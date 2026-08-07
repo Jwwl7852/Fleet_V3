@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er 14 trufne beslutninger i README —
+og få den godkendt, før du skriver. Der er 15 trufne beslutninger i README —
 brud på dem skal være bevidste, ikke tilfældige.
 
 ## Det du ikke må gøre
@@ -23,6 +23,7 @@ brud på dem skal være bevidste, ikke tilfældige.
 - Definere egne farver. Brug tokens i `fleet.css`.
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
+- Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
 
 ## Når du bygger et modul
 

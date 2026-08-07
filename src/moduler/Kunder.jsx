@@ -61,67 +61,116 @@ const AFTALESTATUS = {
 /* Demo-datasæt til useListe(). Bruges når der ikke er en database, og som
    fallback hvis læsningen fejler. Beløb i hele øre, ekskl. moms.
 
+   division står EKSPLICIT på hver post — ingen arver en default. Ellers kan
+   man ikke se om filteret virker eller bare falder tilbage.
+
+   Kunder er stamdata, så alle tre værdier er lovlige. Aalborg Industri
+   (medarbejderbusser + fragt) og Kolding Kommune (skolebusser +
+   containerkørsel) er "faelles" og står derfor på BEGGE divisioners lister
+   med samme tal. Det er ikke en dublet — det er én kunde.
+
+   KENDT SKÆVHED: omsaetningOere og daekningsbidragOere er periodeafhængige
+   tal på en stamdatanode. For en fælles kunde burde de være opgjort pr.
+   division. Det hører i aggregeringen sammen med de øvrige manglende
+   KPI-felter — se noten i useListe.js.
+
    aftaltOere/faktureretOere står kun på de kunder der HAR en afvigelse i
    perioden — salgsprisafvigelseskortet er et filter på samme datasæt, ikke
    en selvstændig liste. */
 const DEMO_KUNDER = [
-  { id: "nordiskFragt", navn: "Nordisk Fragt A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
+  { id: "nordiskFragt", navn: "Nordisk Fragt A/S", division: "gods", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 1 * D, aftaleUdloeberMs: NU + 243 * D,
     omsaetningOere: 14250000, daekningsbidragOere: 4132500,
     aftalestatus: "aktiv", ansvarlig: "Mette Kjær" },
-  { id: "skagenSeafood", navn: "Skagen Seafood ApS", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
+  { id: "skagenSeafood", navn: "Skagen Seafood ApS", division: "gods", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 2 * D, aftaleUdloeberMs: NU + 152 * D,
     omsaetningOere: 11840000, daekningsbidragOere: 3078400,
     aftalestatus: "aktiv", ansvarlig: "Søren Dahl" },
-  { id: "jyskByggecenter", navn: "Jysk Byggecenter A/S", aktiv: true, aftale: "Rammeaftale", prisgruppe: "B",
+  { id: "jyskByggecenter", navn: "Jysk Byggecenter A/S", division: "gods", aktiv: true,
+    aftale: "Rammeaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 3 * D, aftaleUdloeberMs: NU + 30 * D,
     omsaetningOere: 9620000, daekningsbidragOere: 2212600,
     aftalestatus: "genforhandling", ansvarlig: "Mette Kjær",
     aftaltOere: 9620000, faktureretOere: 9913000, afvigelsesAarsag: "Tillæg for ekstra stop" },
-  { id: "fynKoel", navn: "Fyn Køl & Frost A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
+  { id: "fynKoel", navn: "Fyn Køl & Frost A/S", division: "gods", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 5 * D, aftaleUdloeberMs: NU + 334 * D,
     omsaetningOere: 8875000, daekningsbidragOere: 2751200,
     aftalestatus: "aktiv", ansvarlig: "Anne Bøgh" },
-  { id: "hamburgHandel", navn: "Hamburg Handel GmbH", aktiv: true, aftale: "Spotaftale", prisgruppe: "C",
+  { id: "hamburgHandel", navn: "Hamburg Handel GmbH", division: "gods", aktiv: true,
+    aftale: "Spotaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 6 * D, aftaleUdloeberMs: NU + 6 * D,
     omsaetningOere: 7430000, daekningsbidragOere: 1337400,
     aftalestatus: "udloeber", ansvarlig: "Søren Dahl",
     aftaltOere: 7430000, faktureretOere: 5590000, afvigelsesAarsag: "Spotpris under aftalt minimum" },
-  { id: "vestjyskLandbrug", navn: "Vestjysk Landbrug AmbA", aktiv: true, aftale: "Rammeaftale", prisgruppe: "B",
+  { id: "koldingKommune", navn: "Kolding Kommune", division: "faelles", aktiv: true,
+    aftale: "Rammeaftale", prisgruppe: "B",
+    sidsteAktivitetMs: NU - 4 * D, aftaleUdloeberMs: NU + 150 * D,
+    omsaetningOere: 6850000, daekningsbidragOere: 1918000,
+    aftalestatus: "aktiv", ansvarlig: "Anne Bøgh",
+    aftaltOere: 6850000, faktureretOere: 6712000, afvigelsesAarsag: "Kommunal rabat ikke aftalt" },
+  { id: "vestjyskLandbrug", navn: "Vestjysk Landbrug AmbA", division: "gods", aktiv: true,
+    aftale: "Rammeaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 8 * D, aftaleUdloeberMs: NU + 24 * D,
     omsaetningOere: 6190000, daekningsbidragOere: 1547500,
     aftalestatus: "genforhandling", ansvarlig: "Peter Lund",
     aftaltOere: 6190000, faktureretOere: 6560500, afvigelsesAarsag: "Færgetillæg viderefaktureret" },
-  { id: "aalborgIndustri", navn: "Aalborg Industri A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "B",
+  { id: "aalborgIndustri", navn: "Aalborg Industri A/S", division: "faelles", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 9 * D, aftaleUdloeberMs: NU + 28 * D,
     omsaetningOere: 5420000, daekningsbidragOere: 1463400,
     aftalestatus: "genforhandling", ansvarlig: "Anne Bøgh" },
-  { id: "bornholmsMejeri", navn: "Bornholms Mejeri", aktiv: true, aftale: "Rammeaftale", prisgruppe: "C",
+  { id: "bornholmsMejeri", navn: "Bornholms Mejeri", division: "gods", aktiv: true,
+    aftale: "Rammeaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 12 * D, aftaleUdloeberMs: NU + 11 * D,
     omsaetningOere: 4380000, daekningsbidragOere: 919800,
     aftalestatus: "udloeber", ansvarlig: "Peter Lund",
     aftaltOere: 4380000, faktureretOere: 4380000, afvigelsesAarsag: "Ingen afvigelse" },
-  { id: "koldingStaal", navn: "Kolding Stål ApS", aktiv: true, aftale: "Spotaftale", prisgruppe: "C",
+  { id: "koldingStaal", navn: "Kolding Stål ApS", division: "gods", aktiv: true,
+    aftale: "Spotaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 16 * D, aftaleUdloeberMs: NU - 3 * D,
     omsaetningOere: 3860000, daekningsbidragOere: 617600,
     aftalestatus: "udloebet", ansvarlig: "Søren Dahl",
     aftaltOere: 3860000, faktureretOere: 3612000, afvigelsesAarsag: "Ventetid ikke faktureret" },
-  { id: "sjaellandRetail", navn: "Sjælland Retail A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "B",
+  { id: "sjaellandRetail", navn: "Sjælland Retail A/S", division: "gods", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 21 * D, aftaleUdloeberMs: NU + 19 * D,
     omsaetningOere: 3240000, daekningsbidragOere: 874800,
     aftalestatus: "udloeber", ansvarlig: "Mette Kjær" },
+
+  { id: "sydjyskRutebiler", navn: "Sydjysk Rutebiler A/S", division: "bus", aktiv: true,
+    aftale: "Rammeaftale", prisgruppe: "B",
+    sidsteAktivitetMs: NU - 2 * D, aftaleUdloeberMs: NU + 210 * D,
+    omsaetningOere: 8420000, daekningsbidragOere: 2021000,
+    aftalestatus: "aktiv", ansvarlig: "Mette Kjær" },
+  { id: "midtjyllandsTurist", navn: "Midtjyllands Turistbusser ApS", division: "bus", aktiv: true,
+    aftale: "Fastaftale", prisgruppe: "A",
+    sidsteAktivitetMs: NU - 7 * D, aftaleUdloeberMs: NU + 9 * D,
+    omsaetningOere: 4960000, daekningsbidragOere: 1339200,
+    aftalestatus: "udloeber", ansvarlig: "Søren Dahl" },
+  { id: "djursSommerland", navn: "Djurs Sommerland A/S", division: "bus", aktiv: true,
+    aftale: "Spotaftale", prisgruppe: "C",
+    sidsteAktivitetMs: NU - 13 * D, aftaleUdloeberMs: NU + 21 * D,
+    omsaetningOere: 3180000, daekningsbidragOere: 985800,
+    aftalestatus: "udloeber", ansvarlig: "Peter Lund",
+    aftaltOere: 3180000, faktureretOere: 3402000, afvigelsesAarsag: "Ekstra afgange i højsæson" },
 ];
 
 /* Tilbud er IKKE lagt om til useListe() endnu. De har ingen node i
    ARKITEKTUR.md — 'tilbud' er ikke en bookingtilstand, og de kan gå til
    emner der ikke er kunder endnu. Nodeformen skal besluttes før den
-   forespørgsel kan skrives. */
+   forespørgsel kan skrives. Divisionen står alligevel eksplicit: et tilbud
+   er en transaktion og hører derfor til én afdeling, aldrig "faelles". */
 const TILBUD = [
-  { id: "t1", kunde: "Djursland Transport ApS", beloebOere: 8450000, sendtMs: NU - 18 * D },
-  { id: "t2", kunde: "Skagen Seafood ApS", beloebOere: 5620000, sendtMs: NU - 15 * D },
-  { id: "t3", kunde: "Randers Papir A/S", beloebOere: 3980000, sendtMs: NU - 11 * D },
-  { id: "t4", kunde: "Hamburg Handel GmbH", beloebOere: 12400000, sendtMs: NU - 9 * D },
-  { id: "t5", kunde: "Esbjerg Offshore A/S", beloebOere: 7150000, sendtMs: NU - 6 * D },
+  { id: "t1", kunde: "Djursland Transport ApS", division: "gods", beloebOere: 8450000, sendtMs: NU - 18 * D },
+  { id: "t2", kunde: "Skagen Seafood ApS", division: "gods", beloebOere: 5620000, sendtMs: NU - 15 * D },
+  { id: "t3", kunde: "Randers Papir A/S", division: "gods", beloebOere: 3980000, sendtMs: NU - 11 * D },
+  { id: "t4", kunde: "Hamburg Handel GmbH", division: "gods", beloebOere: 12400000, sendtMs: NU - 9 * D },
+  { id: "t5", kunde: "Esbjerg Offshore A/S", division: "gods", beloebOere: 7150000, sendtMs: NU - 6 * D },
+  { id: "t6", kunde: "Vejle Turistfart ApS", division: "bus", beloebOere: 2980000, sendtMs: NU - 16 * D },
+  { id: "t7", kunde: "Odense Skoleforvaltning", division: "bus", beloebOere: 5410000, sendtMs: NU - 10 * D },
 ];
 
 /* Margin beregnes hos forbrugeren — den skrives ikke ind i basen ved siden
@@ -130,7 +179,7 @@ const margin = (r) => (r.omsaetningOere ? (r.daekningsbidragOere / r.omsaetningO
 
 export default function Kunder() {
   const { kpi: k, henter: henterKpi, fejl: kpiFejl, genindlaes: genindlaesKpi } = useKpi();
-  const { dage } = useFleet();
+  const { dage, division } = useFleet();
 
   /* ÉT opslag. Server-side filtreres på `aktiv` — en kundebase er dusinvis
      af rækker, så equalTo er mere selektivt end et tidsvindue, og resten
@@ -166,6 +215,10 @@ export default function Kunder() {
     .sort((a, b) => Math.abs(b.salgsafvigelseOere) - Math.abs(a.salgsafvigelseOere));
   const salgsafvigelseSum = salgsafvigelser.reduce((s, r) => s + r.salgsafvigelseOere, 0);
 
+  /* Tilbud er endnu lokale, men følger samme visningsregel. Et tilbud er en
+     transaktion, så der er ingen "faelles" at tage højde for. */
+  const tilbud = TILBUD.filter((t) => t.division === division);
+
   /* Afledte tal beregnes her — de skrives ikke ind i basen et andet sted.
      Dækningsgraden er Økonomis felt; den læses, ikke genudregnet. */
   const daekningsgradAfv = k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct;
@@ -197,14 +250,24 @@ export default function Kunder() {
         <Kort titel="Kunder og aftaler"
               handling={<Link className="fc-a" to="/booking/opsaetning">Se satser og prisgrupper</Link>}>
           <p className="fc-hint" style={{ marginBottom: 12 }}>
-            Viser de {num(hovedtabel.length)} største af {num(k.kunder.aktive)} aktive kunder.
+            Viser de {num(hovedtabel.length)} største af {num(k.kunder.aktive)} aktive kunder
+            i {division === "bus" ? "busafdelingen" : "godsafdelingen"}. Kunder mærket
+            <Pille tone="info">Fælles</Pille> køber begge dele og står på begge lister med
+            samme tal — det er én kunde, ikke en dublet.
             Prisgruppen bestemmer hvilket satssæt en booking regner med — satserne redigeres
             i Bookingopsætning, hvor de får <b>gyldigFra</b> og aldrig overskrives. Ellers
             ændrer en rettelse i dag prisen på en faktura fra sidste kvartal.
           </p>
           <Tabel
             kolonner={[
-              { key: "navn", label: "Kunde", render: (r) => <b>{r.navn}</b> },
+              { key: "navn", label: "Kunde", render: (r) => (
+                  <>
+                    <b>{r.navn}</b>
+                    {r.division === "faelles" && (
+                      <> <Pille tone="info">Fælles</Pille></>
+                    )}
+                  </>
+                ) },
               { key: "aftale", label: "Aftaletype" },
               { key: "prisgruppe", label: "Prisgruppe", render: (r) => PRISGRUPPER[r.prisgruppe] },
               { key: "sidsteAktivitetMs", label: "Sidste aktivitet", render: (r) => dato(r.sidsteAktivitetMs) },
@@ -317,7 +380,7 @@ export default function Kunder() {
               { key: "beloeb", label: "Beløb", num: true, render: (r) => kr(r.beloebOere) },
               { key: "sendt", label: "Sendt", render: (r) => dato(r.sendtMs) },
             ]}
-            raekker={TILBUD}
+            raekker={tilbud}
             tom="Ingen tilbud afventer opfølgning."
           />
         </Kort>

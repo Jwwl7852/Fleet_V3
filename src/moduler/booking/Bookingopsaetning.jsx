@@ -31,76 +31,106 @@ const FANER = [
 
 /* Satsarket. Bemærk gyldigFra på hver sats: satser overskrives ALDRIG, de
    får en ny post. Ellers ændrer en rettelse i dag prisen på en booking fra
-   sidste kvartal, og så kan fakturaen ikke forklares. */
+   sidste kvartal, og så kan fakturaen ikke forklares.
+
+   division står eksplicit på hver post (beslutning 15). Broer, færger og
+   vejafgifter er "faelles" — Storebælt koster det samme uanset hvilken
+   afdeling der kører over den. Agenter og biler hører til én afdeling. */
 const START = Date.UTC(2026, 0, 1);
 const SATSARK = {
   poster: {
-    "faerge:femern": { navn: "Færge: Femern (Rødby–Puttgarden)", kategori: "faerge",
+    "faerge:femern": { navn: "Færge: Femern (Rødby–Puttgarden)", kategori: "faerge", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 215000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "faerge:oevrige": { navn: "Færger (øvrige)", kategori: "faerge",
+    "faerge:oevrige": { navn: "Færger (øvrige)", kategori: "faerge", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 215000, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
-    "bro:storebaelt": { navn: "Bro: Storebælt (lastbil 10–20 m)", kategori: "bro",
+    "bro:storebaelt": { navn: "Bro: Storebælt (lastbil 10–20 m)", kategori: "bro", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 88700, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "bro:oeresund": { navn: "Bro: Øresund", kategori: "bro",
+    "bro:oeresund": { navn: "Bro: Øresund", kategori: "bro", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 91000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "tunnel:eurotunnel": { navn: "Eurotunnel (Calais–Folkestone)", kategori: "tunnel",
+    "tunnel:eurotunnel": { navn: "Eurotunnel (Calais–Folkestone)", kategori: "tunnel", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 235000, metode: "prPassageEnVej", valuta: "DKK", aktiv: true }] },
-    "parkering:europa": { navn: "Parkering Europa (gennemsnit)", kategori: "parkering",
+    "parkering:europa": { navn: "Parkering Europa (gennemsnit)", kategori: "parkering", division: "faelles",
       satser: [{ gyldigFra: START, beloebOere: 45000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    "vejafgift:miljoezoner": { navn: "Vejafgifter / miljøzoner", kategori: "vejafgift", altidPaaBooking: true,
+    "vejafgift:miljoezoner": { navn: "Vejafgifter / miljøzoner", kategori: "vejafgift", division: "faelles", altidPaaBooking: true,
       satser: [{ gyldigFra: START, beloebOere: 32500, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
   },
   agenter: {
-    hthHamburg: { navn: "HTH Logistics GmbH", by: "Hamburg", note: "Indendørs parkering",
+    hthHamburg: { navn: "HTH Logistics GmbH", by: "Hamburg", note: "Indendørs parkering", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 125000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    transportsParis: { navn: "Transports Parisien SARL", by: "Paris", note: "Sikret område",
+    transportsParis: { navn: "Transports Parisien SARL", by: "Paris", note: "Sikret område", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 105000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    euroTransAms: { navn: "EuroTrans BV", by: "Amsterdam", note: "Parkeringsplads med overvågning",
+    euroTransAms: { navn: "EuroTrans BV", by: "Amsterdam", note: "Parkeringsplads med overvågning", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 95000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    bavariaMuenchen: { navn: "Bavaria Logistics GmbH", by: "München", note: "Overdækket parkering",
+    bavariaMuenchen: { navn: "Bavaria Logistics GmbH", by: "München", note: "Overdækket parkering", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 115000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    milanoCargo: { navn: "Milano Cargo SRL", by: "Milano", note: "Indhegnet areal",
+    milanoCargo: { navn: "Milano Cargo SRL", by: "Milano", note: "Indhegnet areal", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 110000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    bruxTrans: { navn: "BruxTrans SA", by: "Bruxelles", note: "Åbent område",
+    bruxTrans: { navn: "BruxTrans SA", by: "Bruxelles", note: "Åbent område", division: "gods",
       satser: [{ gyldigFra: START, beloebOere: 90000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    berlinBusPark: { navn: "Berlin Bus Park GmbH", by: "Berlin", note: "Buspladser med chaufførfaciliteter", division: "bus",
+      satser: [{ gyldigFra: START, beloebOere: 85000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
   },
   biler: {
-    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345",
+    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 840, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678",
+    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 860, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901",
+    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567",
+    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 850, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123",
+    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 820, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789",
+    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789", division: "gods",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    volvo9700: { navn: "Volvo 9700 turistbus", registrering: "DE 22 111", division: "bus",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 690, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    setraS516: { navn: "Setra S 516 HDH", registrering: "DE 33 222", division: "bus",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 715, metode: "prKm", valuta: "DKK", aktiv: true }] },
   },
 };
 
-/* Eksempelbooking. Femern og Storebælt — ikke Eurotunnel. */
-const EKSEMPEL = {
-  bilId: "volvoFH500",
-  rute: "København → Hamburg",
-  kmEstimeret: 780,
-  doegnParkering: 1,
-  agentId: "hthHamburg",
-  passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+/* Eksempelbooking pr. division. Femern og Storebælt — ikke Eurotunnel.
+   Broerne er fælles poster, så begge eksempler regner med de samme
+   passagesatser; kun bilen og agenten skifter. */
+const EKSEMPLER = {
+  gods: {
+    bilId: "volvoFH500",
+    rute: "København → Hamburg",
+    kmEstimeret: 780,
+    doegnParkering: 1,
+    agentId: "hthHamburg",
+    passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+  },
+  bus: {
+    bilId: "volvo9700",
+    rute: "København → Berlin",
+    kmEstimeret: 620,
+    doegnParkering: 1,
+    agentId: "berlinBusPark",
+    passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+  },
 };
 
+/* Samme visningsregel som useListe: valgt division plus fælles. */
+const iDivision = (d) => ([, v]) => v.division === d || v.division === "faelles";
+
 export default function Bookingopsaetning() {
-  const { periode } = useFleet();
+  const { periode, division } = useFleet();
   const [fane, setFane] = useState("satser");
   const [aendret, setAendret] = useState(false);
 
+  const eksempel = EKSEMPLER[division] || EKSEMPLER.gods;
   const beregning = useMemo(
-    () => beregnBooking(EKSEMPEL, SATSARK, { paaMs: periode.til }),
-    [periode.til]
+    () => beregnBooking(eksempel, SATSARK, { paaMs: periode.til }),
+    [eksempel, periode.til]
   );
-  const bil = SATSARK.biler[EKSEMPEL.bilId];
+  const bil = SATSARK.biler[eksempel.bilId];
   const kmSats = satsPaa(bil.kmPrisSatser, periode.til);
+
+  const poster = Object.entries(SATSARK.poster).filter(iDivision(division)).map(([id, p]) => ({ id, ...p }));
+  const agenter = Object.entries(SATSARK.agenter).filter(iDivision(division)).map(([id, a]) => ({ id, ...a }));
+  const biler = Object.entries(SATSARK.biler).filter(iDivision(division)).map(([id, b]) => ({ id, ...b }));
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -138,7 +168,7 @@ export default function Bookingopsaetning() {
                     render: (r) => dato(satsPaa(r.satser, periode.til)?.gyldigFra) },
                   { key: "aktiv", label: "Status", render: () => <Pille tone="ok">Aktiv</Pille> },
                 ]}
-                raekker={Object.entries(SATSARK.poster).map(([id, p]) => ({ id, ...p }))}
+                raekker={poster}
               />
             </Kort>
           )}
@@ -161,7 +191,7 @@ export default function Bookingopsaetning() {
                   { key: "note", label: "Noter" },
                   { key: "aktiv", label: "Status", render: () => <Pille tone="ok">Aktiv</Pille> },
                 ]}
-                raekker={Object.entries(SATSARK.agenter).map(([id, a]) => ({ id, ...a }))}
+                raekker={agenter}
               />
             </Kort>
           )}
@@ -186,7 +216,7 @@ export default function Bookingopsaetning() {
                   { key: "gyldig", label: "Gyldig fra",
                     render: (r) => dato(satsPaa(r.kmPrisSatser, periode.til)?.gyldigFra) },
                 ]}
-                raekker={Object.entries(SATSARK.biler).map(([id, b]) => ({ id, ...b }))}
+                raekker={biler}
               />
             </Kort>
           )}
@@ -201,8 +231,8 @@ export default function Bookingopsaetning() {
         <div className="fc-grid">
           <Kort titel="Automatisk beregning – eksempel">
             <div style={{ fontWeight: 650, marginBottom: 2 }}>{bil.navn} – Int. Hamburg</div>
-            <div className="fc-linje"><span>Rute</span><b>{EKSEMPEL.rute}</b></div>
-            <div className="fc-linje"><span>Km estimeret</span><b>{num(EKSEMPEL.kmEstimeret)} km</b></div>
+            <div className="fc-linje"><span>Rute</span><b>{eksempel.rute}</b></div>
+            <div className="fc-linje"><span>Km estimeret</span><b>{num(eksempel.kmEstimeret)} km</b></div>
             <div className="fc-linje"><span>Kalkulationspris</span><b>{kr(kmSats.beloebOere, 2)}/km</b></div>
 
             <div style={{ marginTop: 14 }}>

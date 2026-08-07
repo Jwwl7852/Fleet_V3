@@ -60,43 +60,64 @@ const RAPPORTER = [
   { key: "oevrige", label: "Øvrige" },
 ];
 
-/* Omkostningskategorier. faktiskOere og budgetOere summer PRÆCIS til
-   k.oekonomi.driftsomkostningerOere (842.615 kr) og k.oekonomi.budgetOere
-   (770.055 kr) — ellers ville tabellens rækker og dens totalrække sige hver
-   sit, hvilket er den fejl hele skærmen handler om.
+/* Omkostningskategorier — ét sæt PR. DIVISION, som KPI-noden.
+   Var det ét fælles sæt, ville Økonomi vise godsomkostninger under Bus,
+   og så havde vi flyttet inkonsistensen i stedet for at fjerne den.
+
+   Hvert sæts faktiskOere og budgetOere summer PRÆCIS til divisionens
+   k.oekonomi.driftsomkostningerOere og k.oekonomi.budgetOere — ellers ville
+   tabellens rækker og dens totalrække sige hver sit, hvilket er den fejl
+   hele skærmen handler om.
+     gods: 842.615 kr faktisk / 770.055 kr budget
+     bus:  343.460 kr faktisk / 333.500 kr budget
 
    historik er de 11 foregående måneder; den 12. er det aktuelle tal, så
    grafen ender i det samme som nøgletallet. budgetOere er månedligt og fladt
    (årsbudget delt med 12). forrigeOere = sidste element i historik. */
 const KATEGORIER = [
   { id: "vaerksted", navn: "Værksted",
-    faktiskOere: 24180000, budgetOere: 20500000, forrigeOere: 22890000,
-    historik: [19450000, 21200000, 18900000, 22400000, 20100000, 23650000,
-               19800000, 24900000, 21750000, 22300000, 22890000] },
+    gods: { faktiskOere: 24180000, budgetOere: 20500000, forrigeOere: 22890000,
+            historik: [19450000, 21200000, 18900000, 22400000, 20100000, 23650000,
+                       19800000, 24900000, 21750000, 22300000, 22890000] },
+    bus:  { faktiskOere: 9640000, budgetOere: 8900000, forrigeOere: 9120000,
+            historik: [8450000, 9320000, 8900000, 9650000, 8780000, 10100000,
+                       9240000, 9880000, 8960000, 9400000, 9120000] } },
   { id: "braendstof", navn: "Brændstof",
-    faktiskOere: 31450000, budgetOere: 30200000, forrigeOere: 32100000,
-    historik: [28900000, 30450000, 29100000, 31800000, 30900000, 32400000,
-               29700000, 33100000, 30200000, 31050000, 32100000] },
+    gods: { faktiskOere: 31450000, budgetOere: 30200000, forrigeOere: 32100000,
+            historik: [28900000, 30450000, 29100000, 31800000, 30900000, 32400000,
+                       29700000, 33100000, 30200000, 31050000, 32100000] },
+    bus:  { faktiskOere: 12180000, budgetOere: 12600000, forrigeOere: 12450000,
+            historik: [11800000, 12350000, 12900000, 13100000, 12200000, 11950000,
+                       12600000, 13400000, 12800000, 12100000, 12450000] } },
   { id: "daek", navn: "Dæk",
-    faktiskOere: 6840000, budgetOere: 5900000, forrigeOere: 6120000,
-    historik: [5200000, 7400000, 4800000, 6100000, 5650000, 8200000,
-               5400000, 6900000, 5950000, 6300000, 6120000] },
+    gods: { faktiskOere: 6840000, budgetOere: 5900000, forrigeOere: 6120000,
+            historik: [5200000, 7400000, 4800000, 6100000, 5650000, 8200000,
+                       5400000, 6900000, 5950000, 6300000, 6120000] },
+    bus:  { faktiskOere: 2310000, budgetOere: 2100000, forrigeOere: 2240000,
+            historik: [1980000, 2450000, 1820000, 2600000, 2100000, 2890000,
+                       1950000, 2340000, 2180000, 2420000, 2240000] } },
   { id: "forsikring", navn: "Forsikring",
-    faktiskOere: 8560000, budgetOere: 9120000, forrigeOere: 8560000,
-    historik: [9120000, 9120000, 9120000, 9120000, 8560000, 8560000,
-               8560000, 8560000, 8560000, 8560000, 8560000] },
+    gods: { faktiskOere: 8560000, budgetOere: 9120000, forrigeOere: 8560000,
+            historik: [9120000, 9120000, 9120000, 9120000, 8560000, 8560000,
+                       8560000, 8560000, 8560000, 8560000, 8560000] },
+    bus:  { faktiskOere: 4820000, budgetOere: 4820000, forrigeOere: 4820000,
+            historik: [4820000, 4820000, 4820000, 4820000, 4820000, 4820000,
+                       4820000, 4820000, 4820000, 4820000, 4820000] } },
   { id: "oevrige", navn: "Øvrige",
-    faktiskOere: 13231500, budgetOere: 11285500, forrigeOere: 12610000,
-    historik: [10900000, 11450000, 12100000, 10750000, 11900000, 13200000,
-               11600000, 12800000, 12050000, 12400000, 12610000] },
+    gods: { faktiskOere: 13231500, budgetOere: 11285500, forrigeOere: 12610000,
+            historik: [10900000, 11450000, 12100000, 10750000, 11900000, 13200000,
+                       11600000, 12800000, 12050000, 12400000, 12610000] },
+    bus:  { faktiskOere: 5396000, budgetOere: 4930000, forrigeOere: 5120000,
+            historik: [4650000, 5100000, 4890000, 5340000, 4980000, 5620000,
+                       5050000, 5480000, 5210000, 5300000, 5120000] } },
 ];
 
-const FORRIGE_SUM = KATEGORIER.reduce((s, c) => s + c.forrigeOere, 0);
-const HISTORIK_TOTAL = Array.from({ length: 11 }, (_, i) =>
-  KATEGORIER.reduce((s, c) => s + c.historik[i], 0));
-
-/* Dækningsgrad pr. måned. Sidste punkt kommer fra KPI-noden. */
-const DAEKNINGSGRAD_HISTORIK = [68, 69, 71, 70, 67, 69, 73, 71, 70, 72, 71];
+/* Dækningsgrad pr. måned, pr. division. Sidste punkt kommer fra KPI-noden.
+   Gods ender over målet, bus under — samme graf, modsat side af stregen. */
+const DAEKNINGSGRAD_HISTORIK = {
+  gods: [68, 69, 71, 70, 67, 69, 73, 71, 70, 72, 71],
+  bus: [65, 67, 66, 69, 64, 68, 70, 67, 66, 69, 67],
+};
 
 /* Månedsetiketter regnes ud fra i dag. setDate(1) først, ellers ruller
    31. august tilbage til 3. marts. */
@@ -107,28 +128,34 @@ const MAANEDER = Array.from({ length: 12 }, (_, i) => {
   return d.toLocaleDateString("da-DK", { month: "short" });
 });
 
-/* Nævnere til omkostning pr. enhed. De findes IKKE i kpi/ endnu — der er
-   hverken driftstimer eller udførte opgaver i perioden. De står synligt i
-   labelen, så det fremgår hvad der er divideret med, og de hører hjemme i
-   aggregeringen når Cloud Functions skrives. */
-const DEMO_DRIFTSTIMER = 2840;
-const DEMO_UDFOERTE_OPGAVER = 214;
+/* Nævnere til omkostning pr. enhed, pr. division. De findes IKKE i kpi/
+   endnu — der er hverken driftstimer eller udførte opgaver i perioden. De
+   står synligt i labelen, så det fremgår hvad der er divideret med, og de
+   hører hjemme i aggregeringen når Cloud Functions skrives. */
+const DEMO_DRIFTSTIMER = { gods: 2840, bus: 1120 };
+const DEMO_UDFOERTE_OPGAVER = { gods: 214, bus: 96 };
 
 /* Klar til fakturering. Nummerformatet er PRÆFIKS-ÅÅÅÅ-NNNNN (beslutning 8).
-   De fem viste må aldrig summe til mere end k.oekonomi.ikkeFaktureretOere —
-   ellers ville de resterende opgaver have negativ værdi. 140.240 af
-   186.240 kr. */
+   En faktureringsklar opgave er en transaktion, så division er altid gods
+   eller bus — aldrig "faelles".
+   De viste må aldrig summe til mere end divisionens ikkeFaktureretOere —
+   ellers ville de resterende opgaver have negativ værdi.
+   gods 140.240 af 186.240 kr · bus 55.000 af 72.400 kr. */
 const KLAR_TIL_FAKTURERING = [
-  { id: "BKG-2026-00118", kunde: "Nordisk Fragt A/S", afsluttetMs: NU - 24 * D, beloebOere: 4280000 },
-  { id: "BKG-2026-00121", kunde: "Skagen Seafood ApS", afsluttetMs: NU - 19 * D, beloebOere: 3150000 },
-  { id: "BKG-2026-00126", kunde: "Fyn Køl & Frost A/S", afsluttetMs: NU - 15 * D, beloebOere: 2640000 },
-  { id: "BKG-2026-00130", kunde: "Jysk Byggecenter A/S", afsluttetMs: NU - 11 * D, beloebOere: 2120000 },
-  { id: "BKG-2026-00134", kunde: "Hamburg Handel GmbH", afsluttetMs: NU - 8 * D, beloebOere: 1834000 },
+  { id: "BKG-2026-00118", division: "gods", kunde: "Nordisk Fragt A/S", afsluttetMs: NU - 24 * D, beloebOere: 4280000 },
+  { id: "BKG-2026-00119", division: "bus", kunde: "Sydjysk Rutebiler A/S", afsluttetMs: NU - 21 * D, beloebOere: 1840000 },
+  { id: "BKG-2026-00121", division: "gods", kunde: "Skagen Seafood ApS", afsluttetMs: NU - 19 * D, beloebOere: 3150000 },
+  { id: "BKG-2026-00124", division: "bus", kunde: "Kolding Kommune", afsluttetMs: NU - 17 * D, beloebOere: 1260000 },
+  { id: "BKG-2026-00126", division: "gods", kunde: "Fyn Køl & Frost A/S", afsluttetMs: NU - 15 * D, beloebOere: 2640000 },
+  { id: "BKG-2026-00129", division: "bus", kunde: "Djurs Sommerland A/S", afsluttetMs: NU - 12 * D, beloebOere: 980000 },
+  { id: "BKG-2026-00130", division: "gods", kunde: "Jysk Byggecenter A/S", afsluttetMs: NU - 11 * D, beloebOere: 2120000 },
+  { id: "BKG-2026-00133", division: "bus", kunde: "Midtjyllands Turistbusser ApS", afsluttetMs: NU - 7 * D, beloebOere: 1420000 },
+  { id: "BKG-2026-00134", division: "gods", kunde: "Hamburg Handel GmbH", afsluttetMs: NU - 8 * D, beloebOere: 1834000 },
 ];
 
 export default function Oekonomi() {
   const { kpi: k, henter, fejl, genindlaes } = useKpi();
-  const { dage } = useFleet();
+  const { dage, division } = useFleet();
   const [rapport, setRapport] = useState("alle");
 
   if (henter) return <Henter hvad="nøgletal" />;
@@ -139,38 +166,53 @@ export default function Oekonomi() {
   const budgetAfvigelsePct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
   const daekningsgradAfv = k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct;
 
-  const valgt = KATEGORIER.find((c) => c.id === rapport) || null;
+  /* Kategorierne foldes ud til den valgte division. Ét sæt tal, ikke to
+     der kan drive fra hinanden. */
+  const kategorier = KATEGORIER.map((c) => ({ id: c.id, navn: c.navn, ...(c[division] || c.gods) }));
+  const forrigeSum = kategorier.reduce((s, c) => s + c.forrigeOere, 0);
+  const historikTotal = Array.from({ length: 11 }, (_, i) =>
+    kategorier.reduce((s, c) => s + c.historik[i], 0));
+
+  const valgt = kategorier.find((c) => c.id === rapport) || null;
 
   const total = {
     id: "alle",
     navn: "Driftsomkostninger i alt",
     faktiskOere: k.oekonomi.driftsomkostningerOere,
     budgetOere: k.oekonomi.budgetOere,
-    forrigeOere: FORRIGE_SUM,
+    forrigeOere: forrigeSum,
     daekningsgradPct: k.oekonomi.daekningsgradPct,
   };
-  const raekker = valgt ? [valgt] : [total, ...KATEGORIER];
+  const raekker = valgt ? [valgt] : [total, ...kategorier];
 
   /* Største afvigelse udledes af rækkerne — den skrives ikke som sin egen
      post, som mockuppens "Største afvigelser" gjorde. */
-  const stoerste = [...KATEGORIER].sort(
+  const stoerste = [...kategorier].sort(
     (a, b) => Math.abs(b.faktiskOere - b.budgetOere) - Math.abs(a.faktiskOere - a.budgetOere)
   )[0];
 
   const omkostningSerie = valgt ? [...valgt.historik, valgt.faktiskOere]
-                                : [...HISTORIK_TOTAL, k.oekonomi.driftsomkostningerOere];
+                                : [...historikTotal, k.oekonomi.driftsomkostningerOere];
   const budgetMaanedligOere = valgt ? valgt.budgetOere : k.oekonomi.budgetOere;
 
+  const dgHistorik = DAEKNINGSGRAD_HISTORIK[division] || DAEKNINGSGRAD_HISTORIK.gods;
   const omkostningPunkter = MAANEDER.map((m, i) => ({
     label: m, vaerdier: [omkostningSerie[i], budgetMaanedligOere],
   }));
   const daekningsgradPunkter = MAANEDER.map((m, i) => ({
     label: m,
-    vaerdier: [i < 11 ? DAEKNINGSGRAD_HISTORIK[i] : k.oekonomi.daekningsgradPct],
+    vaerdier: [i < 11 ? dgHistorik[i] : k.oekonomi.daekningsgradPct],
   }));
 
-  const prDriftstimeOere = Math.round(k.oekonomi.driftsomkostningerOere / DEMO_DRIFTSTIMER);
-  const prOpgaveOere = Math.round(k.oekonomi.driftsomkostningerOere / DEMO_UDFOERTE_OPGAVER);
+  const timer = DEMO_DRIFTSTIMER[division] ?? DEMO_DRIFTSTIMER.gods;
+  const udfoerte = DEMO_UDFOERTE_OPGAVER[division] ?? DEMO_UDFOERTE_OPGAVER.gods;
+  const prDriftstimeOere = Math.round(k.oekonomi.driftsomkostningerOere / timer);
+  const prOpgaveOere = Math.round(k.oekonomi.driftsomkostningerOere / udfoerte);
+
+  /* Faktureringsklare opgaver er transaktioner — ingen "faelles". */
+  const klarTilFakturering = KLAR_TIL_FAKTURERING
+    .filter((r) => r.division === division)
+    .slice(0, 5);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -275,9 +317,9 @@ export default function Oekonomi() {
           <Kort titel="Omkostninger pr. enhed">
             <MiniLinje label="Pr. km (uden chauffør)"
                        vaerdi={`${kr(k.flaade.omkostningPrKmOere, 2)}/km`} />
-            <MiniLinje label={`Pr. driftstime (${num(DEMO_DRIFTSTIMER)})`}
+            <MiniLinje label={`Pr. driftstime (${num(timer)})`}
                        vaerdi={kr(prDriftstimeOere, 2)} />
-            <MiniLinje label={`Pr. udført opgave (${num(DEMO_UDFOERTE_OPGAVER)})`}
+            <MiniLinje label={`Pr. udført opgave (${num(udfoerte)})`}
                        vaerdi={kr(prOpgaveOere, 2)} />
             <p className="fc-hint" style={{ marginTop: 10 }}>
               Km-tallet er <b>driftsomkostning uden chauffør</b>. Kalkulationsprisen pr. km
@@ -301,13 +343,13 @@ export default function Oekonomi() {
                   { key: "afsluttet", label: "Afsluttet", render: (r) => dato(r.afsluttetMs) },
                   { key: "beloeb", label: "Beløb", num: true, render: (r) => kr(r.beloebOere) },
                 ]}
-                raekker={KLAR_TIL_FAKTURERING}
+                raekker={klarTilFakturering}
                 tom="Ingen opgaver afventer fakturering."
               />
             </div>
             <p className="fc-hint" style={{ marginTop: 10 }}>
-              Viser de 5 ældste. Antal og beløb kommer fra KPI-noden — de summes ikke ud af
-              rækkerne her.
+              Viser de {num(klarTilFakturering.length)} ældste. Antal og beløb kommer fra
+              KPI-noden — de summes ikke ud af rækkerne her.
             </p>
           </Kort>
         </div>

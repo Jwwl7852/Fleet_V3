@@ -11,6 +11,7 @@
  */
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
+import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import { Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, MiniLinje, Gitter } from "../fleet/ui.jsx";
 
@@ -22,16 +23,23 @@ const HANDLINGER = (k) => [
   { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "brand", ikon: "⚙" },
 ];
 
+/* division står eksplicit på hver post — ingen arver en default.
+   Port 3 er "faelles": porten er den samme uanset om det er en lastbil
+   eller en bus der skal igennem den, så opgaven står på begge lister.
+   Fælles omkostninger skal fordeles før de kan læses som divisionens egne —
+   fordelingsnøglen er udskudt, se beslutning 15. */
 const OPGAVER = [
-  { id: 1, ms: Date.now() - 3 * 864e5, enhed: "Bil 155", type: "Reparation", besk: "Palleløfter vil ikke løfte", ansv: "Lars Aage", status: "Indberettet", tone: "warn", est: 650000, alvor: "hoej" },
-  { id: 2, ms: Date.now() - 4 * 864e5, enhed: "Bil 104", type: "Service", besk: "Serviceeftersyn 30.000 km", ansv: "Rene Thomsen", status: "Planlagt", tone: "info", est: 320000, alvor: "mellem" },
-  { id: 3, ms: Date.now() - 5 * 864e5, enhed: "Porte – Port 3", type: "Facility", besk: "Port lukker langsomt", ansv: "Benjamin", status: "Afventer", tone: "warn", est: 480000, alvor: "hoej" },
-  { id: 4, ms: Date.now() - 6 * 864e5, enhed: "Lastbil 106", type: "Reparation", besk: "Motorlampe lyser", ansv: "Lars Aage", status: "I gang", tone: "ok", est: 1200000, alvor: "hoej" },
-  { id: 5, ms: Date.now() - 7 * 864e5, enhed: "Truck 2", type: "Service", besk: "Gaffeljustering og smøring", ansv: "Benjamin", status: "Planlagt", tone: "info", est: 180000, alvor: "lav" },
+  { id: 1, ms: Date.now() - 3 * 864e5, division: "gods", enhed: "Bil 155", type: "Reparation", besk: "Palleløfter vil ikke løfte", ansv: "Lars Aage", status: "Indberettet", tone: "warn", est: 650000, alvor: "hoej" },
+  { id: 2, ms: Date.now() - 4 * 864e5, division: "gods", enhed: "Bil 104", type: "Service", besk: "Serviceeftersyn 30.000 km", ansv: "Rene Thomsen", status: "Planlagt", tone: "info", est: 320000, alvor: "mellem" },
+  { id: 3, ms: Date.now() - 5 * 864e5, division: "faelles", enhed: "Porte – Port 3", type: "Facility", besk: "Port lukker langsomt", ansv: "Benjamin", status: "Afventer", tone: "warn", est: 480000, alvor: "hoej" },
+  { id: 4, ms: Date.now() - 6 * 864e5, division: "gods", enhed: "Lastbil 106", type: "Reparation", besk: "Motorlampe lyser", ansv: "Lars Aage", status: "I gang", tone: "ok", est: 1200000, alvor: "hoej" },
+  { id: 5, ms: Date.now() - 7 * 864e5, division: "gods", enhed: "Truck 2", type: "Service", besk: "Gaffeljustering og smøring", ansv: "Benjamin", status: "Planlagt", tone: "info", est: 180000, alvor: "lav" },
+  { id: 6, ms: Date.now() - 8 * 864e5, division: "bus", enhed: "Bus 12", type: "Reparation", besk: "Fordør lukker ikke i", ansv: "Rene Thomsen", status: "Indberettet", tone: "warn", est: 540000, alvor: "hoej" },
 ];
 
 export default function Dashboard() {
   const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
@@ -42,6 +50,9 @@ export default function Dashboard() {
   const budgetAfv = k.oekonomi.driftsomkostningerOere - k.oekonomi.budgetOere;
   const budgetAfvPct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
   const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
+
+  /* Samme visningsregel som useListe: valgt division plus fælles. */
+  const opgaver = OPGAVER.filter((o) => o.division === division || o.division === "faelles");
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -94,7 +105,7 @@ export default function Dashboard() {
                     {r.alvor === "hoej" ? "Høj" : r.alvor === "mellem" ? "Mellem" : "Lav"}
                   </Pille>) },
             ]}
-            raekker={OPGAVER}
+            raekker={opgaver}
             tom="Ingen åbne opgaver i perioden."
           />
         </Kort>

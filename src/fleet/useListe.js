@@ -16,10 +16,12 @@
  * i konsollen. Regningen kommer stille. Hvert ordnPaa-felt herunder skal
  * have en tilsvarende regel i firebase.rules.json.
  *
- * KENDT HUL: Gods/Bus (beslutning 9) er ikke en del af entitetsmodellen —
- * kun kpi/ er delt på division. Lister er derfor ikke divisionsopdelte. Får
- * kunder, opgaver og køretøjer et division-felt, hører det som ordnPaa+lig
- * eller som et klientsidefilter, ikke som en ny sti.
+ * Division (beslutning 15) er et FELT, ikke en sti, og filtreres altid
+ * klientside. Den optager derfor aldrig det ene server-side felt, og et
+ * skift mellem Gods og Bus genhenter ikke — filteret ligger i render.
+ * Prisen er at en divisionsopdelt liste henter ca. dobbelt så meget som
+ * den viser. Det er den pris analysen valgte, frem for to kalendere for
+ * én chauffør med C+D.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
@@ -114,13 +116,28 @@ function somServeren(raekker, { ordnPaa, interval, lig, graense }) {
   return ud;
 }
 
+export const FAELLES = "faelles";
+
+/* Visningsreglen: den valgte division PLUS fælles. En kunde der køber både
+   gods og bus står på begge lister med samme tal.
+   En post UDEN division vises i begge — ikke i ingen. Skjuler den sig,
+   forsvinder en fejlskrevet booking fra begge toggles, og fejlen opdages
+   først når nogen spørger hvorfor en tur mangler. */
+function divisionsfilter(raekker, valgt, tilstand) {
+  if (tilstand === "alle") return raekker;
+  return raekker.filter(
+    (r) => r.division == null || r.division === valgt || r.division === FAELLES
+  );
+}
+
 /* Klientsidedelen. Køres på BÅDE ægte og demo-data, så en fejl i et filter
    dukker op i demo-mode i stedet for først i produktion. */
-function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter }) {
+function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand }) {
   let ud = raekker;
   if (ordnPaa && lig === undefined && interval) {
     ud = ud.filter((r) => r[ordnPaa] >= interval.fra && r[ordnPaa] < interval.til);
   }
+  ud = divisionsfilter(ud, valgtDivision, divisionsTilstand);
   if (filtrer) ud = ud.filter(filtrer);
   if (sorter) ud = [...ud].sort(sorter);
   return ud;
@@ -141,6 +158,7 @@ function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter }) {
  *     filtrer      (r) => bool
  *     sorter       (a, b) => number
  *
+ *     division     "shell" (standard: valgt division + faelles) | "alle"
  *     partition    "maaned" — læser /<år>/<måned>/ i vinduet
  *     live         false (once) | true (on + off i cleanup)
  *     demo         array eller () => array, når db er null
@@ -152,10 +170,11 @@ function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter }) {
  * hvorfor en booking mangler.
  */
 export function useListe(node, indstillinger = {}) {
-  const { periode, path, tenantId } = useFleet();
+  const { periode, path, tenantId, division: valgtDivision } = useFleet();
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
-    filtrer, sorter, partition, live = false, demo,
+    filtrer, sorter, division: divisionsTilstand = "shell",
+    partition, live = false, demo,
   } = indstillinger;
 
   /* Konfigurationsfejl er statiske pr. kaldsted — de skal fejle højlydt
@@ -209,6 +228,18 @@ export function useListe(node, indstillinger = {}) {
 
     const modtag = (raekker) => {
       if (!aktiv) return;
+      /* Drift-detektor: har NOGLE rækker division og andre ikke, er feltet
+         ved at glide. De divisionsløse vises i begge, så fejlen er synlig —
+         men den skal også være hørbar for udvikleren. */
+      if (import.meta.env.DEV) {
+        const uden = raekker.filter((r) => r.division == null).length;
+        if (uden && uden < raekker.length) {
+          console.warn(
+            `useListe("${node}"): ${uden} af ${raekker.length} poster mangler division. ` +
+            `De vises i BEGGE divisioner — se beslutning 15.`
+          );
+        }
+      }
       setRaa(raekker);
       setAfkortet(Boolean(graense) && raekker.length >= graense);
       setHenter(false);
@@ -247,5 +278,10 @@ export function useListe(node, indstillinger = {}) {
     return () => { aktiv = false; };
   }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce]);
 
-  return { data: efterbehandl(raa, { ordnPaa, interval, lig, filtrer, sorter }), henter, fejl, genindlaes, afkortet };
+  /* Divisionen filtreres HER, ikke i effekten. Derfor genhenter et skift
+     mellem Gods og Bus ikke — det er øjeblikkeligt og koster ingen egress. */
+  const data = efterbehandl(raa, {
+    ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand,
+  });
+  return { data, henter, fejl, genindlaes, afkortet };
 }
