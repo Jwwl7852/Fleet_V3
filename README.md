@@ -248,12 +248,43 @@ endnu ikke holder.
 | 2 | DEV og PROD som to Firebase-projekter | Adskilte projekter, og Storage-regionen verificeret |
 | 3 | **Permissions som liste frem for rolle-streng** | Håndhævet i `firebase.rules.json`, **ikke kun i frontend**. Testen skal vise at *serveren* afviser — ikke at UI'et skjuler knappen |
 | 4 | Central audit-service | Append-only. En bruger med alle permissions kan hverken skrive, ændre eller slette en post, og tenant A kan ikke læse tenant B's log |
-| 5 | `securityLevel: normal \| internal \| confidential \| restricted` | |
-| 6 | Sensitive felter i separat RTDB-node | |
+| 5 | `securityLevel: normal \| internal \| confidential \| restricted` | Valideret enum på general, så en liste kan vise en hængelås uden at hente noget klassificeret. `restricted`-kontakterne beskrevet, ikke bygget |
+| 6 | Sensitive felter i separat RTDB-node | `booking.laes` alene giver hverken `sensitive/` eller `vaerdi/` — den grovere permission arver ikke den finere |
+
+Alle syv er lukket. Se **Status** nedenfor for hvad det dækker, og hvad der
+stadig venter på Cloud Functions.
 
 Punkt 3 er værd at læse to gange. En permission der kun findes i frontend, er
 ikke adgangskontrol — det er en pæn knap. Definition of done er en afvisning
 fra serveren.
+
+### Forbehold: læsningslogning er klientside
+
+Platformen logger læsning af følsomme data, og ikke kun ændringer. **Men
+påstanden har et forbehold, og det skal kunne læses her frem for opdages.**
+
+Selve auditposten skrives af en Cloud Function og er append-only — ingen kan
+ændre eller slette den, heller ikke en admin. Det holder.
+
+Men *udløseren* er klientside. `useListe()` kalder `audit.laes()` når en
+følsom node hentes, og `audit.adgangNaegtet()` når serveren afviser. En klient
+der ikke kalder, logger ikke. Reglerne afviser stadig — adgangskontrollen er
+server-side og testet — men **sporet af en læsning afhænger af at klienten er
+ærlig.**
+
+Det betyder konkret:
+
+- En *afvist* læsning er registreret, hvis den kom fra vores UI. En direkte
+  forespørgsel mod databasen uden om appen bliver afvist, men ikke logget.
+- En *gennemført* læsning logges af samme grund kun fra vores UI.
+
+Rigtig serverlogning kræver, at følsomme læsninger går gennem en callable, der
+autoriserer, skriver auditposten og **først derefter** leverer data — med
+reglerne stående som anden linje, så et direkte opslag uden om funktionen
+stadig afvises. Det hører i Cloud Functions-opgaven og er ikke bygget.
+
+Indtil da: sig "vi logger læsninger fra applikationen", ikke "vi logger alle
+læsninger".
 
 ### Audit-retention er ikke afgjort
 
@@ -289,6 +320,42 @@ fundet i det sekund reglerne for første gang blev **kørt**.
 Det er begrundelsen for punkt 1, og den er stærkere som konkret hændelse end
 som princip: sikkerhedsregler man ikke kører, ved man ikke om virker. Derfor er
 punkt 1 en test der køres ved hver ændring — ikke en note om at huske det.
+
+### Status: hvad der er sikret, og hvad der venter
+
+Alle syv punkter er lukket. Svaret på "hvad er sikret?" står her, så det ikke
+skal samles ud af syv commits.
+
+**Håndhævet af serveren og dækket af tests** — 84 tests, obligatoriske før
+commit:
+
+| | |
+|---|---|
+| Tenant-isolation | På hver node. Også mod et claim der peger på en tenant der ikke findes: `_findes` skal være sat af Admin SDK, så et forkert claim kan ikke oprette en tenant ved at skrive |
+| Adgang | 28 permissions i claim'et. Ingen `auth.token.rolle` i reglerne. Ukendte eller manglende permissions giver adgang til intet |
+| Klassificerede data | `sensitive/` og `vaerdi/` som søskendenoder, hver med egen permission. Den grovere arver ikke den finere |
+| Auditlog | Append-only. Ingen kan skrive, ændre eller slette — heller ikke admin. Kun `audit.laes` kan læse |
+| Division | Valideret felt på fem noder, forbudt på fravær |
+| Miljø | DEV og PROD adskilt. Produktionsnøgler uden for et produktionsdeploy giver en rød bjælke |
+| Regioner | RTDB og Storage i `europe-west1`, verificeret 7. august 2026 |
+
+**Venter på Cloud Functions.** Indtil de findes, er de berørte noder
+`.write: false` — serveren afviser altså alle, hvilket er strengere end den
+kontrol der skal afløse det, men ikke granulært:
+
+| | Konsekvens i dag |
+|---|---|
+| Bookingtilstandsskift med permission-tjek | `bookinger` og `etaper` kan ikke skrives af nogen |
+| Udstedelse af `perms`-claims fra `roller/` | `roller/` er `.write: false`; presets i `permissions.js` er reelt autoritative |
+| Skrivning af auditposter | `audit.log()` fejler; fejl tælles og advares om i dev |
+| Serverlogning af følsomme læsninger | Se forbeholdet ovenfor |
+| Sletning efter retention | Intet slettes endnu |
+| Nummerserier, reservationskonflikter, KPI-aggregering | Som beskrevet under "Det tungeste tilbage" |
+| Fem af seks `restricted`-kontakter | Kun gen-MFA kan håndhæves i regler alene. Se ARKITEKTUR |
+
+**Reglerne er deployet til DEV, ikke til PROD.** De er ændret grundlæggende
+flere gange under punkt 0–6; en samlet deploy til produktion hører sammen med
+den første rigtige tenant-provisionering.
 
 **Derefter stopper sikkerhedsarbejdet**, og næste skærme bygges i denne
 rækkefølge:

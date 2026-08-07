@@ -261,6 +261,47 @@ alle — strengere end nogen permission, men ikke granulært. Der er en test der
 fastholder `.write: false`, så ingen åbner noden uden at opdage at
 `booking.godkend` så ikke bliver tjekket af nogen.
 
+## securityLevel: restricted — kontakterne
+
+`restricted` er den strengeste af de fire niveauer, men **automatikken er ikke
+bygget.** Feltet valideres og kan sættes; det udløser i dag ingen adfærd.
+
+Herunder står de seks kontakter fra sikkerhedsgennemgangen: hvor hver enkelt
+skal håndhæves, og hvad der mangler. Tænd dem én ad gangen — en kontakt der
+ikke kan håndhæves der hvor den påstås at virke, er værre end ingen.
+
+| # | Kontakt | Håndhæves i | Mangler |
+|---|---|---|---|
+| 1 | Skjul værdi | **Regler** (delvist) | Værdien ligger allerede i `vaerdi/` bag egen permission. For `restricted` mangler kun klientsidemaskering med audit på afsløring |
+| 2 | Begræns GPS | Cloud Function + klient | En **afrundet position** i general. Regler kan ikke afrunde data — kun vælge om de må læses |
+| 3 | Blokér eksport | Cloud Function | Der findes ingen eksportfunktion at spærre. Regler kan **ikke** forhindre en klient i at læse og gemme selv |
+| 4 | **Kræv MFA igen** | **Regler alene** | **Intet.** Kan skrives i dag — se nedenfor |
+| 5 | Stærkere audit | Cloud Function | "Ingen audit, ingen adgang" kræver at læsningen går gennem en callable der logger *før* den leverer |
+| 6 | Ingen detaljer i notifikationer | Klient/Function | Der findes intet notifikationssystem |
+
+### Nummer 4 er den eneste der kan tændes nu
+
+RTDB-regler kan læse `auth.token.auth_time` — hvornår brugeren senest
+autentificerede sig. Den er i sekunder, mens `now` er i millisekunder:
+
+```
+&& auth.token.auth_time * 1000 > now - 900000     // 15 minutter
+```
+
+Ingen ny infrastruktur, ingen Cloud Function. Men der er et valg at træffe om
+hvor den lægges:
+
+- **På samlingen** (`sensitive/bookinger`): *alle* følsomme læsninger kræver
+  frisk MFA. Simplest og strengest, og ingen strukturændring.
+- **Pr. objekt** (`sensitive/bookinger/$id`, betinget af at general-postens
+  `securityLevel` er `restricted`): mere målrettet — men `.read` skal så ligge
+  på `$id`, og dermed kan man ikke længere forespørge på den følsomme samling.
+
+Det er samme afvejning som i beslutning 17. Da følsomme data alligevel ikke
+vises i lister, er prisen mindre end den lyder — men den skal træffes bevidst.
+
+De øvrige fem venter på Cloud Functions eller er klientside og dermed svagere.
+
 ## Auditlog
 
 ```
