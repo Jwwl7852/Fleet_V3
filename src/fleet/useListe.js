@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
-import { laes as auditLaes } from "./audit.js";
+import { laes as auditLaes, adgangNaegtet as auditNaegtet } from "./audit.js";
 
 const DAG = 86400000;
 
@@ -262,6 +262,17 @@ export function useListe(node, indstillinger = {}) {
       return somServeren(typeof d === "function" ? d() : d || [], o);
     };
 
+    /* Et afvist forsøg på en auditeret node er selv en hændelse. Reglerne
+       kan ikke skrive til auditloggen, så det må komme herfra — svagere end
+       serverlogning, men bedre end tavshed. Se noten på audit.adgangNaegtet. */
+    const fejlet = (e) => {
+      setFejl(e);
+      if (auditerSom) {
+        auditNaegtet({ objekt: auditerSom, aarsag: e?.code || "ukendt" });
+      }
+      modtag(demoData());
+    };
+
     if (!db) {
       modtag(demoData());
       return () => { aktiv = false; };
@@ -272,7 +283,7 @@ export function useListe(node, indstillinger = {}) {
       const cb = q.on(
         "value",
         (snap) => modtag(laes(snap)),
-        (e) => { if (aktiv) { setFejl(e); modtag(demoData()); } }
+        (e) => { if (aktiv) fejlet(e); }
       );
       return () => { aktiv = false; q.off("value", cb); };
     }
@@ -282,8 +293,7 @@ export function useListe(node, indstillinger = {}) {
         modtag(await hentListe(db, path, node, o));
       } catch (e) {
         if (!aktiv) return;
-        setFejl(e);
-        modtag(demoData());
+        fejlet(e);
       }
     })();
 

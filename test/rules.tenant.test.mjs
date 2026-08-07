@@ -49,6 +49,11 @@ const NODER = Object.keys(TENANT_REGLER).filter((n) => !n.startsWith("."));
    et valg; står den ingen af stederne, er det en forglemmelse. */
 const LAESNING_NAEGTET = new Set(["_findes"]);
 
+/* BEHOLDERE. De har selv ingen .read — den ville kaskadere ned over alle
+   objekterne derunder og ophæve hele opdelingen — men hvert objekt inde i
+   dem har sin egen. Se beslutning 17. */
+const BEHOLDERE = new Set(["sensitive", "vaerdi"]);
+
 let miljoe;
 
 /* perms lægges automatisk på ud fra rollens preset, medmindre kaldet sætter
@@ -129,15 +134,31 @@ describe("tenant-isolation — suiten skal have noget at teste", () => {
   /* Uden denne kan man tilføje en node og glemme dens .read. Den ville så
      være ulæselig — hvilket fejler lukket og altså er sikkert — men det ville
      blive opdaget af en bruger frem for af en test. */
-  it("hver node har enten en .read eller står på nægtelisten", () => {
+  it("hver node har enten en .read, står på nægtelisten, eller er en beholder", () => {
     for (const node of NODER) {
-      const harRead = typeof TENANT_REGLER[node]?.[".read"] === "string";
+      const regel = TENANT_REGLER[node] || {};
+      const harRead = typeof regel[".read"] === "string";
+
+      if (BEHOLDERE.has(node)) {
+        /* En beholder må IKKE have .read — den ville kaskadere. Til gengæld
+           skal hvert objekt inde i den have sin egen. */
+        assert.equal(regel[".read"], undefined,
+          `"${node}" er en beholder og må ikke have .read — den kaskaderer ned over alt derunder.`);
+        const objekter = Object.keys(regel).filter((k) => !k.startsWith("."));
+        assert.ok(objekter.length > 0, `Beholderen "${node}" er tom.`);
+        for (const o of objekter) {
+          assert.ok(typeof regel[o]?.[".read"] === "string",
+            `"${node}/${o}" mangler .read. Uden den kan objektet ikke læses af nogen.`);
+        }
+        continue;
+      }
+
       const naegtet = LAESNING_NAEGTET.has(node);
       assert.ok(
         harRead !== naegtet,
         naegtet
           ? `"${node}" står på nægtelisten, men har alligevel en .read.`
-          : `"${node}" har hverken .read eller plads på nægtelisten. Tag stilling.`
+          : `"${node}" har hverken .read, plads på nægtelisten eller status som beholder. Tag stilling.`
       );
     }
   });

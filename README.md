@@ -74,7 +74,63 @@ i den nævnte fil.
 | 13 | **Live-kort er beholdt.** | Findes deployet på `/tracking`, men mangler i alle 20 mockups. Du var ved at taste en funktion væk du allerede har bygget. | `moduler/booking/LiveKort.jsx` |
 | 14 | **`indkoebsprisafvigelse` og `salgsprisafvigelse` — aldrig bare "prisafvigelse".** Leverandørsiden har `betterWhen: "lower"`, salgssiden `"higher"`. | Samme fejl som nr. 11: to tal med hvert sit fortegn for "godt" hed det samme. Indkøb betaler for meget = dårligt; en kunde betaler for lidt = også dårligt — men det ene er plus og det andet minus. Blandes de, farves halvdelen forkert. | `fleet/useKpi.js` |
 | 15 | **Division er et felt, ikke en sti.** Tre værdier: `gods`, `bus`, `faelles`. Transaktioner hører til én afdeling; stamdata kan være fælles; reservationer og fravær har ingen division og arver fra ressourcen. | Sti ville give to kalendere for én chauffør med C+D — beslutning 4's fejl et niveau højere oppe. Dertil to `BKG-2026-00125`, to Kolding Kommune-poster der driver fra hinanden, og en dieselfaktura der ikke kan afstemmes mod leverandørens total. | `fleet/useListe.js` |
+| 17 | **`securityLevel` og klassificerede søskendenoder.** `normal` \| `internal` \| `confidential` \| `restricted` på general. Følsomme felter ligger i `sensitive/<objekt>/<id>`, værdiansættelser i `vaerdi/<objekt>/<id>` — som søskende, ikke som børn. | En `.read` kaskaderer og kan ikke indsnævres på et barn. Som barn ville `.read` skulle flyttes ned på `<id>/general`, og så kan man ikke længere forespørge på noden — der ville ingen bookingliste være. Søskende koster ét ekstra opslag på en detaljeskærm og nul på en liste. Se afsnittet nedenfor. | `fleet/permissions.js` |
 | 16 | **Kombi-transport: en booking er et forløb med N etaper.** Tilstanden ligger på etapen, ikke på bookingen. `aaben` er en tilstand med frist. Lageret er en kapacitetsressource i den samme reservationsnode. Etaper ligger som **egen node** — se afsnittet nedenfor. | Gods kan afhentes af én bil, stå på eget lager i uger, og køre videre med en anden. Etape 1 kan være reserveret mens etape 2 venter på en passende tur. Uden etaper skulle bookingen have én tilstand for to ting der sker på hver sin tid. | `fleet/booking-state.js` |
+
+### Beslutning 17 i detaljer
+
+**Dette er den første bevidste stramning i den låste rækkefølge.** Punkt 3
+skiftede mekanisme — fra rolle-streng til permission-liste — uden at ændre
+hvem der måtte hvad. Trin 2 af punkt 5+6 flytter faktisk adgang: en disponent
+kan ikke længere se vurderingen på godset, og kun admin kan se årsagen til et
+fravær.
+
+Den er **gratis nu**, fordi felterne ikke findes i data endnu. Med kunder i
+drift ville den have været en migrering — man skulle flytte felter ud af
+eksisterende poster, mens skærme læste dem. Det er hele grunden til at gøre
+det på det her tidspunkt.
+
+**Kaskadebruddet er forudsætningen.** RTDB's `.read` kaskaderer og kan ikke
+indsnævres på et barn, så en `.read` på `bookinger` ville også dække et
+`bookinger/<id>/sensitive`. Men flytter man `.read` ned på
+`bookinger/<id>/general`, kan man ikke længere *forespørge* på `bookinger` —
+RTDB kræver læseadgang på den node man forespørger på, og så findes der ingen
+bookingliste. Derfor ligger det klassificerede som **søskende**, ikke som barn:
+
+```
+tenants/<t>/bookinger/<id>              general + securityLevel
+tenants/<t>/sensitive/bookinger/<id>    securityInformation, privatePickupAddress, sensitiveNotes
+tenants/<t>/vaerdi/bookinger/<id>       cargoValue
+```
+
+Det koster **ét ekstra opslag på en detaljeskærm og nul på en liste.** Følsomme
+data vises ikke i lister; skal en skærm bruge dem pr. række, er det reelt en
+eksport, og en sum hører i `kpi/`.
+
+**`sensitive` og `vaerdi` er sideordnede, ikke trin.** `booking.sensitiveLaes`
+giver ikke `booking.vaerdiLaes`. Disponenten skal vide at godset kræver
+følgebil — ikke at det er 18 millioner værd. Sikkerhedsinformation der ikke når
+frem til planlæggeren, er en fælde frem for en beskyttelse; en vurdering der
+når længere end nødvendigt, er en lækage.
+
+**Presets er udgangspunkter, ikke lov.** Fordelingen nedenfor er hvad en ny
+tenant får ved oprettelse. En kunde skal kunne fjerne `booking.vaerdiLaes` fra
+sin disponent-rolle uden at nogen skriver kode — rollernes indhold ligger i
+`tenants/<t>/roller/`, ikke i `permissions.js`. Se ARKITEKTUR.
+
+| Rolle | sensitive | vaerdi |
+|---|---|---|
+| chauffoer, casehandler, revisor | – | – |
+| disponent | booking, koeretoejer | – |
+| koordinator | booking, koeretoejer, kunder | booking |
+| admin | alle | alle |
+
+Fraværets årsag — sygdom mod ferie er helbredsoplysning efter GDPR art. 9 —
+har **kun admin**. Disponeringen skal vide *at* chaufføren er utilgængelig,
+ikke hvorfor.
+
+`securityLevel` (`normal` | `internal` | `confidential` | `restricted`) står på
+general, så en liste kan vise en hængelås uden at hente noget klassificeret.
 
 ### Beslutning 16 i detaljer
 

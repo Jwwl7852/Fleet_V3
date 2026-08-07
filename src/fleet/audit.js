@@ -114,4 +114,33 @@ export function laes({ objekt, objektId, antal, korrelationsId }) {
   });
 }
 
-export default { AUDIT, log, laes, diff, klasseFor, nytKorrelationsId, auditStatus };
+/**
+ * audit.adgangNaegtet — et afvist forsøg.
+ *
+ * Et forsøg der bliver afvist, er ofte det mest interessante i en auditlog.
+ *
+ * ⚠ Den her er KLIENTRAPPORTERET og dermed svagere end resten: en klient der
+ * ikke kalder den, logger ikke. Reglerne afviser stadig, men sporet afhænger
+ * af at klienten er ærlig.
+ *
+ * Rigtig serverlogning af afviste forsøg kræver, at følsomme læsninger går
+ * gennem en callable der autoriserer, auditerer og først derefter læser med
+ * Admin SDK. Reglerne bliver stående som anden linje. Det hører i
+ * Cloud Function-opgaven — se ARKITEKTUR.
+ */
+export function adgangNaegtet({ objekt, objektId, aarsag, korrelationsId }) {
+  return send({
+    handling: AUDIT.adgangNaegtet,
+    objekt,
+    objektId: objektId ?? null,
+    klasse: klasseFor(AUDIT.adgangNaegtet, objekt),
+    /* aarsag er en kort kode — "permission_denied" — ikke en fejlbesked der
+       kan indeholde data. */
+    note: aarsag ?? null,
+    korrelationsId: korrelationsId ?? nytId(),
+  });
+}
+
+export default {
+  AUDIT, log, laes, adgangNaegtet, diff, klasseFor, nytKorrelationsId, auditStatus,
+};

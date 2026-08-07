@@ -74,6 +74,58 @@
           ".write": false
         },
 
+        // KLASSIFICEREDE SATELLITTER (beslutning 17).
+        // 
+        // securityInformation, privatePickupAddress, sensitiveNotes, liveGPS,
+        // og fravaerets art (sygdom vs. ferie — helbredsoplysning, GDPR art. 9).
+        // 
+        // De ligger som SOESKENDE og ikke som barn af objektet. Var sensitive et
+        // barn af bookinger/<id>, skulle .read flyttes ned paa bookinger/<id>/general
+        // for ikke at kaskadere — og saa kunne man ikke laengere FORESPOERGE paa
+        // bookinger. RTDB kraever laeseadgang paa den node man forespoerger paa, saa
+        // der ville ikke findes en bookingliste. Soeskende koster eet ekstra opslag
+        // paa en detaljeskaerm og nul paa en liste.
+        // 
+        // Bemaerk at der IKKE er .read paa 'sensitive' selv. Laegges den der,
+        // kaskaderer den ned over alle objekterne, og saa er hele opdelingen vaek.
+        // 
+        // Skrivning kraever BAADE objektets .skriv OG dets sensitiveLaes: kan man
+        // ikke laese feltet, skal man heller ikke kunne overskrive det i blinde.
+        // sensitive/bookinger er .write: false som bookinger selv.
+        "sensitive": {
+          "bookinger": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.sensitiveLaes|')",
+            ".write": false
+          },
+          "kunder": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')"
+          },
+          "koeretoejer": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')"
+          },
+          "fravaer": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')"
+          }
+        },
+        // VAERDIANSAETTELSE — eget undertrae, ikke en del af sensitive/.
+        // 
+        // cargoValue og andre beloeb paa selve godset.
+        // 
+        // Hvorfor ikke bare i sensitive/? Fordi .read er PR. NODE, og de to skal
+        // have hver sin permission. Disponenten skal vide at godset kraever
+        // foelgebil (sensitive) — ikke at det er 18 millioner vaerd (vaerdi). To
+        // permissions kan ikke dele een node, saa de maa ligge hver for sig.
+        // 
+        // De er SIDEORDNEDE, ikke trin: sensitiveLaes giver ikke vaerdiLaes.
+        "vaerdi": {
+          "bookinger": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.vaerdiLaes|')",
+            ".write": false
+          }
+        },
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
         "kpi": {
@@ -100,7 +152,7 @@
         // oprettes atomisk sammen med skiftet.
         // historik under $bookingId er append-only og slettes aldrig.
         "bookinger": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.laes|')",
           ".write": false,
           ".indexOn": ["tilstand", "oprettetMs", "kundeId"]
         },
@@ -174,11 +226,12 @@
         },
 
         "koeretoejer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.laes|')",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|')",
           ".indexOn": ["status", "naesteServiceMs"],
           "$koeretoejId": {
             ".validate": "newData.hasChildren(['division'])",
+            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             }
@@ -205,11 +258,12 @@
         // C+D er fælles — fraværet blokerer ham i begge afdelinger. Gav vi det
         // en division, ville han være syg i gods og rask i bus.
         "fravaer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.laes|')",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|')",
           ".indexOn": ["fra"],
           "$fravaerId": {
-            "division": { ".validate": false }
+            "division": { ".validate": false },
+            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" }
           }
         },
 
@@ -256,11 +310,12 @@
         // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
         // tidsvindue.
         "kunder": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|')",
           ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
           "$kundeId": {
             ".validate": "newData.hasChildren(['division'])",
+            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             }

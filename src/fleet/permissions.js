@@ -73,6 +73,55 @@ export const PERM = {
      spor, og så er hele loggen værdiløs. Har du brug for at skrive, skal du
      kalde audit.log() — ikke give dig selv adgang. */
   auditLaes: "audit.laes",
+
+  /* --- Læsning af klassificerede objekter (beslutning 17) ---
+   *
+   * HVORFOR HAR KUN FIRE OBJEKTER EN laes-PERMISSION?
+   *
+   * Fordi kun fire objekter har noget klassificeret at holde adskilt fra.
+   * bookinger, kunder, koeretoejer og fravaer har hver en satellit under
+   * sensitive/ — og booking desuden en under vaerdi/. laes-permissionen er
+   * dét der giver mening at kontrastere den finere adgang MOD: "må se
+   * bookingen, men ikke hvad godset er værd."
+   *
+   * De øvrige tretten noder — opgaver, indkoeb, fakturaer, satser, lagre,
+   * idebank og resten — styres fortsat af tenant-medlemskab alene, præcis som
+   * i dag. Det ER asymmetrisk, og det er med vilje.
+   *
+   * ⚠ "RET" DET IKKE ved at tilføje tretten laes-permissions mere. De ville
+   * ikke beskytte noget: uden en klassificeret satellit er der intet at
+   * skelne imellem, og alle presets skulle alligevel have dem alle. Man ville
+   * få et katalog der er dobbelt så stort og præcis lige så sikkert.
+   *
+   * Skal læseadgang generelt strammes — så en chauffør ikke kan læse hele
+   * kundekartoteket — er det en selvstændig beslutning med sin egen
+   * begrundelse, ikke en oprydning i navngivningen. */
+  bookingLaes: "booking.laes",
+  /* securityInformation, privatePickupAddress, sensitiveNotes.
+     Disponenten SKAL have den: den der planlægger turen, skal vide at godset
+     kræver følgebil, og kan ikke disponere en afhentning uden adressen.
+     Sikkerhedsinformation der ikke når frem til planlæggeren, er en fælde
+     frem for en beskyttelse. */
+  bookingSensitiveLaes: "booking.sensitiveLaes",
+  /* cargoValue og andre beløb på selve godset.
+     ADSKILT fra sensitiveLaes med vilje: disponenten skal vide at godset
+     kræver følgebil — ikke at det er 18 millioner værd. De to er
+     SIDEORDNEDE, ikke trin på en stige. */
+  bookingVaerdiLaes: "booking.vaerdiLaes",
+
+  kunderLaes: "kunder.laes",
+  kunderSensitiveLaes: "kunder.sensitiveLaes",
+
+  koeretoejerLaes: "koeretoejer.laes",
+  /* liveGPS. Disponenten har den — man kan ikke disponere uden at vide hvor
+     bilerne er. */
+  koeretoejerSensitiveLaes: "koeretoejer.sensitiveLaes",
+
+  fravaerLaes: "fravaer.laes",
+  /* art (sygdom vs. ferie) og dokumentation. Helbredsoplysning, altså særlig
+     kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
+     chaufføren er utilgængelig — ikke hvorfor. Derfor kun admin. */
+  fravaerSensitiveLaes: "fravaer.sensitiveLaes",
 };
 
 export const ALLE_PERMS = Object.values(PERM);
@@ -89,6 +138,16 @@ const BASIS_DATA = [
   PERM.indberetningerSkriv,
 ];
 
+/* Læsning af de fire klassificerede objekters GENERAL-del. Alle presets har
+   dem, fordi enhver i tenanten kunne læse alt før beslutning 17 — det er kun
+   sensitive/ og vaerdi/ der strammes. */
+const BASIS_LAES = [
+  PERM.bookingLaes,
+  PERM.kunderLaes,
+  PERM.koeretoejerLaes,
+  PERM.fravaerLaes,
+];
+
 /**
  * Rollerne som forudindstillede samlinger. Ingen skal konfigurere
  * permissions manuelt for at komme i gang.
@@ -98,47 +157,62 @@ const BASIS_DATA = [
  * problem kom fra det ene eller det andet. Stramninger er en egen opgave.
  */
 export const ROLLE_PERMS = {
-  chauffoer: [PERM.indberetningerSkriv, PERM.idebankSkriv],
+  chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv, PERM.idebankSkriv],
 
-  casehandler: [...BASIS_DATA, PERM.bookingOpret],
+  casehandler: [...BASIS_LAES, ...BASIS_DATA, PERM.bookingOpret],
 
   disponent: [
+    ...BASIS_LAES,
     ...BASIS_DATA,
     PERM.koeretoejerSkriv,
     PERM.bookingForeslaa,
     PERM.bookingAfvis,
     PERM.bookingUdfoer,
     /* Ingen bookingGodkend. Det er beslutning 5. */
+    /* Skal kunne se følgebilskrav og afhentningsadresse — ellers planlægger
+       de i blinde. Men IKKE bookingVaerdiLaes: vurderingen på godset er ikke
+       nødvendig for at lægge en rute. */
+    PERM.bookingSensitiveLaes,
+    /* Kan ikke disponere uden at vide hvor bilerne er. */
+    PERM.koeretoejerSensitiveLaes,
   ],
 
   koordinator: [
+    ...BASIS_LAES,
     ...BASIS_DATA,
     PERM.bookingGodkend,
     PERM.bookingReturner,
     PERM.bookingAfvis,
     PERM.bookingAnnuller,
     PERM.bookingUdfoer,
+    PERM.bookingSensitiveLaes,
+    /* Den eneste driftsrolle der ser vurderingen. Den der godkender, skal
+       kunne se hvad der står på spil. */
+    PERM.bookingVaerdiLaes,
+    PERM.koeretoejerSensitiveLaes,
+    PERM.kunderSensitiveLaes,
+    /* Ingen fravaerSensitiveLaes: disponeringen har brug for at vide at
+       chaufføren er utilgængelig, ikke hvorfor. */
   ],
 
   /**
    * Revisor — og den rolle en RA-kundes security manager får, når de vil
    * verificere at loggen findes og virker.
    *
-   * Læser auditloggen. Skriver INTET, nogen steder. Presettet indeholder
-   * bevidst ikke én eneste .skriv.
+   * Læser auditloggen og de fire objekters general-del. Skriver INTET, nogen
+   * steder. Presettet indeholder bevidst ikke én eneste .skriv.
    *
-   * ⚠ Bemærk hvad der IKKE står her: læse-permissions til kunder, bookinger
-   * og så videre. De findes ikke i kataloget, fordi de ikke håndhæves nogen
-   * steder — læsning styres i dag alene af tenant-medlemskab, og
-   * tenants/$tenantId/.read kaskaderer ned over alt. En revisor kan derfor
-   * læse tenantens data uden at nogen har givet lov til det.
+   * ⚠ Bemærk hvad der IKKE står her: hverken sensitiveLaes eller vaerdiLaes.
+   * En revisor skal kunne verificere AT loggen findes og hvad den registrerer
+   * — ikke læse indholdet af det den registrerer at andre har set. Ellers
+   * bliver "må læse loggen" til "må læse alt følsomt", og så er revisorrollen
+   * den bredeste adgang i systemet i stedet for den smalleste.
    *
-   * Det er dagens model, ikke en beslutning truffet her, og at opfinde et
-   * kunder.laes der ikke tjekkes nogen steder ville være værre end at lade
-   * være: en permission der ikke håndhæves, antyder en beskyttelse der ikke
-   * findes. At indsnævre læseadgang er punkt 6 i den låste rækkefølge.
+   * De øvrige tretten noder kan revisor stadig læse via tenant-medlemskab,
+   * som alle andre. Se noten ved bookingLaes om hvorfor kun fire objekter har
+   * en laes-permission.
    */
-  revisor: [PERM.auditLaes],
+  revisor: [...BASIS_LAES, PERM.auditLaes],
 
   admin: [...ALLE_PERMS],
 };

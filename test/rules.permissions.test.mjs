@@ -79,10 +79,17 @@ describe("permission-kataloget", () => {
   });
 
   it("chaufføren kan kun indberette og skrive i idébanken", () => {
+    const skriv = ROLLE_PERMS.chauffoer.filter((p) => p.includes(".skriv"));
     assert.deepEqual(
-      [...ROLLE_PERMS.chauffoer].sort(),
+      skriv.sort(),
       [PERM.idebankSkriv, PERM.indberetningerSkriv].sort()
     );
+    /* Læsning af de fire klassificerede objekters general-del har de, som
+       alle andre — men intet klassificeret. Se beslutning 17. */
+    for (const p of ROLLE_PERMS.chauffoer) {
+      assert.ok(!p.includes("sensitiveLaes") && !p.includes("vaerdiLaes"),
+        `chaufføren har "${p}"`);
+    }
   });
 
   it("harPerm matcher hele navnet, ikke et præfiks", () => {
@@ -169,9 +176,18 @@ describe("ukendte og manglende permissions fejler lukket", () => {
     await assertFails(set(ref(db, sti("kunder", "k-tom")), KUNDE));
   });
 
-  it("læsning virker stadig — det er kun skrivning der kræver permissions", async () => {
+  /* Foer beslutning 17 gjaldt det alle noder. Nu gaelder det de tretten der
+     ikke har en klassificeret satellit — de fire der har, kraever ogsaa en
+     laes-permission. Se noten ved bookingLaes om hvorfor asymmetrien er
+     bevidst. */
+  it("de tretten uklassificerede noder kan læses med tenant-medlemskab alene", async () => {
     const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
-    await assertSucceeds(get(ref(db, `tenants/${T}/kunder`)));
+    for (const node of ["opgaver", "indkoeb", "fakturaer", "idebank", "facility"]) {
+      await assertSucceeds(get(ref(db, `tenants/${T}/${node}`)));
+    }
+    /* Men ikke de fire klassificerede — uden perms-claim er der ingen
+       booking.laes. */
+    await assertFails(get(ref(db, `tenants/${T}/kunder`)));
   });
 });
 
