@@ -88,8 +88,9 @@
         },
 
         "kunder": {
+          "//": "aktiv er indekseret fordi Kunder & Priser henter kundebasen med orderByChild('aktiv').equalTo(true) gennem useListe. Uden indekset FEJLER forespørgslen ikke — RTDB henter hele noden ned og filtrerer i klienten, med en advarsel i konsollen. Vokser basen ud over ét hent, skal sidsteAktivitetMs med, så listen kan skifte til et tidsvindue.",
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
-          ".indexOn": ["navn", "aftaleUdloeberMs"]
+          ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"]
         },
 
         "idebank": {

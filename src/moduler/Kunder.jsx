@@ -26,9 +26,15 @@
  *
  * Satser redigeres ikke på denne skærm. Prisgruppen peger på et satssæt i
  * Bookingopsætning; satserne selv versioneres med gyldigFra (beslutning 7).
+ *
+ * DATAKILDE: ÉT useListe()-kald. Hovedtabellen, udløbende aftaler,
+ * topkunderne og salgsprisafvigelserne er fire visninger af samme hentede
+ * datasæt — ikke fire forespørgsler. De kan derfor ikke sige hver sit om
+ * samme kunde, og de koster ét opslag.
  */
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
+import { useListe } from "../fleet/useListe.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, serviceTone } from "../fleet/format.js";
 import {
@@ -42,88 +48,74 @@ const D = 86400000;
    ligger i Bookingopsætning — de har gyldigFra og overskrives aldrig. */
 const PRISGRUPPER = { A: "A – Fastpris", B: "B – Volumen", C: "C – Spot" };
 
-/* ÉT kundedatasæt. Både hovedtabellen, topkunderne, salgsprisafvigelserne
-   og listen over udløbende aftaler læser herfra — så de kan ikke nå at sige
-   hver sit om samme kunde. Beløb i hele øre, ekskl. moms. */
-const KUNDER = [
-  { id: "nordiskFragt", navn: "Nordisk Fragt A/S", aftale: "Fastaftale", prisgruppe: "A",
+/* aftalestatus er aftalens tilstand. `aktiv` er noget andet: om kunden
+   overhovedet er en levende kunde. Det er `aktiv` der forespørges på
+   server-side, for en kunde under genforhandling er stadig en kunde. */
+const AFTALESTATUS = {
+  aktiv: { label: "Aktiv", tone: "ok" },
+  genforhandling: { label: "Genforhandling", tone: "warn" },
+  udloeber: { label: "Udløber", tone: "warn" },
+  udloebet: { label: "Udløbet", tone: "bad" },
+};
+
+/* Demo-datasæt til useListe(). Bruges når der ikke er en database, og som
+   fallback hvis læsningen fejler. Beløb i hele øre, ekskl. moms.
+
+   aftaltOere/faktureretOere står kun på de kunder der HAR en afvigelse i
+   perioden — salgsprisafvigelseskortet er et filter på samme datasæt, ikke
+   en selvstændig liste. */
+const DEMO_KUNDER = [
+  { id: "nordiskFragt", navn: "Nordisk Fragt A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 1 * D, aftaleUdloeberMs: NU + 243 * D,
     omsaetningOere: 14250000, daekningsbidragOere: 4132500,
-    status: "Aktiv", statusTone: "ok", ansvarlig: "Mette Kjær" },
-  { id: "skagenSeafood", navn: "Skagen Seafood ApS", aftale: "Fastaftale", prisgruppe: "A",
+    aftalestatus: "aktiv", ansvarlig: "Mette Kjær" },
+  { id: "skagenSeafood", navn: "Skagen Seafood ApS", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 2 * D, aftaleUdloeberMs: NU + 152 * D,
     omsaetningOere: 11840000, daekningsbidragOere: 3078400,
-    status: "Aktiv", statusTone: "ok", ansvarlig: "Søren Dahl" },
-  { id: "jyskByggecenter", navn: "Jysk Byggecenter A/S", aftale: "Rammeaftale", prisgruppe: "B",
+    aftalestatus: "aktiv", ansvarlig: "Søren Dahl" },
+  { id: "jyskByggecenter", navn: "Jysk Byggecenter A/S", aktiv: true, aftale: "Rammeaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 3 * D, aftaleUdloeberMs: NU + 30 * D,
     omsaetningOere: 9620000, daekningsbidragOere: 2212600,
-    status: "Genforhandling", statusTone: "warn", ansvarlig: "Mette Kjær" },
-  { id: "fynKoel", navn: "Fyn Køl & Frost A/S", aftale: "Fastaftale", prisgruppe: "A",
+    aftalestatus: "genforhandling", ansvarlig: "Mette Kjær",
+    aftaltOere: 9620000, faktureretOere: 9913000, afvigelsesAarsag: "Tillæg for ekstra stop" },
+  { id: "fynKoel", navn: "Fyn Køl & Frost A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "A",
     sidsteAktivitetMs: NU - 5 * D, aftaleUdloeberMs: NU + 334 * D,
     omsaetningOere: 8875000, daekningsbidragOere: 2751200,
-    status: "Aktiv", statusTone: "ok", ansvarlig: "Anne Bøgh" },
-  { id: "hamburgHandel", navn: "Hamburg Handel GmbH", aftale: "Spotaftale", prisgruppe: "C",
+    aftalestatus: "aktiv", ansvarlig: "Anne Bøgh" },
+  { id: "hamburgHandel", navn: "Hamburg Handel GmbH", aktiv: true, aftale: "Spotaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 6 * D, aftaleUdloeberMs: NU + 6 * D,
     omsaetningOere: 7430000, daekningsbidragOere: 1337400,
-    status: "Udløber", statusTone: "warn", ansvarlig: "Søren Dahl" },
-  { id: "vestjyskLandbrug", navn: "Vestjysk Landbrug AmbA", aftale: "Rammeaftale", prisgruppe: "B",
+    aftalestatus: "udloeber", ansvarlig: "Søren Dahl",
+    aftaltOere: 7430000, faktureretOere: 5590000, afvigelsesAarsag: "Spotpris under aftalt minimum" },
+  { id: "vestjyskLandbrug", navn: "Vestjysk Landbrug AmbA", aktiv: true, aftale: "Rammeaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 8 * D, aftaleUdloeberMs: NU + 24 * D,
     omsaetningOere: 6190000, daekningsbidragOere: 1547500,
-    status: "Genforhandling", statusTone: "warn", ansvarlig: "Peter Lund" },
-  { id: "aalborgIndustri", navn: "Aalborg Industri A/S", aftale: "Fastaftale", prisgruppe: "B",
+    aftalestatus: "genforhandling", ansvarlig: "Peter Lund",
+    aftaltOere: 6190000, faktureretOere: 6560500, afvigelsesAarsag: "Færgetillæg viderefaktureret" },
+  { id: "aalborgIndustri", navn: "Aalborg Industri A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 9 * D, aftaleUdloeberMs: NU + 28 * D,
     omsaetningOere: 5420000, daekningsbidragOere: 1463400,
-    status: "Genforhandling", statusTone: "warn", ansvarlig: "Anne Bøgh" },
-  { id: "bornholmsMejeri", navn: "Bornholms Mejeri", aftale: "Rammeaftale", prisgruppe: "C",
+    aftalestatus: "genforhandling", ansvarlig: "Anne Bøgh" },
+  { id: "bornholmsMejeri", navn: "Bornholms Mejeri", aktiv: true, aftale: "Rammeaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 12 * D, aftaleUdloeberMs: NU + 11 * D,
     omsaetningOere: 4380000, daekningsbidragOere: 919800,
-    status: "Udløber", statusTone: "warn", ansvarlig: "Peter Lund" },
-  { id: "koldingStaal", navn: "Kolding Stål ApS", aftale: "Spotaftale", prisgruppe: "C",
+    aftalestatus: "udloeber", ansvarlig: "Peter Lund",
+    aftaltOere: 4380000, faktureretOere: 4380000, afvigelsesAarsag: "Ingen afvigelse" },
+  { id: "koldingStaal", navn: "Kolding Stål ApS", aktiv: true, aftale: "Spotaftale", prisgruppe: "C",
     sidsteAktivitetMs: NU - 16 * D, aftaleUdloeberMs: NU - 3 * D,
     omsaetningOere: 3860000, daekningsbidragOere: 617600,
-    status: "Udløbet", statusTone: "bad", ansvarlig: "Søren Dahl" },
-  { id: "sjaellandRetail", navn: "Sjælland Retail A/S", aftale: "Fastaftale", prisgruppe: "B",
+    aftalestatus: "udloebet", ansvarlig: "Søren Dahl",
+    aftaltOere: 3860000, faktureretOere: 3612000, afvigelsesAarsag: "Ventetid ikke faktureret" },
+  { id: "sjaellandRetail", navn: "Sjælland Retail A/S", aktiv: true, aftale: "Fastaftale", prisgruppe: "B",
     sidsteAktivitetMs: NU - 21 * D, aftaleUdloeberMs: NU + 19 * D,
     omsaetningOere: 3240000, daekningsbidragOere: 874800,
-    status: "Udløber", statusTone: "warn", ansvarlig: "Mette Kjær" },
+    aftalestatus: "udloeber", ansvarlig: "Mette Kjær" },
 ];
 
-const NAVN = Object.fromEntries(KUNDER.map((r) => [r.id, r.navn]));
-
-/* Margin beregnes hos forbrugeren — den skrives ikke ind i basen ved siden
-   af omsætning og dækningsbidrag, hvor den kunne nå at komme ud af sync. */
-const margin = (r) => (r.omsaetningOere ? (r.daekningsbidragOere / r.omsaetningOere) * 100 : 0);
-
-/* Udløbende aftaler filtreres ud af KUNDER med samme tærskler som Flåde og
-   Facility bruger til servicevarsling. Ingen egen datering, ingen egne trin. */
-const UDLOEBER = KUNDER
-  .filter((r) => serviceTone(r.aftaleUdloeberMs).dage <= 30)
-  .sort((a, b) => a.aftaleUdloeberMs - b.aftaleUdloeberMs);
-
-const TOP5 = [...KUNDER].sort((a, b) => b.omsaetningOere - a.omsaetningOere).slice(0, 5);
-const TOP5_DB = TOP5.reduce((s, r) => s + r.daekningsbidragOere, 0);
-
-/* Salgsprisafvigelse = faktureret − aftalt. Kundesiden: kommer der mindre
-   ind end aftalt, er det mistet omsætning. Fortegnet gemmes som det er;
-   farven sættes af betterWhen:'higher' i visningen.
-   Leverandørsidens indkoebsprisafvigelse er et andet tal med modsat
-   betterWhen — se k.indkoeb.indkoebsprisafvigelseSnitPct. */
-const SALGSAFVIGELSER = [
-  { id: "hamburgHandel", aftaltOere: 7430000, faktureretOere: 5590000,
-    aarsag: "Spotpris under aftalt minimum" },
-  { id: "koldingStaal", aftaltOere: 3860000, faktureretOere: 3612000,
-    aarsag: "Ventetid ikke faktureret" },
-  { id: "jyskByggecenter", aftaltOere: 9620000, faktureretOere: 9913000,
-    aarsag: "Tillæg for ekstra stop" },
-  { id: "bornholmsMejeri", aftaltOere: 4380000, faktureretOere: 4380000,
-    aarsag: "Ingen afvigelse" },
-  { id: "vestjyskLandbrug", aftaltOere: 6190000, faktureretOere: 6560500,
-    aarsag: "Færgetillæg viderefaktureret" },
-].map((a) => ({ ...a, navn: NAVN[a.id], salgsafvigelseOere: a.faktureretOere - a.aftaltOere }));
-
-const SALGSAFVIGELSE_SUM = SALGSAFVIGELSER.reduce((s, a) => s + a.salgsafvigelseOere, 0);
-
-/* Tilbud kan gå til emner der endnu ikke er kunder — derfor eget navnefelt. */
+/* Tilbud er IKKE lagt om til useListe() endnu. De har ingen node i
+   ARKITEKTUR.md — 'tilbud' er ikke en bookingtilstand, og de kan gå til
+   emner der ikke er kunder endnu. Nodeformen skal besluttes før den
+   forespørgsel kan skrives. */
 const TILBUD = [
   { id: "t1", kunde: "Djursland Transport ApS", beloebOere: 8450000, sendtMs: NU - 18 * D },
   { id: "t2", kunde: "Skagen Seafood ApS", beloebOere: 5620000, sendtMs: NU - 15 * D },
@@ -132,12 +124,47 @@ const TILBUD = [
   { id: "t5", kunde: "Esbjerg Offshore A/S", beloebOere: 7150000, sendtMs: NU - 6 * D },
 ];
 
+/* Margin beregnes hos forbrugeren — den skrives ikke ind i basen ved siden
+   af omsætning og dækningsbidrag, hvor den kunne nå at komme ud af sync. */
+const margin = (r) => (r.omsaetningOere ? (r.daekningsbidragOere / r.omsaetningOere) * 100 : 0);
+
 export default function Kunder() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter: henterKpi, fejl: kpiFejl, genindlaes: genindlaesKpi } = useKpi();
   const { dage } = useFleet();
 
-  if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  /* ÉT opslag. Server-side filtreres på `aktiv` — en kundebase er dusinvis
+     af rækker, så equalTo er mere selektivt end et tidsvindue, og resten
+     sorteres og filtreres i klienten. Var det `indberetninger`, der vokser
+     med tiden, ville tidsvinduet være det rigtige felt i stedet.
+     Kræver ".indexOn": ["aktiv"] på kunder — uden indeks henter RTDB hele
+     noden ned og filtrerer i klienten, uden at fejle. */
+  const {
+    data: kunder, henter: henterKunder, fejl: kundeFejl,
+    genindlaes: genindlaesKunder, afkortet,
+  } = useListe("kunder", {
+    ordnPaa: "aktiv",
+    lig: true,
+    graense: 200,
+    sorter: (a, b) => b.omsaetningOere - a.omsaetningOere,
+    demo: DEMO_KUNDER,
+  });
+
+  if (henterKpi || henterKunder) return <Henter hvad="kunder og nøgletal" />;
+  if (!k) return <Fejl genprov={genindlaesKpi}>Nøgletallene kunne ikke hentes.</Fejl>;
+
+  const genindlaesAlt = () => { genindlaesKpi(); genindlaesKunder(); };
+
+  /* Fire visninger, ét datasæt. */
+  const hovedtabel = kunder.slice(0, 10);
+  const top5 = kunder.slice(0, 5);
+  const udloeber = kunder
+    .filter((r) => serviceTone(r.aftaleUdloeberMs).dage <= 30)
+    .sort((a, b) => a.aftaleUdloeberMs - b.aftaleUdloeberMs);
+  const salgsafvigelser = kunder
+    .filter((r) => r.aftaltOere != null)
+    .map((r) => ({ ...r, salgsafvigelseOere: r.faktureretOere - r.aftaltOere }))
+    .sort((a, b) => Math.abs(b.salgsafvigelseOere) - Math.abs(a.salgsafvigelseOere));
+  const salgsafvigelseSum = salgsafvigelser.reduce((s, r) => s + r.salgsafvigelseOere, 0);
 
   /* Afledte tal beregnes her — de skrives ikke ind i basen et andet sted.
      Dækningsgraden er Økonomis felt; den læses, ikke genudregnet. */
@@ -146,11 +173,14 @@ export default function Kunder() {
   /* Andelen regnes mod KPI-nodens dækningsbidrag. Tælleren kommer fra
      rækkerne, nævneren fra kilden — en total må ikke summeres ud af et
      udsnit. Derfor står der heller ingen sumlinje under hovedtabellen. */
-  const top5Andel = (TOP5_DB / k.kunder.daekningsbidragOere) * 100;
+  const top5Db = top5.reduce((s, r) => s + r.daekningsbidragOere, 0);
+  const top5Andel = (top5Db / k.kunder.daekningsbidragOere) * 100;
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      {(kpiFejl || kundeFejl) && (
+        <Fejl genprov={genindlaesAlt}>Viser demo-data — ingen forbindelse til databasen.</Fejl>
+      )}
 
       <KpiRaekke>
         <KpiKort label="Aktive kunder" vaerdi={num(k.kunder.aktive)} note="i perioden" />
@@ -167,7 +197,7 @@ export default function Kunder() {
         <Kort titel="Kunder og aftaler"
               handling={<Link className="fc-a" to="/booking/opsaetning">Se satser og prisgrupper</Link>}>
           <p className="fc-hint" style={{ marginBottom: 12 }}>
-            Viser de {num(KUNDER.length)} største af {num(k.kunder.aktive)} aktive kunder.
+            Viser de {num(hovedtabel.length)} største af {num(k.kunder.aktive)} aktive kunder.
             Prisgruppen bestemmer hvilket satssæt en booking regner med — satserne redigeres
             i Bookingopsætning, hvor de får <b>gyldigFra</b> og aldrig overskrives. Ellers
             ændrer en rettelse i dag prisen på en faktura fra sidste kvartal.
@@ -182,13 +212,21 @@ export default function Kunder() {
                 render: (r) => kr(r.omsaetningOere) },
               { key: "db", label: "Dækningsbidrag", num: true, render: (r) => kr(r.daekningsbidragOere) },
               { key: "margin", label: "Margin", num: true, render: (r) => pct(margin(r), 1) },
-              { key: "status", label: "Status",
-                render: (r) => <Pille tone={r.statusTone}>{r.status}</Pille> },
+              { key: "aftalestatus", label: "Status", render: (r) => {
+                  const s = AFTALESTATUS[r.aftalestatus] || AFTALESTATUS.aktiv;
+                  return <Pille tone={s.tone}>{s.label}</Pille>;
+                } },
               { key: "ansvarlig", label: "Ansvarlig" },
             ]}
-            raekker={KUNDER}
+            raekker={hovedtabel}
             tom="Ingen kunder med aktivitet i perioden."
           />
+          {afkortet && (
+            <p className="fc-hint" style={{ marginTop: 12 }}>
+              Der er flere end de 200 hentede kunder. Listen er afkortet — snævr perioden
+              eller filteret ind for at se resten.
+            </p>
+          )}
         </Kort>
 
         <div className="fc-grid">
@@ -202,7 +240,7 @@ export default function Kunder() {
                     return <Pille tone={s.tone}>{s.tekst}</Pille>;
                   } },
               ]}
-              raekker={UDLOEBER}
+              raekker={udloeber}
               tom="Ingen aftaler udløber inden for 30 dage."
             />
           </Kort>
@@ -238,9 +276,9 @@ export default function Kunder() {
               { key: "faktureret", label: "Faktureret", num: true, render: (r) => kr(r.faktureretOere) },
               { key: "salgsafvigelse", label: "Salgsprisafvigelse", num: true,
                 render: (r) => <Afvigelse vaerdi={r.salgsafvigelseOere} betterWhen="higher" unit="kr" /> },
-              { key: "aarsag", label: "Årsag" },
+              { key: "afvigelsesAarsag", label: "Årsag" },
             ]}
-            raekker={SALGSAFVIGELSER}
+            raekker={salgsafvigelser}
             tom="Ingen salgsprisafvigelser i perioden."
           />
           <div className="fc-sum">
@@ -249,13 +287,13 @@ export default function Kunder() {
               <div className="fc-hint">faktureret − aftalt, ekskl. moms</div>
             </div>
             <div className="fc-sum-v">
-              <Afvigelse vaerdi={SALGSAFVIGELSE_SUM} betterWhen="higher" unit="kr" />
+              <Afvigelse vaerdi={salgsafvigelseSum} betterWhen="higher" unit="kr" />
             </div>
           </div>
         </Kort>
 
         <Kort titel={`Topkunder (omsætning, ${dage} dage)`}>
-          {TOP5.map((r) => (
+          {top5.map((r) => (
             <MiniLinje key={r.id} label={r.navn} vaerdi={kr(r.omsaetningOere)} />
           ))}
           <div className="fc-sum">
