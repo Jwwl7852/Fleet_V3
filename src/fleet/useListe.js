@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
+import { laes as auditLaes } from "./audit.js";
 
 const DAG = 86400000;
 
@@ -162,6 +163,13 @@ function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter, valgtD
  *     partition    "maaned" — læser /<år>/<måned>/ i vinduet
  *     live         false (once) | true (on + off i cleanup)
  *     demo         array eller () => array, når db er null
+ *     auditerSom   objektnavn — logger LÆSNINGEN i auditloggen
+ *
+ * auditerSom hører her og ikke i skærmen. Bad vi hver skærm om selv at kalde
+ * audit.laes(), ville det blive glemt — og så var audit eftermonteret, hvilket
+ * er præcis det punkt 4 skulle undgå. Som en egenskab ved forespørgslen kan
+ * den ikke overses. Der logges ÉN post pr. hentning med antal rækker, aldrig
+ * rækkerne selv.
  *
  * → { data, henter, fejl, genindlaes, afkortet }
  *
@@ -174,7 +182,7 @@ export function useListe(node, indstillinger = {}) {
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
     filtrer, sorter, division: divisionsTilstand = "shell",
-    partition, live = false, demo,
+    partition, live = false, demo, auditerSom,
   } = indstillinger;
 
   /* Konfigurationsfejl er statiske pr. kaldsted — de skal fejle højlydt
@@ -243,6 +251,10 @@ export function useListe(node, indstillinger = {}) {
       setRaa(raekker);
       setAfkortet(Boolean(graense) && raekker.length >= graense);
       setHenter(false);
+
+      /* Antallet, ikke rækkerne. En audit-post må ikke indeholde det den
+         registrerer at nogen har set. audit.laes kaster aldrig. */
+      if (auditerSom) auditLaes({ objekt: auditerSom, antal: raekker.length });
     };
 
     const demoData = () => {
@@ -276,7 +288,7 @@ export function useListe(node, indstillinger = {}) {
     })();
 
     return () => { aktiv = false; };
-  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce]);
+  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom]);
 
   /* Divisionen filtreres HER, ikke i effekten. Derfor genhenter et skift
      mellem Gods og Bus ikke — det er øjeblikkeligt og koster ingen egress. */

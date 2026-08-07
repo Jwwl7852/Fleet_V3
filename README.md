@@ -142,6 +142,9 @@ src/
     reservations.js    reservationer + konfliktdetektion
     permissions.js     permission-katalog + rolle-presets. Ingen imports:
                        samme kilde som den Cloud Function der udsteder claims
+    audit-regler.js    auditpolitik: vokabular, feltallowliste, før/efter,
+                       retention. Ingen imports — samme grund
+    audit.js           audit.log() / audit.laes(). Kaster aldrig
     booking-state.js   tilstande, overgange — spørger efter permission
     ui.jsx             Kort, KpiKort, Tabel, Pille, Tom, Fejl, Knap
     fleet.css          tokens (udvider de eksisterende --bc-*)
@@ -188,13 +191,33 @@ endnu ikke holder.
 | 1 | **Tenant-isolationstest** | Automatisk og permanent. Køres ved **hver** ændring i `firebase.rules.json` |
 | 2 | DEV og PROD som to Firebase-projekter | Adskilte projekter, og Storage-regionen verificeret |
 | 3 | **Permissions som liste frem for rolle-streng** | Håndhævet i `firebase.rules.json`, **ikke kun i frontend**. Testen skal vise at *serveren* afviser — ikke at UI'et skjuler knappen |
-| 4 | Central audit-service | |
+| 4 | Central audit-service | Append-only. En bruger med alle permissions kan hverken skrive, ændre eller slette en post, og tenant A kan ikke læse tenant B's log |
 | 5 | `securityLevel: normal \| internal \| confidential \| restricted` | |
 | 6 | Sensitive felter i separat RTDB-node | |
 
 Punkt 3 er værd at læse to gange. En permission der kun findes i frontend, er
 ikke adgangskontrol — det er en pæn knap. Definition of done er en afvisning
 fra serveren.
+
+### Audit-retention er ikke afgjort
+
+Auditloggen sletter i dag efter **24 måneder** for alle tre klasser. **Tallet
+er foreløbigt og skal afgøres juridisk, før den første betalende kunde er på
+platformen.**
+
+To krav trækker i hver sin retning. Bogføringsloven peger mod **5 år** for det
+der rører regnskabsgrundlaget — fakturaer, indkøb, satser, bookinger. GDPR
+peger mod **kortere** for personoplysninger, og en auditpost indeholder altid
+mindst hvem der gjorde hvad hvornår.
+
+Det ender sandsynligvis med **forskellig retention pr. posttype, ikke ét tal**.
+Mekanismen er bygget til det: retention-klassen ligger i stien
+(`audit/<tenant>/<klasse>/<år>/<måned>/`), så grænserne kan variere uden en
+omskrivning — kun tallene i `RETENTION_MAANEDER` skal ændres. Klasserne er
+`drift`, `regnskab` og `sikkerhed`.
+
+Der er endnu ingen sletning: mekanismen er beskrevet, ikke bygget. Se
+`ARKITEKTUR.md`.
 
 ### Hvorfor punkt 1 står så tidligt
 

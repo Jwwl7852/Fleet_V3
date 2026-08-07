@@ -228,6 +228,37 @@
       }
     },
 
+    // AUDITLOG — append-only.
+    //
+    // Hvorfor den ligger her og IKKE under tenants/<id>/audit: RTDB's .read
+    // kaskaderer og kan ikke indsnaevres paa et barn. Reglen paa
+    // tenants/$tenantId giver laeseadgang til alt nedenunder, og en log over
+    // hvem der har set hvad er selv foelsom — den afsloerer hvilke kunder der
+    // bliver kigget paa, og af hvem. Som topniveau-node kan den faa sin egen
+    // laeseregel. Flyt den ikke ind under tenants/ for at "rydde op".
+    //
+    // .write: false for ALLE, ogsaa admin. Skrivning sker kun gennem en Cloud
+    // Function med Admin SDK, som gaar uden om reglerne. Der findes derfor
+    // ingen audit.skriv-permission, og den maa ikke tilfoejes: kan en
+    // kompromitteret admin-konto redigere sit eget spor, er loggen vaerdiloes.
+    //
+    // Stien er audit/<tenantId>/<klasse>/<aar>/<maaned>/<id>. Klassen ligger i
+    // stien, fordi retention varierer pr. klasse — saa er sletning "fjern hele
+    // partitionen" og ikke en scanning. Se RETENTION_MAANEDER i audit.js.
+    "audit": {
+      "$tenantId": {
+        ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|audit.laes|')",
+        ".write": false,
+        "$klasse": {
+          "$aar": {
+            "$maaned": {
+              ".indexOn": ["ms", "brugerUid", "objekt", "korrelationsId"]
+            }
+          }
+        }
+      }
+    },
+
     // Opslag uid → tenant. Skrives kun server-side. Bruges til at sætte custom
     // claims, ikke til autorisation i sig selv.
     "brugerTenants": {

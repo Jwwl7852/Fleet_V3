@@ -233,6 +233,77 @@ alle — strengere end nogen permission, men ikke granulært. Der er en test der
 fastholder `.write: false`, så ingen åbner noden uden at opdage at
 `booking.godkend` så ikke bliver tjekket af nogen.
 
+## Auditlog
+
+```
+audit/<tenantId>/<klasse>/<år>/<måned>/<id>
+  { ms, brugerUid, rolle, handling, objekt, objektId, resultat,
+    korrelationsId, kilde, ip, aendrede[], foer{}, efter{}, antal }
+```
+
+**Den ligger ikke under `tenants/<id>/`, og det er med vilje.** RTDB's `.read`
+kaskaderer og kan ikke indsnævres på et barn: reglen på `tenants/$tenantId`
+giver læseadgang til alt nedenunder. En log over hvem der har set hvad er selv
+følsom — den afslører hvilke kunder der bliver kigget på, og af hvem. Som
+topniveau-node kan den få sin egen læseregel. Flyt den ikke ind under
+`tenants/` for at rydde op.
+
+**Append-only.** `.write: false` for alle, også admin. Skrivning sker kun
+gennem en Cloud Function med Admin SDK. Der findes derfor ingen
+`audit.skriv`-permission, og den må ikke tilføjes: kan en kompromitteret
+admin-konto redigere sit eget spor, er loggen værdiløs.
+
+**Læsning kræver `audit.laes`**, som ligger i `admin` og i `revisor` —
+sidstnævnte kan læse loggen og skrive intet, og er den rolle en RA-kundes
+security manager får.
+
+### Ingen følsomme oplysninger i posten
+
+*"Viste booking 28372"* — ikke *"viste Picasso, værdi 18 mio., Strandvejen
+123"*. En audit-log der lækker er værre end ingen.
+
+Kravet om `før/efter` og kravet om ingen følsomme oplysninger løses med en
+feltallowliste i `fleet/audit-regler.js`:
+
+| | |
+|---|---|
+| `aendrede` | **alle** ændrede felter, ved navn. Et feltnavn er ikke følsomt |
+| `foer` / `efter` | kun værdier fra allowlisten: beløb, tilstande, klassifikationer, tidspunkter, id'er |
+
+Fritekst — navne, adresser, noter, begrundelser — kommer aldrig med som værdi.
+Begrundelser går ikke tabt: de står i objektets egen `historik`, som også er
+append-only.
+
+Serveren filtrerer mod samme liste **igen**. Klientens filtrering er en
+bekvemmelighed; serverens er kontrollen. Derfor har `audit-regler.js` ingen
+imports — Cloud Function'en skal kunne bruge nøjagtig samme kilde.
+
+### Læsningslogning
+
+`useListe()` tager `auditerSom`, og logger da én post pr. hentning med antal
+rækker — aldrig rækkerne. Det ligger i hooket og ikke i skærmen, fordi en
+skærm ville glemme det, og så var audit eftermonteret.
+
+### Retention
+
+Klassen ligger i **stien**, ikke kun i posten, fordi retention varierer pr.
+klasse: så bliver sletning "fjern `audit/<tenant>/drift/2024/03`" i én
+operation frem for en scanning af hver post.
+
+| Klasse | Indhold | Grænse |
+|---|---|---|
+| `drift` | alt andet | 24 mdr. |
+| `regnskab` | fakturaer, indkøb, satser, bookinger, etaper, countere | 24 mdr. |
+| `sikkerhed` | login, adgang nægtet, eksport | 24 mdr. |
+
+**Tallene er foreløbige** — se README. Mekanismen kan bære forskellige
+grænser; det er kun beslutningen der mangler.
+
+Sletning sker med Cloud Scheduler → Pub/Sub → en Function med Admin SDK.
+Grænsen konfigureres i funktionen, **ikke i tenantens data**: kunne kunden
+sætte den, ville append-only være teater. Er der opbevaringspligt, eksporteres
+partitionen til en bucket i `europe-west1`, før den fjernes.
+
 ## Egress
 
 RTDB koster på data ud, ikke på forespørgsler.

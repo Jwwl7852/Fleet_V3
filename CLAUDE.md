@@ -34,6 +34,11 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
+- Tilføje en `audit.skriv`-permission, eller flytte `audit/` ind under
+  `tenants/`. Loggen er append-only og har sin egen læseregel — begge dele
+  ville ophæve det. Skal du logge, så kald `audit.log()`.
+- Skrive fritekst i en auditpost. Kun felter på allowlisten i
+  `audit-regler.js` må få deres værdi med.
 - **Røre `firebase.rules.json` uden at køre `npm run test:rules` bagefter.**
   Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
   fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og

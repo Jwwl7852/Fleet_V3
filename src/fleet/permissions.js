@@ -60,6 +60,19 @@ export const PERM = {
   bookingAfvis: "booking.afvis",
   bookingAnnuller: "booking.annuller",
   bookingUdfoer: "booking.udfoer",
+
+  /* --- Audit --- */
+  /* Læsning af auditloggen. Loggen er selv følsom: den afslører hvilke kunder
+     der bliver kigget på, og af hvem. Derfor er den ikke synlig for enhver i
+     tenanten, men kræver denne.
+
+     ⚠ DER FINDES INGEN audit.skriv, OG DEN MÅ IKKE TILFØJES.
+     Auditloggen er append-only: audit/ er .write: false for alle, også admin,
+     og skrivning sker kun gennem en Cloud Function med Admin SDK. Tilføjer man
+     en skrive-permission, kan en kompromitteret admin-konto redigere sit eget
+     spor, og så er hele loggen værdiløs. Har du brug for at skrive, skal du
+     kalde audit.log() — ikke give dig selv adgang. */
+  auditLaes: "audit.laes",
 };
 
 export const ALLE_PERMS = Object.values(PERM);
@@ -106,6 +119,26 @@ export const ROLLE_PERMS = {
     PERM.bookingAnnuller,
     PERM.bookingUdfoer,
   ],
+
+  /**
+   * Revisor — og den rolle en RA-kundes security manager får, når de vil
+   * verificere at loggen findes og virker.
+   *
+   * Læser auditloggen. Skriver INTET, nogen steder. Presettet indeholder
+   * bevidst ikke én eneste .skriv.
+   *
+   * ⚠ Bemærk hvad der IKKE står her: læse-permissions til kunder, bookinger
+   * og så videre. De findes ikke i kataloget, fordi de ikke håndhæves nogen
+   * steder — læsning styres i dag alene af tenant-medlemskab, og
+   * tenants/$tenantId/.read kaskaderer ned over alt. En revisor kan derfor
+   * læse tenantens data uden at nogen har givet lov til det.
+   *
+   * Det er dagens model, ikke en beslutning truffet her, og at opfinde et
+   * kunder.laes der ikke tjekkes nogen steder ville være værre end at lade
+   * være: en permission der ikke håndhæves, antyder en beskyttelse der ikke
+   * findes. At indsnævre læseadgang er punkt 6 i den låste rækkefølge.
+   */
+  revisor: [PERM.auditLaes],
 
   admin: [...ALLE_PERMS],
 };

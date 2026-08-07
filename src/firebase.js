@@ -9,6 +9,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/database";
+import "firebase/compat/functions";
 
 const cfg = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -55,12 +56,16 @@ export const erProduktionsdeploy = netlifyKontekst === "production";
 
 let _db = null;
 let _auth = null;
+let _funktioner = null;
 
 if (!demoMode) {
   try {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     _db = firebase.database();
     _auth = firebase.auth();
+    /* Samme region som RTDB. En callable i us-central1 mod en database i
+       europe-west1 er både langsommere og en dataoverførsel ud af EU. */
+    _funktioner = firebase.app().functions("europe-west1");
   } catch (e) {
     console.warn("Firebase kunne ikke starte. Kører demo-mode.", e);
   }
@@ -69,6 +74,18 @@ if (!demoMode) {
 export const db = _db;
 export const auth = _auth;
 export { firebase };
+
+/**
+ * Kald en Cloud Function. Bruges af audit.js — og af de øvrige funktioner
+ * når de findes: nummerserier, reservationskonflikter, tilstandsskift.
+ *
+ * Kaster hvis der ikke er en app. Kalderen afgør hvad det betyder; audit
+ * tæller fejlen og går videre, mens et tilstandsskift skal fejle synligt.
+ */
+export function kaldFunktion(navn, data) {
+  if (!_funktioner) throw new Error(`kaldFunktion("${navn}"): ingen Firebase-app (demo-mode?).`);
+  return _funktioner.httpsCallable(navn)(data);
+}
 
 /* Tenant kommer fra et custom claim, ikke fra klienten. Se ARKITEKTUR.md.
    Efter rolleskift skal serveren kalde revokeRefreshTokens, ellers har
