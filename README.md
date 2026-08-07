@@ -11,9 +11,16 @@ enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det gør.
 
 ```bash
 npm install
-cp .env.example .env.local     # udfyld Firebase-nøglerne
+cp .env.example .env.local          # udfyld Firebase-nøglerne
+git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
 ```
+
+`core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
+git. Uden den kan man committe en ændring i `firebase.rules.json` uden at have
+kørt testen, og det er præcis sådan reglerne kunne ligge ugyldige fra
+fundamentet uden at nogen opdagede det. Hooken kører kun når regelfilen er i
+det stagede diff, så almindelige commits er upåvirkede.
 
 Uden `.env.local` kører appen i demo-mode med datasættet i `src/fleet/useKpi.js`.
 Ingen hvide skærme, ingen crash.

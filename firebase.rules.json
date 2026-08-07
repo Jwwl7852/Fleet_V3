@@ -21,8 +21,27 @@
       // Tenant kommer fra custom claim, ALDRIG fra klienten. Rolleskift skal
       // følges af revokeRefreshTokens, ellers beholder brugeren sin gamle
       // adgang indtil tokenet udløber.
+      //
+      // _findes-MARKØREN. Hver regel herunder kræver at tenanten faktisk er
+      // oprettet. Uden den sammenligner reglerne kun claim'et med
+      // STISEGMENTET: en token med tenant "spoegelse" ville matche
+      // tenants/spoegelse og dermed kunne skrive en helt ny tenant frem.
+      // Det er ikke et adgangsbrud — man ser stadig ikke andres data — men
+      // det forurener databasen med tenants ingen har oprettet, og de er
+      // usynlige indtil nogen leder. Læsesiden er med af samme grund: et
+      // opdigtet claim skal ikke kunne få bekræftet at en node er tom.
+      //
+      // Markøren kan kun sættes med Admin SDK, som går uden om reglerne. En
+      // tenant kan derfor kun opstå ved provisionering — aldrig som
+      // bivirkning af en skrivning.
       "$tenantId": {
-        ".read": "auth != null && auth.token.tenant === $tenantId",
+        ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+
+        // Ingen .write. Kan markøren skrives eller slettes fra klienten, er
+        // hele tjekket teater — og en sletning ville spærre ens egen tenant.
+        "_findes": {
+          ".write": false
+        },
 
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
@@ -76,7 +95,7 @@
         // Lagerstamdata: kapacitet og satser. Kapaciteten laeses af
         // tjekLedig() naar den summerer belastningen over et tidsrum.
         "lagre": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle === 'admin'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle === 'admin'",
           "$lagerId": {
             ".validate": "newData.hasChildren(['division'])",
             "division": {
@@ -96,7 +115,7 @@
         // Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer
         // en rettelse i dag prisen på en booking fra sidste kvartal.
         "satser": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle === 'admin'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle === 'admin'",
           "$gruppe": {
             "$postId": {
               "satser": { ".indexOn": ["gyldigFra"] }
@@ -105,7 +124,7 @@
         },
 
         "opgaver": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle !== 'chauffoer'",
           ".indexOn": ["dato", "status", "koeretoejId", "chauffoerId"],
           "$opgaveId": {
             ".validate": "newData.hasChildren(['division'])",
@@ -116,7 +135,7 @@
         },
 
         "koeretoejer": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && (auth.token.rolle === 'admin' || auth.token.rolle === 'disponent')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (auth.token.rolle === 'admin' || auth.token.rolle === 'disponent')",
           ".indexOn": ["status", "naesteServiceMs"],
           "$koeretoejId": {
             ".validate": "newData.hasChildren(['division'])",
@@ -131,7 +150,7 @@
         "indberetninger": {
           ".indexOn": ["oprettetMs", "koeretoejId", "type"],
           "$id": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && (!data.exists() || data.child('oprettetAf').val() === auth.uid || auth.token.rolle === 'admin')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!data.exists() || data.child('oprettetAf').val() === auth.uid || auth.token.rolle === 'admin')",
             ".validate": "newData.hasChildren(['division'])",
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
@@ -145,7 +164,7 @@
         // C+D er fælles — fraværet blokerer ham i begge afdelinger. Gav vi det
         // en division, ville han være syg i gods og rask i bus.
         "fravaer": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle !== 'chauffoer'",
           ".indexOn": ["fra"],
           "$fravaerId": {
             "division": { ".validate": false }
@@ -153,7 +172,7 @@
         },
 
         "facility": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle !== 'chauffoer'",
           // ÉN kilde til sensorværdier. Både Facility-overblik og
           // Klima-skærmen læser herfra — i mockupsene viste de forskellige
           // temperaturer for samme zoner.
@@ -169,7 +188,7 @@
         // faelles er en lovlig division her: én dieselleverance dækker begge
         // afdelinger. Fordelingsnøglen for fælles omkostninger er udskudt.
         "indkoeb": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle !== 'chauffoer'",
           ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
           "$indkoebId": {
             ".validate": "newData.hasChildren(['division'])",
@@ -192,7 +211,7 @@
         // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
         // tidsvindue.
         "kunder": {
-          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.rolle !== 'chauffoer'",
           ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
           "$kundeId": {
             ".validate": "newData.hasChildren(['division'])",
@@ -203,7 +222,7 @@
         },
 
         "idebank": {
-          ".write": "auth != null && auth.token.tenant === $tenantId",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
           ".indexOn": ["oprettetMs", "prioritet"]
         }
       }

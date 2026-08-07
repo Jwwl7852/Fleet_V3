@@ -30,6 +30,9 @@ import { ref, set, update, get } from "firebase/database";
 
 const MIN = "tenantX";
 const FREMMED = "tenantY";
+/* Aldrig provisioneret — ingen _findes-markør. Et claim der peger herhen er
+   enten forældet eller resultatet af en fejl i den kode der sætter claims. */
+const SPOEGELSE = "tenantSpoegelse";
 
 const RAA_REGLER = readFileSync("firebase.rules.json", "utf8");
 
@@ -62,6 +65,10 @@ before(async () => {
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     for (const t of [MIN, FREMMED]) {
+      /* Provisioneringsmarkøren. I produktion sættes den af Admin SDK; her
+         af withSecurityRulesDisabled, som går uden om reglerne på samme måde.
+         SPOEGELSE får den bevidst IKKE. */
+      await set(ref(db, `tenants/${t}/_findes`), true);
       await set(ref(db, `tenants/${t}/kunder/seed`), { ...POST, navn: `Kunde i ${t}` });
       await set(ref(db, `tenants/${t}/opgaver/seed`), { division: "gods", art: "vaerksted" });
       await set(ref(db, `tenants/${t}/kpi/gods/current`), { kunder: { aktive: 3 } });
@@ -157,6 +164,34 @@ describe("tenant-isolation — på tværs af tenants", () => {
       snap.exists(), false,
       "Den lovlige halvdel af en afvist multi-path update må ikke lande — skrivningen skal være atomisk."
     );
+  });
+});
+
+describe("tenant-isolation — claim mod en tenant der ikke findes", () => {
+  it("et opdigtet tenant-claim kan ikke læse, heller ikke en tom node", async () => {
+    const db = som("uid-spoeg", { tenant: SPOEGELSE, rolle: "admin" });
+    await assertFails(get(ref(db, `tenants/${SPOEGELSE}/kunder`)));
+    await assertFails(get(ref(db, `tenants/${SPOEGELSE}`)));
+  });
+
+  /* Den vigtige. Uden _findes ville skrivningen HER oprette tenanten —
+     databasen ville få en tenant ingen har provisioneret, og den ville være
+     usynlig indtil nogen ledte. */
+  it("et opdigtet tenant-claim kan ikke oprette tenanten ved at skrive", async () => {
+    const db = som("uid-spoeg", { tenant: SPOEGELSE, rolle: "admin" });
+    await assertFails(set(ref(db, `tenants/${SPOEGELSE}/kunder/foerste`), POST));
+    await assertFails(set(ref(db, `tenants/${SPOEGELSE}/opgaver/foerste`), { division: "gods" }));
+  });
+
+  it("markøren kan ikke bootstrappes fra klienten", async () => {
+    const db = som("uid-spoeg", { tenant: SPOEGELSE, rolle: "admin" });
+    await assertFails(set(ref(db, `tenants/${SPOEGELSE}/_findes`), true));
+  });
+
+  it("_findes kan hverken skrives eller slettes i ens EGEN tenant", async () => {
+    const db = som("uid-min", { tenant: MIN, rolle: "admin" });
+    await assertFails(set(ref(db, `tenants/${MIN}/_findes`), true));
+    await assertFails(set(ref(db, `tenants/${MIN}/_findes`), null));
   });
 });
 

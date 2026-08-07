@@ -1,0 +1,38 @@
+#!/bin/sh
+# FleetControl 3.0 — pre-commit
+#
+# Kører sikkerhedsreglernes testsuite, men KUN når firebase.rules.json er i
+# det stagede diff. Almindelige commits mærker ingenting; prisen betales af
+# dem der ændrer regler.
+#
+# Aktiveres én gang pr. klon:
+#   git config core.hooksPath .githooks
+#
+# Hvorfor den findes: reglerne var ugyldige fra fundamentet og kunne slet
+# ikke indlæses. Det overlevede gennemlæsning og flere redigeringer, og blev
+# først fundet da de blev kørt. Se "Låst rækkefølge" i README.
+
+if ! git diff --cached --name-only | grep -q '^firebase\.rules\.json$'; then
+  exit 0
+fi
+
+echo "firebase.rules.json er ændret — kører npm run test:rules …"
+
+if npm run --silent test:rules; then
+  echo "Regeltesten er grøn. Fortsætter."
+  exit 0
+fi
+
+cat <<'SLUT'
+
+  Regeltesten fejlede. Commit afbrudt.
+
+  Ret reglerne, og kør `npm run test:rules` indtil den er grøn.
+  Er fejlen i testen og ikke i reglerne, så ret testen — men lad være med
+  at svække den for at komme videre.
+
+  Skal du absolut igennem: git commit --no-verify
+  Gør det kun hvis du ved præcis hvorfor.
+
+SLUT
+exit 1

@@ -13,6 +13,13 @@ brud på dem skal være bevidste, ikke tilfældige.
 Rækkefølgen for sikkerhedsarbejdet er også låst — se **Låst rækkefølge** i
 README. Tag punkterne i orden, og spring ikke frem.
 
+**Enhver ændring i `firebase.rules.json` kræver at `npm run test:rules` kører
+grønt, før der committes.** Ingen undtagelser, heller ikke for en kommentar —
+det var netop en kommentar der gjorde reglerne ugyldige fra fundamentet, og
+fejlen overlevede i månedsvis, fordi ingen kørte dem. `npm test` kører samme
+suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
+`core.hooksPath` er sat.
+
 ## Det du ikke må gøre
 
 - Kalde `firebase.initializeApp()` i et modul. Importér `db` fra `src/firebase.js`.

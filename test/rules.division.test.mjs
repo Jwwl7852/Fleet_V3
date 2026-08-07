@@ -50,6 +50,13 @@ before(async () => {
       rules: readFileSync("firebase.rules.json", "utf8"),
     },
   });
+
+  /* Reglerne kræver at tenanten er provisioneret — se _findes i
+     firebase.rules.json. Uden markøren ville hver eneste skrivning herunder
+     blive afvist, og divisionstestene ville fejle af den forkerte grund. */
+  await miljoe.withSecurityRulesDisabled(async (ctx) => {
+    await set(ref(ctx.database(), `tenants/${TENANT}/_findes`), true);
+  });
 });
 
 after(async () => {
