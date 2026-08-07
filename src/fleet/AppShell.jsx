@@ -7,33 +7,42 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, PERIODER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
 import { klokke } from "./format.js";
-import { miljoe, projektId, paaLokalMaskine } from "../firebase.js";
+import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
 /**
  * Miljøbjælke — over hele bredden, over sidebaren, umulig at overse.
  *
  * Den farlige situation er ikke "jeg troede jeg var på prod". Det er
  * "jeg troede jeg var på dev" — og så skriver man testdata ind i rigtige
- * kunders base. Derfor råber den højest ved PRODUKTIONSNØGLER PÅ EN
- * UDVIKLERMASKINE, ikke ved dev.
+ * kunders base. Derfor råber den højest ved PRODUKTIONSNØGLER ET STED DE
+ * IKKE HØRER HJEMME, ikke ved dev.
  *
- * Produktion fra et deployet site viser INGEN bjælke. En advarsel man ser
- * hele tiden, holder man op med at se.
+ * To sådanne steder, og begge fanges:
+ *   1. en udviklermaskine        (localhost eller vite dev)
+ *   2. en deploy-preview eller branch-deploy
  *
- * Kendt hul: en Netlify deploy-preview er ikke localhost, så prod-nøgler i
- * en preview fanges ikke her. Derfor skal previews have DEV-værdier — se
- * netlify.toml.
+ * Nr. 2 kan kun ses, fordi netlify.toml mapper Netlifys CONTEXT ned i en
+ * VITE_-variabel. Uden den ligner en preview et helt almindeligt
+ * produktionsdeploy — samme netlify.app-domæne, samme alt.
+ *
+ * Produktion fra et bekræftet produktionsdeploy viser INGEN bjælke. En
+ * advarsel man ser hele tiden, holder man op med at se.
  */
 function MiljoeBjaelke() {
   const udvikling = paaLokalMaskine || import.meta.env.DEV;
+  /* Bemærk: kun hvis konteksten er KENDT og ikke er produktion. Er den ukendt
+     — et build hostet et sted vi ikke kender — falder vi tilbage på
+     localhost-tjekket frem for at give falsk alarm på det rigtige site. */
+  const forkertKontekst = netlifyKontekst !== null && !erProduktionsdeploy;
 
-  if (miljoe === "prod" && udvikling) {
+  if (miljoe === "prod" && (udvikling || forkertKontekst)) {
     return (
       <div className="fc-miljoe fc-miljoe-fare" role="alert">
         <b>Produktion</b>
         <span>
-          Du kører mod <b>{projektId}</b> fra en udviklermaskine. Alt du gør,
-          rammer rigtige kunders data.
+          Du kører mod <b>{projektId}</b>{" "}
+          {udvikling ? "fra en udviklermaskine" : `i en ${netlifyKontekst}`}.
+          Alt du gør, rammer rigtige kunders data.
         </span>
       </div>
     );
@@ -41,7 +50,7 @@ function MiljoeBjaelke() {
   if (miljoe === "dev") {
     return (
       <div className="fc-miljoe fc-miljoe-dev" role="status">
-        <b>Dev</b>
+        <b>Dev{netlifyKontekst && !erProduktionsdeploy ? ` · ${netlifyKontekst}` : ""}</b>
         <span>{projektId} — data her er til at smide væk.</span>
       </div>
     );

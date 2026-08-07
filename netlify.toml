@@ -1,14 +1,32 @@
-# MILJØVARIABLER sættes i Netlify-UI'et, ikke her — så de kan sættes pr.
+# FIREBASE-NØGLER sættes i Netlify-UI'et, ikke her — så de kan sættes pr.
 # kontekst uden at ligge i repoet.
 #
 #   Production            → PROD-nøgler (fleetcontrol-98e11)
 #   Deploy previews       → DEV-nøgler  (fleetcontrol-dev)
 #   Branch deploys        → DEV-nøgler
 #
-# Previews og branch-deploys må ALDRIG have produktionsnøgler. Miljøbjælken i
-# AppShell fanger produktionsnøgler på localhost, men en preview kører på et
-# netlify.app-domæne og ser derfor ud som almindelig produktion. Der er intet
-# der advarer dig — det er derfor det står her.
+# Previews og branch-deploys må ALDRIG have produktionsnøgler.
+#
+# BYGGEKONTEKSTEN nedenfor er det der gør reglen håndhævet frem for skrevet.
+# Netlify sætter CONTEXT i build, men Vite eksponerer kun VITE_*-variabler til
+# klienten — derfor mappes den eksplicit her. Værdierne skrives ud i fuld
+# længde frem for at interpolere $CONTEXT, så det kan læses hvad hver kontekst
+# faktisk får.
+#
+# Med den kan miljøbjælken i AppShell se forskel på en preview og et rigtigt
+# produktionsdeploy: produktionsnøgler i en preview giver samme røde bjælke
+# som produktionsnøgler på en laptop.
+#
+# Fjerner du en af blokkene, forsvinder advarslen for netop den kontekst.
+
+[context.production.environment]
+  VITE_NETLIFY_CONTEXT = "production"
+
+[context.deploy-preview.environment]
+  VITE_NETLIFY_CONTEXT = "deploy-preview"
+
+[context.branch-deploy.environment]
+  VITE_NETLIFY_CONTEXT = "branch-deploy"
 
 [build]
   command = "npm run build"

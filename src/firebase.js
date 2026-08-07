@@ -40,6 +40,19 @@ export const paaLokalMaskine =
   typeof window !== "undefined" &&
   /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)$/.test(window.location.hostname);
 
+/* "production" | "deploy-preview" | "branch-deploy" | null
+ *
+ * Mappet fra Netlifys CONTEXT i netlify.toml. Uden den kan en deploy-preview
+ * ikke skelnes fra produktion — begge kører på et netlify.app-domæne.
+ *
+ * Bemærk at den kun kan TILFØJE advarsler, aldrig fjerne dem: sætter man
+ * VITE_NETLIFY_CONTEXT=production i sin .env.local for at få ro, fanger
+ * paaLokalMaskine stadig produktionsnøgler på laptoppen. */
+export const netlifyKontekst = import.meta.env.VITE_NETLIFY_CONTEXT || null;
+
+/** Positivt bekræftet produktionsdeploy — ikke bare "ikke localhold". */
+export const erProduktionsdeploy = netlifyKontekst === "production";
+
 let _db = null;
 let _auth = null;
 

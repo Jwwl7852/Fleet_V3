@@ -1,21 +1,41 @@
 # Datamodel
 
-Firebase Realtime Database, europe-west1. **To projekter:**
+Firebase Realtime Database. **To projekter:**
 
-| Alias | Projekt | Indhold |
-|---|---|---|
-| `dev` | `fleetcontrol-dev` | Til at smide væk |
-| `prod` | `fleetcontrol-98e11` | Rigtige kunders data |
+| Alias | Projekt | RTDB | Storage | Plan |
+|---|---|---|---|---|
+| `dev` | `fleetcontrol-dev-1ac1c` | europe-west1, locked mode | **ikke oprettet** | Spark |
+| `prod` | `fleetcontrol-98e11` | europe-west1 | europe-west1, Regional | — |
 
 Aliaserne står i `.firebaserc`, så `firebase deploy --project dev` og
 `--project prod` er eksplicitte valg. Appen udleder selv sit miljø af
 `VITE_FB_PROJECT_ID` og viser en bjælke i toppen, når man ikke er på
 produktion — se `AppShell.jsx`.
 
-Der findes tre ældre projekter i kontoen: `fleetcontrol-6de59` (det gamle
-produktionsprojekt, kan indeholde rigtige data), `fleetcontrol-v2-0` og
-`flaadestyring-4b161`. **Ingen af dem må bruges til noget**, før nogen har
-set efter hvad der ligger i dem. Det er en oprydningsopgave for sig.
+### Regioner — verificeret 7. august 2026
+
+**PROD's Storage-bucket ligger i `europe-west1`, Regional.** Samme region som
+RTDB. Ingen migrering nødvendig. Kontrolleret i Firebase Console; bemærk at
+`firebase projects:list` viser *Resource Location ID: Not specified* og
+dermed er misvisende — nyere `.firebasestorage.app`-buckets oprettes uden at
+sætte projektets fælles resource location, så bucket'en har sin egen.
+
+**En bucket-region kan ikke ændres efter oprettelsen.** Det samme gælder
+RTDB-instansen. Oprettes et nyt projekt, skal begge dele derfor sættes til
+`europe-west1` fra starten — vælger man forkert, er den eneste vej ud en
+migrering til en ny bucket. Det er noteret her, fordi det ellers er den slags
+der skal slås op forfra hver gang nogen spørger.
+
+**DEV har ingen Storage-bucket.** Den kræver Blaze, og DEV står på Spark. Det
+er udskudt til en skærm faktisk skal uploade filer — og når den dag kommer,
+skal bucket'en oprettes i `europe-west1` sammen med en budgetalarm.
+
+### Ældre projekter i kontoen
+
+`fleetcontrol-6de59` (det gamle produktionsprojekt, kan indeholde rigtige
+data), `fleetcontrol-v2-0` og `flaadestyring-4b161`. **Ingen af dem må bruges
+til noget**, før nogen har set efter hvad der ligger i dem. Det er en
+oprydningsopgave for sig.
 
 ## Konventioner
 

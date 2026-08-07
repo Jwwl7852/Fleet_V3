@@ -16,12 +16,25 @@ git config core.hooksPath .githooks # kører regeltesten før commits der rører
 npm run dev
 ```
 
-**Der er to Firebase-projekter.** `fleetcontrol-dev` er til at smide væk;
-`fleetcontrol-98e11` er rigtige kunders data. `.env.example` peger på dev, og
-det skal din `.env.local` også — appen udleder miljøet af projekt-id'et og
-viser en bjælke i toppen, når du ikke er på produktion. Kører du med
-produktionsnøgler på din egen maskine, bliver bjælken rød og stribet. Den er
-der med vilje.
+**Der er to Firebase-projekter.** `fleetcontrol-dev-1ac1c` er til at smide væk;
+`fleetcontrol-98e11` er rigtige kunders data.
+
+Som ny udvikler peger du på **DEV**. `.env.example` gør det allerede, og det
+skal din `.env.local` også.
+
+**Produktionsnøglerne findes kun i Netlify.** De hører ikke hjemme i en
+`.env`-fil på nogens maskine, og de står derfor heller ikke i `.env.example`.
+Skal du fejlsøge mod produktionsdata, så tag en kopi ned i DEV.
+
+Appen udleder miljøet af projekt-id'et og viser en bjælke i toppen, når du
+ikke er på produktion. Havner produktionsnøgler alligevel et sted de ikke
+hører hjemme — en laptop eller en deploy-preview — bliver bjælken rød og
+stribet.
+
+**DEV har ingen Storage-bucket.** Den kræver Blaze, og DEV står på Spark.
+Skal en skærm uploade filer, skal projektet opgraderes, bucket'en oprettes i
+`europe-west1` (samme region som PROD — den kan ikke ændres bagefter), og der
+skal sættes en budgetalarm samtidig. Ikke bagefter.
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
 git. Uden den kan man committe en ændring i `firebase.rules.json` uden at have

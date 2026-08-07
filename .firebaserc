@@ -1,6 +1,6 @@
 {
   "projects": {
-    "dev": "fleetcontrol-dev",
+    "dev": "fleetcontrol-dev-1ac1c",
     "prod": "fleetcontrol-98e11"
   }
 }
