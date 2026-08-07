@@ -122,7 +122,7 @@ describe("serveren håndhæver permissions", () => {
       ["kunder", PERM.kunderSkriv, KUNDE],
       ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted" }],
       ["koeretoejer", PERM.koeretoejerSkriv, { division: "gods", navn: "Volvo" }],
-      ["fravaer", PERM.fravaerSkriv, { chauffoerId: "lars", fra: 1, til: 2 }],
+      ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", beloebOere: 100 }],
       ["satser", PERM.satserSkriv, { post: { satser: [] } }],
       ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],

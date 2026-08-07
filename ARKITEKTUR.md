@@ -61,7 +61,7 @@ tenants/<tenantId>/
     biler/<id>/kmPrisSatser[]
   reservationer/<type>/<id>/<resId>
                                 { fra, til, kilde:{type,id,reference}, maengde, annulleret }
-                                type: koeretoej | chauffoer | facilityAktiv | lokation | lager
+                                type: koeretoej | medarbejder | facilityAktiv | lokation | lager
                                 kilde: booking | vaerksted | facilitySag | fravaer | lager | manuel
                                 maengde: { m3, kg } — KUN kapacitetsressourcer
   lagre/<lagerId>               { navn, kapacitet:{m3,kg}, satser[], haandteringSatser[] }
@@ -69,7 +69,7 @@ tenants/<tenantId>/
                                   prisSnapshot, prisLinjer[], historik/<ms> }
                                 tilstand og harAabneEtaper er AFLEDT af etaperne
   etaper/<etapeId>              { bookingId, nr, tilstand, division, senestMs,
-                                  fraSted, tilSted, koeretoejId, chauffoerId,
+                                  fraSted, tilSted, koeretoejId, personId,
                                   forslag[], valgtForslagId, maengde, historik/<ms> }
   opgaver/<id>                  { art: vaerksted|langtur, ... }
   koeretoejer/<id>
@@ -90,7 +90,7 @@ Højere tal vinder. Bestemmer hvad der kan overskrive hvad.
 
 ```
 vaerksted    40   en bil på værksted kan ikke køre
-fravaer      30   en syg chauffør kan ikke disponeres
+fravaer      30   en syg medarbejder kan ikke disponeres
 facilitySag  20
 booking      10
 manuel        5
@@ -107,7 +107,7 @@ plads, eller også er der ikke.
 
 | Art | Ressourcer | Konflikt |
 |---|---|---|
-| `eksklusiv` | koeretoej, chauffoer, facilityAktiv, lokation | Enhver overlapning |
+| `eksklusiv` | koeretoej, medarbejder, facilityAktiv, lokation | Enhver overlapning |
 | `kapacitet` | lager | Kun hvis **summen** over overlappet overskrider kapaciteten |
 
 Kapacitet måles på `m3` og `kg` hver for sig — en palle kan være let og fylde

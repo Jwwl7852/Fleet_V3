@@ -54,7 +54,7 @@ export const LOGBARE_FELTER = new Set([
   "gyldigFra", "fra", "til", "senestMs", "aftaleUdloeberMs", "forfaldMs",
   "sidsteAktivitetMs", "friDage",
   // referencer og numre
-  "nummer", "bookingId", "etapeNr", "kundeId", "koeretoejId", "chauffoerId",
+  "nummer", "bookingId", "etapeNr", "kundeId", "koeretoejId", "personId",
   "lagerId", "leverandoerId", "valgtForslagId", "ressourceType", "ressourceId",
 ]);
 

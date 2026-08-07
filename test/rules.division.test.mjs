@@ -117,7 +117,7 @@ describe("beslutning 15 — division som felt", () => {
 
   it("afviser division på fravær — det arver fra chaufføren", async () => {
     const db = som("admin1", "admin");
-    const fravaer = { chauffoerId: "lars", fra: 1786000000000, til: 1786600000000, art: "sygdom" };
+    const fravaer = { personId: "lars", fra: 1786000000000, til: 1786600000000, art: "sygdom" };
     await assertSucceeds(set(ref(db, sti("fravaer", "f1")), fravaer));
     await assertFails(set(ref(db, sti("fravaer", "f2")), { ...fravaer, division: "gods" }));
   });

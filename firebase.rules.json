@@ -216,7 +216,7 @@
         "opgaver": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
-          ".indexOn": ["dato", "status", "koeretoejId", "chauffoerId"],
+          ".indexOn": ["dato", "status", "koeretoejId", "personId"],
           "$opgaveId": {
             ".validate": "newData.hasChildren(['division'])",
             "division": {

@@ -1,6 +1,6 @@
 /* src/fleet/reservations.js
  * ÉN reservationsmodel. Tre kilder skriver til den:
- *   booking      → bil + chauffør reserveret til en tur
+ *   booking      → enhed + medarbejder reserveret til en tur
  *   vaerksted    → bil blokeret under værkstedsbesøg
  *   facilitySag  → aktiv eller lokation optaget af et servicebesøg
  *
@@ -12,8 +12,12 @@
  */
 
 export const RESSOURCE = {
-  koeretoej: "koeretoej",
-  chauffoer: "chauffoer",
+  koeretoej: "koeretoej",   // også trailere og påhæng — art står på enheden
+  /* MEDARBEJDER, ikke chauffør. En lagermedarbejders ferie skal også kunne
+     blokere hende, og en værkstedsopgave tildeles en mekaniker. Hed den
+     'chauffoer', var halvdelen af personalet usynligt for disponeringen —
+     én ting med et for snævert navn, spejlvendingen af beslutning 11. */
+  medarbejder: "medarbejder",
   facilityAktiv: "facilityAktiv",
   lokation: "lokation",
   lager: "lager",           // beslutning 16 — kapacitet, ikke eksklusivitet
@@ -23,7 +27,7 @@ export const KILDE = {
   booking: "booking",
   vaerksted: "vaerksted",
   facilitySag: "facilitySag",
-  fravaer: "fravaer",      // ferie, sygdom — blokerer chauffør
+  fravaer: "fravaer",      // ferie, sygdom — blokerer medarbejderen
   lager: "lager",          // gods der står mellem to etaper
   manuel: "manuel",
 };
@@ -42,7 +46,7 @@ export const KILDE = {
  */
 export const RESSOURCE_ART = {
   koeretoej: "eksklusiv",
-  chauffoer: "eksklusiv",
+  medarbejder: "eksklusiv",
   facilityAktiv: "eksklusiv",
   lokation: "eksklusiv",
   lager: "kapacitet",
@@ -94,7 +98,7 @@ export function maksBelastning(reservationer, { fra, til }, felt) {
 export function konfliktTekst(ny, eksisterende) {
   const k = eksisterende.kilde;
   if (k.type === KILDE.vaerksted) return `Køretøjet er reserveret til værksted (${k.reference || k.id}).`;
-  if (k.type === KILDE.fravaer) return `Chaufføren har registreret fravær i perioden.`;
+  if (k.type === KILDE.fravaer) return `Medarbejderen har registreret fravær i perioden.`;
   if (k.type === KILDE.booking) return `Allerede reserveret til booking ${k.reference || k.id}.`;
   if (k.type === KILDE.facilitySag) return `Optaget af servicebesøg fra sag ${k.reference || k.id}.`;
   return "Ressourcen er optaget i perioden.";
