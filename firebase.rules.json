@@ -294,6 +294,10 @@
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|vaerksted|udeAfDrift|solgt|skrottet)$/)" },
             "laengdeMm": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "driftPrKmOere": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "kapacitet": {
+              "m3": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+              "kg": { ".validate": "newData.isNumber() && newData.val() >= 0" }
+            },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"

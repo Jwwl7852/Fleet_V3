@@ -87,6 +87,11 @@ kan ikke komme ud af sync.
 - Cloud Functions mangler: reservationskonflikter, bookingtilstandsskift med
   rolletjek, nummerserier. Rules er `.write: false` på de noder.
 - Disponering skal have `art` (vaerksted|langtur) på opgaver, før skærmen bygges.
+- **Disponering har tre forudsætninger** — se ARKITEKTUR. `kanDisponeres()`,
+  `kraevedeKompetencer()` + `tjekKompetencer()` og `kanBaere()` er bygget og
+  testet, men **intet kalder dem**. De hører i den Cloud Function der skriver
+  etapen, ikke i skærmen: ligger de i skærmen, omgår en direkte skrivning dem.
+  En udløbet kompetence skal **blokere**, ikke advare.
 - **Disponering skal bygges med etapemodellen i tankerne** (beslutning 16).
   Det man disponerer, er en *etape* — ikke en booking. Etaper ligger i
   `etaper/<etapeId>`, har deres egen tilstand, og `aaben` betyder at etapen

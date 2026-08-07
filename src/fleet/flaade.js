@@ -114,3 +114,78 @@ export const samletLaengdeMm = (enheder = []) =>
  */
 export const driftPrKmOere = (enheder = []) =>
   enheder.filter(Boolean).reduce((s, e) => s + (e.driftPrKmOere || 0), 0);
+
+/* ---- Kapacitet ------------------------------------------------------ */
+
+/**
+ * Hvad kombinationen kan bære: { m3, kg }.
+ *
+ * Feltet `kapacitet` sidder på hver enhed. En trækker alene bærer næsten
+ * intet — lasten ligger på traileren — så det er summen der tæller, ikke
+ * den enkelte enheds tal.
+ *
+ * Samme enheder som lagerreservationen bruger (`maengde: { m3, kg }`), så
+ * godset kan sammenlignes med både en hal og et vogntog uden omregning.
+ */
+export const samletKapacitet = (enheder = []) =>
+  enheder.filter(Boolean).reduce(
+    (s, e) => ({ m3: s.m3 + (e.kapacitet?.m3 || 0), kg: s.kg + (e.kapacitet?.kg || 0) }),
+    { m3: 0, kg: 0 }
+  );
+
+/**
+ * Kan kombinationen bære godset?  → { ok, mangler: { m3, kg } }
+ *
+ * m3 og kg tjekkes hver for sig: en palle kan være let og fylde meget, eller
+ * tung og fylde lidt. Samme grund som i lagerets kapacitetstjek.
+ */
+export function kanBaere(enheder = [], gods = {}) {
+  const k = samletKapacitet(enheder);
+  const mangler = {
+    m3: Math.max(0, (gods.m3 || 0) - k.m3),
+    kg: Math.max(0, (gods.kg || 0) - k.kg),
+  };
+  return { ok: !mangler.m3 && !mangler.kg, kapacitet: k, mangler };
+}
+
+/* ---- Kompetencekrav ------------------------------------------------- */
+
+/**
+ * Hvilke kompetencer en enhed kræver af den der fører den.
+ *
+ * Katalog og ikke logik i skærmen: kravet skal være det samme, uanset om det
+ * er Disponering, en Cloud Function eller en test der spørger.
+ */
+export const KOMPETENCE = {
+  c: "c",                       // stort kørekort
+  ce: "ce",                     // stort kørekort med påhæng
+  d: "d",                       // bus
+  adr: "adr",                   // farligt gods
+  tachografkort: "tachografkort",
+  truckcertifikat: "truckcertifikat",
+};
+
+const ART_KRAV = {
+  traekker: [KOMPETENCE.c, KOMPETENCE.tachografkort],
+  lastbil: [KOMPETENCE.c, KOMPETENCE.tachografkort],
+  varevogn: [],
+  scooter: [],
+  truck: [KOMPETENCE.truckcertifikat],
+  trailer: [KOMPETENCE.ce],
+  paahaeng: [KOMPETENCE.ce],
+};
+
+/**
+ * Hvad kombinationen og godset tilsammen kræver.
+ *
+ * gods.farligt → ADR. Det er ikke en egenskab ved bilen, men ved lasten, og
+ * derfor kan kravet ikke udledes af enhederne alene.
+ */
+export function kraevedeKompetencer(enheder = [], gods = {}) {
+  const krav = new Set();
+  for (const e of enheder.filter(Boolean)) {
+    for (const k of ART_KRAV[e.art] || []) krav.add(k);
+  }
+  if (gods.farligt) krav.add(KOMPETENCE.adr);
+  return [...krav].sort();
+}

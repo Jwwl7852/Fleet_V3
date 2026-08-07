@@ -302,6 +302,45 @@ vises i lister, er prisen mindre end den lyder — men den skal træffes bevidst
 
 De øvrige fem venter på Cloud Functions eller er klientside og dermed svagere.
 
+## Forudsætninger for Disponering
+
+Koblingen personale + køretøj + trailer sker på **etapen**, og hver kobling
+skriver en reservation. Tre tjek skal køre, før en etape må oprettes eller
+ændres.
+
+**Alle tre hører i den Cloud Function der skriver etapen — ikke i skærmen.**
+Ligger de i skærmen, kan en direkte skrivning omgå dem, og så er de
+dekoration. `etaper` er `.write: false` netop derfor.
+
+| # | Tjek | Funktion | Status |
+|---|---|---|---|
+| 1 | Enhedskombination | `kanDisponeres(enheder)` i `flaade.js` | **Bygget og testet — men intet kalder den** |
+| 2 | Kompetencer | `kraevedeKompetencer(enheder, gods)` + `tjekKompetencer(...)` | Bygget og testet — intet kalder dem |
+| 3 | Kapacitet | `kanBaere(enheder, gods)` i `flaade.js` | Bygget og testet — intet kalder den |
+
+At funktionerne findes er ikke det samme som at de håndhæves. Indtil
+Cloud Function'en skrives, er `.write: false` den eneste reelle spærring —
+strengere end de tre tjek, men ikke granulær.
+
+**En udløbet kompetence BLOKERER.** Den advarer ikke. Samme regel som i
+reservationsmodellen: *"ingen konflikter fundet"* skal betyde noget. En
+advarsel man kan klikke videre fra, er ikke en kontrol, og en chauffør uden
+gyldigt ADR-bevis må ikke køre farligt gods, uanset hvor travlt disponenten
+har.
+
+`tjekKompetencer()` holder **mangler** og **udløbne** adskilt. *"Han har
+aldrig haft C+E"* og *"hans C+E udløb i går"* kræver hver sin handling — et
+andet køretøj mod en fornyelse — og en samlet liste ville skjule forskellen.
+
+ADR-kravet kommer fra **lasten**, ikke fra bilen, og kan derfor ikke udledes
+af enhederne alene. Det er grunden til at `kraevedeKompetencer()` tager både
+`enheder` og `gods`.
+
+Kapacitet måles på `m3` og `kg` hver for sig, i samme enheder som
+lagerreservationens `maengde` — så godset kan sammenlignes med både en hal og
+et vogntog uden omregning. En trækker bærer næsten intet; lasten ligger på
+traileren, så det er summen der tæller.
+
 ## Auditlog
 
 ```

@@ -80,3 +80,44 @@ export const harFunktion = (person, funktion) =>
 /** Funktionerne på en person, i katalogets rækkefølge frem for objektets. */
 export const funktionerAf = (person) =>
   ALLE_FUNKTIONER.filter((f) => harFunktion(person, f));
+
+/* ---- Kompetencetjek ------------------------------------------------- */
+
+/**
+ * tjekKompetencer(kompetencer, krav, paaMs) → { ok, mangler, udloebne }
+ *
+ * kompetencer: personens poster fra kompetencer/ — [{ type, udloeberMs }]
+ * krav:        fra kraevedeKompetencer() i flaade.js
+ *
+ * EN UDLØBET KOMPETENCE BLOKERER. Den advarer ikke.
+ *
+ * Det er samme regel som i reservationsmodellen: "ingen konflikter fundet"
+ * skal betyde noget. En advarsel man kan klikke videre fra, er ikke en
+ * kontrol — og en chauffør uden gyldigt ADR-bevis må ikke køre farligt gods,
+ * uanset hvor travlt disponenten har.
+ *
+ * Bemærk at `mangler` og `udloebne` holdes adskilt. "Han har aldrig haft
+ * C+E" og "hans C+E udløb i går" kræver hver sin handling — den ene et andet
+ * køretøj, den anden en fornyelse — og en samlet liste ville skjule det.
+ *
+ * HÅNDHÆVELSEN hører i den Cloud Function der opretter etapen, ikke i
+ * skærmen. Ligger den i skærmen, kan en direkte skrivning omgå den.
+ */
+export function tjekKompetencer(kompetencer = [], krav = [], paaMs = Date.now()) {
+  const mine = new Map();
+  for (const k of kompetencer.filter(Boolean)) {
+    /* Har man to poster af samme type, tæller den der udløber sidst. */
+    const nuvaerende = mine.get(k.type);
+    if (!nuvaerende || (k.udloeberMs || 0) > (nuvaerende.udloeberMs || 0)) mine.set(k.type, k);
+  }
+
+  const mangler = [];
+  const udloebne = [];
+  for (const t of krav) {
+    const k = mine.get(t);
+    if (!k) mangler.push(t);
+    else if ((k.udloeberMs || 0) <= paaMs) udloebne.push(t);
+  }
+
+  return { ok: !mangler.length && !udloebne.length, mangler, udloebne };
+}

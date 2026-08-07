@@ -11,9 +11,13 @@ import {
 } from "@firebase/rules-unit-testing";
 import { ref, set, get, remove, update } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
-import { FUNKTION, PERSONALE_STATUS, kanDisponeres as personKanDisponeres } from "../src/fleet/personale.js";
+import {
+  FUNKTION, PERSONALE_STATUS, tjekKompetencer,
+  kanDisponeres as personKanDisponeres,
+} from "../src/fleet/personale.js";
 import {
   ENHEDSART, GRUPPE, kanDisponeres, samletLaengdeMm, driftPrKmOere, gruppeFor,
+  samletKapacitet, kanBaere, kraevedeKompetencer,
 } from "../src/fleet/flaade.js";
 
 const T = "tenantPers";
@@ -231,6 +235,83 @@ describe("flaade.js", () => {
     assert.equal(ENHEDSART.scooter.tachograf, false);
     assert.equal(ENHEDSART.scooter.koereHviletid, false);
     assert.equal(ENHEDSART.traekker.tachograf, true);
+  });
+});
+
+/* ---- Forudsætningerne for Disponering -------------------------------- */
+
+describe("de tre tjek der skal køre før en etape oprettes", () => {
+  const traekker = { id: "t1", art: "traekker", status: "aktiv", laengdeMm: 6000, kapacitet: { m3: 0, kg: 0 } };
+  const trailer = { id: "tr1", art: "trailer", status: "aktiv", laengdeMm: 13600, kapacitet: { m3: 90, kg: 24000 } };
+  const varevogn = { id: "v1", art: "varevogn", status: "aktiv", laengdeMm: 5300, kapacitet: { m3: 11, kg: 1200 } };
+
+  /* 1. Enhedskombinationen — kanDisponeres() findes og er testet ovenfor. */
+
+  /* 2. Kompetencer. En UDLØBET kompetence blokerer; den advarer ikke. */
+  it("kravene udledes af enhederne og af godset", () => {
+    assert.deepEqual(kraevedeKompetencer([traekker, trailer]), ["c", "ce", "tachografkort"]);
+    assert.deepEqual(kraevedeKompetencer([varevogn]), []);
+    /* ADR kommer fra LASTEN, ikke fra bilen — det kan ikke udledes af
+       enhederne alene. */
+    assert.deepEqual(kraevedeKompetencer([varevogn], { farligt: true }), ["adr"]);
+  });
+
+  it("en udløbet kompetence blokerer — den advarer ikke", () => {
+    const nu = 1786000000000;
+    const krav = kraevedeKompetencer([traekker, trailer]);
+    const gyldige = krav.map((type) => ({ type, udloeberMs: nu + 90 * 86400000 }));
+
+    assert.equal(tjekKompetencer(gyldige, krav, nu).ok, true);
+
+    const udloebet = gyldige.map((k) => (k.type === "ce" ? { ...k, udloeberMs: nu - 1 } : k));
+    const svar = tjekKompetencer(udloebet, krav, nu);
+    assert.equal(svar.ok, false);
+    assert.deepEqual(svar.udloebne, ["ce"]);
+    assert.deepEqual(svar.mangler, []);
+  });
+
+  /* "Har aldrig haft C+E" og "hans C+E udløb i går" kræver hver sin
+     handling — et andet køretøj mod en fornyelse. En samlet liste ville
+     skjule forskellen. */
+  it("mangler og udløbne holdes adskilt", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [{ type: "c", udloeberMs: nu - 1 }],
+      ["c", "ce"],
+      nu
+    );
+    assert.deepEqual(svar.udloebne, ["c"]);
+    assert.deepEqual(svar.mangler, ["ce"]);
+    assert.equal(svar.ok, false);
+  });
+
+  it("den senest udløbende post tæller, hvis der er flere af samme type", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [{ type: "adr", udloeberMs: nu - 1 }, { type: "adr", udloeberMs: nu + 86400000 }],
+      ["adr"], nu
+    );
+    assert.equal(svar.ok, true);
+  });
+
+  /* 3. Kapacitet. Trækkeren bærer intet — lasten ligger på traileren. */
+  it("kapaciteten er kombinationens, ikke den enkelte enheds", () => {
+    assert.deepEqual(samletKapacitet([traekker]), { m3: 0, kg: 0 });
+    assert.deepEqual(samletKapacitet([traekker, trailer]), { m3: 90, kg: 24000 });
+
+    assert.equal(kanBaere([traekker, trailer], { m3: 80, kg: 22000 }).ok, true);
+    assert.equal(kanBaere([varevogn], { m3: 80, kg: 22000 }).ok, false);
+  });
+
+  it("m3 og kg tjekkes hver for sig — let og fyldende, eller tung og lille", () => {
+    const letOgStort = kanBaere([varevogn], { m3: 20, kg: 100 });
+    assert.equal(letOgStort.ok, false);
+    assert.equal(letOgStort.mangler.m3, 9);
+    assert.equal(letOgStort.mangler.kg, 0);
+
+    const tungtOgLille = kanBaere([varevogn], { m3: 1, kg: 3000 });
+    assert.equal(tungtOgLille.ok, false);
+    assert.equal(tungtOgLille.mangler.kg, 1800);
   });
 });
 
