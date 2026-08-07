@@ -1,0 +1,172 @@
+/* src/fleet/fleet.css
+ * Bygger oven på de --bc-* tokens der allerede ligger i appen, så de
+ * inline styles der findes i dag ikke går i stykker.
+ *
+ * Én rettelse: --bc-accent er #1f5eff i appen, men logoet og v2.0-mockupsene
+ * bruger #125bec. To blå der er tæt nok på at ligne en fejl ved siden af
+ * hinanden. Her sættes begge til logoets blå — ret tilbage hvis det var
+ * bevidst.
+ */
+:root{
+  --bc-accent:#125bec;
+  --bc-card:#fff;
+  --bc-line:#e3e6ea;
+  --bc-text:#1f2733;
+  --bc-muted:#6b7684;
+  --bc-ok:#1f9d55;
+  --bc-warn:#c77700;
+  --bc-block:#d64545;
+
+  --fc-navy:#101a30;
+  --fc-navy-2:#18243f;
+  --fc-navy-3:#22314f;
+  --fc-accent-soft:#e8f0ff;
+  --fc-bg:#f5f7fa;
+  --fc-ok-bg:#dcfce7;
+  --fc-warn-bg:#fef3c7;
+  --fc-bad-bg:#fee2e2;
+  --fc-info:#2563eb;
+  --fc-info-bg:#dbeafe;
+  --fc-r:12px;
+  --fc-sidebar:216px;
+  --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
+}
+
+.fc-app{display:flex; min-height:100vh; background:var(--fc-bg); color:var(--bc-text);
+  font:14px/1.45 "Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.fc-app :focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px; border-radius:4px}
+
+.fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
+  display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}
+.fc-brand{padding:0 8px; font-size:21px; font-weight:800; letter-spacing:-.02em; color:#fff}
+.fc-brand b{color:var(--bc-accent)}
+.fc-ver{padding:0 8px; color:var(--bc-accent); font-size:11px; font-weight:700}
+.fc-tenant{padding:10px 8px 12px; color:#cbd5e1; font-size:12px; font-weight:600}
+
+.fc-div{display:flex; gap:4px; background:var(--fc-navy-2); padding:4px; border-radius:9px; margin:0 4px 14px}
+.fc-div button{flex:1; border:0; background:transparent; color:#94a3b8; cursor:pointer;
+  padding:7px 0; border-radius:6px; font:inherit; font-weight:600; font-size:13px}
+.fc-div button[aria-pressed="true"]{background:var(--bc-accent); color:#fff}
+
+.fc-nav{display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto}
+.fc-link{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
+  color:#c3ccda; text-decoration:none; font-size:13.5px; font-weight:500}
+.fc-link:hover{background:var(--fc-navy-2); color:#fff}
+.fc-link.fc-on{background:var(--bc-accent); color:#fff; font-weight:600}
+.fc-link svg{width:17px; height:17px; flex:0 0 17px; stroke:currentColor; fill:none; stroke-width:1.9}
+.fc-sub{display:flex; flex-direction:column; margin:2px 0 4px 27px;
+  border-left:1px solid var(--fc-navy-3); padding-left:9px}
+.fc-sublink{color:#9aa7b8; text-decoration:none; font-size:12.5px; padding:6px 8px; border-radius:6px}
+.fc-sublink:hover{color:#fff; background:var(--fc-navy-2)}
+.fc-sublink.fc-on{color:#fff; font-weight:600}
+
+.fc-foot{border-top:1px solid var(--fc-navy-3); padding-top:12px; margin-top:8px}
+.fc-who{display:flex; gap:9px; align-items:center; padding:4px 6px}
+.fc-av{width:31px; height:31px; border-radius:50%; background:var(--fc-navy-3); color:#fff;
+  display:grid; place-items:center; font-size:11px; font-weight:700; flex:0 0 31px}
+.fc-who-n{color:#fff; font-size:12.5px; font-weight:600}
+.fc-who-r{color:#94a3b8; font-size:11px}
+
+.fc-main{flex:1; min-width:0; display:flex; flex-direction:column}
+.fc-top{display:flex; align-items:flex-start; gap:14px; padding:22px 26px 14px; flex-wrap:wrap}
+.fc-top-h{flex:1; min-width:220px}
+.fc-top-h h1{margin:0; font-size:25px; font-weight:700; letter-spacing:-.02em}
+.fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:13px}
+.fc-top-ctl{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.fc-ctl{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
+  padding:8px 11px; font:inherit; font-size:13px; color:var(--bc-text); cursor:pointer;
+  box-shadow:var(--fc-shadow); min-height:38px}
+.fc-stamp{color:#8b97a8; font-size:12px; white-space:nowrap}
+.fc-slot{padding:0 26px 34px; flex:1}
+
+/* Delte primitiver — modulerne skal ikke definere egne kort og tabeller */
+.fc-grid{display:grid; gap:14px}
+.fc-card{background:var(--bc-card); border:1px solid var(--bc-line);
+  border-radius:var(--fc-r); box-shadow:var(--fc-shadow)}
+.fc-card-h{padding:15px 17px 0; font-size:14.5px; font-weight:650}
+.fc-card-b{padding:15px 17px}
+.fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
+.fc-kpi-l{color:var(--bc-muted); font-size:12.5px; font-weight:500}
+.fc-kpi-v{font-size:23px; font-weight:700; letter-spacing:-.02em; margin:1px 0 2px}
+.fc-kpi-d{font-size:11.5px; font-weight:600}
+.fc-bad{color:var(--bc-block)} .fc-good{color:var(--bc-ok)} .fc-neutral{color:#8b97a8}
+
+.fc-table{width:100%; border-collapse:collapse}
+.fc-table th{text-align:left; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:#8b97a8; font-weight:650; padding:0 12px 9px; white-space:nowrap}
+.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:13px}
+.fc-table tbody tr:hover{background:#fafbfd}
+.fc-num{text-align:right; font-variant-numeric:tabular-nums}
+.fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
+.fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
+.fc-pill-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}
+.fc-pill-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
+.fc-pill-info{background:var(--fc-info-bg); color:var(--fc-info)}
+.fc-a{color:var(--bc-accent); font-weight:600; font-size:13px; text-decoration:none}
+.fc-a:hover{text-decoration:underline}
+
+@media (prefers-reduced-motion:reduce){.fc-app *{transition:none!important; animation:none!important}}
+@media (max-width:900px){
+  .fc-app{flex-direction:column}
+  .fc-side{position:static; height:auto; width:100%; flex:none}
+  .fc-nav{flex-direction:row; overflow-x:auto; flex:none}
+  .fc-link{white-space:nowrap}
+  .fc-sub,.fc-foot{display:none}
+  .fc-top,.fc-slot{padding-left:16px; padding-right:16px}
+}
+
+/* ---- Primitiver brugt af ui.jsx ---------------------------------- */
+.fc-boot{display:grid; place-items:center; min-height:100vh; color:var(--bc-muted)}
+.fc-row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.fc-scroll{overflow-x:auto}
+.fc-kpi{display:flex; gap:12px; padding:16px 17px; align-items:flex-start}
+.fc-kpi-txt{min-width:0}
+.fc-kpi-ico{width:38px; height:38px; border-radius:10px; display:grid; place-items:center;
+  flex:0 0 38px; font-size:15px; font-weight:700}
+.fc-tone-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
+.fc-tone-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}
+.fc-tone-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
+.fc-tone-info{background:var(--fc-info-bg); color:var(--fc-info)}
+.fc-tone-brand{background:var(--fc-accent-soft); color:var(--bc-accent)}
+
+.fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
+.fc-empty p{margin:0 auto 12px; max-width:48ch}
+.fc-empty-bad{color:var(--bc-block)}
+
+.fc-btn{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
+  padding:8px 13px; font:inherit; font-size:13px; font-weight:600; color:var(--bc-text);
+  cursor:pointer; min-height:38px}
+.fc-btn:hover{background:#fafbfd}
+.fc-btn-primaer{background:var(--bc-accent); border-color:var(--bc-accent); color:#fff}
+.fc-btn-primaer:hover{filter:brightness(.94); background:var(--bc-accent)}
+.fc-btn-fare{border-color:var(--bc-block); color:var(--bc-block)}
+.fc-btn:disabled{opacity:.5; cursor:not-allowed}
+
+.fc-mini{display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px}
+.fc-mini span{color:var(--bc-muted)}
+
+.fc-side-btn{width:100%; text-align:left; background:var(--fc-navy-2);
+  border:1px solid var(--fc-navy-3); color:#cbd5e1; padding:9px 11px; border-radius:8px;
+  font:inherit; font-size:12.5px; cursor:pointer; margin-top:8px}
+.fc-side-btn:hover{background:var(--fc-navy-3); color:#fff}
+.fc-who-txt{min-width:0}
+.fc-who-n,.fc-who-r{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+.fc-faner{display:flex; gap:2px; border-bottom:1px solid var(--bc-line); margin-bottom:16px;
+  overflow-x:auto}
+.fc-fane{background:none; border:0; border-bottom:2px solid transparent; padding:10px 14px;
+  font:inherit; font-size:13.5px; font-weight:600; color:var(--bc-muted); cursor:pointer; white-space:nowrap}
+.fc-fane[aria-selected="true"]{color:var(--bc-accent); border-bottom-color:var(--bc-accent)}
+
+.fc-felt{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
+.fc-felt label{font-size:12px; font-weight:600; color:var(--bc-muted)}
+.fc-felt input,.fc-felt select,.fc-felt textarea{border:1px solid var(--bc-line); border-radius:8px;
+  padding:9px 11px; font:inherit; font-size:13px; min-height:38px; background:var(--bc-card); color:var(--bc-text)}
+.fc-hint{font-size:12px; color:var(--bc-muted); margin:0}
+
+.fc-sum{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  border-top:1px solid var(--bc-line); margin-top:12px; padding-top:12px}
+.fc-sum-v{font-size:21px; font-weight:700; color:var(--bc-accent); font-variant-numeric:tabular-nums}
+.fc-linje{display:flex; justify-content:space-between; gap:12px; padding:7px 0; font-size:13px;
+  border-bottom:1px solid var(--bc-line)}
+.fc-linje:last-of-type{border-bottom:0}

@@ -1,0 +1,239 @@
+/* src/moduler/booking/Bookingopsaetning.jsx
+ * Satsarket + eksempelberegning.
+ *
+ * Eksemplet kalder beregnBooking() — SAMME funktion som Booking bruger til
+ * "Estimeret beløb". I mockuppen var de to tal beregnet hver for sig, og
+ * eksemplet viste 11.585 kr hvor satserne gav 11.677 kr.
+ *
+ * Tre fejl fra mockuppen er rettet her:
+ *  1. Eurotunnel lå på ruten København–Hamburg. Eurotunnel er Calais–
+ *     Folkestone. Femern (Rødby–Puttgarden) er tilføjet i stedet.
+ *  2. Storebælt stod til 750 kr. Erhvervstaksten for lastbiler 10–20 m er
+ *     887 kr med grøn rabat / 1.020 kr uden (2026). Verificér mod din egen
+ *     Storebælt Erhvervsaftale — rabatten er progressiv på månedsbasis.
+ *  3. Valutakolonnen sagde "kr" for agenter i Hamburg, Paris, Milano og
+ *     Bruxelles. Satser er nu eksplicit DKK, og EUR-agenter skal have kurs
+ *     og kursdato på bookingen (se ARKITEKTUR.md).
+ */
+import { useMemo, useState } from "react";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { beregnBooking, METODER, satsPaa } from "../../fleet/pricing.js";
+import { kr, num, dato } from "../../fleet/format.js";
+import { Kort, Tabel, Pille, Knap, Gitter, Tom } from "../../fleet/ui.jsx";
+
+const FANER = [
+  { key: "generelt", label: "Generelt" },
+  { key: "satser", label: "Omkostninger & satser" },
+  { key: "agenter", label: "Agenter" },
+  { key: "regler", label: "Prisregler" },
+  { key: "biler", label: "Bilomkostninger" },
+];
+
+/* Satsarket. Bemærk gyldigFra på hver sats: satser overskrives ALDRIG, de
+   får en ny post. Ellers ændrer en rettelse i dag prisen på en booking fra
+   sidste kvartal, og så kan fakturaen ikke forklares. */
+const START = Date.UTC(2026, 0, 1);
+const SATSARK = {
+  poster: {
+    "faerge:femern": { navn: "Færge: Femern (Rødby–Puttgarden)", kategori: "faerge",
+      satser: [{ gyldigFra: START, beloebOere: 215000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
+    "faerge:oevrige": { navn: "Færger (øvrige)", kategori: "faerge",
+      satser: [{ gyldigFra: START, beloebOere: 215000, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
+    "bro:storebaelt": { navn: "Bro: Storebælt (lastbil 10–20 m)", kategori: "bro",
+      satser: [{ gyldigFra: START, beloebOere: 88700, metode: "prPassage", valuta: "DKK", aktiv: true }] },
+    "bro:oeresund": { navn: "Bro: Øresund", kategori: "bro",
+      satser: [{ gyldigFra: START, beloebOere: 91000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
+    "tunnel:eurotunnel": { navn: "Eurotunnel (Calais–Folkestone)", kategori: "tunnel",
+      satser: [{ gyldigFra: START, beloebOere: 235000, metode: "prPassageEnVej", valuta: "DKK", aktiv: true }] },
+    "parkering:europa": { navn: "Parkering Europa (gennemsnit)", kategori: "parkering",
+      satser: [{ gyldigFra: START, beloebOere: 45000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    "vejafgift:miljoezoner": { navn: "Vejafgifter / miljøzoner", kategori: "vejafgift", altidPaaBooking: true,
+      satser: [{ gyldigFra: START, beloebOere: 32500, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
+  },
+  agenter: {
+    hthHamburg: { navn: "HTH Logistics GmbH", by: "Hamburg", note: "Indendørs parkering",
+      satser: [{ gyldigFra: START, beloebOere: 125000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    transportsParis: { navn: "Transports Parisien SARL", by: "Paris", note: "Sikret område",
+      satser: [{ gyldigFra: START, beloebOere: 105000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    euroTransAms: { navn: "EuroTrans BV", by: "Amsterdam", note: "Parkeringsplads med overvågning",
+      satser: [{ gyldigFra: START, beloebOere: 95000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    bavariaMuenchen: { navn: "Bavaria Logistics GmbH", by: "München", note: "Overdækket parkering",
+      satser: [{ gyldigFra: START, beloebOere: 115000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    milanoCargo: { navn: "Milano Cargo SRL", by: "Milano", note: "Indhegnet areal",
+      satser: [{ gyldigFra: START, beloebOere: 110000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+    bruxTrans: { navn: "BruxTrans SA", by: "Bruxelles", note: "Åbent område",
+      satser: [{ gyldigFra: START, beloebOere: 90000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
+  },
+  biler: {
+    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 840, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 860, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 850, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 820, metode: "prKm", valuta: "DKK", aktiv: true }] },
+    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789",
+      kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
+  },
+};
+
+/* Eksempelbooking. Femern og Storebælt — ikke Eurotunnel. */
+const EKSEMPEL = {
+  bilId: "volvoFH500",
+  rute: "København → Hamburg",
+  kmEstimeret: 780,
+  doegnParkering: 1,
+  agentId: "hthHamburg",
+  passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+};
+
+export default function Bookingopsaetning() {
+  const { periode } = useFleet();
+  const [fane, setFane] = useState("satser");
+  const [aendret, setAendret] = useState(false);
+
+  const beregning = useMemo(
+    () => beregnBooking(EKSEMPEL, SATSARK, { paaMs: periode.til }),
+    [periode.til]
+  );
+  const bil = SATSARK.biler[EKSEMPEL.bilId];
+  const kmSats = satsPaa(bil.kmPrisSatser, periode.til);
+
+  return (
+    <div className="fc-grid" style={{ gap: 16 }}>
+      <div className="fc-row">
+        <div className="fc-faner" role="tablist">
+          {FANER.map((f) => (
+            <button key={f.key} role="tab" className="fc-fane" aria-selected={fane === f.key}
+                    onClick={() => setFane(f.key)}>{f.label}</button>
+          ))}
+        </div>
+        <Knap variant="primaer" disabled={!aendret} onClick={() => setAendret(false)}>
+          Gem ændringer
+        </Knap>
+      </div>
+
+      <Gitter kolonner="minmax(0,1.9fr) minmax(0,1fr)">
+        <div className="fc-grid">
+          {fane === "satser" && (
+            <Kort titel="Standardomkostninger for booking"
+                  handling={<Knap onClick={() => setAendret(true)}>Tilføj sats</Knap>}>
+              <p className="fc-hint" style={{ marginBottom: 12 }}>
+                Standardpriser foreslås automatisk ud fra ruten. Hvilke broer og færger en tur
+                indeholder kommer fra ruteopslaget — ikke fra en antagelse om at internationale
+                ture altid går gennem tunnel.
+              </p>
+              <Tabel
+                kolonner={[
+                  { key: "navn", label: "Omkostningstype" },
+                  { key: "pris", label: "Standardpris", num: true,
+                    render: (r) => kr(satsPaa(r.satser, periode.til)?.beloebOere, 2) },
+                  { key: "valuta", label: "Valuta", render: (r) => satsPaa(r.satser, periode.til)?.valuta },
+                  { key: "metode", label: "Beregningsmetode",
+                    render: (r) => METODER[satsPaa(r.satser, periode.til)?.metode]?.label },
+                  { key: "gyldig", label: "Gyldig fra",
+                    render: (r) => dato(satsPaa(r.satser, periode.til)?.gyldigFra) },
+                  { key: "aktiv", label: "Status", render: () => <Pille tone="ok">Aktiv</Pille> },
+                ]}
+                raekker={Object.entries(SATSARK.poster).map(([id, p]) => ({ id, ...p }))}
+              />
+            </Kort>
+          )}
+
+          {fane === "agenter" && (
+            <Kort titel="Agentparkering"
+                  handling={<Knap onClick={() => setAendret(true)}>Tilføj agent</Knap>}>
+              <p className="fc-hint" style={{ marginBottom: 12 }}>
+                Parkeringspriser pr. agent. Indsættes automatisk ved valg af agent i en booking.
+                Fakturerer agenten i EUR, skal bookingen gemme kurs og kursdato — ellers ændrer
+                gamle bookinger sig når kursen flytter.
+              </p>
+              <Tabel
+                kolonner={[
+                  { key: "navn", label: "Agent" },
+                  { key: "by", label: "By" },
+                  { key: "pris", label: "Pris pr. døgn", num: true,
+                    render: (r) => kr(satsPaa(r.satser, periode.til)?.beloebOere, 2) },
+                  { key: "valuta", label: "Valuta", render: (r) => satsPaa(r.satser, periode.til)?.valuta },
+                  { key: "note", label: "Noter" },
+                  { key: "aktiv", label: "Status", render: () => <Pille tone="ok">Aktiv</Pille> },
+                ]}
+                raekker={Object.entries(SATSARK.agenter).map(([id, a]) => ({ id, ...a }))}
+              />
+            </Kort>
+          )}
+
+          {fane === "biler" && (
+            <Kort titel="Kalkulationspris pr. km (inkl. chauffør)"
+                  handling={<Knap onClick={() => setAendret(true)}>Redigér sats</Knap>}>
+              <p className="fc-hint" style={{ marginBottom: 12 }}>
+                Dette er <b>kalkulationsprisen</b> — inkl. brændstof, vejafgifter, dæk,
+                vedligehold og chauffør. Den er ikke det samme som{" "}
+                <b>driftsomkostning pr. km</b> i Flåde, som er uden chauffør. To felter der
+                begge hed "kr/km" i mockupsene.
+              </p>
+              <Tabel
+                kolonner={[
+                  { key: "navn", label: "Bil" },
+                  { key: "registrering", label: "Registrering" },
+                  { key: "pris", label: "Km-pris", num: true,
+                    render: (r) => `${kr(satsPaa(r.kmPrisSatser, periode.til)?.beloebOere, 2)}/km` },
+                  { key: "valuta", label: "Valuta",
+                    render: (r) => satsPaa(r.kmPrisSatser, periode.til)?.valuta },
+                  { key: "gyldig", label: "Gyldig fra",
+                    render: (r) => dato(satsPaa(r.kmPrisSatser, periode.til)?.gyldigFra) },
+                ]}
+                raekker={Object.entries(SATSARK.biler).map(([id, b]) => ({ id, ...b }))}
+              />
+            </Kort>
+          )}
+
+          {(fane === "generelt" || fane === "regler") && (
+            <Kort titel={fane === "generelt" ? "Generelt" : "Prisregler"}>
+              <Tom>Denne fane er ikke tegnet endnu.</Tom>
+            </Kort>
+          )}
+        </div>
+
+        <div className="fc-grid">
+          <Kort titel="Automatisk beregning – eksempel">
+            <div style={{ fontWeight: 650, marginBottom: 2 }}>{bil.navn} – Int. Hamburg</div>
+            <div className="fc-linje"><span>Rute</span><b>{EKSEMPEL.rute}</b></div>
+            <div className="fc-linje"><span>Km estimeret</span><b>{num(EKSEMPEL.kmEstimeret)} km</b></div>
+            <div className="fc-linje"><span>Kalkulationspris</span><b>{kr(kmSats.beloebOere, 2)}/km</b></div>
+
+            <div style={{ marginTop: 14 }}>
+              {beregning.linjer.map((l) => (
+                <div key={l.id} className="fc-linje">
+                  <span>{l.navn}</span><b>{kr(l.beloebOere, 2)}</b>
+                </div>
+              ))}
+            </div>
+
+            <div className="fc-sum">
+              <div>
+                <div style={{ fontWeight: 650 }}>Samlet estimeret bookingomkostning</div>
+                <div className="fc-hint">ekskl. moms</div>
+              </div>
+              <div className="fc-sum-v">{kr(beregning.totalOere, 2)}</div>
+            </div>
+          </Kort>
+
+          <Kort titel="Sådan bruges satserne">
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
+              <li>Vælger sagsbehandleren en agent, hentes agenttaksten automatisk.</li>
+              <li>Vælges en bil, bruges bilens kalkulationspris pr. km.</li>
+              <li>Broer og færger kommer fra ruteopslaget, ikke fra transporttypen.</li>
+              <li>Satser kan overstyres på den enkelte booking — overstyringen gemmes
+                  med bruger og begrundelse, satsen ændres ikke.</li>
+              <li>Hver booking gemmer et snapshot af de satser den blev beregnet med.</li>
+            </ul>
+          </Kort>
+        </div>
+      </Gitter>
+    </div>
+  );
+}

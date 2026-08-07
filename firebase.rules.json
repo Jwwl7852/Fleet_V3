@@ -1,0 +1,110 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "tenants": {
+      "$tenantId": {
+        "//": "Tenant kommer fra custom claim, ALDRIG fra klienten. Rolleskift skal følges af revokeRefreshTokens, ellers beholder brugeren sin gamle adgang indtil tokenet udløber.",
+        ".read": "auth != null && auth.token.tenant === $tenantId",
+
+        "kpi": {
+          "//": "Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan Dashboard og modulerne komme til at vise forskellige tal igen.",
+          ".write": false
+        },
+
+        "reservationer": {
+          "//": "Konfliktfrihed kan ikke garanteres fra klienten: to disponenter kan ramme samme sekund. Skrivning går gennem en Cloud Function der tjekker overlap i en transaction.",
+          ".write": false,
+          "$ressourceType": {
+            "$ressourceId": {
+              ".indexOn": ["fra"]
+            }
+          }
+        },
+
+        "bookinger": {
+          "//": "Tilstandsskift valideres server-side mod booking-state.js. En disponent må ikke godkende sit eget forslag, og reservationen skal oprettes atomisk sammen med skiftet.",
+          ".write": false,
+          ".indexOn": ["tilstand", "oprettetMs", "kundeId"],
+          "$bookingId": {
+            "historik": { "//": "Append-only. Slettes aldrig." }
+          }
+        },
+
+        "countere": {
+          "//": "Booking-, fragtbrev- og fakturanumre. Kun via transaction i en Cloud Function.",
+          ".write": false
+        },
+
+        "satser": {
+          "//": "Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer en rettelse i dag prisen på en booking fra sidste kvartal.",
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle === 'admin'",
+          "$gruppe": { "$postId": { "satser": { ".indexOn": ["gyldigFra"] } } }
+        },
+
+        "opgaver": {
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".indexOn": ["dato", "status", "koeretoejId", "chauffoerId"]
+        },
+
+        "koeretoejer": {
+          ".write": "auth != null && auth.token.tenant === $tenantId && (auth.token.rolle === 'admin' || auth.token.rolle === 'disponent')",
+          ".indexOn": ["status", "naesteServiceMs"]
+        },
+
+        "indberetninger": {
+          "//": "Chauffører må oprette, men ikke redigere andres. km er TOTAL målerstand, ikke km siden sidste tankning.",
+          ".indexOn": ["oprettetMs", "koeretoejId", "type"],
+          "$id": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && (!data.exists() || data.child('oprettetAf').val() === auth.uid || auth.token.rolle === 'admin')"
+          }
+        },
+
+        "fravaer": {
+          "//": "Skriver en reservation med kilde 'fravaer' på chaufføren, så en syg chauffør ikke kan disponeres.",
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".indexOn": ["fra"]
+        },
+
+        "facility": {
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          "sensorer": {
+            "//": "ÉN kilde til sensorværdier. Både Facility-overblik og Klima-skærmen læser herfra — i mockupsene viste de forskellige temperaturer for samme zoner.",
+            "$zoneId": { "maalinger": { ".indexOn": ["ms"] } }
+          }
+        },
+
+        "indkoeb": {
+          "//": "beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.",
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".indexOn": ["dato", "leverandoerId", "fakturastatus"]
+        },
+
+        "fakturaer": {
+          "//": "Bogførte poster slettes ALDRIG. Kun slettet: true med spor.",
+          ".write": false,
+          ".indexOn": ["fakturadatoMs", "leverandoerId", "godkendelsesstatus"]
+        },
+
+        "kunder": {
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          ".indexOn": ["navn", "aftaleUdloeberMs"]
+        },
+
+        "idebank": {
+          ".write": "auth != null && auth.token.tenant === $tenantId",
+          ".indexOn": ["oprettetMs", "prioritet"]
+        }
+      }
+    },
+
+    "brugerTenants": {
+      "//": "Opslag uid → tenant. Skrives kun server-side. Bruges til at sætte custom claims, ikke til autorisation i sig selv.",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    }
+  }
+}
