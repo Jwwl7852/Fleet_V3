@@ -27,10 +27,29 @@ README. Tag punkterne i orden, og spring ikke frem.
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
+- **Røre `firebase.rules.json` uden at køre `npm run test:rules` bagefter.**
+  Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
+  fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og
+  flere redigeringer, og blev først fundet da de blev kørt.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
   adgangskontrol, men en pæn knap.
+
+## Sikkerhedsregler
+
+```bash
+npm run test:rules     # starter emulatoren, kører suiten, lukker den ned
+```
+
+Obligatorisk ved hver ændring i `firebase.rules.json`. Suiten dækker sig selv
+ind: nodelisten i `test/rules.tenant.test.mjs` læses ud af regelfilen, så en ny
+node med en for løs regel fejler uden at nogen har husket at skrive et
+testtilfælde. Tilføjer du en ny node, skal du derfor forvente at suiten siger
+noget om den.
+
+Testene skal også kunne fejle. Vil du efterprøve det, så løsn `.read` på
+`tenants/$tenantId` til `auth != null` og kør igen — fem tests skal falde.
 
 ## Når du bygger et modul
 

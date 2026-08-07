@@ -21,8 +21,9 @@ import {
 } from "@firebase/rules-unit-testing";
 import { ref, set, update, get } from "firebase/database";
 
+/* Egne tenant-id'er: node --test kører testfiler parallelt, og
+   rules.tenant.test.mjs bruger sine egne. */
 const TENANT = "vognmandA";
-const ANDEN_TENANT = "vognmandB";
 
 let miljoe;
 
@@ -147,15 +148,9 @@ describe("smuthuller", () => {
   });
 });
 
-describe("tenant-isolation (forudsætning — punkt 1 gør den permanent)", () => {
-  it("en bruger fra én tenant kan hverken læse eller skrive i en anden", async () => {
-    const db = som("admin1", "admin", TENANT);
-    await assertFails(
-      set(ref(db, sti("kunder", "k-fremmed", ANDEN_TENANT)), kunde({ division: "gods" }))
-    );
-    await assertFails(get(ref(db, `tenants/${ANDEN_TENANT}/kunder`)));
-  });
-
+/* Tenant-isolation ligger i rules.tenant.test.mjs — punkt 1. Her holder vi os
+   til rolle og division, så de to suiter ikke overlapper. */
+describe("rolle og division i samme skrivning", () => {
   it("en chauffør må ikke skrive kunder, uanset gyldig division", async () => {
     const db = som("chauffoer1", "chauffoer");
     await assertFails(set(ref(db, sti("kunder", "k-chauffoer")), kunde({ division: "gods" })));
