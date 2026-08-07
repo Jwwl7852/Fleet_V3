@@ -10,6 +10,9 @@ danske variabelnavne i domænelogikken.
 og få den godkendt, før du skriver. Der er 15 trufne beslutninger i README —
 brud på dem skal være bevidste, ikke tilfældige.
 
+Rækkefølgen for sikkerhedsarbejdet er også låst — se **Låst rækkefølge** i
+README. Tag punkterne i orden, og spring ikke frem.
+
 ## Det du ikke må gøre
 
 - Kalde `firebase.initializeApp()` i et modul. Importér `db` fra `src/firebase.js`.
@@ -24,6 +27,10 @@ brud på dem skal være bevidste, ikke tilfældige.
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
+- **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
+  Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
+  `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
+  adgangskontrol, men en pæn knap.
 
 ## Når du bygger et modul
 

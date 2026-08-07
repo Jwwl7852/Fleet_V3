@@ -96,5 +96,49 @@ konfliktfrihed (to disponenter kan ramme samme sekund), bookingtilstandsskift
 med rolletjek, og nummerserier. Rules er sat til `.write: false` på de noder,
 så de fejler tydeligt indtil funktionerne findes.
 
+## Låst rækkefølge
+
+Sikkerhedsarbejdet er prioriteret én gang, og rækkefølgen ligger fast. Hvert
+punkt gør det næste billigere; springer man frem, bygger man ovenpå noget der
+endnu ikke holder.
+
+| # | Punkt | Definition of done |
+|---|---|---|
+| 0 | `.validate` for beslutning 15 | Reglerne afprøvet i emulatoren — accept og afvisning demonstreret, ikke kun læst igennem |
+| 1 | **Tenant-isolationstest** | Automatisk og permanent. Køres ved **hver** ændring i `firebase.rules.json` |
+| 2 | DEV og PROD som to Firebase-projekter | Adskilte projekter, og Storage-regionen verificeret |
+| 3 | **Permissions som liste frem for rolle-streng** | Håndhævet i `firebase.rules.json`, **ikke kun i frontend**. Testen skal vise at *serveren* afviser — ikke at UI'et skjuler knappen |
+| 4 | Central audit-service | |
+| 5 | `securityLevel: normal \| internal \| confidential \| restricted` | |
+| 6 | Sensitive felter i separat RTDB-node | |
+
+Punkt 3 er værd at læse to gange. En permission der kun findes i frontend, er
+ikke adgangskontrol — det er en pæn knap. Definition of done er en afvisning
+fra serveren.
+
+### Hvorfor punkt 1 står så tidligt
+
+Da punkt 0 blev afprøvet, viste det sig at `firebase.rules.json` **slet ikke
+kunne indlæses**. Filen dokumenterede sig selv med `"//": "tekst"`-nøgler, og
+det er ugyldigt i RTDB-regler: en nøgle uden `.`-præfiks er et stinavn og skal
+pege på et objekt. Emulatoren stoppede på linje 8 — den allerførste kommentar.
+
+Fejlen lå der fra fundamentet. Den overlevede gennemlæsning, den overlevede at
+blive redigeret flere gange, og den ville have overlevet en deploy. Den blev
+fundet i det sekund reglerne for første gang blev **kørt**.
+
+Det er begrundelsen for punkt 1, og den er stærkere som konkret hændelse end
+som princip: sikkerhedsregler man ikke kører, ved man ikke om virker. Derfor er
+punkt 1 en test der køres ved hver ændring — ikke en note om at huske det.
+
+**Derefter stopper sikkerhedsarbejdet**, og næste skærme bygges i denne
+rækkefølge:
+
+> Bemanding → Ferie & fravær → Værkstedskalender → Disponering
+
+Disponering ligger sidst, fordi den læser de reservationer som fravær og
+værksted skriver. Bygges den først, disponerer den på en kalender der endnu
+ikke ved noget om syge chauffører eller biler på værksted.
+
 Se `ARKITEKTUR.md` for datamodellen og `CLAUDE.md` hvis du arbejder videre med
 Claude Code.

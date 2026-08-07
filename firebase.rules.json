@@ -1,20 +1,40 @@
+// FleetControl 3.0 — Realtime Database security rules
+//
+// BEMÆRK om kommentarer: RTDB-regler tillader //-kommentarer som her, men
+// IKKE "//": "tekst" som nøgle. En nøgle der ikke starter med '.' læses som
+// et stinavn, og et stinavn skal pege på et objekt. Filen brugte den forkerte
+// form indtil punkt 0 blev afprøvet i emulatoren — reglerne kunne altså slet
+// ikke indlæses. Kør `npm run test:rules` efter hver ændring her.
+//
+// BESLUTNING 15 — division er et FELT, ikke en sti. Tre værdier:
+//   gods | bus | faelles
+// Transaktioner hører til én afdeling. Stamdata kan være faelles. Reservationer
+// og fravær har INGEN division — de arver fra ressourcen. Gav man en reservation
+// en division, ville en chauffør med C+D få to kalendere, og så er beslutning 4
+// brudt et niveau højere oppe.
 {
   "rules": {
     ".read": false,
     ".write": false,
 
     "tenants": {
+      // Tenant kommer fra custom claim, ALDRIG fra klienten. Rolleskift skal
+      // følges af revokeRefreshTokens, ellers beholder brugeren sin gamle
+      // adgang indtil tokenet udløber.
       "$tenantId": {
-        "//": "Tenant kommer fra custom claim, ALDRIG fra klienten. Rolleskift skal følges af revokeRefreshTokens, ellers beholder brugeren sin gamle adgang indtil tokenet udløber.",
         ".read": "auth != null && auth.token.tenant === $tenantId",
 
+        // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
+        // Dashboard og modulerne komme til at vise forskellige tal igen.
         "kpi": {
-          "//": "Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan Dashboard og modulerne komme til at vise forskellige tal igen.",
           ".write": false
         },
 
+        // Konfliktfrihed kan ikke garanteres fra klienten: to disponenter kan
+        // ramme samme sekund. Skrivning går gennem en Cloud Function der
+        // tjekker overlap i en transaction.
+        // Ingen division her — reservationen arver fra ressourcen.
         "reservationer": {
-          "//": "Konfliktfrihed kan ikke garanteres fra klienten: to disponenter kan ramme samme sekund. Skrivning går gennem en Cloud Function der tjekker overlap i en transaction.",
           ".write": false,
           "$ressourceType": {
             "$ressourceId": {
@@ -23,74 +43,128 @@
           }
         },
 
+        // Tilstandsskift valideres server-side mod booking-state.js. En
+        // disponent må ikke godkende sit eget forslag, og reservationen skal
+        // oprettes atomisk sammen med skiftet.
+        // historik under $bookingId er append-only og slettes aldrig.
         "bookinger": {
-          "//": "Tilstandsskift valideres server-side mod booking-state.js. En disponent må ikke godkende sit eget forslag, og reservationen skal oprettes atomisk sammen med skiftet.",
           ".write": false,
-          ".indexOn": ["tilstand", "oprettetMs", "kundeId"],
-          "$bookingId": {
-            "historik": { "//": "Append-only. Slettes aldrig." }
-          }
+          ".indexOn": ["tilstand", "oprettetMs", "kundeId"]
         },
 
+        // Booking-, fragtbrev- og fakturanumre. Kun via transaction i en
+        // Cloud Function.
         "countere": {
-          "//": "Booking-, fragtbrev- og fakturanumre. Kun via transaction i en Cloud Function.",
           ".write": false
         },
 
+        // Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer
+        // en rettelse i dag prisen på en booking fra sidste kvartal.
         "satser": {
-          "//": "Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer en rettelse i dag prisen på en booking fra sidste kvartal.",
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle === 'admin'",
-          "$gruppe": { "$postId": { "satser": { ".indexOn": ["gyldigFra"] } } }
+          "$gruppe": {
+            "$postId": {
+              "satser": { ".indexOn": ["gyldigFra"] }
+            }
+          }
         },
 
         "opgaver": {
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
-          ".indexOn": ["dato", "status", "koeretoejId", "chauffoerId"]
+          ".indexOn": ["dato", "status", "koeretoejId", "chauffoerId"],
+          "$opgaveId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
+          }
         },
 
         "koeretoejer": {
           ".write": "auth != null && auth.token.tenant === $tenantId && (auth.token.rolle === 'admin' || auth.token.rolle === 'disponent')",
-          ".indexOn": ["status", "naesteServiceMs"]
-        },
-
-        "indberetninger": {
-          "//": "Chauffører må oprette, men ikke redigere andres. km er TOTAL målerstand, ikke km siden sidste tankning.",
-          ".indexOn": ["oprettetMs", "koeretoejId", "type"],
-          "$id": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && (!data.exists() || data.child('oprettetAf').val() === auth.uid || auth.token.rolle === 'admin')"
+          ".indexOn": ["status", "naesteServiceMs"],
+          "$koeretoejId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
           }
         },
 
+        // Chauffører må oprette, men ikke redigere andres. km er TOTAL
+        // målerstand, ikke km siden sidste tankning.
+        "indberetninger": {
+          ".indexOn": ["oprettetMs", "koeretoejId", "type"],
+          "$id": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && (!data.exists() || data.child('oprettetAf').val() === auth.uid || auth.token.rolle === 'admin')",
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
+          }
+        },
+
+        // Skriver en reservation med kilde 'fravaer' på chaufføren, så en syg
+        // chauffør ikke kan disponeres.
+        // INGEN division: fraværet hænger på chaufføren, og en chauffør med
+        // C+D er fælles — fraværet blokerer ham i begge afdelinger. Gav vi det
+        // en division, ville han være syg i gods og rask i bus.
         "fravaer": {
-          "//": "Skriver en reservation med kilde 'fravaer' på chaufføren, så en syg chauffør ikke kan disponeres.",
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
-          ".indexOn": ["fra"]
+          ".indexOn": ["fra"],
+          "$fravaerId": {
+            "division": { ".validate": false }
+          }
         },
 
         "facility": {
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
+          // ÉN kilde til sensorværdier. Både Facility-overblik og
+          // Klima-skærmen læser herfra — i mockupsene viste de forskellige
+          // temperaturer for samme zoner.
           "sensorer": {
-            "//": "ÉN kilde til sensorværdier. Både Facility-overblik og Klima-skærmen læser herfra — i mockupsene viste de forskellige temperaturer for samme zoner.",
-            "$zoneId": { "maalinger": { ".indexOn": ["ms"] } }
+            "$zoneId": {
+              "maalinger": { ".indexOn": ["ms"] }
+            }
           }
         },
 
+        // beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland
+        // dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.
+        // faelles er en lovlig division her: én dieselleverance dækker begge
+        // afdelinger. Fordelingsnøglen for fælles omkostninger er udskudt.
         "indkoeb": {
-          "//": "beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.",
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
-          ".indexOn": ["dato", "leverandoerId", "fakturastatus"]
+          ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
+          "$indkoebId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
+          }
         },
 
+        // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
         "fakturaer": {
-          "//": "Bogførte poster slettes ALDRIG. Kun slettet: true med spor.",
           ".write": false,
           ".indexOn": ["fakturadatoMs", "leverandoerId", "godkendelsesstatus"]
         },
 
+        // aktiv er indekseret fordi Kunder & Priser henter kundebasen med
+        // orderByChild('aktiv').equalTo(true) gennem useListe. Uden indekset
+        // FEJLER forespørgslen ikke — RTDB henter hele noden ned og filtrerer
+        // i klienten, med en advarsel i konsollen. Vokser basen ud over ét
+        // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
+        // tidsvindue.
         "kunder": {
-          "//": "aktiv er indekseret fordi Kunder & Priser henter kundebasen med orderByChild('aktiv').equalTo(true) gennem useListe. Uden indekset FEJLER forespørgslen ikke — RTDB henter hele noden ned og filtrerer i klienten, med en advarsel i konsollen. Vokser basen ud over ét hent, skal sidsteAktivitetMs med, så listen kan skifte til et tidsvindue.",
           ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle !== 'chauffoer'",
-          ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"]
+          ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
+          "$kundeId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
+          }
         },
 
         "idebank": {
@@ -100,8 +174,9 @@
       }
     },
 
+    // Opslag uid → tenant. Skrives kun server-side. Bruges til at sætte custom
+    // claims, ikke til autorisation i sig selv.
     "brugerTenants": {
-      "//": "Opslag uid → tenant. Skrives kun server-side. Bruges til at sætte custom claims, ikke til autorisation i sig selv.",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": false
