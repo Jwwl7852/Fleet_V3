@@ -209,12 +209,12 @@ src/
 
 ## Status
 
-**Bygget:** Dashboard (referencemodul — start her når du skriver et nyt),
-Bookingopsætning (prismotoren i brug).
+**Bygget (5):** Dashboard (referencemodul — start her når du skriver et nyt),
+Bookingopsætning (prismotoren i brug), Kunder & Priser (første forbruger af
+`useListe`), Økonomi & Rapporter (`Soejlegraf`), Bemanding.
 
-**Skelet med mockup (15):** Booking-oversigt, Ny forespørgsel, Forslag,
-Disponering, Bemanding, Flåde, Værkstedskalender, Facility ×3, Indkøb ×2,
-Kunder, Økonomi.
+**Skelet med mockup (11):** Booking-oversigt, Ny forespørgsel, Forslag,
+Disponering, Flåde, Værkstedskalender, Facility ×3, Indkøb ×2.
 
 **Skelet uden mockup (9):** Live-kort, Kompetencer, Ferie & fravær,
 Indberetninger, Leverandører, Fakturering, Opsætning ×4.
