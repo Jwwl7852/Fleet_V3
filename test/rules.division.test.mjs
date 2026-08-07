@@ -20,6 +20,7 @@ import {
   assertFails,
 } from "@firebase/rules-unit-testing";
 import { ref, set, update, get } from "firebase/database";
+import { permStrengFraRolle } from "../src/fleet/permissions.js";
 
 /* Egne tenant-id'er: node --test kører testfiler parallelt, og
    rules.tenant.test.mjs bruger sine egne. */
@@ -27,9 +28,13 @@ const TENANT = "vognmandA";
 
 let miljoe;
 
-/** Bruger i TENANT med en given rolle. Claims matcher dem firebase.js sætter. */
+/** Bruger i TENANT med en given rolle. Claims matcher dem firebase.js sætter.
+ *  perms udledes af rollens preset — reglerne spørger efter permissions, ikke
+ *  efter rollen. Se permissions.js. */
 const som = (uid, rolle, tenant = TENANT) =>
-  miljoe.authenticatedContext(uid, { tenant, rolle }).database();
+  miljoe
+    .authenticatedContext(uid, { tenant, rolle, perms: permStrengFraRolle(rolle) })
+    .database();
 
 const sti = (node, id, tenant = TENANT) => `tenants/${tenant}/${node}/${id}`;
 
@@ -43,7 +48,7 @@ const kunde = (ekstra = {}) => ({
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
-    projectId: "fleetcontrol-rules-test",
+    projectId: "fc-rules-division",
     database: {
       host: "127.0.0.1",
       port: 9000,

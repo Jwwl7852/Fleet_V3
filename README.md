@@ -140,7 +140,9 @@ src/
     format.js          øre, datoer, ugenr, fortegnskonvention
     pricing.js         prismotor: satsopslag, beregning, snapshot
     reservations.js    reservationer + konfliktdetektion
-    booking-state.js   tilstande, roller, overgange
+    permissions.js     permission-katalog + rolle-presets. Ingen imports:
+                       samme kilde som den Cloud Function der udsteder claims
+    booking-state.js   tilstande, overgange — spørger efter permission
     ui.jsx             Kort, KpiKort, Tabel, Pille, Tom, Fejl, Knap
     fleet.css          tokens (udvider de eksisterende --bc-*)
   moduler/             26 skærme

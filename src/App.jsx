@@ -35,12 +35,17 @@ import Generelt from "./moduler/opsaetning/Generelt.jsx";
 import Brugere from "./moduler/opsaetning/Brugere.jsx";
 import Integrationer from "./moduler/opsaetning/Integrationer.jsx";
 import Idebank from "./moduler/opsaetning/Idebank.jsx";
+import { permStrengFraRolle } from "./fleet/permissions.js";
 
 const TENANTS = [{ id: "demo", navn: "DEMO Transport ApS", kort: "DEMO Transport" }];
 
+/* perms udledes af rollen via presettet — den skrives ikke i hånden her.
+   Ellers ville demo-brugeren kunne have en anden adgang end en rigtig admin,
+   og så tester man noget andet end det man leverer. */
 const DEMO_BRUGER = {
   uid: "demo", navn: "Dennis Christensen", email: "dch@fleetcontrol.dk",
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
+  perms: permStrengFraRolle("admin"),
 };
 
 export default function App() {

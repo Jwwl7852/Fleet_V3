@@ -15,11 +15,17 @@
  * er først udført når hver eneste etape er det.
  */
 
+import { PERM, harPerm } from "./permissions.js";
+
+/* Rollenavnene bruges til visning og som navn på et permission-preset — se
+   permissions.js. De afgør IKKE længere hvad man må: overgangene nedenfor
+   spørger efter en permission. */
 export const ROLLE = {
   casehandler: "casehandler",
   disponent: "disponent",
   koordinator: "koordinator",
   admin: "admin",
+  chauffoer: "chauffoer",
 };
 
 export const TILSTAND = {
@@ -35,33 +41,40 @@ export const TILSTAND = {
   udfoert:           { label: "Udført",                 pill: "ok"    },
 };
 
-/* fra → [{ til, roller, handling, kraeverForslag, kraeverBegrundelse }] */
+/* fra → [{ til, kraeverPerm, handling, kraeverForslag, kraeverBegrundelse }]
+ *
+ * kraeverPerm frem for en rolle-liste. Før stod der fire steder
+ * `roller: [ROLLE.koordinator, ROLLE.admin]`, og admin skulle huskes på hver
+ * eneste linje — glemte man den, kunne administratoren ikke rydde op. Nu har
+ * admin-presettet alle permissions, og listerne kan ikke komme ud af sync.
+ */
 const OVERGANGE = {
   kladde: [
-    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Send til planlægning" },
-    { til: "annulleret",   roller: [ROLLE.casehandler, ROLLE.admin], handling: "Annullér" },
+    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Send til planlægning" },
+    { til: "annulleret",   kraeverPerm: PERM.bookingOpret, handling: "Annullér" },
   ],
   afventerPlan: [
-    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send forslag", kraeverForslag: true },
-    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send forslag", kraeverForslag: true },
+    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
   ],
   afventerKoord: [
-    /* Bemærk: disponent står IKKE på listen. Den der har lavet forslaget
-       må ikke godkende det. */
-    { til: "reserveret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Godkend valgt forslag", kraeverValgtForslag: true },
-    { til: "returneret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Returnér til disponent", kraeverBegrundelse: true },
-    { til: "afvist",      roller: [ROLLE.koordinator, ROLLE.admin], handling: "Afvis alle", kraeverBegrundelse: true },
+    /* Bemærk: disponent-presettet har IKKE bookingGodkend. Den der har lavet
+       forslaget må ikke godkende det — beslutning 5, nu som et felt der
+       mangler i en liste frem for en kommentar om hvem der ikke står der. */
+    { til: "reserveret",  kraeverPerm: PERM.bookingGodkend, handling: "Godkend valgt forslag", kraeverValgtForslag: true },
+    { til: "returneret",  kraeverPerm: PERM.bookingReturner, handling: "Returnér til disponent", kraeverBegrundelse: true },
+    { til: "afvist",      kraeverPerm: PERM.bookingAfvis, handling: "Afvis alle", kraeverBegrundelse: true },
   ],
   returneret: [
-    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send nye forslag", kraeverForslag: true },
-    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send nye forslag", kraeverForslag: true },
+    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
   ],
   reserveret: [
-    { til: "udfoert",    roller: [ROLLE.disponent, ROLLE.koordinator, ROLLE.admin], handling: "Markér udført" },
-    { til: "annulleret", roller: [ROLLE.koordinator, ROLLE.admin], handling: "Annullér booking", kraeverBegrundelse: true },
+    { til: "udfoert",    kraeverPerm: PERM.bookingUdfoer, handling: "Markér udført" },
+    { til: "annulleret", kraeverPerm: PERM.bookingAnnuller, handling: "Annullér booking", kraeverBegrundelse: true },
   ],
   afvist: [
-    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Genåbn forespørgsel" },
+    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Genåbn forespørgsel" },
   ],
   udfoert: [],
   annulleret: [],
@@ -81,60 +94,63 @@ const OVERGANGE = {
    intervalforespørges. Vi gemmer ikke det vi kan regne ud. */
 const ETAPE_OVERGANGE = {
   kladde: [
-    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Send til planlægning" },
-    { til: "annulleret",   roller: [ROLLE.casehandler, ROLLE.admin], handling: "Annullér" },
+    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Send til planlægning" },
+    { til: "annulleret",   kraeverPerm: PERM.bookingOpret, handling: "Annullér" },
   ],
   afventerPlan: [
-    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send forslag", kraeverForslag: true },
-    { til: "aaben",         roller: [ROLLE.disponent, ROLLE.admin], handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
-    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send forslag", kraeverForslag: true },
+    { til: "aaben",         kraeverPerm: PERM.bookingForeslaa, handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
   ],
   aaben: [
     /* Et match fra matchAabneEtaper() bliver et FORSLAG her — det bliver
        aldrig en reservation af sig selv. Koordinatoren godkender stadig,
        ellers er beslutning 5 væk ad bagvejen. */
-    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Foreslå matchet tur", kraeverForslag: true },
-    { til: "afventerPlan",  roller: [ROLLE.disponent, ROLLE.admin], handling: "Tag af venteliste" },
-    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
-    { til: "annulleret",    roller: [ROLLE.koordinator, ROLLE.admin], handling: "Annullér etape", kraeverBegrundelse: true },
+    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Foreslå matchet tur", kraeverForslag: true },
+    { til: "afventerPlan",  kraeverPerm: PERM.bookingForeslaa, handling: "Tag af venteliste" },
+    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "annulleret",    kraeverPerm: PERM.bookingAnnuller, handling: "Annullér etape", kraeverBegrundelse: true },
   ],
   afventerKoord: [
-    { til: "reserveret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Godkend valgt forslag", kraeverValgtForslag: true },
-    { til: "returneret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Returnér til disponent", kraeverBegrundelse: true },
-    { til: "aaben",       roller: [ROLLE.koordinator, ROLLE.admin], handling: "Tilbage på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
-    { til: "afvist",      roller: [ROLLE.koordinator, ROLLE.admin], handling: "Afvis alle", kraeverBegrundelse: true },
+    { til: "reserveret",  kraeverPerm: PERM.bookingGodkend, handling: "Godkend valgt forslag", kraeverValgtForslag: true },
+    { til: "returneret",  kraeverPerm: PERM.bookingReturner, handling: "Returnér til disponent", kraeverBegrundelse: true },
+    /* Samme permission som returnér: begge er "send tilbage uden at afvise".
+       Se noten på PERM.bookingReturner. */
+    { til: "aaben",       kraeverPerm: PERM.bookingReturner, handling: "Tilbage på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",      kraeverPerm: PERM.bookingAfvis, handling: "Afvis alle", kraeverBegrundelse: true },
   ],
   returneret: [
-    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send nye forslag", kraeverForslag: true },
-    { til: "aaben",         roller: [ROLLE.disponent, ROLLE.admin], handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
-    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send nye forslag", kraeverForslag: true },
+    { til: "aaben",         kraeverPerm: PERM.bookingForeslaa, handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
   ],
   reserveret: [
-    { til: "udfoert",    roller: [ROLLE.disponent, ROLLE.koordinator, ROLLE.admin], handling: "Markér udført" },
-    { til: "annulleret", roller: [ROLLE.koordinator, ROLLE.admin], handling: "Annullér etape", kraeverBegrundelse: true },
+    { til: "udfoert",    kraeverPerm: PERM.bookingUdfoer, handling: "Markér udført" },
+    { til: "annulleret", kraeverPerm: PERM.bookingAnnuller, handling: "Annullér etape", kraeverBegrundelse: true },
   ],
   afvist: [
-    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Genåbn etape" },
+    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Genåbn etape" },
   ],
   udfoert: [],
   annulleret: [],
 };
 
-/** Hvad må denne rolle gøre lige nu. Driver knapperne i UI'et. */
-export function tilgaengeligeHandlinger(tilstand, rolle) {
-  return (OVERGANGE[tilstand] || []).filter((o) => o.roller.includes(rolle));
+/** Hvad må brugeren gøre lige nu. Driver knapperne i UI'et.
+ *  perms er claim-strengen fra auth.token.perms — eller et array. */
+export function tilgaengeligeHandlinger(tilstand, perms) {
+  return (OVERGANGE[tilstand] || []).filter((o) => harPerm(perms, o.kraeverPerm));
 }
 
-export function tilgaengeligeEtapeHandlinger(tilstand, rolle) {
-  return (ETAPE_OVERGANGE[tilstand] || []).filter((o) => o.roller.includes(rolle));
+export function tilgaengeligeEtapeHandlinger(tilstand, perms) {
+  return (ETAPE_OVERGANGE[tilstand] || []).filter((o) => harPerm(perms, o.kraeverPerm));
 }
 
 /* Én kontrol, to tabeller. Ellers driver reglerne fra hinanden, og så kan en
    disponent godkende sit eget forslag på en etape men ikke på en booking. */
-function pruvOvergang(overgange, post, tilTilstand, rolle, { begrundelse } = {}) {
+function pruvOvergang(overgange, post, tilTilstand, perms, { begrundelse } = {}) {
   const o = (overgange[post.tilstand] || []).find((x) => x.til === tilTilstand);
   if (!o) return { ok: false, aarsag: `Kan ikke gå fra ${TILSTAND[post.tilstand]?.label} til ${TILSTAND[tilTilstand]?.label}.` };
-  if (!o.roller.includes(rolle)) return { ok: false, aarsag: `Din rolle må ikke udføre "${o.handling}".` };
+  if (!harPerm(perms, o.kraeverPerm)) return { ok: false, aarsag: `Du mangler adgangen "${o.kraeverPerm}" til at udføre "${o.handling}".` };
   if (o.kraeverForslag && !(post.forslag?.length > 0)) return { ok: false, aarsag: "Der skal være mindst ét forslag." };
   if (o.kraeverValgtForslag && !post.valgtForslagId) return { ok: false, aarsag: "Vælg et forslag før godkendelse." };
   if (o.kraeverBegrundelse && !begrundelse?.trim()) return { ok: false, aarsag: "Angiv en begrundelse." };
@@ -143,16 +159,19 @@ function pruvOvergang(overgange, post, tilTilstand, rolle, { begrundelse } = {})
 }
 
 /**
- * kanSkifte(booking, tilTilstand, rolle, { begrundelse })
+ * kanSkifte(booking, tilTilstand, perms, { begrundelse })
  * → { ok, aarsag }
+ *
+ * perms er auth.token.perms-strengen, ikke en rolle. Det er den eneste måde
+ * at sikre at UI'et og serveren spørger om det samme.
  */
-export function kanSkifte(booking, tilTilstand, rolle, opts = {}) {
-  return pruvOvergang(OVERGANGE, booking, tilTilstand, rolle, opts);
+export function kanSkifte(booking, tilTilstand, perms, opts = {}) {
+  return pruvOvergang(OVERGANGE, booking, tilTilstand, perms, opts);
 }
 
 /** Samme kontrol på en etape. Bemærk kraeverFrist på vej til aaben. */
-export function kanSkifteEtape(etape, tilTilstand, rolle, opts = {}) {
-  return pruvOvergang(ETAPE_OVERGANGE, etape, tilTilstand, rolle, opts);
+export function kanSkifteEtape(etape, tilTilstand, perms, opts = {}) {
+  return pruvOvergang(ETAPE_OVERGANGE, etape, tilTilstand, perms, opts);
 }
 
 /**

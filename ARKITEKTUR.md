@@ -189,6 +189,50 @@ falder totalen på Dashboard uden at nogen har ændret noget synligt.
 Samme disciplin som beslutning 14: to tal med hver sin betydning skal have
 hver sit navn. `daekningsbidragOere` tæller kun færdige forløb.
 
+## Adgang: permissions, ikke roller
+
+Adgang afgøres af **permissions**. Rollen er et navn på en samling — ikke et
+niveau man er over eller under. Kataloget og presetsene står i
+`fleet/permissions.js`, som ikke importerer noget, så den Cloud Function der
+udsteder claims kan bruge nøjagtig samme kilde. To definitioner af hvem der må
+godkende en booking er præcis den fejl beslutning 5 handler om.
+
+```
+auth.token.rolle = "koordinator"                  // kun til visning
+auth.token.perms = "|kunder.skriv|booking.godkend|…"
+```
+
+En rør-afgrænset streng, fordi RTDB-regler kan `.contains()` på strenge men
+ikke slå op i arrays. Rørene i begge ender er ikke pynt: uden dem ville
+`contains('|booking.afvis')` også matche `|booking.afvisAlle|`.
+
+**Reglerne læser kun `perms`.** Der er ingen `auth.token.rolle` tilbage i
+`firebase.rules.json`. En tastefejl i claim'et — `kunder.skrivx`, eller en
+streng helt uden rør — giver adgang til ingenting. Fejler lukket.
+
+Klienten udleder aldrig selv permissions af rollen. Gjorde den det, kunne
+UI'et vise knapper som serveren afviser, og så var adgangskontrollen tilbage i
+frontend. Mangler claim'et, må brugeren intet.
+
+| Rolle | Kort sagt |
+|---|---|
+| `chauffoer` | Egne indberetninger, idébanken |
+| `casehandler` | Dataskrivning + opretter bookinger |
+| `disponent` | Samme + køretøjer, foreslår, afviser, udfører |
+| `koordinator` | Samme + **godkender**, returnerer, annullerer |
+| `admin` | Alt |
+
+Disponenten har **ikke** `booking.godkend`. Beslutning 5 er nu et felt der
+mangler i en liste frem for en kommentar om hvem der ikke står der — og der er
+en test der fastholder det.
+
+**Bookingflowets permissions håndhæves endnu ikke i reglerne.** `bookinger` og
+`etaper` er `.write: false`, fordi tilstandsskiftet skal ske atomisk sammen
+med reservationen i en Cloud Function der ikke findes. Serveren afviser altså
+alle — strengere end nogen permission, men ikke granulært. Der er en test der
+fastholder `.write: false`, så ingen åbner noden uden at opdage at
+`booking.godkend` så ikke bliver tjekket af nogen.
+
 ## Egress
 
 RTDB koster på data ud, ikke på forespørgsler.

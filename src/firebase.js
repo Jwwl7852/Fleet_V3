@@ -82,5 +82,10 @@ export async function hentBrugerContext(user) {
     navn: user.displayName || user.email,
     tenant: token.claims.tenant || null,
     rolle: token.claims.rolle || "casehandler",
+    /* Tom streng, ikke udledt af rollen. Udleder klienten selv permissions
+       fra rolle-claim'et, kan UI'et vise knapper som serveren afviser — og
+       så er vi tilbage ved at adgangskontrollen kun findes i frontend.
+       Mangler claim'et, må brugeren ingenting. Fejler lukket. */
+    perms: token.claims.perms || "",
   };
 }
