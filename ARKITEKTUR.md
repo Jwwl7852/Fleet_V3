@@ -214,6 +214,34 @@ Klienten udleder aldrig selv permissions af rollen. Gjorde den det, kunne
 UI'et vise knapper som serveren afviser, og så var adgangskontrollen tilbage i
 frontend. Mangler claim'et, må brugeren intet.
 
+### Presets er provisioneringsstandard, ikke facit
+
+`ROLLE_PERMS` i `permissions.js` definerer, hvad en **ny** tenant får ved
+oprettelse. Hvad tenanten *faktisk* har, ligger i databasen:
+
+```
+tenants/<t>/roller/<rolleId>/{ navn, perms: ["booking.foreslaa", …] }
+```
+
+En kunde skal kunne fjerne fx `booking.vaerdiLaes` fra sin disponent-rolle
+uden at nogen skriver kode. Roller er udgangspunkter, ikke lov.
+
+`perms` er et **array**, ikke et map. RTDB-nøgler må ikke indeholde punktum,
+og permission-navnene gør — `perms/booking.foreslaa: true` er derfor umuligt.
+
+**Claim'et forbliver håndhævelsespunktet.** Reglerne slår ikke op i databasen
+ved hver skrivning; det ville koste en ekstra læsning pr. regel-evaluering.
+Den Cloud Function der udsteder claims, læser `roller/`, og en ændring træder
+i kraft ved næste token-fornyelse — eller straks med `revokeRefreshTokens`,
+som allerede er påkrævet ved rolleskift.
+
+**`roller/` er `.write: false` indtil den funktion findes**, og det er med
+vilje hårdt frem for dokumenteret. Kunne man redigere en rolle nu, ville
+claim'et ikke blive opdateret: man ville tro, man havde fjernet en permission,
+som stadig virkede. Det er den værste fejltilstand af alle, for den ser ud som
+om den lykkedes. En fejl er bedre end tavshed. Der er en test der fastholder
+det.
+
 | Rolle | Kort sagt |
 |---|---|
 | `chauffoer` | Egne indberetninger, idébanken |

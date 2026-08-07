@@ -222,6 +222,46 @@ describe("rolle-presets giver samme adgang som før", () => {
 
 /* ---- Bookingflowet ------------------------------------------------- */
 
+describe("roller/ er inert indtil Cloud Function'en findes", () => {
+  /* Den vaerste fejltilstand af alle er den der SER UD som om den lykkedes.
+     Kunne man redigere roller/ nu, ville claim'et ikke blive opdateret: man
+     fjernede booking.vaerdiLaes fra disponent-rollen, fik ingen fejl, og
+     disponenten kunne stadig se vurderingen paa hvert vaerk. En afvisning er
+     bedre end tavshed.
+
+     Aabnes noden for admin med roller.skriv, SKAL den her test opdateres i
+     samme aendring — og det er meningen at det gør ondt nok til at man taenker
+     over om claim-udstedelsen er paa plads. */
+  /* perms er et ARRAY, ikke et map. RTDB-noegler maa ikke indeholde punktum,
+     og permission-navnene gor — perms/booking.foreslaa: true er derfor
+     umuligt. Arrayet er ogsaa det permsFraRolle() allerede returnerer. */
+  it("ingen kan skrive i roller/ — heller ikke med alle permissions", async () => {
+    const db = medPerms("uid-roller", ALLE_PERMS);
+    const rolle = { navn: "Disponent", perms: [PERM.bookingForeslaa, PERM.kunderSkriv] };
+    await assertFails(set(ref(db, sti("roller", "disponent")), rolle));
+    await assertFails(set(ref(db, `${sti("roller", "disponent")}/perms`), [PERM.bookingForeslaa]));
+    await assertFails(set(ref(db, `tenants/${T}/roller`), { disponent: rolle }));
+  });
+
+  it("reglen står som .write: false i filen, ikke som en betingelse der kan blive sand", () => {
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")
+    );
+    assert.strictEqual(
+      regler.rules.tenants.$tenantId.roller[".write"], false,
+      "roller/ skal være .write: false indtil claim-udstedelsen findes. " +
+      "Uden den ville en rolleændring se ud som om den virkede, mens claim'et " +
+      "blev stående — og en fjernet permission ville stadig give adgang."
+    );
+  });
+
+  it("men den kan læses, så en admin-skærm kan vise rollerne", async () => {
+    const db = medPerms("uid-rollerlaes", ALLE_PERMS);
+    await assertSucceeds(get(ref(db, `tenants/${T}/roller`)));
+  });
+});
+
 describe("bookingflowet er stadig lukket for alle", () => {
   /* Permissions for bookingflowet kan ikke haandhaeves i reglerne endnu:
      bookinger og etaper er .write: false, fordi tilstandsskiftet skal ske

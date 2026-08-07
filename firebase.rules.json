@@ -42,6 +42,38 @@
           ".write": false
         },
 
+        // ROLLER — tenantens FAKTISKE rolledefinitioner.
+        //
+        // roller/<rolleId>/{ navn, perms: ["booking.foreslaa", ...] }
+        //
+        // perms er et ARRAY og ikke et map: RTDB-noegler maa ikke indeholde
+        // punktum, og permission-navnene gor. perms/booking.foreslaa: true er
+        // altsaa umuligt. Arrayet er ogsaa det permsFraRolle() returnerer.
+        //
+        // ROLLE_PERMS i permissions.js er provisioneringsstandarden: hvad en
+        // NY tenant faar ved oprettelse. Denne node er hvad tenanten faktisk
+        // har, og en kunde skal kunne fjerne fx booking.vaerdiLaes fra sin
+        // disponent-rolle uden at nogen skriver kode.
+        //
+        // Claim'et forbliver haandhaevelsespunktet: reglerne slaar IKKE op
+        // her ved hver skrivning. Den Cloud Function der udsteder claims
+        // laeser noden, og en aendring traeder i kraft ved naeste
+        // token-fornyelse — eller straks med revokeRefreshTokens.
+        //
+        // .write: false INDTIL den funktion findes, og det er med vilje haardt
+        // frem for dokumenteret. Kunne man redigere en rolle nu, ville
+        // claim'et ikke blive opdateret: man ville tro man havde fjernet en
+        // permission, som stadig virkede. Det er den vaerste fejltilstand af
+        // alle, for den ser ud som om den lykkedes. En fejl er bedre end
+        // tavshed.
+        //
+        // Naar funktionen findes, aabnes den for admin med roller.skriv — og
+        // aendringer skal auditeres.
+        "roller": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".write": false
+        },
+
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
         "kpi": {
