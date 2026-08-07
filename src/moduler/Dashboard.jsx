@@ -121,8 +121,10 @@ export default function Dashboard() {
                 handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
             <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
             <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />
-            <MiniLinje label="Prisafvigelse (snit)"
-                       vaerdi={deviation(k.indkoeb.prisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" }).text} />
+            {/* Indkøbsprisafvigelse — leverandørsiden, betterWhen 'lower'. Ikke det
+                samme tal som salgsprisafvigelsen på Kunder & Priser. */}
+            <MiniLinje label="Indkøbsprisafvigelse (snit)"
+                       vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" }).text} />
             <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)} />
           </Kort>
         </div>

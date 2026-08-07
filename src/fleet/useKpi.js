@@ -68,9 +68,12 @@ export const DEMO_KPI = {
     chauffoerPlanlagt: 20, chauffoerDisponeret: 18, kompetencerUdloeber: 5,
   },
   facility: { aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12 },
+  /* Bemærk 'indkoebs'-præfikset: leverandørsiden og salgssiden er to
+     forskellige tal, og de må ikke begge hedde "prisafvigelse". Se
+     beslutning 14 i README. */
   indkoeb: {
-    aabneOrdrer: 18, fakturaerTilGodkendelse: 7, prisafvigelser: 5,
-    leveranceTilTidenPct: 92, prisafvigelseSnitPct: 7,
+    aabneOrdrer: 18, fakturaerTilGodkendelse: 7, indkoebsprisafvigelser: 5,
+    leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
   },
   kunder: {
     aktive: 51, aftalerUdloeber: 7, tilbud: 12, tilbudKraeverOpfoelgning: 5,
