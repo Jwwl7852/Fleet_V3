@@ -170,3 +170,20 @@
 .fc-linje{display:flex; justify-content:space-between; gap:12px; padding:7px 0; font-size:13px;
   border-bottom:1px solid var(--bc-line)}
 .fc-linje:last-of-type{border-bottom:0}
+
+/* Grafer. Søjlefarverne sættes af Soejlegraf ud fra en tone, ikke af modulet —
+   samme regel som Pille. Alt kommer fra tokens ovenfor. */
+.fc-graf{position:relative; display:flex; align-items:flex-end; gap:4px; padding-top:6px;
+  border-bottom:1px solid var(--bc-line)}
+.fc-graf-kol{flex:1; min-width:0; height:100%; display:flex; align-items:flex-end;
+  justify-content:center; gap:3px}
+.fc-graf-soejle{flex:1; max-width:15px; min-height:2px; border-radius:3px 3px 0 0}
+.fc-graf-maal{position:absolute; left:0; right:0; border-top:1px dashed var(--bc-muted);
+  pointer-events:none}
+.fc-graf-x{display:flex; gap:4px; margin-top:6px}
+.fc-graf-x span{flex:1; min-width:0; text-align:center; font-size:10.5px; color:var(--bc-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-graf-legend{display:flex; flex-wrap:wrap; gap:14px; margin-bottom:10px}
+.fc-graf-navn{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--bc-muted)}
+.fc-graf-prik{width:9px; height:9px; border-radius:3px; display:inline-block}
+.fc-graf-streg{width:13px; border-top:1px dashed var(--bc-muted); display:inline-block}

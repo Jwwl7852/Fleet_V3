@@ -120,3 +120,66 @@ export const Afvigelse = ({ vaerdi, betterWhen = "lower", unit = "kr", dec }) =>
   const d = deviation(vaerdi, { betterWhen, unit, dec });
   return <span className={`fc-${d.tone}`}>{d.text}</span>;
 };
+
+/* Grafernes farver slås op på en tone — præcis som Pille. Et modul sender
+   aldrig en farve ind, så to grafer kan ikke ende med hver sit blå. */
+const GRAF_TONE = {
+  brand: "var(--bc-accent)",
+  neutral: "var(--bc-line)",
+  ok: "var(--bc-ok)",
+  warn: "var(--bc-warn)",
+  bad: "var(--bc-block)",
+};
+
+/**
+ * Soejlegraf — grupperede søjler med valgfri vandret mållinje.
+ *
+ *   punkter  [{ label, vaerdier: [tal, …] }]   én værdi pr. serie
+ *   serier   [{ navn, tone }]                  tone slås op i GRAF_TONE
+ *   maal     { vaerdi, navn }                  valgfri stiplet linje
+ *   format   (tal) => streng                   bruges i tooltip
+ *
+ * Nulpunktet er altid 0. En afkortet akse får to procentpoint til at ligne
+ * en halvering, og det er den slags en økonomiskærm ikke skal lave.
+ */
+export function Soejlegraf({ punkter = [], serier = [], maal, format = (v) => v, hoejde = 168 }) {
+  if (!punkter.length) return <Tom>Ingen data i perioden.</Tom>;
+
+  const alle = punkter.flatMap((p) => p.vaerdier);
+  if (maal) alle.push(maal.vaerdi);
+  const top = Math.max(...alle, 0) * 1.08 || 1;
+  const h = (v) => `${Math.max(0, Math.min(100, (v / top) * 100))}%`;
+
+  return (
+    <div>
+      <div className="fc-graf-legend">
+        {serier.map((s) => (
+          <span key={s.navn} className="fc-graf-navn">
+            <i className="fc-graf-prik" style={{ background: GRAF_TONE[s.tone] || GRAF_TONE.brand }} />
+            {s.navn}
+          </span>
+        ))}
+        {maal && (
+          <span className="fc-graf-navn"><i className="fc-graf-streg" />{maal.navn}</span>
+        )}
+      </div>
+
+      <div className="fc-graf" style={{ height: hoejde }}>
+        {maal && <div className="fc-graf-maal" style={{ bottom: h(maal.vaerdi) }} />}
+        {punkter.map((p) => (
+          <div key={p.label} className="fc-graf-kol"
+               title={`${p.label} — ${p.vaerdier.map((v, i) => `${serier[i]?.navn ?? ""} ${format(v)}`).join(" · ")}`}>
+            {p.vaerdier.map((v, i) => (
+              <span key={serier[i]?.navn ?? i} className="fc-graf-soejle"
+                    style={{ height: h(v), background: GRAF_TONE[serier[i]?.tone] || GRAF_TONE.brand }} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="fc-graf-x">
+        {punkter.map((p) => <span key={p.label}>{p.label}</span>)}
+      </div>
+    </div>
+  );
+}
