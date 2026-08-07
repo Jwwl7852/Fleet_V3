@@ -42,7 +42,12 @@ const RAA_REGLER = readFileSync("firebase.rules.json", "utf8");
 const REGLER = JSON.parse(
   RAA_REGLER.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")
 );
-const NODER = Object.keys(REGLER.rules.tenants.$tenantId).filter((n) => !n.startsWith("."));
+const TENANT_REGLER = REGLER.rules.tenants.$tenantId;
+const NODER = Object.keys(TENANT_REGLER).filter((n) => !n.startsWith("."));
+
+/* Noder der BEVIDST ikke kan læses af nogen klient. Står en node her, er det
+   et valg; står den ingen af stederne, er det en forglemmelse. */
+const LAESNING_NAEGTET = new Set(["_findes"]);
 
 let miljoe;
 
@@ -106,6 +111,34 @@ describe("tenant-isolation — suiten skal have noget at teste", () => {
     );
     for (const paakraevet of ["kunder", "opgaver", "kpi", "reservationer", "fakturaer"]) {
       assert.ok(NODER.includes(paakraevet), `Noden "${paakraevet}" mangler i regelfilen.`);
+    }
+  });
+
+  /* KASKADEBRUDDET, fastholdt.
+     tenants/$tenantId må IKKE have .read. Havde den det, ville den kaskadere
+     ned over alt — også over de klassificerede undertræer — og så kan ingen
+     af dem beskyttes uafhængigt. Det er hele forudsætningen for punkt 5 og 6. */
+  it("tenants/$tenantId har ingen .read — ellers kaskaderer den ned over alt", () => {
+    assert.equal(
+      TENANT_REGLER[".read"], undefined,
+      "En .read på tenants/$tenantId giver læseadgang til hvert eneste undertræ, " +
+      "inklusive sensitive/ og vaerdi/. Læg den på de enkelte noder i stedet."
+    );
+  });
+
+  /* Uden denne kan man tilføje en node og glemme dens .read. Den ville så
+     være ulæselig — hvilket fejler lukket og altså er sikkert — men det ville
+     blive opdaget af en bruger frem for af en test. */
+  it("hver node har enten en .read eller står på nægtelisten", () => {
+    for (const node of NODER) {
+      const harRead = typeof TENANT_REGLER[node]?.[".read"] === "string";
+      const naegtet = LAESNING_NAEGTET.has(node);
+      assert.ok(
+        harRead !== naegtet,
+        naegtet
+          ? `"${node}" står på nægtelisten, men har alligevel en .read.`
+          : `"${node}" har hverken .read eller plads på nægtelisten. Tag stilling.`
+      );
     }
   });
 });
