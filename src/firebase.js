@@ -20,6 +20,26 @@ const cfg = {
 
 export const demoMode = !cfg.apiKey || !cfg.databaseURL;
 
+/* PRODUKTIONSPROJEKTET, skrevet ind i koden med vilje.
+ *
+ * Miljøet udledes af det projekt-id nøglerne faktisk peger på — ikke af en
+ * VITE_FB_MILJOE-variabel. En variabel kan sige "dev" mens nøglerne peger på
+ * produktion, og så advarer indikatoren om det stik modsatte af virkeligheden.
+ * Det her kan ikke sættes forkert uden at pege et andet sted hen. */
+const PROD_PROJEKT = "fleetcontrol-98e11";
+
+export const projektId = cfg.projectId || null;
+
+/** "demo" | "dev" | "prod" */
+export const miljoe = demoMode ? "demo" : projektId === PROD_PROJEKT ? "prod" : "dev";
+
+/* Kører vi på en udviklermaskine? Et deployet Netlify-site har aldrig
+   localhost som vært. Bruges til den farlige kombination: PRODUKTIONSNØGLER
+   på en laptop. */
+export const paaLokalMaskine =
+  typeof window !== "undefined" &&
+  /^(localhost|127\.0\.0\.1|\[::1\]|.*\.local)$/.test(window.location.hostname);
+
 let _db = null;
 let _auth = null;
 

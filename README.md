@@ -11,10 +11,17 @@ enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det gør.
 
 ```bash
 npm install
-cp .env.example .env.local          # udfyld Firebase-nøglerne
+cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
 ```
+
+**Der er to Firebase-projekter.** `fleetcontrol-dev` er til at smide væk;
+`fleetcontrol-98e11` er rigtige kunders data. `.env.example` peger på dev, og
+det skal din `.env.local` også — appen udleder miljøet af projekt-id'et og
+viser en bjælke i toppen, når du ikke er på produktion. Kører du med
+produktionsnøgler på din egen maskine, bliver bjælken rød og stribet. Den er
+der med vilje.
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
 git. Uden den kan man committe en ændring i `firebase.rules.json` uden at have

@@ -1,6 +1,21 @@
 # Datamodel
 
-Firebase Realtime Database, projekt `fleetcontrol-98e11`, europe-west1.
+Firebase Realtime Database, europe-west1. **To projekter:**
+
+| Alias | Projekt | Indhold |
+|---|---|---|
+| `dev` | `fleetcontrol-dev` | Til at smide væk |
+| `prod` | `fleetcontrol-98e11` | Rigtige kunders data |
+
+Aliaserne står i `.firebaserc`, så `firebase deploy --project dev` og
+`--project prod` er eksplicitte valg. Appen udleder selv sit miljø af
+`VITE_FB_PROJECT_ID` og viser en bjælke i toppen, når man ikke er på
+produktion — se `AppShell.jsx`.
+
+Der findes tre ældre projekter i kontoen: `fleetcontrol-6de59` (det gamle
+produktionsprojekt, kan indeholde rigtige data), `fleetcontrol-v2-0` og
+`flaadestyring-4b161`. **Ingen af dem må bruges til noget**, før nogen har
+set efter hvad der ligger i dem. Det er en oprydningsopgave for sig.
 
 ## Konventioner
 
