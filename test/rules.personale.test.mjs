@@ -170,7 +170,7 @@ describe("køretøjer", () => {
     await assertFails(set(ref(db, sti("koeretoejer", "k-3")), udenArt));
   });
 
-  it("accepterer alle syv arter", async () => {
+  it("accepterer alle arter i kataloget", async () => {
     const db = medPerms("uid-arter", ALLE_PERMS);
     for (const art of Object.keys(ENHEDSART)) {
       await assertSucceeds(set(ref(db, sti("koeretoejer", `k-${art}`)), { ...ENHED, art }));
@@ -226,7 +226,7 @@ describe("flaade.js", () => {
   it("grupperne er rigtige", () => {
     assert.equal(gruppeFor("trailer"), GRUPPE.paahaengt);
     assert.equal(gruppeFor("paahaeng"), GRUPPE.paahaengt);
-    for (const a of ["traekker", "lastbil", "varevogn", "scooter", "truck"]) {
+    for (const a of ["traekker", "lastbil", "varevogn", "bus", "minibus", "scooter", "truck"]) {
       assert.equal(gruppeFor(a), GRUPPE.motoriseret, `${a} skal være motoriseret`);
     }
   });
@@ -235,6 +235,27 @@ describe("flaade.js", () => {
     assert.equal(ENHEDSART.scooter.tachograf, false);
     assert.equal(ENHEDSART.scooter.koereHviletid, false);
     assert.equal(ENHEDSART.traekker.tachograf, true);
+  });
+
+  /* Bus-divisionen havde ingen enhedstype at pege paa. Og minibussen ligger
+     mellem varevogn og bus i BAADE koerekortkrav og faergetakst — rundes den
+     ned, mangler et krav; rundes den op, bliver taksten for hoej. */
+  it("bus og minibus er hver sin art med hvert sit kørekortkrav", () => {
+    assert.deepEqual(kraevedeKompetencer([{ art: "bus" }]), ["d", "tachografkort"]);
+    assert.deepEqual(kraevedeKompetencer([{ art: "minibus" }]), ["d1"]);
+    assert.deepEqual(kraevedeKompetencer([{ art: "varevogn" }]), []);
+  });
+
+  /* Regelfilens enum og kataloget maa ikke drive fra hinanden: en art der
+     kun findes eet af stederne, kan enten ikke gemmes eller ikke forstaas. */
+  it("kataloget og reglernes enum indeholder de samme arter", () => {
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    for (const art of Object.keys(ENHEDSART)) {
+      assert.ok(
+        regler.includes(`|${art}|`) || regler.includes(`(${art}|`) || regler.includes(`|${art})`),
+        `arten "${art}" mangler i reglernes enum`
+      );
+    }
   });
 });
 

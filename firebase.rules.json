@@ -290,7 +290,7 @@
           "$koeretoejId": {
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['division', 'art', 'status'])",
-            "art": { ".validate": "newData.isString() && newData.val().matches(/^(traekker|lastbil|varevogn|scooter|truck|trailer|paahaeng)$/)" },
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(traekker|lastbil|varevogn|bus|minibus|scooter|truck|trailer|paahaeng)$/)" },
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|vaerksted|udeAfDrift|solgt|skrottet)$/)" },
             "laengdeMm": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "driftPrKmOere": { ".validate": "newData.isNumber() && newData.val() >= 0" },

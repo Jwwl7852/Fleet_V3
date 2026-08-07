@@ -24,10 +24,24 @@ export const GRUPPE = {
   paahaengt: "paahaengt",
 };
 
+/**
+ * ⚠ tachograf og koereHviletid er ARTENS TYPISKE krav, ikke en juridisk
+ * afgørelse. Om en konkret enhed er omfattet afhænger af totalvægt og
+ * sædeantal på registreringsattesten — en minibus til 9 personer og en til 16
+ * er ikke det samme. Skal det være præcist, hører det som felter på enheden
+ * og ikke på arten. Noteret som kendt hul.
+ */
 export const ENHEDSART = {
   traekker:  { label: "Trækker",      gruppe: GRUPPE.motoriseret, tachograf: true,  koereHviletid: true },
   lastbil:   { label: "Lastbil",      gruppe: GRUPPE.motoriseret, tachograf: true,  koereHviletid: true },
   varevogn:  { label: "Varevogn",     gruppe: GRUPPE.motoriseret, tachograf: false, koereHviletid: false },
+  /* Bus-divisionen havde ingen enhedstype at pege på. Samme klasse fund som
+     chauffør/medarbejder: modellen dækkede ikke det den påstod. */
+  bus:       { label: "Bus",          gruppe: GRUPPE.motoriseret, tachograf: true,  koereHviletid: true },
+  /* Ligger mellem varevogn og bus i BÅDE kørekortkrav og færgetakst, og må
+     derfor ikke rundes til nogen af dem. Rundes den ned til varevogn, mangler
+     der et kørekortkrav; rundes den op til bus, bliver færgetaksten for høj. */
+  minibus:   { label: "Minibus",      gruppe: GRUPPE.motoriseret, tachograf: false, koereHviletid: false },
   scooter:   { label: "Scooter",      gruppe: GRUPPE.motoriseret, tachograf: false, koereHviletid: false },
   truck:     { label: "Truck",        gruppe: GRUPPE.motoriseret, tachograf: false, koereHviletid: false },
   trailer:   { label: "Trailer",      gruppe: GRUPPE.paahaengt,   tachograf: false, koereHviletid: false },
@@ -159,6 +173,7 @@ export function kanBaere(enheder = [], gods = {}) {
 export const KOMPETENCE = {
   c: "c",                       // stort kørekort
   ce: "ce",                     // stort kørekort med påhæng
+  d1: "d1",                     // minibus
   d: "d",                       // bus
   adr: "adr",                   // farligt gods
   tachografkort: "tachografkort",
@@ -169,6 +184,9 @@ const ART_KRAV = {
   traekker: [KOMPETENCE.c, KOMPETENCE.tachografkort],
   lastbil: [KOMPETENCE.c, KOMPETENCE.tachografkort],
   varevogn: [],
+  bus: [KOMPETENCE.d, KOMPETENCE.tachografkort],
+  /* D1 og ikke D: det er dét der gør minibussen til sin egen art. */
+  minibus: [KOMPETENCE.d1],
   scooter: [],
   truck: [KOMPETENCE.truckcertifikat],
   trailer: [KOMPETENCE.ce],

@@ -241,6 +241,61 @@ konfliktfrihed (to disponenter kan ramme samme sekund), bookingtilstandsskift
 med rolletjek, og nummerserier. Rules er sat til `.write: false` på de noder,
 så de fejler tydeligt indtil funktionerne findes.
 
+## Hvor står vi
+
+Skrevet 7. august 2026. Start her efter en pause.
+
+**Kernen er på plads.** Otte byggeklodser i `fleet/` er i brug på tværs af
+skærme: `useKpi`, `useListe`, `pricing`, `reservations`, `booking-state`,
+`permissions`, `audit`, `personale` + `flaade`. 18 beslutninger i README.
+**115 tests**, obligatoriske før commit via `.githooks/pre-commit`.
+
+**Fem skærme bygget:** Dashboard, Bookingopsætning, Kunder & Priser,
+Økonomi & Rapporter, Bemanding. Elleve skeletter har mockup, elleve har ikke.
+
+**Sikkerhedsrækkefølgen punkt 0–6 er lukket.** Se Status-afsnittet under
+Låst rækkefølge for hvad det dækker.
+
+### Næste skridt, i den rækkefølge
+
+1. **Trin 3 af beslutning 18 — længdeintervaller i `satsPaa()`.** Det eneste
+   udestående af personale/flåde-arbejdet. Uden det er `laengdeMm` et felt
+   ingen læser, og færgetaksten er stadig forkert med over tusind kroner:
+   10 m koster 1.338 kr på Rødby–Puttgarden, 18 m koster 2.530 kr.
+2. **Modulabonnement.** En kunde vælger moduler — Flåde alene, Flåde+Booking,
+   eller alle tre. Personale og flåde ligger derfor i basen. Uafklaret: skal
+   reglerne håndhæve abonnementet, eller er det kun navigation? En kommerciel
+   grænse og en sikkerhedsgrænse giver meget forskellige regelfiler.
+3. **Kundeportal.** Abonnentens kunder skal kunne booke selv. ⚠ Problemet er
+   kendt og af samme slags som læsekaskaden: **RTDB kan ikke filtrere en
+   forespørgsel med regler.** En kunde kan ikke *liste* sine egne bookinger —
+   `.read` på `bookinger` er alt eller intet. Det kræver en indeksnode pr.
+   kunde, og den beslutning skal træffes før portalen bygges.
+4. Skærmene: Ferie & fravær → Værkstedskalender → Disponering.
+
+### Tre tjek der er bygget, men som intet kalder
+
+Forudsætningerne for Disponering. Funktionerne findes og er testede;
+**håndhævelsespunktet mangler**, fordi den Cloud Function der skriver en
+etape ikke er skrevet. `etaper` er `.write: false` indtil da — strengere end
+de tre tjek, men ikke granulært.
+
+| Tjek | Funktion |
+|---|---|
+| Enhedskombination | `kanDisponeres()` — en trailer kan ikke køre alene |
+| Kompetencer | `kraevedeKompetencer()` + `tjekKompetencer()` — en udløbet kompetence **blokerer** |
+| Kapacitet | `kanBaere()` — m³ og kg hver for sig |
+
+At en funktion findes er ikke det samme som at den håndhæves. Se ARKITEKTUR.
+
+**Cloud Functions er den reelle flaskehals.** Ni ting venter på samme
+opsætning: bookingtilstandsskift, de tre tjek ovenfor, claim-udstedelse fra
+`roller/`, skrivning af auditposter, nummerserier, reservationskonflikter,
+KPI-aggregering og retention-sletning. Dertil `bemanding.ledig`, som er et
+afledt tal der er gemt og bør ud af aggregeringen.
+
+**Reglerne er deployet til DEV, ikke PROD.**
+
 ## Låst rækkefølge
 
 Sikkerhedsarbejdet er prioriteret én gang, og rækkefølgen ligger fast. Hvert
