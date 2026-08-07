@@ -34,6 +34,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
+- **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
+  `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler
+  om*: reservationer, fravær, opgaver, etaper, kompetencer. Bytter du om,
+  holder ejerskabstjekket i reglerne op med at virke —
+  `data.child('oprettetAf').val() === auth.uid` sammenligner med et uid, og et
+  personId matcher aldrig. En chauffør har måske slet intet login.
 - Tilføje en `audit.skriv`-permission, eller flytte `audit/` ind under
   `tenants/`. Loggen er append-only og har sin egen læseregel — begge dele
   ville ophæve det. Skal du logge, så kald `audit.log()`.

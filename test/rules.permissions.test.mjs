@@ -121,7 +121,7 @@ describe("serveren håndhæver permissions", () => {
     const noder = [
       ["kunder", PERM.kunderSkriv, KUNDE],
       ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted" }],
-      ["koeretoejer", PERM.koeretoejerSkriv, { division: "gods", navn: "Volvo" }],
+      ["koeretoejer", PERM.koeretoejerSkriv, { division: "gods", navn: "Volvo", art: "lastbil", status: "aktiv" }],
       ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", beloebOere: 100 }],
       ["satser", PERM.satserSkriv, { post: { satser: [] } }],
@@ -219,10 +219,10 @@ describe("rolle-presets giver samme adgang som før", () => {
 
   it("koordinatoren må ikke skrive køretøjer — det må disponenten", async () => {
     const koord = somRolle("uid-ko", "koordinator");
-    await assertFails(set(ref(koord, sti("koeretoejer", "bil1")), { division: "gods", navn: "Volvo" }));
+    await assertFails(set(ref(koord, sti("koeretoejer", "bil1")), { division: "gods", navn: "Volvo", art: "lastbil", status: "aktiv" }));
 
     const disp = somRolle("uid-di", "disponent");
-    await assertSucceeds(set(ref(disp, sti("koeretoejer", "bil1")), { division: "gods", navn: "Volvo" }));
+    await assertSucceeds(set(ref(disp, sti("koeretoejer", "bil1")), { division: "gods", navn: "Volvo", art: "lastbil", status: "aktiv" }));
   });
 
   it("kun admin må skrive satser og lagre", async () => {

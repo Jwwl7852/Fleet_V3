@@ -117,6 +117,19 @@ export const PERM = {
      bilerne er. */
   koeretoejerSensitiveLaes: "koeretoejer.sensitiveLaes",
 
+  /* PERSONALE er platformens mest følsomme entitet, og den ligger i BASEN —
+     enhver abonnementskombination har medarbejdere. Skrivning er derfor
+     admin alene; en HR-rolle kan tilføjes i roller/ uden kode, hvis en kunde
+     beder om det. */
+  personaleLaes: "personale.laes",
+  personaleSkriv: "personale.skriv",
+  /* CPR, privatadresse, pårørende, baggrundskontrol. */
+  personaleSensitiveLaes: "personale.sensitiveLaes",
+
+  /* Kompetencer har ingen klassificeret satellit og får derfor ingen
+     laes-permission — se noten ved bookingLaes. Kun skrivning styres. */
+  kompetencerSkriv: "kompetencer.skriv",
+
   fravaerLaes: "fravaer.laes",
   /* art (sygdom vs. ferie) og dokumentation. Helbredsoplysning, altså særlig
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
@@ -146,6 +159,9 @@ const BASIS_LAES = [
   PERM.kunderLaes,
   PERM.koeretoejerLaes,
   PERM.fravaerLaes,
+  /* Bemanding og Disponering viser navne — enhver rolle skal kunne læse
+     personalelisten. Det er sensitive/personale der er lukket. */
+  PERM.personaleLaes,
 ];
 
 /**
@@ -192,7 +208,9 @@ export const ROLLE_PERMS = {
     PERM.koeretoejerSensitiveLaes,
     PERM.kunderSensitiveLaes,
     /* Ingen fravaerSensitiveLaes: disponeringen har brug for at vide at
-       chaufføren er utilgængelig, ikke hvorfor. */
+       medarbejderen er utilgængelig, ikke hvorfor.
+       Ingen personaleSensitiveLaes: CPR og baggrundskontrol er ikke
+       driftsdata. */
   ],
 
   /**

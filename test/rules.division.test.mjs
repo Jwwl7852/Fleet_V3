@@ -105,7 +105,7 @@ describe("beslutning 15 — division som felt", () => {
     const db = som("admin1", "admin");
     const noder = [
       ["opgaver", { art: "vaerksted", dato: 1786000000000 }],
-      ["koeretoejer", { navn: "Volvo FH 500", status: "aktiv" }],
+      ["koeretoejer", { navn: "Volvo FH 500", status: "aktiv", art: "lastbil" }],
       ["indberetninger", { type: "braendstof", km: 184320, oprettetAf: "admin1" }],
       ["indkoeb", { beloebOere: 450000, momsOere: 112500, dato: 1786000000000 }],
     ];
@@ -115,11 +115,20 @@ describe("beslutning 15 — division som felt", () => {
     }
   });
 
-  it("afviser division på fravær — det arver fra chaufføren", async () => {
+  it("afviser division OG årsag på fravær — begge arves eller er følsomme", async () => {
     const db = som("admin1", "admin");
-    const fravaer = { personId: "lars", fra: 1786000000000, til: 1786600000000, art: "sygdom" };
+    const fravaer = { personId: "lars", fra: 1786000000000, til: 1786600000000 };
     await assertSucceeds(set(ref(db, sti("fravaer", "f1")), fravaer));
+
+    /* Division arves fra medarbejderen. */
     await assertFails(set(ref(db, sti("fravaer", "f2")), { ...fravaer, division: "gods" }));
+
+    /* ÅRSAGEN er en anden sag: "sygdom" er en helbredsoplysning og dermed
+       særlig kategori efter GDPR art. 9. Tilgængeligheden er planlægningsdata
+       — disponenten skal vide at Lars ikke er der 14.-18. juli — men ikke
+       hvorfor. `art` hører derfor i sensitive/fravaer og afvises her. */
+    await assertFails(set(ref(db, sti("fravaer", "f3")), { ...fravaer, art: "sygdom" }));
+    await assertFails(set(ref(db, sti("fravaer", "f1") + "/art"), "ferie"));
   });
 });
 

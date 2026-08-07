@@ -105,6 +105,10 @@
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')",
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')"
           },
+          "personale": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')"
+          },
           "fravaer": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')",
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')"
@@ -126,6 +130,61 @@
             ".write": false
           }
         },
+        // PERSONALE — beslutning 18. Ligger i BASEN: enhver
+        // abonnementskombination har medarbejdere.
+        //
+        // Noeglen er et personId, ikke et uid. En person findes foer sit login
+        // og efter det — en chauffoer har maaske aldrig et, en vikar sjaeldent.
+        // uid er hvem der GJORDE noget (indberetninger.oprettetAf, auditloggen);
+        // personId er hvem det HANDLER OM (reservationer, fravaer, opgaver,
+        // etaper, kompetencer). Bytter man om, holder ejerskabstjekket i
+        // reglerne op med at virke.
+        //
+        // .write ligger paa $personId og ikke paa samlingen, saa
+        // newData.exists() kan afvise en SLETNING. En fratraadt medarbejder
+        // bliver staaende — der haenger reservationer og indberetninger paa
+        // id'et. Paa samlingen ville newData stadig findes efter at een person
+        // var slettet.
+        "personale": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.laes|')",
+          ".indexOn": ["uid", "status", "division"],
+          "$personId": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && newData.exists()",
+            ".validate": "newData.hasChildren(['navn', 'division', 'status'])",
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|orlov|fratraadt)$/)" },
+            "ansaettelsesform": { ".validate": "newData.isString() && newData.val().matches(/^(fastansat|vikar|ekstern)$/)" },
+            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
+            "uid": { ".validate": "newData.isString()" },
+            // CPR og privatadresse hoerer i sensitive/personale, ikke her.
+            "cpr": { ".validate": false },
+            "privatAdresse": { ".validate": false }
+          }
+        },
+
+        // KOMPETENCER — egen node, ikke en undernode af personale.
+        //
+        // Samme begrundelse som etaper i beslutning 16: "hvilke kompetencer
+        // udloeber inden for 30 dage?" kan ikke stilles under
+        // personale/<id>/kompetencer/, fordi RTDB kun forespoerger paa
+        // boernene af een node. Man ville skulle hente hele personalet ned og
+        // lede. Det er tredje gang samme argument afgoer en placering — se
+        // moenstret i ARKITEKTUR.
+        //
+        // Ingen division: den arves fra personen, som reservationer og fravaer.
+        // Ingen laes-permission: der er ingen klassificeret satellit at
+        // kontrastere imod — se noten ved bookingLaes i permissions.js.
+        "kompetencer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".indexOn": ["udloeberMs", "personId", "type"],
+          "$kompetenceId": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kompetencer.skriv|') && newData.exists()",
+            ".validate": "newData.hasChildren(['personId', 'type', 'udloeberMs'])",
+            "udloeberMs": { ".validate": "newData.isNumber()" },
+            "division": { ".validate": false }
+          }
+        },
+
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
         "kpi": {
@@ -227,10 +286,14 @@
 
         "koeretoejer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.laes|')",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|')",
-          ".indexOn": ["status", "naesteServiceMs"],
+          ".indexOn": ["status", "art", "naesteServiceMs", "division"],
           "$koeretoejId": {
-            ".validate": "newData.hasChildren(['division'])",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && newData.exists()",
+            ".validate": "newData.hasChildren(['division', 'art', 'status'])",
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(traekker|lastbil|varevogn|scooter|truck|trailer|paahaeng)$/)" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|vaerksted|udeAfDrift|solgt|skrottet)$/)" },
+            "laengdeMm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "driftPrKmOere": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
@@ -262,7 +325,9 @@
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|')",
           ".indexOn": ["fra"],
           "$fravaerId": {
+            ".validate": "newData.hasChildren(['personId'])",
             "division": { ".validate": false },
+            "art": { ".validate": false },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" }
           }
         },
