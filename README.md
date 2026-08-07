@@ -186,7 +186,7 @@ Beslutning 1 og 10 gælder uændret.
 
 ```
 src/
-  App.jsx              alle 26 ruter, genereret efter nav.js
+  App.jsx              alle 27 ruter, genereret efter nav.js
   firebase.js          ÉN initialisering. Moduler importerer db herfra.
   fleet/               kernen — modulerne må ikke duplikere noget herfra
     nav.js             sidebar + ruter, én kilde
@@ -216,8 +216,14 @@ Bookingopsætning (prismotoren i brug), Kunder & Priser (første forbruger af
 **Skelet med mockup (11):** Booking-oversigt, Ny forespørgsel, Forslag,
 Disponering, Flåde, Værkstedskalender, Facility ×3, Indkøb ×2.
 
-**Skelet uden mockup (9):** Live-kort, Kompetencer, Ferie & fravær,
-Indberetninger, Leverandører, Fakturering, Opsætning ×4.
+**Skelet uden mockup (11):** **Medarbejdere**, Live-kort, Kompetencer,
+Ferie & fravær, Indberetninger, Leverandører, Fakturering, Opsætning ×4.
+
+`Medarbejdere` manglede i hele designsættet — og det var grunden til at
+hverken Bemanding eller Kompetencer havde noget sted at hente navne fra.
+Skærmen er stedet hvor en person oprettes; **Opsætning → Brugere & roller**
+er stedet hvor et login oprettes. En chauffør har måske aldrig et login.
+Datamodellen kom med beslutning 18.
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
 fejl fra mockuppen der skal undgås.

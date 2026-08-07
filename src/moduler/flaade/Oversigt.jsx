@@ -5,6 +5,34 @@
  *
  * 'Omkostning pr. km' her er DRIFTSOMKOSTNING uden chauffør. Kalkulationsprisen
  * inkl. chauffør ligger i Bookingopsætning. Hold navnene adskilt.
+ * Feltet hedder `driftPrKmOere` netop af den grund — beslutning 11.
+ *
+ * DET HER ER STEDET HVOR EN ENHED OPRETTES. Mockuppens biler er hardcodede;
+ * datamodellen kom med beslutning 18.
+ *
+ * FLÅDEN ER IKKE EN LISTE AF BILER. Syv arter i to grupper — se
+ * fleet/flaade.js:
+ *
+ *   motoriseret  traekker, lastbil, varevogn, scooter, truck
+ *   paahaengt    trailer, paahaeng — eget registreringsnummer, egen synsfrist,
+ *                egne dæk, men ingen motor
+ *
+ * `art` STYRER FELTSKEMAET, som `art` på opgaver. En scooter har ingen
+ * tachograf og ingen køre-hviletid; ENHEDSART siger hvilke felter der findes.
+ * Reglerne kræver art, status, division og en positiv laengdeMm — resten er
+ * formularlogik.
+ *
+ * NÅR DU BYGGER DEN:
+ *
+ *  - laengdeMm er MILLIMETER som integer. Færgetakster har grænser ved 10 og
+ *    20 m, og 9,998 mod 10,002 afgør prisen. Vis meter, gem millimeter —
+ *    aldrig en float. Samme disciplin som øre i beslutning 2.
+ *  - En trailer kan reserveres selvstændigt, men ikke disponeres alene. Brug
+ *    kanDisponeres() frem for at skrive reglen i skærmen.
+ *  - En solgt bil kan ikke slettes. Sæt status til `solgt`; der hænger
+ *    indberetninger og omkostningshistorik på id'et, og reglerne afviser en
+ *    sletning — en Slet-knap ville fejle.
+ *  - liveGPS hører i sensitive/koeretoejer bag koeretoejer.sensitiveLaes.
  */
 import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, pct } from "../../fleet/format.js";

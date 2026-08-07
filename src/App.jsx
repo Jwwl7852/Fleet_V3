@@ -17,6 +17,7 @@ import Disponering from "./moduler/booking/Disponering.jsx";
 import LiveKort from "./moduler/booking/LiveKort.jsx";
 import Bookingopsaetning from "./moduler/booking/Bookingopsaetning.jsx";
 import Bemanding from "./moduler/Bemanding.jsx";
+import Medarbejdere from "./moduler/Medarbejdere.jsx";
 import Kompetencer from "./moduler/Kompetencer.jsx";
 import Fravaer from "./moduler/Fravaer.jsx";
 import FlaadeOversigt from "./moduler/flaade/Oversigt.jsx";
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="booking/opsaetning" element={<Bookingopsaetning />} />
 
             <Route path="bemanding" element={<Bemanding />} />
+            <Route path="bemanding/medarbejdere" element={<Medarbejdere />} />
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />
             <Route path="bemanding/fravaer" element={<Fravaer />} />
 

@@ -40,6 +40,11 @@ export const NAV = [
     born: [
       { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan",
         titel: "Bemanding", under: "Overblik over bemanding og kapacitet" },
+      /* Medarbejdere er IKKE det samme som Brugere & roller under Opsætning.
+         Her oprettes personen; dér oprettes et login. En chauffør har måske
+         aldrig et login, en vikar sjældent. Se beslutning 18. */
+      { key: "medarbejdere", sti: "/bemanding/medarbejdere", label: "Medarbejdere",
+        titel: "Medarbejdere", under: "Opret og vedligehold personalet. Login oprettes under Opsætning → Brugere & roller." },
       { key: "kompetencer", sti: "/bemanding/kompetencer", label: "Kompetencer",
         titel: "Kompetencer & certifikater", under: "Gyldighed, udløb og påmindelser" },
       { key: "fravaer", sti: "/bemanding/fravaer", label: "Ferie & fravær",
@@ -110,7 +115,8 @@ export const NAV = [
       { key: "generelt", sti: "/opsaetning", label: "Generelt",
         titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
       { key: "brugere", sti: "/opsaetning/brugere", label: "Brugere & roller",
-        titel: "Brugere & roller", under: "Adgang, roller og tenant-tilknytning" },
+        titel: "Brugere & roller",
+        under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Bemanding → Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer",
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
       { key: "idebank", sti: "/opsaetning/idebank", label: "Idébank",
