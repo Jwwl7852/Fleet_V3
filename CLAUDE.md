@@ -69,4 +69,10 @@ kan ikke komme ud af sync.
 - Cloud Functions mangler: reservationskonflikter, bookingtilstandsskift med
   rolletjek, nummerserier. Rules er `.write: false` på de noder.
 - Disponering skal have `art` (vaerksted|langtur) på opgaver, før skærmen bygges.
+- **Disponering skal bygges med etapemodellen i tankerne** (beslutning 16).
+  Det man disponerer, er en *etape* — ikke en booking. Etaper ligger i
+  `etaper/<etapeId>`, har deres egen tilstand, og `aaben` betyder at etapen
+  venter på en passende tur. Skærmen skal kunne vise åbne etaper ved siden af
+  planlagte, og den skal læse to noder: `etaper` og `opgaver`. Bygger du den
+  med én booking = én tur, er det en migrering bagefter.
 - 9 skærme har ingen mockup. Byg dem ikke på gæt — spørg.

@@ -52,6 +52,41 @@
           ".indexOn": ["tilstand", "oprettetMs", "kundeId"]
         },
 
+        // BESLUTNING 16 — etaper ligger som EGEN node, ikke under bookingen.
+        // RTDB forespoerger kun paa boernene af een node, og matchningen skal
+        // kunne finde "alle aabne etaper paa tvaers af bookinger" med
+        // orderByChild("tilstand").equalTo("aaben"). Laa de under hver sin
+        // booking, skulle samtlige bookinger hentes ned og gennemsoeges.
+        // Flyt dem ikke ind under bookinger — se README.
+        //
+        // .write: false af samme grund som bookinger: tilstandsskiftet skal
+        // ske atomisk sammen med reservationen, ellers kan etapens
+        // koeretoejId og dens reservation naa at vaere uenige.
+        "etaper": {
+          ".write": false,
+          ".indexOn": ["tilstand", "bookingId", "senestMs"],
+          "$etapeId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            }
+          }
+        },
+
+        // Lagerstamdata: kapacitet og satser. Kapaciteten laeses af
+        // tjekLedig() naar den summerer belastningen over et tidsrum.
+        "lagre": {
+          ".write": "auth != null && auth.token.tenant === $tenantId && auth.token.rolle === 'admin'",
+          "$lagerId": {
+            ".validate": "newData.hasChildren(['division'])",
+            "division": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            },
+            "satser": { ".indexOn": ["gyldigFra"] },
+            "haandteringSatser": { ".indexOn": ["gyldigFra"] }
+          }
+        },
+
         // Booking-, fragtbrev- og fakturanumre. Kun via transaction i en
         // Cloud Function.
         "countere": {

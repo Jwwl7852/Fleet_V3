@@ -47,6 +47,57 @@ i den nævnte fil.
 | 13 | **Live-kort er beholdt.** | Findes deployet på `/tracking`, men mangler i alle 20 mockups. Du var ved at taste en funktion væk du allerede har bygget. | `moduler/booking/LiveKort.jsx` |
 | 14 | **`indkoebsprisafvigelse` og `salgsprisafvigelse` — aldrig bare "prisafvigelse".** Leverandørsiden har `betterWhen: "lower"`, salgssiden `"higher"`. | Samme fejl som nr. 11: to tal med hvert sit fortegn for "godt" hed det samme. Indkøb betaler for meget = dårligt; en kunde betaler for lidt = også dårligt — men det ene er plus og det andet minus. Blandes de, farves halvdelen forkert. | `fleet/useKpi.js` |
 | 15 | **Division er et felt, ikke en sti.** Tre værdier: `gods`, `bus`, `faelles`. Transaktioner hører til én afdeling; stamdata kan være fælles; reservationer og fravær har ingen division og arver fra ressourcen. | Sti ville give to kalendere for én chauffør med C+D — beslutning 4's fejl et niveau højere oppe. Dertil to `BKG-2026-00125`, to Kolding Kommune-poster der driver fra hinanden, og en dieselfaktura der ikke kan afstemmes mod leverandørens total. | `fleet/useListe.js` |
+| 16 | **Kombi-transport: en booking er et forløb med N etaper.** Tilstanden ligger på etapen, ikke på bookingen. `aaben` er en tilstand med frist. Lageret er en kapacitetsressource i den samme reservationsnode. Etaper ligger som **egen node** — se afsnittet nedenfor. | Gods kan afhentes af én bil, stå på eget lager i uger, og køre videre med en anden. Etape 1 kan være reserveret mens etape 2 venter på en passende tur. Uden etaper skulle bookingen have én tilstand for to ting der sker på hver sin tid. | `fleet/booking-state.js` |
+
+### Beslutning 16 i detaljer
+
+Skærmene bygges senere. Datamodellen er afgjort nu, fordi den er dyr at ændre
+bagefter.
+
+**Hvorfor `etaper` er en egen node og ikke ligger under bookingen.**
+
+Læs det her, før du "rydder op". En løs node med et `bookingId` ligner noget
+der er blevet glemt, og den næste der ser den, vil flytte den ind under
+`bookinger/<id>/etaper/`. Lad være.
+
+RTDB kan kun forespørge på **børnene af én node**. Ligger etaperne under hver
+sin booking, findes der ingen forespørgsel der svarer på *"hvilke etaper er
+åbne lige nu?"* — og det er præcis det spørgsmål matchningen stiller hver gang
+en tur oprettes eller ændres. Svaret ville være at hente samtlige bookinger med
+samtlige etaper ned og lede i klienten. Det er den egress-fejl hele
+`ARKITEKTUR.md`'s egress-afsnit og `useListe` er bygget for at undgå, og den
+vokser med historikken: jo flere afsluttede forløb, jo dyrere bliver det at
+finde de tre åbne.
+
+Som egen node er det ét indekseret opslag:
+`etaper.orderByChild("tilstand").equalTo("aaben")`.
+
+Prisen er en fremmednøgle at holde styr på. Det er den værd.
+
+**Hvorfor etaper ikke bare er `opgaver` med et `bookingId`.** Fordi
+`opgaver.status` er et andet statsmaskineri (indberettet → planlagt → igang →
+udført) end bookingflowet (kladde → afventerPlan → afventerKoord → reserveret).
+Ét `status`-felt med to betydninger er nøjagtig fejlen fra beslutning 11 og 14.
+Disponering læser begge noder.
+
+**Tre fejl fra prototypen, lukket i modellen:**
+
+1. *Planner-estimatet manglede lagerdage,* mens den endelige beregning havde
+   dem — estimatet var systematisk for lavt. `beregnForloeb()` udelader aldrig
+   lagerdagslinjen, og når afgangen er ukendt, bruges etapens frist. Estimatet
+   fejler nu for **højt**, hvilket er den rigtige retning.
+2. *Den valgte bil var uenig med sig selv:* DE-QR 777 med afgang 28/6 i
+   reservationstabellen, DE-KL 404 den 24/6 i timelinen og i svaret til
+   koordinatoren. Årsagen var ikke en tastefejl, men at svaret og
+   reservationen var to poster. Nu skrives etapens `koeretoejId` og dens
+   reservation i **én transaktion**, og timelinen læser reservationen — ikke en
+   kopi. Beslutning 4 og 6 anvendt på etaper.
+3. *"På lager nu 11 · 6 endnu ikke ankommet"* var tvetydigt om de 6 var en
+   delmængde. To disjunkte tal, `paaLagerNu` og `forventetAnkomst`, og ingen
+   total der kan læses som indeholdende begge.
+
+Prototypens sidebar med topfaner og brandfarven `#f5a300` overtages ikke.
+Beslutning 1 og 10 gælder uændret.
 
 ## Struktur
 

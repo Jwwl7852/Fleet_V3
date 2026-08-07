@@ -16,6 +16,7 @@ export const RESSOURCE = {
   chauffoer: "chauffoer",
   facilityAktiv: "facilityAktiv",
   lokation: "lokation",
+  lager: "lager",           // beslutning 16 — kapacitet, ikke eksklusivitet
 };
 
 export const KILDE = {
@@ -23,14 +24,71 @@ export const KILDE = {
   vaerksted: "vaerksted",
   facilitySag: "facilitySag",
   fravaer: "fravaer",      // ferie, sygdom — blokerer chauffør
+  lager: "lager",          // gods der står mellem to etaper
   manuel: "manuel",
 };
 
+/**
+ * BESLUTNING 16 — to slags ressourcer i den SAMME node.
+ *
+ *   eksklusiv   én ad gangen. Enhver overlapning er en konflikt.
+ *   kapacitet   mange på én gang. Konflikt kun hvis SUMMEN over overlappet
+ *               overskrider kapaciteten.
+ *
+ * Lageret kunne have fået sin egen model ved siden af. Det ville have brudt
+ * beslutning 4: så kunne en facility-sag der spærrer lagerhallen og en
+ * forsendelse på samme hal ikke se hinanden — det er nøjagtig de tre
+ * kalendere om igen, bare med et nyt navn.
+ */
+export const RESSOURCE_ART = {
+  koeretoej: "eksklusiv",
+  chauffoer: "eksklusiv",
+  facilityAktiv: "eksklusiv",
+  lokation: "eksklusiv",
+  lager: "kapacitet",
+};
+
+export const erKapacitet = (ressourceType) => RESSOURCE_ART[ressourceType] === "kapacitet";
+
 /** Hvilke kilder må overskrive hvilke. Værksted vinder over booking:
- *  en bil på værksted kan ikke køre, uanset hvad disponenten har lovet. */
+ *  en bil på værksted kan ikke køre, uanset hvad disponenten har lovet.
+ *
+ *  Prioritet gælder KUN eksklusive ressourcer. Man smider ikke en palle ud
+ *  af lageret, fordi en værkstedsopgave har prioritet 40 — derfor står
+ *  'lager' ikke på listen, og kapacitetsgrenen i tjekLedig() rører den ikke. */
 const PRIORITET = { vaerksted: 40, fravaer: 30, facilitySag: 20, booking: 10, manuel: 5 };
 
 export const overlapper = (a, b) => a.fra < b.til && b.fra < a.til;
+
+/**
+ * Største samtidige belastning i et vindue. Sweep-line: +mængde ved fra,
+ * −mængde ved til. Det er toppen der afgør om der er plads — ikke summen
+ * over hele perioden, og ikke antallet af reservationer.
+ *
+ * felt er "m3" eller "kg". De tjekkes hver for sig: en palle kan være let
+ * og fylde meget, eller tung og fylde lidt.
+ */
+export function maksBelastning(reservationer, { fra, til }, felt) {
+  const haendelser = [];
+  for (const r of reservationer) {
+    if (r.annulleret) continue;
+    const m = r.maengde?.[felt] || 0;
+    if (!m) continue;
+    if (!overlapper(r, { fra, til })) continue;
+    haendelser.push({ ms: Math.max(r.fra, fra), delta: m });
+    haendelser.push({ ms: Math.min(r.til, til), delta: -m });
+  }
+  /* Frigivelse før optagelse ved samme millisekund: intervaller er halvåbne,
+     så en der slutter kl. 12 og en der starter kl. 12 er ikke samtidige. */
+  haendelser.sort((a, b) => a.ms - b.ms || a.delta - b.delta);
+
+  let nu = 0, top = 0;
+  for (const h of haendelser) {
+    nu += h.delta;
+    if (nu > top) top = nu;
+  }
+  return top;
+}
 
 /** Fritekst til brugeren om hvorfor en reservation kollidere. */
 export function konfliktTekst(ny, eksisterende) {
@@ -69,16 +127,49 @@ export async function hentReservationer(db, path, ressourceType, ressourceId, { 
 
 /**
  * Tjekker om en reservation kan oprettes.
- * → { ok, konflikter, kanOverskrive }
+ *
+ * Eksklusiv ressource  → { ok, konflikter, kanOverskrive }
+ * Kapacitetsressource  → { ok, konflikter, restkapacitet }
+ *
+ * kapacitet: { m3, kg } skal med for et lager. Uden den kan vi ikke svare på
+ * spørgsmålet, og så skal vi sige det frem for at gætte på "der er nok plads".
  */
 export async function tjekLedig(db, path, ny, opts = {}) {
   const eksisterende = await hentReservationer(db, path, ny.ressourceType, ny.ressourceId, {
     fra: ny.fra, til: ny.til, ...opts,
   });
-  const konflikter = eksisterende
-    .filter((r) => r.id !== ny.id)
-    .map((r) => ({ ...r, tekst: konfliktTekst(ny, r) }));
+  const andre = eksisterende.filter((r) => r.id !== ny.id);
 
+  if (erKapacitet(ny.ressourceType)) {
+    const kapacitet = opts.kapacitet;
+    if (!kapacitet) {
+      throw new Error(
+        `tjekLedig: ${ny.ressourceType} er en kapacitetsressource og kræver opts.kapacitet ({ m3, kg }).`
+      );
+    }
+    const restkapacitet = {};
+    const konflikter = [];
+    for (const felt of ["m3", "kg"]) {
+      if (kapacitet[felt] == null) continue;
+      const top = maksBelastning(andre, { fra: ny.fra, til: ny.til }, felt);
+      const oenskes = ny.maengde?.[felt] || 0;
+      restkapacitet[felt] = kapacitet[felt] - top;
+      if (top + oenskes > kapacitet[felt]) {
+        konflikter.push({
+          felt,
+          iBrug: top,
+          oenskes,
+          kapacitet: kapacitet[felt],
+          tekst: `Lageret har ${restkapacitet[felt]} ${felt} ledigt i perioden, der er brug for ${oenskes}.`,
+        });
+      }
+    }
+    /* Ingen kanOverskrive: kapacitet overskrives ikke. Der er plads, eller
+       også er der ikke. */
+    return { ok: konflikter.length === 0, konflikter, restkapacitet };
+  }
+
+  const konflikter = andre.map((r) => ({ ...r, tekst: konfliktTekst(ny, r) }));
   const nyPri = PRIORITET[ny.kilde.type] ?? 0;
   const kanOverskrive = konflikter.every((r) => (PRIORITET[r.kilde.type] ?? 0) < nyPri);
 
@@ -93,10 +184,26 @@ export async function tjekLedig(db, path, ny, opts = {}) {
  * samme sekund, og klientsidetjek kan ikke forhindre det. Denne funktion
  * er til UI-feedback, ikke til at garantere unikhed.
  */
-export async function reserver(db, path, ny, { tving = false } = {}) {
-  const tjek = await tjekLedig(db, path, ny);
-  if (!tjek.ok && !(tving && tjek.kanOverskrive)) {
-    const fejl = new Error("Ressourcen er ikke ledig i perioden.");
+export async function reserver(db, path, ny, { tving = false, kapacitet } = {}) {
+  /* Et lagerophold uden slutdato må ALDRIG gemmes som til: null. Man kan
+     ikke summere kapacitet over uendelighed, og en åben ende betyder i
+     praksis at hallen er fuld for altid. Er afgangen ukendt, sættes til til
+     etapens frist (senestMs) — se lagerUd() i pricing.js, der bruger samme
+     rangorden til prisen. */
+  if (!Number.isFinite(ny.til)) {
+    throw new Error(
+      "reserver: til skal være et konkret tidspunkt. Er afgangen ukendt, brug etapens senestMs som estimat."
+    );
+  }
+
+  const tjek = await tjekLedig(db, path, ny, { kapacitet });
+  const maaOverskrive = tving && !erKapacitet(ny.ressourceType) && tjek.kanOverskrive;
+  if (!tjek.ok && !maaOverskrive) {
+    const fejl = new Error(
+      erKapacitet(ny.ressourceType)
+        ? "Der er ikke kapacitet nok i perioden."
+        : "Ressourcen er ikke ledig i perioden."
+    );
     fejl.konflikter = tjek.konflikter;
     throw fejl;
   }
@@ -106,6 +213,7 @@ export async function reserver(db, path, ny, { tving = false } = {}) {
     fra: ny.fra,
     til: ny.til,
     kilde: ny.kilde,                 // { type, id, reference }
+    maengde: ny.maengde || null,     // { m3, kg } — kun kapacitetsressourcer
     note: ny.note || null,
     oprettetMs: Date.now(),
     oprettetAf: ny.oprettetAf || null,
@@ -115,7 +223,7 @@ export async function reserver(db, path, ny, { tving = false } = {}) {
 
   /* Overskrevne reservationer annulleres med spor — de slettes ikke, så
      man kan forklare hvorfor en tur blev flyttet. */
-  if (tving) {
+  if (maaOverskrive) {
     for (const k of tjek.konflikter) {
       await db.ref(path(`reservationer/${ny.ressourceType}/${ny.ressourceId}/${k.id}`)).update({
         annulleret: true,

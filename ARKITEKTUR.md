@@ -13,6 +13,7 @@ Firebase Realtime Database, projekt `fleetcontrol-98e11`, europe-west1.
 | Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV. |
 | Sletning | Regnskabsdata: kun `slettet: true` med `slettetMs`, `slettetAf`, `slettetAarsag`. |
 | Tenant | `tenantId` er immutabelt. Kommer fra `auth.token.tenant`, aldrig fra klienten. |
+| Division | Felt, aldrig sti. `gods` \| `bus` \| `faelles`. Transaktioner hører til én afdeling, stamdata kan være fælles. Reservationer og fravær har **ingen** division — de arver fra ressourcen. Håndhævet med `.validate`. |
 
 ## Noder
 
@@ -24,11 +25,17 @@ tenants/<tenantId>/
     agenter/<id>/satser[]
     biler/<id>/kmPrisSatser[]
   reservationer/<type>/<id>/<resId>
-                                { fra, til, kilde:{type,id,reference}, annulleret }
-                                type: koeretoej | chauffoer | facilityAktiv | lokation
-                                kilde: booking | vaerksted | facilitySag | fravaer | manuel
-  bookinger/<id>                { nummer, tilstand, forslag[], valgtForslagId,
+                                { fra, til, kilde:{type,id,reference}, maengde, annulleret }
+                                type: koeretoej | chauffoer | facilityAktiv | lokation | lager
+                                kilde: booking | vaerksted | facilitySag | fravaer | lager | manuel
+                                maengde: { m3, kg } — KUN kapacitetsressourcer
+  lagre/<lagerId>               { navn, kapacitet:{m3,kg}, satser[], haandteringSatser[] }
+  bookinger/<id>                { nummer, kundeId, tilstand, harAabneEtaper,
                                   prisSnapshot, prisLinjer[], historik/<ms> }
+                                tilstand og harAabneEtaper er AFLEDT af etaperne
+  etaper/<etapeId>              { bookingId, nr, tilstand, division, senestMs,
+                                  fraSted, tilSted, koeretoejId, chauffoerId,
+                                  forslag[], valgtForslagId, maengde, historik/<ms> }
   opgaver/<id>                  { art: vaerksted|langtur, ... }
   koeretoejer/<id>
   indberetninger/<id>           { type, km, ... }  km = TOTAL målerstand
@@ -57,19 +64,95 @@ manuel        5
 Overskrives en reservation, sættes den til `annulleret: true` med årsag — den
 slettes ikke. Ellers kan man ikke forklare hvorfor en tur blev flyttet.
 
+**Prioritet gælder kun eksklusive ressourcer.** `lager` står ikke på listen:
+man smider ikke en palle ud, fordi en værkstedsopgave har prioritet 40. Der er
+plads, eller også er der ikke.
+
+## Ressourcearter
+
+| Art | Ressourcer | Konflikt |
+|---|---|---|
+| `eksklusiv` | koeretoej, chauffoer, facilityAktiv, lokation | Enhver overlapning |
+| `kapacitet` | lager | Kun hvis **summen** over overlappet overskrider kapaciteten |
+
+Kapacitet måles på `m3` og `kg` hver for sig — en palle kan være let og fylde
+meget, eller tung og fylde lidt. `maksBelastning()` finder toppen med en
+sweep-line; det er den samtidige spids der afgør om der er plads, ikke summen
+over hele perioden.
+
+**Et lagerophold uden slutdato må aldrig gemmes som `til: null`.** Man kan ikke
+summere kapacitet over uendelighed, og en åben ende betyder i praksis at hallen
+er fuld for altid. Er afgangen ukendt, sættes `til` til etapens `senestMs` —
+samme rangorden som prisen bruger i `lagerUd()`.
+
 ## Bookingtilstande
+
+Tilstanden ligger på **etapen**, ikke på bookingen. En booking er et forløb med
+N etaper, og etape 1 kan være reserveret mens etape 2 stadig er åben.
 
 ```
 kladde ──► afventerPlan ──► afventerKoord ──► reserveret ──► udfoert
-             ▲                   │  │              │
-             │                   │  └► returneret ─┘
-             └── afvist ◄────────┘         │
-                                           └──► afventerKoord
+             ▲  │               │  │              │
+             │  ▼               │  └► returneret ─┘
+             │ aaben ───────────┤         │
+             │  │               │         └──► afventerKoord
+             └──┴── afvist ◄────┘
 ```
 
 Roller: `casehandler` opretter, `disponent` foreslår, `koordinator` godkender.
 Disponenten står ikke på listen over roller der må godkende — se
 `booking-state.js`.
+
+**`aaben` er en tilstand, ikke fravær af planlægning.** Den skal kunne
+forespørges (`orderByChild("tilstand").equalTo("aaben")` — fravær kan ikke
+indekseres), den skal kunne skelnes fra `kladde`, og den bærer `senestMs`.
+Uden en frist på tilstanden fyldes lageret med gods ingen henter.
+
+Der er ingen `forfalden`-tilstand. Overskredet frist udledes af `senestMs` med
+`serviceTone()` og kan intervalforespørges.
+
+### Forløbstilstand
+
+Bookingens `tilstand` er **afledt** af etaperne med `forloebstilstand()`. Den
+lagres denormaliseret, men skrives af præcis én ting: den Cloud Function der
+skifter en etapetilstand, i samme transaktion. Samme mønster som `kpi/`, og
+`bookinger` er allerede `.write: false`. Klienten kan altid genberegne.
+
+Ny værdi: **`delvist`** — noget er i hus, noget er ikke. Et forløb er først
+`udfoert` når hver eneste etape er det.
+
+## Fakturering af forløb
+
+Dækningsbidraget på et forløb er ikke endeligt, før sidste etape er kørt —
+lagerdagene løber stadig. Derfor tre spande, ikke to. Et forløb med åbne
+etaper må hverken tælle med som færdigt eller være usynligt.
+
+| Felt | Dækker |
+|---|---|
+| `opgaver.klarTilFakturering` | **Alle** etaper udført. Kun disse kan faktureres |
+| `opgaver.forloebMedAabneEtaper` | Antal forløb i gang |
+| `oekonomi.igangvaerendeForloebOere` | Påløbet omkostning på igangværende forløb |
+| `kunder.foreloebigtDaekningsbidragOere` | DB på igangværende forløb — ikke endeligt |
+
+### ⚠ `ikkeFaktureretOere` skifter betydning
+
+Feltet findes allerede og læses i dag af **Dashboard, Booking og Økonomi**.
+Dette er en ændring i noget der er i brug, ikke en tilføjelse.
+
+| | |
+|---|---|
+| **Før** | Alt arbejde der ikke var faktureret |
+| **Nu** | Kun **færdige** forløb der ikke er faktureret |
+
+Igangværende forløb ligger i `oekonomi.igangvaerendeForloebOere`. Blandes de
+to, kan et halvfærdigt forløb blive læst som fakturerbart, og lagerdage der
+stadig løber bliver talt som en endelig omkostning.
+
+Aggregeringen skal opdateres samtidig med de forbrugende skærme — ellers
+falder totalen på Dashboard uden at nogen har ændret noget synligt.
+
+Samme disciplin som beslutning 14: to tal med hver sin betydning skal have
+hver sit navn. `daekningsbidragOere` tæller kun færdige forløb.
 
 ## Egress
 
@@ -82,6 +165,26 @@ RTDB koster på data ud, ikke på forespørgsler.
   men stadig løber, og filtrér resten klientside.
 - Historiske data tidspartitioneres (`/<år>/<måned>/`), så et opslag ikke
   trækker hele historikken.
+- **Etaper ligger som egen node, ikke under bookingen.** RTDB forespørger kun
+  på børnene af én node, så "alle åbne etaper på tværs af bookinger" ville
+  kræve at hente samtlige bookinger ned. Se beslutning 16.
+
+## Matchning af åbne etaper
+
+Grænseflade — implementeringen er en Cloud Function, ikke en skærm.
+
+```
+matchAabneEtaper(tur, { radiusKm }) → [{ etapeId, score, afstandKm, restkapacitet, slaek }]
+```
+
+Kører `onWrite` af en tur, altså når en tur oprettes **eller ændres**. Finder
+åbne etaper med `orderByChild("tilstand").equalTo("aaben")` og vurderer dem på
+destination + radius, kapacitet, transporttype og deadline. `slaek` er dage til
+`senestMs`.
+
+**Den skriver aldrig en reservation.** Et match bliver et `forslag` på etapen,
+og koordinatoren godkender stadig. Ellers omgår automatikken rolletjekket, og
+beslutning 5 er væk ad bagvejen.
 
 ## Verificér før demo
 

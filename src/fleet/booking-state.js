@@ -7,6 +7,12 @@
  *
  * Reglerne hører her — ikke i knapperne. Ellers kan en disponent godkende
  * sit eget forslag, og hele pointen med koordinatorleddet forsvinder.
+ *
+ * BESLUTNING 16 — et forløb med flere etaper.
+ * Tilstanden ligger på ETAPEN, ikke på bookingen: etape 1 kan være reserveret
+ * mens etape 2 stadig er åben og venter på en passende tur. Bookingens egen
+ * tilstand er AFLEDT af etaperne med forloebstilstand() nedenfor, og et forløb
+ * er først udført når hver eneste etape er det.
  */
 
 export const ROLLE = {
@@ -19,9 +25,11 @@ export const ROLLE = {
 export const TILSTAND = {
   kladde:            { label: "Kladde",                 pill: "info"  },
   afventerPlan:      { label: "Afventer planlægning",   pill: "warn"  },
+  aaben:             { label: "Åben – afventer tur",    pill: "info"  },
   afventerKoord:     { label: "Afventer koordinator",   pill: "warn"  },
   reserveret:        { label: "Reserveret / Booket",    pill: "ok"    },
   returneret:        { label: "Returneret til disponent", pill: "warn" },
+  delvist:           { label: "Delvist gennemført",     pill: "warn"  },
   afvist:            { label: "Afvist",                 pill: "bad"   },
   annulleret:        { label: "Annulleret",             pill: "bad"   },
   udfoert:           { label: "Udført",                 pill: "ok"    },
@@ -59,23 +67,92 @@ const OVERGANGE = {
   annulleret: [],
 };
 
+/* Etapens overgange. Samme flow som en enkeltbooking, plus ÉN ting: aaben.
+   aaben er en TILSTAND, ikke fravær af planlægning. Tre grunde:
+     1. Matchningen skal kunne forespørge på den —
+        orderByChild("tilstand").equalTo("aaben"). Fravær kan ikke indekseres.
+     2. Den skal kunne skelnes fra kladde. "Venter bevidst på en passende tur"
+        og "ingen har kigget på den endnu" er to forskellige situationer.
+     3. Den bærer senestMs. Uden en frist på selve tilstanden fyldes lageret
+        op med gods ingen henter, uden at nogen kan se det.
+
+   Der er ingen 'forfalden'-tilstand. Overskredet frist udledes af senestMs
+   med serviceTone() — samme tre trin som Flåde og Facility bruger — og kan
+   intervalforespørges. Vi gemmer ikke det vi kan regne ud. */
+const ETAPE_OVERGANGE = {
+  kladde: [
+    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Send til planlægning" },
+    { til: "annulleret",   roller: [ROLLE.casehandler, ROLLE.admin], handling: "Annullér" },
+  ],
+  afventerPlan: [
+    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send forslag", kraeverForslag: true },
+    { til: "aaben",         roller: [ROLLE.disponent, ROLLE.admin], handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+  ],
+  aaben: [
+    /* Et match fra matchAabneEtaper() bliver et FORSLAG her — det bliver
+       aldrig en reservation af sig selv. Koordinatoren godkender stadig,
+       ellers er beslutning 5 væk ad bagvejen. */
+    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Foreslå matchet tur", kraeverForslag: true },
+    { til: "afventerPlan",  roller: [ROLLE.disponent, ROLLE.admin], handling: "Tag af venteliste" },
+    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+    { til: "annulleret",    roller: [ROLLE.koordinator, ROLLE.admin], handling: "Annullér etape", kraeverBegrundelse: true },
+  ],
+  afventerKoord: [
+    { til: "reserveret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Godkend valgt forslag", kraeverValgtForslag: true },
+    { til: "returneret",  roller: [ROLLE.koordinator, ROLLE.admin], handling: "Returnér til disponent", kraeverBegrundelse: true },
+    { til: "aaben",       roller: [ROLLE.koordinator, ROLLE.admin], handling: "Tilbage på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",      roller: [ROLLE.koordinator, ROLLE.admin], handling: "Afvis alle", kraeverBegrundelse: true },
+  ],
+  returneret: [
+    { til: "afventerKoord", roller: [ROLLE.disponent, ROLLE.admin], handling: "Send nye forslag", kraeverForslag: true },
+    { til: "aaben",         roller: [ROLLE.disponent, ROLLE.admin], handling: "Sæt på venteliste", kraeverFrist: true, kraeverBegrundelse: true },
+    { til: "afvist",        roller: [ROLLE.disponent, ROLLE.admin], handling: "Kan ikke løses", kraeverBegrundelse: true },
+  ],
+  reserveret: [
+    { til: "udfoert",    roller: [ROLLE.disponent, ROLLE.koordinator, ROLLE.admin], handling: "Markér udført" },
+    { til: "annulleret", roller: [ROLLE.koordinator, ROLLE.admin], handling: "Annullér etape", kraeverBegrundelse: true },
+  ],
+  afvist: [
+    { til: "afventerPlan", roller: [ROLLE.casehandler, ROLLE.admin], handling: "Genåbn etape" },
+  ],
+  udfoert: [],
+  annulleret: [],
+};
+
 /** Hvad må denne rolle gøre lige nu. Driver knapperne i UI'et. */
 export function tilgaengeligeHandlinger(tilstand, rolle) {
   return (OVERGANGE[tilstand] || []).filter((o) => o.roller.includes(rolle));
+}
+
+export function tilgaengeligeEtapeHandlinger(tilstand, rolle) {
+  return (ETAPE_OVERGANGE[tilstand] || []).filter((o) => o.roller.includes(rolle));
+}
+
+/* Én kontrol, to tabeller. Ellers driver reglerne fra hinanden, og så kan en
+   disponent godkende sit eget forslag på en etape men ikke på en booking. */
+function pruvOvergang(overgange, post, tilTilstand, rolle, { begrundelse } = {}) {
+  const o = (overgange[post.tilstand] || []).find((x) => x.til === tilTilstand);
+  if (!o) return { ok: false, aarsag: `Kan ikke gå fra ${TILSTAND[post.tilstand]?.label} til ${TILSTAND[tilTilstand]?.label}.` };
+  if (!o.roller.includes(rolle)) return { ok: false, aarsag: `Din rolle må ikke udføre "${o.handling}".` };
+  if (o.kraeverForslag && !(post.forslag?.length > 0)) return { ok: false, aarsag: "Der skal være mindst ét forslag." };
+  if (o.kraeverValgtForslag && !post.valgtForslagId) return { ok: false, aarsag: "Vælg et forslag før godkendelse." };
+  if (o.kraeverBegrundelse && !begrundelse?.trim()) return { ok: false, aarsag: "Angiv en begrundelse." };
+  if (o.kraeverFrist && !post.senestMs) return { ok: false, aarsag: "En åben etape skal have en frist — ellers kan lageret fyldes op uden at nogen ser det." };
+  return { ok: true };
 }
 
 /**
  * kanSkifte(booking, tilTilstand, rolle, { begrundelse })
  * → { ok, aarsag }
  */
-export function kanSkifte(booking, tilTilstand, rolle, { begrundelse } = {}) {
-  const o = (OVERGANGE[booking.tilstand] || []).find((x) => x.til === tilTilstand);
-  if (!o) return { ok: false, aarsag: `Kan ikke gå fra ${TILSTAND[booking.tilstand]?.label} til ${TILSTAND[tilTilstand]?.label}.` };
-  if (!o.roller.includes(rolle)) return { ok: false, aarsag: `Din rolle må ikke udføre "${o.handling}".` };
-  if (o.kraeverForslag && !(booking.forslag?.length > 0)) return { ok: false, aarsag: "Der skal være mindst ét forslag." };
-  if (o.kraeverValgtForslag && !booking.valgtForslagId) return { ok: false, aarsag: "Vælg et forslag før godkendelse." };
-  if (o.kraeverBegrundelse && !begrundelse?.trim()) return { ok: false, aarsag: "Angiv en begrundelse." };
-  return { ok: true };
+export function kanSkifte(booking, tilTilstand, rolle, opts = {}) {
+  return pruvOvergang(OVERGANGE, booking, tilTilstand, rolle, opts);
+}
+
+/** Samme kontrol på en etape. Bemærk kraeverFrist på vej til aaben. */
+export function kanSkifteEtape(etape, tilTilstand, rolle, opts = {}) {
+  return pruvOvergang(ETAPE_OVERGANGE, etape, tilTilstand, rolle, opts);
 }
 
 /**
@@ -103,6 +180,92 @@ export function byggSkifte(booking, tilTilstand, { rolle, bruger, begrundelse, v
       ms: nu,
     },
   };
+}
+
+/**
+ * Samme for en etape. senestMs skrives med, når etapen sættes åben — det er
+ * den frist matchningen og lagerprisen begge regner på.
+ *
+ * Skrivningen hører i en Cloud Function: etapens koeretoejId og dens
+ * reservation skal oprettes i ÉN transaktion. I prototypen stod der
+ * DE-QR 777 med afgang 28/6 i reservationstabellen og DE-KL 404 den 24/6 i
+ * timelinen og i svaret til koordinatoren — fordi svaret og reservationen
+ * var to poster. Der må ikke være to steder at være uenige.
+ */
+export function byggEtapeSkifte(etape, tilTilstand, { rolle, bruger, begrundelse, valgtForslagId, senestMs }) {
+  const nu = Date.now();
+  return {
+    tilstand: tilTilstand,
+    valgtForslagId: valgtForslagId ?? etape.valgtForslagId ?? null,
+    senestMs: tilTilstand === "aaben" ? (senestMs ?? etape.senestMs ?? null) : (etape.senestMs ?? null),
+    sidstAendretMs: nu,
+    sidstAendretAf: bruger,
+    [`historik/${nu}`]: {
+      fra: etape.tilstand,
+      til: tilTilstand,
+      rolle,
+      af: bruger,
+      begrundelse: begrundelse || null,
+      ms: nu,
+    },
+  };
+}
+
+/* ---- Forløbstilstand ---------------------------------------------- */
+
+/* Hvor langt en etape er nået. Bruges KUN når intet er reserveret eller
+   udført endnu — så snart der er spredning, er forløbet 'delvist'.
+   afvist og annulleret står ikke her; de behandles for sig. */
+const RANG = { kladde: 0, afventerPlan: 1, aaben: 2, returneret: 2, afventerKoord: 3 };
+
+const FAERDIG = new Set(["reserveret", "udfoert"]);
+
+/**
+ * forloebstilstand(etaper) → { tilstand, harAabneEtaper, antal }
+ *
+ * Bookingens tilstand er AFLEDT af etaperne. Den lagres på bookingen som
+ * denormaliseret felt, men skrives af PRÆCIS én ting: den Cloud Function der
+ * skifter en etapetilstand, i samme transaktion. Samme mønster som kpi/ —
+ * bookinger er allerede .write: false. Klienten kan altid genberegne og
+ * kontrollere, så et felt der er drevet fra hinanden kan opdages.
+ *
+ * Reglen du skal huske: et forløb er først UDFØRT når hver eneste etape er
+ * det. Er én etape stadig åben, er forløbet 'delvist' — ikke færdigt, og
+ * ikke usynligt.
+ */
+export function forloebstilstand(etaper = []) {
+  const alle = etaper.filter(Boolean);
+  const aktive = alle.filter((e) => e.tilstand !== "annulleret");
+
+  const antal = {
+    ialt: alle.length,
+    aabne: alle.filter((e) => e.tilstand === "aaben").length,
+    udfoerte: alle.filter((e) => e.tilstand === "udfoert").length,
+    annullerede: alle.length - aktive.length,
+  };
+  const svar = (tilstand) => ({ tilstand, harAabneEtaper: antal.aabne > 0, antal });
+
+  if (!alle.length) return svar("kladde");
+  if (!aktive.length) return svar("annulleret");
+
+  /* Er alle etaper det samme, er forløbet det. Det dækker udfoert (alle
+     kørt), reserveret (alle booket, ingen kørt) og afvist. */
+  const unikke = new Set(aktive.map((e) => e.tilstand));
+  if (unikke.size === 1) return svar(aktive[0].tilstand);
+
+  /* Spredning, hvor noget er booket eller kørt: det er 'delvist'. Bemærk at
+     udfoert+reserveret også hører her — etape 1 er kørt, etape 2 er kun
+     booket, og forløbet er hverken færdigt eller bare reserveret. Uden det
+     eget navn bliver et halvfærdigt forløb læst som færdigt. */
+  if (aktive.some((e) => FAERDIG.has(e.tilstand))) return svar("delvist");
+
+  /* Intet er booket endnu: forløbet står hvor den mindst fremskredne etape
+     står. En afvist etape blandt åbne trækker ikke forløbet ned — den kan
+     genåbnes, og de åbne venter stadig. */
+  const laveste = aktive
+    .filter((e) => e.tilstand in RANG)
+    .sort((a, b) => RANG[a.tilstand] - RANG[b.tilstand])[0];
+  return svar(laveste ? laveste.tilstand : "afventerPlan");
 }
 
 /** Nummerserie. Bookingnumre skal komme fra en counter i en transaction,
