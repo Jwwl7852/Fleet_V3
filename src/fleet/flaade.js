@@ -178,7 +178,47 @@ export const KOMPETENCE = {
   adr: "adr",                   // farligt gods
   tachografkort: "tachografkort",
   truckcertifikat: "truckcertifikat",
+
+  /* HERFRA OG NED: typer der REGISTRERES, men som ingen enhed kan kræve.
+     De står med vilje i samme katalog — to vokabularer for samme begreb er
+     beslutning 11 og 14 om igen — men de optræder IKKE i ART_KRAV nedenfor,
+     og kraevedeKompetencer() udsender dem derfor aldrig.
+
+     Konsekvensen skal være tydelig, for den er nem at læse forkert: en
+     medarbejder hvis førstehjælpsbevis er udløbet, BLOKERES IKKE i
+     disponeringen. Det er ikke en forglemmelse. Kravet skal kunne udledes af
+     enhederne plus godset — og der findes ingen lastbil der gør førstehjælp
+     til en betingelse for at køre. Skal et af dem begynde at blokere, hører
+     det i ART_KRAV eller i kraevedeKompetencer()'s gods-gren, ikke i en
+     skærm. */
+  eubevis: "eubevis",           // chaufføruddannelse, EU-kvalifikationsbevis
+  kran: "kran",                 // kran og hejs
+  foerstehjaelp: "foerstehjaelp",
 };
+
+/** Labels ét sted, som FUNKTION_LABEL i personale.js. En skærm skriver ikke
+ *  "ADR — farligt gods" i hånden; så står der noget andet på den næste. */
+export const KOMPETENCE_LABEL = {
+  c: "C – stort kørekort",
+  ce: "C/E – stort kørekort med påhæng",
+  d1: "D1 – minibus",
+  d: "D – bus",
+  adr: "ADR — farligt gods",
+  tachografkort: "Tachografkort",
+  truckcertifikat: "Truckcertifikat",
+  eubevis: "Chaufføruddannelse (EU-bevis)",
+  kran: "Kran og hejs",
+  foerstehjaelp: "Førstehjælp",
+};
+
+/** Kompetencer en enhed kan kræve — altså dem der kan BLOKERE en etape.
+ *  Resten af kataloget registreres kun. */
+export const BLOKERENDE_KOMPETENCER = [
+  KOMPETENCE.c, KOMPETENCE.ce, KOMPETENCE.d1, KOMPETENCE.d,
+  KOMPETENCE.adr, KOMPETENCE.tachografkort, KOMPETENCE.truckcertifikat,
+];
+
+export const kanBlokere = (type) => BLOKERENDE_KOMPETENCER.includes(type);
 
 const ART_KRAV = {
   traekker: [KOMPETENCE.c, KOMPETENCE.tachografkort],

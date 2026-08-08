@@ -25,13 +25,22 @@
  * fjernes fra aggregeringen, når Cloud Functions skrives, og så beregnes
  * begge steder.
  *
- * DATA: der findes ingen personale-node i ARKITEKTUR — hverken chauffører,
- * funktioner eller vagter. Ugeplanen er derfor et lokalt demo-sæt, som TILBUD
- * på Kunder. Den beslutning hører sammen med at skærmen skal SKRIVE noget.
+ * DATA: ugeplanen er stadig et lokalt demo-sæt, som TILBUD på Kunder — der
+ * findes ingen vagtnode i ARKITEKTUR. Den beslutning hører sammen med at
+ * skærmen skal SKRIVE noget.
+ *
+ * KOMPETENCERNE ER FLYTTET UD. De stod her som elleve hardkodede navne, og de
+ * var det eneste sted personalet fandtes — Medarbejdere ville have fået sit
+ * eget sæt, og så havde vi haft to stabe der ikke kendte hinanden. De ligger
+ * nu i fleet/demo-personale.js sammen med personerne selv, og både denne skærm
+ * og Medarbejdere læser derfra. Datoerne er uændrede: fem af gods' og tre af
+ * bus' udløber inden for 30 dage, som k.bemanding.kompetencerUdloeber siger.
+ * Filen kontrollerer selv det tal mod DEMO_KPI i dev.
  */
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
+import { demoKompetencerMedNavn } from "../fleet/demo-personale.js";
 import { num, pct, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, MiniLinje, Gitter,
@@ -85,28 +94,6 @@ const FUNKTIONER = [
     bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
 ];
 
-const D = 86400000;
-/* serviceTone() giver de samme tre trin som Flåde og Facility bruger:
-   overskredet / ≤14 dage / ≤30 dage. Fem af gods' syv udløber inden for 30
-   dage, som k.bemanding.kompetencerUdloeber siger. Bus: tre af fire. */
-const KOMPETENCER = {
-  gods: [
-    { id: "g1", person: "Lars Aage", kompetence: "Chaufføruddannelse (EU-bevis)", udloeberMs: +NU - 2 * D },
-    { id: "g2", person: "Rene Thomsen", kompetence: "ADR — farligt gods", udloeberMs: +NU + 9 * D },
-    { id: "g3", person: "Benjamin Holm", kompetence: "Truckcertifikat B", udloeberMs: +NU + 16 * D },
-    { id: "g4", person: "Mette Sørensen", kompetence: "Kran og hejs", udloeberMs: +NU + 23 * D },
-    { id: "g5", person: "Peter Iversen", kompetence: "Førstehjælp", udloeberMs: +NU + 29 * D },
-    { id: "g6", person: "Anne Krogh", kompetence: "Chaufføruddannelse (EU-bevis)", udloeberMs: +NU + 112 * D },
-    { id: "g7", person: "Jesper Riis", kompetence: "ADR — farligt gods", udloeberMs: +NU + 240 * D },
-  ],
-  bus: [
-    { id: "b1", person: "Kim Dalsgaard", kompetence: "Buschaufføruddannelse", udloeberMs: +NU + 5 * D },
-    { id: "b2", person: "Tina Bruun", kompetence: "Førstehjælp", udloeberMs: +NU + 18 * D },
-    { id: "b3", person: "Ove Nilsson", kompetence: "D-kørekort, fornyelse", udloeberMs: +NU + 27 * D },
-    { id: "b4", person: "Sara Lind", kompetence: "Buschaufføruddannelse", udloeberMs: +NU + 190 * D },
-  ],
-};
-
 /* Ingen vagt planlagt er ikke det samme som en tom vagt. */
 const celleTone = (c) =>
   c.mangler <= 0 ? "ok" : c.mangler === 1 ? "warn" : "bad";
@@ -149,7 +136,11 @@ export default function Bemanding() {
     .flatMap((f) => f.uge.filter((c) => c.mangler > 0).map((c) => ({ ...c, id: `${f.id}-${c.ms}`, funktion: f.navn })))
     .sort((a, b) => a.ms - b.ms || b.mangler - a.mangler);
 
-  const kompetencer = (KOMPETENCER[division] || KOMPETENCER.gods)
+  /* Personerne og deres beviser kommer fra demo-personale.js — samme kilde som
+     Medarbejdere læser. En person med C/E og D er `faelles` og står derfor på
+     begge divisioners liste; det er useListe()'s visningsregel, ikke en
+     dublet. serviceTone() giver de samme tre trin som Flåde og Facility. */
+  const kompetencer = demoKompetencerMedNavn(division)
     .map((r) => ({ ...r, tone: serviceTone(r.udloeberMs) }))
     .sort((a, b) => a.udloeberMs - b.udloeberMs);
   const udloebende = kompetencer.filter((r) => r.tone.dage <= 30);
@@ -292,7 +283,10 @@ export default function Bemanding() {
       </Gitter>
 
       <p className="fc-hint">
-        Bemandingsplanen er demo-data: der findes endnu ingen personale-node i datamodellen.
+        Bemandingsplanen er demo-data: der findes ingen vagtnode i datamodellen endnu.
+        Personerne og deres kompetencer er derimod rigtige poster i <b>personale/</b> og{" "}
+        <b>kompetencer/</b> — de vedligeholdes på{" "}
+        <Link className="fc-a" to="/bemanding/medarbejdere">Medarbejdere</Link>.
         Nøgletallene ovenfor kommer fra KPI-noden og matcher Dashboard.
       </p>
     </div>

@@ -209,21 +209,29 @@ src/
 
 ## Status
 
-**Bygget (5):** Dashboard (referencemodul — start her når du skriver et nyt),
+**Bygget (6):** Dashboard (referencemodul — start her når du skriver et nyt),
 Bookingopsætning (prismotoren i brug), Kunder & Priser (første forbruger af
-`useListe`), Økonomi & Rapporter (`Soejlegraf`), Bemanding.
+`useListe`), Økonomi & Rapporter (`Soejlegraf`), Bemanding, Medarbejdere.
 
 **Skelet med mockup (11):** Booking-oversigt, Ny forespørgsel, Forslag,
 Disponering, Flåde, Værkstedskalender, Facility ×3, Indkøb ×2.
 
-**Skelet uden mockup (11):** **Medarbejdere**, Live-kort, Kompetencer,
-Ferie & fravær, Indberetninger, Leverandører, Fakturering, Opsætning ×4.
+**Skelet uden mockup (10):** Live-kort, Kompetencer, Ferie & fravær,
+Indberetninger, Leverandører, Fakturering, Opsætning ×4.
 
 `Medarbejdere` manglede i hele designsættet — og det var grunden til at
 hverken Bemanding eller Kompetencer havde noget sted at hente navne fra.
 Skærmen er stedet hvor en person oprettes; **Opsætning → Brugere & roller**
 er stedet hvor et login oprettes. En chauffør har måske aldrig et login.
 Datamodellen kom med beslutning 18.
+
+Den blev bygget uden mockup, og demo-personalet ligger derfor ét sted:
+`fleet/demo-personale.js`. Bemanding importerer derfra i stedet for at have
+sine egne elleve navne, som var det eneste sted staben fandtes. Filen
+kontrollerer i dev sig selv mod `DEMO_KPI` — flytter man en udløbsdato, siger
+den til, før Bemanding kommer til at vise et nøgletal der modsiger tabellen
+under det. Rosteren er **et udsnit på 35 personer**, ikke hele staben, og
+skærmen skriver det frem for at lade tallet konkurrere med `kpi/`.
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
 fejl fra mockuppen der skal undgås.
@@ -250,8 +258,9 @@ skærme: `useKpi`, `useListe`, `pricing`, `reservations`, `booking-state`,
 `permissions`, `audit`, `personale` + `flaade`. 18 beslutninger i README.
 **115 tests**, obligatoriske før commit via `.githooks/pre-commit`.
 
-**Fem skærme bygget:** Dashboard, Bookingopsætning, Kunder & Priser,
-Økonomi & Rapporter, Bemanding. Elleve skeletter har mockup, elleve har ikke.
+**Seks skærme bygget:** Dashboard, Bookingopsætning, Kunder & Priser,
+Økonomi & Rapporter, Bemanding, Medarbejdere. Elleve skeletter har mockup, ti
+har ikke.
 
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket.** Se Status-afsnittet under
 Låst rækkefølge for hvad det dækker.
@@ -293,6 +302,12 @@ opsætning: bookingtilstandsskift, de tre tjek ovenfor, claim-udstedelse fra
 `roller/`, skrivning af auditposter, nummerserier, reservationskonflikter,
 KPI-aggregering og retention-sletning. Dertil `bemanding.ledig`, som er et
 afledt tal der er gemt og bør ud af aggregeringen.
+
+**`bemanding.medarbejdereAktive` mangler i `kpi/`.** Medarbejdere kan derfor
+ikke vise et antal som nøgletal — at tælle rækkerne i den hentede liste ville
+være beslutning 6 brudt, for listen er et udsnit og ikke en total. Skærmen
+skriver "af N hentede" indtil feltet findes. Det hører i KPI-aggregeringen
+sammen med `bemanding.ledig`.
 
 **Reglerne er deployet til DEV, ikke PROD.**
 

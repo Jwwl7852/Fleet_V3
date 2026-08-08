@@ -336,6 +336,19 @@ ADR-kravet kommer fra **lasten**, ikke fra bilen, og kan derfor ikke udledes
 af enhederne alene. Det er grunden til at `kraevedeKompetencer()` tager både
 `enheder` og `gods`.
 
+**Ikke alle kompetencer kan blokere.** `KOMPETENCE` i `flaade.js` rummer også
+typer der kun *registreres* — EU-chaufføruddannelse, kran og hejs,
+førstehjælp. De står i samme katalog, fordi to vokabularer for samme begreb er
+beslutning 11 og 14 om igen, men de optræder ikke i `ART_KRAV`, og
+`kraevedeKompetencer()` udsender dem aldrig. Konsekvensen skal læses som den
+er: **en udløbet førstehjælp blokerer ikke en disponering.** Det er ikke en
+forglemmelse — kravet skal kunne udledes af enhederne plus godset, og der
+findes ingen lastbil der gør førstehjælp til en betingelse for at køre. Skal
+et af dem begynde at blokere, hører det i `ART_KRAV` eller i
+`kraevedeKompetencer()`s gods-gren, ikke i en skærm. `BLOKERENDE_KOMPETENCER`
+og `kanBlokere()` gør skellet forespørgbart, så en skærm kan skrive det til
+brugeren frem for at lade ham gætte.
+
 Kapacitet måles på `m3` og `kg` hver for sig, i samme enheder som
 lagerreservationens `maengde` — så godset kan sammenlignes med både en hal og
 et vogntog uden omregning. En trækker bærer næsten intet; lasten ligger på
