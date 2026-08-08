@@ -73,9 +73,61 @@ i den nævnte fil.
 | 12 | **De to Flåde-værkstedsskærme er slået sammen.** | Næsten identiske: begge havde værkstedskalender, fakturaformular og historik. To steder at uploade samme faktura. | `moduler/flaade/Vaerkstedskalender.jsx` |
 | 13 | **Live-kort er beholdt.** | Findes deployet på `/tracking`, men mangler i alle 20 mockups. Du var ved at taste en funktion væk du allerede har bygget. | `moduler/booking/LiveKort.jsx` |
 | 14 | **`indkoebsprisafvigelse` og `salgsprisafvigelse` — aldrig bare "prisafvigelse".** Leverandørsiden har `betterWhen: "lower"`, salgssiden `"higher"`. | Samme fejl som nr. 11: to tal med hvert sit fortegn for "godt" hed det samme. Indkøb betaler for meget = dårligt; en kunde betaler for lidt = også dårligt — men det ene er plus og det andet minus. Blandes de, farves halvdelen forkert. | `fleet/useKpi.js` |
-| 15 | **Division er et felt, ikke en sti.** Tre værdier: `gods`, `bus`, `faelles`. Transaktioner hører til én afdeling; stamdata kan være fælles; reservationer og fravær har ingen division og arver fra ressourcen. | Sti ville give to kalendere for én chauffør med C+D — beslutning 4's fejl et niveau højere oppe. Dertil to `BKG-2026-00125`, to Kolding Kommune-poster der driver fra hinanden, og en dieselfaktura der ikke kan afstemmes mod leverandørens total. | `fleet/useListe.js` |
-| 17 | **`securityLevel` og klassificerede søskendenoder.** `normal` \| `internal` \| `confidential` \| `restricted` på general. Følsomme felter ligger i `sensitive/<objekt>/<id>`, værdiansættelser i `vaerdi/<objekt>/<id>` — som søskende, ikke som børn. | En `.read` kaskaderer og kan ikke indsnævres på et barn. Som barn ville `.read` skulle flyttes ned på `<id>/general`, og så kan man ikke længere forespørge på noden — der ville ingen bookingliste være. Søskende koster ét ekstra opslag på en detaljeskærm og nul på en liste. Se afsnittet nedenfor. | `fleet/permissions.js` |
+| 15 | **Division er et felt, ikke en sti.** Tre værdier: `gods`, `bus`, `faelles`. Transaktioner hører til én afdeling. Reservationer og fravær har ingen og arver fra ressourcen. **Undtaget af beslutning 19:** personale og køretøjer har slet ingen division. | Sti ville give to kalendere for én chauffør med C+D — beslutning 4's fejl et niveau højere oppe. Dertil to `BKG-2026-00125`, to Kolding Kommune-poster der driver fra hinanden, og en dieselfaktura der ikke kan afstemmes mod leverandørens total. | `fleet/useListe.js` |
 | 16 | **Kombi-transport: en booking er et forløb med N etaper.** Tilstanden ligger på etapen, ikke på bookingen. `aaben` er en tilstand med frist. Lageret er en kapacitetsressource i den samme reservationsnode. Etaper ligger som **egen node** — se afsnittet nedenfor. | Gods kan afhentes af én bil, stå på eget lager i uger, og køre videre med en anden. Etape 1 kan være reserveret mens etape 2 venter på en passende tur. Uden etaper skulle bookingen have én tilstand for to ting der sker på hver sin tid. | `fleet/booking-state.js` |
+| 17 | **`securityLevel` og klassificerede søskendenoder.** `normal` \| `internal` \| `confidential` \| `restricted` på general. Følsomme felter ligger i `sensitive/<objekt>/<id>`, værdiansættelser i `vaerdi/<objekt>/<id>` — som søskende, ikke som børn. | En `.read` kaskaderer og kan ikke indsnævres på et barn. Som barn ville `.read` skulle flyttes ned på `<id>/general`, og så kan man ikke længere forespørge på noden — der ville ingen bookingliste være. Søskende koster ét ekstra opslag på en detaljeskærm og nul på en liste. Se afsnittet nedenfor. | `fleet/permissions.js` |
+| 18 | **Personale og flåde er entiteter.** Nøglen i `personale/` er et `personId`; `uid` er et valgfrit felt, der sættes hvis personen får et login. Flåden er ikke en liste af biler: `art` styrer skemaet, og en påhængt enhed kan ikke disponeres alene. Begge ligger i **basen** — enhver abonnementskombination har medarbejdere og materiel. | Modellen dækkede ikke det den påstod. Chauffører fandtes kun som navne i en kompetencetabel, så hverken Bemanding eller Kompetencer havde et sted at hente dem fra, og bus-divisionen havde ingen enhedstype at pege på. Bytter man `uid` og `personId` om, holder ejerskabstjekket i reglerne op med at virke: `oprettetAf === auth.uid` matcher aldrig et personId, og en chauffør har måske slet intet login. En person findes før sit login og efter det — kontoen lukkes ved fratrædelse, men en reservation fra tre år siden skal stadig kunne opløses til et navn. | `fleet/personale.js`, `fleet/flaade.js` |
+| 19 | **Stamdata har ikke en division.** En medarbejder er defineret ved sine **kompetencer**, et køretøj ved sin **art**. Feltet er derfor forbudt på `personale/` og `koeretoejer/` — ikke bare valgfrit. `faelles` bevares på **kunder**, hvor værdien betyder at kundens forretning går på tværs. | Ingen abonnent har både gods og bus. En busvognmand har kun ét sæt tal, så der var aldrig noget at dele op. En påhængsvogn eller en varevogn kan tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget: det skulle udfyldes på hver bil uden at kunne begrundes på nogen af dem — og så blev det læst af nogen. Valgfrit havde ikke været nok; et felt der må stå der, bliver tastet. Omgør delvist beslutning 15. | `firebase.rules.json` |
+
+### Beslutning 16 i detaljer
+
+Skærmene bygges senere. Datamodellen er afgjort nu, fordi den er dyr at ændre
+bagefter.
+
+**Hvorfor `etaper` er en egen node og ikke ligger under bookingen.**
+
+Læs det her, før du "rydder op". En løs node med et `bookingId` ligner noget
+der er blevet glemt, og den næste der ser den, vil flytte den ind under
+`bookinger/<id>/etaper/`. Lad være.
+
+RTDB kan kun forespørge på **børnene af én node**. Ligger etaperne under hver
+sin booking, findes der ingen forespørgsel der svarer på *"hvilke etaper er
+åbne lige nu?"* — og det er præcis det spørgsmål matchningen stiller hver gang
+en tur oprettes eller ændres. Svaret ville være at hente samtlige bookinger med
+samtlige etaper ned og lede i klienten. Det er den egress-fejl hele
+`ARKITEKTUR.md`'s egress-afsnit og `useListe` er bygget for at undgå, og den
+vokser med historikken: jo flere afsluttede forløb, jo dyrere bliver det at
+finde de tre åbne.
+
+Som egen node er det ét indekseret opslag:
+`etaper.orderByChild("tilstand").equalTo("aaben")`.
+
+Prisen er en fremmednøgle at holde styr på. Det er den værd.
+
+**Hvorfor etaper ikke bare er `opgaver` med et `bookingId`.** Fordi
+`opgaver.status` er et andet statsmaskineri (indberettet → planlagt → igang →
+udført) end bookingflowet (kladde → afventerPlan → afventerKoord → reserveret).
+Ét `status`-felt med to betydninger er nøjagtig fejlen fra beslutning 11 og 14.
+Disponering læser begge noder.
+
+**Tre fejl fra prototypen, lukket i modellen:**
+
+1. *Planner-estimatet manglede lagerdage,* mens den endelige beregning havde
+   dem — estimatet var systematisk for lavt. `beregnForloeb()` udelader aldrig
+   lagerdagslinjen, og når afgangen er ukendt, bruges etapens frist. Estimatet
+   fejler nu for **højt**, hvilket er den rigtige retning.
+2. *Den valgte bil var uenig med sig selv:* DE-QR 777 med afgang 28/6 i
+   reservationstabellen, DE-KL 404 den 24/6 i timelinen og i svaret til
+   koordinatoren. Årsagen var ikke en tastefejl, men at svaret og
+   reservationen var to poster. Nu skrives etapens `koeretoejId` og dens
+   reservation i **én transaktion**, og timelinen læser reservationen — ikke en
+   kopi. Beslutning 4 og 6 anvendt på etaper.
+3. *"På lager nu 11 · 6 endnu ikke ankommet"* var tvetydigt om de 6 var en
+   delmængde. To disjunkte tal, `paaLagerNu` og `forventetAnkomst`, og ingen
+   total der kan læses som indeholdende begge.
+
+Prototypens sidebar med topfaner og brandfarven `#f5a300` overtages ikke.
+Beslutning 1 og 10 gælder uændret.
 
 ### Beslutning 17 i detaljer
 
@@ -131,56 +183,6 @@ ikke hvorfor.
 
 `securityLevel` (`normal` | `internal` | `confidential` | `restricted`) står på
 general, så en liste kan vise en hængelås uden at hente noget klassificeret.
-
-### Beslutning 16 i detaljer
-
-Skærmene bygges senere. Datamodellen er afgjort nu, fordi den er dyr at ændre
-bagefter.
-
-**Hvorfor `etaper` er en egen node og ikke ligger under bookingen.**
-
-Læs det her, før du "rydder op". En løs node med et `bookingId` ligner noget
-der er blevet glemt, og den næste der ser den, vil flytte den ind under
-`bookinger/<id>/etaper/`. Lad være.
-
-RTDB kan kun forespørge på **børnene af én node**. Ligger etaperne under hver
-sin booking, findes der ingen forespørgsel der svarer på *"hvilke etaper er
-åbne lige nu?"* — og det er præcis det spørgsmål matchningen stiller hver gang
-en tur oprettes eller ændres. Svaret ville være at hente samtlige bookinger med
-samtlige etaper ned og lede i klienten. Det er den egress-fejl hele
-`ARKITEKTUR.md`'s egress-afsnit og `useListe` er bygget for at undgå, og den
-vokser med historikken: jo flere afsluttede forløb, jo dyrere bliver det at
-finde de tre åbne.
-
-Som egen node er det ét indekseret opslag:
-`etaper.orderByChild("tilstand").equalTo("aaben")`.
-
-Prisen er en fremmednøgle at holde styr på. Det er den værd.
-
-**Hvorfor etaper ikke bare er `opgaver` med et `bookingId`.** Fordi
-`opgaver.status` er et andet statsmaskineri (indberettet → planlagt → igang →
-udført) end bookingflowet (kladde → afventerPlan → afventerKoord → reserveret).
-Ét `status`-felt med to betydninger er nøjagtig fejlen fra beslutning 11 og 14.
-Disponering læser begge noder.
-
-**Tre fejl fra prototypen, lukket i modellen:**
-
-1. *Planner-estimatet manglede lagerdage,* mens den endelige beregning havde
-   dem — estimatet var systematisk for lavt. `beregnForloeb()` udelader aldrig
-   lagerdagslinjen, og når afgangen er ukendt, bruges etapens frist. Estimatet
-   fejler nu for **højt**, hvilket er den rigtige retning.
-2. *Den valgte bil var uenig med sig selv:* DE-QR 777 med afgang 28/6 i
-   reservationstabellen, DE-KL 404 den 24/6 i timelinen og i svaret til
-   koordinatoren. Årsagen var ikke en tastefejl, men at svaret og
-   reservationen var to poster. Nu skrives etapens `koeretoejId` og dens
-   reservation i **én transaktion**, og timelinen læser reservationen — ikke en
-   kopi. Beslutning 4 og 6 anvendt på etaper.
-3. *"På lager nu 11 · 6 endnu ikke ankommet"* var tvetydigt om de 6 var en
-   delmængde. To disjunkte tal, `paaLagerNu` og `forventetAnkomst`, og ingen
-   total der kan læses som indeholdende begge.
-
-Prototypens sidebar med topfaner og brandfarven `#f5a300` overtages ikke.
-Beslutning 1 og 10 gælder uændret.
 
 ## Struktur
 
@@ -411,7 +413,7 @@ commit:
 | Adgang | 28 permissions i claim'et. Ingen `auth.token.rolle` i reglerne. Ukendte eller manglende permissions giver adgang til intet |
 | Klassificerede data | `sensitive/` og `vaerdi/` som søskendenoder, hver med egen permission. Den grovere arver ikke den finere |
 | Auditlog | Append-only. Ingen kan skrive, ændre eller slette — heller ikke admin. Kun `audit.laes` kan læse |
-| Division | Valideret felt på fem noder, forbudt på fravær |
+| Division | Valideret og **påkrævet** felt på seks noder — `etaper`, `lagre`, `opgaver`, `indberetninger`, `indkoeb`, `kunder`. **Forbudt** på fire: `fravaer`, `kompetencer` og — efter beslutning 19 — `personale` og `koeretoejer`. Linjen sagde tidligere "fem noder, forbudt på fravær"; det var forkert allerede før 19, hvor tallene var otte og to |
 | Miljø | DEV og PROD adskilt. Produktionsnøgler uden for et produktionsdeploy giver en rød bjælke |
 | Regioner | RTDB og Storage i `europe-west1`, verificeret 7. august 2026 |
 

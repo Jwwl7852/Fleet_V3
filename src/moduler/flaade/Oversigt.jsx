@@ -19,8 +19,10 @@
  *
  * `art` STYRER FELTSKEMAET, som `art` på opgaver. En scooter har ingen
  * tachograf og ingen køre-hviletid; ENHEDSART siger hvilke felter der findes.
- * Reglerne kræver art, status, division og en positiv laengdeMm — resten er
- * formularlogik.
+ * Reglerne kræver art, status og en positiv laengdeMm — resten er
+ * formularlogik. De kræver IKKE division: et køretøj har ingen (beslutning
+ * 19), og feltet afvises. Byg ikke et divisionsfelt ind i formularen — det
+ * ville fejle ved skrivningen.
  *
  * NÅR DU BYGGER DEN:
  *

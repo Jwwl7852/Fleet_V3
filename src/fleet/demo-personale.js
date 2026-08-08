@@ -19,9 +19,15 @@
  * væk. Et demo-sæt med sin egen form ville skjule at skærmen læser forkert.
  *
  * DET ER ET UDSNIT. 35 personer er ikke hele staben — KPI-noden siger 58
- * planlagte og 48 disponerede i gods alene. Rosteren er tegnet til at ligne
- * en vognmand, ikke til at summere op til nøgletallene, og skærmene skriver
- * det til brugeren frem for at lade to tal modsige hinanden i stilhed.
+ * planlagte og 48 disponerede. Rosteren er tegnet til at ligne en vognmand,
+ * ikke til at summere op til nøgletallene, og skærmene skriver det til
+ * brugeren frem for at lade to tal modsige hinanden i stilhed.
+ *
+ * INGEN DIVISION — beslutning 19. Stamdata har ikke en division, og reglerne
+ * afviser feltet på personale/ med .validate: false. En medarbejder er
+ * defineret ved sine KOMPETENCER: hun oprettes én gang og virker i alle
+ * moduler tenanten har adgang til. Ulrik Bang med C/E og D er derfor ikke
+ * `faelles` længere — han er en person med fire kompetencer.
  *
  * NØGLEN ER ET personId. Ikke et uid. Kun de otte der har et login har et
  * uid-felt; chaufførerne har intet, og det er ikke et hul i datasættet — det
@@ -40,11 +46,6 @@
 import { serviceTone } from "./format.js";
 import { KOMPETENCE, KOMPETENCE_LABEL } from "./flaade.js";
 
-/* Samme streng som useListe.FAELLES og som reglernes .validate på division.
-   Den står som literal her frem for som import, så filen ikke afhænger af et
-   React-hook-modul for at kende tre bogstaver. */
-const FAELLES = "faelles";
-
 const NU = Date.now();
 const D = 86400000;
 const AAR = 365 * D;
@@ -58,143 +59,146 @@ const AAR = 365 * D;
  * og kører også, Ulrik Bang har både C/E og D. Et array kunne ikke indekseres,
  * og "hvem er mekanikere" ville kræve at hente hele staben ned.
  *
- * division er en ANDEN AKSE end funktioner (beslutning 15). Ulrik Bang er
- * `faelles`, fordi han kører både gods og bus — ikke fordi han har to
- * funktioner. Mekanikerne der servicerer begge flåder er det samme, og de fire
- * kundeansvarlige er `faelles`, fordi deres kunder er det.
+ * INGEN division på nogen af dem (beslutning 19). Grupperingerne herunder er
+ * kun læsbarhed — de er funktioner, ikke afdelinger, og de findes ikke som
+ * felt. Hvad en person kan, står i kompetencer/; hvad hun laver, står i
+ * funktioner.
  *
  * status: en fratrådt medarbejder står tilbage med fratraadtMs. Der hænger
  * reservationer og indberetninger på personId'et, og reglerne afviser en
  * sletning med newData.exists().
  */
 export const DEMO_PERSONALE = [
-  /* --- Gods: chauffører ------------------------------------------- */
+  /* --- Chauffører -------------------------------------------------- */
   { id: "larsAage", navn: "Lars Aage", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "20 14 88 03", email: "lars.aage@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 11 * AAR },
   { id: "reneThomsen", navn: "Rene Thomsen", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "22 41 07 65", email: "rene.thomsen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 7 * AAR },
   { id: "jesperRiis", navn: "Jesper Riis", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "26 78 31 14", email: "jesper.riis@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 5 * AAR },
   { id: "anneKrogh", navn: "Anne Krogh", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "31 55 92 40", email: "anne.krogh@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 4 * AAR },
   { id: "henrikVestergaard", navn: "Henrik Vestergaard", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "40 23 66 18", email: "henrik.vestergaard@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 9 * AAR },
   { id: "mortenBech", navn: "Morten Bech", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "vikar",
+    status: "aktiv", ansaettelsesform: "vikar",
     telefon: "50 71 24 93", email: "morten.bech@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 140 * D },
   { id: "dorteEnevoldsen", navn: "Dorte Enevoldsen", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "28 90 15 77", email: "dorte.enevoldsen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 6 * AAR },
   { id: "yusufDemir", navn: "Yusuf Demir", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "23 12 40 58", email: "yusuf.demir@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 3 * AAR },
   { id: "steenHalvorsen", navn: "Steen Halvorsen", funktioner: { chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "ekstern",
+    status: "aktiv", ansaettelsesform: "ekstern",
     telefon: "60 44 81 29", email: "steen.halvorsen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 220 * D },
   /* Orlov: kan ikke disponeres, men er hverken slettet eller fratrådt. */
   { id: "clausNyholm", navn: "Claus Nyholm", funktioner: { chauffoer: true },
-    division: "gods", status: "orlov", ansaettelsesform: "fastansat",
+    status: "orlov", ansaettelsesform: "fastansat",
     telefon: "29 63 07 41", email: "claus.nyholm@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 8 * AAR },
   /* Fratrådt: står tilbage. Hans indberetninger og reservationer peger stadig
      på personId'et, og reglerne afviser en sletning. */
   { id: "bjarneToft", navn: "Bjarne Toft", funktioner: { chauffoer: true },
-    division: "gods", status: "fratraadt", ansaettelsesform: "fastansat",
+    status: "fratraadt", ansaettelsesform: "fastansat",
     telefon: "21 08 55 36", email: "bjarne.toft@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 14 * AAR, fratraadtMs: NU - 96 * D },
 
-  /* --- Gods: lager og terminal ------------------------------------ */
+  /* --- Lager og terminal ------------------------------------------- */
   { id: "benjaminHolm", navn: "Benjamin Holm", funktioner: { lager: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "27 33 19 84", email: "benjamin.holm@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 2 * AAR },
   { id: "metteSoerensen", navn: "Mette Sørensen", funktioner: { lager: true, terminal: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "30 27 64 12", email: "mette.soerensen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 6 * AAR },
   { id: "nadiaKrarup", navn: "Nadia Krarup", funktioner: { terminal: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "vikar",
+    status: "aktiv", ansaettelsesform: "vikar",
     telefon: "52 80 41 07", email: "nadia.krarup@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 62 * D },
   { id: "emilBrandt", navn: "Emil Brandt", funktioner: { lager: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "24 19 73 55", email: "emil.brandt@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 3 * AAR },
 
   /* --- Værksted --------------------------------------------------- */
   /* Peter Iversen kører også — funktioner er et map netop af den grund. */
   { id: "peterIversen", navn: "Peter Iversen", funktioner: { mekaniker: true, chauffoer: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "25 66 30 91", email: "peter.iversen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 10 * AAR },
   { id: "ibSoerensen", navn: "Ib Sørensen", funktioner: { mekaniker: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "22 74 58 60", email: "ib.soerensen@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 17 * AAR },
-  /* Værkstedet servicerer begge flåder — division faelles, ikke to poster. */
+  /* Værkstedet servicerer hele materiellet. Det krævede før et felt der sagde
+     "begge"; nu kræver det ingenting. */
   { id: "janHolmgaard", navn: "Jan Holmgaard", funktioner: { mekaniker: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "26 41 09 37", email: "jan.holmgaard@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 12 * AAR },
   { id: "kasperLykke", navn: "Kasper Lykke", funktioner: { mekaniker: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "vikar",
+    status: "aktiv", ansaettelsesform: "vikar",
     telefon: "53 22 87 14", email: "kasper.lykke@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 88 * D },
 
-  /* --- Bus -------------------------------------------------------- */
+  /* --- Buschauffører ----------------------------------------------- */
   { id: "kimDalsgaard", navn: "Kim Dalsgaard", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "20 55 12 74", email: "kim.dalsgaard@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 9 * AAR },
   { id: "tinaBruun", navn: "Tina Bruun", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "22 90 46 31", email: "tina.bruun@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 5 * AAR },
   { id: "oveNilsson", navn: "Ove Nilsson", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "27 18 63 05", email: "ove.nilsson@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 13 * AAR },
   { id: "saraLind", navn: "Sara Lind", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "31 74 20 68", email: "sara.lind@demotransport.dk",
     stationeret: "Odense", ansatMs: NU - 2 * AAR },
   { id: "gitteFrandsen", navn: "Gitte Frandsen", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "28 35 91 47", email: "gitte.frandsen@demotransport.dk",
     stationeret: "Odense", ansatMs: NU - 4 * AAR },
   { id: "leifMogensen", navn: "Leif Mogensen", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "ekstern",
+    status: "aktiv", ansaettelsesform: "ekstern",
     telefon: "61 02 77 53", email: "leif.mogensen@demotransport.dk",
     stationeret: "Odense", ansatMs: NU - 310 * D },
   { id: "camillaStorm", navn: "Camilla Storm", funktioner: { buschauffoer: true },
-    division: "bus", status: "aktiv", ansaettelsesform: "vikar",
+    status: "aktiv", ansaettelsesform: "vikar",
     telefon: "51 46 08 22", email: "camilla.storm@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 105 * D },
   { id: "torbenVad", navn: "Torben Vad", funktioner: { buschauffoer: true },
-    division: "bus", status: "orlov", ansaettelsesform: "fastansat",
+    status: "orlov", ansaettelsesform: "fastansat",
     telefon: "29 81 34 76", email: "torben.vad@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 7 * AAR },
 
-  /* --- Begge divisioner ------------------------------------------- */
-  /* Eksemplet fra personale.js: C/E og D på samme kørekort. Han er ÉN person
-     med ÉN kalender — det er hele grunden til at division er et felt og ikke
-     en sti (beslutning 15). Med divisionen i stien ville han have to. */
+  /* --- Både lastbil og bus ----------------------------------------- */
+  /* C/E og D på samme kørekort. Han var eksemplet på hvorfor division måtte
+     være et felt og ikke en sti (beslutning 15) — med divisionen i stien ville
+     han have haft to kalendere. Beslutning 19 fjernede spørgsmålet: han har
+     ingen division, han har fire kompetencer. Det er dem der afgør hvad han
+     må køre, og de står i kompetencer/. */
   { id: "ulrikBang", navn: "Ulrik Bang", funktioner: { chauffoer: true, buschauffoer: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "23 60 15 89", email: "ulrik.bang@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 15 * AAR },
 
@@ -202,33 +206,35 @@ export const DEMO_PERSONALE = [
   /* Herfra og ned har alle et login. Bemærk at uid og id er forskellige
      strenge: personen er ikke sin konto. */
   { id: "frankUhrskov", navn: "Frank Uhrskov", funktioner: { disponent: true },
-    division: "gods", status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "40 91 26 03", email: "frank.uhrskov@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 8 * AAR, uid: "u-frank" },
   { id: "lineAggerholm", navn: "Line Aggerholm", funktioner: { disponent: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "41 07 58 32", email: "line.aggerholm@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 3 * AAR, uid: "u-line" },
 
   /* --- Administration --------------------------------------------- */
   /* De fire kundeansvarlige fra Kunder & Priser. De stod som `ansvarlig` på
      kunderne og fandtes ellers ingen steder — endnu et sæt navne uden en
-     medarbejder bagved. Alle fire er faelles: deres kundeporteføljer går på
-     tværs af gods og bus. */
+     medarbejder bagved. Bemærk at KUNDERNE stadig kan være `faelles`: dér
+     betyder værdien at kundens forretning går på tværs, og den beholder sin
+     mening. Det er stamdata om vores egne folk og biler der ikke har en
+     division, ikke om kunden. */
   { id: "metteKjaer", navn: "Mette Kjær", funktioner: { administration: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "42 15 80 64", email: "mette.kjaer@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 6 * AAR, uid: "u-mette" },
   { id: "soerenDahl", navn: "Søren Dahl", funktioner: { administration: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "42 33 07 19", email: "soeren.dahl@demotransport.dk",
     stationeret: "Aalborg", ansatMs: NU - 4 * AAR, uid: "u-soeren" },
   { id: "anneBoegh", navn: "Anne Bøgh", funktioner: { administration: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "42 76 21 58", email: "anne.boegh@demotransport.dk",
     stationeret: "Kolding", ansatMs: NU - 9 * AAR, uid: "u-anne" },
   { id: "peterLund", navn: "Peter Lund", funktioner: { administration: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "42 04 93 27", email: "peter.lund@demotransport.dk",
     stationeret: "Vejle", ansatMs: NU - 2 * AAR, uid: "u-peter" },
   /* Den indloggede demo-bruger. uid'et er det samme som i App.jsx, så
@@ -236,7 +242,7 @@ export const DEMO_PERSONALE = [
      som — og at kontoen er noget andet end personen. */
   { id: "dennisChristensen", navn: "Dennis Christensen",
     funktioner: { administration: true, disponent: true },
-    division: FAELLES, status: "aktiv", ansaettelsesform: "fastansat",
+    status: "aktiv", ansaettelsesform: "fastansat",
     telefon: "42 88 10 45", email: "dch@fleetcontrol.dk",
     stationeret: "Kolding", ansatMs: NU - 10 * AAR, uid: "demo" },
 ];
@@ -251,19 +257,23 @@ export const DEMO_PERSONALE = [
  * kun forespørger på børnene af én node. Samme argument som etaper i
  * beslutning 16.
  *
- * INGEN DIVISION. Reglerne afviser feltet med .validate: false — divisionen
- * arves fra personen, som reservationer og fravær. Det er derfor
- * kompetencerne herunder kun har et personId at hænge i.
+ * INGEN DIVISION. Reglerne afviser feltet med .validate: false. Det gjorde de
+ * også før beslutning 19 — dengang med den begrundelse at divisionen arvedes
+ * fra personen. Nu har personen heller ingen, og feltet er ikke bare
+ * unødvendigt her: det findes ikke på nogen af de to noder.
  *
  * DE ELLEVE FØRSTE ER LÅST. De kom fra Bemanding, og deres udløbsdatoer er
- * regnet ud så fem af gods' og tre af bus' falder inden for 30 dage —
- * nøjagtig hvad k.bemanding.kompetencerUdloeber siger. Flytter du en dato,
- * holder Bemanding op med at stemme med sit eget nøgletal. Kontrollen
- * nederst i filen fanger det i dev.
+ * regnet ud så præcis otte af dem falder inden for 30 dage — hvad
+ * k.bemanding.kompetencerUdloeber siger. Flytter du en dato, holder Bemanding
+ * op med at stemme med sit eget nøgletal. Kontrollen nederst i filen fanger
+ * det i dev.
  *
- * Alle øvrige rækker udløber med VILJE mere end 30 dage ude. Det gælder også
- * for de faelles-ansatte: en faelles person tæller i begge divisioner, så en
- * kort frist på Jan Holmgaard ville lægge en ekstra række i både gods og bus.
+ * Tallet var før 5 i gods og 3 i bus, delt efter personens division. Med
+ * beslutning 19 er der ét tal: ingen abonnent har både gods og bus, så der er
+ * ingenting at dele op. Summen er den samme — det er kun opdelingen der er
+ * væk, ikke en eneste post.
+ *
+ * Alle øvrige rækker udløber med VILJE mere end 30 dage ude.
  */
 export const DEMO_KOMPETENCER = [
   /* De elleve fra Bemanding. Rør ikke datoerne. */
@@ -350,7 +360,8 @@ export const DEMO_KOMPETENCER = [
   { id: "k-torbenVad-d", personId: "torbenVad", type: KOMPETENCE.d, udloeberMs: NU + 279 * D },
   { id: "k-torbenVad-tacho", personId: "torbenVad", type: KOMPETENCE.tachografkort, udloeberMs: NU + 198 * D },
 
-  /* C/E og D på samme person — begge divisioner, én kalender. */
+  /* C/E og D på samme person. Det er her hans rækkevidde står — ikke i et
+     divisionsfelt på personen. */
   { id: "k-ulrikBang-c", personId: "ulrikBang", type: KOMPETENCE.c, udloeberMs: NU + 481 * D },
   { id: "k-ulrikBang-ce", personId: "ulrikBang", type: KOMPETENCE.ce, udloeberMs: NU + 481 * D },
   { id: "k-ulrikBang-d", personId: "ulrikBang", type: KOMPETENCE.d, udloeberMs: NU + 447 * D },
@@ -370,28 +381,23 @@ export const DEMO_KOMPETENCER = [
 const personerEfterId = new Map(DEMO_PERSONALE.map((p) => [p.id, p]));
 
 /**
- * Kompetencer med personnavn og label, til en divisionsopdelt visning.
+ * Kompetencer med personnavn og label.
  *
- * Visningsreglen er useListe()'s: den valgte division PLUS faelles. En person
- * med C/E og D står på begge lister med samme rækker — det er én person, ikke
- * en dublet.
+ * Tog før en division og filtrerede personerne på den. Den parameter er væk
+ * med beslutning 19: der er én liste, fordi der er én stab. Ingen abonnent har
+ * både gods og bus, så der var aldrig to lister at holde adskilt — kun et felt
+ * der lod som om.
  *
  * Formen er den Bemanding viser i sin tabel: { person, kompetence }. Det er en
  * visning af nodeformen ovenfor, ikke en anden kilde.
  */
-export function demoKompetencerMedNavn(division) {
-  const iDivisionen = new Map(
-    DEMO_PERSONALE
-      .filter((p) => p.division === division || p.division === FAELLES)
-      .map((p) => [p.id, p])
-  );
-
+export function demoKompetencerMedNavn() {
   return DEMO_KOMPETENCER
-    .filter((k) => iDivisionen.has(k.personId))
+    .filter((k) => personerEfterId.has(k.personId))
     .map((k) => ({
       id: k.id,
       personId: k.personId,
-      person: iDivisionen.get(k.personId).navn,
+      person: personerEfterId.get(k.personId).navn,
       kompetence: KOMPETENCE_LABEL[k.type] || k.type,
       udloeberMs: k.udloeberMs,
     }))
@@ -401,8 +407,8 @@ export function demoKompetencerMedNavn(division) {
 /* ---- Selvkontrol ---------------------------------------------------- */
 
 /**
- * Antal kompetencer der udløber inden for 30 dage, pr. division — samme
- * regnestykke som Bemanding laver på sin egen tabel.
+ * Antal kompetencer der udløber inden for 30 dage — samme regnestykke som
+ * Bemanding laver på sin egen tabel.
  *
  * Den skal give nøjagtig k.bemanding.kompetencerUdloeber. Gør den ikke det,
  * viser Bemanding et nøgletal der modsiger tabellen lige under det, og det er
@@ -412,8 +418,8 @@ export function demoKompetencerMedNavn(division) {
  * Eksporteret så en test kan kalde den. Filen importerer kun rene moduler
  * netop derfor.
  */
-export const demoUdloeberInden30 = (division) =>
-  demoKompetencerMedNavn(division).filter((r) => serviceTone(r.udloeberMs).dage <= 30).length;
+export const demoUdloeberInden30 = () =>
+  demoKompetencerMedNavn().filter((r) => serviceTone(r.udloeberMs).dage <= 30).length;
 
 /** Kompetencer der peger på et personId der ikke findes. Skal være tom. */
 export const demoForaeldreloeseKompetencer = () =>
@@ -423,13 +429,16 @@ export const demoForaeldreloeseKompetencer = () =>
    til. useKpi importeres dynamisk, så resten af filen kan indlæses uden React. */
 if (import.meta.env?.DEV) {
   import("./useKpi.js").then(({ DEMO_KPI }) => {
+    const inden30 = demoUdloeberInden30();
+    /* Feltet står stadig under begge divisioner i kpi/ — noden er delt
+       (beslutning 9) — men vaerdien er den samme, fordi staben er den samme.
+       Begge tjekkes, saa en aendring kun det ene sted ogsaa fanges. */
     for (const division of ["gods", "bus"]) {
-      const inden30 = demoUdloeberInden30(division);
       const forventet = DEMO_KPI[division]?.bemanding?.kompetencerUdloeber;
       if (inden30 !== forventet) {
         console.warn(
-          `demo-personale: ${inden30} kompetencer udløber inden for 30 dage i ${division}, ` +
-          `men kpi.bemanding.kompetencerUdloeber siger ${forventet}. ` +
+          `demo-personale: ${inden30} kompetencer udløber inden for 30 dage, ` +
+          `men kpi.${division}.bemanding.kompetencerUdloeber siger ${forventet}. ` +
           `Bemanding viser nu et nøgletal der modsiger sin egen tabel — se noten ved DEMO_KOMPETENCER.`
         );
       }

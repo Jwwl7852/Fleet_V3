@@ -31,8 +31,12 @@
  * permission-navne indeholder punktum og ikke kan være RTDB-nøgler.
  * Forskellen er teknisk, ikke smag.
  *
- * DIVISION er en anden akse. Lars med C+D er `division: "faelles"` og kører
- * både gods og bus; det er beslutning 15 og har intet med funktioner at gøre.
+ * DER ER INGEN DIVISION på en medarbejder — beslutning 19. Feltet fandtes, og
+ * Lars med C+D stod som `faelles`. Det er væk: en medarbejder er defineret ved
+ * sine KOMPETENCER, ikke ved en afdeling, og hun oprettes én gang og virker i
+ * alle moduler tenanten har adgang til. At Lars må køre både lastbil og bus
+ * står i kompetencer/ som C/E og D — dér kan det efterprøves, og dér kan det
+ * udløbe. Reglerne afviser feltet med .validate: false.
  */
 export const FUNKTION = {
   chauffoer: "chauffoer",

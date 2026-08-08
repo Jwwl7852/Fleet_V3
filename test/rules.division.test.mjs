@@ -101,11 +101,10 @@ describe("beslutning 15 — division som felt", () => {
     }
   });
 
-  it("kræver division på opgaver, køretøjer, indberetninger og indkøb", async () => {
+  it("kræver division på opgaver, indberetninger og indkøb", async () => {
     const db = som("admin1", "admin");
     const noder = [
       ["opgaver", { art: "vaerksted", dato: 1786000000000 }],
-      ["koeretoejer", { navn: "Volvo FH 500", status: "aktiv", art: "lastbil" }],
       ["indberetninger", { type: "braendstof", km: 184320, oprettetAf: "admin1" }],
       ["indkoeb", { beloebOere: 450000, momsOere: 112500, dato: 1786000000000 }],
     ];
@@ -113,6 +112,30 @@ describe("beslutning 15 — division som felt", () => {
       await assertFails(set(ref(db, sti(node, "uden")), post));
       await assertSucceeds(set(ref(db, sti(node, "med")), { ...post, division: "gods" }));
     }
+  });
+
+  /* BESLUTNING 19. Koeretoejer stod paa listen ovenfor indtil beslutning 19:
+     stamdata har ikke en division. En paahaengsvogn eller en varevogn kan
+     tilhoere baade en gods- og en busvognmand, saa feltet kunne ikke begrundes
+     paa den enkelte bil — og et felt der maa staa der uden at betyde noget,
+     bliver udfyldt og derefter laest af nogen.
+
+     Testen er vendt frem for slettet: den skal fastholde at feltet er FORBUDT,
+     ikke bare at det er valgfrit. Aabner nogen det igen, falder den. */
+  it("afviser division på køretøjer og personale — stamdata har ingen", async () => {
+    const db = som("admin1", "admin");
+
+    const bil = { navn: "Volvo FH 500", status: "aktiv", art: "lastbil" };
+    await assertSucceeds(set(ref(db, sti("koeretoejer", "k-uden")), bil));
+    await assertFails(set(ref(db, sti("koeretoejer", "k-med")), { ...bil, division: "gods" }));
+    await assertFails(set(ref(db, sti("koeretoejer", "k-faelles")), { ...bil, division: "faelles" }));
+    await assertFails(set(ref(db, `${sti("koeretoejer", "k-uden")}/division`), "bus"));
+
+    const person = { navn: "Lars Aage", status: "aktiv" };
+    await assertSucceeds(set(ref(db, sti("personale", "p-uden")), person));
+    await assertFails(set(ref(db, sti("personale", "p-med")), { ...person, division: "gods" }));
+    await assertFails(set(ref(db, sti("personale", "p-faelles")), { ...person, division: "faelles" }));
+    await assertFails(set(ref(db, `${sti("personale", "p-uden")}/division`), "bus"));
   });
 
   it("afviser division OG årsag på fravær — begge arves eller er følsomme", async () => {

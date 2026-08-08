@@ -77,7 +77,11 @@ export const DEMO_KPI = {
     },
     bemanding: {
       planlagt: 58, disponeret: 48, ledig: 10, underbemandede: 6,
-      chauffoerPlanlagt: 20, chauffoerDisponeret: 18, kompetencerUdloeber: 5,
+      /* kompetencerUdloeber er IKKE delt på division (beslutning 19). Staben
+         er én, så tallet er det samme her og under bus. Stod der to
+         forskellige, ville Bemanding vise et andet tal ved et toggle-skift
+         uden at en eneste kompetence havde ændret sig. */
+      chauffoerPlanlagt: 20, chauffoerDisponeret: 18, kompetencerUdloeber: 8,
     },
     facility: { aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12 },
     indkoeb: {
@@ -107,7 +111,8 @@ export const DEMO_KPI = {
     },
     bemanding: {
       planlagt: 26, disponeret: 22, ledig: 4, underbemandede: 2,
-      chauffoerPlanlagt: 24, chauffoerDisponeret: 21, kompetencerUdloeber: 3,
+      /* Samme tal som under gods — se noten der. */
+      chauffoerPlanlagt: 24, chauffoerDisponeret: 21, kompetencerUdloeber: 8,
     },
     facility: { aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12 },
     indkoeb: {

@@ -12,9 +12,15 @@
  * udvidelse. Kernen står i reglerne, udvidelsen står her.
  *
  * Reglerne håndhæver kun det der ville ødelægge en beregning eller en
- * sikkerhedsvurdering — art, status, division, længde. At kode hvert felts
- * lovlige arter ind i RTDB-regler ville gøre filen ulæselig uden at gøre
- * noget sikrere.
+ * sikkerhedsvurdering — art, status, længde. At kode hvert felts lovlige
+ * arter ind i RTDB-regler ville gøre filen ulæselig uden at gøre noget
+ * sikrere.
+ *
+ * INGEN DIVISION på et køretøj — beslutning 19. Feltet var påkrævet indtil da.
+ * En påhængsvogn eller en varevogn kan tilhøre både en gods- og en
+ * busvognmand, så værdien kunne ikke begrundes på den enkelte bil: den ville
+ * skulle tastes, og derefter blive læst af nogen. Arten siger det der kan
+ * siges. Reglerne afviser feltet med .validate: false.
  */
 
 export const GRUPPE = {

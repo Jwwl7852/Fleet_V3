@@ -33,9 +33,14 @@
  * var det eneste sted personalet fandtes — Medarbejdere ville have fået sit
  * eget sæt, og så havde vi haft to stabe der ikke kendte hinanden. De ligger
  * nu i fleet/demo-personale.js sammen med personerne selv, og både denne skærm
- * og Medarbejdere læser derfra. Datoerne er uændrede: fem af gods' og tre af
- * bus' udløber inden for 30 dage, som k.bemanding.kompetencerUdloeber siger.
- * Filen kontrollerer selv det tal mod DEMO_KPI i dev.
+ * og Medarbejdere læser derfra. Filen kontrollerer selv sit tal mod DEMO_KPI
+ * i dev.
+ *
+ * KOMPETENCETABELLEN SKIFTER IKKE MED GODS/BUS — beslutning 19. Personalet har
+ * ingen division, så der er ét sæt kompetencer og ét nøgletal (8), ikke fem og
+ * tre. Bemandingsplanen ovenfor skifter stadig: den er vagter, altså
+ * transaktioner, og de har en division. Det er ikke en inkonsekvens på skærmen
+ * — det er forskellen på stamdata og transaktioner.
  */
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
@@ -137,10 +142,11 @@ export default function Bemanding() {
     .sort((a, b) => a.ms - b.ms || b.mangler - a.mangler);
 
   /* Personerne og deres beviser kommer fra demo-personale.js — samme kilde som
-     Medarbejdere læser. En person med C/E og D er `faelles` og står derfor på
-     begge divisioners liste; det er useListe()'s visningsregel, ikke en
-     dublet. serviceTone() giver de samme tre trin som Flåde og Facility. */
-  const kompetencer = demoKompetencerMedNavn(division)
+     Medarbejdere læser. Listen er IKKE divisionsopdelt (beslutning 19):
+     stamdata har ingen division, staben er én, og tallet i KPI-kortet er det
+     samme uanset toggle. serviceTone() giver de samme tre trin som Flåde og
+     Facility. */
+  const kompetencer = demoKompetencerMedNavn()
     .map((r) => ({ ...r, tone: serviceTone(r.udloeberMs) }))
     .sort((a, b) => a.udloeberMs - b.udloeberMs);
   const udloebende = kompetencer.filter((r) => r.tone.dage <= 30);

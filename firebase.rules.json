@@ -8,10 +8,18 @@
 //
 // BESLUTNING 15 — division er et FELT, ikke en sti. Tre værdier:
 //   gods | bus | faelles
-// Transaktioner hører til én afdeling. Stamdata kan være faelles. Reservationer
-// og fravær har INGEN division — de arver fra ressourcen. Gav man en reservation
-// en division, ville en chauffør med C+D få to kalendere, og så er beslutning 4
-// brudt et niveau højere oppe.
+// Transaktioner hører til én afdeling. Reservationer og fravær har INGEN
+// division — de arver fra ressourcen. Gav man en reservation en division,
+// ville en chauffør med C+D få to kalendere, og så er beslutning 4 brudt et
+// niveau højere oppe.
+//
+// BESLUTNING 19 — stamdata har ikke en division. En medarbejder er defineret
+// ved sine KOMPETENCER, et køretøj ved sin ART. Feltet er derfor FORBUDT på
+// personale/ og koeretoejer/, ikke bare valgfrit. faelles bevares på kunder,
+// hvor værdien betyder at kundens forretning går på tværs.
+//
+// Kræver division:  opgaver, indberetninger, etaper, lagre, indkoeb, kunder
+// Forbyder den:     personale, koeretoejer, kompetencer, fravaer
 {
   "rules": {
     ".read": false,
@@ -145,13 +153,20 @@
         // bliver staaende — der haenger reservationer og indberetninger paa
         // id'et. Paa samlingen ville newData stadig findes efter at een person
         // var slettet.
+        //
+        // INGEN DIVISION — beslutning 19. Stamdata har ikke en division. En
+        // medarbejder er defineret ved sine KOMPETENCER, ikke ved en afdeling:
+        // hun oprettes een gang og virker i alle moduler tenanten har adgang
+        // til. Feltet er derfor forbudt her, ikke bare valgfrit — et felt der
+        // maa staa der, men ikke betyder noget, bliver udfyldt og derefter
+        // laest af nogen. Samme behandling som fravaer og kompetencer.
         "personale": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.laes|')",
-          ".indexOn": ["uid", "status", "division"],
+          ".indexOn": ["uid", "status"],
           "$personId": {
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && newData.exists()",
-            ".validate": "newData.hasChildren(['navn', 'division', 'status'])",
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            ".validate": "newData.hasChildren(['navn', 'status'])",
+            "division": { ".validate": false },
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|orlov|fratraadt)$/)" },
             "ansaettelsesform": { ".validate": "newData.isString() && newData.val().matches(/^(fastansat|vikar|ekstern)$/)" },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
@@ -284,12 +299,22 @@
           }
         },
 
+        // INGEN DIVISION — beslutning 19. Et koeretoej er defineret ved sin
+        // ART, ikke ved en afdeling. En paahaengsvogn eller en varevogn kan
+        // tilhoere begge slags vognmaend, og det er praecis derfor feltet ikke
+        // siger noget: det ville skulle udfyldes paa hver bil uden at kunne
+        // begrundes paa nogen af dem. Forbudt frem for valgfrit, af samme
+        // grund som paa personale.
+        //
+        // Bemaerk at opgaver, indberetninger og etaper STADIG kraever
+        // division. De er transaktioner (beslutning 15) — men vaerdien kan
+        // ikke laengere kopieres fra bilen, og skriveren skal saette den selv.
         "koeretoejer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.laes|')",
-          ".indexOn": ["status", "art", "naesteServiceMs", "division"],
+          ".indexOn": ["status", "art", "naesteServiceMs"],
           "$koeretoejId": {
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && newData.exists()",
-            ".validate": "newData.hasChildren(['division', 'art', 'status'])",
+            ".validate": "newData.hasChildren(['art', 'status'])",
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(traekker|lastbil|varevogn|bus|minibus|scooter|truck|trailer|paahaeng)$/)" },
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|vaerksted|udeAfDrift|solgt|skrottet)$/)" },
             "laengdeMm": { ".validate": "newData.isNumber() && newData.val() > 0" },
@@ -299,9 +324,7 @@
               "kg": { ".validate": "newData.isNumber() && newData.val() >= 0" }
             },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            }
+            "division": { ".validate": false }
           }
         },
 

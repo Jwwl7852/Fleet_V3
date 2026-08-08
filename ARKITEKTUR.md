@@ -48,7 +48,7 @@ oprydningsopgave for sig.
 | Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV. |
 | Sletning | Regnskabsdata: kun `slettet: true` med `slettetMs`, `slettetAf`, `slettetAarsag`. |
 | Tenant | `tenantId` er immutabelt. Kommer fra `auth.token.tenant`, aldrig fra klienten. |
-| Division | Felt, aldrig sti. `gods` \| `bus` \| `faelles`. Transaktioner hører til én afdeling, stamdata kan være fælles. Reservationer og fravær har **ingen** division — de arver fra ressourcen. Håndhævet med `.validate`. |
+| Division | Felt, aldrig sti. `gods` \| `bus` \| `faelles`. **Transaktioner** hører til én afdeling: `opgaver`, `indberetninger`, `etaper`, `indkoeb`, `lagre`. **Kunder** kan være `faelles` — kundens forretning går på tværs. **Stamdata om vores egne folk og biler har ingen** (beslutning 19): `personale` og `koeretoejer` afvises. Det samme gør `reservationer`, `fravaer` og `kompetencer`, som arvede den fra ressourcen. Håndhævet med `.validate` i begge retninger. |
 
 ## Noder
 
@@ -72,9 +72,11 @@ tenants/<tenantId>/
                                   fraSted, tilSted, koeretoejId, personId,
                                   forslag[], valgtForslagId, maengde, historik/<ms> }
   opgaver/<id>                  { art: vaerksted|langtur, ... }
-  koeretoejer/<id>
+  koeretoejer/<id>              { art, status, laengdeMm, ... }  INGEN division
+  personale/<personId>          { navn, status, funktioner{}, uid? }  INGEN division
+  kompetencer/<id>              { personId, type, udloeberMs }  INGEN division
   indberetninger/<id>           { type, km, ... }  km = TOTAL målerstand
-  fravaer/<id>
+  fravaer/<id>                  { personId, fra, til }  INGEN division
   facility/sensorer/<zoneId>/   { aktuel, maalinger/<ms> }  ÉN kilde
   indkoeb/<id>                  { beloebOere, momsOere, ... }
   fakturaer/<id>
@@ -467,3 +469,44 @@ Satser der ændrer sig og bør tjekkes mod kilden:
   og 2,7 m høj.
 - **Femern (Rødby–Puttgarden):** sats i `Bookingopsaetning.jsx` er et gæt.
 - Eurotunnel er Calais–Folkestone og hører ikke på en Hamburg-rute.
+
+## Beslutning 19 — stamdata har ikke en division
+
+**Division hører på tenanten, ikke på medarbejderen eller bilen.** Ingen
+abonnent har både gods og bus; en busvognmand har kun ét sæt tal, så der var
+aldrig noget at dele op.
+
+En medarbejder oprettes **én gang** og virker i alle moduler tenanten har
+adgang til. Hun er defineret ved sine **kompetencer**, ikke ved en afdeling.
+Et køretøj er defineret ved sin **art** — en påhængsvogn eller en varevogn kan
+tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget.
+
+Feltet er **forbudt**, ikke valgfrit, på `personale/` og `koeretoejer/`. Et
+felt der må stå der uden at betyde noget, bliver tastet — og derefter læst af
+nogen. `.validate: false` gør fejlen til en afvisning frem for en vane.
+
+**`faelles` bevares på kunder.** Dér betyder værdien noget andet: at kundens
+forretning går på tværs. Kolding Kommune køber både skolebusser og
+containerkørsel. Det er kundens forhold, ikke vores organisation.
+
+### Hvad der fulgte med
+
+- `kompetencer/` og `fravaer/` afviste allerede feltet, men med begrundelsen
+  *"divisionen arves fra personen"*. Personen har den ikke længere, så
+  begrundelsen er nu enklere: den findes ikke nogen steder på den akse.
+- **`bemanding.kompetencerUdloeber` er ét tal**, ikke fem i gods og tre i bus.
+  Summen er uændret — otte. Feltet står stadig under begge divisioner i `kpi/`,
+  fordi noden er delt (beslutning 9), men med samme værdi.
+- **`opgaver`, `indberetninger` og `etaper` kræver stadig division.** De er
+  transaktioner. Men værdien kan ikke længere kopieres fra køretøjet, og
+  skriveren skal sætte den selv. Det hører i den Cloud Function der endnu ikke
+  er skrevet; indtil da er `etaper` alligevel `.write: false`.
+- `.indexOn` mistede `division` på begge noder. Intet forespurgte på den.
+
+### Det åbne spørgsmål
+
+Holder præmissen — at ingen abonnent har både gods og bus — så er **hele
+Gods/Bus-toggle'en** til diskussion, ikke kun de to felter. `kpi/` er delt på
+division, shellen har en vælger, og elleve skærme filtrerer på den. Denne
+beslutning rører kun stamdata. Om resten skal følge efter, er en beslutning
+for sig.

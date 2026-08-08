@@ -28,14 +28,16 @@ const medPerms = (uid, perms) =>
 
 const sti = (node, id) => `tenants/${T}/${node}/${id}`;
 
+/* Ingen division paa nogen af dem — beslutning 19. Personen er defineret ved
+   sine kompetencer, bilen ved sin art. */
 const PERSON = {
-  navn: "Lars Aage", division: "faelles", status: "aktiv",
+  navn: "Lars Aage", status: "aktiv",
   ansaettelsesform: "fastansat",
   funktioner: { [FUNKTION.chauffoer]: true, [FUNKTION.mekaniker]: true },
 };
 const ENHED = {
   registrering: "AB 12 345", navn: "Volvo FH 500", art: "lastbil",
-  status: "aktiv", division: "gods", laengdeMm: 10500, driftPrKmOere: 342,
+  status: "aktiv", laengdeMm: 10500, driftPrKmOere: 342,
 };
 
 before(async () => {
@@ -89,15 +91,24 @@ describe("personale", () => {
     const db = medPerms("uid-enum", ALLE_PERMS);
     await assertFails(set(ref(db, sti("personale", "p-e1")), { ...PERSON, status: "opsagt" }));
     await assertFails(set(ref(db, sti("personale", "p-e2")), { ...PERSON, ansaettelsesform: "freelance" }));
-    await assertFails(set(ref(db, sti("personale", "p-e3")), { navn: "Uden", division: "gods" }));
+    /* Navn uden status. Feltet division er ikke laengere en udvej. */
+    await assertFails(set(ref(db, sti("personale", "p-e3")), { navn: "Uden" }));
   });
 
-  /* Beslutning 15: en person med C+D er faelles. Det er en ANDEN akse end
-     funktioner — han kan være chauffoer OG mekaniker uafhaengigt af det. */
-  it("accepterer faelles som division", async () => {
+  /* BESLUTNING 19 — vendt om. Foer accepterede reglerne `faelles` paa en
+     person: en chauffoer med C+D koerte baade gods og bus. Nu er division
+     forbudt paa personale, fordi en medarbejder er defineret ved sine
+     KOMPETENCER og virker i alle moduler tenanten har adgang til. C+D er
+     stadig sandt — det staar bare i kompetencer/, hvor det hoerer hjemme.
+
+     Testen fastholder at feltet er FORBUDT og ikke bare valgfrit. Aabner
+     nogen det igen med den gamle enum, falder den her. */
+  it("afviser division på en person — også faelles", async () => {
     const db = medPerms("uid-div", ALLE_PERMS);
-    await assertSucceeds(set(ref(db, sti("personale", "p-div")), { ...PERSON, division: "faelles" }));
-    await assertFails(set(ref(db, sti("personale", "p-div2")), { ...PERSON, division: "taxa" }));
+    await assertSucceeds(set(ref(db, sti("personale", "p-div")), PERSON));
+    await assertFails(set(ref(db, sti("personale", "p-div2")), { ...PERSON, division: "faelles" }));
+    await assertFails(set(ref(db, sti("personale", "p-div3")), { ...PERSON, division: "gods" }));
+    await assertFails(set(ref(db, sti("personale", "p-div") + "/division"), "bus"));
   });
 
   it("CPR kan ikke stå i general — den hører i sensitive/personale", async () => {
