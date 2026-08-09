@@ -14,6 +14,11 @@
  *   sag.aftale       strukturen i general, den citerede sætning i sensitive.
  * Se beslutning 17 og 20 i BESLUTNINGER.md.
  *
+ * BILEN KOMMER FRA demo-flaade.js. Bil 104 er kt-104, en Mercedes Actros 1845
+ * med registrering DE 45 678 — ét sted, ét nummer. Den stod her med AB 12 345
+ * og i Bookingopsætning med DE 45 678, hvilket er beslutning 6's 84-mod-83 på
+ * en nummerplade. Opfind ikke en bil her; slå den op i rosteren.
+ *
  * SÆTTET ER TEGNET TIL AT VISE MEKANISMEN, IKKE ET LYKKELIGT FORLØB.
  * Derfor er der med vilje én besked i karantæne og én vedhæftning der ikke er
  * scannet færdig. Et demo-sæt hvor alt er grønt, lærer den næste udvikler at
@@ -86,7 +91,7 @@ const FLT = {
       modtagere: ["service@mercedes-greve.dk"],
       emne: "[FLT-2026-00381] Bil 104 – serviceeftersyn 30.000 km",
       tekst:
-        "Hej\n\nBil 104 (Mercedes Actros, reg. AB 12 345) skal til 30.000 km-eftersyn. " +
+        "Hej\n\nBil 104 (Mercedes Actros 1845, reg. DE 45 678) skal til 30.000 km-eftersyn. " +
         "Vi har den ledig fra uge 34. Hvornår kan I tage den ind?\n\nVenlig hilsen\nRené Thomsen",
       afsenderStatus: AFSENDER_STATUS.kendt,
       dmarc: "pass",

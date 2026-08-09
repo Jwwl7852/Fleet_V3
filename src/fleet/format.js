@@ -17,6 +17,11 @@ export const num = (n, dec = 0) => nf(dec).format(n || 0);
 export const pct = (p, dec = 0) => nf(dec).format(p || 0) + " %";
 export const km = (n) => nf(0).format(n || 0) + " km";
 
+/** Millimeter → meter til VISNING. Længder gemmes som integer i millimeter —
+ *  se samletLaengdeMm() i flaade.js. Vis meter, gem millimeter; en float ved
+ *  en færgetakstgrænse er en fejl der venter. */
+export const meter = (mm, dec = 2) => nf(dec).format((mm || 0) / 1000) + " m";
+
 export const dato = (ms) =>
   new Date(ms).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric" });
 

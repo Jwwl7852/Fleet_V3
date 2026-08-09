@@ -33,9 +33,18 @@ const FANER = [
    får en ny post. Ellers ændrer en rettelse i dag prisen på en booking fra
    sidste kvartal, og så kan fakturaen ikke forklares.
 
-   division står eksplicit på hver post (beslutning 15). Broer, færger og
-   vejafgifter er "faelles" — Storebælt koster det samme uanset hvilken
-   afdeling der kører over den. Agenter og biler hører til én afdeling. */
+   division står eksplicit på poster og agenter (beslutning 15). Broer, færger
+   og vejafgifter er "faelles" — Storebælt koster det samme uanset hvilken
+   afdeling der kører over den. En agent hører til én afdeling.
+
+   BILERNE HAR INGEN DIVISION, og det er ikke en forglemmelse. Beslutning 19:
+   et køretøj er defineret ved sin ART, ikke ved en afdeling, og reglerne
+   afviser feltet på koeretoejer/ med .validate: false. Posterne her lå med
+   division: "gods" / "bus" fra før beslutningen blev taget — de beskrev altså
+   samme bil efter en anden regel end fleet/demo-flaade.js gør.
+
+   Bilernes navne og registreringsnumre skal matche demo-flaade.js, som er
+   kilden. Volvo FH 500 er DE 12 345 dér og skal være DE 12 345 her. */
 const START = Date.UTC(2026, 0, 1);
 const SATSARK = {
   poster: {
@@ -71,21 +80,21 @@ const SATSARK = {
       satser: [{ gyldigFra: START, beloebOere: 85000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
   },
   biler: {
-    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345", division: "gods",
+    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 840, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678", division: "gods",
+    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 860, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901", division: "gods",
+    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567", division: "gods",
+    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 850, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123", division: "gods",
+    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 820, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789", division: "gods",
+    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    volvo9700: { navn: "Volvo 9700 turistbus", registrering: "DE 22 111", division: "bus",
+    volvo9700: { navn: "Volvo 9700 turistbus", registrering: "DE 22 111",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 690, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    setraS516: { navn: "Setra S 516 HDH", registrering: "DE 33 222", division: "bus",
+    setraS516: { navn: "Setra S 516 HDH", registrering: "DE 33 222",
       kmPrisSatser: [{ gyldigFra: START, beloebOere: 715, metode: "prKm", valuta: "DKK", aktiv: true }] },
   },
 };
@@ -112,8 +121,20 @@ const EKSEMPLER = {
   },
 };
 
-/* Samme visningsregel som useListe: valgt division plus fælles. */
-const iDivision = (d) => ([, v]) => v.division === d || v.division === "faelles";
+/* Samme visningsregel som useListe — og nu FAKTISK den samme.
+ *
+ * Den manglede leddet for poster UDEN division, og useListe's divisionsfilter
+ * siger udtrykkeligt: "En post UDEN division vises i BEGGE — ikke i ingen."
+ * Så længe hver eneste post havde et divisionsfelt, var forskellen usynlig.
+ * Den blev synlig i det sekund bilerne mistede deres felt (beslutning 19):
+ * uden det første led ville biltabellen stå tom i både Gods og Bus, uden at
+ * nogen havde slettet en bil.
+ *
+ * Det er samme klasse fejl som beslutning 6 handler om — én regel skrevet to
+ * steder, hvor den ene kopi driver. Den rigtige rettelse på sigt er at hente
+ * satsarket gennem useListe frem for at gentage filteret her. */
+const iDivision = (d) => ([, v]) =>
+  v.division == null || v.division === d || v.division === "faelles";
 
 export default function Bookingopsaetning() {
   const { periode, division } = useFleet();

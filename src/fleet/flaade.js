@@ -72,6 +72,78 @@ export const KOERETOEJ_STATUS = {
 
 export const ALLE_STATUS = Object.keys(KOERETOEJ_STATUS);
 
+/* ---- Art styrer feltskemaet ----------------------------------------- */
+
+/**
+ * Hvilke felter der overhovedet FINDES på en art.
+ *
+ * Det her er den konkrete udmøntning af "art styrer skemaet" fra toppen af
+ * filen. Reglerne håndhæver kun det der kan ødelægge en beregning — art,
+ * status, laengdeMm, driftPrKmOere, kapacitet. Resten er formularlogik, og
+ * den hører i et katalog frem for i en skærm: spørger Flåde, Disponering og
+ * en fremtidig formular hver for sig, får man tre svar på om en scooter har
+ * en tachograf.
+ *
+ * ⚠ ET FELT DER IKKE FINDES ER IKKE ET TOMT FELT. En trailer har ingen
+ * kilometerstand, fordi den ikke har en motor — ikke fordi ingen har tastet
+ * den. Vises den som "—", ligner det en mangel nogen bør udfylde, og så bliver
+ * den udfyldt. Brug harFelt() til at udelade rækken helt.
+ */
+export const FELT = {
+  kmStand: "kmStand",                 // målerstand. Kun motoriserede
+  driftPrKmOere: "driftPrKmOere",     // også påhæng: dæk og slid koster pr. km
+  kapacitet: "kapacitet",             // { m3, kg } — det der kan lastes
+  saeder: "saeder",                   // bus og minibus. Passagerer, ikke m³
+  naesteServiceMs: "naesteServiceMs",
+  synMs: "synMs",                     // påhængt materiel har sit EGET syn
+  tachografNr: "tachografNr",
+};
+
+/* Rækkefølgen her er den rækkefølge felterne vises i. Ét sted, så to skærme
+   ikke lister de samme fem felter forskelligt. */
+const ALLE_FELTER = [
+  FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet, FELT.saeder,
+  FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
+];
+
+/* Godsbærende motoriseret materiel. Bus og minibus står IKKE her: de bærer
+   passagerer, og en kapacitet i m³ på en turistbus er et tal ingen kan bruge
+   til noget — bagagerummet er ikke det man disponerer efter. */
+const GODS_MOTOR = [
+  FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet,
+  FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
+];
+
+const PASSAGER = [
+  FELT.kmStand, FELT.driftPrKmOere, FELT.saeder,
+  FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
+];
+
+export const ART_FELTER = {
+  traekker: GODS_MOTOR,
+  lastbil: GODS_MOTOR,
+  /* Ingen tachograf — se ENHEDSART. Feltet findes derfor slet ikke. */
+  varevogn: [FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet, FELT.naesteServiceMs, FELT.synMs],
+  bus: PASSAGER,
+  minibus: [FELT.kmStand, FELT.driftPrKmOere, FELT.saeder, FELT.naesteServiceMs, FELT.synMs],
+  scooter: [FELT.kmStand, FELT.driftPrKmOere, FELT.naesteServiceMs],
+  /* En truck kører på matriklen. Intet syn, ingen tachograf. */
+  truck: [FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet, FELT.naesteServiceMs],
+  /* Påhængt: ingen motor og dermed ingen kilometerstand — men eget
+     registreringsnummer, eget syn og egne dæk. Det er hele grunden til at de
+     er selvstændige enheder og ikke et felt på trækkeren. */
+  trailer: [FELT.driftPrKmOere, FELT.kapacitet, FELT.naesteServiceMs, FELT.synMs],
+  paahaeng: [FELT.driftPrKmOere, FELT.kapacitet, FELT.naesteServiceMs, FELT.synMs],
+};
+
+/** Har denne art overhovedet feltet? Brug den frem for at tjekke på om
+ *  værdien er udfyldt — se advarslen ved FELT. */
+export const harFelt = (art, felt) => (ART_FELTER[art] || []).includes(felt);
+
+/** Felterne for en art, i katalogets rækkefølge. */
+export const felterFor = (art) =>
+  ALLE_FELTER.filter((f) => harFelt(art, f));
+
 /**
  * Må disse enheder disponeres sammen?
  *

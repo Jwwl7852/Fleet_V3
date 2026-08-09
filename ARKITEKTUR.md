@@ -73,6 +73,10 @@ tenants/<tenantId>/
                                   forslag[], valgtForslagId, maengde, historik/<ms> }
   opgaver/<id>                  { art: vaerksted|langtur, ... }
   koeretoejer/<id>              { art, status, laengdeMm, ... }  INGEN division
+                                art styrer feltskemaet — ART_FELTER i flaade.js.
+                                En trailer har intet kmStand (ingen motor), en
+                                bus har saeder frem for kapacitet. Et felt arten
+                                ikke har, er ikke et tomt felt
   personale/<personId>          { navn, status, funktioner{}, uid? }  INGEN division
   kompetencer/<id>              { personId, type, udloeberMs }  INGEN division
   indberetninger/<id>           { type, km, ... }  km = TOTAL målerstand

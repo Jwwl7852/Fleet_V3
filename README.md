@@ -117,13 +117,13 @@ Opdateret 9. august 2026. **Start her efter en pause.**
 skærme, og **155 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 7 af 27 har indhold
+### Skærmene: 8 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (6)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere |
+| **Bygget (7)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde |
 | **Delvist (1)** | Værkstedskalender — sagsvisningen er bygget, kalenderen og fakturaformularen mangler |
-| **Skelet med mockup (10)** | Booking-oversigt, Ny forespørgsel, Forslag, Disponering, Flåde, Facility ×3, Indkøb ×2 |
+| **Skelet med mockup (9)** | Booking-oversigt, Ny forespørgsel, Forslag, Disponering, Facility ×3, Indkøb ×2 |
 | **Skelet uden mockup (10)** | Live-kort, Kompetencer, Ferie & fravær, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -159,7 +159,29 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    kunde kan ikke *liste* sine egne bookinger — `.read` på `bookinger` er alt
    eller intet. Det kræver en indeksnode pr. kunde, og den beslutning skal
    træffes før portalen bygges.
-4. Skærmene: Flåde → Ferie & fravær → Værkstedskalender → Disponering.
+4. Skærmene: Ferie & fravær → Værkstedskalender → Disponering. Disponering
+   ligger sidst, fordi den læser de reservationer som fravær og værksted
+   skriver — bygges den først, disponerer den på en kalender der ikke ved
+   noget om syge chauffører eller biler på værksted.
+
+### Demo-data skal kontrollere sig selv
+
+`demo-personale.js` virkede, fordi den sammenligner sig med `DEMO_KPI` i dev og
+siger til, hvis en udløbsdato flyttes så Bemanding ville vise et nøgletal der
+modsiger tabellen under det. **Den kontrol hører i hver ny demo-fil**, og den
+skal skrives som en **test** og ikke kun som en `console.warn` — ellers fanges
+den kun af en udvikler der tilfældigt har konsollen åben, og ikke af
+pre-commit-hooken.
+
+Datasættet lå før i `useKpi.js`, som importerer `FleetContext.jsx`. Det gjorde
+det uindlæseligt for node, så kontrollen *kunne* ikke være en test. `DEMO_KPI`
+ligger derfor nu i `fleet/demo-kpi.js` — rent data, ingen React — og
+`useKpi.js` re-eksporterer det, så eksisterende importer er uberørte.
+
+Flådens roster kan **ikke** ramme `kpi/` på samme måde: den er delt på division
+(42 aktive i gods, 18 i bus), mens et køretøj ingen division har. Kontrollen er
+derfor et **loft** — et udsnit må være mindre end totalen, aldrig større. Det er
+beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 

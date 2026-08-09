@@ -39,12 +39,12 @@
  * general-noden. Et demo-sæt der havde dem med, ville lære den næste udvikler
  * en form der ikke kan gemmes.
  */
-/* Kun rene moduler herinde. format.js og flaade.js har ingen React i sig, og
-   det er med vilje: så kan datasættet indlæses af en test eller en Cloud
-   Function uden at trække en hel frontend med. useKpi importeres derfor
-   dynamisk nede i selvkontrollen, som alligevel kun kører i browseren. */
+/* Kun rene moduler herinde. format.js, flaade.js og demo-kpi.js har ingen
+   React i sig, og det er med vilje: så kan datasættet indlæses af en test
+   eller en Cloud Function uden at trække en hel frontend med. */
 import { serviceTone } from "./format.js";
 import { KOMPETENCE, KOMPETENCE_LABEL } from "./flaade.js";
+import { DEMO_KPI } from "./demo-kpi.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -425,25 +425,26 @@ export const demoUdloeberInden30 = () =>
 export const demoForaeldreloeseKompetencer = () =>
   DEMO_KOMPETENCER.filter((k) => !personerEfterId.has(k.personId));
 
-/* Kontrollen kører kun i browseren under dev og retter ikke noget — den siger
-   til. useKpi importeres dynamisk, så resten af filen kan indlæses uden React. */
+/* Kontrollen kører kun under dev og retter ikke noget — den siger til.
+   DEMO_KPI importeres statisk fra demo-kpi.js. Den lå før i useKpi.js og måtte
+   hentes med et dynamisk import, fordi useKpi trækker FleetContext.jsx med;
+   datasættet er flyttet ud netop for at den slags kontrol også kan køres af en
+   test. Se demo-kpi.js. */
 if (import.meta.env?.DEV) {
-  import("./useKpi.js").then(({ DEMO_KPI }) => {
-    const inden30 = demoUdloeberInden30();
-    /* Feltet står stadig under begge divisioner i kpi/ — noden er delt
-       (beslutning 9) — men vaerdien er den samme, fordi staben er den samme.
-       Begge tjekkes, saa en aendring kun det ene sted ogsaa fanges. */
-    for (const division of ["gods", "bus"]) {
-      const forventet = DEMO_KPI[division]?.bemanding?.kompetencerUdloeber;
-      if (inden30 !== forventet) {
-        console.warn(
-          `demo-personale: ${inden30} kompetencer udløber inden for 30 dage, ` +
-          `men kpi.${division}.bemanding.kompetencerUdloeber siger ${forventet}. ` +
-          `Bemanding viser nu et nøgletal der modsiger sin egen tabel — se noten ved DEMO_KOMPETENCER.`
-        );
-      }
+  const inden30 = demoUdloeberInden30();
+  /* Feltet står stadig under begge divisioner i kpi/ — noden er delt
+     (beslutning 9) — men vaerdien er den samme, fordi staben er den samme.
+     Begge tjekkes, saa en aendring kun det ene sted ogsaa fanges. */
+  for (const division of ["gods", "bus"]) {
+    const forventet = DEMO_KPI[division]?.bemanding?.kompetencerUdloeber;
+    if (inden30 !== forventet) {
+      console.warn(
+        `demo-personale: ${inden30} kompetencer udløber inden for 30 dage, ` +
+        `men kpi.${division}.bemanding.kompetencerUdloeber siger ${forventet}. ` +
+        `Bemanding viser nu et nøgletal der modsiger sin egen tabel — se noten ved DEMO_KOMPETENCER.`
+      );
     }
-  });
+  }
 
   const udenPerson = demoForaeldreloeseKompetencer();
   if (udenPerson.length) {
