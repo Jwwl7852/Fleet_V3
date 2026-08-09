@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 292 tests. Starter emulatoren.
+npm test                            # 332 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -125,16 +125,16 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Fjorten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **292 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Seksten byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **332 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 9 af 27 har indhold — Værkstedskalender er færdig
+### Skærmene: 10 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (9)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender |
-| **Skelet med mockup (9)** | Booking-oversigt, Ny forespørgsel, Forslag, Disponering, Facility ×3, Indkøb ×2 |
+| **Bygget (10)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering |
+| **Skelet med mockup (8)** | Booking-oversigt, Ny forespørgsel, Forslag, Facility ×3, Indkøb ×2 |
 | **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -176,6 +176,30 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    Nu ved den det, og **den sidste datamodelbeslutning er truffet** —
    se beslutning 21. Skærmen læser **to noder**: `opgaver` med art `vaerksted`
    i dagsvisningen, `etaper` i ugesvisningen.
+
+### Disponering står i fase 0 — de fem tjek kaldes, men blokerer ikke
+
+Skærmen er bygget som **visning**. To faner, to noder: dagsvisningen læser
+`opgaver` med art `vaerksted` (timer, 06–18), ugesvisningen læser `etaper`
+(døgn, syv dage, ETA over døgngrænser og grænseovergange).
+
+**Det er første gang de fem tjek faktisk kaldes.** De har været bygget og
+testet uden at nogen kaldte dem — `kanDisponeres()`, `kraevedeKompetencer()` +
+`tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og `tjekKoerehviletid()`.
+⚠ **Men de blokerer ikke.** At de kaldes betyder at man kan *se* hvad de siger,
+ikke at de er håndhævet. Håndhævelsen hører i den Cloud Function der skriver
+etapen; ligger den i skærmen, kan en direkte skrivning gå uden om den.
+
+Der er **ingen drag-and-drop og ingen skrivning**. "Træk opgave hertil" er en
+attrap der siger hvorfor i sin `title`. Bygger man det interaktive før Cloud
+Functions, bygger man det to gange — og anden gang er en migrering af data der
+blev skrevet forkert i mellemtiden.
+
+`tjekLedig()` blev splittet for at gøre det muligt: logikken lå inde i en
+`async` funktion der krævede en database, så den fjerde af de fem tjek kunne
+ikke køre i demo-mode og kunne ikke testes. `tjekLedigMod()` er nu den rene
+kerne, `tjekLedig()` henter og delegerer. Samme greb som `gitter.js` og
+`demo-kpi.js`.
 
 ### Gitterkalenderen er en genbrugskontrakt
 

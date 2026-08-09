@@ -242,6 +242,19 @@
 .fc-gk-bad{background:var(--fc-bad-bg); color:var(--bc-block); border-color:#f3bcbc}
 .fc-gk-info{background:var(--fc-info-bg); color:var(--fc-info); border-color:#c3d9fb}
 .fc-gk-brand{background:var(--fc-accent-soft); color:var(--bc-accent); border-color:#c9dbff}
+/* "Træk opgave hertil". Stiplet og bleg — den ser ud som et felt der venter,
+   men den er ikke en knap: ingen cursor:pointer, ingen hover, pointer-events
+   slået fra. En attrap der opfører sig som en kontrol, er værre end ingen. */
+.fc-gk-drop{grid-row:1; z-index:0; display:flex; align-items:center; justify-content:center;
+  border:1px dashed var(--bc-line); border-radius:7px; margin:5px 2px; padding:4px 6px;
+  color:#9aa7b8; font-size:11px; font-weight:600; overflow:hidden;
+  background:repeating-linear-gradient(45deg,
+    rgba(139,151,168,.05) 0 5px, rgba(139,151,168,0) 5px 10px);
+  /* cursor:default og ingen hover — men IKKE pointer-events:none, for saa
+     ville title heller ikke vises, og feltet kunne ikke sige hvorfor det ikke
+     virker. Det er ikke fokuserbart og har ingen klik-handler. */
+  cursor:default; user-select:none}
+
 /* Konflikt: stribet og rød, oven i hinanden. Lagde vi dem i hver sin bane,
    ville et overlap reservationsmodellen ville AFVISE se rigtigt ud. */
 .fc-gk-konflikt{background:var(--fc-bad-bg); color:var(--bc-block);

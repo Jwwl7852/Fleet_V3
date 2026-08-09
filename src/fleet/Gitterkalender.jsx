@@ -46,6 +46,7 @@ const TONE_KLASSE = {
 export default function Gitterkalender({
   raekker = [], blokke = [], fra, til, enhed = ENHED.dag,
   valgtId = null, onVaelg, tom = "Ingen aktiviteter i perioden.",
+  dropfelter = null,
 }) {
   const slotListe = slots(fra, til, enhed);
   if (!slotListe.length || !raekker.length) return <Tom>{tom}</Tom>;
@@ -53,6 +54,13 @@ export default function Gitterkalender({
   const placerede = laegUd(blokke, slotListe);
   const perRaekke = blokkePrRaekke(placerede);
   const antalKonflikter = placerede.filter((p) => p.konflikt).length;
+
+  /* Drop-felterne lægges ud med SAMME funktion som blokkene, så de ikke kan
+     være uenige om hvor der er plads. De er attrap i fase 0 — se noten i
+     Disponering. */
+  const placeredeDrop = dropfelter?.felter?.length
+    ? blokkePrRaekke(laegUd(dropfelter.felter, slotListe))
+    : new Map();
 
   return (
     <div>
@@ -82,6 +90,22 @@ export default function Gitterkalender({
                   {slotListe.map((s, i) => (
                     <div key={s.fra} className={`fc-gk-celle ${erNu(s) ? "fc-gk-nu" : ""}`}
                          style={{ gridColumn: i + 1 }} />
+                  ))}
+
+                  {/* Drop-felter FØR blokkene, så en blok altid ligger
+                      øverst. Feltet er ikke en knap: det kan ikke fokuseres,
+                      det kan ikke klikkes, og title siger hvorfor. En attrap
+                      der opfører sig som en kontrol, er værre end ingen. */}
+                  {(placeredeDrop.get(r.id) || []).map((d) => (
+                    <div
+                      key={d.id}
+                      className="fc-gk-drop"
+                      aria-disabled="true"
+                      style={{ gridColumn: `${d.start + 1} / ${d.slut + 2}` }}
+                      title={dropfelter.titel}
+                    >
+                      <span className="fc-gk-tekst">{dropfelter.tekst}</span>
+                    </div>
                   ))}
 
                   {mine.map((b, i) => (

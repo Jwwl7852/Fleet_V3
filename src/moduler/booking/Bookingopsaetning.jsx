@@ -99,9 +99,18 @@ const SATSARK = {
   },
 };
 
-/* Eksempelbooking pr. division. Femern og Storebælt — ikke Eurotunnel.
-   Broerne er fælles poster, så begge eksempler regner med de samme
-   passagesatser; kun bilen og agenten skifter. */
+/* Eksempelbooking pr. division. Femern — ikke Eurotunnel, og ikke Storebælt
+   oveni.
+
+   ⚠ PASSAGER KAN VÆRE GEOGRAFISK UMULIGE, OG PRISMOTOREN BROKKER SIG IKKE.
+   beregnForloeb() lægger sammen hvad den får. Står der både Storebælt og
+   Femern på en tur mod syd, bliver det til en pris ingen kan forklare — og
+   det er ikke en beregningsfejl, men en datafejl ingen kontrol fanger.
+
+   Om ruteopslaget skal validere geografien, eller om der skal være et katalog
+   over gensidigt udelukkende passager, er et ÅBENT SPØRGSMÅL. Det hører
+   sammen med HERE-integrationen — se ARKITEKTUR. Indtil da findes listen kun
+   som UDELUKKER_HINANDEN i demo-etaper.js, hvor selvkontrollen bruger den. */
 const EKSEMPLER = {
   gods: {
     bilId: "volvoFH500",
@@ -109,7 +118,14 @@ const EKSEMPLER = {
     kmEstimeret: 780,
     doegnParkering: 1,
     agentId: "hthHamburg",
-    passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+    /* ⚠ FEMERN-RUTEN, IKKE BEGGE. Eksemplet havde både bro:storebaelt og
+       faerge:femern, og det er geografisk umuligt: København → Hamburg går
+       ENTEN over Storebælt + Jylland + Padborg ELLER over Femern
+       (Rødby–Puttgarden). Man kører den ene vej eller den anden.
+       Fejlen kom da Eurotunnel blev rettet til Femern under beslutning 17 —
+       Storebælt blev ikke taget ud samtidig. Femern er den korte rute.
+       En vognmand med Hamburg-kørsel ser den slags på tre sekunder. */
+    passager: { "faerge:femern": 1, "parkering:europa": 1 },
   },
   bus: {
     bilId: "volvo9700",
@@ -117,7 +133,8 @@ const EKSEMPLER = {
     kmEstimeret: 620,
     doegnParkering: 1,
     agentId: "berlinBusPark",
-    passager: { "bro:storebaelt": 1, "faerge:femern": 1, "parkering:europa": 1 },
+    /* Samme rettelse. Berlin nås også over Femern. */
+    passager: { "faerge:femern": 1, "parkering:europa": 1 },
   },
 };
 

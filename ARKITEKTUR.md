@@ -358,6 +358,33 @@ vises i lister, er prisen mindre end den lyder — men den skal træffes bevidst
 
 De øvrige fem venter på Cloud Functions eller er klientside og dermed svagere.
 
+## Åbent: passager kan være geografisk umulige
+
+`beregnForloeb()` lægger sammen hvad den får. Står der både `bro:storebaelt`
+og `faerge:femern` på en tur mod syd, bliver det til en pris ingen kan
+forklare — København → Hamburg går **enten** over Storebælt + Jylland +
+Padborg **eller** over Femern (Rødby–Puttgarden). Man kører den ene vej eller
+den anden.
+
+Det er ikke en beregningsfejl, men en **datafejl ingen kontrol fanger**. Og en
+vognmand med Hamburg-kørsel ser den på tre sekunder.
+
+Fejlen har været i Bookingopsætnings regneeksempel: da Eurotunnel blev rettet
+til Femern under beslutning 17, blev Storebælt ikke taget ud samtidig. Rettet
+nu, men mekanismen der tillod det, findes stadig.
+
+**Det åbne spørgsmål er hvordan det håndhæves:**
+
+| Mulighed | Betyder |
+|---|---|
+| Ruteopslaget validerer | Passagerne udledes af den faktiske rute frem for at tastes. Kræver HERE eller tilsvarende |
+| Katalog over gensidigt udelukkende passager | Billigere, men skal vedligeholdes i hånden, og det fanger kun de par nogen har tænkt på |
+
+Det hører sammen med **HERE-integrationen** og er ikke afgjort. Indtil da
+findes listen kun som `UDELUKKER_HINANDEN` i `demo-etaper.js`, hvor
+selvkontrollen bruger den på demo-turene — det dækker demo-data, ikke det en
+bruger taster.
+
 ## Tachografdata — forudsætningen for at fjerne køre-hviletidsforbeholdet
 
 `tjekKoerehviletid()` i `fleet/koerehviletid.js` blokerer en disponering der

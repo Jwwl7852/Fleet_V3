@@ -144,6 +144,39 @@ export function laegUd(blokke = [], slotListe = []) {
   return placeret;
 }
 
+/**
+ * ledigeVinduer(blokke, fra, til) → [{ fra, til }]
+ *
+ * Hullerne mellem blokkene i ÉN række. Bruges til "Træk opgave hertil"-felter.
+ *
+ * ⚠ DE BEREGNES AF SAMME DATA SOM BLOKKENE, og det er hele pointen. Tegnede
+ * skærmen drop-felterne ud fra sin egen idé om hvornår bilen er fri, kunne de
+ * to være uenige — og så ville feltet invitere til at lægge en opgave oven i
+ * en anden. Ét regnestykke, to visninger.
+ *
+ * Halvåbent: en blok der slutter kl. 12 og et hul der starter kl. 12 rører
+ * hinanden uden at overlappe.
+ */
+export function ledigeVinduer(blokke = [], fra, til) {
+  if (!Number.isFinite(fra) || !Number.isFinite(til) || til <= fra) return [];
+
+  const optaget = blokke
+    .filter((b) => Number.isFinite(b.fra) && Number.isFinite(b.til) && b.til > b.fra)
+    .map((b) => ({ fra: Math.max(b.fra, fra), til: Math.min(b.til, til) }))
+    .filter((b) => b.til > b.fra)
+    .sort((a, b) => a.fra - b.fra);
+
+  const ud = [];
+  let markoer = fra;
+  for (const b of optaget) {
+    if (b.fra > markoer) ud.push({ fra: markoer, til: b.fra });
+    /* Overlappende blokke må ikke skubbe markøren tilbage. */
+    if (b.til > markoer) markoer = b.til;
+  }
+  if (markoer < til) ud.push({ fra: markoer, til });
+  return ud;
+}
+
 /** Blokke pr. række, sorteret. Bekvemmelighed til komponenten. */
 export function blokkePrRaekke(placerede) {
   const kort = new Map();

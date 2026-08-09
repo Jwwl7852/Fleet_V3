@@ -63,7 +63,8 @@ import {
   DEMO_BESOEG, DEMO_INDKOEB, BESOEG_STATUS, OMKOSTNINGSTYPE,
   ALLE_OMKOSTNINGSTYPER, demoIkkeLinkede, totalOere, demoKoeretoejKaldenavn,
 } from "../../fleet/demo-vaerksted.js";
-import { RESSOURCE, KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
+import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
+import { reservationFraOpgave } from "../../fleet/opgaver.js";
 
 const DAG = 86400000;
 const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
@@ -73,20 +74,10 @@ const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
    udenfor, får en pil frem for at blive klippet i stilhed. */
 const VINDUE_DAGE = 14;
 
-/** Reservationen et besøg VILLE skrive. Bygges, skrives ikke.
- *  Prioriteten læses fra reservations.js — 40 tastet ind her ville være
- *  samme regel to steder. */
-function reservationFraBesoeg(b) {
-  return {
-    ressourceType: RESSOURCE.koeretoej,
-    ressourceId: b.koeretoejId,
-    fra: b.fra,
-    til: b.til,
-    kilde: { type: KILDE.vaerksted, id: b.id, reference: null },
-    maengde: null,
-    note: null,
-  };
-}
+/* Reservationsbyggeren lå her som en lokal kopi, indtil Disponering fik brug
+   for den samme. Den ligger nu i fleet/opgaver.js som reservationFraOpgave()
+   og er generaliseret over arten — to skærme med hver sin kopi er den fejl vi
+   fangede i Bookingopsætnings divisionsfilter. */
 
 export default function Vaerkstedskalender() {
   const { kpi: k, henter, fejl, genindlaes } = useKpi();
@@ -264,7 +255,7 @@ function Blokeringer({ besoeg }) {
       </Kort>
     );
   }
-  const r = reservationFraBesoeg(besoeg);
+  const r = reservationFraOpgave(besoeg);
   const pri = prioritetFor(KILDE.vaerksted);
 
   return (

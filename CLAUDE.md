@@ -59,6 +59,13 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `forbehold`, også når `ok` er true, fordi vi kun kan se planen og ikke
   tachografen. Et grønt flueben ved siden af en bøde er værre end ingen
   kontrol. Forudsætningen for at fjerne det er tachografdata — se ARKITEKTUR.
+- **Lade et af de fem disponeringstjek blokere i skærmen.** De kaldes nu i
+  Disponering, men til VISNING. Håndhævelsen hører i den Cloud Function der
+  skriver etapen — ligger den i skærmen, kan en direkte skrivning gå uden om
+  den, og så er tjekket dekoration.
+- **Bygge drag-and-drop i Disponering før Cloud Functions.** En reservation
+  skal skrives atomisk sammen med etapens `koeretoejId`, og to disponenter kan
+  ramme samme sekund. Bygger du det interaktive nu, bygger du det to gange.
 - **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
   ressourcer × tid og bruges af Værkstedskalender, Servicekalender og
   Disponering. Regnestykket ligger i `gitter.js`. To gitre der læser det samme

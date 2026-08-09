@@ -124,6 +124,43 @@ export function ressourceId(opgave) {
 }
 
 /**
+ * reservationFraOpgave(opgave) → posten reserver() skal skrive.
+ *
+ * BYGGER, SKRIVER IKKE — samme mønster som reservationFraFravaer() og
+ * reservationFraAftale().
+ *
+ * Den lå som en lokal kopi i Vaerkstedskalender.jsx, indtil Disponering fik
+ * brug for den samme. To skærme med hver sin kopi er den fejl vi fangede i
+ * Bookingopsætnings divisionsfilter — usynlig indtil den ene drev.
+ *
+ * Kilden følger arten: en værkstedsopgave spærrer et køretøj (prioritet 40 —
+ * en bil på værksted kan ikke køre), en facility-opgave optager et aktiv
+ * (prioritet 20). Prioriteten selv står i reservations.js og skrives ikke her.
+ */
+export function reservationFraOpgave(opgave) {
+  const art = OPGAVE_ART[opgave?.art];
+  if (!art) throw new Error(`reservationFraOpgave: ukendt art "${opgave?.art}".`);
+  const id = ressourceId(opgave);
+  if (!id) throw new Error(`reservationFraOpgave: opgaven mangler sin ressource.`);
+  if (!Number.isFinite(opgave.fra) || !Number.isFinite(opgave.til) || opgave.til <= opgave.fra) {
+    throw new Error("reservationFraOpgave: fra og til skal være konkrete tidspunkter med til > fra.");
+  }
+  return {
+    ressourceType: art.ressource,
+    ressourceId: id,
+    fra: opgave.fra,
+    til: opgave.til,
+    kilde: {
+      type: opgave.art === "vaerksted" ? "vaerksted" : "facilitySag",
+      id: opgave.id,
+      reference: null,
+    },
+    maengde: null,
+    note: null,
+  };
+}
+
+/**
  * Er posten gyldig efter reglernes krav? Til UI-feedback — reglerne er
  * kontrollen. Fejler lukket: en ukendt art giver falsk.
  *

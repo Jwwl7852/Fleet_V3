@@ -151,7 +151,39 @@ export async function tjekLedig(db, path, ny, opts = {}) {
   const eksisterende = await hentReservationer(db, path, ny.ressourceType, ny.ressourceId, {
     fra: ny.fra, til: ny.til, ...opts,
   });
-  const andre = eksisterende.filter((r) => r.id !== ny.id);
+  return tjekLedigMod(eksisterende, ny, opts);
+}
+
+/**
+ * Samme kontrol, men mod en liste man allerede HAR.
+ *
+ * Hele logikken ligger her; tjekLedig() henter og delegerer. Opdelingen er
+ * ikke pænhed — den er nødvendig:
+ *
+ *  1. I demo-mode er `db` null, og tjekLedig() ville kaste. Disponering kunne
+ *     derfor ikke vise det fjerde af sine fem tjek uden en database.
+ *  2. Den Cloud Function der skriver en etape, henter alligevel sine
+ *     reservationer i én transaktion — den skal kunne kontrollere dem uden at
+ *     læse dem igen.
+ *  3. Logikken kunne ikke testes uden emulator. Nu kan den.
+ *
+ * Samme greb som gitter.js og demo-kpi.js: den rene kerne skal kunne kaldes
+ * uden infrastruktur.
+ *
+ * `eksisterende` skal allerede være afgrænset til den rigtige ressource og
+ * det rigtige vindue — det er hentReservationer() der ved hvordan man spørger
+ * RTDB, og den viden hører ikke to steder.
+ */
+export function tjekLedigMod(eksisterende = [], ny, opts = {}) {
+  /* Overlapsfiltreringen sker HER og ikke kun i hentReservationer().
+     hentReservationer() filtrerer allerede, så for tjekLedig() er det
+     dobbeltarbejde uden virkning. Men en kalder der har hele ressourcens
+     reservationsliste i hånden — som Disponering har — ville ellers få hver
+     eneste reservation meldt som konflikt. Kapacitetsgrenen filtrerer selv
+     inde i maksBelastning(). */
+  const andre = eksisterende.filter(
+    (r) => !r.annulleret && r.id !== ny.id && overlapper(r, { fra: ny.fra, til: ny.til })
+  );
 
   if (erKapacitet(ny.ressourceType)) {
     const kapacitet = opts.kapacitet;
