@@ -28,8 +28,11 @@ export const NAV = [
         titel: "Booking – forslag & reservation", under: "Disponent har udarbejdet forslag. Koordinator godkender." },
       { key: "disponering", sti: "/booking/disponering", label: "Disponering",
         titel: "Disponering", under: "Planlæg og disponér opgaver på biler og chauffører" },
-      { key: "livekort", sti: "/booking/live-kort", label: "Live-kort",
-        titel: "Live-kort", under: "Hvor er bilerne lige nu" },
+      { /* Beslutning 22: skaermen hed Live-kort, og navnet lovede en sporing der
+           ikke findes. RUTEN er uaendret, saa /tracking-redirecten og alle
+           eksisterende links overlever. */
+        key: "livekort", sti: "/booking/live-kort", label: "Rute & status",
+        titel: "Rute & status", under: "Planlagt rute og chaufførens meldinger — ingen GPS" },
       { key: "bookingopsaetning", sti: "/booking/opsaetning", label: "Bookingopsætning",
         titel: "Bookingopsætning", under: "Vedligehold standardomkostninger og automatiske regelsæt til brug i bookinger." },
     ],

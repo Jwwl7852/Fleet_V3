@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 21
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 23
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 21 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 23 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -79,6 +79,8 @@ tilfældigt.
 | 19 | Stamdata har ikke en division. Forbudt på `personale/` og `koeretoejer/` | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail:** nummeret i emnefeltet er hele integrationen | `fleet/sager.js` |
 | 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `langtur`. En langtur *er* en etape. Køre-hviletid blokerer, men med forbehold | `fleet/opgaver.js`, `fleet/koerehviletid.js` |
+| 22 | **De ni skærme uden mockup er afgjort.** Fakturering hedder **Fakturagrundlag** — FleetControl laver ikke den juridiske faktura. Live-kort hedder **Rute & status** — ingen GPS. Indberetninger deles i **driftshændelser** og **udgiftsregistreringer**. Kompetencer har **lovkritiske** (blokerer) og **virksomhedskrav** (advarer med begrundet override). Leverandører får **objektive tal, ingen stjerner**. Integrationer viser **kun det der findes**. Idébank ud af kundens installation | `fleet/integrationer.js`, `fleet/rutestatus.js` |
+| 23 | **Supportadgang er tidsbegrænset og kundestyret.** FleetControl-personale har som standard **ingen** adgang. Kundens administrator giver adgang med varighed, type, formål og sagsnummer; den **udløber automatisk**, ikke ved at nogen husker det. En supportsag bærer kontekst — aldrig passwords, tokens eller feltværdier. **Ikke besluttet:** AI-diagnose og systemstatusside | *ikke bygget — efter fase 1* |
 
 ## Struktur
 
@@ -107,6 +109,9 @@ src/
     fravaer.js         årsager (sensitive), afledt tilstand, reservationen
     opgaver.js         art (vaerksted|facility), feltskema pr. art, status
     etaper.js          transportfelter, grænseovergange, reservationerne
+    rutestatus.js      Rute & status: planlagte stop, chaufførens meldinger.
+                       INGEN GPS — en melding er ikke en måling
+    integrationer.js   kun det der findes. Listen er tom, og det er indholdet
     leverandoerer.js   kategorier, aftaler, afstemning. Division er tilladt her —
                        den beskriver leverandørens forretning, ikke vores
     facility.js        lokationer, aktiver, zoner. Grænsen på zonen, målingen
@@ -136,16 +141,17 @@ Opdateret 9. august 2026. **Start her efter en pause.**
 skærme, og **442 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 18 af 27 har indhold
+### Skærmene: 20 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (18)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2 |
-| **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
+| **Bygget (20)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer |
+| **Venter på svar (7)** | Fakturagrundlag, Indberetninger, Kompetencer, Leverandører, Opsætning → Generelt, Opsætning → Brugere & roller, Idébank *(ud af kundens installation)* |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
-fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De ni uden
-mockup må ikke bygges på gæt — spørg.
+fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De syv der
+venter, har fået deres produktvalg i beslutning 22 — men detaljerne mangler,
+og de må ikke bygges på gæt. Se afsnittet nedenfor.
 
 ### Beslutning 20 står i fase 0
 
@@ -286,6 +292,32 @@ ikke er skrevet. At en funktion findes er ikke det samme som at den håndhæves.
 | Enhedskombination | `kanDisponeres()` — en trailer kan ikke køre alene |
 | Kompetencer | `kraevedeKompetencer()` + `tjekKompetencer()` — en udløbet kompetence **blokerer** |
 | Kapacitet | `kanBaere()` — m³ og kg hver for sig |
+
+### De fem skærme der venter — og hvad de venter på
+
+**Alle skærme med mockup er bygget**, og de ni uden har fået deres produktvalg
+i **beslutning 22**. Fire af dem er dermed bygget eller ude af fase 0:
+
+| Skærm | Status |
+|---|---|
+| Opsætning → Integrationer | **Bygget.** Kun det der findes — og der findes ingen. Ingen "coming soon" |
+| Booking → **Rute & status** | **Bygget.** Ingen GPS: planlagt rute, meldte stop, næste stop, forventede tidspunkter |
+| Opsætning → Idébank | **Ud af kundens installation** i fase 0. Intern hos os — bygges ikke her |
+| Indkøb → Leverandører | Kartoteket er bygget som del af Indkøb & vareforbrug. Kun performancetallene mangler |
+
+De **fem** der venter, venter nu på at svarene skrives ind i
+**[FleetControl-spoergsmaal.md](FleetControl-spoergsmaal.md)** — retningen er
+afgjort, detaljerne ikke:
+
+| Skærm | Afgjort i beslutning 22 | Hvad der stadig mangler |
+|---|---|---|
+| **Økonomi → Fakturagrundlag** | FleetControl laver **ikke** den juridiske faktura. Ingen nummerserie, kreditnotaer, betalingsregistrering eller rykkere. Den producerer et godkendt, **låst** grundlag der eksporteres. Neutral intern model med adaptere: e-conomic, Dinero, Business Central, CSV. `prepared_by` og `approved_by` findes **altid**, også når det er samme person | Feltskemaet i den neutrale model, og hvilken adapter der bygges først |
+| **Flåde → Indberetninger** | To slags: **driftshændelser** (reparation, skade, dæk, service, andet) starter et forløb; **udgiftsregistreringer** (tankning, parkering, truckwash, kvittering) gør ikke. En driftshændelse **lukkes ikke** når den bliver et værkstedsbesøg — den er samme sag hele vejen til fakturaen. Skade får modpart, reg.nr., forsikringsselskab, policenr., skadenr. og ansvar | Om skadeforløbet er sin egen tilstandsmaskine |
+| **Bemanding → Kompetencer** | **Lovkritiske** (C, CE, D1, D, ADR, tachograf) blokerer hårdt. **Virksomheds- og kundekrav** advarer med override der kræver begrundelse og logges. Chaufføren uploader dokumentation, kontoret godkender. Varsler konfigurerbare, default **90/30/14** dage | ⚠ Ændrer `tjekKompetencer()`: den skal returnere **blokerende og advarende hver for sig**. Og et foto af et ADR-kort hører i `sensitive/` |
+| **Indkøb → Leverandører** | **Ingen stjerner.** Objektive tal: leverance til tiden, fakturaafvigelse, gennemsnitlig leveringstid, prisændring 12 mdr., reklamationer, samlet køb. En score må **kun** findes hvis beregningen kan vises. Aftaler og prislister ligger på leverandøren, ét sted | Hvilke af tallene der kan beregnes uden en aggregering |
+| **Opsætning → Generelt** og **Brugere & roller** | ikke afgjort | Hvad kunden må ændre selv. Og: skal en kunde kunne ændre en rolles indhold? `roller/` er bygget til det — men en vognmand der fjerner `booking.godkend` fra sin egen rolle har lukket sig ude |
+
+**Support hører efter fase 1** — se beslutning 23. Den er ikke en af de ni.
 
 ### Noder der er dokumenteret, men mangler regler
 

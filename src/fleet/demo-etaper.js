@@ -170,6 +170,48 @@ export const DEMO_ETAPER = [
   },
 ];
 
+/* ---- Statushændelser: chaufførens meldinger ---------------------------- */
+
+/**
+ * BESLUTNING 22 — Rute & status har INGEN GPS.
+ *
+ * Det her er hvad chaufføren MELDER, ikke hvad en boks måler. En melding kan
+ * være forsinket, forkert eller mangle, og skærmen skal kunne sige "vi har
+ * ikke hørt noget siden kl. 11.40" frem for at gætte en position.
+ *
+ * `stopId` binder meldingen til et planlagt stop fra planlagteStop() i
+ * rutestatus.js, så "næste stop" kan udledes frem for at blive gemt.
+ */
+export const DEMO_STATUSHAENDELSER = {
+  /* Kbh → Hamburg i dag. Undervejs, meldt til og med grænsen. */
+  "et-001": [
+    { ms: dag(0, 5), type: "afgang", stopId: "start", sted: "København", note: "Læsset i går aften" },
+    { ms: dag(0, 8) + 20 * 60000, type: "pause", sted: "Rastplatz Fehmarn" },
+    { ms: dag(0, 9) + 40 * 60000, type: "graense", stopId: "graense-roedby", sted: "Rødby–Puttgarden" },
+  ],
+  /* Kbh → Berlin i morgen. Endnu ingen meldinger — turen er ikke begyndt. */
+  "et-002": [],
+  /* Kbh → Amsterdam. Meldt forsinket ved grænsen. */
+  "et-003": [
+    { ms: dag(2, 3), type: "afgang", stopId: "start", sted: "København" },
+    { ms: dag(2, 7), type: "graense", stopId: "graense-padborg", sted: "Padborg" },
+    { ms: dag(2, 7) + 15 * 60000, type: "forsinkelse", sted: "Padborg",
+      forsinketMin: 75, note: "Kø ved grænsen, tolddokumenter kontrolleret" },
+  ],
+  /* Afsluttet tur. Meldt hele vejen igennem — det er den der viser hvordan en
+     fuld tidslinje ser ud. */
+  "et-008": [
+    { ms: dag(-3, 5), type: "afgang", stopId: "start", sted: "København" },
+    { ms: dag(-3, 9), type: "graense", stopId: "graense-roedby", sted: "Rødby–Puttgarden" },
+    { ms: dag(-3, 12), type: "pause", sted: "Rastplatz Neustadt" },
+    { ms: dag(-3, 15), type: "ankomstLosning", sted: "Hamburg" },
+    { ms: dag(-3, 16) + 40 * 60000, type: "afsluttet", stopId: "slut", sted: "Hamburg",
+      note: "Aflæsset, kvittering modtaget" },
+  ],
+};
+
+export const demoHaendelser = (etapeId) => DEMO_STATUSHAENDELSER[etapeId] || [];
+
 /* ---- Opslag ----------------------------------------------------------- */
 
 export const demoEtaperFor = (koeretoejId) =>
