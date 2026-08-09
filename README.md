@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 213 tests. Starter emulatoren.
+npm test                            # 250 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -104,6 +104,9 @@ src/
     personale.js       personer som entiteter
     flaade.js          arter, feltskema pr. art, kapacitet, kompetencekrav
     fravaer.js         årsager (sensitive), afledt tilstand, reservationen
+    gitter.js          kalendergitterets regnestykke: slots, udlægning,
+                       pile ved vinduets kant, overlap som konflikt
+    Gitterkalender.jsx ressourcer × tid — delt af tre skærme
     demo-kpi.js        demo-nøgletal. Rent data, ingen React — så demo-filernes
                        selvkontrol også kan køres af en test
     demo-*.js          personale, flåde, fravær, sager. Nodens form, ikke
@@ -118,16 +121,15 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Elleve byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **213 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Tolv byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **250 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 9 af 27 har indhold
+### Skærmene: 9 af 27 har indhold — Værkstedskalender er færdig
 
 | | Skærme |
 |---|---|
-| **Bygget (8)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær |
-| **Delvist (1)** | Værkstedskalender — sagsvisningen er bygget, kalenderen og fakturaformularen mangler |
+| **Bygget (9)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender |
 | **Skelet med mockup (9)** | Booking-oversigt, Ny forespørgsel, Forslag, Disponering, Facility ×3, Indkøb ×2 |
 | **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
@@ -164,10 +166,30 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    kunde kan ikke *liste* sine egne bookinger — `.read` på `bookinger` er alt
    eller intet. Det kræver en indeksnode pr. kunde, og den beslutning skal
    træffes før portalen bygges.
-4. Skærmene: Værkstedskalender → Disponering. Disponering
-   ligger sidst, fordi den læser de reservationer som fravær og værksted
-   skriver — bygges den først, disponerer den på en kalender der ikke ved
-   noget om syge chauffører eller biler på værksted.
+4. **Disponering.** Den lå sidst med vilje: den læser de reservationer som
+   fravær og værksted skriver, og bygget først ville den disponere på en
+   kalender der ikke vidste noget om syge chauffører eller biler på værksted.
+   Nu ved den det. ⚠ Giv `opgaver` en `art` (`vaerksted` | `langtur`) **før**
+   skærmen bygges — bagefter er det en migrering.
+
+### Gitterkalenderen er en genbrugskontrakt
+
+`fleet/Gitterkalender.jsx` tegner ressourcer som rækker og tid som kolonner.
+**Tre skærme skal bruge den samme:** Værkstedskalender (køretøjer × dage),
+Facility → Servicekalender (lokationer × dage) og Disponering (biler × timer,
+`enhed: "time"`). Byg ikke et fjerde gitter — to gitre der læser det samme
+interval forskelligt, opdages ikke ved at kigge på dem.
+
+Regnestykket ligger i `fleet/gitter.js` uden React, så det kan testes. To ting
+der skal blive stående, også når de ser grimme ud:
+
+- **Blokke der rækker ud over vinduet får en pil.** En værkstedsblok på tre
+  uger, klippet ved kanten, læses som et kort besøg — og så planlægger nogen
+  en tur i en uge hvor bilen står på værksted. Samme fejlklasse som tavs
+  afkortning i `useListe`.
+- **Overlap i samme række tegnes som konflikt**, ikke stablet i hver sin bane.
+  På en eksklusiv ressource er et overlap noget `reserver()` ville afvise.
+  Ser det pænt ud, skjuler gitteret en fejl i data.
 
 ### Demo-data skal kontrollere sig selv
 

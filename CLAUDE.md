@@ -51,6 +51,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
   fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og
   flere redigeringer, og blev først fundet da de blev kørt.
+- **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
+  ressourcer × tid og bruges af Værkstedskalender, Servicekalender og
+  Disponering. Regnestykket ligger i `gitter.js`. To gitre der læser det samme
+  interval forskelligt, opdages ikke ved at kigge på dem.
+- **Bygge en fakturagodkendelse uden for Indkøb.** Værkstedskalender
+  registrerer et **indkøb** i kontekst; godkendelse og afstemning sker ét sted:
+  Indkøb → Fakturaer. `fakturaer/` er i øvrigt `.write: false`. To
+  godkendelsesflows er beslutning 12 om igen.
 - **Skrive divisionsfilteret igen.** Det står i `useListe` — og reglen er
   ikke bare "valgt division plus fælles": en post **uden** division vises i
   **begge**, ikke i ingen. Bookingopsætning havde sin egen kopi uden det led,

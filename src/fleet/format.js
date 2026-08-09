@@ -13,6 +13,28 @@ const nf = (d = 0) =>
   new Intl.NumberFormat("da-DK", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 export const kr = (oere, dec = 0) => nf(dec).format((oere || 0) / 100) + " kr.";
+
+/**
+ * oereFraKroner("8.420,50") → 842050
+ *
+ * Den anden vej end kr(). Et inputfelt viser kroner; basen gemmer ØRE som
+ * integer (beslutning 2), og omregningen skal ske ét sted.
+ *
+ * Math.round er ikke en detalje: 84,20 * 100 giver 8419.999999999999 i
+ * flydende komma. Uden afrunding ville beløbet blive gemt som 8419 øre, og
+ * en faktura ville mangle en øre — som først opdages i en afstemning, hvor
+ * ingen kan forklare den.
+ *
+ * Dansk notation: komma som decimaltegn, punktum og mellemrum som
+ * tusindtalsseparator. → null hvis feltet ikke er et tal.
+ */
+export function oereFraKroner(tekst) {
+  if (tekst == null || tekst === "") return null;
+  const rent = String(tekst).replace(/[\s.]/g, "").replace(",", ".");
+  const n = Number(rent);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 100);
+}
 export const num = (n, dec = 0) => nf(dec).format(n || 0);
 export const pct = (p, dec = 0) => nf(dec).format(p || 0) + " %";
 export const km = (n) => nf(0).format(n || 0) + " km";

@@ -209,6 +209,46 @@
 .fc-aftale-citat{margin:10px 0 0; padding:9px 12px; border-left:3px solid var(--bc-accent);
   background:var(--fc-bg); font-size:12.5px; color:var(--bc-muted); font-style:italic}
 
+/* Gitterkalender — ressourcer som rækker, tid som kolonner. Bruges af
+   Værkstedskalender, Servicekalender og Disponering. Alt fra tokens. */
+.fc-gk{display:grid; grid-template-columns:180px 1fr; min-width:640px}
+.fc-gk-navn{padding:8px 10px; border-top:1px solid var(--bc-line); font-size:12.5px;
+  display:flex; flex-direction:column; gap:2px; justify-content:center}
+.fc-gk-hj{border-top:0}
+.fc-gk-navn-t{font-weight:650}
+.fc-gk-navn-u{color:var(--bc-muted); font-size:11.5px}
+.fc-gk-raekkepar{display:contents}
+.fc-gk-band{display:grid; grid-template-columns:repeat(var(--gk-slots),minmax(34px,1fr));
+  border-top:1px solid var(--bc-line); position:relative; min-height:44px; align-items:center}
+.fc-gk-hoved{border-top:0; min-height:0}
+.fc-gk-kol{grid-row:1; text-align:center; font-size:10.5px; color:#8b97a8; font-weight:650;
+  padding:6px 2px; letter-spacing:.02em; white-space:nowrap; overflow:hidden}
+.fc-gk-celle{grid-row:1; height:100%; min-height:44px; border-left:1px solid var(--bc-line)}
+.fc-gk-celle:first-child{border-left:0}
+/* Kolonnen for nu. En kalender uden et "nu" tvinger brugeren til at tælle. */
+.fc-gk-nu{background:var(--fc-accent-soft)}
+.fc-gk-kol.fc-gk-nu{color:var(--bc-accent)}
+
+.fc-gk-blok{grid-row:1; z-index:1; display:flex; align-items:center; gap:4px;
+  min-width:0; border:1px solid transparent; border-radius:7px; padding:5px 8px;
+  margin:3px 2px; font:inherit; font-size:11.5px; font-weight:650; cursor:pointer;
+  overflow:hidden; text-align:left}
+.fc-gk-tekst{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+/* Pilen er ikke pynt: uden den læses en tre ugers blok som et kort besøg. */
+.fc-gk-pil{flex:0 0 auto; font-weight:800; opacity:.75}
+.fc-gk-valgt{outline:2px solid var(--bc-accent); outline-offset:1px}
+.fc-gk-ok{background:var(--fc-ok-bg); color:var(--bc-ok); border-color:#bbe8cd}
+.fc-gk-warn{background:var(--fc-warn-bg); color:var(--bc-warn); border-color:#f2ddab}
+.fc-gk-bad{background:var(--fc-bad-bg); color:var(--bc-block); border-color:#f3bcbc}
+.fc-gk-info{background:var(--fc-info-bg); color:var(--fc-info); border-color:#c3d9fb}
+.fc-gk-brand{background:var(--fc-accent-soft); color:var(--bc-accent); border-color:#c9dbff}
+/* Konflikt: stribet og rød, oven i hinanden. Lagde vi dem i hver sin bane,
+   ville et overlap reservationsmodellen ville AFVISE se rigtigt ud. */
+.fc-gk-konflikt{background:var(--fc-bad-bg); color:var(--bc-block);
+  border-color:var(--bc-block); border-style:dashed;
+  background-image:repeating-linear-gradient(45deg,
+    rgba(214,69,69,.14) 0 6px, rgba(214,69,69,0) 6px 12px)}
+
 /* Grafer. Søjlefarverne sættes af Soejlegraf ud fra en tone, ikke af modulet —
    samme regel som Pille. Alt kommer fra tokens ovenfor. */
 .fc-graf{position:relative; display:flex; align-items:flex-end; gap:4px; padding-top:6px;
