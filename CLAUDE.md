@@ -49,6 +49,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
   fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og
   flere redigeringer, og blev først fundet da de blev kørt.
+- **Læse et sagsnummer ud af brødteksten i en mail.** Kun emnefeltet — en
+  brødtekst bærer citerede tidligere mails med andre sagsnumre, og så kan en
+  fremmed videresende en gammel tråd og lande på en sag han intet har med at
+  gøre. `sagsnummerFraEmne()` i `sager.js`.
+- **Vise en karantæneret besked i tråden.** Ikke gråtonet, ikke sammenklappet.
+  Renderes den inline, læser mennesket den og handler på den — samme regel som
+  at en udløbet kompetence blokerer frem for at advare.
+- Tilføje `emne` til `LOGBARE_FELTER`. Det er fritekst fra internettet, og
+  allowlisten findes for at holde fritekst ude af auditloggen.
+- Give en mail-aftale sin egen `kilde.type` i reservationsnoden. Det man
+  reserverer, er et **værkstedsbesøg** — `kilde.type: vaerksted`, prioritet 40.
+  Ellers taber en bekræftet værkstedsaftale til en booking. Sporet er
+  `kilde.viaSagId`.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
@@ -98,4 +111,10 @@ kan ikke komme ud af sync.
   venter på en passende tur. Skærmen skal kunne vise åbne etaper ved siden af
   planlagte, og den skal læse to noder: `etaper` og `opgaver`. Bygger du den
   med én booking = én tur, er det en migrering bagefter.
+- **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
+  parsing, afsendelse og scanning mangler. `sager/` findes ikke i
+  `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,
+  `sag.skriv`, `sag.karantaeneFrigiv` og `sag.aftaleBekraeft` heller ikke i
+  `permissions.js`. Tilføj dem i samme ombæring som reglerne og deres tests —
+  ikke før.
 - 9 skærme har ingen mockup. Byg dem ikke på gæt — spørg.

@@ -19,6 +19,19 @@ export const km = (n) => nf(0).format(n || 0) + " km";
 
 export const dato = (ms) =>
   new Date(ms).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+/** Dato + klokkeslæt i én streng. Bruges hvor tidspunktet på minuttet betyder
+ *  noget — en mail i en sagstråd, en aftale med et værksted. */
+export const datoTid = (ms) => `${dato(ms)} kl. ${klokke(ms)}`;
+
+/** Filstørrelse. Hører her og ikke i et modul, af samme grund som alt andet
+ *  i filen: ellers bliver det 180 kB ét sted og 0,18 MB et andet. */
+export const filstoerrelse = (bytes) => {
+  const b = bytes || 0;
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${nf(0).format(b / 1024)} kB`;
+  return `${nf(1).format(b / (1024 * 1024))} MB`;
+};
 export const klokke = (ms) =>
   new Date(ms).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
 export const ugedag = (ms) =>

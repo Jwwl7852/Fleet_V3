@@ -287,11 +287,34 @@ export function forloebstilstand(etaper = []) {
   return svar(laveste ? laveste.tilstand : "afventerPlan");
 }
 
-/** Nummerserie. Bookingnumre skal komme fra en counter i en transaction,
- *  ikke fra en optælling af eksisterende bookinger. */
-export async function naesteBookingnummer(db, path) {
+/* ---- Nummerserier (beslutning 8) ----------------------------------- */
+
+/**
+ * naesteNummer(db, path, { praefiks, serie })
+ *   → "PRÆFIKS-ÅÅÅÅ-NNNNN"
+ *
+ * ÉT format, ÉN mekanisme: en counter i en transaction, aldrig en optælling
+ * af eksisterende poster. Serien er nøglen under countere/, præfikset er det
+ * der står i nummeret — de er adskilt, fordi to serier kan dele præfiks-logik
+ * uden at dele tæller.
+ *
+ * ⚠ Et nummer fra denne serie er FORTLØBENDE og dermed gætbart: findes
+ * FLT-2026-00381, findes 00382 også. Det er i orden så længe nummeret
+ * behandles som en ADRESSE og ikke som en hemmelighed. Beslutning 20 hænger
+ * på det: et sagsnummer i et emnefelt må aldrig i sig selv give adgang til
+ * noget — afsenderen skal valideres uafhængigt. Læg ikke et tilfældigt token
+ * ind i nummeret for at "gøre det sikrere"; det ville bryde formatet her og
+ * alligevel ikke flytte kontrollen hen hvor den hører hjemme.
+ */
+export async function naesteNummer(db, path, { praefiks, serie }) {
+  if (!praefiks || !serie) throw new Error("naesteNummer: praefiks og serie er påkrævede.");
   const aar = new Date().getFullYear();
-  const ref = db.ref(path(`countere/booking/${aar}`));
+  const ref = db.ref(path(`countere/${serie}/${aar}`));
   const res = await ref.transaction((n) => (n || 0) + 1);
-  return `BKG-${aar}-${String(res.snapshot.val()).padStart(5, "0")}`;
+  return `${praefiks}-${aar}-${String(res.snapshot.val()).padStart(5, "0")}`;
 }
+
+/** Bookingnumre. Wrapper om naesteNummer — samme counter som før
+ *  (countere/booking/<år>), så eksisterende tællere er uberørte. */
+export const naesteBookingnummer = (db, path) =>
+  naesteNummer(db, path, { praefiks: "BKG", serie: "booking" });

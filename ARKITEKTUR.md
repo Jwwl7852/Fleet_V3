@@ -45,7 +45,7 @@ oprydningsopgave for sig.
 | Moms | `beloebOere` er **altid ekskl. moms**. `momsOere` er separat felt. |
 | Tid | Epoch millisekunder. Intervaller er halvåbne: `[fra, til)` |
 | Afvigelser | Gemmes som `faktisk − budget`. Farven afgøres af `betterWhen` i visningen. |
-| Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV. |
+| Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV, **FLT**, **FAC**. Én mekanisme: `naesteNummer()` i `booking-state.js`. Serien er fortløbende og dermed gætbar — et nummer er en **adresse, ikke en hemmelighed**, og må aldrig i sig selv give adgang. Se beslutning 20. |
 | Sletning | Regnskabsdata: kun `slettet: true` med `slettetMs`, `slettetAf`, `slettetAarsag`. |
 | Tenant | `tenantId` er immutabelt. Kommer fra `auth.token.tenant`, aldrig fra klienten. |
 | Division | Felt, aldrig sti. `gods` \| `bus` \| `faelles`. **Transaktioner** hører til én afdeling: `opgaver`, `indberetninger`, `etaper`, `indkoeb`, `lagre`. **Kunder** kan være `faelles` — kundens forretning går på tværs. **Stamdata om vores egne folk og biler har ingen** (beslutning 19): `personale` og `koeretoejer` afvises. Det samme gør `reservationer`, `fravaer` og `kompetencer`, som arvede den fra ressourcen. Håndhævet med `.validate` i begge retninger. |
@@ -81,7 +81,16 @@ tenants/<tenantId>/
   indkoeb/<id>                  { beloebOere, momsOere, ... }
   fakturaer/<id>
   kunder/<id>
+  sager/<sagId>                 { nummer, art: fleet|facility, tilstand, emne,
+                                  modul, objektType, objektId, modpartNavn,
+                                  parter[], securityLevel, sidsteBeskedMs,
+                                  antalBeskeder, antalKarantaene,
+                                  harAftale, aftaleTilstand, aftaleFraMs }
+                                GENERAL — ingen brødtekst. parter[] er
+                                ADGANGSLISTEN, ikke kontaktinfo
   countere/booking/<år>
+  countere/sagFlt/<år>
+  countere/sagFac/<år>
   idebank/<id>
 brugerTenants/<uid>             opslag til custom claims, kun server-side
 ```
@@ -510,3 +519,172 @@ Gods/Bus-toggle'en** til diskussion, ikke kun de to felter. `kpi/` er delt på
 division, shellen har en vælger, og elleve skærme filtrerer på den. Denne
 beslutning rører kun stamdata. Om resten skal følge efter, er en beslutning
 for sig.
+
+## Beslutning 20 — sagsbaseret mail
+
+**Nummeret i emnefeltet er hele integrationen.** En sag får et nummer fra
+beslutning 8's counter, nummeret sættes i emnet, modtageren svarer normalt i
+Outlook, `Re:` bevarer det, og svaret lægges på sagen. Værkstedet og
+leverandøren installerer ingenting og gør ingenting anderledes.
+
+Politikken ligger i `fleet/sager.js`. Filen importerer kun `booking-state.js`
+og aldrig firebase — samme disciplin som `permissions.js` og
+`audit-regler.js`, og af samme grund: den Cloud Function der modtager mail,
+skal bruge **nøjagtig samme** regex og **nøjagtig samme** afsendervurdering som
+skærmen. To definitioner ville betyde, at en besked kan se accepteret ud ét
+sted og karantæneret et andet.
+
+### Noder
+
+```
+tenants/<t>/sager/<sagId>                             general — se Noder ovenfor
+tenants/<t>/sensitive/sager/<sagId>/beskeder/<id>     { ms, retning, afsender,
+                                                        afsenderNavn, modtagere[],
+                                                        emne, tekst, afsenderStatus,
+                                                        dmarc, vedhaeftninger[] }
+tenants/<t>/sensitive/sager/<sagId>/karantaene/<id>   samme + aarsag
+tenants/<t>/sensitive/sager/<sagId>/aftaleforslag/<id>
+                                                      { tilstand, fra, til, sted,
+                                                        ressourceType, ressourceId,
+                                                        udtrukketFra, udtrukketSaetning,
+                                                        bekraeftetAf, bekraeftetMs }
+tenants/<t>/countere/sagFlt/<år>                      FLT-serien
+tenants/<t>/countere/sagFac/<år>                      FAC-serien
+```
+
+**Delingen er beslutning 17 anvendt på en ny node, ikke en ny idé.**
+Brødteksten er fritekst fra internettet og kan indeholde hvad som helst —
+navne, telefonnumre, og før eller siden en helbredsoplysning. Den kan ikke
+ligge som barn af sagen, for `.read` kaskaderer, og flytter man `.read` ned på
+`<sagId>/general`, kan man ikke længere forespørge på `sager` — og så findes
+der ingen sagsliste. Som søskende koster det ét ekstra opslag på en
+detaljeskærm og nul på en liste.
+
+Læg mærke til hvad der er i general og hvad der ikke er: `harAftale`,
+`aftaleTilstand` og `aftaleFraMs` er **struktur** og kan stå i en liste.
+`udtrukketSaetning` er et citat fra en mail og ligger i `sensitive/`.
+
+`parter[]` er **adgangslisten**, ikke kontaktinfo. Den står derfor på Oversigt
+og ikke gemt i en opsætningsskærm: det er den der afgør hvad der lander på
+tråden.
+
+### Modtagevejen
+
+Én adapter, én vej bygget:
+
+```
+indgaaendeMail(raw) → { envelopeAfsender, dmarc, emne, tekst, vedhaeftninger[] }
+```
+
+**Bygget: dedikeret adresse hos en mailtjeneste med webhook.** Én integration,
+virker for alle tenants dag ét, testbar i DEV uden en kunde. Mailtjenesten
+bliver underdatabehandler og skal i DPA og i EU.
+
+**Tilvalg, ikke bygget: Microsoft Graph mod kundens eget Microsoft 365.**
+Korrespondancen bliver i kundens egen postkasse, og der er ingen tredjepart på
+indholdet. Til gengæld kræver det admin consent pr. kunde til en Entra-app,
+scopet med en `ApplicationAccessPolicy` til den ene postkasse — beder man om
+`Mail.Read` uden scope, beder man om læseadgang til hele virksomhedens mail.
+Det er en IT-samtale, ikke en afkrydsning, og en tenant kan stå fast på en
+person vi ikke kan nå. Se README for hele sammenligningen.
+
+Adapteren findes, så den anden vej kan tilføjes uden at røre sagsmodellen.
+**Byg ikke begge på én gang.**
+
+### Indgangen er den eneste uautentificerede i platformen
+
+Alt andet i FleetControl kommer fra en bruger med et claim. Det her kommer fra
+internettet, og sagsnummeret er fortløbende og dermed gætbart.
+
+```
+sagsnummerFraEmne(emne)  → { nummer, art } | null    KUN emnefeltet
+vurderAfsender({ envelopeAfsender, dmarc, parter, egneDomaener })
+                         → { status, aarsag }        kendt | karantaene | afvist
+```
+
+**Kun emnefeltet, aldrig brødteksten.** En brødtekst bærer citerede tidligere
+mails, og en af dem kan have et andet sagsnummer i sig. Læste vi den, kunne en
+fremmed videresende en gammel tråd og få sin besked lagt på en sag han aldrig
+har haft med at gøre. To *forskellige* numre i samme emne giver `null`.
+
+**Envelope-afsenderen, aldrig `From:`.** `From:` er fritekst afsenderen
+skriver selv.
+
+**DMARC pass er nødvendigt, ikke tilstrækkeligt.** DMARC beviser at afsenderen
+ejer det domæne han skriver fra — ikke at han er den rigtige part.
+`mercedes-greve-service.dk` består DMARC og er stadig ikke
+`mercedes-greve.dk`. Derfor er sidste led et opslag i sagens `parter[]`.
+
+**Karantænen er ikke en del af tråden.** Ikke gråtonet, ikke sammenklappet —
+eget afsnit med egen ramme. Renderes den inline, læser mennesket den og
+handler på den, og så er karantænen dekoration. Frigivelse kræver
+`sag.karantaeneFrigiv` og tilføjer adressen til **denne sags** parter alene.
+
+**Vedhæftninger fejler lukket.** `maaHentes()` er sand kun ved `ren`. Er
+scanneren nede, bliver status stående på `afventerScan`, og der renderes intet
+downloadlink — ikke et gråt link, ikke et link med en advarsel, intet element.
+
+Brødtekst renderes som **tekst**. Ingen `dangerouslySetInnerHTML`, ingen
+fjernbilleder: et fjernbillede er en sporingspixel der fortæller afsenderen at
+sagen blev åbnet.
+
+### Aftale → reservation
+
+En sætning i en mail kan blive en reservation. Den bliver et **forslag** først.
+
+```
+reservationFraAftale(sag, aftale) → { ressourceType, ressourceId, fra, til, kilde }
+```
+
+**Mailen er ikke en femte `kilde.type`.** Det man reserverer, er et
+værkstedsbesøg, og reservationen får derfor `kilde.type: vaerksted` med
+prioritet 40 — `facilitySag` og prioritet 20 på en FAC-sag. Fik den sin egen
+lave prioritet, ville en bekræftet værkstedsaftale tabe til en booking, og en
+bil på værksted kan ikke køre uanset hvad disponenten har lovet. Sporet
+bevares med `kilde.viaSagId`, ikke ved at ændre `kilde.type`.
+
+`reservationFraAftale()` kaster på alt der ikke er `tilstand: "aftalt"`.
+Automatikken skriver aldrig selv — samme regel som `matchAabneEtaper()`.
+
+**Datoen er et gæt.** "18/8" kan læses to veje, og "næste tirsdag" kan ingen
+maskine læse med sikkerhed. Derfor bærer forslaget altid `udtrukketSaetning`,
+og skærmen viser den ved siden af feltet. Tidspunktet er aldrig forudfyldt i
+noget der kan bekræftes i ét klik.
+
+### Retention
+
+To grænser der ikke er den samme:
+
+| | Hvor | Grænse |
+|---|---|---|
+| Auditposten om en besked | `audit/<t>/drift/…` | Følger `RETENTION_MAANEDER` |
+| Tråden selv | `sensitive/sager/` | **Ikke afgjort** |
+| Karantæne | `sensitive/sager/<id>/karantaene/` | 30 dage, **hård sletning** |
+
+**`emne` må ikke på `LOGBARE_FELTER`.** Det er fritekst fra internettet, og
+allowlisten i `audit-regler.js` findes netop for at holde fritekst ude af
+loggen. Auditposten bærer `nummer`, `sagId`, `afsenderStatus` og `ms`.
+
+Trådens egen grænse er samme åbne spørgsmål som audit-retention: en
+værkstedssag knyttet til en faktura rører regnskabsgrundlaget, en sag der løb
+ud i sandet er drift. Afgøres juridisk sammen med de øvrige tal.
+
+Karantænen er den ene undtagelse fra "hardslet aldrig". Det er
+uautentificeret input fra en fremmed, der er intet behandlingsgrundlag for at
+gemme det, og det er ikke regnskabsdata.
+
+### Status
+
+Fase 0 er **visning**: `Sagsvisning.jsx` med fanerne Oversigt, Kommunikation,
+Dokumenter, Aktiviteter, og en demo-tråd på Værkstedskalender. Komponenten
+ligger i `fleet/` fordi Facility skal bruge den samme — forskellen på FLT og
+FAC er præfiks, counter og hvad knappen hedder, og alt det står i `SAG_ART`.
+
+Ikke bygget: modtagevej, parsing, afsendelse, scanning, Cloud Functions.
+`sager/` findes ikke i `firebase.rules.json`, og derfor står `sag.laes`,
+`sag.sensitiveLaes`, `sag.skriv`, `sag.karantaeneFrigiv` og
+`sag.aftaleBekraeft` heller ikke i `permissions.js` endnu. Kataloget siger
+selv, at man ikke tilføjer en permission uden et sted der spørger efter den.
+
+`test/sager.test.mjs` kører politikken frem for at læse den — 39 tests, uden
+emulator, men med i `npm test` og dermed i pre-commit-hooken.

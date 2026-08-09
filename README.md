@@ -78,6 +78,7 @@ i den nævnte fil.
 | 17 | **`securityLevel` og klassificerede søskendenoder.** `normal` \| `internal` \| `confidential` \| `restricted` på general. Følsomme felter ligger i `sensitive/<objekt>/<id>`, værdiansættelser i `vaerdi/<objekt>/<id>` — som søskende, ikke som børn. | En `.read` kaskaderer og kan ikke indsnævres på et barn. Som barn ville `.read` skulle flyttes ned på `<id>/general`, og så kan man ikke længere forespørge på noden — der ville ingen bookingliste være. Søskende koster ét ekstra opslag på en detaljeskærm og nul på en liste. Se afsnittet nedenfor. | `fleet/permissions.js` |
 | 18 | **Personale og flåde er entiteter.** Nøglen i `personale/` er et `personId`; `uid` er et valgfrit felt, der sættes hvis personen får et login. Flåden er ikke en liste af biler: `art` styrer skemaet, og en påhængt enhed kan ikke disponeres alene. Begge ligger i **basen** — enhver abonnementskombination har medarbejdere og materiel. | Modellen dækkede ikke det den påstod. Chauffører fandtes kun som navne i en kompetencetabel, så hverken Bemanding eller Kompetencer havde et sted at hente dem fra, og bus-divisionen havde ingen enhedstype at pege på. Bytter man `uid` og `personId` om, holder ejerskabstjekket i reglerne op med at virke: `oprettetAf === auth.uid` matcher aldrig et personId, og en chauffør har måske slet intet login. En person findes før sit login og efter det — kontoen lukkes ved fratrædelse, men en reservation fra tre år siden skal stadig kunne opløses til et navn. | `fleet/personale.js`, `fleet/flaade.js` |
 | 19 | **Stamdata har ikke en division.** En medarbejder er defineret ved sine **kompetencer**, et køretøj ved sin **art**. Feltet er derfor forbudt på `personale/` og `koeretoejer/` — ikke bare valgfrit. `faelles` bevares på **kunder**, hvor værdien betyder at kundens forretning går på tværs. | Ingen abonnent har både gods og bus. En busvognmand har kun ét sæt tal, så der var aldrig noget at dele op. En påhængsvogn eller en varevogn kan tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget: det skulle udfyldes på hver bil uden at kunne begrundes på nogen af dem — og så blev det læst af nogen. Valgfrit havde ikke været nok; et felt der må stå der, bliver tastet. Omgør delvist beslutning 15. | `firebase.rules.json` |
+| 20 | **Sagsbaseret mail: nummeret i emnefeltet er hele integrationen.** En sag får et nummer fra beslutning 8's counter — `FLT` i Fleet, `FAC` i Facility. Nummeret sættes i emnet, modtageren svarer normalt i Outlook, `Re:` bevarer det, og svaret lægges på sagen. Indgående mail er **uautentificeret input**: afsenderen valideres mod sagens parter, alt andet i karantæne. | Alternativet var en Outlook-integration hos hvert værksted og hver leverandør — altså hos nogen der ikke er vores kunde og ikke har nogen grund til at installere noget. Et emnefelt virker hos alle, i dag, uden at modtageren gør noget anderledes. Prisen er at kanalen står åben mod internettet, og det er dét afklaringerne nedenfor handler om. | `fleet/sager.js` |
 
 ### Beslutning 16 i detaljer
 
@@ -184,6 +185,138 @@ ikke hvorfor.
 `securityLevel` (`normal` | `internal` | `confidential` | `restricted`) står på
 general, så en liste kan vise en hængelås uden at hente noget klassificeret.
 
+### Beslutning 20 i detaljer
+
+Fem afklaringer. De fire første handler alle om det samme: **kanalen står åben
+mod internettet**, og det er den eneste indgang i platformen der gør.
+
+**1. Numrene kommer fra beslutning 8, ikke fra et nyt system.**
+`naesteBookingnummer()` er generaliseret til `naesteNummer(db, path,
+{ praefiks, serie })`; bookingnumre er nu en wrapper om den, så eksisterende
+tællere er urørte. To adskilte serier — `countere/sagFlt/<år>` og
+`countere/sagFac/<år>` — så FLT kan stå på 00381 mens FAC står på 00127.
+
+**Konsekvensen skal læses som den er: et sagsnummer er en adresse, ikke en
+hemmelighed.** Serien er fortløbende, så findes FLT-2026-00381, findes 00382
+også. Det er i orden — men kun fordi nummeret aldrig i sig selv giver adgang
+til noget. Læg ikke et tilfældigt token ind i formatet for at "stramme op";
+det ville bryde beslutning 8 og alligevel ikke flytte kontrollen derhen hvor
+den hører hjemme.
+
+**2. Afsenderen valideres, ikke nummeret.** Tre udfald, og der findes bevidst
+ikke et fjerde der hedder *sandsynligvis i orden*:
+
+| Udfald | Betingelse | Hvad der sker |
+|---|---|---|
+| `kendt` | DMARC-alignet envelope-afsender står på sagens `parter[]` | Lægges på tråden |
+| `karantaene` | Gyldigt nummer, ukendt afsender | Eget afsnit i UI'et — **ikke** i tråden |
+| `afvist` | Intet eller tvetydigt nummer, eller DMARC ≠ pass | Skrives aldrig i tenanten. `audit.adgangNaegtet` |
+
+Matchet sker på **envelope-afsenderen** (Return-Path), aldrig på `From:` —
+den header er fritekst afsenderen skriver selv.
+
+`sagsnummerFraEmne()` læser **kun emnefeltet, aldrig brødteksten**. En
+brødtekst indeholder citerede tidligere mails, og en af dem kan bære et andet
+sagsnummer; læste vi den, kunne en fremmed videresende en gammel tråd og få
+sin besked lagt på en sag han aldrig har haft med at gøre. To *forskellige*
+numre i samme emne giver `null` — der findes ikke et rigtigt svar på hvilken
+sag beskeden hører til, og et gæt ville lægge den på en tilfældig af de to.
+
+**Karantænen vises ikke i tråden.** Ikke gråtonet, ikke sammenklappet. Samme
+regel som at en udløbet kompetence blokerer frem for at advare: renderes
+beskeden inline, læser mennesket den og handler på den. Frigivelse kræver
+`sag.karantaeneFrigiv` og tilføjer adressen til **den ene sags** parter — ikke
+til leverandørkartoteket, så rækkevidden af en fejl svarer til rækkevidden af
+beslutningen.
+
+Demo-sagen viser hvorfor DMARC ikke er nok: karantænebeskeden har `dmarc:
+pass`. DMARC beviser at afsenderen ejer det domæne han skriver fra — ikke at
+han er den rigtige part. `mercedes-greve-service.dk` er ikke
+`mercedes-greve.dk`, og forskellen er præcis sådan et fakturasnyderi ser ud.
+
+**Vedhæftninger scannes før de gemmes**, og `maaHentes()` er falsk for alt der
+ikke er `ren`. Fejler scanneren, bliver status stående på `afventerScan` —
+aldrig "antaget ren". En scanner der er nede, må gøre systemet ubrugeligt; den
+må ikke gøre det utroværdigt. Brødtekst renderes som **tekst**: ingen
+`dangerouslySetInnerHTML`, ingen fjernbilleder (en sporingspixel fortæller
+afsenderen at sagen blev åbnet).
+
+**3. Modtagevejen: dedikeret adresse med webhook. Graph som tilvalg.**
+
+| | Dedikeret adresse + webhook | Microsoft Graph |
+|---|---|---|
+| Onboarding | Én integration, virker for alle tenants dag ét | Admin consent pr. kunde — en IT-samtale, ikke en afkrydsning |
+| Hvor mailen bor | Hos os. Kundens Outlook har intet spor | I kundens egen postkasse — deres arkiv, deres eDiscovery |
+| Databehandler | Mailtjenesten bliver underdatabehandler. Skal i DPA og ligge i EU | Ingen tredjepart på indholdet |
+| Afsenderadresse | Vores domæne, medmindre kunden delegerer et subdomæne med MX. SPF/DKIM for udgående | Kundens rigtige adresse. Ingen leveringsopsætning |
+| Driftsrisiko | Få bevægelige dele. Testbar i DEV uden en kunde | Change notifications udløber og skal fornyes; delta-query som net. Flere tavse fejltilstande |
+| Blokerende | Nej | Ja — en tenant kan stå fast på en person vi ikke kan nå |
+
+Graph-adgangen skal scopes med en `ApplicationAccessPolicy` til den ene
+postkasse. Beder man om `Mail.Read` uden scope, beder man om læseadgang til
+hele virksomhedens mail, og den samtale ender aftalen.
+
+Vi bygger **kun webhook-vejen**, bag adapteren `indgaaendeMail(raw) →
+normaliseretBesked`, så Graph kan tilføjes uden at røre sagsmodellen. To
+modtageveje hvor den ene er utestet, er værre end én.
+
+**4. Tråden hører i `sensitive/`. Retention er ikke afgjort.**
+
+Brødteksten er fritekst udefra. Den *vil* indeholde navne og telefonnumre, og
+den vil før eller siden indeholde en helbredsoplysning — *"Jens er sygemeldt,
+han kan ikke hente bilen"*. Vi kan ikke klassificere det vi ikke skriver selv,
+så det klassificeres samlet. Delingen følger beslutning 17 præcist: general
+bærer nummer, tilstand, parter og tællere så listen kan forespørges;
+brødtekst, karantæne og den citerede aftalesætning ligger i `sensitive/`. Ét
+ekstra opslag når en sag åbnes, nul på en liste.
+
+**To retentioner der ikke er den samme.** `RETENTION_MAANEDER` styrer
+auditpartitionerne. Tråden er forretningsdata under `tenants/`, og der slettes
+intet i dag.
+
+- Auditposten om en modtaget besked er `drift`. **`emne` må ikke på
+  `LOGBARE_FELTER`** — det er fritekst fra internettet, og allowlisten findes
+  netop for at holde fritekst ude. Kun `nummer`, `sagId`, `afsenderStatus`, `ms`.
+- Trådens egen grænse **er ikke afgjort**, og det er samme åbne spørgsmål som
+  audit-retention: en værkstedssag knyttet til en faktura er
+  regnskabsgrundlag, en sag der løb ud i sandet er drift.
+- **Karantæne slettes hårdt efter 30 dage.** Det er uautentificeret input fra
+  en fremmed; der er intet behandlingsgrundlag for at gemme det, og det er det
+  ene sted en hård sletning er den rigtige — det er ikke regnskabsdata.
+
+**5. En aftale i en mail bliver et forslag, ikke en reservation.**
+
+*"Vi kan tage bilen 18/8 kl. 08.00"* skal kunne blive en reservation. Men
+mailen er **ikke** en femte `kilde.type` i beslutning 4's node. Den
+reservation der til sidst skrives, er et **værkstedsbesøg** og har
+`kilde.type: vaerksted` med prioritet 40. Fik den sin egen lave prioritet,
+ville en bekræftet værkstedsaftale tabe til en booking — og en bil på værksted
+kan ikke køre, uanset hvad disponenten har lovet. Sporet bevares med
+`kilde.viaSagId`, ikke ved at ændre `kilde.type`.
+
+Mailen er derimod en femte kilde til et **forslag**, og det er samme mønster
+som `matchAabneEtaper()`: automatikken skriver aldrig selv.
+`reservationFraAftale()` kaster på alt der ikke er `tilstand: "aftalt"`.
+
+Og datoen er et **gæt**. "18/8" kan læses to veje, og "næste tirsdag" kan ikke
+læses af nogen maskine med sikkerhed. Derfor bærer forslaget altid
+`udtrukketSaetning`: den sætning tidspunktet blev læst ud af, står ved siden af
+feltet, så mennesket kan se hvad maskinen gættede — og selv sætte tidspunktet.
+**Aldrig forudfyldt og bekræftet i ét klik.**
+
+#### Hvad der ikke er bygget
+
+Fase 0 er **visning**. Der er ingen modtagevej, ingen parsing, ingen
+afsendelse og ingen Cloud Function. Sagen på Værkstedskalender kommer fra
+`fleet/demo-sag.js`, som har nodens form.
+
+`sager/` findes **ikke** i `firebase.rules.json` endnu, og derfor står
+`sag.laes`, `sag.sensitiveLaes`, `sag.skriv`, `sag.karantaeneFrigiv` og
+`sag.aftaleBekraeft` heller ikke i `permissions.js`. Det er med vilje:
+permission-kataloget siger selv at man ikke tilføjer en permission uden et
+sted der spørger efter den, og en permission der kun findes i frontend er en
+pæn knap. De fem tilføjes i samme ombæring som reglerne og deres tests.
+
 ## Struktur
 
 ```
@@ -217,6 +350,12 @@ Bookingopsætning (prismotoren i brug), Kunder & Priser (første forbruger af
 
 **Skelet med mockup (11):** Booking-oversigt, Ny forespørgsel, Forslag,
 Disponering, Flåde, Værkstedskalender, Facility ×3, Indkøb ×2.
+
+`Værkstedskalender` er stadig et skelet — kalenderen, bookingblokeringerne og
+fakturaformularen mangler. Men **sagsvisningen fra beslutning 20 er bygget på
+den**: fanerne Oversigt / Kommunikation / Dokumenter / Aktiviteter med en
+demo-tråd. Visning, ingen afsendelse. Komponenten ligger i
+`fleet/Sagsvisning.jsx`, fordi Facility skal bruge nøjagtig den samme.
 
 **Skelet uden mockup (10):** Live-kort, Kompetencer, Ferie & fravær,
 Indberetninger, Leverandører, Fakturering, Opsætning ×4.
@@ -253,12 +392,19 @@ så de fejler tydeligt indtil funktionerne findes.
 
 ## Hvor står vi
 
-Skrevet 7. august 2026. Start her efter en pause.
+Skrevet 7. august 2026, opdateret 9. august. Start her efter en pause.
 
-**Kernen er på plads.** Otte byggeklodser i `fleet/` er i brug på tværs af
+**Kernen er på plads.** Ni byggeklodser i `fleet/` er i brug på tværs af
 skærme: `useKpi`, `useListe`, `pricing`, `reservations`, `booking-state`,
-`permissions`, `audit`, `personale` + `flaade`. 18 beslutninger i README.
-**115 tests**, obligatoriske før commit via `.githooks/pre-commit`.
+`permissions`, `audit`, `personale` + `flaade`, `sager`. 20 beslutninger i
+README. **155 tests**, obligatoriske før commit via `.githooks/pre-commit`.
+
+De 39 af dem er `test/sager.test.mjs`, som ikke bruger emulatoren: den kører
+politikken bag beslutning 20 — hvad der genkendes i et emnefelt, og hvem der
+kommer i karantæne. Den slags kan læses igennem og tros på, og det var også
+tilfældet med `firebase.rules.json`, som lå ugyldig fra fundamentet i
+månedsvis. Testene fandt straks én fejl: mønstret var versalfølsomt, så et
+håndtastet `flt-2026-00381` ville ikke være blevet genkendt.
 
 **Seks skærme bygget:** Dashboard, Bookingopsætning, Kunder & Priser,
 Økonomi & Rapporter, Bemanding, Medarbejdere. Elleve skeletter har mockup, ti
@@ -302,14 +448,22 @@ At en funktion findes er ikke det samme som at den håndhæves. Se ARKITEKTUR.
 **Cloud Functions er den reelle flaskehals.** Ni ting venter på samme
 opsætning: bookingtilstandsskift, de tre tjek ovenfor, claim-udstedelse fra
 `roller/`, skrivning af auditposter, nummerserier, reservationskonflikter,
-KPI-aggregering og retention-sletning. Dertil `bemanding.ledig`, som er et
-afledt tal der er gemt og bør ud af aggregeringen.
+KPI-aggregering og retention-sletning.
 
-**`bemanding.medarbejdereAktive` mangler i `kpi/`.** Medarbejdere kan derfor
-ikke vise et antal som nøgletal — at tælle rækkerne i den hentede liste ville
-være beslutning 6 brudt, for listen er et udsnit og ikke en total. Skærmen
-skriver "af N hentede" indtil feltet findes. Det hører i KPI-aggregeringen
-sammen med `bemanding.ledig`.
+### KPI-aggregeringens efterslæb — beslutning 6
+
+**Alle kendte brud på beslutning 6 står her.** Ét sted, ellers glemmes de:
+hvert enkelt er lille nok til at se ud som en detalje på den skærm det står
+på, og der findes ingen anden liste der samler dem.
+
+| Felt | Skærm | Hvad der sker i dag |
+|---|---|---|
+| `bemanding.medarbejdereAktive` | Medarbejdere | Feltet mangler i `kpi/`. Skærmen skriver "af N hentede" frem for et antal — at tælle rækkerne ville være beslutning 6 brudt, for listen er et udsnit, ikke en total |
+| `flaade.ikkeLinkedeFakturaer` | Værkstedskalender | Feltet mangler i `kpi/`. KpiKortet står med et **hårdkodet 5-tal** fra skelettet. Det er et brud, ikke et pladsholdertal — det kan modsige Indkøb uden at nogen ser det |
+| `bemanding.ledig` | Bemanding, Dashboard | Findes, men er et **afledt** tal der er gemt. Skal ud af aggregeringen og beregnes hos forbrugeren |
+
+De to første er felter der mangler, den tredje er et felt der ikke burde
+findes. Alle tre lukkes i samme ombæring som KPI-aggregeringen skrives.
 
 **Reglerne er deployet til DEV, ikke PROD.**
 

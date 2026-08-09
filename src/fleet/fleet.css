@@ -175,6 +175,40 @@
   border-bottom:1px solid var(--bc-line)}
 .fc-linje:last-of-type{border-bottom:0}
 
+/* Sagstråd (beslutning 20). Indgående og udgående skal kunne skelnes på
+   ét blik, uden at farven er den eneste forskel — retningen står også som
+   tekst i hovedet på hver besked. Alt herunder er tokens. */
+.fc-traad{display:flex; flex-direction:column; gap:12px}
+.fc-besked{border:1px solid var(--bc-line); border-radius:10px; overflow:hidden}
+.fc-besked-h{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px;
+  padding:9px 13px; border-bottom:1px solid var(--bc-line); font-size:12.5px}
+.fc-besked-hvem{font-weight:650}
+.fc-besked-adr{color:var(--bc-muted); font-size:12px; word-break:break-all}
+.fc-besked-tid{margin-left:auto; color:var(--bc-muted); font-size:12px; white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.fc-besked-b{padding:12px 13px; font-size:13px; white-space:pre-wrap; word-break:break-word}
+.fc-besked-emne{padding:0 13px 10px; font-size:12px; color:var(--bc-muted)}
+/* Udgående får vores egen accentflade, indgående en neutral. Ikke omvendt:
+   det er de indgående der er interessante, og de skal ikke se "godkendte" ud. */
+.fc-besked-ud{background:var(--fc-accent-soft); border-color:#c9dbff}
+.fc-besked-ud .fc-besked-h{border-bottom-color:#c9dbff}
+.fc-besked-ind{background:var(--bc-card)}
+
+/* Karantæne. Skal ikke kunne forveksles med en besked i tråden — derfor
+   stribet kant og eget kort, ikke en gråtonet variant af .fc-besked. */
+.fc-karantaene{border:1px solid var(--bc-block); border-radius:10px; overflow:hidden}
+.fc-karantaene .fc-besked-h{background:var(--fc-bad-bg); border-bottom-color:#f3bcbc;
+  color:var(--bc-block)}
+.fc-karantaene-note{padding:10px 13px; font-size:12.5px; color:var(--bc-block);
+  background:var(--fc-bad-bg); border-top:1px solid #f3bcbc}
+
+/* Aftalefeltet. Tre linjer — tidspunkt, sted, status — plus den sætning den
+   blev læst ud af. Sætningen er ikke pynt: den er dokumentationen for hvad
+   maskinen gættede. */
+.fc-aftale{border:1px solid var(--bc-line); border-radius:10px; padding:13px}
+.fc-aftale-citat{margin:10px 0 0; padding:9px 12px; border-left:3px solid var(--bc-accent);
+  background:var(--fc-bg); font-size:12.5px; color:var(--bc-muted); font-style:italic}
+
 /* Grafer. Søjlefarverne sættes af Soejlegraf ud fra en tone, ikke af modulet —
    samme regel som Pille. Alt kommer fra tokens ovenfor. */
 .fc-graf{position:relative; display:flex; align-items:flex-end; gap:4px; padding-top:6px;
