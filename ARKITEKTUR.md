@@ -45,7 +45,7 @@ oprydningsopgave for sig.
 | Moms | `beloebOere` er **altid ekskl. moms**. `momsOere` er separat felt. |
 | Tid | Epoch millisekunder. Intervaller er halvåbne: `[fra, til)` |
 | Afvigelser | Gemmes som `faktisk − budget`. Farven afgøres af `betterWhen` i visningen. |
-| Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV, **FLT**, **FAC**. Én mekanisme: `naesteNummer()` i `booking-state.js`. Serien er fortløbende og dermed gætbar — et nummer er en **adresse, ikke en hemmelighed**, og må aldrig i sig selv give adgang. Se beslutning 20. |
+| Numre | `PRÆFIKS-ÅÅÅÅ-NNNNN` fra counter i transaction. BKG, FRB, WO, PO, INV, **FLT**, **FAC**, **SUP**. SUP-counteren er GLOBAL (`support/countere`) — sagsnumrene er vores, ikke kundens. Én mekanisme: `naesteNummer()` i `booking-state.js`. Serien er fortløbende og dermed gætbar — et nummer er en **adresse, ikke en hemmelighed**, og må aldrig i sig selv give adgang. Se beslutning 20. |
 | Sletning | Regnskabsdata: kun `slettet: true` med `slettetMs`, `slettetAf`, `slettetAarsag`. |
 | Tenant | `tenantId` er immutabelt. Kommer fra `auth.token.tenant`, aldrig fra klienten. |
 | Division | Felt, aldrig sti. `gods` \| `bus` \| `faelles`. **Transaktioner** hører til én afdeling: `opgaver`, `indberetninger`, `etaper`, `indkoeb`, `lagre`. **Kunder** kan være `faelles` — kundens forretning går på tværs. **Stamdata om vores egne folk og biler har ingen** (beslutning 19): `personale` og `koeretoejer` afvises. Det samme gør `reservationer`, `fravaer` og `kompetencer`, som arvede den fra ressourcen. Håndhævet med `.validate` i begge retninger. |
@@ -394,6 +394,57 @@ Det hører sammen med **HERE-integrationen** og er ikke afgjort. Indtil da
 findes listen kun som `UDELUKKER_HINANDEN` i `demo-etaper.js`, hvor
 selvkontrollen bruger den på demo-turene — det dækker demo-data, ikke det en
 bruger taster.
+
+
+## Support — det eneste der krydser tenant-grænsen
+
+```
+support/sager/<sagId>          { tenantId, nummer, kategori, prioritet,
+                                 status, emne, beskrivelse, kontekst{},
+                                 fejlMs, ansvarlig, checkliste[] }
+support/beskeder/<sagId>/<id>  traaden
+support/udtraek/<sagId>        auditudtraekket — se nedenfor
+support/bevillinger/<sagId>    tidsbegraenset supportadgang
+support/countere/sager/<aar>   GLOBAL counter. SUP-AAAA-NNNNN
+tenants/<t>/supportsager/<id>  INDEKS — kun id'er
+```
+
+**Sagen ligger i toppen og ikke under `tenants/`** — af samme grund som
+`audit/`: en `.read` kaskaderer og kan ikke indsnævres på et barn.
+
+**Reglerne kan sammenligne et felt på den post der læses, men de kan ikke
+filtrere en forespørgsel.** Det er hele svaret:
+
+| Hvem | Hvad | Hvordan |
+|---|---|---|
+| Kunden | én sag | `data.child('tenantId').val() === auth.token.tenant` |
+| Kunden | sin liste | indeksnoden i egen tenant — almindelig tenant-regel |
+| Os | alle sager, forespørgbart | `perms.contains('\|support.laes\|')` |
+
+Tenant-isolationen er ikke brudt: en kunde kan stadig ikke læse en anden
+kundes sag. `maaLaeseSag()` i `fleet/support.js` er reglen skrevet som en
+funktion, så skelnen kan **køres** frem for at blive læst.
+
+### Auditudtrækket er et udtræk, ikke en adgang
+
+Beslutning 23 sagde "vis kundens auditlog". Beslutning 24 retter det:
+
+- kun posterne for **én bruger** — den der oprettede sagen
+- kun i vinduet **±5 minutter** omkring fejltidspunktet, højst **50 poster**
+- udtrækket skrives **på sagen**; support læser sagen, aldrig `audit/`
+- support får **aldrig** `audit.laes` på en kundes tenant
+- grænsen er **ikke konfigurerbar** af support
+
+Uden indsnævringen ville "aktivitetslog på supportsagen" i praksis være
+permanent læseadgang til hele auditloggen for alle tenants.
+
+### Konteksten er en allowliste
+
+En supportsag er en **ny kanal ud af systemet**. `SUPPORT_KONTEKST` er derfor
+en allowliste — samme mekanisme og samme grund som `LOGBARE_FELTER` i
+`audit-regler.js`. Aldrig passwords, tokens eller **feltværdier**: lægger vi
+"kundenavn: Kolding Kommune" i en supportsag, har vi flyttet kundens
+forretningsdata ud af deres tenant for at fejlsøge en knap.
 
 ## Tachografdata — forudsætningen for at fjerne køre-hviletidsforbeholdet
 

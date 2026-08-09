@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **23 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **24 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -67,6 +67,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `forbehold`, også når `ok` er true, fordi vi kun kan se planen og ikke
   tachografen. Et grønt flueben ved siden af en bøde er værre end ingen
   kontrol. Forudsætningen for at fjerne det er tachografdata — se ARKITEKTUR.
+- **Give support `audit.laes` på en kundes tenant, eller udvide
+  auditudtrækket.** Udtrækket er ±5 minutter og højst 50 poster, bundet til
+  én bruger, og det ligger **på sagen** — support læser aldrig `audit/`.
+  Grænsen må ikke gøres konfigurerbar: et loft der kan hæves af den der
+  rammer det, er ikke et loft. Beslutning 24 rettede 23 netop på det punkt.
+- **Lægge en feltværdi i en supportsags kontekst.** `SUPPORT_KONTEKST` er en
+  allowliste. En supportsag er en ny kanal UD af systemet, og et kundenavn i
+  den har forladt kundens tenant.
 - **Vise rollevælgeren i produktion.** `saetDemoRolle()` i `FleetContext` er
   en **no-op** når `rolleskifte` er falsk, og App sætter den til
   `miljoe !== "prod"`. Rør ikke den betingelse. I demo og dev er den nyttig —

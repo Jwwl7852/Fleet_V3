@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 23
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 24
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 23 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 24 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 442 tests. Starter emulatoren.
+npm test                            # 479 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -81,12 +81,13 @@ tilfældigt.
 | 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `langtur`. En langtur *er* en etape. Køre-hviletid blokerer, men med forbehold | `fleet/opgaver.js`, `fleet/koerehviletid.js` |
 | 22 | **De ni skærme uden mockup er afgjort.** Fakturering hedder **Fakturagrundlag** — FleetControl laver ikke den juridiske faktura. Live-kort hedder **Rute & status** — ingen GPS. Indberetninger deles i **driftshændelser** og **udgiftsregistreringer**. Kompetencer har **lovkritiske** (blokerer) og **virksomhedskrav** (advarer med begrundet override). Leverandører får **objektive tal, ingen stjerner**. Integrationer viser **kun det der findes**. Idébank ud af kundens installation | `fleet/integrationer.js`, `fleet/rutestatus.js` |
 | 23 | **Supportadgang er tidsbegrænset og kundestyret.** FleetControl-personale har som standard **ingen** adgang. Kundens administrator giver adgang med varighed, type, formål og sagsnummer; den **udløber automatisk**, ikke ved at nogen husker det. En supportsag bærer kontekst — aldrig passwords, tokens eller feltværdier. **Ikke besluttet:** AI-diagnose og systemstatusside | *ikke bygget — efter fase 1* |
+| 24 | **Support krydser tenant-grænsen — én gang, og kun her.** Sagen ligger i `support/sager/<id>` i toppen med et `tenantId`; hver tenant har en **indeksnode** til at liste sine egne. **Retter beslutning 23:** auditloggen vises som et bundet **udtræk** på sagen, ikke som adgang. ±5 minutter, højst 50 poster, ikke konfigurerbart | `fleet/support.js` |
 
 ## Struktur
 
 ```
 src/
-  App.jsx              alle 27 ruter, genereret efter nav.js
+  App.jsx              alle 30 ruter, genereret efter nav.js
   firebase.js          ÉN initialisering. Moduler importerer db herfra.
   fleet/               kernen — modulerne må ikke duplikere noget herfra
     nav.js             sidebar + ruter, én kilde
@@ -112,6 +113,8 @@ src/
     rutestatus.js      Rute & status: planlagte stop, chaufførens meldinger.
                        INGEN GPS — en melding er ikke en måling
     integrationer.js   kun det der findes. Listen er tom, og det er indholdet
+    support.js         maaLaeseSag() er reglen skrevet een gang. Kontekst-
+                       allowliste, auditudtrækkets faste grænse, supportadgang
     leverandoerer.js   kategorier, aftaler, afstemning. Division er tilladt her —
                        den beskriver leverandørens forretning, ikke vores
     facility.js        lokationer, aktiver, zoner. Grænsen på zonen, målingen
@@ -130,7 +133,7 @@ src/
     Sagsvisning.jsx    sagen med faner — delt mellem Fleet og Facility
     ui.jsx             Kort, KpiKort, Tabel, Pille, Tom, Fejl, Knap, Soejlegraf
     fleet.css          tokens (udvider de eksisterende --bc-*)
-  moduler/             27 skærme
+  moduler/             30 skærme
 ```
 
 ## Status
@@ -138,14 +141,14 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **442 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+skærme, og **479 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 20 af 27 har indhold
+### Skærmene: 23 af 30 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (20)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer |
+| **Bygget (23)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3 |
 | **Venter på svar (7)** | Fakturagrundlag, Indberetninger, Kompetencer, Leverandører, Opsætning → Generelt, Opsætning → Brugere & roller, Idébank *(ud af kundens installation)* |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -293,6 +296,55 @@ ikke er skrevet. At en funktion findes er ikke det samme som at den håndhæves.
 | Kompetencer | `kraevedeKompetencer()` + `tjekKompetencer()` — en udløbet kompetence **blokerer** |
 | Kapacitet | `kanBaere()` — m³ og kg hver for sig |
 
+### ⚠ Beslutning 24 rettede beslutning 23
+
+**Beslutning 23 sagde at supportsagen skulle "vise kundens auditlog".** Læst
+som skrevet ville det have betydet at support kunne *læse* auditloggen — og
+den er selv følsom: `ARKITEKTUR.md` siger udtrykkeligt at en log over hvem der
+har set hvad, afslører hvilke kunder der bliver kigget på, og af hvem.
+
+I praksis ville det være **permanent læseadgang til alle tenants' logge**,
+altså det stik modsatte af hvad 23 skulle opnå.
+
+**Rettelsen er at det er et udtræk og ikke en adgang.** En Cloud Function
+henter posterne for *én bruger* i et fast vindue omkring fejltidspunktet og
+skriver dem **på sagen**. Support læser sagen, aldrig `audit/`, og får aldrig
+`audit.laes` på en kundes tenant.
+
+| | |
+|---|---|
+| Vindue | ±5 minutter omkring fejltidspunktet |
+| Loft | 50 poster. Rammes det, **siges det** — et udtræk skåret i stilhed læses som hele billedet |
+| Konfigurerbart | **Nej.** Ikke af support, ikke på skærmen. Et loft der kan hæves af den der rammer det, er ikke et loft |
+
+Det står her af samme grund som rettelsen under beslutning 21: **en synlig
+rettelse er ikke det samme som drift.** Man skal kunne se at nogen tog
+stilling, ikke undre sig over hvorfor teksten ikke passer med koden.
+
+### Indeksnoden er også svaret på kundeportalen
+
+README har længe noteret problemet under næste skridt: *"RTDB kan ikke
+filtrere en forespørgsel med regler. En kunde kan ikke liste sine egne
+bookinger — `.read` på `bookinger` er alt eller intet."*
+
+**Support løser det, og mønstret er portalens svar:**
+
+```
+support/sager/<sagId>            i toppen, med et tenantId på posten
+tenants/<t>/supportsager/<id>    indeks — kun id'er. Det kunden kan LISTE
+```
+
+At læse **én** post er en regel pr. post: `data.child('tenantId').val() ===
+auth.token.tenant`. At **liste** kræver `.read` på forælderen — og derfor
+findes indeksnoden i kundens egen tenant.
+
+Tenant-isolationen er urørt: en kunde kan stadig ikke læse en anden kundes
+sag. Vi kan, men kun med `support.laes`, som ingen kunderolle har.
+
+Skriver man portalen senere, er det den samme figur: **posten i toppen med et
+ejerfelt, plus et indeks pr. tenant.** Det er billigt at skrive ned nu og dyrt
+at genopdage.
+
 ### De fem skærme der venter — og hvad de venter på
 
 **Alle skærme med mockup er bygget**, og de ni uden har fået deres produktvalg
@@ -332,6 +384,9 @@ regel afviser RTDB alt — der er ingen åben dør, kun en manglende.
 | `facility/aktiver` | |
 | `facility/zoner` | Bærer grænserne. `facility/sensorer` har regler i forvejen |
 | `sager`, `sensitive/sager` | Beslutning 20. Permissions `sag.*` mangler af samme grund |
+| `support/sager`, `support/beskeder` | ⚠ I **toppen**, ikke under `tenants/` — som `audit/`, fordi `.read` kaskaderer. Reglen pr. sag sammenligner `tenantId` med claim'et |
+| `tenants/<t>/supportsager` | Indeks. Kun id'er |
+| `support/countere` | Global counter — sagsnumre er vores, ikke kundens |
 | `leverandoerer` | ⚠ `leverandoerId` er **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
 
 Listen står her, så den ikke ligger spredt i tre dokumenter. Tilføjer du en

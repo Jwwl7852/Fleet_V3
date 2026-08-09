@@ -112,6 +112,21 @@ export const NAV = [
     ],
   },
   {
+    key: "support", sti: "/support", label: "Support", titel: "Hjælp & Support",
+    under: "Opret en supportsag og følg den.",
+    born: [
+      { key: "hjaelp", sti: "/support", label: "Hjælp & Support",
+        titel: "Hjælp & Support", under: "Opret en supportsag og følg den." },
+      /* Vores egne to. De SKJULES ikke for en kunde — de viser en "din rolle
+         har ikke adgang"-tilstand, som Medarbejdere gør. Nav-filtrering på
+         permission er en selvstændig ændring. */
+      { key: "supportOverblik", sti: "/support/overblik", label: "Supportoverblik",
+        titel: "Supportoverblik", under: "Sager på tværs af kunder. Kræver support.laes." },
+      { key: "supportSag", sti: "/support/sag/:id", label: "Supportsag", skjulINav: true,
+        titel: "Supportsag", under: "Tråd, kontekst, aktivitetsudtræk og supportadgang." },
+    ],
+  },
+  {
     key: "opsaetning", sti: "/opsaetning", label: "Opsætning", titel: "Opsætning",
     under: "Virksomhed, brugere, roller og integrationer",
     born: [

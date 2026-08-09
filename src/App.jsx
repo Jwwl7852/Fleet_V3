@@ -36,6 +36,9 @@ import Generelt from "./moduler/opsaetning/Generelt.jsx";
 import Brugere from "./moduler/opsaetning/Brugere.jsx";
 import Integrationer from "./moduler/opsaetning/Integrationer.jsx";
 import Idebank from "./moduler/opsaetning/Idebank.jsx";
+import Hjaelp from "./moduler/support/Hjaelp.jsx";
+import Supportoverblik from "./moduler/support/Overblik.jsx";
+import Supportsag from "./moduler/support/Sag.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
 
 const TENANTS = [{ id: "demo", navn: "DEMO Transport ApS", kort: "DEMO Transport" }];
@@ -103,6 +106,10 @@ export default function App() {
 
             <Route path="oekonomi" element={<Oekonomi />} />
             <Route path="oekonomi/fakturering" element={<Fakturering />} />
+
+            <Route path="support" element={<Hjaelp />} />
+            <Route path="support/overblik" element={<Supportoverblik />} />
+            <Route path="support/sag/:id" element={<Supportsag />} />
 
             <Route path="opsaetning" element={<Generelt />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />

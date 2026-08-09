@@ -306,10 +306,17 @@ export function forloebstilstand(etaper = []) {
  * ind i nummeret for at "gøre det sikrere"; det ville bryde formatet her og
  * alligevel ikke flytte kontrollen hen hvor den hører hjemme.
  */
-export async function naesteNummer(db, path, { praefiks, serie }) {
+export async function naesteNummer(db, path, { praefiks, serie, rod = null }) {
   if (!praefiks || !serie) throw new Error("naesteNummer: praefiks og serie er påkrævede.");
   const aar = new Date().getFullYear();
-  const ref = db.ref(path(`countere/${serie}/${aar}`));
+  /* `rod` gør counteren GLOBAL i stedet for tenant-scoped.
+     Supportsager er VORES numre, ikke kundens: to tenants må ikke kunne få
+     samme sagsnummer, for så kan to sager ikke skelnes i en samtale med den
+     ene af dem. Derfor support/countere/… og ikke tenants/<t>/countere/….
+     Alt andet — bookinger, sager, indkøb — hører i tenanten, hvor to kunder
+     GERNE må have hver sit BKG-2026-00125. */
+  const sti = rod ? `${rod}/countere/${serie}/${aar}` : path(`countere/${serie}/${aar}`);
+  const ref = db.ref(sti);
   const res = await ref.transaction((n) => (n || 0) + 1);
   return `${praefiks}-${aar}-${String(res.snapshot.val()).padStart(5, "0")}`;
 }
