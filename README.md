@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 155 tests. Starter emulatoren.
+npm test                            # 213 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -40,7 +40,7 @@ projekt-id'et og viser en bjælke i toppen, når du ikke er på produktion.
 Havner produktionsnøgler et sted de ikke hører hjemme, bliver bjælken rød og
 stribet.
 
-Uden `.env.local` kører appen i demo-mode med datasættet i `fleet/useKpi.js`.
+Uden `.env.local` kører appen i demo-mode med datasættene i `fleet/demo-*.js`.
 Ingen hvide skærme, ingen crash.
 
 Deploy: Netlify, `npm run build` → `dist`. `netlify.toml` har SPA-fallback —
@@ -89,7 +89,7 @@ src/
     nav.js             sidebar + ruter, én kilde
     AppShell.jsx       layout: sidebar, topbar, Outlet
     FleetContext.jsx   tenant, periode, Gods/Bus
-    useKpi.js          nøgletal + demo-datasæt
+    useKpi.js          nøgletal fra kpi/. Demo-sættet ligger i demo-kpi.js
     useListe.js        listeopslag med division og auditering
     format.js          øre, datoer, ugenr, fortegnskonvention
     pricing.js         prismotor: satsopslag, beregning, snapshot
@@ -102,7 +102,12 @@ src/
     booking-state.js   tilstande, overgange, nummerserier
     sager.js           sagsbaseret mail: genkendelse + afsendervalidering
     personale.js       personer som entiteter
-    flaade.js          arter, enhedskombination, kapacitet, kompetencekrav
+    flaade.js          arter, feltskema pr. art, kapacitet, kompetencekrav
+    fravaer.js         årsager (sensitive), afledt tilstand, reservationen
+    demo-kpi.js        demo-nøgletal. Rent data, ingen React — så demo-filernes
+                       selvkontrol også kan køres af en test
+    demo-*.js          personale, flåde, fravær, sager. Nodens form, ikke
+                       skærmens. Hver med en selvkontrol mod demo-kpi
     Sagsvisning.jsx    sagen med faner — delt mellem Fleet og Facility
     ui.jsx             Kort, KpiKort, Tabel, Pille, Tom, Fejl, Knap, Soejlegraf
     fleet.css          tokens (udvider de eksisterende --bc-*)
@@ -113,21 +118,21 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Ti byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **155 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Elleve byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **213 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 8 af 27 har indhold
+### Skærmene: 9 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (7)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde |
+| **Bygget (8)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær |
 | **Delvist (1)** | Værkstedskalender — sagsvisningen er bygget, kalenderen og fakturaformularen mangler |
 | **Skelet med mockup (9)** | Booking-oversigt, Ny forespørgsel, Forslag, Disponering, Facility ×3, Indkøb ×2 |
-| **Skelet uden mockup (10)** | Live-kort, Kompetencer, Ferie & fravær, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
+| **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
-fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De ti uden
+fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De ni uden
 mockup må ikke bygges på gæt — spørg.
 
 ### Beslutning 20 står i fase 0
@@ -159,7 +164,7 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    kunde kan ikke *liste* sine egne bookinger — `.read` på `bookinger` er alt
    eller intet. Det kræver en indeksnode pr. kunde, og den beslutning skal
    træffes før portalen bygges.
-4. Skærmene: Ferie & fravær → Værkstedskalender → Disponering. Disponering
+4. Skærmene: Værkstedskalender → Disponering. Disponering
    ligger sidst, fordi den læser de reservationer som fravær og værksted
    skriver — bygges den først, disponerer den på en kalender der ikke ved
    noget om syge chauffører eller biler på værksted.
@@ -219,10 +224,11 @@ på, og der findes ingen anden liste der samler dem.
 |---|---|---|
 | `bemanding.medarbejdereAktive` | Medarbejdere | Mangler i `kpi/`. Skærmen skriver "af N hentede" — at tælle rækkerne ville være beslutning 6 brudt, for listen er et udsnit, ikke en total |
 | `flaade.ikkeLinkedeFakturaer` | Værkstedskalender | Mangler i `kpi/`. KpiKortet står med et **hårdkodet 5-tal** fra skelettet. Det kan modsige Indkøb uden at nogen ser det |
+| `bemanding.fravaerIDag` | Ferie & fravær | Mangler i `kpi/`. Skærmen har ingen KpiRække og skriver "af N hentede" — listen er et udsnit i en periode, ikke en total |
 | `bemanding.ledig` | Bemanding, Dashboard | Findes, men er et **afledt** tal der er gemt. Skal ud af aggregeringen og beregnes hos forbrugeren |
 
-De to første er felter der mangler, den tredje er et felt der ikke burde
-findes. Alle tre lukkes sammen med KPI-aggregeringen.
+De tre første er felter der mangler, den fjerde er et felt der ikke burde
+findes. Alle fire lukkes sammen med KPI-aggregeringen.
 
 ## Låst rækkefølge
 

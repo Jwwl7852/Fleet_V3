@@ -51,6 +51,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
   fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og
   flere redigeringer, og blev først fundet da de blev kørt.
+- **Skrive divisionsfilteret igen.** Det står i `useListe` — og reglen er
+  ikke bare "valgt division plus fælles": en post **uden** division vises i
+  **begge**, ikke i ingen. Bookingopsætning havde sin egen kopi uden det led,
+  og fejlen var usynlig indtil beslutning 19 fjernede feltet fra bilerne —
+  så ville biltabellen stå tom i både Gods og Bus, uden at nogen havde
+  slettet en bil. Samme regel to steder, hvor den ene kopi driver.
 - **Læse et sagsnummer ud af brødteksten i en mail.** Kun emnefeltet — en
   brødtekst bærer citerede tidligere mails med andre sagsnumre, og så kan en
   fremmed videresende en gammel tråd og lande på en sag han intet har med at

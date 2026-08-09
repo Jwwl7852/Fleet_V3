@@ -59,8 +59,17 @@ export const erKapacitet = (ressourceType) => RESSOURCE_ART[ressourceType] === "
  *
  *  Prioritet gælder KUN eksklusive ressourcer. Man smider ikke en palle ud
  *  af lageret, fordi en værkstedsopgave har prioritet 40 — derfor står
- *  'lager' ikke på listen, og kapacitetsgrenen i tjekLedig() rører den ikke. */
-const PRIORITET = { vaerksted: 40, fravaer: 30, facilitySag: 20, booking: 10, manuel: 5 };
+ *  'lager' ikke på listen, og kapacitetsgrenen i tjekLedig() rører den ikke.
+ *
+ *  EKSPORTERET, så en skærm kan VISE prioriteten frem for at skrive tallet
+ *  selv. Ferie & fravær viser hvad reservationen ville blive, og "30" skrevet
+ *  i den skærm ville være samme regel to steder — den fejl der lå i
+ *  Bookingopsætnings divisionsfilter, usynlig indtil den ene kopi drev. */
+export const PRIORITET = { vaerksted: 40, fravaer: 30, facilitySag: 20, booking: 10, manuel: 5 };
+
+/** Prioriteten for en kilde. Ukendt kilde giver 0 — den kan overskrive
+ *  ingenting, hvilket er den sikre retning. */
+export const prioritetFor = (kildeType) => PRIORITET[kildeType] ?? 0;
 
 export const overlapper = (a, b) => a.fra < b.til && b.fra < a.til;
 

@@ -80,7 +80,12 @@ tenants/<tenantId>/
   personale/<personId>          { navn, status, funktioner{}, uid? }  INGEN division
   kompetencer/<id>              { personId, type, udloeberMs }  INGEN division
   indberetninger/<id>           { type, km, ... }  km = TOTAL målerstand
-  fravaer/<id>                  { personId, fra, til }  INGEN division
+  fravaer/<id>                  { personId, fra, til }  INGEN division, INGEN art
+                                [fra, til) er HALVÅBENT: et fravær 14.–18. juli
+                                har til = 19. juli. Gemmes den 18., er
+                                medarbejderen ledig hele sin sidste dag
+  sensitive/fravaer/<id>        { art, note, dokumentation }  bag
+                                fravaer.sensitiveLaes — HELE art, også ferie
   facility/sensorer/<zoneId>/   { aktuel, maalinger/<ms> }  ÉN kilde
   indkoeb/<id>                  { beloebOere, momsOere, ... }
   fakturaer/<id>
@@ -275,6 +280,38 @@ med reservationen i en Cloud Function der ikke findes. Serveren afviser altså
 alle — strengere end nogen permission, men ikke granulært. Der er en test der
 fastholder `.write: false`, så ingen åbner noden uden at opdage at
 `booking.godkend` så ikke bliver tjekket af nogen.
+
+## Delvis afsløring lækker gennem udeladelsen
+
+**Klassificér hele feltet, eller intet af det.** Skjuler man kun de værdier der
+er følsomme, bliver *fraværet af en værdi* selv svaret.
+
+Fravær er det tydelige tilfælde. Årsagen kan være `sygdom`, `ferie`, `barsel`,
+`kursus`. Kun sygdom og barsel er helbredsoplysninger, så det ser rimeligt ud
+at vise ferie og skjule sygdom. Men så betyder en tom celle *sygdom*, og
+disponenten kan læse det uden at have `fravaer.sensitiveLaes`. Derfor ligger
+**hele `art`** i `sensitive/fravaer/<id>`, og reglerne afviser feltet i
+general-noden med `.validate: false` — også for en ferie.
+
+Det gælder også et niveau op: **klassifikationsfeltet må ikke variere med det
+klassificerede.** Sætter man `securityLevel: confidential` på sygdom og
+`normal` på ferie, er niveauet selv kanalen — det ligger i general og kan
+læses af enhver. Derfor har hvert fravær samme niveau, og der er en test der
+fastholder det.
+
+Reglen skal huskes andre steder, hvor den er nemmere at overse:
+
+| Hvis nogen engang gør… | …er læk-slutningen |
+|---|---|
+| Skjuler `cargoValue` kun over en beløbsgrænse | Et skjult felt betyder at godset er dyrt |
+| Viser `securityLevel` men skjuler `sensitive/` selektivt | Hængelåsen udpeger hvilke bookinger der er noget ved |
+| Logger kun afviste følsomme opslag | Loggens tavshed markerer de godkendte |
+| Viser antallet af karantænebeskeder kun når det er > 0 | Nul og skjult bliver til det samme signal |
+
+Den generelle form: hvis en observatør kan udlede den skjulte værdi af
+*hvilke* poster der er skjult, er skjulningen ikke en beskyttelse — den er et
+indeks. En hængelås på hver række siger ingenting; en hængelås på hver tredje
+siger hvem.
 
 ## securityLevel: restricted — kontakterne
 
