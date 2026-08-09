@@ -277,7 +277,15 @@ export const DEMO_PERSONALE = [
  */
 export const DEMO_KOMPETENCER = [
   /* De elleve fra Bemanding. Rør ikke datoerne. */
-  { id: "k-larsAage-eubevis", personId: "larsAage", type: KOMPETENCE.eubevis, udloeberMs: NU - 2 * D },
+  { id: "k-larsAage-eubevis", personId: "larsAage", type: KOMPETENCE.eubevis, udloeberMs: NU + 120 * D },
+  /* ⚠ DET UDLOEBNE EU-BEVIS LIGGER PAA EN DER IKKE ER PAA EN ETAPE.
+     Efter beslutning 25 BLOKERER eubevis, fordi kravet kan udledes af arten.
+     Laa det paa en chauffoer der er tildelt en tur, ville Disponering vise en
+     konflikt der kom fra DEMO-DATA og ikke fra modellen — og saa kan man ikke
+     se forskel paa en fejl i data og en fejl i koden. */
+  { id: "k-steen-eubevis", personId: "steenHalvorsen", type: KOMPETENCE.eubevis, udloeberMs: NU - 2 * D },
+  { id: "k-rene-eubevis", personId: "reneThomsen", type: KOMPETENCE.eubevis, udloeberMs: NU + 201 * D },
+  { id: "k-jesper-eubevis", personId: "jesperRiis", type: KOMPETENCE.eubevis, udloeberMs: NU + 168 * D },
   { id: "k-reneThomsen-adr", personId: "reneThomsen", type: KOMPETENCE.adr, udloeberMs: NU + 9 * D },
   { id: "k-benjaminHolm-truck", personId: "benjaminHolm", type: KOMPETENCE.truckcertifikat, udloeberMs: NU + 16 * D },
   { id: "k-metteSoerensen-kran", personId: "metteSoerensen", type: KOMPETENCE.kran, udloeberMs: NU + 23 * D },

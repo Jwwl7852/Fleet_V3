@@ -59,7 +59,10 @@ describe("Arterne", () => {
       kraevedeKompetencer([{ art: "minibus" }]),
       kraevedeKompetencer([{ art: "bus" }])
     );
-    assert.deepEqual(kraevedeKompetencer([{ art: "minibus" }]), [KOMPETENCE.d1]);
+    /* BESLUTNING 25: eubevis foelger af at koere ERHVERVSMAESSIGT med C eller D,
+       og kan derfor udledes af arten. */
+    assert.deepEqual(kraevedeKompetencer([{ art: "minibus" }]),
+      [KOMPETENCE.d1, KOMPETENCE.eubevis].sort());
   });
 
   it("deler sig i motoriseret og påhængt", () => {
@@ -276,11 +279,11 @@ describe("Disponeringsreglerne på rosteren", () => {
   it("kræver C/E når der er påhæng med, og D af en bus", () => {
     assert.deepEqual(
       kraevedeKompetencer([demoKoeretoej("Bil 12"), demoKoeretoej("Trailer 41")]),
-      [KOMPETENCE.c, KOMPETENCE.ce, KOMPETENCE.tachografkort].sort()
+      [KOMPETENCE.c, KOMPETENCE.ce, KOMPETENCE.eubevis, KOMPETENCE.tachografkort].sort()
     );
     assert.deepEqual(
       kraevedeKompetencer([demoKoeretoej("Bus 12")]),
-      [KOMPETENCE.d, KOMPETENCE.tachografkort].sort()
+      [KOMPETENCE.d, KOMPETENCE.eubevis, KOMPETENCE.tachografkort].sort()
     );
   });
 

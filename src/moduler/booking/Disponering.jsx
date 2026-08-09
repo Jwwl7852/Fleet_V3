@@ -122,7 +122,7 @@ const forRessource = (alle, type, id) =>
  * Kører alle fem for én planlagt post. Ren funktion — den kan flyttes ind i
  * den Cloud Function der skal håndhæve dem, uden at røre skærmen.
  */
-function tjekAlt({ post, enheder, person, kompetencer, reservationer, straekninger, gods }) {
+function tjekAlt({ post, enheder, person, kompetencer, reservationer, straekninger, gods, advarendeKrav = [] }) {
   const ud = [];
 
   /* 1. Enhedskombination */
@@ -131,21 +131,36 @@ function tjekAlt({ post, enheder, person, kompetencer, reservationer, straekning
 
   /* 2. Kompetencer. Kravet kommer fra enhederne PLUS godset — ADR hænger på
         lasten og kan ikke udledes af bilen. */
+  /* BESLUTNING 25: alt kraevedeKompetencer() udleder af enheden og godset,
+     BLOKERER. Krav der kommer et andet sted fra — virksomhedens egne, en
+     kundes — advarer med en begrundet override og sendes ind som `advarende`. */
   const krav = kraevedeKompetencer(enheder, gods);
-  if (person && krav.length) {
-    const komp = tjekKompetencer(kompetencer, krav);
-    for (const m of komp.mangler) {
+  if (person && (krav.length || advarendeKrav?.length)) {
+    const komp = tjekKompetencer(kompetencer, {
+      blokerende: krav, advarende: advarendeKrav || [],
+    });
+
+    /* Mangler og udløbne holdes adskilt: "har aldrig haft C/E" og "hans C/E
+       udløb i går" kræver hver sin handling. */
+    for (const m of komp.blokerende.mangler) {
       ud.push({
         tjek: "Kompetence", tone: "bad",
         tekst: `${person.navn} har aldrig haft ${KOMPETENCE_LABEL[m] || m}.`,
       });
     }
-    /* Mangler og udløbne holdes adskilt: "har aldrig haft C/E" og "hans C/E
-       udløb i går" kræver hver sin handling. */
-    for (const u of komp.udloebne) {
+    for (const u of komp.blokerende.udloebne) {
       ud.push({
         tjek: "Kompetence", tone: "bad",
-        tekst: `${person.navn}s ${KOMPETENCE_LABEL[u] || u} er udløbet. En udløbet kompetence BLOKERER.`,
+        tekst: `${person.navn}s ${KOMPETENCE_LABEL[u] || u} er udløbet. Den BLOKERER — kravet kommer fra bilen eller godset.`,
+      });
+    }
+
+    /* ADVARSLER er ikke spærringer. Læses de som blokeringer, holder
+       disponenten op med at læse dem. */
+    for (const m of [...komp.advarende.mangler, ...komp.advarende.udloebne]) {
+      ud.push({
+        tjek: "Kompetence", tone: "warn",
+        tekst: `${person.navn} mangler ${KOMPETENCE_LABEL[m] || m}. Advarsel — kan overrules med en begrundelse, der logges.`,
       });
     }
   }

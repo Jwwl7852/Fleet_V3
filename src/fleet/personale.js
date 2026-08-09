@@ -115,13 +115,63 @@ export function tjekKompetencer(kompetencer = [], krav = [], paaMs = Date.now())
     if (!nuvaerende || (k.udloeberMs || 0) > (nuvaerende.udloeberMs || 0)) mine.set(k.type, k);
   }
 
-  const mangler = [];
-  const udloebne = [];
-  for (const t of krav) {
-    const k = mine.get(t);
-    if (!k) mangler.push(t);
-    else if ((k.udloeberMs || 0) <= paaMs) udloebne.push(t);
-  }
+  /* BESLUTNING 25 — to slags krav, og linjen er hvad kravet KOMMER FRA.
+     Et array er alle blokerende (bagudkompatibelt: kraevedeKompetencer()
+     udleder netop de blokerende). Et objekt skiller dem ad. */
+  const blokerendeKrav = Array.isArray(krav) ? krav : (krav.blokerende || []);
+  const advarendeKrav = Array.isArray(krav) ? [] : (krav.advarende || []);
 
-  return { ok: !mangler.length && !udloebne.length, mangler, udloebne };
+  const vurder = (liste) => {
+    const mangler = [];
+    const udloebne = [];
+    for (const t of liste) {
+      const k = mine.get(t);
+      if (!k) mangler.push(t);
+      else if ((k.udloeberMs || 0) <= paaMs) udloebne.push(t);
+    }
+    return { mangler, udloebne, ok: !mangler.length && !udloebne.length };
+  };
+
+  const blokerende = vurder(blokerendeKrav);
+  const advarende = vurder(advarendeKrav);
+
+  return {
+    /* ok betyder KAN DISPONERES. Advarsler gør den ikke falsk — de kræver en
+       begrundet override, ikke en spærring. Læses advarsler som blokeringer,
+       holder disponenten op med at læse dem. */
+    ok: blokerende.ok,
+    blokerende,
+    advarende,
+    /* Bevaret, så eksisterende kaldere ikke knækker. De peger på de
+       BLOKERENDE — det var det de altid har betydet. */
+    mangler: blokerende.mangler,
+    udloebne: blokerende.udloebne,
+  };
+}
+
+/**
+ * En override af en ADVARSEL. Blokerende krav kan ikke overrules.
+ *
+ * ⚠ BEGRUNDELSEN HØRER I OBJEKTETS EGEN historik — IKKE I AUDITPOSTEN.
+ *
+ * `begrundelse` står ikke på LOGBARE_FELTER i audit-regler.js, og allowlisten
+ * findes netop for at holde fritekst ude af loggen: en auditpost der lækker,
+ * er værre end ingen. Tilføj den ikke til listen for at få den med her — den
+ * skal ligge samme sted som en returneret bookings begrundelse gør, i
+ * objektets append-only historik.
+ *
+ * Auditposten får at der SKETE en override, af hvem og på hvilken kompetence.
+ * Ikke hvorfor.
+ */
+export function byggOverride({ personId, kompetence, begrundelse, bruger }, nu = Date.now()) {
+  if (!begrundelse?.trim()) {
+    throw new Error("byggOverride: en override kræver en begrundelse.");
+  }
+  return {
+    personId, kompetence,
+    af: bruger ?? null,
+    ms: nu,
+    /* Fritekst — og den bliver HER, i historikken. */
+    begrundelse: begrundelse.trim(),
+  };
 }

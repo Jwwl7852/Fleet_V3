@@ -252,8 +252,9 @@ describe("flaade.js", () => {
      mellem varevogn og bus i BAADE koerekortkrav og faergetakst — rundes den
      ned, mangler et krav; rundes den op, bliver taksten for hoej. */
   it("bus og minibus er hver sin art med hvert sit kørekortkrav", () => {
-    assert.deepEqual(kraevedeKompetencer([{ art: "bus" }]), ["d", "tachografkort"]);
-    assert.deepEqual(kraevedeKompetencer([{ art: "minibus" }]), ["d1"]);
+    /* eubevis er med efter beslutning 25 — se rettelsen ved KOMPETENCE. */
+    assert.deepEqual(kraevedeKompetencer([{ art: "bus" }]), ["d", "eubevis", "tachografkort"]);
+    assert.deepEqual(kraevedeKompetencer([{ art: "minibus" }]), ["d1", "eubevis"]);
     assert.deepEqual(kraevedeKompetencer([{ art: "varevogn" }]), []);
   });
 
@@ -281,7 +282,7 @@ describe("de tre tjek der skal køre før en etape oprettes", () => {
 
   /* 2. Kompetencer. En UDLØBET kompetence blokerer; den advarer ikke. */
   it("kravene udledes af enhederne og af godset", () => {
-    assert.deepEqual(kraevedeKompetencer([traekker, trailer]), ["c", "ce", "tachografkort"]);
+    assert.deepEqual(kraevedeKompetencer([traekker, trailer]), ["c", "ce", "eubevis", "tachografkort"]);
     assert.deepEqual(kraevedeKompetencer([varevogn]), []);
     /* ADR kommer fra LASTEN, ikke fra bilen — det kan ikke udledes af
        enhederne alene. */

@@ -97,13 +97,16 @@ export const FELT = {
   naesteServiceMs: "naesteServiceMs",
   synMs: "synMs",                     // påhængt materiel har sit EGET syn
   tachografNr: "tachografNr",
+  /* Kranens loefteevne i TONMETER. Findes kun paa traekker og lastbil, og er
+     null paa dem uden kran — se de to slags "har ikke" i kraevedeKompetencer(). */
+  kranTonmeter: "kranTonmeter",
 };
 
 /* Rækkefølgen her er den rækkefølge felterne vises i. Ét sted, så to skærme
    ikke lister de samme fem felter forskelligt. */
 const ALLE_FELTER = [
   FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet, FELT.saeder,
-  FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
+  FELT.kranTonmeter, FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
 ];
 
 /* Godsbærende motoriseret materiel. Bus og minibus står IKKE her: de bærer
@@ -119,9 +122,13 @@ const PASSAGER = [
   FELT.naesteServiceMs, FELT.synMs, FELT.tachografNr,
 ];
 
+/* Kun traekker og lastbil kan baere en kran. En bus med kran findes ikke, og
+   en trailer har ingen motor at drive den med. */
+const MED_KRAN = [...GODS_MOTOR, FELT.kranTonmeter];
+
 export const ART_FELTER = {
-  traekker: GODS_MOTOR,
-  lastbil: GODS_MOTOR,
+  traekker: MED_KRAN,
+  lastbil: MED_KRAN,
   /* Ingen tachograf — se ENHEDSART. Feltet findes derfor slet ikke. */
   varevogn: [FELT.kmStand, FELT.driftPrKmOere, FELT.kapacitet, FELT.naesteServiceMs, FELT.synMs],
   bus: PASSAGER,
@@ -257,22 +264,40 @@ export const KOMPETENCE = {
   tachografkort: "tachografkort",
   truckcertifikat: "truckcertifikat",
 
-  /* HERFRA OG NED: typer der REGISTRERES, men som ingen enhed kan kræve.
-     De står med vilje i samme katalog — to vokabularer for samme begreb er
-     beslutning 11 og 14 om igen — men de optræder IKKE i ART_KRAV nedenfor,
-     og kraevedeKompetencer() udsender dem derfor aldrig.
-
-     Konsekvensen skal være tydelig, for den er nem at læse forkert: en
-     medarbejder hvis førstehjælpsbevis er udløbet, BLOKERES IKKE i
-     disponeringen. Det er ikke en forglemmelse. Kravet skal kunne udledes af
-     enhederne plus godset — og der findes ingen lastbil der gør førstehjælp
-     til en betingelse for at køre. Skal et af dem begynde at blokere, hører
-     det i ART_KRAV eller i kraevedeKompetencer()'s gods-gren, ikke i en
-     skærm. */
+  /* ⚠ RETTET I BESLUTNING 25 — eubevis og kran blokerer nu.
+   *
+   * Her stod at eubevis, kran og førstehjælp kun REGISTRERES, og at ingen
+   * enhed kan kræve dem. Begrundelsen var rigtig — et krav skal kunne udledes
+   * af enhederne plus godset — men slutningen var forkert for to af de tre:
+   *
+   *   eubevis  EU-kvalifikationsbeviset følger af at køre ERHVERVSMÆSSIGT med
+   *            C eller D. Det kan altså udledes af arten, præcis som C og
+   *            tachografkort kan. Kommentaren blev skrevet før den slutning.
+   *   kran     Kranførerbevis er lovpligtigt over 8 tonmeter. Kravet kommer
+   *            fra BILENS KRAN — se kranTonmeter i ART_FELTER — og er dermed
+   *            samme mønster som ADR fra godset.
+   *
+   * Førstehjælp står stadig her, og konsekvensen er uændret: en medarbejder
+   * hvis førstehjælpsbevis er udløbet, BLOKERES IKKE. Der findes ingen bil der
+   * gør førstehjælp til en betingelse for at køre — kravet kommer fra
+   * virksomheden eller kunden, og den slags ADVARER med en begrundet override.
+   *
+   * Reglen efter beslutning 25 er skarpere end "lovkritisk mod virksomhedskrav":
+   * ALT hvad kraevedeKompetencer() udleder af enheden og godset, blokerer.
+   * Alt andet advarer. Linjen er hvad kravet KOMMER FRA. */
   eubevis: "eubevis",           // chaufføruddannelse, EU-kvalifikationsbevis
-  kran: "kran",                 // kran og hejs
+  kran: "kran",                 // kran og hejs — over KRAN_KRAEVER_BEVIS_TONMETER
   foerstehjaelp: "foerstehjaelp",
 };
+
+/**
+ * Kranførerbevis er lovpligtigt over 8 tonmeter.
+ *
+ * Tallet står som en navngiven konstant og ikke i en if: en tærskel gemt i et
+ * udtryk kan ikke findes af den der skal ændre den, og den kan ikke forklares
+ * af den der undrer sig over hvorfor netop denne bil kræver et bevis.
+ */
+export const KRAN_KRAEVER_BEVIS_TONMETER = 8;
 
 /** Labels ét sted, som FUNKTION_LABEL i personale.js. En skærm skriver ikke
  *  "ADR — farligt gods" i hånden; så står der noget andet på den næste. */
@@ -289,22 +314,36 @@ export const KOMPETENCE_LABEL = {
   foerstehjaelp: "Førstehjælp",
 };
 
-/** Kompetencer en enhed kan kræve — altså dem der kan BLOKERE en etape.
- *  Resten af kataloget registreres kun. */
+/**
+ * Kompetencer der kan UDLEDES af enheden eller godset — og som derfor
+ * blokerer. Resten advarer.
+ *
+ * ⚠ Listen er ikke et valg om hvad der er "vigtigt nok". Den er facit for
+ * hvad kraevedeKompetencer() kan udsende, og de to skal stemme: står en type
+ * her uden at kunne udledes, blokerer den aldrig, og en der kan udledes uden
+ * at stå her, blokerer uden at være erklæret. Der er en test der holder dem
+ * sammen.
+ */
 export const BLOKERENDE_KOMPETENCER = [
   KOMPETENCE.c, KOMPETENCE.ce, KOMPETENCE.d1, KOMPETENCE.d,
   KOMPETENCE.adr, KOMPETENCE.tachografkort, KOMPETENCE.truckcertifikat,
+  /* Beslutning 25 — begge kan udledes. Se noten ved KOMPETENCE. */
+  KOMPETENCE.eubevis, KOMPETENCE.kran,
 ];
 
 export const kanBlokere = (type) => BLOKERENDE_KOMPETENCER.includes(type);
 
+/* eubevis står på de arter der køres ERHVERVSMÆSSIGT med C eller D —
+   trækker, lastbil, bus og minibus. Ikke på varevogn, scooter og truck, hvor
+   kørslen ikke kræver et kvalifikationsbevis, og ikke på påhængt materiel,
+   som ikke føres af nogen alene. Se rettelsen ved KOMPETENCE. */
 const ART_KRAV = {
-  traekker: [KOMPETENCE.c, KOMPETENCE.tachografkort],
-  lastbil: [KOMPETENCE.c, KOMPETENCE.tachografkort],
+  traekker: [KOMPETENCE.c, KOMPETENCE.tachografkort, KOMPETENCE.eubevis],
+  lastbil: [KOMPETENCE.c, KOMPETENCE.tachografkort, KOMPETENCE.eubevis],
   varevogn: [],
-  bus: [KOMPETENCE.d, KOMPETENCE.tachografkort],
+  bus: [KOMPETENCE.d, KOMPETENCE.tachografkort, KOMPETENCE.eubevis],
   /* D1 og ikke D: det er dét der gør minibussen til sin egen art. */
-  minibus: [KOMPETENCE.d1],
+  minibus: [KOMPETENCE.d1, KOMPETENCE.eubevis],
   scooter: [],
   truck: [KOMPETENCE.truckcertifikat],
   trailer: [KOMPETENCE.ce],
@@ -321,6 +360,16 @@ export function kraevedeKompetencer(enheder = [], gods = {}) {
   const krav = new Set();
   for (const e of enheder.filter(Boolean)) {
     for (const k of ART_KRAV[e.art] || []) krav.add(k);
+
+    /* ⚠ TO SLAGS "HAR IKKE" — de må ikke forveksles.
+       harFelt(art, kranTonmeter) siger at ARTEN kan have en kran.
+       kranTonmeter == null siger at DENNE bil ikke har en.
+       Blandes de, kræver vi kranbevis af hver eneste lastbil. */
+    if (harFelt(e.art, FELT.kranTonmeter)
+        && Number.isFinite(e.kranTonmeter)
+        && e.kranTonmeter > KRAN_KRAEVER_BEVIS_TONMETER) {
+      krav.add(KOMPETENCE.kran);
+    }
   }
   if (gods.farligt) krav.add(KOMPETENCE.adr);
   return [...krav].sort();
