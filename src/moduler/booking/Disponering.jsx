@@ -71,6 +71,12 @@ import { DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE } from "../../fleet/demo-va
 import { DEMO_ETAPER, demoAabneEtaper } from "../../fleet/demo-etaper.js";
 import { DEMO_FRAVAER } from "../../fleet/demo-fravaer.js";
 
+/* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
+   fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+
 const DAG = 86400000;
 const T = 3600000;
 
@@ -213,7 +219,7 @@ export default function Disponering() {
 
   const dagBlokke = dagensOpgaver.map((o) => ({
     id: o.id, raekkeId: o.koeretoejId, fra: o.fra, til: o.til,
-    label: `${OMKOSTNINGSTYPE[o.type]} · ${o.vaerksted}`,
+    label: `${OMKOSTNINGSTYPE[o.type]} · ${lvNavn(o.leverandoerId)}`,
     titel: o.beskrivelse, tone: BESOEG_STATUS[o.status]?.tone,
   }));
 
@@ -441,7 +447,7 @@ function Detalje({ post, personEfterId }) {
     return (
       <Kort titel={post.beskrivelse}>
         <MiniLinje label="Type" vaerdi={OMKOSTNINGSTYPE[post.type]} />
-        <MiniLinje label="Værksted" vaerdi={post.vaerksted} />
+        <MiniLinje label="Værksted" vaerdi={lvNavn(post.leverandoerId)} />
         <MiniLinje label="Fra" vaerdi={klokke(post.fra)} />
         <MiniLinje label="Til" vaerdi={`${klokke(post.til)} (eksklusiv)`} />
         <MiniLinje label="Art" vaerdi={<code>{post.art}</code>} />

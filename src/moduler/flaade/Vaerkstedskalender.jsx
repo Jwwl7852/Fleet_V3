@@ -66,6 +66,12 @@ import {
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
 
+/* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
+   fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+
 const DAG = 86400000;
 const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
 
@@ -116,7 +122,7 @@ export default function Vaerkstedskalender() {
     raekkeId: b.koeretoejId,
     fra: b.fra,
     til: b.til,
-    label: `${OMKOSTNINGSTYPE[b.type]} · ${b.vaerksted}`,
+    label: `${OMKOSTNINGSTYPE[b.type]} · ${lvNavn(b.leverandoerId)}`,
     titel: b.beskrivelse,
     tone: BESOEG_STATUS[b.status]?.tone,
   }));
@@ -265,7 +271,7 @@ function Blokeringer({ besoeg }) {
     >
       <MiniLinje label="Bil" vaerdi={<b>{demoKoeretoejKaldenavn(besoeg.koeretoejId)}</b>} />
       <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
-      <MiniLinje label="Værksted" vaerdi={besoeg.vaerksted} />
+      <MiniLinje label="Værksted" vaerdi={lvNavn(besoeg.leverandoerId)} />
       <MiniLinje label="Fra" vaerdi={datoTid(besoeg.fra)} />
       <MiniLinje label="Til" vaerdi={`${datoTid(besoeg.til)} (eksklusiv)`} />
       {besoeg.sagsnummer && <MiniLinje label="Sag" vaerdi={besoeg.sagsnummer} />}
@@ -338,7 +344,7 @@ function IndkoebsForm({ besoeg, sag, maaSkrive }) {
         <>
           <MiniLinje label="Bil" vaerdi={<b>{demoKoeretoejKaldenavn(besoeg.koeretoejId)}</b>} />
           <MiniLinje label="Arbejdsordre" vaerdi={<code>{besoeg.id}</code>} />
-          <MiniLinje label="Leverandør" vaerdi={besoeg.vaerksted} />
+          <MiniLinje label="Leverandør" vaerdi={lvNavn(besoeg.leverandoerId)} />
 
           {/* ⚠ Divisionsfeltet står FOR SIG og udfyldes ikke af bilvalget.
               Reglerne kræver det på indkoeb/, og bilen har det ikke

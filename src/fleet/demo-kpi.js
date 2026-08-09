@@ -54,6 +54,8 @@ export const DEMO_KPI = {
     },
     indkoeb: {
       aabneOrdrer: 18, fakturaerTilGodkendelse: 7, indkoebsprisafvigelser: 5,
+      varerTilGodkendelse: 8, manglerFaktura: 24, godkendtDenneMaaned: 86,
+      maanedensForbrugOere: 12284500,
       leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
     },
     kunder: {
@@ -95,6 +97,8 @@ export const DEMO_KPI = {
     },
     indkoeb: {
       aabneOrdrer: 7, fakturaerTilGodkendelse: 3, indkoebsprisafvigelser: 2,
+      varerTilGodkendelse: 3, manglerFaktura: 9, godkendtDenneMaaned: 34,
+      maanedensForbrugOere: 4820000,
       leveranceTilTidenPct: 95, indkoebsprisafvigelseSnitPct: 4,
     },
     kunder: {

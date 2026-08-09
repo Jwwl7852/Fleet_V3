@@ -37,6 +37,12 @@ import {
   DEMO_SERVICEBESOEG, DEMO_AKTIVER, DEMO_LOKATIONER, demoAktiv, demoLokation,
 } from "../../fleet/demo-facility.js";
 
+/* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
+   fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+
 const DAG = 86400000;
 const VINDUE_DAGE = 10;
 
@@ -75,7 +81,7 @@ export default function Servicekalender() {
     id: b.id,
     raekkeId: b.aktivId || b.lokationId,
     fra: b.fra, til: b.til,
-    label: `${b.leverandoer}${b.sagsnummer ? ` · ${b.sagsnummer}` : ""}`,
+    label: `${lvNavn(b.leverandoerId)}${b.sagsnummer ? ` · ${b.sagsnummer}` : ""}`,
     titel: b.beskrivelse,
     tone: BESOEG_TONE[b.status] || "info",
   }));
@@ -119,7 +125,7 @@ export default function Servicekalender() {
               { key: "fra", label: "Dato", render: (r) => dato(r.fra) },
               { key: "hvad", label: "Hvad", render: (r) => (
                   <b>{r.aktivId ? demoAktiv(r.aktivId)?.navn : demoLokation(r.lokationId)?.navn}</b>) },
-              { key: "leverandoer", label: "Leverandør" },
+              { key: "leverandoerId", label: "Leverandør", render: (r) => lvNavn(r.leverandoerId) },
               { key: "sagsnummer", label: "Sag", render: (r) => r.sagsnummer
                   ? <code>{r.sagsnummer}</code>
                   : <span className="fc-neutral">—</span> },
@@ -165,7 +171,7 @@ function Reservationen({ besoeg }) {
       {byggefejl ? <Fejl>{byggefejl}</Fejl> : (
         <>
           <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
-          <MiniLinje label="Leverandør" vaerdi={besoeg.leverandoer} />
+          <MiniLinje label="Leverandør" vaerdi={lvNavn(besoeg.leverandoerId)} />
           {besoeg.sagsnummer && <MiniLinje label="Sag" vaerdi={<code>{besoeg.sagsnummer}</code>} />}
           <MiniLinje label="Fra" vaerdi={datoTid(besoeg.fra)} />
           <MiniLinje label="Til" vaerdi={`${datoTid(besoeg.til)} (eksklusiv)`} />

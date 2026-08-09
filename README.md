@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 406 tests. Starter emulatoren.
+npm test                            # 442 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -107,6 +107,8 @@ src/
     fravaer.js         årsager (sensitive), afledt tilstand, reservationen
     opgaver.js         art (vaerksted|facility), feltskema pr. art, status
     etaper.js          transportfelter, grænseovergange, reservationerne
+    leverandoerer.js   kategorier, aftaler, afstemning. Division er tilladt her —
+                       den beskriver leverandørens forretning, ikke vores
     facility.js        lokationer, aktiver, zoner. Grænsen på zonen, målingen
                        på sensoren — alarmen er afledt og gemmes aldrig
     koerehviletid.js   reglen, ikke et felt. Blokerer — med forbehold, fordi
@@ -130,16 +132,15 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Sytten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **406 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **442 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 16 af 27 har indhold
+### Skærmene: 18 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (16)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag |
-| **Skelet med mockup (2)** | Indkøb ×2 |
+| **Bygget (18)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2 |
 | **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -286,6 +287,24 @@ ikke er skrevet. At en funktion findes er ikke det samme som at den håndhæves.
 | Kompetencer | `kraevedeKompetencer()` + `tjekKompetencer()` — en udløbet kompetence **blokerer** |
 | Kapacitet | `kanBaere()` — m³ og kg hver for sig |
 
+### Noder der er dokumenteret, men mangler regler
+
+Entiteterne er afgjort og har form i `ARKITEKTUR.md` og et demo-sæt, men de
+står **ikke** i `firebase.rules.json`. Det er bevidst: reglerne skrives når
+skrivning bygges, så de kan testes mod noget der faktisk skriver. Uden en
+regel afviser RTDB alt — der er ingen åben dør, kun en manglende.
+
+| Node | Bemærkning |
+|---|---|
+| `facility/lokationer` | |
+| `facility/aktiver` | |
+| `facility/zoner` | Bærer grænserne. `facility/sensorer` har regler i forvejen |
+| `sager`, `sensitive/sager` | Beslutning 20. Permissions `sag.*` mangler af samme grund |
+| `leverandoerer` | ⚠ `leverandoerId` er **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
+
+Listen står her, så den ikke ligger spredt i tre dokumenter. Tilføjer du en
+node, hører den enten i reglerne eller på denne liste.
+
 ### KPI-aggregeringens efterslæb — beslutning 6
 
 **Reglen: et manglende KPI-tal defineres i `demo-kpi.js` — det hardkodes ikke
@@ -314,6 +333,10 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.eksterneLeverandoerer` | Leverandører med aftale |
 | `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
+| `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
+| `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
+| `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
+| `indkoeb.maanedensForbrugOere` | Vareforbrug i perioden, ekskl. moms |
 | `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
 | `opgaver.udfoerteOpgaver` | Udførte opgaver i perioden. Nævner i omkostning pr. opgave |
 

@@ -72,20 +72,22 @@ export const BESOEG_STATUS = {
 /**
  * Et besøg spærrer bilen i [fra, til). Halvåbent, som alt andet.
  *
- * `vaerksted` er navnet på leverandøren, ikke en reference til en node —
- * leverandørkartoteket bygges på Indkøb → Leverandører.
+ * `leverandoerId` peger på demo-indkoeb.js. Feltet hed før `vaerksted` og var
+ * en fritekststreng — samme navn stod i tre filer med hver sin stavemåde at
+ * drive med. Reglerne har hele tiden indekseret `leverandoerId`; noden fandtes
+ * bare ikke.
  */
 export const DEMO_BESOEG = [
   /* --- Udført, ligger bag os -------------------------------------- */
   {
     id: "vb-001", koeretoejId: "kt-078", status: "udfoert", art: "vaerksted", division: "gods",
-    type: "service", vaerksted: "Scania Kolding",
+    type: "service", leverandoerId: "lv-scania",
     fra: dag(-24, 7), til: dag(-24, 16),
     beskrivelse: "Serviceeftersyn 250.000 km",
   },
   {
     id: "vb-002", koeretoejId: "kt-b16", status: "udfoert", art: "vaerksted", division: "bus",
-    type: "daek", vaerksted: "Dækteam Vejle",
+    type: "daek", leverandoerId: "lv-daekteam",
     fra: dag(-11, 8), til: dag(-11, 13),
     beskrivelse: "Fire nye dæk på foraksel og bogie",
   },
@@ -93,7 +95,7 @@ export const DEMO_BESOEG = [
   /* --- I gang lige nu. Skal stemme med status 'vaerksted' i demo-flaade --- */
   {
     id: "vb-003", koeretoejId: "kt-106", status: "igang", art: "vaerksted", division: "gods",
-    type: "reparation", vaerksted: "DAF Trucks Fredericia",
+    type: "reparation", leverandoerId: "lv-daf",
     fra: dag(-2, 7), til: dag(2, 16),
     beskrivelse: "Motorlampe — fejlsøgning på EGR-ventil",
   },
@@ -102,7 +104,7 @@ export const DEMO_BESOEG = [
        vises: klippet ved kanten læses tre uger som et kort besøg, og så
        planlægger nogen en tur i en uge hvor traileren står på værksted. */
     id: "vb-004", koeretoejId: "kt-tr42", status: "igang", art: "vaerksted", division: "gods",
-    type: "reparation", vaerksted: "Schmitz Service Padborg",
+    type: "reparation", leverandoerId: "lv-schmitz",
     fra: dag(-1, 8), til: dag(18, 15),
     beskrivelse: "Køleaggregat starter ikke — kompressor i restordre",
   },
@@ -115,20 +117,20 @@ export const DEMO_BESOEG = [
        beskriver sagsvisningen og værkstedskalenderen hver sin virkelighed —
        og det er 84-mod-83 igen. Selvkontrollen nedenfor fastholder det. */
     id: "vb-005", koeretoejId: "kt-104", status: "planlagt", art: "vaerksted", division: "gods",
-    type: "service", vaerksted: "Mercedes Greve",
+    type: "service", leverandoerId: "lv-mercedes",
     fra: null, til: null,          // sættes fra sagen — se nedenfor
     beskrivelse: "Serviceeftersyn 30.000 km",
     sagId: "sag-flt-381", sagsnummer: "FLT-2026-00381",
   },
   {
     id: "vb-006", koeretoejId: "kt-034", status: "planlagt", art: "vaerksted", division: "gods",
-    type: "service", vaerksted: "MAN Truck Center Horsens",
+    type: "service", leverandoerId: "lv-man",
     fra: dag(9, 7), til: dag(9, 15),
     beskrivelse: "Serviceeftersyn 525.000 km",
   },
   {
     id: "vb-007", koeretoejId: "kt-tr41", status: "planlagt", art: "vaerksted", division: "gods",
-    type: "syn", vaerksted: "Applus Bilsyn Kolding",
+    type: "syn", leverandoerId: "lv-applus",
     fra: dag(30, 9), til: dag(30, 12),
     beskrivelse: "Periodisk syn af trailer",
   },
@@ -140,7 +142,7 @@ export const DEMO_BESOEG = [
        Flåde og Værkstedskalender sige hver sit om samme scooter — og der er
        en test der fanger præcis det. */
     id: "vb-008", koeretoejId: "kt-s01", status: "planlagt", art: "vaerksted", division: "faelles",
-    type: "reparation", vaerksted: "Scootercenter Kolding",
+    type: "reparation", leverandoerId: "lv-scooter",
     fra: dag(10, 8), til: dag(24, 16),
     beskrivelse: "Motorblok skiftes når reservedelen er kommet",
   },
@@ -171,21 +173,21 @@ for (const b of DEMO_BESOEG) {
 export const DEMO_INDKOEB = [
   {
     id: "ik-001", besoegId: "vb-001", koeretoejId: "kt-078",
-    division: "gods", type: "service", leverandoer: "Scania Kolding",
+    division: "gods", type: "service", leverandoerId: "lv-scania",
     fakturanummer: "SK-2026-4471", fakturadatoMs: dag(-22),
     beloebOere: 1842500, momsOere: 460625,
     fakturaId: "fa-9001",
   },
   {
     id: "ik-002", besoegId: "vb-002", koeretoejId: "kt-b16",
-    division: "bus", type: "daek", leverandoer: "Dækteam Vejle",
+    division: "bus", type: "daek", leverandoerId: "lv-daekteam",
     fakturanummer: "DV-88213", fakturadatoMs: dag(-9),
     beloebOere: 2960000, momsOere: 740000,
     fakturaId: null,
   },
   {
     id: "ik-003", besoegId: "vb-003", koeretoejId: "kt-106",
-    division: "gods", type: "reparation", leverandoer: "DAF Trucks Fredericia",
+    division: "gods", type: "reparation", leverandoerId: "lv-daf",
     fakturanummer: "DAF-2026-1188", fakturadatoMs: dag(-1),
     beloebOere: 1215000, momsOere: 303750,
     fakturaId: null,
@@ -194,7 +196,7 @@ export const DEMO_INDKOEB = [
     /* Kom ind på en SAG. Sagsnummeret følger med posten, så man kan gå fra
        fakturaen tilbage til den tråd der aftalte arbejdet. */
     id: "ik-004", besoegId: "vb-004", koeretoejId: "kt-tr42",
-    division: "gods", type: "reparation", leverandoer: "Schmitz Service Padborg",
+    division: "gods", type: "reparation", leverandoerId: "lv-schmitz",
     fakturanummer: "SSP-70412", fakturadatoMs: dag(0),
     beloebOere: 3480000, momsOere: 870000,
     fakturaId: null, sagsnummer: null,

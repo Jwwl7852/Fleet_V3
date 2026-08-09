@@ -607,6 +607,24 @@ nogen. `.validate: false` gør fejlen til en afvisning frem for en vane.
 forretning går på tværs. Kolding Kommune køber både skolebusser og
 containerkørsel. Det er kundens forhold, ikke vores organisation.
 
+### Prøven: beskriver feltet deres forretning eller vores organisation?
+
+Formuleringen ovenfor var for tæt på eksemplerne. Den generelle prøve er:
+
+> **Beskriver `division` på denne node modpartens forretning, eller vores egen
+> opdeling?** Er det vores egen, hører feltet ikke der.
+
+| Node | Svar | Division |
+|---|---|---|
+| `personale`, `koeretoejer` | vores organisation — og den kunne ikke begrundes pr. medarbejder eller bil | **forbudt** |
+| `kunder` | kundens forretning. Kolding Kommune køber begge dele | tilladt, `faelles` betyder noget |
+| `leverandoerer` | leverandørens forretning. Mercedes Greve er et lastbilværksted, Crawford leverer porte til begge | tilladt |
+| `opgaver`, `etaper`, `indkoeb`, `indberetninger` | ingen af delene — det er **transaktioner**, og de hører til én afdeling | **påkrævet** |
+
+Prøven afgør også de tilfælde der endnu ikke findes. Spørgsmålet er ikke om
+værdien *kan* udfyldes, men om den siger noget om den anden part. Kan den kun
+udfyldes ved at kigge på vores eget organisationsdiagram, er den forbudt.
+
 ### Hvad der fulgte med
 
 - `kompetencer/` og `fravaer/` afviste allerede feltet, men med begrundelsen
