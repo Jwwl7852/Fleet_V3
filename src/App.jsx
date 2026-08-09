@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
-import { auth, demoMode, hentBrugerContext } from "./firebase.js";
+import { auth, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import Dashboard from "./moduler/Dashboard.jsx";
 import BookingOversigt from "./moduler/booking/Oversigt.jsx";
@@ -64,9 +64,11 @@ export default function App() {
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
   return (
-    /* demo styrer om rollevælgeren overhovedet findes. Se saetDemoRolle i
-       FleetContext — den er en no-op uden den. */
-    <FleetProvider tenants={TENANTS} bruger={bruger} demo={demoMode}
+    /* rolleskifte styrer om rollevælgeren overhovedet findes: alt UNDTAGEN
+       produktion. En udvikler kører normalt mod DEV med rigtige nøgler, og
+       dér skal den være der. Se saetDemoRolle i FleetContext — den er en
+       no-op uden flaget. */
+    <FleetProvider tenants={TENANTS} bruger={bruger} rolleskifte={miljoe !== "prod"}
                    logUd={() => auth?.signOut()}>
       <BrowserRouter>
         <Routes>

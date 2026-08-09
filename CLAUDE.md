@@ -67,14 +67,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `forbehold`, også når `ok` er true, fordi vi kun kan se planen og ikke
   tachografen. Et grønt flueben ved siden af en bøde er værre end ingen
   kontrol. Forudsætningen for at fjerne det er tachografdata — se ARKITEKTUR.
-- **Gøre rollevælgeren tilgængelig uden demo-mode.** `saetDemoRolle()` i
-  `FleetContext` er en **no-op** når `demo` er falsk, og shellen render den
-  kun i demo. Rør ikke den betingelse. Med et rigtigt token ville den vise
-  knapper serveren afviser — ikke en sikkerhedsbrist, men vildledende, og det
-  **ligner** at man skiftede sin egen adgang. En kontrol der ligner en
-  rettighedsændring uden at være det, bliver før eller siden læst som en.
-  Skal en rigtig bruger have anden adgang, ændres rollen i `roller/` og
-  claim'et fornys.
+- **Vise rollevælgeren i produktion.** `saetDemoRolle()` i `FleetContext` er
+  en **no-op** når `rolleskifte` er falsk, og App sætter den til
+  `miljoe !== "prod"`. Rør ikke den betingelse. I demo og dev er den nyttig —
+  claim'et er urørt, og serveren afviser stadig, så man kan se at UI og regler
+  er enige. I produktion ville den **ligne** at man skiftede sin egen adgang,
+  og en kontrol der ligner en rettighedsændring, bliver læst som en. Skal en
+  rigtig bruger have anden adgang, ændres rollen i `roller/` og claim'et
+  fornys.
 - **Definere et demo-datasæt i en modulfil.** Det hører i `fleet/demo-*.js`.
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`

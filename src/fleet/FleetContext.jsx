@@ -30,8 +30,11 @@ function gemt() {
 export const DEMO_ROLLER = Object.keys(ROLLE_PERMS);
 
 export function FleetProvider({
-  children, tenants = [], bruger = null, logUd = () => {}, demo = false,
+  children, tenants = [], bruger = null, logUd = () => {}, rolleskifte = false,
 }) {
+  /* Beholdt som lokalt navn, så resten af filen læses som før. Betingelsen er
+     nu "ikke produktion" og ikke "demo" — se saetDemoRolle. */
+  const demo = rolleskifte;
   const start = gemt();
   const [tenantId, setTenantId] = useState(start.tenantId || tenants[0]?.id || "demo");
   const [dage, setDage] = useState(start.dage || 30);
@@ -44,21 +47,25 @@ export function FleetProvider({
   }, [tenantId, dage, division, demoRolle]);
 
   /**
-   * ⚠ NO-OP UDEN DEMO-MODE. RØR IKKE DEN BETINGELSE.
+   * ⚠ NO-OP I PRODUKTION. RØR IKKE DEN BETINGELSE.
    *
    * Vælgeren findes for at gøre adgangsmodellen synlig: skifter man rolle,
    * ændrer knapperne sig på HVER skærm, fordi de alle spørger efter en
    * permission frem for efter en rolle.
    *
-   * Med et rigtigt token ville den vise knapper serveren afviser. Det er ikke
-   * en sikkerhedsbrist — serveren afviser stadig, og claim'et er urørt — men
-   * det er vildledende, og værre: det LIGNER at man skiftede sin egen adgang.
-   * En kontrol der ligner en rettighedsændring uden at være det, bliver før
-   * eller siden læst som en.
+   * ⚠ DEN GATEDE FØRST PÅ demoMode ALENE, OG DET VAR FORKERT.
+   * En udvikler kører normalt mod DEV med rigtige nøgler — README siger det
+   * udtrykkeligt — og så var vælgeren usynlig præcis dér hvor man har brug
+   * for den. Betingelsen er nu "ikke produktion".
    *
-   * Den skal derfor ikke "gøres nyttig" uden for demo-mode. Skal en rigtig
-   * bruger have en anden adgang, ændres rollen i tenantens roller/ og
-   * claim'et fornys — det er den vej der findes.
+   * I dev er der et rigtigt token, og claim'et er URØRT: serveren afviser
+   * stadig det rollen ikke må. Det er ikke en ulempe, men selve nytten —
+   * man kan se at UI og regler er enige. Teksten i shellen siger det.
+   *
+   * I PRODUKTION må den ikke findes. Dér ville den ligne at man skiftede sin
+   * egen adgang, og en kontrol der ligner en rettighedsændring uden at være
+   * det, bliver før eller siden læst som en. Skal en rigtig bruger have anden
+   * adgang, ændres rollen i tenantens roller/ og claim'et fornys.
    */
   const saetDemoRolle = useCallback((rolle) => {
     if (!demo) return;

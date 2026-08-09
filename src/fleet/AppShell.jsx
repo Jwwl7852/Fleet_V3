@@ -138,23 +138,29 @@ export default function AppShell() {
                 <div className="fc-who-r">{bruger?.rolleLabel || bruger?.email || "—"}</div>
               </div>
             </div>
-            {/* ⚠ KUN I DEMO-MODE. Vælgeren gør adgangsmodellen synlig: skifter
-                man rolle, ændrer knapperne sig på HVER skærm, fordi de alle
-                spørger efter en permission og ikke efter en rolle. Den ændrer
-                intet claim og intet på serveren.
-                Med et rigtigt token ville den vise knapper serveren afviser —
-                vildledende, og det ligner en rettighedsændring. saetDemoRolle
-                er en no-op uden demo; se FleetContext. */}
+            {/* ⚠ ALT UNDTAGEN PRODUKTION. Vælgeren gør adgangsmodellen synlig:
+                skifter man rolle, ændrer knapperne sig på HVER skærm, fordi de
+                alle spørger efter en permission og ikke efter en rolle.
+                Den ændrer intet claim og intet på serveren.
+
+                Den gatede først på demoMode alene, og så var den usynlig i dev
+                — hvor en udvikler normalt kører. I produktion må den ikke
+                findes: dér ville den ligne en rettighedsændring.
+                saetDemoRolle er en no-op uden flaget; se FleetContext. */}
             {demo && (
               <div className="fc-demo-rolle">
-                <label htmlFor="fc-rolle">Demo: se platformen som</label>
+                <label htmlFor="fc-rolle">Se platformen som</label>
                 <select id="fc-rolle" value={demoRolle || bruger?.rolle || "admin"}
                         onChange={(e) => saetDemoRolle(e.target.value)}>
                   {DEMO_ROLLER.map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
-                <span>Ændrer kun hvad UI'et viser — ikke din adgang.</span>
+                <span>
+                  {miljoe === "demo"
+                    ? "Ændrer kun hvad UI'et viser. Der er ingen server at spørge."
+                    : "Ændrer kun UI'et. Dit rigtige claim er urørt, så serveren afviser stadig det rollen ikke må — og det er meningen: sådan kan du se at UI og regler er enige."}
+                </span>
               </div>
             )}
             <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
