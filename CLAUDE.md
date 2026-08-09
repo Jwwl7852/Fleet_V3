@@ -7,8 +7,10 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er 17 trufne beslutninger i README —
-brud på dem skal være bevidste, ikke tilfældige.
+og få den godkendt, før du skriver. Der er **20 trufne beslutninger** — kort
+form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
+bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
+der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
 
 Rækkefølgen for sikkerhedsarbejdet er også låst — se **Låst rækkefølge** i
 README. Tag punkterne i orden, og spring ikke frem.

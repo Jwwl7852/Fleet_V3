@@ -119,7 +119,7 @@ export default function Medarbejdere() {
        ikke i skærmen — ellers blev den glemt næste gang nogen læser noden.
        Der logges ÉN post med antallet, aldrig rækkerne. Indtil Cloud
        Function'en findes, tælles fejlen og skærmen kører videre; se
-       forbeholdet om klientside-læsningslogning i README. */
+       forbeholdet om klientside-læsningslogning i BESLUTNINGER.md. */
     auditerSom: "personale",
   });
 

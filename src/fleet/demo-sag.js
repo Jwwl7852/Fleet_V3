@@ -12,7 +12,7 @@
  *   sag.beskeder     hører i sensitive/. Brødtekst fra internettet.
  *   sag.karantaene   hører i sensitive/. Og den er IKKE en del af tråden.
  *   sag.aftale       strukturen i general, den citerede sætning i sensitive.
- * Se beslutning 17 og 20 i README.
+ * Se beslutning 17 og 20 i BESLUTNINGER.md.
  *
  * SÆTTET ER TEGNET TIL AT VISE MEKANISMEN, IKKE ET LYKKELIGT FORLØB.
  * Derfor er der med vilje én besked i karantæne og én vedhæftning der ikke er

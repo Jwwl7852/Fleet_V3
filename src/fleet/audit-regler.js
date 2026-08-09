@@ -65,7 +65,7 @@ export const LOGBARE_FELTER = new Set([
  * Bogføringsloven trækker mod 5 år for det der rører regnskabsdata; GDPR
  * trækker mod kortere for personoplysninger. Det ender sandsynligvis med
  * forskellige tal pr. klasse — mekanismen er klar til det, tallene er ikke
- * besluttet. Se README.
+ * besluttet. Se BESLUTNINGER.md.
  *
  * Retention varierer pr. KLASSE og ikke pr. handling, fordi partitionerne er
  * månedlige: en partition indeholder alle handlinger. Skulle grænsen variere
