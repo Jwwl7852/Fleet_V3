@@ -149,6 +149,16 @@
 .fc-mini{display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px}
 .fc-mini span{color:var(--bc-muted)}
 
+/* Rollevælger i sidebarens fod. KUN i demo-mode — se AppShell. */
+.fc-demo-rolle{margin-top:10px; padding:9px 10px; border-radius:8px;
+  background:var(--fc-navy-2); border:1px dashed var(--fc-navy-3)}
+.fc-demo-rolle label{display:block; color:#9aa7b8; font-size:10.5px;
+  font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px}
+.fc-demo-rolle select{width:100%; background:var(--fc-navy-3); color:#fff;
+  border:1px solid var(--fc-navy-3); border-radius:6px; padding:6px 8px;
+  font:inherit; font-size:12.5px}
+.fc-demo-rolle span{display:block; margin-top:6px; color:#8b97a8; font-size:10.5px; line-height:1.35}
+
 .fc-side-btn{width:100%; text-align:left; background:var(--fc-navy-2);
   border:1px solid var(--fc-navy-3); color:#cbd5e1; padding:9px 11px; border-radius:8px;
   font:inherit; font-size:12.5px; cursor:pointer; margin-top:8px}

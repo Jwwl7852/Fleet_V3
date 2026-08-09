@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 372 tests. Starter emulatoren.
+npm test                            # 406 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -116,8 +116,10 @@ src/
     Gitterkalender.jsx ressourcer × tid — delt af tre skærme
     demo-kpi.js        demo-nøgletal. Rent data, ingen React — så demo-filernes
                        selvkontrol også kan køres af en test
-    demo-*.js          personale, flåde, fravær, sager. Nodens form, ikke
-                       skærmens. Hver med en selvkontrol mod demo-kpi
+    demo-*.js          personale, flåde, fravær, sager, etaper, bookinger,
+                       facility, kunder. Nodens form, ikke skærmens. Hver med
+                       en selvkontrol. ⚠ Et demo-datasæt hører HER, ikke i en
+                       modulfil — test/demo-kilder.test.mjs fejler på det
     Sagsvisning.jsx    sagen med faner — delt mellem Fleet og Facility
     ui.jsx             Kort, KpiKort, Tabel, Pille, Tom, Fejl, Knap, Soejlegraf
     fleet.css          tokens (udvider de eksisterende --bc-*)
@@ -129,15 +131,15 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Sytten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **372 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+skærme, og **406 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 13 af 27 har indhold
+### Skærmene: 16 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (13)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3 |
-| **Skelet med mockup (5)** | Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2 |
+| **Bygget (16)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag |
+| **Skelet med mockup (2)** | Indkøb ×2 |
 | **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -312,6 +314,8 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.eksterneLeverandoerer` | Leverandører med aftale |
 | `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
+| `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
+| `opgaver.udfoerteOpgaver` | Udførte opgaver i perioden. Nævner i omkostning pr. opgave |
 
 **Skal UD af aggregeringen.** Et afledt tal der er gemt, driver fra sit
 grundlag:

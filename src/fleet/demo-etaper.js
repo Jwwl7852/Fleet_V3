@@ -135,6 +135,25 @@ export const DEMO_ETAPER = [
     forslag: [], valgtForslagId: null, senestMs: null,
   },
   {
+    /* ⚠ NR. 1 AF ET FORLØB MED TO ETAPER, OG DEN ER UDFØRT.
+       Uden den ville forloebstilstand() aldrig give `delvist` på demo-data,
+       og beslutning 16's vigtigste værdi kunne ikke ses: et forløb hvor noget
+       er i hus og noget ikke er, må hverken læses som færdigt eller være
+       usynligt. Sammen med den åbne nr. 2 nedenfor giver bk-2026-00317
+       netop `delvist`. */
+    id: "et-008", bookingId: "bk-2026-00317", nr: 1,
+    tilstand: "udfoert", division: "gods",
+    fraSted: "København", tilSted: "Hamburg",
+    fra: dag(-3, 5), til: dag(-3, 17),
+    etaMs: dag(-3, 16),
+    graenseovergange: ["roedby"],
+    kunDanmark: false,
+    passager: { "faerge:femern": 1 },
+    koeretoejId: "kt-012", personId: "larsAage",
+    maengde: { m3: 38, kg: 8100 },
+    forslag: [], valgtForslagId: null, senestMs: null,
+  },
+  {
     /* Åben etape: venter på en passende tur, og bærer en frist. Uden
        senestMs fyldes lageret med gods ingen henter (beslutning 16). */
     id: "et-007", bookingId: "bk-2026-00317", nr: 2,

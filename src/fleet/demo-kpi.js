@@ -29,6 +29,7 @@ export const DEMO_KPI = {
     opgaver: {
       aabne: 47, indberettet: 12, planlagt: 10, igang: 9, afventer: 7, udfoert: 9,
       forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, klarTilFakturering: 12,
+      udfoerteOpgaver: 214,
     },
     flaade: {
       aktive: 42, udeAfDrift: 6, paaVaerksted: 3, serviceInden30: 9,
@@ -62,6 +63,7 @@ export const DEMO_KPI = {
     oekonomi: {
       driftsomkostningerOere: 84261500, budgetOere: 77005500,
       ikkeFaktureretOere: 18624000, daekningsgradPct: 72, maalDaekningsgradPct: 70,
+      driftstimer: 2840,
       planlagtVedligeholdPct: 72,
     },
     disponering: { planlagteOpgaver: 22, ledigKapacitetPct: 18, forsinkelsesrisiko: 2, konflikter: 4 },
@@ -71,6 +73,7 @@ export const DEMO_KPI = {
     opgaver: {
       aabne: 19, indberettet: 5, planlagt: 4, igang: 3, afventer: 3, udfoert: 4,
       forsinkede: 2, nyeBookinger: 3, igangIDag: 8, uplanlagte: 3, klarTilFakturering: 6,
+      udfoerteOpgaver: 96,
     },
     flaade: {
       aktive: 18, udeAfDrift: 2, paaVaerksted: 1, serviceInden30: 4,
@@ -103,6 +106,7 @@ export const DEMO_KPI = {
     oekonomi: {
       driftsomkostningerOere: 34346000, budgetOere: 33350000,
       ikkeFaktureretOere: 7240000, daekningsgradPct: 68, maalDaekningsgradPct: 70,
+      driftstimer: 1120,
       planlagtVedligeholdPct: 64,
     },
     disponering: { planlagteOpgaver: 9, ledigKapacitetPct: 12, forsinkelsesrisiko: 1, konflikter: 2 },

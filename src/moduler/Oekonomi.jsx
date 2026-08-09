@@ -128,12 +128,13 @@ const MAANEDER = Array.from({ length: 12 }, (_, i) => {
   return d.toLocaleDateString("da-DK", { month: "short" });
 });
 
-/* Nævnere til omkostning pr. enhed, pr. division. De findes IKKE i kpi/
-   endnu — der er hverken driftstimer eller udførte opgaver i perioden. De
-   står synligt i labelen, så det fremgår hvad der er divideret med, og de
-   hører hjemme i aggregeringen når Cloud Functions skrives. */
-const DEMO_DRIFTSTIMER = { gods: 2840, bus: 1120 };
-const DEMO_UDFOERTE_OPGAVER = { gods: 214, bus: 96 };
+/* Nævnerne til omkostning pr. enhed ligger i demo-kpi.js som
+   oekonomi.driftstimer og opgaver.udfoerteOpgaver — ikke som konstanter her.
+
+   Reglen: et manglende KPI-tal DEFINERES i demo-kpi.js, det hardkodes ikke i
+   en skærm. Så er skærmen rigtig, og kun aggregeringen mangler. Begge felter
+   står på KPI-efterslæbet i README. De står stadig synligt i labelen, så det
+   fremgår hvad der er divideret med. */
 
 /* Klar til fakturering. Nummerformatet er PRÆFIKS-ÅÅÅÅ-NNNNN (beslutning 8).
    En faktureringsklar opgave er en transaktion, så division er altid gods
@@ -204,8 +205,8 @@ export default function Oekonomi() {
     vaerdier: [i < 11 ? dgHistorik[i] : k.oekonomi.daekningsgradPct],
   }));
 
-  const timer = DEMO_DRIFTSTIMER[division] ?? DEMO_DRIFTSTIMER.gods;
-  const udfoerte = DEMO_UDFOERTE_OPGAVER[division] ?? DEMO_UDFOERTE_OPGAVER.gods;
+  const timer = k.oekonomi.driftstimer;
+  const udfoerte = k.opgaver.udfoerteOpgaver;
   const prDriftstimeOere = Math.round(k.oekonomi.driftsomkostningerOere / timer);
   const prOpgaveOere = Math.round(k.oekonomi.driftsomkostningerOere / udfoerte);
 

@@ -64,7 +64,10 @@ export default function App() {
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
   return (
-    <FleetProvider tenants={TENANTS} bruger={bruger} logUd={() => auth?.signOut()}>
+    /* demo styrer om rollevælgeren overhovedet findes. Se saetDemoRolle i
+       FleetContext — den er en no-op uden den. */
+    <FleetProvider tenants={TENANTS} bruger={bruger} demo={demoMode}
+                   logUd={() => auth?.signOut()}>
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>

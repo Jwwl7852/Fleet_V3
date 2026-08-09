@@ -79,7 +79,7 @@ const ICO = {
 };
 
 export default function AppShell() {
-  const { tenant, tenants, tenantId, setTenantId, dage, setDage, division, setDivision, bruger, logUd } = useFleet();
+  const { tenant, tenants, tenantId, setTenantId, dage, setDage, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle } = useFleet();
   const { pathname } = useLocation();
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
@@ -138,6 +138,25 @@ export default function AppShell() {
                 <div className="fc-who-r">{bruger?.rolleLabel || bruger?.email || "—"}</div>
               </div>
             </div>
+            {/* ⚠ KUN I DEMO-MODE. Vælgeren gør adgangsmodellen synlig: skifter
+                man rolle, ændrer knapperne sig på HVER skærm, fordi de alle
+                spørger efter en permission og ikke efter en rolle. Den ændrer
+                intet claim og intet på serveren.
+                Med et rigtigt token ville den vise knapper serveren afviser —
+                vildledende, og det ligner en rettighedsændring. saetDemoRolle
+                er en no-op uden demo; se FleetContext. */}
+            {demo && (
+              <div className="fc-demo-rolle">
+                <label htmlFor="fc-rolle">Demo: se platformen som</label>
+                <select id="fc-rolle" value={demoRolle || bruger?.rolle || "admin"}
+                        onChange={(e) => saetDemoRolle(e.target.value)}>
+                  {DEMO_ROLLER.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+                <span>Ændrer kun hvad UI'et viser — ikke din adgang.</span>
+              </div>
+            )}
             <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
           </div>
         </aside>
