@@ -35,6 +35,10 @@ export const DEMO_KPI = {
       aktive: 42, udeAfDrift: 6, paaVaerksted: 3, serviceInden30: 9,
       omkostningPrKmOere: 342, omkostningPrKmDeltaOere: 21, nedetidPct: 3.8,
       ikkeLinkedeFakturaer: 5,
+      /* Beslutning 25: Indberetninger viser periodens braendstofudgift. Feltet
+         defineres HER frem for at blive hardkodet i skaermen — saa er skaermen
+         rigtig, og det eneste der mangler, er aggregeringen. Se KPI-efterslaebet. */
+      braendstofOere: 184240000,
     },
     bemanding: {
       planlagt: 58, disponeret: 48, ledig: 10, underbemandede: 6,
@@ -81,6 +85,7 @@ export const DEMO_KPI = {
       aktive: 18, udeAfDrift: 2, paaVaerksted: 1, serviceInden30: 4,
       omkostningPrKmOere: 268, omkostningPrKmDeltaOere: -9, nedetidPct: 2.4,
       ikkeLinkedeFakturaer: 2,
+      braendstofOere: 74960000,
     },
     bemanding: {
       planlagt: 26, disponeret: 22, ledig: 4, underbemandede: 2,

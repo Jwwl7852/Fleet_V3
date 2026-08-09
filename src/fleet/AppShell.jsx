@@ -4,7 +4,7 @@
  * Skifter du periode her, ser alle moduler det via useFleet().
  */
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useFleet, PERIODER } from "./FleetContext.jsx";
+import { useFleet, PERIODER, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
 import { klokke } from "./format.js";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";

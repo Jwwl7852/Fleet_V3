@@ -100,6 +100,12 @@
   color:#8b97a8; font-weight:650; padding:0 12px 9px; white-space:nowrap}
 .fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:13px}
 .fc-table tbody tr:hover{background:#fafbfd}
+/* Valgt raekke i en klikbar tabel. Bruger accent-tokenet frem for en ny farve,
+   og markerer med en kant i venstre side saa markeringen ogsaa kan ses uden
+   farvesyn. Fokusrammen er tastaturets svar paa det samme. */
+.fc-table tbody tr.fc-valgt{background:var(--fc-accent-soft);
+  box-shadow:inset 3px 0 0 var(--fc-info)}
+.fc-table tbody tr[role="button"]:focus-visible{outline:2px solid var(--fc-info); outline-offset:-2px}
 .fc-num{text-align:right; font-variant-numeric:tabular-nums}
 .fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}

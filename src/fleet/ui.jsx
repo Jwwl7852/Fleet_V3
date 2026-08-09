@@ -51,7 +51,17 @@ export const Pille = ({ tone = "info", children }) => (
  * Tabel — kolonner: [{ key, label, num, bredde, render }]
  * tom: hvad der vises når der ikke er rækker. Aldrig en blank tabel.
  */
-export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "Ingen data i perioden." }) {
+/**
+ * `paaRaekke` gør rækken klikbar. Valgfri — udelades den, opfører tabellen sig
+ * præcis som før.
+ *
+ * Den ligger HER frem for i den skærm der først fik brug for den, af samme
+ * grund som Gitterkalender ligger i fleet/: to tabeller der render det samme
+ * lidt forskelligt, opdages ikke ved at kigge på dem. Rækken får role/tabIndex
+ * med, så den kan nås med tastatur — en klikbar <tr> uden det er kun klikbar
+ * for dem der bruger mus.
+ */
+export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "Ingen data i perioden.", paaRaekke, erValgt }) {
   if (!raekker?.length) return <Tom>{tom}</Tom>;
   return (
     <div className="fc-scroll">
@@ -67,7 +77,18 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
         </thead>
         <tbody>
           {raekker.map((r, i) => (
-            <tr key={noegle(r, i)}>
+            <tr
+              key={noegle(r, i)}
+              onClick={paaRaekke ? () => paaRaekke(r) : undefined}
+              onKeyDown={paaRaekke ? (e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); paaRaekke(r); }
+              } : undefined}
+              tabIndex={paaRaekke ? 0 : undefined}
+              role={paaRaekke ? "button" : undefined}
+              aria-current={erValgt?.(r) ? "true" : undefined}
+              className={erValgt?.(r) ? "fc-valgt" : undefined}
+              style={paaRaekke ? { cursor: "pointer" } : undefined}
+            >
               {kolonner.map((k) => (
                 <td key={k.key} className={k.num ? "fc-num" : ""}>
                   {k.render ? k.render(r) : r[k.key]}
