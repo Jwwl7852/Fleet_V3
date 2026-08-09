@@ -34,6 +34,8 @@ vilkårlige valg man lige så godt kunne lave om.
 | 18 | **Personale og flåde er entiteter.** Nøglen i `personale/` er et `personId`; `uid` er et valgfrit felt, der sættes hvis personen får et login. Flåden er ikke en liste af biler: `art` styrer skemaet, og en påhængt enhed kan ikke disponeres alene. Begge ligger i **basen** — enhver abonnementskombination har medarbejdere og materiel. | Modellen dækkede ikke det den påstod. Chauffører fandtes kun som navne i en kompetencetabel, så hverken Bemanding eller Kompetencer havde et sted at hente dem fra, og bus-divisionen havde ingen enhedstype at pege på. Bytter man `uid` og `personId` om, holder ejerskabstjekket i reglerne op med at virke: `oprettetAf === auth.uid` matcher aldrig et personId, og en chauffør har måske slet intet login. En person findes før sit login og efter det — kontoen lukkes ved fratrædelse, men en reservation fra tre år siden skal stadig kunne opløses til et navn. | `fleet/personale.js`, `fleet/flaade.js` |
 | 19 | **Stamdata har ikke en division.** En medarbejder er defineret ved sine **kompetencer**, et køretøj ved sin **art**. Feltet er derfor forbudt på `personale/` og `koeretoejer/` — ikke bare valgfrit. `faelles` bevares på **kunder**, hvor værdien betyder at kundens forretning går på tværs. | Ingen abonnent har både gods og bus. En busvognmand har kun ét sæt tal, så der var aldrig noget at dele op. En påhængsvogn eller en varevogn kan tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget: det skulle udfyldes på hver bil uden at kunne begrundes på nogen af dem — og så blev det læst af nogen. Valgfrit havde ikke været nok; et felt der må stå der, bliver tastet. Omgør delvist beslutning 15. | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail: nummeret i emnefeltet er hele integrationen.** En sag får et nummer fra beslutning 8's counter — `FLT` i Fleet, `FAC` i Facility. Nummeret sættes i emnet, modtageren svarer normalt i Outlook, `Re:` bevarer det, og svaret lægges på sagen. Indgående mail er **uautentificeret input**: afsenderen valideres mod sagens parter, alt andet i karantæne. | Alternativet var en Outlook-integration hos hvert værksted og hver leverandør — altså hos nogen der ikke er vores kunde og ikke har nogen grund til at installere noget. Et emnefelt virker hos alle, i dag, uden at modtageren gør noget anderledes. Prisen er at kanalen står åben mod internettet, og det er dét afklaringerne nedenfor handler om. | `fleet/sager.js` |
+| 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `vaerksted` \| `langtur`. Feltskemaet pr. art står i `fleet/opgaver.js`, ikke i reglerne. Køre-hviletid er en **regel**, ikke et felt: den blokerer, men svaret bærer altid et forbehold, fordi vi kun kan se planen og ikke tachografen. | README foreslog `langtur`, men den formulering er ældre end beslutning 16. Da etaper kom som egen node, blev `langtur` en **dublet**: `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`, `senestMs` og `forslag[]` står allerede på etapen, og `matchAabneEtaper()` søger på etaper. To poster for én tildeling er præcis prototypens DE-QR 777 mod DE-KL 404, som beslutning 16 lukkede. Den ægte artsforskel i noden er hvad arbejdet udføres **på**: et køretøj eller et facility-aktiv. | `fleet/opgaver.js` |
+| 21 | **`opgaver.art` er `vaerksted` | `facility`.** Ikke `vaerksted` | `langtur`: en langtur ER en etape, og feltskemaet pr. art staar i `fleet/opgaver.js` — ikke i reglerne. Koere-hviletid er en REGEL, ikke et felt, og den blokerer — men svaret baerer altid et forbehold, fordi vi kun kan se planen og ikke tachografen. | README foreslog `vaerksted` | `langtur`, men den formulering er aeldre end beslutning 16. Da etaper kom som egen node, blev `langtur` en dublet: `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`, `senestMs` og `forslag[]` staar allerede paa etapen, og `matchAabneEtaper()` soeger paa etaper. To poster for een tildeling er praecis prototypens DE-QR 777 mod DE-KL 404, som beslutning 16 lukkede. Den aegte artsforskel i noden er hvad arbejdet udfoeres PAA: et koeretoej eller et facility-aktiv. | `fleet/opgaver.js` |
 
 ## Beslutning 16 i detaljer
 
@@ -272,6 +274,103 @@ permission-kataloget siger selv at man ikke tilføjer en permission uden et
 sted der spørger efter den, og en permission der kun findes i frontend er en
 pæn knap. De fem tilføjes i samme ombæring som reglerne og deres tests.
 
+
+## Beslutning 21 i detaljer
+
+### Den rettede en modstrid i vores egen dokumentation
+
+README sagde i lang tid: *"Giv opgaver en `art` (`vaerksted` | `langtur`) der
+styrer feltskemaet, før skærmen bygges."* Den formulering er **ældre end
+beslutning 16**, og den blev båret videre uden at blive genlæst.
+
+Da etaper kom som egen node, blev `langtur` en **dublet**. Hvert eneste felt en
+langtur har brug for, står allerede på etapen:
+
+```
+fraSted · tilSted · koeretoejId · personId · maengde · senestMs
+forslag[] · valgtForslagId
+```
+
+Og `matchAabneEtaper()` finder åbne ture med
+`orderByChild("tilstand").equalTo("aaben")` **på `etaper`**. Lå langturen også
+i `opgaver`, ville matchningen enten overse den eller finde to poster for én
+tur.
+
+**Den afgørende grund er en fejl beslutning 16 allerede lukkede.** Prototypen
+viste DE-QR 777 med afgang 28/6 i reservationstabellen og DE-KL 404 den 24/6 i
+timelinen — ikke en tastefejl, men to poster for samme tildeling. Svaret var:
+*der må ikke være to steder at være uenige.* En langtur som både opgave og
+etape genåbner præcis det, for `koeretoejId` og `personId` ville stå begge
+steder.
+
+**Beslutning 16 vandt.** Reglerne afviser nu `langtur` som art, og der er en
+test der fastholder det.
+
+### De to noder forbliver to
+
+Beslutning 16 begrundede adskillelsen med statsmaskineriet, ikke med formen:
+
+| | |
+|---|---|
+| `opgaver.status` | indberettet → planlagt → igang → afventer → udfoert |
+| `etaper.tilstand` | kladde → afventerPlan → afventerKoord → reserveret → udfoert |
+
+Ét `status`-felt med to betydninger er beslutning 11 og 14 om igen. `art`
+ændrer ikke det argument. **Disponering læser begge noder** — dagsvisningen er
+`opgaver` med art `vaerksted`, ugesvisningen er `etaper`.
+
+Bemærk også at `opgaver.afventer` og `etaper.aaben` ikke er det samme: her
+venter arbejdet på en reservedel, dér venter godset på en passende tur.
+
+### Hvad arten så skelner
+
+Den ægte artsforskel i noden er hvad arbejdet udføres **på**:
+
+| | `vaerksted` | `facility` |
+|---|---|---|
+| Ressource | et køretøj | et aktiv eller en lokation |
+| Kun art | `koeretoejId`, `varighedMin`, `omkostningstype`, `besoegId` | `aktivId`, `lokationId` |
+
+Skemaet står i `fleet/opgaver.js` som `ART_FELTER`, samme mønster som flåden.
+Reglerne håndhæver kun `art` og `division` — at kode hvert felts lovlige arter
+ind i RTDB-regler ville gøre filen ulæselig uden at gøre noget sikrere.
+
+Langturens felter — `etaMs`, `graenseovergange[]`, `kunDanmark`, `passager{}` —
+hører på **etaper**, hvor forløbet står, og hvor `beregnForloeb()` allerede
+regner på passagerne.
+
+### Køre-hviletid er en regel, ikke et felt
+
+4,5 timers kørsel før 45 minutters pause. 9 timers daglig køretid, 10 højst to
+gange om ugen. 56 timer om ugen. Tallene står i `GRAENSE` i
+`fleet/koerehviletid.js`.
+
+**Den blokerer.** En overtrædelse er en bøde til vognmanden, ikke en advarsel,
+og en advarsel man kan klikke videre fra er ikke en kontrol. Håndhævelsen hører
+i den Cloud Function der skriver etapen — samme sted som `kanDisponeres()`,
+`tjekKompetencer()` og `kanBaere()`.
+
+Man gemmer ikke *"overholder køre-hviletid: ja"* på en etape. Et gemt flag
+ville drive fra planen i det sekund nogen flytter en tur, og så står der grønt
+på noget der er blevet ulovligt.
+
+#### ⚠ Forbeholdet er en returværdi, ikke en note
+
+**Vi kan kun se planen.** Hvad chaufføren faktisk har kørt, står på
+tachografen, som vi ikke har adgang til. `tjekKoerehviletid()` returnerer
+derfor `forbehold` på **hvert eneste svar — også de grønne**, og teksten er
+skrevet til at stå på skærmen:
+
+> planen overtræder ikke reglen — vi kan ikke se tachografen
+
+Et grønt flueben ved siden af en bøde er værre end ingen kontrol. Læses vores
+markering som *"chaufføren er lovlig"*, har vi gjort skade frem for gavn. Der
+er tests der fastholder at forbeholdet følger med på et `ok`-svar, og at
+teksten ikke lover mere end vi kan vide.
+
+**Forudsætningen for at fjerne forbeholdet er tachografdata** — se ARKITEKTUR.
+Det er formentlig en større opgave end kortintegrationen: der er ingen
+standard, og hver producent har sit eget format.
 
 ## Sikkerhedsarbejdet i detaljer
 

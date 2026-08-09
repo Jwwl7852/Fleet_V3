@@ -6,12 +6,18 @@
  *
  * FORMEN ER NODENS, IKKE SKÆRMENS.
  *
- * ⚠ BESØGENE ER IKKE `opgaver` ENDNU, og det er med vilje. Et værkstedsbesøg
- * ER en opgave med art 'vaerksted', men `art` findes ikke i reglerne på
- * opgaver/ endnu, og README siger feltet skal på plads FØR Disponering bygges.
- * At indføre det halvvejs herfra ville gøre den migrering værre, ikke bedre.
- * Besøgene ligger derfor i deres egen demo-node, og flytningen er én
- * omdøbning den dag `art` kommer.
+ * ⚠ ET VÆRKSTEDSBESØG ER EN OPGAVE MED art 'vaerksted' (beslutning 21).
+ * Posterne herunder bærer derfor `art` og `division` og har nodens form —
+ * selvkontrollen validerer dem mod opgaveMangler() i fleet/opgaver.js, så et
+ * besøg der ikke kunne gemmes i opgaver/, siger til her.
+ *
+ * De ligger stadig i deres egen demo-node og ikke i DEMO_OPGAVER, fordi
+ * Disponering ikke er bygget endnu og der ikke findes et opgave-datasæt at
+ * lægge dem i. Flytningen er en omdøbning, ikke en migrering: formen er
+ * allerede den rigtige.
+ *
+ * `division` kan IKKE udledes af bilen (beslutning 19) — den står eksplicit på
+ * hvert besøg, som reglerne kræver på opgaver/.
  *
  * ⚠ INDKØB, IKKE FAKTURAER. Reglerne siger `.write: false` på fakturaer/ —
  * bogførte poster skrives kun af en Cloud Function. Det man registrerer her,
@@ -28,6 +34,7 @@
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { demoSag } from "./demo-sag.js";
+import { opgaveMangler } from "./opgaver.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -71,13 +78,13 @@ export const BESOEG_STATUS = {
 export const DEMO_BESOEG = [
   /* --- Udført, ligger bag os -------------------------------------- */
   {
-    id: "vb-001", koeretoejId: "kt-078", status: "udfoert",
+    id: "vb-001", koeretoejId: "kt-078", status: "udfoert", art: "vaerksted", division: "gods",
     type: "service", vaerksted: "Scania Kolding",
     fra: dag(-24, 7), til: dag(-24, 16),
     beskrivelse: "Serviceeftersyn 250.000 km",
   },
   {
-    id: "vb-002", koeretoejId: "kt-b16", status: "udfoert",
+    id: "vb-002", koeretoejId: "kt-b16", status: "udfoert", art: "vaerksted", division: "bus",
     type: "daek", vaerksted: "Dækteam Vejle",
     fra: dag(-11, 8), til: dag(-11, 13),
     beskrivelse: "Fire nye dæk på foraksel og bogie",
@@ -85,7 +92,7 @@ export const DEMO_BESOEG = [
 
   /* --- I gang lige nu. Skal stemme med status 'vaerksted' i demo-flaade --- */
   {
-    id: "vb-003", koeretoejId: "kt-106", status: "igang",
+    id: "vb-003", koeretoejId: "kt-106", status: "igang", art: "vaerksted", division: "gods",
     type: "reparation", vaerksted: "DAF Trucks Fredericia",
     fra: dag(-2, 7), til: dag(2, 16),
     beskrivelse: "Motorlampe — fejlsøgning på EGR-ventil",
@@ -94,7 +101,7 @@ export const DEMO_BESOEG = [
     /* Langt besøg der rækker ud over et to-ugers vindue. Det er her pilen skal
        vises: klippet ved kanten læses tre uger som et kort besøg, og så
        planlægger nogen en tur i en uge hvor traileren står på værksted. */
-    id: "vb-004", koeretoejId: "kt-tr42", status: "igang",
+    id: "vb-004", koeretoejId: "kt-tr42", status: "igang", art: "vaerksted", division: "gods",
     type: "reparation", vaerksted: "Schmitz Service Padborg",
     fra: dag(-1, 8), til: dag(18, 15),
     beskrivelse: "Køleaggregat starter ikke — kompressor i restordre",
@@ -107,20 +114,20 @@ export const DEMO_BESOEG = [
        Mercedes Greve. Står den ikke i kalenderen med de tidspunkter,
        beskriver sagsvisningen og værkstedskalenderen hver sin virkelighed —
        og det er 84-mod-83 igen. Selvkontrollen nedenfor fastholder det. */
-    id: "vb-005", koeretoejId: "kt-104", status: "planlagt",
+    id: "vb-005", koeretoejId: "kt-104", status: "planlagt", art: "vaerksted", division: "gods",
     type: "service", vaerksted: "Mercedes Greve",
     fra: null, til: null,          // sættes fra sagen — se nedenfor
     beskrivelse: "Serviceeftersyn 30.000 km",
     sagId: "sag-flt-381", sagsnummer: "FLT-2026-00381",
   },
   {
-    id: "vb-006", koeretoejId: "kt-034", status: "planlagt",
+    id: "vb-006", koeretoejId: "kt-034", status: "planlagt", art: "vaerksted", division: "gods",
     type: "service", vaerksted: "MAN Truck Center Horsens",
     fra: dag(9, 7), til: dag(9, 15),
     beskrivelse: "Serviceeftersyn 525.000 km",
   },
   {
-    id: "vb-007", koeretoejId: "kt-tr41", status: "planlagt",
+    id: "vb-007", koeretoejId: "kt-tr41", status: "planlagt", art: "vaerksted", division: "gods",
     type: "syn", vaerksted: "Applus Bilsyn Kolding",
     fra: dag(30, 9), til: dag(30, 12),
     beskrivelse: "Periodisk syn af trailer",
@@ -132,7 +139,7 @@ export const DEMO_BESOEG = [
        Det er ikke en detalje: gav vi den et besøg der dækkede i dag, ville
        Flåde og Værkstedskalender sige hver sit om samme scooter — og der er
        en test der fanger præcis det. */
-    id: "vb-008", koeretoejId: "kt-s01", status: "planlagt",
+    id: "vb-008", koeretoejId: "kt-s01", status: "planlagt", art: "vaerksted", division: "faelles",
     type: "reparation", vaerksted: "Scootercenter Kolding",
     fra: dag(10, 8), til: dag(24, 16),
     beskrivelse: "Motorblok skiftes når reservedelen er kommet",
@@ -225,6 +232,17 @@ if (import.meta.env?.DEV) {
     }
     if (!BESOEG_STATUS[b.status]) console.warn(`demo-vaerksted: ${b.id} har ukendt status "${b.status}".`);
     if (!OMKOSTNINGSTYPE[b.type]) console.warn(`demo-vaerksted: ${b.id} har ukendt type "${b.type}".`);
+
+    /* Beslutning 21: et besøg ER en opgave. Kunne posten ikke gemmes i
+       opgaver/, er formen forkert her — og så lærer demo-sættet den næste
+       udvikler noget reglerne afviser. */
+    const mangler = opgaveMangler(b);
+    if (mangler.length) {
+      console.warn(
+        `demo-vaerksted: ${b.id} mangler ${mangler.join(", ")} og kunne ikke gemmes ` +
+        `i opgaver/. Se opgaveMangler() i fleet/opgaver.js.`
+      );
+    }
   }
 
   /* Aftalen fra sagen SKAL være besøget. Ellers siger sagsvisningen og

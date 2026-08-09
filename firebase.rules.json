@@ -287,12 +287,38 @@
           }
         },
 
+        // BESLUTNING 21 — art styrer feltskemaet paa en opgave.
+        //
+        // ARTEN ER vaerksted | facility, IKKE vaerksted | langtur.
+        // README sagde laenge det sidste, men den formulering er aeldre end
+        // beslutning 16. Da etaper kom som egen node, blev langtur en DUBLET:
+        // fraSted, tilSted, koeretoejId, personId, maengde og senestMs staar
+        // allerede paa etapen, og matchAabneEtaper() soeger paa ETAPER. To
+        // poster for een tildeling er praecis den fejl beslutning 16 lukkede
+        // (DE-QR 777 mod DE-KL 404 i prototypen).
+        //
+        // Disponering laeser derfor BEGGE noder: dagsvisningen er opgaver med
+        // art 'vaerksted', ugesvisningen er etaper.
+        //
+        // Feltskemaet pr. art staar i fleet/opgaver.js, ikke her. Reglerne
+        // haandhaever kun det der vil oedelaegge en beregning eller en
+        // forespoergsel — art og division. At kode hvert felts lovlige arter
+        // ind i RTDB-regler ville goere filen ulaeselig uden at goere noget
+        // sikrere. Samme afvejning som paa koeretoejer.
+        //
+        // .indexOn har faaet 'art'. Dagsvisningen henter dog paa 'dato' over
+        // eet doegns vindue — naar langturene ligger i etaper, er der ingen
+        // langture i opgaver at traekke med, og filtreringen paa art koster
+        // derfor kun een dags raekker klientside.
         "opgaver": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
-          ".indexOn": ["dato", "status", "koeretoejId", "personId"],
+          ".indexOn": ["dato", "status", "art", "koeretoejId", "personId"],
           "$opgaveId": {
-            ".validate": "newData.hasChildren(['division'])",
+            ".validate": "newData.hasChildren(['art', 'division'])",
+            "art": {
+              ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|facility)$/)"
+            },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             }

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **20 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **21 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -51,6 +51,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Ingen undtagelser, heller ikke for en kommentar. Reglerne var ugyldige fra
   fundamentet og kunne slet ikke indlæses — det overlevede gennemlæsning og
   flere redigeringer, og blev først fundet da de blev kørt.
+- **Give en langtur en plads i `opgaver`.** En langtur *er* en etape — alle
+  dens felter står allerede der, og `matchAabneEtaper()` søger på `etaper`.
+  To poster for én tildeling er prototypens DE-QR 777 mod DE-KL 404, som
+  beslutning 16 lukkede. Reglerne afviser `art: "langtur"`.
+- **Fjerne forbeholdet fra `tjekKoerehviletid()`.** Svaret bærer altid
+  `forbehold`, også når `ok` er true, fordi vi kun kan se planen og ikke
+  tachografen. Et grønt flueben ved siden af en bøde er værre end ingen
+  kontrol. Forudsætningen for at fjerne det er tachografdata — se ARKITEKTUR.
 - **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
   ressourcer × tid og bruges af Værkstedskalender, Servicekalender og
   Disponering. Regnestykket ligger i `gitter.js`. To gitre der læser det samme
@@ -115,7 +123,10 @@ kan ikke komme ud af sync.
 
 - Cloud Functions mangler: reservationskonflikter, bookingtilstandsskift med
   rolletjek, nummerserier. Rules er `.write: false` på de noder.
-- Disponering skal have `art` (vaerksted|langtur) på opgaver, før skærmen bygges.
+- **Disponerings datamodel er på plads** (beslutning 21). `opgaver.art` er
+  `vaerksted` | `facility` — **ikke** `langtur`. Skærmen læser to noder:
+  `opgaver` med art `vaerksted` i dagsvisningen, `etaper` i ugesvisningen.
+  Selve skærmen er ikke bygget.
 - **Disponering har tre forudsætninger** — se ARKITEKTUR. `kanDisponeres()`,
   `kraevedeKompetencer()` + `tjekKompetencer()` og `kanBaere()` er bygget og
   testet, men **intet kalder dem**. De hører i den Cloud Function der skriver

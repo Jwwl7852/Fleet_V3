@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 20
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 21
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 20 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 21 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 250 tests. Starter emulatoren.
+npm test                            # 292 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -78,6 +78,7 @@ tilfældigt.
 | 18 | Personale og flåde er entiteter. `personId` er ikke `uid` | `fleet/personale.js`, `fleet/flaade.js` |
 | 19 | Stamdata har ikke en division. Forbudt på `personale/` og `koeretoejer/` | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail:** nummeret i emnefeltet er hele integrationen | `fleet/sager.js` |
+| 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `langtur`. En langtur *er* en etape. Køre-hviletid blokerer, men med forbehold | `fleet/opgaver.js`, `fleet/koerehviletid.js` |
 
 ## Struktur
 
@@ -104,6 +105,9 @@ src/
     personale.js       personer som entiteter
     flaade.js          arter, feltskema pr. art, kapacitet, kompetencekrav
     fravaer.js         årsager (sensitive), afledt tilstand, reservationen
+    opgaver.js         art (vaerksted|facility), feltskema pr. art, status
+    koerehviletid.js   reglen, ikke et felt. Blokerer — med forbehold, fordi
+                       vi kun kan se planen og ikke tachografen
     gitter.js          kalendergitterets regnestykke: slots, udlægning,
                        pile ved vinduets kant, overlap som konflikt
     Gitterkalender.jsx ressourcer × tid — delt af tre skærme
@@ -121,8 +125,8 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Tolv byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **250 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Fjorten byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **292 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
 ### Skærmene: 9 af 27 har indhold — Værkstedskalender er færdig
@@ -169,8 +173,9 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
 4. **Disponering.** Den lå sidst med vilje: den læser de reservationer som
    fravær og værksted skriver, og bygget først ville den disponere på en
    kalender der ikke vidste noget om syge chauffører eller biler på værksted.
-   Nu ved den det. ⚠ Giv `opgaver` en `art` (`vaerksted` | `langtur`) **før**
-   skærmen bygges — bagefter er det en migrering.
+   Nu ved den det, og **den sidste datamodelbeslutning er truffet** —
+   se beslutning 21. Skærmen læser **to noder**: `opgaver` med art `vaerksted`
+   i dagsvisningen, `etaper` i ugesvisningen.
 
 ### Gitterkalenderen er en genbrugskontrakt
 
@@ -220,9 +225,25 @@ indtil da — strengere end den kontrol der skal afløse det, men ikke granulær
 
 **Disponering dækker to forretninger.** Dagsvisningen er værkstedsopgaver med
 varighed i timer; ugesvisningen er langtur med ETA over døgngrænser og
-køre-hviletid. Det er ikke to zoomniveauer af samme datamodel. Giv opgaver en
-`art` (`vaerksted` | `langtur`) **før** skærmen bygges — bagefter er det en
-migrering.
+køre-hviletid. Det er ikke to zoomniveauer af samme datamodel — og
+**beslutning 21 afgjorde hvordan de deles**: dagsvisningen læser `opgaver` med
+art `vaerksted`, ugesvisningen læser `etaper`. Datamodellen er dermed på
+plads; skærmen er ikke bygget.
+
+### ⚠ Beslutning 21 rettede en modstrid i dette dokument
+
+**README sagde i lang tid at `opgaver` skulle have en `art`
+(`vaerksted` | `langtur`).** Den formulering er ældre end beslutning 16. Da
+etaper kom som egen node, blev `langtur` en **dublet**: hvert felt en langtur
+har brug for — `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`,
+`senestMs`, `forslag[]` — står allerede på etapen, og `matchAabneEtaper()`
+søger på **etaper**. To poster for én tildeling er præcis den fejl beslutning
+16 lukkede: prototypens DE-QR 777 mod DE-KL 404.
+
+Linjen blev båret videre uden at blive genlæst. **Beslutning 16 vandt**, og
+arten er `vaerksted` | `facility`. Det står her, så man kan se at det var en
+bevidst rettelse og ikke en drift — og reglerne afviser nu `langtur`, med en
+test der fastholder det.
 
 ### Tre tjek der er bygget, men som intet kalder
 

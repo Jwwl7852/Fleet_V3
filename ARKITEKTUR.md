@@ -71,7 +71,11 @@ tenants/<tenantId>/
   etaper/<etapeId>              { bookingId, nr, tilstand, division, senestMs,
                                   fraSted, tilSted, koeretoejId, personId,
                                   forslag[], valgtForslagId, maengde, historik/<ms> }
-  opgaver/<id>                  { art: vaerksted|langtur, ... }
+  opgaver/<id>                  { art: vaerksted|facility, division, status, ... }
+                                art styrer feltskemaet — ART_FELTER i
+                                opgaver.js. IKKE langtur: en langtur er en
+                                ETAPE (beslutning 21). status er opgavens eget
+                                maskineri, ikke etapens tilstand
   koeretoejer/<id>              { art, status, laengdeMm, ... }  INGEN division
                                 art styrer feltskemaet — ART_FELTER i flaade.js.
                                 En trailer har intet kmStand (ingen motor), en
@@ -353,6 +357,33 @@ Det er samme afvejning som i beslutning 17. Da følsomme data alligevel ikke
 vises i lister, er prisen mindre end den lyder — men den skal træffes bevidst.
 
 De øvrige fem venter på Cloud Functions eller er klientside og dermed svagere.
+
+## Tachografdata — forudsætningen for at fjerne køre-hviletidsforbeholdet
+
+`tjekKoerehviletid()` i `fleet/koerehviletid.js` blokerer en disponering der
+overtræder 4,5-timers-reglen eller den daglige køretid. **Men den regner kun på
+planen**, og derfor bærer hvert svar — også de grønne — et forbehold:
+
+> planen overtræder ikke reglen — vi kan ikke se tachografen
+
+Forbeholdet kan først fjernes når vi har **faktisk køretid pr. chauffør**, og
+den findes ét sted: på tachografen. Indtil da må ingen skærm og ingen rapport
+formulere svaret som at chaufføren er lovlig.
+
+**Det hører sammen med de øvrige integrationer** — kort, brændstofkort,
+regnskab, løn — men det er formentlig en større opgave end kortintegrationen,
+og det skal siges før nogen estimerer det:
+
+| | |
+|---|---|
+| Ingen standard | Der findes ikke ét format at læse. DDD-filer fra førerkort og køretøjsenhed er reguleret, men udtrækket sker gennem producentens eget system |
+| Hver producent sit format | Scania, Volvo, Mercedes, MAN og DAF har hver sin flådeportal og sit eget API. En kunde med blandet flåde skal have flere |
+| Fjernudlæsning kræver abonnement | Remote download er en betalt tjeneste hos producenten, ikke noget vi kan hente selv |
+| Persondata | Køretid pr. chauffør er personoplysninger og hører i `sensitive/`. Det er også et medbestemmelsesspørgsmål |
+
+Så længe det ikke er løst, er kontrollen ærlig frem for fuldstændig: den fanger
+en plan der ikke kan lade sig gøre, og den påstår ikke at fange en overtrædelse
+der allerede er sket.
 
 ## Forudsætninger for Disponering
 
