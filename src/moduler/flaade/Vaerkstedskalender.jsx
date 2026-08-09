@@ -134,12 +134,12 @@ export default function Vaerkstedskalender() {
         <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)} />
         <KpiKort label="Reserveret til værksted" vaerdi={num(k.flaade.paaVaerksted)} />
         <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)} />
-        {/* ⚠ HÅRDKODET. flaade.ikkeLinkedeFakturaer findes ikke i kpi/, og
-            indkoeb.fakturaerTilGodkendelse er IKKE det samme tal:
-            "ikke-linket" og "afventer godkendelse" er to tilstande, og at
-            bruge det ene som det andet er beslutning 11 og 14 om igen.
-            Står som række 2 på KPI-efterslæbet i README. */}
-        <KpiKort label="Ikke-linkede fakturaer" vaerdi={num(5)} note="afventer kpi-felt" />
+        {/* Feltet er defineret i demo-kpi.js og læses herfra. Det er IKKE det
+            samme tal som indkoeb.fakturaerTilGodkendelse: "ikke-linket" og
+            "afventer godkendelse" er to tilstande, og at bruge det ene som det
+            andet er beslutning 11 og 14 om igen. Det er aggregeringen der
+            mangler, ikke skærmen — se KPI-efterslæbet i README. */}
+        <KpiKort label="Ikke-linkede fakturaer" vaerdi={num(k.flaade.ikkeLinkedeFakturaer)} />
       </KpiRaekke>
 
       {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}

@@ -33,6 +33,7 @@ export const DEMO_KPI = {
     flaade: {
       aktive: 42, udeAfDrift: 6, paaVaerksted: 3, serviceInden30: 9,
       omkostningPrKmOere: 342, omkostningPrKmDeltaOere: 21, nedetidPct: 3.8,
+      ikkeLinkedeFakturaer: 5,
     },
     bemanding: {
       planlagt: 58, disponeret: 48, ledig: 10, underbemandede: 6,
@@ -42,7 +43,14 @@ export const DEMO_KPI = {
          uden at en eneste kompetence havde ændret sig. */
       chauffoerPlanlagt: 20, chauffoerDisponeret: 18, kompetencerUdloeber: 8,
     },
-    facility: { aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12 },
+    /* Facility er FAELLES: tallene er ens under gods og bus, fordi porten er
+       den samme uanset hvem der koerer igennem den. */
+    facility: {
+      aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12,
+      aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
+      eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
+      anslaaetServiceOere: 12845000,
+    },
     indkoeb: {
       aabneOrdrer: 18, fakturaerTilGodkendelse: 7, indkoebsprisafvigelser: 5,
       leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
@@ -67,13 +75,21 @@ export const DEMO_KPI = {
     flaade: {
       aktive: 18, udeAfDrift: 2, paaVaerksted: 1, serviceInden30: 4,
       omkostningPrKmOere: 268, omkostningPrKmDeltaOere: -9, nedetidPct: 2.4,
+      ikkeLinkedeFakturaer: 2,
     },
     bemanding: {
       planlagt: 26, disponeret: 22, ledig: 4, underbemandede: 2,
       /* Samme tal som under gods — se noten der. */
       chauffoerPlanlagt: 24, chauffoerDisponeret: 21, kompetencerUdloeber: 8,
     },
-    facility: { aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12 },
+    /* Facility er FAELLES: tallene er ens under gods og bus, fordi porten er
+       den samme uanset hvem der koerer igennem den. */
+    facility: {
+      aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12,
+      aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
+      eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
+      anslaaetServiceOere: 12845000,
+    },
     indkoeb: {
       aabneOrdrer: 7, fakturaerTilGodkendelse: 3, indkoebsprisafvigelser: 2,
       leveranceTilTidenPct: 95, indkoebsprisafvigelseSnitPct: 4,

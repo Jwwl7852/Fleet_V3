@@ -27,6 +27,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - Kalde `firebase.initializeApp()` i et modul. Importér `db` fra `src/firebase.js`.
 - Lave en sidebar, tenant-vælger eller periodevælger i et modul. Shellen ejer dem.
 - Beregne nøgletal ud af rådata i et modul. Brug `useKpi()`.
+- **Hardkode et tal i en skærm, fordi feltet mangler i `kpi/`.** Definér det i
+  `demo-kpi.js` — den fil *er* nodens form. Så er skærmen rigtig, og det
+  eneste der mangler er aggregeringen. Hardkoder du, har du to opgaver senere
+  i stedet for én. Tilføj feltet til KPI-efterslæbet i README.
+  **Undtagelsen:** er tallet *afledt* af data skærmen allerede har — en
+  gennemsnitstemperatur, en aktiv alarm, en sum af komponenter — så beregn det
+  hos forbrugeren og læg det **ikke** i `kpi/`. Et gemt afledt tal driver fra
+  sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - Gemme beløb som float eller kroner. Øre som integer, ekskl. moms.
 - Overskrive en sats. Ny post med `gyldigFra`.

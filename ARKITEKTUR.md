@@ -90,7 +90,17 @@ tenants/<tenantId>/
                                 medarbejderen ledig hele sin sidste dag
   sensitive/fravaer/<id>        { art, note, dokumentation }  bag
                                 fravaer.sensitiveLaes — HELE art, også ferie
+  facility/lokationer/<id>      { navn, type, adresse }   reserverbar som lokation
+  facility/aktiver/<id>         { navn, art, lokationId, status, zoneId?,
+                                  naesteServiceMs }       reserverbar som facilityAktiv
+                                art = udstyrstypen. IKKE opgave.art, som er
+                                'facility' — samme feltnavn, to vokabularer
+  facility/zoner/<zoneId>       { navn, art, lokationId, graenser:{minC,maksC} }
+                                ZONEN BÆRER GRÆNSERNE
   facility/sensorer/<zoneId>/   { aktuel, maalinger/<ms> }  ÉN kilde
+                                SENSOREN BÆRER MÅLINGERNE. En alarm er AFLEDT
+                                af de to og gemmes aldrig — lå tærsklen her,
+                                ville en justering skrive i måledata
   indkoeb/<id>                  { beloebOere, momsOere, ... }
   fakturaer/<id>
   kunder/<id>

@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 332 tests. Starter emulatoren.
+npm test                            # 372 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -106,6 +106,9 @@ src/
     flaade.js          arter, feltskema pr. art, kapacitet, kompetencekrav
     fravaer.js         årsager (sensitive), afledt tilstand, reservationen
     opgaver.js         art (vaerksted|facility), feltskema pr. art, status
+    etaper.js          transportfelter, grænseovergange, reservationerne
+    facility.js        lokationer, aktiver, zoner. Grænsen på zonen, målingen
+                       på sensoren — alarmen er afledt og gemmes aldrig
     koerehviletid.js   reglen, ikke et felt. Blokerer — med forbehold, fordi
                        vi kun kan se planen og ikke tachografen
     gitter.js          kalendergitterets regnestykke: slots, udlægning,
@@ -125,16 +128,16 @@ src/
 
 Opdateret 9. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Seksten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **332 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+**Kernen er på plads.** Sytten byggeklodser i `fleet/` er i brug på tværs af
+skærme, og **372 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 10 af 27 har indhold
+### Skærmene: 13 af 27 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (10)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering |
-| **Skelet med mockup (8)** | Booking-oversigt, Ny forespørgsel, Forslag, Facility ×3, Indkøb ×2 |
+| **Bygget (13)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3 |
+| **Skelet med mockup (5)** | Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2 |
 | **Skelet uden mockup (9)** | Live-kort, Kompetencer, Indberetninger, Leverandører, Fakturering, Opsætning ×4 |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
@@ -283,19 +286,45 @@ ikke er skrevet. At en funktion findes er ikke det samme som at den håndhæves.
 
 ### KPI-aggregeringens efterslæb — beslutning 6
 
-**Alle kendte brud på beslutning 6 står her.** Ét sted, ellers glemmes de:
-hvert enkelt er lille nok til at se ud som en detalje på den skærm det står
-på, og der findes ingen anden liste der samler dem.
+**Reglen: et manglende KPI-tal defineres i `demo-kpi.js` — det hardkodes ikke
+i en skærm.**
 
-| Felt | Skærm | Hvad der sker i dag |
-|---|---|---|
-| `bemanding.medarbejdereAktive` | Medarbejdere | Mangler i `kpi/`. Skærmen skriver "af N hentede" — at tælle rækkerne ville være beslutning 6 brudt, for listen er et udsnit, ikke en total |
-| `flaade.ikkeLinkedeFakturaer` | Værkstedskalender | Mangler i `kpi/`. KpiKortet står med et **hårdkodet 5-tal** fra skelettet. Det kan modsige Indkøb uden at nogen ser det |
-| `bemanding.fravaerIDag` | Ferie & fravær | Mangler i `kpi/`. Skærmen har ingen KpiRække og skriver "af N hentede" — listen er et udsnit i en periode, ikke en total |
-| `bemanding.ledig` | Bemanding, Dashboard | Findes, men er et **afledt** tal der er gemt. Skal ud af aggregeringen og beregnes hos forbrugeren |
+`demo-kpi.js` *er* formen på `kpi/`-noden. Definerer man feltet der, er
+skærmen rigtig med det samme (`k.facility.aabneFejl`), og det eneste der
+mangler er aggregeringen. Hardkoder man i stedet `num(24)` i en JSX-fil, har
+man to opgaver senere: rette skærmen **og** skrive aggregeringen — og imens
+står der et tal ingen kan spore.
 
-De tre første er felter der mangler, den fjerde er et felt der ikke burde
-findes. Alle fire lukkes sammen med KPI-aggregeringen.
+Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
+rettes.
+
+**Venter på aggregeringen.** Felterne er defineret, skærmene læser dem
+korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
+
+| Felt | Hvad det skal tælle |
+|---|---|
+| `bemanding.medarbejdereAktive` | Aktive medarbejdere. Medarbejdere skriver "af N hentede" indtil da — listen er et udsnit |
+| `bemanding.fravaerIDag` | Fraværende i dag. Ferie & fravær har ingen KpiRække indtil da |
+| `flaade.ikkeLinkedeFakturaer` | Indkøb uden matchet faktura. **Ikke** det samme som `indkoeb.fakturaerTilGodkendelse` — to tilstande, to tal |
+| `facility.aabneFejl` | Fejlmeldinger der ikke er udbedret |
+| `facility.klimaalarmerIDag` | Alarmer udløst i døgnet. Kræver historik — modsat *aktive* alarmer, som beregnes |
+| `facility.sensorerAktive` | Sensorer der leverer målinger |
+| `facility.eksterneLeverandoerer` | Leverandører med aftale |
+| `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
+| `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
+
+**Skal UD af aggregeringen.** Et afledt tal der er gemt, driver fra sit
+grundlag:
+
+| Felt | Hvorfor |
+|---|---|
+| `bemanding.ledig` | Kan beregnes af planlagt − disponeret. Beregnes hos forbrugeren |
+
+Og tre tal er **bevidst holdt ude** af `kpi/`, fordi de er afledte:
+klimaalarmer *nu* (måling + zonens grænse), gennemsnitstemperatur (regnes af
+sensorlisten) og bygningsomkostningen (summen af sine komponenter). Gemte man
+dem, kunne de modsige de data de beskriver — og det var netop de tre fejl
+Facility-mockupsene havde.
 
 ## Låst rækkefølge
 

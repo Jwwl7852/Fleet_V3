@@ -145,8 +145,17 @@ export function reservationFraOpgave(opgave) {
   if (!Number.isFinite(opgave.fra) || !Number.isFinite(opgave.til) || opgave.til <= opgave.fra) {
     throw new Error("reservationFraOpgave: fra og til skal være konkrete tidspunkter med til > fra.");
   }
+  /* ⚠ En facility-opgave binder ENTEN et anlæg ELLER et helt sted, og de er
+     to forskellige ressourcetyper. Lukker man hallen, er alle porte i den
+     også optaget — derfor kan lokationen ikke bare være "aktivet uden id".
+     Ternæret står her frem for et import: filen har ingen imports, og
+     ressourceTypeForFacility() i facility.js siger det samme for skærmene. */
+  const ressourceType = opgave.art === "facility"
+    ? (opgave.aktivId ? "facilityAktiv" : "lokation")
+    : art.ressource;
+
   return {
-    ressourceType: art.ressource,
+    ressourceType,
     ressourceId: id,
     fra: opgave.fra,
     til: opgave.til,
