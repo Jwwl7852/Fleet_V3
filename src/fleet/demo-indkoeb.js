@@ -101,43 +101,43 @@ export const DEMO_LEVERANDOERER = [
  * i en sum over hundrede linjer.
  */
 export const DEMO_INDKOEBSLINJER = [
-  { id: "il-001", dato: dag(-2), leverandoerId: "lv-hydra", division: "gods",
-    vare: "Hydraulikslange 3/8\"", kategori: "reservedele", antal: 12, enhed: "stk",
+  { id: "il-001", dato: dag(-2), aftaltLeveringMs: dag(0), leveretMs: dag(0), leverandoerId: "lv-hydra", division: "gods",
+    vare: "Hydraulikslange 3/8\"", varenummer: "HYD-38", kategori: "reservedele", antal: 12, enhed: "stk",
     prisPrEnhedOere: 1850, lokationId: "lok-kolding",
     fakturastatus: "modtaget", godkendtAf: "Søren Dahl", godkendtMs: dag(-1) },
-  { id: "il-002", dato: dag(-3), leverandoerId: "lv-daekteam", division: "bus",
-    vare: "Dæk 315/70 R22.5", kategori: "daek", antal: 4, enhed: "stk",
+  { id: "il-002", dato: dag(-3), aftaltLeveringMs: dag(-1), leveretMs: dag(-1), leverandoerId: "lv-daekteam", division: "bus",
+    vare: "Dæk 315/70 R22.5", varenummer: "DAEK-31570", kategori: "daek", antal: 4, enhed: "stk",
     prisPrEnhedOere: 412500, lokationId: "lok-kolding",
     fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
-  { id: "il-003", dato: dag(-4), leverandoerId: "lv-circlek", division: "gods",
-    vare: "Diesel B7", kategori: "braendstof", antal: 4820, enhed: "liter",
+  { id: "il-003", dato: dag(-4), aftaltLeveringMs: dag(-2), leveretMs: dag(-2), leverandoerId: "lv-circlek", division: "gods",
+    vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", antal: 4820, enhed: "liter",
     prisPrEnhedOere: 1142, lokationId: "lok-kolding",
     fakturastatus: "bogfoert", godkendtAf: "Anne Bøgh", godkendtMs: dag(-3) },
-  { id: "il-004", dato: dag(-5), leverandoerId: "lv-hydra", division: "gods",
-    vare: "Bremseklods, aksel 2", kategori: "reservedele", antal: 8, enhed: "sæt",
+  { id: "il-004", dato: dag(-5), aftaltLeveringMs: dag(-3), leveretMs: dag(0), leverandoerId: "lv-hydra", division: "gods",
+    vare: "Bremseklods, aksel 2", varenummer: "BRK-A2", kategori: "reservedele", antal: 8, enhed: "sæt",
     prisPrEnhedOere: 78500, lokationId: "lok-halb",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
-  { id: "il-005", dato: dag(-6), leverandoerId: "lv-crawford", division: "faelles",
+  { id: "il-005", dato: dag(-6), aftaltLeveringMs: dag(-4), leveretMs: dag(-4), leverandoerId: "lv-crawford", division: "faelles",
     vare: "Portmotor, reservedel", kategori: "facility", antal: 1, enhed: "stk",
     prisPrEnhedOere: 1284000, lokationId: "lok-halb",
     fakturastatus: "modtaget", godkendtAf: "Benjamin Holm", godkendtMs: dag(-5) },
-  { id: "il-006", dato: dag(-7), leverandoerId: "lv-koelecenter", division: "faelles",
+  { id: "il-006", dato: dag(-7), aftaltLeveringMs: dag(-5), leveretMs: dag(-5), leverandoerId: "lv-koelecenter", division: "faelles",
     vare: "Kølemiddel R452A", kategori: "facility", antal: 25, enhed: "kg",
     prisPrEnhedOere: 34800, lokationId: "lok-halb",
     fakturastatus: "godkendt", godkendtAf: "Benjamin Holm", godkendtMs: dag(-6) },
-  { id: "il-007", dato: dag(-8), leverandoerId: "lv-circlek", division: "bus",
+  { id: "il-007", dato: dag(-8), aftaltLeveringMs: dag(-6), leveretMs: dag(-6), leverandoerId: "lv-circlek", division: "bus",
     vare: "AdBlue", kategori: "braendstof", antal: 900, enhed: "liter",
     prisPrEnhedOere: 682, lokationId: "lok-aalborg",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
-  { id: "il-008", dato: dag(-9), leverandoerId: "lv-hydra", division: "gods",
+  { id: "il-008", dato: dag(-9), aftaltLeveringMs: dag(-7), leveretMs: dag(-4), leverandoerId: "lv-hydra", division: "gods",
     vare: "Luftfilter", kategori: "reservedele", antal: 6, enhed: "stk",
     prisPrEnhedOere: 24900, lokationId: "lok-kolding",
     fakturastatus: "bogfoert", godkendtAf: "Søren Dahl", godkendtMs: dag(-8) },
-  { id: "il-009", dato: dag(-11), leverandoerId: "lv-daekteam", division: "gods",
+  { id: "il-009", dato: dag(-11), aftaltLeveringMs: dag(-9), leveretMs: dag(-9), leverandoerId: "lv-daekteam", division: "gods",
     vare: "Dæk 385/65 R22.5", kategori: "daek", antal: 2, enhed: "stk",
     prisPrEnhedOere: 498000, lokationId: "lok-kolding",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
-  { id: "il-010", dato: dag(-13), leverandoerId: "lv-kontorland", division: "faelles",
+  { id: "il-010", dato: dag(-13), aftaltLeveringMs: dag(-11), leveretMs: dag(-11), leverandoerId: "lv-kontorland", division: "faelles",
     vare: "Kontorartikler, diverse", kategori: "kontor", antal: 1, enhed: "pk",
     prisPrEnhedOere: 184500, lokationId: "lok-kolding",
     fakturastatus: "afvist", godkendtAf: null, godkendtMs: null },
@@ -335,3 +335,69 @@ if (import.meta.env?.DEV) {
     );
   }
 }
+
+/* ---- Prislister. BESLUTNING 25 ---------------------------------------- */
+
+/**
+ * ⚠ PRISLISTEN LIGGER FOR SIG, IKKE PÅ LEVERANDØREN.
+ *
+ * Ikke af pænhed: en prisliste kan have hundredvis af rækker med flere års
+ * historik, og den skal IKKE hentes med hver eneste leverandøroversigt.
+ * Formen her svarer til den node den bliver — `prislister/<leverandoerId>` —
+ * så skærmen bygges mod det rigtige og ikke skal laves om.
+ *
+ * ⚠ EN SATS OVERSKRIVES ALDRIG. Ny post med gyldigFra. BESLUTNING 7.
+ * Bemærk Mercedes' motorolie: tre rækker for samme vare. Den ældste gjaldt da
+ * vi købte i marts, og det er DEN en marts-faktura skal måles mod. Den nyeste
+ * træder først i kraft til oktober og må gerne stå der allerede — det er hele
+ * grunden til at kommendePriser() findes.
+ *
+ * ⚠ VARENUMMERET ER NØGLEN, IKKE VARENAVNET. En prisliste kan ikke matches på
+ * fritekst: "Motorolie 5W30", "Motorolie 5w-30" og "Olie 5W30" er samme vare
+ * for et menneske og tre for en maskine. Det er Bil 104 med to nummerplader,
+ * denne gang på en oliedunk.
+ */
+export const DEMO_PRISLISTER = {
+  "lv-mercedes": [
+    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4200, gyldigFra: dag(-160) },
+    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4600, gyldigFra: dag(-70) },
+    /* Kommende regulering — gælder ikke endnu, men kan ses. */
+    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4900, gyldigFra: dag(53) },
+    { varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 79500, gyldigFra: dag(-400) },
+    { varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 84500, gyldigFra: dag(-35) },
+  ],
+  "lv-hydra": [
+    { varenummer: "HYD-38", vare: "Hydraulikslange 3/8\"", enhed: "stk", prisOere: 1750, gyldigFra: dag(-800) },
+    { varenummer: "BRK-A2", vare: "Bremseklods, aksel 2", enhed: "sæt", prisOere: 78500, gyldigFra: dag(-800) },
+  ],
+  "lv-daekteam": [
+    { varenummer: "DAEK-31570", vare: "Dæk 315/70 R22.5", enhed: "stk", prisOere: 398000, gyldigFra: dag(-540) },
+  ],
+  "lv-circlek": [
+    { varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1118, gyldigFra: dag(-90) },
+    { varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1142, gyldigFra: dag(-30) },
+  ],
+};
+
+/**
+ * Leverandøren med sin prisliste påsat. Skærmen kalder denne frem for at
+ * flette selv — to steder der fletter, kan flette forskelligt.
+ */
+export const medPrisliste = (l) => ({ ...l, prisliste: DEMO_PRISLISTER[l?.id] || [] });
+
+/**
+ * Sager pr. leverandør, til svartiden. Kun det de seks nøgletal skal bruge —
+ * den fulde sagsmodel ligger i demo-sag.js.
+ *
+ * ⚠ DEN SIDSTE ER UBESVARET MED VILJE. En ubesvaret sag har ingen svartid, den
+ * har en alder; regnede vi den med som en meget lang svartid, ville tallet
+ * blande "de svarer langsomt" med "de har ikke svaret".
+ */
+export const DEMO_LEVERANDOERSAGER = [
+  { id: "ls-1", leverandoerId: "lv-mercedes", oprettetMs: dag(-20), foersteSvarMs: dag(-20) + 3 * 3600000 },
+  { id: "ls-2", leverandoerId: "lv-mercedes", oprettetMs: dag(-14), foersteSvarMs: dag(-14) + 5 * 3600000 },
+  { id: "ls-3", leverandoerId: "lv-mercedes", oprettetMs: dag(-6), foersteSvarMs: dag(-6) + 2 * 3600000 },
+  { id: "ls-4", leverandoerId: "lv-mercedes", oprettetMs: dag(-40), foersteSvarMs: null },
+  { id: "ls-5", leverandoerId: "lv-crawford", oprettetMs: dag(-11), foersteSvarMs: dag(-11) + 26 * 3600000 },
+  { id: "ls-6", leverandoerId: "lv-daekteam", oprettetMs: dag(-9), foersteSvarMs: dag(-9) + 1 * 3600000 },
+];

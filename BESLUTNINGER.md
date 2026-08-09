@@ -35,7 +35,10 @@ vilkårlige valg man lige så godt kunne lave om.
 | 19 | **Stamdata har ikke en division.** En medarbejder er defineret ved sine **kompetencer**, et køretøj ved sin **art**. Feltet er derfor forbudt på `personale/` og `koeretoejer/` — ikke bare valgfrit. `faelles` bevares på **kunder**, hvor værdien betyder at kundens forretning går på tværs. | Ingen abonnent har både gods og bus. En busvognmand har kun ét sæt tal, så der var aldrig noget at dele op. En påhængsvogn eller en varevogn kan tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget: det skulle udfyldes på hver bil uden at kunne begrundes på nogen af dem — og så blev det læst af nogen. Valgfrit havde ikke været nok; et felt der må stå der, bliver tastet. Omgør delvist beslutning 15. | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail: nummeret i emnefeltet er hele integrationen.** En sag får et nummer fra beslutning 8's counter — `FLT` i Fleet, `FAC` i Facility. Nummeret sættes i emnet, modtageren svarer normalt i Outlook, `Re:` bevarer det, og svaret lægges på sagen. Indgående mail er **uautentificeret input**: afsenderen valideres mod sagens parter, alt andet i karantæne. | Alternativet var en Outlook-integration hos hvert værksted og hver leverandør — altså hos nogen der ikke er vores kunde og ikke har nogen grund til at installere noget. Et emnefelt virker hos alle, i dag, uden at modtageren gør noget anderledes. Prisen er at kanalen står åben mod internettet, og det er dét afklaringerne nedenfor handler om. | `fleet/sager.js` |
 | 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `vaerksted` \| `langtur`. Feltskemaet pr. art står i `fleet/opgaver.js`, ikke i reglerne. Køre-hviletid er en **regel**, ikke et felt: den blokerer, men svaret bærer altid et forbehold, fordi vi kun kan se planen og ikke tachografen. | README foreslog `langtur`, men den formulering er ældre end beslutning 16. Da etaper kom som egen node, blev `langtur` en **dublet**: `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`, `senestMs` og `forslag[]` står allerede på etapen, og `matchAabneEtaper()` søger på etaper. To poster for én tildeling er præcis prototypens DE-QR 777 mod DE-KL 404, som beslutning 16 lukkede. Den ægte artsforskel i noden er hvad arbejdet udføres **på**: et køretøj eller et facility-aktiv. | `fleet/opgaver.js` |
-| 21 | **`opgaver.art` er `vaerksted` | `facility`.** Ikke `vaerksted` | `langtur`: en langtur ER en etape, og feltskemaet pr. art staar i `fleet/opgaver.js` — ikke i reglerne. Koere-hviletid er en REGEL, ikke et felt, og den blokerer — men svaret baerer altid et forbehold, fordi vi kun kan se planen og ikke tachografen. | README foreslog `vaerksted` | `langtur`, men den formulering er aeldre end beslutning 16. Da etaper kom som egen node, blev `langtur` en dublet: `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`, `senestMs` og `forslag[]` staar allerede paa etapen, og `matchAabneEtaper()` soeger paa etaper. To poster for een tildeling er praecis prototypens DE-QR 777 mod DE-KL 404, som beslutning 16 lukkede. Den aegte artsforskel i noden er hvad arbejdet udfoeres PAA: et koeretoej eller et facility-aktiv. | `fleet/opgaver.js` |
+| 22 | **De ni skærme uden mockup er afgjort.** Fakturering hedder **Fakturagrundlag** — FleetControl laver ikke den juridiske faktura. Live-kort hedder **Rute & status** — ingen GPS. Kompetencer skelner lovkritiske (blokerer) fra virksomhedskrav (advarer). Leverandører får objektive tal, ingen stjerner. Idébank ud af kundens installation. | Ni skærme stod som skeletter uden tegning, og de måtte ikke bygges på gæt. Navnene var det vigtigste: "Fakturering" lovede en juridisk faktura vi ikke laver, og "Live-kort" lovede en sporing der ikke findes. Et navn der lover for meget, bliver til en fejlmelding. | `fleet/integrationer.js`, `fleet/rutestatus.js` |
+| 23 | **Supportadgang er tidsbegrænset og kundestyret.** FleetControl-personale har som standard **ingen** adgang. Kundens administrator giver adgang med varighed, type, formål og sagsnummer; den udløber **automatisk**. En supportsag bærer kontekst — aldrig passwords, tokens eller feltværdier. | Standardadgang for supportere er den slags der aldrig bliver lukket igen. En adgang der udløber fordi nogen skal huske det, er ikke tidsbegrænset. Og en supportsag er en **ny kanal ud af systemet**: et kundenavn i konteksten har forladt kundens tenant. Derfor allowliste, ikke blokliste. **Rettet af 24.** | *ikke bygget — efter fase 1* |
+| 24 | **Support krydser tenant-grænsen — én gang, og kun her.** Sagen ligger i `support/sager/<id>` i toppen med et `tenantId`; hver tenant har en **indeksnode** til at liste sine egne. Auditloggen vises som et bundet **udtræk** på sagen: ±5 minutter, højst 50 poster, ikke konfigurerbart. | RTDB kan sammenligne et felt på den post der læses mod claim'et, men kan ikke **filtrere** en forespørgsel på det — derfor indeksnoden. **Retter 23:** 23 gav support `audit.laes` på kundens tenant, og det er for meget. Et loft der kan hæves af den der rammer det, er ikke et loft. Indeksnoden er samtidig svaret på kundeportalen. | `fleet/support.js` |
+| 25 | **De fire sidste skærme — og det er ANTAGELSER, ikke afgjorte krav.** Et fakturagrundlag er en **opgørelse**, ikke en faktura; det erstattes frem for at rettes, med referencen **begge veje**. Momssatsen står pr. linje og **gættes ikke**. En indberetning **har** en sag. Materialeforbrug er **én hændelse med to posteringer**. Kompetencekravet **kommer fra enheden**. Leverandørtal står **med deres grundlag**. | De 24 foregående afgjorde noget vi **vidste**; denne afgør noget vi **tror**, og den skal derfor efterprøves hos første kunde frem for brydes bevidst. De tre steder hvor et forkert gæt koster mest: forløbet i `indberetninger.js`, linjearterne i `grundlag.js`, de seks nøgletal i `leverandoerer.js`. Hvor et gæt ville koste penge, gætter vi ikke — momssatsen blokerer eksporten frem for at antage 25 %. | `fleet/grundlag.js`, `fleet/indberetninger.js`, `fleet/leverandoerer.js` |
 
 ## Beslutning 16 i detaljer
 
@@ -371,6 +374,272 @@ teksten ikke lover mere end vi kan vide.
 **Forudsætningen for at fjerne forbeholdet er tachografdata** — se ARKITEKTUR.
 Det er formentlig en større opgave end kortintegrationen: der er ingen
 standard, og hver producent har sit eget format.
+
+## Beslutning 25 i detaljer
+
+### ⚠ Den er antagelser, ikke afgjorte krav
+
+Det er ikke en forsigtighedsfloskel, og det står i toppen af hver af de tre
+filer. De 24 foregående beslutninger afgjorde noget vi **vidste** — en
+modstrid mellem to mockups, en fejl i en model, en sikkerhedsgrænse. Beslutning
+25 afgør noget vi **tror**: hvordan en vognmand opgør en tur, hvordan en
+reparation bevæger sig fra melding til afsluttet, og hvilke seks tal han styrer
+sine leverandører efter.
+
+Forskellen betyder noget for hvordan man bryder med den. De andre beslutninger
+skal brydes bevidst. Denne skal **efterprøves** — og de tre steder hvor et
+forkert gæt koster mest at rette bagefter, er forløbet i `indberetninger.js`,
+linjearterne i `grundlag.js` og de seks nøgletal i `leverandoerer.js`.
+
+Valider dem hos første kunde, før der bygges skrivning ovenpå.
+
+### Et fakturagrundlag er en opgørelse, ikke en faktura
+
+Fakturaen dannes i regnskabssystemet, og fakturanummeret hører dér. Byggede vi
+den her, ville vi konkurrere med e-conomic om noget de gør bedre — og tallet
+ville stå to steder.
+
+Grundlaget er derimod vores: det er os der ved hvad bilen kørte, hvem der sad i
+den, og hvad der blev brugt. Det er præcis den arbejdsdeling der gør at
+`GRL-ÅÅÅÅ-NNNNN` ikke er et fakturanummer og aldrig må blive læst som et.
+
+### ⚠ RETTELSE 1: referencen går begge veje
+
+Det oprindelige krav skrev referencen i **én** retning: det nye grundlag peger
+tilbage på det gamle. Rettelsen: **to veje, og kun grundlag uden
+`erstattetAfId` tæller med.**
+
+    nyt.erstatterId        peger BAGUD   → "hvad rettede denne?"
+    gammelt.erstattetAfId  peger FREM    → "gælder denne stadig?"
+
+Uden den fremadrettede kan man ikke se på et gammelt grundlag om det stadig
+tæller — man skal søge hele mængden igennem efter noget der peger på det. Det
+ville virke i en test med tre poster og fejle stille i produktion, hvor
+optællingen ikke går den vej. Og fejlen er ikke kosmetisk: begge poster ville
+tælle med i summen, og **en rettelse ville blive en fordobling.**
+
+`summer()` filtrerer derfor på `erGaeldende()`, og enhver optælling skal gå
+gennem den. En kopi uden det filter ser ud som en sum og er en
+dobbeltfakturering.
+
+**Fundet under bygningen:** første udkast af `erstat()` returnerede
+`erstattetAfId: null` med en kommentar om at kalderen satte den bagefter. Det
+er fordoblingen indbygget i den funktion der skal forhindre den — en regel der
+kun holder hvis kalderen husker en kommentar, er ikke en regel. `push()`
+udleverer nøglen før skrivningen, så `nytId` kræves nu op front, og begge
+halvdele bygges samme sted og skrives atomisk.
+
+Bemærk også at **tilstanden ikke ændres** på det erstattede grundlag. Et låst
+grundlag forbliver låst — det *er* blevet eksporteret, og det kan ikke gøres
+usket. "Erstattet" er ikke en tilstand; det er svaret på et andet spørgsmål.
+
+### ⚠ RETTELSE 2: indberetningen HAR en sag — den ER ikke en sag
+
+Det oprindelige krav skrev at indberetningen *er* en sag. Det ville kollidere
+to tilstandsmaskiner:
+
+| | Handler om | Tilstande |
+|---|---|---|
+| **Sagen** (beslutning 20) | kommunikationen med værkstedet | åben / afventer svar / afsluttet |
+| **Indberetningen** | arbejdet | ny → vurderet → planlagt → på værksted → afventer faktura → afsluttet |
+
+En mail kan være besvaret uden at bilen er repareret, og bilen kan være
+repareret uden at nogen har svaret. Slås de sammen, kan man ikke udtrykke
+nogen af delene. Forbindelsen er ét felt: `sagId`.
+
+`afventerFaktura` er en **egen** tilstand og ikke en variant af `paaVaerksted`.
+Bilen er tilbage i drift, arbejdet er gjort, men pengesiden er ikke lukket.
+Uden den ville indberetningen enten stå som "på værksted" med en bil der
+kører, eller som "afsluttet" med en faktura der aldrig kom — og listen ville
+være ubrugelig som huskeliste.
+
+### ⚠ RETTELSE 3: feltnavnene er danske
+
+`udarbejdetAf` / `godkendtAf`. Ikke `preparedBy` / `approvedBy`.
+Domænelogikken er dansk hele vejen, og et enkelt engelsk felt midt i en dansk
+post er den slags der breder sig. Begge er **uid** — hvem der *gjorde* noget —
+og ikke `personId`; se beslutning 18.
+
+### Momssatsen gættes ikke
+
+Den står **pr. linje**, og eksporten nægtes uden.
+
+Det ville være nemt at sætte 25 som standard. Det er den danske sats, og det
+ville være rigtigt de fleste gange. Men "de fleste gange" er ikke godt nok:
+udlandskørsel, EU-handel med omvendt betalingspligt og momsfri persontransport
+har ikke 25. Rammer vi forkert, er det ikke en visningsfejl — det er en
+momsangivelse der er forkert, og den opdages af SKAT frem for af os.
+
+**Et system der gætter rigtigt ni gange ud af ti, lærer brugeren at stole på
+det tiende gæt.**
+
+Satserne og hvornår hver især gælder, skal bekræftes af en bogholder **før
+første eksport**. Se README's liste over hvad der blokerer fase 2. Indtil da er
+feltet påkrævet og tomt — det tvinger et menneske til at tage stilling, hvilket
+er det rigtige svar så længe vi ikke kender reglen.
+
+### Der afrundes pr. linje, ikke på totalen
+
+Kunden lægger linjerne sammen i hånden. Det er præcis hvad man gør, når man er
+uenig — og hvis den viste total så afviger med to øre fra summen af de viste
+linjer, er der et tal på skærmen der ikke kan genfindes.
+
+Prøven i `test/grundlag.test.mjs` er valgt så de to metoder faktisk *er*
+uenige (5,01 mod 5,00). Første udkast brugte et regnestykke der gik op, og så
+beviste prøven ingenting.
+
+### Chaufførappens tre datatyper — felterne nu, appen senere
+
+Appen bygges ikke nu. Felterne lægges alligevel i modellen, fordi den skal
+være rigtig **før** appen kommer: bygges de først når appen er der, skal
+Indberetninger laves om, og så er der allerede data i produktion der ikke
+passer.
+
+**1. Tidsregistrering bærer to slags tidspunkter.** `ankomstMs` er hvornår det
+skete; `registreretMs` er hvornår det blev tastet. En chauffør der taster på
+stedet, og en der taster hjemmefra om aftenen, afgiver en *iagttagelse*
+henholdsvis en *erindring*. Gemmer vi kun ét tidspunkt, kan ingen bagefter se
+hvilken slags man har med at gøre — og det er netop det spørgsmål der kommer,
+når kunden bestrider ventetiden på fakturaen.
+
+**2. Underskriften er write-once.** Reglen er
+`"underskrift": { ".write": "!data.exists()" }` — ikke en konvention. En
+underskrift er et **bevis**; kan den redigeres bagefter, beviser den
+ingenting, og så er der ingen grund til at indsamle den. Den er samtidig en
+personoplysning om en der ikke er vores medarbejder — modtageren på
+lossepladsen har ikke sagt ja til noget hos os — og ligger derfor i
+`sensitive/`.
+
+En rettelse er et **tillæg**, ikke en redigering: en ny indberetning der
+henviser til den gamle, præcis som et låst fakturagrundlag erstattes frem for
+at rettes. Begge steder er begrundelsen den samme — dokumentet er allerede
+blevet vist til nogen udenfor.
+
+Navnet er påkrævet. En krusedulle uden et navn kan man ikke stille spørgsmål
+til.
+
+**3. Materialeforbrug er én hændelse med to posteringer.**
+
+| | Hvad det er | Hvor det havner |
+|---|---|---|
+| **Salget** | hvad kunden skal betale | en linje på fakturagrundlaget |
+| **Forbruget** | hvad det kostede os | et lagertræk i Indkøb |
+
+De har forskellige beløb (der skal være en avance), forskellige modtagere og
+forskellige tidspunkter. Slås de sammen, fakturerer man enten til kostpris
+eller bogfører sin salgspris som en omkostning — og dækningsgraden bliver
+forkert uden at noget ser forkert ud. Det er beslutning 11 om igen.
+
+Linjen bærer derfor to referencer, `grundlagslinjeId` og `lagertraekId`, som
+hver især sættes **én** gang. Er den første sat, afvises et nyt kald frem for
+at lave linje nummer to: **en gentagelse må ikke blive en fordobling** — samme
+princip som to-vejs-referencen på grundlaget.
+
+### Koblingen mellem appen og økonomien
+
+Det er det første sted chaufførappens data møder regnskabet, og tre ting kunne
+være gået galt:
+
+**Skalaen.** `MAENGDE_SKALA` *importeres* fra `grundlag.js` frem for at blive
+skrevet af. To skalaer ville fakturere tusind gange for meget eller for lidt,
+og fejlen opdages ikke i en test — den opdages på fakturaen.
+
+**Salgsprisen er ikke kostprisen.** Indkøbsprisen står lige der i lagerlinjen,
+og bruger man den som sats, forsvinder avancen på hver eneste materialelinje
+uden at noget ser forkert ud: tallene stemmer, fakturaen går igennem, og
+dækningsgraden falder af grunde ingen kan pege på. `satsOere` kræves, af samme
+grund som momssatsen.
+
+**Materiale på egen bil kan ikke faktureres.** En reparation på vores egen
+lastbil har ingen booking og dermed ingen kunde. Uden det tjek kunne
+materialeforbrug fra eget værksted blive til en linje på en tilfældig kundes
+grundlag — den slags opdages af kunden, ikke af os.
+
+Prøven bruger `grundlag.js`' egen `validerLinje()` frem for et håndskrevet
+forventet objekt. En test der gentager modellen, kan ikke opdage at de to er
+uenige.
+
+### Kompetencekravet kommer fra enheden
+
+Reglen er skarpere end beslutning 22's "lovkritisk mod virksomhedskrav": **alt
+hvad `kraevedeKompetencer()` udleder af enheden og godset, blokerer. Alt andet
+advarer med en begrundet override.** Linjen er hvad kravet *kommer fra*.
+
+Det flyttede to beviser fra advarende til blokerende:
+
+* **EU-kvalifikationsbeviset** følger af at køre erhvervsmæssigt med C eller D
+  — det kan altså udledes af arten, præcis som C og tachografkort kan.
+* **Kranførerbeviset** er lovpligtigt over 8 tonmeter, og kravet kommer fra
+  *bilens kran*. Samme mønster som ADR fra godset.
+
+Førstehjælp blev stående som advarende: der findes ingen bil der gør
+førstehjælp til en betingelse for at køre.
+
+⚠ **To slags "har ikke", og de må ikke forveksles.** At *arten* kan have en
+kran, er et andet spørgsmål end om *denne bil* har en. Blandes de, kræver vi
+kranbevis af hver eneste lastbil.
+
+**Begrundelsen for en override står i objektets historik — ikke i
+auditposten.** `begrundelse` må ikke tilføjes til `LOGBARE_FELTER`;
+allowlisten findes netop for at holde fritekst ude af loggen, og en auditpost
+der lækker, er værre end ingen. Auditposten får at der *skete* en override, af
+hvem og på hvilken kompetence. Ikke hvorfor. Det står som en kommentar i
+`personale.js`, så ingen tilføjer feltet i god tro.
+
+### Et nøgletal uden sit grundlag er vildledende
+
+"50 % til tiden" betyder noget helt andet ved to leveringer end ved to
+hundrede — men i en tabel ser de ens ud, og så skifter man leverandør på
+grundlag af én forsinkelse.
+
+Hvert af de seks tal bærer derfor `grundlag` (antallet det er regnet på), og
+værdien er `null` under tre observationer. Skærmen skriver **"for lidt
+grundlag"** frem for en streg: en streg læses som nul eller som "ingen
+problemer".
+
+To undtagelser, begge med en grund:
+
+* **Manglende fakturaer har ingen grænse.** Det er en optælling, ikke et
+  gennemsnit — én manglende faktura *er* én manglende faktura, og en tærskel
+  ville skjule den første. Det er netop den man skal rykke for.
+* **En ubesvaret sag tæller ikke med i svartiden.** Den har ingen svartid, den
+  har en alder. Regnede vi den med som en meget lang svartid, ville tallet
+  blande "de svarer langsomt" med "de har ikke svaret".
+
+**Samme tal, to betydninger:** en prisafvigelse på 4 % er et brud på en
+fastaftale og helt almindeligt på et spotkøb. Farven kommer derfor fra
+aftaleformen, ikke fra tallet. En tabel der farver dem ens, lærer indkøberen at
+ignorere farven.
+
+**Prislisten er en historik, ikke et opslagsværk** (beslutning 7). Et køb i
+marts måles mod martsprisen. Overskrev vi prisen ved en regulering, ville en
+faktura fra marts pludselig se forkert ud, og afvigelsen ville pege på
+leverandøren frem for på os. Et opslag på en vare der ikke fandtes endnu, giver
+`null` — ikke den nyeste pris som trøstepræmie, for et opslag der altid svarer,
+kan ikke skelne "ukendt" fra "kendt".
+
+⚠ **Varenummeret er nøglen, ikke varenavnet.** "Motorolie 5W30", "Motorolie
+5w-30" og "Olie 5W30" er samme vare for et menneske og tre for en maskine. Det
+er Bil 104 med to nummerplader, denne gang på en oliedunk.
+
+### To fejl fundet under bygningen, som er værd at kende
+
+**Jeg opfandt et `forloebId`.** Et forløb *er* en booking, og etaperne bærer
+`bookingId`. Værre var at jeg skrev mit eget `tilstand === "aaben"`-filter,
+mens `forloebstilstand()` allerede svarer på det — samme regel to steder, hvor
+den ene driver. Det er nøjagtig divisionsfilterets fejl fra beslutning 19.
+Tjekket går nu gennem den eksisterende funktion, og en prøve holder fast i
+konsekvensen: en **annulleret** etape spærrer ikke faktureringen, hvilket et
+hjemmestrikket filter ville have overset.
+
+**Jeg skrev `beregnNoegletal()` mod en forestillet dataform.** Den læste
+`beloebOere`, `datoMs` og `prisOere`. De rigtige indkøbslinjer hedder `dato`,
+`antal` og `prisPrEnhedOere`, og beløbet *beregnes* af antal × pris. Havde jeg
+rettet demo-data efter funktionen frem for omvendt, ville tallene have været
+rigtige lige indtil de mødte produktion. Der er nu en prøve der bruger den
+faktiske form — de øvrige prøver i filen ville have bestået, selv om koden
+ikke kunne læse et eneste rigtigt indkøb.
+
 
 ## Sikkerhedsarbejdet i detaljer
 

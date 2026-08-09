@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 24
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 25
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 24 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 25 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
 npm run dev
-npm test                            # 479 tests. Starter emulatoren.
+npm test                            # 542 tests. Starter emulatoren.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -82,6 +82,7 @@ tilfældigt.
 | 22 | **De ni skærme uden mockup er afgjort.** Fakturering hedder **Fakturagrundlag** — FleetControl laver ikke den juridiske faktura. Live-kort hedder **Rute & status** — ingen GPS. Indberetninger deles i **driftshændelser** og **udgiftsregistreringer**. Kompetencer har **lovkritiske** (blokerer) og **virksomhedskrav** (advarer med begrundet override). Leverandører får **objektive tal, ingen stjerner**. Integrationer viser **kun det der findes**. Idébank ud af kundens installation | `fleet/integrationer.js`, `fleet/rutestatus.js` |
 | 23 | **Supportadgang er tidsbegrænset og kundestyret.** FleetControl-personale har som standard **ingen** adgang. Kundens administrator giver adgang med varighed, type, formål og sagsnummer; den **udløber automatisk**, ikke ved at nogen husker det. En supportsag bærer kontekst — aldrig passwords, tokens eller feltværdier. **Ikke besluttet:** AI-diagnose og systemstatusside | *ikke bygget — efter fase 1* |
 | 24 | **Support krydser tenant-grænsen — én gang, og kun her.** Sagen ligger i `support/sager/<id>` i toppen med et `tenantId`; hver tenant har en **indeksnode** til at liste sine egne. **Retter beslutning 23:** auditloggen vises som et bundet **udtræk** på sagen, ikke som adgang. ±5 minutter, højst 50 poster, ikke konfigurerbart | `fleet/support.js` |
+| 25 | **De fire sidste skærme — og det er antagelser, ikke afgjorte krav.** Skal valideres hos første kunde. Et fakturagrundlag er en **opgørelse**, ikke en faktura; det **erstattes** frem for at rettes, med referencen **begge veje**, og kun grundlag uden `erstattetAfId` tæller med. **Momssatsen står pr. linje og gættes ikke** — eksport nægtes uden. En indberetning **har** en sag, den **er** ikke en sag. Materialeforbrug er **én hændelse med to posteringer**: et salg og et lagertræk. Kompetencekravet **kommer fra enheden** — alt udledt blokerer, resten advarer med begrundet override. Leverandørtal står **med deres grundlag**; under tre observationer vises ingen procent | `fleet/grundlag.js`, `fleet/indberetninger.js`, `fleet/leverandoerer.js` |
 
 ## Struktur
 
@@ -144,17 +145,25 @@ Opdateret 9. august 2026. **Start her efter en pause.**
 skærme, og **479 tests** er obligatoriske før commit via `.githooks/pre-commit`.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
-### Skærmene: 23 af 30 har indhold
+### Skærmene: 27 af 30 har indhold
 
 | | Skærme |
 |---|---|
-| **Bygget (23)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3 |
-| **Venter på svar (7)** | Fakturagrundlag, Indberetninger, Kompetencer, Leverandører, Opsætning → Generelt, Opsætning → Brugere & roller, Idébank *(ud af kundens installation)* |
+| **Bygget (27)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3, **Fakturagrundlag**, **Indberetninger**, **Kompetencer**, **Leverandører** |
+| **Venter på svar (3)** | Opsætning → Generelt, Opsætning → Brugere & roller, Idébank *(ud af kundens installation)* |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
-fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De syv der
+fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De tre der
 venter, har fået deres produktvalg i beslutning 22 — men detaljerne mangler,
 og de må ikke bygges på gæt. Se afsnittet nedenfor.
+
+⚠ **De fire fra beslutning 25 er bygget på ANTAGELSER.** Fakturagrundlag,
+Indberetninger, Kompetencer og Leverandører står på hvordan vi *tror* en
+vognmand arbejder. Det står i toppen af hver fil, og det er ikke en
+forsigtighedsfloskel: forløbet i `indberetninger.js`, linjearterne i
+`grundlag.js` og de seks nøgletal i `leverandoerer.js` er de tre steder hvor
+en forkert antagelse koster mest at rette bagefter. **Valider dem hos første
+kunde, før der bygges skrivning ovenpå.**
 
 ### Beslutning 20 står i fase 0
 
@@ -388,9 +397,26 @@ regel afviser RTDB alt — der er ingen åben dør, kun en manglende.
 | `tenants/<t>/supportsager` | Indeks. Kun id'er |
 | `support/countere` | Global counter — sagsnumre er vores, ikke kundens |
 | `leverandoerer` | ⚠ `leverandoerId` er **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
+| `prislister/<leverandoerId>` | Beslutning 25. Ligger **for sig**, ikke på leverandøren: flere års historik skal ikke hentes med hver oversigt |
+| `grundlag` | Beslutning 25. ⚠ Godkendelse, låsning og erstatning skal håndhæves i en Cloud Function — de tre regler i `grundlag.js` er i dag kun visning |
+| `sensitive/indberetninger` | Beslutning 25. Skadebeskrivelse, modpart og **underskrift**. Permissionen `indberetninger.sensitiveLaes` mangler af samme grund som `sag.*` |
+| `sensitive/indberetninger/<id>/underskrift` | ⚠ Skal have `".write": "!data.exists()"`. Write-once er en **regel**, ikke en konvention — en underskrift der kan redigeres bagefter, beviser ingenting |
 
 Listen står her, så den ikke ligger spredt i tre dokumenter. Tilføjer du en
 node, hører den enten i reglerne eller på denne liste.
+
+### ⚠ `ikkeFaktureretOere` betyder noget andet efter beslutning 25
+
+Feltet hed det samme før, men der stod ikke hvad det talte. Nu gør der:
+**udført arbejde uden et låst fakturagrundlag.** Ikke "ufaktureret omsætning"
+i almindelighed, og ikke summen af åbne bookinger.
+
+Forskellen er ikke akademisk. Et forløb med en åben etape kan ikke godkendes,
+og et grundlag der er erstattet, tæller ikke med — begge dele ville pynte på
+tallet, hvis det blev regnet på bookinger frem for på grundlag. Aggregeringen
+skal bruge `erGaeldende()` og `summer()` fra `grundlag.js`, ikke sin egen
+optælling. En kopi uden det filter ser ud som en sum og er en
+dobbeltfakturering.
 
 ### KPI-aggregeringens efterslæb — beslutning 6
 
@@ -422,6 +448,7 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
 | `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
 | `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
+| `flaade.braendstofOere` | Brændstofudgift i perioden. **Beslutning 25** — Indberetninger læser den. ⚠ AdBlue tæller ikke med: det er et additiv, ikke brændstof, og lagt til ville forbruget se ~5 % bedre ud end det er |
 | `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
 | `indkoeb.maanedensForbrugOere` | Vareforbrug i perioden, ekskl. moms |
 | `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
@@ -439,6 +466,25 @@ klimaalarmer *nu* (måling + zonens grænse), gennemsnitstemperatur (regnes af
 sensorlisten) og bygningsomkostningen (summen af sine komponenter). Gemte man
 dem, kunne de modsige de data de beskriver — og det var netop de tre fejl
 Facility-mockupsene havde.
+
+## Uafklaret — blokerer fase 2
+
+Fase 0 er visning. Fase 1 er skrivning bag Cloud Functions. **Fase 2 er det
+der forlader systemet:** eksport til regnskabet, sletning efter retention,
+mails ud af huset. Listen her er kort med vilje — det er de spørgsmål der
+skal have et *menneskeligt* svar, ikke et teknisk, og de kan ikke besvares af
+den der skriver koden.
+
+| Spørgsmål | Hvem svarer | Hvad det blokerer |
+|---|---|---|
+| **Momssatserne pr. linjeart** — hvornår er det 25 %, hvornår 0, hvornår omvendt betalingspligt? | En bogholder, **før første eksport** | Eksport af fakturagrundlag. `grundlag.js` nægter i dag eksport uden en sats pr. linje, og det er det rigtige svar så længe reglen er ukendt — men det betyder også at ingen kan eksportere |
+| **Retention på `sensitive/indberetninger`** — hvor længe skal en underskrift og en skadebeskrivelse gemmes? | Jurist eller DPO | Sletning. Underskriften er både en personoplysning og et **bevis**, og de to trækker i hver sin retning: databeskyttelsen siger slet, bevisbyrden siger gem. Forældelsesfristen på et erstatningskrav er formentlig det rigtige anker, men det er ikke et gæt vi skal tage |
+| **Audit-retention** | Samme | Sletning af `audit/`. Se BESLUTNINGER — den har været uafklaret siden sikkerhedsarbejdet og er ikke blevet mere afklaret af beslutning 25 |
+| **Fire-øjne på fakturagrundlag** — skal godkenderen være en anden end den der udarbejdede det? | Kunden | Ingenting endnu, men det ændrer `kanGodkende()`. Det er rigtigt i en stor virksomhed og forkert hos en vognmand med to på kontoret, hvor det ville betyde at grundlag aldrig blev godkendt. Hører som en indstilling pr. tenant — ikke som en regel vi vælger for dem |
+
+⚠ **Ingen af de fire må besvares ved at gætte i koden.** Det er hele pointen
+med at `grundlag.js` kaster frem for at sætte 25 %: et system der gætter
+rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende gæt.
 
 ## Låst rækkefølge
 

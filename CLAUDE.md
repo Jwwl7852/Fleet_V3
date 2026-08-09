@@ -121,6 +121,24 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   reserverer, er et **værkstedsbesøg** — `kilde.type: vaerksted`, prioritet 40.
   Ellers taber en bekræftet værkstedsaftale til en booking. Sporet er
   `kilde.viaSagId`.
+- **Lægge et grundlag sammen uden `erGaeldende()`.** Brug `summer()` fra
+  `grundlag.js`. Et erstattet grundlag findes stadig, og tæller begge med, har
+  du dobbeltfaktureret. En rettelse må ikke være en fordobling — og referencen
+  går **begge veje**, så `erstat()` kræver `nytId` op front.
+- **Sætte en momssats fordi den mangler.** Ikke 25, ikke 0. Eksporten nægtes
+  uden — det er det rigtige svar, indtil en bogholder har svaret. Et system
+  der gætter rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende.
+- **Gøre en materialelinje til én postering.** Salget på fakturagrundlaget og
+  lagertrækket i Indkøb er to. Slås de sammen, fakturerer du til kostpris
+  eller bogfører din salgspris som en omkostning. Og `MAENGDE_SKALA`
+  **importeres** fra `grundlag.js` — to skalaer fakturerer 1000× forkert.
+- **Skrive en underskrift to gange.** `sensitive/…/underskrift` er write-once
+  i reglerne (`!data.exists()`). En rettelse er en NY indberetning der
+  henviser til den gamle. Et bevis der kan redigeres, beviser ingenting.
+- **Vise et nøgletal uden sit grundlag.** `beregnNoegletal()` returnerer
+  `null` under `MINDSTE_GRUNDLAG`, og skærmen skal skrive "for lidt
+  grundlag" — ikke en streg. To leveringer og to hundrede ser ens ud i en
+  tabel, og så skiftes leverandør på grundlag af én forsinkelse.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
