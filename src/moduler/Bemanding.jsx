@@ -45,10 +45,11 @@
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
-import { demoKompetencerMedNavn } from "../fleet/demo-personale.js";
-import { num, pct, ugedag, ugenr, serviceTone } from "../fleet/format.js";
+import { demoKompetencerMedNavn, DEMO_PERSONALE } from "../fleet/demo-personale.js";
+import { stationeringerFor } from "../fleet/personale.js";
+import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap,
 } from "../fleet/ui.jsx";
 
 /* Ugen regnes fra mandag. Hvilken kolonne der er "i dag" afhænger af hvornår
@@ -127,7 +128,8 @@ export default function Bemanding() {
         }),
         { planlagt: 0, disponeret: 0, mangler: 0 }
       );
-      return { id: f.id, navn: f.navn, uge, iDag: uge[I_DAG], ialt };
+      return { id: f.id, navn: f.navn, uge, iDag: uge[I_DAG], ialt,
+               steder: stationeringerFor(DEMO_PERSONALE, f.id) };
     })
     /* En funktion uden planlagte timer i divisionen findes ikke der. */
     .filter((f) => f.uge.some((c) => c.planlagt > 0));
@@ -138,7 +140,7 @@ export default function Bemanding() {
   const udnyttelse = (f) => (f.iDag.planlagt ? (f.iDag.disponeret / f.iDag.planlagt) * 100 : 0);
 
   const aabneVagter = funktioner
-    .flatMap((f) => f.uge.filter((c) => c.mangler > 0).map((c) => ({ ...c, id: `${f.id}-${c.ms}`, funktion: f.navn })))
+    .flatMap((f) => f.uge.filter((c) => c.mangler > 0).map((c) => ({ ...c, id: `${f.id}-${c.ms}`, funktion: f.navn, steder: f.steder })))
     .sort((a, b) => a.ms - b.ms || b.mangler - a.mangler);
 
   /* Personerne og deres beviser kommer fra demo-personale.js — samme kilde som
@@ -156,23 +158,34 @@ export default function Bemanding() {
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <KpiRaekke>
-        <KpiKort label="Disponeret i dag"
-                 vaerdi={`${num(k.bemanding.disponeret)} / ${num(k.bemanding.planlagt)}`}
-                 note={`${pct(kapacitet, 0)} kapacitetsgrad`} />
-        <KpiKort label="Ledig kapacitet" vaerdi={num(k.bemanding.ledig)} note="personer i dag" />
+        {/* Runde ikoner og chevron som på Booking. Tonerne er IKONACCENTER —
+            farven forstærker, tallet og teksten bærer betydningen alene. */}
+        <KpiKort label="Disponeret i dag" vaerdi={num(k.bemanding.disponeret)}
+                 ikon={<Ikon navn="personer" />} tone="ikon-5" rund
+                 note={`af ${num(k.bemanding.planlagt)} planlagte · ${pct(kapacitet, 0)} kapacitet`} />
+        {/* ⚠ ledig er et GEMT afledt tal og et kendt hul — se noten i toppen.
+            Det læses her fordi Dashboard læser det; regner de to skærme hver
+            sin vej, har vi 84-mod-83 igen i ny forklædning. */}
+        <KpiKort label="Ledig kapacitet" vaerdi={num(k.bemanding.ledig)}
+                 ikon={<Ikon navn="afspil" />} tone="ikon-6" rund note="personer i dag" />
         <KpiKort label="Underbemandede vagter" vaerdi={num(k.bemanding.underbemandede)}
-                 note="denne uge" />
-        <KpiKort label="Kompetencer udløber" vaerdi={num(k.bemanding.kompetencerUdloeber)}
-                 note="inden for 30 dage" />
+                 ikon={<Ikon navn="advarsel" />} tone="ikon-2" rund note="denne uge" />
+        <KpiKort label="Kompetencer udløber snart" vaerdi={num(k.bemanding.kompetencerUdloeber)}
+                 ikon={<Ikon navn="skjold" />} tone="ikon-3" rund
+                 note="inden for 30 dage" til="/bemanding/kompetencer" />
       </KpiRaekke>
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort titel={`Bemandingsplan — uge ${ugenr(DAGE[0].ms)}`}
               handling={
-                <span className="fc-hint">
-                  <Pille tone="ok">Dækket</Pille>{" "}
-                  <Pille tone="warn">Mangler 1</Pille>{" "}
-                  <Pille tone="bad">Mangler 2+</Pille>
+                /* Legenden med prikker, som mockuppen. Farven bærer ikke
+                   betydningen alene — hver celle viser også tallet og
+                   procenten. */
+                <span className="fc-legende">
+                  <i className="fc-prik fc-prik-ok" /> Dækket
+                  <i className="fc-prik fc-prik-warn" /> Mangler 1
+                  <i className="fc-prik fc-prik-bad" /> Mangler 2+
+                  <span className="fc-neutral">— Fri / ikke planlagt</span>
                 </span>
               }>
           <p className="fc-hint" style={{ marginBottom: 12 }}>
@@ -184,15 +197,30 @@ export default function Bemanding() {
           </p>
           <Tabel
             kolonner={[
-              { key: "navn", label: "Funktion", render: (r) => <b>{r.navn}</b> },
+              /* Lokationen UDLEDES af personalets `stationeret` — mockuppens
+                 "Greve" og "Taastrup" findes ikke i data. Se
+                 stationeringerFor() om hvorfor den ikke opfindes. */
+              { key: "navn", label: "Funktion", render: (r) => (
+                  <div className="fc-funk">
+                    <b>{r.navn}</b>
+                    <span>{r.steder.length ? r.steder.join(" + ") : "Ingen stationering"}</span>
+                  </div>) },
               ...DAGE.map((dag, i) => ({
                 key: `d${i}`,
                 label: i === I_DAG ? `${dag.label} · i dag` : dag.label,
                 num: true,
                 render: (r) => {
                   const c = r.uge[i];
+                  /* Ingen vagt planlagt er ikke en tom vagt — derfor en streg
+                     og ikke "0/0", som ville se ud som en fejl i planen. */
                   if (!c.planlagt) return <span className="fc-neutral">—</span>;
-                  return <Pille tone={celleTone(c)}>{c.disponeret}/{c.planlagt}</Pille>;
+                  const grad = Math.round((c.disponeret / c.planlagt) * 100);
+                  return (
+                    <div className={`fc-celle fc-${celleTone(c) === "ok" ? "good" : celleTone(c) === "warn" ? "warn" : "bad"}`}>
+                      <b>{c.disponeret} / {c.planlagt}</b>
+                      <span>{grad} %</span>
+                    </div>
+                  );
                 },
               })),
               /* Rækkesummen over de syv viste dage. Den hører ikke sammen med
@@ -219,8 +247,17 @@ export default function Bemanding() {
                 { key: "planlagt", label: "Planl.", num: true, render: (r) => num(r.iDag.planlagt) },
                 { key: "disponeret", label: "Disp.", num: true, render: (r) => num(r.iDag.disponeret) },
                 { key: "ledig", label: "Ledig", num: true, render: (r) => num(r.iDag.mangler) },
-                { key: "udnyttelse", label: "Udnyttelse", num: true,
-                  render: (r) => pct(udnyttelse(r), 0) },
+                /* Bjaelken er andelen af planlagt — 100 % er fuldt disponeret.
+                   Tallet staar ved siden af: en bjaelke alene kan ikke aflaeses. */
+                { key: "udnyttelse", label: "Udnyttelse", bredde: "34%",
+                  render: (r) => (
+                    <div className="fc-udn">
+                      <b>{pct(udnyttelse(r), 0)}</b>
+                      <span className="fc-udn-spor">
+                        <span className={`fc-udn-fyld fc-udn-${celleTone(r.iDag)}`}
+                              style={{ width: `${Math.min(100, udnyttelse(r))}%` }} />
+                      </span>
+                    </div>) },
               ]}
               raekker={funktioner.filter((f) => f.iDag.planlagt > 0)}
               tom="Ingen vagter planlagt i dag."
@@ -255,12 +292,33 @@ export default function Bemanding() {
           </p>
           <Tabel
             kolonner={[
-              { key: "dag", label: "Dag", render: (r) => r.label },
+              { key: "dag", label: "Dato", render: (r) => `${r.label} ${dato(r.ms)}` },
               { key: "funktion", label: "Funktion", render: (r) => <b>{r.funktion}</b> },
-              { key: "planlagt", label: "Planlagt", num: true, render: (r) => num(r.planlagt) },
-              { key: "disponeret", label: "Disponeret", num: true, render: (r) => num(r.disponeret) },
-              { key: "mangler", label: "Mangler", num: true,
-                render: (r) => <Pille tone={celleTone(r)}>{r.mangler}</Pille> },
+              { key: "sted", label: "Lokation",
+                render: (r) => (r.steder?.length
+                  ? r.steder.join(" + ")
+                  : <span className="fc-neutral">—</span>) },
+              { key: "besk", label: "Beskrivelse",
+                render: (r) => `${r.disponeret} af ${r.planlagt} disponeret` },
+              /* PRIORITET udledes af hvor mange der mangler — den er ikke et
+                 felt nogen har tastet. Ét hul er noget andet end tre. */
+              { key: "prioritet", label: "Prioritet",
+                render: (r) => (
+                  <Pille tone={r.mangler >= 3 ? "bad" : r.mangler === 2 ? "warn" : "ok"}>
+                    {r.mangler >= 3 ? "Høj" : r.mangler === 2 ? "Mellem" : "Lav"}
+                  </Pille>) },
+              { key: "status", label: "Status",
+                render: (r) => (
+                  <Pille tone={celleTone(r)}>
+                    {r.mangler >= 2 ? "Underbemandet" : "Delvist dækket"}
+                  </Pille>) },
+              /* ⚠ DEAKTIVERET MED EN BEGRUNDELSE. Fase 0 er visning, og der
+                 findes ingen vagtnode at skrive til. En knap der ikke gør
+                 noget uden at sige hvorfor, er værre end ingen knap. */
+              { key: "tildel", label: "", render: () => (
+                  <Knap disabled title="Kræver en vagtnode i datamodellen — se noten i toppen af filen">
+                    Tildel
+                  </Knap>) },
             ]}
             raekker={aabneVagter}
             tom="Alle vagter er dækket i denne uge."

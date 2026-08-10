@@ -60,6 +60,24 @@ export const FUNKTION_LABEL = {
 
 export const ALLE_FUNKTIONER = Object.values(FUNKTION);
 
+/**
+ * Hvor en funktion har folk stående. Udledes af `stationeret` på personerne.
+ *
+ * ⚠ LOKATIONEN OPFINDES IKKE. Bemanding-mockuppen skrev "Greve" og "Taastrup";
+ * de findes ikke i data. Et opdigtet stednavn er Bil 104 med to nummerplader,
+ * denne gang på et depot — og det opdages først når nogen leder efter Greve.
+ *
+ * Kun AKTIVE tæller: en fratrådt lagermedarbejder i Aalborg betyder ikke at
+ * lageret bemandes fra Aalborg. Ren funktion, så den kan prøves.
+ */
+export function stationeringerFor(personale = [], funktion) {
+  const steder = personale
+    .filter((p) => p?.status === "aktiv" && p?.funktioner?.[funktion])
+    .map((p) => p.stationeret)
+    .filter(Boolean);
+  return [...new Set(steder)].sort((a, b) => a.localeCompare(b, "da"));
+}
+
 /* En fratrådt medarbejder HARDSLETTES ALDRIG. Der hænger reservationer,
    indberetninger og bookinger på personId'et — samme princip som
    regnskabsdata. Reglerne håndhæver det med newData.exists(). */

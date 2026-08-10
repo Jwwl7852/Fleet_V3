@@ -14,6 +14,7 @@ import { deviation } from "./format.js";
    (fill-rule evenodd), så de viser feltets tone igennem frem for at være
    malet i en farve der skulle kende sit felt. */
 export const IKON = {
+  skjold: "M12 1.8 21 5.4v6.2c0 5-3.8 9.2-9 10.6-5.2-1.4-9-5.6-9-10.6V5.4zm-1.3 13.4 6.2-6.2-1.6-1.6-4.6 4.6-2.3-2.3-1.6 1.6z",
   kalender: "M7 1.6h2.2v2.2H7zm7.8 0H17v2.2h-2.2zM3.4 3.8h2.4v2.2a1.2 1.2 0 0 0 2.4 0V3.8h7.6v2.2a1.2 1.2 0 0 0 2.4 0V3.8h2.4a1.4 1.4 0 0 1 1.4 1.4v3.2H2V5.2a1.4 1.4 0 0 1 1.4-1.4zM2 10.6h20v9a1.4 1.4 0 0 1-1.4 1.4H3.4A1.4 1.4 0 0 1 2 19.6zm3.4 2.6v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2z",
   afspil: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM9.8 7.2v9.6l7.2-4.8z",
   advarsel: "M12 1.8 23 21H1zm-1.1 6.4v6.2h2.2V8.2zm0 8v2.2h2.2v-2.2z",

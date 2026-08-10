@@ -12,7 +12,7 @@ import {
 import { ref, set, get, remove, update } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
 import {
-  FUNKTION, PERSONALE_STATUS, tjekKompetencer,
+  FUNKTION, PERSONALE_STATUS, tjekKompetencer, stationeringerFor,
   kanDisponeres as personKanDisponeres,
 } from "../src/fleet/personale.js";
 import {
@@ -434,5 +434,46 @@ describe("personale.js", () => {
     for (const s of Object.keys(PERSONALE_STATUS)) {
       assert.ok(regler.includes(s), `status "${s}" mangler i reglernes enum`);
     }
+  });
+});
+
+describe("Stationering udledes af personalet, opfindes ikke", () => {
+  /* ⚠ Bemanding-mockuppen skrev "Greve" og "Taastrup" som lokation pr. række.
+     De findes ikke i data. Et opdigtet stednavn er Bil 104 med to
+     nummerplader, denne gang på et depot — og det opdages først når nogen
+     leder efter Greve. */
+  const stab = [
+    { status: "aktiv", funktioner: { chauffoer: true }, stationeret: "Kolding" },
+    { status: "aktiv", funktioner: { chauffoer: true }, stationeret: "Aalborg" },
+    { status: "aktiv", funktioner: { chauffoer: true }, stationeret: "Kolding" },
+    { status: "aktiv", funktioner: { mekaniker: true }, stationeret: "Vejle" },
+  ];
+
+  it("samler stederne for en funktion, uden gentagelser", () => {
+    assert.deepEqual(stationeringerFor(stab, "mekaniker"), ["Vejle"]);
+    assert.equal(stationeringerFor(stab, "chauffoer").length, 2);
+  });
+
+  /* Dansk sortering: Aa sorterer SIDST, så Kolding kommer før Aalborg.
+     Det ser forkert ud for den der forventer A først — og en sortering der er
+     "næsten rigtig" er den man aldrig får meldt. */
+  it("sorterer dansk — Aa sidst", () => {
+    assert.deepEqual(stationeringerFor(stab, "chauffoer"), ["Kolding", "Aalborg"]);
+  });
+
+  /* En fratrådt lagermedarbejder i Aalborg betyder ikke at lageret bemandes
+     fra Aalborg. Ellers står der et depot på skærmen som ingen arbejder på. */
+  it("tæller kun aktive", () => {
+    const ud = stationeringerFor(
+      [{ status: "fratraadt", funktioner: { lager: true }, stationeret: "Aalborg" }],
+      "lager"
+    );
+    assert.deepEqual(ud, []);
+  });
+
+  it("tåler personer uden stationering og en tom stab", () => {
+    assert.deepEqual(stationeringerFor([{ status: "aktiv", funktioner: { lager: true } }], "lager"), []);
+    assert.deepEqual(stationeringerFor([], "lager"), []);
+    assert.deepEqual(stationeringerFor(), []);
   });
 });
