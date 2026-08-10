@@ -693,6 +693,51 @@ endnu, fordi KPI-aggregeringen mangler (se efterslæbet i README). Falder det
 bort før aggregeringen findes, står hele appen tom for en bruger der er logget
 korrekt ind.
 
+## 27. Dev bruger rigtige DEV-brugere. Emulatoren er til reglerne
+
+Claims-kæden var **helt uprøvet i browseren**. Tenant-isolationen hviler på
+custom JWT claims — `auth.token.tenant` og den rør-afgrænsede
+`auth.token.perms` — og kæden *bruger oprettes → claims sættes → token fornys →
+reglerne læser dem* var kun afprøvet i emulatoren.
+
+Emulatoren lader dig minte et vilkårligt token med hvilke claims du vil. Det er
+præcis det rigtige til at prøve **reglerne**, og den bliver dér. Men det
+springer det led over hvor fejlene sidder: at claim'et rent faktisk bliver sat,
+at det overlever en tokenfornyelse, og at reglerne læser det, der faktisk står
+i det. Man tester reglerne mod claims man selv har opfundet.
+
+Med rigtige brugere i `fleetcontrol-dev-1ac1c` prøves hele kæden, i det miljø
+der er bygget til at smide væk, uden at der indføres et tredje miljø ved siden
+af DEV og PROD.
+
+Prisen er `scripts/provisioner-dev.mjs`. Det er ikke ekstraarbejde — det er
+onboarding af en tenant, skrevet første gang.
+
+**Seks brugere, én pr. rolle i `ROLLE_PERMS`.** Listen i `fleet/dev-brugere.js`
+er *udledt* af presetsene og kan derfor ikke være usynkron med dem. `perms`
+bygges med `permStrengFraRolle()` — aldrig i hånden. En seedet disponent med
+sit eget sæt permissions ville betyde, at man afprøvede noget andet end det man
+leverer, og det er beslutning 5's fejl flyttet ned i provisioneringen.
+
+`revokeRefreshTokens()` kaldes ved hvert claim-skift. Uden det beholder en
+allerede indlogget session sine gamle claims, indtil tokenet udløber: man ville
+tro, man havde ændret adgangen, og den gamle ville stadig virke. Det er den
+værste fejltilstand, fordi den ser ud som om den lykkedes.
+
+⚠ **`tenants/<id>/_findes` er trin 1, ikke en detalje.** Hver eneste `.read` i
+reglerne kræver markøren. Uden den afviser alt, og en korrekt indlogget bruger
+ville se "afvist" på hver skærm — login ville gøre appen *mere* tom, ikke
+mindre. Det var derfor seeding hørte med i den samme opgave.
+
+⚠ **Scriptet nægter at køre mod andet end DEV, og det er ikke konfigurerbart.**
+Ingen flag, ingen miljøvariabel, intet `--force`. Samme begrundelse som loftet i
+beslutning 24: en spærring der kan hæves af den der rammer den, er ingen
+spærring. Et seed-script der kan pege på produktion, skriver testdata i rigtige
+kunders base — og det opdages først når en kunde ringer.
+
+Kun de noder, skærmene faktisk læser, seedes. Et seedet datasæt, ingen skærm
+rører, driver fra sin kilde uden at nogen ser det.
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside

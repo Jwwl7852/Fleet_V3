@@ -1,0 +1,64 @@
+/* src/fleet/dev-brugere.js
+ * De seedede DEV-brugere — ÉN liste, delt af provisioneringsscriptet og
+ * brugervælgeren i shellen.
+ *
+ * ⚠ HVORFOR LISTEN LIGGER HER OG IKKE I SCRIPTET: fordi to lister driver.
+ * Scriptet opretter kontiene, og vælgeren logger ind på dem. Stod de hvert
+ * sit sted, ville en tilføjet rolle virke i den ene og mangle i den anden —
+ * og fejlen ville se ud som en login-fejl. Det er demo-kilder-mønstret igen;
+ * se test/demo-kilder.test.mjs for hvor mange gange det er sket.
+ *
+ * Listen UDLEDES af ROLLE_PERMS. Den er derfor ikke bare synkron med
+ * presetsene — den kan ikke være andet. Samme greb som DEMO_ROLLER i
+ * FleetContext.
+ *
+ * ⚠ INGEN ADGANGSKODE HER. Kontiene deler én kode, som står i
+ * VITE_DEV_BRUGER_KODE i .env.local (gitignored) og sættes af scriptet.
+ * E-mailadresser er ikke hemmeligheder; en adgangskode er.
+ *
+ * ⚠ KUN DEV. Kontiene findes udelukkende i fleetcontrol-dev-1ac1c, og
+ * scriptet nægter at pege andre steder hen. Vælgeren tegnes kun når
+ * miljoe === "dev".
+ */
+import { permStrengFraRolle, ROLLE_PERMS } from "./permissions.js";
+
+/** Tenanten de seedede brugere hører til. Samme id som TENANTS i App.jsx. */
+export const DEV_TENANT = "demo";
+
+/** Ikke et rigtigt domæne. Kontiene skal ikke kunne modtage post. */
+export const DEV_DOMAENE = "dev.fleetcontrol.invalid";
+
+/* Kun til visning i sidebaren. Mangler en rolle et navn her, bruges rollen
+   selv — listen må ikke kunne blokere for en ny rolle i presettet. */
+const NAVN = {
+  chauffoer: "Dev Chauffør",
+  casehandler: "Dev Sagsbehandler",
+  disponent: "Dev Disponent",
+  koordinator: "Dev Koordinator",
+  revisor: "Dev Revisor",
+  admin: "Dev Administrator",
+};
+
+export const DEV_BRUGERE = Object.keys(ROLLE_PERMS).map((rolle) => ({
+  rolle,
+  email: `${rolle}@${DEV_DOMAENE}`,
+  navn: NAVN[rolle] || `Dev ${rolle}`,
+}));
+
+/**
+ * Claims for en seedet DEV-bruger.
+ *
+ * `perms` udledes ALTID af presettet — den skrives ikke i hånden. Ellers
+ * kunne en seedet disponent have anden adgang end en rigtig disponent, og så
+ * tester man noget andet end det man leverer. Det er beslutning 5's fejl,
+ * flyttet ned i provisioneringen.
+ *
+ * `rolle` er kun til visning. Reglerne læser udelukkende `perms` — se
+ * ARKITEKTUR.
+ */
+export function claimsFor(rolle, tenant = DEV_TENANT) {
+  if (!ROLLE_PERMS[rolle]) {
+    throw new Error(`claimsFor: ukendt rolle "${rolle}". Se ROLLE_PERMS i permissions.js.`);
+  }
+  return { tenant, rolle, perms: permStrengFraRolle(rolle) };
+}
