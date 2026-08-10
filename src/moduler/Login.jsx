@@ -33,9 +33,32 @@ const FEJLTEKST = {
 
 const GENEREL = "E-mail eller adgangskode passer ikke.";
 
+/**
+ * ⚠ KUN DEV. Felterne udfyldes med den seedede ejerkonto.
+ *
+ * Ikke en bekvemmelighed: browserens adgangskodehåndtering gemmer den kode
+ * man skrev første gang, og roterer man den bagefter, genudfylder browseren
+ * den gamle. Fejlen bliver INVALID_LOGIN_CREDENTIALS — altså "forkert kode"
+ * på en kode man lige har læst i .env.local, og man leder efter fejlen alle
+ * andre steder end i autofyld.
+ *
+ * Værdierne er dem der allerede ligger i klientbundtet, fordi brugervælgeren
+ * bruger dem til at skifte session. Der udstilles ikke noget nyt.
+ *
+ * autoComplete="off" er ikke pynt her: uden den overskriver browseren
+ * felterne igen, og så er fælden tilbage.
+ */
+const DEV_UDFYLD =
+  miljoe === "dev"
+    ? {
+        email: import.meta.env?.VITE_DEV_EJER_MAIL || "admin@dev.fleetcontrol.invalid",
+        kode: import.meta.env?.VITE_DEV_BRUGER_KODE || "",
+      }
+    : null;
+
 export default function Login({ uprovisioneret = false }) {
-  const [email, setEmail] = useState("");
-  const [kode, setKode] = useState("");
+  const [email, setEmail] = useState(DEV_UDFYLD?.email || "");
+  const [kode, setKode] = useState(DEV_UDFYLD?.kode || "");
   const [fejl, setFejl] = useState(null);
   const [sender, setSender] = useState(false);
   const fra = useLocation().state?.fra;
@@ -85,12 +108,12 @@ export default function Login({ uprovisioneret = false }) {
             <div className="fc-card-b">
               <div className="fc-felt">
                 <label htmlFor="fc-email">E-mail</label>
-                <input id="fc-email" type="email" autoComplete="username" required
+                <input id="fc-email" type="email" autoComplete={DEV_UDFYLD ? "off" : "username"} required
                        value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="fc-felt">
                 <label htmlFor="fc-kode">Adgangskode</label>
-                <input id="fc-kode" type="password" autoComplete="current-password" required
+                <input id="fc-kode" type="password" autoComplete={DEV_UDFYLD ? "new-password" : "current-password"} required
                        value={kode} onChange={(e) => setKode(e.target.value)} />
               </div>
 
@@ -102,6 +125,9 @@ export default function Login({ uprovisioneret = false }) {
                 {sender ? "Logger ind…" : "Log ind"}
               </Knap>
 
+              {DEV_UDFYLD && (
+                <p className="fc-hint">Udfyldt fra .env.local — kun i dev.</p>
+              )}
               {fra && (
                 <p className="fc-hint">Du sendes videre til <code>{fra}</code> bagefter.</p>
               )}
