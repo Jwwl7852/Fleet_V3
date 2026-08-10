@@ -202,6 +202,23 @@ const GRAF_TONE = {
 };
 
 /**
+ * Kategorifarver — IKKE statusfarver. Se beslutning 30.
+ *
+ * GRAF_TONE ovenfor siger HVOR SLEMT det er: grøn er i orden, rød er kritisk.
+ * De her siger HVILKEN TING det er: blå er ikke bedre end orange. Genbruger man
+ * statusfarverne som serie 4 og 5, kommer rød til at betyde både "kritisk" og
+ * "den femte kategori", og så holder brugeren op med at læse rød som advarsel.
+ *
+ * Rækkefølgen er FAST og cykler aldrig. Farven følger kategorien, ikke dens
+ * plads i en sorteret liste — ellers skifter et filter farve på de kategorier
+ * der bliver tilbage.
+ */
+const SERIE_FARVER = [
+  "var(--fc-serie-1)", "var(--fc-serie-2)", "var(--fc-serie-3)",
+  "var(--fc-serie-4)", "var(--fc-serie-5)",
+];
+
+/**
  * Soejlegraf — grupperede søjler med valgfri vandret mållinje.
  *
  *   punkter  [{ label, vaerdier: [tal, …] }]   én værdi pr. serie
@@ -212,6 +229,69 @@ const GRAF_TONE = {
  * Nulpunktet er altid 0. En afkortet akse får to procentpoint til at ligne
  * en halvering, og det er den slags en økonomiskærm ikke skal lave.
  */
+/**
+ * Donut — fordelingen af en helhed på få kategorier, med totalen i midten.
+ *
+ * dele: [{ navn, antal }] — højst fem. Er der flere kategorier end farver,
+ * hører resten i "Øvrige"; en genereret sjette farve ville bryde den faste
+ * rækkefølge og gøre paletten uvalideret.
+ *
+ * ⚠ LEGENDEN ER IKKE PYNT. Tre af seriefarverne ligger under 3:1 i kontrast
+ * mod den hvide flade, og validatoren forpligter derfor til synlige labels.
+ * Antal og procent står som TEKST i tekstfarve — aldrig i seriefarven; den
+ * farvede prik ved siden af bærer identiteten. En vinkel aflæses dårligt, et
+ * tal aflæses præcist.
+ *
+ * Segmenterne har 2px mellemrum i fladens farve, så to nabofarver ikke løber
+ * sammen for den der ikke kan skelne dem.
+ */
+export function Donut({ dele = [], total, midteTekst, format = (v) => v }) {
+  const brugbare = dele.filter((d) => (d?.antal || 0) > 0);
+  if (!brugbare.length) return <Tom>Ingen data i perioden.</Tom>;
+
+  const sum = total ?? brugbare.reduce((s, d) => s + d.antal, 0);
+  if (!sum) return <Tom>Ingen data i perioden.</Tom>;
+
+  /* r valgt så omkredsen bliver ~100 — så er dasharray direkte i procent. */
+  const r = 15.915;
+  let forskydning = 25; /* start øverst frem for til højre */
+
+  return (
+    <div className="fc-donut">
+      <svg viewBox="0 0 42 42" className="fc-donut-fig" role="img"
+           aria-label={`${format(sum)} fordelt på ${brugbare.length} kategorier`}>
+        <circle cx="21" cy="21" r={r} className="fc-donut-bund" />
+        {brugbare.map((d, i) => {
+          const pct = (d.antal / sum) * 100;
+          const el = (
+            <circle key={d.navn} cx="21" cy="21" r={r}
+                    className="fc-donut-seg"
+                    stroke={SERIE_FARVER[i % SERIE_FARVER.length]}
+                    /* 2px-mellemrummet: trækkes fra buens længde, ikke lagt til. */
+                    strokeDasharray={`${Math.max(0, pct - 2)} ${100 - Math.max(0, pct - 2)}`}
+                    strokeDashoffset={forskydning} />
+          );
+          forskydning = (forskydning - pct + 100) % 100;
+          return el;
+        })}
+        <text x="21" y="20.4" className="fc-donut-tal">{format(sum)}</text>
+        {midteTekst && <text x="21" y="24.6" className="fc-donut-note">{midteTekst}</text>}
+      </svg>
+
+      <ul className="fc-donut-legende">
+        {brugbare.map((d, i) => (
+          <li key={d.navn}>
+            <i className="fc-graf-prik" style={{ background: SERIE_FARVER[i % SERIE_FARVER.length] }} />
+            <span className="fc-donut-navn">{d.navn}</span>
+            <b>{format(d.antal)}</b>
+            <span className="fc-donut-pct">{Math.round((d.antal / sum) * 100)} %</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function Soejlegraf({ punkter = [], serier = [], maal, format = (v) => v, hoejde = 168 }) {
   if (!punkter.length) return <Tom>Ingen data i perioden.</Tom>;
 

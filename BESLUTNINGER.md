@@ -835,6 +835,37 @@ Tjekket kan ikke ligge i `npm test` — det kræver netværk og en servicekonton
 Det er altså ikke fuldt mekanisk, og det skal ikke påstås at være det. Det er
 mekanisk dér hvor det kan være det.
 
+## 30. Kategorifarver er ikke statusfarver
+
+`GRAF_TONE` havde præcis fem toner — brand, neutral, ok, warn, bad — og det så
+ud som om de rakte til Dashboards fem opgavestatusser. Det gør de ikke, og
+sammenfaldet i antal er et tilfælde.
+
+**De to paletter gør forskellige ting.** Statusfarver siger *hvor slemt det er*:
+grøn er i orden, rød er kritisk. Kategorifarver siger *hvilken ting det er*:
+blå er ikke bedre end orange. Genbruges statusfarverne som serie 4 og 5, kommer
+rød til at betyde både "kritisk" og "den femte kategori" — og så holder
+brugeren op med at læse rød som en advarsel nogen af stederne.
+
+Konkret ville *Planlagt* have fået rød, fordi den var den femte tone der var
+tilbage. Det er samme fejl som en tabel der farver prisafvigelsen ens for en
+fastaftale og et spotkøb: to betydninger, én farve, og farven bliver til pynt.
+
+Fem `--fc-serie-*` i `fleet.css`, adskilt fra `--bc-ok` / `--bc-warn` /
+`--bc-block`. Slot 1 er `var(--bc-accent)` og ikke en kopi af `#125bec` —
+beslutning 10 forbliver den eneste kilde til brandblåen.
+
+⚠ **Paletten er valideret, ikke skønnet.** `dataviz`-skillens validator er kørt
+mod den hvide flade: lysbånd, chroma, CVD-adskillelse (værste nabopar ΔE 9,1
+protan) og normalsyn (ΔE 19,6) består alle. Tre af farverne ligger under 3:1 i
+kontrast mod fladen, og den advarsel **forpligter** til synlige labels — derfor
+bærer donutens legende antal og procent som tekst. Den er ikke pynt, den er
+lettelsen.
+
+Rækkefølgen: **rettelsen her først**, derefter snapshottet i
+`test/design-tokens.test.mjs`. Retter man kun snapshottet, har man flyttet
+beslutningen ind i en testfil hvor ingen leder efter den — se beslutning 10.
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside

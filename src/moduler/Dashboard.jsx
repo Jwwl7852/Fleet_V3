@@ -13,7 +13,23 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
-import { Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter } from "../fleet/ui.jsx";
+import {
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut,
+} from "../fleet/ui.jsx";
+
+/* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
+   ud af en hentet liste, for en liste er et udsnit i en periode og ikke en
+   total (beslutning 6). Rækkefølgen er forløbets, ikke størrelsens: farven
+   følger tilstanden, så den ikke skifter når tallene gør.
+   'aabne' er IKKE summen af de fem — den tæller de uafsluttede. Totalen
+   udregnes derfor af delene. */
+const STATUSFORDELING = (k) => [
+  { navn: "Indberettet", antal: k.opgaver.indberettet },
+  { navn: "Planlagt", antal: k.opgaver.planlagt },
+  { navn: "I gang", antal: k.opgaver.igang },
+  { navn: "Afventer", antal: k.opgaver.afventer },
+  { navn: "Udført", antal: k.opgaver.udfoert },
+];
 
 const HANDLINGER = (k) => [
   { n: 3, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "bad", ikon: "!" },
@@ -47,7 +63,6 @@ export default function Dashboard() {
   /* Afledte tal BEREGNES her — de skrives ikke ind i basen to steder.
      Det er derfor kapacitetsgraden ikke længere kan være 84 % på Dashboard
      og 83 % i Bemanding. */
-  const budgetAfv = k.oekonomi.driftsomkostningerOere - k.oekonomi.budgetOere;
   const budgetAfvPct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
   const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
 
@@ -81,14 +96,28 @@ export default function Dashboard() {
         <KpiKort label="Omkostning pr. km" vaerdi={kr(k.flaade.omkostningPrKmOere, 2)}
                  afvigelse={deviation(k.flaade.omkostningPrKmDeltaOere / 100, { betterWhen: "lower", dec: 2 })}
                  note="vs. sidste periode" />
-        <KpiKort label="Budgetafvigelse"
-                 vaerdi={deviation(budgetAfv, { betterWhen: "lower", unit: "kr" }).text}
-                 afvigelse={deviation(budgetAfvPct, { betterWhen: "lower", unit: "pct" })} note="vs. budget" />
+        {/* Planlagt vs. akut vedligehold — feltet fandtes i kpi/ hele tiden.
+            Budgetafvigelsen er ikke tabt: den beregnes ÉN gang og vises på
+            Økonomi, hvor fortegnskonventionen fra beslutning 3 hører hjemme.
+            Her stod den som det femte kort uden at være i mockuppen. */}
+        <KpiKort label="Planlagt vs. akut vedligehold"
+                 vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${pct(100 - k.oekonomi.planlagtVedligeholdPct)}`}
+                 note={`Mål ${pct(70)} / ${pct(30)}`} />
         <KpiKort label="Ikke-faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
                  note="ekskl. moms" />
       </KpiRaekke>
 
-      <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
+      {/* Midterrækken. auto-fit, så kortet fylder pænt alene nu og de to
+          øvrige (Omkostninger pr. måned, Største afvigelser) glider ind ved
+          siden af uden endnu en layoutændring. */}
+      <Gitter kolonner="repeat(auto-fit, minmax(320px, 1fr))">
+        <Kort titel="Status på opgaver"
+              handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
+          <Donut dele={STATUSFORDELING(k)} format={num} midteTekst="i alt" />
+        </Kort>
+      </Gitter>
+
+      <Gitter kolonner="minmax(0,2fr) repeat(3, minmax(0,1fr))">
         <Kort titel="Åbne opgaver der kræver opfølgning"
               handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
           <Tabel
@@ -110,35 +139,33 @@ export default function Dashboard() {
           />
         </Kort>
 
-        <div className="fc-grid">
-          <Kort titel="Bemanding i dag"
-                handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
-            <MiniLinje label="Chauffører disponeret"
-                       vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`} />
-            <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede} />
-            <MiniLinje label="Ledig kapacitet" vaerdi={`${k.bemanding.ledig} personer`} />
-            <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)} />
-          </Kort>
+        <Kort titel="Bemanding i dag"
+              handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
+          <MiniLinje label="Chauffører disponeret"
+                     vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`} />
+          <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede} />
+          <MiniLinje label="Ledig kapacitet" vaerdi={`${k.bemanding.ledig} personer`} />
+          <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)} />
+        </Kort>
 
-          <Kort titel="Facility"
-                handling={<Link className="fc-a" to="/facility">Gå til Facility</Link>}>
-            <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder} />
-            <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager} />
-            <MiniLinje label="Planlagt vedligehold" vaerdi={k.facility.planlagtVedligehold} />
-            <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} />
-          </Kort>
+        <Kort titel="Facility"
+              handling={<Link className="fc-a" to="/facility">Gå til Facility</Link>}>
+          <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder} />
+          <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager} />
+          <MiniLinje label="Planlagt vedligehold" vaerdi={k.facility.planlagtVedligehold} />
+          <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} />
+        </Kort>
 
-          <Kort titel="Indkøb"
-                handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
-            <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
-            <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />
-            {/* Indkøbsprisafvigelse — leverandørsiden, betterWhen 'lower'. Ikke det
-                samme tal som salgsprisafvigelsen på Kunder & Priser. */}
-            <MiniLinje label="Indkøbsprisafvigelse (snit)"
-                       vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" }).text} />
-            <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)} />
-          </Kort>
-        </div>
+        <Kort titel="Indkøb"
+              handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
+          <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
+          <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />
+          {/* Indkøbsprisafvigelse — leverandørsiden, betterWhen 'lower'. Ikke det
+              samme tal som salgsprisafvigelsen på Kunder & Priser. */}
+          <MiniLinje label="Indkøbsprisafvigelse (snit)"
+                     vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" }).text} />
+          <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)} />
+        </Kort>
       </Gitter>
 
       <p className="fc-hint">Alle beløb er ekskl. moms, medmindre andet er angivet.</p>

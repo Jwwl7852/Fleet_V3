@@ -27,6 +27,16 @@
   --fc-bad-bg:#fee2e2;
   --fc-info:#2563eb;
   --fc-info-bg:#dbeafe;
+  /* Kategoripalet — IKKE statusfarver. Se beslutning 30: statusfarver siger
+     hvor slemt det er, kategorifarver siger hvilken ting det er. Slot 1 peger
+     på accenten frem for at gentage #125bec; beslutning 10 er kilden.
+     Valideret med dataviz-validatoren mod hvid flade. */
+  --fc-serie-1:var(--bc-accent);
+  --fc-serie-2:#eb6834;
+  --fc-serie-3:#1baf7a;
+  --fc-serie-4:#eda100;
+  --fc-serie-5:#e87ba4;
+
   --fc-r:12px;
   --fc-sidebar:216px;
   --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
@@ -291,6 +301,29 @@
   border-color:var(--bc-block); border-style:dashed;
   background-image:repeating-linear-gradient(45deg,
     rgba(214,69,69,.14) 0 6px, rgba(214,69,69,0) 6px 12px)}
+
+/* Donut. Figur til venstre, legende til højre — legenden bærer tallene, fordi
+   en vinkel aflæses dårligt. Under 520px lægger de sig over hinanden.
+   Farverne kommer fra SERIE_FARVER i ui.jsx; her står kun geometrien. */
+.fc-donut{display:flex; gap:18px; align-items:center; flex-wrap:wrap}
+.fc-donut-fig{width:150px; height:150px; flex:0 0 150px; transform:rotate(-90deg)}
+.fc-donut-bund{fill:none; stroke:var(--bc-line); stroke-width:5}
+.fc-donut-seg{fill:none; stroke-width:5}
+/* Teksten roteres tilbage — figuren er drejet for at starte buerne øverst. */
+.fc-donut-tal,.fc-donut-note{transform:rotate(90deg); transform-origin:21px 21px;
+  text-anchor:middle; fill:var(--bc-text)}
+.fc-donut-tal{font-size:6px; font-weight:700; letter-spacing:-.02em}
+.fc-donut-note{font-size:2.6px; font-weight:600; fill:var(--bc-muted)}
+
+.fc-donut-legende{list-style:none; margin:0; padding:0; flex:1; min-width:190px;
+  display:flex; flex-direction:column; gap:7px}
+.fc-donut-legende li{display:flex; align-items:center; gap:8px; font-size:13px}
+/* Navnet skubber tallene ud til højre, så de står på linje og kan sammenlignes. */
+.fc-donut-navn{flex:1; min-width:0; color:var(--bc-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-donut-legende b{font-variant-numeric:tabular-nums}
+.fc-donut-pct{width:44px; text-align:right; color:var(--bc-muted);
+  font-size:12px; font-variant-numeric:tabular-nums}
 
 /* Grafer. Søjlefarverne sættes af Soejlegraf ud fra en tone, ikke af modulet —
    samme regel som Pille. Alt kommer fra tokens ovenfor. */

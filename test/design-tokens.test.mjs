@@ -139,6 +139,13 @@ const FORVENTEDE_TOKENS = {
   "--fc-bad-bg": "#fee2e2",
   "--fc-info": "#2563eb",
   "--fc-info-bg": "#dbeafe",
+  /* Kategoripalet, beslutning 30. Adskilt fra statusfarverne med vilje:
+     genbruges de, betyder rød både "kritisk" og "den femte kategori". */
+  "--fc-serie-1": "var(--bc-accent)",
+  "--fc-serie-2": "#eb6834",
+  "--fc-serie-3": "#1baf7a",
+  "--fc-serie-4": "#eda100",
+  "--fc-serie-5": "#e87ba4",
   "--fc-r": "12px",
   "--fc-sidebar": "216px",
   "--fc-shadow": "0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04)",
