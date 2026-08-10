@@ -522,3 +522,104 @@ export function Sider({ side, antal, prSide, saet }) {
     </nav>
   );
 }
+
+/**
+ * Linjegraf — udvikling over tid. To serier: den aktuelle periode fuldt
+ * optrukket, sammenligningsperioden stiplet.
+ *
+ *   punkter  [{ label, vaerdier: [tal, …] }]   én værdi pr. serie, null = intet
+ *   serier   [{ navn, stiplet }]
+ *
+ * ⚠ NULL ER IKKE NUL. En måned uden indkøb har ingen pris — kurven brydes
+ * frem for at dykke til bunden. En kurve der falder til nul i juli, fortæller
+ * det modsatte af sandheden om en måned hvor man bare ikke købte noget.
+ *
+ * ⚠ Y-AKSEN STARTER IKKE NØDVENDIGVIS I NUL, men den siger det: minimum og
+ * maksimum står skrevet. En afkortet akse uden mærkning gør 2 % udsving til
+ * et bjerg, og det er den mest almindelige måde at lyve med en graf på.
+ */
+export function Linjegraf({ punkter = [], serier = [], format = (v) => v, hoejde = 168 }) {
+  if (!punkter.length) return <Tom>Ingen data i perioden.</Tom>;
+
+  const alle = punkter.flatMap((p) => p.vaerdier).filter((v) => Number.isFinite(v));
+  if (!alle.length) return <Tom>Ingen data i perioden.</Tom>;
+
+  const raaMin = Math.min(...alle);
+  const raaMaks = Math.max(...alle);
+  /* Lidt luft, så yderpunkterne ikke klistrer til kanten. Er alle værdier
+     ens, giver spandet 0 og y bliver NaN — derfor gulvet på 1. */
+  const spand = Math.max(1, raaMaks - raaMin);
+  const min = raaMin - spand * 0.15;
+  const maks = raaMaks + spand * 0.15;
+
+  const B = 100;
+  const H = 40;
+  const x = (i) => (punkter.length === 1 ? B / 2 : (i / (punkter.length - 1)) * B);
+  const y = (v) => H - ((v - min) / (maks - min)) * H;
+
+  /* Segmenter frem for én lang path: et hul i data skal BRYDE linjen. */
+  const segmenter = (si) => {
+    const ud = [];
+    let nu = [];
+    punkter.forEach((p, i) => {
+      const v = p.vaerdier[si];
+      if (Number.isFinite(v)) nu.push(`${x(i)},${y(v)}`);
+      else if (nu.length) { ud.push(nu); nu = []; }
+    });
+    if (nu.length) ud.push(nu);
+    return ud;
+  };
+
+  return (
+    <div>
+      {serier.length > 1 && (
+        <div className="fc-graf-legend">
+          {serier.map((s, i) => (
+            <span key={s.navn} className="fc-graf-navn">
+              {s.stiplet
+                ? <i className="fc-graf-streg" />
+                : <i className="fc-graf-prik" style={{ background: SERIE_FARVER[i % SERIE_FARVER.length] }} />}
+              {s.navn}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="fc-linje" style={{ height: hoejde }}>
+        <svg viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" className="fc-linje-fig"
+             role="img" aria-label={`Udvikling over ${punkter.length} perioder`}>
+          {serier.map((s, si) =>
+            segmenter(si).map((seg, j) => (
+              <polyline key={`${s.navn}-${j}`} points={seg.join(" ")}
+                        className={`fc-linje-serie${s.stiplet ? " fc-linje-stiplet" : ""}`}
+                        stroke={s.stiplet ? "var(--bc-muted)" : SERIE_FARVER[si % SERIE_FARVER.length]} />
+            ))
+          )}
+        </svg>
+        {/* Punkterne ligger UDEN FOR svg'en, så de ikke strækkes af
+            preserveAspectRatio="none" — en strakt cirkel bliver en ellipse. */}
+        {serier.map((s, si) => punkter.map((p, i) => {
+          const v = p.vaerdier[si];
+          if (!Number.isFinite(v)) return null;
+          return (
+            <span key={`${s.navn}-${i}`} className="fc-linje-prik"
+                  title={`${p.label}: ${format(v)}`}
+                  style={{
+                    left: `${x(i)}%`, top: `${(y(v) / H) * 100}%`,
+                    background: s.stiplet ? "var(--bc-muted)" : SERIE_FARVER[si % SERIE_FARVER.length],
+                  }} />
+          );
+        }))}
+      </div>
+
+      <div className="fc-graf-x">
+        {punkter.map((p) => <span key={p.label}>{p.label}</span>)}
+      </div>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        Y-aksen går fra <b>{format(raaMin)}</b> til <b>{format(raaMaks)}</b> — den
+        starter ikke i nul. Det står her, fordi en afkortet akse uden mærkning gør
+        et lille udsving til et bjerg.
+      </p>
+    </div>
+  );
+}

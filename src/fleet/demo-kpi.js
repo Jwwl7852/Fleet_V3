@@ -75,6 +75,13 @@ export const DEMO_KPI = {
       varerTilGodkendelse: 8, manglerFaktura: 24, godkendtDenneMaaned: 86,
       maanedensForbrugOere: 12284500,
       leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
+      /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/.
+         ⚠ leveranceTilTidenDeltaPoint er PROCENTPOINT, ikke procent. 92 %
+         der stiger til 97 % er +5 point, ikke +5 %. Blandes de to, staar der
+         et tal der er rigtigt paa den ene laesning og forkert paa den anden —
+         og ingen kan se hvilken. Feltnavnet siger hvilket. */
+      aabneOrdrerDeltaPct: 13, fakturaerTilGodkendelseDeltaPct: 40,
+      prisafvigelserDelta: 2, leveranceTilTidenDeltaPoint: 5,
     },
     kunder: {
       aktive: 51, aftalerUdloeber: 7, tilbud: 12, tilbudKraeverOpfoelgning: 5,
@@ -145,6 +152,9 @@ export const DEMO_KPI = {
       },
     },
     indkoeb: {
+      /* Samme fire felter som under gods — se noten der om procentpoint. */
+      aabneOrdrerDeltaPct: -6, fakturaerTilGodkendelseDeltaPct: 12,
+      prisafvigelserDelta: 1, leveranceTilTidenDeltaPoint: -2,
       aabneOrdrer: 7, fakturaerTilGodkendelse: 3, indkoebsprisafvigelser: 2,
       varerTilGodkendelse: 3, manglerFaktura: 9, godkendtDenneMaaned: 34,
       maanedensForbrugOere: 4820000,

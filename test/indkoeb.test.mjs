@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS,
   afstem, fakturaTotalOere, kanGodkende, leverandoerNavn, parterFraLeverandoer,
-  PERM_GODKEND_MIDLERTIDIG,
+  PERM_GODKEND_MIDLERTIDIG, mestKoebteVarer, snitprisPrMaaned,
 } from "../src/fleet/leverandoerer.js";
 import {
   DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_AFSTEMNING,
@@ -314,9 +314,38 @@ describe("Indkøbslinjerne bærer det reglerne kræver", () => {
     }
   });
 
-  it("er et udsnit, ikke hele perioden", () => {
+  it("viser ikke flere ÅBNE ordrer end kpi/ siger der findes", () => {
+    /* ⚠ DEN HER SAMMENLIGNEDE FØR ALLE LINJER MED ÅBNE ORDRER, og det gik
+       kun godt så længe demo-sættet ikke havde historik. `aabneOrdrer` tæller
+       ordrer der ikke er lukket; en bogført dieselregning fra marts er ikke
+       en åben ordre, og at tælle den med gjorde loftet til noget andet end
+       det hed.
+
+       Det blev synligt da prisudviklingens tolv måneders indkøb kom til —
+       de er alle bogførte. Loftet gælder stadig, det er bare det rigtige
+       loft nu: et udsnit kan ikke have flere åbne end totalen. */
+    const aabne = DEMO_INDKOEBSLINJER.filter(
+      (l) => l.fakturastatus !== "bogfoert" && l.fakturastatus !== "afvist"
+    );
     const iAlt = DEMO_KPI.gods.indkoeb.aabneOrdrer + DEMO_KPI.bus.indkoeb.aabneOrdrer;
-    assert.ok(DEMO_INDKOEBSLINJER.length <= iAlt);
+    assert.ok(aabne.length <= iAlt,
+      `${aabne.length} åbne linjer i demo, men kpi/ siger ${iAlt} i alt`);
+  });
+
+  it("har en historik der kan bære en prisudvikling", () => {
+    /* Snitprisen pr. måned ER et gennemsnit af indkøb. Havde historikken sin
+       egen tabel, kunne de to sige hver sit om samme måned — samme fejl som
+       to demo-datasæt. Derfor ligger den i DEMO_INDKOEBSLINJER, og derfor
+       skal der være måneder nok til at tegne en kurve. */
+    const historik = DEMO_INDKOEBSLINJER.filter((l) => l.historisk);
+    assert.ok(historik.length >= 30, `kun ${historik.length} historiske linjer`);
+    const maaneder = new Set(historik.map((l) => new Date(l.dato).getMonth()));
+    assert.ok(maaneder.size >= 6, `kun ${maaneder.size} forskellige måneder`);
+    /* Historikken er afsluttet. Stod den som `mangler`, ville huskelisten
+       "mangler faktura" vokse med et år bagud. */
+    for (const l of historik) {
+      assert.equal(l.fakturastatus, "bogfoert", `${l.id} er ikke bogført`);
+    }
   });
 
   it("dækker begge divisioner og flere kategorier", () => {
@@ -324,5 +353,58 @@ describe("Indkøbslinjerne bærer det reglerne kræver", () => {
     assert.ok(divisioner.size >= 2, "kun én division — filteret kan ikke ses virke");
     const kategorier = new Set(DEMO_INDKOEBSLINJER.map((l) => l.kategori));
     assert.ok(kategorier.size >= 4);
+  });
+});
+
+/* ---- Vareforbrug og prisudvikling ------------------------------------- */
+
+describe("Mest købte varer og snitpris", () => {
+  it("andelen er af den VISTE liste, og skærmen skal sige det", () => {
+    /* Samme fælde som andelAfIndkoebPct: én vare i en filtreret liste giver
+       100 %, og det ligner en andel af helheden. Testen fastholder at
+       funktionen regner på det den får — skærmens tekst er den anden halvdel
+       af aftalen. */
+    const kun = [{ vare: "A", kategori: "daek", antal: 2, prisPrEnhedOere: 100 }];
+    assert.equal(mestKoebteVarer(kun)[0].andelPct, 100);
+  });
+
+  it("sorterer efter beløb og lægger samme vare sammen", () => {
+    const l = [
+      { vare: "A", kategori: "daek", antal: 1, prisPrEnhedOere: 100 },
+      { vare: "B", kategori: "daek", antal: 1, prisPrEnhedOere: 500 },
+      { vare: "A", kategori: "daek", antal: 1, prisPrEnhedOere: 100 },
+    ];
+    const r = mestKoebteVarer(l);
+    assert.equal(r[0].vare, "B");
+    assert.equal(r[1].beloebOere, 200, "de to A-linjer skal lægges sammen");
+  });
+
+  it("snitprisen er VÆGTET, ikke gennemsnittet af enhedspriser", () => {
+    /* 4.000 liter til 10 kr og 100 til 20 kr giver 10,24 — ikke 15. Det
+       usammenvejede tal lader et lille nødkøb flytte månedens pris, og så
+       ligner én dyr tankning en prisstigning hos leverandøren. */
+    const nu = Date.now();
+    const l = [
+      { varenummer: "X", dato: nu - 86400000, antal: 4000, prisPrEnhedOere: 1000 },
+      { varenummer: "X", dato: nu - 86400000, antal: 100, prisPrEnhedOere: 2000 },
+    ];
+    const r = snitprisPrMaaned(l, { varenummer: "X", maaneder: 2, nu });
+    assert.equal(r.at(-1).snitOere, Math.round((4000 * 1000 + 100 * 2000) / 4100));
+  });
+
+  it("en måned uden indkøb udelades — den har ikke prisen nul", () => {
+    /* En kurve der dykker til bunden i juli fortæller det modsatte af
+       sandheden om en måned man bare ikke købte noget i. */
+    const nu = Date.now();
+    const l = [{ varenummer: "X", dato: nu - 86400000, antal: 10, prisPrEnhedOere: 500 }];
+    const r = snitprisPrMaaned(l, { varenummer: "X", maaneder: 6, nu });
+    assert.equal(r.length, 1);
+    assert.ok(r.every((p) => p.antal > 0));
+  });
+
+  it("demo-historikken giver en stigende dieselkurve over seks måneder", () => {
+    const r = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6 });
+    assert.ok(r.length >= 5, `kun ${r.length} måneder med data`);
+    assert.ok(r.at(-1).snitOere > r[0].snitOere, "kurven skal kunne ses stige");
   });
 });

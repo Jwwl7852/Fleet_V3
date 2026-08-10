@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 652 tests. Starter emulatoren.
+npm test                            # 658 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 ```
@@ -173,7 +173,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **652 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **658 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -485,6 +485,9 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
 | `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
+| `indkoeb.aabneOrdrerDeltaPct`, `.fakturaerTilGodkendelseDeltaPct` | Periodeafvigelser i **procent** |
+| `indkoeb.prisafvigelserDelta` | Nye prisafvigelser i **antal** |
+| `indkoeb.leveranceTilTidenDeltaPoint` | ⚠ **Procentpoint**, ikke procent. 92 % der bliver til 97 % er +5 point. Feltnavnet siger hvilket — blandes de to, er tallet rigtigt på den ene læsning og forkert på den anden, og ingen kan se hvilken |
 | `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
 | `opgaver.udenTidsregistrering` | Udførte opgaver uden registreret faktisk tid. Kan ikke faktureres på tid |
 | `afvigelser` | **Top 5 på tværs af flåde, facility, indkøb og værksted.** Dashboards "Største afvigelser". Kan ikke udledes lokalt — den blander fire moduler |

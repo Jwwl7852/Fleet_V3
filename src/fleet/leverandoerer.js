@@ -401,3 +401,80 @@ export function prisafvigelseTone(leverandoer, pct) {
   if (pct > graense / 2) return "warn";
   return "ok";
 }
+
+/* ---- Vareforbrug og prisudvikling ------------------------------------- */
+
+/**
+ * mestKoebteVarer(linjer, maks) → [{ vare, kategori, beloebOere, andelPct }]
+ *
+ * AFLEDT af de linjer forbrugeren har. Den hører derfor ikke i kpi/.
+ *
+ * ⚠ ANDELEN ER AF DEN VISTE LISTE, og det skal skærmen skrive. Det er samme
+ * fælde som andelAfIndkoebPct i beregnNoegletal(): en andel ud af et udsnit
+ * ser ud som en andel af helheden, og en enkelt vare i en filtreret liste
+ * giver 100 %. Nævneren er summen af det man kan se — ikke tenantens indkøb.
+ */
+export function mestKoebteVarer(linjer = [], maks = 5) {
+  const pr = new Map();
+  for (const l of linjer) {
+    if (!l?.vare) continue;
+    const n = pr.get(l.vare) || { vare: l.vare, kategori: l.kategori, beloebOere: 0, antal: 0 };
+    n.beloebOere += indkoebBeloebOere(l);
+    n.antal += 1;
+    pr.set(l.vare, n);
+  }
+  const alle = [...pr.values()].sort((a, b) => b.beloebOere - a.beloebOere);
+  const sum = alle.reduce((s, v) => s + v.beloebOere, 0);
+  return alle.slice(0, maks).map((v) => ({
+    ...v,
+    andelPct: sum ? Math.round((v.beloebOere / sum) * 100) : 0,
+  }));
+}
+
+/**
+ * snitprisPrMaaned(linjer, { varenummer, maaneder, nu }) → [{ maaned, snitOere, antal }]
+ *
+ * ⚠ VÆGTET GENNEMSNIT, ikke gennemsnittet af enhedspriserne. Købte man 4.000
+ * liter til 10 kr og 100 liter til 20 kr, er snitprisen 10,24 — ikke 15. Det
+ * usammenvejede tal lader et lille nødkøb flytte månedens pris, og så ligner
+ * en enkelt dyr tankning en prisstigning hos leverandøren.
+ *
+ * Måneder UDEN indkøb udelades frem for at stå som nul. En måned man ikke
+ * købte noget, har ikke en pris på nul kroner — den har ingen pris, og en
+ * kurve der dykker til bunden i juli fortæller det modsatte af sandheden.
+ *
+ * `maaneder` tælles bagud fra `nu`, nyeste sidst.
+ */
+export function snitprisPrMaaned(linjer = [], { varenummer, maaneder = 6, nu = Date.now() } = {}) {
+  const start = new Date(nu);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(1);
+  start.setMonth(start.getMonth() - (maaneder - 1));
+
+  const spande = [];
+  for (let i = 0; i < maaneder; i++) {
+    const fra = new Date(start);
+    fra.setMonth(fra.getMonth() + i);
+    const til = new Date(fra);
+    til.setMonth(til.getMonth() + 1);
+    spande.push({ fraMs: fra.getTime(), tilMs: til.getTime(), maaned: fra.getMonth(), aar: fra.getFullYear(), oere: 0, antal: 0 });
+  }
+
+  for (const l of linjer) {
+    if (varenummer && l?.varenummer !== varenummer) continue;
+    const ms = l?.dato;
+    if (!Number.isFinite(ms)) continue;
+    const s = spande.find((x) => ms >= x.fraMs && ms < x.tilMs);
+    if (!s) continue;
+    s.oere += indkoebBeloebOere(l);
+    s.antal += l.antal || 0;
+  }
+
+  return spande
+    .filter((s) => s.antal > 0)
+    .map((s) => ({
+      maaned: s.maaned, aar: s.aar, fraMs: s.fraMs,
+      snitOere: Math.round(s.oere / s.antal),
+      antal: s.antal,
+    }));
+}

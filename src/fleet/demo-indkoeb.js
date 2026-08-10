@@ -100,47 +100,140 @@ export const DEMO_LEVERANDOERER = [
  * Mockuppens 18,50 kr/stk står som 1850. En float her ville ende som 1849,999
  * i en sum over hundrede linjer.
  */
+/**
+ * Tolv måneders indkøb af de tre varer der købes hver måned.
+ *
+ * Priserne er DETERMINISTISKE — ingen Math.random(). To kørsler skal give
+ * samme graf, ellers kan man ikke se om en ændring i koden flyttede noget.
+ * Kurven er et jævnt stigende dieselforløb med et enkelt dyk, som virkelige
+ * brændstofpriser opfører sig.
+ *
+ * `m` er antal måneder tilbage: 0 er indeværende, 11 er for et år siden.
+ */
+const MAANEDSVARER = [
+  { vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", enhed: "liter",
+    leverandoerId: "lv-circlek", division: "gods", antal: 4200, koeretoejId: null,
+    /* øre pr. liter, ældst først */
+    priser: [1048, 1061, 1039, 1072, 1085, 1094, 1088, 1103, 1118, 1126, 1135, 1142] },
+  { vare: "AdBlue", varenummer: "ADBLUE", kategori: "braendstof", enhed: "liter",
+    leverandoerId: "lv-circlek", division: "bus", antal: 820, koeretoejId: null,
+    priser: [612, 618, 624, 631, 629, 640, 648, 655, 661, 668, 674, 682] },
+  { vare: "Dæk 315/70 R22.5", varenummer: "DAEK-31570", kategori: "daek", enhed: "stk",
+    leverandoerId: "lv-daekteam", division: "gods", antal: 4, koeretoejId: null,
+    priser: [398000, 399500, 401000, 402500, 404000, 405500, 407000, 408500,
+             410000, 411000, 412000, 412500] },
+];
+
+function maanedligeIndkoeb() {
+  const linjer = [];
+  for (const v of MAANEDSVARER) {
+    v.priser.forEach((prisOere, i) => {
+      /* i = 0 er tolv måneder siden. 30 dage pr. måned er rigeligt præcist
+         til en snitpris pr. måned og gør datoen forudsigelig. */
+      const m = v.priser.length - 1 - i;
+      const d = dag(-(m * 30) - 15);
+      linjer.push({
+        id: `il-h-${v.varenummer}-${m}`,
+        dato: d, aftaltLeveringMs: d, leveretMs: d,
+        leverandoerId: v.leverandoerId, division: v.division,
+        reference: `HIST-${v.varenummer}-${m}`,
+        vare: v.vare, varenummer: v.varenummer, kategori: v.kategori,
+        antal: v.antal, enhed: v.enhed, prisPrEnhedOere: prisOere,
+        lokationId: "lok-kolding", koeretoejId: v.koeretoejId,
+        formaal: "Løbende forbrug",
+        /* Historikken er afsluttet. Stod den som `mangler`, ville
+           huskelisten "mangler faktura" vokse med et år bagud. */
+        fakturastatus: "bogfoert", godkendtAf: "Anne Bøgh", godkendtMs: d,
+        historisk: true,
+      });
+    });
+  }
+  return linjer;
+}
+
+/**
+ * ⚠ `reference` ER LEVERANDØRENS NUMMER, ikke vores. Det er dét man slår op i,
+ * når man ringer og spørger hvor varen bliver af, og det er dét der står på
+ * fakturaen der skal matches. Vores eget id (`il-001`) duer ikke til nogen af
+ * delene — leverandøren kender det ikke.
+ *
+ * ⚠ ET INDKØB ER KØBT TIL NOGET. `koeretoejId` eller `lokationId` siger hvad,
+ * og `formaal` siger hvorfor. Uden dem er en linje et beløb uden ærinde, og så
+ * kan ingen svare på om den hørte til. Begge er valgfrie: kontorartikler er
+ * hverken en bil eller en bygning.
+ */
 export const DEMO_INDKOEBSLINJER = [
   { id: "il-001", dato: dag(-2), aftaltLeveringMs: dag(0), leveretMs: dag(0), leverandoerId: "lv-hydra", division: "gods",
+    reference: "HYD-450078912",
     vare: "Hydraulikslange 3/8\"", varenummer: "HYD-38", kategori: "reservedele", antal: 12, enhed: "stk",
     prisPrEnhedOere: 1850, lokationId: "lok-kolding",
+    koeretoejId: "kt-104", formaal: "Reparation — hydraulikslange, tipkasse",
     fakturastatus: "modtaget", godkendtAf: "Søren Dahl", godkendtMs: dag(-1) },
   { id: "il-002", dato: dag(-3), aftaltLeveringMs: dag(-1), leveretMs: dag(-1), leverandoerId: "lv-daekteam", division: "bus",
+    reference: "DT-2026-77812",
     vare: "Dæk 315/70 R22.5", varenummer: "DAEK-31570", kategori: "daek", antal: 4, enhed: "stk",
     prisPrEnhedOere: 412500, lokationId: "lok-kolding",
+    koeretoejId: "kt-b16", formaal: "Dækskifte foraksel og bogie",
     fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
   { id: "il-003", dato: dag(-4), aftaltLeveringMs: dag(-2), leveretMs: dag(-2), leverandoerId: "lv-circlek", division: "gods",
+    reference: "CK-2026-55640",
     vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", antal: 4820, enhed: "liter",
     prisPrEnhedOere: 1142, lokationId: "lok-kolding",
+    koeretoejId: "kt-012", formaal: "Tankkort — periodens tankninger",
     fakturastatus: "bogfoert", godkendtAf: "Anne Bøgh", godkendtMs: dag(-3) },
   { id: "il-004", dato: dag(-5), aftaltLeveringMs: dag(-3), leveretMs: dag(0), leverandoerId: "lv-hydra", division: "gods",
+    reference: "HYD-450079140",
     vare: "Bremseklods, aksel 2", varenummer: "BRK-A2", kategori: "reservedele", antal: 8, enhed: "sæt",
     prisPrEnhedOere: 78500, lokationId: "lok-halb",
+    koeretoejId: "kt-078", formaal: "Bremseslidtage bagaksel — se indberetning",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
   { id: "il-005", dato: dag(-6), aftaltLeveringMs: dag(-4), leveretMs: dag(-4), leverandoerId: "lv-crawford", division: "faelles",
+    reference: "CRW-119988",
     vare: "Portmotor, reservedel", kategori: "facility", antal: 1, enhed: "stk",
     prisPrEnhedOere: 1284000, lokationId: "lok-halb",
+    formaal: "Port 3 — udskiftning af portmotor",
     fakturastatus: "modtaget", godkendtAf: "Benjamin Holm", godkendtMs: dag(-5) },
   { id: "il-006", dato: dag(-7), aftaltLeveringMs: dag(-5), leveretMs: dag(-5), leverandoerId: "lv-koelecenter", division: "faelles",
+    reference: "KC-88214",
     vare: "Kølemiddel R452A", kategori: "facility", antal: 25, enhed: "kg",
     prisPrEnhedOere: 34800, lokationId: "lok-halb",
+    formaal: "Fryseanlæg — halvårligt serviceeftersyn",
     fakturastatus: "godkendt", godkendtAf: "Benjamin Holm", godkendtMs: dag(-6) },
   { id: "il-007", dato: dag(-8), aftaltLeveringMs: dag(-6), leveretMs: dag(-6), leverandoerId: "lv-circlek", division: "bus",
-    vare: "AdBlue", kategori: "braendstof", antal: 900, enhed: "liter",
+    reference: "CK-2026-55402",
+    vare: "AdBlue", varenummer: "ADBLUE", kategori: "braendstof", antal: 900, enhed: "liter",
     prisPrEnhedOere: 682, lokationId: "lok-aalborg",
+    koeretoejId: "kt-b12", formaal: "Påfyldning, depot Aalborg",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
   { id: "il-008", dato: dag(-9), aftaltLeveringMs: dag(-7), leveretMs: dag(-4), leverandoerId: "lv-hydra", division: "gods",
-    vare: "Luftfilter", kategori: "reservedele", antal: 6, enhed: "stk",
+    reference: "HYD-450078455",
+    vare: "Luftfilter", varenummer: "LUF-01", kategori: "reservedele", antal: 6, enhed: "stk",
     prisPrEnhedOere: 24900, lokationId: "lok-kolding",
+    koeretoejId: "kt-106", formaal: "Serviceeftersyn — filterskift",
     fakturastatus: "bogfoert", godkendtAf: "Søren Dahl", godkendtMs: dag(-8) },
   { id: "il-009", dato: dag(-11), aftaltLeveringMs: dag(-9), leveretMs: dag(-9), leverandoerId: "lv-daekteam", division: "gods",
-    vare: "Dæk 385/65 R22.5", kategori: "daek", antal: 2, enhed: "stk",
+    reference: "DT-2026-77440",
+    vare: "Dæk 385/65 R22.5", varenummer: "DAEK-38565", kategori: "daek", antal: 2, enhed: "stk",
     prisPrEnhedOere: 498000, lokationId: "lok-kolding",
+    koeretoejId: "kt-034", formaal: "Dækskifte foraksel",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
   { id: "il-010", dato: dag(-13), aftaltLeveringMs: dag(-11), leveretMs: dag(-11), leverandoerId: "lv-kontorland", division: "faelles",
+    reference: "KL-2026-0412",
     vare: "Kontorartikler, diverse", kategori: "kontor", antal: 1, enhed: "pk",
     prisPrEnhedOere: 184500, lokationId: "lok-kolding",
+    formaal: "Hovedkontor — kvartalets forbrugsartikler",
     fakturastatus: "afvist", godkendtAf: null, godkendtMs: null },
+
+  /* --- Historik: tolv måneder tilbage ---------------------------------
+     ⚠ DE HER LINJER ER PRISUDVIKLINGENS GRUNDLAG, og de ligger derfor HER
+     og ikke i et separat DEMO_PRISHISTORIK. En snitpris ER et gennemsnit af
+     indkøb; havde den sin egen tabel, ville de to kunne sige hver sit om
+     samme måned — og det er nøjagtig fejlen fra to demo-datasæt.
+
+     Linjerne genereres, fordi tolv måneder × tre varer er 36 poster hvor
+     kun datoen og prisen varierer. Skrevet i hånden ville de være 36
+     steder at lave en tastefejl. */
+  ...maanedligeIndkoeb(),
 ];
 
 /** BEREGNET, aldrig gemt. */

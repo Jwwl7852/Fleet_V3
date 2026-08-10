@@ -12,40 +12,124 @@
  *
  * ⚠ DIVISION ER PÅKRÆVET. Reglerne validerer hasChildren(['division']) på
  * indkoeb/$id. Værdien kan IKKE arves fra køretøjet — beslutning 19 forbyder
- * feltet dér — så den der registrerer, skal sætte den. Kolonnen står derfor
- * eksplicit i tabellen frem for at blive udledt.
+ * feltet dér — så den der registrerer, skal sætte den.
  *
  * ⚠ LEVERANDØREN ER EN ENTITET. Posterne bærer `leverandoerId`, ikke en
  * fritekststreng. Modellen har hele tiden indekseret feltet — se
  * fleet/leverandoerer.js.
  *
  * FASE 0: VISNING. Ingen skrivning.
+ *
+ * ---------------------------------------------------------------------------
+ * MOCKUPPEN, OG HVOR JEG IKKE FULGTE DEN
+ *
+ * 1. ⚠ INGEN STJERNER. Mockuppens leverandørkort har "Kvalitet 4,7 ★" og en
+ *    "Samlet score". BESLUTNING 22 afgjorde det modsatte: Leverandører får
+ *    OBJEKTIVE TAL, ingen stjerner. En stjerne er en vurdering uden regnestykke
+ *    — man kan ikke svare en leverandør der spørger hvorfor han fik 4,2, og man
+ *    kan ikke handle på den. En samlet score må kun findes hvis beregningen kan
+ *    vises, og der findes intet kvalitetsfelt at bygge den af. Kortet viser i
+ *    stedet de tal beregnNoegletal() faktisk kan regne, hvert med sit grundlag.
+ * 2. HVERT TAL BÆRER SIT GRUNDLAG. Beslutning 25: under MINDSTE_GRUNDLAG
+ *    returnerer beregnNoegletal() null, og der skal stå "for lidt grundlag" —
+ *    ikke en streg. To leveringer og to hundrede ser ens ud i en tabel, og så
+ *    skiftes leverandør på grundlag af én forsinkelse.
+ * 3. INGEN PERIODEVÆLGER I FILTERKORTET. Shellen ejer den. Prisudviklingen har
+ *    heller ingen egen vælger: den er et TRENDBILLEDE over tolv måneder delt i
+ *    to halvår, og den skriver sit vindue frem for at lade to periodevælgere
+ *    blive uenige.
+ * 4. INGEN "FLERE FILTRE"-KNAP. Der er ikke flere filtre at folde ud. En knap
+ *    der åbner et tomt panel, er værre end ingen knap.
+ * 5. INGEN ⋮-MENU. Skrivning er ikke bygget.
+ *
+ * TRE AFLEDTE TAL, og de bliver afledte: mest købte varer, deres andel, og
+ * snitprisen pr. måned. Alle tre er regnet af linjer skærmen allerede har, og
+ * et gemt afledt tal driver fra sit grundlag — se `bemanding.ledig`.
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato } from "../../fleet/format.js";
+import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
+  MiniLinje, Ikon, Sider, Linjegraf,
 } from "../../fleet/ui.jsx";
 import {
-  LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, leverandoerNavn,
+  LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
+  leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
+  prisafvigelseTone,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, linjeBeloebOere, demoLeverandoer,
+  DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
+  linjeBeloebOere, medPrisliste,
 } from "../../fleet/demo-indkoeb.js";
 import { demoLokation } from "../../fleet/demo-facility.js";
+import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 
+const PR_SIDE = 5;
+const MAANED = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
+
 const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+const ktNavn = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || null;
+const ktPlade = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.registrering || null;
+
+/**
+ * En afvigelse man ikke har, er ikke en afvigelse på nul.
+ * Se den samme note på Facility — deviation(undefined) giver "0" med neutral
+ * tone, altså påstanden "ingen ændring" om et tal vi ikke har.
+ */
+const afvig = (vaerdi, opts, note = "vs. forrige periode") =>
+  Number.isFinite(vaerdi)
+    ? { afvigelse: deviation(vaerdi, opts), note }
+    : { note: "afvigelsen er ikke aggregeret endnu" };
+
+/**
+ * Godkendelsen af en linje. AFLEDT af de felter der findes.
+ *
+ * `afvist` er en fakturastatus, ikke et godkendelsesflag — en afvist faktura
+ * ER en afvist godkendelse, og to felter for den samme kendsgerning kunne
+ * modsige hinanden.
+ */
+function godkendelse(l) {
+  if (l.fakturastatus === "afvist") return { tone: "bad", tekst: "Afvist", ikon: "udraab" };
+  if (l.godkendtAf) return { tone: "ok", tekst: "Godkendt", ikon: "skjold" };
+  return { tone: "warn", tekst: "Afventer", ikon: "ur" };
+}
+
+/**
+ * Et nøgletal med sit grundlag. BESLUTNING 25.
+ *
+ * ⚠ null ER IKKE NUL, OG DET ER IKKE EN STREG. beregnNoegletal() returnerer
+ * null under MINDSTE_GRUNDLAG, fordi to observationer ikke er et mønster. En
+ * streg ville se ud som "ingen problemer"; teksten siger hvorfor der ikke står
+ * et tal, og hvor lidt der ligger bag.
+ */
+function MedGrundlag({ maal, format = (v) => v, tone }) {
+  if (!maal?.nokData) {
+    return (
+      <span className="fc-neutral" title={`${maal?.grundlag ?? 0} af mindst ${MINDSTE_GRUNDLAG} observationer`}>
+        for lidt grundlag
+      </span>
+    );
+  }
+  return (
+    <span className={tone ? `fc-${tone}` : undefined}>
+      {format(maal.vaerdi)}{" "}
+      <span className="fc-neutral" style={{ fontSize: 11 }}>({num(maal.grundlag)})</span>
+    </span>
+  );
+}
 
 export default function IndkoebOversigt() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
-  const { bruger, division } = useFleet();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { bruger, division, periode } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
+  const [leverandoer, setLeverandoer] = useState("");
+  const [side, setSide] = useState(1);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -56,28 +140,127 @@ export default function IndkoebOversigt() {
   const iDivision = DEMO_INDKOEBSLINJER.filter(
     (l) => l.division === division || l.division === "faelles"
   );
-  const viste = iDivision.filter(
-    (l) => (!kategori || l.kategori === kategori) && (!status || l.fakturastatus === status)
-  );
 
-  /* Beregnet af den viste liste — ikke et nøgletal. Labelen siger hvilket
-     udsnit, så det ikke går op mod kpi/. */
+  /* ⚠ TABELLEN VISER SHELLENS PERIODE. Historikken bagud er prisgrafens
+     grundlag og hører ikke i en liste over "ordrer og fakturaer" — den ville
+     drukne de aktuelle i tolv måneders løbende dieselkøb. */
+  const iPerioden = iDivision.filter((l) => l.dato >= periode.fra && l.dato <= periode.til);
+
+  const viste = iPerioden.filter((l) =>
+    (!kategori || l.kategori === kategori) &&
+    (!status || l.fakturastatus === status) &&
+    (!leverandoer || l.leverandoerId === leverandoer));
+
+  const harFilter = Boolean(kategori || status || leverandoer);
+  const nulstil = () => { setKategori(""); setStatus(""); setLeverandoer(""); setSide(1); };
+
+  const sider = Math.max(1, Math.ceil(viste.length / PR_SIDE));
+  const nuSide = Math.min(side, sider);
+  const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
+
+  /* Beregnet af den viste liste — ikke et nøgletal. */
   const vistForbrugOere = viste.reduce((s, l) => s + linjeBeloebOere(l), 0);
+
+  /* Mest købte: over divisionens linjer i perioden, ikke over historikken. */
+  const topVarer = mestKoebteVarer(iPerioden.length ? iPerioden : iDivision);
+
+  /* ⚠ TOLV MÅNEDER DELT I TO HALVÅR. Serien "forrige periode" er de seks
+     måneder FØR de seks viste, forskudt så samme x-position sammenligner
+     måned nr. 1 med måned nr. 1. Sammenlignes januar med juli, er forskellen
+     sæson og ikke leverandør. */
+  const nu = Date.now();
+  const seksMdr = 182 * 86400000;
+  const aktuel = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6, nu });
+  const forrige = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6, nu: nu - seksMdr });
+  const prisPunkter = aktuel.map((p, i) => ({
+    label: MAANED[p.maaned],
+    vaerdier: [p.snitOere / 100, forrige[i] ? forrige[i].snitOere / 100 : null],
+  }));
+
+  /* Leverandørernes objektive tal. Prislisten skal med — prisafvigelsen måles
+     mod den pris der GJALDT DA VI KØBTE, og den står i prislisten. */
+  const performance = DEMO_LEVERANDOERER
+    .filter((l) => l.aktiv && (l.division === division || l.division === "faelles"))
+    .map((l) => ({
+      leverandoer: l,
+      tal: beregnNoegletal(medPrisliste(l), {
+        indkoeb: DEMO_INDKOEBSLINJER,
+        fakturaer: DEMO_FAKTURAER,
+        sager: DEMO_LEVERANDOERSAGER,
+      }),
+    }))
+    .sort((a, b) => b.tal.omsaetningOere - a.tal.omsaetningOere)
+    .slice(0, 5);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Åbne indkøb" vaerdi={num(k.indkoeb.aabneOrdrer)} />
-        <KpiKort label="Varer til godkendelse" vaerdi={num(k.indkoeb.varerTilGodkendelse)} />
-        <KpiKort label="Mangler faktura" vaerdi={num(k.indkoeb.manglerFaktura)} />
-        <KpiKort label="Månedens forbrug" vaerdi={kr(k.indkoeb.maanedensForbrugOere)}
-                 note="ekskl. moms" />
+        {/* Runde ikoner med chevron, som resten af appen. Tonerne er
+            IKONACCENTER — farven forstærker, tallet og teksten bærer. */}
+        <KpiKort label="Åbne ordrer" vaerdi={num(k.indkoeb.aabneOrdrer)}
+                 ikon={<Ikon navn="dokument" />} tone="ikon-5" rund til="/indkoeb"
+                 {...afvig(k.indkoeb.aabneOrdrerDeltaPct, { betterWhen: "lower", unit: "pct" })} />
+        <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)}
+                 ikon={<Ikon navn="seddel" />} tone="ikon-2" rund til="/indkoeb/fakturaer"
+                 {...afvig(k.indkoeb.fakturaerTilGodkendelseDeltaPct, { betterWhen: "lower", unit: "pct" })} />
+        <KpiKort label="Prisafvigelser" vaerdi={num(k.indkoeb.indkoebsprisafvigelser)}
+                 ikon={<Ikon navn="advarsel" />} tone="ikon-4" rund til="/indkoeb/leverandoerer"
+                 {...afvig(k.indkoeb.prisafvigelserDelta, { betterWhen: "lower" }, "nye vs. forrige periode")} />
+        {/* ⚠ PROCENTPOINT, IKKE PROCENT. 92 % der stiger til 97 % er +5 point.
+            Feltnavnet siger hvilket — se noten i demo-kpi.js. */}
+        <KpiKort label="Leverancer til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct, 0)}
+                 ikon={<Ikon navn="lastbil" />} tone="ikon-6" rund til="/indkoeb/leverandoerer"
+                 {...afvig(k.indkoeb.leveranceTilTidenDeltaPoint, { betterWhen: "higher" },
+                           "procentpoint vs. forrige periode")} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
+      <Kort>
+        <div className="fc-filtre">
+          <div className="fc-felt">
+            <label htmlFor="ik-lev">Leverandør</label>
+            <select id="ik-lev" value={leverandoer}
+                    onChange={(e) => { setLeverandoer(e.target.value); setSide(1); }}>
+              <option value="">Alle leverandører</option>
+              {DEMO_LEVERANDOERER
+                .filter((l) => l.division === division || l.division === "faelles")
+                .map((l) => <option key={l.id} value={l.id}>{l.navn}</option>)}
+            </select>
+          </div>
+          <div className="fc-felt">
+            <label htmlFor="ik-status">Status</label>
+            <select id="ik-status" value={status}
+                    onChange={(e) => { setStatus(e.target.value); setSide(1); }}>
+              <option value="">Alle</option>
+              {Object.entries(FAKTURASTATUS).map(([v, s]) => (
+                <option key={v} value={v}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="fc-felt">
+            <label htmlFor="ik-kat">Kategori</label>
+            <select id="ik-kat" value={kategori}
+                    onChange={(e) => { setKategori(e.target.value); setSide(1); }}>
+              <option value="">Alle kategorier</option>
+              {Object.entries(LEVERANDOER_KATEGORI).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </div>
+          <div className="fc-filtre-knapper">
+            <Knap disabled={!harFilter} onClick={nulstil}>Nulstil filtre</Knap>
+          </div>
+        </div>
+        <p className="fc-hint" style={{ marginTop: 12 }}>
+          Filtrene virker med det samme. <b>Perioden</b> vælges i toppen — den er
+          shellens, og to periodevælgere på samme skærm kan blive uenige om hvilken
+          der gjaldt. Tabellen viser de <b>{num(periode.dage)} dage</b> der er valgt.
+        </p>
+      </Kort>
+
       <Kort
-        titel="Registrerede indkøb"
+        titel={`Ordrer og fakturaer (${num(viste.length)})`}
         handling={
           <Knap variant="primaer" disabled
                 title={maaSkrive ? "Registrering er ikke bygget endnu (fase 0)."
@@ -86,71 +269,180 @@ export default function IndkoebOversigt() {
           </Knap>
         }
       >
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-          <div className="fc-felt" style={{ flex: "0 1 240px", marginBottom: 0 }}>
-            <label htmlFor="ik-kat">Kategori</label>
-            <select id="ik-kat" value={kategori} onChange={(e) => setKategori(e.target.value)}>
-              <option value="">Alle kategorier</option>
-              {Object.entries(LEVERANDOER_KATEGORI).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-          </div>
-          <div className="fc-felt" style={{ flex: "0 1 240px", marginBottom: 0 }}>
-            <label htmlFor="ik-status">Fakturastatus</label>
-            <select id="ik-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">Alle</option>
-              {Object.entries(FAKTURASTATUS).map(([v, s]) => (
-                <option key={v} value={v}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <Tabel
           kolonner={[
             { key: "dato", label: "Dato", render: (r) => dato(r.dato) },
-            { key: "vare", label: "Vare", render: (r) => <b>{r.vare}</b> },
+            { key: "leverandoerId", label: "Leverandør", render: (r) => <b>{lvNavn(r.leverandoerId)}</b> },
+            /* ⚠ LEVERANDØRENS NUMMER, ikke vores. Det er dét man slår op i,
+               når man ringer, og dét der står på fakturaen der skal matches. */
+            { key: "reference", label: "Reference",
+              render: (r) => r.reference || <span className="fc-neutral">—</span> },
             { key: "kategori", label: "Kategori", render: (r) => LEVERANDOER_KATEGORI[r.kategori] },
-            { key: "leverandoerId", label: "Leverandør", render: (r) => lvNavn(r.leverandoerId) },
-            { key: "antal", label: "Antal", num: true,
-              render: (r) => `${num(r.antal)} ${r.enhed}` },
-            /* 18,50 kr/stk = 1850 øre. To decimaler, fordi enhedspriser er små. */
-            { key: "prisPrEnhedOere", label: "Pris pr. enhed", num: true,
-              render: (r) => kr(r.prisPrEnhedOere, 2) },
+            /* Et indkøb er købt TIL noget. Uden det er linjen et beløb uden
+               ærinde, og så kan ingen svare på om den hørte til. */
+            { key: "relateret", label: "Relateret enhed / opgave", bredde: "22%", render: (r) => {
+                const bil = ktNavn(r.koeretoejId);
+                const sted = demoLokation(r.lokationId)?.navn;
+                const hoved = bil
+                  ? `${bil}${ktPlade(r.koeretoejId) ? ` (${ktPlade(r.koeretoejId)})` : ""}`
+                  : sted;
+                if (!hoved && !r.formaal) return <span className="fc-neutral">—</span>;
+                return (
+                  <div className="fc-tolinje">
+                    <b>{hoved || "Ikke tilknyttet"}</b>
+                    {r.formaal && <span>{r.formaal}</span>}
+                  </div>
+                );
+              } },
             /* BEREGNET — der findes intet gemt beløb på linjen. */
             { key: "beloeb", label: "Beløb", num: true,
               render: (r) => kr(linjeBeloebOere(r)) },
-            { key: "lokationId", label: "Lokation",
-              render: (r) => demoLokation(r.lokationId)?.navn || <span className="fc-neutral">—</span> },
+            { key: "godkendelse", label: "Godkendelse", render: (r) => {
+                const g = godkendelse(r);
+                return (
+                  <Pille tone={g.tone}>
+                    <span className="fc-pill-ikon"><Ikon navn={g.ikon} /></span>{g.tekst}
+                  </Pille>
+                );
+              } },
+            { key: "fakturastatus", label: "Status",
+              render: (r) => <Pille tone={FAKTURASTATUS[r.fakturastatus]?.pill}>
+                {FAKTURASTATUS[r.fakturastatus]?.label}</Pille> },
             /* Division står eksplicit — den kan ikke arves fra bilen. */
             { key: "division", label: "Division",
               render: (r) => <Pille tone="info">{DIVISIONER[r.division]}</Pille> },
-            { key: "fakturastatus", label: "Faktura",
-              render: (r) => <Pille tone={FAKTURASTATUS[r.fakturastatus]?.pill}>
-                {FAKTURASTATUS[r.fakturastatus]?.label}</Pille> },
-            { key: "godkendtAf", label: "Godkendt af",
-              render: (r) => (r.godkendtAf
-                ? <>{r.godkendtAf} <span className="fc-neutral">· {dato(r.godkendtMs)}</span></>
-                : <span className="fc-neutral">ikke godkendt</span>) },
           ]}
-          raekker={viste}
-          tom="Ingen indkøb passer på filtrene."
+          raekker={paaSiden}
+          tom={harFilter ? "Ingen indkøb passer på filtrene."
+                         : "Ingen indkøb registreret i perioden."}
         />
 
-        <p className="fc-hint" style={{ marginTop: 12 }}>
-          Viser {num(viste.length)} af {num(iDivision.length)} hentede linjer i{" "}
-          <b>{division}</b> til <b>{kr(vistForbrugOere)}</b> ekskl. moms. Det er det{" "}
-          <b>viste udsnit</b> — månedens forbrug øverst kommer fra <code>kpi/</code> og
-          dækker hele perioden. De to skal ikke gå op mod hinanden.
-        </p>
-        <p className="fc-hint" style={{ marginTop: 8 }}>
+        <div className="fc-row" style={{ marginTop: 12, gap: 12, flexWrap: "wrap" }}>
+          <p className="fc-hint" style={{ margin: 0 }}>
+            Viser {num(paaSiden.length)} af {num(viste.length)} i <b>{DIVISIONER[division]}</b> til{" "}
+            <b>{kr(vistForbrugOere)}</b> ekskl. moms. Det er det <b>viste udsnit</b> —
+            månedens forbrug i <code>kpi/</code> dækker hele perioden, og de to skal
+            ikke gå op mod hinanden.
+          </p>
+          <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={setSide} />
+        </div>
+        <p className="fc-hint" style={{ marginTop: 10 }}>
           Beløbet pr. linje <b>beregnes</b> af antal × pris pr. enhed og gemmes ikke.
           Prisen står i <b>hele øre</b> — 18,50 kr/stk er <code>1850</code>. En float
           ville blive 1849,999 i en sum, og så går afstemningen ikke op med en øre
-          ingen kan forklare.
+          ingen kan forklare. <b>Division</b> står eksplicit, fordi den ikke kan arves
+          fra bilen: beslutning 19 forbyder feltet dér.
         </p>
       </Kort>
+
+      <Gitter kolonner="repeat(auto-fit, minmax(310px, 1fr))">
+        <Kort titel="Mest købte varer"
+              handling={<Link className="fc-a" to="/indkoeb/leverandoerer">Se leverandører</Link>}>
+          <Tabel
+            kolonner={[
+              { key: "vare", label: "Vare", render: (r) => <b>{r.vare}</b> },
+              { key: "kategori", label: "Kategori",
+                render: (r) => LEVERANDOER_KATEGORI[r.kategori] || r.kategori },
+              { key: "beloebOere", label: "Køb", num: true, render: (r) => kr(r.beloebOere) },
+              { key: "andelPct", label: "Andel", bredde: "26%", render: (r) => (
+                  <div className="fc-udn">
+                    <b>{pct(r.andelPct, 0)}</b>
+                    <span className="fc-udn-spor">
+                      <span className="fc-udn-fyld fc-udn-serie1"
+                            style={{ width: `${Math.min(100, r.andelPct)}%` }} />
+                    </span>
+                  </div>
+                ) },
+            ]}
+            raekker={topVarer}
+            tom="Ingen indkøb i perioden."
+          />
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            ⚠ Andelen er af <b>de viste linjer</b>, ikke af tenantens samlede indkøb.
+            En andel ud af et udsnit ligner en andel af helheden — og en enkelt vare
+            i en filtreret liste ville give 100 %. Nævneren er summen af det du kan
+            se ovenfor.
+          </p>
+        </Kort>
+
+        <Kort titel="Prisudvikling — snitpris, diesel">
+          <Linjegraf
+            punkter={prisPunkter}
+            serier={[{ navn: "Seneste 6 måneder" }, { navn: "De 6 måneder før", stiplet: true }]}
+            format={(v) => `${v.toFixed(2)} kr/l`}
+          />
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            <b>Vægtet</b> snitpris: samlet beløb divideret med samlet mængde. Det
+            usammenvejede gennemsnit lader et lille nødkøb flytte månedens pris, og
+            så ligner én dyr tankning en prisstigning hos leverandøren.
+          </p>
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Vinduet er <b>tolv måneder delt i to halvår</b> og følger ikke
+            periodevælgeren i toppen: en trend over 30 dage er ét punkt. De to
+            kurver er forskudt, så samme x-position sammenligner måned nr. 1 med
+            måned nr. 1 — sammenlignes januar med juli, er forskellen sæson og ikke
+            leverandør. En måned uden indkøb <b>bryder</b> kurven frem for at dykke
+            til nul.
+          </p>
+        </Kort>
+
+        <Kort titel="Leverandørperformance"
+              handling={<Link className="fc-a" to="/indkoeb/leverandoerer">Se alle</Link>}>
+          <Tabel
+            kolonner={[
+              { key: "navn", label: "Leverandør",
+                render: (r) => <b>{r.leverandoer.navn}</b> },
+              { key: "tilTiden", label: "Til tiden", render: (r) => (
+                  r.tal.leveringspraecisionPct.nokData ? (
+                    <div className="fc-udn">
+                      <b>{pct(r.tal.leveringspraecisionPct.vaerdi, 0)}</b>
+                      <span className="fc-udn-spor">
+                        <span className={`fc-udn-fyld fc-udn-${
+                          r.tal.leveringspraecisionPct.vaerdi >= 95 ? "ok"
+                          : r.tal.leveringspraecisionPct.vaerdi >= 85 ? "warn" : "bad"}`}
+                              style={{ width: `${r.tal.leveringspraecisionPct.vaerdi}%` }} />
+                      </span>
+                    </div>
+                  ) : <MedGrundlag maal={r.tal.leveringspraecisionPct} />
+                ) },
+              /* Prisafvigelsen tones efter AFTALEFORMEN: 4 % på en fastaftale er
+                 et aftalebrud, 4 % på et spotkøb er markedet. */
+              { key: "pris", label: "Prisafvigelse", num: true, render: (r) => (
+                  <MedGrundlag
+                    maal={r.tal.prisafvigelsePct}
+                    format={(v) => `${v > 0 ? "+" : ""}${num(v, 1)} %`}
+                    tone={r.tal.prisafvigelsePct.nokData
+                      ? prisafvigelseTone(r.leverandoer, r.tal.prisafvigelsePct.vaerdi)?.tone
+                      : undefined}
+                  />
+                ) },
+              { key: "mangler", label: "Mangler faktura", num: true, render: (r) => (
+                  <span className={r.tal.manglendeFakturaer.vaerdi > 0 ? "fc-warn" : undefined}>
+                    {num(r.tal.manglendeFakturaer.vaerdi)}
+                  </span>
+                ) },
+              { key: "omsaetning", label: "Samlet køb", num: true,
+                render: (r) => kr(r.tal.omsaetningOere) },
+            ]}
+            raekker={performance}
+            noegle={(r) => r.leverandoer.id}
+            tom="Ingen aktive leverandører i divisionen."
+          />
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            ⚠ <b>Ingen stjerner og ingen samlet score.</b> Mockuppen har begge dele;
+            beslutning 22 afgjorde det modsatte. En stjerne er en vurdering uden
+            regnestykke — man kan hverken svare en leverandør der spørger hvorfor
+            han fik 4,2, eller handle på tallet. En score må kun findes hvis
+            beregningen kan vises.
+          </p>
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Tallet i parentes er <b>grundlaget</b> — hvor mange observationer der
+            ligger bag. Under {MINDSTE_GRUNDLAG} står der <b>for lidt grundlag</b> og
+            ikke en streg: to leveringer og to hundrede ser ens ud i en tabel, og så
+            skiftes leverandør på grundlag af én forsinkelse. Beslutning 25.
+          </p>
+        </Kort>
+      </Gitter>
 
       <Leverandoerkartotek division={division} />
     </div>

@@ -611,3 +611,25 @@
 .fc-lokrk-txt span{font-size:11px; color:var(--bc-muted)}
 .fc-lokrk-m2{font-size:12px; color:var(--bc-muted); font-variant-numeric:tabular-nums;
   white-space:nowrap}
+
+/* ---- Linjegraf -------------------------------------------------------- */
+.fc-linje{position:relative; width:100%}
+.fc-linje-fig{width:100%; height:100%; display:block; overflow:visible}
+/* Faelles egenskaber paa en faelles klasse, ikke paa en gruppe af to.
+   test/css-navne.test.mjs fangede den: en grupperegel plus en modifikator
+   med samme navn ER to grundregler, og saa er det tilfaeldigt hvilken der
+   vinder naeste gang nogen tilfoejer noget. */
+.fc-linje-serie{fill:none; stroke-width:.7;
+  vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round}
+.fc-linje-stiplet{stroke-dasharray:4 3}
+/* Punkterne ligger uden for svg'en: preserveAspectRatio="none" ville
+   straekke en cirkel til en ellipse. */
+.fc-linje-prik{position:absolute; width:8px; height:8px; border-radius:50%;
+  transform:translate(-50%,-50%); box-shadow:0 0 0 2px var(--bc-card)}
+
+/* Ikon inde i en pille (godkendelsesstatus). Lille — pillen er tekst med et
+   maerke, ikke et ikon med tekst. */
+.fc-pill-ikon{display:inline-block; vertical-align:-2px; margin-right:4px}
+.fc-pill-ikon svg{width:12px; height:12px; fill:currentColor}
+/* Andelsbjaelke i seriefarve — kategori, ikke status. Beslutning 30. */
+.fc-udn-serie1{background:var(--fc-serie-1)}
