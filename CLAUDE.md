@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **28 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **29 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -163,6 +163,11 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `null` under `MINDSTE_GRUNDLAG`, og skærmen skal skrive "for lidt
   grundlag" — ikke en streg. To leveringer og to hundrede ser ens ud i en
   tabel, og så skiftes leverandør på grundlag af én forsinkelse.
+- **Rette `firebase.rules.json` uden at udrulle bagefter.** Prøverne siger noget
+  om **filen**; databasen håndhæver det **udrullede**. De to var ude af sync i
+  månedsvis, og en kaskaderende `.read` i den udrullede version satte hele
+  beslutning 17 ud af kraft uden at én prøve blev rød. Brug `npm run
+  regler:udrul` — ikke `firebase deploy` alene. Se beslutning 29.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

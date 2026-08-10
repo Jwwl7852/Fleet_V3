@@ -52,6 +52,27 @@ if printf '%s\n' "$STAGED" | grep -qE '^firebase\.rules\.json$'; then
 
   if npm run --silent test:rules; then
     echo "Regeltesten er grøn."
+
+    # ⚠ ADVARER, BLOKERER IKKE. Paa dette tidspunkt ER drift forventet: du har
+    # lige rettet filen og ikke udrullet endnu. En blokering her ville laere
+    # folk at bruge --no-verify, og saa er baade den og regeltesten vaek.
+    #
+    # Testene siger noget om FILEN. Databasen haandhaever det udrullede — og
+    # de to var ude af sync i maanedsvis uden at nogen opdagede det.
+    # Se beslutning 29.
+    if npm run --silent regler:tjek >/dev/null 2>&1; then
+      echo "De udrullede regler svarer allerede til filen."
+    else
+      cat <<'SLUT'
+
+  ! HUSK AT UDRULLE. De udrullede regler er ikke den fil du lige har rettet.
+
+    npm run regler:udrul
+
+  Commit fortsætter — men databasen håndhæver det udrullede, ikke filen.
+
+SLUT
+    fi
   else
     FEJL=1
     cat <<'SLUT'

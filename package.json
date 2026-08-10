@@ -10,7 +10,9 @@
     "test": "npm run test:rules",
     "test:rules": "firebase emulators:exec --only database --project fleetcontrol-rules-test \"node --test\"",
     "test:design": "node --test test/design-tokens.test.mjs",
-    "provisioner:dev": "node scripts/provisioner-dev.mjs"
+    "provisioner:dev": "node scripts/provisioner-dev.mjs",
+    "regler:tjek": "node scripts/tjek-regler.mjs",
+    "regler:udrul": "firebase deploy --only database --project dev && npm run regler:tjek"
   },
   "dependencies": {
     "firebase": "^10.12.2",

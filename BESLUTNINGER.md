@@ -786,6 +786,55 @@ En bruger der er logget ind uden tenant-claim, får sin egen besked. Det sker
 hver gang provisioneringen kun er kørt halvt, og "forkert adgangskode" ville
 sende folk i gang med at nulstille en kode der virker.
 
+## 29. En udrulning er ikke færdig, før den er efterprøvet
+
+`firebase.rules.json` var **aldrig udrullet til DEV**. Databasen kørte en ældre
+version med en `.read` på `tenants/$tenantId`. En `.read` kaskaderer ned over
+alt under sig, og et strammere barn kan ikke tilbagekalde den — så hele
+klassificeringen fra beslutning 17 var sat ud af kraft. Seks noder fandtes slet
+ikke: `sensitive`, `vaerdi`, `personale`, `kompetencer`, `roller`, `$klasse`.
+
+En `chauffoer` uden `personale.sensitiveLaes` kunne læse `sensitive/personale`.
+Reglerne var rigtige hele tiden. **De kørte bare ikke.**
+
+⚠ **De 591 prøver havde ret om FILEN og sagde intet om DATABASEN.** De kører mod
+emulatoren med den lokale fil. Ingen af dem kunne have fanget det, og ingen af
+dem er forkerte. Det er projektets kernefejl i en ny form — en kontrol der
+findes i repoet, men ikke i virkeligheden. Præcis som reglerne der var ugyldige
+fra fundamentet, og som "en kontrol der kun findes i frontend, er ikke
+adgangskontrol, men en pæn knap".
+
+`npm run regler:tjek` henter `/.settings/rules.json` fra den kørende database og
+sammenligner. `npm run regler:udrul` udruller **og** efterprøver: CLI'ens
+*"released successfully"* siger at kaldet lykkedes, ikke at databasen nu
+indeholder din fil.
+
+Sammenligningen er **tekstuel**, fordi Firebase returnerer filen byte-identisk —
+kommentarer, indrykning, rækkefølge. Efterprøvet: 29.548 tegn ud, 29.548 ind.
+Ingen JSON-parsing, ingen semantisk diff der selv kan tage fejl. Kun linjeskift
+normaliseres, så en frisk klon på Windows ikke fejler falsk på CRLF.
+
+Rapporten peger på **første afvigende linje med begge sider**. En besked der kun
+siger "de er forskellige", sender folk i gang med at diffe i hånden — og så
+bliver tjekket noget man springer over.
+
+⚠ **Læsetjekket arver bevidst IKKE produktionsspærringen.** Provisioneringen
+nægter at køre mod produktion, fordi den **skriver**. Det her er en ren læsning,
+og mod produktion er den *mere* værd end mod DEV: dér er konsekvensen af drift
+en kunde der ser data, de ikke må se. Kopierede vi spærringen ind af vane, ville
+vi gøre den vigtigste kontrol umulig præcis dér hvor den betyder mest. En
+spærring hører til den handling der er farlig, ikke til projektet.
+
+**Hvor den fyrer af sig selv, og hvor den ikke gør.** Provisioneringen kører
+tjekket til sidst og advarer — det er dér man sætter et miljø op, og dér hullet
+stod ubemærket. `pre-commit` advarer også, men **blokerer ikke**: på det
+tidspunkt *er* drift forventet, for man har lige rettet filen. En blokering
+ville lære folk at bruge `--no-verify`, og så ryger regeltesten med.
+
+Tjekket kan ikke ligge i `npm test` — det kræver netværk og en servicekontonøgle.
+Det er altså ikke fuldt mekanisk, og det skal ikke påstås at være det. Det er
+mekanisk dér hvor det kan være det.
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside

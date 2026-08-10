@@ -23,6 +23,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
+import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
@@ -313,6 +314,23 @@ async function main() {
     await db.ref(`tenants/${DEV_TENANT}/${node}`).set(nyttelast);
     const antal = form === "liste" ? `${data.length} rækker` : "objekt";
     console.log(`  ${node.padEnd(24)} ${antal}`);
+  }
+
+  /* 4. Håndhæver databasen den regelfil vi lige har prøvet 591 gange?
+     Provisionering er det øjeblik hvor man sætter et miljø op — og det var
+     netop dér hullet stod ubemærket i månedsvis. Se beslutning 29.
+     Advarer, afbryder ikke: dataene ER seedet, og en exit-kode her ville
+     ligne at provisioneringen mislykkedes. */
+  const token = await app.options.credential.getAccessToken();
+  const svar = await fetch(
+    `https://${noegle.project_id}-default-rtdb.europe-west1.firebasedatabase.app` +
+    `/.settings/rules.json?access_token=${token.access_token}`
+  );
+  if (svar.ok) {
+    const r = sammenlignRegler(readFileSync(REGELFIL, "utf8"), await svar.text());
+    if (!r.ens) {
+      console.warn(`\n⚠ ${rapport(r, noegle.project_id)}\n`);
+    }
   }
 
   console.log(`\nFærdig. Log ind med en af adresserne ovenfor.`);
