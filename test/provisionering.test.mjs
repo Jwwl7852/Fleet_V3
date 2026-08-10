@@ -21,7 +21,7 @@ import assert from "node:assert/strict";
 import { ROLLE_PERMS, harPerm, PERM } from "../src/fleet/permissions.js";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
-  tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT, vurderIgnorering, NOEGLEFIL,
+  tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT, vurderIgnorering, NOEGLEFIL, foreslaaNoeglefil,
 } from "../scripts/provisioner-dev.mjs";
 
 describe("Spærringen mod produktion", () => {
@@ -67,6 +67,37 @@ describe("Nøglefilen skal være gitignoreret, før noget skrives", () => {
   /* Den vagt der er skrevet, skal passe til den fil der faktisk læses. */
   it("tjekker den fil scriptet rent faktisk åbner", () => {
     assert.equal(NOEGLEFIL, ".serviceaccount-dev.json");
+  });
+});
+
+describe("En forkert navngivet nøglefil peges der på", () => {
+  /* ⚠ Windows skjuler kendte filtypenavne. Omdøber man i Stifinder, hedder
+     filen .serviceaccount-dev.json.json uden at man kan se det — og et bart
+     "mangler" ville sende folk på jagt efter en fil de kan SE ligger der.
+     Det er den mest almindelige måde skridtet går galt på. */
+  it("fanger det usynlige ekstra .json", () => {
+    assert.deepEqual(
+      foreslaaNoeglefil(["package.json", ".serviceaccount-dev.json.json"]),
+      [".serviceaccount-dev.json.json"]
+    );
+  });
+
+  /* Den anden er slet ikke at omdøbe — Firebases eget filnavn. */
+  it("fanger Firebases eget downloadnavn", () => {
+    const f = "fleetcontrol-dev-1ac1c-firebase-adminsdk-x7k2p-9f3a1b2c4d.json";
+    assert.deepEqual(foreslaaNoeglefil(["README.md", f]), [f]);
+  });
+
+  it("foreslår ikke den fil vi allerede leder efter", () => {
+    assert.deepEqual(foreslaaNoeglefil([NOEGLEFIL]), []);
+  });
+
+  /* Et forslag på hver commit-fil ville være støj, og støj læses ikke. */
+  it("foreslår ikke almindelige projektfiler", () => {
+    assert.deepEqual(
+      foreslaaNoeglefil(["package.json", "package-lock.json", "firebase.json", "firebase.rules.json"]),
+      []
+    );
   });
 });
 

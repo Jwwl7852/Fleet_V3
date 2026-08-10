@@ -19,7 +19,7 @@
  * hentes i Firebase-konsollen under Projektindstillinger → Tjenestekonti) og
  * VITE_DEV_BRUGER_KODE i .env.local.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
@@ -166,19 +166,51 @@ function laesFraEnvLocal(navn) {
   }
 }
 
+/**
+ * Ligner en af filerne i roden den nøgle vi leder efter?
+ *
+ * ⚠ WINDOWS SKJULER KENDTE FILTYPENAVNE. Omdøber man i Stifinder, hedder
+ * filen `.serviceaccount-dev.json.json` uden at man kan se det, og scriptet
+ * ville bare sige "mangler" — så leder man efter en fil man kan SE ligger der.
+ * Det er den mest almindelige måde dette skridt går galt på.
+ *
+ * Den anden er slet ikke at omdøbe: Firebase kalder den downloadede fil noget
+ * i retning af `fleetcontrol-dev-1ac1c-firebase-adminsdk-x7k2p-9f3a1b2c4d.json`.
+ *
+ * Ren funktion, så den kan prøves uden et filsystem.
+ */
+export function foreslaaNoeglefil(filnavne) {
+  return filnavne.filter(
+    (f) =>
+      f !== NOEGLEFIL &&
+      (/firebase-adminsdk/i.test(f) || /serviceaccount/i.test(f) || /\.json\.json$/i.test(f))
+  );
+}
+
 function laesNoegle() {
   try {
     return JSON.parse(readFileSync(NOEGLEFIL, "utf8"));
   } catch (e) {
     if (e.code === "ENOENT") {
+      let kandidater = [];
+      try { kandidater = foreslaaNoeglefil(readdirSync(".")); } catch { /* ligegyldigt */ }
+
       throw new Error(
-        "AFBRUDT: .serviceaccount-dev.json mangler.\n" +
-        "Hent den i Firebase-konsollen for fleetcontrol-dev-1ac1c under\n" +
-        "Projektindstillinger → Tjenestekonti → Generer ny privat nøgle,\n" +
-        "og læg den i projektets rod. Filen er gitignored — den må aldrig committes."
+        `AFBRUDT: ${NOEGLEFIL} mangler.\n` +
+        (kandidater.length
+          ? "\nMen der ligger noget der ligner:\n" +
+            kandidater.map((f) => `  ${f}`).join("\n") +
+            `\n\nOmdøb til ${NOEGLEFIL} — fra terminalen, ikke i Stifinder:\n` +
+            `  mv "${kandidater[0]}" ${NOEGLEFIL}\n` +
+            "Stifinder skjuler kendte filtypenavne, så en omdøbning dér kan give\n" +
+            "et usynligt ekstra .json til sidst.\n"
+          : "\nHent den i Firebase-konsollen for fleetcontrol-dev-1ac1c under\n" +
+            "Projektindstillinger → Tjenestekonti → Generer ny privat nøgle,\n" +
+            "og læg den i projektets rod.\n") +
+        "\nFilen er gitignored — den må aldrig committes."
       );
     }
-    throw new Error(`AFBRUDT: .serviceaccount-dev.json kunne ikke læses som JSON.\n${e.message}`);
+    throw new Error(`AFBRUDT: ${NOEGLEFIL} kunne ikke læses som JSON.\n${e.message}`);
   }
 }
 
