@@ -99,6 +99,42 @@ export function vurderIgnorering(kode) {
   return { ok: true, advarsel: "kunne ikke spørge git, om nøglefilen er ignoreret" };
 }
 
+/**
+ * Oversæt Firebases Auth-fejl til noget der siger hvad man skal gøre.
+ *
+ * ⚠ auth/configuration-not-found LYDER som en fejl i nøglen eller i koden.
+ * Det er den ikke: den betyder at Authentication aldrig er taget i brug i
+ * projektet, eller at Email/adgangskode ikke er slået til som loginmetode.
+ * Rå lyder den "There is no configuration corresponding to the provided
+ * identifier", og så leder man i servicekontoen og i sin egen kode — ikke i
+ * konsollen, hvor knappen sidder.
+ *
+ * Ren funktion, så oversættelsen kan prøves uden at kalde Firebase.
+ */
+export function forklarAuthFejl(kode) {
+  if (kode === "auth/configuration-not-found") {
+    return (
+      "Authentication er ikke taget i brug i projektet, eller Email/adgangskode " +
+      "er ikke slået til.\n\n" +
+      "  Firebase-konsollen → " + DEV_PROJEKT + " → Authentication\n" +
+      "  → Kom godt i gang (hvis knappen er der)\n" +
+      "  → Sign-in method → Email/Password → Aktivér → Gem\n\n" +
+      "Kør derefter npm run provisioner:dev igen. Scriptet kan køres flere " +
+      "gange — det opdaterer de konti der allerede findes."
+    );
+  }
+  if (kode === "auth/insufficient-permission" || kode === "auth/invalid-credential") {
+    return (
+      "Servicekontoen har ikke rettigheder nok til at oprette brugere.\n" +
+      "Hent en ny privat nøgle, eller giv kontoen rollen Firebase Authentication Admin."
+    );
+  }
+  if (kode === "auth/invalid-password") {
+    return "VITE_DEV_BRUGER_KODE er for kort. Firebase kræver mindst 6 tegn.";
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------------ *
  * Hvad der seedes
  * ------------------------------------------------------------------ */
@@ -287,7 +323,8 @@ async function main() {
    og de skal ikke provisionere noget som helst. */
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
-    console.error(`\n${e.message}\n`);
+    const forklaring = forklarAuthFejl(e?.code);
+    console.error(`\n${forklaring ? `AFBRUDT: ${forklaring}` : e.message}\n`);
     process.exit(1);
   });
 }
