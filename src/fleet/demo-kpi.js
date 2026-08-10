@@ -55,6 +55,20 @@ export const DEMO_KPI = {
       aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
       eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
       anslaaetServiceOere: 12845000,
+      /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/ — de kan
+         ikke regnes af de elleve demo-aktiver skaermen har. aktiverDeltaPct er
+         procent, de tre andre er antal. Se KPI-efterslaebet i README. */
+      aktiverDeltaPct: 8, servicepunkterDelta: 3, aabneSagerDelta: 2,
+      planlagtVedligeholdDelta: -2,
+      /* Fordelingen af HELE aktivbasen paa art — donutten paa Facility.
+         Summen SKAL vaere `aktiver`; selvkontrollen i demo-facility.js
+         holder den. Kategorierne er vores egne fra AKTIV_ART, ikke
+         mockuppens "El & Tavler": et katalog vi ikke har, kan vi ikke
+         fordele paa. `oevrige` samler vaskehal og truckoplader. */
+      aktiverPrArt: {
+        ventilation: 76, port: 62, ladestander: 48, koeleanlaeg: 41,
+        alarm: 32, oevrige: 28,
+      },
     },
     indkoeb: {
       aabneOrdrer: 18, fakturaerTilGodkendelse: 7, indkoebsprisafvigelser: 5,
@@ -115,6 +129,20 @@ export const DEMO_KPI = {
       aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
       eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
       anslaaetServiceOere: 12845000,
+      /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/ — de kan
+         ikke regnes af de elleve demo-aktiver skaermen har. aktiverDeltaPct er
+         procent, de tre andre er antal. Se KPI-efterslaebet i README. */
+      aktiverDeltaPct: 8, servicepunkterDelta: 3, aabneSagerDelta: 2,
+      planlagtVedligeholdDelta: -2,
+      /* Fordelingen af HELE aktivbasen paa art — donutten paa Facility.
+         Summen SKAL vaere `aktiver`; selvkontrollen i demo-facility.js
+         holder den. Kategorierne er vores egne fra AKTIV_ART, ikke
+         mockuppens "El & Tavler": et katalog vi ikke har, kan vi ikke
+         fordele paa. `oevrige` samler vaskehal og truckoplader. */
+      aktiverPrArt: {
+        ventilation: 76, port: 62, ladestander: 48, koeleanlaeg: 41,
+        alarm: 32, oevrige: 28,
+      },
     },
     indkoeb: {
       aabneOrdrer: 7, fakturaerTilGodkendelse: 3, indkoebsprisafvigelser: 2,

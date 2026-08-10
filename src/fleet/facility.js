@@ -215,3 +215,153 @@ export const FEJL_STATUS = {
  */
 export const ressourceTypeForFacility = (opgave) =>
   opgave?.aktivId ? RESSOURCE.facilityAktiv : RESSOURCE.lokation;
+
+/* ---- Lokationens tilstand --------------------------------------------- */
+
+/**
+ * lokationTilstand(lokationId, { aktiver, aabneFejl, par }) → { tone, tekst }
+ *
+ * ⚠ AFLEDT, ALDRIG GEMT. Et statusfelt på lokationen ville drive fra
+ * anlæggene under den i det sekund et af dem blev meldt i orden — og så stod
+ * der Kritisk på en hal hvor alt virkede, eller Normal på en hvor intet gjorde.
+ * Samme grund som alarmTilstand() ikke er et flag: se noten der.
+ *
+ * TRE TRIN, og rækkefølgen er meningsbærende:
+ *
+ *   Kritisk    en aktiv klimaalarm, en fejl af høj alvor, eller et anlæg
+ *              der er ude af drift. Alle tre betyder at noget IKKE virker nu.
+ *   Advarsel   en åben fejl af lavere alvor, eller et anlæg til service.
+ *              Noget kræver handling, men stedet fungerer.
+ *   Normal     ingen af delene.
+ *
+ * En klimaalarm er kritisk uanset alvorsgrad på fejlen: står et kølerum for
+ * varmt, er varen i fare, og det er ikke et spørgsmål om hvem der meldte det.
+ */
+export function lokationTilstand(lokationId, { aktiver = [], aabneFejl = [], par = [] } = {}) {
+  const mine = aktiver.filter((a) => a.lokationId === lokationId);
+  const mineIder = new Set(mine.map((a) => a.id));
+  const fejl = aabneFejl.filter((f) => mineIder.has(f.aktivId));
+
+  const alarm = par.some(
+    (p) => p.zone?.lokationId === lokationId && alarmTilstand(p.zone, p.maaling).alarm
+  );
+  const udeAfDrift = mine.some((a) => a.status === "udeAfDrift");
+  const hoejFejl = fejl.some((f) => f.alvor === "hoej");
+
+  if (alarm || udeAfDrift || hoejFejl) {
+    return { tone: "bad", tekst: "Kritisk",
+             grund: alarm ? "aktiv klimaalarm"
+                  : udeAfDrift ? "anlæg ude af drift"
+                  : "fejl af høj alvor" };
+  }
+  if (fejl.length || mine.some((a) => a.status === "fejl" || a.status === "service")) {
+    return { tone: "warn", tekst: "Advarsel",
+             grund: fejl.length ? `${fejl.length} åben${fejl.length === 1 ? "" : "e"} fejl`
+                                : "anlæg til service" };
+  }
+  return { tone: "ok", tekst: "Normal", grund: "ingen åbne fejl eller alarmer" };
+}
+
+/**
+ * driftsforhold(lokationId, { aktiver, aabneFejl, par }) → rækker til kortet
+ *
+ * Hver række er { ikon, label, vaerdi, tone, tekst } — ikonnavnet slås op i
+ * IKON i ui.jsx, som ART_IKON gør det i flaade.js. Logikken hører her, så
+ * Overblik og en fremtidig detaljeret driftsstatus ikke kan svare forskelligt
+ * på det samme spørgsmål.
+ *
+ * ⚠ MOCKUPPENS "78 % KAPACITET" PÅ VENTILATIONEN ER IKKE MED. Der findes
+ * ingen kapacitetsmåling — hverken i sensorer/ eller på aktivet — og et
+ * procenttal opfundet til lejligheden ville se ud som en måling. Rækken siger
+ * i stedet hvor mange ventilationsanlæg der kører, hvilket VI kan se.
+ */
+export function driftsforhold(lokationId, { aktiver = [], aabneFejl = [], par = [] } = {}) {
+  const mine = aktiver.filter((a) => a.lokationId === lokationId);
+  const mineZoner = par.filter((p) => p.zone?.lokationId === lokationId);
+
+  /* Temperaturen: den koldeste zone på stedet er den der har noget på spil.
+     Et kontor på 21 grader siger intet om et kølerum ved siden af. */
+  const medMaaling = mineZoner.filter((p) => p.maaling);
+  const koldest = medMaaling.length
+    ? medMaaling.reduce((a, b) => (b.maaling.tempC < a.maaling.tempC ? b : a))
+    : null;
+  const tempAlarm = koldest ? alarmTilstand(koldest.zone, koldest.maaling) : null;
+
+  const raekker = [];
+
+  raekker.push(koldest
+    ? { ikon: "termometer", label: koldest.zone.navn,
+        vaerdi: `${koldest.maaling.tempC.toFixed(1)} °C`,
+        tone: tempAlarm.tone, tekst: tempAlarm.tekst }
+    : { ikon: "termometer", label: "Temperatur", vaerdi: "Ingen sensor",
+        tone: "info", tekst: "Ikke målt" });
+
+  const gruppe = (art, ikon, label, ordEt, ordFlere) => {
+    const dem = mine.filter((a) => a.art === art);
+    if (!dem.length) return null;
+    const nede = dem.filter((a) => !AKTIV_STATUS[a.status]?.driftsklar);
+    return {
+      ikon, label,
+      vaerdi: nede.length
+        ? `${nede.length} af ${dem.length} ${dem.length === 1 ? ordEt : ordFlere} nede`
+        : `Alle ${dem.length} ${dem.length === 1 ? ordEt : ordFlere} OK`,
+      tone: nede.length ? "bad" : "ok",
+      tekst: nede.length ? "Kritisk" : "Normal",
+    };
+  };
+
+  const porte = gruppe("port", "port", "Porte", "port", "porte");
+  if (porte) raekker.push(porte);
+  const vent = gruppe("ventilation", "ventilator", "Ventilation", "anlæg", "anlæg");
+  if (vent) raekker.push(vent);
+
+  const alarmer = mineZoner.filter((p) => alarmTilstand(p.zone, p.maaling).alarm);
+  raekker.push({
+    ikon: "klokke", label: "Klimaalarmer",
+    vaerdi: alarmer.length
+      ? `${alarmer.length} aktiv${alarmer.length === 1 ? "" : "e"} alarm${alarmer.length === 1 ? "" : "er"}`
+      : "Ingen aktive",
+    tone: alarmer.length ? "bad" : "ok",
+    tekst: alarmer.length ? "Kritisk" : "Normal",
+  });
+
+  return raekker;
+}
+
+/* ---- Fordelingen af aktivbasen ---------------------------------------- */
+
+/**
+ * aktivFordeling(prArt, maks) → [{ id, label, antal }], størst først
+ *
+ * ⚠ HØJST `maks` SLICES, RESTEN FOLDES TIL "ØVRIGE". Seriepaletten har fem
+ * farver, og de fem er valgt fordi de kan skelnes fra hinanden — også af den
+ * der ikke ser rødt og grønt (beslutning 30). En sjette kategori ville
+ * genbruge farve nummer ét, og så betyder to slices i samme figur det samme
+ * uden at gøre det. Folder man i stedet, kan legenden sige hvad Øvrige er.
+ *
+ * Summen bevares: Øvrige er præcis resten, ikke et afrundet tal.
+ */
+export function aktivFordeling(prArt = {}, maks = 5) {
+  const poster = Object.entries(prArt)
+    .filter(([, n]) => n > 0)
+    .map(([id, antal]) => ({
+      id, antal,
+      label: id === "oevrige" ? "Øvrige" : AKTIV_ART[id]?.label || id,
+    }))
+    .sort((a, b) => b.antal - a.antal);
+
+  if (poster.length <= maks) return poster;
+
+  const beholdt = poster.slice(0, maks - 1);
+  const rest = poster.slice(maks - 1);
+  return [
+    ...beholdt,
+    {
+      id: "oevrige", label: "Øvrige",
+      antal: rest.reduce((s, p) => s + p.antal, 0),
+      /* Hvad der ligger i den. Legenden skal kunne sige det — ellers er
+         Øvrige bare et hul man ikke kan spørge ind til. */
+      dele: rest.map((p) => p.label),
+    },
+  ];
+}

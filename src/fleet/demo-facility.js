@@ -22,6 +22,7 @@
  * er derfor identisk under gods og bus.
  */
 import { DEMO_KPI } from "./demo-kpi.js";
+import { STED, erSted } from "./steder.js";
 import {
   AKTIV_ART, AKTIV_STATUS, ZONE_ART, LOKATION_TYPE, FEJL_STATUS,
   alarmTilstand, gennemsnitTemperatur, elVarmeOere, bygningsomkostningOere,
@@ -40,38 +41,82 @@ const dag = (n, time = 0) => D0 + n * DAG + time * T;
 
 /* ---- Lokationer -------------------------------------------------------- */
 
+/**
+ * `sted` binder lokationen til STED-kataloget i steder.js — samme fire steder
+ * som personalet er stationeret på og køretøjerne har hjemme.
+ *
+ * ⚠ ALLE FIRE STEDER HAR EN FACILITET, og det er ikke pynt. Køretøjerne fik
+ * `hjemsted` i Vejle og Odense; havde facility kun kendt Kolding og Aalborg,
+ * ville halvdelen af flåden stå på et sted der ikke fandtes i bygningsdata.
+ * Mockuppen skrev Greve, Taastrup og København — de findes stadig ikke.
+ *
+ * `arealM2` er kvadratmeter som integer. Ingen decimaler: et areal måles i
+ * hele meter i BBR, og et komma her ville antyde en præcision vi ikke har.
+ */
 export const DEMO_LOKATIONER = [
-  { id: "lok-kolding", navn: "Hovedkontor Kolding", type: "hovedkontor", adresse: "Vejlevej 112, 6000 Kolding" },
-  { id: "lok-halb",    navn: "Hal B, Kolding",      type: "lager",       adresse: "Vejlevej 112, 6000 Kolding" },
-  { id: "lok-aalborg", navn: "Depot 2, Aalborg",    type: "depot",       adresse: "Havnegade 44, 9000 Aalborg" },
+  { id: "lok-kolding", navn: "Hovedkontor Kolding", type: "hovedkontor", sted: STED.kolding,
+    arealM2: 2100,  adresse: "Vejlevej 112, 6000 Kolding" },
+  { id: "lok-halb",    navn: "Hal B, Kolding",      type: "lager",       sted: STED.kolding,
+    arealM2: 12450, adresse: "Vejlevej 112, 6000 Kolding" },
+  { id: "lok-aalborg", navn: "Depot 2, Aalborg",    type: "depot",       sted: STED.aalborg,
+    arealM2: 8200,  adresse: "Havnegade 44, 9000 Aalborg" },
+  { id: "lok-vejle",   navn: "Værksted Vejle",      type: "vaerksted",   sted: STED.vejle,
+    arealM2: 1350,  adresse: "Boulevarden 9, 7100 Vejle" },
+  { id: "lok-odense",  navn: "Kølehus Odense",      type: "lager",       sted: STED.odense,
+    arealM2: 1200,  adresse: "Havnegade 21, 5000 Odense" },
 ];
 
 /* ---- Aktiver ----------------------------------------------------------- */
 
 export const DEMO_AKTIVER = [
   { id: "fa-port1", navn: "Port 1", art: "port", lokationId: "lok-kolding", status: "idrift",
-    serviceIntervalDage: 180, naesteServiceMs: dag(24) },
+    serviceIntervalDage: 180, naesteServiceMs: dag(24),
+    ansvarligPersonId: "benjaminHolm" },
   /* Dashboard har "Porte – Port 3" med "Port lukker langsomt". Samme anlæg. */
   { id: "fa-port3", navn: "Port 3", art: "port", lokationId: "lok-halb", status: "fejl",
-    serviceIntervalDage: 180, naesteServiceMs: dag(3) },
+    serviceIntervalDage: 180, naesteServiceMs: dag(3),
+    ansvarligPersonId: "benjaminHolm" },
   { id: "fa-port5", navn: "Port 5", art: "port", lokationId: "lok-aalborg", status: "idrift",
-    serviceIntervalDage: 180, naesteServiceMs: dag(61) },
+    serviceIntervalDage: 180, naesteServiceMs: dag(61),
+    ansvarligPersonId: "nadiaKrarup" },
   { id: "fa-koel1", navn: "Køleanlæg 1", art: "koeleanlaeg", lokationId: "lok-halb", status: "idrift",
-    zoneId: "zo-koel1", serviceIntervalDage: 90, naesteServiceMs: dag(11) },
+    zoneId: "zo-koel1", serviceIntervalDage: 90, naesteServiceMs: dag(11),
+    ansvarligPersonId: "metteSoerensen" },
   { id: "fa-frost1", navn: "Fryseanlæg", art: "koeleanlaeg", lokationId: "lok-halb", status: "service",
-    zoneId: "zo-frost", serviceIntervalDage: 90, naesteServiceMs: dag(1) },
+    zoneId: "zo-frost", serviceIntervalDage: 90, naesteServiceMs: dag(1),
+    ansvarligPersonId: "metteSoerensen" },
   { id: "fa-koel2", navn: "Køleanlæg 2", art: "koeleanlaeg", lokationId: "lok-aalborg", status: "idrift",
-    zoneId: "zo-depot2", serviceIntervalDage: 90, naesteServiceMs: dag(38) },
+    zoneId: "zo-depot2", serviceIntervalDage: 90, naesteServiceMs: dag(38),
+    ansvarligPersonId: "nadiaKrarup" },
   { id: "fa-vent1", navn: "Ventilation, kontor", art: "ventilation", lokationId: "lok-kolding", status: "idrift",
-    zoneId: "zo-kontor", serviceIntervalDage: 365, naesteServiceMs: dag(92) },
+    zoneId: "zo-kontor", serviceIntervalDage: 365, naesteServiceMs: dag(92),
+    ansvarligPersonId: "emilBrandt" },
   { id: "fa-vask",  navn: "Vaskehal", art: "vaskehal", lokationId: "lok-kolding", status: "udeAfDrift",
-    serviceIntervalDage: 120, naesteServiceMs: dag(-6) },
+    serviceIntervalDage: 120, naesteServiceMs: dag(-6),
+    ansvarligPersonId: "ibSoerensen" },
   { id: "fa-lade1", navn: "Ladestander 1", art: "ladestander", lokationId: "lok-kolding", status: "idrift",
-    serviceIntervalDage: 365, naesteServiceMs: dag(140) },
+    serviceIntervalDage: 365, naesteServiceMs: dag(140),
+    ansvarligPersonId: "emilBrandt" },
   { id: "fa-lade2", navn: "Ladestander 2", art: "ladestander", lokationId: "lok-kolding", status: "fejl",
-    serviceIntervalDage: 365, naesteServiceMs: dag(140) },
+    serviceIntervalDage: 365, naesteServiceMs: dag(140),
+    ansvarligPersonId: "emilBrandt" },
   { id: "fa-alarm", navn: "Alarmanlæg", art: "alarm", lokationId: "lok-kolding", status: "idrift",
-    serviceIntervalDage: 365, naesteServiceMs: dag(210) },
+    serviceIntervalDage: 365, naesteServiceMs: dag(210),
+    ansvarligPersonId: "benjaminHolm" },
+  /* --- Vejle og Odense. Uden aktiver ville de to lokationer vaere tomme
+         raekker, og Driftsforhold-kortet kunne ikke sige noget om dem. --- */
+  { id: "fa-port7", navn: "Port 7", art: "port", lokationId: "lok-vejle", status: "idrift",
+    serviceIntervalDage: 180, naesteServiceMs: dag(47),
+    ansvarligPersonId: "janHolmgaard" },
+  { id: "fa-lade3", navn: "Ladestander 3", art: "ladestander", lokationId: "lok-vejle", status: "idrift",
+    serviceIntervalDage: 365, naesteServiceMs: dag(118),
+    ansvarligPersonId: "janHolmgaard" },
+  { id: "fa-koel3", navn: "Køleanlæg 3", art: "koeleanlaeg", lokationId: "lok-odense", status: "idrift",
+    zoneId: "zo-koelodense", serviceIntervalDage: 90, naesteServiceMs: dag(19),
+    ansvarligPersonId: "peterIversen" },
+  { id: "fa-vent2", navn: "Ventilation, kølehus", art: "ventilation", lokationId: "lok-odense", status: "idrift",
+    zoneId: "zo-koelodense", serviceIntervalDage: 365, naesteServiceMs: dag(74),
+    ansvarligPersonId: "peterIversen" },
 ];
 
 /* ---- Zoner: GRÆNSERNE -------------------------------------------------- */
@@ -82,6 +127,10 @@ export const DEMO_ZONER = [
   { id: "zo-halb",   navn: "Hal B",          art: "tempereret", lokationId: "lok-halb",    graenser: { minC: 5,   maksC: 25  } },
   { id: "zo-depot2", navn: "Depot 2",        art: "tempereret", lokationId: "lok-aalborg", graenser: { minC: 5,   maksC: 25  } },
   { id: "zo-kontor", navn: "Kontor Kolding", art: "tempereret", lokationId: "lok-kolding", graenser: { minC: 5,   maksC: 25  } },
+  /* ⚠ ART koel, IKKE tempereret. De tre tempererede zoner giver praecis
+     16,9 gr. i gennemsnit, og det tal er mockup-fejlen rekonstrueret og
+     pinnet i en proeve. En fjerde tempereret zone ville flytte det. */
+  { id: "zo-koelodense", navn: "Kølerum, Odense", art: "koel", lokationId: "lok-odense", graenser: { minC: 2, maksC: 6 } },
 ];
 
 /* ---- Sensorer: MÅLINGERNE ---------------------------------------------- */
@@ -106,6 +155,9 @@ export const DEMO_SENSORER = {
   "zo-halb":   { aktuel: { tempC: 18.4,  fugtPct: 51, ms: Date.now() - 5 * MIN } },
   "zo-depot2": { aktuel: { tempC: 17.1,  fugtPct: 54, ms: Date.now() - 6 * MIN } },
   "zo-kontor": { aktuel: { tempC: 15.2,  fugtPct: 43, ms: Date.now() - 2 * MIN } },
+  /* Inden for 2-6 gr.: ingen alarm. Der skal blive ved med at vaere
+     PRAECIS én aktiv klimaalarm — zo-koel1 paa 7,4 gr. */
+  "zo-koelodense": { aktuel: { tempC: 4.1, fugtPct: 79, ms: Date.now() - 7 * MIN } },
 };
 
 /** Zone + måling parret. DEN ENE kilde begge skærme læser. */
@@ -204,6 +256,15 @@ if (import.meta.env?.DEV) {
 
   for (const l of DEMO_LOKATIONER) {
     if (!LOKATION_TYPE[l.type]) console.warn(`demo-facility: ${l.id} har ukendt type "${l.type}".`);
+    /* ⚠ SAMME STEDKATALOG SOM PERSONALE OG FLAADE. Et opdigtet stednavn her
+       ville betyde at en bil med hjemsted i Vejle stod paa et sted
+       bygningsdata ikke kendte — og det opdages foerst naar nogen leder. */
+    if (!erSted(l.sted)) {
+      console.warn(`demo-facility: ${l.id} staar i "${l.sted}", som ikke er i STED.`);
+    }
+    if (!Number.isInteger(l.arealM2) || l.arealM2 <= 0) {
+      console.warn(`demo-facility: ${l.id} har arealM2 "${l.arealM2}" — skal vaere et helt positivt tal.`);
+    }
   }
 
   for (const a of DEMO_AKTIVER) {
@@ -310,6 +371,19 @@ if (import.meta.env?.DEV) {
   }
   for (const k of Object.keys(DEMO_BYGNINGSOMKOSTNING)) {
     if (!OMKOSTNINGSPOST[k]) console.warn(`demo-facility: ukendt omkostningspost "${k}".`);
+  }
+
+  /* Fordelingen paa art SKAL summe til totalen. Goer den ikke det, viser
+     donutten en anden aktivbase end nøgletallet over den — og det er
+     84-mod-83 i en cirkel. */
+  const prArt = DEMO_KPI.gods?.facility?.aktiverPrArt || {};
+  const artSum = Object.values(prArt).reduce((s, v) => s + v, 0);
+  if (artSum !== (DEMO_KPI.gods?.facility?.aktiver || 0)) {
+    console.warn(
+      `demo-facility: aktiverPrArt summer til ${artSum}, men kpi.facility.aktiver ` +
+      `siger ${DEMO_KPI.gods?.facility?.aktiver}. Donutten og noegletallet ville ` +
+      `beskrive hver sin aktivbase.`
+    );
   }
 
   /* Loft mod kpi/, som flåden og fraværet. Facility er fælles, så tallet står

@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 614 tests. Starter emulatoren.
+npm test                            # 651 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 ```
@@ -173,7 +173,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **614 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **651 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -476,6 +476,9 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `bemanding.fravaerIDag` | Fraværende i dag. Ferie & fravær har ingen KpiRække indtil da |
 | `flaade.ikkeLinkedeFakturaer` | Indkøb uden matchet faktura. **Ikke** det samme som `indkoeb.fakturaerTilGodkendelse` — to tilstande, to tal |
 | `facility.aabneFejl` | Fejlmeldinger der ikke er udbedret |
+| `facility.aktiverPrArt` | Hele aktivbasen fordelt på art. **Summen skal være `facility.aktiver`** — ellers beskriver donutten og nøgletallet over den hver sin base. Selvkontrollen i `demo-facility.js` og `test/facility-drift.test.mjs` holder den |
+| `facility.aktiverDeltaPct` | Ændring i aktivbasen mod forrige periode, i procent |
+| `facility.servicepunkterDelta`, `.aabneSagerDelta`, `.planlagtVedligeholdDelta` | Periodeafvigelser i antal. De **kræver historik** og kan derfor ikke regnes af de hentede rækker — modsat åbne fejl og nedetid på Flåde, som er afledte og bevidst holdes ude af `kpi/` |
 | `facility.klimaalarmerIDag` | Alarmer udløst i døgnet. Kræver historik — modsat *aktive* alarmer, som beregnes |
 | `facility.sensorerAktive` | Sensorer der leverer målinger |
 | `facility.eksterneLeverandoerer` | Leverandører med aftale |
