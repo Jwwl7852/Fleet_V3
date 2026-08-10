@@ -391,7 +391,9 @@ export default function FlaadeOversigt() {
               ) },
             { key: "hjemsted", label: "Lokation", render: (r) => (
                 r.hjemsted
-                  ? <span className="fc-med-ikon"><Ikon navn="stednaal" />{r.hjemsted}</span>
+                  ? <span className="fc-med-ikon fc-med-ikon-svag">
+                      <Ikon navn="stednaal" />{r.hjemsted}
+                    </span>
                   : <span className="fc-neutral">—</span>
               ) },
             /* En trailer har ingen kilometerstand. Streg frem for 0 — nul km

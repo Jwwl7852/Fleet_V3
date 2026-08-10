@@ -500,19 +500,19 @@ export function Sider({ side, antal, prSide, saet }) {
   const viste = [...numre].filter((n) => n >= 1 && n <= sider).sort((a, b) => a - b);
 
   return (
-    <nav className="fc-sider" aria-label="Sider">
-      <button type="button" className="fc-side-pil" disabled={side <= 1}
+    <nav className="fc-pager" aria-label="Sider">
+      <button type="button" className="fc-pag-pil" disabled={side <= 1}
               onClick={() => saet(side - 1)} aria-label="Forrige side">‹</button>
       {viste.map((n, i) => (
         <span key={n} style={{ display: "contents" }}>
-          {i > 0 && viste[i - 1] !== n - 1 && <span className="fc-side-hul">…</span>}
+          {i > 0 && viste[i - 1] !== n - 1 && <span className="fc-pag-hul">…</span>}
           <button type="button"
-                  className={`fc-side${n === side ? " fc-side-nu" : ""}`}
+                  className={`fc-pag${n === side ? " fc-pag-nu" : ""}`}
                   aria-current={n === side ? "page" : undefined}
                   onClick={() => saet(n)}>{n}</button>
         </span>
       ))}
-      <button type="button" className="fc-side-pil" disabled={side >= sider}
+      <button type="button" className="fc-pag-pil" disabled={side >= sider}
               onClick={() => saet(side + 1)} aria-label="Næste side">›</button>
     </nav>
   );

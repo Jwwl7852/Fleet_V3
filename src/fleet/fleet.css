@@ -551,26 +551,36 @@
 @media (prefers-reduced-motion:reduce){.fc-miljoe-fare b{animation:none}}
 
 /* ---- Paginering ------------------------------------------------------ */
-.fc-sider{display:flex; align-items:center; gap:4px; justify-content:flex-end}
-.fc-side,.fc-side-pil{min-width:30px; height:30px; padding:0 7px; border-radius:8px;
+/* ⚠ HEDDER fc-pag, IKKE fc-side. .fc-side ER SIDEBAREN, og en knapregel med
+   det navn gav den background:var(--bc-card) — hvid tekst på hvid bund, og
+   hele menuen forsvandt. Et klassenavn er en global variabel: tjek at det er
+   ledigt, før du tager det. test/css-navne.test.mjs fanger det nu. */
+.fc-pager{display:flex; align-items:center; gap:4px; justify-content:flex-end}
+.fc-pag,.fc-pag-pil{min-width:30px; height:30px; padding:0 7px; border-radius:8px;
   border:1px solid var(--bc-line); background:var(--bc-card); color:var(--bc-text);
   font:inherit; font-size:12.5px; cursor:pointer; font-variant-numeric:tabular-nums}
-.fc-side:hover,.fc-side-pil:hover:not(:disabled){border-color:var(--bc-accent)}
-.fc-side-nu{background:var(--bc-accent); border-color:var(--bc-accent); color:var(--bc-card);
+.fc-pag:hover,.fc-pag-pil:hover:not(:disabled){border-color:var(--bc-accent)}
+.fc-pag-nu{background:var(--bc-accent); border-color:var(--bc-accent); color:var(--bc-card);
   font-weight:650}
-.fc-side-pil:disabled{opacity:.4; cursor:default}
-.fc-side-hul{padding:0 2px; color:var(--bc-muted); font-size:12.5px}
+.fc-pag-pil:disabled{opacity:.4; cursor:default}
+.fc-pag-hul{padding:0 2px; color:var(--bc-muted); font-size:12.5px}
 
 /* ---- Filterlinje som eget kort --------------------------------------- */
-.fc-filtre{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:12px; align-items:end}
-.fc-filtre .fc-felt{margin-bottom:0}
-.fc-filtre-knapper{display:flex; gap:8px; align-items:end; justify-content:flex-end}
+/* ⚠ .fc-filtre FANDTES ALLEREDE og bruges af de andre skærmes filterrække.
+   Den blev her redefineret fra flex til grid — og så ændrede Flådes mockup
+   filterrækken på hver eneste anden skærm. Kun det NYE står her. */
+.fc-filtre-knapper{display:flex; gap:8px; align-items:end; justify-content:flex-end;
+  flex:1 0 auto}
 
 /* ---- Celler i floadetabellen ----------------------------------------- */
 /* Lokation og type: ikonet er en FORSTAERKNING, teksten baerer. */
-.fc-med-ikon{display:inline-flex; align-items:center; gap:6px; min-width:0}
-.fc-med-ikon svg{width:21px; height:21px; flex:0 0 21px; fill:currentColor; color:var(--bc-muted)}
+.fc-med-ikon{display:inline-flex; align-items:center; gap:7px; min-width:0}
+/* Typeikonet er ACCENTFARVET som i mockuppen, ikke gråt. Stednålen bliver
+   dæmpet: den siger hvor, ikke hvad, og to accenter i samme række gør begge
+   til baggrund. Farven er en forstærkning — teksten står ved siden af. */
+.fc-med-ikon svg{width:21px; height:21px; flex:0 0 21px; fill:currentColor;
+  color:var(--bc-accent)}
+.fc-med-ikon-svag svg{color:var(--bc-muted)}
 /* To linjer i servicecellen: datoen, og hvor langt der er til den i km. */
 .fc-tolinje{display:flex; flex-direction:column; gap:1px; line-height:1.3}
 .fc-tolinje span{font-size:11px; color:var(--bc-muted); font-variant-numeric:tabular-nums}
