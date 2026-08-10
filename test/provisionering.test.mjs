@@ -21,7 +21,7 @@ import assert from "node:assert/strict";
 import { ROLLE_PERMS, harPerm, PERM } from "../src/fleet/permissions.js";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
-  tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT,
+  tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT, vurderIgnorering, NOEGLEFIL,
 } from "../scripts/provisioner-dev.mjs";
 
 describe("Spærringen mod produktion", () => {
@@ -38,6 +38,35 @@ describe("Spærringen mod produktion", () => {
   it("afbryder på et ukendt projekt frem for at gætte", () => {
     assert.throws(() => tjekProjekt("et-eller-andet"), /ukendt projekt/);
     assert.throws(() => tjekProjekt(undefined), /ukendt projekt/);
+  });
+});
+
+describe("Nøglefilen skal være gitignoreret, før noget skrives", () => {
+  /* Nøglen giver fuld admin på DEV og går uden om alle regler. En committet
+     servicekontonøgle retter man ikke ved at slette filen bagefter — den
+     ligger i historikken. Derfor maskinelt frem for i README, samme valg som
+     produktionsspærringen. */
+  it("kører videre når git siger at filen er ignoreret", () => {
+    assert.equal(vurderIgnorering(0).ok, true);
+  });
+
+  it("afbryder når filen IKKE er ignoreret", () => {
+    const v = vurderIgnorering(1);
+    assert.equal(v.ok, false);
+    assert.match(v.besked, /IKKE dækket af \.gitignore/);
+  });
+
+  /* Uden for et git-repo kan vi ikke vide det, og en vagt der gætter,
+     blokerer det forkerte. Kør videre — men sig det højt. */
+  it("blokerer ikke når git ikke kan svare, men siger det", () => {
+    const v = vurderIgnorering(128);
+    assert.equal(v.ok, true);
+    assert.ok(v.advarsel, "en tavs usikkerhed ligner et bestået tjek");
+  });
+
+  /* Den vagt der er skrevet, skal passe til den fil der faktisk læses. */
+  it("tjekker den fil scriptet rent faktisk åbner", () => {
+    assert.equal(NOEGLEFIL, ".serviceaccount-dev.json");
   });
 });
 

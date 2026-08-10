@@ -21,6 +21,7 @@
  */
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -32,6 +33,8 @@ import { DEMO_FRAVAER, DEMO_FRAVAER_SENSITIVE } from "../src/fleet/demo-fravaer.
 /* ------------------------------------------------------------------ *
  * Spærringen
  * ------------------------------------------------------------------ */
+
+export const NOEGLEFIL = ".serviceaccount-dev.json";
 
 export const DEV_PROJEKT = "fleetcontrol-dev-1ac1c";
 export const PROD_PROJEKT = "fleetcontrol-98e11";
@@ -59,6 +62,41 @@ export function tjekProjekt(projektId) {
   throw new Error(
     `AFBRUDT: ukendt projekt "${projektId}". Scriptet kører kun mod ${DEV_PROJEKT}.`
   );
+}
+
+/**
+ * ⚠ NØGLEFILEN SKAL VÆRE GITIGNORERET, FØR SCRIPTET RØRER NOGET.
+ *
+ * Nøglen giver **fuld admin** på DEV-databasen — den går uden om alle regler
+ * i firebase.rules.json. En committet servicekontonøgle er ikke en fejl man
+ * retter ved at slette filen bagefter; den ligger i historikken.
+ *
+ * Filnavnet er ikke et almindeligt mønster, og Firebase døber selv den
+ * downloadede fil noget i retning af
+ * `fleetcontrol-dev-1ac1c-firebase-adminsdk-x7k2p-9f3a1b2c4d.json`. Den der
+ * lige har hentet den, omdøber den ikke først. Derfor tjekkes det maskinelt
+ * frem for at stå i README — samme valg som produktionsspærringen ovenfor.
+ *
+ * Ren funktion, så beslutningen kan prøves uden at kalde git.
+ *
+ * @param kode exit-koden fra `git check-ignore -q <fil>`
+ */
+export function vurderIgnorering(kode) {
+  if (kode === 0) return { ok: true };
+  if (kode === 1) {
+    return {
+      ok: false,
+      besked:
+        "AFBRUDT: .serviceaccount-dev.json er IKKE dækket af .gitignore.\n" +
+        "Nøglen giver fuld admin på DEV-databasen og går uden om alle regler.\n" +
+        "Committes den, ligger den i historikken — det retter man ikke ved at\n" +
+        "slette filen bagefter.\n" +
+        "Tilføj den til .gitignore, og kør igen.",
+    };
+  }
+  /* 128 = ikke et git-repo, eller git findes ikke. Vi ved det ikke, og en
+     vagt der gætter, blokerer det forkerte. Kør videre, men sig det. */
+  return { ok: true, advarsel: "kunne ikke spørge git, om nøglefilen er ignoreret" };
 }
 
 /* ------------------------------------------------------------------ *
@@ -130,7 +168,7 @@ function laesFraEnvLocal(navn) {
 
 function laesNoegle() {
   try {
-    return JSON.parse(readFileSync(".serviceaccount-dev.json", "utf8"));
+    return JSON.parse(readFileSync(NOEGLEFIL, "utf8"));
   } catch (e) {
     if (e.code === "ENOENT") {
       throw new Error(
@@ -145,6 +183,14 @@ function laesNoegle() {
 }
 
 async function main() {
+  /* Rækkefølgen er ikke tilfældig: begge spærringer skal have svaret, før
+     der oprettes en bruger eller skrives en byte. */
+  const ignorering = vurderIgnorering(
+    spawnSync("git", ["check-ignore", "-q", NOEGLEFIL], { stdio: "ignore" }).status ?? 128
+  );
+  if (!ignorering.ok) throw new Error(ignorering.besked);
+  if (ignorering.advarsel) console.warn(`  ! ${ignorering.advarsel}\n`);
+
   const noegle = laesNoegle();
   tjekProjekt(noegle.project_id);
   const kode = laesKode();

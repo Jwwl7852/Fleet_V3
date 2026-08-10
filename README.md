@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 583 tests. Starter emulatoren.
+npm test                            # 587 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 ```
 
@@ -50,8 +50,10 @@ med rigtige custom claims, og seeder demo-datasættene ind under de noder
 skærmene læser. Uden det afviser hver eneste regel alt: `_findes` er en
 forudsætning i hver `.read`, og en indlogget bruger ville se "afvist" overalt.
 
-⚠ **Scriptet nægter at køre mod andet end DEV.** Peger nøglen på produktion,
-afbryder det. Der er ikke noget `--force` — se beslutning 27.
+⚠ **To spærringer, begge mekaniske.** Scriptet afbryder hvis nøglen peger på
+produktion, og hvis nøglefilen ikke er dækket af `.gitignore` — nøglen giver
+fuld admin og går uden om alle regler, og en committet nøgle ligger i
+historikken bagefter. Der er ikke noget `--force`. Se beslutning 27.
 
 Rollerne afprøves ved at **skifte session**, ikke ved at skifte en dropdown:
 claims kommer fra tokenet, og en klient kan ikke ændre sit eget token
@@ -168,7 +170,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **583 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **587 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

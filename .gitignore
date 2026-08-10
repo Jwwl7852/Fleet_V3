@@ -2,7 +2,13 @@ node_modules
 dist
 .env
 .env.local
+# Servicekontonoegler. Fuld admin paa databasen — de maa ALDRIG committes.
+# Bredt, fordi Firebase selv doeber den downloadede fil noget i retning af
+# fleetcontrol-dev-1ac1c-firebase-adminsdk-x7k2p-9f3a1b2c4d.json, og den der
+# lige har hentet den, omdoeber den ikke foerst.
 .serviceaccount-*.json
+*serviceaccount*.json
+*firebase-adminsdk*.json
 .firebase
 *.log
 .DS_Store
