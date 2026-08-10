@@ -19,7 +19,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { ROLLE_PERMS, harPerm, PERM } from "../src/fleet/permissions.js";
-import { DEV_BRUGERE, DEV_TENANT, claimsFor } from "../src/fleet/dev-brugere.js";
+import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
   tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT,
 } from "../scripts/provisioner-dev.mjs";
@@ -60,6 +60,42 @@ describe("De seedede brugere svarer til presetsene", () => {
      at en glemt-kode-mail fra DEV landede hos et menneske. */
   it("bruger et domæne der ikke kan modtage post", () => {
     for (const b of DEV_BRUGERE) assert.match(b.email, /\.invalid$/);
+  });
+});
+
+describe("Ejerkontoen er en almindelig konto, ikke en bagdør", () => {
+  /* ⚠ AT EJE PRODUKTET ER IKKE ET CLAIM. Kontoen får admin fordi scriptet
+     giver den det — ad nøjagtig samme vej som de seks — ikke fordi adressen
+     er speciel. En adgang der kommer et andet sted fra end alle andres, er
+     den der bliver glemt når rettighederne skal gennemgås. */
+  it("får sine claims gennem claimsFor, som alle andre", () => {
+    const e = ejerkonto("ejer@eksempel.dk");
+    assert.equal(e.rolle, "admin");
+    assert.deepEqual(claimsFor(e.rolle), claimsFor("admin"),
+      "ejerens claim må ikke kunne afvige fra admin-presettet");
+  });
+
+  it("er fraværende når der ikke er sat en adresse", () => {
+    for (const tom of [undefined, null, "", "   "]) {
+      assert.equal(ejerkonto(tom), null, "uden adresse skal der ikke oprettes noget");
+    }
+  });
+
+  /* Tavs frasortering ville betyde at man leder efter en konto der aldrig
+     blev forsøgt oprettet — og så leder man i Firebase-konsollen i stedet
+     for i sin .env.local. */
+  it("fejler på en tastefejl frem for at springe kontoen over", () => {
+    assert.throws(() => ejerkonto("ikke-en-mail"), /e-mailadresse/);
+    assert.throws(() => ejerkonto("mangler@punktum"), /e-mailadresse/);
+  });
+
+  it("står ikke i repoets egen brugerliste", () => {
+    const e = ejerkonto("ejer@eksempel.dk");
+    assert.equal(
+      DEV_BRUGERE.some((b) => b.email === e.email), false,
+      "en navngiven persons adresse hører i .env.local, ikke i repoet — den " +
+      "næste der kloner, skal ikke arve den"
+    );
   });
 });
 

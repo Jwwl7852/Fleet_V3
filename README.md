@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 579 tests. Starter emulatoren.
+npm test                            # 583 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 ```
 
@@ -45,6 +45,7 @@ npm run provisioner:dev
 ```
 
 Scriptet sætter `tenants/demo/_findes`, opretter **seks brugere — én pr. rolle**
+(plus din egen, hvis `VITE_DEV_EJER_MAIL` er sat)
 med rigtige custom claims, og seeder demo-datasættene ind under de noder
 skærmene læser. Uden det afviser hver eneste regel alt: `_findes` er en
 forudsætning i hver `.read`, og en indlogget bruger ville se "afvist" overalt.
@@ -167,7 +168,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **579 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **583 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

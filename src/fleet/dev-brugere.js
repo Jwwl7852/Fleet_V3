@@ -46,6 +46,34 @@ export const DEV_BRUGERE = Object.keys(ROLLE_PERMS).map((rolle) => ({
 }));
 
 /**
+ * Din egen konto i DEV, hvis du vil logge ind som dig selv frem for som
+ * `admin@dev.fleetcontrol.invalid`.
+ *
+ * ⚠ ADRESSEN STÅR IKKE I REPOET. Den kommer fra VITE_DEV_EJER_MAIL i
+ * .env.local, fordi en navngiven persons mailadresse ikke er en del af
+ * produktet. Den næste der kloner, skal ikke arve din.
+ *
+ * ⚠ AT EJE PRODUKTET ER IKKE ET CLAIM. Kontoen får `admin` i DEV-tenanten,
+ * fordi scriptet giver den det — ikke fordi adressen er speciel. Præcis samme
+ * vej som de seks andre, og præcis samme vej som en rigtig kunde skal have
+ * sin. Der er ingen bagdør, og der skal ikke laves en: en adgang der
+ * kommer et andet sted fra end alle andres, er den der bliver glemt, når
+ * rettighederne skal gennemgås.
+ *
+ * @returns {{email, rolle, navn}|null}
+ */
+export function ejerkonto(mail) {
+  const m = (mail || "").trim();
+  if (!m) return null;
+  /* Tavs frasortering ville betyde at man leder efter en konto der aldrig
+     blev forsøgt oprettet. Hellere fejle på en tastefejl. */
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) {
+    throw new Error(`VITE_DEV_EJER_MAIL ("${m}") ser ikke ud som en e-mailadresse.`);
+  }
+  return { email: m, rolle: "admin", navn: m.split("@")[0] };
+}
+
+/**
  * Claims for en seedet DEV-bruger.
  *
  * `perms` udledes ALTID af presettet — den skrives ikke i hånden. Ellers

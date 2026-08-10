@@ -21,7 +21,7 @@
  */
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { DEV_BRUGERE, DEV_TENANT, claimsFor } from "../src/fleet/dev-brugere.js";
+import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
@@ -168,8 +168,12 @@ async function main() {
   await db.ref(`tenants/${DEV_TENANT}/_findes`).set(true);
   console.log("  _findes            sat");
 
-  /* 2. Brugere og claims. */
-  for (const b of DEV_BRUGERE) {
+  /* 2. Brugere og claims. Ejerkontoen — hvis der er sat en — provisioneres
+     ad NØJAGTIG samme vej som de seks. Ingen bagdør: en adgang der kommer et
+     andet sted fra end alle andres, er den der bliver glemt når rettighederne
+     skal gennemgås. */
+  const ejer = ejerkonto(process.env.VITE_DEV_EJER_MAIL || laesFraEnvLocal("VITE_DEV_EJER_MAIL"));
+  for (const b of ejer ? [...DEV_BRUGERE, ejer] : DEV_BRUGERE) {
     let bruger;
     try {
       bruger = await auth.getUserByEmail(b.email);

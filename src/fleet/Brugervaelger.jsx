@@ -19,11 +19,17 @@
  */
 import { useState } from "react";
 import { auth } from "../firebase.js";
-import { DEV_BRUGERE } from "./dev-brugere.js";
+import { DEV_BRUGERE, ejerkonto } from "./dev-brugere.js";
 
 /* Alle seks konti deler én kode. Den står i .env.local, som er gitignored —
    e-mailadresser er ikke hemmeligheder, en adgangskode er. */
 const KODE = import.meta.env?.VITE_DEV_BRUGER_KODE || "";
+
+/* Ejerkontoen staar foerst, hvis der er sat en. Den er en almindelig konto med
+   admin-claims — se ejerkonto() — ikke en genvej uden om noget. */
+let EJER = null;
+try { EJER = ejerkonto(import.meta.env?.VITE_DEV_EJER_MAIL); } catch { EJER = null; }
+const KONTI = EJER ? [EJER, ...DEV_BRUGERE] : DEV_BRUGERE;
 
 export default function Brugervaelger({ email }) {
   const [skifter, setSkifter] = useState(false);
@@ -67,11 +73,11 @@ export default function Brugervaelger({ email }) {
               onChange={(e) => skift(e.target.value)}>
         {/* Er man logget ind som noget uden for listen — fx en rigtig konto —
             skal den stå der, ellers ser det ud som om man er en anden. */}
-        {!DEV_BRUGERE.some((b) => b.email === email) && (
+        {!KONTI.some((b) => b.email === email) && (
           <option value={email || ""}>{email || "—"}</option>
         )}
-        {DEV_BRUGERE.map((b) => (
-          <option key={b.email} value={b.email}>{b.rolle}</option>
+        {KONTI.map((b) => (
+          <option key={b.email} value={b.email}>{b === EJER ? `${b.rolle} (dig)` : b.rolle}</option>
         ))}
       </select>
       <span>
