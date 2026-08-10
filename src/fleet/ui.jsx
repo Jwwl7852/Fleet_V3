@@ -14,6 +14,7 @@ import { deviation } from "./format.js";
    (fill-rule evenodd), så de viser feltets tone igennem frem for at være
    malet i en farve der skulle kende sit felt. */
 export const IKON = {
+  maerkat: "M12.6 2H21a1 1 0 0 1 1 1v8.4a2 2 0 0 1-.6 1.4l-8.6 8.6a2 2 0 0 1-2.8 0l-8-8a2 2 0 0 1 0-2.8l8.6-8.6A2 2 0 0 1 12.6 2zm5.1 3.1a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z",
   udraab: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1.1 4.6v7.4h2.2V6.6zm0 9.1v2.3h2.2v-2.3z",
   termometer: "M12 1.8a2.8 2.8 0 0 1 2.8 2.8v8.7a5 5 0 1 1-5.6 0V4.6A2.8 2.8 0 0 1 12 1.8z",
   port: "M2 9.4 12 3l10 6.4V22h-3.2V10.4H5.2V22H2zM7 12.2h10v2.1H7zm0 3.7h10V18H7zm0 3.7h10V22H7z",

@@ -86,6 +86,11 @@ export const DEMO_KPI = {
     kunder: {
       aktive: 51, aftalerUdloeber: 7, tilbud: 12, tilbudKraeverOpfoelgning: 5,
       daekningsbidragOere: 31184000,
+      /* Periodeafvigelser — de kraever historik og kan ikke regnes af de
+         hentede kunder. aktiveDeltaPct er procent; daekningsbidragDeltaPct
+         ogsaa. ⚠ Bland dem ikke med daekningsgradAfvigelsen, som er
+         PROCENTPOINT mod maalet og staar under oekonomi. */
+      aktiveDeltaPct: 8, daekningsbidragDeltaPct: 36,
     },
     oekonomi: {
       driftsomkostningerOere: 84261500, budgetOere: 77005500,
@@ -163,6 +168,8 @@ export const DEMO_KPI = {
     kunder: {
       aktive: 17, aftalerUdloeber: 3, tilbud: 6, tilbudKraeverOpfoelgning: 2,
       daekningsbidragOere: 11460000,
+      /* Samme to felter som under gods — se noten der. */
+      aktiveDeltaPct: -3, daekningsbidragDeltaPct: 11,
     },
     /* Dækningsgrad UNDER mål her, over mål på gods. Samme kort, modsat farve
        — betterWhen:'higher' afgør det, ikke fortegnet. */

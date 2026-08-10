@@ -11,6 +11,8 @@
  * test/demo-kilder.test.mjs. Fire gange er ikke et tilfaelde.
  */
 
+import { DEMO_KPI } from "./demo-kpi.js";
+
 const NU = Date.now();
 const D = 86400000;
 /* Demo-datasæt til useListe(). Bruges når der ikke er en database, og som
@@ -112,3 +114,86 @@ export const DEMO_KUNDER = [
     aftalestatus: "udloeber", ansvarlig: "Peter Lund",
     aftaltOere: 3180000, faktureretOere: 3402000, afvigelsesAarsag: "Ekstra afgange i højsæson" },
 ];
+
+/* ---- Tilbud ------------------------------------------------------------ */
+
+/**
+ * FEMTE GANG MØNSTRET DUKKER OP. Tilbuddene lå som `const TILBUD` inde i
+ * moduler/Kunder.jsx — samme fejl som kundelisten selv, og den overlevede
+ * kun fordi den ikke hed DEMO_ og derfor gled forbi linten i
+ * test/demo-kilder.test.mjs. Et navn er ikke en beskyttelse.
+ *
+ * ⚠ ET TILBUD ER IKKE EN BOOKING. Der findes ingen `tilbud`-node i
+ * ARKITEKTUR: `tilbud` er ikke en bookingtilstand, og et tilbud kan gå til et
+ * EMNE der ikke er kunde endnu. Nodeformen skal besluttes, før forespørgslen
+ * kan skrives — indtil da ligger de her, i den form de skal have.
+ *
+ * `kundeId` er null på et emne. Det er ikke en manglende oplysning; det er
+ * hele grunden til at tilbud ikke bare er et felt på kunden.
+ *
+ * DIVISION STÅR EKSPLICIT. Et tilbud er en transaktion og hører til én
+ * afdeling — aldrig "faelles", modsat kunden det går til.
+ */
+export const TILBUD_STATUS = {
+  ny:          { label: "Ny",          tone: "info", kraeverOpfoelgning: false },
+  opfoelgning: { label: "Opfølgning",  tone: "warn", kraeverOpfoelgning: true  },
+  afventerSvar:{ label: "Afventer svar", tone: "warn", kraeverOpfoelgning: true },
+};
+
+export const DEMO_TILBUD = [
+  { id: "tb-001", kunde: "Djursland Transport ApS", kundeId: null, division: "gods",
+    beloebOere: 8450000, sendtMs: NU - 18 * D, gyldigTilMs: NU + 4 * D, status: "opfoelgning" },
+  { id: "tb-002", kunde: "Skagen Seafood ApS", kundeId: "skagenSeafood", division: "gods",
+    beloebOere: 5620000, sendtMs: NU - 15 * D, gyldigTilMs: NU + 11 * D, status: "afventerSvar" },
+  { id: "tb-003", kunde: "Randers Papir A/S", kundeId: null, division: "gods",
+    beloebOere: 3980000, sendtMs: NU - 11 * D, gyldigTilMs: NU + 19 * D, status: "ny" },
+  { id: "tb-004", kunde: "Hamburg Handel GmbH", kundeId: null, division: "gods",
+    beloebOere: 12400000, sendtMs: NU - 9 * D, gyldigTilMs: NU + 2 * D, status: "opfoelgning" },
+  { id: "tb-005", kunde: "Esbjerg Offshore A/S", kundeId: null, division: "gods",
+    beloebOere: 7150000, sendtMs: NU - 6 * D, gyldigTilMs: NU + 24 * D, status: "ny" },
+  { id: "tb-006", kunde: "Vejle Turistfart ApS", kundeId: null, division: "bus",
+    beloebOere: 2980000, sendtMs: NU - 16 * D, gyldigTilMs: NU + 6 * D, status: "opfoelgning" },
+  { id: "tb-007", kunde: "Odense Skoleforvaltning", kundeId: null, division: "bus",
+    beloebOere: 5410000, sendtMs: NU - 10 * D, gyldigTilMs: NU + 15 * D, status: "afventerSvar" },
+];
+
+/* ---- Selvkontrol ------------------------------------------------------- */
+
+if (import.meta.env?.DEV) {
+  const kundeIder = new Set(DEMO_KUNDER.map((k) => k.id));
+
+  for (const t of DEMO_TILBUD) {
+    if (!TILBUD_STATUS[t.status]) {
+      console.warn(`demo-kunder: ${t.id} har ukendt status "${t.status}".`);
+    }
+    /* Et tilbud til en EKSISTERENDE kunde skal pege på en der findes. Er
+       kundeId null, er det et emne — og det er lovligt. */
+    if (t.kundeId && !kundeIder.has(t.kundeId)) {
+      console.warn(`demo-kunder: ${t.id} peger på kundeId "${t.kundeId}", som ikke findes.`);
+    }
+    if (t.division === "faelles") {
+      console.warn(`demo-kunder: ${t.id} har division "faelles". Et tilbud er en transaktion og hører til én afdeling.`);
+    }
+    if (!(t.gyldigTilMs > t.sendtMs)) {
+      console.warn(`demo-kunder: ${t.id} er gyldig til før den blev sendt.`);
+    }
+  }
+
+  /* Loft mod kpi/: et udsnit kan ikke være større end totalen. */
+  for (const div of ["gods", "bus"]) {
+    const mine = DEMO_TILBUD.filter((t) => t.division === div);
+    const loft = DEMO_KPI[div]?.kunder?.tilbud || 0;
+    if (mine.length > loft) {
+      console.warn(
+        `demo-kunder: ${mine.length} tilbud i ${div}, men kpi.${div}.kunder.tilbud siger ${loft}.`
+      );
+    }
+    const kraever = mine.filter((t) => TILBUD_STATUS[t.status]?.kraeverOpfoelgning).length;
+    const kraeverLoft = DEMO_KPI[div]?.kunder?.tilbudKraeverOpfoelgning || 0;
+    if (kraever > kraeverLoft) {
+      console.warn(
+        `demo-kunder: ${kraever} tilbud kræver opfølgning i ${div}, men kpi/ siger ${kraeverLoft}.`
+      );
+    }
+  }
+}

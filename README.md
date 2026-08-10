@@ -484,6 +484,7 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.eksterneLeverandoerer` | Leverandører med aftale |
 | `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
+| `kunder.aktiveDeltaPct`, `.daekningsbidragDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke det samme som dækningsgradens afvigelse mod **målet**, som er procentpoint og står under `oekonomi` — samme ord, to regnestykker, og de kan pege hver sin vej |
 | `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
 | `indkoeb.aabneOrdrerDeltaPct`, `.fakturaerTilGodkendelseDeltaPct` | Periodeafvigelser i **procent** |
 | `indkoeb.prisafvigelserDelta` | Nye prisafvigelser i **antal** |
