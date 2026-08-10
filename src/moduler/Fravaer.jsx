@@ -54,6 +54,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../fleet/useListe.js";
+import { usePost } from "../fleet/usePost.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { dato, num } from "../fleet/format.js";
 import { harPerm, PERM } from "../fleet/permissions.js";
@@ -81,6 +82,9 @@ export default function Fravaer() {
   const [soeg, setSoeg] = useState("");
   const [funktion, setFunktion] = useState("");
   const [visAlle, setVisAlle] = useState(false);
+  /* Hvilken post brugeren har bedt om at se årsagen på. Nulstilles ikke ved
+     valg af en anden post — sammenligningen med valgtId gør det for os. */
+  const [visAarsagFor, setVisAarsagFor] = useState(null);
 
   const maaSeAarsag = harPerm(bruger?.perms, PERM.fravaerSensitiveLaes);
   const maaSkrive = harPerm(bruger?.perms, PERM.fravaerSkriv);
@@ -117,6 +121,31 @@ export default function Fravaer() {
     demo: DEMO_PERSONALE,
   });
 
+  /* ⚠ DET EKSTRA OPSLAG. Årsagen hentes fra sensitive/fravaer/<id> — én post,
+     ikke hele noden. Læste vi den med useListe, hentede vi alle personers
+     årsager for at vise én, og så var beslutning 17's opdeling meningsløs.
+
+     ⚠ LÆSNINGEN GATES IKKE PÅ maaSeAarsag, OG DET ER MED VILJE.
+     Serveren er autoriteten. Spurgte vi kun når frontend mente vi måtte,
+     kunne afvisningen aldrig ses — og så var beslutning 26's besked død kode.
+     En klients perm-streng kan desuden være forældet: får man en permission,
+     skal man ikke vente på en tokenfornyelse for at kunne prøve.
+
+     ⚠ MEN KUN PÅ KLIK. Læste vi ved hver markering, ville fem ud af seks
+     roller skrive en adgangNaegtet i auditloggen bare ved at bladre — og en
+     sikkerhedslog fuld af ikke-hændelser er værre end ingen. Klikker nogen
+     derimod på "Vis årsag" og bliver afvist, ER det en hændelse.
+
+     Kaldet bruger valgtId (state) og ikke det udledte valgt, så hooket står
+     før skærmens tidlige return. Hooks må ikke kaldes betinget. */
+  const aarsagId = visAarsagFor && visAarsagFor === valgtId ? valgtId : null;
+  const {
+    post: valgtFoelsom, henter: henterAarsag, tilstand: aarsagTilstand,
+  } = usePost("sensitive/fravaer", aarsagId, {
+    demo: DEMO_FRAVAER_SENSITIVE,
+    auditerSom: "fravaerSensitive",
+  });
+
   if (henter || henterPersonale) return <Henter hvad="fravær" />;
 
   /* Navnet slås op i personale — fraværet gemmer et personId og ikke et navn.
@@ -134,10 +163,8 @@ export default function Fravaer() {
 
   const valgt = viste.find((f) => f.id === valgtId) || null;
   const valgtPerson = valgt ? personEfterId.get(valgt.personId) : null;
-  /* Den følsomme del ville være ét EKSTRA opslag mod sensitive/fravaer/<id> —
-     ikke en del af listen. Her er det demo-data, men opslaget sker først når
-     en post er valgt, præcis som det skal i drift. */
-  const valgtFoelsom = valgt && maaSeAarsag ? DEMO_FRAVAER_SENSITIVE[valgt.id] : null;
+  /* valgtFoelsom kommer nu fra usePost ovenfor — ét ægte opslag mod
+     sensitive/fravaer/<id>, ikke en lokal opslagstabel. */
 
   /* Hvad reservationen VILLE blive. Bygges, skrives ikke. */
   let reservation = null;
@@ -290,7 +317,7 @@ export default function Fravaer() {
               </Kort>
 
               <Kort titel="Årsag">
-                {maaSeAarsag && valgtFoelsom ? (
+                {valgtFoelsom ? (
                   <>
                     <MiniLinje
                       label="Art"
@@ -310,6 +337,11 @@ export default function Fravaer() {
                   </>
                 ) : (
                   <>
+                    {/* Afvist af reglerne. Beskeden kommer fra <Datatilstand> og
+                        siger at det var en AFVISNING — ikke en netværksfejl — og
+                        der følger ingen årsag med. Beslutning 26. */}
+                    <Datatilstand tilstand={aarsagTilstand} />
+
                     <p className="fc-hint">
                       🔒 Årsagen ligger i <b>sensitive/fravaer/{valgt.id}</b> og kræver{" "}
                       <b>fravaer.sensitiveLaes</b>, som kun admin har i presettet — hverken
@@ -317,6 +349,18 @@ export default function Fravaer() {
                       general-noden med <b>.validate: false</b>, så den kan ikke ende her
                       ved et uheld.
                     </p>
+
+                    {/* ⚠ KNAPPEN VISES TIL ALLE, OGSÅ UDEN fravaer.sensitiveLaes.
+                        Skjulte vi den, ville frontend afgøre adgangen, og
+                        serverens afvisning ville aldrig kunne ses. Det er hele
+                        forskellen på adgangskontrol og en pæn knap. */}
+                    <Knap
+                      onClick={() => setVisAarsagFor(valgt.id)}
+                      disabled={henterAarsag || aarsagId === valgt.id}
+                    >
+                      {henterAarsag ? "Henter…" : "Vis årsag"}
+                    </Knap>
+
                     <p className="fc-hint" style={{ marginTop: 8 }}>
                       Disponeringen har brug for at vide <b>at</b> medarbejderen er
                       utilgængelig — ikke hvorfor. Det er nok til at planlægge efter.
