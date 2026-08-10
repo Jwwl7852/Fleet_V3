@@ -31,21 +31,30 @@ const STATUSFORDELING = (k) => [
   { navn: "Udført", antal: k.opgaver.udfoert },
 ];
 
-/* Stregikoner, 24×24, samme streg som sidebarens ICO i AppShell.
-   Tegnene "!", "▲", "kr" var pladsholdere — mockuppen har rigtige ikoner. */
+/* ⚠ MASSIVE IKONER, IKKE STREGTEGNEDE. Mockuppens glyffer er fyldte —
+   sidebarens ICO i AppShell er konturer, og de to skal ikke forveksles: her
+   sidder ikonet på en farvet flade og skal have vægt, dér står det på mørk
+   bund ved siden af tekst og skal være let.
+   Detaljerne — linjer i dokumentet, hjulnav, urets visere — er HULLER
+   (fill-rule evenodd), så de viser feltets tone igennem frem for at være
+   malet i en farve der skulle kende sit felt. */
 const IKON = {
-  dokument: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
-  lastbil: "M3 16V7h11v9M14 10h4l3 3v3h-7M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4m11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
-  ur: "M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18",
-  seddel: "M2 6h20v12H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 9h.01M18 15h.01",
-  skruenoegle: "M14.7 6.3a4 4 0 0 1 5 5l-9.4 9.4a2 2 0 0 1-2.8-2.8l9.4-9.4M14.7 6.3 11 2.6a4 4 0 0 0-5 5l3.7 3.7",
-  personer: "M16 20v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M21 20v-2a3 3 0 0 0-2-2.8",
-  bygning: "M4 21V5l8-3v19M12 21h8V9l-8-3M7 9h1m-1 4h1m-1 4h1",
-  vogn: "M3 4h2l2.5 11h10L21 7H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2m8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2",
+  dokument: "M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.8V8h4.2L14 3.8zM8 12.4h8v1.7H8zm0 3.6h5.4v1.7H8z",
+  lastbil: "M2 6h12v9.2H2zm13 3h3.6l2.6 3.1v3.1H15zM6.8 20.4a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8zm11.4 1.7a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z",
+  ur: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4.4h-2v6.7l4.7 2.8 1-1.7-3.7-2.2z",
+  seddel: "M2 5h20v14H2zm10 10.4a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8zM5 7.6h2.2v1.7H5zm11.8 7.1H19v1.7h-2.2z",
+  skruenoegle: "M15.4 2a6 6 0 0 0-5.6 8.1l-7 7a2.6 2.6 0 0 0 3.7 3.7l7-7A6 6 0 0 0 21.4 8l-3.2 3.2-2.5-.7-.7-2.5L18.2 4.8A6 6 0 0 0 15.4 2z",
+  personer: "M9.2 11.4a4.1 4.1 0 1 1 0-8.2 4.1 4.1 0 0 1 0 8.2zm0 1.5c3.1 0 6.2 1.6 6.2 4.1V20H3v-3c0-2.5 3.1-4.1 6.2-4.1zm8.3-1.2a3.3 3.3 0 1 1 0-6.6 3.3 3.3 0 0 1 0 6.6zm-.6 2c2.4 0 4.1 1.3 4.1 3.3V20h-4v-3c0-1.2-.5-2.2-1.3-3 .4-.2.8-.3 1.2-.3z",
+  bygning: "M4 21.5V4.2L12.4 2v19.5H4zm3-13h2.4v2.2H7zm0 4.2h2.4v2.2H7zm0 4.2h2.4v2.2H7zM13.8 21.5V7.4l6.6 2.1v12H13.8zm2-9.4h2.4v2.2h-2.4zm0 4.2h2.4v2.2h-2.4z",
+  vogn: "M1.6 2.6h3.6l.7 2.6h16.5l-2.6 9.2H7.7l.2.9h12v2.1H6.2L3.5 4.7H1.6zM9.4 21.4a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6zm8.4 0a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z",
 };
 
-const Ikon = ({ navn }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d={IKON[navn]} /></svg>
+/* farve er valgfri og peger paa et token — korttitlernes ikoner er farvede i
+   mockuppen, ikke daempede. Uden farve arver ikonet .fc-card-h svg. */
+const Ikon = ({ navn, farve }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" style={farve ? { color: farve } : undefined}>
+    <path d={IKON[navn]} fillRule="evenodd" />
+  </svg>
 );
 
 /* ⚠ TONERNE HER ER IKONACCENTER, IKKE STATUS- ELLER SERIEFARVER.
@@ -161,7 +170,7 @@ export default function Dashboard() {
           />
         </Kort>
 
-        <Kort titel={<><Ikon navn="personer" /> Bemanding i dag</>}
+        <Kort titel={<><Ikon navn="personer" farve="var(--fc-ikon-5)" /> Bemanding i dag</>}
               handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
           <MiniLinje label="Chauffører disponeret"
                      vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`} />
@@ -178,7 +187,7 @@ export default function Dashboard() {
           <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} />
         </Kort>
 
-        <Kort titel={<><Ikon navn="vogn" /> Indkøb</>}
+        <Kort titel={<><Ikon navn="vogn" farve="var(--fc-ikon-2)" /> Indkøb</>}
               handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
           <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
           <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />

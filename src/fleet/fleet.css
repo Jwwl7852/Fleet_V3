@@ -118,9 +118,8 @@
 /* Korttitler med ikon (Bemanding, Facility, Indkøb). Ikonet er dæmpet —
    titlen skal læses, ikke ikonet. */
 .fc-card-h>span{display:inline-flex; align-items:center; gap:8px; min-width:0}
-.fc-card-h svg{width:16px; height:16px; flex:0 0 16px; stroke:currentColor;
-  fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;
-  color:var(--bc-muted)}
+.fc-card-h svg{width:17px; height:17px; flex:0 0 17px; fill:currentColor;
+  stroke:none; color:var(--bc-muted)}
 .fc-card-b{padding:15px 17px}
 .fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
 .fc-kpi-l{color:var(--bc-muted); font-size:12.5px; font-weight:500}
@@ -175,8 +174,8 @@
 .fc-scroll{overflow-x:auto}
 .fc-kpi{display:flex; gap:12px; padding:16px 17px; align-items:flex-start}
 .fc-kpi-txt{min-width:0}
-.fc-kpi-ico{width:38px; height:38px; border-radius:10px; display:grid; place-items:center;
-  flex:0 0 38px; font-size:15px; font-weight:700}
+.fc-kpi-ico{width:40px; height:40px; border-radius:11px; display:grid; place-items:center;
+  flex:0 0 40px; font-size:15px; font-weight:700}
 .fc-tone-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-tone-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-tone-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
@@ -190,9 +189,11 @@
 .fc-tone-ikon-3{background:var(--fc-ikon-3-bg); color:var(--fc-ikon-3)}
 .fc-tone-ikon-4{background:var(--fc-ikon-4-bg); color:var(--fc-ikon-4)}
 .fc-tone-ikon-5{background:var(--fc-ikon-5-bg); color:var(--fc-ikon-5)}
-/* Stregikoner i de runde felter — samme streg som sidebarens. */
-.fc-kpi-ico svg{width:19px; height:19px; stroke:currentColor; fill:none;
-  stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
+/* MASSIVE ikoner i handlingsfelterne — ikke streg. Detaljerne er huller i
+   selve pathen, saa de viser feltets tone igennem. Feltet er 40px og glyffen
+   23px: mockuppens ikon fylder feltet, og et 19px ikon i et 38px felt saa
+   sylespidst ud ved siden af tallet. */
+.fc-kpi-ico svg{width:23px; height:23px; fill:currentColor; stroke:none}
 
 .fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
 .fc-empty p{margin:0 auto 12px; max-width:48ch}
