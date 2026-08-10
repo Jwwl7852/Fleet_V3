@@ -457,3 +457,35 @@ export function forbrugKmPrLiter(tankninger = []) {
   const liter = perioder.reduce((s, p) => s + p.liter, 0);
   return km / liter;
 }
+
+/* ---- Åbne fejl pr. køretøj -------------------------------------------- */
+
+/**
+ * aabneFejlFor(indberetninger, koeretoejId) → antal
+ *
+ * ⚠ AFLEDT, OG DET SKAL DEN BLIVE. Tallet hører ikke i kpi/: det er udregnet
+ * af data forbrugeren allerede har, og et gemt afledt tal driver fra sit
+ * grundlag. Undtagelsen i CLAUDE.md gælder præcis den her slags.
+ *
+ * TO AFGRÆNSNINGER, og begge er meningsbærende:
+ *
+ *  1. `braendstof` er ikke en fejl. En tankning er en registrering, og talte
+ *     den med, ville den bil der kører mest også være den med flest "fejl".
+ *  2. `godsskade` er ikke en fejl PÅ BILEN — HAENDELSE_ART siger det selv med
+ *     paaKoeretoej: false. Skaden sad på godset; bilen fejler ingenting.
+ *
+ * Alt der ikke er `afsluttet`, er åbent. `afventerFaktura` tæller med: bilen
+ * kører igen, men sagen er ikke lukket, og en huskeliste der glemmer den er
+ * ikke en huskeliste.
+ */
+export function aabneFejlFor(indberetninger = [], koeretoejId) {
+  let n = 0;
+  for (const i of indberetninger) {
+    if (!i || i.koeretoejId !== koeretoejId) continue;
+    if (i.forloeb === "afsluttet") continue;
+    const art = HAENDELSE_ART[i.art];
+    if (!art?.paaKoeretoej || i.art === "braendstof") continue;
+    n++;
+  }
+  return n;
+}

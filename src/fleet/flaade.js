@@ -374,3 +374,71 @@ export function kraevedeKompetencer(enheder = [], gods = {}) {
   if (gods.farligt) krav.add(KOMPETENCE.adr);
   return [...krav].sort();
 }
+
+/* ---- Nedetid ---------------------------------------------------------- */
+
+/**
+ * nedetidMs(besoeg, koeretoejId, fraMs, tilMs) → millisekunder i vinduet
+ *
+ * ⚠ NEDETID ER AFLEDT, IKKE ET FELT. Der stod ingen `nedetidDage` på bilen, og
+ * det skal der heller ikke: et gemt afledt tal driver fra sit grundlag, og det
+ * er præcis fejlen i `bemanding.ledig`. Værkstedsbesøget ER grundlaget — det
+ * har `fra` og `til` — så tallet regnes hos den der viser det.
+ *
+ * KUN FAKTISK NEDETID TÆLLER. Et `planlagt` besøg er ikke nedetid endnu; bilen
+ * kører stadig. Tælles det med, står en bil med to dages nedetid i næste uge,
+ * og så ser en beslutning om at udskifte den bedre begrundet ud end den er.
+ *
+ * Vinduet klippes: et besøg der starter før fraMs eller slutter efter tilMs,
+ * tæller kun den del der ligger i perioden. Halvåbent [fra, til) som alt andet
+ * — ellers tæller et besøg der slutter kl. 16 og et der starter kl. 16 samme
+ * millisekund to gange.
+ */
+export function nedetidMs(besoeg = [], koeretoejId, fraMs, tilMs) {
+  if (!(fraMs < tilMs)) return 0;
+  let sum = 0;
+  for (const b of besoeg) {
+    if (!b || b.koeretoejId !== koeretoejId) continue;
+    /* Et besøg uden tider er ikke et besøg af nul længde — det er et besøg vi
+       ikke kender længden på. Se vb-005, der får sine tider fra en sag. */
+    if (b.fra == null || b.til == null) continue;
+    if (b.status !== "igang" && b.status !== "udfoert") continue;
+    const start = Math.max(b.fra, fraMs);
+    const slut = Math.min(b.til, tilMs);
+    if (slut > start) sum += slut - start;
+  }
+  return sum;
+}
+
+/** Nedetiden i dage med én decimal — det format tabellen viser. */
+export const nedetidDage = (besoeg, koeretoejId, fraMs, tilMs) =>
+  nedetidMs(besoeg, koeretoejId, fraMs, tilMs) / 86400000;
+
+/* ---- Ikoner ----------------------------------------------------------- */
+
+/**
+ * Ikon pr. art. Ligger HER ved siden af ENHEDSART, ikke i den skærm der først
+ * fik brug for det — samme begrundelse som FUNKTION_IKON i personale.js.
+ * Flåde, Værkstedskalender og Disponering viser alle en art, og tre skærme med
+ * hvert sit ikonsæt driver uden at nogen ser det.
+ *
+ * Navnene slås op i IKON i ui.jsx.
+ *
+ * `truck` er en gaffeltruck og har ingen egen glyf — den låner `kasse`, fordi
+ * det den gør, er at flytte gods. Hellere et ikon der er lidt for generelt end
+ * et der ligner en lastbil: to arter med samme billede er værre end ét
+ * upræcist.
+ */
+export const ART_IKON = {
+  traekker: "lastbil",
+  lastbil: "lastbil",
+  varevogn: "varevogn",
+  bus: "bus",
+  minibus: "bus",
+  scooter: "scooter",
+  truck: "kasse",
+  trailer: "trailer",
+  paahaeng: "trailer",
+};
+
+export const ikonForArt = (art) => ART_IKON[art] || "vogn";

@@ -29,6 +29,7 @@
  * fastholder at den bliver ved med at være mindre end totalen; skærmen skriver
  * "af N hentede" frem for at lade to tal modsige hinanden.
  */
+import { STED } from "./steder.js";
 import { ALLE_ARTER, ENHEDSART, KOERETOEJ_STATUS, harFelt, FELT } from "./flaade.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 
@@ -44,6 +45,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-012", kaldenavn: "Bil 12", navn: "Volvo FH 500",
     registrering: "DE 12 345", art: "traekker", status: "aktiv",
+    hjemsted: STED.kolding, naesteServiceKm: 414500,
     laengdeMm: 6200, driftPrKmOere: 310,
     /* En trækker bærer næsten intet — lasten ligger på traileren. Nul er den
        rigtige værdi, ikke et manglende tal. Se samletKapacitet(). */
@@ -54,6 +56,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-078", kaldenavn: "Bil 78", navn: "Scania R 450",
     registrering: "DE 78 901", art: "traekker", status: "aktiv",
+    hjemsted: STED.aalborg, naesteServiceKm: 272000,
     laengdeMm: 6050, driftPrKmOere: 305,
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 268400, naesteServiceMs: NU + 51 * D, synMs: NU + 96 * D,
@@ -62,6 +65,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-034", kaldenavn: "Bil 34", navn: "MAN TGX 18.480",
     registrering: "DE 34 567", art: "traekker", status: "aktiv",
+    hjemsted: STED.kolding, naesteServiceKm: 533150,
     laengdeMm: 6150, driftPrKmOere: 318,
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 531900, naesteServiceMs: NU + 9 * D, synMs: NU + 61 * D,
@@ -71,6 +75,7 @@ export const DEMO_KOERETOEJER = [
     /* Solgt. Posten bliver stående — se noten om sletning nederst. */
     id: "kt-077", kaldenavn: "Bil 77", navn: "MAN TGA 18.440",
     registrering: "DE 77 111", art: "traekker", status: "solgt",
+    hjemsted: STED.kolding,
     laengdeMm: 6100, driftPrKmOere: 355,
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 918200, naesteServiceMs: NU - 210 * D, synMs: NU - 180 * D,
@@ -84,6 +89,7 @@ export const DEMO_KOERETOEJER = [
        ÉT registreringsnummer, og det er dette. */
     id: "kt-104", kaldenavn: "Bil 104", navn: "Mercedes Actros 1845",
     registrering: "DE 45 678", art: "lastbil", status: "aktiv",
+    hjemsted: STED.vejle, naesteServiceKm: 299700,
     laengdeMm: 10500, driftPrKmOere: 342,
     kapacitet: { m3: 48, kg: 12000 },
     kmStand: 298450, naesteServiceMs: NU + 9 * D, synMs: NU + 118 * D,
@@ -92,6 +98,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-106", kaldenavn: "Lastbil 106", navn: "DAF XF 480",
     registrering: "DE 90 123", art: "lastbil", status: "vaerksted",
+    hjemsted: STED.kolding, naesteServiceKm: 380200,
     laengdeMm: 10350, driftPrKmOere: 338,
     kapacitet: { m3: 46, kg: 11800 },
     kmStand: 377100, naesteServiceMs: NU + 4 * D, synMs: NU + 73 * D,
@@ -100,6 +107,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-155", kaldenavn: "Bil 155", navn: "Iveco S-Way 460",
     registrering: "DE 56 789", art: "lastbil", status: "aktiv",
+    hjemsted: STED.odense, naesteServiceKm: 186900,
     laengdeMm: 10420, driftPrKmOere: 349,
     kapacitet: { m3: 47, kg: 11500 },
     kmStand: 184600, naesteServiceMs: NU + 26 * D, synMs: NU + 205 * D,
@@ -112,6 +120,7 @@ export const DEMO_KOERETOEJER = [
        det man disponerer efter — passagerantallet er. Se ART_FELTER. */
     id: "kt-b12", kaldenavn: "Bus 12", navn: "Volvo 9700 turistbus",
     registrering: "DE 22 111", art: "bus", status: "aktiv",
+    hjemsted: STED.vejle, naesteServiceKm: 415400,
     laengdeMm: 13100, driftPrKmOere: 268,
     saeder: 53,
     kmStand: 412300, naesteServiceMs: NU + 17 * D, synMs: NU + 88 * D,
@@ -120,6 +129,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-b16", kaldenavn: "Bus 16", navn: "Setra S 516 HDH",
     registrering: "DE 33 222", art: "bus", status: "aktiv",
+    hjemsted: STED.odense, naesteServiceKm: 229100,
     laengdeMm: 13200, driftPrKmOere: 274,
     saeder: 57,
     kmStand: 226800, naesteServiceMs: NU + 44 * D, synMs: NU + 152 * D,
@@ -131,6 +141,7 @@ export const DEMO_KOERETOEJER = [
        dem, bliver enten kørekortkravet eller taksten forkert. */
     id: "kt-m03", kaldenavn: "Minibus 3", navn: "Mercedes Sprinter 519",
     registrering: "DE 44 555", art: "minibus", status: "aktiv",
+    hjemsted: STED.odense, naesteServiceKm: 98750,
     laengdeMm: 7390, driftPrKmOere: 212,
     saeder: 16,
     kmStand: 96200, naesteServiceMs: NU + 63 * D, synMs: NU + 41 * D,
@@ -141,6 +152,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-v21", kaldenavn: "Varevogn 21", navn: "VW Crafter 35",
     registrering: "DE 66 777", art: "varevogn", status: "aktiv",
+    hjemsted: STED.kolding, naesteServiceKm: 76400,
     laengdeMm: 5986, driftPrKmOere: 178,
     kapacitet: { m3: 14, kg: 1400 },
     kmStand: 74300, naesteServiceMs: NU + 35 * D, synMs: NU + 12 * D,
@@ -149,6 +161,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-s01", kaldenavn: "Scooter 1", navn: "Piaggio Liberty 125",
     registrering: "DE 99 001", art: "scooter", status: "udeAfDrift",
+    hjemsted: STED.aalborg, naesteServiceKm: 8400,
     laengdeMm: 1885, driftPrKmOere: 42,
     kmStand: 8400, naesteServiceMs: NU - 12 * D,
     securityLevel: "normal",
@@ -158,6 +171,7 @@ export const DEMO_KOERETOEJER = [
        internt nummer — feltet findes, kravet om en nummerplade gør ikke. */
     id: "kt-t02", kaldenavn: "Truck 2", navn: "Linde H30 D",
     registrering: "INT-T02", art: "truck", status: "aktiv",
+    hjemsted: STED.kolding, naesteServiceKm: 4600,
     laengdeMm: 2510, driftPrKmOere: 118,
     kapacitet: { m3: 0, kg: 3000 },
     kmStand: 4120, naesteServiceMs: NU + 20 * D,
@@ -171,6 +185,7 @@ export const DEMO_KOERETOEJER = [
        trækkeren. Kan reserveres alene, men ikke disponeres alene. */
     id: "kt-tr41", kaldenavn: "Trailer 41", navn: "Krone SDP 27 gardintrailer",
     registrering: "DE 41 100", art: "trailer", status: "aktiv",
+    hjemsted: STED.kolding,
     laengdeMm: 13620, driftPrKmOere: 88,
     kapacitet: { m3: 92, kg: 24000 },
     naesteServiceMs: NU + 30 * D, synMs: NU + 55 * D,
@@ -179,6 +194,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-tr42", kaldenavn: "Trailer 42", navn: "Schmitz S.KO køletrailer",
     registrering: "DE 42 200", art: "trailer", status: "vaerksted",
+    hjemsted: STED.aalborg,
     laengdeMm: 13600, driftPrKmOere: 132,
     kapacitet: { m3: 86, kg: 22000 },
     naesteServiceMs: NU + 6 * D, synMs: NU + 33 * D,
@@ -187,6 +203,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-ph07", kaldenavn: "Påhæng 7", navn: "Kel-Berg 3-akslet kærre",
     registrering: "DE 70 300", art: "paahaeng", status: "skrottet",
+    hjemsted: STED.vejle,
     laengdeMm: 9450, driftPrKmOere: 64,
     kapacitet: { m3: 38, kg: 9000 },
     naesteServiceMs: NU - 320 * D, synMs: NU - 290 * D,

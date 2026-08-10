@@ -14,6 +14,10 @@ import { deviation } from "./format.js";
    (fill-rule evenodd), så de viser feltets tone igennem frem for at være
    malet i en farve der skulle kende sit felt. */
 export const IKON = {
+  varevogn: "M2 6h11.5v9.2H2zm12.5 0h3.2L21.8 11v4.2h-7.3zM6.6 20.2a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zm0-1.7a.8.8 0 1 0 0-1.6.8.8 0 0 0 0 1.6zm11.2 1.7a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zm0-1.7a.8.8 0 1 0 0-1.6.8.8 0 0 0 0 1.6z",
+  trailer: "M2 8h1.6L5 6.2h14.4a1.8 1.8 0 0 1 1.8 1.8v7.6H2zM7 20.8a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8zm9.8 1.7a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z",
+  scooter: "M5.4 20.6a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8zm0-2a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8zm13.2 2a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8zm0-2a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8zM13 3.4h4.4l1.8 10.2h-2.1l-1.4-8.2H13zM4.6 12.4 8.4 7h4.8l1 5.4h-3.5l-.4-2.2H9.6l-1.7 2.2z",
+  stednaal: "M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4.4A2.6 2.6 0 1 0 12 11.6 2.6 2.6 0 0 0 12 6.4z",
   bus: "M4 2h16a2 2 0 0 1 2 2v12.5h-2.2v1.9a1.8 1.8 0 0 1-3.6 0v-1.9H7.8v1.9a1.8 1.8 0 0 1-3.6 0v-1.9H2V4a2 2 0 0 1 2-2zm.4 3.2v5.6h15.2V5.2zM6.2 15.4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm11.6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
   skjold: "M12 1.8 21 5.4v6.2c0 5-3.8 9.2-9 10.6-5.2-1.4-9-5.6-9-10.6V5.4zm-1.3 13.4 6.2-6.2-1.6-1.6-4.6 4.6-2.3-2.3-1.6 1.6z",
   kalender: "M7 1.6h2.2v2.2H7zm7.8 0H17v2.2h-2.2zM3.4 3.8h2.4v2.2a1.2 1.2 0 0 0 2.4 0V3.8h7.6v2.2a1.2 1.2 0 0 0 2.4 0V3.8h2.4a1.4 1.4 0 0 1 1.4 1.4v3.2H2V5.2a1.4 1.4 0 0 1 1.4-1.4zM2 10.6h20v9a1.4 1.4 0 0 1-1.4 1.4H3.4A1.4 1.4 0 0 1 2 19.6zm3.4 2.6v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2z",
@@ -470,5 +474,46 @@ export function Soejlegraf({ punkter = [], serier = [], maal, format = (v) => v,
         {punkter.map((p) => <span key={p.label}>{p.label}</span>)}
       </div>
     </div>
+  );
+}
+
+/**
+ * Sider — klientsidig paginering af en liste der ALLEREDE er hentet.
+ *
+ * ⚠ DEN HENTER IKKE MERE. useListe har et loft (graense), og når det er
+ * ramt, siger skærmen "afkortet" og beder om en snævrere søgning. En pager
+ * der lod som om den kunne blade videre i basen, ville vise side 8 af en
+ * liste hvor side 3 var det sidste vi havde — og RTDB har ingen offset at
+ * blade med. Den her deler kun det hentede op, så tabellen ikke bliver
+ * halvanden skærm lang.
+ *
+ * `antal` er postantallet, ikke sideantallet. Siderne regnes her, så to
+ * forbrugere ikke kan runde forskelligt.
+ */
+export function Sider({ side, antal, prSide, saet }) {
+  const sider = Math.max(1, Math.ceil(antal / prSide));
+  if (sider <= 1) return null;
+
+  /* Højst syv knapper: første, sidste, og et vindue om den aktuelle. Ellers
+     vokser rækken med listen, og det var netop det pagineringen skulle løse. */
+  const numre = new Set([1, sider, side, side - 1, side + 1]);
+  const viste = [...numre].filter((n) => n >= 1 && n <= sider).sort((a, b) => a - b);
+
+  return (
+    <nav className="fc-sider" aria-label="Sider">
+      <button type="button" className="fc-side-pil" disabled={side <= 1}
+              onClick={() => saet(side - 1)} aria-label="Forrige side">‹</button>
+      {viste.map((n, i) => (
+        <span key={n} style={{ display: "contents" }}>
+          {i > 0 && viste[i - 1] !== n - 1 && <span className="fc-side-hul">…</span>}
+          <button type="button"
+                  className={`fc-side${n === side ? " fc-side-nu" : ""}`}
+                  aria-current={n === side ? "page" : undefined}
+                  onClick={() => saet(n)}>{n}</button>
+        </span>
+      ))}
+      <button type="button" className="fc-side-pil" disabled={side >= sider}
+              onClick={() => saet(side + 1)} aria-label="Næste side">›</button>
+    </nav>
   );
 }
