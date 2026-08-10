@@ -1,38 +1,80 @@
 #!/bin/sh
 # FleetControl 3.0 — pre-commit
 #
-# Kører sikkerhedsreglernes testsuite, men KUN når firebase.rules.json er i
-# det stagede diff. Almindelige commits mærker ingenting; prisen betales af
-# dem der ændrer regler.
+# To kontroller, hver med sin egen betingelse. Ingen af dem kører på hver
+# commit: prisen betales af dem der rører det pågældende.
+#
+#   firebase.rules.json ændret  →  npm run test:rules
+#   src/ ændret                 →  npm run test:design
+#
+# Betingelserne skal passe til det testen LÆSER. En farvetest der kun kørte
+# når regelfilen var i diffet, ville aldrig fyre — farver ændres ikke i
+# firebase.rules.json. Så ville man have en test der beskriver tilstanden,
+# men ikke håndhæver den.
 #
 # Aktiveres én gang pr. klon:
 #   git config core.hooksPath .githooks
 #
-# Hvorfor den findes: reglerne var ugyldige fra fundamentet og kunne slet
-# ikke indlæses. Det overlevede gennemlæsning og flere redigeringer, og blev
-# først fundet da de blev kørt. Se "Låst rækkefølge" i README.
+# Hvorfor rules-delen findes: reglerne var ugyldige fra fundamentet og kunne
+# slet ikke indlæses. Det overlevede gennemlæsning og flere redigeringer, og
+# blev først fundet da de blev kørt. Se "Låst rækkefølge" i README.
 
-if ! git diff --cached --name-only | grep -q '^firebase\.rules\.json$'; then
-  exit 0
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+FEJL=0
+
+# ---- Designtokens ---------------------------------------------------
+# Kører også når testen selv er ændret: snapshottet i den ER beslutningen,
+# og en ændring der kun rører testfilen, skal stadig kunne fejle.
+if printf '%s\n' "$STAGED" | grep -qE '^(src/|test/design-tokens\.test\.mjs$)'; then
+  echo "src/ eller designtesten er ændret — kører npm run test:design …"
+
+  if npm run --silent test:design; then
+    echo "Designtestene er grønne."
+  else
+    FEJL=1
+    cat <<'SLUT'
+
+  Designtesten fejlede.
+
+  Enten står der en farve uden for src/fleet/fleet.css, eller også er
+  tokenblokken ændret. Er ændringen bevidst, så ret BESLUTNINGER.md FØRST
+  og derefter snapshottet i test/design-tokens.test.mjs — i den rækkefølge.
+  Retter du kun snapshottet, har du flyttet en beslutning ind i en testfil,
+  hvor ingen leder efter den.
+
+SLUT
+  fi
 fi
 
-echo "firebase.rules.json er ændret — kører npm run test:rules …"
+# ---- Sikkerhedsregler -----------------------------------------------
+if printf '%s\n' "$STAGED" | grep -qE '^firebase\.rules\.json$'; then
+  echo "firebase.rules.json er ændret — kører npm run test:rules …"
 
-if npm run --silent test:rules; then
-  echo "Regeltesten er grøn. Fortsætter."
-  exit 0
-fi
+  if npm run --silent test:rules; then
+    echo "Regeltesten er grøn."
+  else
+    FEJL=1
+    cat <<'SLUT'
 
-cat <<'SLUT'
-
-  Regeltesten fejlede. Commit afbrudt.
+  Regeltesten fejlede.
 
   Ret reglerne, og kør `npm run test:rules` indtil den er grøn.
   Er fejlen i testen og ikke i reglerne, så ret testen — men lad være med
   at svække den for at komme videre.
 
+SLUT
+  fi
+fi
+
+if [ "$FEJL" -ne 0 ]; then
+  cat <<'SLUT'
+  Commit afbrudt.
+
   Skal du absolut igennem: git commit --no-verify
   Gør det kun hvis du ved præcis hvorfor.
 
 SLUT
-exit 1
+  exit 1
+fi
+
+exit 0

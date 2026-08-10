@@ -21,9 +21,10 @@ gør.
 ```bash
 npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
-git config core.hooksPath .githooks # kører regeltesten før commits der rører reglerne
+git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 542 tests. Starter emulatoren.
+npm test                            # 547 tests. Starter emulatoren.
+npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -142,7 +143,9 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **479 tests** er obligatoriske før commit via `.githooks/pre-commit`.
+skærme, og **547 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
+ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 
 ### Skærmene: 27 af 30 har indhold

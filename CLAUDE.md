@@ -40,7 +40,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - Overskrive en sats. Ny post med `gyldigFra`.
 - Skrive en reservation direkte. Brug `reservations.js`.
 - Skifte bookingtilstand uden `kanSkifte()`.
-- Definere egne farver. Brug tokens i `fleet.css`.
+- **Definere egne farver.** Brug tokens i `fleet.css`. Det er ikke længere en
+  konvention: `npm run test:design` fejler på en farveværdi hvor som helst i
+  `src/` uden for tokenfilen, og hooken kører den ved enhver ændring i `src/`.
+  Et token er desuden en **beslutning** — accenten er nr. 10. Skal en værdi
+  ændres, eller et token tilføjes, rettes `BESLUTNINGER.md` **først** og
+  derefter snapshottet i `test/design-tokens.test.mjs`. Retter du kun
+  snapshottet, har du flyttet beslutningen ind i en testfil hvor ingen leder
+  efter den.
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
