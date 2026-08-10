@@ -32,7 +32,7 @@ import {
 import Stopkort from "../../fleet/Stopkort.jsx";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import {
-  DEMO_OPGAVER, opgaveKunde, opgavePerson, opgaveEnhed,
+  DEMO_OPGAVER, opgavePerson, opgaveEnhed,
 } from "../../fleet/demo-opgaver.js";
 import { TILSTAND, forloebstilstand, tilgaengeligeHandlinger } from "../../fleet/booking-state.js";
 import { DEMO_BOOKINGER, TRANSPORTTYPE, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
@@ -45,7 +45,7 @@ export default function BookingOversigt() {
   const { bruger, division } = useFleet();
   const [visAlle, setVisAlle] = useState(false);
   const [fane, setFane] = useState("opgaver");
-  const [kundeFilter, setKundeFilter] = useState("");
+  const [enhedFilter, setEnhedFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
   if (henter) return <Henter hvad="nøgletal" />;
@@ -86,14 +86,16 @@ export default function BookingOversigt() {
   /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
      og den står allerede i topbaren. */
   const opgaver = opgaverIDivision
-    .filter((o) => !kundeFilter || o.kundeId === kundeFilter)
+    .filter((o) => !enhedFilter || o.koeretoejId === enhedFilter)
     .filter((o) => !statusFilter || o.status === statusFilter)
     .sort((a, b) => a.startMs - b.startMs);
 
-  /* Kunder der FAKTISK har en opgave i den valgte division — ikke hele
-     kartoteket. Et filter med tomme valg lærer brugeren at filtre ikke virker. */
-  const kundevalg = [...new Set(opgaverIDivision.map((o) => o.kundeId).filter(Boolean))]
-    .map((id) => ({ id, navn: opgaveKunde(id) }))
+  /* Enheder der FAKTISK har en opgave i den valgte division — ikke hele
+     flåden. Et filter med tomme valg lærer brugeren at filtre ikke virker.
+     Filteret er på ENHED og ikke på kunde: en opgave hænger på et køretøj,
+     fordi værkstedet servicerer egen flåde. */
+  const enhedsvalg = [...new Set(opgaverIDivision.map((o) => o.koeretoejId).filter(Boolean))]
+    .map((id) => ({ id, navn: opgaveEnhed(id) }))
     .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
 
   /* Dagens plan udledes af opgaverne — det er ikke et nyt datasæt. */
@@ -122,10 +124,13 @@ export default function BookingOversigt() {
       under: "Kan først færdiggøres ved levering", til: "/indkoeb" },
     { id: "tid", ikon: "dokument", tone: "ikon-3", antal: k.opgaver.udenTidsregistrering,
       tekst: `${k.opgaver.udenTidsregistrering} uden tidsregistrering`,
-      under: "Registrér faktisk tid for korrekt fakturering", til: "/booking" },
+      under: "Uden den er omkostningen stadig et estimat", til: "/booking" },
     { id: "faktura", ikon: "seddel", tone: "ikon-4", antal: k.opgaver.klarTilFakturering,
-      tekst: `${k.opgaver.klarTilFakturering} ikke-fakturerede opgaver`,
-      under: "Klar til fakturering", til: "/oekonomi/fakturering" },
+      /* ⚠ FORLØB, ikke opgaver. klarTilFakturering tæller afsluttede
+         BOOKINGER — se Økonomi, hvor rækkerne er BKG-numre. Opgaver
+         faktureres ikke; de er egen flådes omkostning. */
+      tekst: `${k.opgaver.klarTilFakturering} forløb klar til fakturering`,
+      under: "Afsluttede bookinger uden grundlag", til: "/oekonomi/fakturering" },
   ];
 
   return (
@@ -165,10 +170,10 @@ export default function BookingOversigt() {
       <Kort>
         <div className="fc-filtre">
           <div className="fc-felt">
-            <label htmlFor="bo-kunde">Kunde</label>
-            <select id="bo-kunde" value={kundeFilter} onChange={(e) => setKundeFilter(e.target.value)}>
-              <option value="">Alle kunder</option>
-              {kundevalg.map((k2) => <option key={k2.id} value={k2.id}>{k2.navn}</option>)}
+            <label htmlFor="bo-enhed">Enhed</label>
+            <select id="bo-enhed" value={enhedFilter} onChange={(e) => setEnhedFilter(e.target.value)}>
+              <option value="">Alle enheder</option>
+              {enhedsvalg.map((e2) => <option key={e2.id} value={e2.id}>{e2.navn}</option>)}
             </select>
           </div>
           <div className="fc-felt">
@@ -180,7 +185,7 @@ export default function BookingOversigt() {
               ))}
             </select>
           </div>
-          <Knap onClick={() => { setKundeFilter(""); setStatusFilter(""); }}>Nulstil</Knap>
+          <Knap onClick={() => { setEnhedFilter(""); setStatusFilter(""); }}>Nulstil</Knap>
           <p className="fc-hint" style={{ margin: 0, flex: 1, minWidth: 200 }}>
             Periode og afdeling vælges i topbaren — de gælder hele platformen.
           </p>
@@ -215,8 +220,6 @@ export default function BookingOversigt() {
             kolonner={[
               { key: "startMs", label: "Dato",
                 render: (o) => `${dato(o.startMs)} ${klokke(o.startMs)}` },
-              { key: "kundeId", label: "Kunde",
-                render: (o) => opgaveKunde(o.kundeId) || <span className="fc-neutral">Egen flåde</span> },
               { key: "beskrivelse", label: "Opgave" },
               { key: "personId", label: "Chauffør / tekniker",
                 render: (o) => opgavePerson(o.personId) },
@@ -235,12 +238,12 @@ export default function BookingOversigt() {
               { key: "faktiskMin", label: "Faktisk tid", num: true,
                 render: (o) => (o.faktiskMin == null
                   ? <span className="fc-neutral">—</span> : timer(o.faktiskMin)) },
-              { key: "beloebOere", label: "Estimeret beløb", num: true,
+              /* OMKOSTNING, ikke beløb. Værkstedet servicerer egen flåde, så
+                 arbejdet er en udgift — ikke noget der faktureres videre. To
+                 tal der begge hed "beløb" ville blive lagt sammen; det er
+                 beslutning 11's fejl i en tabel. */
+              { key: "beloebOere", label: "Estimeret omkostning", num: true,
                 render: (o) => kr(o.beloebOere) },
-              { key: "fakturerbar", label: "Fakturerbar", render: (o) => (
-                  o.fakturerbar
-                    ? <span className="fc-good">● Ja</span>
-                    : <span className="fc-neutral">— Nej</span>) },
             ]}
           />
         ) : (
@@ -279,11 +282,9 @@ export default function BookingOversigt() {
 
         {fane === "opgaver" && (
           <p className="fc-hint" style={{ marginTop: 12 }}>
-            ⚠ <b>Kunde</b> og <b>Fakturerbar</b> på en værkstedsopgave er en
-            modeludvidelse, ikke en detalje: <code>ARKITEKTUR.md</code> beskriver{" "}
-            <code>opgaver/</code> som arbejde på <b>egen</b> flåde. En kunde plus
-            fakturerbarhed betyder at værkstedet også arbejder for andre. Felterne
-            er valgfrie indtil det er bekræftet — se README.
+            Opgaver er arbejde på <b>egen flåde</b> — derfor ingen kunde og ingen
+            fakturerbarhed. Beløbet er en <b>omkostning</b>. Det der faktureres, er{" "}
+            <b>bookinger</b>; de står i fanen ved siden af med deres egen omsætning.
           </p>
         )}
 
@@ -319,11 +320,8 @@ export default function BookingOversigt() {
               {dagensPlan.map((o) => (
                 <li key={o.id}>
                   <span className="fc-plan-tid">{klokke(o.startMs)}</span>
-                  <span className="fc-plan-kunde">
-                    {opgaveKunde(o.kundeId) || "Egen flåde"}
-                  </span>
+                  <span className="fc-plan-kunde">{opgaveEnhed(o.koeretoejId) || "Facility"}</span>
                   <span className="fc-plan-opgave">{o.beskrivelse}</span>
-                  <span className="fc-plan-enhed">{opgaveEnhed(o.koeretoejId) || "—"}</span>
                   <span className="fc-plan-person">{opgavePerson(o.personId)}</span>
                   <Pille tone={OPGAVE_STATUS[o.status]?.pill}>
                     {OPGAVE_STATUS[o.status]?.label || o.status}

@@ -504,19 +504,23 @@ sensorlisten) og bygningsomkostningen (summen af sine komponenter). Gemte man
 dem, kunne de modsige de data de beskriver — og det var netop de tre fejl
 Facility-mockupsene havde.
 
-### ⚠ Må en værkstedsopgave have en kunde?
+### En opgave har ingen kunde — værkstedet servicerer egen flåde
 
-Booking-mockuppen viser `Kunde` og `Fakturerbar: Ja` på en værkstedsopgave.
-`ARKITEKTUR.md` beskriver `opgaver/` som arbejde på **egen** flåde:
-`ressourceFor()` giver `koeretoej` eller `facilityAktiv`, og der er ingen kunde.
+Booking-mockuppen viste `Kunde` og `Fakturerbar: Ja` på hver værkstedsopgave.
+**Det er afgjort: værkstedet servicerer kun egen flåde**, og begge felter er
+derfor forkerte — ikke bare unødvendige.
 
-En kunde plus fakturerbarhed betyder at værkstedet også arbejder **for andre** —
-en anden forretningsmodel end den modellen beskriver. `kundeId` og
-`fakturerbar` er derfor bygget som **valgfrie** felter (facility-opgaver har
-dem ikke), så skærmen matcher billedet uden at modellen er afgjort.
+En kunde på en opgave ville betyde at arbejdet kunne faktureres videre, og et
+beløb der ser ud som en indtægt bliver læst som en indtægt. `beloebOere` på en
+opgave er en **omkostning**. Det er samme skel som beslutning 11: to tal der
+begge hedder "beløb" ender med at blive lagt sammen.
 
-**Er svaret at værkstedet kun servicerer egen flåde, skal kolonnen væk igen.**
-Det er billigere at vide nu end efter første kunde.
+Det der faktureres, er **bookinger** — transportarbejde med egen omsætning, i
+fanen ved siden af. `opgaver.klarTilFakturering` tæller derfor afsluttede
+**forløb**, ikke opgaver; se rækkerne i Økonomi, som er BKG-numre.
+
+Selvkontrollen i `demo-opgaver.js` advarer, hvis `kundeId` eller `fakturerbar`
+dukker op igen. Kommer de tilbage, skal det være en bevidst modelændring.
 
 ## Uafklaret — blokerer fase 2
 
