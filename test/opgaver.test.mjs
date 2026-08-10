@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import {
   OPGAVE_ART, ALLE_OPGAVE_ARTER, OPGAVE_STATUS, ALLE_OPGAVE_STATUS,
   FELT, ART_FELTER, harFelt, felterFor, ressourceFor, ressourceId, opgaveMangler,
+  fordelPaaSted,
 } from "../src/fleet/opgaver.js";
 import {
   GRAENSE, OVERTRAEDELSE, FORBEHOLD, tjekKoerehviletid, koerehviletidTekst,
@@ -264,5 +265,48 @@ describe("Demo-besøgene har opgavens form", () => {
     for (const b of DEMO_BESOEG) {
       assert.ok(["gods", "bus", "faelles"].includes(b.division), `${b.id}: ugyldig division`);
     }
+  });
+});
+
+describe("Hvor arbejdet ligger — fordelPaaSted", () => {
+  /* Panelet erstattede et håndtegnet Danmarkskort. For et dusin opgaver siger
+     et kort ikke noget en liste ikke også siger — men listen skal så være
+     rigtig, og det er derfor regnestykket ligger her og ikke i .jsx-filen. */
+  it("samler stop på sted og tæller dem", () => {
+    const ud = fordelPaaSted([
+      { sted: "Kolding" }, { sted: "Aarhus" }, { sted: "Kolding" },
+    ]);
+    assert.deepEqual(ud.map((s) => [s.sted, s.antal]), [["Kolding", 2], ["Aarhus", 1]]);
+  });
+
+  /* To steder med lige mange skal stå i samme rækkefølge hver gang — ellers
+     hopper listen mellem renders, og man tror der er sket noget.
+     ⚠ OG SORTERINGEN ER DANSK, IKKE ASCII. localeCompare(…, "da") sætter
+     Aa og Å SIDST i alfabetet, så Aalborg kommer efter Odense. Det ser
+     forkert ud for den der forventer A først — men det er rigtigt dansk, og
+     en sortering der er "næsten rigtig" er den man aldrig får meldt. */
+  it("sorterer flest først, derefter dansk alfabetisk", () => {
+    const ud = fordelPaaSted([
+      { sted: "Odense" }, { sted: "Aalborg" }, { sted: "Esbjerg" }, { sted: "Esbjerg" },
+    ]);
+    assert.deepEqual(ud.map((s) => s.sted), ["Esbjerg", "Odense", "Aalborg"]);
+  });
+
+  it("bærer tonerne med, så prikkerne kan tegnes", () => {
+    const ud = fordelPaaSted([{ sted: "Kolding", tone: "bad" }, { sted: "Kolding" }]);
+    assert.deepEqual(ud[0].toner, ["bad", "info"]);
+  });
+
+  /* Et stop uden sted må ikke forsvinde — det ville få listen til at vise
+     færre opgaver end der er, uden at nogen kan se hvorfor. */
+  it("samler stop uden sted under Ukendt frem for at tabe dem", () => {
+    const ud = fordelPaaSted([{ sted: "Kolding" }, {}, { sted: null }]);
+    assert.equal(ud.reduce((s, x) => s + x.antal, 0), 3);
+    assert.ok(ud.some((s) => s.sted === "Ukendt"));
+  });
+
+  it("tåler en tom liste", () => {
+    assert.deepEqual(fordelPaaSted([]), []);
+    assert.deepEqual(fordelPaaSted(), []);
   });
 });

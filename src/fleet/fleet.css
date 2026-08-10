@@ -395,14 +395,18 @@
 .fc-handling-tal{font-size:13px; font-variant-numeric:tabular-nums}
 .fc-handling-pil{color:var(--bc-muted); font-size:17px; line-height:1}
 
-/* Stopkort. Omridset er dæmpet — prikkerne er indholdet, landet er kulisse. */
-.fc-stopkort svg{width:100%; display:block}
-.fc-stopkort-land{fill:var(--fc-bg); stroke:var(--bc-line); stroke-width:.6}
-.fc-stopkort-prik{stroke:var(--bc-card); stroke-width:1.1}
-.fc-stop-ok{fill:var(--bc-ok)} .fc-stop-warn{fill:var(--bc-warn)}
-.fc-stop-bad{fill:var(--bc-block)} .fc-stop-info{fill:var(--fc-info)}
-.fc-stopkort-nr{font-size:3.2px; font-weight:700; text-anchor:middle; fill:var(--bc-card)}
-.fc-stopkort-note{margin:8px 0 0}
+/* Hvor arbejdet ligger. Soejlen er andelen af det TRAVLESTE sted, ikke af
+   totalen — ellers bliver alle soejler korte naar arbejdet er spredt. */
+.fc-steder{list-style:none; margin:0; padding:0}
+.fc-steder li{display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13px}
+.fc-steder li+li{border-top:1px solid var(--bc-line)}
+.fc-steder-navn{flex:0 0 33%; min-width:0; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.fc-steder-spor{flex:1; min-width:40px; height:8px; border-radius:4px;
+  background:var(--bc-line); overflow:hidden}
+.fc-steder-fyld{display:block; height:100%; background:var(--bc-accent); border-radius:4px}
+.fc-steder-prikker{display:flex; gap:3px; flex:0 0 auto}
+.fc-steder-tal{width:20px; text-align:right; font-variant-numeric:tabular-nums}
 
 /* Dagens plan — tidslinje. Klokkeslættet er kolonne, ikke indledning: de skal
    kunne løbes ned ad. */

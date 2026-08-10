@@ -29,7 +29,7 @@ import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Knap,
   Gitter, Handlingsliste, Ikon,
 } from "../../fleet/ui.jsx";
-import Stopkort from "../../fleet/Stopkort.jsx";
+import Stopoversigt from "../../fleet/Stopoversigt.jsx";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import {
   DEMO_OPGAVER, opgavePerson, opgaveEnhed,
@@ -332,8 +332,8 @@ export default function BookingOversigt() {
           )}
         </Kort>
 
-        <Kort titel="Hvor arbejdet ligger">
-          <Stopkort stop={stop} />
+        <Kort titel="Hvor arbejdet ligger i dag">
+          <Stopoversigt stop={stop} />
         </Kort>
       </Gitter>
 

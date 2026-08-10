@@ -185,3 +185,25 @@ export function opgaveMangler(opgave = {}) {
   }
   return mangler;
 }
+
+/* ---- Hvor arbejdet ligger --------------------------------------------- *
+ * Fordel stop paa sted, flest foerst. Ren funktion og i en .js-fil, saa den
+ * kan proeves — samme grund som regnestykket i gitter.js ligger uden React.
+ * Laa den i Stopoversigt.jsx, kunne node ikke importere den.
+ *
+ * Sekundaer sortering er alfabetisk: to steder med lige mange opgaver skal
+ * staa i samme raekkefoelge hver gang, ellers hopper listen mellem renders.
+ */
+export function fordelPaaSted(stop = []) {
+  const efterSted = new Map();
+  for (const s of stop) {
+    const sted = s.sted || "Ukendt";
+    if (!efterSted.has(sted)) efterSted.set(sted, { sted, antal: 0, toner: [] });
+    const p = efterSted.get(sted);
+    p.antal += 1;
+    p.toner.push(s.tone || "info");
+  }
+  return [...efterSted.values()].sort(
+    (a, b) => b.antal - a.antal || a.sted.localeCompare(b.sted, "da")
+  );
+}
