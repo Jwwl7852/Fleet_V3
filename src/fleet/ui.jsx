@@ -3,7 +3,39 @@
  * statuschips eller tomme tilstande — så kan de heller ikke se
  * forskellige ud fra skærm til skærm.
  */
+import { Link } from "react-router-dom";
 import { deviation } from "./format.js";
+
+/* ⚠ MASSIVE IKONER, IKKE STREGTEGNEDE. Mockuppens glyffer er fyldte —
+   sidebarens ICO i AppShell er konturer, og de to skal ikke forveksles: her
+   sidder ikonet på en farvet flade og skal have vægt, dér står det på mørk
+   bund ved siden af tekst og skal være let.
+   Detaljerne — linjer i dokumentet, hjulnav, urets visere — er HULLER
+   (fill-rule evenodd), så de viser feltets tone igennem frem for at være
+   malet i en farve der skulle kende sit felt. */
+export const IKON = {
+  kalender: "M7 1.6h2.2v2.2H7zm7.8 0H17v2.2h-2.2zM3.4 3.8h2.4v2.2a1.2 1.2 0 0 0 2.4 0V3.8h7.6v2.2a1.2 1.2 0 0 0 2.4 0V3.8h2.4a1.4 1.4 0 0 1 1.4 1.4v3.2H2V5.2a1.4 1.4 0 0 1 1.4-1.4zM2 10.6h20v9a1.4 1.4 0 0 1-1.4 1.4H3.4A1.4 1.4 0 0 1 2 19.6zm3.4 2.6v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2z",
+  afspil: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM9.8 7.2v9.6l7.2-4.8z",
+  advarsel: "M12 1.8 23 21H1zm-1.1 6.4v6.2h2.2V8.2zm0 8v2.2h2.2v-2.2z",
+  kasse: "M12 1.8 21.6 6v12L12 22.2 2.4 18V6zm0 2.4L5.2 7l6.8 3 6.8-3zM4.2 8.6v8.2l6.9 3V11.6zm15.6 0-6.9 3v8.2l6.9-3z",
+  dokument: "M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.8V8h4.2L14 3.8zM8 12.4h8v1.7H8zm0 3.6h5.4v1.7H8z",
+  lastbil: "M2 6h12v9.2H2zm13 3h3.6l2.6 3.1v3.1H15zM6.8 20.4a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8zm11.4 1.7a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2zm0-1.7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z",
+  ur: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4.4h-2v6.7l4.7 2.8 1-1.7-3.7-2.2z",
+  seddel: "M2 5h20v14H2zm10 10.4a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8zM5 7.6h2.2v1.7H5zm11.8 7.1H19v1.7h-2.2z",
+  skruenoegle: "M15.4 2a6 6 0 0 0-5.6 8.1l-7 7a2.6 2.6 0 0 0 3.7 3.7l7-7A6 6 0 0 0 21.4 8l-3.2 3.2-2.5-.7-.7-2.5L18.2 4.8A6 6 0 0 0 15.4 2z",
+  personer: "M9.2 11.4a4.1 4.1 0 1 1 0-8.2 4.1 4.1 0 0 1 0 8.2zm0 1.5c3.1 0 6.2 1.6 6.2 4.1V20H3v-3c0-2.5 3.1-4.1 6.2-4.1zm8.3-1.2a3.3 3.3 0 1 1 0-6.6 3.3 3.3 0 0 1 0 6.6zm-.6 2c2.4 0 4.1 1.3 4.1 3.3V20h-4v-3c0-1.2-.5-2.2-1.3-3 .4-.2.8-.3 1.2-.3z",
+  bygning: "M4 21.5V4.2L12.4 2v19.5H4zm3-13h2.4v2.2H7zm0 4.2h2.4v2.2H7zm0 4.2h2.4v2.2H7zM13.8 21.5V7.4l6.6 2.1v12H13.8zm2-9.4h2.4v2.2h-2.4zm0 4.2h2.4v2.2h-2.4z",
+  vogn: "M1.6 2.6h3.6l.7 2.6h16.5l-2.6 9.2H7.7l.2.9h12v2.1H6.2L3.5 4.7H1.6zM9.4 21.4a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6zm8.4 0a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z",
+};
+
+/* farve er valgfri og peger paa et token — korttitlernes ikoner er farvede i
+   mockuppen, ikke daempede. Uden farve arver ikonet .fc-card-h svg. */
+export const Ikon = ({ navn, farve }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" style={farve ? { color: farve } : undefined}>
+    <path d={IKON[navn]} fillRule="evenodd" />
+  </svg>
+);
+
 
 export const Kort = ({ titel, handling, children, className = "", ...p }) => (
   <section className={`fc-card ${className}`} {...p}>
@@ -26,10 +58,20 @@ export const Kort = ({ titel, handling, children, className = "", ...p }) => (
  * ændring" ét sted og "den skærm er ikke opdateret endnu" et andet — og så
  * kan man ikke læse fraværet af en pil. Fjern den ikke fra en enkelt skærm.
  */
-export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra }) {
-  return (
-    <div className="fc-card fc-kpi">
-      {ikon && <div className={`fc-kpi-ico fc-tone-${tone || "info"}`}>{ikon}</div>}
+/**
+ * `rund` gør ikonfeltet cirkulært, `til` gør hele kortet til et link med en
+ * chevron. Begge kom fra Booking-mockuppen, hvor kortene ser sådan ud — og
+ * begge er OPT-IN, så Dashboards kort ikke ændrer sig af at et andet skærmbillede
+ * gjorde noget andet.
+ */
+export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra, rund, til }) {
+  const indhold = (
+    <>
+      {ikon && (
+        <div className={`fc-kpi-ico ${rund ? "fc-kpi-rund " : ""}fc-tone-${tone || "info"}`}>
+          {ikon}
+        </div>
+      )}
       <div className="fc-kpi-txt">
         <div className="fc-kpi-l">{label}</div>
         <div className="fc-kpi-v">{vaerdi}</div>
@@ -44,8 +86,13 @@ export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra }) 
           <div className="fc-kpi-d fc-neutral">{note || "\u00a0"}</div>
         )}
       </div>
-    </div>
+      {til && <span className="fc-kpi-pil" aria-hidden="true">\u203a</span>}
+    </>
   );
+
+  return til
+    ? <Link className="fc-card fc-kpi fc-kpi-link" to={til}>{indhold}</Link>
+    : <div className="fc-card fc-kpi">{indhold}</div>;
 }
 
 export const KpiRaekke = ({ children }) => <div className="fc-kpis">{children}</div>;
@@ -183,6 +230,40 @@ export const Knap = ({ variant = "sekundaer", children, ...p }) => (
 );
 
 export const Raekke = ({ children, ...p }) => <div className="fc-row" {...p}>{children}</div>;
+
+/**
+ * Handlingsliste — "Kræver handling": ikon, hvad der er galt, hvad man gør
+ * ved det, antallet, og en vej derhen.
+ *
+ * poster: [{ id, ikon, tone, tekst, under, antal, til }]
+ *
+ * ⚠ `under` ER IKKE PYNT. Den siger hvad man skal GØRE — "Registrér faktisk
+ * tid for korrekt fakturering" — og uden den er posten kun en optælling.
+ * En liste over ting man ikke kan handle på, holder man op med at læse.
+ *
+ * Hele rækken er linket, ikke kun tallet: et klikmål på 24 px i en liste er
+ * en fejlkilde for enhver der ikke rammer præcist med en mus.
+ */
+export const Handlingsliste = ({ poster = [] }) => {
+  if (!poster.length) return <Tom>Intet kræver handling lige nu.</Tom>;
+  return (
+    <ul className="fc-handling">
+      {poster.map((p) => (
+        <li key={p.id}>
+          <Link to={p.til}>
+            <span className={`fc-handling-ico fc-tone-${p.tone}`}><Ikon navn={p.ikon} /></span>
+            <span className="fc-handling-txt">
+              <b>{p.tekst}</b>
+              <span>{p.under}</span>
+            </span>
+            <b className="fc-handling-tal">{p.antal}</b>
+            <span className="fc-handling-pil" aria-hidden="true">›</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+};
 export const Gitter = ({ kolonner = "1fr", children, ...p }) => (
   <div className="fc-grid" style={{ gridTemplateColumns: kolonner }} {...p}>{children}</div>
 );

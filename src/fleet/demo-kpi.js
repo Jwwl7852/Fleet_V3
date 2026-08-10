@@ -28,7 +28,7 @@ export const DEMO_KPI = {
   gods: {
     opgaver: {
       aabne: 47, indberettet: 12, planlagt: 10, igang: 9, afventer: 7, udfoert: 9,
-      forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, klarTilFakturering: 12,
+      forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, udenTidsregistrering: 7, klarTilFakturering: 12,
       udfoerteOpgaver: 214,
     },
     flaade: {
@@ -94,7 +94,7 @@ export const DEMO_KPI = {
   bus: {
     opgaver: {
       aabne: 19, indberettet: 5, planlagt: 4, igang: 3, afventer: 3, udfoert: 4,
-      forsinkede: 2, nyeBookinger: 3, igangIDag: 8, uplanlagte: 3, klarTilFakturering: 6,
+      forsinkede: 2, nyeBookinger: 3, igangIDag: 8, uplanlagte: 3, udenTidsregistrering: 3, klarTilFakturering: 6,
       udfoerteOpgaver: 96,
     },
     flaade: {

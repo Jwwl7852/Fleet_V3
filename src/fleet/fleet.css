@@ -48,11 +48,13 @@
   --fc-ikon-3:#eda100;   /* gul */
   --fc-ikon-4:#4a3aa7;   /* lilla */
   --fc-ikon-5:var(--bc-accent);  /* blå */
+  --fc-ikon-6:#008300;   /* grøn — dataviz slot 6 */
   --fc-ikon-1-bg:color-mix(in srgb, #e34948 13%, #fff);
   --fc-ikon-2-bg:color-mix(in srgb, #eb6834 13%, #fff);
   --fc-ikon-3-bg:color-mix(in srgb, #eda100 15%, #fff);
   --fc-ikon-4-bg:color-mix(in srgb, #4a3aa7 12%, #fff);
   --fc-ikon-5-bg:var(--fc-accent-soft);
+  --fc-ikon-6-bg:color-mix(in srgb, #008300 12%, #fff);
 
   --fc-r:12px;
   --fc-sidebar:216px;
@@ -189,11 +191,19 @@
 .fc-tone-ikon-3{background:var(--fc-ikon-3-bg); color:var(--fc-ikon-3)}
 .fc-tone-ikon-4{background:var(--fc-ikon-4-bg); color:var(--fc-ikon-4)}
 .fc-tone-ikon-5{background:var(--fc-ikon-5-bg); color:var(--fc-ikon-5)}
+.fc-tone-ikon-6{background:var(--fc-ikon-6-bg); color:var(--fc-ikon-6)}
 /* MASSIVE ikoner i handlingsfelterne — ikke streg. Detaljerne er huller i
    selve pathen, saa de viser feltets tone igennem. Feltet er 40px og glyffen
    23px: mockuppens ikon fylder feltet, og et 19px ikon i et 38px felt saa
    sylespidst ud ved siden af tallet. */
 .fc-kpi-ico svg{width:34px; height:34px; fill:currentColor; stroke:none}
+/* Rundt ikonfelt — Booking-mockuppens variant. Opt-in, saa Dashboards
+   afrundede firkanter staar uaendret. */
+.fc-kpi-rund{border-radius:50%}
+/* Klikbart KPI-kort med chevron. */
+.fc-kpi-link{text-decoration:none; color:inherit}
+.fc-kpi-link:hover .fc-kpi-l{color:var(--bc-accent)}
+.fc-kpi-pil{color:var(--bc-muted); font-size:19px; line-height:1; align-self:center}
 
 .fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
 .fc-empty p{margin:0 auto 12px; max-width:48ch}
@@ -367,6 +377,52 @@
   border-color:var(--bc-block); border-style:dashed;
   background-image:repeating-linear-gradient(45deg,
     rgba(214,69,69,.14) 0 6px, rgba(214,69,69,0) 6px 12px)}
+
+/* Kræver handling — hele rækken er linket, ikke kun tallet. Et klikmål på
+   24 px er en fejlkilde for enhver der ikke rammer præcist med en mus. */
+.fc-handling{list-style:none; margin:0; padding:0}
+.fc-handling li+li{border-top:1px solid var(--bc-line)}
+.fc-handling a{display:flex; align-items:center; gap:11px; padding:10px 0;
+  text-decoration:none; color:inherit}
+.fc-handling a:hover .fc-handling-txt b{color:var(--bc-accent)}
+.fc-handling-ico{width:32px; height:32px; border-radius:9px; flex:0 0 32px;
+  display:grid; place-items:center}
+.fc-handling-ico svg{width:18px; height:18px; fill:currentColor}
+.fc-handling-txt{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
+.fc-handling-txt b{font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-handling-txt span{color:var(--bc-muted); font-size:11.5px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-handling-tal{font-size:13px; font-variant-numeric:tabular-nums}
+.fc-handling-pil{color:var(--bc-muted); font-size:17px; line-height:1}
+
+/* Stopkort. Omridset er dæmpet — prikkerne er indholdet, landet er kulisse. */
+.fc-stopkort svg{width:100%; display:block}
+.fc-stopkort-land{fill:var(--fc-bg); stroke:var(--bc-line); stroke-width:.6}
+.fc-stopkort-prik{stroke:var(--bc-card); stroke-width:1.1}
+.fc-stop-ok{fill:var(--bc-ok)} .fc-stop-warn{fill:var(--bc-warn)}
+.fc-stop-bad{fill:var(--bc-block)} .fc-stop-info{fill:var(--fc-info)}
+.fc-stopkort-nr{font-size:3.2px; font-weight:700; text-anchor:middle; fill:var(--bc-card)}
+.fc-stopkort-note{margin:8px 0 0}
+
+/* Dagens plan — tidslinje. Klokkeslættet er kolonne, ikke indledning: de skal
+   kunne løbes ned ad. */
+.fc-plan{list-style:none; margin:0; padding:0}
+.fc-plan li{display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px}
+.fc-plan li+li{border-top:1px solid var(--bc-line)}
+.fc-plan-tid{width:42px; flex:0 0 42px; color:var(--bc-muted);
+  font-variant-numeric:tabular-nums}
+.fc-plan-kunde{flex:0 0 26%; min-width:0; font-weight:650;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-plan-opgave{flex:1; min-width:0; color:var(--bc-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-plan-enhed{flex:0 0 15%; min-width:0; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.fc-plan-person{flex:0 0 20%; min-width:0; color:var(--bc-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+/* Filterrække. Periode og afdeling står IKKE her — shellen ejer dem. */
+.fc-filtre{display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap}
+.fc-filtre .fc-felt{margin-bottom:0; min-width:180px}
 
 /* Største afvigelser — nummereret liste, fordi rækkefølgen ER informationen:
    den første er den største. Tallet står i sin egen kolonne, så beløb og

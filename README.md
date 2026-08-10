@@ -483,6 +483,7 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
 | `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
 | `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
+| `opgaver.udenTidsregistrering` | Udførte opgaver uden registreret faktisk tid. Kan ikke faktureres på tid |
 | `afvigelser` | **Top 5 på tværs af flåde, facility, indkøb og værksted.** Dashboards "Største afvigelser". Kan ikke udledes lokalt — den blander fire moduler |
 | `flaade.braendstofOere` | Brændstofudgift i perioden. **Beslutning 25** — Indberetninger læser den. ⚠ AdBlue tæller ikke med: det er et additiv, ikke brændstof, og lagt til ville forbruget se ~5 % bedre ud end det er |
 | `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
@@ -502,6 +503,20 @@ klimaalarmer *nu* (måling + zonens grænse), gennemsnitstemperatur (regnes af
 sensorlisten) og bygningsomkostningen (summen af sine komponenter). Gemte man
 dem, kunne de modsige de data de beskriver — og det var netop de tre fejl
 Facility-mockupsene havde.
+
+### ⚠ Må en værkstedsopgave have en kunde?
+
+Booking-mockuppen viser `Kunde` og `Fakturerbar: Ja` på en værkstedsopgave.
+`ARKITEKTUR.md` beskriver `opgaver/` som arbejde på **egen** flåde:
+`ressourceFor()` giver `koeretoej` eller `facilityAktiv`, og der er ingen kunde.
+
+En kunde plus fakturerbarhed betyder at værkstedet også arbejder **for andre** —
+en anden forretningsmodel end den modellen beskriver. `kundeId` og
+`fakturerbar` er derfor bygget som **valgfrie** felter (facility-opgaver har
+dem ikke), så skærmen matcher billedet uden at modellen er afgjort.
+
+**Er svaret at værkstedet kun servicerer egen flåde, skal kolonnen væk igen.**
+Det er billigere at vide nu end efter første kunde.
 
 ## Uafklaret — blokerer fase 2
 

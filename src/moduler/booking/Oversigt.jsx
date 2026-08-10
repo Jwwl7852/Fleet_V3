@@ -24,10 +24,16 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato } from "../../fleet/format.js";
+import { kr, num, dato, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Knap,
+  Gitter, Handlingsliste, Ikon,
 } from "../../fleet/ui.jsx";
+import Stopkort from "../../fleet/Stopkort.jsx";
+import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
+import {
+  DEMO_OPGAVER, opgaveKunde, opgavePerson, opgaveEnhed,
+} from "../../fleet/demo-opgaver.js";
 import { TILSTAND, forloebstilstand, tilgaengeligeHandlinger } from "../../fleet/booking-state.js";
 import { DEMO_BOOKINGER, TRANSPORTTYPE, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
@@ -38,6 +44,9 @@ export default function BookingOversigt() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger, division } = useFleet();
   const [visAlle, setVisAlle] = useState(false);
+  const [fane, setFane] = useState("opgaver");
+  const [kundeFilter, setKundeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -66,14 +75,75 @@ export default function BookingOversigt() {
   const viste = visAlle ? raekker : raekker.filter((r) => !FAERDIGE.has(r.vist));
   const drevne = raekker.filter((r) => r.drevet);
 
+  /* ⚠ SAMME DIVISIONSREGEL SOM BOOKINGERNE, og den kommer fra shellen.
+     Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
+     Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder.
+     En post uden division vises i BEGGE — se useListe. */
+  const opgaverIDivision = DEMO_OPGAVER.filter(
+    (o) => o.division == null || o.division === division || o.division === "faelles"
+  );
+
+  /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
+     og den står allerede i topbaren. */
+  const opgaver = opgaverIDivision
+    .filter((o) => !kundeFilter || o.kundeId === kundeFilter)
+    .filter((o) => !statusFilter || o.status === statusFilter)
+    .sort((a, b) => a.startMs - b.startMs);
+
+  /* Kunder der FAKTISK har en opgave i den valgte division — ikke hele
+     kartoteket. Et filter med tomme valg lærer brugeren at filtre ikke virker. */
+  const kundevalg = [...new Set(opgaverIDivision.map((o) => o.kundeId).filter(Boolean))]
+    .map((id) => ({ id, navn: opgaveKunde(id) }))
+    .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
+
+  /* Dagens plan udledes af opgaverne — det er ikke et nyt datasæt. */
+  const dagStart = new Date(); dagStart.setHours(0, 0, 0, 0);
+  const dagSlut = dagStart.getTime() + 86400000;
+  const dagensPlan = opgaverIDivision
+    .filter((o) => o.startMs >= dagStart.getTime() && o.startMs < dagSlut)
+    .sort((a, b) => a.startMs - b.startMs);
+
+  /* Stoppene er de steder arbejdet er PLANLAGT — ikke positioner. Beslutning 22.
+     Byen kommer fra køretøjets stationering, som er det eneste sted vi ved
+     hvor arbejdet foregår. */
+  const stop = dagensPlan.map((o, i) => ({
+    id: o.id, nr: i + 1,
+    sted: o.sted || "Kolding",
+    tekst: o.beskrivelse,
+    tone: OPGAVE_STATUS[o.status]?.pill || "info",
+  }));
+
+  const KRAEVER = [
+    { id: "forsinket", ikon: "ur", tone: "ikon-1", antal: k.opgaver.forsinkede,
+      tekst: `${k.opgaver.forsinkede} forsinkede opgaver`,
+      under: "Overskredet planlagt tid", til: "/booking" },
+    { id: "dele", ikon: "kasse", tone: "ikon-2", antal: k.opgaver.afventer,
+      tekst: `${k.opgaver.afventer} afventer dele`,
+      under: "Kan først færdiggøres ved levering", til: "/indkoeb" },
+    { id: "tid", ikon: "dokument", tone: "ikon-3", antal: k.opgaver.udenTidsregistrering,
+      tekst: `${k.opgaver.udenTidsregistrering} uden tidsregistrering`,
+      under: "Registrér faktisk tid for korrekt fakturering", til: "/booking" },
+    { id: "faktura", ikon: "seddel", tone: "ikon-4", antal: k.opgaver.klarTilFakturering,
+      tekst: `${k.opgaver.klarTilFakturering} ikke-fakturerede opgaver`,
+      under: "Klar til fakturering", til: "/oekonomi/fakturering" },
+  ];
+
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Nye bookinger" vaerdi={num(k.opgaver.nyeBookinger)} />
-        <KpiKort label="I gang i dag" vaerdi={num(k.opgaver.igangIDag)} />
-        <KpiKort label="Forsinkede" vaerdi={num(k.opgaver.forsinkede)} />
+        {/* Runde ikoner her, afrundede firkanter på Dashboard — det er
+            mockuppernes egen forskel, og den er bevaret. Tonerne er
+            IKONACCENTER: farven forstærker, tallet og teksten bærer. */}
+        <KpiKort label="Nye bookinger" vaerdi={num(k.opgaver.nyeBookinger)}
+                 ikon={<Ikon navn="kalender" />} tone="ikon-5" rund til="/booking/ny" />
+        <KpiKort label="I gang i dag" vaerdi={num(k.opgaver.igangIDag)}
+                 ikon={<Ikon navn="afspil" />} tone="ikon-6" rund
+                 note={`${k.opgaver.planlagt} planlagt i dag`} />
+        <KpiKort label="Forsinkede" vaerdi={num(k.opgaver.forsinkede)}
+                 ikon={<Ikon navn="ur" />} tone="ikon-3" rund note="kræver opmærksomhed" />
         <KpiKort label="Ikke-faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
-                 note="kun færdige forløb" />
+                 ikon={<Ikon navn="seddel" />} tone="ikon-4" rund
+                 note="kun færdige forløb" til="/oekonomi/fakturering" />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
@@ -88,21 +158,92 @@ export default function BookingOversigt() {
         </Fejl>
       )}
 
+      {/* ⚠ FILTRE: KUNDE OG STATUS. Mockuppen havde også Periode og Afdeling.
+          Periodevælgeren ejes af shellen og står i topbaren; divisionen er
+          shellens Gods/Bus (beslutning 9). To steder at vælge det samme er to
+          sandheder om hvad man ser. */}
+      <Kort>
+        <div className="fc-filtre">
+          <div className="fc-felt">
+            <label htmlFor="bo-kunde">Kunde</label>
+            <select id="bo-kunde" value={kundeFilter} onChange={(e) => setKundeFilter(e.target.value)}>
+              <option value="">Alle kunder</option>
+              {kundevalg.map((k2) => <option key={k2.id} value={k2.id}>{k2.navn}</option>)}
+            </select>
+          </div>
+          <div className="fc-felt">
+            <label htmlFor="bo-status">Status</label>
+            <select id="bo-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">Alle</option>
+              {Object.entries(OPGAVE_STATUS).map(([v, s]) => (
+                <option key={v} value={v}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <Knap onClick={() => { setKundeFilter(""); setStatusFilter(""); }}>Nulstil</Knap>
+          <p className="fc-hint" style={{ margin: 0, flex: 1, minWidth: 200 }}>
+            Periode og afdeling vælges i topbaren — de gælder hele platformen.
+          </p>
+        </div>
+      </Kort>
+
       <Kort
-        titel="Bookinger"
-        handling={<Link className="fc-a" to="/booking/ny">Ny forespørgsel</Link>}
+        titel={fane === "opgaver" ? `Alle opgaver (${opgaver.length})` : "Bookinger"}
+        handling={fane === "opgaver"
+          ? <Link className="fc-a" to="/oekonomi/fakturering">Til fakturagrundlag</Link>
+          : <Link className="fc-a" to="/booking/ny">Ny forespørgsel</Link>}
       >
+        {/* To modeller, to faner. En booking er et transportforløb med etaper
+            (beslutning 16); en opgave er værksteds- eller facilityarbejde
+            (beslutning 21). At vise dem i én tabel ville kræve en tredje
+            model der ikke findes. */}
         <div className="fc-faner" role="tablist" aria-label="Udsnit">
-          <button type="button" role="tab" className="fc-fane" aria-selected={!visAlle}
-                  onClick={() => setVisAlle(false)}>
-            Åbne forløb
+          <button type="button" role="tab" className="fc-fane" aria-selected={fane === "opgaver"}
+                  onClick={() => setFane("opgaver")}>
+            Opgaver
           </button>
-          <button type="button" role="tab" className="fc-fane" aria-selected={visAlle}
-                  onClick={() => setVisAlle(true)}>
-            Alle, inkl. udførte og afviste
+          <button type="button" role="tab" className="fc-fane" aria-selected={fane === "bookinger"}
+                  onClick={() => setFane("bookinger")}>
+            Bookinger
           </button>
         </div>
 
+        {fane === "opgaver" ? (
+          <Tabel
+            raekker={opgaver}
+            tom="Ingen opgaver med de valgte filtre."
+            kolonner={[
+              { key: "startMs", label: "Dato",
+                render: (o) => `${dato(o.startMs)} ${klokke(o.startMs)}` },
+              { key: "kundeId", label: "Kunde",
+                render: (o) => opgaveKunde(o.kundeId) || <span className="fc-neutral">Egen flåde</span> },
+              { key: "beskrivelse", label: "Opgave" },
+              { key: "personId", label: "Chauffør / tekniker",
+                render: (o) => opgavePerson(o.personId) },
+              { key: "koeretoejId", label: "Enhed",
+                render: (o) => opgaveEnhed(o.koeretoejId) || <span className="fc-neutral">—</span> },
+              /* Status fra OPGAVE_STATUS — label OG farve fra samme kilde, så
+                 to skærme ikke kan kalde samme tilstand noget forskelligt. */
+              { key: "status", label: "Status", render: (o) => (
+                  <Pille tone={OPGAVE_STATUS[o.status]?.pill}>
+                    {OPGAVE_STATUS[o.status]?.label || o.status}
+                  </Pille>) },
+              { key: "estimeretMin", label: "Estimeret tid", num: true,
+                render: (o) => timer(o.estimeretMin) },
+              /* Mangler faktisk tid er ikke "0" — det er ikke registreret endnu,
+                 og det er præcis det "uden tidsregistrering" tæller. */
+              { key: "faktiskMin", label: "Faktisk tid", num: true,
+                render: (o) => (o.faktiskMin == null
+                  ? <span className="fc-neutral">—</span> : timer(o.faktiskMin)) },
+              { key: "beloebOere", label: "Estimeret beløb", num: true,
+                render: (o) => kr(o.beloebOere) },
+              { key: "fakturerbar", label: "Fakturerbar", render: (o) => (
+                  o.fakturerbar
+                    ? <span className="fc-good">● Ja</span>
+                    : <span className="fc-neutral">— Nej</span>) },
+            ]}
+          />
+        ) : (
         <Tabel
           kolonner={[
             { key: "nummer", label: "Nummer", render: (r) => <b>{r.nummer}</b> },
@@ -134,7 +275,20 @@ export default function BookingOversigt() {
           raekker={viste}
           tom="Ingen bookinger i udsnittet."
         />
+        )}
 
+        {fane === "opgaver" && (
+          <p className="fc-hint" style={{ marginTop: 12 }}>
+            ⚠ <b>Kunde</b> og <b>Fakturerbar</b> på en værkstedsopgave er en
+            modeludvidelse, ikke en detalje: <code>ARKITEKTUR.md</code> beskriver{" "}
+            <code>opgaver/</code> som arbejde på <b>egen</b> flåde. En kunde plus
+            fakturerbarhed betyder at værkstedet også arbejder for andre. Felterne
+            er valgfrie indtil det er bekræftet — se README.
+          </p>
+        )}
+
+        {fane === "bookinger" && (
+        <>
         <p className="fc-hint" style={{ marginTop: 12 }}>
           Tilstanden er <b>genberegnet af etaperne</b> med <code>forloebstilstand()</code> —
           ikke læst af bookingens eget felt. Et forløb er først <b>udført</b> når hver
@@ -146,12 +300,53 @@ export default function BookingOversigt() {
           <b>{division}</b>. Tallene øverst kommer fra <code>kpi/</code> og dækker hele
           platformen — de skal ikke gå op mod tabellen.
         </p>
+        </>
+        )}
       </Kort>
+
+      <Gitter kolonner="minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr)">
+        <Kort titel="Kræver handling"
+              handling={<Link className="fc-a" to="/booking">Se alle</Link>}>
+          <Handlingsliste poster={KRAEVER} />
+        </Kort>
+
+        <Kort titel="Dagens plan — overblik"
+              handling={<Link className="fc-a" to="/booking/disponering">Se fuld plan</Link>}>
+          {dagensPlan.length === 0 ? (
+            <Tom>Ingen opgaver planlagt i dag.</Tom>
+          ) : (
+            <ul className="fc-plan">
+              {dagensPlan.map((o) => (
+                <li key={o.id}>
+                  <span className="fc-plan-tid">{klokke(o.startMs)}</span>
+                  <span className="fc-plan-kunde">
+                    {opgaveKunde(o.kundeId) || "Egen flåde"}
+                  </span>
+                  <span className="fc-plan-opgave">{o.beskrivelse}</span>
+                  <span className="fc-plan-enhed">{opgaveEnhed(o.koeretoejId) || "—"}</span>
+                  <span className="fc-plan-person">{opgavePerson(o.personId)}</span>
+                  <Pille tone={OPGAVE_STATUS[o.status]?.pill}>
+                    {OPGAVE_STATUS[o.status]?.label || o.status}
+                  </Pille>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Kort>
+
+        <Kort titel="Hvor arbejdet ligger">
+          <Stopkort stop={stop} />
+        </Kort>
+      </Gitter>
 
       <Handlinger raekker={viste} perms={bruger?.perms} rolle={bruger?.rolle} />
     </div>
   );
 }
+
+/* Minutter som timer med én decimal — "1,5 t", som mockuppen. Tiden gemmes i
+   minutter; visningsformatet hører her og ikke i datasættet. */
+const timer = (min) => (min == null ? "—" : `${(min / 60).toFixed(1).replace(".", ",")} t`);
 
 /* ---- Hvad rollen må lige nu -------------------------------------------- */
 
