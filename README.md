@@ -483,6 +483,7 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
 | `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
 | `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
+| `afvigelser` | **Top 5 på tværs af flåde, facility, indkøb og værksted.** Dashboards "Største afvigelser". Kan ikke udledes lokalt — den blander fire moduler |
 | `flaade.braendstofOere` | Brændstofudgift i perioden. **Beslutning 25** — Indberetninger læser den. ⚠ AdBlue tæller ikke med: det er et additiv, ikke brændstof, og lagt til ville forbruget se ~5 % bedre ud end det er |
 | `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
 | `indkoeb.maanedensForbrugOere` | Vareforbrug i perioden, ekskl. moms |

@@ -337,6 +337,21 @@
   background-image:repeating-linear-gradient(45deg,
     rgba(214,69,69,.14) 0 6px, rgba(214,69,69,0) 6px 12px)}
 
+/* Største afvigelser — nummereret liste, fordi rækkefølgen ER informationen:
+   den første er den største. Tallet står i sin egen kolonne, så beløb og
+   procent kan sammenlignes ned ad listen. */
+.fc-afvig{list-style:none; margin:0; padding:0; counter-reset:afvig}
+.fc-afvig li{display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--bc-line); font-size:13px}
+.fc-afvig li:last-child{border-bottom:0}
+.fc-afvig li::before{counter-increment:afvig; content:counter(afvig);
+  color:var(--bc-muted); font-size:11.5px; font-weight:650; width:12px; flex:0 0 12px}
+.fc-afvig-txt{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
+.fc-afvig-txt b{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-afvig-txt span{color:var(--bc-muted); font-size:11.5px}
+.fc-afvig-tal{font-size:12px; font-weight:650; white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+
 /* Donut. Figur til venstre, legende til højre — legenden bærer tallene, fordi
    en vinkel aflæses dårligt. Under 520px lægger de sig over hinanden.
    Farverne kommer fra SERIE_FARVER i ui.jsx; her står kun geometrien. */

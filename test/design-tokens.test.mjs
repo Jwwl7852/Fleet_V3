@@ -79,8 +79,17 @@ whitesmoke yellow yellowgreen`.split(/\s+/).filter(Boolean);
 /* Funktionsnotationen tages MED sine argumenter — ikke bare `rgba(`. Ellers
    kan snapshottet nedenfor ikke se forskel på to striber med hver sin farve.
    Ét niveau af indre parenteser er nok til calc() og color-mix(). */
+/* ⚠ 4-CIFRET HEX ER UDELADT, OG DET ER EN AFVEJNING.
+   #RGBA er en gyldig CSS-farve, men den skrives stort set aldrig i hånden —
+   og fire cifre efter en havelåge er derimod HYPPIGT et nummer:
+   "Reserveret fra sag #1245", "Faktura #2458 – Hydraulikolie". Begge er
+   rigtige strenge i demo-data, og begge blev flaget som farver.
+   Prisen: en farve skrevet som #abcd slipper forbi. Den ville i praksis stå i
+   fleet.css, hvor snapshottet fanger den alligevel. En lint der brokker sig
+   over et fakturanummer, bliver slået fra — og så fanger den heller ikke det
+   den findes for. */
 const FARVE = new RegExp(
-  "#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\\b" +
+  "#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\\b" +
     "|\\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)" +
     "\\((?:[^()]|\\([^()]*\\))*\\)" +
     "|(?<![\\w-])(?:" + NAVNGIVNE.join("|") + ")(?![\\w-])",

@@ -12,9 +12,10 @@
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
+import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf,
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -97,6 +98,17 @@ export default function Dashboard() {
   const budgetAfvPct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
   const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
 
+  /* Seks måneder, ikke tolv: kortet er en tredjedel bredt, og tolv søjler
+     dér bliver til striber. Serien og etiketterne kommer fra demo-oekonomi,
+     så Dashboard og Økonomi viser de SAMME måneder og de samme tal — lå
+     regnestykket to steder, kunne de vise hver sit.
+     Sidste punkt er det aktuelle tal fra kpi/, som på Økonomi. */
+  const { historik } = omkostningsserie(division);
+  const serie = [...historik, k.oekonomi.driftsomkostningerOere].slice(-6);
+  const maanedsPunkter = maanedsEtiketter(6).map((m, i) => ({
+    label: m, vaerdier: [serie[i]],
+  }));
+
   /* Samme visningsregel som useListe: valgt division plus fælles. */
   const opgaver = OPGAVER.filter((o) => o.division === division || o.division === "faelles");
 
@@ -142,9 +154,50 @@ export default function Dashboard() {
           øvrige (Omkostninger pr. måned, Største afvigelser) glider ind ved
           siden af uden endnu en layoutændring. */}
       <Gitter kolonner="repeat(auto-fit, minmax(320px, 1fr))">
+        <Kort titel="Omkostninger pr. måned">
+          <Soejlegraf
+            punkter={maanedsPunkter}
+            serier={[{ navn: "Driftsomkostninger", tone: "brand" }]}
+            maal={{ vaerdi: k.oekonomi.budgetOere, navn: "Budget" }}
+            format={(v) => kr(v)}
+            hoejde={148}
+          />
+        </Kort>
+
         <Kort titel="Status på opgaver"
               handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
           <Donut dele={STATUSFORDELING(k)} format={num} midteTekst="i alt" />
+        </Kort>
+
+        <Kort titel="Største afvigelser"
+              handling={<Link className="fc-a" to="/oekonomi">Se alle afvigelser</Link>}>
+          <ol className="fc-afvig">
+            {k.afvigelser.map((a) => (
+              <li key={a.id}>
+                <div className="fc-afvig-txt">
+                  <b>{a.emne}</b>
+                  <span>{a.kilde}</span>
+                </div>
+                {/* Afvigelsen skrives ALDRIG som en håndlavet streng — så ville
+                    + være rødt her og grønt et andet sted. betterWhen 'lower':
+                    en overskridelse er dårlig, uanset om det er kroner eller
+                    procent. */}
+                {a.beloebOere != null && (
+                  <span className="fc-afvig-tal fc-bad">
+                    {deviation(a.beloebOere, { betterWhen: "lower", unit: "kr" }).text}
+                  </span>
+                )}
+                {a.pct != null && (
+                  <span className="fc-afvig-tal fc-bad">
+                    {deviation(a.pct, { betterWhen: "lower", unit: "pct" }).text}
+                  </span>
+                )}
+                <Pille tone={a.alvor === "hoej" ? "bad" : a.alvor === "mellem" ? "warn" : "ok"}>
+                  {a.alvor === "hoej" ? "Høj" : a.alvor === "mellem" ? "Mellem" : "Lav"}
+                </Pille>
+              </li>
+            ))}
+          </ol>
         </Kort>
       </Gitter>
 

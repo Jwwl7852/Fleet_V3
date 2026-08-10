@@ -72,6 +72,22 @@ export const DEMO_KPI = {
       driftstimer: 2840,
       planlagtVedligeholdPct: 72,
     },
+    /* ⚠ TOP 5 PÅ TVÆRS AF MODULERNE — flåde, facility, indkøb, værksted.
+       Den kan derfor IKKE udledes af det Dashboard allerede har, og
+       undtagelsen for afledte tal gælder ikke. Feltet defineres her, så
+       skærmen er rigtig og kun aggregeringen mangler (beslutning 6).
+       Enhederne er de rigtige fra demo-flaade og demo-facility — en opdigtet
+       'Bil 155' der ikke findes i flåden, er den fejl demo-kilder-prøven
+       findes for.
+       Beløb i ØRE. 'pct' bruges når afvigelsen ikke er et beløb; præcis ét
+       af de to felter er sat. */
+    afvigelser: [
+      { id: "a1", emne: "Bil 155 – Dækudskiftning", kilde: "Over estimat", beloebOere: 1840000, alvor: "hoej" },
+      { id: "a2", emne: "Port 3 – Service overskredet", kilde: "Teknisk Facility", alvor: "hoej" },
+      { id: "a3", emne: "Lastbil 106 – Øget brændstofforbrug", kilde: "vs. norm", pct: 12, alvor: "mellem" },
+      { id: "a4", emne: "Faktura #2458 – Hydraulikolie", kilde: "Over aftalt pris", beloebOere: 725000, alvor: "lav" },
+      { id: "a5", emne: "Værksted – Kapacitetsudnyttelse lav", kilde: "58 % udnyttelse", alvor: "lav" },
+    ],
     disponering: { planlagteOpgaver: 22, ledigKapacitetPct: 18, forsinkelsesrisiko: 2, konflikter: 4 },
   },
 
@@ -118,6 +134,15 @@ export const DEMO_KPI = {
       driftstimer: 1120,
       planlagtVedligeholdPct: 64,
     },
+    /* Bussernes egne fem. Enhederne er busser og bus-lokationer — ikke
+       lastbiler, som ville afsløre at sættet blev kopieret. */
+    afvigelser: [
+      { id: "b1", emne: "Bus 12 – Fordør lukker ikke", kilde: "Gentagen fejl", beloebOere: 540000, alvor: "hoej" },
+      { id: "b2", emne: "Rute 214 – Forsinket afgang", kilde: "Ni gange på 30 dage", alvor: "hoej" },
+      { id: "b3", emne: "Bus 8 – Øget brændstofforbrug", kilde: "vs. norm", pct: 9, alvor: "mellem" },
+      { id: "b4", emne: "Faktura #2471 – Ruderest", kilde: "Over aftalt pris", beloebOere: 312000, alvor: "lav" },
+      { id: "b5", emne: "Garage syd – Lav pladsudnyttelse", kilde: "61 % udnyttelse", alvor: "lav" },
+    ],
     disponering: { planlagteOpgaver: 9, ledigKapacitetPct: 12, forsinkelsesrisiko: 1, konflikter: 2 },
   },
 };
