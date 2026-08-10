@@ -16,18 +16,18 @@ const NETVAERKSFEJL = { code: "NETWORK_ERROR", message: "Failed to fetch" };
 
 describe("dataTilstand skiller de tre tilstande", () => {
   it("kalder det demo når der ikke er nogen database", () => {
-    const t = dataTilstand({ harDb: false, harBruger: false, miljoe: "demo" });
+    const t = dataTilstand({ harDb: false, harBruger: false });
     assert.equal(t.art, TILSTAND.demo);
     assert.equal(t.visDemo, true, "demo-mode er netop det tilfælde hvor demo-data er det rigtige svar");
   });
 
   it("kalder det uautentificeret når der er en database men ingen bruger", () => {
-    const t = dataTilstand({ harDb: true, harBruger: false, miljoe: "dev" });
+    const t = dataTilstand({ harDb: true, harBruger: false });
     assert.equal(t.art, TILSTAND.uautentificeret);
   });
 
   it("er ok når der er en bruger og ingen fejl", () => {
-    const t = dataTilstand({ harDb: true, harBruger: true, miljoe: "dev" });
+    const t = dataTilstand({ harDb: true, harBruger: true });
     assert.equal(t.art, TILSTAND.ok);
     assert.equal(t.visDemo, false);
   });
@@ -35,7 +35,7 @@ describe("dataTilstand skiller de tre tilstande", () => {
 
 describe("En afvisning bærer aldrig tal med sig", () => {
   it("kalder en permission-denied for naegtet — ikke forbindelse", () => {
-    const t = dataTilstand({ harDb: true, harBruger: true, miljoe: "prod", fejl: AFVIST_FEJL });
+    const t = dataTilstand({ harDb: true, harBruger: true, fejl: AFVIST_FEJL });
     assert.equal(
       t.art, TILSTAND.naegtet,
       "en afvist læsning er reglerne der virker, ikke et netværksproblem"
@@ -43,34 +43,60 @@ describe("En afvisning bærer aldrig tal med sig", () => {
   });
 
   it("viser ALDRIG demo-data ved en afvisning", () => {
-    for (const miljoe of ["demo", "dev", "prod"]) {
-      const t = dataTilstand({ harDb: true, harBruger: true, miljoe, fejl: AFVIST_FEJL });
-      assert.equal(
-        t.visDemo, false,
-        `${miljoe}: opdigtede tal oven på en afvisning er den fejl filen findes for at rette`
-      );
-    }
+    const t = dataTilstand({ harDb: true, harBruger: true, fejl: AFVIST_FEJL });
+    assert.equal(
+      t.visDemo, false,
+      "opdigtede tal oven på en afvisning er den fejl filen findes for at rette"
+    );
   });
 
   it("skelner en almindelig fejl fra en afvisning", () => {
-    const t = dataTilstand({ harDb: true, harBruger: true, miljoe: "dev", fejl: NETVAERKSFEJL });
+    const t = dataTilstand({ harDb: true, harBruger: true, fejl: NETVAERKSFEJL });
     assert.equal(t.art, TILSTAND.forbindelse);
     assert.equal(t.visDemo, false, "heller ikke en netværksfejl må fylde skærmen med tal");
   });
 });
 
-describe("Stilladset er gated på dev", () => {
-  it("viser demo-data ved uautentificeret i dev", () => {
-    const t = dataTilstand({ harDb: true, harBruger: false, miljoe: "dev" });
-    assert.equal(t.visDemo, true, "uden det ville dev-appen være tom indtil login findes");
-  });
+describe("Stilladset er fjernet, som beslutning 26 lovede", () => {
+  /* ⚠ DEN HER PRØVE STOD OMVENDT.
+     Indtil beslutning 27 gav `uautentificeret` demo-data i dev, fordi der
+     ikke fandtes noget login-flow, og en tom app ville have betydet at nogen
+     lavede en hurtig overstyring for at kunne arbejde. Fjernelsesbetingelsen
+     stod skrevet: grenen skulle væk, når login landede.
 
-  it("viser IKKE demo-data ved uautentificeret i produktion", () => {
-    const t = dataTilstand({ harDb: true, harBruger: false, miljoe: "prod" });
+     Den blev vendt om frem for slettet. At betingelsen faktisk blev indfriet
+     — og kan ses indfriet — er det der gør den NÆSTE midlertidige gren
+     troværdig. Slettes prøven, står der bare ingenting. */
+  it("viser ikke demo-data ved uautentificeret, heller ikke i dev", () => {
+    const t = dataTilstand({ harDb: true, harBruger: false });
     assert.equal(
       t.visDemo, false,
-      "en uautentificeret besøgende i produktion skal møde login-skærmen, ikke opdigtede KPI'er"
+      "der findes nu en måde at logge ind på, og en dev-bruger der ikke er " +
+      "logget ind er ikke længere en tilstand man skal kunne arbejde i"
     );
+  });
+
+  /* Ingen miljøparameter mere. Var der én, ville der være et sted at gøre
+     undtagelsen igen. */
+  it("kender ikke længere sit miljø", () => {
+    const uden = dataTilstand({ harDb: true, harBruger: false });
+    for (const miljoe of ["demo", "dev", "prod"]) {
+      assert.deepEqual(
+        dataTilstand({ harDb: true, harBruger: false, miljoe }), uden,
+        `miljoe:"${miljoe}" ændrede svaret — så er der igen et sted at gøre undtagelsen`
+      );
+    }
+  });
+
+  it("viser kun demo-data hvor der ikke er en database at spørge", () => {
+    const medDb = [
+      dataTilstand({ harDb: true, harBruger: false }),
+      dataTilstand({ harDb: true, harBruger: true }),
+      dataTilstand({ harDb: true, harBruger: true, fejl: AFVIST_FEJL }),
+      dataTilstand({ harDb: true, harBruger: true, fejl: NETVAERKSFEJL }),
+    ];
+    for (const t of medDb) assert.equal(t.visDemo, false, `${t.art} bar tal med sig`);
+    assert.equal(dataTilstand({ harDb: false, harBruger: false }).visDemo, true);
   });
 });
 

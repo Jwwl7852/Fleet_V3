@@ -146,14 +146,14 @@ export const Datatilstand = ({ tilstand, genprov, tom }) => {
     return tom ? <Fejl genprov={genprov}>{tom}</Fejl> : null;
   }
 
+  /* Rutevagten i App.jsx slipper ingen ind uden session, så ser man den her
+     inde på en skærm, døde sessionen mens man kiggede — typisk fordi
+     claims blev fornyet, eller tokenet blev tilbagekaldt. Beskeden siger det
+     frem for "ikke logget ind", som ville lyde som om man aldrig var det. */
   if (art === "uautentificeret") {
     return (
       <div className="fc-empty fc-empty-warn">
-        <p>
-          {tilstand.visDemo
-            ? "Ikke logget ind — tallene herunder er demo-data, ikke din database."
-            : "Ikke logget ind. Skærmen kan ikke vise data uden et token."}
-        </p>
+        <p>Din session er udløbet. Log ind igen for at se de her data.</p>
       </div>
     );
   }

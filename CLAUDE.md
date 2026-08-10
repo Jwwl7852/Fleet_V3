@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **27 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **28 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -90,19 +90,23 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   derfor kun meningsfuld i **demo**, hvor der ingen server er at være uenig
   med. Skal en rigtig bruger have anden adgang, ændres rollen i `roller/` og
   claim'et fornys.
-  I dev er det rigtige svar en **brugervælger**, ikke en rollevælger: log ud,
-  log ind som en anden seedet DEV-bruger, hent nyt token. Så skifter perms
-  fordi *tokenet* skifter — og det er netop dér man kan se om UI og regler er
-  enige. `saetDemoRolle()` er stadig en no-op når `rolleskifte` er falsk, og
-  App sætter den til `miljoe !== "prod"`; rør ikke den betingelse, før
-  brugervælgeren afløser den.
+  I dev skifter man **session**, ikke visning: `fleet/Brugervaelger.jsx` logger
+  ud og ind som en anden seedet DEV-bruger, så perms skifter fordi *tokenet*
+  skifter. `rolleskifte` er `miljoe === "demo"` — rør ikke den betingelse.
+  Se beslutning 28.
+- **Lade adgangsvejen afhænge af miljøet.** `harAdgang` i `App.jsx` kræver et
+  **tenant-claim**, ikke "en bruger" og ikke "ikke produktion". Der må ikke være
+  en dev-variant og en prod-variant: det er den slags forskel der får en
+  spærring til at gælde alle andre steder end dér hvor den betyder noget. Det
+  eneste der må afhænge af miljøet, er om brugervælgeren **tegnes**.
 - **Vise demo-data oven på en afvist læsning.** En `permission-denied` er
   reglerne der **virker** — den må ikke oversættes til "ingen forbindelse" og
   fyldes ud med opdigtede tal. Brug `dataTilstand()` fra `datatilstand.js` og
   `<Datatilstand>` fra `ui.jsx`; skriv ikke din egen fejltekst i en skærm.
-  Opdigtede tal findes **kun** hvor der ikke er en database at spørge — plus
-  det midlertidige dev-stillads ved `auth == null`, som skal væk når login
-  lander. Se beslutning 26.
+  Opdigtede tal findes **kun** hvor der ikke er en database at spørge. Der stod
+  et dev-stillads ved `auth == null`; det blev fjernet med login, som beslutning
+  26 lovede. Genindfør det ikke — `dataTilstand()` kender ikke sit miljø, og det
+  er med vilje. Se beslutning 26 og 28.
 - **Definere et demo-datasæt i en modulfil.** Det hører i `fleet/demo-*.js`.
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`

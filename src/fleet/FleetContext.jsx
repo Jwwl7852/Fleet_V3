@@ -33,7 +33,8 @@ export function FleetProvider({
   children, tenants = [], bruger = null, logUd = () => {}, rolleskifte = false,
 }) {
   /* Beholdt som lokalt navn, så resten af filen læses som før. Betingelsen er
-     nu "ikke produktion" og ikke "demo" — se saetDemoRolle. */
+     efter beslutning 28 igen "demo" — og denne gang af den rigtige grund.
+     Se saetDemoRolle. */
   const demo = rolleskifte;
   const start = gemt();
   const [tenantId, setTenantId] = useState(start.tenantId || tenants[0]?.id || "demo");
@@ -47,25 +48,29 @@ export function FleetProvider({
   }, [tenantId, dage, division, demoRolle]);
 
   /**
-   * ⚠ NO-OP I PRODUKTION. RØR IKKE DEN BETINGELSE.
+   * ⚠ NO-OP UDEN FOR DEMO-MODE. RØR IKKE DEN BETINGELSE.
    *
-   * Vælgeren findes for at gøre adgangsmodellen synlig: skifter man rolle,
-   * ændrer knapperne sig på HVER skærm, fordi de alle spørger efter en
-   * permission frem for efter en rolle.
+   * Overstyringen tegner UI'et som en anden rolle. Den kan IKKE ændre adgang:
+   * perms kommer fra tokenets claims, og en klient kan ikke ændre sit eget
+   * token. Det er ikke et forbud der gælder ét sted — det er en umulighed der
+   * gælder overalt hvor der er en server.
    *
-   * ⚠ DEN GATEDE FØRST PÅ demoMode ALENE, OG DET VAR FORKERT.
-   * En udvikler kører normalt mod DEV med rigtige nøgler — README siger det
-   * udtrykkeligt — og så var vælgeren usynlig præcis dér hvor man har brug
-   * for den. Betingelsen er nu "ikke produktion".
+   * ⚠ DEN HAR VÆRET GATET FORKERT TO GANGE. Først på demoMode alene, hvilket
+   * gjorde den usynlig i dev. Så på "ikke produktion", hvilket gjorde den
+   * SYNLIG i dev — hvor den viste knapper serveren afviser, og hvor det så ud
+   * som om man skiftede sin egen adgang. Begge gange blev symptomet rettet.
    *
-   * I dev er der et rigtigt token, og claim'et er URØRT: serveren afviser
-   * stadig det rollen ikke må. Det er ikke en ulempe, men selve nytten —
-   * man kan se at UI og regler er enige. Teksten i shellen siger det.
+   * Betingelsen er nu "demo", og denne gang af den rigtige grund: i demo er
+   * der ingen server at være uenig med, og at kunne vise platformen som en
+   * disponent er hele pointen med en demo.
    *
-   * I PRODUKTION må den ikke findes. Dér ville den ligne at man skiftede sin
-   * egen adgang, og en kontrol der ligner en rettighedsændring uden at være
-   * det, bliver før eller siden læst som en. Skal en rigtig bruger have anden
-   * adgang, ændres rollen i tenantens roller/ og claim'et fornys.
+   * I DEV skifter man i stedet SESSION — se fleet/Brugervaelger.jsx. Log ud,
+   * log ind som en anden seedet bruger, hent nyt token. Så skifter perms fordi
+   * tokenet skifter, og det er dér man kan se at UI og regler er enige.
+   * Beslutning 28.
+   *
+   * Skal en rigtig bruger have anden adgang, ændres rollen i tenantens
+   * roller/ og claim'et fornys.
    */
   const saetDemoRolle = useCallback((rolle) => {
     if (!demo) return;

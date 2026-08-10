@@ -25,7 +25,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
-import { db, miljoe } from "../firebase.js";
+import { db } from "../firebase.js";
 import { laes as auditLaes, adgangNaegtet as auditNaegtet } from "./audit.js";
 import { TILSTAND, dataTilstand } from "./datatilstand.js";
 
@@ -274,7 +274,7 @@ export function useListe(node, indstillinger = {}) {
     const fejlet = (e) => {
       if (!aktiv) return;
       setFejl(e);
-      setTilstand(dataTilstand({ harDb: true, harBruger: true, miljoe, fejl: e }));
+      setTilstand(dataTilstand({ harDb: true, harBruger: true, fejl: e }));
       if (auditerSom) {
         auditNaegtet({ objekt: auditerSom, aarsag: e?.code || "ukendt" });
       }
@@ -287,7 +287,7 @@ export function useListe(node, indstillinger = {}) {
 
     /* FØR forespørgslen — manglende database og manglende bruger er begge
        kendt op front. Uden bruger sendes forespørgslen slet ikke. */
-    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger), miljoe });
+    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger) });
     if (foer.art !== TILSTAND.ok) {
       setTilstand(foer);
       modtag(foer.visDemo ? demoData() : [], false);

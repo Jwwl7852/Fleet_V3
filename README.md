@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 27
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 28
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 27 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 28 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 578 tests. Starter emulatoren.
+npm test                            # 579 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 ```
 
@@ -106,6 +106,7 @@ tilfældigt.
 | 25 | **De fire sidste skærme — og det er antagelser, ikke afgjorte krav.** Skal valideres hos første kunde. Et fakturagrundlag er en **opgørelse**, ikke en faktura; det **erstattes** frem for at rettes, med referencen **begge veje**, og kun grundlag uden `erstattetAfId` tæller med. **Momssatsen står pr. linje og gættes ikke** — eksport nægtes uden. En indberetning **har** en sag, den **er** ikke en sag. Materialeforbrug er **én hændelse med to posteringer**: et salg og et lagertræk. Kompetencekravet **kommer fra enheden** — alt udledt blokerer, resten advarer med begrundet override. Leverandørtal står **med deres grundlag**; under tre observationer vises ingen procent | `fleet/grundlag.js`, `fleet/indberetninger.js`, `fleet/leverandoerer.js` |
 | 26 | **En afvist læsning er ikke et netværksproblem.** `permission-denied` blev oversat til demo-data og "ingen forbindelse". Tre tilstande er skilt: manglende database, manglende bruger (kendt **før** forespørgslen — den sendes ikke) og afvist af reglerne. **Opdigtede tal følger aldrig en afvisning.** Demo-data ved `auth == null` er et **stillads** gated på dev, og skal fjernes når login lander | `fleet/datatilstand.js` |
 | 27 | **Dev bruger rigtige DEV-brugere mod DEV-projektet.** Claims-kæden var uprøvet i browseren — emulatoren lader dig minte et token med hvilke claims du vil, og tester derfor reglerne mod claims du selv har opfundet. Den bliver til rules-testene. Seks seedede brugere, én pr. rolle, med `perms` udledt af presettet. `_findes` er trin 1: uden markøren afviser hver regel alt. Scriptet **nægter at køre mod andet end DEV**, ikke konfigurerbart | `scripts/provisioner-dev.mjs` |
+| 28 | **Rollevælgeren er en brugervælger.** Perms kommer fra tokenets claims, og en klient kan ikke ændre sit eget token — en dropdown kan derfor ikke ændre adgang, kun hvad UI'et tegner. I dev skiftes **session**: log ud, log ind som en anden seedet bruger, nyt token. I demo bevares overstyringen, hvor der ingen server er at være uenig med. Adgangsvejen selv (`harAdgang`) er **miljøuafhængig** og kræver et tenant-claim | `fleet/Brugervaelger.jsx`, `App.jsx` |
 
 ## Struktur
 
@@ -166,7 +167,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **578 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **579 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

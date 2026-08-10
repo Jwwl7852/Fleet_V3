@@ -25,16 +25,20 @@
  *   naegtet          Logget ind, men afvist af reglerne. Kan KUN opdages
  *                    bagefter. Aldrig tal — det er hele grunden til filen.
  *
- * visDemo er sand for `demo`, og for `uautentificeret` KUN i dev.
+ * **Opdigtede tal findes kun hvor der ikke er en database at spørge.**
+ * visDemo er sand for `demo` og for ingen andre.
  *
- * ⚠ visDemo ved `uautentificeret` er et STILLADS, ikke en funktion.
- * Det findes fordi der endnu ikke er noget login-flow, og en tom app ville
- * betyde at nogen om tre dage laver en hurtig overstyring for at kunne
- * arbejde. Når login lander, SKAL grenen væk: der er ingen legitim grund til
- * at en dev-bruger ikke er logget ind, når der findes en måde at logge ind
- * på. Gaten på "dev" er ikke pynt — en uautentificeret besøgende i
- * produktion skal møde login-skærmen, ikke opdigtede KPI'er, uanset hvor
- * pænt de er mærket.
+ * ⚠ DER STOD ET STILLADS HER, OG DET ER FJERNET SOM AFTALT.
+ * Indtil beslutning 27 gav `uautentificeret` demo-data i dev, fordi der ikke
+ * fandtes noget login-flow, og en tom app ville have betydet at nogen lavede
+ * en hurtig overstyring for at kunne arbejde. Fjernelsesbetingelsen stod
+ * skrevet i beslutning 26: grenen skulle væk, når login landede. Det gjorde
+ * den, og det gjorde grenen. `miljoe` er ikke længere en parameter — der er
+ * ikke noget tilbage, funktionen skal kende sit miljø for.
+ *
+ * Efter det betyder `uautentificeret` noget snævrere: rutevagten i App.jsx
+ * slipper ingen ind uden session, så ser man tilstanden inde på en skærm,
+ * DØDE sessionen mens man kiggede. Beskeden i <Datatilstand> siger det.
  *
  * Ren funktion uden React, så den kan testes. Samme grund som gitter.js.
  */
@@ -62,17 +66,16 @@ export function erAfvist(fejl) {
 /**
  * @param harDb     er der overhovedet en database at spørge
  * @param harBruger er der en autentificeret bruger
- * @param miljoe    "demo" | "dev" | "prod" — fra firebase.js
  * @param fejl      kun sat EFTER en forespørgsel der fejlede
  * @returns { art, visDemo }
  */
-export function dataTilstand({ harDb, harBruger, miljoe, fejl = null }) {
+export function dataTilstand({ harDb, harBruger, fejl = null }) {
   if (!harDb) return { art: TILSTAND.demo, visDemo: true };
 
   /* Før forespørgslen. Rækkefølgen er meningen: uden bruger skal kalderen
      ikke sende noget, og derfor kan der ikke ligge en fejl her endnu. */
   if (!harBruger) {
-    return { art: TILSTAND.uautentificeret, visDemo: miljoe === "dev" };
+    return { art: TILSTAND.uautentificeret, visDemo: false };
   }
 
   if (fejl) {

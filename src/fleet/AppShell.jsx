@@ -7,6 +7,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, PERIODER, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
 import { klokke } from "./format.js";
+import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
 /**
@@ -139,14 +140,14 @@ export default function AppShell() {
                 <div className="fc-who-r">{bruger?.rolleLabel || bruger?.email || "—"}</div>
               </div>
             </div>
-            {/* ⚠ ALT UNDTAGEN PRODUKTION. Vælgeren gør adgangsmodellen synlig:
-                skifter man rolle, ændrer knapperne sig på HVER skærm, fordi de
-                alle spørger efter en permission og ikke efter en rolle.
-                Den ændrer intet claim og intet på serveren.
+            {/* ⚠ KUN DEMO-MODE. Klientside-overstyringen af perms er
+                meningsløs alle andre steder: perms kommer fra tokenets claims,
+                og en klient kan ikke ændre sit eget token. Med en rigtig
+                server ville den vise knapper serveren afviser.
 
-                Den gatede først på demoMode alene, og så var den usynlig i dev
-                — hvor en udvikler normalt kører. I produktion må den ikke
-                findes: dér ville den ligne en rettighedsændring.
+                I demo er der ingen server at være uenig med, og at kunne vise
+                platformen som en disponent er hele pointen med en demo.
+                I dev afløser Brugervaelger den — se beslutning 28.
                 saetDemoRolle er en no-op uden flaget; se FleetContext. */}
             {demo && (
               <div className="fc-demo-rolle">
@@ -157,13 +158,13 @@ export default function AppShell() {
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
-                <span>
-                  {miljoe === "demo"
-                    ? "Ændrer kun hvad UI'et viser. Der er ingen server at spørge."
-                    : "Ændrer kun UI'et. Dit rigtige claim er urørt, så serveren afviser stadig det rollen ikke må — og det er meningen: sådan kan du se at UI og regler er enige."}
-                </span>
+                <span>Ændrer kun hvad UI'et viser. Der er ingen server at spørge.</span>
               </div>
             )}
+
+            {/* Dev skifter SESSION frem for visning. Det er den eneste måde at
+                ændre perms på, fordi de står i tokenet. */}
+            {miljoe === "dev" && <Brugervaelger email={bruger?.email} />}
             <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
           </div>
         </aside>

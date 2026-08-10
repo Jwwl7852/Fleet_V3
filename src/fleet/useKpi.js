@@ -14,7 +14,7 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { useFleet } from "./FleetContext.jsx";
-import { db, miljoe } from "../firebase.js";
+import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand } from "./datatilstand.js";
 
@@ -38,7 +38,7 @@ export function useKpi() {
        tilstande vi kender op front — de skal ikke fanges som fejl, og uden
        bruger sendes forespørgslen slet ikke. Så kan vi heller ikke komme til
        at kalde en afvisning for et netværksproblem. Se datatilstand.js. */
-    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger), miljoe });
+    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger) });
     if (foer.art !== TILSTAND.ok) {
       if (aktiv) {
         setTilstand(foer);
@@ -62,7 +62,7 @@ export function useKpi() {
       } catch (e) {
         if (!aktiv) return;
         setFejl(e);
-        setTilstand(dataTilstand({ harDb: true, harBruger: true, miljoe, fejl: e }));
+        setTilstand(dataTilstand({ harDb: true, harBruger: true, fejl: e }));
         /* Ingen tal oven på en afvisning. Det er hele pointen. */
         setData(null);
       } finally {

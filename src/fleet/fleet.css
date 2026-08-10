@@ -126,7 +126,18 @@
 }
 
 /* ---- Primitiver brugt af ui.jsx ---------------------------------- */
-.fc-boot{display:grid; place-items:center; min-height:100vh; color:var(--bc-muted)}
+.fc-boot{display:grid; place-items:center; min-height:100vh; color:var(--bc-muted);
+  background:var(--fc-bg);
+  font:14px/1.45 "Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+
+/* Login. Ligger uden for .fc-app, så skriftsnittet og baggrunden skal sættes
+   her — ellers arver siden browserens standard og ligner et andet produkt. */
+.fc-login{width:100%; max-width:360px; padding:20px}
+/* .fc-brand er hvid, fordi den normalt står på sidebarens mørke flade. */
+.fc-login-brand{color:var(--bc-text); text-align:center; margin-bottom:18px}
+.fc-login .fc-felt input{width:100%; box-sizing:border-box}
+.fc-login .fc-btn{width:100%; margin-top:4px}
+.fc-login-miljoe{text-align:center; margin-top:14px; font-variant-numeric:tabular-nums}
 .fc-row{display:flex; align-items:center; justify-content:space-between; gap:12px}
 .fc-scroll{overflow-x:auto}
 .fc-kpi{display:flex; gap:12px; padding:16px 17px; align-items:flex-start}

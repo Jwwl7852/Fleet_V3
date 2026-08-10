@@ -3,7 +3,7 @@
  * ikke kan komme ud af sync.
  */
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
@@ -39,6 +39,7 @@ import Idebank from "./moduler/opsaetning/Idebank.jsx";
 import Hjaelp from "./moduler/support/Hjaelp.jsx";
 import Supportoverblik from "./moduler/support/Overblik.jsx";
 import Supportsag from "./moduler/support/Sag.jsx";
+import Login from "./moduler/Login.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
 
 const TENANTS = [{ id: "demo", navn: "DEMO Transport ApS", kort: "DEMO Transport" }];
@@ -51,6 +52,20 @@ const DEMO_BRUGER = {
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
   perms: permStrengFraRolle("admin"),
 };
+
+/* Gemmer hvor man var på vej hen, så et dybt link ikke koster en ekstra
+   navigation efter login. */
+function TilLogin() {
+  const l = useLocation();
+  return <Navigate to="/login" replace state={{ fra: l.pathname + l.search }} />;
+}
+
+/* Er man logget ind og lander på /login — typisk lige efter et login — så
+   videre til det man kom fra. */
+function EfterLogin() {
+  const l = useLocation();
+  return <Navigate to={l.state?.fra || "/"} replace />;
+}
 
 export default function App() {
   const [bruger, setBruger] = useState(demoMode ? DEMO_BRUGER : null);
@@ -66,15 +81,40 @@ export default function App() {
 
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
+  /**
+   * ⚠ MILJØUAFHÆNGIG. RØR IKKE DEN BETINGELSE.
+   *
+   * Adgang kræver et tenant-claim — ikke "en bruger", og ikke "ikke
+   * produktion". En bruger uden claim må ingenting (se hentBrugerContext:
+   * perms er tom streng, ikke udledt af rollen), så at lukke den ind i
+   * shellen ville give en app hvor hver eneste læsning bliver afvist.
+   *
+   * Der er med vilje ikke en dev-variant og en prod-variant af den her gren.
+   * Det er præcis den slags forskel der får en spærring til at gælde alle
+   * andre steder end dér hvor den betyder noget. Den eneste tilbageværende
+   * miljøafhængighed i adgangsvejen er om brugervælgeren TEGNES.
+   */
+  const harAdgang = Boolean(bruger?.tenant);
+
   return (
-    /* rolleskifte styrer om rollevælgeren overhovedet findes: alt UNDTAGEN
-       produktion. En udvikler kører normalt mod DEV med rigtige nøgler, og
-       dér skal den være der. Se saetDemoRolle i FleetContext — den er en
-       no-op uden flaget. */
-    <FleetProvider tenants={TENANTS} bruger={bruger} rolleskifte={miljoe !== "prod"}
+    /* rolleskifte er nu KUN demo. Klientside-overstyringen af perms er
+       meningsløs alle andre steder: claims kommer fra tokenet, og klienten
+       kan ikke ændre sit eget token. I dev skifter man bruger i stedet — se
+       Brugervaelger og beslutning 28. */
+    <FleetProvider tenants={TENANTS} bruger={bruger} rolleskifte={miljoe === "demo"}
                    logUd={() => auth?.signOut()}>
       <BrowserRouter>
         <Routes>
+          {!harAdgang && (
+            <>
+              {/* Logget ind uden tenant-claim er en ANDEN fejl end forkert
+                  kode, og skærmen siger noget andet. Se Login.jsx. */}
+              <Route path="/login" element={<Login uprovisioneret={Boolean(bruger)} />} />
+              <Route path="*" element={<TilLogin />} />
+            </>
+          )}
+          {harAdgang && <Route path="/login" element={<EfterLogin />} />}
+          {harAdgang && (
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
 
@@ -122,6 +162,7 @@ export default function App() {
             ))}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
+          )}
         </Routes>
       </BrowserRouter>
     </FleetProvider>

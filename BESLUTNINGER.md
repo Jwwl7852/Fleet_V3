@@ -673,19 +673,22 @@ kan prøves — samme grund som `gitter.js`. Teksten ligger i `<Datatilstand>` i
 Dashboard sagde *"der er ikke forbindelse"* mens de øvrige fjorten sagde *"ingen
 forbindelse"*.
 
-⚠ **Demo-data ved `auth == null` er et STILLADS, ikke en funktion.** Det findes
-kun fordi der endnu ikke er noget login-flow — `signInWith*` optræder nul gange
-i `src/` — og en tom app ville betyde at nogen om tre dage lavede en hurtig
-overstyring for at kunne arbejde. Det er genvejen i `effektivBruger` igen, bare
-et andet sted.
+⚠ **Der stod et STILLADS her, og det er fjernet.** Indtil beslutning 27 gav
+`auth == null` demo-data i dev, fordi der ikke fandtes noget login-flow, og en
+tom app ville have betydet at nogen lavede en hurtig overstyring for at kunne
+arbejde. Grenen var gated på `miljoe === "dev"`, og fjernelsesbetingelsen stod
+skrevet her: den skulle væk, når login landede.
 
-Grenen er gated på `miljoe === "dev"`: en uautentificeret besøgende i produktion
-skal møde login-skærmen, ikke opdigtede KPI'er, uanset hvor pænt de er mærket.
+**Den er indfriet.** Login kom med beslutning 27, og grenen forsvandt i samme
+commit. `dataTilstand()` tager ikke længere et `miljoe`-argument — der er ikke
+noget tilbage, funktionen skal kende sit miljø for, og dermed heller ikke noget
+sted at gøre undtagelsen igen. Prøven i `test/datatilstand.test.mjs` blev
+**vendt om frem for slettet**: at betingelsen faktisk blev indfriet, og kan ses
+indfriet, er det der gør den næste midlertidige gren troværdig.
 
-**Fjernelsesbetingelsen er en del af beslutningen.** Når login lander, skal
-grenen væk — der er ingen legitim grund til at en dev-bruger ikke er logget ind,
-når der findes en måde at logge ind på. Uden den betingelse skrevet ned bliver
-stilladset permanent, fordi det virker.
+Efter det betyder `uautentificeret` noget snævrere. Rutevagten i `App.jsx`
+slipper ingen ind uden session, så ser man tilstanden inde på en skærm, døde
+sessionen mens man kiggede — og `<Datatilstand>` siger det.
 
 **Ét tilfælde er bevidst urørt:** en tom `kpi/`-node giver stadig demo-tal.
 Det er ikke samme sag — serveren *har* svaret, og der står bare ikke noget
@@ -737,6 +740,51 @@ kunders base — og det opdages først når en kunde ringer.
 
 Kun de noder, skærmene faktisk læser, seedes. Et seedet datasæt, ingen skærm
 rører, driver fra sin kilde uden at nogen ser det.
+
+## 28. Rollevælgeren er en brugervælger, fordi claims ikke kan ændres klientside
+
+Perms kommer fra tokenets claims. **En klient kan ikke ændre sit eget token.**
+En dropdown kan derfor pr. definition ikke ændre adgang — kun hvad UI'et
+tegner. Det er ikke et forbud der gælder ét bestemt sted; det er en umulighed
+der gælder overalt hvor der er en server.
+
+Rollevælgeren har været gatet forkert **to gange**, og begge gange blev
+symptomet rettet i stedet for årsagen:
+
+1. Først på `demoMode` alene. Så var den usynlig i dev, hvor en udvikler
+   normalt kører — og det så ud som en fejl.
+2. Så på "ikke produktion". Så var den synlig i dev, hvor den viste knapper
+   serveren afviser, og hvor det så ud som om man skiftede sin egen adgang.
+
+Den underliggende fejl var at kalde den en *rollevælger*. Det man vil, er at se
+platformen som en anden rolle **og få serveren til at være enig**. Det kan kun
+ske ved at skifte session.
+
+**I dev: log ud, log ind som en anden seedet DEV-bruger, hent nyt token.** Så
+skifter perms fordi *tokenet* skifter, og det er præcis dér man kan se om UI og
+regler er enige. `fleet/Brugervaelger.jsx`, kun når `miljoe === "dev"`.
+
+**I demo bevares overstyringen** — dér er der ingen server at være uenig med,
+og at kunne vise platformen som en disponent er hele pointen med en demo.
+`rolleskifte` er derfor tilbage på `miljoe === "demo"`, men denne gang af den
+rigtige grund og ikke fordi ingen havde tænkt over dev.
+
+Formuleringen i CLAUDE.md er rettet med. Der stod "no-op i produktion", hvilket
+beskriver en **adfærd** — og en adfærd kan man fortolke sig uden om. Der står nu
+*hvorfor*: claims kommer fra tokenet. Så er der ikke noget at fortolke, og ingen
+genindfører genvejen om et halvt år, fordi den ser praktisk ud.
+
+⚠ **Adgangsvejen selv er miljøuafhængig.** `harAdgang` i `App.jsx` kræver et
+tenant-claim — ikke "en bruger", og ikke "ikke produktion". En bruger uden claim
+må ingenting, så at lukke den ind i shellen ville give en app hvor hver eneste
+læsning bliver afvist. Der er med vilje ikke en dev-variant og en prod-variant:
+det er den slags forskel der får en spærring til at gælde alle andre steder end
+dér hvor den betyder noget. Den eneste tilbageværende miljøafhængighed er, om
+brugervælgeren **tegnes**.
+
+En bruger der er logget ind uden tenant-claim, får sin egen besked. Det sker
+hver gang provisioneringen kun er kørt halvt, og "forkert adgangskode" ville
+sende folk i gang med at nulstille en kode der virker.
 
 ## Sikkerhedsarbejdet i detaljer
 
