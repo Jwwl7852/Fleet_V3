@@ -211,8 +211,32 @@
 .fc-btn-fare{border-color:var(--bc-block); color:var(--bc-block)}
 .fc-btn:disabled{opacity:.5; cursor:not-allowed}
 
-.fc-mini{display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px}
+.fc-mini{display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:6px 0; font-size:13px}
 .fc-mini span{color:var(--bc-muted)}
+/* Med bjælke bliver linjen to rækker: tekst+tal øverst, sporet nedenunder i
+   fuld bredde. */
+.fc-mini-bar{flex-wrap:wrap}
+.fc-mini-bar>span{flex:1; min-width:0}
+.fc-mini-spor{flex:0 0 100%; height:6px; border-radius:3px;
+  background:var(--bc-line); overflow:hidden; margin-top:5px}
+.fc-mini-fyld{height:100%; background:var(--bc-accent); border-radius:3px}
+
+/* Statusprik. STATUSpaletten — rød betyder skidt, og den betydning skal
+   bevares. Se beslutning 30 om hvorfor den ikke er en serie- eller ikonfarve.
+   ⚠ Prikken står ALTID sammen med sin tekst og sit tal; farven alene bærer
+   ikke betydningen. */
+.fc-prik{width:9px; height:9px; border-radius:50%; flex:0 0 9px; display:inline-block}
+.fc-prik-ok{background:var(--bc-ok)}
+.fc-prik-warn{background:var(--bc-warn)}
+.fc-prik-bad{background:var(--bc-block)}
+.fc-prik-info{background:var(--fc-info)}
+
+/* Fordelingsbjælke — to segmenter. Den anden fylder resten af sporet. */
+.fc-fordel{display:flex; height:7px; border-radius:4px; overflow:hidden;
+  margin:6px 0 2px; background:var(--bc-line)}
+.fc-fordel-ok{background:var(--bc-ok)}
+.fc-fordel-bad{background:var(--bc-block); flex:1}
 
 /* Rollevælger i sidebarens fod. KUN i demo-mode — se AppShell. */
 .fc-demo-rolle{margin-top:10px; padding:9px 10px; border-radius:8px;

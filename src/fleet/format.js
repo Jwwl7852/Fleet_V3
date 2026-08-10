@@ -88,7 +88,14 @@ export function deviation(v, { betterWhen = "lower", unit = "num", dec } = {}) {
   const abs = Math.abs(value);
   const text =
     sign + (unit === "kr" ? kr(abs, dec ?? 0) : unit === "pct" ? pct(abs, dec ?? 1) : num(abs, dec ?? 0));
-  return { text, tone: value === 0 ? "neutral" : good ? "good" : "bad", good };
+  /* ⚠ PILEN FØLGER RETNINGEN, FARVEN FØLGER OM DET ER GODT.
+     De to er ikke det samme, og det er hele pointen med betterWhen: en
+     stigning i omkostninger peger OP og er rød; et fald i nedetid peger NED
+     og er grønt. Slog vi dem sammen, ville pilen sige det samme som farven
+     og dermed ingenting. Den står uden for `text`, så tabeller og
+     minilinjer kan bruge tallet uden pilen. */
+  const pil = value > 0 ? "↗" : value < 0 ? "↘" : "";
+  return { text, pil, tone: value === 0 ? "neutral" : good ? "good" : "bad", good };
 }
 
 /** Afvigelse i procent af budget. Beregnes — skrives aldrig ind i basen. */

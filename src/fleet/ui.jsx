@@ -21,16 +21,19 @@ export const Kort = ({ titel, handling, children, className = "", ...p }) => (
  * KpiKort — brug ALTID afvigelse via deviation(), ikke en håndskrevet
  * streng. Ellers ender + med at være rødt på én skærm og grønt på en anden.
  */
-export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone }) {
+export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra }) {
   return (
     <div className="fc-card fc-kpi">
       {ikon && <div className={`fc-kpi-ico fc-tone-${tone || "info"}`}>{ikon}</div>}
       <div className="fc-kpi-txt">
         <div className="fc-kpi-l">{label}</div>
         <div className="fc-kpi-v">{vaerdi}</div>
+        {/* ekstra ligger MELLEM tallet og noten — en fordelingsbjælke hører
+            visuelt til tallet den deler op, ikke til teksten under den. */}
+        {ekstra}
         {afvigelse ? (
           <div className={`fc-kpi-d fc-${afvigelse.tone}`}>
-            {afvigelse.text}{note ? ` ${note}` : ""}
+            {afvigelse.pil ? `${afvigelse.pil} ` : ""}{afvigelse.text}{note ? ` ${note}` : ""}
           </div>
         ) : (
           <div className="fc-kpi-d fc-neutral">{note || "\u00a0"}</div>
@@ -179,9 +182,43 @@ export const Gitter = ({ kolonner = "1fr", children, ...p }) => (
   <div className="fc-grid" style={{ gridTemplateColumns: kolonner }} {...p}>{children}</div>
 );
 
-/** Nøgletal-linje til de smalle sidepaneler (Bemanding i dag, Facility, Indkøb). */
-export const MiniLinje = ({ label, vaerdi }) => (
-  <div className="fc-mini"><span>{label}</span><b>{vaerdi}</b></div>
+/**
+ * Nøgletal-linje til de smalle sidepaneler (Bemanding i dag, Facility, Indkøb).
+ *
+ *   andel  0..1 → en udnyttelsesbjælke under linjen. Kun hvor der FINDES et
+ *          forhold: "6 af 8 disponeret" kan tegnes, "10 personer ledig" kan
+ *          ikke. En bjælke uden nævner ville være pynt der ligner en måling.
+ *   prik   statustone → farvet prik efter værdien. Det er STATUSpaletten og
+ *          ikke serie- eller ikonfarverne: rød betyder her netop "skidt", og
+ *          det er den betydning der skal bevares (beslutning 30).
+ */
+export const MiniLinje = ({ label, vaerdi, andel, prik }) => (
+  <div className={andel != null ? "fc-mini fc-mini-bar" : "fc-mini"}>
+    <span>{label}</span>
+    <b>{vaerdi}</b>
+    {prik && <i className={`fc-prik fc-prik-${prik}`} aria-hidden="true" />}
+    {andel != null && (
+      <div className="fc-mini-spor">
+        <div className="fc-mini-fyld"
+             style={{ width: `${Math.max(0, Math.min(100, andel * 100))}%` }} />
+      </div>
+    )}
+  </div>
+);
+
+/**
+ * Fordelingsbjælke — to dele af en helhed, fx planlagt mod akut vedligehold.
+ *
+ * ⚠ TO SEGMENTER, IKKE FLERE. Skal en helhed deles i fem, er det en Donut.
+ * Farverne er STATUS og ikke kategori: den første del er den man vil have
+ * mest af, den anden den man vil have mindst af. Derfor grøn og rød, og
+ * derfor bærer bjælken ikke identitet — tallene over den gør.
+ */
+export const Fordelingsbjaelke = ({ pct }) => (
+  <div className="fc-fordel" role="presentation">
+    <span className="fc-fordel-ok" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+    <span className="fc-fordel-bad" />
+  </div>
 );
 
 /** Afvigelse som færdig celle. Genbruger format.deviation, så fortegn og

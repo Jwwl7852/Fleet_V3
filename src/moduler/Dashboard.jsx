@@ -15,7 +15,7 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke,
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -103,6 +103,10 @@ export default function Dashboard() {
      så Dashboard og Økonomi viser de SAMME måneder og de samme tal — lå
      regnestykket to steder, kunne de vise hver sit.
      Sidste punkt er det aktuelle tal fra kpi/, som på Økonomi. */
+  /* Beregnes ÉN gang — både farven og pilen skal komme fra samme deviation(),
+     ellers kan tallet være rødt og pilen pege den anden vej. */
+  const prisafv = deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" });
+
   const { historik } = omkostningsserie(division);
   const serie = [...historik, k.oekonomi.driftsomkostningerOere].slice(-6);
   const maanedsPunkter = maanedsEtiketter(6).map((m, i) => ({
@@ -145,6 +149,7 @@ export default function Dashboard() {
             Her stod den som det femte kort uden at være i mockuppen. */}
         <KpiKort label="Planlagt vs. akut vedligehold"
                  vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${pct(100 - k.oekonomi.planlagtVedligeholdPct)}`}
+                 ekstra={<Fordelingsbjaelke pct={k.oekonomi.planlagtVedligeholdPct} />}
                  note={`Mål ${pct(70)} / ${pct(30)}`} />
         <KpiKort label="Ikke-faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
                  note="ekskl. moms" />
@@ -236,30 +241,47 @@ export default function Dashboard() {
 
         <Kort titel={<><Ikon navn="personer" farve="var(--fc-ikon-5)" /> Bemanding i dag</>}
               handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
+          {/* Bjælke KUN hvor der findes en nævner. "10 personer ledig" har
+              ingen helhed at være en andel af, og en bjælke uden nævner ville
+              være pynt der ligner en måling. */}
           <MiniLinje label="Chauffører disponeret"
-                     vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`} />
-          <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede} />
+                     vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`}
+                     andel={k.bemanding.chauffoerDisponeret / k.bemanding.chauffoerPlanlagt} />
+          <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede}
+                     prik={k.bemanding.underbemandede ? "bad" : "ok"} />
           <MiniLinje label="Ledig kapacitet" vaerdi={`${k.bemanding.ledig} personer`} />
-          <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)} />
+          <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)}
+                     andel={kapacitet / 100} />
         </Kort>
 
         <Kort titel={<><Ikon navn="bygning" /> Facility</>}
               handling={<Link className="fc-a" to="/facility">Gå til Facility</Link>}>
-          <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder} />
-          <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager} />
-          <MiniLinje label="Planlagt vedligehold" vaerdi={k.facility.planlagtVedligehold} />
-          <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} />
+          {/* Prikken siger hvor slemt tallet er — den er STATUS og bæres
+              altid sammen med tekst og tal. Tærsklerne er de samme som
+              Facility selv bruger. */}
+          <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder}
+                     prik={k.facility.servicepunkterForfalder > 10 ? "bad" : k.facility.servicepunkterForfalder ? "warn" : "ok"} />
+          <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager}
+                     prik={k.facility.aabneSager > 5 ? "warn" : "ok"} />
+          <MiniLinje label="Planlagt vedligehold" vaerdi={k.facility.planlagtVedligehold} prik="ok" />
+          <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} prik="info" />
         </Kort>
 
         <Kort titel={<><Ikon navn="vogn" farve="var(--fc-ikon-2)" /> Indkøb</>}
               handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
-          <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
-          <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />
+          <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse}
+                     prik={k.indkoeb.fakturaerTilGodkendelse > 5 ? "bad" : "ok"} />
+          <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} prik="info" />
           {/* Indkøbsprisafvigelse — leverandørsiden, betterWhen 'lower'. Ikke det
-              samme tal som salgsprisafvigelsen på Kunder & Priser. */}
+              samme tal som salgsprisafvigelsen på Kunder & Priser.
+              Værdien farves af deviation()s egen tone — ikke af en farve valgt
+              her, som kunne blive grøn for en overskridelse. */}
           <MiniLinje label="Indkøbsprisafvigelse (snit)"
-                     vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" }).text} />
-          <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)} />
+                     vaerdi={
+                       <span className={`fc-${prisafv.tone}`}>{prisafv.pil} {prisafv.text}</span>
+                     } />
+          <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)}
+                     prik={k.indkoeb.leveranceTilTidenPct >= 90 ? "ok" : "warn"} />
         </Kort>
       </Gitter>
 
