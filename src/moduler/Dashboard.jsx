@@ -15,7 +15,7 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom,
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -169,8 +169,18 @@ export default function Dashboard() {
           <Donut dele={STATUSFORDELING(k)} format={num} midteTekst="i alt" />
         </Kort>
 
+        {/* ⚠ FELTET KAN MANGLE, OG SKÆRMEN SKAL TÅLE DET.
+            `afvigelser` står på KPI-efterslæbet: aggregeringen er ikke bygget,
+            så en ægte kpi/-node har det ikke endnu. useKpi returnerer nodens
+            værdi når den findes — og så er demo-sættets felt ikke med.
+            Det gælder ethvert efterslæbsfelt: definér det i demo-kpi.js, OG
+            lad skærmen kunne stå uden det. Et .map() på undefined giver en
+            hvid skærm, ikke et manglende kort. */}
         <Kort titel="Største afvigelser"
               handling={<Link className="fc-a" to="/oekonomi">Se alle afvigelser</Link>}>
+          {!k.afvigelser?.length ? (
+            <Tom>Afvigelser aggregeres endnu ikke. Se KPI-efterslæbet i README.</Tom>
+          ) : (
           <ol className="fc-afvig">
             {k.afvigelser.map((a) => (
               <li key={a.id}>
@@ -198,6 +208,7 @@ export default function Dashboard() {
               </li>
             ))}
           </ol>
+          )}
         </Kort>
       </Gitter>
 
