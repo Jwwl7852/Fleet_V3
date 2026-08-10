@@ -20,6 +20,11 @@ export const Kort = ({ titel, handling, children, className = "", ...p }) => (
 /**
  * KpiKort — brug ALTID afvigelse via deviation(), ikke en håndskrevet
  * streng. Ellers ender + med at være rødt på én skærm og grønt på en anden.
+ *
+ * ⚠ PILEN ER APP-BRED OG BEVIDST. Den kom med Dashboard-arbejdet, men gælder
+ * hvert KpiKort i appen. Gør den ikke det, betyder en manglende pil "ingen
+ * ændring" ét sted og "den skærm er ikke opdateret endnu" et andet — og så
+ * kan man ikke læse fraværet af en pil. Fjern den ikke fra en enkelt skærm.
  */
 export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra }) {
   return (
@@ -191,6 +196,12 @@ export const Gitter = ({ kolonner = "1fr", children, ...p }) => (
  *   prik   statustone → farvet prik efter værdien. Det er STATUSpaletten og
  *          ikke serie- eller ikonfarverne: rød betyder her netop "skidt", og
  *          det er den betydning der skal bevares (beslutning 30).
+ *
+ * ⚠ PRIKKENS KOLONNE RESERVERES I ALLE 22 SKÆRME, ikke kun dem der bruger
+ * prikker. Det er bevidst: værdierne står i samme kolonne overalt, og en
+ * skærm der senere tilføjer én prik rykker ikke sine øvrige tal. Fjerner man
+ * den tomme plads for at spare 19 px, står tallene hulter til bulter igen —
+ * det var netop fejlen der blev rettet.
  */
 export const MiniLinje = ({ label, vaerdi, andel, prik }) => (
   <div className={andel != null ? "fc-mini fc-mini-bar" : "fc-mini"}>
