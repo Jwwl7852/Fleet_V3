@@ -64,6 +64,22 @@ import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 
 const PR_SIDE = 5;
 
+/**
+ * En afvigelse man ikke har, er ikke en afvigelse på nul.
+ *
+ * ⚠ deviation(undefined) giver "0" og tonen neutral — altså påstanden "ingen
+ * ændring". Det er en oplysning vi ikke har, skrevet som om vi havde den, og
+ * det er samme fejl som at oversætte en afvist læsning til "ingen
+ * forbindelse". Mangler feltet, siger noten det i stedet.
+ *
+ * Det ER en tilstand man møder: appen læser kpi/ fra basen, og en base der er
+ * seedet før feltet fandtes, har det ikke. Nøjagtig sådan stod donutten tom.
+ */
+const afvig = (vaerdi, opts) =>
+  Number.isFinite(vaerdi)
+    ? { afvigelse: deviation(vaerdi, opts), note: "vs. forrige periode" }
+    : { note: "afvigelsen er ikke aggregeret endnu" };
+
 /* Navnet på den ansvarlige. ⚠ personId, ALDRIG uid — det er hvem det HANDLER
    om, ikke hvem der gjorde noget. En facilityansvarlig har måske intet login. */
 const personNavn = (personId) =>
@@ -117,24 +133,20 @@ export default function FacilityOversigt() {
             Afvigelserne KRÆVER historik og kommer derfor fra kpi/ — de kan
             ikke regnes af de femten demo-aktiver skærmen har. */}
         <KpiKort label="Aktiver i drift" vaerdi={num(k.facility.aktiver)}
-                 ikon={<Ikon navn="bygning" />} tone="ikon-5" rund
-                 afvigelse={deviation(k.facility.aktiverDeltaPct,
-                                      { betterWhen: "higher", unit: "pct" })}
-                 note="vs. forrige periode" til="/facility" />
+                 ikon={<Ikon navn="bygning" />} tone="ikon-5" rund til="/facility"
+                 {...afvig(k.facility.aktiverDeltaPct, { betterWhen: "higher", unit: "pct" })} />
         <KpiKort label="Servicepunkter forfalder" vaerdi={num(k.facility.servicepunkterForfalder)}
                  ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
-                 afvigelse={deviation(k.facility.servicepunkterDelta,
-                                      { betterWhen: "lower" })}
-                 note="vs. forrige periode" til="/facility/servicekalender" />
+                 til="/facility/servicekalender"
+                 {...afvig(k.facility.servicepunkterDelta, { betterWhen: "lower" })} />
         <KpiKort label="Åbne facility-sager" vaerdi={num(k.facility.aabneSager)}
                  ikon={<Ikon navn="udraab" />} tone="ikon-1" rund
-                 afvigelse={deviation(k.facility.aabneSagerDelta, { betterWhen: "lower" })}
-                 note="vs. forrige periode" til="/facility/servicekalender" />
+                 til="/facility/servicekalender"
+                 {...afvig(k.facility.aabneSagerDelta, { betterWhen: "lower" })} />
         <KpiKort label="Planlagt vedligehold" vaerdi={num(k.facility.planlagtVedligehold)}
                  ikon={<Ikon navn="kalender" />} tone="ikon-6" rund
-                 afvigelse={deviation(k.facility.planlagtVedligeholdDelta,
-                                      { betterWhen: "higher" })}
-                 note="vs. forrige periode" til="/facility/servicekalender" />
+                 til="/facility/servicekalender"
+                 {...afvig(k.facility.planlagtVedligeholdDelta, { betterWhen: "higher" })} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
@@ -173,12 +185,30 @@ export default function FacilityOversigt() {
 
         <Kort titel="Aktivoversigt"
               handling={<Link className="fc-a" to="/facility/servicekalender">Se alle aktiver</Link>}>
-          <Donut
-            dele={fordeling}
-            total={k.facility.aktiver}
-            midteTekst="aktive"
-            format={(v) => num(v)}
-          />
+          {/* ⚠ ET MANGLENDE FELT ER IKKE "INGEN DATA I PERIODEN".
+              Donut-primitivet siger det sidste, når listen er tom, og det er
+              rigtigt for en periode uden aktivitet — men forkert her: feltet
+              er ikke aggregeret endnu, og det er en helt anden ting at gøre
+              noget ved. Samme skelnen som dataTilstand() laver mellem en
+              afvist læsning og en manglende forbindelse.
+              Det ER sket: appen læser kpi/ fra basen, og en base seedet før
+              aktiverPrArt fandtes, har feltet ikke. Kør npm run
+              provisioner:dev. */}
+          {!fordeling.length ? (
+            <Tom>
+              <b>aktiverPrArt</b> findes ikke i <code>kpi/</code> for denne tenant.
+              Fordelingen er ikke aggregeret endnu — det er ikke det samme som
+              at der ingen aktiver er; nøgletallet ovenfor siger{" "}
+              {num(k.facility.aktiver)}.
+            </Tom>
+          ) : (
+            <Donut
+              dele={fordeling}
+              total={k.facility.aktiver}
+              midteTekst="aktive"
+              format={(v) => num(v)}
+            />
+          )}
           <p className="fc-hint" style={{ marginTop: 12 }}>
             Fordelingen af alle <b>{num(k.facility.aktiver)}</b> aktiver kommer fra{" "}
             <b>kpi/</b> — den kan ikke regnes af de {num(DEMO_AKTIVER.length)} hentede.

@@ -342,11 +342,15 @@ export function driftsforhold(lokationId, { aktiver = [], aabneFejl = [], par = 
  * Summen bevares: Øvrige er præcis resten, ikke et afrundet tal.
  */
 export function aktivFordeling(prArt = {}, maks = 5) {
+  /* ⚠ FELTET HEDDER `navn`. Det er Donut-primitivets kontrakt i ui.jsx, og
+     den skal overholdes her frem for at primitivet skal kende to former.
+     Hed det `label`, tegnede figuren rigtigt og legenden stod tom — det er
+     netop den slags fejl der ikke ses i en test af tallene. */
   const poster = Object.entries(prArt)
     .filter(([, n]) => n > 0)
     .map(([id, antal]) => ({
       id, antal,
-      label: id === "oevrige" ? "Øvrige" : AKTIV_ART[id]?.label || id,
+      navn: id === "oevrige" ? "Øvrige" : AKTIV_ART[id]?.label || id,
     }))
     .sort((a, b) => b.antal - a.antal);
 
@@ -357,11 +361,11 @@ export function aktivFordeling(prArt = {}, maks = 5) {
   return [
     ...beholdt,
     {
-      id: "oevrige", label: "Øvrige",
+      id: "oevrige", navn: "Øvrige",
       antal: rest.reduce((s, p) => s + p.antal, 0),
       /* Hvad der ligger i den. Legenden skal kunne sige det — ellers er
          Øvrige bare et hul man ikke kan spørge ind til. */
-      dele: rest.map((p) => p.label),
+      dele: rest.map((p) => p.navn),
     },
   ];
 }

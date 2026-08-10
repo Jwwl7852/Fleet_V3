@@ -114,6 +114,15 @@ test("Aktivfordelingen folder til fem og bevarer summen", async (t) => {
     assert.ok(!f.some((x) => x.dele));
   });
 
+  await t.test("hver del hedder navn — Donut-primitivets kontrakt", () => {
+    /* Hed feltet label, tegnede figuren rigtigt og legenden stod tom. En test
+       af tallene alene ville ikke have fanget det. */
+    for (const d of aktivFordeling({ port: 4, koeleanlaeg: 3, oevrige: 2 })) {
+      assert.ok(typeof d.navn === "string" && d.navn.length,
+        `en del uden navn: ${JSON.stringify(d)}`);
+    }
+  });
+
   await t.test("demo-fordelingen summer til kpi.facility.aktiver", () => {
     /* Ellers beskriver donutten en anden aktivbase end nøgletallet over den. */
     for (const div of ["gods", "bus"]) {
