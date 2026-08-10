@@ -196,7 +196,11 @@ export const MiniLinje = ({ label, vaerdi, andel, prik }) => (
   <div className={andel != null ? "fc-mini fc-mini-bar" : "fc-mini"}>
     <span>{label}</span>
     <b>{vaerdi}</b>
-    {prik && <i className={`fc-prik fc-prik-${prik}`} aria-hidden="true" />}
+    {/* ⚠ PRIKKENS PLADS RESERVERES ALTID, ogsaa naar der ikke er en prik.
+        Ellers flytter tallets hoejrekant sig fra linje til linje, alt efter om
+        raekken har en prik — og saa staar tallene hulter til bulter i stedet
+        for i en kolonne man kan loebe ned ad. */}
+    <i className={prik ? `fc-prik fc-prik-${prik}` : "fc-prik fc-prik-tom"} aria-hidden="true" />
     {andel != null && (
       <div className="fc-mini-spor">
         <div className="fc-mini-fyld"
