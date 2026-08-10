@@ -114,7 +114,6 @@ tenants/<tenantId>/
   countere/booking/<år>
   countere/sagFlt/<år>
   countere/sagFac/<år>
-  idebank/<id>
 brugerTenants/<uid>             opslag til custom claims, kun server-side
 ```
 

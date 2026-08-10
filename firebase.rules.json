@@ -438,12 +438,6 @@
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             }
           }
-        },
-
-        "idebank": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|idebank.skriv|')",
-          ".indexOn": ["oprettetMs", "prioritet"]
         }
       }
     },

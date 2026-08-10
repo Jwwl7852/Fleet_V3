@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 30
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 31
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 30 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 31 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -113,6 +113,7 @@ tilfældigt.
 | 28 | **Rollevælgeren er en brugervælger.** Perms kommer fra tokenets claims, og en klient kan ikke ændre sit eget token — en dropdown kan derfor ikke ændre adgang, kun hvad UI'et tegner. I dev skiftes **session**: log ud, log ind som en anden seedet bruger, nyt token. I demo bevares overstyringen, hvor der ingen server er at være uenig med. Adgangsvejen selv (`harAdgang`) er **miljøuafhængig** og kræver et tenant-claim | `fleet/Brugervaelger.jsx`, `App.jsx` |
 | 29 | **En udrulning er ikke færdig, før den er efterprøvet.** `firebase.rules.json` var aldrig udrullet: DEV kørte en ældre version med en kaskaderende `.read` på `tenants/$tenantId`, så hele beslutning 17 var sat ud af kraft. **Prøverne havde ret om filen og sagde intet om databasen.** `npm run regler:udrul` udruller OG sammenligner. Læsetjekket arver bevidst ikke provisioneringens produktionsspærring — mod prod er det mere værd | `scripts/tjek-regler.mjs` |
 | 30 | **Kategorifarver er ikke statusfarver.** `GRAF_TONE` havde fem toner, og det så ud som om de rakte til Dashboards fem opgavestatusser — men statusfarver siger *hvor slemt det er*, kategorifarver siger *hvilken ting det er*. Genbruges de, betyder rød både "kritisk" og "den femte kategori". Fem `--fc-serie-*`, **valideret** med dataviz-validatoren, ikke skønnet | `fleet/fleet.css`, `fleet/ui.jsx` |
+| 31 | **Roller er faste. Man tildeler dem — man ændrer dem ikke.** En vognmand der fjernede `booking.godkend` fra sin egen adminrolle havde lukket sig ude af sit eget system, og adgangen til at rette det var selv en permission. Beslutningen var **allerede håndhævet** — `roller` er `.write: false` — den var bare ikke skrevet ned. Idébanken røg ud i samme ombæring: rute, skærm, permission og node, som beslutning 22 lovede | `fleet/permissions.js`, `firebase.rules.json` |
 
 ## Struktur
 
@@ -184,8 +185,9 @@ reglerne var aldrig udrullet til DEV, og prøverne kunne ikke se det (beslutning
 
 | | Skærme |
 |---|---|
-| **Bygget (27)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3, **Fakturagrundlag**, **Indberetninger**, **Kompetencer**, **Leverandører** |
-| **Venter på svar (3)** | Opsætning → Generelt, Opsætning → Brugere & roller, Idébank *(ud af kundens installation)* |
+| **Bygget (29)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3, **Fakturagrundlag**, **Indberetninger**, **Kompetencer**, **Leverandører**, **Opsætning → Generelt**, **Opsætning → Brugere & roller** |
+| **Bygget som LÆSESKÆRME** | De to Opsætning-skærme viser hvad der findes — tenant, divisioner, lokationer, roller og permissions — og har **al skrivning deaktiveret med en begrundelse**. De åbne spørgsmål i `FleetControl-spoergsmaal.md` handler alle om at ændre, og de blokerer ikke en visning. Spørgsmålene står **på skærmen**, ikke kun i en fil |
+| **Fjernet** | Idébank. Beslutning 22 afgjorde at den ikke hører i kundens installation; rute, skærm, `idebank.skriv` og noden i regelfilen er væk (beslutning 31) |
 
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
 fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De tre der
@@ -398,7 +400,7 @@ i **beslutning 22**. Fire af dem er dermed bygget eller ude af fase 0:
 |---|---|
 | Opsætning → Integrationer | **Bygget.** Kun det der findes — og der findes ingen. Ingen "coming soon" |
 | Booking → **Rute & status** | **Bygget.** Ingen GPS: planlagt rute, meldte stop, næste stop, forventede tidspunkter |
-| Opsætning → Idébank | **Ud af kundens installation** i fase 0. Intern hos os — bygges ikke her |
+| Opsætning → Idébank | **Fjernet fra kundens installation** — rute, skærm, permission og node. Lever videre som selvstændig `idebank.html` hos os. Beslutning 22, udført i beslutning 31 |
 | Indkøb → Leverandører | Kartoteket er bygget som del af Indkøb & vareforbrug. Kun performancetallene mangler |
 
 De **fem** der venter, venter nu på at svarene skrives ind i

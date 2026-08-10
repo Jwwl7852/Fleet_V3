@@ -35,7 +35,6 @@ import Fakturering from "./moduler/Fakturering.jsx";
 import Generelt from "./moduler/opsaetning/Generelt.jsx";
 import Brugere from "./moduler/opsaetning/Brugere.jsx";
 import Integrationer from "./moduler/opsaetning/Integrationer.jsx";
-import Idebank from "./moduler/opsaetning/Idebank.jsx";
 import Hjaelp from "./moduler/support/Hjaelp.jsx";
 import Supportoverblik from "./moduler/support/Overblik.jsx";
 import Supportsag from "./moduler/support/Sag.jsx";
@@ -154,7 +153,6 @@ export default function App() {
             <Route path="opsaetning" element={<Generelt />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
-            <Route path="opsaetning/idebank" element={<Idebank />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}
             {REDIRECTS.map((r) => (

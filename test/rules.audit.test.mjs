@@ -160,7 +160,6 @@ describe("revisor-presettet", () => {
     for (const [node, post] of [
       ["kunder", { navn: "K", division: "gods", aktiv: true }],
       ["opgaver", { division: "gods" }],
-      ["idebank", { titel: "Idé" }],
       ["indberetninger", { division: "gods", type: "braendstof", km: 1, oprettetAf: "uid-rev2" }],
     ]) {
       await assertFails(set(ref(db, `tenants/${MIN}/${node}/rev`), post));
@@ -236,6 +235,6 @@ describe("retention-klassen ligger i stien", () => {
     assert.equal(klasseFor(AUDIT.adgangNaegtet, "kunder"), "sikkerhed");
     assert.equal(klasseFor(AUDIT.eksporter, "kunder"), "sikkerhed");
     assert.equal(klasseFor(AUDIT.laes, "kunder"), "drift");
-    assert.equal(klasseFor(AUDIT.aendre, "idebank"), "drift");
+    assert.equal(klasseFor(AUDIT.aendre, "opgaver"), "drift");
   });
 });

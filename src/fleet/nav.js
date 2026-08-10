@@ -137,8 +137,6 @@ export const NAV = [
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Bemanding → Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer",
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
-      { key: "idebank", sti: "/opsaetning/idebank", label: "Idébank",
-        titel: "Idébank", under: "Idéer, værdi ÷ indsats og vejkort" },
     ],
   },
 ];

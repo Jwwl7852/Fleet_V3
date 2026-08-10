@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **30 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **31 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -226,4 +226,14 @@ kan ikke komme ud af sync.
   `sag.skriv`, `sag.karantaeneFrigiv` og `sag.aftaleBekraeft` heller ikke i
   `permissions.js`. Tilføj dem i samme ombæring som reglerne og deres tests —
   ikke før.
-- 9 skærme har ingen mockup. Byg dem ikke på gæt — spørg.
+- 7 skærme har ingen mockup. Byg dem ikke på gæt — spørg. **Opsætning → Generelt
+  og Brugere & roller er bygget som LÆSESKÆRME**: de viser kun hvad der findes,
+  al skrivning er deaktiveret med en begrundelse, og de åbne spørgsmål står på
+  skærmen. Det er mønstret for de resterende — en visning kræver ikke et svar
+  på hvordan man ændrer.
+- **Idébanken findes ikke længere i kundens installation.** Rute, skærm,
+  `idebank.skriv` og `idebank`-noden er fjernet (beslutning 22, udført i 31).
+  Genindfør den ikke — den lever som selvstændig `idebank.html`.
+- **Rollerne er faste.** `roller` er `.write: false`, og det skal det blive:
+  en vognmand der fjerner `booking.godkend` fra sin egen adminrolle, har lukket
+  sig ude, og adgangen til at rette det var selv en permission. Se beslutning 31.

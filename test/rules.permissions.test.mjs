@@ -78,12 +78,13 @@ describe("permission-kataloget", () => {
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.bookingGodkend));
   });
 
-  it("chaufføren kan kun indberette og skrive i idébanken", () => {
+  it("chaufføren kan KUN indberette", () => {
+    /* ⚠ HED FOER "…og skrive i idébanken". Idébanken er ude af kundens
+       installation (beslutning 22), og saa er indberetningen det eneste en
+       chauffoer skriver. Testen er skaerpet, ikke svaekket: listen er
+       udtoemmende, saa en ny skrivepermission paa chauffoeren faelder den. */
     const skriv = ROLLE_PERMS.chauffoer.filter((p) => p.includes(".skriv"));
-    assert.deepEqual(
-      skriv.sort(),
-      [PERM.idebankSkriv, PERM.indberetningerSkriv].sort()
-    );
+    assert.deepEqual(skriv.sort(), [PERM.indberetningerSkriv].sort());
     /* Læsning af de fire klassificerede objekters general-del har de, som
        alle andre — men intet klassificeret. Se beslutning 17. */
     for (const p of ROLLE_PERMS.chauffoer) {
@@ -126,7 +127,6 @@ describe("serveren håndhæver permissions", () => {
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", beloebOere: 100 }],
       ["satser", PERM.satserSkriv, { post: { satser: [] } }],
       ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],
-      ["idebank", PERM.idebankSkriv, { titel: "Idé" }],
     ];
     for (const [node, perm, post] of noder) {
       /* Navngiv noden i fejlen. Ellers siger en fejlende løkke kun
@@ -158,7 +158,6 @@ describe("ukendte og manglende permissions fejler lukket", () => {
     for (const [node, post] of [
       ["kunder", KUNDE],
       ["opgaver", { division: "gods" }],
-      ["idebank", { titel: "Idé" }],
       ["satser", { post: {} }],
     ]) {
       await assertFails(set(ref(db, sti(node, "tastefejl")), post));
@@ -168,7 +167,7 @@ describe("ukendte og manglende permissions fejler lukket", () => {
   it("rollen alene giver ingenting — admin uden perms-claim afvises", async () => {
     const db = miljoe.authenticatedContext("uid-kunrolle", { tenant: T, rolle: "admin" }).database();
     await assertFails(set(ref(db, sti("kunder", "k-kunrolle")), KUNDE));
-    await assertFails(set(ref(db, sti("idebank", "i-kunrolle")), { titel: "Idé" }));
+    await assertFails(set(ref(db, sti("opgaver", "o-kunrolle")), { division: "gods" }));
   });
 
   it("et tomt perms-claim giver ingenting", async () => {
@@ -176,13 +175,13 @@ describe("ukendte og manglende permissions fejler lukket", () => {
     await assertFails(set(ref(db, sti("kunder", "k-tom")), KUNDE));
   });
 
-  /* Foer beslutning 17 gjaldt det alle noder. Nu gaelder det de tretten der
+  /* Foer beslutning 17 gjaldt det alle noder. Nu gaelder det dem der
      ikke har en klassificeret satellit — de fire der har, kraever ogsaa en
      laes-permission. Se noten ved bookingLaes om hvorfor asymmetrien er
      bevidst. */
-  it("de tretten uklassificerede noder kan læses med tenant-medlemskab alene", async () => {
+  it("de uklassificerede noder kan læses med tenant-medlemskab alene", async () => {
     const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
-    for (const node of ["opgaver", "indkoeb", "fakturaer", "idebank", "facility"]) {
+    for (const node of ["opgaver", "indkoeb", "fakturaer", "satser", "facility"]) {
       await assertSucceeds(get(ref(db, `tenants/${T}/${node}`)));
     }
     /* Men ikke de fire klassificerede — uden perms-claim er der ingen

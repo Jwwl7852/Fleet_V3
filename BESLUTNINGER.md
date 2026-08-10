@@ -893,6 +893,41 @@ i en strengliteral, og linten så det som en hardkodet farve. Den havde ret af e
 bedre grund end sin egen — et navn der siger farven, lyver den dag paletten
 ændres.
 
+## 31. Roller er faste. Man tildeler dem — man ændrer dem ikke
+
+`tenants/<id>/roller/` blev bygget som en node med et `perms`-array, altså
+som noget der kunne redigeres. Det skal det ikke være hos kunden.
+
+**En vognmand der fjerner `booking.godkend` fra sin egen adminrolle har lukket
+sig selv ude af sit eget system.** Det er ikke en teoretisk fejl — det er den
+mest almindelige måde at ødelægge en rolleadministration på, og den rammer
+netop den der prøver at stramme op. Der findes ingen vej tilbage fra klienten:
+adgangen til at rette rollen var selv en permission.
+
+Kunden tildeler derfor blandt seks faste roller — chauffør, sagsbehandler,
+disponent, koordinator, revisor, administrator — og ændrer ikke hvad de
+indeholder. Skal en rolle betyde noget andet, er det en ændring i
+`permissions.js` og i regelfilen, ikke et klik.
+
+⚠ **Beslutningen var allerede håndhævet, den var bare ikke skrevet ned.**
+`roller` er `.write: false` i `firebase.rules.json` og har været det hele
+tiden. Det er værd at bemærke, fordi det er den rigtige rækkefølge: spærringen
+lå i reglerne, og skærmen kunne derfor ikke komme til at love noget serveren
+ville afvise. Havde den kun ligget i frontend, havde det ikke været
+adgangskontrol men en pæn knap.
+
+**Idébanken røg ud i samme ombæring.** Beslutning 22 afgjorde at den ikke hører
+i kundens installation; ruten stod der stadig med et tomt skelet. Nu er ruten,
+skærmen, `idebank.skriv` og selve `idebank`-noden i regelfilen væk. En node
+ingen skærm læser, med en skriverettighed hver chauffør har, er død overflade —
+og død overflade er noget nogen finder på at bruge til noget.
+
+Prøverne fulgte med: "chaufføren kan kun indberette og skrive i idébanken" hed
+sådan, fordi det var sandt. Den hedder nu "chaufføren kan KUN indberette", og
+listen er udtømmende, så en ny skrivepermission på chaufføren fælder den.
+
+---
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside

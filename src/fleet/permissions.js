@@ -33,7 +33,6 @@ export const PERM = {
   fravaerSkriv: "fravaer.skriv",
   facilitySkriv: "facility.skriv",
   indkoebSkriv: "indkoeb.skriv",
-  idebankSkriv: "idebank.skriv",
   satserSkriv: "satser.skriv",
   lagreSkriv: "lagre.skriv",
   /* Egne indberetninger. Ejerskabet tjekkes i reglerne på oprettetAf — det
@@ -84,8 +83,8 @@ export const PERM = {
    * dét der giver mening at kontrastere den finere adgang MOD: "må se
    * bookingen, men ikke hvad godset er værd."
    *
-   * De øvrige tretten noder — opgaver, indkoeb, fakturaer, satser, lagre,
-   * idebank og resten — styres fortsat af tenant-medlemskab alene, præcis som
+   * De øvrige noder — opgaver, indkoeb, fakturaer, satser, lagre
+   * og resten — styres fortsat af tenant-medlemskab alene, præcis som
    * i dag. Det ER asymmetrisk, og det er med vilje.
    *
    * ⚠ "RET" DET IKKE ved at tilføje tretten laes-permissions mere. De ville
@@ -147,7 +146,6 @@ const BASIS_DATA = [
   PERM.fravaerSkriv,
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
-  PERM.idebankSkriv,
   PERM.indberetningerSkriv,
 ];
 
@@ -173,7 +171,7 @@ const BASIS_LAES = [
  * problem kom fra det ene eller det andet. Stramninger er en egen opgave.
  */
 export const ROLLE_PERMS = {
-  chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv, PERM.idebankSkriv],
+  chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv],
 
   casehandler: [...BASIS_LAES, ...BASIS_DATA, PERM.bookingOpret],
 
@@ -255,3 +253,61 @@ export function harPerm(perms, perm) {
   if (Array.isArray(perms)) return perms.includes(perm);
   return perms.includes(`|${perm}|`);
 }
+
+/* ---- Rollekataloget som noget man kan VISE ----------------------------- */
+
+/**
+ * Label og formål pr. rolle. Ligger HER ved siden af ROLLE_PERMS, ikke i den
+ * skærm der først fik brug for det — samme begrundelse som FUNKTION_IKON i
+ * personale.js og ART_IKON i flaade.js.
+ *
+ * `hvorfor` er den ENE sætning der forklarer hvorfor rollen ikke har mere end
+ * den har. Uden den ser en manglende permission ud som en forglemmelse, og så
+ * bliver den "rettet".
+ */
+export const ROLLE_LABEL = {
+  chauffoer: {
+    label: "Chauffør",
+    hvad: "Kører, indberetter og ser sine egne opgaver.",
+    hvorfor: "Skriver kun indberetninger. Intet klassificeret — hverken godsets " +
+             "værdi, privatadresser eller kollegers fraværsårsag.",
+  },
+  casehandler: {
+    label: "Sagsbehandler",
+    hvad: "Opretter bookinger og holder styr på kundedialogen.",
+    hvorfor: "Kan oprette, men ikke foreslå eller godkende. En booking skal " +
+             "gennem disponering, før den bliver til en tur.",
+  },
+  disponent: {
+    label: "Disponent",
+    hvad: "Planlægger ture, tildeler biler og folk.",
+    hvorfor: "Har IKKE booking.godkend. Beslutning 5: den der foreslår, " +
+             "godkender ikke sit eget forslag. Ser hvor bilerne er — man kan " +
+             "ikke disponere i blinde — men ikke hvad godset er værd.",
+  },
+  koordinator: {
+    label: "Koordinator",
+    hvad: "Godkender, returnerer og lukker bookinger.",
+    hvorfor: "Den eneste driftsrolle der ser godsets vurdering: den der " +
+             "godkender, skal kunne se hvad der står på spil. Ser IKKE " +
+             "fraværsårsager — disponeringen har brug for at vide at nogen er " +
+             "utilgængelig, ikke hvorfor.",
+  },
+  revisor: {
+    label: "Revisor",
+    hvad: "Læser alt driftsdata og auditloggen.",
+    hvorfor: "Kan intet skrive. En revisor der kan rette i det han reviderer, " +
+             "reviderer ikke.",
+  },
+  admin: {
+    label: "Administrator",
+    hvad: "Alt.",
+    hvorfor: "Har hver eneste permission. Derfor er det den rolle der skal " +
+             "gives færrest af.",
+  },
+};
+
+export const ALLE_ROLLER = Object.keys(ROLLE_PERMS);
+
+/** Har rollen denne permission? Ukendt rolle giver false, ikke true. */
+export const rolleHarPerm = (rolle, perm) => permsFraRolle(rolle).includes(perm);
