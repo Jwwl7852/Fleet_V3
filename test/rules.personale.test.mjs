@@ -318,6 +318,79 @@ describe("de tre tjek der skal køre før en etape oprettes", () => {
     assert.equal(svar.ok, false);
   });
 
+  /* ⚠ BESLUTNING 25's EGENTLIGE REGEL, OG DEN VAR IKKE PRØVET.
+     Alle prøverne ovenfor sender `krav` som et ARRAY — den bagudkompatible
+     sti, hvor alt blokerer. Objektformen { blokerende, advarende } er det
+     beslutning 25 tilføjede, og den er det Kompetencer-skærmen faktisk
+     kalder med. Den havde nul dækning.
+
+     Linjen er hvad kravet KOMMER FRA: alt kraevedeKompetencer() udleder af
+     enheden og godset, blokerer. Virksomheds- og kundekrav advarer. */
+  it("en advarende mangel gør IKKE ok falsk", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [{ type: "c", udloeberMs: nu + 86400000 }],
+      { blokerende: ["c"], advarende: ["kundekursus"] },
+      nu
+    );
+    assert.equal(
+      svar.ok, true,
+      "ok betyder KAN DISPONERES. Læses advarsler som spærringer, holder " +
+      "disponenten op med at læse dem"
+    );
+    assert.deepEqual(svar.advarende.mangler, ["kundekursus"]);
+    assert.equal(svar.advarende.ok, false, "advarslen findes stadig — den er bare ikke en spærring");
+  });
+
+  it("en blokerende mangel gør ok falsk, uanset at advarslerne er i orden", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [{ type: "kundekursus", udloeberMs: nu + 86400000 }],
+      { blokerende: ["ce"], advarende: ["kundekursus"] },
+      nu
+    );
+    assert.equal(svar.ok, false);
+    assert.deepEqual(svar.blokerende.mangler, ["ce"]);
+    assert.equal(svar.advarende.ok, true);
+  });
+
+  /* En udløbet ADVARENDE kompetence er stadig kun en advarsel. Blokerede den,
+     ville "en udløbet kompetence blokerer" gælde bredere end beslutning 25
+     siger, og enhver virksomhedsattest ville kunne stoppe en tur. */
+  it("en udløbet advarende kompetence advarer — den blokerer ikke", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [{ type: "c", udloeberMs: nu + 86400000 }, { type: "kundekursus", udloeberMs: nu - 1 }],
+      { blokerende: ["c"], advarende: ["kundekursus"] },
+      nu
+    );
+    assert.equal(svar.ok, true);
+    assert.deepEqual(svar.advarende.udloebne, ["kundekursus"]);
+    assert.deepEqual(svar.blokerende.udloebne, []);
+  });
+
+  /* mangler/udloebne i toppen har altid betydet DE BLOKERENDE. Kaldere fra før
+     beslutning 25 må ikke pludselig få advarsler blandet ind — så ville en
+     virksomhedsattest kunne spærre en tur i en kalder der aldrig bad om det. */
+  it("mangler og udloebne i toppen peger stadig kun på de blokerende", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer(
+      [],
+      { blokerende: ["ce"], advarende: ["kundekursus"] },
+      nu
+    );
+    assert.deepEqual(svar.mangler, ["ce"], "advarsler må ikke sive op i det gamle felt");
+    assert.deepEqual(svar.udloebne, []);
+  });
+
+  it("et array betyder stadig at alt blokerer", () => {
+    const nu = 1786000000000;
+    const svar = tjekKompetencer([], ["c"], nu);
+    assert.equal(svar.ok, false);
+    assert.deepEqual(svar.blokerende.mangler, ["c"]);
+    assert.deepEqual(svar.advarende.mangler, [], "der er ingen advarende krav i array-formen");
+  });
+
   it("den senest udløbende post tæller, hvis der er flere af samme type", () => {
     const nu = 1786000000000;
     const svar = tjekKompetencer(
