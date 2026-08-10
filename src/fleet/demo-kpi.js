@@ -97,6 +97,15 @@ export const DEMO_KPI = {
       ikkeFaktureretOere: 18624000, daekningsgradPct: 72, maalDaekningsgradPct: 70,
       driftstimer: 2840,
       planlagtVedligeholdPct: 72,
+      /* PERIODEAFVIGELSER, og de er noget ANDET end budgetafvigelsen.
+         Budgetafvigelsen udledes af de to felter ovenfor og staar derfor
+         ikke her. De tre nedenfor sammenligner med FORRIGE PERIODE og
+         kraever historik laengere tilbage end de tolv maaneder graferne
+         har — derfor kpi/ og ikke en beregning i skaermen.
+         ⚠ daekningsgradDeltaPoint er PROCENTPOINT. Samme faelde som
+         leveranceTilTidenDeltaPoint paa Indkoeb. */
+      driftsomkostningerDeltaPct: 8.6, ikkeFaktureretDeltaPct: -14.6,
+      daekningsgradDeltaPoint: 5,
     },
     /* ⚠ TOP 5 PÅ TVÆRS AF MODULERNE — flåde, facility, indkøb, værksted.
        Den kan derfor IKKE udledes af det Dashboard allerede har, og
@@ -178,6 +187,9 @@ export const DEMO_KPI = {
       ikkeFaktureretOere: 7240000, daekningsgradPct: 68, maalDaekningsgradPct: 70,
       driftstimer: 1120,
       planlagtVedligeholdPct: 64,
+      /* Samme tre felter som under gods — se noten der om procentpoint. */
+      driftsomkostningerDeltaPct: 2.9, ikkeFaktureretDeltaPct: 6.2,
+      daekningsgradDeltaPoint: -2,
     },
     /* Bussernes egne fem. Enhederne er busser og bus-lokationer — ikke
        lastbiler, som ville afsløre at sættet blev kopieret. */

@@ -624,3 +624,32 @@ export function Linjegraf({ punkter = [], serier = [], format = (v) => v, hoejde
     </div>
   );
 }
+
+/**
+ * MiniKurve — en trend i en tabelcelle. Ingen akser, ingen tal.
+ *
+ * ⚠ DEN ER ET FORM-INDTRYK, IKKE EN AFLÆSNING. Netop derfor står der ALTID
+ * et tal ved siden af den i tabellen: en kurve uden akse kan vise hvad som
+ * helst, og læses den som et niveau, er den løgn. Den siger "op eller ned",
+ * og det er alt den må sige.
+ *
+ * `tone` farver den. Kurven bærer ikke retningen med farve alene — tallet
+ * ved siden af har fortegn og pil.
+ */
+export function MiniKurve({ punkter = [], tone = "neutral", bredde = 62, hoejde = 20 }) {
+  const tal = punkter.filter((v) => Number.isFinite(v));
+  if (tal.length < 2) return <span className="fc-neutral">—</span>;
+
+  const min = Math.min(...tal);
+  const maks = Math.max(...tal);
+  const spand = Math.max(1, maks - min);
+  const x = (i) => (i / (tal.length - 1)) * bredde;
+  const y = (v) => hoejde - 2 - ((v - min) / spand) * (hoejde - 4);
+
+  return (
+    <svg className={`fc-minikurve fc-minikurve-${tone}`} width={bredde} height={hoejde}
+         viewBox={`0 0 ${bredde} ${hoejde}`} aria-hidden="true">
+      <polyline points={tal.map((v, i) => `${x(i)},${y(v)}`).join(" ")} />
+    </svg>
+  );
+}
