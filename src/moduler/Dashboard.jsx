@@ -31,12 +31,34 @@ const STATUSFORDELING = (k) => [
   { navn: "Udført", antal: k.opgaver.udfoert },
 ];
 
+/* Stregikoner, 24×24, samme streg som sidebarens ICO i AppShell.
+   Tegnene "!", "▲", "kr" var pladsholdere — mockuppen har rigtige ikoner. */
+const IKON = {
+  dokument: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
+  lastbil: "M3 16V7h11v9M14 10h4l3 3v3h-7M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4m11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
+  ur: "M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18",
+  seddel: "M2 6h20v12H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 9h.01M18 15h.01",
+  skruenoegle: "M14.7 6.3a4 4 0 0 1 5 5l-9.4 9.4a2 2 0 0 1-2.8-2.8l9.4-9.4M14.7 6.3 11 2.6a4 4 0 0 0-5 5l3.7 3.7",
+  personer: "M16 20v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M21 20v-2a3 3 0 0 0-2-2.8",
+  bygning: "M4 21V5l8-3v19M12 21h8V9l-8-3M7 9h1m-1 4h1m-1 4h1",
+  vogn: "M3 4h2l2.5 11h10L21 7H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2m8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2",
+};
+
+const Ikon = ({ navn }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d={IKON[navn]} /></svg>
+);
+
+/* ⚠ TONERNE HER ER IKONACCENTER, IKKE STATUS- ELLER SERIEFARVER.
+   Farven forstærker; tallet, teksten og linket bærer betydningen alene.
+   Derfor må de fem ikke genbruges i en graf — mockuppens rød og orange
+   ligger ΔE 7,1 fra hinanden og ville dumpe validatorens gulv, netop fordi
+   farven dér ER encodingen. Se beslutning 30. */
 const HANDLINGER = (k) => [
-  { n: 3, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "bad", ikon: "!" },
-  { n: k.flaade.udeAfDrift, t: "køretøjer ude af drift", til: "/flaade", link: "Se køretøjer", tone: "warn", ikon: "▲" },
-  { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "warn", ikon: "◷" },
-  { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "info", ikon: "kr" },
-  { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "brand", ikon: "⚙" },
+  { n: 3, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
+  { n: k.flaade.udeAfDrift, t: "køretøjer ude af drift", til: "/flaade", link: "Se køretøjer", tone: "ikon-2", ikon: "lastbil" },
+  { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "ikon-3", ikon: "ur" },
+  { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "ikon-4", ikon: "seddel" },
+  { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },
 ];
 
 /* division står eksplicit på hver post — ingen arver en default.
@@ -77,7 +99,7 @@ export default function Dashboard() {
         <KpiRaekke>
           {HANDLINGER(k).map((h) => (
             <div key={h.t} className="fc-card fc-kpi" style={{ boxShadow: "none" }}>
-              <div className={`fc-kpi-ico fc-tone-${h.tone}`}>{h.ikon}</div>
+              <div className={`fc-kpi-ico fc-tone-${h.tone}`}><Ikon navn={h.ikon} /></div>
               <div className="fc-kpi-txt">
                 <div style={{ fontWeight: 650 }}>{h.n} {h.t}</div>
                 <Link className="fc-a" style={{ fontSize: 12.5 }} to={h.til}>{h.link}</Link>
@@ -139,7 +161,7 @@ export default function Dashboard() {
           />
         </Kort>
 
-        <Kort titel="Bemanding i dag"
+        <Kort titel={<><Ikon navn="personer" /> Bemanding i dag</>}
               handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
           <MiniLinje label="Chauffører disponeret"
                      vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`} />
@@ -148,7 +170,7 @@ export default function Dashboard() {
           <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)} />
         </Kort>
 
-        <Kort titel="Facility"
+        <Kort titel={<><Ikon navn="bygning" /> Facility</>}
               handling={<Link className="fc-a" to="/facility">Gå til Facility</Link>}>
           <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder} />
           <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager} />
@@ -156,7 +178,7 @@ export default function Dashboard() {
           <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} />
         </Kort>
 
-        <Kort titel="Indkøb"
+        <Kort titel={<><Ikon navn="vogn" /> Indkøb</>}
               handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
           <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse} />
           <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} />

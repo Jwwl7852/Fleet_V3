@@ -146,6 +146,18 @@ const FORVENTEDE_TOKENS = {
   "--fc-serie-3": "#1baf7a",
   "--fc-serie-4": "#eda100",
   "--fc-serie-5": "#e87ba4",
+  /* Ikonaccenter, beslutning 30 — en tredje palet, adskilt fra serierne
+     fordi farven her er forstærkning og ikke encoding. */
+  "--fc-ikon-1": "#e34948",
+  "--fc-ikon-2": "#eb6834",
+  "--fc-ikon-3": "#eda100",
+  "--fc-ikon-4": "#4a3aa7",
+  "--fc-ikon-5": "var(--bc-accent)",
+  "--fc-ikon-1-bg": "color-mix(in srgb, #e34948 13%, #fff)",
+  "--fc-ikon-2-bg": "color-mix(in srgb, #eb6834 13%, #fff)",
+  "--fc-ikon-3-bg": "color-mix(in srgb, #eda100 15%, #fff)",
+  "--fc-ikon-4-bg": "color-mix(in srgb, #4a3aa7 12%, #fff)",
+  "--fc-ikon-5-bg": "var(--fc-accent-soft)",
   "--fc-r": "12px",
   "--fc-sidebar": "216px",
   "--fc-shadow": "0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04)",

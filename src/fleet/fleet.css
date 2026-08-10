@@ -37,6 +37,23 @@
   --fc-serie-4:#eda100;
   --fc-serie-5:#e87ba4;
 
+  /* Ikonaccenter — en TREDJE palet, og med vilje adskilt fra --fc-serie-*.
+     Se beslutning 30. De sidder på handlingsboksene, hvor farven er
+     FORSTÆRKNING: tallet, teksten og linket bærer betydningen alene.
+     Seriefarver bærer identitet i en graf og er bundet af validatorens
+     gulve; disse er ikke. Blandes de to, arver en graf en palet der ikke
+     kan bestå — mockuppens rød og orange ligger ΔE 7,1 fra hinanden. */
+  --fc-ikon-1:#e34948;   /* rød */
+  --fc-ikon-2:#eb6834;   /* orange */
+  --fc-ikon-3:#eda100;   /* gul */
+  --fc-ikon-4:#4a3aa7;   /* lilla */
+  --fc-ikon-5:var(--bc-accent);  /* blå */
+  --fc-ikon-1-bg:color-mix(in srgb, #e34948 13%, #fff);
+  --fc-ikon-2-bg:color-mix(in srgb, #eb6834 13%, #fff);
+  --fc-ikon-3-bg:color-mix(in srgb, #eda100 15%, #fff);
+  --fc-ikon-4-bg:color-mix(in srgb, #4a3aa7 12%, #fff);
+  --fc-ikon-5-bg:var(--fc-accent-soft);
+
   --fc-r:12px;
   --fc-sidebar:216px;
   --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
@@ -98,6 +115,12 @@
 .fc-card{background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:var(--fc-r); box-shadow:var(--fc-shadow)}
 .fc-card-h{padding:15px 17px 0; font-size:14.5px; font-weight:650}
+/* Korttitler med ikon (Bemanding, Facility, Indkøb). Ikonet er dæmpet —
+   titlen skal læses, ikke ikonet. */
+.fc-card-h>span{display:inline-flex; align-items:center; gap:8px; min-width:0}
+.fc-card-h svg{width:16px; height:16px; flex:0 0 16px; stroke:currentColor;
+  fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;
+  color:var(--bc-muted)}
 .fc-card-b{padding:15px 17px}
 .fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
 .fc-kpi-l{color:var(--bc-muted); font-size:12.5px; font-weight:500}
@@ -159,6 +182,17 @@
 .fc-tone-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
 .fc-tone-info{background:var(--fc-info-bg); color:var(--fc-info)}
 .fc-tone-brand{background:var(--fc-accent-soft); color:var(--bc-accent)}
+
+/* Ikonaccenter til handlingsboksene. Se noten ved --fc-ikon-* i :root:
+   forstærkning, ikke encoding. Brug dem ALDRIG i en graf. */
+.fc-tone-ikon-1{background:var(--fc-ikon-1-bg); color:var(--fc-ikon-1)}
+.fc-tone-ikon-2{background:var(--fc-ikon-2-bg); color:var(--fc-ikon-2)}
+.fc-tone-ikon-3{background:var(--fc-ikon-3-bg); color:var(--fc-ikon-3)}
+.fc-tone-ikon-4{background:var(--fc-ikon-4-bg); color:var(--fc-ikon-4)}
+.fc-tone-ikon-5{background:var(--fc-ikon-5-bg); color:var(--fc-ikon-5)}
+/* Stregikoner i de runde felter — samme streg som sidebarens. */
+.fc-kpi-ico svg{width:19px; height:19px; stroke:currentColor; fill:none;
+  stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
 
 .fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
 .fc-empty p{margin:0 auto 12px; max-width:48ch}

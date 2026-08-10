@@ -866,6 +866,33 @@ Rækkefølgen: **rettelsen her først**, derefter snapshottet i
 `test/design-tokens.test.mjs`. Retter man kun snapshottet, har man flyttet
 beslutningen ind i en testfil hvor ingen leder efter den — se beslutning 10.
 
+### Tre paletter, ikke to
+
+Handlingsboksene på Dashboard krævede en **tredje**, og grunden er værd at
+kende, fordi den bestemmer hvornår validatorens gulve gælder.
+
+| Palet | Farven er | Bundet af gulvene? |
+|---|---|---|
+| `--bc-ok` / `--bc-warn` / `--bc-block` | tilstand | nej — de er reserverede |
+| `--fc-serie-*` | **identitet i en graf** | **ja** |
+| `--fc-ikon-*` | forstærkning på et felt | nej |
+
+Mockuppens fem handlingsfarver **dumper** som seriepalet: rød↔orange måler
+ΔE 7,1 og blå↔lilla 13,4, begge under gulvet på 15 hvor selv fuldt farvesyn kan
+skelne. Under `--pairs all` — som fem felter side om side er — klarer kun de
+**tre** første slots gulvet i det hele taget.
+
+De bruges alligevel, og det er ikke en undtagelse fra reglen: **farven bærer
+ikke betydningen her.** Hver boks har et tal, en tekst og et link. Gulvene
+gælder encoding, ikke pynt. Havde vi lagt dem i `--fc-serie-*`, ville den næste
+graf have arvet en palet der ikke kan bestå — derfor to navnerum.
+
+⚠ **Tonen hedder sin plads, ikke sin farve.** `tone: "ikon-2"`, ikke
+`tone: "orange"`. Designtesten fangede det sidste: `"orange"` er et CSS-farvenavn
+i en strengliteral, og linten så det som en hardkodet farve. Den havde ret af en
+bedre grund end sin egen — et navn der siger farven, lyver den dag paletten
+ændres.
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside
