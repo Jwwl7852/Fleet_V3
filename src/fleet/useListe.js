@@ -25,8 +25,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
-import { db } from "../firebase.js";
+import { db, miljoe } from "../firebase.js";
 import { laes as auditLaes, adgangNaegtet as auditNaegtet } from "./audit.js";
+import { TILSTAND, dataTilstand } from "./datatilstand.js";
 
 const DAG = 86400000;
 
@@ -178,7 +179,7 @@ function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter, valgtD
  * hvorfor en booking mangler.
  */
 export function useListe(node, indstillinger = {}) {
-  const { periode, path, tenantId, division: valgtDivision } = useFleet();
+  const { periode, path, tenantId, division: valgtDivision, bruger } = useFleet();
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
     filtrer, sorter, division: divisionsTilstand = "shell",
@@ -213,6 +214,7 @@ export function useListe(node, indstillinger = {}) {
   const [raa, setRaa] = useState([]);
   const [henter, setHenter] = useState(true);
   const [fejl, setFejl] = useState(null);
+  const [tilstand, setTilstand] = useState({ art: TILSTAND.ok, visDemo: false });
   const [afkortet, setAfkortet] = useState(false);
   const [nonce, setNonce] = useState(0);
   const genindlaes = useCallback(() => setNonce((n) => n + 1), []);
@@ -234,7 +236,10 @@ export function useListe(node, indstillinger = {}) {
 
     const o = { ordnPaa, interval: fra == null ? null : { fra, til }, lig, graense, partition };
 
-    const modtag = (raekker) => {
+    /* egteLaesning er falsk når rækkerne kommer fra demo-sættet uden at
+       serveren er spurgt. Så må der ikke skrives en auditpost: den ville
+       registrere en læsning der aldrig fandt sted. */
+    const modtag = (raekker, egteLaesning = true) => {
       if (!aktiv) return;
       /* Drift-detektor: har NOGLE rækker division og andre ikke, er feltet
          ved at glide. De divisionsløse vises i begge, så fejlen er synlig —
@@ -248,13 +253,14 @@ export function useListe(node, indstillinger = {}) {
           );
         }
       }
+      if (egteLaesning) setTilstand({ art: TILSTAND.ok, visDemo: false });
       setRaa(raekker);
       setAfkortet(Boolean(graense) && raekker.length >= graense);
       setHenter(false);
 
       /* Antallet, ikke rækkerne. En audit-post må ikke indeholde det den
          registrerer at nogen har set. audit.laes kaster aldrig. */
-      if (auditerSom) auditLaes({ objekt: auditerSom, antal: raekker.length });
+      if (auditerSom && egteLaesning) auditLaes({ objekt: auditerSom, antal: raekker.length });
     };
 
     const demoData = () => {
@@ -266,15 +272,25 @@ export function useListe(node, indstillinger = {}) {
        kan ikke skrive til auditloggen, så det må komme herfra — svagere end
        serverlogning, men bedre end tavshed. Se noten på audit.adgangNaegtet. */
     const fejlet = (e) => {
+      if (!aktiv) return;
       setFejl(e);
+      setTilstand(dataTilstand({ harDb: true, harBruger: true, miljoe, fejl: e }));
       if (auditerSom) {
         auditNaegtet({ objekt: auditerSom, aarsag: e?.code || "ukendt" });
       }
-      modtag(demoData());
+      /* INGEN demo-data. En afvist læsning skal ses som en afvisning, ikke
+         som en tabel med opdigtede rækker. Se datatilstand.js. */
+      setRaa([]);
+      setAfkortet(false);
+      setHenter(false);
     };
 
-    if (!db) {
-      modtag(demoData());
+    /* FØR forespørgslen — manglende database og manglende bruger er begge
+       kendt op front. Uden bruger sendes forespørgslen slet ikke. */
+    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger), miljoe });
+    if (foer.art !== TILSTAND.ok) {
+      setTilstand(foer);
+      modtag(foer.visDemo ? demoData() : [], false);
       return () => { aktiv = false; };
     }
 
@@ -298,12 +314,12 @@ export function useListe(node, indstillinger = {}) {
     })();
 
     return () => { aktiv = false; };
-  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom]);
+  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger]);
 
   /* Divisionen filtreres HER, ikke i effekten. Derfor genhenter et skift
      mellem Gods og Bus ikke — det er øjeblikkeligt og koster ingen egress. */
   const data = efterbehandl(raa, {
     ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand,
   });
-  return { data, henter, fejl, genindlaes, afkortet };
+  return { data, henter, fejl, tilstand, genindlaes, afkortet };
 }

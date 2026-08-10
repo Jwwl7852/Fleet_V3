@@ -26,7 +26,7 @@ import { useKpi } from "../../fleet/useKpi.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Knap,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Knap,
 } from "../../fleet/ui.jsx";
 import { TILSTAND, forloebstilstand, tilgaengeligeHandlinger } from "../../fleet/booking-state.js";
 import { DEMO_BOOKINGER, TRANSPORTTYPE, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
@@ -35,12 +35,12 @@ import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id;
 
 export default function BookingOversigt() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger, division } = useFleet();
   const [visAlle, setVisAlle] = useState(false);
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* Samme visningsregel som useListe: valgt division plus fælles, og en post
      uden division vises i begge. */
@@ -76,7 +76,7 @@ export default function BookingOversigt() {
                  note="kun færdige forløb" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {/* Er det denormaliserede felt drevet, skal det siges — ikke skjules bag
           det genberegnede tal. */}

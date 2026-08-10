@@ -43,7 +43,7 @@ import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Henter, Fejl, MiniLinje, Gitter, Afvigelse, Soejlegraf,
+  Kort, KpiKort, KpiRaekke, Tabel, Henter, Datatilstand, MiniLinje, Gitter, Afvigelse, Soejlegraf,
 } from "../fleet/ui.jsx";
 
 const NU = Date.now();
@@ -155,12 +155,12 @@ const KLAR_TIL_FAKTURERING = [
 ];
 
 export default function Oekonomi() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { dage, division } = useFleet();
   const [rapport, setRapport] = useState("alle");
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* ÉN beregning. KPI-kortet og totalrækken læser begge herfra. */
   const budgetAfvigelseOere = k.oekonomi.driftsomkostningerOere - k.oekonomi.budgetOere;
@@ -217,7 +217,7 @@ export default function Oekonomi() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <KpiRaekke>
         <KpiKort label="Driftsomkostninger" vaerdi={kr(k.oekonomi.driftsomkostningerOere)}

@@ -142,6 +142,9 @@
 .fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
 .fc-empty p{margin:0 auto 12px; max-width:48ch}
 .fc-empty-bad{color:var(--bc-block)}
+/* "Ikke logget ind" er ikke en fejl — det er en tilstand. Rød ville lære
+   brugeren at ignorere rød. Se Datatilstand i ui.jsx. */
+.fc-empty-warn{color:var(--bc-warn)}
 
 .fc-btn{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
   padding:8px 13px; font:inherit; font-size:13px; font-weight:600; color:var(--bc-text);

@@ -39,7 +39,7 @@ import { useState } from "react";
 import { useKpi } from "../fleet/useKpi.js";
 import { kr, num, dato, datoTid } from "../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../fleet/ui.jsx";
 import {
   GRUNDLAG_TILSTAND, LINJE_ART,
@@ -57,11 +57,11 @@ const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id || "�
 const momsTekst = (oere) => (oere === null ? "—" : kr(oere));
 
 export default function Fakturering() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState("grl-002");
 
   if (henter) return <Henter hvad="fakturagrundlag" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const valgt = DEMO_GRUNDLAG.find((g) => g.id === valgtId) || null;
 
@@ -93,7 +93,7 @@ export default function Fakturering() {
                  tone={udenMoms.length ? "warn" : undefined} note="eksport spærret" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
         <Kort titel="Fakturagrundlag">

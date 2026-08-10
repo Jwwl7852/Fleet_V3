@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
-import { Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, MiniLinje, Gitter } from "../fleet/ui.jsx";
+import { Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter } from "../fleet/ui.jsx";
 
 const HANDLINGER = (k) => [
   { n: 3, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "bad", ikon: "!" },
@@ -38,11 +38,11 @@ const OPGAVER = [
 ];
 
 export default function Dashboard() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* Afledte tal BEREGNES her — de skrives ikke ind i basen to steder.
      Det er derfor kapacitetsgraden ikke længere kan være 84 % på Dashboard
@@ -56,7 +56,7 @@ export default function Dashboard() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — der er ikke forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel="Kræver handling">
         <KpiRaekke>

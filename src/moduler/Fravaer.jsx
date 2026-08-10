@@ -68,7 +68,7 @@ import { KILDE, RESSOURCE, konfliktTekst } from "../fleet/reservations.js";
 import { DEMO_PERSONALE } from "../fleet/demo-personale.js";
 import { DEMO_FRAVAER, DEMO_FRAVAER_SENSITIVE } from "../fleet/demo-fravaer.js";
 import {
-  Kort, Tabel, Pille, Henter, Fejl, Tom, Gitter, MiniLinje, Knap,
+  Kort, Tabel, Pille, Henter, Fejl, Datatilstand, Tom, Gitter, MiniLinje, Knap,
 } from "../fleet/ui.jsx";
 
 /* Perioden vises inklusivt: "14.08.2026 – 18.08.2026" for et fravær der er
@@ -97,7 +97,7 @@ export default function Fravaer() {
      division:"alle" står EKSPLICIT. Reglerne afviser feltet på fravaer/, så
      posterne har det ikke, og useListe viser divisionsløse rækker i begge
      toggles. Uden linjen ville det se ud som om skærmen bare var heldig. */
-  const { data: fravaer, henter, fejl, genindlaes, afkortet } = useListe("fravaer", {
+  const { data: fravaer, henter, fejl, tilstand, genindlaes, afkortet } = useListe("fravaer", {
     ordnPaa: "fra",
     vindue: visAlle ? "alle" : "fremad",
     fremDage: 180,
@@ -154,9 +154,7 @@ export default function Fravaer() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {fejl && (
-        <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>
-      )}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort

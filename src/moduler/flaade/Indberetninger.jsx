@@ -33,7 +33,7 @@ import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
 import { harPerm } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
@@ -51,12 +51,12 @@ const bilNavn = (id) =>
   DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || id || "—";
 
 export default function Indberetninger() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("ind-001");
 
   if (henter) return <Henter hvad="indberetninger" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const valgt = DEMO_INDBERETNINGER.find((i) => i.id === valgtId) || null;
 
@@ -81,7 +81,7 @@ export default function Indberetninger() {
                  note="perioden" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
         <Kort titel="Indberetninger">

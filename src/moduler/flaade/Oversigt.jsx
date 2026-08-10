@@ -62,9 +62,10 @@ import {
 } from "../../fleet/flaade.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import {
-  Kort, Tabel, Pille, Henter, Fejl, Tom, Gitter, MiniLinje, Knap,
+  Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
   KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
+import { vaerste } from "../../fleet/datatilstand.js";
 
 const passerSoegning = (k, q) =>
   !q || [k.kaldenavn, k.navn, k.registrering, k.tachografNr]
@@ -111,7 +112,7 @@ function FristLinje({ label, ms }) {
 
 export default function FlaadeOversigt() {
   const { bruger } = useFleet();
-  const { kpi: k, henter: henterKpi, fejl: kpiFejl, genindlaes: genindlaesKpi } = useKpi();
+  const { kpi: k, henter: henterKpi, fejl: kpiFejl, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
   const [valgtId, setValgtId] = useState(null);
   const [soeg, setSoeg] = useState("");
   const [art, setArt] = useState("");
@@ -126,7 +127,7 @@ export default function FlaadeOversigt() {
      useListe kaster hvis man sender både lig og vindue. Arten filtreres
      klientside: RTDB kan kun filtrere på ét felt, og status er det rigtige at
      bruge det på. */
-  const { data: flaade, henter, fejl, genindlaes, afkortet } = useListe("koeretoejer", {
+  const { data: flaade, henter, fejl, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
     /* EKSPLICIT. Posterne har ingen division (beslutning 19), og useListe
@@ -139,7 +140,7 @@ export default function FlaadeOversigt() {
   });
 
   if (henterKpi || henter) return <Henter hvad="flåden" />;
-  if (!k) return <Fejl genprov={genindlaesKpi}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} tom="Nøgletallene kunne ikke hentes." />;
 
   const maaSkrive = harPerm(bruger?.perms, PERM.koeretoejerSkriv);
   const maaSeFoelsomt = harPerm(bruger?.perms, PERM.koeretoejerSensitiveLaes);
@@ -173,11 +174,8 @@ export default function FlaadeOversigt() {
                  note="uden chauffør" />
       </KpiRaekke>
 
-      {(fejl || kpiFejl) && (
-        <Fejl genprov={() => { genindlaes(); genindlaesKpi(); }}>
-          Viser demo-data — ingen forbindelse til databasen.
-        </Fejl>
-      )}
+      <Datatilstand tilstand={vaerste(tilstand, kpiTilstand)}
+                    genprov={() => { genindlaes(); genindlaesKpi(); }} />
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort

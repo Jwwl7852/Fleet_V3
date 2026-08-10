@@ -641,6 +641,58 @@ faktiske form — de øvrige prøver i filen ville have bestået, selv om koden
 ikke kunne læse et eneste rigtigt indkøb.
 
 
+## 26. En afvist læsning er ikke et netværksproblem
+
+`useKpi` og `useListe` oversatte **enhver** fejl til demo-data plus teksten
+*"Viser demo-data — ingen forbindelse til databasen."* Også en
+`permission-denied` fra sikkerhedsreglerne.
+
+Det er forkert på den værst tænkelige måde. Reglerne afviste læsningen — det er
+systemet der **virker** — og appen kaldte det et netværksproblem og fyldte
+skærmen med opdigtede tal. Den dag en regel er for stram i produktion, ser en
+kunde befolkede skærme med tal der ikke er deres, og en besked om at internettet
+driller. Fejlen ville ikke blive rapporteret som en adgangsfejl, og den ville
+ikke blive fundet ved at kigge.
+
+Tre tilstande er skilt, og pointen er at de opdages på **to forskellige
+tidspunkter**:
+
+| Tilstand | Hvornår kendt | Skærmen viser |
+|---|---|---|
+| `demo` — ingen database konfigureret | Før forespørgslen | Demo-data. Ingen besked; miljøbjælken siger det allerede |
+| `uautentificeret` — ingen bruger | **Før** forespørgslen | Demo-data mærket *"Ikke logget ind"* — **kun i dev**. Forespørgslen sendes ikke |
+| `naegtet` — logget ind, afvist af reglerne | Kun bagefter | Årsagen, med ordet afvist. **Aldrig tal** |
+
+At `auth == null` er en tilstand man kender **op front**, er det der gør
+adskillelsen ren. Den skal ikke fanges som en fejl: forespørgslen sendes slet
+ikke, og så er der ingen påstand om netværket at komme til at fremsætte.
+
+Logikken ligger i `fleet/datatilstand.js` som en ren funktion uden React, så den
+kan prøves — samme grund som `gitter.js`. Teksten ligger i `<Datatilstand>` i
+`ui.jsx`, ét sted: den stod før i 32 kald og var **allerede** drevet, for
+Dashboard sagde *"der er ikke forbindelse"* mens de øvrige fjorten sagde *"ingen
+forbindelse"*.
+
+⚠ **Demo-data ved `auth == null` er et STILLADS, ikke en funktion.** Det findes
+kun fordi der endnu ikke er noget login-flow — `signInWith*` optræder nul gange
+i `src/` — og en tom app ville betyde at nogen om tre dage lavede en hurtig
+overstyring for at kunne arbejde. Det er genvejen i `effektivBruger` igen, bare
+et andet sted.
+
+Grenen er gated på `miljoe === "dev"`: en uautentificeret besøgende i produktion
+skal møde login-skærmen, ikke opdigtede KPI'er, uanset hvor pænt de er mærket.
+
+**Fjernelsesbetingelsen er en del af beslutningen.** Når login lander, skal
+grenen væk — der er ingen legitim grund til at en dev-bruger ikke er logget ind,
+når der findes en måde at logge ind på. Uden den betingelse skrevet ned bliver
+stilladset permanent, fordi det virker.
+
+**Ét tilfælde er bevidst urørt:** en tom `kpi/`-node giver stadig demo-tal.
+Det er ikke samme sag — serveren *har* svaret, og der står bare ikke noget
+endnu, fordi KPI-aggregeringen mangler (se efterslæbet i README). Falder det
+bort før aggregeringen findes, står hele appen tom for en bruger der er logget
+korrekt ind.
+
 ## Sikkerhedsarbejdet i detaljer
 
 ### Forbehold: læsningslogning er klientside

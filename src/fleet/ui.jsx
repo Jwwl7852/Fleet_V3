@@ -121,6 +121,55 @@ export const Henter = ({ hvad = "data" }) => (
   <div className="fc-empty"><p>Henter {hvad}…</p></div>
 );
 
+/**
+ * Hvorfor skærmen ikke viser rigtige tal. ÉN komponent, fordi teksten ellers
+ * står 32 steder — og allerede var drevet: Dashboard sagde "der er ikke
+ * forbindelse" mens de øvrige fjorten sagde "ingen forbindelse".
+ *
+ * ⚠ DEN VIGTIGE: `naegtet`. Reglerne afviste læsningen — det er systemet der
+ * VIRKER — og det må ikke læses som et netværksproblem. Der følger aldrig tal
+ * med; se datatilstand.js.
+ *
+ * To brug:
+ *   <Datatilstand tilstand={tilstand} genprov={g} />      banner over indhold
+ *   <Datatilstand tilstand={tilstand} genprov={g} tom="…" />  når data mangler
+ *
+ * Uden `tom` returnerer den null når der intet er at sige. Med `tom` siger den
+ * altid noget — den afløser det tidlige `return` i skærmene, og dét er stedet
+ * hvor årsagen ellers forsvandt bag "Nøgletallene kunne ikke hentes".
+ */
+export const Datatilstand = ({ tilstand, genprov, tom }) => {
+  const art = tilstand?.art ?? "ok";
+
+  /* Demo-mode siger miljøbjælken allerede. Skærmen skal ikke sige det igen. */
+  if (art === "ok" || art === "demo") {
+    return tom ? <Fejl genprov={genprov}>{tom}</Fejl> : null;
+  }
+
+  if (art === "uautentificeret") {
+    return (
+      <div className="fc-empty fc-empty-warn">
+        <p>
+          {tilstand.visDemo
+            ? "Ikke logget ind — tallene herunder er demo-data, ikke din database."
+            : "Ikke logget ind. Skærmen kan ikke vise data uden et token."}
+        </p>
+      </div>
+    );
+  }
+
+  if (art === "naegtet") {
+    return (
+      <Fejl genprov={genprov}>
+        Sikkerhedsreglerne afviste læsningen. Din bruger har ikke adgang til de
+        her data — det er ikke en netværksfejl. De vises derfor ikke.
+      </Fejl>
+    );
+  }
+
+  return <Fejl genprov={genprov}>Der er ikke forbindelse til databasen.</Fejl>;
+};
+
 export const Knap = ({ variant = "sekundaer", children, ...p }) => (
   <button type="button" className={`fc-btn fc-btn-${variant}`} {...p}>{children}</button>
 );

@@ -44,7 +44,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation } from "../../fleet/format.js";
 import { harPerm } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, kanGodkende,
@@ -57,12 +57,12 @@ import {
 const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 export default function Fakturaer() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
 
   if (henter) return <Henter hvad="fakturaer" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND_MIDLERTIDIG);
   const valgt = DEMO_FAKTURAER.find((f) => f.id === valgtId) || null;
@@ -88,7 +88,7 @@ export default function Fakturaer() {
                  note="snit, leverandørsiden" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Afstemning />
 

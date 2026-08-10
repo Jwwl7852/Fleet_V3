@@ -31,7 +31,7 @@
 import { useState } from "react";
 import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE,
@@ -51,11 +51,11 @@ const KILDER = {
 };
 
 export default function Leverandoerer() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState("lv-hydra");
 
   if (henter) return <Henter hvad="leverandører" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const aktive = DEMO_LEVERANDOERER.filter((l) => l.aktiv);
   const valgt = DEMO_LEVERANDOERER.find((l) => l.id === valgtId) || null;
@@ -84,7 +84,7 @@ export default function Leverandoerer() {
                  note={`under ${MINDSTE_GRUNDLAG} leveringer`} />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel="Leverandører">
         <Tabel

@@ -50,7 +50,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { num, pct, dato, klokke, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
   Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
@@ -206,7 +206,7 @@ function tjekAlt({ post, enheder, person, kompetencer, reservationer, straekning
 /* ---- Skærmen ---------------------------------------------------------- */
 
 export default function Disponering() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
 
@@ -272,7 +272,7 @@ export default function Disponering() {
   }));
 
   if (henter) return <Henter hvad="disponering" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* --- Tjekkene, kørt på det viste vindue --- */
   const fund = [];
@@ -311,7 +311,7 @@ export default function Disponering() {
         <KpiKort label="Konflikter" vaerdi={num(k.disponering.konflikter)} note="hele platformen" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel="Disponering">
         <div className="fc-faner" role="tablist" aria-label="Visning">

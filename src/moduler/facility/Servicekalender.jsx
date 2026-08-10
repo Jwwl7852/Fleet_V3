@@ -26,7 +26,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Gitter, MiniLinje, Knap,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje, Knap,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";
@@ -49,7 +49,7 @@ const VINDUE_DAGE = 10;
 const BESOEG_TONE = { planlagt: "info", igang: "warn", udfoert: "ok" };
 
 export default function Servicekalender() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState(null);
 
   const iDag = new Date(); iDag.setHours(0, 0, 0, 0);
@@ -87,7 +87,7 @@ export default function Servicekalender() {
   }));
 
   if (henter) return <Henter hvad="servicekalenderen" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const valgt = DEMO_SERVICEBESOEG.find((b) => b.id === valgtId) || null;
 
@@ -100,7 +100,7 @@ export default function Servicekalender() {
         <KpiKort label="Anslået omkostning" vaerdi={kr(k.facility.anslaaetServiceOere)} note="ekskl. moms" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel={`Servicekalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}>
         <Gitterkalender

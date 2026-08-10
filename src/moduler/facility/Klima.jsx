@@ -28,7 +28,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, klokke } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Gitter, MiniLinje, Soejlegraf,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Soejlegraf,
 } from "../../fleet/ui.jsx";
 import {
   ZONE_ART, OMKOSTNINGSPOST, alarmTilstand, aktiveAlarmer,
@@ -39,9 +39,9 @@ import { zonePar, demoLokation, DEMO_BYGNINGSOMKOSTNING } from "../../fleet/demo
 const grader = (t) => (Number.isFinite(t) ? `${t.toFixed(1)} °C` : "—");
 
 export default function Klima() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   if (henter) return <Henter hvad="klimadata" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const par = zonePar();
   const alarmer = aktiveAlarmer(par);
@@ -62,7 +62,7 @@ export default function Klima() {
         <KpiKort label="El & varme" vaerdi={kr(elVarme)} note="denne måned, ekskl. moms" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort titel="Zoner">

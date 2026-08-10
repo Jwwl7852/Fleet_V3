@@ -59,7 +59,7 @@ function MiljoeBjaelke() {
     return (
       <div className="fc-miljoe fc-miljoe-demo" role="status">
         <b>Demo</b>
-        <span>Ingen databaseforbindelse. Tallene kommer fra datasættet i useKpi.js.</span>
+        <span>Ingen databaseforbindelse. Tallene kommer fra datasættene i fleet/demo-*.js.</span>
       </div>
     );
   }

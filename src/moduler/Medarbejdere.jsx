@@ -75,8 +75,9 @@ import {
 import { KOMPETENCE_LABEL, kanBlokere } from "../fleet/flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import {
-  Kort, Tabel, Pille, Henter, Fejl, Tom, Gitter, MiniLinje, Knap,
+  Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
 } from "../fleet/ui.jsx";
+import { vaerste } from "../fleet/datatilstand.js";
 
 const passerSoegning = (p, q) =>
   !q || [p.navn, p.email, p.telefon, p.stationeret]
@@ -107,7 +108,7 @@ export default function Medarbejdere() {
      heldig. Her står der at den ikke er delt, fordi staben ikke er det. */
   const {
     data: personale, henter: henterPersonale, fejl: personaleFejl,
-    genindlaes: genindlaesPersonale, afkortet,
+    tilstand: personaleTilstand, genindlaes: genindlaesPersonale, afkortet,
   } = useListe("personale", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
@@ -129,7 +130,7 @@ export default function Medarbejdere() {
      — reglerne afviser feltet på begge noder med .validate: false. */
   const {
     data: kompetencer, henter: henterKompetencer, fejl: kompetenceFejl,
-    genindlaes: genindlaesKompetencer,
+    tilstand: kompetenceTilstand, genindlaes: genindlaesKompetencer,
   } = useListe("kompetencer", {
     ordnPaa: "udloeberMs",
     vindue: "alle",
@@ -164,11 +165,8 @@ export default function Medarbejdere() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {(personaleFejl || kompetenceFejl) && (
-        <Fejl genprov={genindlaesAlt}>
-          Viser demo-data — ingen forbindelse til databasen.
-        </Fejl>
-      )}
+      <Datatilstand tilstand={vaerste(personaleTilstand, kompetenceTilstand)}
+                    genprov={genindlaesAlt} />
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort

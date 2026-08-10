@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **24 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **26 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -82,14 +82,27 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - **Lægge en feltværdi i en supportsags kontekst.** `SUPPORT_KONTEKST` er en
   allowliste. En supportsag er en ny kanal UD af systemet, og et kundenavn i
   den har forladt kundens tenant.
-- **Vise rollevælgeren i produktion.** `saetDemoRolle()` i `FleetContext` er
-  en **no-op** når `rolleskifte` er falsk, og App sætter den til
-  `miljoe !== "prod"`. Rør ikke den betingelse. I demo og dev er den nyttig —
-  claim'et er urørt, og serveren afviser stadig, så man kan se at UI og regler
-  er enige. I produktion ville den **ligne** at man skiftede sin egen adgang,
-  og en kontrol der ligner en rettighedsændring, bliver læst som en. Skal en
-  rigtig bruger have anden adgang, ændres rollen i `roller/` og claim'et
-  fornys.
+- **Lade en rolleoverstyring klientside ændre hvad brugeren MÅ.** Perms kommer
+  fra tokenets claims. En klient kan ikke ændre sit eget token, og derfor kan
+  `saetDemoRolle()` pr. definition ikke ændre adgang — kun hvad UI'et tegner.
+  Det er ikke et forbud der gælder i produktion; det er en **umulighed** der
+  gælder overalt hvor der er en server. Overstyringen i `effektivBruger` er
+  derfor kun meningsfuld i **demo**, hvor der ingen server er at være uenig
+  med. Skal en rigtig bruger have anden adgang, ændres rollen i `roller/` og
+  claim'et fornys.
+  I dev er det rigtige svar en **brugervælger**, ikke en rollevælger: log ud,
+  log ind som en anden seedet DEV-bruger, hent nyt token. Så skifter perms
+  fordi *tokenet* skifter — og det er netop dér man kan se om UI og regler er
+  enige. `saetDemoRolle()` er stadig en no-op når `rolleskifte` er falsk, og
+  App sætter den til `miljoe !== "prod"`; rør ikke den betingelse, før
+  brugervælgeren afløser den.
+- **Vise demo-data oven på en afvist læsning.** En `permission-denied` er
+  reglerne der **virker** — den må ikke oversættes til "ingen forbindelse" og
+  fyldes ud med opdigtede tal. Brug `dataTilstand()` fra `datatilstand.js` og
+  `<Datatilstand>` fra `ui.jsx`; skriv ikke din egen fejltekst i en skærm.
+  Opdigtede tal findes **kun** hvor der ikke er en database at spørge — plus
+  det midlertidige dev-stillads ved `auth == null`, som skal væk når login
+  lander. Se beslutning 26.
 - **Definere et demo-datasæt i en modulfil.** Det hører i `fleet/demo-*.js`.
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`

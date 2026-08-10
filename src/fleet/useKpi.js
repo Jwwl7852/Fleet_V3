@@ -14,14 +14,16 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { useFleet } from "./FleetContext.jsx";
-import { db } from "../firebase.js";
+import { db, miljoe } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
+import { TILSTAND, dataTilstand } from "./datatilstand.js";
 
 export function useKpi() {
-  const { tenantId, division, path, dage } = useFleet();
+  const { tenantId, division, path, dage, bruger } = useFleet();
   const [data, setData] = useState(null);
   const [henter, setHenter] = useState(true);
   const [fejl, setFejl] = useState(null);
+  const [tilstand, setTilstand] = useState({ art: TILSTAND.ok, visDemo: false });
   const [nonce, setNonce] = useState(0);
 
   const genindlaes = useCallback(() => setNonce((n) => n + 1), []);
@@ -32,28 +34,46 @@ export function useKpi() {
     setFejl(null);
     const demo = DEMO_KPI[division] || DEMO_KPI.gods;
 
-    (async () => {
-      if (!db) {
-        if (aktiv) { setData(demo); setHenter(false); }
-        return;
+    /* FØR forespørgslen. Manglende database og manglende bruger er begge
+       tilstande vi kender op front — de skal ikke fanges som fejl, og uden
+       bruger sendes forespørgslen slet ikke. Så kan vi heller ikke komme til
+       at kalde en afvisning for et netværksproblem. Se datatilstand.js. */
+    const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger), miljoe });
+    if (foer.art !== TILSTAND.ok) {
+      if (aktiv) {
+        setTilstand(foer);
+        setData(foer.visDemo ? demo : null);
+        setHenter(false);
       }
+      return () => { aktiv = false; };
+    }
+
+    (async () => {
       try {
         const snap = await db.ref(path(`kpi/${division}/current`)).once("value");
         if (!aktiv) return;
+        setTilstand({ art: TILSTAND.ok, visDemo: false });
+        /* Tom node → demo. Det er IKKE samme sag som en afvisning: her har
+           serveren svaret, og der står bare ikke noget endnu, fordi
+           KPI-aggregeringen mangler (se efterslæbet i README). Skal det
+           falde bort, skal aggregeringen findes først — ellers står hele
+           appen tom for en bruger der er logget korrekt ind. */
         setData(snap.val() || demo);
       } catch (e) {
         if (!aktiv) return;
         setFejl(e);
-        setData(demo);
+        setTilstand(dataTilstand({ harDb: true, harBruger: true, miljoe, fejl: e }));
+        /* Ingen tal oven på en afvisning. Det er hele pointen. */
+        setData(null);
       } finally {
         if (aktiv) setHenter(false);
       }
     })();
 
     return () => { aktiv = false; };
-  }, [tenantId, division, dage, path, nonce]);
+  }, [tenantId, division, dage, path, nonce, bruger]);
 
-  return { kpi: data, henter, fejl, genindlaes };
+  return { kpi: data, henter, fejl, tilstand, genindlaes };
 }
 
 /* Demo-sættet ligger i demo-kpi.js — rent data, uden React, så en test og

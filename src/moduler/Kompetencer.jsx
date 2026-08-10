@@ -35,7 +35,7 @@
 import { useState } from "react";
 import { num, dato, serviceTone } from "../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Gitter, MiniLinje, Knap,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
 } from "../fleet/ui.jsx";
 import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/flaade.js";
 import { tjekKompetencer, PERSONALE_STATUS, kanDisponeres } from "../fleet/personale.js";
@@ -48,11 +48,11 @@ const personNavn = (id) => DEMO_PERSONALE.find((p) => p.id === id)?.navn || id;
 const mineKompetencer = (personId) => DEMO_KOMPETENCER.filter((k) => k.personId === personId);
 
 export default function Kompetencer() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState(null);
 
   if (henter) return <Henter hvad="kompetencer" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* AFLEDT af listen skærmen allerede har — hører derfor ikke i kpi/.
      Samme sag som aktive klimaalarmer; et gemt afledt tal driver fra sit
@@ -95,7 +95,7 @@ export default function Kompetencer() {
                  tone={snart.length ? "warn" : undefined} note="forny i tide" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
         <Kort titel="Medarbejdere">

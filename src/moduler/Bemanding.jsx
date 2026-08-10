@@ -48,7 +48,7 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { demoKompetencerMedNavn } from "../fleet/demo-personale.js";
 import { num, pct, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, MiniLinje, Gitter,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
 } from "../fleet/ui.jsx";
 
 /* Ugen regnes fra mandag. Hvilken kolonne der er "i dag" afhænger af hvornår
@@ -104,11 +104,11 @@ const celleTone = (c) =>
   c.mangler <= 0 ? "ok" : c.mangler === 1 ? "warn" : "bad";
 
 export default function Bemanding() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* Ugen sættes sammen med iDag-sættet i den kolonne der faktisk ER i dag. */
   const funktioner = FUNKTIONER
@@ -153,7 +153,7 @@ export default function Bemanding() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <KpiRaekke>
         <KpiKort label="Disponeret i dag"

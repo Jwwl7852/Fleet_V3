@@ -28,7 +28,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, leverandoerNavn,
@@ -42,13 +42,13 @@ const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
 const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 export default function IndkoebOversigt() {
-  const { kpi: k, henter, fejl, genindlaes } = useKpi();
+  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger, division } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaes}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
@@ -74,7 +74,7 @@ export default function IndkoebOversigt() {
                  note="ekskl. moms" />
       </KpiRaekke>
 
-      {fejl && <Fejl genprov={genindlaes}>Viser demo-data — ingen forbindelse til databasen.</Fejl>}
+      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort
         titel="Registrerede indkøb"

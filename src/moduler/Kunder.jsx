@@ -39,8 +39,9 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { DEMO_KUNDER } from "../fleet/demo-kunder.js";
 import { kr, num, pct, dato, deviation, serviceTone } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, MiniLinje, Gitter, Afvigelse,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Afvigelse,
 } from "../fleet/ui.jsx";
+import { vaerste } from "../fleet/datatilstand.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -83,7 +84,7 @@ const TILBUD = [
 const margin = (r) => (r.omsaetningOere ? (r.daekningsbidragOere / r.omsaetningOere) * 100 : 0);
 
 export default function Kunder() {
-  const { kpi: k, henter: henterKpi, fejl: kpiFejl, genindlaes: genindlaesKpi } = useKpi();
+  const { kpi: k, henter: henterKpi, fejl: kpiFejl, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
   const { dage, division } = useFleet();
 
   /* ÉT opslag. Server-side filtreres på `aktiv` — en kundebase er dusinvis
@@ -93,7 +94,7 @@ export default function Kunder() {
      Kræver ".indexOn": ["aktiv"] på kunder — uden indeks henter RTDB hele
      noden ned og filtrerer i klienten, uden at fejle. */
   const {
-    data: kunder, henter: henterKunder, fejl: kundeFejl,
+    data: kunder, henter: henterKunder, fejl: kundeFejl, tilstand: kundeTilstand,
     genindlaes: genindlaesKunder, afkortet,
   } = useListe("kunder", {
     ordnPaa: "aktiv",
@@ -104,7 +105,7 @@ export default function Kunder() {
   });
 
   if (henterKpi || henterKunder) return <Henter hvad="kunder og nøgletal" />;
-  if (!k) return <Fejl genprov={genindlaesKpi}>Nøgletallene kunne ikke hentes.</Fejl>;
+  if (!k) return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} tom="Nøgletallene kunne ikke hentes." />;
 
   const genindlaesAlt = () => { genindlaesKpi(); genindlaesKunder(); };
 
@@ -136,9 +137,7 @@ export default function Kunder() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {(kpiFejl || kundeFejl) && (
-        <Fejl genprov={genindlaesAlt}>Viser demo-data — ingen forbindelse til databasen.</Fejl>
-      )}
+      <Datatilstand tilstand={vaerste(kpiTilstand, kundeTilstand)} genprov={genindlaesAlt} />
 
       <KpiRaekke>
         <KpiKort label="Aktive kunder" vaerdi={num(k.kunder.aktive)} note="i perioden" />
