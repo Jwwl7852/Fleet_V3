@@ -46,7 +46,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { demoKompetencerMedNavn, DEMO_PERSONALE } from "../fleet/demo-personale.js";
-import { stationeringerFor } from "../fleet/personale.js";
+import { stationeringerFor, ikonFor } from "../fleet/personale.js";
 import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap,
@@ -176,7 +176,7 @@ export default function Bemanding() {
       </KpiRaekke>
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort titel={`Bemandingsplan — uge ${ugenr(DAGE[0].ms)}`}
+        <Kort className="fc-plan" titel={`Bemandingsplan — uge ${ugenr(DAGE[0].ms)}`}
               handling={
                 /* Legenden med prikker, som mockuppen. Farven bærer ikke
                    betydningen alene — hver celle viser også tallet og
@@ -202,23 +202,40 @@ export default function Bemanding() {
                  stationeringerFor() om hvorfor den ikke opfindes. */
               { key: "navn", label: "Funktion", render: (r) => (
                   <div className="fc-funk">
-                    <b>{r.navn}</b>
-                    <span>{r.steder.length ? r.steder.join(" + ") : "Ingen stationering"}</span>
+                    {/* Ikonet kommer fra FUNKTION_IKON i personale.js — ikke
+                        fra en tabel her, saa Medarbejdere kan bruge det samme. */}
+                    <span className="fc-funk-ico"><Ikon navn={ikonFor(r.id)} /></span>
+                    <span className="fc-funk-txt">
+                      <b>{r.navn}</b>
+                      <span>{r.steder.length ? r.steder.join(" + ") : "Ingen stationering"}</span>
+                    </span>
                   </div>) },
               ...DAGE.map((dag, i) => ({
                 key: `d${i}`,
                 label: i === I_DAG ? `${dag.label} · i dag` : dag.label,
-                num: true,
+                /* CENTRERET, ikke højrestillet. Cellen er en FLADE og ikke et
+                   tal i en talkolonne — højrestilling ville skubbe firkanterne
+                   ud mod hver sin kant og ødelægge gitteret. Se `midt` i
+                   Tabel: `num` gælder stadig for Kapacitet og I alt. */
+                midt: true,
                 render: (r) => {
                   const c = r.uge[i];
                   /* Ingen vagt planlagt er ikke en tom vagt — derfor en streg
                      og ikke "0/0", som ville se ud som en fejl i planen. */
                   if (!c.planlagt) return <span className="fc-neutral">—</span>;
                   const grad = Math.round((c.disponeret / c.planlagt) * 100);
+                  const tone = celleTone(c);
                   return (
-                    <div className={`fc-celle fc-${celleTone(c) === "ok" ? "good" : celleTone(c) === "warn" ? "warn" : "bad"}`}>
+                    /* Firkanten bærer farven tre gange: tonet flade, ramme og
+                       dækningsbjælke. Men ALDRIG farven alene — tallet og
+                       procenten står i feltet, så den der ikke skelner grøn
+                       fra rød kan læse det samme. */
+                    <div className={`fc-celle fc-celle-${tone}${i === I_DAG ? " fc-celle-idag" : ""}`}>
                       <b>{c.disponeret} / {c.planlagt}</b>
                       <span>{grad} %</span>
+                      <span className="fc-celle-spor" aria-hidden="true">
+                        <span className="fc-celle-fyld" style={{ width: `${Math.min(100, grad)}%` }} />
+                      </span>
                     </div>
                   );
                 },

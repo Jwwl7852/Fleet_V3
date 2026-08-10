@@ -14,6 +14,7 @@ import { deviation } from "./format.js";
    (fill-rule evenodd), så de viser feltets tone igennem frem for at være
    malet i en farve der skulle kende sit felt. */
 export const IKON = {
+  bus: "M4 2h16a2 2 0 0 1 2 2v12.5h-2.2v1.9a1.8 1.8 0 0 1-3.6 0v-1.9H7.8v1.9a1.8 1.8 0 0 1-3.6 0v-1.9H2V4a2 2 0 0 1 2-2zm.4 3.2v5.6h15.2V5.2zM6.2 15.4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm11.6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
   skjold: "M12 1.8 21 5.4v6.2c0 5-3.8 9.2-9 10.6-5.2-1.4-9-5.6-9-10.6V5.4zm-1.3 13.4 6.2-6.2-1.6-1.6-4.6 4.6-2.3-2.3-1.6 1.6z",
   kalender: "M7 1.6h2.2v2.2H7zm7.8 0H17v2.2h-2.2zM3.4 3.8h2.4v2.2a1.2 1.2 0 0 0 2.4 0V3.8h7.6v2.2a1.2 1.2 0 0 0 2.4 0V3.8h2.4a1.4 1.4 0 0 1 1.4 1.4v3.2H2V5.2a1.4 1.4 0 0 1 1.4-1.4zM2 10.6h20v9a1.4 1.4 0 0 1-1.4 1.4H3.4A1.4 1.4 0 0 1 2 19.6zm3.4 2.6v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2zm5 0v2.2h2.4v-2.2z",
   afspil: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM9.8 7.2v9.6l7.2-4.8z",
@@ -104,7 +105,11 @@ export const Pille = ({ tone = "info", children }) => (
 );
 
 /**
- * Tabel — kolonner: [{ key, label, num, bredde, render }]
+ * Tabel — kolonner: [{ key, label, num, midt, bredde, render }]
+ *
+ * `num` højrestiller (tal skal stå lige over hinanden). `midt` centrerer, og
+ * er til gittter-agtige kolonner hvor cellen ER en flade — en ugeplan, en
+ * kalenderdag. De to udelukker hinanden; sættes begge, vinder `num`.
  * tom: hvad der vises når der ikke er rækker. Aldrig en blank tabel.
  */
 /**
@@ -125,7 +130,7 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
         <thead>
           <tr>
             {kolonner.map((k) => (
-              <th key={k.key} className={k.num ? "fc-num" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
+              <th key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
                 {k.label}
               </th>
             ))}
@@ -146,7 +151,7 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
               style={paaRaekke ? { cursor: "pointer" } : undefined}
             >
               {kolonner.map((k) => (
-                <td key={k.key} className={k.num ? "fc-num" : ""}>
+                <td key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""}>
                   {k.render ? k.render(r) : r[k.key]}
                 </td>
               ))}

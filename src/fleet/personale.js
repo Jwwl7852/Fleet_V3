@@ -58,6 +58,26 @@ export const FUNKTION_LABEL = {
   administration: "Administration",
 };
 
+/**
+ * Ikon pr. funktion. Ligger HER ved siden af FUNKTION_LABEL og ikke i den
+ * skærm der først fik brug for det — to skærme med hvert sit ikonsæt er
+ * samme fælde som to demo-datasæt: de driver, og ingen ser det.
+ *
+ * Navnene slås op i IKON i ui.jsx. En funktion uden ikon falder tilbage på
+ * `personer` frem for at efterlade et hul i kolonnen.
+ */
+export const FUNKTION_IKON = {
+  chauffoer: "lastbil",
+  buschauffoer: "bus",
+  mekaniker: "skruenoegle",
+  lager: "kasse",
+  terminal: "bygning",
+  disponent: "kalender",
+  administration: "dokument",
+};
+
+export const ikonFor = (funktion) => FUNKTION_IKON[funktion] || "personer";
+
 export const ALLE_FUNKTIONER = Object.values(FUNKTION);
 
 /**
