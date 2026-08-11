@@ -31,6 +31,11 @@ export const DEMO_ROLLER = Object.keys(ROLLE_PERMS);
 
 export function FleetProvider({
   children, tenants = [], bruger = null, logUd = () => {}, rolleskifte = false,
+  /* Hvilke moduler tenanten har koebt. null betyder "ved ikke endnu" og
+     behandles som ALT — se harModul() i moduler.js om hvorfor den fejler
+     aabent. En betalende kunde med tom sidebar er vaerre end en salgsflade
+     der staar aaben. */
+  moduler = null,
 }) {
   /* Beholdt som lokalt navn, så resten af filen læses som før. Betingelsen er
      efter beslutning 28 igen "demo" — og denne gang af den rigtige grund.
@@ -109,13 +114,14 @@ export function FleetProvider({
       tenantId, tenant, tenants, setTenantId,
       dage, periode, setDage,
       division, setDivision,
+      moduler,
       path, bruger: effektivBruger, logUd,
       /* demo er false i produktion, og så er demoRolle altid null og
          saetDemoRolle en no-op. Shellen render kun vælgeren når demo er sand. */
       demo, demoRolle, saetDemoRolle,
     }),
-    [tenantId, tenant, tenants, dage, periode, division, path, effektivBruger,
-     logUd, demo, demoRolle, saetDemoRolle]
+    [tenantId, tenant, tenants, dage, periode, division, moduler, path,
+     effektivBruger, logUd, demo, demoRolle, saetDemoRolle]
   );
 
   return <FleetCtx.Provider value={value}>{children}</FleetCtx.Provider>;

@@ -6,6 +6,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, PERIODER, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
+import { harModul } from "./moduler.js";
 import { klokke } from "./format.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
@@ -81,7 +82,7 @@ const ICO = {
 };
 
 export default function AppShell() {
-  const { tenant, tenants, tenantId, setTenantId, dage, setDage, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle } = useFleet();
+  const { tenant, tenants, tenantId, setTenantId, dage, setDage, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
   const { pathname } = useLocation();
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
@@ -106,7 +107,14 @@ export default function AppShell() {
           </div>
 
           <nav className="fc-nav" aria-label="Moduler">
-            {NAV.map((m) => {
+            {/* ⚠ MENUEN SKJULER ET MODUL KUNDEN IKKE HAR KØBT — men det er en
+                KOMMERCIEL kontrol, ikke en sikkerhedskontrol. Taster kunden
+                /facility alligevel, ser han SIN EGEN tomme facility-node, ikke
+                en andens. At kunder ikke kan nå hinandens data er en helt
+                anden mekanisme: auth.token.tenant === $tenantId i hver regel,
+                prøvet på hver node i begge retninger. De to må ikke forveksles.
+                Se fleet/moduler.js. */}
+            {NAV.filter((m) => harModul(moduler, m.key)).map((m) => {
               const aktiv = hoved.key === m.key;
               const born = (m.born || []).filter((b) => !b.skjulINav);
               return (

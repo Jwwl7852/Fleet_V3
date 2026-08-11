@@ -179,7 +179,7 @@ export function somNode(raekker) {
  * Kørslen
  * ------------------------------------------------------------------ */
 
-function laesKode() {
+export function laesKode() {
   const kode = process.env.VITE_DEV_BRUGER_KODE || laesFraEnvLocal("VITE_DEV_BRUGER_KODE");
   if (!kode) {
     throw new Error(
@@ -192,7 +192,7 @@ function laesKode() {
   return kode;
 }
 
-function laesFraEnvLocal(navn) {
+export function laesFraEnvLocal(navn) {
   try {
     const linje = readFileSync(".env.local", "utf8")
       .split(/\r?\n/)
@@ -224,7 +224,7 @@ export function foreslaaNoeglefil(filnavne) {
   );
 }
 
-function laesNoegle() {
+export function laesNoegle() {
   try {
     return JSON.parse(readFileSync(NOEGLEFIL, "utf8"));
   } catch (e) {

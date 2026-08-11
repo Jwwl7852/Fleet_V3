@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
-import { auth, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
+import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import Dashboard from "./moduler/Dashboard.jsx";
 import BookingOversigt from "./moduler/booking/Oversigt.jsx";
@@ -41,7 +41,10 @@ import Supportsag from "./moduler/support/Sag.jsx";
 import Login from "./moduler/Login.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
 
-const TENANTS = [{ id: "demo", navn: "DEMO Transport ApS", kort: "DEMO Transport" }];
+/* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
+   sidebaren skal stadig kunne skrive et navn. I dev og produktion kommer
+   navnet fra tenants/<id>/virksomhed — se noten i App(). */
+const DEMO_TENANT = { id: "demo", navn: "DEMO Transport ApS", kort: "DEMO Transport" };
 
 /* perms udledes af rollen via presettet — den skrives ikke i hånden her.
    Ellers ville demo-brugeren kunne have en anden adgang end en rigtig admin,
@@ -69,6 +72,21 @@ function EfterLogin() {
 export default function App() {
   const [bruger, setBruger] = useState(demoMode ? DEMO_BRUGER : null);
   const [klar, setKlar] = useState(demoMode);
+  /**
+   * ⚠ TENANTEN KOMMER FRA BRUGERENS CLAIM, IKKE FRA EN KONSTANT.
+   *
+   * TENANTS var hardkodet til ét element, og så hed hver eneste kunde "DEMO
+   * Transport ApS" i sidebaren. Navnet ligger nu i tenants/<id>/virksomhed —
+   * ét sted, som kunden selv læser og udbyderen kan vise i en kundeliste.
+   *
+   * Der hentes KUN den tenant claim'et peger på. Der findes ingen liste at
+   * vælge fra: reglerne sammenligner auth.token.tenant === $tenantId, så en
+   * vælger kunne alligevel ikke skifte noget. Skal man se en anden kunde,
+   * logger man ind som en bruger der hører til den — beslutning 28's model,
+   * nu med to rigtige tenants at prøve den på.
+   */
+  const [virksomhed, setVirksomhed] = useState(null);
+  const [moduler, setModuler] = useState(null);
 
   useEffect(() => {
     if (demoMode || !auth) return;
@@ -77,6 +95,31 @@ export default function App() {
       setKlar(true);
     });
   }, []);
+
+  useEffect(() => {
+    const t = bruger?.tenant;
+    if (demoMode || !db || !t) { setVirksomhed(null); setModuler(null); return; }
+    let aktiv = true;
+    (async () => {
+      try {
+        const [v, m] = await Promise.all([
+          db.ref(`tenants/${t}/virksomhed`).once("value"),
+          db.ref(`tenants/${t}/moduler`).once("value"),
+        ]);
+        if (!aktiv) return;
+        setVirksomhed(v.val());
+        /* null = "ved ikke endnu". harModul() behandler det som ALT — en
+           betalende kunde med tom sidebar er værre end en salgsflade der
+           står åben. Se noten i moduler.js om hvorfor den fejler åbent. */
+        setModuler(m.val());
+      } catch {
+        /* En afvist eller fejlet læsning må ikke tømme menuen. Kunden er
+           logget korrekt ind; det er os der ikke kunne svare. */
+        if (aktiv) { setVirksomhed(null); setModuler(null); }
+      }
+    })();
+    return () => { aktiv = false; };
+  }, [bruger?.tenant]);
 
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
@@ -95,12 +138,25 @@ export default function App() {
    */
   const harAdgang = Boolean(bruger?.tenant);
 
+  /* Én tenant — den claim'et peger på. Navnet kommer fra basen; falder
+     læsningen ud, bruges tenant-id'et, så sidebaren aldrig står tom. */
+  const tenantListe = demoMode
+    ? [DEMO_TENANT]
+    : bruger?.tenant
+      ? [{
+          id: bruger.tenant,
+          navn: virksomhed?.navn || bruger.tenant,
+          kort: virksomhed?.navn || bruger.tenant,
+        }]
+      : [];
+
   return (
     /* rolleskifte er nu KUN demo. Klientside-overstyringen af perms er
        meningsløs alle andre steder: claims kommer fra tokenet, og klienten
        kan ikke ændre sit eget token. I dev skifter man bruger i stedet — se
        Brugervaelger og beslutning 28. */
-    <FleetProvider tenants={TENANTS} bruger={bruger} rolleskifte={miljoe === "demo"}
+    <FleetProvider tenants={tenantListe} moduler={moduler} bruger={bruger}
+                   rolleskifte={miljoe === "demo"}
                    logUd={() => auth?.signOut()}>
       <BrowserRouter>
         <Routes>
