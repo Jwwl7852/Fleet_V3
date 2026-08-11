@@ -28,6 +28,10 @@ export const UDBYDERFUNKTION = {
   moduler: "kundemoduler",
   status: "kundestatus",
   admin: "kundeadmin",
+  prisliste: "prislisteopret",
+  abonnement: "kundeabonnement",
+  grundlag: "grundlagopret",
+  maalnu: "maalnu",
 };
 
 async function kald(navn, data) {
@@ -66,3 +70,20 @@ export const opretKundeadmin = ({ id, email, navn, kode, rolle }) =>
   kald(UDBYDERFUNKTION.admin, {
     id, email: email.trim(), navn: navn.trim(), kode, rolle: rolle || "admin",
   });
+
+export const opretPrisliste = ({ gyldigFraMs, momssats, moduler }) =>
+  kald(UDBYDERFUNKTION.prisliste, { gyldigFraMs, momssats, moduler });
+
+/**
+ * ⚠ RABAT I BASISPOINT. 1500 = 15,00 %. Skærmen viser procent; feltet her
+ * tager basispoint, og omregningen sker ét sted — pctTilBps() i beloeb.js.
+ */
+export const saetAbonnement = ({ id, rabatBps, interval, startetMs }) =>
+  kald(UDBYDERFUNKTION.abonnement, { id, rabatBps, interval, startetMs });
+
+export const opretGrundlag = ({ periode }) =>
+  kald(UDBYDERFUNKTION.grundlag, { periode });
+
+/* ⚠ IKKE EN REPARATION. Målingen kan ikke laves bagud — knappen findes for at
+   kunne se at kæden virker uden at vente et døgn. */
+export const maalNu = () => kald(UDBYDERFUNKTION.maalnu, {});

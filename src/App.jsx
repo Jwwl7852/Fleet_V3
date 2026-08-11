@@ -42,6 +42,7 @@ import Supportoverblik from "./moduler/support/Overblik.jsx";
 import Supportsag from "./moduler/support/Sag.jsx";
 import Login from "./moduler/Login.jsx";
 import Konsol from "./moduler/udbyder/Konsol.jsx";
+import Prisliste from "./moduler/udbyder/Prisliste.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -255,6 +256,7 @@ export default function App() {
         <Udbyderramme bruger={bruger} logUd={() => auth?.signOut()}>
           <Routes>
             <Route path="/main" element={<Konsol bruger={bruger} />} />
+            <Route path="/main/priser" element={<Prisliste />} />
             <Route path="*" element={<Navigate to="/main" replace />} />
           </Routes>
         </Udbyderramme>

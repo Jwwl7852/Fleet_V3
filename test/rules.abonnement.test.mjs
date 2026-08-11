@@ -153,7 +153,7 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
 
        ⚠ De tre under udbyder/ er ikke kundedata. Prislisten er vores,
        målingerne er tal og ingen rækker, og kunder er et eksistensindeks. */
-    assert.equal(undtaget.length, 6, "forventede seks regler med udbyder-claimet");
+    assert.equal(undtaget.length, 7, "forventede syv regler med udbyder-claimet");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);
     }

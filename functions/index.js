@@ -45,8 +45,10 @@ import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.j
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
+import { totalerAfLinjer } from "./delt/beloeb.js";
 import {
-  taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste,
+  taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste, sammenfatMaalinger,
+  maalingerIPeriode, periodeGraenser, gaeldendePrisliste, linjerForPeriode,
 } from "./delt/priser.js";
 
 initializeApp();
@@ -769,4 +771,143 @@ export const kundeabonnement = onCall({ region: REGION }, async (req) => {
     post.rabatBps !== undefined ? `rabat ${post.rabatBps} bps` : "abonnementsvilkaar");
 
   return { ok: true, ...post };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   GENERATOREN — den fryser en periode og rører den aldrig igen
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ ET GRUNDLAG ER ET DOKUMENT, IKKE EN BEREGNING.
+
+   Genberegnede vi grundlaget hver gang skærmen blev åbnet, ville et gammelt
+   grundlag ændre sig når prislisten eller rabatten ændrede sig. En faktura
+   fra marts ville få nye tal i april, og bogføringsmaterialet kunne ikke
+   dokumenteres. Derfor gemmer dokumentet sine EGNE satser og regner aldrig
+   igen.
+
+   ⚠ DET ER FRYSNINGEN DER BESKYTTER MARTS — ikke at prislisten er
+   versioneret. Versioneringen giver sporbarhed. De to forveksles, og så
+   bygger man den ene og tror man har den anden.
+
+   ⚠ PRISLISTEN ER DEN DER GJALDT VED PERIODENS BEGYNDELSE.
+   En prisstigning midt i en måned slår altså igennem NÆSTE periode. Det er
+   et valg: alternativet var at dele måneden i to stykker med hver sin sats,
+   og så ville en kunde få to linjer for det samme modul uden at have ændret
+   noget. Sæt `gyldigFraMs` til den 1. i en måned, så er der ingen tvivl.
+
+   ⚠ DEN OVERSKRIVER IKKE. Findes grundlaget, afvises kaldet. En rettelse er
+   et NYT grundlag der henviser til det gamle — som `erstat()` i grundlag.js
+   — og den vej er ikke bygget endnu. Indtil den er, er "nægt" det rigtige
+   svar: en overskrivning ville se ud som en rettelse og være en sletning.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Grundlaget for ÉN kunde i én periode. Ren udregning oven på det læste. */
+function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonnement }) {
+  const s = sammenfatMaalinger(maalingerIPeriode(maalinger, periode));
+
+  const rabatBps = Number.isInteger(abonnement?.rabatBps) ? abonnement.rabatBps : 0;
+  const linjer = linjerForPeriode({
+    prisliste,
+    moduldage: s.moduldage,
+    dageIPerioden: graenser.dage,
+    antalBrugere: s.brugere,
+    antalKoeretoejer: s.koeretoejer,
+    rabatBps,
+  }).map((l) => ({ ...l, prislisteId: prisliste.id || null }));
+
+  const t = totalerAfLinjer(linjer);
+
+  return {
+    kundeId: id,
+    periode,
+    periodeFra: graenser.fra,
+    periodeTil: graenser.til,
+    dageIPerioden: graenser.dage,
+    /* ⚠ DAGE MÅLT OG DAGE FAKTURERET STÅR BEGGE. Er de forskellige, er der
+       enten pauset eller ikke målt — og de to ser ens ud på en total. Uden
+       begge tal kan ingen se forskel bagefter. */
+    dageMaalt: s.dageMaalt,
+    dageFaktureres: s.dageFaktureres,
+    hoejesteBrugere: s.brugere,
+    hoejesteKoeretoejer: s.koeretoejer,
+    rabatBps,
+    prislisteId: prisliste.id || null,
+    momssats: Number.isFinite(prisliste.momssats) ? prisliste.momssats : null,
+    linjer,
+    beloebOere: t.beloebOere,
+    /* ⚠ null, IKKE 0, hvis bare én linje mangler sin momssats. Et halvt
+       momsbeløb er værre end intet: det ser ud som om det er regnet ud. */
+    momsOere: t.momsOere,
+    ialtOere: t.ialtOere,
+    laast: true,
+  };
+}
+
+export const grundlagopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+
+  const periode = kortStreng(d.periode, 7);
+  const graenser = periodeGraenser(periode);
+  if (!graenser) {
+    throw new HttpsError("invalid-argument", `Ugyldig periode: ${d.periode} (forventer "2026-08").`);
+  }
+  /* ⚠ EN PERIODE DER IKKE ER SLUT, KAN IKKE GØRES OP. Frøs vi den i dag,
+     ville resten af måneden mangle — og dokumentet er frosset, så den
+     kommer aldrig med. */
+  if (Date.now() <= graenser.til) {
+    throw new HttpsError("failed-precondition",
+      `Perioden ${periode} er ikke slut endnu. Et grundlag der fryses for tidligt, mangler resten af måneden for altid.`);
+  }
+
+  const db = getDatabase();
+  const rod = `udbyder/fakturagrundlag/${periode}`;
+
+  if ((await db.ref(rod).once("value")).exists()) {
+    throw new HttpsError("already-exists",
+      `Grundlaget for ${periode} findes allerede. En rettelse er et NYT grundlag der henviser til det gamle — den vej er ikke bygget.`);
+  }
+
+  const lister = (await db.ref("udbyder/prisliste").once("value")).val() || {};
+  const prisliste = gaeldendePrisliste(lister, graenser.fra);
+  if (!prisliste) {
+    throw new HttpsError("failed-precondition",
+      `Ingen prisliste gjaldt ved begyndelsen af ${periode}. Opret en med gyldigFraMs den 1. i måneden.`);
+  }
+
+  const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
+  const ud = {};
+  for (const id of Object.keys(indeks)) {
+    const [maal, abon] = await Promise.all([
+      db.ref(`udbyder/maalinger/${id}`).once("value"),
+      db.ref(`tenants/${id}/abonnement`).once("value"),
+    ]);
+    const g = byggKundegrundlag({
+      id, periode, graenser,
+      maalinger: maal.val() || {},
+      prisliste,
+      abonnement: abon.val(),
+    });
+    g.genereretMs = Date.now();
+    g.genereretAf = ejerUid;
+    ud[id] = g;
+  }
+
+  /* Ét skriv. Enten står hele perioden, eller også står ingen af den — en
+     halv opgørelse er værre end ingen, fordi den ser færdig ud. */
+  await db.ref(rod).set(ud);
+
+  for (const id of Object.keys(ud)) {
+    /* ⚠ LOGGES HOS KUNDEN. Det er hans regning. `eksporter` er en
+       sikkerhedshandling i klasseFor(), så posten havner i sikkerhedslogget
+       med den længste opbevaring — og det er det rigtige for et
+       faktureringsgrundlag. */
+    await log(id, ejerUid, AUDIT.opret, `${periode}`, `fakturagrundlag ${periode}`);
+  }
+
+  return {
+    ok: true, periode,
+    kunder: Object.keys(ud).length,
+    ialtOere: Object.values(ud).reduce((s, g) => s + (g.beloebOere || 0), 0),
+  };
 });

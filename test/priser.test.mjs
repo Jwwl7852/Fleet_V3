@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -388,5 +388,43 @@ describe("Fra målinger til linjer", () => {
     const t = abonnementstotaler(linjer);
     const sum = linjer.reduce((x, l) => x + linjeBeloebOere(l), 0);
     assert.equal(t.beloebOere, sum);
+  });
+});
+
+describe("Perioden", () => {
+  it("regner UTC-graenser og laengde", () => {
+    /* ⚠ UTC HELE VEJEN, som målingernes datoer. En blanding af UTC og lokal
+       tid ville give 30 eller 32 dage i en måned med sommertidsskifte, og
+       forholdsmæssigheden ville være forkert i netop de to måneder om året
+       hvor ingen leder efter fejlen. */
+    const p = periodeGraenser("2026-08");
+    assert.equal(p.dage, 31);
+    assert.equal(new Date(p.fra).toISOString(), "2026-08-01T00:00:00.000Z");
+    assert.equal(new Date(p.til).toISOString(), "2026-08-31T23:59:59.999Z");
+  });
+
+  it("kender februar og skudår", () => {
+    assert.equal(periodeGraenser("2026-02").dage, 28);
+    assert.equal(periodeGraenser("2028-02").dage, 29);
+  });
+
+  it("har 31 dage i marts og oktober — også med sommertidsskifte", () => {
+    assert.equal(periodeGraenser("2026-03").dage, 31);
+    assert.equal(periodeGraenser("2026-10").dage, 31);
+  });
+
+  it("afviser noget der ikke er en periode", () => {
+    for (const p of ["2026", "2026-13", "august", "", null, "2026-8"]) {
+      assert.equal(periodeGraenser(p), null, `${p} blev godtaget`);
+    }
+  });
+
+  it("plukker kun periodens målinger ud", () => {
+    const alle = {
+      "2026-07-31": { ms: 1 }, "2026-08-01": { ms: 2 },
+      "2026-08-31": { ms: 3 }, "2026-09-01": { ms: 4 },
+    };
+    assert.deepEqual(Object.keys(maalingerIPeriode(alle, "2026-08")),
+      ["2026-08-01", "2026-08-31"]);
   });
 });

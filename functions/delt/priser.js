@@ -222,6 +222,43 @@ export function sammenfatMaalinger(maalinger = {}) {
   };
 }
 
+/* ---- Perioden ---------------------------------------------------------- */
+
+/** "2026-08". Én måned. Se noten ved interval i kundeabonnement. */
+export const PERIODE_MOENSTER = /^(\d{4})-(\d{2})$/;
+
+/**
+ * Periodens grænser og længde.
+ *
+ * ⚠ UTC HELE VEJEN, som målingernes datoer og auditloggens partitioner. En
+ * blanding af UTC og lokal tid ville give 30 eller 32 dage i en måned med
+ * sommertidsskifte, og forholdsmæssigheden ville være forkert i to måneder
+ * om året — de to hvor ingen leder efter fejlen.
+ */
+export function periodeGraenser(periode) {
+  const m = PERIODE_MOENSTER.exec(String(periode || ""));
+  if (!m) return null;
+  const aar = Number(m[1]);
+  const maaned = Number(m[2]);
+  if (maaned < 1 || maaned > 12) return null;
+  const fra = Date.UTC(aar, maaned - 1, 1);
+  const til = Date.UTC(aar, maaned, 1) - 1;
+  return { fra, til, dage: new Date(Date.UTC(aar, maaned, 0)).getUTCDate() };
+}
+
+/** Hører datoen "2026-08-11" til perioden "2026-08"? */
+export const datoIPeriode = (dato, periode) =>
+  typeof dato === "string" && dato.slice(0, 7) === periode;
+
+/** Målingerne der hører til perioden. Resten ignoreres. */
+export function maalingerIPeriode(alle = {}, periode) {
+  const ud = {};
+  for (const [dato, m] of Object.entries(alle || {})) {
+    if (datoIPeriode(dato, periode)) ud[dato] = m;
+  }
+  return ud;
+}
+
 /* ---- Prislisten -------------------------------------------------------- */
 
 /** En tom prisliste for de moduler der kan sælges. */

@@ -289,8 +289,13 @@
 
 .fc-felt{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
 .fc-felt label{font-size:12px; font-weight:600; color:var(--bc-muted)}
-.fc-felt input,.fc-felt select,.fc-felt textarea{border:1px solid var(--bc-line); border-radius:8px;
+.fc-felt input,.fc-felt select,.fc-felt textarea,.fc-input-tal{border:1px solid var(--bc-line); border-radius:8px;
   padding:9px 11px; font:inherit; font-size:13px; min-height:38px; background:var(--bc-card); color:var(--bc-text)}
+/* Tal i en tabelcelle. ⚠ ARVER FELTETS UDSEENDE frem for at faa sit eget:
+   to inputstile ville drive, og den ene ville se ud som et andet produkt.
+   Ingen egne farver — se designtesten. */
+.fc-input-tal{width:96px; text-align:right; font-variant-numeric:tabular-nums}
+
 .fc-hint{font-size:12px; color:var(--bc-muted); margin:0}
 
 .fc-sum{display:flex; justify-content:space-between; align-items:baseline; gap:12px;

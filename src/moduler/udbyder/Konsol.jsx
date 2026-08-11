@@ -36,9 +36,10 @@ import {
 } from "../../fleet/abonnement.js";
 import { nytLoesen } from "../../fleet/brugere-regler.js";
 import {
-  opretKunde, saetModuler, saetStatus, opretKundeadmin,
+  opretKunde, saetModuler, saetStatus, opretKundeadmin, saetAbonnement,
   valideNyKunde, foreslaaId,
 } from "../../fleet/udbyder.js";
+import { bpsTilPct, pctTilBps } from "../../fleet/beloeb.js";
 
 /* ---- Læsning ----------------------------------------------------------- */
 
@@ -240,6 +241,76 @@ function Abonnement({ kunde, paaGemt }) {
         </Knap>
         {aendret && (
           <Knap onClick={() => { saetStatusVal(nu); saetSvar(null); }} disabled={gemmer}>
+            Fortryd
+          </Knap>
+        )}
+      </div>
+      <Formularsvar svar={svar} />
+    </div>
+  );
+}
+
+/**
+ * Rabatten på én kunde.
+ *
+ * ⚠ FELTET ER PROCENT, BASEN ER BASISPOINT. 15,5 % bliver 1550. Omregningen
+ * sker ét sted — pctTilBps() i beloeb.js — fordi en float i basen ville give
+ * afrundingsfejl der først dukker op på faktura nummer fyrre. Samme
+ * begrundelse som øre (beslutning 2) og millimeter på et køretøj.
+ *
+ * ⚠ RABATTEN VIRKER FØRST PÅ NÆSTE OPGØRELSE. Et allerede frosset grundlag
+ * regnes aldrig igen — det er hele pointen med at det er frosset. Skærmen
+ * siger det, så ingen tror en aftale gælder bagud.
+ */
+function Rabat({ kunde, paaGemt }) {
+  const nuBps = Number.isInteger(kunde.abonnement?.rabatBps) ? kunde.abonnement.rabatBps : 0;
+  const [felt, saetFelt] = useState(String(bpsTilPct(nuBps)));
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const tal = Number(String(felt).replace(",", "."));
+  const gyldig = Number.isFinite(tal) && tal >= 0 && tal <= 100;
+  const bps = gyldig ? pctTilBps(tal) : null;
+  const aendret = gyldig && bps !== nuBps;
+
+  const gem = async () => {
+    saetGemmer(true);
+    const r = await saetAbonnement({ id: kunde.id, rabatBps: bps });
+    saetGemmer(false);
+    saetSvar(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div>
+      <Feltraekke>
+        <Felt id={`rb-${kunde.id}`} label="Rabat (%)" vaerdi={felt}
+              saet={(v) => { saetFelt(v); saetSvar(null); }}
+              fejl={felt !== "" && !gyldig ? "Mellem 0 og 100." : null}
+              hint="Gælder alle linjer på kundens grundlag." />
+      </Feltraekke>
+
+      {gyldig && bps > 0 && (
+        <p className="fc-hint">
+          Gemmes som <b>{num(bps)}</b> basispoint. Heltal, ikke decimaler — en
+          float ville give afrundingsfejl der først dukker op på faktura nummer
+          fyrre.
+        </p>
+      )}
+
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        ⚠ <b>Virker først på næste opgørelse.</b> Et frosset grundlag regnes
+        aldrig igen — det er hele pointen med at det er frosset. En ændring her
+        gælder ikke bagud.
+      </p>
+
+      <div className="fc-formular-knapper" style={{ marginTop: 10 }}>
+        <Knap variant="primaer" disabled={!aendret || gemmer} onClick={gem}>
+          {gemmer ? "Gemmer …" : "Gem rabat"}
+        </Knap>
+        {aendret && (
+          <Knap onClick={() => { saetFelt(String(bpsTilPct(nuBps))); saetSvar(null); }}
+                disabled={gemmer}>
             Fortryd
           </Knap>
         )}
@@ -464,6 +535,9 @@ export default function Konsol({ bruger }) {
           <div className="fc-grid" style={{ gap: 16 }}>
             <Kort titel="Abonnement">
               <Abonnement kunde={aaben} paaGemt={genindlaes} />
+            </Kort>
+            <Kort titel="Rabat">
+              <Rabat kunde={aaben} paaGemt={genindlaes} />
             </Kort>
             <Kort titel="Første administrator">
               <Foersteadmin kunde={aaben} />
