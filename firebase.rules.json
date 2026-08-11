@@ -430,15 +430,124 @@
           }
         },
 
+        // ⚠ NODEN HAVDE INGEN VALIDERING OVERHOVEDET. Kun .write bag en
+        // permission — alt derunder var frit. En lokation uden navn, et anlaeg
+        // med en opdigtet art, et areal som streng: alt blev taget imod. Saa
+        // laenge ingen skrev, var det harmloest. Piloten skriver.
         "facility": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|')",
+
+          "lokationer": {
+            ".indexOn": ["type"],
+            "$lokationId": {
+              ".validate": "newData.hasChildren(['navn', 'type'])",
+              "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              "type": { ".validate": "newData.isString() && newData.val().matches(/^(hovedkontor|depot|lager|vaerksted)$/)" },
+              // ⚠ sted er IKKE en enum — samme begrundelse som hjemsted paa et
+              // koeretoej. Stederne er DENNE tenants; et katalog i regelfilen
+              // ville betyde at et nyt depot krevede en udrulning.
+              "sted": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+              // Kvadratmeter som HELT tal. Et areal maales i hele meter i BBR,
+              // og et komma her ville antyde en praecision vi ikke har.
+              "arealM2": { ".validate": "newData.isNumber() && newData.val() > 0" },
+              "adresse": { ".validate": "newData.isString() && newData.val().length <= 200" },
+              "division": { ".validate": false }
+            }
+          },
+
+          "aktiver": {
+            ".indexOn": ["lokationId", "status", "naesteServiceMs"],
+            "$aktivId": {
+              ".validate": "newData.hasChildren(['navn', 'art', 'status', 'lokationId'])",
+              "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              // ⚠ art ER UDSTYRSTYPEN, ikke opgave.art. Samme feltnavn, to
+              // vokabularer — se ARKITEKTUR. Blandes de, faar et koeleanlaeg
+              // arten 'facility' og forsvinder ud af enhver liste.
+              "art": { ".validate": "newData.isString() && newData.val().matches(/^(port|koeleanlaeg|ventilation|vaskehal|ladestander|alarm|truck)$/)" },
+              "status": { ".validate": "newData.isString() && newData.val().matches(/^(idrift|fejl|service|udeAfDrift)$/)" },
+              // Anlaegget SKAL staa et sted. Et anlaeg uden lokation kan ikke
+              // vises i driftsstatus og taeller ikke med noget sted.
+              "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+              "zoneId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('zoner').child(newData.val()).exists()" },
+              "serviceIntervalDage": { ".validate": "newData.isNumber() && newData.val() > 0" },
+              "naesteServiceMs": { ".validate": "newData.isNumber()" },
+              // ⚠ personId, ALDRIG uid. Den ansvarlige er hvem det HANDLER om;
+              // en facilityansvarlig har maaske intet login. Se beslutning 18.
+              "ansvarligPersonId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
+              "division": { ".validate": false }
+            }
+          },
+
+          // ⚠ ZONEN BAERER GRAENSERNE. Ligger taersklen paa sensoren, skriver
+          // en justering i MAALEDATA — og saa er historikken aendret bagud.
+          "zoner": {
+            ".indexOn": ["lokationId"],
+            "$zoneId": {
+              ".validate": "newData.hasChildren(['navn', 'art', 'lokationId'])",
+              "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              "art": { ".validate": "newData.isString() && newData.val().matches(/^(frost|koel|tempereret|kontor)$/)" },
+              "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+              "graenser": {
+                ".validate": "newData.hasChildren(['minC', 'maksC'])",
+                // ⚠ MIN SKAL VAERE UNDER MAKS. En zone med byttede graenser
+                // alarmerer ALDRIG — alarmTilstand() finder ingen maaling der
+                // ligger uden for et interval der er tomt. Det ser ud som om
+                // alt er i orden, og det er den vaerste fejltilstand.
+                "minC": { ".validate": "newData.isNumber() && newData.val() < newData.parent().child('maksC').val()" },
+                "maksC": { ".validate": "newData.isNumber() && newData.val() > newData.parent().child('minC').val()" }
+              },
+              "division": { ".validate": false }
+            }
+          },
+
           // ÉN kilde til sensorværdier. Både Facility-overblik og
           // Klima-skærmen læser herfra — i mockupsene viste de forskellige
           // temperaturer for samme zoner.
           "sensorer": {
             "$zoneId": {
-              "maalinger": { ".indexOn": ["ms"] }
+              // ⚠ INGEN graenser HER. Se noten paa zoner. .validate: false
+              // afviser feltet, saa fejlen ikke kan indfoeres ved et uheld.
+              "graenser": { ".validate": false },
+              "aktuel": {
+                ".validate": "newData.hasChildren(['tempC', 'ms'])",
+                "tempC": { ".validate": "newData.isNumber()" },
+                "fugtPct": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+                "ms": { ".validate": "newData.isNumber()" }
+              },
+              "maalinger": {
+                ".indexOn": ["ms"],
+                "$maalingId": {
+                  "tempC": { ".validate": "newData.isNumber()" },
+                  "fugtPct": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+                  "ms": { ".validate": "newData.isNumber()" }
+                }
+              }
+            }
+          },
+
+          "fejl": {
+            ".indexOn": ["aktivId", "status", "meldtMs"],
+            "$fejlId": {
+              ".validate": "newData.hasChildren(['aktivId', 'status', 'alvor', 'meldtMs'])",
+              "aktivId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('aktiver').child(newData.val()).exists()" },
+              "status": { ".validate": "newData.isString() && newData.val().matches(/^(ny|planlagt|igang|udbedret)$/)" },
+              // Samme tre trin som alvorTone() i format.js. Fire vaerdier her
+              // og tre dér ville give en pille uden farve.
+              "alvor": { ".validate": "newData.isString() && newData.val().matches(/^(hoej|mellem|lav)$/)" },
+              "meldtMs": { ".validate": "newData.isNumber()" },
+              "beskrivelse": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+              "meldtAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+              "division": { ".validate": false }
+            }
+          },
+
+          // Bygningsomkostningens KOMPONENTER. Totalen gemmes aldrig — den
+          // beregnes af bygningsomkostningOere(). Et gemt totalfelt ville
+          // kunne drive fra komponenterne; her er der ingen at drive fra.
+          "omkostning": {
+            "$post": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && $post.matches(/^(el|varme|vand|ventilation|alarm)$/)"
             }
           }
         },
@@ -452,9 +561,61 @@
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|')",
           ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
           "$indkoebId": {
-            ".validate": "newData.hasChildren(['division'])",
+            ".validate": "newData.hasChildren(['division', 'dato', 'leverandoerId', 'vare', 'antal', 'prisPrEnhedOere', 'fakturastatus'])",
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            },
+
+            // ⚠ NODEN VALIDEREDE KUN division. En pris kunne komme ind som
+            // FLOAT — 18.5 i stedet for 1850 — og beslutning 2 stod dermed
+            // kun i en kommentar. Det er den fejl der ender som 1849,999 i en
+            // sum over hundrede linjer, og saa gaar afstemningen mod
+            // leverandoerens faktura ikke op med en oere ingen kan forklare.
+            //
+            // ⚠ HELE OERE. isNumber() alene raekker ikke: 1850.5 er ogsaa et
+            // tal. Loftet paa 10 mia. oere (100 mio. kr) er ikke en
+            // forretningsregel — det fanger en tastefejl med tre nuller for
+            // meget, og et beloeb over det er noget nogen skal se paa.
+            "prisPrEnhedOere": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && newData.val() <= 10000000000"
+            },
+            // ⚠ LINJENS BELOEB GEMMES IKKE. Det beregnes af antal x pris —
+            // to kilder til samme tal kan drive fra hinanden, og saa mangler
+            // en post uden at totalen afsloerer det.
+            "beloebOere": { ".validate": false },
+
+            "antal": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "vare": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "dato": { ".validate": "newData.isNumber()" },
+            "aftaltLeveringMs": { ".validate": "newData.isNumber()" },
+            "leveretMs": { ".validate": "newData.isNumber()" },
+
+            // ⚠ LEVERANDOEREN ER EN ENTITET, ikke en fritekststreng. Feltet
+            // har hele tiden vaeret indekseret; noden fandtes bare ikke.
+            // Imens stod navnene i tre demo-filer med hver sin stavemaade.
+            "leverandoerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "kategori": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|reservedele|daek|braendstof|facility|kontor|transport)$/)" },
+            "fakturastatus": { ".validate": "newData.isString() && newData.val().matches(/^(mangler|modtaget|godkendt|bogfoert|afvist)$/)" },
+
+            // Leverandoerens eget nummer — det man slaar op i naar man ringer,
+            // og det der staar paa fakturaen der skal matches. Vores id duer
+            // ikke til nogen af delene; leverandoeren kender det ikke.
+            "reference": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "formaal": { ".validate": "newData.isString() && newData.val().length <= 200" },
+
+            "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },
+            "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+
+            "godkendtAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "godkendtMs": { ".validate": "newData.isNumber()" },
+
+            // ⚠ MOMS ER ET SEPARAT FELT, og beloeb er ALTID ekskl. Bland dem
+            // ikke — ellers laegges inkl.-tal sammen med ekskl.-tal i en
+            // rapport, og ingen opdager det foer regnskabet ikke stemmer.
+            "momsOere": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
             }
           }
         },

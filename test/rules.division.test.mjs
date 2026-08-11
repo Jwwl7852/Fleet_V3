@@ -106,7 +106,13 @@ describe("beslutning 15 — division som felt", () => {
     const noder = [
       ["opgaver", { art: "vaerksted", dato: 1786000000000 }],
       ["indberetninger", { type: "braendstof", km: 184320, oprettetAf: "admin1" }],
-      ["indkoeb", { beloebOere: 450000, momsOere: 112500, dato: 1786000000000 }],
+      /* ⚠ FIXTURET HAVDE beloebOere. Det er nu forbudt: linjens beloeb
+         BEREGNES af antal x pris, og to kilder til samme tal kan drive fra
+         hinanden. Posten her er en rigtig indkoebslinje — den proever
+         division, ikke hvor lidt man kan slippe afsted med. */
+      ["indkoeb", { dato: 1786000000000, leverandoerId: "lv-hydra", vare: "Slange",
+                    antal: 12, prisPrEnhedOere: 1850, momsOere: 5550,
+                    fakturastatus: "modtaget" }],
     ];
     for (const [node, post] of noder) {
       await assertFails(set(ref(db, sti(node, "uden")), post));
@@ -288,5 +294,165 @@ describe("køretøjets felter valideres på serveren", () => {
     const db = som("admin1", "admin");
     await assertSucceeds(set(ref(db, p("k-slet")), bil()));
     await assertFails(set(ref(db, p("k-slet")), null));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   Facility — noden havde INGEN validering overhovedet
+   ══════════════════════════════════════════════════════════════════════
+
+   Kun .write bag en permission; alt derunder var frit. En lokation uden navn,
+   et anlæg med en opdigtet art, et areal som streng — alt blev taget imod. Så
+   længe ingen skrev, var det harmløst.
+   ══════════════════════════════════════════════════════════════════════ */
+describe("facility valideres på serveren", () => {
+  const p = (under, id) => `tenants/${TENANT}/facility/${under}/${id}`;
+  const lok = { navn: "Hal B", type: "lager", sted: "Kolding", arealM2: 12450 };
+
+  it("tager en gyldig lokation og afviser en uden navn", async () => {
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("lokationer", "lok-a")), lok));
+    await assertFails(set(ref(db, p("lokationer", "lok-tom")), { ...lok, navn: "" }));
+    await assertFails(set(ref(db, p("lokationer", "lok-type")), { ...lok, type: "garage" }));
+    await assertFails(set(ref(db, p("lokationer", "lok-areal")), { ...lok, arealM2: "12450" }));
+  });
+
+  it("kræver at et anlæg står på en lokation der FINDES", async () => {
+    /* Et anlæg uden lokation kan ikke vises i driftsstatus og tæller ikke
+       med noget sted — det er væk uden at være slettet. */
+    const db = som("admin1", "admin");
+    const aktiv = { navn: "Port 1", art: "port", status: "idrift", lokationId: "lok-a" };
+    await assertSucceeds(set(ref(db, p("aktiver", "fa-a")), aktiv));
+    await assertFails(set(ref(db, p("aktiver", "fa-luft")), { ...aktiv, lokationId: "lok-findes-ikke" }));
+  });
+
+  it("afviser udstyrsarten 'facility' — det er opgavens art", async () => {
+    /* ⚠ SAMME FELTNAVN, TO VOKABULARER. Blandes de, får et køleanlæg arten
+       'facility' og forsvinder ud af enhver liste der grupperer på art. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("aktiver", "fa-forkert")), {
+      navn: "Port 2", art: "facility", status: "idrift", lokationId: "lok-a",
+    }));
+  });
+
+  it("afviser en zone hvor min ligger OVER maks", async () => {
+    /* ⚠ DEN VIGTIGSTE HER. En zone med byttede grænser alarmerer ALDRIG:
+       alarmTilstand() finder ingen måling uden for et interval der er tomt.
+       Det ser ud som om alt er i orden, og det er den værste fejltilstand —
+       et kølerum der står for varmt bag et grønt flueben. */
+    const db = som("admin1", "admin");
+    const zone = { navn: "Køl 1", art: "koel", lokationId: "lok-a" };
+    await assertSucceeds(set(ref(db, p("zoner", "zo-ok")), { ...zone, graenser: { minC: 2, maksC: 6 } }));
+    await assertFails(set(ref(db, p("zoner", "zo-byt")), { ...zone, graenser: { minC: 6, maksC: 2 } }));
+    await assertFails(set(ref(db, p("zoner", "zo-ens")), { ...zone, graenser: { minC: 4, maksC: 4 } }));
+  });
+
+  it("afviser grænser på SENSOREN — de hører på zonen", async () => {
+    /* Lå tærsklen i måledata, ville en justering skrive bagud i historikken.
+       .validate: false gør at fejlen ikke kan indføres ved et uheld. */
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, `tenants/${TENANT}/facility/sensorer/zo-ok/aktuel`),
+      { tempC: 4.1, fugtPct: 79, ms: 1e12 }));
+    await assertFails(set(ref(db, `tenants/${TENANT}/facility/sensorer/zo-ok/graenser`),
+      { minC: 2, maksC: 6 }));
+    await assertFails(set(ref(db, `tenants/${TENANT}/facility/sensorer/zo-ok/aktuel`),
+      { tempC: 4.1, fugtPct: 140, ms: 1e12 }));
+  });
+
+  it("kræver at en fejl peger på et anlæg der findes, med kendt alvor", async () => {
+    const db = som("admin1", "admin");
+    const fejl = { aktivId: "fa-a", status: "ny", alvor: "hoej", meldtMs: 1e12,
+                   beskrivelse: "Porten lukker langsomt" };
+    await assertSucceeds(set(ref(db, p("fejl", "fe-a")), fejl));
+    await assertFails(set(ref(db, p("fejl", "fe-luft")), { ...fejl, aktivId: "fa-findes-ikke" }));
+    await assertFails(set(ref(db, p("fejl", "fe-alvor")), { ...fejl, alvor: "kritisk" }));
+  });
+
+  it("afviser en division på facility-stamdata", async () => {
+    /* Facility er FÆLLES — porten er den samme uanset hvem der kører
+       igennem den. Samme begrundelse som beslutning 19. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("lokationer", "lok-div")), { ...lok, division: "gods" }));
+  });
+
+  it("afviser en ukendt omkostningspost", async () => {
+    /* Komponenterne er faste. En sjette post ville ikke komme med i
+       bygningsomkostningOere(), og totalen ville stille være for lav. */
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, `tenants/${TENANT}/facility/omkostning/el`), 2180000));
+    await assertFails(set(ref(db, `tenants/${TENANT}/facility/omkostning/kaffe`), 4200));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   Indkøb — beslutning 2 stod kun i en kommentar
+   ══════════════════════════════════════════════════════════════════════ */
+describe("indkøb valideres på serveren", () => {
+  const p = (id) => `tenants/${TENANT}/indkoeb/${id}`;
+  const linje = (ekstra = {}) => ({
+    division: "gods", dato: 1e12, leverandoerId: "lv-hydra",
+    vare: "Hydraulikslange 3/8\"", antal: 12, prisPrEnhedOere: 1850,
+    fakturastatus: "modtaget", ...ekstra,
+  });
+
+  it("tager en fuldt udfyldt linje", async () => {
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("il-ok")), linje({
+      enhed: "stk", kategori: "reservedele", reference: "HYD-450078912",
+    })));
+  });
+
+  it("afviser en pris som FLOAT", async () => {
+    /* ⚠ DEN HER ER HELE BESLUTNING 2. 18,50 kr/stk er 1850 — ikke 18.5.
+       En float ender som 1849,999 i en sum over hundrede linjer, og så går
+       afstemningen mod leverandørens faktura ikke op med en øre ingen kan
+       forklare. isNumber() alene rækker ikke: 1850.5 er også et tal. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("il-float")), linje({ prisPrEnhedOere: 18.5 })));
+    await assertFails(set(ref(db, p("il-float2")), linje({ prisPrEnhedOere: 1850.5 })));
+    await assertFails(set(ref(db, p("il-str")), linje({ prisPrEnhedOere: "1850" })));
+    await assertFails(set(ref(db, p("il-neg")), linje({ prisPrEnhedOere: -1 })));
+  });
+
+  it("afviser et gemt linjebeløb", async () => {
+    /* Beløbet BEREGNES af antal × pris. To kilder til samme tal kan drive
+       fra hinanden, og så mangler en post uden at totalen afslører det. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("il-total")), linje({ beloebOere: 22200 })));
+  });
+
+  it("afviser moms som float og kræver at den står for sig", async () => {
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("il-moms")), linje({ momsOere: 5550 })));
+    await assertFails(set(ref(db, p("il-momsf")), linje({ momsOere: 55.5 })));
+  });
+
+  it("kræver de felter en linje ikke kan undvære", async () => {
+    /* En linje uden leverandør kan ikke matches mod en faktura; en uden
+       vare kan ingen genkende et halvt år senere. */
+    const db = som("admin1", "admin");
+    for (const felt of ["leverandoerId", "vare", "antal", "prisPrEnhedOere", "fakturastatus", "dato"]) {
+      const uden = linje();
+      delete uden[felt];
+      await assertFails(set(ref(db, p(`il-uden-${felt}`)), uden));
+    }
+  });
+
+  it("afviser ukendt kategori og fakturastatus", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("il-kat")), linje({ kategori: "diverse" })));
+    await assertFails(set(ref(db, p("il-stat")), linje({ fakturastatus: "betalt" })));
+  });
+
+  it("kræver at et køretøj på linjen findes", async () => {
+    /* Et indkøb er købt TIL noget. Peger det på en bil der ikke findes, er
+       linjen et beløb uden ærinde. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("il-bil")), linje({ koeretoejId: "kt-findes-ikke" })));
+  });
+
+  it("tillader faelles — én dieselleverance dækker begge afdelinger", async () => {
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("il-faelles")), linje({ division: "faelles" })));
   });
 });

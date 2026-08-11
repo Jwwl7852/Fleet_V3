@@ -124,7 +124,9 @@ describe("serveren håndhæver permissions", () => {
       ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted" }],
       ["koeretoejer", PERM.koeretoejerSkriv, { navn: "Volvo", art: "lastbil", status: "aktiv" }],
       ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
-      ["indkoeb", PERM.indkoebSkriv, { division: "gods", beloebOere: 100 }],
+      ["indkoeb", PERM.indkoebSkriv, { division: "gods", dato: 1786000000000,
+        leverandoerId: "lv-hydra", vare: "Slange", antal: 1, prisPrEnhedOere: 1850,
+        fakturastatus: "modtaget" }],
       ["satser", PERM.satserSkriv, { post: { satser: [] } }],
       ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],
     ];
