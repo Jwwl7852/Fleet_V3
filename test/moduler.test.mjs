@@ -124,3 +124,40 @@ describe("moduler.js kan deles", () => {
     assert.doesNotMatch(kilde, /^\s*import\s/m, "moduler.js har et import");
   });
 });
+
+describe("hvert menupunkt har et ikon", () => {
+  /* ⚠ HVORFOR DEN HER FILDEL BLEV SKREVET.
+     Warehouse stod i sidebaren i tre etaper UDEN ikon. Alle de andre punkter
+     havde et, og det manglende så ud som en tom plads — men intet fejlede,
+     fordi `<path d={undefined} />` er gyldig SVG der bare tegner ingenting.
+
+     Fælden er at ikonerne ligger i TO forskellige maps: `IKON` i ui.jsx er
+     FYLDTE ikoner til kort og nøgletal, mens `ICO` i AppShell.jsx er
+     STREGTEGNEDE til sidebaren. At have lagt et ikon i det ene siger intet
+     om det andet, og navnet er ikke engang det samme.
+
+     Prøven læser AppShell.jsx som tekst, fordi filen er JSX og importerer
+     React-ting der ikke kan indlæses i Node. */
+  const kilde = readFileSync("src/fleet/AppShell.jsx", "utf8");
+  const blok = kilde.slice(kilde.indexOf("const ICO = {"));
+  const noegler = new Set(
+    [...blok.slice(0, blok.indexOf("};")).matchAll(/^\s{2}([a-zA-Z]+):/gm)]
+      .map((m) => m[1]));
+
+  it("kender hvert hovedpunkt i NAV", () => {
+    for (const m of NAV) {
+      assert.ok(noegler.has(m.key),
+        `ICO i AppShell.jsx mangler "${m.key}" — menupunktet tegnes uden ikon, ` +
+        `og en tom <path d={undefined}> fejler ikke af sig selv`);
+    }
+  });
+
+  it("har ingen ikoner tilovers", () => {
+    /* Den anden vej: et ikon til et punkt der er fjernet, er en rest ingen
+       opdager — idébanken efterlod netop sådan en (beslutning 22). */
+    const navKeys = new Set(NAV.map((m) => m.key));
+    for (const k of noegler) {
+      assert.ok(navKeys.has(k), `ICO har "${k}", som ikke er et menupunkt`);
+    }
+  });
+});
