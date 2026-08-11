@@ -477,3 +477,64 @@ describe("Stationering udledes af personalet, opfindes ikke", () => {
     assert.deepEqual(stationeringerFor(), []);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   Feltvalidering — forudsætningen for medarbejderformularen
+   ══════════════════════════════════════════════════════════════════════ */
+describe("medarbejderens felter valideres på serveren", () => {
+  const p = (id) => sti("personale", id);
+  const person = (ekstra = {}) => ({
+    navn: "Lars Aage", status: "aktiv", ansaettelsesform: "fastansat",
+    funktioner: { chauffoer: true }, stationeret: "Kolding", ...ekstra,
+  });
+
+  it("tager en fuldt udfyldt medarbejder", async () => {
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertSucceeds(set(ref(db, p("pe-ok")), person({
+      telefon: "20 11 22 33", email: "lars@vognmand.dk",
+      ansatMs: 1e12, uid: "uid-lars",
+    })));
+  });
+
+  it("afviser et tomt navn", async () => {
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertFails(set(ref(db, p("pe-tom")), person({ navn: "" })));
+  });
+
+  it("afviser en funktion der ikke findes i kataloget", async () => {
+    /* En tastefejl ville stå som en funktion ingen skærm kender — og
+       personen ville forsvinde ud af bemandingsplanen uden at nogen så det. */
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertFails(set(ref(db, p("pe-funk")), person({ funktioner: { pilot: true } })));
+    await assertSucceeds(set(ref(db, p("pe-flere")), person({
+      funktioner: { chauffoer: true, mekaniker: true },
+    })));
+  });
+
+  it("afviser funktioner som array", async () => {
+    /* ⚠ MAP, IKKE ARRAY. funktioner/{chauffoer:true} kan forespørges;
+       et array kan ikke. RTDB gemmer et array som 0,1,2-nøgler, og de
+       matcher ikke funktionsmønsteret. */
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertFails(set(ref(db, p("pe-arr")), person({ funktioner: ["chauffoer"] })));
+  });
+
+  it("tager ethvert stednavn — stationeret er ikke en enum", async () => {
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertSucceeds(set(ref(db, p("pe-sted")), person({ stationeret: "Padborg" })));
+  });
+
+  it("afviser et tomt uid — men feltet må mangle helt", async () => {
+    /* En chauffør har måske aldrig et login. Personen findes før sin konto
+       og efter den — beslutning 18. */
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertSucceeds(set(ref(db, p("pe-uden-uid")), person()));
+    await assertFails(set(ref(db, p("pe-tomt-uid")), person({ uid: "" })));
+  });
+
+  it("kan stadig ikke slettes", async () => {
+    const db = medPerms("admin1", ALLE_PERMS);
+    await assertSucceeds(set(ref(db, p("pe-slet")), person()));
+    await assertFails(set(ref(db, p("pe-slet")), null));
+  });
+});

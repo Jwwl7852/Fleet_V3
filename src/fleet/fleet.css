@@ -690,3 +690,14 @@
 /* "Ikke aggregeret endnu" — en oplysning, ikke en fejl. Derfor info-tonen og
    ingen genproev-knap: der er intet at proeve igen. */
 .fc-empty-info{color:var(--fc-info)}
+
+/* Afkrydsningsfelter i en formular (funktioner paa en medarbejder). */
+.fc-afkryds{display:flex; flex-wrap:wrap; gap:8px}
+.fc-afkryds-punkt{display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+  border:1px solid var(--bc-line); border-radius:9px; padding:7px 11px;
+  font-size:12.5px; background:var(--bc-card)}
+.fc-afkryds-punkt:hover{border-color:var(--bc-accent)}
+.fc-afkryds-punkt input{margin:0; cursor:pointer}
+.fc-afkryds-punkt:has(input:checked){border-color:var(--bc-accent);
+  background:var(--fc-accent-soft)}
+.fc-afkryds-punkt svg{width:16px; height:16px}

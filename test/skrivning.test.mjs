@@ -304,3 +304,65 @@ test("En indkøbspris indtastes i kroner og gemmes som hele øre", async (t) => 
     assert.ok(valideIndkoeb({ ...god, leverandoerId: "lv-nope" }, ctxI).leverandoerId);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   Medarbejderen — personen, ikke loginnet
+   ══════════════════════════════════════════════════════════════════════ */
+import { valideMedarbejder, byggMedarbejder } from "../src/fleet/personale.js";
+
+const person = {
+  navn: "Lars Aage", status: "aktiv", ansaettelsesform: "fastansat",
+  funktioner: { chauffoer: true }, stationeret: "Kolding",
+};
+
+test("En medarbejder skal have mindst én funktion", () => {
+  /* ⚠ IKKE EN REGEL PÅ SERVEREN — RTDB kan ikke kræve "mindst ét barn". Det
+     her er derfor den eneste kontrol, og den er værd at have: en medarbejder
+     uden funktion kan ikke disponeres, tælles ikke i bemandingsplanen, og
+     står i listen som en person ingen kan bruge til noget. */
+  assert.deepEqual(valideMedarbejder(person), {});
+  assert.ok(valideMedarbejder({ ...person, funktioner: {} }).funktioner);
+  assert.ok(valideMedarbejder({ ...person, funktioner: null }).funktioner);
+});
+
+test("Funktioner gemmes som et MAP, ikke et array", () => {
+  /* funktioner/{chauffoer:true} kan indekseres og forespørges ("hvem er
+     mekanikere"); et array kan ikke. Reglerne afviser et array, fordi RTDB
+     gemmer det som 0,1,2-nøgler der ikke matcher funktionsmønsteret. */
+  const ud = byggMedarbejder({ ...person, funktioner: { chauffoer: true, mekaniker: true } });
+  assert.equal(Array.isArray(ud.funktioner), false);
+  assert.deepEqual(ud.funktioner, { chauffoer: true, mekaniker: true });
+});
+
+test("Kun valgte funktioner sendes med", () => {
+  /* `false` betyder fravalgt, og et map fuldt af false ville se ud som om
+     personen havde alle funktioner slået fra frem for ikke at have dem. */
+  const ud = byggMedarbejder({ ...person, funktioner: { chauffoer: true, mekaniker: false } });
+  assert.equal("mekaniker" in ud.funktioner, false);
+});
+
+test("En fratrådt medarbejder skal have en dato", () => {
+  /* Posten bliver stående — der hænger reservationer og indberetninger på
+     personId'et — men uden datoen kan ingen sige hvornår ansvaret ophørte. */
+  assert.ok(valideMedarbejder({ ...person, status: "fratraadt" }).fratraadtIso);
+  assert.deepEqual(
+    valideMedarbejder({ ...person, status: "fratraadt", fratraadtIso: "2026-01-31" }), {}
+  );
+});
+
+test("Formularen sender ALDRIG uid", () => {
+  /* ⚠ uid ER HVEM DER GJORDE NOGET. personId er hvem det handler om, og det
+     er nøglen. Uid sættes af den funktion der opretter loginnet — bytter man
+     om, holder ejerskabstjekket i reglerne op med at virke, fordi
+     data.child('oprettetAf').val() === auth.uid sammenligner med et uid og
+     et personId aldrig matcher. Beslutning 18. */
+  const ud = byggMedarbejder({ ...person, uid: "uid-lars" });
+  assert.equal("uid" in ud, false);
+});
+
+test("En medarbejder får aldrig en division", () => {
+  /* Beslutning 19. Lars med C+D stod som "faelles"; han er en person med
+     fire kompetencer, og de står i kompetencer/ hvor de kan udløbe. */
+  assert.ok(valideMedarbejder({ ...person, division: "faelles" }).division);
+  assert.equal("division" in byggMedarbejder(person), false);
+});

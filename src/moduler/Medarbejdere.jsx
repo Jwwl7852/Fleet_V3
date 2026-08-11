@@ -70,24 +70,192 @@ import { dato, num, serviceTone } from "../fleet/format.js";
 import { harPerm, PERM } from "../fleet/permissions.js";
 import {
   ALLE_FUNKTIONER, FUNKTION_LABEL, PERSONALE_STATUS, ANSAETTELSESFORM,
-  funktionerAf, harFunktion, kanDisponeres,
+  funktionerAf, harFunktion, kanDisponeres, ikonFor,
+  valideMedarbejder, byggMedarbejder,
 } from "../fleet/personale.js";
 import { KOMPETENCE_LABEL, kanBlokere } from "../fleet/flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
+  Ikon, Felt, Feltraekke, Formular,
 } from "../fleet/ui.jsx";
+import { gem, nyId } from "../fleet/skriv.js";
+import { AUDIT } from "../fleet/audit.js";
 import { vaerste } from "../fleet/datatilstand.js";
 
 const passerSoegning = (p, q) =>
   !q || [p.navn, p.email, p.telefon, p.stationeret]
     .some((v) => (v || "").toLowerCase().includes(q));
 
+/* ---- Formularen -------------------------------------------------------- */
+
+const isoFraMs = (ms) =>
+  Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : "";
+
+const tomMedarbejder = () => ({
+  navn: "", status: "aktiv", ansaettelsesform: "fastansat",
+  funktioner: {}, stationeret: "", telefon: "", email: "",
+  ansatIso: "", fratraadtIso: "",
+});
+
+const fraPerson = (p) => ({
+  ...tomMedarbejder(),
+  navn: p.navn ?? "", status: p.status ?? "aktiv",
+  ansaettelsesform: p.ansaettelsesform ?? "fastansat",
+  funktioner: { ...(p.funktioner || {}) },
+  stationeret: p.stationeret ?? "", telefon: p.telefon ?? "", email: p.email ?? "",
+  ansatIso: isoFraMs(p.ansatMs), fratraadtIso: isoFraMs(p.fratraadtMs),
+});
+
+/**
+ * ⚠ PERSONEN ER IKKE ET LOGIN.
+ *
+ * Nøglen her er et personId, ikke et uid. En chauffør har måske aldrig en
+ * konto, og en vikar har det sjældent — personen findes før sit login og
+ * efter det: kontoen lukkes ved fratrædelse, men en reservation fra tre år
+ * siden skal stadig kunne opløses til et navn. Beslutning 18.
+ *
+ * Formularen sender derfor ALDRIG `uid`. Det sættes af den funktion der
+ * opretter loginnet, under Opsætning → Brugere & roller.
+ */
+function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
+  const nyt = !person;
+  const [f, saetF] = useState(() => (person ? fraPerson(person) : tomMedarbejder()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const skiftFunktion = (fn) => {
+    saetF((x) => ({ ...x, funktioner: { ...x.funktioner, [fn]: !x.funktioner[fn] } }));
+    saetRoert((x) => ({ ...x, funktioner: true }));
+    saetSvar(null);
+  };
+
+  const fejl = valideMedarbejder(f);
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+  const erFratraadt = f.status === "fratraadt";
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = person?.id || nyId("pe");
+    const r = await gem({
+      sti: sti(id), data: byggMedarbejder(f), foer: person || null,
+      objekt: "personale", objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt(id);
+  };
+
+  return (
+    <Kort titel={nyt ? "Ny medarbejder" : `Redigér ${person.navn}`}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Opret medarbejder" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          <Felt id="me-navn" label="Navn" kraevet vaerdi={f.navn} saet={saet("navn")}
+                fejl={vis("navn")} />
+          <Felt id="me-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+                fejl={vis("status")}
+                valgmuligheder={Object.entries(PERSONALE_STATUS)
+                  .map(([v, s]) => ({ vaerdi: v, label: s.label }))} />
+          <Felt id="me-form" label="Ansættelsesform" vaerdi={f.ansaettelsesform}
+                saet={saet("ansaettelsesform")} fejl={vis("ansaettelsesform")}
+                valgmuligheder={Object.entries(ANSAETTELSESFORM)
+                  .map(([v, l]) => ({ vaerdi: v, label: l }))} />
+        </Feltraekke>
+
+        {/* ⚠ MINDST ÉN FUNKTION. En medarbejder uden funktion kan ikke
+            disponeres og tælles ikke i bemandingsplanen — han står i listen
+            som en person ingen kan bruge til noget. RTDB kan ikke kræve
+            "mindst ét barn", så det her er den eneste kontrol. */}
+        <div className={`fc-felt${vis("funktioner") ? " fc-felt-fejl" : ""}`}>
+          <label>
+            Funktioner
+            <span className="fc-felt-kraev" aria-hidden="true"> *</span>
+          </label>
+          <div className="fc-afkryds">
+            {ALLE_FUNKTIONER.map((fn) => (
+              <label key={fn} className="fc-afkryds-punkt">
+                <input type="checkbox" checked={Boolean(f.funktioner[fn])}
+                       onChange={() => skiftFunktion(fn)} />
+                <span className="fc-med-ikon"><Ikon navn={ikonFor(fn)} /></span>
+                {FUNKTION_LABEL[fn]}
+              </label>
+            ))}
+          </div>
+          <span className="fc-felt-hint">
+            Flere er tilladt — en mekaniker der også kører, har begge. Hvad han
+            må køre, står i <b>kompetencer</b>, hvor det kan udløbe.
+          </span>
+          {vis("funktioner") && (
+            <span className="fc-felt-fejltekst" role="alert">{vis("funktioner")}</span>
+          )}
+        </div>
+
+        <Feltraekke>
+          {/* ⚠ IKKE EN ENUM — hverken her eller i reglerne. Stederne er
+              denne kundes, og et nyt depot må ikke kræve en udrulning. */}
+          <Felt id="me-sted" label="Stationeret" kraevet vaerdi={f.stationeret}
+                saet={saet("stationeret")} fejl={vis("stationeret")}
+                hint="Frit stednavn. Bruges til at vise hvor en funktion har folk stående." />
+          <Felt id="me-tlf" label="Telefon" vaerdi={f.telefon} saet={saet("telefon")}
+                fejl={vis("telefon")} />
+          <Felt id="me-mail" label="E-mail" type="email" vaerdi={f.email}
+                saet={saet("email")} fejl={vis("email")}
+                hint="Kontaktadresse — ikke et login. Loginnet oprettes under Opsætning." />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="me-ansat" label="Ansat fra" type="date" vaerdi={f.ansatIso}
+                saet={saet("ansatIso")} fejl={vis("ansatIso")} />
+          {/* Vises kun når den er relevant — et tomt fratrædelsesfelt på en
+              aktiv medarbejder ligner en mangel nogen bør udfylde. */}
+          {erFratraadt && (
+            <Felt id="me-fratraadt" label="Fratrådt" kraevet type="date"
+                  vaerdi={f.fratraadtIso} saet={saet("fratraadtIso")}
+                  fejl={vis("fratraadtIso")}
+                  hint="Personen slettes ikke — posten bliver stående, fordi der hænger reservationer og indberetninger på id'et." />
+          )}
+        </Feltraekke>
+      </Formular>
+
+      <p className="fc-hint" style={{ marginTop: 14 }}>
+        ⚠ <b>Personen er ikke et login.</b> Nøglen her er et <b>personId</b>,
+        ikke et uid: en chauffør har måske aldrig en konto, og en vikar har det
+        sjældent. Personen findes før sit login og efter det — kontoen lukkes
+        ved fratrædelse, men en reservation fra tre år siden skal stadig kunne
+        opløses til et navn.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        Der er <b>ingen division</b> på en medarbejder (beslutning 19). Hun er
+        defineret ved sine <b>kompetencer</b>, ikke ved en afdeling, og
+        reglerne afviser feltet. <b>CPR og privatadresse</b> hører i{" "}
+        <code>sensitive/personale</code> bag en egen læseregel — de kan ikke
+        skrives herfra.
+      </p>
+    </Kort>
+  );
+}
+
 export default function Medarbejdere() {
   /* Ingen `division` herfra: staben er ikke delt, og skærmen skal ikke
      reagere på toggle'en. Se punkt 2 i noten øverst. */
-  const { bruger } = useFleet();
+  const { bruger, path } = useFleet();
   const [valgtId, setValgtId] = useState(null);
+  /* null = lukket, "ny" = opret, ellers noeglen paa den der redigeres. */
+  const [form, setForm] = useState(null);
   const [soeg, setSoeg] = useState("");
   const [funktion, setFunktion] = useState("");
   const [visAlle, setVisAlle] = useState(false);
@@ -168,17 +336,36 @@ export default function Medarbejdere() {
       <Datatilstand tilstand={vaerste(personaleTilstand, kompetenceTilstand)}
                     genprov={genindlaesAlt} />
 
+      {/* Formularen står OVER listen, så man ser den man netop har oprettet.
+          `key` nulstiller felterne ved skift mellem personer. */}
+      {form && (
+        <Medarbejderformular
+          key={form}
+          person={form === "ny" ? null : personale.find((p) => p.id === form)}
+          sti={(id) => path(`personale/${id}`)}
+          paaGemt={(id) => {
+            /* Listen hentes forfra: den kommer fra basen, ikke fra
+               formularen, så skærmen viser hvad der FAKTISK blev gemt. */
+            genindlaesPersonale();
+            setForm(null);
+            setValgtId(id);
+          }}
+          paaLuk={() => setForm(null)}
+        />
+      )}
+
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort
           titel="Medarbejdere"
           handling={
             <Knap
               variant="primaer"
-              disabled
+              disabled={!maaSkrive}
+              onClick={() => { setForm("ny"); setValgtId(null); }}
               title={
                 maaSkrive
-                  ? "Oprettelse er ikke bygget endnu."
-                  : "Kræver personale.skriv, som kun admin har."
+                  ? "Opret en medarbejder."
+                  : "Kræver personale.skriv, som kun admin har — serveren afviser."
               }
             >
               Ny medarbejder

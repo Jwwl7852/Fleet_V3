@@ -213,3 +213,107 @@ export function byggOverride({ personId, kompetence, begrundelse, bruger }, nu =
     begrundelse: begrundelse.trim(),
   };
 }
+
+/* ---- Validering før skrivning ----------------------------------------- */
+
+/**
+ * ⚠ SPEJLER firebase.rules.json. Afgør ingenting — serveren validerer igen,
+ * og er de to uenige, er reglerne rigtige.
+ */
+export const GRAENSE_PERSON = {
+  navn: 80,
+  stationeret: 60,
+  telefon: 30,
+  email: 120,
+};
+
+/**
+ * valideMedarbejder(post) → { [felt]: tekst }
+ *
+ * ⚠ MINDST ÉN FUNKTION. En medarbejder uden funktion kan ikke disponeres,
+ * kan ikke tælles i bemandingsplanen, og står i Medarbejdere som en person
+ * ingen kan bruge til noget. Det er ikke en regel på serveren — RTDB kan
+ * ikke kræve "mindst ét barn" — så den her er den eneste kontrol, og teksten
+ * siger hvorfor.
+ */
+export function valideMedarbejder(post = {}) {
+  const f = {};
+
+  if (typeof post.navn !== "string" || !post.navn.trim()) f.navn = "Navn skal udfyldes.";
+  else if (post.navn.length > GRAENSE_PERSON.navn) {
+    f.navn = `Navn må højst være ${GRAENSE_PERSON.navn} tegn.`;
+  }
+
+  if (!PERSONALE_STATUS[post.status]) f.status = "Vælg en status.";
+  if (post.ansaettelsesform && !ANSAETTELSESFORM[post.ansaettelsesform]) {
+    f.ansaettelsesform = "Vælg en ansættelsesform.";
+  }
+
+  const valgte = ALLE_FUNKTIONER.filter((fn) => post.funktioner?.[fn]);
+  if (!valgte.length) {
+    f.funktioner = "Vælg mindst én funktion — ellers kan personen ikke disponeres.";
+  }
+
+  if (typeof post.stationeret !== "string" || !post.stationeret.trim()) {
+    f.stationeret = "Stationering skal udfyldes.";
+  } else if (post.stationeret.length > GRAENSE_PERSON.stationeret) {
+    f.stationeret = `Stationering må højst være ${GRAENSE_PERSON.stationeret} tegn.`;
+  }
+
+  if (post.telefon && String(post.telefon).length > GRAENSE_PERSON.telefon) {
+    f.telefon = `Telefon må højst være ${GRAENSE_PERSON.telefon} tegn.`;
+  }
+  if (post.email && String(post.email).length > GRAENSE_PERSON.email) {
+    f.email = `E-mail må højst være ${GRAENSE_PERSON.email} tegn.`;
+  }
+
+  /* ⚠ EN FRATRÅDT MEDARBEJDER SKAL HAVE EN DATO. Posten bliver stående —
+     der hænger reservationer og indberetninger på personId'et — men uden
+     datoen kan ingen sige hvornår ansvaret ophørte. */
+  if (post.status === "fratraadt" && !post.fratraadtIso) {
+    f.fratraadtIso = "En fratrådt medarbejder skal have en fratrædelsesdato.";
+  }
+
+  /* ⚠ DIVISION ER FORBUDT (beslutning 19). En medarbejder er defineret ved
+     sine KOMPETENCER, ikke ved en afdeling — Lars med C+D stod som
+     "faelles", og det er væk. Reglerne afviser feltet. */
+  if (post.division !== undefined && post.division !== null) {
+    f.division = "En medarbejder har ingen division. Feltet må ikke sendes.";
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+const msFraIso = (iso) => {
+  if (!iso) return null;
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isFinite(d.getTime()) ? d.getTime() : null;
+};
+
+export function byggMedarbejder(post) {
+  const ud = {
+    navn: post.navn.trim(),
+    status: post.status,
+    stationeret: post.stationeret.trim(),
+    /* ⚠ MAP, IKKE ARRAY. funktioner/{chauffoer:true} kan indekseres og
+       forespørges ("hvem er mekanikere"); et array kan ikke. */
+    funktioner: Object.fromEntries(
+      ALLE_FUNKTIONER.filter((fn) => post.funktioner?.[fn]).map((fn) => [fn, true])
+    ),
+  };
+  if (post.ansaettelsesform) ud.ansaettelsesform = post.ansaettelsesform;
+  if (post.telefon) ud.telefon = String(post.telefon).trim();
+  if (post.email) ud.email = String(post.email).trim();
+
+  const ansat = msFraIso(post.ansatIso);
+  if (ansat) ud.ansatMs = ansat;
+  const fratraadt = msFraIso(post.fratraadtIso);
+  if (fratraadt) ud.fratraadtMs = fratraadt;
+
+  /* ⚠ uid SENDES IKKE FRA FORMULAREN. Det er hvem der GJORDE noget, og det
+     sættes af den funktion der opretter loginnet — ikke af den der taster
+     personen ind. Bytter man om, holder ejerskabstjekket i reglerne op med
+     at virke. Beslutning 18. */
+  return ud;
+}
