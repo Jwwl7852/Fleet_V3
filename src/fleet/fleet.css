@@ -69,6 +69,14 @@
   font:14px/1.45 "Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .fc-app :focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px; border-radius:4px}
 
+/* Ejerkonsollen. ⚠ INGEN SIDEBAR — .fc-app er en RÆKKE, fordi sidebaren står
+   ved siden af indholdet. Konsollen har ingen sidebar (beslutning 35: en ejer
+   står ikke i en kundekontekst), så den skal stables. Ingen egne farver: den
+   arver .fc-app, og en anden baggrund ville se ud som et andet produkt. */
+.fc-udbyder{flex-direction:column}
+.fc-udbyder .fc-top{align-items:center; justify-content:space-between}
+.fc-udbyder .fc-brand{padding-left:0; color:var(--bc-text)}
+
 .fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
   display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}
 .fc-brand{padding:0 8px; font-size:21px; font-weight:800; letter-spacing:-.02em; color:#fff}

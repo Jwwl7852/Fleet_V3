@@ -29,9 +29,9 @@ en spec der navngiver noget der ikke findes, får den næste til at lede.
 
 ---
 
-## 1. Fire beslutninger — én truffet, tre venter
+## 1. Fire beslutninger — ALLE TRUFNE OG BYGGET
 
-### Beslutning 33 (foreslået) — konsollen skriver ikke
+### Beslutning 34 — ✅ konsollen skriver ikke
 
 Alt hvad konsollen gør, går gennem en Cloud Function med et
 `udbyder`-tjek som første handling. `udbyder/kunder` er allerede
@@ -82,7 +82,7 @@ mod den udrullede base med en rigtig bruger: fjorten punkter, alle holdt.
 kontrakt bag, ikke en knap i en konsol. En knap der findes, bliver trykket
 på — samme begrundelse som at `skriv.js` ikke har en `slet()`.
 
-### Beslutning 34 (foreslået) — moduler håndhæves i reglerne, læsning OG skrivning
+### Beslutning 33 — ✅ moduler håndhæves i reglerne, læsning OG skrivning
 
 ⚠ **Det her bryder en note der står i koden i dag**, og bruddet skal være
 bevidst. `src/fleet/moduler.js` siger med rene ord at modulafkrydsning er en
@@ -129,10 +129,10 @@ medarbejdere. `bemanding` gater vagtplan, `fravaer` og `kompetencer`.
 `kpi/` gates heller ikke — det er ét aggregat, og et modul man ikke har,
 har ingen tal.
 
-### Beslutning 35 (foreslået) — ejerskab tildeles ikke fra konsollen
+### Beslutning 35 — ✅ ejerskab tildeles ikke fra konsollen
 
 Konsollen kan ikke give eller fjerne `udbyder`-claim'et. Det sker fortsat med
-`kunde:opret --giv-udbyder` fra en maskine med servicekontonøglen.
+`npm run ejer:giv` fra en maskine med servicekontonøglen.
 
 **Hvorfor:** I er to. Kunne den ene fjerne den andens claim, kunne den ene
 lukke den anden ude — og adgangen til at rette det var selv ejerskabet. Det
@@ -243,16 +243,18 @@ bygget imod.*
 1. ✅ **`abonnement`-noden + regler + prøver.** Gjort: 812 grønne,
    udrullet, og efterprøvet mod den udrullede base med en rigtig bruger
    (beslutning 29). Låseskærmen i `App.jsx` fulgte med.
-2. **Modulhåndhævelsen i reglerne.** Kræver en tabel `MODUL[x].noder` i
-   `moduler.js` og en prøve der udleder sig af den, så en ny node uden
-   modultilknytning fejler. Klausulen står ordret i mange noder — det er
-   repoets kendte fejlmønster, og prøven er det eneste der holder dem ens.
+2. ✅ **Modulhåndhævelsen i reglerne.** Gjort: `NODE_MODUL` i moduler.js, 27 regler, lint i begge retninger, udrullet og efterprøvet mod driften. Beslutning 33.
 3. **De fire funktioner** + `npm run funktioner:udrul`, efterprøvet med
    rigtige konti i begge retninger: en kundeadmin skal få
    `permission-denied` på alle fire.
-4. **Skærmen.**
+4. ✅ **Skærmen.** `/main`, uden for AppShell. Beslutning 35.
 
 Punkt 1 og 2 er værdifulde alene. Punkt 4 er værdiløst uden dem.
+
+⚠ **De fire Cloud Run-tjenester mangler invoker-bindingen.** Indtil de åbnes i
+konsollen, får ALLE 401 — også en gyldig ejer. `npm run funktioner:aabn` kan
+ikke sætte den: tjenestekontoen må ikke `run.services.list`. Samme skridt som
+de tre første funktioner krævede.
 
 ---
 

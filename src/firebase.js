@@ -104,5 +104,19 @@ export async function hentBrugerContext(user) {
        så er vi tilbage ved at adgangskontrollen kun findes i frontend.
        Mangler claim'et, må brugeren ingenting. Fejler lukket. */
     perms: token.claims.perms || "",
+    /**
+     * Ejerskab — beslutning 35.
+     *
+     * ⚠ DEN BRUGES KUN TIL AT TEGNE. Håndhævelsen ligger i de fire
+     * ejerfunktioner, som tjekker det SAMME claim server-side, og i
+     * reglerne. En klient kan ikke ændre sit eget token, så et `udbyder`
+     * her kan ikke give adgang til noget — det kan kun afgøre om
+     * konsollen vises.
+     *
+     * ⚠ EN EJERKONTO HAR INGEN TENANT. `tenant` ovenfor er derfor null for
+     * dem, og `harAdgang` i App.jsx lukker dem ude af kundeshellen. Det er
+     * ikke en betingelse i en skærm; det er fraværet af en nøgle.
+     */
+    udbyder: token.claims.udbyder === true,
   };
 }

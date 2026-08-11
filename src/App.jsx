@@ -41,6 +41,7 @@ import Hjaelp from "./moduler/support/Hjaelp.jsx";
 import Supportoverblik from "./moduler/support/Overblik.jsx";
 import Supportsag from "./moduler/support/Sag.jsx";
 import Login from "./moduler/Login.jsx";
+import Konsol from "./moduler/udbyder/Konsol.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -56,6 +57,33 @@ const DEMO_BRUGER = {
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
   perms: permStrengFraRolle("admin"),
 };
+
+/**
+ * Rammen om ejerkonsollen.
+ *
+ * ⚠ IKKE AppShell. Shellen ejer sidebar, tenant-vælger og periodevælger, og
+ * alle tre hører til en KUNDEKONTEKST. En ejer står ikke i en — han har ingen
+ * tenant. En sidebar med kundens moduler ville desuden antyde at han kunne
+ * klikke sig ind i dem, og det kan han ikke: reglerne kender kun hans claim,
+ * og det rækker til tre noder pr. kunde.
+ */
+function Udbyderramme({ bruger, logUd, children }) {
+  return (
+    <div className="fc-app fc-udbyder">
+      <header className="fc-top">
+        <div className="fc-med-ikon" style={{ gap: 12 }}>
+          <span className="fc-brand">FleetControl</span>
+          <span className="fc-hint">Ejerkonsol</span>
+        </div>
+        <div className="fc-med-ikon" style={{ gap: 12 }}>
+          <span className="fc-hint">{bruger?.email}</span>
+          <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
+        </div>
+      </header>
+      <main className="fc-slot">{children}</main>
+    </div>
+  );
+}
 
 /**
  * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
@@ -201,6 +229,38 @@ export default function App() {
    * miljøafhængighed i adgangsvejen er om brugervælgeren TEGNES.
    */
   const harAdgang = Boolean(bruger?.tenant);
+
+  /**
+   * Ejerkonsollen — beslutning 35.
+   *
+   * ⚠ SIDEORDNET, IKKE EN UDVIDELSE. `harAdgang` er ikke løsnet, og må ikke
+   * blive det. En ejerkonto har INGEN tenant, kan derfor ikke nå kundeshellen,
+   * og reglerne sammenligner `auth.token.tenant === $tenantId` — så den kan
+   * ikke læse én eneste kundes data uanset hvad klienten sender.
+   *
+   * ⚠ DEN HER LINJE GIVER INGEN ADGANG. Claim'et kommer fra tokenet, og en
+   * klient kan ikke ændre sit eget. De fire ejerfunktioner tjekker det SAMME
+   * claim server-side som det første de gør. Linjen afgør kun om konsollen
+   * TEGNES — som `rolleskifte` i demo (beslutning 28).
+   */
+  const erUdbyder = bruger?.udbyder === true;
+
+  /* ⚠ EJEREN KOMMER FØRST. En konto der er begge dele — det sker i dev — skal
+     lande i konsollen, ikke i sin egen tenant. Ellers ville man skulle logge
+     ud for at komme til den, og så ville nogen give ejerkontoen en tenant
+     for at slippe. */
+  if (erUdbyder) {
+    return (
+      <BrowserRouter>
+        <Udbyderramme bruger={bruger} logUd={() => auth?.signOut()}>
+          <Routes>
+            <Route path="/main" element={<Konsol bruger={bruger} />} />
+            <Route path="*" element={<Navigate to="/main" replace />} />
+          </Routes>
+        </Udbyderramme>
+      </BrowserRouter>
+    );
+  }
 
   /* Stamdataene er ikke læst endnu. Uden den her ville en lukket kunde se
      shellen i et glimt, før låseskærmen nåede frem. */
