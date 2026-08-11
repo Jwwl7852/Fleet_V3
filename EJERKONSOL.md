@@ -4,7 +4,7 @@ Et sted hvor Jørn og Dennis opretter kunder, sætter dem på pause, opsiger dem
 og tildeler moduler. **Dette er specifikationen, ikke skærmen.** Datamodellen
 her er den dyreste at ændre bagefter, og derfor står den før koden.
 
-Læs `ARKITEKTUR.md` og beslutning 17, 24, 28 og 31 først. Konsollen er den
+Læs `ARKITEKTUR.md` og beslutning 17, 24, 28, 31 og 32 først. Konsollen er den
 **anden** krydsning af tenant-grænsen — support var den første (beslutning 24).
 
 ---
@@ -29,9 +29,9 @@ en spec der navngiver noget der ikke findes, får den næste til at lede.
 
 ---
 
-## 1. Fire beslutninger, der skal træffes før koden
+## 1. Fire beslutninger — én truffet, tre venter
 
-### Beslutning 32 (foreslået) — konsollen skriver ikke
+### Beslutning 33 (foreslået) — konsollen skriver ikke
 
 Alt hvad konsollen gør, går gennem en Cloud Function med et
 `udbyder`-tjek som første handling. `udbyder/kunder` er allerede
@@ -55,35 +55,32 @@ Og én auditmekanisme frem for to.
 `proeveperiodeUdloebet`, `fejloprettet`. Fritekst i auditloggen er præcis det
 `audit-regler.js` findes for at holde ude.
 
-### Beslutning 33 (foreslået) — pause lukker skrivningen, ikke døren
+### Beslutning 32 — ✅ TRUFFET OG BYGGET
 
-Tre tilstande: `aktiv`, `paused`, `opsagt`. **Ingen af dem sletter data.**
+**Et lukket abonnement lukker tenanten, ikke kontoen.** Se `BESLUTNINGER.md`
+nr. 32 for hele begrundelsen. Kort:
 
-`paused` og `opsagt` afviser **skrivning** i `firebase.rules.json`. Læsning
-består. Skærmen viser en bjælke der siger hvorfor.
+Jørn valgte **loginspærring** frem for min anbefaling om skrivespærring. Det
+er bygget som en spærring på **tenanten**, ikke på kontoen — og det løser
+netop den indvending jeg rejste:
 
-**Jeg anbefaler dette frem for "login afvises", og det er en uenighed værd at
-skrive ned:**
+> Login-spærring kan ikke rulles tilbage rent: nogle konti er spærret
+> *individuelt*, og ved genåbning ville man genåbne folk der var fyret.
 
-1. **Login-spærring kan ikke rulles tilbage rent.** Den ville skulle sætte
-   `disabled` på hver konto — og når abonnementet genåbnes, skal de konti der
-   var spærret **individuelt** blive ved med at være det. Den tilstand findes
-   ikke noget sted efter man har overskrevet den. Man ville genåbne folk der
-   var fyret.
-2. **Kunden er dataansvarlig, I er databehandler.** Hans bogføringsmateriale
-   har opbevaringspligt hos ham. Et betalingsskænderi er ikke en grund til at
-   han ikke kan se sine egne tal.
-3. **Skrivespærring er ét greb i reglerne** — `&& erAktiv($tenantId)` på hver
-   `.write` — og det er mekanisk, ensartet og prøvbart. Login-spærring er en
-   ny mekanisme ved siden af den der findes.
+`tenants/<id>/abonnement/status` er `aktiv | paused | opsagt`, og **hver
+eneste regel under tenanten kræver `aktiv`** — 41 steder. Brugeren kan stadig
+autentificere sig, men hver læsning og skrivning afvises, og appen viser en
+låseskærm. **Ingen konto røres. Genåbning er ét felt.**
 
-Skal en konkret bruger ud, findes knappen allerede: **Spær login** i
-Opsætning → Brugere & roller. Den er per bruger, den husker sin tilstand, og
-den kan rulles tilbage.
+Tre noder bliver læsbare — `virksomhed`, `moduler`, `abonnement` — så
+låseskærmen kan skrive kundens navn og sige hvorfor.
+
+Reglen fejler **åbent** på en manglende node, som `harModul()`. Efterprøvet
+mod den udrullede base med en rigtig bruger: fjorten punkter, alle holdt.
 
 ⚠ **`opsagt` sletter ikke.** Egentlig sletning er en manuel proces med en
 kontrakt bag, ikke en knap i en konsol. En knap der findes, bliver trykket
-på — det er samme begrundelse som at `skriv.js` ikke har en `slet()`.
+på — samme begrundelse som at `skriv.js` ikke har en `slet()`.
 
 ### Beslutning 34 (foreslået) — moduler håndhæves i reglerne, på skrivning
 
@@ -229,9 +226,9 @@ Reglerne før skærmen. Det er din egen formulering fra Flåde-formularen:
 *ellers bliver formularen den eneste kontrol, og det er hele mønstret vi har
 bygget imod.*
 
-1. **`abonnement`-noden + regler + prøver.** `npm run test:rules` grøn,
-   `npm run regler:udrul`, og efterprøvet mod den udrullede base — prøverne
-   siger noget om filen, databasen håndhæver det udrullede (beslutning 29).
+1. ✅ **`abonnement`-noden + regler + prøver.** Gjort: 812 grønne,
+   udrullet, og efterprøvet mod den udrullede base med en rigtig bruger
+   (beslutning 29). Låseskærmen i `App.jsx` fulgte med.
 2. **Modulhåndhævelsen i reglerne.** Kræver en tabel `MODUL[x].noder` i
    `moduler.js` og en prøve der udleder sig af den, så en ny node uden
    modultilknytning fejler. Klausulen står ordret i mange noder — det er
@@ -245,10 +242,10 @@ Punkt 1 og 2 er værdifulde alene. Punkt 4 er værdiløst uden dem.
 
 ---
 
-## 6. Fire spørgsmål jeg ikke kan svare på
+## 6. Spørgsmålene
 
-1. **Pause = skrivespærring (min anbefaling) eller loginspærring?**
-   Se beslutning 33. Vælger du login, skal reversibiliteten løses først.
+1. ~~Pause = skrivespærring eller loginspærring?~~ **Besvaret: loginspærring.**
+   Bygget som en spærring på tenanten — se beslutning 32.
 2. **Modul fravalgt = kun skrivning spærret (min anbefaling), eller også
    læsning?** Læsespærring er en kommerciel beslutning med en juridisk
    konsekvens; jeg gætter den ikke.

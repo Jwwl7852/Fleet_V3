@@ -47,9 +47,14 @@ function nodeliste() {
   return Object.keys(t).filter((k) => !k.startsWith(".") && !k.startsWith("$"));
 }
 
-/* De to noder udbyderen MED VILJE må læse. Står de her, er det fordi nogen
-   har besluttet det — alt andet skal fejle. */
-const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler"];
+/* De TRE noder udbyderen MED VILJE må læse. Står de her, er det fordi nogen
+   har besluttet det — alt andet skal fejle.
+
+   ⚠ abonnement kom til med ejerkonsollen. Den er kundeposten, ikke kundedata:
+   status, hvornår den blev ændret og af hvem. Konsollen kan ikke vise en
+   kundeliste med "aktiv / på pause" uden den — og kunden selv skal kunne
+   læse den, for det er DEN node der lukker alle de andre. */
+const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler", "abonnement"];
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
@@ -91,7 +96,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
   });
 
-  it("kan læse virksomhed og moduler — og PRÆCIS de to", async () => {
+  it("kan læse virksomhed, moduler og abonnement — og PRÆCIS de tre", async () => {
     const db = somUdbyder();
     for (const node of TILLADT_FOR_UDBYDER) {
       await assertSucceeds(get(ref(db, `tenants/${T_A}/${node}`)));

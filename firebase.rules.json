@@ -86,6 +86,42 @@
         // databrud. At kunder ikke kan naa HINANDENS data er en anden
         // mekanisme, og den maa ikke forveksles med den her. Se
         // fleet/moduler.js.
+        // ══════════════════════════════════════════════════════════════
+        // ABONNEMENTET — det ENE sted en kundes tilstand staar
+        // ══════════════════════════════════════════════════════════════
+        //
+        // status: aktiv | paused | opsagt.
+        //
+        // ⚠ DEN LIGGER UNDER TENANTEN, IKKE I UDBYDERINDEKSET. Den stod i
+        // udbyder/kunder/<id>/status, hvor KUNDEN ikke kan laese den — og
+        // saa kan skaermen ikke fortaelle ham hvorfor han er lukket ude.
+        // Samme begrundelse som navnet og modulerne: ét sted, ikke
+        // kopieret ind i indekset hvor de to kunne drive fra hinanden.
+        //
+        // ⚠ LAESEREGLEN HAR IKKE aaben-KLAUSULEN. Den maa ikke have den:
+        // det er DENNE node der lukker alle de andre, og kunne den ikke
+        // laeses naar den var lukket, ville appen ikke kunne sige hvorfor.
+        // En spaerring der ikke kan forklare sig selv, ligner en fejl.
+        //
+        // ⚠ .write ER false. Statussen saettes af en udbyderfunktion med
+        // Admin SDK. En klient der maa skrive den for ÉN tenant, kan
+        // skrive den for dem alle — reglen kan ikke kende forskel paa
+        // "min kunde" og "en anden kunde", naar begge er kunder.
+        "abonnement": {
+          ".read": "auth != null && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".write": false,
+          ".validate": "newData.hasChildren(['status', 'aendretMs'])",
+          "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|paused|opsagt)$/)" },
+          "aendretMs": { ".validate": "newData.isNumber()" },
+          // Hvem der gjorde det. ⚠ uid, ikke personId: det er hvem der
+          // GJORDE noget, og det er en ejer uden for kundens personale.
+          "aendretAf": { ".validate": "newData.isString() && newData.val().length > 0" },
+          // ⚠ ALLOWLISTE, IKKE FRITEKST. Aarsagen ender i auditloggen, og
+          // fritekst dér er praecis det audit-regler.js findes for at
+          // holde ude.
+          "aarsag": { ".validate": "newData.isString() && newData.val().matches(/^(betaling|kundeoensket|proeveperiodeUdloebet|fejloprettet)$/)" },
+          "$andet": { ".validate": false }
+        },
         "moduler": {
           ".read": "auth != null && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
           ".write": false
@@ -119,7 +155,7 @@
         // Naar funktionen findes, aabnes den for admin med roller.skriv — og
         // aendringer skal auditeres.
         "roller": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false
         },
 
@@ -152,7 +188,7 @@
         // ikke hemmeligt for kollegerne. .write er false — indekset skrives
         // kun af funktionen, sammen med den rigtige konto.
         "brugere": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
           ".indexOn": ["rolle", "spaerret"]
         },
@@ -177,24 +213,24 @@
         // sensitive/bookinger er .write: false som bookinger selv.
         "sensitive": {
           "bookinger": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.sensitiveLaes|')",
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|booking.sensitiveLaes|')",
             ".write": false
           },
           "kunder": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')"
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|')"
           },
           "koeretoejer": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')"
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|')"
           },
           "personale": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')"
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')"
           },
           "fravaer": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')"
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|')"
           }
         },
         // VAERDIANSAETTELSE — eget undertrae, ikke en del af sensitive/.
@@ -209,7 +245,7 @@
         // De er SIDEORDNEDE, ikke trin: sensitiveLaes giver ikke vaerdiLaes.
         "vaerdi": {
           "bookinger": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.vaerdiLaes|')",
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|booking.vaerdiLaes|')",
             ".write": false
           }
         },
@@ -236,10 +272,10 @@
         // maa staa der, men ikke betyder noget, bliver udfyldt og derefter
         // laest af nogen. Samme behandling som fravaer og kompetencer.
         "personale": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.laes|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.laes|')",
           ".indexOn": ["uid", "status"],
           "$personId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && newData.exists()",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['navn', 'status'])",
             "division": { ".validate": false },
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|orlov|fratraadt)$/)" },
@@ -298,10 +334,10 @@
         // Ingen laes-permission: der er ingen klassificeret satellit at
         // kontrastere imod — se noten ved bookingLaes i permissions.js.
         "kompetencer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".indexOn": ["udloeberMs", "personId", "type"],
           "$kompetenceId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kompetencer.skriv|') && newData.exists()",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kompetencer.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['personId', 'type', 'udloeberMs'])",
             "udloeberMs": { ".validate": "newData.isNumber()" },
             "division": { ".validate": false }
@@ -311,7 +347,7 @@
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
         "kpi": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false
         },
 
@@ -320,7 +356,7 @@
         // tjekker overlap i en transaction.
         // Ingen division her — reservationen arver fra ressourcen.
         "reservationer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
           "$ressourceType": {
             "$ressourceId": {
@@ -334,7 +370,7 @@
         // oprettes atomisk sammen med skiftet.
         // historik under $bookingId er append-only og slettes aldrig.
         "bookinger": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|booking.laes|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|booking.laes|')",
           ".write": false,
           ".indexOn": ["tilstand", "oprettetMs", "kundeId"]
         },
@@ -350,7 +386,7 @@
         // ske atomisk sammen med reservationen, ellers kan etapens
         // koeretoejId og dens reservation naa at vaere uenige.
         "etaper": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
           ".indexOn": ["tilstand", "bookingId", "senestMs"],
           "$etapeId": {
@@ -364,8 +400,8 @@
         // Lagerstamdata: kapacitet og satser. Kapaciteten laeses af
         // tjekLedig() naar den summerer belastningen over et tidsrum.
         "lagre": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|lagre.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|lagre.skriv|')",
           "$lagerId": {
             ".validate": "newData.hasChildren(['division'])",
             "division": {
@@ -379,15 +415,15 @@
         // Booking-, fragtbrev- og fakturanumre. Kun via transaction i en
         // Cloud Function.
         "countere": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false
         },
 
         // Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer
         // en rettelse i dag prisen på en booking fra sidste kvartal.
         "satser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')",
           "$gruppe": {
             "$postId": {
               "satser": { ".indexOn": ["gyldigFra"] }
@@ -419,8 +455,8 @@
         // langture i opgaver at traekke med, og filtreringen paa art koster
         // derfor kun een dags raekker klientside.
         "opgaver": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
           ".indexOn": ["dato", "status", "art", "koeretoejId", "personId"],
           "$opgaveId": {
             ".validate": "newData.hasChildren(['art', 'division'])",
@@ -444,10 +480,10 @@
         // division. De er transaktioner (beslutning 15) — men vaerdien kan
         // ikke laengere kopieres fra bilen, og skriveren skal saette den selv.
         "koeretoejer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.laes|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.laes|')",
           ".indexOn": ["status", "art", "naesteServiceMs"],
           "$koeretoejId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && newData.exists()",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['art', 'status'])",
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(traekker|lastbil|varevogn|bus|minibus|scooter|truck|trailer|paahaeng)$/)" },
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|vaerksted|udeAfDrift|solgt|skrottet)$/)" },
@@ -510,10 +546,10 @@
         // Chauffører må oprette, men ikke redigere andres. km er TOTAL
         // målerstand, ikke km siden sidste tankning.
         "indberetninger": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".indexOn": ["oprettetMs", "koeretoejId", "type"],
           "$id": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|'))",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|'))",
             ".validate": "newData.hasChildren(['division'])",
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
@@ -527,8 +563,8 @@
         // C+D er fælles — fraværet blokerer ham i begge afdelinger. Gav vi det
         // en division, ville han være syg i gods og rask i bus.
         "fravaer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.laes|')",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.laes|')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|')",
           ".indexOn": ["fra"],
           "$fravaerId": {
             ".validate": "newData.hasChildren(['personId'])",
@@ -543,8 +579,8 @@
         // med en opdigtet art, et areal som streng: alt blev taget imod. Saa
         // laenge ingen skrev, var det harmloest. Piloten skriver.
         "facility": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|')",
 
           "lokationer": {
             ".indexOn": ["type"],
@@ -665,8 +701,8 @@
         // faelles er en lovlig division her: én dieselleverance dækker begge
         // afdelinger. Fordelingsnøglen for fælles omkostninger er udskudt.
         "indkoeb": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|')",
           ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
           "$indkoebId": {
             ".validate": "newData.hasChildren(['division', 'dato', 'leverandoerId', 'vare', 'antal', 'prisPrEnhedOere', 'fakturastatus'])",
@@ -730,7 +766,7 @@
 
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
         "fakturaer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
           ".indexOn": ["fakturadatoMs", "leverandoerId", "godkendelsesstatus"]
         },
@@ -742,8 +778,8 @@
         // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
         // tidsvindue.
         "kunder": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|')",
           ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
           "$kundeId": {
             ".validate": "newData.hasChildren(['division'])",
@@ -775,7 +811,7 @@
     // partitionen" og ikke en scanning. Se RETENTION_MAANEDER i audit.js.
     "audit": {
       "$tenantId": {
-        ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && auth.token.perms != null && auth.token.perms.contains('|audit.laes|')",
+        ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|audit.laes|')",
         ".write": false,
         "$klasse": {
           "$aar": {

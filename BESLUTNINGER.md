@@ -1040,3 +1040,69 @@ ikke ved noget om syge chauffører eller biler på værksted.
 
 Se `ARKITEKTUR.md` for datamodellen og `CLAUDE.md` hvis du arbejder videre med
 Claude Code.
+
+---
+
+## 32. Et lukket abonnement lukker tenanten — ikke kontoen
+
+Ejerkonsollen skal kunne sætte en kunde **på pause** og **opsige** ham. Den
+nærliggende måde er at spærre hans logins: sæt `disabled` på hver konto.
+
+**Det er en fælde, og fælden er genåbningen.** Nogle af kundens konti er
+spærret *individuelt* — folk der er fratrådt, en konto der blev misbrugt. Når
+abonnementet åbnes igen, skal netop de blive ved med at være spærrede. Den
+tilstand findes ikke noget sted, når man har overskrevet den. **Man ville
+genåbne folk der var fyret**, og ingen ville opdage det før de loggede ind.
+
+Spærringen ligger derfor på **tenanten** og rører ingen konto:
+
+```
+tenants/<id>/abonnement/status = aktiv | paused | opsagt
+```
+
+og hver eneste regel under tenanten kræver `aktiv`. Brugeren kan stadig
+autentificere sig — men han kommer ikke ind, fordi der ikke er noget at komme
+ind til. **Genåbning er ét felt**, og ingen per-bruger-tilstand er gået tabt.
+
+Skal en konkret bruger ud, findes knappen allerede: **Spær login** i
+Opsætning → Brugere & roller. Den er pr. bruger, den husker sin tilstand, og
+den kan rulles tilbage.
+
+**Ingen af de tre tilstande sletter noget.** `opsagt` er ikke en sletning —
+egentlig sletning er en manuel proces med en kontrakt bag, ikke en knap i en
+konsol. Samme begrundelse som at `skriv.js` ikke har en `slet()`: en funktion
+der findes, bliver kaldt.
+
+### Tre noder bliver læsbare, og det er med vilje
+
+`virksomhed`, `moduler` og `abonnement` beholder deres læseregel. Uden dem kan
+låseskærmen hverken skrive kundens navn eller sige hvorfor han er lukket — og
+**en spærring der ikke kan forklare sig selv, ligner en fejl.** Så ringer
+kunden og siger at systemet er nede.
+
+`abonnement` er `.write: false`. En kunde der kan sætte sin egen status til
+`aktiv`, er ikke på pause.
+
+### Den fejler åbent, som `harModul()`
+
+En tenant **uden** `abonnement`-node er aktiv. Alternativet var at en kunde
+oprettet før feltet fandtes står med et system der afviser alt — og han har
+betalt. Noden kan ikke fjernes for at slippe udenom; den er `.write: false`.
+
+`erAktiv()` i `abonnement.js` fejler åbent på nøjagtig samme måde, og de to
+**skal** være enige: er klienten strengere end serveren, viser vi en låseskærm
+oven på en database der svarer fint.
+
+### ⚠ Den første prøve havde ingen tænder
+
+Klausulen står **41 steder** i `firebase.rules.json` — én pr. regel. Den
+første prøve probede kun noderne på øverste niveau, og da klausulen blev
+fjernet fra `sensitive/kunder/.write` som efterprøvning, **blev suiten grøn**.
+
+Prøven er nu en **lint der læser regelfilen**: hver regel der bærer
+`_findes`-markøren, skal også bære abonnementsklausulen. Den navngiver den
+regel der mangler den. En adfærdsprøve kan kun se de stier nogen huskede at
+skrive ned — og det er præcis derfor hullet var der.
+
+Efterprøvet mod den **udrullede** base med en rigtig bruger, ikke kun mod
+filen (beslutning 29): fjorten punkter, alle holdt.

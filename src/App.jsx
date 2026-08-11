@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
+import { erAktiv, laasetekst } from "./fleet/abonnement.js";
 import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import Dashboard from "./moduler/Dashboard.jsx";
@@ -57,6 +58,41 @@ const DEMO_BRUGER = {
 
 /* Gemmer hvor man var på vej hen, så et dybt link ikke koster en ekstra
    navigation efter login. */
+/**
+ * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
+ *
+ * ⚠ DEN SPÆRRER INGENTING. Spærringen står i `firebase.rules.json`, hvor hver
+ * eneste regel under tenanten kræver `status === 'aktiv'` — prøvet mod den
+ * udrullede base, ikke kun mod filen. Skærmen her er FORKLARINGEN.
+ *
+ * Uden den ville en lukket kunde se shellen fyldt med "adgang nægtet", og det
+ * er sandt men ubrugeligt: det ligner et system i stykker, og så ringer han
+ * og siger at FleetControl er nede. Reglerne holder tre noder læsbare netop
+ * for at den her skærm kan skrive hvem han er og hvorfor han er lukket.
+ *
+ * ⚠ INGEN "PRØV IGEN"-KNAP. Der er intet at prøve igen — det er ikke en fejl,
+ * og en knap der ikke kan virke, lærer brugeren at systemet er upålideligt.
+ * Der er en vej UD (log ud) og en vej VIDERE (kontakt os).
+ */
+function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
+  const t = laasetekst(abonnement);
+  return (
+    <div className="fc-boot">
+      <div className="fc-login">
+        <h1 className="fc-brand fc-login-brand">FleetControl</h1>
+        <div className="fc-empty fc-empty-info">
+          <p><b>{virksomhed?.navn || "Din virksomhed"}</b></p>
+          <p style={{ marginTop: 8 }}><b>{t.besked}</b></p>
+          <p className="fc-hint" style={{ marginTop: 8 }}>{t.naeste}</p>
+        </div>
+        <button type="button" className="fc-btn" onClick={paaLogUd} style={{ marginTop: 14 }}>
+          Log ud
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TilLogin() {
   const l = useLocation();
   return <Navigate to="/login" replace state={{ fra: l.pathname + l.search }} />;
@@ -87,6 +123,16 @@ export default function App() {
    */
   const [virksomhed, setVirksomhed] = useState(null);
   const [moduler, setModuler] = useState(null);
+  /**
+   * Abonnementet.
+   *
+   * ⚠ TRE TILSTANDE, IKKE TO. `undefined` er "ikke læst endnu" og `null` er
+   * "læst, og der er ingen node" — som betyder AKTIV, præcis som reglerne
+   * behandler den (se erAktiv() i abonnement.js). Blandede vi de to, ville
+   * en lukket kunde se shellen i et halvt sekund før låseskærmen kom, og et
+   * glimt af noget man ikke må se, er ikke en detalje.
+   */
+  const [abonnement, setAbonnement] = useState(demoMode ? null : undefined);
 
   useEffect(() => {
     if (demoMode || !auth) return;
@@ -98,13 +144,19 @@ export default function App() {
 
   useEffect(() => {
     const t = bruger?.tenant;
-    if (demoMode || !db || !t) { setVirksomhed(null); setModuler(null); return; }
+    if (demoMode || !db || !t) { setVirksomhed(null); setModuler(null); setAbonnement(null); return; }
+    setAbonnement(undefined);
     let aktiv = true;
     (async () => {
       try {
-        const [v, m] = await Promise.all([
+        /* ⚠ DE TRE NODER DER BLIVER LÆSBARE NÅR ALT ANDET LUKKER. Det er med
+           vilje netop dem: uden virksomhed kan låseskærmen ikke skrive
+           kundens navn, og uden abonnement kan den ikke sige hvorfor. En
+           spærring der ikke kan forklare sig selv, ligner en fejl. */
+        const [v, m, a] = await Promise.all([
           db.ref(`tenants/${t}/virksomhed`).once("value"),
           db.ref(`tenants/${t}/moduler`).once("value"),
+          db.ref(`tenants/${t}/abonnement`).once("value"),
         ]);
         if (!aktiv) return;
         setVirksomhed(v.val());
@@ -112,10 +164,11 @@ export default function App() {
            betalende kunde med tom sidebar er værre end en salgsflade der
            står åben. Se noten i moduler.js om hvorfor den fejler åbent. */
         setModuler(m.val());
+        setAbonnement(a.val());
       } catch {
         /* En afvist eller fejlet læsning må ikke tømme menuen. Kunden er
            logget korrekt ind; det er os der ikke kunne svare. */
-        if (aktiv) { setVirksomhed(null); setModuler(null); }
+        if (aktiv) { setVirksomhed(null); setModuler(null); setAbonnement(null); }
       }
     })();
     return () => { aktiv = false; };
@@ -137,6 +190,18 @@ export default function App() {
    * miljøafhængighed i adgangsvejen er om brugervælgeren TEGNES.
    */
   const harAdgang = Boolean(bruger?.tenant);
+
+  /* Stamdataene er ikke læst endnu. Uden den her ville en lukket kunde se
+     shellen i et glimt, før låseskærmen nåede frem. */
+  if (harAdgang && abonnement === undefined) return <div className="fc-boot">Henter…</div>;
+
+  /* ⚠ FORKLARINGEN, IKKE SPÆRRINGEN. Reglerne afviser allerede hver læsning;
+     det her er kun det brugeren får at se i stedet for tredive fejlbeskeder.
+     Se noten på Abonnementslaas. */
+  if (harAdgang && !erAktiv(abonnement)) {
+    return <Abonnementslaas abonnement={abonnement} virksomhed={virksomhed}
+                            paaLogUd={() => auth?.signOut()} />;
+  }
 
   /* Én tenant — den claim'et peger på. Navnet kommer fra basen; falder
      læsningen ud, bruges tenant-id'et, så sidebaren aldrig står tom. */
