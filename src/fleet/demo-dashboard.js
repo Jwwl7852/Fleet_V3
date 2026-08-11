@@ -8,17 +8,30 @@
  * sin FORM: et modul-niveau array med mindst tre id-bærende poster.
  *
  * ---------------------------------------------------------------------------
- * ⚠ INDHOLDET ER FLYTTET UÆNDRET, OG DER ER EN GRUND
+ * ⚠ INDHOLDET BLEV FLYTTET UÆNDRET, OG DET AFSLØREDE TO DRIFTER
  *
- * Listen overlapper med DEMO_OPGAVER og DEMO_BESOEG, og de er ikke enige.
- * "Serviceeftersyn 30.000 km" står her på Bil 104, i demo-opgaver på Bil 78 og
- * i demo-vaerksted på Bil 104. To af tre er enige; den tredje er ikke.
+ * Listen overlapper med DEMO_OPGAVER og DEMO_BESOEG, og de var ikke enige.
+ * Selvkontrollen nedenfor fandt to steder hvor samme arbejde stod på hver sin
+ * bil — netop fordi datasættene endelig lå samme sted og kunne sammenlignes:
  *
- * At vælge for jer hvilken bil den service hører til, ville være at afgøre et
- * DOMÆNESPØRGSMÅL med en gætning. Selvkontrollen nedenfor SIGER derfor til om
- * driften, i stedet for at jeg lukker den. Når svaret findes, forsvinder denne
- * fil og Dashboard læser DEMO_OPGAVER direkte — det er hele pointen med at
- * flytte den herind først.
+ *   "Fordør lukker ikke i"       Bus 12 her, Bil 77 i demo-opgaver.
+ *                                Bil 77 er en SOLGT TRÆKKER. Rettet: op-010
+ *                                peger nu på Bus 12.
+ *   "Serviceeftersyn 30.000 km"  Bil 104 her og i demo-vaerksted (vb-005,
+ *                                aftalt på sag FLT-2026-00381), Bil 78 i
+ *                                demo-opgaver. Afgjort: servicen hører til
+ *                                BIL 104. op-002 beskrev en anden service og
+ *                                hedder nu "Serviceeftersyn – 270.000 km",
+ *                                som passer til Bil 78s 268.400 km og til
+ *                                vb-001s navngivning på samme bil.
+ *
+ * Den anden kunne kun afgøres af den der kender flåden — ikke af mig.
+ * Selvkontrollen sagde til om driften i stedet for at lukke den med en
+ * gætning, og det var det rigtige: svaret var Bil 104, og jeg ville have
+ * flyttet den forkerte vej.
+ *
+ * Når Dashboard læser DEMO_OPGAVER direkte, forsvinder filen her. Det er hele
+ * pointen med at flytte listen herind først.
  *
  * `alvor` og `type` findes ikke på DEMO_OPGAVER. Det er den anden grund til at
  * sammenlægningen ikke kan gøres mekanisk: `type` (Reparation/Service/Facility)
@@ -27,6 +40,7 @@
  */
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_OPGAVER } from "./demo-opgaver.js";
+import { DEMO_BESOEG } from "./demo-vaerksted.js";
 import { ALVOR } from "./format.js";
 
 const D = 864e5;
@@ -76,16 +90,41 @@ if (import.meta.env?.DEV) {
   const enhedFor = (koeretoejId) =>
     DEMO_KOERETOEJER.find((k) => k.id === koeretoejId)?.kaldenavn || null;
 
+  /* ⚠ TRE DATASÆT, IKKE TO. Den tredje kopi lå i demo-vaerksted: den samme
+     30.000 km-service stod som opgave OG som besøg OG her. Tjekket dækker
+     derfor begge — ellers finder man den ene halvdel af driften og tror man
+     er færdig. */
+  const andre = [
+    ...DEMO_OPGAVER.map((o) => ({ id: o.id, kilde: "demo-opgaver", besk: o.beskrivelse, koeretoejId: o.koeretoejId })),
+    ...DEMO_BESOEG.map((b) => ({ id: b.id, kilde: "demo-vaerksted", besk: b.beskrivelse, koeretoejId: b.koeretoejId })),
+  ];
+
   for (const d of DEMO_DASHBOARD_OPGAVER) {
-    for (const o of DEMO_OPGAVER) {
-      if (normaliser(d.besk) !== normaliser(o.beskrivelse)) continue;
-      const andenEnhed = enhedFor(o.koeretoejId);
+    for (const a of andre) {
+      if (normaliser(d.besk) !== normaliser(a.besk)) continue;
+      const andenEnhed = enhedFor(a.koeretoejId);
       if (andenEnhed && andenEnhed !== d.enhed) {
         console.warn(
           `demo-dashboard: "${d.besk}" står på ${d.enhed} her og på ${andenEnhed} ` +
-          `i demo-opgaver (${o.id}). To datasæt beskriver samme arbejde på hver ` +
+          `i ${a.kilde} (${a.id}). To datasæt beskriver samme arbejde på hver ` +
           `sin bil — det er Bil 104 med to nummerplader. Afgør hvilken der er ` +
           `rigtig, og lad Dashboard læse DEMO_OPGAVER i stedet.`
+        );
+      }
+    }
+  }
+
+  /* Og de to ANDRE indbyrdes — driften behøver ikke gå gennem Dashboard for
+     at findes. Det var netop sådan "Serviceeftersyn 30.000 km" kunne stå på
+     Bil 78 i demo-opgaver og Bil 104 i demo-vaerksted. */
+  for (const o of DEMO_OPGAVER) {
+    for (const b of DEMO_BESOEG) {
+      if (normaliser(o.beskrivelse) !== normaliser(b.beskrivelse)) continue;
+      if (o.koeretoejId && b.koeretoejId && o.koeretoejId !== b.koeretoejId) {
+        console.warn(
+          `demo-opgaver/${o.id} og demo-vaerksted/${b.id} beskriver begge ` +
+          `"${o.beskrivelse}", men står på ${enhedFor(o.koeretoejId)} og ` +
+          `${enhedFor(b.koeretoejId)}.`
         );
       }
     }

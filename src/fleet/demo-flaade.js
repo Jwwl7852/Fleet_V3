@@ -56,7 +56,7 @@ export const DEMO_KOERETOEJER = [
   {
     id: "kt-078", kaldenavn: "Bil 78", navn: "Scania R 450",
     registrering: "DE 78 901", art: "traekker", status: "aktiv",
-    hjemsted: STED.aalborg, naesteServiceKm: 272000,
+    hjemsted: STED.aalborg, naesteServiceKm: 270000,
     laengdeMm: 6050, driftPrKmOere: 305,
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 268400, naesteServiceMs: NU + 51 * D, synMs: NU + 96 * D,

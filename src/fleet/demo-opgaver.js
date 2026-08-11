@@ -42,8 +42,15 @@ export const DEMO_OPGAVER = [
     personId: "larsAage", koeretoejId: "kt-012", status: "planlagt",
     estimeretMin: 90, faktiskMin: null, beloebOere: 125000 },
 
+  /* ⚠ HED "Serviceeftersyn – 30.000 km", og det var Bil 104s service.
+     30.000 km-eftersynet hoerer til Bil 104 (vb-005, aftalt paa sag
+     FLT-2026-00381 med Mercedes Greve) — ikke til Bil 78, som staar paa
+     268.400 km. Beskrivelsen laa to steder paa hver sin bil, og det var Bil
+     104 med to nummerplader.
+     Bil 78 navngives efter kilometerstand som vb-001 ("Serviceeftersyn
+     250.000 km") gjorde det paa samme bil. Naeste er 270.000. */
   { id: "op-002", art: "vaerksted", division: "gods", startMs: iDag(9, 30),
-    sted: "Kolding", beskrivelse: "Serviceeftersyn – 30.000 km",
+    sted: "Kolding", beskrivelse: "Serviceeftersyn – 270.000 km",
     personId: "reneThomsen", koeretoejId: "kt-078", status: "igang",
     estimeretMin: 150, faktiskMin: 66, beloebOere: 210000 },
 
@@ -52,9 +59,16 @@ export const DEMO_OPGAVER = [
     personId: "peterIversen", koeretoejId: "kt-034", status: "igang",
     estimeretMin: 60, faktiskMin: 27, beloebOere: 90000 },
 
+  /* ⚠ STOD OGSÅ PÅ kt-077, den solgte trækker — den anden af to. En afgået
+     enhed kan ikke have en åben opgave: posten bliver stående i flåden, men
+     den står ikke på værkstedet.
+     Valget af kt-v21 er MIT, ikke en oplysning fra data. Varevogn 21 er
+     aktiv, står i Kolding som opgavens sted siger, og har ingen anden
+     opgave; en ABS-fejl passer på en Crafter. Skal den på en anden bil, er
+     det én linje. */
   { id: "op-004", art: "vaerksted", division: "gods", startMs: iDag(11, 0),
     sted: "Kolding", beskrivelse: "Fejlsøgning – ABS-fejl",
-    personId: "ibSoerensen", koeretoejId: "kt-077", status: "afventer",
+    personId: "ibSoerensen", koeretoejId: "kt-v21", status: "afventer",
     estimeretMin: 120, faktiskMin: null, beloebOere: 240000 },
 
   { id: "op-005", art: "vaerksted", division: "gods", startMs: iDag(13, 0),
