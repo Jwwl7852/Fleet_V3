@@ -292,6 +292,9 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
     for (const m of Object.keys(start)) {
       start[m].basisOere = gl[m]?.basisOere || 0;
       start[m].prKoeretoejOere = gl[m]?.prKoeretoejOere || 0;
+      for (const a of ALLE_BRUGERARTER) {
+        start[m].prBrugerOere[a] = gl[m]?.prBrugerOere?.[a] || 0;
+      }
     }
     return start;
   });
@@ -302,7 +305,6 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
     const gl = udgangspunkt?.platform || {};
     start.basisOere = gl.basisOere || 0;
     for (const a of ALLE_BRUGERARTER) {
-      start.prBrugerOere[a] = gl.prBrugerOere?.[a] || 0;
       start.inkluderetBrugere[a] = gl.inkluderetBrugere?.[a] || 0;
     }
     return start;
@@ -319,8 +321,9 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
   const saetSats = (modul, sti, kroner) => {
     saetSvar(null);
     saetP((x) => {
-      const ny = { ...x, [modul]: { ...x[modul] } };
-      ny[modul][sti] = oereFelt(kroner);
+      const ny = { ...x, [modul]: { ...x[modul], prBrugerOere: { ...x[modul].prBrugerOere } } };
+      if (sti.startsWith("bruger:")) ny[modul].prBrugerOere[sti.slice(7)] = oereFelt(kroner);
+      else ny[modul][sti] = oereFelt(kroner);
       return ny;
     });
   };
@@ -389,10 +392,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
               <tr>
                 <th>Grundbeløb pr. måned</th>
                 {ALLE_BRUGERARTER.map((a) => (
-                  <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
-                ))}
-                {ALLE_BRUGERARTER.map((a) => (
-                  <th key={`i-${a}`} className="fc-num">Inkl. {BRUGERART[a].label.toLowerCase()}</th>
+                  <th key={`i-${a}`} className="fc-num">Inkl. {BRUGERART[a].label.toLowerCase()}e</th>
                 ))}
               </tr>
             </thead>
@@ -406,21 +406,12 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                            saetPf((x) => ({ ...x, basisOere: oereFelt(e.target.value) })); }} />
                 </td>
                 {ALLE_BRUGERARTER.map((a) => (
-                  <td key={a} className="fc-num">
-                    <input className="fc-input-tal" inputMode="decimal"
-                           aria-label={`Pris pr. ${BRUGERART[a].label}`}
-                           value={kronerFelt(pf.prBrugerOere[a])}
-                           onChange={(e) => { saetSvar(null);
-                             const v = oereFelt(e.target.value);
-                             saetPf((x) => ({ ...x, prBrugerOere: { ...x.prBrugerOere, [a]: v } })); }} />
-                  </td>
-                ))}
-                {ALLE_BRUGERARTER.map((a) => (
                   <td key={`i-${a}`} className="fc-num">
-                    {/* ⚠ ET ANTAL, IKKE KRONER. Frimaengden er brugere der er
-                        med i prisen — kun det der ligger UD OVER, faktureres. */}
+                    {/* ⚠ ET ANTAL, IKKE KRONER. Frimængden er brugere der er
+                        med i prisen — og den trækkes fra ÉN gang, ikke én
+                        gang pr. modul. Se tomPlatform() i priser.js. */}
                     <input className="fc-input-tal fc-input-pct" inputMode="numeric"
-                           aria-label={`Inkluderede ${BRUGERART[a].label}`}
+                           aria-label={`Inkluderede ${BRUGERART[a].label}e`}
                            value={pf.inkluderetBrugere[a] || ""}
                            onChange={(e) => { saetSvar(null);
                              const n = Math.max(0, Math.round(Number(e.target.value) || 0));
@@ -431,7 +422,6 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
             </tbody>
           </table>
         </div>
-
         <p className="fc-hint" style={{ marginTop: 12 }}><b>Moduler</b></p>
         <div className="fc-scroll">
           <table className="fc-table">
@@ -439,6 +429,9 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
               <tr>
                 <th>Modul</th>
                 <th className="fc-num">Pr. måned</th>
+                {ALLE_BRUGERARTER.map((a) => (
+                  <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
+                ))}
                 <th className="fc-num">Pr. køretøj</th>
               </tr>
             </thead>
@@ -448,14 +441,25 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                   <td>
                     <b>{MODUL[m].label}</b>
                     {MODUL[m].altid && <> <Pille tone="info">basis</Pille></>}
+                    {/* Beskrivelsen fra kataloget — ét sted, ikke skrevet af. */}
+                    <div className="fc-hint">{MODUL[m].hvad}</div>
                   </td>
                   <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
                            value={kronerFelt(p[m].basisOere)}
                            onChange={(e) => saetSats(m, "basisOere", e.target.value)} />
                   </td>
+                  {ALLE_BRUGERARTER.map((a) => (
+                    <td key={a} className="fc-num">
+                      <input className="fc-input-tal" inputMode="decimal"
+                             aria-label={`${MODUL[m].label} pr. ${BRUGERART[a].label}`}
+                             value={kronerFelt(p[m].prBrugerOere[a])}
+                             onChange={(e) => saetSats(m, `bruger:${a}`, e.target.value)} />
+                    </td>
+                  ))}
                   <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
+                           aria-label={`${MODUL[m].label} pr. køretøj`}
                            value={kronerFelt(p[m].prKoeretoejOere)}
                            onChange={(e) => saetSats(m, "prKoeretoejOere", e.target.value)} />
                   </td>
@@ -470,11 +474,15 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
           kan Flåde koste pr. køretøj og Bemanding pr. chauffør.
         </p>
         <p className="fc-hint" style={{ marginTop: 6 }}>
-          ⚠ <b>Brugerprisen ligger på platformen</b>, ikke på modulerne: en
-          faktura har én linje pr. brugerart, og en linje kan kun have én
-          stk.pris. <b>Inkl.</b> er en frimængde — kun antallet ud over den
-          faktureres, og linjen vises alligevel med 0 kr. så det kan ses at
-          der blev målt.
+          ⚠ <b>Antallet er kundens, satsen er modulets.</b> Sætter du en
+          brugerpris på to moduler, betaler kunden to gange pr. bruger — og
+          fakturaen får en linje for hver, så det kan ses.
+        </p>
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          <b>Inkl.</b> er en frimængde på <b>abonnementet</b>: kun antallet ud
+          over den faktureres, og den trækkes fra <b>én gang</b> — ikke én gang
+          pr. modul. Linjen vises alligevel med 0 kr., så det kan ses at der
+          blev målt.
         </p>
         {fejl.length > 0 && (
           <ul className="fc-hint" style={{ marginTop: 8 }}>

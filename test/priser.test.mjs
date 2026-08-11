@@ -31,14 +31,13 @@ const PRISLISTE = {
   momssats: 25,
   platform: {
     basisOere: 99500,
-    prBrugerOere: { chauffoer: 4900, desktop: 14900 },
-    /* Tre desktopbrugere er med i prisen. */
+    /* ⚠ KUN FRIMAENGDEN. Prisen pr. bruger staar paa modulet. */
     inkluderetBrugere: { chauffoer: 0, desktop: 3 },
   },
   moduler: {
     flaade: { basisOere: 49500, prKoeretoejOere: 2900 },
-    bemanding: { basisOere: 29500 },
-    booking: { basisOere: 79500 },
+    bemanding: { basisOere: 29500, prBrugerOere: { chauffoer: 4900, desktop: 0 } },
+    booking: { basisOere: 79500, prBrugerOere: { chauffoer: 0, desktop: 14900 } },
   },
 };
 
@@ -114,29 +113,30 @@ describe("Tællingen", () => {
 });
 
 describe("Prislisten", () => {
-  it("kan laves tom for de moduler der kan sælges", () => {
+  it("kan laves tom med alle fire satser pr. modul", () => {
     const t = tomPrisliste(VALGFRIE_MODULER);
     assert.deepEqual(Object.keys(t).sort(), [...VALGFRIE_MODULER].sort());
     for (const m of VALGFRIE_MODULER) {
-      /* ⚠ INGEN prBrugerOere. Den ligger paa platformen nu. */
-      assert.deepEqual(Object.keys(t[m]).sort(), ["basisOere", "prKoeretoejOere"]);
+      assert.deepEqual(Object.keys(t[m]).sort(),
+        ["basisOere", "prBrugerOere", "prKoeretoejOere"]);
+      assert.deepEqual(Object.keys(t[m].prBrugerOere).sort(), [...ALLE_BRUGERARTER].sort());
     }
   });
 
-  it("har en platform med baade pris og frimaengde", () => {
+  it("har en platform med grundbeloeb og frimaengde — men ingen brugerpris", () => {
+    /* ⚠ Prisen pr. bruger staar paa MODULET; frimaengden hoerer til
+       ABONNEMENTET. Stod prisen begge steder, var der to at rette. */
     const pf = tomPlatform();
-    assert.deepEqual(Object.keys(pf.prBrugerOere).sort(), [...ALLE_BRUGERARTER].sort());
+    assert.ok(!pf.prBrugerOere, "platformen har faaet en brugerpris igen");
     assert.deepEqual(Object.keys(pf.inkluderetBrugere).sort(), [...ALLE_BRUGERARTER].sort());
   });
 
-  it("afviser en brugerpris paa et MODUL", () => {
-    /* To steder at saette den ville betyde at fakturaens ene brugerlinje ikke
-       kunne sige hvilken der gjaldt. */
+  it("afviser en brugerpris paa PLATFORMEN", () => {
     const f = validerPrisliste({
       ...PRISLISTE,
-      moduler: { flaade: { basisOere: 1, prBrugerOere: { desktop: 100 } } },
+      platform: { ...PRISLISTE.platform, prBrugerOere: { desktop: 100 } },
     }, { kendteModuler: VALGFRIE_MODULER });
-    assert.ok(f.some((x) => /platformen/.test(x)), "en brugerpris paa modulet blev godtaget");
+    assert.ok(f.some((x) => /modulet/.test(x)), "en brugerpris paa platformen blev godtaget");
   });
 
   it("kraever en platform", () => {
@@ -163,7 +163,7 @@ describe("Prislisten", () => {
   it("afviser en ukendt brugerart og et ukendt modul", () => {
     assert.ok(validerPrisliste({
       ...PRISLISTE,
-      platform: { ...PRISLISTE.platform, prBrugerOere: { fritter: 100 } },
+      moduler: { flaade: { prBrugerOere: { fritter: 100 } } },
     }).some((x) => /brugerart/.test(x)));
     assert.ok(validerPrisliste(
       { ...PRISLISTE, moduler: { fritter: {} } }, { kendteModuler: VALGFRIE_MODULER }
@@ -205,7 +205,7 @@ describe("Linjerne for en periode", () => {
       [
         "platform/platform",
         "booking/basis", "bemanding/basis", "flaade/basis",
-        "platform/bruger/chauffoer", "platform/bruger/desktop",
+        "bemanding/bruger/chauffoer", "booking/bruger/desktop",
         "flaade/koeretoej",
       ]);
   });
@@ -644,9 +644,12 @@ describe("gyldigFraMs skal være en dato, ikke bare et tal", () => {
 });
 
 describe("Frimængden — og hvorfor nul-linjen bliver stående", () => {
+  /* ⚠ MODULERNE DER BAERER BRUGERPRISEN SKAL VAERE MED. Brugerlinjen hoerer
+     nu til det modul der har satsen — bemanding pr. medarbejder, booking pr.
+     desktopbruger — saa en fixtur med kun flaade ville proeve noget andet. */
   const grund = {
     prisliste: PRISLISTE,
-    moduldage: { flaade: 31 },
+    moduldage: { flaade: 31, bemanding: 31, booking: 31 },
     dageIPerioden: 31,
     antalKoeretoejer: 0,
   };

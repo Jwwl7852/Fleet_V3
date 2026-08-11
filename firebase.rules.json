@@ -953,20 +953,15 @@
           // betydninger — og linjen skulle hedde 'Platformsadgang' paa
           // fakturaen og 'Dashboard' i menuen.
           //
-          // ⚠ BRUGERPRISEN LIGGER HER, IKKE PAA MODULERNE. Fakturaen har ÉN
-          // linje pr. brugerart, og en linje kan kun have ÉN stk.pris — den
-          // kan ikke vaere summen af fire modulers satser.
+          // ⚠ INGEN BRUGERPRIS HER. Den saettes pr. modul; stod den ogsaa
+          // her, var der to steder at rette den.
           //
           // ⚠ FRIMAENGDEN HOERER TIL ABONNEMENTET. En bruger er ét login hos
           // kunden, ikke ét pr. modul: laa den paa modulet, ville en kunde
           // med fire moduler à '3 inkluderet' have TOLV gratis brugere.
           "platform": {
             "basisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-            "prBrugerOere": {
-              "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-              "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-              "$andet": { ".validate": false }
-            },
+            "prBrugerOere": { ".validate": false },
             // ⚠ ET HELT ANTAL. En halv inkluderet bruger findes ikke.
             "inkluderetBrugere": {
               "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
@@ -981,10 +976,15 @@
               // og den gaelder ogsaa naar det er OS der sender regningen.
               "basisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
               "prKoeretoejOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-              // ⚠ prBrugerOere ER FLYTTET TIL platform. Det maa ikke kunne
-              // saettes to steder: fakturaens ene brugerlinje kunne saa ikke
-              // sige hvilken sats der gjaldt. false = feltet afvises.
-              "prBrugerOere": { ".validate": false },
+              // ⚠ PRISEN PR. BRUGER STAAR PAA MODULET. Fakturaen faar ÉN
+              // linje pr. modul OG art, saa hver linje stadig har én
+              // stk.pris. FRIMAENGDEN ligger derimod paa platformen — se
+              // dér om hvorfor.
+              "prBrugerOere": {
+                "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "$andet": { ".validate": false }
+              },
               "$andet": { ".validate": false }
             }
           },

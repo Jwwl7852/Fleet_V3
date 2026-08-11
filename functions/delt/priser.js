@@ -66,8 +66,14 @@ import { ALLE_MODULER } from "./moduler.js";
 export const BRUGERART = {
   chauffoer: {
     art: "chauffoer",
-    label: "Chauffør",
-    hvad: "Kører og indberetter. Bruger appen i bilen.",
+    /* ⚠ LABELEN ER "Medarbejder", ROLLEN HEDDER STADIG chauffoer.
+       Prislisten kalder dem medarbejdere, fordi det ikke kun er chauffoerer
+       der bruger appen i marken — en mekaniker og en lagermand har samme
+       adgang og koster det samme. Rollen i permissions.js doebes IKKE om:
+       den staar i hvert token og i hver regel, og et navneskift dér ville
+       vaere en migrering uden gevinst. */
+    label: "Medarbejder",
+    hvad: "Bruger appen i marken. Kører, indberetter, registrerer.",
     roller: ["chauffoer"],
   },
   desktop: {
@@ -300,10 +306,16 @@ export const GYLDIG_FRA_SENEST = Date.UTC(2100, 0, 1);
 export function tomPrisliste(moduler = []) {
   const ud = {};
   for (const m of moduler) {
-    /* ⚠ INGEN prBrugerOere PAA MODULET LAENGERE. Brugerprisen ligger paa
-       platformen, fordi fakturaen har ÉN linje pr. brugerart og en linje kun
-       kan have ÉN stk.pris. Se tomPlatform(). */
-    ud[m] = { basisOere: 0, prKoeretoejOere: 0 };
+    /* ⚠ BRUGERPRISEN LIGGER PAA MODULET. Det er en aendring tilbage: den laa
+       kortvarigt paa platformen, saa fakturaens brugerlinje kunne have ÉN
+       stk.pris. Prisen saettes nu pr. modul igen, og fakturaen faar i stedet
+       ÉN LINJE PR. MODUL OG ART — saa hver linje stadig har én sats.
+       Se linjerForPeriode(). */
+    ud[m] = {
+      basisOere: 0,
+      prBrugerOere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
+      prKoeretoejOere: 0,
+    };
   }
   return ud;
 }
@@ -350,11 +362,11 @@ export function validerPrisliste(liste = {}, { kendteModuler = [] } = {}) {
     if (p?.prKoeretoejOere != null && !erHeltal(p.prKoeretoejOere)) {
       fejl.push(`${modul}: prKoeretoejOere skal være hele øre.`);
     }
-    /* ⚠ BRUGERPRISEN ER FLYTTET TIL PLATFORMEN. Bliver den staaende paa et
-       modul, ville der vaere TO steder at saette den, og fakturaens ene
-       brugerlinje kunne ikke sige hvilken der gjaldt. */
-    if (p?.prBrugerOere) {
-      fejl.push(`${modul}: prBrugerOere hoerer paa platformen, ikke paa modulet.`);
+    for (const [art, sats] of Object.entries(p?.prBrugerOere || {})) {
+      if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`${modul}: ukendt brugerart "${art}".`);
+      else if (sats != null && !erHeltal(sats)) {
+        fejl.push(`${modul}: prBrugerOere.${art} skal være hele øre.`);
+      }
     }
   }
 
@@ -366,11 +378,10 @@ export function validerPrisliste(liste = {}, { kendteModuler = [] } = {}) {
     if (pf.basisOere != null && !erHeltal(pf.basisOere)) {
       fejl.push("platform: basisOere skal vaere hele oere.");
     }
-    for (const [art, sats] of Object.entries(pf.prBrugerOere || {})) {
-      if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`platform: ukendt brugerart "${art}".`);
-      else if (sats != null && !erHeltal(sats)) {
-        fejl.push(`platform: prBrugerOere.${art} skal vaere hele oere.`);
-      }
+    /* ⚠ INGEN BRUGERPRIS PAA PLATFORMEN. Den saettes pr. modul; staar den
+       ogsaa her, er der to steder at rette den. */
+    if (pf.prBrugerOere) {
+      fejl.push("platform: prBrugerOere hoerer paa modulet, ikke paa platformen.");
     }
     for (const [art, antal] of Object.entries(pf.inkluderetBrugere || {})) {
       if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`platform: ukendt brugerart "${art}".`);
@@ -438,7 +449,11 @@ export const PLATFORM = "platform";
  */
 export const tomPlatform = () => ({
   basisOere: 0,
-  prBrugerOere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
+  /* ⚠ INGEN PRIS HER — kun frimaengden. Prisen pr. bruger saettes pr. modul,
+     men FRIMAENGDEN hoerer til abonnementet: "tre desktopbrugere er med i
+     prisen" er en saetning om abonnementet, ikke om Booking. Den traekkes
+     derfor fra ÉN gang, ikke én gang pr. modul — ellers ville en kunde med
+     fire moduler have tolv gratis brugere. */
   inkluderetBrugere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
 });
 
@@ -570,15 +585,46 @@ export function linjerForPeriode({
     laeg({ modul, akse: "basis", enheder: 1, listeprisOere: moduler[modul].basisOere, dage });
   }
 
-  /* 3. Brugerne — én linje pr. art, ALTID, saa maalingen kan ses. */
+  /* 3. Brugerne — ÉN LINJE PR. MODUL OG ART, saa hver linje har ÉN stk.pris.
+        ⚠ FRIMAENGDEN TRAEKKES ÉN GANG PR. ART, ikke én gang pr. modul. "Tre
+        desktopbrugere er med i prisen" er en saetning om ABONNEMENTET; laa den
+        paa modulet, ville en kunde med fire moduler have tolv gratis brugere.
+        Den bruges op paa den foerste linje der faktisk koster noget — i
+        katalogorden, saa den samme faktura ser ens ud hver maaned. */
+  const restFri = Object.fromEntries(
+    ALLE_BRUGERARTER.map((a) => [a, platform.inkluderetBrugere?.[a] || 0]));
+
   for (const art of ALLE_BRUGERARTER) {
-    laeg({
-      modul: PLATFORM, akse: "bruger", brugerart: art,
-      enheder: antalBrugere[art] || 0,
-      inkluderet: platform.inkluderetBrugere?.[art] || 0,
-      listeprisOere: platform.prBrugerOere?.[art],
-      dage: dageIDrift, altidVis: true,
-    });
+    const maalt = antalBrugere[art] || 0;
+    const medSats = ALLE_MODULER.filter(
+      (m) => moduler[m]?.prBrugerOere?.[art] > 0 && (moduldage[m] ?? 0) > 0);
+
+    if (!medSats.length) {
+      /* ⚠ INGEN SATS, MEN MAASKE EN FRIMAENGDE. Linjen vises alligevel naar
+         der ER maalt eller lovet noget — se beslutning 36. */
+      laeg({
+        modul: PLATFORM, akse: "bruger", brugerart: art,
+        enheder: maalt, inkluderet: restFri[art],
+        listeprisOere: 0, dage: dageIDrift, altidVis: true,
+      });
+      continue;
+    }
+
+    for (const modul of medSats) {
+      const fri = restFri[art];
+      const faktureres = overFrimaengde(maalt, fri);
+      restFri[art] = Math.max(0, fri - maalt);
+      laeg({
+        modul, akse: "bruger", brugerart: art,
+        enheder: maalt, inkluderet: fri,
+        listeprisOere: moduler[modul].prBrugerOere[art],
+        dage: moduldage[modul] ?? 0,
+        /* Foerste modul med en sats vises altid — det er dét der dokumenterer
+           maalingen. De oevrige vises kun naar de koster noget. */
+        altidVis: modul === medSats[0],
+      });
+      void faktureres;
+    }
   }
 
   /* 4. Køretøjer. ⚠ STOD IKKE I OPGAVEN, men satsen findes og skal kunne ses:
