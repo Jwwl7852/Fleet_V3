@@ -1179,3 +1179,78 @@ en kunde uden Bemanding ikke kunne se sine egne medarbejdere.
 
 Efterprøvet mod den **udrullede** base med en rigtig bruger: nitten punkter,
 alle holdt.
+
+---
+
+## 34. Ejerkonsollen skriver ikke — den beder om det
+
+Alt hvad konsollen gør — opret kunde, sæt på pause, opsig, tildel moduler,
+opret den første administrator — går gennem en Cloud Function med
+`udbyder === true` som **første** handling.
+
+**Hvorfor det ikke er nok at stole på claim'et i browseren:** en klient der må
+skrive til `tenants/<id>/moduler` for ét `<id>`, kan skrive til dem alle.
+Reglen kan ikke kende forskel på "min kunde" og "en anden kunde", når begge
+er kunder. Serveren kan, fordi den kender handlingen.
+
+`udbyder/kunder` og `tenants/<id>/{moduler,abonnement,virksomhed}` er alle
+`.write: false`. Et udbyder-claim i en browser kan ikke skrive én byte.
+
+### ⚠ Her — og kun her — kommer tenanten fra nyttelasten
+
+Overalt ellers står der at tenanten kommer fra tokenet. Det gælder stadig for
+kundens egne funktioner, og af den hårdeste grund der findes: en admin hos
+kunde A der selv måtte oplyse tenanten, kunne oprette en administrator hos
+kunde B.
+
+Ejeren er undtagelsen, og det er ikke en opblødning: **en ejerkonto har slet
+ingen tenant i sit token.** Der er ikke noget at tage. Derfor bærer
+`udbyder`-claim'et hele adgangen, og en prøve holder de to adskilt — kundens
+funktioner må ikke røre `kraevKundeId`, og ejerens må ikke røre
+`kraevBrugeradmin`.
+
+### Én oprettelse, to adgangskontroller
+
+`kundeadmin` og `opretbruger` deler `opretKonto()`. De har forskellig
+adgangskontrol — kundens admin må kun sin egen tenant, ejeren må hvilken som
+helst — og **samme** oprettelse. To kopier ville drive, og den ene ville
+glemme at skrive brugerindekset eller at sætte claims.
+
+### Hver handling logges hos kunden
+
+`audit/<kundeId>/sikkerhed/` med ejerens uid — ikke i en separat ejerlog.
+Kunden skal kunne se at hans abonnement blev ændret; det er hans abonnement.
+Og én auditmekanisme frem for to.
+
+`aarsag` er en **allowliste**: `betaling`, `kundeoensket`,
+`proeveperiodeUdloebet`, `fejloprettet`. Fritekst i auditloggen er præcis det
+`audit-regler.js` findes for at holde ude.
+
+---
+
+## 35. Ejerskab tildeles ikke fra konsollen
+
+`udbyder`-claim'et sættes kun med servicekontonøglen — `npm run ejer:giv`.
+Konsollen kan hverken give eller fjerne det, og en prøve fastholder at ingen
+ejerfunktion skriver `udbyder: true`.
+
+**Hvorfor:** vi er to ejere. Kunne den ene fjerne den andens claim, kunne den
+ene lukke den anden ude — og adgangen til at rette det var selv ejerskabet.
+Det er nøjagtig beslutning 31 om igen (rollerne er faste, fordi en admin der
+fjerner sin egen permission har låst sig ude), bare med højere indsats.
+
+Det er ikke besværligt nok til at genere nogen to gange om året, og præcis
+besværligt nok til at ingen gør det ved et uheld.
+
+### En ejerkonto har ingen tenant
+
+`harAdgang` i `App.jsx` kræver et tenant-claim, og den betingelse løsnes
+**ikke**. En ejerkonto kan derfor ikke nå kundeshellen overhovedet — og
+reglerne sammenligner `auth.token.tenant === $tenantId`, så den kan ikke læse
+én eneste kundes data uanset hvad klienten sender.
+
+**Spærringen er ikke en betingelse i en skærm; den er fraværet af en nøgle.**
+
+De to ejere har **samme rettigheder**, og alt logges. Et fire-øjne-princip med
+to personer er ikke et princip — det er en aftale om altid at være to på
+kontoret.

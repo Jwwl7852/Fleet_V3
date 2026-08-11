@@ -24,7 +24,13 @@ import { fileURLToPath } from "node:url";
 const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Filer der skal være ens i src/fleet og functions/delt. */
-export const DELTE_FILER = ["audit-regler.js", "permissions.js"];
+/* ⚠ KUN IMPORTFRIE FILER KAN STÅ HER. En kopi der importerer noget, ville
+   trække halve appen med ind i functions/ — og fejle ved DEPLOY, ikke ved
+   test. Alle fire er skrevet importfri med vilje; det er ikke et tilfælde
+   man kan regne med holder, så tilføj ikke en femte uden at tjekke. */
+export const DELTE_FILER = [
+  "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",
+];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);
 export const kopiSti = (navn) => join(ROD, "functions", "delt", navn);

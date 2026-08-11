@@ -192,3 +192,185 @@ test("Kun admin har brugere.skriv", async () => {
     .map(([r]) => r);
   assert.deepEqual(med, ["admin"]);
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   EJERFUNKTIONERNE — den anden krydsning af tenant-grænsen
+   ══════════════════════════════════════════════════════════════════════ */
+
+const EJERFUNKTIONER = ["kundeopret", "kundemoduler", "kundestatus", "kundeadmin"];
+
+/** Hvor ejerblokken begynder. ⚠ ET KODEMAERKE — se noten nedenfor. */
+function ejergraense(kode) {
+  const i = kode.indexOf("const TENANT_MOENSTER");
+  assert.ok(i > 0, "fandt ikke ejerblokken — er TENANT_MOENSTER doebt om?");
+  return i;
+}
+
+test("De fire ejerfunktioner findes og hedder det klienten kalder", () => {
+  /* ⚠ SMÅ BOGSTAVER. En 2. generations funktion bliver til en Cloud
+     Run-tjeneste, og et tjenestenavn må kun være småt. */
+  const kode = funktionskode();
+  for (const navn of EJERFUNKTIONER) {
+    assert.match(kode, new RegExp(`export const ${navn} = onCall`), `${navn} mangler`);
+    assert.equal(navn, navn.toLowerCase(), `${navn} har store bogstaver`);
+  }
+});
+
+test("Hver ejerfunktion kræver udbyder-claim'et som FØRSTE handling", () => {
+  /* ⚠ ET TJEK DER STÅR EFTER EN SKRIVNING, ER IKKE ET TJEK. Rækkefølgen
+     er hele pointen: kraevUdbyder() skal kaste, før der er sket noget. */
+  const kode = funktionskode();
+  for (const navn of EJERFUNKTIONER) {
+    const i = kode.indexOf(`export const ${navn} = onCall`);
+    const krop = kode.slice(i, i + 400);
+    const linjer = krop.split("\n").slice(1).map((l) => l.trim()).filter(Boolean);
+    assert.match(linjer[0], /kraevUdbyder\(req\)/,
+      `${navn} tjekker ikke udbyder-claim'et som det første, den gør.`);
+  }
+});
+
+test("Udbydertjekket er et CLAIM, ikke en node i basen", () => {
+  /* Slog vi op i en ejerliste i basen, ville en skrivning til den liste være
+     en vej til at give sig selv adgang — og så skulle DEN skrivning
+     beskyttes af noget. Ring. */
+  const kode = funktionskode();
+  const i = kode.indexOf("function kraevUdbyder");
+  const krop = kode.slice(i, i + 500);
+  assert.match(krop, /auth\.token\?\.udbyder !== true/);
+  assert.doesNotMatch(krop, /getDatabase\(\)/,
+    "kraevUdbyder slår op i basen — ejerskab skal komme fra tokenet.");
+});
+
+test("Ejerfunktionerne kan ikke give ejerskab", () => {
+  /* ⚠ BESLUTNING 35. I er to. Kunne den ene fjerne den andens claim, kunne
+     den ene lukke den anden ude — og adgangen til at rette det var selv
+     ejerskabet. udbyder sættes kun med servicekontonøglen. */
+  const kode = funktionskode();
+  /* ⚠ GRAENSEN ER KODE, IKKE EN KOMMENTAR. Foerste udgave delte paa
+     overskriften "EJERKONSOLLEN" — men funktionskode() stripper kommentarer,
+     saa indexOf gav -1, slice(-1) gav ét tegn, og proeven var GROEN af
+     ingenting. En proeve der ikke kan fejle, er ikke en proeve. */
+  const efterEjerblok = kode.slice(ejergraense(kode));
+  assert.doesNotMatch(efterEjerblok, /udbyder:\s*true/,
+    "en ejerfunktion sætter udbyder-claim'et. Det må kun ske fra en maskine " +
+    "med servicekontonøglen.");
+});
+
+test("kundeopret overskriver ikke en eksisterende kunde", () => {
+  /* Et "opret" der stille nulstillede virksomhedsnavnet på en kunde med
+     data og brugere, ville være en meget dyr tastefejl. */
+  const kode = funktionskode();
+  const i = kode.indexOf("export const kundeopret");
+  const krop = kode.slice(i, i + 2000);
+  assert.match(krop, /kundeFindes\(id\)/);
+  assert.match(krop, /already-exists/);
+});
+
+test("kundeopret seeder ingen demo-data", () => {
+  /* Hele pointen med den tomme platform: kunden skal se sit eget system tomt
+     og opdage hvad tomme tilstande faktisk siger. En kunde der får DEMO
+     Transports fjorten biler, sletter aldrig dem alle. */
+  const kode = funktionskode();
+  const i = kode.indexOf("export const kundeopret");
+  const krop = kode.slice(i, kode.indexOf("export const kundemoduler"));
+  assert.doesNotMatch(krop, /DEMO_|demo-/, "kundeopret seeder demo-data.");
+  for (const node of ["koeretoejer", "personale", "kunder", "kpi"]) {
+    assert.doesNotMatch(krop, new RegExp(`/${node}\``), `kundeopret skriver ${node}.`);
+  }
+});
+
+test("kundeopret sætter markøren FØR alt andet", () => {
+  /* Uden _findes afviser hver eneste regel alt — også de skrivninger der
+     kommer bagefter, hvis de nogensinde skulle gå gennem reglerne. */
+  const kode = funktionskode();
+  const i = kode.indexOf("export const kundeopret");
+  const krop = kode.slice(i, kode.indexOf("export const kundemoduler"));
+  const iFindes = krop.indexOf("_findes");
+  const iVirksomhed = krop.indexOf("/virksomhed");
+  assert.ok(iFindes > 0 && iFindes < iVirksomhed, "_findes sættes ikke først.");
+});
+
+test("Kunde-id valideres — RTDB-nøgler tåler ikke punktum", () => {
+  /* . $ # [ ] / er ulovlige i en nøgle. Et id med punktum ville skrive et
+     helt andet sted i træet end nogen troede. */
+  const kode = funktionskode();
+  assert.match(kode, /TENANT_MOENSTER = \/\^\[a-z0-9\]\[a-z0-9-\]/);
+  const i = kode.indexOf("function kraevKundeId");
+  assert.match(kode.slice(i, i + 400), /TENANT_MOENSTER\.test\(id\)/);
+});
+
+test("kundestatus og kundemoduler rører ingen konto", () => {
+  /* ⚠ BESLUTNING 32. Spærringen ligger på TENANTEN. Sattes `disabled` på
+     kundens logins, kunne genåbningen ikke rulles tilbage: de der var
+     spærret individuelt ville blive åbnet med. */
+  const kode = funktionskode();
+  for (const navn of ["kundestatus", "kundemoduler"]) {
+    const i = kode.indexOf(`export const ${navn}`);
+    const krop = kode.slice(i, i + 2200);
+    assert.doesNotMatch(krop, /updateUser|deleteUser|disabled/,
+      `${navn} rører en konto — spærringen hører på tenanten.`);
+  }
+});
+
+test("Årsagen er en allowliste, ikke fritekst", () => {
+  const kode = funktionskode();
+  const i = kode.indexOf("export const kundestatus");
+  const krop = kode.slice(i, i + 2200);
+  assert.match(krop, /ALLE_AARSAGER\.includes\(aarsag\)/,
+    "kundestatus tager imod en fri årsag — den ender i auditloggen.");
+  assert.match(krop, /ALLE_ABONNEMENTSTATUS\.includes\(status\)/);
+});
+
+test("Hver ejerhandling logges hos KUNDEN", () => {
+  /* Ikke i en separat ejerlog. Kunden skal kunne se at hans abonnement blev
+     ændret; det er hans abonnement. Og én auditmekanisme frem for to. */
+  const kode = funktionskode();
+  for (const navn of EJERFUNKTIONER) {
+    const i = kode.indexOf(`export const ${navn} = onCall`);
+    const slut = kode.indexOf("export const", i + 10);
+    const krop = kode.slice(i, slut > 0 ? slut : undefined);
+    assert.match(krop, /log\(id, ejerUid|opretKonto\(/,
+      `${navn} logger ikke hos kunden.`);
+  }
+});
+
+test("kundeadmin og opretbruger deler ÉN oprettelse", () => {
+  /* ⚠ TO KOPIER VILLE DRIVE, og den ene ville glemme at skrive indekset
+     eller at sætte claims. De har forskellig ADGANGSKONTROL og samme
+     oprettelse — det er præcis det en delt funktion er til for. */
+  const kode = funktionskode();
+  assert.match(kode, /async function opretKonto\(/);
+  for (const navn of ["opretbruger", "kundeadmin"]) {
+    const i = kode.indexOf(`export const ${navn} = onCall`);
+    const slut = kode.indexOf("export const", i + 10);
+    const krop = kode.slice(i, slut > 0 ? slut : undefined);
+    assert.match(krop, /opretKonto\(/, `${navn} opretter kontoen selv.`);
+    assert.doesNotMatch(krop, /createUser\(/, `${navn} har sin egen kopi af oprettelsen.`);
+  }
+});
+
+test("Kun ejerfunktionerne tager tenanten fra nyttelasten", () => {
+  /* ⚠ DET ER UNDTAGELSEN, OG DEN SKAL VÆRE SYNLIG. En ejerkonto har slet
+     ingen tenant i sit token, så der er ikke noget at tage. Kundens egne
+     funktioner må aldrig gøre det: en admin hos kunde A der selv måtte
+     oplyse tenanten, kunne oprette en administrator hos kunde B. */
+  /* ⚠ KLIPPET VED EJERBLOKKEN FØRST. Første udgave sliced fra hver funktion
+     til den NÆSTE `export const` — og mellem spaerlogin og kundeopret står
+     definitionen af kraevKundeId. Prøven var rød af den forkerte grund, og en
+     prøve der er rød af den forkerte grund, bliver grøn af den forkerte grund
+     næste gang. */
+  const kode = funktionskode();
+  const graense = ejergraense(kode);
+  const kundensDel = kode.slice(0, graense);
+
+  assert.doesNotMatch(kundensDel, /kraevKundeId\(/,
+    "en af kundens egne funktioner tager et tenant-id fra nyttelasten.");
+  assert.doesNotMatch(kundensDel, /kraevUdbyder\(/,
+    "en af kundens egne funktioner bruger ejertjekket.");
+
+  /* Og den anden vej: ejerblokken må ikke bruge kundens tjek, for en
+     ejerkonto har ingen tenant og intet perms-claim at tjekke. */
+  const ejerensDel = kode.slice(graense);
+  assert.doesNotMatch(ejerensDel, /kraevBrugeradmin\(/,
+    "en ejerfunktion bruger kundens tjek — en ejerkonto har ingen tenant.");
+});

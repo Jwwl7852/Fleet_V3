@@ -17,7 +17,10 @@
     "funktioner:udrul": "npm run delt:kopier && firebase deploy --only functions --project dev && npm run funktioner:aabn",
     "kunde:opret": "node scripts/opret-kunde.mjs",
     "funktioner:aabn": "node scripts/funktioner-aabn.mjs",
-    "kunde:moduler": "node scripts/kunde-moduler.mjs"
+    "kunde:moduler": "node scripts/kunde-moduler.mjs",
+    "ejer:vis": "node scripts/ejer.mjs vis",
+    "ejer:giv": "node scripts/ejer.mjs giv",
+    "ejer:fjern": "node scripts/ejer.mjs fjern"
   },
   "dependencies": {
     "firebase": "^10.12.2",

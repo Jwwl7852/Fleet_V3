@@ -42,6 +42,8 @@ import { getAuth } from "firebase-admin/auth";
 
 import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
+import { modulsaet, ukendteModuler } from "./delt/moduler.js";
+import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 
 initializeApp();
 
@@ -239,10 +241,16 @@ async function log(tenantId, uid, handling, objektId, note) {
     });
 }
 
-export const opretbruger = onCall({ region: REGION }, async (req) => {
-  const { uid, tenantId } = kraevBrugeradmin(req);
-  const d = req.data || {};
-
+/**
+ * Opret en konto i EN BESTEMT tenant.
+ *
+ * ⚠ DEN DELES AF opretbruger OG kundeadmin, og det er hele pointen. De to
+ * har forskellig ADGANGSKONTROL — kundens admin må kun sin egen tenant, mens
+ * ejeren må hvilken som helst — men de skal oprette kontoen på nøjagtig
+ * samme måde. To kopier ville drive, og den ene ville glemme at skrive
+ * indekset eller at sætte claims. Se functions-delt.test.mjs.
+ */
+async function opretKonto({ tenantId, kalderUid, d }) {
   const email = kortStreng(d.email, 120);
   if (!email || !MAIL_MOENSTER.test(email)) {
     throw new HttpsError("invalid-argument", "Ugyldig mailadresse.");
@@ -273,7 +281,6 @@ export const opretbruger = onCall({ region: REGION }, async (req) => {
     throw e;
   }
 
-  /* ⚠ tenantId FRA TOKENET. Se noten øverst. */
   await auth.setCustomUserClaims(bruger.uid, {
     tenant: tenantId,
     rolle,
@@ -281,9 +288,15 @@ export const opretbruger = onCall({ region: REGION }, async (req) => {
   });
 
   await skrivIndeks(tenantId, bruger, rolle, false);
-  await log(tenantId, uid, "opret", bruger.uid, `rolle ${rolle}`);
+  await log(tenantId, kalderUid, "opret", bruger.uid, `rolle ${rolle}`);
 
   return { ok: true, uid: bruger.uid };
+}
+
+export const opretbruger = onCall({ region: REGION }, async (req) => {
+  /* ⚠ tenantId FRA TOKENET, aldrig fra nyttelasten. Se noten øverst. */
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  return opretKonto({ tenantId, kalderUid: uid, d: req.data || {} });
 });
 
 export const skiftrolle = onCall({ region: REGION }, async (req) => {
@@ -342,4 +355,198 @@ export const spaerlogin = onCall({ region: REGION }, async (req) => {
   await log(tenantId, uid, "tilstandsskift", maalUid, spaerret ? "spaerret" : "genaabnet");
 
   return { ok: true, spaerret };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   EJERKONSOLLEN — den ANDEN krydsning af tenant-grænsen
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HER TAGES TENANTEN FRA NYTTELASTEN, OG DET ER MED VILJE.
+
+   Overalt ellers i filen står der at tenanten kommer fra tokenet, aldrig fra
+   nyttelasten. Det gælder stadig for kundens egne funktioner. Ejeren er den
+   ene undtagelse, og den er ikke en opblødning: en ejerkonto har SLET INGEN
+   tenant i sit token (beslutning 35). Der er ikke noget at tage.
+
+   Derfor er det `udbyder === true` der bærer hele adgangen her — ét claim,
+   ét sted, sat af provisioneren med servicekontonøglen og ikke af nogen
+   funktion. Konsollen kan ikke give sig selv ejerskab.
+
+   ⚠ INGEN AF DE FIRE LÆSER KUNDEDATA. De skriver kundeposten — navn, CVR,
+   moduler, abonnement — og opretter den første administrator. Præcis som
+   udbyder-claim'et i reglerne kun rækker til tre noder.
+
+   ⚠ HVER HANDLING LOGGES HOS KUNDEN, ikke i en separat ejerlog. Kunden skal
+   kunne se at hans abonnement blev ændret; det er hans abonnement. Og én
+   auditmekanisme frem for to.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Kun små bogstaver, tal og bindestreg. RTDB-nøgler må ikke bære . $ # [ ] / */
+const TENANT_MOENSTER = /^[a-z0-9][a-z0-9-]{1,39}$/;
+
+/**
+ * Ejertjekket. Returnerer ejerens uid eller kaster.
+ *
+ * ⚠ DET ER ET CLAIM, IKKE EN NODE. Slog vi op i en ejerliste i basen, ville
+ * en skrivning til den liste være en vej til at give sig selv adgang — og så
+ * skulle DEN skrivning beskyttes af noget, og så er vi i ring.
+ */
+function kraevUdbyder(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  if (auth.token?.udbyder !== true) {
+    throw new HttpsError("permission-denied", "Kræver udbyderadgang.");
+  }
+  return auth.uid;
+}
+
+/** Kunde-id'et fra nyttelasten — se noten ovenfor om hvorfor det er lovligt her. */
+function kraevKundeId(d) {
+  const id = kortStreng(d.id, 40);
+  if (!id || !TENANT_MOENSTER.test(id)) {
+    throw new HttpsError("invalid-argument",
+      "Kunde-id må kun være små bogstaver, tal og bindestreg.");
+  }
+  return id;
+}
+
+const kundeFindes = async (id) =>
+  (await getDatabase().ref(`tenants/${id}/_findes`).once("value")).exists();
+
+export const kundeopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+
+  const navn = kortStreng(d.navn, 120);
+  if (!navn) throw new HttpsError("invalid-argument", "Virksomhedsnavn mangler.");
+  const cvr = kortStreng(d.cvr, 20);
+
+  const valgte = Array.isArray(d.moduler) ? d.moduler : [];
+  const ukendte = ukendteModuler(valgte);
+  if (ukendte.length) {
+    throw new HttpsError("invalid-argument", `Ukendte moduler: ${ukendte.join(", ")}`);
+  }
+
+  /* ⚠ OVERSKRIVER IKKE. En eksisterende tenant har data og brugere, og et
+     "opret" der stille nulstillede virksomhedsnavnet ville være en meget dyr
+     tastefejl — samme spærring som scripts/opret-kunde.mjs har. */
+  if (await kundeFindes(id)) {
+    throw new HttpsError("already-exists", `Kunden "${id}" findes allerede.`);
+  }
+
+  const moduler = modulsaet(valgte);
+  const db = getDatabase();
+  const nu = Date.now();
+
+  /* Markøren FØRST. Uden den afviser hver eneste regel alt. */
+  await db.ref(`tenants/${id}/_findes`).set(true);
+  await db.ref(`tenants/${id}/virksomhed`).set(
+    cvr ? { navn, cvr, oprettetMs: nu } : { navn, oprettetMs: nu });
+  await db.ref(`tenants/${id}/moduler`).set(moduler);
+  await db.ref(`tenants/${id}/abonnement`).set({
+    status: "aktiv", aendretMs: nu, aendretAf: ejerUid,
+  });
+  /* ⚠ INDEKSET BÆRER INTET NAVN. Det står i tenants/<id>/virksomhed — ét
+     sted. En kopi ville drive, og udbyderen ville se et andet navn end
+     kunden selv. */
+  await db.ref(`udbyder/kunder/${id}`).set({ oprettetMs: nu });
+
+  await log(id, ejerUid, AUDIT.opret, id, "kunde oprettet");
+
+  /* ⚠ INGEN DEMO-DATA. Kunden skal se sit eget system tomt og opdage hvad
+     tomme tilstande faktisk siger. Se opret-kunde.mjs. */
+  return { ok: true, id, moduler: Object.keys(moduler) };
+});
+
+export const kundemoduler = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+
+  if (!Array.isArray(d.moduler)) {
+    throw new HttpsError("invalid-argument", "moduler skal være en liste.");
+  }
+  const ukendte = ukendteModuler(d.moduler);
+  if (ukendte.length) {
+    throw new HttpsError("invalid-argument", `Ukendte moduler: ${ukendte.join(", ")}`);
+  }
+  if (!(await kundeFindes(id))) {
+    throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
+  }
+
+  const db = getDatabase();
+  const foer = (await db.ref(`tenants/${id}/moduler`).once("value")).val() || {};
+  const efter = modulsaet(d.moduler);
+
+  /* ⚠ ET FRAVALG LUKKER KUNDENS EGNE DATA (beslutning 33). Han kan ikke
+     hente dem ud gennem appen bagefter. Derfor står de fravalgte i
+     auditposten — så det kan ses hvad der blev lukket, og hvornår. */
+  const fjernet = Object.keys(foer).filter((m) => foer[m] === true && efter[m] !== true);
+
+  await db.ref(`tenants/${id}/moduler`).set(efter);
+  await log(id, ejerUid, AUDIT.aendre, id,
+    fjernet.length ? `moduler; fravalgt: ${fjernet.join(",")}` : "moduler");
+
+  return { ok: true, moduler: Object.keys(efter), fjernet };
+});
+
+export const kundestatus = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+
+  const status = kortStreng(d.status, 20);
+  if (!ALLE_ABONNEMENTSTATUS.includes(status)) {
+    throw new HttpsError("invalid-argument", `Ukendt status: ${d.status}`);
+  }
+  /* ⚠ ÅRSAGEN ER EN ALLOWLISTE, IKKE FRITEKST. Den ender i auditloggen, og
+     fritekst dér er præcis det audit-regler.js findes for at holde ude. */
+  const aarsag = kortStreng(d.aarsag, 40);
+  if (aarsag && !ALLE_AARSAGER.includes(aarsag)) {
+    throw new HttpsError("invalid-argument", `Ukendt årsag: ${d.aarsag}`);
+  }
+  if (!(await kundeFindes(id))) {
+    throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
+  }
+
+  const post = { status, aendretMs: Date.now(), aendretAf: ejerUid };
+  if (aarsag) post.aarsag = aarsag;
+
+  await getDatabase().ref(`tenants/${id}/abonnement`).set(post);
+  /* ⚠ INGEN KONTO RØRES. Spærringen ligger på tenanten — beslutning 32.
+     Sattes `disabled` på kundens logins, kunne genåbningen ikke rulles
+     tilbage: de der var spærret individuelt ville blive åbnet med. */
+  await log(id, ejerUid, AUDIT.tilstandsskift, id,
+    aarsag ? `abonnement ${status} (${aarsag})` : `abonnement ${status}`);
+
+  return { ok: true, status };
+});
+
+/**
+ * Kundens FØRSTE administrator.
+ *
+ * ⚠ DEN FINDES FORDI opretbruger IKKE KAN BRUGES HER. Den tager tenanten fra
+ * kalderens token, og en ejerkonto har ingen. Selve oprettelsen deles med den
+ * gennem opretKonto() — to kopier ville drive, og den ene ville glemme
+ * indekset eller claims.
+ *
+ * Løsenet vises én gang i konsollen og gemmes ikke. Firebase gemmer kun et
+ * hash, og der er ingen invitationsmail endnu.
+ */
+export const kundeadmin = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+
+  if (!(await kundeFindes(id))) {
+    throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
+  }
+  /* ⚠ ROLLEN KAN VÆLGES, men kun blandt presettene — som alle andre steder.
+     Uden en angivet rolle bliver det admin: det er den første konto, og en
+     kunde uden administrator kan ikke oprette sine egne brugere. */
+  return opretKonto({
+    tenantId: id, kalderUid: ejerUid,
+    d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" },
+  });
 });

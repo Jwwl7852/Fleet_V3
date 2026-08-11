@@ -1,0 +1,202 @@
+/* ⚠ KOPI — REDIGÉR IKKE HER.
+ * Kilden er src/fleet/moduler.js. Filen lægges af
+ * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.
+ * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
+ */
+/* src/fleet/moduler.js
+ * Hvilke moduler en kunde har købt.
+ *
+ * INGEN IMPORTS — som permissions.js og steder.js. Både klienten, reglerne
+ * (gennem provisioneren) og en fremtidig udbyderkonsol skal bruge samme
+ * katalog, og en delt fil med imports kan ikke kopieres ind i functions/.
+ *
+ * ---------------------------------------------------------------------------
+ * ⚠ MODULAFKRYDSNINGEN HÅNDHÆVES NU I REGLERNE — beslutning 34.
+ *
+ * Her stod indtil videre at afkrydsningen var en KOMMERCIEL kontrol og ikke
+ * en sikkerhedskontrol: en kunde uden Facility der tastede /facility, så sin
+ * egen tomme node, og det var en salgsflade frem for et databrud.
+ *
+ * Det holdt så længe modullisten kun tegnede en sidebar. Det holder ikke, når
+ * ejerkonsollen kan FRATAGE et modul: gjorde vi kun det, havde kunden stadig
+ * sine data og sit API, og modulet var ikke solgt — det var foreslået.
+ * `NODE_MODUL` nedenfor er tabellen reglerne følger, og håndhævelsen rammer
+ * BÅDE læsning og skrivning.
+ *
+ * ⚠ DET FRITAGER IKKE TENANT-ISOLATIONEN. At kunder ikke kan nå HINANDENS
+ * data er en helt anden mekanisme — `auth.token.tenant === $tenantId` i hver
+ * eneste regel, prøvet på hver node i begge retninger
+ * (test/rules.tenant.test.mjs, punkt 1 i den låste rækkefølge). De to må ikke
+ * blandes sammen, og modulspærringen må aldrig bruges som argument for at
+ * isolationen er i orden.
+ *
+ * ⚠ EN KUNDE DER FÅR ET MODUL FRATAGET, KAN IKKE HENTE SINE EGNE DATA UD.
+ * De ligger der — intet slettes — men eneste vej til dem går gennem
+ * servicekontoen. Et fravalg skal derfor aftales, ikke bare klikkes, og en
+ * eksport hører FØR fravalget. Se EJERKONSOL.md.
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠ DASHBOARD OG OPSÆTNING KAN IKKE FRAVÆLGES. Et system uden forside er
+ * ikke et system, og en kunde der har fravalgt Opsætning kan ikke se sine
+ * egne brugere. De står derfor som `altid: true` og kan ikke slås fra —
+ * hverken her eller i konsollen.
+ */
+
+export const MODUL = {
+  dashboard: {
+    navKey: "dashboard",
+    label: "Dashboard",
+    hvad: "Forsiden med nøgletal og det der kræver handling.",
+    altid: true,
+  },
+  booking: {
+    navKey: "booking",
+    label: "Booking & Opgaver",
+    hvad: "Forespørgsler, forslag, disponering og ruteoverblik.",
+  },
+  bemanding: {
+    navKey: "bemanding",
+    label: "Bemanding",
+    hvad: "Vagtplan, medarbejdere, kompetencer og fravær.",
+  },
+  flaade: {
+    navKey: "flaade",
+    label: "Flåde",
+    hvad: "Køretøjer, værkstedskalender og indberetninger.",
+  },
+  facility: {
+    navKey: "facility",
+    label: "Facility",
+    hvad: "Bygninger, anlæg, klima og servicekalender.",
+  },
+  indkoeb: {
+    navKey: "indkoeb",
+    label: "Indkøb",
+    hvad: "Indkøb, fakturaafstemning og leverandører.",
+  },
+  kunder: {
+    navKey: "kunder",
+    label: "Kunder & Priser",
+    hvad: "Kundekartotek, aftaler, prisgrupper og tilbud.",
+  },
+  oekonomi: {
+    navKey: "oekonomi",
+    label: "Økonomi & Rapporter",
+    hvad: "Driftsomkostninger, budget, dækningsgrad og fakturagrundlag.",
+  },
+  support: {
+    navKey: "support",
+    label: "Support",
+    hvad: "Hjælp og sager med FleetControl.",
+    altid: true,
+  },
+  opsaetning: {
+    navKey: "opsaetning",
+    label: "Opsætning",
+    hvad: "Virksomhed, brugere og roller.",
+    altid: true,
+  },
+};
+
+export const ALLE_MODULER = Object.keys(MODUL);
+
+/** De moduler en kunde kan vælge til og fra. */
+export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
+
+/** De moduler enhver kunde altid har. */
+export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HVILKE NODER ET MODUL EJER — og hvorfor tre af dem ikke ejes af nogen
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ TABELLEN ER SANDHEDEN, OG REGLERNE SKAL FØLGE DEN.
+   `test/rules.moduler.test.mjs` udleder sig af den: hver node herunder SKAL
+   have modulklausulen i `firebase.rules.json`, og hver node der IKKE står her
+   må ikke have den. Tilføjer nogen en node uden at tage stilling, fejler
+   prøven — det er samme greb som nodelisten i rules.tenant.test.mjs.
+
+   ⚠ TRE NODER STÅR MED VILJE UDEN FOR: opgaver, satser og fakturaer. De
+   hører hver til TO moduler:
+
+     opgaver    art er `vaerksted` | `facility` (beslutning 21)
+     satser     prisgrupper hører til Kunder, kalkulationsprisen til Booking
+     fakturaer  ligger i Indkøb, men Økonomi læser dem
+
+   En node der hører til to moduler, kan ikke gates af det ene uden at det
+   andet går i stykker. Alternativet — "har mindst ét af modulerne" — er en
+   regel ingen kan læse sig til bagefter, og den slags regler bliver forkert
+   ændret. De står derfor i BASEN.
+
+   ⚠ personale, kompetencer og kpi er heller ikke gatede. personale ligger i
+   basen fordi enhver abonnementskombination har medarbejdere (se
+   permissions.js). kpi er ét aggregat — et modul man ikke har, har ingen tal.
+
+   ⚠ oekonomi og kunder ejer ingen node hver for sig ud over kunder/. Økonomi
+   læser kpi, fakturaer og satser, som alle er base. Modulet styrer altså kun
+   om SKÆRMEN findes. Det er ikke en fejl i tabellen — det er hvad der er. */
+
+/** Node → modul. Kun de noder et modul EJER alene. */
+export const NODE_MODUL = {
+  koeretoejer: "flaade",
+  "sensitive/koeretoejer": "flaade",
+  indberetninger: "flaade",
+
+  facility: "facility",
+
+  indkoeb: "indkoeb",
+  lagre: "indkoeb",
+
+  bookinger: "booking",
+  "sensitive/bookinger": "booking",
+  "vaerdi/bookinger": "booking",
+  etaper: "booking",
+  reservationer: "booking",
+
+  fravaer: "bemanding",
+  "sensitive/fravaer": "bemanding",
+  kompetencer: "bemanding",
+
+  kunder: "kunder",
+  "sensitive/kunder": "kunder",
+};
+
+/** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */
+export const MODUL_NODER = Object.entries(NODE_MODUL).reduce((ud, [node, modul]) => {
+  (ud[modul] ||= []).push(node);
+  return ud;
+}, {});
+
+/**
+ * Har tenanten det her modul?
+ *
+ * ⚠ FEJLER ÅBENT, OG DET ER MED VILJE — modsat permissions.js, som fejler
+ * lukket. Forskellen er hvad en manglende oplysning betyder:
+ *
+ *   En manglende PERMISSION betyder "du må ikke". Fejler den åbent, giver
+ *   man adgang til noget nogen skulle have stoppet.
+ *   En manglende MODULLISTE betyder "vi ved ikke hvad kunden har købt" —
+ *   typisk fordi noden ikke er skrevet endnu. Fejler den lukket, står en
+ *   betalende kunde med en tom sidebar og tror systemet er væk.
+ *
+ * Det er derfor det ikke er en sikkerhedskontrol: den forkerte fejlretning
+ * er en salgsflade, ikke et databrud.
+ */
+export function harModul(moduler, modul) {
+  if (MODUL[modul]?.altid) return true;
+  if (!moduler) return true;
+  return moduler[modul] === true;
+}
+
+/** Modulsættet til en ny kunde: de obligatoriske plus de valgte. */
+export function modulsaet(valgte = []) {
+  const ud = {};
+  for (const m of OBLIGATORISKE_MODULER) ud[m] = true;
+  for (const m of valgte) {
+    if (MODUL[m]) ud[m] = true;
+  }
+  return ud;
+}
+
+/** Navnene på de moduler der IKKE findes i kataloget. Til validering. */
+export const ukendteModuler = (valgte = []) => valgte.filter((m) => !MODUL[m]);
