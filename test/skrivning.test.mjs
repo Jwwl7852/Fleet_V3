@@ -454,3 +454,23 @@ test("Funktionsnavnene i klienten matcher dem der er udrullet", () => {
     assert.match(server, new RegExp(`export const ${navn} = onCall`), `serveren har ikke ${navn}`);
   }
 });
+
+test("En slettet konto er ikke en netværksfejl", () => {
+  /* ⚠ INDEKSET KAN OVERLEVE SIN KONTO. Slettes en bruger i Firebase-konsollen,
+     bliver rækken under tenants/<t>/brugere stående — konsollen ved intet om
+     den. Før dette blev auth.getUser()'s fejl til `internal` og dermed til
+     "prøv igen", og kontoen kommer aldrig tilbage. Det er nøjagtig den
+     fejltilstand hele skellet i denne fil er skrevet imod.
+     Det ER sket: en admin oprettede sig selv og slettede kontoen i konsollen. */
+  const r = tolkBrugerfejl({ code: "functions/not-found", message: "Kontoen findes ikke længere." });
+  assert.equal(r.art, BRUGERSVAR.forsvundet);
+  assert.notEqual(r.art, BRUGERSVAR.forbindelse);
+
+  const server = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+  assert.match(server, /auth\/user-not-found/,
+    "funktionen fanger ikke en slettet konto — så bliver den til `internal`.");
+  assert.match(server, /HttpsError\(\s*[\r\n\s]*"not-found"/,
+    "funktionen svarer ikke not-found på en slettet konto.");
+  assert.match(server, /brugere\/\$\{maalUid\}`\)\.remove\(\)/,
+    "den døde indeksrække ryddes ikke — så er fælden der stadig næste gang.");
+});

@@ -72,6 +72,12 @@ export const BRUGERSVAR = {
   /* Adressen er i brug. Ikke en fejl hos os, og ikke noget der bliver bedre
      af at prøve igen. */
   optaget: "optaget",
+  /* Kontoen findes ikke længere — slettet uden om systemet, altså i
+     Firebase-konsollen. Indekset stod tilbage og pegede på ingenting.
+     ⚠ IKKE "forbindelse". Serveren svarede, og svaret var klart; funktionen
+     har fjernet rækken. "Prøv igen" ville sende brugeren efter en konto der
+     aldrig kommer tilbage. */
+  forsvundet: "forsvundet",
   /* Funktionen kunne ikke nås. "Prøv igen" giver mening. */
   forbindelse: "forbindelse",
   /* Ingen Firebase-app. Demo-mode. */
@@ -94,6 +100,12 @@ export function tolkBrugerfejl(fejl) {
   }
   if (kode === "already-exists") {
     return { art: BRUGERSVAR.optaget, besked: besked || "Adressen er allerede i brug." };
+  }
+  if (kode === "not-found") {
+    return {
+      art: BRUGERSVAR.forsvundet,
+      besked: besked || "Kontoen findes ikke længere. Rækken er fjernet fra listen.",
+    };
   }
   if (kode === "invalid-argument" || kode === "failed-precondition") {
     return { art: BRUGERSVAR.ugyldig, besked: besked || "Oplysningerne kunne ikke bruges." };

@@ -52,7 +52,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import {
-  opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger,
+  opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger, BRUGERSVAR,
 } from "../../fleet/brugere.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
@@ -188,7 +188,11 @@ export default function Brugere() {
   const efterHandling = (r) => {
     setArbejder(null);
     setSvar(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
-    if (r.ok) genindlaesBrugere();
+    /* ⚠ OGSÅ VED `forsvundet`. Kontoen var slettet uden om systemet, og
+       funktionen har netop fjernet den døde række — men den står stadig på
+       skærmen indtil listen hentes igen. Uden det ville næste klik ramme
+       samme række og få samme besked, og brugeren ville tro beskeden løj. */
+    if (r.ok || r.art === BRUGERSVAR.forsvundet) genindlaesBrugere();
   };
 
   const skiftRollePaa = async (r, rolle) => {

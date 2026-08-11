@@ -142,10 +142,26 @@ test("Et rolleskift fornyer tokenet", () => {
 
 test("Funktionerne rører kun brugere i egen tenant", () => {
   /* uid er ikke hemmeligt. Uden tjekket kunne en admin ændre rollen på — eller
-     spærre — en bruger hos en anden kunde ved at gætte eller opsnappe et uid. */
+     spærre — en bruger hos en anden kunde ved at gætte eller opsnappe et uid.
+
+     ⚠ PRØVEN TALTE FØR TO FOREKOMSTER, og det var et mål for kopier frem for
+     for kontrol. Da de to blev til ét hentIEgenTenant(), faldt den — mens
+     koden var blevet strammere, ikke løsere. Nu spørger den om det den mener:
+     ingen af de to funktioner må hente en konto uden om hjælperen, og
+     hjælperen skal have tjekket. */
   const kode = funktionskode();
-  const antal = [...kode.matchAll(/customClaims\?\.tenant !== tenantId/g)].length;
-  assert.ok(antal >= 2, `kun ${antal} tenant-tjek på målbrugeren — forventede mindst 2`);
+
+  assert.match(kode, /function hentIEgenTenant[\s\S]*?customClaims\?\.tenant !== tenantId/,
+    "hentIEgenTenant tjekker ikke tenanten.");
+
+  for (const navn of ["skiftrolle", "spaerlogin"]) {
+    const i = kode.indexOf(`export const ${navn} = onCall`);
+    assert.ok(i > 0, `${navn} findes ikke — er funktionen døbt om?`);
+    const krop = kode.slice(i, i + 1800);
+    assert.match(krop, /hentIEgenTenant\(/, `${navn} går uden om hentIEgenTenant.`);
+    assert.doesNotMatch(krop, /auth\.getUser\(/,
+      `${navn} henter kontoen direkte — så er tenant-tjekket ikke garanteret.`);
+  }
 });
 
 test("Brugerindekset bærer hverken claims eller løsen", () => {

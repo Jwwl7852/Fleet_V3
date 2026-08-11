@@ -193,6 +193,41 @@ async function skrivIndeks(tenantId, bruger, rolle, spaerret) {
     .set(indeksPost(bruger, rolle, spaerret));
 }
 
+/**
+ * Hent en konto — og sig det ordentligt, hvis den ikke findes længere.
+ *
+ * ⚠ INDEKSET KAN OVERLEVE SIN KONTO. Slettes en bruger i Firebase-konsollen,
+ * bliver rækken under tenants/<t>/brugere stående: konsollen ved intet om
+ * den. Klikker nogen så på rollen, kastede auth.getUser() en fejl der ikke
+ * var en HttpsError, og den blev til `internal` — som klienten oversætter til
+ * "prøv igen". Det er præcis den fejltilstand hele filen er skrevet imod: en
+ * kontrol der virker, meldt som et netværksproblem. Brugeren prøver igen, og
+ * igen, og kontoen kommer aldrig tilbage.
+ *
+ * Rækken ryddes med det samme. Et indeks der peger på ingenting, er ikke en
+ * oplysning — det er en fælde, og den bliver ikke bedre af at stå længere.
+ */
+async function hentIEgenTenant(auth, maalUid, tenantId) {
+  let bruger;
+  try {
+    bruger = await auth.getUser(maalUid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+    await getDatabase().ref(`tenants/${tenantId}/brugere/${maalUid}`).remove();
+    throw new HttpsError(
+      "not-found",
+      "Kontoen findes ikke længere — den er slettet uden om systemet. " +
+      "Rækken er nu fjernet fra listen."
+    );
+  }
+  /* ⚠ KUN BRUGERE I EGEN TENANT. Uden det kunne en admin ændre en bruger hos
+     en anden kunde — uid er ikke hemmeligt. */
+  if (bruger.customClaims?.tenant !== tenantId) {
+    throw new HttpsError("permission-denied", "Brugeren hører ikke til din virksomhed.");
+  }
+  return bruger;
+}
+
 async function log(tenantId, uid, handling, objektId, note) {
   const nu = new Date();
   await getDatabase()
@@ -261,13 +296,7 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
   if (!ROLLE_PERMS[rolle]) throw new HttpsError("invalid-argument", `Ukendt rolle: ${d.rolle}`);
 
   const auth = getAuth();
-  const bruger = await auth.getUser(maalUid);
-
-  /* ⚠ KUN BRUGERE I EGEN TENANT. Uden det kunne en admin ændre rollen på en
-     bruger hos en anden kunde — uid er ikke hemmeligt. */
-  if (bruger.customClaims?.tenant !== tenantId) {
-    throw new HttpsError("permission-denied", "Brugeren hører ikke til din virksomhed.");
-  }
+  const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
 
   await auth.setCustomUserClaims(maalUid, {
     ...bruger.customClaims,
@@ -295,10 +324,7 @@ export const spaerlogin = onCall({ region: REGION }, async (req) => {
   const spaerret = d.spaerret !== false;
 
   const auth = getAuth();
-  const bruger = await auth.getUser(maalUid);
-  if (bruger.customClaims?.tenant !== tenantId) {
-    throw new HttpsError("permission-denied", "Brugeren hører ikke til din virksomhed.");
-  }
+  const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
   /* ⚠ MAN KAN IKKE SPÆRRE SIG SELV UDE. Den sidste administrator der gjorde
      det, ville have låst hele virksomheden ude af sin egen brugeradministration
      — og der er ingen vej tilbage fra klienten. */
