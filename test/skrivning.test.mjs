@@ -366,3 +366,91 @@ test("En medarbejder får aldrig en division", () => {
   assert.ok(valideMedarbejder({ ...person, division: "faelles" }).division);
   assert.equal("division" in byggMedarbejder(person), false);
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   Brugeroprettelse — klientsiden af det funktionen håndhæver
+   ══════════════════════════════════════════════════════════════════════ */
+import {
+  valideNyBruger, nytLoesen, MINDSTE_KODE, tolkBrugerfejl, BRUGERSVAR,
+} from "../src/fleet/brugere-regler.js";
+
+const nyBruger = {
+  navn: "Lars Aage", email: "lars@vognmand.dk", rolle: "chauffoer",
+  kode: "etMegetLangtLoesen1",
+};
+
+test("En ny bruger kræver navn, gyldig mail og en kendt rolle", () => {
+  assert.deepEqual(valideNyBruger(nyBruger), {});
+  assert.ok(valideNyBruger({ ...nyBruger, navn: "" }).navn);
+  assert.ok(valideNyBruger({ ...nyBruger, email: "lars-at-vognmand" }).email);
+  assert.ok(valideNyBruger({ ...nyBruger, rolle: "direktoer" }).rolle);
+});
+
+test("Kodekravet er det SAMME tal som funktionen håndhæver", () => {
+  /* ⚠ STÅR DE TO FORSKELLIGE STEDER, afviser serveren en adgangskode
+     formularen godtog — og brugeren får en fejl han ikke kan handle på. */
+  assert.equal(MINDSTE_KODE, 12);
+  const kode = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+  assert.match(kode, /kode\.length < 12/,
+    "funktionen kræver ikke 12 tegn — så er de to ude af sync.");
+  assert.ok(valideNyBruger({ ...nyBruger, kode: "eeeeeeeeeee" }).kode, "11 tegn skal afvises");
+  assert.deepEqual(valideNyBruger({ ...nyBruger, kode: "eeeeeeeeeeee" }), {}, "12 skal gå");
+});
+
+test("Det genererede løsen er langt nok og uden forvekslelige tegn", () => {
+  /* l, I, 1, O og 0 forveksles når nogen læser koden op i telefonen — og
+     det er præcis sådan den bliver overleveret, indtil der er en
+     invitationsmail. */
+  for (let i = 0; i < 20; i++) {
+    const k = nytLoesen();
+    assert.ok(k.length >= MINDSTE_KODE, `${k} er for kort`);
+    assert.doesNotMatch(k, /[lI1O0]/, `${k} indeholder et forveksleligt tegn`);
+  }
+  assert.notEqual(nytLoesen(), nytLoesen(), "to løsener må ikke være ens");
+});
+
+test("En afvist handling er ikke en netværksfejl", async (t) => {
+  await t.test("permission-denied bliver til naegtet", () => {
+    /* Kontrollen VIRKER. "Prøv igen" ville lære brugeren at systemet er i
+       stykker — samme skel som dataTilstand() og skriv-regler.js laver. */
+    const r = tolkBrugerfejl({ code: "functions/permission-denied", message: "Kræver brugere.skriv." });
+    assert.equal(r.art, BRUGERSVAR.naegtet);
+    assert.equal(r.besked, "Kræver brugere.skriv.");
+  });
+
+  await t.test("already-exists er sin egen tilstand", () => {
+    /* Den bliver ikke bedre af at prøve igen, og den er ikke en fejl hos os. */
+    assert.equal(tolkBrugerfejl({ code: "functions/already-exists" }).art, BRUGERSVAR.optaget);
+  });
+
+  await t.test("invalid-argument er formen, ikke adgangen", () => {
+    assert.equal(tolkBrugerfejl({ code: "functions/invalid-argument" }).art, BRUGERSVAR.ugyldig);
+    assert.equal(tolkBrugerfejl({ code: "functions/failed-precondition" }).art, BRUGERSVAR.ugyldig);
+  });
+
+  await t.test("alt andet er forbindelsen", () => {
+    assert.equal(tolkBrugerfejl({ code: "functions/internal" }).art, BRUGERSVAR.forbindelse);
+    assert.equal(tolkBrugerfejl(new Error("nede")).art, BRUGERSVAR.forbindelse);
+  });
+});
+
+test("Klienten sender aldrig tenant eller perms", () => {
+  /* Funktionen ignorerer dem alligevel — men et felt der ser ud til at
+     betyde noget og bliver ignoreret, er værre end intet felt. */
+  const kilde = readFileSync(new URL("../src/fleet/brugere.js", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(kilde, /tenant\s*[:,]/, "brugere.js sender en tenant med.");
+  assert.doesNotMatch(kilde, /perms\s*[:,]/, "brugere.js sender perms med.");
+});
+
+test("Funktionsnavnene i klienten matcher dem der er udrullet", () => {
+  /* ⚠ SMÅ BOGSTAVER. En 2. generations funktion bliver til en Cloud
+     Run-tjeneste, og et tjenestenavn må kun være småt. Stemmer navnene ikke,
+     får man 404 fra en funktion man kan se i konsollen. */
+  const klient = readFileSync(new URL("../src/fleet/brugere.js", import.meta.url), "utf8");
+  const server = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+  for (const navn of ["opretbruger", "skiftrolle", "spaerlogin"]) {
+    assert.match(klient, new RegExp(`"${navn}"`), `klienten kender ikke ${navn}`);
+    assert.match(server, new RegExp(`export const ${navn} = onCall`), `serveren har ikke ${navn}`);
+  }
+});
