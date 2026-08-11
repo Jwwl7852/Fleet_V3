@@ -145,11 +145,15 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
     const undtaget = alleRegler().filter(
       (r) => typeof r.udtryk === "string" && r.udtryk.includes("auth.token.udbyder")
     );
-    /* virksomhed, moduler og abonnement under tenanten — plus selve
-       udbyder/kunder. Fire, og tallet står her for at en femte skal ses:
-       hver ny regel med udbyder-claim'et er en udvidelse af den anden
-       krydsning af tenant-grænsen, og den skal besluttes, ikke opdages. */
-    assert.equal(undtaget.length, 4, "forventede fire regler med udbyder-claimet");
+    /* virksomhed, moduler og abonnement under tenanten — plus udbyder/kunder,
+       udbyder/prisliste og udbyder/maalinger. Seks, og tallet står her for at
+       en syvende skal SES: hver ny regel med udbyder-claim'et er en udvidelse
+       af den anden krydsning af tenant-grænsen, og den skal besluttes, ikke
+       opdages.
+
+       ⚠ De tre under udbyder/ er ikke kundedata. Prislisten er vores,
+       målingerne er tal og ingen rækker, og kunder er et eksistensindeks. */
+    assert.equal(undtaget.length, 6, "forventede seks regler med udbyder-claimet");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);
     }

@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -274,5 +274,119 @@ describe("Aritmetikken deles med kundefaktureringen", () => {
     assert.doesNotMatch(kilde, /export const linjeBeloebOere = /,
       "grundlag.js definerer linjeBeloebOere igen.");
     assert.match(kilde, /from "\.\/beloeb\.js"/);
+  });
+});
+
+describe("Målingerne — højeste antal for perioden", () => {
+  const maaling = (b, kt, moduler, status) => ({
+    ms: 1, status, brugere: b, koeretoejer: kt, moduler,
+  });
+  const MOD = { flaade: true, bemanding: true };
+
+  it("tager toppen, ikke slutantallet", () => {
+    /* ⚠ HELE GRUNDEN TIL AT DER MAALES DAGLIGT. En kunde med 30 chauffører
+       den 3. og 8 den 31. ville med et slutantal blive faktureret for 8. */
+    const s = sammenfatMaalinger({
+      "2026-08-03": maaling({ chauffoer: 30, desktop: 4 }, 20, MOD),
+      "2026-08-17": maaling({ chauffoer: 12, desktop: 6 }, 14, MOD),
+      "2026-08-31": maaling({ chauffoer: 8, desktop: 5 }, 12, MOD),
+    });
+    assert.equal(s.brugere.chauffoer, 30);
+    assert.equal(s.koeretoejer, 20);
+  });
+
+  it("tager toppen PR. BRUGERART for sig", () => {
+    /* De to toppe var aldrig der samtidig, og begge faktureres. Reglen står
+       skrevet i sammenfatMaalinger() — alternativet ville give to kunder med
+       samme forbrug forskellig pris afhængigt af rækkefølgen. */
+    const s = sammenfatMaalinger({
+      "2026-08-03": maaling({ chauffoer: 30, desktop: 1 }, 1, MOD),
+      "2026-08-27": maaling({ chauffoer: 1, desktop: 9 }, 1, MOD),
+    });
+    assert.equal(s.brugere.chauffoer, 30);
+    assert.equal(s.brugere.desktop, 9);
+  });
+
+  it("tæller moduldage som dage hvor modulet var slået til", () => {
+    const s = sammenfatMaalinger({
+      "2026-08-01": maaling({}, 0, { flaade: true }),
+      "2026-08-02": maaling({}, 0, { flaade: true, bemanding: true }),
+      "2026-08-03": maaling({}, 0, { bemanding: true }),
+    });
+    assert.deepEqual(s.moduldage, { flaade: 2, bemanding: 2 });
+  });
+
+  it("fakturerer ikke dage på pause", () => {
+    /* ⚠ HER BLIVER PAUSE KOMMERCIEL. Beslutning 32 gjorde den teknisk. En
+       pause der ikke fjerner en dag fra regningen, er ikke en pause. */
+    const s = sammenfatMaalinger({
+      "2026-08-01": maaling({ chauffoer: 5 }, 5, MOD, "aktiv"),
+      "2026-08-02": maaling({ chauffoer: 99 }, 99, MOD, "paused"),
+      "2026-08-03": maaling({ chauffoer: 5 }, 5, MOD, "opsagt"),
+    });
+    assert.equal(s.dageMaalt, 3);
+    assert.equal(s.dageFaktureres, 1);
+    assert.equal(s.brugere.chauffoer, 5, "en pauset dags top blev faktureret");
+    assert.deepEqual(s.moduldage, { flaade: 1, bemanding: 1 });
+  });
+
+  it("behandler en manglende status som aktiv", () => {
+    /* Samme retning som erAktiv() i abonnement.js — og som harModul(). */
+    const s = sammenfatMaalinger({ "2026-08-01": maaling({ chauffoer: 3 }, 2, MOD) });
+    assert.equal(s.dageFaktureres, 1);
+  });
+
+  it("tæller kun dage der ER målt", () => {
+    /* ⚠ En kunde oprettet den 12. har ingen målinger før den 12. og skal
+       ikke faktureres for dem. En dag hvor funktionen ikke kørte, ser ens ud
+       — derfor returneres dageMaalt, saa forskellen kan SES. */
+    const s = sammenfatMaalinger({
+      "2026-08-12": maaling({ chauffoer: 2 }, 1, MOD),
+      "2026-08-13": maaling({ chauffoer: 2 }, 1, MOD),
+    });
+    assert.equal(s.dageMaalt, 2);
+    assert.equal(s.foersteDag, "2026-08-12");
+    assert.equal(s.sidsteDag, "2026-08-13");
+  });
+
+  it("giver nul på ingen målinger — ikke en fejl", () => {
+    const s = sammenfatMaalinger({});
+    assert.equal(s.dageMaalt, 0);
+    assert.deepEqual(s.moduldage, {});
+    assert.equal(s.foersteDag, null);
+  });
+
+  it("datoen er UTC, som auditloggens partitioner", () => {
+    assert.equal(maalingsdato(Date.UTC(2026, 7, 5, 23, 59)), "2026-08-05");
+    assert.equal(maalingsdato(Date.UTC(2026, 0, 1, 0, 0)), "2026-01-01");
+  });
+});
+
+describe("Fra målinger til linjer", () => {
+  it("hænger sammen hele vejen", () => {
+    const s = sammenfatMaalinger({
+      "2026-08-01": { status: "aktiv", brugere: { chauffoer: 12, desktop: 4 },
+                      koeretoejer: 14, moduler: { flaade: true, bemanding: true } },
+      "2026-08-02": { status: "aktiv", brugere: { chauffoer: 15, desktop: 4 },
+                      koeretoejer: 14, moduler: { flaade: true } },
+    });
+    const linjer = linjerForPeriode({
+      prisliste: PRISLISTE,
+      moduldage: s.moduldage,
+      dageIPerioden: 31,
+      antalBrugere: s.brugere,
+      antalKoeretoejer: s.koeretoejer,
+      rabatBps: 1000,
+    });
+    /* Flaade to dage, bemanding én — og chaufførtoppen er 15, ikke 12. */
+    const bem = linjer.find((l) => l.modul === "bemanding" && l.akse === "bruger");
+    assert.equal(bem.enheder, 15);
+    assert.equal(bem.dage, 1);
+    const fl = linjer.find((l) => l.modul === "flaade" && l.akse === "basis");
+    assert.equal(fl.dage, 2);
+
+    const t = abonnementstotaler(linjer);
+    const sum = linjer.reduce((x, l) => x + linjeBeloebOere(l), 0);
+    assert.equal(t.beloebOere, sum);
   });
 });

@@ -855,6 +855,89 @@
     // proeve der fastholder at et claim uden det ikke naar noget her, og at
     // et claim MED det ikke naar kundedata. Se rules.udbyder.test.mjs.
     "udbyder": {
+      // ══════════════════════════════════════════════════════════════
+      // PRISLISTEN — versioneret, aldrig rettet
+      // ══════════════════════════════════════════════════════════════
+      //
+      // ⚠ EN NY PRIS ER EN NY POST. Samme idiom som `gyldigFra` paa en
+      // sats: rettede vi en liste, kunne en faktura fra marts ikke
+      // genskabes efter en prisstigning i april. Noeglen er et push-id og
+      // ikke "2026-01" — et navn nogen selv har skrevet, inviterer til at
+      // blive genbrugt.
+      //
+      // ⚠ MEN VERSIONERINGEN ER IKKE DET DER BESKYTTER MARTS-FAKTURAEN.
+      // Det goer FRYSNINGEN: et genereret grundlag gemmer sine egne satser
+      // og regner aldrig igen. De to forveksles, og saa bygger man den ene
+      // og tror man har den anden.
+      //
+      // ⚠ MOMSSATSEN STAAR PAA LISTEN OG GAETTES IKKE. Ikke 25, ikke 0 —
+      // se validerLinje() i grundlag.js. Uden den kan der ikke eksporteres.
+      "prisliste": {
+        ".read": "auth != null && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["gyldigFraMs"],
+        "$listeId": {
+          ".validate": "newData.hasChildren(['gyldigFraMs', 'momssats'])",
+          "gyldigFraMs": { ".validate": "newData.isNumber()" },
+          "momssats": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+          "oprettetAf": { ".validate": "newData.isString()" },
+          "moduler": {
+            "$modul": {
+              // ⚠ OERE SOM INTEGER. Ikke kroner, ikke float — beslutning 2,
+              // og den gaelder ogsaa naar det er OS der sender regningen.
+              "basisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "prKoeretoejOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "prBrugerOere": {
+                // ⚠ TO ARTER, OG GRAENSEN GAAR VED ROLLEN. En chauffoer i en
+                // lastbil og en disponent ved en skaerm koster ikke det
+                // samme at levere. Se BRUGERART i priser.js.
+                "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "$andet": { ".validate": false }
+              },
+              "$andet": { ".validate": false }
+            }
+          },
+          "$andet": { ".validate": false }
+        }
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // MAALINGERNE — det eneste der ikke kan laves bagud
+      // ══════════════════════════════════════════════════════════════
+      //
+      // Abonnementet faktureres paa HOEJESTE antal aktive i perioden. Et
+      // slutantal kan ikke rekonstruere en top: en kunde med 30 chauffoerer
+      // den 3. og 8 den 31. ville blive faktureret for 8.
+      //
+      // ⚠ DER STAAR TAL, IKKE RAEKKER. To heltal og en modulliste pr. doegn
+      // — ingen navne, ingen nummerplader, ingen mailadresser. Optaellingen
+      // sker i en funktion med Admin SDK, saa der ikke skulle aabnes én
+      // eneste regel: udbyder-claim'et naar fortsat kun tre noder pr. kunde.
+      //
+      // ⚠ .write: false. Maalingen skrives af maaldagligt. Kunne en klient
+      // skrive den, kunne den skrive sin egen regning ned.
+      "maalinger": {
+        ".read": "auth != null && auth.token.udbyder === true",
+        ".write": false,
+        "$kundeId": {
+          "$dato": {
+            ".validate": "newData.hasChildren(['ms', 'status'])",
+            "ms": { ".validate": "newData.isNumber()" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|paused|opsagt)$/)" },
+            "koeretoejer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "ukendteRoller": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "brugere": {
+              "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "$andet": { ".validate": false }
+            },
+            "moduler": { "$modul": { ".validate": "newData.isBoolean()" } },
+            "$andet": { ".validate": false }
+          }
+        }
+      },
+
       "kunder": {
         ".read": "auth != null && auth.token.udbyder === true",
         ".write": false,

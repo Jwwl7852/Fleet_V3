@@ -222,7 +222,7 @@ nummerserier, ikke vores.
 
 ---
 
-## 5. Det ene spørgsmål der ændrer modellen
+## 5. Prismodellen — BESVARET
 
 **Er modulprisen fast pr. måned, eller afhænger den af antal biler eller
 brugere?**
@@ -259,3 +259,67 @@ vænnet sig til den.
 5. **Eksporten.**
 
 Punkt 2 er det eneste der bliver dyrere af at vente.
+
+---
+
+## 7. Besvaret, og hvad det kostede
+
+**Pris pr. modul, pr. bruger og pr. køretøj — og forskel på chauffør og
+desktopbruger.** Bygget i `priser.js`, prøvet i `test/priser.test.mjs`.
+
+**Faktureres på højeste antal aktive i perioden.**
+
+⚠ **Det valg gør den daglige måling obligatorisk.** Et slutantal kan ikke
+rekonstruere en top: en kunde med 30 chauffører den 3. og 8 den 31. ville
+blive faktureret for 8. Vælger man toppen, *skal* der samples — og en
+sampling kan ikke laves bagud.
+
+### Målingen erstatter den hændelseslog jeg selv foreslog
+
+Afsnit 2 foreslog `abonnementHistorik`. Den er droppet. En daglig måling
+bærer **både** modullisten og statussen, så moduldage kan tælles direkte —
+dage hvor modulet var slået til. To kilder til "hvad havde kunden hvornår"
+ville drive fra hinanden, og målingen skal alligevel findes.
+
+Auditloggen beholder sin egen post: den svarer på **hvem** der slog modulet
+fra, og det er et andet spørgsmål end hvad der skal faktureres.
+
+### Én måling i døgnet
+
+```
+udbyder/maalinger/<kundeId>/<YYYY-MM-DD>/
+  ms, status, moduler: { flaade: true, … }
+  brugere: { chauffoer: 12, desktop: 4 }, koeretoejer: 14
+```
+
+⚠ **Et modul der var tilvalgt i tre timer, faktureres ikke.** Det skal stå på
+grundlaget, så ingen tror det er en fejl.
+
+⚠ **Der står tal, ikke rækker.** To heltal og en modulliste — ingen navne,
+ingen nummerplader, ingen mailadresser. Optællingen sker i en funktion med
+Admin SDK, netop **for ikke at åbne én eneste regel**: havde vi i stedet
+udvidet udbyder-claim'et til at læse `brugere` og `koeretoejer`, kunne en
+browser med det claim se hver kundes flåde — for at kunne lave en optælling
+der hører hjemme på en server.
+
+### Toppen tages pr. brugerart for sig
+
+En kunde med 30 chauffører den 3. og 9 desktopbrugere den 27. faktureres for
+begge toppe, også selvom de aldrig var der samtidig. Alternativet — toppen af
+den samlede regning — ville give to kunder med samme forbrug forskellig pris
+afhængigt af rækkefølgen.
+
+### Pause blev kommerciel
+
+Dage med `paused` eller `opsagt` tælles ikke. Beslutning 32 gjorde pause
+teknisk og billig at rulle tilbage; her koster en fejlagtig pause penge.
+Konsollens knap skal sige det.
+
+### Åbent, og bevidst
+
+`03:10 UTC` er efter midnat i dansk tid året rundt, så en måling altid hører
+til den dag den er stemplet med — også i sommertid.
+
+**Skal påhæng koste mindre end en lastbil?** En trailer tæller lige nu som ét
+køretøj. Bliver svaret nej, er det en ekstra sats i prislisten — ikke en
+undtagelse i koden.

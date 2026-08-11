@@ -175,3 +175,46 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(db, `tenants/${T_A}/personale`)));
   });
 });
+
+describe("Prislisten og målingerne er udbyderens — og kun læsbare", () => {
+  before(async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      await set(ref(db, "udbyder/prisliste/p1"), {
+        gyldigFraMs: 1e12, momssats: 25,
+        moduler: { flaade: { basisOere: 49500, prBrugerOere: { chauffoer: 4900 } } },
+      });
+      await set(ref(db, `udbyder/maalinger/${T_A}/2026-08-11`), {
+        ms: 1e12, status: "aktiv", brugere: { chauffoer: 12, desktop: 4 },
+        koeretoejer: 14, moduler: { flaade: true },
+      });
+    });
+  });
+
+  it("lader udbyderen læse begge", async () => {
+    const db = somUdbyder();
+    await assertSucceeds(get(ref(db, "udbyder/prisliste")));
+    await assertSucceeds(get(ref(db, "udbyder/maalinger")));
+  });
+
+  it("holder en KUNDE ude af begge", async () => {
+    /* ⚠ MÅLINGEN ER GRUNDLAGET FOR HANS EGEN REGNING, og han skal kunne se
+       den — men på grundlaget, ikke i den rå node. Her ligger også de andre
+       kunders tal, og de kommer ham ikke ved. */
+    const db = somKunde();
+    await assertFails(get(ref(db, "udbyder/prisliste")));
+    await assertFails(get(ref(db, "udbyder/maalinger")));
+    await assertFails(get(ref(db, `udbyder/maalinger/${T_A}`)));
+  });
+
+  it("afviser skrivning fra BEGGE", async () => {
+    /* ⚠ Kunne en klient skrive en måling, kunne den skrive sin egen regning
+       ned. Og kunne den skrive en prisliste, kunne den sætte prisen til nul.
+       Begge skrives med Admin SDK. */
+    for (const db of [somUdbyder(), somKunde()]) {
+      await assertFails(set(ref(db, "udbyder/prisliste/p2"), { gyldigFraMs: 1, momssats: 25 }));
+      await assertFails(set(ref(db, "udbyder/prisliste/p1/momssats"), 0));
+      await assertFails(set(ref(db, `udbyder/maalinger/${T_A}/2026-08-11/koeretoejer`), 0));
+    }
+  });
+});

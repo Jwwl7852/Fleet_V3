@@ -14,7 +14,7 @@ gør.
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 35 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
-| **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. **Forslag, ikke bygget** |
+| **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 
@@ -25,7 +25,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 870 tests. Starter emulatoren.
+npm test                            # 882 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -199,7 +199,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **870 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **882 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

@@ -36,6 +36,7 @@
  * fejl hele dette repo bliver ved med at betale for.
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
@@ -44,6 +45,9 @@ import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.j
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
+import {
+  taelBrugere, taelKoeretoejer, maalingsdato,
+} from "./delt/priser.js";
 
 initializeApp();
 
@@ -549,4 +553,107 @@ export const kundeadmin = onCall({ region: REGION }, async (req) => {
     tenantId: id, kalderUid: ejerUid,
     d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" },
   });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   DEN DAGLIGE MÅLING — det eneste der ikke kan laves bagud
+   ══════════════════════════════════════════════════════════════════════
+
+   Abonnementet faktureres på HØJESTE antal aktive i perioden. Et slutantal
+   kan ikke rekonstruere en top: en kunde med 30 chauffører den 3. og 8 den
+   31. ville blive faktureret for 8. Vælger man toppen, SKAL der samples.
+
+   ⚠ DEN LÆSER KUNDEDATA, OG DET ER DEN FØRSTE FUNKTION DER GØR DET.
+   Admin SDK kommer uden om reglerne, og det er netop derfor der ikke bliver
+   åbnet én eneste regel: ejerkonsollen kan fortsat kun læse tre noder pr.
+   kunde. Havde vi i stedet udvidet udbyder-claim'et til at læse `brugere` og
+   `koeretoejer`, ville en browser med det claim kunne se hver kundes flåde —
+   for at kunne lave en optælling der hører hjemme på en server.
+
+   Målingen gemmer TAL, ikke rækker: to heltal og en modulliste. Der står
+   ingen navne, ingen registreringsnumre og ingen mailadresser i den.
+
+   ⚠ ÉN MÅLING I DØGNET. Et modul der var tilvalgt i tre timer, faktureres
+   ikke. Det står på grundlaget, så ingen tror det er en fejl.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Målingen for én kunde. Eksporteret for sig, så den kan prøves. */
+async function maalKunde(db, id, nu) {
+  const [b, k, m, a] = await Promise.all([
+    db.ref(`tenants/${id}/brugere`).once("value"),
+    db.ref(`tenants/${id}/koeretoejer`).once("value"),
+    db.ref(`tenants/${id}/moduler`).once("value"),
+    db.ref(`tenants/${id}/abonnement`).once("value"),
+  ]);
+
+  const { antal, ukendte } = taelBrugere(b.val() || {});
+  const post = {
+    ms: nu,
+    /* ⚠ MANGLENDE STATUS ER AKTIV — samme retning som erAktiv() og
+       harModul(). En kunde oprettet før feltet fandtes skal ikke slippe for
+       at blive faktureret, fordi noden mangler. */
+    status: a.val()?.status || "aktiv",
+    brugere: antal,
+    koeretoejer: taelKoeretoejer(k.val() || {}),
+    moduler: m.val() || null,
+  };
+  /* ⚠ EN UKENDT ROLLE SLUGES IKKE. Den ville lydløst blive en gratis bruger.
+     Tallet står i målingen, så det kan ses på grundlaget. */
+  if (ukendte.length) post.ukendteRoller = ukendte.length;
+  return post;
+}
+
+/**
+ * Måler ALLE kunder én gang i døgnet.
+ *
+ * ⚠ 03:10 UTC. Efter midnat i dansk tid året rundt, så en måling altid hører
+ * til den dag den er stemplet med — også i sommertid. Kører den 23:50 UTC,
+ * ville den i vintertid tilhøre næste dansk dag.
+ *
+ * ⚠ IDEMPOTENT PR. DØGN. Nøglen er datoen, så to kørsler samme dag
+ * overskriver hinanden frem for at give to målinger. En genkørsel efter en
+ * fejl er derfor ufarlig.
+ */
+export const maaldagligt = onSchedule(
+  { schedule: "10 3 * * *", timeZone: "UTC", region: REGION },
+  async () => {
+    const db = getDatabase();
+    const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
+    const nu = Date.now();
+    const dato = maalingsdato(nu);
+
+    let maalt = 0;
+    for (const id of Object.keys(indeks)) {
+      const post = await maalKunde(db, id, nu);
+      await db.ref(`udbyder/maalinger/${id}/${dato}`).set(post);
+      maalt += 1;
+    }
+    console.log(`maaldagligt: ${maalt} kunder maalt for ${dato}`);
+    return null;
+  }
+);
+
+/**
+ * Samme måling, kaldt i hånden.
+ *
+ * ⚠ DEN FINDES FORDI DEN PLANLAGTE KØRSEL IKKE KAN EFTERPRØVES UDEN AT VENTE
+ * ET DØGN. En mekanisme man først ser virke i produktion, er en mekanisme man
+ * ikke ved virker. Den skriver til samme sted med samme nøgle, så en manuel
+ * kørsel og den planlagte ikke kan give to forskellige målinger.
+ */
+export const maalnu = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const db = getDatabase();
+  const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
+  const nu = Date.now();
+  const dato = maalingsdato(nu);
+
+  const ud = {};
+  for (const id of Object.keys(indeks)) {
+    const post = await maalKunde(db, id, nu);
+    await db.ref(`udbyder/maalinger/${id}/${dato}`).set(post);
+    ud[id] = post;
+  }
+  console.log(`maalnu: ${Object.keys(ud).length} kunder, kaldt af ${ejerUid}`);
+  return { ok: true, dato, maalinger: ud };
 });

@@ -130,6 +130,98 @@ export function taelKoeretoejer(koeretoejer = {}) {
     .filter((k) => !AFGAAEDE_STATUS.includes(k?.status)).length;
 }
 
+/* ---- Målinger ---------------------------------------------------------- */
+
+/**
+ * ÉN MÅLING I DØGNET PR. KUNDE — og den svarer på alt fakturaen skal vide.
+ *
+ * ```
+ * udbyder/maalinger/<kundeId>/<YYYY-MM-DD>/
+ *   ms, status, moduler: { flaade: true, … },
+ *   brugere: { chauffoer: 12, desktop: 4 }, koeretoejer: 14
+ * ```
+ *
+ * ⚠ DEN KAN IKKE LAVES BAGUD, og det er hele grunden til at den bygges før
+ * skærmen. Et slutantal kan ikke rekonstruere en top: en kunde med 30
+ * chauffører den 3. og 8 den 31. ville blive faktureret for 8. Vælger man at
+ * fakturere på højeste antal, SKAL der samples.
+ *
+ * ⚠ MÅLINGEN ERSTATTER DEN HÆNDELSESLOG JEG SELV FORESLOG. En daglig prøve
+ * bærer både modullisten og statussen, så moduldage kan tælles direkte —
+ * dage hvor modulet var slået til. To kilder til "hvad havde kunden hvornår"
+ * ville drive fra hinanden, og målingen skal alligevel findes.
+ *
+ * Auditloggen beholder sin egen post: den svarer på HVEM der slog modulet
+ * fra, og det er et andet spørgsmål end hvad der skal faktureres.
+ *
+ * ⚠ ET MODUL DER VAR TILVALGT I TRE TIMER, FAKTURERES IKKE. Der måles én
+ * gang i døgnet. Det står på grundlaget, så ingen tror det er en fejl.
+ */
+export const MAALING_PR_DOEGN = 1;
+
+/** YYYY-MM-DD i UTC. Samme partitionering som auditloggen bruger. */
+export function maalingsdato(ms) {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-` +
+         `${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Sammenfat en periodes målinger til det linjerne skal bruge.
+ *
+ * ⚠ HØJESTE ANTAL, PR. BRUGERART FOR SIG. En kunde med 12 chauffører den 3.
+ * og 4 desktopbrugere den 27. faktureres for begge toppe, også selvom de
+ * aldrig var der samtidig. Det er den regel der er valgt, og den skal stå
+ * skrevet: alternativet — toppen af den samlede regning — ville betyde at
+ * to kunder med samme forbrug kunne få forskellig pris afhængigt af
+ * rækkefølgen.
+ *
+ * ⚠ DAGE UDEN MÅLING TÆLLER IKKE. En kunde oprettet den 12. har ingen
+ * målinger før den 12., og skal ikke faktureres for dem. Det samme gælder en
+ * dag hvor funktionen ikke kørte — og DET er værd at kunne se, derfor
+ * returneres `dageMaalt`.
+ *
+ * ⚠ DAGE PÅ PAUSE TÆLLER HELLER IKKE. Beslutning 32 gjorde pause teknisk;
+ * her bliver den kommerciel. En pause der ikke fjerner en dag fra regningen,
+ * er ikke en pause.
+ */
+export function sammenfatMaalinger(maalinger = {}) {
+  const dage = Object.keys(maalinger || {}).sort();
+  const brugere = Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0]));
+  const moduldage = {};
+  let koeretoejer = 0;
+  let dageMaalt = 0;
+  let dageFaktureres = 0;
+
+  for (const d of dage) {
+    const m = maalinger[d];
+    if (!m) continue;
+    dageMaalt += 1;
+    /* Kun aktive dage tæller. En manglende status er aktiv — samme retning
+       som erAktiv() i abonnement.js. */
+    if (m.status && m.status !== "aktiv") continue;
+    dageFaktureres += 1;
+
+    for (const a of ALLE_BRUGERARTER) {
+      const n = Number(m.brugere?.[a]) || 0;
+      if (n > brugere[a]) brugere[a] = n;
+    }
+    const kt = Number(m.koeretoejer) || 0;
+    if (kt > koeretoejer) koeretoejer = kt;
+
+    for (const [modul, til] of Object.entries(m.moduler || {})) {
+      if (til === true) moduldage[modul] = (moduldage[modul] || 0) + 1;
+    }
+  }
+
+  return {
+    brugere, koeretoejer, moduldage,
+    dageMaalt, dageFaktureres,
+    foersteDag: dage[0] || null,
+    sidsteDag: dage[dage.length - 1] || null,
+  };
+}
+
 /* ---- Prislisten -------------------------------------------------------- */
 
 /** En tom prisliste for de moduler der kan sælges. */
