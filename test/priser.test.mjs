@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor, GYLDIG_FRA_TIDLIGST,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -110,7 +110,7 @@ describe("Prislisten", () => {
     /* ⚠ Ikke 25, ikke 0. Samme regel som på kundens fakturagrundlag: et
        system der gætter rigtigt ni gange ud af ti, lærer brugeren at stole
        på det tiende. */
-    const fejl = validerPrisliste({ gyldigFraMs: 1, moduler: {} });
+    const fejl = validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), moduler: {} });
     assert.ok(fejl.some((f) => /moms/i.test(f)), "en prisliste uden momssats blev godtaget.");
     assert.deepEqual(validerPrisliste(PRISLISTE, { kendteModuler: VALGFRIE_MODULER }), []);
   });
@@ -451,8 +451,8 @@ describe("Momssatsen på abonnementet", () => {
   it("valideres stadig som et tal mellem 0 og 100", () => {
     /* Datamodellen behøver ikke ændres den dag en udenlandsk kunde kommer. */
     assert.deepEqual(validerPrisliste(
-      { gyldigFraMs: 1, momssats: MOMSSATS, moduler: {} }), []);
-    assert.ok(validerPrisliste({ gyldigFraMs: 1, momssats: 120, moduler: {} }).length);
+      { gyldigFraMs: Date.UTC(2026, 0, 1), momssats: MOMSSATS, moduler: {} }), []);
+    assert.ok(validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), momssats: 120, moduler: {} }).length);
   });
 });
 
@@ -553,5 +553,35 @@ describe("Rabat pr. modul — og hvad der overruler hvad", () => {
       antalKoeretoejer: 2, rabatModulBps: { bemanding: 5000 },
     });
     assert.ok(!l.some((x) => x.modul === "bemanding"));
+  });
+});
+
+describe("gyldigFraMs skal være en dato, ikke bare et tal", () => {
+  it("afviser 0 — det er 1. januar 1970", () => {
+    /* ⚠ FUNDET AF MIN EGEN PROBE. Jeg kaldte prislisteopret med
+       { gyldigFraMs: 0 } for at se om funktionen var åben, og den OPRETTEDE
+       en prisliste. Number.isFinite(0) er sandt, og tjekket spurgte kun om
+       værdien var et tal.
+
+       En liste fra 1970 vinder over ingenting og står først i enhver
+       sortering — den ville have været den gældende for enhver periode uden
+       en nyere. */
+    const f = validerPrisliste({ gyldigFraMs: 0, momssats: MOMSSATS, moduler: {} });
+    assert.ok(f.some((x) => /dato/i.test(x)), "0 blev godtaget som en dato");
+  });
+
+  it("afviser en dato før FleetControl fandtes og langt ude i fremtiden", () => {
+    for (const ms of [Date.UTC(2019, 11, 31), Date.UTC(2101, 0, 1), -1]) {
+      assert.ok(
+        validerPrisliste({ gyldigFraMs: ms, momssats: MOMSSATS, moduler: {} })
+          .some((x) => /dato/i.test(x)),
+        `${new Date(ms).toISOString()} blev godtaget`);
+    }
+  });
+
+  it("godtager en rigtig dato", () => {
+    assert.deepEqual(
+      validerPrisliste({ gyldigFraMs: Date.UTC(2026, 8, 1), momssats: MOMSSATS, moduler: {} }),
+      []);
   });
 });

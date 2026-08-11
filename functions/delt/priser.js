@@ -286,6 +286,10 @@ export function maalingerIPeriode(alle = {}, periode) {
  */
 export const MOMSSATS = 25;
 
+/* Graenserne for hvornaar en prisliste kan gaelde fra. Se validerPrisliste. */
+export const GYLDIG_FRA_TIDLIGST = Date.UTC(2020, 0, 1);
+export const GYLDIG_FRA_SENEST = Date.UTC(2100, 0, 1);
+
 /** En tom prisliste for de moduler der kan sælges. */
 export function tomPrisliste(moduler = []) {
   const ud = {};
@@ -316,8 +320,18 @@ export function validerPrisliste(liste = {}, { kendteModuler = [] } = {}) {
   } else if (liste.momssats < 0 || liste.momssats > 100) {
     fejl.push("Momssatsen skal være mellem 0 og 100.");
   }
+  /* ⚠ EN DATO, IKKE BARE ET TAL. Number.isFinite(0) er sandt, og 0 er
+     1. januar 1970 — en prisliste der gaelder fra dengang, vinder over
+     ingenting og staar foerst i enhver sortering. Den slap igennem, fordi
+     tjekket kun spurgte om vaerdien var et TAL.
+
+     Nedre graense er 2020: foer det fandtes hverken FleetControl eller en
+     kunde. Oevre er ti aar frem — en pris man laegger laengere ude end det, er
+     en tastefejl i aarstallet, ikke en plan. */
   if (!Number.isFinite(liste.gyldigFraMs)) {
     fejl.push("gyldigFraMs mangler. En prisliste uden dato kan ikke stilles op mod en periode.");
+  } else if (liste.gyldigFraMs < GYLDIG_FRA_TIDLIGST || liste.gyldigFraMs > GYLDIG_FRA_SENEST) {
+    fejl.push("Datoen ser forkert ud. Den skal ligge mellem 2020 og ti år frem.");
   }
 
   const moduler = liste.moduler || {};
