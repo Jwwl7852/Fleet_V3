@@ -134,9 +134,10 @@ test("Et rolleskift fornyer tokenet", () => {
      tro man havde fjernet en adgang, som stadig virkede. Det er den værste
      fejltilstand, fordi den ser ud som om den lykkedes. */
   const kode = funktionskode();
-  const skift = kode.slice(kode.indexOf("export const skiftRolle"));
-  assert.match(skift.slice(0, 1400), /revokeRefreshTokens/,
-    "skiftRolle fornyer ikke tokenet.");
+  const i = kode.indexOf("export const skiftrolle");
+  assert.ok(i > 0, "skiftrolle findes ikke — er funktionen døbt om?");
+  assert.match(kode.slice(i, i + 1400), /revokeRefreshTokens/,
+    "skiftrolle fornyer ikke tokenet.");
 });
 
 test("Funktionerne rører kun brugere i egen tenant", () => {

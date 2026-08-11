@@ -143,6 +143,13 @@ export const audit = onCall({ region: REGION }, async (req) => {
    administrator hos kunde B. Det ville være det stik modsatte af hele
    isolationen, og det ville ske gennem en funktion vi selv har skrevet.
 
+   Navnene er med små bogstaver, så de matcher Cloud Run-tjenesten præcis.
+   Det gør ét spor lettere at følge, men det var IKKE årsagen til 403'eren:
+   jeg troede det, døbte dem om, og fejlen blev til en 401 med
+   `error="invalid_token"` — Google forsøgte stadig at verificere Firebase-
+   tokenet som sit eget. Årsagen var og er invoker-bindingen, se noten om
+   funktioner-aabn.mjs nedenfor.
+
    ⚠ ROLLEN AFGØR PERMS — DE SENDES IKKE MED. Kalderen vælger en rolle fra
    presettet; permissionerne udledes af ROLLE_PERMS. Kunne klienten sende en
    perms-liste, kunne en admin give sig selv noget der ikke findes i noget
@@ -197,7 +204,7 @@ async function log(tenantId, uid, handling, objektId, note) {
     });
 }
 
-export const opretBruger = onCall({ region: REGION }, async (req) => {
+export const opretbruger = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);
   const d = req.data || {};
 
@@ -244,7 +251,7 @@ export const opretBruger = onCall({ region: REGION }, async (req) => {
   return { ok: true, uid: bruger.uid };
 });
 
-export const skiftRolle = onCall({ region: REGION }, async (req) => {
+export const skiftrolle = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);
   const d = req.data || {};
 
@@ -279,7 +286,7 @@ export const skiftRolle = onCall({ region: REGION }, async (req) => {
   return { ok: true };
 });
 
-export const spaerLogin = onCall({ region: REGION }, async (req) => {
+export const spaerlogin = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);
   const d = req.data || {};
 
