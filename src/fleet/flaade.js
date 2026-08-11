@@ -442,3 +442,158 @@ export const ART_IKON = {
 };
 
 export const ikonForArt = (art) => ART_IKON[art] || "vogn";
+
+/* ---- Validering før skrivning ----------------------------------------- */
+
+/**
+ * ⚠ DEN HER SPEJLER firebase.rules.json. Den afgør ingenting.
+ *
+ * Serveren validerer igen, og hvis de to er uenige, er reglerne rigtige.
+ * Formålet er at svare hurtigt og i marginen frem for at sende en skrivning
+ * afsted der bliver afvist med "permission-denied" — en fejl brugeren ikke
+ * kan handle på.
+ *
+ * ⚠ SKRIV ALDRIG EN KONTROL HER SOM IKKE OGSÅ STÅR I REGLERNE. Så ville
+ * formularen enten love noget serveren afviser, eller — værre — tillade noget
+ * serveren skulle have stoppet, og så er den en pæn knap.
+ *
+ * Grænserne står som konstanter, så de kan sammenlignes med regelfilen af et
+ * menneske der læser begge dele.
+ */
+export const GRAENSE = {
+  kaldenavn: 60,
+  navn: 120,
+  registrering: 20,
+  hjemsted: 60,
+  tachografNr: 40,
+  afgangAarsag: 200,
+};
+
+const tal = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
+
+/** Kræver en ikke-tom streng inden for længden. */
+function tekstFejl(v, maks, navn) {
+  if (typeof v !== "string" || !v.trim()) return `${navn} skal udfyldes.`;
+  if (v.length > maks) return `${navn} må højst være ${maks} tegn.`;
+  return null;
+}
+
+function talFejl(v, { min = 0, kraevet = false, navn, heltal = false }) {
+  if (v === null) return kraevet ? `${navn} skal udfyldes.` : null;
+  if (!Number.isFinite(v)) return `${navn} skal være et tal.`;
+  if (v < min) return `${navn} kan ikke være under ${min}.`;
+  if (heltal && !Number.isInteger(v)) return `${navn} skal være et helt tal.`;
+  return null;
+}
+
+/**
+ * valideKoeretoej(post) → { [felt]: tekst }. Tom = i orden.
+ *
+ * `post` er formularens råtekst; tal må gerne komme som strenge.
+ */
+export function valideKoeretoej(post = {}) {
+  const f = {};
+
+  if (!ENHEDSART[post.art]) f.art = "Vælg en art.";
+  if (!KOERETOEJ_STATUS[post.status]) f.status = "Vælg en status.";
+
+  f.kaldenavn = tekstFejl(post.kaldenavn, GRAENSE.kaldenavn, "Kaldenavn");
+  f.navn = tekstFejl(post.navn, GRAENSE.navn, "Model");
+  /* ⚠ NUMMERPLADEN ER DEN MAN SLÅR OP PÅ. Bil 104 havde to i prototypen. */
+  f.registrering = tekstFejl(post.registrering, GRAENSE.registrering, "Registreringsnummer");
+  f.hjemsted = tekstFejl(post.hjemsted, GRAENSE.hjemsted, "Hjemsted");
+
+  /* Længden er millimeter som integer — færgetakster har grænser ved 10 og
+     20 m, og 9,998 mod 10,002 afgør prisen. Beslutning 2's disciplin. */
+  f.laengdeMm = talFejl(tal(post.laengdeMm), { min: 1, kraevet: true, navn: "Længde", heltal: true });
+  f.driftPrKmOere = talFejl(tal(post.driftPrKmOere), { kraevet: true, navn: "Driftsomkostning", heltal: true });
+
+  /* ⚠ ARTEN STYRER SKEMAET. Et felt der ikke findes på arten, valideres
+     ikke — og det sendes heller ikke. En trailer har ingen kilometerstand. */
+  if (harFelt(post.art, FELT.kmStand)) {
+    f.kmStand = talFejl(tal(post.kmStand), { kraevet: true, navn: "Kilometerstand", heltal: true });
+    f.naesteServiceKm = talFejl(tal(post.naesteServiceKm), { navn: "Service ved", heltal: true });
+    const km = tal(post.kmStand);
+    const svc = tal(post.naesteServiceKm);
+    /* Ikke en regel på serveren — den kan ikke se de to felter mod hinanden
+       uden en .validate på forældrenoden. Her er den en hjælp, ikke en
+       spærring, og teksten siger det. */
+    if (!f.kmStand && !f.naesteServiceKm && km !== null && svc !== null && svc < km) {
+      f.naesteServiceKm = "Servicemålet ligger bag kilometerstanden — er tallet rigtigt?";
+    }
+  }
+  if (harFelt(post.art, FELT.saeder)) {
+    f.saeder = talFejl(tal(post.saeder), { kraevet: true, navn: "Sæder", heltal: true });
+  }
+  if (harFelt(post.art, FELT.tachografNr) && post.tachografNr) {
+    if (String(post.tachografNr).length > GRAENSE.tachografNr) {
+      f.tachografNr = `Tachografnummer må højst være ${GRAENSE.tachografNr} tegn.`;
+    }
+  }
+  if (harFelt(post.art, FELT.kranTonmeter)) {
+    f.kranTonmeter = talFejl(tal(post.kranTonmeter), { navn: "Kran (tonmeter)" });
+  }
+
+  /* ⚠ AFGANG SLETTER IKKE, men den kræver en årsag. En bil der bare
+     forsvandt ud af drift, kan ingen forklare et halvt år senere. */
+  const erAfgaaet = post.status === "solgt" || post.status === "skrottet";
+  if (erAfgaaet) {
+    f.afgangAarsag = tekstFejl(post.afgangAarsag, GRAENSE.afgangAarsag, "Årsag til afgang");
+  }
+
+  /* ⚠ DIVISION ER FORBUDT PÅ ET KØRETØJ (beslutning 19). Reglerne afviser
+     feltet med .validate: false. Står det i formularen, er det en fejl i
+     koden — ikke noget brugeren har gjort. */
+  if (post.division !== undefined && post.division !== null) {
+    f.division = "Et køretøj har ingen division. Feltet må ikke sendes.";
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * Formularens felter → posten der skrives.
+ *
+ * ⚠ FELTER ARTEN IKKE HAR, SENDES IKKE. Et tomt felt på en trailer ville
+ * blive gemt som null og derefter vist som "—" i en tabel, og et "—" ligner
+ * en mangel nogen bør udfylde. Rækken skal udelades helt.
+ */
+export function byggKoeretoej(post) {
+  const ud = {
+    art: post.art,
+    status: post.status,
+    kaldenavn: post.kaldenavn.trim(),
+    navn: post.navn.trim(),
+    registrering: post.registrering.trim(),
+    hjemsted: post.hjemsted.trim(),
+    laengdeMm: Number(post.laengdeMm),
+    driftPrKmOere: Number(post.driftPrKmOere),
+    securityLevel: post.securityLevel || "normal",
+  };
+
+  if (harFelt(post.art, FELT.kmStand)) {
+    ud.kmStand = Number(post.kmStand);
+    if (tal(post.naesteServiceKm) !== null) ud.naesteServiceKm = Number(post.naesteServiceKm);
+  }
+  if (harFelt(post.art, FELT.saeder)) ud.saeder = Number(post.saeder);
+  if (harFelt(post.art, FELT.tachografNr) && post.tachografNr) {
+    ud.tachografNr = String(post.tachografNr).trim();
+  }
+  if (harFelt(post.art, FELT.kranTonmeter) && tal(post.kranTonmeter) !== null) {
+    ud.kranTonmeter = Number(post.kranTonmeter);
+  }
+  if (harFelt(post.art, FELT.kapacitet)) {
+    ud.kapacitet = { m3: Number(post.kapacitetM3) || 0, kg: Number(post.kapacitetKg) || 0 };
+  }
+  if (Number.isFinite(tal(post.naesteServiceMs))) ud.naesteServiceMs = Number(post.naesteServiceMs);
+  if (Number.isFinite(tal(post.synMs))) ud.synMs = Number(post.synMs);
+
+  if (post.status === "solgt" || post.status === "skrottet") {
+    ud.afgangMs = Number(post.afgangMs) || Date.now();
+    ud.afgangAarsag = post.afgangAarsag.trim();
+  }
+
+  /* ⚠ ALDRIG division. Se valideKoeretoej(). */
+  return ud;
+}

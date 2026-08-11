@@ -91,9 +91,9 @@ import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, km, meter, dato, datoTid, deviation, serviceTone } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  ENHEDSART, ALLE_ARTER, KOERETOEJ_STATUS, GRUPPE, FELT,
+  ENHEDSART, ALLE_ARTER, ALLE_STATUS, KOERETOEJ_STATUS, GRUPPE, FELT,
   felterFor, harFelt, gruppeFor, erPaahaengt, kanDisponeres, kraevedeKompetencer,
-  KOMPETENCE_LABEL, ikonForArt, nedetidDage,
+  KOMPETENCE_LABEL, ikonForArt, nedetidDage, valideKoeretoej, byggKoeretoej,
 } from "../../fleet/flaade.js";
 import { HAENDELSE_ART, FORLOEB, aabneFejlFor } from "../../fleet/indberetninger.js";
 import { stederI } from "../../fleet/steder.js";
@@ -102,9 +102,11 @@ import { DEMO_BESOEG } from "../../fleet/demo-vaerksted.js";
 import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
-  KpiKort, KpiRaekke, Ikon, Sider,
+  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import { vaerste } from "../../fleet/datatilstand.js";
+import { gem, nyId } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 
 const PR_SIDE = 8;
 
@@ -186,8 +188,188 @@ function ServiceCelle({ enhed }) {
   );
 }
 
+/* ---- Formularen -------------------------------------------------------- */
+
+/** Formularens felter fra en eksisterende post — eller tomme til en ny. */
+const tomFormular = () => ({
+  art: "lastbil", status: "aktiv", kaldenavn: "", navn: "", registrering: "",
+  hjemsted: "", laengdeMm: "", driftPrKmOere: "", kmStand: "",
+  naesteServiceKm: "", saeder: "", tachografNr: "", kranTonmeter: "",
+  kapacitetM3: "", kapacitetKg: "", afgangAarsag: "",
+});
+
+const fraEnhed = (e) => ({
+  ...tomFormular(),
+  art: e.art, status: e.status,
+  kaldenavn: e.kaldenavn ?? "", navn: e.navn ?? "", registrering: e.registrering ?? "",
+  hjemsted: e.hjemsted ?? "",
+  laengdeMm: e.laengdeMm ?? "", driftPrKmOere: e.driftPrKmOere ?? "",
+  kmStand: e.kmStand ?? "", naesteServiceKm: e.naesteServiceKm ?? "",
+  saeder: e.saeder ?? "", tachografNr: e.tachografNr ?? "",
+  kranTonmeter: e.kranTonmeter ?? "",
+  kapacitetM3: e.kapacitet?.m3 ?? "", kapacitetKg: e.kapacitet?.kg ?? "",
+  afgangAarsag: e.afgangAarsag ?? "",
+  naesteServiceMs: e.naesteServiceMs, synMs: e.synMs,
+});
+
+/**
+ * ⚠ FORMULAREN VALIDERER FOR AT SVARE HURTIGT, IKKE FOR AT AFGØRE NOGET.
+ * valideKoeretoej() spejler firebase.rules.json — serveren validerer igen, og
+ * er de to uenige, er reglerne rigtige.
+ *
+ * ⚠ ARTEN STYRER HVILKE FELTER DER VISES, som i detaljepanelet. Et felt der
+ * ikke findes på arten, tegnes ikke og sendes ikke: en trailer har ingen
+ * kilometerstand, og et tomt felt bliver udfyldt af den næste der ser det.
+ */
+function Enhedsformular({ enhed, sti, paaGemt, paaLuk }) {
+  const nyt = !enhed;
+  const [f, saetF] = useState(() => (enhed ? fraEnhed(enhed) : tomFormular()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const fejl = valideKoeretoej(f);
+  /* Fejl vises først når feltet er rørt — ellers står en tom formular rød,
+     før brugeren har gjort noget forkert. Ved forsøg på at gemme vises alle. */
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = enhed?.id || nyId("kt");
+    const r = await gem({
+      sti: sti(id),
+      data: byggKoeretoej(f),
+      foer: enhed || null,
+      objekt: "koeretoejer",
+      objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt(id);
+  };
+
+  const artHar = (felt) => harFelt(f.art, felt);
+  const erAfgaaet = f.status === "solgt" || f.status === "skrottet";
+
+  return (
+    <Kort titel={nyt ? "Ny enhed" : `Redigér ${enhed.kaldenavn || enhed.navn}`}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Opret enhed" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          {/* ⚠ ARTEN FØRST. Den styrer resten af skemaet, så den skal vælges
+              før felterne under den giver mening. */}
+          <Felt id="fm-art" label="Art" kraevet vaerdi={f.art} saet={saet("art")}
+                fejl={vis("art")} hint="Bestemmer hvilke felter enheden har."
+                valgmuligheder={ALLE_ARTER.map((a) => ({ vaerdi: a, label: ENHEDSART[a].label }))} />
+          <Felt id="fm-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+                fejl={vis("status")}
+                valgmuligheder={ALLE_STATUS.map((s) => ({ vaerdi: s, label: KOERETOEJ_STATUS[s].label }))} />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="fm-kaldenavn" label="Kaldenavn" kraevet vaerdi={f.kaldenavn}
+                saet={saet("kaldenavn")} fejl={vis("kaldenavn")}
+                hint="Det navn folk bruger i telefonen — Bil 104." />
+          <Felt id="fm-navn" label="Model" kraevet vaerdi={f.navn} saet={saet("navn")}
+                fejl={vis("navn")} hint="Mercedes Actros 1845." />
+          {/* ⚠ DEN MAN SLÅR OP PÅ. Bil 104 havde to nummerplader i prototypen. */}
+          <Felt id="fm-reg" label="Registreringsnummer" kraevet vaerdi={f.registrering}
+                saet={saet("registrering")} fejl={vis("registrering")} />
+          <Felt id="fm-hjemsted" label="Hjemsted" kraevet vaerdi={f.hjemsted}
+                saet={saet("hjemsted")} fejl={vis("hjemsted")}
+                hint="Frit stednavn — reglerne binder det ikke til et katalog, så et nyt depot ikke kræver en udrulning." />
+        </Feltraekke>
+
+        <Feltraekke>
+          {/* Millimeter som integer: færgetakster har grænser ved 10 og 20 m,
+              og 9,998 mod 10,002 afgør prisen. */}
+          <Felt id="fm-laengde" label="Længde" kraevet type="number" suffiks="mm"
+                vaerdi={f.laengdeMm} saet={saet("laengdeMm")} fejl={vis("laengdeMm")}
+                hint="I hele millimeter. En færgetakst afgøres på 9.998 mod 10.002." />
+          {/* Øre som integer, ekskl. moms — beslutning 2. */}
+          <Felt id="fm-drift" label="Driftsomkostning pr. km" kraevet type="number" suffiks="øre"
+                vaerdi={f.driftPrKmOere} saet={saet("driftPrKmOere")} fejl={vis("driftPrKmOere")}
+                hint="I hele øre, UDEN chauffør. 3,42 kr er 342. Kalkulationsprisen inkl. chauffør står i Bookingopsætning." />
+        </Feltraekke>
+
+        {artHar(FELT.kmStand) && (
+          <Feltraekke>
+            <Felt id="fm-km" label="Kilometerstand" kraevet type="number" suffiks="km"
+                  vaerdi={f.kmStand} saet={saet("kmStand")} fejl={vis("kmStand")} />
+            <Felt id="fm-svc" label="Næste service ved" type="number" suffiks="km"
+                  vaerdi={f.naesteServiceKm} saet={saet("naesteServiceKm")}
+                  fejl={vis("naesteServiceKm")}
+                  hint="Målerstanden servicen forfalder på — ikke antal km til." />
+          </Feltraekke>
+        )}
+
+        {(artHar(FELT.saeder) || artHar(FELT.tachografNr) || artHar(FELT.kranTonmeter)) && (
+          <Feltraekke>
+            {artHar(FELT.saeder) && (
+              <Felt id="fm-saeder" label="Sæder" kraevet type="number" vaerdi={f.saeder}
+                    saet={saet("saeder")} fejl={vis("saeder")}
+                    hint="Passagerer — ikke m³." />
+            )}
+            {artHar(FELT.tachografNr) && (
+              <Felt id="fm-tacho" label="Tachografnummer" vaerdi={f.tachografNr}
+                    saet={saet("tachografNr")} fejl={vis("tachografNr")} />
+            )}
+            {artHar(FELT.kranTonmeter) && (
+              <Felt id="fm-kran" label="Kran" type="number" suffiks="tonmeter"
+                    vaerdi={f.kranTonmeter} saet={saet("kranTonmeter")} fejl={vis("kranTonmeter")}
+                    hint="Tom hvis enheden ikke har kran. Over 8 tonmeter kræver kranbevis af føreren." />
+            )}
+          </Feltraekke>
+        )}
+
+        {artHar(FELT.kapacitet) && (
+          <Feltraekke>
+            <Felt id="fm-m3" label="Kapacitet" type="number" suffiks="m³"
+                  vaerdi={f.kapacitetM3} saet={saet("kapacitetM3")} />
+            <Felt id="fm-kg" label="Nyttelast" type="number" suffiks="kg"
+                  vaerdi={f.kapacitetKg} saet={saet("kapacitetKg")} />
+          </Feltraekke>
+        )}
+
+        {/* ⚠ AFGANG SLETTER IKKE. Posten bliver stående — der hænger
+            indberetninger og omkostningshistorik på id'et — men den skal
+            kunne forklares et halvt år senere. */}
+        {erAfgaaet && (
+          <Felt id="fm-afgang" label="Årsag til afgang" kraevet vaerdi={f.afgangAarsag}
+                saet={saet("afgangAarsag")} fejl={vis("afgangAarsag")}
+                hint="Enheden slettes ikke — posten bliver stående, fordi der hænger historik på id'et. Årsagen er sporet." />
+        )}
+      </Formular>
+
+      <p className="fc-hint" style={{ marginTop: 14 }}>
+        Felterne følger <b>arten</b>: en trailer har ingen kilometerstand, og en
+        scooter ingen tachograf. Et felt der ikke findes, vises ikke som tomt —
+        et tomt felt bliver udfyldt af den næste der ser det.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        Der er <b>ingen division</b> på et køretøj (beslutning 19), og reglerne
+        afviser feltet. Valideringen her <b>spejler</b>{" "}
+        <code>firebase.rules.json</code> — serveren validerer igen, og er de to
+        uenige, er reglerne rigtige.
+      </p>
+    </Kort>
+  );
+}
+
 export default function FlaadeOversigt() {
-  const { bruger, periode } = useFleet();
+  const { bruger, periode, path } = useFleet();
   const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
   const [valgtId, setValgtId] = useState(null);
   const [soeg, setSoeg] = useState("");
@@ -195,6 +377,8 @@ export default function FlaadeOversigt() {
   const [sted, setSted] = useState("");
   const [visAlle, setVisAlle] = useState(false);
   const [side, setSide] = useState(1);
+  /* null = lukket, "ny" = opret, ellers nøglen på den enhed der redigeres. */
+  const [redigerer, setRedigerer] = useState(null);
 
   /* Server-side filtreres på ét felt: status. Det er indekseret
      (".indexOn": ["status", "art", "naesteServiceMs"]), og `aktiv` er langt
@@ -298,6 +482,27 @@ export default function FlaadeOversigt() {
       <Datatilstand tilstand={vaerste(tilstand, kpiTilstand)}
                     genprov={() => { genindlaes(); genindlaesKpi(); }} />
 
+      {/* Formularen står OVER tabellen: man skal kunne se den post man netop
+          har oprettet, uden at rulle. `key` tvinger felterne nulstillet når
+          man skifter fra én enhed til en anden — ellers bærer formularen den
+          forriges værdier med sig. */}
+      {redigerer && (
+        <Enhedsformular
+          key={redigerer}
+          enhed={redigerer === "ny" ? null : flaade.find((e) => e.id === redigerer)}
+          sti={(id) => path(`koeretoejer/${id}`)}
+          paaGemt={(id) => {
+            /* Listen hentes forfra: den kommer fra basen, ikke fra formularen,
+               så skærmen viser hvad der FAKTISK blev gemt — ikke hvad vi
+               troede vi sendte. */
+            genindlaes();
+            setRedigerer(null);
+            setValgtId(id);
+          }}
+          paaLuk={() => setRedigerer(null)}
+        />
+      )}
+
       {/* Filtrene som eget kort, som mockuppen — men uden dens periodevælger
           og uden "Anvend filtre". Se noten i toppen af filen. */}
       <Kort>
@@ -350,9 +555,12 @@ export default function FlaadeOversigt() {
         handling={
           <div style={{ display: "flex", gap: 8 }}>
             <Knap disabled title="Eksport er ikke bygget endnu.">Eksportér</Knap>
-            <Knap variant="primaer" disabled
-                  title={maaSkrive ? "Oprettelse er ikke bygget endnu."
-                                   : "Kræver koeretoejer.skriv."}>
+            {/* ⚠ KNAPPEN STÅR OGSÅ UDEN PERMISSION, deaktiveret med grunden.
+                En skjult knap lærer brugeren at funktionen ikke findes. */}
+            <Knap variant="primaer" disabled={!maaSkrive}
+                  onClick={() => { setRedigerer("ny"); setValgtId(null); }}
+                  title={maaSkrive ? "Opret en ny enhed."
+                                   : "Kræver koeretoejer.skriv — serveren afviser."}>
               Ny enhed
             </Knap>
           </div>
@@ -535,12 +743,19 @@ export default function FlaadeOversigt() {
               sidste kvartal ikke forklares.
             </p>
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <Knap disabled title={maaSkrive ? "Redigering er ikke bygget endnu."
-                                              : "Kræver koeretoejer.skriv."}>
+              <Knap disabled={!maaSkrive} onClick={() => setRedigerer(valgt.id)}
+                    title={maaSkrive ? "Ret enhedens stamdata."
+                                     : "Kræver koeretoejer.skriv — serveren afviser."}>
                 Redigér
               </Knap>
-              <Knap disabled title={maaSkrive ? "Afgang er ikke bygget endnu."
-                                              : "Kræver koeretoejer.skriv."}>
+              {/* ⚠ AFGANG ER IKKE EN SLETNING, og den har derfor ikke sin egen
+                  skrivning. Samme formular åbnes: man sætter status til Solgt
+                  eller Skrottet og skriver en årsag. To knapper der skrev hver
+                  sin vej til samme ændring, ville før eller siden være uenige
+                  om hvad en afgang kræver. */}
+              <Knap disabled={!maaSkrive} onClick={() => setRedigerer(valgt.id)}
+                    title={maaSkrive ? "Sæt status til Solgt eller Skrottet med en årsag."
+                                     : "Kræver koeretoejer.skriv — serveren afviser."}>
                 Registrér afgang
               </Knap>
             </div>

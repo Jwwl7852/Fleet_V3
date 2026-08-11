@@ -653,3 +653,102 @@ export function MiniKurve({ punkter = [], tone = "neutral", bredde = 62, hoejde 
     </svg>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Formular — den første skrivning i appen
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ FELTERNE VALIDERER FOR AT SVARE HURTIGT, IKKE FOR AT AFGØRE NOGET.
+   Serveren validerer igen, og hvis de to er uenige, er reglerne rigtige. Skriv
+   derfor aldrig en kontrol her som ikke også står i firebase.rules.json — så
+   ville formularen love noget serveren afviser, eller værre: tillade noget
+   serveren skulle have stoppet.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Felt — én linje i en formular.
+ *
+ * `fejl` er en streng eller null. Den vises UNDER feltet og markerer det, så
+ * fejlen står ved det den handler om; en samlet fejlliste i toppen tvinger
+ * brugeren til at lede.
+ *
+ * `hint` er den forklaring der ellers ender i et supportopkald — hvorfor et
+ * felt findes, eller hvad enheden er.
+ */
+export function Felt({
+  id, label, type = "text", vaerdi, saet, fejl, hint, kraevet,
+  suffiks, valgmuligheder, disabled, ...p
+}) {
+  const beskrivelse = [hint && `${id}-hint`, fejl && `${id}-fejl`].filter(Boolean).join(" ");
+  return (
+    <div className={`fc-felt${fejl ? " fc-felt-fejl" : ""}`}>
+      <label htmlFor={id}>
+        {label}
+        {/* ⚠ PÅKRÆVET MARKERES, IKKE VALGFRIT. Markeres det valgfrie i
+            stedet, læses en umarkeret etiket som "den skal jeg nok udfylde". */}
+        {kraevet && <span className="fc-felt-kraev" aria-hidden="true"> *</span>}
+      </label>
+      <div className="fc-felt-ind">
+        {valgmuligheder ? (
+          <select id={id} value={vaerdi ?? ""} disabled={disabled}
+                  aria-invalid={fejl ? "true" : undefined}
+                  aria-describedby={beskrivelse || undefined}
+                  onChange={(e) => saet(e.target.value)} {...p}>
+            {valgmuligheder.map((o) => (
+              <option key={o.vaerdi} value={o.vaerdi}>{o.label}</option>
+            ))}
+          </select>
+        ) : (
+          <input id={id} type={type} value={vaerdi ?? ""} disabled={disabled}
+                 aria-invalid={fejl ? "true" : undefined}
+                 aria-describedby={beskrivelse || undefined}
+                 onChange={(e) => saet(e.target.value)} {...p} />
+        )}
+        {suffiks && <span className="fc-felt-suf">{suffiks}</span>}
+      </div>
+      {hint && <span className="fc-felt-hint" id={`${id}-hint`}>{hint}</span>}
+      {/* role="alert" så en skærmlæser får fejlen når den opstår, ikke først
+          når brugeren tabber tilbage til feltet. */}
+      {fejl && <span className="fc-felt-fejltekst" id={`${id}-fejl`} role="alert">{fejl}</span>}
+    </div>
+  );
+}
+
+export const Feltraekke = ({ children }) => <div className="fc-feltraekke">{children}</div>;
+
+/**
+ * Formularsvar — resultatet af en skrivning, med den RIGTIGE forklaring.
+ *
+ * ⚠ EN AFVIST SKRIVNING ER IKKE EN NETVÆRKSFEJL. `permission-denied` betyder
+ * at reglerne virker. Oversættes den til "prøv igen", får brugeren at vide at
+ * systemet er i stykker — og han prøver igen, og igen. Tonen skal skille dem:
+ * en afvisning er ikke rød på samme måde som en nedbrudt forbindelse.
+ */
+export function Formularsvar({ svar }) {
+  if (!svar) return null;
+  if (svar.ok) return <p className="fc-svar fc-svar-ok" role="status">Gemt.</p>;
+  const tone = svar.art === "naegtet" ? "naegtet" : svar.art === "demo" ? "demo" : "fejl";
+  return <p className={`fc-svar fc-svar-${tone}`} role="alert">{svar.besked}</p>;
+}
+
+/**
+ * Formular — samler felterne og knapperne.
+ *
+ * `gemmer` deaktiverer knappen mens skrivningen kører, så den samme post ikke
+ * kan sendes to gange af et dobbeltklik.
+ */
+export function Formular({ onGem, gemmer, kanGemme = true, gemLabel = "Gem",
+                           onAnnuller, svar, children }) {
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (kanGemme && !gemmer) onGem(); }}>
+      {children}
+      <Formularsvar svar={svar} />
+      <div className="fc-formular-knapper">
+        <Knap type="submit" variant="primaer" disabled={!kanGemme || gemmer}>
+          {gemmer ? "Gemmer …" : gemLabel}
+        </Knap>
+        {onAnnuller && <Knap type="button" onClick={onAnnuller} disabled={gemmer}>Annullér</Knap>}
+      </div>
+    </form>
+  );
+}

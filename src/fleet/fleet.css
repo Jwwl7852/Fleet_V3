@@ -664,3 +664,25 @@
   padding:3px 8px; font-size:11.5px}
 .fc-liste{margin:10px 0 0; padding-left:20px; color:var(--bc-muted); font-size:12.5px;
   line-height:1.6}
+
+/* ---- Formular --------------------------------------------------------- */
+.fc-feltraekke{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px}
+.fc-felt-kraev{color:var(--bc-block)}
+.fc-felt-ind{display:flex; align-items:center; gap:8px}
+.fc-felt-ind input,.fc-felt-ind select{flex:1; min-width:0}
+.fc-felt-suf{color:var(--bc-muted); font-size:12px; white-space:nowrap}
+.fc-felt-hint{display:block; margin-top:4px; color:var(--bc-muted); font-size:11.5px; line-height:1.4}
+/* Fejlen staar VED feltet, ikke i en liste i toppen — ellers skal brugeren
+   lede efter hvad den handler om. */
+.fc-felt-fejltekst{display:block; margin-top:4px; color:var(--bc-block); font-size:11.5px;
+  font-weight:600}
+.fc-felt-fejl input,.fc-felt-fejl select{border-color:var(--bc-block)}
+.fc-formular-knapper{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap}
+/* ⚠ TRE TONER, IKKE TO. En afvist skrivning er ikke en nedbrudt forbindelse:
+   reglerne VIRKER, og farven maa ikke sige "i stykker". */
+.fc-svar{margin:14px 0 0; padding:10px 12px; border-radius:9px; font-size:12.5px;
+  font-weight:600}
+.fc-svar-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
+.fc-svar-naegtet{background:var(--fc-warn-bg); color:var(--bc-warn)}
+.fc-svar-fejl{background:var(--fc-bad-bg); color:var(--bc-block)}
+.fc-svar-demo{background:var(--fc-info-bg); color:var(--fc-info)}
