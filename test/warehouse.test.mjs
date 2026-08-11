@@ -210,22 +210,31 @@ describe("Adgangen er permissions, ikke en femte rolleverden", () => {
     assert.equal(PERM.kasseudlaanSkriv, "kasseudlaan.skriv");
   });
 
-  it("⚠ CHAUFFØREN HAR DEM IKKE — og det er en åben beslutning", () => {
+  it("⚠ CHAUFFØREN HAR DEM IKKE — og det er nu et SVAR, ikke et spørgsmål", () => {
     /* Prototypens "Chauffør = udlevering/retur" ville kræve
        kasseudlaan.skriv på chauffør-presettet. Et preset er en BESLUTNING
-       (nr. 31), ikke noget der ændres i forbifarten. Falder den her prøve,
-       er beslutningen truffet — og så skal WAREHOUSE.md punkt 2.3 rettes. */
+       (nr. 31), ikke noget der ændres i forbifarten.
+
+       Svaret blev: det er LAGERMEDARBEJDEREN der udleverer og modtager
+       retur. En chauffør kører; den der står med kassen i hånden på lageret,
+       er en anden person med et andet arbejde. Rollen findes nu. */
     assert.ok(!ROLLE_PERMS.chauffoer.includes(PERM.kasseudlaanSkriv));
     assert.ok(!ROLLE_PERMS.chauffoer.includes(PERM.kasserSkriv));
   });
 
-  it("giver dem til de roller der driver et lager", () => {
-    for (const rolle of ["disponent", "koordinator", "casehandler", "admin"]) {
+  it("giver dem KUN til lagermedarbejderen og admin", () => {
+    /* ⚠ EN DEDIKERET ROLLE ER MENINGSLOES, hvis alle andre har det samme i
+       forvejen. De to permissions laa foerst i BASIS_DATA — altsaa hos
+       sagsbehandler, disponent og koordinator — og saa ville
+       lagermedarbejderen ikke vaere en afgraensning af noget. */
+    for (const rolle of ["lagermedarbejder", "admin"]) {
       assert.ok(ROLLE_PERMS[rolle].includes(PERM.kasserSkriv), `${rolle} mangler kasser.skriv`);
       assert.ok(ROLLE_PERMS[rolle].includes(PERM.kasseudlaanSkriv), `${rolle} mangler kasseudlaan.skriv`);
     }
-    /* Revisor skriver intet, nogen steder. */
-    assert.ok(!ROLLE_PERMS.revisor.includes(PERM.kasserSkriv));
+    for (const rolle of ["chauffoer", "casehandler", "disponent", "koordinator", "revisor"]) {
+      assert.ok(!ROLLE_PERMS[rolle].includes(PERM.kasseudlaanSkriv),
+        `${rolle} kan udlevere en kasse — det er lagermedarbejderens arbejde`);
+    }
   });
 
   it("har ingen laes-permission", () => {

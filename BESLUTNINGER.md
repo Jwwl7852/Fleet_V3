@@ -904,10 +904,21 @@ mest almindelige måde at ødelægge en rolleadministration på, og den rammer
 netop den der prøver at stramme op. Der findes ingen vej tilbage fra klienten:
 adgangen til at rette rollen var selv en permission.
 
-Kunden tildeler derfor blandt seks faste roller — chauffør, sagsbehandler,
-disponent, koordinator, revisor, administrator — og ændrer ikke hvad de
-indeholder. Skal en rolle betyde noget andet, er det en ændring i
-`permissions.js` og i regelfilen, ikke et klik.
+Kunden tildeler derfor blandt **syv** faste roller — chauffør,
+lagermedarbejder, sagsbehandler, disponent, koordinator, revisor,
+administrator — og ændrer ikke hvad de indeholder. Skal en rolle betyde noget
+andet, er det en ændring i `permissions.js` og i regelfilen, ikke et klik.
+
+⚠ **Der stod SEKS her indtil Warehouse kom.** `lagermedarbejder` blev tilføjet
+fordi prototypen ville lade chaufføren udlevere og modtage kasser — og en
+chauffør kører; den der står med kassen i hånden på lageret, er en anden
+person med et andet arbejde. **Det er sådan en rolle skal komme til:** som en
+ændring i koden, med en begrundelse, prøver og fornyede claims — ikke som et
+felt en kunde kan rette.
+
+⚠ Og den kostede med det samme en anden beslutning: en ny rolle uden en
+**brugerart** i `priser.js` ville lydløst være blevet faktureret som
+*desktop*, den dyre af de to. Prøven fangede det i samme kørsel.
 
 ⚠ **Beslutningen var allerede håndhævet, den var bare ikke skrevet ned.**
 `roller` er `.write: false` i `firebase.rules.json` og har været det hele

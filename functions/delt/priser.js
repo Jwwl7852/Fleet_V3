@@ -73,8 +73,16 @@ export const BRUGERART = {
        den staar i hvert token og i hver regel, og et navneskift dér ville
        vaere en migrering uden gevinst. */
     label: "Medarbejder",
-    hvad: "Bruger appen i marken. Kører, indberetter, registrerer.",
-    roller: ["chauffoer"],
+    hvad: "Bruger appen i marken eller på lageret. Kører, indberetter, pakker.",
+    /* ⚠ TO ROLLER, ÉN ART. En chauffør og en lagermedarbejder bruger appen
+       samme sted — i hånden, ude ved arbejdet — og de koster det samme at
+       levere. At give dem hver sin sats ville vaere en pris uden en forskel.
+
+       ⚠ PROEVEN TVANG BESLUTNINGEN FREM. Da lagermedarbejder blev oprettet,
+       faldt "daekker HVER rolle i permissions.js" med det samme: en ny rolle
+       uden en art ville lydloest vaere blevet faktureret som DESKTOP, den dyre
+       af de to. Det er praecis det den proeve findes for. */
+    roller: ["chauffoer", "lagermedarbejder"],
   },
   desktop: {
     art: "desktop",

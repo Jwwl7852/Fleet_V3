@@ -177,13 +177,10 @@ const BASIS_DATA = [
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
   PERM.indberetningerSkriv,
-  /* ⚠ CHAUFFØREN FÅR DEM IKKE. Prototypens rolle "Chauffør =
-     udlevering/retur" ville kræve kasseudlaan.skriv på chauffør-presettet,
-     og et preset er en BESLUTNING (nr. 31) — ikke noget der ændres i
-     forbifarten. Se WAREHOUSE.md punkt 2.3; det spørgsmål er stillet og
-     ikke besvaret. */
-  PERM.kasserSkriv,
-  PERM.kasseudlaanSkriv,
+  /* ⚠ WAREHOUSE-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
+     spørgsmålet blev besvaret. Svaret var at LAGERMEDARBEJDEREN skal
+     udlevere og modtage retur — og en dedikeret rolle er meningsløs, hvis
+     alle andre roller har det samme i forvejen. Se `lagermedarbejder`. */
 ];
 
 /* Læsning af de fire klassificerede objekters GENERAL-del. Alle presets har
@@ -265,6 +262,32 @@ export const ROLLE_PERMS = {
    * som alle andre. Se noten ved bookingLaes om hvorfor kun fire objekter har
    * en laes-permission.
    */
+  /**
+   * Lagermedarbejder — den der pakker, klargør, udleverer og modtager retur.
+   *
+   * ⚠ ROLLEN ER NY, OG DEN KOM AF ET SPØRGSMÅL DER BLEV STILLET FØRST.
+   * Warehouse-prototypen havde sin egen rolle "Chauffør = udlevering/retur".
+   * At hænge det på VORES chauffør ville have været forkert: en chauffør
+   * kører, og han skriver indberetninger. Den der står med kassen i hånden
+   * på lageret, er en anden person med et andet arbejde.
+   *
+   * ⚠ EN NY ROLLE ER EN ÆNDRING I KODEN, ikke et klik. Beslutning 31: en
+   * vognmand tildeler blandt faste presets og ændrer ikke hvad de
+   * indeholder. Skal en rolle betyde noget andet, rettes den her — og så
+   * skal claims fornys, for et preset er hvad man får VED UDSTEDELSE.
+   *
+   * Den er SMAL med vilje: den kan alt med kasser og udlån, den kan se
+   * hvem folk er, og den kan skrive sine egne indberetninger. Den kan ikke
+   * oprette en booking, røre en kunde eller se en pris.
+   */
+  lagermedarbejder: [
+    ...BASIS_LAES,
+    PERM.kasserSkriv,
+    PERM.kasseudlaanSkriv,
+    /* Han melder også en beskadiget kasse — det er en indberetning. */
+    PERM.indberetningerSkriv,
+  ],
+
   revisor: [...BASIS_LAES, PERM.auditLaes],
 
   admin: [...ALLE_PERMS],
@@ -347,6 +370,13 @@ export const ROLLE_LABEL = {
              "godkender, skal kunne se hvad der står på spil. Ser IKKE " +
              "fraværsårsager — disponeringen har brug for at vide at nogen er " +
              "utilgængelig, ikke hvorfor.",
+  },
+  lagermedarbejder: {
+    label: "Lagermedarbejder",
+    hvad: "Pakker, klargør, udleverer og modtager retur på lageret.",
+    hvorfor: "Den eneste rolle ud over admin der må røre udlån. En chauffør " +
+             "kører; den der står med kassen i hånden, er en anden person. " +
+             "Kan ikke oprette en booking, røre en kunde eller se en pris.",
   },
   revisor: {
     label: "Revisor",

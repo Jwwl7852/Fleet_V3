@@ -78,9 +78,19 @@ kasseudlaan.laes   kasseudlaan.skriv
 reolpladser.skriv
 ```
 
-⚠ **Det rører et preset.** Prototypens *Chauffør = udlevering/retur* betyder at
-vores `chauffoer` skal have `kasseudlaan.skriv`. Et preset er en beslutning
-(`permissions.js`), og den skal træffes bevidst — ikke opdages.
+✅ **BESVARET: det er lagermedarbejderen.** Ikke chaufføren — en chauffør
+kører, og den der står med kassen i hånden på lageret er en anden person med
+et andet arbejde. Der er derfor oprettet en **syvende rolle**,
+`lagermedarbejder`, som er den eneste ud over admin der må røre udlån.
+
+⚠ Det gjorde også de to permissions smallere: de lå først i `BASIS_DATA` og
+blev fjernet derfra. En dedikeret rolle er meningsløs, hvis alle andre roller
+har det samme i forvejen.
+
+⚠ Og prøven tvang en faktureringsbeslutning frem med det samme: en ny rolle
+uden en **brugerart** ville lydløst være blevet faktureret som *desktop* — den
+dyre af de to. Lagermedarbejderen er en **medarbejder**, som chaufføren: de
+bruger appen samme sted og koster det samme at levere.
 
 ### ⚠ 2.4 Prototypen laver sine egne logins
 
