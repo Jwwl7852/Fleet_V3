@@ -205,3 +205,88 @@ describe("rolle og division i samme skrivning", () => {
     await assertFails(set(ref(db, `tenants/${TENANT}/kpi/gods/current`), { kunder: { aktive: 51 } }));
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   Feltvalidering på køretøjer — forudsætningen for den første formular
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR DE HER STÅR HER. `hjemsted`, `naesteServiceKm`, `kaldenavn` og
+   resten kunne LÆSES længe før reglerne kendte dem — de kom i demo-sættet
+   fordi en skærm skulle vise dem. Så længe ingen skrev, var det harmløst.
+
+   Piloten skriver. Uden validering på serveren ville formularen være den
+   eneste kontrol, og en kontrol der kun findes i frontend er ikke
+   adgangskontrol. Prøverne her beviser at reglerne KAN afvise — en regel
+   ingen har set fejle, er en påstand.
+   ══════════════════════════════════════════════════════════════════════ */
+describe("køretøjets felter valideres på serveren", () => {
+  const bil = (ekstra = {}) => ({
+    navn: "Volvo FH 500", kaldenavn: "Bil 900", registrering: "DE 90 000",
+    status: "aktiv", art: "lastbil", ...ekstra,
+  });
+  const p = (id) => sti("koeretoejer", id);
+
+  it("tager en fuldt udfyldt bil", async () => {
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("k-ok")), bil({
+      hjemsted: "Kolding", kmStand: 298450, naesteServiceKm: 299700,
+      naesteServiceMs: 1e12, synMs: 1e12, laengdeMm: 6200, driftPrKmOere: 342,
+      tachografNr: "TG-40122", saeder: 0, kranTonmeter: 12,
+    })));
+  });
+
+  it("afviser et tomt kaldenavn og en tom nummerplade", async () => {
+    /* Nummerpladen er den man slår op på. Bil 104 havde to i prototypen —
+       en tom er samme slags fejl, bare stille. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("k-tomt")), bil({ kaldenavn: "" })));
+    await assertFails(set(ref(db, p("k-tompl")), bil({ registrering: "" })));
+  });
+
+  it("afviser et hjemsted der er et tal eller en roman", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("k-tal")), bil({ hjemsted: 6000 })));
+    await assertFails(set(ref(db, p("k-lang")), bil({ hjemsted: "x".repeat(61) })));
+  });
+
+  it("tager ethvert stednavn — hjemsted er ikke en enum", async () => {
+    /* ⚠ MED VILJE. Kolding og Aalborg er DENNE tenants steder; en anden
+       vognmand har andre. Et katalog i regelfilen ville betyde at et nyt
+       depot krævede en udrulning. */
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("k-nyt")), bil({ hjemsted: "Padborg" })));
+  });
+
+  it("afviser kilometer som streng og som negativt tal", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("k-str")), bil({ kmStand: "298450" })));
+    await assertFails(set(ref(db, p("k-neg")), bil({ kmStand: -1 })));
+    await assertFails(set(ref(db, p("k-svc")), bil({ naesteServiceKm: -5 })));
+  });
+
+  it("afviser en servicedato som streng", async () => {
+    /* En dato som streng sorterer alfabetisk og stiller 10-01 før 9-12. */
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, p("k-dato")), bil({ naesteServiceMs: "2026-08-18" })));
+  });
+
+  it("kræver en årsag når en bil registreres afgået", async () => {
+    /* Afgang sletter ikke — posten bliver stående. Men en afgang uden
+       årsag er en bil der bare forsvandt ud af drift. */
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("k-solgt")), bil({
+      status: "solgt", afgangMs: 1e12, afgangAarsag: "Solgt til Padborg Transport",
+    })));
+    await assertFails(set(ref(db, p("k-tomaarsag")), bil({
+      status: "solgt", afgangMs: 1e12, afgangAarsag: "",
+    })));
+  });
+
+  it("kan stadig ikke slettes", async () => {
+    /* .write kræver newData.exists(). Der hænger indberetninger og
+       omkostningshistorik på id'et. */
+    const db = som("admin1", "admin");
+    await assertSucceeds(set(ref(db, p("k-slet")), bil()));
+    await assertFails(set(ref(db, p("k-slet")), null));
+  });
+});

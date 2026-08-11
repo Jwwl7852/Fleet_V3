@@ -350,7 +350,52 @@
               "kg": { ".validate": "newData.isNumber() && newData.val() >= 0" }
             },
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
-            "division": { ".validate": false }
+            "division": { ".validate": false },
+
+            // ⚠ FELTERNE HERUNDER KOM MED SKRIVNINGEN, IKKE FOER DEN.
+            //
+            // Skaermen kunne laese dem laenge foer reglerne kendte dem:
+            // hjemsted og naesteServiceKm blev lagt i demo-saettet da Flaade
+            // skulle vise lokation og "om 1.250 km". Saa laenge ingen skrev,
+            // var det harmloest. I det oejeblik en formular skriver, er et
+            // uvalideret felt en aaben doer.
+            //
+            // ⚠ hjemsted er IKKE en enum. Kolding, Aalborg, Vejle og Odense er
+            // DENNE tenants steder — en anden vognmand har andre. Et katalog i
+            // regelfilen ville betyde at et nyt depot krevede en udrulning.
+            // Laengden begraenses i stedet, saa fritekst ikke havner i et felt
+            // der vises i en tabel.
+            "hjemsted": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+
+            // Maalerstand og servicemaal er HELE kilometer. Et komma gav
+            // "om 1.249,7 km" i tabellen, og floats summerer ikke praecist
+            // over en flaade.
+            "kmStand": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "naesteServiceKm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+
+            // Fristerne er epoch-millisekunder. En dato som streng ville
+            // sortere alfabetisk og stille 10-01 foer 9-12.
+            "naesteServiceMs": { ".validate": "newData.isNumber()" },
+            "synMs": { ".validate": "newData.isNumber()" },
+
+            // Kaldenavnet er det man slaar op paa. Tomt er ikke et navn.
+            "kaldenavn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+
+            // ⚠ NUMMERPLADEN ER DEN MAN SLAAR OP PAA. Bil 104 havde to i
+            // prototypen, og det er den fejl der er dyrest at opdage sent.
+            "registrering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+
+            "tachografNr": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "saeder": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "kranTonmeter": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+
+            // ⚠ AFGANG SLETTER IKKE. En solgt bil beholder sin post — der
+            // haenger indberetninger og omkostningshistorik paa id'et, og
+            // .write kraever i forvejen newData.exists(). Felterne her er
+            // sporet efter hvorfor den gik ud af drift.
+            "afgangMs": { ".validate": "newData.isNumber()" },
+            "afgangAarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" }
           }
         },
 
