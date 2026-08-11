@@ -30,6 +30,10 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
    man kan regne med holder, så tilføj ikke en femte uden at tjekke. */
 export const DELTE_FILER = [
   "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",
+  /* ⚠ beloeb.js SKAL MED FØR priser.js KAN BRUGES SERVER-SIDE. Den funktion
+     der fryser en faktureringsperiode, regner i øre — og gjorde den det med
+     en afskrift, ville der være to afrundingsregler i ét repo. */
+  "beloeb.js", "priser.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

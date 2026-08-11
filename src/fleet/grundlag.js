@@ -26,6 +26,9 @@
  */
 
 import { naesteNummer, forloebstilstand } from "./booking-state.js";
+import {
+  ANTAL_SKALA, linjeBeloebOere, linjeMomsOere, totalerAfLinjer,
+} from "./beloeb.js";
 
 /* ---- Nummerserie ----------------------------------------------------- */
 
@@ -105,43 +108,20 @@ export const erGaeldende = (g) => Boolean(g) && !g.erstattetAfId;
 
 /* ---- Beløb ------------------------------------------------------------ */
 
-/**
- * ⚠ ANTAL ER I TUSINDDELE. 1,5 time er 1500 — ikke 1.5.
+/* ⚠ ARITMETIKKEN ER FLYTTET TIL beloeb.js, OG DEN BLIVER DÉR.
  *
- * Samme grund som øre og millimeter: 0,1 + 0,2 er ikke 0,3 i en float, og et
- * grundlag der ikke stemmer med sig selv på øren, kan ikke afstemmes mod
- * regnskabet. Fejlen ville være lille nok til at overleve gennemlæsning og
- * stor nok til at en bogholder ringer.
- */
-export const ANTAL_SKALA = 1000;
-
-export const antalFraTal = (n) => Math.round((Number(n) || 0) * ANTAL_SKALA);
-export const talFraAntal = (a) => (Number(a) || 0) / ANTAL_SKALA;
-
-/**
- * Linjens beløb, ekskl. moms.
+ * Abonnementsfaktureringen (FleetControl → vognmanden) skal regne præcis
+ * som den her (vognmanden → hans kunde), og den kører server-side i en
+ * Cloud Function. Filen her importerer booking-state.js og kan derfor ikke
+ * kopieres til functions/delt/ — så uden udskillelsen skulle tallene skrives
+ * af, og der ville være TO afrundingsregler i ét repo. Det er den fejl der
+ * bliver ved: Bil 104 med to nummerplader, to divisionsfiltre, to demo-sæt.
  *
- * ⚠ DER AFRUNDES PR. LINJE, ÉN GANG. Ikke på totalen.
- *
- * Det er ikke ligegyldigt hvilken vej man gør det: runder man først på
- * totalen, kan summen af de viste linjer afvige fra den viste total med et par
- * øre, og så er der et tal på skærmen der ikke kan genfindes. Kunden lægger
- * linjerne sammen i hånden — det er præcis hvad man gør, når man er uenig.
- */
-export const linjeBeloebOere = (l) =>
-  Math.round(((l?.antal || 0) * (l?.satsOere || 0)) / ANTAL_SKALA);
-
-/**
- * Momsen på en linje. null hvis satsen mangler — IKKE 0, og IKKE 25.
- *
- * Se noten ved momssats i validerLinje(). Et manglende tal må aldrig blive til
- * et gæt undervejs i et regnestykke; så forsvinder det, og resultatet ser
- * færdigt ud.
- */
-export function linjeMomsOere(l) {
-  if (!Number.isFinite(l?.momssats)) return null;
-  return Math.round((linjeBeloebOere(l) * l.momssats) / 100);
-}
+ * De re-eksporteres, så ingen kalder skal ændres. Der er stadig ÉN
+ * definition; den ligger bare et sted både klienten og serveren kan nå. */
+export {
+  ANTAL_SKALA, antalFraTal, talFraAntal, linjeBeloebOere, linjeMomsOere,
+} from "./beloeb.js";
 
 /**
  * Totalerne. BEREGNET, aldrig gemt — beslutning 6.
@@ -149,22 +129,7 @@ export function linjeMomsOere(l) {
  * `momsOere` er null, hvis bare én linje mangler sin sats. Et halvt momsbeløb
  * er værre end intet: det ser ud som om det er regnet ud.
  */
-export function totaler(grundlag) {
-  const linjer = grundlag?.linjer || [];
-  const beloebOere = linjer.reduce((s, l) => s + linjeBeloebOere(l), 0);
-  const momsdele = linjer.map(linjeMomsOere);
-  const momsOere = momsdele.some((m) => m === null)
-    ? null
-    : momsdele.reduce((s, m) => s + m, 0);
-  return {
-    beloebOere,
-    momsOere,
-    /* Ekskl. moms er det tal vi arbejder i overalt. Inkl. moms findes kun for
-       at kunne vises, og kun når momsen er kendt. */
-    ialtOere: momsOere === null ? null : beloebOere + momsOere,
-    antalLinjer: linjer.length,
-  };
-}
+export const totaler = (grundlag) => totalerAfLinjer(grundlag?.linjer || []);
 
 /* ---- Validering ------------------------------------------------------- */
 

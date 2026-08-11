@@ -51,14 +51,27 @@ test("Kopien bærer advarslen om at den ikke må redigeres", () => {
   }
 });
 
-test("Den delte fil har ingen imports", () => {
-  /* Den skal kunne stå alene i to træer. En import ville trække en fil med
-     der ikke er kopieret, og så fejler funktionen først i skyen. Det er
-     samme grund som permissions.js og personale.js er importfri. */
+test("En delt fil importerer kun andre delte filer", () => {
+  /* Den skal kunne stå alene i functions/delt/. En import af noget der IKKE
+     er kopieret med, fejler først i skyen — ved deploy, ikke ved test.
+     Det er samme grund som permissions.js og personale.js er importfri.
+
+     ⚠ KRAVET ER LØSNET FRA "INGEN IMPORTS" TIL "KUN DELTE FILER", og det er
+     en skærpelse forklædt som en lempelse. priser.js skal bruge aritmetikken
+     i beloeb.js. Alternativet var at skrive den af — og så ville der være to
+     afrundingsregler i ét repo, hvilket er præcis den fejl hele filen her
+     findes for at forhindre. Kopierne ligger i samme mappe, så en relativ
+     import mellem to delte filer virker uændret i skyen. */
   for (const navn of DELTE_FILER) {
     const kilde = readFileSync(kildeSti(navn), "utf8");
-    assert.doesNotMatch(kilde, /^\s*import\s/m,
-      `src/fleet/${navn} har et import. En delt fil skal kunne stå alene.`);
+    const stier = [...kilde.matchAll(/^\s*(?:import|export)[^;]*?from\s+["']([^"']+)["']/gm)]
+      .map((m) => m[1]);
+    for (const sti of stier) {
+      const fil = sti.replace(/^\.\//, "");
+      assert.ok(DELTE_FILER.includes(fil),
+        `src/fleet/${navn} importerer "${sti}", som ikke er en delt fil. ` +
+        `Den ville ikke være kopieret med, og funktionen ville fejle i skyen.`);
+    }
   }
 });
 
