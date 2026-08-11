@@ -134,16 +134,28 @@ Klargjort / Udlånt) er **status**, ikke kategori — beslutning 30.
 
 Rækkefølgen er valgt så hvert trin er værd at have alene.
 
-| # | Hvad | Værdi alene |
-|---|---|---|
-| 1 | **Modulet findes**: `warehouse` i `moduler.js`, nav, regler med modulklausul, række i prislisten | Kan sælges og krydses af. ⚠ Ingen skærm endnu — nav-punktet må ikke tegnes før der er noget bag |
-| 2 | **Datamodel + regler + prøver** for `kasser`, `reolpladser`, `kasseudlaan` | Grundlaget kan ikke laves om bagefter |
-| 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret |
-| 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne |
-| 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge |
-| 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation |
-| 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen |
-| 8 | QR-koder og rapporter | Kan vente |
+| # | Hvad | Værdi alene | Status |
+|---|---|---|---|
+| 1 | **Modulet findes**: `warehouse` i `moduler.js`, nav, regler med modulklausul, række i prislisten | Kan sælges og krydses af. ⚠ Ingen skærm endnu — nav-punktet må ikke tegnes før der er noget bag | ✅ |
+| 2 | **Datamodel + regler + prøver** for `kasser`, `reolpladser`, `kasseudlaan` | Grundlaget kan ikke laves om bagefter | ✅ |
+| 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret | ✅ |
+| 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | |
+| 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge | |
+| 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation | |
+| 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen | |
+| 8 | QR-koder og rapporter | Kan vente | |
+
+**Etape 3 er inde.** `warehouse` står nu i sidebaren med **Kasser** og
+**Reolpladser** (sidstnævnte rummer også kassetyperne — en type uden pladser at
+stå på er ikke til nogen nytte, og to skærme til seks felter er to skærme for
+mange). `UDEN_SKAERM` er tom igen; den fandtes præcis for at holde menupunktet
+borte, indtil det førte et sted hen.
+
+⚠ **`konflikter()` i `warehouse.js` afgør stadig ingenting.** Den svarer på om en
+periode støder sammen med et eksisterende udlån, og den er testet — men intet
+kalder den endnu, og håndhævelsen hører i den Cloud Function der skriver
+udlånet. Ligger den i skærmen, går en direkte skrivning uden om den. Samme
+forudsætning som de fem disponeringstjek. Det er etape 4.
 
 ⚠ **Kalenderen skal genbruge `Gitterkalender.jsx`.** CLAUDE.md forbyder et nyt
 kalendergitter: to gitre der læser samme interval forskelligt, opdages ikke ved
