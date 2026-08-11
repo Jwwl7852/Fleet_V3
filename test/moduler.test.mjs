@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  MODUL, ALLE_MODULER, VALGFRIE_MODULER, OBLIGATORISKE_MODULER,
+  MODUL, ALLE_MODULER, VALGFRIE_MODULER, OBLIGATORISKE_MODULER, UDEN_SKAERM,
   harModul, modulsaet, ukendteModuler,
 } from "../src/fleet/moduler.js";
 import { NAV } from "../src/fleet/nav.js";
@@ -24,9 +24,20 @@ import { NAV } from "../src/fleet/nav.js";
 describe("modulkataloget svarer til menuen", () => {
   it("hvert modul peger på et navKey der findes", () => {
     /* Ellers filtrerer AppShell på et navn ingen menupunkt har, og modulet
-       kan hverken skjules eller vises. */
+       kan hverken skjules eller vises.
+
+       ⚠ UDEN_SKAERM ER UNDTAGET, OG DET ER EN SYNLIG UNDTAGELSE. Et modul
+       kan sælges og prissættes før dets skærme findes — men det må ikke
+       tegnes i sidebaren, for et menupunkt der fører til ingenting, lover
+       noget produktet ikke kan. Navnet står i moduler.js, ikke her, så det
+       er koden der siger hvad der mangler. */
     const navKeys = new Set(NAV.map((m) => m.key));
     for (const m of ALLE_MODULER) {
+      if (UDEN_SKAERM.includes(m)) {
+        assert.ok(!navKeys.has(MODUL[m].navKey),
+          `${m} står i UDEN_SKAERM, men har et menupunkt. Fjern det ene af de to.`);
+        continue;
+      }
       assert.ok(navKeys.has(MODUL[m].navKey), `${m} peger på "${MODUL[m].navKey}"`);
     }
   });

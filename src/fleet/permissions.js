@@ -141,6 +141,19 @@ export const PERM = {
      laes-permission — se noten ved bookingLaes. Kun skrivning styres. */
   kompetencerSkriv: "kompetencer.skriv",
 
+  /* WAREHOUSE — udlejning af transportkasser.
+
+     ⚠ TO PERMISSIONS, IKKE FIRE. Den ene dækker STAMDATA (kasser,
+     kassetyper, reolpladser), den anden det OPERATIONELLE (book, klargør,
+     udlever, retur). Det er de to slags handlinger der findes; en
+     permission pr. node ville være fire navne der altid blev givet sammen.
+
+     ⚠ INGEN laes-permission. Der er ingen klassificeret satellit at
+     kontrastere mod, og så ville den ikke beskytte noget — se den lange
+     note ved bookingLaes om hvorfor kun fire objekter har en. */
+  kasserSkriv: "kasser.skriv",
+  kasseudlaanSkriv: "kasseudlaan.skriv",
+
   fravaerLaes: "fravaer.laes",
   /* art (sygdom vs. ferie) og dokumentation. Helbredsoplysning, altså særlig
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
@@ -159,6 +172,13 @@ const BASIS_DATA = [
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
   PERM.indberetningerSkriv,
+  /* ⚠ CHAUFFØREN FÅR DEM IKKE. Prototypens rolle "Chauffør =
+     udlevering/retur" ville kræve kasseudlaan.skriv på chauffør-presettet,
+     og et preset er en BESLUTNING (nr. 31) — ikke noget der ændres i
+     forbifarten. Se WAREHOUSE.md punkt 2.3; det spørgsmål er stillet og
+     ikke besvaret. */
+  PERM.kasserSkriv,
+  PERM.kasseudlaanSkriv,
 ];
 
 /* Læsning af de fire klassificerede objekters GENERAL-del. Alle presets har

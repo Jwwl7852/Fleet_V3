@@ -69,6 +69,11 @@ export const MODUL = {
     label: "Indkøb",
     hvad: "Indkøb, fakturaafstemning og leverandører.",
   },
+  warehouse: {
+    navKey: "warehouse",
+    label: "Warehouse",
+    hvad: "Udlejning af transportkasser: kasser, reolpladser og udlån.",
+  },
   kunder: {
     navKey: "kunder",
     label: "Kunder & Priser",
@@ -97,6 +102,23 @@ export const ALLE_MODULER = Object.keys(MODUL);
 
 /** De moduler en kunde kan vælge til og fra. */
 export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
+
+/**
+ * Moduler der er i kataloget, men endnu ikke har en skærm.
+ *
+ * ⚠ ET MODUL UDEN SKÆRM MÅ IKKE TEGNES I SIDEBAREN. Et menupunkt der fører
+ * til ingenting, lover noget produktet ikke kan — og det er værre end at
+ * modulet mangler, for kunden opdager det først når han klikker.
+ *
+ * Listen er en UNDTAGELSE, og den skal tømmes. Så længe et navn står her,
+ * kan modulet sælges og prissættes, men ikke bruges. Prøven
+ * `modulkataloget svarer til menuen` kræver et navKey for alle ANDRE — så
+ * en glemt menupost fanges stadig.
+ *
+ * warehouse: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
+ * etape 3, hvor kasser og reolpladser kan ses. Se WAREHOUSE.md.
+ */
+export const UDEN_SKAERM = ["warehouse"];
 
 /** De moduler enhver kunde altid har. */
 export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
@@ -154,6 +176,14 @@ export const NODE_MODUL = {
 
   kunder: "kunder",
   "sensitive/kunder": "kunder",
+
+  /* ⚠ IKKE lagre. Den node er reservedelslageret under Indkøb. Kasser er
+     transportkasser der lejes ud — se noten i warehouse.js om de tre navne
+     der allerede var taget. */
+  kasser: "warehouse",
+  kassetyper: "warehouse",
+  reolpladser: "warehouse",
+  kasseudlaan: "warehouse",
 };
 
 /** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */

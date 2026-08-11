@@ -808,6 +808,107 @@
         // i klienten, med en advarsel i konsollen. Vokser basen ud over ét
         // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
         // tidsvindue.
+        // ══════════════════════════════════════════════════════════════
+        // WAREHOUSE — udlejning af transportkasser
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ IKKE lagre, IKKE bookinger, IKKE kunder. De tre navne var
+        // taget: lagre er reservedelslageret under Indkoeb, bookinger er en
+        // TRANSPORTOPGAVE med etaper og koeretoej, og kunder er
+        // kundekartoteket. To ting med samme navn er beslutning 11 og 14
+        // om igen. Se warehouse.js.
+        //
+        // ⚠ FIRE NODER, IKKE ÉT BLOB. Prototypen gemte alt i
+        // lagerstyring/state. Det kan ikke beskyttes (alt eller intet), ikke
+        // valideres, og to lagermaend der klargoer hver sin kasse i samme
+        // minut ville overskrive hinanden UDEN en fejlmeddelelse.
+
+        "kassetyper": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+          "$typeId": {
+            ".validate": "newData.hasChildren(['navn'])",
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ PLADSEN ER ET ID MED FELTER — navnet UDLEDES af pladsnavn().
+        // Prototypen brugte selve strengen som noegle OG som visningsnavn,
+        // og den stod to gange paa hver kasse: omdoebtes en hal, pegede hver
+        // eneste kasse paa en plads der ikke fandtes. Samme rettelse som
+        // steder.js lavede for hjemsted.
+        "reolpladser": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+          ".indexOn": ["hal"],
+          "$pladsId": {
+            ".validate": "newData.hasChildren(['hal', 'reol', 'fag', 'hylde', 'plads'])",
+            "hal": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "reol": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 10" },
+            "fag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 10" },
+            "hylde": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 10" },
+            "plads": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 10" },
+            // ⚠ INTET navn-FELT. Det udledes; et gemt navn ville drive fra
+            // sine felter, og saa kunne ingen se hvilket der var rigtigt.
+            "navn": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        "kasser": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["status", "type", "pladsId"],
+          "$kasseId": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+            // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
+            // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
+            // Samme regel som en solgt bil (beslutning 18).
+            ".validate": "newData.hasChildren(['type', 'status', 'hjemPladsId'])",
+            "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(ledig|booket|klargjort|udlaant|udeAfDrift)$/)" },
+            "hjemPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // Den nuvaerende plads. ⚠ FRAVAERENDE naar kassen er udlaant —
+            // en kasse hos kunden optager ikke en hylde. Prototypen skrev
+            // "Udlaant hos kunde" SOM PLADS, og saa kunne ledige pladser
+            // ikke taelles.
+            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ IKKE EN BOOKING. Et kasseudlaan har en periode og en kasse; en
+        // booking har etaper, koeretoej og chauffoer. At slaa dem sammen
+        // ville vaere beslutning 16 om igen.
+        "kasseudlaan": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["kasseId", "sagsnummer", "tilstand", "fra"],
+          "$udlaanId": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasseudlaan.skriv|')",
+            ".validate": "newData.hasChildren(['kasseId', 'sagsnummer', 'fra', 'til', 'tilstand'])",
+            "kasseId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kasser').child(newData.val()).exists()" },
+            // ⚠ DEN ENESTE NOEGLE UD AF SYSTEMET. Uden sagsnummer kan en
+            // kasse ikke findes igen naar museet ringer.
+            "sagsnummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            // ⚠ TIDSPUNKTER SOM TAL. Samme grund som alle andre Ms-felter:
+            // de kan sorteres, sammenlignes og regnes paa uden tidszone.
+            "fra": { ".validate": "newData.isNumber()" },
+            "til": { ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('fra').val()" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(booket|klargjort|udlaant|returneret|annulleret)$/)" },
+            // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+            // Den oprindelige fritekst fra prototypens Excel-import. Den
+            // bevares saa intet gaar tabt, men der soeges ikke i den.
+            "importtekst": { ".validate": "newData.isString() && newData.val().length <= 400" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         "kunder": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
