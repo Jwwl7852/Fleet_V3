@@ -245,6 +245,24 @@ export const ROLLE_PERMS = {
   admin: [...ALLE_PERMS],
 };
 
+/**
+ * ⚠ EN NY PERMISSION I ET PRESET RAMMER IKKE EKSISTERENDE BRUGERE.
+ *
+ * Presettet er hvad en bruger får VED UDSTEDELSE. Claim'et i tokenet er hvad
+ * hun FAKTISK har, og de to er ikke det samme: tilføjer man en permission her,
+ * står den i koden med det samme og i ingen brugeres token.
+ *
+ * Det blev fundet med brugere.skriv. Permissionen var tilføjet, admin havde
+ * den i presettet, prøverne var grønne — og den udrullede funktion svarede
+ * stadig "Kræver brugere.skriv" til en rigtig administrator, fordi hans konto
+ * var oprettet dagen før.
+ *
+ * Efter en ændring her skal claims fornys: `npm run provisioner:dev` for
+ * DEV-brugerne, `kunde:opret --genskriv` for en kundes admin, og i produktion
+ * en funktion der kalder setCustomUserClaims + revokeRefreshTokens. Uden det
+ * sidste virker det gamle token indtil det udløber af sig selv.
+ */
+
 /** Permissions for en rolle. Ukendt rolle giver ingenting — ikke alt. */
 export const permsFraRolle = (rolle) => ROLLE_PERMS[rolle] || [];
 
