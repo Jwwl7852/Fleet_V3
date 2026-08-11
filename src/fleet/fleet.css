@@ -163,6 +163,23 @@
   box-shadow:inset 3px 0 0 var(--fc-info)}
 .fc-table tbody tr[role="button"]:focus-visible{outline:2px solid var(--fc-info); outline-offset:-2px}
 .fc-num{text-align:right; font-variant-numeric:tabular-nums}
+
+/* ⚠ OVERSKRIFTEN SKAL JUSTERES SOM SIN KOLONNE — og gjorde det ikke.
+   `.fc-table th` har specificitet 0,1,1 (klasse + element) og slaar dermed
+   `.fc-num` med 0,1,0. Resultatet var at HVER talkolonne i hele platformen
+   havde en venstrestillet overskrift over hoejrestillede tal: paa
+   prisskaermen stod "PR. MAANED" et stykke til venstre for det felt den
+   hoerte til.
+
+   Det er ikke et layoutproblem i én skaerm — det er ét sted i CSS'en, og
+   derfor rettes det her frem for med bredder i tredive tabeller. */
+.fc-table th.fc-num{text-align:right}
+.fc-table th.fc-midt{text-align:center}
+
+/* Feltet fylder sin celle, saa venstrekanten ogsaa staar lodret ned gennem
+   raekkerne — ikke kun cifrenes hoejrekant. max-width holder det fra at
+   blive absurd bredt i en kolonne med en lang overskrift. */
+.fc-num .fc-input-tal{width:100%; max-width:120px}
 .fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-pill-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}

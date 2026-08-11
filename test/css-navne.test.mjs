@@ -117,3 +117,27 @@ test("Et modul overtager ikke shellens klasser", () => {
       `(linje ${linjer.join(", ")}). Vælg et andet navn til det nye.`);
   }
 });
+
+test("En justeringsklasse taber ikke til en elementregel", () => {
+  /* ⚠ SPECIFICITET ER OGSAA "ÉN TING TO STEDER" — bare i CSS.
+     `.fc-table th` er 0,1,1 (klasse + element) og slaar `.fc-num` med 0,1,0.
+     Resultatet var at HVER talkolonne i hele platformen havde en
+     venstrestillet overskrift over hoejrestillede tal. Fejlen var usynlig i
+     den regel der forårsagede den — som `.fc-side` og `.fc-filtre` før den.
+
+     Prøven kræver at overstyringen findes, ikke at nogen husker den. */
+  const css = readFileSync(CSS, "utf8");
+
+  const saetter = (sel) =>
+    new RegExp(`(^|[},])\s*${sel.replace(/[.]/g, "\.")}\s*\{[^}]*text-align`, "m").test(css);
+
+  if (saetter(".fc-table th")) {
+    for (const k of ["fc-num", "fc-midt"]) {
+      assert.ok(
+        new RegExp(`\.fc-table th\.${k}\s*\{[^}]*text-align`).test(css),
+        `.fc-table th sætter text-align og slår .${k}. ` +
+        `Tilføj .fc-table th.${k} — ellers står overskriften ikke over sin kolonne.`
+      );
+    }
+  }
+});
