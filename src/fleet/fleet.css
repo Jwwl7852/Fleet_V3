@@ -139,9 +139,14 @@
 .fc-bad{color:var(--bc-block)} .fc-good{color:var(--bc-ok)} .fc-neutral{color:#8b97a8}
 
 .fc-table{width:100%; border-collapse:collapse}
-.fc-table th{text-align:left; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+.fc-table th{text-align:left; vertical-align:bottom; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
   color:#8b97a8; font-weight:650; padding:0 12px 9px; white-space:nowrap}
-.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:13px}
+/* ⚠ TABULARTAL I HVER CELLE. fc-num hoejrestiller de rene talkolonner, men
+   i en venstrestillet kolonne med tal — "12 m³", datoer, "3 af 14" — har
+   cifrene forskellig bredde i Inter, og saa danser kolonnen. Her faar hvert
+   ciffer samme bredde, saa de staar under hinanden uanset justering. */
+.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:13px;
+  font-variant-numeric:tabular-nums}
 .fc-table tbody tr:hover{background:#fafbfd}
 /* Valgt raekke i en klikbar tabel. Bruger accent-tokenet frem for en ny farve,
    og markerer med en kant i venstre side saa markeringen ogsaa kan ses uden

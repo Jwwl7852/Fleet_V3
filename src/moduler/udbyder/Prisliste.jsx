@@ -25,16 +25,18 @@ import { db } from "../../firebase.js";
 import { kr, num, dato, datoTid, pct } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
-  Henter, Tom, KpiKort, KpiRaekke,
+  Henter, Tom,
 } from "../../fleet/ui.jsx";
 import { MODUL, ALLE_MODULER } from "../../fleet/moduler.js";
 import {
   BRUGERART, ALLE_BRUGERARTER, tomPrisliste, validerPrisliste,
-  gaeldendePrisliste, periodeGraenser,
+  gaeldendePrisliste, periodeGraenser, MOMSSATS,
 } from "../../fleet/priser.js";
 import { bpsTilPct } from "../../fleet/beloeb.js";
 import { csv, csvOere, filnavn } from "../../fleet/eksport.js";
-import { opretPrisliste, opretGrundlag, maalNu } from "../../fleet/udbyder.js";
+import {
+  opretPrisliste, opretGrundlag, maalNu, sletPrisliste,
+} from "../../fleet/udbyder.js";
 
 /* Kroner i feltet, øre i basen. ⚠ To skalaer fakturerer 100× forkert. */
 const kronerFelt = (oere) => (Number.isFinite(oere) && oere ? String(oere / 100) : "");
@@ -82,22 +84,22 @@ function Satser({ liste, visAlle }) {
         <thead>
           <tr>
             <th>Modul</th>
-            <th style={{ textAlign: "right" }}>Pr. måned</th>
+            <th className="fc-num">Pr. måned</th>
             {ALLE_BRUGERARTER.map((a) => (
-              <th key={a} style={{ textAlign: "right" }}>Pr. {BRUGERART[a].label.toLowerCase()}</th>
+              <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
             ))}
-            <th style={{ textAlign: "right" }}>Pr. køretøj</th>
+            <th className="fc-num">Pr. køretøj</th>
           </tr>
         </thead>
         <tbody>
           {raekker.map((r) => (
             <tr key={r.modul}>
               <td><b>{MODUL[r.modul]?.label || r.modul}</b></td>
-              <td style={{ textAlign: "right" }}>{sats(r.basisOere)}</td>
+              <td className="fc-num">{sats(r.basisOere)}</td>
               {ALLE_BRUGERARTER.map((a) => (
-                <td key={a} style={{ textAlign: "right" }}>{sats(r.prBrugerOere?.[a])}</td>
+                <td key={a} className="fc-num">{sats(r.prBrugerOere?.[a])}</td>
               ))}
-              <td style={{ textAlign: "right" }}>{sats(r.prKoeretoejOere)}</td>
+              <td className="fc-num">{sats(r.prKoeretoejOere)}</td>
             </tr>
           ))}
         </tbody>
@@ -151,9 +153,7 @@ const grundlagCsv = (periode, raekker) =>
 /* ---- Ny prisliste ------------------------------------------------------- */
 
 function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
-  const [momssats, saetMoms] = useState(
-    udgangspunkt && Number.isFinite(udgangspunkt.momssats) ? String(udgangspunkt.momssats) : ""
-  );
+
   const [fra, saetFra] = useState(() => {
     /* Den 1. i næste måned. ⚠ Sæt ALTID gyldigFraMs til den 1.: generatoren
        bruger listen der gjaldt ved periodens BEGYNDELSE, og en dato midt i en
@@ -189,7 +189,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
 
   const liste = {
     gyldigFraMs: Date.parse(`${fra}T00:00:00.000Z`),
-    momssats: Number(momssats),
+    momssats: MOMSSATS,
     moduler: p,
   };
   const fejl = validerPrisliste(liste, { kendteModuler: ALLE_MODULER });
@@ -209,23 +209,28 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                 gemLabel="Læg prislisten" onAnnuller={paaLuk} svar={svar}>
         <Feltraekke>
           <Felt id="pl-fra" label="Gælder fra" kraevet type="date" vaerdi={fra} saet={saetFra}
-                hint="Sæt den til den 1. Generatoren bruger den liste der gjaldt ved periodens begyndelse." />
-          {/* ⚠ MOMSSATSEN GÆTTES IKKE. Ikke 25, ikke 0 — se validerLinje() i
-              grundlag.js. Uden den kan grundlaget ikke eksporteres. */}
-          <Felt id="pl-moms" label="Momssats (%)" kraevet vaerdi={momssats} saet={saetMoms}
-                hint="Gættes ikke. Uden den nægtes eksporten." />
+                hint="Listen gælder fra denne dato og fremad — indtil en nyere liste tager over." />
         </Feltraekke>
+
+        {/* ⚠ MOMSSATSEN ER FAST OG SÆTTES IKKE HER. Det er FleetControls egen
+            faktura til en dansk vognmand: 25 % hver gang. Et åbent felt ville
+            ikke give præcision, men en tastefejl at lave. Se MOMSSATS i
+            priser.js — og noten dér om hvorfor det IKKE er samme sag som
+            kundens eget fakturagrundlag, hvor satsen faktisk varierer. */}
+        <p className="fc-hint">
+          Moms <b>{MOMSSATS} %</b> — fast. Sættes ét sted i koden, ikke pr. liste.
+        </p>
 
         <div style={{ overflowX: "auto" }}>
           <table className="fc-table">
             <thead>
               <tr>
                 <th>Modul</th>
-                <th style={{ textAlign: "right" }}>Pr. måned</th>
+                <th className="fc-num">Pr. måned</th>
                 {ALLE_BRUGERARTER.map((a) => (
-                  <th key={a} style={{ textAlign: "right" }}>Pr. {BRUGERART[a].label.toLowerCase()}</th>
+                  <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
                 ))}
-                <th style={{ textAlign: "right" }}>Pr. køretøj</th>
+                <th className="fc-num">Pr. køretøj</th>
               </tr>
             </thead>
             <tbody>
@@ -235,19 +240,19 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                     <b>{MODUL[m].label}</b>
                     {MODUL[m].altid && <> <Pille tone="info">basis</Pille></>}
                   </td>
-                  <td style={{ textAlign: "right" }}>
+                  <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
                            value={kronerFelt(p[m].basisOere)}
                            onChange={(e) => saetSats(m, "basisOere", e.target.value)} />
                   </td>
                   {ALLE_BRUGERARTER.map((a) => (
-                    <td key={a} style={{ textAlign: "right" }}>
+                    <td key={a} className="fc-num">
                       <input className="fc-input-tal" inputMode="decimal"
                              value={kronerFelt(p[m].prBrugerOere[a])}
                              onChange={(e) => saetSats(m, `bruger:${a}`, e.target.value)} />
                     </td>
                   ))}
-                  <td style={{ textAlign: "right" }}>
+                  <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
                            value={kronerFelt(p[m].prKoeretoejOere)}
                            onChange={(e) => saetSats(m, "prKoeretoejOere", e.target.value)} />
@@ -293,6 +298,7 @@ export default function Prisliste() {
       .toISOString().slice(0, 7);
   });
   const [arbejder, saetArbejder] = useState(false);
+  const [sletter, saetSletter] = useState(null);
   const [svar, saetSvar] = useState(null);
 
   /**
@@ -345,6 +351,23 @@ export default function Prisliste() {
 
   const aaben = alle.find((l) => l.id === aabenId) || null;
 
+  /* Den nærmest FØLGENDE liste. `alle` er sorteret nyest først, så afløseren
+     står lige før i rækken. */
+  const afloeser = (l) => {
+    const i = alle.findIndex((x) => x.id === l.id);
+    return i > 0 ? alle[i - 1] : null;
+  };
+
+  /* ⚠ HVILKE PERIODER ER REGNET AF LISTEN. Samme opslag som funktionen laver
+     — men her for at kunne SIGE det, ikke for at afgøre det. Afgørelsen
+     ligger på serveren; ellers kunne en ændret klient slette en brugt liste. */
+  const brugtI = (l) =>
+    Object.entries(grundlag)
+      .filter(([, kunder]) =>
+        Object.values(kunder || {}).some((g) => g?.prislisteId === l.id))
+      .map(([periode]) => periode)
+      .sort();
+
   const kald = async (fn) => {
     saetArbejder(true);
     const r = await fn();
@@ -376,21 +399,48 @@ export default function Prisliste() {
         </div>
       )}
 
-      <KpiRaekke>
-        <KpiKort label="Prislister" vaerdi={num(alle.length)}
-                 note={gaeldende ? `gældende fra ${dato(gaeldende.gyldigFraMs)}` : "ingen gælder endnu"} />
-        <KpiKort label="Momssats"
-                 vaerdi={gaeldende && Number.isFinite(gaeldende.momssats) ? `${gaeldende.momssats} %` : "—"}
-                 note={gaeldende ? "" : "gættes ikke"} />
-        <KpiKort label="Sidst rettet"
-                 vaerdi={sidstRettet ? dato(sidstRettet) : "—"}
-                 note={sidstRettet ? "en ny liste blev lagt" : "ingen lister"} />
-        <KpiKort label="Opgjorte perioder" vaerdi={num(Object.keys(grundlag).length)} />
-      </KpiRaekke>
 
       {ny && (
         <Nyliste udgangspunkt={gaeldende} paaLuk={() => saetNy(false)}
                  paaGemt={() => { saetNy(false); genindlaes(); }} />
+      )}
+
+      {sletter && (
+        <Kort titel={`Slet prislisten der gælder fra ${dato(sletter.gyldigFraMs)}?`}>
+          {/* ⚠ ADVARSLEN STÅR HER, AFVISNINGEN STÅR I FUNKTIONEN. En advarsel
+              man kan klikke væk, er ikke en kontrol: er listen brugt til at
+              gøre en periode op, afvises sletningen uanset hvad der klikkes. */}
+          <div className="fc-empty fc-empty-warn">
+            <p><b>Den forsvinder helt. Der er ingen fortryd.</b></p>
+            <p className="fc-hint" style={{ marginTop: 6 }}>
+              {brugtI(sletter).length > 0 ? (
+                <>
+                  ⚠ Listen er brugt til at gøre <b>{brugtI(sletter).join(", ")}</b> op.
+                  Serveren <b>afviser</b> at slette den — et grundlag der peger
+                  på en slettet prisliste, kan ikke dokumenteres.
+                </>
+              ) : (
+                <>
+                  Ingen opgørelse er regnet af den, så den er en kladde og ikke
+                  regnskabsmateriale. Er den <b>gældende</b>, tager den
+                  nærmest foregående liste over — og findes der ingen, kan der
+                  ikke gøres en periode op før du lægger en ny.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="fc-formular-knapper">
+            <Knap variant="primaer" disabled={arbejder || brugtI(sletter).length > 0}
+                  onClick={async () => {
+                    const r = await kald(() => sletPrisliste({ id: sletter.id }));
+                    if (r.ok) { saetSletter(null); saetAabenId(null); }
+                  }}>
+              {arbejder ? "Sletter …" : "Slet prislisten"}
+            </Knap>
+            <Knap onClick={() => saetSletter(null)} disabled={arbejder}>Behold den</Knap>
+          </div>
+          <Formularsvar svar={svar} />
+        </Kort>
       )}
 
       <Kort
@@ -417,6 +467,17 @@ export default function Prisliste() {
                     {l.gyldigFraMs > Date.now() && <> <Pille tone="info">kommende</Pille></>}
                   </>
                 ) },
+              /* ⚠ EN LISTE HAR INGEN SLUTDATO — den gælder til en NYERE tager
+                 over. En liste lagt 1. januar gælder hele året, hvis der ikke
+                 kommer en ny. Kolonnen regnes derfor af naboen i listen; den
+                 er ikke et felt, og den må ikke blive det: et gemt "gælder
+                 til" ville drive fra den næste liste. */
+              { key: "til", label: "Gælder til", render: (l) => {
+                  const naeste = afloeser(l);
+                  return naeste
+                    ? <span className="fc-hint">{dato(naeste.gyldigFraMs - 1)}</span>
+                    : <span className="fc-hint">indtil videre</span>;
+                } },
               { key: "lagt", label: "Lagt", render: (l) =>
                   (l.oprettetMs ? datoTid(l.oprettetMs) : <span className="fc-neutral">—</span>) },
               { key: "moms", label: "Moms", render: (l) => `${l.momssats} %` },
@@ -430,6 +491,10 @@ export default function Prisliste() {
                     <Knap onClick={() => hent(prislisteCsv(l),
                             filnavn(`prisliste-gaelder-${dato(l.gyldigFraMs)}`, l.oprettetMs))}>
                       Excel
+                    </Knap>
+                    <Knap onClick={() => { saetSletter(l); saetSvar(null); }}
+                          disabled={arbejder}>
+                      Slet
                     </Knap>
                   </span>
                 ) },

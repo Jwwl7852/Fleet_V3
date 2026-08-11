@@ -32,6 +32,7 @@ export const UDBYDERFUNKTION = {
   abonnement: "kundeabonnement",
   grundlag: "grundlagopret",
   maalnu: "maalnu",
+  prislisteSlet: "prislisteslet",
 };
 
 async function kald(navn, data) {
@@ -87,3 +88,7 @@ export const opretGrundlag = ({ periode }) =>
 /* ⚠ IKKE EN REPARATION. Målingen kan ikke laves bagud — knappen findes for at
    kunne se at kæden virker uden at vente et døgn. */
 export const maalNu = () => kald(UDBYDERFUNKTION.maalnu, {});
+
+/* ⚠ EN BRUGT LISTE AFVISES AF FUNKTIONEN, ikke af skaermen. En advarsel man
+   kan klikke vaek, er ikke en kontrol. */
+export const sletPrisliste = ({ id }) => kald(UDBYDERFUNKTION.prislisteSlet, { id });

@@ -256,6 +256,31 @@ export function maalingerIPeriode(alle = {}, periode) {
 
 /* ---- Prislisten -------------------------------------------------------- */
 
+/**
+ * Momssatsen på ABONNEMENTET. Fast 25 %.
+ *
+ * ⚠ DET SER UD SOM ET BRUD PÅ EN REGEL, OG DET ER DET IKKE — men forskellen
+ * er værd at have præcist, for de to ligner hinanden.
+ *
+ * `CLAUDE.md` siger: *sæt aldrig en momssats fordi den mangler — ikke 25,
+ * ikke 0.* Den regel gælder KUNDENS fakturagrundlag (vognmanden → hans
+ * kunder), hvor satsen faktisk varierer: kørsel til udlandet, EU-handel med
+ * omvendt betalingspligt og momsfri persontransport har ikke 25. Dér ville et
+ * gæt være en forkert momsangivelse.
+ *
+ * Det her er en anden faktura: FleetControl → en dansk vognmand, for et
+ * stykke software. Den er 25 % hver eneste gang så længe kunden er dansk. At
+ * lade et felt stå åbent ville ikke give præcision — det ville give en
+ * tastefejl at lave, og en pris der pludselig var 2,5 %.
+ *
+ * ⚠ FORUDSÆTNINGEN ER AT ALLE KUNDER ER DANSKE. Kommer den første kunde i
+ * Sverige eller Tyskland, er det omvendt betalingspligt og 0 %, og så skal
+ * satsen ligge på KUNDEN. Den står derfor ét sted — her — så det bliver én
+ * linje at rette og ikke en jagt. Reglerne validerer stadig 0-100, så
+ * datamodellen behøver ikke ændres den dag.
+ */
+export const MOMSSATS = 25;
+
 /** En tom prisliste for de moduler der kan sælges. */
 export function tomPrisliste(moduler = []) {
   const ud = {};

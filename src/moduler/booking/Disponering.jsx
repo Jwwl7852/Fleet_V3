@@ -430,7 +430,8 @@ function Uplanlagte() {
           { key: "senestMs", label: "Frist", render: (r) => (r.senestMs
               ? dato(r.senestMs)
               : <span className="fc-bad">mangler</span>) },
-          { key: "maengde", label: "Gods", render: (r) => `${num(r.maengde?.m3)} m³` },
+          { key: "maengde", label: "Gods", num: true,
+            render: (r) => `${num(r.maengde?.m3)} m³` },
         ]}
         raekker={aabne}
         tom="Ingen åbne etaper."

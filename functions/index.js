@@ -48,7 +48,7 @@ import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
 import {
   taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste, sammenfatMaalinger,
-  maalingerIPeriode, periodeGraenser, gaeldendePrisliste, linjerForPeriode,
+  maalingerIPeriode, periodeGraenser, MOMSSATS, gaeldendePrisliste, linjerForPeriode,
 } from "./delt/priser.js";
 
 initializeApp();
@@ -691,7 +691,13 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
 
   const liste = {
     gyldigFraMs: Number(d.gyldigFraMs),
-    momssats: Number(d.momssats),
+    /* ⚠ FAST 25 %, IKKE FRA NYTTELASTEN. Det er FleetControls egen faktura
+       til en dansk vognmand — den er 25 % hver gang. Et aabent felt ville
+       ikke give praecision, men en tastefejl at lave. Kommer den foerste
+       udenlandske kunde, staar satsen ét sted: MOMSSATS i priser.js.
+       Se noten dér om hvorfor det IKKE er samme sag som kundens eget
+       fakturagrundlag, hvor satsen faktisk varierer. */
+    momssats: MOMSSATS,
     moduler: d.moduler || {},
     oprettetAf: ejerUid,
     /* ⚠ TO DATOER, OG DE BETYDER IKKE DET SAMME. gyldigFraMs er hvornaar
@@ -915,4 +921,52 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
     kunder: Object.keys(ud).length,
     ialtOere: Object.values(ud).reduce((s, g) => s + (g.beloebOere || 0), 0),
   };
+});
+
+/**
+ * Slet en prisliste.
+ *
+ * ⚠ EN LISTE DER ER BRUGT, KAN IKKE SLETTES — og det er ikke en advarsel, det
+ * er en afvisning. Hvert frosset fakturagrundlag bærer `prislisteId`. Slettes
+ * listen, peger grundlaget på ingenting, og så kan en faktura ikke længere
+ * dokumenteres. Bogføringsmaterialet skal kunne forklares i fem år.
+ *
+ * ⚠ EN UBRUGT LISTE ER IKKE REGNSKABSDATA. Den er en kladde eller en
+ * tastefejl, og dér ville "tag den ud af drift med en status" bare give en
+ * liste over ting man skal se bort fra. Det er forskellen på at slette en
+ * FAKTURA og at slette et UDKAST.
+ *
+ * Advarslen står i skærmen; afvisningen står her. En advarsel man kan klikke
+ * væk, er ikke en kontrol.
+ */
+export const prislisteslet = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const id = kortStreng(req.data?.id, 60);
+  if (!id) throw new HttpsError("invalid-argument", "id mangler.");
+
+  const db = getDatabase();
+  if (!(await db.ref(`udbyder/prisliste/${id}`).once("value")).exists()) {
+    throw new HttpsError("not-found", "Prislisten findes ikke.");
+  }
+
+  /* Hvert grundlag i hver periode bærer den prisliste det blev regnet af. */
+  const alle = (await db.ref("udbyder/fakturagrundlag").once("value")).val() || {};
+  const brugtI = [];
+  for (const [periode, kunder] of Object.entries(alle)) {
+    for (const g of Object.values(kunder || {})) {
+      if (g?.prislisteId === id && !brugtI.includes(periode)) brugtI.push(periode);
+    }
+  }
+  if (brugtI.length) {
+    throw new HttpsError("failed-precondition",
+      `Prislisten er brugt til at gøre ${brugtI.sort().join(", ")} op og kan ikke slettes. ` +
+      `Et grundlag der peger på en slettet prisliste, kan ikke dokumenteres.`);
+  }
+
+  await db.ref(`udbyder/prisliste/${id}`).remove();
+  /* ⚠ INGEN AUDITPOST HOS EN KUNDE. Prislisten er vores, ikke én kundes — at
+     vælge en tilfældig tenant ville skrive en fremmed hændelse i hans log.
+     Se prislisteopret. */
+  console.log(`prislisteslet: ${id} af ${ejerUid}`);
+  return { ok: true, id };
 });

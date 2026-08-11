@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -426,5 +426,64 @@ describe("Perioden", () => {
     };
     assert.deepEqual(Object.keys(maalingerIPeriode(alle, "2026-08")),
       ["2026-08-01", "2026-08-31"]);
+  });
+});
+
+describe("Momssatsen på abonnementet", () => {
+  it("er fast 25 og står ÉT sted", () => {
+    /* ⚠ DET SER UD SOM ET BRUD PÅ EN REGEL, OG DET ER DET IKKE.
+       CLAUDE.md forbyder at gætte en momssats — men den regel gælder KUNDENS
+       fakturagrundlag, hvor satsen faktisk varierer (udlandskørsel, omvendt
+       betalingspligt, momsfri persontransport). Det her er FleetControls egen
+       faktura til en dansk vognmand: 25 % hver gang.
+
+       ⚠ FORUDSÆTNINGEN ER AT ALLE KUNDER ER DANSKE. Kommer den første
+       udenlandske, skal satsen på KUNDEN — og så er det den her ene
+       konstant der skal findes. */
+    assert.equal(MOMSSATS, 25);
+    const server = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+    assert.match(server, /momssats: MOMSSATS,/,
+      "prislisteopret tager momssatsen fra nyttelasten i stedet for kataloget.");
+    assert.doesNotMatch(server, /Number\(d\.momssats\)/,
+      "momssatsen kan stadig sendes med fra klienten.");
+  });
+
+  it("valideres stadig som et tal mellem 0 og 100", () => {
+    /* Datamodellen behøver ikke ændres den dag en udenlandsk kunde kommer. */
+    assert.deepEqual(validerPrisliste(
+      { gyldigFraMs: 1, momssats: MOMSSATS, moduler: {} }), []);
+    assert.ok(validerPrisliste({ gyldigFraMs: 1, momssats: 120, moduler: {} }).length);
+  });
+});
+
+describe("En gældende prisliste gælder fremad", () => {
+  it("bliver ved indtil en NYERE tager over", () => {
+    /* En liste lagt 1. januar gælder hele året, hvis der ikke kommer en ny. */
+    const jan = Date.UTC(2026, 0, 1);
+    const lister = { a: { gyldigFraMs: jan, momssats: 25 } };
+    for (const m of [0, 3, 6, 11]) {
+      const naar = Date.UTC(2026, m, 15);
+      assert.equal(gaeldendePrisliste(lister, naar)?.id, "a",
+        `listen gjaldt ikke i måned ${m + 1}`);
+    }
+    /* Og året efter. Den udløber ikke af sig selv. */
+    assert.equal(gaeldendePrisliste(lister, Date.UTC(2028, 5, 1))?.id, "a");
+  });
+
+  it("viger for en nyere fra dens dato — ikke før", () => {
+    const lister = {
+      a: { gyldigFraMs: Date.UTC(2026, 0, 1), momssats: 25 },
+      b: { gyldigFraMs: Date.UTC(2026, 6, 1), momssats: 25 },
+    };
+    assert.equal(gaeldendePrisliste(lister, Date.UTC(2026, 5, 30))?.id, "a");
+    assert.equal(gaeldendePrisliste(lister, Date.UTC(2026, 6, 1))?.id, "b");
+  });
+
+  it("kender ingen slutdato — den regnes af naboen", () => {
+    /* ⚠ Et gemt "gælder til" ville drive fra den næste liste. Skærmen regner
+       den af rækkefølgen; feltet findes ikke, og må ikke komme til. */
+    const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
+    assert.doesNotMatch(regler, /gyldigTilMs|gaelderTil/,
+      "prislisten har fået en slutdato som felt — den skal regnes af naboen.");
   });
 });
