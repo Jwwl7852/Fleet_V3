@@ -153,7 +153,25 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
 
        ⚠ De tre under udbyder/ er ikke kundedata. Prislisten er vores,
        målingerne er tal og ingen rækker, og kunder er et eksistensindeks. */
-    assert.equal(undtaget.length, 7, "forventede syv regler med udbyder-claimet");
+    /* ⚠ AT TAELLE REGLER ER IKKE AT VIDE HVOR DE ER, og den her proeve var
+       GROEN mens fakturagrundlag-reglen laa i
+       tenants/$tenantId/facility/sensorer/$zoneId. Jeg haevede tallet fra 6
+       til 7 da jeg tilfoejede den, og antog at den var landet rigtigt — den
+       var indsat med et anker der matchede som UNDERSTRENG.
+
+       Den spoerger nu om STIEN. Et tal kan man rette; en sti skal man
+       beslutte. Reglen gav ingen adgang — en .read gaelder kun ved og under
+       sin egen sti, og den sti fandtes ikke — men grundlaget kunne ikke
+       laeses, og skaermen viste 'ingen prisliste endnu'. */
+    assert.deepEqual(undtaget.map((r) => r.sti).sort(), [
+      "/tenants/$tenantId/abonnement/.read",
+      "/tenants/$tenantId/moduler/.read",
+      "/tenants/$tenantId/virksomhed/.read",
+      "/udbyder/fakturagrundlag/.read",
+      "/udbyder/kunder/.read",
+      "/udbyder/maalinger/.read",
+      "/udbyder/prisliste/.read",
+    ], "en regel med udbyder-claim'et staar et andet sted end besluttet.");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);
     }

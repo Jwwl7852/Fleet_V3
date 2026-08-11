@@ -295,15 +295,36 @@ export default function Prisliste() {
   const [arbejder, saetArbejder] = useState(false);
   const [svar, saetSvar] = useState(null);
 
+  /**
+   * ⚠ EN AFVIST LAESNING ER IKKE 'INGEN PRISLISTER'.
+   *
+   * Her stod `.catch(() => saetLister({}))`, og det er samme fejl som
+   * beslutning 26 handler om: reglerne VIRKEDE, og skaermen oversatte det
+   * til at der ikke var noget. Fem prislister laa i basen mens skaermen
+   * skrev 'Ingen prisliste endnu'.
+   *
+   * ⚠ OG DE TO LAESNINGER ER SKILT AD. De laa i ét Promise.all, saa en
+   * afvisning paa fakturagrundlag skjulte prislisterne. To spoergsmaal, to
+   * svar — den ene maa ikke kunne slaa den anden ihjel.
+   */
+  const [fejl, saetFejl] = useState(null);
+
   const genindlaes = async () => {
-    const [l, g] = await Promise.all([
-      db.ref("udbyder/prisliste").once("value"),
-      db.ref("udbyder/fakturagrundlag").once("value"),
-    ]);
-    saetLister(l.val() || {});
-    saetGrundlag(g.val() || {});
+    saetFejl(null);
+    try {
+      saetLister((await db.ref("udbyder/prisliste").once("value")).val() || {});
+    } catch (e) {
+      saetLister({});
+      saetFejl(e);
+    }
+    try {
+      saetGrundlag((await db.ref("udbyder/fakturagrundlag").once("value")).val() || {});
+    } catch (e) {
+      saetGrundlag({});
+      saetFejl((f) => f || e);
+    }
   };
-  useEffect(() => { genindlaes().catch(() => saetLister({})); }, []);
+  useEffect(() => { genindlaes(); }, []);
 
   if (lister === null) return <Henter hvad="prislisten" />;
 
@@ -342,6 +363,18 @@ export default function Prisliste() {
         <Link className="fc-a" to="/main">← Kunder</Link>
         <span className="fc-hint">Priser &amp; fakturagrundlag</span>
       </div>
+
+      {fejl && (
+        <div className="fc-empty fc-empty-bad">
+          <p><b>Læsningen blev afvist.</b></p>
+          <p className="fc-hint" style={{ marginTop: 6 }}>
+            Det er ikke et tomt katalog — det er reglerne der virker. Har
+            kontoen udbyderadgang? Den gives med <code>npm run ejer:giv</code>.
+          </p>
+          <p className="fc-hint" style={{ marginTop: 6 }}>{String(fejl?.message || fejl)}</p>
+          <Knap onClick={genindlaes}>Prøv igen</Knap>
+        </div>
+      )}
 
       <KpiRaekke>
         <KpiKort label="Prislister" vaerdi={num(alle.length)}

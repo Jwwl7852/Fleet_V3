@@ -679,41 +679,7 @@
                 "fugtPct": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
                 "ms": { ".validate": "newData.isNumber()" }
               },
-              // ══════════════════════════════════════════════════════════════
-      // FAKTURAGRUNDLAGET — frosset, og derfor uskriveligt
-      // ══════════════════════════════════════════════════════════════
-      //
-      // ⚠ ET GRUNDLAG ER ET DOKUMENT, IKKE EN BEREGNING. Genberegnede vi
-      // det hver gang skaermen blev aabnet, ville et gammelt grundlag
-      // aendre sig naar prislisten eller rabatten aendrede sig — og en
-      // faktura fra marts ville faa nye tal i april. Dokumentet gemmer
-      // sine EGNE satser og regner aldrig igen.
-      //
-      // ⚠ DET ER FRYSNINGEN DER BESKYTTER MARTS, ikke at prislisten er
-      // versioneret. Versioneringen giver sporbarhed. De to forveksles.
-      //
-      // ⚠ .write: false OG INGEN VEJ TIL AT RETTE. En rettelse er et NYT
-      // grundlag der henviser til det gamle — som erstat() i grundlag.js.
-      // Kunne dokumentet redigeres, ville en rettelse se ud som en
-      // rettelse og vaere en sletning.
-      "fakturagrundlag": {
-        ".read": "auth != null && auth.token.udbyder === true",
-        ".write": false,
-        "$periode": {
-          "$kundeId": {
-            ".validate": "newData.hasChildren(['periode', 'kundeId', 'laast', 'beloebOere'])",
-            "laast": { ".validate": "newData.isBoolean() && newData.val() === true" },
-            // ⚠ OERE SOM INTEGER, ogsaa her. Beslutning 2.
-            "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
-            // ⚠ momsOere maa vaere null: mangler bare én linje sin sats, er
-            // et halvt momsbeloeb vaerre end intet. Se totalerAfLinjer().
-            "momsOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
-            "ialtOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" }
-          }
-        }
-      },
-
-      "maalinger": {
+                "maalinger": {
                 ".indexOn": ["ms"],
                 "$maalingId": {
                   "tempC": { ".validate": "newData.isNumber()" },
@@ -926,6 +892,36 @@
       //
       // ⚠ MOMSSATSEN STAAR PAA LISTEN OG GAETTES IKKE. Ikke 25, ikke 0 —
       // se validerLinje() i grundlag.js. Uden den kan der ikke eksporteres.
+      // ══════════════════════════════════════════════════════════════
+      // FAKTURAGRUNDLAGET — frosset, og derfor uskriveligt
+      // ══════════════════════════════════════════════════════════════
+      //
+      // ⚠ ET GRUNDLAG ER ET DOKUMENT, IKKE EN BEREGNING. Genberegnede vi
+      // det hver gang skaermen blev aabnet, ville et gammelt grundlag
+      // aendre sig naar prislisten eller rabatten aendrede sig — og en
+      // faktura fra marts ville faa nye tal i april.
+      //
+      // ⚠ .write: false OG INGEN VEJ TIL AT RETTE. En rettelse er et NYT
+      // grundlag der henviser til det gamle — som erstat() i grundlag.js.
+      //
+      // ⚠ DEN HER REGEL LAA ÉT DOEGN I facility/sensorer/$zoneId, fordi et
+      // anker matchede som UNDERSTRENG. Den gav ingen adgang — en .read
+      // gaelder kun ved og under sin egen sti, og den sti findes ikke — men
+      // grundlaget kunne ikke laeses, og skaermen viste "ingen prisliste".
+      "fakturagrundlag": {
+        ".read": "auth != null && auth.token.udbyder === true",
+        ".write": false,
+        "$periode": {
+          "$kundeId": {
+            ".validate": "newData.hasChildren(['periode', 'kundeId', 'laast', 'beloebOere'])",
+            "laast": { ".validate": "newData.isBoolean() && newData.val() === true" },
+            "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+            "momsOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+            "ialtOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" }
+          }
+        }
+      },
+
       "prisliste": {
         ".read": "auth != null && auth.token.udbyder === true",
         ".write": false,
