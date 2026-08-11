@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -485,5 +485,73 @@ describe("En gældende prisliste gælder fremad", () => {
     const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
     assert.doesNotMatch(regler, /gyldigTilMs|gaelderTil/,
       "prislisten har fået en slutdato som felt — den skal regnes af naboen.");
+  });
+});
+
+describe("Rabat pr. modul — og hvad der overruler hvad", () => {
+  it("bruger modulets rabat når der ingen generel er", () => {
+    assert.equal(rabatFor("flaade", { rabatBps: 0, rabatModulBps: { flaade: 1000 } }), 1000);
+    assert.equal(rabatFor("bemanding", { rabatBps: 0, rabatModulBps: { flaade: 1000 } }), 0);
+  });
+
+  it("lader den GENERELLE overrule modulernes", () => {
+    /* ⚠ REGLEN STÅR ÉT STED. Skrev skærmen sin egen udgave, ville den vise ét
+       tal og serveren fakturere et andet — og det ville først blive opdaget
+       når kunden lagde linjerne sammen. */
+    const a = { rabatBps: 1500, rabatModulBps: { flaade: 500, bemanding: 9000 } };
+    assert.equal(rabatFor("flaade", a), 1500);
+    assert.equal(rabatFor("bemanding", a), 1500, "en STØRRE modulrabat vandt over den generelle");
+    assert.equal(rabatFor("kunder", a), 1500);
+  });
+
+  it("lader modulerne træde i kraft igen når den generelle sættes til nul", () => {
+    /* Modulrabatterne bliver stående. Det er forskellen på et tomt felt og et
+       felt med et nul i, og den skal kunne mærkes. */
+    const modul = { flaade: 500 };
+    assert.equal(rabatFor("flaade", { rabatBps: 1500, rabatModulBps: modul }), 1500);
+    assert.equal(rabatFor("flaade", { rabatBps: 0, rabatModulBps: modul }), 500);
+  });
+
+  it("slår igennem på linjerne", () => {
+    const grund = {
+      prisliste: PRISLISTE,
+      moduldage: { flaade: 31, bemanding: 31 },
+      dageIPerioden: 31,
+      antalBrugere: { chauffoer: 10, desktop: 2 },
+      antalKoeretoejer: 5,
+    };
+    const l = linjerForPeriode({ ...grund, rabatModulBps: { flaade: 2000 } });
+    const fl = l.find((x) => x.modul === "flaade" && x.akse === "basis");
+    const be = l.find((x) => x.modul === "bemanding" && x.akse === "basis");
+    assert.equal(fl.rabatBps, 2000, "flåde fik ikke sin egen rabat");
+    assert.equal(fl.satsOere, rabatteretSatsOere(49500, 2000));
+    assert.equal(be.rabatBps, 0, "bemanding fik en rabat den ikke havde");
+    assert.equal(be.satsOere, 29500);
+  });
+
+  it("holder linjesum og total sammen også med blandede rabatter", () => {
+    /* Den vigtigste prøve i filen, nu med to satser i spil. */
+    const l = linjerForPeriode({
+      prisliste: PRISLISTE,
+      moduldage: { flaade: 31, bemanding: 19, booking: 31 },
+      dageIPerioden: 31,
+      antalBrugere: { chauffoer: 13, desktop: 7 },
+      antalKoeretoejer: 11,
+      rabatModulBps: { flaade: 1234, booking: 777 },
+    });
+    const t = abonnementstotaler(l);
+    assert.equal(t.beloebOere, l.reduce((s, x) => s + linjeBeloebOere(x), 0));
+    /* Og linjerne bærer HVER sin sats — ikke én fælles. */
+    assert.equal(new Set(l.map((x) => x.rabatBps)).size, 3);
+  });
+
+  it("ignorerer en rabat på et modul kunden ikke har", () => {
+    /* Modulet er ikke i moduldage, så der er ingen linje at give rabat på.
+       Aftalen bliver stående og træder i kraft den dag modulet tilvælges. */
+    const l = linjerForPeriode({
+      prisliste: PRISLISTE, moduldage: { flaade: 31 }, dageIPerioden: 31,
+      antalKoeretoejer: 2, rabatModulBps: { bemanding: 5000 },
+    });
+    assert.ok(!l.some((x) => x.modul === "bemanding"));
   });
 });

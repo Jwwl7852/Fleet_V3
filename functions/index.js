@@ -771,6 +771,31 @@ export const kundeabonnement = onCall({ region: REGION }, async (req) => {
     post.startetMs = ms;
   }
 
+  if (d.rabatModulBps !== undefined) {
+    /* ⚠ ET MAP, IKKE EN LISTE. Nøglen er modulnavnet, og et ukendt modul
+       afvises: en rabat på et modul der ikke findes, ville ligge og se ud som
+       en aftale ingen kunne finde igen. */
+    const m = d.rabatModulBps;
+    if (m !== null && (typeof m !== "object" || Array.isArray(m))) {
+      throw new HttpsError("invalid-argument", "rabatModulBps skal være et map.");
+    }
+    const ud = {};
+    for (const [modul, bps] of Object.entries(m || {})) {
+      if (!ALLE_MODULER.includes(modul)) {
+        throw new HttpsError("invalid-argument", `Ukendt modul: ${modul}`);
+      }
+      const n = Number(bps);
+      if (!Number.isInteger(n) || n < 0 || n > 10000) {
+        throw new HttpsError("invalid-argument",
+          `Rabatten på ${modul} skal være basispoint mellem 0 og 10000.`);
+      }
+      /* ⚠ NUL GEMMES IKKE. Et modul med 0 % er et modul uden rabat, og en
+         node fuld af nuller ville se ud som aftaler der ikke findes. */
+      if (n > 0) ud[modul] = n;
+    }
+    post.rabatModulBps = Object.keys(ud).length ? ud : null;
+  }
+
   if (Object.keys(post).length === 2) {
     throw new HttpsError("invalid-argument", "Intet at ændre.");
   }
@@ -817,13 +842,14 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
   const s = sammenfatMaalinger(maalingerIPeriode(maalinger, periode));
 
   const rabatBps = Number.isInteger(abonnement?.rabatBps) ? abonnement.rabatBps : 0;
+  const rabatModulBps = abonnement?.rabatModulBps || {};
   const linjer = linjerForPeriode({
     prisliste,
     moduldage: s.moduldage,
     dageIPerioden: graenser.dage,
     antalBrugere: s.brugere,
     antalKoeretoejer: s.koeretoejer,
-    rabatBps,
+    rabatBps, rabatModulBps,
   }).map((l) => ({ ...l, prislisteId: prisliste.id || null }));
 
   const t = totalerAfLinjer(linjer);
@@ -841,7 +867,11 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
     dageFaktureres: s.dageFaktureres,
     hoejesteBrugere: s.brugere,
     hoejesteKoeretoejer: s.koeretoejer,
+    /* ⚠ BEGGE STAAR PAA GRUNDLAGET. Linjen baerer den rabat der FAKTISK blev
+       brugt; de her to siger hvad der var aftalt, saa det kan ses hvorfor.
+       En generel rabat over nul overruler modulernes — se rabatFor(). */
     rabatBps,
+    rabatModulBps: Object.keys(rabatModulBps).length ? rabatModulBps : null,
     prislisteId: prisliste.id || null,
     momssats: Number.isFinite(prisliste.momssats) ? prisliste.momssats : null,
     linjer,
@@ -871,55 +901,56 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
       `Perioden ${periode} er ikke slut endnu. Et grundlag der fryses for tidligt, mangler resten af måneden for altid.`);
   }
 
-  const db = getDatabase();
-  const rod = `udbyder/fakturagrundlag/${periode}`;
+  /* ⚠ ÉN KUNDE AD GANGEN. Foerst blev hele perioden skrevet i ét saet med
+     begrundelsen "enten staar hele opgoerelsen, eller ogsaa staar ingen af
+     den". Det var forkert: hver kundes grundlag er et SELVSTAENDIGT dokument
+     med sine egne satser og sin egen rabat, og at binde dem sammen betoed at
+     én kunde uden maalinger holdt de andre tilbage.
 
-  if ((await db.ref(rod).once("value")).exists()) {
+     Bekymringen om en halv opgoerelse er loest et andet sted: skaermen viser
+     hvilke kunder der er gjort op og hvilke der ikke er. En delvis opgoerelse
+     der KAN SES, er ikke farlig — det er en usynlig der er. */
+  const kundeId = kraevKundeId(d);
+
+  const db = getDatabase();
+  const sti = `udbyder/fakturagrundlag/${periode}/${kundeId}`;
+
+  if (!(await kundeFindes(kundeId))) {
+    throw new HttpsError("not-found", `Kunden "${kundeId}" findes ikke.`);
+  }
+  if ((await db.ref(sti).once("value")).exists()) {
     throw new HttpsError("already-exists",
-      `Grundlaget for ${periode} findes allerede. En rettelse er et NYT grundlag der henviser til det gamle — den vej er ikke bygget.`);
+      `${kundeId} er allerede gjort op for ${periode}. En rettelse er et NYT grundlag der henviser til det gamle — den vej er ikke bygget.`);
   }
 
   const lister = (await db.ref("udbyder/prisliste").once("value")).val() || {};
   const prisliste = gaeldendePrisliste(lister, graenser.fra);
   if (!prisliste) {
     throw new HttpsError("failed-precondition",
-      `Ingen prisliste gjaldt ved begyndelsen af ${periode}. Opret en med gyldigFraMs den 1. i måneden.`);
+      `Ingen prisliste gjaldt ved begyndelsen af ${periode}. Opret en med gyldigFraMs den 1. i maaneden.`);
   }
 
-  const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
-  const ud = {};
-  for (const id of Object.keys(indeks)) {
-    const [maal, abon] = await Promise.all([
-      db.ref(`udbyder/maalinger/${id}`).once("value"),
-      db.ref(`tenants/${id}/abonnement`).once("value"),
-    ]);
-    const g = byggKundegrundlag({
-      id, periode, graenser,
-      maalinger: maal.val() || {},
-      prisliste,
-      abonnement: abon.val(),
-    });
-    g.genereretMs = Date.now();
-    g.genereretAf = ejerUid;
-    ud[id] = g;
-  }
+  const [maal, abon] = await Promise.all([
+    db.ref(`udbyder/maalinger/${kundeId}`).once("value"),
+    db.ref(`tenants/${kundeId}/abonnement`).once("value"),
+  ]);
+  const g = byggKundegrundlag({
+    id: kundeId, periode, graenser,
+    maalinger: maal.val() || {},
+    prisliste,
+    abonnement: abon.val(),
+  });
+  g.genereretMs = Date.now();
+  g.genereretAf = ejerUid;
 
-  /* Ét skriv. Enten står hele perioden, eller også står ingen af den — en
-     halv opgørelse er værre end ingen, fordi den ser færdig ud. */
-  await db.ref(rod).set(ud);
+  await db.ref(sti).set(g);
 
-  for (const id of Object.keys(ud)) {
-    /* ⚠ LOGGES HOS KUNDEN. Det er hans regning. `eksporter` er en
-       sikkerhedshandling i klasseFor(), så posten havner i sikkerhedslogget
-       med den længste opbevaring — og det er det rigtige for et
-       faktureringsgrundlag. */
-    await log(id, ejerUid, AUDIT.opret, `${periode}`, `fakturagrundlag ${periode}`);
-  }
+  /* ⚠ LOGGES HOS KUNDEN. Det er hans regning. */
+  await log(kundeId, ejerUid, AUDIT.opret, periode, `fakturagrundlag ${periode}`);
 
   return {
-    ok: true, periode,
-    kunder: Object.keys(ud).length,
-    ialtOere: Object.values(ud).reduce((s, g) => s + (g.beloebOere || 0), 0),
+    ok: true, periode, kundeId,
+    beloebOere: g.beloebOere, linjer: (g.linjer || []).length,
   };
 });
 

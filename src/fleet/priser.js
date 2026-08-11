@@ -381,9 +381,33 @@ export const LINJEAKSE = {
  * @param antalKoeretoejer
  * @param rabatBps
  */
+/**
+ * Hvilken rabat gælder på ET modul?
+ *
+ * ⚠ EN GENEREL RABAT OVERRULER ALT. Er der tastet en procent i kundens
+ * rabatfelt, gælder den på hver linje — også på et modul der har sin egen.
+ * Modulrabatterne er stadig gemt, så de træder i kraft igen i det øjeblik den
+ * generelle sættes til nul.
+ *
+ * ⚠ REGLEN STÅR HER OG KUN HER. Skrev skærmen sin egen udgave, ville den vise
+ * ét tal og serveren fakturere et andet — og det ville først blive opdaget når
+ * kunden lagde linjerne sammen. Både formularen, generatoren og eksporten
+ * spørger den her funktion.
+ *
+ * NUL BETYDER "INGEN GENEREL RABAT", ikke "0 % på alt". Det er forskellen på
+ * et tomt felt og et felt med et nul i, og den skal kunne mærkes: ellers
+ * kunne man ikke slå den generelle fra igen uden at miste modulrabatterne.
+ */
+export function rabatFor(modul, { rabatBps = 0, rabatModulBps = {} } = {}) {
+  const generel = Number.isInteger(rabatBps) ? rabatBps : 0;
+  if (generel > 0) return generel;
+  const paaModul = rabatModulBps?.[modul];
+  return Number.isInteger(paaModul) && paaModul > 0 ? paaModul : 0;
+}
+
 export function linjerForPeriode({
   prisliste, moduldage = {}, dageIPerioden,
-  antalBrugere = {}, antalKoeretoejer = 0, rabatBps = 0,
+  antalBrugere = {}, antalKoeretoejer = 0, rabatBps = 0, rabatModulBps = {},
 } = {}) {
   const linjer = [];
   if (!prisliste || !Number.isFinite(dageIPerioden) || dageIPerioden <= 0) return linjer;
@@ -392,6 +416,10 @@ export function linjerForPeriode({
   const moduler = prisliste.moduler || {};
 
   const laeg = ({ modul, akse, brugerart, enheder, listeprisOere, dage }) => {
+    /* ⚠ RABATTEN SLAAS OP PR. MODUL. rabatFor() afgoer om den generelle
+       overruler modulets — reglen staar ét sted, saa skaerm og server ikke
+       kan regne forskelligt. */
+    const bps = rabatFor(modul, { rabatBps, rabatModulBps });
     if (!erHeltal(listeprisOere) || listeprisOere === 0) return;
     if (!enheder || enheder <= 0) return;
     const andel = Math.min(1, Math.max(0, dage / dageIPerioden));
@@ -402,10 +430,10 @@ export function linjerForPeriode({
     linjer.push({
       modul, akse, brugerart: brugerart || null,
       antal,
-      satsOere: rabatteretSatsOere(listeprisOere, rabatBps),
+      satsOere: rabatteretSatsOere(listeprisOere, bps),
       momssats,
       /* Dokumentation. Ikke regnegrundlag. */
-      listeprisOere, rabatBps, enheder, dage, dageIPerioden,
+      listeprisOere, rabatBps: bps, enheder, dage, dageIPerioden,
     });
   };
 

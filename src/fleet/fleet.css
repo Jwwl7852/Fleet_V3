@@ -76,6 +76,14 @@
 .fc-udbyder{flex-direction:column}
 .fc-udbyder .fc-top{align-items:center; justify-content:space-between}
 .fc-udbyder .fc-brand{padding-left:0; color:var(--bc-text)}
+/* ⚠ SMALLERE END KUNDESHELLEN, og det er ikke smag. Konsollen har ingen
+   sidebar, saa indholdet ville ellers staa fra kant til kant paa en bred
+   skaerm — og en tabel paa 2000 px er ikke lettere at laese, den er
+   svaerere: oejet mister raekken paa vej ud. ~80 % med en oevre graense. */
+.fc-udbyder .fc-slot,.fc-udbyder .fc-top{width:80%; max-width:1360px; margin-left:auto; margin-right:auto}
+@media (max-width:900px){
+  .fc-udbyder .fc-slot,.fc-udbyder .fc-top{width:auto; margin-left:0; margin-right:0}
+}
 
 .fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
   display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}

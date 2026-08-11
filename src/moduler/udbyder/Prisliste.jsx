@@ -299,6 +299,7 @@ export default function Prisliste() {
   });
   const [arbejder, saetArbejder] = useState(false);
   const [sletter, saetSletter] = useState(null);
+  const [kunder, saetKunder] = useState([]);
   const [svar, saetSvar] = useState(null);
 
   /**
@@ -327,6 +328,18 @@ export default function Prisliste() {
       saetGrundlag((await db.ref("udbyder/fakturagrundlag").once("value")).val() || {});
     } catch (e) {
       saetGrundlag({});
+      saetFejl((f) => f || e);
+    }
+    try {
+      const i = (await db.ref("udbyder/kunder").once("value")).val() || {};
+      const ider = Object.keys(i).sort((a, b) => a.localeCompare(b, "da"));
+      /* Navnet staar under tenanten — ét sted. Se noten i Konsol.jsx. */
+      saetKunder(await Promise.all(ider.map(async (id) => ({
+        id,
+        navn: (await db.ref(`tenants/${id}/virksomhed/navn`).once("value")).val() || id,
+      }))));
+    } catch (e) {
+      saetKunder([]);
       saetFejl((f) => f || e);
     }
   };
@@ -481,7 +494,10 @@ export default function Prisliste() {
               { key: "lagt", label: "Lagt", render: (l) =>
                   (l.oprettetMs ? datoTid(l.oprettetMs) : <span className="fc-neutral">—</span>) },
               { key: "moms", label: "Moms", render: (l) => `${l.momssats} %` },
-              { key: "antal", label: "Moduler med en pris", num: true, render: (l) =>
+              /* ⚠ VENSTRESTILLET MED VILJE. Et antal er et tal, men kolonnen
+                 staar mellem to tekstkolonner, og et enkelt ciffer klemt ud
+                 til hoejre under en lang overskrift ser ud som en fejl. */
+              { key: "antal", label: "Moduler med en pris", render: (l) =>
                   num(ALLE_MODULER.filter((m) => harSats(l.moduler?.[m])).length) },
               { key: "handling", label: "", render: (l) => (
                   <span className="fc-med-ikon fc-ikke-print" style={{ gap: 6 }}>
@@ -557,17 +573,13 @@ export default function Prisliste() {
           )}
 
           <div className="fc-formular-knapper" style={{ marginTop: 10 }}>
-            <Knap variant="primaer" disabled={arbejder || !periodeSlut || findes}
-                  onClick={() => kald(() => opretGrundlag({ periode }))}>
-              {arbejder ? "Arbejder …" : findes ? "Allerede opgjort" : `Gør ${periode} op`}
-            </Knap>
             {/* ⚠ MÅLINGEN KAN IKKE LAVES BAGUD. Knappen findes for at kunne se
                 at kæden virker uden at vente et døgn — ikke for at reparere en
                 manglende dag. */}
             <Knap disabled={arbejder} onClick={() => kald(() => maalNu())}>
               Mål alle kunder nu
             </Knap>
-            {findes && (
+            {raekker.length > 0 && (
               <>
                 <Knap onClick={() => hent(grundlagCsv(periode, raekker),
                         filnavn(`fakturagrundlag-${periode}`, raekker[0]?.genereretMs))}>
@@ -577,47 +589,72 @@ export default function Prisliste() {
               </>
             )}
           </div>
+
           <Formularsvar svar={svar} />
         </div>
 
-        {findes && (
+        {/* ⚠ ÉN RÆKKE PR. KUNDE, OGSÅ FØR DER ER GJORT OP. Grundlaget er et
+            SELVSTÆNDIGT dokument pr. kunde — én kunde uden målinger må ikke
+            holde de andre tilbage. En delvis opgørelse er kun farlig hvis den
+            er usynlig, og her kan den ses. */}
+        {kunder.length > 0 && (
           <>
             <p className="fc-hint" style={{ marginTop: 10 }}>
-              Opgjort {datoTid(raekker[0]?.genereretMs)} — <b>låst</b>. En rettelse
-              er et nyt grundlag der henviser til det gamle; den vej er ikke
-              bygget, og indtil den er, nægter generatoren at overskrive.
+              Et opgjort grundlag er <b>låst</b>. En rettelse er et nyt grundlag
+              der henviser til det gamle; den vej er ikke bygget, og indtil den
+              er, nægter generatoren at overskrive.
             </p>
             <Tabel
+              noegle={(r) => r.id}
               kolonner={[
-                { key: "id", label: "Kunde", render: (r) => <b>{r.kundeId}</b> },
-                { key: "dage", label: "Dage", num: true, render: (r) => (
+                { key: "id", label: "Kunde", render: (r) => (
                     <>
-                      {num(r.dageFaktureres)}
-                      {r.dageFaktureres !== r.dageMaalt && (
-                        <span className="fc-hint"> af {num(r.dageMaalt)} målt</span>
-                      )}
+                      <b>{r.navn}</b>
+                      <div className="fc-hint">{r.id}</div>
                     </>
                   ) },
-                { key: "brugere", label: "Højeste brugere", render: (r) => (
-                    <span className="fc-hint">
-                      {ALLE_BRUGERARTER.map((a) =>
-                        `${BRUGERART[a].label.toLowerCase()} ${r.hoejesteBrugere?.[a] ?? 0}`).join(", ")}
-                    </span>
+                { key: "tilstand", label: "Status", render: (r) => (
+                    r.g ? <Pille tone="ok">opgjort</Pille>
+                        : <Pille tone="info">ikke opgjort</Pille>
+                  ) },
+                { key: "dage", label: "Dage", num: true, render: (r) => (
+                    r.g ? (
+                      <>
+                        {num(r.g.dageFaktureres)}
+                        {r.g.dageFaktureres !== r.g.dageMaalt && (
+                          <span className="fc-hint"> af {num(r.g.dageMaalt)} målt</span>
+                        )}
+                      </>
+                    ) : <span className="fc-neutral">—</span>
                   ) },
                 { key: "kt", label: "Køretøjer", num: true,
-                  render: (r) => num(r.hoejesteKoeretoejer) },
+                  render: (r) => (r.g ? num(r.g.hoejesteKoeretoejer) : <span className="fc-neutral">—</span>) },
                 { key: "rabat", label: "Rabat", num: true,
-                  render: (r) => (r.rabatBps ? pct(bpsTilPct(r.rabatBps)) : "—") },
+                  render: (r) => (r.g ? (r.g.rabatBps ? pct(bpsTilPct(r.g.rabatBps)) : "—")
+                                      : <span className="fc-neutral">—</span>) },
                 { key: "beloeb", label: "Ekskl. moms", num: true,
-                  render: (r) => <b>{kr(r.beloebOere)}</b> },
+                  render: (r) => (r.g ? <b>{kr(r.g.beloebOere)}</b> : <span className="fc-neutral">—</span>) },
                 /* ⚠ null, IKKE 0. Mangler en linje sin momssats, er et halvt
                    momsbeløb værre end intet — det ser ud som om det er regnet. */
                 { key: "moms", label: "Moms", num: true,
-                  render: (r) => (r.momsOere === null || r.momsOere === undefined
-                    ? <span className="fc-bad">mangler sats</span> : kr(r.momsOere)) },
+                  render: (r) => (!r.g ? <span className="fc-neutral">—</span>
+                    : r.g.momsOere === null || r.g.momsOere === undefined
+                      ? <span className="fc-bad">mangler sats</span> : kr(r.g.momsOere)) },
+                { key: "handling", label: "", render: (r) => (
+                    <span className="fc-ikke-print">
+                      {r.g ? (
+                        <span className="fc-hint">{datoTid(r.g.genereretMs)}</span>
+                      ) : (
+                        <Knap disabled={arbejder || !periodeSlut}
+                              onClick={() => kald(() => opretGrundlag({ periode, id: r.id }))}>
+                          Gør op
+                        </Knap>
+                      )}
+                    </span>
+                  ) },
               ]}
-              raekker={raekker}
-              tom="Ingen kunder i perioden."
+              raekker={kunder.map((k) => ({ ...k, g: grundlag[periode]?.[k.id] || null }))}
+              tom="Ingen kunder."
             />
             <p className="fc-hint" style={{ marginTop: 10 }}>
               Udtrækket indeholder <b>linjerne</b>, ikke totalerne. En revisor

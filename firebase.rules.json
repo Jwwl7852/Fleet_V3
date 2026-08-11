@@ -134,6 +134,17 @@
           // altsaa en kreditnota forkleaedt som et abonnement.
           "rabatBps": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000" },
 
+          // ⚠ RABAT PR. MODUL. Noeglen er modulnavnet; en rabat paa et
+          // modul der ikke findes, ville ligge og se ud som en aftale ingen
+          // kunne finde igen.
+          //
+          // ⚠ DEN GENERELLE rabatBps OVERRULER DE HER. Reglen staar i
+          // rabatFor() i priser.js — ikke to steder. Reglerne validerer kun
+          // FORMEN; hvad der vinder, afgoeres ét sted i koden.
+          "rabatModulBps": {
+            "$modul": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0 && newData.val() <= 10000" }
+          },
+
           // Kun maaned indtil videre. En kvartalsfaktura er ikke en anden
           // sats — det er en anden PERIODE, og generatoren skal kende den.
           // Et felt der lover noget der ikke virker, er vaerre end intet.

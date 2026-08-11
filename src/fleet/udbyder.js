@@ -79,11 +79,13 @@ export const opretPrisliste = ({ gyldigFraMs, momssats, moduler }) =>
  * ⚠ RABAT I BASISPOINT. 1500 = 15,00 %. Skærmen viser procent; feltet her
  * tager basispoint, og omregningen sker ét sted — pctTilBps() i beloeb.js.
  */
-export const saetAbonnement = ({ id, rabatBps, interval, startetMs }) =>
-  kald(UDBYDERFUNKTION.abonnement, { id, rabatBps, interval, startetMs });
+export const saetAbonnement = ({ id, rabatBps, rabatModulBps, interval, startetMs }) =>
+  kald(UDBYDERFUNKTION.abonnement, { id, rabatBps, rabatModulBps, interval, startetMs });
 
-export const opretGrundlag = ({ periode }) =>
-  kald(UDBYDERFUNKTION.grundlag, { periode });
+/* ⚠ ÉN KUNDE AD GANGEN. Hver kundes grundlag er et selvstaendigt dokument
+   med sine egne satser og sin egen rabat. */
+export const opretGrundlag = ({ periode, id }) =>
+  kald(UDBYDERFUNKTION.grundlag, { periode, id });
 
 /* ⚠ IKKE EN REPARATION. Målingen kan ikke laves bagud — knappen findes for at
    kunne se at kæden virker uden at vente et døgn. */
