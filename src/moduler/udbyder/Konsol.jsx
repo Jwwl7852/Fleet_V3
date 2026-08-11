@@ -210,6 +210,19 @@ function Abonnement({ kunde, paaGemt }) {
             ét klik, og de brugere der er spærret hver for sig, bliver ved med
             at være det.
           </p>
+          {/* ⚠ DEN HER SÆTNING ER IKKE KOSMETIK. Beslutning 32 gjorde pause
+              TEKNISK og gratis at rulle tilbage. Da faktureringen kom til at
+              tælle dage (højeste antal aktive pr. periode), blev den
+              KOMMERCIEL — og dermed betyder knappen noget andet end den
+              gjorde. Teksten er det eneste der står mellem et fejlklik og en
+              faktura der er forkert. */}
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            ⚠ <b>Det koster penge fra i dag.</b> Dage hvor kunden ikke er aktiv,
+            tælles ikke med på fakturagrundlaget. Sætter du ham på pause ved en
+            fejl og åbner igen i morgen, mangler dagen i dag på hans regning —
+            og den kan ikke tilføjes bagud, fordi målingen for dagen allerede
+            er skrevet.
+          </p>
         </div>
       )}
 

@@ -29,11 +29,13 @@
  * Koer: npm run funktioner:aabn
  */
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 import { NOEGLEFIL, tjekProjekt, laesNoegle } from "./provisioner-dev.mjs";
 
 const REGION = "europe-west1";
+const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function main() {
   const noegle = laesNoegle();
@@ -60,10 +62,31 @@ async function main() {
        end den sparer. */
     throw new Error(
       `Tjenestekontoen maa ikke aendre IAM (${liste.error.message.split(":")[0]}).\n\n` +
-      `  Det skal goeres med din egen konto — én gang pr. funktion:\n\n` +
+      `  ══ GOER DET ÉN GANG, SAA GOER SCRIPTET DET HERFRA ══\n\n` +
+      `  Kontoen mangler PRAECIS TRE permissions. Giv den dem, og du skal\n` +
+      `  aldrig klikke en funktion aaben igen:\n\n` +
+      `    run.services.list\n` +
+      `    run.services.getIamPolicy\n` +
+      `    run.services.setIamPolicy\n\n` +
+      `  ⚠ IKKE "Cloud Run Admin". Den rolle kan ogsaa UDRULLE og SLETTE\n` +
+      `  tjenester, og den kan aendre hvilken servicekonto de koerer som — og\n` +
+      `  dermed give sig selv mere. De tre ovenfor kan kun aabne og lukke\n` +
+      `  doeren. Det er samme skel som mellem en rolle og en permission:\n` +
+      `  spoerg hvad handlingen kraever, ikke hvem kontoen er.\n\n` +
+      `    console.cloud.google.com/iam-admin/roles?project=${noegle.project_id}\n` +
+      `    → CREATE ROLE → tilfoej de tre → gem som fx "Invoker-aabner"\n` +
+      `    → console.cloud.google.com/iam-admin/iam → find\n` +
+      `      ${noegle.client_email}\n` +
+      `      → Edit → ADD ROLE → Invoker-aabner → Save\n\n` +
+      `  ══ INDTIL DA: én gang pr. NY funktion ══\n\n` +
       `    console.cloud.google.com/run?project=${noegle.project_id}\n` +
-      `    → vaelg tjenesten → fanen Security → Authentication\n` +
-      `    → "Allow unauthenticated invocations" → Save\n\n` +
+      `    ⚠ Klik "Cloud Run" i VENSTRE MENU. Overview-sidens felt hedder\n` +
+      `      "Most used resources" og viser ikke dem alle — en funktion der\n` +
+      `      ikke er kaldt et stykke tid, falder ud af listen og ser slettet ud.\n` +
+      `    → vaelg tjenesten → Security → Authentication\n` +
+      `    → "Allow public access" (foer: "Allow unauthenticated invocations")\n\n` +
+      `  ⚠ SPRING maaldagligt OVER. Den udloeses af Cloud Scheduler med sin\n` +
+      `  egen servicekonto og har ingen brug for offentlig adgang.\n\n` +
       `  Eller med gcloud, hvis du har den:\n\n` +
       `    gcloud run services add-iam-policy-binding <navn> \\\n` +
       `      --region=${REGION} --project=${noegle.project_id} \\\n` +
@@ -74,7 +97,29 @@ async function main() {
       `  den, heller ikke en gyldig. Se noten i toppen af scriptet.`
     );
   }
-  const tjenester = (liste.services || []).map((s) => s.name);
+  /**
+   * ⚠ PLANLAGTE FUNKTIONER MAA IKKE AABNES.
+   *
+   * `maaldagligt` udloeses af Cloud Scheduler med sin egen servicekonto. Gav
+   * vi den allUsers, ville enhver paa internettet kunne udloese en maaling —
+   * og en maaling der kan udloeses udefra, kan skrives paa den forkerte dato.
+   *
+   * Listen UDLEDES af functions/index.js frem for at staa skrevet her. Et
+   * navn i en konstant ville blive glemt ved den naeste planlagte funktion,
+   * og den ville saa blive aabnet uden at nogen opdagede det.
+   */
+  const planlagte = new Set(
+    [...readFileSync(join(ROD, "functions", "index.js"), "utf8")
+      .matchAll(/export const (\w+) = onSchedule/g)].map((m) => m[1])
+  );
+
+  const tjenester = (liste.services || []).map((s) => s.name)
+    .filter((n) => {
+      const kort = n.split("/").pop();
+      if (!planlagte.has(kort)) return true;
+      console.log(`  – ${kort.padEnd(16)} sprunget over (planlagt, ikke callable)`);
+      return false;
+    });
   if (!tjenester.length) {
     console.log("Ingen Cloud Run-tjenester i " + REGION + ". Er funktionerne udrullet?");
     return;
