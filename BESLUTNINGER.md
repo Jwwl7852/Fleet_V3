@@ -1106,3 +1106,76 @@ skrive ned — og det er præcis derfor hullet var der.
 
 Efterprøvet mod den **udrullede** base med en rigtig bruger, ikke kun mod
 filen (beslutning 29): fjorten punkter, alle holdt.
+
+---
+
+## 33. Et fravalgt modul lukker sine noder — læsning og skrivning
+
+Modulafkrydsningen var en **kommerciel** kontrol og ikke en sikkerhedskontrol.
+Det stod i rene ord i `moduler.js`: en kunde uden Facility der tastede
+`/facility`, så sin egen tomme node — en salgsflade, ikke et databrud.
+
+**Det holdt så længe listen kun tegnede en sidebar.** Det holder ikke, når
+ejerkonsollen kan **fratage** et modul: gør vi kun det, har kunden stadig sine
+data og sit API, og modulet er ikke solgt — det er foreslået.
+
+`NODE_MODUL` i `moduler.js` er tabellen, og reglerne følger den. Håndhævelsen
+rammer **både `.read` og `.write`** — 27 regler.
+
+### ⚠ Prisen, som skal stå skrevet ned
+
+**En kunde der får et modul frataget, kan ikke hente sine egne data ud gennem
+appen.** De ligger der — intet slettes — men eneste vej til dem går gennem
+servicekontoen. Fravælges Flåde for en kunde der har kørt to år, er hans
+køretøjshistorik utilgængelig for ham selv fra det sekund.
+
+Derfor: **et fravalg skal aftales, ikke bare klikkes.** Konsollen skal spørge,
+fravalget skal i auditloggen med en årsag, og en eksport hører **før**
+fravalget.
+
+Jeg anbefalede kun at spærre skrivning, netop for at kunden kunne komme til
+sit eget. Jørn valgte begge dele, og det er det stærkere kommercielt. Valget
+står her sammen med prisen, så den næste ikke skal gætte hvad der blev vejet.
+
+### Tre noder står med vilje i basen
+
+`opgaver`, `satser` og `fakturaer` hører hver til **to** moduler:
+
+| Node | Hvorfor to |
+|---|---|
+| `opgaver` | `art` er `vaerksted` \| `facility` (beslutning 21) |
+| `satser` | prisgrupper hører til Kunder, kalkulationsprisen til Booking |
+| `fakturaer` | ligger i Indkøb, men Økonomi læser dem |
+
+En node der gates af det ene modul, går i stykker i det andet. Alternativet —
+"har mindst ét af modulerne" — er en regel ingen kan læse sig til bagefter, og
+den slags regler bliver forkert ændret.
+
+`personale` og `kompetencer`… `personale` er base, fordi enhver
+abonnementskombination har medarbejdere (det stod allerede i `permissions.js`).
+`kpi` er ét aggregat: et modul man ikke har, har ingen tal.
+
+### Den fejler åbent
+
+En tenant **uden** `moduler`-node har alt. Samme retning som `harModul()` og
+som abonnementsklausulen — en kunde oprettet før listen fandtes skal ikke stå
+med et system der afviser alt.
+
+### ⚠ To fejl undervejs, begge værd at kende
+
+**Første patch erstattede på udtrykkets TEKST.** Flere regler har nøjagtig
+samme udtryk, så `replace()` traf den første forekomst — altså en anden node.
+Fem noder fik ingen klausul, og fem fik en de ikke skulle have. Rettet ved at
+patche efter **position** i filen.
+
+**Første prøve fejlede af den forkerte grund.** Skrivningen til
+`facility/aktiver` blev afvist, fordi `lokationId` skal pege på en lokation
+der findes — ikke fordi modulet manglede. En prøve der er rød af den forkerte
+grund, bliver grøn af den forkerte grund næste gang.
+
+Linten går **begge veje**: hver node i tabellen skal have klausulen, og ingen
+node uden for den må have en. Kom klausulen ved et uheld på `personale`, ville
+en kunde uden Bemanding ikke kunne se sine egne medarbejdere.
+
+Efterprøvet mod den **udrullede** base med en rigtig bruger: nitten punkter,
+alle holdt.

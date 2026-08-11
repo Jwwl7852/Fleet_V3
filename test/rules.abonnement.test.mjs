@@ -32,6 +32,9 @@ import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { ref, set, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { ALLE_MODULER } from "../src/fleet/moduler.js";
+
+const ALLE_MODULER_TIL = Object.fromEntries(ALLE_MODULER.map((m) => [m, true]));
 
 /* Egne tenant-id'er: node --test kører filerne parallelt. */
 const AKTIV = "abonAktiv";
@@ -86,7 +89,11 @@ before(async () => {
     for (const t of [AKTIV, PAUSED, OPSAGT, UDEN]) {
       await set(ref(db, `tenants/${t}/_findes`), true);
       await set(ref(db, `tenants/${t}/virksomhed`), { navn: `Kunde ${t}`, cvr: "12345678" });
-      await set(ref(db, `tenants/${t}/moduler`), { dashboard: true, flaade: true });
+      /* ⚠ ALLE MODULER. Prøven her handler om ABONNEMENTET, ikke om
+         modulafkrydsningen (beslutning 34). Manglede kunder-modulet, ville
+         `kunder` blive afvist af den ANDEN spærring — og prøven ville være
+         grøn af den forkerte grund. */
+      await set(ref(db, `tenants/${t}/moduler`), ALLE_MODULER_TIL);
       await set(ref(db, `tenants/${t}/kunder/k1`), { navn: "Kunde", division: "gods", aktiv: true });
       await set(ref(db, `tenants/${t}/koeretoejer/kt1`), { art: "lastbil", status: "aktiv" });
       await set(ref(db, `tenants/${t}/kpi/flaade`), { aktive: 3 });

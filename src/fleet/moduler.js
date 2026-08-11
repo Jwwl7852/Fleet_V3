@@ -6,20 +6,29 @@
  * katalog, og en delt fil med imports kan ikke kopieres ind i functions/.
  *
  * ---------------------------------------------------------------------------
- * ⚠ MODULAFKRYDSNING ER EN KOMMERCIEL KONTROL, IKKE EN SIKKERHEDSKONTROL.
+ * ⚠ MODULAFKRYDSNINGEN HÅNDHÆVES NU I REGLERNE — beslutning 34.
  *
- * Det er værd at holde adskilt, fordi de to bliver blandet sammen og så
- * tror man at det ene løser det andet.
+ * Her stod indtil videre at afkrydsningen var en KOMMERCIEL kontrol og ikke
+ * en sikkerhedskontrol: en kunde uden Facility der tastede /facility, så sin
+ * egen tomme node, og det var en salgsflade frem for et databrud.
  *
- * En kunde der ikke har købt Facility og taster /facility, ser SIN EGEN tomme
- * facility-node. Det er en salgsflade, ikke et databrud. At kunder ikke kan nå
- * HINANDENS data er en helt anden mekanisme: `auth.token.tenant === $tenantId`
- * i hver eneste regel, prøvet på hver node i begge retninger
- * (test/rules.tenant.test.mjs, punkt 1 i den låste rækkefølge).
+ * Det holdt så længe modullisten kun tegnede en sidebar. Det holder ikke, når
+ * ejerkonsollen kan FRATAGE et modul: gjorde vi kun det, havde kunden stadig
+ * sine data og sit API, og modulet var ikke solgt — det var foreslået.
+ * `NODE_MODUL` nedenfor er tabellen reglerne følger, og håndhævelsen rammer
+ * BÅDE læsning og skrivning.
  *
- * Slutstillingen er begge dele — en kontrol der kun findes i frontend, er en
- * pæn knap — men modulspærringen i reglerne haster ikke på samme måde, og den
- * må ikke bruges som argument for at isolationen er i orden.
+ * ⚠ DET FRITAGER IKKE TENANT-ISOLATIONEN. At kunder ikke kan nå HINANDENS
+ * data er en helt anden mekanisme — `auth.token.tenant === $tenantId` i hver
+ * eneste regel, prøvet på hver node i begge retninger
+ * (test/rules.tenant.test.mjs, punkt 1 i den låste rækkefølge). De to må ikke
+ * blandes sammen, og modulspærringen må aldrig bruges som argument for at
+ * isolationen er i orden.
+ *
+ * ⚠ EN KUNDE DER FÅR ET MODUL FRATAGET, KAN IKKE HENTE SINE EGNE DATA UD.
+ * De ligger der — intet slettes — men eneste vej til dem går gennem
+ * servicekontoen. Et fravalg skal derfor aftales, ikke bare klikkes, og en
+ * eksport hører FØR fravalget. Se EJERKONSOL.md.
  * ---------------------------------------------------------------------------
  *
  * ⚠ DASHBOARD OG OPSÆTNING KAN IKKE FRAVÆLGES. Et system uden forside er
@@ -91,6 +100,67 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
 
 /** De moduler enhver kunde altid har. */
 export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HVILKE NODER ET MODUL EJER — og hvorfor tre af dem ikke ejes af nogen
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ TABELLEN ER SANDHEDEN, OG REGLERNE SKAL FØLGE DEN.
+   `test/rules.moduler.test.mjs` udleder sig af den: hver node herunder SKAL
+   have modulklausulen i `firebase.rules.json`, og hver node der IKKE står her
+   må ikke have den. Tilføjer nogen en node uden at tage stilling, fejler
+   prøven — det er samme greb som nodelisten i rules.tenant.test.mjs.
+
+   ⚠ TRE NODER STÅR MED VILJE UDEN FOR: opgaver, satser og fakturaer. De
+   hører hver til TO moduler:
+
+     opgaver    art er `vaerksted` | `facility` (beslutning 21)
+     satser     prisgrupper hører til Kunder, kalkulationsprisen til Booking
+     fakturaer  ligger i Indkøb, men Økonomi læser dem
+
+   En node der hører til to moduler, kan ikke gates af det ene uden at det
+   andet går i stykker. Alternativet — "har mindst ét af modulerne" — er en
+   regel ingen kan læse sig til bagefter, og den slags regler bliver forkert
+   ændret. De står derfor i BASEN.
+
+   ⚠ personale, kompetencer og kpi er heller ikke gatede. personale ligger i
+   basen fordi enhver abonnementskombination har medarbejdere (se
+   permissions.js). kpi er ét aggregat — et modul man ikke har, har ingen tal.
+
+   ⚠ oekonomi og kunder ejer ingen node hver for sig ud over kunder/. Økonomi
+   læser kpi, fakturaer og satser, som alle er base. Modulet styrer altså kun
+   om SKÆRMEN findes. Det er ikke en fejl i tabellen — det er hvad der er. */
+
+/** Node → modul. Kun de noder et modul EJER alene. */
+export const NODE_MODUL = {
+  koeretoejer: "flaade",
+  "sensitive/koeretoejer": "flaade",
+  indberetninger: "flaade",
+
+  facility: "facility",
+
+  indkoeb: "indkoeb",
+  lagre: "indkoeb",
+
+  bookinger: "booking",
+  "sensitive/bookinger": "booking",
+  "vaerdi/bookinger": "booking",
+  etaper: "booking",
+  reservationer: "booking",
+
+  fravaer: "bemanding",
+  "sensitive/fravaer": "bemanding",
+  kompetencer: "bemanding",
+
+  kunder: "kunder",
+  "sensitive/kunder": "kunder",
+};
+
+/** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */
+export const MODUL_NODER = Object.entries(NODE_MODUL).reduce((ud, [node, modul]) => {
+  (ud[modul] ||= []).push(node);
+  return ud;
+}, {});
 
 /**
  * Har tenanten det her modul?
