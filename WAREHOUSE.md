@@ -141,7 +141,7 @@ Rækkefølgen er valgt så hvert trin er værd at have alene.
 | 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret | ✅ |
 | 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | ✅ |
 | 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge | ✅ |
-| 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation | |
+| 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation | ✅ |
 | 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen | |
 | 8 | QR-koder og rapporter | Kan vente | |
 
@@ -184,6 +184,27 @@ kassen ser fri ud den dag den stadig står hos museet. `halvaabent()` i
 `warehouse.js` er den ene oversættelse, og den er prøvet mod `overlapper()`
 på hver kombination i ti dage — er de to uenige ét sted, viser gitteret noget
 andet end konflikttjekket afviser.
+
+**Etape 6 er inde** — og den tvang en rettelse frem i etape 4. Historikken
+kunne kun kende den **planlagte** periode, og "MDT-101 har været ude 126
+dage" ville være en påstand vi ikke kan stå inde for, hvis kassen kom hjem i
+forvejen.
+
+`kasseudlaanskriv` stempler derfor `udleveretMs` og `returneretMs` i selve
+tilstandsskiftet, og `dageUde()` returnerer `{dage, faktisk}`. **Flaget er
+vigtigere end tallet:** skærmen mærker hver varighed *målt* eller *planlagt*,
+og et nøgletal viser hvor stor en andel af de afsluttede udlån vi faktisk kan
+sige varigheden på. Det tal måler os selv, ikke lageret — det falder kun, hvis
+nogen begynder at gå uden om systemet.
+
+⚠ **Historikken er ikke auditloggen.** Her står hvad der skete med kasserne,
+ikke hvem der trykkede. Skiftene ligger i `audit/` bag `audit.laes`, som en
+lagermedarbejder ikke har — en log over hvem der har gjort hvad, er selv
+følsom.
+
+⚠ **En annulleret reservation er historik.** Nogen lovede kassen væk og trak
+det tilbage; det er en oplysning. Den udelades kun på kalenderen, hvor den
+ville få kassen til at se optaget ud i en periode hvor den er fri.
 
 ⚠ **Kalenderen skal genbruge `Gitterkalender.jsx`.** CLAUDE.md forbyder et nyt
 kalendergitter: to gitre der læser samme interval forskelligt, opdages ikke ved

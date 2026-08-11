@@ -353,6 +353,78 @@ export function naesteReservation(udlaan = [], kasseId, naa) {
   return r.find((u) => u.til >= naa) || null;
 }
 
+/* ---- Historik ---------------------------------------------------------- */
+
+/**
+ * Hvor længe kassen var ude — og om tallet er en KENDSGERNING eller en PLAN.
+ *
+ * ⚠ FLAGET ER VIGTIGERE END TALLET. `fra`/`til` er aftalen; `udleveretMs` og
+ * `returneretMs` er hvad der faktisk skete, stemplet af serveren i selve
+ * tilstandsskiftet. Har vi begge stempler, ved vi det. Har vi dem ikke, gætter
+ * vi ud fra planen — og en historik der siger "126 dage" uden at sige at det
+ * var det aftalte, er en påstand vi ikke kan stå inde for, hvis kassen kom
+ * hjem i forvejen.
+ *
+ * Det er samme forbehold som `tjekKoerehviletid()` bærer: vi kan se planen,
+ * ikke virkeligheden — og et tal uden forbehold læses som en måling.
+ *
+ * @returns {{dage:number, faktisk:boolean}}
+ */
+export function dageUde(u = {}) {
+  if (Number.isFinite(u.udleveretMs) && Number.isFinite(u.returneretMs)) {
+    /* Mindst én dag: en kasse der er ude fire timer, har været ude. */
+    return {
+      dage: Math.max(1, Math.round((u.returneretMs - u.udleveretMs) / DAG_MS)),
+      faktisk: true,
+    };
+  }
+  if (!Number.isFinite(u.fra) || !Number.isFinite(u.til)) return { dage: 0, faktisk: false };
+  /* ⚠ INKLUSIVT, som alt andet om et udlån: 1.–1. er én dag, ikke nul. */
+  return { dage: Math.round((u.til - u.fra) / DAG_MS) + 1, faktisk: false };
+}
+
+/**
+ * Udlånene på én kasse, nyeste først.
+ *
+ * ⚠ EN ANNULLERET RESERVATION ER OGSÅ HISTORIK. Nogen lovede kassen væk og
+ * trak det tilbage; det er en oplysning, ikke støj. Den udelades kun dér hvor
+ * den ville få kassen til at se optaget ud — på kalenderen.
+ */
+export const historikForKasse = (udlaan = [], kasseId) =>
+  udlaan.filter((u) => u.kasseId === kasseId).sort((a, b) => (b.fra || 0) - (a.fra || 0));
+
+/**
+ * Sagerne, med de kasser der hører til hver.
+ *
+ * ⚠ SAGSNUMMERET ER DEN ENESTE NØGLE UD AF SYSTEMET. Når museet ringer om sag
+ * 4260, er det den vej ind — og et museum låner sjældent én kasse. Derfor er
+ * sagen en gruppering, ikke et felt man søger på i en flad liste.
+ */
+export function sagsoversigt(udlaan = []) {
+  const map = new Map();
+  for (const u of udlaan) {
+    const nr = u.sagsnummer;
+    if (!nr) continue;
+    if (!map.has(nr)) {
+      map.set(nr, {
+        sagsnummer: nr, udlaan: [], kasser: new Set(),
+        fra: u.fra, til: u.til, beskrivelse: u.beskrivelse || null,
+      });
+    }
+    const s = map.get(nr);
+    s.udlaan.push(u);
+    s.kasser.add(u.kasseId);
+    /* Sagens periode er yderpunkterne af dens udlån — den er ikke gemt
+       nogen steder, og skal den blive ved med at passe, skal den udledes. */
+    if (u.fra < s.fra) s.fra = u.fra;
+    if (u.til > s.til) s.til = u.til;
+    if (!s.beskrivelse && u.beskrivelse) s.beskrivelse = u.beskrivelse;
+  }
+  return [...map.values()]
+    .map((s) => ({ ...s, kasser: [...s.kasser].sort((a, b) => a.localeCompare(b, "da")) }))
+    .sort((a, b) => (b.fra || 0) - (a.fra || 0));
+}
+
 /** Kasser der er fri i hele perioden. Bruges af "søg ledige i periode". */
 export function ledigeKasser(kasser = {}, udlaan = [], { fra, til, type = null } = {}) {
   const alle = Object.entries(kasser).map(([id, k]) => ({ id, ...k }));

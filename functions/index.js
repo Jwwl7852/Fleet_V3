@@ -1222,6 +1222,18 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
        To kald ville kunne efterlade en kasse som udlånt uden et udlån —
        netop den tilstand hele noden er lukket for at undgå. */
     const opdatering = { [`kasseudlaan/${udlaanId}/tilstand`]: til };
+
+    /* ⚠ HVORNÅR DET FAKTISK SKETE. `fra`/`til` er AFTALEN — hvad der var
+       planlagt. De to stempler her er kendsgerningen, og de sættes af
+       SERVEREN i selve skiftet, ikke af klienten: et tidspunkt en browser må
+       oplyse, kan sættes til hvad som helst, og et ur der går forkert er
+       ikke engang ond vilje.
+       Uden dem kan historikken kun sige hvad der var meningen, og "MDT-101
+       har været ude 126 dage" ville være en påstand vi ikke kan stå inde
+       for, hvis kassen kom hjem i forvejen. */
+    if (til === "udlaant") opdatering[`kasseudlaan/${udlaanId}/udleveretMs`] = Date.now();
+    if (til === "returneret") opdatering[`kasseudlaan/${udlaanId}/returneretMs`] = Date.now();
+
     if (virkning) {
       for (const [felt, vaerdi] of Object.entries(virkning)) {
         opdatering[`kasser/${foer.kasseId}/${felt}`] = vaerdi;

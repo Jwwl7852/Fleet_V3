@@ -211,6 +211,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   har kassen i hånden og kan se om den er hel; springes den over, opdages en
   skade først hos museet, hvor den ikke kan afgøres. Og der er ingen vej
   tilbage fra `returneret` — skal kassen ud igen, er det et nyt udlån.
+- **Vise en udlånsvarighed uden at sige om den er målt eller planlagt.**
+  `fra`/`til` er AFTALEN; `udleveretMs` og `returneretMs` er hvad der skete,
+  og de sættes af **serveren** i selve tilstandsskiftet — et tidspunkt en
+  browser må oplyse, kan sættes til hvad som helst. `dageUde()` returnerer
+  `{dage, faktisk}`, og **flaget er vigtigere end tallet**: uden det læses
+  "20 dage" som en måling, og er kassen kommet hjem i forvejen, er det
+  forkert på en måde ingen kan se. Samme forbehold som
+  `tjekKoerehviletid()` bærer.
 - **Tegne et udlån på et gitter uden `halvaabent()`.** Gitteret regner
   halvåbent `[fra, til)`; et udlån er inklusivt i begge ender. Tegnes det
   råt, mangler den SIDSTE dag, og kassen ser fri ud den dag den stadig står

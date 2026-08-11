@@ -929,6 +929,14 @@
             // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
             "oprettetAf": { ".validate": "newData.isString()" },
             "oprettetMs": { ".validate": "newData.isNumber()" },
+            // ⚠ HVORNAAR DET FAKTISK SKETE, ikke hvornaar det var planlagt.
+            // fra/til er AFTALEN; de to her er kendsgerningen. Uden dem kan
+            // historikken kun sige hvad der var meningen — og "MDT-101 har
+            // vaeret ude 126 dage" ville vaere en paastand vi ikke kan staa
+            // inde for, hvis kassen kom hjem i forvejen. Saettes af
+            // kasseudlaanskriv i selve tilstandsskiftet.
+            "udleveretMs": { ".validate": "newData.isNumber()" },
+            "returneretMs": { ".validate": "newData.isNumber()" },
             // Den oprindelige fritekst fra prototypens Excel-import. Den
             // bevares saa intet gaar tabt, men der soeges ikke i den.
             "importtekst": { ".validate": "newData.isString() && newData.val().length <= 400" },

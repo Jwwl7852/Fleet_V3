@@ -35,6 +35,7 @@ import WarehouseKasser from "./moduler/warehouse/Kasser.jsx";
 import Reolpladser from "./moduler/warehouse/Reolpladser.jsx";
 import Kasseudlaan from "./moduler/warehouse/Udlaan.jsx";
 import Warehousekalender from "./moduler/warehouse/Kalender.jsx";
+import Warehousehistorik from "./moduler/warehouse/Historik.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -342,6 +343,7 @@ export default function App() {
             <Route path="warehouse" element={<WarehouseKasser />} />
             <Route path="warehouse/udlaan" element={<Kasseudlaan />} />
             <Route path="warehouse/kalender" element={<Warehousekalender />} />
+            <Route path="warehouse/historik" element={<Warehousehistorik />} />
             <Route path="warehouse/reolpladser" element={<Reolpladser />} />
 
             <Route path="kunder" element={<Kunder />} />

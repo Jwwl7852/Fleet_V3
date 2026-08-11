@@ -13,6 +13,7 @@ import {
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
+  dageUde, historikForKasse, sagsoversigt,
 } from "../src/fleet/warehouse.js";
 import { NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
@@ -466,5 +467,129 @@ describe("to konventioner, én oversættelse", () => {
     assert.equal(iVindue(u, D(6), D(7)), false);
     /* Og et vindue der slutter FØR udlånet begynder, rører det ikke. */
     assert.equal(iVindue(u, D(1) - 86400000 * 3, D(1)), false);
+  });
+});
+
+describe("historikken skelner mellem planen og kendsgerningen", () => {
+  const D = (d) => Date.UTC(2026, 8, d);
+
+  it("bruger stemplerne når de findes, og siger at den gør", () => {
+    const u = {
+      fra: D(1), til: D(20),
+      udleveretMs: D(3) + 3600000 * 9, returneretMs: D(9) + 3600000 * 14,
+    };
+    const r = dageUde(u);
+    assert.equal(r.faktisk, true);
+    /* Seks dage, ikke de tyve der var aftalt. */
+    assert.equal(r.dage, 6);
+  });
+
+  it("falder tilbage på planen — og siger at den gør", () => {
+    /* ⚠ FLAGET ER VIGTIGERE END TALLET. Uden det læses et planlagt tal som
+       en måling, og "MDT-101 har været ude 20 dage" ville være en påstand vi
+       ikke kan stå inde for, hvis kassen kom hjem den 9. Samme forbehold som
+       tjekKoerehviletid() bærer. */
+    const r = dageUde({ fra: D(1), til: D(20) });
+    assert.equal(r.faktisk, false);
+    assert.equal(r.dage, 20);
+  });
+
+  it("regner inklusivt, som alt andet om et udlån", () => {
+    /* Ud og hjem samme dag er ÉN dag, ikke nul. */
+    assert.equal(dageUde({ fra: D(4), til: D(4) }).dage, 1);
+    assert.equal(dageUde({ fra: D(4), til: D(5) }).dage, 2);
+  });
+
+  it("giver en kasse der var ude få timer, mindst én dag", () => {
+    const u = { fra: D(1), til: D(1), udleveretMs: D(1) + 3600000 * 8,
+                returneretMs: D(1) + 3600000 * 12 };
+    assert.equal(dageUde(u).dage, 1);
+    assert.equal(dageUde(u).faktisk, true);
+  });
+
+  it("halter ikke på et halvt stempel", () => {
+    /* Er kassen udleveret men ikke kommet hjem, kender vi ikke varigheden —
+       så er planen det bedste vi har, og flaget siger det. */
+    const r = dageUde({ fra: D(1), til: D(10), udleveretMs: D(2) });
+    assert.equal(r.faktisk, false);
+    assert.equal(r.dage, 10);
+  });
+});
+
+describe("sagen samler kasserne", () => {
+  const D = (d) => Date.UTC(2026, 8, d);
+  const u = [
+    { id: "a", kasseId: "K2", sagsnummer: "4260", fra: D(5), til: D(20), tilstand: "booket" },
+    { id: "b", kasseId: "K1", sagsnummer: "4260", fra: D(1), til: D(25),
+      tilstand: "booket", beskrivelse: "Monet" },
+    { id: "c", kasseId: "K3", sagsnummer: "4357", fra: D(2), til: D(3), tilstand: "returneret" },
+    { id: "d", kasseId: "K1", sagsnummer: null, fra: D(1), til: D(2), tilstand: "booket" },
+  ];
+
+  it("grupperer på sagsnummer og samler kasserne", () => {
+    const s = sagsoversigt(u);
+    assert.equal(s.length, 2);
+    const sag = s.find((x) => x.sagsnummer === "4260");
+    assert.deepEqual(sag.kasser, ["K1", "K2"]);
+    assert.equal(sag.udlaan.length, 2);
+  });
+
+  it("udleder sagens periode af yderpunkterne", () => {
+    /* ⚠ IKKE GEMT. En sagsperiode der stod som et felt, ville holde op med at
+       passe første gang et af udlånene blev rettet. */
+    const sag = sagsoversigt(u).find((x) => x.sagsnummer === "4260");
+    assert.equal(sag.fra, D(1));
+    assert.equal(sag.til, D(25));
+  });
+
+  it("springer et udlån uden sagsnummer over", () => {
+    /* Det kan ikke lade sig gøre gennem formularen — feltet er påkrævet — men
+       et importeret udlån kunne mangle det, og en gruppe der hedder
+       "undefined" er værre end ingen. */
+    const alle = sagsoversigt(u).flatMap((s) => s.udlaan.map((x) => x.id));
+    assert.ok(!alle.includes("d"));
+  });
+
+  it("tager den første beskrivelse der findes", () => {
+    const sag = sagsoversigt(u).find((x) => x.sagsnummer === "4260");
+    assert.equal(sag.beskrivelse, "Monet");
+  });
+});
+
+describe("historikken pr. kasse", () => {
+  const D = (d) => Date.UTC(2026, 8, d);
+  const u = [
+    { id: "a", kasseId: "K1", fra: D(1), til: D(2), tilstand: "returneret" },
+    { id: "b", kasseId: "K1", fra: D(10), til: D(11), tilstand: "annulleret" },
+    { id: "c", kasseId: "K2", fra: D(5), til: D(6), tilstand: "booket" },
+  ];
+
+  it("tager nyeste først", () => {
+    assert.deepEqual(historikForKasse(u, "K1").map((x) => x.id), ["b", "a"]);
+  });
+
+  it("⚠ TAGER DEN ANNULLEREDE MED", () => {
+    /* Nogen lovede kassen væk og trak det tilbage. Det er en oplysning, ikke
+       støj — den udelades kun på kalenderen, hvor den ville få kassen til at
+       se optaget ud i en periode hvor den er fri. */
+    assert.ok(historikForKasse(u, "K1").some((x) => x.tilstand === "annulleret"));
+  });
+});
+
+describe("serveren stempler det faktiske tidspunkt", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+
+  it("sætter udleveretMs og returneretMs i selve skiftet", () => {
+    /* ⚠ I SAMME opdatering-OBJEKT som tilstanden. To skrivninger kunne give
+       et udlån der er returneret uden et returtidspunkt. */
+    assert.ok(kilde.includes("udleveretMs`] = Date.now()"));
+    assert.ok(kilde.includes("returneretMs`] = Date.now()"));
+  });
+
+  it("lader ikke klienten oplyse dem", () => {
+    /* Et tidspunkt en browser må sende, kan sættes til hvad som helst — og
+       et ur der går forkert er ikke engang ond vilje. */
+    assert.ok(!kilde.includes("d.udleveretMs"));
+    assert.ok(!kilde.includes("d.returneretMs"));
   });
 });
