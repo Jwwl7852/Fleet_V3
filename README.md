@@ -26,6 +26,7 @@ npm run dev
 npm test                            # 669 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
+npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
 ```
 
 `core.hooksPath` skal sættes **én gang pr. klon** — hooks følger ikke med i
@@ -70,6 +71,18 @@ Ingen hvide skærme, ingen crash.
 
 Deploy: Netlify, `npm run build` → `dist`. `netlify.toml` har SPA-fallback —
 uden den giver et direkte hit på `/booking/disponering` en 404.
+
+⚠ **CLOUD FUNCTIONS KAN IKKE UDRULLES ENDNU.** De kræver **Blaze**, og DEV står
+på Spark. Den første funktion — auditloggen i `functions/index.js` — er skrevet
+og prøvet, men `npm run funktioner:udrul` fejler indtil projektet er opgraderet.
+Det gælder ikke kun loggen: **hele TMS-kernen** (reservationer, bookingtilstande,
+nummerserier) venter på det samme. Blazes frie kvote dækker rigeligt et
+dev-projekt — opret en budgetalarm samtidig.
+
+⚠ **Skrivning uden auditlog er ulogget skrivning.** `audit.log()` tæller fejlen
+og går videre, så en skærm ikke går ned når loggen er nede. Det er rigtigt for
+en læseskærm og forkert for en pilot: kunden skal kunne få svar på hvem der
+ændrede hvad.
 
 ⚠ **DEV har ingen Storage-bucket** (kræver Blaze; DEV står på Spark). Skal en
 skærm uploade filer, skal bucket'en oprettes i `europe-west1` sammen med en
