@@ -180,6 +180,13 @@
    raekkerne — ikke kun cifrenes hoejrekant. max-width holder det fra at
    blive absurd bredt i en kolonne med en lang overskrift. */
 .fc-num .fc-input-tal{width:100%; max-width:120px}
+
+/* Rabatfeltet i modulraekken: plads til to-tre cifre og et %-suffiks.
+   ⚠ EGEN KLASSE FREM FOR EN BREDDE PAA STEDET. Et style={{width}} i en jsx
+   ville vaere den ellevte maade at saette en feltbredde paa, og ingen af dem
+   ville vide om hinanden. Bredden hoerer i CSS'en, hvor de andre staar. */
+.fc-num .fc-input-pct{max-width:58px}
+.fc-med-suffiks{display:inline-flex; align-items:baseline; gap:5px}
 .fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-pill-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}

@@ -474,3 +474,53 @@ test("En slettet konto er ikke en netværksfejl", () => {
   assert.match(server, /brugere\/\$\{maalUid\}`\)\.remove\(\)/,
     "den døde indeksrække ryddes ikke — så er fælden der stadig næste gang.");
 });
+
+test("Moduler og rabat gemmes hver for sig", () => {
+  /* ⚠ TO KNAPPER, OG DET ER EN BESLUTNING — ikke en forglemmelse.
+     De to felter i en modulrække skriver til hver sin funktion og har hver
+     sin virkning i TID: et modulskift gælder i samme sekund og kan lukke
+     kunden ude af sine egne data (beslutning 33), mens en rabat først gælder
+     fra næste opgørelse og aldrig bagud.
+
+     Lægges de sammen til ét kald, udløser en tastet procent et modulskift —
+     eller et fravalg udløser en rabatændring ingen havde til hensigt. Og
+     kvitteringen ville sige "Gemt" om to ting hvoraf den ene ikke skete.
+
+     Prøven læser skærmen som tekst: samme greb som lint'en på useKpi og
+     skriv.js, og af samme grund — komponenten kan ikke indlæses i Node. */
+  const kilde = readFileSync(new URL("../src/moduler/udbyder/Konsol.jsx", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+
+  const i = kilde.indexOf("function Moduler(");
+  const slut = kilde.indexOf("function Rabat(");
+  assert.ok(i > 0 && slut > i, "fandt ikke Moduler-komponenten");
+  const krop = kilde.slice(i, slut);
+
+  assert.match(krop, /saetModuler\(\{/, "Moduler gemmer ikke modullisten.");
+  assert.match(krop, /saetAbonnement\(\{/, "Moduler gemmer ikke rabatterne.");
+
+  /* De to kald må ikke stå i SAMME funktion. */
+  for (const navn of ["gemModuler", "gemRabat"]) {
+    const j = krop.indexOf(`const ${navn} = async`);
+    assert.ok(j > 0, `${navn} findes ikke — er de to lagt sammen til én knap?`);
+    const f = krop.slice(j, krop.indexOf("};", j));
+    const antal = (f.match(/saetModuler\(|saetAbonnement\(/g) || []).length;
+    assert.equal(antal, 1, `${navn} kalder to funktioner. Én knap, én skrivning.`);
+  }
+
+  /* Hver knap er slået fra indtil netop dens egen ting er ændret — det er
+     dét der gør tilbagemeldingen ærlig: man kan SE hvad der ikke blev gemt. */
+  assert.match(krop, /disabled=\{!modulerAendret/, "modulknappen lyser altid.");
+  assert.match(krop, /disabled=\{!rabatAendret/, "rabatknappen lyser altid.");
+});
+
+test("Rabat pr. modul står ÉT sted i skærmen", () => {
+  /* De samme ti moduler listet to gange på én skærm er en liste man skal
+     holde styr på med øjnene — og to steder at rette samme tal. */
+  const kilde = readFileSync(new URL("../src/moduler/udbyder/Konsol.jsx", import.meta.url), "utf8");
+  const rabat = kilde.slice(kilde.indexOf("function Rabat("), kilde.indexOf("function Foersteadmin("));
+  assert.doesNotMatch(rabat, /VALGFRIE_MODULER\.map/,
+    "Rabat-kortet tegner en modulliste igen. Den hører i Moduler-kortet.");
+  assert.doesNotMatch(rabat, /rabatModulBps:/,
+    "Rabat-kortet skriver modulrabatter. Det gør Moduler-kortet.");
+});

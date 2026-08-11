@@ -41,7 +41,6 @@ import {
   valideNyKunde, foreslaaId,
 } from "../../fleet/udbyder.js";
 import { bpsTilPct, pctTilBps } from "../../fleet/beloeb.js";
-import { rabatFor } from "../../fleet/priser.js";
 
 /* ---- Læsning ----------------------------------------------------------- */
 
@@ -81,47 +80,133 @@ function Statuspille({ abonnement }) {
 }
 
 /**
- * Modulafkrydsningen for én kunde.
+ * Modulafkrydsningen og rabatten pr. modul for én kunde.
  *
  * ⚠ FRAVALG ADVARES DER OM, TILVALG GØR DER IKKE. De to er ikke lige farlige:
  * et tilvalg åbner noget, et fravalg lukker kundens egne data inde. Advarslen
  * står FØR knappen, ikke som en bekræftelsesdialog bagefter — man skal kunne
  * se konsekvensen mens man vælger.
+ *
+ * ⚠ TO KNAPPER, OG DET ER MED VILJE.
+ *
+ * De to felter i en række skriver til hver sin funktion og har hver sin
+ * virkning i tid: et modulskift gælder i SAMME sekund og kan lukke kunden ude
+ * af sine data, mens en rabat først gælder fra NÆSTE opgørelse og aldrig
+ * bagud. Én knap ville skrive begge dele, og så ville en tastet rabat udløse
+ * et modulskift — eller omvendt: et fravalg udløse en rabatændring nogen ikke
+ * havde til hensigt.
+ *
+ * Hver knap er derfor slået fra indtil netop dens egen ting er ændret. Skriver
+ * man en procent, lyser kun "Gem rabatter", og "Gem moduler" bliver ved med at
+ * være grå. Det er den mest ærlige tilbagemelding om hvad der lige skete: man
+ * kan se på skærmen hvad der IKKE blev gemt.
+ *
+ * Alternativet — at lade "Gem rabat" i Rabat-kortet gemme modulrabatterne —
+ * blev valgt fra: man ville redigere ét sted og gemme et andet, og de fleste
+ * ville trykke "Gem moduler" og tro at rabatten fulgte med.
  */
 function Moduler({ kunde, paaGemt }) {
-  const [valgte, saetValgte] = useState(
-    () => VALGFRIE_MODULER.filter((m) => kunde.moduler?.[m] === true)
-  );
-  const [gemmer, saetGemmer] = useState(false);
-  const [svar, saetSvar] = useState(null);
-
   const nuHar = VALGFRIE_MODULER.filter((m) => kunde.moduler?.[m] === true);
+  const nuRabat = kunde.abonnement?.rabatModulBps || {};
+  const generel = Number.isInteger(kunde.abonnement?.rabatBps) ? kunde.abonnement.rabatBps : 0;
+
+  const [valgte, saetValgte] = useState(() => nuHar);
+  const [rabat, saetRabat] = useState(() =>
+    Object.fromEntries(VALGFRIE_MODULER.map((m) =>
+      [m, nuRabat[m] ? String(bpsTilPct(nuRabat[m])) : ""])));
+
+  const [gemmerModuler, saetGemmerModuler] = useState(false);
+  const [gemmerRabat, saetGemmerRabat] = useState(false);
+  const [svarModuler, saetSvarModuler] = useState(null);
+  const [svarRabat, saetSvarRabat] = useState(null);
+
   const fjernet = nuHar.filter((m) => !valgte.includes(m));
   const tilfoejet = valgte.filter((m) => !nuHar.includes(m));
-  const aendret = fjernet.length > 0 || tilfoejet.length > 0;
+  const modulerAendret = fjernet.length > 0 || tilfoejet.length > 0;
+
+  const tilBps = (v) => {
+    if (String(v).trim() === "") return 0;
+    const n = Number(String(v).replace(",", "."));
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? pctTilBps(n) : null;
+  };
+  const bps = Object.fromEntries(VALGFRIE_MODULER.map((m) => [m, tilBps(rabat[m])]));
+  const ugyldige = VALGFRIE_MODULER.filter((m) => bps[m] === null);
+  /* ⚠ NUL GEMMES IKKE. Et modul med 0 % er et modul uden rabat, og en node
+     fuld af nuller ville se ud som aftaler der ikke findes. */
+  const rene = Object.fromEntries(
+    VALGFRIE_MODULER.filter((m) => bps[m] > 0).map((m) => [m, bps[m]]));
+  const gemte = Object.fromEntries(Object.entries(nuRabat).filter(([, v]) => v > 0));
+  const rabatAendret = ugyldige.length === 0 &&
+    JSON.stringify(rene) !== JSON.stringify(gemte);
 
   const skift = (m) => {
-    saetSvar(null);
+    saetSvarModuler(null);
     saetValgte((v) => (v.includes(m) ? v.filter((x) => x !== m) : [...v, m]));
   };
 
-  const gem = async () => {
-    saetGemmer(true);
+  const gemModuler = async () => {
+    saetGemmerModuler(true);
     const r = await saetModuler({ id: kunde.id, moduler: valgte });
-    saetGemmer(false);
-    saetSvar(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
+    saetGemmerModuler(false);
+    saetSvarModuler(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
+    if (r.ok) paaGemt();
+  };
+
+  const gemRabat = async () => {
+    saetGemmerRabat(true);
+    const r = await saetAbonnement({ id: kunde.id, rabatModulBps: rene });
+    saetGemmerRabat(false);
+    saetSvarRabat(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
     if (r.ok) paaGemt();
   };
 
   return (
     <div>
-      <div className="fc-grid" style={{ gap: 6 }}>
-        {VALGFRIE_MODULER.map((m) => (
-          <label key={m} className="fc-med-ikon" style={{ gap: 8 }}>
-            <input type="checkbox" checked={valgte.includes(m)} onChange={() => skift(m)} />
-            <span><b>{MODUL[m].label}</b> <span className="fc-hint">{MODUL[m].hvad}</span></span>
-          </label>
-        ))}
+      <div className="fc-scroll">
+        <table className="fc-table">
+          <thead>
+            <tr>
+              <th>Modul</th>
+              <th className="fc-num">Rabat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {VALGFRIE_MODULER.map((m) => {
+              const til = valgte.includes(m);
+              return (
+                <tr key={m}>
+                  <td>
+                    {/* ⚠ DÆMPET NAVN FREM FOR "(ikke tilvalgt)". Rækken er
+                        smal nu, og en parentes efter hvert fravalgt modul
+                        ville fylde mere end den forklarer. Feltet er stadig
+                        udfyldeligt: en aftalt sats kan stå klar til den dag
+                        modulet tilvælges. */}
+                    <label className="fc-med-ikon" style={{ gap: 8 }}>
+                      <input type="checkbox" checked={til} onChange={() => skift(m)} />
+                      <span className={til ? undefined : "fc-neutral"}>
+                        <b>{MODUL[m].label}</b>{" "}
+                        <span className="fc-hint">{MODUL[m].hvad}</span>
+                      </span>
+                    </label>
+                  </td>
+                  <td className="fc-num">
+                    <span className="fc-med-suffiks">
+                      <input className="fc-input-tal fc-input-pct" inputMode="decimal"
+                             size={3} value={rabat[m]}
+                             aria-label={`Rabat på ${MODUL[m].label} i procent`}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               saetRabat((x) => ({ ...x, [m]: v }));
+                               saetSvarRabat(null);
+                             }} />
+                      <span className="fc-hint">%</span>
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <p className="fc-hint" style={{ marginTop: 10 }}>
@@ -130,13 +215,10 @@ function Moduler({ kunde, paaGemt }) {
         Opsætning kan ikke se sine egne brugere.
       </p>
 
+      {/* ---- Moduler ---- */}
       {fjernet.length > 0 && (
         <div className="fc-empty fc-empty-warn" style={{ marginTop: 12 }}>
-          <p>
-            <b>
-              Du fravælger {fjernet.map((m) => MODUL[m].label).join(", ")}.
-            </b>
-          </p>
+          <p><b>Du fravælger {fjernet.map((m) => MODUL[m].label).join(", ")}.</b></p>
           <p className="fc-hint" style={{ marginTop: 6 }}>
             Kunden kan derefter <b>hverken læse eller skrive</b> i modulet — heller
             ikke det han selv har lagt ind. Data slettes ikke, men eneste vej til
@@ -146,16 +228,64 @@ function Moduler({ kunde, paaGemt }) {
       )}
 
       <div className="fc-formular-knapper" style={{ marginTop: 12 }}>
-        <Knap variant="primaer" disabled={!aendret || gemmer} onClick={gem}>
-          {gemmer ? "Gemmer …" : "Gem moduler"}
+        <Knap variant="primaer" disabled={!modulerAendret || gemmerModuler}
+              onClick={gemModuler}
+              title="Gælder med det samme.">
+          {gemmerModuler ? "Gemmer …" : "Gem moduler"}
         </Knap>
-        {aendret && (
-          <Knap onClick={() => { saetValgte(nuHar); saetSvar(null); }} disabled={gemmer}>
-            Fortryd
+        {modulerAendret && (
+          <Knap onClick={() => { saetValgte(nuHar); saetSvarModuler(null); }}
+                disabled={gemmerModuler}>
+            Fortryd moduler
           </Knap>
         )}
       </div>
-      <Formularsvar svar={svar} />
+      <Formularsvar svar={svarModuler} />
+
+      {/* ---- Rabat pr. modul ---- */}
+      {generel > 0 && (
+        <div className="fc-empty fc-empty-warn" style={{ marginTop: 12 }}>
+          <p><b>Rabat på alt ({pct(bpsTilPct(generel))}) overruler satserne herover.</b></p>
+          <p className="fc-hint" style={{ marginTop: 6 }}>
+            Hver linje får {pct(bpsTilPct(generel))} — også et modul med sin egen
+            sats. Satserne bliver stående og træder i kraft igen, når{" "}
+            <b>Rabat på alt</b> sættes til 0.
+          </p>
+        </div>
+      )}
+
+      <p className="fc-hint" style={{ marginTop: 12 }}>
+        ⚠ <b>En rabat virker først på næste opgørelse.</b> Et frosset
+        fakturagrundlag regnes <b>aldrig</b> igen — det er hele pointen med at
+        det er frosset. En ændring her gælder ikke bagud.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 6 }}>
+        Tom rubrik = ingen rabat. Et modul kunden ikke har, kan godt have en
+        aftalt sats — den træder i kraft den dag modulet tilvælges.
+      </p>
+      {ugyldige.length > 0 && (
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          Ugyldig procent: {ugyldige.map((m) => MODUL[m].label).join(", ")}. Mellem 0 og 100.
+        </p>
+      )}
+
+      <div className="fc-formular-knapper" style={{ marginTop: 10 }}>
+        <Knap disabled={!rabatAendret || gemmerRabat} onClick={gemRabat}
+              title="Gælder fra næste opgørelse.">
+          {gemmerRabat ? "Gemmer …" : "Gem rabatter"}
+        </Knap>
+        {rabatAendret && (
+          <Knap disabled={gemmerRabat}
+                onClick={() => {
+                  saetRabat(Object.fromEntries(VALGFRIE_MODULER.map((m) =>
+                    [m, nuRabat[m] ? String(bpsTilPct(nuRabat[m])) : ""])));
+                  saetSvarRabat(null);
+                }}>
+            Fortryd rabatter
+          </Knap>
+        )}
+      </div>
+      <Formularsvar svar={svarRabat} />
     </div>
   );
 }
@@ -253,73 +383,43 @@ function Abonnement({ kunde, paaGemt }) {
 }
 
 /**
- * Rabatten på én kunde — generelt og pr. modul.
+ * Rabat på ALT — den generelle.
  *
- * ⚠ FELTERNE ER PROCENT, BASEN ER BASISPOINT. 15,5 % bliver 1550. Omregningen
- * sker ét sted (pctTilBps i beloeb.js), fordi en float i basen ville give
- * afrundingsfejl der først dukker op på faktura nummer fyrre.
+ * ⚠ RABAT PR. MODUL STÅR IKKE HER. Den bor i Moduler-kortet, på samme linje
+ * som modulets afkrydsningsfelt: de samme ti moduler listet to gange på én
+ * skærm er en liste man skal holde styr på med øjnene. Det her felt er en
+ * ANDEN slags rabat — den gælder alt, uanset hvilke moduler kunden har — og
+ * derfor hører den ikke i modullisten.
  *
- * ⚠ DEN GENERELLE OVERRULER MODULERNE. Står der en procent i den øverste
- * rubrik, gælder den på hver eneste linje — også på et modul der har sin egen.
- * Modulrabatterne bliver stående og træder i kraft igen, når den generelle
+ * ⚠ DEN OVERRULER MODULERNES. Står der en procent her, gælder den på hver
+ * eneste linje — også på et modul der har sin egen, og også når modulets er
+ * større. Modulsatserne bliver stående og træder i kraft igen, når den her
  * sættes til nul.
  *
  * Reglen står i `rabatFor()` i priser.js og INGEN andre steder. Skrev skærmen
  * sin egen udgave, ville den vise ét tal og serveren fakturere et andet — og
  * det ville først blive opdaget når kunden lagde linjerne sammen.
- *
- * ⚠ RABATTEN VIRKER FØRST PÅ NÆSTE OPGØRELSE. Et frosset grundlag regnes
- * aldrig igen — det er hele pointen med at det er frosset.
  */
 function Rabat({ kunde, paaGemt }) {
   const nuBps = Number.isInteger(kunde.abonnement?.rabatBps) ? kunde.abonnement.rabatBps : 0;
-  const nuModul = kunde.abonnement?.rabatModulBps || {};
+  const paaModuler = Object.entries(kunde.abonnement?.rabatModulBps || {})
+    .filter(([, v]) => v > 0);
 
   const [felt, saetFelt] = useState(String(bpsTilPct(nuBps)));
-  const [modulFelt, saetModulFelt] = useState(() =>
-    Object.fromEntries(VALGFRIE_MODULER.map((m) =>
-      [m, nuModul[m] ? String(bpsTilPct(nuModul[m])) : ""])));
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
 
-  const tilBps = (v) => {
-    if (String(v).trim() === "") return 0;
-    const n = Number(String(v).replace(",", "."));
-    return Number.isFinite(n) && n >= 0 && n <= 100 ? pctTilBps(n) : null;
-  };
-
-  const bps = tilBps(felt);
-  const modulBps = Object.fromEntries(
-    VALGFRIE_MODULER.map((m) => [m, tilBps(modulFelt[m])]));
-  const ugyldige = [
-    ...(bps === null ? ["den generelle"] : []),
-    ...VALGFRIE_MODULER.filter((m) => modulBps[m] === null).map((m) => MODUL[m].label),
-  ];
-  const gyldig = ugyldige.length === 0;
-
-  const rene = Object.fromEntries(
-    VALGFRIE_MODULER.filter((m) => modulBps[m] > 0).map((m) => [m, modulBps[m]]));
-  const aendret = gyldig && (
-    bps !== nuBps ||
-    JSON.stringify(rene) !== JSON.stringify(
-      Object.fromEntries(Object.entries(nuModul).filter(([, v]) => v > 0)))
-  );
-
-  const overrulet = gyldig && bps > 0 && Object.keys(rene).length > 0;
+  const tal = String(felt).trim() === "" ? 0 : Number(String(felt).replace(",", "."));
+  const gyldig = Number.isFinite(tal) && tal >= 0 && tal <= 100;
+  const bps = gyldig ? pctTilBps(tal) : null;
+  const aendret = gyldig && bps !== nuBps;
 
   const gem = async () => {
     saetGemmer(true);
-    const r = await saetAbonnement({ id: kunde.id, rabatBps: bps, rabatModulBps: rene });
+    const r = await saetAbonnement({ id: kunde.id, rabatBps: bps });
     saetGemmer(false);
     saetSvar(r.ok ? { ok: true } : { ok: false, art: r.art, besked: r.besked });
     if (r.ok) paaGemt();
-  };
-
-  const nulstil = () => {
-    saetFelt(String(bpsTilPct(nuBps)));
-    saetModulFelt(Object.fromEntries(VALGFRIE_MODULER.map((m) =>
-      [m, nuModul[m] ? String(bpsTilPct(nuModul[m])) : ""])));
-    saetSvar(null);
   };
 
   return (
@@ -327,84 +427,44 @@ function Rabat({ kunde, paaGemt }) {
       <Feltraekke>
         <Felt id={`rb-${kunde.id}`} label="Rabat på alt (%)" vaerdi={felt}
               saet={(v) => { saetFelt(v); saetSvar(null); }}
-              fejl={bps === null ? "Mellem 0 og 100." : null}
+              fejl={!gyldig ? "Mellem 0 og 100." : null}
               hint="Tom eller 0 betyder ingen generel rabat." />
       </Feltraekke>
 
-      {overrulet && (
-        <div className="fc-empty fc-empty-warn" style={{ marginTop: 4 }}>
-          <p><b>Den generelle rabat overruler modulerne.</b></p>
+      {gyldig && bps > 0 && paaModuler.length > 0 && (
+        <div className="fc-empty fc-empty-warn">
+          <p><b>Den overruler {paaModuler.length} modulsats{paaModuler.length === 1 ? "" : "er"}.</b></p>
           <p className="fc-hint" style={{ marginTop: 6 }}>
-            Alle linjer får <b>{pct(bpsTilPct(bps))}</b> — også{" "}
-            {Object.keys(rene).map((m) => MODUL[m].label).join(", ")}. Satserne
-            nedenfor bliver stående og træder i kraft igen, når den øverste
-            rubrik sættes til <b>0</b>.
+            {paaModuler.map(([m]) => MODUL[m]?.label || m).join(", ")} har egne
+            satser i <b>Moduler</b>. De bliver stående og træder i kraft igen,
+            når det her felt sættes til <b>0</b>.
           </p>
         </div>
       )}
 
-      <p className="fc-hint" style={{ marginTop: 12 }}><b>Rabat pr. modul</b></p>
-      <div style={{ overflowX: "auto" }}>
-        <table className="fc-table">
-          <thead>
-            <tr><th>Modul</th><th className="fc-num">Rabat (%)</th><th>Gælder</th></tr>
-          </thead>
-          <tbody>
-            {VALGFRIE_MODULER.map((m) => {
-              const har = kunde.moduler?.[m] === true;
-              const egen = modulBps[m];
-              return (
-                <tr key={m}>
-                  <td>
-                    <b>{MODUL[m].label}</b>
-                    {!har && <> <span className="fc-neutral">(ikke tilvalgt)</span></>}
-                  </td>
-                  <td className="fc-num">
-                    <input className="fc-input-tal" inputMode="decimal"
-                           value={modulFelt[m]}
-                           onChange={(e) => {
-                             const v = e.target.value;
-                             saetModulFelt((x) => ({ ...x, [m]: v }));
-                             saetSvar(null);
-                           }} />
-                  </td>
-                  <td>
-                    {/* Hvad der FAKTISK gælder — samme funktion som serveren
-                        regner med. Ikke en gentagelse af reglen. */}
-                    {gyldig ? (
-                      <span className="fc-hint">
-                        {pct(bpsTilPct(rabatFor(m, { rabatBps: bps, rabatModulBps: rene })))}
-                        {bps > 0 && egen > 0 && " (generel)"}
-                      </span>
-                    ) : <span className="fc-neutral">—</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {gyldig && bps > 0 && (
+        <p className="fc-hint">
+          Gemmes som <b>{num(bps)}</b> basispoint. Heltal, ikke decimaler — en
+          float ville give afrundingsfejl der først dukker op på faktura nummer
+          fyrre.
+        </p>
+      )}
 
-      <p className="fc-hint" style={{ marginTop: 10 }}>
-        Tom rubrik = ingen rabat på modulet. Et modul kunden ikke har, kan godt
-        have en aftalt sats — den træder i kraft den dag modulet tilvælges.
-      </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
         ⚠ <b>Virker først på næste opgørelse.</b> Et frosset grundlag regnes
         aldrig igen. En ændring her gælder ikke bagud.
       </p>
 
-      {!gyldig && (
-        <p className="fc-hint" style={{ marginTop: 8 }}>
-          Ugyldig procent: {ugyldige.join(", ")}.
-        </p>
-      )}
-
       <div className="fc-formular-knapper" style={{ marginTop: 10 }}>
         <Knap variant="primaer" disabled={!aendret || gemmer} onClick={gem}>
           {gemmer ? "Gemmer …" : "Gem rabat"}
         </Knap>
-        {aendret && <Knap onClick={nulstil} disabled={gemmer}>Fortryd</Knap>}
+        {aendret && (
+          <Knap onClick={() => { saetFelt(String(bpsTilPct(nuBps))); saetSvar(null); }}
+                disabled={gemmer}>
+            Fortryd
+          </Knap>
+        )}
       </div>
       <Formularsvar svar={svar} />
     </div>
@@ -628,14 +688,14 @@ export default function Konsol({ bruger }) {
 
       {aaben && (
         <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-          <Kort titel={`Moduler — ${aaben.virksomhed?.navn || aaben.id}`}>
+          <Kort titel={`Moduler & rabat — ${aaben.virksomhed?.navn || aaben.id}`}>
             <Moduler kunde={aaben} paaGemt={genindlaes} />
           </Kort>
           <div className="fc-grid" style={{ gap: 16 }}>
             <Kort titel="Abonnement">
               <Abonnement kunde={aaben} paaGemt={genindlaes} />
             </Kort>
-            <Kort titel="Rabat">
+            <Kort titel="Rabat på alt">
               <Rabat kunde={aaben} paaGemt={genindlaes} />
             </Kort>
             <Kort titel="Første administrator">
