@@ -387,3 +387,53 @@ test("Kun ejerfunktionerne tager tenanten fra nyttelasten", () => {
   assert.doesNotMatch(ejerensDel, /kraevBrugeradmin\(/,
     "en ejerfunktion bruger kundens tjek — en ejerkonto har ingen tenant.");
 });
+
+test("kundestatus TOERRER IKKE rabatten vaek", () => {
+  /* ⚠ DEN HER FEJL VAR JEG VED AT BYGGE IND. Noden bar kun status da den
+     blev skrevet, og et set() var derfor rigtigt. Da rabatBps, interval og
+     startetMs kom til, blev det samme set() til en sletning: hver gang nogen
+     satte en kunde på pause, ville rabatten forsvinde — og den næste faktura
+     ville være til fuld pris. En fejl der først opdages når kunden ringer.
+
+     Prøven er skrevet på mønstret frem for på symptomet: INGEN funktion må
+     set()'e hele abonnement-noden. */
+  const kode = funktionskode();
+
+  /* ⚠ kundeopret ER UNDTAGET, og det er ikke en opblødning: den skriver noden
+     for FØRSTE gang, hvor der pr. definition ikke er noget at tørre væk. Alle
+     andre rører en node der allerede har vilkår i sig. */
+  const navne = [...kode.matchAll(/export const (\w+) = onCall/g)].map((m) => m[1]);
+  const syndere = [];
+  for (const navn of navne) {
+    if (navn === "kundeopret") continue;
+    const i = kode.indexOf(`export const ${navn} = onCall`);
+    const naeste = kode.indexOf("export const", i + 10);
+    const krop = kode.slice(i, naeste > 0 ? naeste : undefined);
+    if (/abonnement`\)\s*\.set\(/.test(krop)) syndere.push(navn);
+  }
+  assert.deepEqual(syndere, [],
+    "en funktion kalder set() på hele abonnement-noden. Brug update() — " +
+    "ellers tørres rabatten og vilkårene væk af et statusskift.");
+
+  const i = kode.indexOf("export const kundeopret");
+  const krop = kode.slice(i, kode.indexOf("export const kundemoduler"));
+  assert.match(krop, /abonnement`\)\.set\(\{[\s\S]*?status: "aktiv"/,
+    "kundeopret sætter ikke abonnementet ved oprettelsen.");
+});
+
+test("Rabatten er basispoint som HELTAL", () => {
+  /* 15.5 som float giver afrundingsfejl der først dukker op på faktura
+     nummer fyrre. Samme begrundelse som øre og millimeter. */
+  const kode = funktionskode();
+  const i = kode.indexOf("export const kundeabonnement");
+  assert.ok(i > 0, "kundeabonnement findes ikke.");
+  const krop = kode.slice(i, i + 2500);
+  assert.match(krop, /Number\.isInteger\(bps\)/, "rabatten godtages som float.");
+  assert.match(krop, /bps > 10000/, "en rabat over 100 % afvises ikke.");
+
+  const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
+  const linje = regler.split(/\r?\n/).find((l) => l.includes('"rabatBps"'));
+  assert.ok(linje, "reglerne kender ikke rabatBps.");
+  assert.match(linje, /% 1 === 0/, "reglerne tillader en rabat med decimaler.");
+  assert.match(linje, /<= 10000/, "reglerne tillader en rabat over 100 %.");
+});

@@ -120,6 +120,26 @@
           // fritekst dér er praecis det audit-regler.js findes for at
           // holde ude.
           "aarsag": { ".validate": "newData.isString() && newData.val().matches(/^(betaling|kundeoensket|proeveperiodeUdloebet|fejloprettet)$/)" },
+
+          // ══════════════════════════════════════════════════════════
+          // ABONNEMENTSVILKAAR — skrives af kundeabonnement
+          // ══════════════════════════════════════════════════════════
+          //
+          // ⚠ RABAT I BASISPOINT SOM HELTAL. 1500 = 15,00 %. Samme
+          // begrundelse som oere (beslutning 2) og millimeter paa et
+          // koeretoej: 15.5 som float giver afrundingsfejl der foerst
+          // dukker op paa faktura nummer fyrre.
+          //
+          // ⚠ 0-10000. En rabat over 100 % ville give en NEGATIV sats,
+          // altsaa en kreditnota forkleaedt som et abonnement.
+          "rabatBps": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000" },
+
+          // Kun maaned indtil videre. En kvartalsfaktura er ikke en anden
+          // sats — det er en anden PERIODE, og generatoren skal kende den.
+          // Et felt der lover noget der ikke virker, er vaerre end intet.
+          "interval": { ".validate": "newData.isString() && newData.val().matches(/^(maaned)$/)" },
+          "startetMs": { ".validate": "newData.isNumber()" },
+
           "$andet": { ".validate": false }
         },
         "moduler": {

@@ -43,10 +43,10 @@ import { getAuth } from "firebase-admin/auth";
 
 import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
-import { modulsaet, ukendteModuler } from "./delt/moduler.js";
+import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import {
-  taelBrugere, taelKoeretoejer, maalingsdato,
+  taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste,
 } from "./delt/priser.js";
 
 initializeApp();
@@ -514,10 +514,18 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
     throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
   }
 
-  const post = { status, aendretMs: Date.now(), aendretAf: ejerUid };
-  if (aarsag) post.aarsag = aarsag;
-
-  await getDatabase().ref(`tenants/${id}/abonnement`).set(post);
+  /* ⚠ update(), IKKE set(). Noden bærer også rabatBps, interval og startetMs,
+     og et set() ville tørre dem væk hver gang nogen satte en kunde på pause.
+     Rabatten ville forsvinde lydløst, og den næste faktura ville være til
+     fuld pris — en fejl der først opdages når kunden ringer.
+     `aarsag` nulstilles med vilje, når der ikke er angivet nogen: en gammel
+     årsag der blev stående efter en genåbning, ville forklare den forkerte
+     hændelse. */
+  const post = {
+    status, aendretMs: Date.now(), aendretAf: ejerUid,
+    aarsag: aarsag || null,
+  };
+  await getDatabase().ref(`tenants/${id}/abonnement`).update(post);
   /* ⚠ INGEN KONTO RØRES. Spærringen ligger på tenanten — beslutning 32.
      Sattes `disabled` på kundens logins, kunne genåbningen ikke rulles
      tilbage: de der var spærret individuelt ville blive åbnet med. */
@@ -656,4 +664,109 @@ export const maalnu = onCall({ region: REGION }, async (req) => {
   }
   console.log(`maalnu: ${Object.keys(ud).length} kunder, kaldt af ${ejerUid}`);
   return { ok: true, dato, maalinger: ud };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRISER OG RABAT
+   ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Læg en NY prisliste. En gammel rettes aldrig.
+ *
+ * ⚠ EN NY PRIS ER EN NY POST. Samme idiom som `gyldigFra` på en sats. Kunne
+ * en liste rettes, kunne en faktura fra marts ikke genskabes efter en
+ * prisstigning i april — og bogføringsmaterialet skal kunne dokumenteres i
+ * fem år.
+ *
+ * ⚠ MEN DET ER IKKE VERSIONERINGEN DER BESKYTTER MARTS. Det gør frysningen:
+ * et genereret grundlag gemmer sine egne satser. Versioneringen giver
+ * sporbarhed. De to forveksles, og så bygger man den ene og tror man har
+ * den anden.
+ */
+export const prislisteopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+
+  const liste = {
+    gyldigFraMs: Number(d.gyldigFraMs),
+    momssats: Number(d.momssats),
+    moduler: d.moduler || {},
+    oprettetAf: ejerUid,
+  };
+
+  /* ⚠ SAMME VALIDERING SOM KLIENTEN, kørt igen. En ændret klient kunne sende
+     kroner som float, og så ville hele prislisten være en øre-fejl. */
+  const fejl = validerPrisliste(liste, { kendteModuler: ALLE_MODULER });
+  if (fejl.length) throw new HttpsError("invalid-argument", fejl.join(" "));
+
+  const ref = getDatabase().ref("udbyder/prisliste").push();
+  await ref.set(liste);
+
+  /* ⚠ INGEN AUDITPOST HOS EN KUNDE. Prislisten er VORES, ikke én kundes —
+     der er ingen tenant at logge den under, og at vælge en tilfældig ville
+     være at skrive en fremmed hændelse ind i hans log. */
+  console.log(`prislisteopret: ${ref.key} af ${ejerUid}`);
+  return { ok: true, id: ref.key };
+});
+
+/**
+ * Rabatten og abonnementsvilkårene på ÉN kunde.
+ *
+ * ⚠ RABAT I BASISPOINT. 1500 = 15,00 %. Heltal, som beløb er i øre: 15.5 som
+ * float giver afrundingsfejl der først dukker op på faktura nummer fyrre.
+ *
+ * ⚠ update(), IKKE set(). Statussen ligger i samme node og skrives af
+ * kundestatus. Et set() her ville sætte en pauset kunde tilbage til aktiv,
+ * fordi feltet manglede i nyttelasten.
+ */
+export const kundeabonnement = onCall({ region: REGION }, async (req) => {
+  const ejerUid = kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+
+  if (!(await kundeFindes(id))) {
+    throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
+  }
+
+  const post = { aendretMs: Date.now(), aendretAf: ejerUid };
+
+  if (d.rabatBps !== undefined) {
+    const bps = Number(d.rabatBps);
+    if (!Number.isInteger(bps) || bps < 0 || bps > 10000) {
+      throw new HttpsError("invalid-argument",
+        "Rabatten er basispoint som heltal mellem 0 og 10000 (0-100 %).");
+    }
+    post.rabatBps = bps;
+  }
+
+  if (d.interval !== undefined) {
+    /* Kun måned indtil videre. En kvartalsfaktura er ikke en anden sats —
+       det er en anden PERIODE, og generatoren skal kende den. Den findes
+       ikke endnu, og et felt der lover noget der ikke virker, er værre end
+       intet felt. */
+    if (d.interval !== "maaned") {
+      throw new HttpsError("invalid-argument", "Kun 'maaned' er understøttet.");
+    }
+    post.interval = "maaned";
+  }
+
+  if (d.startetMs !== undefined) {
+    const ms = Number(d.startetMs);
+    if (!Number.isFinite(ms)) {
+      throw new HttpsError("invalid-argument", "startetMs skal være et tidspunkt.");
+    }
+    post.startetMs = ms;
+  }
+
+  if (Object.keys(post).length === 2) {
+    throw new HttpsError("invalid-argument", "Intet at ændre.");
+  }
+
+  await getDatabase().ref(`tenants/${id}/abonnement`).update(post);
+  /* ⚠ RABATTEN ER ET TAL PÅ ALLOWLISTEN og må derfor stå i loggen. Kunden
+     skal kunne se hvad der blev aftalt om hans egen regning. */
+  await log(id, ejerUid, AUDIT.aendre, id,
+    post.rabatBps !== undefined ? `rabat ${post.rabatBps} bps` : "abonnementsvilkaar");
+
+  return { ok: true, ...post };
 });
