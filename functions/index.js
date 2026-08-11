@@ -901,27 +901,15 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
       `Perioden ${periode} er ikke slut endnu. Et grundlag der fryses for tidligt, mangler resten af måneden for altid.`);
   }
 
-  /* ⚠ ÉN KUNDE AD GANGEN. Foerst blev hele perioden skrevet i ét saet med
-     begrundelsen "enten staar hele opgoerelsen, eller ogsaa staar ingen af
-     den". Det var forkert: hver kundes grundlag er et SELVSTAENDIGT dokument
-     med sine egne satser og sin egen rabat, og at binde dem sammen betoed at
-     én kunde uden maalinger holdt de andre tilbage.
+  /* ⚠ ÉT KLIK, ALLE KUNDER — men stadig ét DOKUMENT pr. kunde.
+     De to blev forvekslet undervejs: jeg lavede handlingen om til én kunde ad
+     gangen, fordi grundlaget skulle vaere pr. kunde. Det er dokumentet der
+     skal vaere pr. kunde; knappen skal goere dem alle. Med tredive kunder
+     ville tredive klik vaere en maanedlig opgave ingen orker.
 
-     Bekymringen om en halv opgoerelse er loest et andet sted: skaermen viser
-     hvilke kunder der er gjort op og hvilke der ikke er. En delvis opgoerelse
-     der KAN SES, er ikke farlig — det er en usynlig der er. */
-  const kundeId = kraevKundeId(d);
-
+     Hver kunde skrives for sig, og en kunde der fejler stopper ikke de
+     andre — den staar bare uden grundlag paa skaermen bagefter. */
   const db = getDatabase();
-  const sti = `udbyder/fakturagrundlag/${periode}/${kundeId}`;
-
-  if (!(await kundeFindes(kundeId))) {
-    throw new HttpsError("not-found", `Kunden "${kundeId}" findes ikke.`);
-  }
-  if ((await db.ref(sti).once("value")).exists()) {
-    throw new HttpsError("already-exists",
-      `${kundeId} er allerede gjort op for ${periode}. En rettelse er et NYT grundlag der henviser til det gamle — den vej er ikke bygget.`);
-  }
 
   const lister = (await db.ref("udbyder/prisliste").once("value")).val() || {};
   const prisliste = gaeldendePrisliste(lister, graenser.fra);
@@ -930,29 +918,66 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
       `Ingen prisliste gjaldt ved begyndelsen af ${periode}. Opret en med gyldigFraMs den 1. i maaneden.`);
   }
 
-  const [maal, abon] = await Promise.all([
-    db.ref(`udbyder/maalinger/${kundeId}`).once("value"),
-    db.ref(`tenants/${kundeId}/abonnement`).once("value"),
-  ]);
-  const g = byggKundegrundlag({
-    id: kundeId, periode, graenser,
-    maalinger: maal.val() || {},
-    prisliste,
-    abonnement: abon.val(),
-  });
-  g.genereretMs = Date.now();
-  g.genereretAf = ejerUid;
+  /* Én bestemt kunde kan stadig goeres op alene — men det er ikke vejen. */
+  const kunEn = kortStreng(d.id, 40) || null;
+  const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
+  const ider = (kunEn ? [kunEn] : Object.keys(indeks)).sort();
+  if (kunEn && !indeks[kunEn]) {
+    throw new HttpsError("not-found", `Kunden "${kunEn}" findes ikke.`);
+  }
 
-  await db.ref(sti).set(g);
+  const oprettet = [];
+  const sprunget = [];
 
-  /* ⚠ LOGGES HOS KUNDEN. Det er hans regning. */
-  await log(kundeId, ejerUid, AUDIT.opret, periode, `fakturagrundlag ${periode}`);
+  for (const id of ider) {
+    const sti = `udbyder/fakturagrundlag/${periode}/${id}`;
+
+    /* ⚠ EN ALLEREDE OPGJORT KUNDE OVERSKRIVES IKKE — den springes over.
+       Ét klik der roerte et frosset dokument, ville vaere en sletning
+       forklaedt som en gentagelse. Med flere kunder kan man ikke naegte hele
+       kaldet, for saa ville én opgjort kunde blokere resten. */
+    if ((await db.ref(sti).once("value")).exists()) {
+      sprunget.push({ id, hvorfor: "allerede opgjort" });
+      continue;
+    }
+
+    const [maal, abon] = await Promise.all([
+      db.ref(`udbyder/maalinger/${id}`).once("value"),
+      db.ref(`tenants/${id}/abonnement`).once("value"),
+    ]);
+    const g = byggKundegrundlag({
+      id, periode, graenser,
+      maalinger: maal.val() || {},
+      prisliste,
+      abonnement: abon.val(),
+    });
+
+    /* ⚠ "AKTIVE KUNDER" ER DEM DER VAR AKTIVE I PERIODEN — ikke dem der er
+       aktive I DAG. En kunde der blev sat paa pause den 20., var i drift i
+       nitten dage og skal have en regning for dem; en kunde der har vaeret
+       opsagt hele maaneden har nul dage og skal ikke have et tomt dokument.
+       dageFaktureres svarer paa netop det, og den taeller allerede pause og
+       opsigelse fra. */
+    if (!g.dageFaktureres) {
+      sprunget.push({ id, hvorfor: "ingen fakturerbare dage" });
+      continue;
+    }
+
+    g.genereretMs = Date.now();
+    g.genereretAf = ejerUid;
+    await db.ref(sti).set(g);
+    await log(id, ejerUid, AUDIT.opret, periode, `fakturagrundlag ${periode}`);
+    oprettet.push({ id, beloebOere: g.beloebOere });
+  }
 
   return {
-    ok: true, periode, kundeId,
-    beloebOere: g.beloebOere, linjer: (g.linjer || []).length,
+    ok: true, periode,
+    oprettet: oprettet.length,
+    sprunget,
+    ialtOere: oprettet.reduce((s, x) => s + (x.beloebOere || 0), 0),
   };
 });
+
 
 /**
  * Slet en prisliste.

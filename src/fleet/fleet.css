@@ -780,6 +780,10 @@
   .fc-table{break-inside:auto}
   .fc-table tr{break-inside:avoid}
   .fc-table thead{display:table-header-group}
+  /* ⚠ ÉN FAKTURA PR. ARK. Uden det her ville to kunders opgoerelser dele
+     side, og man kan ikke sende et halvt ark til hver. Det er hele
+     pointen med at de er OPDELT: man river dem fra hinanden. */
+  .fc-side-skift{break-before:page; page-break-before:always}
   .fc-kpis{grid-template-columns:repeat(4,1fr)}
   a[href]:after{content:""}
 }

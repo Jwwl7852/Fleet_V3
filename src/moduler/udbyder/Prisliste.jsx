@@ -177,6 +177,29 @@ function linjetekst(l) {
  */
 function Faktura({ kunde, periode, g }) {
   const linjer = g.linjer || [];
+
+  /* ⚠ ET FROSSET DOKUMENT UDEN LINJER ER IKKE EN VISNINGSFEJL. Det blev
+     opgjort dengang der ikke var maalt noget — og det regnes aldrig igen.
+     Skaermen skal sige hvad der skete, ikke vise en tom tabel og lade
+     laeseren gaette. Samme regel som "for lidt grundlag" frem for en streg. */
+  if (!linjer.length) {
+    return (
+      <div className="fc-empty fc-empty-info">
+        <p><b>Opgjort uden linjer.</b></p>
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          Der var <b>{num(g.dageMaalt)} maalte dage</b> og{" "}
+          <b>{num(g.dageFaktureres)} fakturerbare</b> i {periode}. Er begge nul,
+          fandtes der endnu ingen daglig maaling for kunden — den kan ikke laves
+          bagud.
+        </p>
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          Dokumentet er <b>laast</b> og regnes aldrig igen. Opgjort{" "}
+          {datoTid(g.genereretMs)}.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="fc-scroll">
@@ -452,10 +475,6 @@ export default function Prisliste() {
   const [arbejder, saetArbejder] = useState(false);
   const [sletter, saetSletter] = useState(null);
   const [kunder, saetKunder] = useState([]);
-  /* Hvilken kundes grundlag der er slaaet op. ⚠ ÉT AD GANGEN — en samlet
-     oversigt over alle kunders linjer er ikke en faktura, og det er en
-     faktura der skal kunne laegges sammen i haanden. */
-  const [aabenKunde, saetAabenKunde] = useState(null);
   const [svar, saetSvar] = useState(null);
 
   /**
@@ -729,6 +748,13 @@ export default function Prisliste() {
           )}
 
           <div className="fc-formular-knapper" style={{ marginTop: 10 }}>
+            {/* ⚠ ÉT KLIK, ALLE KUNDER. Dokumentet er stadig ét pr. kunde —
+                det er handlingen der er samlet. Med tredive kunder ville
+                tredive klik være en månedlig opgave ingen orker. */}
+            <Knap variant="primaer" disabled={arbejder || !periodeSlut}
+                  onClick={() => kald(() => opretGrundlag({ periode }))}>
+              {arbejder ? "Danner …" : `Dan fakturagrundlag for ${periode}`}
+            </Knap>
             {/* ⚠ MÅLINGEN KAN IKKE LAVES BAGUD. Knappen findes for at kunne se
                 at kæden virker uden at vente et døgn — ikke for at reparere en
                 manglende dag. */}
@@ -796,19 +822,9 @@ export default function Prisliste() {
                   render: (r) => (!r.g ? <span className="fc-neutral">—</span>
                     : r.g.momsOere === null || r.g.momsOere === undefined
                       ? <span className="fc-bad">mangler sats</span> : kr(r.g.momsOere)) },
-                { key: "handling", label: "", render: (r) => (
-                    <span className="fc-ikke-print">
-                      {r.g ? (
-                        <Knap onClick={() => saetAabenKunde(aabenKunde === r.id ? null : r.id)}>
-                          {aabenKunde === r.id ? "Luk" : "Vis grundlag"}
-                        </Knap>
-                      ) : (
-                        <Knap disabled={arbejder || !periodeSlut}
-                              onClick={() => kald(() => opretGrundlag({ periode, id: r.id }))}>
-                          Gør op
-                        </Knap>
-                      )}
-                    </span>
+                { key: "opgjort", label: "Opgjort", render: (r) => (
+                    r.g ? <span className="fc-hint">{datoTid(r.g.genereretMs)}</span>
+                        : <span className="fc-neutral">—</span>
                   ) },
               ]}
               raekker={kunder.map((k) => ({ ...k, g: grundlag[periode]?.[k.id] || null }))}
@@ -823,26 +839,30 @@ export default function Prisliste() {
         )}
       </Kort>
 
-      {aabenKunde && grundlag[periode]?.[aabenKunde] && (
-        <Kort
-          titel={`Fakturagrundlag ${periode} — ${
-            kunder.find((k) => k.id === aabenKunde)?.navn || aabenKunde}`}
-          handling={
-            <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
-              <Knap onClick={() => hent(
-                      grundlagCsv(periode, [grundlag[periode][aabenKunde]]),
-                      filnavn(`fakturagrundlag-${aabenKunde}-${periode}`,
-                              grundlag[periode][aabenKunde].genereretMs))}>
-                Hent som Excel
-              </Knap>
-              <Knap onClick={() => window.print()}>Print</Knap>
-            </span>
-          }
-        >
-          <Faktura kunde={kunder.find((k) => k.id === aabenKunde)}
-                   periode={periode} g={grundlag[periode][aabenKunde]} />
-        </Kort>
-      )}
+      {/* ⚠ ÉN FAKTURA PR. KUNDE, UNDER HINANDEN — og hver starter paa sin egen
+          side i print (fc-side-skift). Det er dét "opdelt hver for sig"
+          betyder paa en udskrift: man river arkene fra hinanden og sender ét
+          til hver. En samlet tabel over alle kunders linjer kan ingen sende. */}
+      {raekker.map((g, i) => (
+        <div key={g.id} className={i > 0 ? "fc-side-skift" : undefined}>
+          <Kort
+            titel={`Fakturagrundlag ${periode} — ${
+              kunder.find((k) => k.id === g.kundeId)?.navn || g.kundeId}`}
+            handling={
+              <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
+                <Knap onClick={() => hent(
+                        grundlagCsv(periode, [g]),
+                        filnavn(`fakturagrundlag-${g.kundeId}-${periode}`, g.genereretMs))}>
+                  Excel
+                </Knap>
+              </span>
+            }
+          >
+            <Faktura kunde={kunder.find((k) => k.id === g.kundeId)}
+                     periode={periode} g={g} />
+          </Kort>
+        </div>
+      ))}
     </div>
   );
 }
