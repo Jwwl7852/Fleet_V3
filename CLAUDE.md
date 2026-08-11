@@ -108,6 +108,10 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   26 lovede. Genindfør det ikke — `dataTilstand()` kender ikke sit miljø, og det
   er med vilje. Se beslutning 26 og 28.
 - **Definere et demo-datasæt i en modulfil.** Det hører i `fleet/demo-*.js`.
+  ⚠ **Et navn er ikke en beskyttelse.** Linten matchede før på `DEMO_`-præfikset,
+  og `TILBUD`, `OPGAVER` og `FUNKTIONER` gled forbi den i tre forskellige
+  skærme. Den kender nu et datasæt på sin **form**: et modul-niveau array med
+  mindst tre id-bærende poster.
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`
   fejler på det, og den er skrevet fordi mønstret er dukket op **seks gange**.

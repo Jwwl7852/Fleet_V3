@@ -54,7 +54,55 @@ const DEKLARATION = /^\s*(?:export\s+)?(?:const|let|var)\s+(DEMO_[A-ZÆØÅ0-9_]
 const udenKommentarer = (tekst) =>
   tekst.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
+/**
+ * Et datasæt kendt på sin FORM, ikke på sit navn.
+ *
+ * ⚠ FEMTE OG SJETTE GANG. `TILBUD` lå i Kunder.jsx, `OPGAVER` i Dashboard.jsx
+ * og `FUNKTIONER` i Bemanding.jsx — alle tre er datasæt, og alle tre gled forbi
+ * prøven ovenfor, fordi den matcher `DEMO_[A-ZÆØÅ0-9_]+`. Et navn er ikke en
+ * beskyttelse: den der skriver et par rækker demo-data i den skærm han er i
+ * gang med, kalder dem netop ikke DEMO_noget.
+ *
+ * Signaturen er et modul-niveau array med mindst tre objektliterals der har et
+ * `id`. Det er hvad et datasæt ER. Kolonnedefinitioner (`kolonner={[…]}`) er
+ * inline i JSX og har ingen `id`; kataloger som RAPPORTER og MATRIX har heller
+ * ikke tre id-bærende poster.
+ */
+function moduldatasaet(tekst) {
+  const fund = [];
+  for (const m of tekst.matchAll(/^(?:export\s+)?const\s+([A-Za-z_][\w]*)\s*=\s*\[/gm)) {
+    const start = m.index + m[0].length - 1;
+    let dybde = 0;
+    let i = start;
+    for (; i < tekst.length; i++) {
+      if (tekst[i] === "[") dybde++;
+      else if (tekst[i] === "]" && --dybde === 0) break;
+    }
+    const poster = (tekst.slice(start, i).match(/\{\s*id:/g) || []).length;
+    if (poster >= 3) fund.push({ navn: m[1], poster });
+  }
+  return fund;
+}
+
 describe("Demo-data hører i fleet/, ikke i moduler/", () => {
+  it("har intet datasæt i en modulfil — uanset hvad det hedder", () => {
+    const fund = [];
+    for (const sti of alleFiler(MODULER)) {
+      const tekst = udenKommentarer(readFileSync(sti, "utf8"));
+      for (const d of moduldatasaet(tekst)) {
+        fund.push(`${sti}: ${d.navn} (${d.poster} poster med id)`);
+      }
+    }
+    assert.deepEqual(
+      fund, [],
+      "Et array med tre eller flere id-bærende poster i en modulfil ER et " +
+      "datasæt, uanset hvad konstanten hedder. Den kan ikke nås af de andre " +
+      "demo-sæt, og så laver de deres egen kopi — det er sket seks gange. " +
+      "Flyt den til src/fleet/demo-*.js, giv den DEMO_-præfikset, og importér " +
+      "den.\n  " + fund.join("\n  ")
+    );
+  });
+
   it("har ingen DEMO_-konstant deklareret i en modulfil", () => {
     const fund = [];
     for (const sti of alleFiler(MODULER)) {

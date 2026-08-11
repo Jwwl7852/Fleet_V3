@@ -12,6 +12,7 @@
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
+import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
 import {
@@ -45,19 +46,6 @@ const HANDLINGER = (k) => [
   { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },
 ];
 
-/* division står eksplicit på hver post — ingen arver en default.
-   Port 3 er "faelles": porten er den samme uanset om det er en lastbil
-   eller en bus der skal igennem den, så opgaven står på begge lister.
-   Fælles omkostninger skal fordeles før de kan læses som divisionens egne —
-   fordelingsnøglen er udskudt, se beslutning 15. */
-const OPGAVER = [
-  { id: 1, ms: Date.now() - 3 * 864e5, division: "gods", enhed: "Bil 155", type: "Reparation", besk: "Palleløfter vil ikke løfte", ansv: "Lars Aage", status: "Indberettet", tone: "warn", est: 650000, alvor: "hoej" },
-  { id: 2, ms: Date.now() - 4 * 864e5, division: "gods", enhed: "Bil 104", type: "Service", besk: "Serviceeftersyn 30.000 km", ansv: "Rene Thomsen", status: "Planlagt", tone: "info", est: 320000, alvor: "mellem" },
-  { id: 3, ms: Date.now() - 5 * 864e5, division: "faelles", enhed: "Porte – Port 3", type: "Facility", besk: "Port lukker langsomt", ansv: "Benjamin", status: "Afventer", tone: "warn", est: 480000, alvor: "hoej" },
-  { id: 4, ms: Date.now() - 6 * 864e5, division: "gods", enhed: "Lastbil 106", type: "Reparation", besk: "Motorlampe lyser", ansv: "Lars Aage", status: "I gang", tone: "ok", est: 1200000, alvor: "hoej" },
-  { id: 5, ms: Date.now() - 7 * 864e5, division: "gods", enhed: "Truck 2", type: "Service", besk: "Gaffeljustering og smøring", ansv: "Benjamin", status: "Planlagt", tone: "info", est: 180000, alvor: "lav" },
-  { id: 6, ms: Date.now() - 8 * 864e5, division: "bus", enhed: "Bus 12", type: "Reparation", besk: "Fordør lukker ikke i", ansv: "Rene Thomsen", status: "Indberettet", tone: "warn", est: 540000, alvor: "hoej" },
-];
 
 export default function Dashboard() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
@@ -88,7 +76,7 @@ export default function Dashboard() {
   }));
 
   /* Samme visningsregel som useListe: valgt division plus fælles. */
-  const opgaver = OPGAVER.filter((o) => o.division === division || o.division === "faelles");
+  const opgaver = DEMO_DASHBOARD_OPGAVER.filter((o) => o.division === division || o.division === "faelles");
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>

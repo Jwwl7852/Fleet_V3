@@ -84,9 +84,14 @@ export const DEMO_OPGAVER = [
     personId: "kasperLykke", status: "afventer",
     estimeretMin: 120, faktiskMin: null, beloebOere: 48000 },
 
+  /* ⚠ STOD PAA kt-077 — en SOLGT TRAEKKER. En fordoer paa en traekker findes
+     ikke, og en solgt bil kan ikke have en aaben vaerkstedsopgave. Fejlen blev
+     fundet af selvkontrollen i demo-dashboard.js, som sammenholder
+     beskrivelser paa tvaers af datasaettene: Dashboard sagde Bus 12, det her
+     saagde Bil 77. Selvkontrollen nedenfor fanger begge dele nu. */
   { id: "op-010", art: "vaerksted", division: "bus", startMs: iDag(10, 30),
     sted: "Odense", beskrivelse: "Fordør lukker ikke i",
-    personId: "ibSoerensen", koeretoejId: "kt-077", status: "indberettet",
+    personId: "ibSoerensen", koeretoejId: "kt-b12", status: "indberettet",
     estimeretMin: 75, faktiskMin: null, beloebOere: 54000 },
 ];
 
@@ -105,6 +110,18 @@ export const opgaveEnhed = (id) => {
  */
 if (import.meta.env?.DEV) {
   for (const o of DEMO_OPGAVER) {
+    /* ⚠ EN SOLGT ELLER SKROTTET BIL KAN IKKE HAVE EN AABEN OPGAVE. Den stod
+       der: op-010 var en busdoer paa en solgt traekker. Posten bliver staaende
+       i flaaden — regnskabsdata hardslettes ikke — men den kan ikke vaere paa
+       vaerksted. Uden det her tjek ser opgaven helt normal ud i en tabel. */
+    const bil = DEMO_KOERETOEJER.find((k) => k.id === o.koeretoejId);
+    if (bil && (bil.status === "solgt" || bil.status === "skrottet")
+        && o.status !== "udfoert" && o.status !== "annulleret") {
+      console.warn(
+        `demo-opgaver: ${o.id} er ${o.status} paa ${bil.kaldenavn}, som er ${bil.status}. ` +
+        `En afgaaet enhed kan ikke have en aaben opgave.`
+      );
+    }
     if (o.koeretoejId && !DEMO_KOERETOEJER.some((k) => k.id === o.koeretoejId)) {
       console.warn(`demo-opgaver: ${o.id} peger på koeretoejId "${o.koeretoejId}", som ikke findes i demo-flaade.`);
     }
