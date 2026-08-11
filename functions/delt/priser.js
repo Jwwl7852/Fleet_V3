@@ -570,7 +570,18 @@ export function linjerForPeriode({
     laeg({ modul, akse: "basis", enheder: 1, listeprisOere: moduler[modul].basisOere, dage });
   }
 
-  /* 3. Køretøjer. ⚠ STOD IKKE I OPGAVEN, men satsen findes og skal kunne ses:
+  /* 3. Brugerne — én linje pr. art, ALTID, saa maalingen kan ses. */
+  for (const art of ALLE_BRUGERARTER) {
+    laeg({
+      modul: PLATFORM, akse: "bruger", brugerart: art,
+      enheder: antalBrugere[art] || 0,
+      inkluderet: platform.inkluderetBrugere?.[art] || 0,
+      listeprisOere: platform.prBrugerOere?.[art],
+      dage: dageIDrift, altidVis: true,
+    });
+  }
+
+  /* 4. Køretøjer. ⚠ STOD IKKE I OPGAVEN, men satsen findes og skal kunne ses:
         en flåde der faktureres uden en linje, er et beløb kunden ikke kan
         genfinde. Prisen hænger paa det modul der ejer den. */
   for (const modul of ALLE_MODULER.filter((m) => moduler[m]?.prKoeretoejOere)) {
@@ -579,17 +590,6 @@ export function linjerForPeriode({
     laeg({
       modul, akse: "koeretoej", enheder: antalKoeretoejer,
       listeprisOere: moduler[modul].prKoeretoejOere, dage,
-    });
-  }
-
-  /* 4. Brugerne — én linje pr. art, ALTID, saa maalingen kan ses. */
-  for (const art of ALLE_BRUGERARTER) {
-    laeg({
-      modul: PLATFORM, akse: "bruger", brugerart: art,
-      enheder: antalBrugere[art] || 0,
-      inkluderet: platform.inkluderetBrugere?.[art] || 0,
-      listeprisOere: platform.prBrugerOere?.[art],
-      dage: dageIDrift, altidVis: true,
     });
   }
 

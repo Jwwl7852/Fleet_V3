@@ -337,7 +337,8 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
   };
 
   return (
-    <Kort titel={udgangspunkt ? "Ny prisliste (kopi af den gældende)" : "Første prisliste"}>
+    <Kort className="fc-ikke-print"
+          titel={udgangspunkt ? "Ny prisliste (kopi af den gældende)" : "Første prisliste"}>
       <Formular onGem={gem} gemmer={gemmer} kanGemme={kanGemme}
                 gemLabel="Læg prislisten" onAnnuller={paaLuk} svar={svar}>
         <Feltraekke>
@@ -631,7 +632,11 @@ export default function Prisliste() {
         </Kort>
       )}
 
+      {/* ⚠ UD AF PRINTET. En udskrift skal kunne sendes til kunden, og han
+          skal ikke have vores prisliste eller vores arbejdsgang med. Kun
+          fakturaerne printes. */}
       <Kort
+        className="fc-ikke-print"
         titel="Prislister"
         handling={
           <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
@@ -704,6 +709,7 @@ export default function Prisliste() {
 
       {aaben && (
         <Kort
+          className="fc-ikke-print"
           titel={`Satser — gælder fra ${dato(aaben.gyldigFraMs)}`}
           handling={
             <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
@@ -729,7 +735,7 @@ export default function Prisliste() {
         </Kort>
       )}
 
-      <Kort titel="Gør en periode op">
+      <Kort className="fc-ikke-print" titel="Gør en periode op">
         <div className="fc-ikke-print">
           <Feltraekke>
             <Felt id="gr-periode" label="Periode" vaerdi={periode}
@@ -846,8 +852,9 @@ export default function Prisliste() {
       {raekker.map((g, i) => (
         <div key={g.id} className={i > 0 ? "fc-side-skift" : undefined}>
           <Kort
-            titel={`Fakturagrundlag ${periode} — ${
-              kunder.find((k) => k.id === g.kundeId)?.navn || g.kundeId}`}
+            /* ⚠ KUN FIRMANAVN OG PERIODE. Arket skal kunne sendes som det
+               er, og "Fakturagrundlag" er vores ord for det — ikke kundens. */
+            titel={`${kunder.find((k) => k.id === g.kundeId)?.navn || g.kundeId} — ${periode}`}
             handling={
               <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
                 <Knap onClick={() => hent(

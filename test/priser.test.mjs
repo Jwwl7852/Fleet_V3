@@ -205,8 +205,8 @@ describe("Linjerne for en periode", () => {
       [
         "platform/platform",
         "booking/basis", "bemanding/basis", "flaade/basis",
-        "flaade/koeretoej",
         "platform/bruger/chauffoer", "platform/bruger/desktop",
+        "flaade/koeretoej",
       ]);
   });
 
