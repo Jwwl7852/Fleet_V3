@@ -172,6 +172,26 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   månedsvis, og en kaskaderende `.read` i den udrullede version satte hele
   beslutning 17 ud af kraft uden at én prøve blev rød. Brug `npm run
   regler:udrul` — ikke `firebase deploy` alene. Se beslutning 29.
+- **Skrive til databasen uden om `skriv.js`.** Der er én vej ind, som der er
+  én vej ud i `useListe`. Kalder tyve skærme `db.ref().set()` selv, bygger de
+  også hver sin fejlhåndtering — og så er det tilfældigt hvilke der husker at
+  logge og at kunne forklare en afvisning. **En afvist skrivning er ikke en
+  netværksfejl:** `permission-denied` betyder at reglerne virker, og
+  "prøv igen" lærer brugeren at systemet er i stykker.
+- **Tilføje en `slet()` til `skriv.js`.** Regnskabsdata hardslettes ikke, og
+  der skal heller ikke findes en vej til det i klienten — en funktion der
+  findes, bliver kaldt. En post tages ud af drift med en status og en årsag.
+  En prøve læser filen som tekst og fejler på `slet`, `.remove()` og
+  `set(null)`.
+- **Skrive en klientvalidering der ikke også står i `firebase.rules.json`.**
+  Validering i en formular findes for at svare hurtigt, ikke for at afgøre
+  noget. Er de to uenige, er reglerne rigtige — og en kontrol der kun findes i
+  frontend, tillader før eller siden noget serveren skulle have stoppet.
+- **Redigere `functions/delt/`.** Det er en KOPI, lagt af
+  `npm run delt:kopier`. Firebase deployer kun `functions/`-mappen, så en
+  import op gennem træet fejler i skyen — ved deploy, ikke ved test. Retter du
+  kopien, filtrerer klienten mod én allowliste og serveren mod en anden, og
+  serveren vinder i tavshed. `test/functions-delt.test.mjs` fanger det.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

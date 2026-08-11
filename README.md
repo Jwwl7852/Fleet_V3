@@ -72,12 +72,16 @@ Ingen hvide skærme, ingen crash.
 Deploy: Netlify, `npm run build` → `dist`. `netlify.toml` har SPA-fallback —
 uden den giver et direkte hit på `/booking/disponering` en 404.
 
-⚠ **CLOUD FUNCTIONS KAN IKKE UDRULLES ENDNU.** De kræver **Blaze**, og DEV står
-på Spark. Den første funktion — auditloggen i `functions/index.js` — er skrevet
-og prøvet, men `npm run funktioner:udrul` fejler indtil projektet er opgraderet.
-Det gælder ikke kun loggen: **hele TMS-kernen** (reservationer, bookingtilstande,
-nummerserier) venter på det samme. Blazes frie kvote dækker rigeligt et
-dev-projekt — opret en budgetalarm samtidig.
+**Cloud Functions kører.** DEV er på **Blaze**, og den første funktion —
+auditloggen i `functions/index.js` — er udrullet i `europe-west1`. Udrul med
+`npm run funktioner:udrul`; den kopierer den delte politik ind i
+`functions/delt/` først.
+
+⚠ **Budgetalarmen kom FØR opgraderingen, og rækkefølgen var med vilje.** Mellem
+opgradering og alarm er der et vindue hvor en løkke i en funktion kan koste
+penge uden at nogen får besked. Der er alarm på **både DEV og PROD** på 50 kr,
+og en oprydningspolitik på containerbillederne (3 dage) — uden den vokser
+Artifact Registry stille og roligt ind i budgettet.
 
 ⚠ **Skrivning uden auditlog er ulogget skrivning.** `audit.log()` tæller fejlen
 og går videre, så en skærm ikke går ned når loggen er nede. Det er rigtigt for
