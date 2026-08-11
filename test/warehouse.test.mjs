@@ -12,7 +12,7 @@ import {
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
-  virkningPaaKasse, reservationerFor, naesteReservation,
+  virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
 } from "../src/fleet/warehouse.js";
 import { NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
@@ -412,5 +412,59 @@ describe("serveren skriver ikke sin egen politik af", () => {
        være en åben dør rundt om både modulafkrydsningen og loginspærringen. */
     assert.ok(kilde.includes("Abonnementet er ikke aktivt."));
     assert.ok(kilde.includes("Warehouse er ikke slået til."));
+  });
+});
+
+describe("to konventioner, én oversættelse", () => {
+  const D = (d) => Date.UTC(2026, 8, d);
+
+  it("lægger en dag til, så den sidste dag kommer med", () => {
+    /* ⚠ UDEN DEN MANGLER DEN SIDSTE DAG PÅ GITTERET. En kasse der er ude
+       1.–15., er også ude den 15. — men et halvåbent [1., 15.) stopper ved
+       midnat den 15. og tegner kassen som fri den dag den stadig er hos
+       museet. Gitterkalenderens eget hoved advarer om præcis det. */
+    const u = { fra: D(1), til: D(15) };
+    assert.equal(halvaabent(u).fra, D(1));
+    assert.equal(halvaabent(u).til, D(16));
+  });
+
+  it("giver en endagsperiode en bredde", () => {
+    /* Ud og hjem samme dag er ét slot, ikke nul. Et halvåbent [d, d) er tomt,
+       og blokken ville slet ikke blive tegnet. */
+    const u = { fra: D(4), til: D(4) };
+    const h = halvaabent(u);
+    assert.ok(h.til > h.fra);
+    assert.equal(h.til - h.fra, 86400000);
+  });
+
+  it("er enig med overlapper() om hvad der støder sammen", () => {
+    /* ⚠ DEN VIGTIGSTE. To måder at regne på samme interval er præcis den
+       slags der driver fra hinanden. Her prøves de mod hinanden på hver
+       eneste kombination i en måned: er de uenige ét sted, viser gitteret
+       noget andet end konflikttjekket afviser. */
+    for (let aF = 1; aF <= 10; aF++) {
+      for (let aT = aF; aT <= 10; aT++) {
+        for (let bF = 1; bF <= 10; bF++) {
+          for (let bT = bF; bT <= 10; bT++) {
+            const a = halvaabent({ fra: D(aF), til: D(aT) });
+            const b = halvaabent({ fra: D(bF), til: D(bT) });
+            const halvaabentOverlap = a.fra < b.til && b.fra < a.til;
+            const inklusivtOverlap = overlapper(D(aF), D(aT), D(bF), D(bT));
+            assert.equal(halvaabentOverlap, inklusivtOverlap,
+              `uenige om [${aF},${aT}] mod [${bF},${bT}]`);
+          }
+        }
+      }
+    }
+  });
+
+  it("tæller et udlån med i vinduet på dets sidste dag", () => {
+    const u = { fra: D(1), til: D(5) };
+    /* Vinduet er den 5. alene, halvåbent. */
+    assert.equal(iVindue(u, D(5), D(6)), true);
+    /* Den 6. er kassen hjemme igen. */
+    assert.equal(iVindue(u, D(6), D(7)), false);
+    /* Og et vindue der slutter FØR udlånet begynder, rører det ikke. */
+    assert.equal(iVindue(u, D(1) - 86400000 * 3, D(1)), false);
   });
 });

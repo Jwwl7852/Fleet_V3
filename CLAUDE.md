@@ -211,6 +211,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   har kassen i hånden og kan se om den er hel; springes den over, opdages en
   skade først hos museet, hvor den ikke kan afgøres. Og der er ingen vej
   tilbage fra `returneret` — skal kassen ud igen, er det et nyt udlån.
+- **Tegne et udlån på et gitter uden `halvaabent()`.** Gitteret regner
+  halvåbent `[fra, til)`; et udlån er inklusivt i begge ender. Tegnes det
+  råt, mangler den SIDSTE dag, og kassen ser fri ud den dag den stadig står
+  hos museet — et gitter der er én dag forskudt, opdages ikke ved at kigge på
+  det. Oversættelsen står ét sted i `warehouse.js` og er prøvet mod
+  `overlapper()` på hver kombination i ti dage.
 - **Skrive `isoTilMs`/`msTilIso` igen.** De står i `format.js`. Klokken er 12
   og ikke midnat, fordi `new Date("2026-08-10")` er midnat UTC — trækkes der
   en time et sted i kæden, bliver det den 9. De var skrevet af to steder, før

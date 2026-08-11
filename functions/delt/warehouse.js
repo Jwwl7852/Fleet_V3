@@ -283,6 +283,35 @@ export function valideUdlaan(post = {}, { kasser = [] } = {}) {
  */
 export const overlapper = (aFra, aTil, bFra, bTil) => aFra <= bTil && bFra <= aTil;
 
+const DAG_MS = 86400000;
+
+/**
+ * Udlånets periode som et HALVÅBENT interval `[fra, til)`.
+ *
+ * ⚠ TO KONVENTIONER I ÉT REPO, OG DET ER MED VILJE.
+ *
+ * Et udlån er **inklusivt** i begge ender: en kasse der er ude 1.–15., er også
+ * ude den 15. Reservationsmodellen og `Gitterkalender.jsx` regner
+ * **halvåbent** `[fra, til)`, fordi en time der slutter kl. 12 og en der
+ * begynder kl. 12 ikke overlapper.
+ *
+ * Begge er rigtige for hver sin ting. Det farlige er oversættelsen — tegnes
+ * udlånet råt på gitteret, mangler den **sidste dag**, og kassen ser fri ud
+ * den dag den stadig står hos museet. Det er nøjagtig den fejl
+ * Gitterkalenderens eget hoved advarer om: et gitter der er én dag forskudt,
+ * opdages ikke ved at kigge på det.
+ *
+ * Derfor sker oversættelsen ÉT sted, med et navn, og den er prøvet mod
+ * `overlapper()`.
+ */
+export const halvaabent = (u) => ({ fra: u.fra, til: u.til + DAG_MS });
+
+/** Rører udlånet vinduet [vindueFra, vindueTil)? Bruges af kalenderen. */
+export function iVindue(u, vindueFra, vindueTil) {
+  const h = halvaabent(u);
+  return h.fra < vindueTil && vindueFra < h.til;
+}
+
 /**
  * De udlån der spærrer kassen i perioden.
  *

@@ -140,7 +140,7 @@ Rækkefølgen er valgt så hvert trin er værd at have alene.
 | 2 | **Datamodel + regler + prøver** for `kasser`, `reolpladser`, `kasseudlaan` | Grundlaget kan ikke laves om bagefter | ✅ |
 | 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret | ✅ |
 | 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | ✅ |
-| 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge | |
+| 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge | ✅ |
 | 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation | |
 | 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen | |
 | 8 | QR-koder og rapporter | Kan vente | |
@@ -170,6 +170,20 @@ i tolv punkter: booking, konflikt i begge ender af perioden, ingen genvej til
 udlånt, atomisk skrivning af udlån + kasse, pladsen der forsvinder ved
 udlevering og kommer tilbage på **hjempladsen** ved retur, en lukket sag der
 ikke kan genåbnes, og afvisning for en chauffør.
+
+**Etape 5 er inde.** Kalenderen er kasser × dage i et **fast, fremadrettet**
+vindue på fire uger — shellens periodevælger ser bagud og hører til
+rapporterne. Under den står **udlånslisten**, hvor hvert udlån optræder to
+gange: den dag kassen skal ud, og den dag den skal hjem. Lageret arbejder
+efter hændelser, ikke perioder; et udlån over to måneder ville ellers være
+usynligt i begge de uger hvor der faktisk skulle gøres noget.
+
+⚠ **Den ene fælde var intervallet.** Gitteret regner halvåbent `[fra, til)`;
+et udlån er inklusivt i begge ender. Tegnet råt mangler den sidste dag, og
+kassen ser fri ud den dag den stadig står hos museet. `halvaabent()` i
+`warehouse.js` er den ene oversættelse, og den er prøvet mod `overlapper()`
+på hver kombination i ti dage — er de to uenige ét sted, viser gitteret noget
+andet end konflikttjekket afviser.
 
 ⚠ **Kalenderen skal genbruge `Gitterkalender.jsx`.** CLAUDE.md forbyder et nyt
 kalendergitter: to gitre der læser samme interval forskelligt, opdages ikke ved
