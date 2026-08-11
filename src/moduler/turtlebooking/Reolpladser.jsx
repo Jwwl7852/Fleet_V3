@@ -1,5 +1,5 @@
-/* src/moduler/warehouse/Reolpladser.jsx
- * Warehouse – reolpladser og kassetyper.
+/* src/moduler/turtlebooking/Reolpladser.jsx
+ * Turtlebooking – reolpladser og kassetyper.
  *
  * ⚠ PLADSEN ER ET ID MED FELTER. Prototypen brugte strengen
  * "Hal 1 - Reol 2 - Fag 1 - Hylde 10 - Plads 1" både som nøgle og som
@@ -23,10 +23,10 @@ import {
   Kort, Tabel, Knap, Felt, Feltraekke, Formular, Formularsvar,
   Henter, Datatilstand, Tom, Gitter, Ikon,
 } from "../../fleet/ui.jsx";
-import { pladsnavn, haller, valideReolplads } from "../../fleet/warehouse.js";
+import { pladsnavn, haller, valideReolplads } from "../../fleet/turtlebooking.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
-import { DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSER } from "../../fleet/demo-warehouse.js";
+import { DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
 
 const tomPlads = () => ({ hal: "", reol: "", fag: "", hylde: "", plads: "" });
 

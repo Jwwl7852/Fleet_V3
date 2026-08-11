@@ -1,5 +1,5 @@
-/* src/moduler/warehouse/Historik.jsx
- * Warehouse – historik pr. kasse og pr. sagsnummer.
+/* src/moduler/turtlebooking/Historik.jsx
+ * Turtlebooking – historik pr. kasse og pr. sagsnummer.
  *
  * ⚠ SKÆRMEN SKRIVER IKKE OG SKAL IKKE. Historik er dokumentation; kan den
  * rettes fra en skærm, dokumenterer den ingenting. Rettes en periode, sker
@@ -24,10 +24,10 @@ import {
 import {
   UDLAAN_TILSTAND, KASSE_STATUS, AFSLUTTET, pladsnavn,
   dageUde, historikForKasse, sagsoversigt,
-} from "../../fleet/warehouse.js";
+} from "../../fleet/turtlebooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_REOLPLADSER, DEMO_KASSEUDLAAN,
-} from "../../fleet/demo-warehouse.js";
+} from "../../fleet/demo-turtlebooking.js";
 
 /**
  * Varigheden med sit forbehold.

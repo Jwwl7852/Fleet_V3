@@ -1,5 +1,5 @@
-/* test/warehouse.test.mjs
- * Warehouse — de fem ting prototypen gjorde forkert, og som ikke må komme med.
+/* test/turtlebooking.test.mjs
+ * Turtlebooking — de fem ting prototypen gjorde forkert, og som ikke må komme med.
  *
  * Koer: npm test
  */
@@ -14,7 +14,7 @@ import {
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
-} from "../src/fleet/warehouse.js";
+} from "../src/fleet/turtlebooking.js";
 import { NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
 
@@ -154,7 +154,7 @@ describe("To udlån på samme kasse", () => {
        lagermænd kan ramme samme sekund, og en kontrol der kun står i skærmen,
        kan gås uden om med en direkte skrivning. Præcis samme forbehold som de
        fem disponeringstjek har. Prøven fastholder at noten står der. */
-    const kilde = readFileSync(new URL("../src/fleet/warehouse.js", import.meta.url), "utf8");
+    const kilde = readFileSync(new URL("../src/fleet/turtlebooking.js", import.meta.url), "utf8");
     assert.match(kilde, /AFGØR INGENTING/,
       "forbeholdet om at konflikter() ikke håndhæver, er fjernet.");
   });
@@ -183,9 +183,9 @@ describe("To udlån på samme kasse", () => {
 
 describe("Modulet er registreret — men ikke tegnet", () => {
   it("står i kataloget med sine fire noder", () => {
-    assert.ok(MODUL.warehouse, "warehouse mangler i kataloget");
+    assert.ok(MODUL.turtlebooking, "turtlebooking mangler i kataloget");
     assert.deepEqual(
-      Object.keys(NODE_MODUL).filter((n) => NODE_MODUL[n] === "warehouse").sort(),
+      Object.keys(NODE_MODUL).filter((n) => NODE_MODUL[n] === "turtlebooking").sort(),
       ["kasser", "kassetyper", "kasseudlaan", "reolpladser"]);
   });
 
@@ -197,7 +197,7 @@ describe("Modulet er registreret — men ikke tegnet", () => {
        ⚠ Proeven holder BEGGE veje: staar et modul i UDEN_SKAERM, maa det ikke
        have et menupunkt — og er listen tom, skal hvert modul have ét. Se
        moduler.test.mjs. */
-    assert.ok(!UDEN_SKAERM.includes("warehouse"));
+    assert.ok(!UDEN_SKAERM.includes("turtlebooking"));
   });
 
   it("bruger ikke et navn der var taget", () => {
@@ -395,8 +395,8 @@ describe("serveren skriver ikke sin egen politik af", () => {
     for (const navn of ["valideUdlaan", "kanSkifteUdlaan", "virkningPaaKasse", "konflikter"]) {
       assert.ok(kilde.includes(`${navn}(`), `functions/index.js kalder ikke ${navn}`);
     }
-    assert.ok(kilde.includes('from "./delt/warehouse.js"'),
-      "functions/index.js importerer ikke den delte warehouse-fil");
+    assert.ok(kilde.includes('from "./delt/turtlebooking.js"'),
+      "functions/index.js importerer ikke den delte turtlebooking-fil");
   });
 
   it("lader ikke klienten vælge tilstanden på et nyt udlån", () => {
@@ -412,7 +412,7 @@ describe("serveren skriver ikke sin egen politik af", () => {
     /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE. Uden de to tjek ville funktionen
        være en åben dør rundt om både modulafkrydsningen og loginspærringen. */
     assert.ok(kilde.includes("Abonnementet er ikke aktivt."));
-    assert.ok(kilde.includes("Warehouse er ikke slået til."));
+    assert.ok(kilde.includes("Turtlebooking er ikke slået til."));
   });
 });
 

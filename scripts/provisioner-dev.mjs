@@ -25,7 +25,7 @@ import { spawnSync } from "node:child_process";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
   DEMO_KASSETYPER, DEMO_REOLPLADSER, DEMO_KASSER, DEMO_KASSEUDLAAN,
-} from "../src/fleet/demo-warehouse.js";
+} from "../src/fleet/demo-turtlebooking.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -161,7 +161,7 @@ export const SEED = [
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */
   { node: "sensitive/fravaer", data: DEMO_FRAVAER_SENSITIVE, form: "objekt" },
-  /* ⚠ WAREHOUSE SEEDES OGSAA, og kasseudlaan er med selv om noden er
+  /* ⚠ TURTLEBOOKING SEEDES OGSAA, og kasseudlaan er med selv om noden er
      .write: false for enhver klient. Provisioneringen kører på admin-SDK og
      går uden om reglerne — det er netop det den er til for. Uden udlånene
      ville Udlån-skærmen stå tom i dev, og så ville ingen opdage at

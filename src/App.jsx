@@ -31,11 +31,11 @@ import Klima from "./moduler/facility/Klima.jsx";
 import IndkoebOversigt from "./moduler/indkoeb/Oversigt.jsx";
 import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
 import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
-import WarehouseKasser from "./moduler/warehouse/Kasser.jsx";
-import Reolpladser from "./moduler/warehouse/Reolpladser.jsx";
-import Kasseudlaan from "./moduler/warehouse/Udlaan.jsx";
-import Warehousekalender from "./moduler/warehouse/Kalender.jsx";
-import Warehousehistorik from "./moduler/warehouse/Historik.jsx";
+import TurtlebookingKasser from "./moduler/turtlebooking/Kasser.jsx";
+import Reolpladser from "./moduler/turtlebooking/Reolpladser.jsx";
+import Kasseudlaan from "./moduler/turtlebooking/Udlaan.jsx";
+import Turtlebookingkalender from "./moduler/turtlebooking/Kalender.jsx";
+import Turtlebookinghistorik from "./moduler/turtlebooking/Historik.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -340,11 +340,11 @@ export default function App() {
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 
-            <Route path="warehouse" element={<WarehouseKasser />} />
-            <Route path="warehouse/udlaan" element={<Kasseudlaan />} />
-            <Route path="warehouse/kalender" element={<Warehousekalender />} />
-            <Route path="warehouse/historik" element={<Warehousehistorik />} />
-            <Route path="warehouse/reolpladser" element={<Reolpladser />} />
+            <Route path="turtlebooking" element={<TurtlebookingKasser />} />
+            <Route path="turtlebooking/udlaan" element={<Kasseudlaan />} />
+            <Route path="turtlebooking/kalender" element={<Turtlebookingkalender />} />
+            <Route path="turtlebooking/historik" element={<Turtlebookinghistorik />} />
+            <Route path="turtlebooking/reolpladser" element={<Reolpladser />} />
 
             <Route path="kunder" element={<Kunder />} />
 

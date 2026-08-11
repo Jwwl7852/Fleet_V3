@@ -127,7 +127,7 @@ describe("moduler.js kan deles", () => {
 
 describe("hvert menupunkt har et ikon", () => {
   /* ⚠ HVORFOR DEN HER FILDEL BLEV SKREVET.
-     Warehouse stod i sidebaren i tre etaper UDEN ikon. Alle de andre punkter
+     Turtlebooking stod i sidebaren i tre etaper UDEN ikon. Alle de andre punkter
      havde et, og det manglende så ud som en tom plads — men intet fejlede,
      fordi `<path d={undefined} />` er gyldig SVG der bare tegner ingenting.
 

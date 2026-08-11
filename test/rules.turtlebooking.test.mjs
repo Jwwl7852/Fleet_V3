@@ -1,5 +1,5 @@
-/* test/rules.warehouse.test.mjs
- * Warehouse etape 4: hvem må skrive hvad om en kasse og et udlån.
+/* test/rules.turtlebooking.test.mjs
+ * Turtlebooking etape 4: hvem må skrive hvad om en kasse og et udlån.
  *
  * ⚠ HVORFOR DEN HER FIL BLEV SKREVET.
  * Etape 4 flyttede to ting fra klienten til serveren, og begge flytninger er
@@ -26,7 +26,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import { get, ref, set, update } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
-import { SELVVALGT_KASSE_STATUS } from "../src/fleet/warehouse.js";
+import { SELVVALGT_KASSE_STATUS } from "../src/fleet/turtlebooking.js";
 
 /* Egen tenant: node --test kører testfilerne parallelt. */
 const TENANT = "vognmandWh";
@@ -41,7 +41,7 @@ const t = (sti) => `tenants/${TENANT}/${sti}`;
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
-    projectId: "fc-rules-warehouse",
+    projectId: "fc-rules-turtlebooking",
     database: {
       host: "127.0.0.1",
       port: 9000,

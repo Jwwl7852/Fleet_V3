@@ -1,5 +1,5 @@
-/* src/moduler/warehouse/Udlaan.jsx
- * Warehouse – udlån. Den operationelle kerne: søg ledige i periode, reservér,
+/* src/moduler/turtlebooking/Udlaan.jsx
+ * Turtlebooking – udlån. Den operationelle kerne: søg ledige i periode, reservér,
  * klargør, udlever, modtag retur.
  *
  * ⚠ SKÆRMEN SKRIVER IKKE. `kasseudlaan` er `.write: false`, og hver handling
@@ -35,11 +35,11 @@ import {
 import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
-} from "../../fleet/warehouse.js";
+} from "../../fleet/turtlebooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
   DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
-} from "../../fleet/demo-warehouse.js";
+} from "../../fleet/demo-turtlebooking.js";
 
 const DAG = 86400000;
 
@@ -167,7 +167,7 @@ export default function Udlaan() {
     division: "alle", graense: 100, demo: DEMO_KASSETYPER,
   });
   /* ⚠ KUNDER KAN VÆRE UTILGÆNGELIGE, og det er ikke en fejl: `kunder` er sit
-     eget modul, og en warehouse-kunde behøver ikke have det. Feltet udelades
+     eget modul, og en turtlebooking-kunde behøver ikke have det. Feltet udelades
      i så fald — et påkrævet felt mod en node man ikke må læse, ville gøre
      skærmen ubrugelig for præcis den rolle der bruger den. */
   const { data: kunder, tilstand: kundetilstand } = useListe("kunder", {

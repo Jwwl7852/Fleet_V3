@@ -59,7 +59,7 @@ export const datoTid = (ms) => `${dato(ms)} kl. ${klokke(ms)}`;
  * ikke ved at kigge på den. Middag har en halv dags luft til hver side.
  *
  * ⚠ OG DERFOR STÅR DE HER. De var skrevet af i personale.js og i Indkøb, og
- * en tredje kopi var på vej ind med Warehouse. Samme regel to steder, hvor
+ * en tredje kopi var på vej ind med Turtlebooking. Samme regel to steder, hvor
  * den ene driver, er den fejl dette repo bliver ved med at betale for.
  */
 export const iDagIso = () => new Date().toISOString().slice(0, 10);

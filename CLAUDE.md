@@ -197,7 +197,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   lagermedarbejderen **har** `kasseudlaan.skriv`. Det er vejen der er lukket:
   et udlån ændrer **to** poster (udlånet og kassen), perioden skal prøves mod
   de andre udlån, og to lagermænd kan ramme samme sekund. `konflikter()` i
-  `warehouse.js` **afgør ingenting** — den svarer, og skærmen bruger den kun
+  `turtlebooking.js` **afgør ingenting** — den svarer, og skærmen bruger den kun
   til at vise hvad der er ledigt. Håndhævelsen ligger i en transaktion inde i
   funktionen. Se beslutning 37.
 - **Give en kasse status `booket`.** Den findes ikke. En reservation **er** et
@@ -211,6 +211,13 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   har kassen i hånden og kan se om den er hel; springes den over, opdages en
   skade først hos museet, hvor den ikke kan afgøres. Og der er ingen vej
   tilbage fra `returneret` — skal kassen ud igen, er det et nyt udlån.
+- **Tage navnet `warehouse` til noget.** Det er **reserveret** til et kommende
+  modul: blandede varer ind og ud af et lager, med afregning for håndtering
+  ind, opbevaring og håndtering ud. Modulet der lejer transportkasser ud pr.
+  sag, hed `warehouse` indtil etape 6 og hedder nu **`turtlebooking`** —
+  netop for at de to ikke skulle hedde det samme. Det ville have været
+  `lagre` mod `lager` og `bookinger` mod `bookings` for tredje gang.
+  Navnet er ikke ledigt; det er optaget af noget der ikke er bygget endnu.
 - **Vise en udlånsvarighed uden at sige om den er målt eller planlagt.**
   `fra`/`til` er AFTALEN; `udleveretMs` og `returneretMs` er hvad der skete,
   og de sættes af **serveren** i selve tilstandsskiftet — et tidspunkt en
@@ -223,12 +230,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   halvåbent `[fra, til)`; et udlån er inklusivt i begge ender. Tegnes det
   råt, mangler den SIDSTE dag, og kassen ser fri ud den dag den stadig står
   hos museet — et gitter der er én dag forskudt, opdages ikke ved at kigge på
-  det. Oversættelsen står ét sted i `warehouse.js` og er prøvet mod
+  det. Oversættelsen står ét sted i `turtlebooking.js` og er prøvet mod
   `overlapper()` på hver kombination i ti dage.
 - **Skrive `isoTilMs`/`msTilIso` igen.** De står i `format.js`. Klokken er 12
   og ikke midnat, fordi `new Date("2026-08-10")` er midnat UTC — trækkes der
   en time et sted i kæden, bliver det den 9. De var skrevet af to steder, før
-  Warehouse var ved at lave den tredje kopi.
+  Turtlebooking var ved at lave den tredje kopi.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

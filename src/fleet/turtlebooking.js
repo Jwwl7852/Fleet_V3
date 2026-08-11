@@ -1,14 +1,9 @@
-/* ⚠ KOPI — REDIGÉR IKKE HER.
- * Kilden er src/fleet/warehouse.js. Filen lægges af
- * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.
- * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
- */
-/* src/fleet/warehouse.js
- * Warehouse — udlejning af transportkasser.
+/* src/fleet/turtlebooking.js
+ * Turtlebooking — udlejning af transportkasser.
  *
  * Kommer af prototypen "Turtlebooking" (Hizkia Denmark): kasser med id og
  * type, reolpladser i haller, udlån med sagsnummer, historik og kalender.
- * Se WAREHOUSE.md for hele planen og de syv ting der blev afgjort først.
+ * Se TURTLEBOOKING.md for hele planen og de syv ting der blev afgjort først.
  *
  * ---------------------------------------------------------------------------
  * ⚠ TRE NAVNE VAR TAGET, OG DE ER IKKE GENBRUGT.

@@ -141,7 +141,7 @@ export const PERM = {
      laes-permission — se noten ved bookingLaes. Kun skrivning styres. */
   kompetencerSkriv: "kompetencer.skriv",
 
-  /* WAREHOUSE — udlejning af transportkasser.
+  /* TURTLEBOOKING — udlejning af transportkasser.
 
      ⚠ TO PERMISSIONS, IKKE FIRE. Den ene dækker STAMDATA (kasser,
      kassetyper, reolpladser), den anden det OPERATIONELLE (book, klargør,
@@ -172,7 +172,7 @@ const BASIS_DATA = [
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
   PERM.indberetningerSkriv,
-  /* ⚠ WAREHOUSE-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
+  /* ⚠ TURTLEBOOKING-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
      spørgsmålet blev besvaret. Svaret var at LAGERMEDARBEJDEREN skal
      udlevere og modtage retur — og en dedikeret rolle er meningsløs, hvis
      alle andre roller har det samme i forvejen. Se `lagermedarbejder`. */
@@ -261,7 +261,7 @@ export const ROLLE_PERMS = {
    * Lagermedarbejder — den der pakker, klargør, udleverer og modtager retur.
    *
    * ⚠ ROLLEN ER NY, OG DEN KOM AF ET SPØRGSMÅL DER BLEV STILLET FØRST.
-   * Warehouse-prototypen havde sin egen rolle "Chauffør = udlevering/retur".
+   * Turtlebooking-prototypen havde sin egen rolle "Chauffør = udlevering/retur".
    * At hænge det på VORES chauffør ville have været forkert: en chauffør
    * kører, og han skriver indberetninger. Den der står med kassen i hånden
    * på lageret, er en anden person med et andet arbejde.

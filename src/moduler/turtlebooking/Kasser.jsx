@@ -1,5 +1,5 @@
-/* src/moduler/warehouse/Kasser.jsx
- * Warehouse – kasser.
+/* src/moduler/turtlebooking/Kasser.jsx
+ * Turtlebooking – kasser.
  *
  * ⚠ EN UDLÅNT KASSE OPTAGER IKKE EN REOLPLADS. Prototypen skrev "Udlånt hos
  * kunde" SOM PLADS. Så kunne ledige hylder ikke tælles, og en plads var
@@ -27,12 +27,12 @@ import {
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation,
-} from "../../fleet/warehouse.js";
+} from "../../fleet/turtlebooking.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
   DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
-} from "../../fleet/demo-warehouse.js";
+} from "../../fleet/demo-turtlebooking.js";
 
 const PR_SIDE = 12;
 

@@ -69,10 +69,31 @@ export const MODUL = {
     label: "Indkøb",
     hvad: "Indkøb, fakturaafstemning og leverandører.",
   },
-  warehouse: {
-    navKey: "warehouse",
-    label: "Warehouse",
-    hvad: "Udlejning af transportkasser: kasser, reolpladser og udlån.",
+  /**
+   * ⚠ MODULET HED `warehouse` INDTIL ETAPE 6 VAR INDE, OG NAVNET BLEV
+   * FRIGJORT MED VILJE.
+   *
+   * `warehouse` er **reserveret** til et andet modul, der er på vej: blandede
+   * varer ind og ud af et lager, med afregning for håndtering ind, opbevaring
+   * og håndtering ud. Det er en anden forretning end at leje transportkasser
+   * ud pr. sag — andre noder, andre priser, andre skærme.
+   *
+   * Havde de to delt navn, ville vi have haft to ting der hedder det samme
+   * for tredje gang: `lagre` mod `lager`, `bookinger` mod `bookings`, og nu
+   * `warehouse` mod `warehouse`. Det er beslutning 11 og 14, og det er den
+   * fejl der har kostet mest i dette repo. Omdøbningen kostede en eftermiddag
+   * NU, fordi der endnu ikke fandtes en eneste kunde med modulet krydset af —
+   * ingen tenant, ingen prisliste og intet fakturagrundlag nævnte det. Om et
+   * halvt år ville den samme omdøbning have været en datamigrering af
+   * frosne regnskabsdokumenter.
+   *
+   * ⚠ TAG DERFOR IKKE `warehouse` TIL NOGET ANDET. Navnet er ikke ledigt —
+   * det er optaget af noget der ikke er bygget endnu.
+   */
+  turtlebooking: {
+    navKey: "turtlebooking",
+    label: "Turtlebooking",
+    hvad: "Udlejning af transportkasser: kasser, reolpladser og udlån pr. sag.",
   },
   kunder: {
     navKey: "kunder",
@@ -115,12 +136,12 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
  * `modulkataloget svarer til menuen` kræver et navKey for alle ANDRE — så
  * en glemt menupost fanges stadig.
  *
- * warehouse: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
- * etape 3, hvor kasser og reolpladser kan ses. Se WAREHOUSE.md.
+ * turtlebooking: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
+ * etape 3, hvor kasser og reolpladser kan ses. Se TURTLEBOOKING.md.
  */
 /* ⚠ TOM IGEN — og det er meningen at den skal vaere det.
  *
- * warehouse stod her mellem etape 1 og 3: modulet kunne saelges og
+ * turtlebooking stod her mellem etape 1 og 3: modulet kunne saelges og
  * prissaettes, men havde ingen skaerm, og et menupunkt der foerer til
  * ingenting lover noget produktet ikke kan. Nu findes Kasser og
  * Reolpladser, og navnet er fjernet. */
@@ -184,12 +205,12 @@ export const NODE_MODUL = {
   "sensitive/kunder": "kunder",
 
   /* ⚠ IKKE lagre. Den node er reservedelslageret under Indkøb. Kasser er
-     transportkasser der lejes ud — se noten i warehouse.js om de tre navne
+     transportkasser der lejes ud — se noten i turtlebooking.js om de tre navne
      der allerede var taget. */
-  kasser: "warehouse",
-  kassetyper: "warehouse",
-  reolpladser: "warehouse",
-  kasseudlaan: "warehouse",
+  kasser: "turtlebooking",
+  kassetyper: "turtlebooking",
+  reolpladser: "turtlebooking",
+  kasseudlaan: "turtlebooking",
 };
 
 /** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */
