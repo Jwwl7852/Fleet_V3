@@ -51,9 +51,39 @@ export const ABONNEMENT = {
     pill: "bad",
     hvad: "Abonnementet er ophørt. Data opbevares, men er ikke tilgængelige.",
     besked: "Abonnementet er opsagt.",
-    naeste: "Data er ikke slettet. Kontakt FleetControl om udlevering eller genåbning.",
+    naeste: "Kontakt FleetControl om udlevering eller genåbning.",
   },
 };
+
+/**
+ * Hvor længe data opbevares efter en opsigelse. 90 dage.
+ *
+ * ⚠ DER SLETTES INTET AUTOMATISK, og teksten lover heller ikke at der gør.
+ * Der står "slettes tidligst" — ikke "slettes den". Egentlig sletning er en
+ * manuel proces med en kontrakt bag (beslutning 32), og en skærm der lovede
+ * en automatisk sletning der ikke findes, ville være samme slags løgn som at
+ * kalde en afvist læsning for en netværksfejl: den ser rigtig ud og er
+ * forkert.
+ *
+ * Skal fristen håndhæves, er det en opgave for sig — og den hører sammen med
+ * at auditopbevaringen heller ikke er afgjort. Se BESLUTNINGER.md.
+ */
+export const OPBEVARING_DAGE = 90;
+
+const DAG_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Datoen data tidligst kan slettes.
+ *
+ * ⚠ AFLEDT, IKKE GEMT. Den regnes af `aendretMs` hver gang. Et gemt
+ * `sletTidligstMs` ville drive fra sit grundlag i det sekund nogen genåbnede
+ * og opsagde igen — præcis fejlen i `bemanding.ledig`.
+ */
+export function opbevaresTil(abonnement) {
+  const ms = abonnement?.aendretMs;
+  if (abonnement?.status !== "opsagt" || !Number.isFinite(ms)) return null;
+  return ms + OPBEVARING_DAGE * DAG_MS;
+}
 
 export const ALLE_ABONNEMENTSTATUS = Object.keys(ABONNEMENT);
 

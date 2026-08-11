@@ -82,7 +82,7 @@ mod den udrullede base med en rigtig bruger: fjorten punkter, alle holdt.
 kontrakt bag, ikke en knap i en konsol. En knap der findes, bliver trykket
 på — samme begrundelse som at `skriv.js` ikke har en `slet()`.
 
-### Beslutning 34 (foreslået) — moduler håndhæves i reglerne, på skrivning
+### Beslutning 34 (foreslået) — moduler håndhæves i reglerne, læsning OG skrivning
 
 ⚠ **Det her bryder en note der står i koden i dag**, og bruddet skal være
 bevidst. `src/fleet/moduler.js` siger med rene ord at modulafkrydsning er en
@@ -92,10 +92,24 @@ sidebar. Det holder ikke, når man kan **fratage** et modul: gør vi kun det,
 har kunden stadig sine data og sit API, og modulet er ikke solgt — det er
 foreslået.
 
-**Håndhævelsen rammer `.write`, ikke `.read`.** En kunde der nedgraderer, kan
-ikke længere arbejde i modulet — men han kan stadig se og eksportere det han
-selv har lagt ind. Læsespærring ville betyde at et opsagt abonnement holder
-kundens egne data som gidsel, og det er hverken pænt eller lovligt sikkert.
+**Jørn har valgt at håndhævelsen rammer BÅDE `.read` og `.write`.** Jeg
+anbefalede kun skrivning; valget er truffet, og det er det stærkere af de to
+kommercielt. Men det har en konsekvens der skal stå skrevet ned, fordi den
+først viser sig når nogen står i den:
+
+⚠ **En kunde der får et modul frataget, kan ikke længere hente sine egne data
+ud gennem appen.** De ligger der — intet slettes — men den eneste vej til dem
+går gennem servicekontoen. Fravælges Flåde for en kunde der har kørt to år,
+er hans køretøjshistorik utilgængelig for ham selv fra det sekund.
+
+**Det følger heraf, at et modul ikke må fravælges uden en aftale.** Det er
+ikke en teknisk begrænsning — reglerne er ligeglade — men konsollen skal
+spørge, og fravalget skal i auditloggen med en årsag. Skal en kunde have sine
+data med ud, skal det ske **før** modulet slås fra.
+
+Overvej derfor et **eksportskridt** i konsollen, før fravalget kan gennemføres.
+Det er ikke med i punkt 2; det er noteret her, så det ikke bliver opdaget af
+en kunde i stedet for af os.
 
 ⚠ **Reglen skal fejle ÅBENT på en manglende `moduler`-node**, præcis som
 `harModul()` gør:
@@ -246,12 +260,52 @@ Punkt 1 og 2 er værdifulde alene. Punkt 4 er værdiløst uden dem.
 
 1. ~~Pause = skrivespærring eller loginspærring?~~ **Besvaret: loginspærring.**
    Bygget som en spærring på tenanten — se beslutning 32.
-2. **Modul fravalgt = kun skrivning spærret (min anbefaling), eller også
-   læsning?** Læsespærring er en kommerciel beslutning med en juridisk
-   konsekvens; jeg gætter den ikke.
-3. **Skal Dennis have en kundetenant?** Min anbefaling: nej — ren ejerkonto
-   uden tenant-claim.
-4. **Hvor længe opbevares data efter `opsagt`?** Skærmen skal skrive en dato
-   til kunden, og jeg opfinder ikke en opbevaringsfrist. Den hører sammen med
-   at auditopbevaringen heller ikke er afgjort — se `BESLUTNINGER.md`,
-   "Audit-retention er ikke afgjort".
+2. ~~Modul fravalgt = kun skrivning, eller også læsning?~~
+   **Besvaret: begge dele.** Se beslutning 34 — og især konsekvensen dér:
+   kunden kan ikke længere hente sine egne data ud gennem appen, så et
+   fravalg skal aftales, ikke bare klikkes.
+3. ~~Skal Dennis have en kundetenant?~~ **Besvaret: nej — for jer begge.**
+   To rene ejerkonti uden tenant-claim. Det gør `/main` til den eneste rute
+   de kan nå, og det gør spærringen ægte: en konto uden tenant kan ikke læse
+   én eneste kundes data, uanset hvad en klient sender.
+   ⚠ **Det betyder at `harAdgang` ikke må løsnes.** Ejerruten er sideordnet,
+   ikke en udvidelse af kundens — se afsnit 4.
+4. ~~Hvor længe opbevares data efter `opsagt`?~~ **Besvaret: 90 dage.**
+   `OPBEVARING_DAGE` i `abonnement.js`, og datoen er **afledt** af
+   `aendretMs` — ikke gemt. Et gemt `sletTidligstMs` ville drive fra sit
+   grundlag i det sekund nogen genåbnede og opsagde igen.
+
+   ⚠ **Der slettes intet automatisk, og skærmen lover det ikke.** Der står
+   *"slettes tidligst den …"*, ikke *"slettes den …"*. En lovet sletning der
+   ikke sker, er samme slags løgn som at kalde en afvist læsning for en
+   netværksfejl — den ser rigtig ud. Skal fristen håndhæves, er det en opgave
+   for sig, og den hører sammen med at auditopbevaringen heller ikke er
+   afgjort (`BESLUTNINGER.md`, "Audit-retention er ikke afgjort").
+
+---
+
+## 7. Nodetabellen, punkt 2 mangler et svar på
+
+Modulhåndhævelsen kræver at hver node hører til et modul. De fleste giver sig
+selv. **Tre gør ikke**, og et forkert gæt låser en kunde ude af noget han har
+betalt for:
+
+| Node | Modul | Sikker? |
+|---|---|---|
+| `koeretoejer`, `sensitive/koeretoejer`, `indberetninger` | `flaade` | ✔ |
+| `facility` | `facility` | ✔ |
+| `indkoeb`, `fakturaer`, `lagre` | `indkoeb` | ✔ |
+| `bookinger`, `sensitive/bookinger`, `vaerdi/bookinger`, `etaper`, `reservationer` | `booking` | ✔ |
+| `fravaer`, `sensitive/fravaer`, `kompetencer` | `bemanding` | ✔ |
+| `kunder`, `sensitive/kunder` | `kunder` | ✔ |
+| `personale`, `sensitive/personale` | **ingen — basen** | ✔ `permissions.js` siger hvorfor: enhver abonnementskombination har medarbejdere |
+| `kpi` | **ingen** | ✔ ét aggregat; et modul man ikke har, har ingen tal |
+| `roller`, `brugere`, `countere`, `virksomhed`, `moduler`, `abonnement` | **ingen — basen** | ✔ |
+| **`opgaver`** | ? | ⚠ `art` er `vaerksted` \| `facility` (beslutning 21). Den hører til **to** moduler |
+| **`satser`** | ? | ⚠ prisgrupper hører til `kunder`, men kalkulationsprisen bruges af `booking` |
+| **`fakturaer`** | ? | ⚠ ligger i Indkøb, men Økonomi læser dem |
+
+For de tre: **min anbefaling er at lade dem være ugatede** (basen). En node
+der hører til to moduler, kan ikke gates af ét af dem uden at det andet går i
+stykker — og alternativet, at gate på "har mindst ét af dem", er en regel
+ingen kan læse sig til bagefter.

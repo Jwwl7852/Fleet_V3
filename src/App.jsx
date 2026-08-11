@@ -7,7 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
-import { erAktiv, laasetekst } from "./fleet/abonnement.js";
+import { erAktiv, laasetekst, opbevaresTil } from "./fleet/abonnement.js";
+import { dato } from "./fleet/format.js";
 import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import Dashboard from "./moduler/Dashboard.jsx";
@@ -56,8 +57,6 @@ const DEMO_BRUGER = {
   perms: permStrengFraRolle("admin"),
 };
 
-/* Gemmer hvor man var på vej hen, så et dybt link ikke koster en ekstra
-   navigation efter login. */
 /**
  * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
  *
@@ -76,6 +75,7 @@ const DEMO_BRUGER = {
  */
 function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
   const t = laasetekst(abonnement);
+  const til = opbevaresTil(abonnement);
   return (
     <div className="fc-boot">
       <div className="fc-login">
@@ -83,6 +83,15 @@ function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
         <div className="fc-empty fc-empty-info">
           <p><b>{virksomhed?.navn || "Din virksomhed"}</b></p>
           <p style={{ marginTop: 8 }}><b>{t.besked}</b></p>
+          {/* ⚠ "TIDLIGST", IKKE "DEN". Der slettes intet automatisk, og en
+              skærm der lovede en sletning der ikke findes, ville være samme
+              slags løgn som at kalde en afvist læsning for en netværksfejl.
+              Se OPBEVARING_DAGE i abonnement.js. */}
+          {til && (
+            <p className="fc-hint" style={{ marginTop: 8 }}>
+              Data er <b>ikke slettet</b> og slettes tidligst <b>{dato(til)}</b>.
+            </p>
+          )}
           <p className="fc-hint" style={{ marginTop: 8 }}>{t.naeste}</p>
         </div>
         <button type="button" className="fc-btn" onClick={paaLogUd} style={{ marginTop: 14 }}>
@@ -93,6 +102,8 @@ function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
   );
 }
 
+/* Gemmer hvor man var på vej hen, så et dybt link ikke koster en ekstra
+   navigation efter login. */
 function TilLogin() {
   const l = useLocation();
   return <Navigate to="/login" replace state={{ fra: l.pathname + l.search }} />;
