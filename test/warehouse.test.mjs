@@ -186,10 +186,15 @@ describe("Modulet er registreret — men ikke tegnet", () => {
       ["kasser", "kassetyper", "kasseudlaan", "reolpladser"]);
   });
 
-  it("⚠ HAR INGEN SKÆRM ENDNU, og siger det", () => {
-    /* Et menupunkt der fører til ingenting, lover noget produktet ikke kan.
-       Navnet står i UDEN_SKAERM indtil etape 3. */
-    assert.ok(UDEN_SKAERM.includes("warehouse"));
+  it("⚠ TEGNES NU — og UDEN_SKAERM er tom igen", () => {
+    /* Navnet stod der mellem etape 1 og 3: modulet kunne saelges, men havde
+       ingen skaerm, og et menupunkt der foerer til ingenting lover noget
+       produktet ikke kan. Kasser og Reolpladser findes nu.
+
+       ⚠ Proeven holder BEGGE veje: staar et modul i UDEN_SKAERM, maa det ikke
+       have et menupunkt — og er listen tom, skal hvert modul have ét. Se
+       moduler.test.mjs. */
+    assert.ok(!UDEN_SKAERM.includes("warehouse"));
   });
 
   it("bruger ikke et navn der var taget", () => {

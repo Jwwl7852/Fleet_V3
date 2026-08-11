@@ -96,6 +96,17 @@ export const NAV = [
     ],
   },
   {
+    key: "warehouse", sti: "/warehouse", label: "Warehouse", titel: "Warehouse",
+    under: "Transportkasser, reolpladser og udlån",
+    born: [
+      { key: "warehouseKasser", sti: "/warehouse", label: "Kasser",
+        titel: "Warehouse – kasser", under: "Transportkasser, type, status og plads" },
+      { key: "reolpladser", sti: "/warehouse/reolpladser", label: "Reolpladser",
+        titel: "Warehouse – reolpladser & kassetyper",
+        under: "Hal, reol, fag, hylde og plads. Navnet udledes af felterne." },
+    ],
+  },
+  {
     key: "kunder", sti: "/kunder", label: "Kunder & Priser", titel: "Kunder & Priser",
     under: "Overblik over kunder, aftaler og priser",
   },

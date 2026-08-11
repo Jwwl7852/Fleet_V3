@@ -123,7 +123,13 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
  * warehouse: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
  * etape 3, hvor kasser og reolpladser kan ses. Se WAREHOUSE.md.
  */
-export const UDEN_SKAERM = ["warehouse"];
+/* ⚠ TOM IGEN — og det er meningen at den skal vaere det.
+ *
+ * warehouse stod her mellem etape 1 og 3: modulet kunne saelges og
+ * prissaettes, men havde ingen skaerm, og et menupunkt der foerer til
+ * ingenting lover noget produktet ikke kan. Nu findes Kasser og
+ * Reolpladser, og navnet er fjernet. */
+export const UDEN_SKAERM = [];
 
 /** De moduler enhver kunde altid har. */
 export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
