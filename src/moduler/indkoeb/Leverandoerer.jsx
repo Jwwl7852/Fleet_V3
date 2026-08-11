@@ -33,6 +33,7 @@ import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE,
   beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG,
@@ -55,7 +56,10 @@ export default function Leverandoerer() {
   const [valgtId, setValgtId] = useState("lv-hydra");
 
   if (henter) return <Henter hvad="leverandører" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const aktive = DEMO_LEVERANDOERER.filter((l) => l.aktiv);
   const valgt = DEMO_LEVERANDOERER.find((l) => l.id === valgtId) || null;
@@ -72,17 +76,19 @@ export default function Leverandoerer() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Aktive leverandører" vaerdi={num(aktive.length)} />
-        <KpiKort label="Indkøb i perioden" vaerdi={kr(samletOere)} note="ekskl. moms" />
-        <KpiKort label="Indkøb uden faktura" vaerdi={num(udenFaktura)}
-                 tone={udenFaktura ? "warn" : undefined} note="ryk leverandøren" />
-        {/* ⚠ ET TAL DER SIGER HVAD VI IKKE VED. Det hører på skærmen: uden det
-            ser en tabel med mange tomme felter ud som en fejl frem for som en
-            oplysning om at grundlaget er tyndt. */}
-        <KpiKort label="For lidt grundlag" vaerdi={num(forTyndt)}
-                 note={`under ${MINDSTE_GRUNDLAG} leveringer`} />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Aktive leverandører" vaerdi={num(aktive.length)} />
+          <KpiKort label="Indkøb i perioden" vaerdi={kr(samletOere)} note="ekskl. moms" />
+          <KpiKort label="Indkøb uden faktura" vaerdi={num(udenFaktura)}
+                   tone={udenFaktura ? "warn" : undefined} note="ryk leverandøren" />
+          {/* ⚠ ET TAL DER SIGER HVAD VI IKKE VED. Det hører på skærmen: uden det
+              ser en tabel med mange tomme felter ud som en fejl frem for som en
+              oplysning om at grundlaget er tyndt. */}
+          <KpiKort label="For lidt grundlag" vaerdi={num(forTyndt)}
+                   note={`under ${MINDSTE_GRUNDLAG} leveringer`} />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

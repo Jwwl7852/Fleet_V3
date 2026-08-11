@@ -41,6 +41,7 @@ import { kr, num, dato, datoTid } from "../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../fleet/ui.jsx";
+import { blokerer } from "../fleet/datatilstand.js";
 import {
   GRUNDLAG_TILSTAND, LINJE_ART,
   totaler, linjeBeloebOere, linjeMomsOere, talFraAntal,
@@ -61,7 +62,10 @@ export default function Fakturering() {
   const [valgtId, setValgtId] = useState("grl-002");
 
   if (henter) return <Henter hvad="fakturagrundlag" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const valgt = DEMO_GRUNDLAG.find((g) => g.id === valgtId) || null;
 
@@ -78,20 +82,22 @@ export default function Fakturering() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        {/* Fra kpi/ — en opgørelse på tværs af tenanten, som denne side af
-            listen ikke kan regne ud. Betydningen er skærpet med beslutning 25:
-            udført arbejde UDEN et låst grundlag. */}
-        <KpiKort label="Ikke faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
-                 note="udført uden låst grundlag" />
-        {/* De tre næste er AFLEDT af de hentede grundlag. Labelen siger hvilket
-            udsnit, så tallet ikke læses som en total. */}
-        <KpiKort label="Kladder" vaerdi={num(kladder.length)} note="i de hentede" />
-        <KpiKort label="Spærret af åbne etaper" vaerdi={num(spaerrede.length)}
-                 tone={spaerrede.length ? "warn" : undefined} note="kan ikke godkendes" />
-        <KpiKort label="Mangler momssats" vaerdi={num(udenMoms.length)}
-                 tone={udenMoms.length ? "warn" : undefined} note="eksport spærret" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          {/* Fra kpi/ — en opgørelse på tværs af tenanten, som denne side af
+              listen ikke kan regne ud. Betydningen er skærpet med beslutning 25:
+              udført arbejde UDEN et låst grundlag. */}
+          <KpiKort label="Ikke faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
+                   note="udført uden låst grundlag" />
+          {/* De tre næste er AFLEDT af de hentede grundlag. Labelen siger hvilket
+              udsnit, så tallet ikke læses som en total. */}
+          <KpiKort label="Kladder" vaerdi={num(kladder.length)} note="i de hentede" />
+          <KpiKort label="Spærret af åbne etaper" vaerdi={num(spaerrede.length)}
+                   tone={spaerrede.length ? "warn" : undefined} note="kan ikke godkendes" />
+          <KpiKort label="Mangler momssats" vaerdi={num(udenMoms.length)}
+                   tone={udenMoms.length ? "warn" : undefined} note="eksport spærret" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

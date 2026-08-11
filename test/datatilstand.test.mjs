@@ -10,7 +10,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { TILSTAND, dataTilstand, erAfvist, vaerste } from "../src/fleet/datatilstand.js";
+import { TILSTAND, dataTilstand, erAfvist, vaerste, blokerer } from "../src/fleet/datatilstand.js";
 
 const AFVIST_FEJL = { code: "PERMISSION_DENIED", message: "PERMISSION_DENIED: Permission denied" };
 const NETVAERKSFEJL = { code: "NETWORK_ERROR", message: "Failed to fetch" };
@@ -210,5 +210,63 @@ describe("useKpi falder ikke tilbage til demo", () => {
     "DEMO Transports tal — beslutning 26.");
   assert.match(kilde, /TILSTAND\.ikkeAggregeret/,
       "useKpi sætter ikke ikkeAggregeret på en tom node.");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   blokerer() — den lukkede ring en ny kunde stod i
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Skærme med noget UNDER nøgletallene som de læser direkte fra basen. De må
+   ikke blanke: en ny kunde opretter sin første post netop dér.
+   Listen er ikke pynt — den er hvad prøven håndhæver. */
+const SKAERME_DER_IKKE_MAA_BLOKERE = [
+  "src/moduler/flaade/Oversigt.jsx",
+  "src/moduler/flaade/Indberetninger.jsx",
+  "src/moduler/flaade/Vaerkstedskalender.jsx",
+  "src/moduler/facility/Oversigt.jsx",
+  "src/moduler/facility/Klima.jsx",
+  "src/moduler/facility/Servicekalender.jsx",
+  "src/moduler/indkoeb/Oversigt.jsx",
+  "src/moduler/indkoeb/Fakturaer.jsx",
+  "src/moduler/indkoeb/Leverandoerer.jsx",
+  "src/moduler/Kompetencer.jsx",
+  "src/moduler/Fakturering.jsx",
+];
+
+describe("blokerer() lader en ny kunde komme i gang", () => {
+  it("blokerer IKKE på manglende aggregering", () => {
+    /* ⚠ HELE POINTEN. Ingen tal → ingen skærm → ingen bil → ingen tal.
+       Ringen ramte det allerførste en kunde skal gøre. */
+    assert.equal(blokerer({ art: TILSTAND.ikkeAggregeret, visDemo: false }), false);
+  });
+
+  it("blokerer ikke når alt er i orden", () => {
+    assert.equal(blokerer({ art: TILSTAND.ok, visDemo: false }), false);
+    assert.equal(blokerer(null), false);
+  });
+
+  it("blokerer stadig på afvisning, fejl og manglende session", () => {
+    /* En afvist læsning er ikke "lidt data" — det er at vi ikke ved hvad
+       der er. Så skal skærmen ikke tegne noget som helst. */
+    for (const art of [TILSTAND.naegtet, TILSTAND.forbindelse, TILSTAND.uautentificeret]) {
+      assert.equal(blokerer({ art, visDemo: false }), true, `${art} skal blokere`);
+    }
+  });
+
+  it("ingen af de elleve skærme har den gamle tidlige retur tilbage", () => {
+    /* LINT. Mønstret `if (!k) return <Datatilstand/>` stod i sytten filer og
+       var rigtigt i seks af dem. Kopieres det tilbage til en af de elleve,
+       er kunden i ringen igen — og det ville ingen opdage, fordi skærmen
+       ser pæn ud med demo-data. */
+    for (const sti of SKAERME_DER_IKKE_MAA_BLOKERE) {
+      const kilde = readFileSync(new URL(`../${sti}`, import.meta.url), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      assert.doesNotMatch(kilde, /if \(!k\) return <Datatilstand/,
+        `${sti} blokerer igen på manglende nøgletal — en ny kunde kan ikke oprette sin første post.`);
+      assert.match(kilde, /blokerer\(/, `${sti} kalder ikke blokerer().`);
+      assert.match(kilde, /\{k && \(/,
+        `${sti} tegner nøgletalsrækken uden at tjekke at der ER nøgletal.`);
+    }
   });
 });

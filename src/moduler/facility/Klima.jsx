@@ -30,6 +30,7 @@ import { kr, num, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Soejlegraf,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   ZONE_ART, OMKOSTNINGSPOST, alarmTilstand, aktiveAlarmer,
   gennemsnitPrZoneArt, elVarmeOere, bygningsomkostningOere,
@@ -41,7 +42,10 @@ const grader = (t) => (Number.isFinite(t) ? `${t.toFixed(1)} °C` : "—");
 export default function Klima() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   if (henter) return <Henter hvad="klimadata" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const par = zonePar();
   const alarmer = aktiveAlarmer(par);
@@ -52,15 +56,17 @@ export default function Klima() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Aktive sensorer" vaerdi={num(k.facility.sensorerAktive)} />
-        {/* Afledt af måling + grænse, ikke gemt. kpi'ens klimaalarmerIDag er et
-            andet tal: det kræver historik. */}
-        <KpiKort label="Klimaalarmer nu" vaerdi={num(alarmer.length)} note="beregnet" />
-        <KpiKort label="Klimaalarmer i dag" vaerdi={num(k.facility.klimaalarmerIDag)} />
-        {/* TO KORT, TO TAL. Aldrig ét felt der hedder begge dele. */}
-        <KpiKort label="El & varme" vaerdi={kr(elVarme)} note="denne måned, ekskl. moms" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Aktive sensorer" vaerdi={num(k.facility.sensorerAktive)} />
+          {/* Afledt af måling + grænse, ikke gemt. kpi'ens klimaalarmerIDag er et
+              andet tal: det kræver historik. */}
+          <KpiKort label="Klimaalarmer nu" vaerdi={num(alarmer.length)} note="beregnet" />
+          <KpiKort label="Klimaalarmer i dag" vaerdi={num(k.facility.klimaalarmerIDag)} />
+          {/* TO KORT, TO TAL. Aldrig ét felt der hedder begge dele. */}
+          <KpiKort label="El & varme" vaerdi={kr(elVarme)} note="denne måned, ekskl. moms" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

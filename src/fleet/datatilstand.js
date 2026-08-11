@@ -110,6 +110,36 @@ const RANG = {
   [TILSTAND.naegtet]: 5,
 };
 
+/**
+ * Skal skærmen holde op med at tegne — eller kun nøgletallene?
+ *
+ * ⚠ `ikkeAggregeret` MÅ ALDRIG BLANKE EN SKÆRM, og det er ikke en finesse.
+ * En ny kunde har ingen aggregerede tal, fordi han ingen data har. Knappen
+ * der opretter hans FØRSTE køretøj sidder på Flåde-skærmen, og den skærm
+ * begyndte med `if (!k) return <Datatilstand/>`. Så kunne han aldrig komme i
+ * gang: ingen tal → ingen skærm → ingen bil → ingen tal. En lukket ring, og
+ * den ramte den allerførste ting en kunde skal gøre.
+ *
+ * De øvrige tilstande blokerer stadig. En afvist eller fejlet læsning er
+ * ikke en oplysning om at der er lidt data — det er en oplysning om at vi
+ * ikke ved hvad der er.
+ *
+ * ⚠ SEKS SKÆRME KALDER DEN IKKE, OG DET ER MED VILJE.
+ * Dashboard, Økonomi, Kunder, Bemanding, Booking-oversigten og Disponering
+ * er BYGGET af nøgletal — kroppen læser `k.` hele vejen ned. Uden dem er der
+ * ikke en skærm med et hul i; der er intet tilbage at tegne, og hvert felt
+ * skulle sige "ikke aggregeret". Beskeden ÉN gang er det ærlige svar.
+ *
+ * Skellet er derfor ikke "hvilke skærme er vigtige", men: har skærmen noget
+ * under nøgletallene som den læser DIREKTE fra basen? Har den det — en
+ * tabel man kan oprette i — må den ikke blokere. Har den det ikke, er
+ * beskeden hele indholdet.
+ */
+export const blokerer = (tilstand) =>
+  Boolean(tilstand) &&
+  tilstand.art !== TILSTAND.ok &&
+  tilstand.art !== TILSTAND.ikkeAggregeret;
+
 export function vaerste(...tilstande) {
   return tilstande.filter(Boolean).reduce(
     (a, b) => ((RANG[b.art] ?? 0) > (RANG[a.art] ?? 0) ? b : a),

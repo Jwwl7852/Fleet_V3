@@ -37,6 +37,7 @@ import { num, dato, serviceTone } from "../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
 } from "../fleet/ui.jsx";
+import { blokerer } from "../fleet/datatilstand.js";
 import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/flaade.js";
 import { tjekKompetencer, PERSONALE_STATUS, kanDisponeres } from "../fleet/personale.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
@@ -52,7 +53,10 @@ export default function Kompetencer() {
   const [valgtId, setValgtId] = useState(null);
 
   if (henter) return <Henter hvad="kompetencer" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   /* AFLEDT af listen skærmen allerede har — hører derfor ikke i kpi/.
      Samme sag som aktive klimaalarmer; et gemt afledt tal driver fra sit
@@ -83,17 +87,19 @@ export default function Kompetencer() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Medarbejdere" vaerdi={num(raekker.length)} note="ikke fratrådte" />
-        <KpiKort label="Udløbet og blokerer" vaerdi={num(blokerende.length)}
-                 tone={blokerende.length ? "bad" : undefined}
-                 note="chaufføren kan ikke disponeres" />
-        <KpiKort label="Udløbet, advarer" vaerdi={num(udloebne.length - blokerende.length)}
-                 tone={udloebne.length - blokerende.length ? "warn" : undefined}
-                 note="kan overrules med begrundelse" />
-        <KpiKort label="Udløber inden 30 dage" vaerdi={num(snart.length)}
-                 tone={snart.length ? "warn" : undefined} note="forny i tide" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Medarbejdere" vaerdi={num(raekker.length)} note="ikke fratrådte" />
+          <KpiKort label="Udløbet og blokerer" vaerdi={num(blokerende.length)}
+                   tone={blokerende.length ? "bad" : undefined}
+                   note="chaufføren kan ikke disponeres" />
+          <KpiKort label="Udløbet, advarer" vaerdi={num(udloebne.length - blokerende.length)}
+                   tone={udloebne.length - blokerende.length ? "warn" : undefined}
+                   note="kan overrules med begrundelse" />
+          <KpiKort label="Udløber inden 30 dage" vaerdi={num(snart.length)}
+                   tone={snart.length ? "warn" : undefined} note="forny i tide" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

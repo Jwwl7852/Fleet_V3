@@ -52,6 +52,7 @@ import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter,
   MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   AKTIV_ART, AKTIV_STATUS, FEJL_STATUS, LOKATION_TYPE,
   ALLE_AKTIV_ARTER, ALLE_AKTIV_STATUS,
@@ -309,7 +310,10 @@ export default function FacilityOversigt() {
   const [fejlform, setFejlform] = useState(null);
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   /* ÉN kilde. Klima-skærmen kalder den samme funktion. */
   const par = zonePar();
@@ -323,7 +327,12 @@ export default function FacilityOversigt() {
   const valgtLok = DEMO_LOKATIONER.find((l) => l.id === valgtLokId) || DEMO_LOKATIONER[0];
   const drift = valgtLok ? driftsforhold(valgtLok.id, ctx) : [];
 
-  const fordeling = aktivFordeling(k.facility.aktiverPrArt || {});
+  const fordeling = aktivFordeling(k?.facility?.aktiverPrArt || {});
+
+  /* ⚠ IKKE num(undefined) OG IKKE NUL. En ny kunde har ingen aggregerede tal,
+     og "0 aktiver" ville være en påstand om at han ingen har. Se blokerer()
+     i datatilstand.js — skærmen skal kunne bruges uden nøgletallene. */
+  const kpiTal = (v) => (Number.isFinite(v) ? num(v) : "ikke aggregeret");
 
   /* Aktivtabellen sorteres efter hvornår service forfalder — det er den
      rækkefølge man arbejder listen i. */
@@ -334,27 +343,29 @@ export default function FacilityOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        {/* Runde ikoner med chevron, som resten af appen. Tonerne er
-            IKONACCENTER: farven forstærker, tallet og teksten bærer.
-            Afvigelserne KRÆVER historik og kommer derfor fra kpi/ — de kan
-            ikke regnes af de femten demo-aktiver skærmen har. */}
-        <KpiKort label="Aktiver i drift" vaerdi={num(k.facility.aktiver)}
-                 ikon={<Ikon navn="bygning" />} tone="ikon-5" rund til="/facility"
-                 {...afvig(k.facility.aktiverDeltaPct, { betterWhen: "higher", unit: "pct" })} />
-        <KpiKort label="Servicepunkter forfalder" vaerdi={num(k.facility.servicepunkterForfalder)}
-                 ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
-                 til="/facility/servicekalender"
-                 {...afvig(k.facility.servicepunkterDelta, { betterWhen: "lower" })} />
-        <KpiKort label="Åbne facility-sager" vaerdi={num(k.facility.aabneSager)}
-                 ikon={<Ikon navn="udraab" />} tone="ikon-1" rund
-                 til="/facility/servicekalender"
-                 {...afvig(k.facility.aabneSagerDelta, { betterWhen: "lower" })} />
-        <KpiKort label="Planlagt vedligehold" vaerdi={num(k.facility.planlagtVedligehold)}
-                 ikon={<Ikon navn="kalender" />} tone="ikon-6" rund
-                 til="/facility/servicekalender"
-                 {...afvig(k.facility.planlagtVedligeholdDelta, { betterWhen: "higher" })} />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          {/* Runde ikoner med chevron, som resten af appen. Tonerne er
+              IKONACCENTER: farven forstærker, tallet og teksten bærer.
+              Afvigelserne KRÆVER historik og kommer derfor fra kpi/ — de kan
+              ikke regnes af de femten demo-aktiver skærmen har. */}
+          <KpiKort label="Aktiver i drift" vaerdi={num(k.facility.aktiver)}
+                   ikon={<Ikon navn="bygning" />} tone="ikon-5" rund til="/facility"
+                   {...afvig(k.facility.aktiverDeltaPct, { betterWhen: "higher", unit: "pct" })} />
+          <KpiKort label="Servicepunkter forfalder" vaerdi={num(k.facility.servicepunkterForfalder)}
+                   ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
+                   til="/facility/servicekalender"
+                   {...afvig(k.facility.servicepunkterDelta, { betterWhen: "lower" })} />
+          <KpiKort label="Åbne facility-sager" vaerdi={num(k.facility.aabneSager)}
+                   ikon={<Ikon navn="udraab" />} tone="ikon-1" rund
+                   til="/facility/servicekalender"
+                   {...afvig(k.facility.aabneSagerDelta, { betterWhen: "lower" })} />
+          <KpiKort label="Planlagt vedligehold" vaerdi={num(k.facility.planlagtVedligehold)}
+                   ikon={<Ikon navn="kalender" />} tone="ikon-6" rund
+                   til="/facility/servicekalender"
+                   {...afvig(k.facility.planlagtVedligeholdDelta, { betterWhen: "higher" })} />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
@@ -406,18 +417,18 @@ export default function FacilityOversigt() {
               <b>aktiverPrArt</b> findes ikke i <code>kpi/</code> for denne tenant.
               Fordelingen er ikke aggregeret endnu — det er ikke det samme som
               at der ingen aktiver er; nøgletallet ovenfor siger{" "}
-              {num(k.facility.aktiver)}.
+              {kpiTal(k?.facility?.aktiver)}.
             </Tom>
           ) : (
             <Donut
               dele={fordeling}
-              total={k.facility.aktiver}
+              total={k?.facility?.aktiver}
               midteTekst="aktive"
               format={(v) => num(v)}
             />
           )}
           <p className="fc-hint" style={{ marginTop: 12 }}>
-            Fordelingen af alle <b>{num(k.facility.aktiver)}</b> aktiver kommer fra{" "}
+            Fordelingen af alle <b>{kpiTal(k?.facility?.aktiver)}</b> aktiver kommer fra{" "}
             <b>kpi/</b> — den kan ikke regnes af de {num(DEMO_AKTIVER.length)} hentede.
             Højst fem slices: seriepaletten har fem farver der kan skelnes fra
             hinanden, også uden farvesyn, og en sjette ville genbruge den første.
@@ -477,7 +488,7 @@ export default function FacilityOversigt() {
         />
       )}
 
-      <Kort titel={`Aktiver (${num(DEMO_AKTIVER.length)} hentede af ${num(k.facility.aktiver)})`}
+      <Kort titel={`Aktiver (${num(DEMO_AKTIVER.length)} hentede af ${kpiTal(k?.facility?.aktiver)})`}
             handling={
               <Knap variant="primaer" disabled={!maaSkrive}
                     onClick={() => { setAktivform("ny"); setFejlform(null); }}
@@ -531,7 +542,7 @@ export default function FacilityOversigt() {
           <p className="fc-hint" style={{ margin: 0 }}>
             Viser {num((nuSide - 1) * PR_SIDE + 1)}–{num((nuSide - 1) * PR_SIDE + paaSiden.length)}{" "}
             af {num(aktiver.length)} hentede. Platformens tal er{" "}
-            <b>{num(k.facility.aktiver)}</b>, og de to skal ikke gå op mod hinanden:
+            <b>{kpiTal(k?.facility?.aktiver)}</b>, og de to skal ikke gå op mod hinanden:
             listen er et udsnit. Sorteret efter hvornår service forfalder.
           </p>
           <Sider side={nuSide} antal={aktiver.length} prSide={PR_SIDE} saet={setSide} />
@@ -579,7 +590,7 @@ export default function FacilityOversigt() {
           />
           <p className="fc-hint" style={{ marginTop: 12 }}>
             Viser {num(aabne.length)} af {num(DEMO_FEJL.length)} hentede fejl.{" "}
-            <b>{num(k.facility.aabneFejl)}</b> er platformens tal fra <code>kpi/</code> —
+            <b>{kpiTal(k?.facility?.aabneFejl)}</b> er platformens tal fra <code>kpi/</code> —
             listen her er et udsnit og skal ikke gå op mod det.
           </p>
         </Kort>

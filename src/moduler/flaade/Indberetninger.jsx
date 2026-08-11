@@ -35,6 +35,7 @@ import { harPerm } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
   kanAfslutte, kanFaktureres,
@@ -56,7 +57,10 @@ export default function Indberetninger() {
   const [valgtId, setValgtId] = useState("ind-001");
 
   if (henter) return <Henter hvad="indberetninger" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const valgt = DEMO_INDBERETNINGER.find((i) => i.id === valgtId) || null;
 
@@ -70,16 +74,18 @@ export default function Indberetninger() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Åbne indberetninger" vaerdi={num(aabne.length)} note="i de hentede" />
-        <KpiKort label="Afventer faktura" vaerdi={num(kanIkkeAfsluttes.length)}
-                 tone={kanIkkeAfsluttes.length ? "warn" : undefined}
-                 note="pengesiden er ikke afklaret" />
-        <KpiKort label="Materiale til fakturering" vaerdi={num(ufakturerede.length)}
-                 note="linjer der kan blive til et grundlag" />
-        <KpiKort label="Brændstofudgift" vaerdi={kr(k.flaade.braendstofOere)}
-                 note="perioden" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Åbne indberetninger" vaerdi={num(aabne.length)} note="i de hentede" />
+          <KpiKort label="Afventer faktura" vaerdi={num(kanIkkeAfsluttes.length)}
+                   tone={kanIkkeAfsluttes.length ? "warn" : undefined}
+                   note="pengesiden er ikke afklaret" />
+          <KpiKort label="Materiale til fakturering" vaerdi={num(ufakturerede.length)}
+                   note="linjer der kan blive til et grundlag" />
+          <KpiKort label="Brændstofudgift" vaerdi={kr(k.flaade.braendstofOere)}
+                   note="perioden" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

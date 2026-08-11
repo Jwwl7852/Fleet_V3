@@ -104,7 +104,7 @@ import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
   KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
-import { vaerste } from "../../fleet/datatilstand.js";
+import { vaerste, blokerer } from "../../fleet/datatilstand.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 
@@ -402,7 +402,10 @@ export default function FlaadeOversigt() {
   });
 
   if (henterKpi || henter) return <Henter hvad="flåden" />;
-  if (!k) return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(kpiTilstand)) return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} />;
 
   const maaSkrive = harPerm(bruger?.perms, PERM.koeretoejerSkriv);
   const maaSeFoelsomt = harPerm(bruger?.perms, PERM.koeretoejerSensitiveLaes);
@@ -453,31 +456,33 @@ export default function FlaadeOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        {/* Runde ikoner med chevron, som Booking og Bemanding. Tonerne er
-            IKONACCENTER: farven forstærker, tallet og teksten bærer.
-            Kortet er SELV linket — mockuppen har både en chevron og en
-            "Se køretøjer"-linje, men et link inde i et link er ugyldigt
-            markup, og to veje til samme sted er én for meget. */}
-        <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)}
-                 ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/flaade" />
-        <KpiKort label="Ude af drift" vaerdi={num(k.flaade.udeAfDrift)}
-                 ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
-                 note={`heraf ${num(k.flaade.paaVaerksted)} på værksted`}
-                 til="/flaade/vaerksted" />
-        <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)}
-                 ikon={<Ikon navn="ur" />} tone="ikon-3" rund
-                 til="/flaade/vaerksted" />
-        {/* Driftsomkostning UDEN chauffør. Kalkulationsprisen inkl. chauffør
-            er 8,40 kr og ligger i Bookingopsætning — beslutning 11.
-            betterWhen:"lower" — en stigning i kroner pr. km er RØD, uanset at
-            pilen peger op. Se noten i deviation(). */}
-        <KpiKort label="Omkostning pr. km" vaerdi={kr(k.flaade.omkostningPrKmOere, 2)}
-                 ikon={<Ikon navn="seddel" />} tone="ikon-6" rund
-                 afvigelse={deviation(k.flaade.omkostningPrKmDeltaOere,
-                                      { betterWhen: "lower", unit: "kr", dec: 2 })}
-                 note="vs. forrige periode" til="/oekonomi" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          {/* Runde ikoner med chevron, som Booking og Bemanding. Tonerne er
+              IKONACCENTER: farven forstærker, tallet og teksten bærer.
+              Kortet er SELV linket — mockuppen har både en chevron og en
+              "Se køretøjer"-linje, men et link inde i et link er ugyldigt
+              markup, og to veje til samme sted er én for meget. */}
+          <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)}
+                   ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/flaade" />
+          <KpiKort label="Ude af drift" vaerdi={num(k.flaade.udeAfDrift)}
+                   ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
+                   note={`heraf ${num(k.flaade.paaVaerksted)} på værksted`}
+                   til="/flaade/vaerksted" />
+          <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)}
+                   ikon={<Ikon navn="ur" />} tone="ikon-3" rund
+                   til="/flaade/vaerksted" />
+          {/* Driftsomkostning UDEN chauffør. Kalkulationsprisen inkl. chauffør
+              er 8,40 kr og ligger i Bookingopsætning — beslutning 11.
+              betterWhen:"lower" — en stigning i kroner pr. km er RØD, uanset at
+              pilen peger op. Se noten i deviation(). */}
+          <KpiKort label="Omkostning pr. km" vaerdi={kr(k.flaade.omkostningPrKmOere, 2)}
+                   ikon={<Ikon navn="seddel" />} tone="ikon-6" rund
+                   afvigelse={deviation(k.flaade.omkostningPrKmDeltaOere,
+                                        { betterWhen: "lower", unit: "kr", dec: 2 })}
+                   note="vs. forrige periode" til="/oekonomi" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={vaerste(tilstand, kpiTilstand)}
                     genprov={() => { genindlaes(); genindlaesKpi(); }} />
@@ -843,12 +848,15 @@ export default function FlaadeOversigt() {
                 render: (r) => <b>{kr(r.driftPrKmOere, 2)}</b> },
               /* Mod FLÅDENS gennemsnit fra kpi/, ikke mod de hentedes — ellers
                  flytter sammenligningsgrundlaget sig hver gang nogen filtrerer,
-                 og den samme bil er pludselig billig. */
-              { key: "afvig", label: "vs. flåden", num: true, render: (r) => {
+                 og den samme bil er pludselig billig.
+                 ⚠ KOLONNEN FALDER HELT VÆK uden det gennemsnit. En ny kunde har
+                 ingen aggregerede tal, og en afvigelse målt mod ingenting ville
+                 kalde hver eneste bil dyr. */
+              ...(k ? [{ key: "afvig", label: "vs. flåden", num: true, render: (r) => {
                   const d = deviation(r.driftPrKmOere - k.flaade.omkostningPrKmOere,
                                       { betterWhen: "lower", unit: "kr", dec: 2 });
                   return <span className={`fc-${d.tone}`}>{d.pil} {d.text}</span>;
-                } },
+                } }] : []),
             ]}
             raekker={dyreste}
             tom="Ingen aktive enheder med en omkostning pr. km."
@@ -856,8 +864,12 @@ export default function FlaadeOversigt() {
           <p className="fc-hint" style={{ marginTop: 10 }}>
             Mockuppen har en kurve pr. bil. Der findes <b>ingen tidsserie</b> pr.
             køretøj — kun den aktuelle sats — så der står afvigelsen mod flådens
-            gennemsnit på <b>{kr(k.flaade.omkostningPrKmOere, 2)}</b> i stedet. En
-            kurve tegnet af ét punkt er en påstand om en udvikling, vi ikke kender.
+            gennemsnit i stedet. En kurve tegnet af ét punkt er en påstand om en
+            udvikling, vi ikke kender.{" "}
+            {k
+              ? <>Gennemsnittet er <b>{kr(k.flaade.omkostningPrKmOere, 2)}</b>.</>
+              : <>Gennemsnittet er ikke aggregeret for den her virksomhed endnu,
+                 og så er der ingen afvigelse at måle mod.</>}{" "}
             Beløb er ekskl. moms og <b>uden</b> chauffør.
           </p>
         </Kort>

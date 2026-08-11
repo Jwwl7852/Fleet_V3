@@ -28,6 +28,7 @@ import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje, Knap,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
@@ -87,18 +88,23 @@ export default function Servicekalender() {
   }));
 
   if (henter) return <Henter hvad="servicekalenderen" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const valgt = DEMO_SERVICEBESOEG.find((b) => b.id === valgtId) || null;
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Planlagte besøg" vaerdi={num(k.facility.planlagtVedligehold)} />
-        <KpiKort label="Eksterne leverandører" vaerdi={num(k.facility.eksterneLeverandoerer)} />
-        <KpiKort label="Reserveret fra sager" vaerdi={num(k.facility.aabneSager)} />
-        <KpiKort label="Anslået omkostning" vaerdi={kr(k.facility.anslaaetServiceOere)} note="ekskl. moms" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Planlagte besøg" vaerdi={num(k.facility.planlagtVedligehold)} />
+          <KpiKort label="Eksterne leverandører" vaerdi={num(k.facility.eksterneLeverandoerer)} />
+          <KpiKort label="Reserveret fra sager" vaerdi={num(k.facility.aabneSager)} />
+          <KpiKort label="Anslået omkostning" vaerdi={kr(k.facility.anslaaetServiceOere)} note="ekskl. moms" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

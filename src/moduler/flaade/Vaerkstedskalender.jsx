@@ -52,6 +52,7 @@ import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Knap, Henter, Datatilstand,
   Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";
 import Sagsvisning from "../../fleet/Sagsvisning.jsx";
@@ -130,23 +131,28 @@ export default function Vaerkstedskalender() {
   const valgtBesoeg = DEMO_BESOEG.find((b) => b.id === valgtBesoegId) || null;
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const maaSkriveIndkoeb = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)} />
-        <KpiKort label="Reserveret til værksted" vaerdi={num(k.flaade.paaVaerksted)} />
-        <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)} />
-        {/* Feltet er defineret i demo-kpi.js og læses herfra. Det er IKKE det
-            samme tal som indkoeb.fakturaerTilGodkendelse: "ikke-linket" og
-            "afventer godkendelse" er to tilstande, og at bruge det ene som det
-            andet er beslutning 11 og 14 om igen. Det er aggregeringen der
-            mangler, ikke skærmen — se KPI-efterslæbet i README. */}
-        <KpiKort label="Ikke-linkede fakturaer" vaerdi={num(k.flaade.ikkeLinkedeFakturaer)} />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)} />
+          <KpiKort label="Reserveret til værksted" vaerdi={num(k.flaade.paaVaerksted)} />
+          <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)} />
+          {/* Feltet er defineret i demo-kpi.js og læses herfra. Det er IKKE det
+              samme tal som indkoeb.fakturaerTilGodkendelse: "ikke-linket" og
+              "afventer godkendelse" er to tilstande, og at bruge det ene som det
+              andet er beslutning 11 og 14 om igen. Det er aggregeringen der
+              mangler, ikke skærmen — se KPI-efterslæbet i README. */}
+          <KpiKort label="Ikke-linkede fakturaer" vaerdi={num(k.flaade.ikkeLinkedeFakturaer)} />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

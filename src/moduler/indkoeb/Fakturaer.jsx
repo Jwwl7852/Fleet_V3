@@ -46,6 +46,7 @@ import { harPerm } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, kanGodkende,
   PERM_GODKEND_MIDLERTIDIG,
@@ -62,7 +63,10 @@ export default function Fakturaer() {
   const [valgtId, setValgtId] = useState(null);
 
   if (henter) return <Henter hvad="fakturaer" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND_MIDLERTIDIG);
   const valgt = DEMO_FAKTURAER.find((f) => f.id === valgtId) || null;
@@ -76,17 +80,19 @@ export default function Fakturaer() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        {/* Feltet fra kpi/, ikke et hardkodet 21. Dashboard viser samme tal. */}
-        <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)} />
-        {/* AFLEDT af den viste liste. Labelen siger det. */}
-        <KpiKort label="Manglende match" vaerdi={num(udenMatch.length)} note="i de hentede" />
-        <KpiKort label="Godkendt denne måned" vaerdi={num(k.indkoeb.godkendtDenneMaaned)} />
-        <KpiKort label="Indkøbsprisafvigelse"
-                 vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct,
-                   { betterWhen: "lower", unit: "pct" }).text}
-                 note="snit, leverandørsiden" />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          {/* Feltet fra kpi/, ikke et hardkodet 21. Dashboard viser samme tal. */}
+          <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)} />
+          {/* AFLEDT af den viste liste. Labelen siger det. */}
+          <KpiKort label="Manglende match" vaerdi={num(udenMatch.length)} note="i de hentede" />
+          <KpiKort label="Godkendt denne måned" vaerdi={num(k.indkoeb.godkendtDenneMaaned)} />
+          <KpiKort label="Indkøbsprisafvigelse"
+                   vaerdi={deviation(k.indkoeb.indkoebsprisafvigelseSnitPct,
+                     { betterWhen: "lower", unit: "pct" }).text}
+                   note="snit, leverandørsiden" />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

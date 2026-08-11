@@ -56,6 +56,7 @@ import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
   MiniLinje, Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
   leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
@@ -321,7 +322,10 @@ export default function IndkoebOversigt() {
   const [linjeform, setLinjeform] = useState(null);
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
+     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
+     opretter hans første post sidder på en af dem. Se blokerer(). */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
@@ -383,25 +387,27 @@ export default function IndkoebOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        {/* Runde ikoner med chevron, som resten af appen. Tonerne er
-            IKONACCENTER — farven forstærker, tallet og teksten bærer. */}
-        <KpiKort label="Åbne ordrer" vaerdi={num(k.indkoeb.aabneOrdrer)}
-                 ikon={<Ikon navn="dokument" />} tone="ikon-5" rund til="/indkoeb"
-                 {...afvig(k.indkoeb.aabneOrdrerDeltaPct, { betterWhen: "lower", unit: "pct" })} />
-        <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)}
-                 ikon={<Ikon navn="seddel" />} tone="ikon-2" rund til="/indkoeb/fakturaer"
-                 {...afvig(k.indkoeb.fakturaerTilGodkendelseDeltaPct, { betterWhen: "lower", unit: "pct" })} />
-        <KpiKort label="Prisafvigelser" vaerdi={num(k.indkoeb.indkoebsprisafvigelser)}
-                 ikon={<Ikon navn="advarsel" />} tone="ikon-4" rund til="/indkoeb/leverandoerer"
-                 {...afvig(k.indkoeb.prisafvigelserDelta, { betterWhen: "lower" }, "nye vs. forrige periode")} />
-        {/* ⚠ PROCENTPOINT, IKKE PROCENT. 92 % der stiger til 97 % er +5 point.
-            Feltnavnet siger hvilket — se noten i demo-kpi.js. */}
-        <KpiKort label="Leverancer til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct, 0)}
-                 ikon={<Ikon navn="lastbil" />} tone="ikon-6" rund til="/indkoeb/leverandoerer"
-                 {...afvig(k.indkoeb.leveranceTilTidenDeltaPoint, { betterWhen: "higher" },
-                           "procentpoint vs. forrige periode")} />
-      </KpiRaekke>
+      {k && (
+        <KpiRaekke>
+          {/* Runde ikoner med chevron, som resten af appen. Tonerne er
+              IKONACCENTER — farven forstærker, tallet og teksten bærer. */}
+          <KpiKort label="Åbne ordrer" vaerdi={num(k.indkoeb.aabneOrdrer)}
+                   ikon={<Ikon navn="dokument" />} tone="ikon-5" rund til="/indkoeb"
+                   {...afvig(k.indkoeb.aabneOrdrerDeltaPct, { betterWhen: "lower", unit: "pct" })} />
+          <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)}
+                   ikon={<Ikon navn="seddel" />} tone="ikon-2" rund til="/indkoeb/fakturaer"
+                   {...afvig(k.indkoeb.fakturaerTilGodkendelseDeltaPct, { betterWhen: "lower", unit: "pct" })} />
+          <KpiKort label="Prisafvigelser" vaerdi={num(k.indkoeb.indkoebsprisafvigelser)}
+                   ikon={<Ikon navn="advarsel" />} tone="ikon-4" rund til="/indkoeb/leverandoerer"
+                   {...afvig(k.indkoeb.prisafvigelserDelta, { betterWhen: "lower" }, "nye vs. forrige periode")} />
+          {/* ⚠ PROCENTPOINT, IKKE PROCENT. 92 % der stiger til 97 % er +5 point.
+              Feltnavnet siger hvilket — se noten i demo-kpi.js. */}
+          <KpiKort label="Leverancer til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct, 0)}
+                   ikon={<Ikon navn="lastbil" />} tone="ikon-6" rund til="/indkoeb/leverandoerer"
+                   {...afvig(k.indkoeb.leveranceTilTidenDeltaPoint, { betterWhen: "higher" },
+                             "procentpoint vs. forrige periode")} />
+        </KpiRaekke>
+      )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
