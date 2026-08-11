@@ -437,3 +437,32 @@ test("Rabatten er basispoint som HELTAL", () => {
   assert.match(linje, /% 1 === 0/, "reglerne tillader en rabat med decimaler.");
   assert.match(linje, /<= 10000/, "reglerne tillader en rabat over 100 %.");
 });
+
+test("prislisteopret taber ikke et felt modellen kraever", () => {
+  /* ⚠ DEN HER FEJL VAR BYGGET IND OG USYNLIG. Modellen, reglerne og
+     formularen kendte `platform` — men funktionen byggede listen FELT FOR
+     FELT og tog kun de felter den kendte i forvejen. Resultatet: enhver
+     prisliste blev afvist med "Platformsadgangen mangler", af serverens EGEN
+     validering, på data serveren selv havde smidt væk.
+
+     Alt så rigtigt ud i tre af fire lag. Det blev først fundet ved at kalde
+     den udrullede funktion.
+
+     Prøven spørger derfor om det den mener: hvert felt validerPrisliste
+     kigger på, skal funktionen også sende videre. */
+  const kode = funktionskode();
+  const i = kode.indexOf("export const prislisteopret");
+  assert.ok(i > 0, "prislisteopret findes ikke");
+  const krop = kode.slice(i, kode.indexOf("export const", i + 10));
+
+  for (const felt of ["gyldigFraMs", "momssats", "platform", "moduler"]) {
+    assert.ok(krop.includes(`${felt}:`),
+      `prislisteopret sender ikke ${felt} videre — validerPrisliste kigger på det, ` +
+      `og listen ville blive afvist på et felt funktionen selv havde tabt.`);
+  }
+
+  /* ⚠ OG FELTLISTEN BLIVER. At tage nyttelasten ind som den er, ville løse
+     samme problem — og lade en ændret klient sætte sin egen momssats. */
+  assert.doesNotMatch(krop, /\.\.\.d\b/,
+    "prislisteopret spreder nyttelasten ind. Så er momssatsen ikke fast længere.");
+});

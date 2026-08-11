@@ -698,6 +698,18 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
        Se noten dér om hvorfor det IKKE er samme sag som kundens eget
        fakturagrundlag, hvor satsen faktisk varierer. */
     momssats: MOMSSATS,
+    /* ⚠ PLATFORMSADGANGEN SKAL MED. Den blev glemt her, da modellen fik den:
+       modellen, reglerne og formularen kendte den, men funktionen byggede
+       listen FELT FOR FELT og tog kun de felter den kendte i forvejen. Alt saa
+       rigtigt ud, og enhver prisliste blev afvist med "Platformsadgangen
+       mangler" — af serverens egen validering, paa data serveren selv havde
+       smidt vaek.
+
+       Det er den slags fejl et objekt der bygges felt for felt inviterer til.
+       Alternativet — at tage d ind som den er — ville til gengaeld lade en
+       aendret klient skrive hvad som helst, og saa er momssatsen ikke fast
+       laengere. Feltlisten bliver, og proeven nedenfor holder den komplet. */
+    platform: d.platform || null,
     moduler: d.moduler || {},
     oprettetAf: ejerUid,
     /* ⚠ TO DATOER, OG DE BETYDER IKKE DET SAMME. gyldigFraMs er hvornaar
