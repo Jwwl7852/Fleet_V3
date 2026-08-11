@@ -49,6 +49,14 @@ export const TILSTAND = {
   uautentificeret: "uautentificeret",
   naegtet: "naegtet",
   forbindelse: "forbindelse",
+  /* ⚠ SERVEREN SVAREDE, OG DER STOD INGENTING.
+     Det er hverken en fejl, en afvisning eller nul. En ny tenant har ingen
+     aggregerede noegletal endnu, og "0 aktive koeretoejer" ville vaere en
+     PAASTAND om at kunden ingen biler har. Tilstanden findes for at skaermen
+     kan sige hvad der mangler i stedet for at gaette.
+     Den kom med den toemme platform: useKpi faldt tilbage til DEMO_KPI paa en
+     tom node, og en rigtig kunde ville have set DEMO Transports 287 aktiver. */
+  ikkeAggregeret: "ikkeAggregeret",
 };
 
 /* RTDB melder afvisning som PERMISSION_DENIED, men formen varierer: nogle
@@ -93,10 +101,13 @@ export function dataTilstand({ harDb, harBruger, fejl = null }) {
    de to. Rangen er derfor efter alvor, ikke efter hvem der svarede først. */
 const RANG = {
   [TILSTAND.ok]: 0,
-  [TILSTAND.demo]: 1,
-  [TILSTAND.uautentificeret]: 2,
-  [TILSTAND.forbindelse]: 3,
-  [TILSTAND.naegtet]: 4,
+  /* Under demo: at noget ikke er aggregeret, er en oplysning — ikke en fejl.
+     Er den anden node afvist, er det afvisningen brugeren skal se. */
+  [TILSTAND.ikkeAggregeret]: 1,
+  [TILSTAND.demo]: 2,
+  [TILSTAND.uautentificeret]: 3,
+  [TILSTAND.forbindelse]: 4,
+  [TILSTAND.naegtet]: 5,
 };
 
 export function vaerste(...tilstande) {

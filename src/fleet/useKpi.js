@@ -52,13 +52,26 @@ export function useKpi() {
       try {
         const snap = await db.ref(path(`kpi/${division}/current`)).once("value");
         if (!aktiv) return;
-        setTilstand({ art: TILSTAND.ok, visDemo: false });
-        /* Tom node → demo. Det er IKKE samme sag som en afvisning: her har
-           serveren svaret, og der står bare ikke noget endnu, fordi
-           KPI-aggregeringen mangler (se efterslæbet i README). Skal det
-           falde bort, skal aggregeringen findes først — ellers står hele
-           appen tom for en bruger der er logget korrekt ind. */
-        setData(snap.val() || demo);
+        /* ⚠ HER STOD `snap.val() || demo` — OG DET VAR EN FEJL DER VENTEDE.
+           Begrundelsen var at appen ellers stod tom for en bruger der var
+           logget korrekt ind. Det var rigtigt dengang alt var visning og der
+           kun fandtes én tenant.
+
+           Men i det øjeblik en RIGTIG kunde får en tom base, ville han se
+           DEMO Transports tal: 287 aktiver, 842.615 kr i driftsomkostninger.
+           Det er beslutning 26's lærestreg — demo-data oven på en rigtig
+           læsning — som overlevede præcis her.
+
+           En tom node er en TREDJE ting: ikke en fejl, ikke en afvisning, og
+           ikke nul. Skærmen siger hvad der mangler. Se TILSTAND.ikkeAggregeret. */
+        const vaerdi = snap.val();
+        if (vaerdi) {
+          setTilstand({ art: TILSTAND.ok, visDemo: false });
+          setData(vaerdi);
+        } else {
+          setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
+          setData(null);
+        }
       } catch (e) {
         if (!aktiv) return;
         setFejl(e);

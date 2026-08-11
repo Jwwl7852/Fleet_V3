@@ -238,6 +238,27 @@ export const Datatilstand = ({ tilstand, genprov, tom }) => {
     );
   }
 
+  /* ⚠ IKKE EN FEJL, OG IKKE NUL. Serveren svarede, og der stod ingenting:
+     nøgletallene er ikke aggregeret for den her tenant endnu. "0 aktive
+     køretøjer" ville være en påstand om at kunden ingen biler har, og en ny
+     kunde med fjorten biler ville tro systemet var i stykker.
+     Ingen genprøv-knap: der er intet at prøve igen. */
+  if (art === "ikkeAggregeret") {
+    return (
+      <div className="fc-empty fc-empty-info">
+        <p>
+          <b>Nøgletallene er ikke aggregeret for den her virksomhed endnu.</b>
+        </p>
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          Det er ikke en fejl, og det er ikke nul. Tallene beregnes af en
+          aggregering der endnu ikke er bygget — se KPI-efterslæbet i README.
+          Data du selv opretter, vises på de skærme der læser direkte fra
+          basen.
+        </p>
+      </div>
+    );
+  }
+
   return <Fejl genprov={genprov}>Der er ikke forbindelse til databasen.</Fejl>;
 };
 

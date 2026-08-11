@@ -686,3 +686,7 @@
 .fc-svar-naegtet{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-svar-fejl{background:var(--fc-bad-bg); color:var(--bc-block)}
 .fc-svar-demo{background:var(--fc-info-bg); color:var(--fc-info)}
+
+/* "Ikke aggregeret endnu" — en oplysning, ikke en fejl. Derfor info-tonen og
+   ingen genproev-knap: der er intet at proeve igen. */
+.fc-empty-info{color:var(--fc-info)}

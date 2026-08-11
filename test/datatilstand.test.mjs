@@ -9,6 +9,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { TILSTAND, dataTilstand, erAfvist, vaerste } from "../src/fleet/datatilstand.js";
 
 const AFVIST_FEJL = { code: "PERMISSION_DENIED", message: "PERMISSION_DENIED: Permission denied" };
@@ -144,5 +145,70 @@ describe("vaerste vælger efter alvor, ikke efter rækkefølge", () => {
     assert.equal(vaerste(ok, ok).art, TILSTAND.ok);
     assert.equal(vaerste().art, TILSTAND.ok);
     assert.equal(vaerste(null, undefined, ok).art, TILSTAND.ok);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   En tom node er en TREDJE ting
+   ══════════════════════════════════════════════════════════════════════
+
+   useKpi faldt tilbage til DEMO_KPI når kpi/ var tom. Begrundelsen var at
+   appen ellers stod tom for en bruger der var logget korrekt ind — og det var
+   rigtigt dengang alt var visning og der kun fandtes én tenant.
+
+   ⚠ MEN EN RIGTIG KUNDE MED EN TOM BASE VILLE HAVE SET DEMO TRANSPORTS TAL:
+   287 aktiver, 842.615 kr i driftsomkostninger. Det er beslutning 26's
+   lærestreg — demo-data oven på en rigtig læsning — som overlevede præcis dér.
+   ══════════════════════════════════════════════════════════════════════ */
+describe("ikkeAggregeret er hverken en fejl, en afvisning eller nul", () => {
+  it("den findes som sin egen tilstand", () => {
+    assert.ok(TILSTAND.ikkeAggregeret);
+    assert.notEqual(TILSTAND.ikkeAggregeret, TILSTAND.ok);
+    assert.notEqual(TILSTAND.ikkeAggregeret, TILSTAND.forbindelse);
+    assert.notEqual(TILSTAND.ikkeAggregeret, TILSTAND.naegtet);
+  });
+
+  it("den taber til en afvisning", () => {
+    /* Læser en skærm to noder, og den ene er afvist, er det afvisningen
+       brugeren skal se — ikke den mildeste af de to. */
+    assert.equal(
+      vaerste({ art: TILSTAND.ikkeAggregeret }, { art: TILSTAND.naegtet }).art,
+      TILSTAND.naegtet
+    );
+    assert.equal(
+      vaerste({ art: TILSTAND.ikkeAggregeret }, { art: TILSTAND.forbindelse }).art,
+      TILSTAND.forbindelse
+    );
+  });
+
+  it("den vinder over ok", () => {
+    /* Ellers ville en skærm med ét aggregeret og ét manglende nøgletal se
+       fuldstændig normal ud. */
+    assert.equal(
+      vaerste({ art: TILSTAND.ok }, { art: TILSTAND.ikkeAggregeret }).art,
+      TILSTAND.ikkeAggregeret
+    );
+  });
+});
+
+describe("useKpi falder ikke tilbage til demo", () => {
+  it("har ingen demo-fallback på en tom node", () => {
+  /* LINT. Prøven læser useKpi.js som tekst: hooken kan ikke importeres i
+     Node, fordi den henter firebase.js. Det er samme greb som prøven på
+     skriv.js, og af samme grund.
+
+     ⚠ KOMMENTARER SKAL VÆK FØRST. Noten i useKpi.js CITERER det gamle
+     `snap.val() || demo` for at forklare hvorfor det ikke står der længere —
+     og linten fangede sin egen forklaring. Samme falske positiv som
+     designlinten havde på `tone: "orange"`. En lint man ikke kan stole på,
+     bliver slået fra. */
+  const kilde = readFileSync(new URL("../src/fleet/useKpi.js", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  assert.doesNotMatch(kilde, /snap\.val\(\)\s*\|\|\s*demo/,
+    "useKpi falder tilbage til demo på en tom node. En rigtig kunde ville se " +
+    "DEMO Transports tal — beslutning 26.");
+  assert.match(kilde, /TILSTAND\.ikkeAggregeret/,
+      "useKpi sætter ikke ikkeAggregeret på en tom node.");
   });
 });
