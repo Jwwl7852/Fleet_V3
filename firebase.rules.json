@@ -50,6 +50,47 @@
           ".write": false
         },
 
+        // ══════════════════════════════════════════════════════════════
+        // DE TO NODER UDBYDEREN OGSAA MAA LAESE
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ UDBYDERKONSOLLEN LAESER IKKE KUNDEDATA. Overhovedet. Den
+        // administrerer kundeposten — navn, CVR, hvilke moduler — og de to
+        // noder her er ALT hvad et udbyder-claim giver adgang til under
+        // tenants/. Alt operationelt kraever stadig
+        // auth.token.tenant === $tenantId, praecis som foer.
+        //
+        // Det er samme princip som beslutning 24: support fik ikke
+        // audit.laes paa kundens tenant, den fik et bundet UDTRAEK paa
+        // sagen. Giv ikke adgang — lever en afgraenset artefakt.
+        //
+        // ⚠ REGLERNE LIGGER PAA BOERNENE, ikke paa tenants/$tenantId. En
+        // .read dér ville KASKADERE ned over alt, og saa havde udbyderen
+        // adgang til hver eneste kundes drift med én linje. Se noten paa
+        // tenants/$tenantId om hvorfor den bevidst ikke har nogen .read.
+        //
+        // .write er false BEGGE steder: kundeposten skrives kun af
+        // provisioneren eller en udbyderfunktion med Admin SDK. Hverken
+        // kunden eller udbyderen skriver den fra en browser.
+
+        // Virksomhedens stamoplysninger. Kunden laeser sit eget navn i
+        // sidebaren; udbyderen laeser det for at kunne vise kundelisten.
+        "virksomhed": {
+          ".read": "auth != null && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".write": false
+        },
+
+        // ⚠ MODULAFKRYDSNING ER EN KOMMERCIEL KONTROL, IKKE EN
+        // SIKKERHEDSKONTROL. En kunde uden Facility der taster /facility,
+        // ser SIN EGEN tomme facility-node — en salgsflade, ikke et
+        // databrud. At kunder ikke kan naa HINANDENS data er en anden
+        // mekanisme, og den maa ikke forveksles med den her. Se
+        // fleet/moduler.js.
+        "moduler": {
+          ".read": "auth != null && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".write": false
+        },
+
         // ROLLER — tenantens FAKTISKE rolledefinitioner.
         //
         // roller/<rolleId>/{ navn, perms: ["booking.foreslaa", ...] }
@@ -685,6 +726,36 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": false
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    // UDBYDEREN — den ANDEN krydsning af tenant-graensen
+    // ══════════════════════════════════════════════════════════════════
+    //
+    // ⚠ DEN FOERSTE VAR SUPPORT (beslutning 24), og den blev tilladt ÉN
+    // gang med vilje: hver krydsning er et sted hvor en fejl giver én kunde
+    // adgang til en andens. Den her er den anden, og den er derfor holdt saa
+    // smal som muligt.
+    //
+    // ⚠ NODEN INDEHOLDER INGEN KUNDEDATA. Den er et INDEKS: hvilke tenants
+    // findes, hvornaar blev de oprettet, er de aktive. Navnet og modulerne
+    // staar i tenants/<id>/virksomhed og /moduler — ét sted, ikke kopieret
+    // herind. En kopi ville drive, og udbyderen ville se et andet navn end
+    // kunden selv.
+    //
+    // ⚠ KUN LAESNING. Skrivning sker med Admin SDK gennem provisioneren
+    // eller en udbyderfunktion. Et udbyder-claim i en browser kan ikke
+    // oprette en kunde — og kan derfor heller ikke oprette sig selv adgang.
+    //
+    // ⚠ INGEN KUNDEROLLE MAA NOGENSINDE HAVE udbyder-claim'et. Der er en
+    // proeve der fastholder at et claim uden det ikke naar noget her, og at
+    // et claim MED det ikke naar kundedata. Se rules.udbyder.test.mjs.
+    "udbyder": {
+      "kunder": {
+        ".read": "auth != null && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["oprettetMs", "status"]
       }
     }
   }
