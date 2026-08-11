@@ -50,23 +50,25 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
+import { kr, num, pct, dato, deviation, oereFraKroner, kronerFraOere } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
-  MiniLinje, Ikon, Sider, Linjegraf,
+  MiniLinje, Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
   leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
-  prisafvigelseTone,
+  prisafvigelseTone, valideIndkoeb, byggIndkoeb,
 } from "../../fleet/leverandoerer.js";
 import {
   DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
   linjeBeloebOere, medPrisliste,
 } from "../../fleet/demo-indkoeb.js";
-import { demoLokation } from "../../fleet/demo-facility.js";
+import { demoLokation, DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
+import { gem, nyId } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 
 const PR_SIDE = 5;
 const MAANED = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
@@ -123,13 +125,200 @@ function MedGrundlag({ maal, format = (v) => v, tone }) {
   );
 }
 
+/* ---- Formularen -------------------------------------------------------- */
+
+const iDagIso = () => new Date().toISOString().slice(0, 10);
+const isoTilMs = (iso) => {
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isFinite(d.getTime()) ? d.getTime() : NaN;
+};
+const msTilIso = (ms) =>
+  Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : iDagIso();
+
+const tomLinje = () => ({
+  division: "gods", datoIso: iDagIso(), leverandoerId: "",
+  vare: "", varenummer: "", antal: "", enhed: "stk",
+  prisKr: "", momsKr: "", kategori: "reservedele", fakturastatus: "mangler",
+  reference: "", formaal: "", koeretoejId: "", lokationId: "",
+});
+
+const fraLinje = (l) => ({
+  ...tomLinje(),
+  division: l.division, datoIso: msTilIso(l.dato), leverandoerId: l.leverandoerId,
+  vare: l.vare ?? "", varenummer: l.varenummer ?? "",
+  antal: l.antal ?? "", enhed: l.enhed ?? "stk",
+  prisKr: kronerFraOere(l.prisPrEnhedOere),
+  momsKr: Number.isFinite(l.momsOere) ? kronerFraOere(l.momsOere) : "",
+  kategori: l.kategori, fakturastatus: l.fakturastatus,
+  reference: l.reference ?? "", formaal: l.formaal ?? "",
+  koeretoejId: l.koeretoejId ?? "", lokationId: l.lokationId ?? "",
+});
+
+/**
+ * ⚠ PRISEN INDTASTES I KRONER OG GEMMES SOM ØRE.
+ *
+ * Beslutning 2: 18,50 kr/stk er `1850`, ikke `18.5`. En float ender som
+ * 1849,999 i en sum over hundrede linjer, og så går afstemningen mod
+ * leverandørens faktura ikke op med en øre ingen kan forklare. Omregningen
+ * sker ét sted — oereFraKroner() i format.js — og reglerne afviser en pris
+ * der ikke er hele øre.
+ *
+ * ⚠ LINJENS BELØB SENDES IKKE. Det beregnes af antal × pris. To kilder til
+ * samme tal kan drive fra hinanden, og reglerne afviser feltet.
+ */
+function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, paaGemt, paaLuk }) {
+  const nyt = !linje;
+  const [f, saetF] = useState(() => (linje ? fraLinje(linje) : tomLinje()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  /* Datoen bæres som ISO i formularen og som epoch-ms i basen. */
+  const medMs = { ...f, dato: isoTilMs(f.datoIso) };
+  const fejl = valideIndkoeb(medMs, { leverandoerer, koeretoejer, lokationer });
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  /* Beløbet vises, men gemmes ikke — så man kan se hvad linjen bliver til. */
+  const oere = oereFraKroner(f.prisKr);
+  const linjeSum = Number.isFinite(oere) && Number(f.antal) > 0 ? oere * Number(f.antal) : null;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = linje?.id || nyId("il");
+    const r = await gem({
+      sti: sti(id), data: byggIndkoeb(medMs), foer: linje || null,
+      objekt: "indkoeb", objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt(id);
+  };
+
+  return (
+    <Kort titel={nyt ? "Registrér indkøb" : `Redigér ${linje.vare}`}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Registrér indkøb" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          <Felt id="ik-dato" label="Dato" kraevet type="date" vaerdi={f.datoIso}
+                saet={saet("datoIso")} fejl={vis("dato")} />
+          <Felt id="ik-lev" label="Leverandør" kraevet vaerdi={f.leverandoerId}
+                saet={saet("leverandoerId")} fejl={vis("leverandoerId")}
+                hint="En entitet, ikke en fritekst — så navnet ikke får tre stavemåder."
+                valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
+                  ...leverandoerer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
+          {/* ⚠ DIVISION ER PÅKRÆVET og kan IKKE arves fra bilen — beslutning
+              19 forbyder feltet dér. Den der registrerer, sætter den. */}
+          <Felt id="ik-div" label="Division" kraevet vaerdi={f.division} saet={saet("division")}
+                fejl={vis("division")}
+                hint="Kan ikke arves fra køretøjet: et køretøj har ingen division."
+                valgmuligheder={[
+                  { vaerdi: "gods", label: "Gods" },
+                  { vaerdi: "bus", label: "Bus" },
+                  { vaerdi: "faelles", label: "Fælles — dækker begge" },
+                ]} />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="ik-vare" label="Vare" kraevet vaerdi={f.vare} saet={saet("vare")}
+                fejl={vis("vare")} />
+          <Felt id="ik-varenr" label="Varenummer" vaerdi={f.varenummer}
+                saet={saet("varenummer")} fejl={vis("varenummer")}
+                hint="Bruges til at måle prisafvigelsen mod den aftalte pris." />
+          <Felt id="ik-kat" label="Kategori" kraevet vaerdi={f.kategori} saet={saet("kategori")}
+                fejl={vis("kategori")}
+                valgmuligheder={Object.entries(LEVERANDOER_KATEGORI)
+                  .map(([v, l]) => ({ vaerdi: v, label: l }))} />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="ik-antal" label="Antal" kraevet type="number" step="any"
+                vaerdi={f.antal} saet={saet("antal")} fejl={vis("antal")} />
+          <Felt id="ik-enhed" label="Enhed" vaerdi={f.enhed} saet={saet("enhed")}
+                fejl={vis("enhed")} />
+          {/* ⚠ KRONER IND, ØRE UD. Se oereFraKroner(). */}
+          <Felt id="ik-pris" label="Pris pr. enhed" kraevet suffiks="kr"
+                vaerdi={f.prisKr} saet={saet("prisKr")} fejl={vis("prisKr")}
+                hint="Ekskl. moms. Brug KOMMA som decimaltegn — punktum er tusindtalsseparator på dansk." />
+          <Felt id="ik-moms" label="Moms" suffiks="kr" vaerdi={f.momsKr}
+                saet={saet("momsKr")} fejl={vis("momsKr")}
+                hint="Står for sig. Beløbet ovenfor er altid ekskl." />
+        </Feltraekke>
+
+        {/* ⚠ BELØBET VISES, MEN GEMMES IKKE. To kilder til samme tal kan drive
+            fra hinanden, og reglerne afviser feltet. */}
+        {linjeSum !== null && (
+          <p className="fc-hint" style={{ marginTop: 4 }}>
+            Linjen bliver <b>{kr(linjeSum)}</b> ekskl. moms —{" "}
+            {num(Number(f.antal))} × {kr(oere, 2)}. Beløbet <b>beregnes</b> og
+            gemmes ikke.
+          </p>
+        )}
+
+        <Feltraekke>
+          <Felt id="ik-status" label="Fakturastatus" kraevet vaerdi={f.fakturastatus}
+                saet={saet("fakturastatus")} fejl={vis("fakturastatus")}
+                valgmuligheder={Object.entries(FAKTURASTATUS)
+                  .map(([v, s]) => ({ vaerdi: v, label: s.label }))} />
+          <Felt id="ik-ref" label="Reference" vaerdi={f.reference} saet={saet("reference")}
+                fejl={vis("reference")}
+                hint="LEVERANDØRENS nummer — det man slår op i når man ringer, og det der står på fakturaen." />
+        </Feltraekke>
+
+        <Feltraekke>
+          {/* Et indkøb er købt TIL noget. Uden det er linjen et beløb uden
+              ærinde, og ingen kan svare på om den hørte til. */}
+          <Felt id="ik-bil" label="Køretøj" vaerdi={f.koeretoejId} saet={saet("koeretoejId")}
+                fejl={vis("koeretoejId")}
+                valgmuligheder={[{ vaerdi: "", label: "Ingen" },
+                  ...koeretoejer.map((k2) => ({ vaerdi: k2.id, label: k2.kaldenavn || k2.navn }))]} />
+          <Felt id="ik-lok" label="Lokation" vaerdi={f.lokationId} saet={saet("lokationId")}
+                fejl={vis("lokationId")}
+                valgmuligheder={[{ vaerdi: "", label: "Ingen" },
+                  ...lokationer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
+          <Felt id="ik-formaal" label="Formål" vaerdi={f.formaal} saet={saet("formaal")}
+                fejl={vis("formaal")} hint="Hvorfor blev det købt?" />
+        </Feltraekke>
+      </Formular>
+
+      <p className="fc-hint" style={{ marginTop: 14 }}>
+        ⚠ <b>Prisen indtastes i kroner og gemmes som hele øre.</b> 18,50 kr/stk
+        bliver til <code>1850</code>. En float ender som 1849,999 i en sum over
+        hundrede linjer, og så går afstemningen mod leverandørens faktura ikke op
+        med en øre ingen kan forklare. Reglerne afviser en pris der ikke er hele
+        øre — beslutning 2.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        <b>Godkendelse sker ikke her.</b> En faktura godkendes og afstemmes ét
+        sted — <Link className="fc-a" to="/indkoeb/fakturaer">Indkøb → Fakturaer</Link>{" "}
+        — og <code>fakturaer</code> er <code>.write: false</code>, fordi
+        godkendelsen skal skrive atomisk sammen med afstemningen. To
+        godkendelsesflows er beslutning 12 om igen.
+      </p>
+    </Kort>
+  );
+}
+
 export default function IndkoebOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { bruger, division, periode } = useFleet();
+  const { bruger, division, periode, path } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
   const [leverandoer, setLeverandoer] = useState("");
   const [side, setSide] = useState(1);
+  /* null = lukket, "ny" = registrér, ellers nøglen på den linje der rettes. */
+  const [linjeform, setLinjeform] = useState(null);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -259,12 +448,28 @@ export default function IndkoebOversigt() {
         </p>
       </Kort>
 
+      {/* Formularen står OVER tabellen, så man kan se linjen man netop har
+          registreret. `key` nulstiller felterne ved skift mellem poster. */}
+      {linjeform && (
+        <Indkoebsformular
+          key={linjeform}
+          linje={linjeform === "ny" ? null : DEMO_INDKOEBSLINJER.find((l) => l.id === linjeform)}
+          leverandoerer={DEMO_LEVERANDOERER}
+          koeretoejer={DEMO_KOERETOEJER}
+          lokationer={DEMO_LOKATIONER}
+          sti={(id) => path(`indkoeb/${id}`)}
+          paaGemt={() => { setLinjeform(null); genindlaes(); }}
+          paaLuk={() => setLinjeform(null)}
+        />
+      )}
+
       <Kort
         titel={`Ordrer og fakturaer (${num(viste.length)})`}
         handling={
-          <Knap variant="primaer" disabled
-                title={maaSkrive ? "Registrering er ikke bygget endnu (fase 0)."
-                                 : `Kræver ${PERM.indkoebSkriv}.`}>
+          <Knap variant="primaer" disabled={!maaSkrive}
+                onClick={() => setLinjeform("ny")}
+                title={maaSkrive ? "Registrér et indkøb."
+                                 : `Kræver ${PERM.indkoebSkriv} — serveren afviser.`}>
             Registrér indkøb
           </Knap>
         }

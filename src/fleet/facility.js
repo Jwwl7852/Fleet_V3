@@ -369,3 +369,171 @@ export function aktivFordeling(prArt = {}, maks = 5) {
     },
   ];
 }
+
+/* ---- Validering før skrivning ----------------------------------------- */
+
+/**
+ * ⚠ SPEJLER firebase.rules.json. Afgør ingenting.
+ *
+ * Serveren validerer igen, og er de to uenige, er reglerne rigtige. Skriv
+ * derfor aldrig en kontrol her som ikke også står i regelfilen — så ville
+ * formularen enten love noget serveren afviser, eller tillade noget serveren
+ * skulle have stoppet.
+ *
+ * Grænserne står som konstanter, så et menneske kan sammenligne de to filer.
+ */
+export const GRAENSE_FACILITY = {
+  navn: 80,
+  sted: 60,
+  adresse: 200,
+  beskrivelse: 500,
+  meldtAf: 80,
+};
+
+const tekstKrav = (v, maks, navn) => {
+  if (typeof v !== "string" || !v.trim()) return `${navn} skal udfyldes.`;
+  if (v.length > maks) return `${navn} må højst være ${maks} tegn.`;
+  return null;
+};
+
+const talKrav = (v, { min = 0, kraevet = false, navn, heltal = false }) => {
+  if (v === "" || v === null || v === undefined) return kraevet ? `${navn} skal udfyldes.` : null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return `${navn} skal være et tal.`;
+  if (n < min) return `${navn} kan ikke være under ${min}.`;
+  if (heltal && !Number.isInteger(n)) return `${navn} skal være et helt tal.`;
+  return null;
+};
+
+const ryd = (f) => {
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+};
+
+/**
+ * valideAktiv(post, { lokationer, zoner, personale }) → { [felt]: tekst }
+ *
+ * Referencerne tjekkes mod de lister skærmen HAR. Reglerne tjekker dem igen
+ * mod databasen — her er det for at fange fejlen før den bliver til en
+ * `permission-denied` brugeren ikke kan handle på.
+ */
+export function valideAktiv(post = {}, { lokationer = [], zoner = [], personale = [] } = {}) {
+  const f = {};
+  f.navn = tekstKrav(post.navn, GRAENSE_FACILITY.navn, "Navn");
+
+  /* ⚠ art ER UDSTYRSTYPEN, ikke opgave.art. Samme feltnavn, to vokabularer —
+     blandes de, får et køleanlæg arten "facility" og forsvinder ud af enhver
+     liste der grupperer på art. */
+  if (!AKTIV_ART[post.art]) f.art = "Vælg en udstyrstype.";
+  if (!AKTIV_STATUS[post.status]) f.status = "Vælg en status.";
+
+  if (!post.lokationId) f.lokationId = "Vælg en lokation.";
+  else if (!lokationer.some((l) => l.id === post.lokationId)) {
+    f.lokationId = "Lokationen findes ikke.";
+  }
+
+  /* Et anlæg der MÅLES i en zone, skal have en — ellers kan Klima ikke vise
+     hvad køleanlægget faktisk holder. */
+  if (AKTIV_ART[post.art]?.maalesZone && !post.zoneId) {
+    f.zoneId = "Et anlæg af den art måles i en zone. Vælg den.";
+  }
+  if (post.zoneId && !zoner.some((z) => z.id === post.zoneId)) {
+    f.zoneId = "Zonen findes ikke.";
+  }
+
+  /* ⚠ personId, ALDRIG uid. Den ansvarlige er hvem det HANDLER om; en
+     facilityansvarlig har måske intet login. Beslutning 18. */
+  if (post.ansvarligPersonId && !personale.some((p) => p.id === post.ansvarligPersonId)) {
+    f.ansvarligPersonId = "Personen findes ikke.";
+  }
+
+  f.serviceIntervalDage = talKrav(post.serviceIntervalDage,
+    { min: 1, navn: "Serviceinterval", heltal: true });
+
+  return ryd(f);
+}
+
+export function byggAktiv(post) {
+  const ud = {
+    navn: post.navn.trim(),
+    art: post.art,
+    status: post.status,
+    lokationId: post.lokationId,
+  };
+  if (post.zoneId) ud.zoneId = post.zoneId;
+  if (post.ansvarligPersonId) ud.ansvarligPersonId = post.ansvarligPersonId;
+  if (post.serviceIntervalDage !== "" && post.serviceIntervalDage != null) {
+    ud.serviceIntervalDage = Number(post.serviceIntervalDage);
+  }
+  if (Number.isFinite(Number(post.naesteServiceMs))) {
+    ud.naesteServiceMs = Number(post.naesteServiceMs);
+  }
+  /* ⚠ ALDRIG division. Facility er FÆLLES — porten er den samme uanset hvem
+     der kører igennem den. Reglerne afviser feltet. */
+  return ud;
+}
+
+/**
+ * valideFejl(post, { aktiver }) → { [felt]: tekst }
+ *
+ * ⚠ ALVOREN ER ET VALG, IKKE EN UDLEDNING. Den der melder fejlen, ved om
+ * porten står helt stille eller bare lukker langsomt — det kan ingen regel
+ * regne sig frem til bagefter.
+ */
+export function valideFejl(post = {}, { aktiver = [] } = {}) {
+  const f = {};
+  if (!post.aktivId) f.aktivId = "Vælg det anlæg fejlen sidder på.";
+  else if (!aktiver.some((a) => a.id === post.aktivId)) f.aktivId = "Anlægget findes ikke.";
+
+  if (!FEJL_STATUS[post.status]) f.status = "Vælg en status.";
+  if (!["hoej", "mellem", "lav"].includes(post.alvor)) f.alvor = "Vælg en alvorsgrad.";
+
+  f.beskrivelse = tekstKrav(post.beskrivelse, GRAENSE_FACILITY.beskrivelse, "Beskrivelse");
+  if (post.meldtAf && String(post.meldtAf).length > GRAENSE_FACILITY.meldtAf) {
+    f.meldtAf = `Meldt af må højst være ${GRAENSE_FACILITY.meldtAf} tegn.`;
+  }
+  return ryd(f);
+}
+
+export function byggFejl(post) {
+  const ud = {
+    aktivId: post.aktivId,
+    status: post.status,
+    alvor: post.alvor,
+    beskrivelse: post.beskrivelse.trim(),
+    /* Meldetidspunktet sættes ved oprettelsen og flytter sig ikke bagefter.
+       En fejl der "blev meldt" da nogen sidst rettede i den, kan ikke bruges
+       til at måle svartid. */
+    meldtMs: Number.isFinite(Number(post.meldtMs)) ? Number(post.meldtMs) : Date.now(),
+  };
+  if (post.meldtAf) ud.meldtAf = String(post.meldtAf).trim();
+  return ud;
+}
+
+/**
+ * valideLokation(post) → { [felt]: tekst }
+ */
+export function valideLokation(post = {}) {
+  const f = {};
+  f.navn = tekstKrav(post.navn, GRAENSE_FACILITY.navn, "Navn");
+  if (!LOKATION_TYPE[post.type]) f.type = "Vælg en type.";
+  /* ⚠ sted er IKKE en enum — hverken her eller i reglerne. Stederne er DENNE
+     tenants; et katalog ville betyde at et nyt depot krævede en udrulning. */
+  f.sted = tekstKrav(post.sted, GRAENSE_FACILITY.sted, "Sted");
+  f.arealM2 = talKrav(post.arealM2, { min: 1, kraevet: true, navn: "Areal", heltal: true });
+  if (post.adresse && String(post.adresse).length > GRAENSE_FACILITY.adresse) {
+    f.adresse = `Adresse må højst være ${GRAENSE_FACILITY.adresse} tegn.`;
+  }
+  return ryd(f);
+}
+
+export function byggLokation(post) {
+  const ud = {
+    navn: post.navn.trim(),
+    type: post.type,
+    sted: post.sted.trim(),
+    arealM2: Number(post.arealM2),
+  };
+  if (post.adresse) ud.adresse = String(post.adresse).trim();
+  return ud;
+}

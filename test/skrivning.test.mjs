@@ -183,3 +183,124 @@ test("Skrivelaget har ingen sletning", () => {
   assert.doesNotMatch(kode, /.remove()/, "skriv.js kalder .remove()");
   assert.doesNotMatch(kode, /set(s*nulls*)/, "skriv.js skriver null");
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   Facility og Indkøb — samme aftale som Flåde
+   ══════════════════════════════════════════════════════════════════════ */
+import {
+  valideAktiv, byggAktiv, valideFejl, byggFejl, valideLokation,
+} from "../src/fleet/facility.js";
+import { valideIndkoeb, byggIndkoeb } from "../src/fleet/leverandoerer.js";
+import { oereFraKroner, kronerFraOere } from "../src/fleet/format.js";
+
+const ctxF = { lokationer: [{ id: "lok-a" }], zoner: [{ id: "zo-a" }], personale: [{ id: "p1" }] };
+
+test("Et anlæg skal stå på en lokation der findes", () => {
+  const a = { navn: "Port 1", art: "port", status: "idrift", lokationId: "lok-a" };
+  assert.deepEqual(valideAktiv(a, ctxF), {});
+  assert.ok(valideAktiv({ ...a, lokationId: "nope" }, ctxF).lokationId);
+  assert.ok(valideAktiv({ ...a, lokationId: "" }, ctxF).lokationId);
+});
+
+test("Et anlæg der MÅLES i en zone, skal have en", () => {
+  /* Uden zone kan Klima ikke vise hvad køleanlægget faktisk holder — og så
+     står anlægget i listen uden at nogen kan se om det virker. */
+  const koel = { navn: "Køl 1", art: "koeleanlaeg", status: "idrift", lokationId: "lok-a" };
+  assert.ok(valideAktiv(koel, ctxF).zoneId);
+  assert.deepEqual(valideAktiv({ ...koel, zoneId: "zo-a" }, ctxF), {});
+  /* En port måles ikke — feltet må ikke kræves dér. */
+  assert.deepEqual(valideAktiv({ ...koel, art: "port" }, ctxF), {});
+});
+
+test("Udstyrsarten 'facility' findes ikke", () => {
+  /* ⚠ SAMME FELTNAVN, TO VOKABULARER. opgave.art er facility|vaerksted;
+     aktiv.art er udstyrstypen. Blandes de, forsvinder anlægget ud af enhver
+     liste der grupperer på art. */
+  assert.ok(valideAktiv(
+    { navn: "P", art: "facility", status: "idrift", lokationId: "lok-a" }, ctxF).art);
+});
+
+test("Et facility-anlæg får aldrig en division", () => {
+  /* Facility er FÆLLES — porten er den samme uanset hvem der kører igennem
+     den. Reglerne afviser feltet. */
+  const ud = byggAktiv({ navn: "P", art: "port", status: "idrift", lokationId: "lok-a" });
+  assert.equal("division" in ud, false);
+});
+
+test("En fejlmelding kræver alvor, og alvoren er et VALG", () => {
+  /* Den afgør om lokationen står Kritisk i overblikket, og det kan ingen
+     regel regne sig frem til bagefter. */
+  const f = { aktivId: "fa-a", status: "ny", beskrivelse: "Porten står stille" };
+  const ctx = { aktiver: [{ id: "fa-a" }] };
+  assert.ok(valideFejl(f, ctx).alvor);
+  assert.deepEqual(valideFejl({ ...f, alvor: "hoej" }, ctx), {});
+  assert.ok(valideFejl({ ...f, alvor: "kritisk" }, ctx).alvor);
+  assert.ok(valideFejl({ ...f, alvor: "lav", aktivId: "nope" }, ctx).aktivId);
+});
+
+test("Meldetidspunktet sættes ved oprettelsen og flytter sig ikke", () => {
+  /* En fejl der "blev meldt" da nogen sidst rettede i den, kan ikke bruges
+     til at måle svartid. */
+  const ud = byggFejl({ aktivId: "a", status: "ny", alvor: "lav", beskrivelse: "x", meldtMs: 1234 });
+  assert.equal(ud.meldtMs, 1234);
+  assert.ok(Number.isFinite(byggFejl({ aktivId: "a", status: "ny", alvor: "lav", beskrivelse: "x" }).meldtMs));
+});
+
+test("En lokation kræver navn, type, sted og et helt areal", () => {
+  const l = { navn: "Hal B", type: "lager", sted: "Kolding", arealM2: "12450" };
+  assert.deepEqual(valideLokation(l), {});
+  assert.ok(valideLokation({ ...l, type: "garage" }).type);
+  assert.ok(valideLokation({ ...l, arealM2: "12450,5" }).arealM2);
+  /* ⚠ sted er IKKE en enum — et nyt depot må ikke kræve en kodeændring. */
+  assert.deepEqual(valideLokation({ ...l, sted: "Padborg" }), {});
+});
+
+test("En indkøbspris indtastes i kroner og gemmes som hele øre", async (t) => {
+  const ctxI = { leverandoerer: [{ id: "lv-a" }] };
+  const god = {
+    division: "gods", dato: 1e12, leverandoerId: "lv-a", vare: "Slange",
+    antal: "12", prisKr: "18,50", kategori: "reservedele", fakturastatus: "modtaget",
+  };
+
+  await t.test("18,50 bliver til 1850", () => {
+    /* ⚠ HELE BESLUTNING 2. En float ender som 1849,999 i en sum over hundrede
+       linjer, og så går afstemningen ikke op med en øre ingen kan forklare. */
+    assert.deepEqual(valideIndkoeb(god, ctxI), {});
+    assert.equal(byggIndkoeb(god).prisPrEnhedOere, 1850);
+    assert.equal(oereFraKroner("0,05"), 5);
+    assert.equal(kronerFraOere(1850), "18,50");
+  });
+
+  await t.test("en pris der ikke er et beløb, afvises", () => {
+    assert.ok(valideIndkoeb({ ...god, prisKr: "atten halvtreds" }, ctxI).prisKr);
+    assert.ok(valideIndkoeb({ ...god, prisKr: "" }, ctxI).prisKr);
+  });
+
+  await t.test("tre nuller for meget fanges", () => {
+    /* Ikke en forretningsregel — et loft der fanger en tastefejl. */
+    assert.match(valideIndkoeb({ ...god, prisKr: "18500000000" }, ctxI).prisKr, /tre nuller/);
+  });
+
+  await t.test("division er påkrævet og kan ikke arves fra bilen", () => {
+    /* Beslutning 19 forbyder feltet på et køretøj, så der er intet at arve. */
+    assert.ok(valideIndkoeb({ ...god, division: "" }, ctxI).division);
+    assert.match(valideIndkoeb({ ...god, division: "" }, ctxI).division, /arves/);
+  });
+
+  await t.test("linjens beløb sendes ALDRIG med", () => {
+    /* Det beregnes af antal × pris. To kilder til samme tal kan drive fra
+       hinanden, og reglerne afviser feltet. */
+    const ud = byggIndkoeb({ ...god, beloebOere: 22200 });
+    assert.equal("beloebOere" in ud, false);
+  });
+
+  await t.test("momsen står for sig og er også hele øre", () => {
+    const ud = byggIndkoeb({ ...god, momsKr: "4,63" });
+    assert.equal(ud.momsOere, 463);
+    assert.equal(Number.isInteger(ud.momsOere), true);
+  });
+
+  await t.test("en ukendt leverandør afvises", () => {
+    assert.ok(valideIndkoeb({ ...god, leverandoerId: "lv-nope" }, ctxI).leverandoerId);
+  });
+});

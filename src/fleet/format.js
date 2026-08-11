@@ -115,3 +115,11 @@ export function serviceTone(forfaldMs, nu = Date.now()) {
   if (dage <= 30) return { dage, tone: "warn", tekst: `Om ${dage} dage` };
   return { dage, tone: "ok", tekst: `Om ${dage} dage` };
 }
+
+/**
+ * Øre → den tekst der står i et beløbsFELT. Uden tusindtalsseparator: et
+ * inputfelt skal kunne redigeres, ikke læses som en rapport. Modstykket til
+ * oereFraKroner() ovenfor — kr() er til visning, den her er til redigering.
+ */
+export const kronerFraOere = (oere) =>
+  !Number.isFinite(oere) ? "" : (oere / 100).toFixed(2).replace(".", ",");

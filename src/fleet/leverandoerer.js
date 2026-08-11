@@ -29,6 +29,7 @@
  * — ellers ville ét klik åbne for alle fremtidige sager.
  */
 
+import { oereFraKroner } from "./format.js";
 /** Hvad leverandøren leverer. Vokabular ét sted, så to skærme ikke kalder
  *  samme kategori noget forskelligt og gør den utællelig. */
 export const LEVERANDOER_KATEGORI = {
@@ -477,4 +478,119 @@ export function snitprisPrMaaned(linjer = [], { varenummer, maaneder = 6, nu = D
       snitOere: Math.round(s.oere / s.antal),
       antal: s.antal,
     }));
+}
+
+/* ---- Validering før skrivning ----------------------------------------- */
+
+/**
+ * ⚠ SPEJLER firebase.rules.json. Afgør ingenting — serveren validerer igen.
+ */
+export const GRAENSE_INDKOEB = {
+  vare: 120,
+  varenummer: 60,
+  enhed: 20,
+  leverandoerId: 60,
+  reference: 60,
+  formaal: 200,
+  godkendtAf: 80,
+  /* 100 mio. kr. Ikke en forretningsregel — den fanger en tastefejl med tre
+     nuller for meget, og et beløb over det er noget nogen skal se på. */
+  maksOere: 10000000000,
+};
+
+/**
+ * valideIndkoeb(post, { leverandoerer, koeretoejer, lokationer })
+ *
+ * ⚠ PRISEN KOMMER SOM KRONETEKST OG GEMMES SOM ØRE. Feltet `prisKr` er
+ * formularens; `prisPrEnhedOere` er basens. Beslutning 2: 18,50 kr/stk er
+ * 1850, og en float ender som 1849,999 i en sum over hundrede linjer.
+ */
+export function valideIndkoeb(post = {}, { leverandoerer = [], koeretoejer = [], lokationer = [] } = {}) {
+  const f = {};
+
+  if (!["gods", "bus", "faelles"].includes(post.division)) {
+    /* ⚠ DIVISION ER PÅKRÆVET og kan IKKE arves fra bilen — beslutning 19
+       forbyder feltet dér. Den der registrerer, skal sætte den. */
+    f.division = "Vælg en division. Den kan ikke arves fra køretøjet.";
+  }
+
+  if (!post.leverandoerId) f.leverandoerId = "Vælg en leverandør.";
+  else if (!leverandoerer.some((l) => l.id === post.leverandoerId)) {
+    f.leverandoerId = "Leverandøren findes ikke.";
+  }
+
+  if (typeof post.vare !== "string" || !post.vare.trim()) f.vare = "Varen skal udfyldes.";
+  else if (post.vare.length > GRAENSE_INDKOEB.vare) {
+    f.vare = `Varen må højst være ${GRAENSE_INDKOEB.vare} tegn.`;
+  }
+
+  const antal = Number(post.antal);
+  if (post.antal === "" || post.antal == null) f.antal = "Antal skal udfyldes.";
+  else if (!Number.isFinite(antal) || antal <= 0) f.antal = "Antal skal være over 0.";
+
+  /* Prisen: kronetekst ind, øre ud. null er ikke nul — et tomt felt har ikke
+     prisen nul kroner, det har ingen pris. */
+  if (post.prisKr === "" || post.prisKr == null) {
+    f.prisKr = "Prisen skal udfyldes.";
+  } else {
+    const oere = oereFraKroner(post.prisKr);
+    if (oere === null) f.prisKr = "Prisen skal være et beløb — brug komma som decimaltegn.";
+    else if (oere < 0) f.prisKr = "Prisen kan ikke være negativ.";
+    else if (oere > GRAENSE_INDKOEB.maksOere) {
+      f.prisKr = "Beløbet er over 100 mio. kr. Er der tre nuller for meget?";
+    }
+  }
+
+  if (post.momsKr) {
+    const moms = oereFraKroner(post.momsKr);
+    if (moms === null) f.momsKr = "Momsen skal være et beløb.";
+    else if (moms < 0) f.momsKr = "Momsen kan ikke være negativ.";
+  }
+
+  if (!LEVERANDOER_KATEGORI[post.kategori]) f.kategori = "Vælg en kategori.";
+  if (!FAKTURASTATUS[post.fakturastatus]) f.fakturastatus = "Vælg en fakturastatus.";
+  if (!Number.isFinite(Number(post.dato))) f.dato = "Datoen skal udfyldes.";
+
+  if (post.koeretoejId && !koeretoejer.some((k) => k.id === post.koeretoejId)) {
+    f.koeretoejId = "Køretøjet findes ikke.";
+  }
+  if (post.lokationId && !lokationer.some((l) => l.id === post.lokationId)) {
+    f.lokationId = "Lokationen findes ikke.";
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+export function byggIndkoeb(post) {
+  const ud = {
+    division: post.division,
+    dato: Number(post.dato),
+    leverandoerId: post.leverandoerId,
+    vare: post.vare.trim(),
+    antal: Number(post.antal),
+    /* ⚠ ØRE SOM INTEGER. Se oereFraKroner() — der ganges ikke med 100 uden
+       afrunding, og der gemmes aldrig en float. */
+    prisPrEnhedOere: oereFraKroner(post.prisKr),
+    kategori: post.kategori,
+    fakturastatus: post.fakturastatus,
+  };
+
+  /* ⚠ INTET beloebOere. Linjens beløb BEREGNES af antal × pris — to kilder
+     til samme tal kan drive fra hinanden, og reglerne afviser feltet. */
+
+  if (post.momsKr) ud.momsOere = oereFraKroner(post.momsKr);
+  if (post.enhed) ud.enhed = String(post.enhed).trim();
+  if (post.varenummer) ud.varenummer = String(post.varenummer).trim();
+  /* Leverandørens eget nummer — det man slår op i når man ringer. */
+  if (post.reference) ud.reference = String(post.reference).trim();
+  if (post.formaal) ud.formaal = String(post.formaal).trim();
+  if (post.koeretoejId) ud.koeretoejId = post.koeretoejId;
+  if (post.lokationId) ud.lokationId = post.lokationId;
+  if (Number.isFinite(Number(post.aftaltLeveringMs))) {
+    ud.aftaltLeveringMs = Number(post.aftaltLeveringMs);
+  }
+  if (Number.isFinite(Number(post.leveretMs))) ud.leveretMs = Number(post.leveretMs);
+
+  return ud;
 }

@@ -46,16 +46,22 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation, serviceTone } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter,
-  MiniLinje, Donut, Ikon, Sider,
+  MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import {
   AKTIV_ART, AKTIV_STATUS, FEJL_STATUS, LOKATION_TYPE,
+  ALLE_AKTIV_ARTER, ALLE_AKTIV_STATUS,
   alarmTilstand, aktiveAlarmer, lokationTilstand, driftsforhold, aktivFordeling,
+  valideAktiv, byggAktiv, valideFejl, byggFejl,
 } from "../../fleet/facility.js";
 import { alvorTone, ALVOR } from "../../fleet/format.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
+import { gem, nyId } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 import {
   DEMO_FEJL, DEMO_AKTIVER, DEMO_LOKATIONER, DEMO_SERVICEBESOEG,
   zonePar, demoAktiv, demoLokation, demoAabneFejl,
@@ -99,10 +105,208 @@ function estimatForAktiv(besoeg, aktivId, nu = Date.now()) {
   return mine.length ? mine[0].estimatOere : null;
 }
 
+/* ---- Formularerne ------------------------------------------------------ */
+
+const tomtAktiv = () => ({
+  navn: "", art: "port", status: "idrift", lokationId: "",
+  zoneId: "", ansvarligPersonId: "", serviceIntervalDage: "",
+});
+
+const tomFejl = (aktivId = "") => ({
+  aktivId, status: "ny", alvor: "mellem", beskrivelse: "", meldtAf: "",
+});
+
+/**
+ * ⚠ VALIDERINGEN SPEJLER firebase.rules.json og afgør ingenting. Serveren
+ * validerer igen, og er de to uenige, er reglerne rigtige.
+ *
+ * ⚠ ARTEN AFGØR OM ANLÆGGET SKAL HAVE EN ZONE. Et køleanlæg uden zone kan
+ * Klima ikke vise temperaturen for — feltet er derfor påkrævet netop dér, og
+ * skjult hvor det ikke giver mening.
+ */
+function Aktivformular({ aktiv, lokationer, zoner, personale, sti, paaGemt, paaLuk }) {
+  const nyt = !aktiv;
+  const [f, saetF] = useState(() => (aktiv ? { ...tomtAktiv(), ...aktiv } : tomtAktiv()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const fejl = valideAktiv(f, { lokationer, zoner, personale });
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = aktiv?.id || nyId("fa");
+    const r = await gem({
+      sti: sti(`aktiver/${id}`), data: byggAktiv(f), foer: aktiv || null,
+      objekt: "facility", objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt(id);
+  };
+
+  return (
+    <Kort titel={nyt ? "Nyt anlæg" : `Redigér ${aktiv.navn}`}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Opret anlæg" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          <Felt id="fa-navn" label="Navn" kraevet vaerdi={f.navn} saet={saet("navn")}
+                fejl={vis("navn")} hint="Port 3, Køleanlæg 1 — det navn folk bruger." />
+          {/* ⚠ art ER UDSTYRSTYPEN, ikke opgavens art. Samme feltnavn, to
+              vokabularer — se ARKITEKTUR. */}
+          <Felt id="fa-art" label="Udstyrstype" kraevet vaerdi={f.art} saet={saet("art")}
+                fejl={vis("art")}
+                valgmuligheder={ALLE_AKTIV_ARTER.map((a) => ({ vaerdi: a, label: AKTIV_ART[a].label }))} />
+          <Felt id="fa-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+                fejl={vis("status")}
+                valgmuligheder={ALLE_AKTIV_STATUS.map((s) => ({ vaerdi: s, label: AKTIV_STATUS[s].label }))} />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="fa-lok" label="Lokation" kraevet vaerdi={f.lokationId} saet={saet("lokationId")}
+                fejl={vis("lokationId")}
+                hint="Et anlæg uden lokation kan ikke vises i driftsstatus."
+                valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
+                  ...lokationer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
+          {AKTIV_ART[f.art]?.maalesZone && (
+            <Felt id="fa-zone" label="Zone" kraevet vaerdi={f.zoneId} saet={saet("zoneId")}
+                  fejl={vis("zoneId")}
+                  hint="Arten måles i en zone — uden den kan Klima ikke vise dens temperatur."
+                  valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
+                    ...zoner.map((z) => ({ vaerdi: z.id, label: z.navn }))]} />
+          )}
+        </Feltraekke>
+
+        <Feltraekke>
+          {/* ⚠ personId, ALDRIG uid. Den ansvarlige er hvem det HANDLER om;
+              en facilityansvarlig har måske intet login. Beslutning 18. */}
+          <Felt id="fa-ansv" label="Ansvarlig" vaerdi={f.ansvarligPersonId}
+                saet={saet("ansvarligPersonId")} fejl={vis("ansvarligPersonId")}
+                hint="En medarbejder — ikke et login. Personen findes uden konto."
+                valgmuligheder={[{ vaerdi: "", label: "Ingen" },
+                  ...personale.map((p) => ({ vaerdi: p.id, label: p.navn }))]} />
+          <Felt id="fa-interval" label="Serviceinterval" type="number" suffiks="dage"
+                vaerdi={f.serviceIntervalDage} saet={saet("serviceIntervalDage")}
+                fejl={vis("serviceIntervalDage")} />
+        </Feltraekke>
+      </Formular>
+
+      <p className="fc-hint" style={{ marginTop: 14 }}>
+        Der er <b>ingen division</b> på et facility-anlæg. Facility er{" "}
+        <b>fælles</b> — porten er den samme uanset hvem der kører igennem den —
+        og reglerne afviser feltet.
+      </p>
+    </Kort>
+  );
+}
+
+/**
+ * ⚠ ALVOREN ER ET VALG, IKKE EN UDLEDNING. Den der melder fejlen, ved om
+ * porten står helt stille eller bare lukker langsomt. Det kan ingen regel
+ * regne sig frem til bagefter — og alvoren afgør om lokationen bliver kritisk.
+ */
+function Fejlformular({ fejlpost, aktiver, sti, paaGemt, paaLuk }) {
+  const nyt = !fejlpost;
+  const [f, saetF] = useState(() => (fejlpost ? { ...tomFejl(), ...fejlpost } : tomFejl()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const fejl = valideFejl(f, { aktiver });
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = fejlpost?.id || nyId("fe");
+    const r = await gem({
+      sti: sti(`fejl/${id}`), data: byggFejl(f), foer: fejlpost || null,
+      objekt: "facility", objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt(id);
+  };
+
+  return (
+    <Kort titel={nyt ? "Meld en fejl" : "Opdatér fejlmelding"}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Meld fejl" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          <Felt id="fe-aktiv" label="Anlæg" kraevet vaerdi={f.aktivId} saet={saet("aktivId")}
+                fejl={vis("aktivId")}
+                valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
+                  ...aktiver.map((a) => ({
+                    vaerdi: a.id,
+                    label: `${a.navn} · ${demoLokation(a.lokationId)?.navn || "—"}`,
+                  }))]} />
+          <Felt id="fe-alvor" label="Alvor" kraevet vaerdi={f.alvor} saet={saet("alvor")}
+                fejl={vis("alvor")}
+                hint="Høj gør lokationen kritisk i overblikket. Vælg den kun når noget ikke virker nu."
+                valgmuligheder={[
+                  { vaerdi: "hoej", label: ALVOR.hoej },
+                  { vaerdi: "mellem", label: ALVOR.mellem },
+                  { vaerdi: "lav", label: ALVOR.lav },
+                ]} />
+          <Felt id="fe-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+                fejl={vis("status")}
+                valgmuligheder={Object.entries(FEJL_STATUS).map(([v, s]) => ({ vaerdi: v, label: s.label }))} />
+        </Feltraekke>
+
+        <Felt id="fe-besk" label="Beskrivelse" kraevet vaerdi={f.beskrivelse}
+              saet={saet("beskrivelse")} fejl={vis("beskrivelse")}
+              hint="Hvad sker der, og hvornår? Den her læses af den der skal ud og se på det." />
+        <Felt id="fe-meldt" label="Meldt af" vaerdi={f.meldtAf} saet={saet("meldtAf")}
+              fejl={vis("meldtAf")} />
+      </Formular>
+
+      <p className="fc-hint" style={{ marginTop: 14 }}>
+        ⚠ <b>Alvoren er et valg.</b> Den afgør om lokationen står{" "}
+        <b>Kritisk</b> i overblikket, og den kan ingen regel regne sig frem til
+        bagefter — den der melder fejlen, ved om porten står stille eller bare
+        lukker langsomt.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        Beskrivelsen er <b>fritekst</b> og havner derfor <b>ikke</b> i
+        auditloggen — kun at fejlen blev meldt, af hvem og på hvilket anlæg.
+        Allowlisten i <code>audit-regler.js</code> holder fritekst ude.
+      </p>
+    </Kort>
+  );
+}
+
 export default function FacilityOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { bruger, path } = useFleet();
   const [valgtLokId, setValgtLokId] = useState(DEMO_LOKATIONER[0]?.id || null);
   const [side, setSide] = useState(1);
+  /* null = lukket, "ny" = opret, ellers nøglen på den post der redigeres. */
+  const [aktivform, setAktivform] = useState(null);
+  const [fejlform, setFejlform] = useState(null);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -112,6 +316,9 @@ export default function FacilityOversigt() {
   const alarmer = aktiveAlarmer(par);
   const aabne = demoAabneFejl();
   const ctx = { aktiver: DEMO_AKTIVER, aabneFejl: aabne, par };
+  /* Zonerne til formularens vælger — samme kilde som klimalisten. */
+  const zoner = par.map((p) => p.zone);
+  const maaSkrive = harPerm(bruger?.perms, PERM.facilitySkriv);
 
   const valgtLok = DEMO_LOKATIONER.find((l) => l.id === valgtLokId) || DEMO_LOKATIONER[0];
   const drift = valgtLok ? driftsforhold(valgtLok.id, ctx) : [];
@@ -243,7 +450,42 @@ export default function FacilityOversigt() {
         </Kort>
       </Gitter>
 
-      <Kort titel={`Aktiver (${num(DEMO_AKTIVER.length)} hentede af ${num(k.facility.aktiver)})`}>
+      {/* Formularerne står OVER den tabel de skriver til, så man kan se
+          resultatet uden at rulle. `key` nulstiller felterne når man skifter
+          fra én post til en anden — ellers bærer formularen den forriges
+          værdier med sig. */}
+      {aktivform && (
+        <Aktivformular
+          key={aktivform}
+          aktiv={aktivform === "ny" ? null : DEMO_AKTIVER.find((a) => a.id === aktivform)}
+          lokationer={DEMO_LOKATIONER}
+          zoner={zoner}
+          personale={DEMO_PERSONALE.filter((p) => p.status === "aktiv")}
+          sti={(under) => path(`facility/${under}`)}
+          paaGemt={() => { setAktivform(null); genindlaes(); }}
+          paaLuk={() => setAktivform(null)}
+        />
+      )}
+      {fejlform && (
+        <Fejlformular
+          key={fejlform}
+          fejlpost={fejlform === "ny" ? null : DEMO_FEJL.find((x) => x.id === fejlform)}
+          aktiver={DEMO_AKTIVER}
+          sti={(under) => path(`facility/${under}`)}
+          paaGemt={() => { setFejlform(null); genindlaes(); }}
+          paaLuk={() => setFejlform(null)}
+        />
+      )}
+
+      <Kort titel={`Aktiver (${num(DEMO_AKTIVER.length)} hentede af ${num(k.facility.aktiver)})`}
+            handling={
+              <Knap variant="primaer" disabled={!maaSkrive}
+                    onClick={() => { setAktivform("ny"); setFejlform(null); }}
+                    title={maaSkrive ? "Opret et nyt anlæg."
+                                     : "Kræver facility.skriv — serveren afviser."}>
+                Nyt anlæg
+              </Knap>
+            }>
         <Tabel
           kolonner={[
             { key: "navn", label: "Aktiv", render: (r) => <b>{r.navn}</b> },
@@ -305,7 +547,17 @@ export default function FacilityOversigt() {
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort
           titel={`Åbne fejl (${aabne.length})`}
-          handling={<Link className="fc-a" to="/facility/servicekalender">Se servicekalenderen</Link>}
+          handling={
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Link className="fc-a" to="/facility/servicekalender">Se servicekalenderen</Link>
+              <Knap variant="primaer" disabled={!maaSkrive}
+                    onClick={() => { setFejlform("ny"); setAktivform(null); }}
+                    title={maaSkrive ? "Meld en fejl på et anlæg."
+                                     : "Kræver facility.skriv — serveren afviser."}>
+                Meld fejl
+              </Knap>
+            </div>
+          }
         >
           <Tabel
             kolonner={[
