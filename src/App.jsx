@@ -33,6 +33,7 @@ import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
 import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
 import WarehouseKasser from "./moduler/warehouse/Kasser.jsx";
 import Reolpladser from "./moduler/warehouse/Reolpladser.jsx";
+import Kasseudlaan from "./moduler/warehouse/Udlaan.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -338,6 +339,7 @@ export default function App() {
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 
             <Route path="warehouse" element={<WarehouseKasser />} />
+            <Route path="warehouse/udlaan" element={<Kasseudlaan />} />
             <Route path="warehouse/reolpladser" element={<Reolpladser />} />
 
             <Route path="kunder" element={<Kunder />} />

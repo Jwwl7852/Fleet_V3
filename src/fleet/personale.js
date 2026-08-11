@@ -21,6 +21,7 @@
  * personId matcher aldrig. Reglen står også i CLAUDE.md.
  * ---------------------------------------------------------------------------
  */
+import { isoTilMs } from "./format.js";
 
 /**
  * Funktioner. En person kan have FLERE — en mekaniker der også kører.
@@ -285,11 +286,9 @@ export function valideMedarbejder(post = {}) {
   return f;
 }
 
-const msFraIso = (iso) => {
-  if (!iso) return null;
-  const d = new Date(`${iso}T12:00:00`);
-  return Number.isFinite(d.getTime()) ? d.getTime() : null;
-};
+/* ⚠ FLYTTET TIL format.js. Den stod her OG i Indkøb, og en tredje kopi
+   var på vej ind med Warehouse. Se noten der. */
+const msFraIso = isoTilMs;
 
 export function byggMedarbejder(post) {
   const ud = {

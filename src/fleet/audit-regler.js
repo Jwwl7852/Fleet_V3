@@ -56,6 +56,12 @@ export const LOGBARE_FELTER = new Set([
   // referencer og numre
   "nummer", "bookingId", "etapeNr", "kundeId", "koeretoejId", "personId",
   "lagerId", "leverandoerId", "valgtForslagId", "ressourceType", "ressourceId",
+  /* ⚠ kasseId ER MED, sagsnummer ER IKKE. Kassens id er en kontrolleret
+     reference — reglerne kræver at den peger på en kasse der findes, præcis
+     som koeretoejId. Sagsnummeret er 40 tegn en sagsbehandler har tastet, og
+     allowlisten findes for at holde tastet tekst ude af loggen. Skal man
+     finde udlånet, står objektId der. */
+  "kasseId",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */

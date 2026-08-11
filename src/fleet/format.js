@@ -51,6 +51,28 @@ export const dato = (ms) =>
  *  noget — en mail i en sagstråd, en aftale med et værksted. */
 export const datoTid = (ms) => `${dato(ms)} kl. ${klokke(ms)}`;
 
+/* ---- <input type="date"> ↔ millisekunder -------------------------------
+ *
+ * ⚠ KLOKKEN 12, IKKE MIDNAT. `new Date("2026-08-10")` er midnat UTC, og i
+ * dansk sommertid er det den 10. kl. 02 — men trækkes der en time et sted i
+ * kæden, bliver det den 9. En reservation der rykker sig en dag, opdages
+ * ikke ved at kigge på den. Middag har en halv dags luft til hver side.
+ *
+ * ⚠ OG DERFOR STÅR DE HER. De var skrevet af i personale.js og i Indkøb, og
+ * en tredje kopi var på vej ind med Warehouse. Samme regel to steder, hvor
+ * den ene driver, er den fejl dette repo bliver ved med at betale for.
+ */
+export const iDagIso = () => new Date().toISOString().slice(0, 10);
+
+export function isoTilMs(iso) {
+  if (!iso) return null;
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isFinite(d.getTime()) ? d.getTime() : null;
+}
+
+export const msTilIso = (ms) =>
+  Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : iDagIso();
+
 /** Filstørrelse. Hører her og ikke i et modul, af samme grund som alt andet
  *  i filen: ellers bliver det 180 kB ét sted og 0,18 MB et andet. */
 export const filstoerrelse = (bytes) => {

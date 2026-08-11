@@ -101,6 +101,9 @@ export const NAV = [
     born: [
       { key: "warehouseKasser", sti: "/warehouse", label: "Kasser",
         titel: "Warehouse – kasser", under: "Transportkasser, type, status og plads" },
+      { key: "kasseudlaan", sti: "/warehouse/udlaan", label: "Udlån",
+        titel: "Warehouse – udlån",
+        under: "Søg ledige i periode, reservér, klargør, udlevér og modtag retur" },
       { key: "reolpladser", sti: "/warehouse/reolpladser", label: "Reolpladser",
         titel: "Warehouse – reolpladser & kassetyper",
         under: "Hal, reol, fag, hylde og plads. Navnet udledes af felterne." },

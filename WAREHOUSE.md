@@ -139,7 +139,7 @@ Rækkefølgen er valgt så hvert trin er værd at have alene.
 | 1 | **Modulet findes**: `warehouse` i `moduler.js`, nav, regler med modulklausul, række i prislisten | Kan sælges og krydses af. ⚠ Ingen skærm endnu — nav-punktet må ikke tegnes før der er noget bag | ✅ |
 | 2 | **Datamodel + regler + prøver** for `kasser`, `reolpladser`, `kasseudlaan` | Grundlaget kan ikke laves om bagefter | ✅ |
 | 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret | ✅ |
-| 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | |
+| 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | ✅ |
 | 5 | **Kalender og udlånsliste** — genbruger `Gitterkalender.jsx` | Overblik pr. uge | |
 | 6 | **Historik** pr. kasse og pr. sagsnummer | Dokumentation | |
 | 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen | |
@@ -151,11 +151,25 @@ stå på er ikke til nogen nytte, og to skærme til seks felter er to skærme fo
 mange). `UDEN_SKAERM` er tom igen; den fandtes præcis for at holde menupunktet
 borte, indtil det førte et sted hen.
 
-⚠ **`konflikter()` i `warehouse.js` afgør stadig ingenting.** Den svarer på om en
-periode støder sammen med et eksisterende udlån, og den er testet — men intet
-kalder den endnu, og håndhævelsen hører i den Cloud Function der skriver
-udlånet. Ligger den i skærmen, går en direkte skrivning uden om den. Samme
-forudsætning som de fem disponeringstjek. Det er etape 4.
+**Etape 4 er inde.** `kasseudlaanskriv` er udrullet, `kasseudlaan` er
+`.write: false`, og `Udlån`-skærmen søger ledige kasser i en periode,
+reserverer, klargør, udleverer og modtager retur.
+
+⚠ **`konflikter()` afgør stadig ingenting — men den bliver nu spurgt to
+gange.** Skærmen bruger den til at VISE hvad der er ledigt; serveren spørger
+igen **inde i en transaktion**, og det er den der gælder. Fjernes serverens
+tjek, er skærmens tjek ren dekoration. Samme forbehold som de fem disponeringstjek,
+men her er den anden halvdel bygget.
+
+⚠ **"Booket" er ikke længere en kassestatus.** Se beslutning 37 — en
+reservation er et udlån, og mærkatet på kassen udledes af `kasseudlaan` med
+sagsnummer og periode. Prototypens femte status er væk.
+
+Verificeret mod den **udrullede** funktion med en rigtig lagermedarbejder-konto
+i tolv punkter: booking, konflikt i begge ender af perioden, ingen genvej til
+udlånt, atomisk skrivning af udlån + kasse, pladsen der forsvinder ved
+udlevering og kommer tilbage på **hjempladsen** ved retur, en lukket sag der
+ikke kan genåbnes, og afvisning for en chauffør.
 
 ⚠ **Kalenderen skal genbruge `Gitterkalender.jsx`.** CLAUDE.md forbyder et nyt
 kalendergitter: to gitre der læser samme interval forskelligt, opdages ikke ved

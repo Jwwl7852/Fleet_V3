@@ -11,6 +11,8 @@ import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, BINDENDE,
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
+  SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
+  virkningPaaKasse, reservationerFor, naesteReservation,
 } from "../src/fleet/warehouse.js";
 import { NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
@@ -247,5 +249,168 @@ describe("Adgangen er permissions, ikke en femte rolleverden", () => {
        note ved bookingLaes om hvorfor kun fire objekter har en. */
     assert.ok(!Object.values(PERM).includes("kasser.laes"));
     assert.ok(!Object.values(PERM).includes("kasseudlaan.laes"));
+  });
+});
+
+describe("udlånets tilstandsmaskine", () => {
+  it("har ingen genvej fra booket til udlaant", () => {
+    /* ⚠ KLARGØRINGEN ER DET ENESTE STED et menneske har kassen i hånden og
+       kan se om den er hel. Springes den over, går kassen ud af huset uden
+       at nogen har set på den, og skaden opdages hos museet — hvor den ikke
+       kan afgøres. Det koster ét klik at klargøre. */
+    assert.equal(kanSkifteUdlaan("booket", "udlaant"), false);
+    assert.equal(kanSkifteUdlaan("booket", "klargjort"), true);
+    assert.equal(kanSkifteUdlaan("klargjort", "udlaant"), true);
+  });
+
+  it("lukker en returneret sag for altid", () => {
+    /* Skal kassen ud igen, er det et NYT udlån med sin egen periode. En
+       genåbnet post ville betyde at historikken kunne skrives om bagefter. */
+    for (const til of ALLE_UDLAAN_TILSTANDE) {
+      assert.equal(kanSkifteUdlaan("returneret", til), false,
+        `returneret kunne skifte til ${til}`);
+      assert.equal(kanSkifteUdlaan("annulleret", til), false,
+        `annulleret kunne skifte til ${til}`);
+    }
+  });
+
+  it("kender ikke en tilstand der ikke findes", () => {
+    assert.equal(kanSkifteUdlaan("booket", "afsendt"), false);
+    assert.equal(kanSkifteUdlaan("pjat", "booket"), false);
+  });
+
+  it("holder AFSLUTTET og BINDENDE adskilt og udtømmende", () => {
+    assert.deepEqual([...BINDENDE, ...AFSLUTTET].sort(),
+      [...ALLE_UDLAAN_TILSTANDE].sort());
+    for (const t of AFSLUTTET) assert.ok(!BINDENDE.includes(t));
+  });
+
+  it("har en overgangstabel for hver tilstand der findes", () => {
+    /* Ellers ville en ny tilstand give `undefined` og lydløst blive en
+       blindgyde — eller værre, en tilstand ingen kan komme ud af. */
+    for (const t of ALLE_UDLAAN_TILSTANDE) {
+      assert.ok(Array.isArray(UDLAAN_SKIFT[t]), `${t} mangler i UDLAAN_SKIFT`);
+      for (const til of UDLAAN_SKIFT[t]) {
+        assert.ok(ALLE_UDLAAN_TILSTANDE.includes(til),
+          `${t} kan skifte til ${til}, som ikke findes`);
+      }
+    }
+  });
+});
+
+describe("hvad skiftet gør ved kassen", () => {
+  const kasse = { hjemPladsId: "p-hjem", pladsId: "p-anden" };
+
+  it("⚠ RØRER IKKE KASSEN ved en booking", () => {
+    /* Det er hele grunden til at `booket` ikke er en kassestatus: kassen
+       står stadig fysisk på sin hylde. */
+    assert.equal(virkningPaaKasse({ fra: "booket", til: "annulleret", kasse }), null);
+  });
+
+  it("tager pladsen fra en udleveret kasse", () => {
+    const v = virkningPaaKasse({ fra: "klargjort", til: "udlaant", kasse });
+    assert.equal(v.status, "udlaant");
+    /* ⚠ null, IKKE "hos kunde". Ellers er hylden optaget af en kasse der
+       fysisk er i Paris, og ledige pladser kan ikke tælles. */
+    assert.equal(v.pladsId, null);
+  });
+
+  it("sender en returneret kasse hjem — ikke tilbage hvor den stod", () => {
+    const v = virkningPaaKasse({ fra: "udlaant", til: "returneret", kasse });
+    assert.equal(v.status, "ledig");
+    assert.equal(v.pladsId, "p-hjem");
+  });
+
+  it("ruller klargøringen tilbage, men kun hvis den fandt sted", () => {
+    assert.equal(
+      virkningPaaKasse({ fra: "klargjort", til: "booket", kasse }).status, "ledig");
+    assert.equal(
+      virkningPaaKasse({ fra: "klargjort", til: "annulleret", kasse }).status, "ledig");
+    /* Var den kun booket, blev kassen aldrig rørt — så er der intet at rulle
+       tilbage, og en skrivning ville overskrive fx udeAfDrift. */
+    assert.equal(virkningPaaKasse({ fra: "booket", til: "annulleret", kasse }), null);
+  });
+
+  it("giver kun statusser kassen kender", () => {
+    for (const fra of ALLE_UDLAAN_TILSTANDE) {
+      for (const til of UDLAAN_SKIFT[fra] || []) {
+        const v = virkningPaaKasse({ fra, til, kasse });
+        if (!v) continue;
+        assert.ok(ALLE_KASSE_STATUS.includes(v.status),
+          `${fra}→${til} gav kassestatussen ${v.status}, som ikke findes`);
+      }
+    }
+  });
+});
+
+describe("booket er ikke en kassestatus", () => {
+  it("står ikke i KASSE_STATUS", () => {
+    /* ⚠ EN RESERVATION ER ET UDLÅN. Stod den også på kassen, var samme
+       kendsgerning gemt to steder — og de bliver uenige. Det er
+       `bemanding.ledig` i ny forklædning. */
+    assert.ok(!ALLE_KASSE_STATUS.includes("booket"));
+    assert.ok(ALLE_UDLAAN_TILSTANDE.includes("booket"));
+  });
+
+  it("lader klienten sætte netop de to den selv kan observere", () => {
+    assert.deepEqual(SELVVALGT_KASSE_STATUS, ["ledig", "udeAfDrift"]);
+    for (const s of SELVVALGT_KASSE_STATUS) {
+      assert.ok(ALLE_KASSE_STATUS.includes(s));
+    }
+    /* De to andre er FØLGER af et udlånsskifte og sættes kun af serveren. */
+    for (const s of ["klargjort", "udlaant"]) {
+      assert.ok(!SELVVALGT_KASSE_STATUS.includes(s));
+    }
+  });
+
+  it("finder reservationen der skal vises på kassen", () => {
+    const u = [
+      { id: "a", kasseId: "K1", tilstand: "returneret", fra: 10, til: 20 },
+      { id: "b", kasseId: "K1", tilstand: "booket", fra: 100, til: 120 },
+      { id: "c", kasseId: "K1", tilstand: "booket", fra: 50, til: 60 },
+      { id: "d", kasseId: "K2", tilstand: "booket", fra: 1, til: 5 },
+    ];
+    /* Tidligst først, og kun de bindende — en afsluttet periode er
+       historik, ikke en reservation. */
+    assert.deepEqual(reservationerFor(u, "K1").map((x) => x.id), ["c", "b"]);
+    /* Står vi før begge, vises den næste. */
+    assert.equal(naesteReservation(u, "K1", 30).id, "c");
+    /* Er den første overstået, springes den over. */
+    assert.equal(naesteReservation(u, "K1", 70).id, "b");
+    /* Er alle overstået, er der intet at vise. */
+    assert.equal(naesteReservation(u, "K1", 200), null);
+    /* ⚠ EN IGANGVÆRENDE VINDER over en kommende. */
+    assert.equal(naesteReservation(u, "K1", 55).id, "c");
+  });
+});
+
+describe("serveren skriver ikke sin egen politik af", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+
+  it("bruger den delte tilstandstabel og det delte konflikttjek", () => {
+    /* ⚠ DET ER HELE GRUNDEN TIL delt/. Skrev serveren sin egen afskrift af
+       overgangene, ville skærmen sige ja og serveren nej — og brugeren
+       kunne ikke se hvorfor. Samme fejl som to divisionsfiltre. */
+    for (const navn of ["valideUdlaan", "kanSkifteUdlaan", "virkningPaaKasse", "konflikter"]) {
+      assert.ok(kilde.includes(`${navn}(`), `functions/index.js kalder ikke ${navn}`);
+    }
+    assert.ok(kilde.includes('from "./delt/warehouse.js"'),
+      "functions/index.js importerer ikke den delte warehouse-fil");
+  });
+
+  it("lader ikke klienten vælge tilstanden på et nyt udlån", () => {
+    /* Kunne den sendes med, kunne klargøringen springes over ved at oprette
+       udlånet direkte som `udlaant`. */
+    assert.ok(kilde.includes('tilstand: "booket"'),
+      "et nyt udlån får ikke tvunget tilstanden booket");
+    assert.ok(!kilde.includes("tilstand: kortStreng(d.tilstand"),
+      "tilstanden læses fra nyttelasten");
+  });
+
+  it("prøver abonnement og modul, som reglerne gør", () => {
+    /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE. Uden de to tjek ville funktionen
+       være en åben dør rundt om både modulafkrydsningen og loginspærringen. */
+    assert.ok(kilde.includes("Abonnementet er ikke aktivt."));
+    assert.ok(kilde.includes("Warehouse er ikke slået til."));
   });
 });

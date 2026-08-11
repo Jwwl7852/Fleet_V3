@@ -38,7 +38,10 @@ export const DEMO_KASSER = [
   { id: "MDT-103", type: "AL", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h9-2" },
   { id: "MDT-104", type: "AL", status: "klargjort", hjemPladsId: "p-h1-r2-f1-h9-2", pladsId: "p-h1-r2-f1-h9-2" },
   { id: "MDT-105", type: "TR", status: "ledig", hjemPladsId: "p-h1-r2-f1-h9-3", pladsId: "p-h1-r2-f1-h9-3" },
-  { id: "MDT-106", type: "TR", status: "booket", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
+  /* ⚠ LEDIG, SELV OM DEN ER RESERVERET til september (ku-4). Kassen står
+     fysisk på sin hylde — "booket" er ikke en kassestatus, det er et udlån.
+     Sættet er valgt netop for at vise det tilfælde. */
+  { id: "MDT-106", type: "TR", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   { id: "MDT-107", type: "KL", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   {
     id: "MDT-108", type: "KL", status: "udeAfDrift", hjemPladsId: "p-h1-r1-f1-h6-1",
@@ -90,7 +93,7 @@ if (import.meta.env?.DEV) {
   const typer = new Set(DEMO_KASSETYPER.map((t) => t.id));
   const pladser = new Set(DEMO_REOLPLADSER.map((p) => p.id));
   const kasser = new Set(DEMO_KASSER.map((k) => k.id));
-  const PAA_LAGER = ["ledig", "booket", "klargjort", "udeAfDrift"];
+  const PAA_LAGER = ["ledig", "klargjort", "udeAfDrift"];
 
   const brugtePladser = new Set();
 
@@ -134,13 +137,15 @@ if (import.meta.env?.DEV) {
     if (!u.sagsnummer) {
       console.warn(`demo-warehouse: udlån ${u.id} mangler sagsnummer — den eneste nøgle ud af systemet.`);
     }
-    /* ⚠ ET BINDENDE UDLÅN OG EN LEDIG KASSE ER EN MODSIGELSE. Skærmen ville
-       vise "Ledig" på en kasse der er lovet væk. */
+    /* ⚠ KUN klargjort OG udlaant BINDER KASSENS STATUS. Et *booket* udlån
+       gør det ikke: kassen står stadig på hylden, og at kræve det ville
+       genindføre den kopi som fjernelsen af kassestatussen "booket" netop
+       afskaffede. Se noten ved KASSE_STATUS. */
     const kasse = DEMO_KASSER.find((k) => k.id === u.kasseId);
-    if (kasse && ["booket", "klargjort", "udlaant"].includes(u.tilstand) &&
-        kasse.status === "ledig") {
+    if (kasse && ["klargjort", "udlaant"].includes(u.tilstand) &&
+        kasse.status !== u.tilstand) {
       console.warn(
-        `demo-warehouse: udlån ${u.id} er ${u.tilstand}, men ${kasse.id} står som ledig.`);
+        `demo-warehouse: udlån ${u.id} er ${u.tilstand}, men ${kasse.id} står som ${kasse.status}.`);
     }
   }
 }

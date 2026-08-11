@@ -867,13 +867,29 @@
             // Samme regel som en solgt bil (beslutning 18).
             ".validate": "newData.hasChildren(['type', 'status', 'hjemPladsId'])",
             "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
-            "status": { ".validate": "newData.isString() && newData.val().matches(/^(ledig|booket|klargjort|udlaant|udeAfDrift)$/)" },
+            // ⚠ KLIENTEN MAA KUN SAETTE ledig OG udeAfDrift. "booket" er
+            // slet ikke en kassestatus mere — en reservation ER et udlaan, og
+            // to steder til samme kendsgerning bliver uenige.
+            // klargjort og udlaant er FOELGER af et udlaansskifte og saettes
+            // af kasseudlaanskriv, som gaar uden om reglerne (admin-SDK).
+            // Sidste led lader en uaendret status blive staaende, saa man kan
+            // rette note eller type paa en kasse der er ude.
+            // ⚠ SIDSTE LED ER IKKE PYNT: BAADE den gamle og den nye vaerdi
+            // skal vaere klientens egne. Uden det matcher "ledig" ogsaa naar
+            // kassen kommer FRA udlaant — og saa kan en kasse meldes hjem
+            // uden om udlaanet, mens udlaanet stadig siger at museet har den.
+            // Foerste led lader en uaendret status blive staaende, saa man kan
+            // rette note eller type paa en kasse der er ude.
+            "status": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(ledig|udeAfDrift)$/) && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/))))" },
             "hjemPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
             // Den nuvaerende plads. ⚠ FRAVAERENDE naar kassen er udlaant —
             // en kasse hos kunden optager ikke en hylde. Prototypen skrev
             // "Udlaant hos kunde" SOM PLADS, og saa kunne ledige pladser
             // ikke taelles.
-            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ SIDSTE LED STOD KUN I valideKasse(). En kontrol der kun
+            // findes i frontend, er ikke adgangskontrol — den blev fundet af
+            // en proeve i etape 4, to etaper efter den blev skrevet.
+            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists() && newData.parent().child('status').val() !== 'udlaant'" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
             "$andet": { ".validate": false }
           }
@@ -886,7 +902,18 @@
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["kasseId", "sagsnummer", "tilstand", "fra"],
           "$udlaanId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasseudlaan.skriv|')",
+            // ⚠ KUN SERVEREN. Et udlaan aendrer TO poster — udlaanet og
+            // kassen — og de skal skrives sammen eller slet ikke. Dertil skal
+            // perioden proeves mod de eksisterende udlaan, og to lagermaend
+            // kan ramme samme sekund. Et konflikttjek i skaermen kan gaas
+            // uden om med en direkte skrivning; derfor ligger det i
+            // kasseudlaanskriv. Samme grund som reservationer.
+            //
+            // .validate herunder er formen serveren skal overholde. Den
+            // haandhaeves ikke paa admin-SDK'et — det goer valideUdlaan() i
+            // functions/delt/warehouse.js, som er DEN SAMME fil klienten
+            // proever mod.
+            ".write": false,
             ".validate": "newData.hasChildren(['kasseId', 'sagsnummer', 'fra', 'til', 'tilstand'])",
             "kasseId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kasser').child(newData.val()).exists()" },
             // ⚠ DEN ENESTE NOEGLE UD AF SYSTEMET. Uden sagsnummer kan en

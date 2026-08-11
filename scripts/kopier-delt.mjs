@@ -34,6 +34,13 @@ export const DELTE_FILER = [
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med
      en afskrift, ville der være to afrundingsregler i ét repo. */
   "beloeb.js", "priser.js",
+  /* ⚠ warehouse.js SKAL MED, fordi kasseudlaanskriv er DEN ENESTE vej ind i
+     kasseudlaan — noden er .write: false. Serveren skal proeve mod nøjagtig
+     de samme regler som formularen viser brugeren: samme valideUdlaan(),
+     samme kanSkifteUdlaan(), samme overlapsregel. Skrev serveren sin egen
+     afskrift, ville skaermen sige ja og serveren nej, uden at nogen kunne se
+     hvorfor. */
+  "warehouse.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

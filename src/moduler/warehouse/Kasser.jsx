@@ -18,19 +18,20 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num } from "../../fleet/format.js";
+import { num, dato } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
   Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
-  KASSE_STATUS, ALLE_KASSE_STATUS, kraeverPlads, valideKasse, pladsnavn,
+  KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
+  kraeverPlads, valideKasse, pladsnavn, naesteReservation,
 } from "../../fleet/warehouse.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
-  DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER,
+  DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-warehouse.js";
 
 const PR_SIDE = 12;
@@ -103,11 +104,24 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
           <Felt id="k-type" label="Type" kraevet vaerdi={f.type} saet={saet("type")}
                 fejl={vis("type")}
                 valgmuligheder={typer.map((t) => ({ vaerdi: t.id, label: `${t.id} · ${t.navn}` }))} />
-          <Felt id="k-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
-                fejl={vis("status")}
-                valgmuligheder={ALLE_KASSE_STATUS.map((s) => ({
-                  vaerdi: s, label: KASSE_STATUS[s].label,
-                }))} />
+          {/* ⚠ KUN DE TO DEN HER SKÆRM KAN OBSERVERE. `klargjort` og `udlaant`
+              er FØLGER af et udlånsskifte og sættes af serveren sammen med
+              udlånet. Kunne de vælges her, ville der findes en kasse der stod
+              som udlånt uden et udlån at pege på — og ingen kunne se hvem der
+              havde den. Reglerne afviser det også; det er ikke kun formularen
+              der er pæn. */}
+          {SELVVALGT_KASSE_STATUS.includes(f.status) ? (
+            <Felt id="k-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+                  fejl={vis("status")}
+                  valgmuligheder={SELVVALGT_KASSE_STATUS.map((s) => ({
+                    vaerdi: s, label: KASSE_STATUS[s].label,
+                  }))}
+                  hint="Ude af drift, når kassen er i stykker. Den bliver stående." />
+          ) : (
+            <Felt id="k-status" label="Status" readOnly
+                  vaerdi={KASSE_STATUS[f.status]?.label || f.status}
+                  hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
+          )}
         </Feltraekke>
 
         <Feltraekke>
@@ -161,6 +175,13 @@ export default function Kasser() {
   const { data: typer } = useListe("kassetyper", {
     division: "alle", graense: 100, demo: DEMO_KASSETYPER,
   });
+  /* ⚠ HERFRA KOMMER "RESERVERET". Det er IKKE en kassestatus — en reservation
+     ER et udlån, og et flag på kassen ville være samme kendsgerning gemt to
+     steder. Prisen for at gøre det rigtigt er den her ekstra læsning; til
+     gengæld står der hvilken sag og hvornår, og ikke bare "booket". */
+  const { data: udlaan } = useListe("kasseudlaan", {
+    division: "alle", graense: 2000, demo: DEMO_KASSEUDLAAN,
+  });
 
   if (henter) return <Henter hvad="kasserne" />;
 
@@ -185,13 +206,21 @@ export default function Kasser() {
      har — de er ikke et aggregat, og et gemt tal ville drive fra listen.
      Se undtagelsen i CLAUDE.md. */
   const paaLager = kasser.filter((k) => kraeverPlads(k.status)).length;
+  /* ⚠ UDLEDT, IKKE GEMT. "Reserveret" er ikke en kassestatus — se noten ved
+     KASSE_STATUS. Tallet regnes af de udlån skærmen allerede har. */
+  const nu = Date.now();
+  const reserveret = kasser.filter(
+    (k) => k.status === "ledig" && naesteReservation(udlaan, k.id, nu)).length;
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
         <KpiKort label="Kasser i alt" vaerdi={num(kasser.length)}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund />
-        <KpiKort label="Ledige" vaerdi={num(antal("ledig"))} note="klar til udlån" />
+        <KpiKort label="Ledige" vaerdi={num(antal("ledig"))}
+                 note={reserveret
+                   ? `heraf ${num(reserveret)} lovet væk i en periode`
+                   : "klar til udlån"} />
         <KpiKort label="Udlånt" vaerdi={num(antal("udlaant"))} note="ude hos kunde" />
         <KpiKort label="På lager" vaerdi={num(paaLager)}
                  note={`heraf ${num(antal("udeAfDrift"))} ude af drift`} />
@@ -277,6 +306,19 @@ export default function Kasser() {
                 { key: "hjem", label: "Hjemplads", render: (k) => (
                     <span className="fc-hint">{pladsnavn(pladsMap[k.hjemPladsId])}</span>
                   ) },
+                /* ⚠ HER STOD "BOOKET" I PROTOTYPEN — som en femte status på
+                   kassen. Den er væk: en reservation ER et udlån, og mærkatet
+                   udledes af det. Til gengæld står der HVILKEN sag og HVORNÅR,
+                   hvilket et flag aldrig kunne. */
+                { key: "reserveret", label: "Reserveret", render: (k) => {
+                    const r = naesteReservation(udlaan, k.id, nu);
+                    if (!r) return <span className="fc-neutral">—</span>;
+                    return (
+                      <span className="fc-hint">
+                        sag {r.sagsnummer} · {dato(r.fra)}–{dato(r.til)}
+                      </span>
+                    );
+                  } },
                 { key: "handling", label: "", render: (k) => (
                     <Knap disabled={!maaSkrive} onClick={() => saetRedigerer(k)}>Redigér</Knap>
                   ) },

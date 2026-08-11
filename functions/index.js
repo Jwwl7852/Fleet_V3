@@ -41,7 +41,10 @@ import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 
-import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.js";
+import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff } from "./delt/audit-regler.js";
+import {
+  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
+} from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
@@ -1037,4 +1040,257 @@ export const prislisteslet = onCall({ region: REGION }, async (req) => {
      Se prislisteopret. */
   console.log(`prislisteslet: ${id} af ${ejerUid}`);
   return { ok: true, id };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   WAREHOUSE — UDLÅN AF TRANSPORTKASSER
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR DEN HER SKAL VÆRE EN FUNKTION.
+
+   `kasseudlaan` er `.write: false`. Ikke fordi klienten mangler en rettighed
+   — lagermedarbejderen HAR `kasseudlaan.skriv` — men fordi handlingen ikke
+   kan udføres rigtigt fra en klient:
+
+   1. ET UDLÅN ÆNDRER TO POSTER. Udlånet og kassen skal skrives sammen eller
+      slet ikke. Skrives kun den ene, står en kasse som udlånt uden et udlån,
+      eller et udlån som returneret mens kassen stadig er hos museet.
+
+   2. PERIODEN SKAL PRØVES MOD DE ANDRE UDLÅN. `konflikter()` er ren og
+      prøvet, men den AFGØR ingenting — den svarer. Ligger tjekket i skærmen,
+      kan det gås uden om med en direkte skrivning, og så er det dekoration.
+      Præcis samme forbehold som de fem disponeringstjek har.
+
+   3. TO LAGERMÆND KAN RAMME SAMME SEKUND. Et læs-så-skriv uden lås ville
+      lade begge bookinger passere hver sin kontrol og lande oven på
+      hinanden. Det er prototypens DE-QR 777 mod DE-KL 404 igen, denne gang
+      med en kasse.
+
+   ⚠ POLITIKKEN ER DEN SAMME FIL. `delt/warehouse.js` er en KOPI af
+   `src/fleet/warehouse.js`. Serveren prøver mod nøjagtig den `valideUdlaan()`
+   og den `kanSkifteUdlaan()` som formularen viser brugeren. Skrev serveren
+   sin egen afskrift, ville skærmen sige ja og serveren nej — uden at nogen
+   kunne se hvorfor.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Adgangen til at skrive et udlån.
+ *
+ * ⚠ MODUL OG ABONNEMENT PRØVES HER OGSÅ. Admin-SDK'et går uden om reglerne,
+ * og reglerne er det eneste sted de to spærringer ellers står. Uden de linjer
+ * ville funktionen være en åben dør rundt om både modulafkrydsningen og
+ * loginspærringen — en kunde på pause kunne skrive videre gennem den.
+ */
+async function kraevUdlaansskriv(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const perms = auth.token?.perms;
+  if (typeof perms !== "string" || !perms.includes(`|${PERM.kasseudlaanSkriv}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${PERM.kasseudlaanSkriv}.`);
+  }
+
+  const db = getDatabase();
+  /* Fejler ÅBENT når feltet ikke findes, nøjagtig som reglen gør — ellers
+     ville en gammel tenant uden abonnementsnode blive lukket ude. */
+  const [ab, modul] = await Promise.all([
+    db.ref(`tenants/${tenantId}/abonnement/status`).once("value"),
+    db.ref(`tenants/${tenantId}/moduler/warehouse`).once("value"),
+  ]);
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  if (modul.exists() && modul.val() !== true) {
+    throw new HttpsError("permission-denied", "Warehouse er ikke slået til.");
+  }
+
+  return { uid: auth.uid, tenantId, db };
+}
+
+/** Fejlene fra valideUdlaan som én læselig besked. */
+const somBesked = (fejl) =>
+  Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" ");
+
+async function logUdlaan(tenantId, uid, handling, udlaanId, foer, efter, note) {
+  const d = diff(foer, efter);
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/drift/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "kasseudlaan", objektId: udlaanId,
+      klasse: "drift",
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null,
+    });
+}
+
+export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const d = req.data || {};
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ---- OPRET: en reservation ---------------------------------------- */
+  if (d.handling === "opret") {
+    const post = {
+      kasseId: kortStreng(d.kasseId, 40),
+      sagsnummer: kortStreng(d.sagsnummer, 40),
+      kundeId: kortStreng(d.kundeId, 60),
+      beskrivelse: kortStreng(d.beskrivelse, 300),
+      fra: Number(d.fra),
+      til: Number(d.til),
+      /* ⚠ TILSTANDEN VÆLGES IKKE AF KLIENTEN. Et nyt udlån er `booket`.
+         Kunne den sendes med, kunne man springe klargøringen over ved at
+         oprette udlånet direkte som `udlaant`. */
+      tilstand: "booket",
+    };
+
+    const fejl = valideUdlaan(post, {});
+    if (Object.keys(fejl).length) {
+      throw new HttpsError("invalid-argument", somBesked(fejl));
+    }
+
+    const kasse = (await rod.child(`kasser/${post.kasseId}`).once("value")).val();
+    if (!kasse) throw new HttpsError("not-found", `Kassen ${post.kasseId} findes ikke.`);
+    if (kasse.status === "udeAfDrift") {
+      throw new HttpsError("failed-precondition",
+        `${post.kasseId} er ude af drift og kan ikke loves væk.`);
+    }
+
+    post.oprettetAf = uid;
+    post.oprettetMs = Date.now();
+
+    /* ⚠ HELE LISTEN I ÉN TRANSAKTION, og det er med vilje.
+       Konflikttjekket skal se DEN LISTE der skrives til. Læste vi først og
+       skrev bagefter, ville to bookinger i samme sekund begge passere hver
+       sin kontrol. En transaktion på listen genlæser og kører kroppen igen,
+       hvis nogen nåede at skrive imens.
+       Prisen er at hele noden læses og skrives pr. booking. Vokser den ud
+       over det, er svaret et indeks pr. kasse — ikke et svagere tjek. */
+    const nyId = rod.child("kasseudlaan").push().key;
+    let konflikt = null;
+    const res = await rod.child("kasseudlaan").transaction((nuvaerende) => {
+      konflikt = null;
+      const liste = Object.entries(nuvaerende || {}).map(([id, u]) => ({ id, ...u }));
+      const stoeder = konflikter(liste, {
+        kasseId: post.kasseId, fra: post.fra, til: post.til,
+      });
+      if (stoeder.length) {
+        konflikt = stoeder[0];
+        return; /* undefined = afbryd, skriv ingenting */
+      }
+      return { ...(nuvaerende || {}), [nyId]: post };
+    });
+
+    if (konflikt) {
+      throw new HttpsError("failed-precondition",
+        `${post.kasseId} er allerede lovet væk på sag ${konflikt.sagsnummer} i perioden.`);
+    }
+    if (!res.committed) {
+      throw new HttpsError("aborted", "En anden nåede først. Prøv igen.");
+    }
+
+    await logUdlaan(tenantId, uid, AUDIT.opret, nyId, null, post, null);
+    return { ok: true, id: nyId };
+  }
+
+  /* ---- SKIFT: klargør, udlever, retur, annullér ---------------------- */
+  if (d.handling === "skift") {
+    const udlaanId = kortStreng(d.udlaanId, 60);
+    const til = kortStreng(d.til, 20);
+    if (!udlaanId) throw new HttpsError("invalid-argument", "udlaanId mangler.");
+
+    const foer = (await rod.child(`kasseudlaan/${udlaanId}`).once("value")).val();
+    if (!foer) throw new HttpsError("not-found", "Udlånet findes ikke.");
+
+    if (!kanSkifteUdlaan(foer.tilstand, til)) {
+      /* ⚠ SAMME TABEL SOM SKÆRMEN. Knappen findes ikke i UI'et for et skift
+         der ikke er lovligt — den her er for den der går uden om UI'et. */
+      throw new HttpsError("failed-precondition",
+        `Et udlån kan ikke skifte fra ${foer.tilstand} til ${til}.`);
+    }
+
+    const kasse = (await rod.child(`kasser/${foer.kasseId}`).once("value")).val();
+    if (!kasse) throw new HttpsError("not-found", `Kassen ${foer.kasseId} findes ikke.`);
+
+    const virkning = virkningPaaKasse({ fra: foer.tilstand, til, kasse });
+
+    /* ⚠ ÉN SKRIVNING. Udlånet og kassen lander sammen eller slet ikke.
+       To kald ville kunne efterlade en kasse som udlånt uden et udlån —
+       netop den tilstand hele noden er lukket for at undgå. */
+    const opdatering = { [`kasseudlaan/${udlaanId}/tilstand`]: til };
+    if (virkning) {
+      for (const [felt, vaerdi] of Object.entries(virkning)) {
+        opdatering[`kasser/${foer.kasseId}/${felt}`] = vaerdi;
+      }
+    }
+    await rod.update(opdatering);
+
+    await logUdlaan(tenantId, uid, AUDIT.tilstandsskift, udlaanId,
+      { tilstand: foer.tilstand }, { tilstand: til },
+      virkning ? `kasse ${foer.kasseId} -> ${virkning.status}` : null);
+    return { ok: true, id: udlaanId, tilstand: til, kasse: virkning || null };
+  }
+
+  /* ---- RET: sagsnummer, periode og beskrivelse, kun mens den er booket -- */
+  if (d.handling === "ret") {
+    const udlaanId = kortStreng(d.udlaanId, 60);
+    if (!udlaanId) throw new HttpsError("invalid-argument", "udlaanId mangler.");
+
+    const foer = (await rod.child(`kasseudlaan/${udlaanId}`).once("value")).val();
+    if (!foer) throw new HttpsError("not-found", "Udlånet findes ikke.");
+
+    /* ⚠ KUN MENS DEN ER BOOKET. Er kassen klargjort eller ude, er perioden
+       ikke længere en aftale man kan skrive om — den er noget der er sket.
+       Skal den forlænges bagefter, er det et nyt udlån. */
+    if (foer.tilstand !== "booket") {
+      throw new HttpsError("failed-precondition",
+        "Kun en booket reservation kan rettes. Er kassen ude, er perioden en kendsgerning.");
+    }
+
+    /* ⚠ KASSEN KAN IKKE BYTTES. Skal udlånet flyttes til en anden kasse, er
+       det en annullering og en ny reservation — ellers ville historikken på
+       den første kasse forsvinde uden spor. */
+    const post = {
+      ...foer,
+      sagsnummer: kortStreng(d.sagsnummer, 40),
+      kundeId: kortStreng(d.kundeId, 60),
+      beskrivelse: kortStreng(d.beskrivelse, 300),
+      fra: Number(d.fra),
+      til: Number(d.til),
+    };
+
+    const fejl = valideUdlaan(post, {});
+    if (Object.keys(fejl).length) {
+      throw new HttpsError("invalid-argument", somBesked(fejl));
+    }
+
+    let konflikt = null;
+    const res = await rod.child("kasseudlaan").transaction((nuvaerende) => {
+      konflikt = null;
+      const liste = Object.entries(nuvaerende || {}).map(([id, u]) => ({ id, ...u }));
+      /* ⚠ undtagId: udlånet må ikke støde sammen med sig selv. */
+      const stoeder = konflikter(liste, {
+        kasseId: post.kasseId, fra: post.fra, til: post.til, undtagId: udlaanId,
+      });
+      if (stoeder.length) { konflikt = stoeder[0]; return; }
+      return { ...(nuvaerende || {}), [udlaanId]: post };
+    });
+
+    if (konflikt) {
+      throw new HttpsError("failed-precondition",
+        `${post.kasseId} er lovet væk på sag ${konflikt.sagsnummer} i den periode.`);
+    }
+    if (!res.committed) {
+      throw new HttpsError("aborted", "En anden nåede først. Prøv igen.");
+    }
+
+    await logUdlaan(tenantId, uid, AUDIT.aendre, udlaanId, foer, post, null);
+    return { ok: true, id: udlaanId };
+  }
+
+  throw new HttpsError("invalid-argument", `Ukendt handling: ${d.handling}`);
 });

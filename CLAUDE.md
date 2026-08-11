@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **36 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **37 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -192,6 +192,29 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   import op gennem træet fejler i skyen — ved deploy, ikke ved test. Retter du
   kopien, filtrerer klienten mod én allowliste og serveren mod en anden, og
   serveren vinder i tavshed. `test/functions-delt.test.mjs` fanger det.
+- **Skrive et kasseudlån uden om `kasseudlaanskriv`.** `kasseudlaan` er
+  `.write: false`, og det er ikke en manglende rettighed —
+  lagermedarbejderen **har** `kasseudlaan.skriv`. Det er vejen der er lukket:
+  et udlån ændrer **to** poster (udlånet og kassen), perioden skal prøves mod
+  de andre udlån, og to lagermænd kan ramme samme sekund. `konflikter()` i
+  `warehouse.js` **afgør ingenting** — den svarer, og skærmen bruger den kun
+  til at vise hvad der er ledigt. Håndhævelsen ligger i en transaktion inde i
+  funktionen. Se beslutning 37.
+- **Give en kasse status `booket`.** Den findes ikke. En reservation **er** et
+  udlån, og et flag på kassen ville være samme kendsgerning gemt to steder —
+  `bemanding.ledig` i ny forklædning. Kassen har kun sine fysiske tilstande,
+  og `SELVVALGT_KASSE_STATUS` er de to en klient må sætte: `klargjort` og
+  `udlaant` er **følger** af et udlånsskifte. Reglen håndhæver det i begge
+  retninger, så en udlånt kasse heller ikke kan meldes hjem uden om udlånet.
+- **Fjerne klargøringen som eget trin.** Der er ingen genvej fra `booket` til
+  `udlaant` i `UDLAAN_SKIFT`. Klargøringen er det ene sted hvor et menneske
+  har kassen i hånden og kan se om den er hel; springes den over, opdages en
+  skade først hos museet, hvor den ikke kan afgøres. Og der er ingen vej
+  tilbage fra `returneret` — skal kassen ud igen, er det et nyt udlån.
+- **Skrive `isoTilMs`/`msTilIso` igen.** De står i `format.js`. Klokken er 12
+  og ikke midnat, fordi `new Date("2026-08-10")` er midnat UTC — trækkes der
+  en time et sted i kæden, bliver det den 9. De var skrevet af to steder, før
+  Warehouse var ved at lave den tredje kopi.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

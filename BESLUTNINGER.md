@@ -1318,3 +1318,113 @@ brugerart, og en linje kan kun have **én** stk.pris — den kan ikke være summ
 af fire modulers satser. `prBrugerOere` ligger derfor på platformen, og
 reglerne **afviser** feltet på et modul. Modulerne beholder deres månedspris
 og køretøjspris.
+
+
+## 37. "Booket" er ikke en kassestatus. Og udlånet skrives kun af serveren
+
+Prototypen gav en transportkasse fem statusser: *Ledig, Booket, Klargjort,
+Udlånt, Ude af drift*. Warehouse etape 4 fjernede den ene af dem og lukkede
+hele `kasseudlaan` for klienten. Begge dele kom af det samme spørgsmål:
+**hvem ejer kendsgerningen?**
+
+### Booket
+
+Spørgsmålet blev stillet direkte, og svaret var: *"Booket betyder at en
+sagsbehandler har reserveret."*
+
+Det afgjorde sagen. En reservation **er** et udlån — den har en periode, et
+sagsnummer og en person der oprettede den, og alt det står allerede i
+`kasseudlaan`. Et `booket`-flag på kassen ville være **samme kendsgerning
+gemt to steder**, og så bliver de uenige. Det er `bemanding.ledig` i ny
+forklædning: et gemt afledt tal der driver fra sit grundlag.
+
+Kassen har derfor kun de tilstande den **fysisk** kan være i:
+
+```
+ledig · klargjort · udlaant · udeAfDrift
+```
+
+En kasse der er reserveret til oktober, står i august stadig på sin hylde og
+er **ledig**. Reservationen vises som et mærkat udledt af `kasseudlaan` — med
+**sagsnummer og periode**, hvilket er mere end et bart "Booket" nogensinde
+fortalte. Prisen er en ekstra læsning i Kasser-skærmen. Det er den rigtige
+pris: et flag kunne kun sige *at* kassen var lovet væk, ikke til hvem.
+
+⚠ **Klienten må kun sætte to af de fire.** `klargjort` og `udlaant` er
+**følger** af et udlånsskifte, ikke valg. Formularen tilbyder kun `ledig` og
+`udeAfDrift`, og reglen håndhæver det samme — begge veje:
+
+```
+newData.val() === data.val()
+|| (newData.val().matches(/^(ledig|udeAfDrift)$/)
+    && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/)))
+```
+
+Første led lader en **uændret** status blive stående, så man kan rette en note
+på en kasse der er ude. Sidste led kræver at **både** den gamle og den nye
+værdi er klientens egne — uden det matcher `ledig` også når kassen kommer FRA
+`udlaant`, og så kan en kasse meldes hjem uden om udlånet, mens udlånet stadig
+siger at museet har den. **Den fejl var i den første version af reglen, og den
+blev fundet af en prøve, ikke af en gennemlæsning.**
+
+### Udlånet
+
+`kasseudlaan` er `.write: false`. Ikke fordi lagermedarbejderen mangler en
+rettighed — han **har** `kasseudlaan.skriv`, og den blev der ikke fjernet.
+Det er **vejen** der er lukket, fordi handlingen ikke kan udføres rigtigt fra
+en klient:
+
+1. **Et udlån ændrer TO poster.** Udlånet og kassen skal skrives sammen eller
+   slet ikke. Skrives kun den ene, står en kasse som udlånt uden et udlån at
+   pege på — og ingen kan se hvem der har den.
+2. **Perioden skal prøves mod de andre udlån.** `konflikter()` er ren og
+   prøvet, men den **afgør ingenting** — den svarer. Ligger tjekket i skærmen,
+   kan det gås uden om med en direkte skrivning, og så er det dekoration.
+   Samme forbehold som de fem disponeringstjek.
+3. **To lagermænd kan ramme samme sekund.** Et læs-så-skriv uden lås ville
+   lade begge bookinger passere hver sin kontrol og lande oven på hinanden.
+   Det er DE-QR 777 mod DE-KL 404 igen, denne gang med en kasse.
+
+`kasseudlaanskriv` gør derfor konflikttjekket **inde i en transaktion på
+listen**: den genlæser og kører kroppen igen, hvis nogen nåede at skrive
+imens. Prisen er at hele noden læses og skrives pr. booking. Vokser den ud
+over det, er svaret et **indeks pr. kasse — ikke et svagere tjek.**
+
+⚠ **Serveren prøver mod DEN SAMME fil som skærmen.** `warehouse.js` er
+kopieret til `functions/delt/`, og `valideUdlaan()`, `kanSkifteUdlaan()` og
+`konflikter()` er de samme funktioner begge steder. Skrev serveren sin egen
+afskrift, ville skærmen sige ja og serveren nej — uden at nogen kunne se
+hvorfor. Det er syvende fil efter det mønster.
+
+⚠ **Modul og abonnement prøves også i funktionen.** Admin-SDK'et går uden om
+reglerne, og reglerne er det eneste sted de to spærringer ellers står. Uden de
+tjek ville funktionen være en åben dør rundt om både modulafkrydsningen og
+loginspærringen — en kunde på pause kunne skrive videre gennem den.
+
+### To ting i tilstandsmaskinen der ligner pedanteri
+
+**Der er ingen genvej fra `booket` til `udlaant`.** Klargøringen er det ene
+sted hvor et menneske har kassen i hånden og kan se om den er hel. Springes
+den over, går kassen ud af huset uden at nogen har set på den, og skaden
+opdages hos museet — hvor den ikke kan afgøres. Det koster ét klik.
+
+**Der er ingen vej tilbage fra `returneret`.** Kassen er kommet hjem; skal den
+ud igen, er det et **nyt** udlån med sin egen periode. En genåbnet post ville
+betyde at historikken kunne skrives om bagefter.
+
+### Hvad der kom med i samme ombæring
+
+⚠ **`valideKasse()`s regel om at en udlånt kasse ikke optager en reolplads
+stod kun i frontend.** Den har været skrevet siden etape 2 og blev først
+håndhævet nu — fundet af en prøve i etape 4, to etaper efter. En kontrol der
+kun findes i klienten, er ikke adgangskontrol.
+
+⚠ **`isoTilMs`/`msTilIso` er flyttet til `format.js`.** De var skrevet af i
+`personale.js` og i Indkøb, og en tredje kopi var på vej ind med Warehouse.
+Klokken er 12 og ikke midnat: `new Date("2026-08-10")` er midnat UTC, og
+trækkes der en time et sted i kæden, bliver det den 9.
+
+⚠ **`kasseId` kom på `LOGBARE_FELTER` — `sagsnummer` gjorde ikke.** Kassens id
+er en kontrolleret reference som `koeretoejId`; sagsnummeret er 40 tegn en
+sagsbehandler har tastet, og allowlisten findes for at holde tastet tekst ude
+af auditloggen.

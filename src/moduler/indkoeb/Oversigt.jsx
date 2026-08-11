@@ -50,7 +50,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, pct, dato, deviation, oereFraKroner, kronerFraOere } from "../../fleet/format.js";
+import {
+  kr, num, pct, dato, deviation, oereFraKroner, kronerFraOere,
+  iDagIso, isoTilMs, msTilIso,
+} from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
@@ -128,13 +131,9 @@ function MedGrundlag({ maal, format = (v) => v, tone }) {
 
 /* ---- Formularen -------------------------------------------------------- */
 
-const iDagIso = () => new Date().toISOString().slice(0, 10);
-const isoTilMs = (iso) => {
-  const d = new Date(`${iso}T12:00:00`);
-  return Number.isFinite(d.getTime()) ? d.getTime() : NaN;
-};
-const msTilIso = (ms) =>
-  Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : iDagIso();
+/* ⚠ DE TRE STOD HER FØR. De er flyttet til format.js, fordi personale.js
+   havde sin egen kopi og Warehouse var ved at lave en tredje. Se noten der
+   om hvorfor klokken er 12 og ikke midnat. */
 
 const tomLinje = () => ({
   division: "gods", datoIso: iDagIso(), leverandoerId: "",
