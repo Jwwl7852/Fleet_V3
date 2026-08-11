@@ -310,6 +310,12 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
 
+  /* Brugerpriser der laa paa et MODUL i den liste vi kopierer fra. */
+  const gamleBrugerpriser = Object.entries(udgangspunkt?.moduler || {})
+    .flatMap(([modul, m]) => Object.entries(m?.prBrugerOere || {})
+      .filter(([, oere]) => oere > 0)
+      .map(([art, oere]) => ({ modul, art, oere })));
+
   const saetSats = (modul, sti, kroner) => {
     saetSvar(null);
     saetP((x) => {
@@ -354,6 +360,27 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
         <p className="fc-hint">
           Moms <b>{MOMSSATS} %</b> — fast. Sættes ét sted i koden, ikke pr. liste.
         </p>
+
+        {/* ⚠ EN GAMMEL LISTE HAVDE BRUGERPRISER PAA MODULERNE. De foelger IKKE
+            med over, fordi de nu hoerer paa platformen — og en kopi der taber
+            et tal i stilhed, er vaerre end en der siger det. Satserne vises,
+            saa de kan tastes ind ét sted i stedet. */}
+        {gamleBrugerpriser.length > 0 && (
+          <div className="fc-empty fc-empty-warn" style={{ marginBottom: 12 }}>
+            <p><b>Brugerpriserne følger ikke med fra den gamle liste.</b></p>
+            <p className="fc-hint" style={{ marginTop: 6 }}>
+              Den havde dem på modulerne; de hører nu på platformen, hvor der
+              er ÉN sats pr. brugerart. Tast dem ind nedenfor:{" "}
+              {gamleBrugerpriser.map((g, i) => (
+                <span key={`${g.modul}-${g.art}`}>
+                  {i > 0 && ", "}
+                  <b>{MODUL[g.modul]?.label || g.modul}</b>{" "}
+                  {BRUGERART[g.art]?.label.toLowerCase()} {kr(g.oere)}
+                </span>
+              ))}.
+            </p>
+          </div>
+        )}
 
         <p className="fc-hint" style={{ marginTop: 4 }}><b>Platformsadgang</b></p>
         <div className="fc-scroll">
