@@ -13,7 +13,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
-  AFGAAEDE_STATUS, tomPrisliste, validerPrisliste, gaeldendePrisliste,
+  AFGAAEDE_STATUS, tomPrisliste, tomPlatform, overFrimaengde, PLATFORM,
+  validerPrisliste, gaeldendePrisliste,
   linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor, GYLDIG_FRA_TIDLIGST,
 } from "../src/fleet/priser.js";
 import {
@@ -22,14 +23,29 @@ import {
 import { ALLE_ROLLER } from "../src/fleet/permissions.js";
 import { VALGFRIE_MODULER } from "../src/fleet/moduler.js";
 
+/* ⚠ BRUGERPRISEN LIGGER PAA PLATFORMEN, ikke paa modulerne. Fakturaen har ÉN
+   linje pr. brugerart, og en linje kan kun have ÉN stk.pris — den kan ikke
+   vaere summen af fire modulers satser. Se tomPlatform() i priser.js. */
 const PRISLISTE = {
-  gyldigFraMs: 1767225600000,
+  gyldigFraMs: Date.UTC(2026, 0, 1),
   momssats: 25,
-  moduler: {
-    flaade: { basisOere: 49500, prKoeretoejOere: 2900, prBrugerOere: {} },
-    bemanding: { basisOere: 29500, prBrugerOere: { chauffoer: 4900, desktop: 0 } },
-    booking: { basisOere: 79500, prBrugerOere: { chauffoer: 0, desktop: 14900 } },
+  platform: {
+    basisOere: 99500,
+    prBrugerOere: { chauffoer: 4900, desktop: 14900 },
+    /* Tre desktopbrugere er med i prisen. */
+    inkluderetBrugere: { chauffoer: 0, desktop: 3 },
   },
+  moduler: {
+    flaade: { basisOere: 49500, prKoeretoejOere: 2900 },
+    bemanding: { basisOere: 29500 },
+    booking: { basisOere: 79500 },
+  },
+};
+
+/** En prisliste uden frimaengde — til de proever hvor den ville forstyrre. */
+const UDEN_FRI = {
+  ...PRISLISTE,
+  platform: { ...PRISLISTE.platform, inkluderetBrugere: { chauffoer: 0, desktop: 0 } },
 };
 
 describe("Brugerarten kommer af rollen", () => {
@@ -102,15 +118,37 @@ describe("Prislisten", () => {
     const t = tomPrisliste(VALGFRIE_MODULER);
     assert.deepEqual(Object.keys(t).sort(), [...VALGFRIE_MODULER].sort());
     for (const m of VALGFRIE_MODULER) {
-      assert.deepEqual(Object.keys(t[m].prBrugerOere).sort(), [...ALLE_BRUGERARTER].sort());
+      /* ⚠ INGEN prBrugerOere. Den ligger paa platformen nu. */
+      assert.deepEqual(Object.keys(t[m]).sort(), ["basisOere", "prKoeretoejOere"]);
     }
+  });
+
+  it("har en platform med baade pris og frimaengde", () => {
+    const pf = tomPlatform();
+    assert.deepEqual(Object.keys(pf.prBrugerOere).sort(), [...ALLE_BRUGERARTER].sort());
+    assert.deepEqual(Object.keys(pf.inkluderetBrugere).sort(), [...ALLE_BRUGERARTER].sort());
+  });
+
+  it("afviser en brugerpris paa et MODUL", () => {
+    /* To steder at saette den ville betyde at fakturaens ene brugerlinje ikke
+       kunne sige hvilken der gjaldt. */
+    const f = validerPrisliste({
+      ...PRISLISTE,
+      moduler: { flaade: { basisOere: 1, prBrugerOere: { desktop: 100 } } },
+    }, { kendteModuler: VALGFRIE_MODULER });
+    assert.ok(f.some((x) => /platformen/.test(x)), "en brugerpris paa modulet blev godtaget");
+  });
+
+  it("kraever en platform", () => {
+    const f = validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), momssats: 25, moduler: {} });
+    assert.ok(f.some((x) => /latform/.test(x)), "en prisliste uden platform blev godtaget");
   });
 
   it("GÆTTER IKKE momssatsen", () => {
     /* ⚠ Ikke 25, ikke 0. Samme regel som på kundens fakturagrundlag: et
        system der gætter rigtigt ni gange ud af ti, lærer brugeren at stole
        på det tiende. */
-    const fejl = validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), moduler: {} });
+    const fejl = validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), moduler: {}, platform: {} });
     assert.ok(fejl.some((f) => /moms/i.test(f)), "en prisliste uden momssats blev godtaget.");
     assert.deepEqual(validerPrisliste(PRISLISTE, { kendteModuler: VALGFRIE_MODULER }), []);
   });
@@ -124,7 +162,8 @@ describe("Prislisten", () => {
 
   it("afviser en ukendt brugerart og et ukendt modul", () => {
     assert.ok(validerPrisliste({
-      ...PRISLISTE, moduler: { flaade: { prBrugerOere: { fritter: 100 } } },
+      ...PRISLISTE,
+      platform: { ...PRISLISTE.platform, prBrugerOere: { fritter: 100 } },
     }).some((x) => /brugerart/.test(x)));
     assert.ok(validerPrisliste(
       { ...PRISLISTE, moduler: { fritter: {} } }, { kendteModuler: VALGFRIE_MODULER }
@@ -154,14 +193,30 @@ describe("Linjerne for en periode", () => {
     antalKoeretoejer: 14,
   };
 
-  it("laver én linje pr. akse der har en sats", () => {
+  it("laver linjerne i FAKTURAENS raekkefoelge", () => {
+    /* ⚠ RAEKKEFOELGEN ER EN DEL AF PRODUKTET. Platformsadgang foerst, saa
+       modulerne i katalogorden, saa koeretoejer, og til sidst brugerne.
+       Sorteres der alfabetisk, flytter linjerne sig den dag et modul doebes
+       om — og en faktura der ser anderledes ud hver maaned, bliver laest
+       forfra hver gang. */
     const l = linjerForPeriode(fuld);
-    const nøgler = l.map((x) => `${x.modul}/${x.akse}${x.brugerart ? "/" + x.brugerart : ""}`);
-    assert.deepEqual(nøgler.sort(), [
-      "bemanding/basis", "bemanding/bruger/chauffoer",
-      "booking/basis", "booking/bruger/desktop",
-      "flaade/basis", "flaade/koeretoej",
-    ]);
+    assert.deepEqual(
+      l.map((x) => `${x.modul}/${x.akse}${x.brugerart ? "/" + x.brugerart : ""}`),
+      [
+        "platform/platform",
+        "booking/basis", "bemanding/basis", "flaade/basis",
+        "flaade/koeretoej",
+        "platform/bruger/chauffoer", "platform/bruger/desktop",
+      ]);
+  });
+
+  it("laegger platformsadgangen foerst, med antal 1", () => {
+    const l = linjerForPeriode(fuld);
+    const pf = l[0];
+    assert.equal(pf.akse, "platform");
+    assert.equal(pf.enheder, 1);
+    assert.equal(pf.antal, ANTAL_SKALA);
+    assert.equal(linjeBeloebOere(pf), 99500);
   });
 
   it("springer en sats på 0 over — den faktureres ikke", () => {
@@ -195,7 +250,8 @@ describe("Linjerne for en periode", () => {
 
   it("udelader et modul kunden ikke havde i perioden", () => {
     const l = linjerForPeriode({ ...fuld, moduldage: { flaade: 31 } });
-    assert.deepEqual([...new Set(l.map((x) => x.modul))], ["flaade"]);
+    const modulLinjer = l.filter((x) => x.modul !== PLATFORM);
+    assert.deepEqual([...new Set(modulLinjer.map((x) => x.modul))], ["flaade"]);
   });
 });
 
@@ -379,8 +435,9 @@ describe("Fra målinger til linjer", () => {
       rabatBps: 1000,
     });
     /* Flaade to dage, bemanding én — og chaufførtoppen er 15, ikke 12. */
-    const bem = linjer.find((l) => l.modul === "bemanding" && l.akse === "bruger");
-    assert.equal(bem.enheder, 15);
+    const ch = linjer.find((l) => l.akse === "bruger" && l.brugerart === "chauffoer");
+    assert.equal(ch.enheder, 15);
+    const bem = linjer.find((l) => l.modul === "bemanding" && l.akse === "basis");
     assert.equal(bem.dage, 1);
     const fl = linjer.find((l) => l.modul === "flaade" && l.akse === "basis");
     assert.equal(fl.dage, 2);
@@ -451,8 +508,8 @@ describe("Momssatsen på abonnementet", () => {
   it("valideres stadig som et tal mellem 0 og 100", () => {
     /* Datamodellen behøver ikke ændres den dag en udenlandsk kunde kommer. */
     assert.deepEqual(validerPrisliste(
-      { gyldigFraMs: Date.UTC(2026, 0, 1), momssats: MOMSSATS, moduler: {} }), []);
-    assert.ok(validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), momssats: 120, moduler: {} }).length);
+      { gyldigFraMs: Date.UTC(2026, 0, 1), momssats: MOMSSATS, moduler: {}, platform: {} }), []);
+    assert.ok(validerPrisliste({ gyldigFraMs: Date.UTC(2026, 0, 1), momssats: 120, moduler: {}, platform: {} }).length);
   });
 });
 
@@ -566,14 +623,14 @@ describe("gyldigFraMs skal være en dato, ikke bare et tal", () => {
        En liste fra 1970 vinder over ingenting og står først i enhver
        sortering — den ville have været den gældende for enhver periode uden
        en nyere. */
-    const f = validerPrisliste({ gyldigFraMs: 0, momssats: MOMSSATS, moduler: {} });
+    const f = validerPrisliste({ gyldigFraMs: 0, momssats: MOMSSATS, moduler: {}, platform: {} });
     assert.ok(f.some((x) => /dato/i.test(x)), "0 blev godtaget som en dato");
   });
 
   it("afviser en dato før FleetControl fandtes og langt ude i fremtiden", () => {
     for (const ms of [Date.UTC(2019, 11, 31), Date.UTC(2101, 0, 1), -1]) {
       assert.ok(
-        validerPrisliste({ gyldigFraMs: ms, momssats: MOMSSATS, moduler: {} })
+        validerPrisliste({ gyldigFraMs: ms, momssats: MOMSSATS, moduler: {}, platform: {} })
           .some((x) => /dato/i.test(x)),
         `${new Date(ms).toISOString()} blev godtaget`);
     }
@@ -581,7 +638,99 @@ describe("gyldigFraMs skal være en dato, ikke bare et tal", () => {
 
   it("godtager en rigtig dato", () => {
     assert.deepEqual(
-      validerPrisliste({ gyldigFraMs: Date.UTC(2026, 8, 1), momssats: MOMSSATS, moduler: {} }),
+      validerPrisliste({ gyldigFraMs: Date.UTC(2026, 8, 1), momssats: MOMSSATS, moduler: {}, platform: {} }),
       []);
+  });
+});
+
+describe("Frimængden — og hvorfor nul-linjen bliver stående", () => {
+  const grund = {
+    prisliste: PRISLISTE,
+    moduldage: { flaade: 31 },
+    dageIPerioden: 31,
+    antalKoeretoejer: 0,
+  };
+
+  it("fakturerer kun det der ligger UD OVER frimængden", () => {
+    /* 5 desktopbrugere, 3 inkluderet → der betales for 2. */
+    const l = linjerForPeriode({ ...grund, antalBrugere: { chauffoer: 0, desktop: 5 } });
+    const d = l.find((x) => x.brugerart === "desktop");
+    assert.equal(d.enheder, 5, "det målte antal er ikke bevaret");
+    assert.equal(d.inkluderet, 3);
+    assert.equal(d.fakturerbare, 2);
+    assert.equal(linjeBeloebOere(d), 2 * 14900);
+  });
+
+  it("giver 0 kr. når antallet ligger inden for frimængden", () => {
+    const l = linjerForPeriode({ ...grund, antalBrugere: { chauffoer: 0, desktop: 1 } });
+    const d = l.find((x) => x.brugerart === "desktop");
+    assert.equal(d.enheder, 1);
+    assert.equal(d.inkluderet, 3);
+    assert.equal(linjeBeloebOere(d), 0);
+  });
+
+  it("VISER linjen selv om den er nul — beslutning 36", () => {
+    /* ⚠ DEN HER VENDER EN TIDLIGERE BESLUTNING. Nul-linjer blev sprunget over
+       som støj. Men "1 · 3 inkluderet" til 0 kr. DOKUMENTERER at der blev
+       målt — uden linjen kan kunden ikke se forskel på at målingen var nul og
+       at den manglede. */
+    for (const antal of [0, 1, 3]) {
+      const l = linjerForPeriode({ ...grund, antalBrugere: { chauffoer: 0, desktop: antal } });
+      const d = l.find((x) => x.brugerart === "desktop");
+      assert.ok(d, `linjen forsvandt ved ${antal} brugere`);
+      assert.equal(linjeBeloebOere(d), 0);
+    }
+  });
+
+  it("viser også en brugerart uden frimængde og uden brugere", () => {
+    const l = linjerForPeriode({ ...grund, antalBrugere: { chauffoer: 0, desktop: 0 } });
+    const c = l.find((x) => x.brugerart === "chauffoer");
+    assert.ok(c, "chaufførlinjen forsvandt — så kan man ikke se at der blev målt");
+    assert.equal(c.enheder, 0);
+    assert.equal(linjeBeloebOere(c), 0);
+  });
+
+  it("regner rabatten på det der faktisk faktureres", () => {
+    /* Rabatten sidder i SATSEN; frimængden i antallet. De to må ikke
+       forveksles — ellers ville en rabat give penge tilbage for en gratis
+       bruger. */
+    const l = linjerForPeriode({
+      ...grund, antalBrugere: { chauffoer: 0, desktop: 5 }, rabatBps: 1000,
+    });
+    const d = l.find((x) => x.brugerart === "desktop");
+    assert.equal(d.satsOere, rabatteretSatsOere(14900, 1000));
+    assert.equal(linjeBeloebOere(d), 2 * rabatteretSatsOere(14900, 1000));
+  });
+
+  it("overFrimaengde går aldrig under nul", () => {
+    assert.equal(overFrimaengde(1, 3), 0);
+    assert.equal(overFrimaengde(5, 3), 2);
+    assert.equal(overFrimaengde(0, 0), 0);
+  });
+
+  it("holder linjesum og total sammen — også med nul-linjer", () => {
+    const l = linjerForPeriode({
+      ...grund, antalBrugere: { chauffoer: 2, desktop: 1 }, rabatBps: 1500,
+    });
+    const t = abonnementstotaler(l);
+    assert.equal(t.beloebOere, l.reduce((s, x) => s + linjeBeloebOere(x), 0));
+    assert.ok(l.some((x) => linjeBeloebOere(x) === 0), "der er ingen nul-linje at prøve på");
+  });
+});
+
+describe("Platformsadgangen er ikke dashboard-modulet", () => {
+  it("har sit eget id, som ikke er et modul", () => {
+    /* ⚠ Et katalogpunkt der både er en skærmsektion og en prislinje, er én
+       ting med to betydninger. Se noten ved PLATFORM. */
+    assert.equal(PLATFORM, "platform");
+    assert.ok(!VALGFRIE_MODULER.includes(PLATFORM));
+  });
+
+  it("kan ikke få en modulrabat — kun den generelle", () => {
+    /* rabatModulBps valideres mod modulkataloget, så "platform" kan ikke stå
+       der. Den generelle rammer den som alt andet. */
+    assert.equal(rabatFor(PLATFORM, { rabatBps: 0, rabatModulBps: { platform: 5000 } }), 5000,
+      "rabatFor kender ikke forskel — men reglerne afviser nøglen, se rules-prøven");
+    assert.equal(rabatFor(PLATFORM, { rabatBps: 1500, rabatModulBps: {} }), 1500);
   });
 });

@@ -38,6 +38,12 @@
 import {
   ANTAL_SKALA, antalFraTal, rabatteretSatsOere, totalerAfLinjer,
 } from "./beloeb.js";
+/* ⚠ TILLADT: moduler.js ER ogsaa en delt fil. Kopierne ligger i samme mappe i
+   functions/delt/, saa en relativ import mellem to delte filer virker
+   uaendret i skyen — se noten i functions-delt.test.mjs. Kataloget bruges til
+   at give fakturaen SAMME raekkefoelge hver maaned; en alfabetisk sortering
+   ville flytte linjerne den dag et modul blev doebt om. */
+import { ALLE_MODULER } from "./moduler.js";
 
 /* ---- Brugerarter ------------------------------------------------------- */
 
@@ -289,11 +295,10 @@ export const GYLDIG_FRA_SENEST = Date.UTC(2100, 0, 1);
 export function tomPrisliste(moduler = []) {
   const ud = {};
   for (const m of moduler) {
-    ud[m] = {
-      basisOere: 0,
-      prBrugerOere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
-      prKoeretoejOere: 0,
-    };
+    /* ⚠ INGEN prBrugerOere PAA MODULET LAENGERE. Brugerprisen ligger paa
+       platformen, fordi fakturaen har ÉN linje pr. brugerart og en linje kun
+       kan have ÉN stk.pris. Se tomPlatform(). */
+    ud[m] = { basisOere: 0, prKoeretoejOere: 0 };
   }
   return ud;
 }
@@ -340,10 +345,34 @@ export function validerPrisliste(liste = {}, { kendteModuler = [] } = {}) {
     if (p?.prKoeretoejOere != null && !erHeltal(p.prKoeretoejOere)) {
       fejl.push(`${modul}: prKoeretoejOere skal være hele øre.`);
     }
-    for (const [art, sats] of Object.entries(p?.prBrugerOere || {})) {
-      if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`${modul}: ukendt brugerart "${art}".`);
+    /* ⚠ BRUGERPRISEN ER FLYTTET TIL PLATFORMEN. Bliver den staaende paa et
+       modul, ville der vaere TO steder at saette den, og fakturaens ene
+       brugerlinje kunne ikke sige hvilken der gjaldt. */
+    if (p?.prBrugerOere) {
+      fejl.push(`${modul}: prBrugerOere hoerer paa platformen, ikke paa modulet.`);
+    }
+  }
+
+  /* ---- Platformsadgangen ---- */
+  const pf = liste.platform;
+  if (!pf) {
+    fejl.push("Platformsadgangen mangler. Uden den kan grundbeloebet ikke faktureres.");
+  } else {
+    if (pf.basisOere != null && !erHeltal(pf.basisOere)) {
+      fejl.push("platform: basisOere skal vaere hele oere.");
+    }
+    for (const [art, sats] of Object.entries(pf.prBrugerOere || {})) {
+      if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`platform: ukendt brugerart "${art}".`);
       else if (sats != null && !erHeltal(sats)) {
-        fejl.push(`${modul}: prBrugerOere.${art} skal være hele øre.`);
+        fejl.push(`platform: prBrugerOere.${art} skal vaere hele oere.`);
+      }
+    }
+    for (const [art, antal] of Object.entries(pf.inkluderetBrugere || {})) {
+      if (!ALLE_BRUGERARTER.includes(art)) fejl.push(`platform: ukendt brugerart "${art}".`);
+      else if (antal != null && !erHeltal(antal)) {
+        /* ⚠ ET HELT ANTAL BRUGERE. En halv inkluderet bruger findes ikke, og
+           et komma her ville give en frimaengde ingen kan forklare. */
+        fejl.push(`platform: inkluderetBrugere.${art} skal vaere et helt antal.`);
       }
     }
   }
@@ -365,36 +394,53 @@ export function gaeldendePrisliste(lister = {}, ms) {
   return kandidater[0] || null;
 }
 
-/* ---- Fra periode til linjer -------------------------------------------- */
-
-export const LINJEAKSE = {
-  basis: { akse: "basis", label: "Abonnement", enhed: "måned" },
-  bruger: { akse: "bruger", label: "Brugere", enhed: "bruger" },
-  koeretoej: { akse: "koeretoej", label: "Køretøjer", enhed: "køretøj" },
-};
+/* ---- Platformsadgang --------------------------------------------------- */
 
 /**
- * Linjerne for én kunde i én periode.
+ * ⚠ PLATFORMSADGANG ER EN EGEN PRISLINJE — IKKE `dashboard`-MODULET.
  *
- * ⚠ FORHOLDSMÆSSIGHED GÅR I `antal`, IKKE I SATSEN. En kunde der havde
- * Bemanding i 19 af 31 dage får `antal = 613` (altså 0,613 måned) og den
- * fulde månedssats. Regnede vi en dagspris ud i stedet, ville der afrundes
- * pr. dag, og 31 dage ville ikke give en hel måned tilbage.
+ * Det var det nærliggende: `dashboard` er allerede markeret `altid: true` og
+ * kan ikke fravælges. Men et katalogpunkt der både er en SKÆRMSEKTION i
+ * sidebaren og en PRISLINJE på en faktura, er én ting med to betydninger — og
+ * det er den fejl dette repo bliver ved med at betale for.
  *
- * ⚠ RABATTEN REGNES IND I SATSEN, ÉN GANG. Se rabatteretSatsOere() i
- * beloeb.js: lagde man den oven på linjebeløbet, ville der afrundes to gange,
- * og summen af linjerne ville holde op med at stemme med totalen.
+ * Konkret ville det gå galt to steder: linjen skulle hedde "Platformsadgang"
+ * på fakturaen og "Dashboard" i menuen, altså to navne på samme id; og
+ * frimængden nedenfor ville hænge på et modul frem for på abonnementet.
  *
- * Linjen bærer `listeprisOere` og `rabatBps` som DOKUMENTATION — men ét tal
- * går ind i regnestykket.
- *
- * @param prisliste   { momssats, moduler: { <modul>: {...} } }
- * @param moduldage   { <modul>: antal dage modulet var tilvalgt i perioden }
- * @param dageIPerioden
- * @param antalBrugere { chauffoer, desktop }
- * @param antalKoeretoejer
- * @param rabatBps
+ * Platformen står derfor for sig i prislisten, ved siden af `moduler`.
  */
+export const PLATFORM = "platform";
+
+/**
+ * ⚠ FRIMÆNGDEN HØRER TIL PLATFORMSADGANGEN, IKKE TIL MODULET.
+ *
+ * Tre grunde, og den første afgør det alene:
+ *
+ * 1. ANTALLET ER TENANTENS. En bruger er ét login hos kunden — ikke ét login
+ *    pr. modul. Lå frimængden på modulet, ville en kunde med fire moduler à
+ *    "3 inkluderet" have TOLV gratis brugere, og han ville ikke kunne se
+ *    hvorfor.
+ * 2. FAKTURAEN HAR ÉN LINJE PR. BRUGERART. Skulle den vise en frimængde pr.
+ *    modul, ville den skulle vise fire linjer for det samme login.
+ * 3. Det er sådan man sælger det: "abonnementet inkluderer tre
+ *    desktopbrugere" er en sætning om abonnementet.
+ *
+ * ⚠ DET FLYTTER OGSÅ SELVE BRUGERPRISEN. En enkelt linje kan kun have ÉN
+ * stk.pris, og den kan ikke være summen af fire modulers satser. `prBruger`
+ * ligger derfor på platformen. Modulerne beholder deres månedspris og
+ * køretøjspris.
+ */
+export const tomPlatform = () => ({
+  basisOere: 0,
+  prBrugerOere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
+  inkluderetBrugere: Object.fromEntries(ALLE_BRUGERARTER.map((a) => [a, 0])),
+});
+
+/** Hvor mange enheder der faktisk faktureres, når frimængden er trukket fra. */
+export const overFrimaengde = (maalt, inkluderet) =>
+  Math.max(0, (Number(maalt) || 0) - (Number(inkluderet) || 0));
+
 /**
  * Hvilken rabat gælder på ET modul?
  *
@@ -408,6 +454,10 @@ export const LINJEAKSE = {
  * kunden lagde linjerne sammen. Både formularen, generatoren og eksporten
  * spørger den her funktion.
  *
+ * ⚠ PLATFORMSLINJEN KAN KUN RAMMES AF DEN GENERELLE. `rabatModulBps`
+ * valideres mod modulkataloget, og "platform" er ikke et modul — så der kan
+ * ikke sættes en modulrabat på den.
+ *
  * NUL BETYDER "INGEN GENEREL RABAT", ikke "0 % på alt". Det er forskellen på
  * et tomt felt og et felt med et nul i, og den skal kunne mærkes: ellers
  * kunne man ikke slå den generelle fra igen uden at miste modulrabatterne.
@@ -419,6 +469,40 @@ export function rabatFor(modul, { rabatBps = 0, rabatModulBps = {} } = {}) {
   return Number.isInteger(paaModul) && paaModul > 0 ? paaModul : 0;
 }
 
+/* ---- Fra periode til linjer -------------------------------------------- */
+
+export const LINJEAKSE = {
+  platform: { akse: "platform", label: "Platformsadgang", enhed: "abonnement" },
+  basis: { akse: "basis", label: "Modul", enhed: "måned" },
+  bruger: { akse: "bruger", label: "Brugere", enhed: "bruger" },
+  koeretoej: { akse: "koeretoej", label: "Køretøjer", enhed: "køretøj" },
+};
+
+/**
+ * Linjerne for én kunde i én periode — i den rækkefølge de står på fakturaen.
+ *
+ *   1. Platformsadgang
+ *   2. Én linje pr. tilvalgt modul
+ *   3. Køretøjer
+ *   4. Én linje pr. brugerart
+ *
+ * ⚠ FORHOLDSMÆSSIGHED GÅR I `antal`, IKKE I SATSEN. En kunde der havde
+ * Bemanding i 19 af 31 dage får `antal = 613` og den fulde månedssats.
+ * Regnede vi en dagspris ud, ville der afrundes pr. dag, og 31 dage ville
+ * ikke give en hel måned tilbage.
+ *
+ * ⚠ RABATTEN REGNES IND I SATSEN, ÉN GANG. Se rabatteretSatsOere().
+ *
+ * ⚠ PLATFORMSLINJEN KAN KUN RAMMES AF DEN GENERELLE RABAT. `rabatModulBps`
+ * valideres mod modulkataloget, og "platform" er ikke et modul — så en rabat
+ * pr. modul kan ikke sættes på den. "Rabat på alt" gælder den, som den gælder
+ * alt andet.
+ *
+ * ⚠ NUL-LINJER VISES (beslutning 36). Tidligere blev en linje på 0 kr.
+ * sprunget over som støj. Det er vendt: en linje der viser "1 · 3 inkluderet"
+ * DOKUMENTERER at der blev målt. Uden den kan kunden ikke se forskel på at
+ * målingen var nul og at den manglede.
+ */
 export function linjerForPeriode({
   prisliste, moduldage = {}, dageIPerioden,
   antalBrugere = {}, antalKoeretoejer = 0, rabatBps = 0, rabatModulBps = {},
@@ -428,49 +512,82 @@ export function linjerForPeriode({
 
   const momssats = prisliste.momssats;
   const moduler = prisliste.moduler || {};
+  const platform = prisliste.platform || {};
 
-  const laeg = ({ modul, akse, brugerart, enheder, listeprisOere, dage }) => {
-    /* ⚠ RABATTEN SLAAS OP PR. MODUL. rabatFor() afgoer om den generelle
-       overruler modulets — reglen staar ét sted, saa skaerm og server ikke
-       kan regne forskelligt. */
+  /* Er kunden overhovedet i drift i perioden? Platformslinjen skal have en
+     periodeandel, og den findes ikke i moduldage — den er det HØJESTE antal
+     dage et modul var slået til, for basen er altid med. */
+  const dageIDrift = Math.max(0, ...Object.values(moduldage).map((d) => Number(d) || 0));
+
+  const laeg = ({
+    modul, akse, brugerart, enheder, inkluderet = 0, listeprisOere, dage,
+    /* Vises selv naar der ikke er noget at betale. Se beslutning 36. */
+    altidVis = false,
+  }) => {
     const bps = rabatFor(modul, { rabatBps, rabatModulBps });
-    if (!erHeltal(listeprisOere) || listeprisOere === 0) return;
-    if (!enheder || enheder <= 0) return;
     const andel = Math.min(1, Math.max(0, dage / dageIPerioden));
-    if (andel === 0) return;
-    /* antal = enheder × andel af perioden, i tusindedele. */
-    const antal = antalFraTal(enheder * andel);
-    if (antal === 0) return;
+    const fakturerbare = overFrimaengde(enheder, inkluderet);
+    const harSats = erHeltal(listeprisOere) && listeprisOere > 0;
+
+    if (!altidVis) {
+      if (!harSats || fakturerbare <= 0 || andel === 0) return;
+    } else if (!harSats && !inkluderet) {
+      /* Hverken en pris eller en frimængde — der er ikke noget at oplyse om. */
+      return;
+    }
+
+    /* ⚠ `antal` ER DET DER FAKTURERES, `enheder` ER DET DER BLEV MÅLT.
+       De to er forskellige i det øjeblik der er en frimængde, og beløbet skal
+       regnes af det første. Navnene er valgt så det ikke kan forveksles. */
+    const antal = antalFraTal(fakturerbare * andel);
+
     linjer.push({
-      modul, akse, brugerart: brugerart || null,
+      modul: modul || null, akse, brugerart: brugerart || null,
       antal,
-      satsOere: rabatteretSatsOere(listeprisOere, bps),
+      satsOere: harSats ? rabatteretSatsOere(listeprisOere, bps) : 0,
       momssats,
       /* Dokumentation. Ikke regnegrundlag. */
-      listeprisOere, rabatBps: bps, enheder, dage, dageIPerioden,
+      listeprisOere: listeprisOere || 0, rabatBps: bps,
+      enheder, inkluderet, fakturerbare, dage, dageIPerioden,
     });
   };
 
-  for (const modul of Object.keys(moduler).sort()) {
-    const p = moduler[modul] || {};
+  /* 1. Platformsadgang. Ét abonnement, hele den tid kunden var i drift. */
+  laeg({
+    modul: PLATFORM, akse: "platform", enheder: 1,
+    listeprisOere: platform.basisOere, dage: dageIDrift,
+  });
+
+  /* 2. Modulerne, i kataloguorden så fakturaen ser ens ud hver måned. */
+  for (const modul of ALLE_MODULER.filter((m) => moduler[m])) {
     const dage = moduldage[modul] ?? 0;
     if (dage <= 0) continue;
+    laeg({ modul, akse: "basis", enheder: 1, listeprisOere: moduler[modul].basisOere, dage });
+  }
 
-    laeg({ modul, akse: "basis", enheder: 1, listeprisOere: p.basisOere, dage });
-
-    for (const art of ALLE_BRUGERARTER) {
-      laeg({
-        modul, akse: "bruger", brugerart: art,
-        enheder: antalBrugere[art] || 0,
-        listeprisOere: p.prBrugerOere?.[art], dage,
-      });
-    }
-
+  /* 3. Køretøjer. ⚠ STOD IKKE I OPGAVEN, men satsen findes og skal kunne ses:
+        en flåde der faktureres uden en linje, er et beløb kunden ikke kan
+        genfinde. Prisen hænger paa det modul der ejer den. */
+  for (const modul of ALLE_MODULER.filter((m) => moduler[m]?.prKoeretoejOere)) {
+    const dage = moduldage[modul] ?? 0;
+    if (dage <= 0) continue;
     laeg({
       modul, akse: "koeretoej", enheder: antalKoeretoejer,
-      listeprisOere: p.prKoeretoejOere, dage,
+      listeprisOere: moduler[modul].prKoeretoejOere, dage,
     });
   }
+
+  /* 4. Brugerne — én linje pr. art, ALTID, saa maalingen kan ses. */
+  for (const art of ALLE_BRUGERARTER) {
+    laeg({
+      modul: PLATFORM, akse: "bruger", brugerart: art,
+      enheder: antalBrugere[art] || 0,
+      inkluderet: platform.inkluderetBrugere?.[art] || 0,
+      listeprisOere: platform.prBrugerOere?.[art],
+      dage: dageIDrift, altidVis: true,
+    });
+  }
+
   return linjer;
 }
 

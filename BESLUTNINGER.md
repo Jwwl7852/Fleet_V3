@@ -1254,3 +1254,56 @@ reglerne sammenligner `auth.token.tenant === $tenantId`, så den kan ikke læse
 De to ejere har **samme rettigheder**, og alt logges. Et fire-øjne-princip med
 to personer er ikke et princip — det er en aftale om altid at være to på
 kontoret.
+
+---
+
+## 36. En nul-linje dokumenterer en måling. Den vendes tilbage
+
+`linjerForPeriode()` sprang linjer på 0 kr. over. Begrundelsen stod i koden og
+var ikke dum: *"en linje på nul kroner er støj på en faktura."*
+
+**Den holder ikke, når der er en frimængde.**
+
+Abonnementet inkluderer tre desktopbrugere. En kunde med én desktopbruger
+skal have linjen:
+
+```
+Brugere (1 · 3 inkluderet)      1      149,00      —      0,00
+```
+
+Uden den linje **kan kunden ikke se forskel på at målingen var nul og at den
+manglede.** Og det er netop den forskel der betyder noget: målingen kan ikke
+laves bagud (beslutning om højeste antal), så en manglende dag er en fejl der
+ikke kan repareres. En faktura der tier om det, skjuler den eneste ting man
+kunne have reageret på.
+
+Det er samme argument som `dageMaalt` ved siden af `dageFaktureres` på
+grundlaget: to tal der ser ens ud på en total, men betyder noget forskelligt.
+
+### Hvad der stadig springes over
+
+Ikke alt nul vises. En **modul- eller køretøjslinje uden sats** udelades
+fortsat: der er ingen aftale om den, og den ville ikke dokumentere en måling —
+den ville dokumentere at vi ikke sælger noget.
+
+Reglen er derfor ikke "vis alle nuller", men: **vis linjen når der ER blevet
+målt noget, uanset hvad det kostede.** Det er `altidVis` i `laeg()`, og den
+sættes kun på brugerlinjerne.
+
+### To ting kom med i samme ombæring
+
+**Platformsadgang er en egen prislinje, ikke `dashboard`-modulet.** Et
+katalogpunkt der både er en skærmsektion i sidebaren og en prislinje på en
+faktura, er én ting med to betydninger — og linjen skulle hedde
+"Platformsadgang" på fakturaen og "Dashboard" i menuen.
+
+**Frimængden hører til platformsadgangen, ikke til modulet.** En bruger er ét
+login hos kunden, ikke ét pr. modul: lå frimængden på modulet, ville en kunde
+med fire moduler à "3 inkluderet" have **tolv** gratis brugere, og han ville
+ikke kunne se hvorfor.
+
+⚠ **Det flyttede også selve brugerprisen.** En faktura har én linje pr.
+brugerart, og en linje kan kun have **én** stk.pris — den kan ikke være summen
+af fire modulers satser. `prBrugerOere` ligger derfor på platformen, og
+reglerne **afviser** feltet på et modul. Modulerne beholder deres månedspris
+og køretøjspris.

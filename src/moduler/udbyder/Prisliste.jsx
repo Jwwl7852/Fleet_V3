@@ -29,10 +29,10 @@ import {
 } from "../../fleet/ui.jsx";
 import { MODUL, ALLE_MODULER } from "../../fleet/moduler.js";
 import {
-  BRUGERART, ALLE_BRUGERARTER, tomPrisliste, validerPrisliste,
-  gaeldendePrisliste, periodeGraenser, MOMSSATS,
+  BRUGERART, ALLE_BRUGERARTER, tomPrisliste, tomPlatform, validerPrisliste,
+  gaeldendePrisliste, periodeGraenser, MOMSSATS, PLATFORM,
 } from "../../fleet/priser.js";
-import { bpsTilPct } from "../../fleet/beloeb.js";
+import { bpsTilPct, linjeBeloebOere } from "../../fleet/beloeb.js";
 import { csv, csvOere, filnavn } from "../../fleet/eksport.js";
 import {
   opretPrisliste, opretGrundlag, maalNu, sletPrisliste,
@@ -150,6 +150,107 @@ const grundlagCsv = (periode, raekker) =>
     ]
   );
 
+/* ---- Fakturaopstillingen ------------------------------------------------ */
+
+/** Linjens tekst. ⚠ MODULETS RIGTIGE NAVN — ikke et opdigtet produktnavn. */
+function linjetekst(l) {
+  if (l.akse === "platform") return "Platformsadgang";
+  if (l.akse === "koeretoej") return "Køretøjer";
+  if (l.akse === "bruger") {
+    const navn = BRUGERART[l.brugerart]?.label || l.brugerart;
+    /* ⚠ FRIMÆNGDEN STÅR I TEKSTEN, ikke i en fodnote. "1 · 3 inkluderet" er
+       det der forklarer hvorfor beløbet er nul — se beslutning 36. */
+    return l.inkluderet
+      ? `${navn}e (${num(l.enheder)} · ${num(l.inkluderet)} inkluderet)`
+      : `${navn}e`;
+  }
+  return MODUL[l.modul]?.label || l.modul;
+}
+
+/**
+ * Ét grundlag som en faktura.
+ *
+ * ⚠ DEN REGNER IKKE. Hvert beløb står som det blev FROSSET ved generingen.
+ * En genberegning her kunne give et andet tal end det kunden fik — og så
+ * ville skærmen og fakturaen være uenige uden at nogen kunne se hvorfor.
+ * `linjeBeloebOere` bruges kun til at lægge linjens egne to tal sammen.
+ */
+function Faktura({ kunde, periode, g }) {
+  const linjer = g.linjer || [];
+  return (
+    <div>
+      <div className="fc-scroll">
+        <table className="fc-table">
+          <thead>
+            <tr>
+              <th>Beskrivelse</th>
+              <th className="fc-num">Antal</th>
+              <th className="fc-num">Stk.pris</th>
+              <th className="fc-num">Rabat</th>
+              <th className="fc-num">Beløb</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linjer.map((l, i) => (
+              <tr key={`${l.modul}-${l.akse}-${l.brugerart || ""}-${i}`}>
+                <td>
+                  {linjetekst(l)}
+                  {l.dage !== l.dageIPerioden && (
+                    <div className="fc-hint">
+                      {num(l.dage)} af {num(l.dageIPerioden)} dage
+                    </div>
+                  )}
+                </td>
+                {/* Det MÅLTE antal — ikke det fakturerbare. Forskellen står i
+                    beskrivelsen som "3 inkluderet". */}
+                <td className="fc-num">{num(l.enheder)}</td>
+                <td className="fc-num">{kr(l.listeprisOere)}</td>
+                <td className="fc-num">
+                  {l.rabatBps ? pct(bpsTilPct(l.rabatBps)) : <span className="fc-neutral">—</span>}
+                </td>
+                <td className="fc-num"><b>{kr(linjeBeloebOere(l))}</b></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={4}><b>I alt (ekskl. moms)</b></td>
+              <td className="fc-num"><b>{kr(g.beloebOere)}</b></td>
+            </tr>
+            <tr>
+              <td colSpan={4}>Moms {Number.isFinite(g.momssats) ? `${g.momssats} %` : ""}</td>
+              <td className="fc-num">
+                {/* ⚠ null, IKKE 0. Mangler en linje sin momssats, er et halvt
+                    momsbeløb værre end intet — det ser ud som om det er regnet. */}
+                {g.momsOere === null || g.momsOere === undefined
+                  ? <span className="fc-bad">mangler sats</span> : kr(g.momsOere)}
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={4}><b>Total</b></td>
+              <td className="fc-num">
+                <b>{g.ialtOere === null || g.ialtOere === undefined
+                  ? <span className="fc-bad">—</span> : kr(g.ialtOere)}</b>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <p className="fc-hint" style={{ marginTop: 12 }}>
+        {kunde?.navn || g.kundeId} · {periode} · opgjort {datoTid(g.genereretMs)} ·{" "}
+        <b>låst</b>. Beløbene står som de blev frosset og regnes aldrig igen.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 6 }}>
+        {num(g.dageFaktureres)} dage faktureret
+        {g.dageFaktureres !== g.dageMaalt && <> af {num(g.dageMaalt)} målte</>} — højeste
+        antal i perioden. Dage på pause eller opsagt tæller ikke med.
+        {g.rabatBps > 0 && <> Rabat på alt: <b>{pct(bpsTilPct(g.rabatBps))}</b>.</>}
+      </p>
+    </div>
+  );
+}
+
 /* ---- Ny prisliste ------------------------------------------------------- */
 
 function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
@@ -168,9 +269,18 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
     for (const m of Object.keys(start)) {
       start[m].basisOere = gl[m]?.basisOere || 0;
       start[m].prKoeretoejOere = gl[m]?.prKoeretoejOere || 0;
-      for (const a of ALLE_BRUGERARTER) {
-        start[m].prBrugerOere[a] = gl[m]?.prBrugerOere?.[a] || 0;
-      }
+    }
+    return start;
+  });
+  /* ⚠ PLATFORMSADGANGEN STAAR FOR SIG — den er ikke et modul. Se noten ved
+     PLATFORM i priser.js om hvorfor den ikke er dashboard-modulet. */
+  const [pf, saetPf] = useState(() => {
+    const start = tomPlatform();
+    const gl = udgangspunkt?.platform || {};
+    start.basisOere = gl.basisOere || 0;
+    for (const a of ALLE_BRUGERARTER) {
+      start.prBrugerOere[a] = gl.prBrugerOere?.[a] || 0;
+      start.inkluderetBrugere[a] = gl.inkluderetBrugere?.[a] || 0;
     }
     return start;
   });
@@ -180,9 +290,8 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
   const saetSats = (modul, sti, kroner) => {
     saetSvar(null);
     saetP((x) => {
-      const ny = { ...x, [modul]: { ...x[modul], prBrugerOere: { ...x[modul].prBrugerOere } } };
-      if (sti.startsWith("bruger:")) ny[modul].prBrugerOere[sti.slice(7)] = oereFelt(kroner);
-      else ny[modul][sti] = oereFelt(kroner);
+      const ny = { ...x, [modul]: { ...x[modul] } };
+      ny[modul][sti] = oereFelt(kroner);
       return ny;
     });
   };
@@ -190,6 +299,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
   const liste = {
     gyldigFraMs: Date.parse(`${fra}T00:00:00.000Z`),
     momssats: MOMSSATS,
+    platform: pf,
     moduler: p,
   };
   const fejl = validerPrisliste(liste, { kendteModuler: ALLE_MODULER });
@@ -221,15 +331,63 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
           Moms <b>{MOMSSATS} %</b> — fast. Sættes ét sted i koden, ikke pr. liste.
         </p>
 
-        <div style={{ overflowX: "auto" }}>
+        <p className="fc-hint" style={{ marginTop: 4 }}><b>Platformsadgang</b></p>
+        <div className="fc-scroll">
+          <table className="fc-table">
+            <thead>
+              <tr>
+                <th>Grundbeløb pr. måned</th>
+                {ALLE_BRUGERARTER.map((a) => (
+                  <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
+                ))}
+                {ALLE_BRUGERARTER.map((a) => (
+                  <th key={`i-${a}`} className="fc-num">Inkl. {BRUGERART[a].label.toLowerCase()}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="fc-num">
+                  <input className="fc-input-tal" inputMode="decimal"
+                         aria-label="Grundbeløb pr. måned"
+                         value={kronerFelt(pf.basisOere)}
+                         onChange={(e) => { saetSvar(null);
+                           saetPf((x) => ({ ...x, basisOere: oereFelt(e.target.value) })); }} />
+                </td>
+                {ALLE_BRUGERARTER.map((a) => (
+                  <td key={a} className="fc-num">
+                    <input className="fc-input-tal" inputMode="decimal"
+                           aria-label={`Pris pr. ${BRUGERART[a].label}`}
+                           value={kronerFelt(pf.prBrugerOere[a])}
+                           onChange={(e) => { saetSvar(null);
+                             const v = oereFelt(e.target.value);
+                             saetPf((x) => ({ ...x, prBrugerOere: { ...x.prBrugerOere, [a]: v } })); }} />
+                  </td>
+                ))}
+                {ALLE_BRUGERARTER.map((a) => (
+                  <td key={`i-${a}`} className="fc-num">
+                    {/* ⚠ ET ANTAL, IKKE KRONER. Frimaengden er brugere der er
+                        med i prisen — kun det der ligger UD OVER, faktureres. */}
+                    <input className="fc-input-tal fc-input-pct" inputMode="numeric"
+                           aria-label={`Inkluderede ${BRUGERART[a].label}`}
+                           value={pf.inkluderetBrugere[a] || ""}
+                           onChange={(e) => { saetSvar(null);
+                             const n = Math.max(0, Math.round(Number(e.target.value) || 0));
+                             saetPf((x) => ({ ...x, inkluderetBrugere: { ...x.inkluderetBrugere, [a]: n } })); }} />
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="fc-hint" style={{ marginTop: 12 }}><b>Moduler</b></p>
+        <div className="fc-scroll">
           <table className="fc-table">
             <thead>
               <tr>
                 <th>Modul</th>
                 <th className="fc-num">Pr. måned</th>
-                {ALLE_BRUGERARTER.map((a) => (
-                  <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
-                ))}
                 <th className="fc-num">Pr. køretøj</th>
               </tr>
             </thead>
@@ -245,13 +403,6 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                            value={kronerFelt(p[m].basisOere)}
                            onChange={(e) => saetSats(m, "basisOere", e.target.value)} />
                   </td>
-                  {ALLE_BRUGERARTER.map((a) => (
-                    <td key={a} className="fc-num">
-                      <input className="fc-input-tal" inputMode="decimal"
-                             value={kronerFelt(p[m].prBrugerOere[a])}
-                             onChange={(e) => saetSats(m, `bruger:${a}`, e.target.value)} />
-                    </td>
-                  ))}
                   <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
                            value={kronerFelt(p[m].prKoeretoejOere)}
@@ -268,10 +419,11 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
           kan Flåde koste pr. køretøj og Bemanding pr. chauffør.
         </p>
         <p className="fc-hint" style={{ marginTop: 6 }}>
-          ⚠ <b>Antallet er kundens, satsen er modulets.</b> Sætter du en
-          brugerpris på fire moduler, betaler kunden fire gange pr. bruger. Vil
-          du have den én gang for hele platformen, så sæt den på{" "}
-          <b>{MODUL.dashboard.label}</b> — det modul ingen kan fravælge.
+          ⚠ <b>Brugerprisen ligger på platformen</b>, ikke på modulerne: en
+          faktura har én linje pr. brugerart, og en linje kan kun have én
+          stk.pris. <b>Inkl.</b> er en frimængde — kun antallet ud over den
+          faktureres, og linjen vises alligevel med 0 kr. så det kan ses at
+          der blev målt.
         </p>
         {fejl.length > 0 && (
           <ul className="fc-hint" style={{ marginTop: 8 }}>
@@ -300,6 +452,10 @@ export default function Prisliste() {
   const [arbejder, saetArbejder] = useState(false);
   const [sletter, saetSletter] = useState(null);
   const [kunder, saetKunder] = useState([]);
+  /* Hvilken kundes grundlag der er slaaet op. ⚠ ÉT AD GANGEN — en samlet
+     oversigt over alle kunders linjer er ikke en faktura, og det er en
+     faktura der skal kunne laegges sammen i haanden. */
+  const [aabenKunde, saetAabenKunde] = useState(null);
   const [svar, saetSvar] = useState(null);
 
   /**
@@ -643,7 +799,9 @@ export default function Prisliste() {
                 { key: "handling", label: "", render: (r) => (
                     <span className="fc-ikke-print">
                       {r.g ? (
-                        <span className="fc-hint">{datoTid(r.g.genereretMs)}</span>
+                        <Knap onClick={() => saetAabenKunde(aabenKunde === r.id ? null : r.id)}>
+                          {aabenKunde === r.id ? "Luk" : "Vis grundlag"}
+                        </Knap>
                       ) : (
                         <Knap disabled={arbejder || !periodeSlut}
                               onClick={() => kald(() => opretGrundlag({ periode, id: r.id }))}>
@@ -664,6 +822,27 @@ export default function Prisliste() {
           </>
         )}
       </Kort>
+
+      {aabenKunde && grundlag[periode]?.[aabenKunde] && (
+        <Kort
+          titel={`Fakturagrundlag ${periode} — ${
+            kunder.find((k) => k.id === aabenKunde)?.navn || aabenKunde}`}
+          handling={
+            <span className="fc-med-ikon fc-ikke-print" style={{ gap: 8 }}>
+              <Knap onClick={() => hent(
+                      grundlagCsv(periode, [grundlag[periode][aabenKunde]]),
+                      filnavn(`fakturagrundlag-${aabenKunde}-${periode}`,
+                              grundlag[periode][aabenKunde].genereretMs))}>
+                Hent som Excel
+              </Knap>
+              <Knap onClick={() => window.print()}>Print</Knap>
+            </span>
+          }
+        >
+          <Faktura kunde={kunder.find((k) => k.id === aabenKunde)}
+                   periode={periode} g={grundlag[periode][aabenKunde]} />
+        </Kort>
+      )}
     </div>
   );
 }

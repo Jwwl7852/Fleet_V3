@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 35 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 36 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
@@ -25,7 +25,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 918 tests. Starter emulatoren.
+npm test                            # 931 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -139,6 +139,7 @@ tilfældigt.
 | 33 | **Et fravalgt modul lukker sine noder — læsning og skrivning.** Afkrydsningen var en kommerciel kontrol; det holdt kun så længe listen tegnede en sidebar. Kan et modul **fratages**, har kunden ellers stadig data og API. ⚠ Prisen: kunden kan ikke hente sine egne data ud gennem appen, så et fravalg skal **aftales, ikke klikkes**. `opgaver`, `satser` og `fakturaer` står i basen — de hører hver til to moduler | `fleet/moduler.js`, `firebase.rules.json` |
 | 34 | **Ejerkonsollen skriver ikke — den beder om det.** Fire Cloud Functions med `udbyder === true` som **første** handling; alle ejer-noder er `.write: false`. ⚠ Her — og kun her — kommer tenanten fra nyttelasten, fordi en ejerkonto **ingen** har. Prøver holder kundens og ejerens tjek adskilt, og `kundeadmin` og `opretbruger` deler ÉN oprettelse | `functions/index.js` |
 | 35 | **Ejerskab tildeles ikke fra konsollen.** `udbyder`-claim'et sættes kun med servicekontonøglen (`npm run ejer:giv`). Vi er to: kunne den ene fjerne den andens claim, kunne den ene lukke den anden ude — og adgangen til at rette det var selv ejerskabet. En ejerkonto har **ingen tenant**, så spærringen er ikke en betingelse i en skærm, men fraværet af en nøgle | `scripts/ejer.mjs`, `App.jsx` |
+| 36 | **En nul-linje dokumenterer en måling.** Linjer på 0 kr. blev sprunget over som støj. Det holder ikke med en frimængde: uden *"Brugere (1 · 3 inkluderet) — 0,00"* kan kunden ikke se forskel på at målingen var **nul** og at den **manglede** — og målingen kan ikke laves bagud. Kom sammen med at **platformsadgang er en egen prislinje** (ikke `dashboard`) og at **frimængden hører til abonnementet** (ikke modulet) | `fleet/priser.js`, `firebase.rules.json` |
 
 ## Struktur
 
@@ -199,7 +200,7 @@ src/
 Opdateret 9. august 2026. **Start her efter en pause.**
 
 **Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **918 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
+skærme, og **931 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
 obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

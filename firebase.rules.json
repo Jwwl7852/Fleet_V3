@@ -943,20 +943,48 @@
           "momssats": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
           "oprettetAf": { ".validate": "newData.isString()" },
           "oprettetMs": { ".validate": "newData.isNumber()" },
+
+          // ══════════════════════════════════════════════════════════
+          // PLATFORMSADGANGEN — en egen prislinje, ikke dashboard-modulet
+          // ══════════════════════════════════════════════════════════
+          //
+          // ⚠ IKKE `dashboard`. Det modul er en SKAERMSEKTION i sidebaren.
+          // Bruges samme id ogsaa som prislinje, er det én ting med to
+          // betydninger — og linjen skulle hedde 'Platformsadgang' paa
+          // fakturaen og 'Dashboard' i menuen.
+          //
+          // ⚠ BRUGERPRISEN LIGGER HER, IKKE PAA MODULERNE. Fakturaen har ÉN
+          // linje pr. brugerart, og en linje kan kun have ÉN stk.pris — den
+          // kan ikke vaere summen af fire modulers satser.
+          //
+          // ⚠ FRIMAENGDEN HOERER TIL ABONNEMENTET. En bruger er ét login hos
+          // kunden, ikke ét pr. modul: laa den paa modulet, ville en kunde
+          // med fire moduler à '3 inkluderet' have TOLV gratis brugere.
+          "platform": {
+            "basisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "prBrugerOere": {
+              "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "$andet": { ".validate": false }
+            },
+            // ⚠ ET HELT ANTAL. En halv inkluderet bruger findes ikke.
+            "inkluderetBrugere": {
+              "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "$andet": { ".validate": false }
+            },
+            "$andet": { ".validate": false }
+          },
           "moduler": {
             "$modul": {
               // ⚠ OERE SOM INTEGER. Ikke kroner, ikke float — beslutning 2,
               // og den gaelder ogsaa naar det er OS der sender regningen.
               "basisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
               "prKoeretoejOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-              "prBrugerOere": {
-                // ⚠ TO ARTER, OG GRAENSEN GAAR VED ROLLEN. En chauffoer i en
-                // lastbil og en disponent ved en skaerm koster ikke det
-                // samme at levere. Se BRUGERART i priser.js.
-                "chauffoer": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-                "desktop": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-                "$andet": { ".validate": false }
-              },
+              // ⚠ prBrugerOere ER FLYTTET TIL platform. Det maa ikke kunne
+              // saettes to steder: fakturaens ene brugerlinje kunne saa ikke
+              // sige hvilken sats der gjaldt. false = feltet afvises.
+              "prBrugerOere": { ".validate": false },
               "$andet": { ".validate": false }
             }
           },
