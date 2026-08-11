@@ -692,12 +692,18 @@ export default function Konsol({ bruger }) {
             <Moduler kunde={aaben} paaGemt={genindlaes} />
           </Kort>
           <div className="fc-grid" style={{ gap: 16 }}>
-            <Kort titel="Abonnement">
-              <Abonnement kunde={aaben} paaGemt={genindlaes} />
-            </Kort>
-            <Kort titel="Rabat på alt">
-              <Rabat kunde={aaben} paaGemt={genindlaes} />
-            </Kort>
+            {/* ⚠ SIDE OM SIDE, IKKE STABLET. De to er begge korte — to felter
+                og ét felt — og stablet skubbede de "Første administrator" så
+                langt ned at man skulle rulle for at finde den knap man leder
+                efter på en ny kunde. */}
+            <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
+              <Kort titel="Abonnement">
+                <Abonnement kunde={aaben} paaGemt={genindlaes} />
+              </Kort>
+              <Kort titel="Rabat på alt">
+                <Rabat kunde={aaben} paaGemt={genindlaes} />
+              </Kort>
+            </Gitter>
             <Kort titel="Første administrator">
               <Foersteadmin kunde={aaben} />
             </Kort>

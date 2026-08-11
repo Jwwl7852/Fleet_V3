@@ -185,7 +185,14 @@
    ⚠ EGEN KLASSE FREM FOR EN BREDDE PAA STEDET. Et style={{width}} i en jsx
    ville vaere den ellevte maade at saette en feltbredde paa, og ingen af dem
    ville vide om hinanden. Bredden hoerer i CSS'en, hvor de andre staar. */
-.fc-num .fc-input-pct{max-width:58px}
+/* Rabatfeltet i en modulraekke. ⚠ HALV HOEJDE AF ET ALMINDELIGT FELT
+   (38px → 19px): det staar i en TAET liste ved siden af et
+   afkrydsningsfelt, ikke i en formular. Et fuldhoejt felt gjorde raekken
+   halvanden gang saa hoej som den behoevede, og ti raekker under hinanden
+   blev til en side man skulle rulle i.
+   Radius og kant arves fra faelles-reglen — kun maalene aendres, saa feltet
+   stadig ligner et felt. */
+.fc-num .fc-input-pct{max-width:58px; min-height:19px; padding:1px 6px; font-size:12.5px}
 .fc-med-suffiks{display:inline-flex; align-items:baseline; gap:5px}
 .fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
