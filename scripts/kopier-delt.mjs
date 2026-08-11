@@ -24,14 +24,17 @@ import { fileURLToPath } from "node:url";
 const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Filer der skal være ens i src/fleet og functions/delt. */
-export const DELTE_FILER = ["audit-regler.js"];
+export const DELTE_FILER = ["audit-regler.js", "permissions.js"];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);
 export const kopiSti = (navn) => join(ROD, "functions", "delt", navn);
 
-const ADVARSEL =
+/* Hovedet navngiver SIN EGEN kilde. Stod der ét fast filnavn, ville den næste
+   delte fil bære en henvisning til en anden — og den der læser den, ville
+   rette i det forkerte sted. */
+const advarsel = (navn) =>
   "/* ⚠ KOPI — REDIGÉR IKKE HER.\n" +
-  " * Kilden er src/fleet/audit-regler.js. Filen lægges af\n" +
+  ` * Kilden er src/fleet/${navn}. Filen lægges af\n` +
   " * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.\n" +
   " * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.\n" +
   " */\n";
@@ -50,7 +53,7 @@ export function kopier() {
   const gjort = [];
   for (const navn of DELTE_FILER) {
     const kilde = readFileSync(kildeSti(navn), "utf8");
-    writeFileSync(kopiSti(navn), ADVARSEL + kilde, "utf8");
+    writeFileSync(kopiSti(navn), advarsel(navn) + kilde, "utf8");
     gjort.push(navn);
   }
   return gjort;

@@ -1,5 +1,10 @@
 /* functions/index.js
- * Den første Cloud Function i projektet: auditloggen.
+ * Cloud Functions: auditloggen og brugeradministrationen.
+ *
+ * De findes her af SAMME grund, og den er værd at have i hovedet: begge gør
+ * noget en klient ikke KAN gøre. audit/ er .write: false for alle, og
+ * Firebase Auth har ingen createUser på klientsiden. Det er ikke bekvemmelighed
+ * — det er Admin SDK eller ingenting.
  *
  * ---------------------------------------------------------------------------
  * HVORFOR DEN SKAL VÆRE EN FUNKTION OG IKKE EN SKRIVNING FRA KLIENTEN
@@ -33,8 +38,10 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
+import { getAuth } from "firebase-admin/auth";
 
 import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor } from "./delt/audit-regler.js";
+import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 
 initializeApp();
 
@@ -120,4 +127,186 @@ export const audit = onCall({ region: REGION }, async (req) => {
      sletter en post. Retention håndteres af en separat, planlagt funktion der
      sletter en HEL partition — se retentionFor() og noten i audit-regler.js. */
   return { ok: true, id: ref.key, klasse };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   BRUGERADMINISTRATION
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR DET SKAL VÆRE FUNKTIONER. Firebase Auth har ingen createUser,
+   updateUser eller setCustomUserClaims på klientsiden. Det er ikke en mangel
+   der kan omgås — det er Admin SDK eller ingenting.
+
+   ⚠ TENANTEN KOMMER FRA KALDERENS TOKEN, ALDRIG FRA NYTTELASTEN.
+   Præcis samme regel som auditfunktionen, og af en endnu hårdere grund: en
+   admin hos kunde A der selv måtte oplyse tenanten, kunne oprette en
+   administrator hos kunde B. Det ville være det stik modsatte af hele
+   isolationen, og det ville ske gennem en funktion vi selv har skrevet.
+
+   ⚠ ROLLEN AFGØR PERMS — DE SENDES IKKE MED. Kalderen vælger en rolle fra
+   presettet; permissionerne udledes af ROLLE_PERMS. Kunne klienten sende en
+   perms-liste, kunne en admin give sig selv noget der ikke findes i noget
+   preset, og rollegennemgangen ville ikke længere beskrive virkeligheden.
+   ══════════════════════════════════════════════════════════════════════ */
+/**
+ * Fælles indgangstjek. Returnerer { uid, tenantId } eller kaster.
+ *
+ * ⚠ PERMISSIONEN LÆSES AF TOKENET, ikke af en node. Claim'et er
+ * håndhævelsespunktet — slog vi op i roller/, ville en rolleændring virke
+ * før tokenet blev fornyet, og så ville to veje give hvert sit svar.
+ */
+function kraevBrugeradmin(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const perms = auth.token?.perms;
+  if (typeof perms !== "string" || !perms.includes(`|${PERM.brugereSkriv}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${PERM.brugereSkriv}.`);
+  }
+  return { uid: auth.uid, tenantId };
+}
+
+const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Indekset klienten kan læse. ⚠ INGEN CLAIMS OG INGEN LØSEN. */
+const indeksPost = (b, rolle, spaerret = false) => ({
+  email: b.email,
+  navn: b.displayName || b.email,
+  rolle,
+  spaerret,
+  opdateretMs: Date.now(),
+});
+
+async function skrivIndeks(tenantId, bruger, rolle, spaerret) {
+  await getDatabase()
+    .ref(`tenants/${tenantId}/brugere/${bruger.uid}`)
+    .set(indeksPost(bruger, rolle, spaerret));
+}
+
+async function log(tenantId, uid, handling, objektId, note) {
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/sikkerhed/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "brugere", objektId,
+      klasse: "sikkerhed", note: note ?? null,
+    });
+}
+
+export const opretBruger = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const email = kortStreng(d.email, 120);
+  if (!email || !MAIL_MOENSTER.test(email)) {
+    throw new HttpsError("invalid-argument", "Ugyldig mailadresse.");
+  }
+  const rolle = kortStreng(d.rolle, 30);
+  if (!ROLLE_PERMS[rolle]) {
+    throw new HttpsError("invalid-argument", `Ukendt rolle: ${d.rolle}`);
+  }
+  /* Løsenet sættes af den der opretter. Det sendes ikke retur og logges
+     ikke — hverken her eller i auditposten. */
+  const kode = typeof d.kode === "string" ? d.kode : "";
+  if (kode.length < 12) {
+    throw new HttpsError("invalid-argument", "Adgangskoden skal være mindst 12 tegn.");
+  }
+  const navn = kortStreng(d.navn, 80) || email;
+
+  const auth = getAuth();
+  let bruger;
+  try {
+    bruger = await auth.createUser({ email, password: kode, displayName: navn });
+  } catch (e) {
+    if (e.code === "auth/email-already-exists") {
+      /* ⚠ VI OVERTAGER IKKE EN EKSISTERENDE KONTO. Mailen kan høre til en
+         anden kunde, og at sætte vores tenant på den ville flytte en bruger
+         mellem to virksomheder med ét klik. */
+      throw new HttpsError("already-exists", "Adressen er allerede i brug.");
+    }
+    throw e;
+  }
+
+  /* ⚠ tenantId FRA TOKENET. Se noten øverst. */
+  await auth.setCustomUserClaims(bruger.uid, {
+    tenant: tenantId,
+    rolle,
+    perms: permStrengFraRolle(rolle),
+  });
+
+  await skrivIndeks(tenantId, bruger, rolle, false);
+  await log(tenantId, uid, "opret", bruger.uid, `rolle ${rolle}`);
+
+  return { ok: true, uid: bruger.uid };
+});
+
+export const skiftRolle = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const maalUid = kortStreng(d.uid, 128);
+  const rolle = kortStreng(d.rolle, 30);
+  if (!maalUid) throw new HttpsError("invalid-argument", "uid mangler.");
+  if (!ROLLE_PERMS[rolle]) throw new HttpsError("invalid-argument", `Ukendt rolle: ${d.rolle}`);
+
+  const auth = getAuth();
+  const bruger = await auth.getUser(maalUid);
+
+  /* ⚠ KUN BRUGERE I EGEN TENANT. Uden det kunne en admin ændre rollen på en
+     bruger hos en anden kunde — uid er ikke hemmeligt. */
+  if (bruger.customClaims?.tenant !== tenantId) {
+    throw new HttpsError("permission-denied", "Brugeren hører ikke til din virksomhed.");
+  }
+
+  await auth.setCustomUserClaims(maalUid, {
+    ...bruger.customClaims,
+    rolle,
+    perms: permStrengFraRolle(rolle),
+  });
+  /* ⚠ UDEN DEN HER ER NEDGRADERINGEN EN PÆN KNAP. Brugeren beholder sine
+     gamle claims indtil tokenet udløber af sig selv — man ville tro man
+     havde fjernet en adgang, som stadig virkede. Det er den værste
+     fejltilstand, fordi den ser ud som om den lykkedes. */
+  await auth.revokeRefreshTokens(maalUid);
+
+  await skrivIndeks(tenantId, bruger, rolle, Boolean(bruger.disabled));
+  await log(tenantId, uid, "tilstandsskift", maalUid, `rolle ${rolle}`);
+
+  return { ok: true };
+});
+
+export const spaerLogin = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const maalUid = kortStreng(d.uid, 128);
+  if (!maalUid) throw new HttpsError("invalid-argument", "uid mangler.");
+  const spaerret = d.spaerret !== false;
+
+  const auth = getAuth();
+  const bruger = await auth.getUser(maalUid);
+  if (bruger.customClaims?.tenant !== tenantId) {
+    throw new HttpsError("permission-denied", "Brugeren hører ikke til din virksomhed.");
+  }
+  /* ⚠ MAN KAN IKKE SPÆRRE SIG SELV UDE. Den sidste administrator der gjorde
+     det, ville have låst hele virksomheden ude af sin egen brugeradministration
+     — og der er ingen vej tilbage fra klienten. */
+  if (maalUid === uid && spaerret) {
+    throw new HttpsError("failed-precondition", "Du kan ikke spærre dit eget login.");
+  }
+
+  await auth.updateUser(maalUid, { disabled: spaerret });
+  if (spaerret) await auth.revokeRefreshTokens(maalUid);
+
+  /* ⚠ KONTOEN SLETTES IKKE. Personen bliver stående i personale/ — der
+     hænger indberetninger på uid'et — og kontoen skal kunne genåbnes. Kun
+     loginnet spærres. */
+  await skrivIndeks(tenantId, bruger, bruger.customClaims?.rolle || "chauffoer", spaerret);
+  await log(tenantId, uid, "tilstandsskift", maalUid, spaerret ? "spaerret" : "genaabnet");
+
+  return { ok: true, spaerret };
 });

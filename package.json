@@ -14,8 +14,9 @@
     "regler:tjek": "node scripts/tjek-regler.mjs",
     "regler:udrul": "npm run delt:kopier && firebase deploy --only database --project dev && npm run regler:tjek",
     "delt:kopier": "node scripts/kopier-delt.mjs",
-    "funktioner:udrul": "npm run delt:kopier && firebase deploy --only functions --project dev",
-    "kunde:opret": "node scripts/opret-kunde.mjs"
+    "funktioner:udrul": "npm run delt:kopier && firebase deploy --only functions --project dev && npm run funktioner:aabn",
+    "kunde:opret": "node scripts/opret-kunde.mjs",
+    "funktioner:aabn": "node scripts/funktioner-aabn.mjs"
   },
   "dependencies": {
     "firebase": "^10.12.2",

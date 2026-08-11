@@ -123,6 +123,40 @@
           ".write": false
         },
 
+        // ══════════════════════════════════════════════════════════════
+        // BRUGERINDEKSET — fordi en klient ikke kan liste konti
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ FIREBASE AUTH HAR INGEN listUsers PAA KLIENTSIDEN. Skaermen
+        // kunne derfor ikke vise hvem der har adgang — og en opdigtet
+        // brugerliste er vaerre end ingen: den viser konti der ikke findes
+        // og skjuler dem der goer.
+        //
+        // Noden her er et INDEKS skrevet af den Cloud Function der opretter
+        // brugeren. Den er ikke sandheden — Auth er sandheden — men den er
+        // det eneste en klient kan laese, og funktionen skriver begge dele i
+        // samme kald.
+        //
+        // Alternativet var at lade funktionen liste ALLE konti og filtrere
+        // paa tenant. Det skanner hver eneste kundes brugere ved hvert
+        // opslag, og en filtrering man selv skriver, er en filtrering man kan
+        // komme til at glemme. Et indeks pr. tenant kan ikke laekke paa
+        // tvaers, fordi det ligger UNDER tenanten.
+        //
+        // ⚠ INGEN LOESEN, INGEN CLAIMS. Kun navn, mail, rolle og om kontoen
+        // er spaerret. Claims staar i tokenet, hvor de hoerer hjemme; laa de
+        // ogsaa her, ville de to kunne drive fra hinanden — og indekset ville
+        // vaere det man kiggede paa.
+        //
+        // .read er tenant-medlemskab som paa roller: hvem der arbejder her, er
+        // ikke hemmeligt for kollegerne. .write er false — indekset skrives
+        // kun af funktionen, sammen med den rigtige konto.
+        "brugere": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()",
+          ".write": false,
+          ".indexOn": ["rolle", "spaerret"]
+        },
+
         // KLASSIFICEREDE SATELLITTER (beslutning 17).
         // 
         // securityInformation, privatePickupAddress, sensitiveNotes, liveGPS,

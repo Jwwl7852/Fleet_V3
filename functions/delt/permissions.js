@@ -1,3 +1,8 @@
+/* ⚠ KOPI — REDIGÉR IKKE HER.
+ * Kilden er src/fleet/permissions.js. Filen lægges af
+ * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.
+ * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
+ */
 /* src/fleet/permissions.js
  * Adgang afgøres af PERMISSIONS, ikke af rollen.
  *
