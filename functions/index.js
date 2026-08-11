@@ -694,6 +694,11 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
     momssats: Number(d.momssats),
     moduler: d.moduler || {},
     oprettetAf: ejerUid,
+    /* ⚠ TO DATOER, OG DE BETYDER IKKE DET SAMME. gyldigFraMs er hvornaar
+       prisen GAELDER; oprettetMs er hvornaar den blev lagt. En liste kan
+       laegges i dag og gaelde fra den 1. i naeste maaned, og skaermen skal
+       kunne sige begge dele — "sidst rettet" er den ene, ikke den anden. */
+    oprettetMs: Date.now(),
   };
 
   /* ⚠ SAMME VALIDERING SOM KLIENTEN, kørt igen. En ændret klient kunne sende

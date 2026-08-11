@@ -935,6 +935,7 @@
           "gyldigFraMs": { ".validate": "newData.isNumber()" },
           "momssats": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
           "oprettetAf": { ".validate": "newData.isString()" },
+          "oprettetMs": { ".validate": "newData.isNumber()" },
           "moduler": {
             "$modul": {
               // ⚠ OERE SOM INTEGER. Ikke kroner, ikke float — beslutning 2,

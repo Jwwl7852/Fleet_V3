@@ -714,3 +714,28 @@
 .fc-afkryds-punkt:has(input:checked){border-color:var(--bc-accent);
   background:var(--fc-accent-soft)}
 .fc-afkryds-punkt svg{width:16px; height:16px}
+
+/* ---- Print ---------------------------------------------------------
+   ⚠ EN SKAERM ER IKKE ET ARK. Uden det her folder sidebaren sig ud over to
+   sider, knapper printes som tomme kasser, og en tabel brydes midt i en
+   raekke — og en pris der staar halvt paa side 1 og halvt paa side 2 er
+   ikke dokumentation.
+
+   Ingen egne farver: browseren printer i sort/hvid som standard, og en
+   farve her ville kun gaelde for den der har slaaet baggrundsgrafik til. */
+@media print{
+  .fc-side,.fc-top-ctl,.fc-ikke-print,.fc-btn{display:none !important}
+  .fc-app,.fc-udbyder{display:block}
+  .fc-slot{padding:0}
+  /* ⚠ TOKENET, IKKE EN GRAATONE. Designtesten fangede et #999 her, og den har
+     ret: en raafarve i print er stadig en farve nogen skal vedligeholde to
+     steder. Er kanten for lys paa papir, er det en token-diskussion. */
+  .fc-card{border:1px solid var(--bc-line); box-shadow:none; break-inside:avoid}
+  /* En raekke maa ikke brydes. En tabel MAA gerne — den faar sin overskrift
+     med paa naeste side af thead. */
+  .fc-table{break-inside:auto}
+  .fc-table tr{break-inside:avoid}
+  .fc-table thead{display:table-header-group}
+  .fc-kpis{grid-template-columns:repeat(4,1fr)}
+  a[href]:after{content:""}
+}

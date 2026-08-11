@@ -22,6 +22,7 @@
  * gennem appen bagefter, og en eksport hører FØR fravalget.
  */
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { db, auth } from "../../firebase.js";
 import { dato, num } from "../../fleet/format.js";
 import {
@@ -499,7 +500,15 @@ export default function Konsol({ bruger }) {
 
       <Kort
         titel={`Kunder (${num(kunder.length)})`}
-        handling={<Knap variant="primaer" onClick={() => saetNy(true)}>Ny kunde</Knap>}
+        handling={
+          <span className="fc-med-ikon" style={{ gap: 10 }}>
+            {/* ⚠ KONSOLLEN HAR INGEN SIDEBAR (beslutning 35: en ejer staar
+                ikke i en kundekontekst), saa uden det her link findes
+                prisskaermen kun for den der kender adressen. */}
+            <Link className="fc-a" to="/main/priser">Priser &amp; fakturagrundlag →</Link>
+            <Knap variant="primaer" onClick={() => saetNy(true)}>Ny kunde</Knap>
+          </span>
+        }
       >
         <Tabel
           kolonner={[
