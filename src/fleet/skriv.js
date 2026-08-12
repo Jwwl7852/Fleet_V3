@@ -45,6 +45,24 @@ export async function gem({
   sti, data, foer = null, objekt, objektId = null,
   handling = AUDIT.aendre, note = null, korrelationsId = null,
   formentligGyldig = true,
+  /**
+   * ⚠ `flet` FINDES FOR DE NODER TO MODULER DELER, og den er ikke en
+   * bekvemmelighed.
+   *
+   * `reolpladser` skrives af BÅDE Turtlebooking (hal · reol · fag · hylde ·
+   * plads) og Warehouse (zone · type · status · temperatur). Med `.set()`
+   * sender hver formular kun SINE felter — og sletter dermed den andens i
+   * tavshed. En lagermedarbejder der rettede en hyldes nummer, ville have
+   * nulstillet dens temperatur og taget den ud af karantæne uden at vide det.
+   *
+   * `flet: true` bruger `update()`, så hver skærm kun rører det den kender.
+   * Et felt der skal ryddes, sendes som `null` — præcis som med `set()`.
+   *
+   * ⚠ DET ER IKKE EN SLETNING. `update()` med null fjerner ét felt, ikke en
+   * post; der er stadig ingen vej til at hardslette en post herfra, og
+   * `skrivning.test.mjs` holder øje med det.
+   */
+  flet = false,
 }) {
   if (!db) {
     if (import.meta.env?.DEV) console.debug("[skriv, demo]", sti, data);
@@ -52,7 +70,8 @@ export async function gem({
   }
 
   try {
-    await db.ref(sti).set(data);
+    if (flet) await db.ref(sti).update(data);
+    else await db.ref(sti).set(data);
   } catch (fejl) {
     const art = tolkFejl(fejl, { formentligGyldig });
     /* ⚠ EN AFVIST SKRIVNING LOGGES OGSÅ. Det er den man vil se bagefter:

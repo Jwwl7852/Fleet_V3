@@ -31,8 +31,9 @@ import {
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
-  DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
+  DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const PR_SIDE = 12;
 

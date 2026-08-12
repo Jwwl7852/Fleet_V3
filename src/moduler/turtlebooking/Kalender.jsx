@@ -30,8 +30,9 @@ import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
 } from "../../fleet/turtlebooking.js";
 import {
-  DEMO_KASSER, DEMO_KASSETYPER, DEMO_REOLPLADSER, DEMO_KASSEUDLAAN,
+  DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const DAG = 86400000;
 

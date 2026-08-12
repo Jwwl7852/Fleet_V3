@@ -38,8 +38,9 @@ import {
 } from "../../fleet/turtlebooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
-  DEMO_KASSER, DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
+  DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const DAG = 86400000;
 

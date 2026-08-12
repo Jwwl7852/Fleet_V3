@@ -135,6 +135,21 @@ ting følger, og begge rører noget der allerede virker:
   WMS-medarbejder uden Turtlebooking ville ikke kunne oprette en hylde. Den
   får sin egen — `reolpladser.skriv`.
 
+**Etape 3 er inde.** Warehouse står nu i sidebaren med **Varer** og
+**Lokationer**, og `UDEN_SKAERM` er tom igen.
+
+⚠ **Delingen af `reolpladser` havde en fælde der allerede var indført.**
+Turtlebookings formular sender kun sine fem felter, og `gem()` skrev med
+`.set()`. En lagermedarbejder der rettede et hyldenummer, ville have
+nulstillet temperaturen og taget hylden ud af karantæne — i tavshed.
+`skriv.js` har derfor fået `flet: true`, som bruger `update()`, og begge
+skærme bruger den. Der er både en adfærdsprøve (felterne overlever) og en
+kodeprøve (skærmen kalder den vej) — den første kan ikke se om nogen fjerner
+`flet` igen.
+
+⚠ **Demo-sættet flyttede til `demo-lager.js`.** Et datasæt for en delt node
+hører ikke i det ene moduls fil; ellers laver den anden skærm sin egen kopi.
+
 ### ⚠ 3.4 Scanner-appen er ikke en skærm
 
 Offline-kø, kamera, stregkodelæser, signatur, badge-login. Det er en
@@ -195,7 +210,7 @@ stemmer.
 |---|---|---|---|
 | 1 | **Modulet findes**: `warehouse` i katalog, regler, prisliste, nav | Kan sælges og krydses af | ✅ |
 | 2 | **Datamodel**: varer, lokationer, bevægelser, beholdning + regler + prøver | Grundlaget kan ikke laves om bagefter | ✅ |
-| 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | |
+| 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | ✅ |
 | 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | |
 | 5 | **Pluk, pak, afsend** — pluklister, konsolidering, afsendelse | Udgående flow | |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | |

@@ -24,8 +24,11 @@ import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
-  DEMO_KASSETYPER, DEMO_REOLPLADSER, DEMO_KASSER, DEMO_KASSEUDLAAN,
-} from "../src/fleet/demo-turtlebooking.js";
+  DEMO_KASSETYPER, DEMO_KASSER, DEMO_KASSEUDLAAN,
+} from "../src/fleet/demo-turtlebooking.js"
+import {
+  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING,
+} from "../src/fleet/demo-lager.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -170,6 +173,12 @@ export const SEED = [
   { node: "reolpladser", data: DEMO_REOLPLADSER, form: "liste" },
   { node: "kasser", data: DEMO_KASSER, form: "liste" },
   { node: "kasseudlaan", data: DEMO_KASSEUDLAAN, form: "liste" },
+  /* Warehouse. ⚠ beholdning seedes selv om noden er .write: false for enhver
+     klient — provisioneringen koerer paa admin-SDK og gaar uden om reglerne.
+     Uden den ville Varer- og Lokationer-skaermene staa med tomme kolonner i
+     dev, og saa ville ingen opdage at summen ikke blev regnet. */
+  { node: "varer", data: DEMO_VARER, form: "liste" },
+  { node: "beholdning", data: DEMO_BEHOLDNING, form: "liste" },
 ];
 
 /**

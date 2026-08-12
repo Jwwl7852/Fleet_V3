@@ -10,6 +10,12 @@
  * Det her er opdigtet, og det er meningen: opdigtede tal findes kun hvor der
  * ikke er en database at spørge.
  */
+import { DEMO_REOLPLADSER } from "./demo-lager.js";
+
+/* ⚠ REOLPLADSERNE LIGGER I demo-lager.js. Noden deles med Warehouse, og et
+   demo-datasæt hører ét sted — ellers laver den anden skærm sin egen kopi.
+   Den re-eksporteres IKKE herfra: to navne til det samme er begyndelsen på
+   to sæt. Skærmene importerer den direkte fra demo-lager.js. */
 
 export const DEMO_KASSETYPER = [
   { id: "AL", navn: "Alukasse", beskrivelse: "Standard alukasse til lærred og ramme." },
@@ -17,15 +23,6 @@ export const DEMO_KASSETYPER = [
   { id: "KL", navn: "Klimakasse", beskrivelse: "Isoleret, med fugtbuffer." },
 ];
 
-export const DEMO_REOLPLADSER = [
-  { id: "p-h1-r1-f1-h6-1", hal: "Hal 1", reol: "1", fag: "1", hylde: "6", plads: "1" },
-  { id: "p-h1-r1-f1-h7-3", hal: "Hal 1", reol: "1", fag: "1", hylde: "7", plads: "3" },
-  { id: "p-h1-r2-f1-h9-2", hal: "Hal 1", reol: "2", fag: "1", hylde: "9", plads: "2" },
-  { id: "p-h1-r2-f1-h9-3", hal: "Hal 1", reol: "2", fag: "1", hylde: "9", plads: "3" },
-  { id: "p-h1-r2-f1-h10-1", hal: "Hal 1", reol: "2", fag: "1", hylde: "10", plads: "1" },
-  { id: "p-h2-r1-f2-h3-1", hal: "Hal 2", reol: "1", fag: "2", hylde: "3", plads: "1" },
-  { id: "p-h2-r1-f2-h3-2", hal: "Hal 2", reol: "1", fag: "2", hylde: "3", plads: "2" },
-];
 
 /**
  * ⚠ DE UDLÅNTE HAR INGEN pladsId. En kasse hos kunden optager ikke en hylde —

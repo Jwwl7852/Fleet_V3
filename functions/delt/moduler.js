@@ -156,19 +156,18 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
  * `modulkataloget svarer til menuen` kræver et navKey for alle ANDRE — så
  * en glemt menupost fanges stadig.
  *
- * turtlebooking: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
- * etape 3, hvor kasser og reolpladser kan ses. Se TURTLEBOOKING.md.
- */
-/* turtlebooking stod her mellem etape 1 og 3: modulet kunne saelges og
- * prissaettes, men havde ingen skaerm, og et menupunkt der foerer til
- * ingenting lover noget produktet ikke kan. Nu findes skaermene, og navnet
- * er fjernet igen.
+ * ⚠ TOM IGEN — OG DET ER MENINGEN AT DEN SKAL VÆRE DET.
  *
- * ⚠ warehouse staar her NU, af samme grund. Modulet findes i kataloget og
- * kan krydses af og prissaettes — men datamodellen er ikke bygget, og der er
- * ingen skaerm at gaa til. Fjern navnet naar der ER en (se WAREHOUSE.md,
- * etape 3), ikke foer. */
-export const UDEN_SKAERM = ["warehouse"];
+ * Begge de nye moduler har stået her og er fjernet igen, hvert på sin tur:
+ * `turtlebooking` mellem etape 1 og 3, `warehouse` mellem etape 1 og 3. I
+ * begge tilfælde kunne modulet sælges og prissættes, mens der endnu ikke var
+ * en skærm at gå til — og listen var det der holdt menupunktet borte imens.
+ *
+ * Sæt et navn ind når et modul kommer i kataloget uden skærm, og fjern det
+ * igen SAMME dag skærmen findes. En liste der aldrig tømmes, holder op med at
+ * betyde noget.
+ */
+export const UDEN_SKAERM = [];
 
 /** De moduler enhver kunde altid har. */
 export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);

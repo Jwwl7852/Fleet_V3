@@ -26,7 +26,8 @@ import {
 import { pladsnavn, haller, valideReolplads } from "../../fleet/turtlebooking.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
-import { DEMO_REOLPLADSER, DEMO_KASSETYPER, DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_KASSETYPER, DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const tomPlads = () => ({ hal: "", reol: "", fag: "", hylde: "", plads: "" });
 
@@ -60,6 +61,11 @@ function Pladsformular({ plads, sti, paaGemt, paaLuk }) {
     };
     const r = await gem({
       sti: sti(`reolpladser/${id}`), data, foer: plads || null,
+      /* ⚠ FLET, IKKE OVERSKRIV. Noden deles med Warehouse, som har sine egne
+         felter paa den samme plads (zone, type, status, temperatur). Med en
+         hel skrivning ville en rettelse af hyldenummeret slette dem i
+         tavshed — og tage hylden ud af karantaene uden at nogen vidste det. */
+      flet: true,
       objekt: "reolpladser", objektId: id,
       handling: nyt ? AUDIT.opret : AUDIT.aendre,
     });

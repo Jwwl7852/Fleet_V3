@@ -116,6 +116,17 @@ export const NAV = [
     ],
   },
   {
+    key: "warehouse", sti: "/warehouse", label: "Warehouse", titel: "Warehouse",
+    under: "Lagerhotel: kundens varer, lokationer og bevægelser",
+    born: [
+      { key: "warehouseVarer", sti: "/warehouse", label: "Varer",
+        titel: "Warehouse – varer", under: "Kundens varekartotek, enheder og sporing" },
+      { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
+        titel: "Warehouse – lokationer",
+        under: "Zoner, hylder, belægning og status. Deles med Turtlebooking." },
+    ],
+  },
+  {
     key: "kunder", sti: "/kunder", label: "Kunder & Priser", titel: "Kunder & Priser",
     under: "Overblik over kunder, aftaler og priser",
   },

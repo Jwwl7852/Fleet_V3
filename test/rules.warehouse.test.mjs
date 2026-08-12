@@ -112,6 +112,30 @@ describe("den delte reolplads", () => {
     const db = som(BEGGE);
     await assertSucceeds(set(ref(db, t(BEGGE, "reolpladser/p6")), plads));
   });
+
+  it("⚠ EN RETTELSE FRA DEN ENE SKÆRM SLETTER IKKE DEN ANDENS FELTER", async () => {
+    /* Den her prøve findes fordi fejlen ALLEREDE var indført: Turtlebookings
+       formular sender kun hal/reol/fag/hylde/plads, og gem() skrev med
+       .set(). En lagermedarbejder der rettede et hyldenummer, ville have
+       nulstillet temperaturen og taget hylden ud af karantæne — i tavshed.
+
+       Rettelsen er `flet: true` i skriv.js, som bruger update(). Prøven her
+       er den adfærd, ikke koden: skriv WMS-felterne, ret så kun
+       Turtlebookings, og se at de første står. */
+    const db = som(BEGGE);
+    const sti = t(BEGGE, "reolpladser/delt");
+    await assertSucceeds(set(ref(db, sti), {
+      ...plads, zone: "Zone A", type: "hylde", status: "karantaene", temperatur: 4.2,
+    }));
+    await assertSucceeds(update(ref(db, sti), {
+      hal: "Hal 3", reol: "9", fag: "1", hylde: "2", plads: "1",
+    }));
+    const efter = (await get(ref(db, sti))).val();
+    assert.equal(efter.hal, "Hal 3", "rettelsen slog ikke igennem");
+    assert.equal(efter.status, "karantaene", "karantænen forsvandt");
+    assert.equal(efter.temperatur, 4.2, "temperaturen forsvandt");
+    assert.equal(efter.zone, "Zone A", "zonen forsvandt");
+  });
 });
 
 describe("varekartoteket", () => {

@@ -252,10 +252,11 @@ describe("beholdningen er summen, ikke et tal der tælles op og ned", () => {
 });
 
 describe("modulet, noderne og rettighederne hænger sammen", () => {
-  it("står i kataloget og er IKKE tegnet endnu", () => {
+  it("⚠ TEGNES NU — og UDEN_SKAERM er tom igen", () => {
+    /* Navnet stod der mellem etape 1 og 3: modulet kunne saelges, men havde
+       ingen skaerm. Varer og Lokationer findes nu. */
     assert.ok(MODUL.warehouse);
-    assert.ok(UDEN_SKAERM.includes("warehouse"),
-      "warehouse har ingen skærm endnu og må ikke stå i sidebaren");
+    assert.ok(!UDEN_SKAERM.includes("warehouse"));
   });
 
   it("ejer sine tre egne noder og DELER reolpladser", () => {
@@ -296,5 +297,38 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
     assert.ok(skriv.includes("|reolpladser.skriv|"));
     assert.ok(!skriv.includes("|kasser.skriv|"),
       "reolpladser kræver stadig kasser.skriv");
+  });
+});
+
+describe("den delte node skrives uden at slette den andens felter", () => {
+  it("Turtlebookings formular fletter", () => {
+    /* ⚠ KODEPRØVEN VED SIDEN AF ADFÆRDSPRØVEN, og de er ikke overflødige:
+       adfærdsprøven i rules.warehouse.test.mjs viser at update() bevarer
+       felterne, men den kan ikke se om SKÆRMEN kalder den vej. Fjerner nogen
+       `flet: true` igen, er reglerne stadig grønne — og felterne forsvinder
+       lige så stille som første gang. */
+    const kilde = readFileSync("src/moduler/turtlebooking/Reolpladser.jsx", "utf8");
+    assert.ok(kilde.includes("flet: true"),
+      "Reolpladser skriver hele posten og sletter Warehouses felter");
+  });
+
+  it("skriv.js kan flette, og gør det ikke som standard", () => {
+    /* ⚠ IKKE STANDARD. De øvrige skærme ejer hele deres post, og en fletning
+       dér ville betyde at et felt man RYDDEDE, blev stående hvis formularen
+       holdt op med at sende det. Fletningen er undtagelsen for delte noder. */
+    const kilde = readFileSync("src/fleet/skriv.js", "utf8");
+    assert.ok(kilde.includes("flet = false"), "flet er ikke slået fra som standard");
+    assert.ok(kilde.includes(".update(data)"));
+    assert.ok(kilde.includes(".set(data)"));
+  });
+
+  it("⚠ FLETNINGEN ER IKKE EN SLETTEVEJ", () => {
+    /* Regnskabsdata hardslettes ikke, og update() må ikke blive smuthullet.
+       Den samme prøve som skrivning.test.mjs kører på filen — gentaget her,
+       fordi det var DEN HER ændring der kunne have åbnet den. */
+    const kilde = readFileSync("src/fleet/skriv.js", "utf8");
+    assert.ok(!/\.remove\(\)/.test(kilde), "skriv.js kalder .remove()");
+    assert.ok(!/\bset\(null\)/.test(kilde), "skriv.js kalder set(null)");
+    assert.ok(!/export (async )?function slet\b/.test(kilde), "skriv.js har en slet()");
   });
 });

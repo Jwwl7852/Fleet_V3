@@ -26,8 +26,9 @@ import {
   dageUde, historikForKasse, sagsoversigt,
 } from "../../fleet/turtlebooking.js";
 import {
-  DEMO_KASSER, DEMO_KASSETYPER, DEMO_REOLPLADSER, DEMO_KASSEUDLAAN,
+  DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 /**
  * Varigheden med sit forbehold.
