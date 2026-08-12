@@ -792,18 +792,30 @@ export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 
    RATERNE OG AFREGNINGEN
    ══════════════════════════════════════════════════════════════════════════
 
-   ⚠ RATERNE FÅR IKKE DERES EGEN NODE. De ligger i `satser` — platformens
-   eksisterende prisnode, hvor en sats ALDRIG overskrives, men får en ny post
-   med `gyldigFra`. Plancherne kalder dem "Rater", og det ville have været et
-   FJERDE sted priser bor (satser, lagre/haandteringSatser, udbyder/prisliste).
+   ⚠ RATERNE DEFINERES PÅ KUNDEN, I KUNDER & PRISER — IKKE HER.
 
-   Formen er `satser/lager/<ydelse>/satser/<id> = { gyldigFra, satsOere }`, og
-   den passer i den regel der allerede står der. Ingen ny node, ingen ny
-   permission: `satser.skriv`.
+   Der er to slags priser i platformen, og de må ikke blandes sammen:
 
-   ⚠ HVORFOR gyldigFra ER HELE POINTEN. Rettes en sats i dag, må den ikke
-   ændre prisen på en håndtering fra sidste kvartal. Afregningen slår derfor
-   satsen op på BEVÆGELSENS tidspunkt, ikke på nutiden.
+     · UDBYDERENS priser på modulerne (`udbyder/prisliste`). Dem sætter vi
+       som ejere, og de handler om hvad abonnementet koster.
+     · KUNDENS priser til SIN kunde. Dem sætter vognmanden selv, og de
+       defineres ét sted: på kunden i Kunder & Priser. Det gælder ALLE
+       kundens priser — også lagerydelserne.
+
+   Plancherne har en selvstændig "Rater & afregning"-skærm. Den bygges IKKE:
+   den ville være et andet sted at sætte den samme slags pris, og så ville en
+   vognmand skulle vedligeholde sine priser to steder.
+
+   ⚠ OG SATSOPSLAGET SKRIVES IKKE AF. `satsPaa()` i pricing.js er husets ene
+   funktion til "hvilken sats gjaldt på det her tidspunkt", og den bærer
+   allerede reglen om at satser aldrig overskrives (beslutning 7). Filen her
+   er importfri og kan ikke importere den — derfor tager `afregningslinjer()`
+   opslaget som en PARAMETER frem for at lave sin egen. En kopi ville være to
+   steder der afgør hvilken pris der gjaldt.
+
+   ⚠ pricing.js KAN I FORVEJEN LAGERDØGN. `METODER.prLagerdoegn`,
+   `lagerdoegn()` (påbegyndte døgn, rundet OP) og `lagerUd()` findes og er
+   prøvet. Opbevaringsafregningen skal bygge på dem — ikke på noget nyt.
 
    ---------------------------------------------------------------------------
    ⚠ TO TING KAN IKKE REGNES BAGUD, OG DE ER IKKE BYGGET HER.
@@ -867,24 +879,6 @@ export const ALLE_YDELSER = Object.keys(YDELSE);
 export const IKKE_AFREGNEDE_ARTER = ["optael", "justering"];
 
 /**
- * Den sats der gjaldt på et tidspunkt.
- *
- * ⚠ PÅ BEVÆGELSENS TIDSPUNKT, IKKE PÅ NUTIDENS. Rettes en sats i dag, må den
- * ikke ændre prisen på en håndtering fra sidste kvartal. Samme regel som
- * `gaeldendePrisliste()` i priser.js.
- *
- * → `null` hvis der ingen sats gjaldt. Det er ikke nul kroner: det er et
- * spørgsmål der skal besvares, og afregningen nægter at gætte. Samme regel
- * som momssatsen der mangler.
- */
-export function gaeldendeSats(poster = [], naa) {
-  const gyldige = poster
-    .filter((p) => Number.isFinite(p?.gyldigFra) && p.gyldigFra <= naa)
-    .sort((a, b) => b.gyldigFra - a.gyldigFra);
-  return gyldige.length ? gyldige[0] : null;
-}
-
-/**
  * Afregningslinjerne for én kunde i én periode.
  *
  * `satser` er `{ <ydelse>: [{ gyldigFra, satsOere }] }`.
@@ -896,8 +890,13 @@ export function gaeldendeSats(poster = [], naa) {
  * null, og summen kan ikke gøres op. Det er det rigtige svar.
  */
 export function afregningslinjer({
-  bevaegelser = [], satser = {}, kundeId, fra, til,
+  bevaegelser = [], satsFor, kundeId, fra, til,
 }) {
+  if (typeof satsFor !== "function") {
+    throw new Error(
+      "afregningslinjer: satsFor(ydelse, tidspunktMs) mangler. Satsen slås op " +
+      "af kaldereren — se noten om hvor kundens priser bor.");
+  }
   const ud = [];
   for (const ydelse of ALLE_YDELSER) {
     const y = YDELSE[ydelse];
@@ -915,10 +914,13 @@ export function afregningslinjer({
        ene halvdel. Derfor grupperes bevægelserne PR. SATS. */
     const pr = new Map();
     for (const b of mine) {
-      const sats = gaeldendeSats(satser[ydelse] || [], b.tidspunktMs);
+      /* ⚠ OPSLAGET SKER UDEFRA. Kundens priser bor i Kunder & Priser, og
+         satsPaa() i pricing.js er husets ene opslagsfunktion. En kopi her
+         ville være to steder der afgør hvilken sats der gjaldt. */
+      const sats = satsFor(ydelse, b.tidspunktMs);
       const noegle = sats ? String(sats.gyldigFra) : "ingen";
       const g = pr.get(noegle) || {
-        satsOere: sats ? sats.satsOere : null,
+        satsOere: sats ? (sats.beloebOere ?? sats.satsOere ?? null) : null,
         gyldigFra: sats ? sats.gyldigFra : null,
         antal: 0, haendelser: 0,
       };

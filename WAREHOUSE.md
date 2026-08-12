@@ -90,7 +90,7 @@ fakturerbar hændelse der ender på kundens fakturagrundlag.
    bevægelsen er en indtægt. To forskellige ting — og derfor to noder, ikke én
    med et flag.
 
-### ⚠ 3.2 Afregningen må ikke blive et fjerde prissystem
+### ✅ 3.2 BESVARET: kundens priser sættes i Kunder & Priser
 
 Platformen har allerede **tre** steder hvor priser bor:
 
@@ -108,8 +108,29 @@ og `summer()`, øre som integer, moms der nægtes hvis satsen mangler.
 fakturagodkendelsesflow, og det ligger i Indkøb → Fakturaer. En "Afregn"-knap
 i WMS der godkender noget, er beslutning 12 om igen.
 
-*Det her afgør jeg selv, medmindre du siger noget andet — det følger af
-beslutninger der allerede er truffet.*
+**Svaret er:** der er to slags priser, og de må ikke blandes sammen.
+
+| Hvem sætter den | Hvor | Hvad den er |
+|---|---|---|
+| **Vi som ejere** | `udbyder/prisliste` | Hvad modulerne koster i abonnement |
+| **Vognmanden selv** | **Kunder & Priser, på kunden** | Hvad HANS kunde skal betale |
+
+⚠ **Plancherne har en selvstændig "Rater & afregning"-skærm. Den bygges IKKE.**
+Den ville være et andet sted at sætte den samme slags pris, og så skulle en
+vognmand vedligeholde sine priser to steder. Alle kundens priser — også
+lagerydelserne — defineres på kunden i Kunder & Priser.
+
+⚠ **OG SATSOPSLAGET SKREV JEG AF.** `satsPaa()` i `pricing.js` er husets ene
+funktion til *"hvilken sats gjaldt på det her tidspunkt"*, og den bærer
+allerede beslutning 7 om at satser aldrig overskrives. Jeg havde bygget den
+igen som `gaeldendeSats()` i `warehouse.js`. Den er slettet:
+`afregningslinjer()` tager nu opslaget som en **parameter**, fordi filen er
+importfri og ikke kan importere `pricing.js`.
+
+⚠ **Og `pricing.js` kan i forvejen lagerdøgn.** `METODER.prLagerdoegn`,
+`lagerdoegn()` (påbegyndte døgn, rundet **op**) og `lagerUd()` findes og er
+prøvet — med en tre-trins rangorden for hvornår godset forlader lageret.
+Opbevaringsafregningen skal bygge på dem, ikke på noget nyt.
 
 ### ✅ 3.3 BESVARET: én node, udvidet
 
