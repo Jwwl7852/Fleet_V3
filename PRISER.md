@@ -62,11 +62,24 @@ ydelser/<ydelseId> = {
 | **Warehouse** | **Håndtering ind, håndtering ud, flytning** | `prHaandtering` *(ny)* |
 | **Warehouse** | **Pr. palleplads pr. dag, pr. m³ pr. dag** | `prPalledoegn`, `prKubikdoegn` *(nye)* |
 
-### 3.2 Standardprisen — versioneret
+### ✅ 3.2 Standardprisen — i den node der allerede fandtes
 
 ```
-standardpriser/<ydelseId>/satser/<id> = { gyldigFra, beloebOere, aktiv }
+satser/standard/<ydelseId>/satser/<id> = { gyldigFra, beloebOere }
 ```
+
+⚠ **Der kom ingen ny node.** `satser` har eksisteret siden beslutning 7 med
+sit `gyldigFra`-indeks og sin `satser.skriv`-permission — den havde bare
+aldrig noget i sig. Til gengæld havde den **ingen validering**; den er nu
+strammet: beløb i hele ører, `gyldigFra` påkrævet, ukendte felter afvist.
+Det kunne gøres uden risiko netop fordi intet skrev til den — men det skulle
+gøres før den begyndte at bære penge.
+
+⚠ **Ydelses-id'et er en databasenøgle.** Id'erne hed `lager.handlingInd`, og
+RTDB tillader ikke punktum i en nøgle — hver eneste skrivning fejlede med
+*"invalid path"*. Build og prøver var grønne; kun en probe mod den udrullede
+base fandt det. De hedder nu `lager-handlingInd`, og en prøve holder øje med
+tegnene.
 
 ⚠ **Beslutning 7 gælder uændret:** en sats overskrives ALDRIG. Rettes prisen i
 dag, kommer der en ny post med `gyldigFra` — ellers ændrer en rettelse prisen
@@ -165,7 +178,7 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
 | 1 | **Ydelseskataloget** + de tre nye metoder i `pricing.js` | Der findes en liste over hvad der kan prissættes | ✅ |
-| 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | |
+| 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | ✅ |
 | 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | |
 | 4 | **`prisFor()`** og snapshot — én opslagsvej for hele platformen | Priserne bruges ét sted fra | |
 | 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder | |
