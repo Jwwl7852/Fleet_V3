@@ -21,6 +21,8 @@ import {
   valideOrdre, ordreFremdrift, kanFortrydeFrigivelse, plukkoe,
   AFVIGELSESAARSAG, ALLE_AFVIGELSESAARSAGER, valideOptaelling,
   noejagtighed, MINDSTE_OPTAELLINGER, afvigelserPrAarsag, forfaldneOptaellinger,
+  YDELSE, ALLE_YDELSER, IKKE_AFREGNEDE_ARTER, gaeldendeSats,
+  afregningslinjer, afregningssum,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -702,5 +704,105 @@ describe("serveren læser forventningen — klienten gør ikke", () => {
     assert.equal((krop.match(/rod\.update\(/g) || []).length, 1);
     assert.ok(krop.includes("optaellinger/${optId}"));
     assert.ok(krop.includes("bevaegelser/${bevId}"));
+  });
+});
+
+describe("raterne bor i satser — ikke i et fjerde prissystem", () => {
+  const V = 1000;
+  const D = (d) => Date.UTC(2026, 5, d);
+
+  it("finder den sats der gjaldt PÅ TIDSPUNKTET", () => {
+    /* ⚠ IKKE NUTIDENS. Rettes en sats i dag, må den ikke ændre prisen på en
+       håndtering fra sidste kvartal. Samme regel som gaeldendePrisliste(). */
+    const poster = [
+      { gyldigFra: D(1), satsOere: 1000 },
+      { gyldigFra: D(15), satsOere: 1250 },
+    ];
+    assert.equal(gaeldendeSats(poster, D(10)).satsOere, 1000);
+    assert.equal(gaeldendeSats(poster, D(20)).satsOere, 1250);
+    /* Før den første sats gjaldt der ingen. */
+    assert.equal(gaeldendeSats(poster, D(0)), null);
+    assert.equal(gaeldendeSats([], D(10)), null);
+  });
+
+  it("⚠ AFREGNER IKKE EN OPTÆLLING", () => {
+    /* Optælling og justering er VORES kontrol af vores eget lager, ikke en
+       ydelse kunden har bedt om. Kunne de afregnes, ville en optælling være
+       en indtægt — og så blev der talt af de forkerte grunde. */
+    assert.deepEqual(IKKE_AFREGNEDE_ARTER, ["optael", "justering"]);
+    const alleArter = ALLE_YDELSER.flatMap((y) => YDELSE[y].arter);
+    for (const a of IKKE_AFREGNEDE_ARTER) {
+      assert.ok(!alleArter.includes(a), `${a} er blevet fakturerbar`);
+    }
+  });
+
+  it("regner håndtering pr. hændelse og modtagelse pr. mængde", () => {
+    /* ⚠ EN SATS PR. PALLE OG EN PR. HÅNDTERING giver vidt forskellige beløb af
+       de samme bevægelser. Derfor står `grundlag` i modellen. */
+    const bev = [
+      { kundeId: "k1", art: "modtag", antal: 10 * V, tidspunktMs: D(5) },
+      { kundeId: "k1", art: "flyt", antal: 4 * V, tidspunktMs: D(5) },
+      { kundeId: "k1", art: "flyt", antal: 6 * V, tidspunktMs: D(6) },
+    ];
+    const satser = {
+      modtagelse: [{ gyldigFra: D(1), satsOere: 4500 }],
+      haandtering: [{ gyldigFra: D(1), satsOere: 1250 }],
+    };
+    const l = afregningslinjer({ bevaegelser: bev, satser, kundeId: "k1", fra: D(1), til: D(30) });
+    const m = l.find((x) => x.ydelse === "modtagelse");
+    const h = l.find((x) => x.ydelse === "haandtering");
+    /* 10 enheder × 45,00 */
+    assert.equal(m.antal, 10 * V);
+    assert.equal(m.beloebOere, 45000);
+    /* TO hændelser × 12,50 — ikke ti enheder */
+    assert.equal(h.haendelser, 2);
+    assert.equal(h.antal, 2 * V);
+    assert.equal(h.beloebOere, 2500);
+  });
+
+  it("⚠ DELER PERIODEN NÅR SATSEN SKIFTER MIDT I DEN", () => {
+    /* En enkelt sats for hele måneden ville fakturere den forkerte pris for
+       den ene halvdel. */
+    const bev = [
+      { kundeId: "k1", art: "pluk", antal: 1 * V, tidspunktMs: D(5) },
+      { kundeId: "k1", art: "pluk", antal: 1 * V, tidspunktMs: D(20) },
+    ];
+    const satser = { pluk: [{ gyldigFra: D(1), satsOere: 375 }, { gyldigFra: D(15), satsOere: 400 }] };
+    const l = afregningslinjer({ bevaegelser: bev, satser, kundeId: "k1", fra: D(1), til: D(30) });
+    assert.equal(l.length, 2, "perioden blev ikke delt ved satsskiftet");
+    assert.deepEqual(l.map((x) => x.beloebOere).sort((a, b) => a - b), [375, 400]);
+  });
+
+  it("holder andre kunder og andre perioder ude", () => {
+    const bev = [
+      { kundeId: "k1", art: "pluk", antal: 1 * V, tidspunktMs: D(5) },
+      { kundeId: "k2", art: "pluk", antal: 1 * V, tidspunktMs: D(5) },
+      { kundeId: "k1", art: "pluk", antal: 1 * V, tidspunktMs: D(29) },
+    ];
+    const satser = { pluk: [{ gyldigFra: D(1), satsOere: 375 }] };
+    /* Halvåbent [fra, til) — den 29. er uden for [1, 29). */
+    const l = afregningslinjer({ bevaegelser: bev, satser, kundeId: "k1", fra: D(1), til: D(29) });
+    assert.equal(l.length, 1);
+    assert.equal(l[0].haendelser, 1);
+  });
+
+  it("⚠ EN YDELSE UDEN SATS UDELADES IKKE — den står med null", () => {
+    /* Udelod vi den, ville fakturaen se komplet ud mens en ydelse manglede en
+       pris. Beløbet er null og ikke 0: et beløb på nul ligner en gratis
+       ydelse, null er et ubesvaret spørgsmål. */
+    const bev = [{ kundeId: "k1", art: "pluk", antal: 1 * V, tidspunktMs: D(5) }];
+    const l = afregningslinjer({ bevaegelser: bev, satser: {}, kundeId: "k1", fra: D(1), til: D(30) });
+    assert.equal(l.length, 1);
+    assert.equal(l[0].satsOere, null);
+    assert.equal(l[0].beloebOere, null);
+  });
+
+  it("⚠ NÆGTER EN SUM NÅR BARE ÉN SATS MANGLER", () => {
+    /* Samme regel som momsen der mangler: et system der lægger de kendte tal
+       sammen og lader det manglende stå som nul, giver et tal der ser rigtigt
+       ud og er for lavt. */
+    assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: null }]).beloebOere, null);
+    assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: null }]).mangler, 1);
+    assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: 250 }]).beloebOere, 350);
   });
 });

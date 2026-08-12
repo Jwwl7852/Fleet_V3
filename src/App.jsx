@@ -36,6 +36,11 @@ import Reolpladser from "./moduler/turtlebooking/Reolpladser.jsx";
 import Kasseudlaan from "./moduler/turtlebooking/Udlaan.jsx";
 import Turtlebookingkalender from "./moduler/turtlebooking/Kalender.jsx";
 import Turtlebookinghistorik from "./moduler/turtlebooking/Historik.jsx";
+import Wmsvarer from "./moduler/warehouse/Varer.jsx";
+import Wmslokationer from "./moduler/warehouse/Lokationer.jsx";
+import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
+import Wmspluk from "./moduler/warehouse/Pluk.jsx";
+import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -345,6 +350,11 @@ export default function App() {
             <Route path="turtlebooking/kalender" element={<Turtlebookingkalender />} />
             <Route path="turtlebooking/historik" element={<Turtlebookinghistorik />} />
             <Route path="turtlebooking/reolpladser" element={<Reolpladser />} />
+            <Route path="warehouse" element={<Wmsvarer />} />
+            <Route path="warehouse/lokationer" element={<Wmslokationer />} />
+            <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />
+            <Route path="warehouse/pluk" element={<Wmspluk />} />
+            <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
 
             <Route path="kunder" element={<Kunder />} />
 

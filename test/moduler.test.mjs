@@ -161,3 +161,50 @@ describe("hvert menupunkt har et ikon", () => {
     }
   });
 });
+
+describe("hvert menupunkt fører et sted hen", () => {
+  /* ⚠ HVORFOR DEN HER FILDEL BLEV SKREVET.
+     Warehouse stod i sidebaren med fem undermenupunkter, og INGEN af dem
+     havde en rute i App.jsx. Klikkede man, kom der en tom side.
+
+     Hverken `npm run build` eller de 1096 prøver kunne se det: komponenterne
+     var gyldige filer, de blev bare aldrig importeret, og en manglende rute
+     er ikke en syntaksfejl. Fejlen opstod fordi fem `String.replace()`-ankre
+     pegede på et komponentnavn der var omdøbt i en tidligere omgang — og
+     replace() fejler TAVST når ankeret ikke findes.
+
+     nav.js er ment som ÉN kilde til sidebar og ruter (se filens eget hoved).
+     Prøven her er dét løfte, gjort mekanisk. */
+  const app = readFileSync("src/App.jsx", "utf8");
+  const ruter = new Set(
+    [...app.matchAll(/<Route\s+path="([^"]*)"/g)].map((m) => m[1]));
+
+  /* ⚠ FORSIDEN ER EN <Route index>, IKKE EN path="". React Router skelner, og
+     en prøve der ikke gjorde det, ville kræve at nogen skrev path="" for at
+     blive grøn — hvilket ville være forkert. */
+  const harIndeks = /<Route\s+index/.test(app);
+  const somRute = (sti) => sti.replace(/^\//, "");
+  const harRute = (sti) => (sti === "/" ? harIndeks : ruter.has(somRute(sti)));
+
+  const alleNavpunkter = NAV.flatMap((m) => [m, ...(m.born || [])]);
+
+  it("hvert nav-punkt har en Route", () => {
+    const mangler = [];
+    for (const p of alleNavpunkter) {
+      /* Parametriserede stier står med :id både i nav og i ruten. */
+      if (!harRute(p.sti)) mangler.push(`${p.key} → ${p.sti}`);
+    }
+    assert.deepEqual(mangler, [],
+      "menupunkter uden rute — de giver en tom side når man klikker");
+  });
+
+  it("hvert modul med skærm har en rute", () => {
+    /* Den grovere kontrol ved siden af: står et modul i UDEN_SKAERM, må det
+       ikke have et menupunkt; står det ikke, SKAL hovedpunktet føre et sted
+       hen. */
+    for (const m of NAV) {
+      if (UDEN_SKAERM.includes(m.key)) continue;
+      assert.ok(harRute(m.sti), `App.jsx har ingen rute til modulet ${m.key}`);
+    }
+  });
+});

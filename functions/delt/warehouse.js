@@ -792,3 +792,179 @@ export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 
       (b.negativ ? 1 : 0) - (a.negativ ? 1 : 0) ||
       (a.senestOptaltMs || 0) - (b.senestOptaltMs || 0));
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RATERNE OG AFREGNINGEN
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ RATERNE FÅR IKKE DERES EGEN NODE. De ligger i `satser` — platformens
+   eksisterende prisnode, hvor en sats ALDRIG overskrives, men får en ny post
+   med `gyldigFra`. Plancherne kalder dem "Rater", og det ville have været et
+   FJERDE sted priser bor (satser, lagre/haandteringSatser, udbyder/prisliste).
+
+   Formen er `satser/lager/<ydelse>/satser/<id> = { gyldigFra, satsOere }`, og
+   den passer i den regel der allerede står der. Ingen ny node, ingen ny
+   permission: `satser.skriv`.
+
+   ⚠ HVORFOR gyldigFra ER HELE POINTEN. Rettes en sats i dag, må den ikke
+   ændre prisen på en håndtering fra sidste kvartal. Afregningen slår derfor
+   satsen op på BEVÆGELSENS tidspunkt, ikke på nutiden.
+
+   ---------------------------------------------------------------------------
+   ⚠ TO TING KAN IKKE REGNES BAGUD, OG DE ER IKKE BYGGET HER.
+
+   1. OPBEVARING PR. PALLE PR. DAG kræver en daglig måling af hvad der stod på
+      lageret. Den kan ikke rekonstrueres troværdigt bagefter: bevægelser kan
+      være registreret for sent, og en genberegning ville give et andet tal
+      hver gang historikken blev rettet. Det er samme lærestreg som
+      `maalnu` — målingen kan ikke laves bagud.
+
+   2. HVOR AFREGNINGEN SKAL LANDE. `grundlag.js` bygger et fakturagrundlag,
+      men `byggGrundlag()` KASTER uden et `bookingId`: "et grundlag hører til
+      et forløb". En lagerafregning har ingen booking — den har en periode og
+      en kunde. Og den tenant-nære `fakturagrundlag`-node findes slet ikke
+      endnu; `Fakturering.jsx` læser demo-data.
+
+   Derfor regner det her modul HÅNDTERINGEN — den kan udledes af bevægelserne,
+   som bærer deres eget tidsstempel — og stopper før dokumentet. Se WAREHOUSE.md.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * De ydelser der kan afregnes.
+ *
+ * ⚠ `grundlag` SIGER HVAD SATSEN GANGES MED, og det er ikke pynt: en sats pr.
+ * palle og en sats pr. håndtering giver vidt forskellige beløb af de samme
+ * bevægelser. Stod det ikke i modellen, ville hver skærm gætte.
+ */
+export const YDELSE = {
+  modtagelse: {
+    ydelse: "modtagelse", label: "Modtagelse", grundlag: "maengde",
+    arter: ["modtag"], enhed: "enhed",
+  },
+  haandtering: {
+    ydelse: "haandtering", label: "Håndtering", grundlag: "haendelse",
+    arter: ["putaway", "flyt"], enhed: "håndtering",
+  },
+  pluk: {
+    ydelse: "pluk", label: "Pluk", grundlag: "haendelse",
+    arter: ["pluk"], enhed: "pluklinje",
+  },
+  afsendelse: {
+    ydelse: "afsendelse", label: "Afsendelse", grundlag: "maengde",
+    arter: ["afsend"], enhed: "enhed",
+  },
+  retur: {
+    ydelse: "retur", label: "Returhåndtering", grundlag: "haendelse",
+    arter: ["retur"], enhed: "retur",
+  },
+};
+
+export const ALLE_YDELSER = Object.keys(YDELSE);
+
+/**
+ * ⚠ OPTÆLLING OG JUSTERING AFREGNES IKKE.
+ *
+ * De er VORES kontrol af vores eget lager, ikke en ydelse kunden har bedt om.
+ * Kunne de afregnes, ville en optælling være en indtægt — og så ville der
+ * blive talt af de forkerte grunde. Listen står eksplicit, så en ny art ikke
+ * lydløst bliver fakturerbar.
+ */
+export const IKKE_AFREGNEDE_ARTER = ["optael", "justering"];
+
+/**
+ * Den sats der gjaldt på et tidspunkt.
+ *
+ * ⚠ PÅ BEVÆGELSENS TIDSPUNKT, IKKE PÅ NUTIDENS. Rettes en sats i dag, må den
+ * ikke ændre prisen på en håndtering fra sidste kvartal. Samme regel som
+ * `gaeldendePrisliste()` i priser.js.
+ *
+ * → `null` hvis der ingen sats gjaldt. Det er ikke nul kroner: det er et
+ * spørgsmål der skal besvares, og afregningen nægter at gætte. Samme regel
+ * som momssatsen der mangler.
+ */
+export function gaeldendeSats(poster = [], naa) {
+  const gyldige = poster
+    .filter((p) => Number.isFinite(p?.gyldigFra) && p.gyldigFra <= naa)
+    .sort((a, b) => b.gyldigFra - a.gyldigFra);
+  return gyldige.length ? gyldige[0] : null;
+}
+
+/**
+ * Afregningslinjerne for én kunde i én periode.
+ *
+ * `satser` er `{ <ydelse>: [{ gyldigFra, satsOere }] }`.
+ * Perioden er halvåben `[fra, til)` — som alt andet der regner i tid her.
+ *
+ * ⚠ EN LINJE UDEN SATS UDELADES IKKE — den kommer med, med `satsOere: null`.
+ * Udelod vi den, ville fakturaen se komplet ud mens en ydelse manglede en
+ * pris, og ingen ville opdage det før kunden ringede. Beløbet er så også
+ * null, og summen kan ikke gøres op. Det er det rigtige svar.
+ */
+export function afregningslinjer({
+  bevaegelser = [], satser = {}, kundeId, fra, til,
+}) {
+  const ud = [];
+  for (const ydelse of ALLE_YDELSER) {
+    const y = YDELSE[ydelse];
+    const mine = bevaegelser.filter((b) =>
+      b.kundeId === kundeId &&
+      y.arter.includes(b.art) &&
+      !IKKE_AFREGNEDE_ARTER.includes(b.art) &&
+      Number.isFinite(b.tidspunktMs) &&
+      b.tidspunktMs >= fra && b.tidspunktMs < til);
+    if (!mine.length) continue;
+
+    /* ⚠ SATSEN SLÅS OP PR. BEVÆGELSE, ikke én gang for perioden. Skifter en
+       sats midt i en måned, skal de to halvdele afregnes hver for sig — og en
+       enkelt sats for hele perioden ville fakturere den forkerte pris for den
+       ene halvdel. Derfor grupperes bevægelserne PR. SATS. */
+    const pr = new Map();
+    for (const b of mine) {
+      const sats = gaeldendeSats(satser[ydelse] || [], b.tidspunktMs);
+      const noegle = sats ? String(sats.gyldigFra) : "ingen";
+      const g = pr.get(noegle) || {
+        satsOere: sats ? sats.satsOere : null,
+        gyldigFra: sats ? sats.gyldigFra : null,
+        antal: 0, haendelser: 0,
+      };
+      g.haendelser += 1;
+      g.antal += y.grundlag === "haendelse" ? MAENGDE_SKALA : (b.antal || 0);
+      pr.set(noegle, g);
+    }
+
+    for (const [, g] of pr) {
+      ud.push({
+        ydelse,
+        label: y.label,
+        enhed: y.enhed,
+        antal: g.antal,
+        haendelser: g.haendelser,
+        satsOere: g.satsOere,
+        gyldigFra: g.gyldigFra,
+        /* ⚠ null, IKKE 0, når satsen mangler. Et beløb på nul ligner en
+           gratis ydelse; null er et ubesvaret spørgsmål. */
+        beloebOere: g.satsOere == null
+          ? null
+          : Math.round((g.antal * g.satsOere) / MAENGDE_SKALA),
+      });
+    }
+  }
+  return ud.sort((a, b) => ALLE_YDELSER.indexOf(a.ydelse) - ALLE_YDELSER.indexOf(b.ydelse));
+}
+
+/**
+ * Summen af afregningslinjer — eller `null` hvis bare én mangler sin sats.
+ *
+ * ⚠ SAMME REGEL SOM MOMSEN DER MANGLER. Et system der lægger de kendte tal
+ * sammen og lader det manglende stå som nul, giver et tal der ser rigtigt ud
+ * og er for lavt. Så hellere ingen sum og en tydelig grund.
+ */
+export function afregningssum(linjer = []) {
+  if (linjer.some((l) => l.beloebOere == null)) {
+    return { beloebOere: null, mangler: linjer.filter((l) => l.beloebOere == null).length };
+  }
+  return {
+    beloebOere: linjer.reduce((s, l) => s + l.beloebOere, 0),
+    mangler: 0,
+  };
+}
