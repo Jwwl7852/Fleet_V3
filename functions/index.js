@@ -38,13 +38,17 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { initializeApp } from "firebase-admin/app";
-import { getDatabase } from "firebase-admin/database";
+import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 
 import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff } from "./delt/audit-regler.js";
 import {
   valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
 } from "./delt/turtlebooking.js";
+import {
+  valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
+  talFraMaengde,
+} from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
@@ -1306,3 +1310,249 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
 
   throw new HttpsError("invalid-argument", `Ukendt handling: ${d.handling}`);
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   WAREHOUSE (WMS) — BEVÆGELSEN
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR DEN SKAL VÆRE EN FUNKTION.
+
+   `bevaegelser` og `beholdning` er begge `.write: false`. Ikke fordi
+   rettigheden mangler — lagermedarbejderen HAR `bevaegelser.skriv` — men
+   fordi handlingen ikke kan udføres rigtigt fra en klient:
+
+   1. EN BEVÆGELSE ÆNDRER TO TIL TRE POSTER. Bevægelsen selv, og saldoen på
+      den plads varen kom fra og den den kom til. Skrives kun den ene, står
+      der varer på en hylde ingen har lagt der — eller de forsvinder uden
+      spor. Et lagertal uden en bevægelse bag sig kan ikke forklares.
+
+   2. SALDOEN MÅ IKKE KUNNE RETTES I HÅNDEN. Kunne den det, beviser en
+      optælling ingenting: enhver afvigelse kunne "rettes" frem for at blive
+      forklaret.
+
+   3. TO LAGERMÆND KAN PLUKKE FRA SAMME HYLDE I SAMME SEKUND.
+
+   ---------------------------------------------------------------------------
+   ⚠ HVAD ATOMICITETEN GARANTERER — OG HVAD DEN IKKE GØR.
+
+   Skrivningen sker som ÉN multi-path `update()` med `ServerValue.increment()`
+   på saldoerne. Det giver to ting:
+
+     ✓ Bevægelsen og begge saldoændringer lander SAMMEN eller slet ikke.
+       Der kan aldrig opstå en saldo uden en bevægelse bag sig.
+     ✓ Selve tilvæksten er atomisk. To samtidige plukninger af 2 og 3 giver
+       −5, aldrig −2 eller −3.
+
+   ✗ Men den kan IKKE afvise sig selv. Beholdningen læses FØR skrivningen for
+     at afvise et pluk der ikke er dækning for, og i det vindue — millisekunder
+     — kan to plukninger begge se dækning og tilsammen tage hylden i minus.
+
+   Det er ikke et hul der kan lukkes med en transaktion: en RTDB-transaktion
+   virker på ÉN ref, og en flytning rører to. En transaktion på hele
+   `beholdning` ville låse hele lageret ved hver eneste scanning.
+
+   Derfor er valget: garantér det der ikke må gå galt (ingen saldo uden
+   bevægelse), og gør det der kan gå galt SYNLIGT. Funktionen læser saldoerne
+   igen bagefter, og går én i minus, skrives der en auditpost om det. En
+   negativ saldo er et lager der skal tælles — ikke et tal der skal rettes.
+   Det er hvad cycle count er til for.
+
+   ---------------------------------------------------------------------------
+   ⚠ POLITIKKEN ER DEN SAMME FIL. `delt/warehouse.js` er en KOPI af
+   `src/fleet/warehouse.js`. Serveren prøver mod nøjagtig den
+   `valideBevaegelse()` og den `virkningPaaBeholdning()` som skærmen viser
+   brugeren. Ottende fil efter det mønster.
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function kraevBevaegelsesskriv(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const perms = auth.token?.perms;
+  if (typeof perms !== "string" || !perms.includes(`|${PERM.bevaegelserSkriv}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${PERM.bevaegelserSkriv}.`);
+  }
+
+  const db = getDatabase();
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE, og reglerne er det eneste sted de to
+     spærringer ellers står. Uden de linjer var funktionen en åben dør rundt om
+     både modulafkrydsningen og loginspærringen. Fejler ÅBENT når feltet ikke
+     findes — nøjagtig som reglen gør. */
+  const [ab, modul] = await Promise.all([
+    db.ref(`tenants/${tenantId}/abonnement/status`).once("value"),
+    db.ref(`tenants/${tenantId}/moduler/warehouse`).once("value"),
+  ]);
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  if (modul.exists() && modul.val() !== true) {
+    throw new HttpsError("permission-denied", "Warehouse er ikke slået til.");
+  }
+
+  return { uid: auth.uid, tenantId, db };
+}
+
+/** Saldoposten som den ser ud efter en ændring — eller null hvis den ikke findes. */
+const saldoAf = (snap) => (snap.exists() ? snap.val()?.antal ?? 0 : 0);
+
+export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevBevaegelsesskriv(req);
+  const rod = db.ref(`tenants/${tenantId}`);
+  const d = req.data || {};
+
+  const post = {
+    art: kortStreng(d.art, 20),
+    vareId: kortStreng(d.vareId, 60),
+    antal: Number(d.antal),
+    fraPladsId: kortStreng(d.fraPladsId, 60),
+    tilPladsId: kortStreng(d.tilPladsId, 60),
+    batch: kortStreng(d.batch, 40),
+    serienummer: kortStreng(d.serienummer, 60),
+    reference: kortStreng(d.reference, 60),
+    note: kortStreng(d.note, 300),
+  };
+
+  if (!post.vareId) throw new HttpsError("invalid-argument", "vareId mangler.");
+
+  /* ---- Varen bestemmer sporing, enhed OG kunde ----------------------- */
+  const vare = (await rod.child(`varer/${post.vareId}`).once("value")).val();
+  if (!vare) throw new HttpsError("not-found", `Varen ${post.vareId} findes ikke.`);
+
+  /* ⚠ KUNDEN LÆSES AF VAREN OG SKRIVES MED PÅ BEVÆGELSEN. Den sendes IKKE
+     fra klienten: kunne den det, kunne en bevægelse afregnes til en anden
+     kunde end den varen tilhører. Og den skrives MED frem for at blive slået
+     op igen senere, fordi bevægelsen er et historisk faktum — skifter varen
+     ejer, må sidste kvartals fakturagrundlag ikke ændre sig. */
+  post.kundeId = vare.kundeId;
+
+  const fejl = valideBevaegelse(post, { vare });
+  if (Object.keys(fejl).length) {
+    throw new HttpsError("invalid-argument",
+      Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" "));
+  }
+
+  /* ---- Pladserne skal findes, og fra-pladsen skal kunne plukkes ------ */
+  const pladser = {};
+  for (const felt of ["fraPladsId", "tilPladsId"]) {
+    const id = post[felt];
+    if (!id) continue;
+    const p = (await rod.child(`reolpladser/${id}`).once("value")).val();
+    if (!p) throw new HttpsError("not-found", `Lokationen ${id} findes ikke.`);
+    pladser[id] = p;
+  }
+
+  /* ⚠ KARANTÆNE BLOKERER, DEN ADVARER IKKE. Varen på en karantæneplads er
+     under mistanke; en pluk der bare advarer, bliver klikket væk. Samme regel
+     som en udløbet kompetence. */
+  if (post.fraPladsId && !kanPlukkesFra(pladser[post.fraPladsId])) {
+    const p = pladser[post.fraPladsId];
+    throw new HttpsError("failed-precondition",
+      `Der kan ikke plukkes fra en plads i ${
+        PLADS_STATUS[p.status]?.label.toLowerCase() || "den tilstand"}.`);
+  }
+  /* En lukket plads må heller ikke modtage: hylden er taget ud af drift. */
+  if (post.tilPladsId && pladser[post.tilPladsId]?.status === "lukket") {
+    throw new HttpsError("failed-precondition",
+      "Lokationen er lukket og kan ikke modtage varer.");
+  }
+
+  /* ---- Hvad det gør ved saldoerne ------------------------------------ */
+  const virkning = virkningPaaBeholdning(post);
+
+  /* ⚠ DÆKNINGEN PRØVES FØR SKRIVNINGEN — og se noten i hovedet om hvad det
+     vindue IKKE dækker. Uden tjekket ville hvert eneste fejlpluk tage hylden
+     i minus, og et negativt lagertal er værre end intet: nogen disponerer
+     efter det. */
+  for (const v of virkning) {
+    if (!(v.aendring < 0)) continue;
+    const snap = await rod.child(`beholdning/${v.noegle}`).once("value");
+    const nu = saldoAf(snap);
+    if (nu + v.aendring < 0) {
+      throw new HttpsError("failed-precondition",
+        `Der står kun ${talFraMaengde(nu)} ${vare.enhed} af ${vare.varenummer} på lokationen — ` +
+        `der kan ikke tages ${talFraMaengde(-v.aendring)}.`);
+    }
+  }
+
+  /* ---- ÉN skrivning ---------------------------------------------------- */
+  const nyId = rod.child("bevaegelser").push().key;
+  const nu = Date.now();
+  const opdatering = {
+    [`bevaegelser/${nyId}`]: {
+      art: post.art,
+      vareId: post.vareId,
+      kundeId: post.kundeId,
+      antal: post.antal,
+      fraPladsId: post.fraPladsId || null,
+      tilPladsId: post.tilPladsId || null,
+      batch: post.batch || null,
+      serienummer: post.serienummer || null,
+      reference: post.reference || null,
+      note: post.note || null,
+      tidspunktMs: nu,
+      /* ⚠ uid, IKKE personId. Det er hvem der GJORDE noget. */
+      oprettetAf: uid,
+    },
+  };
+
+  for (const v of virkning) {
+    const b = `beholdning/${v.noegle}`;
+    /* Nøglefelterne skrives hver gang; de er de samme, og en post der
+       oprettes af en increment ville ellers mangle dem. */
+    opdatering[`${b}/pladsId`] = v.pladsId;
+    opdatering[`${b}/vareId`] = v.vareId;
+    opdatering[`${b}/batch`] = v.batch;
+    opdatering[`${b}/senestMs`] = nu;
+    /* ⚠ increment() ER DET DER GØR DET ATOMISK. To samtidige plukninger af 2
+       og 3 giver −5, aldrig −2 eller −3. En læs-og-skriv ville tabe den ene. */
+    opdatering[`${b}/antal`] = Number.isFinite(v.saet)
+      ? v.saet
+      : ServerValue.increment(v.aendring);
+  }
+
+  await rod.update(opdatering);
+
+  /* ---- Gik noget i minus alligevel? ---------------------------------- */
+  /* ⚠ DET KAN SKE, og så skal det være LARMENDE frem for tavst. Se hovedet:
+     vinduet mellem dækningstjekket og skrivningen kan ikke lukkes med en
+     transaktion, når to pladser skal ændres sammen. En negativ saldo er et
+     lager der skal tælles — ikke et tal der skal rettes. */
+  const negative = [];
+  for (const v of virkning) {
+    if (!(v.aendring < 0)) continue;
+    const efter = saldoAf(await rod.child(`beholdning/${v.noegle}`).once("value"));
+    if (efter < 0) negative.push({ noegle: v.noegle, antal: efter });
+  }
+  if (negative.length) {
+    await logBevaegelse(tenantId, uid, AUDIT.aendre, nyId, null,
+      { antal: negative[0].antal, art: post.art },
+      `NEGATIV SALDO paa ${negative.map((n) => n.noegle).join(", ")} — optael lokationen`);
+  }
+
+  await logBevaegelse(tenantId, uid, AUDIT.opret, nyId, null,
+    { art: post.art, antal: post.antal, vareId: post.vareId, kundeId: post.kundeId },
+    post.reference ? `ref ${post.reference}` : null);
+
+  return {
+    ok: true, id: nyId,
+    beholdning: virkning.map((v) => v.noegle),
+    advarsel: negative.length ? "negativ-saldo" : null,
+  };
+});
+
+async function logBevaegelse(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/drift/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "bevaegelser", objektId: id,
+      klasse: "drift",
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null,
+    });
+}

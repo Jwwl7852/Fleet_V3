@@ -121,6 +121,9 @@ export const NAV = [
     born: [
       { key: "warehouseVarer", sti: "/warehouse", label: "Varer",
         titel: "Warehouse – varer", under: "Kundens varekartotek, enheder og sporing" },
+      { key: "warehouseBevaegelser", sti: "/warehouse/bevaegelser", label: "Bevægelser",
+        titel: "Warehouse – bevægelser",
+        under: "Modtag, sæt på plads, flyt, pluk og afsend" },
       { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
         titel: "Warehouse – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Turtlebooking." },

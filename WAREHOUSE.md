@@ -150,6 +150,28 @@ kodeprøve (skærmen kalder den vej) — den første kan ikke se om nogen fjerne
 ⚠ **Demo-sættet flyttede til `demo-lager.js`.** Et datasæt for en delt node
 hører ikke i det ene moduls fil; ellers laver den anden skærm sin egen kopi.
 
+**Etape 4 er inde.** `bevaegelseskriv` er udrullet, og skærmen **Bevægelser**
+kan modtage, sætte på plads, flytte, plukke, afsende, returnere, optælle og
+justere.
+
+⚠ **Atomiciteten er delvis, og det står skrevet.** Bevægelsen og begge
+saldoændringer lander sammen eller slet ikke — det er ÉN multi-path `update()`
+med `ServerValue.increment()`. To samtidige plukninger af 2 og 3 giver −5,
+aldrig −2 eller −3.
+
+Men skrivningen kan ikke afvise sig selv: dækningen læses FØR, og i det vindue
+— millisekunder — kan to plukninger begge se dækning og tilsammen tage hylden i
+minus. Det kan ikke lukkes med en transaktion, for en RTDB-transaktion virker
+på ÉN ref, og en flytning rører to. En transaktion på hele `beholdning` ville
+låse hele lageret ved hver scanning.
+
+Valget er derfor: **garantér det der ikke må gå galt** (ingen saldo uden en
+bevægelse bag sig), og gør **det der kan gå galt synligt**. Funktionen læser
+saldoerne igen bagefter, og går én i minus, skrives der en auditpost — og
+skærmen har et nøgletal for det. En negativ saldo er et lager der skal tælles,
+ikke et tal der skal rettes. Det er præcis hvad cycle count i etape 6 er til
+for.
+
 ### ⚠ 3.4 Scanner-appen er ikke en skærm
 
 Offline-kø, kamera, stregkodelæser, signatur, badge-login. Det er en
@@ -211,7 +233,7 @@ stemmer.
 | 1 | **Modulet findes**: `warehouse` i katalog, regler, prisliste, nav | Kan sælges og krydses af | ✅ |
 | 2 | **Datamodel**: varer, lokationer, bevægelser, beholdning + regler + prøver | Grundlaget kan ikke laves om bagefter | ✅ |
 | 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | ✅ |
-| 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | |
+| 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | ✅ |
 | 5 | **Pluk, pak, afsend** — pluklister, konsolidering, afsendelse | Udgående flow | |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | |
 | 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | |

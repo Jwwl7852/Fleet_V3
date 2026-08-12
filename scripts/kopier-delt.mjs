@@ -41,6 +41,11 @@ export const DELTE_FILER = [
      afskrift, ville skaermen sige ja og serveren nej, uden at nogen kunne se
      hvorfor. */
   "turtlebooking.js",
+  /* ⚠ warehouse.js SKAL MED, fordi bevaegelseskriv er DEN ENESTE vej ind i
+     bevaegelser og beholdning — begge noder er .write: false. Serveren skal
+     proeve mod noejagtig de samme regler som formularen viser brugeren:
+     samme valideBevaegelse(), samme virkningPaaBeholdning(), samme skala. */
+  "warehouse.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

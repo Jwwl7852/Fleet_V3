@@ -16,6 +16,7 @@ import {
   MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
   UDEN_BATCH, beholdningsNoegle, virkningPaaBeholdning,
   beholdningPrVare, beholdningPaaPlads, underMinimum,
+  LAGERSVAR, tolkLagerfejl,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -330,5 +331,97 @@ describe("den delte node skrives uden at slette den andens felter", () => {
     assert.ok(!/\.remove\(\)/.test(kilde), "skriv.js kalder .remove()");
     assert.ok(!/\bset\(null\)/.test(kilde), "skriv.js kalder set(null)");
     assert.ok(!/export (async )?function slet\b/.test(kilde), "skriv.js har en slet()");
+  });
+});
+
+describe("serveren skriver bevægelsen og saldoen sammen", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+
+  it("bruger den delte politik frem for sin egen afskrift", () => {
+    for (const navn of ["valideBevaegelse", "virkningPaaBeholdning", "kanPlukkesFra"]) {
+      assert.ok(kilde.includes(`${navn}(`), `functions/index.js kalder ikke ${navn}`);
+    }
+    assert.ok(kilde.includes('from "./delt/warehouse.js"'));
+  });
+
+  it("⚠ SKRIVER ALT I ÉN update()", () => {
+    /* Bevægelsen og begge saldoændringer skal lande sammen eller slet ikke.
+       To kald ville kunne efterlade en saldo uden en bevægelse bag sig — et
+       lagertal ingen kan forklare. */
+    /* ⚠ BLOKKEN AFGRÆNSES. Auditloggen skriver også — den ligger i
+       `logBevaegelse` under funktionen, og den er en LEGITIM anden skrivning:
+       en log der kunne vælte en bevægelse, ville være værre end ingen log.
+       Prøven må ikke ramme den, og den må heller ikke bare tælle alt. */
+    const start = kilde.indexOf("export const bevaegelseskriv");
+    const blok = kilde.slice(start, kilde.indexOf("async function logBevaegelse", start));
+    assert.ok(blok.length > 500, "fandt ikke funktionskroppen");
+    assert.ok(blok.includes("rod.update(opdatering)"),
+      "bevægelsen skrives ikke som én multi-path update");
+    /* ⚠ PRÆCIS ÉN SKRIVNING TIL LAGERET. Bliver det to, kan den ene lykkes og
+       den anden fejle — og så står der en saldo uden en bevægelse bag sig.
+       Læsninger (`once`) tæller ikke; det er skrivningerne der skal samles. */
+    const skrivninger = blok.match(/\.(update|set)\(/g) || [];
+    assert.equal(skrivninger.length, 1,
+      `der er ${skrivninger.length} skrivninger i bevaegelseskriv — der må være én`);
+  });
+
+  it("⚠ BRUGER increment(), IKKE LÆS-OG-SKRIV", () => {
+    /* To samtidige plukninger af 2 og 3 skal give −5, aldrig −2 eller −3.
+       En læs-og-skriv ville tabe den ene. */
+    assert.ok(kilde.includes("ServerValue.increment("),
+      "saldoen opdateres ikke atomisk");
+  });
+
+  it("læser kunden af varen frem for af nyttelasten", () => {
+    /* ⚠ ELLERS KAN EN BEVÆGELSE AFREGNES TIL EN ANDEN KUNDE end den varen
+       tilhører. Klienten sender den ikke, og serveren tager den ikke imod. */
+    const blok = kilde.slice(kilde.indexOf("export const bevaegelseskriv"));
+    assert.ok(blok.includes("post.kundeId = vare.kundeId"));
+    /* ⚠ KUN I DEN HER FUNKTION. `kasseudlaanskriv` tager legitimt imod en
+       kundeId fra klienten — dér er kunden en oplysning om udlånet, ikke en
+       ejendomsret der kan misbruges. Prøven må ikke ramme den. */
+    assert.ok(!blok.includes("kundeId: kortStreng(d.kundeId"),
+      "bevaegelseskriv læser kundeId fra nyttelasten");
+  });
+
+  it("blokerer pluk fra en karantæneplads", () => {
+    /* ⚠ BLOKERER, ADVARER IKKE. Samme regel som en udløbet kompetence. */
+    assert.ok(kilde.includes("kanPlukkesFra(pladser[post.fraPladsId])"));
+  });
+
+  it("prøver abonnement og modul, som reglerne gør", () => {
+    const blok = kilde.slice(kilde.indexOf("kraevBevaegelsesskriv"));
+    assert.ok(blok.includes("Abonnementet er ikke aktivt."));
+    assert.ok(blok.includes("Warehouse er ikke slået til."));
+  });
+
+  it("⚠ GØR EN NEGATIV SALDO LARMENDE", () => {
+    /* Vinduet mellem dækningstjekket og skrivningen kan ikke lukkes med en
+       transaktion, når to pladser skal ændres sammen. Derfor skal det der KAN
+       gå galt, være synligt frem for tavst. */
+    assert.ok(kilde.includes("NEGATIV SALDO"),
+      "en negativ saldo logges ikke");
+  });
+});
+
+describe("svaret fra serveren forklarer sig selv", () => {
+  it("⚠ BEHOLDER SERVERENS TEKST NÅR LAGERET SIGER FRA", () => {
+    /* "Der står kun 3 paller på lokationen" ER svaret. En generisk tekst
+       ville lade brugeren prøve igen med samme mængde. */
+    const r = tolkLagerfejl({
+      code: "functions/failed-precondition",
+      message: "Der står kun 3 palle af PAL-1200 på lokationen — der kan ikke tages 5.",
+    });
+    assert.equal(r.art, LAGERSVAR.afvist);
+    assert.match(r.besked, /Der står kun 3/);
+  });
+
+  it("kalder en afvisning for en afvisning, ikke en netværksfejl", () => {
+    assert.equal(tolkLagerfejl({ code: "functions/permission-denied" }).art,
+      LAGERSVAR.naegtet);
+    assert.equal(tolkLagerfejl({ code: "functions/unavailable" }).art,
+      LAGERSVAR.forbindelse);
+    assert.equal(tolkLagerfejl({ code: "functions/invalid-argument" }).art,
+      LAGERSVAR.ugyldig);
   });
 });

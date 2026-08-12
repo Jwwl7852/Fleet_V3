@@ -1,0 +1,59 @@
+/* src/fleet/lager.js
+ * Klientsiden af lagerbevægelsen. Transport — politikken ligger i
+ * `warehouse.js`.
+ *
+ * ⚠ DER SKRIVES INTET HERFRA DIREKTE. `bevaegelser` og `beholdning` er begge
+ * `.write: false`, og det er ikke fordi rettigheden mangler —
+ * lagermedarbejderen HAR `bevaegelser.skriv`. Det er fordi en bevægelse
+ * ændrer to til tre poster der skal lande sammen, og fordi et lagertal der
+ * kan rettes i hånden, gør en optælling meningsløs. Hele begrundelsen står i
+ * functions/index.js.
+ *
+ * ⚠ KUNDEN SENDES IKKE MED. Serveren læser den af varen. Kunne klienten
+ * oplyse den, kunne en bevægelse afregnes til en anden kunde end den varen
+ * tilhører.
+ */
+import { kaldFunktion } from "../firebase.js";
+import { LAGERSVAR, tolkLagerfejl } from "./warehouse.js";
+
+export { LAGERSVAR, lagerBesked, tolkLagerfejl } from "./warehouse.js";
+
+/* Småt navn — en 2. generations funktion bliver en Cloud Run-tjeneste, og et
+   tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
+export const LAGERFUNKTION = "bevaegelseskriv";
+
+async function kald(data) {
+  try {
+    const svar = await kaldFunktion(LAGERFUNKTION, data);
+    return { ok: true, art: LAGERSVAR.ok, besked: null, data: svar?.data ?? null };
+  } catch (fejl) {
+    if (/ingen Firebase-app/i.test(String(fejl?.message))) {
+      return {
+        ok: false, art: LAGERSVAR.demo,
+        besked: "Demo-tilstand: der er ingen server, så intet blev registreret.",
+        data: null,
+      };
+    }
+    return { ok: false, ...tolkLagerfejl(fejl), data: null };
+  }
+}
+
+/**
+ * Registrér en bevægelse.
+ *
+ * `antal` er SKALERET med MAENGDE_SKALA — brug `maengdeFraTal()` fra
+ * warehouse.js. Et utilsigtet uskaleret tal ville blive registreret som
+ * en tusindedel.
+ */
+export const skrivBevaegelse = ({
+  art, vareId, antal, fraPladsId, tilPladsId, batch, serienummer, reference, note,
+}) =>
+  kald({
+    art, vareId, antal,
+    fraPladsId: fraPladsId || undefined,
+    tilPladsId: tilPladsId || undefined,
+    batch: batch || undefined,
+    serienummer: serienummer || undefined,
+    reference: reference || undefined,
+    note: note || undefined,
+  });
