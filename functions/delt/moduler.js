@@ -100,6 +100,21 @@ export const MODUL = {
     label: "Turtlebooking",
     hvad: "Udlejning af transportkasser: kasser, reolpladser og udlån pr. sag.",
   },
+  /**
+   * ⚠ DET ER 3PL, IKKE VORES EGET LAGER. Warehouse opbevarer KUNDENS gods og
+   * afregner for håndtering ind, opbevaring og håndtering ud. Hver vare bærer
+   * en `kundeId`, og hver bevægelse er en fakturerbar hændelse.
+   *
+   * ⚠ FORVEKSL DEN IKKE MED `lagre`. Den node er reservedelslageret under
+   * Indkøb — VORES egne dele, hvor forbruget er en omkostning på en bil. Her
+   * er varen kundens, og bevægelsen er en indtægt. To forskellige ting, og
+   * derfor to noder frem for én med et flag. Se WAREHOUSE.md punkt 3.1.
+   */
+  warehouse: {
+    navKey: "warehouse",
+    label: "Warehouse",
+    hvad: "Lagerhotel: kundens varer, lokationer, bevægelser og afregning.",
+  },
   kunder: {
     navKey: "kunder",
     label: "Kunder & Priser",
@@ -144,13 +159,16 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
  * turtlebooking: etape 1 og 2 er datamodel og regler. Nav-punktet kommer med
  * etape 3, hvor kasser og reolpladser kan ses. Se TURTLEBOOKING.md.
  */
-/* ⚠ TOM IGEN — og det er meningen at den skal vaere det.
- *
- * turtlebooking stod her mellem etape 1 og 3: modulet kunne saelges og
+/* turtlebooking stod her mellem etape 1 og 3: modulet kunne saelges og
  * prissaettes, men havde ingen skaerm, og et menupunkt der foerer til
- * ingenting lover noget produktet ikke kan. Nu findes Kasser og
- * Reolpladser, og navnet er fjernet. */
-export const UDEN_SKAERM = [];
+ * ingenting lover noget produktet ikke kan. Nu findes skaermene, og navnet
+ * er fjernet igen.
+ *
+ * ⚠ warehouse staar her NU, af samme grund. Modulet findes i kataloget og
+ * kan krydses af og prissaettes — men datamodellen er ikke bygget, og der er
+ * ingen skaerm at gaa til. Fjern navnet naar der ER en (se WAREHOUSE.md,
+ * etape 3), ikke foer. */
+export const UDEN_SKAERM = ["warehouse"];
 
 /** De moduler enhver kunde altid har. */
 export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
