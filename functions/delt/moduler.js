@@ -232,13 +232,44 @@ export const NODE_MODUL = {
      der allerede var taget. */
   kasser: "turtlebooking",
   kassetyper: "turtlebooking",
-  reolpladser: "turtlebooking",
   kasseudlaan: "turtlebooking",
+
+  /* ⚠ DEN FØRSTE NODE DER HØRER TIL TO MODULER, og det er en beslutning og
+     ikke en forglemmelse. Turtlebookings transportkasser og Warehouses
+     kundegods står på de samme hylder; to reolnoder ville betyde at den
+     vognmand der har begge moduler, skulle vedligeholde sit lager to gange —
+     og at "Hal 1 · Reol 2" fandtes to steder der kunne blive uenige.
+
+     Modulklausulen skal derfor acceptere BEGGE, og permissionen kan ikke
+     hedde `kasser.skriv`: en WMS-medarbejder hos en kunde uden Turtlebooking
+     ville ikke kunne oprette en hylde. Se WAREHOUSE.md punkt 3.3. */
+  reolpladser: ["turtlebooking", "warehouse"],
+
+  /* Warehouse (WMS) — 3PL. Varen er KUNDENS; se noten ved MODUL.warehouse
+     om hvorfor det ikke er det samme som `lagre`. */
+  varer: "warehouse",
+  bevaegelser: "warehouse",
+  beholdning: "warehouse",
+};
+
+/**
+ * Modulerne en node hører til, altid som en liste.
+ *
+ * ⚠ FINDES FORDI TABELLEN NU KAN BÆRE BEGGE DELE. Læste hver forbruger selv
+ * værdien, ville halvdelen behandle `["turtlebooking", "warehouse"]` som en
+ * streng — og en sammenligning mod et array giver ikke en fejl, den giver
+ * bare `false`. Så ville modulklausulen lydløst holde op med at matche.
+ */
+export const modulerFor = (node) => {
+  const v = NODE_MODUL[node];
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
 };
 
 /** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */
-export const MODUL_NODER = Object.entries(NODE_MODUL).reduce((ud, [node, modul]) => {
-  (ud[modul] ||= []).push(node);
+export const MODUL_NODER = Object.keys(NODE_MODUL).reduce((ud, node) => {
+  /* En node der hører til to moduler, står under begge. */
+  for (const modul of modulerFor(node)) (ud[modul] ||= []).push(node);
   return ud;
 }, {});
 

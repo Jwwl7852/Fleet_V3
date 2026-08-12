@@ -149,9 +149,19 @@ offline-køen støder direkte ind i to ting der er besluttet:
 ### ⚠ 3.5 Multi-site står i topbaren på plancherne
 
 *"Hovedlager – Aarhus"* med en vælger. Shellen ejer tenant- og
-periodevælgeren; en lagervælger ville være den tredje. **Uanset hvad bærer
-hver post et `lagerId` fra dag ét** — at tilføje det bagefter er en migrering
-af alle bevægelser. *Det afgør jeg selv.*
+periodevælgeren; en lagervælger ville være den tredje.
+
+⚠ **RETTET I ETAPE 2 — DER KOM INTET `lagerId`.** Planen sagde først at hver
+post skulle bære et, for at slippe for en migrering senere. Det viste sig at
+være det forkerte svar: **lageret er `hal` på reolpladsen**, og listen af
+lagre udledes af pladserne — præcis som `haller()` allerede gør i
+`turtlebooking.js`.
+
+Et `lagerId` ved siden af ville have været et katalog mere at holde ved lige,
+og det ville have kunnet blive uenigt med `hal`. Og bevægelsen behøver det
+ikke: den peger på en plads, og pladsen ved hvor den står. **Et felt der kan
+udledes, skal ikke gemmes** — det er `bemanding.ledig`-reglen, og den gælder
+også når det er bekvemt at bryde den.
 
 ### ⚠ 3.6 Roller og permissions
 
@@ -181,18 +191,18 @@ stemmer.
 
 ## 4. Etaper
 
-| # | Hvad | Værdi alene |
-|---|---|---|
-| 1 | **Modulet findes**: `warehouse` i katalog, regler, prisliste, nav | Kan sælges og krydses af |
-| 2 | **Datamodel**: varer, lokationer, bevægelser, beholdning + regler + prøver | Grundlaget kan ikke laves om bagefter |
-| 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres |
-| 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig |
-| 5 | **Pluk, pak, afsend** — pluklister, konsolidering, afsendelse | Udgående flow |
-| 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer |
-| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning |
-| 8 | **Volumenkalkulator** som tilbudsværktøj | Salg |
-| 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation |
-| 10 | **Scanner-app** — egen applikation | Gulvet |
+| # | Hvad | Værdi alene | Status |
+|---|---|---|---|
+| 1 | **Modulet findes**: `warehouse` i katalog, regler, prisliste, nav | Kan sælges og krydses af | ✅ |
+| 2 | **Datamodel**: varer, lokationer, bevægelser, beholdning + regler + prøver | Grundlaget kan ikke laves om bagefter | ✅ |
+| 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | |
+| 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | |
+| 5 | **Pluk, pak, afsend** — pluklister, konsolidering, afsendelse | Udgående flow | |
+| 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | |
+| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | |
+| 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |
+| 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | |
+| 10 | **Scanner-app** — egen applikation | Gulvet | |
 
 Etape 1–4 er fundamentet og kan ikke deles op mindre. Etape 7 kan ikke bygges
 før 4, fordi der ikke er noget at afregne før bevægelserne findes.

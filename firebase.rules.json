@@ -840,8 +840,8 @@
         // eneste kasse paa en plads der ikke fandtes. Samme rettelse som
         // steder.js lavede for hjemsted.
         "reolpladser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|reolpladser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["hal"],
           "$pladsId": {
             ".validate": "newData.hasChildren(['hal', 'reol', 'fag', 'hylde', 'plads'])",
@@ -853,6 +853,17 @@
             // ⚠ INTET navn-FELT. Det udledes; et gemt navn ville drive fra
             // sine felter, og saa kunne ingen se hvilket der var rigtigt.
             "navn": { ".validate": false },
+            // ⚠ DE FEM FELTER HERUNDER ER WAREHOUSES, OG DE ER VALGFRIE.
+            // Noden blev UDVIDET frem for kopieret, fordi transportkasser og
+            // kundegods staar paa de samme hylder. Var de paakraevede, gik
+            // Turtlebooking i stykker — en plads uden dem opfoerer sig
+            // praecis som foer. Se WAREHOUSE.md punkt 3.3.
+            "zone": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "type": { ".validate": "newData.isString() && newData.val().matches(/^(hylde|gulvplads|bulk)$/)" },
+            // ⚠ karantaene BLOKERER en pluk, den advarer ikke. En vare paa en
+            // plads i karantaene er under mistanke.
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|karantaene|lukket)$/)" },
+            "temperatur": { ".validate": "newData.isNumber() && newData.val() >= -60 && newData.val() <= 80" },
             "$andet": { ".validate": false }
           }
         },
@@ -940,6 +951,114 @@
             // Den oprindelige fritekst fra prototypens Excel-import. Den
             // bevares saa intet gaar tabt, men der soeges ikke i den.
             "importtekst": { ".validate": "newData.isString() && newData.val().length <= 400" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ══ WAREHOUSE (WMS) — lagerhotel. Kundens gods. ══
+        //
+        // ⚠ IKKE `lagre`. Den node er reservedelslageret under Indkoeb —
+        // VORES egne dele, hvor forbruget er en omkostning paa en bil. Her
+        // er varen KUNDENS, og bevaegelsen er en indtaegt. To forskellige
+        // ting, og derfor to noder frem for een med et flag.
+        "varer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|varer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["kundeId", "varenummer", "varegruppe"],
+          "$vareId": {
+            ".validate": "newData.hasChildren(['kundeId', 'varenummer', 'navn', 'enhed', 'sporing'])",
+            // ⚠ VAREN ER KUNDENS. Uden en gyldig kunde kan bevaegelsen ikke
+            // afregnes, og saa er varen paa lageret uden en modpart.
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "varenummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "enhed": { ".validate": "newData.isString() && newData.val().matches(/^(stk|kolli|palle|kasse|kg|m3)$/)" },
+            // ⚠ SPORINGEN KAN IKKE LAVES OM BAGUD. Faar en vare batch et aar
+            // senere, findes der bevaegelser uden — og saa kan et tilbagekald
+            // ikke svare paa hvilke kolli der var i partiet.
+            "sporing": { ".validate": "newData.isString() && newData.val().matches(/^(ingen|batch|serie)$/)" },
+            "varegruppe": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // Millimeter og gram som INTEGER — samme regel som
+            // samletLaengdeMm() i flaade.js. En float ved en volumengraense
+            // er en fejl der venter, og volumenkalkulatoren regner paa dem.
+            "laengdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "breddeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "hoejdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "vaegtG": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "minimum": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ KUN SERVEREN. En bevaegelse aendrer TO ting — bevaegelsen selv og
+        // beholdningen paa en eller to pladser — og de skal skrives sammen
+        // eller slet ikke. Skrives kun den ene, staar der varer paa en hylde
+        // ingen har lagt der, eller de forsvinder uden spor.
+        //
+        // Dertil kan to lagermaend ramme samme sekund paa samme hylde. Et
+        // laes-saa-skriv uden laas ville lade begge passere hver sin kontrol
+        // og lande oven paa hinanden. Samme begrundelse som kasseudlaan.
+        //
+        // .validate herunder er FORMEN serveren skal overholde. Den
+        // haandhaeves ikke paa admin-SDK'et — det goer valideBevaegelse() i
+        // functions/delt/warehouse.js, som er DEN SAMME fil klienten
+        // proever mod.
+        "bevaegelser": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["vareId", "kundeId", "tidspunktMs", "art", "reference"],
+          "$bevaegelseId": {
+            ".write": false,
+            ".validate": "newData.hasChildren(['art', 'vareId', 'kundeId', 'antal', 'tidspunktMs'])",
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtag|putaway|flyt|pluk|afsend|retur|optael|justering)$/)" },
+            "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+            // ⚠ ET HISTORISK FAKTUM, IKKE ET OPSLAG. Hvem varen tilhoerte DA
+            // den blev flyttet. Skifter varen ejer, maa sidste kvartals
+            // fakturagrundlag ikke aendre sig med tilbagevirkende kraft.
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            // Maengden er skaleret med 1000, som ANTAL_SKALA i beloeb.js. En
+            // anden skala her ville fakturere 1000x forkert paa den linje der
+            // bandt de to sammen.
+            "antal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "fraPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "tilPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ INTET PUNKTUM. Batchen indgaar i en beholdningsnoegle, og
+            // RTDB tillader hverken . # $ [ ] eller / i en noegle.
+            "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/)" },
+            "serienummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "udloebMs": { ".validate": "newData.isNumber()" },
+            "tidspunktMs": { ".validate": "newData.isNumber()" },
+            // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "reference": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ SALDOEN. Noeglen er <pladsId>__<vareId>__<batch>, deterministisk,
+        // saa den samme hylde og vare ALDRIG kan faa to poster. To poster for
+        // samme hylde er DE-QR 777 mod DE-KL 404 igen, denne gang med et
+        // lagertal.
+        //
+        // ⚠ DER FINDES INTET TOTALTAL PR. VARE. Det er en sum, hver gang.
+        // Gemtes summen ved siden af, ville de to drive fra hinanden ved den
+        // foerste skrivning der ramte den ene og ikke den anden — og saa er
+        // det bemanding.ledig igen, med lagervaerdi paa.
+        "beholdning": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["pladsId", "vareId", "batch"],
+          "$noegle": {
+            ".write": false,
+            ".validate": "newData.hasChildren(['pladsId', 'vareId', 'antal'])",
+            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+            "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_][A-Za-z0-9_-]{0,39}$/)" },
+            // ⚠ IKKE NEGATIV. En hylde kan ikke rumme minus tolv paller, og
+            // en beholdning der kan gaa i minus, skjuler den bevaegelse der
+            // manglede.
+            "antal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "senestMs": { ".validate": "newData.isNumber()" },
             "$andet": { ".validate": false }
           }
         },

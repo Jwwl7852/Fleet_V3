@@ -30,7 +30,9 @@ import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { ref, set, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
-import { NODE_MODUL, MODUL_NODER, VALGFRIE_MODULER } from "../src/fleet/moduler.js";
+import {
+  NODE_MODUL, MODUL_NODER, VALGFRIE_MODULER, modulerFor,
+} from "../src/fleet/moduler.js";
 
 const MED = "modulMed";      /* har alle moduler */
 const UDEN = "modulUden";    /* har KUN dashboard — alt valgfrit er fravalgt */
@@ -115,10 +117,19 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
     const mangler = [];
     for (const r of alleRegler()) {
       if (typeof r.udtryk !== "string") continue;
-      const modul = NODE_MODUL[grundsti(r.sti)];
-      if (!modul) continue;
-      if (!r.udtryk.includes(`child('${modul}').val() === true`)) {
-        mangler.push(`${r.sti}/${r.felt} (mangler ${modul})`);
+      /* ⚠ EN NODE KAN HØRE TIL FLERE MODULER. `reolpladser` deles af
+         Turtlebooking og Warehouse, fordi transportkasser og kundegods står
+         på de samme hylder — og klausulen er så et ELLER.
+
+         Prøven kræver at HVERT af modulerne står der. Mangler det ene, er
+         noden lukket for præcis den kunde der har købt det andet, og det
+         ville ingen opdage: skærmen ville bare sige "ingen reolpladser". */
+      const moduler = modulerFor(grundsti(r.sti));
+      if (!moduler.length) continue;
+      for (const modul of moduler) {
+        if (!r.udtryk.includes(`child('${modul}').val() === true`)) {
+          mangler.push(`${r.sti}/${r.felt} (mangler ${modul})`);
+        }
       }
     }
     assert.deepEqual(mangler, [], "noder fra tabellen uden modulklausul — de er åbne for en kunde der ikke har købt modulet.");
@@ -131,7 +142,7 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
     const forkert = [];
     for (const r of alleRegler()) {
       if (typeof r.udtryk !== "string") continue;
-      if (NODE_MODUL[grundsti(r.sti)]) continue;
+      if (modulerFor(grundsti(r.sti)).length) continue;
       if (/child\('moduler'\)/.test(r.udtryk) && !r.udtryk.includes("auth.token.udbyder")) {
         forkert.push(`${r.sti}/${r.felt}`);
       }

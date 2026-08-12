@@ -154,6 +154,25 @@ export const PERM = {
   kasserSkriv: "kasser.skriv",
   kasseudlaanSkriv: "kasseudlaan.skriv",
 
+  /* ⚠ REOLPLADSEN FIK SIN EGEN, FORDI NODEN NU DELES AF TO MODULER.
+     Den lå under `kasser.skriv`, og det holdt så længe Turtlebooking var den
+     eneste der stod på hylderne. Warehouse står på de samme — og en
+     WMS-medarbejder hos en kunde der IKKE har Turtlebooking, ville ellers
+     ikke kunne oprette en hylde, fordi rettigheden hed noget om kasser.
+     En node to moduler deler, kan ikke gates af det ene moduls rettighed. */
+  reolpladserSkriv: "reolpladser.skriv",
+
+  /* WAREHOUSE (WMS) — lagerhotel, 3PL.
+
+     ⚠ TO PERMISSIONS, SAMME SNIT SOM TURTLEBOOKING: den ene dækker STAMDATA
+     (varekartoteket), den anden det OPERATIONELLE (bevægelserne).
+
+     ⚠ `bevaegelser.skriv` ER IKKE EN VEJ UDEN OM FUNKTIONEN. Noden er
+     `.write: false`; permissionen er dét `bevaegelseskriv` prøver KALDEREN
+     mod. Præcis som `kasseudlaan.skriv` blev det for Turtlebooking. */
+  varerSkriv: "varer.skriv",
+  bevaegelserSkriv: "bevaegelser.skriv",
+
   fravaerLaes: "fravaer.laes",
   /* art (sygdom vs. ferie) og dokumentation. Helbredsoplysning, altså særlig
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
@@ -279,6 +298,13 @@ export const ROLLE_PERMS = {
     ...BASIS_LAES,
     PERM.kasserSkriv,
     PERM.kasseudlaanSkriv,
+    /* ⚠ SAMME MAND, TO MODULER — IKKE EN OTTENDE ROLLE. Han står på lageret;
+       om hylden bærer en transportkasse eller kundens paller, er ikke to job.
+       Beslutning 31: rollerne er faste, og en ny rolle skal svare til et nyt
+       ARBEJDE, ikke til et nyt modul. */
+    PERM.reolpladserSkriv,
+    PERM.varerSkriv,
+    PERM.bevaegelserSkriv,
     /* Han melder også en beskadiget kasse — det er en indberetning. */
     PERM.indberetningerSkriv,
   ],

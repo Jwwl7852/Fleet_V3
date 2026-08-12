@@ -15,7 +15,9 @@ import {
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
 } from "../src/fleet/turtlebooking.js";
-import { NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM } from "../src/fleet/moduler.js";
+import {
+  NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM, modulerFor,
+} from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
 
 const D = (a, m, d) => Date.UTC(a, m - 1, d);
@@ -185,8 +187,14 @@ describe("Modulet er registreret — men ikke tegnet", () => {
   it("står i kataloget med sine fire noder", () => {
     assert.ok(MODUL.turtlebooking, "turtlebooking mangler i kataloget");
     assert.deepEqual(
-      Object.keys(NODE_MODUL).filter((n) => NODE_MODUL[n] === "turtlebooking").sort(),
+      Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("turtlebooking")).sort(),
       ["kasser", "kassetyper", "kasseudlaan", "reolpladser"]);
+    /* ⚠ REOLPLADSER ER DELT MED WAREHOUSE. Transportkasser og kundegods staar
+       paa de samme hylder, og noden blev UDVIDET frem for kopieret. Proeven
+       staar her, saa en fremtidig oprydning ikke "retter" den tilbage til eet
+       modul og dermed lukker WMS ude af sit eget lager. */
+    assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
+    assert.deepEqual(modulerFor("kasser"), ["turtlebooking"]);
   });
 
   it("⚠ TEGNES NU — og UDEN_SKAERM er tom igen", () => {
