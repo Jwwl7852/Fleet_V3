@@ -457,7 +457,40 @@
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')",
           "$gruppe": {
             "$postId": {
-              "satser": { ".indexOn": ["gyldigFra"] }
+              // ⚠ VALIDERINGEN KOM MED PRISERNE. Noden har vaeret her siden
+              // beslutning 7, men INTET skrev til den — satsarket stod som en
+              // const i Bookingopsaetning.jsx. Nu skal den baere kundepriser,
+              // og en node uden validering er en node hvor et beloeb kan vaere
+              // en streng.
+              "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+              "kategori": { ".validate": "newData.isString() && newData.val().length <= 40" },
+              "aktiv": { ".validate": "newData.isBoolean()" },
+              "satser": {
+                ".indexOn": ["gyldigFra"],
+                "$satsId": {
+                  ".validate": "newData.hasChildren(['gyldigFra', 'beloebOere'])",
+                  // ⚠ EN SATS OVERSKRIVES ALDRIG (beslutning 7). Rettes prisen
+                  // i dag, kommer der en NY post med sin egen gyldigFra —
+                  // ellers aendrer en rettelse prisen paa en booking fra sidste
+                  // kvartal, og saa kan fakturaen ikke forklares.
+                  //
+                  // Reglen kan ikke forbyde en overskrivning uden ogsaa at
+                  // forbyde en rettelse af en tastefejl samme dag. Den
+                  // haandhaever formen; beslutningen haandhaeves af skaermen
+                  // og af proeven paa den.
+                  "gyldigFra": { ".validate": "newData.isNumber()" },
+                  // Beloeb i hele OERE som alt andet. En float ville give en
+                  // oere til eller fra paa hver eneste linje.
+                  "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                  "metode": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                  "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                  "aktiv": { ".validate": "newData.isBoolean()" },
+                  "oprettetAf": { ".validate": "newData.isString()" },
+                  "oprettetMs": { ".validate": "newData.isNumber()" },
+                  "$andet": { ".validate": false }
+                }
+              },
+              "$andet": { ".validate": false }
             }
           }
         },

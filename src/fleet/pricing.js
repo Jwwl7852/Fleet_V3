@@ -85,40 +85,47 @@ export const ALLE_YDELSESKATEGORIER = Object.keys(YDELSESKATEGORI);
  * betyde at prisskærmen skulle kende hvert eneste modul for at kunne tegne
  * sig.
  *
+ * ⚠ ID-ET ER EN DATABASENØGLE. Derfor bindestreg og ikke punktum: RTDB
+ * tillader hverken . # $ [ ] eller / i en nøgle, og standardprisen ligger på
+ * `satser/standard/<ydelseId>/satser/<id>`. Med et punktum fejler skrivningen
+ * med "invalid path" — et helt andet sted end der hvor navnet blev valgt.
+ * Den fælde står allerede beskrevet ved BATCH_MOENSTER i warehouse.js; jeg
+ * gik i den alligevel, og en probe mod den udrullede base fandt den.
+ *
  * ⚠ HÅNDTERING IND OG UD ER TO YDELSER. De regnes ens (pr. hændelse), men de
  * koster ikke det samme: at tage imod en palle og at sende den ud er to
  * arbejdsgange. Én fælles "håndtering" ville gøre det umuligt at prissætte
  * dem forskelligt — og det er præcis dét der bedes om.
  */
 export const LAGERYDELSER = {
-  "lager.handlingInd": {
+  "lager-handlingInd": {
     navn: "Håndtering ind", kategori: "haandtering", metode: "prHaandtering",
     arter: ["modtag"],
   },
-  "lager.handlingUd": {
+  "lager-handlingUd": {
     navn: "Håndtering ud", kategori: "haandtering", metode: "prHaandtering",
     arter: ["afsend"],
   },
-  "lager.flytning": {
+  "lager-flytning": {
     navn: "Flytning", kategori: "haandtering", metode: "prHaandtering",
     arter: ["putaway", "flyt"],
   },
-  "lager.pluk": {
+  "lager-pluk": {
     navn: "Pluk", kategori: "haandtering", metode: "prHaandtering",
     arter: ["pluk"],
   },
-  "lager.retur": {
+  "lager-retur": {
     navn: "Returhåndtering", kategori: "haandtering", metode: "prHaandtering",
     arter: ["retur"],
   },
   /* ⚠ DE TO OPBEVARINGSYDELSER HAR INGEN arter. De regnes ikke af bevægelser,
      men af hvad der STÅR på lageret pr. døgn — og den måling kan ikke laves
      bagud. Se WAREHOUSE.md. */
-  "lager.palleplads": {
+  "lager-palleplads": {
     navn: "Palleplads pr. døgn", kategori: "lager", metode: "prPalledoegn",
     arter: null,
   },
-  "lager.kubik": {
+  "lager-kubik": {
     navn: "m³ pr. døgn", kategori: "lager", metode: "prKubikdoegn",
     arter: null,
   },
@@ -347,3 +354,80 @@ export function medOverstyring(resultat, { id, navn, beloebOere, af, begrundelse
 }
 
 export const formatLinje = (l) => `${l.navn}: ${kr(l.beloebOere, 2)}`;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STANDARDPRISEN
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ DEN LIGGER I `satser`, IKKE I EN NY NODE.
+
+   `satser/standard/<ydelseId>/satser/<id> = { gyldigFra, beloebOere }`
+
+   Noden har eksisteret siden beslutning 7 med sit gyldigFra-indeks og sin
+   `satser.skriv`-permission — den har bare aldrig haft noget i sig, fordi
+   satsarket stod som en `const` i Bookingopsaetning.jsx. En ny node ville
+   have været et fjerde sted priser bor.
+
+   ⚠ GRUPPEN HEDDER `standard` OG ER DEN ENESTE.
+   Prisgruppen ("A"/"B") bærer ikke længere en pris: der er ÉN standardliste
+   for hele virksomheden, og afvigelser sættes på den enkelte kunde. To lag,
+   ikke tre — se PRISER.md punkt 4.1.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const STANDARDGRUPPE = "standard";
+
+/**
+ * ⚠ EN SATS OVERSKRIVES ALDRIG. Rettes prisen, kommer der en NY post med sin
+ * egen `gyldigFra`. Reglerne kan ikke forbyde en overskrivning uden også at
+ * forbyde en rettelse af en tastefejl samme dag, så formen håndhæves i
+ * reglerne og beslutningen her.
+ */
+export function valideSats(post = {}, { nu = Date.now() } = {}) {
+  const f = {};
+
+  if (!Number.isFinite(post.gyldigFra)) f.gyldigFra = "Vælg hvornår prisen gælder fra.";
+  else if (post.gyldigFra < Date.UTC(2020, 0, 1)) f.gyldigFra = "Datoen ligger urealistisk langt tilbage.";
+  else if (post.gyldigFra > nu + 5 * 365 * 86400000) f.gyldigFra = "Datoen ligger mere end fem år ude i fremtiden.";
+
+  if (!Number.isInteger(post.beloebOere)) f.beloebOere = "Skriv en pris.";
+  else if (post.beloebOere < 0) f.beloebOere = "En pris kan ikke være negativ.";
+
+  if (post.valuta && !/^[A-Z]{3}$/.test(post.valuta)) f.valuta = "Tre store bogstaver, fx DKK.";
+  if (post.metode && !METODER[post.metode]) f.metode = "Ukendt beregningsmetode.";
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * Standardprisen for en ydelse på et tidspunkt — eller `null`.
+ *
+ * ⚠ `null`, IKKE 0. En ydelse uden pris er et ubesvaret spørgsmål, ikke en
+ * gratis ydelse. Samme regel som momssatsen der mangler: et system der gætter
+ * rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende.
+ *
+ * ⚠ OG OPSLAGET GÅR GENNEM satsPaa(). Den bærer allerede beslutning 7 om at
+ * satser aldrig overskrives, og en kopi her ville være to steder der afgør
+ * hvilken pris der gjaldt.
+ */
+export function standardPris(standardpriser = {}, ydelseId, paaMs = Date.now()) {
+  const post = standardpriser?.[ydelseId];
+  const liste = Array.isArray(post?.satser)
+    ? post.satser
+    : Object.values(post?.satser || {});
+  return satsPaa(liste, paaMs);
+}
+
+/**
+ * Ydelserne der er i spil for en tenant, ud fra hvilke moduler den har.
+ *
+ * ⚠ EN VOGNMAND UDEN WAREHOUSE SKAL IKKE SÆTTE PRIS PÅ EN PALLEPLADS.
+ * Prisskærmen ville ellers bede om tal for noget han ikke har købt — og de
+ * tal ville stå der og se ud som en aftale.
+ */
+export function ydelserForModuler(moduler) {
+  const harModul = (m) => !moduler || moduler[m] === true;
+  return Object.entries(LAGERYDELSER)
+    .filter(([, y]) => harModul(YDELSESKATEGORI[y.kategori]?.modul))
+    .map(([id, y]) => ({ id, ...y }));
+}

@@ -138,6 +138,17 @@ export const NAV = [
   {
     key: "kunder", sti: "/kunder", label: "Kunder & Priser", titel: "Kunder & Priser",
     under: "Overblik over kunder, aftaler og priser",
+    born: [
+      { key: "kunderOversigt", sti: "/kunder", label: "Kunder",
+        titel: "Kunder & Priser", under: "Overblik over kunder, aftaler og priser" },
+      /* ⚠ ALLE PRISER SAMLES HER. Plancherne til Warehouse har en egen
+         "Rater"-skaerm; den bygges ikke. Et andet sted at saette den samme
+         slags pris ville betyde at en vognmand skulle vedligeholde sine
+         priser to steder. Se PRISER.md. */
+      { key: "standardpriser", sti: "/kunder/priser", label: "Standardpriser",
+        titel: "Standardpriser",
+        under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
+    ],
   },
   {
     key: "oekonomi", sti: "/oekonomi", label: "Økonomi & Rapporter",

@@ -41,6 +41,7 @@ import Wmslokationer from "./moduler/warehouse/Lokationer.jsx";
 import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
 import Wmspluk from "./moduler/warehouse/Pluk.jsx";
 import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
+import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -357,6 +358,7 @@ export default function App() {
             <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
 
             <Route path="kunder" element={<Kunder />} />
+            <Route path="kunder/priser" element={<Standardpriser />} />
 
             <Route path="oekonomi" element={<Oekonomi />} />
             <Route path="oekonomi/fakturering" element={<Fakturering />} />

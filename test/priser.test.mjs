@@ -11,7 +11,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  METODER, YDELSESKATEGORI, LAGERYDELSER, IKKE_FAKTURERBARE_ARTER, ydelseForArt,
+  METODER, YDELSESKATEGORI, LAGERYDELSER, ALLE_LAGERYDELSER,
+  IKKE_FAKTURERBARE_ARTER, ydelseForArt,
+  STANDARDGRUPPE, standardPris, valideSats, ydelserForModuler,
 } from "../src/fleet/pricing.js";
 import {
   ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER,
@@ -759,11 +761,11 @@ describe("ydelseskataloget — hvad der kan prissættes", () => {
     /* De regnes ens, men de koster ikke det samme: at tage imod en palle og
        at sende den ud er to arbejdsgange. Én fælles "håndtering" ville gøre
        det umuligt at prissætte dem forskelligt. */
-    assert.notEqual(LAGERYDELSER["lager.handlingInd"], LAGERYDELSER["lager.handlingUd"]);
-    assert.deepEqual(LAGERYDELSER["lager.handlingInd"].arter, ["modtag"]);
-    assert.deepEqual(LAGERYDELSER["lager.handlingUd"].arter, ["afsend"]);
-    assert.equal(LAGERYDELSER["lager.handlingInd"].metode,
-                 LAGERYDELSER["lager.handlingUd"].metode);
+    assert.notEqual(LAGERYDELSER["lager-handlingInd"], LAGERYDELSER["lager-handlingUd"]);
+    assert.deepEqual(LAGERYDELSER["lager-handlingInd"].arter, ["modtag"]);
+    assert.deepEqual(LAGERYDELSER["lager-handlingUd"].arter, ["afsend"]);
+    assert.equal(LAGERYDELSER["lager-handlingInd"].metode,
+                 LAGERYDELSER["lager-handlingUd"].metode);
   });
 
   it("⚠ AFREGNER IKKE EN OPTÆLLING", () => {
@@ -773,10 +775,10 @@ describe("ydelseskataloget — hvad der kan prissættes", () => {
     for (const art of IKKE_FAKTURERBARE_ARTER) {
       assert.equal(ydelseForArt(art), null, `${art} er blevet fakturerbar`);
     }
-    assert.equal(ydelseForArt("modtag"), "lager.handlingInd");
-    assert.equal(ydelseForArt("afsend"), "lager.handlingUd");
-    assert.equal(ydelseForArt("flyt"), "lager.flytning");
-    assert.equal(ydelseForArt("putaway"), "lager.flytning");
+    assert.equal(ydelseForArt("modtag"), "lager-handlingInd");
+    assert.equal(ydelseForArt("afsend"), "lager-handlingUd");
+    assert.equal(ydelseForArt("flyt"), "lager-flytning");
+    assert.equal(ydelseForArt("putaway"), "lager-flytning");
     assert.equal(ydelseForArt(null), null);
     assert.equal(ydelseForArt("findes-ikke"), null);
   });
@@ -802,14 +804,114 @@ describe("ydelseskataloget — hvad der kan prissættes", () => {
   it("⚠ OPBEVARINGSYDELSERNE HAR INGEN ARTER", () => {
     /* De regnes ikke af bevægelser, men af hvad der STÅR på lageret pr. døgn
        — og den måling kan ikke laves bagud. */
-    assert.equal(LAGERYDELSER["lager.palleplads"].arter, null);
-    assert.equal(LAGERYDELSER["lager.kubik"].arter, null);
-    assert.equal(METODER[LAGERYDELSER["lager.palleplads"].metode].enhed, "palledøgn");
+    assert.equal(LAGERYDELSER["lager-palleplads"].arter, null);
+    assert.equal(LAGERYDELSER["lager-kubik"].arter, null);
+    assert.equal(METODER[LAGERYDELSER["lager-palleplads"].metode].enhed, "palledøgn");
   });
 
   it("bruger den samme liste over ikke-fakturerbare arter som Warehouse", () => {
     /* ⚠ TO LISTER VILLE DRIVE. warehouse.js er importfri og kan ikke importere
        pricing.js — så prøven binder dem i stedet, som med MAENGDE_SKALA. */
     assert.deepEqual(IKKE_FAKTURERBARE_ARTER, IKKE_AFREGNEDE_ARTER);
+  });
+});
+
+describe("standardprisen", () => {
+  const D = (d) => Date.UTC(2026, 5, d);
+  const NU = D(20);
+
+  it("⚠ LIGGER I `satser`, IKKE I EN NY NODE", () => {
+    /* Noden har eksisteret siden beslutning 7 med sit gyldigFra-indeks og sin
+       satser.skriv-permission — den har bare aldrig haft noget i sig, fordi
+       satsarket stod som en const i Bookingopsaetning.jsx. En ny node ville
+       være et fjerde sted priser bor. */
+    assert.equal(STANDARDGRUPPE, "standard");
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    assert.ok(!regler.includes('"standardpriser"'),
+      "der er oprettet en standardpriser-node ved siden af satser");
+  });
+
+  it("slår prisen op gennem satsPaa()", () => {
+    const std = {
+      "lager-handlingInd": {
+        satser: {
+          a: { gyldigFra: D(1), beloebOere: 4500 },
+          b: { gyldigFra: D(15), beloebOere: 5000 },
+        },
+      },
+    };
+    assert.equal(standardPris(std, "lager-handlingInd", D(10)).beloebOere, 4500);
+    assert.equal(standardPris(std, "lager-handlingInd", D(20)).beloebOere, 5000);
+  });
+
+  it("⚠ GIVER null NÅR PRISEN MANGLER — ikke 0", () => {
+    /* En ydelse uden pris er et ubesvaret spørgsmål, ikke en gratis ydelse.
+       Samme regel som momssatsen der mangler. */
+    assert.equal(standardPris({}, "lager-pluk", NU), null);
+    assert.equal(standardPris({ "lager-pluk": { satser: {} } }, "lager-pluk", NU), null);
+    /* Og før den første sats gjaldt der ingen. */
+    const std = { "lager-pluk": { satser: { a: { gyldigFra: D(15), beloebOere: 375 } } } };
+    assert.equal(standardPris(std, "lager-pluk", D(1)), null);
+  });
+
+  it("tager både et array og et objekt af satser", () => {
+    /* useListe() giver et array; en rå RTDB-læsning giver et objekt. En
+       funktion der kun tålte det ene, ville virke i én skærm og fejle i den
+       næste. */
+    const somObjekt = { x: { satser: { a: { gyldigFra: D(1), beloebOere: 100 } } } };
+    const somArray = { x: { satser: [{ gyldigFra: D(1), beloebOere: 100 }] } };
+    assert.equal(standardPris(somObjekt, "x", NU).beloebOere, 100);
+    assert.equal(standardPris(somArray, "x", NU).beloebOere, 100);
+  });
+
+  it("afviser et beløb der ikke er hele ører", () => {
+    assert.ok(valideSats({ gyldigFra: NU, beloebOere: 45.5 }, { nu: NU }).beloebOere);
+    assert.ok(valideSats({ gyldigFra: NU, beloebOere: -1 }, { nu: NU }).beloebOere);
+    assert.deepEqual(valideSats({ gyldigFra: NU, beloebOere: 4500 }, { nu: NU }), {});
+    /* Nul er en gyldig pris — en ydelse KAN være gratis, når nogen har
+       besluttet det. Det er den manglende pris der er problemet. */
+    assert.deepEqual(valideSats({ gyldigFra: NU, beloebOere: 0 }, { nu: NU }), {});
+  });
+
+  it("afviser en dato der ikke giver mening", () => {
+    assert.ok(valideSats({ gyldigFra: Date.UTC(1999, 0, 1), beloebOere: 1 }, { nu: NU }).gyldigFra);
+    assert.ok(valideSats({ gyldigFra: NU + 20 * 365 * 86400000, beloebOere: 1 }, { nu: NU }).gyldigFra);
+    assert.ok(valideSats({ beloebOere: 1 }, { nu: NU }).gyldigFra);
+  });
+
+  it("afviser en ukendt metode og en ugyldig valuta", () => {
+    assert.ok(valideSats({ gyldigFra: NU, beloebOere: 1, metode: "prTime" }, { nu: NU }).metode);
+    assert.ok(valideSats({ gyldigFra: NU, beloebOere: 1, valuta: "dkk" }, { nu: NU }).valuta);
+    assert.deepEqual(
+      valideSats({ gyldigFra: NU, beloebOere: 1, metode: "prHaandtering", valuta: "DKK" }, { nu: NU }), {});
+  });
+
+  it("⚠ VISER KUN YDELSER FRA MODULER KUNDEN HAR", () => {
+    /* Prisskærmen ville ellers bede om tal for noget vognmanden ikke har
+       købt — og de tal ville stå der og se ud som en aftale. */
+    const uden = ydelserForModuler({ booking: true, warehouse: false });
+    assert.equal(uden.length, 0, "lagerydelser vises uden Warehouse");
+    const med = ydelserForModuler({ warehouse: true });
+    assert.equal(med.length, ALLE_LAGERYDELSER.length);
+    /* En tenant uden modulliste har alt — samme regel som harModul(). */
+    assert.equal(ydelserForModuler(undefined).length, ALLE_LAGERYDELSER.length);
+  });
+});
+
+describe("ydelses-id'et er en databasenøgle", () => {
+  it("⚠ INDEHOLDER HVERKEN PUNKTUM ELLER ANDRE ULOVLIGE TEGN", () => {
+    /* Standardprisen ligger på `satser/standard/<ydelseId>/satser/<id>`, og
+       RTDB tillader hverken . # $ [ ] eller / i en nøgle. Id'erne hed
+       `lager.handlingInd`, og hver eneste skrivning fejlede med "invalid
+       path" — et helt andet sted end der hvor navnet blev valgt.
+
+       Fælden står allerede beskrevet ved BATCH_MOENSTER i warehouse.js. Den
+       her prøve findes fordi jeg gik i den alligevel, og fordi kun en probe
+       mod den udrullede base fandt den: build og prøver var grønne. */
+    for (const id of ALLE_LAGERYDELSER) {
+      assert.ok(!/[.#$[\]/]/.test(id),
+        `ydelses-id'et "${id}" kan ikke være en RTDB-nøgle`);
+      assert.ok(id.length > 0 && id.length <= 60, `"${id}" har en urimelig længde`);
+    }
   });
 });
