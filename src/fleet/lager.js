@@ -21,10 +21,11 @@ export { LAGERSVAR, lagerBesked, tolkLagerfejl } from "./warehouse.js";
 /* Småt navn — en 2. generations funktion bliver en Cloud Run-tjeneste, og et
    tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
 export const LAGERFUNKTION = "bevaegelseskriv";
+export const AFSENDFUNKTION = "plukordreafsend";
 
-async function kald(data) {
+async function kald(data, navn = LAGERFUNKTION) {
   try {
-    const svar = await kaldFunktion(LAGERFUNKTION, data);
+    const svar = await kaldFunktion(navn, data);
     return { ok: true, art: LAGERSVAR.ok, besked: null, data: svar?.data ?? null };
   } catch (fejl) {
     if (/ingen Firebase-app/i.test(String(fejl?.message))) {
@@ -57,3 +58,14 @@ export const skrivBevaegelse = ({
     reference: reference || undefined,
     note: note || undefined,
   });
+
+/**
+ * Afsend en plukordre.
+ *
+ * ⚠ DER SENDES INGEN LINJER MED. Serveren afsender det der FAKTISK er plukket,
+ * læst af bevægelserne — ikke det klienten tror står på pladsen. Kunne
+ * mængderne oplyses, kunne en ordre lukkes med tal der ikke svarede til
+ * hylden.
+ */
+export const afsendPlukordre = ({ ordreId }) =>
+  kald({ ordreId }, AFSENDFUNKTION);

@@ -463,3 +463,171 @@ export function tolkLagerfejl(fejl) {
   }
   return { art: LAGERSVAR.forbindelse, besked: LAGERBESKED[LAGERSVAR.forbindelse] };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PLUKORDREN — det udgående flow
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ DEN HEDDER `plukordrer` OG IKKE `ordrer`. Plancherne siger "Ordrer", men
+   `bookinger` er allerede en ORDRE i dette hus: en transportopgave med etaper,
+   køretøj og chauffør (beslutning 16 og 21). En plukordre er noget andet — den
+   siger hvad der skal UD AF LAGERET, ikke hvem der kører det hvorhen. En 3PL
+   der både opbevarer og kører, har begge dele, og de må kunne skelnes.
+
+   ⚠ FREMDRIFTEN ER UDLEDT, IKKE GEMT. Hvor meget der er plukket på en linje,
+   regnes af de BEVÆGELSER der peger på ordren — ikke af et `plukketAntal` på
+   linjen. Et gemt tal ville drive fra bevægelserne ved den første pluk der
+   ramte den ene og ikke den anden, og så ville en ordre se færdig ud mens
+   varerne stod på hylden. Det er `bemanding.ledig` igen.
+
+   ⚠ PLUK FLYTTER, DET FJERNER IKKE. En pluk går FRA hylden TIL en
+   afsendelsesplads. Først afsendelsen tager varen ud af huset. Var pluk en
+   ren fjernelse, ville der være et hul mellem hylden og bilen hvor godset
+   ikke stod nogen steder — og det er præcis dér det bliver væk.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const ORDRE_TILSTAND = {
+  kladde: { tilstand: "kladde", label: "Kladde", pill: "info", kanPlukkes: false },
+  frigivet: { tilstand: "frigivet", label: "Frigivet", pill: "warn", kanPlukkes: true },
+  afsendt: { tilstand: "afsendt", label: "Afsendt", pill: "ok", kanPlukkes: false },
+  annulleret: { tilstand: "annulleret", label: "Annulleret", pill: "bad", kanPlukkes: false },
+};
+
+export const ALLE_ORDRE_TILSTANDE = Object.keys(ORDRE_TILSTAND);
+
+/**
+ * ⚠ `afsendt` STÅR IKKE PÅ LISTEN, OG DET ER HELE POINTEN.
+ *
+ * En ordre bliver afsendt fordi varerne FORLADER huset — altså fordi der
+ * skrives afsendelsesbevægelser. Kunne en klient sætte tilstanden direkte,
+ * ville en ordre kunne meldes afsendt uden at en eneste palle var rørt, og
+ * lageret ville stadig stå med godset. Reglerne håndhæver listen; serveren
+ * går uden om den, fordi den skriver bevægelserne i samme ombæring.
+ *
+ * Samme greb som `SELVVALGT_KASSE_STATUS` i turtlebooking.js.
+ */
+export const KLIENT_ORDRE_TILSTANDE = ["kladde", "frigivet", "annulleret"];
+
+export const ORDRE_SKIFT = {
+  kladde: ["frigivet", "annulleret"],
+  /* ⚠ TILBAGE TIL KLADDE ER TILLADT — men kun så længe intet er plukket.
+     Det håndhæves af `kanFortrydeFrigivelse()`, ikke af tabellen: en ordre
+     med varer på afsendelsespladsen kan ikke bare lukkes ned igen. */
+  frigivet: ["kladde", "afsendt", "annulleret"],
+  afsendt: [],
+  annulleret: [],
+};
+
+export const kanSkifteOrdre = (fra, til) =>
+  Array.isArray(ORDRE_SKIFT[fra]) && ORDRE_SKIFT[fra].includes(til);
+
+export const PRIORITET = {
+  lav: { prioritet: "lav", label: "Lav", pill: "info", vaegt: 3 },
+  normal: { prioritet: "normal", label: "Normal", pill: "info", vaegt: 2 },
+  hoej: { prioritet: "hoej", label: "Høj", pill: "bad", vaegt: 1 },
+};
+
+export const ALLE_PRIORITETER = Object.keys(PRIORITET);
+
+export function valideOrdre(post = {}, { kunder = [], varer = [], pladser = [] } = {}) {
+  const f = {};
+
+  if (!post.kundeId) f.kundeId = "Vælg hvilken kunde ordren er til.";
+  else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+
+  if (!post.nummer?.trim()) f.nummer = "Ordrenummer skal udfyldes.";
+  else if (post.nummer.length > 40) f.nummer = "Højst 40 tegn.";
+
+  if (!ALLE_PRIORITETER.includes(post.prioritet)) f.prioritet = "Vælg en prioritet.";
+  if (!ALLE_ORDRE_TILSTANDE.includes(post.tilstand)) f.tilstand = "Vælg en tilstand.";
+
+  if (!Number.isFinite(post.afgangMs)) f.afgangMs = "Vælg en afgangsdato.";
+
+  /* ⚠ AFSENDELSESPLADSEN ER PÅKRÆVET. En pluk flytter varen HEN et sted; uden
+     den ville plukket ikke vide hvor godset skal stå indtil bilen kommer. */
+  if (!post.afsendPladsId) f.afsendPladsId = "Vælg hvor det plukkede skal stå.";
+  else if (pladser.length && !pladser.includes(post.afsendPladsId)) {
+    f.afsendPladsId = "Ukendt lokation.";
+  }
+
+  const linjer = Object.values(post.linjer || {});
+  if (!linjer.length) f.linjer = "Ordren har ingen linjer.";
+  for (const l of linjer) {
+    if (!l?.vareId || (varer.length && !varer.includes(l.vareId))) {
+      f.linjer = "En linje peger på en vare der ikke findes.";
+      break;
+    }
+    if (!Number.isInteger(l.antal) || l.antal <= 0) {
+      f.linjer = "En linje mangler en mængde.";
+      break;
+    }
+  }
+
+  if (post.note && post.note.length > 300) f.note = "Højst 300 tegn.";
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * Hvor meget der er plukket pr. vare på en ordre — UDLEDT af bevægelserne.
+ *
+ * ⚠ AFSENDELSER TÆLLER IKKE MED SOM PLUK. De to arter peger begge på ordren,
+ * og lagde man dem sammen, ville en fuldt plukket og afsendt ordre se ud som
+ * om der var plukket dobbelt.
+ */
+export function plukketPrVare(bevaegelser = [], ordreId) {
+  const ud = {};
+  for (const b of bevaegelser) {
+    if (b.reference !== ordreId || b.art !== "pluk") continue;
+    ud[b.vareId] = (ud[b.vareId] || 0) + (b.antal || 0);
+  }
+  return ud;
+}
+
+/**
+ * Ordrens fremdrift: hver linje med bestilt, plukket og resten.
+ *
+ * ⚠ `mangler` KAN IKKE BLIVE NEGATIV her, men et OVERPLUK kan godt opstå — en
+ * scanner kan læse den samme palle to gange. Det skal kunne SES frem for at
+ * blive klippet væk, og derfor bærer linjen `plukket` råt.
+ */
+export function ordreFremdrift(ordre = {}, bevaegelser = []) {
+  const plukket = plukketPrVare(bevaegelser, ordre.id);
+  const linjer = Object.entries(ordre.linjer || {}).map(([id, l]) => {
+    const p = plukket[l.vareId] || 0;
+    return {
+      id, ...l, plukket: p,
+      mangler: Math.max(0, (l.antal || 0) - p),
+      overplukket: Math.max(0, p - (l.antal || 0)),
+    };
+  });
+  const bestiltIalt = linjer.reduce((s, l) => s + (l.antal || 0), 0);
+  const plukketIalt = linjer.reduce((s, l) => s + Math.min(l.plukket, l.antal || 0), 0);
+  return {
+    linjer,
+    bestiltIalt,
+    plukketIalt,
+    /* 0 bestilt giver 0 — ikke NaN og ikke 100 %. En tom ordre er ikke færdig. */
+    andel: bestiltIalt > 0 ? plukketIalt / bestiltIalt : 0,
+    faerdig: bestiltIalt > 0 && plukketIalt >= bestiltIalt,
+    harOverpluk: linjer.some((l) => l.overplukket > 0),
+  };
+}
+
+/**
+ * ⚠ EN FRIGIVET ORDRE MED PLUK PÅ KAN IKKE TRÆKKES TILBAGE TIL KLADDE.
+ * Varerne står på afsendelsespladsen; lukkes ordren ned, står de dér uden en
+ * ordre der forklarer hvorfor. De skal føres tilbage først — som bevægelser,
+ * så historikken viser at de var ude og kom tilbage.
+ */
+export const kanFortrydeFrigivelse = (fremdrift) =>
+  (fremdrift?.plukketIalt || 0) === 0;
+
+/** Ordrer der venter på at blive plukket, vigtigst først. */
+export const plukkoe = (ordrer = []) =>
+  ordrer
+    .filter((o) => ORDRE_TILSTAND[o.tilstand]?.kanPlukkes)
+    .sort((a, b) =>
+      (PRIORITET[a.prioritet]?.vaegt ?? 9) - (PRIORITET[b.prioritet]?.vaegt ?? 9) ||
+      (a.afgangMs || 0) - (b.afgangMs || 0));

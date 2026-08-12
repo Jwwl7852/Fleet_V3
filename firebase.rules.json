@@ -1063,6 +1063,53 @@
           }
         },
 
+        // ══ PLUKORDREN — det udgaaende flow ══
+        //
+        // ⚠ DEN HEDDER plukordrer OG IKKE ordrer. `bookinger` er allerede en
+        // ordre i dette hus: en transportopgave med etaper, koeretoej og
+        // chauffoer. En plukordre siger hvad der skal UD AF LAGERET, ikke
+        // hvem der koerer det hvorhen. En 3PL har begge dele.
+        "plukordrer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|bevaegelser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["kundeId", "tilstand", "afgangMs", "prioritet"],
+          "$ordreId": {
+            ".validate": "newData.hasChildren(['kundeId', 'nummer', 'tilstand', 'prioritet', 'afgangMs', 'afsendPladsId', 'linjer'])",
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "nummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            // ⚠ KLIENTEN MAA IKKE SAETTE `afsendt`. En ordre bliver afsendt
+            // fordi varerne FORLADER huset — altsaa fordi der skrives
+            // afsendelsesbevaegelser. Kunne tilstanden saettes direkte, kunne
+            // en ordre meldes afsendt uden at en palle var roert, og lageret
+            // ville stadig staa med godset.
+            //
+            // Sidste led lader en UAENDRET tilstand blive staaende, saa man
+            // kan rette en note paa en afsendt ordre. Samme greb som kassens
+            // status i turtlebooking.
+            "tilstand": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(kladde|frigivet|annulleret)$/) && (!data.exists() || data.val().matches(/^(kladde|frigivet|annulleret)$/))))" },
+            "prioritet": { ".validate": "newData.isString() && newData.val().matches(/^(lav|normal|hoej)$/)" },
+            "afgangMs": { ".validate": "newData.isNumber()" },
+            // ⚠ HVOR DET PLUKKEDE SKAL STAA. En pluk FLYTTER varen hen et
+            // sted; uden pladsen ville godset ikke staa nogen steder mellem
+            // hylden og bilen — og det er praecis dér det bliver vaek.
+            "afsendPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "linjer": {
+              "$linjeId": {
+                ".validate": "newData.hasChildren(['vareId', 'antal'])",
+                "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+                // Skaleret med 1000, som ANTAL_SKALA i beloeb.js.
+                "antal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
+                "$andet": { ".validate": false }
+              }
+            },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+            "afsendtMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         "kunder": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",

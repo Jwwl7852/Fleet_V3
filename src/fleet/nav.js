@@ -121,6 +121,9 @@ export const NAV = [
     born: [
       { key: "warehouseVarer", sti: "/warehouse", label: "Varer",
         titel: "Warehouse – varer", under: "Kundens varekartotek, enheder og sporing" },
+      { key: "warehousePluk", sti: "/warehouse/pluk", label: "Pluk & afsend",
+        titel: "Warehouse – pluk & afsend",
+        under: "Plukordrer, fremdrift og afsendelse" },
       { key: "warehouseBevaegelser", sti: "/warehouse/bevaegelser", label: "Bevægelser",
         titel: "Warehouse – bevægelser",
         under: "Modtag, sæt på plads, flyt, pluk og afsend" },

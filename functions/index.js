@@ -47,7 +47,7 @@ import {
 } from "./delt/turtlebooking.js";
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
-  talFraMaengde,
+  talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
@@ -1556,3 +1556,118 @@ async function logBevaegelse(tenantId, uid, handling, id, foer, efter, note) {
       note: note ?? null,
     });
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PLUKORDREN — AFSENDELSEN
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR AFSENDELSEN IKKE ER ET FELT MAN SÆTTER.
+
+   Reglerne lader klienten sætte `kladde`, `frigivet` og `annulleret` — men
+   ikke `afsendt`. En ordre bliver afsendt fordi varerne FORLADER huset, altså
+   fordi der skrives afsendelsesbevægelser der tager dem af
+   afsendelsespladsen. Kunne tilstanden sættes direkte, kunne en ordre meldes
+   afsendt uden at en palle var rørt — og lageret ville stadig stå med godset,
+   mens kunden fik besked om at det var på vej.
+
+   Funktionen skriver derfor BEGGE dele i én multi-path `update()`: én
+   afsendelsesbevægelse pr. (vare, batch) der står på afsendelsespladsen,
+   saldoændringerne, og ordrens tilstand. Enten sker det hele, eller intet.
+
+   ⚠ DEN AFSENDER DET DER ER PLUKKET — IKKE DET DER ER BESTILT.
+   Er der plukket 8 af 10, afsendes 8. Alternativet ville være at afvise
+   delleverancer, og det ville betyde at et lager med 8 på hylden skulle vente
+   på 2 der måske aldrig kommer. Ordren lukkes med det der faktisk gik ud, og
+   forskellen står i historikken.
+   ══════════════════════════════════════════════════════════════════════ */
+
+export const plukordreafsend = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevBevaegelsesskriv(req);
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const ordreId = kortStreng(req.data?.ordreId, 60);
+  if (!ordreId) throw new HttpsError("invalid-argument", "ordreId mangler.");
+
+  const ordre = (await rod.child(`plukordrer/${ordreId}`).once("value")).val();
+  if (!ordre) throw new HttpsError("not-found", "Ordren findes ikke.");
+
+  if (!kanSkifteOrdre(ordre.tilstand, "afsendt")) {
+    throw new HttpsError("failed-precondition",
+      `En ordre i tilstanden ${ordre.tilstand} kan ikke afsendes.`);
+  }
+
+  /* ⚠ HVAD DER FAKTISK ER PLUKKET, læst af BEVÆGELSERNE — ikke af et felt på
+     ordren. Et gemt `plukketAntal` ville drive fra bevægelserne ved den første
+     pluk der ramte den ene og ikke den anden, og så ville der blive afsendt
+     noget der ikke stod på pladsen. */
+  const alle = (await rod.child("bevaegelser")
+    .orderByChild("reference").equalTo(ordreId).once("value")).val() || {};
+
+  /* Grupperet pr. (vare, batch): en afsendelse skal spejle det parti der
+     blev plukket, ellers kan et tilbagekald ikke følge godset ud af huset. */
+  const pr = new Map();
+  for (const b of Object.values(alle)) {
+    if (b.art !== "pluk") continue;
+    const noegle = `${b.vareId}|${b.batch || ""}`;
+    const nu = pr.get(noegle) || {
+      vareId: b.vareId, batch: b.batch || null,
+      serienummer: b.serienummer || null, antal: 0,
+    };
+    nu.antal += b.antal || 0;
+    pr.set(noegle, nu);
+  }
+  /* Allerede afsendt fra en tidligere delafsendelse trækkes fra. */
+  for (const b of Object.values(alle)) {
+    if (b.art !== "afsend") continue;
+    const noegle = `${b.vareId}|${b.batch || ""}`;
+    const nu = pr.get(noegle);
+    if (nu) nu.antal -= b.antal || 0;
+  }
+
+  const linjer = [...pr.values()].filter((x) => x.antal > 0);
+  if (!linjer.length) {
+    throw new HttpsError("failed-precondition",
+      "Der er ikke plukket noget på ordren endnu — der er intet at afsende.");
+  }
+
+  const nu = Date.now();
+  const opdatering = {
+    [`plukordrer/${ordreId}/tilstand`]: "afsendt",
+    [`plukordrer/${ordreId}/afsendtMs`]: nu,
+  };
+
+  for (const l of linjer) {
+    const bevId = rod.child("bevaegelser").push().key;
+    opdatering[`bevaegelser/${bevId}`] = {
+      art: "afsend",
+      vareId: l.vareId,
+      /* ⚠ KUNDEN FRA ORDREN. Den er den samme som varens, men den skrives MED
+         som på enhver anden bevægelse: et historisk faktum om hvem godset
+         tilhørte da det forlod huset. */
+      kundeId: ordre.kundeId,
+      antal: l.antal,
+      fraPladsId: ordre.afsendPladsId,
+      tilPladsId: null,
+      batch: l.batch,
+      serienummer: l.serienummer,
+      reference: ordreId,
+      note: null,
+      tidspunktMs: nu,
+      oprettetAf: uid,
+    };
+    const bn = `beholdning/${beholdningsNoegle(ordre.afsendPladsId, l.vareId, l.batch)}`;
+    opdatering[`${bn}/pladsId`] = ordre.afsendPladsId;
+    opdatering[`${bn}/vareId`] = l.vareId;
+    opdatering[`${bn}/batch`] = l.batch || UDEN_BATCH;
+    opdatering[`${bn}/senestMs`] = nu;
+    opdatering[`${bn}/antal`] = ServerValue.increment(-l.antal);
+  }
+
+  await rod.update(opdatering);
+
+  await logBevaegelse(tenantId, uid, AUDIT.tilstandsskift, ordreId,
+    { tilstand: ordre.tilstand }, { tilstand: "afsendt", antal: linjer.length },
+    `afsendte ${linjer.length} varelinjer fra ordre ${ordre.nummer}`);
+
+  return { ok: true, id: ordreId, linjer: linjer.length };
+});

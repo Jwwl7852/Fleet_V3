@@ -172,6 +172,34 @@ skærmen har et nøgletal for det. En negativ saldo er et lager der skal tælles
 ikke et tal der skal rettes. Det er præcis hvad cycle count i etape 6 er til
 for.
 
+**Etape 5 er inde.** Skærmen **Pluk & afsend** kan oprette plukordrer, frigive
+dem, registrere pluk mod dem og afsende.
+
+⚠ **Noden hedder `plukordrer`, ikke `ordrer`.** `bookinger` er allerede en
+ordre i dette hus — en transportopgave med etaper, køretøj og chauffør. En
+plukordre siger hvad der skal UD AF LAGERET, ikke hvem der kører det hvorhen.
+En 3PL der både opbevarer og kører, har begge dele.
+
+⚠ **Fremdriften er udledt af bevægelserne.** Der står ikke et `plukketAntal`
+på linjen; det ville drive ved den første pluk der ramte den ene og ikke den
+anden, og så ville ordren se færdig ud mens varerne stod på hylden.
+
+⚠ **Et pluk FLYTTER, det fjerner ikke.** Varen går fra hylden til ordrens
+afsendelsesplads, og først afsendelsen tager den ud af huset. Var pluk en ren
+fjernelse, ville der være et hul mellem hylden og bilen hvor godset ikke stod
+nogen steder — og det er dér det bliver væk. Derfor er afsendelsespladsen et
+**påkrævet** felt på ordren.
+
+⚠ **`afsendt` kan ikke sættes af en klient.** Reglerne tillader kun
+`kladde`, `frigivet` og `annulleret`; `plukordreafsend` skriver
+afsendelsesbevægelserne og tilstanden i én skrivning. Ellers kunne en ordre
+meldes afsendt uden at en palle var rørt, mens lageret stadig stod med godset.
+Samme greb som kassens status i Turtlebooking.
+
+Og den afsender **det der er plukket**, ikke det der er bestilt: er der plukket
+8 af 10, går de 8 ud. Alternativet ville være at et lager med 8 på hylden
+skulle vente på 2 der måske aldrig kommer.
+
 ### ⚠ 3.4 Scanner-appen er ikke en skærm
 
 Offline-kø, kamera, stregkodelæser, signatur, badge-login. Det er en
@@ -234,7 +262,7 @@ stemmer.
 | 2 | **Datamodel**: varer, lokationer, bevægelser, beholdning + regler + prøver | Grundlaget kan ikke laves om bagefter | ✅ |
 | 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | ✅ |
 | 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | ✅ |
-| 5 | **Pluk, pak, afsend** — pluklister, konsolidering, afsendelse | Udgående flow | |
+| 5 | **Pluk, pak, afsend** — plukordrer, fremdrift, afsendelse | Udgående flow | ✅ |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | |
 | 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | |
 | 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |

@@ -17,6 +17,8 @@ import {
   UDEN_BATCH, beholdningsNoegle, virkningPaaBeholdning,
   beholdningPrVare, beholdningPaaPlads, underMinimum,
   LAGERSVAR, tolkLagerfejl,
+  ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, KLIENT_ORDRE_TILSTANDE, kanSkifteOrdre,
+  valideOrdre, ordreFremdrift, kanFortrydeFrigivelse, plukkoe,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -260,10 +262,10 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
     assert.ok(!UDEN_SKAERM.includes("warehouse"));
   });
 
-  it("ejer sine tre egne noder og DELER reolpladser", () => {
+  it("ejer sine egne noder og DELER reolpladser", () => {
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
-      ["beholdning", "bevaegelser", "reolpladser", "varer"]);
+      ["beholdning", "bevaegelser", "plukordrer", "reolpladser", "varer"]);
     assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
   });
 
@@ -360,9 +362,13 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
     /* ⚠ PRÆCIS ÉN SKRIVNING TIL LAGERET. Bliver det to, kan den ene lykkes og
        den anden fejle — og så står der en saldo uden en bevægelse bag sig.
        Læsninger (`once`) tæller ikke; det er skrivningerne der skal samles. */
-    const skrivninger = blok.match(/\.(update|set)\(/g) || [];
-    assert.equal(skrivninger.length, 1,
-      `der er ${skrivninger.length} skrivninger i bevaegelseskriv — der må være én`);
+    /* ⚠ KUN DATABASESKRIVNINGER TÆLLES. Et Map har også `.set()`, og en prøve
+       der tæller alt, falder på en datastruktur frem for på en fejl — det
+       skete for den tilsvarende prøve på plukordreafsend. */
+    assert.equal((blok.match(/rod\.update\(/g) || []).length, 1,
+      "der må være præcis én rod.update() i bevaegelseskriv");
+    assert.equal((blok.match(/rod\.set\(|rod\.child\([^)]*\)\.set\(/g) || []).length, 0,
+      "der skrives til lageret uden for den samlede update");
   });
 
   it("⚠ BRUGER increment(), IKKE LÆS-OG-SKRIV", () => {
@@ -423,5 +429,143 @@ describe("svaret fra serveren forklarer sig selv", () => {
       LAGERSVAR.forbindelse);
     assert.equal(tolkLagerfejl({ code: "functions/invalid-argument" }).art,
       LAGERSVAR.ugyldig);
+  });
+});
+
+describe("plukordren — det udgående flow", () => {
+  const V = 1000;
+  const ordre = (x = {}) => ({
+    id: "o1", kundeId: "k1", nummer: "SO-10458", prioritet: "normal",
+    tilstand: "kladde", afgangMs: 1786000000000, afsendPladsId: "p2",
+    linjer: { a: { vareId: "v1", antal: 10 * V } }, ...x,
+  });
+  const CTX = { kunder: ["k1"], varer: ["v1"], pladser: ["p1", "p2"] };
+
+  it("kræver en kunde, et nummer, en afgang og en afsendelsesplads", () => {
+    assert.deepEqual(valideOrdre(ordre(), CTX), {});
+    assert.ok(valideOrdre(ordre({ kundeId: "" }), CTX).kundeId);
+    assert.ok(valideOrdre(ordre({ nummer: "" }), CTX).nummer);
+    assert.ok(valideOrdre(ordre({ afgangMs: null }), CTX).afgangMs);
+    /* ⚠ UDEN AFSENDELSESPLADS VED PLUKKET IKKE HVOR GODSET SKAL STÅ mellem
+       hylden og bilen — og det er dér det bliver væk. */
+    assert.ok(valideOrdre(ordre({ afsendPladsId: "" }), CTX).afsendPladsId);
+  });
+
+  it("nægter en ordre uden linjer", () => {
+    assert.ok(valideOrdre(ordre({ linjer: {} }), CTX).linjer);
+    assert.ok(valideOrdre(ordre({ linjer: { a: { vareId: "v1", antal: 0 } } }), CTX).linjer);
+    assert.ok(valideOrdre(ordre({ linjer: { a: { vareId: "x", antal: 1 } } }), CTX).linjer);
+  });
+
+  it("⚠ `afsendt` STÅR IKKE PÅ KLIENTENS LISTE", () => {
+    /* En ordre bliver afsendt fordi varerne forlader huset. Kunne tilstanden
+       sættes direkte, kunne en ordre meldes afsendt uden at en palle var rørt,
+       mens lageret stadig stod med godset. */
+    assert.deepEqual(KLIENT_ORDRE_TILSTANDE, ["kladde", "frigivet", "annulleret"]);
+    assert.ok(!KLIENT_ORDRE_TILSTANDE.includes("afsendt"));
+    assert.ok(ALLE_ORDRE_TILSTANDE.includes("afsendt"));
+  });
+
+  it("lukker en afsendt og en annulleret ordre for altid", () => {
+    for (const til of ALLE_ORDRE_TILSTANDE) {
+      assert.equal(kanSkifteOrdre("afsendt", til), false, `afsendt → ${til}`);
+      assert.equal(kanSkifteOrdre("annulleret", til), false, `annulleret → ${til}`);
+    }
+    assert.equal(kanSkifteOrdre("kladde", "afsendt"), false,
+      "en kladde kan ikke afsendes — den er ikke frigivet til plukning");
+  });
+
+  it("udleder fremdriften af BEVÆGELSERNE, ikke af et felt", () => {
+    const bev = [
+      { reference: "o1", art: "pluk", vareId: "v1", antal: 4 * V },
+      { reference: "o1", art: "pluk", vareId: "v1", antal: 2 * V },
+      /* ⚠ EN AFSENDELSE TÆLLER IKKE SOM ET PLUK. Lagde man dem sammen, ville
+         en fuldt plukket og afsendt ordre se ud som om der var plukket
+         dobbelt. */
+      { reference: "o1", art: "afsend", vareId: "v1", antal: 6 * V },
+      /* En anden ordres pluk må ikke tælle med. */
+      { reference: "o2", art: "pluk", vareId: "v1", antal: 99 * V },
+    ];
+    const fd = ordreFremdrift(ordre(), bev);
+    assert.equal(fd.plukketIalt, 6 * V);
+    assert.equal(fd.linjer[0].mangler, 4 * V);
+    assert.equal(fd.andel, 0.6);
+    assert.equal(fd.faerdig, false);
+  });
+
+  it("⚠ VISER ET OVERPLUK FREM FOR AT KLIPPE DET VÆK", () => {
+    /* En scanner kan læse den samme palle to gange. Klippede vi det væk,
+       ville lageret mangle noget ingen kunne forklare. */
+    const fd = ordreFremdrift(ordre(), [
+      { reference: "o1", art: "pluk", vareId: "v1", antal: 12 * V },
+    ]);
+    assert.equal(fd.linjer[0].overplukket, 2 * V);
+    assert.equal(fd.linjer[0].mangler, 0);
+    assert.ok(fd.harOverpluk);
+    /* Andelen går ikke over 100 %. */
+    assert.equal(fd.andel, 1);
+  });
+
+  it("kalder en tom ordre for ufærdig frem for færdig", () => {
+    /* 0 af 0 er ikke 100 %. En tom ordre er ikke en leveret ordre. */
+    const fd = ordreFremdrift(ordre({ linjer: {} }), []);
+    assert.equal(fd.andel, 0);
+    assert.equal(fd.faerdig, false);
+  });
+
+  it("⚠ EN FRIGIVET ORDRE MED PLUK PÅ KAN IKKE TRÆKKES TILBAGE", () => {
+    /* Varerne står på afsendelsespladsen. Lukkes ordren ned, står de dér
+       uden en ordre der forklarer hvorfor. */
+    assert.equal(kanFortrydeFrigivelse(ordreFremdrift(ordre(), [])), true);
+    assert.equal(kanFortrydeFrigivelse(ordreFremdrift(ordre(), [
+      { reference: "o1", art: "pluk", vareId: "v1", antal: 1 * V },
+    ])), false);
+  });
+
+  it("sorterer plukkøen efter prioritet, så afgang", () => {
+    const koe = plukkoe([
+      ordre({ id: "a", tilstand: "frigivet", prioritet: "normal", afgangMs: 100 }),
+      ordre({ id: "b", tilstand: "frigivet", prioritet: "hoej", afgangMs: 900 }),
+      ordre({ id: "c", tilstand: "frigivet", prioritet: "normal", afgangMs: 50 }),
+      /* Kladder og afsendte står ikke i køen. */
+      ordre({ id: "d", tilstand: "kladde", prioritet: "hoej", afgangMs: 1 }),
+      ordre({ id: "e", tilstand: "afsendt", prioritet: "hoej", afgangMs: 1 }),
+    ]);
+    assert.deepEqual(koe.map((o) => o.id), ["b", "c", "a"]);
+  });
+});
+
+describe("afsendelsen skriver bevægelser og tilstand sammen", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+  const start = kilde.indexOf("export const plukordreafsend");
+  const blok = kilde.slice(start);
+
+  it("findes og bruger den delte tilstandstabel", () => {
+    assert.ok(start > 0, "plukordreafsend findes ikke");
+    assert.ok(blok.includes("kanSkifteOrdre(ordre.tilstand"));
+  });
+
+  it("⚠ SKRIVER ALT I ÉN update()", () => {
+    const krop = blok.slice(0, blok.indexOf("await logBevaegelse"));
+    assert.ok(krop.includes("rod.update(opdatering)"));
+    /* ⚠ HER ER DER ET Map. Bevægelserne grupperes pr. vare og batch før de
+       skrives, og `pr.set()` er ikke en databaseskrivning. Prøven må se
+       forskel — ellers falder den på en datastruktur frem for på en fejl. */
+    assert.equal((krop.match(/rod\.update\(/g) || []).length, 1);
+    assert.equal((krop.match(/rod\.set\(|rod\.child\([^)]*\)\.set\(/g) || []).length, 0);
+  });
+
+  it("afsender det der er PLUKKET, ikke det der er bestilt", () => {
+    /* ⚠ ELLERS SKULLE ET LAGER MED 8 PÅ HYLDEN VENTE PÅ 2 der måske aldrig
+       kommer. Forskellen står i historikken. */
+    assert.ok(blok.includes('b.art !== "pluk"'));
+    assert.ok(blok.includes('b.art !== "afsend"'),
+      "allerede afsendt trækkes ikke fra — en anden afsendelse ville sende dobbelt");
+    assert.ok(!blok.includes("ordre.linjer"),
+      "afsendelsen læser ordrens linjer frem for bevægelserne");
+  });
+
+  it("bruger increment() på saldoen", () => {
+    assert.ok(blok.includes("ServerValue.increment(-l.antal)"));
   });
 });
