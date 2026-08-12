@@ -10,6 +10,12 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import {
+  METODER, YDELSESKATEGORI, LAGERYDELSER, IKKE_FAKTURERBARE_ARTER, ydelseForArt,
+} from "../src/fleet/pricing.js";
+import {
+  ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER,
+} from "../src/fleet/warehouse.js";
 import { readFileSync } from "node:fs";
 import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
@@ -735,5 +741,75 @@ describe("Platformsadgangen er ikke dashboard-modulet", () => {
     assert.equal(rabatFor(PLATFORM, { rabatBps: 0, rabatModulBps: { platform: 5000 } }), 5000,
       "rabatFor kender ikke forskel — men reglerne afviser nøglen, se rules-prøven");
     assert.equal(rabatFor(PLATFORM, { rabatBps: 1500, rabatModulBps: {} }), 1500);
+  });
+});
+
+describe("ydelseskataloget — hvad der kan prissættes", () => {
+  it("har en metode for hver ydelse, og metoden findes", () => {
+    /* ⚠ ELLERS VILLE EN YDELSE HAVE EN PRIS uden at nogen vidste hvad `antal`
+       skulle ganges med. Metoden er dét der gør en sats til et beløb. */
+    for (const [id, y] of Object.entries(LAGERYDELSER)) {
+      assert.ok(METODER[y.metode], `${id} har metoden ${y.metode}, som ikke findes`);
+      assert.ok(YDELSESKATEGORI[y.kategori], `${id} har en ukendt kategori`);
+      assert.ok(y.navn?.length, `${id} mangler et navn`);
+    }
+  });
+
+  it("⚠ HÅNDTERING IND OG UD ER TO YDELSER", () => {
+    /* De regnes ens, men de koster ikke det samme: at tage imod en palle og
+       at sende den ud er to arbejdsgange. Én fælles "håndtering" ville gøre
+       det umuligt at prissætte dem forskelligt. */
+    assert.notEqual(LAGERYDELSER["lager.handlingInd"], LAGERYDELSER["lager.handlingUd"]);
+    assert.deepEqual(LAGERYDELSER["lager.handlingInd"].arter, ["modtag"]);
+    assert.deepEqual(LAGERYDELSER["lager.handlingUd"].arter, ["afsend"]);
+    assert.equal(LAGERYDELSER["lager.handlingInd"].metode,
+                 LAGERYDELSER["lager.handlingUd"].metode);
+  });
+
+  it("⚠ AFREGNER IKKE EN OPTÆLLING", () => {
+    /* Optælling og justering er vores kontrol af vores eget arbejde. Kunne de
+       afregnes, ville en optælling være en indtægt — og så blev der talt af de
+       forkerte grunde. */
+    for (const art of IKKE_FAKTURERBARE_ARTER) {
+      assert.equal(ydelseForArt(art), null, `${art} er blevet fakturerbar`);
+    }
+    assert.equal(ydelseForArt("modtag"), "lager.handlingInd");
+    assert.equal(ydelseForArt("afsend"), "lager.handlingUd");
+    assert.equal(ydelseForArt("flyt"), "lager.flytning");
+    assert.equal(ydelseForArt("putaway"), "lager.flytning");
+    assert.equal(ydelseForArt(null), null);
+    assert.equal(ydelseForArt("findes-ikke"), null);
+  });
+
+  it("dækker hver bevægelsesart præcis én gang", () => {
+    /* ⚠ TO YDELSER PÅ SAMME ART ville betyde at den samme håndtering blev
+       faktureret to gange, og hvilken der vandt, ville afhænge af
+       rækkefølgen i objektet. */
+    const set = new Set();
+    for (const [id, y] of Object.entries(LAGERYDELSER)) {
+      for (const a of y.arter || []) {
+        assert.ok(!set.has(a), `arten ${a} dækkes af mere end én ydelse (${id})`);
+        set.add(a);
+      }
+    }
+    /* Og hver art i Warehouse er enten dækket eller eksplicit undtaget. */
+    for (const a of ALLE_BEVAEGELSE_ARTER) {
+      assert.ok(set.has(a) || IKKE_FAKTURERBARE_ARTER.includes(a),
+        `bevægelsesarten ${a} er hverken prissat eller undtaget`);
+    }
+  });
+
+  it("⚠ OPBEVARINGSYDELSERNE HAR INGEN ARTER", () => {
+    /* De regnes ikke af bevægelser, men af hvad der STÅR på lageret pr. døgn
+       — og den måling kan ikke laves bagud. */
+    assert.equal(LAGERYDELSER["lager.palleplads"].arter, null);
+    assert.equal(LAGERYDELSER["lager.kubik"].arter, null);
+    assert.equal(METODER[LAGERYDELSER["lager.palleplads"].metode].enhed, "palledøgn");
+  });
+
+  it("bruger den samme liste over ikke-fakturerbare arter som Warehouse", () => {
+    /* ⚠ TO LISTER VILLE DRIVE. warehouse.js er importfri og kan ikke importere
+       pricing.js — så prøven binder dem i stedet, som med MAENGDE_SKALA. */
+    assert.deepEqual(IKKE_FAKTURERBARE_ARTER, IKKE_AFREGNEDE_ARTER);
   });
 });

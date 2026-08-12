@@ -118,7 +118,7 @@ også en lagerafregning: linjen bærer den sats der blev brugt.
 
 ## 4. Det der skal afgøres
 
-### ⚠ 4.1 Hvad sker der med `prisgruppe`?
+### ✅ 4.1 BESVARET: prisgruppen udgår som prisbærer
 
 Kunden har i dag `prisgruppe: "A"`. Din model er **standard + afvigelse pr.
 kunde**, og så er prisgruppen et tredje lag i midten.
@@ -127,17 +127,27 @@ kunde**, og så er prisgruppen et tredje lag i midten.
 siden af prisgruppen, og at opfinde et ville være to måder at inddele de samme
 kunder på"*. Tre lag ville være det samme problem én gang til.
 
-**Forslag: prisgruppen udgår** som prisbærer og bliver et rent
-filtrerings-/rapporteringsfelt — eller fjernes helt. Alternativet er at
-standardprisen ER prisgruppe "A", og at man kan have flere standardlister.
+**Der er ÉN standardprisliste for hele virksomheden**, og afvigelser sættes på
+den enkelte kunde. To lag, ikke tre.
 
-### ⚠ 4.2 Flytter Bookingopsætning helt?
+`prisgruppe` bliver et rent filtreringsfelt i kundeoversigten og bærer ikke
+længere en pris. ⚠ Feltet fjernes ikke af sig selv: det står på hver
+kundepost og i demo-data, og en skærm der stadig filtrerer på det, skal blive
+ved med at virke. Det er navnet der holder op med at betyde noget, ikke
+kolonnen der forsvinder.
+
+### ✅ 4.2 BESVARET: hele skærmen flytter
 
 Skærmen hedder *Bookingopsætning* og indeholder to ting: **satser** (priser) og
 **regelsæt** (automatik). Skal begge til Kunder & Priser, eller kun priserne?
 
-**Forslag: kun priserne flytter.** Regelsættene er ikke priser, og en skærm der
-hedder Kunder & Priser skal ikke rumme bookingautomatik.
+**Bookingopsætning nedlægges.** Både satserne og regelsættene flytter under
+Kunder & Priser.
+
+⚠ **Det gør Kunder & Priser til en skærm med undermenuer**, ikke ét kort. Og
+det betyder at ruten `/booking/opsaetning` forsvinder — den skal have en
+redirect, ikke bare fjernes, for den står i sidebaren i dag og kan være
+bogmærket. Se `legacy` i nav.js.
 
 ### ⚠ 4.3 Hvor mange klik må en pris koste?
 
@@ -152,14 +162,14 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 
 ## 5. Etaper
 
-| # | Hvad | Værdi alene |
-|---|---|---|
-| 1 | **Ydelseskataloget** + de tre nye metoder i `pricing.js` | Der findes en liste over hvad der kan prissættes |
-| 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser |
-| 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale |
-| 4 | **`prisFor()`** og snapshot — én opslagsvej for hele platformen | Priserne bruges ét sted fra |
-| 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder |
-| 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres |
+| # | Hvad | Værdi alene | Status |
+|---|---|---|---|
+| 1 | **Ydelseskataloget** + de tre nye metoder i `pricing.js` | Der findes en liste over hvad der kan prissættes | ✅ |
+| 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | |
+| 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | |
+| 4 | **`prisFor()`** og snapshot — én opslagsvej for hele platformen | Priserne bruges ét sted fra | |
+| 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder | |
+| 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres | |
 
 ⚠ Etape 5 er den farligste: `beregnBooking()` og `beregnForloeb()` er prøvet
 mod det hardkodede satsark. Flyttes det, skal prøverne følge med — ellers

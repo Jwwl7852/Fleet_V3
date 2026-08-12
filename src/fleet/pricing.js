@@ -37,7 +37,113 @@ export const METODER = {
   prDoegn:       { label: "Pr. døgn",                enhed: "døgn" },
   prKm:          { label: "Pr. km",                  enhed: "km" },
   prLagerdoegn:  { label: "Pr. lagerdøgn (efter friperiode)", enhed: "døgn" },
+
+  /* ⚠ DE TRE HER KOM MED WAREHOUSE, og de er METODER frem for ydelser af en
+     grund: "håndtering ind" og "håndtering ud" er to ydelser med hver sin
+     pris, men de regnes ens — pr. hændelse. Blandede vi de to begreber
+     sammen, ville kataloget have en linje pr. kombination i stedet for en
+     pr. ting. */
+  prHaandtering: { label: "Pr. håndtering",          enhed: "håndtering" },
+  /* Opbevaring. ⚠ PÅBEGYNDTE DØGN, som prLagerdoegn — se lagerdoegn(). Et
+     lager fakturerer det døgn godset ankom, også hvis det kom kl. 23. */
+  prPalledoegn:  { label: "Pr. palleplads pr. døgn", enhed: "palledøgn" },
+  prKubikdoegn:  { label: "Pr. m³ pr. døgn",         enhed: "m³-døgn" },
 };
+
+export const ALLE_METODER = Object.keys(METODER);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   YDELSESKATALOGET — hvad der overhovedet kan prissættes
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ KATALOGET ER PLATFORMENS, PRISEN ER KUNDENS.
+   Her står HVAD der kan sælges; hvad det koster, står i standardpriserne og i
+   kundens afvigelse. Blandede vi de to, ville en vognmand der slettede en
+   pris, også slette ydelsen — og en faktura fra sidste kvartal kunne ikke
+   længere forklare hvad linjen var.
+
+   ⚠ KATEGORIEN SIGER HVILKET MODUL ydelsen hører til. En vognmand uden
+   Warehouse skal ikke sætte pris på en palleplads.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const YDELSESKATEGORI = {
+  koersel:     { kategori: "koersel",     label: "Kørsel",      modul: "booking" },
+  passage:     { kategori: "passage",     label: "Passage",     modul: "booking" },
+  agent:       { kategori: "agent",       label: "Agent",       modul: "booking" },
+  ophold:      { kategori: "ophold",      label: "Ophold",      modul: "booking" },
+  lager:       { kategori: "lager",       label: "Opbevaring",  modul: "warehouse" },
+  haandtering: { kategori: "haandtering", label: "Håndtering",  modul: "warehouse" },
+};
+
+export const ALLE_YDELSESKATEGORIER = Object.keys(YDELSESKATEGORI);
+
+/**
+ * De ydelser Warehouse leverer.
+ *
+ * ⚠ DE STÅR HER OG IKKE I warehouse.js, fordi kataloget er ÉT. En vognmand
+ * skal kunne se alle sine priser på én skærm, og et katalog pr. modul ville
+ * betyde at prisskærmen skulle kende hvert eneste modul for at kunne tegne
+ * sig.
+ *
+ * ⚠ HÅNDTERING IND OG UD ER TO YDELSER. De regnes ens (pr. hændelse), men de
+ * koster ikke det samme: at tage imod en palle og at sende den ud er to
+ * arbejdsgange. Én fælles "håndtering" ville gøre det umuligt at prissætte
+ * dem forskelligt — og det er præcis dét der bedes om.
+ */
+export const LAGERYDELSER = {
+  "lager.handlingInd": {
+    navn: "Håndtering ind", kategori: "haandtering", metode: "prHaandtering",
+    arter: ["modtag"],
+  },
+  "lager.handlingUd": {
+    navn: "Håndtering ud", kategori: "haandtering", metode: "prHaandtering",
+    arter: ["afsend"],
+  },
+  "lager.flytning": {
+    navn: "Flytning", kategori: "haandtering", metode: "prHaandtering",
+    arter: ["putaway", "flyt"],
+  },
+  "lager.pluk": {
+    navn: "Pluk", kategori: "haandtering", metode: "prHaandtering",
+    arter: ["pluk"],
+  },
+  "lager.retur": {
+    navn: "Returhåndtering", kategori: "haandtering", metode: "prHaandtering",
+    arter: ["retur"],
+  },
+  /* ⚠ DE TO OPBEVARINGSYDELSER HAR INGEN arter. De regnes ikke af bevægelser,
+     men af hvad der STÅR på lageret pr. døgn — og den måling kan ikke laves
+     bagud. Se WAREHOUSE.md. */
+  "lager.palleplads": {
+    navn: "Palleplads pr. døgn", kategori: "lager", metode: "prPalledoegn",
+    arter: null,
+  },
+  "lager.kubik": {
+    navn: "m³ pr. døgn", kategori: "lager", metode: "prKubikdoegn",
+    arter: null,
+  },
+};
+
+export const ALLE_LAGERYDELSER = Object.keys(LAGERYDELSER);
+
+/**
+ * ⚠ OPTÆLLING OG JUSTERING ER IKKE EN YDELSE.
+ *
+ * De er vores kontrol af vores eget arbejde, ikke noget kunden har bedt om.
+ * Kunne de afregnes, ville en optælling være en indtægt — og så blev der talt
+ * af de forkerte grunde. Listen står eksplicit, så en ny bevægelsesart ikke
+ * lydløst bliver fakturerbar.
+ */
+export const IKKE_FAKTURERBARE_ARTER = ["optael", "justering"];
+
+/** Ydelsen der dækker en bevægelsesart — eller null. */
+export function ydelseForArt(art) {
+  if (!art || IKKE_FAKTURERBARE_ARTER.includes(art)) return null;
+  for (const [id, y] of Object.entries(LAGERYDELSER)) {
+    if (y.arter?.includes(art)) return id;
+  }
+  return null;
+}
 
 function linjebeloeb(sats, antal) {
   if (!sats) return 0;
