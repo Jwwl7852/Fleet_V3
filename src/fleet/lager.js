@@ -22,6 +22,7 @@ export { LAGERSVAR, lagerBesked, tolkLagerfejl } from "./warehouse.js";
    tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
 export const LAGERFUNKTION = "bevaegelseskriv";
 export const AFSENDFUNKTION = "plukordreafsend";
+export const OPTAELFUNKTION = "optaellingskriv";
 
 async function kald(data, navn = LAGERFUNKTION) {
   try {
@@ -69,3 +70,19 @@ export const skrivBevaegelse = ({
  */
 export const afsendPlukordre = ({ ordreId }) =>
   kald({ ordreId }, AFSENDFUNKTION);
+
+/**
+ * Registrér en optælling.
+ *
+ * ⚠ FORVENTNINGEN SENDES IKKE MED. Serveren læser saldoen i det øjeblik der
+ * tælles og regner selv afvigelsen. Kunne klienten oplyse den, ville
+ * afvigelsen være forskellen mellem hvad brugeren TROEDE der stod og hvad han
+ * talte — og så måler den ingenting.
+ */
+export const skrivOptaelling = ({ pladsId, vareId, batch, taeltAntal, aarsag, note }) =>
+  kald({
+    pladsId, vareId, taeltAntal,
+    batch: batch || undefined,
+    aarsag: aarsag || undefined,
+    note: note || undefined,
+  }, OPTAELFUNKTION);

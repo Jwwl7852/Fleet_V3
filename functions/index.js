@@ -48,6 +48,7 @@ import {
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
+  valideOptaelling,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
@@ -1670,4 +1671,122 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
     `afsendte ${linjer.length} varelinjer fra ordre ${ordre.nummer}`);
 
   return { ok: true, id: ordreId, linjer: linjer.length };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   OPTÆLLINGEN
+   ══════════════════════════════════════════════════════════════════════
+
+   ⚠ FORVENTNINGEN LÆSES HER, IKKE AF KLIENTEN.
+
+   Det er hele grunden til at optællingen er en funktion. Sendte skærmen
+   `forventet` med, ville afvigelsen være forskellen mellem hvad brugeren
+   TROEDE der stod og hvad han talte — og så måler den ingenting. Serveren
+   læser saldoen i det øjeblik der tælles, og regner selv forskellen.
+
+   ⚠ TRE TING SKRIVES SAMMEN: optællingsposten, `optael`-bevægelsen og den
+   nye saldo. Sker kun det ene, står der enten en rettelse ingen kan forklare,
+   eller en måling der ikke slog igennem.
+
+   ⚠ EN STOR AFVIGELSE BLOKERER IKKE. Det er fristende at kræve godkendelse
+   over en grænse. Det ville betyde at den der finder det største hul, er den
+   der ikke kan lukke sin optælling — og så bliver der talt mindre, ikke mere.
+   Hylden er sandheden. Rettelsen sker med det samme, og afvigelsen står som
+   sin egen kendsgerning der ikke kan slettes: `optaellinger` er
+   `.write: false` for enhver klient.
+
+   ⚠ MEN EN AFVIGELSE SKAL HAVE EN ÅRSAG, og årsagen er en allowliste.
+   Fritekst kan ikke summeres — "svind", "Svind?" og "vist nok stjålet" ville
+   blive tre kategorier af det samme problem.
+   ══════════════════════════════════════════════════════════════════════ */
+
+export const optaellingskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevBevaegelsesskriv(req);
+  const rod = db.ref(`tenants/${tenantId}`);
+  const d = req.data || {};
+
+  const pladsId = kortStreng(d.pladsId, 60);
+  const vareId = kortStreng(d.vareId, 60);
+  const batch = kortStreng(d.batch, 40);
+  const taeltAntal = Number(d.taeltAntal);
+  const aarsag = kortStreng(d.aarsag, 30);
+  const note = kortStreng(d.note, 300);
+
+  if (!pladsId) throw new HttpsError("invalid-argument", "pladsId mangler.");
+  if (!vareId) throw new HttpsError("invalid-argument", "vareId mangler.");
+
+  const [vare, plads] = await Promise.all([
+    rod.child(`varer/${vareId}`).once("value").then((s) => s.val()),
+    rod.child(`reolpladser/${pladsId}`).once("value").then((s) => s.val()),
+  ]);
+  if (!vare) throw new HttpsError("not-found", `Varen ${vareId} findes ikke.`);
+  if (!plads) throw new HttpsError("not-found", `Lokationen ${pladsId} findes ikke.`);
+
+  /* ⚠ HER LÆSES FORVENTNINGEN. Se hovedet. */
+  const noegle = beholdningsNoegle(pladsId, vareId, batch);
+  const snap = await rod.child(`beholdning/${noegle}`).once("value");
+  const forventet = snap.exists() ? (snap.val()?.antal ?? 0) : 0;
+
+  const fejl = valideOptaelling(
+    { pladsId, vareId, batch, taeltAntal, aarsag, note, forventet }, { vare });
+  if (Object.keys(fejl).length) {
+    throw new HttpsError("invalid-argument",
+      Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" "));
+  }
+
+  const afvigelse = taeltAntal - forventet;
+  const nu = Date.now();
+  const bevId = rod.child("bevaegelser").push().key;
+  const optId = rod.child("optaellinger").push().key;
+
+  /* ⚠ EN OPTÆLLING SÆTTER SALDOEN, den lægger ikke til. Blev den lagt til,
+     ville en optælling der BEKRÆFTEDE beholdningen, fordoble den. Derfor
+     skrives `taeltAntal` direkte og ikke som en increment. */
+  const opdatering = {
+    [`bevaegelser/${bevId}`]: {
+      art: "optael",
+      vareId,
+      kundeId: vare.kundeId,
+      antal: taeltAntal,
+      fraPladsId: null,
+      tilPladsId: pladsId,
+      batch: batch || null,
+      serienummer: null,
+      /* Referencen binder bevægelsen til optællingsposten, så en rettelse i
+         lageret altid kan spores til den måling der udløste den. */
+      reference: optId,
+      note: note || null,
+      tidspunktMs: nu,
+      oprettetAf: uid,
+    },
+    [`optaellinger/${optId}`]: {
+      pladsId, vareId,
+      batch: batch || null,
+      forventet,
+      taeltAntal,
+      afvigelse,
+      /* Uden afvigelse er årsagen meningsløs og udelades — ellers ville hver
+         eneste optælling der ramte plet, stå med en årsagskode. */
+      aarsag: afvigelse === 0 ? null : aarsag,
+      note: note || null,
+      bevaegelseId: bevId,
+      tidspunktMs: nu,
+      oprettetAf: uid,
+    },
+    [`beholdning/${noegle}/pladsId`]: pladsId,
+    [`beholdning/${noegle}/vareId`]: vareId,
+    [`beholdning/${noegle}/batch`]: batch || UDEN_BATCH,
+    [`beholdning/${noegle}/antal`]: taeltAntal,
+    [`beholdning/${noegle}/senestMs`]: nu,
+  };
+
+  await rod.update(opdatering);
+
+  await logBevaegelse(tenantId, uid, AUDIT.aendre, optId,
+    { antal: forventet }, { antal: taeltAntal, aarsag: aarsag || null },
+    afvigelse === 0
+      ? `optaelling uden afvigelse paa ${pladsId}`
+      : `AFVIGELSE ${afvigelse > 0 ? "+" : ""}${afvigelse} paa ${pladsId} (${aarsag})`);
+
+  return { ok: true, id: optId, forventet, taeltAntal, afvigelse };
 });

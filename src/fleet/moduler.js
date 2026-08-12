@@ -245,6 +245,7 @@ export const NODE_MODUL = {
   bevaegelser: "warehouse",
   beholdning: "warehouse",
   plukordrer: "warehouse",
+  optaellinger: "warehouse",
 };
 
 /**

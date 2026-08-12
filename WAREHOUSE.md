@@ -200,6 +200,32 @@ Og den afsender **det der er plukket**, ikke det der er bestilt: er der plukket
 8 af 10, går de 8 ud. Alternativet ville være at et lager med 8 på hylden
 skulle vente på 2 der måske aldrig kommer.
 
+**Etape 6 er inde.** Skærmen **Optælling** viser hvad der skal tælles,
+registrerer tællingen, og opgør afvigelserne pr. årsag.
+
+⚠ **Forventningen læses af SERVEREN, ikke af klienten.** Det er hele grunden
+til at optællingen er en funktion. Sendte skærmen `forventet` med, ville
+afvigelsen være forskellen mellem hvad brugeren TROEDE der stod og hvad han
+talte — og så måler den ingenting. Skærmen viser derfor heller ikke det
+forventede tal, før der er talt: står svaret på skærmen, tæller man efter det.
+
+⚠ **En afvigelse skal have en årsag, og årsagen er en allowliste.** Fritekst
+kan ikke summeres: "svind", "Svind?" og "vist nok stjålet" ville blive tre
+kategorier af det samme problem. `ukendt` står med vilje på listen — tvinges
+folk til at vælge en de ikke kender, vælger de en tilfældig.
+
+⚠ **Men en stor afvigelse BLOKERER ikke.** Krævede vi godkendelse over en
+grænse, ville den der finder det største hul, være den der ikke kan lukke sin
+optælling — og så bliver der talt mindre, ikke mere. Hylden er sandheden;
+rettelsen sker med det samme, og afvigelsen står som sin egen post der ikke
+kan slettes: `optaellinger` er `.write: false` for enhver klient.
+
+⚠ **Lagernøjagtigheden siger "for lidt grundlag" under ti optællinger.** To og
+to hundrede ser ens ud som en procent. Samme regel som `MINDSTE_GRUNDLAG`.
+
+Og den negative saldo fra etape 4 har nu et sted at gå hen: den er **altid**
+forfalden til optælling, uanset hvornår der sidst blev talt.
+
 ### ⚠ 3.4 Scanner-appen er ikke en skærm
 
 Offline-kø, kamera, stregkodelæser, signatur, badge-login. Det er en
@@ -263,7 +289,7 @@ stemmer.
 | 3 | **Varekartotek og lokationer** — stamdata, zoner, belægning | Lageret kan registreres | ✅ |
 | 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | ✅ |
 | 5 | **Pluk, pak, afsend** — plukordrer, fremdrift, afsendelse | Udgående flow | ✅ |
-| 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | |
+| 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | ✅ |
 | 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | |
 | 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |
 | 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | |

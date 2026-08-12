@@ -1110,6 +1110,42 @@
           }
         },
 
+        // ══ OPTAELLINGEN — beviset for at beholdningen passer ══
+        //
+        // ⚠ KUN SERVEREN. Forventningen skal laeses af DATABASEN i det
+        // oejeblik der taelles; sendte klienten den med, ville afvigelsen
+        // vaere forskellen mellem hvad brugeren TROEDE der stod og hvad han
+        // talte — og saa maaler den ingenting.
+        //
+        // ⚠ OG POSTEN KAN IKKE RETTES BAGEFTER. En optaelling er en maaling,
+        // ikke en holdning. Kunne afvigelsen redigeres, ville optaellingen
+        // vaere vejen til at SKJULE et svind frem for vejen til at finde det.
+        "optaellinger": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["pladsId", "vareId", "tidspunktMs", "aarsag"],
+          "$optaellingId": {
+            ".write": false,
+            ".validate": "newData.hasChildren(['pladsId', 'vareId', 'forventet', 'taeltAntal', 'afvigelse', 'tidspunktMs'])",
+            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+            "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/)" },
+            // ⚠ forventet KAN vaere negativ. Er saldoen gaaet i minus, er det
+            // netop dét optaellingen skal fange — og et tal der ikke kunne
+            // vaere negativt, ville skjule den fejl der udloeste taellingen.
+            "forventet": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+            "taeltAntal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "afvigelse": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+            // Allowliste, ikke fritekst: \"svind\" og \"Svind?\" ville blive to
+            // kategorier, og saa kan ingen se om det er samme problem.
+            "aarsag": { ".validate": "newData.isString() && newData.val().matches(/^(svind|fejlpluk|fejlmodtagelse|skade|fundet|tastefejl|ukendt)$/)" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "bevaegelseId": { ".validate": "newData.isString()" },
+            "tidspunktMs": { ".validate": "newData.isNumber()" },
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         "kunder": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",

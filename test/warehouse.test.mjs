@@ -19,6 +19,8 @@ import {
   LAGERSVAR, tolkLagerfejl,
   ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, KLIENT_ORDRE_TILSTANDE, kanSkifteOrdre,
   valideOrdre, ordreFremdrift, kanFortrydeFrigivelse, plukkoe,
+  AFVIGELSESAARSAG, ALLE_AFVIGELSESAARSAGER, valideOptaelling,
+  noejagtighed, MINDSTE_OPTAELLINGER, afvigelserPrAarsag, forfaldneOptaellinger,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -265,7 +267,7 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
   it("ejer sine egne noder og DELER reolpladser", () => {
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
-      ["beholdning", "bevaegelser", "plukordrer", "reolpladser", "varer"]);
+      ["beholdning", "bevaegelser", "optaellinger", "plukordrer", "reolpladser", "varer"]);
     assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
   });
 
@@ -567,5 +569,138 @@ describe("afsendelsen skriver bevægelser og tilstand sammen", () => {
 
   it("bruger increment() på saldoen", () => {
     assert.ok(blok.includes("ServerValue.increment(-l.antal)"));
+  });
+});
+
+describe("optællingen måler noget", () => {
+  const V = 1000;
+  const opt = (x = {}) => ({
+    pladsId: "p1", vareId: "v1", taeltAntal: 10 * V, forventet: 10 * V, ...x,
+  });
+
+  it("kræver en årsag NÅR der er en afvigelse", () => {
+    /* ⚠ OG KUN DÉR. Krævede vi en årsag på hver optælling, ville hver eneste
+       der ramte plet, stå med en årsagskode — og så betyder koden intet. */
+    assert.deepEqual(valideOptaelling(opt()), {});
+    assert.ok(valideOptaelling(opt({ taeltAntal: 8 * V })).aarsag);
+    assert.deepEqual(
+      valideOptaelling(opt({ taeltAntal: 8 * V, aarsag: "svind" })), {});
+  });
+
+  it("⚠ ÅRSAGEN ER EN ALLOWLISTE, IKKE FRITEKST", () => {
+    /* "svind", "Svind?" og "vist nok stjålet" ville blive tre kategorier af
+       det samme problem, og så kan ingen se hvor hullet er. */
+    assert.ok(valideOptaelling(opt({ taeltAntal: 8 * V, aarsag: "stjålet" })).aarsag);
+    for (const a of ALLE_AFVIGELSESAARSAGER) {
+      assert.deepEqual(valideOptaelling(opt({ taeltAntal: 8 * V, aarsag: a })), {},
+        `${a} blev afvist`);
+    }
+  });
+
+  it("⚠ `ukendt` ER EN GYLDIG ÅRSAG", () => {
+    /* Tvinges folk til at vælge en de ikke kender, vælger de en tilfældig —
+       og så er statistikken værre end ingen. */
+    assert.ok(ALLE_AFVIGELSESAARSAGER.includes("ukendt"));
+    assert.deepEqual(
+      valideOptaelling(opt({ taeltAntal: 0, aarsag: "ukendt" })), {});
+  });
+
+  it("nægter en negativ optælling og en halv palle", () => {
+    /* Man kan tælle nul på en hylde. Man kan ikke tælle minus tre. */
+    assert.ok(valideOptaelling(opt({ taeltAntal: -1 })).taeltAntal);
+    assert.deepEqual(
+      valideOptaelling(opt({ taeltAntal: 0, forventet: 0 })), {});
+    assert.ok(valideOptaelling(
+      opt({ taeltAntal: 500, forventet: 500 }), { vare: { enhed: "palle" } }).taeltAntal);
+  });
+
+  it("⚠ SIGER 'FOR LIDT GRUNDLAG' FREM FOR EN PROCENT", () => {
+    /* To optællinger og to hundrede ser ens ud som en procent, og så skiftes
+       der arbejdsgang på grundlag af én uenighed. Samme regel som
+       MINDSTE_GRUNDLAG i leverandoerer.js. */
+    const faa = Array.from({ length: MINDSTE_OPTAELLINGER - 1 }, () => ({ afvigelse: 0 }));
+    assert.equal(noejagtighed(faa), null);
+    const nok = Array.from({ length: MINDSTE_OPTAELLINGER }, (_, i) =>
+      ({ afvigelse: i === 0 ? 5 : 0 }));
+    assert.equal(noejagtighed(nok), (MINDSTE_OPTAELLINGER - 1) / MINDSTE_OPTAELLINGER);
+    assert.equal(noejagtighed([]), null);
+  });
+
+  it("summerer afvigelser MED fortegn pr. årsag", () => {
+    /* ⚠ FUNDET OG SVIND MÅ IKKE UDLIGNE HINANDEN I ANTAL — det er to
+       forskellige problemer — men i mængde er det netop forskellen der er
+       interessant. */
+    const a = afvigelserPrAarsag([
+      { afvigelse: -5, aarsag: "svind" },
+      { afvigelse: -3, aarsag: "svind" },
+      { afvigelse: 2, aarsag: "fundet" },
+      { afvigelse: 0, aarsag: null },
+    ]);
+    assert.equal(a[0].aarsag, "svind");
+    assert.equal(a[0].antal, 2);
+    assert.equal(a[0].sum, -8);
+    assert.equal(a.find((x) => x.aarsag === "fundet").sum, 2);
+    /* En optælling uden afvigelse tæller ikke med nogen steder. */
+    assert.equal(a.reduce((s, x) => s + x.antal, 0), 3);
+  });
+
+  it("⚠ EN NEGATIV SALDO ER ALTID FORFALDEN — og står øverst", () => {
+    /* Den er beviset på at en bevægelse mangler, og fejlen vokser indtil
+       nogen går ud og kigger. */
+    const nu = 1786000000000;
+    const beh = [
+      { id: "a", pladsId: "p1", vareId: "v1", batch: "_", antal: 5 },
+      { id: "b", pladsId: "p2", vareId: "v1", batch: "_", antal: -2 },
+    ];
+    /* a blev talt i går — den er ikke forfalden på tid. */
+    const forf = forfaldneOptaellinger(beh, [
+      { pladsId: "p1", vareId: "v1", batch: null, tidspunktMs: nu - 86400000 },
+    ], nu);
+    assert.deepEqual(forf.map((x) => x.id), ["b"]);
+    assert.equal(forf[0].negativ, true);
+  });
+
+  it("regner en aldrig talt lokation som forfalden", () => {
+    const beh = [{ id: "a", pladsId: "p1", vareId: "v1", batch: "_", antal: 5 }];
+    assert.equal(forfaldneOptaellinger(beh, [], 1786000000000).length, 1);
+    assert.equal(forfaldneOptaellinger(beh, [], 1786000000000)[0].senestOptaltMs, null);
+  });
+});
+
+describe("serveren læser forventningen — klienten gør ikke", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+  const start = kilde.indexOf("export const optaellingskriv");
+  const blok = kilde.slice(start);
+
+  it("findes og læser saldoen selv", () => {
+    assert.ok(start > 0, "optaellingskriv findes ikke");
+    assert.ok(blok.includes("const forventet = snap.exists()"),
+      "forventningen læses ikke af databasen");
+  });
+
+  it("⚠ TAGER IKKE FORVENTNINGEN FRA NYTTELASTEN", () => {
+    /* Ellers er afvigelsen forskellen mellem hvad brugeren TROEDE der stod og
+       hvad han talte — og så måler den ingenting. */
+    const krop = blok.slice(0, blok.indexOf("await logBevaegelse"));
+    assert.ok(!krop.includes("d.forventet"),
+      "forventningen læses fra nyttelasten");
+    assert.ok(!krop.includes("d.afvigelse"));
+  });
+
+  it("⚠ SÆTTER SALDOEN, den lægger ikke til", () => {
+    /* Blev optællingen lagt til, ville en optælling der BEKRÆFTEDE
+       beholdningen, fordoble den. */
+    const krop = blok.slice(0, blok.indexOf("await logBevaegelse"));
+    assert.ok(krop.includes("antal`]: taeltAntal"),
+      "saldoen sættes ikke til det talte");
+    assert.ok(!krop.includes("ServerValue.increment"),
+      "en optælling må ikke bruge increment");
+  });
+
+  it("skriver måling, bevægelse og saldo i én update()", () => {
+    const krop = blok.slice(0, blok.indexOf("await logBevaegelse"));
+    assert.equal((krop.match(/rod\.update\(/g) || []).length, 1);
+    assert.ok(krop.includes("optaellinger/${optId}"));
+    assert.ok(krop.includes("bevaegelser/${bevId}"));
   });
 });

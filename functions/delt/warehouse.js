@@ -636,3 +636,159 @@ export const plukkoe = (ordrer = []) =>
     .sort((a, b) =>
       (PRIORITET[a.prioritet]?.vaegt ?? 9) - (PRIORITET[b.prioritet]?.vaegt ?? 9) ||
       (a.afgangMs || 0) - (b.afgangMs || 0));
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OPTÆLLINGEN — beviset for at beholdningen passer
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ HVORFOR DET IKKE ER NOK MED EN `optael`-BEVÆGELSE.
+
+   Bevægelsen sætter den nye saldo, og den er nødvendig. Men den siger ikke
+   hvad der var FORVENTET — og uden det tal kan ingen bagefter svare på om
+   lageret passer. "Vi talte 118" er ikke en måling; "vi forventede 128 og
+   talte 118" er.
+
+   Derfor er `optaellinger` sin egen node, med forventet, talt og afvigelse
+   gemt SOM DE VAR i det øjeblik der blev talt. Det ligner et afledt tal og er
+   det ikke: forventningen kan ikke regnes ud bagefter uden at afspille hver
+   eneste bevægelse — og var den regnet ud bagefter, ville den afspejle
+   nutiden frem for tælletidspunktet. Samme slags som `udleveretMs`.
+
+   ⚠ FORVENTNINGEN LÆSES AF SERVEREN, ALDRIG AF KLIENTEN.
+   Sendte skærmen den med, ville afvigelsen være forskellen mellem hvad
+   brugeren TROEDE der stod, og hvad han talte — og så måler den ingenting.
+
+   ⚠ EN AFVIGELSE SKAL HAVE EN ÅRSAG, OG ÅRSAGEN ER EN ALLOWLISTE.
+   Fritekst kan ikke summeres: "svind" og "Svind?" og "vist nok stjålet"
+   bliver tre kategorier, og så kan ingen se om det er det samme problem.
+   Samme grund som `LOGBARE_FELTER` i audit-regler.js.
+
+   ⚠ MEN OPTÆLLINGEN BLOKERES IKKE AF EN STOR AFVIGELSE.
+   Det er fristende at kræve godkendelse over en grænse. Det ville betyde at
+   den der finder det største hul, er den der ikke kan lukke sin optælling —
+   og så bliver der talt mindre. Hylden er sandheden; rettelsen sker med det
+   samme, og afvigelsen står som sin egen kendsgerning der ikke kan slettes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ `ukendt` STÅR MED VILJE PÅ LISTEN. Tvinges folk til at vælge en årsag de
+ * ikke kender, vælger de en tilfældig — og så er statistikken værre end
+ * ingen. En ærlig "ukendt" kan tælles for sig og undersøges.
+ */
+export const AFVIGELSESAARSAG = {
+  svind: { aarsag: "svind", label: "Svind", tone: "bad" },
+  fejlpluk: { aarsag: "fejlpluk", label: "Fejlpluk", tone: "warn" },
+  fejlmodtagelse: { aarsag: "fejlmodtagelse", label: "Fejl ved modtagelse", tone: "warn" },
+  skade: { aarsag: "skade", label: "Skade / kassation", tone: "bad" },
+  fundet: { aarsag: "fundet", label: "Fundet igen", tone: "ok" },
+  tastefejl: { aarsag: "tastefejl", label: "Tastefejl", tone: "info" },
+  ukendt: { aarsag: "ukendt", label: "Ukendt", tone: "info" },
+};
+
+export const ALLE_AFVIGELSESAARSAGER = Object.keys(AFVIGELSESAARSAG);
+
+export function valideOptaelling(post = {}, { vare = null } = {}) {
+  const f = {};
+
+  if (!post.pladsId) f.pladsId = "Vælg en lokation.";
+  if (!post.vareId) f.vareId = "Vælg en vare.";
+
+  if (!Number.isInteger(post.taeltAntal)) f.taeltAntal = "Skriv hvad der blev talt.";
+  else if (post.taeltAntal < 0) f.taeltAntal = "En optælling kan ikke være negativ.";
+  else if (vare && ENHED[vare.enhed]?.helTal && post.taeltAntal % MAENGDE_SKALA !== 0) {
+    f.taeltAntal = `${ENHED[vare.enhed].label} kan ikke deles.`;
+  }
+
+  if (post.batch && !BATCH_MOENSTER.test(post.batch)) {
+    f.batch = "Bogstaver, tal, bindestreg og underscore — ikke punktum.";
+  }
+  if (vare && SPORING[vare.sporing]?.kraeverBatch && !post.batch) {
+    f.batch = "Varen spores på batch — tæl ét parti ad gangen.";
+  }
+
+  /* ⚠ ÅRSAGEN KRÆVES KUN NÅR DER ER EN AFVIGELSE, og kun når klienten kender
+     den. Serveren prøver igen med sin EGEN forventning — se noten i hovedet
+     om hvorfor klientens forventning ikke tæller. */
+  if (Number.isFinite(post.forventet) && post.forventet !== post.taeltAntal) {
+    if (!ALLE_AFVIGELSESAARSAGER.includes(post.aarsag)) {
+      f.aarsag = "En afvigelse skal have en årsag.";
+    }
+  } else if (post.aarsag && !ALLE_AFVIGELSESAARSAGER.includes(post.aarsag)) {
+    f.aarsag = "Ukendt årsag.";
+  }
+
+  if (post.note && post.note.length > 300) f.note = "Højst 300 tegn.";
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * Lagernøjagtighed: andelen af optællinger der ramte plet.
+ *
+ * ⚠ DEN MÅLER OS, IKKE LAGERET. Falder den, er det fordi bevægelser ikke
+ * bliver registreret — ikke fordi hylderne opfører sig dårligt.
+ *
+ * ⚠ RETURNERER null UNDER `MINDSTE_OPTAELLINGER`. To optællinger og to
+ * hundrede ser ens ud som en procent, og så skiftes der arbejdsgang på
+ * grundlag af én uenighed. Samme regel som `MINDSTE_GRUNDLAG` i
+ * leverandoerer.js — skærmen skal skrive "for lidt grundlag", ikke en streg.
+ */
+export const MINDSTE_OPTAELLINGER = 10;
+
+export function noejagtighed(optaellinger = []) {
+  const n = optaellinger.length;
+  if (n < MINDSTE_OPTAELLINGER) return null;
+  const ramte = optaellinger.filter((o) => (o.afvigelse || 0) === 0).length;
+  return ramte / n;
+}
+
+/** Afvigelserne fordelt på årsag, størst først. Grundlaget for at handle. */
+export function afvigelserPrAarsag(optaellinger = []) {
+  const ud = {};
+  for (const o of optaellinger) {
+    if (!o.afvigelse) continue;
+    const a = ALLE_AFVIGELSESAARSAGER.includes(o.aarsag) ? o.aarsag : "ukendt";
+    ud[a] = ud[a] || { aarsag: a, antal: 0, sum: 0 };
+    ud[a].antal += 1;
+    /* Summen er FORTEGNSBÆRENDE: fundet og svind må ikke udligne hinanden i
+       antal, men i mængde er det netop forskellen der er interessant. */
+    ud[a].sum += o.afvigelse;
+  }
+  return Object.values(ud).sort((a, b) => Math.abs(b.sum) - Math.abs(a.sum));
+}
+
+/** Hvor længe en lokation må gå uden at blive talt. */
+export const OPTAELLINGSINTERVAL_DAGE = 90;
+
+/**
+ * Lokationer der skal tælles — vigtigst først.
+ *
+ * ⚠ EN NEGATIV SALDO ER ALTID FORFALDEN, uanset hvornår der sidst blev talt.
+ * Den er beviset på at en bevægelse mangler, og den fejl vokser indtil nogen
+ * går ud og kigger. Se noten i functions/index.js om vinduet der ikke kan
+ * lukkes med en transaktion.
+ */
+export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 0) {
+  const senest = {};
+  for (const o of optaellinger) {
+    const n = beholdningsNoegle(o.pladsId, o.vareId, o.batch);
+    senest[n] = Math.max(senest[n] || 0, o.tidspunktMs || 0);
+  }
+  const graense = naa - OPTAELLINGSINTERVAL_DAGE * 86400000;
+  return beholdning
+    .map((b) => ({
+      ...b,
+      /* ⚠ NØGLEN REGNES AF FELTERNE, IKKE AF `b.id`. De to er de samme i
+         databasen — id'et ER den sammensatte nøgle — men en funktion der
+         stoler på det, går i stykker første gang nogen loader posterne på en
+         anden måde. Og fejlen ville være tavs: alt ville se forfaldent ud,
+         og ingen ville undre sig over at der skulle tælles. */
+      senestOptaltMs: senest[beholdningsNoegle(b.pladsId, b.vareId, b.batch)] || null,
+      negativ: (b.antal || 0) < 0,
+    }))
+    .filter((b) => b.negativ || !b.senestOptaltMs || b.senestOptaltMs < graense)
+    .sort((a, b) =>
+      (b.negativ ? 1 : 0) - (a.negativ ? 1 : 0) ||
+      (a.senestOptaltMs || 0) - (b.senestOptaltMs || 0));
+}
