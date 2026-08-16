@@ -49,6 +49,13 @@ export const LOGBARE_FELTER = new Set([
   // beløb og mængder
   "beloebOere", "momsOere", "aftaltOere", "faktureretOere", "budgetOere",
   "omsaetningOere", "daekningsbidragOere", "kmPrisOere", "km", "antal",
+  /* ⚠ rabatBps ER ET TAL, IKKE FRITEKST. Kundens afvigelse kan sætte prisen
+     enten med sit eget beløb eller med en rabat, og `beloebOere` stod her i
+     forvejen. Uden rabatBps ville loggen kunne fortælle AT rabatten blev
+     ændret, men ikke fra 0 til 90 % — og det er præcis den ændring nogen
+     ville lede efter. Allowlisten findes for at holde tastet tekst ude, ikke
+     tal. */
+  "rabatBps",
   "kmEstimeret", "maengde", "doegnParkering",
   // tilstand og status
   "tilstand", "status", "aftalestatus", "aktiv", "annulleret", "slettet",

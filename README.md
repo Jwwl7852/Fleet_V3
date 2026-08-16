@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 37 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 38 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[TURTLEBOOKING.md](TURTLEBOOKING.md)** | Turtlebooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -142,12 +142,13 @@ tilfældigt.
 | 35 | **Ejerskab tildeles ikke fra konsollen.** `udbyder`-claim'et sættes kun med servicekontonøglen (`npm run ejer:giv`). Vi er to: kunne den ene fjerne den andens claim, kunne den ene lukke den anden ude — og adgangen til at rette det var selv ejerskabet. En ejerkonto har **ingen tenant**, så spærringen er ikke en betingelse i en skærm, men fraværet af en nøgle | `scripts/ejer.mjs`, `App.jsx` |
 | 36 | **En nul-linje dokumenterer en måling.** Linjer på 0 kr. blev sprunget over som støj. Det holder ikke med en frimængde: uden *"Brugere (1 · 3 inkluderet) — 0,00"* kan kunden ikke se forskel på at målingen var **nul** og at den **manglede** — og målingen kan ikke laves bagud. Kom sammen med at **platformsadgang er en egen prislinje** (ikke `dashboard`) og at **frimængden hører til abonnementet** (ikke modulet) | `fleet/priser.js`, `firebase.rules.json` |
 | 37 | **»Booket« er ikke en kassestatus, og et udlån skrives kun af serveren.** En reservation **er** et udlån — står den også på kassen, er samme kendsgerning gemt to steder, og de bliver uenige. Kassen har kun sine fire **fysiske** tilstande, og klienten må kun sætte `ledig` og `udeAfDrift`; resten er følger af et udlånsskifte. `kasseudlaan` er `.write: false`: udlånet og kassen skal skrives sammen eller slet ikke, perioden skal prøves mod de andre udlån, og to lagermænd kan ramme samme sekund — derfor et konflikttjek **inde i en transaktion**. ⚠ Ingen genvej fra booket til udlånt: klargøringen er det ene sted et menneske har kassen i hånden | `fleet/turtlebooking.js`, `functions/index.js` |
+| 38 | **Kundens pris ligger på kunden — og kræver derfor TO permissions.** `kunder/<id>/priser/<ydelseId>/satser/<id>`: enten en egen pris eller en rabat, aldrig begge. ⚠ `.write` kaskaderer, og `kunder.skriv` har casehandler, disponent og koordinator — `satser.skriv` har kun admin. Uden en `.validate` på `priser` der **også** kræver `satser.skriv`, ville prisen kunne sættes af flere end standardprisen kan, alene fordi den lå i en anden sti. ⚠ Hullet der bliver tilbage: `.validate` kører ikke ved en **sletning**, og det kan ikke lukkes med en regel — efterprøvet mod den udrullede base, ikke udledt | `fleet/pricing.js`, `firebase.rules.json` |
 
 ## Struktur
 
 ```
 src/
-  App.jsx              alle 30 ruter, genereret efter nav.js
+  App.jsx              alle 48 ruter, genereret efter nav.js
   firebase.js          ÉN initialisering. Moduler importerer db herfra.
   fleet/               kernen — modulerne må ikke duplikere noget herfra
     nav.js             sidebar + ruter, én kilde

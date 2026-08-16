@@ -42,6 +42,7 @@ import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
 import Wmspluk from "./moduler/warehouse/Pluk.jsx";
 import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
 import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
+import Kundepriser from "./moduler/kunder/Kundepriser.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
@@ -359,6 +360,8 @@ export default function App() {
 
             <Route path="kunder" element={<Kunder />} />
             <Route path="kunder/priser" element={<Standardpriser />} />
+            <Route path="kunder/aftalepriser" element={<Kundepriser />} />
+            <Route path="kunder/aftalepriser/:kundeId" element={<Kundepriser />} />
 
             <Route path="oekonomi" element={<Oekonomi />} />
             <Route path="oekonomi/fakturering" element={<Fakturering />} />

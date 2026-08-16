@@ -1428,3 +1428,86 @@ trækkes der en time et sted i kæden, bliver det den 9.
 er en kontrolleret reference som `koeretoejId`; sagsnummeret er 40 tegn en
 sagsbehandler har tastet, og allowlisten findes for at holde tastet tekst ude
 af auditloggen.
+
+## 38. Kundens pris ligger på kunden — og derfor kræver den to permissions
+
+Standardprisen ligger i `satser/standard/<ydelseId>/satser/<id>`. Kundens
+afvigelse kunne have ligget samme sted, som en gruppe ved siden af standard.
+Den ligger i stedet på **kunden**:
+
+```
+kunder/<kundeId>/priser/<ydelseId>/satser/<satsId> = {
+  gyldigFra,
+  beloebOere,   // egen pris — ELLER
+  rabatBps      // rabat på standardprisen
+}
+```
+
+Prisen hører til aftalen, og aftalen hører til kunden. Læsningen følger
+kunden med `kunder.laes`, og en pris kan ikke komme til at hænge på et
+kundeId der ikke findes — kundens egen `.validate` kræver `division`, og den
+gælder også en skrivning dybt nede i undertræet.
+
+### ⚠ Men `.write` kaskaderer, og det flyttede i stilhed hvem der må sætte en pris
+
+`tenants/<id>/kunder` er skrivbar med `kunder.skriv`, og den permission
+ligger i `BASIS_DATA`: **casehandler, disponent og koordinator har den alle.**
+`satser.skriv` har **kun admin**. Lagt ind under `kunder/` uden videre kunne
+enhver der må rette en kundes adresse, også give kunden 30 % rabat — mens
+standardprisen krævede admin. Det er ikke en rettighed nogen havde besluttet
+at give; det er en der fulgte med stien.
+
+Man kan ikke stramme et barn under en åben `.write`. Man **kan** lægge en
+`.validate` — den kan læse `auth`, og den kører for hele stien:
+
+```json
+"priser": {
+  ".validate": "auth != null && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')"
+}
+```
+
+At forfaderens `.validate` også kører ved en **dyb enkeltfelt-skrivning** var
+det led hele placeringen stod og faldt med. Det er derfor en prøve og ikke en
+antagelse: `test/rules.kundepriser.test.mjs` skriver til
+`…/satser/<id>/rabatBps` som en bruger med `kunder.skriv` alene og kræver en
+afvisning. Kunne man gå udenom ved at gå dybt nok ned, var konstruktionen
+pynt.
+
+### ⚠ Hullet der bliver tilbage, og som ikke kan lukkes her
+
+**`.validate` kører ikke ved en sletning.** En bruger med `kunder.skriv` alene
+kan derfor **fjerne** en kundes prisafvigelse, selv om hun hverken kan sætte
+eller ændre den. Det er efterprøvet mod den udrullede base — ikke udledt: en
+seedet casehandler slettede en rabat som admin lige havde skrevet.
+
+Det kan ikke lukkes med en regel. En `.write: false` på et barn ophæver ikke
+en åben `.write` længere oppe, og reglerne kan ikke udtrykke "de børn der var
+her, skal stadig være her". **Den eneste fuldstændige lukning er at flytte
+prisen ud af `kunder/`** — altså den anden placering. Afvejningen blev taget
+med åbne øjne: sletningen fjerner en aftale og opfinder ingen, den kræver
+`kunder.skriv` i forvejen, og klienten har ingen vej til den — `skriv.js` har
+ingen `slet()`, og skærmen har ingen sletteknap.
+
+En halv spærring blev fravalgt af samme grund som et halvt momsbeløb: den
+ville se ud som en beskyttelse.
+
+### Enten en egen pris eller en rabat — aldrig begge
+
+To felter der begge kan sætte prisen, er to svar på samme spørgsmål, og så
+bliver det tilfældigt hvilket der vinder. Reglerne afviser en post med begge
+og en post med ingen af dem.
+
+Forskellen mellem de to er hele grunden til at der skal vælges: **en rabat
+følger standardprisen, en egen pris gør ikke.** Ændres standarden i morgen,
+flytter rabatkunden sig med; den med sin egen pris bliver stående.
+
+### ⚠ En rabat på en standardpris der mangler, er `null` — ikke 0
+
+15 % af ingenting er ikke nul kroner; det er det samme ubesvarede spørgsmål
+med et tal foran. Regnede `prisFor()` den til 0, ville en glemt standardpris
+blive til en **gratis ydelse** hos præcis den kunde der havde forhandlet sig
+til en rabat. Samme regel som momssatsen der mangler.
+
+Og opslaget sker ét sted. `prisFor()` bygger på `satsPaa()` og
+`rabatteretSatsOere()` — den skriver ingen af dem af. En procentregning mere
+ville være en afrundingsregel mere.

@@ -14,6 +14,7 @@ import {
   METODER, YDELSESKATEGORI, LAGERYDELSER, ALLE_LAGERYDELSER,
   IKKE_FAKTURERBARE_ARTER, ydelseForArt,
   STANDARDGRUPPE, standardPris, valideSats, ydelserForModuler,
+  kundeprisSti, valideKundesats, kundeSats, prisFor, PRISKILDE,
 } from "../src/fleet/pricing.js";
 import {
   ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER,
@@ -895,6 +896,159 @@ describe("standardprisen", () => {
     assert.equal(med.length, ALLE_LAGERYDELSER.length);
     /* En tenant uden modulliste har alt — samme regel som harModul(). */
     assert.equal(ydelserForModuler(undefined).length, ALLE_LAGERYDELSER.length);
+  });
+});
+
+describe("kundens afvigelse", () => {
+  const D = (d) => Date.UTC(2026, 5, d);
+  const NU = D(20);
+
+  /* Standardprisen på pluk: 375,00 kr fra den 1., 400,00 kr fra den 15. */
+  const STANDARD = {
+    "lager-pluk": {
+      satser: {
+        a: { gyldigFra: D(1), beloebOere: 37500 },
+        b: { gyldigFra: D(15), beloebOere: 40000 },
+      },
+    },
+    "lager-handlingInd": { satser: { a: { gyldigFra: D(1), beloebOere: 4500 } } },
+  };
+
+  it("stien bygges ét sted", () => {
+    /* ⚠ ET YDELSES-ID ER EN DATABASENOEGLE, og stien skal se ens ud fra
+       skærmen og fra en prøve. Bygget af strenge to steder driver den. */
+    assert.equal(kundeprisSti("k7", "lager-pluk", "s1"),
+      "kunder/k7/priser/lager-pluk/satser/s1");
+  });
+
+  it("ingen afvigelse giver standardprisen", () => {
+    const r = prisFor({ standard: STANDARD, kunde: {} }, "lager-pluk", NU);
+    assert.equal(r.oere, 40000);
+    assert.equal(r.kilde, "standard");
+  });
+
+  it("kundens egen pris slår standarden", () => {
+    const kunde = { "lager-pluk": { satser: { x: { gyldigFra: D(10), beloebOere: 32500 } } } };
+    const r = prisFor({ standard: STANDARD, kunde }, "lager-pluk", NU);
+    assert.equal(r.oere, 32500);
+    assert.equal(r.kilde, "kunde");
+    /* Standarden står stadig ved siden af. En pris man ikke kan se
+       afvigelsen fra, kan ikke forhandles. */
+    assert.equal(r.standardOere, 40000);
+  });
+
+  it("rabatten regnes af den standard der gjaldt PÅ TIDSPUNKTET", () => {
+    const kunde = { "lager-pluk": { satser: { x: { gyldigFra: D(1), rabatBps: 1500 } } } };
+    /* Den 10.: 375,00 − 15 % = 318,75 */
+    assert.equal(prisFor({ standard: STANDARD, kunde }, "lager-pluk", D(10)).oere, 31875);
+    /* Den 20.: 400,00 − 15 % = 340,00. Samme rabat, ny standard — og det er
+       hele pointen med at rabatten er en PROCENT og ikke et beløb. */
+    const r = prisFor({ standard: STANDARD, kunde }, "lager-pluk", D(20));
+    assert.equal(r.oere, 34000);
+    assert.equal(r.kilde, "rabat");
+    assert.equal(r.rabatBps, 1500);
+  });
+
+  it("rabatten går gennem rabatteretSatsOere() — ikke en egen procentregning", () => {
+    /* ⚠ EN PROCENTREGNING MERE VILLE VÆRE EN AFRUNDINGSREGEL MERE.
+       Prøven binder de to sammen: ændres afrundingen ét sted, falder den. */
+    const kunde = { p: { satser: { x: { gyldigFra: D(1), rabatBps: 3333 } } } };
+    const standard = { p: { satser: { a: { gyldigFra: D(1), beloebOere: 9999 } } } };
+    assert.equal(prisFor({ standard, kunde }, "p", NU).oere,
+      rabatteretSatsOere(9999, 3333));
+  });
+
+  it("⚠ EN RABAT PÅ EN PRIS DER IKKE FINDES, ER null — ikke 0", () => {
+    /* 15 % af ingenting er ikke nul kroner; det er det samme ubesvarede
+       spørgsmål med et tal foran. Regnede vi den til 0, ville en glemt
+       standardpris blive til en GRATIS ydelse hos præcis den kunde der havde
+       forhandlet sig til en rabat. */
+    const kunde = { "lager-flytning": { satser: { x: { gyldigFra: D(1), rabatBps: 1500 } } } };
+    assert.equal(prisFor({ standard: STANDARD, kunde }, "lager-flytning", NU), null);
+  });
+
+  it("ingen standard og ingen afvigelse giver null", () => {
+    assert.equal(prisFor({ standard: {}, kunde: {} }, "lager-pluk", NU), null);
+    assert.equal(prisFor(undefined, "lager-pluk", NU), null);
+  });
+
+  it("en afvigelse gælder først fra sin egen dato", () => {
+    /* Indtil da er det standarden der gælder — ikke ingenting. */
+    const kunde = { "lager-pluk": { satser: { x: { gyldigFra: D(18), beloebOere: 1 } } } };
+    assert.equal(prisFor({ standard: STANDARD, kunde }, "lager-pluk", D(17)).kilde, "standard");
+    assert.equal(prisFor({ standard: STANDARD, kunde }, "lager-pluk", D(18)).kilde, "kunde");
+  });
+
+  it("den nyeste afvigelse vinder — den gamle bliver stående", () => {
+    /* Beslutning 7 gælder også her: en rettelse er en ny post. */
+    const kunde = {
+      "lager-pluk": {
+        satser: {
+          gammel: { gyldigFra: D(1), rabatBps: 1000 },
+          ny: { gyldigFra: D(15), beloebOere: 30000 },
+        },
+      },
+    };
+    assert.equal(kundeSats(kunde, "lager-pluk", D(10)).rabatBps, 1000);
+    assert.equal(prisFor({ standard: STANDARD, kunde }, "lager-pluk", NU).oere, 30000);
+  });
+
+  it("tager både et array og et objekt af satser", () => {
+    const somArray = { p: { satser: [{ gyldigFra: D(1), beloebOere: 100 }] } };
+    assert.equal(kundeSats(somArray, "p", NU).beloebOere, 100);
+  });
+
+  it("hver kilde har en label — tallet står aldrig alene", () => {
+    /* En pris man ikke kan se oprindelsen af, kan ikke forklares over for
+       kunden. Derfor er kilden en del af svaret, ikke noget skærmen gætter. */
+    for (const kilde of ["kunde", "rabat", "standard"]) {
+      assert.ok(PRISKILDE[kilde]?.label, `kilden "${kilde}" har ingen label`);
+    }
+  });
+});
+
+describe("valideringen af en kundesats", () => {
+  const NU = Date.UTC(2026, 5, 20);
+  const v = (post) => valideKundesats(post, { nu: NU });
+
+  it("⚠ AFVISER BÅDE EN EGEN PRIS OG EN RABAT PÅ SAMME POST", () => {
+    /* To felter der begge kan sætte prisen, er to svar på samme spørgsmål —
+       og så bliver det tilfældigt hvilket der vinder. Reglen står også i
+       firebase.rules.json; formularen svarer hurtigt, reglerne afgør. */
+    assert.ok(v({ gyldigFra: NU, beloebOere: 100, rabatBps: 1500 }).form);
+    assert.ok(v({ gyldigFra: NU }).form);
+    assert.deepEqual(v({ gyldigFra: NU, beloebOere: 100 }), {});
+    assert.deepEqual(v({ gyldigFra: NU, rabatBps: 1500 }), {});
+  });
+
+  it("accepterer nul kroner og nul rabat", () => {
+    /* Nul er en beslutning om at noget er gratis. Det er den MANGLENDE pris
+       der er det ubesvarede spørgsmål. */
+    assert.deepEqual(v({ gyldigFra: NU, beloebOere: 0 }), {});
+    assert.deepEqual(v({ gyldigFra: NU, rabatBps: 0 }), {});
+  });
+
+  it("afviser en rabat uden for 0–100 % og en der ikke er hele basispoint", () => {
+    assert.ok(v({ gyldigFra: NU, rabatBps: BPS_SKALA + 1 }).rabatBps);
+    assert.ok(v({ gyldigFra: NU, rabatBps: -1 }).rabatBps);
+    assert.ok(v({ gyldigFra: NU, rabatBps: 1500.5 }).rabatBps);
+    assert.deepEqual(v({ gyldigFra: NU, rabatBps: BPS_SKALA }), {});
+  });
+
+  it("arver datoreglerne fra standardprisen", () => {
+    assert.ok(v({ beloebOere: 100 }).gyldigFra);
+    assert.ok(v({ gyldigFra: Date.UTC(1999, 0, 1), rabatBps: 100 }).gyldigFra);
+    assert.ok(v({ gyldigFra: NU + 20 * 365 * 86400000, rabatBps: 100 }).gyldigFra);
+  });
+
+  it("afviser et beløb der ikke er hele ører", () => {
+    assert.ok(v({ gyldigFra: NU, beloebOere: 45.5 }).beloebOere);
+    assert.ok(v({ gyldigFra: NU, beloebOere: -1 }).beloebOere);
+  });
+
+  it("15 % skrives som 1500 — samme skala som ejerkonsollen", () => {
+    assert.equal(pctTilBps(15), 1500);
+    assert.deepEqual(v({ gyldigFra: NU, rabatBps: pctTilBps(15) }), {});
   });
 });
 

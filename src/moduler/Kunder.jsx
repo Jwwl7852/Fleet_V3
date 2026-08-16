@@ -332,10 +332,19 @@ export default function Kunder() {
                          <Pille tone={serviceTone(valgt.aftaleUdloeberMs).tone}>
                            {serviceTone(valgt.aftaleUdloeberMs).tekst}
                          </Pille></>} />
+            {/* ⚠ PRISGRUPPEN BÆRER IKKE LÆNGERE EN PRIS (PRISER.md 4.1).
+                Der er ÉN standardprisliste, og afvigelsen sættes på kunden —
+                to lag, ikke tre. Feltet står stadig på posten og filtrerer
+                oversigten; det er navnet der er holdt op med at betyde noget.
+                Linjen pegede på Bookingopsætning, og den henvisning var
+                forkert i samme øjeblik aftaleprisen fandtes. */}
             <p className="fc-hint" style={{ marginTop: 10 }}>
-              Satserne for <b>{PRISGRUPPER[valgt.prisgruppe] || valgt.prisgruppe}</b>{" "}
-              redigeres i <Link className="fc-a" to="/booking/opsaetning">Bookingopsætning</Link>,
-              ikke her — de versioneres med <b>gyldigFra</b> og overskrives aldrig.
+              <Link className="fc-a" to={`/kunder/aftalepriser/${valgt.id}`}>
+                Se og sæt aftalepriser for {valgt.navn}
+              </Link>{" "}
+              — kundens egen pris eller rabat. Uden en afvigelse gælder{" "}
+              <Link className="fc-a" to="/kunder/priser">standardprisen</Link>.
+              Begge dele versioneres med <b>gyldigFra</b> og overskrives aldrig.
             </p>
           </Kort>
 

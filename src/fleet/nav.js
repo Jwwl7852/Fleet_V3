@@ -148,6 +148,15 @@ export const NAV = [
       { key: "standardpriser", sti: "/kunder/priser", label: "Standardpriser",
         titel: "Standardpriser",
         under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
+      /* ⚠ TO LAG, IKKE TRE. Standardprisen gaelder alle; her saettes den
+         enkelte kundes afvigelse — enten en egen pris eller en rabat.
+         Prisgruppen baerer ikke laengere en pris. Se PRISER.md punkt 4.1. */
+      { key: "kundepriser", sti: "/kunder/aftalepriser", label: "Kundepriser",
+        titel: "Kundepriser",
+        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
+      { key: "kundepriserEn", sti: "/kunder/aftalepriser/:kundeId", label: "Kundepriser",
+        skjulINav: true, titel: "Kundepriser",
+        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
     ],
   },
   {

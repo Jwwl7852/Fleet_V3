@@ -14,6 +14,7 @@
  * Alle beløb i hele ØRE.
  */
 import { kr } from "./format.js";
+import { rabatteretSatsOere, BPS_SKALA } from "./beloeb.js";
 
 /* ---- Satsopslag -------------------------------------------------- */
 
@@ -411,11 +412,18 @@ export function valideSats(post = {}, { nu = Date.now() } = {}) {
  * hvilken pris der gjaldt.
  */
 export function standardPris(standardpriser = {}, ydelseId, paaMs = Date.now()) {
-  const post = standardpriser?.[ydelseId];
-  const liste = Array.isArray(post?.satser)
-    ? post.satser
-    : Object.values(post?.satser || {});
-  return satsPaa(liste, paaMs);
+  return satsPaa(satsliste(standardpriser?.[ydelseId]), paaMs);
+}
+
+/**
+ * Satserne på en prispost som et array.
+ *
+ * `useListe()` giver et array; en rå RTDB-læsning giver et objekt. En
+ * funktion der kun tålte det ene, ville virke i én skærm og fejle i den
+ * næste — og det ville se ud som en manglende pris.
+ */
+export function satsliste(post) {
+  return Array.isArray(post?.satser) ? post.satser : Object.values(post?.satser || {});
 }
 
 /**
@@ -431,3 +439,142 @@ export function ydelserForModuler(moduler) {
     .filter(([, y]) => harModul(YDELSESKATEGORI[y.kategori]?.modul))
     .map(([id, y]) => ({ id, ...y }));
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KUNDENS AFVIGELSE
+   ══════════════════════════════════════════════════════════════════════════
+
+   `kunder/<kundeId>/priser/<ydelseId>/satser/<satsId>`
+
+   ⚠ DEN LIGGER PÅ KUNDEN, OG DET ER EN AFVEJNING DER BLEV TAGET BEVIDST.
+
+   `.write` kaskaderer i RTDB, og `kunder` er skrivbar med `kunder.skriv` —
+   som casehandler, disponent og koordinator alle har gennem BASIS_DATA.
+   `satser.skriv` har kun admin. Uden videre ville prisen på kunden altså
+   kunne sættes af flere end standardprisen kan, alene fordi den ligger i en
+   anden sti. Det er ikke en rettighed nogen har besluttet at give.
+
+   Derfor har `priser`-undertræet en `.validate` der OGSÅ kræver
+   `satser.skriv`. En `.validate` kan læse `auth`, og den kan strammes hvor en
+   `.write` ikke kan løsnes fra oven.
+
+   ⚠ HULLET DER BLIVER TILBAGE: `.validate` kører ikke ved en SLETNING. En
+   bruger med `kunder.skriv` alene kan derfor fjerne en kundes prisafvigelse,
+   men ikke sætte eller ændre den. Det er skrevet her frem for at blive
+   opdaget, og det er grunden til at skærmen ikke har en sletteknap — der
+   findes ingen vej til det i klienten, som `skriv.js` ikke har en slet().
+
+   ⚠ TIL GENGÆLD ARVER PRISEN KUNDENS EGEN VALIDERING. `kunder/$kundeId`
+   kræver `division`, og den regel gælder også en skrivning dybt nede i
+   undertræet: en pris på en kunde der ikke findes, afvises af reglerne.
+   Det er den samme kendsgerning ét sted — ikke et opslag skærmen skal huske.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Stien til én kundesats. Ét sted, så skærmen ikke bygger den af strenge. */
+export const kundeprisSti = (kundeId, ydelseId, satsId) =>
+  `kunder/${kundeId}/priser/${ydelseId}/satser/${satsId}`;
+
+/**
+ * ⚠ ENTEN EN EGEN PRIS ELLER EN RABAT — ALDRIG BEGGE.
+ *
+ * To felter der begge kan sætte prisen, er to svar på samme spørgsmål, og så
+ * bliver det tilfældigt hvilket der vinder. Reglen står både her og i
+ * `firebase.rules.json`: formularen svarer hurtigt, reglerne afgør.
+ */
+export function valideKundesats(post = {}, { nu = Date.now() } = {}) {
+  const harPris = post.beloebOere !== undefined && post.beloebOere !== null;
+  const harRabat = post.rabatBps !== undefined && post.rabatBps !== null;
+
+  const f = {};
+
+  /* Datoen, metoden og valutaen er de samme regler som standardprisen.
+     `beloebOere` prøves kun når den er der — derfor uden feltet her. */
+  const grund = valideSats({ ...post, beloebOere: harPris ? post.beloebOere : 0 }, { nu });
+  if (grund.gyldigFra) f.gyldigFra = grund.gyldigFra;
+  if (harPris && grund.beloebOere) f.beloebOere = grund.beloebOere;
+  if (grund.metode) f.metode = grund.metode;
+  if (grund.valuta) f.valuta = grund.valuta;
+
+  if (harPris && harRabat) {
+    f.form = "Vælg enten en egen pris eller en rabat — ikke begge.";
+  } else if (!harPris && !harRabat) {
+    f.form = "Sæt enten en egen pris eller en rabat.";
+  }
+
+  if (harRabat) {
+    /* Basispoint som i ejerkonsollen: 1500 = 15,00 %. En procent med
+       decimaler ville give en afrundingsregel mere. */
+    if (!Number.isInteger(post.rabatBps)) f.rabatBps = "Rabatten skal være hele basispoint (1500 = 15 %).";
+    else if (post.rabatBps < 0) f.rabatBps = "En rabat kan ikke være negativ.";
+    else if (post.rabatBps > BPS_SKALA) f.rabatBps = "En rabat kan ikke være over 100 %.";
+  }
+
+  return f;
+}
+
+/** Kundens gældende afvigelse for en ydelse — eller null. */
+export function kundeSats(kundepriser = {}, ydelseId, paaMs = Date.now()) {
+  return satsPaa(satsliste(kundepriser?.[ydelseId]), paaMs);
+}
+
+/**
+ * prisFor({ standard, kunde }, ydelseId, paaMs)
+ *
+ *   → kundens egen sats på tidspunktet      (hvis der er en)
+ *   → ellers standard × (1 − rabat)          (hvis der er en rabat)
+ *   → ellers standarden
+ *   → ellers null
+ *
+ * ⚠ `null`, IKKE 0. En ydelse uden pris er et ubesvaret spørgsmål, ikke en
+ * gratis ydelse — samme regel som momssatsen der mangler.
+ *
+ * ⚠ OG EN RABAT PÅ INGENTING ER OGSÅ null. 15 % af en pris der ikke findes,
+ * er ikke nul kroner; det er det samme ubesvarede spørgsmål med et tal foran.
+ * Regnede vi den til 0, ville en glemt standardpris blive til en gratis ydelse
+ * hos præcis den kunde der havde forhandlet sig til en rabat.
+ *
+ * ⚠ RABATTEN REGNES IND I SATSEN, ÉN GANG — gennem rabatteretSatsOere() i
+ * beloeb.js. Lagde vi den oven på linjebeløbet, ville der afrundes to gange,
+ * og summen af linjerne ville holde op med at stemme med totalen.
+ *
+ * ⚠ OG OPSLAGET GÅR GENNEM satsPaa(). Den bærer beslutning 7 om at satser
+ * aldrig overskrives; en kopi her ville være to steder der afgør hvilken pris
+ * der gjaldt.
+ */
+export function prisFor({ standard = {}, kunde = {} } = {}, ydelseId, paaMs = Date.now()) {
+  const std = standardPris(standard, ydelseId, paaMs);
+  const egen = kundeSats(kunde, ydelseId, paaMs);
+  const standardOere = std ? std.beloebOere : null;
+
+  if (egen && Number.isFinite(egen.beloebOere)) {
+    return {
+      oere: egen.beloebOere, kilde: "kunde",
+      standardOere, rabatBps: null, sats: egen, standardSats: std,
+    };
+  }
+
+  if (egen && Number.isFinite(egen.rabatBps)) {
+    if (!std) return null;
+    return {
+      oere: rabatteretSatsOere(std.beloebOere, egen.rabatBps), kilde: "rabat",
+      standardOere, rabatBps: egen.rabatBps, sats: egen, standardSats: std,
+    };
+  }
+
+  if (std) {
+    return {
+      oere: std.beloebOere, kilde: "standard",
+      standardOere, rabatBps: null, sats: std, standardSats: std,
+    };
+  }
+
+  return null;
+}
+
+/** Hvor prisen kom fra — til visning. Kilden står ALTID ved tallet: en pris
+ *  man ikke kan se oprindelsen af, kan ikke forklares over for kunden. */
+export const PRISKILDE = {
+  kunde:    { label: "Egen pris", tone: "warn" },
+  rabat:    { label: "Rabat",     tone: "info" },
+  standard: { label: "Standard",  tone: "ok" },
+};

@@ -85,7 +85,7 @@ tegnene.
 dag, kommer der en ny post med `gyldigFra` — ellers ændrer en rettelse prisen
 på en booking fra sidste kvartal, og så kan fakturaen ikke forklares.
 
-### 3.3 Kundens afvigelse — også versioneret
+### ✅ 3.3 Kundens afvigelse — også versioneret
 
 ```
 kunder/<kundeId>/priser/<ydelseId>/satser/<id> = {
@@ -103,7 +103,19 @@ hvilket der vinder. Valideringen afviser en post med begge.
 `rabatteretSatsOere()` findes og skal bruges — en procentregning mere ville
 være to afrundingsregler.
 
-### 3.4 Opslaget
+⚠ **Placeringen kostede en permission.** `.write` kaskaderer, og `kunder` er
+skrivbar med `kunder.skriv` — som casehandler, disponent og koordinator alle
+har. `satser.skriv` har kun admin. Uden videre kunne prisen altså sættes af
+flere end standardprisen kan, alene fordi den lå i en anden sti. Derfor har
+`priser`-undertræet en `.validate` der **også** kræver `satser.skriv`. Se
+beslutning 38.
+
+⚠ **Og ét hul kunne ikke lukkes:** `.validate` kører ikke ved en sletning, så
+`kunder.skriv` alene kan **fjerne** en afvigelse — ikke sætte eller ændre den.
+Det er efterprøvet mod den udrullede base. Det kan ikke lukkes med en regel;
+kun ved at flytte prisen ud af `kunder/`.
+
+### ✅ 3.4 Opslaget
 
 ```
 prisFor(ydelseId, kundeId, paaMs)
@@ -115,6 +127,16 @@ prisFor(ydelseId, kundeId, paaMs)
 
 ⚠ **`null`, ikke 0.** En ydelse uden pris er et ubesvaret spørgsmål, ikke en
 gratis ydelse. Samme regel som momssatsen der mangler.
+
+⚠ **Og en rabat på en standardpris der mangler, er også `null`.** 15 % af
+ingenting er ikke nul kroner; det er det samme ubesvarede spørgsmål med et tal
+foran. Regnede vi den til 0, ville en glemt standardpris blive til en gratis
+ydelse hos præcis den kunde der havde forhandlet sig til en rabat.
+
+⚠ **`prisFor()` blev bygget i etape 3, ikke i 4.** Skærmen skal vise hvad
+kunden faktisk skal betale, og skrev den sit eget regnestykke, ville der være
+to steder der afgør en pris — præcis det punktet her advarer mod. Etape 4 er
+derfor **forbrugerne**: booking, warehouse og snapshottet.
 
 ⚠ **Og opslaget sker ÉT sted.** `satsPaa()` i `pricing.js` bærer allerede
 "hvilken sats gjaldt på det her tidspunkt". `prisFor()` bygger på den — den
@@ -179,8 +201,8 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 |---|---|---|---|
 | 1 | **Ydelseskataloget** + de tre nye metoder i `pricing.js` | Der findes en liste over hvad der kan prissættes | ✅ |
 | 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | ✅ |
-| 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | |
-| 4 | **`prisFor()`** og snapshot — én opslagsvej for hele platformen | Priserne bruges ét sted fra | |
+| 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | ✅ |
+| 4 | **`prisFor()` tages i brug** af booking og warehouse + snapshot | Priserne bruges ét sted fra | selve `prisFor()` kom i etape 3 |
 | 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder | |
 | 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres | |
 

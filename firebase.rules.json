@@ -1188,6 +1188,53 @@
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            },
+            // KUNDENS PRISAFVIGELSE — enten en egen pris eller en rabat paa
+            // standardprisen. To lag, ikke tre: prisgruppen baerer ikke
+            // laengere en pris. Se PRISER.md.
+            //
+            // ⚠ HVORFOR DEN HAR EN .validate PAA PERMISSIONEN:
+            // .write kaskaderer, og `kunder` er skrivbar med kunder.skriv —
+            // som casehandler, disponent og koordinator alle har gennem
+            // BASIS_DATA. satser.skriv har KUN admin. Uden det her led ville
+            // en pris kunne saettes af flere end standardprisen kan, alene
+            // fordi den ligger i en anden sti. En .validate kan laese auth og
+            // kan stramme dér hvor en .write ikke kan loesnes fra oven.
+            //
+            // ⚠ HULLET DER BLIVER TILBAGE: .validate koerer IKKE ved en
+            // sletning. kunder.skriv alene kan derfor FJERNE en afvigelse,
+            // men hverken saette eller aendre den. Det staar skrevet her frem
+            // for at blive opdaget, og det er grunden til at der ikke findes
+            // en sletteknap i klienten — som skriv.js ikke har en slet().
+            //
+            // ⚠ OG DEN ARVER $kundeId's EGEN .validate: en pris paa en kunde
+            // der ikke findes, mangler `division` efter fletningen og afvises.
+            "priser": {
+              ".validate": "auth != null && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')",
+              "$ydelseId": {
+                "satser": {
+                  ".indexOn": ["gyldigFra"],
+                  "$satsId": {
+                    // ⚠ ENTEN beloebOere ELLER rabatBps — ALDRIG BEGGE.
+                    // To felter der begge kan saette prisen, er to svar paa
+                    // samme spoergsmaal, og saa bliver det tilfaeldigt hvilket
+                    // der vinder.
+                    ".validate": "newData.hasChild('gyldigFra') && ((newData.hasChild('beloebOere') && !newData.hasChild('rabatBps')) || (!newData.hasChild('beloebOere') && newData.hasChild('rabatBps')))",
+                    "gyldigFra": { ".validate": "newData.isNumber()" },
+                    "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                    // Basispoint som i ejerkonsollen: 1500 = 15,00 %. Hele
+                    // tal, saa der ikke kommer en afrundingsregel mere.
+                    "rabatBps": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000" },
+                    "metode": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                    "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                    "aktiv": { ".validate": "newData.isBoolean()" },
+                    "oprettetAf": { ".validate": "newData.isString()" },
+                    "oprettetMs": { ".validate": "newData.isNumber()" },
+                    "$andet": { ".validate": false }
+                  }
+                },
+                "$andet": { ".validate": false }
+              }
             }
           }
         }
