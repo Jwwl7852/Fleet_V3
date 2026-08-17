@@ -173,7 +173,7 @@ export default function Sporbarhed() {
 
       <Kort titel="Slå op"
             under="Et parti er en vare og en batch. En enhed er ét serienummer.">
-        <div className="fc-row" style={{ gap: 8, marginBottom: 12 }}>
+        <div className="fc-formular-knapper" style={{ marginTop: 0, marginBottom: 12 }}>
           {Object.values(OPSLAG).map((o) => (
             <Knap key={o.key} variant={art === o.key ? "primaer" : undefined}
                   onClick={() => art !== o.key && saetArt(o.key)}>

@@ -322,7 +322,7 @@ stemmer.
 | 5 | **Pluk, pak, afsend** — plukordrer, fremdrift, afsendelse | Udgående flow | ✅ |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | ✅ |
 | 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | ✅ PRISER.md etape 4, 6 og 7. Momssatsen pr. linje mangler stadig — se punkt 8 |
-| 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |
+| 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | ✅ Se punkt 10. Beregner en pris; opretter ikke et tilbud — nodeformen er ikke besluttet |
 | 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | ✅ |
 | 10 | **Scanner-app** — egen applikation | Gulvet | |
 
@@ -775,3 +775,75 @@ enige efter hvert skridt.
 **Og klikket i skærmen:** sporet står i den rigtige rækkefølge, og
 afvigelsespanelet blev rødt da en saldo blev sat til 5 med tre enhedsrækker
 under sig — med den rigtige tekst om at det er en bevægelse der mangler.
+
+---
+
+## 10. Etape 8 er inde — volumenkalkulatoren
+
+Skærmen **Volumen** (`/warehouse/volumen`) er et salgsværktøj. En kunde ringer
+og siger *"jeg har omkring 120 paller og regner med 40 ind og 40 ud om
+måneden"* — og sælgeren skal kunne svare med husets egne priser, mens de taler
+sammen.
+
+Alt til det fandtes i forvejen: de fem håndteringsydelser, de to
+opbevaringsmetoder (`prPalledoegn`, `prKubikdoegn`), `prisFor()` og varernes
+egne mål. Etapen er derfor lille — det er en beregner oven på et katalog der
+allerede er besluttet.
+
+### 10.1 ⚠ Tallet er et estimat, og forbeholdet er bygget ind
+
+**Priserne er vores og er rigtige. Mængderne er kundens gæt og er det ikke.**
+Et beløb der står alene, læses som en pris — og så er det den sælgeren bliver
+holdt fast på, den dag det viser sig at være 180 paller og 90 håndteringer.
+
+`tilbudsberegning()` returnerer derfor **altid** sine `forudsaetninger`, og
+skærmen tegner dem ved siden af tallet. Det er ikke pynt: uden feltet kan en
+skærm vise beløbet uden at vise hvad det hviler på. Samme familie som
+forbeholdet i `tjekKoerehviletid()` og `faktisk`-flaget i `dageUde()` — begge
+steder er svaret ubrugeligt uden sit forbehold, og derfor kan de ikke skilles ad.
+
+### 10.2 Man vælger ÉT grundlag
+
+Paller, m³ og m² er **tre måder at måle det samme gods på**. Modellen tager ét
+`grundlag`, ikke tre mængder — var det tre felter, ville de blive udfyldt, og
+så faktureres den samme plads tre gange.
+
+⚠ **m² kom til med denne etape.** Planchen siger "m², m³, paller", men
+kataloget havde kun de to. Gods der ikke kan stables, lægger beslag på **gulv**
+uanset højden; solgtes det som m³, ville en vognmand fakturere en tredjedel af
+hvad pladsen koster ham. `lager-kvadratmeter` med metoden
+`prKvadratmeterdoegn` er nu i kataloget — og den dukkede op i
+Standardpriser-skærmen af sig selv, fordi den skærm enumererer kataloget frem
+for at have sin egen liste.
+
+### 10.3 En måned er 30 døgn, og det står på skærmen
+
+Opbevaring prissættes **pr. døgn**. En "månedspris" kræver derfor at nogen har
+besluttet hvad en måned er. Brugte beregneren den indeværende måneds længde,
+ville det samme gods koste noget andet den 1. marts end den 1. juli — og
+modtageren af tilbuddet kunne ikke regne efter. `DOEGN_PR_MAANED` står som en
+konstant frem for som et 30-tal midt i en formel.
+
+### 10.4 Det den ikke gør
+
+⚠ **Der oprettes ikke et tilbud.** Nodeformen er ikke besluttet: et tilbud kan
+gå til et **emne** der ikke er kunde endnu, og `tilbud` er ikke en
+bookingtilstand. Modellen ligger i `demo-kunder.js` med den note. En "Gem
+tilbud"-knap ville afgøre det spørgsmål ved et uheld.
+
+⚠ **Den kender ikke vores egen kapacitet.** Beregneren svarer på *hvad koster
+det*, ikke på *har vi plads*. Det andet kræver m³ eller m² pr. reolplads, og
+det findes ikke i modellen — se punkt 6.4. Et opdigtet rumfang ville se ud som
+en måling.
+
+### 10.5 Klikket fandt en fejl prøverne ikke kunne
+
+Beregningen var rigtig — 120 paller × 360 døgn × 2,50 kr. = 108.000 kr. — men
+**satsen stod som "3 kr."**. `kr()` runder til hele kroner som standard, og et
+tilbud hvor 120 × 360 × 3 ikke er 108.000, kan sælgeren ikke forklare over for
+kunden. Satsen står nu med to decimaler; totalerne står i hele kroner som alle
+andre steder. En prøve holder det fast.
+
+Det er tredje gang i træk at et klik i den rigtige skærm har fundet noget
+hverken prøverne eller en probe kunne se — og alle tre gange var det noget der
+kun kan ses af et menneske der læser tallet.

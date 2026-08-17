@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 1349 tests. Starter emulatoren.
+npm test                            # 1375 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/

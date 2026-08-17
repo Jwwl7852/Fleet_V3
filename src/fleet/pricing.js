@@ -49,6 +49,12 @@ export const METODER = {
      lager fakturerer det døgn godset ankom, også hvis det kom kl. 23. */
   prPalledoegn:  { label: "Pr. palleplads pr. døgn", enhed: "palledøgn" },
   prKubikdoegn:  { label: "Pr. m³ pr. døgn",         enhed: "m³-døgn" },
+  /* ⚠ DEN TREDJE KOM MED VOLUMENKALKULATOREN (etape 8), og den er ikke en
+     dublet af de to andre: gods der ikke kan stables, lægger beslag på GULV
+     uanset hvor lavt det er. En kunde med lange emner betaler for arealet,
+     ikke for rumfanget. De tre er tre måder at måle det SAMME gods på — se
+     KAPACITETSGRUNDLAG i volumen.js, hvor man vælger ét. */
+  prKvadratmeterdoegn: { label: "Pr. m² pr. døgn", enhed: "m²-døgn" },
 };
 
 export const ALLE_METODER = Object.keys(METODER);
@@ -128,6 +134,14 @@ export const LAGERYDELSER = {
   },
   "lager-kubik": {
     navn: "m³ pr. døgn", kategori: "lager", metode: "prKubikdoegn",
+    arter: null,
+  },
+  /* ⚠ GULVAREAL ER SIN EGEN YDELSE. Planchen siger "m², m³, paller", og de to
+     første stod her indtil etape 8. Gods der ikke kan stables, lægger beslag
+     på gulv uanset højden — og en vognmand der solgte det som m³, ville
+     fakturere en tredjedel af det plads koster ham. */
+  "lager-kvadratmeter": {
+    navn: "m² pr. døgn", kategori: "lager", metode: "prKvadratmeterdoegn",
     arter: null,
   },
 };

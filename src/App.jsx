@@ -45,6 +45,7 @@ import Wmscarriers from "./moduler/warehouse/Carriers.jsx";
 import Wmsmodtagelse from "./moduler/warehouse/Modtagelse.jsx";
 import Wmsafregning from "./moduler/warehouse/Afregning.jsx";
 import Wmssporbarhed from "./moduler/warehouse/Sporbarhed.jsx";
+import Wmsvolumen from "./moduler/warehouse/Volumen.jsx";
 import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
 import Kundepriser from "./moduler/kunder/Kundepriser.jsx";
 import Kunder from "./moduler/Kunder.jsx";
@@ -365,6 +366,7 @@ export default function App() {
             <Route path="warehouse/modtagelse" element={<Wmsmodtagelse />} />
             <Route path="warehouse/afregning" element={<Wmsafregning />} />
             <Route path="warehouse/sporbarhed" element={<Wmssporbarhed />} />
+            <Route path="warehouse/volumen" element={<Wmsvolumen />} />
 
             <Route path="kunder" element={<Kunder />} />
             <Route path="kunder/priser" element={<Standardpriser />} />

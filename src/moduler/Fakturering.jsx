@@ -336,7 +336,7 @@ function Detaljer({ g, etaper = [], kunder = [], alle = [], bruger, paaSkrevet }
 
       <Formularsvar svar={svar} />
 
-      <div className="fc-row" style={{ gap: 8, marginTop: 12 }}>
+      <div className="fc-formular-knapper">
         {/* ⚠ KNAPPERNE ER DEAKTIVERET AF DET SAMME TJEK SOM SERVEREN BRUGER —
             kanGodkende() og kanLaase() er de SAMME funktioner begge
             steder, fordi grundlag.js er kopieret til functions/delt/. UI og

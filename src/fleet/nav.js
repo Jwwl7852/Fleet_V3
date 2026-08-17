@@ -154,6 +154,12 @@ export const NAV = [
       /* ⚠ SPORBARHED, IKKE "Sporbarhed & optaelling". Planchen hedder det
          sidste, men optaellingen ER sin egen skaerm — to navne til det samme
          ville vaere sjette gang det moenster dukker op. */
+      /* ⚠ VOLUMEN, IKKE "Tilbud". Skaermen REGNER et tal; den opretter
+         ikke et tilbud — nodeformen er ikke besluttet, og et navn der lovede
+         et tilbud, ville love noget platformen ikke kan. Se DEMO_TILBUD. */
+      { key: "warehouseVolumen", sti: "/warehouse/volumen", label: "Volumen",
+        titel: "Warehouse – volumenkalkulator",
+        under: "Paller, m3 eller m2 til en maanedspris. Et estimat, ikke et tilbud" },
       { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
         titel: "Warehouse – sporbarhed",
         under: "Hvor er partiet nu, og hvor har det vaeret" },

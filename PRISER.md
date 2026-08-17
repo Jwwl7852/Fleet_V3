@@ -419,3 +419,26 @@ ingenting, koordinatoren begge dele.
   regnskabet; formatet i den anden ende er ikke afklaret.
 - **Opbevaring pr. palle pr. dag.** Kræver en daglig måling og kan ikke
   regnes bagud — se `warehouse.js`.
+
+---
+
+## 11. Kataloget fik en ydelse mere: m² pr. døgn
+
+Warehouse etape 8 — volumenkalkulatoren — bad om det tredje opbevaringsgrundlag.
+Planchen har hele tiden sagt *"m², m³, paller"*, men kataloget havde kun de to.
+
+`lager-kvadratmeter` med metoden `prKvadratmeterdoegn` er nu i `LAGERYDELSER`.
+Gods der ikke kan stables, lægger beslag på **gulv** uanset højden; solgtes det
+som m³, ville en vognmand fakturere en tredjedel af hvad pladsen koster ham.
+
+⚠ **Der skulle ingenting ændres andre steder.** Standardpriser- og
+Kundepriser-skærmene enumererer kataloget frem for at have hver sin liste, og
+ydelsen dukkede op af sig selv i begge — set med egne øjne i DEV. Reglerne
+validerer `metode` som en streng på højst 40 tegn og skulle heller ikke røres:
+en ny beregningsmetode er ikke en regelændring. Det er hele gevinsten ved at
+kataloget er ÉT sted, og det var værd at efterprøve frem for at antage.
+
+⚠ **Og de tre grundlag udelukker hinanden.** Paller, m³ og m² er tre måder at
+måle det samme gods på. `KAPACITETSGRUNDLAG` i `volumen.js` gør det til et
+VALG frem for tre felter — tre felter ville blive udfyldt, og så faktureres den
+samme plads tre gange.
