@@ -22,8 +22,10 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
 import { ref, set, get, update } from "firebase/database";
-import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { permStrengFraRolle, PERM, ROLLE_PERMS } from "../src/fleet/permissions.js";
 import { GRUNDLAG_TILSTAND, ALLE_LINJEARTER } from "../src/fleet/grundlag.js";
+import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
+import { AUDIT, klasseFor } from "../src/fleet/audit-regler.js";
 
 const T = "tenantGrundlag";
 const KUNDE = "k-nordisk";
@@ -170,5 +172,115 @@ describe("formen på et grundlag", () => {
 
   it("tager imod et helt grundlag skrevet af serveren", () => {
     return skriv("grl-server", { ...GRUNDLAG, tilstand: "godkendt", godkendtAf: "uid-jorn", godkendtMs: 1786100000000 });
+  });
+});
+
+describe("grundlagskriv — den eneste vej ind", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+  const blok = kilde.slice(kilde.indexOf("export const grundlagskriv"));
+
+  it("⚠ SERVEREN BRUGER SAMME FIL SOM SKÆRMEN", () => {
+    /* kanGodkende(), kanEksportere() og nummerformatet er de SAMME
+       funktioner begge steder. Skrev serveren sin egen afskrift, ville
+       skærmen sige ja og serveren nej — og et regnskabsdokument er det
+       værste sted at have to meninger. */
+    assert.ok(kilde.includes('from "./delt/grundlag.js"'),
+      "funktionen importerer ikke den delte grundlag.js");
+    assert.ok(DELTE_FILER.includes("grundlag.js"), "grundlag.js kopieres ikke til delt/");
+    assert.ok(DELTE_FILER.includes("booking-state.js"),
+      "booking-state.js mangler — grundlag.js importerer den");
+  });
+
+  it("⚠ REGLEN FOR DELTE FILER ER TRANSITIV, IKKE 'IMPORTFRI'", () => {
+    /* En fil må kun stå på listen hvis ALT den importerer også står der.
+       Firebase deployer kun functions/-mappen, så en import op gennem træet
+       fejler i skyen — ved DEPLOY, ikke ved test. */
+    for (const fil of DELTE_FILER) {
+      const src = readFileSync(`src/fleet/${fil}`, "utf8");
+      const importer = [...src.matchAll(/from\s+"\.\/([\w-]+\.js)"/g)].map((m) => m[1]);
+      for (const i of importer) {
+        assert.ok(DELTE_FILER.includes(i),
+          `${fil} importerer ${i}, som ikke kopieres til functions/delt/`);
+      }
+    }
+  });
+
+  it("⚠ NUMMERET TAGES I EN TRANSACTION, FØR POSTEN SKRIVES", () => {
+    /* To mennesker der trykker i samme sekund, skal have hvert sit nummer.
+       En optælling af eksisterende poster ville give dem det samme. */
+    assert.ok(blok.includes("naesteGrundlagsnummer(db,"),
+      "nummeret kommer ikke fra husets nummerserie");
+  });
+
+  it("⚠ ETAPERNE LÆSES AF SERVEREN, IKKE SENDT MED", () => {
+    /* Kunne klienten oplyse dem, kunne et grundlag godkendes ved at fortie
+       den åbne etape — og det er præcis den kontrol der spærrer. */
+    assert.ok(blok.includes('rod.child("etaper").once("value")'),
+      "etaperne læses ikke af serveren");
+    assert.ok(blok.includes("kanGodkende(g, { etaper, bruger: uid })"));
+  });
+
+  it("⚠ EN LÅSNING KRÆVER EN EKSPORTREFERENCE", () => {
+    /* En låsning uden reference er en påstand. Referencen er beviset på at
+       grundlaget faktisk ER eksporteret — uden den kan ingen finde bilaget
+       igen i regnskabet. */
+    assert.ok(blok.includes("En låsning kræver en eksportreference"));
+  });
+
+  it("⚠ DER FINDES INGEN SLET-HANDLING", () => {
+    /* Regnskabsdata hardslettes ikke. En rettelse er et NYT grundlag der
+       henviser til det gamle — og en funktion der findes, bliver kaldt. */
+    assert.ok(!/handling === "slet"/.test(blok), "der er en slet-handling");
+    assert.ok(!/\.remove\(\)/.test(blok), "funktionen kan fjerne et grundlag");
+    assert.ok(blok.includes("Kendte: opret, godkend, laas."),
+      "listen over handlinger er ændret — er sletning kommet med?");
+  });
+
+  it("de to permissioner er to handlinger", () => {
+    /* At UDARBEJDE et grundlag er kontorarbejde; at GODKENDE det er at sige
+       god for at fakturaen kan sendes. Den der gør det første, skal ikke
+       nødvendigvis kunne gøre det andet. */
+    assert.ok(blok.includes("PERM.grundlagSkriv"));
+    assert.ok(blok.includes("PERM.grundlagGodkend"));
+    assert.ok(ROLLE_PERMS.casehandler.includes(PERM.grundlagSkriv));
+    assert.ok(!ROLLE_PERMS.casehandler.includes(PERM.grundlagGodkend),
+      "casehandleren kan godkende sit eget grundlag");
+    assert.ok(ROLLE_PERMS.koordinator.includes(PERM.grundlagGodkend));
+    assert.ok(!ROLLE_PERMS.chauffoer.includes(PERM.grundlagSkriv));
+  });
+
+  it("⚠ SPORET LANDER I REGNSKABSPARTITIONEN", () => {
+    /* Klassen afgør retention. Et grundlag hører sammen med de fakturaer det
+       bliver til — ikke med de bevægelser der udløste det. */
+    assert.equal(klasseFor(AUDIT.opret, "grundlag"), "regnskab");
+    assert.ok(blok.includes("audit/${tenantId}/regnskab/"));
+  });
+
+  it("prøver abonnementet, som reglerne gør", () => {
+    /* Admin-SDK'et går uden om reglerne, og reglerne er det eneste sted
+       spærringen ellers står. */
+    const guard = kilde.slice(kilde.indexOf("async function kraevGrundlag"));
+    assert.ok(guard.slice(0, 1500).includes("Abonnementet er ikke aktivt."));
+  });
+});
+
+describe("RTDB har ingen arrays — og domænet regner med dem", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+
+  it("⚠ BÅDE LINJER OG HISTORIK OVERSÆTTES, når et grundlag læses", () => {
+    /* Linjer og historik ligger som OBJEKTER i basen. godkend() gør
+       `[...grundlag.historik]`, og med et objekt kaster den et sted der intet
+       har med godkendelsen at gøre — fejlen kom ud som "INTERNAL". Kun
+       linjerne blev oversat i første omgang, og det tog en probe at finde. */
+    const blok = kilde.slice(kilde.indexOf("async function hentGrundlag"));
+    assert.ok(blok.slice(0, 900).includes("linjer: Object.values(g.linjer || {})"));
+    assert.ok(blok.slice(0, 900).includes("historik: Object.values(g.historik || {})"),
+      "historikken oversættes ikke — godkend() vil kaste INTERNAL");
+  });
+
+  it("skriver dem tilbage som objekter", () => {
+    /* Den anden vej. Et array i RTDB bliver til nøglerne 0,1,2 — og en
+       sletning midt i ville rykke resten. */
+    assert.ok(kilde.includes("Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h]))"));
   });
 });

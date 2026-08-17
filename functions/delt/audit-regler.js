@@ -102,6 +102,11 @@ export const KLASSER = Object.keys(RETENTION_MAANEDER);
 /* Objekter hvor en ændring rører regnskabsgrundlaget. */
 const REGNSKABSOBJEKTER = new Set([
   "fakturaer", "indkoeb", "satser", "bookinger", "etaper", "countere",
+  /* ⚠ FAKTURAGRUNDLAGET ER REGNSKAB, IKKE DRIFT. Klassen afgør retention, og
+     et grundlag hører sammen med de fakturaer det bliver til — ikke med de
+     bevægelser der udløste det. Lå sporet i drift-partitionen, ville
+     halvdelen af en fakturas historik have en anden levetid end den anden. */
+  "grundlag", "omkostninger",
 ]);
 
 const SIKKERHEDSHANDLINGER = new Set([

@@ -52,6 +52,13 @@ import {
   CARRIER_STATUS,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
+/* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
+   delt/, saa kanGodkende(), kanEksportere() og nummerformatet er de SAMME
+   funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
+import {
+  byggGrundlag, validerLinje, kanGodkende, godkend, kanEksportere, laas,
+  naesteGrundlagsnummer,
+} from "./delt/grundlag.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
@@ -1940,3 +1947,251 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
 
   return { ok: true, id: optId, forventet, taeltAntal, afvigelse };
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURAGRUNDLAGET — den eneste vej ind. Beslutning 25.
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ `grundlag` ER .write: false FOR ALLE, OGSÅ ADMIN. Tre ting kan ikke
+   håndhæves af en klient:
+
+     1. NUMMERET kommer fra en counter i en transaction (beslutning 8).
+        En optælling af eksisterende poster ville give to grundlag samme
+        nummer, den dag to mennesker trykker i samme sekund.
+     2. TILSTANDSSKIFTET følger kanGodkende(): en åben etape spærrer, en linje
+        uden momssats spærrer eksporten, et erstattet grundlag kan ikke
+        godkendes igen. Ligger tjekket i skærmen, kan en direkte skrivning gå
+        udenom — og så er det dekoration.
+     3. ET LÅST GRUNDLAG MÅ ALDRIG ÆNDRES. Det er eksporteret; tallet findes
+        et sted vi ikke kontrollerer, og to sandheder er værre end én forkert.
+
+   ⚠ SERVEREN PRØVER MOD DEN SAMME FIL SOM SKÆRMEN. `grundlag.js` og
+   `booking-state.js` er kopieret til `functions/delt/`, så kanGodkende(),
+   kanEksportere() og nummerformatet er de SAMME funktioner begge steder.
+   Skrev serveren sin egen afskrift, ville skærmen sige ja og serveren nej —
+   og et regnskabsdokument er det værste sted at have to meninger.
+
+   ⚠ ET GRUNDLAG SLETTES ALDRIG. Der er ingen handling der fjerner et; en
+   rettelse er et NYT grundlag der henviser til det gamle (erstat()), og
+   referencen går begge veje, så det gamle holder op med at tælle med.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function kraevGrundlag(req, perm) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const perms = auth.token?.perms;
+  if (typeof perms !== "string" || !perms.includes(`|${perm}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${perm}.`);
+  }
+
+  const db = getDatabase();
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE, og reglerne er det eneste sted
+     abonnementsspærringen ellers står. Uden linjen her var funktionen en åben
+     dør rundt om den. Der er ingen modulklausul på `grundlag`: noden røres af
+     booking, warehouse og økonomi, og en klausul på ét af dem ville spærre de
+     to andre. */
+  const ab = await db.ref(`tenants/${tenantId}/abonnement/status`).once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  return { uid: auth.uid, tenantId, db };
+}
+
+/** Grundlaget, eller en fejl der siger hvilket der manglede. */
+async function hentGrundlag(rod, id) {
+  if (!id) throw new HttpsError("invalid-argument", "id mangler.");
+  const g = (await rod.child(`grundlag/${id}`).once("value")).val();
+  if (!g) throw new HttpsError("not-found", `Grundlaget ${id} findes ikke.`);
+  /* ⚠ BEGGE LISTER SKAL OVERSÆTTES. RTDB har ingen arrays — linjer og
+     historik ligger som objekter — mens domænet regner med arrays.
+     godkend() gør `[...grundlag.historik]`, og med et objekt kaster den et
+     sted der intet har med godkendelsen at gøre. Det kostede en probe at
+     finde: fejlen kom ud som "INTERNAL". */
+  return {
+    ...g, id,
+    linjer: Object.values(g.linjer || {}),
+    historik: Object.values(g.historik || {}),
+  };
+}
+
+/** Linjer fra basen/klienten → den form grundlag.js validerer. */
+function tilLinjer(raa) {
+  return Object.values(raa || {}).map((l, i) => ({
+    id: kortStreng(l.id, 60) || `l${i + 1}`,
+    art: kortStreng(l.art, 20),
+    tekst: kortStreng(l.tekst, 200) || null,
+    antal: Number(l.antal),
+    satsOere: Number(l.satsOere),
+    enhed: kortStreng(l.enhed, 20) || null,
+    /* ⚠ MOMSSATSEN GÆTTES IKKE. Mangler den, bliver den ved med at mangle —
+       og eksporten er spærret indtil en bogholder har svaret. */
+    momssats: Number.isFinite(Number(l.momssats)) ? Number(l.momssats) : null,
+    kilde: l.kilde?.type && l.kilde?.id
+      ? { type: kortStreng(l.kilde.type, 20), id: kortStreng(l.kilde.id, 60) }
+      : null,
+  }));
+}
+
+const somNode = (linjer) =>
+  Object.fromEntries(linjer.map((l) => {
+    const { id, ...resten } = l;
+    /* null-felter skrives ikke: reglerne afviser en type de ikke kender, og
+       en tom streng er ikke det samme som "ikke oplyst". */
+    const ud = {};
+    for (const [k, v] of Object.entries(resten)) if (v != null) ud[k] = v;
+    return [id, ud];
+  }));
+
+export const grundlagskriv = onCall({ region: REGION }, async (req) => {
+  const d = req.data || {};
+  const handling = kortStreng(d.handling, 20);
+
+  /* ---- OPRET ---------------------------------------------------------- */
+  if (handling === "opret") {
+    const { uid, tenantId, db } = await kraevGrundlag(req, PERM.grundlagSkriv);
+    const rod = db.ref(`tenants/${tenantId}`);
+
+    const kundeId = kortStreng(d.kundeId, 60);
+    if (!kundeId) throw new HttpsError("invalid-argument", "kundeId mangler.");
+    if (!(await rod.child(`kunder/${kundeId}`).once("value")).exists()) {
+      throw new HttpsError("not-found", `Kunden ${kundeId} findes ikke.`);
+    }
+
+    const linjer = tilLinjer(d.linjer);
+    if (!linjer.length) {
+      throw new HttpsError("invalid-argument", "Et grundlag uden linjer kan ikke oprettes.");
+    }
+    /* ⚠ SAMME validerLinje() SOM SKÆRMEN. Se noten i hovedet. */
+    for (const l of linjer) {
+      const fejl = validerLinje(l);
+      if (fejl.length) {
+        throw new HttpsError("invalid-argument", `${l.tekst || l.id}: ${fejl[0]}`);
+      }
+    }
+
+    /* ⚠ ENTEN ET FORLØB ELLER EN PERIODE. En tur faktureres pr. forløb; en
+       lagerafregning gør en periode op. byggGrundlag() afviser begge dele og
+       ingen af delene — se noten der. */
+    const periode = Number.isFinite(Number(d.periodeFra)) && Number.isFinite(Number(d.periodeTil))
+      ? { fra: Number(d.periodeFra), til: Number(d.periodeTil) }
+      : null;
+    const post = byggGrundlag({
+      bookingId: kortStreng(d.bookingId, 60) || null,
+      periode,
+      kundeId,
+      division: kortStreng(d.division, 10) || "faelles",
+      linjer,
+      udarbejdetAf: uid,
+    });
+
+    /* ⚠ NUMMERET FØRST, OG I EN TRANSACTION. To mennesker der trykker i samme
+       sekund, skal få hvert sit — en optælling af eksisterende poster ville
+       give dem det samme. */
+    const nummer = await naesteGrundlagsnummer(db, (sti) => `tenants/${tenantId}/${sti}`);
+    const id = rod.child("grundlag").push().key;
+
+    /* null-felter skrives ikke: reglerne kender ikke typen, og "ikke
+       oplyst" er ikke det samme som en tom værdi. */
+    const uden = Object.fromEntries(
+      Object.entries(post).filter(([, v]) => v != null && !Array.isArray(v)));
+    await rod.child(`grundlag/${id}`).set({
+      ...uden,
+      nummer,
+      linjer: somNode(post.linjer),
+      historik: Object.fromEntries((post.historik || []).map((h, i) => [`h${i}`, h])),
+    });
+
+    await logGrundlag(tenantId, uid, AUDIT.opret, id, null,
+      { tilstand: post.tilstand, kundeId, antal: linjer.length },
+      `grundlag ${nummer} oprettet med ${linjer.length} linjer`);
+
+    return { ok: true, id, nummer };
+  }
+
+  /* ---- GODKEND -------------------------------------------------------- */
+  if (handling === "godkend") {
+    const { uid, tenantId, db } = await kraevGrundlag(req, PERM.grundlagGodkend);
+    const rod = db.ref(`tenants/${tenantId}`);
+    const id = kortStreng(d.id, 60);
+    const g = await hentGrundlag(rod, id);
+
+    /* ⚠ ETAPERNE LÆSES AF SERVEREN, ikke sendt med. Kunne klienten oplyse
+       dem, kunne et grundlag godkendes ved at fortie den åbne etape — og det
+       er præcis den kontrol der spærrer. */
+    const alle = (await rod.child("etaper").once("value")).val() || {};
+    const etaper = Object.entries(alle).map(([eid, e]) => ({ id: eid, ...e }));
+
+    const tjek = kanGodkende(g, { etaper, bruger: uid });
+    if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsager[0]);
+
+    const aendring = godkend(g, { bruger: uid, etaper });
+    await rod.child(`grundlag/${id}`).update({
+      tilstand: aendring.tilstand,
+      godkendtAf: aendring.godkendtAf,
+      godkendtMs: aendring.godkendtMs,
+      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h])),
+    });
+
+    await logGrundlag(tenantId, uid, AUDIT.tilstandsskift, id,
+      { tilstand: g.tilstand }, { tilstand: "godkendt" },
+      `grundlag ${g.nummer} godkendt`);
+
+    return { ok: true, id, tilstand: "godkendt" };
+  }
+
+  /* ---- LÅS ------------------------------------------------------------ */
+  if (handling === "laas") {
+    const { uid, tenantId, db } = await kraevGrundlag(req, PERM.grundlagGodkend);
+    const rod = db.ref(`tenants/${tenantId}`);
+    const id = kortStreng(d.id, 60);
+    const reference = kortStreng(d.reference, 120);
+    if (!reference) {
+      /* ⚠ EN LÅSNING UDEN REFERENCE ER EN PÅSTAND. Referencen er beviset på
+         at grundlaget faktisk ER eksporteret — uden den kan ingen finde
+         bilaget igen i regnskabet. */
+      throw new HttpsError("invalid-argument",
+        "En låsning kræver en eksportreference — hvor ligger bilaget?");
+    }
+    const g = await hentGrundlag(rod, id);
+
+    const tjek = kanEksportere(g);
+    if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsager[0]);
+
+    const aendring = laas(g, { bruger: uid, reference });
+    await rod.child(`grundlag/${id}`).update({
+      tilstand: aendring.tilstand,
+      laastMs: aendring.laastMs,
+      eksportReference: aendring.eksportReference,
+      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h])),
+    });
+
+    await logGrundlag(tenantId, uid, AUDIT.tilstandsskift, id,
+      { tilstand: g.tilstand }, { tilstand: "laast" },
+      `grundlag ${g.nummer} laast mod ${reference}`);
+
+    return { ok: true, id, tilstand: "laast" };
+  }
+
+  throw new HttpsError("invalid-argument",
+    `Ukendt handling: "${handling}". Kendte: opret, godkend, laas.`);
+});
+
+async function logGrundlag(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const nu = new Date();
+  /* ⚠ REGNSKAB, IKKE DRIFT. Klassen afgør retention, og et fakturagrundlag
+     hører sammen med fakturaerne — se klasseFor() i audit-regler.js. */
+  await getDatabase()
+    .ref(`audit/${tenantId}/regnskab/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "grundlag", objektId: id,
+      klasse: "regnskab",
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null,
+    });
+}

@@ -77,6 +77,25 @@ export const PERM = {
   bookingAnnuller: "booking.annuller",
   bookingUdfoer: "booking.udfoer",
 
+  /* --- Fakturagrundlaget (beslutning 25) ---
+   *
+   * ⚠ TO PERMISSIONS, FORDI DET ER TO HANDLINGER. At UDARBEJDE et grundlag er
+   * kontorarbejde: samle linjerne og få tallene til at passe. At GODKENDE det
+   * er at sige god for at fakturaen kan sendes — og at LÅSE det er at sige at
+   * den ER sendt. Den der gør det første, skal ikke nødvendigvis kunne gøre
+   * det andet.
+   *
+   * Det er samme snit som beslutning 5 på bookingen: disponenten foreslår,
+   * koordinatoren godkender. Her er det ikke et forbud mod at godkende sit
+   * eget — det er et åbent spørgsmål (fire-øjne, se README) — men snittet
+   * findes, så svaret kan sættes i en rolle frem for i kode.
+   *
+   * ⚠ INGEN AF DEM ÅBNER NODEN. `grundlag` er .write: false for alle;
+   * permissionerne er dét den Cloud Function prøver kalderen mod. Præcis som
+   * bevaegelser.skriv og kasseudlaan.skriv. */
+  grundlagSkriv: "grundlag.skriv",
+  grundlagGodkend: "grundlag.godkend",
+
   /* --- Audit --- */
   /* Læsning af auditloggen. Loggen er selv følsom: den afslører hvilke kunder
      der bliver kigget på, og af hvem. Derfor er den ikke synlig for enhver i
@@ -234,7 +253,9 @@ const BASIS_LAES = [
 export const ROLLE_PERMS = {
   chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv],
 
-  casehandler: [...BASIS_LAES, ...BASIS_DATA, PERM.bookingOpret],
+  casehandler: [...BASIS_LAES, ...BASIS_DATA, PERM.bookingOpret,
+    /* Udarbejder grundlaget — men godkender det ikke. */
+    PERM.grundlagSkriv],
 
   disponent: [
     ...BASIS_LAES,
@@ -266,6 +287,10 @@ export const ROLLE_PERMS = {
     PERM.bookingVaerdiLaes,
     PERM.koeretoejerSensitiveLaes,
     PERM.kunderSensitiveLaes,
+    /* Samme snit som på bookingen: den der godkender turen, godkender også
+       det grundlag den bliver faktureret på. */
+    PERM.grundlagSkriv,
+    PERM.grundlagGodkend,
     /* Ingen fravaerSensitiveLaes: disponeringen har brug for at vide at
        medarbejderen er utilgængelig, ikke hvorfor.
        Ingen personaleSensitiveLaes: CPR og baggrundskontrol er ikke

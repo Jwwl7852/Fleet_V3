@@ -464,7 +464,7 @@ regel afviser RTDB alt — der er ingen åben dør, kun en manglende.
 | `support/countere` | Global counter — sagsnumre er vores, ikke kundens |
 | `leverandoerer` | ⚠ `leverandoerId` er **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
 | `prislister/<leverandoerId>` | Beslutning 25. Ligger **for sig**, ikke på leverandøren: flere års historik skal ikke hentes med hver oversigt |
-| ~~`grundlag`~~ | ✅ **Noden findes nu**, og Fakturering læser den. Den er `.write: false` for **alle**, også admin: nummeret kommer fra en counter i en transaction, tilstandsskiftet følger `kanGodkende()`, og et låst grundlag må aldrig kunne ændres. ⚠ Den Cloud Function der skal skrive, mangler stadig — det er dét der står tilbage af beslutning 25 |
+| ~~`grundlag`~~ | ✅ **Bygget.** Noden findes, Fakturering læser den, og `grundlagskriv` skriver den: opret (med nummer fra counteren), godkend og lås. Noden er `.write: false` for **alle**, også admin. ⚠ To permissions, fordi det er to handlinger: `grundlag.skriv` udarbejder, `grundlag.godkend` godkender og låser — casehandleren har kun den første |
 | `sensitive/indberetninger` | Beslutning 25. Skadebeskrivelse, modpart og **underskrift**. Permissionen `indberetninger.sensitiveLaes` mangler af samme grund som `sag.*` |
 | `sensitive/indberetninger/<id>/underskrift` | ⚠ Skal have `".write": "!data.exists()"`. Write-once er en **regel**, ikke en konvention — en underskrift der kan redigeres bagefter, beviser ingenting |
 

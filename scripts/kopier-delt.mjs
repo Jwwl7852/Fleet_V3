@@ -24,10 +24,16 @@ import { fileURLToPath } from "node:url";
 const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Filer der skal være ens i src/fleet og functions/delt. */
-/* ⚠ KUN IMPORTFRIE FILER KAN STÅ HER. En kopi der importerer noget, ville
-   trække halve appen med ind i functions/ — og fejle ved DEPLOY, ikke ved
-   test. Alle fire er skrevet importfri med vilje; det er ikke et tilfælde
-   man kan regne med holder, så tilføj ikke en femte uden at tjekke. */
+/* ⚠ REGLEN ER IKKE "IMPORTFRI" — DEN ER LUKKET UNDER IMPORT.
+   En fil må kun stå her hvis ALT den importerer også står her. Firebase
+   deployer kun functions/-mappen, så en import op gennem træet fejler i skyen
+   — ved DEPLOY, ikke ved test.
+
+   Listen begyndte med fire importfrie filer, og formuleringen fulgte med. Den
+   holdt ikke: priser.js importerer beloeb.js, og det er netop derfor beloeb.js
+   står her. Kravet er transitivt, ikke fraværet af imports.
+
+   Tilføjer du en fil, så følg dens imports hele vejen ned. */
 export const DELTE_FILER = [
   "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",
   /* ⚠ beloeb.js SKAL MED FØR priser.js KAN BRUGES SERVER-SIDE. Den funktion
@@ -46,6 +52,16 @@ export const DELTE_FILER = [
      proeve mod noejagtig de samme regler som formularen viser brugeren:
      samme valideBevaegelse(), samme virkningPaaBeholdning(), samme skala. */
   "warehouse.js",
+  /* ⚠ DE TO HER ER IKKE IMPORTFRIE, og de er beviset på at reglen ovenfor er
+     transitiv. booking-state.js importerer permissions.js; grundlag.js
+     importerer booking-state.js og beloeb.js. Alle tre står på listen.
+
+     De skal med, fordi den funktion der skriver et fakturagrundlag, skal
+     prøve mod NØJAGTIG de samme regler som skærmen viser: samme
+     kanGodkende(), samme kanEksportere(), samme nummerformat. Skrev serveren
+     sin egen afskrift, ville skærmen sige ja og serveren nej — og et
+     regnskabsdokument er det værste sted at have to meninger. */
+  "booking-state.js", "grundlag.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

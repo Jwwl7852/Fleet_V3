@@ -472,7 +472,17 @@
           ".write": false,
           ".indexOn": ["kundeId", "bookingId", "tilstand", "udarbejdetMs"],
           "$grundlagId": {
-            ".validate": "newData.hasChildren(['kundeId', 'tilstand', 'udarbejdetMs'])",
+            // ⚠ ENTEN ET FORLOEB ELLER EN PERIODE — aldrig begge, aldrig
+            // ingen af delene. En tur faktureres pr. forloeb; en
+            // lagerafregning goer en PERIODE op for een kunde. Et grundlag
+            // uden ophav kan ikke efterproeves, naar kunden ringer.
+            ".validate": "newData.hasChildren(['kundeId', 'tilstand', 'udarbejdetMs']) && (newData.hasChild('bookingId') != newData.hasChild('periode'))",
+            "periode": {
+              ".validate": "newData.hasChildren(['fra', 'til']) && newData.child('til').val() > newData.child('fra').val()",
+              "fra": { ".validate": "newData.isNumber()" },
+              "til": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            },
             // GRL-AAAA-NNNNN. Eet format, een mekanisme (beslutning 8).
             "nummer": { ".validate": "newData.isString() && newData.val().matches(/^GRL-[0-9]{4}-[0-9]{5}$/)" },
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
