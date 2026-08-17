@@ -26,6 +26,11 @@ først som ved Turtlebooking.
 | Volumenkalkulator | m², m³, paller → månedspris. En tilbudsberegner |
 | Rater & afregning | Rater pr. ydelse (håndtering, modtagelse, pluk, pak, lager pr. palle/m²/m³ pr. dag), kundeaftaler, brancheprofiler, tillæg |
 
+⚠ **Tre plancher mere kom til bagefter**, og de står ikke i tabellen ovenfor,
+fordi de ikke er en niende flade — de tilføjer et **objekt** der går på tværs
+af dem alle: *Transit & placering*, *Transportlabels* og *Carrier-overblik*.
+Se punkt 6.
+
 ---
 
 ## 2. ⚠ Fem navne er allerede taget — og det er værre end ved Turtlebooking
@@ -41,6 +46,11 @@ den er dukket op **seks gange**. Her er den seks nye gange på én gang.
 | **Rater** | `satser` | Kundepriser med `gyldigFra`, som **aldrig overskrives** |
 | **Afregning** | `grundlag.js` + `fakturaer` | **Fakturagrundlaget**, med `erGaeldende()` og ét godkendelsesflow (beslutning 12) |
 | **Modtagelse** | `indkoeb` | Købsfakturaer og varelinjer med leverandør og lokation |
+
+⚠ Og en **ottende** kom med de nye plancher: **`carrier` er `kasse`.**
+Turtlebooking har `kasser` — en fysisk beholder med type, status og en
+reolplads. Planchens carrier er den samme ting med indhold og ejerforhold.
+Svaret blev her **to noder** og ikke én, og prisen for det står i punkt 6.2.
 
 ⚠ Og en syvende, som er den lumske: **`reolpladser` er taget af
 Turtlebooking.** Hal · reol · fag · hylde · plads. WMS'ens lokation er
@@ -319,6 +329,10 @@ stemmer.
 Etape 1–4 er fundamentet og kan ikke deles op mindre. Etape 7 kan ikke bygges
 før 4, fordi der ikke er noget at afregne før bevægelserne findes.
 
+⚠ **Der er fem etaper mere — 11 til 15 — og de står i punkt 6.7.** De kom med
+carrieren, og de er ikke en fortsættelse af rækken her: etape 12 flytter
+beholdningens nøgle **under** etape 4, 5 og 6.
+
 ---
 
 ## 5. Størrelsen, ærligt
@@ -334,3 +348,150 @@ afstemt, og en Cloud Function for hver hændelsestype.
 Det bliver ikke færdigt i én omgang, og et halvt bygget WMS er værre end
 intet: en beholdning der er forkert, er værre end ingen beholdning, fordi
 nogen disponerer efter den.
+
+---
+
+## 6. Carrieren — de tre plancher der kom til
+
+Tre plancher mere: **Transit & placering**, **Transportlabels** og
+**Carrier-overblik**. Den sidste er den med de fem KPI-kort øverst.
+
+⚠ **Ingen af dem er "Overblik" fra punkt 1.** Den flade viser aktive
+lokationer, varelinjer, åbne modtagelser og opgavekø. Carrier-overblik viser
+noget andet: **beholdere**. Det er ikke den samme skærm med et andet udseende,
+og der findes i dag hverken en rute, et menupunkt eller en fil til nogen af
+dem — `/warehouse` tegner **Varer**.
+
+De tre hænger sammen om ét nyt objekt: **carrieren**. En beholder der rummer
+flere varer, er egen eller engangs, står enten på en lokation eller er knyttet
+til en transport, kan tømmes delvist og bærer sin egen historik.
+
+### 6.1 Hvad de tre viser
+
+| Planche | Hvad |
+|---|---|
+| **Transit & placering** | Fire trin: ankommet fra transport → scan carrier → vælg eller scan lokation → carrier placeret. Systemet **foreslår** en ledig lokation, eller man vælger kundens faste område. Lageroversigt med ledig/optaget/kundezone/kundeområde/transitområde |
+| **Transportlabels** | Tre transporttyper med hver sin label: **Direkte A → B**, **Via transit → destination**, **Storage via transit**. Labelen bærer booking-id, carrier-id, kunde, fra/transit/slutmål, lokation efter transit og en stregkode `BK-2026-0513-C-000245` |
+| **Carrier-overblik** | Fem nøgletal (aktive, i transit, engangs, delvist tømt, uden lokation), filtre på lokation/transport/status, tabel med carrier-id, type, ejerforhold, lokation, indhold, status, tilknyttet transport og seneste bevægelse — plus en lageroversigt pr. zone |
+
+### ✅ 6.2 BESVARET: carrieren er sin egen node
+
+⚠ **Det er `kasse` én gang til.** Turtlebooking har `kasser` med id
+(`MDT-101`), type, status, hjemplads og nuværende plads. Planchen har
+`CRR-100245`, type *Pallekasse 1200×800×950*, ejerforhold, lokation
+*Zone A · A-01-02* og status. Fysisk er det den samme ting: en beholder der
+står på en reolplads.
+
+**Svaret blev alligevel to noder** — `kasser` og `carriers` — og modsat
+`reolpladser` i punkt 3.3, hvor svaret blev én udvidet node. Begrundelsen er
+at de to bærer hver sin **forretning**: kassen udlejes pr. sag og har sin egen
+tilstandsmaskine med klargøring og returnering (beslutning 37), mens
+carrieren bærer **kundens gods** og har ejerforhold og indhold. Én node ville
+have båret to tilstandsmaskiner og to formål, og så afgør et felt hvilken
+halvdel af reglerne der gælder.
+
+⚠ **Prisen skal betales i etape 11, ikke opdages i etape 13.** Begge noder
+står på **de samme** `reolpladser`. Spørgsmålet *"er hylden optaget?"* har fra
+nu af to kilder, og det skal besvares **ét sted** — én funktion der læser
+begge. Gør den det ikke, ser en hylde ledig ud i Turtlebooking og optaget ud i
+Warehouse, og de to skærme har hver sin sandhed om samme fysiske hylde. Det er
+divisionsfilteret der stod to steder, og det er `bemanding.ledig` — en
+kendsgerning gemt to steder driver.
+
+⚠ **Og permissionen kan ikke hedde `kasser.skriv`.** Carrieren får sin egen,
+af samme grund som `reolpladser.skriv` fik sin i punkt 3.3: en
+WMS-medarbejder uden Turtlebooking skal kunne oprette en carrier.
+
+### ✅ 6.3 BESVARET: beholdningen flytter til carrier-niveau
+
+```
+I DAG:  beholdning/<pladsId>_<vareId>_<batch>
+EFTER:  beholdning/<carrierId>_<vareId>_<batch>
+        carriers/<carrierId>.pladsId → hvor beholderen står
+```
+
+Planchen lover to ting der ikke kan holdes med nøglen på pladsen: **"flyt
+carrieren, og indholdet følger med"** og **"delvis tømning uden at miste
+indhold"**. Med beholdningen på pladsen ville en flytning være N bevægelser
+der skal lykkes sammen — og atomiciteten er allerede kun **delvis** (se etape
+4). Med nøglen på carrieren rører en flytning ét felt: `pladsId`.
+
+⚠ **Det er en migrering af noget der virker.** `beholdningsNoegle()`,
+`virkningPaaBeholdning()`, `valideBevaegelse()`, `beholdningPaaPlads()`,
+`plukketPrVare()` og optællingen hænger alle på pladsnøglen i dag, og
+prøverne prøver den form. Flyttes nøglen uden at prøverne følger med, prøver
+de en form der ikke længere findes — samme fælde som etape 5 i PRISER.md.
+
+⚠ **ÅBENT, og det skal besvares før etape 12:** *kan der ligge gods direkte på
+en hylde uden en carrier?* Siger vi ja, har beholdningen **to** nøgler og
+dermed to modeller, og hver eneste funktion skal kende begge. Siger vi nej, er
+en palle også en carrier, og pladsen bærer aldrig beholdning selv. Det sidste
+er renest og er formentlig svaret — men det er ikke afgjort, og det må ikke
+afgøres af den første funktion der får brug for det.
+
+### ⚠ 6.4 Fire ting på planchen der ikke er felter endnu
+
+**"Delvist tømt"** kræver et udgangspunkt: delvist i forhold til *hvad?*
+Gemmes tilstanden som et felt, driver den fra beholdningen — `bemanding.ledig`
+igen. Udledes den, skal der findes et referencetal (det oprindelige indhold),
+og det tal findes ikke i dag. Åbent.
+
+**"Ingen lokation"** — 11 carriers er scannet, men ikke placeret. Det er en
+rigtig tilstand, ikke en fejl, og den bør være **fraværet af `pladsId`** frem
+for en status ved siden af. To kilder til samme kendsgerning er den fejl der
+bliver ved med at koste her.
+
+**Engangs-carriers forbruges.** De hardslettes ikke — bevægelseshistorikken
+hænger på dem, og et id der forsvinder, gør historikken uforklarlig. De tages
+ud af drift med en status, som alt andet.
+
+**`TRP-2024-0513` mod `BK-2026-0513`.** Planchen bruger to id-serier: en
+"tilknyttet transport" i carrier-tabellen og et "booking-id" på labelen.
+⚠ Er en transport en **etape** (beslutning 16) eller et nyt objekt? Bliver det
+et nyt objekt ved siden af etapen, er det DE-QR 777 mod DE-KL 404 for tredje
+gang. Åbent, og det er det tungeste af de fire.
+
+### ⚠ 6.5 De fem nøgletal har ikke noget at læse
+
+Der er ikke ét warehouse-felt i `demo-kpi.js` i dag. Kortene kan heller ikke
+regnes i skærmen: tabellen viser **6 af 248** carriers, så tallene er ikke
+afledt af data skærmen har — undtagelsen i CLAUDE.md gælder ikke her.
+
+Felterne skal defineres i `demo-kpi.js` først: aktive carriers, i transit,
+engangs, delvist tømt, uden lokation.
+
+⚠ **Og kortene viser "↑ 12 % siden i går".** Det kræver gårsdagens tal, ikke
+bare dagens. Enten et gemt delta eller en gemt serie — men det må ikke blive
+en beregning ud af rådata i skærmen, og det må ikke blive et hardkodet tal
+fordi feltet mangler.
+
+### ⚠ 6.6 Transitzonen er et sted, men ikke en hylde
+
+Planchen placerer carriers på *Modtagelse · Indgang 1*, *TRANSIT*,
+*Kundezone KZ-OT-01* og *Kundeområde KB-01-03*. `reolpladser` har `type`
+(hylde/gulvplads) fra punkt 3.3, men de her er **områder**, ikke pladser — og
+et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
+Åbent: en ny `type`, eller en zone-art ved siden af.
+
+### 6.7 Etaper
+
+| # | Hvad | Værdi alene | Status |
+|---|---|---|---|
+| 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | |
+| 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | |
+| 13 | **Nøgletallene i `kpi/`** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | |
+| 14 | **Transit & placering** — de fire trin, forslag til ledig lokation, kundens faste område | Modtagelsen på gulvet | |
+| 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | |
+
+⚠ **Skærmen er nummer tre i rækken, og det er ikke til at lave om på.** Den
+læser en node der ikke findes (11) og et indhold der ligger et andet sted end
+planchen viser (12). Bygges den først, bygges den to gange — og de fem
+nøgletal ville stå som hardkodede tal imens.
+
+### 6.8 Størrelsen
+
+Etape 11 er lille: en node, en validering, en permission og prøverne.
+**Etape 12 er den farlige** — den flytter nøglen under fire ting der virker og
+er prøvet. Etape 13 er en skærm og et sæt KPI-felter. 14 og 15 er hver sit
+flow og hører sammen med scanner-appen og etapemodellen; de kan ikke bygges
+færdige uden svar på 6.4's fjerde punkt.
