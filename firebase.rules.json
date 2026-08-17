@@ -450,6 +450,65 @@
           ".write": false
         },
 
+        // OMKOSTNINGER — hvad turen KOSTER os. IKKE hvad kunden betaler.
+        //
+        // ⚠ TO NODER, FORDI TALLENE IKKE MAA BLANDES. `satser` er kundens
+        // pris; her staar km-omkostningen paa bilen, faergen, broen,
+        // agentparkeringen og vejafgiften. Beslutning 11 findes praecis for
+        // den forskel: driftsomkostning pr. km er ikke kalkulationspris pr.
+        // km. Storebaelt koster 887 kr og faktureres maaske til 950 — laa de
+        // to i samme node, ville en sum blande indtaegt og udgift.
+        //
+        // ⚠ PERMISSIONEN ER SATSER.SKRIV, og det er en beslutning: det er den
+        // samme person der saetter begge, og en permission mere skulle gives
+        // til noejagtig de samme. Noderne er delt fordi tallene ikke maa
+        // blandes, ikke fordi adgangen skulle deles.
+        //
+        // ⚠ SATSARKET STOD SOM EN const I Bookingopsaetning.jsx indtil
+        // PRISER.md etape 5. Skaermen viste et satsark ingen kunne rette.
+        "omkostninger": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          "$id": {
+            // ⚠ EN BILOMKOSTNING BAERER INTET NAVN OG INGEN DIVISION.
+            // Navnet staar paa koeretoejet — skrives det ogsaa her, driver de
+            // to fra hinanden, og det var netop advarslen i den gamle
+            // JSX-fil. Og en bil har ingen division (beslutning 19): et
+            // koeretoej er defineret ved sin ART, ikke ved en afdeling, og
+            // reglerne afviser feltet paa koeretoejer/. En km-sats maa ikke
+            // indfoere det ad bagvejen.
+            ".validate": "newData.hasChildren(['art']) && (newData.child('art').val() !== 'bil' || (!newData.hasChild('navn') && !newData.hasChild('division'))) && (newData.child('art').val() === 'bil' || newData.hasChild('navn'))",
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(bil|passage|agent)$/)" },
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "kategori": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            // Vejafgiften kommer med uden at nogen vaelger den. Antallet af
+            // faerger kommer fra RUTEN; vejafgiften goer ikke.
+            "altidPaaBooking": { ".validate": "newData.isBoolean()" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "satser": {
+              ".indexOn": ["gyldigFra"],
+              "$satsId": {
+                // Samme form som en kundesats — og samme regel: en sats
+                // overskrives ALDRIG, den faar en ny post med gyldigFra.
+                ".validate": "newData.hasChildren(['gyldigFra', 'beloebOere'])",
+                "gyldigFra": { ".validate": "newData.isNumber()" },
+                "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "metode": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                "friDage": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "aktiv": { ".validate": "newData.isBoolean()" },
+                "oprettetAf": { ".validate": "newData.isString()" },
+                "oprettetMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer
         // en rettelse i dag prisen på en booking fra sidste kvartal.
         "satser": {

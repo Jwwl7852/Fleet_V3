@@ -5,6 +5,15 @@
  * "Estimeret beløb". I mockuppen var de to tal beregnet hver for sig, og
  * eksemplet viste 11.585 kr hvor satserne gav 11.677 kr.
  *
+ * ⚠ SATSARKET ER FLYTTET UD AF FILEN (PRISER.md etape 5). Det stod som en
+ * `const` her, og skærmen viste altså et satsark ingen kunne rette. Det
+ * ligger nu i `omkostninger`-noden.
+ *
+ * ⚠ OG DET ER OMKOSTNINGER, IKKE PRISER. Fanerne hedder "Omkostninger &
+ * satser" og "Bilomkostninger", fordi det er hvad turen koster OS — ikke hvad
+ * kunden betaler. Kundens priser bor i Kunder & Priser. Beslutning 11 findes
+ * for den forskel: driftsomkostning pr. km er ikke kalkulationspris pr. km.
+ *
  * Tre fejl fra mockuppen er rettet her:
  *  1. Eurotunnel lå på ruten København–Hamburg. Eurotunnel er Calais–
  *     Folkestone. Femern (Rødby–Puttgarden) er tilføjet i stedet.
@@ -17,9 +26,14 @@
  */
 import { useMemo, useState } from "react";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { useListe } from "../../fleet/useListe.js";
 import { beregnBooking, METODER, satsPaa } from "../../fleet/pricing.js";
+import { omkostningsark, bilNoegle } from "../../fleet/omkostninger.js";
+import { harModul } from "../../fleet/moduler.js";
 import { kr, num, dato } from "../../fleet/format.js";
-import { Kort, Tabel, Pille, Knap, Gitter, Tom } from "../../fleet/ui.jsx";
+import { Kort, Tabel, Pille, Knap, Gitter, Tom, Henter, Datatilstand } from "../../fleet/ui.jsx";
+import { DEMO_OMKOSTNINGER } from "../../fleet/demo-omkostninger.js";
+import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 
 const FANER = [
   { key: "generelt", label: "Generelt" },
@@ -29,75 +43,14 @@ const FANER = [
   { key: "biler", label: "Bilomkostninger" },
 ];
 
-/* Satsarket. Bemærk gyldigFra på hver sats: satser overskrives ALDRIG, de
-   får en ny post. Ellers ændrer en rettelse i dag prisen på en booking fra
-   sidste kvartal, og så kan fakturaen ikke forklares.
+/* ⚠ SATSARKET LÅ HER SOM EN `const`, og det var den vigtigste linje i
+   PRISER.md's tabel over hvad der gjorde ondt: skærmen viste et satsark ingen
+   kunne rette, og der fandtes ingen omkostningssatser i databasen.
 
-   division står eksplicit på poster og agenter (beslutning 15). Broer, færger
-   og vejafgifter er "faelles" — Storebælt koster det samme uanset hvilken
-   afdeling der kører over den. En agent hører til én afdeling.
-
-   BILERNE HAR INGEN DIVISION, og det er ikke en forglemmelse. Beslutning 19:
-   et køretøj er defineret ved sin ART, ikke ved en afdeling, og reglerne
-   afviser feltet på koeretoejer/ med .validate: false. Posterne her lå med
-   division: "gods" / "bus" fra før beslutningen blev taget — de beskrev altså
-   samme bil efter en anden regel end fleet/demo-flaade.js gør.
-
-   Bilernes navne og registreringsnumre skal matche demo-flaade.js, som er
-   kilden. Volvo FH 500 er DE 12 345 dér og skal være DE 12 345 her. */
-const START = Date.UTC(2026, 0, 1);
-const SATSARK = {
-  poster: {
-    "faerge:femern": { navn: "Færge: Femern (Rødby–Puttgarden)", kategori: "faerge", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 215000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "faerge:oevrige": { navn: "Færger (øvrige)", kategori: "faerge", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 215000, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
-    "bro:storebaelt": { navn: "Bro: Storebælt (lastbil 10–20 m)", kategori: "bro", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 88700, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "bro:oeresund": { navn: "Bro: Øresund", kategori: "bro", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 91000, metode: "prPassage", valuta: "DKK", aktiv: true }] },
-    "tunnel:eurotunnel": { navn: "Eurotunnel (Calais–Folkestone)", kategori: "tunnel", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 235000, metode: "prPassageEnVej", valuta: "DKK", aktiv: true }] },
-    "parkering:europa": { navn: "Parkering Europa (gennemsnit)", kategori: "parkering", division: "faelles",
-      satser: [{ gyldigFra: START, beloebOere: 45000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    "vejafgift:miljoezoner": { navn: "Vejafgifter / miljøzoner", kategori: "vejafgift", division: "faelles", altidPaaBooking: true,
-      satser: [{ gyldigFra: START, beloebOere: 32500, metode: "fastPrBooking", valuta: "DKK", aktiv: true }] },
-  },
-  agenter: {
-    hthHamburg: { navn: "HTH Logistics GmbH", by: "Hamburg", note: "Indendørs parkering", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 125000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    transportsParis: { navn: "Transports Parisien SARL", by: "Paris", note: "Sikret område", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 105000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    euroTransAms: { navn: "EuroTrans BV", by: "Amsterdam", note: "Parkeringsplads med overvågning", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 95000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    bavariaMuenchen: { navn: "Bavaria Logistics GmbH", by: "München", note: "Overdækket parkering", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 115000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    milanoCargo: { navn: "Milano Cargo SRL", by: "Milano", note: "Indhegnet areal", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 110000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    bruxTrans: { navn: "BruxTrans SA", by: "Bruxelles", note: "Åbent område", division: "gods",
-      satser: [{ gyldigFra: START, beloebOere: 90000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-    berlinBusPark: { navn: "Berlin Bus Park GmbH", by: "Berlin", note: "Buspladser med chaufførfaciliteter", division: "bus",
-      satser: [{ gyldigFra: START, beloebOere: 85000, metode: "prDoegn", valuta: "DKK", aktiv: true }] },
-  },
-  biler: {
-    volvoFH500: { navn: "Volvo FH 500", registrering: "DE 12 345",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 840, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    mercedesActros: { navn: "Mercedes Actros 1845", registrering: "DE 45 678",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 860, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    scaniaR450: { navn: "Scania R 450", registrering: "DE 78 901",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    manTGX: { navn: "MAN TGX 18.480", registrering: "DE 34 567",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 850, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    dafXF: { navn: "DAF XF 480", registrering: "DE 90 123",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 820, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    ivecoSWay: { navn: "Iveco S-Way 460", registrering: "DE 56 789",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 830, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    volvo9700: { navn: "Volvo 9700 turistbus", registrering: "DE 22 111",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 690, metode: "prKm", valuta: "DKK", aktiv: true }] },
-    setraS516: { navn: "Setra S 516 HDH", registrering: "DE 33 222",
-      kmPrisSatser: [{ gyldigFra: START, beloebOere: 715, metode: "prKm", valuta: "DKK", aktiv: true }] },
-  },
-};
+   Det ligger nu i `omkostninger`-noden, med demo-sættet i
+   `demo-omkostninger.js`. Tallene er de samme — flytningen skal kunne
+   efterprøves, og giver eksempelberegningen et andet resultat, er det
+   flytningen der er gået galt frem for prismotoren. */
 
 /* Eksempelbooking pr. division. Femern — ikke Eurotunnel, og ikke Storebælt
    oveni.
@@ -113,7 +66,9 @@ const SATSARK = {
    som UDELUKKER_HINANDEN i demo-etaper.js, hvor selvkontrollen bruger den. */
 const EKSEMPLER = {
   gods: {
-    bilId: "volvoFH500",
+    /* ⚠ KØRETØJETS ID, ikke et navn fra et satsark. Satsen nøgles på
+       bilen, og navnet står kun ét sted — i `koeretoejer`. */
+    bilId: "kt-012",
     rute: "København → Hamburg",
     kmEstimeret: 780,
     doegnParkering: 1,
@@ -128,7 +83,7 @@ const EKSEMPLER = {
     passager: { "faerge:femern": 1, "parkering:europa": 1 },
   },
   bus: {
-    bilId: "volvo9700",
+    bilId: "kt-b12",
     rute: "København → Berlin",
     kmEstimeret: 620,
     doegnParkering: 1,
@@ -138,37 +93,52 @@ const EKSEMPLER = {
   },
 };
 
-/* Samme visningsregel som useListe — og nu FAKTISK den samme.
- *
- * Den manglede leddet for poster UDEN division, og useListe's divisionsfilter
- * siger udtrykkeligt: "En post UDEN division vises i BEGGE — ikke i ingen."
- * Så længe hver eneste post havde et divisionsfelt, var forskellen usynlig.
- * Den blev synlig i det sekund bilerne mistede deres felt (beslutning 19):
- * uden det første led ville biltabellen stå tom i både Gods og Bus, uden at
- * nogen havde slettet en bil.
- *
- * Det er samme klasse fejl som beslutning 6 handler om — én regel skrevet to
- * steder, hvor den ene kopi driver. Den rigtige rettelse på sigt er at hente
- * satsarket gennem useListe frem for at gentage filteret her. */
-const iDivision = (d) => ([, v]) =>
-  v.division == null || v.division === d || v.division === "faelles";
+/* ⚠ SKÆRMENS EGEN KOPI AF DIVISIONSFILTERET ER VÆK. Den manglede leddet om
+   at en post UDEN division vises i BEGGE — og den fejl ville have tømt
+   biltabellen i både Gods og Bus, uden at nogen havde slettet en bil.
+   useListe ejer reglen nu, som filens gamle kommentar selv bad om. */
 
 export default function Bookingopsaetning() {
-  const { periode, division } = useFleet();
+  const { periode, division, moduler } = useFleet();
   const [fane, setFane] = useState("satser");
   const [aendret, setAendret] = useState(false);
 
-  const eksempel = EKSEMPLER[division] || EKSEMPLER.gods;
-  const beregning = useMemo(
-    () => beregnBooking(eksempel, SATSARK, { paaMs: periode.til }),
-    [eksempel, periode.til]
-  );
-  const bil = SATSARK.biler[eksempel.bilId];
-  const kmSats = satsPaa(bil.kmPrisSatser, periode.til);
+  /* ⚠ DIVISIONSFILTERET ER useListe'S — ikke skærmens eget. Kopien her
+     manglede leddet om at en post UDEN division vises i BEGGE, og den fejl
+     ville have tømt biltabellen i både Gods og Bus uden at nogen havde
+     slettet en bil. Filens gamle kommentar bad selv om den her rettelse. */
+  const { data: raekker, tilstand, genindlaes, henter } = useListe("omkostninger", {
+    vindue: "alle", graense: 500, demo: DEMO_OMKOSTNINGER,
+  });
+  /* ⚠ NAVNET STÅR PÅ KØRETØJET. Satsen nøgles på bilen, og listen hentes kun
+     hvis tenanten har Flåde — uden modulet findes noden ikke, og svaret ville
+     være en afvisning frem for et tomt satsark. */
+  const { data: koeretoejer } = useListe("koeretoejer", {
+    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    hent: harModul(moduler, "flaade"),
+  });
 
-  const poster = Object.entries(SATSARK.poster).filter(iDivision(division)).map(([id, p]) => ({ id, ...p }));
-  const agenter = Object.entries(SATSARK.agenter).filter(iDivision(division)).map(([id, a]) => ({ id, ...a }));
-  const biler = Object.entries(SATSARK.biler).filter(iDivision(division)).map(([id, b]) => ({ id, ...b }));
+  const eksempel = EKSEMPLER[division] || EKSEMPLER.gods;
+  const ark = useMemo(
+    () => omkostningsark(raekker, { koeretoejer }),
+    [raekker, koeretoejer]
+  );
+  const beregning = useMemo(
+    () => beregnBooking(eksempel, ark, { paaMs: periode.til }),
+    [eksempel, ark, periode.til]
+  );
+
+  if (henter) return <Henter hvad="omkostningerne" />;
+
+  /* ⚠ BILEN KAN MANGLE, og så regnes der ikke videre på et gæt. Er
+     køretøjet solgt eller Flåde fravalgt, står eksemplet uden km-linje —
+     et navn vi selv fandt på, ville stå i et estimat. */
+  const bil = ark.biler[eksempel.bilId] || null;
+  const kmSats = bil ? satsPaa(bil.kmPrisSatser, periode.til) : null;
+
+  const poster = Object.entries(ark.poster).map(([id, p]) => ({ id, ...p }));
+  const agenter = Object.entries(ark.agenter).map(([id, a]) => ({ id, ...a }));
+  const biler = Object.entries(ark.biler).map(([id, b]) => ({ id, ...b }));
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -268,10 +238,22 @@ export default function Bookingopsaetning() {
 
         <div className="fc-grid">
           <Kort titel="Automatisk beregning – eksempel">
-            <div style={{ fontWeight: 650, marginBottom: 2 }}>{bil.navn} – Int. Hamburg</div>
+            {/* ⚠ BILEN KAN MANGLE — se noten hvor arket bygges. Så står der
+                hvorfor, frem for et navn skærmen selv fandt på. */}
+            <div style={{ fontWeight: 650, marginBottom: 2 }}>
+              {bil ? `${bil.navn} – Int. Hamburg` : "Eksempel uden bil"}
+            </div>
             <div className="fc-linje"><span>Rute</span><b>{eksempel.rute}</b></div>
             <div className="fc-linje"><span>Km estimeret</span><b>{num(eksempel.kmEstimeret)} km</b></div>
-            <div className="fc-linje"><span>Kalkulationspris</span><b>{kr(kmSats.beloebOere, 2)}/km</b></div>
+            {/* ⚠ "KM-OMKOSTNING", IKKE "KALKULATIONSPRIS". Beslutning 11: det
+                er to forskellige tal, og de kan pege hver sin vej. Det her er
+                hvad kilometeren koster os. */}
+            <div className="fc-linje">
+              <span>Km-omkostning</span>
+              {kmSats
+                ? <b>{kr(kmSats.beloebOere, 2)}/km</b>
+                : <b className="fc-bad">ingen sats</b>}
+            </div>
 
             <div style={{ marginTop: 14 }}>
               {beregning.linjer.map((l) => (

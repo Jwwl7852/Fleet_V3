@@ -25,7 +25,7 @@ prisliste er vores omsætning; vognmandens er hans.
 | Hvad | Hvor | Tilstand |
 |---|---|---|
 | Prismotoren | `pricing.js` | **Bygget og prøvet.** `satsPaa()`, `METODER`, `beregnBooking()`, `beregnForloeb()`, `lagerdoegn()`, `lagerUd()` |
-| Satsarket (biler, poster, agenter) | `Bookingopsaetning.jsx` | ⚠ **HARDKODET I JSX-FILEN.** Det står ikke i databasen |
+| Satsarket (biler, poster, agenter) | `omkostninger`-noden | ✅ Ude af JSX-filen i etape 5. ⚠ Det er **omkostninger**, ikke priser |
 | `satser`-noden | `firebase.rules.json` | Findes, med `gyldigFra`-indeks — men **intet skriver til den** |
 | Prisgruppe | `kunder/<id>.prisgruppe` | "A"/"B". Peger på et satssæt der ikke findes som data |
 | Lagersatser | `lagre/<id>/{satser,haandteringSatser}` | Node findes, bruges af `beregnForloeb()` |
@@ -171,18 +171,34 @@ kundepost og i demo-data, og en skærm der stadig filtrerer på det, skal blive
 ved med at virke. Det er navnet der holder op med at betyde noget, ikke
 kolonnen der forsvinder.
 
-### ✅ 4.2 BESVARET: hele skærmen flytter
+### ✅ 4.2 BESVARET — OG SVARET BLEV LAVET OM I ETAPE 5
 
-Skærmen hedder *Bookingopsætning* og indeholder to ting: **satser** (priser) og
-**regelsæt** (automatik). Skal begge til Kunder & Priser, eller kun priserne?
+Skærmen hedder *Bookingopsætning* og indeholder to ting: **satser** og
+**regelsæt** (automatik). Spørgsmålet var om begge skulle til Kunder & Priser.
 
-**Bookingopsætning nedlægges.** Både satserne og regelsættene flytter under
-Kunder & Priser.
+Svaret her stod oprindeligt: *"Bookingopsætning nedlægges. Både satserne og
+regelsættene flytter under Kunder & Priser."* Det byggede på at satsarket var
+**priser**.
 
-⚠ **Det gør Kunder & Priser til en skærm med undermenuer**, ikke ét kort. Og
-det betyder at ruten `/booking/opsaetning` forsvinder — den skal have en
-redirect, ikke bare fjernes, for den står i sidebaren i dag og kan være
-bogmærket. Se `legacy` i nav.js.
+⚠ **Det var det ikke.** Da satsarket blev åbnet i etape 5, viste det sig at
+være **omkostninger**: km-omkostningen på bilen, færgen, broen,
+agentparkeringen, vejafgiften. Skærmens egne faner hedder *"Omkostninger &
+satser"* og *"Bilomkostninger"*, og `beregnBooking()` skriver linjen som
+*"Km-omkostning – Volvo FH 500"*.
+
+Beslutning 11 findes præcis for den forskel: **driftsomkostning pr. km er ikke
+kalkulationspris pr. km.** Storebælt koster 887 kr og faktureres måske til
+950. Var omkostningsarket flyttet ind under Kunder & Priser — det sted der er
+defineret som *"hvad HANS kunde skal betale"* — havde vi slået indtægt og
+udgift sammen i én skærm og i én node.
+
+**Bookingopsætning bliver derfor stående som omkostningsskærm**, og
+`/booking/opsaetning` forsvinder ikke. Kunder & Priser bærer kundens priser;
+Bookingopsætning bærer hvad turen koster os. Det er de to spørgsmål, og de har
+hvert sit sted.
+
+⚠ **Regelsættene (automatikken) er ikke afgjort af det her.** De hører
+stadig til bookingen og bliver hvor de er, indtil nogen har set på dem.
 
 ### ⚠ 4.3 Hvor mange klik må en pris koste?
 
@@ -203,7 +219,7 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 | 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | ✅ |
 | 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | ✅ |
 | 4 | **Én opslagsvej** — `satsopslag()`, broen til afregningen og kilden på linjen | Priserne bruges ét sted fra | ✅ |
-| 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder | |
+| 5 | **Satsarket ud af JSX** — og det viste sig at være OMKOSTNINGER | Det hardkodede forsvinder | ✅ |
 | 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres | |
 
 ⚠ Etape 5 er den farligste: `beregnBooking()` og `beregnForloeb()` er prøvet
@@ -260,3 +276,40 @@ tilhører.
 
 **Tilbage:** etape 5 (satsarket ud af `Bookingopsaetning.jsx`) og etape 6
 (afregningsskærmen, der samler linjerne for en kunde i en periode).
+
+
+---
+
+## 8. Etape 5 er inde — og planen tog fejl om hvad satsarket var
+
+Satsarket er ude af `Bookingopsaetning.jsx` og ligger i noden
+`omkostninger`. Skærmen læser det gennem `useListe`, og
+`omkostningsark()` bygger den form `beregnBooking()` allerede kendte.
+
+⚠ **DET ER OMKOSTNINGER, IKKE PRISER — og derfor sin egen node.** Se den
+rettede 4.2. `satser` er hvad kunden betaler; `omkostninger` er hvad turen
+koster os. Beslutning 11 findes for den forskel.
+
+⚠ **Prismotoren er ikke lavet om.** Formen — biler, poster, agenter — er
+uændret; det er KILDEN der er flyttet. Ændrede vi begge dele på én gang, ville
+en fejl i regnestykket ligne en fejl i flytningen. Eksempelberegningen giver
+**10.727,00 kr** både før og efter, og en prøve holder tallet fast.
+
+⚠ **Bilens sats nøgles på KØRETØJET** (`bil-<koeretoejId>`), og navnet slås op
+i `koeretoejer`. Den gamle fil skrev navn og registreringsnummer af fra
+`demo-flaade.js` i hånden, og dens egen kommentar advarede om at de to skulle
+holdes ens. Findes bilen ikke, udelades satsen — et navn vi selv fandt på,
+ville ellers stå på en linje i et estimat.
+
+⚠ **Passagernes id'er er uændrede** (`faerge:femern`, `bro:storebaelt` …).
+Etapernes `passager`-kort peger på dem, og et nyt navn ville have gjort hver
+eneste etape til en tur uden færge, uden at nogen havde rørt etapen. Kolon er
+tilladt i en RTDB-nøgle; det var **punktum** der var fejlen i etape 2.
+
+⚠ **Og skærmens egen kopi af divisionsfilteret er væk.** Den manglede leddet
+om at en post UDEN division vises i BEGGE — og den fejl ville have tømt
+biltabellen i både Gods og Bus uden at nogen havde slettet en bil. Filens
+gamle kommentar bad selv om rettelsen; nu ejer `useListe` reglen.
+
+**Tilbage:** etape 6 — afregningsskærmen, der samler linjerne for en kunde i
+en periode.

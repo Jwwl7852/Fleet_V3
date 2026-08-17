@@ -214,6 +214,11 @@ export const NODE_MODUL = {
   lagre: "indkoeb",
 
   bookinger: "booking",
+  /* ⚠ OMKOSTNINGER ER IKKE PRISER. `satser` er hvad KUNDEN betaler;
+     `omkostninger` er hvad turen koster os — km, færge, bro, agentparkering.
+     Beslutning 11 findes for den forskel. Noden hører til booking, fordi det
+     er bookingens estimat den bærer. */
+  omkostninger: "booking",
   "sensitive/bookinger": "booking",
   "vaerdi/bookinger": "booking",
   etaper: "booking",

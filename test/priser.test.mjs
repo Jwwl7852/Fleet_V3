@@ -15,7 +15,7 @@ import {
   IKKE_FAKTURERBARE_ARTER, ydelseForArt,
   STANDARDGRUPPE, standardPris, valideSats, ydelserForModuler,
   kundeprisSti, valideKundesats, kundeSats, prisFor, PRISKILDE,
-  prisydelseForArter, satsopslag,
+  prisydelseForArter, satsopslag, beregnBooking,
 } from "../src/fleet/pricing.js";
 import {
   ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER, afregningslinjer,
@@ -31,7 +31,9 @@ import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
 } from "../src/fleet/beloeb.js";
 import { ALLE_ROLLER } from "../src/fleet/permissions.js";
-import { VALGFRIE_MODULER } from "../src/fleet/moduler.js";
+import { VALGFRIE_MODULER, modulerFor } from "../src/fleet/moduler.js";
+import { omkostningsark, valideOmkostning } from "../src/fleet/omkostninger.js";
+import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 
 /* ⚠ BRUGERPRISEN LIGGER PAA PLATFORMEN, ikke paa modulerne. Fakturaen har ÉN
    linje pr. brugerart, og en linje kan kun have ÉN stk.pris — den kan ikke
@@ -1162,5 +1164,111 @@ describe("én opslagsvej — fra afregning til pris", () => {
     const blok = cf.slice(start, cf.indexOf("async function logBevaegelse", start));
     assert.ok(blok.includes("kundeId: carrier.kundeId"),
       "placeringen skrives uden en kunde og kan derfor ikke afregnes");
+  });
+});
+
+describe("omkostningsarket ud af JSX-filen", () => {
+  const KT = [
+    { id: "kt-012", navn: "Volvo FH 500", registrering: "DE 12 345" },
+    { id: "kt-b12", navn: "Volvo 9700 turistbus", registrering: "DE 22 111" },
+  ];
+
+  it("⚠ OMKOSTNINGER ER IKKE PRISER — to noder", () => {
+    /* `satser` er hvad KUNDEN betaler; `omkostninger` er hvad turen koster
+       os. Beslutning 11 findes for den forskel: driftsomkostning pr. km er
+       ikke kalkulationspris pr. km. Lå de i samme node, ville en sum blande
+       indtægt og udgift, og ingen ville kunne se det på tallet. */
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    assert.ok(regler.includes('"omkostninger": {'), "noden findes ikke i reglerne");
+    assert.deepEqual(modulerFor("omkostninger"), ["booking"]);
+    assert.deepEqual(modulerFor("satser"), [], "satser hører ikke til ét modul");
+  });
+
+  it("bygger satsarket i den form prismotoren allerede kender", () => {
+    /* ⚠ PRISMOTOREN ER IKKE LAVET OM. Formen — biler, poster, agenter — er
+       uændret; det er KILDEN der er flyttet. Ændrede vi begge dele på én
+       gang, ville en fejl i regnestykket ligne en fejl i flytningen. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
+    assert.ok(ark.biler["kt-012"], "bilen mangler i arket");
+    assert.equal(ark.biler["kt-012"].navn, "Volvo FH 500");
+    assert.ok(Array.isArray(ark.biler["kt-012"].kmPrisSatser));
+    assert.ok(ark.poster["faerge:femern"]);
+    assert.ok(ark.agenter.hthHamburg);
+  });
+
+  it("⚠ NAVNET KOMMER FRA KØRETØJET, IKKE FRA SATSEN", () => {
+    /* Den gamle JSX-fil skrev navn og registrering af fra demo-flaade.js i
+       hånden, og dens egen kommentar advarede om at de skulle holdes ens.
+       Nu står navnet ét sted. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, {
+      koeretoejer: [{ id: "kt-012", navn: "Omdøbt", registrering: "XX 1" }],
+    });
+    assert.equal(ark.biler["kt-012"].navn, "Omdøbt");
+    assert.equal(ark.biler["kt-012"].registrering, "XX 1");
+    assert.ok(valideOmkostning({ id: "bil-kt-012", art: "bil", navn: "Volvo" }).navn,
+      "et navn på en bilsats blev accepteret");
+  });
+
+  it("⚠ EN SATS UDEN SIT KØRETØJ UDELADES", () => {
+    /* Bilen er solgt eller aldrig oprettet. Satsen bliver stående i basen —
+       den forklarer gamle beregninger — men den kan ikke bruges til nye, og
+       et navn vi selv fandt på, ville stå på en linje i et estimat. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: [] });
+    assert.deepEqual(ark.biler, {});
+    assert.ok(Object.keys(ark.poster).length > 0, "passagerne skal stadig være der");
+  });
+
+  it("⚠ PASSAGERNES ID'ER ER UÆNDREDE", () => {
+    /* Etapernes `passager`-kort peger på dem. Et nyt navn ville gøre hver
+       eneste etape til en tur uden færge, uden at nogen havde rørt etapen. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
+    for (const id of ["faerge:femern", "bro:storebaelt", "vejafgift:miljoezoner"]) {
+      assert.ok(ark.poster[id], `${id} findes ikke længere`);
+    }
+  });
+
+  it("beregningen giver det samme som før flytningen", () => {
+    /* ⚠ TALLENE ER DE SAMME. Flytningen skal kunne efterprøves: giver
+       eksemplet et andet resultat, er det flytningen der er gået galt frem
+       for prismotoren. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
+    const r = beregnBooking({
+      bilId: "kt-012", kmEstimeret: 780, doegnParkering: 1,
+      agentId: "hthHamburg",
+      passager: { "faerge:femern": 1, "parkering:europa": 1 },
+    }, ark, { paaMs: Date.UTC(2026, 5, 1) });
+    assert.equal(r.linjer.find((l) => l.id === "bil:kt-012").beloebOere, 780 * 840);
+    assert.equal(r.totalOere, 780 * 840 + 215000 + 45000 + 32500 + 125000);
+  });
+
+  it("⚠ EN BIL HAR INGEN DIVISION (beslutning 19)", () => {
+    /* Et køretøj er defineret ved sin ART, ikke ved en afdeling, og reglerne
+       afviser feltet på koeretoejer/. En km-sats må ikke indføre det ad
+       bagvejen. */
+    assert.ok(valideOmkostning({ id: "bil-kt-012", art: "bil", division: "gods" }).division);
+    assert.deepEqual(valideOmkostning({ id: "bil-kt-012", art: "bil" },
+      { koeretoejer: ["kt-012"] }), {});
+  });
+
+  it("afviser en bilsats der peger på et køretøj der ikke findes", () => {
+    assert.ok(valideOmkostning({ id: "bil-kt-999", art: "bil" },
+      { koeretoejer: ["kt-012"] }).id);
+    /* Og et id uden præfikset er ikke en bilsats. */
+    assert.ok(valideOmkostning({ id: "kt-012", art: "bil" }, { koeretoejer: ["kt-012"] }).id);
+  });
+
+  it("⚠ KOLON ER TILLADT I EN RTDB-NØGLE — PUNKTUM ER IKKE", () => {
+    /* Derfor kan `faerge:femern` blive stående. Punktummet var fejlen i
+       etape 2, hvor hver eneste skrivning fejlede med "invalid path". */
+    assert.deepEqual(valideOmkostning({ id: "faerge:femern", art: "passage", navn: "Femern" }), {});
+    assert.ok(valideOmkostning({ id: "faerge.femern", art: "passage", navn: "Femern" }).id);
+  });
+
+  it("skærmen bygger ikke satsarket selv længere", () => {
+    const skaerm = readFileSync("src/moduler/booking/Bookingopsaetning.jsx", "utf8");
+    assert.ok(!/const SATSARK\s*=/.test(skaerm), "satsarket står stadig i JSX-filen");
+    assert.ok(skaerm.includes('useListe("omkostninger"'), "skærmen læser ikke noden");
+    /* Og den gentager ikke divisionsfilteret — useListe ejer reglen. */
+    assert.ok(!/const iDivision/.test(skaerm), "skærmen har sin egen kopi af divisionsfilteret");
   });
 });

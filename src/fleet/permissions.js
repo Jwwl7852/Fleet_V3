@@ -46,6 +46,11 @@ export const PERM = {
   facilitySkriv: "facility.skriv",
   indkoebSkriv: "indkoeb.skriv",
   satserSkriv: "satser.skriv",
+  /* ⚠ OMKOSTNINGSSATSER DELER PERMISSION MED PRISERNE, og det er en
+     beslutning frem for en genvej: det er den samme person — vognmanden — der
+     sætter begge, og en permission mere ville skulle gives til nøjagtig de
+     samme. Noderne er delt fordi TALLENE ikke må blandes (beslutning 11), ikke
+     fordi adgangen skulle deles. */
   lagreSkriv: "lagre.skriv",
   /* Egne indberetninger. Ejerskabet tjekkes i reglerne på oprettetAf — det
      er ikke en rolle og hører derfor ikke i en permission. */

@@ -29,6 +29,7 @@ import {
 import {
   DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../src/fleet/demo-lager.js";
+import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -160,6 +161,10 @@ export const SEED = [
   { node: "personale", data: DEMO_PERSONALE, form: "liste" },
   { node: "kompetencer", data: DEMO_KOMPETENCER, form: "liste" },
   { node: "kunder", data: DEMO_KUNDER, form: "liste" },
+  /* ⚠ OMKOSTNINGER, IKKE PRISER. Satsarket stod som en const i
+     Bookingopsaetning.jsx indtil PRISER.md etape 5; uden det her seed ville
+     skaermen staa tom i dev, og eksempelberegningen ville vise "ingen sats". */
+  { node: "omkostninger", data: DEMO_OMKOSTNINGER, form: "liste" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */
