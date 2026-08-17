@@ -477,7 +477,7 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
-| 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | |
+| 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | ✅ |
 | 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | |
 | 13 | **Nøgletallene i `kpi/`** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | |
 | 14 | **Transit & placering** — de fire trin, forslag til ledig lokation, kundens faste område | Modtagelsen på gulvet | |
@@ -487,6 +487,28 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 læser en node der ikke findes (11) og et indhold der ligger et andet sted end
 planchen viser (12). Bygges den først, bygges den to gange — og de fem
 nøgletal ville stå som hardkodede tal imens.
+
+**Etape 11 er inde.** `carriers` findes med regler, `carriers.skriv` og prøver
+i begge lag, og belægningen opgøres ét sted i `reolplads.js`.
+
+⚠ **Skærmen talte allerede forkert, før carrieren kom.** Lokationer regnede
+belægningen af beholdningsposterne alene og var dermed blind for
+Turtlebookings kasser på de samme hylder — en hylde med en transportkasse på
+stod som fri. Fejlen var der fra etape 3; carrieren ville have gjort den
+dobbelt så stor. Kortet hedder nu **Optaget** og ikke "Med varer på", og der
+er en egen kolonne for beholdere, fordi en plads kan bære en beholder uden en
+eneste varelinje.
+
+⚠ **`kasser` læses kun hvis tenanten har Turtlebooking.** Noden er spærret af
+det modul, og en forespørgsel ville give `permission-denied` hos en kunde der
+kun har Warehouse. `useListe` har fået `hent`, og den er til dét — ikke til at
+dæmpe en afvisning på en node kunden har.
+
+⚠ **En probe mod den udrullede base afviste ALT — også for admin.** Ikke en
+fejl i reglerne: de seedede DEV-brugeres tokens var ældre end permissionen, og
+et preset rammer ikke eksisterende brugere. Claims skal fornys, og det er
+skrevet ved `ROLLE_PERMS` i forvejen. Prøverne i emulatoren kunne ikke se det —
+de udsteder deres egne claims.
 
 ### 6.8 Størrelsen
 

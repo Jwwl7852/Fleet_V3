@@ -965,3 +965,163 @@ export function afregningssum(linjer = []) {
     mangler: 0,
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CARRIEREN — beholderen kundens gods står i
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ DET ER `kasse` ÉN GANG TIL, OG SVARET BLEV ALLIGEVEL TO NODER.
+
+   Turtlebooking har `kasser`: en fysisk beholder med type, status og en
+   reolplads. Fysisk er en carrier den samme ting. De to bærer alligevel hver
+   sin forretning — kassen udlejes pr. sag og har sin egen tilstandsmaskine
+   med klargøring og returnering (beslutning 37), carrieren bærer KUNDENS gods
+   og har ejerforhold og indhold. Én node ville have båret to tilstandsmaskiner
+   og to formål, og så afgør et felt hvilken halvdel af reglerne der gælder.
+
+   ⚠ PRISEN FOR TO NODER BETALES I `reolplads.js`, IKKE HER. Begge står på de
+   SAMME `reolpladser`, så "er hylden optaget?" har to kilder. Det spørgsmål
+   besvares ét sted — se `belaegningPaaPlads()`. Ellers ser en hylde ledig ud
+   i Turtlebooking og optaget ud i Warehouse, og ingen af skærmene kan se at
+   de er uenige.
+
+   ⚠ INDHOLDET ER IKKE HER ENDNU. Beholdningen hænger i dag på PLADSEN
+   (`beholdningsNoegle`), og planchens "flyt carrieren, indholdet følger med"
+   kræver at nøglen flytter til carrieren. Det er etape 12, og det er en
+   migrering af fire ting der virker. Carrieren findes først; indholdet
+   flytter bagefter. Se WAREHOUSE.md punkt 6.3.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ TYPEN ER EN ENUM OG IKKE EN NODE — for nu.
+ *
+ * Turtlebooking har `kassetyper` som en node, fordi en museumskasse er
+ * vognmandens eget inventar med sine egne mål. De her fem er generiske
+ * kategorier af transportemballage, og målene står på den ENKELTE carrier,
+ * fordi to pallekasser kan være forskellige.
+ *
+ * Skal en vognmand kunne oprette sine egne typer med standardmål, bliver det
+ * en node som `kassetyper` — og det er en beslutning, ikke en oprydning.
+ * `kassetyper` kan ikke genbruges: den node er spærret af turtlebooking-modulet,
+ * og en kunde med kun Warehouse kan ikke læse den.
+ */
+export const CARRIER_TYPE = {
+  pallekasse: { type: "pallekasse", label: "Pallekasse" },
+  gitterbur:  { type: "gitterbur",  label: "Gitterbur" },
+  plastkasse: { type: "plastkasse", label: "Plastkasse" },
+  kartonkasse:{ type: "kartonkasse",label: "Kartonkasse" },
+  traekasse:  { type: "traekasse",  label: "Trækasse" },
+};
+
+export const ALLE_CARRIER_TYPER = Object.keys(CARRIER_TYPE);
+
+/**
+ * Egen beholder eller engangsemballage.
+ *
+ * ⚠ FORSKELLEN ER IKKE KOSMETISK. En egen carrier kommer retur og skal kunne
+ * genbruges; en engangs bliver hos modtageren eller kasseres. Kun en engangs
+ * kan derfor ende som `opbrugt`.
+ */
+export const EJERFORHOLD = {
+  ejet:   { ejerforhold: "ejet",   label: "Ejet",   pill: "ok" },
+  engang: { ejerforhold: "engang", label: "Engang", pill: "info" },
+};
+
+export const ALLE_EJERFORHOLD = Object.keys(EJERFORHOLD);
+
+/**
+ * Carrierens tilstand.
+ *
+ * ⚠ "INGEN LOKATION" ER IKKE EN STATUS. Planchen viser den som en rød pille,
+ * men den er FRAVÆRET af `pladsId` på en carrier der burde stå et sted — og
+ * en kendsgerning gemt to steder driver fra sig selv (`bemanding.ledig`).
+ * Se `udenLokation()`.
+ *
+ * ⚠ "DELVIST TØMT" ER HELLER IKKE HER. Den kræver et referencetal — delvist i
+ * forhold til hvad? — og det tal findes ikke, før indholdet ligger på
+ * carrieren. Se WAREHOUSE.md punkt 6.4. En status vi gemmer nu, ville være
+ * gættet før spørgsmålet var besvaret.
+ */
+export const CARRIER_STATUS = {
+  paaLager:   { status: "paaLager",   label: "På lager",     pill: "ok",   paaPlads: true },
+  iTransit:   { status: "iTransit",   label: "I transit",    pill: "info", paaPlads: false },
+  udeAfDrift: { status: "udeAfDrift", label: "Ude af drift", pill: "bad",  paaPlads: true },
+  /* En engangs-carrier der er brugt op. ⚠ DEN SLETTES IKKE: bevægelses-
+     historikken hænger på id'et, og et id der forsvinder, gør historikken
+     uforklarlig. Samme regel som en kasse der går i stykker. */
+  opbrugt:    { status: "opbrugt",    label: "Opbrugt",      pill: "bad",  paaPlads: false },
+};
+
+export const ALLE_CARRIER_STATUS = Object.keys(CARRIER_STATUS);
+
+/** Skal carrieren stå på en reolplads i den her tilstand? */
+export const kraeverLokation = (status) => CARRIER_STATUS[status]?.paaPlads === true;
+
+/**
+ * Carrieren burde stå et sted, men gør det ikke.
+ *
+ * ⚠ AFLEDT, IKKE GEMT. Det er scanningen der er sket uden en placering — og
+ * det er præcis det tal nøgletallet "uden lokation" tæller. Gemte vi det som
+ * en status, kunne den blive stående efter placeringen.
+ */
+export const udenLokation = (carrier = {}) =>
+  kraeverLokation(carrier.status) && !carrier.pladsId;
+
+const CARRIER_ID_MOENSTER = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
+
+/**
+ * ⚠ EN CARRIER I TRANSIT OPTAGER IKKE EN HYLDE.
+ *
+ * Præcis samme regel som en udlånt kasse, og den findes af samme grund:
+ * prototypen skrev "Udlånt hos kunde" SOM plads, og så kunne ledige pladser
+ * ikke tælles. Reglen står også i `firebase.rules.json` — en kontrol der kun
+ * findes i frontend, er ikke adgangskontrol.
+ */
+export function valideCarrier(post = {}, { pladser = [], kunder = [] } = {}) {
+  const f = {};
+
+  const id = (post.id || "").trim();
+  if (!id) f.id = "Carrier-id skal udfyldes.";
+  else if (!CARRIER_ID_MOENSTER.test(id)) {
+    f.id = "Bogstaver, tal, bindestreg og understreg — fx CRR-100245.";
+  }
+
+  if (!ALLE_CARRIER_TYPER.includes(post.type)) f.type = "Vælg en carriertype.";
+  if (!ALLE_EJERFORHOLD.includes(post.ejerforhold)) f.ejerforhold = "Vælg ejerforhold.";
+  if (!ALLE_CARRIER_STATUS.includes(post.status)) f.status = "Vælg en status.";
+
+  /* ⚠ KUN EN ENGANGS KAN VÆRE OPBRUGT. En egen beholder kommer retur; er den
+     ødelagt, er den ude af drift, og de to må ikke kunne bruges i flæng —
+     ellers kan man ikke tælle hvor mange beholdere man faktisk har. */
+  if (post.status === "opbrugt" && post.ejerforhold !== "engang") {
+    f.status = "Kun en engangs-carrier kan være opbrugt. En egen tages ude af drift.";
+  }
+
+  if (post.pladsId && pladser.length && !pladser.includes(post.pladsId)) {
+    f.pladsId = "Ukendt reolplads.";
+  }
+  if (post.pladsId && !kraeverLokation(post.status)) {
+    f.pladsId = `En carrier der er ${CARRIER_STATUS[post.status]?.label.toLowerCase() || "ude"}, optager ikke en reolplads.`;
+  }
+
+  /* ⚠ pladsId ER IKKE PÅKRÆVET PÅ EN CARRIER PÅ LAGERET. En carrier der er
+     scannet ind, men endnu ikke placeret, er en RIGTIG tilstand — det er de
+     elleve på planchen. Kræver man en plads, kan modtagelsen ikke gemme det
+     der faktisk er sket. */
+
+  if (post.kundeId && kunder.length && !kunder.includes(post.kundeId)) {
+    f.kundeId = "Ukendt kunde.";
+  }
+
+  /* Millimeter som INTEGER — samme regel som varens mål og
+     samletLaengdeMm() i flaade.js. En float ved en volumengrænse er en fejl
+     der venter, og volumenkalkulatoren skal regne på dem. */
+  for (const felt of ["laengdeMm", "breddeMm", "hoejdeMm"]) {
+    const v = post[felt];
+    if (v == null || v === "") continue;
+    if (!Number.isInteger(v) || v < 0) f[felt] = "Mål i hele millimeter.";
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}

@@ -1024,6 +1024,73 @@
           }
         },
 
+        // CARRIEREN — beholderen kundens gods staar i.
+        //
+        // ⚠ DET ER `kasser` EN GANG TIL, OG SVARET BLEV ALLIGEVEL TO NODER.
+        // Fysisk er en carrier og en transportkasse den samme ting, men de
+        // baerer hver sin forretning: kassen udlejes pr. sag med sin egen
+        // tilstandsmaskine (beslutning 37), carrieren baerer KUNDENS gods og
+        // har ejerforhold og indhold. Se WAREHOUSE.md punkt 6.2.
+        //
+        // ⚠ PRISEN: begge staar paa de SAMME reolpladser. "Er hylden
+        // optaget?" har derfor to kilder og besvares eet sted —
+        // belaegningPaaPlads() i reolplads.js. Reglerne her holder den ene
+        // halvdel af invarianten: en carrier der ikke staar paa lageret, har
+        // ingen pladsId.
+        //
+        // ⚠ PERMISSIONEN ER carriers.skriv OG IKKE kasser.skriv. En
+        // WMS-medarbejder hos en kunde uden Turtlebooking skal kunne oprette
+        // en beholder — samme faelde som reolpladser.skriv lukkede.
+        "carriers": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|carriers.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["status", "pladsId", "kundeId", "transportId"],
+          "$carrierId": {
+            // ⚠ EN CARRIER SLETTES ALDRIG. Bevaegelseshistorikken haenger paa
+            // id'et, og et id der forsvinder, goer historikken uforklarlig.
+            // En egen beholder der gaar i stykker, faar udeAfDrift; en
+            // engangs der er brugt, faar opbrugt.
+            //
+            // De to KRYDSFELT-regler staar HER og ikke paa felterne, fordi de
+            // skal gaelde uanset hvilket enkeltfelt der skrives. En .validate
+            // paa en forfader koerer ogsaa ved en dyb skrivning — det er
+            // proevet, se test/rules.kundepriser.test.mjs.
+            //
+            //  1. Kun en ENGANGS kan vaere opbrugt. En egen kommer retur.
+            //  2. En carrier der ikke staar paa lageret, optager INGEN hylde.
+            //     Praecis samme regel som en udlaant kasse, og den findes af
+            //     samme grund: prototypen skrev "Udlaant hos kunde" SOM
+            //     plads, og saa kunne ledige pladser ikke taelles.
+            ".validate": "newData.hasChildren(['type', 'ejerforhold', 'status']) && (newData.child('status').val() !== 'opbrugt' || newData.child('ejerforhold').val() === 'engang') && (!newData.hasChild('pladsId') || newData.child('status').val().matches(/^(paaLager|udeAfDrift)$/))",
+            "type": { ".validate": "newData.isString() && newData.val().matches(/^(pallekasse|gitterbur|plastkasse|kartonkasse|traekasse)$/)" },
+            "ejerforhold": { ".validate": "newData.isString() && newData.val().matches(/^(ejet|engang)$/)" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(paaLager|iTransit|udeAfDrift|opbrugt)$/)" },
+            // ⚠ FRAVAERENDE ER EN RIGTIG TILSTAND. En carrier der er scannet
+            // ind men endnu ikke placeret, staar uden plads — det er de
+            // elleve "uden lokation" paa planchen, og noegletallet findes
+            // netop for at jage dem. Derfor er feltet ikke paakraevet.
+            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // Kundens faste omraade. Godset er KUNDENS (punkt 3.1), og en
+            // beholder der peger paa en kunde der ikke findes, kan ikke
+            // afregnes.
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            // ⚠ INGEN EKSISTENSKONTROL PAA TRANSPORTEN ENDNU. Planchen bruger
+            // baade TRP- og BK-numre, og om en transport ER en etape eller et
+            // nyt objekt, er ikke afgjort (WAREHOUSE.md punkt 6.4). En
+            // fremmednoegle der peger paa en node vi ikke har valgt, ville
+            // laase valget.
+            "transportId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            // Millimeter som INTEGER — samme regel som varens maal.
+            "laengdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "breddeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "hoejdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // ⚠ KUN SERVEREN. En bevaegelse aendrer TO ting — bevaegelsen selv og
         // beholdningen paa en eller to pladser — og de skal skrives sammen
         // eller slet ikke. Skrives kun den ene, staar der varer paa en hylde

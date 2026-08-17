@@ -12,10 +12,21 @@
  * ville den slette det Turtlebooking havde sat — og omvendt. Se noten ved
  * `flet` i skriv.js.
  *
- * ⚠ BELÆGNINGEN ER UDLEDT. Den regnes af beholdningsposterne på pladsen; der
- * findes ikke et gemt belægningstal. Et gemt tal ville drive fra posterne, og
- * en hylde der ser fri ud men ikke er det, sender nogen op ad stigen
- * forgæves.
+ * ⚠ BELÆGNINGEN ER UDLEDT. Den regnes af det der står på pladsen; der findes
+ * ikke et gemt belægningstal. Et gemt tal ville drive fra posterne, og en
+ * hylde der ser fri ud men ikke er det, sender nogen op ad stigen forgæves.
+ *
+ * ⚠ OG DEN TÆLLER NU TRE KILDER: beholdningsposter, transportkasser og
+ * carriers. Skærmen talte før kun beholdningen og var dermed allerede blind
+ * for Turtlebookings kasser på de samme hylder; med carrieren ville den være
+ * blind for to ting. Opgørelsen ligger i `belaegningPrPlads()` —
+ * ét sted, fordi to opgørelser af samme hylde bliver uenige uden at nogen
+ * kan se det.
+ *
+ * ⚠ `kasser` LÆSES KUN HVIS TENANTEN HAR TURTLEBOOKING. Noden er spærret af
+ * det modul, og en forespørgsel ville give `permission-denied` hos en kunde
+ * der kun har Warehouse. Den tomme liste er dér det rigtige svar: der ER
+ * ingen kasser. Se `hent` i useListe.js.
  */
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
@@ -31,9 +42,14 @@ import {
   PLADS_TYPE, ALLE_PLADS_TYPER, PLADS_STATUS, ALLE_PLADS_STATUS,
   kanPlukkesFra, valideLagerfelter, talFraMaengde, beholdningPaaPlads,
 } from "../../fleet/warehouse.js";
+import { belaegningPrPlads } from "../../fleet/reolplads.js";
+import { harModul } from "../../fleet/moduler.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
-import { DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING } from "../../fleet/demo-lager.js";
+import {
+  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
+} from "../../fleet/demo-lager.js";
+import { DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
 
 const PR_SIDE = 14;
 
@@ -157,7 +173,7 @@ function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }
 }
 
 export default function Lokationer() {
-  const { path, bruger } = useFleet();
+  const { path, bruger, moduler } = useFleet();
   const [ny, saetNy] = useState(false);
   const [redigerer, saetRedigerer] = useState(null);
   const [soeg, saetSoeg] = useState("");
@@ -177,6 +193,16 @@ export default function Lokationer() {
   const { data: varer } = useListe("varer", {
     division: "alle", graense: 2000, demo: DEMO_VARER,
   });
+  const { data: carriers } = useListe("carriers", {
+    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+  });
+  /* ⚠ KUN HVIS TENANTEN HAR TURTLEBOOKING. Se noten i hovedet: uden modulet
+     findes noden ikke, og svaret ville være en afvisning frem for et tomt
+     lager. */
+  const { data: kasser } = useListe("kasser", {
+    division: "alle", graense: 2000, demo: DEMO_KASSER,
+    hent: harModul(moduler, "turtlebooking"),
+  });
 
   if (henter) return <Henter hvad="lokationerne" />;
 
@@ -185,9 +211,17 @@ export default function Lokationer() {
   const zoner = [...new Set(pladser.map((p) => p.zone).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "da"));
 
-  /* ⚠ UDLEDT. Belægningen er antallet af beholdningsposter på pladsen — der
-     findes ikke et gemt tal, og der skal ikke komme et. */
+  /* ⚠ UDLEDT. Der findes ikke et gemt belægningstal, og der skal ikke komme
+     et. `paaPlads` er varelinjerne — det er dem "Indhold" viser. */
   const paaPlads = (id) => beholdningPaaPlads(beholdning, id);
+
+  /* ⚠ OG DET ER HER HYLDEN FÅR ÉN SANDHED. Beholdning, kasser og carriers
+     opgøres samme sted, i ét gennemløb pr. kilde. Talte skærmen selv, ville
+     den næste skærm tælle lidt anderledes — og de to ville aldrig kunne
+     opdage at de var uenige. */
+  const belaeg = belaegningPrPlads({ beholdning, kasser, carriers });
+  const paaPladsIalt = (id) => belaeg[id]?.ialt || 0;
+  const beholdere = (id) => (belaeg[id]?.kasser || 0) + (belaeg[id]?.carriers || 0);
 
   const q = soeg.trim().toLowerCase();
   const viste = pladser.filter((p) =>
@@ -200,7 +234,7 @@ export default function Lokationer() {
   const nuSide = Math.min(side, sider);
   const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
-  const optagne = pladser.filter((p) => paaPlads(p.id).length > 0).length;
+  const optagne = pladser.filter((p) => paaPladsIalt(p.id) > 0).length;
   const spaerrede = pladser.filter((p) => !kanPlukkesFra(p)).length;
 
   return (
@@ -209,12 +243,15 @@ export default function Lokationer() {
         <KpiKort label="Lokationer" vaerdi={num(pladser.length)}
                  ikon={<Ikon navn="bygning" />} tone="ikon-5" rund
                  note={`i ${num(kendteHaller.length)} lagre`} />
-        <KpiKort label="Med varer på" vaerdi={num(optagne)}
+        {/* ⚠ "OPTAGET" OG IKKE "MED VARER PÅ". Kortet talte før kun
+            beholdningen, og en hylde med en transportkasse på stod som fri.
+            Nu tæller det alt tre kilder — se noten i hovedet. */}
+        <KpiKort label="Optaget" vaerdi={num(optagne)}
                  note={pladser.length
                    ? `${Math.round((optagne / pladser.length) * 100)} % af pladserne`
                    : "ingen pladser endnu"} />
         <KpiKort label="Frie" vaerdi={num(pladser.length - optagne)}
-                 note="ingen beholdning" />
+                 note="hverken varer, kasser eller carriers" />
         {/* ⚠ SPÆRREDE SKAL STÅ FOR SIG. En hylde i karantæne ser fri ud i en
             belægningsopgørelse, men der må ikke plukkes fra den. */}
         <KpiKort label="Spærrede" vaerdi={num(spaerrede)}
@@ -292,7 +329,14 @@ export default function Lokationer() {
                 /* ⚠ UDLEDT AF BEHOLDNINGEN. Se noten i hovedet. */
                 { key: "indhold", label: "Indhold", render: (p) => {
                     const b = paaPlads(p.id);
-                    if (!b.length) return <span className="fc-neutral">tom</span>;
+                    /* ⚠ "TOM" MÅ IKKE STÅ PÅ EN PLADS DER BÆRER EN BEHOLDER.
+                       Den har ingen varelinjer, men den er ikke fri — og det
+                       er præcis den forskel der sendte nogen op ad stigen. */
+                    if (!b.length) {
+                      return beholdere(p.id)
+                        ? <span className="fc-hint">ingen varelinjer — bærer en beholder</span>
+                        : <span className="fc-neutral">tom</span>;
+                    }
                     return (
                       <span className="fc-hint">
                         {b.map((x) => `${vareNr(x.vareId)} · ${num(talFraMaengde(x.antal), 0)}`)
@@ -302,6 +346,15 @@ export default function Lokationer() {
                   } },
                 { key: "antal", label: "Varelinjer", num: true,
                   render: (p) => num(paaPlads(p.id).length) },
+                /* ⚠ BEHOLDERNE STÅR FOR SIG. En hylde kan bære en
+                   transportkasse eller en carrier UDEN at have en eneste
+                   varelinje — og så er den optaget, selv om "Indhold" siger
+                   tom. Lagt sammen i ét tal ville man ikke kunne se hvad der
+                   fylder. */
+                { key: "beholdere", label: "Kasser/carriers", num: true,
+                  render: (p) => (beholdere(p.id)
+                    ? num(beholdere(p.id))
+                    : <span className="fc-neutral">—</span>) },
                 { key: "temp", label: "Temp.", num: true,
                   render: (p) => (Number.isFinite(p.temperatur)
                     ? `${p.temperatur} °C`

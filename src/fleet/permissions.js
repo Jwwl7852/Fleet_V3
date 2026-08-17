@@ -173,6 +173,14 @@ export const PERM = {
   varerSkriv: "varer.skriv",
   bevaegelserSkriv: "bevaegelser.skriv",
 
+  /* ⚠ CARRIEREN FÅR SIN EGEN — den kan ikke hedde `kasser.skriv`.
+     En carrier og en transportkasse er fysisk den samme slags beholder, men
+     de ligger i hver sin node og hører til hvert sit modul (WAREHOUSE.md
+     punkt 6.2). En WMS-medarbejder hos en kunde uden Turtlebooking ville
+     ellers ikke kunne oprette en beholder, fordi rettigheden hed noget om
+     kasser — samme fælde som `reolpladser.skriv` lukkede. */
+  carriersSkriv: "carriers.skriv",
+
   fravaerLaes: "fravaer.laes",
   /* art (sygdom vs. ferie) og dokumentation. Helbredsoplysning, altså særlig
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
@@ -305,6 +313,9 @@ export const ROLLE_PERMS = {
     PERM.reolpladserSkriv,
     PERM.varerSkriv,
     PERM.bevaegelserSkriv,
+    /* Beholderen er hans arbejde på samme måde som hylden og varen: han
+       scanner den ind og sætter den på plads. */
+    PERM.carriersSkriv,
     /* Han melder også en beskadiget kasse — det er en indberetning. */
     PERM.indberetningerSkriv,
   ],

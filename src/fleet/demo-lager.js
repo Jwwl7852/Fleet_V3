@@ -136,6 +136,56 @@ export const DEMO_BEHOLDNING = [
   { id: "p-b-02-01__v-gran-50__LOT-240401", pladsId: "p-b-02-01", vareId: "v-gran-50", batch: "LOT-240401", antal: M(250.5) },
 ];
 
+/**
+ * Carriers — beholderne kundens gods står i.
+ *
+ * ⚠ SÆTTET SKAL BÆRE DE FIRE TILFÆLDE DER ELLERS FØRST SES HOS KUNDEN:
+ *
+ *  1. En carrier på en plads hvor der ALLEREDE står beholdning. Det er den
+ *     eneste måde at se at belægningen tæller begge dele — og at hylden ikke
+ *     ser fri ud, fordi den ene kilde blev spurgt og den anden ikke.
+ *  2. En carrier på samme plads som en KASSE fra Turtlebooking, af samme
+ *     grund. Se `p-h1-r2-f1-h9-2` i demo-turtlebooking.js.
+ *  3. En UDEN plads: scannet ind, ikke placeret. Det er de elleve "uden
+ *     lokation" på planchen, og tilstanden er rigtig — ikke en fejl.
+ *  4. En i transit, som derfor IKKE må have en plads.
+ */
+export const DEMO_CARRIERS = [
+  {
+    id: "CRR-100245", type: "pallekasse", ejerforhold: "ejet", status: "paaLager",
+    pladsId: "p-a-01-02", kundeId: "nordiskFragt",
+    laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950,
+  },
+  {
+    /* (1) Står på en plads der i forvejen bærer beholdning. */
+    id: "CRR-100246", type: "gitterbur", ejerforhold: "ejet", status: "paaLager",
+    pladsId: "p-d-05-12", kundeId: "skagenSeafood",
+    laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950,
+  },
+  {
+    /* (2) Deler hylde med en transportkasse fra det andet modul. */
+    id: "CRR-100247", type: "plastkasse", ejerforhold: "ejet", status: "paaLager",
+    pladsId: "p-h1-r2-f1-h9-2", kundeId: "koldingKommune",
+    laengdeMm: 600, breddeMm: 400, hoejdeMm: 320,
+  },
+  {
+    /* (3) Scannet ind, ikke placeret. */
+    id: "CRR-1X8910", type: "kartonkasse", ejerforhold: "engang", status: "paaLager",
+    kundeId: "jyskByggecenter",
+  },
+  {
+    /* (4) I transit — og derfor uden plads. Reglerne afviser en plads her. */
+    id: "CRR-100248", type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
+    kundeId: "fynKoel", transportId: "TRP-2024-0514",
+    laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950,
+  },
+  {
+    /* En engangs der er brugt op. En EJET kan ikke få den status. */
+    id: "CRR-1X8911", type: "traekasse", ejerforhold: "engang", status: "opbrugt",
+    kundeId: "hamburgHandel",
+  },
+];
+
 /* ══════════════════════════════════════════════════════════════════════════
    SELVKONTROL — kun i DEV.
    ⚠ TRE SÆT DER PEGER PÅ HINANDEN. En tastefejl i et id giver en tom celle,
@@ -186,6 +236,26 @@ if (import.meta.env?.DEV) {
     /* ⚠ EN HALV PALLE FINDES IKKE. */
     if (v && ["stk", "kolli", "palle", "kasse"].includes(v.enhed) && b.antal % 1000 !== 0) {
       console.warn(`demo-lager: ${b.id} er ${b.antal / 1000} ${v.enhed} — den enhed kan ikke deles.`);
+    }
+  }
+
+  /* Carriers — samme tre fælder som varerne: en plads der ikke findes, en
+     kunde der ikke findes, og den invariant reglerne håndhæver. */
+  for (const c of DEMO_CARRIERS) {
+    if (c.pladsId && !pladser.has(c.pladsId)) {
+      console.warn(`demo-lager: carrier ${c.id} står på "${c.pladsId}", som ikke findes.`);
+    }
+    if (c.kundeId && !kunder.has(c.kundeId)) {
+      console.warn(`demo-lager: carrier ${c.id} peger paa kunden "${c.kundeId}", som ikke findes.`);
+    }
+    /* ⚠ EN CARRIER DER IKKE STÅR PÅ LAGERET, OPTAGER INGEN HYLDE. Reglerne
+       afviser den, og et demo-sæt der bryder invarianten, ville vise en
+       skærm som ingen kunne have skrevet. */
+    if (c.pladsId && !["paaLager", "udeAfDrift"].includes(c.status)) {
+      console.warn(`demo-lager: carrier ${c.id} er ${c.status}, men har en plads.`);
+    }
+    if (c.status === "opbrugt" && c.ejerforhold !== "engang") {
+      console.warn(`demo-lager: carrier ${c.id} er opbrugt, men ikke en engangs.`);
     }
   }
 }

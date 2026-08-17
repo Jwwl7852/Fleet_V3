@@ -27,7 +27,7 @@ import {
   DEMO_KASSETYPER, DEMO_KASSER, DEMO_KASSEUDLAAN,
 } from "../src/fleet/demo-turtlebooking.js"
 import {
-  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING,
+  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../src/fleet/demo-lager.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
@@ -179,6 +179,10 @@ export const SEED = [
      dev, og saa ville ingen opdage at summen ikke blev regnet. */
   { node: "varer", data: DEMO_VARER, form: "liste" },
   { node: "beholdning", data: DEMO_BEHOLDNING, form: "liste" },
+  /* ⚠ CARRIERNE SKAL MED, ELLERS SER HYLDERNE FRIERE UD I DEV END DE ER.
+     Belægningen tæller nu beholdning, kasser OG carriers; uden det sidste
+     sæt ville dev vise den fejl skærmen lige er holdt op med at lave. */
+  { node: "carriers", data: DEMO_CARRIERS, form: "liste" },
 ];
 
 /**

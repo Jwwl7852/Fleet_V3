@@ -23,6 +23,9 @@ import {
   noejagtighed, MINDSTE_OPTAELLINGER, afvigelserPrAarsag, forfaldneOptaellinger,
   YDELSE, ALLE_YDELSER, IKKE_AFREGNEDE_ARTER,
   afregningslinjer, afregningssum,
+  CARRIER_TYPE, ALLE_CARRIER_TYPER, EJERFORHOLD, ALLE_EJERFORHOLD,
+  CARRIER_STATUS, ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
+  valideCarrier,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -269,8 +272,18 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
   it("ejer sine egne noder og DELER reolpladser", () => {
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
-      ["beholdning", "bevaegelser", "optaellinger", "plukordrer", "reolpladser", "varer"]);
+      ["beholdning", "bevaegelser", "carriers", "optaellinger", "plukordrer",
+       "reolpladser", "varer"]);
     assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
+  });
+
+  it("⚠ CARRIEREN HØRER TIL WAREHOUSE ALENE — IKKE SAMMEN MED `kasser`", () => {
+    /* De to er fysisk den samme slags beholder, men de bærer hver sin
+       forretning: kassen udlejes pr. sag, carrieren bærer kundens gods. De
+       står derfor på hvert sit modul — mens `reolpladser`, som de begge står
+       på, hører til begge. Se WAREHOUSE.md punkt 6.2. */
+    assert.deepEqual(modulerFor("carriers"), ["warehouse"]);
+    assert.deepEqual(modulerFor("kasser"), ["turtlebooking"]);
   });
 
   it("⚠ RØRER IKKE `lagre`", () => {
@@ -810,5 +823,121 @@ describe("raterne bor i satser — ikke i et fjerde prissystem", () => {
     assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: null }]).beloebOere, null);
     assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: null }]).mangler, 1);
     assert.equal(afregningssum([{ beloebOere: 100 }, { beloebOere: 250 }]).beloebOere, 350);
+  });
+});
+
+describe("carrieren — beholderen kundens gods står i", () => {
+  const CTX = { pladser: ["p-1", "p-2"], kunder: ["k-1"] };
+  const OK = {
+    id: "CRR-100245", type: "pallekasse", ejerforhold: "ejet",
+    status: "paaLager", pladsId: "p-1", kundeId: "k-1",
+  };
+
+  it("accepterer en gyldig carrier", () => {
+    assert.deepEqual(valideCarrier(OK, CTX), {});
+  });
+
+  it("kræver type, ejerforhold og status", () => {
+    assert.ok(valideCarrier({ ...OK, type: undefined }, CTX).type);
+    assert.ok(valideCarrier({ ...OK, type: "papkasse" }, CTX).type);
+    assert.ok(valideCarrier({ ...OK, ejerforhold: undefined }, CTX).ejerforhold);
+    assert.ok(valideCarrier({ ...OK, ejerforhold: "lejet" }, CTX).ejerforhold);
+    assert.ok(valideCarrier({ ...OK, status: "påLager" }, CTX).status);
+  });
+
+  it("⚠ ID-ET ER EN DATABASENØGLE", () => {
+    /* Samme fælde som ydelses-id'et i PRISER.md: RTDB tillader hverken
+       . # $ [ ] eller / i en nøgle, og hver skrivning ville fejle med
+       "invalid path" et helt andet sted end der hvor navnet blev valgt. */
+    assert.ok(valideCarrier({ ...OK, id: "CRR.100245" }, CTX).id);
+    assert.ok(valideCarrier({ ...OK, id: "CRR/245" }, CTX).id);
+    assert.ok(valideCarrier({ ...OK, id: "" }, CTX).id);
+    assert.deepEqual(valideCarrier({ ...OK, id: "CRR_100-245" }, CTX), {});
+  });
+
+  it("⚠ EN CARRIER I TRANSIT OPTAGER IKKE EN HYLDE", () => {
+    /* Præcis samme regel som en udlånt kasse: prototypen skrev "Udlånt hos
+       kunde" SOM plads, og så kunne ledige pladser ikke tælles. */
+    assert.ok(valideCarrier({ ...OK, status: "iTransit" }, CTX).pladsId);
+    assert.deepEqual(
+      valideCarrier({ ...OK, status: "iTransit", pladsId: null }, CTX), {});
+    /* Ude af drift står stadig et sted — den er ødelagt, ikke væk. */
+    assert.deepEqual(valideCarrier({ ...OK, status: "udeAfDrift" }, CTX), {});
+  });
+
+  it("⚠ EN CARRIER PÅ LAGERET MÅ GERNE MANGLE SIN PLADS", () => {
+    /* Scannet ind, ikke placeret — det er de elleve "uden lokation" på
+       planchen. Kræver man en plads, kan modtagelsen ikke gemme det der
+       faktisk er sket. */
+    assert.deepEqual(valideCarrier({ ...OK, pladsId: null }, CTX), {});
+    assert.equal(udenLokation({ status: "paaLager" }), true);
+    assert.equal(udenLokation({ status: "paaLager", pladsId: "p-1" }), false);
+    /* En i transit er ikke "uden lokation" — den er undervejs. */
+    assert.equal(udenLokation({ status: "iTransit" }), false);
+    assert.equal(udenLokation({ status: "opbrugt" }), false);
+  });
+
+  it("⚠ KUN EN ENGANGS KAN VÆRE OPBRUGT", () => {
+    /* En egen beholder kommer retur; er den ødelagt, er den ude af drift.
+       Kunne de bruges i flæng, kunne man ikke tælle hvor mange beholdere man
+       faktisk har. */
+    assert.ok(valideCarrier(
+      { ...OK, status: "opbrugt", pladsId: null }, CTX).status);
+    assert.deepEqual(valideCarrier(
+      { ...OK, ejerforhold: "engang", status: "opbrugt", pladsId: null }, CTX), {});
+  });
+
+  it("afviser en plads og en kunde der ikke findes", () => {
+    assert.ok(valideCarrier({ ...OK, pladsId: "p-9" }, CTX).pladsId);
+    assert.ok(valideCarrier({ ...OK, kundeId: "k-9" }, CTX).kundeId);
+    /* Uden kontekst kan de ikke prøves — så lader vi være med at påstå. */
+    assert.deepEqual(valideCarrier({ ...OK, pladsId: "p-9", kundeId: "k-9" }, {}), {});
+  });
+
+  it("kræver mål i hele millimeter", () => {
+    /* Samme regel som varens mål og samletLaengdeMm() i flaade.js. En float
+       ved en volumengrænse er en fejl der venter. */
+    assert.ok(valideCarrier({ ...OK, laengdeMm: 1200.5 }, CTX).laengdeMm);
+    assert.ok(valideCarrier({ ...OK, breddeMm: -1 }, CTX).breddeMm);
+    assert.deepEqual(
+      valideCarrier({ ...OK, laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950 }, CTX), {});
+    /* Målene er valgfrie — en engangs-kartonkasse måles ikke op. */
+    assert.deepEqual(valideCarrier({ ...OK, laengdeMm: null }, CTX), {});
+  });
+
+  it("kundeId er valgfrit — en tom beholder tilhører ingen endnu", () => {
+    assert.deepEqual(valideCarrier({ ...OK, kundeId: null }, CTX), {});
+  });
+
+  it("⚠ HVER STATUS SIGER OM DEN KRÆVER EN PLADS", () => {
+    /* Reolplads-opgørelsen hviler på invarianten: det der har et pladsId,
+       står der. Uden den ville en carrier i transit kunne tælle på en hylde. */
+    assert.equal(kraeverLokation("paaLager"), true);
+    assert.equal(kraeverLokation("udeAfDrift"), true);
+    assert.equal(kraeverLokation("iTransit"), false);
+    assert.equal(kraeverLokation("opbrugt"), false);
+    assert.equal(kraeverLokation("findesIkke"), false);
+  });
+
+  it("statusserne i koden er de samme som i reglerne", () => {
+    /* ⚠ TO LISTER DRIVER. Reglerne er dem der afgør; står der en status i
+       koden som reglerne ikke kender, afvises skrivningen først hos kunden. */
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    for (const s of ALLE_CARRIER_STATUS) {
+      assert.ok(regler.includes(s), `status "${s}" står ikke i firebase.rules.json`);
+    }
+    for (const t of ALLE_CARRIER_TYPER) {
+      assert.ok(regler.includes(t), `typen "${t}" står ikke i firebase.rules.json`);
+    }
+  });
+
+  it("⚠ 'DELVIST TØMT' ER IKKE EN STATUS", () => {
+    /* Planchen viser den, men den kræver et referencetal — delvist i forhold
+       til hvad? Indholdet ligger først på carrieren i etape 12. En status vi
+       gemte nu, ville være gættet før spørgsmålet var besvaret, og den ville
+       drive fra beholdningen som `bemanding.ledig`. */
+    assert.ok(!ALLE_CARRIER_STATUS.includes("delvistTomt"));
+    /* Og "ingen lokation" er fraværet af en plads — ikke en femte status. */
+    assert.ok(!ALLE_CARRIER_STATUS.includes("ingenLokation"));
   });
 });

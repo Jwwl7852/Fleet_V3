@@ -165,6 +165,16 @@ function efterbehandl(raekker, { ordnPaa, interval, lig, filtrer, sorter, valgtD
  *     live         false (once) | true (on + off i cleanup)
  *     demo         array eller () => array, når db er null
  *     auditerSom   objektnavn — logger LÆSNINGEN i auditloggen
+ *     hent         false → spørg slet ikke. Tom liste, ingen fejl
+ *
+ * ⚠ `hent: false` ER TIL EN NODE DER ER SPÆRRET AF ET FRAVALGT MODUL — ikke
+ * til at skjule en afvisning. Warehouses lokationsskærm tæller både kasser og
+ * carriers på hylden; hos en kunde uden Turtlebooking findes `kasser` ikke,
+ * og reglerne ville svare `permission-denied`. Den tomme liste er dér det
+ * RIGTIGE svar: der er ingen kasser, ikke en fejl at vise.
+ *
+ * Bruges den til at dæmpe en afvisning på en node kunden HAR, er det
+ * beslutning 26 om igen — en spærring der oversættes til ingenting.
  *
  * auditerSom hører her og ikke i skærmen. Bad vi hver skærm om selv at kalde
  * audit.laes(), ville det blive glemt — og så var audit eftermonteret, hvilket
@@ -183,7 +193,7 @@ export function useListe(node, indstillinger = {}) {
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
     filtrer, sorter, division: divisionsTilstand = "shell",
-    partition, live = false, demo, auditerSom,
+    partition, live = false, demo, auditerSom, hent = true,
   } = indstillinger;
 
   /* Konfigurationsfejl er statiske pr. kaldsted — de skal fejle højlydt
@@ -285,6 +295,19 @@ export function useListe(node, indstillinger = {}) {
       setHenter(false);
     };
 
+    /* ⚠ FØRST AF ALT: skal noden overhovedet spørges? En node der er spærret
+       af et fravalgt modul, ville svare permission-denied, og den afvisning
+       er ikke en fejl brugeren skal se — den er svaret "modulet er ikke
+       købt". Ingen forespørgsel, ingen auditpost: en læsning der aldrig
+       fandt sted, må ikke registreres som en. */
+    if (!hent) {
+      setTilstand({ art: TILSTAND.ok, visDemo: false });
+      setRaa([]);
+      setAfkortet(false);
+      setHenter(false);
+      return () => { aktiv = false; };
+    }
+
     /* FØR forespørgslen — manglende database og manglende bruger er begge
        kendt op front. Uden bruger sendes forespørgslen slet ikke. */
     const foer = dataTilstand({ harDb: Boolean(db), harBruger: Boolean(bruger) });
@@ -314,7 +337,7 @@ export function useListe(node, indstillinger = {}) {
     })();
 
     return () => { aktiv = false; };
-  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger]);
+  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger, hent]);
 
   /* Divisionen filtreres HER, ikke i effekten. Derfor genhenter et skift
      mellem Gods og Bus ikke — det er øjeblikkeligt og koster ingen egress. */

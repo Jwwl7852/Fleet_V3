@@ -246,6 +246,13 @@ export const NODE_MODUL = {
   beholdning: "warehouse",
   plukordrer: "warehouse",
   optaellinger: "warehouse",
+
+  /* ⚠ IKKE `kasser`, og ikke sammen med den. En carrier og en transportkasse
+     er fysisk den samme slags beholder, men de bærer hver sin forretning:
+     kassen udlejes pr. sag, carrieren bærer kundens gods. De to noder står
+     derfor på HVER SIT modul — mens `reolpladser`, som de begge står på,
+     hører til begge. Se WAREHOUSE.md punkt 6.2. */
+  carriers: "warehouse",
 };
 
 /**
