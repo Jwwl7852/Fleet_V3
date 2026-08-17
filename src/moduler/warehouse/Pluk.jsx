@@ -34,25 +34,25 @@ import {
   ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, PRIORITET, ALLE_PRIORITETER,
   ENHED, MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
   valideOrdre, ordreFremdrift, kanFortrydeFrigivelse, plukkoe,
-  kanPlukkesFra, beholdningsNoegle, UDEN_BATCH,
+  kanPlukkesFra, beholdningsNoegle, UDEN_BATCH, CARRIER_TYPE, kraeverLokation,
 } from "../../fleet/warehouse.js";
 import { skrivBevaegelse, afsendPlukordre } from "../../fleet/lager.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
-  DEMO_VARER, DEMO_REOLPLADSER, DEMO_BEHOLDNING,
+  DEMO_VARER, DEMO_REOLPLADSER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../../fleet/demo-lager.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 
 const tomOrdre = () => ({
   kundeId: "", nummer: "", prioritet: "normal", tilstand: "kladde",
-  afgangIso: iDagIso(), afsendPladsId: "", note: "",
+  afgangIso: iDagIso(), afsendCarrierId: "", note: "",
   linjer: [{ vareId: "", antal: "" }],
 });
 
 /* ---- Formularen --------------------------------------------------------- */
 
-function Ordreformular({ ordre, kunder, varer, pladser, sti, paaGemt, paaLuk }) {
+function Ordreformular({ ordre, kunder, varer, pladser, carriers, sti, paaGemt, paaLuk }) {
   const nyt = !ordre;
   const [f, saetF] = useState(() => (ordre
     ? {
@@ -84,13 +84,13 @@ function Ordreformular({ ordre, kunder, varer, pladser, sti, paaGemt, paaLuk }) 
   const post = {
     kundeId: f.kundeId, nummer: f.nummer, prioritet: f.prioritet,
     tilstand: f.tilstand, afgangMs: isoTilMs(f.afgangIso),
-    afsendPladsId: f.afsendPladsId, note: f.note || null,
+    afsendCarrierId: f.afsendCarrierId, note: f.note || null,
     linjer: Object.fromEntries(linjer),
   };
   const fejl = valideOrdre(post, {
     kunder: kunder.map((k) => k.id),
     varer: varer.map((v) => v.id),
-    pladser: pladser.map((p) => p.id),
+    carriers: carriers.map((c) => c.id),
   });
   const kanGemme = Object.keys(fejl).length === 0;
   const vis = (felt) => (visAlle ? fejl[felt] : null);
@@ -141,15 +141,18 @@ function Ordreformular({ ordre, kunder, varer, pladser, sti, paaGemt, paaLuk }) 
         <Feltraekke>
           <Felt id="o-afgang" label="Afgang" kraevet type="date" vaerdi={f.afgangIso}
                 saet={saet("afgangIso")} fejl={vis("afgangMs")} />
-          {/* ⚠ PÅKRÆVET. Et pluk flytter varen HEN et sted — se hovedet. */}
-          <Felt id="o-plads" label="Afsendelsesplads" kraevet vaerdi={f.afsendPladsId}
-                saet={saet("afsendPladsId")} fejl={vis("afsendPladsId")}
+          {/* ⚠ PÅKRÆVET, OG DET ER EN BEHOLDER. Et pluk flytter varen HEN et
+              sted — og efter etape 12 ligger alt gods i en beholder, også det
+              der venter på bilen. */}
+          <Felt id="o-carrier" label="Afsendelsesbeholder" kraevet vaerdi={f.afsendCarrierId}
+                saet={saet("afsendCarrierId")} fejl={vis("afsendCarrierId")}
                 valgmuligheder={[{ vaerdi: "", label: "— vælg —" },
-                  ...pladser.map((p) => ({
-                    vaerdi: p.id,
-                    label: `${pladsnavn(p)}${p.zone ? ` · ${p.zone}` : ""}`,
+                  ...carriers.map((c) => ({
+                    vaerdi: c.id,
+                    label: `${c.id} · ${CARRIER_TYPE[c.type]?.label || c.type}${
+                      c.pladsId ? ` · ${pladsnavn(pladser.find((p) => p.id === c.pladsId))}` : ""}`,
                   }))]}
-                hint="Her står det plukkede, indtil bilen kommer." />
+                hint="Her ligger det plukkede, indtil bilen kommer." />
         </Feltraekke>
 
         <p className="fc-hint" style={{ marginTop: 4 }}><b>Linjer</b></p>
@@ -184,9 +187,9 @@ function Ordreformular({ ordre, kunder, varer, pladser, sti, paaGemt, paaLuk }) 
 
 /* ---- Plukning ----------------------------------------------------------- */
 
-function Plukpanel({ ordre, fremdrift, varer, pladser, beholdning, paaPlukket }) {
+function Plukpanel({ ordre, fremdrift, varer, pladser, carriers, beholdning, paaPlukket }) {
   const [linje, saetLinje] = useState("");
-  const [fraPladsId, saetFra] = useState("");
+  const [fraCarrierId, saetFra] = useState("");
   const [antal, saetAntal] = useState("");
   const [batch, saetBatch] = useState("");
   const [arbejder, saetArbejder] = useState(false);
@@ -195,31 +198,38 @@ function Plukpanel({ ordre, fremdrift, varer, pladser, beholdning, paaPlukket })
   const valgt = fremdrift.linjer.find((l) => l.id === linje) || null;
   const vare = varer.find((v) => v.id === valgt?.vareId) || null;
 
-  /* ⚠ KUN PLADSER DER FAKTISK HAR VAREN, og kun dem der kan plukkes fra. En
-     karantæneplads står ikke på listen — varen dér er under mistanke, og
-     serveren afviser den alligevel. */
-  const muligePladser = !vare ? [] : beholdning
-    .filter((b) => b.vareId === vare.id && (b.antal || 0) > 0 &&
-      b.pladsId !== ordre.afsendPladsId &&
-      kanPlukkesFra(pladser.find((p) => p.id === b.pladsId)))
-    .map((b) => ({
-      ...b,
-      plads: pladser.find((p) => p.id === b.pladsId),
-    }));
+  /* ⚠ KUN BEHOLDERE DER FAKTISK HAR VAREN, og kun dem der står et sted der
+     kan plukkes fra. Spærringen sidder på HYLDEN, ikke på beholderen — efter
+     etape 12 slås den derfor op ét led længere ude. En karantæneplads står
+     ikke på listen: varen dér er under mistanke, og serveren afviser den
+     alligevel. */
+  const muligeCarriers = !vare ? [] : beholdning
+    .filter((b) => {
+      if (b.vareId !== vare.id || (b.antal || 0) <= 0) return false;
+      if (b.carrierId === ordre.afsendCarrierId) return false;
+      const c = carriers.find((x) => x.id === b.carrierId);
+      if (!c) return false;
+      /* En beholder uden plads har ingen hylde at arve en spærring fra. */
+      return !c.pladsId || kanPlukkesFra(pladser.find((p) => p.id === c.pladsId));
+    })
+    .map((b) => {
+      const c = carriers.find((x) => x.id === b.carrierId);
+      return { ...b, carrier: c, plads: pladser.find((p) => p.id === c?.pladsId) };
+    });
 
-  const valgtePlads = muligePladser.find((m) => m.pladsId === fraPladsId) || null;
+  const valgteCarrier = muligeCarriers.find((m) => m.carrierId === fraCarrierId) || null;
   const skaleret = antal === "" ? NaN : maengdeFraTal(antal);
-  const kanPlukke = valgt && vare && fraPladsId && Number.isFinite(skaleret) &&
-    skaleret > 0 && skaleret <= (valgtePlads?.antal ?? 0);
+  const kanPlukke = valgt && vare && fraCarrierId && Number.isFinite(skaleret) &&
+    skaleret > 0 && skaleret <= (valgteCarrier?.antal ?? 0);
 
   const pluk = async () => {
     if (!kanPlukke) return;
     saetArbejder(true);
     const r = await skrivBevaegelse({
       art: "pluk", vareId: vare.id, antal: skaleret,
-      fraPladsId, tilPladsId: ordre.afsendPladsId,
-      batch: valgtePlads?.batch && valgtePlads.batch !== UDEN_BATCH
-        ? valgtePlads.batch : batch,
+      fraCarrierId, tilCarrierId: ordre.afsendCarrierId,
+      batch: valgteCarrier?.batch && valgteCarrier.batch !== UDEN_BATCH
+        ? valgteCarrier.batch : batch,
       reference: ordre.id,
     });
     saetArbejder(false);
@@ -241,22 +251,23 @@ function Plukpanel({ ordre, fremdrift, varer, pladser, beholdning, paaPlukket })
                       num(talFraMaengde(l.mangler), ENHED[v?.enhed]?.helTal ? 0 : 1)}`,
                   };
                 })]} />
-        <Felt id="p-fra" label="Tag fra" vaerdi={fraPladsId}
+        <Felt id="p-fra" label="Tag fra" vaerdi={fraCarrierId}
               saet={(v) => { saetFra(v); saetSvar(null); }}
               valgmuligheder={[{ vaerdi: "", label: "— vælg —" },
-                ...muligePladser.map((m) => ({
-                  vaerdi: m.pladsId,
-                  label: `${pladsnavn(m.plads)} · ${num(talFraMaengde(m.antal), 0)}${
+                ...muligeCarriers.map((m) => ({
+                  vaerdi: m.carrierId,
+                  label: `${m.carrierId} · ${m.plads ? pladsnavn(m.plads) : "uden lokation"} · ${
+                    num(talFraMaengde(m.antal), 0)}${
                     m.batch && m.batch !== UDEN_BATCH ? ` · ${m.batch}` : ""}`,
                 }))]}
-              hint={vare && !muligePladser.length
-                ? "Varen står ingen steder der kan plukkes fra."
+              hint={vare && !muligeCarriers.length
+                ? "Varen ligger ingen steder der kan plukkes fra."
                 : undefined} />
         <Felt id="p-antal" label="Mængde" type="number" step="any" vaerdi={antal}
               saet={(v) => { saetAntal(v); saetSvar(null); }}
               suffiks={ENHED[vare?.enhed]?.label}
-              hint={valgtePlads
-                ? `Der står ${num(talFraMaengde(valgtePlads.antal), 0)}`
+              hint={valgteCarrier
+                ? `Der ligger ${num(talFraMaengde(valgteCarrier.antal), 0)}`
                 : undefined} />
       </Feltraekke>
       <div className="fc-formular-knapper" style={{ marginTop: 0 }}>
@@ -299,6 +310,12 @@ export default function Pluk() {
   const { data: pladser } = useListe("reolpladser", {
     division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
+  });
+  /* ⚠ GODSET LIGGER I EN BEHOLDER (etape 12). Både plukket og
+     afsendelsesstedet er beholdere; hylden er beholderens adresse. */
+  const { data: carriers } = useListe("carriers", {
+    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
   const { data: kunder } = useListe("kunder", {
     division: "alle", graense: 500, demo: DEMO_KUNDER,
@@ -360,13 +377,14 @@ export default function Pluk() {
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
-        <Ordreformular kunder={kunder} varer={varer} pladser={pladser} sti={path}
+        <Ordreformular kunder={kunder} varer={varer} pladser={pladser}
+                       carriers={carriers} sti={path}
                        paaLuk={() => saetNy(false)}
                        paaGemt={() => { saetNy(false); genindlaesAlt(); }} />
       )}
       {redigerer && (
         <Ordreformular ordre={redigerer} kunder={kunder} varer={varer}
-                       pladser={pladser} sti={path}
+                       pladser={pladser} carriers={carriers} sti={path}
                        paaLuk={() => saetRedigerer(null)}
                        paaGemt={() => { saetRedigerer(null); genindlaesAlt(); }} />
       )}
@@ -481,8 +499,8 @@ export default function Pluk() {
       {ordre && fremdrift && (
         <Kort titel={`${ordre.nummer} · ${kundeNavn(ordre.kundeId)}`}>
           <p className="fc-hint">
-            Afgang {dato(ordre.afgangMs)} · det plukkede stilles på{" "}
-            <b>{pladsnavn(pladser.find((p) => p.id === ordre.afsendPladsId))}</b>
+            Afgang {dato(ordre.afgangMs)} · det plukkede lægges i{" "}
+            <b>{ordre.afsendCarrierId}</b>
             {ordre.note ? ` · ${ordre.note}` : ""}
           </p>
 
@@ -522,7 +540,7 @@ export default function Pluk() {
             <div style={{ marginTop: 12 }}>
               <p className="fc-hint"><b>Registrér et pluk</b></p>
               <Plukpanel ordre={ordre} fremdrift={fremdrift} varer={varer}
-                         pladser={pladser} beholdning={beholdning}
+                         pladser={pladser} carriers={carriers} beholdning={beholdning}
                          paaPlukket={genindlaesAlt} />
             </div>
           ) : (

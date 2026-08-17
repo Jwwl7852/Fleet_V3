@@ -14,7 +14,8 @@ import {
   kanPlukkesFra, valideLagerfelter,
   BEVAEGELSE_ART, ALLE_BEVAEGELSE_ARTER, ABSOLUTTE_ARTER, valideBevaegelse,
   MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
-  UDEN_BATCH, beholdningsNoegle, virkningPaaBeholdning,
+  UDEN_BATCH, beholdningsNoegle, virkningPaaBeholdning, virkningPaaCarrier,
+  beholdningPaaCarrier, validePlacering,
   beholdningPrVare, beholdningPaaPlads, underMinimum,
   LAGERSVAR, tolkLagerfejl,
   ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, KLIENT_ORDRE_TILSTANDE, kanSkifteOrdre,
@@ -31,14 +32,17 @@ import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS } from "../src/fleet/permissions.js";
 
-const K = { kunder: ["k1"], varer: ["v1"], pladser: ["p1", "p2"] };
+const K = {
+  kunder: ["k1"], varer: ["v1"], pladser: ["p1", "p2"],
+  carriers: ["c1", "c2"],
+};
 const vare = (x = {}) => ({
   kundeId: "k1", varenummer: "ST-1002", navn: "Leje 6205 2RS",
   enhed: "stk", sporing: "ingen", ...x,
 });
 const bev = (x = {}) => ({
   art: "flyt", vareId: "v1", kundeId: "k1", antal: 2 * MAENGDE_SKALA,
-  fraPladsId: "p1", tilPladsId: "p2", ...x,
+  fraCarrierId: "c1", tilCarrierId: "c2", ...x,
 });
 
 describe("skalaen er husets, ikke Warehouses egen", () => {
@@ -135,33 +139,41 @@ describe("reolpladsen er delt — og de nye felter er valgfrie", () => {
   });
 });
 
-describe("bevægelsen ved hvad den gør ved en plads", () => {
-  it("nægter en modtagelse en fra-plads", () => {
-    /* ⚠ ELLERS TRÆKKES DER VARER UD AF EN HYLDE DER ALDRIG HAVDE DEM, og
+describe("bevægelsen ved hvad den gør ved en beholder", () => {
+  it("nægter en modtagelse en fra-beholder", () => {
+    /* ⚠ ELLERS TRÆKKES DER VARER UD AF EN BEHOLDER DER ALDRIG HAVDE DEM, og
        beholdningen går i minus uden at nogen kan se hvorfor. */
-    assert.ok(valideBevaegelse(bev({ art: "modtag" }), K).fraPladsId);
+    assert.ok(valideBevaegelse(bev({ art: "modtag" }), K).fraCarrierId);
     assert.deepEqual(
-      valideBevaegelse(bev({ art: "modtag", fraPladsId: null }), K), {});
+      valideBevaegelse(bev({ art: "modtag", fraCarrierId: null }), K), {});
   });
 
-  it("nægter en afsendelse en til-plads", () => {
-    assert.ok(valideBevaegelse(bev({ art: "afsend" }), K).tilPladsId);
+  it("nægter en afsendelse en til-beholder", () => {
+    assert.ok(valideBevaegelse(bev({ art: "afsend" }), K).tilCarrierId);
     assert.deepEqual(
-      valideBevaegelse(bev({ art: "afsend", tilPladsId: null }), K), {});
+      valideBevaegelse(bev({ art: "afsend", tilCarrierId: null }), K), {});
   });
 
   it("kræver begge på en flytning — og at de er forskellige", () => {
-    assert.ok(valideBevaegelse(bev({ fraPladsId: null }), K).fraPladsId);
-    assert.ok(valideBevaegelse(bev({ tilPladsId: "p1" }), K).tilPladsId);
+    assert.ok(valideBevaegelse(bev({ fraCarrierId: null }), K).fraCarrierId);
+    assert.ok(valideBevaegelse(bev({ tilCarrierId: "c1" }), K).tilCarrierId);
+  });
+
+  it("⚠ AFVISER EN PLADS PÅ EN GODSBEVÆGELSE", () => {
+    /* Efter etape 12 ligger godset i en beholder. Et pladsId der blev taget
+       imod og ignoreret, ville få den næste til at tro at det virkede — og
+       beholdningen ville blive skrevet et sted hvor der ikke ligger noget. */
+    assert.ok(valideBevaegelse(bev({ fraPladsId: "p1" }), K).fraPladsId);
+    assert.ok(valideBevaegelse(bev({ tilPladsId: "p2" }), K).tilPladsId);
   });
 
   it("har en regel for hver art der findes", () => {
     /* Ellers ville en ny art give `undefined` og lydløst slippe forbi begge
-       pladstjek. */
+       beholdertjek. */
     for (const a of ALLE_BEVAEGELSE_ARTER) {
       assert.ok(BEVAEGELSE_ART[a], `${a} mangler i tabellen`);
-      assert.equal(typeof BEVAEGELSE_ART[a].kraeverFra, "boolean");
-      assert.equal(typeof BEVAEGELSE_ART[a].kraeverTil, "boolean");
+      assert.equal(typeof BEVAEGELSE_ART[a].kraeverFraCarrier, "boolean");
+      assert.equal(typeof BEVAEGELSE_ART[a].kraeverTilCarrier, "boolean");
     }
   });
 
@@ -196,7 +208,7 @@ describe("bevægelsen ved hvad den gør ved en plads", () => {
     /* ⚠ EN OPTÆLLING KAN VÆRE NUL — hylden var tom, og det er et resultat.
        En pluk på nul er en fejl. */
     assert.deepEqual(
-      valideBevaegelse(bev({ art: "optael", antal: 0, fraPladsId: null }), K), {});
+      valideBevaegelse(bev({ art: "optael", antal: 0, fraCarrierId: null }), K), {});
     assert.ok(valideBevaegelse(bev({ art: "pluk", antal: 0 }), K).antal);
   });
 });
@@ -210,23 +222,36 @@ describe("beholdningen er summen, ikke et tal der tælles op og ned", () => {
     assert.equal(beholdningsNoegle("p1", "v1"), beholdningsNoegle("p1", "v1", ""));
   });
 
-  it("trækker fra den ene plads og lægger til den anden", () => {
+  it("trækker fra den ene beholder og lægger til den anden", () => {
     const v = virkningPaaBeholdning(bev({ antal: 3000 }));
     assert.equal(v.length, 2);
-    assert.equal(v.find((x) => x.pladsId === "p1").aendring, -3000);
-    assert.equal(v.find((x) => x.pladsId === "p2").aendring, 3000);
+    assert.equal(v.find((x) => x.carrierId === "c1").aendring, -3000);
+    assert.equal(v.find((x) => x.carrierId === "c2").aendring, 3000);
   });
 
-  it("rører kun én plads på en modtagelse", () => {
-    const v = virkningPaaBeholdning(bev({ art: "modtag", fraPladsId: null, antal: 5000 }));
+  it("rører kun én beholder på en modtagelse", () => {
+    const v = virkningPaaBeholdning(bev({ art: "modtag", fraCarrierId: null, antal: 5000 }));
     assert.equal(v.length, 1);
     assert.equal(v[0].aendring, 5000);
+  });
+
+  it("⚠ EN PLACERING RØRER INGEN SALDO", () => {
+    /* Beholderen flytter med alt hvad der er i den; tallene følger med uden
+       at blive skrevet om. Det er hele gevinsten ved etape 12 — før var en
+       flytning N saldoændringer der skulle lykkes sammen. */
+    assert.deepEqual(
+      virkningPaaBeholdning({ art: "putaway", carrierId: "c1", tilPladsId: "p1" }), []);
+    assert.deepEqual(
+      virkningPaaCarrier({ art: "putaway", carrierId: "c1", tilPladsId: "p1" }),
+      { carrierId: "c1", pladsId: "p1" });
+    /* Og omvendt: en godsbevægelse flytter ingen beholder. */
+    assert.equal(virkningPaaCarrier(bev()), null);
   });
 
   it("⚠ EN OPTÆLLING SÆTTER, DEN ÆNDRER IKKE", () => {
     /* Optællingen er et tal man har talt sig frem til. Blev den lagt til,
        ville en optælling der bekræftede beholdningen, fordoble den. */
-    const v = virkningPaaBeholdning(bev({ art: "optael", fraPladsId: null, antal: 7000 }));
+    const v = virkningPaaBeholdning(bev({ art: "optael", fraCarrierId: null, antal: 7000 }));
     assert.equal(v.length, 1);
     assert.equal(v[0].saet, 7000);
     assert.equal(v[0].aendring, undefined);
@@ -235,12 +260,19 @@ describe("beholdningen er summen, ikke et tal der tælles op og ned", () => {
 
   it("summerer pr. vare frem for at læse et gemt tal", () => {
     const poster = [
-      { pladsId: "p1", vareId: "v1", batch: "A", antal: 2000 },
-      { pladsId: "p2", vareId: "v1", batch: "B", antal: 3000 },
-      { pladsId: "p2", vareId: "v2", batch: "_", antal: 1000 },
+      { carrierId: "c1", vareId: "v1", batch: "A", antal: 2000 },
+      { carrierId: "c2", vareId: "v1", batch: "B", antal: 3000 },
+      { carrierId: "c2", vareId: "v2", batch: "_", antal: 1000 },
     ];
     assert.deepEqual(beholdningPrVare(poster), { v1: 5000, v2: 1000 });
-    assert.equal(beholdningPaaPlads(poster, "p2").length, 2);
+    assert.equal(beholdningPaaCarrier(poster, "c2").length, 2);
+    /* ⚠ HYLDEN NÅS GENNEM BEHOLDEREN. To led, fordi et gemt pladsId på
+       posten ville drive fra carrieren første gang nogen flyttede den. */
+    const carriers = [{ id: "c1", pladsId: "p1" }, { id: "c2", pladsId: "p1" }];
+    assert.equal(beholdningPaaPlads(poster, "p1", carriers).length, 3);
+    assert.equal(beholdningPaaPlads(poster, "p2", carriers).length, 0);
+    /* En beholder uden lokation lægger ikke sit gods på en tilfældig hylde. */
+    assert.equal(beholdningPaaPlads(poster, "p1", [{ id: "c1" }]).length, 0);
   });
 
   it("regner en vare uden minimum som uden grænse", () => {
@@ -372,7 +404,7 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
        en log der kunne vælte en bevægelse, ville være værre end ingen log.
        Prøven må ikke ramme den, og den må heller ikke bare tælle alt. */
     const start = kilde.indexOf("export const bevaegelseskriv");
-    const blok = kilde.slice(start, kilde.indexOf("async function logBevaegelse", start));
+    const blok = kilde.slice(start, kilde.indexOf("async function skrivPlacering", start));
     assert.ok(blok.length > 500, "fandt ikke funktionskroppen");
     assert.ok(blok.includes("rod.update(opdatering)"),
       "bevægelsen skrives ikke som én multi-path update");
@@ -407,9 +439,36 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
       "bevaegelseskriv læser kundeId fra nyttelasten");
   });
 
-  it("blokerer pluk fra en karantæneplads", () => {
-    /* ⚠ BLOKERER, ADVARER IKKE. Samme regel som en udløbet kompetence. */
-    assert.ok(kilde.includes("kanPlukkesFra(pladser[post.fraPladsId])"));
+  it("blokerer pluk fra en beholder på en karantæneplads", () => {
+    /* ⚠ BLOKERER, ADVARER IKKE. Samme regel som en udløbet kompetence.
+       ⚠ OG SPÆRRINGEN SIDDER PÅ HYLDEN, IKKE PÅ BEHOLDEREN. Efter etape 12
+       står godset i en carrier, og carrieren står på pladsen: slås den ikke
+       op ét led længere ude, kan karantænen omgås ved at plukke fra
+       beholderen frem for fra hylden. */
+    assert.ok(kilde.includes("kanPlukkesFra(p)"),
+      "karantænen slås ikke op på beholderens plads");
+    assert.ok(kilde.includes("const pladsFor = async (carrierId)"),
+      "der findes ikke et opslag fra beholder til hylde");
+  });
+
+  it("⚠ PLACERINGEN SKRIVER BEVÆGELSEN OG PLADSEN SAMMEN", () => {
+    /* Skrives kun den ene, står beholderen enten et sted ingen kan se
+       hvornår den kom til, eller der findes en placering af noget der aldrig
+       blev flyttet. Samme regel som udlånet og kassen. */
+    const start = kilde.indexOf("async function skrivPlacering");
+    const blok = kilde.slice(start, kilde.indexOf("async function logBevaegelse", start));
+    assert.ok(blok.length > 400, "fandt ikke placeringens krop");
+    assert.equal((blok.match(/rod\.update\(/g) || []).length, 1,
+      "placeringen skrives ikke som én multi-path update");
+    assert.ok(blok.includes("/pladsId`]: virkning.pladsId"),
+      "carrierens plads skrives ikke med i samme update");
+  });
+
+  it("⚠ NÆGTER AT SÆTTE EN BEHOLDER DER IKKE ER I HUSET, PÅ EN HYLDE", () => {
+    /* Admin-SDK'et går uden om reglerne, så invarianten skal håndhæves i
+       funktionen også. Slap en carrier i transit igennem, ville en hylde se
+       optaget ud af noget der er ude af huset. */
+    assert.ok(kilde.includes("kraeverLokation(carrier.status)"));
   });
 
   it("prøver abonnement og modul, som reglerne gør", () => {
@@ -429,14 +488,14 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
 
 describe("svaret fra serveren forklarer sig selv", () => {
   it("⚠ BEHOLDER SERVERENS TEKST NÅR LAGERET SIGER FRA", () => {
-    /* "Der står kun 3 paller på lokationen" ER svaret. En generisk tekst
+    /* "Der ligger kun 3 paller i beholderen" ER svaret. En generisk tekst
        ville lade brugeren prøve igen med samme mængde. */
     const r = tolkLagerfejl({
       code: "functions/failed-precondition",
-      message: "Der står kun 3 palle af PAL-1200 på lokationen — der kan ikke tages 5.",
+      message: "Der ligger kun 3 palle af PAL-1200 i beholderen — der kan ikke tages 5.",
     });
     assert.equal(r.art, LAGERSVAR.afvist);
-    assert.match(r.besked, /Der står kun 3/);
+    assert.match(r.besked, /Der ligger kun 3/);
   });
 
   it("kalder en afvisning for en afvisning, ikke en netværksfejl", () => {
@@ -453,19 +512,21 @@ describe("plukordren — det udgående flow", () => {
   const V = 1000;
   const ordre = (x = {}) => ({
     id: "o1", kundeId: "k1", nummer: "SO-10458", prioritet: "normal",
-    tilstand: "kladde", afgangMs: 1786000000000, afsendPladsId: "p2",
+    tilstand: "kladde", afgangMs: 1786000000000, afsendCarrierId: "c2",
     linjer: { a: { vareId: "v1", antal: 10 * V } }, ...x,
   });
-  const CTX = { kunder: ["k1"], varer: ["v1"], pladser: ["p1", "p2"] };
+  const CTX = { kunder: ["k1"], varer: ["v1"], carriers: ["c1", "c2"] };
 
-  it("kræver en kunde, et nummer, en afgang og en afsendelsesplads", () => {
+  it("kræver en kunde, et nummer, en afgang og en afsendelsesbeholder", () => {
     assert.deepEqual(valideOrdre(ordre(), CTX), {});
     assert.ok(valideOrdre(ordre({ kundeId: "" }), CTX).kundeId);
     assert.ok(valideOrdre(ordre({ nummer: "" }), CTX).nummer);
     assert.ok(valideOrdre(ordre({ afgangMs: null }), CTX).afgangMs);
-    /* ⚠ UDEN AFSENDELSESPLADS VED PLUKKET IKKE HVOR GODSET SKAL STÅ mellem
-       hylden og bilen — og det er dér det bliver væk. */
-    assert.ok(valideOrdre(ordre({ afsendPladsId: "" }), CTX).afsendPladsId);
+    /* ⚠ UDEN AFSENDELSESBEHOLDER VED PLUKKET IKKE HVAD GODSET SKAL LIGGE I
+       mellem hylden og bilen — og det er dér det bliver væk. Efter etape 12
+       ligger alt gods i en beholder, også det der venter på afgang. */
+    assert.ok(valideOrdre(ordre({ afsendCarrierId: "" }), CTX).afsendCarrierId);
+    assert.ok(valideOrdre(ordre({ afsendCarrierId: "c9" }), CTX).afsendCarrierId);
   });
 
   it("nægter en ordre uden linjer", () => {
@@ -590,7 +651,7 @@ describe("afsendelsen skriver bevægelser og tilstand sammen", () => {
 describe("optællingen måler noget", () => {
   const V = 1000;
   const opt = (x = {}) => ({
-    pladsId: "p1", vareId: "v1", taeltAntal: 10 * V, forventet: 10 * V, ...x,
+    carrierId: "c1", vareId: "v1", taeltAntal: 10 * V, forventet: 10 * V, ...x,
   });
 
   it("kræver en årsag NÅR der er en afvigelse", () => {
@@ -939,5 +1000,77 @@ describe("carrieren — beholderen kundens gods står i", () => {
     assert.ok(!ALLE_CARRIER_STATUS.includes("delvistTomt"));
     /* Og "ingen lokation" er fraværet af en plads — ikke en femte status. */
     assert.ok(!ALLE_CARRIER_STATUS.includes("ingenLokation"));
+  });
+});
+
+describe("placeringen — beholderen sættes på en hylde", () => {
+  const CTX = { pladser: ["p1", "p2"], carriers: ["c1", "c2"] };
+  const OK = { art: "putaway", carrierId: "c1", tilPladsId: "p1" };
+
+  it("kræver en beholder og en hylde", () => {
+    assert.deepEqual(valideBevaegelse(OK, CTX), {});
+    assert.ok(valideBevaegelse({ ...OK, carrierId: null }, CTX).carrierId);
+    assert.ok(valideBevaegelse({ ...OK, tilPladsId: null }, CTX).tilPladsId);
+    assert.ok(valideBevaegelse({ ...OK, carrierId: "c9" }, CTX).carrierId);
+    assert.ok(valideBevaegelse({ ...OK, tilPladsId: "p9" }, CTX).tilPladsId);
+  });
+
+  it("⚠ HAR HVERKEN VARE ELLER ANTAL", () => {
+    /* Den flytter beholderen med alt hvad der er i den. Godset skifter ikke
+       mængde af at blive båret et andet sted hen, og et antal her ville være
+       et tal ingen kunne forklare bagefter. */
+    assert.ok(valideBevaegelse({ ...OK, vareId: "v1" }, CTX).vareId);
+    assert.ok(valideBevaegelse({ ...OK, antal: 1000 }, CTX).antal);
+    assert.ok(valideBevaegelse({ ...OK, batch: "LOT-1" }, CTX).batch);
+    /* Og den blander sig ikke med godsbevægelsens felter. */
+    assert.ok(valideBevaegelse({ ...OK, fraCarrierId: "c2" }, CTX).fraCarrierId);
+  });
+
+  it("⚠ ER DEN ENESTE ART DER FLYTTER EN BEHOLDER", () => {
+    /* Alle andre flytter gods MELLEM beholdere. Var der to arter der begge
+       kunne flytte en beholder, ville "hvor står den?" have to svar. */
+    const flytter = ALLE_BEVAEGELSE_ARTER.filter((a) => BEVAEGELSE_ART[a].flytterCarrier);
+    assert.deepEqual(flytter, ["putaway"]);
+  });
+
+  it("valideBevaegelse deler sig efter arten", () => {
+    /* Samme indgang, to skemaer. En placering prøvet mod godsreglerne ville
+       blive afvist for at mangle en vare den ikke skal have. */
+    assert.deepEqual(validePlacering(OK, CTX), valideBevaegelse(OK, CTX));
+  });
+});
+
+describe("nøglen bærer beholderen", () => {
+  it("⚠ ER <carrierId>__<vareId>__<batch>", () => {
+    /* Efter etape 12 ligger godset i en beholder. Nøglen er deterministisk,
+       så serveren kan skrive uden først at slå op — og så samme beholder og
+       vare ALDRIG kan få to poster. */
+    assert.equal(beholdningsNoegle("CRR-1", "v1", "LOT-A"), "CRR-1__v1__LOT-A");
+    assert.equal(beholdningsNoegle("CRR-1", "v1", null), `CRR-1__v1__${UDEN_BATCH}`);
+  });
+
+  it("⚠ OG HYLDEN STÅR IKKE I DEN", () => {
+    /* Stod pladsen i nøglen, ville en flytning af beholderen kræve at hver
+       eneste beholdningspost blev skrevet om — N ændringer der skulle lykkes
+       sammen, hvor atomiciteten kun er delvis. Nu er en flytning ét felt. */
+    const n = beholdningsNoegle("CRR-1", "v1", "LOT-A");
+    assert.ok(!n.includes("p-"), "nøglen bærer en plads");
+  });
+});
+
+describe("serveren læser ikke et felt forbi", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+
+  it("⚠ EN PLACERING MED ET ANTAL AFVISES AF FUNKTIONEN", () => {
+    /* Fundet af en probe mod den udrullede base: funktionen læste `antal`
+       forbi, så kaldet lykkedes. Der landede ingen forkerte data — posten
+       bygges af serveren — men kalderen troede at tallet betød noget.
+       Et felt der tages imod og ignoreres, er værre end et der afvises. */
+    const start = kilde.indexOf("async function skrivPlacering");
+    const blok = kilde.slice(start, kilde.indexOf("async function logBevaegelse", start));
+    assert.ok(blok.includes("vareId: kortStreng(d.vareId"),
+      "de forbudte felter sendes ikke med i valideringen");
+    assert.ok(blok.includes("antal: Number.isFinite(Number(d.antal))"),
+      "et antal på en placering læses stadig forbi");
   });
 });

@@ -38,7 +38,7 @@ import {
 } from "../../fleet/warehouse.js";
 import { skrivOptaelling } from "../../fleet/lager.js";
 import {
-  DEMO_VARER, DEMO_REOLPLADSER, DEMO_BEHOLDNING,
+  DEMO_VARER, DEMO_REOLPLADSER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../../fleet/demo-lager.js";
 
 export default function Optaelling() {
@@ -66,11 +66,26 @@ export default function Optaelling() {
   const { data: pladser } = useListe("reolpladser", {
     division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
   });
+  /* ⚠ DER TÆLLES I EN BEHOLDER, IKKE PÅ EN HYLDE (etape 12). Hylden vises
+     stadig — den er beholderens adresse, og den der skal ud og tælle, skal
+     vide hvor han går hen. */
+  const { data: carriers } = useListe("carriers", {
+    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+  });
 
   if (henter) return <Henter hvad="optællingerne" />;
 
   const vareMap = Object.fromEntries(varer.map((v) => [v.id, v]));
   const pladsMap = Object.fromEntries(pladser.map((p) => [p.id, p]));
+  const carrierMap = Object.fromEntries(carriers.map((c) => [c.id, c]));
+
+  /* Beholderen OG hvor den står. Uden hylden ved den der skal tælle, ikke
+     hvor han går hen; uden beholderen ved han ikke hvad han skal åbne. */
+  const hvor = (carrierId) => {
+    const c = carrierMap[carrierId];
+    if (!c) return carrierId || "—";
+    return `${c.id} · ${c.pladsId ? pladsnavn(pladsMap[c.pladsId]) : "uden lokation"}`;
+  };
 
   const nu = Date.now();
   const forfaldne = forfaldneOptaellinger(beholdning, optaellinger, nu);
@@ -95,7 +110,7 @@ export default function Optaelling() {
     if (!kanTaelle) return;
     saetArbejder(true);
     const r = await skrivOptaelling({
-      pladsId: valgt.pladsId, vareId: valgt.vareId,
+      carrierId: valgt.carrierId, vareId: valgt.vareId,
       batch: valgt.batch && valgt.batch !== UDEN_BATCH ? valgt.batch : null,
       taeltAntal: skaleret, aarsag: kraeverAarsag ? aarsag : null, note,
     });
@@ -112,7 +127,7 @@ export default function Optaelling() {
 
   const linje = (b) => {
     const v = vareMap[b.vareId];
-    return `${v?.varenummer || b.vareId} · ${pladsnavn(pladsMap[b.pladsId])}${
+    return `${v?.varenummer || b.vareId} · ${hvor(b.carrierId)}${
       b.batch && b.batch !== UDEN_BATCH ? ` · ${b.batch}` : ""}`;
   };
 
@@ -146,7 +161,7 @@ export default function Optaelling() {
         <Kort titel={`Tæl ${linje(valgt)}`}>
           {/* ⚠ DET FORVENTEDE TAL STÅR IKKE HER. Se hovedet. */}
           <p className="fc-hint">
-            Gå ud og tæl, og skriv hvad der <b>står på hylden</b>. Det
+            Gå ud og tæl, og skriv hvad der <b>ligger i beholderen</b>. Det
             forventede tal vises først bagefter — står det her, tæller man
             efter det frem for efter varerne.
           </p>
@@ -209,7 +224,7 @@ export default function Optaelling() {
                 <b>{vareMap[b.vareId]?.varenummer || b.vareId}</b>
               ) },
             { key: "plads", label: "Lokation",
-              render: (b) => pladsnavn(pladsMap[b.pladsId]) },
+              render: (b) => hvor(b.carrierId) },
             { key: "batch", label: "Batch", render: (b) => (
                 b.batch && b.batch !== UDEN_BATCH
                   ? <span className="fc-hint">{b.batch}</span>
@@ -282,7 +297,7 @@ export default function Optaelling() {
             { key: "vare", label: "Vare",
               render: (o) => <b>{vareMap[o.vareId]?.varenummer || o.vareId}</b> },
             { key: "plads", label: "Lokation",
-              render: (o) => pladsnavn(pladsMap[o.pladsId]) },
+              render: (o) => hvor(o.carrierId) },
             { key: "forventet", label: "Forventet", num: true,
               render: (o) => num(talFraMaengde(o.forventet), 0) },
             { key: "taelt", label: "Talt", num: true,

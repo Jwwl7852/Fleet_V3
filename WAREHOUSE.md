@@ -422,12 +422,43 @@ der skal lykkes sammen — og atomiciteten er allerede kun **delvis** (se etape
 prøverne prøver den form. Flyttes nøglen uden at prøverne følger med, prøver
 de en form der ikke længere findes — samme fælde som etape 5 i PRISER.md.
 
-⚠ **ÅBENT, og det skal besvares før etape 12:** *kan der ligge gods direkte på
-en hylde uden en carrier?* Siger vi ja, har beholdningen **to** nøgler og
-dermed to modeller, og hver eneste funktion skal kende begge. Siger vi nej, er
-en palle også en carrier, og pladsen bærer aldrig beholdning selv. Det sidste
-er renest og er formentlig svaret — men det er ikke afgjort, og det må ikke
-afgøres af den første funktion der får brug for det.
+### ✅ BESVARET: alt gods ligger i en carrier
+
+*Kan der ligge gods direkte på en hylde uden en carrier?* **Nej.** En palle
+er også en carrier, og `reolpladser` bærer aldrig beholdning selv. To nøgler
+ville have været to modeller, og hver eneste funktion — nøglen, bevægelsen,
+plukket, optællingen, belægningen — skulle kende begge.
+
+Prisen er at hver modtagelse skal navngive en beholder. Det er sådan et WMS
+sætter en pallelabel på: beholderen ER stedet, og hylden er dens adresse.
+
+**Etape 12 er inde.** `beholdning/<carrierId>__<vareId>__<batch>`, og
+`carriers/<id>.pladsId` siger hvor det står.
+
+⚠ **`putaway` SKIFTEDE BETYDNING, og det er den ene ting man skal vide.**
+Før var den en beholdningsbevægelse fra modtagepladsen til lagerpladsen. Nu
+flytter den **beholderen** og rører ikke ét eneste beholdningstal — den hedder
+*Placering* i skærmen. Til gengæld er `flyt` blevet omstuvning: gods fra én
+beholder til en anden. En bevægelse har derfor to former, og
+`valideBevaegelse()` deler sig efter arten: en placering har hverken vare
+eller antal, fordi godset ikke skifter mængde af at blive båret et andet sted
+hen.
+
+⚠ **En flytning er nu ÉT felt.** Før var det N saldoændringer der skulle
+lykkes sammen, hvor atomiciteten kun er delvis (etape 4). Det var hele
+argumentet for at flytte nøglen.
+
+⚠ **Karantænen sidder på hylden og skulle følge med et led ud.** Godset står i
+en beholder, beholderen står på en plads — slås spærringen ikke op gennem
+carrieren, kan den omgås ved at plukke fra beholderen frem for fra hylden. Det
+gælder både i skærmen, i plukpanelet og i `bevaegelseskriv`.
+
+⚠ **En probe mod den udrullede base fandt en placering med et `antal` der gik
+igennem.** Funktionen læste feltet forbi. Der landede ingen forkerte data —
+serveren bygger selv posten — men kalderen fik at vide at det lykkedes og
+troede dermed at tallet betød noget. Et felt der tages imod og ignoreres, er
+værre end et der afvises. Prøverne kunne ikke se det: de prøver
+`validePlacering()`, og fejlen lå i hvad funktionen sendte ind i den.
 
 ### ⚠ 6.4 Fire ting på planchen der ikke er felter endnu
 
@@ -478,7 +509,7 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
 | 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | ✅ |
-| 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | |
+| 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | ✅ |
 | 13 | **Nøgletallene i `kpi/`** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | |
 | 14 | **Transit & placering** — de fire trin, forslag til ledig lokation, kundens faste område | Modtagelsen på gulvet | |
 | 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | |

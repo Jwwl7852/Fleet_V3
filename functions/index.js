@@ -48,7 +48,8 @@ import {
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
-  valideOptaelling,
+  valideOptaelling, validePlacering, virkningPaaCarrier, kraeverLokation,
+  CARRIER_STATUS,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
@@ -1404,12 +1405,20 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
   const rod = db.ref(`tenants/${tenantId}`);
   const d = req.data || {};
 
+  /* ⚠ TO SLAGS BEVÆGELSER SIDEN ETAPE 12. En PLACERING flytter beholderen hen
+     på en hylde og rører ingen saldo; alt andet flytter gods MELLEM beholdere.
+     De to deles her, fordi de har hver sit skema — en placering har hverken
+     vare eller antal. */
+  if (kortStreng(d.art, 20) === "putaway") {
+    return await skrivPlacering({ rod, tenantId, uid, d });
+  }
+
   const post = {
     art: kortStreng(d.art, 20),
     vareId: kortStreng(d.vareId, 60),
     antal: Number(d.antal),
-    fraPladsId: kortStreng(d.fraPladsId, 60),
-    tilPladsId: kortStreng(d.tilPladsId, 60),
+    fraCarrierId: kortStreng(d.fraCarrierId, 60),
+    tilCarrierId: kortStreng(d.tilCarrierId, 60),
     batch: kortStreng(d.batch, 40),
     serienummer: kortStreng(d.serienummer, 60),
     reference: kortStreng(d.reference, 60),
@@ -1435,29 +1444,48 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
       Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" "));
   }
 
-  /* ---- Pladserne skal findes, og fra-pladsen skal kunne plukkes ------ */
-  const pladser = {};
-  for (const felt of ["fraPladsId", "tilPladsId"]) {
+  /* ---- Beholderne skal findes ---------------------------------------- */
+  const carriers = {};
+  for (const felt of ["fraCarrierId", "tilCarrierId"]) {
     const id = post[felt];
     if (!id) continue;
-    const p = (await rod.child(`reolpladser/${id}`).once("value")).val();
-    if (!p) throw new HttpsError("not-found", `Lokationen ${id} findes ikke.`);
-    pladser[id] = p;
+    const c = (await rod.child(`carriers/${id}`).once("value")).val();
+    if (!c) throw new HttpsError("not-found", `Beholderen ${id} findes ikke.`);
+    carriers[id] = c;
   }
 
-  /* ⚠ KARANTÆNE BLOKERER, DEN ADVARER IKKE. Varen på en karantæneplads er
-     under mistanke; en pluk der bare advarer, bliver klikket væk. Samme regel
-     som en udløbet kompetence. */
-  if (post.fraPladsId && !kanPlukkesFra(pladser[post.fraPladsId])) {
-    const p = pladser[post.fraPladsId];
-    throw new HttpsError("failed-precondition",
-      `Der kan ikke plukkes fra en plads i ${
-        PLADS_STATUS[p.status]?.label.toLowerCase() || "den tilstand"}.`);
+  /* ⚠ KARANTÆNEN SIDDER PÅ HYLDEN, IKKE PÅ BEHOLDEREN — og den skal stadig
+     håndhæves. Efter etape 12 står godset i en carrier, og carrieren står på
+     en plads: spærringen slås derfor op ét led længere ude. Uden det ville en
+     karantæne kunne omgås ved at plukke fra beholderen frem for fra hylden,
+     og det er nøjagtig den slags hul en migrering efterlader.
+
+     En beholder UDEN plads (scannet ind, ikke placeret, eller i transit) har
+     ingen hylde at arve en spærring fra — dér er der intet at slå op. */
+  const pladsFor = async (carrierId) => {
+    const pid = carriers[carrierId]?.pladsId;
+    if (!pid) return null;
+    const p = (await rod.child(`reolpladser/${pid}`).once("value")).val();
+    if (!p) throw new HttpsError("not-found", `Lokationen ${pid} findes ikke.`);
+    return { id: pid, ...p };
+  };
+
+  if (post.fraCarrierId) {
+    const p = await pladsFor(post.fraCarrierId);
+    if (p && !kanPlukkesFra(p)) {
+      throw new HttpsError("failed-precondition",
+        `Beholderen står på en plads i ${
+          PLADS_STATUS[p.status]?.label.toLowerCase() || "den tilstand"} — ` +
+        "der kan ikke plukkes fra den.");
+    }
   }
-  /* En lukket plads må heller ikke modtage: hylden er taget ud af drift. */
-  if (post.tilPladsId && pladser[post.tilPladsId]?.status === "lukket") {
-    throw new HttpsError("failed-precondition",
-      "Lokationen er lukket og kan ikke modtage varer.");
+  if (post.tilCarrierId) {
+    const p = await pladsFor(post.tilCarrierId);
+    /* En lukket plads må heller ikke modtage: hylden er taget ud af drift. */
+    if (p?.status === "lukket") {
+      throw new HttpsError("failed-precondition",
+        "Beholderen står på en lukket lokation og kan ikke modtage varer.");
+    }
   }
 
   /* ---- Hvad det gør ved saldoerne ------------------------------------ */
@@ -1473,7 +1501,7 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
     const nu = saldoAf(snap);
     if (nu + v.aendring < 0) {
       throw new HttpsError("failed-precondition",
-        `Der står kun ${talFraMaengde(nu)} ${vare.enhed} af ${vare.varenummer} på lokationen — ` +
+        `Der ligger kun ${talFraMaengde(nu)} ${vare.enhed} af ${vare.varenummer} i beholderen — ` +
         `der kan ikke tages ${talFraMaengde(-v.aendring)}.`);
     }
   }
@@ -1487,8 +1515,8 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
       vareId: post.vareId,
       kundeId: post.kundeId,
       antal: post.antal,
-      fraPladsId: post.fraPladsId || null,
-      tilPladsId: post.tilPladsId || null,
+      fraCarrierId: post.fraCarrierId || null,
+      tilCarrierId: post.tilCarrierId || null,
       batch: post.batch || null,
       serienummer: post.serienummer || null,
       reference: post.reference || null,
@@ -1503,7 +1531,7 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
     const b = `beholdning/${v.noegle}`;
     /* Nøglefelterne skrives hver gang; de er de samme, og en post der
        oprettes af en increment ville ellers mangle dem. */
-    opdatering[`${b}/pladsId`] = v.pladsId;
+    opdatering[`${b}/carrierId`] = v.carrierId;
     opdatering[`${b}/vareId`] = v.vareId;
     opdatering[`${b}/batch`] = v.batch;
     opdatering[`${b}/senestMs`] = nu;
@@ -1543,6 +1571,94 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
     advarsel: negative.length ? "negativ-saldo" : null,
   };
 });
+
+/**
+ * En PLACERING: beholderen sættes på en hylde.
+ *
+ * ⚠ DEN RØRER INGEN SALDO. Godset ligger i beholderen og flytter med den —
+ * det er hele gevinsten ved at lægge beholdningen på carrieren i etape 12.
+ * Før var en flytning N saldoændringer der skulle lykkes sammen, og
+ * atomiciteten var kun delvis.
+ *
+ * ⚠ BEVÆGELSEN OG PLADSEN SKRIVES SAMMEN ELLER SLET IKKE. Skrives kun den
+ * ene, står beholderen enten et sted ingen kan se hvornår den kom til, eller
+ * der findes en placering af noget der aldrig blev flyttet. Samme regel som
+ * udlånet og kassen i `kasseudlaanskriv`.
+ */
+async function skrivPlacering({ rod, tenantId, uid, d }) {
+  const carrierId = kortStreng(d.carrierId, 60);
+  const tilPladsId = kortStreng(d.tilPladsId, 60);
+  const note = kortStreng(d.note, 300);
+
+  /* ⚠ DE FORBUDTE FELTER SENDES MED IND I VALIDERINGEN, frem for bare at
+     blive læst forbi. En placering med et `antal` gik igennem indtil en probe
+     mod den udrullede base fandt det: der landede ingen forkerte data, fordi
+     funktionen selv bygger posten — men kalderen fik at vide at det lykkedes,
+     og troede dermed at tallet betød noget. Et felt der tages imod og
+     ignoreres, er værre end et der afvises. */
+  const fejl = validePlacering({
+    art: "putaway", carrierId, tilPladsId,
+    vareId: kortStreng(d.vareId, 60) || null,
+    antal: Number.isFinite(Number(d.antal)) ? Number(d.antal) : null,
+    batch: kortStreng(d.batch, 40) || null,
+    fraCarrierId: kortStreng(d.fraCarrierId, 60) || null,
+    tilCarrierId: kortStreng(d.tilCarrierId, 60) || null,
+  });
+  if (Object.keys(fejl).length) {
+    throw new HttpsError("invalid-argument",
+      Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" "));
+  }
+
+  const [carrier, plads] = await Promise.all([
+    rod.child(`carriers/${carrierId}`).once("value").then((s) => s.val()),
+    rod.child(`reolpladser/${tilPladsId}`).once("value").then((s) => s.val()),
+  ]);
+  if (!carrier) throw new HttpsError("not-found", `Beholderen ${carrierId} findes ikke.`);
+  if (!plads) throw new HttpsError("not-found", `Lokationen ${tilPladsId} findes ikke.`);
+
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE, så invarianten skal håndhæves HER
+     også. En beholder i transit eller en opbrugt engangskasse optager ingen
+     hylde — og belægningen tæller alt der har et pladsId. Slap en af dem
+     igennem, ville en hylde se optaget ud af noget der er ude af huset. */
+  if (!kraeverLokation(carrier.status)) {
+    throw new HttpsError("failed-precondition",
+      `En beholder der er ${
+        CARRIER_STATUS[carrier.status]?.label.toLowerCase() || "ude"}, ` +
+      "kan ikke sættes på en hylde.");
+  }
+  if (plads.status === "lukket") {
+    throw new HttpsError("failed-precondition",
+      "Lokationen er lukket og kan ikke modtage en beholder.");
+  }
+
+  const virkning = virkningPaaCarrier({ art: "putaway", carrierId, tilPladsId });
+  if (!virkning) throw new HttpsError("internal", "Placeringen kunne ikke udledes.");
+
+  const nu = Date.now();
+  const nyId = rod.child("bevaegelser").push().key;
+
+  await rod.update({
+    [`bevaegelser/${nyId}`]: {
+      art: "putaway",
+      carrierId,
+      /* Hvor den stod før — så flytningen kan læses baglæns. `null` første
+         gang: en nyscannet beholder kom ikke fra en hylde. */
+      fraPladsId: carrier.pladsId || null,
+      tilPladsId,
+      note: note || null,
+      tidspunktMs: nu,
+      /* ⚠ uid, IKKE personId. Det er hvem der GJORDE noget. */
+      oprettetAf: uid,
+    },
+    [`carriers/${virkning.carrierId}/pladsId`]: virkning.pladsId,
+  });
+
+  await logBevaegelse(tenantId, uid, AUDIT.aendre, nyId, null,
+    { art: "putaway" },
+    `beholder ${carrierId} placeret paa ${tilPladsId}`);
+
+  return { ok: true, id: nyId, carrierId, pladsId: tilPladsId };
+}
 
 async function logBevaegelse(tenantId, uid, handling, id, foer, efter, note) {
   const d = diff(foer, efter);
@@ -1647,8 +1763,10 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
          tilhørte da det forlod huset. */
       kundeId: ordre.kundeId,
       antal: l.antal,
-      fraPladsId: ordre.afsendPladsId,
-      tilPladsId: null,
+      /* ⚠ UD AF AFSENDELSESBEHOLDEREN, ikke af en hylde. Plukket flyttede
+         godset dertil; afsendelsen tager det ud af huset. */
+      fraCarrierId: ordre.afsendCarrierId,
+      tilCarrierId: null,
       batch: l.batch,
       serienummer: l.serienummer,
       reference: ordreId,
@@ -1656,8 +1774,8 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
       tidspunktMs: nu,
       oprettetAf: uid,
     };
-    const bn = `beholdning/${beholdningsNoegle(ordre.afsendPladsId, l.vareId, l.batch)}`;
-    opdatering[`${bn}/pladsId`] = ordre.afsendPladsId;
+    const bn = `beholdning/${beholdningsNoegle(ordre.afsendCarrierId, l.vareId, l.batch)}`;
+    opdatering[`${bn}/carrierId`] = ordre.afsendCarrierId;
     opdatering[`${bn}/vareId`] = l.vareId;
     opdatering[`${bn}/batch`] = l.batch || UDEN_BATCH;
     opdatering[`${bn}/senestMs`] = nu;
@@ -1705,30 +1823,33 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
   const rod = db.ref(`tenants/${tenantId}`);
   const d = req.data || {};
 
-  const pladsId = kortStreng(d.pladsId, 60);
+  const carrierId = kortStreng(d.carrierId, 60);
   const vareId = kortStreng(d.vareId, 60);
   const batch = kortStreng(d.batch, 40);
   const taeltAntal = Number(d.taeltAntal);
   const aarsag = kortStreng(d.aarsag, 30);
   const note = kortStreng(d.note, 300);
 
-  if (!pladsId) throw new HttpsError("invalid-argument", "pladsId mangler.");
+  if (!carrierId) throw new HttpsError("invalid-argument", "carrierId mangler.");
   if (!vareId) throw new HttpsError("invalid-argument", "vareId mangler.");
 
-  const [vare, plads] = await Promise.all([
+  /* ⚠ DER TÆLLES I EN BEHOLDER (etape 12). En optælling af hylden ville
+     skulle summere alt hvad der stod på den, og så kunne en afvigelse ikke
+     henføres til den beholder hvor den opstod. */
+  const [vare, carrier] = await Promise.all([
     rod.child(`varer/${vareId}`).once("value").then((s) => s.val()),
-    rod.child(`reolpladser/${pladsId}`).once("value").then((s) => s.val()),
+    rod.child(`carriers/${carrierId}`).once("value").then((s) => s.val()),
   ]);
   if (!vare) throw new HttpsError("not-found", `Varen ${vareId} findes ikke.`);
-  if (!plads) throw new HttpsError("not-found", `Lokationen ${pladsId} findes ikke.`);
+  if (!carrier) throw new HttpsError("not-found", `Beholderen ${carrierId} findes ikke.`);
 
   /* ⚠ HER LÆSES FORVENTNINGEN. Se hovedet. */
-  const noegle = beholdningsNoegle(pladsId, vareId, batch);
+  const noegle = beholdningsNoegle(carrierId, vareId, batch);
   const snap = await rod.child(`beholdning/${noegle}`).once("value");
   const forventet = snap.exists() ? (snap.val()?.antal ?? 0) : 0;
 
   const fejl = valideOptaelling(
-    { pladsId, vareId, batch, taeltAntal, aarsag, note, forventet }, { vare });
+    { carrierId, vareId, batch, taeltAntal, aarsag, note, forventet }, { vare });
   if (Object.keys(fejl).length) {
     throw new HttpsError("invalid-argument",
       Object.entries(fejl).map(([k, v]) => `${k}: ${v}`).join(" "));
@@ -1748,8 +1869,8 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
       vareId,
       kundeId: vare.kundeId,
       antal: taeltAntal,
-      fraPladsId: null,
-      tilPladsId: pladsId,
+      fraCarrierId: null,
+      tilCarrierId: carrierId,
       batch: batch || null,
       serienummer: null,
       /* Referencen binder bevægelsen til optællingsposten, så en rettelse i
@@ -1760,7 +1881,7 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
       oprettetAf: uid,
     },
     [`optaellinger/${optId}`]: {
-      pladsId, vareId,
+      carrierId, vareId,
       batch: batch || null,
       forventet,
       taeltAntal,
@@ -1773,7 +1894,7 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
       tidspunktMs: nu,
       oprettetAf: uid,
     },
-    [`beholdning/${noegle}/pladsId`]: pladsId,
+    [`beholdning/${noegle}/carrierId`]: carrierId,
     [`beholdning/${noegle}/vareId`]: vareId,
     [`beholdning/${noegle}/batch`]: batch || UDEN_BATCH,
     [`beholdning/${noegle}/antal`]: taeltAntal,
@@ -1785,8 +1906,8 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
   await logBevaegelse(tenantId, uid, AUDIT.aendre, optId,
     { antal: forventet }, { antal: taeltAntal, aarsag: aarsag || null },
     afvigelse === 0
-      ? `optaelling uden afvigelse paa ${pladsId}`
-      : `AFVIGELSE ${afvigelse > 0 ? "+" : ""}${afvigelse} paa ${pladsId} (${aarsag})`);
+      ? `optaelling uden afvigelse i ${carrierId}`
+      : `AFVIGELSE ${afvigelse > 0 ? "+" : ""}${afvigelse} i ${carrierId} (${aarsag})`);
 
   return { ok: true, id: optId, forventet, taeltAntal, afvigelse };
 });

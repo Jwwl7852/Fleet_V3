@@ -48,11 +48,18 @@ async function kald(data, navn = LAGERFUNKTION) {
  * en tusindedel.
  */
 export const skrivBevaegelse = ({
-  art, vareId, antal, fraPladsId, tilPladsId, batch, serienummer, reference, note,
+  art, vareId, antal, fraCarrierId, tilCarrierId,
+  carrierId, tilPladsId,
+  batch, serienummer, reference, note,
 }) =>
   kald({
     art, vareId, antal,
-    fraPladsId: fraPladsId || undefined,
+    /* Godsbevægelsen flytter mellem BEHOLDERE (etape 12) … */
+    fraCarrierId: fraCarrierId || undefined,
+    tilCarrierId: tilCarrierId || undefined,
+    /* … mens en placering flytter selve beholderen hen på en hylde. De to
+       sæt felter udelukker hinanden, og serveren afviser en blanding. */
+    carrierId: carrierId || undefined,
     tilPladsId: tilPladsId || undefined,
     batch: batch || undefined,
     serienummer: serienummer || undefined,
@@ -79,9 +86,9 @@ export const afsendPlukordre = ({ ordreId }) =>
  * afvigelsen være forskellen mellem hvad brugeren TROEDE der stod og hvad han
  * talte — og så måler den ingenting.
  */
-export const skrivOptaelling = ({ pladsId, vareId, batch, taeltAntal, aarsag, note }) =>
+export const skrivOptaelling = ({ carrierId, vareId, batch, taeltAntal, aarsag, note }) =>
   kald({
-    pladsId, vareId, taeltAntal,
+    carrierId, vareId, taeltAntal,
     batch: batch || undefined,
     aarsag: aarsag || undefined,
     note: note || undefined,

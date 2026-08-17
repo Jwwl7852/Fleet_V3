@@ -125,15 +125,26 @@ const M = (n) => Math.round(n * 1000);
  * ⚠ NØGLEN ER <plads>__<vare>__<batch>, som beholdningsNoegle() bygger den.
  * Skrives den anderledes her, viser demo noget der ikke kan opstå i drift.
  */
+/**
+ * ⚠ NØGLEN BÆRER CARRIEREN, IKKE PLADSEN (etape 12). Godset ligger i en
+ * beholder, og beholderen står på hylden — `<carrierId>__<vareId>__<batch>`.
+ * Hylden står ALDRIG på beholdningsposten: to steder til samme kendsgerning
+ * driver fra hinanden første gang nogen flytter beholderen.
+ */
 export const DEMO_BEHOLDNING = [
-  { id: "p-d-05-12__v-st-1002__LOT-240515", pladsId: "p-d-05-12", vareId: "v-st-1002", batch: "LOT-240515", antal: M(420) },
-  { id: "p-d-05-13__v-st-1002__LOT-240602", pladsId: "p-d-05-13", vareId: "v-st-1002", batch: "LOT-240602", antal: M(180) },
-  { id: "p-d-05-12__v-tool-1256___", pladsId: "p-d-05-12", vareId: "v-tool-1256", batch: "_", antal: M(3) },
-  { id: "p-c-01-01__v-pal-1200___", pladsId: "p-c-01-01", vareId: "v-pal-1200", batch: "_", antal: M(128) },
-  { id: "p-a-01-03__v-kart-a4___", pladsId: "p-a-01-03", vareId: "v-kart-a4", batch: "_", antal: M(64) },
-  /* ⚠ PÅ EN KARANTÆNEPLADS. Der SKAL stå noget dér — ellers kan man ikke se
-     at beholdningen tælles med, men ikke må plukkes. */
-  { id: "p-b-02-01__v-gran-50__LOT-240401", pladsId: "p-b-02-01", vareId: "v-gran-50", batch: "LOT-240401", antal: M(250.5) },
+  { id: "CRR-100246__v-st-1002__LOT-240515", carrierId: "CRR-100246", vareId: "v-st-1002", batch: "LOT-240515", antal: M(420) },
+  { id: "CRR-100246__v-st-1002__LOT-240602", carrierId: "CRR-100246", vareId: "v-st-1002", batch: "LOT-240602", antal: M(180) },
+  { id: "CRR-100246__v-tool-1256___", carrierId: "CRR-100246", vareId: "v-tool-1256", batch: "_", antal: M(3) },
+  { id: "CRR-100245__v-pal-1200___", carrierId: "CRR-100245", vareId: "v-pal-1200", batch: "_", antal: M(128) },
+  /* ⚠ I EN BEHOLDER UDEN LOKATION. Godset findes, hylden gør ikke — det er
+     den scannede, endnu ikke placerede beholder. Den SKAL være i sættet:
+     ellers opdages det ikke, hvis en skærm lægger sådan en post på en
+     tilfældig hylde frem for at lade den stå uden. */
+  { id: "CRR-1X8910__v-kart-a4___", carrierId: "CRR-1X8910", vareId: "v-kart-a4", batch: "_", antal: M(64) },
+  /* ⚠ I EN BEHOLDER PÅ EN KARANTÆNEPLADS. Der SKAL ligge noget dér — ellers
+     kan man ikke se at beholdningen tælles med, men ikke må plukkes. Efter
+     etape 12 arves spærringen fra hylden gennem beholderen. */
+  { id: "CRR-100249__v-gran-50__LOT-240401", carrierId: "CRR-100249", vareId: "v-gran-50", batch: "LOT-240401", antal: M(250.5) },
 ];
 
 /**
@@ -184,6 +195,13 @@ export const DEMO_CARRIERS = [
     id: "CRR-1X8911", type: "traekasse", ejerforhold: "engang", status: "opbrugt",
     kundeId: "hamburgHandel",
   },
+  {
+    /* ⚠ PÅ KARANTÆNEPLADSEN. Efter etape 12 arves spærringen fra hylden
+       GENNEM beholderen, og uden en beholder dér kunne man ikke se om
+       arven virker. */
+    id: "CRR-100249", type: "gitterbur", ejerforhold: "ejet", status: "paaLager",
+    pladsId: "p-b-02-01", kundeId: "skagenSeafood",
+  },
 ];
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -212,16 +230,22 @@ if (import.meta.env?.DEV) {
     }
   }
 
+  const carrierIder = new Set(DEMO_CARRIERS.map((c) => c.id));
   for (const b of DEMO_BEHOLDNING) {
-    if (!pladser.has(b.pladsId)) {
-      console.warn(`demo-lager: beholdning på "${b.pladsId}", som ikke findes.`);
+    if (!carrierIder.has(b.carrierId)) {
+      console.warn(`demo-lager: beholdning i "${b.carrierId}", som ikke findes.`);
+    }
+    /* ⚠ INGEN pladsId PÅ EN BEHOLDNINGSPOST. Hylden er beholderens adresse;
+       to steder til samme kendsgerning driver fra hinanden. */
+    if (b.pladsId) {
+      console.warn(`demo-lager: ${b.id} har en pladsId — godset ligger i en beholder.`);
     }
     if (!varer.has(b.vareId)) {
       console.warn(`demo-lager: beholdning af "${b.vareId}", som ikke findes.`);
     }
     /* ⚠ NØGLEN SKAL SVARE TIL FELTERNE. Gør den ikke det, kan serveren skrive
-       to poster for samme hylde og vare — og så er totalen forkert. */
-    const forventet = `${b.pladsId}__${b.vareId}__${b.batch || "_"}`;
+       to poster for samme beholder og vare — og så er totalen forkert. */
+    const forventet = `${b.carrierId}__${b.vareId}__${b.batch || "_"}`;
     if (b.id !== forventet) {
       console.warn(`demo-lager: nøglen ${b.id} burde være ${forventet}.`);
     }

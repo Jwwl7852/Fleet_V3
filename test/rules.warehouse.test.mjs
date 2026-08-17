@@ -182,7 +182,7 @@ describe("varekartoteket", () => {
 describe("bevægelser og beholdning skrives kun af serveren", () => {
   const bev = {
     art: "modtag", vareId: "v1", kundeId: "k1",
-    antal: 2 * MAENGDE_SKALA, tilPladsId: "p1", tidspunktMs: 1786000000000,
+    antal: 2 * MAENGDE_SKALA, tilCarrierId: "c1", tidspunktMs: 1786000000000,
   };
 
   it("nægter en lagermedarbejder at skrive en bevægelse", async () => {
@@ -202,9 +202,9 @@ describe("bevægelser og beholdning skrives kun af serveren", () => {
     /* ⚠ ET LAGERTAL DER KAN RETTES I HÅNDEN, BEVISER INGENTING. Så er
        cycle count en formalitet. */
     const db = som(BEGGE, "admin");
-    const noegle = beholdningsNoegle("p1", "v1", null);
+    const noegle = beholdningsNoegle("c1", "v1", null);
     await assertFails(set(ref(db, t(BEGGE, `beholdning/${noegle}`)), {
-      pladsId: "p1", vareId: "v1", antal: 5000,
+      carrierId: "c1", vareId: "v1", antal: 5000,
     }));
     await assertFails(
       update(ref(db, t(BEGGE, `beholdning/${noegle}`)), { antal: 99000 }));
@@ -242,5 +242,33 @@ describe("modellen og reglerne siger det samme", () => {
     const blok = regler.slice(regler.indexOf('"beholdning": {'));
     const antal = blok.split(/\r?\n/).find((l) => l.includes('"antal"'));
     assert.ok(antal.includes(">= 0"), "beholdningen kan gå i minus");
+  });
+
+  it("⚠ BEHOLDNINGEN HÆNGER PÅ EN BEHOLDER, IKKE PÅ EN HYLDE", () => {
+    /* Etape 12. Bar posten OGSÅ en pladsId, ville de to drive fra hinanden
+       første gang nogen flyttede beholderen — og hylden ville vise varer der
+       fysisk stod et andet sted. */
+    const blok = regler.slice(regler.indexOf('"beholdning": {'),
+                              regler.indexOf('"plukordrer"'));
+    assert.ok(blok.includes("hasChildren(['carrierId', 'vareId', 'antal'])"),
+      "beholdningen kræver ikke en beholder");
+    assert.ok(!blok.includes('"pladsId"'),
+      "beholdningsposten bærer stadig en hylde");
+    assert.ok(blok.includes("child('carriers').child(newData.val()).exists()"),
+      "beholderen prøves ikke mod carriers-noden");
+  });
+
+  it("⚠ EN PLACERING HAR HVERKEN VARE ELLER ANTAL", () => {
+    /* To slags bevægelser deler noden: en godsbevægelse har vare, kunde og
+       antal; en placering flytter selve beholderen. Krydsreglen holder dem
+       adskilt, så en placering ikke kan bære et antal ingen kan forklare. */
+    const blok = regler.slice(regler.indexOf('"bevaegelser": {'),
+                              regler.indexOf('"beholdning": {'));
+    assert.ok(blok.includes("newData.child('art').val() === 'putaway'"),
+      "reglerne skelner ikke de to slags bevægelser");
+    assert.ok(blok.includes("!newData.hasChild('vareId')"),
+      "en placering kan bære en vare");
+    assert.ok(blok.includes("!newData.hasChild('tilPladsId')"),
+      "en godsbevægelse kan bære en hylde");
   });
 });

@@ -206,31 +206,55 @@ export function valideLagerfelter(post = {}) {
  */
 export const BEVAEGELSE_ART = {
   modtag: {
-    art: "modtag", label: "Modtagelse", kraeverFra: false, kraeverTil: true,
+    art: "modtag", label: "Modtagelse",
+    kraeverFraCarrier: false, kraeverTilCarrier: true,
   },
+  /* ⚠ PUTAWAY FLYTTER BEHOLDEREN, IKKE GODSET — og det er den ENE art der
+     skiftede betydning, da beholdningen flyttede til carrier-niveau.
+
+     Før lå godset på hylden, og en putaway var en beholdningsbevægelse fra
+     modtagepladsen til lagerpladsen. Nu ligger godset I carrieren, og
+     carrieren står på hylden: at sætte den på plads ændrer `carriers/<id>
+     .pladsId` og rører ikke ét eneste beholdningstal.
+
+     Den bliver stående som en bevægelse, fordi den ER en hændelse man skal
+     kunne spore — "Placeret på lokation" er linjen på planchen — og fordi
+     den er en håndtering der kan afregnes. Men den har hverken vare eller
+     antal, og det er derfor `valideBevaegelse()` deler sig i to. */
   putaway: {
-    art: "putaway", label: "Putaway", kraeverFra: true, kraeverTil: true,
+    art: "putaway", label: "Placering", flytterCarrier: true,
+    kraeverFraCarrier: false, kraeverTilCarrier: false,
   },
+  /* ⚠ OG DERFOR ER `flyt` NU OMSTUVNING — gods fra én beholder til en anden.
+     At flytte en carrier hen på en anden hylde er en `putaway`; det er den
+     samme handling som den første placering, og to arter for det ville være
+     to navne for én hændelse. */
   flyt: {
-    art: "flyt", label: "Flytning", kraeverFra: true, kraeverTil: true,
+    art: "flyt", label: "Flytning mellem beholdere",
+    kraeverFraCarrier: true, kraeverTilCarrier: true,
   },
   pluk: {
-    art: "pluk", label: "Pluk", kraeverFra: true, kraeverTil: true,
+    art: "pluk", label: "Pluk",
+    kraeverFraCarrier: true, kraeverTilCarrier: true,
   },
   afsend: {
-    art: "afsend", label: "Afsendelse", kraeverFra: true, kraeverTil: false,
+    art: "afsend", label: "Afsendelse",
+    kraeverFraCarrier: true, kraeverTilCarrier: false,
   },
   retur: {
-    art: "retur", label: "Retur", kraeverFra: false, kraeverTil: true,
+    art: "retur", label: "Retur",
+    kraeverFraCarrier: false, kraeverTilCarrier: true,
   },
   /* ⚠ OPTÆLLING OG JUSTERING ER TO TING. En optælling er et TAL man har talt
      sig frem til; en justering er en RETTELSE med en årsag. Slås de sammen,
      kan et svind bogføres som "vi talte bare forkert". */
   optael: {
-    art: "optael", label: "Optælling", kraeverFra: false, kraeverTil: true,
+    art: "optael", label: "Optælling",
+    kraeverFraCarrier: false, kraeverTilCarrier: true,
   },
   justering: {
-    art: "justering", label: "Justering", kraeverFra: false, kraeverTil: true,
+    art: "justering", label: "Justering",
+    kraeverFraCarrier: false, kraeverTilCarrier: true,
   },
 };
 
@@ -256,11 +280,21 @@ export const MAENGDE_SKALA = 1000;
 export const maengdeFraTal = (n) => Math.round((Number(n) || 0) * MAENGDE_SKALA);
 export const talFraMaengde = (m) => (Number(m) || 0) / MAENGDE_SKALA;
 
-export function valideBevaegelse(post = {}, { varer = [], kunder = [], pladser = [], vare = null } = {}) {
+export function valideBevaegelse(
+  post = {},
+  { varer = [], kunder = [], pladser = [], carriers = [], vare = null } = {}
+) {
   const f = {};
 
   const art = BEVAEGELSE_ART[post.art];
   if (!art) f.art = "Vælg en art.";
+
+  /* ⚠ EN PLACERING ER EN ANDEN SLAGS BEVÆGELSE, og derfor deler funktionen
+     sig her. Den flytter en BEHOLDER hen på en hylde og rører hverken vare,
+     antal eller batch — de felter ville være tomme rubrikker der inviterede
+     til at blive udfyldt, og et antal på en placering ville være et tal ingen
+     kunne forklare. Se noten ved `putaway` i BEVAEGELSE_ART. */
+  if (art?.flytterCarrier) return validePlacering(post, { pladser, carriers });
 
   if (!post.vareId) f.vareId = "Vælg en vare.";
   else if (varer.length && !varer.includes(post.vareId)) f.vareId = "Ukendt vare.";
@@ -281,21 +315,37 @@ export function valideBevaegelse(post = {}, { varer = [], kunder = [], pladser =
     f.antal = `${ENHED[vare.enhed].label} kan ikke deles.`;
   }
 
-  if (art?.kraeverFra && !post.fraPladsId) f.fraPladsId = "Vælg hvor varen tages fra.";
-  if (!art?.kraeverFra && post.fraPladsId) {
-    f.fraPladsId = `En ${art?.label.toLowerCase() || "bevægelse"} kommer ikke fra en plads.`;
+  /* ⚠ GODSET FLYTTER MELLEM BEHOLDERE, IKKE MELLEM HYLDER. Hylden er
+     carrierens adresse, ikke godsets — det er hele etape 12. En bevægelse der
+     stadig pegede på en plads, ville skrive et beholdningstal et sted hvor
+     der ikke ligger noget. */
+  if (art?.kraeverFraCarrier && !post.fraCarrierId) {
+    f.fraCarrierId = "Vælg hvilken beholder varen tages fra.";
   }
-  if (art?.kraeverTil && !post.tilPladsId) f.tilPladsId = "Vælg hvor varen sættes.";
-  if (!art?.kraeverTil && post.tilPladsId) {
-    f.tilPladsId = `En ${art?.label.toLowerCase() || "bevægelse"} går ikke til en plads.`;
+  if (!art?.kraeverFraCarrier && post.fraCarrierId) {
+    f.fraCarrierId = `En ${art?.label.toLowerCase() || "bevægelse"} kommer ikke fra en beholder.`;
   }
-  for (const felt of ["fraPladsId", "tilPladsId"]) {
-    if (post[felt] && pladser.length && !pladser.includes(post[felt])) {
-      f[felt] = "Ukendt reolplads.";
+  if (art?.kraeverTilCarrier && !post.tilCarrierId) {
+    f.tilCarrierId = "Vælg hvilken beholder varen lægges i.";
+  }
+  if (!art?.kraeverTilCarrier && post.tilCarrierId) {
+    f.tilCarrierId = `En ${art?.label.toLowerCase() || "bevægelse"} går ikke til en beholder.`;
+  }
+  for (const felt of ["fraCarrierId", "tilCarrierId"]) {
+    if (post[felt] && carriers.length && !carriers.includes(post[felt])) {
+      f[felt] = "Ukendt beholder.";
     }
   }
-  if (post.fraPladsId && post.fraPladsId === post.tilPladsId) {
-    f.tilPladsId = "Fra og til er den samme plads.";
+  if (post.fraCarrierId && post.fraCarrierId === post.tilCarrierId) {
+    f.tilCarrierId = "Fra og til er den samme beholder.";
+  }
+  /* ⚠ EN PLADS PÅ EN GODSBEVÆGELSE ER EN REST FRA DEN GAMLE MODEL. Den
+     afvises frem for at blive ignoreret: et felt der tages imod og ikke
+     bruges, får den næste til at tro at det virker. */
+  for (const felt of ["fraPladsId", "tilPladsId"]) {
+    if (post[felt]) {
+      f[felt] = "Godset ligger i en beholder, ikke på en hylde. Angiv en beholder.";
+    }
   }
 
   /* Sporingen er varens, ikke bevægelsens — men den håndhæves her, fordi det
@@ -335,8 +385,42 @@ export const UDEN_BATCH = "_";
  * poster for samme hylde og vare er DE-QR 777 mod DE-KL 404 igen, denne gang
  * med et lagertal.
  */
-export const beholdningsNoegle = (pladsId, vareId, batch) =>
-  `${pladsId}__${vareId}__${batch || UDEN_BATCH}`;
+export const beholdningsNoegle = (carrierId, vareId, batch) =>
+  `${carrierId}__${vareId}__${batch || UDEN_BATCH}`;
+
+/**
+ * Placeringen — carrieren sættes på en hylde.
+ *
+ * ⚠ EN PLACERING HAR HVERKEN VARE ELLER ANTAL. Den flytter beholderen med alt
+ * hvad der er i den, og godset skifter ikke ejer, mængde eller batch af at
+ * blive båret hen på en anden hylde. Et antal her ville være et tal ingen
+ * kunne forklare bagefter.
+ */
+export function validePlacering(post = {}, { pladser = [], carriers = [] } = {}) {
+  const f = {};
+
+  if (!post.carrierId) f.carrierId = "Vælg beholderen der skal placeres.";
+  else if (carriers.length && !carriers.includes(post.carrierId)) {
+    f.carrierId = "Ukendt beholder.";
+  }
+
+  if (!post.tilPladsId) f.tilPladsId = "Vælg hvor beholderen sættes.";
+  else if (pladser.length && !pladser.includes(post.tilPladsId)) {
+    f.tilPladsId = "Ukendt reolplads.";
+  }
+
+  /* ⚠ FELTER DER IKKE HØRER TIL, AFVISES. En placering med et antal ville
+     ligne en beholdningsbevægelse — og den næste der læste posten, ville tro
+     at der var flyttet gods. */
+  for (const felt of ["vareId", "antal", "batch", "fraCarrierId", "tilCarrierId"]) {
+    if (post[felt] != null && post[felt] !== "") {
+      f[felt] = "En placering flytter beholderen, ikke godset i den.";
+    }
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
 
 /**
  * Hvad bevægelsen gør ved beholdningen: en liste af (nøgle, ændring).
@@ -353,30 +437,50 @@ export function virkningPaaBeholdning(post = {}) {
   const batch = post.batch || UDEN_BATCH;
   const ud = [];
 
+  /* ⚠ EN PLACERING RØRER INGEN SALDO. Beholderen flytter med alt hvad der er
+     i den; tallene følger med uden at blive skrevet om. Det er hele gevinsten
+     ved at lægge beholdningen på carrieren — før var en flytning N
+     saldoændringer der skulle lykkes sammen, og atomiciteten var kun delvis. */
+  if (BEVAEGELSE_ART[post.art]?.flytterCarrier) return ud;
+
   if (ABSOLUTTE_ARTER.includes(post.art)) {
     ud.push({
-      noegle: beholdningsNoegle(post.tilPladsId, post.vareId, batch),
-      pladsId: post.tilPladsId, vareId: post.vareId, batch,
+      noegle: beholdningsNoegle(post.tilCarrierId, post.vareId, batch),
+      carrierId: post.tilCarrierId, vareId: post.vareId, batch,
       saet: post.antal,
     });
     return ud;
   }
 
-  if (post.fraPladsId) {
+  if (post.fraCarrierId) {
     ud.push({
-      noegle: beholdningsNoegle(post.fraPladsId, post.vareId, batch),
-      pladsId: post.fraPladsId, vareId: post.vareId, batch,
+      noegle: beholdningsNoegle(post.fraCarrierId, post.vareId, batch),
+      carrierId: post.fraCarrierId, vareId: post.vareId, batch,
       aendring: -post.antal,
     });
   }
-  if (post.tilPladsId) {
+  if (post.tilCarrierId) {
     ud.push({
-      noegle: beholdningsNoegle(post.tilPladsId, post.vareId, batch),
-      pladsId: post.tilPladsId, vareId: post.vareId, batch,
+      noegle: beholdningsNoegle(post.tilCarrierId, post.vareId, batch),
+      carrierId: post.tilCarrierId, vareId: post.vareId, batch,
       aendring: post.antal,
     });
   }
   return ud;
+}
+
+/**
+ * Hvad en placering gør ved carrieren — eller `null`.
+ *
+ * ⚠ SAMME FORBEHOLD SOM virkningPaaBeholdning(): den AFGØR ingenting. Den
+ * svarer. Håndhævelsen hører i den Cloud Function der skriver bevægelsen, hvor
+ * placeringen og bevægelsen lander i ÉN skrivning — ellers står carrieren et
+ * sted uden at nogen kan se hvornår den kom.
+ */
+export function virkningPaaCarrier(post = {}) {
+  if (!BEVAEGELSE_ART[post.art]?.flytterCarrier) return null;
+  if (!post.carrierId || !post.tilPladsId) return null;
+  return { carrierId: post.carrierId, pladsId: post.tilPladsId };
 }
 
 /**
@@ -395,9 +499,23 @@ export function beholdningPrVare(poster = []) {
   return ud;
 }
 
-/** Beholdningen på én plads, pr. vare og batch. */
-export const beholdningPaaPlads = (poster = [], pladsId) =>
-  poster.filter((p) => p.pladsId === pladsId && (p.antal || 0) !== 0);
+/** Beholdningen i én beholder, pr. vare og batch. */
+export const beholdningPaaCarrier = (poster = [], carrierId) =>
+  poster.filter((p) => p.carrierId === carrierId && (p.antal || 0) !== 0);
+
+/**
+ * Beholdningen på én hylde — gennem de beholdere der står på den.
+ *
+ * ⚠ TO LED, OG DET ER MED VILJE. Godset ligger i en carrier, carrieren står
+ * på en plads. Gemte vi pladsen PÅ beholdningsposten også, ville den drive
+ * fra carrieren første gang nogen flyttede beholderen — og så ville en hylde
+ * vise varer der fysisk stod et andet sted. Det er `bemanding.ledig` igen.
+ */
+export function beholdningPaaPlads(poster = [], pladsId, carriers = []) {
+  const paaPladsen = new Set(
+    carriers.filter((c) => c.pladsId === pladsId).map((c) => c.id));
+  return poster.filter((p) => paaPladsen.has(p.carrierId) && (p.antal || 0) !== 0);
+}
 
 /**
  * Varer under deres minimum. Grundlaget for genbestillingsalerts.
@@ -485,8 +603,8 @@ export function tolkLagerfejl(fejl) {
    ramte den ene og ikke den anden, og så ville en ordre se færdig ud mens
    varerne stod på hylden. Det er `bemanding.ledig` igen.
 
-   ⚠ PLUK FLYTTER, DET FJERNER IKKE. En pluk går FRA hylden TIL en
-   afsendelsesplads. Først afsendelsen tager varen ud af huset. Var pluk en
+   ⚠ PLUK FLYTTER, DET FJERNER IKKE. En pluk går FRA lagerbeholderen TIL en
+   afsendelsesbeholder. Først afsendelsen tager varen ud af huset. Var pluk en
    ren fjernelse, ville der være et hul mellem hylden og bilen hvor godset
    ikke stod nogen steder — og det er præcis dér det bliver væk.
    ══════════════════════════════════════════════════════════════════════════ */
@@ -534,7 +652,7 @@ export const PRIORITET = {
 
 export const ALLE_PRIORITETER = Object.keys(PRIORITET);
 
-export function valideOrdre(post = {}, { kunder = [], varer = [], pladser = [] } = {}) {
+export function valideOrdre(post = {}, { kunder = [], varer = [], carriers = [] } = {}) {
   const f = {};
 
   if (!post.kundeId) f.kundeId = "Vælg hvilken kunde ordren er til.";
@@ -548,11 +666,13 @@ export function valideOrdre(post = {}, { kunder = [], varer = [], pladser = [] }
 
   if (!Number.isFinite(post.afgangMs)) f.afgangMs = "Vælg en afgangsdato.";
 
-  /* ⚠ AFSENDELSESPLADSEN ER PÅKRÆVET. En pluk flytter varen HEN et sted; uden
-     den ville plukket ikke vide hvor godset skal stå indtil bilen kommer. */
-  if (!post.afsendPladsId) f.afsendPladsId = "Vælg hvor det plukkede skal stå.";
-  else if (pladser.length && !pladser.includes(post.afsendPladsId)) {
-    f.afsendPladsId = "Ukendt lokation.";
+  /* ⚠ AFSENDELSESBEHOLDEREN ER PÅKRÆVET. En pluk flytter varen HEN et sted;
+     uden den ville plukket ikke vide hvad godset skal ligge i, indtil bilen
+     kommer. Det var en PLADS indtil etape 12 — nu ligger alt gods i en
+     beholder, og afsendelsesstedet er ikke en undtagelse. */
+  if (!post.afsendCarrierId) f.afsendCarrierId = "Vælg hvad det plukkede lægges i.";
+  else if (carriers.length && !carriers.includes(post.afsendCarrierId)) {
+    f.afsendCarrierId = "Ukendt beholder.";
   }
 
   const linjer = Object.values(post.linjer || {});
@@ -690,7 +810,11 @@ export const ALLE_AFVIGELSESAARSAGER = Object.keys(AFVIGELSESAARSAG);
 export function valideOptaelling(post = {}, { vare = null } = {}) {
   const f = {};
 
-  if (!post.pladsId) f.pladsId = "Vælg en lokation.";
+  /* ⚠ DER TÆLLES I EN BEHOLDER, IKKE PÅ EN HYLDE. Det er beholderen der
+     bærer godset, og en optælling af "hylden" ville skulle summere alt hvad
+     der stod på den — og så kunne en afvigelse ikke henføres til den beholder
+     hvor den opstod. Hylden findes stadig: den er carrierens adresse. */
+  if (!post.carrierId) f.carrierId = "Vælg beholderen der tælles.";
   if (!post.vareId) f.vareId = "Vælg en vare.";
 
   if (!Number.isInteger(post.taeltAntal)) f.taeltAntal = "Skriv hvad der blev talt.";
@@ -772,7 +896,7 @@ export const OPTAELLINGSINTERVAL_DAGE = 90;
 export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 0) {
   const senest = {};
   for (const o of optaellinger) {
-    const n = beholdningsNoegle(o.pladsId, o.vareId, o.batch);
+    const n = beholdningsNoegle(o.carrierId, o.vareId, o.batch);
     senest[n] = Math.max(senest[n] || 0, o.tidspunktMs || 0);
   }
   const graense = naa - OPTAELLINGSINTERVAL_DAGE * 86400000;
@@ -784,7 +908,7 @@ export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 
          stoler på det, går i stykker første gang nogen loader posterne på en
          anden måde. Og fejlen ville være tavs: alt ville se forfaldent ud,
          og ingen ville undre sig over at der skulle tælles. */
-      senestOptaltMs: senest[beholdningsNoegle(b.pladsId, b.vareId, b.batch)] || null,
+      senestOptaltMs: senest[beholdningsNoegle(b.carrierId, b.vareId, b.batch)] || null,
       negativ: (b.antal || 0) < 0,
     }))
     .filter((b) => b.negativ || !b.senestOptaltMs || b.senestOptaltMs < graense)

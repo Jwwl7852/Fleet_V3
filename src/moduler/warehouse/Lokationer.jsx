@@ -16,12 +16,16 @@
  * ikke et gemt belægningstal. Et gemt tal ville drive fra posterne, og en
  * hylde der ser fri ud men ikke er det, sender nogen op ad stigen forgæves.
  *
- * ⚠ OG DEN TÆLLER NU TRE KILDER: beholdningsposter, transportkasser og
- * carriers. Skærmen talte før kun beholdningen og var dermed allerede blind
- * for Turtlebookings kasser på de samme hylder; med carrieren ville den være
- * blind for to ting. Opgørelsen ligger i `belaegningPrPlads()` —
- * ét sted, fordi to opgørelser af samme hylde bliver uenige uden at nogen
- * kan se det.
+ * ⚠ OG DEN TÆLLER TO SLAGS BEHOLDERE: Turtlebookings transportkasser og
+ * Warehouses carriers. Skærmen talte før kun beholdningen og var dermed
+ * allerede blind for kasserne på de samme hylder. Opgørelsen ligger i
+ * `belaegningPrPlads()` — ét sted, fordi to opgørelser af samme hylde bliver
+ * uenige uden at nogen kan se det.
+ *
+ * ⚠ VARELINJERNE TÆLLES GENNEM BEHOLDEREN. Efter etape 12 ligger godset i en
+ * carrier, og carrieren står på pladsen; beholdningsposten kender ikke selv
+ * en hylde. To led, fordi et gemt pladsId på posten ville drive fra
+ * carrieren første gang nogen flyttede beholderen.
  *
  * ⚠ `kasser` LÆSES KUN HVIS TENANTEN HAR TURTLEBOOKING. Noden er spærret af
  * det modul, og en forespørgsel ville give `permission-denied` hos en kunde
@@ -213,7 +217,7 @@ export default function Lokationer() {
 
   /* ⚠ UDLEDT. Der findes ikke et gemt belægningstal, og der skal ikke komme
      et. `paaPlads` er varelinjerne — det er dem "Indhold" viser. */
-  const paaPlads = (id) => beholdningPaaPlads(beholdning, id);
+  const paaPlads = (id) => beholdningPaaPlads(beholdning, id, carriers);
 
   /* ⚠ OG DET ER HER HYLDEN FÅR ÉN SANDHED. Beholdning, kasser og carriers
      opgøres samme sted, i ét gennemløb pr. kilde. Talte skærmen selv, ville

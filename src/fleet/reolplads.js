@@ -5,18 +5,20 @@
  * ⚠ HVORFOR FILEN FINDES
  *
  * `reolpladser` er husets ene reolstruktur og deles af to moduler
- * (WAREHOUSE.md punkt 3.3). Fra og med carrieren står der TRE slags ting på
- * en plads:
+ * (WAREHOUSE.md punkt 3.3). Der står TO slags ting på en plads:
  *
- *   · beholdningsposter   Warehouse — kundens varer, pr. vare og batch
  *   · kasser              Turtlebooking — transportkasser til udlån
  *   · carriers            Warehouse — beholdere med kundens gods
  *
- * Indtil nu regnede `Lokationer.jsx` belægningen som antallet af
- * beholdningsposter alene. Den var allerede blind for kasserne, og med
- * carrieren ville den blive blind for to ting. En hylde der ser fri ud men
- * ikke er det, sender nogen op ad stigen forgæves — og værre: en putaway
- * bliver foreslået til en plads der er fysisk optaget.
+ * ⚠ OG GODSET STÅR IKKE PÅ HYLDEN. Efter etape 12 ligger hver eneste
+ * beholdningspost i en CARRIER, og carrieren står på pladsen. Varelinjerne
+ * opgøres derfor gennem to led — de tælles med, fordi de siger hvad der er i
+ * det der står der, men de kan ikke selv pege på en hylde.
+ *
+ * Indtil etape 11 regnede `Lokationer.jsx` belægningen som antallet af
+ * beholdningsposter alene. Den var allerede blind for kasserne. En hylde der
+ * ser fri ud men ikke er det, sender nogen op ad stigen forgæves — og værre:
+ * en placering bliver foreslået til en plads der er fysisk optaget.
  *
  * Det er `bemanding.ledig` og divisionsfilteret der stod to steder: samme
  * kendsgerning opgjort flere steder driver, og ingen af skærmene kan se at de
@@ -50,11 +52,17 @@ export function belaegningPaaPlads(
     return { varelinjer: 0, kasser: 0, carriers: 0, ialt: 0, optaget: false };
   }
 
+  /* ⚠ TO LED. Beholdningsposten peger på en CARRIER, og carrieren peger på
+     pladsen. Gemte posten også en pladsId, ville de to drive fra hinanden
+     første gang nogen flyttede beholderen — og hylden ville vise varer der
+     fysisk stod et andet sted. */
+  const staarHer = new Set(
+    carriers.filter((c) => c.pladsId === pladsId).map((c) => c.id));
   const varelinjer = beholdning.filter(
-    (b) => b.pladsId === pladsId && (b.antal ?? b.maengde ?? 0) !== 0
+    (b) => staarHer.has(b.carrierId) && (b.antal ?? b.maengde ?? 0) !== 0
   ).length;
   const kasseAntal = kasser.filter((k) => k.pladsId === pladsId).length;
-  const carrierAntal = carriers.filter((c) => c.pladsId === pladsId).length;
+  const carrierAntal = staarHer.size;
 
   const ialt = varelinjer + kasseAntal + carrierAntal;
   return {
@@ -99,11 +107,20 @@ export function belaegningPrPlads({ beholdning = [], kasser = [], carriers = [] 
     ud[id].optaget = true;
   };
 
-  for (const b of beholdning) {
-    if ((b.antal ?? b.maengde ?? 0) !== 0) tael(b.pladsId, "varelinjer");
-  }
+  /* Hvor står hver carrier? Ét opslag, så beholdningen kan tælles i ét
+     gennemløb frem for ét pr. post. */
+  const pladsFor = new Map(carriers.map((c) => [c.id, c.pladsId]));
+
   for (const k of kasser) tael(k.pladsId, "kasser");
   for (const c of carriers) tael(c.pladsId, "carriers");
+  for (const b of beholdning) {
+    if ((b.antal ?? b.maengde ?? 0) === 0) continue;
+    /* ⚠ EN POST I EN CARRIER UDEN LOKATION TÆLLER INGEN STEDER. Det er de
+       "uden lokation" på planchen: godset findes, men hylden gør ikke. Lagde
+       vi dem på en tilfældig plads, ville belægningen se rigtig ud og være
+       forkert. */
+    tael(pladsFor.get(b.carrierId), "varelinjer");
+  }
 
   return ud;
 }

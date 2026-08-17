@@ -1106,10 +1106,18 @@
         // proever mod.
         "bevaegelser": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["vareId", "kundeId", "tidspunktMs", "art", "reference"],
+          ".indexOn": ["vareId", "kundeId", "tidspunktMs", "art", "reference", "carrierId"],
           "$bevaegelseId": {
             ".write": false,
-            ".validate": "newData.hasChildren(['art', 'vareId', 'kundeId', 'antal', 'tidspunktMs'])",
+            // ⚠ TO SLAGS BEVAEGELSER SIDEN ETAPE 12.
+            //
+            // En GODSBEVAEGELSE flytter varer mellem beholdere og har vare,
+            // kunde og antal. En PLACERING (art putaway) flytter selve
+            // beholderen hen paa en hylde og har hverken vare eller antal —
+            // godset skifter ikke maengde af at blive baaret et andet sted
+            // hen. Et antal paa en placering ville vaere et tal ingen kunne
+            // forklare bagefter.
+            ".validate": "newData.hasChildren(['art', 'tidspunktMs']) && ((newData.child('art').val() === 'putaway' && newData.hasChildren(['carrierId', 'tilPladsId']) && !newData.hasChild('vareId') && !newData.hasChild('antal')) || (newData.child('art').val() !== 'putaway' && newData.hasChildren(['vareId', 'kundeId', 'antal']) && !newData.hasChild('tilPladsId') && !newData.hasChild('fraPladsId')))",
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtag|putaway|flyt|pluk|afsend|retur|optael|justering)$/)" },
             "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
             // ⚠ ET HISTORISK FAKTUM, IKKE ET OPSLAG. Hvem varen tilhoerte DA
@@ -1120,8 +1128,15 @@
             // anden skala her ville fakturere 1000x forkert paa den linje der
             // bandt de to sammen.
             "antal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
-            "fraPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ GODSET FLYTTER MELLEM BEHOLDERE. Hylden er beholderens
+            // adresse, ikke godsets — se beholdning-noden nedenfor.
+            "fraCarrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
+            "tilCarrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
+            // De to her hoerer KUN til en placering: hvilken beholder der blev
+            // sat hvor. Krydsreglen ovenfor holder dem ude af en godsbevaegelse.
+            "carrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
             "tilPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "fraPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
             // ⚠ INTET PUNKTUM. Batchen indgaar i en beholdningsnoegle, og
             // RTDB tillader hverken . # $ [ ] eller / i en noegle.
             "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/)" },
@@ -1147,11 +1162,16 @@
         // det bemanding.ledig igen, med lagervaerdi paa.
         "beholdning": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["pladsId", "vareId", "batch"],
+          ".indexOn": ["carrierId", "vareId", "batch"],
           "$noegle": {
             ".write": false,
-            ".validate": "newData.hasChildren(['pladsId', 'vareId', 'antal'])",
-            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ GODSET LIGGER I EN BEHOLDER, IKKE PAA EN HYLDE (etape 12).
+            // Noeglen er <carrierId>__<vareId>__<batch>, og hylden er
+            // carrierens adresse. Baerer posten OGSAA en pladsId, driver de to
+            // fra hinanden foerste gang nogen flytter beholderen — og saa
+            // viser hylden varer der fysisk staar et andet sted.
+            ".validate": "newData.hasChildren(['carrierId', 'vareId', 'antal'])",
+            "carrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
             "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
             "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_][A-Za-z0-9_-]{0,39}$/)" },
             // ⚠ IKKE NEGATIV. En hylde kan ikke rumme minus tolv paller, og
@@ -1174,7 +1194,7 @@
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|bevaegelser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["kundeId", "tilstand", "afgangMs", "prioritet"],
           "$ordreId": {
-            ".validate": "newData.hasChildren(['kundeId', 'nummer', 'tilstand', 'prioritet', 'afgangMs', 'afsendPladsId', 'linjer'])",
+            ".validate": "newData.hasChildren(['kundeId', 'nummer', 'tilstand', 'prioritet', 'afgangMs', 'afsendCarrierId', 'linjer'])",
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
             "nummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
             // ⚠ KLIENTEN MAA IKKE SAETTE `afsendt`. En ordre bliver afsendt
@@ -1192,7 +1212,9 @@
             // ⚠ HVOR DET PLUKKEDE SKAL STAA. En pluk FLYTTER varen hen et
             // sted; uden pladsen ville godset ikke staa nogen steder mellem
             // hylden og bilen — og det er praecis dér det bliver vaek.
-            "afsendPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ EN BEHOLDER, IKKE EN PLADS. Det plukkede skal ligge i noget,
+            // og efter etape 12 ligger alt gods i en beholder.
+            "afsendCarrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
             "linjer": {
               "$linjeId": {
                 ".validate": "newData.hasChildren(['vareId', 'antal'])",
@@ -1222,11 +1244,15 @@
         // vaere vejen til at SKJULE et svind frem for vejen til at finde det.
         "optaellinger": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["pladsId", "vareId", "tidspunktMs", "aarsag"],
+          ".indexOn": ["carrierId", "vareId", "tidspunktMs", "aarsag"],
           "$optaellingId": {
             ".write": false,
-            ".validate": "newData.hasChildren(['pladsId', 'vareId', 'forventet', 'taeltAntal', 'afvigelse', 'tidspunktMs'])",
-            "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            // ⚠ DER TAELLES I EN BEHOLDER, IKKE PAA EN HYLDE (etape 12). En
+            // optaelling af hylden ville skulle summere alt hvad der stod paa
+            // den, og saa kunne en afvigelse ikke henfoeres til den beholder
+            // hvor den opstod.
+            ".validate": "newData.hasChildren(['carrierId', 'vareId', 'forventet', 'taeltAntal', 'afvigelse', 'tidspunktMs'])",
+            "carrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
             "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
             "batch": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/)" },
             // ⚠ forventet KAN vaere negativ. Er saldoen gaaet i minus, er det
