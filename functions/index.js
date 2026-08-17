@@ -59,7 +59,9 @@ import {
   byggGrundlag, validerLinje, kanGodkende, godkend, kanEksportere, laas,
   naesteGrundlagsnummer, fraDb, kanLaase,
 } from "./delt/grundlag.js";
-import { kanSkifteEtape, byggEtapeSkifte } from "./delt/booking-state.js";
+import {
+  kanSkifteEtape, byggEtapeSkifte, forloebstilstand,
+} from "./delt/booking-state.js";
 import {
   reservationerFraEtape, enhedsIder, straekningFraEtape,
 } from "./delt/etaper.js";
@@ -2514,9 +2516,48 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
     opdatering[`etaper/${etapeId}/${felt}`] = vaerdi;
   }
 
-  /* ⚠ ÉN SKRIVNING. Etapen, dens ressourcer og reservationerne lander sammen
-     eller slet ikke. To kald ville være to udfald — og prototypens DE-QR 777
-     mod DE-KL 404 var netop to poster der kunne blive uenige. */
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ BOOKINGENS TILSTAND ER AFLEDT AF ETAPERNE — OG SKRIVES HER.
+
+     `forloebstilstand()` siger det selv: feltet lagres denormaliseret på
+     bookingen, men skrives af PRÆCIS ÉN ting — den funktion der skifter en
+     etapetilstand, i SAMME transaktion. Der er derfor ingen `bookingskift`
+     at bygge; der er den her blok.
+
+     Uden den ville bookingen stå som `afventerKoord` mens dens eneste etape
+     var annulleret. Det er `bemanding.ledig` i en tredje forklædning: et
+     gemt afledt tal der driver fra sit grundlag, hvor kun det ene sted
+     bliver rettet. Og det driver med det samme — allerede ved det første
+     skifte.
+
+     ⚠ REGLEN ER "ET FORLØB ER FØRST UDFØRT NÅR HVER ENESTE ETAPE ER DET".
+     Er én etape stadig åben, er forløbet `delvist` — ikke færdigt, og ikke
+     usynligt. Derfor læses ALLE bookingens etaper, ikke kun den der skiftes.
+
+     ⚠ OG DEN NYE TILSTAND LÆGGES OVEN PÅ FØR DER REGNES. Læste vi bare
+     noden, ville vi regne på den gamle tilstand og skrive et forløb der var
+     ét skridt bagud. */
+  if (etape.bookingId) {
+    const alle = (await rod.child("etaper").once("value")).val() || {};
+    const mine = Object.entries(alle)
+      .map(([id, v]) => ({ id, ...v }))
+      .filter((x) => x.bookingId === etape.bookingId)
+      .map((x) => (x.id === etapeId ? { ...x, tilstand: tilTilstand } : x));
+
+    const forloeb = forloebstilstand(mine);
+    opdatering[`bookinger/${etape.bookingId}/tilstand`] = forloeb.tilstand;
+    /* ⚠ harAabneEtaper SKRIVES MED. `kanGodkende()` på et fakturagrundlag
+       spørger om den, og et fakturagrundlag må ikke kunne godkendes mens en
+       etape stadig venter på en tur. Feltet står på LOGBARE_FELTER netop
+       fordi det afgør noget. */
+    opdatering[`bookinger/${etape.bookingId}/harAabneEtaper`] = forloeb.harAabneEtaper;
+    opdatering[`bookinger/${etape.bookingId}/sidstAendretMs`] = Date.now();
+  }
+
+  /* ⚠ ÉN SKRIVNING. Etapen, dens ressourcer, reservationerne OG bookingens
+     afledte tilstand lander sammen eller slet ikke. To kald ville være to
+     udfald — og prototypens DE-QR 777 mod DE-KL 404 var netop to poster der
+     kunne blive uenige. */
   await rod.update(opdatering);
 
   /* ---- Opstod der en konflikt i vinduet? ---------------------------- */

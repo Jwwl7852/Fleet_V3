@@ -933,5 +933,28 @@ Forbeholdet er filens eget — vi ser planen, ikke tachografen.
   platformsspørgsmål: der er noget at kalde.
 - **Etapens ben.** Pausereglen kan først afgøres den dag en etape kan bære
   flere strækninger med hvil imellem. Indtil da er den en advarsel.
-- **Bookingens eget tilstandsskift.** `etapeskift` dækker etapen; `bookinger`
-  er stadig `.write: false` uden en funktion.
+- **Forslag-skærmen skriver stadig ikke.** Den viser beslutning 5 og kan nu
+  kalde `skiftEtape()` — men den er bygget på bookingens `forslag`, og det
+  disponerede er etapens. De to er ikke det samme, og hvilken der er
+  sandheden, er et åbent spørgsmål. Se nedenfor.
+
+### ⚠ DER ER TO SLAGS FORSLAG, OG DET ER IKKE AFGJORT
+
+`bk-2026-00314` bærer tre forslag med afhentning, levering, transittid og et
+prisestimat. Dens eneste etape `et-004` bærer ét forslag med enheder og
+chauffør. For et forløb med én etape er de to det samme løfte skrevet to
+steder — og det er mønstret der har kostet mest i dette repo.
+
+To læsninger, og de peger hver sin vej:
+
+| Læsning | Følge |
+|---|---|
+| **Bookingens forslag er tilbuddet til kunden** — tid og pris. Etapens er dispositionen: hvilke enheder, hvilken chauffør | To objekter, bevidst. Men så skal det stå hvordan de hænger sammen, og hvem der skriver hvad |
+| **Etapens forslag er det eneste rigtige** (beslutning 16: det man disponerer, er en etape). Bookingens er prototypens én-booking-én-tur | Bookingens `forslag` udgår, og Forslag-skærmen bygges om til at læse etaperne |
+
+⚠ **Indtil det er afgjort, skriver Forslag-skærmen ikke.** At lade den
+godkende bookingens forslag ville afgøre spørgsmålet ved et uheld — og et
+forkert svar her er en migrering af data der bærer priser.
+
+- **Bookingens tilstand skrives af `etapeskift`** — ikke af en egen funktion.
+  Se ovenfor: den er AFLEDT, og der findes ikke et `bookingskift`.

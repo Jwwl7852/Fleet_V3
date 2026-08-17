@@ -17,6 +17,7 @@ import { reservationerFraEtape, enhedsIder } from "../src/fleet/etaper.js";
 import { PRIORITET, RESSOURCE, KILDE } from "../src/fleet/reservations.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+import { forloebstilstand, TILSTAND } from "../src/fleet/booking-state.js";
 
 const T = 3600000;
 const A = Date.UTC(2026, 7, 20, 6, 0, 0);
@@ -399,4 +400,75 @@ test("demo-etaperne er lovlige — ellers viser dev noget serveren afviser", () 
     assert.ok(e.koerselMin <= 600,
       `${e.id}: ${e.koerselMin} min. koersel paa eet doegn — serveren ville afvise den`);
   }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BOOKINGENS TILSTAND ER AFLEDT — OG SKRIVES SAMME STED
+
+   `forloebstilstand()` siger det selv: feltet lagres denormaliseret på
+   bookingen, men skrives af PRÆCIS ÉN ting — den funktion der skifter en
+   etapetilstand, i samme transaktion. Der findes derfor ikke et
+   `bookingskift`; der er den her blok i `etapeskift`.
+
+   Hullet var der i én commit: etapeskift skrev etapen og lod bookingen stå.
+   Det er `bemanding.ledig` i en tredje forklædning.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+test("⚠ etapeskift SKRIVER BOOKINGENS AFLEDTE TILSTAND", () => {
+  assert.ok(blok.includes("forloebstilstand(mine)"),
+    "bookingens tilstand udledes ikke");
+  assert.ok(blok.includes("opdatering[`bookinger/${etape.bookingId}/tilstand`]"),
+    "bookingens tilstand skrives ikke");
+  assert.ok(blok.includes("harAabneEtaper"),
+    "harAabneEtaper skrives ikke — kanGodkende() paa et grundlag spoerger om den");
+});
+
+test("⚠ OG DEN SKRIVES I DEN SAMME opdatering", () => {
+  /* Et andet kald ville kunne lykkes halvt, og så ville bookingen påstå noget
+     andet end sine egne etaper. */
+  const tilUpdate = blok.slice(0, blok.indexOf("await rod.update(opdatering)"));
+  assert.ok(tilUpdate.includes("bookinger/${etape.bookingId}/tilstand"),
+    "bookingen skrives efter den atomiske opdatering");
+});
+
+test("⚠ DEN NYE TILSTAND LÆGGES OVEN PÅ FØR DER REGNES", () => {
+  /* Læste vi bare noden, ville vi regne på den GAMLE tilstand og skrive et
+     forløb der var ét skridt bagud. */
+  assert.ok(blok.includes("x.id === etapeId ? { ...x, tilstand: tilTilstand } : x"),
+    "forloebstilstand regner paa den gamle etapetilstand");
+});
+
+test("⚠ DER FINDES IKKE ET bookingskift", () => {
+  /* To veje til det samme felt ville være to sandheder. Kommer der en, skal
+     spørgsmålet om hvem der ejer bookingens tilstand afgøres først. */
+  assert.ok(!/export const bookingskift/.test(kilde),
+    "der er kommet et bookingskift — hvem ejer bookingens tilstand nu?");
+  const klient = readFileSync("src/fleet/disponer.js", "utf8");
+  assert.ok(klient.includes("BOOKINGEN HAR INGEN EGEN FUNKTION"),
+    "klienten siger ikke hvorfor der ikke er en bookingfunktion");
+});
+
+test("et forløb er først udført når hver eneste etape er det", () => {
+  /* Reglen som forloebstilstand() bærer — prøvet her, så den ikke kan drive
+     fra det etapeskift faktisk skriver. */
+  assert.equal(forloebstilstand([
+    { tilstand: "udfoert" }, { tilstand: "reserveret" },
+  ]).tilstand, "delvist");
+  assert.equal(forloebstilstand([
+    { tilstand: "udfoert" }, { tilstand: "udfoert" },
+  ]).tilstand, "udfoert");
+  assert.equal(forloebstilstand([
+    { tilstand: "reserveret" }, { tilstand: "aaben" },
+  ]).harAabneEtaper, true);
+});
+
+test("reglerne kender de samme bookingtilstande som domænet", () => {
+  /* Mønstret i regelfilen er en afskrift af TILSTAND. Kommer der en tilstand
+     mere uden at reglen får den, afviser en fremtidig skrivning noget skærmen
+     viser som gyldigt. */
+  const regler = readFileSync("firebase.rules.json", "utf8");
+  const blokR = regler.slice(regler.indexOf('"bookinger": {'), regler.indexOf('"etaper": {'));
+  const linje = blokR.split(/\r?\n/).find((l) => l.includes('"tilstand": {'));
+  const iReglen = linje?.match(/\(([a-zA-Z|]+)\)/)?.[1].split("|") || [];
+  assert.deepEqual(iReglen.slice().sort(), Object.keys(TILSTAND).slice().sort());
 });

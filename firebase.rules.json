@@ -403,7 +403,30 @@
         "bookinger": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|booking.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
           ".write": false,
-          ".indexOn": ["tilstand", "oprettetMs", "kundeId"]
+          ".indexOn": ["tilstand", "oprettetMs", "kundeId"],
+          "$bookingId": {
+            // ⚠ TILSTANDEN ER AFLEDT AF ETAPERNE. forloebstilstand() regner
+            // den ud, og den skrives af PRAECIS EEN ting: etapeskift, i samme
+            // opdatering som etapeskiftet selv. Der findes ikke et
+            // bookingskift — skal et forloeb skifte, skifter man dets etaper.
+            //
+            // Moenstret er en AFSKRIFT af TILSTAND i booking-state.js. Kommer
+            // der en tilstand mere i domaenet uden at reglen faar den, afviser
+            // en fremtidig skrivning noget skaermen viser som gyldigt.
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerPlan|aaben|afventerKoord|reserveret|returneret|delvist|afvist|annulleret|udfoert)$/)" },
+            // ⚠ ET FORLOEB ER FOERST UDFOERT NAAR HVER ENESTE ETAPE ER DET.
+            // Feltet afgoer om et fakturagrundlag kan godkendes — se
+            // kanGodkende() — og det er derfor det staar paa
+            // LOGBARE_FELTER i audit-regler.js.
+            "harAabneEtaper": { ".validate": "newData.isBoolean()" },
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            // Append-only, som paa etapen: et tilstandsskift der kunne
+            // slettes bagefter, kunne ikke forklares et halvt aar senere.
+            "historik": {
+              "$ms": { ".validate": "!data.exists()" }
+            }
+          }
         },
 
         // BESLUTNING 16 — etaper ligger som EGEN node, ikke under bookingen.
