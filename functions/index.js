@@ -1649,6 +1649,14 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
     [`bevaegelser/${nyId}`]: {
       art: "putaway",
       carrierId,
+      /* ⚠ KUNDEN SKRIVES MED, ELLERS KAN PLACERINGEN IKKE AFREGNES.
+         afregningslinjer() filtrerer på kundeId, og en placering uden ville
+         aldrig komme på en faktura — arbejdet ville være gratis uden at nogen
+         havde besluttet det. Den læses af BEHOLDEREN og ikke af nyttelasten:
+         kunne klienten oplyse den, kunne en håndtering afregnes til en anden
+         kunde end den godset tilhører. Og den skrives MED frem for at blive
+         slået op igen senere, fordi bevægelsen er et historisk faktum. */
+      kundeId: carrier.kundeId || null,
       /* Hvor den stod før — så flytningen kan læses baglæns. `null` første
          gang: en nyscannet beholder kom ikke fra en hylde. */
       fraPladsId: carrier.pladsId || null,

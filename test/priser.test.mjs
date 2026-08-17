@@ -15,9 +15,10 @@ import {
   IKKE_FAKTURERBARE_ARTER, ydelseForArt,
   STANDARDGRUPPE, standardPris, valideSats, ydelserForModuler,
   kundeprisSti, valideKundesats, kundeSats, prisFor, PRISKILDE,
+  prisydelseForArter, satsopslag,
 } from "../src/fleet/pricing.js";
 import {
-  ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER,
+  ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER, afregningslinjer,
 } from "../src/fleet/warehouse.js";
 import { readFileSync } from "node:fs";
 import {
@@ -1067,5 +1068,99 @@ describe("ydelses-id'et er en databasenøgle", () => {
         `ydelses-id'et "${id}" kan ikke være en RTDB-nøgle`);
       assert.ok(id.length > 0 && id.length <= 60, `"${id}" har en urimelig længde`);
     }
+  });
+});
+
+describe("én opslagsvej — fra afregning til pris", () => {
+  const D = (d) => Date.UTC(2026, 5, d);
+  const STANDARD = {
+    "lager-pluk": { satser: { a: { gyldigFra: D(1), beloebOere: 37500 } } },
+    "lager-flytning": { satser: { a: { gyldigFra: D(1), beloebOere: 12000 } } },
+    "lager-handlingInd": { satser: { a: { gyldigFra: D(1), beloebOere: 4500 } } },
+  };
+  /* Afregningskatalogets arter, som warehouse.js kender dem. */
+  const ARTER = {
+    modtagelse: ["modtag"],
+    haandtering: ["putaway", "flyt"],
+    pluk: ["pluk"],
+    afsendelse: ["afsend"],
+    retur: ["retur"],
+  };
+  const arterFor = (y) => ARTER[y];
+
+  it("⚠ BROEN MELLEM DE TO KATALOGER ER ARTEN, IKKE EN TABEL", () => {
+    /* pricing.js siger hvad der kan PRISSÆTTES, warehouse.js hvad der kan
+       AFREGNES. De kan ikke importere hinanden, og en håndskrevet
+       oversættelse ville være det syvende sted hvor to lister skulle holdes i
+       sync i hånden. */
+    assert.equal(prisydelseForArter(["modtag"]), "lager-handlingInd");
+    assert.equal(prisydelseForArter(["putaway", "flyt"]), "lager-flytning");
+    assert.equal(prisydelseForArter(["pluk"]), "lager-pluk");
+    assert.equal(prisydelseForArter(["afsend"]), "lager-handlingUd");
+  });
+
+  it("⚠ ET TVETYDIGT OPSLAG GIVER INGEN PRIS", () => {
+    /* Peger to arter på hver sin prisydelse, kan opslaget ikke afgøre hvilken
+       der gælder — og et gæt ville fakturere en pris ingen kan forklare. */
+    assert.equal(prisydelseForArter(["modtag", "afsend"]), null);
+    assert.equal(prisydelseForArter([]), null);
+    /* En art der ikke må afregnes, giver heller ingen ydelse. */
+    assert.equal(prisydelseForArter(["optael"]), null);
+  });
+
+  it("slår kundens pris op gennem prisFor()", () => {
+    const kunde = { "lager-pluk": { satser: { x: { gyldigFra: D(1), rabatBps: 2000 } } } };
+    const satsFor = satsopslag({ standard: STANDARD, kunde, arterFor });
+
+    /* Standard hvor der ikke er en aftale … */
+    assert.deepEqual(satsFor("haandtering", D(20)), {
+      beloebOere: 12000, gyldigFra: D(1), kilde: "standard", ydelseId: "lager-flytning",
+    });
+    /* … og den rabatterede sats hvor der er. 375,00 − 20 % = 300,00 */
+    const p = satsFor("pluk", D(20));
+    assert.equal(p.beloebOere, 30000);
+    assert.equal(p.kilde, "rabat");
+  });
+
+  it("⚠ EN YDELSE UDEN PRIS GIVER null — ikke nul", () => {
+    /* Linjen kommer stadig med på afregningen, med satsOere: null. Udelod vi
+       den, ville fakturaen se komplet ud mens en ydelse manglede sin pris. */
+    const satsFor = satsopslag({ standard: STANDARD, kunde: {}, arterFor });
+    assert.equal(satsFor("retur", D(20)), null);
+  });
+
+  it("kræver broen — den gætter ikke på arter", () => {
+    assert.throws(() => satsopslag({ standard: STANDARD, kunde: {} }),
+      /arterFor/);
+  });
+
+  it("⚠ KILDEN FØLGER MED PÅ LINJEN", () => {
+    /* En pris på en faktura man ikke kan spore, er en pris man ikke kan
+       forsvare. `afregningslinjer()` skriver feltet videre — prøven binder de
+       to, så et opslag uden kilde ikke lydløst giver en linje uden. */
+    const kunde = { "lager-flytning": { satser: { x: { gyldigFra: D(1), beloebOere: 9900 } } } };
+    const satsFor = satsopslag({ standard: STANDARD, kunde, arterFor });
+    const linjer = afregningslinjer({
+      bevaegelser: [
+        { art: "flyt", kundeId: "k1", tidspunktMs: D(10), antal: 1000 },
+        { art: "putaway", kundeId: "k1", tidspunktMs: D(11) },
+      ],
+      satsFor, kundeId: "k1", fra: D(1), til: D(30),
+    });
+    const h = linjer.find((l) => l.ydelse === "haandtering");
+    assert.equal(h.satsOere, 9900);
+    assert.equal(h.kilde, "kunde");
+    assert.equal(h.haendelser, 2, "placeringen tæller som en håndtering");
+  });
+
+  it("⚠ EN PLACERING SKAL BÆRE SIN KUNDE FOR AT KUNNE AFREGNES", () => {
+    /* afregningslinjer() filtrerer på kundeId. En placering uden ville aldrig
+       komme på en faktura — arbejdet ville være gratis uden at nogen havde
+       besluttet det. Serveren skriver den af BEHOLDEREN; se functions. */
+    const cf = readFileSync("functions/index.js", "utf8");
+    const start = cf.indexOf("async function skrivPlacering");
+    const blok = cf.slice(start, cf.indexOf("async function logBevaegelse", start));
+    assert.ok(blok.includes("kundeId: carrier.kundeId"),
+      "placeringen skrives uden en kunde og kan derfor ikke afregnes");
   });
 });

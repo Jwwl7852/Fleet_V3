@@ -1078,6 +1078,11 @@ export function afregningslinjer({
       const g = pr.get(noegle) || {
         satsOere: sats ? (sats.beloebOere ?? sats.satsOere ?? null) : null,
         gyldigFra: sats ? sats.gyldigFra : null,
+        /* ⚠ HVOR PRISEN KOM FRA, SKREVET MED PÅ LINJEN. Standard, rabat eller
+           kundens egen — en pris på en faktura man ikke kan spore, er en pris
+           man ikke kan forsvare. Feltet er sats-opslagets svar og ikke noget
+           linjen selv udleder; to steder ville kunne blive uenige. */
+        kilde: sats?.kilde ?? null,
         antal: 0, haendelser: 0,
       };
       g.haendelser += 1;
@@ -1094,6 +1099,7 @@ export function afregningslinjer({
         haendelser: g.haendelser,
         satsOere: g.satsOere,
         gyldigFra: g.gyldigFra,
+        kilde: g.kilde,
         /* ⚠ null, IKKE 0, når satsen mangler. Et beløb på nul ligner en
            gratis ydelse; null er et ubesvaret spørgsmål. */
         beloebOere: g.satsOere == null

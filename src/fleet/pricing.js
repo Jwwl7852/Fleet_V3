@@ -578,3 +578,70 @@ export const PRISKILDE = {
   rabat:    { label: "Rabat",     tone: "info" },
   standard: { label: "Standard",  tone: "ok" },
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ÉN OPSLAGSVEJ FOR HELE PLATFORMEN
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ ALLE DER SKAL BRUGE EN PRIS, SKAL IGENNEM HER.
+
+   `prisFor()` afgør hvad kunden betaler for én ydelse på ét tidspunkt.
+   `satsopslag()` pakker den til de forbrugere der regner på mange linjer —
+   `afregningslinjer()` i warehouse.js i dag, prismotoren senere. Uden den
+   ville hver forbruger bygge sit eget opslag, og så bliver det tilfældigt
+   hvilken pris der gjaldt.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ TO KATALOGER SKAL MØDES, OG BROEN ER ARTEN — IKKE EN TABEL.
+ *
+ * `LAGERYDELSER` her siger hvad der kan PRISSÆTTES; `YDELSE` i warehouse.js
+ * siger hvad der kan AFREGNES. De to filer kan ikke importere hinanden —
+ * warehouse.js er importfri, fordi den kopieres til serveren — og en
+ * håndskrevet oversættelsestabel ville være det syvende sted i dette repo
+ * hvor to lister skulle holdes i sync i hånden.
+ *
+ * I stedet oversættes der gennem **bevægelsesarten**, som begge kataloger
+ * kender: afregningsydelsens arter slås op i `ydelseForArt()`.
+ *
+ * ⚠ ER SVARET TVETYDIGT, GIVES DER INGEN PRIS. Peger to arter på hver sin
+ * prisydelse, kan opslaget ikke afgøre hvilken der gælder — og et gæt ville
+ * fakturere en pris ingen kan forklare. `null` er det rigtige svar, og
+ * linjen står så som "mangler sats", præcis som en ydelse uden pris.
+ */
+export function prisydelseForArter(arter = []) {
+  const ider = [...new Set(arter.map(ydelseForArt).filter(Boolean))];
+  return ider.length === 1 ? ider[0] : null;
+}
+
+/**
+ * satsopslag({ standard, kunde, arterFor }) → satsFor(ydelse, paaMs)
+ *
+ * Formen på svaret er den `afregningslinjer()` forventer: `beloebOere` og
+ * `gyldigFra`. Den bærer desuden `kilde`, så en linje kan forklare HVOR
+ * prisen kom fra — standard, rabat eller kundens egen. En pris på en faktura
+ * man ikke kan spore, er en pris man ikke kan forsvare.
+ */
+export function satsopslag({ standard = {}, kunde = {}, arterFor } = {}) {
+  if (typeof arterFor !== "function") {
+    throw new Error(
+      "satsopslag: arterFor(ydelse) mangler. Broen mellem afregningens og " +
+      "prisernes katalog går gennem bevægelsesarten — se prisydelseForArter()."
+    );
+  }
+  return (ydelse, paaMs) => {
+    const id = prisydelseForArter(arterFor(ydelse) || []);
+    if (!id) return null;
+    const r = prisFor({ standard, kunde }, id, paaMs);
+    if (!r) return null;
+    return {
+      /* ⚠ DEN PRIS DER FAKTISK GJALDT — ikke standarden. Er der en rabat, er
+         det den rabatterede sats der skal på linjen, og `kilde` siger hvorfor
+         den ikke er den samme som standardprisen. */
+      beloebOere: r.oere,
+      gyldigFra: r.sats?.gyldigFra ?? null,
+      kilde: r.kilde,
+      ydelseId: id,
+    };
+  };
+}

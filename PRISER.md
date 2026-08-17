@@ -202,7 +202,7 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 | 1 | **Ydelseskataloget** + de tre nye metoder i `pricing.js` | Der findes en liste over hvad der kan prissættes | ✅ |
 | 2 | **Standardpriser** — node, regler, prøver, skærm i Kunder & Priser | Vognmanden kan sætte sine priser | ✅ |
 | 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | ✅ |
-| 4 | **`prisFor()` tages i brug** af booking og warehouse + snapshot | Priserne bruges ét sted fra | selve `prisFor()` kom i etape 3 |
+| 4 | **Én opslagsvej** — `satsopslag()`, broen til afregningen og kilden på linjen | Priserne bruges ét sted fra | ✅ |
 | 5 | **Bookingopsætnings satsark flyttes** fra JSX til databasen | Det hardkodede forsvinder | |
 | 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres | |
 
@@ -221,3 +221,42 @@ satsopslaget som en parameter.
 
 Det er mindre end Warehouse, men det rører **flere** steder — og det rører
 regnskabsdata, hvor en fejl ikke er synlig før en kunde ringer.
+
+
+---
+
+## 7. Etape 4 er inde — én opslagsvej
+
+`satsopslag({ standard, kunde, arterFor })` giver den `satsFor(ydelse, paaMs)`
+som `afregningslinjer()` i warehouse.js har ventet på siden Warehouse etape 7.
+Den bygger på `prisFor()` og dermed på `satsPaa()` — ingen forbruger slår en
+pris op selv.
+
+⚠ **Broen mellem de to kataloger er ARTEN, ikke en tabel.** `pricing.js` siger
+hvad der kan **prissættes** (`LAGERYDELSER`); `warehouse.js` siger hvad der kan
+**afregnes** (`YDELSE`). De to filer kan ikke importere hinanden —
+`warehouse.js` er importfri, fordi den kopieres til serveren — og en
+håndskrevet oversættelse ville være det **syvende** sted i dette repo hvor to
+lister skulle holdes i sync i hånden. I stedet slås afregningsydelsens
+**bevægelsesarter** op i `ydelseForArt()`.
+
+⚠ **Er svaret tvetydigt, gives der ingen pris.** Peger to arter på hver sin
+prisydelse, kan opslaget ikke afgøre hvilken der gælder, og et gæt ville
+fakturere en pris ingen kan forklare. Linjen står så som "mangler sats" —
+præcis som en ydelse uden pris.
+
+⚠ **Kilden følger med på linjen.** `standard`, `rabat` eller `kunde`. En pris
+på en faktura man ikke kan spore, er en pris man ikke kan forsvare — og det er
+den halvdel af snapshottet der manglede: linjen bar allerede satsen og
+`gyldigFra`, men ikke hvor den kom fra.
+
+⚠ **Og en placering kunne ikke afregnes.** Etape 12 gjorde `putaway` til en
+flytning af selve beholderen, og den post bar ingen `kundeId` —
+`afregningslinjer()` filtrerer på netop det felt, så håndteringen ville aldrig
+komme på en faktura. Arbejdet ville have været gratis uden at nogen havde
+besluttet det. Serveren skriver nu kunden af **beholderen**; kunne klienten
+oplyse den, kunne en håndtering afregnes til en anden kunde end den godset
+tilhører.
+
+**Tilbage:** etape 5 (satsarket ud af `Bookingopsaetning.jsx`) og etape 6
+(afregningsskærmen, der samler linjerne for en kunde i en periode).
