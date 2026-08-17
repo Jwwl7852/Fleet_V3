@@ -220,6 +220,19 @@ describe("grundlagskriv — den eneste vej ind", () => {
     assert.ok(blok.includes("kanGodkende(g, { etaper, bruger: uid })"));
   });
 
+  it("⚠ LÅSNINGEN SPØRGER kanLaase(), IKKE kanEksportere()", () => {
+    /* Et låst grundlag må gerne eksporteres igen — filen kan være gået tabt i
+       den anden ende — men ikke låses igen: så ville eksportReference og
+       laastMs blive overskrevet, og den første eksport forsvinde uden spor.
+       Med det forkerte tjek nåede kaldet frem til laas(), som kaster en rå
+       Error — og den kom ud af funktionen som "INTERNAL". */
+    assert.ok(blok.includes("const tjek = kanLaase(g);"),
+      "låsningen bruger stadig eksporttjekket");
+    const skaerm = readFileSync("src/moduler/Fakturering.jsx", "utf8");
+    assert.ok(skaerm.includes("kanLaase(g)"), "skærmen tilbyder at låse et låst grundlag");
+    assert.ok(skaerm.includes("!laasning.ok"), "låseknappen spærres ikke af tjekket");
+  });
+
   it("⚠ EN LÅSNING KRÆVER EN EKSPORTREFERENCE", () => {
     /* En låsning uden reference er en påstand. Referencen er beviset på at
        grundlaget faktisk ER eksporteret — uden den kan ingen finde bilaget
@@ -267,20 +280,97 @@ describe("grundlagskriv — den eneste vej ind", () => {
 describe("RTDB har ingen arrays — og domænet regner med dem", () => {
   const kilde = readFileSync("functions/index.js", "utf8");
 
-  it("⚠ BÅDE LINJER OG HISTORIK OVERSÆTTES, når et grundlag læses", () => {
+  it("⚠ OVERSÆTTELSEN ER ÉN FUNKTION — IKKE ÉN PR. LÆSER", () => {
     /* Linjer og historik ligger som OBJEKTER i basen. godkend() gør
        `[...grundlag.historik]`, og med et objekt kaster den et sted der intet
-       har med godkendelsen at gøre — fejlen kom ud som "INTERNAL". Kun
-       linjerne blev oversat i første omgang, og det tog en probe at finde. */
+       har med godkendelsen at gøre.
+
+       ⚠ DEN STOD SOM EN AFSKRIFT HER. Serveren oversatte selv, og den dag
+       Fakturering-skærmen begyndte at læse noden, manglede den samme
+       oversættelse i klienten — skærmen blev hvid på det første rigtige
+       grundlag. Nu kalder begge `fraDb()` i den delte grundlag.js. */
     const blok = kilde.slice(kilde.indexOf("async function hentGrundlag"));
-    assert.ok(blok.slice(0, 900).includes("linjer: Object.values(g.linjer || {})"));
-    assert.ok(blok.slice(0, 900).includes("historik: Object.values(g.historik || {})"),
-      "historikken oversættes ikke — godkend() vil kaste INTERNAL");
+    assert.ok(blok.slice(0, 900).includes("fraDb(g, id)"),
+      "serveren oversætter selv i stedet for at kalde fraDb()");
+    assert.ok(!/linjer: Object\.values\(g\.linjer/.test(blok.slice(0, 900)),
+      "afskriften står der stadig ved siden af");
+
+    const skaerm = readFileSync("src/moduler/Fakturering.jsx", "utf8");
+    assert.ok(skaerm.includes("fraDb(g)"),
+      "skærmen oversætter ikke — kanGodkende() kaster på den første post");
+    assert.ok(!/Object\.values\(g\.linjer|Object\.values\(.*historik/.test(skaerm),
+      "skærmen har sin egen kopi af oversættelsen");
   });
 
   it("skriver dem tilbage som objekter", () => {
     /* Den anden vej. Et array i RTDB bliver til nøglerne 0,1,2 — og en
        sletning midt i ville rykke resten. */
     assert.ok(kilde.includes("Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h]))"));
+  });
+});
+
+describe("Fakturering-skærmen — knapperne virker nu", () => {
+  const skaerm = readFileSync("src/moduler/Fakturering.jsx", "utf8");
+
+  it("⚠ SKÆRMEN SKRIVER IKKE SELV", () => {
+    /* Nummeret, tilstandsskiftet og låsningen kan ikke håndhæves af en
+       klient. Vejen ind er funktionen — også når knappen ser ud som om den
+       gemmer noget. */
+    assert.ok(skaerm.includes('from "../fleet/fakturering.js"'),
+      "skærmen bruger ikke husets ene vej ind");
+    assert.ok(!/db\.ref\(|\.set\(|\.update\(/.test(skaerm),
+      "skærmen skriver til databasen udenom fakturering.js");
+  });
+
+  it("⚠ DEAKTIVERINGEN BRUGER DE SAMME TJEK SOM SERVEREN", () => {
+    /* kanGodkende() og kanEksportere() er de SAMME funktioner begge steder,
+       fordi grundlag.js kopieres til functions/delt/. Skrev skærmen sin egen
+       afskrift, ville den sige ja hvor serveren siger nej — og så er en grå
+       knap et tilfælde frem for en forklaring. */
+    assert.ok(skaerm.includes("kanGodkende(g, { etaper })"));
+    assert.ok(skaerm.includes("kanLaase(g)"));
+    assert.ok(skaerm.includes("!godkendelse.ok"), "godkendeknappen spærres ikke af tjekket");
+    assert.ok(skaerm.includes("!laasning.ok"), "låseknappen spærres ikke af tjekket");
+    /* Og årsagen står på knappen. En deaktiveret knap uden forklaring sender
+       brugeren på jagt. */
+    assert.ok(skaerm.includes("godkendelse.aarsager[0]"));
+    assert.ok(skaerm.includes("laasning.aarsager[0]"));
+  });
+
+  it("⚠ EN LÅSNING KRÆVER EN REFERENCE — I BEGGE ENDER", () => {
+    /* Feltet på skærmen er den hurtige besked; afgørelsen er serverens.
+       Stod kravet KUN i skærmen, kunne et direkte kald låse et grundlag uden
+       at nogen kan finde bilaget igen. */
+    assert.ok(skaerm.includes("!reference.trim()"), "skærmen låser uden reference");
+    const kilde = readFileSync("functions/index.js", "utf8");
+    const blok = kilde.slice(kilde.indexOf("export const grundlagskriv"));
+    assert.ok(blok.includes("En låsning kræver en eksportreference"),
+      "serveren låser uden reference");
+  });
+
+  it("⚠ GODKENDELSEN KRÆVER SIN EGEN PERMISSION", () => {
+    /* At UDARBEJDE et grundlag er kontorarbejde; at GODKENDE det er at sige
+       god for at fakturaen kan sendes. Skærmen spørger om handlingen, ikke om
+       rollen — men den AFGØR det ikke: serveren spørger om det samme. */
+    assert.ok(skaerm.includes("PERM.grundlagGodkend"));
+    assert.ok(!/rolle ===|bruger\.rolle/.test(skaerm),
+      "skærmen spørger om rollen frem for om permissionen");
+  });
+
+  it("⚠ LISTEN HENTES IGEN EFTER EN SKRIVNING", () => {
+    /* Et godkendt grundlag der stadig står som kladde på skærmen, bliver
+       godkendt to gange — og den anden gang afvises, uden at brugeren kan se
+       hvorfor. */
+    assert.ok(skaerm.includes("paaSkrevet"), "skærmen henter ikke listen igen");
+    assert.ok(skaerm.includes("paaSkrevet={genindlaesGrundlag}"));
+  });
+
+  it("forbeholdet i toppen af filen passer stadig", () => {
+    /* Kommentaren er en påstand om platformen, og den skal kunne blive
+       forkert. Den sagde "der skrives ingenting herfra" indtil funktionen
+       kom. */
+    assert.ok(!/Fase 0/.test(skaerm), "hovedet lover stadig fase 0");
+    assert.ok(skaerm.includes("Håndhævelsen ligger i"),
+      "hovedet siger ikke hvor afgørelsen ligger");
   });
 });

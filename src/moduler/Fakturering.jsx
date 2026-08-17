@@ -29,17 +29,31 @@
  *    en sum og være en dobbeltfakturering.
  * ---------------------------------------------------------------------------
  *
- * VISNING PÅ RIGTIGE DATA. `grundlag` findes nu som node, og skærmen læser
- * den. Men der skrives stadig ingenting herfra: noden er **`.write: false`
- * for alle**, også admin. Tre ting kan ikke håndhæves af en klient — nummeret
- * kommer fra en counter i en transaction, tilstandsskiftet følger
- * kanGodkende()'s regler, og et låst grundlag må aldrig kunne ændres. Den
- * Cloud Function der skal skrive, findes ikke endnu.
+ * RIGTIGE DATA, OG KNAPPERNE VIRKER. `grundlag` er en node, og godkendelsen
+ * og låsningen går gennem `grundlagskriv`.
  *
- * Knapperne viser derfor hvad de VILLE gøre via kanGodkende() og
- * kanEksportere() — samme mønster som Forslag-skærmen med kanSkifte().
- * Håndhævelsen hører i funktionen, ikke her: ligger den i skærmen, kan en
- * direkte skrivning gå uden om den.
+ * ⚠ MEN SKÆRMEN AFGØR STADIG INGENTING. Noden er **`.write: false` for alle**,
+ * også admin. Tre ting kan ikke håndhæves af en klient — nummeret kommer fra
+ * en counter i en transaction, tilstandsskiftet følger kanGodkende()'s regler,
+ * og et låst grundlag må aldrig kunne ændres. Håndhævelsen ligger i
+ * funktionen; ligger den i skærmen, kan et direkte kald gå uden om den.
+ *
+ * ⚠ KNAPPERNE ER DEAKTIVERET AF DE SAMME TJEK SOM SERVEREN BRUGER.
+ * `kanGodkende()` og `kanLaase()` er de SAMME funktioner begge steder, fordi
+ * `grundlag.js` er kopieret til `functions/delt/`. UI og server kan derfor
+ * ikke blive uenige — og titlen på en grå knap siger hvorfor den er grå, frem
+ * for at sende brugeren på jagt.
+ *
+ * ⚠ AT KUNNE EKSPORTERES OG AT KUNNE LÅSES ER TO SPØRGSMÅL. Et låst grundlag
+ * må gerne eksporteres igen — filen kan være gået tabt i den anden ende — men
+ * ikke låses igen. De var det samme tjek, indtil et klik på et låst grundlag
+ * fandt forskellen: skærmen tilbød en ny låsning, og serveren svarede
+ * "INTERNAL".
+ *
+ * ⚠ EN LÅSNING KRÆVER EN EKSPORTREFERENCE. Feltet står på skærmen, men
+ * serveren afviser uden — feltet er den hurtige besked, ikke afgørelsen. En
+ * låsning uden reference er en påstand om at bilaget er eksporteret, uden at
+ * nogen kan finde det igen.
  *
  * ⚠ OG ALT PÅ SKÆRMEN SKAL KOMME FRA DE SAMME RÆKKER. Da noden kom til,
  * hentede kortene rigtige grundlag mens detaljepanelet stadig slog etaper op
@@ -51,15 +65,19 @@
 import { useState } from "react";
 import { useKpi } from "../fleet/useKpi.js";
 import { useListe } from "../fleet/useListe.js";
+import { useFleet } from "../fleet/FleetContext.jsx";
+import { harPerm, PERM } from "../fleet/permissions.js";
+import { godkendGrundlag, laasGrundlag } from "../fleet/fakturering.js";
 import { kr, num, dato, datoTid } from "../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
+  Felt, Feltraekke, Formularsvar,
 } from "../fleet/ui.jsx";
 import { blokerer } from "../fleet/datatilstand.js";
 import {
   GRUNDLAG_TILSTAND, LINJE_ART,
   totaler, linjeBeloebOere, linjeMomsOere, talFraAntal,
-  kanGodkende, kanEksportere, linjerUdenMoms, erGaeldende, summer,
+  kanGodkende, kanEksportere, kanLaase, linjerUdenMoms, erGaeldende, summer, fraDb,
 } from "../fleet/grundlag.js";
 import { DEMO_GRUNDLAG } from "../fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../fleet/demo-etaper.js";
@@ -77,20 +95,28 @@ const momsTekst = (oere) => (oere === null ? "—" : kr(oere));
 
 export default function Fakturering() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("grl-002");
 
   /* ⚠ RIGTIGE GRUNDLAG NU — ikke kun demo-sættet. Noden er `.write: false`
      for alle, ogsaa admin: et grundlag faar sit nummer fra en counter i en
      transaction, skifter tilstand efter kanGodkende()'s regler, og et laast
      grundlag maa aldrig kunne aendres. Ingen af de tre kan haandhaeves af en
-     klient. Skaermen er derfor stadig en LAESESKAERM — se knapperne. */
+     klient — de gaar gennem grundlagskriv. */
   const {
-    data: grundlag, tilstand: grundlagTilstand, genindlaes: genindlaesGrundlag,
+    data: raaGrundlag, tilstand: grundlagTilstand, genindlaes: genindlaesGrundlag,
     henter: henterGrundlag,
   } = useListe("grundlag", {
     division: "alle", ordnPaa: "udarbejdetMs", vindueDage: 365, graense: 500,
     demo: DEMO_GRUNDLAG,
   });
+  /* ⚠ OVERSAT VED LÆSNINGEN, ÉN GANG. RTDB har ingen arrays: `linjer` og
+     `historik` kommer hjem som objekter, og hver eneste funktion i
+     grundlag.js itererer dem. Uden det her kaster kanGodkende() på den
+     første post, og skærmen bliver hvid — det var netop hvad den gjorde, da
+     det første rigtige grundlag blev oprettet. Serveren bruger den SAMME
+     fraDb(); en oversættelse pr. forbruger ville være en kopi der driver. */
+  const grundlag = raaGrundlag.map((g) => fraDb(g));
   /* Etaperne afgoer om et grundlag kan godkendes — kanGodkende() spoerger
      forloebstilstand(), ikke et filter her. */
   const { data: etaper } = useListe("etaper", {
@@ -182,7 +208,8 @@ export default function Fakturering() {
             på det samme grundlag — og det gjorde de: kortet sagde "0 spærret",
             mens panelet skrev at forløbet havde en åben etape. */}
         {valgt
-          ? <Detaljer g={valgt} etaper={etaper} kunder={kunder} alle={grundlag} />
+          ? <Detaljer g={valgt} etaper={etaper} kunder={kunder} alle={grundlag}
+                      bruger={bruger} paaSkrevet={genindlaesGrundlag} />
           : <Kort titel="Detaljer"><Tom>Vælg et grundlag.</Tom></Kort>}
       </Gitter>
     </div>
@@ -216,10 +243,34 @@ function TilstandsPille({ g }) {
 
 /* ---- Detaljepanelet ---------------------------------------------------- */
 
-function Detaljer({ g, etaper = [], kunder = [], alle = [] }) {
+function Detaljer({ g, etaper = [], kunder = [], alle = [], bruger, paaSkrevet }) {
+  const [reference, saetReference] = useState("");
+  const [arbejder, saetArbejder] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
   const t = totaler(g);
   const godkendelse = kanGodkende(g, { etaper });
+  /* ⚠ TO SPØRGSMÅL, IKKE ÉT. `eksport` afgør om bilaget må ud af huset —
+     også et låst grundlag må eksporteres igen, hvis filen er gået tabt.
+     `laasning` afgør om det må låses, og det må et låst grundlag ikke: så
+     ville eksportReference og laastMs blive overskrevet. De var det samme
+     tjek, indtil et klik på et låst grundlag fandt forskellen. */
   const eksport = kanEksportere(g);
+  const laasning = kanLaase(g);
+  const maaGodkende = harPerm(bruger?.perms, PERM.grundlagGodkend);
+
+  /* ⚠ SKÆRMEN SKRIVER IKKE SELV. Begge handlinger går gennem grundlagskriv:
+     nummeret, tilstandsskiftet og låsningen kan ikke håndhæves af en klient.
+     Se fakturering.js. */
+  const send = async (fn) => {
+    saetArbejder(true);
+    const r = await fn();
+    saetArbejder(false);
+    saetSvar(r);
+    if (r.ok) { saetReference(""); paaSkrevet?.(); }
+  };
+  const paaGodkend = () => send(() => godkendGrundlag({ id: g.id }));
+  const paaLaas = () => send(() => laasGrundlag({ id: g.id, reference: reference.trim() }));
 
   return (
     <Kort titel={g.nummer}>
@@ -271,20 +322,50 @@ function Detaljer({ g, etaper = [], kunder = [], alle = [] }) {
 
       <Historik poster={g.historik} />
 
+      {/* ⚠ REFERENCEN ER PÅKRÆVET VED LÅSNING, og feltet står her frem for i
+          en dialog: en låsning uden reference er en påstand om at bilaget er
+          eksporteret, uden at nogen kan finde det igen. Serveren afviser
+          uden — feltet er den hurtige besked, ikke afgørelsen. */}
+      {laasning.ok && (
+        <Feltraekke>
+          <Felt id="f-ref" label="Eksportreference" kraevet vaerdi={reference}
+                saet={(v) => { saetReference(v); saetSvar(null); }}
+                hint="Hvor ligger bilaget? Fx “e-conomic bilag 4471”." />
+        </Feltraekke>
+      )}
+
+      <Formularsvar svar={svar} />
+
       <div className="fc-row" style={{ gap: 8, marginTop: 12 }}>
-        {/* FASE 0: knapperne skriver ikke. De er deaktiveret af det SAMME tjek
-            som Cloud Functionen skal bruge — så UI og server er enige, og man
-            kan se det. Titlen forklarer hvorfor, så en grå knap ikke er en
-            gåde. */}
-        <Knap variant="primaer" disabled title={godkendelse.ok
-          ? "Fase 0: grundlag/ er endnu ikke i firebase.rules.json — der skrives ikke."
-          : godkendelse.aarsager[0]}>
-          Godkend
+        {/* ⚠ KNAPPERNE ER DEAKTIVERET AF DET SAMME TJEK SOM SERVEREN BRUGER —
+            kanGodkende() og kanLaase() er de SAMME funktioner begge
+            steder, fordi grundlag.js er kopieret til functions/delt/. UI og
+            server kan derfor ikke blive uenige, og titlen forklarer hvorfor
+            en grå knap er grå.
+
+            ⚠ MEN SKÆRMEN AFGØR STADIG INGENTING. Håndhævelsen ligger i
+            grundlagskriv; ligger den i skærmen, kan et direkte kald gå
+            udenom. */}
+        <Knap variant="primaer"
+              disabled={!godkendelse.ok || !maaGodkende || arbejder}
+              title={!maaGodkende
+                ? `Kræver ${PERM.grundlagGodkend} — serveren afviser.`
+                : godkendelse.ok
+                  ? "Godkender grundlaget. Åbne etaper og manglende satser spærrer."
+                  : godkendelse.aarsager[0]}
+              onClick={paaGodkend}>
+          {arbejder ? "Arbejder …" : "Godkend"}
         </Knap>
-        <Knap disabled title={eksport.ok
-          ? "Fase 0: eksporten er ikke koblet til regnskabssystemet endnu."
-          : eksport.aarsager[0]}>
-          Eksportér
+        <Knap disabled={!laasning.ok || !maaGodkende || arbejder || !reference.trim()}
+              title={!maaGodkende
+                ? `Kræver ${PERM.grundlagGodkend} — serveren afviser.`
+                : !laasning.ok
+                  ? laasning.aarsager[0]
+                  : !reference.trim()
+                    ? "Skriv hvor bilaget ligger, før grundlaget låses."
+                    : "Låser grundlaget. Det kan ikke ændres bagefter."}
+              onClick={paaLaas}>
+          Lås mod reference
         </Knap>
       </div>
     </Kort>

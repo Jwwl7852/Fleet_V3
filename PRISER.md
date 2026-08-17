@@ -333,20 +333,89 @@ vælgere kunne blive uenige om hvad tallene dækker. Prisen er at afregningen
 følger "seneste N dage" og ikke en kalendermåned — og det skal den, den dag et
 grundlag skal fryses. Det står på skærmen.
 
-### ⚠ Hvorfor der ikke oprettes et fakturagrundlag herfra
+### ⚠ Hvorfor der ikke blev oprettet et fakturagrundlag herfra ⟨lukket i §10⟩
 
-To ting mangler, og ingen af dem hører i den her etape:
+To ting manglede, og ingen af dem hørte i den her etape:
 
-1. **`grundlag` findes ikke som node** i `firebase.rules.json`.
-   `Fakturering.jsx` kører i dag på `demo-grundlag.js` alene.
-2. **Nummerserier er et kendt hul.** Et grundlag skal have et nummer fra en
-   counter i en transaction, og den Cloud Function findes ikke.
+1. **`grundlag` fandtes ikke som node** i `firebase.rules.json`.
+   `Fakturering.jsx` kørte på `demo-grundlag.js` alene.
+2. **Nummerserier var et kendt hul.** Et grundlag skal have et nummer fra en
+   counter i en transaction, og den Cloud Function fandtes ikke.
 
-En knap der lovede en faktura, ville love noget platformen ikke kan. Og
-godkendelsen hører ét sted — Indkøb → Fakturaer, beslutning 12. Det står
-skrevet **på skærmen** frem for kun her.
+En knap der lovede en faktura, ville love noget platformen ikke kunne. Og
+godkendelsen hører ét sted — beslutning 12. Det stod skrevet **på skærmen**
+frem for kun her, og prøven i `priser.test.mjs` holdt teksten ærlig: den faldt
+begge gange virkeligheden flyttede sig — først da noden kom, og igen da vejen
+ind kom. Se §10.
 
 **Efterprøvet med rigtige data i DEV:** en standardpris sat gennem
 Standardpriser-skærmen (45,00 kr. for håndtering ind, 120,00 kr. for flytning)
 ender som **1.035,00 kr.** på Skagen Seafoods afregning, med kilden
 "Standard" på hver linje — og de tre optællinger i perioden tælles ikke med.
+
+---
+
+## 10. Etape 7 er inde — vejen fra afregning til fakturagrundlag
+
+De to huller i §9 er lukket, og det er nu én kæde man kan klikke igennem:
+
+**Warehouse → Afregning** har en knap, **Opret fakturagrundlag**. Den skriver
+ikke selv — den kalder `grundlagskriv`, og noden er stadig `.write: false`
+**for alle, også admin**. Tre ting kan ikke håndhæves af en klient: nummeret
+kommer fra en counter i en transaction (beslutning 8), tilstandsskiftet følger
+`kanGodkende()`, og et låst grundlag må aldrig kunne ændres.
+
+**Økonomi → Fakturering** godkender og låser. Godkendelsen sker ét sted
+(beslutning 12) — afregningen opretter kun kladden.
+
+### Hvad kæden gør, og hvad den nægter
+
+| Trin | Hvem | Hvad spærrer |
+|---|---|---|
+| Opret | `grundlag.skriv` | linjer uden sats kommer ikke med, og **antallet vises** |
+| Godkend | `grundlag.godkend` | åben etape, allerede godkendt, erstattet |
+| Lås | `grundlag.godkend` | manglende momssats, allerede låst, manglende reference |
+
+⚠ **En linje uden sats kommer ikke med — og skærmen siger hvor mange.** Den
+kan ikke faktureres, og et grundlag med en linje på `null` kan ikke gøres op.
+Sker udeladelsen tavst, er resultatet en for lav faktura som ingen kan se.
+
+⚠ **Momssatsen sættes ikke.** Afregningen kender den ikke, og vi gætter ikke
+25 %. Grundlaget oprettes uden, og **eksporten er spærret** indtil en
+bogholder har svaret. Det er beslutning 25, gjort synlig: `GRL-2026-00002`
+kunne godkendes i DEV, men ikke låses.
+
+### To ting klikket fandt, som hverken prøver eller probe gjorde
+
+1. **RTDB har ingen arrays.** `linjer` og `historik` kommer hjem som objekter,
+   og hver funktion i `grundlag.js` itererer dem. Serveren havde oversættelsen
+   — som en **afskrift** inde i `hentGrundlag()`. Klienten havde den ikke, og
+   Fakturering blev **hvid** på det første rigtige grundlag. Oversættelsen er
+   nu `fraDb()` i den delte fil, og begge sider kalder den.
+
+2. **At kunne eksporteres og at kunne låses er to spørgsmål.** Et låst
+   grundlag må gerne eksporteres igen — filen kan være gået tabt i den anden
+   ende — men ikke låses igen: så ville `eksportReference` og `laastMs` blive
+   overskrevet, og den første eksport forsvinde uden spor. Skærmen tilbød det,
+   fordi den spurgte `kanEksportere()`; kaldet nåede frem til `laas()`, som
+   kaster en rå `Error` — og den kom ud af funktionen som **"INTERNAL"**.
+   `kanLaase()` er nu det spørgsmål, begge steder.
+
+**Efterprøvet i DEV, klikket igennem i skærmene:** Skagen Seafoods afregning
+på 1.035,00 kr. blev til `GRL-2026-00002` som kladde, godkendt fra
+Fakturering, og spærret for låsning på den manglende momssats.
+`GRL-2026-00389` blev låst mod referencen "e-conomic bilag 4471", og derefter
+kunne den hverken godkendes eller låses igen. Funktionsprøven dækker de otte
+afvisninger: casehandleren kan oprette men ikke godkende, chaufføren
+ingenting, koordinatoren begge dele.
+
+### Det der stadig mangler
+
+- **Momssatsen pr. linje.** Der er ingen skærm der sætter den. Spørgsmålet er
+  ikke teknisk: en bogholder skal svare på om lagerydelser er 25 % eller
+  noget andet, og indtil da er eksporten spærret — hvilket er det rigtige svar.
+- **Eksporten selv.** `eksporter()` bygger objektet, men intet sender det
+  nogen steder hen. Låsningen bærer referencen, som er bindingen til
+  regnskabet; formatet i den anden ende er ikke afklaret.
+- **Opbevaring pr. palle pr. dag.** Kræver en daglig måling og kan ikke
+  regnes bagud — se `warehouse.js`.

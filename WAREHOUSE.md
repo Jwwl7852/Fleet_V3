@@ -640,3 +640,32 @@ af et.
 Proben kunne ikke se det: den udelod feltet **helt**, og så var der ingen
 `null` at koste om. Rettet i begge lag — serveren læser med `typeof`, og
 klienten sender slet ikke de felter arten ikke har.
+
+---
+
+## 8. Afregningen når frem til et fakturagrundlag
+
+Warehouse regnede sin afregning færdig i etape 6, og **stoppede før
+dokumentet**: `grundlag` havde ingen node, og `byggGrundlag()` kastede uden et
+`bookingId`. Begge dele er lukket. Detaljerne står i **PRISER.md §10**; her
+står kun det Warehouse skal vide.
+
+**Warehouse → Afregning** har en knap: **Opret fakturagrundlag**. Den skriver
+ikke — den kalder `grundlagskriv`. Godkendelsen sker **ét sted**, i Økonomi →
+Fakturering (beslutning 12); afregningen laver kun kladden.
+
+⚠ **En linje uden sats kommer ikke med, og skærmen tæller dem op.** En tavs
+udeladelse er en for lav faktura, som ingen kan se — grundlaget ser komplet ud.
+
+⚠ **Momssatsen sættes ikke.** Lageret kender den ikke, og den gættes ikke til
+25 %. Eksporten er spærret indtil en bogholder har svaret. Det betyder at en
+lagerafregning i dag kan **godkendes, men ikke låses** — og det er det
+rigtige svar, ikke et hul.
+
+⚠ **Oversættelsen fra afregningslinje til grundlagslinje står i
+`fakturering.js`**, ikke i `warehouse.js`. Den hører til dokumentet, ikke til
+lageret — og `warehouse.js` er importfri, fordi den kopieres til serveren.
+
+**Det der ikke kan regnes bagud, står stadig.** Opbevaring pr. palle pr. dag
+kræver en daglig måling; en genberegning ville give et andet tal hver gang
+historikken blev rettet. Samme lærestreg som `maalnu`.

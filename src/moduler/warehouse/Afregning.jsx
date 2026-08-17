@@ -20,13 +20,18 @@
  * en afregning her følger "seneste N dage" og ikke en kalendermåned — og det
  * skal den, den dag et grundlag skal fryses. Se noten nederst.
  *
- * ⚠ DER SKRIVES IKKE ET FAKTURAGRUNDLAG HERFRA, og det er ikke en
- * forglemmelse. Noden findes nu, men den er `.write: false` for alle — også
- * admin: et grundlag får sit nummer fra en counter i en transaction, og et
- * låst grundlag må aldrig kunne ændres. Skrivningen hører i en Cloud
- * Function, og den findes ikke endnu (nummerserier står som et kendt hul i
- * README). En knap der lovede en faktura, ville love noget platformen ikke
- * kan. Skærmen siger hvad der mangler i stedet.
+ * ⚠ GRUNDLAGET OPRETTES GENNEM `grundlagskriv`, ikke herfra. Noden er
+ * `.write: false` for alle — også admin: nummeret kommer fra en counter i en
+ * transaction, og et låst grundlag må aldrig kunne ændres. Skærmen sender
+ * linjerne; serveren bygger dokumentet.
+ *
+ * ⚠ ET GRUNDLAG ER IKKE EN FAKTURA. Det er en KLADDE når det er oprettet, og
+ * godkendelsen sker ét sted — Indkøb → Fakturaer og Økonomi → Fakturering
+ * (beslutning 12). Knappen her siger derfor "Opret fakturagrundlag" og ikke
+ * "Fakturér".
+ *
+ * ⚠ EN LINJE UDEN SATS KOMMER IKKE MED, og skærmen skriver hvor mange der
+ * blev udeladt. En tavs udeladelse er en for lav faktura.
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -35,19 +40,26 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke,
+  Knap, Formularsvar,
 } from "../../fleet/ui.jsx";
 import {
   YDELSE, ALLE_YDELSER, afregningslinjer, afregningssum,
   talFraMaengde, MAENGDE_SKALA,
 } from "../../fleet/warehouse.js";
 import { satsopslag, STANDARDGRUPPE, PRISKILDE } from "../../fleet/pricing.js";
+import { opretGrundlag, grundlagslinjer } from "../../fleet/fakturering.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 
 const arterFor = (ydelse) => YDELSE[ydelse]?.arter;
 
 export default function Afregning() {
-  const { periode, dage } = useFleet();
+  const { periode, dage, bruger } = useFleet();
   const [kundeId, saetKundeId] = useState("");
+  const [arbejder, saetArbejder] = useState(false);
+  const [svar, saetSvar] = useState(null);
+  const [kvittering, saetKvittering] = useState(null);
+  const maaOprette = harPerm(bruger?.perms, PERM.grundlagSkriv);
 
   const {
     data: kunder, tilstand, genindlaes, henter,
@@ -83,6 +95,25 @@ export default function Afregning() {
     : [];
   const sum = afregningssum(linjer);
   const mine = bevaegelser.filter((b) => b.kundeId === kundeId);
+
+  /* ⚠ KUN LINJER MED EN SATS KAN FAKTURERES. Oversættelsen ligger i
+     fakturering.js, ét sted — lå den her, ville den næste skærm lave sin
+     egen, og to fakturaer for det samme lager kunne se forskellige ud. */
+  const tilGrundlag = grundlagslinjer(linjer);
+  const udeladt = linjer.length - tilGrundlag.length;
+
+  const opret = async () => {
+    saetArbejder(true);
+    const r = await opretGrundlag({
+      kundeId: kunde.id,
+      periode: { fra: periode.fra, til: periode.til },
+      division: kunde.division,
+      linjer: tilGrundlag,
+    });
+    saetArbejder(false);
+    saetSvar(r);
+    if (r.ok) saetKvittering(r.data);
+  };
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -181,6 +212,25 @@ export default function Afregning() {
               tom="Ingen linjer."
             />
 
+            {kvittering && (
+              <div className="fc-empty fc-empty-info" style={{ marginTop: 12 }}>
+                <p>
+                  Fakturagrundlag <b>{kvittering.nummer}</b> er oprettet som
+                  {" "}<b>kladde</b>.
+                </p>
+                <p className="fc-hint" style={{ marginTop: 6 }}>
+                  Det godkendes under{" "}
+                  <Link className="fc-a" to="/oekonomi/fakturering">Fakturering</Link>
+                  {" "}— ét godkendelsesflow, ét sted (beslutning 12).
+                  {/* ⚠ MOMSSATSEN FULGTE IKKE MED. Afregningen kender den
+                      ikke, og vi gætter ikke 25 %. */}
+                  {" "}Momssatsen mangler på linjerne, så eksporten er spærret
+                  indtil den er sat.
+                </p>
+              </div>
+            )}
+            <Formularsvar svar={svar} />
+
             <div className="fc-linje" style={{ marginTop: 12 }}>
               <span><b>I alt ekskl. moms</b></span>
               {sum.beloebOere == null
@@ -204,14 +254,33 @@ export default function Afregning() {
           </>
         )}
 
+        {kunde && tilGrundlag.length > 0 && !kvittering && (
+          <div style={{ marginTop: 12 }}>
+            <Knap variant="primaer" disabled={!maaOprette || arbejder}
+                  title={maaOprette
+                    ? "Opretter et grundlag som kladde. Det godkendes i Fakturering."
+                    : `Kræver ${PERM.grundlagSkriv} — serveren afviser.`}
+                  onClick={opret}>
+              {arbejder ? "Opretter …" : "Opret fakturagrundlag"}
+            </Knap>
+            {/* ⚠ EN TAVS UDELADELSE ER EN FOR LAV FAKTURA. */}
+            {udeladt > 0 && (
+              <p className="fc-svar fc-svar-fejl" role="alert">
+                ⚠ {num(udeladt)}{" "}
+                {udeladt === 1 ? "linje kommer" : "linjer kommer"} IKKE med:
+                {" "}de mangler en sats og kan ikke faktureres. Sæt prisen
+                først, hvis de skal med.
+              </p>
+            )}
+          </div>
+        )}
+
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          ⚠ <b>Der oprettes ikke et fakturagrundlag herfra endnu.</b> Noden
-          findes, men den er <b>.write: false for alle</b> — også admin: et
-          grundlag skal have sit nummer fra en counter i en transaction, og et
-          låst grundlag må aldrig kunne ændres. Skrivningen hører i en Cloud
-          Function, og den findes ikke endnu. En knap der lovede en faktura,
-          ville love noget platformen ikke kan. Godkendelsen hører desuden ét
-          sted: Indkøb → Fakturaer (beslutning 12).
+          ⚠ <b>Et grundlag er ikke en faktura.</b> Det oprettes som en kladde,
+          og godkendelsen sker ét sted — Økonomi → Fakturering (beslutning 12).
+          Grundlaget skrives af <b>serveren</b>: noden er <b>.write: false for
+          alle</b>, også admin, fordi nummeret kommer fra en counter i en
+          transaction og et låst grundlag aldrig må kunne ændres.
         </p>
       </Kort>
     </div>

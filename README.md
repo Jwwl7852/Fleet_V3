@@ -331,11 +331,16 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 
-**Cloud Functions er den reelle flaskehals.** Ni ting venter på samme
+**Cloud Functions er den reelle flaskehals.** Otte ting venter på samme
 opsætning: bookingtilstandsskift, de tre tjek nedenfor, claim-udstedelse fra
-`roller/`, skrivning af auditposter, nummerserier, reservationskonflikter,
-KPI-aggregering og retention-sletning. De berørte noder er `.write: false`
-indtil da — strengere end den kontrol der skal afløse det, men ikke granulært.
+`roller/`, skrivning af auditposter, reservationskonflikter, KPI-aggregering
+og retention-sletning. De berørte noder er `.write: false` indtil da —
+strengere end den kontrol der skal afløse det, men ikke granulært.
+
+⚠ **Nummerserier er ikke længere på listen — for fakturagrundlaget.**
+`naesteGrundlagsnummer()` tager nummeret i en transaction inde i
+`grundlagskriv`, som beslutning 8 kræver. Mekanismen er den samme for de
+øvrige serier; kun kaldstedet mangler. Skriv ikke en ny — genbrug counteren.
 
 **Disponering dækker to forretninger.** Dagsvisningen er værkstedsopgaver med
 varighed i timer; ugesvisningen er langtur med ETA over døgngrænser og
@@ -438,7 +443,7 @@ afgjort, detaljerne ikke:
 
 | Skærm | Afgjort i beslutning 22 | Hvad der stadig mangler |
 |---|---|---|
-| **Økonomi → Fakturagrundlag** | FleetControl laver **ikke** den juridiske faktura. Ingen nummerserie, kreditnotaer, betalingsregistrering eller rykkere. Den producerer et godkendt, **låst** grundlag der eksporteres. Neutral intern model med adaptere: e-conomic, Dinero, Business Central, CSV. `prepared_by` og `approved_by` findes **altid**, også når det er samme person | Feltskemaet i den neutrale model, og hvilken adapter der bygges først |
+| **Økonomi → Fakturagrundlag** | FleetControl laver **ikke** den juridiske faktura. Ingen nummerserie, kreditnotaer, betalingsregistrering eller rykkere. Den producerer et godkendt, **låst** grundlag der eksporteres. Neutral intern model med adaptere: e-conomic, Dinero, Business Central, CSV. `prepared_by` og `approved_by` findes **altid**, også når det er samme person | **Kæden er bygget:** opret (Warehouse → Afregning), godkend og lås (Fakturering), alle tre gennem `grundlagskriv`. ⚠ Åbent: **momssatsen pr. linje** — der er ingen skærm der sætter den, og eksporten er spærret uden. Feltskemaet i den neutrale model, og hvilken adapter der bygges først, er også åbent. Selve afsendelsen findes ikke: `eksporter()` bygger objektet, men intet sender det nogen steder hen — låsningens **reference** er bindingen til regnskabet |
 | **Flåde → Indberetninger** | To slags: **driftshændelser** (reparation, skade, dæk, service, andet) starter et forløb; **udgiftsregistreringer** (tankning, parkering, truckwash, kvittering) gør ikke. En driftshændelse **lukkes ikke** når den bliver et værkstedsbesøg — den er samme sag hele vejen til fakturaen. Skade får modpart, reg.nr., forsikringsselskab, policenr., skadenr. og ansvar | Om skadeforløbet er sin egen tilstandsmaskine |
 | **Bemanding → Kompetencer** | **Lovkritiske** (C, CE, D1, D, ADR, tachograf) blokerer hårdt. **Virksomheds- og kundekrav** advarer med override der kræver begrundelse og logges. Chaufføren uploader dokumentation, kontoret godkender. Varsler konfigurerbare, default **90/30/14** dage | **Opdelingen er bygget** — `tjekKompetencer()` returnerer `{ ok, blokerende, advarende }`, og skærmen kalder den med objektformen. `ok` betyder KAN DISPONERES; advarsler gør den ikke falsk. Åbent: et foto af et ADR-kort hører i `sensitive/`, og det kræver en **Storage-bucket, som DEV ikke har** |
 | **Indkøb → Leverandører** | **Ingen stjerner.** Objektive tal: leverance til tiden, fakturaafvigelse, gennemsnitlig leveringstid, prisændring 12 mdr., reklamationer, samlet køb. En score må **kun** findes hvis beregningen kan vises. Aftaler og prislister ligger på leverandøren, ét sted | **Afklaret:** fire af de seks kan beregnes af et opslag pr. leverandør — `leverandoerId` er allerede indekseret på `indkoeb` og `fakturaer`. **Svartid** kræver `sager`, som endnu ikke har regler. **Andel af indkøb** kræver en aggregering: nævneren er tenantens samlede indkøb, og summeres den af et hentet vindue, er det en total ud af et udsnit (beslutning 6). ⚠ `beregnNoegletal()` opdager det ikke — får den en liste der kun rummer én leverandør, returnerer den **100 %** med et grundlag der ser tilstrækkeligt ud |

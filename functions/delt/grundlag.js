@@ -72,6 +72,16 @@ export const LINJE_ART = {
     art: "materiale", label: "Materiale", kraeverKilde: true, kildeArt: "indberetning",
     enhed: "stk",
   },
+  lager: {
+    /* ⚠ EN LAGERLINJE PEGER IKKE PÅ ÉN KILDE, og det er ikke sjusk.
+       Afregningen grupperer mange bevægelser til én linje pr. ydelse og pr.
+       sats — "3 håndteringer à 120,00". Et enkelt kilde-id ville udpege den
+       ene af dem og skjule de to andre. Linjen kan stadig efterprøves: den
+       bærer perioden gennem grundlaget, og bevægelserne ligger i basen.
+       Se afregningslinjer() i warehouse.js. */
+    art: "lager", label: "Lagerydelse", kraeverKilde: false, kildeArt: null,
+    enhed: "stk",
+  },
   manuel: {
     art: "manuel", label: "Manuel linje", kraeverKilde: false, kildeArt: null,
     enhed: "stk",
@@ -110,6 +120,32 @@ export const erRedigerbar = (g) => Boolean(GRUNDLAG_TILSTAND[g?.tilstand]?.redig
  * samme to gange eller slet ikke.
  */
 export const erGaeldende = (g) => Boolean(g) && !g.erstattetAfId;
+
+/**
+ * Et grundlag som det ligger i RTDB → den form domænet regner med.
+ *
+ * ⚠ RTDB HAR INGEN ARRAYS. `linjer` og `historik` ligger som objekter, mens
+ * hver eneste funktion herunder itererer dem: `kanGodkende()` gør
+ * `for (const l of grundlag.linjer)`, `godkend()` gør `[...historik]`. Et
+ * objekt kaster begge steder — og fejlen kommer ud et sted der intet har med
+ * årsagen at gøre. Serveren så det som "INTERNAL"; skærmen så det som en
+ * hvid side.
+ *
+ * ⚠ OG OVERSÆTTELSEN STÅR HÉR, ÉT STED. Den var skrevet af inde i
+ * `hentGrundlag()` i functions/index.js, og da skærmen begyndte at læse
+ * noden, manglede den samme oversættelse i klienten. To kopier af den samme
+ * kendsgerning, hvor den ene ikke fandtes endnu. Filen kopieres til
+ * `functions/delt/`, så serveren kalder den samme.
+ */
+export function fraDb(post, id) {
+  if (!post) return null;
+  return {
+    ...post,
+    id: id ?? post.id,
+    linjer: Array.isArray(post.linjer) ? post.linjer : Object.values(post.linjer || {}),
+    historik: Array.isArray(post.historik) ? post.historik : Object.values(post.historik || {}),
+  };
+}
 
 /* ---- Beløb ------------------------------------------------------------ */
 
@@ -411,6 +447,28 @@ export function eksporter(grundlag, { nummer } = {}) {
     udarbejdetAf: grundlag.udarbejdetAf,
     godkendtAf: grundlag.godkendtAf,
   };
+}
+
+/**
+ * kanLaase(grundlag) → { ok, aarsager }
+ *
+ * ⚠ AT KUNNE EKSPORTERES OG AT KUNNE LÅSES ER TO SPØRGSMÅL. Et LÅST grundlag
+ * må gerne eksporteres igen — filen kan være gået tabt i den anden ende — men
+ * det må ikke låses igen: så ville `eksportReference` og `laastMs` blive
+ * overskrevet, og den første eksport ville forsvinde uden spor.
+ *
+ * De to var det samme spørgsmål indtil et klik på et låst grundlag fandt
+ * forskellen: skærmen tilbød at låse det igen, og `laas()` kastede en rå
+ * Error, som kom ud af funktionen som "INTERNAL". En forudsætning der kun
+ * håndhæves af en exception, er ikke et svar man kan vise nogen.
+ */
+export function kanLaase(grundlag) {
+  const tjek = kanEksportere(grundlag);
+  const aarsager = [...tjek.aarsager];
+  if (grundlag?.tilstand === "laast") {
+    aarsager.unshift("Grundlaget er allerede låst — en rettelse er et nyt grundlag.");
+  }
+  return { ok: !aarsager.length, aarsager };
 }
 
 /** Låsningen sker EFTER en gennemført eksport, ikke før. Fejler eksporten

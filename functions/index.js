@@ -57,7 +57,7 @@ import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
    funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
 import {
   byggGrundlag, validerLinje, kanGodkende, godkend, kanEksportere, laas,
-  naesteGrundlagsnummer,
+  naesteGrundlagsnummer, fraDb, kanLaase,
 } from "./delt/grundlag.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
@@ -2006,16 +2006,12 @@ async function hentGrundlag(rod, id) {
   if (!id) throw new HttpsError("invalid-argument", "id mangler.");
   const g = (await rod.child(`grundlag/${id}`).once("value")).val();
   if (!g) throw new HttpsError("not-found", `Grundlaget ${id} findes ikke.`);
-  /* ⚠ BEGGE LISTER SKAL OVERSÆTTES. RTDB har ingen arrays — linjer og
-     historik ligger som objekter — mens domænet regner med arrays.
-     godkend() gør `[...grundlag.historik]`, og med et objekt kaster den et
-     sted der intet har med godkendelsen at gøre. Det kostede en probe at
-     finde: fejlen kom ud som "INTERNAL". */
-  return {
-    ...g, id,
-    linjer: Object.values(g.linjer || {}),
-    historik: Object.values(g.historik || {}),
-  };
+  /* ⚠ OVERSÆTTELSEN ER fraDb() I DEN DELTE FIL, ikke en afskrift her. RTDB
+     har ingen arrays; domænet regner med arrays. Den stod som en afskrift på
+     dette sted, og da Fakturering-skærmen begyndte at læse noden, manglede
+     den samme oversættelse i klienten — den samme kendsgerning to steder,
+     hvor det ene sted ikke fandtes endnu. */
+  return fraDb(g, id);
 }
 
 /** Linjer fra basen/klienten → den form grundlag.js validerer. */
@@ -2158,7 +2154,13 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
     }
     const g = await hentGrundlag(rod, id);
 
-    const tjek = kanEksportere(g);
+    /* ⚠ kanLaase(), IKKE kanEksportere(). Et laast grundlag maa gerne
+       eksporteres igen — filen kan vaere gaaet tabt i den anden ende — men
+       det maa ikke laases igen: saa ville eksportReference og laastMs blive
+       overskrevet, og den foerste eksport forsvinde uden spor. Med det
+       forkerte tjek naaede kaldet frem til laas(), som kaster en raa Error —
+       og den kom ud som "INTERNAL". */
+    const tjek = kanLaase(g);
     if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsager[0]);
 
     const aendring = laas(g, { bruger: uid, reference });

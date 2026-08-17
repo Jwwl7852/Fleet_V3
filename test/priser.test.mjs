@@ -1287,27 +1287,47 @@ describe("afregningsskærmen samler det hele", () => {
   it("⚠ LAVER IKKE SIN EGEN PERIODEVÆLGER", () => {
     /* Shellen ejer perioden. To vælgere kunne blive uenige om hvilken
        periode tallene dækker — og på en afregning er det et beløb. */
-    assert.ok(skaerm.includes("periode, dage } = useFleet()"));
+    assert.ok(/periode, dage[^}]*\} = useFleet\(\)/.test(skaerm),
+      "skærmen henter ikke perioden fra shellen");
     assert.ok(!/type="date"/.test(skaerm), "skærmen har sin egen datovælger");
   });
 
-  it("⚠ LOVER IKKE ET FAKTURAGRUNDLAG DEN IKKE KAN LAVE", () => {
-    /* Grundlaget har ingen node, og et nummer kræver en Cloud Function med
-       en transaction — et kendt hul. En knap ville love noget platformen
-       ikke kan, og godkendelsen hører ét sted (beslutning 12). */
-    assert.ok(skaerm.includes("Der oprettes ikke et fakturagrundlag herfra endnu"),
-      "det manglende grundlag står ikke på skærmen");
-    /* ⚠ NODEN FINDES NU — og prøven her fangede at skærmens forbehold var
-       blevet forkert i samme øjeblik den kom til. Det der mangler, er VEJEN
-       ind: noden er `.write: false` for alle, og den Cloud Function der skal
-       skrive den, findes ikke. Bliver den skrivbar, falder prøven igen — og
-       så skal teksten rettes en tredje gang. */
+  it("⚠ OPRETTER ET GRUNDLAG GENNEM SERVEREN — OG GODKENDER DET IKKE", () => {
+    /* Denne prøve har nu fanget forbeholdet TO gange: da noden kom til, og da
+       vejen ind kom til. Det er meningen — teksten på skærmen er en påstand om
+       platformen, og en påstand skal kunne blive forkert.
+
+       Godkendelsen hører ÉT sted (beslutning 12). Kunne man både oprette og
+       godkende her, var der to godkendelsesflows — og det var beslutning 12
+       om igen. */
+    assert.ok(skaerm.includes("opretGrundlag"), "skærmen opretter ikke et grundlag");
+    assert.ok(!/godkendGrundlag|laasGrundlag/.test(skaerm),
+      "afregningen godkender sit eget grundlag — to godkendelsesflows");
+    assert.ok(/Fakturering/.test(skaerm),
+      "skærmen siger ikke hvor grundlaget så godkendes");
+
+    /* ⚠ OG NODEN ER STADIG `.write: false` FOR ALLE. Vejen ind er funktionen,
+       ikke en rettighed. Bliver noden skrivbar fra en klient, falder prøven
+       her — for så er nummeret, tilstandsskiftet og låsningen pludselig noget
+       en browser kan bestemme. */
     const regler = readFileSync("firebase.rules.json", "utf8");
     const blok = regler.slice(regler.indexOf('"grundlag": {'));
     assert.ok(blok.slice(0, 900).includes('".write": false'),
-      "grundlaget kan skrives fra en klient — så skal forbeholdet rettes igen");
-    assert.ok(skaerm.includes(".write: false for alle"),
-      "skærmen siger ikke hvorfor der ikke kan skrives");
+      "grundlaget kan skrives direkte fra en klient");
+    /* Teksten står i JSX og kan være brudt af et <b> eller et linjeskift —
+       prøven leder efter udsagnet, ikke efter formateringen. */
+    assert.ok(/\.write: false for[^]{0,40}alle/.test(skaerm),
+      "skærmen siger ikke hvorfor den ikke skriver selv");
+  });
+
+  it("⚠ EN UDELADT LINJE TÆLLES OP PÅ SKÆRMEN", () => {
+    /* En linje uden sats kan ikke faktureres og kommer ikke med. Sker det
+       tavst, er resultatet en for lav faktura — og ingen kan se det, for
+       grundlaget ser komplet ud. */
+    assert.ok(skaerm.includes("udeladt"), "de udeladte linjer tælles ikke");
+    const klient = readFileSync("src/fleet/fakturering.js", "utf8");
+    assert.ok(klient.includes("l.satsOere != null"),
+      "linjer uden sats filtreres ikke fra");
   });
 
   it("henter bevægelserne på det indekserede felt", () => {

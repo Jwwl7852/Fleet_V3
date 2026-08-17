@@ -504,7 +504,7 @@
             "linjer": {
               "$linjeId": {
                 ".validate": "newData.hasChildren(['art', 'antal', 'satsOere'])",
-                "art": { ".validate": "newData.isString() && newData.val().matches(/^(koersel|ventetid|tillaeg|materiale|manuel)$/)" },
+                "art": { ".validate": "newData.isString() && newData.val().matches(/^(koersel|ventetid|tillaeg|materiale|lager|manuel)$/)" },
                 "tekst": { ".validate": "newData.isString() && newData.val().length <= 200" },
                 // Maengder som TUSINDEDELE og beloeb i hele OERE — ANTAL_SKALA
                 // i beloeb.js. To skalaer fakturerer 1000x forkert.

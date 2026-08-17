@@ -15,8 +15,8 @@ import {
   linjeBeloebOere, linjeMomsOere, totaler,
   validerLinje, linjerUdenMoms,
   byggGrundlag, kanGodkende, godkend,
-  kanEksportere, eksporter, EKSPORT_FORMAT_VERSION, laas,
-  erstat, erGaeldende, summer,
+  kanEksportere, eksporter, EKSPORT_FORMAT_VERSION, laas, kanLaase,
+  erstat, erGaeldende, summer, fraDb,
 } from "../src/fleet/grundlag.js";
 
 const NU = Date.UTC(2026, 7, 9, 10, 0, 0);
@@ -247,4 +247,91 @@ test("summen er ukendt hvis bare ét gældende grundlag mangler moms", () => {
   const a = { ...grundlag(), id: "g1" };
   const b = { ...grundlag({ linjer: [linje({ momssats: null })] }), id: "g2" };
   assert.equal(summer([a, b]).momsOere, null);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RTDB HAR INGEN ARRAYS
+
+   Fejlen kostede en hvid skærm: det første rigtige grundlag blev oprettet, og
+   Fakturering kastede "object is not iterable" inde i kanGodkende() — et sted
+   der intet har med godkendelsen at gøre. Serveren havde allerede
+   oversættelsen, som en AFSKRIFT inde i hentGrundlag(). Klienten havde den
+   ikke. Den samme kendsgerning to steder, hvor det ene sted ikke fandtes endnu.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+test("fraDb oversætter linjer og historik fra objekt til array", () => {
+  const raa = {
+    tilstand: "kladde", kundeId: "k1",
+    linjer: { l1: { id: "l1", art: "lager", antal: 1000, satsOere: 4500 } },
+    historik: { h1: { hvad: "oprettet", ms: NU } },
+  };
+  const g = fraDb(raa, "grl-1");
+  assert.equal(g.id, "grl-1");
+  assert.ok(Array.isArray(g.linjer));
+  assert.ok(Array.isArray(g.historik));
+  assert.equal(g.linjer.length, 1);
+});
+
+test("fraDb rører ikke et grundlag der allerede har arrays", () => {
+  /* Demo-sættet og byggGrundlag() leverer arrays. Blev de pakket om, ville
+     rækkefølgen kunne skifte — og en fakturalinjes rækkefølge er det man
+     læser oppefra og ned. */
+  const g = { ...grundlag(), id: "g1" };
+  const ud = fraDb(g);
+  assert.deepEqual(ud.linjer, g.linjer);
+  assert.deepEqual(ud.historik, g.historik);
+});
+
+test("⚠ kanGodkende KASTER på et uoversat grundlag — derfor findes fraDb", () => {
+  /* Prøven her holder fast i HVORFOR: domænet itererer, og et RTDB-objekt kan
+     ikke itereres. Fjernes fraDb, er det den her linje der falder — ikke en
+     bruger der ser en hvid side. */
+  const raat = { ...grundlag(), linjer: { l1: { id: "l1", art: "koersel", antal: 1000, satsOere: 100 } } };
+  assert.throws(() => kanGodkende(raat, { bruger: BRUGER }), /iterable/);
+  assert.ok(kanGodkende(fraDb(raat), { bruger: BRUGER }).ok !== undefined);
+});
+
+test("fraDb på null giver null — en manglende post er ikke et tomt grundlag", () => {
+  assert.equal(fraDb(null), null);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AT KUNNE EKSPORTERES OG AT KUNNE LÅSES ER TO SPØRGSMÅL
+
+   De var det samme, indtil et klik på et LÅST grundlag fandt forskellen:
+   skærmen tilbød at låse det igen, kaldet nåede frem til laas(), og den
+   kastede en rå Error — som kom ud af Cloud Functionen som "INTERNAL". En
+   forudsætning der kun håndhæves af en exception, er ikke et svar man kan
+   vise nogen.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+test("et LÅST grundlag må eksporteres igen — men ikke låses igen", () => {
+  const g = { ...grundlag(), tilstand: "laast", eksportReference: "bilag 4471" };
+  /* Filen kan være gået tabt i den anden ende. Eksporten er en kopi. */
+  assert.equal(kanEksportere(g).ok, true);
+  /* Låsningen ville overskrive eksportReference og laastMs — og så ville den
+     første eksport forsvinde uden spor. */
+  const l = kanLaase(g);
+  assert.equal(l.ok, false);
+  assert.match(l.aarsager[0], /allerede låst/);
+});
+
+test("kanLaase bærer eksportens egne årsager med", () => {
+  /* Den er kanEksportere PLUS ét led — ikke et selvstændigt regelsæt. To
+     regelsæt ville kunne blive uenige om den samme momssats. */
+  const udenMoms = { ...grundlag({ linjer: [linje({ momssats: null })] }), tilstand: "godkendt" };
+  assert.equal(kanLaase(udenMoms).ok, false);
+  assert.ok(kanLaase(udenMoms).aarsager.some((a) => /momssats/.test(a)));
+});
+
+test("et godkendt grundlag med moms kan både eksporteres og låses", () => {
+  const g = { ...grundlag(), tilstand: "godkendt" };
+  assert.equal(kanEksportere(g).ok, true);
+  assert.equal(kanLaase(g).ok, true);
+});
+
+test("en KLADDE kan ingen af delene", () => {
+  const g = { ...grundlag(), tilstand: "kladde" };
+  assert.equal(kanEksportere(g).ok, false);
+  assert.equal(kanLaase(g).ok, false);
 });

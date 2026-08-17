@@ -977,11 +977,18 @@ export function forfaldneOptaellinger(beholdning = [], optaellinger = [], naa = 
       hver gang historikken blev rettet. Det er samme lærestreg som
       `maalnu` — målingen kan ikke laves bagud.
 
-   2. HVOR AFREGNINGEN SKAL LANDE. `grundlag.js` bygger et fakturagrundlag,
-      men `byggGrundlag()` KASTER uden et `bookingId`: "et grundlag hører til
-      et forløb". En lagerafregning har ingen booking — den har en periode og
-      en kunde. Og den tenant-nære `fakturagrundlag`-node findes slet ikke
-      endnu; `Fakturering.jsx` læser demo-data.
+   2. ⟨LØST⟩ HVOR AFREGNINGEN SKAL LANDE. Den stod her som et hul: `grundlag`
+      havde ingen node, og `byggGrundlag()` KASTEDE uden et `bookingId` — "et
+      grundlag hører til et forløb" — mens en lagerafregning har en PERIODE og
+      en kunde. Begge dele er lukket: `byggGrundlag()` tager nu bookingId
+      ELLER periode (aldrig begge), noden findes, og `grundlagskriv` er vejen
+      ind. Afregning-skærmen opretter grundlaget som kladde; godkendelsen
+      sker ét sted, i Fakturering (beslutning 12).
+
+      ⚠ MEN OVERSÆTTELSEN FRA AFREGNINGSLINJE TIL GRUNDLAGSLINJE LIGGER IKKE
+      HER. Den står i `fakturering.js`, fordi den hører til dokumentet og ikke
+      til lageret — og fordi filen her er importfri og skal kunne kopieres til
+      serveren.
 
    Derfor regner det her modul HÅNDTERINGEN — den kan udledes af bevægelserne,
    som bærer deres eget tidsstempel — og stopper før dokumentet. Se WAREHOUSE.md.
