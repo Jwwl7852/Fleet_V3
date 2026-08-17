@@ -21,10 +21,12 @@
  * skal den, den dag et grundlag skal fryses. Se noten nederst.
  *
  * ⚠ DER SKRIVES IKKE ET FAKTURAGRUNDLAG HERFRA, og det er ikke en
- * forglemmelse: `grundlag`-noden findes ikke i `firebase.rules.json`, og
- * nummerserier er et kendt hul (de kræver en Cloud Function med en
- * transaction). En knap der lovede en faktura, ville love noget platformen
- * ikke kan endnu. Skærmen siger hvad der mangler i stedet.
+ * forglemmelse. Noden findes nu, men den er `.write: false` for alle — også
+ * admin: et grundlag får sit nummer fra en counter i en transaction, og et
+ * låst grundlag må aldrig kunne ændres. Skrivningen hører i en Cloud
+ * Function, og den findes ikke endnu (nummerserier står som et kendt hul i
+ * README). En knap der lovede en faktura, ville love noget platformen ikke
+ * kan. Skærmen siger hvad der mangler i stedet.
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -203,12 +205,13 @@ export default function Afregning() {
         )}
 
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          ⚠ <b>Der oprettes ikke et fakturagrundlag herfra endnu.</b> Grundlaget
-          har ingen node i reglerne, og et grundlag skal have et nummer fra en
-          nummerserie — det kræver en Cloud Function med en transaction, og den
-          findes ikke. En knap der lovede en faktura, ville love noget
-          platformen ikke kan. Godkendelsen hører desuden ét sted:
-          Indkøb → Fakturaer (beslutning 12).
+          ⚠ <b>Der oprettes ikke et fakturagrundlag herfra endnu.</b> Noden
+          findes, men den er <b>.write: false for alle</b> — også admin: et
+          grundlag skal have sit nummer fra en counter i en transaction, og et
+          låst grundlag må aldrig kunne ændres. Skrivningen hører i en Cloud
+          Function, og den findes ikke endnu. En knap der lovede en faktura,
+          ville love noget platformen ikke kan. Godkendelsen hører desuden ét
+          sted: Indkøb → Fakturaer (beslutning 12).
         </p>
       </Kort>
     </div>

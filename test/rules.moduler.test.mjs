@@ -153,7 +153,10 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
   it("de tre tvetydige noder står i basen", () => {
     /* opgaver har to arter, satser to forbrugere, fakturaer to skærme.
        Står de her, er det fordi nogen har besluttet det. */
-    for (const node of ["opgaver", "satser", "fakturaer", "personale", "kompetencer", "kpi"]) {
+    /* ⚠ `grundlag` kom til med fakturagrundlagets node. Det roeres af
+       BOOKING (turen), WAREHOUSE (lagerafregningen) og OEKONOMI (skaermen) —
+       en klausul paa eet af dem ville spaerre de to andre. */
+    for (const node of ["opgaver", "satser", "fakturaer", "grundlag", "personale", "kompetencer", "kpi"]) {
       if (node === "kompetencer") continue;  /* kompetencer ER bemanding */
       assert.equal(NODE_MODUL[node], undefined, `${node} er blevet gatet af et modul.`);
     }

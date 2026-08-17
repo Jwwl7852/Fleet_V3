@@ -30,6 +30,7 @@ import {
   DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../src/fleet/demo-lager.js";
 import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
+import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -165,6 +166,11 @@ export const SEED = [
      Bookingopsaetning.jsx indtil PRISER.md etape 5; uden det her seed ville
      skaermen staa tom i dev, og eksempelberegningen ville vise "ingen sats". */
   { node: "omkostninger", data: DEMO_OMKOSTNINGER, form: "liste" },
+  /* ⚠ GRUNDLAGET ER .write: false FOR ALLE, ogsaa admin — som beholdning og
+     kasseudlaan. Provisioneringen koerer paa admin-SDK og gaar uden om
+     reglerne; uden det her seed ville Fakturering staa tom i dev, og saa
+     ville ingen opdage at skaermen nu laeser en rigtig node. */
+  { node: "grundlag", data: DEMO_GRUNDLAG, form: "liste" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */

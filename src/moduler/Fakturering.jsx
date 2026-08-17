@@ -29,14 +29,28 @@
  *    en sum og være en dobbeltfakturering.
  * ---------------------------------------------------------------------------
  *
- * FASE 0: VISNING. grundlag/ findes ikke i firebase.rules.json endnu, så der
- * skrives ingenting. Knapperne viser hvad de VILLE gøre via kanGodkende() og
+ * VISNING PÅ RIGTIGE DATA. `grundlag` findes nu som node, og skærmen læser
+ * den. Men der skrives stadig ingenting herfra: noden er **`.write: false`
+ * for alle**, også admin. Tre ting kan ikke håndhæves af en klient — nummeret
+ * kommer fra en counter i en transaction, tilstandsskiftet følger
+ * kanGodkende()'s regler, og et låst grundlag må aldrig kunne ændres. Den
+ * Cloud Function der skal skrive, findes ikke endnu.
+ *
+ * Knapperne viser derfor hvad de VILLE gøre via kanGodkende() og
  * kanEksportere() — samme mønster som Forslag-skærmen med kanSkifte().
- * Håndhævelsen hører i den Cloud Function der skriver, ikke her: ligger den i
- * skærmen, kan en direkte skrivning gå uden om den.
+ * Håndhævelsen hører i funktionen, ikke her: ligger den i skærmen, kan en
+ * direkte skrivning gå uden om den.
+ *
+ * ⚠ OG ALT PÅ SKÆRMEN SKAL KOMME FRA DE SAMME RÆKKER. Da noden kom til,
+ * hentede kortene rigtige grundlag mens detaljepanelet stadig slog etaper op
+ * i demo-sættet — så kortet sagde "0 spærret", mens panelet ved siden af
+ * skrev at forløbet havde en åben etape. Det er `bemanding.ledig` i en anden
+ * forklædning: to kilder til det samme spørgsmål. Panelet får nu listerne
+ * sendt med.
  */
 import { useState } from "react";
 import { useKpi } from "../fleet/useKpi.js";
+import { useListe } from "../fleet/useListe.js";
 import { kr, num, dato, datoTid } from "../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
@@ -51,7 +65,11 @@ import { DEMO_GRUNDLAG } from "../fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../fleet/demo-kunder.js";
 
-const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id || "—";
+/* ⚠ NAVNET SLÅS OP I DEN LISTE SKÆRMEN HAR HENTET, ikke i demo-sættet.
+   Med rigtige grundlag og opdigtede kundenavne ville en faktura kunne stå
+   med et navn der ikke findes — og ingen ville kunne se at det var opdigtet. */
+const navnetPaa = (kunder, id) =>
+  kunder.find((k) => k.id === id)?.navn || id || "—";
 
 /** Momsen vises som "—" når satsen mangler. IKKE som 0 kr. — et nul ligner et
  *  regnestykke der er gået op, og det er netop det der ikke er sket. */
@@ -61,24 +79,45 @@ export default function Fakturering() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState("grl-002");
 
-  if (henter) return <Henter hvad="fakturagrundlag" />;
+  /* ⚠ RIGTIGE GRUNDLAG NU — ikke kun demo-sættet. Noden er `.write: false`
+     for alle, ogsaa admin: et grundlag faar sit nummer fra en counter i en
+     transaction, skifter tilstand efter kanGodkende()'s regler, og et laast
+     grundlag maa aldrig kunne aendres. Ingen af de tre kan haandhaeves af en
+     klient. Skaermen er derfor stadig en LAESESKAERM — se knapperne. */
+  const {
+    data: grundlag, tilstand: grundlagTilstand, genindlaes: genindlaesGrundlag,
+    henter: henterGrundlag,
+  } = useListe("grundlag", {
+    division: "alle", ordnPaa: "udarbejdetMs", vindueDage: 365, graense: 500,
+    demo: DEMO_GRUNDLAG,
+  });
+  /* Etaperne afgoer om et grundlag kan godkendes — kanGodkende() spoerger
+     forloebstilstand(), ikke et filter her. */
+  const { data: etaper } = useListe("etaper", {
+    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_ETAPER,
+  });
+  const { data: kunder } = useListe("kunder", {
+    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KUNDER,
+  });
+
+  if (henter || henterGrundlag) return <Henter hvad="fakturagrundlag" />;
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  const valgt = DEMO_GRUNDLAG.find((g) => g.id === valgtId) || null;
+  const valgt = grundlag.find((g) => g.id === valgtId) || null;
 
   /* AFLEDT af den liste skærmen allerede har — hører derfor IKKE i kpi/.
      Samme sag som aktive klimaalarmer: et gemt afledt tal driver fra sit
      grundlag, og det er fejlen i bemanding.ledig. */
-  const kladder = DEMO_GRUNDLAG.filter((g) => g.tilstand === "kladde" && erGaeldende(g));
-  const spaerrede = kladder.filter((g) => !kanGodkende(g, { etaper: DEMO_ETAPER }).ok);
-  const udenMoms = DEMO_GRUNDLAG.filter((g) => erGaeldende(g) && linjerUdenMoms(g).length);
+  const kladder = grundlag.filter((g) => g.tilstand === "kladde" && erGaeldende(g));
+  const spaerrede = kladder.filter((g) => !kanGodkende(g, { etaper }).ok);
+  const udenMoms = grundlag.filter((g) => erGaeldende(g) && linjerUdenMoms(g).length);
 
   /* ⚠ GENNEM summer(), ikke en reduce her. Den filtrerer på erGaeldende(), og
      det er hele pointen med to-vejs-referencen. */
-  const sum = summer(DEMO_GRUNDLAG);
+  const sum = summer(grundlag);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -100,27 +139,32 @@ export default function Fakturering() {
       )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
+      {/* ⚠ GRUNDLAGENE HAR DERES EGEN TILSTAND. En afvist læsning på dem er
+          ikke det samme som manglende nøgletal, og de to må ikke dække over
+          hinanden — en tom liste ville ellers ligne "ingen grundlag". */}
+      <Datatilstand tilstand={grundlagTilstand} genprov={genindlaesGrundlag} />
 
       <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
         <Kort titel="Fakturagrundlag">
           <Tabel
             kolonner={[
-              { key: "nummer", label: "Nummer", render: (g) => <Nummer g={g} /> },
-              { key: "kunde", label: "Kunde", render: (g) => kundeNavn(g.kundeId) },
+              { key: "nummer", label: "Nummer",
+                render: (g) => <Nummer g={g} alle={grundlag} /> },
+              { key: "kunde", label: "Kunde", render: (g) => navnetPaa(kunder, g.kundeId) },
               { key: "tilstand", label: "Tilstand", render: (g) => <TilstandsPille g={g} /> },
               { key: "beloeb", label: "Beløb ekskl. moms", num: true,
                 render: (g) => kr(totaler(g).beloebOere) },
               { key: "moms", label: "Moms", num: true,
                 render: (g) => momsTekst(totaler(g).momsOere) },
             ]}
-            raekker={DEMO_GRUNDLAG}
+            raekker={grundlag}
             noegle={(g) => g.id}
             paaRaekke={(g) => setValgtId(g.id)}
             erValgt={(g) => g.id === valgtId}
             tom="Ingen fakturagrundlag i perioden."
           />
           <div className="fc-row" style={{ justifyContent: "space-between", marginTop: 12 }}>
-            <MiniLinje label={`Gældende grundlag (${sum.antal} af ${DEMO_GRUNDLAG.length})`}
+            <MiniLinje label={`Gældende grundlag (${sum.antal} af ${grundlag.length})`}
                        vaerdi={kr(sum.beloebOere)} />
             <MiniLinje label="Moms" vaerdi={momsTekst(sum.momsOere)} />
           </div>
@@ -133,7 +177,13 @@ export default function Fakturering() {
           </p>
         </Kort>
 
-        {valgt ? <Detaljer g={valgt} /> : <Kort titel="Detaljer"><Tom>Vælg et grundlag.</Tom></Kort>}
+        {/* ⚠ ETAPERNE OG KUNDERNE SENDES MED. Slog panelet dem op i
+            demo-sættet, ville kortet ovenfor og panelet her svare forskelligt
+            på det samme grundlag — og det gjorde de: kortet sagde "0 spærret",
+            mens panelet skrev at forløbet havde en åben etape. */}
+        {valgt
+          ? <Detaljer g={valgt} etaper={etaper} kunder={kunder} alle={grundlag} />
+          : <Kort titel="Detaljer"><Tom>Vælg et grundlag.</Tom></Kort>}
       </Gitter>
     </div>
   );
@@ -141,7 +191,7 @@ export default function Fakturering() {
 
 /* ---- Nummeret, med erstatningen synlig -------------------------------- */
 
-function Nummer({ g }) {
+function Nummer({ g, alle = [] }) {
   const erstattet = !erGaeldende(g);
   return (
     <span>
@@ -152,7 +202,7 @@ function Nummer({ g }) {
       </span>
       {erstattet && (
         <span className="fc-hint" style={{ marginLeft: 8 }}>
-          erstattet af {DEMO_GRUNDLAG.find((x) => x.id === g.erstattetAfId)?.nummer || g.erstattetAfId}
+          erstattet af {alle.find((x) => x.id === g.erstattetAfId)?.nummer || g.erstattetAfId}
         </span>
       )}
     </span>
@@ -166,15 +216,15 @@ function TilstandsPille({ g }) {
 
 /* ---- Detaljepanelet ---------------------------------------------------- */
 
-function Detaljer({ g }) {
+function Detaljer({ g, etaper = [], kunder = [], alle = [] }) {
   const t = totaler(g);
-  const godkendelse = kanGodkende(g, { etaper: DEMO_ETAPER });
+  const godkendelse = kanGodkende(g, { etaper });
   const eksport = kanEksportere(g);
 
   return (
     <Kort titel={g.nummer}>
       <Gitter kolonner="1fr 1fr">
-        <MiniLinje label="Kunde" vaerdi={kundeNavn(g.kundeId)} />
+        <MiniLinje label="Kunde" vaerdi={navnetPaa(kunder, g.kundeId)} />
         <MiniLinje label="Forløb" vaerdi={g.bookingId} />
         <MiniLinje label="Udarbejdet" vaerdi={dato(g.udarbejdetMs)} />
         <MiniLinje label="Godkendt" vaerdi={g.godkendtMs ? dato(g.godkendtMs) : "—"} />
@@ -215,7 +265,7 @@ function Detaljer({ g }) {
 
       {g.erstatterId && (
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          Erstatter {DEMO_GRUNDLAG.find((x) => x.id === g.erstatterId)?.nummer || g.erstatterId}.
+          Erstatter {alle.find((x) => x.id === g.erstatterId)?.nummer || g.erstatterId}.
         </p>
       )}
 

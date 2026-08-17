@@ -1297,9 +1297,17 @@ describe("afregningsskærmen samler det hele", () => {
        ikke kan, og godkendelsen hører ét sted (beslutning 12). */
     assert.ok(skaerm.includes("Der oprettes ikke et fakturagrundlag herfra endnu"),
       "det manglende grundlag står ikke på skærmen");
+    /* ⚠ NODEN FINDES NU — og prøven her fangede at skærmens forbehold var
+       blevet forkert i samme øjeblik den kom til. Det der mangler, er VEJEN
+       ind: noden er `.write: false` for alle, og den Cloud Function der skal
+       skrive den, findes ikke. Bliver den skrivbar, falder prøven igen — og
+       så skal teksten rettes en tredje gang. */
     const regler = readFileSync("firebase.rules.json", "utf8");
-    assert.ok(!/"grundlag":\s*\{/.test(regler),
-      "grundlag-noden findes nu — så skal skærmens forbehold rettes");
+    const blok = regler.slice(regler.indexOf('"grundlag": {'));
+    assert.ok(blok.slice(0, 900).includes('".write": false'),
+      "grundlaget kan skrives fra en klient — så skal forbeholdet rettes igen");
+    assert.ok(skaerm.includes(".write: false for alle"),
+      "skærmen siger ikke hvorfor der ikke kan skrives");
   });
 
   it("henter bevægelserne på det indekserede felt", () => {

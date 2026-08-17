@@ -450,6 +450,85 @@
           ".write": false
         },
 
+        // FAKTURAGRUNDLAGET — beslutning 25.
+        //
+        // ⚠ .write: false FOR ALLE, OGSAA ADMIN. Et grundlag faar sit nummer
+        // fra en counter i en transaction (beslutning 8), skifter tilstand
+        // efter kanGodkende()'s regler, og et LAAST grundlag maa aldrig kunne
+        // aendres. Ingen af de tre kan haandhaeves af en klient, og et
+        // regnskabsdokument der kan rettes i haanden, beviser ingenting.
+        // Skrivning sker gennem en Cloud Function — den findes endnu ikke, og
+        // nummerserier staar som et kendt hul i README.
+        //
+        // ⚠ INGEN MODULKLAUSUL, som fakturaer og satser. Grundlaget roeres af
+        // BOOKING (turen), WAREHOUSE (lagerafregningen) og OEKONOMI
+        // (skaermen). En klausul paa eet af dem ville spaerre de to andre.
+        //
+        // ⚠ HARDSLETTES ALDRIG. Regnskabsdata tages ud af drift med en
+        // tilstand og en erstatning — erstat() i grundlag.js — ikke ved at
+        // forsvinde. Der er derfor heller ingen vej til en sletning her.
+        "grundlag": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": false,
+          ".indexOn": ["kundeId", "bookingId", "tilstand", "udarbejdetMs"],
+          "$grundlagId": {
+            ".validate": "newData.hasChildren(['kundeId', 'tilstand', 'udarbejdetMs'])",
+            // GRL-AAAA-NNNNN. Eet format, een mekanisme (beslutning 8).
+            "nummer": { ".validate": "newData.isString() && newData.val().matches(/^GRL-[0-9]{4}-[0-9]{5}$/)" },
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|godkendt|laast)$/)" },
+            // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
+            "udarbejdetAf": { ".validate": "newData.isString()" },
+            "udarbejdetMs": { ".validate": "newData.isNumber()" },
+            "godkendtAf": { ".validate": "newData.isString()" },
+            "godkendtMs": { ".validate": "newData.isNumber()" },
+            "laastMs": { ".validate": "newData.isNumber()" },
+            "eksportReference": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            // ⚠ REFERENCEN GAAR BEGGE VEJE. erstat() kraever nytId op front,
+            // fordi et erstattet grundlag stadig findes og ellers ville taelle
+            // med — en rettelse maa ikke vaere en fordobling.
+            "erstatterId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "erstattetAfId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "linjer": {
+              "$linjeId": {
+                ".validate": "newData.hasChildren(['art', 'antal', 'satsOere'])",
+                "art": { ".validate": "newData.isString() && newData.val().matches(/^(koersel|ventetid|tillaeg|materiale|manuel)$/)" },
+                "tekst": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                // Maengder som TUSINDEDELE og beloeb i hele OERE — ANTAL_SKALA
+                // i beloeb.js. To skalaer fakturerer 1000x forkert.
+                "antal": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+                "satsOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+                "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+                // ⚠ MOMSSATSEN GAETTES IKKE. Feltet maa MANGLE — det er det
+                // rigtige svar indtil en bogholder har svaret — men staar den
+                // der, skal den vaere et tal. Se validerLinje() i grundlag.js.
+                "momssats": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+                "kilde": {
+                  ".validate": "newData.hasChildren(['type', 'id'])",
+                  "type": { ".validate": "newData.isString() && newData.val().matches(/^(etape|indberetning|bevaegelse)$/)" },
+                  "id": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                  "$andet": { ".validate": false }
+                },
+                "$andet": { ".validate": false }
+              }
+            },
+            "historik": {
+              "$postId": {
+                ".validate": "newData.hasChildren(['hvad', 'ms'])",
+                "hvad": { ".validate": "newData.isString() && newData.val().matches(/^(oprettet|aendret|godkendt|laast|erstattet)$/)" },
+                "af": { ".validate": "newData.isString()" },
+                "ms": { ".validate": "newData.isNumber()" },
+                "reference": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "begrundelse": { ".validate": "newData.isString() && newData.val().length <= 300" },
+                "$andet": { ".validate": false }
+              }
+            },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // OMKOSTNINGER — hvad turen KOSTER os. IKKE hvad kunden betaler.
         //
         // ⚠ TO NODER, FORDI TALLENE IKKE MAA BLANDES. `satser` er kundens
