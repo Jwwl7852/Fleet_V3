@@ -9,10 +9,22 @@
  *  en liste: `disponent`-presettet i permissions.js har ikke
  *  PERM.bookingGodkend.
  *
- *  Skift rolle i sidebarens demo-vælger og se knappen ændre sig. Det er hele
+ *  Skift bruger i sidebaren og se knappen ændre sig. Det er hele
  *  adgangsmodellen på ét skærmbillede: knapperne er ikke hardkodede, de er
  *  genereret af tilstandsmaskinen filtreret på dine permissions.
  * ═══════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ FORSLAGET HØRER PÅ ETAPEN — BESLUTNING 40.
+ *
+ * Skærmen læste før bookingens `forslag`. De lå begge steder: på bookingen med
+ * tid, pris og transittid, på etapen med enheder og chauffør — for et forløb
+ * med én etape det samme løfte skrevet to steder. Det man disponerer, er en
+ * etape (beslutning 16), så forslaget ligger dér med alle sine felter, og
+ * godkendelsen sker på etapen.
+ *
+ * Følgen er synlig her: **et forløb med flere etaper godkendes etape for
+ * etape.** Det er ikke en omvej — det er hele grunden til at `delvist`
+ * findes. Vælgeren øverst er derfor etapevælgeren, ikke pynt.
  *
  * ⚠ DER ER TO SLAGS NEJ, OG DE SKAL VISES HVER FOR SIG.
  *
@@ -21,45 +33,69 @@
  *
  * Vises kun den første, læses enhver manglende handling som et
  * rettighedsproblem — og så beder en koordinator om adgang hun allerede har,
- * i stedet for at vælge et forslag. kanSkifte() svarer på begge, og skærmen
- * viser det svar den får.
+ * i stedet for at vælge et forslag. `kanSkifteEtape()` svarer på begge, og
+ * skærmen viser det svar den får.
  *
- * FASE 0: VISNING. Godkendelsen skrives ikke. Den skal ske ATOMISK sammen med
- * reservationen i en Cloud Function — to klientkald kan lykkes halvt, og så
- * står der en godkendt booking uden en reservation.
+ * ⚠ OG DE FEM DISPONERINGSTJEK VISES FOR DET VALGTE FORSLAG — før man
+ * trykker. Serveren kører dem igen og afviser med SAMME sætning; det er den
+ * samme `tjekDisponering()`. Men at se dem først er forskellen på at vælge
+ * rigtigt og at få en fejl. `fs-c` i demo-sættet rammer med vilje en
+ * reservationskonflikt, så man kan se at tjekkene virker frem for at tro det.
+ *
+ * ⚠ SKÆRMEN AFGØR INGENTING. `etaper` og `reservationer` er `.write: false`
+ * for alle; knappen kalder `etapeskift`, som kører tjekkene igen og skriver
+ * etapen, reservationerne og bookingens afledte tilstand i ÉN opdatering.
  */
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { enhedsIder } from "../../fleet/etaper.js";
+import { enhedsIder, reservationerFraEtape, straekningFraEtape } from "../../fleet/etaper.js";
 import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, Tabel, Pille, Fejl, Knap, Gitter, MiniLinje,
+  Kort, Tom, Tabel, Pille, Knap, Gitter, MiniLinje, Formularsvar,
 } from "../../fleet/ui.jsx";
 import {
-  TILSTAND, kanSkifte, byggSkifte, tilgaengeligeHandlinger,
+  TILSTAND, kanSkifteEtape, byggEtapeSkifte, tilgaengeligeEtapeHandlinger,
 } from "../../fleet/booking-state.js";
+import { tjekDisponering, TONE } from "../../fleet/disponering.js";
+import { skiftEtape } from "../../fleet/disponer.js";
 import { PERM } from "../../fleet/permissions.js";
-import { DEMO_BOOKINGER, TRANSPORTTYPE, demoBooking } from "../../fleet/demo-bookinger.js";
+import {
+  DEMO_BOOKINGER, TRANSPORTTYPE, demoBooking, demoEtaperPaa,
+} from "../../fleet/demo-bookinger.js";
+import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
-import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
+import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../../fleet/demo-personale.js";
 
 const kunde = (id) => DEMO_KUNDER.find((k) => k.id === id);
 const bil = (id) => DEMO_KOERETOEJER.find((b) => b.id === id);
 const person = (id) => DEMO_PERSONALE.find((p) => p.id === id);
 
+/** Enhederne på et forslag, som navne. En sættevogn er to. */
+const enhedsnavne = (f) =>
+  enhedsIder(f).map((id) => bil(id)?.kaldenavn || id).join(" + ") || "—";
+
 export default function Forslag() {
   const { id } = useParams();
   const { bruger } = useFleet();
-  /* Uden et id i ruten falder vi tilbage på den booking der faktisk afventer
+
+  /* Uden et id i ruten falder vi tilbage på det forløb der faktisk afventer
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
   const booking = demoBooking(id)
-    || DEMO_BOOKINGER.find((b) => b.tilstand === "afventerKoord" && b.forslag?.length)
+    || DEMO_BOOKINGER.find((b) =>
+      demoEtaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && e.forslag?.length))
     || null;
 
-  const [valgtForslagId, setValgtForslagId] = useState(booking?.valgtForslagId || null);
+  const etaper = booking ? demoEtaperPaa(booking.id) : [];
+  /* Den etape der har noget at tage stilling til, kommer først. */
+  const foerste = etaper.find((e) => e.forslag?.length) || etaper[0] || null;
+
+  const [etapeId, setEtapeId] = useState(foerste?.id || null);
+  const [valgtForslagId, setValgtForslagId] = useState(null);
   const [begrundelse, setBegrundelse] = useState("");
+  const [arbejder, setArbejder] = useState(false);
+  const [svar, setSvar] = useState(null);
 
   if (!booking) {
     return (
@@ -74,16 +110,46 @@ export default function Forslag() {
     );
   }
 
+  const etape = etaper.find((e) => e.id === etapeId) || foerste;
   const perms = bruger?.perms;
   const k = kunde(booking.kundeId);
 
-  /* Bookingen som kanSkifte() ser den — med det forslag brugeren har valgt
-     lige nu, ikke det der ligger gemt. Ellers ville svaret ikke svare til
-     det man ser på skærmen. */
-  const somValgt = { ...booking, valgtForslagId };
+  /* Etapen som `kanSkifteEtape()` ser den — med det forslag brugeren har valgt
+     lige NU, ikke det der ligger gemt. Ellers ville svaret ikke svare til det
+     man ser på skærmen. */
+  const somValgt = etape ? { ...etape, valgtForslagId } : null;
+  const muligheder = etape ? tilgaengeligeEtapeHandlinger(etape.tilstand, perms) : [];
+  const godkendSvar = somValgt
+    ? kanSkifteEtape(somValgt, "reserveret", perms, { begrundelse })
+    : { ok: false, aarsag: "Forløbet har ingen etape." };
 
-  const muligheder = tilgaengeligeHandlinger(booking.tilstand, perms);
-  const godkendSvar = kanSkifte(somValgt, "reserveret", perms, { begrundelse });
+  const valgtForslag = (etape?.forslag || []).find((f) => f.id === valgtForslagId) || null;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ TJEKKENE AFGØR OGSÅ OM KNAPPEN ER AKTIV.
+
+     `kanSkifteEtape()` svarer kun på tilstandsmaskinen: må DU gå fra
+     afventerKoord til reserveret, og er der valgt et forslag. Den ved intet
+     om at chaufføren allerede kører den dag. Serveren afviser — men en knap
+     der er blå og så fejler, er en knap der lyver.
+
+     ⚠ OG DET ER IKKE EN ANDEN SANDHED. Det er den SAMME `tjekDisponering()`
+     serveren kalder; skærmen viser bare svaret først. Håndhævelsen ligger
+     stadig i `etapeskift` — et direkte kald går ikke uden om noget.
+     ══════════════════════════════════════════════════════════════════════ */
+  const tjekraekker = etape && valgtForslag
+    ? tjekrakkerFor({ etape, forslag: valgtForslag })
+    : [];
+  const spaerret = tjekraekker.some((x) => x.tone === TONE.bad);
+
+  const send = async (tilTilstand) => {
+    setArbejder(true);
+    const r = await skiftEtape({
+      etapeId: etape.id, tilTilstand, valgtForslagId, begrundelse,
+    });
+    setArbejder(false);
+    setSvar(r);
+  };
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -107,60 +173,127 @@ export default function Forslag() {
             <MiniLinje label="Oprettet af" vaerdi={`${booking.oprettetAf} · ${dato(booking.oprettetMs)}`} />
           </div>
         </Gitter>
+
+        {/* ⚠ BOOKINGENS TILSTAND ER AFLEDT. Pillen øverst er ikke noget nogen
+            skifter — den regnes af forloebstilstand() ud af etaperne, og den
+            skrives af etapeskift i samme opdatering som etapeskiftet. */}
+        <p className="fc-hint" style={{ marginTop: 12 }}>
+          ⚠ <b>Forløbets tilstand er afledt af dets etaper.</b> Den godkendes ikke
+          her — det gør <b>etapen</b>. Et forløb med flere etaper godkendes én ad
+          gangen, og det er præcis derfor <code>delvist</code> findes.
+        </p>
       </Kort>
 
-      <Kort titel={`Forslag (${booking.forslag?.length || 0})`}>
+      {/* ---- Etapevælgeren ------------------------------------------------ */}
+      {etaper.length > 1 && (
+        <Kort titel={`Forløbets etaper (${etaper.length})`}
+              under="Det man disponerer, er en etape. Vælg den du vil tage stilling til.">
+          <div className="fc-formular-knapper" style={{ marginTop: 0 }}>
+            {etaper.map((e) => (
+              <Knap key={e.id}
+                    variant={e.id === etape?.id ? "primaer" : undefined}
+                    onClick={() => { setEtapeId(e.id); setValgtForslagId(null); setSvar(null); }}>
+                {`nr. ${e.nr ?? "?"} · ${e.fraSted} → ${e.tilSted}`}
+                {" · "}
+                {TILSTAND[e.tilstand]?.label}
+              </Knap>
+            ))}
+          </div>
+        </Kort>
+      )}
+
+      {!etape ? (
+        <Kort titel="Forslag">
+          <Tom>
+            Forløbet har ingen etaper endnu. Det man disponerer, er en etape
+            (beslutning 16) — så der er intet at tage stilling til her.
+          </Tom>
+        </Kort>
+      ) : (
+        <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
+          <Forslagstabel
+            etape={etape}
+            valgtForslagId={valgtForslagId}
+            setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
+          />
+          <Godkendelse
+            svar={godkendSvar} muligheder={muligheder}
+            rolle={bruger?.rolle} valgtForslagId={valgtForslagId}
+          />
+        </Gitter>
+      )}
+
+      {etape && valgtForslag && (
+        <Tjekkene raekker={tjekraekker} forslag={valgtForslag} />
+      )}
+
+      {etape && (
+        <Skrivningen
+          etape={etape} svar={godkendSvar} bruger={bruger}
+          begrundelse={begrundelse} setBegrundelse={setBegrundelse}
+          muligheder={muligheder} valgtForslagId={valgtForslagId}
+          send={send} arbejder={arbejder} serversvar={svar}
+          spaerret={spaerret} tjekraekker={tjekraekker}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---- Forslagene på etapen ---------------------------------------------- */
+
+function Forslagstabel({ etape, valgtForslagId, setValgtForslagId }) {
+  return (
+    <Kort titel={`Forslag på etape nr. ${etape.nr ?? "?"} (${etape.forslag?.length || 0})`}
+          under={`${etape.fraSted} → ${etape.tilSted} · ${TILSTAND[etape.tilstand]?.label}`}>
+      {etape.forslag?.length ? (
+        /* ⚠ HELE RÆKKEN VÆLGER, ikke kun radioen. Et forslag er en linje med
+           otte kolonner, og en 4 px knap yderst til venstre er det eneste
+           sted man må ramme — det er ikke betjening, det er en prøve i
+           finmotorik. `paaRaekke` giver også tastaturadgang, som en <tr> med
+           en onClick ellers ikke har. Radioen bliver stående, fordi den viser
+           HVAD der er valgt. */
         <Tabel
+          paaRaekke={(f) => setValgtForslagId(f.id)}
+          erValgt={(f) => f.id === valgtForslagId}
           kolonner={[
             { key: "vaelg", label: "", render: (f) => (
                 <input type="radio" name="forslag" checked={valgtForslagId === f.id}
                        onChange={() => setValgtForslagId(f.id)}
                        aria-label={`Vælg forslag ${f.nr}`} />) },
             { key: "nr", label: "#", render: (f) => <b>{f.nr}</b> },
-            /* ⚠ ET FORSLAG KAN VÆRE EN SÆTTEVOGN. Feltet er en liste af
-               samme grund som på etapen: en trailer kan ikke køre alene, og
-               et forslag der kun kunne pege på trækkeren, ville foreslå noget
+            /* ⚠ EN SÆTTEVOGN ER TO ENHEDER. Feltet er en liste af samme grund
+               som på etapen: en trailer kan ikke køre alene, og et forslag der
+               kun kunne pege på trækkeren, ville foreslå noget
                kanDisponeres() afviser. */
-            { key: "koeretoejIder", label: "Køretøj", render: (f) => (
-                <>{enhedsIder(f).map((id) => bil(id)).filter(Boolean).map((b, i) => (
-                  <span key={b.id}>{i > 0 ? " + " : ""}{b.kaldenavn}
-                    <span className="fc-neutral"> · {b.navn}</span></span>
-                ))}</>) },
-            { key: "personId", label: "Chauffør", render: (f) => person(f.personId)?.navn || f.personId },
-            { key: "afhentningMs", label: "Planlagt afhentning", render: (f) => datoTid(f.afhentningMs) },
+            { key: "koeretoejIder", label: "Køretøj", render: enhedsnavne },
+            { key: "personId", label: "Chauffør",
+              render: (f) => person(f.personId)?.navn || f.personId },
+            { key: "afhentningMs", label: "Planlagt afhentning",
+              render: (f) => datoTid(f.afhentningMs) },
             { key: "leveringMs", label: "Levering", render: (f) => datoTid(f.leveringMs) },
-            { key: "transitTimer", label: "Transit", num: true, render: (f) => `${num(f.transitTimer)} t` },
-            { key: "estimatOere", label: "Estimat", num: true, render: (f) => kr(f.estimatOere) },
+            { key: "transitTimer", label: "Transit", num: true,
+              render: (f) => `${num(f.transitTimer)} t` },
+            { key: "estimatOere", label: "Estimat", num: true,
+              render: (f) => kr(f.estimatOere) },
             { key: "note", label: "Note" },
           ]}
-          raekker={booking.forslag || []}
-          tom="Ingen forslag på denne booking."
+          raekker={etape.forslag}
+          noegle={(f) => f.id}
         />
-        <p className="fc-hint" style={{ marginTop: 12 }}>
-          Mockuppen viste 1–3 forslag. Det valgte forslag er det der bliver til en
-          reservation ved godkendelse — derfor kræver overgangen til{" "}
-          <b>{TILSTAND.reserveret.label}</b> at et er valgt.
-        </p>
-      </Kort>
-
-      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <Godkendelse
-          svar={godkendSvar} muligheder={muligheder}
-          rolle={bruger?.rolle} perms={perms}
-          valgtForslagId={valgtForslagId}
-        />
-        <Skrivningen
-          booking={somValgt} svar={godkendSvar}
-          bruger={bruger} begrundelse={begrundelse} setBegrundelse={setBegrundelse}
-        />
-      </Gitter>
-    </div>
+      ) : (
+        <Tom>
+          Etapen har ingen forslag. Disponenten laver dem — det er den anden
+          halvdel af beslutning 5.
+        </Tom>
+      )}
+    </Kort>
   );
 }
 
 /* ---- Beslutning 5, synlig ---------------------------------------------- */
 
-function Godkendelse({ svar, muligheder, rolle, perms, valgtForslagId }) {
+function Godkendelse({ svar, muligheder, rolle, valgtForslagId }) {
   /* De to slags nej skilles ad. Den ene handler om HVEM du er, den anden om
      hvad der mangler på skærmen. */
   const manglerPerm = !muligheder.some((m) => m.kraeverPerm === PERM.bookingGodkend);
@@ -168,21 +301,8 @@ function Godkendelse({ svar, muligheder, rolle, perms, valgtForslagId }) {
 
   return (
     <Kort titel={`Godkendelse — rolle: ${rolle || "ukendt"}`}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        {muligheder.length === 0 ? (
-          <span className="fc-hint">Din rolle har ingen handlinger på denne tilstand.</span>
-        ) : muligheder.map((m) => (
-          <Knap key={m.til}
-                variant={m.til === "reserveret" ? "primaer" : "sekundaer"}
-                disabled
-                title={`Kræver ${m.kraeverPerm}. Skrivning er ikke bygget (fase 0).`}>
-            {m.handling}
-          </Knap>
-        ))}
-      </div>
-
       <MiniLinje
-        label="kanSkifte(→ reserveret)"
+        label="kanSkifteEtape(→ reserveret)"
         vaerdi={svar.ok
           ? <Pille tone="ok">ok</Pille>
           : <Pille tone="bad">afvist</Pille>}
@@ -228,10 +348,9 @@ function Godkendelse({ svar, muligheder, rolle, perms, valgtForslagId }) {
           </>
         ) : (
           <>
-            Både adgang og forudsætninger er på plads. <b>Men der skrives ingenting</b> —
-            godkendelsen og reservationen skal ske i <b>én transaktion</b> i en Cloud
-            Function. To klientkald kan lykkes halvt, og så står der en godkendt
-            booking uden en reservation.
+            Både adgang og forudsætninger er på plads. Knappen kalder{" "}
+            <code>etapeskift</code>, som kører de fem tjek igen og skriver etapen,
+            reservationerne og forløbets afledte tilstand i <b>én</b> opdatering.
           </>
         )}
       </p>
@@ -239,17 +358,102 @@ function Godkendelse({ svar, muligheder, rolle, perms, valgtForslagId }) {
   );
 }
 
-/* ---- Hvad der ville blive skrevet -------------------------------------- */
+/* ---- De fem tjek, for det valgte forslag -------------------------------- */
 
-function Skrivningen({ booking, svar, bruger, begrundelse, setBegrundelse }) {
-  const opdatering = byggSkifte(booking, "reserveret", {
-    rolle: bruger?.rolle, bruger: bruger?.uid,
-    begrundelse, valgtForslagId: booking.valgtForslagId,
+/**
+ * ⚠ VIST FØR MAN TRYKKER, IKKE SOM EN FEJL BAGEFTER.
+ *
+ * Serveren kører de samme tjek og afviser med samme sætning — det er den
+ * samme `tjekDisponering()`. Men at se dem først er forskellen på at vælge
+ * rigtigt og at få en fejl man ikke forstod var mulig.
+ *
+ * ⚠ OG DEN AFGØR INTET. Håndhævelsen ligger i `etapeskift`; det her er en
+ * visning af hvad den vil svare.
+ */
+export function tjekrakkerFor({ etape, forslag }) {
+  /* Etapen som den ville se ud MED forslaget — det er den kombination der
+     skal prøves, ikke den etapen bærer nu. */
+  const paaEtapen = {
+    ...etape,
+    koeretoejIder: forslag.koeretoejIder,
+    personId: forslag.personId,
+  };
+  const enheder = enhedsIder(paaEtapen).map((id) => bil(id)).filter(Boolean);
+  const p = person(forslag.personId);
+  const kompetencer = DEMO_KOMPETENCER.filter((c) => c.personId === forslag.personId);
+
+  /* ⚠ KØRE-HVILETID GÆLDER PERSONEN, IKKE TUREN. Alle hans etaper skal med,
+     ellers kan han få sin fjerde tur i træk fordi hver enkelt så lovlig ud
+     for sig. */
+  const straekninger = DEMO_ETAPER
+    .filter((x) => x.personId === forslag.personId && x.id !== etape.id)
+    .map(straekningFraEtape)
+    .concat([straekningFraEtape(paaEtapen)]);
+
+  /* Reservationerne i nodeform — den samme form serveren læser. */
+  const reservationer = {};
+  for (const e of DEMO_ETAPER) {
+    if (e.id === etape.id) continue;
+    for (const [i, r] of reservationerFraEtape(e).entries()) {
+      reservationer[r.ressourceType] ??= {};
+      reservationer[r.ressourceType][r.ressourceId] ??= [];
+      reservationer[r.ressourceType][r.ressourceId].push({ id: `r-${e.id}-${i}`, ...r });
+    }
+  }
+
+  const raekker = tjekDisponering({
+    reservationerForEtapen: reservationerFraEtape(paaEtapen),
+    enheder, person: p, kompetencer, reservationer, straekninger,
+    gods: etape.maengde || {},
+  });
+
+  return raekker;
+}
+
+function Tjekkene({ raekker, forslag }) {
+  return (
+    <Kort titel={`De fem tjek — forslag ${forslag.nr}`}
+          under="Det serveren vil svare. Den kører dem igen; det her er ikke afgørelsen.">
+      {raekker.length === 0 ? (
+        <Tom>
+          Ingen bemærkninger. Enhederne kan køre sammen, chaufføren må føre dem,
+          de kan bære godset, alle er ledige, og køretiden holder.
+        </Tom>
+      ) : (
+        <Tabel
+          kolonner={[
+            { key: "tjek", label: "Tjek", render: (r) => <b>{r.tjek}</b> },
+            { key: "tone", label: "", render: (r) => (
+                <Pille tone={r.tone === TONE.bad ? "bad" : "warn"}>
+                  {r.tone === TONE.bad ? "spærrer" : "advarsel"}
+                </Pille>) },
+            { key: "tekst", label: "Hvad" },
+          ]}
+          raekker={raekker.map((r, i) => ({ ...r, id: `t-${i}` }))}
+        />
+      )}
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        ⚠ <b>En advarsel er ikke en spærring.</b> Læses de ens, holder man op med
+        at læse dem. En udløbet kompetence <b>blokerer</b>; en konflikt med lavere
+        prioritet gør ikke, fordi den nye kilde ville overskrive.
+      </p>
+    </Kort>
+  );
+}
+
+/* ---- Hvad der bliver skrevet ------------------------------------------- */
+
+function Skrivningen({
+  etape, svar, bruger, begrundelse, setBegrundelse,
+  muligheder, valgtForslagId, send, arbejder, serversvar, spaerret, tjekraekker,
+}) {
+  const opdatering = byggEtapeSkifte(etape, "reserveret", {
+    rolle: bruger?.rolle, bruger: bruger?.uid, begrundelse, valgtForslagId,
   });
   const historikNoegle = Object.keys(opdatering).find((n) => n.startsWith("historik/"));
 
   return (
-    <Kort titel="Hvad godkendelsen ville skrive">
+    <Kort titel="Handlinger">
       <div className="fc-felt">
         <label htmlFor="fs-begrund">Begrundelse (kræves ved returnér og afvis)</label>
         <textarea id="fs-begrund" rows={2} value={begrundelse}
@@ -257,25 +461,60 @@ function Skrivningen({ booking, svar, bruger, begrundelse, setBegrundelse }) {
                   onChange={(e) => setBegrundelse(e.target.value)} />
       </div>
 
-      <MiniLinje label="tilstand" vaerdi={<code>{opdatering.tilstand}</code>} />
-      <MiniLinje label="valgtForslagId" vaerdi={<code>{String(opdatering.valgtForslagId)}</code>} />
-      <MiniLinje label="sidstAendretAf" vaerdi={<code>{String(opdatering.sidstAendretAf)}</code>} />
-      <MiniLinje label="historik" vaerdi={<code>{historikNoegle}</code>} />
+      {/* ⚠ KNAPPERNE ER GENERERET AF TILSTANDSMASKINEN, ikke håndskrevet. En
+          rolle kan derfor ikke komme til at se en knap den ikke må bruge — og
+          `kanSkifteEtape()` afgør om den er aktiv, med den samme funktion
+          serveren bruger. */}
+      <div className="fc-formular-knapper">
+        {muligheder.length === 0 ? (
+          <span className="fc-hint">Din rolle har ingen handlinger på denne tilstand.</span>
+        ) : muligheder.map((m) => {
+          const tjek = kanSkifteEtape(
+            { ...etape, valgtForslagId }, m.til, bruger?.perms, { begrundelse });
+          /* ⚠ KUN VEJEN TIL `reserveret` BINDER RESSOURCER. En returnering
+             eller en afvisning rører hverken bil eller chauffør og skal
+             derfor ikke spærres af en reservationskonflikt — tværtimod er det
+             netop dét man gør, når forslaget ikke holder. */
+          const binder = m.til === "reserveret";
+          const stoppet = binder && spaerret;
+          const foersteSpaerring = tjekraekker.find((x) => x.tone === TONE.bad);
+          return (
+            <Knap key={m.til}
+                  variant={binder ? "primaer" : undefined}
+                  disabled={!tjek.ok || stoppet || arbejder}
+                  title={!tjek.ok
+                    ? tjek.aarsag
+                    : stoppet
+                      ? `${foersteSpaerring.tjek}: ${foersteSpaerring.tekst}`
+                      : "Kalder etapeskift. Serveren kører de fem tjek igen."}
+                  onClick={() => send(m.til)}>
+              {arbejder ? "Arbejder …" : m.handling}
+            </Knap>
+          );
+        })}
+      </div>
+
+      <Formularsvar svar={serversvar} />
+
+      <div style={{ marginTop: 14 }}>
+        <MiniLinje label="tilstand" vaerdi={<code>{opdatering.tilstand}</code>} />
+        <MiniLinje label="valgtForslagId" vaerdi={<code>{String(opdatering.valgtForslagId)}</code>} />
+        <MiniLinje label="sidstAendretAf" vaerdi={<code>{String(opdatering.sidstAendretAf)}</code>} />
+        <MiniLinje label="historik" vaerdi={<code>{historikNoegle}</code>} />
+      </div>
 
       <p className="fc-hint" style={{ marginTop: 12 }}>
-        <b>Der skrives altid til historik.</b> En afvist eller returneret booking skal
+        <b>Der skrives altid til historik.</b> En afvist eller returneret etape skal
         kunne forklares et halvt år senere, og begrundelsen står i objektets egen
         historik — ikke i auditloggen, hvor fritekst ikke kommer med som værdi.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        Reservationen bygges <b>ikke</b> her. Den skal skrives atomisk sammen med
-        tilstandsskiftet, og konfliktfriheden kan ikke afgøres i klienten — to
-        koordinatorer kan ramme samme sekund.{" "}
-        <Link className="fc-a" to="/booking/disponering">Se disponeringen</Link>.
+        ⚠ <b>Skærmen skriver ikke selv.</b> <code>etaper</code> og{" "}
+        <code>reservationer</code> er <code>.write: false</code> for alle — også
+        admin. <code>etapeskift</code> skriver etapen, én reservation pr. enhed og
+        pr. chauffør, og forløbets afledte tilstand i <b>én</b> opdatering. To kald
+        kunne lykkes halvt, og så stod der en godkendt etape uden en reservation.
       </p>
-      {!svar.ok && (
-        <Fejl>Overgangen er afvist — posten herover ville aldrig blive skrevet.</Fejl>
-      )}
     </Kort>
   );
 }

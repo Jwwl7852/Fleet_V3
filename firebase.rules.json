@@ -466,6 +466,34 @@
             // chauffoer har maaske slet intet login. Se CLAUDE.md.
             "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
             "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // ⚠ FORSLAGET LIGGER PAA ETAPEN — BESLUTNING 40. Det laa BAADE her
+            // og paa bookingen: dér tid, pris og transittid, her enheder og
+            // chauffoer. For et forloeb med een etape var det det samme loefte
+            // skrevet to steder. Det man disponerer, er en etape (beslutning
+            // 16), saa forslaget hoerer her — med alle sine felter.
+            "forslag": {
+              "$forslagId": {
+                ".validate": "newData.hasChildren(['personId'])",
+                "nr": { ".validate": "newData.isNumber()" },
+                "koeretoejIder": {
+                  "$koeretoejId": {
+                    ".validate": "newData.isBoolean() && root.child('tenants').child($tenantId).child('koeretoejer').child($koeretoejId).exists()"
+                  }
+                },
+                "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
+                "afhentningMs": { ".validate": "newData.isNumber()" },
+                "leveringMs": { ".validate": "newData.isNumber() && newData.val() > newData.parent().child('afhentningMs').val()" },
+                "transitTimer": { ".validate": "newData.isNumber()" },
+                // ⚠ HELE OERER. Beslutning 2 — et estimat er et beloeb, og et
+                // beloeb i dette hus er en integer i oere, ekskl. moms.
+                "estimatOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+                "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+                "$andet": { ".validate": false }
+              }
+            },
+            // ⚠ ET VALG SKAL PEGE PAA ET FORSLAG DER FINDES. Ellers kunne
+            // etapeskift godkende noget der ikke er der.
+            "valgtForslagId": { ".validate": "newData.isString() && newData.parent().child('forslag').child(newData.val()).exists()" },
             "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerPlan|aaben|afventerKoord|reserveret|returneret|delvist|afvist|annulleret|udfoert)$/)" },
             "fra": { ".validate": "newData.isNumber()" },
             "til": { ".validate": "newData.isNumber() && newData.val() > newData.parent().child('fra').val()" },

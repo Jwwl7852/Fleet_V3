@@ -109,13 +109,45 @@ export const DEMO_ETAPER = [
     koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "anneKrogh",
     koerselMin: 530,
     maengde: { m3: 66, kg: 15100 },
-    /* ⚠ EN SÆTTEVOGN, IKKE EN SOLOBIL. Turen er 66 m³ og 15,1 t; kt-104
-       kan 48 m³ og 12 t. Forslaget stod med den alene, indtil etapeskift
-       begyndte at HÅNDHÆVE kanBaere() — serveren afviste demo-sættets eget
-       forslag med "Mangler 18 m³ og 3.100 kg". Selvkontrollen nedenfor
-       fanger det nu. */
-    forslag: [{ id: "f-1", koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "anneKrogh" }],
-    valgtForslagId: "f-1", senestMs: null,
+    /* ══════════════════════════════════════════════════════════════════
+       ⚠ FORSLAGENE LIGGER PÅ ETAPEN — BESLUTNING 40.
+
+       De lå på BOOKINGEN med tid, pris og transittid, mens etapen bar sit
+       eget med enheder og chauffør. For et forløb med én etape var det det
+       samme løfte skrevet to steder, og det er mønstret der har kostet mest
+       i dette repo. Det man disponerer, er en etape (beslutning 16) — så
+       forslaget hører dér, med ALLE sine felter.
+
+       ⚠ TRE FORSLAG DER ALLE KAN LADE SIG GØRE — og som er et ægte valg.
+       Turen er 66 m³ og 15,1 t, så alle tre er sættevogne: der findes kun
+       én aktiv trailer, og tre aktive trækkere. Forskellen er tid og pris,
+       og det er dét koordinatoren skal veje.
+
+       ⚠ OG fs-c RAMMER EN KONFLIKT MED VILJE. jesperRiis kører et-003 til
+       og med dag 3 kl. 14, og denne tur starter dag 3 kl. 02. Uden et
+       forslag der FEJLER, kan man ikke se at tjekkene virker — man kan kun
+       se at knappen er blå. */
+    forslag: [
+      { id: "fs-a", nr: 1, koeretoejIder: { "kt-012": true, "kt-tr41": true },
+        personId: "anneKrogh",
+        afhentningMs: dag(3, 2), leveringMs: dag(4, 18), transitTimer: 40,
+        estimatOere: 3640000,
+        note: "Direkte kørsel med skift i Padborg. Køleaggregat efterset i sidste uge." },
+      { id: "fs-b", nr: 2, koeretoejIder: { "kt-078": true, "kt-tr41": true },
+        personId: "reneThomsen",
+        afhentningMs: dag(3, 6), leveringMs: dag(5, 8), transitTimer: 50,
+        estimatOere: 3280000,
+        note: "Billigere, men leverer en halv dag senere end ønsket." },
+      { id: "fs-c", nr: 3, koeretoejIder: { "kt-034": true, "kt-tr41": true },
+        personId: "jesperRiis",
+        afhentningMs: dag(3, 2), leveringMs: dag(4, 14), transitTimer: 36,
+        estimatOere: 4020000,
+        note: "Hurtigst. Kræver to chauffører på strækningen syd for Hamburg." },
+    ],
+    /* ⚠ INTET VALGT. Koordinatoren vælger — det er beslutning 5. Stod der et
+       valg i forvejen, kunne man ikke se at "Vælg et forslag" er en
+       FORUDSÆTNING og ikke en manglende rettighed. */
+    valgtForslagId: null, senestMs: null,
   },
   {
     id: "et-005", bookingId: "bk-2026-00315", nr: 1,
@@ -324,8 +356,27 @@ if (import.meta.env?.DEV) {
      sættet selv.
      ══════════════════════════════════════════════════════════════════════ */
   for (const e of DEMO_ETAPER) {
+    if ((e.forslag?.length || 0) > 3) {
+      console.warn();
+    }
+    if (e.valgtForslagId && !(e.forslag || []).some((f) => f.id === e.valgtForslagId)) {
+      console.warn();
+    }
     for (const f of e.forslag || []) {
       const enheder = enhedsIder(f).map((id) => bilEfterId.get(id)).filter(Boolean);
+      /* ⚠ FELTERNE FULGTE MED FRA BOOKINGEN (beslutning 40). Et forslag
+         baerer nu BAADE tid og pris OG enheder og chauffoer — det er hele
+         loeftet ét sted. Kontrollen stod i demo-bookinger.js og staar nu
+         her, hvor data staar. */
+      if (!folk.has(f.personId)) {
+        console.warn(`demo-etaper: forslag ${f.id} på ${e.id} peger på ukendt person.`);
+      }
+      if (!(f.leveringMs > f.afhentningMs)) {
+        console.warn(`demo-etaper: forslag ${f.id} på ${e.id} leverer før det henter.`);
+      }
+      if (!Number.isInteger(f.estimatOere)) {
+        console.warn(`demo-etaper: forslag ${f.id} på ${e.id} har et estimat der ikke er hele ører.`);
+      }
       const kombi = kanDisponeres(enheder);
       if (!kombi.ok) {
         console.warn(`demo-etaper: forslag ${f.id} på ${e.id} — ${kombi.aarsag}`);

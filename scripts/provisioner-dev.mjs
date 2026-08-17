@@ -32,6 +32,7 @@ import {
 import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -363,6 +364,38 @@ async function main() {
     const antal = form === "liste" ? `${data.length} rækker` : "objekt";
     console.log(`  ${node.padEnd(24)} ${antal}`);
   }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ EN RESERVERET ETAPE HAR RESERVATIONER — OG DE ER IKKE ET DATASÆT.
+
+     `reservationer` står ikke i SEED, fordi den ikke er en liste af poster:
+     den er UDLEDT af etaperne, med `reservationerFraEtape()` — den samme
+     funktion `etapeskift` bruger. To udgaver ville betyde at dev viste et
+     lager der var reserveret på én måde og produktion på en anden.
+
+     Uden dem ser hver eneste bil FRI ud i dev: reservationerne skrives kun af
+     `etapeskift`, og et seed der springer dem over, springer dem over for
+     altid. Så kan konflikttjekket ikke ses virke — og en probe der godkendte
+     to ture på samme chauffør, ville se ud som en fejl i tjekket frem for i
+     dataene. Det er nøjagtig hvad der skete.
+     ══════════════════════════════════════════════════════════════════════ */
+  const BUNDET = ["reserveret", "udfoert"];
+  const reservationer = {};
+  let antalResv = 0;
+  for (const e of DEMO_ETAPER) {
+    if (!BUNDET.includes(e.tilstand)) continue;
+    for (const [i, r] of reservationerFraEtape(e).entries()) {
+      reservationer[r.ressourceType] ??= {};
+      reservationer[r.ressourceType][r.ressourceId] ??= {};
+      reservationer[r.ressourceType][r.ressourceId][`res-${e.id}-${i}`] = {
+        fra: r.fra, til: r.til, kilde: r.kilde,
+        oprettetAf: "provisioner", oprettetMs: Date.now(),
+      };
+      antalResv += 1;
+    }
+  }
+  await db.ref(`tenants/${DEV_TENANT}/reservationer`).set(reservationer);
+  console.log(`  ${"reservationer".padEnd(24)} ${antalResv} (udledt af etaperne)`);
 
   /* 4. Håndhæver databasen den regelfil vi lige har prøvet 591 gange?
      Provisionering er det øjeblik hvor man sætter et miljø op — og det var

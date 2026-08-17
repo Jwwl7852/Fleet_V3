@@ -41,45 +41,31 @@ export const TILSTAND = {
   udfoert:           { label: "Udført",                 pill: "ok"    },
 };
 
-/* fra → [{ til, kraeverPerm, handling, kraeverForslag, kraeverBegrundelse }]
- *
- * kraeverPerm frem for en rolle-liste. Før stod der fire steder
- * `roller: [ROLLE.koordinator, ROLLE.admin]`, og admin skulle huskes på hver
- * eneste linje — glemte man den, kunne administratoren ikke rydde op. Nu har
- * admin-presettet alle permissions, og listerne kan ikke komme ud af sync.
- */
-const OVERGANGE = {
-  kladde: [
-    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Send til planlægning" },
-    { til: "annulleret",   kraeverPerm: PERM.bookingOpret, handling: "Annullér" },
-  ],
-  afventerPlan: [
-    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send forslag", kraeverForslag: true },
-    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
-  ],
-  afventerKoord: [
-    /* Bemærk: disponent-presettet har IKKE bookingGodkend. Den der har lavet
-       forslaget må ikke godkende det — beslutning 5, nu som et felt der
-       mangler i en liste frem for en kommentar om hvem der ikke står der. */
-    { til: "reserveret",  kraeverPerm: PERM.bookingGodkend, handling: "Godkend valgt forslag", kraeverValgtForslag: true },
-    { til: "returneret",  kraeverPerm: PERM.bookingReturner, handling: "Returnér til disponent", kraeverBegrundelse: true },
-    { til: "afvist",      kraeverPerm: PERM.bookingAfvis, handling: "Afvis alle", kraeverBegrundelse: true },
-  ],
-  returneret: [
-    { til: "afventerKoord", kraeverPerm: PERM.bookingForeslaa, handling: "Send nye forslag", kraeverForslag: true },
-    { til: "afvist",        kraeverPerm: PERM.bookingAfvis, handling: "Kan ikke løses", kraeverBegrundelse: true },
-  ],
-  reserveret: [
-    { til: "udfoert",    kraeverPerm: PERM.bookingUdfoer, handling: "Markér udført" },
-    { til: "annulleret", kraeverPerm: PERM.bookingAnnuller, handling: "Annullér booking", kraeverBegrundelse: true },
-  ],
-  afvist: [
-    { til: "afventerPlan", kraeverPerm: PERM.bookingOpret, handling: "Genåbn forespørgsel" },
-  ],
-  udfoert: [],
-  annulleret: [],
-};
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ DER ER KUN ÉN OVERGANGSTABEL — BESLUTNING 40.
 
+   Her stod `OVERGANGE` ved siden af `ETAPE_OVERGANGE`: to næsten identiske
+   tabeller, hvor bookingens manglede `aaben` og ellers var den samme.
+   Kommentaren under den sagde selv "Én kontrol, to tabeller. Ellers driver
+   reglerne fra hinanden" — men to tabeller ER hvordan de driver.
+
+   Den er væk, og med den `kanSkifte()`, `byggSkifte()` og
+   `tilgaengeligeHandlinger()`. Grunden er ikke oprydning:
+
+     · Det man disponerer, er en ETAPE (beslutning 16). Forslaget ligger
+       på etapen, og godkendelsen sker dér.
+     · Bookingens tilstand er AFLEDT — `forloebstilstand()` regner den ud,
+       og `etapeskift` skriver den i samme opdatering som etapeskiftet.
+
+   En tilstandsmaskine der kunne sætte bookingens tilstand direkte, ville
+   være en anden vej til et felt der har ét sted at komme fra. Og en funktion
+   der findes, bliver kaldt: `kanSkifte()` havde nøjagtig én kalder tilbage,
+   og den skrev ikke — den ville have gjort det, næste gang nogen byggede
+   videre på Forslag-skærmen.
+
+   `TILSTAND` bliver stående: de ti navne er de samme for et forløb og en
+   etape, og et forløb skal kunne tegnes med sin pille.
+   ══════════════════════════════════════════════════════════════════════════ */
 /* Etapens overgange. Samme flow som en enkeltbooking, plus ÉN ting: aaben.
    aaben er en TILSTAND, ikke fravær af planlægning. Tre grunde:
      1. Matchningen skal kunne forespørge på den —
@@ -136,17 +122,20 @@ const ETAPE_OVERGANGE = {
 };
 
 /** Hvad må brugeren gøre lige nu. Driver knapperne i UI'et.
- *  perms er claim-strengen fra auth.token.perms — eller et array. */
-export function tilgaengeligeHandlinger(tilstand, perms) {
-  return (OVERGANGE[tilstand] || []).filter((o) => harPerm(perms, o.kraeverPerm));
-}
-
+ *  perms er claim-strengen fra auth.token.perms — eller et array.
+ *
+ *  ⚠ DER ER KUN DEN HER. Bookingens udgave er væk med beslutning 40 — se
+ *  noten ovenfor. Spørger du efter et forløbs handlinger, spørger du efter
+ *  dets etapers. */
 export function tilgaengeligeEtapeHandlinger(tilstand, perms) {
   return (ETAPE_OVERGANGE[tilstand] || []).filter((o) => harPerm(perms, o.kraeverPerm));
 }
 
-/* Én kontrol, to tabeller. Ellers driver reglerne fra hinanden, og så kan en
-   disponent godkende sit eget forslag på en etape men ikke på en booking. */
+/* ⚠ ÉN KONTROL, ÉN TABEL. Der stod "to tabeller" her, med den begrundelse at
+   reglerne ellers driver fra hinanden — men to tabeller ER hvordan de driver.
+   Funktionen tager stadig tabellen som parameter, så den kan prøves isoleret,
+   og fordi en tabel mere er tænkelig den dag et forløb får sit eget flow der
+   IKKE bare er dets etapers. Indtil da er der én. */
 function pruvOvergang(overgange, post, tilTilstand, perms, { begrundelse } = {}) {
   const o = (overgange[post.tilstand] || []).find((x) => x.til === tilTilstand);
   if (!o) return { ok: false, aarsag: `Kan ikke gå fra ${TILSTAND[post.tilstand]?.label} til ${TILSTAND[tilTilstand]?.label}.` };
@@ -159,51 +148,27 @@ function pruvOvergang(overgange, post, tilTilstand, perms, { begrundelse } = {})
 }
 
 /**
- * kanSkifte(booking, tilTilstand, perms, { begrundelse })
- * → { ok, aarsag }
+ * kanSkifteEtape(etape, tilTilstand, perms, { begrundelse }) → { ok, aarsag }
  *
  * perms er auth.token.perms-strengen, ikke en rolle. Det er den eneste måde
  * at sikre at UI'et og serveren spørger om det samme.
+ *
+ * ⚠ DER ER INGEN kanSkifte() PÅ EN BOOKING. Se noten ved overgangstabellen:
+ * bookingens tilstand er afledt, og det man disponerer, er en etape.
+ * Bemærk kraeverFrist på vej til aaben.
  */
-export function kanSkifte(booking, tilTilstand, perms, opts = {}) {
-  return pruvOvergang(OVERGANGE, booking, tilTilstand, perms, opts);
-}
-
-/** Samme kontrol på en etape. Bemærk kraeverFrist på vej til aaben. */
 export function kanSkifteEtape(etape, tilTilstand, perms, opts = {}) {
   return pruvOvergang(ETAPE_OVERGANGE, etape, tilTilstand, perms, opts);
 }
 
 /**
  * Bygger den opdatering der skal skrives. Skriver ALTID til historik —
- * "Historik"-knappen i mockuppen skal have noget at vise, og en afvist
- * booking skal kunne forklares et halvt år senere.
+ * "Historik"-knappen i mockuppen skal have noget at vise, og en afvist etape
+ * skal kunne forklares et halvt år senere. senestMs skrives med, når etapen
+ * sættes åben — det er den frist matchningen og lagerprisen begge regner på.
  *
- * Selve skrivningen hører i en Cloud Function: rolletjek på klienten kan
- * omgås, og reservationen i reserveret-tilstanden skal oprettes atomisk
- * sammen med tilstandsskiftet.
- */
-export function byggSkifte(booking, tilTilstand, { rolle, bruger, begrundelse, valgtForslagId }) {
-  const nu = Date.now();
-  return {
-    tilstand: tilTilstand,
-    valgtForslagId: valgtForslagId ?? booking.valgtForslagId ?? null,
-    sidstAendretMs: nu,
-    sidstAendretAf: bruger,
-    [`historik/${nu}`]: {
-      fra: booking.tilstand,
-      til: tilTilstand,
-      rolle,
-      af: bruger,
-      begrundelse: begrundelse || null,
-      ms: nu,
-    },
-  };
-}
-
-/**
- * Samme for en etape. senestMs skrives med, når etapen sættes åben — det er
- * den frist matchningen og lagerprisen begge regner på.
+ * ⚠ DER ER INGEN byggSkifte() PÅ EN BOOKING (beslutning 40). Bookingens
+ * tilstand er afledt af etaperne og skrives af etapeskift i samme opdatering.
  *
  * Skrivningen hører i en Cloud Function: etapens koeretoejId og dens
  * reservation skal oprettes i ÉN transaktion. I prototypen stod der

@@ -14,17 +14,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  TILSTAND, kanSkifte, kanSkifteEtape, byggSkifte, forloebstilstand,
-  tilgaengeligeHandlinger,
+  TILSTAND, kanSkifteEtape, byggEtapeSkifte, forloebstilstand, tilgaengeligeEtapeHandlinger,
 } from "../src/fleet/booking-state.js";
 import { PERM, ROLLE_PERMS, permStrengFraRolle, harPerm } from "../src/fleet/permissions.js";
+import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { enhedsIder } from "../src/fleet/etaper.js";
 import {
   DEMO_BOOKINGER, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
   demoBooking, demoEtaperPaa, beregnetTilstand,
 } from "../src/fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../src/fleet/demo-kunder.js";
-import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../src/fleet/demo-personale.js";
 
@@ -33,13 +32,18 @@ const som = (rolle) => permStrengFraRolle(rolle);
 /* ══════════════════════════════════════════════════════════════════════
    BESLUTNING 5
    ══════════════════════════════════════════════════════════════════════ */
+/* ⚠ DET DER PRØVES, ER EN ETAPE — BESLUTNING 40. Forslaget lå på bookingen
+   OG på etapen; det ligger nu kun på etapen, og godkendelsen sker dér.
+   Prøverne herunder er ordret de samme spørgsmål, stillet til det rigtige
+   objekt. */
 describe("Beslutning 5 — disponenten godkender ikke sit eget forslag", () => {
-  const booking = demoBooking("bk-2026-00314");
-  const medValg = { ...booking, valgtForslagId: booking.forslag[0].id };
+  /* Etapen med forslagene — ikke bookingen. Bookingen bærer ingen mere. */
+  const etape = DEMO_ETAPER.find((e) => e.forslag?.length);
+  const medValg = { ...etape, valgtForslagId: etape.forslag[0].id };
 
   it("afviser disponenten på PRÆCIS den booking koordinatoren får ok på", () => {
-    const disponent = kanSkifte(medValg, "reserveret", som("disponent"));
-    const koordinator = kanSkifte(medValg, "reserveret", som("koordinator"));
+    const disponent = kanSkifteEtape(medValg, "reserveret", som("disponent"));
+    const koordinator = kanSkifteEtape(medValg, "reserveret", som("koordinator"));
 
     assert.equal(disponent.ok, false, "disponenten må ikke godkende");
     assert.equal(koordinator.ok, true, "koordinatoren skal kunne godkende");
@@ -61,8 +65,8 @@ describe("Beslutning 5 — disponenten godkender ikke sit eget forslag", () => {
   });
 
   it("viser ingen godkend-knap for disponenten", () => {
-    const dis = tilgaengeligeHandlinger("afventerKoord", som("disponent"));
-    const koo = tilgaengeligeHandlinger("afventerKoord", som("koordinator"));
+    const dis = tilgaengeligeEtapeHandlinger("afventerKoord", som("disponent"));
+    const koo = tilgaengeligeEtapeHandlinger("afventerKoord", som("koordinator"));
     assert.equal(dis.some((h) => h.kraeverPerm === PERM.bookingGodkend), false);
     assert.ok(koo.some((h) => h.kraeverPerm === PERM.bookingGodkend));
   });
@@ -70,7 +74,7 @@ describe("Beslutning 5 — disponenten godkender ikke sit eget forslag", () => {
   it("giver en chauffør ingen handlinger overhovedet", () => {
     for (const tilstand of Object.keys(TILSTAND)) {
       assert.deepEqual(
-        tilgaengeligeHandlinger(tilstand, som("chauffoer")), [],
+        tilgaengeligeEtapeHandlinger(tilstand, som("chauffoer")), [],
         `chaufføren fik en handling på "${tilstand}"`
       );
     }
@@ -80,7 +84,7 @@ describe("Beslutning 5 — disponenten godkender ikke sit eget forslag", () => {
      én eneste .skriv. */
   it("giver revisor ingen tilstandsskift", () => {
     for (const tilstand of Object.keys(TILSTAND)) {
-      assert.deepEqual(tilgaengeligeHandlinger(tilstand, som("revisor")), []);
+      assert.deepEqual(tilgaengeligeEtapeHandlinger(tilstand, som("revisor")), []);
     }
   });
 });
@@ -92,7 +96,7 @@ describe("kanSkifte skelner mellem manglende adgang og manglende forudsætning",
   const booking = demoBooking("bk-2026-00314");
 
   it("siger 'du mangler adgangen' når det er permissionen", () => {
-    const svar = kanSkifte({ ...booking, valgtForslagId: "fs-a" }, "reserveret", som("disponent"));
+    const svar = kanSkifteEtape({ ...booking, valgtForslagId: "fs-a" }, "reserveret", som("disponent"));
     assert.equal(svar.ok, false);
     assert.match(svar.aarsag, /mangler adgangen/i);
   });
@@ -100,7 +104,7 @@ describe("kanSkifte skelner mellem manglende adgang og manglende forudsætning",
   /* Vises kun permissionfejlen, beder en koordinator om adgang hun allerede
      har, i stedet for at vælge et forslag. */
   it("siger 'vælg et forslag' når adgangen er i orden", () => {
-    const svar = kanSkifte({ ...booking, valgtForslagId: null }, "reserveret", som("koordinator"));
+    const svar = kanSkifteEtape({ ...booking, valgtForslagId: null }, "reserveret", som("koordinator"));
     assert.equal(svar.ok, false);
     assert.match(svar.aarsag, /Vælg et forslag/i);
     assert.ok(!/mangler adgangen/i.test(svar.aarsag), "det er ikke en rettighedsfejl");
@@ -109,15 +113,15 @@ describe("kanSkifte skelner mellem manglende adgang og manglende forudsætning",
   it("kræver en begrundelse ved returnér og afvis", () => {
     const medValg = { ...booking, valgtForslagId: "fs-a" };
     assert.match(
-      kanSkifte(medValg, "returneret", som("koordinator")).aarsag, /begrundelse/i
+      kanSkifteEtape(medValg, "returneret", som("koordinator")).aarsag, /begrundelse/i
     );
     assert.equal(
-      kanSkifte(medValg, "returneret", som("koordinator"), { begrundelse: "For dyrt" }).ok, true
+      kanSkifteEtape(medValg, "returneret", som("koordinator"), { begrundelse: "For dyrt" }).ok, true
     );
   });
 
   it("afviser en overgang der slet ikke findes", () => {
-    const svar = kanSkifte({ tilstand: "kladde" }, "udfoert", som("admin"));
+    const svar = kanSkifteEtape({ tilstand: "kladde" }, "udfoert", som("admin"));
     assert.equal(svar.ok, false);
     assert.match(svar.aarsag, /Kan ikke gå fra/i);
   });
@@ -188,7 +192,7 @@ describe("byggSkifte bygger posten uden at skrive den", () => {
   const booking = { tilstand: "kladde", valgtForslagId: null };
 
   it("skriver altid til historik", () => {
-    const u = byggSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
+    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
     const noegle = Object.keys(u).find((n) => n.startsWith("historik/"));
     assert.ok(noegle, "en afvist booking skal kunne forklares et halvt år senere");
     assert.equal(u[noegle].fra, "kladde");
@@ -197,12 +201,12 @@ describe("byggSkifte bygger posten uden at skrive den", () => {
   });
 
   it("bruger uid og ikke personId på sidstAendretAf", () => {
-    const u = byggSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
+    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
     assert.equal(u.sidstAendretAf, "uid-1");
   });
 
   it("bevarer et valgt forslag når der ikke gives et nyt", () => {
-    const u = byggSkifte({ tilstand: "afventerKoord", valgtForslagId: "fs-b" },
+    const u = byggEtapeSkifte({ tilstand: "afventerKoord", valgtForslagId: "fs-b" },
       "reserveret", { rolle: "koordinator", bruger: "uid-2" });
     assert.equal(u.valgtForslagId, "fs-b");
   });
@@ -251,15 +255,25 @@ describe("Demo-bookingerne hænger sammen", () => {
   });
 
   /* 1-3 forslag, som mockuppen viser — og de skal pege på noget der findes. */
-  it("har 1–3 forslag på den booking der afventer koordinator", () => {
-    const afventer = DEMO_BOOKINGER.filter((b) => b.tilstand === "afventerKoord");
+  it("⚠ BOOKINGEN BÆRER INGEN FORSLAG — de ligger på etapen", () => {
+    /* Beslutning 40. De lå begge steder: her tid og pris, dér enheder og
+       chauffør. For et forløb med én etape var det det samme løfte skrevet to
+       steder — det mønster demo-kilder.test.mjs findes for at fange. */
+    for (const b of DEMO_BOOKINGER) {
+      assert.equal(b.forslag, undefined, `${b.nummer} har stadig forslag`);
+      assert.equal(b.valgtForslagId, undefined, `${b.nummer} har stadig et valgtForslagId`);
+    }
+  });
+
+  it("har 1–3 forslag på den etape der afventer koordinator", () => {
+    const afventer = DEMO_ETAPER.filter((e) => e.tilstand === "afventerKoord");
     assert.ok(afventer.length >= 1, "uden den kan Forslag-skærmen ikke vise beslutning 5");
-    for (const b of afventer) {
-      assert.ok(b.forslag.length >= 1 && b.forslag.length <= 3, `${b.nummer}: ${b.forslag.length} forslag`);
-      for (const f of b.forslag) {
-        /* ⚠ ET FORSLAG KAN VÆRE EN SÆTTEVOGN — samme liste som på etapen.
-           Et forslag der kun kunne pege på trækkeren, ville foreslå noget
-           kanDisponeres() afviser. */
+    for (const e of afventer) {
+      const n = e.forslag?.length || 0;
+      assert.ok(n >= 1 && n <= 3, `${e.id}: ${n} forslag`);
+      for (const f of e.forslag) {
+        /* ⚠ ET FORSLAG KAN VÆRE EN SÆTTEVOGN. Et forslag der kun kunne pege
+           på trækkeren, ville foreslå noget kanDisponeres() afviser. */
         const ider = enhedsIder(f);
         assert.ok(ider.length, `${f.id}: ingen bil`);
         for (const id of ider) assert.ok(bilIder.has(id), `${f.id}: ukendt bil ${id}`);
@@ -267,6 +281,15 @@ describe("Demo-bookingerne hænger sammen", () => {
         assert.ok(f.leveringMs > f.afhentningMs, `${f.id}: leverer før den henter`);
         assert.ok(Number.isInteger(f.estimatOere), `${f.id}: estimat ikke i hele øre`);
       }
+    }
+  });
+
+  it("⚠ ET FORSLAG SKAL VÆRE VALGT AF KOORDINATOREN, ikke sat på forhånd", () => {
+    /* Stod der et valg i demo-sættet, kunne man ikke se at "Vælg et forslag"
+       er en FORUDSÆTNING og ikke en manglende rettighed — og de to slags nej
+       er hele pointen med Forslag-skærmen. */
+    for (const e of DEMO_ETAPER.filter((x) => x.tilstand === "afventerKoord")) {
+      assert.equal(e.valgtForslagId, null, `${e.id} har allerede valgt et forslag`);
     }
   });
 
@@ -298,12 +321,12 @@ describe("Rollerne giver forskellige knapper", () => {
 
   it("giver ukendt rolle adgang til ingenting", () => {
     assert.equal(permStrengFraRolle("chef"), "");
-    assert.deepEqual(tilgaengeligeHandlinger("afventerKoord", permStrengFraRolle("chef")), []);
+    assert.deepEqual(tilgaengeligeEtapeHandlinger("afventerKoord", permStrengFraRolle("chef")), []);
   });
 
   it("giver flere handlinger til koordinator end til disponent på afventerKoord", () => {
-    const dis = tilgaengeligeHandlinger("afventerKoord", som("disponent")).length;
-    const koo = tilgaengeligeHandlinger("afventerKoord", som("koordinator")).length;
+    const dis = tilgaengeligeEtapeHandlinger("afventerKoord", som("disponent")).length;
+    const koo = tilgaengeligeEtapeHandlinger("afventerKoord", som("koordinator")).length;
     assert.ok(koo > dis, "rollevælgeren skal kunne ses gøre en forskel");
   });
 });

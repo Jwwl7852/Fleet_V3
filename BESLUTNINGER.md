@@ -1570,3 +1570,74 @@ støjen fra vores egen. `demo-lager.js` kontrollerer det selv, og
 `sporbarhed.test.mjs` fejler på det.
 
 Se WAREHOUSE.md punkt 9.
+
+---
+
+## 40. Forslaget hører på etapen — og bookingen har ingen tilstandsmaskine
+
+Et forslag lå to steder. På **bookingen** med afhentning, levering, transittid,
+prisestimat og note; på **etapen** med enheder og chauffør. For et forløb med
+én etape — hvilket er alle demo-forløbene på nær ét — var det det samme løfte
+skrevet to steder.
+
+Det er mønstret der har kostet mest i dette repo. `lagre` mod `lager`,
+`bookinger` mod `bookings`, Bil 104 med to nummerplader, `warehouse` mod
+`warehouse`. `test/demo-kilder.test.mjs` findes for at fange det, og den fangede
+det ikke her, fordi de to ikke hed det samme.
+
+**Det man disponerer, er en etape** (beslutning 16). Forslaget ligger derfor på
+etapen, med *alle* sine felter, og bookingen bærer ingen.
+
+```
+etaper/<etapeId>/forslag/<forslagId> = {
+  nr, koeretoejIder: { <id>: true }, personId,
+  afhentningMs, leveringMs, transitTimer, estimatOere, note
+}
+etaper/<etapeId>/valgtForslagId
+```
+
+### ⚠ Følgen: der er kun én overgangstabel
+
+`OVERGANGE` stod ved siden af `ETAPE_OVERGANGE` — to næsten identiske tabeller,
+hvor bookingens manglede `aaben` og ellers var den samme. Kommentaren under den
+sagde selv *"Én kontrol, to tabeller. Ellers driver reglerne fra hinanden"* —
+men **to tabeller er hvordan de driver.**
+
+Den er væk, og med den `kanSkifte()`, `byggSkifte()` og
+`tilgaengeligeHandlinger()`. Ikke som oprydning, men fordi:
+
+- bookingens tilstand er **afledt** (`forloebstilstand()`) og skrives af
+  `etapeskift` i samme opdatering som etapeskiftet;
+- en tilstandsmaskine der kunne sætte den direkte, ville være en anden vej til
+  et felt der har ét sted at komme fra;
+- **en funktion der findes, bliver kaldt.** `kanSkifte()` havde nøjagtig én
+  kalder tilbage, og den skrev ikke — den ville have gjort det, næste gang
+  nogen byggede videre på Forslag-skærmen.
+
+`TILSTAND` bliver stående: de ti navne er de samme for et forløb og en etape,
+og et forløb skal kunne tegnes med sin pille.
+
+### Hvad det ændrede i skærmene
+
+| Skærm | Før | Nu |
+|---|---|---|
+| **Forslag** | Bookingens forslag, knapper deaktiveret (fase 0) | Etapens forslag, **live** gennem `etapeskift`. Etapevælger, fordi et forløb med flere etaper godkendes én ad gangen |
+| **Booking-oversigt** | Handlinger pr. *booking* | Handlinger pr. **etape** — bookingens tilstand er ikke noget nogen skifter |
+| **Ny forespørgsel** | `kanSkifte()` | `kanSkifteEtape()` — en forespørgsel bliver til et forløb med mindst én etape |
+
+⚠ **Forslag-skærmen viser nu også de fem tjek for det valgte forslag, før man
+trykker.** Serveren kører dem igen og afviser med samme sætning, men at se dem
+først er forskellen på at vælge rigtigt og at få en fejl man ikke vidste var
+mulig. `fs-c` i demo-sættet rammer med vilje en reservationskonflikt.
+
+### ⚠ Og det afslørede at DEV løj om lageret
+
+En `reserveret` etape har reservationer — men de skrives **kun** af
+`etapeskift`, og provisioneringen sprang dem over. Hver eneste bil så derfor fri
+ud i dev, og den første probe godkendte to ture på samme chauffør uden at
+konflikttjekket sagde noget. Det lignede en fejl i tjekket; det var en fejl i
+dataene.
+
+Provisioneringen udleder dem nu af etaperne med **den samme**
+`reservationerFraEtape()` som funktionen bruger. To udgaver ville betyde at dev
+viste et lager der var reserveret på én måde og produktion på en anden.

@@ -4,8 +4,8 @@
  * Rolle: casehandler. Det er her forløbet begynder — en forespørgsel oprettes
  * som `kladde` og sendes til planlægning med overgangen til `afventerPlan`.
  *
- * ⚠ GEM VISER HVAD byggSkifte() VILLE SKRIVE. Der skrives ingenting (fase 0).
- * Knappen er gated på kanSkifte(), så en rolle uden `booking.opret` får det
+ * ⚠ GEM VISER HVAD byggEtapeSkifte() VILLE SKRIVE. Der skrives ingenting
+ * (fase 0). Knappen er gated på kanSkifteEtape(), så en rolle uden `booking.opret` får det
  * samme nej som serveren ville give — skift rolle i sidebaren og se.
  *
  * ⚠ BOOKINGNUMMERET KOMMER FRA EN COUNTER, ALDRIG FRA EN OPTÆLLING.
@@ -25,7 +25,9 @@ import { kr, num, oereFraKroner } from "../../fleet/format.js";
 import {
   Kort, Tom, Pille, Knap, Gitter, MiniLinje, Fejl,
 } from "../../fleet/ui.jsx";
-import { TILSTAND, kanSkifte, byggSkifte } from "../../fleet/booking-state.js";
+import {
+  TILSTAND, kanSkifteEtape, byggEtapeSkifte,
+} from "../../fleet/booking-state.js";
 import { PERM } from "../../fleet/permissions.js";
 import { harPerm } from "../../fleet/permissions.js";
 import {
@@ -54,9 +56,14 @@ export default function NyForespoergsel() {
   /* Kladden som tilstandsmaskinen ser den. Overgangen kladde → afventerPlan
      kræver booking.opret og har ingen andre forudsætninger — men de felter
      forespørgslen skal bære, kontrolleres her, så man ikke sender en tom sag
-     til planlægning. */
+     til planlægning.
+
+     ⚠ DET ER ETAPENS TILSTANDSMASKINE (beslutning 40). En forespørgsel bliver
+     til et forløb med mindst én etape, og det er etapen der sendes til
+     planlægning — bookingens tilstand er AFLEDT og skrives af etapeskift.
+     Der findes ikke længere en kanSkifte() på en booking. */
   const kladde = { tilstand: "kladde", forslag: [], valgtForslagId: null };
-  const svar = kanSkifte(kladde, "afventerPlan", bruger?.perms);
+  const svar = kanSkifteEtape(kladde, "afventerPlan", bruger?.perms);
   const maaOprette = harPerm(bruger?.perms, PERM.bookingOpret);
 
   const mangler = [
@@ -67,7 +74,7 @@ export default function NyForespoergsel() {
     omsaetningOere == null && "omsætning",
   ].filter(Boolean);
 
-  const opdatering = byggSkifte(kladde, "afventerPlan", {
+  const opdatering = byggEtapeSkifte(kladde, "afventerPlan", {
     rolle: bruger?.rolle, bruger: bruger?.uid, begrundelse: null,
   });
   const historikNoegle = Object.keys(opdatering).find((n) => n.startsWith("historik/"));
@@ -200,7 +207,7 @@ export default function NyForespoergsel() {
             <MiniLinje label="Fra" vaerdi={<Pille tone={TILSTAND.kladde.pill}>{TILSTAND.kladde.label}</Pille>} />
             <MiniLinje label="Til" vaerdi={<Pille tone={TILSTAND.afventerPlan.pill}>{TILSTAND.afventerPlan.label}</Pille>} />
             <MiniLinje label="Kræver" vaerdi={<code>{PERM.bookingOpret}</code>} />
-            <MiniLinje label="kanSkifte()" vaerdi={svar.ok
+            <MiniLinje label="kanSkifteEtape()" vaerdi={svar.ok
               ? <Pille tone="ok">ok</Pille>
               : <Pille tone="bad">afvist</Pille>} />
             {!svar.ok && <p className="fc-hint fc-bad" style={{ marginTop: 8 }}>{svar.aarsag}</p>}

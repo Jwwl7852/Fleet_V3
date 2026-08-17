@@ -472,3 +472,121 @@ test("reglerne kender de samme bookingtilstande som domænet", () => {
   const iReglen = linje?.match(/\(([a-zA-Z|]+)\)/)?.[1].split("|") || [];
   assert.deepEqual(iReglen.slice().sort(), Object.keys(TILSTAND).slice().sort());
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BESLUTNING 40 — FORSLAGET LIGGER PÅ ETAPEN
+
+   Det lå begge steder: på bookingen med tid, pris og transittid, på etapen
+   med enheder og chauffør. For et forløb med én etape var det det samme løfte
+   skrevet to steder — mønstret `test/demo-kilder.test.mjs` findes for at
+   fange, nu for syvende gang.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+test("⚠ DER ER KUN ÉN OVERGANGSTABEL", () => {
+  /* `OVERGANGE` stod ved siden af `ETAPE_OVERGANGE`: to næsten identiske
+     tabeller, hvor bookingens manglede `aaben`. Kommentaren under den sagde
+     selv "Én kontrol, to tabeller. Ellers driver reglerne fra hinanden" — men
+     to tabeller ER hvordan de driver. */
+  const kilde = readFileSync("src/fleet/booking-state.js", "utf8");
+  const kode = kilde.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/const OVERGANGE\s*=/.test(kode), "bookingens overgangstabel er tilbage");
+  assert.ok(/const ETAPE_OVERGANGE\s*=/.test(kode));
+});
+
+test("⚠ OG INGEN kanSkifte() / byggSkifte() PÅ EN BOOKING", () => {
+  /* En funktion der findes, bliver kaldt. En tilstandsmaskine der kunne sætte
+     bookingens tilstand direkte, ville være en anden vej til et felt der har
+     ét sted at komme fra — `forloebstilstand()` gennem `etapeskift`. */
+  const kilde = readFileSync("src/fleet/booking-state.js", "utf8");
+  const kode = kilde.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\*\*[\s\S]*?\*\//g, "");
+  assert.ok(!/export function kanSkifte\s*\(/.test(kode));
+  assert.ok(!/export function byggSkifte\s*\(/.test(kode));
+  assert.ok(!/export function tilgaengeligeHandlinger\s*\(/.test(kode));
+  /* Etapens tre bliver stående. */
+  assert.ok(/export function kanSkifteEtape\s*\(/.test(kode));
+  assert.ok(/export function byggEtapeSkifte\s*\(/.test(kode));
+  assert.ok(/export function tilgaengeligeEtapeHandlinger\s*\(/.test(kode));
+});
+
+test("⚠ INGEN SKÆRM KALDER DEN GAMLE MASKINE", () => {
+  /* Fandtes der en kalder, ville importen fejle ved build — men en prøve
+     siger HVORFOR, og den fanger det før nogen bygger. */
+  for (const f of [
+    "src/moduler/booking/Forslag.jsx",
+    "src/moduler/booking/Oversigt.jsx",
+    "src/moduler/booking/NyForespoergsel.jsx",
+  ]) {
+    const s = readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(!/\bkanSkifte\(|\bbyggSkifte\(|\btilgaengeligeHandlinger\(/.test(s),
+      `${f} kalder bookingens gamle tilstandsmaskine`);
+  }
+});
+
+test("Forslag-skærmen læser etapens forslag og skriver gennem etapeskift", () => {
+  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8");
+  assert.ok(s.includes("demoEtaperPaa("), "skaermen henter ikke forloebets etaper");
+  assert.ok(s.includes("etape.forslag"), "skaermen laeser ikke etapens forslag");
+  assert.ok(s.includes("skiftEtape("), "skaermen skriver ikke gennem etapeskift");
+  /* ⚠ OG DEN VISER DE FEM TJEK FØR MAN TRYKKER. Serveren kører dem igen og
+     afviser med samme sætning, men at se dem først er forskellen på at vælge
+     rigtigt og at få en fejl. */
+  assert.ok(s.includes("tjekDisponering("), "de fem tjek vises ikke for det valgte forslag");
+});
+
+test("⚠ ET FORLØB MED FLERE ETAPER GODKENDES ÉN AD GANGEN", () => {
+  /* Det er ikke en omvej — det er hele grunden til at `delvist` findes.
+     Skærmen skal derfor have en etapevælger. */
+  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8");
+  assert.ok(s.includes("etaper.length > 1"), "der er ingen etapevaelger");
+});
+
+test("reglerne kender etapens forslag", () => {
+  const regler = readFileSync("firebase.rules.json", "utf8");
+  const blokE = regler.slice(regler.indexOf('"etaper": {'), regler.indexOf('"lagre": {'));
+  assert.ok(blokE.includes('"forslag": {'), "forslaget staar ikke i reglerne");
+  assert.ok(blokE.includes('"estimatOere"'), "estimatet valideres ikke");
+  /* ⚠ ET VALG SKAL PEGE PÅ ET FORSLAG DER FINDES. */
+  assert.ok(/"valgtForslagId":[^\n]*child\('forslag'\)/.test(blokE),
+    "valgtForslagId kan pege paa et forslag der ikke findes");
+});
+
+test("⚠ SKÆRMEN DEAKTIVERER GODKEND NÅR TJEKKENE SPÆRRER", () => {
+  /* `kanSkifteEtape()` svarer kun på tilstandsmaskinen — den ved intet om at
+     chaufføren allerede kører den dag. Serveren afviser, men en knap der er
+     blå og så fejler, er en knap der lyver.
+
+     ⚠ OG DET ER IKKE EN ANDEN SANDHED: det er den SAMME tjekDisponering()
+     serveren kalder. Håndhævelsen ligger stadig i etapeskift. */
+  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8");
+  assert.ok(s.includes("const spaerret = tjekraekker.some"),
+    "skaermen udleder ikke om tjekkene spaerrer");
+  assert.ok(/disabled=\{!tjek\.ok \|\| stoppet \|\| arbejder\}/.test(s),
+    "knappen deaktiveres ikke af tjekkene");
+  /* ⚠ KUN VEJEN TIL reserveret BINDER RESSOURCER. En returnering rører
+     hverken bil eller chauffør — den skal ikke spærres af en konflikt;
+     tværtimod er det dét man gør når forslaget ikke holder. */
+  assert.ok(s.includes('const binder = m.til === "reserveret";'),
+    "en returnering spaerres ogsaa af en reservationskonflikt");
+});
+
+test("⚠ HELE RÆKKEN VÆLGER ET FORSLAG, ikke kun radioen", () => {
+  /* Et forslag er en linje med otte kolonner, og en 4 px knap yderst til
+     venstre er det eneste sted man må ramme — det er ikke betjening, det er
+     en prøve i finmotorik. `paaRaekke` giver også tastaturadgang. */
+  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8");
+  assert.ok(s.includes("paaRaekke={(f) => setValgtForslagId(f.id)}"));
+  assert.ok(s.includes("erValgt={(f) => f.id === valgtForslagId}"));
+});
+
+test("⚠ PROVISIONERINGEN SKRIVER RESERVATIONERNE — udledt af etaperne", () => {
+  /* En reserveret etape HAR reservationer, men de skrives kun af etapeskift.
+     Et seed der sprang dem over, viste et lager hvor hver bil var fri — og
+     den første probe godkendte to ture på samme chauffør uden at
+     konflikttjekket sagde noget. Det lignede en fejl i tjekket; det var en
+     fejl i dataene. */
+  const s = readFileSync("scripts/provisioner-dev.mjs", "utf8");
+  assert.ok(s.includes("reservationerFraEtape(e)"),
+    "reservationerne udledes ikke af etaperne");
+  assert.ok(!/DEMO_RESERVATIONER/.test(s),
+    "der er kommet et selvstaendigt reservationsdatasaet — to udgaver af samme kendsgerning");
+});

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **39 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **40 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -115,6 +115,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`
   fejler på det, og den er skrevet fordi mønstret er dukket op **seks gange**.
+- **Lægge et forslag på bookingen.** Det hører på ETAPEN, med alle sine
+  felter — tid, pris, enheder og chauffør. Det lå begge steder indtil
+  beslutning 40, og for et forløb med én etape var det det samme løfte
+  skrevet to steder. Og derfor: **der er ingen `kanSkifte()`, `byggSkifte()`
+  eller `tilgaengeligeHandlinger()` på en booking.** Bookingens tilstand er
+  afledt af etaperne og skrives af `etapeskift`; en tilstandsmaskine der
+  kunne sætte den direkte, ville være en anden vej til ét felt. Og en funktion
+  der findes, bliver kaldt.
 - **Skrive de fem disponeringstjek af.** De ligger i `fleet/disponering.js`,
   ét sted, og både Disponering og `etapeskift` kalder `tjekDisponering()`.
   Serveren afviser med den SAMME sætning skærmen viste — to formuleringer af

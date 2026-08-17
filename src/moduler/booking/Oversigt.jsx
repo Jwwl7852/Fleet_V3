@@ -34,7 +34,9 @@ import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import {
   DEMO_OPGAVER, opgavePerson, opgaveEnhed,
 } from "../../fleet/demo-opgaver.js";
-import { TILSTAND, forloebstilstand, tilgaengeligeHandlinger } from "../../fleet/booking-state.js";
+import {
+  TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger,
+} from "../../fleet/booking-state.js";
 import { DEMO_BOOKINGER, TRANSPORTTYPE, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 
@@ -353,23 +355,38 @@ const timer = (min) => (min == null ? "—" : `${(min / 60).toFixed(1).replace("
  * knaprække — skifter man rolle i demo-vælgeren, ændrer listen sig af sig selv.
  */
 function Handlinger({ raekker, perms, rolle }) {
+  /* ⚠ HANDLINGERNE HØRER TIL ETAPEN, IKKE TIL FORLØBET — beslutning 40.
+     Panelet spurgte før `tilgaengeligeHandlinger(booking.vist)`, men
+     bookingens tilstand er AFLEDT: den er ikke noget nogen kan skifte. Det
+     man kan handle på, er dens etaper, og et forløb i `delvist` har
+     forskellige handlinger på hver af dem — hvilket er hele pointen med at
+     `delvist` findes.
+
+     Bookingens overgangstabel er væk med samme beslutning; der er kun
+     etapens. */
   const grupper = raekker
-    .map((r) => ({ r, muligheder: tilgaengeligeHandlinger(r.vist, perms) }))
+    .flatMap((r) => (r.etaper || []).map((e) => ({
+      r, e, muligheder: tilgaengeligeEtapeHandlinger(e.tilstand, perms),
+    })))
     .filter((g) => g.muligheder.length > 0);
 
   return (
     <Kort titel={`Hvad du må lige nu — rolle: ${rolle || "ukendt"}`}>
       {grupper.length === 0 ? (
         <Tom>
-          Din rolle har ingen tilgængelige tilstandsskift på de viste forløb.
+          Din rolle har ingen tilgængelige tilstandsskift på de viste forløbs etaper.
           Det er ikke en fejl — en chauffør må hverken foreslå, godkende eller afvise.
         </Tom>
       ) : (
         <Tabel
           kolonner={[
             { key: "nummer", label: "Booking", render: (g) => <b>{g.r.nummer}</b> },
+            /* Etapenummeret skal med: et forløb kan have flere, og to rækker
+               med samme bookingnummer ville ellers se ud som en dublet. */
+            { key: "etape", label: "Etape",
+              render: (g) => `nr. ${g.e.nr ?? "?"} · ${g.e.fraSted} → ${g.e.tilSted}` },
             { key: "tilstand", label: "Tilstand",
-              render: (g) => <Pille tone={TILSTAND[g.r.vist]?.pill}>{TILSTAND[g.r.vist]?.label}</Pille> },
+              render: (g) => <Pille tone={TILSTAND[g.e.tilstand]?.pill}>{TILSTAND[g.e.tilstand]?.label}</Pille> },
             { key: "handlinger", label: "Tilgængelige handlinger", render: (g) => (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {g.muligheder.map((m) => (
@@ -381,14 +398,16 @@ function Handlinger({ raekker, perms, rolle }) {
                 </div>) },
           ]}
           raekker={grupper}
-          noegle={(g) => g.r.id}
+          noegle={(g) => g.e.id}
         />
       )}
       <p className="fc-hint" style={{ marginTop: 12 }}>
-        Listen er <b>genereret</b> af <code>tilgaengeligeHandlinger()</code> — tilstandens
-        lovlige overgange, filtreret på dine permissions. Der findes ingen håndskreven
-        knaprække, så en rolle kan ikke komme til at se en knap den ikke må bruge.
-        Skift rolle i sidebaren og se listen ændre sig.
+        Listen er <b>genereret</b> af <code>tilgaengeligeEtapeHandlinger()</code> —
+        etapens lovlige overgange, filtreret på dine permissions. Der findes ingen
+        håndskreven knaprække, så en rolle kan ikke komme til at se en knap den ikke
+        må bruge. Skift rolle i sidebaren og se listen ændre sig.
+        {" "}⚠ Handlingerne står på <b>etapen</b>, ikke på forløbet: bookingens
+        tilstand er afledt af sine etaper og er ikke noget nogen skifter.
       </p>
     </Kort>
   );

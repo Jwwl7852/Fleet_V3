@@ -15,10 +15,17 @@
  * læses som færdigt eller være usynligt. bk-2026-00317 har en udført nr. 1 og
  * en åben nr. 2 og er derfor delvist.
  *
- * ⚠ FORSLAG HØRER PÅ ETAPEN i modellen — her ligger de på bookingen, fordi
- * demo-forløbene har én etape hver på nær ét, og skærmen viser forslag pr.
- * booking. Den dag Forslag-skærmen skal håndtere et flerbenet forløb, flytter
- * de med. Formen er `forslag[]` + `valgtForslagId`, som på etapen.
+ * ⚠ FORSLAGENE ER FLYTTET — BESLUTNING 40.
+ *
+ * Hovedet her sagde selv at de HØRTE på etapen, og at de skulle flytte "den
+ * dag Forslag-skærmen skal håndtere et flerbenet forløb". Imens lå de begge
+ * steder: her med tid, pris og transittid, på etapen med enheder og chauffør.
+ * For et forløb med én etape var det det samme løfte skrevet to steder — det
+ * mønster der har kostet mest i dette repo, og som `test/demo-kilder.test.mjs`
+ * findes for at fange.
+ *
+ * Det man disponerer, er en etape (beslutning 16). Forslaget ligger nu dér
+ * med ALLE sine felter, og bookingen har ingen. Se `et-004` i demo-etaper.js.
  */
 import { DEMO_KUNDER } from "./demo-kunder.js";
 import { DEMO_ETAPER } from "./demo-etaper.js";
@@ -77,7 +84,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(0, 5), afhentningFleks: "timer2",
     onsketLeveringMs: dag(0, 16), leveringFleks: "halvdag",
     krav: ["Bagsmæklift", "Palleløfter"], kundekrav: "Ring 30 min. før ankomst",
-    forslag: [], valgtForslagId: null,
   },
   {
     id: "bk-2026-00312", nummer: "BKG-2026-00312", kundeId: "koldingKommune",
@@ -89,7 +95,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(1, 4), afhentningFleks: "halvdag",
     onsketLeveringMs: dag(1, 19), leveringFleks: "dag1",
     krav: [], kundekrav: "Leveringsadresse har smal indkørsel",
-    forslag: [], valgtForslagId: null,
   },
   {
     id: "bk-2026-00313", nummer: "BKG-2026-00313", kundeId: "nordiskFragt",
@@ -101,7 +106,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(2, 3), afhentningFleks: "timer2",
     onsketLeveringMs: dag(3, 14), leveringFleks: "halvdag",
     krav: ["Tolddokumenter"], kundekrav: "",
-    forslag: [], valgtForslagId: null,
   },
   {
     /* ⚠ DEN VIGTIGE. afventerKoord med tre forslag — det er her beslutning 5
@@ -116,21 +120,11 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(3, 2), afhentningFleks: "fast",
     onsketLeveringMs: dag(4, 18), leveringFleks: "timer2",
     krav: ["Køl 2–6 °C", "Temperaturlog"], kundekrav: "Fransk kvittering påkrævet",
-    forslag: [
-      { id: "fs-a", nr: 1, koeretoejIder: { "kt-104": true }, personId: "anneKrogh",
-        afhentningMs: dag(3, 2), leveringMs: dag(4, 18), transitTimer: 40,
-        estimatOere: 3640000,
-        note: "Direkte kørsel med skift i Padborg. Køleaggregat efterset i sidste uge." },
-      { id: "fs-b", nr: 2, koeretoejIder: { "kt-155": true }, personId: "henrikVestergaard",
-        afhentningMs: dag(3, 6), leveringMs: dag(5, 8), transitTimer: 50,
-        estimatOere: 3280000,
-        note: "Billigere, men leverer en halv dag senere end ønsket." },
-      { id: "fs-c", nr: 3, koeretoejIder: { "kt-034": true }, personId: "jesperRiis",
-        afhentningMs: dag(3, 2), leveringMs: dag(4, 14), transitTimer: 36,
-        estimatOere: 4020000,
-        note: "Hurtigst. Kræver to chauffører på strækningen syd for Hamburg." },
-    ],
-    valgtForslagId: null,
+    /* ⚠ INGEN forslag HER — BESLUTNING 40. De lå både her og på etapen,
+       med hver sine felter: her tid og pris, dér enheder og chauffør. For et
+       forløb med én etape var det det samme løfte skrevet to steder. Det man
+       disponerer, er en etape (beslutning 16), så forslaget hører dér — med
+       alle sine felter. Se et-004 i demo-etaper.js. */
   },
   {
     id: "bk-2026-00315", nummer: "BKG-2026-00315", kundeId: "koldingKommune",
@@ -142,7 +136,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(4, 4), afhentningFleks: "timer2",
     onsketLeveringMs: dag(5, 17), leveringFleks: "halvdag",
     krav: [], kundekrav: "",
-    forslag: [], valgtForslagId: null,
   },
   {
     id: "bk-2026-00316", nummer: "BKG-2026-00316", kundeId: "aalborgIndustri",
@@ -154,7 +147,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(1, 6), afhentningFleks: "dag1",
     onsketLeveringMs: dag(1, 15), leveringFleks: "dag1",
     krav: [], kundekrav: "",
-    forslag: [], valgtForslagId: null,
   },
   {
     /* DELVIST: nr. 1 er udført, nr. 2 venter stadig på en tur.
@@ -168,7 +160,6 @@ export const DEMO_BOOKINGER = [
     onsketAfhentningMs: dag(-3, 5), afhentningFleks: "halvdag",
     onsketLeveringMs: dag(9, 12), leveringFleks: "dag1",
     krav: ["Returlast"], kundekrav: "Returgods afhentes samme uge",
-    forslag: [], valgtForslagId: null,
   },
   {
     /* En forespørgsel der endnu ikke er sendt til planlægning. Uden den kan
@@ -183,7 +174,6 @@ export const DEMO_BOOKINGER = [
     onsketLeveringMs: dag(7, 16), leveringFleks: "halvdag",
     krav: ["ADR-klasse 3", "Følgeseddel på engelsk"],
     kundekrav: "Chauffør skal have gyldigt ADR-bevis",
-    forslag: [], valgtForslagId: null,
   },
 ];
 
@@ -244,29 +234,21 @@ if (import.meta.env?.DEV) {
       );
     }
 
-    /* Forslag: 1-3, og de skal pege på biler og folk der findes. */
-    if (b.tilstand === "afventerKoord" && !(b.forslag?.length >= 1)) {
-      console.warn(`demo-bookinger: ${b.nummer} afventer koordinator uden et eneste forslag.`);
-    }
-    if (b.forslag?.length > 3) {
-      console.warn(`demo-bookinger: ${b.nummer} har ${b.forslag.length} forslag. Mockuppen viser 1-3.`);
-    }
-    for (const f of b.forslag || []) {
-      for (const id of enhedsIder(f)) if (!bilIder.has(id)) {
-        console.warn(`demo-bookinger: forslag ${f.id} på ${b.nummer} peger på ukendt bil.`);
-      }
-      if (!folkIder.has(f.personId)) {
-        console.warn(`demo-bookinger: forslag ${f.id} på ${b.nummer} peger på ukendt person.`);
-      }
-      if (!(f.leveringMs > f.afhentningMs)) {
-        console.warn(`demo-bookinger: forslag ${f.id} leverer før det henter.`);
-      }
-    }
+    /* ⚠ FORSLAGENE KONTROLLERES I demo-etaper.js. De ligger på etapen efter
+       beslutning 40, og kontrollen fulgte med — den skal stå dér hvor data
+       står, ellers går de to fra hinanden næste gang nogen retter det ene. */
 
-    /* valgtForslagId skal pege på et forslag der findes — ellers ville
-       kanSkifte() godkende noget der ikke er der. */
-    if (b.valgtForslagId && !(b.forslag || []).some((f) => f.id === b.valgtForslagId)) {
-      console.warn(`demo-bookinger: ${b.nummer} har valgtForslagId der ikke findes blandt forslagene.`);
+    /* ⚠ EN BOOKING DER AFVENTER KOORDINATOR, SKAL HAVE EN ETAPE MED FORSLAG.
+       Uden det led kan Forslag-skærmen ikke vise beslutning 5 — og tabellen
+       ville være tom uden at nogen kunne se hvorfor. */
+    if (b.tilstand === "afventerKoord") {
+      const medForslag = DEMO_ETAPER.filter(
+        (e) => e.bookingId === b.id && (e.forslag?.length || 0) > 0);
+      if (!medForslag.length) {
+        console.warn(
+          `demo-bookinger: ${b.nummer} afventer koordinator, men ingen af dens ` +
+          `etaper har et forslag.`);
+      }
     }
   }
 
