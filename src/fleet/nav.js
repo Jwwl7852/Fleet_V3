@@ -130,6 +130,13 @@ export const NAV = [
       { key: "warehouseOptaelling", sti: "/warehouse/optaelling", label: "Optælling",
         titel: "Warehouse – optælling",
         under: "Cycle count, afvigelser og lagernøjagtighed" },
+      /* ⚠ CARRIER-OVERBLIK, IKKE "OVERBLIK". Planchen "Overblik" i
+         WAREHOUSE.md punkt 1 er en ANDEN flade — aktive lokationer,
+         varelinjer, aabne modtagelser, opgavekoe — og den er ikke bygget.
+         Den her viser BEHOLDERE. To skaerme, ikke to navne til een. */
+      { key: "warehouseCarriers", sti: "/warehouse/carriers", label: "Beholdere",
+        titel: "Warehouse – beholdere",
+        under: "Carriers: indhold, placering og hvad der mangler at komme paa plads" },
       { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
         titel: "Warehouse – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Turtlebooking." },

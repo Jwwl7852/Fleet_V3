@@ -528,6 +528,7 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `flaade.braendstofOere` | Brændstofudgift i perioden. **Beslutning 25** — Indberetninger læser den. ⚠ AdBlue tæller ikke med: det er et additiv, ikke brændstof, og lagt til ville forbruget se ~5 % bedre ud end det er |
 | `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
 | `indkoeb.maanedensForbrugOere` | Vareforbrug i perioden, ekskl. moms |
+| `warehouse.carriereUdenLokationDelta` | Ændring i uplacerede beholdere siden i går, i **antal**. ⚠ Det ENESTE warehouse-felt i `kpi/`: de fem tal på Carrier-overblik er afledt af de rækker skærmen har og beregnes hos forbrugeren (`carrieroverblik()`). Et delta kræver derimod gårsdagens tal. Antal og ikke procent — 11 beholdere der bliver til 13, er +2, og en procent af et lille tal er støj |
 | `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
 | `opgaver.udfoerteOpgaver` | Udførte opgaver i perioden. Nævner i omkostning pr. opgave |
 

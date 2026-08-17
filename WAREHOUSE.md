@@ -510,7 +510,7 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 |---|---|---|---|
 | 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | ✅ |
 | 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | ✅ |
-| 13 | **Nøgletallene i `kpi/`** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | |
+| 13 | **Nøgletallene** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | ✅ |
 | 14 | **Transit & placering** — de fire trin, forslag til ledig lokation, kundens faste område | Modtagelsen på gulvet | |
 | 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | |
 
@@ -548,3 +548,49 @@ Etape 11 er lille: en node, en validering, en permission og prøverne.
 er prøvet. Etape 13 er en skærm og et sæt KPI-felter. 14 og 15 er hver sit
 flow og hører sammen med scanner-appen og etapemodellen; de kan ikke bygges
 færdige uden svar på 6.4's fjerde punkt.
+
+**Etape 13 er inde.** Skærmen **Beholdere** (`/warehouse/carriers`) tegner de
+fem nøgletal, tabellen med indhold, placering og seneste bevægelse, samt
+beholdere pr. zone.
+
+⚠ **De fem tal ligger IKKE i `kpi/`.** De er afledt af de beholdere og
+beholdningsposter skærmen allerede har hentet, og undtagelsen i CLAUDE.md
+gælder præcis dér: et gemt tal ville drive fra sit grundlag ved den første
+bevægelse der ramte det ene og ikke det andet. Opgørelsen står i
+`carrieroverblik()` — ét sted, så den næste skærm ikke tæller lidt anderledes.
+
+⚠ **Kun ét felt kom i `kpi/`: `warehouse.carriereUdenLokationDelta`.** Et
+"siden i går" kræver gårsdagens tal, og dem har skærmen ikke. Planchen viser
+et delta på alle fem kort; de fire andre er bevidst ikke bygget, fordi hvert
+felt er et løfte om en aggregering — og et delta på "aktive beholdere" siger
+mindre end tallet selv. Det er et **antal**, ikke en procent.
+
+⚠ **Planchens "delvist tømt" er ikke bygget**, og kortet siger i stedet hvor
+mange beholdere der HAR indhold. Se punkt 6.4: "delvist" kræver et
+referencetal der ikke findes, og et gæt ville se ud som en måling.
+
+### ⚠ Og etapen fandt en fejl der var ældre end alle tre carrier-etaper
+
+Skærmen viste **"0 af 0"** med syv beholdere i basen. Det var ikke skærmen.
+
+`useListe` lagde et `startAt`/`endAt` på forespørgsler **uden**
+`orderByChild()` — altså på NØGLEN. En nøgle som `p-a-01-02` eller
+`CRR-100245` ligger uden for ethvert millisekund-interval, så hver skærm der
+kaldte `useListe` uden både `ordnPaa` og `vindue: "alle"` hentede **nul
+rækker**: Lokationer, Bevægelser, Optælling, Pluk og Standardpriser.
+
+Tre ting gjorde den usynlig:
+
+1. **Demo-vejen gjorde det rigtige.** `somServeren()` har altid kun anvendt
+   intervallet under `if (ordnPaa)`. To veje til det samme kald, og kun den
+   ene havde ret — så alt så rigtigt ud dér hvor man kigger.
+2. **En tom tabel ligner et tomt lager.** Skærmene skrev "Der er ingen
+   lokationer endnu", og det er en sætning man tror på i et nyt system.
+3. **Forespørgselsbyggeriet var uprøveligt.** `useListe.js` importerer
+   `FleetContext.jsx`, og Node kan ikke indlæse `.jsx` — der fandtes ikke en
+   test i huset der kunne se hvad der blev sendt til RTDB.
+
+Punkt 3 er rettet først: `byg()`, `somServeren()` og resten ligger nu i
+`src/fleet/liste.js` **uden React**, og `test/useliste.test.mjs` prøver dem —
+heriblandt at de to veje svarer det samme på det samme kald. Samme greb som
+`demo-kpi.js`, der blev skilt ud af `useKpi.js` af nøjagtig samme grund.

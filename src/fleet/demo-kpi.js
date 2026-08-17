@@ -123,6 +123,22 @@ export const DEMO_KPI = {
       { id: "a4", emne: "Faktura #2458 – Hydraulikolie", kilde: "Over aftalt pris", beloebOere: 725000, alvor: "lav" },
       { id: "a5", emne: "Værksted – Kapacitetsudnyttelse lav", kilde: "58 % udnyttelse", alvor: "lav" },
     ],
+    /* ⚠ KUN ÉT WAREHOUSE-FELT, OG DET ER MED VILJE.
+       De fem tal på Carrier-overblik — aktive, i transit, engangs, uden
+       lokation, med indhold — er AFLEDT af de beholdere og beholdningsposter
+       skærmen allerede har hentet. De hører derfor hos forbrugeren og IKKE i
+       kpi/; et gemt tal ville drive fra sit grundlag, som bemanding.ledig.
+
+       Det her felt er undtagelsen: en ændring "siden i går" kræver GÅRSDAGENS
+       tal, og dem har skærmen ikke. Delta er et ANTAL og ikke en procent —
+       11 beholdere der bliver til 13, er +2, og en procent af et lille tal er
+       støj. Planchen viser et delta på alle fem kort; de fire andre er ikke
+       bygget, fordi hvert felt er et løfte om en aggregering, og et delta på
+       "aktive beholdere" siger mindre end tallet selv.
+
+       ⚠ ENS I BEGGE DIVISIONER, som facility-tallene: lageret er fælles, og
+       en beholder bliver ikke til to af at man skifter toggle. */
+    warehouse: { carriereUdenLokationDelta: 3 },
     disponering: { planlagteOpgaver: 22, ledigKapacitetPct: 18, forsinkelsesrisiko: 2, konflikter: 4 },
   },
 
@@ -200,6 +216,8 @@ export const DEMO_KPI = {
       { id: "b4", emne: "Faktura #2471 – Ruderest", kilde: "Over aftalt pris", beloebOere: 312000, alvor: "lav" },
       { id: "b5", emne: "Garage syd – Lav pladsudnyttelse", kilde: "61 % udnyttelse", alvor: "lav" },
     ],
+    /* Samme felt som under gods — lageret er fælles. Se noten der. */
+    warehouse: { carriereUdenLokationDelta: 3 },
     disponering: { planlagteOpgaver: 9, ledigKapacitetPct: 12, forsinkelsesrisiko: 1, konflikter: 2 },
   },
 };

@@ -1249,3 +1249,41 @@ export function valideCarrier(post = {}, { pladser = [], kunder = [] } = {}) {
   for (const k of Object.keys(f)) if (!f[k]) delete f[k];
   return f;
 }
+
+/**
+ * Carrier-overblikkets fem tal.
+ *
+ * ⚠ AFLEDT HOS FORBRUGEREN, IKKE GEMT I `kpi/`. Skærmen har både beholderne
+ * og beholdningsposterne i forvejen, og et gemt tal ved siden af ville drive
+ * fra sit grundlag ved den første bevægelse der ramte det ene og ikke det
+ * andet. Det er `bemanding.ledig` igen. Undtagelsen i CLAUDE.md gælder
+ * præcis her.
+ *
+ * ⚠ MEN "SIDEN I GÅR" KAN IKKE REGNES HERAF. Et delta kræver gårsdagens tal,
+ * og dem har skærmen ikke — det ene felt hører i `kpi/`. Se demo-kpi.js.
+ *
+ * ⚠ OG PLANCHENS "DELVIST TØMT" ER IKKE MED. Den kræver et referencetal —
+ * delvist i forhold til hvad? — og det findes ikke. Et gæt ville se ud som en
+ * måling. Se WAREHOUSE.md punkt 6.4.
+ */
+export function carrieroverblik(carriers = [], beholdning = []) {
+  const medIndhold = new Set(
+    beholdning.filter((b) => (b.antal || 0) > 0).map((b) => b.carrierId));
+
+  const ud = {
+    ialt: carriers.length,
+    aktive: 0, iTransit: 0, engangs: 0, udenLokation: 0, medIndhold: 0,
+  };
+
+  for (const c of carriers) {
+    /* "Aktiv" er en beholder der stadig er i omløb. En opbrugt engangskasse
+       og en der er ude af drift, er det ikke — de tælles med i `ialt`, fordi
+       de stadig findes og bærer historik. */
+    if (c.status === "paaLager" || c.status === "iTransit") ud.aktive += 1;
+    if (c.status === "iTransit") ud.iTransit += 1;
+    if (c.ejerforhold === "engang" && c.status !== "opbrugt") ud.engangs += 1;
+    if (udenLokation(c)) ud.udenLokation += 1;
+    if (medIndhold.has(c.id)) ud.medIndhold += 1;
+  }
+  return ud;
+}

@@ -26,7 +26,7 @@ import {
   afregningslinjer, afregningssum,
   CARRIER_TYPE, ALLE_CARRIER_TYPER, EJERFORHOLD, ALLE_EJERFORHOLD,
   CARRIER_STATUS, ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
-  valideCarrier,
+  valideCarrier, carrieroverblik,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -1072,5 +1072,76 @@ describe("serveren læser ikke et felt forbi", () => {
       "de forbudte felter sendes ikke med i valideringen");
     assert.ok(blok.includes("antal: Number.isFinite(Number(d.antal))"),
       "et antal på en placering læses stadig forbi");
+  });
+});
+
+describe("carrier-overblikkets fem tal", () => {
+  const C = [
+    { id: "c1", status: "paaLager", ejerforhold: "ejet", pladsId: "p1" },
+    { id: "c2", status: "paaLager", ejerforhold: "ejet" },
+    { id: "c3", status: "iTransit", ejerforhold: "ejet" },
+    { id: "c4", status: "paaLager", ejerforhold: "engang" },
+    { id: "c5", status: "opbrugt", ejerforhold: "engang" },
+    { id: "c6", status: "udeAfDrift", ejerforhold: "ejet", pladsId: "p2" },
+  ];
+  const B = [
+    { carrierId: "c1", vareId: "v1", antal: 1000 },
+    { carrierId: "c1", vareId: "v2", antal: 500 },
+    /* En tømt post bliver stående — den er historik og tæller ikke som
+       indhold. Ellers ville hver tømt beholder se fuld ud for altid. */
+    { carrierId: "c2", vareId: "v1", antal: 0 },
+    { carrierId: "c4", vareId: "v3", antal: 70 },
+  ];
+
+  it("tæller hver ting for sig", () => {
+    assert.deepEqual(carrieroverblik(C, B), {
+      ialt: 6, aktive: 4, iTransit: 1, engangs: 1, udenLokation: 2, medIndhold: 2,
+    });
+  });
+
+  it("⚠ EN OPBRUGT ENGANGS ER IKKE EN AKTIV BEHOLDER", () => {
+    /* Den findes stadig og bærer sin historik — derfor tæller den i `ialt`.
+       Men den er ude af omløb, og talte den med under "aktive", kunne man
+       ikke se hvor mange beholdere man faktisk har at arbejde med. */
+    const kun = carrieroverblik([{ id: "x", status: "opbrugt", ejerforhold: "engang" }], []);
+    assert.equal(kun.ialt, 1);
+    assert.equal(kun.aktive, 0);
+    assert.equal(kun.engangs, 0);
+  });
+
+  it("⚠ 'UDEN LOKATION' ER KUN DEM DER BURDE STÅ ET STED", () => {
+    /* En beholder i transit mangler ikke en plads — den er undervejs. Talte
+       den med, ville tallet ikke længere være en liste over noget nogen skal
+       gøre noget ved. */
+    assert.equal(carrieroverblik([{ id: "t", status: "iTransit", ejerforhold: "ejet" }], []).udenLokation, 0);
+    assert.equal(carrieroverblik([{ id: "u", status: "paaLager", ejerforhold: "ejet" }], []).udenLokation, 1);
+  });
+
+  it("tåler tomme lister", () => {
+    assert.deepEqual(carrieroverblik(), {
+      ialt: 0, aktive: 0, iTransit: 0, engangs: 0, udenLokation: 0, medIndhold: 0,
+    });
+  });
+
+  it("⚠ TALLENE LIGGER IKKE I kpi/ — ET DELTA GØR", () => {
+    /* De fem er afledt af data skærmen har, og et gemt tal ville drive fra
+       sit grundlag. "Siden i går" kan derimod ikke regnes af dagens rækker,
+       og det ene felt hører derfor i kpi/. Se CLAUDE.md om undtagelsen. */
+    const kpi = readFileSync("src/fleet/demo-kpi.js", "utf8");
+    assert.ok(kpi.includes("carriereUdenLokationDelta"),
+      "delta-feltet er ikke defineret i demo-kpi.js");
+    for (const felt of ["carriereAktive:", "carriereITransit:", "carriereMedIndhold:"]) {
+      assert.ok(!kpi.includes(felt),
+        `${felt} er gemt i kpi/, men kan regnes af det skærmen har`);
+    }
+  });
+
+  it("skærmen henter tallene fra funktionen og ikke fra sin egen tælling", () => {
+    /* Kodeprøve, som den på belægningen: adfærdsprøverne kan ikke se om
+       skærmen begynder at tælle selv igen. */
+    const skaerm = readFileSync("src/moduler/warehouse/Carriers.jsx", "utf8");
+    assert.ok(skaerm.includes("carrieroverblik(carriers, beholdning)"));
+    assert.ok(skaerm.includes("k?.warehouse"),
+      "delta-kortet læser ikke fra kpi/");
   });
 });
