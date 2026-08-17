@@ -53,7 +53,12 @@ export const skrivBevaegelse = ({
   batch, serienummer, reference, note,
 }) =>
   kald({
-    art, vareId, antal,
+    art,
+    /* ⚠ FELTER DER IKKE HØRER TIL ARTEN, SENDES SLET IKKE. `undefined` bliver
+       til `null` på vejen gennem en callable, og `null` er en VÆRDI — en
+       placering ville komme til at bære en mængde den ikke har. */
+    vareId: vareId || undefined,
+    antal: Number.isFinite(antal) ? antal : undefined,
     /* Godsbevægelsen flytter mellem BEHOLDERE (etape 12) … */
     fraCarrierId: fraCarrierId || undefined,
     tilCarrierId: tilCarrierId || undefined,

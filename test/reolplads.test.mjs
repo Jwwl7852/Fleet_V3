@@ -232,3 +232,36 @@ describe("skærmen bruger den fælles opgørelse", () => {
       "kasser hentes uden hensyn til om tenanten har Turtlebooking");
   });
 });
+
+describe("modtageskærmen foreslår en plads der faktisk er ledig", () => {
+  /* ⚠ KODEPRØVE. Et forslag der brugte sin egen definition af "ledig", ville
+     kunne pege på en hylde Lokationer viser som optaget — og den uenighed er
+     ikke til at se på nogen af de to skærme. */
+  const skaerm = readFileSync("src/moduler/warehouse/Modtagelse.jsx", "utf8");
+
+  it("bruger den fælles opgørelse og pladsErLedig", () => {
+    assert.ok(skaerm.includes("belaegningPrPlads("),
+      "modtagelsen opgør belægningen selv");
+    assert.ok(skaerm.includes("pladsErLedig("),
+      "forslaget bruger sin egen definition af ledig");
+  });
+
+  it("⚠ FORESLÅR IKKE EN SPÆRRET PLADS", () => {
+    /* pladsErLedig() afviser karantæne og lukket — også når der intet står.
+       Prøven her binder skærmen til den, så et forslag ikke kan komme til at
+       pege på en hylde der er taget ud af drift. */
+    const tom = { ialt: 0, optaget: false };
+    assert.equal(pladsErLedig({ id: "p", status: "karantaene" }, tom), false);
+    assert.equal(pladsErLedig({ id: "p", status: "lukket" }, tom), false);
+    assert.equal(pladsErLedig({ id: "p", status: "aktiv" }, tom), true);
+  });
+
+  it("⚠ LOVER IKKE EN KUNDEZONE DEN IKKE KAN LEVERE", () => {
+    /* Planchen har "vælg kundens faste område". Modellen har hverken en
+       reservation til én kunde eller en kapacitet, og en knap der lovede det,
+       ville placere godset et sted systemet ikke kan holde styr på. Skærmen
+       skriver det i stedet. */
+    assert.ok(skaerm.includes("Kundens faste område kan ikke vælges endnu"),
+      "det manglende kundeområde står ikke på skærmen");
+  });
+});

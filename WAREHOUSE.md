@@ -511,7 +511,7 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 | 11 | **Carrieren som node** — `carriers`, regler, prøver + **én** belægningsfunktion der læser både `kasser` og `carriers` | Beholderen findes, og hylden har én sandhed | ✅ |
 | 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | ✅ |
 | 13 | **Nøgletallene** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | ✅ |
-| 14 | **Transit & placering** — de fire trin, forslag til ledig lokation, kundens faste område | Modtagelsen på gulvet | |
+| 14 | **Transit & placering** — de fire trin, forslag til ledig lokation | Modtagelsen på gulvet | ✅ |
 | 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | |
 
 ⚠ **Skærmen er nummer tre i rækken, og det er ikke til at lave om på.** Den
@@ -594,3 +594,49 @@ Punkt 3 er rettet først: `byg()`, `somServeren()` og resten ligger nu i
 `src/fleet/liste.js` **uden React**, og `test/useliste.test.mjs` prøver dem —
 heriblandt at de to veje svarer det samme på det samme kald. Samme greb som
 `demo-kpi.js`, der blev skilt ud af `useKpi.js` af nøjagtig samme grund.
+
+**Etape 14 er inde.** Skærmen **Modtagelse** (`/warehouse/modtagelse`) tegner
+planchens fire trin: hvad der venter på en plads, den valgte beholder med
+indhold og transport, et forslag til en ledig plads, og kvitteringen.
+
+⚠ **AT SÆTTE BEHOLDEREN PÅ EN HYLDE ER ANKOMSTEN.** Planchens flow afslørede
+et hul i modellen: en beholder i transit kunne ikke placeres, fordi
+`skrivPlacering` krævede at den allerede var på lageret. Der er nu ikke et
+"modtag"-trin før placeringen — en beholder i transit der nu står på en hylde,
+ER kommet frem, og `status` skrives sammen med `pladsId` i ÉN opdatering. To
+skridt ville betyde at der fandtes et øjeblik hvor beholderen både var
+undervejs og stod et sted, og det er præcis den tilstand belægningen hviler på
+ikke findes.
+
+Den anden vej findes stadig: scannes beholderen ind uden at blive placeret,
+står den som `paaLager` uden `pladsId`. Køen på skærmen er derfor **begge
+dele** — i transit og uden lokation — fordi begge venter på det samme.
+
+⚠ **Forslaget er en LEDIG plads, ikke en beregnet plads.** Det bruger
+`pladsErLedig()` og den fælles belægning, så det ikke kan blive uenigt med
+Lokationer om hvad "ledig" betyder. Planchens *"1,9 m³ ledig"* er ikke med:
+der er ingen kapacitetsmodel, og et opdigtet rumfang ville se ud som en
+måling. Der står zone og type i stedet.
+
+⚠ **Kundens faste område er ikke bygget**, og skærmen skriver hvorfor. En
+kundezone er et reserveret område med ledig m² og m³ — hverken reservationen
+eller kapaciteten findes i modellen. Se punkt 6.6.
+
+⚠ **Og der tegnes ikke et lagerkort.** `reolpladser` har ingen koordinater;
+hal, reol, fag, hylde og plads er navne, ikke positioner. Et kort tegnet på
+gæt ville vise en hylde et sted den ikke står.
+
+### ⚠ Klikket fandt det proben ikke kunne
+
+Proben mod den udrullede base var grøn i tre punkter. Så blev knappen trykket
+i browseren, og placeringen blev afvist med *"antal: En placering flytter
+beholderen, ikke godset i den"* — uden at nogen havde skrevet et antal.
+
+Skærmen sendte `antal: undefined`. En callable serialiserer `undefined` til
+`null`, og `Number(null)` er **0** — et tal der ser sendt ud. Hærdningen fra
+etape 12, der skulle afvise et antal på en placering, afviste altså fraværet
+af et.
+
+Proben kunne ikke se det: den udelod feltet **helt**, og så var der ingen
+`null` at koste om. Rettet i begge lag — serveren læser med `typeof`, og
+klienten sender slet ikke de felter arten ikke har.

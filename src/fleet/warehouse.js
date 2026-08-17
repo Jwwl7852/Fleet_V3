@@ -472,11 +472,38 @@ export function virkningPaaBeholdning(post = {}) {
  * placeringen og bevægelsen lander i ÉN skrivning — ellers står carrieren et
  * sted uden at nogen kan se hvornår den kom.
  */
-export function virkningPaaCarrier(post = {}) {
+export function virkningPaaCarrier(post = {}, carrier = null) {
   if (!BEVAEGELSE_ART[post.art]?.flytterCarrier) return null;
   if (!post.carrierId || !post.tilPladsId) return null;
-  return { carrierId: post.carrierId, pladsId: post.tilPladsId };
+
+  const ud = { carrierId: post.carrierId, pladsId: post.tilPladsId };
+
+  /* ⚠ AT SÆTTE EN BEHOLDER PÅ EN HYLDE ER ANKOMSTEN.
+     En beholder i transit er undervejs og har ingen plads. Står den nu på en
+     hylde, ER den kommet frem — og så skal statussen følge med i SAMME
+     skrivning. To skridt ville betyde at der fandtes et øjeblik hvor en
+     beholder både var "i transit" og stod på en hylde, og det er præcis den
+     tilstand belægningen hviler på ikke findes.
+
+     Den anden vej findes stadig: scannes beholderen ind uden at blive
+     placeret, står den som `paaLager` uden `pladsId` — de "uden lokation" på
+     planchen. Ankomst og placering er to hændelser, men den ene medfører den
+     anden. */
+  if (carrier?.status === "iTransit") ud.status = "paaLager";
+  return ud;
 }
+
+/**
+ * Må beholderen sættes på en hylde?
+ *
+ * ⚠ IKKE DET SAMME SOM `kraeverLokation()`. Den svarer på om beholderen
+ * BURDE stå et sted; den her på om den må FLYTTES dertil. En i transit må —
+ * det er netop ankomsten. En opbrugt engangskasse må ikke: den er brugt, og
+ * en hylde optaget af noget der er ude af drift, er en hylde ingen kan se er
+ * fri.
+ */
+export const kanPlaceres = (status) =>
+  status === "paaLager" || status === "udeAfDrift" || status === "iTransit";
 
 /**
  * Beholdningen pr. vare — SUMMERET, aldrig gemt.

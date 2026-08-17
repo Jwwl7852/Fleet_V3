@@ -48,7 +48,7 @@ import {
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
-  valideOptaelling, validePlacering, virkningPaaCarrier, kraeverLokation,
+  valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
   CARRIER_STATUS,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
@@ -1599,7 +1599,12 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
   const fejl = validePlacering({
     art: "putaway", carrierId, tilPladsId,
     vareId: kortStreng(d.vareId, 60) || null,
-    antal: Number.isFinite(Number(d.antal)) ? Number(d.antal) : null,
+    /* ⚠ typeof, IKKE Number(). En callable serialiserer `undefined` til
+       `null`, og `Number(null)` er 0 — et tal der ser sendt ud. Skærmen
+       sendte ingen mængde, og placeringen blev afvist for at bære en på nul.
+       Proben fandt det ikke: den udelod feltet HELT, og så var der ingen
+       null at koste om. Det var et klik i browseren der fandt det. */
+    antal: typeof d.antal === "number" ? d.antal : null,
     batch: kortStreng(d.batch, 40) || null,
     fraCarrierId: kortStreng(d.fraCarrierId, 60) || null,
     tilCarrierId: kortStreng(d.tilCarrierId, 60) || null,
@@ -1617,10 +1622,13 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
   if (!plads) throw new HttpsError("not-found", `Lokationen ${tilPladsId} findes ikke.`);
 
   /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE, så invarianten skal håndhæves HER
-     også. En beholder i transit eller en opbrugt engangskasse optager ingen
-     hylde — og belægningen tæller alt der har et pladsId. Slap en af dem
-     igennem, ville en hylde se optaget ud af noget der er ude af huset. */
-  if (!kraeverLokation(carrier.status)) {
+     også. En opbrugt engangskasse optager ingen hylde — og belægningen tæller
+     alt der har et pladsId. Slap den igennem, ville en hylde se optaget ud af
+     noget der er brugt op.
+
+     ⚠ MEN EN I TRANSIT MÅ GERNE: at sætte den på hylden ER ankomsten, og
+     statussen følger med i samme skrivning. Se virkningPaaCarrier(). */
+  if (!kanPlaceres(carrier.status)) {
     throw new HttpsError("failed-precondition",
       `En beholder der er ${
         CARRIER_STATUS[carrier.status]?.label.toLowerCase() || "ude"}, ` +
@@ -1631,13 +1639,13 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
       "Lokationen er lukket og kan ikke modtage en beholder.");
   }
 
-  const virkning = virkningPaaCarrier({ art: "putaway", carrierId, tilPladsId });
+  const virkning = virkningPaaCarrier({ art: "putaway", carrierId, tilPladsId }, carrier);
   if (!virkning) throw new HttpsError("internal", "Placeringen kunne ikke udledes.");
 
   const nu = Date.now();
   const nyId = rod.child("bevaegelser").push().key;
 
-  await rod.update({
+  const opdatering = {
     [`bevaegelser/${nyId}`]: {
       art: "putaway",
       carrierId,
@@ -1651,13 +1659,26 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
       oprettetAf: uid,
     },
     [`carriers/${virkning.carrierId}/pladsId`]: virkning.pladsId,
-  });
+  };
+  /* ⚠ STATUS OG PLADS I SAMME SKRIVNING. Ellers ville der findes et
+     oejeblik hvor beholderen baade var i transit og stod paa en hylde. */
+  if (virkning.status) {
+    opdatering[`carriers/${virkning.carrierId}/status`] = virkning.status;
+  }
 
-  await logBevaegelse(tenantId, uid, AUDIT.aendre, nyId, null,
-    { art: "putaway" },
-    `beholder ${carrierId} placeret paa ${tilPladsId}`);
+  await rod.update(opdatering);
 
-  return { ok: true, id: nyId, carrierId, pladsId: tilPladsId };
+  await logBevaegelse(tenantId, uid, AUDIT.aendre, nyId,
+    { status: carrier.status },
+    { art: "putaway", status: virkning.status || carrier.status },
+    virkning.status
+      ? `beholder ${carrierId} ankommet og placeret paa ${tilPladsId}`
+      : `beholder ${carrierId} placeret paa ${tilPladsId}`);
+
+  return {
+    ok: true, id: nyId, carrierId, pladsId: tilPladsId,
+    ankommet: Boolean(virkning.status),
+  };
 }
 
 async function logBevaegelse(tenantId, uid, handling, id, foer, efter, note) {

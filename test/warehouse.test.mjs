@@ -26,7 +26,7 @@ import {
   afregningslinjer, afregningssum,
   CARRIER_TYPE, ALLE_CARRIER_TYPER, EJERFORHOLD, ALLE_EJERFORHOLD,
   CARRIER_STATUS, ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
-  valideCarrier, carrieroverblik,
+  valideCarrier, carrieroverblik, kanPlaceres,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -464,11 +464,16 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
       "carrierens plads skrives ikke med i samme update");
   });
 
-  it("⚠ NÆGTER AT SÆTTE EN BEHOLDER DER IKKE ER I HUSET, PÅ EN HYLDE", () => {
+  it("⚠ NÆGTER AT SÆTTE EN OPBRUGT BEHOLDER PÅ EN HYLDE", () => {
     /* Admin-SDK'et går uden om reglerne, så invarianten skal håndhæves i
-       funktionen også. Slap en carrier i transit igennem, ville en hylde se
-       optaget ud af noget der er ude af huset. */
-    assert.ok(kilde.includes("kraeverLokation(carrier.status)"));
+       funktionen også. Slap en opbrugt engangskasse igennem, ville en hylde
+       se optaget ud af noget der er brugt op.
+
+       ⚠ EN I TRANSIT MÅ DERIMOD GERNE — at sætte den på hylden ER ankomsten,
+       og statussen følger med i samme skrivning. */
+    assert.ok(kilde.includes("kanPlaceres(carrier.status)"));
+    assert.ok(kilde.includes("carriers/${virkning.carrierId}/status`] = virkning.status"),
+      "ankomsten skrives ikke sammen med placeringen");
   });
 
   it("prøver abonnement og modul, som reglerne gør", () => {
@@ -1070,7 +1075,7 @@ describe("serveren læser ikke et felt forbi", () => {
     const blok = kilde.slice(start, kilde.indexOf("async function logBevaegelse", start));
     assert.ok(blok.includes("vareId: kortStreng(d.vareId"),
       "de forbudte felter sendes ikke med i valideringen");
-    assert.ok(blok.includes("antal: Number.isFinite(Number(d.antal))"),
+    assert.ok(blok.includes('antal: typeof d.antal === "number"'),
       "et antal på en placering læses stadig forbi");
   });
 });
@@ -1143,5 +1148,77 @@ describe("carrier-overblikkets fem tal", () => {
     assert.ok(skaerm.includes("carrieroverblik(carriers, beholdning)"));
     assert.ok(skaerm.includes("k?.warehouse"),
       "delta-kortet læser ikke fra kpi/");
+  });
+});
+
+describe("modtagelsen — at placere er at ankomme", () => {
+  it("⚠ EN BEHOLDER I TRANSIT BLIVER paaLager NÅR DEN SÆTTES PÅ EN HYLDE", () => {
+    /* To skridt ville betyde at der fandtes et øjeblik hvor beholderen både
+       var i transit og stod på en hylde — og det er præcis den tilstand
+       belægningen hviler på ikke findes. */
+    const v = virkningPaaCarrier(
+      { art: "putaway", carrierId: "c1", tilPladsId: "p1" },
+      { id: "c1", status: "iTransit" });
+    assert.deepEqual(v, { carrierId: "c1", pladsId: "p1", status: "paaLager" });
+  });
+
+  it("en beholder der allerede er på lageret, skifter ikke status", () => {
+    /* En flytning fra hylde til hylde er ikke en ankomst. Skrev vi statussen
+       med hver gang, ville auditloggen vise et skifte der ikke skete. */
+    const v = virkningPaaCarrier(
+      { art: "putaway", carrierId: "c1", tilPladsId: "p2" },
+      { id: "c1", status: "paaLager", pladsId: "p1" });
+    assert.deepEqual(v, { carrierId: "c1", pladsId: "p2" });
+    /* Uden beholderen kan ankomsten ikke afgøres — så påstås den ikke. */
+    assert.deepEqual(virkningPaaCarrier({ art: "putaway", carrierId: "c1", tilPladsId: "p2" }),
+      { carrierId: "c1", pladsId: "p2" });
+  });
+
+  it("⚠ kanPlaceres ER IKKE DET SAMME SOM kraeverLokation", () => {
+    /* Den ene svarer på om beholderen BURDE stå et sted, den anden på om den
+       må flyttes dertil. En i transit må — det er ankomsten — men den er
+       ikke "uden lokation" imens. */
+    assert.equal(kanPlaceres("iTransit"), true);
+    assert.equal(kraeverLokation("iTransit"), false);
+    assert.equal(kanPlaceres("paaLager"), true);
+    assert.equal(kanPlaceres("udeAfDrift"), true);
+    /* En opbrugt engangskasse kommer ikke på en hylde igen. */
+    assert.equal(kanPlaceres("opbrugt"), false);
+    assert.equal(kanPlaceres("findesIkke"), false);
+  });
+});
+
+describe("undefined bliver til null på vejen gennem en callable", () => {
+  const cf = readFileSync("functions/index.js", "utf8");
+  const klient = readFileSync("src/fleet/lager.js", "utf8");
+
+  it("⚠ SERVEREN LÆSER `antal` MED typeof, IKKE MED Number()", () => {
+    /* `Number(null)` er 0 — et tal der ser sendt ud. Skærmen sendte ingen
+       mængde på en placering, og den blev afvist for at bære en på nul.
+       Proben fandt det ikke: den udelod feltet HELT. Det var et klik i
+       browseren der fandt det. */
+    const start = cf.indexOf("async function skrivPlacering");
+    const blok = cf.slice(start, cf.indexOf("async function logBevaegelse", start));
+    assert.ok(blok.includes('typeof d.antal === "number"'),
+      "et antal på null læses stadig som 0");
+    assert.ok(!blok.includes("Number.isFinite(Number(d.antal))"));
+  });
+
+  it("klienten sender slet ikke de felter arten ikke har", () => {
+    /* Den anden halvdel af rettelsen: sendes feltet ikke, er der ingen null
+       at koste om. To lag, fordi den ene side ikke kan stole på den anden. */
+    assert.ok(klient.includes("vareId: vareId || undefined"));
+    assert.ok(klient.includes("antal: Number.isFinite(antal) ? antal : undefined"));
+  });
+
+  it("⚠ EN PLACERING UDEN MÆNGDE ER GYLDIG", () => {
+    /* Selve reglen, prøvet på funktionen frem for på teksten: null og
+       undefined er begge "ingen mængde". Kun et rigtigt tal er en fejl. */
+    const CTX = { pladser: ["p1"], carriers: ["c1"] };
+    const OK = { art: "putaway", carrierId: "c1", tilPladsId: "p1" };
+    assert.deepEqual(validePlacering({ ...OK, antal: null, vareId: null }, CTX), {});
+    assert.deepEqual(validePlacering({ ...OK, antal: undefined }, CTX), {});
+    assert.ok(validePlacering({ ...OK, antal: 0 }, CTX).antal,
+      "en mængde på nul er stadig en mængde der ikke hører til");
   });
 });

@@ -134,6 +134,13 @@ export const NAV = [
          WAREHOUSE.md punkt 1 er en ANDEN flade — aktive lokationer,
          varelinjer, aabne modtagelser, opgavekoe — og den er ikke bygget.
          Den her viser BEHOLDERE. To skaerme, ikke to navne til een. */
+      /* ⚠ MODTAGELSE, IKKE "VAREMODTAGELSE". Planche 3 i punkt 1 hedder
+         "Varemodtagelse & putaway" og handler om PO'er og kvalitetskontrol —
+         den er ikke bygget. Den her er transit & placering: beholderen kommer
+         ind og skal staa et sted. */
+      { key: "warehouseModtagelse", sti: "/warehouse/modtagelse", label: "Modtagelse",
+        titel: "Warehouse – transit & placering",
+        under: "Beholdere der venter paa en plads — og hvor de skal staa" },
       { key: "warehouseCarriers", sti: "/warehouse/carriers", label: "Beholdere",
         titel: "Warehouse – beholdere",
         under: "Carriers: indhold, placering og hvad der mangler at komme paa plads" },
