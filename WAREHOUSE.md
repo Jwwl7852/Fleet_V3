@@ -321,7 +321,7 @@ stemmer.
 | 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | ✅ |
 | 5 | **Pluk, pak, afsend** — plukordrer, fremdrift, afsendelse | Udgående flow | ✅ |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | ✅ |
-| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | |
+| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | delvis: raterne og afregningsskærmen er inde (PRISER.md etape 4 og 6). Grundlaget mangler sin node og sin nummerserie |
 | 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |
 | 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | |
 | 10 | **Scanner-app** — egen applikation | Gulvet | |

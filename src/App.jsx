@@ -43,6 +43,7 @@ import Wmspluk from "./moduler/warehouse/Pluk.jsx";
 import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
 import Wmscarriers from "./moduler/warehouse/Carriers.jsx";
 import Wmsmodtagelse from "./moduler/warehouse/Modtagelse.jsx";
+import Wmsafregning from "./moduler/warehouse/Afregning.jsx";
 import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
 import Kundepriser from "./moduler/kunder/Kundepriser.jsx";
 import Kunder from "./moduler/Kunder.jsx";
@@ -361,6 +362,7 @@ export default function App() {
             <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
             <Route path="warehouse/carriers" element={<Wmscarriers />} />
             <Route path="warehouse/modtagelse" element={<Wmsmodtagelse />} />
+            <Route path="warehouse/afregning" element={<Wmsafregning />} />
 
             <Route path="kunder" element={<Kunder />} />
             <Route path="kunder/priser" element={<Standardpriser />} />

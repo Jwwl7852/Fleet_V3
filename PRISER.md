@@ -220,7 +220,7 @@ datoen. Det er samme greb som prislisten i ejerkonsollen.
 | 3 | **Kundens afvigelse** — egen pris eller rabat, pr. ydelse | Den enkelte kunde kan få sin aftale | ✅ |
 | 4 | **Én opslagsvej** — `satsopslag()`, broen til afregningen og kilden på linjen | Priserne bruges ét sted fra | ✅ |
 | 5 | **Satsarket ud af JSX** — og det viste sig at være OMKOSTNINGER | Det hardkodede forsvinder | ✅ |
-| 6 | **Warehouse-afregningen kobles på** | Lageret kan faktureres | |
+| 6 | **Warehouse-afregningen** — skærmen der gør lageret op pr. kunde | Lageret kan gøres op | ✅ |
 
 ⚠ Etape 5 er den farligste: `beregnBooking()` og `beregnForloeb()` er prøvet
 mod det hardkodede satsark. Flyttes det, skal prøverne følge med — ellers
@@ -313,3 +313,40 @@ gamle kommentar bad selv om rettelsen; nu ejer `useListe` reglen.
 
 **Tilbage:** etape 6 — afregningsskærmen, der samler linjerne for en kunde i
 en periode.
+
+
+---
+
+## 9. Etape 6 er inde — afregningen, ikke fakturaen
+
+Skærmen **Warehouse → Afregning** samler linjerne for én kunde i perioden:
+hændelser, mængde, sats, hvor prisen kom fra, og beløb. Den bygger på
+`afregningslinjer()` og `satsopslag()` — den regner ikke selv, så to skærme
+ikke kan blive uenige om det samme lager i den samme periode.
+
+⚠ **En linje uden sats udelades ikke.** Den står med "mangler", og summen kan
+så ikke gøres op — med en henvisning til hvor prisen sættes. Udelod vi den,
+ville totalen se komplet ud mens en ydelse manglede sin pris.
+
+⚠ **Perioden kommer fra shellen.** Modulet laver ikke sin egen vælger; to
+vælgere kunne blive uenige om hvad tallene dækker. Prisen er at afregningen
+følger "seneste N dage" og ikke en kalendermåned — og det skal den, den dag et
+grundlag skal fryses. Det står på skærmen.
+
+### ⚠ Hvorfor der ikke oprettes et fakturagrundlag herfra
+
+To ting mangler, og ingen af dem hører i den her etape:
+
+1. **`grundlag` findes ikke som node** i `firebase.rules.json`.
+   `Fakturering.jsx` kører i dag på `demo-grundlag.js` alene.
+2. **Nummerserier er et kendt hul.** Et grundlag skal have et nummer fra en
+   counter i en transaction, og den Cloud Function findes ikke.
+
+En knap der lovede en faktura, ville love noget platformen ikke kan. Og
+godkendelsen hører ét sted — Indkøb → Fakturaer, beslutning 12. Det står
+skrevet **på skærmen** frem for kun her.
+
+**Efterprøvet med rigtige data i DEV:** en standardpris sat gennem
+Standardpriser-skærmen (45,00 kr. for håndtering ind, 120,00 kr. for flytning)
+ender som **1.035,00 kr.** på Skagen Seafoods afregning, med kilden
+"Standard" på hver linje — og de tre optællinger i perioden tælles ikke med.

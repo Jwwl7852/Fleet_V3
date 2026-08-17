@@ -18,7 +18,7 @@ import {
   prisydelseForArter, satsopslag, beregnBooking,
 } from "../src/fleet/pricing.js";
 import {
-  ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER, afregningslinjer,
+  ALLE_BEVAEGELSE_ARTER, IKKE_AFREGNEDE_ARTER, afregningslinjer, afregningssum,
 } from "../src/fleet/warehouse.js";
 import { readFileSync } from "node:fs";
 import {
@@ -1270,5 +1270,90 @@ describe("omkostningsarket ud af JSX-filen", () => {
     assert.ok(skaerm.includes('useListe("omkostninger"'), "skærmen læser ikke noden");
     /* Og den gentager ikke divisionsfilteret — useListe ejer reglen. */
     assert.ok(!/const iDivision/.test(skaerm), "skærmen har sin egen kopi af divisionsfilteret");
+  });
+});
+
+describe("afregningsskærmen samler det hele", () => {
+  const skaerm = readFileSync("src/moduler/warehouse/Afregning.jsx", "utf8");
+
+  it("bruger husets ene opslagsvej og husets ene linjebygger", () => {
+    /* ⚠ SKÆRMEN REGNER IKKE SELV. To skærme der begge byggede linjer, ville
+       kunne blive uenige om det samme lager i den samme periode. */
+    assert.ok(skaerm.includes("satsopslag({"), "satsen slås ikke op ét sted");
+    assert.ok(skaerm.includes("afregningslinjer({"), "linjerne bygges i skærmen");
+    assert.ok(skaerm.includes("afregningssum("), "summen regnes i skærmen");
+  });
+
+  it("⚠ LAVER IKKE SIN EGEN PERIODEVÆLGER", () => {
+    /* Shellen ejer perioden. To vælgere kunne blive uenige om hvilken
+       periode tallene dækker — og på en afregning er det et beløb. */
+    assert.ok(skaerm.includes("periode, dage } = useFleet()"));
+    assert.ok(!/type="date"/.test(skaerm), "skærmen har sin egen datovælger");
+  });
+
+  it("⚠ LOVER IKKE ET FAKTURAGRUNDLAG DEN IKKE KAN LAVE", () => {
+    /* Grundlaget har ingen node, og et nummer kræver en Cloud Function med
+       en transaction — et kendt hul. En knap ville love noget platformen
+       ikke kan, og godkendelsen hører ét sted (beslutning 12). */
+    assert.ok(skaerm.includes("Der oprettes ikke et fakturagrundlag herfra endnu"),
+      "det manglende grundlag står ikke på skærmen");
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    assert.ok(!/"grundlag":\s*\{/.test(regler),
+      "grundlag-noden findes nu — så skal skærmens forbehold rettes");
+  });
+
+  it("henter bevægelserne på det indekserede felt", () => {
+    /* ⚠ EN AFREGNING MÅ IKKE HENTE HELE HISTORIKKEN NED for at smide 99 % af
+       den væk. `tidspunktMs` er indekseret i reglerne. */
+    assert.ok(skaerm.includes('ordnPaa: "tidspunktMs"'));
+    const regler = readFileSync("firebase.rules.json", "utf8");
+    const blok = regler.slice(regler.indexOf('"bevaegelser": {'));
+    const indeks = blok.split(/\r?\n/).find((l) => l.includes(".indexOn"));
+    assert.ok(indeks?.includes("tidspunktMs"),
+      "tidspunktMs er ikke indekseret — RTDB henter så hele noden ned og " +
+      "sorterer i klienten, med en advarsel i konsollen og en regning i stilhed");
+  });
+
+  it("summen kan ikke gøres op når en sats mangler", () => {
+    /* Adfærden, ikke bare teksten: en linje uden sats gør summen null. En
+       halv sum ser ud som om den er regnet ud. */
+    const linjer = [
+      { ydelse: "pluk", beloebOere: 1000 },
+      { ydelse: "retur", beloebOere: null },
+    ];
+    const s = afregningssum(linjer);
+    assert.equal(s.beloebOere, null);
+    assert.equal(s.mangler, 1);
+    assert.equal(afregningssum([{ beloebOere: 1000 }]).beloebOere, 1000);
+  });
+
+  it("⚠ EN OPTÆLLING KOMMER ALDRIG PÅ EN AFREGNING", () => {
+    /* Den er vores kontrol af vores eget arbejde. Kunne den afregnes, ville
+       en optælling være en indtægt — og så blev der talt af de forkerte
+       grunde. */
+    const satsFor = () => ({ beloebOere: 5000, gyldigFra: 1, kilde: "standard" });
+    const linjer = afregningslinjer({
+      bevaegelser: [
+        { art: "optael", kundeId: "k1", tidspunktMs: 50, antal: 1000 },
+        { art: "justering", kundeId: "k1", tidspunktMs: 50, antal: 1000 },
+        { art: "pluk", kundeId: "k1", tidspunktMs: 50, antal: 1000 },
+      ],
+      satsFor, kundeId: "k1", fra: 0, til: 100,
+    });
+    assert.deepEqual(linjer.map((l) => l.ydelse), ["pluk"]);
+  });
+
+  it("⚠ HOLDER ANDRE KUNDER OG ANDRE PERIODER UDE", () => {
+    const satsFor = () => ({ beloebOere: 5000, gyldigFra: 1, kilde: "standard" });
+    const linjer = afregningslinjer({
+      bevaegelser: [
+        { art: "pluk", kundeId: "k2", tidspunktMs: 50, antal: 1000 },
+        { art: "pluk", kundeId: "k1", tidspunktMs: 150, antal: 1000 },
+        { art: "pluk", kundeId: "k1", tidspunktMs: 50, antal: 1000 },
+      ],
+      satsFor, kundeId: "k1", fra: 0, til: 100,
+    });
+    assert.equal(linjer.length, 1);
+    assert.equal(linjer[0].haendelser, 1);
   });
 });

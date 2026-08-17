@@ -144,6 +144,13 @@ export const NAV = [
       { key: "warehouseCarriers", sti: "/warehouse/carriers", label: "Beholdere",
         titel: "Warehouse – beholdere",
         under: "Carriers: indhold, placering og hvad der mangler at komme paa plads" },
+      /* ⚠ AFREGNING, IKKE FAKTURERING. Skaermen viser hvad lageret KAN
+         faktureres for; godkendelsen hoerer eet sted, i Indkoeb → Fakturaer
+         (beslutning 12). To godkendelsesflows er den fejl beslutningen
+         lukkede. */
+      { key: "warehouseAfregning", sti: "/warehouse/afregning", label: "Afregning",
+        titel: "Warehouse – afregning",
+        under: "Hvad lageret kan faktureres for i perioden, pr. kunde" },
       { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
         titel: "Warehouse – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Turtlebooking." },
