@@ -49,7 +49,7 @@ import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
-  CARRIER_STATUS,
+  CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND,
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 /* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
@@ -1498,6 +1498,60 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
   /* ---- Hvad det gør ved saldoerne ------------------------------------ */
   const virkning = virkningPaaBeholdning(post);
 
+  /* ---- Og hvad det gør ved ENHEDEN (etape 9) ------------------------- */
+  /* ⚠ TO FORUDSÆTNINGER SOM KUN SERVEREN KAN PRØVE. virkningPaaEnhed()
+     svarer på hvad der skal skrives; den kan ikke vide om serienummeret
+     allerede findes, eller om enheden ligger dér hvor klienten tror.
+
+     Uden det første kunne SN-4711 modtages to gange, og den anden modtagelse
+     ville overskrive den første uden spor — enheden ville have været to
+     steder, og kun det sidste ville stå. Uden det andet kunne den plukkes
+     fra en beholder den ikke lå i, og så peger sporet det forkerte sted
+     resten af enhedens liv. */
+  const enhedsvirkning = virkningPaaEnhed(post, { vare });
+  let enhedFoer = null;
+  if (enhedsvirkning) {
+    const sti = `enheder/${enhedsvirkning.serienummer}`;
+    enhedFoer = (await rod.child(sti).once("value")).val();
+
+    if (enhedsvirkning.kraeverLedigtSerienummer) {
+      /* ⚠ EN AFSENDT ENHED MÅ GERNE KOMME RETUR. Det er ikke en dublet — det
+         er den samme enhed der kommer hjem, og den skal have en ny linje i
+         sporet frem for en afvisning. Kun en enhed der ALLEREDE er i huset,
+         kan ikke modtages igen. */
+      if (enhedFoer && ENHED_TILSTAND[enhedFoer.tilstand]?.iHuset) {
+        throw new HttpsError("already-exists",
+          `Serienummeret ${enhedsvirkning.serienummer} ligger allerede i ` +
+          `beholderen ${enhedFoer.carrierId}. Én enhed kan ikke modtages to gange.`);
+      }
+      if (enhedFoer && enhedFoer.vareId !== post.vareId) {
+        throw new HttpsError("failed-precondition",
+          `Serienummeret ${enhedsvirkning.serienummer} hører til en anden vare.`);
+      }
+    } else {
+      if (!enhedFoer) {
+        throw new HttpsError("not-found",
+          `Serienummeret ${enhedsvirkning.serienummer} findes ikke på lageret.`);
+      }
+      if (enhedFoer.carrierId !== enhedsvirkning.kraeverEnhedenLiggerI) {
+        throw new HttpsError("failed-precondition",
+          `Serienummeret ${enhedsvirkning.serienummer} ligger i ` +
+          `${enhedFoer.carrierId || "ingen beholder"}, ikke i ` +
+          `${enhedsvirkning.kraeverEnhedenLiggerI}.`);
+      }
+    }
+
+    /* Og posten skal kunne stå i basen. Reglerne er `.write: false`, så det
+       er HER den validering findes — admin-SDK'et går uden om dem. */
+    const fejlEnhed = valideEnhed(
+      { serienummer: enhedsvirkning.serienummer, ...enhedsvirkning.felter },
+      {});
+    if (Object.keys(fejlEnhed).length) {
+      throw new HttpsError("invalid-argument",
+        Object.entries(fejlEnhed).map(([k, v]) => `${k}: ${v}`).join(" "));
+    }
+  }
+
   /* ⚠ DÆKNINGEN PRØVES FØR SKRIVNINGEN — og se noten i hovedet om hvad det
      vindue IKKE dækker. Uden tjekket ville hvert eneste fejlpluk tage hylden
      i minus, og et negativt lagertal er værre end intet: nogen disponerer
@@ -1547,6 +1601,19 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
     opdatering[`${b}/antal`] = Number.isFinite(v.saet)
       ? v.saet
       : ServerValue.increment(v.aendring);
+  }
+
+  /* ⚠ ENHEDEN SKRIVES I DEN SAMME OPDATERING. Det er hele prisen ved at have
+     enheden som eget objekt: RTDB's multi-path update er atomisk, så
+     bevægelsen, saldoen og enhedsrækken lander sammen eller slet ikke. To
+     kald ville være to udfald — og så ville `enhedsafvigelse()` vise en
+     uenighed vi selv havde lavet. Se WAREHOUSE.md punkt 7. */
+  if (enhedsvirkning) {
+    const e = `enheder/${enhedsvirkning.serienummer}`;
+    for (const [felt, vaerdi] of Object.entries(enhedsvirkning.felter)) {
+      opdatering[`${e}/${felt}`] = vaerdi;
+    }
+    opdatering[`${e}/senestMs`] = nu;
   }
 
   await rod.update(opdatering);

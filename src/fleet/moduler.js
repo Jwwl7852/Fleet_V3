@@ -258,6 +258,11 @@ export const NODE_MODUL = {
      derfor på HVER SIT modul — mens `reolpladser`, som de begge står på,
      hører til begge. Se WAREHOUSE.md punkt 6.2. */
   carriers: "warehouse",
+
+  /* ⚠ ENHEDEN — ét stykke gods med sit eget serienummer (etape 9). Den hører
+     KUN til Warehouse: en transportkasse har et kassenummer og ikke et
+     serienummer på sit indhold, fordi indholdet ikke er vores. */
+  enheder: "warehouse",
 };
 
 /**

@@ -151,6 +151,12 @@ export const NAV = [
       { key: "warehouseAfregning", sti: "/warehouse/afregning", label: "Afregning",
         titel: "Warehouse – afregning",
         under: "Hvad lageret kan faktureres for i perioden, pr. kunde" },
+      /* ⚠ SPORBARHED, IKKE "Sporbarhed & optaelling". Planchen hedder det
+         sidste, men optaellingen ER sin egen skaerm — to navne til det samme
+         ville vaere sjette gang det moenster dukker op. */
+      { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
+        titel: "Warehouse – sporbarhed",
+        under: "Hvor er partiet nu, og hvor har det vaeret" },
       { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
         titel: "Warehouse – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Turtlebooking." },

@@ -1331,6 +1331,37 @@
           }
         },
 
+        // ══ ENHEDEN — ét stykke gods med sit eget serienummer (etape 9) ══
+        //
+        // ⚠ NOEGLEN ER SERIENUMMERET SELV. Derfor gaelder samme tegnregel som
+        // for batchen: hverken punktum, #, $, [, ] eller / — RTDB tillader dem
+        // ikke i en noegle, og en skrivning ville fejle et helt andet sted end
+        // der hvor fejlen blev lavet.
+        //
+        // ⚠ OG NODEN BAERER DEN SAMME KENDSGERNING SOM `beholdning`, bare pr.
+        // enhed frem for som et tal. Det er bevidst valgt (WAREHOUSE.md 7), og
+        // prisen betales tre steder: én atomisk skrivning i bevaegelseskriv,
+        // antallet laast til én enhed pr. bevaegelse, og `enhedsafvigelse()`
+        // der VISER en uenighed frem for at lade den staa. Derfor er .write
+        // ogsaa false: to skrivere ville vaere to sandheder.
+        "enheder": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".indexOn": ["vareId", "kundeId", "carrierId", "tilstand"],
+          "$serienummer": {
+            ".write": false,
+            ".validate": "newData.hasChildren(['vareId', 'kundeId', 'tilstand']) && $serienummer.matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/)",
+            "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+            // ⚠ HISTORISK FAKTUM. Kunden skrives med, som paa bevaegelsen —
+            // skifter varen ejer, maa sidste kvartals sporbarhedsudtraek ikke
+            // pludselig pege paa en anden kunde.
+            "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "carrierId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('carriers').child(newData.val()).exists()" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(paaLager|afsendt)$/)" },
+            "senestMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // ══ PLUKORDREN — det udgaaende flow ══
         //
         // ⚠ DEN HEDDER plukordrer OG IKKE ordrer. `bookinger` er allerede en

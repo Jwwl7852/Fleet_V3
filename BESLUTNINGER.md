@@ -1511,3 +1511,62 @@ til en rabat. Samme regel som momssatsen der mangler.
 Og opslaget sker ét sted. `prisFor()` bygger på `satsPaa()` og
 `rabatteretSatsOere()` — den skriver ingen af dem af. En procentregning mere
 ville være en afrundingsregel mere.
+
+---
+
+## 39. Enheden er et eget objekt — og prisen betales tre steder
+
+Et serienummer kunne have været det samme som en batch: et parti på præcis én
+enhed, lagt i beholdningsnøglen hvor batchen står. Ingen ny node, ingen ny
+kendsgerning, og "hvor er SN-4711" ville have været et opslag i data der
+allerede fandtes.
+
+Det blev i stedet **`enheder/<serienr>`**, med enhedens vare, kunde, beholder
+og tilstand:
+
+```
+enheder/SN-4711 = { vareId, kundeId, carrierId, tilstand }
+beholdning/CRR-100246__v-tool-1256___ = { antal: 3000 }
+```
+
+Begrundelsen er at en enhed har sin egen historie, sin egen tilstand og sin
+egen skæbne — et rigtigt WMS modellerer den sådan, og alt hvad man senere vil
+kunne sige om ét stykke gods (garanti, reparation, ejerskifte, skade) hænger
+på enheden og ikke på et tal.
+
+### ⚠ Men de to noder bærer den SAMME kendsgerning
+
+`beholdning` siger *hvor mange*. `enheder` siger *hvilke*. Det er to
+repræsentationer af én ting, og det er præcis den klasse fejl `bemanding.ledig`
+var: to steder der kan komme ud af trit, hvor kun det ene bliver rettet.
+
+Alternativet — serienummeret som batch — havde ikke den svaghed overhovedet.
+**Valget er truffet med den viden**, og prisen er derfor betalt eksplicit tre
+steder. Ingen af dem er en detalje der kan ryddes op i senere:
+
+| # | Betalingen | Hvor | Hvad der sker uden |
+|---|---|---|---|
+| 1 | Enhedsrækken skrives i **samme `rod.update()`** som bevægelsen og beholdningen. RTDB's multi-path update er atomisk | `bevaegelseskriv` | To kald er to udfald. Halvdelen af skrivningerne kunne lande, og uenigheden ville være vores egen |
+| 2 | En bevægelse af en serie-sporet vare bærer **præcis én enhed** | `valideBevaegelse()` | Ét serienummer skulle bestemme ti enheders skæbne. De ni ville være usporede bag et tal der så rigtigt ud |
+| 3 | `enhedsafvigelse()` sammenholder tallet med rækkerne, og **skærmen viser det** | Sporbarhed | En drift der ikke kan ses, bliver ikke rettet. Så er den ekstra node bare et andet sted at tage fejl |
+
+Derfor er noden også `.write: false` for **alle**, og der findes med vilje
+**ingen `enheder.skriv`**. Det er ikke en manglende rettighed — det er vejen
+der er lukket, som ved `kasseudlaan` (beslutning 37). Kunne en klient skrive
+rækken alene, var betaling 1 spildt i samme øjeblik.
+
+### Og uenigheden er ikke et tal der skal rettes
+
+Samme holdning som ved en negativ saldo og ved optællingens afvigelse: de to
+kilder skrives sammen, så en uenighed betyder at **en bevægelse ikke er
+landet** — eller at nogen har skrevet uden om `bevaegelseskriv`. Find
+bevægelsen. En optælling retter saldoen, men ikke enhederne, og en skærm der
+tilbød at "rette" tallet ville skjule årsagen.
+
+⚠ **Demo-sættet skal være enigt med sig selv.** Er det ikke det, står
+afvigelsespanelet rødt fra dag ét, og så lærer man at rødt er
+normaltilstanden — hvorefter en rigtig uenighed hos en kunde forsvinder i
+støjen fra vores egen. `demo-lager.js` kontrollerer det selv, og
+`sporbarhed.test.mjs` fejler på det.
+
+Se WAREHOUSE.md punkt 9.

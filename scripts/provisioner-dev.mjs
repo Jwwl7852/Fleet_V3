@@ -27,7 +27,7 @@ import {
   DEMO_KASSETYPER, DEMO_KASSER, DEMO_KASSEUDLAAN,
 } from "../src/fleet/demo-turtlebooking.js"
 import {
-  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
+  DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS, DEMO_ENHEDER,
 } from "../src/fleet/demo-lager.js";
 import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
@@ -194,6 +194,12 @@ export const SEED = [
      Belægningen tæller nu beholdning, kasser OG carriers; uden det sidste
      sæt ville dev vise den fejl skærmen lige er holdt op med at lave. */
   { node: "carriers", data: DEMO_CARRIERS, form: "liste" },
+  /* ⚠ ENHEDERNE SKAL MED, OG DE SKAL STEMME MED BEHOLDNINGEN. Noden er
+     .write: false som beholdningen; provisioneringen gaar uden om reglerne.
+     Uden dem ville Sporbarhed vise nul enheder OG en afvigelse paa hver
+     serie-sporet vare i dev — en uenighed vi selv havde lavet. Selvkontrollen
+     i demo-lager.js fanger det, hvis de to saet driver fra hinanden. */
+  { node: "enheder", data: DEMO_ENHEDER, form: "liste" },
 ];
 
 /**

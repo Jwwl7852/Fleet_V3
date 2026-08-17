@@ -354,11 +354,28 @@ export function valideBevaegelse(
     const s = SPORING[vare.sporing];
     if (s?.kraeverBatch && !post.batch) f.batch = "Varen spores på batch.";
     if (s?.kraeverSerie && !post.serienummer) f.serienummer = "Varen spores på serienummer.";
+    /* ⚠ ÉN BEVÆGELSE, ÉN ENHED. Et serienummer peger på præcis ét stykke
+       gods, og bar bevægelsen ti, skulle det ene nummer bestemme ti enheders
+       skæbne — de ni ville være usporede bag et tal der så rigtigt ud. Det er
+       også forudsætningen for at `enheder/<serienr>` kan skrives i den samme
+       opdatering: der er én række at skrive, ikke en liste. Etape 9.
+       Optællingen er undtaget — dér ER `antal` en saldo, ikke en flytning. */
+    if (s?.kraeverSerie && !ABSOLUTTE_ARTER.includes(post.art)
+        && Number.isInteger(post.antal) && post.antal !== MAENGDE_SKALA) {
+      f.antal = "Varen spores på serienummer — én enhed pr. bevægelse.";
+    }
   }
   if (post.batch && !BATCH_MOENSTER.test(post.batch)) {
     f.batch = "Bogstaver, tal, bindestreg og underscore — ikke punktum.";
   }
-  if (post.serienummer && post.serienummer.length > 60) f.serienummer = "Højst 60 tegn.";
+  /* ⚠ MØNSTRET, IKKE KUN LÆNGDEN. Serienummeret er blevet en RTDB-NØGLE med
+     etape 9, og et punktum ville give en skrivning der fejler et helt andet
+     sted. Længdegrænsen stod her før nøglen fandtes; mønstret bærer den nu. */
+  if (post.serienummer && !SERIE_MOENSTER.test(post.serienummer)) {
+    f.serienummer = post.serienummer.length > 60
+      ? "Højst 60 tegn."
+      : "Bogstaver, tal, bindestreg og underscore — ikke punktum.";
+  }
   if (post.note && post.note.length > 300) f.note = "Højst 300 tegn.";
   if (post.reference && post.reference.length > 60) f.reference = "Højst 60 tegn.";
 
@@ -1329,6 +1346,264 @@ export function carrieroverblik(carriers = [], beholdning = []) {
     if (c.ejerforhold === "engang" && c.status !== "opbrugt") ud.engangs += 1;
     if (udenLokation(c)) ud.udenLokation += 1;
     if (medIndhold.has(c.id)) ud.medIndhold += 1;
+  }
+  return ud;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SPORBARHED — ETAPE 9
+
+   Spørgsmålet modulet skal kunne svare på, er tilbagekaldets: HVOR ER DET
+   PARTI NU, og hvor har det været? To slags svar, fordi der er to slags
+   sporing.
+
+   BATCH kræver intet nyt. Beholdningens nøgle er allerede
+   `carrierId__vareId__batch`, så "hvor ligger LOT-2026-14" er et opslag i
+   data der findes. Historikken er bevægelserne, filtreret på batchen.
+
+   SERIENUMMER gør. Feltet har været på bevægelsen hele tiden — og
+   `valideBevaegelse()` har krævet det på en serie-sporet vare — men det indgik
+   ikke i nogen nøgle. Man kunne altså registrere SN-4711 hver dag i en måned
+   uden at nogen kunne svare på hvor den var, og uden at nogen opdagede at den
+   var modtaget to gange.
+
+   ──────────────────────────────────────────────────────────────────────────
+   ⚠ ENHEDEN ER ET EGET OBJEKT, OG DET KOSTER NOGET. LÆS DET HER FØRST.
+
+   `enheder/<serienr>` bærer hvor enheden er NU. Beholdningen bærer det samme
+   som et TAL. Det er to repræsentationer af én kendsgerning, og det er den
+   klasse fejl `bemanding.ledig` var: to steder der kan komme ud af trit, hvor
+   kun det ene bliver rettet.
+
+   Valget er truffet bevidst — et rigtigt WMS gør det sådan, fordi en enhed har
+   sin egen historie, sin egen tilstand og sin egen skæbne. Prisen er betalt
+   tre steder, og ingen af dem må fjernes:
+
+     1. ÉN SKRIVNING. Enhedsrækken skrives i den SAMME `rod.update()` som
+        bevægelsen og beholdningen. RTDB's multi-path update er atomisk —
+        enten lander alle tre, eller ingen. To kald ville være to udfald.
+
+     2. ANTALLET ER LÅST TIL ÉN. En bevægelse af en serie-sporet vare bærer
+        præcis én enhed. Bar den ti, skulle ét serienummer bestemme ti
+        enheders skæbne, og de ni ville være usporede bag et tal der så
+        rigtigt ud.
+
+     3. AFVIGELSEN ER SYNLIG. `enhedsafvigelse()` sammenholder tallet med
+        antallet af rækker, og skærmen VISER det. En drift der ikke kan ses, er
+        en drift der ikke bliver rettet — det er hele lærestregen fra
+        optællingen: afvigelsen er ikke en fejl der skal skjules, den er det
+        eneste sted uenigheden kan opdages.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ SERIENUMMERET BLIVER EN RTDB-NØGLE, og derfor gælder samme regel som for
+ * batchen: hverken punktum, `#`, `$`, `[`, `]` eller `/`. Et serienummer med
+ * punktum ville give en skrivning der fejler et helt andet sted end der hvor
+ * fejlen blev lavet — præcis den fælde `BATCH_MOENSTER` blev skrevet for.
+ *
+ * Mønstret er sit eget frem for en genbrug af batchens, fordi længden er en
+ * anden: reglerne har tilladt 60 tegn i `serienummer` siden etape 4, og en
+ * stramning til batchens 40 ville afvise noget der allerede står i basen.
+ */
+export const SERIE_MOENSTER = /^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/;
+
+/**
+ * Enhedens tilstand.
+ *
+ * ⚠ TO, IKKE FEM. En enhed er enten i huset eller ude af det. Karantæne er
+ * ikke med: den sidder på HYLDEN (`reolpladser.status`), og en enhed der
+ * bar sin egen karantæne, kunne stå spærret på en fri plads — to svar på om
+ * der må plukkes. Se `kanPlukkesFra()`.
+ *
+ * `afsendt` er ikke en slutning i verden, kun i vores hus: kommer enheden
+ * retur, får den `paaLager` igen og en ny linje i sporet. Der slettes ikke —
+ * historikken ER sporbarheden.
+ */
+export const ENHED_TILSTAND = {
+  paaLager: { tilstand: "paaLager", label: "På lager", iHuset: true },
+  afsendt:  { tilstand: "afsendt",  label: "Afsendt",  iHuset: false },
+};
+
+export const ALLE_ENHED_TILSTANDE = Object.keys(ENHED_TILSTAND);
+
+/** Arter der sender en enhed UD af huset. Alt andet flytter den rundt. */
+export const UDGAAENDE_ARTER = ["afsend"];
+
+export function valideEnhed(post = {}, { varer = [], kunder = [], carriers = [] } = {}) {
+  const f = {};
+
+  if (!post.serienummer) f.serienummer = "Serienummeret mangler.";
+  else if (!SERIE_MOENSTER.test(post.serienummer)) {
+    f.serienummer = "Bogstaver, tal, bindestreg og underscore — ikke punktum.";
+  }
+
+  if (!post.vareId) f.vareId = "Enheden mangler en vare.";
+  else if (varer.length && !varer.includes(post.vareId)) f.vareId = "Ukendt vare.";
+
+  /* ⚠ HISTORISK FAKTUM, SOM PÅ BEVÆGELSEN. Kunden skrives med frem for at
+     blive slået op senere: skifter varen ejer, må sidste kvartals
+     sporbarhedsudtræk ikke pludselig pege på en anden kunde. */
+  if (!post.kundeId) f.kundeId = "Enheden mangler en kunde.";
+  else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+
+  if (!ALLE_ENHED_TILSTANDE.includes(post.tilstand)) f.tilstand = "Ukendt tilstand.";
+
+  /* ⚠ I HUSET KRÆVER EN BEHOLDER, UDE AF HUSET FORBYDER DEN. En afsendt enhed
+     med en carrierId ville tælle med i beholderens indhold, og så ville
+     beholderen se fyldt ud af noget der er kørt. Den anden vej er værre: en
+     enhed på lager uden beholder er gods ingen kan finde. */
+  if (ENHED_TILSTAND[post.tilstand]?.iHuset) {
+    if (!post.carrierId) f.carrierId = "En enhed på lager ligger i en beholder.";
+    else if (carriers.length && !carriers.includes(post.carrierId)) {
+      f.carrierId = "Ukendt beholder.";
+    }
+  } else if (post.carrierId) {
+    f.carrierId = "En afsendt enhed ligger ikke i en beholder.";
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * Hvad bevægelsen gør ved enheden — eller `null`, hvis varen ikke spores på
+ * serienummer.
+ *
+ * ⚠ SAMME FORBEHOLD SOM virkningPaaBeholdning(): den AFGØR ingenting, den
+ * svarer. Håndhævelsen hører i den Cloud Function der skriver — at en enhed
+ * ikke kan modtages to gange, og ikke kan plukkes fra en beholder den ikke
+ * ligger i, kan kun afgøres af den der har læst basen. Derfor bærer svaret de
+ * to spørgsmål med som felter frem for at lade serveren udlede dem igen.
+ *
+ * ⚠ EN PLACERING RØRER INGEN ENHED. Beholderen flytter med alt hvad der er i
+ * den; enheden ligger stadig i den samme beholder bagefter. Det er den samme
+ * gevinst som ved beholdningen — se noten dér.
+ */
+export function virkningPaaEnhed(post = {}, { vare = null } = {}) {
+  if (!SPORING[vare?.sporing]?.kraeverSerie) return null;
+  if (!post.serienummer) return null;
+  if (BEVAEGELSE_ART[post.art]?.flytterCarrier) return null;
+
+  /* En optælling flytter ingenting — den er vores kontrol af et TAL, og en
+     enhed er ikke et tal. Tælles en serie-vare, er svaret enhedsrækkerne. */
+  if (ABSOLUTTE_ARTER.includes(post.art)) return null;
+
+  const udgaaende = UDGAAENDE_ARTER.includes(post.art);
+  return {
+    serienummer: post.serienummer,
+    felter: {
+      vareId: post.vareId,
+      kundeId: post.kundeId,
+      /* ⚠ tilCarrierId, IKKE fraCarrierId. Enheden er hvor den ENDER — en
+         række der pegede på hvor den kom fra, ville svare på det forrige
+         spørgsmål. Er der ingen til-beholder, er enheden ude af huset. */
+      carrierId: udgaaende ? null : (post.tilCarrierId || null),
+      tilstand: udgaaende || !post.tilCarrierId ? "afsendt" : "paaLager",
+    },
+    /* Det serveren skal prøve FØR den skriver. En modtagelse har ingen
+       fra-beholder, og så skal serienummeret være ledigt; alt andet flytter
+       en enhed der allerede findes, og så skal den ligge hvor man tror. */
+    kraeverLedigtSerienummer: !post.fraCarrierId,
+    kraeverEnhedenLiggerI: post.fraCarrierId || null,
+  };
+}
+
+/**
+ * Sporet: bevægelserne for ét parti eller én enhed, ældste først.
+ *
+ * ⚠ RÆKKEFØLGEN ER STIGENDE, og det er ikke en smagssag. Et spor læses som en
+ * historie — modtaget, placeret, plukket, afsendt — og vendes den om, læser man
+ * forløbet baglæns uden at opdage det. Alle andre lister i huset er nyeste
+ * først, fordi de svarer på "hvad er der sket for nylig"; den her svarer på
+ * "hvad skete der med DEN her".
+ *
+ * ⚠ OG DEN FILTRERER PÅ VAREN OGSÅ. To kunder kan have hver sin `LOT-1` — en
+ * batch er kun entydig sammen med sin vare, præcis som beholdningsnøglen siger.
+ * Uden `vareId` ville et tilbagekald ramme en fremmed kundes gods.
+ */
+export function spor(bevaegelser = [], { vareId, batch, serienummer } = {}) {
+  if (!vareId && !serienummer) return [];
+  return bevaegelser
+    .filter((b) => {
+      if (serienummer) return b.serienummer === serienummer;
+      if (b.vareId !== vareId) return false;
+      /* En vare uden batch spores på varen alene. `UDEN_BATCH` er nøglens
+         sentinel og aldrig en værdi på selve bevægelsen. */
+      if (!batch || batch === UDEN_BATCH) return !b.batch;
+      return b.batch === batch;
+    })
+    .slice()
+    .sort((a, b) => (a.tidspunktMs || 0) - (b.tidspunktMs || 0));
+}
+
+/**
+ * Hvor et parti ligger NU: beholdningsrækkerne med deres beholder og hylde.
+ *
+ * ⚠ KUN RÆKKER MED NOGET I. En beholdningsrække på nul er en beholder der HAR
+ * haft partiet — den står i sporet, hvor den hører hjemme. Blev den vist som en
+ * placering, ville et tilbagekald sende nogen hen til en tom hylde.
+ */
+export function partiPlacering(beholdning = [], { vareId, batch } = {}, { carriers = [] } = {}) {
+  const carrierPaa = new Map(carriers.map((c) => [c.id, c]));
+  const b = batch || UDEN_BATCH;
+  return beholdning
+    .filter((r) => r.vareId === vareId && (r.batch || UDEN_BATCH) === b && (r.antal || 0) > 0)
+    .map((r) => {
+      const c = carrierPaa.get(r.carrierId) || null;
+      return {
+        ...r,
+        carrier: c,
+        /* ⚠ EN BEHOLDER UDEN PLADS ER IKKE EN FEJL — den er i transit eller
+           scannet ind uden at være sat. Feltet er `null`, og skærmen skal
+           skrive hvad det betyder frem for at vise en tom rubrik. */
+        pladsId: c?.pladsId || null,
+      };
+    });
+}
+
+/**
+ * Uenigheden mellem tallet og rækkerne, pr. beholder og vare.
+ *
+ * ⚠ DEN HER ER PRISEN VED VALGET, GJORT SYNLIG. Beholdningen siger "3 stk. af
+ * SN-varen i CRR-100245"; enhedsrækkerne siger hvilke tre. Er de uenige, er det
+ * ikke et tal der skal rettes — det er en bevægelse der ikke er landet, og den
+ * skal findes. Samme holdning som en negativ saldo og som optællingens
+ * afvigelse: larmende frem for tavst.
+ *
+ * ⚠ KUN SERIE-SPOREDE VARER. En batch-vare har ingen enhedsrækker at være uenig
+ * med, og en sammenligning ville melde afvigelse på hver eneste palle.
+ */
+export function enhedsafvigelse(beholdning = [], enheder = [], { varer = [] } = {}) {
+  const serieVarer = new Set(
+    varer.filter((v) => SPORING[v.sporing]?.kraeverSerie).map((v) => v.id));
+
+  const talt = new Map();
+  for (const e of enheder) {
+    if (!ENHED_TILSTAND[e.tilstand]?.iHuset || !e.carrierId) continue;
+    const n = `${e.carrierId}__${e.vareId}`;
+    talt.set(n, (talt.get(n) || 0) + 1);
+  }
+
+  const ud = [];
+  const set = new Set();
+  for (const b of beholdning) {
+    if (!serieVarer.has(b.vareId)) continue;
+    const n = `${b.carrierId}__${b.vareId}`;
+    set.add(n);
+    /* Beholdningen er skaleret (MAENGDE_SKALA); enhederne er rækker. */
+    const stk = Math.round((b.antal || 0) / MAENGDE_SKALA);
+    const raekker = talt.get(n) || 0;
+    if (stk !== raekker) {
+      ud.push({ carrierId: b.carrierId, vareId: b.vareId, saldo: stk, enheder: raekker });
+    }
+  }
+  /* Og den anden vej: enhedsrækker uden en beholdningspost overhovedet. Uden
+     det led ville en enhed der lå et sted lageret ikke kender, være usynlig. */
+  for (const [n, raekker] of talt) {
+    if (set.has(n)) continue;
+    const [carrierId, vareId] = n.split("__");
+    if (!serieVarer.has(vareId)) continue;
+    ud.push({ carrierId, vareId, saldo: 0, enheder: raekker });
   }
   return ud;
 }

@@ -321,9 +321,9 @@ stemmer.
 | 4 | **Bevægelsen**: modtag → putaway → flyt, som Cloud Function | Den operationelle kerne. Beholdningen bliver rigtig | ✅ |
 | 5 | **Pluk, pak, afsend** — plukordrer, fremdrift, afsendelse | Udgående flow | ✅ |
 | 6 | **Optælling (cycle count)** og afvigelser | Beviset for at beholdningen passer | ✅ |
-| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | delvis: raterne og afregningsskærmen er inde (PRISER.md etape 4 og 6). Grundlaget mangler sin node og sin nummerserie |
+| 7 | **Rater** i `satser` + **afregning** ind i `fakturagrundlag` | Der kan sendes en regning | ✅ PRISER.md etape 4, 6 og 7. Momssatsen pr. linje mangler stadig — se punkt 8 |
 | 8 | **Volumenkalkulator** som tilbudsværktøj | Salg | |
-| 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | |
+| 9 | **Sporbarhed**: batch, serienr., historik, compliance-udtræk | Dokumentation | ✅ |
 | 10 | **Scanner-app** — egen applikation | Gulvet | |
 
 Etape 1–4 er fundamentet og kan ikke deles op mindre. Etape 7 kan ikke bygges
@@ -669,3 +669,109 @@ lageret — og `warehouse.js` er importfri, fordi den kopieres til serveren.
 **Det der ikke kan regnes bagud, står stadig.** Opbevaring pr. palle pr. dag
 kræver en daglig måling; en genberegning ville give et andet tal hver gang
 historikken blev rettet. Samme lærestreg som `maalnu`.
+
+---
+
+## 9. Etape 9 er inde — sporbarheden
+
+Skærmen **Sporbarhed** (`/warehouse/sporbarhed`) svarer på tilbagekaldets
+spørgsmål: *hvor er det parti nu, og hvor har det været?* Der er to slags svar,
+fordi der er to slags sporing.
+
+**Batch krævede intet nyt.** Beholdningens nøgle er allerede
+`carrierId__vareId__batch`, så "hvor ligger LOT-240515" er et opslag i data der
+findes. Historikken er bevægelserne, filtreret på batchen.
+
+⚠ **Et parti slås op på vare OG batch.** To kunder kan have hver sin `LOT-1` —
+en batch er kun entydig sammen med sin vare, præcis som beholdningsnøglen
+siger. Uden varen ville et tilbagekald ramme en fremmed kundes gods, og det er
+den værste udgang af netop denne skærm.
+
+⚠ **Sporet læses ældste først.** Alle andre lister i huset er nyeste først,
+fordi de svarer på "hvad er der sket for nylig". Den her svarer på "hvad skete
+der med DEN her" — og vendes den om, læser man forløbet baglæns uden at opdage
+det.
+
+### 9.1 Serienummeret var erklæret, men bandt ingenting
+
+`SPORING.serie` har været i modellen siden etape 2, og `valideBevaegelse()` har
+krævet et serienummer på en serie-sporet vare hele tiden. Men feltet indgik
+ikke i nogen nøgle. Man kunne registrere SN-4711 hver dag i en måned uden at
+nogen kunne svare på hvor den var — og uden at nogen opdagede at den var
+modtaget to gange.
+
+Det er præcis den fælde kommentaren ved `SPORING` advarer om: *"Sættes en vare
+op uden batch og får batch et år senere, findes der bevægelser uden batch — og
+så kan et tilbagekald ikke svare på hvilke kolli der var i det parti."*
+
+**Enheden er nu et eget objekt:** `enheder/<serienr>` med `vareId`, `kundeId`,
+`carrierId` og `tilstand`. Nøglen er serienummeret selv.
+
+### 9.2 ⚠ Valget koster noget, og prisen betales tre steder
+
+`enheder` og `beholdning` bærer den **samme kendsgerning** — det ene som
+rækker, det andet som et tal. Det er den klasse fejl `bemanding.ledig` var: to
+steder der kan komme ud af trit, hvor kun det ene bliver rettet.
+
+Valget er truffet bevidst — et rigtigt WMS gør det sådan, fordi en enhed har
+sin egen historie, sin egen tilstand og sin egen skæbne. **Ingen af de tre
+betalinger må fjernes:**
+
+| # | Prisen | Hvor |
+|---|---|---|
+| 1 | **Én skrivning.** Enhedsrækken lægges i den SAMME `rod.update()` som bevægelsen og beholdningen. RTDB's multi-path update er atomisk — enten lander alle tre, eller ingen. To kald ville være to udfald | `bevaegelseskriv` |
+| 2 | **Antallet er låst til én.** En bevægelse af en serie-sporet vare bærer præcis én enhed. Bar den ti, skulle ét serienummer bestemme ti enheders skæbne, og de ni ville være usporede bag et tal der så rigtigt ud | `valideBevaegelse()` |
+| 3 | **Afvigelsen er synlig.** `enhedsafvigelse()` sammenholder tallet med antallet af rækker, og skærmen VISER det. En drift der ikke kan ses, er en drift der ikke bliver rettet | Skærmen |
+
+⚠ **Og som ved en negativ saldo: det er ikke et tal der skal rettes.** De to
+kilder skrives sammen, så en uenighed betyder at en bevægelse ikke er landet —
+eller at nogen har skrevet uden om `bevaegelseskriv`. Find bevægelsen. En
+optælling retter saldoen, men ikke enhederne.
+
+⚠ **Demo-sættet skal være enigt med sig selv.** Er det ikke det, står
+afvigelsespanelet rødt fra dag ét — og så lærer man at rødt er
+normaltilstanden. En rigtig uenighed hos en kunde ville forsvinde i støjen fra
+vores egen. Selvkontrollen i `demo-lager.js` og en prøve i
+`sporbarhed.test.mjs` holder de to sæt sammen.
+
+### 9.3 Hvad serveren afviser
+
+Tre ting kan kun afgøres af den der har læst basen, og de ligger derfor i
+funktionen — ikke i skærmen:
+
+| Afvisning | Hvorfor |
+|---|---|
+| **Samme serienummer modtaget to gange** | Den anden modtagelse ville overskrive den første uden spor: enheden ville have været to steder, og kun det sidste ville stå |
+| **Pluk fra en beholder enheden ikke ligger i** | Så peger sporet det forkerte sted resten af enhedens liv |
+| **Et serienummer der ikke findes** | En flytning af noget der aldrig er kommet ind |
+
+⚠ **Men en afsendt enhed må gerne komme retur.** Det er ikke en dublet — det er
+den samme enhed der kommer hjem, og den skal have en ny linje i sporet frem for
+en afvisning. `afsendt` er ikke en slutning i verden, kun i vores hus.
+
+⚠ **Og rækken slettes aldrig.** En afsendt enhed har ingen beholder og tæller
+ikke med nogen steder, men den bliver stående — sporet er hele grunden til at
+rækken findes.
+
+### 9.4 To ting der ikke blev bygget, og hvorfor
+
+**Compliance-udtrækket er skærmen, ikke en fil.** Planchen siger "compliance",
+og sporet står nu på skærmen med tidspunkt, art, fra, til og mængde. En
+FIL — et udtræk der forlader systemet — er en kanal ud af huset og sin egen
+beslutning, præcis som fakturaeksporten: formatet i den anden ende er ikke
+afklaret, og et gæt ville skulle laves om.
+
+**Serienummeret bærer ikke sin egen batch.** En vare spores på `ingen`, `batch`
+eller `serie` — ikke på to ting. Skal en enhed også kunne henføres til et parti,
+er det et fjerde sporingsvalg, ikke et ekstra felt. Ingen har spurgt om det.
+
+### 9.5 Efterprøvet
+
+**14 punkter mod den udrullede DEV-base:** de seks afvisninger ovenfor, og hele
+enhedens liv — modtaget i CRR-100245, flyttet til CRR-100247, afsendt, og
+modtaget igen som retur. Enhedsrækken fulgte med hver gang, og de to kilder var
+enige efter hvert skridt.
+
+**Og klikket i skærmen:** sporet står i den rigtige rækkefølge, og
+afvigelsespanelet blev rødt da en saldo blev sat til 5 med tre enhedsrækker
+under sig — med den rigtige tekst om at det er en bevægelse der mangler.

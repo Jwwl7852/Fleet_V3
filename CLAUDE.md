@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **38 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **39 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -236,6 +236,20 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   og ikke midnat, fordi `new Date("2026-08-10")` er midnat UTC — trækkes der
   en time et sted i kæden, bliver det den 9. De var skrevet af to steder, før
   Turtlebooking var ved at lave den tredje kopi.
+- **Skrive en enhed uden for `bevaegelseskriv`'s ene `update()`.** `enheder/`
+  er `.write: false` for alle, og der findes med vilje **ingen**
+  `enheder.skriv`. Rækken bærer den SAMME kendsgerning som `beholdning` — det
+  ene som rækker, det andet som et tal — og de to skrives atomisk sammen eller
+  slet ikke. Deler du skrivningen i to kald, kan halvdelen lande, og så er
+  uenigheden vores egen. Beslutning 39.
+  Af samme grund bærer en bevægelse af en **serie-sporet** vare præcis **én**
+  enhed: bar den ti, skulle ét serienummer bestemme ti enheders skæbne. Og
+  `enhedsafvigelse()` skal blive ved med at stå **på skærmen** — en drift der
+  ikke kan ses, bliver ikke rettet. En uenighed er en manglende bevægelse, ikke
+  et tal der skal rettes.
+- **Give en enhed en `pladsId`.** Hylden er BEHOLDERENS adresse, som på
+  beholdningsposten. To steder til samme kendsgerning driver fra hinanden
+  første gang nogen flytter beholderen.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

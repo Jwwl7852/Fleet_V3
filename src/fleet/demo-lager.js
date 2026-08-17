@@ -148,6 +148,28 @@ export const DEMO_BEHOLDNING = [
 ];
 
 /**
+ * Enhederne — ét stykke gods pr. række, med sit serienummer som id.
+ *
+ * ⚠ SÆTTET SKAL STEMME MED BEHOLDNINGEN, og det er hele pointen med at have
+ * det. `CRR-100246__v-tool-1256___` står på 3 stk., og derfor ligger der
+ * præcis tre enheder på lager i den beholder. Gjorde de ikke det, ville
+ * `enhedsafvigelse()` melde uenighed i demo — og så ville en rigtig uenighed
+ * hos en kunde se ud som normaltilstanden. Selvkontrollen nedenfor tjekker det.
+ *
+ * ⚠ OG ÉN ER AFSENDT. Den skal med: en afsendt enhed har INGEN carrierId,
+ * tæller derfor ikke med i nogen beholdning — og den bliver stående. Sletter
+ * man den, forsvinder sporet, og et tilbagekald kan ikke svare på hvor den
+ * blev af. `afsendt` er ikke en slutning i verden, kun i vores hus.
+ */
+export const DEMO_ENHEDER = [
+  { id: "SN-4711", vareId: "v-tool-1256", kundeId: "nordiskFragt", carrierId: "CRR-100246", tilstand: "paaLager" },
+  { id: "SN-4712", vareId: "v-tool-1256", kundeId: "nordiskFragt", carrierId: "CRR-100246", tilstand: "paaLager" },
+  { id: "SN-4713", vareId: "v-tool-1256", kundeId: "nordiskFragt", carrierId: "CRR-100246", tilstand: "paaLager" },
+  /* Kørt ud til kunden. Ingen beholder — og posten bliver stående. */
+  { id: "SN-4699", vareId: "v-tool-1256", kundeId: "nordiskFragt", tilstand: "afsendt" },
+];
+
+/**
  * Carriers — beholderne kundens gods står i.
  *
  * ⚠ SÆTTET SKAL BÆRE DE FIRE TILFÆLDE DER ELLERS FØRST SES HOS KUNDEN:
@@ -281,5 +303,59 @@ if (import.meta.env?.DEV) {
     if (c.status === "opbrugt" && c.ejerforhold !== "engang") {
       console.warn(`demo-lager: carrier ${c.id} er opbrugt, men ikke en engangs.`);
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ ENHEDERNE SKAL STEMME MED BEHOLDNINGEN — og det er ikke pedanteri.
+
+     `enheder/<serienr>` og `beholdning` bærer den SAMME kendsgerning, det ene
+     som rækker og det andet som et tal. Det er prisen ved at have enheden som
+     eget objekt (WAREHOUSE.md punkt 7), og den betales blandt andet ved at
+     `enhedsafvigelse()` viser en uenighed på skærmen.
+
+     Men er demo-sættet selv uenigt, står afvigelsespanelet rødt fra dag ét —
+     og så lærer man at rødt er normaltilstanden. En rigtig uenighed hos en
+     kunde ville forsvinde i støjen fra vores egen.
+     ══════════════════════════════════════════════════════════════════════ */
+  const paaLager = new Map();
+  for (const e of DEMO_ENHEDER) {
+    if (!varer.has(e.vareId)) {
+      console.warn(`demo-lager: enheden ${e.id} peger paa varen "${e.vareId}", som ikke findes.`);
+    } else if (varer.get(e.vareId).sporing !== "serie") {
+      console.warn(`demo-lager: ${e.id} er en enhed af ${e.vareId}, som ikke spores paa serienummer.`);
+    }
+    if (!kunder.has(e.kundeId)) {
+      console.warn(`demo-lager: enheden ${e.id} peger paa kunden "${e.kundeId}", som ikke findes.`);
+    }
+    /* Invarianten reglerne håndhæver: i huset kræver en beholder, ude af
+       huset forbyder den. */
+    if (e.tilstand === "paaLager" && !e.carrierId) {
+      console.warn(`demo-lager: ${e.id} er paa lager uden en beholder — gods ingen kan finde.`);
+    }
+    if (e.tilstand === "afsendt" && e.carrierId) {
+      console.warn(`demo-lager: ${e.id} er afsendt, men ligger stadig i ${e.carrierId}.`);
+    }
+    if (e.carrierId && !carrierIder.has(e.carrierId)) {
+      console.warn(`demo-lager: enheden ${e.id} ligger i "${e.carrierId}", som ikke findes.`);
+    }
+    if (e.tilstand === "paaLager" && e.carrierId) {
+      const n = `${e.carrierId}__${e.vareId}`;
+      paaLager.set(n, (paaLager.get(n) || 0) + 1);
+    }
+  }
+  for (const b of DEMO_BEHOLDNING) {
+    if (varer.get(b.vareId)?.sporing !== "serie") continue;
+    const n = `${b.carrierId}__${b.vareId}`;
+    const stk = Math.round(b.antal / 1000);
+    const raekker = paaLager.get(n) || 0;
+    if (stk !== raekker) {
+      console.warn(
+        `demo-lager: ${b.id} staar paa ${stk} stk., men der er ${raekker} enheder. ` +
+        "Saettet ville vise en afvigelse vi selv har lavet.");
+    }
+    paaLager.delete(n);
+  }
+  for (const [n, raekker] of paaLager) {
+    console.warn(`demo-lager: ${raekker} enhed(er) i ${n} uden en beholdningspost.`);
   }
 }

@@ -304,8 +304,8 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
   it("ejer sine egne noder og DELER reolpladser", () => {
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
-      ["beholdning", "bevaegelser", "carriers", "optaellinger", "plukordrer",
-       "reolpladser", "varer"]);
+      ["beholdning", "bevaegelser", "carriers", "enheder", "optaellinger",
+       "plukordrer", "reolpladser", "varer"]);
     assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
   });
 
