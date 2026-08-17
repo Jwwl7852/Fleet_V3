@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 1375 tests. Starter emulatoren.
+npm test                            # 1408 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -332,13 +332,17 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 
-**Cloud Functions er den reelle flaskehals.** Otte ting venter på samme
-opsætning: bookingtilstandsskift, de tre tjek nedenfor, claim-udstedelse fra
-`roller/`, skrivning af auditposter, reservationskonflikter, KPI-aggregering
-og retention-sletning. De berørte noder er `.write: false` indtil da —
+**Cloud Functions er den reelle flaskehals.** Fem ting venter på samme
+opsætning: bookingens eget tilstandsskift, claim-udstedelse fra `roller/`,
+skrivning af auditposter, KPI-aggregering og retention-sletning. De berørte noder er `.write: false` indtil da —
 strengere end den kontrol der skal afløse det, men ikke granulært.
 
-⚠ **Nummerserier er ikke længere på listen — for fakturagrundlaget.**
+⚠ **Tre ting er faldet af listen.** `grundlagskriv` tog nummerserierne,
+og `etapeskift` tog etapens tilstandsskift OG reservationskonflikterne — de
+to var altid den samme skrivning. De fem disponeringstjek håndhæves nu dér;
+se ARKITEKTUR.
+
+⚠ **Om nummerserierne:**
 `naesteGrundlagsnummer()` tager nummeret i en transaction inde i
 `grundlagskriv`, som beslutning 8 kræver. Mekanismen er den samme for de
 øvrige serier; kun kaldstedet mangler. Skriv ikke en ny — genbrug counteren.

@@ -62,6 +62,18 @@ export const DELTE_FILER = [
      sin egen afskrift, ville skærmen sige ja og serveren nej — og et
      regnskabsdokument er det værste sted at have to meninger. */
   "booking-state.js", "grundlag.js",
+  /* ⚠ DE FEM DISPONERINGSTJEK OG DERES TRANSITIVE LUKNING.
+     `etapeskift` er DEN ENESTE vej ind i `etaper` og `reservationer` — begge
+     noder er `.write: false` — og de fem tjek skal HÅNDHÆVES dér frem for at
+     blive vist i skærmen. Ligger de kun i skærmen, kan et direkte kald gå
+     uden om dem, og så er de dekoration.
+
+     `disponering.js` samler dem; den importerer flaade.js, personale.js,
+     reservations.js, koerehviletid.js og format.js — og personale.js
+     importerer selv format.js. Alle seks står derfor her. Reglen er
+     TRANSITIV, ikke "importfri". */
+  "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
+  "format.js", "etaper.js", "disponering.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

@@ -18,6 +18,7 @@ import {
   tilgaengeligeHandlinger,
 } from "../src/fleet/booking-state.js";
 import { PERM, ROLLE_PERMS, permStrengFraRolle, harPerm } from "../src/fleet/permissions.js";
+import { enhedsIder } from "../src/fleet/etaper.js";
 import {
   DEMO_BOOKINGER, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
   demoBooking, demoEtaperPaa, beregnetTilstand,
@@ -256,7 +257,12 @@ describe("Demo-bookingerne hænger sammen", () => {
     for (const b of afventer) {
       assert.ok(b.forslag.length >= 1 && b.forslag.length <= 3, `${b.nummer}: ${b.forslag.length} forslag`);
       for (const f of b.forslag) {
-        assert.ok(bilIder.has(f.koeretoejId), `${f.id}: ukendt bil`);
+        /* ⚠ ET FORSLAG KAN VÆRE EN SÆTTEVOGN — samme liste som på etapen.
+           Et forslag der kun kunne pege på trækkeren, ville foreslå noget
+           kanDisponeres() afviser. */
+        const ider = enhedsIder(f);
+        assert.ok(ider.length, `${f.id}: ingen bil`);
+        for (const id of ider) assert.ok(bilIder.has(id), `${f.id}: ukendt bil ${id}`);
         assert.ok(folkIder.has(f.personId), `${f.id}: ukendt person`);
         assert.ok(f.leveringMs > f.afhentningMs, `${f.id}: leverer før den henter`);
         assert.ok(Number.isInteger(f.estimatOere), `${f.id}: estimat ikke i hele øre`);

@@ -19,7 +19,7 @@ import {
 import { ledigeVinduer, slots, ENHED } from "../src/fleet/gitter.js";
 import {
   GRAENSEOVERGANG, ALLE_GRAENSEOVERGANGE, graenseLabel, krydserGraense,
-  tjekGeografi, reservationerFraEtape,
+  tjekGeografi, reservationerFraEtape,  enhedsIder,
 } from "../src/fleet/etaper.js";
 import { reservationFraOpgave } from "../src/fleet/opgaver.js";
 import {
@@ -193,11 +193,37 @@ describe("Etapens transportfelter", () => {
   it("bygger to reservationer med kilde booking", () => {
     const r = reservationerFraEtape({
       id: "et-x", bookingId: "bk-1", fra: A10, til: A10 + 4 * T,
-      koeretoejId: "kt-104", personId: "larsAage",
+      koeretoejIder: { "kt-104": true }, personId: "larsAage",
     });
     assert.equal(r.length, 2);
     assert.deepEqual(r.map((x) => x.ressourceType).sort(), ["koeretoej", "medarbejder"]);
     for (const x of r) assert.equal(x.kilde.type, KILDE.booking);
+  });
+
+  it("⚠ EN SÆTTEVOGN BINDER BEGGE ENHEDER", () => {
+    /* Trækkeren OG traileren er hver sin eksklusive ressource. Bandt vi kun
+       trækkeren, ville traileren se fri ud i hele turen — og en anden bil
+       kunne få den. */
+    const r = reservationerFraEtape({
+      id: "et-z", bookingId: "bk-2", fra: A10, til: A10 + 4 * T,
+      koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "larsAage",
+    });
+    assert.equal(r.length, 3, "traileren fik ingen reservation");
+    assert.deepEqual(
+      r.filter((x) => x.ressourceType === "koeretoej").map((x) => x.ressourceId).sort(),
+      ["kt-012", "kt-tr41"]);
+  });
+
+  it("enhedsIder oversætter nodens objektform", () => {
+    /* ⚠ RTDB HAR INGEN ARRAYS. Feltet ligger som { <id>: true }; en liste
+       ville få nøglerne 0, 1, 2, og en sletning midt i ville rykke resten.
+       Oversættelsen står ét sted — se hvad to kopier kostede i grundlag.js. */
+    assert.deepEqual(enhedsIder({ koeretoejIder: { a: true, b: true } }), ["a", "b"]);
+    assert.deepEqual(enhedsIder({ koeretoejIder: { a: true, b: false } }), ["a"],
+      "en falsk værdi er ikke en enhed");
+    assert.deepEqual(enhedsIder({ koeretoejIder: ["a"] }), ["a"], "et array tåles også");
+    assert.deepEqual(enhedsIder({}), []);
+    assert.deepEqual(enhedsIder(null), []);
   });
 
   it("bygger kun det den har — en åben etape har hverken bil eller chauffør", () => {
@@ -308,13 +334,13 @@ describe("Demo-etaperne", () => {
     assert.ok(aabne.length > 0, "ingen åben etape — matchningen kan ikke ses virke");
     for (const e of aabne) {
       assert.ok(e.senestMs, `${e.id} er åben uden frist`);
-      assert.equal(e.koeretoejId, null);
+      assert.deepEqual(enhedsIder(e), [], `${e.id} er åben, men har en bil`);
       assert.equal(e.personId, null);
     }
   });
 
   it("sætter ingen bil på to ture samtidig", () => {
-    for (const id of new Set(DEMO_ETAPER.map((e) => e.koeretoejId).filter(Boolean))) {
+    for (const id of new Set(DEMO_ETAPER.flatMap(enhedsIder))) {
       const mine = demoEtaperFor(id);
       for (let i = 0; i < mine.length; i++) {
         for (let j = i + 1; j < mine.length; j++) {

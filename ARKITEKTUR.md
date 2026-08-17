@@ -484,13 +484,12 @@ dekoration. `etaper` er `.write: false` netop derfor.
 
 | # | Tjek | Funktion | Status |
 |---|---|---|---|
-| 1 | Enhedskombination | `kanDisponeres(enheder)` i `flaade.js` | **Bygget og testet — men intet kalder den** |
-| 2 | Kompetencer | `kraevedeKompetencer(enheder, gods)` + `tjekKompetencer(...)` | Bygget og testet — intet kalder dem |
-| 3 | Kapacitet | `kanBaere(enheder, gods)` i `flaade.js` | Bygget og testet — intet kalder den |
+| 1 | Enhedskombination | `kanDisponeres(enheder)` i `flaade.js` | ✅ **Håndhævet i `etapeskift`** |
+| 2 | Kompetencer | `kraevedeKompetencer(enheder, gods)` + `tjekKompetencer(...)` | ✅ **Håndhævet** — og prøvet mod etapens SLUTNING, ikke mod nu |
+| 3 | Kapacitet | `kanBaere(enheder, gods)` i `flaade.js` | ✅ **Håndhævet** — kapaciteten lægges sammen over etapens `koeretoejIder` |
 
-At funktionerne findes er ikke det samme som at de håndhæves. Indtil
-Cloud Function'en skrives, er `.write: false` den eneste reelle spærring —
-strengere end de tre tjek, men ikke granulær.
+At funktionerne findes er ikke det samme som at de håndhæves — og det var
+netop dét der var problemet. Se afsnittet nedenfor.
 
 **En udløbet kompetence BLOKERER.** Den advarer ikke. Samme regel som i
 reservationsmodellen: *"ingen konflikter fundet"* skal betyde noget. En
@@ -865,3 +864,74 @@ selv, at man ikke tilføjer en permission uden et sted der spørger efter den.
 
 `test/sager.test.mjs` kører politikken frem for at læse den — 39 tests, uden
 emulator, men med i `npm test` og dermed i pre-commit-hooken.
+## Disponeringen håndhæves — `etapeskift`
+
+Tabellen ovenfor sagde i månedsvis at de tre tjek var *"bygget og testet — men
+intet kalder dem"*. Så begyndte Disponering at VISE dem. Nu håndhæves de.
+
+`etapeskift` er den eneste vej ind i `etaper` og `reservationer`; begge noder
+er `.write: false` for alle, også admin. Funktionen gør tre ting i **én**
+`rod.update()`:
+
+1. **Tilstandsskiftet**, gennem `kanSkifteEtape()` — den SAMME funktion som
+   skærmen. Den bærer beslutning 5 som en permission, ikke en rolleliste.
+2. **De fem tjek**, gennem `tjekDisponering()` i `fleet/disponering.js`. De lå
+   som en lokal `tjekAlt()` i skærmen indtil serveren skulle bruge dem; en
+   afskrift ville betyde at skærmen sagde ja hvor serveren sagde nej.
+3. **Reservationerne**, én pr. ressource — og de FJERNES igen når etapen
+   forlader `reserveret`. Blev de stående, ville bilen se optaget ud resten af
+   ugen.
+
+⚠ **Serveren afviser med skærmens egen sætning.** `tjekDisponering()`
+returnerer de rækker skærmen tegner, og funktionen citerer den første. To
+formuleringer af den samme spærring ville være to forklaringer på én ting.
+
+⚠ **Vinduet mellem tjek og skrivning kan ikke lukkes.** Flere ressourcer skal
+bindes sammen, og en transaktion virker på én ref. Samme afvejning som i
+`bevaegelseskriv`: garantér det der ikke må gå galt (ingen reservation uden
+etape), og gør resten SYNLIGT — funktionen læser konflikterne igen bagefter og
+skriver en auditpost hvis der opstod en.
+
+### Tre ting håndhævelsen fandt, som visningen ikke kunne
+
+**1. En etape kunne ikke udtrykke en sættevogn.** `kanDisponeres()` afviser en
+trailer uden trækkende enhed, og `kanBaere()` lægger kapaciteten sammen — men
+etapen bar ét `koeretoejId`. Reglen kunne aldrig udløses; funktionen var bygget
+og testet til noget modellen ikke kunne sige. Feltet er nu `koeretoejIder`,
+en liste, og hver enhed får sin egen reservation. Beslutning 39's naboproblem:
+en trailer der ikke blev reserveret, ville se fri ud i hele turen.
+
+**2. Kompetencen blev prøvet mod NU, ikke mod turen.** `tjekKompetencer()` har
+altid taget et tidspunkt og brugt `Date.now()` hvis ingen gav det. En chauffør
+hvis ADR-bevis udløber på tirsdag, kunne derfor disponeres på en tur på fredag:
+beviset ER gyldigt når disponenten trykker, og udløbet når det betyder noget.
+Tidspunktet er nu etapens **slutning** — et bevis der udløber midt i turen, er
+udløbet på hjemvejen.
+
+**3. Køre-hviletid spærrede hver eneste langtur.** Tjekket regner en strækning
+som sammenhængende kørsel, og en etape til Paris løber over 40 timer. Første
+godkendelse mod den udrullede base blev afvist med *"2400 min. sammenhængende
+kørsel"* om en tur hvor chaufføren sover undervejs. To ting fulgte:
+
+- Etapen bærer nu `koerselMin` — hvor meget af vinduet der er kørsel. Feltet
+  har altid stået i `tjekKoerehviletid()`s signatur; det manglede bare på
+  etapen. **Og det gættes ikke:** en langtur uden det spærres med "skriv hvor
+  meget af turen der er kørsel", som en manglende momssats spærrer eksporten.
+- **Pausereglen ADVARER nu frem for at spærre.** En etape siger hvor meget der
+  køres, ikke hvor pauserne ligger. En spærring der udløses af hver eneste
+  langtur, lærer disponenten at klikke videre. Dagens og ugens SUM blokerer
+  uændret — 17 timers kørsel på ét døgn er ulovligt uanset hvordan det deles
+  op, og det er et tal etapen faktisk bærer.
+
+⚠ **Det sidste er en indskrænkning af beslutning 21**, og den står her frem for
+i en commit-besked: reglen blokerer stadig, men kun for det den KAN se.
+Forbeholdet er filens eget — vi ser planen, ikke tachografen.
+
+### Det der stadig mangler
+
+- **Det interaktive gitter.** Drag-and-drop er nu et UI-spørgsmål, ikke et
+  platformsspørgsmål: der er noget at kalde.
+- **Etapens ben.** Pausereglen kan først afgøres den dag en etape kan bære
+  flere strækninger med hvil imellem. Indtil da er den en advarsel.
+- **Bookingens eget tilstandsskift.** `etapeskift` dækker etapen; `bookinger`
+  er stadig `.write: false` uden en funktion.

@@ -21,7 +21,11 @@
  */
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "./demo-personale.js";
-import { GRAENSEOVERGANG, tjekGeografi, krydserGraense } from "./etaper.js";
+import {
+  GRAENSEOVERGANG, tjekGeografi, krydserGraense, enhedsIder, koerselMinPaakraevet,
+} from "./etaper.js";
+import { GRAENSE } from "./koerehviletid.js";
+import { kanDisponeres, kanBaere } from "./flaade.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -59,7 +63,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["roedby"],
     kunDanmark: false,
     passager: { "faerge:femern": 1, "vejafgift:miljoezoner": 1 },
-    koeretoejId: "kt-012", personId: "larsAage",
+    koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "larsAage",
+    koerselMin: 540,
     maengde: { m3: 62, kg: 14200 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -72,7 +77,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["roedby"],
     kunDanmark: false,
     passager: { "faerge:femern": 1, "vejafgift:miljoezoner": 1, "parkering:europa": 1 },
-    koeretoejId: "kt-078", personId: "reneThomsen",
+    koeretoejIder: { "kt-078": true }, personId: "reneThomsen",
+    koerselMin: 500,
     maengde: { m3: 58, kg: 11800 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -86,7 +92,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["padborg"],
     kunDanmark: false,
     passager: { "bro:storebaelt": 1, "vejafgift:miljoezoner": 1, "parkering:europa": 1 },
-    koeretoejId: "kt-034", personId: "jesperRiis",
+    koeretoejIder: { "kt-034": true }, personId: "jesperRiis",
+    koerselMin: 520,
     maengde: { m3: 71, kg: 16400 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -99,9 +106,15 @@ export const DEMO_ETAPER = [
     graenseovergange: ["padborg"],
     kunDanmark: false,
     passager: { "bro:storebaelt": 1, "vejafgift:miljoezoner": 1, "parkering:europa": 2 },
-    koeretoejId: "kt-104", personId: "anneKrogh",
+    koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "anneKrogh",
+    koerselMin: 530,
     maengde: { m3: 66, kg: 15100 },
-    forslag: [{ id: "f-1", koeretoejId: "kt-104", personId: "anneKrogh" }],
+    /* ⚠ EN SÆTTEVOGN, IKKE EN SOLOBIL. Turen er 66 m³ og 15,1 t; kt-104
+       kan 48 m³ og 12 t. Forslaget stod med den alene, indtil etapeskift
+       begyndte at HÅNDHÆVE kanBaere() — serveren afviste demo-sættets eget
+       forslag med "Mangler 18 m³ og 3.100 kg". Selvkontrollen nedenfor
+       fanger det nu. */
+    forslag: [{ id: "f-1", koeretoejIder: { "kt-012": true, "kt-tr41": true }, personId: "anneKrogh" }],
     valgtForslagId: "f-1", senestMs: null,
   },
   {
@@ -113,7 +126,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["padborg"],
     kunDanmark: false,
     passager: { "bro:storebaelt": 1, "vejafgift:miljoezoner": 1, "parkering:europa": 1 },
-    koeretoejId: "kt-155", personId: "henrikVestergaard",
+    koeretoejIder: { "kt-155": true }, personId: "henrikVestergaard",
+    koerselMin: 525,
     maengde: { m3: 69, kg: 15800 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -130,7 +144,8 @@ export const DEMO_ETAPER = [
     graenseovergange: [],
     kunDanmark: true,
     passager: { "bro:storebaelt": 1 },
-    koeretoejId: "kt-106", personId: "dorteEnevoldsen",
+    koeretoejIder: { "kt-106": true }, personId: "dorteEnevoldsen",
+    koerselMin: 480,
     maengde: { m3: 44, kg: 9200 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -149,7 +164,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["roedby"],
     kunDanmark: false,
     passager: { "faerge:femern": 1 },
-    koeretoejId: "kt-012", personId: "larsAage",
+    koeretoejIder: { "kt-012": true }, personId: "larsAage",
+    koerselMin: 500,
     maengde: { m3: 38, kg: 8100 },
     forslag: [], valgtForslagId: null, senestMs: null,
   },
@@ -164,7 +180,8 @@ export const DEMO_ETAPER = [
     graenseovergange: ["roedby"],
     kunDanmark: false,
     passager: { "faerge:femern": 1 },
-    koeretoejId: null, personId: null,
+    koeretoejIder: null, personId: null,
+    koerselMin: 420,
     maengde: { m3: 38, kg: 8100 },
     forslag: [], valgtForslagId: null, senestMs: dag(9, 12),
   },
@@ -215,7 +232,7 @@ export const demoHaendelser = (etapeId) => DEMO_STATUSHAENDELSER[etapeId] || [];
 /* ---- Opslag ----------------------------------------------------------- */
 
 export const demoEtaperFor = (koeretoejId) =>
-  DEMO_ETAPER.filter((e) => e.koeretoejId === koeretoejId);
+  DEMO_ETAPER.filter((e) => enhedsIder(e).includes(koeretoejId));
 
 export const demoAabneEtaper = () => DEMO_ETAPER.filter((e) => e.tilstand === "aaben");
 
@@ -226,11 +243,23 @@ export const demoEtaperIVindue = (fra, til) =>
 
 if (import.meta.env?.DEV) {
   const biler = new Set(DEMO_KOERETOEJER.map((k) => k.id));
+  const bilEfterId = new Map(DEMO_KOERETOEJER.map((k) => [k.id, k]));
   const folk = new Set(DEMO_PERSONALE.map((p) => p.id));
 
   for (const e of DEMO_ETAPER) {
-    if (e.koeretoejId && !biler.has(e.koeretoejId)) {
-      console.warn(`demo-etaper: ${e.id} peger på ukendt køretøj "${e.koeretoejId}".`);
+    for (const id of enhedsIder(e)) {
+      if (!biler.has(id)) {
+        console.warn(`demo-etaper: ${e.id} peger på ukendt køretøj "${id}".`);
+      }
+    }
+    /* ⚠ EN TRAILER KAN IKKE KØRE ALENE, og demo-sættet skal ikke vise noget
+       kanDisponeres() ville afvise. Sættet er det eneste sted reglen kan
+       brydes uden at nogen ser det — reglerne håndhæver den ikke, det gør
+       etapeskift. */
+    const enheder = enhedsIder(e).map((id) => bilEfterId.get(id)).filter(Boolean);
+    const kombi = kanDisponeres(enheder);
+    if (enheder.length && !kombi.ok) {
+      console.warn(`demo-etaper: ${e.id} — ${kombi.aarsag}`);
     }
     if (e.personId && !folk.has(e.personId)) {
       console.warn(`demo-etaper: ${e.id} peger på ukendt personId "${e.personId}".`);
@@ -274,17 +303,60 @@ if (import.meta.env?.DEV) {
       if (!e.senestMs) {
         console.warn(`demo-etaper: ${e.id} er åben uden senestMs. Uden frist fyldes lageret.`);
       }
-      if (e.koeretoejId || e.personId) {
+      if (enhedsIder(e).length || e.personId) {
         console.warn(`demo-etaper: ${e.id} er åben, men har allerede bil eller chauffør.`);
       }
-    } else if (!e.koeretoejId || !e.personId) {
+    } else if (!enhedsIder(e).length || !e.personId) {
       console.warn(`demo-etaper: ${e.id} er ${e.tilstand} uden bil eller chauffør.`);
     }
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ ET FORSLAG SKAL KUNNE LADE SIG GØRE.
+
+     et-004 foreslog kt-104 alene til 66 m³ og 15,1 t — en bil der kan 48 m³
+     og 12 t. Det stod der indtil etapeskift begyndte at HÅNDHÆVE kanBaere(),
+     og serveren afviste demo-sættets eget forslag mod den udrullede base.
+
+     Et demo-forslag ingen koordinator kan godkende, er værre end ingen: det
+     ser ud som en fejl i koden, første gang nogen trykker. Kontrollen her er
+     den samme som serverens — kanDisponeres() og kanBaere() — kørt på
+     sættet selv.
+     ══════════════════════════════════════════════════════════════════════ */
+  for (const e of DEMO_ETAPER) {
+    for (const f of e.forslag || []) {
+      const enheder = enhedsIder(f).map((id) => bilEfterId.get(id)).filter(Boolean);
+      const kombi = kanDisponeres(enheder);
+      if (!kombi.ok) {
+        console.warn(`demo-etaper: forslag ${f.id} på ${e.id} — ${kombi.aarsag}`);
+      }
+      const baere = kanBaere(enheder, e.maengde || {});
+      if (!baere.ok) {
+        console.warn(
+          `demo-etaper: forslag ${f.id} på ${e.id} kan ikke bære godset — ` +
+          `mangler ${baere.mangler.m3} m³ og ${baere.mangler.kg} kg. ` +
+          "Serveren ville afvise det.");
+      }
+    }
+  }
+  /* ⚠ EN LANGTUR SKAL BÆRE SIN PLANLAGTE KØRETID.
+
+     tjekKoerehviletid() regner hele vinduet som kørsel hvis koerselMin
+     mangler — den strenge antagelse. Den er rigtig for en dagstur og forkert
+     for en tur over to døgn, hvor chaufføren sover undervejs. Uden feltet
+     ville etapeskift afvise hver eneste langtur med "2400 min.
+     sammenhængende kørsel", og det ville lære disponenten at spærringen er
+     støj. Se koerselMinPaakraevet() i etaper.js. */
+  for (const e of DEMO_ETAPER) {
+    if (koerselMinPaakraevet(e, GRAENSE.dagligKoerselMin)) {
+      console.warn(
+        `demo-etaper: ${e.id} løber over ${GRAENSE.dagligKoerselMin / 60} timer ` +
+        "uden koerselMin. Serveren ville afvise en disponering af den.");
+    }
+  }
   /* Ingen bil på to ture samtidig — det ville være en reservationskonflikt
      modellen selv ville afvise. */
-  for (const id of new Set(DEMO_ETAPER.map((e) => e.koeretoejId).filter(Boolean))) {
+  for (const id of new Set(DEMO_ETAPER.flatMap(enhedsIder))) {
     const mine = demoEtaperFor(id);
     for (let i = 0; i < mine.length; i++) {
       for (let j = i + 1; j < mine.length; j++) {

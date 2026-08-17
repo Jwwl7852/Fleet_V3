@@ -115,10 +115,25 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`
   fejler på det, og den er skrevet fordi mønstret er dukket op **seks gange**.
-- **Lade et af de fem disponeringstjek blokere i skærmen.** De kaldes nu i
-  Disponering, men til VISNING. Håndhævelsen hører i den Cloud Function der
-  skriver etapen — ligger den i skærmen, kan en direkte skrivning gå uden om
-  den, og så er tjekket dekoration.
+- **Skrive de fem disponeringstjek af.** De ligger i `fleet/disponering.js`,
+  ét sted, og både Disponering og `etapeskift` kalder `tjekDisponering()`.
+  Serveren afviser med den SAMME sætning skærmen viste — to formuleringer af
+  én spærring er to forklaringer på én ting. Skærmen VISER; funktionen
+  HÅNDHÆVER. Ligger kontrollen i skærmen, går et direkte kald uden om den.
+- **Give en etape ét `koeretoejId`.** Feltet er `koeretoejIder`, en liste:
+  en sættevogn er trækker PLUS trailer, og `kanDisponeres()` afviser en
+  trailer uden trækkende enhed. Med ét id kunne den regel aldrig udløses, og
+  traileren fik ingen reservation — så den så fri ud i hele turen. Hver enhed
+  får sin egen reservation i samme `update()`.
+- **Prøve en kompetence mod `Date.now()`.** Den skal gælde når TUREN kører.
+  Et ADR-bevis der udløber på tirsdag, er gyldigt når disponenten trykker og
+  udløbet når turen kører på fredag. `tjekDisponering()` bruger etapens
+  slutning — et bevis der udløber midt i turen, er udløbet på hjemvejen.
+- **Regne en etapes VINDUE som køretid.** En tur til Paris løber over 40
+  timer, og chaufføren sover undervejs. Etapen bærer `koerselMin`, og en
+  langtur uden det SPÆRRES — den gættes ikke, som en momssats ikke gættes.
+  Og pausereglen ADVARER: en plan siger hvor meget der køres, ikke hvor
+  pauserne ligger. Dagens og ugens sum blokerer uændret.
 - **Bygge drag-and-drop i Disponering før Cloud Functions.** En reservation
   skal skrives atomisk sammen med etapens `koeretoejId`, og to disponenter kan
   ramme samme sekund. Bygger du det interaktive nu, bygger du det to gange.

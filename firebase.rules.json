@@ -424,6 +424,33 @@
             ".validate": "newData.hasChildren(['division'])",
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
+            },
+            // ⚠ EN ETAPE BAERER EN LISTE AF KOERETOEJER, IKKE EET.
+            // En saettevognstur er traekker PLUS trailer, og de fem
+            // disponeringstjek er skrevet til det: kanDisponeres() afviser en
+            // trailer uden traekkende enhed, og kanBaere() laegger kapaciteten
+            // sammen. Bar etapen eet id, kunne den regel aldrig udloeses.
+            //
+            // Formen er { <id>: true } og ikke et array: RTDB har ingen
+            // arrays, og et array ville faa noeglerne 0, 1, 2 — hvorefter en
+            // sletning midt i ville rykke resten.
+            "koeretoejIder": {
+              "$koeretoejId": {
+                ".validate": "newData.isBoolean() && root.child('tenants').child($tenantId).child('koeretoejer').child($koeretoejId).exists()"
+              }
+            },
+            // ⚠ personId, IKKE uid. Det er hvem etapen HANDLER OM — en
+            // chauffoer har maaske slet intet login. Se CLAUDE.md.
+            "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
+            "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerPlan|aaben|afventerKoord|reserveret|returneret|delvist|afvist|annulleret|udfoert)$/)" },
+            "fra": { ".validate": "newData.isNumber()" },
+            "til": { ".validate": "newData.isNumber() && newData.val() > newData.parent().child('fra').val()" },
+            // ⚠ APPEND-ONLY. Et tilstandsskift der kunne slettes bagefter,
+            // kunne ikke forklares et halvt aar senere — og historikken er det
+            // eneste sted en afvist booking staar med sin begrundelse.
+            "historik": {
+              "$ms": { ".validate": "!data.exists()" }
             }
           }
         },

@@ -31,6 +31,7 @@ import {
 } from "../src/fleet/demo-lager.js";
 import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
+import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -171,6 +172,11 @@ export const SEED = [
      reglerne; uden det her seed ville Fakturering staa tom i dev, og saa
      ville ingen opdage at skaermen nu laeser en rigtig node. */
   { node: "grundlag", data: DEMO_GRUNDLAG, form: "liste" },
+  /* ⚠ ETAPERNE SKAL MED. Noden er .write: false som grundlaget, og
+     provisioneringen gaar uden om reglerne. Uden dem staar Disponerings
+     ugesvisning tom i dev — og saa ville ingen opdage at etapeskift ikke kan
+     kaldes. */
+  { node: "etaper", data: DEMO_ETAPER, form: "liste" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */

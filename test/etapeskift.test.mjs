@@ -1,0 +1,402 @@
+/* test/etapeskift.test.mjs
+ * Disponeringen: de fem tjek, samlet ét sted — og håndhævet ét sted.
+ *
+ * Prøven der betyder mest, står nederst: at `etapeskift` faktisk KALDER
+ * `tjekDisponering()` og afviser på den. De fem tjek har været bygget og
+ * testet i månedsvis uden at noget kaldte dem; derefter VISTE Disponering dem.
+ * At vise en spærring er ikke at håndhæve den.
+ */
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+import {
+  tjekDisponering, blokerer, spaerringer, forRessource, TONE,
+} from "../src/fleet/disponering.js";
+import { reservationerFraEtape, enhedsIder } from "../src/fleet/etaper.js";
+import { PRIORITET, RESSOURCE, KILDE } from "../src/fleet/reservations.js";
+import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
+import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+
+const T = 3600000;
+const A = Date.UTC(2026, 7, 20, 6, 0, 0);
+
+const TRAEKKER = {
+  id: "kt-1", registrering: "AA 11 111", art: "traekker", status: "aktiv",
+  kapacitet: { m3: 0, kg: 9000 },
+};
+const TRAILER = {
+  id: "tr-1", registrering: "BB 22 222", art: "trailer", status: "aktiv",
+  kapacitet: { m3: 90, kg: 24000 },
+};
+const PERSON = { id: "p-1", navn: "Lars Aage" };
+
+/* Kompetencer der dækker alt en trækker+trailer kræver. */
+const ALLE_KOMP = ["c", "ce", "tachografkort", "eubevis"].map((type) => ({
+  id: `k-${type}`, personId: "p-1", type, udloeberMs: A + 400 * 24 * T,
+}));
+
+const etape = (o = {}) => ({
+  id: "et-1", bookingId: "bk-1", division: "gods",
+  fra: A, til: A + 8 * T,
+  koeretoejIder: { "kt-1": true, "tr-1": true },
+  personId: "p-1",
+  maengde: { m3: 60, kg: 14000 },
+  ...o,
+});
+
+const kald = (o = {}) => {
+  const e = etape(o.etape);
+  return tjekDisponering({
+    reservationerForEtapen: reservationerFraEtape(e),
+    enheder: o.enheder ?? [TRAEKKER, TRAILER],
+    person: o.person ?? PERSON,
+    kompetencer: o.kompetencer ?? ALLE_KOMP,
+    reservationer: o.reservationer ?? {},
+    straekninger: o.straekninger ?? [],
+    gods: o.gods ?? e.maengde,
+    advarendeKrav: o.advarendeKrav ?? [],
+  });
+};
+
+/* ---- Den rene sag ------------------------------------------------------ */
+
+test("en lovlig disponering giver ingen bemærkninger", () => {
+  const r = kald();
+  assert.deepEqual(r, [], `uventede bemaerkninger: ${JSON.stringify(r)}`);
+  assert.equal(blokerer(r), false);
+});
+
+/* ---- 1. Enhedskombination ---------------------------------------------- */
+
+test("⚠ EN TRAILER KAN IKKE DISPONERES ALENE", () => {
+  /* Reglen har været bygget og testet siden flaade.js blev skrevet, men
+     modellen kunne ikke udtrykke en sættevogn — etapen bar ét koeretoejId.
+     Først med `koeretoejIder` kan den overhovedet udløses. */
+  const r = kald({ enheder: [TRAILER], etape: { koeretoejIder: { "tr-1": true } } });
+  assert.ok(blokerer(r));
+  assert.match(spaerringer(r)[0].tekst, /kan ikke disponeres uden en trækkende enhed/);
+});
+
+test("en enhed på værksted spærrer", () => {
+  const r = kald({ enheder: [{ ...TRAEKKER, status: "vaerksted" }, TRAILER] });
+  assert.ok(blokerer(r));
+  assert.equal(spaerringer(r)[0].tjek, "Enhedskombination");
+});
+
+test("ingen enheder er også en spærring", () => {
+  const r = kald({ enheder: [] });
+  assert.ok(blokerer(r));
+});
+
+/* ---- 2. Kompetencer ---------------------------------------------------- */
+
+test("⚠ EN UDLØBET KOMPETENCE BLOKERER — den advarer ikke", () => {
+  /* En advarsel man kan klikke videre fra, er ikke en kontrol. En chauffør
+     uden gyldigt C/E må ikke køre sættevogn, uanset hvor travlt disponenten
+     har. */
+  const udloebet = ALLE_KOMP.map((k) =>
+    (k.type === "ce" ? { ...k, udloeberMs: A - 24 * T } : k));
+  const r = kald({ kompetencer: udloebet });
+  const s = spaerringer(r);
+  assert.ok(s.length, "en udloebet C/E slap igennem");
+  assert.match(s[0].tekst, /udløbet/);
+  assert.match(s[0].tekst, /BLOKERER/);
+});
+
+test("⚠ MANGLER OG UDLØBNE HOLDES ADSKILT", () => {
+  /* "Han har aldrig haft C/E" og "hans C/E udløb i går" kræver hver sin
+     handling — et andet køretøj mod en fornyelse. En samlet liste ville
+     skjule forskellen. */
+  const uden = ALLE_KOMP.filter((k) => k.type !== "ce");
+  const r = kald({ kompetencer: uden });
+  assert.match(spaerringer(r)[0].tekst, /har aldrig haft/);
+});
+
+test("en ADVARENDE kompetence spærrer ikke", () => {
+  /* Krav der ikke kan udledes af enheden og godset — virksomhedens egne, en
+     kundes — advarer med en begrundet override. Læses de som spærringer,
+     holder disponenten op med at læse dem. */
+  const r = kald({ advarendeKrav: ["foerstehjaelp"] });
+  assert.equal(blokerer(r), false, "en advarsel blev til en spaerring");
+  assert.ok(r.some((x) => x.tone === TONE.warn));
+});
+
+/* ---- 3. Kapacitet ------------------------------------------------------ */
+
+test("⚠ m³ OG kg TJEKKES HVER FOR SIG", () => {
+  /* En palle kan være let og fylde meget, eller tung og fylde lidt. */
+  const forTungt = kald({ gods: { m3: 10, kg: 40000 } });
+  assert.ok(blokerer(forTungt));
+  assert.match(spaerringer(forTungt)[0].tekst, /kg/);
+
+  const forStort = kald({ gods: { m3: 200, kg: 1000 } });
+  assert.ok(blokerer(forStort));
+  assert.match(spaerringer(forStort)[0].tekst, /m³/);
+});
+
+test("⚠ KAPACITETEN LÆGGES SAMMEN PÅ TVÆRS AF ENHEDERNE", () => {
+  /* Trækkeren har ingen ladkapacitet at tale om; traileren har 90 m³. Talte
+     vi kun trækkeren, ville hver eneste sættevognstur se ubærlig ud. */
+  const kunTraekker = kald({
+    enheder: [TRAEKKER], etape: { koeretoejIder: { "kt-1": true } },
+    gods: { m3: 60, kg: 14000 },
+  });
+  assert.ok(blokerer(kunTraekker), "traekkeren alene kan baere 60 m3");
+  assert.equal(blokerer(kald()), false, "med traileren kan den");
+});
+
+/* ---- 4. Reservationskonflikt ------------------------------------------- */
+
+const eksisterende = (kildeType, o = {}) => ({
+  id: "r-x", fra: A + T, til: A + 3 * T,
+  kilde: { type: kildeType, id: "andet", reference: null }, ...o,
+});
+
+test("⚠ ET VÆRKSTEDSBESØG SLÅR EN BOOKING", () => {
+  /* Prioritet 40 mod 10. En bil på værksted kan ikke køre, uanset hvad
+     disponenten har lovet kunden — og bookingen kan derfor ikke overskrive. */
+  assert.ok(PRIORITET.vaerksted > PRIORITET.booking);
+  const r = kald({
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.vaerksted)] } },
+  });
+  assert.ok(blokerer(r));
+  assert.equal(spaerringer(r)[0].tjek, "Reservation");
+});
+
+test("en konflikt med LAVERE prioritet er en advarsel", () => {
+  /* Den nye kilde ville overskrive. Det er ikke en spærring — men det skal
+     stå på skærmen, for noget bliver skubbet. */
+  const r = kald({
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.manuel)] } },
+  });
+  assert.equal(blokerer(r), false);
+  assert.ok(r.some((x) => x.tjek === "Reservation" && x.tone === TONE.warn));
+});
+
+test("⚠ ETAPENS EGEN RESERVATION ER IKKE EN KONFLIKT MED SIG SELV", () => {
+  /* Skiftes en allerede reserveret etape, ligger dens egne poster der i
+     forvejen. Talte de med, kunne ingen etape nogensinde gendisponeres. */
+  const e = etape();
+  const egne = reservationerFraEtape(e).map((r, i) => ({ id: `res-et-1-${i}`, ...r }));
+  const r = kald({
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": egne, "tr-1": egne } },
+  });
+  assert.equal(blokerer(r), false, "etapen er i konflikt med sig selv");
+});
+
+test("⚠ BEGGE ENHEDER FÅR EN RESERVATION", () => {
+  /* Bandt vi kun trækkeren, ville traileren se fri ud i hele turen — og en
+     anden bil kunne få den. */
+  const r = reservationerFraEtape(etape());
+  assert.equal(r.length, 3);
+  assert.deepEqual(
+    r.filter((x) => x.ressourceType === RESSOURCE.koeretoej).map((x) => x.ressourceId).sort(),
+    ["kt-1", "tr-1"]);
+});
+
+/* ---- 5. Køre-hviletid --------------------------------------------------- */
+
+test("køre-hviletid spærrer på en for lang strækning", () => {
+  const r = kald({ straekninger: [{ id: "et-1", fra: A, til: A + 11 * T }] });
+  assert.ok(blokerer(r));
+  assert.equal(spaerringer(r).find((x) => x.tjek === "Køre-hviletid") !== undefined, true);
+});
+
+/* ---- Opslaget ----------------------------------------------------------- */
+
+test("forRessource slår op i NODENS form", () => {
+  /* reservationer/<type>/<id>/<resId> — serveren læser den direkte. En flad
+     liste ville være en anden form end den der ligger i basen, og så ville
+     de to sider stille det samme spørgsmål på hver sin måde. */
+  const n = { koeretoej: { "kt-1": [{ id: "a" }] } };
+  assert.deepEqual(forRessource(n, "koeretoej", "kt-1"), [{ id: "a" }]);
+  assert.deepEqual(forRessource(n, "koeretoej", "kt-9"), []);
+  assert.deepEqual(forRessource(undefined, "koeretoej", "kt-1"), []);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HÅNDHÆVELSEN
+
+   At funktionerne findes er ikke det samme som at de håndhæves.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const kilde = readFileSync("functions/index.js", "utf8");
+const blok = kilde.slice(kilde.indexOf("export const etapeskift"));
+
+test("⚠ etapeskift KALDER tjekDisponering OG AFVISER PÅ DEN", () => {
+  assert.ok(blok.includes("tjekDisponering({"), "de fem tjek koeres ikke");
+  assert.ok(blok.includes('r.tone === "bad"'), "spaerringerne skilles ikke fra advarslerne");
+  assert.ok(blok.includes('throw new HttpsError("failed-precondition"'),
+    "der afvises ikke paa en spaerring");
+});
+
+test("⚠ SERVEREN AFVISER MED SKÆRMENS EGEN SÆTNING", () => {
+  /* To formuleringer af den samme spærring ville være to forklaringer på én
+     ting — og brugeren ville se den ene og få den anden. */
+  assert.ok(/spaerringer\[0\]\.tekst/.test(blok),
+    "afvisningen bygger sin egen tekst i stedet for at bruge tjekkets");
+});
+
+test("⚠ TILSTANDSSKIFTET GÅR GENNEM kanSkifteEtape — den SAMME som skærmen", () => {
+  /* Den bærer beslutning 5: disponenten godkender ikke sit eget forslag. Og
+     den er en PERMISSION, ikke en rolleliste. */
+  assert.ok(blok.includes("kanSkifteEtape("));
+  assert.ok(kilde.includes('from "./delt/booking-state.js"'));
+  assert.ok(DELTE_FILER.includes("booking-state.js"));
+});
+
+test("⚠ ALT LANDER I ÉN rod.update()", () => {
+  /* Etapen, dens ressourcer og reservationerne skal skrives sammen eller slet
+     ikke. Prototypens DE-QR 777 mod DE-KL 404 var netop to poster der kunne
+     blive uenige. */
+  const tilUpdate = blok.slice(0, blok.indexOf("await rod.update(opdatering)"));
+  assert.ok(tilUpdate.includes("opdatering[`etaper/${etapeId}/koeretoejIder`]"));
+  assert.ok(tilUpdate.includes("opdatering[`reservationer/"));
+  assert.equal((blok.match(/await rod\.update\(/g) || []).length, 1,
+    "der skrives i mere end eet kald");
+});
+
+test("⚠ EN ETAPE DER FORLADER RESERVERET, FRIGIVER SINE RESSOURCER", () => {
+  /* Blev reservationen stående, ville bilen se optaget ud resten af ugen — og
+     den næste disponent ville lede efter en tur der ikke findes. */
+  assert.ok(blok.includes('etape.tilstand === "reserveret" && tilTilstand !== "reserveret"'));
+  assert.ok(/reservationer\/\$\{r\.ressourceType\}\/\$\{r\.ressourceId\}\/res-\$\{etapeId\}-\$\{i\}`\] = null/.test(blok),
+    "reservationerne fjernes ikke");
+});
+
+test("⚠ RESERVATIONENS ID ER UDLEDT AF ETAPEN, ikke en push-nøgle", () => {
+  /* Så kan den samme etape ikke lægge to reservationer på den samme ressource
+     hvis funktionen kaldes to gange — og frigivelsen kan finde dem igen uden
+     at søge. */
+  assert.ok(blok.includes("`res-${etapeId}-${i}`"));
+});
+
+test("⚠ ABONNEMENT OG MODUL PRØVES — admin-SDK'et gaar uden om reglerne", () => {
+  assert.ok(blok.includes("Abonnementet er ikke aktivt."));
+  assert.ok(blok.includes("Booking-modulet er ikke aktivt."));
+});
+
+test("⚠ REGLEN FOR DELTE FILER ER TRANSITIV", () => {
+  /* disponering.js importerer fem filer, og personale.js importerer selv
+     format.js. Firebase deployer kun functions/-mappen: en import op gennem
+     træet fejler i SKYEN, ved deploy — ikke ved test. */
+  for (const fil of DELTE_FILER) {
+    const src = readFileSync(`src/fleet/${fil}`, "utf8");
+    for (const m of src.matchAll(/from\s+"\.\/([\w-]+\.js)"/g)) {
+      assert.ok(DELTE_FILER.includes(m[1]),
+        `${fil} importerer ${m[1]}, som ikke kopieres til functions/delt/`);
+    }
+  }
+  for (const f of ["disponering.js", "flaade.js", "personale.js", "reservations.js",
+    "koerehviletid.js", "format.js", "etaper.js"]) {
+    assert.ok(DELTE_FILER.includes(f), `${f} mangler paa listen`);
+  }
+});
+
+test("skærmen har ikke sin egen kopi af de fem tjek", () => {
+  /* De stod som en lokal tjekAlt() indtil serveren skulle håndhæve dem. To
+     kopier af en kontrol er værre end ingen: den ene driver, og ingen opdager
+     hvilken. */
+  const s = readFileSync("src/moduler/booking/Disponering.jsx", "utf8");
+  assert.ok(s.includes("tjekDisponering("), "skaermen bruger ikke husets ene funktion");
+  assert.ok(!/function tjekAlt/.test(s), "den lokale kopi staar der stadig");
+  /* ⚠ KODEN, IKKE PROSAEN. Filens hoved NÆVNER de fem tjek ved navn — det er
+     forklaringen, ikke et kald. En prøve der ikke kan skelne, tvinger den
+     næste til at slette begrundelsen for at få grønt. */
+  const kode = s.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/kanDisponeres\(|kanBaere\(|tjekLedigMod\(/.test(kode),
+    "skaermen kalder de enkelte tjek udenom tjekDisponering()");
+});
+
+test("⚠ KOMPETENCEN SKAL GÆLDE NÅR TUREN KØRER, ikke når der klikkes", () => {
+  /* En chauffør hvis ADR-bevis udløber på tirsdag, må ikke kunne disponeres
+     på en tur på fredag: beviset ER gyldigt i det øjeblik disponenten
+     trykker, og udløbet i det øjeblik det betyder noget.
+
+     ⚠ TIDSPUNKTET ER ETAPENS SLUTNING. Et bevis der udløber midt i turen, er
+     udløbet på hjemvejen — og en kontrol i Tyskland spørger ikke hvornår man
+     kørte hjemmefra. */
+  const udloeberMidtITuren = ALLE_KOMP.map((k) =>
+    (k.type === "ce" ? { ...k, udloeberMs: A + 4 * T } : k));
+  const r = tjekDisponering({
+    reservationerForEtapen: reservationerFraEtape(etape()),
+    enheder: [TRAEKKER, TRAILER], person: PERSON,
+    kompetencer: udloeberMidtITuren, gods: { m3: 60, kg: 14000 },
+  });
+  assert.ok(blokerer(r), "et bevis der udloeber midt i turen slap igennem");
+  assert.match(spaerringer(r)[0].tekst, /udløbet/);
+});
+
+test("paaMs kan sættes eksplicit — og ellers udledes af etapens slutning", () => {
+  const komp = ALLE_KOMP.map((k) =>
+    (k.type === "ce" ? { ...k, udloeberMs: A + 4 * T } : k));
+  const args = {
+    reservationerForEtapen: reservationerFraEtape(etape()),
+    enheder: [TRAEKKER, TRAILER], person: PERSON,
+    kompetencer: komp, gods: { m3: 60, kg: 14000 },
+  };
+  /* Spørger vi om turens START, er beviset stadig gyldigt. */
+  assert.equal(blokerer(tjekDisponering({ ...args, paaMs: A })), false);
+  /* Spørger vi om slutningen — som er standarden — er det ikke. */
+  assert.equal(blokerer(tjekDisponering(args)), true);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KØRE-HVILETID PÅ EN PLANLAGT ETAPE
+
+   Begge fund her kom af at HÅNDHÆVE tjekket mod rigtige data. Så længe det
+   blev vist og ikke håndhævet, kunne ingen se at det spærrede alt.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+test("⚠ ET VINDUE ER IKKE KØRETID — en langtur uden koerselMin spærres", () => {
+  /* tjekKoerehviletid() regner hele strækningen som kørsel når koerselMin
+     mangler. Det er rigtigt for en dagstur og forkert for en tur over to
+     døgn, hvor chaufføren sover. Svaret er en spærring der siger hvad der
+     MANGLER — ikke et regnestykke på en antagelse. */
+  const langtur = { id: "et-lang", fra: A, til: A + 40 * T };
+  const r = kald({ straekninger: [langtur] });
+  const s = spaerringer(r);
+  assert.ok(s.length, "en langtur uden planlagt koeretid slap igennem");
+  assert.match(s[0].tekst, /planlagt køretid/);
+  assert.match(s[0].tekst, /gættes ikke/);
+});
+
+test("en dagstur uden koerselMin vurderes stadig", () => {
+  /* Under den daglige grænse er den strenge antagelse både rigtig nok og på
+     den sikre side: en tur på seks timer ER stort set kørsel. */
+  const dagstur = { id: "et-dag", fra: A, til: A + 6 * T };
+  const r = kald({ straekninger: [dagstur] });
+  assert.ok(!spaerringer(r).some((x) => /planlagt køretid/.test(x.tekst)),
+    "en dagstur blev afvist for at mangle et felt den ikke behoever");
+});
+
+test("⚠ PAUSEREGLEN ADVARER — den kan ikke afgøres ud af en plan", () => {
+  /* En etape siger hvor MEGET der køres, ikke hvor pauserne ligger. En tur
+     med 8 timers kørsel er ikke 8 timer i træk. En spærring der udløses af
+     hver eneste langtur, lærer disponenten at klikke videre. */
+  const r = kald({ straekninger: [{ id: "et-x", fra: A, til: A + 12 * T, koerselMin: 480 }] });
+  const pause = r.filter((x) => x.tjek === "Køre-hviletid" && /uden pause/.test(x.tekst));
+  assert.equal(pause.length, 1, "pausereglen blev ikke vurderet");
+  assert.equal(pause[0].tone, TONE.warn, "pausereglen spaerrer paa en plan");
+  assert.match(pause[0].tekst, /kan ikke afgøres/);
+});
+
+test("⚠ MEN DAGENS SUM BLOKERER UÆNDRET", () => {
+  /* 17 timers kørsel på ét døgn er ulovligt, uanset hvordan det deles op —
+     og det er et tal etapen faktisk bærer. Det er den overtrædelse der
+     betyder noget her. */
+  const r = kald({ straekninger: [{ id: "et-y", fra: A, til: A + 20 * T, koerselMin: 17 * 60 }] });
+  const dag = spaerringer(r).filter((x) => /timers kørsel på ét døgn/.test(x.tekst));
+  assert.equal(dag.length, 1, "en 17-timers koeredag slap igennem");
+});
+
+test("demo-etaperne er lovlige — ellers viser dev noget serveren afviser", () => {
+  /* et-004 stod med 1020 min. planlagt kørsel på ét døgn. Det er 17 timer, og
+     serveren afviste demo-sættets eget forslag mod den udrullede base. */
+  for (const e of DEMO_ETAPER) {
+    if (!Number.isFinite(e.koerselMin)) continue;
+    assert.ok(e.koerselMin <= 600,
+      `${e.id}: ${e.koerselMin} min. koersel paa eet doegn — serveren ville afvise den`);
+  }
+});

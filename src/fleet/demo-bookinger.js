@@ -25,6 +25,7 @@ import { DEMO_ETAPER } from "./demo-etaper.js";
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_PERSONALE } from "./demo-personale.js";
 import { forloebstilstand, TILSTAND } from "./booking-state.js";
+import { enhedsIder } from "./etaper.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -116,15 +117,15 @@ export const DEMO_BOOKINGER = [
     onsketLeveringMs: dag(4, 18), leveringFleks: "timer2",
     krav: ["Køl 2–6 °C", "Temperaturlog"], kundekrav: "Fransk kvittering påkrævet",
     forslag: [
-      { id: "fs-a", nr: 1, koeretoejId: "kt-104", personId: "anneKrogh",
+      { id: "fs-a", nr: 1, koeretoejIder: { "kt-104": true }, personId: "anneKrogh",
         afhentningMs: dag(3, 2), leveringMs: dag(4, 18), transitTimer: 40,
         estimatOere: 3640000,
         note: "Direkte kørsel med skift i Padborg. Køleaggregat efterset i sidste uge." },
-      { id: "fs-b", nr: 2, koeretoejId: "kt-155", personId: "henrikVestergaard",
+      { id: "fs-b", nr: 2, koeretoejIder: { "kt-155": true }, personId: "henrikVestergaard",
         afhentningMs: dag(3, 6), leveringMs: dag(5, 8), transitTimer: 50,
         estimatOere: 3280000,
         note: "Billigere, men leverer en halv dag senere end ønsket." },
-      { id: "fs-c", nr: 3, koeretoejId: "kt-034", personId: "jesperRiis",
+      { id: "fs-c", nr: 3, koeretoejIder: { "kt-034": true }, personId: "jesperRiis",
         afhentningMs: dag(3, 2), leveringMs: dag(4, 14), transitTimer: 36,
         estimatOere: 4020000,
         note: "Hurtigst. Kræver to chauffører på strækningen syd for Hamburg." },
@@ -251,7 +252,7 @@ if (import.meta.env?.DEV) {
       console.warn(`demo-bookinger: ${b.nummer} har ${b.forslag.length} forslag. Mockuppen viser 1-3.`);
     }
     for (const f of b.forslag || []) {
-      if (!bilIder.has(f.koeretoejId)) {
+      for (const id of enhedsIder(f)) if (!bilIder.has(id)) {
         console.warn(`demo-bookinger: forslag ${f.id} på ${b.nummer} peger på ukendt bil.`);
       }
       if (!folkIder.has(f.personId)) {

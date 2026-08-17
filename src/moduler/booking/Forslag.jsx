@@ -31,6 +31,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { enhedsIder } from "../../fleet/etaper.js";
 import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, Tabel, Pille, Fejl, Knap, Gitter, MiniLinje,
@@ -116,10 +117,15 @@ export default function Forslag() {
                        onChange={() => setValgtForslagId(f.id)}
                        aria-label={`Vælg forslag ${f.nr}`} />) },
             { key: "nr", label: "#", render: (f) => <b>{f.nr}</b> },
-            { key: "koeretoejId", label: "Køretøj", render: (f) => {
-                const b = bil(f.koeretoejId);
-                return <>{b?.kaldenavn} <span className="fc-neutral">· {b?.navn}</span></>;
-              } },
+            /* ⚠ ET FORSLAG KAN VÆRE EN SÆTTEVOGN. Feltet er en liste af
+               samme grund som på etapen: en trailer kan ikke køre alene, og
+               et forslag der kun kunne pege på trækkeren, ville foreslå noget
+               kanDisponeres() afviser. */
+            { key: "koeretoejIder", label: "Køretøj", render: (f) => (
+                <>{enhedsIder(f).map((id) => bil(id)).filter(Boolean).map((b, i) => (
+                  <span key={b.id}>{i > 0 ? " + " : ""}{b.kaldenavn}
+                    <span className="fc-neutral"> · {b.navn}</span></span>
+                ))}</>) },
             { key: "personId", label: "Chauffør", render: (f) => person(f.personId)?.navn || f.personId },
             { key: "afhentningMs", label: "Planlagt afhentning", render: (f) => datoTid(f.afhentningMs) },
             { key: "leveringMs", label: "Levering", render: (f) => datoTid(f.leveringMs) },

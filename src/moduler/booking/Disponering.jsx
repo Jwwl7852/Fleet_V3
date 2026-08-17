@@ -13,21 +13,18 @@
  * læser derfor to noder og blander dem aldrig sammen i ét gitter.
  *
  * ═══════════════════════════════════════════════════════════════════════
- *  ⚠ FASE 0: DET HER ER EN VISNING.
+ *  ⚠ STADIG INGEN DRAG-AND-DROP — MEN TJEKKENE HÅNDHÆVES NU.
  *
- *  Ingen drag-and-drop. Ingen skrivning. Ingen konflikthåndtering.
- *  "Træk opgave hertil"-felterne ser rigtige ud og gør ingenting — de er
- *  markeret aria-disabled og siger hvorfor i deres title.
+ *  `etapeskift` er bygget: den udfører etapens tilstandsskift server-side og
+ *  skriver reservationerne i SAMME atomiske opdatering. `etaper` og
+ *  `reservationer` er stadig `.write: false` for alle — vejen ind er
+ *  funktionen.
  *
- *  Rigtig disponering kræver de Cloud Functions der ikke findes: en
- *  reservation skal skrives atomisk sammen med etapens koeretoejId, og to
- *  disponenter kan ramme samme sekund. Bygger man det interaktive nu, bygger
- *  man det to gange — og den anden gang er en migrering af data der blev
- *  skrevet forkert i mellemtiden. `etaper` er `.write: false` netop derfor.
+ *  Det interaktive gitter mangler stadig. Det er et UI-spørgsmål nu, ikke et
+ *  platformsspørgsmål: der er noget at kalde.
  * ═══════════════════════════════════════════════════════════════════════
  *
- * DE FEM TJEK KALDES HER FOR FØRSTE GANG. De har været bygget og testet uden
- * at nogen kaldte dem:
+ * DE FEM TJEK LIGGER I `fleet/disponering.js` — ÉT sted.
  *
  *   kanDisponeres()      en trailer kan ikke køre alene
  *   kraevedeKompetencer() + tjekKompetencer()   en udløbet kompetence blokerer
@@ -35,10 +32,15 @@
  *   tjekLedigMod()       reservationskonflikt på tværs af de tre kilder
  *   tjekKoerehviletid()  4,5 t før pause, 9 t i døgnet
  *
- * ⚠ MEN DE BLOKERER IKKE HER. De vises. Håndhævelsen hører i den Cloud
- * Function der skriver etapen — ligger den i skærmen, kan en direkte skrivning
- * gå uden om den, og så er tjekkene dekoration. At de nu kaldes, betyder at
- * man kan SE hvad de siger, ikke at de er håndhævet.
+ * ⚠ SKÆRMEN VISER DEM; SERVEREN HÅNDHÆVER DEM — MED SAMME FUNKTION.
+ * `tjekDisponering()` kaldes begge steder, og `etapeskift` afviser med den
+ * SAMME sætning som står her. Skrev serveren sin egen udgave, ville skærmen
+ * sige ja hvor serveren sagde nej, uden at nogen kunne se hvorfor.
+ *
+ * ⚠ OG KOMPETENCEN PRØVES MOD ETAPENS SLUTNING, ikke mod nu. Et ADR-bevis der
+ * udløber på tirsdag, er gyldigt når disponenten trykker og udløbet når turen
+ * kører på fredag. Det stod her som en fejl indtil en prøve satte udløbet to
+ * dage ude i fremtiden og fik grønt.
  *
  * ⚠ KONFLIKTTALLET ER IKKE kpi.disponering.konflikter. KPI-tallet dækker hele
  * platformen; panelet nederst regner på det VISTE VINDUE. To tal der begge
@@ -55,14 +57,16 @@ import {
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
-import { tjekLedigMod, konfliktTekst } from "../../fleet/reservations.js";
+import { tjekDisponering } from "../../fleet/disponering.js";
 import {
-  kanDisponeres, kanBaere, kraevedeKompetencer, KOMPETENCE_LABEL, KOERETOEJ_STATUS,
+  KOERETOEJ_STATUS,
 } from "../../fleet/flaade.js";
-import { tjekKompetencer } from "../../fleet/personale.js";
 import { tjekKoerehviletid, koerehviletidTekst } from "../../fleet/koerehviletid.js";
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
-import { reservationerFraEtape, graenseLabel, krydserGraense, tjekGeografi } from "../../fleet/etaper.js";
+import {
+  reservationerFraEtape, graenseLabel, krydserGraense, tjekGeografi, enhedsIder,
+  straekningFraEtape,
+} from "../../fleet/etaper.js";
 import { reservationFraFravaer } from "../../fleet/fravaer.js";
 import { TILSTAND } from "../../fleet/booking-state.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -95,113 +99,41 @@ const DAG_TIL_TIME = 18;
  * oven på et værkstedsbesøg uden at nogen opdagede det — det er præcis den
  * fejl beslutning 4 lukkede.
  */
+/* ⚠ NODEFORMEN, IKKE EN FLAD LISTE. reservationer/<type>/<id>/<resId> er
+   sådan noden ser ud, og `tjekDisponering()` slår op i den form — serveren
+   læser den direkte fra basen. Byggede demo-sættet en anden form, ville de
+   to sider stille det samme spørgsmål på hver sin måde, og kun den ene
+   ville blive rettet den dag formen ændrede sig. */
 function byggReservationer() {
-  const ud = [];
+  const ud = {};
+  const laeg = (id, r) => {
+    ud[r.ressourceType] ??= {};
+    ud[r.ressourceType][r.ressourceId] ??= [];
+    ud[r.ressourceType][r.ressourceId].push({ id, ...r });
+  };
   for (const b of DEMO_BESOEG) {
-    try { ud.push({ id: `r-${b.id}`, ...reservationFraOpgave(b) }); } catch { /* ufuldstændig demo-post */ }
+    try { laeg(`r-${b.id}`, reservationFraOpgave(b)); } catch { /* ufuldstændig demo-post */ }
   }
   for (const f of DEMO_FRAVAER) {
-    try { ud.push({ id: `r-${f.id}`, ...reservationFraFravaer(f) }); } catch { /* ditto */ }
+    try { laeg(`r-${f.id}`, reservationFraFravaer(f)); } catch { /* ditto */ }
   }
   for (const e of DEMO_ETAPER) {
     try {
-      for (const [i, r] of reservationerFraEtape(e).entries()) {
-        ud.push({ id: `r-${e.id}-${i}`, ...r });
-      }
+      for (const [i, r] of reservationerFraEtape(e).entries()) laeg(`r-${e.id}-${i}`, r);
     } catch { /* ditto */ }
   }
   return ud;
 }
 
-const forRessource = (alle, type, id) =>
-  alle.filter((r) => r.ressourceType === type && r.ressourceId === id);
+/* ⚠ DE FEM TJEK LIGGER IKKE HER LÆNGERE.
 
-/* ---- De fem tjek ------------------------------------------------------ */
+   De stod som en lokal `tjekAlt()` i denne fil, indtil `etapeskift` skulle
+   håndhæve dem. Serveren skal stille NØJAGTIG de samme spørgsmål, og en
+   afskrift ville betyde at skærmen sagde ja hvor serveren sagde nej — uden
+   at nogen kunne se hvorfor. De bor nu i `fleet/disponering.js`, som
+   kopieres til `functions/delt/`.
 
-/**
- * Kører alle fem for én planlagt post. Ren funktion — den kan flyttes ind i
- * den Cloud Function der skal håndhæve dem, uden at røre skærmen.
- */
-function tjekAlt({ post, enheder, person, kompetencer, reservationer, straekninger, gods, advarendeKrav = [] }) {
-  const ud = [];
-
-  /* 1. Enhedskombination */
-  const kombi = kanDisponeres(enheder);
-  if (!kombi.ok) ud.push({ tjek: "Enhedskombination", tone: "bad", tekst: kombi.aarsag });
-
-  /* 2. Kompetencer. Kravet kommer fra enhederne PLUS godset — ADR hænger på
-        lasten og kan ikke udledes af bilen. */
-  /* BESLUTNING 25: alt kraevedeKompetencer() udleder af enheden og godset,
-     BLOKERER. Krav der kommer et andet sted fra — virksomhedens egne, en
-     kundes — advarer med en begrundet override og sendes ind som `advarende`. */
-  const krav = kraevedeKompetencer(enheder, gods);
-  if (person && (krav.length || advarendeKrav?.length)) {
-    const komp = tjekKompetencer(kompetencer, {
-      blokerende: krav, advarende: advarendeKrav || [],
-    });
-
-    /* Mangler og udløbne holdes adskilt: "har aldrig haft C/E" og "hans C/E
-       udløb i går" kræver hver sin handling. */
-    for (const m of komp.blokerende.mangler) {
-      ud.push({
-        tjek: "Kompetence", tone: "bad",
-        tekst: `${person.navn} har aldrig haft ${KOMPETENCE_LABEL[m] || m}.`,
-      });
-    }
-    for (const u of komp.blokerende.udloebne) {
-      ud.push({
-        tjek: "Kompetence", tone: "bad",
-        tekst: `${person.navn}s ${KOMPETENCE_LABEL[u] || u} er udløbet. Den BLOKERER — kravet kommer fra bilen eller godset.`,
-      });
-    }
-
-    /* ADVARSLER er ikke spærringer. Læses de som blokeringer, holder
-       disponenten op med at læse dem. */
-    for (const m of [...komp.advarende.mangler, ...komp.advarende.udloebne]) {
-      ud.push({
-        tjek: "Kompetence", tone: "warn",
-        tekst: `${person.navn} mangler ${KOMPETENCE_LABEL[m] || m}. Advarsel — kan overrules med en begrundelse, der logges.`,
-      });
-    }
-  }
-
-  /* 3. Kapacitet — m³ og kg hver for sig. */
-  if (gods && (gods.m3 || gods.kg)) {
-    const baere = kanBaere(enheder, gods);
-    if (!baere.ok) {
-      const dele = [];
-      if (baere.mangler.m3) dele.push(`${num(baere.mangler.m3)} m³`);
-      if (baere.mangler.kg) dele.push(`${num(baere.mangler.kg)} kg`);
-      ud.push({ tjek: "Kapacitet", tone: "bad", tekst: `Mangler ${dele.join(" og ")}.` });
-    }
-  }
-
-  /* 4. Reservationskonflikt. tjekLedigMod() er den rene udgave — tjekLedig()
-        kræver en database, og i demo-mode er der ingen. */
-  for (const r of post.reservationer || []) {
-    const mod = forRessource(reservationer, r.ressourceType, r.ressourceId)
-      .filter((x) => x.id !== r.id);
-    const svar = tjekLedigMod(mod, r);
-    for (const k of svar.konflikter) {
-      ud.push({
-        tjek: "Reservation", tone: svar.kanOverskrive ? "warn" : "bad",
-        tekst: `${konfliktTekst(r, k)} ${svar.kanOverskrive
-          ? "Den nye kilde har højere prioritet og ville overskrive."
-          : "Den eksisterende kilde har højere eller samme prioritet."}`,
-      });
-    }
-  }
-
-  /* 5. Køre-hviletid. Forbeholdet følger med — også når svaret er grønt. */
-  if (straekninger?.length) {
-    const kh = tjekKoerehviletid(straekninger);
-    for (const o of kh.overtraedelser) {
-      ud.push({ tjek: "Køre-hviletid", tone: "bad", tekst: o.tekst });
-    }
-  }
-
-  return ud;
-}
+   Skærmen VISER dem stadig; den afgør stadig ingenting. Se hovedet. */
 
 /* ---- Skærmen ---------------------------------------------------------- */
 
@@ -254,22 +186,27 @@ export default function Disponering() {
 
   /* --- Ugesvisning: etaper --- */
   const ugensEtaper = DEMO_ETAPER.filter(
-    (e) => e.koeretoejId && e.fra < ugeTil && ugeFra < e.til
+    (e) => enhedsIder(e).length && e.fra < ugeTil && ugeFra < e.til
   );
   const ugeRaekker = useMemo(() => {
-    const ider = new Set(ugensEtaper.map((e) => e.koeretoejId));
+    /* ⚠ ALLE ETAPENS ENHEDER FÅR EN RÆKKE. En sættevognstur optager både
+       trækkeren og traileren, og tegnede gitteret kun trækkeren, ville
+       traileren se fri ud i hele turen — præcis den fejl reservationen på
+       begge enheder findes for at undgå. */
+    const ider = new Set(ugensEtaper.flatMap(enhedsIder));
     return DEMO_KOERETOEJER.filter((b) => ider.has(b.id)).map((b) => ({
       id: b.id, label: b.kaldenavn, under: b.navn,
     }));
   }, [ugeFra, ugeTil]);
 
-  const ugeBlokke = ugensEtaper.map((e) => ({
-    id: e.id, raekkeId: e.koeretoejId, fra: e.fra, til: e.til,
+  /* Én blok pr. (etape, enhed): turen tegnes på hver af sine enheders rækker. */
+  const ugeBlokke = ugensEtaper.flatMap((e) => enhedsIder(e).map((raekkeId) => ({
+    id: `${e.id}__${raekkeId}`, raekkeId, fra: e.fra, til: e.til,
     label: `${e.fraSted} → ${e.tilSted}`,
     titel: `${e.fraSted} → ${e.tilSted} · ETA ${e.etaMs ? datoTid(e.etaMs) : "ukendt"}` +
            (krydserGraense(e) ? ` · ${e.graenseovergange.map(graenseLabel).join(", ")}` : " · kun Danmark"),
     tone: e.tilstand === "reserveret" ? "ok" : e.tilstand === "afventerKoord" ? "warn" : "info",
-  }));
+  })));
 
   if (henter) return <Henter hvad="disponering" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -277,19 +214,19 @@ export default function Disponering() {
   /* --- Tjekkene, kørt på det viste vindue --- */
   const fund = [];
   for (const e of ugensEtaper) {
-    const bil = bilEfterId.get(e.koeretoejId);
+    const enheder = enhedsIder(e).map((id) => bilEfterId.get(id)).filter(Boolean);
     const person = personEfterId.get(e.personId);
     const kompetencer = DEMO_KOMPETENCER.filter((c) => c.personId === e.personId);
     /* Chaufførens strækninger i vinduet — køre-hviletid gælder personen, ikke
        turen, så alle hans ture skal med. */
     const straekninger = DEMO_ETAPER
       .filter((x) => x.personId === e.personId)
-      .map((x) => ({ id: x.id, fra: x.fra, til: x.til }));
+      .map(straekningFraEtape);
 
     const resv = reservationerFraEtape(e).map((r, i) => ({ id: `r-${e.id}-${i}`, ...r }));
-    for (const f of tjekAlt({
-      post: { reservationer: resv },
-      enheder: [bil].filter(Boolean),
+    for (const f of tjekDisponering({
+      reservationerForEtapen: resv,
+      enheder,
       person, kompetencer, reservationer, straekninger, gods: e.maengde,
     })) {
       fund.push({ ...f, id: `${e.id}-${fund.length}`, hvor: `${e.id} · ${e.fraSted} → ${e.tilSted}` });

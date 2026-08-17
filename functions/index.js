@@ -59,6 +59,11 @@ import {
   byggGrundlag, validerLinje, kanGodkende, godkend, kanEksportere, laas,
   naesteGrundlagsnummer, fraDb, kanLaase,
 } from "./delt/grundlag.js";
+import { kanSkifteEtape, byggEtapeSkifte } from "./delt/booking-state.js";
+import {
+  reservationerFraEtape, enhedsIder, straekningFraEtape,
+} from "./delt/etaper.js";
+import { tjekDisponering } from "./delt/disponering.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
@@ -2264,3 +2269,281 @@ async function logGrundlag(tenantId, uid, handling, id, foer, efter, note) {
       note: note ?? null,
     });
 }
+
+/** Sporet fra et etapeskift.
+ *
+ * ⚠ KLASSEN UDLEDES, DEN GÆTTES IKKE HER. `klasseFor()` i audit-regler.js
+ * kender `etaper` som et REGNSKABSOBJEKT — en etape bliver til en linje på et
+ * fakturagrundlag, og sporet skal leve lige så længe som den faktura. Skrev
+ * funktionen sin egen klasse, ville halvdelen af en fakturas historik have en
+ * anden levetid end den anden.
+ *
+ * ⚠ OG EN AFVIST DISPONERING ER EN SIKKERHEDSHÆNDELSE. `adgangNaegtet` står
+ * på SIKKERHEDSHANDLINGER og lander derfor i en anden partition end
+ * tilstandsskiftet — det er også `klasseFor()`s afgørelse, ikke vores. */
+async function logEtape(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "etaper");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "etaper", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null,
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ETAPESKIFT — DEN ENESTE VEJ IND I `etaper` OG `reservationer`
+
+   Begge noder er `.write: false` for ALLE, også admin, og det er ikke en
+   manglende rettighed. Tre ting kan ikke håndhæves af en klient:
+
+     1. TILSTANDSSKIFTET følger ETAPE_OVERGANGE i booking-state.js, og
+        beslutning 5 siger at disponenten ikke må godkende sit eget forslag.
+        Et rolletjek i en browser kan omgås.
+
+     2. RESERVATIONEN SKAL SKRIVES SAMMEN MED SKIFTET. I prototypen stod der
+        DE-QR 777 med afgang 28/6 i reservationstabellen og DE-KL 404 den 24/6
+        i timelinen — fordi svaret og reservationen var to poster. Der må ikke
+        være to steder at være uenige. Her er det ÉN `rod.update()`.
+
+     3. DE FEM DISPONERINGSTJEK SKAL BLOKERE. De har været bygget og testet i
+        månedsvis uden at noget kaldte dem; siden viste Disponering dem. At
+        VISE en spærring er ikke at håndhæve den — ligger kontrollen i
+        skærmen, går et direkte kald uden om den.
+
+   ⚠ OG TJEKKENE ER DE SAMME FUNKTIONER SOM SKÆRMEN BRUGER.
+   `tjekDisponering()` i den delte `disponering.js` er ét sted, og serveren
+   afviser med NØJAGTIG den sætning disponenten fik at se. To formuleringer af
+   den samme spærring ville være to forklaringer på én ting.
+
+   ⚠ TO DISPONENTER KAN RAMME SAMME SEKUND. Konflikttjekket læser
+   reservationerne, og skrivningen sker bagefter — vinduet kan ikke lukkes med
+   en transaktion, fordi flere ressourcer skal ændres sammen. Det er samme
+   afvejning som i `bevaegelseskriv`: garantér det der ikke må gå galt (ingen
+   reservation uden etape, ingen etape uden reservation), og gør resten
+   SYNLIGT. Funktionen læser konflikterne igen bagefter og logger en auditpost
+   hvis der opstod en. En dobbeltbooking er noget en disponent skal se — ikke
+   noget der skal rettes i stilhed.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Etapens noder, eller en fejl der siger hvad der manglede. */
+async function hentEtape(rod, id) {
+  if (!id) throw new HttpsError("invalid-argument", "etapeId mangler.");
+  const e = (await rod.child(`etaper/${id}`).once("value")).val();
+  if (!e) throw new HttpsError("not-found", `Etapen ${id} findes ikke.`);
+  return { ...e, id };
+}
+
+/**
+ * Reservationerne for de ressourcer etapen rører, i den form
+ * `tjekDisponering()` slår op i: { <type>: { <id>: [poster] } }.
+ *
+ * ⚠ KUN DE RESSOURCER DER ER I SPIL. Et opslag på hele `reservationer` ville
+ * hente hver eneste bil og medarbejder i huset ned for at bruge to af dem.
+ */
+async function hentReservationer(rod, poster) {
+  const ud = {};
+  for (const r of poster) {
+    ud[r.ressourceType] ??= {};
+    if (ud[r.ressourceType][r.ressourceId]) continue;
+    const snap = await rod
+      .child(`reservationer/${r.ressourceType}/${r.ressourceId}`)
+      .once("value");
+    ud[r.ressourceType][r.ressourceId] =
+      Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+  }
+  return ud;
+}
+
+export const etapeskift = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const rolle = kortStreng(auth.token?.rolle, 40) || null;
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE, og reglerne er det eneste sted
+     abonnements- og modulspærringen ellers står. Uden de to linjer var
+     funktionen en åben dør rundt om begge. */
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("booking").val() !== true) {
+    throw new HttpsError("permission-denied", "Booking-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const etapeId = kortStreng(d.etapeId, 60);
+  const tilTilstand = kortStreng(d.tilTilstand, 30);
+  const begrundelse = kortStreng(d.begrundelse, 300) || null;
+  const valgtForslagId = kortStreng(d.valgtForslagId, 60) || null;
+  const senestMs = Number.isFinite(Number(d.senestMs)) ? Number(d.senestMs) : null;
+
+  const etape = await hentEtape(rod, etapeId);
+
+  /* ---- Må brugeren det, og må etapen? -------------------------------- */
+  /* ⚠ SAMME kanSkifteEtape() SOM SKÆRMEN. Den bærer beslutning 5 (disponenten
+     godkender ikke sit eget forslag) som en PERMISSION frem for en rolleliste,
+     og den kræver en begrundelse hvor overgangen kræver en. */
+  const tjek = kanSkifteEtape(
+    { ...etape, valgtForslagId: valgtForslagId ?? etape.valgtForslagId },
+    tilTilstand, perms, { begrundelse });
+  if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsag);
+
+  const opdatering = {};
+  let spaerringer = [];
+
+  /* ---- Går den til RESERVERET, bindes ressourcerne ------------------- */
+  if (tilTilstand === "reserveret") {
+    /* Forslaget siger HVEM og HVAD. Etapen bærer det først når skiftet er
+       skrevet — indtil da er forslaget det eneste sted det står. */
+    const forslag = Object.values(etape.forslag || {})
+      .find((f) => f.id === (valgtForslagId ?? etape.valgtForslagId));
+    if (!forslag) {
+      throw new HttpsError("failed-precondition",
+        "Det valgte forslag findes ikke på etapen.");
+    }
+
+    const paaEtapen = {
+      ...etape,
+      koeretoejIder: forslag.koeretoejIder || null,
+      personId: forslag.personId || null,
+    };
+    const ider = enhedsIder(paaEtapen);
+    if (!ider.length || !paaEtapen.personId) {
+      throw new HttpsError("failed-precondition",
+        "Forslaget mangler enten køretøj eller chauffør.");
+    }
+
+    /* ---- Alt de fem tjek skal bruge -------------------------------- */
+    const enheder = [];
+    for (const id of ider) {
+      const k = (await rod.child(`koeretoejer/${id}`).once("value")).val();
+      if (!k) throw new HttpsError("not-found", `Køretøjet ${id} findes ikke.`);
+      enheder.push({ ...k, id });
+    }
+    const p = (await rod.child(`personale/${paaEtapen.personId}`).once("value")).val();
+    if (!p) throw new HttpsError("not-found", `Medarbejderen ${paaEtapen.personId} findes ikke.`);
+    const person = { ...p, id: paaEtapen.personId };
+
+    const alleKomp = (await rod.child("kompetencer").once("value")).val() || {};
+    const kompetencer = Object.entries(alleKomp)
+      .map(([id, v]) => ({ id, ...v }))
+      .filter((c) => c.personId === person.id);
+
+    /* ⚠ KØRE-HVILETID GÆLDER PERSONEN, IKKE TUREN. Alle chaufførens etaper
+       skal med, ellers kan han få sin fjerde tur i træk fordi hver enkelt så
+       lovlig ud for sig. */
+    const alleEtaper = (await rod.child("etaper").once("value")).val() || {};
+    const straekninger = Object.entries(alleEtaper)
+      .map(([id, v]) => ({ id, ...v }))
+      .filter((x) => x.personId === person.id && x.id !== etape.id)
+      .map(straekningFraEtape)
+      .concat([straekningFraEtape(etape)]);
+
+    const nye = reservationerFraEtape(paaEtapen);
+    const reservationer = await hentReservationer(rod, nye);
+
+    /* ---- DE FEM TJEK, OG DE BLOKERER ------------------------------- */
+    const raekker = tjekDisponering({
+      reservationerForEtapen: nye,
+      enheder, person, kompetencer, reservationer, straekninger,
+      gods: etape.maengde || {},
+    });
+    spaerringer = raekker.filter((r) => r.tone === "bad");
+    if (spaerringer.length) {
+      /* ⚠ SERVERENS AFVISNING ER SKÆRMENS EGEN SÆTNING. Se hovedet i
+         disponering.js: to formuleringer af den samme spærring ville være to
+         forklaringer på én ting. */
+      throw new HttpsError("failed-precondition",
+        `${spaerringer[0].tjek}: ${spaerringer[0].tekst}` +
+        (spaerringer.length > 1 ? ` (+${spaerringer.length - 1} mere)` : ""));
+    }
+
+    /* ---- Etapen får sine ressourcer, og de bindes ------------------ */
+    opdatering[`etaper/${etapeId}/koeretoejIder`] =
+      Object.fromEntries(ider.map((id) => [id, true]));
+    opdatering[`etaper/${etapeId}/personId`] = paaEtapen.personId;
+
+    for (const [i, r] of nye.entries()) {
+      /* Reservationens id er UDLEDT af etapen, ikke en push-nøgle. Så kan den
+         samme etape ikke lægge to reservationer på den samme ressource, hvis
+         funktionen kaldes to gange — og frigivelsen ved et senere skifte kan
+         finde dem uden at søge. */
+      const resId = `res-${etapeId}-${i}`;
+      opdatering[`reservationer/${r.ressourceType}/${r.ressourceId}/${resId}`] = {
+        fra: r.fra, til: r.til,
+        kilde: r.kilde,
+        oprettetAf: uid,
+        oprettetMs: Date.now(),
+      };
+    }
+  }
+
+  /* ---- Forlader den RESERVERET, frigives ressourcerne --------------- */
+  /* ⚠ EN ANNULLERET TUR SKAL GIVE BILEN FRI IGEN. Blev reservationen
+     stående, ville bilen se optaget ud resten af ugen — og den næste
+     disponent ville lede efter en tur der ikke findes. */
+  if (etape.tilstand === "reserveret" && tilTilstand !== "reserveret") {
+    for (const [i, r] of reservationerFraEtape(etape).entries()) {
+      opdatering[`reservationer/${r.ressourceType}/${r.ressourceId}/res-${etapeId}-${i}`] = null;
+    }
+    opdatering[`etaper/${etapeId}/koeretoejIder`] = null;
+    opdatering[`etaper/${etapeId}/personId`] = null;
+  }
+
+  /* ---- Selve skiftet ------------------------------------------------ */
+  const skifte = byggEtapeSkifte(etape, tilTilstand, {
+    rolle, bruger: uid, begrundelse, valgtForslagId, senestMs,
+  });
+  for (const [felt, vaerdi] of Object.entries(skifte)) {
+    opdatering[`etaper/${etapeId}/${felt}`] = vaerdi;
+  }
+
+  /* ⚠ ÉN SKRIVNING. Etapen, dens ressourcer og reservationerne lander sammen
+     eller slet ikke. To kald ville være to udfald — og prototypens DE-QR 777
+     mod DE-KL 404 var netop to poster der kunne blive uenige. */
+  await rod.update(opdatering);
+
+  /* ---- Opstod der en konflikt i vinduet? ---------------------------- */
+  /* ⚠ DET KAN SKE, og så skal det være LARMENDE frem for tavst. Se hovedet:
+     vinduet mellem tjekket og skrivningen kan ikke lukkes, når flere
+     ressourcer skal bindes sammen. En dobbeltbooking er noget en disponent
+     skal se. */
+  if (tilTilstand === "reserveret") {
+    const nye = reservationerFraEtape({
+      ...etape,
+      koeretoejIder: opdatering[`etaper/${etapeId}/koeretoejIder`],
+      personId: opdatering[`etaper/${etapeId}/personId`],
+    });
+    const efter = await hentReservationer(rod, nye);
+    const igen = tjekDisponering({
+      reservationerForEtapen: nye, enheder: [], reservationer: efter,
+    }).filter((r) => r.tone === "bad");
+    if (igen.length) {
+      await logEtape(tenantId, uid, AUDIT.adgangNaegtet, etapeId,
+        null, { tilstand: tilTilstand },
+        `konflikt opstod efter skrivning: ${igen[0].tekst}`);
+    }
+  }
+
+  await logEtape(tenantId, uid, AUDIT.tilstandsskift, etapeId,
+    { tilstand: etape.tilstand }, { tilstand: tilTilstand },
+    `etape ${etapeId} ${etape.tilstand} -> ${tilTilstand}`);
+
+  return { ok: true, id: etapeId, tilstand: tilTilstand };
+});
