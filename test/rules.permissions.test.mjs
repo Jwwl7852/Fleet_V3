@@ -47,6 +47,14 @@ before(async () => {
        kaster FIREBASE FATAL ERROR. */
     const db = ctx.database();
     await set(ref(db, `tenants/${T}/_findes`), true);
+    /* ⚠ LEVERANDOEREN SKAL FINDES. indkoeb.leverandoerId og
+       fakturaer.leverandoerId slaar nu op i leverandoerer/ — beslutning 18,
+       og samme tjek som valideIndkoeb() laver i formularen. Uden posten her
+       fejler enhver indkoebsskrivning i suiten, og den fejl ville ligne en
+       manglende permission. */
+    await set(ref(db, `tenants/${T}/leverandoerer/lv-hydra`), {
+      navn: "Hydra-Grene Kolding", kategori: "reservedele", aktiv: true,
+    });
     await set(ref(db, sti("indberetninger", "andres")), {
       division: "gods", type: "braendstof", km: 100, oprettetAf: "enAnden",
     });
@@ -124,6 +132,13 @@ describe("serveren håndhæver permissions", () => {
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", dato: 1786000000000,
         leverandoerId: "lv-hydra", vare: "Slange", antal: 1, prisPrEnhedOere: 1850,
         fakturastatus: "modtaget" }],
+      /* ⚠ leverandoerer DELER indkoeb.skriv — den har ikke sin egen.
+         En leverandoer er en del af Indkoeb, og en permission mere ville
+         betyde en rolle der kan registrere et indkoeb men ikke oprette den
+         leverandoer indkoebet kraever. Prøven staar her for at sharingen er
+         BESLUTTET frem for overset: en bruger uden indkoeb.skriv afvises
+         stadig, og det er halvdelen der betyder noget. */
+      ["leverandoerer", PERM.indkoebSkriv, { navn: "Ny Leverandoer", kategori: "daek" }],
       ["satser", PERM.satserSkriv, { post: { satser: [] } }],
       ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],
     ];

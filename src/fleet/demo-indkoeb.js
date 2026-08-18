@@ -40,7 +40,10 @@ const dag = (n) => D0 + n * DAG;
  *
  * `kontaktEmail` bliver startlisten af parter på en sag (beslutning 20).
  */
-export const DEMO_LEVERANDOERER = [
+/* ⚠ IKKE EKSPORTERET. Den eksporterede DEMO_LEVERANDOERER samles nederst i
+   filen, med prislisten påsat — se noten dér. Listen her er kun det der er
+   SKREVET i hånden; nodens form er den samlede. */
+const LEVERANDOERER_BASIS = [
   { id: "lv-mercedes", navn: "Mercedes Greve", cvr: "18447291", kategori: "vaerksted",
     division: "gods", aktiv: true, aftale: { type: "rammeaftale", gyldigFra: dag(-400) },
     kontaktEmail: "service@mercedes-greve.dk", kontaktTelefon: "43 90 22 10" },
@@ -364,7 +367,101 @@ export const demoFakturaerFor = (leverandoerId) =>
  *  match" tæller — BEREGNET af listen, ikke gemt. */
 export const demoUdenMatch = () => DEMO_FAKTURAER.filter((f) => !f.indkoebId && f.status !== "afvist");
 
-/* ---- Selvkontrol ------------------------------------------------------- */
+
+/* ---- Prislister. BESLUTNING 25 ---------------------------------------- */
+
+/**
+ * ⚠ PRISLISTEN LIGGER FOR SIG, IKKE PÅ LEVERANDØREN.
+ *
+ * Ikke af pænhed: en prisliste kan have hundredvis af rækker med flere års
+ * historik, og den skal IKKE hentes med hver eneste leverandøroversigt.
+ * Formen her svarer til den node den bliver — `prislister/<leverandoerId>` —
+ * så skærmen bygges mod det rigtige og ikke skal laves om.
+ *
+ * ⚠ EN SATS OVERSKRIVES ALDRIG. Ny post med gyldigFra. BESLUTNING 7.
+ * Bemærk Mercedes' motorolie: tre rækker for samme vare. Den ældste gjaldt da
+ * vi købte i marts, og det er DEN en marts-faktura skal måles mod. Den nyeste
+ * træder først i kraft til oktober og må gerne stå der allerede — det er hele
+ * grunden til at kommendePriser() findes.
+ *
+ * ⚠ VARENUMMERET ER NØGLEN, IKKE VARENAVNET. En prisliste kan ikke matches på
+ * fritekst: "Motorolie 5W30", "Motorolie 5w-30" og "Olie 5W30" er samme vare
+ * for et menneske og tre for en maskine. Det er Bil 104 med to nummerplader,
+ * denne gang på en oliedunk.
+ */
+export const DEMO_PRISLISTER = {
+  "lv-mercedes": [
+    { id: "pl-olie-1", varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4200, gyldigFra: dag(-160) },
+    { id: "pl-olie-2", varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4600, gyldigFra: dag(-70) },
+    /* Kommende regulering — gælder ikke endnu, men kan ses. */
+    { id: "pl-olie-3", varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4900, gyldigFra: dag(53) },
+    { id: "pl-time-1", varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 79500, gyldigFra: dag(-400) },
+    { id: "pl-time-2", varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 84500, gyldigFra: dag(-35) },
+  ],
+  "lv-hydra": [
+    { id: "pl-hyd-1", varenummer: "HYD-38", vare: "Hydraulikslange 3/8\"", enhed: "stk", prisOere: 1750, gyldigFra: dag(-800) },
+    { id: "pl-brk-1", varenummer: "BRK-A2", vare: "Bremseklods, aksel 2", enhed: "sæt", prisOere: 78500, gyldigFra: dag(-800) },
+  ],
+  "lv-daekteam": [
+    { id: "pl-daek-1", varenummer: "DAEK-31570", vare: "Dæk 315/70 R22.5", enhed: "stk", prisOere: 398000, gyldigFra: dag(-540) },
+  ],
+  "lv-circlek": [
+    { id: "pl-diesel-1", varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1118, gyldigFra: dag(-90) },
+    { id: "pl-diesel-2", varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1142, gyldigFra: dag(-30) },
+  ],
+};
+
+/**
+ * Leverandørerne, som noden ser ud: entiteten MED sin prisliste.
+ *
+ * ⚠ HER STOD medPrisliste(), OG SKÆRMEN SKULLE HUSKE AT KALDE DEN. Prislisten
+ * lå i sin egen tabel, og den der glemte fletningen, fik en leverandør uden
+ * priser — hvilket ser ud som en leverandør vi ikke har en aftale med. Det er
+ * samme fejl som to demo-datasæt: to steder der beskriver den samme
+ * leverandør, hvor kun det ene bliver læst.
+ *
+ * Nu er de ét objekt, fordi det er ét objekt i `leverandoerer/<id>`:
+ * prislisten er et BARN af leverandøren, ikke en tabel ved siden af. Den
+ * authored del står stadig for sig i DEMO_PRISLISTER — det er læsbarheden,
+ * ikke formen.
+ */
+export const DEMO_LEVERANDOERER = LEVERANDOERER_BASIS.map((l) => ({
+  ...l,
+  prisliste: DEMO_PRISLISTER[l.id] || [],
+}));
+
+/**
+ * Sager pr. leverandør, til svartiden. Kun det de seks nøgletal skal bruge —
+ * den fulde sagsmodel ligger i demo-sag.js.
+ *
+ * ⚠ DEN SIDSTE ER UBESVARET MED VILJE. En ubesvaret sag har ingen svartid, den
+ * har en alder; regnede vi den med som en meget lang svartid, ville tallet
+ * blande "de svarer langsomt" med "de har ikke svaret".
+ */
+export const DEMO_LEVERANDOERSAGER = [
+  { id: "ls-1", leverandoerId: "lv-mercedes", oprettetMs: dag(-20), foersteSvarMs: dag(-20) + 3 * 3600000 },
+  { id: "ls-2", leverandoerId: "lv-mercedes", oprettetMs: dag(-14), foersteSvarMs: dag(-14) + 5 * 3600000 },
+  { id: "ls-3", leverandoerId: "lv-mercedes", oprettetMs: dag(-6), foersteSvarMs: dag(-6) + 2 * 3600000 },
+  { id: "ls-4", leverandoerId: "lv-mercedes", oprettetMs: dag(-40), foersteSvarMs: null },
+  { id: "ls-5", leverandoerId: "lv-crawford", oprettetMs: dag(-11), foersteSvarMs: dag(-11) + 26 * 3600000 },
+  { id: "ls-6", leverandoerId: "lv-daekteam", oprettetMs: dag(-9), foersteSvarMs: dag(-9) + 1 * 3600000 },
+];
+
+/* ---- Selvkontrol -------------------------------------------------------
+ *
+ * ⚠ DEN STÅR NEDERST, OG DET ER IKKE KOSMETIK. Blokken læser
+ * DEMO_LEVERANDOERER, som nu SAMLES af LEVERANDOERER_BASIS og
+ * DEMO_PRISLISTER længere nede i filen. Står kontrollen før, kaster den
+ * "Cannot access 'DEMO_LEVERANDOERER' before initialization" ved import —
+ * og hele modulet fejler, ikke bare kontrollen.
+ *
+ * ⚠ OG npm test VAR GRØN MENS APPEN VAR HVID. Blokken kører kun under
+ * `import.meta.env?.DEV`, som er undefined i node — så suiten sprang den
+ * over, og fejlen viste sig først i browseren. En selvkontrol prøverne ikke
+ * kan nå, er en kontrol der selv er uden kontrol. Det er en pris ved formen,
+ * ikke en fejl i den her fil; men den skal stå skrevet, så den næste ikke
+ * tror at grønne prøver betyder at demo-sættet er læst.
+ */
 
 if (import.meta.env?.DEV) {
   const lvIder = new Set(DEMO_LEVERANDOERER.map((l) => l.id));
@@ -473,69 +570,3 @@ if (import.meta.env?.DEV) {
     );
   }
 }
-
-/* ---- Prislister. BESLUTNING 25 ---------------------------------------- */
-
-/**
- * ⚠ PRISLISTEN LIGGER FOR SIG, IKKE PÅ LEVERANDØREN.
- *
- * Ikke af pænhed: en prisliste kan have hundredvis af rækker med flere års
- * historik, og den skal IKKE hentes med hver eneste leverandøroversigt.
- * Formen her svarer til den node den bliver — `prislister/<leverandoerId>` —
- * så skærmen bygges mod det rigtige og ikke skal laves om.
- *
- * ⚠ EN SATS OVERSKRIVES ALDRIG. Ny post med gyldigFra. BESLUTNING 7.
- * Bemærk Mercedes' motorolie: tre rækker for samme vare. Den ældste gjaldt da
- * vi købte i marts, og det er DEN en marts-faktura skal måles mod. Den nyeste
- * træder først i kraft til oktober og må gerne stå der allerede — det er hele
- * grunden til at kommendePriser() findes.
- *
- * ⚠ VARENUMMERET ER NØGLEN, IKKE VARENAVNET. En prisliste kan ikke matches på
- * fritekst: "Motorolie 5W30", "Motorolie 5w-30" og "Olie 5W30" er samme vare
- * for et menneske og tre for en maskine. Det er Bil 104 med to nummerplader,
- * denne gang på en oliedunk.
- */
-export const DEMO_PRISLISTER = {
-  "lv-mercedes": [
-    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4200, gyldigFra: dag(-160) },
-    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4600, gyldigFra: dag(-70) },
-    /* Kommende regulering — gælder ikke endnu, men kan ses. */
-    { varenummer: "OLIE-5W30", vare: "Motorolie 5W30", enhed: "l", prisOere: 4900, gyldigFra: dag(53) },
-    { varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 79500, gyldigFra: dag(-400) },
-    { varenummer: "TIME-MEK", vare: "Mekanikertime", enhed: "time", prisOere: 84500, gyldigFra: dag(-35) },
-  ],
-  "lv-hydra": [
-    { varenummer: "HYD-38", vare: "Hydraulikslange 3/8\"", enhed: "stk", prisOere: 1750, gyldigFra: dag(-800) },
-    { varenummer: "BRK-A2", vare: "Bremseklods, aksel 2", enhed: "sæt", prisOere: 78500, gyldigFra: dag(-800) },
-  ],
-  "lv-daekteam": [
-    { varenummer: "DAEK-31570", vare: "Dæk 315/70 R22.5", enhed: "stk", prisOere: 398000, gyldigFra: dag(-540) },
-  ],
-  "lv-circlek": [
-    { varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1118, gyldigFra: dag(-90) },
-    { varenummer: "DIESEL-B7", vare: "Diesel B7", enhed: "liter", prisOere: 1142, gyldigFra: dag(-30) },
-  ],
-};
-
-/**
- * Leverandøren med sin prisliste påsat. Skærmen kalder denne frem for at
- * flette selv — to steder der fletter, kan flette forskelligt.
- */
-export const medPrisliste = (l) => ({ ...l, prisliste: DEMO_PRISLISTER[l?.id] || [] });
-
-/**
- * Sager pr. leverandør, til svartiden. Kun det de seks nøgletal skal bruge —
- * den fulde sagsmodel ligger i demo-sag.js.
- *
- * ⚠ DEN SIDSTE ER UBESVARET MED VILJE. En ubesvaret sag har ingen svartid, den
- * har en alder; regnede vi den med som en meget lang svartid, ville tallet
- * blande "de svarer langsomt" med "de har ikke svaret".
- */
-export const DEMO_LEVERANDOERSAGER = [
-  { id: "ls-1", leverandoerId: "lv-mercedes", oprettetMs: dag(-20), foersteSvarMs: dag(-20) + 3 * 3600000 },
-  { id: "ls-2", leverandoerId: "lv-mercedes", oprettetMs: dag(-14), foersteSvarMs: dag(-14) + 5 * 3600000 },
-  { id: "ls-3", leverandoerId: "lv-mercedes", oprettetMs: dag(-6), foersteSvarMs: dag(-6) + 2 * 3600000 },
-  { id: "ls-4", leverandoerId: "lv-mercedes", oprettetMs: dag(-40), foersteSvarMs: null },
-  { id: "ls-5", leverandoerId: "lv-crawford", oprettetMs: dag(-11), foersteSvarMs: dag(-11) + 26 * 3600000 },
-  { id: "ls-6", leverandoerId: "lv-daekteam", oprettetMs: dag(-9), foersteSvarMs: dag(-9) + 1 * 3600000 },
-];

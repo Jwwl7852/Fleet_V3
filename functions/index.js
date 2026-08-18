@@ -2724,21 +2724,26 @@ export const kpiaggregering = onSchedule(
     let skrevet = 0;
     for (const tenantId of Object.keys(kunderIndeks)) {
       const rod = db.ref(`tenants/${tenantId}`);
-      const [kunder, etaper, grundlag, opgaver, indkoeb, fakturaer] = await Promise.all([
-        rod.child("kunder").once("value").then((s) => raekker(s.val())),
-        rod.child("etaper").once("value").then((s) => raekker(s.val())),
-        rod.child("grundlag").once("value").then((s) => raekker(s.val())),
-        rod.child("opgaver").once("value").then((s) => raekker(s.val())),
-        rod.child("indkoeb").once("value").then((s) => raekker(s.val())),
-        rod.child("fakturaer").once("value").then((s) => raekker(s.val())),
-      ]);
+      const [kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer] =
+        await Promise.all([
+          rod.child("kunder").once("value").then((s) => raekker(s.val())),
+          rod.child("etaper").once("value").then((s) => raekker(s.val())),
+          rod.child("grundlag").once("value").then((s) => raekker(s.val())),
+          rod.child("opgaver").once("value").then((s) => raekker(s.val())),
+          rod.child("indkoeb").once("value").then((s) => raekker(s.val())),
+          rod.child("fakturaer").once("value").then((s) => raekker(s.val())),
+          /* Prislisten kommer med som et BARN af posten — raekker() laegger
+             kun det yderste id paa. beregnKpi() oversaetter selv med
+             leverandoerFraDb(); jobbet regner ikke. */
+          rod.child("leverandoerer").once("value").then((s) => raekker(s.val())),
+        ]);
 
       for (const division of KPI_DIVISIONER) {
         const sti = rod.child(`kpi/${division}`);
         const forrige = (await sti.child("current").once("value")).val();
         const nyt = beregnKpi({
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
-          forrige, nu,
+          leverandoerer, forrige, nu,
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

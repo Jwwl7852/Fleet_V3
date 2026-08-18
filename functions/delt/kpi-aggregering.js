@@ -46,6 +46,8 @@
  */
 import {
   MINDSTE_GRUNDLAG, indkoebBeloebOere, leveringspraecision,
+  prisPaa, leverandoerFraDb, AFTALETYPE,
+  PRISAFVIGELSE_GRAENSE_FAST_PCT, PRISAFVIGELSE_GRAENSE_SPOT_PCT,
 } from "./leverandoerer.js";
 
 /**
@@ -66,7 +68,11 @@ export const KILDER_DER_MANGLER = [
      på null. Det var ikke en manglende beslutning; det var et seed.
      `fakturaer` blev seedet i samme omgang, fordi indkøbets nøgletal ikke kan
      regnes uden dem: en faktura er den anden halvdel af et indkøb. */
-  "facility", "lagre", "leverandoerer",
+  /* ⚠ `leverandoerer` STOD HER, og den fandtes ikke engang i
+     firebase.rules.json — selv om BÅDE indkoeb og fakturaer har indekseret
+     leverandoerId siden de blev skrevet. Uden den var der ingen AFTALT pris
+     at måle en betalt pris imod, og prisafvigelserne var derfor null. */
+  "facility", "lagre",
 ];
 
 const DAG = 86400000;
@@ -111,9 +117,14 @@ export function udenKilde() {
        Felterne står med null frem for at blive udeladt: så kan man se af
        noden at spørgsmålet er stillet og ikke besvaret. */
     flaade: {
+      /* ⚠ ikkeLinkedeFakturaer OG braendstofOere STÅR IKKE HER.
+         De BEREGNES — se beregnKpi() — og stod de med null her, ville de
+         tælle med i efterslæbet. udenKilde() ER optællingen; er den to for
+         høj, holder man op med at tro på tallet. Felterne kommer på objektet
+         i beregnKpi(), og feltniveau-prøven mod demo-kpi holder dem der. */
       aktive: null, udeAfDrift: null, paaVaerksted: null, serviceInden30: null,
       omkostningPrKmOere: null, omkostningPrKmDeltaOere: null,
-      nedetidPct: null, ikkeLinkedeFakturaer: null, braendstofOere: null,
+      nedetidPct: null,
     },
     bemanding: {
       planlagt: null, disponeret: null, ledig: null, underbemandede: null,
@@ -297,7 +308,7 @@ export const deltaPct = (nyt, gammelt) => {
  * Det er ikke en teknikalitet: en umatchet faktura hører til begge, fordi
  * ingen endnu ved hvem der skal betale den. Det er netop derfor den skal ses.
  */
-export function indkoebstal(indkoeb = [], fakturaer = [], division, nu = Date.now()) {
+export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], division, nu = Date.now()) {
   const mine = indkoeb.filter((i) => iDivision(i, division));
   const linje = new Map(indkoeb.map((i) => [i.id, i]));
 
@@ -331,6 +342,7 @@ export function indkoebstal(indkoeb = [], fakturaer = [], division, nu = Date.no
     (i) => Number.isFinite(i.leveretMs) && !Number.isFinite(i.godkendtMs)).length;
 
   const levering = leveringspraecision(mine);
+  const afvig = prisafvigelser(indkoeb, leverandoerer, division);
 
   return {
     aabneOrdrer,
@@ -358,16 +370,69 @@ export function indkoebstal(indkoeb = [], fakturaer = [], division, nu = Date.no
 
     fakturaerTilGodkendelse: mineFakturaer.filter((f) => f.status === "modtaget").length,
 
-    /* ⚠ PRISAFVIGELSERNE KRÆVER EN AFTALT PRIS AT AFVIGE FRA.
-       Den står i leverandørens prisliste, og `leverandoerer/` findes ikke som
-       node — den står i firebase.rules.json overhovedet ikke. Uden den kan
-       vi kun se hvad vi BETALTE, og en afvigelse fra ingenting er ingen
-       afvigelse. 0 ville betyde "ingen afveg", og det er en helt anden
-       besked end "vi har ikke aftalen at måle mod".
-       beregnNoegletal() regner dem allerede pr. leverandør; den dag noden
-       findes, er det den samme prisPaa() der skal bruges her. */
-    indkoebsprisafvigelser: null,
-    indkoebsprisafvigelseSnitPct: null,
+    /* ⚠ HER STOD null, MED "leverandoerer/ findes ikke som node" SOM GRUND.
+       Nu findes den, og det er den SAMME prisPaa() beregnNoegletal() bruger
+       pr. leverandør — som noten lovede. De to kan derfor ikke blive uenige
+       om hvad en afvigelse er.
+       Stadig null hvis intet kunne måles: en leverandør uden prisliste har
+       ingen aftale at afvige fra, og 0 ville lyde som "ingen afveg". */
+    indkoebsprisafvigelser: afvig.antal,
+    indkoebsprisafvigelseSnitPct: afvig.snitPct,
+  };
+}
+
+/**
+ * Prisafvigelserne: hvad vi BETALTE, målt mod hvad vi AFTALTE.
+ *
+ * ⚠ MOD DEN PRIS DER GJALDT DA VI KØBTE — ikke mod dagens. Havde leverandøren
+ * en prisregulering i april, ville en faktura fra marts pludselig se forkert
+ * ud målt mod "aftalen", og afvigelsen ville pege på leverandøren frem for på
+ * os. prisPaa() slår derfor op PÅ INDKØBETS DATO.
+ *
+ * ⚠ OG EN LINJE UDEN AFTALT PRIS TÆLLER SLET IKKE MED — hverken som afvigelse
+ * eller som "ingen afvigelse". Et spotkøb af en vare der ikke står i
+ * prislisten, har ingen aftale at afvige fra. Talte vi den med som 0 %, ville
+ * gennemsnittet blive trukket mod nul af netop de køb ingen har forhandlet.
+ *
+ * ⚠ GRÆNSEN AFHÆNGER AF AFTALEFORMEN. En fastaftale der afviger 4 %, er et
+ * brud på aftalen; et spotkøb der gør det, er markedet. Samme tal, to
+ * betydninger — og en optælling der brugte én grænse, ville enten drukne
+ * brudene eller melde markedet som brud. Det er samme skel som
+ * prisafvigelseTone() bruger på skærmen, og de to læser de samme to
+ * konstanter.
+ *
+ * Returnerer `{antal, snitPct}`, begge `null` hvis intet kunne måles.
+ */
+export function prisafvigelser(indkoeb = [], leverandoerer = [], division) {
+  const kartotek = new Map(
+    leverandoerer.map((l) => [l.id, leverandoerFraDb(l, l.id)]));
+
+  const maalte = [];
+  for (const i of indkoeb) {
+    if (!iDivision(i, division)) continue;
+    const lev = kartotek.get(i.leverandoerId);
+    if (!lev) continue;
+    const aftalt = prisPaa(lev, i.varenummer, i.dato);
+    if (!aftalt || !Number.isInteger(aftalt.prisOere) || aftalt.prisOere === 0) continue;
+    if (!Number.isInteger(i.prisPrEnhedOere)) continue;
+
+    const pct = ((i.prisPrEnhedOere - aftalt.prisOere) / aftalt.prisOere) * 100;
+    const fast = AFTALETYPE[lev.aftale?.type]?.forventerFastPris;
+    const graense = fast
+      ? PRISAFVIGELSE_GRAENSE_FAST_PCT
+      : PRISAFVIGELSE_GRAENSE_SPOT_PCT;
+    maalte.push({ pct, over: Math.abs(pct) > graense });
+  }
+
+  /* ⚠ null OG IKKE 0 NÅR INTET KUNNE MÅLES. "Ingen afvigelser" og "vi har
+     ikke aftalen at måle mod" er to forskellige beskeder, og den ene beder om
+     ingenting mens den anden beder om en prisliste. */
+  if (!maalte.length) return { antal: null, snitPct: null };
+
+  const sum = maalte.reduce((s, m) => s + m.pct, 0);
+  return {
+    antal: maalte.filter((m) => m.over).length,
+    snitPct: Math.round((sum / maalte.length) * 10) / 10,
   };
 }
 
@@ -449,7 +514,7 @@ export const deltaPoint = (nyt, gammelt) => {
  */
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
-  indkoeb = [], fakturaer = [],
+  indkoeb = [], fakturaer = [], leverandoerer = [],
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
@@ -457,7 +522,7 @@ export function beregnKpi({
   const ikkeFakt = ikkeFaktureretOere(etaper, grundlag, division);
   const disp = disponeringstal(etaper, division);
   const opg = opgavetal(opgaver, division, nu);
-  const ind = indkoebstal(indkoeb, fakturaer, division, nu);
+  const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
 
   return {
     ...tomme,
@@ -483,8 +548,8 @@ export function beregnKpi({
          siger hvilket — se noten i demo-kpi.js. */
       leveranceTilTidenDeltaPoint: deltaPoint(
         ind.leveranceTilTidenPct, forrige?.indkoeb?.leveranceTilTidenPct),
-      /* Kan ikke regnes før afvigelserne selv kan. En delta af to null er
-         ikke 0 — den er stadig ubesvaret. */
+      /* ⚠ ANTAL, IKKE PROCENT — feltnavnet siger det. Nye afvigelser mod
+         forrige periode. */
       prisafvigelserDelta: deltaPct(
         ind.indkoebsprisafvigelser, forrige?.indkoeb?.indkoebsprisafvigelser),
     },

@@ -13,6 +13,7 @@ import {
   UDEN_DIVISION, KILDER_DER_MANGLER, iDivision, udenKilde,
   kundetal, ikkeFaktureretOere, disponeringstal,
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
+  prisafvigelser,
   deltaPct, deltaPoint, beregnKpi,
 } from "../src/fleet/kpi-aggregering.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
@@ -290,7 +291,7 @@ test("⚠ ÉN ORDRE MED TO LINJER ER ÉN ÅBEN ORDRE", () => {
     linje({ id: "a", reference: "ORD-1", leveretMs: null }),
     linje({ id: "b", reference: "ORD-1", leveretMs: null }),
     linje({ id: "c", reference: "ORD-2", leveretMs: null }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.aabneOrdrer, 2);
 });
 
@@ -300,12 +301,12 @@ test("⚠ EN LINJE UDEN REFERENCE TÆLLER FOR SIG SELV", () => {
   const t = indkoebstal([
     linje({ id: "a", leveretMs: null }),
     linje({ id: "b", leveretMs: null }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.aabneOrdrer, 2);
 });
 
 test("en leveret linje er ikke åben", () => {
-  const t = indkoebstal([linje({ id: "a", reference: "ORD-1" })], [], "gods", NU);
+  const t = indkoebstal([linje({ id: "a", reference: "ORD-1" })], [], [], "gods", NU);
   assert.equal(t.aabneOrdrer, 0);
 });
 
@@ -316,7 +317,7 @@ test("⚠ TIL TIDEN ER PÅ SEKUNDET, IKKE PÅ DAGEN", () => {
     linje({ id: "a", aftaltLeveringMs: NU, leveretMs: NU }),
     linje({ id: "b", aftaltLeveringMs: NU, leveretMs: NU + 1 }),
     linje({ id: "c", aftaltLeveringMs: NU, leveretMs: NU - 1 }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.leveranceTilTidenPct, 67);
 });
 
@@ -329,7 +330,7 @@ test("⚠ EN LINJE UDEN AFTALT TERMIN KAN IKKE VÆRE FORSINKET", () => {
     linje({ id: "b", aftaltLeveringMs: null }),
     linje({ id: "c", aftaltLeveringMs: null }),
     linje({ id: "d", aftaltLeveringMs: null }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.leveranceTilTidenPct, null,
     "én måling er ikke et grundlag — og 100 % ville se ud som en måling");
 });
@@ -341,7 +342,7 @@ test("⚠ MANGLER FAKTURA ER LINJENS EGET UDSAGN", () => {
   const t = indkoebstal([
     linje({ id: "a", fakturastatus: "mangler" }),
     linje({ id: "b", fakturastatus: "bogfoert" }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.manglerFaktura, 1);
 });
 
@@ -355,8 +356,8 @@ test("⚠ EN ULINKET FAKTURA TÆLLER I BEGGE DIVISIONER", () => {
     { id: "f1", status: "modtaget", indkoebId: "g" },
     { id: "f2", status: "modtaget", indkoebId: null },
   ];
-  assert.equal(indkoebstal(ind, fak, "gods", NU).fakturaerTilGodkendelse, 2);
-  assert.equal(indkoebstal(ind, fak, "bus", NU).fakturaerTilGodkendelse, 1);
+  assert.equal(indkoebstal(ind, fak, [], "gods", NU).fakturaerTilGodkendelse, 2);
+  assert.equal(indkoebstal(ind, fak, [], "bus", NU).fakturaerTilGodkendelse, 1);
 });
 
 test("⚠ EN HÆNGENDE REFERENCE ER ULINKET", () => {
@@ -378,18 +379,117 @@ test("⚠ MÅNEDENS FORBRUG ER KALENDERMÅNEDEN", () => {
   const t = indkoebstal([
     linje({ id: "a", dato: Date.UTC(2026, 7, 1), antal: 2, prisPrEnhedOere: 5000 }),
     linje({ id: "b", dato: Date.UTC(2026, 6, 31), antal: 9, prisPrEnhedOere: 5000 }),
-  ], [], "gods", NU);
+  ], [], [], "gods", NU);
   assert.equal(t.maanedensForbrugOere, 10000, "juli-linjen skal ikke med");
 });
 
-test("⚠ PRISAFVIGELSER ER null, IKKE 0", () => {
-  /* En afvigelse kræver en aftalt pris at afvige fra, og den står i
-     leverandørens prisliste — `leverandoerer/` findes ikke som node. 0 ville
-     betyde "ingen afveg", og det er en helt anden besked end "vi har ikke
-     aftalen at måle mod". */
-  const t = indkoebstal([linje()], [], "gods", NU);
+test("⚠ PRISAFVIGELSER ER null NÅR INTET KAN MÅLES", () => {
+  /* En afvigelse kræver en aftalt pris at afvige fra. Uden et kartotek er der
+     ingen — og 0 ville betyde "ingen afveg", som er en helt anden besked end
+     "vi har ikke aftalen at måle mod". */
+  const t = indkoebstal([linje()], [], [], "gods", NU);
   assert.equal(t.indkoebsprisafvigelser, null);
   assert.equal(t.indkoebsprisafvigelseSnitPct, null);
+});
+
+/* ---- Prisafvigelserne -------------------------------------------------- */
+
+/** En leverandør med én pris på VARE-1, gyldig fra tidernes morgen. */
+const lev = (o = {}) => ({
+  id: o.id || "lv-1", navn: "Leverandør", kategori: "reservedele",
+  aftale: { type: o.aftaletype || "fastaftale" },
+  prisliste: o.prisliste || [
+    { id: "p1", varenummer: "VARE-1", prisOere: 10000, gyldigFra: 0 },
+  ],
+});
+
+test("⚠ MÅLT MOD DEN PRIS DER GJALDT DA VI KØBTE", () => {
+  /* Havde leverandøren en regulering i juli, må en faktura fra juni ikke
+     pludselig se forkert ud målt mod "aftalen" — så ville afvigelsen pege på
+     leverandøren frem for på os. prisPaa() slår op PÅ INDKØBETS DATO. */
+  const juni = Date.UTC(2026, 5, 15);
+  const juli = Date.UTC(2026, 6, 1);
+  const leverandoerer = [lev({
+    prisliste: [
+      { id: "p1", varenummer: "VARE-1", prisOere: 10000, gyldigFra: 0 },
+      { id: "p2", varenummer: "VARE-1", prisOere: 20000, gyldigFra: juli },
+    ],
+  })];
+  /* Købt i juni til 10000 — præcis den pris der gjaldt DA. Ingen afvigelse,
+     selv om dagens pris er den dobbelte. */
+  const iJuni = prisafvigelser(
+    [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: juni, prisPrEnhedOere: 10000 })],
+    leverandoerer, "gods");
+  assert.equal(iJuni.snitPct, 0, "juni-købet skal måles mod juni-prisen");
+
+  /* Samme beløb købt i august er derimod 50 % UNDER den nye aftale. */
+  const iAugust = prisafvigelser(
+    [linje({ id: "b", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 10000 })],
+    leverandoerer, "gods");
+  assert.equal(iAugust.snitPct, -50);
+});
+
+test("⚠ EN LINJE UDEN AFTALT PRIS TÆLLER SLET IKKE MED", () => {
+  /* Hverken som afvigelse eller som "ingen afvigelse". Et spotkøb af en vare
+     der ikke står i prislisten, har ingen aftale at afvige fra — talte vi den
+     med som 0 %, ville gennemsnittet blive trukket mod nul af netop de køb
+     ingen har forhandlet. */
+  const leverandoerer = [lev()];
+  const t = prisafvigelser([
+    linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 12000 }),
+    linje({ id: "b", leverandoerId: "lv-1", varenummer: "UKENDT", dato: NU, prisPrEnhedOere: 99999 }),
+  ], leverandoerer, "gods");
+  assert.equal(t.snitPct, 20, "kun VARE-1 kan måles — 12000 mod 10000 er +20 %");
+});
+
+test("⚠ GRÆNSEN AFHÆNGER AF AFTALEFORMEN", () => {
+  /* En fastaftale der afviger 4 %, er et brud på aftalen; et spotkøb der gør
+     det, er markedet. Samme tal, to betydninger — én fælles grænse ville
+     enten drukne brudene eller melde markedet som brud. */
+  const koeb = (id) => linje({
+    id, leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 10400,
+  });
+  const fast = prisafvigelser([koeb("a")], [lev({ aftaletype: "fastaftale" })], "gods");
+  const spot = prisafvigelser([koeb("a")], [lev({ aftaletype: "spot" })], "gods");
+  assert.equal(fast.snitPct, 4);
+  assert.equal(spot.snitPct, 4, "samme tal");
+  assert.equal(fast.antal, 1, "4 % er over grænsen på en fastaftale");
+  assert.equal(spot.antal, 0, "4 % er under grænsen på et spotkøb");
+});
+
+test("⚠ EN AFVIGELSE NEDAD ER OGSÅ EN AFVIGELSE", () => {
+  /* Betalte vi 10 % MINDRE end aftalt, er noget galt med enten prislisten
+     eller fakturaen. En optælling der kun så opad, ville kalde en forkert
+     prisliste for en god handel. */
+  const t = prisafvigelser(
+    [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 9000 })],
+    [lev()], "gods");
+  assert.equal(t.antal, 1);
+  assert.equal(t.snitPct, -10);
+});
+
+test("en linje fra en ukendt leverandør kan ikke måles", () => {
+  const t = prisafvigelser(
+    [linje({ id: "a", leverandoerId: "lv-fantom", varenummer: "VARE-1", dato: NU })],
+    [lev()], "gods");
+  assert.equal(t.antal, null);
+  assert.equal(t.snitPct, null);
+});
+
+test("⚠ PRISLISTEN MÅ KOMME FRA BASEN SOM ET OBJEKT", () => {
+  /* RTDB har ingen arrays. Kom prislisten ind som {prisId: post} og blev den
+     ikke oversat, kastede prisPaa() ".filter is not a function" midt i
+     aggregeringen — og jobbet ville fejle for hele tenanten, ikke bare for
+     ét felt. */
+  const fraBasen = {
+    id: "lv-1", navn: "Leverandør", kategori: "reservedele",
+    aftale: { type: "fastaftale" },
+    prisliste: { p1: { varenummer: "VARE-1", prisOere: 10000, gyldigFra: 0 } },
+  };
+  const t = prisafvigelser(
+    [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 11000 })],
+    [fraBasen], "gods");
+  assert.equal(t.snitPct, 10);
 });
 
 test("⚠ BRÆNDSTOF SØGES PÅ KATEGORIEN, IKKE PÅ VARENAVNET", () => {

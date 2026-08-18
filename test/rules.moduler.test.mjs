@@ -52,6 +52,10 @@ const TESTDATA = {
     lokationer: { l1: { navn: "Depot Kolding", type: "depot" } },
     aktiver: { fa1: { navn: "Port 3", art: "port", status: "idrift", lokationId: "l1" } },
   },
+  /* ⚠ SAMME GRUND SOM lokationId OVENFOR: indkoeb.leverandoerId slaar op i
+     leverandoerer/, og uden en post her ville skrivningen fejle paa
+     VALIDERING og ligne en modulspaerring. */
+  leverandoerer: { lev1: { navn: "Leverandoer", kategori: "braendstof", aktiv: true } },
   indkoeb: { i1: { division: "gods", dato: "2026-08-01", leverandoerId: "lev1", vare: "Diesel", antal: 1000, prisPrEnhedOere: 1200, fakturastatus: "modtaget" } },
   lagre: { l1: { navn: "Hovedlager" } },
   bookinger: { b1: { tilstand: "kladde" } },

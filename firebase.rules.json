@@ -991,6 +991,102 @@
           }
         },
 
+        // ══════════════════════════════════════════════════════════════
+        // LEVERANDOEREN SOM ENTITET — beslutning 18, femte gang
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ NODEN FANDTES SLET IKKE I DENNE FIL. Modellen har regnet med den
+        // hele tiden: BAADE "indkoeb" og "fakturaer" har indekseret
+        // leverandoerId, siden de blev skrevet. Der var bare ikke noget at
+        // slaa op i, og imens stod leverandoerens navn som FRITEKST i tre
+        // demo-filer med hver sin stavemaade — "Mercedes Greve" i
+        // demo-vaerksted, i demo-sag og naesten i demo-indkoeb. Det er Bil 104
+        // med to nummerplader igen.
+        //
+        // ⚠ DIVISION: JA, SOM PAA KUNDER — IKKE SOM PAA PERSONALE.
+        // Proeven er om feltet beskriver LEVERANDOERENS forretning eller VORES
+        // organisation. Beslutning 19 forbyder det paa personale og
+        // koeretoejer, fordi vaerdien dér ville beskrive vores egen opdeling.
+        // Paa en leverandoer kan den begrundes: Mercedes Greve er et
+        // lastbilvaerksted, Crawford leverer porte til begge.
+        //
+        // Samme modulklausul som "indkoeb". Modsat "fakturaer", som staar i
+        // basen fordi to skaerme roerer den — en leverandoer roeres kun af
+        // Indkoeb.
+        "leverandoerer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".indexOn": ["aktiv", "kategori", "navn"],
+
+          "$leverandoerId": {
+            ".validate": "newData.hasChildren(['navn', 'kategori'])",
+
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+
+            // ⚠ CVR ER OTTE CIFRE, OG DET ER IKKE ET TAL. Et CVR med foranstillet
+            // nul ville miste nullet som number, og saa matcher det ikke
+            // registret. Samme grund som at et telefonnummer er en streng.
+            "cvr": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{8}$/)" },
+
+            "kategori": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|reservedele|daek|braendstof|facility|kontor|transport)$/)" },
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            // ⚠ EN LEVERANDOER SLETTES IKKE — han taget UD AF DRIFT. Hans
+            // fakturaer og indkoebslinjer peger paa ham, og et regnskab der
+            // henviser til en post der ikke findes, kan ikke efterproeves.
+            // Feltet er derfor ikke pynt: det er sletningens erstatning.
+            "aktiv": { ".validate": "newData.isBoolean()" },
+
+            "kontaktEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
+            "kontaktTelefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
+
+            "aftale": {
+              ".validate": "newData.hasChildren(['type'])",
+              // ⚠ AFTALEFORMEN AFGOER HVAD EN PRISAFVIGELSE BETYDER. En
+              // fastaftale der afviger 4 %, er et brud paa aftalen; et spotkoeb
+              // der goer det, er markedet. Samme tal, to betydninger — se
+              // prisafvigelseTone() i leverandoerer.js.
+              "type": { ".validate": "newData.isString() && newData.val().matches(/^(fastaftale|rammeaftale|spot)$/)" },
+              "gyldigFra": { ".validate": "newData.isNumber()" },
+              "gyldigTil": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            },
+
+            // ⚠ PRISLISTEN LIGGER PAA LEVERANDOEREN, IKKE I EN EGEN NODE.
+            // Den ER hans aftale med os, og prisPaa() slaar op i den. Laa den
+            // for sig, skulle to steder holdes i sync om hvem prisen tilhoerer.
+            //
+            // ⚠ OG DEN ER VERSIONERET PAA DATO. Enhver pris i et regnskab skal
+            // kunne slaas op PAA EN DATO: en faktura fra marts skal maales mod
+            // den pris der gjaldt i marts. Rettes prisen i stedet, ville
+            // afvigelsen pege paa leverandoeren frem for paa os.
+            //
+            // Formen er den SAMME som satser/$gruppe/satser — og forbeholdet
+            // derovre gaelder ordret her: reglen kan ikke forbyde en
+            // overskrivning uden ogsaa at forbyde en rettelse af en tastefejl
+            // samme dag. Den haandhaever FORMEN; beslutningen om at en ny pris
+            // er en NY post, haandhaeves af skaermen og af proeven paa den.
+            "prisliste": {
+              ".indexOn": ["gyldigFra", "varenummer"],
+              "$prisId": {
+                ".validate": "newData.hasChildren(['varenummer', 'prisOere', 'gyldigFra'])",
+                "varenummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "vare": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+                // Hele oere som alt andet, og med samme loft som indkoebets
+                // pris: en tastefejl med tre nuller for meget skal fanges her,
+                // ikke opdages i en afstemning.
+                "prisOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && newData.val() <= 10000000000" },
+                "gyldigFra": { ".validate": "newData.isNumber()" },
+                "oprettetAf": { ".validate": "newData.isString()" },
+                "oprettetMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
+            "$andet": { ".validate": false }
+          }
+        },
+
         // beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland
         // dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.
         // faelles er en lovlig division her: én dieselleverance dækker begge
@@ -1034,7 +1130,14 @@
             // ⚠ LEVERANDOEREN ER EN ENTITET, ikke en fritekststreng. Feltet
             // har hele tiden vaeret indekseret; noden fandtes bare ikke.
             // Imens stod navnene i tre demo-filer med hver sin stavemaade.
-            "leverandoerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            //
+            // Nu FINDES den, og opslaget er derfor et rigtigt opslag. Det er
+            // ikke en formalitet: uden det kan en indkoebslinje pege paa et
+            // leverandoer-id der aldrig har eksisteret, og saa staar der en
+            // tom celle i tabellen som ingen kan spore. Samme tjek staar paa
+            // fakturaer.leverandoerId — de to blev strammet SAMMEN, som
+            // noterne begge steder lovede.
+            "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
             "kategori": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|reservedele|daek|braendstof|facility|kontor|transport)$/)" },
             "fakturastatus": { ".validate": "newData.isString() && newData.val().matches(/^(mangler|modtaget|godkendt|bogfoert|afvist)$/)" },
 
@@ -1086,14 +1189,10 @@
             // uden om reglerne: en fejl ville ligge i basen, ikke blive afvist.
             ".validate": "newData.hasChildren(['leverandoerId', 'fakturanummer', 'fakturadatoMs', 'status', 'beloebOere'])",
 
-            // ⚠ INGEN EKSISTENSTJEK — ENDNU. Beslutning 18 siger at
-            // leverandoeren er en entitet, og et opslag mod leverandoerer/ er
-            // det rigtige. Men den node findes ikke i denne fil, og en regel
-            // der slaar op i en node der ikke findes, kan aldrig gaa igennem:
-            // den ville se ud som en spaerring og virke som en blokade.
-            // Naboen indkoeb.leverandoerId staar paa samme form. De to skal
-            // strammes SAMMEN, den dag noden bygges.
-            "leverandoerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            // ⚠ HER STOD "INGEN EKSISTENSTJEK — ENDNU", fordi leverandoerer/
+            // ikke fandtes i denne fil. Nu goer den, og tjekket er sat — samme
+            // dag som naboen indkoeb.leverandoerId, som noten lovede.
+            "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
             "fakturanummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "fakturadatoMs": { ".validate": "newData.isNumber()" },
             "forfaldMs": { ".validate": "newData.isNumber()" },

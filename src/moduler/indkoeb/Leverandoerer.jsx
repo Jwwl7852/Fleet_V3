@@ -37,39 +37,63 @@ import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE,
   beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG,
-  gaeldendePrisliste, kommendePriser, indkoebBeloebOere,
+  gaeldendePrisliste, kommendePriser, indkoebBeloebOere, leverandoerFraDb,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER,
-  medPrisliste, DEMO_LEVERANDOERSAGER,
+  DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
 } from "../../fleet/demo-indkoeb.js";
 import { useKpi } from "../../fleet/useKpi.js";
-
-const KILDER = {
-  indkoeb: DEMO_INDKOEBSLINJER,
-  fakturaer: DEMO_FAKTURAER,
-  sager: DEMO_LEVERANDOERSAGER,
-};
+import { useListe } from "../../fleet/useListe.js";
 
 export default function Leverandoerer() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+
+  /* ⚠ LEVERANDØREN KOM FRA demo-indkoeb.js INDTIL NODEN FANDTES. Den fandtes
+     ikke: `leverandoerer` stod slet ikke i firebase.rules.json, selv om BÅDE
+     indkoeb og fakturaer har indekseret leverandoerId siden de blev skrevet.
+
+     ⚠ division: "alle". Leverandøren BÆRER en division (modsat et køretøj —
+     se beslutning 19), men skærmen er hele kartoteket: Crawford leverer til
+     begge, og en indkøber i Gods skal kunne se hvem Bus handler med når han
+     skal finde en ny dækleverandør. Havde vi delt, ville en leverandør
+     forsvinde ud af listen uden at nogen havde ændret noget. */
+  const {
+    data: raa, henter: henterLev, tilstand: levTilstand, genindlaes: genindlaesLev,
+  } = useListe("leverandoerer", { ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500 });
+
+  const {
+    data: indkoeb, henter: henterIndkoeb,
+  } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500 });
+
   const [valgtId, setValgtId] = useState("lv-hydra");
 
-  if (henter) return <Henter hvad="leverandører" />;
+  if (henter || henterLev || henterIndkoeb) return <Henter hvad="leverandører" />;
+  /* En AFVIST læsning af kartoteket er ikke en tom liste — se noten i
+     Indkøb-oversigten. */
+  if (blokerer(levTilstand)) {
+    return <Datatilstand tilstand={levTilstand} genprov={genindlaesLev} />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  const aktive = DEMO_LEVERANDOERER.filter((l) => l.aktiv);
-  const valgt = DEMO_LEVERANDOERER.find((l) => l.id === valgtId) || null;
+  /* ⚠ OVERSAT FRA BASEN. `prisliste` er et objekt i RTDB og en array i
+     domænekoden — prisPaa() filtrerer på den. Uden det her kald kaster
+     ".filter is not a function" inde i beregnNoegletal(), og skærmen bliver
+     hvid. Det er den samme fejl fraDb() i grundlag.js findes for. */
+  const leverandoerer = raa.map((l) => leverandoerFraDb(l, l.id));
+  const KILDER = { indkoeb, fakturaer: DEMO_FAKTURAER, sager: DEMO_LEVERANDOERSAGER };
+
+  const aktive = leverandoerer.filter((l) => l.aktiv);
+  const valgt = leverandoerer.find((l) => l.id === valgtId) || null;
 
   /* Nøgletallene BEREGNES her — beslutning 6. Et gemt performancetal driver
      fra de fakturaer det blev regnet på, og så rangerer man sine leverandører
      efter et tal ingen kan genfinde. */
-  const raekker = aktive.map((l) => ({ l, n: beregnNoegletal(medPrisliste(l), KILDER) }));
+  const raekker = aktive.map((l) => ({ l, n: beregnNoegletal(l, KILDER) }));
 
-  const samletOere = DEMO_INDKOEBSLINJER.reduce((s, i) => s + indkoebBeloebOere(i), 0);
+  const samletOere = indkoeb.reduce((s, i) => s + indkoebBeloebOere(i), 0);
   const udenFaktura = raekker.reduce((s, r) => s + r.n.manglendeFakturaer.vaerdi, 0);
   /* AFLEDT af listen — hører derfor ikke i kpi/. */
   const forTyndt = raekker.filter((r) => !r.n.leveringspraecisionPct.nokData).length;
@@ -127,7 +151,7 @@ export default function Leverandoerer() {
         </p>
       </Kort>
 
-      {valgt && <Detaljer l={medPrisliste(valgt)} />}
+      {valgt && <Detaljer l={valgt} kilder={KILDER} />}
     </div>
   );
 }
@@ -157,8 +181,12 @@ function Tal({ m, vis, enhed, tone }) {
 
 /* ---- Detaljer: aftalen og prislisten ----------------------------------- */
 
-function Detaljer({ l }) {
-  const n = beregnNoegletal(l, KILDER);
+function Detaljer({ l, kilder }) {
+  /* ⚠ KILDERNE KOMMER IND. De var en MODULKONSTANT indtil indkoebslinjerne
+     blev hentet fra noden — og en modulkonstant kan ikke kende komponentens
+     data. Fejlen var ikke en byggefejl: `npm run build` gik igennem, og
+     skaermen blev hvid foerst i browseren. */
+  const n = beregnNoegletal(l, kilder);
   const gaeldende = gaeldendePrisliste(l);
   const kommende = kommendePriser(l);
 

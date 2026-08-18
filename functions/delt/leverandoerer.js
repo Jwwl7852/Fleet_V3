@@ -210,6 +210,31 @@ export function kanGodkende(faktura, harPermission) {
  */
 
 /**
+ * Leverandøren som han kommer UD AF DATABASEN.
+ *
+ * ⚠ RTDB HAR INGEN LISTER. `prisliste` er et objekt `{prisId: post}` i basen
+ * og en ARRAY i domænekoden — prisPaa() filtrerer og sorterer på den. Uden
+ * oversættelsen her kaster `.filter is not a function` inde i et regnestykke,
+ * og skærmen bliver hvid. Præcis den fejl kostede Fakturering en hvid skærm
+ * på `linjer`; se fraDb() i grundlag.js, som er den samme oversættelse for
+ * det samme problem.
+ *
+ * ⚠ OG DEN TAGER IMOD BEGGE FORMER. Demo-sættet bærer allerede en array, og
+ * en oversættelse der kun kunne det ene, ville betyde at demo og produktion
+ * skulle kaldes hver sin vej — og så ville den ene vej være uprøvet.
+ */
+export function leverandoerFraDb(post, id) {
+  if (!post) return null;
+  return {
+    ...post,
+    id: id ?? post.id,
+    prisliste: Array.isArray(post.prisliste)
+      ? post.prisliste
+      : Object.entries(post.prisliste || {}).map(([prisId, p]) => ({ id: prisId, ...p })),
+  };
+}
+
+/**
  * prisPaa(leverandoer, varenummer, paaMs) → posten der gjaldt på det tidspunkt.
  *
  * Vinderen er den SENESTE gyldigFra der ikke ligger i fremtiden. En kommende

@@ -33,7 +33,9 @@ import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
-import { DEMO_INDKOEBSLINJER, DEMO_FAKTURAER } from "../src/fleet/demo-indkoeb.js";
+import {
+  DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
+} from "../src/fleet/demo-indkoeb.js";
 import { DEMO_LOKATIONER } from "../src/fleet/demo-facility.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
@@ -196,6 +198,19 @@ export const SEED = [
      kan ikke regnes af linjerne alene. Noden er .write: false for enhver
      klient — provisioneringen koerer paa admin-SDK og gaar uden om reglerne,
      praecis som ved grundlag og etaper. */
+  /* ⚠ LEVERANDOEREN FOERST — indkoeb.leverandoerId og fakturaer.leverandoerId
+     slaar nu op i leverandoerer/. Provisioneringen koerer paa admin-SDK og
+     gaar uden om reglerne, saa raekkefoelgen her aendrer ingenting for
+     SEEDET — men den aendrer alt for den der laeser filen og tror at en
+     indkoebslinje kan staa alene.
+
+     ⚠ PRISLISTEN LIGGER PAA POSTEN, som et BARN. Den er en liste af poster
+     med hver sit id, og somNode() noegler kun det yderste niveau — derfor
+     oversaettes den for sig i sammeNode() nedenfor. RTDB har ingen arrays:
+     lagde vi den raa, ville den blive et objekt med noeglerne "0","1","2",
+     og de noegler flytter sig naar en post fjernes. */
+  { node: "leverandoerer", data: DEMO_LEVERANDOERER, form: "liste-med-boern",
+    boern: ["prisliste"] },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
   /* ⚠ LOKATIONERNE ER IKKE HELE FACILITY — de er den DEL af den som indkoebet
@@ -250,6 +265,24 @@ export function somNode(raekker) {
     if (!id) throw new Error("somNode: en række uden id kan ikke nøgles.");
     if (ud[id]) throw new Error(`somNode: id "${id}" optræder to gange.`);
     ud[id] = resten;
+  }
+  return ud;
+}
+
+/**
+ * Som somNode(), men hvor NAVNGIVNE børn selv er lister der skal nøgles.
+ *
+ * ⚠ RTDB HAR INGEN ARRAYS. En array skrevet råt bliver til et objekt med
+ * nøglerne "0", "1", "2" — og de nøgler FLYTTER SIG når en post fjernes.
+ * En prisliste hvor pl-olie-2 pludselig hedder "1", er en prishistorik hvor
+ * ingen reference holder. Barnet nøgles derfor på sit eget id, som alt andet.
+ */
+export function sammeNode(raekker, boern = []) {
+  const ud = somNode(raekker);
+  for (const post of Object.values(ud)) {
+    for (const barn of boern) {
+      if (Array.isArray(post[barn])) post[barn] = somNode(post[barn]);
+    }
   }
   return ud;
 }
@@ -388,10 +421,12 @@ async function main() {
 
   /* 3. Demo-data under de noder skærmene faktisk læser. */
   console.log("");
-  for (const { node, data, form } of SEED) {
-    const nyttelast = form === "liste" ? somNode(data) : data;
+  for (const { node, data, form, boern } of SEED) {
+    const nyttelast = form === "liste-med-boern"
+      ? sammeNode(data, boern)
+      : form === "liste" ? somNode(data) : data;
     await db.ref(`tenants/${DEV_TENANT}/${node}`).set(nyttelast);
-    const antal = form === "liste" ? `${data.length} rækker` : "objekt";
+    const antal = form === "objekt" ? "objekt" : `${data.length} rækker`;
     console.log(`  ${node.padEnd(24)} ${antal}`);
   }
 

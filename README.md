@@ -560,7 +560,7 @@ rettes.
 
 ⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
 optællingen: 31 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
-hvilke noder der skal til — `facility`, `lagre`, `leverandoerer`.
+hvilke noder der skal til — `facility` og `lagre`.
 Får et domæne sin node, fjernes felterne ét sted, og prøven falder hvis
 optællingen ikke følger med.
 
@@ -591,6 +591,36 @@ leddet om poster **uden** division. Den er nu på `useListe("indkoeb")` med
 noden. **Det er den prøve der betyder noget:** en node med data ingen skærm
 læser, er stadig en node ingen ser.
 
+⚠ **`leverandoerer` FANDTES SLET IKKE I `firebase.rules.json`** — og det er
+en anden slags hul end en node med regler og ingen data. Modellen har regnet
+med den hele tiden: BÅDE `indkoeb` og `fakturaer` har indekseret
+`leverandoerId` siden de blev skrevet, og `valideIndkoeb()` har hele tiden
+svaret "Leverandøren findes ikke." Serveren tog imod posten alligevel — en
+klientvalidering der ikke også står i reglerne, er en pæn knap. De to
+fremmednøgler blev strammet **sammen** med at noden kom til, som noterne
+begge steder lovede.
+
+⚠ **Prislisten ligger PÅ leverandøren, versioneret på dato.** Den er hans
+aftale med os, og `prisPaa()` slår op PÅ INDKØBETS DATO — ikke på dagens
+pris. Havde leverandøren en regulering i april, ville en faktura fra marts
+ellers pludselig se forkert ud målt mod "aftalen", og afvigelsen ville pege
+på leverandøren frem for på os. Formen er den samme som
+`satser/$gruppe/satser`, og forbeholdet derovre gælder ordret: reglen kan
+ikke forbyde en overskrivning uden også at forbyde en rettelse af en tastefejl
+samme dag. Den håndhæver **formen**; beslutningen håndhæves af skærmen.
+
+⚠ **Prisafvigelserne kan derfor regnes nu**, med den SAMME `prisPaa()` som
+`beregnNoegletal()` bruger pr. leverandør — og med aftaleformens grænse: en
+fastaftale der afviger 4 %, er et brud; et spotkøb der gør det, er markedet.
+Målt mod DEV: gods 7 afvigelser / +1,8 %, bus 1 / +3,6 %.
+
+⚠ **En selvkontrol i `demo-indkoeb.js` kører kun i browseren.** Blokken står
+under `import.meta.env?.DEV`, som er undefined i node — så `npm test` var
+grøn mens skærmen var hvid, fordi kontrollen læste `DEMO_LEVERANDOERER` før
+den var initialiseret. Den står nu nederst i filen. **En selvkontrol prøverne
+ikke kan nå, er en kontrol der selv er uden kontrol** — det gælder alle
+`demo-*.js`, ikke kun denne.
+
 ⚠ **Nøgletalskortene viser stadig de SEEDEDE demotal i dev.** Provisioneringen
 skriver `DEMO_KPI` til `kpi/`, og `kpiaggregering` kører først 03:20 UTC — så
 "18 åbne ordrer" står i dag over en tabel med 6 rækker. De to er ikke uenige;
@@ -615,12 +645,10 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `kunder.aktiveDeltaPct`, `.daekningsbidragDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke det samme som dækningsgradens afvigelse mod **målet**, som er procentpoint og står under `oekonomi` — samme ord, to regnestykker, og de kan pege hver sin vej |
 | `oekonomi.driftsomkostningerDeltaPct`, `.ikkeFaktureretDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke budgetafvigelsen — den udledes af `driftsomkostningerOere − budgetOere` og må aldrig gemmes |
 | `oekonomi.daekningsgradDeltaPoint` | ⚠ **Procentpoint** mod forrige periode. 68 % der bliver til 72 % er +4 point |
-| `indkoeb.prisafvigelserDelta` | Nye prisafvigelser i **antal**. ⚠ Regnes allerede — men af to `null`, og bliver derfor selv null. En delta af to ubesvarede spørgsmål er ikke 0. Den falder på plads samtidig med prisafvigelserne selv |
 | `afvigelser` | **Top 5 på tværs af flåde, facility, indkøb og værksted.** Dashboards "Største afvigelser". Kan ikke udledes lokalt — den blander fire moduler |
 | `warehouse.carriereUdenLokationDelta` | Ændring i uplacerede beholdere siden i går, i **antal**. ⚠ Det ENESTE warehouse-felt i `kpi/`: de fem tal på Carrier-overblik er afledt af de rækker skærmen har og beregnes hos forbrugeren (`carrieroverblik()`). Et delta kræver derimod gårsdagens tal. Antal og ikke procent — 11 beholdere der bliver til 13, er +2, og en procent af et lille tal er støj |
 | `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
 | `oekonomi.planlagtVedligeholdPct` | Andel planlagt vs. akut. ⚠ **Kan ikke udledes af `opgaver`**: en opgave har `art` (vaerksted \| facility) og en status, men intet felt der siger om arbejdet var planlagt eller akut. At kalde `art: vaerksted` for akut ville være et gæt — og Dashboardet regner `100 − x`, så gættet bliver til to tal der ser ud til at supplere hinanden |
-| `indkoeb.indkoebsprisafvigelser`, `.indkoebsprisafvigelseSnitPct` | Afvigelser mod den **aftalte** pris. ⚠ Kræver leverandørens prisliste, og `leverandoerer/` findes **slet ikke** i `firebase.rules.json`. `beregnNoegletal()` regner dem allerede pr. leverandør med `prisPaa()` — det er den samme funktion der skal bruges, den dag noden findes. 0 ville betyde "ingen afveg", og det er en anden besked end "vi har ikke aftalen at måle mod" |
 | `opgaver.udfoerteOpgaver` | Udførte opgaver i perioden. Nævner i omkostning pr. opgave |
 
 **Skal UD af aggregeringen.** Et afledt tal der er gemt, driver fra sit

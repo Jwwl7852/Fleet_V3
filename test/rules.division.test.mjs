@@ -60,7 +60,16 @@ before(async () => {
      firebase.rules.json. Uden markøren ville hver eneste skrivning herunder
      blive afvist, og divisionstestene ville fejle af den forkerte grund. */
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
-    await set(ref(ctx.database(), `tenants/${TENANT}/_findes`), true);
+    const db = ctx.database();
+    await set(ref(db, `tenants/${TENANT}/_findes`), true);
+    /* ⚠ LEVERANDOEREN SKAL FINDES. indkoeb.leverandoerId slaar nu op i
+       leverandoerer/ — beslutning 18, og samme tjek som valideIndkoeb()
+       laver i formularen. Uden posten her fejler hver indkoebsskrivning i
+       filen, og fejlen ville ligne en manglende division. Proeven ville sige
+       det rigtige af den forkerte grund. */
+    await set(ref(db, `tenants/${TENANT}/leverandoerer/lv-hydra`), {
+      navn: "Hydra-Grene Kolding", kategori: "reservedele", aktiv: true,
+    });
   });
 });
 

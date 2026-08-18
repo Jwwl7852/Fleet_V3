@@ -64,12 +64,11 @@ import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
   leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
-  indkoebBeloebOere,
+  indkoebBeloebOere, leverandoerFraDb,
   prisafvigelseTone, valideIndkoeb, byggIndkoeb,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
-  medPrisliste,
+  DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
 } from "../../fleet/demo-indkoeb.js";
 import { demoLokation, DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -80,7 +79,9 @@ const PR_SIDE = 5;
 const MAANED = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
 
-const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+/* ⚠ HER STOD lvNavn PÅ MODULNIVEAU, med demo-kartoteket lukket inde i sig.
+   Den kan den ikke, når kartoteket HENTES: en modulkonstant kender ikke
+   komponentens data. Den er nu et argument — se opslaget i tabellen. */
 const ktNavn = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || null;
 const ktPlade = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.registrering || null;
 
@@ -335,6 +336,14 @@ export default function IndkoebOversigt() {
     tilstand: linjeTilstand, genindlaes: genindlaesLinjer, afkortet,
   } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, graense: 500 });
 
+  /* ⚠ HELE KARTOTEKET, IKKE DIVISIONENS. Leverandørfilteret skal kunne vise
+     den leverandør en linje peger på — også hvis han er registreret på den
+     anden division. Et filter der ikke kan vælge det der står i tabellen,
+     ligner en tom database. */
+  const { data: raaLeverandoerer } = useListe("leverandoerer", {
+    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+  });
+
   const { bruger, division, periode, path } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
@@ -360,6 +369,13 @@ export default function IndkoebOversigt() {
 
   /* useListe har allerede delt på division — se noten ved kaldet. */
   const iDivision = indkoebslinjer;
+
+  /* ⚠ OVERSAT FRA BASEN. `prisliste` er et objekt i RTDB og en array i
+     domænekoden — prisPaa() filtrerer på den, og beregnNoegletal() kalder
+     prisPaa(). Uden oversættelsen kaster ".filter is not a function" midt i
+     et regnestykke, og skærmen bliver hvid. Samme fejl som Faktureringens
+     `linjer`; se fraDb() i grundlag.js. */
+  const leverandoerer = raaLeverandoerer.map((l) => leverandoerFraDb(l, l.id));
 
   /* ⚠ TABELLEN VISER SHELLENS PERIODE. Historikken bagud er prisgrafens
      grundlag og hører ikke i en liste over "ordrer og fakturaer" — den ville
@@ -399,11 +415,11 @@ export default function IndkoebOversigt() {
 
   /* Leverandørernes objektive tal. Prislisten skal med — prisafvigelsen måles
      mod den pris der GJALDT DA VI KØBTE, og den står i prislisten. */
-  const performance = DEMO_LEVERANDOERER
+  const performance = leverandoerer
     .filter((l) => l.aktiv && (l.division === division || l.division === "faelles"))
     .map((l) => ({
       leverandoer: l,
-      tal: beregnNoegletal(medPrisliste(l), {
+      tal: beregnNoegletal(l, {
         indkoeb: iDivision,
         fakturaer: DEMO_FAKTURAER,
         sager: DEMO_LEVERANDOERSAGER,
@@ -445,7 +461,7 @@ export default function IndkoebOversigt() {
             <select id="ik-lev" value={leverandoer}
                     onChange={(e) => { setLeverandoer(e.target.value); setSide(1); }}>
               <option value="">Alle leverandører</option>
-              {DEMO_LEVERANDOERER
+              {leverandoerer
                 .filter((l) => l.division === division || l.division === "faelles")
                 .map((l) => <option key={l.id} value={l.id}>{l.navn}</option>)}
             </select>
@@ -487,7 +503,7 @@ export default function IndkoebOversigt() {
         <Indkoebsformular
           key={linjeform}
           linje={linjeform === "ny" ? null : iDivision.find((l) => l.id === linjeform)}
-          leverandoerer={DEMO_LEVERANDOERER}
+          leverandoerer={leverandoerer}
           koeretoejer={DEMO_KOERETOEJER}
           lokationer={DEMO_LOKATIONER}
           sti={(id) => path(`indkoeb/${id}`)}
@@ -510,7 +526,8 @@ export default function IndkoebOversigt() {
         <Tabel
           kolonner={[
             { key: "dato", label: "Dato", render: (r) => dato(r.dato) },
-            { key: "leverandoerId", label: "Leverandør", render: (r) => <b>{lvNavn(r.leverandoerId)}</b> },
+            { key: "leverandoerId", label: "Leverandør",
+              render: (r) => <b>{leverandoerNavn(leverandoerer, r.leverandoerId)}</b> },
             /* ⚠ LEVERANDØRENS NUMMER, ikke vores. Det er dét man slår op i,
                når man ringer, og dét der står på fakturaen der skal matches. */
             { key: "reference", label: "Reference",
@@ -692,15 +709,18 @@ export default function IndkoebOversigt() {
         </Kort>
       </Gitter>
 
-      <Leverandoerkartotek division={division} />
+      <Leverandoerkartotek division={division} leverandoerer={leverandoerer} />
     </div>
   );
 }
 
 /* ---- Leverandøren som entitet ------------------------------------------ */
 
-function Leverandoerkartotek({ division }) {
-  const viste = DEMO_LEVERANDOERER.filter(
+function Leverandoerkartotek({ division, leverandoerer }) {
+  /* ⚠ LISTEN KOMMER IND, DEN HENTES IKKE HER. To useListe-kald på samme node
+     i samme skærm er to hentninger af de samme rækker — og to steder der kan
+     nå at vise hver sit, hvis kun det ene genindlæses. */
+  const viste = leverandoerer.filter(
     (l) => l.division === division || l.division === "faelles"
   );
 

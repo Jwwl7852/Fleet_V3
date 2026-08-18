@@ -211,6 +211,11 @@ export const NODE_MODUL = {
   facility: "facility",
 
   indkoeb: "indkoeb",
+  /* ⚠ LEVERANDOEREN EJES AF INDKOEB ALENE — modsat `fakturaer`, som staar i
+     basen fordi to skaermene roerer den. En leverandoer roeres kun af
+     Indkoeb, og noden baerer hans PRISLISTE: hvad vi har aftalt at betale.
+     Det er ikke noget en tenant uden indkoebsmodulet skal kunne laese. */
+  leverandoerer: "indkoeb",
   lagre: "indkoeb",
 
   bookinger: "booking",
