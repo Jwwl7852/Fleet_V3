@@ -254,8 +254,8 @@ export default function Dashboard() {
           />
         </Kort>
 
-        <Kort titel={<><Ikon navn="personer" farve="var(--fc-ikon-5)" /> Bemanding i dag</>}
-              handling={<Link className="fc-a" to="/bemanding">Se bemanding</Link>}>
+        <Kort titel={<><Ikon navn="personer" farve="var(--fc-ikon-5)" /> Workforce i dag</>}
+              handling={<Link className="fc-a" to="/bemanding">Se Workforce</Link>}>
           {/* Bjælke KUN hvor der findes en nævner. "10 personer ledig" har
               ingen helhed at være en andel af, og en bjælke uden nævner ville
               være pynt der ligner en måling. */}

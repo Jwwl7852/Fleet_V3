@@ -38,11 +38,11 @@ export const NAV = [
     ],
   },
   {
-    key: "bemanding", sti: "/bemanding", label: "Bemanding", titel: "Bemanding",
+    key: "bemanding", sti: "/bemanding", label: "Workforce", titel: "Workforce",
     under: "Overblik over bemanding og kapacitet",
     born: [
       { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan",
-        titel: "Bemanding", under: "Overblik over bemanding og kapacitet" },
+        titel: "Workforce", under: "Overblik over bemanding og kapacitet" },
       /* Medarbejdere er IKKE det samme som Brugere & roller under Opsætning.
          Her oprettes personen; dér oprettes et login. En chauffør har måske
          aldrig et login, en vikar sjældent. Se beslutning 18. */
@@ -227,7 +227,7 @@ export const NAV = [
         titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
       { key: "brugere", sti: "/opsaetning/brugere", label: "Brugere & roller",
         titel: "Brugere & roller",
-        under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Bemanding → Medarbejdere." },
+        under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Workforce → Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer",
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
     ],

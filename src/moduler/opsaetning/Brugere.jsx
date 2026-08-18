@@ -225,7 +225,7 @@ export default function Brugere() {
         <KpiKort label="Din rolle" vaerdi={ROLLE_LABEL[bruger?.rolle]?.label || bruger?.rolle || "—"}
                  ikon={<Ikon navn="personer" />} tone="ikon-6" rund
                  note={`${num(mineP.length)} permissions i dit token`} />
-        <KpiKort label="Medarbejdere uden login" vaerdi="Bemanding"
+        <KpiKort label="Medarbejdere uden login" vaerdi="Workforce"
                  ikon={<Ikon navn="bygning" />} tone="ikon-2" rund
                  note="personId, ikke uid" til="/bemanding/medarbejdere" />
       </KpiRaekke>

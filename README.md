@@ -212,7 +212,7 @@ obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 Det gælder **filen**. Databasen er først dækket når `npm run regler:tjek` er grøn:
 reglerne var aldrig udrullet til DEV, og prøverne kunne ikke se det (beslutning 29).
 
-### Fire moduler har skiftet navn — og kun ét skiftede nøgle
+### Fem moduler har skiftet navn — og kun ét skiftede nøgle
 
 **Flåde hedder Fleet, og Indkøb hedder Procure — men kun på skærmen.**
 Ruten er stadig `/flaade` og `/indkoeb`, noden hedder stadig `indkoeb`,
@@ -236,6 +236,7 @@ base**, hver gang, før en linje blev rørt.
 | Indkøb | **Procure** | nej | Dertil noden `indkoeb/` og permissionen `indkoeb.skriv` — mintet ind i udstedte tokens |
 | Turtlebooking | **Unitbooking** | **ja** | **Ingen tenant bar nøglen.** Noderne hedder `kasser`, `kasseudlaan`, `reolpladser` — ikke modulet |
 | Booking & Opgaver | **Planning** | nej | Nøglen `booking` står i to prislister under `udbyder/prisliste`, og den ene er peget på af et **låst fakturagrundlag** |
+| Bemanding | **Workforce** | nej | Samme prislister, samme låste fakturagrundlag. Dertil KPI-domænet `kpi/<division>/bemanding` |
 
 ⚠ **Det sidste er den vigtigste række.** Et frosset fakturagrundlag
 dokumenterer hvad der blev faktureret. Omdøbes modulnøglen i den prisliste
@@ -263,6 +264,12 @@ Havde vi erstattet på ordet, ville tabellen have heddet "Procure i perioden".
 en transportopgave med etaper (beslutning 16) — den holder op med at hedde
 det, fordi menupunktet gør det. Derfor hedder underskærmen stadig
 **Bookingopsætning**: den opsætter bookinger.
+
+Samme snit på Workforce: **Bemandingsplan** hedder stadig det, og
+`kpi/<division>/bemanding` skiftede ikke — et KPI-domæne er et **feltnavn i
+en node**, ikke et menupunkt. `k.bemanding.disponeret` læses af skærmen, og
+et omdøbt domæne ville have slettet sig selv på vejen gennem RTDB uden at
+nogen kunne se hvorfor.
 
 Kommentarer og filhoveder beholder de danske navne — de står ved siden af
 `src/moduler/flaade/` og `indkoeb/`, og en kommentar der sagde "Fleet" om

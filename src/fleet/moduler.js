@@ -51,7 +51,7 @@ export const MODUL = {
   },
   bemanding: {
     navKey: "bemanding",
-    label: "Bemanding",
+    label: "Workforce",
     hvad: "Vagtplan, medarbejdere, kompetencer og fravær.",
   },
   flaade: {

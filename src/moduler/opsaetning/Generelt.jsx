@@ -45,9 +45,9 @@ import {
    fordi det spørgsmål — "hvor retter jeg det?" — er hele grunden til at nogen
    åbner Opsætning. Peger den forkert, leder man videre samme sted igen. */
 const STAMDATA = [
-  { hvad: "Medarbejdere", hvor: "/bemanding/medarbejdere", label: "Bemanding → Medarbejdere",
+  { hvad: "Medarbejdere", hvor: "/bemanding/medarbejdere", label: "Workforce → Medarbejdere",
     note: "Personen findes uden login. personId er ikke uid — beslutning 18." },
-  { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Bemanding → Kompetencer",
+  { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Workforce → Kompetencer",
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
   { hvad: "Køretøjer og påhæng", hvor: "/flaade", label: "Fleet → Køretøjer",
     note: "Arten styrer feltskemaet. Ingen division på et køretøj — beslutning 19." },
