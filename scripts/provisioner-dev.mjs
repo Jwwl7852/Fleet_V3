@@ -36,7 +36,10 @@ import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
   DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
 } from "../src/fleet/demo-indkoeb.js";
-import { DEMO_LOKATIONER } from "../src/fleet/demo-facility.js";
+import {
+  DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
+  DEMO_BYGNINGSOMKOSTNING,
+} from "../src/fleet/demo-facility.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
@@ -213,16 +216,30 @@ export const SEED = [
     boern: ["prisliste"] },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
-  /* ⚠ LOKATIONERNE ER IKKE HELE FACILITY — de er den DEL af den som indkoebet
-     peger paa. indkoeb.lokationId valideres mod
-     facility/lokationer/<id>.exists(), og uden dem ville hver seedet
-     indkoebslinje vaere afvist naeste gang en klient gemte den: seedet gaar
-     uden om reglerne, brugeren goer ikke. En seedet post der ikke kan gemmes
-     igen, er en faelde man foerst falder i naar man retter en tastefejl.
+  /* ⚠ FACILITY HELE VEJEN NU. Lokationerne kom foerst, fordi indkoebets
+     lokationId slaar op i dem — resten fulgte, og raekkefoelgen er ikke
+     kosmetik: aktiver.lokationId, zoner.lokationId, fejl.aktivId og
+     aktiver.ansvarligPersonId slaar ALLE op. Provisioneringen koerer paa
+     admin-SDK og gaar uden om reglerne, saa den ville ikke selv opdage en
+     brudt reference — men naeste gang en bruger gemte posten, ville den
+     blive afvist. En seedet post der ikke kan gemmes igen, er en faelde man
+     foerst falder i naar man retter en tastefejl.
 
-     Resten af facility (aktiver, servicepunkter, sensorer) mangler stadig og
-     staar fortsat i KILDER_DER_MANGLER. */
+     ⚠ OG FACILITY LAASER FAERRE KPI-FELTER OP END VENTET. Aktiver, fejl og
+     lokationer baerer ALLE division: false i reglerne — feltet er FORBUDT,
+     ikke bare fravaerende. Facility-tallene rammer derfor samme spaerring som
+     flaaden: se noten i kpi-aggregering.js. */
   { node: "facility/lokationer", data: DEMO_LOKATIONER, form: "liste" },
+  { node: "facility/aktiver", data: DEMO_AKTIVER, form: "liste" },
+  { node: "facility/zoner", data: DEMO_ZONER, form: "liste" },
+  { node: "facility/fejl", data: DEMO_FEJL, form: "liste" },
+  /* Allerede paa nodeform: sensorerne er noeglet paa ZONEN, ikke paa et
+     sensor-id. En zone har én maaling ad gangen, og et id mere ville vaere et
+     led ingen slaar op i. */
+  { node: "facility/sensorer", data: DEMO_SENSORER, form: "objekt" },
+  /* ⚠ KOMPONENTER, IKKE EN TOTAL. bygningsomkostningOere() summerer dem hos
+     forbrugeren; et gemt totalfelt kunne drive fra sine egne komponenter. */
+  { node: "facility/omkostning", data: DEMO_BYGNINGSOMKOSTNING, form: "objekt" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */

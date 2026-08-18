@@ -19,7 +19,7 @@ import {
 } from "../src/fleet/facility.js";
 import {
   DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
-  DEMO_SERVICEBESOEG, DEMO_BYGNINGSOMKOSTNING, zonePar, demoAabneFejl,
+  DEMO_SERVICEBESOEG, DEMO_BYGNINGSOMKOSTNING, demoZonePar, demoAabneFejl,
 } from "../src/fleet/demo-facility.js";
 import { reservationFraOpgave, opgaveMangler } from "../src/fleet/opgaver.js";
 import { KILDE, RESSOURCE, prioritetFor } from "../src/fleet/reservations.js";
@@ -30,7 +30,7 @@ import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
    ══════════════════════════════════════════════════════════════════════ */
 describe("Fejl 1 — én sensorkilde, ikke to", () => {
   it("giver hver zone præcis én måling", () => {
-    const par = zonePar();
+    const par = demoZonePar();
     assert.equal(par.length, DEMO_ZONER.length);
     const ider = par.map((p) => p.zone.id);
     assert.equal(new Set(ider).size, ider.length, "en zone optræder to gange");
@@ -39,8 +39,8 @@ describe("Fejl 1 — én sensorkilde, ikke to", () => {
   /* To kald må give det samme. Havde hver skærm sit eget datasæt, ville de
      kunne nå at drive fra hinanden — det var mockuppens fejl. */
   it("giver samme svar hver gang den kaldes", () => {
-    const a = zonePar().map((p) => p.maaling?.tempC);
-    const b = zonePar().map((p) => p.maaling?.tempC);
+    const a = demoZonePar().map((p) => p.maaling?.tempC);
+    const b = demoZonePar().map((p) => p.maaling?.tempC);
     assert.deepEqual(a, b);
   });
 
@@ -60,7 +60,7 @@ describe("Fejl 1 — én sensorkilde, ikke to", () => {
    ══════════════════════════════════════════════════════════════════════ */
 describe("Fejl 2 — gennemsnittet beregnes", () => {
   it("giver præcis 16,9 °C for de tempererede zoner", () => {
-    const tempererede = zonePar().filter((p) => p.zone.art === "tempereret");
+    const tempererede = demoZonePar().filter((p) => p.zone.art === "tempereret");
     assert.equal(tempererede.length, 3);
     assert.ok(
       Math.abs(gennemsnitTemperatur(tempererede) - 16.9) < 0.001,
@@ -70,9 +70,9 @@ describe("Fejl 2 — gennemsnittet beregnes", () => {
 
   /* 15,2 var ÉN zones værdi, læst som gennemsnittet af dem alle. */
   it("viser at 15,2 var en enkelt zone og ikke snittet", () => {
-    const kontor = zonePar().find((p) => p.zone.id === "zo-kontor");
+    const kontor = demoZonePar().find((p) => p.zone.id === "zo-kontor");
     assert.equal(kontor.maaling.tempC, 15.2);
-    const tempererede = zonePar().filter((p) => p.zone.art === "tempereret");
+    const tempererede = demoZonePar().filter((p) => p.zone.art === "tempereret");
     assert.notEqual(gennemsnitTemperatur(tempererede), 15.2);
   });
 
@@ -86,13 +86,13 @@ describe("Fejl 2 — gennemsnittet beregnes", () => {
 
   /* Et snit på tværs af en fryser og et kontor beskriver ingen af dem. */
   it("holder zonearterne adskilt", () => {
-    const snit = gennemsnitPrZoneArt(zonePar());
+    const snit = gennemsnitPrZoneArt(demoZonePar());
     assert.ok(snit.frost, "frost mangler");
     assert.ok(snit.tempereret, "tempereret mangler");
     assert.ok(snit.frost.snit < -15, "frost skal ligge under −15 °C");
     assert.ok(snit.tempereret.snit > 10, "tempereret skal ligge over 10 °C");
     /* Ét samlet snit ville ligge et sted ingen zone er. */
-    const samlet = gennemsnitTemperatur(zonePar());
+    const samlet = gennemsnitTemperatur(demoZonePar());
     assert.ok(
       samlet < snit.tempereret.snit && samlet > snit.frost.snit,
       "et samlet snit beskriver ingen af arterne — derfor vises det ikke"
@@ -229,7 +229,7 @@ describe("Alarmen afledes af måling og grænse", () => {
   });
 
   it("finder køl-zonen over grænsen i demo-sættet", () => {
-    const alarmer = aktiveAlarmer(zonePar());
+    const alarmer = aktiveAlarmer(demoZonePar());
     assert.ok(alarmer.some((p) => p.zone.id === "zo-koel1"),
       "demo-sættet skal have mindst én alarm, ellers kan den ikke ses virke");
   });
@@ -302,7 +302,7 @@ describe("Servicebesøg er opgaver med art facility", () => {
 describe("KPI-felterne findes, så skærmene ikke hardkoder", () => {
   for (const felt of [
     "aabneFejl", "klimaalarmerIDag", "sensorerAktive",
-    "eksterneLeverandoerer", "facilityOmkostningOere", "anslaaetServiceOere",
+    "eksterneLeverandoerer", "anslaaetServiceOere",
   ]) {
     it(`facility.${felt} er defineret i begge divisioner`, () => {
       assert.ok(Number.isFinite(DEMO_KPI.gods.facility[felt]), `gods mangler ${felt}`);
@@ -325,6 +325,19 @@ describe("KPI-felterne findes, så skærmene ikke hardkoder", () => {
         "gennemsnittet beregnes af sensorerne");
       assert.equal(DEMO_KPI[d].facility.bygningsomkostningOere, undefined,
         "totalen summeres af komponenterne");
+
+      /* ⚠ SAMME TAL SOM bygningsomkostningOere — UNDER ET ANDET NAVN.
+         Det stod på den PÅBUDTE liste tolv linjer længere oppe, mens navnet
+         nedenfor stod på den FORBUDTE. Prøven krævede altså at feltet fandtes
+         OG at det ikke fandtes; den var kun grøn fordi de to navne aldrig
+         blev holdt op mod hinanden.
+
+         Det er summen af `facility/omkostning`s fem komponenter, og
+         bygningsomkostningOere() regner den hos forbrugeren. Ingen skærm
+         læste kpi-feltet. Et gemt afledt tal driver fra sit grundlag —
+         `bemanding.ledig` en gang til. */
+      assert.equal(DEMO_KPI[d].facility.facilityOmkostningOere, undefined,
+        "facility-omkostningen er bygningsomkostningen under et andet navn");
     }
   });
 });

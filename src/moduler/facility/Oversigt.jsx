@@ -46,6 +46,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation, serviceTone } from "../../fleet/format.js";
 import {
@@ -57,6 +58,7 @@ import {
   AKTIV_ART, AKTIV_STATUS, FEJL_STATUS, LOKATION_TYPE,
   ALLE_AKTIV_ARTER, ALLE_AKTIV_STATUS,
   alarmTilstand, aktiveAlarmer, lokationTilstand, driftsforhold, aktivFordeling,
+  zonePar,
   valideAktiv, byggAktiv, valideFejl, byggFejl,
 } from "../../fleet/facility.js";
 import { alvorTone, ALVOR } from "../../fleet/format.js";
@@ -64,8 +66,8 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
-  DEMO_FEJL, DEMO_AKTIVER, DEMO_LOKATIONER, DEMO_SERVICEBESOEG,
-  zonePar, demoAktiv, demoLokation, demoAabneFejl,
+  DEMO_SERVICEBESOEG,
+  demoAktiv, demoLokation,
 } from "../../fleet/demo-facility.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 
@@ -302,29 +304,59 @@ function Fejlformular({ fejlpost, aktiver, sti, paaGemt, paaLuk }) {
 
 export default function FacilityOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+
+  /* ⚠ FEM NODER, IKKE ÉN. `facility` har børn, og hvert barn er sin egen
+     liste: lokationer, aktiver, fejl, zoner og sensorer. Skærmen læste dem
+     alle fra demo-facility.js indtil noden blev seedet.
+
+     ⚠ division: "alle" PÅ ALLE FEM, og det er ikke en genvej. Reglerne
+     FORBYDER `division` på lokationer, aktiver og fejl — facility er
+     fælles. Står det eksplicit, kan man se at det er besluttet frem for
+     overset; det er samme begrundelse som på køretøjerne.
+
+     ⚠ vindue: "alle" fordi ingen af dem er en tidsserie. Et aktiv har en
+     næste service, ikke en dato det "hører til"; filtrerede vi på shellens
+     periode, ville halvdelen af portene forsvinde når nogen valgte en uge. */
+  const felles = { vindue: "alle", division: "alle", graense: 500 };
+  const lok = useListe("facility/lokationer", { ordnPaa: "type", ...felles });
+  const akt = useListe("facility/aktiver", { ordnPaa: "naesteServiceMs", ...felles });
+  const fej = useListe("facility/fejl", { ordnPaa: "meldtMs", ...felles });
+  const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
+  /* Sensorerne er nøglet på ZONEN — en zone har én måling ad gangen. */
+  const sen = useListe("facility/sensorer", { vindue: "alle", division: "alle", graense: 500 });
+
   const { bruger, path } = useFleet();
-  const [valgtLokId, setValgtLokId] = useState(DEMO_LOKATIONER[0]?.id || null);
+  const [valgtLokId, setValgtLokId] = useState(null);
   const [side, setSide] = useState(1);
   /* null = lukket, "ny" = opret, ellers nøglen på den post der redigeres. */
   const [aktivform, setAktivform] = useState(null);
   const [fejlform, setFejlform] = useState(null);
 
-  if (henter) return <Henter hvad="nøgletal" />;
+  const henterNoget = henter || lok.henter || akt.henter || fej.henter
+    || zon.henter || sen.henter;
+  if (henterNoget) return <Henter hvad="facility" />;
+  /* ⚠ EN AFVIST LÆSNING ER IKKE EN TOM LISTE. Aktiverne blokerer, hvor
+     nøgletallene ikke gør — en tom aktivtabel ligner et anlæg uden aktiver. */
+  if (blokerer(akt.tilstand)) {
+    return <Datatilstand tilstand={akt.tilstand} genprov={akt.genindlaes} />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  /* ÉN kilde. Klima-skærmen kalder den samme funktion. */
-  const par = zonePar();
+  /* ÉN kilde. Klima-skærmen kalder den samme funktion med sine egne rækker. */
+  const par = zonePar(zon.data, sen.data);
   const alarmer = aktiveAlarmer(par);
-  const aabne = demoAabneFejl();
-  const ctx = { aktiver: DEMO_AKTIVER, aabneFejl: aabne, par };
+  /* ⚠ ALT DER IKKE ER UDBEDRET. En fejl der er planlagt eller i gang, er
+     stadig en fejl der ikke er væk — samme regel som facilitytal(). */
+  const aabne = fej.data.filter((f) => f.status !== "udbedret");
+  const ctx = { aktiver: akt.data, aabneFejl: aabne, par };
   /* Zonerne til formularens vælger — samme kilde som klimalisten. */
   const zoner = par.map((p) => p.zone);
   const maaSkrive = harPerm(bruger?.perms, PERM.facilitySkriv);
 
-  const valgtLok = DEMO_LOKATIONER.find((l) => l.id === valgtLokId) || DEMO_LOKATIONER[0];
+  const valgtLok = lok.data.find((l) => l.id === valgtLokId) || lok.data[0];
   const drift = valgtLok ? driftsforhold(valgtLok.id, ctx) : [];
 
   const fordeling = aktivFordeling(k?.facility?.aktiverPrArt || {});
@@ -336,7 +368,7 @@ export default function FacilityOversigt() {
 
   /* Aktivtabellen sorteres efter hvornår service forfalder — det er den
      rækkefølge man arbejder listen i. */
-  const aktiver = [...DEMO_AKTIVER].sort((a, b) => a.naesteServiceMs - b.naesteServiceMs);
+  const aktiver = [...akt.data].sort((a, b) => a.naesteServiceMs - b.naesteServiceMs);
   const sider = Math.max(1, Math.ceil(aktiver.length / PR_SIDE));
   const nuSide = Math.min(side, sider);
   const paaSiden = aktiver.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
@@ -375,7 +407,7 @@ export default function FacilityOversigt() {
           {/* Rækken er klikbar og styrer driftskortet til højre. Mockuppen
               har et fast "Hovedlager Greve"; her følger kortet det sted man
               spørger om, så de to ikke kan komme til at handle om hver sit. */}
-          {DEMO_LOKATIONER.map((l) => {
+          {lok.data.map((l) => {
             const t = lokationTilstand(l.id, ctx);
             const valgt = l.id === valgtLokId;
             return (
@@ -429,7 +461,7 @@ export default function FacilityOversigt() {
           )}
           <p className="fc-hint" style={{ marginTop: 12 }}>
             Fordelingen af alle <b>{kpiTal(k?.facility?.aktiver)}</b> aktiver kommer fra{" "}
-            <b>kpi/</b> — den kan ikke regnes af de {num(DEMO_AKTIVER.length)} hentede.
+            <b>kpi/</b> — den kan ikke regnes af de {num(akt.data.length)} hentede.
             Højst fem slices: seriepaletten har fem farver der kan skelnes fra
             hinanden, også uden farvesyn, og en sjette ville genbruge den første.
             {fordeling.find((d) => d.dele)
@@ -468,8 +500,8 @@ export default function FacilityOversigt() {
       {aktivform && (
         <Aktivformular
           key={aktivform}
-          aktiv={aktivform === "ny" ? null : DEMO_AKTIVER.find((a) => a.id === aktivform)}
-          lokationer={DEMO_LOKATIONER}
+          aktiv={aktivform === "ny" ? null : akt.data.find((a) => a.id === aktivform)}
+          lokationer={lok.data}
           zoner={zoner}
           personale={DEMO_PERSONALE.filter((p) => p.status === "aktiv")}
           sti={(under) => path(`facility/${under}`)}
@@ -480,15 +512,15 @@ export default function FacilityOversigt() {
       {fejlform && (
         <Fejlformular
           key={fejlform}
-          fejlpost={fejlform === "ny" ? null : DEMO_FEJL.find((x) => x.id === fejlform)}
-          aktiver={DEMO_AKTIVER}
+          fejlpost={fejlform === "ny" ? null : fej.data.find((x) => x.id === fejlform)}
+          aktiver={akt.data}
           sti={(under) => path(`facility/${under}`)}
           paaGemt={() => { setFejlform(null); genindlaes(); }}
           paaLuk={() => setFejlform(null)}
         />
       )}
 
-      <Kort titel={`Aktiver (${num(DEMO_AKTIVER.length)} hentede af ${kpiTal(k?.facility?.aktiver)})`}
+      <Kort titel={`Aktiver (${num(akt.data.length)} hentede af ${kpiTal(k?.facility?.aktiver)})`}
             handling={
               <Knap variant="primaer" disabled={!maaSkrive}
                     onClick={() => { setAktivform("ny"); setFejlform(null); }}
@@ -589,7 +621,7 @@ export default function FacilityOversigt() {
             tom="Ingen åbne fejl."
           />
           <p className="fc-hint" style={{ marginTop: 12 }}>
-            Viser {num(aabne.length)} af {num(DEMO_FEJL.length)} hentede fejl.{" "}
+            Viser {num(aabne.length)} af {num(fej.data.length)} hentede fejl.{" "}
             <b>{kpiTal(k?.facility?.aabneFejl)}</b> er platformens tal fra <code>kpi/</code> —
             listen her er et udsnit og skal ikke gå op mod det.
           </p>

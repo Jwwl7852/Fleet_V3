@@ -10,8 +10,9 @@
  * ⚠ ET FELT UDEN KILDE ER `null` — IKKE NUL.
  *
  * `kpi/` har været seedet fra demo-sættet, og hvert felt har derfor haft en
- * værdi. Aggregeringen kan ikke det: `opgaver`, `indkoeb` og `facility`
- * findes ikke som noder endnu, og de bærer tilsammen over tyve felter.
+ * værdi. Aggregeringen kan ikke det. `opgaver`, `indkoeb`, `fakturaer`,
+ * `leverandoerer` og `facility` er kommet til siden; `lagre` mangler stadig,
+ * og flåden og bemandingen venter på et svar frem for på en node.
  *
  * Skrev vi 0, ville skærmen sige "0 åbne ordrer" — en tom liste, ikke et
  * ubesvaret spørgsmål. `num()` skriver nu `INTET` for null netop derfor; se
@@ -61,6 +62,28 @@ export const UDEN_DIVISION = [
   "koeretoejer", "personale", "fravaer", "carriers", "varer", "kompetencer",
 ];
 
+/* ⚠ FACILITY VAR PÅ VEJ IND I LISTEN OVENFOR — OG DET VAR FORKERT.
+ *
+ * Det er rigtigt at aktiver, lokationer og fejl ikke MÅ bære en division;
+ * reglerne siger `"division": {".validate": false}` på alle tre. Men deraf
+ * følger IKKE at tallene er ubesvarlige, og det var den slutning jeg tog.
+ *
+ * demo-facility.js har svaret skrevet i sit hoved: **"FACILITY ER FÆLLES.
+ * Aktiverne er de samme uanset division, og kpi.facility er derfor identisk
+ * under gods og bus."** demo-kpi bekræfter det: 287 aktiver og 24 åbne fejl i
+ * BEGGE divisioner — mens flåden står med 42 mod 18 og bemandingen 58 mod 26.
+ *
+ * Demo-sættene skelner altså allerede mellem to slags "ingen division":
+ *
+ *   FLÅDEN og BEMANDINGEN skal DELES, og feltet findes ikke → ubesvarligt.
+ *   FACILITY er FÆLLES, og feltet er forbudt fordi delingen ikke giver
+ *   mening → svaret er hele basen, vist begge steder.
+ *
+ * Det er samme regel som iDivision(): en post uden division hører til BEGGE,
+ * ikke til ingen. At skrive null for facility ville have været at stille et
+ * spørgsmål der allerede var besvaret — og at holde tolv felter tomme for at
+ * få dem til at ligne flåden. */
+
 /** Kilder der endnu ikke findes som node. Deres felter bliver `null`. */
 export const KILDER_DER_MANGLER = [
   /* ⚠ `indkoeb` STOD HER. Noden havde regler, et indeks og en validering af
@@ -72,7 +95,12 @@ export const KILDER_DER_MANGLER = [
      firebase.rules.json — selv om BÅDE indkoeb og fakturaer har indekseret
      leverandoerId siden de blev skrevet. Uden den var der ingen AFTALT pris
      at måle en betalt pris imod, og prisafvigelserne var derfor null. */
-  "facility", "lagre",
+  /* ⚠ `facility` STOD HER — den manglede DATA, og de er seedet nu.
+     Jeg gættede først at det kun ville låse to felter op, fordi reglerne
+     FORBYDER `division` på aktiver, lokationer og fejl. Det var en forkert
+     slutning: facility er FÆLLES, og et fælles tal skal vises begge steder,
+     ikke skjules begge steder. Se den lange note ved UDEN_DIVISION. */
+  "lagre",
 ];
 
 const DAG = 86400000;
@@ -97,17 +125,16 @@ export const iDivision = (post, division) =>
  */
 export function udenKilde() {
   return {
-    facility: {
-      aktiver: null, servicepunkterForfalder: null, aabneSager: null,
-      planlagtVedligehold: null, aabneFejl: null, klimaalarmerIDag: null,
-      sensorerAktive: null, eksterneLeverandoerer: null,
-      facilityOmkostningOere: null, anslaaetServiceOere: null,
-      /* Et OBJEKT, ikke et tal — arter mod antal. Facility-oversigten har sin
-         egen besked om at feltet ikke findes; null er det den læser. */
-      aktiverPrArt: null,
-      aktiverDeltaPct: null, servicepunkterDelta: null, aabneSagerDelta: null,
-      planlagtVedligeholdDelta: null,
-    },
+    /* ⚠ FACILITY STÅR IKKE LÆNGERE HER. Noden er seedet, og felterne
+       regnes af facilitytal() — også de tre der stadig er null
+       (klimaalarmerIDag, aabneSager, anslaaetServiceOere). De er null INDE i
+       regnestykket, med grunden ved sig: et null med en grund hører hos
+       beregningen, og kun de HELT ukendte kilder samles her.
+
+       ⚠ facilityOmkostningOere ER FJERNET HELT — ikke sat til null. Den var
+       summen af facility/omkostnings fem komponenter, altså et AFLEDT tal,
+       gemt. bygningsomkostningOere() regner den hos forbrugeren, og ingen
+       skærm læste kpi-feltet. Se "Skal UD af aggregeringen" i README. */
     /* ⚠ indkoeb STÅR IKKE LÆNGERE HER — se indkoebstal(). De to felter der
        stadig er null (prisafvigelserne) er null INDE i den funktion, med
        begrundelsen ved sig: de kræver leverandørens prisliste, og
@@ -381,6 +408,93 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], di
   };
 }
 
+/** Servicevinduet: 30 dage frem, og alt der er overskredet. */
+export const SERVICE_VINDUE_DAGE = 30;
+
+/**
+ * Facilitys nøgletal.
+ *
+ * ⚠ DE FLESTE ER ENS I BEGGE DIVISIONER, OG DET ER SVARET — ikke en fejl.
+ * Facility er fælles: aktiverne er de samme uanset division, og reglerne
+ * FORBYDER feltet på lokationer, aktiver og fejl. En port i Hal B er ikke
+ * gods eller bus; det er en port, og begge afdelinger kører ind ad den.
+ * Se den lange note ved UDEN_DIVISION.
+ *
+ * ⚠ TO FELTER ER ALLIGEVEL DELT — og forskellen er værd at forstå:
+ * `planlagtVedligehold` kommer fra `opgaver` og `eksterneLeverandoerer` fra
+ * `leverandoerer`, og de to noder BÆRER en division. Aktivet er GENSTANDEN og
+ * kan ikke deles; ARBEJDET på det er planlagt af en afdeling og kan.
+ */
+export function facilitytal({
+  aktiver = [], fejl = [], sensorer = [], opgaver = [], leverandoerer = [],
+  division, nu = Date.now(),
+} = {}) {
+  const mineOpgaver = opgaver.filter((o) => iDivision(o, division));
+
+  /* ⚠ OVERSKREDET TÆLLER MED. "Forfalder" er ikke "forfalder snart" — en
+     service der skulle have været lavet for en måned siden, er ikke holdt op
+     med at forfalde. Vinduet er de samme 30 dage som serviceTone() farver
+     efter og som flaade.serviceInden30 bruger; to vinduer for samme slags
+     spørgsmål ville give to tal der begge så rigtige ud. */
+  const graense = nu + SERVICE_VINDUE_DAGE * DAG;
+
+  const prArt = {};
+  for (const a of aktiver) {
+    if (!a?.art) continue;
+    prArt[a.art] = (prArt[a.art] || 0) + 1;
+  }
+
+  return {
+    aktiver: aktiver.length,
+
+    servicepunkterForfalder: aktiver.filter(
+      (a) => Number.isFinite(a.naesteServiceMs) && a.naesteServiceMs <= graense).length,
+
+    /* ⚠ ALT DER IKKE ER UDBEDRET. Ikke "ny" alene: en fejl der er planlagt
+       eller i gang, er stadig en fejl der ikke er væk. Samme regel som
+       demoAabneFejl() i demo-facility.js. */
+    aabneFejl: fejl.filter((f) => f.status !== "udbedret").length,
+
+    /* ⚠ EN SENSOR ER AKTIV NÅR DEN LEVERER. Tælles hele listen, tæller man
+       også den der er holdt op med at sende — og så ser overvågningen hel ud
+       netop dér hvor den er gået i stykker. */
+    sensorerAktive: sensorer.filter((s) => Number.isFinite(s?.aktuel?.ms)).length,
+
+    /* ⚠ ET OBJEKT, IKKE ET TAL — arter mod antal, til donutten. Summen SKAL
+       være `aktiver`, og fordi begge tælles af den SAMME liste her, kan de
+       ikke drive fra hinanden. Det var netop dét mockuppen tog fejl af. */
+    aktiverPrArt: prArt,
+
+    /* ⚠ PLANLAGT VEDLIGEHOLD ER EN OPGAVE MED art: "facility" — ikke et
+       aktiv med en fremtidig service. Opgaven er ARBEJDET, aktivet er
+       GENSTANDEN. Talte vi aktiver, ville "planlagt vedligehold" stige hver
+       gang nogen købte en port. */
+    planlagtVedligehold: mineOpgaver.filter(
+      (o) => o.art === "facility" && o.status === "planlagt").length,
+
+    /* ⚠ EKSTERNE — altså leverandører i facility-kategorien, ikke vores egne
+       folk. `aktiv` skal med: en leverandør vi er holdt op med at bruge, er
+       ikke en vi kan ringe til. */
+    eksterneLeverandoerer: leverandoerer.filter(
+      (l) => l.aktiv !== false && l.kategori === "facility"
+        && iDivision(l, division)).length,
+
+    /* ⚠ KRÆVER HISTORIK, ikke en tilstand. "Alarmer udløst I DAG" er noget
+       andet end "alarmer der er aktive NU" — det sidste er AFLEDT af måling
+       plus zonens grænse og holdes bevidst ude af kpi/. Døgnets udløsninger
+       skal læses af `facility/sensorer/<zone>/maalinger`, og den node er tom:
+       ingen skriver målinger endnu. */
+    klimaalarmerIDag: null,
+
+    /* `sager/` findes ikke — beslutning 20 er fase 0, kun visning. */
+    aabneSager: null,
+
+    /* Servicebesøgene har ingen node. De ligger i demo-facility.js med
+       `estimatOere`, men der er intet sted at skrive dem hen endnu. */
+    anslaaetServiceOere: null,
+  };
+}
+
 /**
  * Prisafvigelserne: hvad vi BETALTE, målt mod hvad vi AFTALTE.
  *
@@ -515,6 +629,10 @@ export const deltaPoint = (nyt, gammelt) => {
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
   indkoeb = [], fakturaer = [], leverandoerer = [],
+  /* ⚠ FACILITY ER TRE LISTER, IKKE ÉN. Noden har børn — aktiver, fejl og
+     sensorer — og de tælles hver for sig. Ét samlet argument ville have
+     skjult hvilke af dem der faktisk blev læst. */
+  facilityAktiver = [], facilityFejl = [], facilitySensorer = [],
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
@@ -523,10 +641,31 @@ export function beregnKpi({
   const disp = disponeringstal(etaper, division);
   const opg = opgavetal(opgaver, division, nu);
   const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
+  const fac = facilitytal({
+    aktiver: facilityAktiver, fejl: facilityFejl, sensorer: facilitySensorer,
+    opgaver, leverandoerer, division, nu,
+  });
 
   return {
     ...tomme,
     beregnetMs: nu,
+    facility: {
+      ...fac,
+      /* ⚠ aktiverDeltaPct ER PROCENT; DE TRE ANDRE ER ANTAL.
+         Feltnavnene siger hvilket. To planlagte vedligehold der bliver til
+         fire, er +2 — en procent af et lille tal er støj, og aktivbasen er
+         det eneste af de fire der er stort nok til at en procent betyder
+         noget. Se noten i demo-kpi.js. */
+      aktiverDeltaPct: deltaPct(fac.aktiver, forrige?.facility?.aktiver),
+      servicepunkterDelta: deltaPoint(
+        fac.servicepunkterForfalder, forrige?.facility?.servicepunkterForfalder),
+      planlagtVedligeholdDelta: deltaPoint(
+        fac.planlagtVedligehold, forrige?.facility?.planlagtVedligehold),
+      /* `sager/` findes ikke, så basen er null — og en delta af to null er
+         ikke 0, den er stadig ubesvaret. */
+      aabneSagerDelta: deltaPoint(
+        fac.aabneSager, forrige?.facility?.aabneSager),
+    },
     opgaver: {
       ...opg,
       aabneDeltaPct: deltaPct(opg.aabne, forrige?.opgaver?.aabne),

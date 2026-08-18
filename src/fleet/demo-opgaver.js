@@ -123,6 +123,30 @@ export const DEMO_OPGAVER = [
     sted: "Kolding", beskrivelse: "Lygteskift, venstre for",
     personId: "larsAage", koeretoejId: "kt-034", status: "udfoert",
     estimeretMin: 30, faktiskMin: null, beloebOere: 42000 },
+
+  /* --- To PLANLAGTE facility-opgaver ----------------------------------
+     ⚠ SÆTTET HAVDE ÉN facility-opgave, OG DEN VAR "afventer".
+     `facility.planlagtVedligehold` tæller `art: "facility"` med status
+     `planlagt`, og tallet var derfor 0 i begge divisioner — sandt for de
+     data, men en tælling der kun kan give 0, kan ikke tage fejl på en måde
+     nogen opdager. Tredje gang det mønster dukker op i dette datasæt.
+
+     ⚠ OPGAVEN BÆRER EN DIVISION; AKTIVET GØR IKKE. Reglerne forbyder
+     `division` på `facility/aktiver` — en port er ikke gods eller bus. Men
+     ARBEJDET er planlagt af en afdeling, og opgaven skal have en. Det er
+     netop derfor `planlagtVedligehold` kan regnes pr. division, mens
+     `facility.aktiver` ikke kan.
+
+     Den ene er `faelles` (tæller i begge), den anden `bus` — så viser gods 1
+     og bus 2, og divisionsfilteret kan ses virke på rigtige data. */
+  { id: "op-012", art: "facility", division: "faelles", startMs: iDag(9, 0),
+    sted: "Kolding", beskrivelse: "Ventilation, kontor – halvårligt filterskift",
+    personId: "kasperLykke", status: "planlagt",
+    estimeretMin: 90, faktiskMin: null, beloebOere: 36000 },
+  { id: "op-013", art: "facility", division: "bus", startMs: iDag(13, 0),
+    sted: "Aalborg", beskrivelse: "Ladestandere – eftersyn før vinter",
+    personId: "ibSoerensen", status: "planlagt",
+    estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
 ];
 
 /* ---- Opslag, så skærmen ikke bygger sine egne ------------------------- */

@@ -13,7 +13,7 @@ import {
   UDEN_DIVISION, KILDER_DER_MANGLER, iDivision, udenKilde,
   kundetal, ikkeFaktureretOere, disponeringstal,
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
-  prisafvigelser,
+  prisafvigelser, facilitytal, SERVICE_VINDUE_DAGE,
   deltaPct, deltaPoint, beregnKpi,
 } from "../src/fleet/kpi-aggregering.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
@@ -94,7 +94,7 @@ test("⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION", () => {
 
 test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
   /* Så efterslæbet kan tælles frem for at blive opdaget felt for felt. */
-  for (const n of ["facility", "lagre"]) {
+  for (const n of ["lagre"]) {
     assert.ok(KILDER_DER_MANGLER.includes(n));
   }
   /* ⚠ LISTEN ER EN OPTÆLLING AF EFTERSLÆBET, IKKE EN FAST TEKST.
@@ -107,8 +107,35 @@ test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
     assert.ok(!KILDER_DER_MANGLER.includes(n),
       `${n} har en kilde nu og skal ikke staa som savnet`);
   }
+  /* ⚠ `facility` FALDT AF LISTEN AF EN ANDEN GRUND END DE TO ANDRE.
+     Noden manglede ikke en form eller en beslutning — den manglede DATA, og
+     de er seedet. Men det låste kun to felter op: resten kan ikke deles på
+     division, og det er et andet spørgsmål end en manglende kilde. Et felt
+     der står som "mangler kilde" mens det i virkeligheden venter på et svar,
+     bliver ikke stillet til nogen. */
+  assert.ok(!KILDER_DER_MANGLER.includes("facility"),
+    "facility er seedet");
+
+  /* ⚠ OG FACILITY HØRER HELLER IKKE I UDEN_DIVISION.
+     Jeg lagde den der først, fordi reglerne FORBYDER `division` på aktiver,
+     lokationer og fejl — og sluttede deraf at tallene var ubesvarlige som
+     flådens. Det var forkert: demo-facility.js har svaret i sit hoved
+     ("FACILITY ER FÆLLES"), og demo-kpi viser 287 aktiver i BEGGE divisioner,
+     mens flåden står 42 mod 18. To slags "ingen division", to svar. */
+  for (const n of ["facility/lokationer", "facility/aktiver", "facility/fejl"]) {
+    assert.ok(!UDEN_DIVISION.includes(n),
+      `${n} står som ubesvarlig — men facility er fælles, ikke udelt`);
+  }
   const antal = Object.values(udenKilde()).reduce((s, o) => s + Object.keys(o).length, 0);
-  assert.ok(antal >= 25, `kun ${antal} felter uden kilde — er noget begyndt at gaette?`);
+  assert.ok(antal >= 12, `kun ${antal} felter uden kilde — er noget begyndt at gaette?`);
+
+  /* ⚠ OG NU ER DE TILBAGEVÆRENDE FELTER ÉT SPØRGSMÅL, IKKE MANGE.
+     udenKilde() indeholder kun `flaade` og `bemanding` — alle 16 felter
+     venter på det SAMME svar: kan flåden og bemandingen deles på division?
+     Så længe listen var lang og blandet, kunne man tro at der var meget
+     tilbage at bygge. Der er ét spørgsmål tilbage at BESVARE. */
+  assert.deepEqual(Object.keys(udenKilde()).sort(), ["bemanding", "flaade"],
+    "udenKilde() rummer andet end divisionsspørgsmålet");
 });
 
 /* ---- Det der kan regnes ------------------------------------------------ */
@@ -543,6 +570,136 @@ test("⚠ klarTilFakturering OG ikkeFaktureretForloeb ER SAMME TAL", () => {
   const k = beregnKpi({ division: "gods", etaper, grundlag, nu: NU });
   assert.equal(k.opgaver.klarTilFakturering, k.oekonomi.ikkeFaktureretForloeb);
   assert.equal(k.opgaver.klarTilFakturering, 1);
+});
+
+
+/* ---- Facility ---------------------------------------------------------- */
+
+const aktiv = (o = {}) => ({
+  id: o.id || "fa-x", navn: "Port", art: "port",
+  lokationId: "lok-1", status: "idrift", ...o,
+});
+
+test("⚠ FACILITY ER FÆLLES — SAMME TAL I BEGGE DIVISIONER", () => {
+  /* Aktiverne er de samme uanset division, og reglerne FORBYDER `division`
+     på dem. En port i Hal B er ikke gods eller bus; det er en port, og begge
+     afdelinger kører ind ad den.
+
+     ⚠ IKKE null. Det var min første udgave — jeg lagde facility i
+     UDEN_DIVISION ved siden af flåden. Men de to er ikke samme spørgsmål:
+     demo-kpi har 287 aktiver i BEGGE divisioner og flåden 42 mod 18. Facility
+     er FÆLLES, flåden skal DELES. At skjule et fælles tal begge steder er at
+     stille et spørgsmål der allerede er besvaret. */
+  const aktiver = [aktiv({ id: "a" }), aktiv({ id: "b" }), aktiv({ id: "c" })];
+  const gods = facilitytal({ aktiver, division: "gods", nu: NU });
+  const bus = facilitytal({ aktiver, division: "bus", nu: NU });
+  assert.equal(gods.aktiver, 3);
+  assert.deepEqual(gods.aktiver, bus.aktiver);
+});
+
+test("⚠ EN OVERSKREDET SERVICE TÆLLER STADIG SOM FORFALDEN", () => {
+  /* "Forfalder" er ikke "forfalder snart". En service der skulle have været
+     lavet for en måned siden, er ikke holdt op med at forfalde — og et tal
+     der talte den fra, ville falde netop når den blev mest presserende. */
+  const t = facilitytal({
+    aktiver: [
+      aktiv({ id: "over", naesteServiceMs: NU - 30 * DAGE }),
+      aktiv({ id: "snart", naesteServiceMs: NU + 5 * DAGE }),
+      aktiv({ id: "kant", naesteServiceMs: NU + SERVICE_VINDUE_DAGE * DAGE }),
+      aktiv({ id: "senere", naesteServiceMs: NU + (SERVICE_VINDUE_DAGE + 1) * DAGE }),
+      aktiv({ id: "uden" }),
+    ],
+    division: "gods", nu: NU,
+  });
+  assert.equal(t.servicepunkterForfalder, 3,
+    "overskredet, snart og på kanten tæller — senere og uden dato gør ikke");
+});
+
+test("⚠ EN FEJL DER ER PLANLAGT, ER STADIG ÅBEN", () => {
+  /* Kun `udbedret` lukker den. En fejl der er planlagt eller i gang, er ikke
+     væk — den er bare ikke overraskende længere. */
+  const t = facilitytal({
+    fejl: [
+      { id: "1", status: "ny" },
+      { id: "2", status: "planlagt" },
+      { id: "3", status: "igang" },
+      { id: "4", status: "udbedret" },
+    ],
+    division: "gods", nu: NU,
+  });
+  assert.equal(t.aabneFejl, 3);
+});
+
+test("⚠ EN SENSOR UDEN MÅLING ER IKKE AKTIV", () => {
+  /* Tælles hele listen, tæller man også den der er holdt op med at sende — og
+     så ser overvågningen hel ud netop dér hvor den er gået i stykker. */
+  const t = facilitytal({
+    sensorer: [
+      { id: "zo-1", aktuel: { tempC: -19.8, ms: NU } },
+      { id: "zo-2", aktuel: { tempC: 4.1, ms: NU - 3600000 } },
+      { id: "zo-3" },
+      { id: "zo-4", aktuel: { tempC: 2 } },
+    ],
+    division: "gods", nu: NU,
+  });
+  assert.equal(t.sensorerAktive, 2, "en måling uden tidsstempel er ingen måling");
+});
+
+test("⚠ aktiverPrArt SUMMERER TIL aktiver", () => {
+  /* Donutten og nøgletallet over den skal beskrive den SAMME base. Det var
+     netop dét mockuppen tog fejl af — og fordi begge tælles af den samme
+     liste her, kan de ikke drive fra hinanden. */
+  const t = facilitytal({
+    aktiver: [
+      aktiv({ id: "a", art: "port" }),
+      aktiv({ id: "b", art: "port" }),
+      aktiv({ id: "c", art: "koeleanlaeg" }),
+      aktiv({ id: "d", art: "alarm" }),
+    ],
+    division: "gods", nu: NU,
+  });
+  const sum = Object.values(t.aktiverPrArt).reduce((s, n) => s + n, 0);
+  assert.equal(sum, t.aktiver);
+  assert.deepEqual(t.aktiverPrArt, { port: 2, koeleanlaeg: 1, alarm: 1 });
+});
+
+test("⚠ PLANLAGT VEDLIGEHOLD ER EN OPGAVE, IKKE ET AKTIV", () => {
+  /* Opgaven er ARBEJDET, aktivet er GENSTANDEN. Talte vi aktiver med en
+     fremtidig service, ville "planlagt vedligehold" stige hver gang nogen
+     købte en port — og det er ikke arbejde nogen har planlagt.
+
+     Og DERFOR kan feltet deles på division, selv om aktivet ikke kan:
+     opgaven bærer en. */
+  const opgaver = [
+    { id: "o1", art: "facility", status: "planlagt", division: "gods" },
+    { id: "o2", art: "facility", status: "planlagt", division: "bus" },
+    { id: "o3", art: "facility", status: "afventer", division: "gods" },
+    { id: "o4", art: "vaerksted", status: "planlagt", division: "gods" },
+  ];
+  const aktiver = [aktiv({ id: "a", naesteServiceMs: NU + DAGE })];
+  assert.equal(facilitytal({ aktiver, opgaver, division: "gods", nu: NU }).planlagtVedligehold, 1);
+  assert.equal(facilitytal({ aktiver, opgaver, division: "bus", nu: NU }).planlagtVedligehold, 1);
+});
+
+test("⚠ EN UDGÅET LEVERANDØR ER IKKE EN VI KAN RINGE TIL", () => {
+  const leverandoerer = [
+    { id: "l1", kategori: "facility", aktiv: true, division: "faelles" },
+    { id: "l2", kategori: "facility", aktiv: false, division: "faelles" },
+    { id: "l3", kategori: "daek", aktiv: true, division: "faelles" },
+  ];
+  const t = facilitytal({ leverandoerer, division: "gods", nu: NU });
+  assert.equal(t.eksterneLeverandoerer, 1);
+});
+
+test("⚠ TRE FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
+  /* klimaalarmerIDag kræver HISTORIK — og er noget andet end "alarmer der er
+     aktive nu", som er afledt og bevidst holdes ude af kpi/.
+     aabneSager venter på `sager/`, som ikke findes (beslutning 20, fase 0).
+     anslaaetServiceOere venter på servicebesøgene, som ingen node har. */
+  const t = facilitytal({ aktiver: [aktiv()], division: "gods", nu: NU });
+  assert.equal(t.klimaalarmerIDag, null);
+  assert.equal(t.aabneSager, null);
+  assert.equal(t.anslaaetServiceOere, null);
 });
 
 /* ---- Jobbet ------------------------------------------------------------ */

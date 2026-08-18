@@ -2724,7 +2724,10 @@ export const kpiaggregering = onSchedule(
     let skrevet = 0;
     for (const tenantId of Object.keys(kunderIndeks)) {
       const rod = db.ref(`tenants/${tenantId}`);
-      const [kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer] =
+      const [
+        kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
+        facilityAktiver, facilityFejl, facilitySensorer,
+      ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
           rod.child("etaper").once("value").then((s) => raekker(s.val())),
@@ -2736,6 +2739,12 @@ export const kpiaggregering = onSchedule(
              kun det yderste id paa. beregnKpi() oversaetter selv med
              leverandoerFraDb(); jobbet regner ikke. */
           rod.child("leverandoerer").once("value").then((s) => raekker(s.val())),
+          /* Facility er TRE lister, ikke én: noden har boern. raekker()
+             laegger id paa hver af dem — for sensorerne er id ZONEN, fordi
+             en zone har én maaling ad gangen. */
+          rod.child("facility/aktiver").once("value").then((s) => raekker(s.val())),
+          rod.child("facility/fejl").once("value").then((s) => raekker(s.val())),
+          rod.child("facility/sensorer").once("value").then((s) => raekker(s.val())),
         ]);
 
       for (const division of KPI_DIVISIONER) {
@@ -2743,7 +2752,8 @@ export const kpiaggregering = onSchedule(
         const forrige = (await sti.child("current").once("value")).val();
         const nyt = beregnKpi({
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
-          leverandoerer, forrige, nu,
+          leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
+          forrige, nu,
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

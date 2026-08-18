@@ -25,7 +25,7 @@ import { DEMO_KPI } from "./demo-kpi.js";
 import { STED, erSted } from "./steder.js";
 import {
   AKTIV_ART, AKTIV_STATUS, ZONE_ART, LOKATION_TYPE, FEJL_STATUS,
-  alarmTilstand, gennemsnitTemperatur, elVarmeOere, bygningsomkostningOere,
+  alarmTilstand, gennemsnitTemperatur, elVarmeOere, bygningsomkostningOere, zonePar,
   OMKOSTNINGSPOST,
 } from "./facility.js";
 import { opgaveMangler } from "./opgaver.js";
@@ -161,8 +161,11 @@ export const DEMO_SENSORER = {
 };
 
 /** Zone + måling parret. DEN ENE kilde begge skærme læser. */
-export const zonePar = () =>
-  DEMO_ZONER.map((zone) => ({ zone, maaling: DEMO_SENSORER[zone.id]?.aktuel || null }));
+/* ⚠ HER STOD SELVE PARRINGEN, uden argumenter og med demo-sættet lukket
+   inde i sig. Skærmene kaldte `zonePar()` og fik demofilen — også efter at
+   noden var seedet. Regnestykket hedder nu zonePar(zoner, sensorer) og står
+   i facility.js; det her er kun demo-sættets udgave af kaldet. */
+export const demoZonePar = () => zonePar(DEMO_ZONER, DEMO_SENSORER);
 
 /* ---- Fejl -------------------------------------------------------------- */
 

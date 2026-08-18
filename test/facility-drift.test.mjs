@@ -14,13 +14,13 @@ import assert from "node:assert/strict";
 
 import { lokationTilstand, driftsforhold, aktivFordeling } from "../src/fleet/facility.js";
 import {
-  DEMO_LOKATIONER, DEMO_AKTIVER, demoAabneFejl, zonePar,
+  DEMO_LOKATIONER, DEMO_AKTIVER, demoAabneFejl, demoZonePar,
 } from "../src/fleet/demo-facility.js";
 import { DEMO_PERSONALE } from "../src/fleet/demo-personale.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { erSted } from "../src/fleet/steder.js";
 
-const ctx = () => ({ aktiver: DEMO_AKTIVER, aabneFejl: demoAabneFejl(), par: zonePar() });
+const ctx = () => ({ aktiver: DEMO_AKTIVER, aabneFejl: demoAabneFejl(), par: demoZonePar() });
 
 test("Lokationens tilstand er afledt", async (t) => {
   const zone = { id: "z", lokationId: "L", graenser: { minC: 2, maksC: 6 } };

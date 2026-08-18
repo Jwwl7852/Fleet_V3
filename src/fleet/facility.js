@@ -160,6 +160,33 @@ export function gennemsnitPrZoneArt(par = []) {
 
 /** Aktive alarmer lige nu. AFLEDT — hører ikke i kpi/, af samme grund som
  *  bemanding.ledig ikke gør: et gemt afledt tal driver fra sit grundlag. */
+/**
+ * Zonen parret med sin seneste måling.
+ *
+ * ⚠ FUNKTIONEN LÅ I demo-facility.js OG TOG INGEN ARGUMENTER. Den lukkede
+ * demo-sættet inde i sig, og skærmene kaldte `zonePar()` — så da noden blev
+ * seedet, viste de stadig demofilen. Et regnestykke i en demofil er den fil
+ * der forsvinder den dag noden er rigtig; det er tredje gang mønstret dukker
+ * op (linjeBeloebOere, medPrisliste, og nu den her).
+ *
+ * ⚠ SENSORERNE ER NØGLET PÅ ZONEN, ikke på et sensor-id: en zone har én
+ * måling ad gangen. Derfor tager funktionen både en LISTE af zoner og et
+ * OPSLAG af sensorer — og tåler begge former, fordi useListe leverer
+ * sensorerne som rækker med `id` = zoneId, mens demo-sættet er et objekt.
+ *
+ * En zone uden sensor får `maaling: null`. Det er ikke det samme som en
+ * måling på 0 grader, og alarmTilstand() skelner.
+ */
+export function zonePar(zoner = [], sensorer = {}) {
+  const opslag = Array.isArray(sensorer)
+    ? Object.fromEntries(sensorer.map((s) => [s.id, s]))
+    : sensorer;
+  return zoner.map((zone) => ({
+    zone,
+    maaling: opslag?.[zone.id]?.aktuel || null,
+  }));
+}
+
 export const aktiveAlarmer = (par = []) =>
   par.filter((p) => alarmTilstand(p.zone, p.maaling).alarm);
 

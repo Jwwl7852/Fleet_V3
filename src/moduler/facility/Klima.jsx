@@ -33,26 +33,51 @@ import {
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   ZONE_ART, OMKOSTNINGSPOST, alarmTilstand, aktiveAlarmer,
-  gennemsnitPrZoneArt, elVarmeOere, bygningsomkostningOere,
+  gennemsnitPrZoneArt, elVarmeOere, bygningsomkostningOere, zonePar,
 } from "../../fleet/facility.js";
-import { zonePar, demoLokation, DEMO_BYGNINGSOMKOSTNING } from "../../fleet/demo-facility.js";
+import { demoLokation } from "../../fleet/demo-facility.js";
+import { useListe } from "../../fleet/useListe.js";
+import { usePost } from "../../fleet/usePost.js";
 
 const grader = (t) => (Number.isFinite(t) ? `${t.toFixed(1)} °C` : "—");
 
 export default function Klima() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
-  if (henter) return <Henter hvad="klimadata" />;
+
+  /* ⚠ SAMME TO NODER SOM OVERBLIK, OG SAMME zonePar(). Regnestykket lå i
+     demo-facility.js og tog ingen argumenter — så skærmen viste demofilen
+     også efter at noden var seedet. Nu tager den zoner og sensorer ind, og de
+     to skærme kan ikke længere parre forskelligt.
+
+     division: "alle" — facility er fælles; reglerne forbyder feltet. */
+  const felles = { vindue: "alle", division: "alle", graense: 500 };
+  const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
+  const sen = useListe("facility/sensorer", felles);
+
+  /* ⚠ ET OBJEKT, IKKE EN LISTE. `facility/omkostning` er fem navngivne
+     poster — el, varme, vand, ventilation, alarm — ikke rækker med id.
+     useListe ville have gjort hver komponent til en "post" med et tal som
+     krop, og så ville el og varme se ud som to aktiver. */
+  const omk = usePost("facility", "omkostning");
+
+  if (henter || zon.henter || sen.henter || omk.henter) {
+    return <Henter hvad="klimadata" />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  const par = zonePar();
+  const par = zonePar(zon.data, sen.data);
   const alarmer = aktiveAlarmer(par);
   const snit = gennemsnitPrZoneArt(par);
 
-  const elVarme = elVarmeOere(DEMO_BYGNINGSOMKOSTNING);
-  const bygning = bygningsomkostningOere(DEMO_BYGNINGSOMKOSTNING);
+  /* ⚠ BEGGE BEREGNES HER, IKKE I kpi/. Et gemt totalfelt kunne drive fra de
+     komponenter det beskriver — og kpi-feltet `facilityOmkostningOere` var
+     netop dét, så det er fjernet. Se "Skal UD af aggregeringen" i README. */
+  const poster = omk.post || {};
+  const elVarme = elVarmeOere(poster);
+  const bygning = bygningsomkostningOere(poster);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -122,7 +147,7 @@ export default function Klima() {
           <Kort titel="Bygningsomkostninger denne måned">
             {Object.entries(OMKOSTNINGSPOST).map(([n, label]) => (
               <MiniLinje key={n} label={label}
-                         vaerdi={kr(DEMO_BYGNINGSOMKOSTNING[n] || 0)} />
+                         vaerdi={kr(poster[n] || 0)} />
             ))}
             <div className="fc-sum">
               <span>El &amp; varme</span>
@@ -145,7 +170,7 @@ export default function Klima() {
       <Kort titel="Forbrug pr. post">
         <Soejlegraf
           punkter={Object.entries(OMKOSTNINGSPOST).map(([n, label]) => ({
-            label, vaerdier: [(DEMO_BYGNINGSOMKOSTNING[n] || 0) / 100],
+            label, vaerdier: [(poster[n] || 0) / 100],
           }))}
           serier={[{ navn: "Denne måned (kr.)", tone: "brand" }]}
           format={(v) => `${num(v)} kr.`}

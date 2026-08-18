@@ -50,10 +50,16 @@ export const DEMO_KPI = {
     },
     /* Facility er FAELLES: tallene er ens under gods og bus, fordi porten er
        den samme uanset hvem der koerer igennem den. */
+    /* ⚠ HER STOD facilityOmkostningOere. Den er FJERNET, ikke glemt: den var
+       summen af `facility/omkostning`s fem komponenter — et AFLEDT tal, gemt.
+       bygningsomkostningOere() regner den hos forbrugeren af de komponenter
+       den beskriver, og ingen skærm læste kpi-feltet. Et gemt afledt tal
+       driver fra sit grundlag; det er fejlen i `bemanding.ledig`, og den var
+       på vej til at blive lavet en gang til. Se "Skal UD af aggregeringen". */
     facility: {
       aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12,
       aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
-      eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
+      eksterneLeverandoerer: 8,
       anslaaetServiceOere: 12845000,
       /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/ — de kan
          ikke regnes af de elleve demo-aktiver skaermen har. aktiverDeltaPct er
@@ -164,7 +170,7 @@ export const DEMO_KPI = {
     facility: {
       aktiver: 287, servicepunkterForfalder: 18, aabneSager: 7, planlagtVedligehold: 12,
       aabneFejl: 24, klimaalarmerIDag: 3, sensorerAktive: 27,
-      eksterneLeverandoerer: 8, facilityOmkostningOere: 12684000,
+      eksterneLeverandoerer: 8,
       anslaaetServiceOere: 12845000,
       /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/ — de kan
          ikke regnes af de elleve demo-aktiver skaermen har. aktiverDeltaPct er

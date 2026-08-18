@@ -339,10 +339,12 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
 kilde — og skriver begge i én opdatering.
 
-⚠ **Men 31 felter har ingen kilde, og de skrives som `null`.** `facility` og
-`lagre` findes ikke som noder; `flaade` og `bemanding` kan ikke deles på
-division. Det er efterslæbet, målt frem for anslået — se tabellen nedenfor og
-det åbne spørgsmål om divisionen.
+⚠ **16 felter har ingen kilde, og de er ÉT spørgsmål.** `udenKilde()` rummer
+nu kun `flaade` og `bemanding`, og alle 16 venter på det SAMME svar: kan
+flåden og bemandingen deles på division? Så længe listen var lang og blandet,
+kunne man tro der var meget tilbage at *bygge*. Der er ét spørgsmål tilbage at
+**besvare**. En prøve i `test/kpi-aggregering.test.mjs` holder listen på de to
+domæner, så et nyt felt ikke kan gemme sig blandt dem.
 
 ⚠ **Efterslæbet tælles nu på FELTNIVEAU.** Prøven sammenlignede kun
 *domæner*, og seks felter gemte sig under den — `opgaver.udenTidsregistrering`,
@@ -559,8 +561,8 @@ Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
 rettes.
 
 ⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
-optællingen: 31 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
-hvilke noder der skal til — `facility` og `lagre`.
+optællingen: 16 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
+den ene node der stadig mangler — `lagre`.
 Får et domæne sin node, fjernes felterne ét sted, og prøven falder hvis
 optællingen ikke følger med.
 
@@ -621,6 +623,42 @@ den var initialiseret. Den står nu nederst i filen. **En selvkontrol prøverne
 ikke kan nå, er en kontrol der selv er uden kontrol** — det gælder alle
 `demo-*.js`, ikke kun denne.
 
+⚠ **`facility` VAR EN FORKERT DIAGNOSE — TO GANGE.**
+
+Først stod den som en manglende kilde. Den manglede kun DATA, og de er seedet:
+aktiver, zoner, sensorer, fejl og omkostningskomponenterne.
+
+Så lagde jeg den i `UDEN_DIVISION` ved siden af flåden, fordi reglerne
+udtrykkeligt **forbyder** `division` på lokationer, aktiver og fejl — og
+sluttede deraf at tallene var ubesvarlige. Det var også forkert, og svaret stod
+skrevet i `demo-facility.js`' hoved hele tiden: **"FACILITY ER FÆLLES.
+Aktiverne er de samme uanset division, og kpi.facility er derfor identisk under
+gods og bus."** `demo-kpi` bekræfter det — 287 aktiver i **begge** divisioner,
+mens flåden står 42 mod 18 og bemandingen 58 mod 26.
+
+Der er altså **to slags "ingen division"**, og demo-sættene skelnede allerede:
+
+| | Feltet mangler | Svaret |
+|---|---|---|
+| **Flåden, bemandingen** | fordi det skal DELES og ingen har delt det | ubesvarligt — `null` |
+| **Facility** | fordi delingen ikke giver mening | hele basen, vist begge steder |
+
+Det er samme regel som `iDivision()`: en post uden division hører til **begge**,
+ikke til ingen. At skrive `null` for facility ville have været at stille et
+spørgsmål der allerede var besvaret — og holde tolv felter tomme for at få dem
+til at ligne flåden.
+
+⚠ **To felter kan alligevel deles**, og forskellen er værd at forstå:
+`planlagtVedligehold` kommer fra `opgaver` og `eksterneLeverandoerer` fra
+`leverandoerer` — begge noder BÆRER en division. **Aktivet er genstanden og kan
+ikke deles; arbejdet på det er planlagt af en afdeling og kan.**
+
+⚠ **Og `zonePar()` lå i en demofil uden argumenter.** Skærmene kaldte
+`zonePar()` og fik demo-sættet — også efter at noden var seedet. Tredje gang
+mønstret dukker op efter `linjeBeloebOere` og `medPrisliste`: et regnestykke i
+en `demo-*.js` er kode der forsvinder den dag noden er rigtig. Den hedder nu
+`zonePar(zoner, sensorer)` og står i `facility.js`.
+
 ⚠ **Nøgletalskortene viser stadig de SEEDEDE demotal i dev.** Provisioneringen
 skriver `DEMO_KPI` til `kpi/`, og `kpiaggregering` kører først 03:20 UTC — så
 "18 åbne ordrer" står i dag over en tabel med 6 rækker. De to er ikke uenige;
@@ -633,15 +671,9 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 |---|---|
 | `bemanding.medarbejdereAktive` | Aktive medarbejdere. Medarbejdere skriver "af N hentede" indtil da — listen er et udsnit |
 | `bemanding.fravaerIDag` | Fraværende i dag. Ferie & fravær har ingen KpiRække indtil da |
-| `facility.aabneFejl` | Fejlmeldinger der ikke er udbedret |
-| `facility.aktiverPrArt` | Hele aktivbasen fordelt på art. **Summen skal være `facility.aktiver`** — ellers beskriver donutten og nøgletallet over den hver sin base. Selvkontrollen i `demo-facility.js` og `test/facility-drift.test.mjs` holder den |
-| `facility.aktiverDeltaPct` | Ændring i aktivbasen mod forrige periode, i procent |
-| `facility.servicepunkterDelta`, `.aabneSagerDelta`, `.planlagtVedligeholdDelta` | Periodeafvigelser i antal. De **kræver historik** og kan derfor ikke regnes af de hentede rækker — modsat åbne fejl og nedetid på Flåde, som er afledte og bevidst holdes ude af `kpi/` |
+| `facility.aabneSager`, `.aabneSagerDelta` | Åbne sager pr. lokation. ⚠ `sager/` findes ikke — beslutning 20 er fase 0, kun visning |
 | `facility.klimaalarmerIDag` | Alarmer udløst i døgnet. Kræver historik — modsat *aktive* alarmer, som beregnes |
-| `facility.sensorerAktive` | Sensorer der leverer målinger |
-| `facility.eksterneLeverandoerer` | Leverandører med aftale |
-| `facility.facilityOmkostningOere` | Facility-omkostning i perioden |
-| `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg |
+| `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg. ⚠ Servicebesøgene har **ingen node**: de ligger i `demo-facility.js` med `estimatOere`, men der er intet sted at skrive dem hen. Servicekalenderen læser dem derfor stadig fra demofilen — den eneste facility-skærm der gør |
 | `kunder.aktiveDeltaPct`, `.daekningsbidragDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke det samme som dækningsgradens afvigelse mod **målet**, som er procentpoint og står under `oekonomi` — samme ord, to regnestykker, og de kan pege hver sin vej |
 | `oekonomi.driftsomkostningerDeltaPct`, `.ikkeFaktureretDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke budgetafvigelsen — den udledes af `driftsomkostningerOere − budgetOere` og må aldrig gemmes |
 | `oekonomi.daekningsgradDeltaPoint` | ⚠ **Procentpoint** mod forrige periode. 68 % der bliver til 72 % er +4 point |
@@ -657,6 +689,7 @@ grundlag:
 | Felt | Hvorfor |
 |---|---|
 | `bemanding.ledig` | Kan beregnes af planlagt − disponeret. Beregnes hos forbrugeren |
+| `facility.facilityOmkostningOere` | **Fjernet.** Summen af `facility/omkostning`s fem komponenter — `bygningsomkostningOere()` regner den hos forbrugeren, og **ingen skærm læste kpi-feltet**. Den stod på efterslæbslisten som noget der skulle beregnes; den skulle i stedet ud |
 
 Og tre tal er **bevidst holdt ude** af `kpi/`, fordi de er afledte:
 klimaalarmer *nu* (måling + zonens grænse), gennemsnitstemperatur (regnes af
