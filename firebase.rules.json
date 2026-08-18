@@ -1061,9 +1061,67 @@
 
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
         "fakturaer": {
+          // ⚠ INGEN MODULKLAUSUL — OG DET ER BESLUTTET, IKKE GLEMT.
+          // Naboen "indkoeb" har en; her saa fravaeret ud som en forglemmelse,
+          // og jeg satte den paa. To proever i rules.moduler.test.mjs blev
+          // roede: fakturaer er en af de TRE TVETYDIGE NODER der staar i
+          // basen, fordi den roeres af to skaerme — en klausul paa det ene
+          // modul ville spaerre det andet. Samme grund som opgaver og satser.
+          // Vil du gate den, skal den anden forbruger findes foerst.
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
-          ".indexOn": ["fakturadatoMs", "leverandoerId", "godkendelsesstatus"]
+
+          // ⚠ INDEKSET PEGEDE PAA ET FELT DER IKKE FINDES.
+          // Der stod "godkendelsesstatus"; posterne har "status". Et indeks paa
+          // et felt ingen post baerer, fejler ikke — RTDB henter hele noden ned
+          // og filtrerer i klienten med en advarsel i konsollen. Samme fejl som
+          // opgaver."dato". Feltnavnet stod ogsaa afskrevet i leverandoerer.js.
+          ".indexOn": ["fakturadatoMs", "leverandoerId", "status"],
+
+          "$fakturaId": {
+            // Noden er .write: false, saa det her er ikke en spaerring mod en
+            // klient — den kommer aldrig hertil. Det er formen den Cloud
+            // Function der skriver fakturaen, skal skrive. Uden den ville
+            // serveren vaere det eneste sted formen stod, og admin-SDK'et gaar
+            // uden om reglerne: en fejl ville ligge i basen, ikke blive afvist.
+            ".validate": "newData.hasChildren(['leverandoerId', 'fakturanummer', 'fakturadatoMs', 'status', 'beloebOere'])",
+
+            // ⚠ INGEN EKSISTENSTJEK — ENDNU. Beslutning 18 siger at
+            // leverandoeren er en entitet, og et opslag mod leverandoerer/ er
+            // det rigtige. Men den node findes ikke i denne fil, og en regel
+            // der slaar op i en node der ikke findes, kan aldrig gaa igennem:
+            // den ville se ud som en spaerring og virke som en blokade.
+            // Naboen indkoeb.leverandoerId staar paa samme form. De to skal
+            // strammes SAMMEN, den dag noden bygges.
+            "leverandoerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "fakturanummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "fakturadatoMs": { ".validate": "newData.isNumber()" },
+            "forfaldMs": { ".validate": "newData.isNumber()" },
+
+            // ⚠ IKKE SAMME ORDLISTE SOM indkoeb.fakturastatus. Der findes
+            // "mangler" — en LINJE kan mangle sin faktura. En FAKTURA der
+            // mangler, findes ikke; posten ville vaere paastanden om sit eget
+            // fravaer. Samme ord i to noder med hver sin betydning er den fejl
+            // beslutning 11 og 14 handler om.
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(modtaget|godkendt|bogfoert|afvist)$/)" },
+
+            // Oere som integer, ekskl. moms; momsen er sit eget felt.
+            "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() <= 10000000000" },
+            "momsOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+
+            // ⚠ EN HAENGENDE REFERENCE ER VAERRE END INGEN. Feltet maa vaere
+            // fravaerende (fakturaen er ikke afstemt endnu), men peger den, skal
+            // den ramme. Demoen havde "ik-001" hvor alle linjer hedder il-XXX,
+            // og saa taeller ikkeLinkedeFakturaer den som linket.
+            "indkoebId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoeb').child(newData.val()).exists()" },
+
+            // Beslutning 20: kom fakturaen ind paa en sag, skal sporet vaere der.
+            "sagsnummer": { ".validate": "newData.isString() && newData.val().length <= 40" },
+
+            // Totalen gemmes ikke — den er beloeb + moms. Se fakturaTotalOere().
+            "totalOere": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
         },
 
         // aktiv er indekseret fordi Kunder & Priser henter kundebasen med

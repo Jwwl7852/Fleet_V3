@@ -1,3 +1,8 @@
+/* ⚠ KOPI — REDIGÉR IKKE HER.
+ * Kilden er src/fleet/leverandoerer.js. Filen lægges af
+ * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.
+ * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
+ */
 /* src/fleet/leverandoerer.js
  * Leverandøren som entitet. Femte gang mønstret fra beslutning 18 dukker op.
  *

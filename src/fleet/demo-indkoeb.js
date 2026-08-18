@@ -224,6 +224,39 @@ export const DEMO_INDKOEBSLINJER = [
     formaal: "Hovedkontor — kvartalets forbrugsartikler",
     fakturastatus: "afvist", godkendtAf: null, godkendtMs: null },
 
+  /* --- To BESTILTE, endnu ikke leverede -------------------------------
+     ⚠ UDEN DEM VAR ALLE 46 LINJER LEVERET, og `indkoeb.aabneOrdrer` gav 0
+     i både gods og bus. Nul var det rigtige svar på de data — og derfor
+     kunne tællingen ikke tage fejl på en måde nogen kunne se. En form der
+     aldrig viser den tilstand den skal kunne vise, er ikke formen.
+
+     De to deler ÉN `reference`: det er samme bestilling hos samme
+     leverandør, med to varelinjer. Én åben ORDRE, ikke to — og det er
+     netop den forskel tællingen skal kunne holde.
+
+     Ingen `leveretMs`, ingen `godkendtMs`: man godkender ikke en vare der
+     ikke er kommet. `aftaltLeveringMs` ligger frem i tiden, så de heller
+     ikke tæller som forsinkede — en ordre er ikke for sent leveret før
+     terminen er passeret. */
+  { id: "il-011", dato: dag(-2), aftaltLeveringMs: dag(5), leveretMs: null, leverandoerId: "lv-hydra", division: "gods",
+    reference: "HYD-450079880",
+    vare: "Bremseklods, akselsæt", varenummer: "BRK-22", kategori: "reservedele", antal: 4, enhed: "sæt",
+    prisPrEnhedOere: 89500, lokationId: "lok-kolding",
+    koeretoejId: "kt-078", formaal: "Planlagt bremseeftersyn",
+    fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
+  { id: "il-012", dato: dag(-2), aftaltLeveringMs: dag(5), leveretMs: null, leverandoerId: "lv-hydra", division: "gods",
+    reference: "HYD-450079880",
+    vare: "Bremsevæske DOT 4", varenummer: "BRV-04", kategori: "reservedele", antal: 5, enhed: "liter",
+    prisPrEnhedOere: 7400, lokationId: "lok-kolding",
+    koeretoejId: "kt-078", formaal: "Planlagt bremseeftersyn — samme ordre",
+    fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
+  { id: "il-013", dato: dag(-1), aftaltLeveringMs: dag(9), leveretMs: null, leverandoerId: "lv-schmitz", division: "bus",
+    reference: "SSP-70590",
+    vare: "Sideruder, sæt", varenummer: "RUD-12", kategori: "reservedele", antal: 2, enhed: "sæt",
+    prisPrEnhedOere: 142000, lokationId: "lok-aalborg",
+    koeretoejId: "kt-b16", formaal: "Rudeskade, bus 16",
+    fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
+
   /* --- Historik: tolv måneder tilbage ---------------------------------
      ⚠ DE HER LINJER ER PRISUDVIKLINGENS GRUNDLAG, og de ligger derfor HER
      og ikke i et separat DEMO_PRISHISTORIK. En snitpris ER et gennemsnit af
@@ -236,8 +269,13 @@ export const DEMO_INDKOEBSLINJER = [
   ...maanedligeIndkoeb(),
 ];
 
-/** BEREGNET, aldrig gemt. */
-export const linjeBeloebOere = (l) => (l.antal || 0) * (l.prisPrEnhedOere || 0);
+/* ⚠ HER STOD EN TREDJE linjeBeloebOere.
+   Regnestykket hedder indkoebBeloebOere() og staar i leverandoerer.js — det
+   er domaenemodulet, ikke demofilen. Kopien her regnede raa antal x pris,
+   mens beloeb.js' funktion af samme navn dividerer med ANTAL_SKALA. To
+   funktioner med samme navn og forskellig skala i ét repo er 1000x-fejlen,
+   og skaermene importerede den fra en DEMO-fil — den fil der forsvinder den
+   dag noden er rigtig. test/priser.test.mjs faelder nu paa navnet her ogsaa. */
 
 /* ---- Fakturaer --------------------------------------------------------- */
 
@@ -252,7 +290,14 @@ export const linjeBeloebOere = (l) => (l.antal || 0) * (l.prisPrEnhedOere || 0);
 export const DEMO_FAKTURAER = [
   { id: "fa-9001", leverandoerId: "lv-scania", fakturanummer: "SK-2026-4471",
     fakturadatoMs: dag(-22), forfaldMs: dag(8), status: "bogfoert",
-    beloebOere: 1842500, momsOere: 460625, indkoebId: "ik-001", sagsnummer: null },
+    beloebOere: 1842500, momsOere: 460625,
+    /* ⚠ HER STOD indkoebId: "ik-001" — et id der ikke fandtes. Alle
+       indkoebslinjer hedder il-XXX, og der er slet ingen scania-linje at
+       pege paa. En haengende reference er vaerre end ingen: skaermen viser et
+       tomt opslag, og ikkeLinkedeFakturaer taeller den som linket.
+       Null er det rigtige svar — en bogfoert faktura uden en registrering er
+       netop den uenighed afstemningen findes for. */
+    indkoebId: null, sagsnummer: null },
   { id: "fa-9002", leverandoerId: "lv-daekteam", fakturanummer: "DV-88213",
     fakturadatoMs: dag(-9), forfaldMs: dag(21), status: "modtaget",
     beloebOere: 2960000, momsOere: 740000, indkoebId: "il-002", sagsnummer: null },

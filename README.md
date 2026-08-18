@@ -339,10 +339,18 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
 kilde — og skriver begge i én opdatering.
 
-⚠ **Men 41 felter har ingen kilde, og de skrives som `null`.** `indkoeb` og
-`facility` findes ikke som noder; `flaade` og `bemanding` kan
-ikke deles på division. Det er efterslæbet, målt frem for anslået — se
-tabellen nedenfor og det åbne spørgsmål om divisionen.
+⚠ **Men 31 felter har ingen kilde, og de skrives som `null`.** `facility` og
+`lagre` findes ikke som noder; `flaade` og `bemanding` kan ikke deles på
+division. Det er efterslæbet, målt frem for anslået — se tabellen nedenfor og
+det åbne spørgsmål om divisionen.
+
+⚠ **Efterslæbet tælles nu på FELTNIVEAU.** Prøven sammenlignede kun
+*domæner*, og seks felter gemte sig under den — `opgaver.udenTidsregistrering`,
+`.klarTilFakturering`, `.udfoerteOpgaver`, `flaade.braendstofOere`,
+`facility.aktiverPrArt` og `oekonomi.planlagtVedligeholdPct`. Alle seks
+**læses af en skærm**, og ingen af dem blev skrevet: skærmen fik `undefined`.
+Det er værre end `null`, for null er et svar formatterne kender — `num(null)`
+skriver "—", mens Dashboardets `100 - undefined` blev NaN.
 
 ⚠ **Skrivning af auditposter var allerede bygget** — `audit` er en onCall, kaldt
 fra `fleet/audit.js`. Den satte listen tre gange i træk uden at nogen læste den
@@ -551,16 +559,42 @@ Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
 rettes.
 
 ⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
-optællingen: 41 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
-hvilke noder der skal til — `indkoeb`, `facility`, `lagre`, `leverandoerer`.
+optællingen: 31 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
+hvilke noder der skal til — `facility`, `lagre`, `leverandoerer`.
 Får et domæne sin node, fjernes felterne ét sted, og prøven falder hvis
 optællingen ikke følger med.
 
 ⚠ **`opgaver` var den første af dem, og den havde regler og ingen data.**
 Noden er skrivbar med `opgaver.skriv` og har et indeks — men intet seedede
 den, og **ingen skærm forespurgte på den**, så den stod tom uden at nogen så
-det. De fire andre står i samme tilstand. Indekset navngav oven i købet
-`dato`, som ingen opgave har: de bærer `startMs`.
+det. Indekset navngav oven i købet `dato`, som ingen opgave har: de bærer
+`startMs`.
+
+⚠ **`indkoeb` var den næste, og den havde MEST af det.** Et indeks, en
+validering af hver eneste feltform, et loft på prisen der fanger tre nuller
+for meget, og en kommentar om hvorfor beløbet er hele øre — alt sammen om en
+node der var **tom**. `fakturaer` kom med i samme ombæring: et indkøb uden
+sin faktura er kun den halve historie, og `fakturaerTilGodkendelse` og
+`ikkeLinkedeFakturaer` kan ikke regnes af linjerne alene. Sammen med
+`opgaver` faldt efterslæbet fra 52 til 31 felter.
+
+⚠ **Og `fakturaer` indekserede `godkendelsesstatus`, som ingen post har** —
+posterne bærer `status`. Samme fejl som `opgaver."dato"`, og feltnavnet stod
+oven i købet afskrevet i `leverandoerer.js`' hoved. Et indeks på et felt der
+ikke findes, **fejler ikke**: RTDB henter hele noden ned og filtrerer i
+klienten med en advarsel i konsollen. Regningen kommer stille.
+
+⚠ **Indkøb-skærmen læste demofilen, ikke noden.** Den havde sin egen kopi af
+divisionsfilteret — udtrykkeligt forbudt i CLAUDE.md — og kopien manglede
+leddet om poster **uden** division. Den er nu på `useListe("indkoeb")` med
+`vindueDage: 400`, så prisgrafens tolv måneder er dækket uden at hente hele
+noden. **Det er den prøve der betyder noget:** en node med data ingen skærm
+læser, er stadig en node ingen ser.
+
+⚠ **Nøgletalskortene viser stadig de SEEDEDE demotal i dev.** Provisioneringen
+skriver `DEMO_KPI` til `kpi/`, og `kpiaggregering` kører først 03:20 UTC — så
+"18 åbne ordrer" står i dag over en tabel med 6 rækker. De to er ikke uenige;
+de kommer bare fra hver sin kilde. Se det åbne spørgsmål nedenfor.
 
 **Venter på aggregeringen.** Felterne er defineret, skærmene læser dem
 korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
@@ -569,7 +603,6 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 |---|---|
 | `bemanding.medarbejdereAktive` | Aktive medarbejdere. Medarbejdere skriver "af N hentede" indtil da — listen er et udsnit |
 | `bemanding.fravaerIDag` | Fraværende i dag. Ferie & fravær har ingen KpiRække indtil da |
-| `flaade.ikkeLinkedeFakturaer` | Indkøb uden matchet faktura. **Ikke** det samme som `indkoeb.fakturaerTilGodkendelse` — to tilstande, to tal |
 | `facility.aabneFejl` | Fejlmeldinger der ikke er udbedret |
 | `facility.aktiverPrArt` | Hele aktivbasen fordelt på art. **Summen skal være `facility.aktiver`** — ellers beskriver donutten og nøgletallet over den hver sin base. Selvkontrollen i `demo-facility.js` og `test/facility-drift.test.mjs` holder den |
 | `facility.aktiverDeltaPct` | Ændring i aktivbasen mod forrige periode, i procent |
@@ -582,18 +615,12 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `kunder.aktiveDeltaPct`, `.daekningsbidragDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke det samme som dækningsgradens afvigelse mod **målet**, som er procentpoint og står under `oekonomi` — samme ord, to regnestykker, og de kan pege hver sin vej |
 | `oekonomi.driftsomkostningerDeltaPct`, `.ikkeFaktureretDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke budgetafvigelsen — den udledes af `driftsomkostningerOere − budgetOere` og må aldrig gemmes |
 | `oekonomi.daekningsgradDeltaPoint` | ⚠ **Procentpoint** mod forrige periode. 68 % der bliver til 72 % er +4 point |
-| `indkoeb.varerTilGodkendelse` | Varelinjer der afventer godkendelse |
-| `indkoeb.aabneOrdrerDeltaPct`, `.fakturaerTilGodkendelseDeltaPct` | Periodeafvigelser i **procent** |
-| `indkoeb.prisafvigelserDelta` | Nye prisafvigelser i **antal** |
-| `indkoeb.leveranceTilTidenDeltaPoint` | ⚠ **Procentpoint**, ikke procent. 92 % der bliver til 97 % er +5 point. Feltnavnet siger hvilket — blandes de to, er tallet rigtigt på den ene læsning og forkert på den anden, og ingen kan se hvilken |
-| `indkoeb.manglerFaktura` | Indkøb uden modtaget faktura |
-| `opgaver.udenTidsregistrering` | Udførte opgaver uden registreret faktisk tid. Kan ikke faktureres på tid |
+| `indkoeb.prisafvigelserDelta` | Nye prisafvigelser i **antal**. ⚠ Regnes allerede — men af to `null`, og bliver derfor selv null. En delta af to ubesvarede spørgsmål er ikke 0. Den falder på plads samtidig med prisafvigelserne selv |
 | `afvigelser` | **Top 5 på tværs af flåde, facility, indkøb og værksted.** Dashboards "Største afvigelser". Kan ikke udledes lokalt — den blander fire moduler |
-| `flaade.braendstofOere` | Brændstofudgift i perioden. **Beslutning 25** — Indberetninger læser den. ⚠ AdBlue tæller ikke med: det er et additiv, ikke brændstof, og lagt til ville forbruget se ~5 % bedre ud end det er |
-| `indkoeb.godkendtDenneMaaned` | Godkendte fakturaer i måneden |
-| `indkoeb.maanedensForbrugOere` | Vareforbrug i perioden, ekskl. moms |
 | `warehouse.carriereUdenLokationDelta` | Ændring i uplacerede beholdere siden i går, i **antal**. ⚠ Det ENESTE warehouse-felt i `kpi/`: de fem tal på Carrier-overblik er afledt af de rækker skærmen har og beregnes hos forbrugeren (`carrieroverblik()`). Et delta kræver derimod gårsdagens tal. Antal og ikke procent — 11 beholdere der bliver til 13, er +2, og en procent af et lille tal er støj |
 | `oekonomi.driftstimer` | Driftstimer i perioden. Nævner i omkostning pr. driftstime |
+| `oekonomi.planlagtVedligeholdPct` | Andel planlagt vs. akut. ⚠ **Kan ikke udledes af `opgaver`**: en opgave har `art` (vaerksted \| facility) og en status, men intet felt der siger om arbejdet var planlagt eller akut. At kalde `art: vaerksted` for akut ville være et gæt — og Dashboardet regner `100 − x`, så gættet bliver til to tal der ser ud til at supplere hinanden |
+| `indkoeb.indkoebsprisafvigelser`, `.indkoebsprisafvigelseSnitPct` | Afvigelser mod den **aftalte** pris. ⚠ Kræver leverandørens prisliste, og `leverandoerer/` findes **slet ikke** i `firebase.rules.json`. `beregnNoegletal()` regner dem allerede pr. leverandør med `prisPaa()` — det er den samme funktion der skal bruges, den dag noden findes. 0 ville betyde "ingen afveg", og det er en anden besked end "vi har ikke aftalen at måle mod" |
 | `opgaver.udfoerteOpgaver` | Udførte opgaver i perioden. Nævner i omkostning pr. opgave |
 
 **Skal UD af aggregeringen.** Et afledt tal der er gemt, driver fra sit

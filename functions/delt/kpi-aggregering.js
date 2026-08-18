@@ -36,7 +36,17 @@
  * Filen er ren: den kender ingen database og skriver ingenting. Jobbet i
  * functions/index.js henter noderne og kalder den — så kan hele regnestykket
  * prøves uden en emulator.
+ *
+ * ⚠ FILEN ER IKKE LÆNGERE IMPORTFRI. Den henter MINDSTE_GRUNDLAG,
+ * indkoebBeloebOere() og leveringspraecision() fra leverandoerer.js, fordi
+ * indkøbets regnestykker allerede stod der og bruges af Indkøb-skærmene.
+ * En afskrift her ville betyde at skærmen og noden kunne blive uenige om hvad
+ * "til tiden" er. leverandoerer.js står derfor også i functions/delt/ — og
+ * dens egen import, format.js, gjorde det i forvejen. Lukning under import.
  */
+import {
+  MINDSTE_GRUNDLAG, indkoebBeloebOere, leveringspraecision,
+} from "./leverandoerer.js";
 
 /**
  * Kilder der IKKE bærer en division, og derfor ikke kan deles.
@@ -51,7 +61,12 @@ export const UDEN_DIVISION = [
 
 /** Kilder der endnu ikke findes som node. Deres felter bliver `null`. */
 export const KILDER_DER_MANGLER = [
-  "indkoeb", "facility", "lagre", "leverandoerer",
+  /* ⚠ `indkoeb` STOD HER. Noden havde regler, et indeks og en validering af
+     hver eneste feltform — og ingen data. Den holdt 9 af de 13 indkøbsfelter
+     på null. Det var ikke en manglende beslutning; det var et seed.
+     `fakturaer` blev seedet i samme omgang, fordi indkøbets nøgletal ikke kan
+     regnes uden dem: en faktura er den anden halvdel af et indkøb. */
+  "facility", "lagre", "leverandoerer",
 ];
 
 const DAG = 86400000;
@@ -81,23 +96,24 @@ export function udenKilde() {
       planlagtVedligehold: null, aabneFejl: null, klimaalarmerIDag: null,
       sensorerAktive: null, eksterneLeverandoerer: null,
       facilityOmkostningOere: null, anslaaetServiceOere: null,
+      /* Et OBJEKT, ikke et tal — arter mod antal. Facility-oversigten har sin
+         egen besked om at feltet ikke findes; null er det den læser. */
+      aktiverPrArt: null,
       aktiverDeltaPct: null, servicepunkterDelta: null, aabneSagerDelta: null,
       planlagtVedligeholdDelta: null,
     },
-    indkoeb: {
-      aabneOrdrer: null, fakturaerTilGodkendelse: null,
-      indkoebsprisafvigelser: null, varerTilGodkendelse: null,
-      manglerFaktura: null, leveranceTilTidenPct: null,
-      aabneOrdrerDeltaPct: null, fakturaerTilGodkendelseDeltaPct: null,
-      prisafvigelserDelta: null, leveranceTilTidenDeltaPoint: null,
-    },
+    /* ⚠ indkoeb STÅR IKKE LÆNGERE HER — se indkoebstal(). De to felter der
+       stadig er null (prisafvigelserne) er null INDE i den funktion, med
+       begrundelsen ved sig: de kræver leverandørens prisliste, og
+       leverandoerer/ findes ikke som node. Et null med en grund hører hos
+       regnestykket; det er kun de HELT ukendte kilder der samles her. */
     /* ⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION — se hovedet.
        Felterne står med null frem for at blive udeladt: så kan man se af
        noden at spørgsmålet er stillet og ikke besvaret. */
     flaade: {
       aktive: null, udeAfDrift: null, paaVaerksted: null, serviceInden30: null,
       omkostningPrKmOere: null, omkostningPrKmDeltaOere: null,
-      nedetidPct: null, ikkeLinkedeFakturaer: null,
+      nedetidPct: null, ikkeLinkedeFakturaer: null, braendstofOere: null,
     },
     bemanding: {
       planlagt: null, disponeret: null, ledig: null, underbemandede: null,
@@ -218,6 +234,21 @@ export function opgavetal(opgaver = [], division, nu = Date.now()) {
     /* Indberettet = set, men ikke planlagt endnu. Det ER uplanlagt. */
     uplanlagte: medStatus("indberettet"),
     igangIDag: mine.filter((o) => o.status === "igang" && startetIDag(o)).length,
+
+    /* ⚠ TIDSREGISTRERINGEN ER `faktiskMin`. En udført opgave uden den er
+       netop den række Booking-oversigten beder om: omkostningen er stadig et
+       estimat. Kun UDFØRTE tæller — en opgave der er i gang, mangler ikke
+       sin tid, den er ikke færdig med at bruge den. */
+    udenTidsregistrering: mine.filter(
+      (o) => o.status === "udfoert" && !Number.isFinite(o.faktiskMin)).length,
+
+    /* ⚠ IKKE DET SAMME SOM `udfoert`. Det tal er en OPTÆLLING AF NODEN:
+       hvor mange opgaver står som udførte lige nu. `udfoerteOpgaver` er en
+       PERIODESUM — demo har 9 mod 214. Perioden er ikke besluttet, og et
+       tal der løb fra sidste nul-stilling, kan ikke udledes af en node hvor
+       de udførte opgaver bliver liggende. */
+    udfoerteOpgaver: null,
+
     forsinkede: null,
     udenTidsfrist: null,
     nyeBookinger: null,
@@ -252,6 +283,152 @@ export const deltaPct = (nyt, gammelt) => {
   return Math.round(((nyt - gammelt) / gammelt) * 1000) / 10;
 };
 
+
+/**
+ * Indkøbets nøgletal for én division — og fakturaernes.
+ *
+ * `indkoeb` er LINJER (det vi bestilte), `fakturaer` er hvad leverandøren
+ * sendte. De to er ikke hinandens spejl, og det er hele grunden til at der
+ * er noget at afstemme.
+ *
+ * ⚠ EN FAKTURA HAR INGEN DIVISION. Den arver den fra den indkøbslinje den
+ * er matchet mod. En faktura der IKKE er matchet, har derfor ingen — og
+ * hører dermed til BEGGE divisioner, efter samme regel som iDivision().
+ * Det er ikke en teknikalitet: en umatchet faktura hører til begge, fordi
+ * ingen endnu ved hvem der skal betale den. Det er netop derfor den skal ses.
+ */
+export function indkoebstal(indkoeb = [], fakturaer = [], division, nu = Date.now()) {
+  const mine = indkoeb.filter((i) => iDivision(i, division));
+  const linje = new Map(indkoeb.map((i) => [i.id, i]));
+
+  /* Fakturaens division kommer fra dens linje; er der ingen linje, er der
+     ingen division — og posten hører til begge. */
+  const mineFakturaer = fakturaer.filter(
+    (f) => iDivision(linje.get(f?.indkoebId) || null, division));
+
+  /* ⚠ MÅNEDEN ER KALENDERMÅNEDEN OMKRING `nu`, i UTC — samme døgngrænse som
+     opgavetal() bruger. Ikke "de sidste 30 dage": et forbrug der skal holdes
+     op mod et budget, skal følge den periode budgettet er lagt i. */
+  const d = new Date(nu);
+  const maanedFra = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  const maanedTil = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  const iMaaneden = (ms) => Number.isFinite(ms) && ms >= maanedFra && ms < maanedTil;
+
+  /* ⚠ EN ORDRE ER IKKE EN LINJE. `reference` er leverandørens eget
+     ordrenummer, og én ordre kan bære flere linjer — tæller vi linjer, stiger
+     tallet fordi nogen bestilte to ting på samme ordre. Linjer uden reference
+     tæller for sig selv; de ER hver sin bestilling.
+     Åben = ikke leveret. Der er ingen ordrestatus i modellen, og der skal
+     ikke opfindes en: `leveretMs` ER svaret på om varen er kommet. */
+  const aabne = mine.filter((i) => !Number.isFinite(i.leveretMs));
+  const aabneOrdrer = new Set(aabne.map((i) => i.reference || i.id)).size;
+
+  /* ⚠ GODKENDT ER LINJENS EGEN GODKENDELSE, IKKE FAKTURAENS. `godkendtAf`
+     står på linjer hvis fakturastatus er både "modtaget" og "bogfoert" —
+     altså er det ikke fakturaen der er godkendt, men indkøbet. Varer der er
+     kommet ind som ingen har skrevet under på, er den huskeliste kortet viser. */
+  const varerTilGodkendelse = mine.filter(
+    (i) => Number.isFinite(i.leveretMs) && !Number.isFinite(i.godkendtMs)).length;
+
+  const levering = leveringspraecision(mine);
+
+  return {
+    aabneOrdrer,
+    varerTilGodkendelse,
+
+    /* ⚠ TO FORSKELLIGE SPØRGSMÅL, SAMME ORD.
+       Her: linjer hvis EGEN fakturastatus er "mangler" — registratorens
+       udsagn om at fakturaen ikke er kommet.
+       beregnNoegletal().manglendeFakturaer er noget andet: linjer som ingen
+       fakturapost peger på. Det er afstemningen, og den kan kun stilles pr.
+       leverandør, hvor man ved at man har alle fakturaerne. På hele noden
+       ville den tælle enhver linje hvis faktura ligger i et andet system. */
+    manglerFaktura: mine.filter((i) => i.fakturastatus === "mangler").length,
+
+    godkendtDenneMaaned: mine.filter((i) => iMaaneden(i.godkendtMs)).length,
+    maanedensForbrugOere: mine
+      .filter((i) => iMaaneden(i.dato))
+      .reduce((sum, i) => sum + indkoebBeloebOere(i), 0),
+
+    /* ⚠ null UNDER GRUNDLAGET, IKKE 0 %. "50 % til tiden" ved to leveringer
+       og ved to hundrede ser ens ud i et nøgletalskort. Samme grænse som
+       leverandørens eget tal — den er importeret, ikke skrevet af. */
+    leveranceTilTidenPct:
+      levering.grundlag >= MINDSTE_GRUNDLAG ? levering.pct : null,
+
+    fakturaerTilGodkendelse: mineFakturaer.filter((f) => f.status === "modtaget").length,
+
+    /* ⚠ PRISAFVIGELSERNE KRÆVER EN AFTALT PRIS AT AFVIGE FRA.
+       Den står i leverandørens prisliste, og `leverandoerer/` findes ikke som
+       node — den står i firebase.rules.json overhovedet ikke. Uden den kan
+       vi kun se hvad vi BETALTE, og en afvigelse fra ingenting er ingen
+       afvigelse. 0 ville betyde "ingen afveg", og det er en helt anden
+       besked end "vi har ikke aftalen at måle mod".
+       beregnNoegletal() regner dem allerede pr. leverandør; den dag noden
+       findes, er det den samme prisPaa() der skal bruges her. */
+    indkoebsprisafvigelser: null,
+    indkoebsprisafvigelseSnitPct: null,
+  };
+}
+
+/**
+ * Fakturaer der ikke er koblet til et indkøb. Står under `flaade`, fordi det
+ * er Værkstedskalenderen der skal reagere på dem.
+ *
+ * ⚠ BÅDE DEN TOMME OG DEN HÆNGENDE REFERENCE TÆLLER MED. En faktura uden
+ * `indkoebId` er åbenlyst ulinket; en med et id der ikke findes, SER linket
+ * ud og er det ikke. Demoen havde netop sådan en — "ik-001", hvor alle
+ * linjer hedder il-XXX. Tæller man kun de tomme, er den hængende usynlig,
+ * og det er den farligste af de to: den er allerede talt som afstemt.
+ *
+ * Ingen division: en ulinket faktura har ingen linje at arve den fra, og
+ * derfor tæller den i begge. Se noten i indkoebstal().
+ */
+export function ikkeLinkedeFakturaer(fakturaer = [], indkoeb = []) {
+  const findes = new Set(indkoeb.map((i) => i.id));
+  return fakturaer.filter((f) => !f?.indkoebId || !findes.has(f.indkoebId)).length;
+}
+
+
+/**
+ * Varenumre der ligger i kategorien `braendstof`, men IKKE er brændstof.
+ *
+ * ⚠ ADBLUE ER ET ADDITIV, IKKE ET BRÆNDSTOF. Kravet står i README ved
+ * `flaade.braendstofOere`: lagt med i forbruget ville tallet se ~5 % bedre
+ * ud end det er, og et forbrugstal der er for godt, bliver ikke undersøgt.
+ *
+ * ⚠ OG DET ER EN LAP, IKKE EN MODEL. Den rigtige plads er `kategori`, som er
+ * en lukket ordliste i firebase.rules.json — men den har ingen værdi for et
+ * additiv, og AdBlue-linjerne bærer derfor "braendstof". Indtil ordlisten får
+ * en, er varenummeret det eneste sted forskellen står. Listen ligger her og
+ * ikke som en `if` inde i regnestykket, så den kan læses og udvides ét sted:
+ * den næste AdBlue er urea under et andet handelsnavn.
+ */
+export const IKKE_BRAENDSTOF = ["ADBLUE"];
+
+/**
+ * Månedens brændstofkøb for divisionen, i øre.
+ *
+ * ⚠ KATEGORIEN, IKKE VARENAVNET. `kategori` er en lukket ordliste i
+ * firebase.rules.json — "braendstof" er en af syv tilladte værdier. En
+ * søgning på "diesel" i varenavnet ville tage "Dieselfilter" med, og det er
+ * en reservedel. Undtagelsen er additiverne ovenfor, som kategorien ikke kan
+ * skelne fra brændstof.
+ *
+ * Samme måned som maanedensForbrugOere: brændstof er en delmængde af den,
+ * og to forskellige perioder ville gøre andelen umulig at regne.
+ */
+export function braendstofOere(indkoeb = [], division, nu = Date.now()) {
+  const d = new Date(nu);
+  const fra = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  const til = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  return indkoeb
+    .filter((i) => iDivision(i, division) && i.kategori === "braendstof")
+    .filter((i) => !IKKE_BRAENDSTOF.includes(i.varenummer))
+    .filter((i) => Number.isFinite(i.dato) && i.dato >= fra && i.dato < til)
+    .reduce((sum, i) => sum + indkoebBeloebOere(i), 0);
+}
+
 /**
  * Periodeafvigelse i PROCENTPOINT — eller `null`.
  *
@@ -272,6 +449,7 @@ export const deltaPoint = (nyt, gammelt) => {
  */
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
+  indkoeb = [], fakturaer = [],
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
@@ -279,6 +457,7 @@ export function beregnKpi({
   const ikkeFakt = ikkeFaktureretOere(etaper, grundlag, division);
   const disp = disponeringstal(etaper, division);
   const opg = opgavetal(opgaver, division, nu);
+  const ind = indkoebstal(indkoeb, fakturaer, division, nu);
 
   return {
     ...tomme,
@@ -286,6 +465,28 @@ export function beregnKpi({
     opgaver: {
       ...opg,
       aabneDeltaPct: deltaPct(opg.aabne, forrige?.opgaver?.aabne),
+      /* ⚠ SAMME TAL SOM oekonomi.ikkeFaktureretForloeb, MED VILJE.
+         Booking-oversigten kalder det "forløb klar til fakturering" og
+         Økonomi kalder det "ikke faktureret" — det er samme spørgsmål:
+         afsluttede bookinger uden et låst grundlag. Regnede de to felter
+         hver sin gæng, ville to skærme kunne vise hver sit tal for den
+         samme liste, og ingen kunne se hvilken der løj. ÉN beregning,
+         to navne — og navnene bliver, fordi skærmene læser dem. */
+      klarTilFakturering: ikkeFakt.forloeb,
+    },
+    indkoeb: {
+      ...ind,
+      aabneOrdrerDeltaPct: deltaPct(ind.aabneOrdrer, forrige?.indkoeb?.aabneOrdrer),
+      fakturaerTilGodkendelseDeltaPct: deltaPct(
+        ind.fakturaerTilGodkendelse, forrige?.indkoeb?.fakturaerTilGodkendelse),
+      /* ⚠ PROCENTPOINT. 92 % der bliver til 97 % er +5 point. Feltnavnet
+         siger hvilket — se noten i demo-kpi.js. */
+      leveranceTilTidenDeltaPoint: deltaPoint(
+        ind.leveranceTilTidenPct, forrige?.indkoeb?.leveranceTilTidenPct),
+      /* Kan ikke regnes før afvigelserne selv kan. En delta af to null er
+         ikke 0 — den er stadig ubesvaret. */
+      prisafvigelserDelta: deltaPct(
+        ind.indkoebsprisafvigelser, forrige?.indkoeb?.indkoebsprisafvigelser),
     },
     kunder: {
       ...kunde,
@@ -306,12 +507,35 @@ export function beregnKpi({
       driftstimer: null,
       planlagtPct: null,
       akutPct: null,
+      /* ⚠ KAN IKKE UDLEDES AF `opgaver`. En opgave har `art`
+         (vaerksted | facility) og en status — men intet felt der siger om
+         arbejdet var PLANLAGT eller AKUT. At kalde art=vaerksted for akut
+         ville være et gæt, og Dashboardet regner `100 - x` af tallet: et
+         gæt her bliver til to tal der ser ud til at supplere hinanden.
+         Dashboardet læser feltet i dag og fik `undefined` — og undefined er
+         værre end null: 100 - undefined er NaN. */
+      planlagtVedligeholdPct: null,
     },
     disponering: {
       ...disp,
       planlagteOpgaverDeltaPct: deltaPct(
         disp.planlagteOpgaver, forrige?.disponering?.planlagteOpgaver),
     },
+    /* ⚠ ET ENESTE FELT UNDER `flaade` KAN REGNES — og det er ikke et hul i
+       det åbne divisionsspørgsmål. De øvrige flaadefelter mangler fordi
+       KØRETØJET ikke bærer en division; en ulinket faktura mangler ikke en
+       division, den HAR ingen, og skal derfor ses i begge. De to slags null
+       ligner hinanden i noden og er ikke det samme spørgsmål. */
+    flaade: {
+      ...tomme.flaade,
+      ikkeLinkedeFakturaer: ikkeLinkedeFakturaer(fakturaer, indkoeb),
+      /* ⚠ BRÆNDSTOFFET KOMMER FRA INDKØBET, IKKE FRA BILERNE. Derfor kan
+         det regnes selv om resten af `flaade` ikke kan: det er
+         indkøbslinjens division der spørges om, og den BÆRER en. Bilen gør
+         ikke, og det er hele forskellen. */
+      braendstofOere: braendstofOere(indkoeb, division, nu),
+    },
+
     /* ⚠ TOM LISTE, IKKE null. Afvigelserne er en LISTE — findes der ingen,
        er svaret en tom liste, og det er et svar. Se demo-kpi.js. */
     afvigelser: [],

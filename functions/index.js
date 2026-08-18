@@ -2724,17 +2724,22 @@ export const kpiaggregering = onSchedule(
     let skrevet = 0;
     for (const tenantId of Object.keys(kunderIndeks)) {
       const rod = db.ref(`tenants/${tenantId}`);
-      const [kunder, etaper, grundlag, opgaver] = await Promise.all([
+      const [kunder, etaper, grundlag, opgaver, indkoeb, fakturaer] = await Promise.all([
         rod.child("kunder").once("value").then((s) => raekker(s.val())),
         rod.child("etaper").once("value").then((s) => raekker(s.val())),
         rod.child("grundlag").once("value").then((s) => raekker(s.val())),
         rod.child("opgaver").once("value").then((s) => raekker(s.val())),
+        rod.child("indkoeb").once("value").then((s) => raekker(s.val())),
+        rod.child("fakturaer").once("value").then((s) => raekker(s.val())),
       ]);
 
       for (const division of KPI_DIVISIONER) {
         const sti = rod.child(`kpi/${division}`);
         const forrige = (await sti.child("current").once("value")).val();
-        const nyt = beregnKpi({ division, kunder, etaper, grundlag, opgaver, forrige, nu });
+        const nyt = beregnKpi({
+          division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
+          forrige, nu,
+        });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers
            kunne en delta blive regnet mod et arkiv der ikke svarer til den

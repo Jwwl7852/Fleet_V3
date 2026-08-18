@@ -76,8 +76,17 @@ export const DELTE_FILER = [
   "format.js", "etaper.js", "disponering.js",
   /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele
      regnestykket kan proeves uden en emulator. Jobbet henter noderne og
-     kalder den. Den er importfri og staar derfor alene her. */
-  "kpi-aggregering.js",
+     kalder den.
+
+     Den stod her ALENE og importfri. Den er den ikke laengere: indkoebets
+     noegletal skal regnes med NOEJAGTIG samme leveringspraecision() og
+     indkoebBeloebOere() som Indkoeb-skaermene bruger, og de staar i
+     leverandoerer.js. En afskrift ville betyde at kortet og noden kunne
+     blive uenige om hvad "til tiden" er.
+
+     leverandoerer.js importerer selv format.js — som staar paa listen i
+     forvejen. Lukningen holder. */
+  "kpi-aggregering.js", "leverandoerer.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

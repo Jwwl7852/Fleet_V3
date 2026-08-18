@@ -49,6 +49,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
   kr, num, pct, dato, deviation, oereFraKroner, kronerFraOere,
@@ -63,11 +64,12 @@ import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
   leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
+  indkoebBeloebOere,
   prisafvigelseTone, valideIndkoeb, byggIndkoeb,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
-  linjeBeloebOere, medPrisliste,
+  DEMO_LEVERANDOERER, DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
+  medPrisliste,
 } from "../../fleet/demo-indkoeb.js";
 import { demoLokation, DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -312,6 +314,27 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
 
 export default function IndkoebOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+
+  /* ⚠ LINJERNE KOM FRA demo-indkoeb.js INDTIL NODEN BLEV SEEDET. Noden havde
+     regler, indeks og validering af hver feltform — og ingen data, så skærmen
+     læste demofilen direkte. Den viste altså det samme uanset hvad kunden
+     havde registreret.
+
+     ⚠ vindueDage OG IKKE vindue: "alle". Tabellen viser shellens periode, men
+     prisgrafen skal have tolv måneder bagud — det er dens grundlag. Vinduet
+     lægges derfor bagud fra periodens start, frem for at hente hele noden:
+     "alle" på en node der vokser med hvert indkøb, er en regning der kommer
+     stille. 400 dage, så tolv måneder er dækket uanset hvor i måneden
+     perioden starter.
+
+     ⚠ INGEN division HER. Standarden er "shell", og den er den rigtige:
+     valgt division PLUS fælles PLUS poster uden division. Skærmen havde sin
+     EGEN kopi af den regel, og kopien manglede det sidste led. */
+  const {
+    data: indkoebslinjer, henter: henterLinjer,
+    tilstand: linjeTilstand, genindlaes: genindlaesLinjer, afkortet,
+  } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, graense: 500 });
+
   const { bruger, division, periode, path } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
@@ -320,18 +343,23 @@ export default function IndkoebOversigt() {
   /* null = lukket, "ny" = registrér, ellers nøglen på den linje der rettes. */
   const [linjeform, setLinjeform] = useState(null);
 
-  if (henter) return <Henter hvad="nøgletal" />;
+  if (henter || henterLinjer) return <Henter hvad="indkøb" />;
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
+  /* ⚠ LINJERNE BLOKERER, HVOR NØGLETALLENE IKKE GØR. En ny kunde uden
+     aggregerede tal skal stadig kunne registrere sit første indkøb — men en
+     AFVIST læsning af selve linjerne er noget andet: så er tabellen ikke tom,
+     den er ukendt, og en tom tabel ligner et tomt lager. */
+  if (blokerer(linjeTilstand)) {
+    return <Datatilstand tilstand={linjeTilstand} genprov={genindlaesLinjer} />;
+  }
 
   const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
-  /* Samme visningsregel som useListe: valgt division plus fælles. */
-  const iDivision = DEMO_INDKOEBSLINJER.filter(
-    (l) => l.division === division || l.division === "faelles"
-  );
+  /* useListe har allerede delt på division — se noten ved kaldet. */
+  const iDivision = indkoebslinjer;
 
   /* ⚠ TABELLEN VISER SHELLENS PERIODE. Historikken bagud er prisgrafens
      grundlag og hører ikke i en liste over "ordrer og fakturaer" — den ville
@@ -351,7 +379,7 @@ export default function IndkoebOversigt() {
   const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
   /* Beregnet af den viste liste — ikke et nøgletal. */
-  const vistForbrugOere = viste.reduce((s, l) => s + linjeBeloebOere(l), 0);
+  const vistForbrugOere = viste.reduce((s, l) => s + indkoebBeloebOere(l), 0);
 
   /* Mest købte: over divisionens linjer i perioden, ikke over historikken. */
   const topVarer = mestKoebteVarer(iPerioden.length ? iPerioden : iDivision);
@@ -362,8 +390,8 @@ export default function IndkoebOversigt() {
      sæson og ikke leverandør. */
   const nu = Date.now();
   const seksMdr = 182 * 86400000;
-  const aktuel = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6, nu });
-  const forrige = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6, nu: nu - seksMdr });
+  const aktuel = snitprisPrMaaned(iDivision, { varenummer: "DIESEL-B7", maaneder: 6, nu });
+  const forrige = snitprisPrMaaned(iDivision, { varenummer: "DIESEL-B7", maaneder: 6, nu: nu - seksMdr });
   const prisPunkter = aktuel.map((p, i) => ({
     label: MAANED[p.maaned],
     vaerdier: [p.snitOere / 100, forrige[i] ? forrige[i].snitOere / 100 : null],
@@ -376,7 +404,7 @@ export default function IndkoebOversigt() {
     .map((l) => ({
       leverandoer: l,
       tal: beregnNoegletal(medPrisliste(l), {
-        indkoeb: DEMO_INDKOEBSLINJER,
+        indkoeb: iDivision,
         fakturaer: DEMO_FAKTURAER,
         sager: DEMO_LEVERANDOERSAGER,
       }),
@@ -458,7 +486,7 @@ export default function IndkoebOversigt() {
       {linjeform && (
         <Indkoebsformular
           key={linjeform}
-          linje={linjeform === "ny" ? null : DEMO_INDKOEBSLINJER.find((l) => l.id === linjeform)}
+          linje={linjeform === "ny" ? null : iDivision.find((l) => l.id === linjeform)}
           leverandoerer={DEMO_LEVERANDOERER}
           koeretoejer={DEMO_KOERETOEJER}
           lokationer={DEMO_LOKATIONER}
@@ -506,7 +534,7 @@ export default function IndkoebOversigt() {
               } },
             /* BEREGNET — der findes intet gemt beløb på linjen. */
             { key: "beloeb", label: "Beløb", num: true,
-              render: (r) => kr(linjeBeloebOere(r)) },
+              render: (r) => kr(indkoebBeloebOere(r)) },
             { key: "godkendelse", label: "Godkendelse", render: (r) => {
                 const g = godkendelse(r);
                 return (
@@ -536,6 +564,16 @@ export default function IndkoebOversigt() {
           </p>
           <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={setSide} />
         </div>
+        {/* ⚠ EN AFKORTET LISTE SKAL SIGE DET. Hentes der 500 og findes der
+            flere, er tabellen ikke et udsnit brugeren har valgt — den er et
+            udsnit databasen valgte. Uden beskeden ser 500 linjer ud som alle
+            linjer, og forbruget nedenfor ser ud som hele forbruget. */}
+        {afkortet && (
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Der er flere end de 500 hentede. Listen er <b>afkortet</b> — snævr
+            perioden eller filtrene ind.
+          </p>
+        )}
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Beløbet pr. linje <b>beregnes</b> af antal × pris pr. enhed og gemmes ikke.
           Prisen står i <b>hele øre</b> — 18,50 kr/stk er <code>1850</code>. En float

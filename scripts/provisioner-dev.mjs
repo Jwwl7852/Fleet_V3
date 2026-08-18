@@ -33,6 +33,8 @@ import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
+import { DEMO_INDKOEBSLINJER, DEMO_FAKTURAER } from "../src/fleet/demo-indkoeb.js";
+import { DEMO_LOKATIONER } from "../src/fleet/demo-facility.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
@@ -184,6 +186,28 @@ export const SEED = [
      forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt
      11 KPI-felter paa null. Samme form som etaper foer de blev seedet. */
   { node: "opgaver", data: DEMO_OPGAVER, form: "liste" },
+  /* ⚠ INDKOEB HAVDE OGSAA REGLER OG INGEN DATA — og den havde mest af det:
+     et indeks, en validering af hver eneste feltform og en kommentar om
+     hvorfor prisen er hele oere. Alt sammen om en node der var tom. Den holdt
+     9 af de 13 indkoebsfelter paa null.
+
+     ⚠ FAKTURAERNE SKAL MED I SAMME OMBAERING. Et indkoeb uden sin faktura er
+     kun den halve historie: fakturaerTilGodkendelse og ikkeLinkedeFakturaer
+     kan ikke regnes af linjerne alene. Noden er .write: false for enhver
+     klient — provisioneringen koerer paa admin-SDK og gaar uden om reglerne,
+     praecis som ved grundlag og etaper. */
+  { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
+  { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
+  /* ⚠ LOKATIONERNE ER IKKE HELE FACILITY — de er den DEL af den som indkoebet
+     peger paa. indkoeb.lokationId valideres mod
+     facility/lokationer/<id>.exists(), og uden dem ville hver seedet
+     indkoebslinje vaere afvist naeste gang en klient gemte den: seedet gaar
+     uden om reglerne, brugeren goer ikke. En seedet post der ikke kan gemmes
+     igen, er en faelde man foerst falder i naar man retter en tastefejl.
+
+     Resten af facility (aktiver, servicepunkter, sensorer) mangler stadig og
+     staar fortsat i KILDER_DER_MANGLER. */
+  { node: "facility/lokationer", data: DEMO_LOKATIONER, form: "liste" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */

@@ -98,7 +98,13 @@ export function KpiKort({ label, vaerdi, afvigelse, note, ikon, tone, ekstra, ru
           <div className="fc-kpi-d fc-neutral">{note || "\u00a0"}</div>
         )}
       </div>
-      {til && <span className="fc-kpi-pil" aria-hidden="true">\u203a</span>}
+      {/* ⚠ HER STOD \u203a SOM TEKST. JSX fortolker IKKE en
+          escape-sekvens i et tekstbarn — kun i en streng. Pilen stod derfor
+          som seks tegn paa hvert eneste noegletalskort med et link, i hele
+          appen, og overlevede fordi oejet laeser den som stoej ved siden af
+          det tal det er kommet efter. Naboen paa linjen over gor det rigtigt:
+          {"\u00a0"} i kroellede parenteser ER en streng. */}
+      {til && <span className="fc-kpi-pil" aria-hidden="true">{"\u203a"}</span>}
     </>
   );
 

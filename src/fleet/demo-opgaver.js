@@ -107,6 +107,22 @@ export const DEMO_OPGAVER = [
     sted: "Odense", beskrivelse: "Fordør lukker ikke i",
     personId: "ibSoerensen", koeretoejId: "kt-b12", status: "indberettet",
     estimeretMin: 75, faktiskMin: null, beloebOere: 54000 },
+
+  /* ⚠ UDFØRT UDEN TIDSREGISTRERING — og det er hele pointen med posten.
+     `opgaver.udenTidsregistrering` er den række Booking-oversigten kalder
+     "uden tidsregistrering: uden den er omkostningen stadig et estimat".
+     Feltet blev regnet ud af `faktiskMin`, og hver eneste udførte opgave i
+     sættet havde den — så tallet var 0, og en tælling der kun kan give 0,
+     kan ikke tage fejl på en måde nogen opdager.
+
+     ⚠ `beloebOere` STÅR STADIG. Det er ESTIMATET, og det er netop derfor
+     rækken skal ses: der ligger et beløb der ser færdigt ud, men ingen har
+     målt tiden bag det. Fjernede vi beløbet, ville posten ikke længere vise
+     den fejl den findes for. */
+  { id: "op-011", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
+    sted: "Kolding", beskrivelse: "Lygteskift, venstre for",
+    personId: "larsAage", koeretoejId: "kt-034", status: "udfoert",
+    estimeretMin: 30, faktiskMin: null, beloebOere: 42000 },
 ];
 
 /* ---- Opslag, så skærmen ikke bygger sine egne ------------------------- */

@@ -10,14 +10,15 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS,
   afstem, fakturaTotalOere, kanGodkende, leverandoerNavn, parterFraLeverandoer,
-  PERM_GODKEND_MIDLERTIDIG, mestKoebteVarer, snitprisPrMaaned,
+  PERM_GODKEND_MIDLERTIDIG, mestKoebteVarer, snitprisPrMaaned, indkoebBeloebOere,
 } from "../src/fleet/leverandoerer.js";
 import {
   DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_AFSTEMNING,
-  linjeBeloebOere, demoAfstemning, demoUdenMatch, demoLeverandoer,
+  demoAfstemning, demoUdenMatch, demoLeverandoer,
 } from "../src/fleet/demo-indkoeb.js";
 import { DEMO_BESOEG } from "../src/fleet/demo-vaerksted.js";
 import { DEMO_SERVICEBESOEG } from "../src/fleet/demo-facility.js";
@@ -144,7 +145,7 @@ describe("Fejl 3 — ekskl. moms plus momsOere, aldrig ét felt", () => {
 
   it("beregner linjens beløb af antal × pris", () => {
     for (const l of DEMO_INDKOEBSLINJER) {
-      assert.equal(linjeBeloebOere(l), l.antal * l.prisPrEnhedOere);
+      assert.equal(indkoebBeloebOere(l), l.antal * l.prisPrEnhedOere);
       assert.equal("beloebOere" in l, false, `${l.id} har et gemt beløb`);
     }
   });
@@ -406,5 +407,39 @@ describe("Mest købte varer og snitpris", () => {
     const r = snitprisPrMaaned(DEMO_INDKOEBSLINJER, { varenummer: "DIESEL-B7", maaneder: 6 });
     assert.ok(r.length >= 5, `kun ${r.length} måneder med data`);
     assert.ok(r.at(-1).snitOere > r[0].snitOere, "kurven skal kunne ses stige");
+  });
+});
+
+/* ═════════════════════════════════════════════════════════════════════
+   ÉT BELØB, ÉN SKALA
+   ═════════════════════════════════════════════════════════════════════ */
+
+describe("Linjens beløb regnes ét sted", () => {
+  it("kun beloeb.js definerer linjeBeloebOere", () => {
+    /* ⚠ DEN TREDJE KOPI LÅ I EN DEMOFIL.
+       beloeb.js' linjeBeloebOere dividerer med ANTAL_SKALA; demo-indkoeb.js'
+       af samme navn gangede råt. Skærmene importerede DEMOFILENS — den fil
+       der forsvinder den dag noden er rigtig. To funktioner med samme navn og
+       forskellig skala i ét repo er 1000×-fejlen, og den næste kopi får ikke
+       lov at hedde det samme et tredje sted.
+
+       Indkøbets regnestykke hedder indkoebBeloebOere() og står i
+       leverandoerer.js — domænemodulet, ikke demofilen. */
+    const mappe = new URL("../src/fleet/", import.meta.url);
+    const syndere = readdirSync(mappe)
+      .filter((f) => f.endsWith(".js") && f !== "beloeb.js")
+      .filter((f) => /export (const|function) linjeBeloebOere/
+        .test(readFileSync(new URL(f, mappe), "utf8")));
+    assert.deepEqual(syndere, [],
+      "linjeBeloebOere er defineret uden for beloeb.js — med hvilken skala?");
+  });
+
+  it("en demofil definerer overhovedet ikke beløbsregnestykket", () => {
+    /* Formen hører i demo-filen; REGNESTYKKET gør ikke. En skærm der
+       importerer sin aritmetik fra demo-*.js, holder op med at virke den dag
+       demofilen er tjent — og indtil da regner den på sin egen kopi. */
+    const kilde = readFileSync(new URL("../src/fleet/demo-indkoeb.js", import.meta.url), "utf8");
+    assert.doesNotMatch(kilde, /export const \w*[Bb]eloebOere = \(/,
+      "demo-indkoeb.js definerer et beløbsregnestykke igen.");
   });
 });
