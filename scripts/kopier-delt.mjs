@@ -74,6 +74,10 @@ export const DELTE_FILER = [
      TRANSITIV, ikke "importfri". */
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
+  /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele
+     regnestykket kan proeves uden en emulator. Jobbet henter noderne og
+     kalder den. Den er importfri og staar derfor alene her. */
+  "kpi-aggregering.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

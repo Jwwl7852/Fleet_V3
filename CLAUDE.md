@@ -36,6 +36,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   hos forbrugeren og læg det **ikke** i `kpi/`. Et gemt afledt tal driver fra
   sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
+- **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
+  `null` for de 52 felter hvis kilde ikke findes — og feltet UDELADES ikke:
+  står det med null, kan man se af noden at spørgsmålet er stillet. Får et
+  felt en kilde, fjernes det fra `udenKilde()` ét sted.
+  ⚠ Og **flåden og bemandingen kan ikke deles på division**: stamdata bærer
+  ikke feltet (beslutning 19). At udlede det af arten ville være et gæt.
+- **Regne en KPI i jobbet.** `beregnKpi()` er ren og kender ingen database,
+  så hele regnestykket kan prøves uden en emulator. Jobbet henter noderne og
+  kalder den — regner det selv, kan det kun prøves ved at køre det.
 - **Lade et ikke-beregnet tal se ud som nul.** `num`, `pct` og `km` skriver
   `INTET` (—) for `null` og `NaN`, og "0" for nul. En tom liste er et svar;
   et felt aggregeringen ikke kunne regne, er et ubesvaret spørgsmål. Skriver

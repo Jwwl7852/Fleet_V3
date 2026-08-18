@@ -44,6 +44,7 @@ import { getAuth } from "firebase-admin/auth";
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner,
 } from "./delt/audit-regler.js";
+import { beregnKpi } from "./delt/kpi-aggregering.js";
 import {
   valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
 } from "./delt/turtlebooking.js";
@@ -2675,6 +2676,75 @@ export const auditoprydning = onSchedule(
         ? "Retention er IKKE afgjort — der slettes ingenting. Se RETENTION_AFGJORT."
         : "Intet at rydde op.")
     );
+    return null;
+  }
+);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KPI-AGGREGERINGEN — det sidste punkt på listen
+
+   Beslutning 6: nøgletal læses ÉT sted, `tenants/<id>/kpi/<division>/current`,
+   og afledte tal beregnes hos forbrugeren. Noden har været seedet fra
+   demo-sættet; her regnes den af de rigtige noder.
+
+   ⚠ REGNESTYKKET LIGGER IKKE HER. `beregnKpi()` i den delte
+   kpi-aggregering.js er ren — den kender ingen database — så hele
+   beregningen kan prøves uden en emulator. Jobbet henter noderne og skriver
+   svaret; det er alt.
+
+   ⚠ ET FELT UDEN KILDE BLIVER `null`. 52 af dem: `opgaver`, `indkoeb` og
+   `facility` findes ikke som noder, og `flaade` og `bemanding` kan ikke deles
+   på division, fordi stamdata ikke bærer feltet (beslutning 19). Skrev vi 0,
+   ville skærmen sige "0 åbne ordrer" — se noten i kpi-aggregering.js og
+   `INTET` i format.js.
+
+   ⚠ FORRIGE KØRSEL GEMMES, OG DET ER DELTAERNES ENESTE KILDE.
+   `kpi/<division>/forrige` er den forrige `current`. Uden den kan en
+   periodeafvigelse ikke regnes, og første kørsel giver derfor `null` — ikke
+   0 %, som ville betyde "uændret".
+
+   ⚠ TENANTLISTEN KOMMER FRA `udbyder/kunder`, som `maaldagligt` og
+   `auditoprydning` også bruger. En tenant der ikke er i indekset, får ingen
+   nøgletal — og DEV's `demo`-tenant står ikke der, så det seedede demo-sæt
+   bliver liggende. Det er med vilje: dev skal kunne vise en fuld skærm.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const KPI_DIVISIONER = ["gods", "bus"];
+
+/** Rækker med id, som useListe læser dem. */
+const raekker = (v) => Object.entries(v || {}).map(([id, x]) => ({ id, ...x }));
+
+export const kpiaggregering = onSchedule(
+  { schedule: "20 3 * * *", timeZone: "UTC", region: REGION },
+  async () => {
+    const db = getDatabase();
+    const nu = Date.now();
+    const kunderIndeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
+
+    let skrevet = 0;
+    for (const tenantId of Object.keys(kunderIndeks)) {
+      const rod = db.ref(`tenants/${tenantId}`);
+      const [kunder, etaper, grundlag] = await Promise.all([
+        rod.child("kunder").once("value").then((s) => raekker(s.val())),
+        rod.child("etaper").once("value").then((s) => raekker(s.val())),
+        rod.child("grundlag").once("value").then((s) => raekker(s.val())),
+      ]);
+
+      for (const division of KPI_DIVISIONER) {
+        const sti = rod.child(`kpi/${division}`);
+        const forrige = (await sti.child("current").once("value")).val();
+        const nyt = beregnKpi({ division, kunder, etaper, grundlag, forrige, nu });
+
+        /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers
+           kunne en delta blive regnet mod et arkiv der ikke svarer til den
+           `current` den afløste. */
+        const opdatering = { current: nyt };
+        if (forrige) opdatering.forrige = forrige;
+        await sti.update(opdatering);
+        skrevet += 1;
+      }
+    }
+    console.log(`kpiaggregering: ${skrevet} divisioner skrevet for ${Object.keys(kunderIndeks).length} tenants.`);
     return null;
   }
 );

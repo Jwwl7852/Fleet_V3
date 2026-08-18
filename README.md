@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 1446 tests. Starter emulatoren.
+npm test                            # 1471 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -333,7 +333,16 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 
-**Cloud Functions er den reelle flaskehals.** Én ting venter: **KPI-aggregering**.
+**Cloud Functions er ikke længere flaskehalsen.** Listen er tom.
+
+`kpiaggregering` kører natligt og regner `kpi/<division>/current` af de
+rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
+kilde — og skriver begge i én opdatering.
+
+⚠ **Men 52 felter har ingen kilde, og de skrives som `null`.** `opgaver`,
+`indkoeb` og `facility` findes ikke som noder; `flaade` og `bemanding` kan
+ikke deles på division. Det er efterslæbet, målt frem for anslået — se
+tabellen nedenfor og det åbne spørgsmål om divisionen.
 
 ⚠ **Skrivning af auditposter var allerede bygget** — `audit` er en onCall, kaldt
 fra `fleet/audit.js`. Den satte listen tre gange i træk uden at nogen læste den
@@ -618,6 +627,7 @@ den der skriver koden.
 |---|---|---|
 | **Momssatserne pr. linjeart** — hvornår er det 25 %, hvornår 0, hvornår omvendt betalingspligt? | En bogholder, **før første eksport** | Eksport af fakturagrundlag. `grundlag.js` nægter i dag eksport uden en sats pr. linje, og det er det rigtige svar så længe reglen er ukendt — men det betyder også at ingen kan eksportere |
 | **Retention på `sensitive/indberetninger`** — hvor længe skal en underskrift og en skadebeskrivelse gemmes? | Jurist eller DPO | Sletning. Underskriften er både en personoplysning og et **bevis**, og de to trækker i hver sin retning: databeskyttelsen siger slet, bevisbyrden siger gem. Forældelsesfristen på et erstatningskrav er formentlig det rigtige anker, men det er ikke et gæt vi skal tage |
+| **Kan flåden og bemandingen deles på division?** ⚠ Et køretøj har INGEN division (beslutning 19), og målt på den udrullede base har 0 af 16 køretøjer, 0 af 35 medarbejdere og 0 af 80 kompetencer feltet — mens 14 af 14 kunder og 8 af 8 etaper har det. `kpi/gods/flaade.aktive` kan derfor ikke regnes | Kunden, eller en beslutning | 17 flåde- og bemandingsfelter i `kpi/`, som i dag er `null`. **Tre veje:** (a) udled af ARTEN — bus og minibus er bus, resten er gods. Det er et gæt: en varevogn kan køre for busafdelingen. (b) Udled af BRUGEN — en bil hører til de divisioner den har kørt etaper for. Ægte data, men en bil der aldrig har kørt, hører ingen steder, og "ude af drift" er en status og ikke en brug. (c) Lad dem være udelte — samme tal i begge, hvilket bryder beslutning 9's mening med vælgeren |
 | **Audit-retention** | Samme | ⚠ **Mekanismen er nu bygget og venter kun på tallet.** `auditoprydning` finder de forfaldne partitioner og rapporterer dem til `udbyder/retention/`; den sletter intet, fordi `RETENTION_AFGJORT` er falsk. Når juristen svarer: sæt tallet i `RETENTION_MAANEDER`, sæt flaget, og skriv begrundelsen i BESLUTNINGER.md — i den rækkefølge. Prøven `⚠ INGEN RETENTION ER AFGJORT ENDNU` falder samme dag, og det er meningen |
 | **Fire-øjne på fakturagrundlag** — skal godkenderen være en anden end den der udarbejdede det? | Kunden | Ingenting endnu, men det ændrer `kanGodkende()`. Det er rigtigt i en stor virksomhed og forkert hos en vognmand med to på kontoret, hvor det ville betyde at grundlag aldrig blev godkendt. Hører som en indstilling pr. tenant — ikke som en regel vi vælger for dem |
 
