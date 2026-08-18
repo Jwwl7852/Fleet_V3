@@ -94,7 +94,11 @@ export const DEMO_OPGAVER = [
   /* Facility-opgaver har ingen ressource i flåden — arbejdet er på bygningen.
      `faelles` fordi porten bruges af begge divisioner. */
   { id: "op-009", art: "facility", division: "faelles", startMs: iDag(9, 0),
-    sted: "Kolding", beskrivelse: "Port 3 – lukker langsomt",
+    /* ⚠ AKTIVET, IKKE KUN STEDET. Uden aktivId kan opgaven ikke
+       reservere noget: reservationFraOpgave() afviser den, og en port der
+       er under reparation, ser ledig ud. `sted` er en fritekst til
+       mennesker; `aktivId` er det reservationen haenger paa. */
+    sted: "Kolding", aktivId: "fa-port3", beskrivelse: "Port 3 – lukker langsomt",
     personId: "kasperLykke", status: "afventer",
     estimeretMin: 120, faktiskMin: null, beloebOere: 48000 },
 
@@ -140,11 +144,11 @@ export const DEMO_OPGAVER = [
      Den ene er `faelles` (tæller i begge), den anden `bus` — så viser gods 1
      og bus 2, og divisionsfilteret kan ses virke på rigtige data. */
   { id: "op-012", art: "facility", division: "faelles", startMs: iDag(9, 0),
-    sted: "Kolding", beskrivelse: "Ventilation, kontor – halvårligt filterskift",
+    sted: "Kolding", aktivId: "fa-vent1", beskrivelse: "Ventilation, kontor – halvårligt filterskift",
     personId: "kasperLykke", status: "planlagt",
     estimeretMin: 90, faktiskMin: null, beloebOere: 36000 },
   { id: "op-013", art: "facility", division: "bus", startMs: iDag(13, 0),
-    sted: "Aalborg", beskrivelse: "Ladestandere – eftersyn før vinter",
+    sted: "Aalborg", aktivId: "fa-lade1", beskrivelse: "Ladestandere – eftersyn før vinter",
     personId: "ibSoerensen", status: "planlagt",
     estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
 ];

@@ -876,13 +876,48 @@
           // i stilhed.
           ".indexOn": ["startMs", "status", "art", "koeretoejId", "personId"],
           "$opgaveId": {
-            ".validate": "newData.hasChildren(['art', 'division'])",
-            "art": {
-              ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|facility)$/)"
-            },
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            }
+            // ⚠ NODEN VALIDEREDE KUN art OG division. Alt andet var frit — en
+            // status vi ikke kender, et starttidspunkt som streng, en
+            // omkostning som float. Og opgaven RESERVERER nu sin ressource,
+            // saa et forkert tidspunkt spaerrer en bil i et vindue ingen har
+            // ment noget med.
+            ".validate": "newData.hasChildren(['art', 'division', 'status', 'startMs'])",
+
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|facility)$/)" },
+            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+
+            // Ordlisten staar i opgaver.js. Laengdetjek her, af samme grund som
+            // paa lagre.metode: en afskrift ville vaere et andet sted den stod.
+            "status": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+
+            // ⚠ startMs, IKKE dato. Indekset navngav "dato", som ingen post
+            // har — og MODULETS feltkatalog sagde det samme forkerte.
+            "startMs": { ".validate": "newData.isNumber()" },
+
+            // ⚠ ESTIMAT OG MAALING ER TO FELTER. estimeretMin er hvad vi tror
+            // og er det reservationen regnes af; faktiskMin er hvad der gik.
+            // Slog man dem sammen, ville en reservation flytte sig naar
+            // arbejdet var faerdigt.
+            "estimeretMin": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "faktiskMin": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+
+            "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "sted": { ".validate": "newData.isString() && newData.val().length <= 60" },
+
+            // ⚠ personId, IKKE uid. Det er hvem opgaven HANDLER OM — den der
+            // skal udfoere den. En mekaniker har maaske slet intet login.
+            "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
+
+            "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },
+            "aktivId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('aktiver').child(newData.val()).exists()" },
+            "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+            "besoegId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+
+            // ⚠ EN OMKOSTNING, IKKE EN INDTAEGT. Vaerkstedet servicerer egen
+            // flaade; et beloeb her kan ikke faktureres videre. Hele oere.
+            "beloebOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+
+            "$andet": { ".validate": false }
           }
         },
 

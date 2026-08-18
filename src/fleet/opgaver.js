@@ -70,18 +70,31 @@ export const ALLE_OPGAVE_STATUS = Object.keys(OPGAVE_STATUS);
  * som "—", ligner det en mangel nogen bør udfylde. Brug harFelt() til at
  * udelade rækken helt.
  */
+/**
+ * ⚠ KATALOGET NAVNGAV FELTER INGEN OPGAVE HAR.
+ *
+ * Her stod `dato`, `varighedMin` og `estimatOere`. Noden bærer `startMs`,
+ * `estimeretMin` og `beloebOere` — og det er nodens navne der gælder: de står
+ * i `firebase.rules.json`, i `.indexOn` og på hver eneste post.
+ *
+ * ⚠ OG DET VAR ANDEN HALVDEL AF EN FEJL JEG ALLEREDE HAR RETTET ÉN GANG.
+ * `opgaver`s indeks navngav `dato`, som ingen post har; jeg rettede indekset
+ * til `startMs` og opdagede ikke at MODULET sagde det samme forkerte.
+ * Et katalog der ikke matcher dataene, er værre end intet katalog: skærmene
+ * spørger `harFelt()` og får ja til et felt der er tomt.
+ */
 export const FELT = {
   /* Fælles */
-  dato: "dato",
+  startMs: "startMs",
   beskrivelse: "beskrivelse",
   personId: "personId",                 // hvem der UDFØRER — ikke uid
-  alvor: "alvor",
-  estimatOere: "estimatOere",
-  leverandoer: "leverandoer",
+  sted: "sted",
+  status: "status",
+  beloebOere: "beloebOere",             // opgavens OMKOSTNING, ikke en indtægt
   /* vaerksted */
   koeretoejId: "koeretoejId",
-  varighedMin: "varighedMin",           // dagsvisningen er timer, ikke døgn
-  omkostningstype: "omkostningstype",
+  estimeretMin: "estimeretMin",         // dagsvisningen er timer, ikke døgn
+  faktiskMin: "faktiskMin",             // hvad der FAKTISK gik — se udenTidsregistrering
   besoegId: "besoegId",                 // værkstedsbesøget i kalenderen
   /* facility */
   aktivId: "aktivId",
@@ -89,20 +102,21 @@ export const FELT = {
 };
 
 const FAELLES = [
-  FELT.dato, FELT.beskrivelse, FELT.personId, FELT.alvor,
-  FELT.estimatOere, FELT.leverandoer,
+  FELT.startMs, FELT.beskrivelse, FELT.personId, FELT.sted,
+  FELT.status, FELT.beloebOere,
 ];
 
 /* Rækkefølgen her er visningsrækkefølgen. Ét sted, så to skærme ikke lister
    de samme felter forskelligt. */
 const ALLE_FELTER = [
-  FELT.dato, FELT.beskrivelse, FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
-  FELT.varighedMin, FELT.personId, FELT.leverandoer, FELT.omkostningstype,
-  FELT.besoegId, FELT.alvor, FELT.estimatOere,
+  FELT.startMs, FELT.beskrivelse, FELT.sted, FELT.status,
+  FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
+  FELT.estimeretMin, FELT.faktiskMin, FELT.personId, FELT.besoegId,
+  FELT.beloebOere,
 ];
 
 export const ART_FELTER = {
-  vaerksted: [...FAELLES, FELT.koeretoejId, FELT.varighedMin, FELT.omkostningstype, FELT.besoegId],
+  vaerksted: [...FAELLES, FELT.koeretoejId, FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId],
   facility: [...FAELLES, FELT.aktivId, FELT.lokationId],
 };
 
@@ -136,14 +150,50 @@ export function ressourceId(opgave) {
  * Kilden følger arten: en værkstedsopgave spærrer et køretøj (prioritet 40 —
  * en bil på værksted kan ikke køre), en facility-opgave optager et aktiv
  * (prioritet 20). Prioriteten selv står i reservations.js og skrives ikke her.
+ *
+ * ⚠ DEN KUNNE ALDRIG KALDES PÅ EN RIGTIG OPGAVE.
+ *
+ * Den krævede `fra` og `til`. Noden bærer `startMs` og `estimeretMin`, og
+ * hver eneste opgave kastede derfor. At funktionen alligevel virkede, skyldtes
+ * at alle tre kaldsteder fodrer den med et BESØG — som tilfældigvis har
+ * `fra`/`til`. Resultatet: en værkstedsopgave på vores egen lift spærrede
+ * ingenting, og `etapeskift` kunne disponere bilen mens den stod der.
+ *
+ * ⚠ VINDUET REGNES AF ESTIMATET, og det er en PLAN — ikke en måling.
+ * `faktiskMin` er hvad der gik; `estimeretMin` er hvad vi tror. En
+ * reservation er et krav på fremtiden, så estimatet er det rigtige grundlag.
+ *
+ * ⚠ OG ET MANGLENDE ESTIMAT GÆTTES IKKE. Uden varighed er der intet vindue,
+ * og en standardlængde ville spærre bilen i et tidsrum ingen har besluttet.
+ * Samme regel som `koerselMin` på en langtur: den SPÆRRES frem for at blive
+ * gættet.
  */
 export function reservationFraOpgave(opgave) {
   const art = OPGAVE_ART[opgave?.art];
   if (!art) throw new Error(`reservationFraOpgave: ukendt art "${opgave?.art}".`);
   const id = ressourceId(opgave);
   if (!id) throw new Error(`reservationFraOpgave: opgaven mangler sin ressource.`);
-  if (!Number.isFinite(opgave.fra) || !Number.isFinite(opgave.til) || opgave.til <= opgave.fra) {
-    throw new Error("reservationFraOpgave: fra og til skal være konkrete tidspunkter med til > fra.");
+
+  /* Et BESØG bærer sit vindue direkte; en OPGAVE bærer sin start og sit
+     estimat. Begge former tages imod — de beskriver det samme krav. */
+  const fra = Number.isFinite(opgave.fra) ? opgave.fra : opgave.startMs;
+  const til = Number.isFinite(opgave.til)
+    ? opgave.til
+    : (Number.isFinite(fra) && Number.isFinite(opgave.estimeretMin)
+      ? fra + opgave.estimeretMin * 60000
+      : undefined);
+
+  if (!Number.isFinite(fra)) {
+    throw new Error(
+      "reservationFraOpgave: opgaven mangler et starttidspunkt (fra eller startMs)."
+    );
+  }
+  if (!Number.isFinite(til) || til <= fra) {
+    throw new Error(
+      "reservationFraOpgave: uden til eller estimeretMin er der intet vindue at " +
+      "reservere. En standardlængde ville spærre ressourcen i et tidsrum ingen " +
+      "har besluttet."
+    );
   }
   /* ⚠ En facility-opgave binder ENTEN et anlæg ELLER et helt sted, og de er
      to forskellige ressourcetyper. Lukker man hallen, er alle porte i den
@@ -157,8 +207,8 @@ export function reservationFraOpgave(opgave) {
   return {
     ressourceType,
     ressourceId: id,
-    fra: opgave.fra,
-    til: opgave.til,
+    fra,
+    til,
     kilde: {
       type: opgave.art === "vaerksted" ? "vaerksted" : "facilitySag",
       id: opgave.id,

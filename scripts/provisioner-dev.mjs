@@ -45,6 +45,7 @@ import {
 } from "../src/fleet/demo-facility.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { reservationFraFravaer } from "../src/fleet/fravaer.js";
+import { reservationFraOpgave } from "../src/fleet/opgaver.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { beregnKpi } from "../src/fleet/kpi-aggregering.js";
@@ -539,9 +540,47 @@ async function main() {
     antalFravaer += 1;
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ OG EN BIL PÅ VÆRKSTED SKAL HELLER IKKE KUNNE DISPONERES.
+
+     Opgavernes reservationer manglede, og grunden var ikke et glemt seed:
+     reservationFraOpgave() KUNNE IKKE kaldes på en rigtig opgave. Den krævede
+     fra/til; noden bærer startMs og estimeretMin, så hver eneste opgave
+     kastede. At funktionen alligevel virkede, skyldtes at alle tre kaldsteder
+     fodrer den med et BESØG — som tilfældigvis har fra/til.
+
+     Resultatet: en værkstedsopgave på vores egen lift spærrede ingenting, og
+     etapeskift kunne disponere bilen mens den stod der. Prioritet 40 — den
+     højeste af dem alle — fandtes kun i skærmen.
+
+     ⚠ VINDUET ER ET ESTIMAT, IKKE EN MÅLING. estimeretMin er hvad vi tror;
+     faktiskMin er hvad der gik. En reservation er et krav på fremtiden, så
+     estimatet er det rigtige grundlag — og en opgave UDEN estimat reserverer
+     ingenting frem for at få en gættet standardlængde.
+     ══════════════════════════════════════════════════════════════════════ */
+  let antalOpgaver = 0;
+  for (const o of DEMO_OPGAVER) {
+    let r;
+    try {
+      r = reservationFraOpgave(o);
+    } catch {
+      /* Uden ressource eller uden vindue reserverer opgaven ingenting.
+         Funktionen kaster frem for at gætte — se noten ved den. */
+      continue;
+    }
+    reservationer[r.ressourceType] ??= {};
+    reservationer[r.ressourceType][r.ressourceId] ??= {};
+    reservationer[r.ressourceType][r.ressourceId][`res-${o.id}`] = {
+      fra: r.fra, til: r.til, kilde: r.kilde,
+      oprettetAf: "provisioner", oprettetMs: Date.now(),
+    };
+    antalOpgaver += 1;
+  }
+
   await db.ref(`tenants/${DEV_TENANT}/reservationer`).set(reservationer);
   console.log(
-    `  ${"reservationer".padEnd(24)} ${antalResv} fra etaper, ${antalFravaer} fra fravær`);
+    `  ${"reservationer".padEnd(24)} ${antalResv} fra etaper, ${antalFravaer} fra fravær, ` +
+    `${antalOpgaver} fra opgaver`);
 
   /* ══════════════════════════════════════════════════════════════════════
      ⚠ NØGLETALLENE SEEDES IKKE LÆNGERE — DE REGNES.

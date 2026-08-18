@@ -127,7 +127,8 @@ describe("serveren håndhæver permissions", () => {
   it("hver node kræver sin egen permission", async () => {
     const noder = [
       ["kunder", PERM.kunderSkriv, KUNDE],
-      ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted" }],
+      ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted",
+        status: "planlagt", startMs: 1786000000000, estimeretMin: 90 }],
       ["koeretoejer", PERM.koeretoejerSkriv, { navn: "Volvo", art: "lastbil", status: "aktiv" }],
       ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", dato: 1786000000000,

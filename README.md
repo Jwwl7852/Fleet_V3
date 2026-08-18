@@ -721,6 +721,26 @@ den bil der blev prøvet, var demoens.
 Konsekvensen er værre her end på Disponering: skærmen ville sige **ja** hvor
 serveren siger nej — og brugeren har fået at vide at det var i orden.
 
+✅ **OG EN BIL PÅ VÆRKSTED SPÆRRER NU OGSÅ.** Opgavernes reservationer
+manglede, og grunden var ikke et glemt seed: `reservationFraOpgave()` **kunne
+ikke kaldes på en rigtig opgave**. Den krævede `fra`/`til`; noden bærer
+`startMs` og `estimeretMin`, så hver eneste opgave kastede. At funktionen
+alligevel virkede, skyldtes at alle tre kaldsteder fodrer den med et **besøg**
+— som tilfældigvis har `fra`/`til`.
+
+Resultatet: en værkstedsopgave på vores egen lift spærrede ingenting.
+Prioritet **40** — den højeste af alle — fandtes kun i skærmen.
+
+⚠ **Og det var anden halvdel af en fejl der allerede var rettet én gang.**
+`opgaver`s indeks navngav `dato`, som ingen post har; jeg rettede indekset og
+opdagede ikke at **modulets feltkatalog sagde det samme forkerte**. `FELT`
+lovede `dato`, `varighedMin` og `estimatOere` — tre navne ingen opgave bærer.
+En prøve holder nu kataloget op mod en rigtig post.
+
+Målt efter: 13 reservationer fra etaper, 10 fra fravær, **13 fra opgaver**.
+Disponerings konfliktliste gik fra 13 til 15 og siger nu *"Køretøjet er
+reserveret til værksted (op-001)"*.
+
 ⚠ **VÆRKSTEDSBESØGENE MANGLER STADIG — og det er et hul, ikke en detalje.**
 `besoeg` har **ingen node**. Reservationen med `kilde.type: vaerksted` og
 prioritet **40** — den højeste, højere end en booking — findes derfor kun i

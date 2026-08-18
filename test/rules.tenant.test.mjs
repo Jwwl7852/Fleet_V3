@@ -92,7 +92,10 @@ before(async () => {
          SPOEGELSE får den bevidst IKKE. */
       await set(ref(db, `tenants/${t}/_findes`), true);
       await set(ref(db, `tenants/${t}/kunder/seed`), { ...POST, navn: `Kunde i ${t}` });
-      await set(ref(db, `tenants/${t}/opgaver/seed`), { division: "gods", art: "vaerksted" });
+      await set(ref(db, `tenants/${t}/opgaver/seed`), {
+        division: "gods", art: "vaerksted", status: "planlagt",
+        startMs: 1786000000000, estimeretMin: 90,
+      });
       await set(ref(db, `tenants/${t}/kpi/gods/current`), { kunder: { aktive: 3 } });
     }
     await set(ref(db, "brugerTenants/mig"), { tenant: MIN });

@@ -134,6 +134,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   et dev-stillads ved `auth == null`; det blev fjernet med login, som beslutning
   26 lovede. Genindfør det ikke — `dataTilstand()` kender ikke sit miljø, og det
   er med vilje. Se beslutning 26 og 28.
+- **Skrive et feltnavn i et modul uden at holde det op mod noden.**
+  `opgaver.js`' `FELT` navngav `dato`, `varighedMin` og `estimatOere`; noden
+  bærer `startMs`, `estimeretMin` og `beloebOere`. Skærmene spurgte
+  `harFelt()` og fik **ja til felter der var tomme**. Værre: `reservationFraOpgave()`
+  krævede `fra`/`til`, så den kunne **aldrig** kaldes på en rigtig opgave — en
+  bil på værksted spærrede ingenting, og `etapeskift` kunne disponere den.
+  Funktionen virkede kun fordi alle kaldsteder fodrede den med et BESØG.
+  Nodens navne gælder: de står i reglerne, i `.indexOn` og på hver post.
 - **Vise et demo-datasæt for en node der ER seedet.** Da noderne blev seedet
   én for én, blev skærmene stående på demofilen: Indkøb → Fakturaer viste ni
   demo-fakturaer mens `indkoeb.fakturaerTilGodkendelse` blev regnet af de

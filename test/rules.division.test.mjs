@@ -113,7 +113,8 @@ describe("beslutning 15 — division som felt", () => {
   it("kræver division på opgaver, indberetninger og indkøb", async () => {
     const db = som("admin1", "admin");
     const noder = [
-      ["opgaver", { art: "vaerksted", dato: 1786000000000 }],
+      ["opgaver", { art: "vaerksted", status: "planlagt", startMs: 1786000000000,
+                    estimeretMin: 90 }],
       /* ⚠ EN RIGTIG INDBERETNING, IKKE DET MINDST MULIGE. Noden validerede
          kun `division`; nu kræves art, forløb, oprettetAf og oprettetMs — og
          chauffører SKRIVER til den, så det er den ene node hvor den mindst

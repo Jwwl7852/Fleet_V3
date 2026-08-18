@@ -37,10 +37,14 @@ const som = (uid, rolle = "admin") =>
 const sti = (id) => `tenants/${TENANT}/opgaver/${id}`;
 
 /** En gyldig opgave uden art — arten lægges på pr. test. */
+/* ⚠ startMs, IKKE dato. Fixturet skrev `dato` — det samme felt indekset
+   navngav og som ingen post har. Noden kraever nu startMs, fordi opgaven
+   RESERVERER sin ressource og et vindue skal kunne regnes. */
 const opgave = (ekstra = {}) => ({
   division: "gods",
   status: "planlagt",
-  dato: 1786000000000,
+  startMs: 1786000000000,
+  estimeretMin: 90,
   beskrivelse: "Serviceeftersyn 30.000 km",
   ...ekstra,
 });

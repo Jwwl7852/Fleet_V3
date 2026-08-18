@@ -9,6 +9,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
   OPGAVE_ART, ALLE_OPGAVE_ARTER, OPGAVE_STATUS, ALLE_OPGAVE_STATUS,
   FELT, ART_FELTER, harFelt, felterFor, ressourceFor, ressourceId, opgaveMangler,
@@ -37,7 +38,7 @@ describe("Arten er vaerksted | facility", () => {
      står en transportstrækning to steder. */
   it("kender IKKE langtur — en langtur er en etape", () => {
     assert.equal(OPGAVE_ART.langtur, undefined);
-    assert.equal(harFelt("langtur", FELT.dato), false);
+    assert.equal(harFelt("langtur", FELT.startMs), false);
     assert.deepEqual(felterFor("langtur"), []);
     assert.equal(ressourceFor("langtur"), null);
   });
@@ -76,20 +77,40 @@ describe("Art styrer feltskemaet", () => {
 
   /* Dagsvisningen er timer, ikke døgn — varigheden hører på værkstedsopgaven. */
   it("giver kun værkstedsopgaven en varighed i minutter", () => {
-    assert.equal(harFelt("vaerksted", FELT.varighedMin), true);
-    assert.equal(harFelt("facility", FELT.varighedMin), false);
+    assert.equal(harFelt("vaerksted", FELT.estimeretMin), true);
+    assert.equal(harFelt("facility", FELT.estimeretMin), false);
   });
 
   it("giver begge arter de fælles felter", () => {
-    for (const f of [FELT.dato, FELT.beskrivelse, FELT.personId, FELT.estimatOere]) {
+    for (const f of [FELT.startMs, FELT.beskrivelse, FELT.personId, FELT.beloebOere]) {
       for (const a of ALLE_OPGAVE_ARTER) assert.equal(harFelt(a, f), true, `${a} mangler ${f}`);
     }
   });
 
   it("giver felterne i katalogets rækkefølge", () => {
     const f = felterFor("vaerksted");
-    assert.ok(f.indexOf(FELT.dato) < f.indexOf(FELT.estimatOere));
+    assert.ok(f.indexOf(FELT.startMs) < f.indexOf(FELT.beloebOere));
     assert.deepEqual(f, felterFor("vaerksted"), "rækkefølgen skal være stabil");
+  });
+
+  it("⚠ KATALOGET NAVNGIVER FELTER OPGAVERNE FAKTISK HAR", () => {
+    /* Her stod `dato`, `varighedMin` og `estimatOere` — tre navne ingen post
+       bærer. Noden har `startMs`, `estimeretMin` og `beloebOere`, og det er
+       nodens navne der gælder: de står i firebase.rules.json, i .indexOn og på
+       hver eneste række.
+
+       Det var anden halvdel af en fejl der allerede var rettet én gang:
+       `opgaver`s indeks navngav `dato`, og da jeg rettede indekset, opdagede
+       jeg ikke at MODULET sagde det samme forkerte. Et katalog der ikke
+       matcher dataene, er værre end intet: skærmen spørger harFelt() og får ja
+       til et felt der er tomt. */
+    const post = DEMO_OPGAVER.find((o) => o.art === "vaerksted");
+    assert.ok(post, "ingen værkstedsopgave i demo-sættet");
+    const paakraevede = felterFor("vaerksted")
+      .filter((f) => f !== FELT.besoegId);   /* valgfrit — ikke alle har et besøg */
+    for (const f of paakraevede) {
+      assert.ok(f in post, `kataloget lover "${f}", som ingen opgave har`);
+    }
   });
 
   it("finder ressource-id'et uanset art", () => {
