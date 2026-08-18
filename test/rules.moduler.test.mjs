@@ -123,7 +123,7 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
     for (const r of alleRegler()) {
       if (typeof r.udtryk !== "string") continue;
       /* ⚠ EN NODE KAN HØRE TIL FLERE MODULER. `reolpladser` deles af
-         Turtlebooking og Warehouse, fordi transportkasser og kundegods står
+         Unitbooking og Warehouse, fordi transportkasser og kundegods står
          på de samme hylder — og klausulen er så et ELLER.
 
          Prøven kræver at HVERT af modulerne står der. Mangler det ene, er

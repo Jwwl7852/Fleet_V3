@@ -1,5 +1,5 @@
-/* src/moduler/turtlebooking/Historik.jsx
- * Turtlebooking – historik pr. kasse og pr. sagsnummer.
+/* src/moduler/unitbooking/Historik.jsx
+ * Unitbooking – historik pr. kasse og pr. sagsnummer.
  *
  * ⚠ SKÆRMEN SKRIVER IKKE OG SKAL IKKE. Historik er dokumentation; kan den
  * rettes fra en skærm, dokumenterer den ingenting. Rettes en periode, sker
@@ -24,10 +24,10 @@ import {
 import {
   UDLAAN_TILSTAND, KASSE_STATUS, AFSLUTTET, pladsnavn,
   dageUde, historikForKasse, sagsoversigt,
-} from "../../fleet/turtlebooking.js";
+} from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
-} from "../../fleet/demo-turtlebooking.js";
+} from "../../fleet/demo-unitbooking.js";
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 /**

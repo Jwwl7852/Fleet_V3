@@ -49,7 +49,7 @@ export async function gem({
    * ⚠ `flet` FINDES FOR DE NODER TO MODULER DELER, og den er ikke en
    * bekvemmelighed.
    *
-   * `reolpladser` skrives af BÅDE Turtlebooking (hal · reol · fag · hylde ·
+   * `reolpladser` skrives af BÅDE Unitbooking (hal · reol · fag · hylde ·
    * plads) og Warehouse (zone · type · status · temperatur). Med `.set()`
    * sender hver formular kun SINE felter — og sletter dermed den andens i
    * tavshed. En lagermedarbejder der rettede en hyldes nummer, ville have

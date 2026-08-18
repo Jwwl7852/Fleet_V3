@@ -47,7 +47,7 @@ import {
 import { beregnKpi } from "./delt/kpi-aggregering.js";
 import {
   valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
-} from "./delt/turtlebooking.js";
+} from "./delt/unitbooking.js";
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
@@ -1066,7 +1066,7 @@ export const prislisteslet = onCall({ region: REGION }, async (req) => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════
-   TURTLEBOOKING — UDLÅN AF TRANSPORTKASSER
+   UNITBOOKING — UDLÅN AF TRANSPORTKASSER
    ══════════════════════════════════════════════════════════════════════
 
    ⚠ HVORFOR DEN HER SKAL VÆRE EN FUNKTION.
@@ -1089,8 +1089,8 @@ export const prislisteslet = onCall({ region: REGION }, async (req) => {
       hinanden. Det er prototypens DE-QR 777 mod DE-KL 404 igen, denne gang
       med en kasse.
 
-   ⚠ POLITIKKEN ER DEN SAMME FIL. `delt/turtlebooking.js` er en KOPI af
-   `src/fleet/turtlebooking.js`. Serveren prøver mod nøjagtig den `valideUdlaan()`
+   ⚠ POLITIKKEN ER DEN SAMME FIL. `delt/unitbooking.js` er en KOPI af
+   `src/fleet/unitbooking.js`. Serveren prøver mod nøjagtig den `valideUdlaan()`
    og den `kanSkifteUdlaan()` som formularen viser brugeren. Skrev serveren
    sin egen afskrift, ville skærmen sige ja og serveren nej — uden at nogen
    kunne se hvorfor.
@@ -1121,13 +1121,13 @@ async function kraevUdlaansskriv(req) {
      ville en gammel tenant uden abonnementsnode blive lukket ude. */
   const [ab, modul] = await Promise.all([
     db.ref(`tenants/${tenantId}/abonnement/status`).once("value"),
-    db.ref(`tenants/${tenantId}/moduler/turtlebooking`).once("value"),
+    db.ref(`tenants/${tenantId}/moduler/unitbooking`).once("value"),
   ]);
   if (ab.exists() && ab.val() !== "aktiv") {
     throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
   }
   if (modul.exists() && modul.val() !== true) {
-    throw new HttpsError("permission-denied", "Turtlebooking er ikke slået til.");
+    throw new HttpsError("permission-denied", "Unitbooking er ikke slået til.");
   }
 
   return { uid: auth.uid, tenantId, db };

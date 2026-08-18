@@ -1,5 +1,5 @@
-/* src/fleet/demo-turtlebooking.js
- * Demo-data til Turtlebooking.
+/* src/fleet/demo-unitbooking.js
+ * Demo-data til Unitbooking.
  *
  * ⚠ ET DEMO-DATASÆT HØRER HER, IKKE I EN MODULFIL. Ligger det i skærmen, kan
  * de andre skærme ikke nå det — og så laver de deres egen kopi. Det var Bil
@@ -96,29 +96,29 @@ if (import.meta.env?.DEV) {
 
   for (const k of DEMO_KASSER) {
     if (!typer.has(k.type)) {
-      console.warn(`demo-turtlebooking: ${k.id} har type "${k.type}", som ikke findes i DEMO_KASSETYPER.`);
+      console.warn(`demo-unitbooking: ${k.id} har type "${k.type}", som ikke findes i DEMO_KASSETYPER.`);
     }
     if (!pladser.has(k.hjemPladsId)) {
-      console.warn(`demo-turtlebooking: ${k.id} har hjemPladsId "${k.hjemPladsId}", som ikke findes.`);
+      console.warn(`demo-unitbooking: ${k.id} har hjemPladsId "${k.hjemPladsId}", som ikke findes.`);
     }
     /* ⚠ DEN VIGTIGSTE: en udlånt kasse må IKKE optage en reolplads.
        Prototypen skrev "Udlånt hos kunde" som plads, og så kunne ledige
        hylder ikke tælles. Reglerne afviser det — demo-sættet skal ikke lære
        den næste noget andet. */
     if (k.status === "udlaant" && k.pladsId) {
-      console.warn(`demo-turtlebooking: ${k.id} er udlånt OG står på en plads. Reglerne afviser den.`);
+      console.warn(`demo-unitbooking: ${k.id} er udlånt OG står på en plads. Reglerne afviser den.`);
     }
     if (PAA_LAGER.includes(k.status) && !k.pladsId) {
-      console.warn(`demo-turtlebooking: ${k.id} er ${k.status} men står ingen steder.`);
+      console.warn(`demo-unitbooking: ${k.id} er ${k.status} men står ingen steder.`);
     }
     if (k.pladsId) {
       if (!pladser.has(k.pladsId)) {
-        console.warn(`demo-turtlebooking: ${k.id} står på "${k.pladsId}", som ikke findes.`);
+        console.warn(`demo-unitbooking: ${k.id} står på "${k.pladsId}", som ikke findes.`);
       }
       /* To kasser på samme plads er ikke ulovligt — en hylde kan rumme flere —
          men det skal være med vilje, ikke en kopieret linje. */
       if (brugtePladser.has(`${k.pladsId}|${k.id}`)) {
-        console.warn(`demo-turtlebooking: ${k.id} står to gange.`);
+        console.warn(`demo-unitbooking: ${k.id} står to gange.`);
       }
       brugtePladser.add(`${k.pladsId}|${k.id}`);
     }
@@ -126,13 +126,13 @@ if (import.meta.env?.DEV) {
 
   for (const u of DEMO_KASSEUDLAAN) {
     if (!kasser.has(u.kasseId)) {
-      console.warn(`demo-turtlebooking: udlån ${u.id} peger på kasse "${u.kasseId}", som ikke findes.`);
+      console.warn(`demo-unitbooking: udlån ${u.id} peger på kasse "${u.kasseId}", som ikke findes.`);
     }
     if (!(u.til >= u.fra)) {
-      console.warn(`demo-turtlebooking: udlån ${u.id} slutter før det begynder.`);
+      console.warn(`demo-unitbooking: udlån ${u.id} slutter før det begynder.`);
     }
     if (!u.sagsnummer) {
-      console.warn(`demo-turtlebooking: udlån ${u.id} mangler sagsnummer — den eneste nøgle ud af systemet.`);
+      console.warn(`demo-unitbooking: udlån ${u.id} mangler sagsnummer — den eneste nøgle ud af systemet.`);
     }
     /* ⚠ KUN klargjort OG udlaant BINDER KASSENS STATUS. Et *booket* udlån
        gør det ikke: kassen står stadig på hylden, og at kræve det ville
@@ -142,7 +142,7 @@ if (import.meta.env?.DEV) {
     if (kasse && ["klargjort", "udlaant"].includes(u.tilstand) &&
         kasse.status !== u.tilstand) {
       console.warn(
-        `demo-turtlebooking: udlån ${u.id} er ${u.tilstand}, men ${kasse.id} står som ${kasse.status}.`);
+        `demo-unitbooking: udlån ${u.id} er ${u.tilstand}, men ${kasse.id} står som ${kasse.status}.`);
     }
   }
 }

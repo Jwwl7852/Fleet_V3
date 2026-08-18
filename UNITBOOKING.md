@@ -1,6 +1,10 @@
-# Turtlebooking — plan
+# Unitbooking — plan
 
 `Warehouse.html` er en færdig prototype: **Turtlebooking, Hizkia Denmark**.
+
+⚠ **Prototypen hedder stadig Turtlebooking.** Det er Hizkias navn på deres
+eget produkt, og det bliver ikke omdøbt af at vores modul gør. Står der
+Turtlebooking i denne fil, er det prototypen der menes — ikke modulet.
 4.088 linjer, 320 KB. Den udlejer **transportkasser til kunst** — kasser med
 id og type, reolpladser i haller, udlån med sagsnummer, historik, kalender og
 udlånsliste pr. uge.
@@ -43,23 +47,35 @@ siger noget forskelligt, og hvor en forkert sammenkobling koster en migrering.
 | `bookings` | `bookinger` | En **transportopgave** (beslutning 16, 21) |
 | `customers` | `kunder` | **Kundekartoteket** med priser og aftaler |
 
-⚠ **OG ET FJERDE NAVN BLEV TAGET UNDERVEJS.** Modulet hed selv `warehouse`
-indtil etape 6 var inde. Det hedder nu **`turtlebooking`** — efter
-prototypen — fordi `warehouse` skal bruges til et **andet** modul: blandede
-varer ind og ud af et lager, med afregning for håndtering ind, opbevaring og
-håndtering ud. Det er en anden forretning end at leje transportkasser ud pr.
-sag.
+⚠ **OG MODULET HAR SELV HAFT TRE NAVNE.**
 
-Omdøbningen kostede en eftermiddag, fordi den blev taget mens der endnu ikke
-fandtes **én** kunde med modulet krydset af: ingen tenant, ingen prisliste og
-intet fakturagrundlag nævnte `warehouse`. Det blev efterprøvet i den
-udrullede base før en linje blev rørt. Et halvt år senere ville det have
-været en migrering af frosne regnskabsdokumenter — og et frosset
-fakturagrundlag må ikke skrives om, for så dokumenterer det ikke længere hvad
-der blev faktureret.
+| Hed | Indtil | Hvorfor det skiftede |
+|---|---|---|
+| `warehouse` | etape 6 | Navnet skal bruges til et **andet** modul: blandede varer ind og ud af et lager, med afregning for håndtering ind, opbevaring og håndtering ud. En anden forretning end at leje transportkasser ud pr. sag |
+| `turtlebooking` | 18.08.2026 | Efter prototypen. Produktnavnet blev **Unitbooking** |
+| `unitbooking` | — | |
+
+Begge omdøbninger kostede en eftermiddag, og begge gange af samme grund:
+**de blev taget mens ingen tenant bar modulnøglen.** Det er ikke et held, det
+er en måling — i den **udrullede** base, før en linje blev rørt. Første gang
+nævnte hverken tenant, prisliste eller fakturagrundlag `warehouse`; anden
+gang bar hverken `demo` eller `nordvest` nøglen `turtlebooking`.
+
+⚠ **Og det er den målings holdbarhed der er pointen.** Et halvt år senere
+ville det have været en migrering af **frosne** regnskabsdokumenter — og et
+frosset fakturagrundlag må ikke skrives om, for så dokumenterer det ikke
+længere hvad der blev faktureret. Prisen for at omdøbe et modul stiger med
+hver kunde der krydser det af; den falder aldrig. Skal navnet skiftes igen,
+skal det ske **før** den første kunde, eller slet ikke.
+
+⚠ **Noderne skiftede ingen af gangene.** De hedder stadig `kasser`,
+`kassetyper`, `kasseudlaan` og `reolpladser`, og permissionerne stadig
+`kasser.skriv`, `kasseudlaan.skriv` og `reolpladser.skriv`. Det er derfor
+begge omdøbninger var billige: modulnøglen er det eneste af de tre der står i
+kundens data, og den stod ingen steder.
 
 To ting med samme navn er beslutning 11 og 14 om igen — og det er den fejl der
-har kostet mest i dette repo. **Forslag:** modulet hedder `turtlebooking`, og
+har kostet mest i dette repo. **Forslag:** modulet hedder `unitbooking`, og
 noderne hedder `kasser`, `reolpladser` og `kasseudlaan`. Aldrig `lager`,
 aldrig `booking`.
 
@@ -85,7 +101,7 @@ og validering pr. node som alt andet.
 `Admin · Lager · Læser · Chauffør`, med sin egen adgangsmatrix.
 
 Beslutning 31: **rollerne er faste**, og adgang afgøres af permissions, ikke af
-rollen. Turtlebooking skal derfor ikke have en femte rolleverden, men permissions:
+rollen. Unitbooking skal derfor ikke have en femte rolleverden, men permissions:
 
 ```
 kasser.laes        kasser.skriv
@@ -151,7 +167,7 @@ Rækkefølgen er valgt så hvert trin er værd at have alene.
 
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
-| 1 | **Modulet findes**: `turtlebooking` i `moduler.js`, nav, regler med modulklausul, række i prislisten | Kan sælges og krydses af. ⚠ Ingen skærm endnu — nav-punktet må ikke tegnes før der er noget bag | ✅ |
+| 1 | **Modulet findes**: `unitbooking` i `moduler.js`, nav, regler med modulklausul, række i prislisten | Kan sælges og krydses af. ⚠ Ingen skærm endnu — nav-punktet må ikke tegnes før der er noget bag | ✅ |
 | 2 | **Datamodel + regler + prøver** for `kasser`, `reolpladser`, `kasseudlaan` | Grundlaget kan ikke laves om bagefter | ✅ |
 | 3 | **Kasser og reolpladser** — stamdata, opret, flyt | Man kan registrere lageret | ✅ |
 | 4 | **Udlån** — søg ledige i periode, book, klargør, udlever, retur | Den operationelle kerne | ✅ |
@@ -160,7 +176,7 @@ Rækkefølgen er valgt så hvert trin er værd at have alene.
 | 7 | **Excel-import** af de eksisterende data | Migrering fra prototypen | |
 | 8 | QR-koder og rapporter | Kan vente | |
 
-**Etape 3 er inde.** `turtlebooking` står nu i sidebaren med **Kasser** og
+**Etape 3 er inde.** `unitbooking` står nu i sidebaren med **Kasser** og
 **Reolpladser** (sidstnævnte rummer også kassetyperne — en type uden pladser at
 stå på er ikke til nogen nytte, og to skærme til seks felter er to skærme for
 mange). `UDEN_SKAERM` er tom igen; den fandtes præcis for at holde menupunktet
@@ -196,7 +212,7 @@ usynligt i begge de uger hvor der faktisk skulle gøres noget.
 ⚠ **Den ene fælde var intervallet.** Gitteret regner halvåbent `[fra, til)`;
 et udlån er inklusivt i begge ender. Tegnet råt mangler den sidste dag, og
 kassen ser fri ud den dag den stadig står hos museet. `halvaabent()` i
-`turtlebooking.js` er den ene oversættelse, og den er prøvet mod `overlapper()`
+`unitbooking.js` er den ene oversættelse, og den er prøvet mod `overlapper()`
 på hver kombination i ti dage — er de to uenige ét sted, viser gitteret noget
 andet end konflikttjekket afviser.
 
@@ -245,4 +261,4 @@ datamodel, regler, prøver, to-tre skærme med skrivning. Etape 5–8 er ovenpå
 
 Det er ikke noget der bliver færdigt i én omgang, og et modul der er halvt
 bygget, er værre end intet: nav-punktet står der og lover noget. Derfor tegnes
-`turtlebooking` først i sidebaren, når etape 3 er inde.
+`unitbooking` først i sidebaren, når etape 3 er inde.

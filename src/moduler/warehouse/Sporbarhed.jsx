@@ -51,7 +51,7 @@ import {
   Kort, Tom, Tabel, Pille, Knap, Felt, Feltraekke,
   Henter, Datatilstand, KpiKort, KpiRaekke, MiniLinje, Gitter,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   BEVAEGELSE_ART, SPORING, ENHED, ENHED_TILSTAND, UDEN_BATCH,
   talFraMaengde, spor, partiPlacering, enhedsafvigelse,

@@ -32,7 +32,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   BEVAEGELSE_ART, ALLE_BEVAEGELSE_ARTER, ABSOLUTTE_ARTER,
   ENHED, SPORING, PLADS_STATUS, kanPlukkesFra,

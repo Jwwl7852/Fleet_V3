@@ -109,7 +109,7 @@ describe("varen er kundens", () => {
 
 describe("reolpladsen er delt — og de nye felter er valgfrie", () => {
   it("accepterer en plads helt uden lagerfelter", () => {
-    /* ⚠ ELLERS GÅR TURTLEBOOKING I STYKKER. Noden blev udvidet, ikke
+    /* ⚠ ELLERS GÅR UNITBOOKING I STYKKER. Noden blev udvidet, ikke
        kopieret, og en plads uden de nye felter skal opføre sig som før. */
     assert.deepEqual(valideLagerfelter({}), {});
   });
@@ -134,7 +134,7 @@ describe("reolpladsen er delt — og de nye felter er valgfrie", () => {
     assert.equal(kanPlukkesFra({ status: "lukket" }), false);
     assert.equal(kanPlukkesFra({ status: "aktiv" }), true);
     /* En plads uden status er aktiv — ellers ville hver eneste
-       Turtlebooking-plads holde op med at virke. */
+       Unitbooking-plads holde op med at virke. */
     assert.equal(kanPlukkesFra({}), true);
   });
 });
@@ -306,7 +306,7 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
       ["beholdning", "bevaegelser", "carriers", "enheder", "optaellinger",
        "plukordrer", "reolpladser", "varer"]);
-    assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
+    assert.deepEqual(modulerFor("reolpladser").sort(), ["unitbooking", "warehouse"]);
   });
 
   it("⚠ CARRIEREN HØRER TIL WAREHOUSE ALENE — IKKE SAMMEN MED `kasser`", () => {
@@ -315,7 +315,7 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
        står derfor på hvert sit modul — mens `reolpladser`, som de begge står
        på, hører til begge. Se WAREHOUSE.md punkt 6.2. */
     assert.deepEqual(modulerFor("carriers"), ["warehouse"]);
-    assert.deepEqual(modulerFor("kasser"), ["turtlebooking"]);
+    assert.deepEqual(modulerFor("kasser"), ["unitbooking"]);
   });
 
   it("⚠ RØRER IKKE `lagre`", () => {
@@ -341,7 +341,7 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
 
   it("reolpladsen har sin egen permission, ikke kasserens", () => {
     /* ⚠ EN NODE TO MODULER DELER, KAN IKKE GATES AF DET ENE MODULS RETTIGHED.
-       En WMS-medarbejder hos en kunde uden Turtlebooking ville ellers ikke
+       En WMS-medarbejder hos en kunde uden Unitbooking ville ellers ikke
        kunne oprette en hylde. */
     const regler = readFileSync("firebase.rules.json", "utf8");
     const blok = regler.slice(regler.indexOf('"reolpladser": {'));
@@ -353,13 +353,13 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
 });
 
 describe("den delte node skrives uden at slette den andens felter", () => {
-  it("Turtlebookings formular fletter", () => {
+  it("Unitbookings formular fletter", () => {
     /* ⚠ KODEPRØVEN VED SIDEN AF ADFÆRDSPRØVEN, og de er ikke overflødige:
        adfærdsprøven i rules.warehouse.test.mjs viser at update() bevarer
        felterne, men den kan ikke se om SKÆRMEN kalder den vej. Fjerner nogen
        `flet: true` igen, er reglerne stadig grønne — og felterne forsvinder
        lige så stille som første gang. */
-    const kilde = readFileSync("src/moduler/turtlebooking/Reolpladser.jsx", "utf8");
+    const kilde = readFileSync("src/moduler/unitbooking/Reolpladser.jsx", "utf8");
     assert.ok(kilde.includes("flet: true"),
       "Reolpladser skriver hele posten og sletter Warehouses felter");
   });

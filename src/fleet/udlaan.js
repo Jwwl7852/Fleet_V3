@@ -1,6 +1,6 @@
 /* src/fleet/udlaan.js
  * Klientsiden af kasseudlånet. Transport — politikken ligger i
- * `udlaan-regler.js` og i `turtlebooking.js`.
+ * `udlaan-regler.js` og i `unitbooking.js`.
  *
  * ⚠ DER SKRIVES INTET HERFRA DIREKTE. `kasseudlaan` er `.write: false`, og
  * det er ikke fordi lagermedarbejderen mangler en rettighed — han HAR

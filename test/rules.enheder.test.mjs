@@ -70,7 +70,7 @@ before(async () => {
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     await set(ref(db, `tenants/${T}/_findes`), true);
-    await set(ref(db, `tenants/${T}/moduler`), { warehouse: true, turtlebooking: false });
+    await set(ref(db, `tenants/${T}/moduler`), { warehouse: true, unitbooking: false });
     await set(ref(db, sti(`reolpladser/${PLADS}`)), {
       hal: "Hovedlager", reol: "A01", fag: "02", hylde: "1", plads: "1",
     });
@@ -87,7 +87,7 @@ before(async () => {
     });
 
     await set(ref(db, `tenants/${UDEN_MODUL}/_findes`), true);
-    await set(ref(db, `tenants/${UDEN_MODUL}/moduler`), { warehouse: false, turtlebooking: true });
+    await set(ref(db, `tenants/${UDEN_MODUL}/moduler`), { warehouse: false, unitbooking: true });
   });
 });
 

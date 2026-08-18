@@ -1489,14 +1489,14 @@
         // hent, skal sidsteAktivitetMs med, så listen kan skifte til et
         // tidsvindue.
         // ══════════════════════════════════════════════════════════════
-        // TURTLEBOOKING — udlejning af transportkasser
+        // UNITBOOKING — udlejning af transportkasser
         // ══════════════════════════════════════════════════════════════
         //
         // ⚠ IKKE lagre, IKKE bookinger, IKKE kunder. De tre navne var
         // taget: lagre er reservedelslageret under Indkoeb, bookinger er en
         // TRANSPORTOPGAVE med etaper og koeretoej, og kunder er
         // kundekartoteket. To ting med samme navn er beslutning 11 og 14
-        // om igen. Se turtlebooking.js.
+        // om igen. Se unitbooking.js.
         //
         // ⚠ FIRE NODER, IKKE ÉT BLOB. Prototypen gemte alt i
         // lagerstyring/state. Det kan ikke beskyttes (alt eller intet), ikke
@@ -1504,8 +1504,8 @@
         // minut ville overskrive hinanden UDEN en fejlmeddelelse.
 
         "kassetyper": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
           "$typeId": {
             ".validate": "newData.hasChildren(['navn'])",
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
@@ -1520,8 +1520,8 @@
         // eneste kasse paa en plads der ikke fandtes. Samme rettelse som
         // steder.js lavede for hjemsted.
         "reolpladser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|reolpladser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|reolpladser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["hal"],
           "$pladsId": {
             ".validate": "newData.hasChildren(['hal', 'reol', 'fag', 'hylde', 'plads'])",
@@ -1536,7 +1536,7 @@
             // ⚠ DE FEM FELTER HERUNDER ER WAREHOUSES, OG DE ER VALGFRIE.
             // Noden blev UDVIDET frem for kopieret, fordi transportkasser og
             // kundegods staar paa de samme hylder. Var de paakraevede, gik
-            // Turtlebooking i stykker — en plads uden dem opfoerer sig
+            // Unitbooking i stykker — en plads uden dem opfoerer sig
             // praecis som foer. Se WAREHOUSE.md punkt 3.3.
             "zone": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
             "type": { ".validate": "newData.isString() && newData.val().matches(/^(hylde|gulvplads|bulk)$/)" },
@@ -1549,10 +1549,10 @@
         },
 
         "kasser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
           ".indexOn": ["status", "type", "pladsId"],
           "$kasseId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
             // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
             // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
             // Samme regel som en solgt bil (beslutning 18).
@@ -1590,7 +1590,7 @@
         // booking har etaper, koeretoej og chauffoer. At slaa dem sammen
         // ville vaere beslutning 16 om igen.
         "kasseudlaan": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('turtlebooking').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
           ".indexOn": ["kasseId", "sagsnummer", "tilstand", "fra"],
           "$udlaanId": {
             // ⚠ KUN SERVEREN. Et udlaan aendrer TO poster — udlaanet og
@@ -1602,7 +1602,7 @@
             //
             // .validate herunder er formen serveren skal overholde. Den
             // haandhaeves ikke paa admin-SDK'et — det goer valideUdlaan() i
-            // functions/delt/turtlebooking.js, som er DEN SAMME fil klienten
+            // functions/delt/unitbooking.js, som er DEN SAMME fil klienten
             // proever mod.
             ".write": false,
             ".validate": "newData.hasChildren(['kasseId', 'sagsnummer', 'fra', 'til', 'tilstand'])",
@@ -1686,7 +1686,7 @@
         // ingen pladsId.
         //
         // ⚠ PERMISSIONEN ER carriers.skriv OG IKKE kasser.skriv. En
-        // WMS-medarbejder hos en kunde uden Turtlebooking skal kunne oprette
+        // WMS-medarbejder hos en kunde uden Unitbooking skal kunne oprette
         // en beholder — samme faelde som reolpladser.skriv lukkede.
         "carriers": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
@@ -1883,7 +1883,7 @@
             //
             // Sidste led lader en UAENDRET tilstand blive staaende, saa man
             // kan rette en note paa en afsendt ordre. Samme greb som kassens
-            // status i turtlebooking.
+            // status i unitbooking.
             "tilstand": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(kladde|frigivet|annulleret)$/) && (!data.exists() || data.val().matches(/^(kladde|frigivet|annulleret)$/))))" },
             "prioritet": { ".validate": "newData.isString() && newData.val().matches(/^(lav|normal|hoej)$/)" },
             "afgangMs": { ".validate": "newData.isNumber()" },

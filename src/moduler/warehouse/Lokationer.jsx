@@ -1,7 +1,7 @@
 /* src/moduler/warehouse/Lokationer.jsx
  * Warehouse – lokationer: zoner, hylder, belægning og status.
  *
- * ⚠ DET ER DEN SAMME NODE SOM TURTLEBOOKINGS REOLPLADSER. `reolpladser` blev
+ * ⚠ DET ER DEN SAMME NODE SOM UNITBOOKINGS REOLPLADSER. `reolpladser` blev
  * UDVIDET frem for kopieret, fordi transportkasser og kundegods står på de
  * samme hylder. To reolnoder ville betyde at "Hal 1 · Reol 2" fandtes to
  * steder der kunne blive uenige, og at en vognmand med begge moduler
@@ -9,14 +9,14 @@
  *
  * ⚠ DERFOR SKRIVER SKÆRMEN MED `flet: true`. Den rører kun de fire felter den
  * ejer (zone, type, status, temperatur) plus adressen. Med en hel skrivning
- * ville den slette det Turtlebooking havde sat — og omvendt. Se noten ved
+ * ville den slette det Unitbooking havde sat — og omvendt. Se noten ved
  * `flet` i skriv.js.
  *
  * ⚠ BELÆGNINGEN ER UDLEDT. Den regnes af det der står på pladsen; der findes
  * ikke et gemt belægningstal. Et gemt tal ville drive fra posterne, og en
  * hylde der ser fri ud men ikke er det, sender nogen op ad stigen forgæves.
  *
- * ⚠ OG DEN TÆLLER TO SLAGS BEHOLDERE: Turtlebookings transportkasser og
+ * ⚠ OG DEN TÆLLER TO SLAGS BEHOLDERE: Unitbookings transportkasser og
  * Warehouses carriers. Skærmen talte før kun beholdningen og var dermed
  * allerede blind for kasserne på de samme hylder. Opgørelsen ligger i
  * `belaegningPrPlads()` — ét sted, fordi to opgørelser af samme hylde bliver
@@ -27,7 +27,7 @@
  * en hylde. To led, fordi et gemt pladsId på posten ville drive fra
  * carrieren første gang nogen flyttede beholderen.
  *
- * ⚠ `kasser` LÆSES KUN HVIS TENANTEN HAR TURTLEBOOKING. Noden er spærret af
+ * ⚠ `kasser` LÆSES KUN HVIS TENANTEN HAR UNITBOOKING. Noden er spærret af
  * det modul, og en forespørgsel ville give `permission-denied` hos en kunde
  * der kun har Warehouse. Den tomme liste er dér det rigtige svar: der ER
  * ingen kasser. Se `hent` i useListe.js.
@@ -41,7 +41,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
-import { pladsnavn, haller, valideReolplads } from "../../fleet/turtlebooking.js";
+import { pladsnavn, haller, valideReolplads } from "../../fleet/unitbooking.js";
 import {
   PLADS_TYPE, ALLE_PLADS_TYPER, PLADS_STATUS, ALLE_PLADS_STATUS,
   kanPlukkesFra, valideLagerfelter, talFraMaengde, beholdningPaaPlads,
@@ -53,7 +53,7 @@ import { AUDIT } from "../../fleet/audit.js";
 import {
   DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS,
 } from "../../fleet/demo-lager.js";
-import { DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_KASSER } from "../../fleet/demo-unitbooking.js";
 
 const PR_SIDE = 14;
 
@@ -77,7 +77,7 @@ function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }
   };
 
   const temp = f.temperatur === "" ? null : Number(f.temperatur);
-  /* To valideringer, fordi noden har to ejere: adressen er Turtlebookings,
+  /* To valideringer, fordi noden har to ejere: adressen er Unitbookings,
      lagerfelterne er Warehouses. Begge skal passere. */
   const fejl = {
     ...valideReolplads(f),
@@ -167,7 +167,7 @@ function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }
         )}
 
         <p className="fc-hint">
-          ⚠ <b>Den her lokation deles med Turtlebooking.</b> Skærmen skriver kun
+          ⚠ <b>Den her lokation deles med Unitbooking.</b> Skærmen skriver kun
           de felter den ejer, så en rettelse her ikke sletter noget derovre — og
           omvendt.
         </p>
@@ -200,12 +200,12 @@ export default function Lokationer() {
   const { data: carriers } = useListe("carriers", {
     division: "alle", graense: 2000, demo: DEMO_CARRIERS,
   });
-  /* ⚠ KUN HVIS TENANTEN HAR TURTLEBOOKING. Se noten i hovedet: uden modulet
+  /* ⚠ KUN HVIS TENANTEN HAR UNITBOOKING. Se noten i hovedet: uden modulet
      findes noden ikke, og svaret ville være en afvisning frem for et tomt
      lager. */
   const { data: kasser } = useListe("kasser", {
     division: "alle", graense: 2000, demo: DEMO_KASSER,
-    hent: harModul(moduler, "turtlebooking"),
+    hent: harModul(moduler, "unitbooking"),
   });
 
   if (henter) return <Henter hvad="lokationerne" />;
@@ -382,7 +382,7 @@ export default function Lokationer() {
         )}
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Lokationerne deles med Turtlebooking.</b> De pladser der bærer
+          ⚠ <b>Lokationerne deles med Unitbooking.</b> De pladser der bærer
           transportkasser, står også her — uden zone og temperatur, fordi de
           felter er valgfrie. Det er med vilje: én reolstruktur i huset, så
           "Hal 1 · Reol 2" ikke findes to steder der kan blive uenige.

@@ -40,13 +40,13 @@ export const DELTE_FILER = [
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med
      en afskrift, ville der være to afrundingsregler i ét repo. */
   "beloeb.js", "priser.js",
-  /* ⚠ turtlebooking.js SKAL MED, fordi kasseudlaanskriv er DEN ENESTE vej ind i
+  /* ⚠ unitbooking.js SKAL MED, fordi kasseudlaanskriv er DEN ENESTE vej ind i
      kasseudlaan — noden er .write: false. Serveren skal proeve mod nøjagtig
      de samme regler som formularen viser brugeren: samme valideUdlaan(),
      samme kanSkifteUdlaan(), samme overlapsregel. Skrev serveren sin egen
      afskrift, ville skaermen sige ja og serveren nej, uden at nogen kunne se
      hvorfor. */
-  "turtlebooking.js",
+  "unitbooking.js",
   /* ⚠ warehouse.js SKAL MED, fordi bevaegelseskriv er DEN ENESTE vej ind i
      bevaegelser og beholdning — begge noder er .write: false. Serveren skal
      proeve mod noejagtig de samme regler som formularen viser brugeren:

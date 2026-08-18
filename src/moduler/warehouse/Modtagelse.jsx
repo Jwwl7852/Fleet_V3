@@ -40,7 +40,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formularsvar,
   Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke, MiniLinje,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   CARRIER_TYPE, CARRIER_STATUS, EJERFORHOLD, kanPlaceres, udenLokation,
   beholdningPaaCarrier, talFraMaengde, ENHED, PLADS_TYPE, PLADS_STATUS,
@@ -52,7 +52,7 @@ import { harModul } from "../../fleet/moduler.js";
 import {
   DEMO_CARRIERS, DEMO_REOLPLADSER, DEMO_BEHOLDNING, DEMO_VARER,
 } from "../../fleet/demo-lager.js";
-import { DEMO_KASSER } from "../../fleet/demo-turtlebooking.js";
+import { DEMO_KASSER } from "../../fleet/demo-unitbooking.js";
 
 /* m³ med én decimal. Målene er i millimeter (heltal), så regnestykket sker
    her og gemmes ikke — et gemt rumfang ville drive fra målene. */
@@ -95,7 +95,7 @@ export default function Modtagelse() {
      Se noten ved `hent` i useListe.js. */
   const { data: kasser } = useListe("kasser", {
     division: "alle", graense: 2000, demo: DEMO_KASSER,
-    hent: harModul(moduler, "turtlebooking"),
+    hent: harModul(moduler, "unitbooking"),
   });
 
   if (henter) return <Henter hvad="beholderne i transit" />;

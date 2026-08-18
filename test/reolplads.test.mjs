@@ -2,7 +2,7 @@
  * Hyldens ENE sandhed.
  *
  * ⚠ HELE FILEN FINDES FORDI CARRIEREN BLEV SIN EGEN NODE (WAREHOUSE.md 6.2).
- * Der står to slags beholdere på en reolplads — Turtlebookings transportkasser
+ * Der står to slags beholdere på en reolplads — Unitbookings transportkasser
  * og Warehouses carriers — og de ligger i hver sin node. Opgøres belægningen
  * mere end ét sted, bliver de to opgørelser uenige uden at nogen kan se det.
  * Det er `bemanding.ledig` og divisionsfilteret der stod to steder.
@@ -12,7 +12,7 @@
  * gennem to led, og en post i en beholder UDEN lokation tæller ingen steder.
  *
  * Skærmen talte i forvejen kun beholdningen og var dermed allerede blind for
- * Turtlebookings kasser. Den fejl er den her fil skrevet imod.
+ * Unitbookings kasser. Den fejl er den her fil skrevet imod.
  *
  * Koer: npm test
  */
@@ -23,7 +23,7 @@ import {
   belaegningPaaPlads, pladsErLedig, belaegningPrPlads,
 } from "../src/fleet/reolplads.js";
 import { DEMO_CARRIERS, DEMO_REOLPLADSER, DEMO_BEHOLDNING } from "../src/fleet/demo-lager.js";
-import { DEMO_KASSER } from "../src/fleet/demo-turtlebooking.js";
+import { DEMO_KASSER } from "../src/fleet/demo-unitbooking.js";
 
 const P = "p-a-01-02";
 
@@ -90,7 +90,7 @@ describe("belægningen tæller alle tre kilder", () => {
   });
 
   it("tåler at en kilde helt mangler", () => {
-    /* Hos en kunde uden Turtlebooking findes `kasser` slet ikke, og listen er
+    /* Hos en kunde uden Unitbooking findes `kasser` slet ikke, og listen er
        tom — ikke en fejl. Se `hent` i useListe.js. */
     assert.equal(
       belaegningPaaPlads({ beholdning: SAET.beholdning, carriers: SAET.carriers }, P).ialt,
@@ -163,7 +163,7 @@ describe("ledig er ikke det samme som tom", () => {
     assert.equal(pladsErLedig({ id: "p-x", status: "lukket" }, tom), false);
   });
 
-  it("en plads uden status er aktiv — Turtlebookings egne har ingen", () => {
+  it("en plads uden status er aktiv — Unitbookings egne har ingen", () => {
     /* De fire WMS-felter er valgfrie (WAREHOUSE.md 3.3). En plads uden
        status må ikke falde ud som spærret. */
     assert.equal(pladsErLedig({ id: "p-x" }, belaegningPaaPlads({}, "p-x")), true);
@@ -225,11 +225,11 @@ describe("skærmen bruger den fælles opgørelse", () => {
     assert.ok(skaerm.includes('useListe("kasser"'), "kasser læses ikke");
   });
 
-  it("⚠ SPØRGER IKKE OM kasser UDEN TURTLEBOOKING", () => {
+  it("⚠ SPØRGER IKKE OM kasser UDEN UNITBOOKING", () => {
     /* Noden er spærret af modulet, og svaret ville være permission-denied —
        en afvisning brugeren ikke skal se, fordi den ikke er en fejl. */
-    assert.ok(/hent:\s*harModul\(moduler,\s*"turtlebooking"\)/.test(skaerm),
-      "kasser hentes uden hensyn til om tenanten har Turtlebooking");
+    assert.ok(/hent:\s*harModul\(moduler,\s*"unitbooking"\)/.test(skaerm),
+      "kasser hentes uden hensyn til om tenanten har Unitbooking");
   });
 });
 

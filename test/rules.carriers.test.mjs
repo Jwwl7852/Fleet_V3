@@ -59,7 +59,7 @@ before(async () => {
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     await set(ref(db, `tenants/${T}/_findes`), true);
-    await set(ref(db, `tenants/${T}/moduler`), { warehouse: true, turtlebooking: false });
+    await set(ref(db, `tenants/${T}/moduler`), { warehouse: true, unitbooking: false });
     await set(ref(db, sti(`reolpladser/${PLADS}`)), {
       hal: "Hovedlager", reol: "A01", fag: "02", hylde: "1", plads: "1",
     });
@@ -69,7 +69,7 @@ before(async () => {
 
     /* En tenant der IKKE har Warehouse — modulspærringen prøves mod den. */
     await set(ref(db, `tenants/${UDEN_MODUL}/_findes`), true);
-    await set(ref(db, `tenants/${UDEN_MODUL}/moduler`), { warehouse: false, turtlebooking: true });
+    await set(ref(db, `tenants/${UDEN_MODUL}/moduler`), { warehouse: false, unitbooking: true });
   });
 });
 
@@ -84,7 +84,7 @@ describe("hvem må skrive en carrier", () => {
   });
 
   /* ⚠ PERMISSIONEN ER carriers.skriv OG IKKE kasser.skriv.
-     En WMS-medarbejder hos en kunde uden Turtlebooking skal kunne oprette en
+     En WMS-medarbejder hos en kunde uden Unitbooking skal kunne oprette en
      beholder — samme fælde som reolpladser.skriv lukkede. */
   it("⚠ kasser.skriv RÆKKER IKKE — heller ikke med alt andet", async () => {
     const uden = ALLE_PERMS.filter((p) => p !== PERM.carriersSkriv);

@@ -31,11 +31,11 @@ import Klima from "./moduler/facility/Klima.jsx";
 import IndkoebOversigt from "./moduler/indkoeb/Oversigt.jsx";
 import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
 import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
-import TurtlebookingKasser from "./moduler/turtlebooking/Kasser.jsx";
-import Reolpladser from "./moduler/turtlebooking/Reolpladser.jsx";
-import Kasseudlaan from "./moduler/turtlebooking/Udlaan.jsx";
-import Turtlebookingkalender from "./moduler/turtlebooking/Kalender.jsx";
-import Turtlebookinghistorik from "./moduler/turtlebooking/Historik.jsx";
+import UnitbookingKasser from "./moduler/unitbooking/Kasser.jsx";
+import Reolpladser from "./moduler/unitbooking/Reolpladser.jsx";
+import Kasseudlaan from "./moduler/unitbooking/Udlaan.jsx";
+import Unitbookingkalender from "./moduler/unitbooking/Kalender.jsx";
+import Unitbookinghistorik from "./moduler/unitbooking/Historik.jsx";
 import Wmsvarer from "./moduler/warehouse/Varer.jsx";
 import Wmslokationer from "./moduler/warehouse/Lokationer.jsx";
 import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
@@ -352,11 +352,11 @@ export default function App() {
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 
-            <Route path="turtlebooking" element={<TurtlebookingKasser />} />
-            <Route path="turtlebooking/udlaan" element={<Kasseudlaan />} />
-            <Route path="turtlebooking/kalender" element={<Turtlebookingkalender />} />
-            <Route path="turtlebooking/historik" element={<Turtlebookinghistorik />} />
-            <Route path="turtlebooking/reolpladser" element={<Reolpladser />} />
+            <Route path="unitbooking" element={<UnitbookingKasser />} />
+            <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
+            <Route path="unitbooking/kalender" element={<Unitbookingkalender />} />
+            <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
+            <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
             <Route path="warehouse" element={<Wmsvarer />} />
             <Route path="warehouse/lokationer" element={<Wmslokationer />} />
             <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />

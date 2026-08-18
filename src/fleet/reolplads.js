@@ -7,7 +7,7 @@
  * `reolpladser` er husets ene reolstruktur og deles af to moduler
  * (WAREHOUSE.md punkt 3.3). Der står TO slags ting på en plads:
  *
- *   · kasser              Turtlebooking — transportkasser til udlån
+ *   · kasser              Unitbooking — transportkasser til udlån
  *   · carriers            Warehouse — beholdere med kundens gods
  *
  * ⚠ OG GODSET STÅR IKKE PÅ HYLDEN. Efter etape 12 ligger hver eneste
@@ -31,7 +31,7 @@
  * `pladsId` — og ikke det der har en bestemt status. Den skelnen er ikke
  * dovenskab, den er invarianten:
  *
- *   · en udlånt kasse har ingen `pladsId` (turtlebooking.js + reglerne)
+ *   · en udlånt kasse har ingen `pladsId` (unitbooking.js + reglerne)
  *   · en carrier i transit har ingen `pladsId` (warehouse.js + reglerne)
  *
  * Begge dele håndhæves i `firebase.rules.json`, ikke kun i en formular. Skulle

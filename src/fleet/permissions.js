@@ -176,7 +176,7 @@ export const PERM = {
      laes-permission — se noten ved bookingLaes. Kun skrivning styres. */
   kompetencerSkriv: "kompetencer.skriv",
 
-  /* TURTLEBOOKING — udlejning af transportkasser.
+  /* UNITBOOKING — udlejning af transportkasser.
 
      ⚠ TO PERMISSIONS, IKKE FIRE. Den ene dækker STAMDATA (kasser,
      kassetyper, reolpladser), den anden det OPERATIONELLE (book, klargør,
@@ -190,28 +190,28 @@ export const PERM = {
   kasseudlaanSkriv: "kasseudlaan.skriv",
 
   /* ⚠ REOLPLADSEN FIK SIN EGEN, FORDI NODEN NU DELES AF TO MODULER.
-     Den lå under `kasser.skriv`, og det holdt så længe Turtlebooking var den
+     Den lå under `kasser.skriv`, og det holdt så længe Unitbooking var den
      eneste der stod på hylderne. Warehouse står på de samme — og en
-     WMS-medarbejder hos en kunde der IKKE har Turtlebooking, ville ellers
+     WMS-medarbejder hos en kunde der IKKE har Unitbooking, ville ellers
      ikke kunne oprette en hylde, fordi rettigheden hed noget om kasser.
      En node to moduler deler, kan ikke gates af det ene moduls rettighed. */
   reolpladserSkriv: "reolpladser.skriv",
 
   /* WAREHOUSE (WMS) — lagerhotel, 3PL.
 
-     ⚠ TO PERMISSIONS, SAMME SNIT SOM TURTLEBOOKING: den ene dækker STAMDATA
+     ⚠ TO PERMISSIONS, SAMME SNIT SOM UNITBOOKING: den ene dækker STAMDATA
      (varekartoteket), den anden det OPERATIONELLE (bevægelserne).
 
      ⚠ `bevaegelser.skriv` ER IKKE EN VEJ UDEN OM FUNKTIONEN. Noden er
      `.write: false`; permissionen er dét `bevaegelseskriv` prøver KALDEREN
-     mod. Præcis som `kasseudlaan.skriv` blev det for Turtlebooking. */
+     mod. Præcis som `kasseudlaan.skriv` blev det for Unitbooking. */
   varerSkriv: "varer.skriv",
   bevaegelserSkriv: "bevaegelser.skriv",
 
   /* ⚠ CARRIEREN FÅR SIN EGEN — den kan ikke hedde `kasser.skriv`.
      En carrier og en transportkasse er fysisk den samme slags beholder, men
      de ligger i hver sin node og hører til hvert sit modul (WAREHOUSE.md
-     punkt 6.2). En WMS-medarbejder hos en kunde uden Turtlebooking ville
+     punkt 6.2). En WMS-medarbejder hos en kunde uden Unitbooking ville
      ellers ikke kunne oprette en beholder, fordi rettigheden hed noget om
      kasser — samme fælde som `reolpladser.skriv` lukkede. */
   carriersSkriv: "carriers.skriv",
@@ -234,7 +234,7 @@ const BASIS_DATA = [
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
   PERM.indberetningerSkriv,
-  /* ⚠ TURTLEBOOKING-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
+  /* ⚠ UNITBOOKING-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
      spørgsmålet blev besvaret. Svaret var at LAGERMEDARBEJDEREN skal
      udlevere og modtage retur — og en dedikeret rolle er meningsløs, hvis
      alle andre roller har det samme i forvejen. Se `lagermedarbejder`. */
@@ -341,7 +341,7 @@ export const ROLLE_PERMS = {
    * Lagermedarbejder — den der pakker, klargør, udleverer og modtager retur.
    *
    * ⚠ ROLLEN ER NY, OG DEN KOM AF ET SPØRGSMÅL DER BLEV STILLET FØRST.
-   * Turtlebooking-prototypen havde sin egen rolle "Chauffør = udlevering/retur".
+   * Unitbooking-prototypen havde sin egen rolle "Chauffør = udlevering/retur".
    * At hænge det på VORES chauffør ville have været forkert: en chauffør
    * kører, og han skriver indberetninger. Den der står med kassen i hånden
    * på lageret, er en anden person med et andet arbejde.

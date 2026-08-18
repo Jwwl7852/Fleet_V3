@@ -130,13 +130,13 @@ export function rumfangMm3(vare = {}) {
 /**
  * ⚠ FELTERNE HER ER VALGFRIE, OG DET ER HELE POINTEN.
  *
- * `reolpladser` blev bygget til Turtlebookings transportkasser med
+ * `reolpladser` blev bygget til Unitbookings transportkasser med
  * `hal · reol · fag · hylde · plads`. Warehouse står på de samme hylder, og
  * derfor blev noden UDVIDET frem for kopieret: to reolnoder ville betyde at
  * "Hal 1 · Reol 2" fandtes to steder der kunne blive uenige, og at en
  * vognmand med begge moduler skulle vedligeholde sit lager to gange.
  *
- * Er felterne påkrævede, går Turtlebooking i stykker. Derfor: valgfrie, og
+ * Er felterne påkrævede, går Unitbooking i stykker. Derfor: valgfrie, og
  * en plads uden dem opfører sig præcis som før.
  */
 export const PLADS_TYPE = {
@@ -163,7 +163,7 @@ export const ALLE_PLADS_STATUS = Object.keys(PLADS_STATUS);
 export const kanPlukkesFra = (plads) =>
   PLADS_STATUS[plads?.status ?? "aktiv"]?.kanPlukkes === true;
 
-/** Validering af DE UDVIDEDE felter. Turtlebookings egne prøves i turtlebooking.js. */
+/** Validering af DE UDVIDEDE felter. Unitbookings egne prøves i unitbooking.js. */
 export function valideLagerfelter(post = {}) {
   const f = {};
 
@@ -440,7 +440,7 @@ export function validePlacering(post = {}, { pladser = [], carriers = [] } = {})
  * ⚠ DEN HER AFGØR INGENTING — den svarer. Håndhævelsen hører i den Cloud
  * Function der skriver bevægelsen: beholdningen og bevægelsen skal skrives
  * sammen eller slet ikke, og to lagermænd kan ramme samme sekund. Samme
- * forbehold som `konflikter()` i turtlebooking.js.
+ * forbehold som `konflikter()` i unitbooking.js.
  *
  * `optael` er absolut: `antal` ER den nye beholdning, ikke en ændring. Derfor
  * bærer den `saet` frem for `aendring`, og kalderen skal kende forskellen.
@@ -666,7 +666,7 @@ export const ALLE_ORDRE_TILSTANDE = Object.keys(ORDRE_TILSTAND);
  * lageret ville stadig stå med godset. Reglerne håndhæver listen; serveren
  * går uden om den, fordi den skriver bevægelserne i samme ombæring.
  *
- * Samme greb som `SELVVALGT_KASSE_STATUS` i turtlebooking.js.
+ * Samme greb som `SELVVALGT_KASSE_STATUS` i unitbooking.js.
  */
 export const KLIENT_ORDRE_TILSTANDE = ["kladde", "frigivet", "annulleret"];
 
@@ -1153,7 +1153,7 @@ export function afregningssum(linjer = []) {
 
    ⚠ DET ER `kasse` ÉN GANG TIL, OG SVARET BLEV ALLIGEVEL TO NODER.
 
-   Turtlebooking har `kasser`: en fysisk beholder med type, status og en
+   Unitbooking har `kasser`: en fysisk beholder med type, status og en
    reolplads. Fysisk er en carrier den samme ting. De to bærer alligevel hver
    sin forretning — kassen udlejes pr. sag og har sin egen tilstandsmaskine
    med klargøring og returnering (beslutning 37), carrieren bærer KUNDENS gods
@@ -1163,7 +1163,7 @@ export function afregningssum(linjer = []) {
    ⚠ PRISEN FOR TO NODER BETALES I `reolplads.js`, IKKE HER. Begge står på de
    SAMME `reolpladser`, så "er hylden optaget?" har to kilder. Det spørgsmål
    besvares ét sted — se `belaegningPaaPlads()`. Ellers ser en hylde ledig ud
-   i Turtlebooking og optaget ud i Warehouse, og ingen af skærmene kan se at
+   i Unitbooking og optaget ud i Warehouse, og ingen af skærmene kan se at
    de er uenige.
 
    ⚠ INDHOLDET ER IKKE HER ENDNU. Beholdningen hænger i dag på PLADSEN
@@ -1176,14 +1176,14 @@ export function afregningssum(linjer = []) {
 /**
  * ⚠ TYPEN ER EN ENUM OG IKKE EN NODE — for nu.
  *
- * Turtlebooking har `kassetyper` som en node, fordi en museumskasse er
+ * Unitbooking har `kassetyper` som en node, fordi en museumskasse er
  * vognmandens eget inventar med sine egne mål. De her fem er generiske
  * kategorier af transportemballage, og målene står på den ENKELTE carrier,
  * fordi to pallekasser kan være forskellige.
  *
  * Skal en vognmand kunne oprette sine egne typer med standardmål, bliver det
  * en node som `kassetyper` — og det er en beslutning, ikke en oprydning.
- * `kassetyper` kan ikke genbruges: den node er spærret af turtlebooking-modulet,
+ * `kassetyper` kan ikke genbruges: den node er spærret af unitbooking-modulet,
  * og en kunde med kun Warehouse kan ikke læse den.
  */
 export const CARRIER_TYPE = {

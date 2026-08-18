@@ -135,7 +135,7 @@ function MedGrundlag({ maal, format = (v) => v, tone }) {
 /* ---- Formularen -------------------------------------------------------- */
 
 /* ⚠ DE TRE STOD HER FØR. De er flyttet til format.js, fordi personale.js
-   havde sin egen kopi og Turtlebooking var ved at lave en tredje. Se noten der
+   havde sin egen kopi og Unitbooking var ved at lave en tredje. Se noten der
    om hvorfor klokken er 12 og ikke midnat. */
 
 const tomLinje = () => ({

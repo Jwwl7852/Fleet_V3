@@ -287,7 +287,7 @@ export function valideMedarbejder(post = {}) {
 }
 
 /* ⚠ FLYTTET TIL format.js. Den stod her OG i Indkøb, og en tredje kopi
-   var på vej ind med Turtlebooking. Se noten der. */
+   var på vej ind med Unitbooking. Se noten der. */
 const msFraIso = isoTilMs;
 
 export function byggMedarbejder(post) {

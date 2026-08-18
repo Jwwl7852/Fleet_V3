@@ -37,7 +37,7 @@ import {
   Kort, Tabel, Pille, Knap, Henter, Datatilstand, Tom, Ikon, Sider,
   KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   CARRIER_TYPE, ALLE_CARRIER_TYPER, CARRIER_STATUS, ALLE_CARRIER_STATUS,
   EJERFORHOLD, ALLE_EJERFORHOLD, udenLokation, carrieroverblik,

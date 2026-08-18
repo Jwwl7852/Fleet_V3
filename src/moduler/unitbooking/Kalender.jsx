@@ -1,5 +1,5 @@
-/* src/moduler/turtlebooking/Kalender.jsx
- * Turtlebooking – kalender og udlånsliste.
+/* src/moduler/unitbooking/Kalender.jsx
+ * Unitbooking – kalender og udlånsliste.
  *
  * ⚠ GITTERET ER IKKE BYGGET HER. `fleet/Gitterkalender.jsx` tegner ressourcer
  * × tid og bruges også af Værkstedskalender, Servicekalender og Disponering.
@@ -9,7 +9,7 @@
  * ⚠ OG NETOP DERFOR ER `halvaabent()` DET VIGTIGSTE I FILEN. Gitteret regner
  * halvåbent `[fra, til)`; et udlån er inklusivt i begge ender. Tegnes udlånet
  * råt, mangler den SIDSTE dag — og kassen ser fri ud den dag den stadig står
- * hos museet. Oversættelsen sker ét sted, i `turtlebooking.js`, og den er prøvet
+ * hos museet. Oversættelsen sker ét sted, i `unitbooking.js`, og den er prøvet
  * mod `overlapper()` på hver kombination i ti dage.
  *
  * ⚠ VINDUET ER FREMADRETTET OG FAST. Shellens periodevælger er BAGUD
@@ -28,10 +28,10 @@ import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
-} from "../../fleet/turtlebooking.js";
+} from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
-} from "../../fleet/demo-turtlebooking.js";
+} from "../../fleet/demo-unitbooking.js";
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const DAG = 86400000;

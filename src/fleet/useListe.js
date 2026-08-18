@@ -63,7 +63,7 @@ export { MAX_PARTITIONER, FAELLES, maanedsSegmenter, hentListe };
  *
  * ⚠ `hent: false` ER TIL EN NODE DER ER SPÆRRET AF ET FRAVALGT MODUL — ikke
  * til at skjule en afvisning. Warehouses lokationsskærm tæller både kasser og
- * carriers på hylden; hos en kunde uden Turtlebooking findes `kasser` ikke,
+ * carriers på hylden; hos en kunde uden Unitbooking findes `kasser` ikke,
  * og reglerne ville svare `permission-denied`. Den tomme liste er dér det
  * RIGTIGE svar: der er ingen kasser, ikke en fejl at vise.
  *

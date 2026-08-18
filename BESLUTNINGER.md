@@ -909,7 +909,7 @@ lagermedarbejder, sagsbehandler, disponent, koordinator, revisor,
 administrator — og ændrer ikke hvad de indeholder. Skal en rolle betyde noget
 andet, er det en ændring i `permissions.js` og i regelfilen, ikke et klik.
 
-⚠ **Der stod SEKS her indtil Turtlebooking kom.** `lagermedarbejder` blev tilføjet
+⚠ **Der stod SEKS her indtil Unitbooking kom.** `lagermedarbejder` blev tilføjet
 fordi prototypen ville lade chaufføren udlevere og modtage kasser — og en
 chauffør kører; den der står med kassen i hånden på lageret, er en anden
 person med et andet arbejde. **Det er sådan en rolle skal komme til:** som en
@@ -1323,7 +1323,7 @@ og køretøjspris.
 ## 37. "Booket" er ikke en kassestatus. Og udlånet skrives kun af serveren
 
 Prototypen gav en transportkasse fem statusser: *Ledig, Booket, Klargjort,
-Udlånt, Ude af drift*. Turtlebooking etape 4 fjernede den ene af dem og lukkede
+Udlånt, Ude af drift*. Unitbooking etape 4 fjernede den ene af dem og lukkede
 hele `kasseudlaan` for klienten. Begge dele kom af det samme spørgsmål:
 **hvem ejer kendsgerningen?**
 
@@ -1390,7 +1390,7 @@ listen**: den genlæser og kører kroppen igen, hvis nogen nåede at skrive
 imens. Prisen er at hele noden læses og skrives pr. booking. Vokser den ud
 over det, er svaret et **indeks pr. kasse — ikke et svagere tjek.**
 
-⚠ **Serveren prøver mod DEN SAMME fil som skærmen.** `turtlebooking.js` er
+⚠ **Serveren prøver mod DEN SAMME fil som skærmen.** `unitbooking.js` er
 kopieret til `functions/delt/`, og `valideUdlaan()`, `kanSkifteUdlaan()` og
 `konflikter()` er de samme funktioner begge steder. Skrev serveren sin egen
 afskrift, ville skærmen sige ja og serveren nej — uden at nogen kunne se
@@ -1420,7 +1420,7 @@ håndhævet nu — fundet af en prøve i etape 4, to etaper efter. En kontrol de
 kun findes i klienten, er ikke adgangskontrol.
 
 ⚠ **`isoTilMs`/`msTilIso` er flyttet til `format.js`.** De var skrevet af i
-`personale.js` og i Indkøb, og en tredje kopi var på vej ind med Turtlebooking.
+`personale.js` og i Indkøb, og en tredje kopi var på vej ind med Unitbooking.
 Klokken er 12 og ikke midnat: `new Date("2026-08-10")` er midnat UTC, og
 trækkes der en time et sted i kæden, bliver det den 9.
 

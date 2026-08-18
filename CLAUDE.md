@@ -284,7 +284,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   lagermedarbejderen **har** `kasseudlaan.skriv`. Det er vejen der er lukket:
   et udlån ændrer **to** poster (udlånet og kassen), perioden skal prøves mod
   de andre udlån, og to lagermænd kan ramme samme sekund. `konflikter()` i
-  `turtlebooking.js` **afgør ingenting** — den svarer, og skærmen bruger den kun
+  `unitbooking.js` **afgør ingenting** — den svarer, og skærmen bruger den kun
   til at vise hvad der er ledigt. Håndhævelsen ligger i en transaktion inde i
   funktionen. Se beslutning 37.
 - **Give en kasse status `booket`.** Den findes ikke. En reservation **er** et
@@ -301,10 +301,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - **Tage navnet `warehouse` til noget.** Det er **reserveret** til et kommende
   modul: blandede varer ind og ud af et lager, med afregning for håndtering
   ind, opbevaring og håndtering ud. Modulet der lejer transportkasser ud pr.
-  sag, hed `warehouse` indtil etape 6 og hedder nu **`turtlebooking`** —
-  netop for at de to ikke skulle hedde det samme. Det ville have været
-  `lagre` mod `lager` og `bookinger` mod `bookings` for tredje gang.
-  Navnet er ikke ledigt; det er optaget af noget der ikke er bygget endnu.
+  sag, hed `warehouse` indtil etape 6, derefter `turtlebooking`, og hedder
+  nu **`unitbooking`** — netop for at de to ikke skulle hedde det samme. Det
+  ville have været `lagre` mod `lager` og `bookinger` mod `bookings` for
+  tredje gang. Navnet er ikke ledigt; det er optaget af noget der ikke er
+  bygget endnu.
+  ⚠ **`Turtlebooking` er stadig navnet på PROTOTYPEN** (Hizkia Denmark) —
+  det er deres produkt, ikke vores modul. Ret det ikke i UNITBOOKING.md.
+  ⚠ **Og begge omdøbninger var kun billige fordi ingen tenant bar
+  modulnøglen.** Det blev målt i den udrullede base, ikke antaget. Noderne
+  (`kasser`, `kasseudlaan`, `reolpladser`) og permissionerne skiftede
+  ingen af gangene — de står i kundens data og i tokens, og de er dyre.
+  Skal et modulnavn skiftes igen, sker det **før** den første kunde krydser
+  modulet af, eller slet ikke.
 - **Vise en udlånsvarighed uden at sige om den er målt eller planlagt.**
   `fra`/`til` er AFTALEN; `udleveretMs` og `returneretMs` er hvad der skete,
   og de sættes af **serveren** i selve tilstandsskiftet — et tidspunkt en
@@ -317,12 +326,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   halvåbent `[fra, til)`; et udlån er inklusivt i begge ender. Tegnes det
   råt, mangler den SIDSTE dag, og kassen ser fri ud den dag den stadig står
   hos museet — et gitter der er én dag forskudt, opdages ikke ved at kigge på
-  det. Oversættelsen står ét sted i `turtlebooking.js` og er prøvet mod
+  det. Oversættelsen står ét sted i `unitbooking.js` og er prøvet mod
   `overlapper()` på hver kombination i ti dage.
 - **Skrive `isoTilMs`/`msTilIso` igen.** De står i `format.js`. Klokken er 12
   og ikke midnat, fordi `new Date("2026-08-10")` er midnat UTC — trækkes der
   en time et sted i kæden, bliver det den 9. De var skrevet af to steder, før
-  Turtlebooking var ved at lave den tredje kopi.
+  Unitbooking var ved at lave den tredje kopi.
 - **Skrive en enhed uden for `bevaegelseskriv`'s ene `update()`.** `enheder/`
   er `.write: false` for alle, og der findes med vilje **ingen**
   `enheder.skriv`. Rækken bærer den SAMME kendsgerning som `beholdning` — det

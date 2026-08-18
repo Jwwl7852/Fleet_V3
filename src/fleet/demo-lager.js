@@ -2,7 +2,7 @@
  * Demo-data til den DELTE reolstruktur — og til Warehouse.
  *
  * ⚠ HVORFOR REOLPLADSERNE FLYTTEDE HERTIL.
- * `reolpladser` hørte til Turtlebooking og lå derfor i `demo-turtlebooking.js`.
+ * `reolpladser` hørte til Unitbooking og lå derfor i `demo-unitbooking.js`.
  * Noden deles nu med Warehouse, og et demo-datasæt hører ét sted — ellers
  * laver den anden skærm sin egen kopi, og så er det Bil 104 med to
  * nummerplader igen. Filen hedder `demo-lager` og ikke `demo-warehouse`,
@@ -19,7 +19,7 @@
 import { DEMO_KUNDER } from "./demo-kunder.js";
 
 export const DEMO_REOLPLADSER = [
-  /* Turtlebookings oprindelige — uden WMS-felter. De SKAL blive stående
+  /* Unitbookings oprindelige — uden WMS-felter. De SKAL blive stående
      sådan; det er dem der beviser at felterne er valgfrie. */
   { id: "p-h1-r1-f1-h6-1", hal: "Hal 1", reol: "1", fag: "1", hylde: "6", plads: "1" },
   { id: "p-h1-r1-f1-h7-3", hal: "Hal 1", reol: "1", fag: "1", hylde: "7", plads: "3" },
@@ -177,8 +177,8 @@ export const DEMO_ENHEDER = [
  *  1. En carrier på en plads hvor der ALLEREDE står beholdning. Det er den
  *     eneste måde at se at belægningen tæller begge dele — og at hylden ikke
  *     ser fri ud, fordi den ene kilde blev spurgt og den anden ikke.
- *  2. En carrier på samme plads som en KASSE fra Turtlebooking, af samme
- *     grund. Se `p-h1-r2-f1-h9-2` i demo-turtlebooking.js.
+ *  2. En carrier på samme plads som en KASSE fra Unitbooking, af samme
+ *     grund. Se `p-h1-r2-f1-h9-2` i demo-unitbooking.js.
  *  3. En UDEN plads: scannet ind, ikke placeret. Det er de elleve "uden
  *     lokation" på planchen, og tilstanden er rigtig — ikke en fejl.
  *  4. En i transit, som derfor IKKE må have en plads.

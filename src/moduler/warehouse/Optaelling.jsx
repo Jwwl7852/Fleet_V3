@@ -29,7 +29,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formularsvar,
   Henter, Datatilstand, Ikon, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   AFVIGELSESAARSAG, ALLE_AFVIGELSESAARSAGER, ENHED,
   MAENGDE_SKALA, maengdeFraTal, talFraMaengde,

@@ -1,5 +1,5 @@
-/* test/turtlebooking.test.mjs
- * Turtlebooking — de fem ting prototypen gjorde forkert, og som ikke må komme med.
+/* test/unitbooking.test.mjs
+ * Unitbooking — de fem ting prototypen gjorde forkert, og som ikke må komme med.
  *
  * Koer: npm test
  */
@@ -14,7 +14,7 @@ import {
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
-} from "../src/fleet/turtlebooking.js";
+} from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM, modulerFor,
 } from "../src/fleet/moduler.js";
@@ -156,7 +156,7 @@ describe("To udlån på samme kasse", () => {
        lagermænd kan ramme samme sekund, og en kontrol der kun står i skærmen,
        kan gås uden om med en direkte skrivning. Præcis samme forbehold som de
        fem disponeringstjek har. Prøven fastholder at noten står der. */
-    const kilde = readFileSync(new URL("../src/fleet/turtlebooking.js", import.meta.url), "utf8");
+    const kilde = readFileSync(new URL("../src/fleet/unitbooking.js", import.meta.url), "utf8");
     assert.match(kilde, /AFGØR INGENTING/,
       "forbeholdet om at konflikter() ikke håndhæver, er fjernet.");
   });
@@ -185,16 +185,16 @@ describe("To udlån på samme kasse", () => {
 
 describe("Modulet er registreret — men ikke tegnet", () => {
   it("står i kataloget med sine fire noder", () => {
-    assert.ok(MODUL.turtlebooking, "turtlebooking mangler i kataloget");
+    assert.ok(MODUL.unitbooking, "unitbooking mangler i kataloget");
     assert.deepEqual(
-      Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("turtlebooking")).sort(),
+      Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("unitbooking")).sort(),
       ["kasser", "kassetyper", "kasseudlaan", "reolpladser"]);
     /* ⚠ REOLPLADSER ER DELT MED WAREHOUSE. Transportkasser og kundegods staar
        paa de samme hylder, og noden blev UDVIDET frem for kopieret. Proeven
        staar her, saa en fremtidig oprydning ikke "retter" den tilbage til eet
        modul og dermed lukker WMS ude af sit eget lager. */
-    assert.deepEqual(modulerFor("reolpladser").sort(), ["turtlebooking", "warehouse"]);
-    assert.deepEqual(modulerFor("kasser"), ["turtlebooking"]);
+    assert.deepEqual(modulerFor("reolpladser").sort(), ["unitbooking", "warehouse"]);
+    assert.deepEqual(modulerFor("kasser"), ["unitbooking"]);
   });
 
   it("⚠ TEGNES NU — og UDEN_SKAERM er tom igen", () => {
@@ -205,7 +205,7 @@ describe("Modulet er registreret — men ikke tegnet", () => {
        ⚠ Proeven holder BEGGE veje: staar et modul i UDEN_SKAERM, maa det ikke
        have et menupunkt — og er listen tom, skal hvert modul have ét. Se
        moduler.test.mjs. */
-    assert.ok(!UDEN_SKAERM.includes("turtlebooking"));
+    assert.ok(!UDEN_SKAERM.includes("unitbooking"));
   });
 
   it("bruger ikke et navn der var taget", () => {
@@ -403,8 +403,8 @@ describe("serveren skriver ikke sin egen politik af", () => {
     for (const navn of ["valideUdlaan", "kanSkifteUdlaan", "virkningPaaKasse", "konflikter"]) {
       assert.ok(kilde.includes(`${navn}(`), `functions/index.js kalder ikke ${navn}`);
     }
-    assert.ok(kilde.includes('from "./delt/turtlebooking.js"'),
-      "functions/index.js importerer ikke den delte turtlebooking-fil");
+    assert.ok(kilde.includes('from "./delt/unitbooking.js"'),
+      "functions/index.js importerer ikke den delte unitbooking-fil");
   });
 
   it("lader ikke klienten vælge tilstanden på et nyt udlån", () => {
@@ -420,7 +420,7 @@ describe("serveren skriver ikke sin egen politik af", () => {
     /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE. Uden de to tjek ville funktionen
        være en åben dør rundt om både modulafkrydsningen og loginspærringen. */
     assert.ok(kilde.includes("Abonnementet er ikke aktivt."));
-    assert.ok(kilde.includes("Turtlebooking er ikke slået til."));
+    assert.ok(kilde.includes("Unitbooking er ikke slået til."));
   });
 });
 

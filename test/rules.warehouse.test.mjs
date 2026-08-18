@@ -3,8 +3,8 @@
  * DELTE reolplads.
  *
  * ⚠ DEN VIGTIGSTE PRØVE I FILEN ER "en kunde med KUN Warehouse".
- * `reolpladser` blev bygget til Turtlebooking og gates i dag af det modul.
- * Blev klausulen ikke udvidet, ville en WMS-kunde uden Turtlebooking få en
+ * `reolpladser` blev bygget til Unitbooking og gates i dag af det modul.
+ * Blev klausulen ikke udvidet, ville en WMS-kunde uden Unitbooking få en
  * tom liste og en afvist skrivning — og skærmen ville bare sige "ingen
  * reolpladser". Ingen ville gætte at det var modulafkrydsningen.
  *
@@ -21,9 +21,9 @@ import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import { MAENGDE_SKALA, beholdningsNoegle } from "../src/fleet/warehouse.js";
 
 /* Tre tenanter, fordi det er modulkombinationen der prøves. */
-const BEGGE = "wmsBegge";      /* turtlebooking + warehouse */
+const BEGGE = "wmsBegge";      /* unitbooking + warehouse */
 const KUN_WMS = "wmsKun";      /* kun warehouse */
-const KUN_TB = "wmsTb";        /* kun turtlebooking */
+const KUN_TB = "wmsTb";        /* kun unitbooking */
 let miljoe;
 
 const som = (tenant, rolle = "lagermedarbejder") =>
@@ -49,9 +49,9 @@ before(async () => {
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     const moduler = {
-      [BEGGE]: { turtlebooking: true, warehouse: true },
-      [KUN_WMS]: { warehouse: true, turtlebooking: false },
-      [KUN_TB]: { turtlebooking: true, warehouse: false },
+      [BEGGE]: { unitbooking: true, warehouse: true },
+      [KUN_WMS]: { warehouse: true, unitbooking: false },
+      [KUN_TB]: { unitbooking: true, warehouse: false },
     };
     for (const [id, m] of Object.entries(moduler)) {
       await set(ref(db, t(id, "_findes")), true);
@@ -81,7 +81,7 @@ describe("den delte reolplads", () => {
     await assertSucceeds(get(ref(db, t(KUN_WMS, "reolpladser"))));
   });
 
-  it("en kunde med kun Turtlebooking kan det stadig", async () => {
+  it("en kunde med kun Unitbooking kan det stadig", async () => {
     /* Den anden retning: udvidelsen må ikke have lukket den oprindelige ude. */
     const db = som(KUN_TB);
     await assertSucceeds(set(ref(db, t(KUN_TB, "reolpladser/ny")), plads));
@@ -108,20 +108,20 @@ describe("den delte reolplads", () => {
   });
 
   it("accepterer stadig en plads helt uden dem", async () => {
-    /* ⚠ ELLERS GÅR TURTLEBOOKING I STYKKER. */
+    /* ⚠ ELLERS GÅR UNITBOOKING I STYKKER. */
     const db = som(BEGGE);
     await assertSucceeds(set(ref(db, t(BEGGE, "reolpladser/p6")), plads));
   });
 
   it("⚠ EN RETTELSE FRA DEN ENE SKÆRM SLETTER IKKE DEN ANDENS FELTER", async () => {
-    /* Den her prøve findes fordi fejlen ALLEREDE var indført: Turtlebookings
+    /* Den her prøve findes fordi fejlen ALLEREDE var indført: Unitbookings
        formular sender kun hal/reol/fag/hylde/plads, og gem() skrev med
        .set(). En lagermedarbejder der rettede et hyldenummer, ville have
        nulstillet temperaturen og taget hylden ud af karantæne — i tavshed.
 
        Rettelsen er `flet: true` i skriv.js, som bruger update(). Prøven her
        er den adfærd, ikke koden: skriv WMS-felterne, ret så kun
-       Turtlebookings, og se at de første står. */
+       Unitbookings, og se at de første står. */
     const db = som(BEGGE);
     const sti = t(BEGGE, "reolpladser/delt");
     await assertSucceeds(set(ref(db, sti), {

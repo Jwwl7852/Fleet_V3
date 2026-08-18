@@ -90,9 +90,9 @@ export const MODUL = {
    * ⚠ TAG DERFOR IKKE `warehouse` TIL NOGET ANDET. Navnet er ikke ledigt —
    * det er optaget af noget der ikke er bygget endnu.
    */
-  turtlebooking: {
-    navKey: "turtlebooking",
-    label: "Turtlebooking",
+  unitbooking: {
+    navKey: "unitbooking",
+    label: "Unitbooking",
     hvad: "Udlejning af transportkasser: kasser, reolpladser og udlån pr. sag.",
   },
   /**
@@ -154,7 +154,7 @@ export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
  * ⚠ TOM IGEN — OG DET ER MENINGEN AT DEN SKAL VÆRE DET.
  *
  * Begge de nye moduler har stået her og er fjernet igen, hvert på sin tur:
- * `turtlebooking` mellem etape 1 og 3, `warehouse` mellem etape 1 og 3. I
+ * `unitbooking` mellem etape 1 og 3, `warehouse` mellem etape 1 og 3. I
  * begge tilfælde kunne modulet sælges og prissættes, mens der endnu ikke var
  * en skærm at gå til — og listen var det der holdt menupunktet borte imens.
  *
@@ -236,22 +236,22 @@ export const NODE_MODUL = {
   "sensitive/kunder": "kunder",
 
   /* ⚠ IKKE lagre. Den node er reservedelslageret under Indkøb. Kasser er
-     transportkasser der lejes ud — se noten i turtlebooking.js om de tre navne
+     transportkasser der lejes ud — se noten i unitbooking.js om de tre navne
      der allerede var taget. */
-  kasser: "turtlebooking",
-  kassetyper: "turtlebooking",
-  kasseudlaan: "turtlebooking",
+  kasser: "unitbooking",
+  kassetyper: "unitbooking",
+  kasseudlaan: "unitbooking",
 
   /* ⚠ DEN FØRSTE NODE DER HØRER TIL TO MODULER, og det er en beslutning og
-     ikke en forglemmelse. Turtlebookings transportkasser og Warehouses
+     ikke en forglemmelse. Unitbookings transportkasser og Warehouses
      kundegods står på de samme hylder; to reolnoder ville betyde at den
      vognmand der har begge moduler, skulle vedligeholde sit lager to gange —
      og at "Hal 1 · Reol 2" fandtes to steder der kunne blive uenige.
 
      Modulklausulen skal derfor acceptere BEGGE, og permissionen kan ikke
-     hedde `kasser.skriv`: en WMS-medarbejder hos en kunde uden Turtlebooking
+     hedde `kasser.skriv`: en WMS-medarbejder hos en kunde uden Unitbooking
      ville ikke kunne oprette en hylde. Se WAREHOUSE.md punkt 3.3. */
-  reolpladser: ["turtlebooking", "warehouse"],
+  reolpladser: ["unitbooking", "warehouse"],
 
   /* Warehouse (WMS) — 3PL. Varen er KUNDENS; se noten ved MODUL.warehouse
      om hvorfor det ikke er det samme som `lagre`. */
@@ -278,7 +278,7 @@ export const NODE_MODUL = {
  * Modulerne en node hører til, altid som en liste.
  *
  * ⚠ FINDES FORDI TABELLEN NU KAN BÆRE BEGGE DELE. Læste hver forbruger selv
- * værdien, ville halvdelen behandle `["turtlebooking", "warehouse"]` som en
+ * værdien, ville halvdelen behandle `["unitbooking", "warehouse"]` som en
  * streng — og en sammenligning mod et array giver ikke en fejl, den giver
  * bare `false`. Så ville modulklausulen lydløst holde op med at matche.
  */

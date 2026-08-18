@@ -6,7 +6,7 @@ Elleve designplancher: **Overblik, Lokationer & lagerstruktur, Varemodtagelse
 
 Det er ikke et modul. Det er **et system på størrelse med resten af
 platformen** — og det skal bygges i etaper, med de samme spørgsmål afgjort
-først som ved Turtlebooking.
+først som ved Unitbooking.
 
 **Denne fil er planen, ikke koden.** CLAUDE.md: *analyse før kode.*
 
@@ -33,7 +33,7 @@ Se punkt 6.
 
 ---
 
-## 2. ⚠ Fem navne er allerede taget — og det er værre end ved Turtlebooking
+## 2. ⚠ Fem navne er allerede taget — og det er værre end ved Unitbooking
 
 Det er ikke pedanteri. Det er den fejl der har kostet mest i dette repo, og
 den er dukket op **seks gange**. Her er den seks nye gange på én gang.
@@ -48,12 +48,12 @@ den er dukket op **seks gange**. Her er den seks nye gange på én gang.
 | **Modtagelse** | `indkoeb` | Købsfakturaer og varelinjer med leverandør og lokation |
 
 ⚠ Og en **ottende** kom med de nye plancher: **`carrier` er `kasse`.**
-Turtlebooking har `kasser` — en fysisk beholder med type, status og en
+Unitbooking har `kasser` — en fysisk beholder med type, status og en
 reolplads. Planchens carrier er den samme ting med indhold og ejerforhold.
 Svaret blev her **to noder** og ikke én, og prisen for det står i punkt 6.2.
 
 ⚠ Og en syvende, som er den lumske: **`reolpladser` er taget af
-Turtlebooking.** Hal · reol · fag · hylde · plads. WMS'ens lokation er
+Unitbooking.** Hal · reol · fag · hylde · plads. WMS'ens lokation er
 zone · række · reol · niveau · plads. **Det er praktisk taget den samme ting**,
 og hvis de bliver to noder, har vi to reolsystemer i samme installation, hvor
 den ene ikke kan se den andens pladser.
@@ -150,27 +150,27 @@ plus **type** (hylde/gulvplads), **belægning**, **temperatur** og **status**
 (aktiv/karantæne).
 
 **`reolpladser` udvides og deles.** Zone, type, temperatur og status kommer
-til som **valgfrie** felter, så Turtlebooking ikke mærker det. Én reolstruktur
+til som **valgfrie** felter, så Unitbooking ikke mærker det. Én reolstruktur
 i huset: transportkasser og kundens gods står på samme slags plads, og den
 vognmand der har begge moduler, vedligeholder sit lager ét sted.
 
 ⚠ **Det gør `reolpladser` til den første node der hører til TO moduler.** To
 ting følger, og begge rører noget der allerede virker:
 
-- **Modulklausulen skal acceptere begge.** `turtlebooking === true ||
+- **Modulklausulen skal acceptere begge.** `unitbooking === true ||
   warehouse === true`. `NODE_MODUL` peger i dag på præcis ét modul pr. node,
   og `rules.moduler.test.mjs` håndhæver det i **begge** retninger — den skal
   kunne bære en liste.
 - **Permissionen kan ikke blive ved med at være `kasser.skriv`.** En node to
   moduler deler, kan ikke gates af det ene moduls rettighed: en
-  WMS-medarbejder uden Turtlebooking ville ikke kunne oprette en hylde. Den
+  WMS-medarbejder uden Unitbooking ville ikke kunne oprette en hylde. Den
   får sin egen — `reolpladser.skriv`.
 
 **Etape 3 er inde.** Warehouse står nu i sidebaren med **Varer** og
 **Lokationer**, og `UDEN_SKAERM` er tom igen.
 
 ⚠ **Delingen af `reolpladser` havde en fælde der allerede var indført.**
-Turtlebookings formular sender kun sine fem felter, og `gem()` skrev med
+Unitbookings formular sender kun sine fem felter, og `gem()` skrev med
 `.set()`. En lagermedarbejder der rettede et hyldenummer, ville have
 nulstillet temperaturen og taget hylden ud af karantæne — i tavshed.
 `skriv.js` har derfor fået `flet: true`, som bruger `update()`, og begge
@@ -225,7 +225,7 @@ nogen steder — og det er dér det bliver væk. Derfor er afsendelsespladsen et
 `kladde`, `frigivet` og `annulleret`; `plukordreafsend` skriver
 afsendelsesbevægelserne og tilstanden i én skrivning. Ellers kunne en ordre
 meldes afsendt uden at en palle var rørt, mens lageret stadig stod med godset.
-Samme greb som kassens status i Turtlebooking.
+Samme greb som kassens status i Unitbooking.
 
 Og den afsender **det der er plukket**, ikke det der er bestilt: er der plukket
 8 af 10, går de 8 ud. Alternativet ville være at et lager med 8 på hylden
@@ -277,7 +277,7 @@ periodevælgeren; en lagervælger ville være den tredje.
 post skulle bære et, for at slippe for en migrering senere. Det viste sig at
 være det forkerte svar: **lageret er `hal` på reolpladsen**, og listen af
 lagre udledes af pladserne — præcis som `haller()` allerede gør i
-`turtlebooking.js`.
+`unitbooking.js`.
 
 Et `lagerId` ved siden af ville have været et katalog mere at holde ved lige,
 og det ville have kunnet blive uenigt med `hal`. Og bevægelsen behøver det
@@ -288,7 +288,7 @@ også når det er bekvemt at bryde den.
 ### ⚠ 3.6 Roller og permissions
 
 Beslutning 31: rollerne er faste. `lagermedarbejder` findes allerede (fra
-Turtlebooking) og er den oplagte til modtagelse, pluk og flytning. WMS'en
+Unitbooking) og er den oplagte til modtagelse, pluk og flytning. WMS'en
 har brug for nye permissions — `wms.laes`, `wms.skriv`, `wms.rater`,
 `wms.optaelling` — men **ikke** en ny rolleverden. Planchernes "Warehouse
 Manager" og "Driftsleder" er ikke roller; de er admin med et andet visitkort.
@@ -337,7 +337,7 @@ beholdningens nøgle **under** etape 4, 5 og 6.
 
 ## 5. Størrelsen, ærligt
 
-Turtlebooking var seks etaper og blev bygget på en dag, fordi datamodellen var
+Unitbooking var seks etaper og blev bygget på en dag, fordi datamodellen var
 lille: en kasse, en plads, et udlån.
 
 Det her er **fem til ti gange så stort**. Alene etape 2–4 er sammenlignelige
@@ -376,7 +376,7 @@ til en transport, kan tømmes delvist og bærer sin egen historik.
 
 ### ✅ 6.2 BESVARET: carrieren er sin egen node
 
-⚠ **Det er `kasse` én gang til.** Turtlebooking har `kasser` med id
+⚠ **Det er `kasse` én gang til.** Unitbooking har `kasser` med id
 (`MDT-101`), type, status, hjemplads og nuværende plads. Planchen har
 `CRR-100245`, type *Pallekasse 1200×800×950*, ejerforhold, lokation
 *Zone A · A-01-02* og status. Fysisk er det den samme ting: en beholder der
@@ -393,14 +393,14 @@ halvdel af reglerne der gælder.
 ⚠ **Prisen skal betales i etape 11, ikke opdages i etape 13.** Begge noder
 står på **de samme** `reolpladser`. Spørgsmålet *"er hylden optaget?"* har fra
 nu af to kilder, og det skal besvares **ét sted** — én funktion der læser
-begge. Gør den det ikke, ser en hylde ledig ud i Turtlebooking og optaget ud i
+begge. Gør den det ikke, ser en hylde ledig ud i Unitbooking og optaget ud i
 Warehouse, og de to skærme har hver sin sandhed om samme fysiske hylde. Det er
 divisionsfilteret der stod to steder, og det er `bemanding.ledig` — en
 kendsgerning gemt to steder driver.
 
 ⚠ **Og permissionen kan ikke hedde `kasser.skriv`.** Carrieren får sin egen,
 af samme grund som `reolpladser.skriv` fik sin i punkt 3.3: en
-WMS-medarbejder uden Turtlebooking skal kunne oprette en carrier.
+WMS-medarbejder uden Unitbooking skal kunne oprette en carrier.
 
 ### ✅ 6.3 BESVARET: beholdningen flytter til carrier-niveau
 
@@ -524,13 +524,13 @@ i begge lag, og belægningen opgøres ét sted i `reolplads.js`.
 
 ⚠ **Skærmen talte allerede forkert, før carrieren kom.** Lokationer regnede
 belægningen af beholdningsposterne alene og var dermed blind for
-Turtlebookings kasser på de samme hylder — en hylde med en transportkasse på
+Unitbookings kasser på de samme hylder — en hylde med en transportkasse på
 stod som fri. Fejlen var der fra etape 3; carrieren ville have gjort den
 dobbelt så stor. Kortet hedder nu **Optaget** og ikke "Med varer på", og der
 er en egen kolonne for beholdere, fordi en plads kan bære en beholder uden en
 eneste varelinje.
 
-⚠ **`kasser` læses kun hvis tenanten har Turtlebooking.** Noden er spærret af
+⚠ **`kasser` læses kun hvis tenanten har Unitbooking.** Noden er spærret af
 det modul, og en forespørgsel ville give `permission-denied` hos en kunde der
 kun har Warehouse. `useListe` har fået `hent`, og den er til dét — ikke til at
 dæmpe en afvisning på en node kunden har.

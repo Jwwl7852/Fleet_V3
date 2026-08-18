@@ -29,7 +29,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
   Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke, MiniLinje,
 } from "../../fleet/ui.jsx";
-import { pladsnavn } from "../../fleet/turtlebooking.js";
+import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, PRIORITET, ALLE_PRIORITETER,
   ENHED, MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
