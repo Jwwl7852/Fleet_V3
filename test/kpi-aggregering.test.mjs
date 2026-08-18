@@ -66,7 +66,7 @@ test("felterne UDELADES ikke — de står med null", () => {
   /* Udelades de, får skærmen `undefined` og samme streg — men så står
      spørgsmålet ingen steder, og ingen kan se af noden hvad der mangler. */
   const k = beregnKpi({ division: "gods", nu: NU });
-  assert.ok("aabne" in k.opgaver, "opgaver.aabne er udeladt");
+  assert.ok("forsinkede" in k.opgaver, "opgaver.forsinkede er udeladt");
   assert.ok("aktiver" in k.facility);
   assert.ok("aabneOrdrer" in k.indkoeb);
   assert.ok("aktive" in k.flaade, "flaade.aktive er udeladt");
@@ -85,11 +85,16 @@ test("⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION", () => {
 
 test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
   /* Så efterslæbet kan tælles frem for at blive opdaget felt for felt. */
-  for (const n of ["opgaver", "indkoeb", "facility"]) {
+  for (const n of ["indkoeb", "facility"]) {
     assert.ok(KILDER_DER_MANGLER.includes(n));
   }
+  /* ⚠ opgaver STÅR IKKE LÆNGERE PÅ LISTEN. Noden havde regler og ingen data;
+     nu seedes den, og de elleve felter regnes. Listen er en optælling af
+     efterslæbet, ikke en fast tekst. */
+  assert.ok(!KILDER_DER_MANGLER.includes("opgaver"),
+    "opgaver har en kilde nu og skal ikke staa som savnet");
   const antal = Object.values(udenKilde()).reduce((s, o) => s + Object.keys(o).length, 0);
-  assert.ok(antal >= 50, `kun ${antal} felter uden kilde — er noget begyndt at gaette?`);
+  assert.ok(antal >= 40, `kun ${antal} felter uden kilde — er noget begyndt at gaette?`);
 });
 
 /* ---- Det der kan regnes ------------------------------------------------ */

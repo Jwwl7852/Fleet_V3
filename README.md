@@ -339,8 +339,8 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
 kilde — og skriver begge i én opdatering.
 
-⚠ **Men 52 felter har ingen kilde, og de skrives som `null`.** `opgaver`,
-`indkoeb` og `facility` findes ikke som noder; `flaade` og `bemanding` kan
+⚠ **Men 41 felter har ingen kilde, og de skrives som `null`.** `indkoeb` og
+`facility` findes ikke som noder; `flaade` og `bemanding` kan
 ikke deles på division. Det er efterslæbet, målt frem for anslået — se
 tabellen nedenfor og det åbne spørgsmål om divisionen.
 
@@ -549,6 +549,18 @@ står der et tal ingen kan spore.
 
 Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
 rettes.
+
+⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
+optællingen: 41 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
+hvilke noder der skal til — `indkoeb`, `facility`, `lagre`, `leverandoerer`.
+Får et domæne sin node, fjernes felterne ét sted, og prøven falder hvis
+optællingen ikke følger med.
+
+⚠ **`opgaver` var den første af dem, og den havde regler og ingen data.**
+Noden er skrivbar med `opgaver.skriv` og har et indeks — men intet seedede
+den, og **ingen skærm forespurgte på den**, så den stod tom uden at nogen så
+det. De fire andre står i samme tilstand. Indekset navngav oven i købet
+`dato`, som ingen opgave har: de bærer `startMs`.
 
 **Venter på aggregeringen.** Felterne er defineret, skærmene læser dem
 korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:

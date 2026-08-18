@@ -32,6 +32,7 @@ import {
 import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
@@ -178,6 +179,11 @@ export const SEED = [
      ugesvisning tom i dev — og saa ville ingen opdage at etapeskift ikke kan
      kaldes. */
   { node: "etaper", data: DEMO_ETAPER, form: "liste" },
+  /* ⚠ OPGAVERNE HAR HAFT REGLER OG INGEN DATA. Noden er skrivbar med
+     opgaver.skriv og har et indeks — men intet seedede den, og ingen skaerm
+     forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt
+     11 KPI-felter paa null. Samme form som etaper foer de blev seedet. */
+  { node: "opgaver", data: DEMO_OPGAVER, form: "liste" },
   { node: "fravaer", data: DEMO_FRAVAER, form: "liste" },
   /* Allerede på nodeform — demo-fravaer.js gemmer den bevidst sådan, fordi
      `art` ligger i sensitive/ og ikke på posten. Se filens egen note. */

@@ -22,6 +22,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import { ref, set, update } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import { ALLE_OPGAVE_ARTER } from "../src/fleet/opgaver.js";
 
 /* Egen tenant: node --test kører testfilerne parallelt. */
@@ -133,12 +134,28 @@ describe("beslutning 21 — art på opgaver", () => {
   /* Reglerne skal kunne forespørges på art — ellers kan Disponering ikke
      hente dagens værkstedsopgaver uden at hente hele noden ned. Et manglende
      .indexOn FEJLER ikke; det henter bare alt og advarer i konsollen. */
-  it("har art med i .indexOn", () => {
+  it("⚠ INDEKSERER FELTER DER FAKTISK FINDES PÅ EN OPGAVE", () => {
+    /* Her stod at .indexOn skulle indeholde "dato". Det gjorde det — og
+       INGEN opgave har feltet: de bærer startMs. Et indeks på et felt der
+       ikke findes, koster ingenting og beskytter ingenting, og den dag
+       nogen sorterer på startMs, henter RTDB hele noden ned og sorterer i
+       klienten: en advarsel i konsollen og en regning i stilhed.
+
+       Det overlevede fordi ingen skærm forespurgte på noden — den var
+       demo-drevet, og noden stod tom. Prøven spørger nu om DATAENE. */
     const regler = JSON.parse(
-      readFileSync("firebase.rules.json", "utf8").replace(/^\s*(\/\/|\\).*$/gm, "")
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10))
     );
-    const opg = regler.rules.tenants.$tenantId.opgaver;
-    assert.ok(opg[".indexOn"].includes("art"), ".indexOn mangler art");
-    assert.ok(opg[".indexOn"].includes("dato"), ".indexOn mangler dato");
+    const indeks = regler.rules.tenants.$tenantId.opgaver[".indexOn"];
+    assert.ok(indeks.includes("art"), ".indexOn mangler art");
+    assert.ok(indeks.includes("startMs"), ".indexOn mangler startMs");
+    assert.ok(!indeks.includes("dato"), "dato er tilbage — intet felt hedder det");
+
+    /* Og hvert indekseret felt skal findes på en rigtig post. */
+    const felter = new Set(DEMO_OPGAVER.flatMap((o) => Object.keys(o)));
+    for (const f of indeks) {
+      assert.ok(felter.has(f), `.indexOn indekserer "${f}", som ingen opgave har`);
+    }
   });
 });

@@ -745,7 +745,14 @@
         "opgaver": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
-          ".indexOn": ["dato", "status", "art", "koeretoejId", "personId"],
+          // ⚠ startMs, IKKE dato. Indekset navngav et felt INGEN post har:
+          // opgaverne baerer startMs. Det overlevede fordi ingen skaerm
+          // forespurgte paa noden — den var demo-drevet. Et indeks paa et
+          // felt der ikke findes, koster ingenting og beskytter ingenting,
+          // og den dag nogen sorterer paa startMs, henter RTDB hele noden
+          // ned og sorterer i klienten: en advarsel i konsollen og en regning
+          // i stilhed.
+          ".indexOn": ["startMs", "status", "art", "koeretoejId", "personId"],
           "$opgaveId": {
             ".validate": "newData.hasChildren(['art', 'division'])",
             "art": {

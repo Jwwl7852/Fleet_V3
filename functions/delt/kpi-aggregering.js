@@ -51,7 +51,7 @@ export const UDEN_DIVISION = [
 
 /** Kilder der endnu ikke findes som node. Deres felter bliver `null`. */
 export const KILDER_DER_MANGLER = [
-  "opgaver", "indkoeb", "facility", "lagre", "leverandoerer",
+  "indkoeb", "facility", "lagre", "leverandoerer",
 ];
 
 const DAG = 86400000;
@@ -76,11 +76,6 @@ export const iDivision = (post, division) =>
  */
 export function udenKilde() {
   return {
-    opgaver: {
-      aabne: null, indberettet: null, planlagt: null, igang: null,
-      afventer: null, udfoert: null, forsinkede: null, nyeBookinger: null,
-      igangIDag: null, uplanlagte: null, udenTidsfrist: null,
-    },
     facility: {
       aktiver: null, servicepunkterForfalder: null, aabneSager: null,
       planlagtVedligehold: null, aabneFejl: null, klimaalarmerIDag: null,
@@ -178,6 +173,57 @@ export function ikkeFaktureretOere(etaper = [], grundlag = [], division) {
   return { oere: sum, forloeb: ufaktureret.length, udenPris: false };
 }
 
+/**
+ * Opgaverne i divisionen.
+ *
+ * ⚠ KUN DET VOKABULARET BÆRER. `OPGAVE_STATUS` har seks værdier, og de fem
+ * tælles direkte. Resten er `null` med hver sin grund:
+ *
+ *   `forsinkede`     kræver en FRIST, og en opgave har ingen. Etapen har
+ *                    `senestMs`; opgaven har `startMs`, som er hvornår den
+ *                    begynder — ikke hvornår den skal være færdig. At regne
+ *                    "startet før i dag og ikke udført" som forsinket ville
+ *                    gøre enhver flerdagsopgave forsinket på dag to.
+ *   `udenTidsfrist`  samme grund, spejlvendt: uden et fristfelt er ALLE uden
+ *                    frist, og tallet ville være antallet af opgaver.
+ *   `nyeBookinger`   hører til `bookinger`, ikke til opgaver. Feltet står
+ *                    under `opgaver` i demo-sættet, og det er en fejl i
+ *                    formen — men at flytte det er en skærmændring, ikke en
+ *                    aggregering. Noteret.
+ *
+ * ⚠ `aabne` ER IKKE "IKKE UDFØRT". En annulleret opgave er heller ikke åben.
+ * Regnede vi komplementet, ville en oprydning i annullerede se ud som nyt
+ * arbejde.
+ */
+export function opgavetal(opgaver = [], division, nu = Date.now()) {
+  const mine = opgaver.filter((o) => iDivision(o, division));
+  const medStatus = (s) => mine.filter((o) => o.status === s).length;
+  const AABNE = ["indberettet", "planlagt", "igang", "afventer"];
+
+  const startetIDag = (o) => {
+    if (!Number.isFinite(o.startMs)) return false;
+    const d = new Date(nu);
+    const fra = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    return o.startMs >= fra && o.startMs < fra + DAG;
+  };
+
+  return {
+    aabne: mine.filter((o) => AABNE.includes(o.status)).length,
+    indberettet: medStatus("indberettet"),
+    planlagt: medStatus("planlagt"),
+    igang: medStatus("igang"),
+    afventer: medStatus("afventer"),
+    udfoert: medStatus("udfoert"),
+    annulleret: medStatus("annulleret"),
+    /* Indberettet = set, men ikke planlagt endnu. Det ER uplanlagt. */
+    uplanlagte: medStatus("indberettet"),
+    igangIDag: mine.filter((o) => o.status === "igang" && startetIDag(o)).length,
+    forsinkede: null,
+    udenTidsfrist: null,
+    nyeBookinger: null,
+  };
+}
+
 /** Disponeringen, af etaperne. */
 export function disponeringstal(etaper = [], division) {
   const mine = etaper.filter((e) => iDivision(e, division));
@@ -225,17 +271,22 @@ export const deltaPoint = (nyt, gammelt) => {
  * regnes af den; første kørsel giver `null` overalt.
  */
 export function beregnKpi({
-  division, kunder = [], etaper = [], grundlag = [], forrige = null,
-  nu = Date.now(),
+  division, kunder = [], etaper = [], grundlag = [], opgaver = [],
+  forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
   const kunde = kundetal(kunder, division, nu);
   const ikkeFakt = ikkeFaktureretOere(etaper, grundlag, division);
   const disp = disponeringstal(etaper, division);
+  const opg = opgavetal(opgaver, division, nu);
 
   return {
     ...tomme,
     beregnetMs: nu,
+    opgaver: {
+      ...opg,
+      aabneDeltaPct: deltaPct(opg.aabne, forrige?.opgaver?.aabne),
+    },
     kunder: {
       ...kunde,
       aktiveDeltaPct: deltaPct(kunde.aktive, forrige?.kunder?.aktive),
