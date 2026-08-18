@@ -55,13 +55,13 @@ export const NAV = [
     ],
   },
   {
-    key: "flaade", sti: "/flaade", label: "Flåde", titel: "Flåde",
+    key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
     under: "Overblik over køretøjer, drift og økonomi",
     born: [
       { key: "flaadeOversigt", sti: "/flaade", label: "Køretøjer",
-        titel: "Flåde", under: "Overblik over køretøjer, drift og økonomi" },
+        titel: "Fleet", under: "Overblik over køretøjer, drift og økonomi" },
       { key: "vaerksted", sti: "/flaade/vaerksted", label: "Værkstedskalender",
-        titel: "Flåde – service, reservationer & fakturaer",
+        titel: "Fleet – service, reservationer & fakturaer",
         under: "Værkstedsaktiviteter, bookingintegration og fakturalink." },
       { key: "indberetninger", sti: "/flaade/indberetninger", label: "Indberetninger",
         titel: "Indberetninger", under: "Reparation, skade, brændstof og fejl" },
@@ -83,11 +83,11 @@ export const NAV = [
     ],
   },
   {
-    key: "indkoeb", sti: "/indkoeb", label: "Indkøb", titel: "Indkøb & vareforbrug",
+    key: "indkoeb", sti: "/indkoeb", label: "Procure", titel: "Procure & vareforbrug",
     under: "Registrér indkøb og tilknyt fakturaer og rapportering.",
     born: [
-      { key: "indkoebOversigt", sti: "/indkoeb", label: "Indkøb & vareforbrug",
-        titel: "Indkøb & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
+      { key: "indkoebOversigt", sti: "/indkoeb", label: "Procure & vareforbrug",
+        titel: "Procure & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
       { key: "fakturaer", sti: "/indkoeb/fakturaer", label: "Fakturaer & afstemning",
         titel: "Fakturagodkendelse & afstemning",
         under: "Indkøb matches med leverandørfakturaer, godkendes og afstemmes mod regnskabsgrundlaget." },

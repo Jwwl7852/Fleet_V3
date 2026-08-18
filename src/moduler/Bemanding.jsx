@@ -323,7 +323,7 @@ export default function Bemanding() {
           <p className="fc-hint" style={{ marginBottom: 12 }}>
             Viser de {num(udloebende.length)} der udløber inden for 30 dage, af{" "}
             {num(kompetencer.length)} registrerede. Tærsklerne kommer fra{" "}
-            <b>serviceTone()</b> — de samme tre trin som Flåde og Facility bruger til
+            <b>serviceTone()</b> — de samme tre trin som Fleet og Facility bruger til
             servicevarsling. En udløbet kompetence skal blokere chaufføren i disponeringen.
           </p>
           <Tabel

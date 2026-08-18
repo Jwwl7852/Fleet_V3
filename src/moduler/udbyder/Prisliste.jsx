@@ -471,7 +471,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Kroner her, <b>øre</b> i basen. En sats på <b>0</b> faktureres ikke — så
-          kan Flåde koste pr. køretøj og Bemanding pr. chauffør.
+          kan Fleet koste pr. køretøj og Bemanding pr. chauffør.
         </p>
         <p className="fc-hint" style={{ marginTop: 6 }}>
           ⚠ <b>Antallet er kundens, satsen er modulets.</b> Sætter du en

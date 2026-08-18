@@ -38,7 +38,7 @@ export const SUPPORT_KATEGORI = {
   rettigheder:       "Rettigheder og adgang",
   integration:       "Integration",
   booking:           "Booking",
-  flaade:            "Flåde",
+  flaade:            "Fleet",
   facility:          "Facility",
 };
 

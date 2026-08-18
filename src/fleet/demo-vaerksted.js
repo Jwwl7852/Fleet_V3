@@ -260,7 +260,7 @@ if (import.meta.env?.DEV) {
     if (k.status === "vaerksted" && !paaVaerkstedNu.has(k.id)) {
       console.warn(
         `demo-vaerksted: ${k.kaldenavn} har status "vaerksted" i demo-flaade, men har ` +
-        `intet besøg der dækker i dag. Flåde og Værkstedskalender siger hver sit.`
+        `intet besøg der dækker i dag. Fleet og Værkstedskalender siger hver sit.`
       );
     }
     if (k.status !== "vaerksted" && paaVaerkstedNu.has(k.id)) {

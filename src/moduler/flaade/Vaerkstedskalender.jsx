@@ -207,7 +207,7 @@ export default function Vaerkstedskalender() {
 
       <Kort
         titel="Registrerede indkøb"
-        handling={<Link className="fc-a" to="/indkoeb/fakturaer">Godkend og afstem i Indkøb</Link>}
+        handling={<Link className="fc-a" to="/indkoeb/fakturaer">Godkend og afstem i Procure</Link>}
       >
         <Tabel
           /* ⚠ KOLONNERNE FØLGER NODENS FORM, ikke kopiens. Den gamle
@@ -373,7 +373,7 @@ function IndkoebsForm({ besoeg, sag, maaSkrive }) {
     <Kort
       titel="Registrér indkøb"
       handling={
-        <Link className="fc-a" to="/indkoeb/fakturaer">Godkendelse sker i Indkøb</Link>
+        <Link className="fc-a" to="/indkoeb/fakturaer">Godkendelse sker i Procure</Link>
       }
     >
       {!besoeg ? (
@@ -473,7 +473,7 @@ function IndkoebsForm({ besoeg, sag, maaSkrive }) {
             Posten skrives til <b>indkoeb/</b> — ikke til <b>fakturaer/</b>, som er{" "}
             <b>.write: false</b> og kun skrives af en Cloud Function. Matchning mod
             leverandørens faktura, godkendelse og afstemning sker ét sted:{" "}
-            <Link className="fc-a" to="/indkoeb/fakturaer">Indkøb → Fakturaer</Link>.
+            <Link className="fc-a" to="/indkoeb/fakturaer">Procure → Fakturaer</Link>.
             Der er derfor ingen Godkend-knap her.
           </p>
         </>

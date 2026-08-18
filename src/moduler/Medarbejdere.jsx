@@ -563,7 +563,7 @@ export default function Medarbejdere() {
                   tom="Ingen kompetencer registreret på denne medarbejder."
                 />
                 <p className="fc-hint" style={{ marginTop: 10 }}>
-                  Tærsklerne kommer fra <b>serviceTone()</b> — samme tre trin som Flåde og
+                  Tærsklerne kommer fra <b>serviceTone()</b> — samme tre trin som Fleet og
                   Facility. En <b>udløbet</b> kompetence skal <b>blokere</b> disponeringen,
                   ikke advare.{" "}
                   {valgtesKompetencer.some((k) => !kanBlokere(k.type)) && (

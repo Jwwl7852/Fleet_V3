@@ -304,7 +304,7 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
         <b>Godkendelse sker ikke her.</b> En faktura godkendes og afstemmes ét
-        sted — <Link className="fc-a" to="/indkoeb/fakturaer">Indkøb → Fakturaer</Link>{" "}
+        sted — <Link className="fc-a" to="/indkoeb/fakturaer">Procure → Fakturaer</Link>{" "}
         — og <code>fakturaer</code> er <code>.write: false</code>, fordi
         godkendelsen skal skrive atomisk sammen med afstemningen. To
         godkendelsesflows er beslutning 12 om igen.

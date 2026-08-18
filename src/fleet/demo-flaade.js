@@ -310,7 +310,7 @@ if (import.meta.env?.DEV) {
       console.warn(
         `demo-flaade: rosteren har ${iRosteren} enheder i "${felt}", men kpi/ siger ${iAlt} ` +
         `i hele flåden (gods + bus). Et udsnit kan ikke være større end totalen — ` +
-        `Flåde ville vise et nøgletal der modsiger tabellen under det.`
+        `Fleet ville vise et nøgletal der modsiger tabellen under det.`
       );
     }
   }

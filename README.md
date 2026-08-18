@@ -212,6 +212,31 @@ obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 Det gælder **filen**. Databasen er først dækket når `npm run regler:tjek` er grøn:
 reglerne var aldrig udrullet til DEV, og prøverne kunne ikke se det (beslutning 29).
 
+### To moduler har skiftet visningsnavn: Fleet og Procure
+
+**Flåde hedder Fleet, og Indkøb hedder Procure — men kun på skærmen.**
+Ruten er stadig `/flaade` og `/indkoeb`, noden hedder stadig `indkoeb`,
+permissionen stadig `indkoeb.skriv`, modulnøglen stadig `flaade`, og mappen
+stadig `src/moduler/flaade/`.
+
+Det er med vilje, og grænsen er ikke kosmetisk: modulnøglen står i hver tenants
+`moduler/`-node, permissionen er **mintet ind i udstedte JWT-tokens**, og
+stien står i `firebase.rules.json`. En omdøbning af dem er en datamigrering
+plus en genudstedelse af alle tokens — ikke en tekstændring. Derfor skifter
+**navnet**, ikke **nøglen**.
+
+⚠ **Og derfor er det ikke en blind erstatning.** `Indkøb` som *modulnavn*
+skifter til Procure; `indkøb` som *almindeligt dansk ord* gør ikke. Skærmen
+siger stadig "Registrér indkøb", "Indkøb i perioden" og
+"Indkøbsprisafvigelse" — det er beløb og handlinger, ikke henvisninger til et
+modul. Samme skel på `Flåde` mod `flåden`: "Flåden er ikke en liste af
+biler" står uændret på Fleet-skærmen, fordi sætningen handler om flåden.
+Havde vi erstattet på ordet, ville tabellen have heddet "Procure i perioden".
+
+Kommentarer og filhoveder beholder de danske navne — de står ved siden af
+`src/moduler/flaade/` og `indkoeb/`, og en kommentar der sagde "Fleet" om
+en mappe der hedder `flaade`, ville pege forkert.
+
 ### Skærmene: 27 af 30 har indhold
 
 | | Skærme |

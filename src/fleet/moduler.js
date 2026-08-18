@@ -56,7 +56,7 @@ export const MODUL = {
   },
   flaade: {
     navKey: "flaade",
-    label: "Flåde",
+    label: "Fleet",
     hvad: "Køretøjer, værkstedskalender og indberetninger.",
   },
   facility: {
@@ -66,7 +66,7 @@ export const MODUL = {
   },
   indkoeb: {
     navKey: "indkoeb",
-    label: "Indkøb",
+    label: "Procure",
     hvad: "Indkøb, fakturaafstemning og leverandører.",
   },
   /**

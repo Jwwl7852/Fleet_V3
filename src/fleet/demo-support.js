@@ -54,7 +54,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Martin K.",
     fejlMs: dag(0, 9, 14),
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Flåde",
+      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Fleet",
       browser: "Chrome 126", version: "FleetControl 3.0.0",
       brugerId: "uid-line", tidspunkt: "18-08-2026 09:14",
       fejlId: "FC-ERR-SAVE-VEH-001",
@@ -117,7 +117,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Martin K.",
     fejlMs: dag(-2, 15, 33),
     kontekst: {
-      kunde: "Nordisk Logistik A/S", side: "/flaade/vaerksted", modul: "Flåde",
+      kunde: "Nordisk Logistik A/S", side: "/flaade/vaerksted", modul: "Fleet",
       browser: "Edge 127", version: "FleetControl 3.0.0",
       brugerId: "uid-preben", tidspunkt: "16-08-2026 15:33",
       fejlId: "FC-SAG-KARANTAENE",
@@ -136,11 +136,11 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Line A.",
     fejlMs: null,
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Flåde",
+      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Fleet",
       browser: "Firefox 129", version: "FleetControl 3.0.0",
       brugerId: "uid-benjamin", tidspunkt: "12-08-2026 10:12", fejlId: null,
     },
-    checkliste: [{ id: "c1", tekst: "Henvist til Flåde → Ny enhed", klaret: true }],
+    checkliste: [{ id: "c1", tekst: "Henvist til Fleet → Ny enhed", klaret: true }],
   },
 ];
 
@@ -182,7 +182,7 @@ export const DEMO_SUPPORTBESKEDER = {
     { id: "b1", ms: dag(-6, 10, 12), fra: "kunde", navn: "Benjamin Holm",
       tekst: "Hvor opretter man en påhængsvogn?" },
     { id: "b2", ms: dag(-6, 10, 40), fra: "support", navn: "Line A.",
-      tekst: "Under Flåde → Ny enhed. Vælg arten 'Påhængsvogn'." },
+      tekst: "Under Fleet → Ny enhed. Vælg arten 'Påhængsvogn'." },
   ],
 };
 

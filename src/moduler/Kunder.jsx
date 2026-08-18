@@ -407,7 +407,7 @@ export default function Kunder() {
             Her er minus <b>rødt</b>: der er kommet mindre ind end aftalt. På Økonomi er
             minus grønt, fordi tallet dér er omkostninger under budget. Samme
             regnestykke — kun <b>betterWhen</b> skifter. Leverandørsidens{" "}
-            <b>indkøbsprisafvigelse</b> er et andet tal og ligger på Indkøb.
+            <b>indkøbsprisafvigelse</b> er et andet tal og ligger på Procure.
             Alvoren er <b>afledt af beløbets størrelse</b>, ikke et felt.
           </p>
         </Kort>

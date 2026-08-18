@@ -210,7 +210,7 @@ export default function Bookingopsaetning() {
               <p className="fc-hint" style={{ marginBottom: 12 }}>
                 Dette er <b>kalkulationsprisen</b> — inkl. brændstof, vejafgifter, dæk,
                 vedligehold og chauffør. Den er ikke det samme som{" "}
-                <b>driftsomkostning pr. km</b> i Flåde, som er uden chauffør. To felter der
+                <b>driftsomkostning pr. km</b> i Fleet, som er uden chauffør. To felter der
                 begge hed "kr/km" i mockupsene.
               </p>
               <Tabel

@@ -287,8 +287,8 @@ export default function Dashboard() {
           <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} prik="info" />
         </Kort>
 
-        <Kort titel={<><Ikon navn="vogn" farve="var(--fc-ikon-2)" /> Indkøb</>}
-              handling={<Link className="fc-a" to="/indkoeb">Gå til Indkøb</Link>}>
+        <Kort titel={<><Ikon navn="vogn" farve="var(--fc-ikon-2)" /> Procure</>}
+              handling={<Link className="fc-a" to="/indkoeb">Gå til Procure</Link>}>
           <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse}
                      prik={k.indkoeb.fakturaerTilGodkendelse > 5 ? "bad" : "ok"} />
           <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} prik="info" />
