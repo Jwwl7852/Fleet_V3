@@ -11,9 +11,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  tjekDisponering, blokerer, spaerringer, forRessource, TONE,
+  tjekDisponering, blokerer, spaerringer, forRessource, TONE
 } from "../src/fleet/disponering.js";
-import { reservationerFraEtape, enhedsIder } from "../src/fleet/etaper.js";
+import { reservationerFraEtape  } from "../src/fleet/etaper.js";
 import { PRIORITET, RESSOURCE, KILDE } from "../src/fleet/reservations.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
@@ -24,17 +24,17 @@ const A = Date.UTC(2026, 7, 20, 6, 0, 0);
 
 const TRAEKKER = {
   id: "kt-1", registrering: "AA 11 111", art: "traekker", status: "aktiv",
-  kapacitet: { m3: 0, kg: 9000 },
+  kapacitet: { m3: 0, kg: 9000 }
 };
 const TRAILER = {
   id: "tr-1", registrering: "BB 22 222", art: "trailer", status: "aktiv",
-  kapacitet: { m3: 90, kg: 24000 },
+  kapacitet: { m3: 90, kg: 24000 }
 };
 const PERSON = { id: "p-1", navn: "Lars Aage" };
 
 /* Kompetencer der dækker alt en trækker+trailer kræver. */
 const ALLE_KOMP = ["c", "ce", "tachografkort", "eubevis"].map((type) => ({
-  id: `k-${type}`, personId: "p-1", type, udloeberMs: A + 400 * 24 * T,
+  id: `k-${type}`, personId: "p-1", type, udloeberMs: A + 400 * 24 * T
 }));
 
 const etape = (o = {}) => ({
@@ -43,7 +43,7 @@ const etape = (o = {}) => ({
   koeretoejIder: { "kt-1": true, "tr-1": true },
   personId: "p-1",
   maengde: { m3: 60, kg: 14000 },
-  ...o,
+  ...o
 });
 
 const kald = (o = {}) => {
@@ -56,7 +56,7 @@ const kald = (o = {}) => {
     reservationer: o.reservationer ?? {},
     straekninger: o.straekninger ?? [],
     gods: o.gods ?? e.maengde,
-    advarendeKrav: o.advarendeKrav ?? [],
+    advarendeKrav: o.advarendeKrav ?? []
   });
 };
 
@@ -141,7 +141,7 @@ test("⚠ KAPACITETEN LÆGGES SAMMEN PÅ TVÆRS AF ENHEDERNE", () => {
      vi kun trækkeren, ville hver eneste sættevognstur se ubærlig ud. */
   const kunTraekker = kald({
     enheder: [TRAEKKER], etape: { koeretoejIder: { "kt-1": true } },
-    gods: { m3: 60, kg: 14000 },
+    gods: { m3: 60, kg: 14000 }
   });
   assert.ok(blokerer(kunTraekker), "traekkeren alene kan baere 60 m3");
   assert.equal(blokerer(kald()), false, "med traileren kan den");
@@ -151,7 +151,7 @@ test("⚠ KAPACITETEN LÆGGES SAMMEN PÅ TVÆRS AF ENHEDERNE", () => {
 
 const eksisterende = (kildeType, o = {}) => ({
   id: "r-x", fra: A + T, til: A + 3 * T,
-  kilde: { type: kildeType, id: "andet", reference: null }, ...o,
+  kilde: { type: kildeType, id: "andet", reference: null }, ...o
 });
 
 test("⚠ ET VÆRKSTEDSBESØG SLÅR EN BOOKING", () => {
@@ -159,7 +159,7 @@ test("⚠ ET VÆRKSTEDSBESØG SLÅR EN BOOKING", () => {
      disponenten har lovet kunden — og bookingen kan derfor ikke overskrive. */
   assert.ok(PRIORITET.vaerksted > PRIORITET.booking);
   const r = kald({
-    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.vaerksted)] } },
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.vaerksted)] } }
   });
   assert.ok(blokerer(r));
   assert.equal(spaerringer(r)[0].tjek, "Reservation");
@@ -169,7 +169,7 @@ test("en konflikt med LAVERE prioritet er en advarsel", () => {
   /* Den nye kilde ville overskrive. Det er ikke en spærring — men det skal
      stå på skærmen, for noget bliver skubbet. */
   const r = kald({
-    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.manuel)] } },
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": [eksisterende(KILDE.manuel)] } }
   });
   assert.equal(blokerer(r), false);
   assert.ok(r.some((x) => x.tjek === "Reservation" && x.tone === TONE.warn));
@@ -181,7 +181,7 @@ test("⚠ ETAPENS EGEN RESERVATION ER IKKE EN KONFLIKT MED SIG SELV", () => {
   const e = etape();
   const egne = reservationerFraEtape(e).map((r, i) => ({ id: `res-et-1-${i}`, ...r }));
   const r = kald({
-    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": egne, "tr-1": egne } },
+    reservationer: { [RESSOURCE.koeretoej]: { "kt-1": egne, "tr-1": egne } }
   });
   assert.equal(blokerer(r), false, "etapen er i konflikt med sig selv");
 });
@@ -223,7 +223,19 @@ test("forRessource slår op i NODENS form", () => {
    ══════════════════════════════════════════════════════════════════════════ */
 
 const kilde = readFileSync("functions/index.js", "utf8");
-const blok = kilde.slice(kilde.indexOf("export const etapeskift"));
+/* ⚠ KUN etapeskift-FUNKTIONEN, IKKE RESTEN AF FILEN.
+   Her stod `kilde.slice(indexOf("export const etapeskift"))` — altså ALT fra
+   etapeskift og ned. Det holdt så længe den var den sidste callable i filen;
+   den dag `opgaveplanlaeg` blev lagt ind under den, talte prøven "een
+   rod.update()" på TO funktioner og faldt på noget der var rigtigt.
+
+   En prøve der læser en fil som tekst, skal afgrænse det den læser. Ellers
+   flytter dens betydning sig, hver gang nogen skriver noget nedenunder. */
+const blok = (() => {
+  const start = kilde.indexOf("export const etapeskift");
+  const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", start + 1);
+  return naeste < 0 ? kilde.slice(start) : kilde.slice(start, naeste);
+})();
 
 test("⚠ etapeskift KALDER tjekDisponering OG AFVISER PÅ DEN", () => {
   assert.ok(blok.includes("tjekDisponering({"), "de fem tjek koeres ikke");
@@ -323,7 +335,7 @@ test("⚠ KOMPETENCEN SKAL GÆLDE NÅR TUREN KØRER, ikke når der klikkes", () 
   const r = tjekDisponering({
     reservationerForEtapen: reservationerFraEtape(etape()),
     enheder: [TRAEKKER, TRAILER], person: PERSON,
-    kompetencer: udloeberMidtITuren, gods: { m3: 60, kg: 14000 },
+    kompetencer: udloeberMidtITuren, gods: { m3: 60, kg: 14000 }
   });
   assert.ok(blokerer(r), "et bevis der udloeber midt i turen slap igennem");
   assert.match(spaerringer(r)[0].tekst, /udløbet/);
@@ -335,7 +347,7 @@ test("paaMs kan sættes eksplicit — og ellers udledes af etapens slutning", ()
   const args = {
     reservationerForEtapen: reservationerFraEtape(etape()),
     enheder: [TRAEKKER, TRAILER], person: PERSON,
-    kompetencer: komp, gods: { m3: 60, kg: 14000 },
+    kompetencer: komp, gods: { m3: 60, kg: 14000 }
   };
   /* Spørger vi om turens START, er beviset stadig gyldigt. */
   assert.equal(blokerer(tjekDisponering({ ...args, paaMs: A })), false);

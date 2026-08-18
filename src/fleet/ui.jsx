@@ -3,7 +3,7 @@
  * statuschips eller tomme tilstande — så kan de heller ikke se
  * forskellige ud fra skærm til skærm.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { deviation } from "./format.js";
 
@@ -888,3 +888,86 @@ export function Dialog({ titel, under, handling, onLuk, bred = false, children }
     </div>
   );
 }
+
+/* ---- Delknap ---------------------------------------------------------- */
+
+/**
+ * Delknap({ label, onKlik, poster, titel })
+ *
+ *   poster  [{ key, label, ikon, onVaelg }]
+ *
+ * En primærknap med en pil ved siden af. Klik på knappen gør det åbenlyse;
+ * pilen viser resten.
+ *
+ * ⚠ HVORFOR IKKE BARE TO KNAPPER. Det var det den var: "Åbn" og "Åbn i nyt
+ * vindue" side om side på hvert af fem kort — ti knapper i en række hvor to
+ * af dem gør næsten det samme. Kortet skal kunne læses på et sekund, og et
+ * tal med to lige store knapper under sig læses ikke som ét tal med én
+ * handling. Den hyppige handling bliver knappen; varianten kommer frem når
+ * man beder om den.
+ *
+ * ⚠ MENUEN LUKKER PÅ ESCAPE OG PÅ ET KLIK UDENFOR. Uden det bliver den
+ * stående når man klikker videre i tabellen nedenunder, og så ligger der en
+ * åben menu over noget man prøver at læse. `pointerdown` frem for `click`:
+ * en menu der først lukker når museknappen slippes, når at flytte det man
+ * sigtede efter.
+ *
+ * ⚠ OG DEN ER IKKE ET <select>. Posterne er HANDLINGER, ikke værdier — et
+ * select ville melde en "ændring" til en skærmlæser hvor der i virkeligheden
+ * skete noget.
+ */
+export function Delknap({ label, onKlik, poster = [], titel }) {
+  const [aaben, saetAaben] = useState(false);
+  const hylster = useRef(null);
+
+  useEffect(() => {
+    if (!aaben) return undefined;
+    const udenfor = (e) => {
+      if (!hylster.current?.contains(e.target)) saetAaben(false);
+    };
+    const paaTast = (e) => { if (e.key === "Escape") saetAaben(false); };
+    document.addEventListener("pointerdown", udenfor);
+    document.addEventListener("keydown", paaTast);
+    return () => {
+      document.removeEventListener("pointerdown", udenfor);
+      document.removeEventListener("keydown", paaTast);
+    };
+  }, [aaben]);
+
+  return (
+    <div className="fc-delknap" ref={hylster}>
+      <button type="button" className="fc-delknap-h" onClick={onKlik} title={titel}>
+        {label}
+      </button>
+      <button
+        type="button" className="fc-delknap-pil"
+        aria-haspopup="menu" aria-expanded={aaben}
+        aria-label={`Flere måder at ${label.toLowerCase()} på`}
+        onClick={() => saetAaben((a) => !a)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {aaben && (
+        <div className="fc-delknap-menu" role="menu">
+          {poster.map((p) => (
+            <button
+              key={p.key} type="button" role="menuitem" className="fc-delknap-post"
+              onClick={() => { saetAaben(false); p.onVaelg(); }}
+            >
+              {p.ikon && (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d={p.ikon} /></svg>
+              )}
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Ikonstier til Delknap-poster. Konturer, som sidebarens ICO. */
+export const DELIKON = {
+  vindue: "M4 5h16v14H4zM4 9h16",
+  nytVindue: "M14 4h6v6M20 4l-8 8M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6",
+};

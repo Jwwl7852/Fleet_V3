@@ -1142,3 +1142,48 @@ og **fem af seks `restricted`-kontakter kan ikke håndhæves endnu**.
 
 **Reglerne er deployet til DEV, ikke til PROD.** En samlet deploy til
 produktion hører sammen med den første rigtige tenant-provisionering.
+
+### Planlæg aktivitet — den første skrivning i Fleet
+
+Driftskalenderen kan nu **oprette** en driftsopgave. Formularen er en dialog,
+og den skriver **gennem serveren**: Cloud Function'en `opgaveplanlaeg` lægger
+opgaven og dens reservation i **én `update()`**.
+
+⚠ **Hvorfor en funktion, når `opgaver` er skrivbar fra klienten.** Fordi
+`reservationer` er `.write: false`, og de to skal skrives sammen. Landede kun
+opgaven, ville enheden have et værkstedsbesøg **uden at være spærret** — og så
+ser den *fri* ud i disponeringen, hvilket er værre end en spærring man kan se.
+Landede kun reservationen, ville enheden være spærret af ingenting. Dertil kan
+to disponenter ramme samme sekund, og det kan et klientsidetjek ikke forhindre.
+
+⚠ **Den overskriver ikke en booking — den afviser.** Et værkstedsbesøg har
+prioritet 40, den højeste, og *kunne* slå en booking. Men at annullere en
+booking betyder at skifte en **etapetilstand** med årsag og historik, og det er
+`etapeskift`s arbejde. To veje ind i etapens tilstand er den "anden vej til ét
+felt" beslutning 40 lukkede. Serveren svarer i stedet **hvad** der spærrer, så
+turen kan flyttes først.
+
+⚠ **Valideringen er den samme fil begge steder.** `valideOpgaveplan()` i
+`fleet/opgaveplan-regler.js` står i `DELTE_FILER` og kaldes af både formularen
+og funktionen. Formularen svarer *hurtigt*; serveren *afgør* — og de siger det
+samme, fordi det er den samme funktion. `opgaver.js` måtte med på listen af
+samme grund: kravet er transitivt.
+
+⚠ **Ingen mail.** Mockuppens "Send bekræftelse til leverandøren" er beslutning
+20, og den er fase 0: `sager/` står ikke i `firebase.rules.json`, og der er
+hverken modtagevej eller afsendelse. En deaktiveret radiogruppe der sagde "ikke
+bygget", ville være en attrap der opfører sig som en kontrol — formularen
+skriver i stedet hvad der mangler.
+
+**Fejl vises først når feltet er rørt** — eller når man trykker Gem, hvor de
+manglende felter også navngives i én linje. ⚠ Knappen er derfor **aktiv**, også
+når formularen er ugyldig: deaktiverede vi den, kunne `visAlle` aldrig udløses,
+og brugeren ville se en grå knap uden at få at vide hvilke to felter der
+manglede. De syv andre formularer i repoet har præcis den døde gren — de kalder
+`saetVisAlle(true)` i en funktion knappen forhindrer dem i at nå. Det er en
+selvstændig oprydning, men mønstret er ikke kopieret videre.
+
+**Kasserne er forenklet:** rundt ikon øverst, ét delt **Åbn ▾** med "Åbn her" og
+"Åbn i nyt vindue" i en menu. Før stod der to knapper på hvert af fem kort — ti
+knapper, hvor to af dem gør næsten det samme, under et tal der skal kunne læses
+på et sekund. `Delknap` ligger i `ui.jsx`.

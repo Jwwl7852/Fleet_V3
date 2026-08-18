@@ -78,6 +78,22 @@ export const DELTE_FILER = [
      reservations.js, koerehviletid.js og format.js — og personale.js
      importerer selv format.js. Alle seks står derfor her. Reglen er
      TRANSITIV, ikke "importfri". */
+  /* ⚠ opgaver.js OG opgaveplan-regler.js HØRER SAMMEN, og de kom med
+     "Planlæg aktivitet". Funktionen `opgaveplanlaeg` skriver opgaven og dens
+     reservation i EEN update(), og den skal proeve mod noejagtig de samme
+     regler som formularen viste:
+
+       opgaveMangler()        nodens eget katalog
+       reservationFraOpgave() reservationen, bygget eet sted
+       valideOpgaveplan()     hvert felt, med SKAERMENS sætning
+
+     Skrev serveren sin egen afskrift, ville skaermen sige ja og serveren nej
+     uden at nogen kunne se hvorfor — og en klientvalidering der ikke ogsaa
+     staar paa serveren, er en paen knap.
+
+     opgaver.js importerer prioritet.js, som allerede staar paa listen:
+     kravet er transitivt. */
+  "opgaver.js", "opgaveplan-regler.js",
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
   /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele

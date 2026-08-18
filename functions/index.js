@@ -42,39 +42,44 @@ import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 
 import {
-  AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner,
+  AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
 } from "./delt/audit-regler.js";
 import { beregnKpi } from "./delt/kpi-aggregering.js";
 import {
-  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
+  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter
 } from "./delt/unitbooking.js";
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
-  CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND,
+  CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
 } from "./delt/warehouse.js";
 import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
 /* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
    delt/, saa kanGodkende(), kanEksportere() og nummerformatet er de SAMME
    funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
 import {
-  byggGrundlag, validerLinje, kanGodkende, godkend, kanEksportere, laas,
-  naesteGrundlagsnummer, fraDb, kanLaase,
+  byggGrundlag, validerLinje, kanGodkende, godkend, laas,
+  naesteGrundlagsnummer, fraDb, kanLaase
 } from "./delt/grundlag.js";
 import {
-  kanSkifteEtape, byggEtapeSkifte, forloebstilstand,
+  kanSkifteEtape, byggEtapeSkifte, forloebstilstand
 } from "./delt/booking-state.js";
 import {
-  reservationerFraEtape, enhedsIder, straekningFraEtape,
+  reservationerFraEtape, enhedsIder, straekningFraEtape
 } from "./delt/etaper.js";
 import { tjekDisponering } from "./delt/disponering.js";
+/* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
+   formularen viste — se noten i opgaveplan-regler.js. */
+import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
+import { valideOpgaveplan } from "./delt/opgaveplan-regler.js";
+import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
 import {
   taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste, sammenfatMaalinger,
-  maalingerIPeriode, periodeGraenser, MOMSSATS, gaeldendePrisliste, linjerForPeriode,
+  maalingerIPeriode, periodeGraenser, MOMSSATS, gaeldendePrisliste, linjerForPeriode
 } from "./delt/priser.js";
 
 initializeApp();
@@ -151,7 +156,7 @@ export const audit = onCall({ region: REGION }, async (req) => {
     /* ⚠ note er IKKE fritekst fra en formular. Den er en kort, teknisk
        forklaring skrevet af koden, og den afkortes hårdt. Skriv aldrig
        brugerinput her — se allowlisten. */
-    note: kortStreng(d.note, 120),
+    note: kortStreng(d.note, 120)
   };
 
   const ref = getDatabase().ref(`audit/${tenantId}/${klasse}/${aar}/${maaned}`).push();
@@ -210,7 +215,7 @@ function kraevBrugeradmin(req) {
   return { uid: auth.uid, tenantId };
 }
 
-const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2}$/;
 
 /** Indekset klienten kan læse. ⚠ INGEN CLAIMS OG INGEN LØSEN. */
 const indeksPost = (b, rolle, spaerret = false) => ({
@@ -218,7 +223,7 @@ const indeksPost = (b, rolle, spaerret = false) => ({
   navn: b.displayName || b.email,
   rolle,
   spaerret,
-  opdateretMs: Date.now(),
+  opdateretMs: Date.now()
 });
 
 async function skrivIndeks(tenantId, bruger, rolle, spaerret) {
@@ -269,7 +274,7 @@ async function log(tenantId, uid, handling, objektId, note) {
     .push()
     .set({
       ms: Date.now(), uid, handling, objekt: "brugere", objektId,
-      klasse: "sikkerhed", note: note ?? null,
+      klasse: "sikkerhed", note: note ?? null
     });
 }
 
@@ -316,7 +321,7 @@ async function opretKonto({ tenantId, kalderUid, d }) {
   await auth.setCustomUserClaims(bruger.uid, {
     tenant: tenantId,
     rolle,
-    perms: permStrengFraRolle(rolle),
+    perms: permStrengFraRolle(rolle)
   });
 
   await skrivIndeks(tenantId, bruger, rolle, false);
@@ -346,7 +351,7 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
   await auth.setCustomUserClaims(maalUid, {
     ...bruger.customClaims,
     rolle,
-    perms: permStrengFraRolle(rolle),
+    perms: permStrengFraRolle(rolle)
   });
   /* ⚠ UDEN DEN HER ER NEDGRADERINGEN EN PÆN KNAP. Brugeren beholder sine
      gamle claims indtil tokenet udløber af sig selv — man ville tro man
@@ -477,7 +482,7 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
     cvr ? { navn, cvr, oprettetMs: nu } : { navn, oprettetMs: nu });
   await db.ref(`tenants/${id}/moduler`).set(moduler);
   await db.ref(`tenants/${id}/abonnement`).set({
-    status: "aktiv", aendretMs: nu, aendretAf: ejerUid,
+    status: "aktiv", aendretMs: nu, aendretAf: ejerUid
   });
   /* ⚠ INDEKSET BÆRER INTET NAVN. Det står i tenants/<id>/virksomhed — ét
      sted. En kopi ville drive, og udbyderen ville se et andet navn end
@@ -551,7 +556,7 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
      hændelse. */
   const post = {
     status, aendretMs: Date.now(), aendretAf: ejerUid,
-    aarsag: aarsag || null,
+    aarsag: aarsag || null
   };
   await getDatabase().ref(`tenants/${id}/abonnement`).update(post);
   /* ⚠ INGEN KONTO RØRES. Spærringen ligger på tenanten — beslutning 32.
@@ -587,7 +592,7 @@ export const kundeadmin = onCall({ region: REGION }, async (req) => {
      kunde uden administrator kan ikke oprette sine egne brugere. */
   return opretKonto({
     tenantId: id, kalderUid: ejerUid,
-    d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" },
+    d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" }
   });
 });
 
@@ -631,7 +636,7 @@ async function maalKunde(db, id, nu) {
     status: a.val()?.status || "aktiv",
     brugere: antal,
     koeretoejer: taelKoeretoejer(k.val() || {}),
-    moduler: m.val() || null,
+    moduler: m.val() || null
   };
   /* ⚠ EN UKENDT ROLLE SLUGES IKKE. Den ville lydløst blive en gratis bruger.
      Tallet står i målingen, så det kan ses på grundlaget. */
@@ -742,7 +747,7 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
        prisen GAELDER; oprettetMs er hvornaar den blev lagt. En liste kan
        laegges i dag og gaelde fra den 1. i naeste maaned, og skaermen skal
        kunne sige begge dele — "sidst rettet" er den ene, ikke den anden. */
-    oprettetMs: Date.now(),
+    oprettetMs: Date.now()
   };
 
   /* ⚠ SAMME VALIDERING SOM KLIENTEN, kørt igen. En ændret klient kunne sende
@@ -887,7 +892,7 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
     dageIPerioden: graenser.dage,
     antalBrugere: s.brugere,
     antalKoeretoejer: s.koeretoejer,
-    rabatBps, rabatModulBps,
+    rabatBps, rabatModulBps
   }).map((l) => ({ ...l, prislisteId: prisliste.id || null }));
 
   const t = totalerAfLinjer(linjer);
@@ -918,7 +923,7 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
        momsbeløb er værre end intet: det ser ud som om det er regnet ud. */
     momsOere: t.momsOere,
     ialtOere: t.ialtOere,
-    laast: true,
+    laast: true
   };
 }
 
@@ -987,7 +992,7 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
       id, periode, graenser,
       maalinger: maal.val() || {},
       prisliste,
-      abonnement: abon.val(),
+      abonnement: abon.val()
     });
 
     /* ⚠ "AKTIVE KUNDER" ER DEM DER VAR AKTIVE I PERIODEN — ikke dem der er
@@ -1012,10 +1017,9 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
     ok: true, periode,
     oprettet: oprettet.length,
     sprunget,
-    ialtOere: oprettet.reduce((s, x) => s + (x.beloebOere || 0), 0),
+    ialtOere: oprettet.reduce((s, x) => s + (x.beloebOere || 0), 0)
   };
 });
-
 
 /**
  * Slet en prisliste.
@@ -1147,7 +1151,7 @@ async function logUdlaan(tenantId, uid, handling, udlaanId, foer, efter, note) {
       ms: Date.now(), uid, handling, objekt: "kasseudlaan", objektId: udlaanId,
       klasse: "drift",
       aendrede: d.aendrede, foer: d.foer, efter: d.efter,
-      note: note ?? null,
+      note: note ?? null
     });
 }
 
@@ -1168,7 +1172,7 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       /* ⚠ TILSTANDEN VÆLGES IKKE AF KLIENTEN. Et nyt udlån er `booket`.
          Kunne den sendes med, kunne man springe klargøringen over ved at
          oprette udlånet direkte som `udlaant`. */
-      tilstand: "booket",
+      tilstand: "booket"
     };
 
     const fejl = valideUdlaan(post, {});
@@ -1199,7 +1203,7 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       konflikt = null;
       const liste = Object.entries(nuvaerende || {}).map(([id, u]) => ({ id, ...u }));
       const stoeder = konflikter(liste, {
-        kasseId: post.kasseId, fra: post.fra, til: post.til,
+        kasseId: post.kasseId, fra: post.fra, til: post.til
       });
       if (stoeder.length) {
         konflikt = stoeder[0];
@@ -1295,7 +1299,7 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       kundeId: kortStreng(d.kundeId, 60),
       beskrivelse: kortStreng(d.beskrivelse, 300),
       fra: Number(d.fra),
-      til: Number(d.til),
+      til: Number(d.til)
     };
 
     const fejl = valideUdlaan(post, {});
@@ -1309,7 +1313,7 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       const liste = Object.entries(nuvaerende || {}).map(([id, u]) => ({ id, ...u }));
       /* ⚠ undtagId: udlånet må ikke støde sammen med sig selv. */
       const stoeder = konflikter(liste, {
-        kasseId: post.kasseId, fra: post.fra, til: post.til, undtagId: udlaanId,
+        kasseId: post.kasseId, fra: post.fra, til: post.til, undtagId: udlaanId
       });
       if (stoeder.length) { konflikt = stoeder[0]; return; }
       return { ...(nuvaerende || {}), [udlaanId]: post };
@@ -1439,7 +1443,7 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
     batch: kortStreng(d.batch, 40),
     serienummer: kortStreng(d.serienummer, 60),
     reference: kortStreng(d.reference, 60),
-    note: kortStreng(d.note, 300),
+    note: kortStreng(d.note, 300)
   };
 
   if (!post.vareId) throw new HttpsError("invalid-argument", "vareId mangler.");
@@ -1594,8 +1598,8 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
       note: post.note || null,
       tidspunktMs: nu,
       /* ⚠ uid, IKKE personId. Det er hvem der GJORDE noget. */
-      oprettetAf: uid,
-    },
+      oprettetAf: uid
+    }
   };
 
   for (const v of virkning) {
@@ -1652,7 +1656,7 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
   return {
     ok: true, id: nyId,
     beholdning: virkning.map((v) => v.noegle),
-    advarsel: negative.length ? "negativ-saldo" : null,
+    advarsel: negative.length ? "negativ-saldo" : null
   };
 });
 
@@ -1691,7 +1695,7 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
     antal: typeof d.antal === "number" ? d.antal : null,
     batch: kortStreng(d.batch, 40) || null,
     fraCarrierId: kortStreng(d.fraCarrierId, 60) || null,
-    tilCarrierId: kortStreng(d.tilCarrierId, 60) || null,
+    tilCarrierId: kortStreng(d.tilCarrierId, 60) || null
   });
   if (Object.keys(fejl).length) {
     throw new HttpsError("invalid-argument",
@@ -1748,9 +1752,9 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
       note: note || null,
       tidspunktMs: nu,
       /* ⚠ uid, IKKE personId. Det er hvem der GJORDE noget. */
-      oprettetAf: uid,
+      oprettetAf: uid
     },
-    [`carriers/${virkning.carrierId}/pladsId`]: virkning.pladsId,
+    [`carriers/${virkning.carrierId}/pladsId`]: virkning.pladsId
   };
   /* ⚠ STATUS OG PLADS I SAMME SKRIVNING. Ellers ville der findes et
      oejeblik hvor beholderen baade var i transit og stod paa en hylde. */
@@ -1769,7 +1773,7 @@ async function skrivPlacering({ rod, tenantId, uid, d }) {
 
   return {
     ok: true, id: nyId, carrierId, pladsId: tilPladsId,
-    ankommet: Boolean(virkning.status),
+    ankommet: Boolean(virkning.status)
   };
 }
 
@@ -1783,7 +1787,7 @@ async function logBevaegelse(tenantId, uid, handling, id, foer, efter, note) {
       ms: Date.now(), uid, handling, objekt: "bevaegelser", objektId: id,
       klasse: "drift",
       aendrede: d.aendrede, foer: d.foer, efter: d.efter,
-      note: note ?? null,
+      note: note ?? null
     });
 }
 
@@ -1841,7 +1845,7 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
     const noegle = `${b.vareId}|${b.batch || ""}`;
     const nu = pr.get(noegle) || {
       vareId: b.vareId, batch: b.batch || null,
-      serienummer: b.serienummer || null, antal: 0,
+      serienummer: b.serienummer || null, antal: 0
     };
     nu.antal += b.antal || 0;
     pr.set(noegle, nu);
@@ -1863,7 +1867,7 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
   const nu = Date.now();
   const opdatering = {
     [`plukordrer/${ordreId}/tilstand`]: "afsendt",
-    [`plukordrer/${ordreId}/afsendtMs`]: nu,
+    [`plukordrer/${ordreId}/afsendtMs`]: nu
   };
 
   for (const l of linjer) {
@@ -1885,7 +1889,7 @@ export const plukordreafsend = onCall({ region: REGION }, async (req) => {
       reference: ordreId,
       note: null,
       tidspunktMs: nu,
-      oprettetAf: uid,
+      oprettetAf: uid
     };
     const bn = `beholdning/${beholdningsNoegle(ordre.afsendCarrierId, l.vareId, l.batch)}`;
     opdatering[`${bn}/carrierId`] = ordre.afsendCarrierId;
@@ -1991,7 +1995,7 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
       reference: optId,
       note: note || null,
       tidspunktMs: nu,
-      oprettetAf: uid,
+      oprettetAf: uid
     },
     [`optaellinger/${optId}`]: {
       carrierId, vareId,
@@ -2005,13 +2009,13 @@ export const optaellingskriv = onCall({ region: REGION }, async (req) => {
       note: note || null,
       bevaegelseId: bevId,
       tidspunktMs: nu,
-      oprettetAf: uid,
+      oprettetAf: uid
     },
     [`beholdning/${noegle}/carrierId`]: carrierId,
     [`beholdning/${noegle}/vareId`]: vareId,
     [`beholdning/${noegle}/batch`]: batch || UDEN_BATCH,
     [`beholdning/${noegle}/antal`]: taeltAntal,
-    [`beholdning/${noegle}/senestMs`]: nu,
+    [`beholdning/${noegle}/senestMs`]: nu
   };
 
   await rod.update(opdatering);
@@ -2105,7 +2109,7 @@ function tilLinjer(raa) {
     momssats: Number.isFinite(Number(l.momssats)) ? Number(l.momssats) : null,
     kilde: l.kilde?.type && l.kilde?.id
       ? { type: kortStreng(l.kilde.type, 20), id: kortStreng(l.kilde.id, 60) }
-      : null,
+      : null
   }));
 }
 
@@ -2158,7 +2162,7 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
       kundeId,
       division: kortStreng(d.division, 10) || "faelles",
       linjer,
-      udarbejdetAf: uid,
+      udarbejdetAf: uid
     });
 
     /* ⚠ NUMMERET FØRST, OG I EN TRANSACTION. To mennesker der trykker i samme
@@ -2175,7 +2179,7 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
       ...uden,
       nummer,
       linjer: somNode(post.linjer),
-      historik: Object.fromEntries((post.historik || []).map((h, i) => [`h${i}`, h])),
+      historik: Object.fromEntries((post.historik || []).map((h, i) => [`h${i}`, h]))
     });
 
     await logGrundlag(tenantId, uid, AUDIT.opret, id, null,
@@ -2206,7 +2210,7 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
       tilstand: aendring.tilstand,
       godkendtAf: aendring.godkendtAf,
       godkendtMs: aendring.godkendtMs,
-      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h])),
+      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h]))
     });
 
     await logGrundlag(tenantId, uid, AUDIT.tilstandsskift, id,
@@ -2245,7 +2249,7 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
       tilstand: aendring.tilstand,
       laastMs: aendring.laastMs,
       eksportReference: aendring.eksportReference,
-      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h])),
+      historik: Object.fromEntries(aendring.historik.map((h, i) => [`h${i}`, h]))
     });
 
     await logGrundlag(tenantId, uid, AUDIT.tilstandsskift, id,
@@ -2271,7 +2275,7 @@ async function logGrundlag(tenantId, uid, handling, id, foer, efter, note) {
       ms: Date.now(), uid, handling, objekt: "grundlag", objektId: id,
       klasse: "regnskab",
       aendrede: d.aendrede, foer: d.foer, efter: d.efter,
-      note: note ?? null,
+      note: note ?? null
     });
 }
 
@@ -2297,7 +2301,7 @@ async function logEtape(tenantId, uid, handling, id, foer, efter, note) {
       ms: Date.now(), uid, handling, objekt: "etaper", objektId: id,
       klasse,
       aendrede: d.aendrede, foer: d.foer, efter: d.efter,
-      note: note ?? null,
+      note: note ?? null
     });
 }
 
@@ -2426,7 +2430,7 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
     const paaEtapen = {
       ...etape,
       koeretoejIder: forslag.koeretoejIder || null,
-      personId: forslag.personId || null,
+      personId: forslag.personId || null
     };
     const ider = enhedsIder(paaEtapen);
     if (!ider.length || !paaEtapen.personId) {
@@ -2467,7 +2471,7 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
     const raekker = tjekDisponering({
       reservationerForEtapen: nye,
       enheder, person, kompetencer, reservationer, straekninger,
-      gods: etape.maengde || {},
+      gods: etape.maengde || {}
     });
     spaerringer = raekker.filter((r) => r.tone === "bad");
     if (spaerringer.length) {
@@ -2494,7 +2498,7 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
         fra: r.fra, til: r.til,
         kilde: r.kilde,
         oprettetAf: uid,
-        oprettetMs: Date.now(),
+        oprettetMs: Date.now()
       };
     }
   }
@@ -2513,7 +2517,7 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
 
   /* ---- Selve skiftet ------------------------------------------------ */
   const skifte = byggEtapeSkifte(etape, tilTilstand, {
-    rolle, bruger: uid, begrundelse, valgtForslagId, senestMs,
+    rolle, bruger: uid, begrundelse, valgtForslagId, senestMs
   });
   for (const [felt, vaerdi] of Object.entries(skifte)) {
     opdatering[`etaper/${etapeId}/${felt}`] = vaerdi;
@@ -2572,11 +2576,11 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
     const nye = reservationerFraEtape({
       ...etape,
       koeretoejIder: opdatering[`etaper/${etapeId}/koeretoejIder`],
-      personId: opdatering[`etaper/${etapeId}/personId`],
+      personId: opdatering[`etaper/${etapeId}/personId`]
     });
     const efter = await hentReservationer(rod, nye);
     const igen = tjekDisponering({
-      reservationerForEtapen: nye, enheder: [], reservationer: efter,
+      reservationerForEtapen: nye, enheder: [], reservationer: efter
     }).filter((r) => r.tone === "bad");
     if (igen.length) {
       await logEtape(tenantId, uid, AUDIT.adgangNaegtet, etapeId,
@@ -2634,6 +2638,188 @@ async function auditpartitioner(db, tenantId) {
   return ud;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   PLANLAEG EN DRIFTSOPGAVE — opgaven OG dens reservation, i EEN update().
+
+   ⚠ HVORFOR DEN FINDES, NAAR opgaver/ ER SKRIVBAR FRA KLIENTEN.
+   Fordi `reservationer` er .write: false, og de to skal skrives SAMMEN.
+   Landede kun opgaven, ville enheden have et vaerkstedsbesoeg uden at vaere
+   spaerret — og saa ser den FRI ud i disponeringen, hvilket er vaerre end en
+   spaerring man kan se. Landede kun reservationen, ville enheden vaere
+   spaerret af ingenting. Dertil: to disponenter kan ramme samme sekund, og
+   det kan et klientsidetjek ikke forhindre. Det staar i reserver().
+
+   ⚠ DEN OVERSKRIVER IKKE — DEN AFVISER.
+   Et vaerkstedsbesoeg har prioritet 40, den hoejeste, og KUNNE derfor slaa en
+   booking. Men at annullere en booking betyder at skifte en ETAPETILSTAND med
+   aarsag og historik, og det er `etapeskift`s arbejde. Gjorde vi det herfra,
+   ville der vaere to veje ind i etapens tilstand — praecis den 'anden vej til
+   eet felt' beslutning 40 lukkede, og en funktion der findes, bliver kaldt.
+   Serveren svarer i stedet HVAD der spaerrer og hvornaar, saa disponenten kan
+   flytte turen foerst.
+
+   ⚠ INGEN MAIL. Mockuppens 'Send bekraeftelse til leverandoeren' er
+   beslutning 20, fase 0: sager/ staar ikke i firebase.rules.json.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN. Spoerg hvad handlingen kraever, ikke hvem
+     brugeren er — CLAUDE.md. Reglerne paa opgaver/ kraever den samme. */
+  if (!perms.includes("|opgaver.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke oprette driftsopgaver. Det kræver opgaver.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE, og reglerne er det eneste sted
+     abonnements- og modulspaerringen ellers staar. Uden de her blokke var
+     funktionen en aaben doer rundt om begge. Samme linjer som etapeskift. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("flaade").val() !== true) {
+    throw new HttpsError("permission-denied", "Fleet-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const post = {
+    /* ⚠ ARTEN SAETTES HER, IKKE AF KLIENTEN. Driftskalenderen planlaegger
+       vaerkstedsopgaver; facility har sin egen skaerm paa den SAMME node.
+       Kom arten udefra, ville den ene formular kunne oprette den andens
+       poster — og de to har ikke samme feltskema. */
+    art: "vaerksted",
+    koeretoejId: kortStreng(d.koeretoejId, 60),
+    division: kortStreng(d.division, 20),
+    arbejdstype: kortStreng(d.arbejdstype, 40),
+    status: kortStreng(d.status, 40),
+    beskrivelse: kortStreng(d.beskrivelse, 500),
+    startMs: Number.isFinite(Number(d.startMs)) ? Number(d.startMs) : null,
+    estimeretMin: Number.isFinite(Number(d.estimeretMin)) ? Number(d.estimeretMin) : null,
+  };
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  const prioritet = kortStreng(d.prioritet, 20);
+  const sted = kortStreng(d.sted, 60);
+  const personId = kortStreng(d.personId, 60);
+  if (leverandoerId) post.leverandoerId = leverandoerId;
+  if (prioritet) post.prioritet = prioritet;
+  if (sted) post.sted = sted;
+  if (personId) post.personId = personId;
+
+  /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
+  /* ⚠ SAMME FUNKTION, SAMME SAETNING. valideOpgaveplan() ligger i delt/, og
+     formularen kalder den ogsaa. To formuleringer af een spaerring er to
+     forklaringer paa een ting. */
+  const form = valideOpgaveplan(post);
+  if (!form.ok) {
+    const foerste = Object.values(form.fejl)[0];
+    throw new HttpsError("invalid-argument", foerste);
+  }
+  /* Nodens eget katalog ved siden af — den fanger felter formularen ikke har. */
+  const mangler = opgaveMangler(post);
+  if (mangler.length) {
+    throw new HttpsError("invalid-argument",
+      `Noden afviser posten: ${mangler.join(", ")}.`);
+  }
+
+  /* ---- Findes enheden, og kan den overhovedet bruges? ------------------ */
+  const kt = (await rod.child(`koeretoejer/${post.koeretoejId}`).once("value")).val();
+  if (!kt) throw new HttpsError("not-found", `Enheden ${post.koeretoejId} findes ikke.`);
+
+  /* ⚠ EN SOLGT ELLER SKROTTET ENHED KAN IKKE FAA EN OPGAVE. Posten bliver
+     staaende i flaaden — regnskabsdata hardslettes ikke — men den kan ikke
+     komme paa vaerksted. Uden det her tjek ser opgaven helt normal ud i en
+     tabel; selvkontrollen i demo-opgaver.js fandt netop den fejl. */
+  if (kt.status === "solgt" || kt.status === "skrottet") {
+    throw new HttpsError("failed-precondition",
+      `${kt.kaldenavn || post.koeretoejId} er ${kt.status} og kan ikke få en driftsopgave.`);
+  }
+
+  if (leverandoerId) {
+    const lv = (await rod.child(`leverandoerer/${leverandoerId}`).once("value")).val();
+    if (!lv) throw new HttpsError("not-found", `Leverandøren ${leverandoerId} findes ikke.`);
+  }
+
+  /* ---- Reservationen, bygget EET sted --------------------------------- */
+  /* ⚠ reservationFraOpgave() KASTER uden et vindue at reservere, og det er
+     det rigtige svar: en standardlaengde ville spaerre enheden i et tidsrum
+     ingen har besluttet. valideOpgaveplan() har allerede krævet
+     estimeretMin, saa den her er baeltet ved siden af selerne. */
+  let ny;
+  try {
+    ny = reservationFraOpgave(post);
+  } catch (e) {
+    throw new HttpsError("invalid-argument", e.message);
+  }
+
+  /* ---- Er enheden ledig? ---------------------------------------------- */
+  const snap = await rod
+    .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
+    .once("value");
+  const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+
+  const svar = tjekLedigMod(eksisterende, ny);
+  if (!svar.ok) {
+    /* ⚠ SERVERENS AFVISNING ER SKAERMENS EGEN SAETNING. konfliktTekst()
+       navngiver hvad der spaerrer og hvornaar — en generisk 'kunne ikke
+       gemmes' ville lade disponenten proeve igen med samme dato uden
+       nogensinde at faa at vide hvad der stod i vejen.
+
+       ⚠ OG DEN OVERSKRIVER IKKE, heller ikke naar den KUNNE. Se hovedet. */
+    const foerste = svar.konflikter[0];
+    const flere = svar.konflikter.length > 1
+      ? ` (+${svar.konflikter.length - 1} mere)` : "";
+    const raad = svar.kanOverskrive
+      ? " Værkstedsbesøget har højere prioritet, men det rydder ikke selv en" +
+        " booking af vejen: flyt eller annullér turen først, så den kan" +
+        " forklares bagefter."
+      : "";
+    throw new HttpsError("failed-precondition",
+      (foerste.tekst || konfliktTekst(ny, foerste)) + flere + raad);
+  }
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  /* ⚠ Opgaven og reservationen lander sammen eller slet ikke. To kald ville
+     vaere to halve sandheder, og den ene af dem — en opgave uden reservation
+     — ser FRI ud i disponeringen. */
+  const opgaveId = rod.child("opgaver").push().key;
+  const nu = Date.now();
+
+  const opdatering = {};
+  opdatering[`opgaver/${opgaveId}`] = {
+    ...post,
+    oprettetAf: uid,
+    oprettetMs: nu,
+  };
+  /* Reservationens id er UDLEDT af opgaven, ikke en ny push-noegle. Saa kan
+     den samme opgave ikke laegge to reservationer paa den samme enhed, hvis
+     funktionen kaldes to gange — og en senere frigivelse kan finde den uden
+     at soege. Samme greb som res-<etapeId>-<i> i etapeskift. */
+  opdatering[`reservationer/${ny.ressourceType}/${ny.ressourceId}/res-${opgaveId}`] = {
+    fra: ny.fra, til: ny.til,
+    kilde: ny.kilde,
+    oprettetAf: uid,
+    oprettetMs: nu,
+  };
+
+  await rod.update(opdatering);
+
+  return { opgaveId, fra: ny.fra, til: ny.til };
+});
+
 export const auditoprydning = onSchedule(
   { schedule: "40 3 1 * *", timeZone: "UTC", region: REGION },
   async () => {
@@ -2655,7 +2841,7 @@ export const auditoprydning = onSchedule(
         rapport.iAlt += p.antal || 0;
         const linje = {
           tenantId, klasse: p.klasse, aar: p.aar, maaned: p.maaned,
-          antal: p.antal || 0, maaneder: p.maaneder,
+          antal: p.antal || 0, maaneder: p.maaneder
         };
         if (!p.maaSlettes) {
           rapport.forfaldne.push(linje);
@@ -2754,7 +2940,7 @@ export const kpiaggregering = onSchedule(
         const nyt = beregnKpi({
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
-          indberetninger, forrige, nu,
+          indberetninger, forrige, nu
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers
