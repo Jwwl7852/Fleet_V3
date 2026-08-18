@@ -177,7 +177,14 @@ describe("formen på et grundlag", () => {
 
 describe("grundlagskriv — den eneste vej ind", () => {
   const kilde = readFileSync("functions/index.js", "utf8");
-  const blok = kilde.slice(kilde.indexOf("export const grundlagskriv"));
+  /* ⚠ BLOKKEN SKAL AFGRAENSES. Den gik foer til filens SLUT, og da
+     auditoprydning kom til med sin .remove() paa en auditpartition, faldt
+     "der findes ingen slet-handling" — paa kode der intet har med
+     grundlaget at goere. En proeve der laeser en fil, skal vide hvor den
+     stopper. */
+  const fraGrundlag = kilde.slice(kilde.indexOf("export const grundlagskriv"));
+  const naeste = fraGrundlag.indexOf("export const ", 20);
+  const blok = naeste > 0 ? fraGrundlag.slice(0, naeste) : fraGrundlag;
 
   it("⚠ SERVEREN BRUGER SAMME FIL SOM SKÆRMEN", () => {
     /* kanGodkende(), kanEksportere() og nummerformatet er de SAMME

@@ -41,7 +41,9 @@ import { initializeApp } from "firebase-admin/app";
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 
-import { AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff } from "./delt/audit-regler.js";
+import {
+  AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner,
+} from "./delt/audit-regler.js";
 import {
   valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
 } from "./delt/turtlebooking.js";
@@ -2588,3 +2590,91 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
 
   return { ok: true, id: etapeId, tilstand: tilTilstand };
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AUDITOPRYDNING — OG HVORFOR DEN IKKE SLETTER NOGET ENDNU
+
+   Retention er designet ind i STIEN: audit/<tenantId>/<klasse>/<år>/<måned>/.
+   Klassen ligger i stien netop for at en oprydning bliver ÉN operation pr.
+   partition frem for en scanning af hver post. Mekanismen er derfor triviel;
+   det svære er tallet.
+
+   ⚠ OG TALLET ER IKKE AFGJORT. `RETENTION_MAANEDER` står på 24 måneder for
+   alle tre klasser, med noten at bogføringsloven trækker mod fem år og GDPR
+   mod kortere. Et job der slettede på det tal, ville fjerne revisionsspor på
+   en værdi ingen jurist har sagt god for — og et slettet auditspor kan ikke
+   skaffes igen.
+
+   Derfor NÆGTER den frem for at gætte, præcis som eksporten nægter uden en
+   momssats. `retentionErAfgjort()` er et selvstændigt felt fra tallet, og
+   `forfaldnePartitioner()` svarer `maaSlettes: false` så længe det er falsk.
+
+   ⚠ MEN DEN TIER IKKE. Den skriver hvad der VILLE blive slettet til
+   `udbyder/retention/<dato>`. Et spørgsmål ingen kan se, bliver ikke besvaret
+   — og en oprydning der bare var udeladt, ville ingen opdage manglede. Nu
+   vokser tallet i rapporten indtil nogen svarer.
+
+   ⚠ RAPPORTEN BÆRER INGEN POSTER. Kun tenant, klasse, år, måned og antal.
+   En auditpost der blev kopieret ud i en rapport under `udbyder/`, ville have
+   forladt kundens tenant — og det er den grænse beslutning 24 holder.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Partitionerne under én tenant, som stien har dem. Læser ingen poster. */
+async function auditpartitioner(db, tenantId) {
+  const ud = [];
+  const rod = (await db.ref(`audit/${tenantId}`).once("value")).val() || {};
+  for (const [klasse, aarene] of Object.entries(rod)) {
+    for (const [aar, maanederne] of Object.entries(aarene || {})) {
+      for (const [maaned, poster] of Object.entries(maanederne || {})) {
+        ud.push({ klasse, aar, maaned, antal: Object.keys(poster || {}).length });
+      }
+    }
+  }
+  return ud;
+}
+
+export const auditoprydning = onSchedule(
+  { schedule: "40 3 1 * *", timeZone: "UTC", region: REGION },
+  async () => {
+    const db = getDatabase();
+    const nu = Date.now();
+    const dato = new Date(nu).toISOString().slice(0, 10);
+
+    /* ⚠ TENANTLISTEN KOMMER FRA `udbyder/kunder`, som `maaldagligt` også
+       bruger. En scanning af `audit/` selv ville liste tenants ud af en node
+       der er skrevet af auditloggen — og en tenant uden aktivitet ville
+       forsvinde ud af oprydningen uden at nogen så det. */
+    const kunder = (await db.ref("udbyder/kunder").once("value")).val() || {};
+
+    const rapport = { koertMs: nu, forfaldne: [], slettede: [], iAlt: 0 };
+
+    for (const tenantId of Object.keys(kunder)) {
+      const partitioner = await auditpartitioner(db, tenantId);
+      for (const p of forfaldnePartitioner(partitioner, nu)) {
+        rapport.iAlt += p.antal || 0;
+        const linje = {
+          tenantId, klasse: p.klasse, aar: p.aar, maaned: p.maaned,
+          antal: p.antal || 0, maaneder: p.maaneder,
+        };
+        if (!p.maaSlettes) {
+          rapport.forfaldne.push(linje);
+          continue;
+        }
+        /* ⚠ ÉN OPERATION PR. PARTITION. Det er hele grunden til at klassen
+           ligger i stien — se noten i audit-regler.js. */
+        await db.ref(`audit/${tenantId}/${p.klasse}/${p.aar}/${p.maaned}`).remove();
+        rapport.slettede.push(linje);
+      }
+    }
+
+    await db.ref(`udbyder/retention/${dato}`).set(rapport);
+    console.log(
+      `auditoprydning: ${rapport.forfaldne.length} partitioner forfaldne ` +
+      `(${rapport.iAlt} poster), ${rapport.slettede.length} slettet. ` +
+      (rapport.forfaldne.length
+        ? "Retention er IKKE afgjort — der slettes ingenting. Se RETENTION_AFGJORT."
+        : "Intet at rydde op.")
+    );
+    return null;
+  }
+);

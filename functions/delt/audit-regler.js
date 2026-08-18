@@ -99,6 +99,63 @@ export const RETENTION_MAANEDER = {
 
 export const KLASSER = Object.keys(RETENTION_MAANEDER);
 
+/**
+ * ⚠ ER TALLET AFGJORT? Det er et SELVSTÆNDIGT spørgsmål fra hvad tallet er.
+ *
+ * 24 står ovenfor som en foreløbig værdi. En oprydningsjob der slettede på
+ * den, ville slette revisionsspor på et tal ingen jurist har sagt god for —
+ * og et slettet auditspor kan ikke skaffes igen. Det er samme regel som den
+ * manglende momssats: vi gætter ikke, vi nægter.
+ *
+ * Derfor to felter og ikke ét. `retentionFor()` svarer på HVOR LÆNGE;
+ * `retentionErAfgjort()` svarer på OM VI TØR HANDLE PÅ DET. Stod der kun et
+ * tal, ville den første der skrev en sletter, læse det som et svar.
+ *
+ * Når juristen har svaret: sæt tallet, sæt flaget, og skriv begrundelsen i
+ * BESLUTNINGER.md — i den rækkefølge.
+ */
+export const RETENTION_AFGJORT = {
+  drift: false,
+  regnskab: false,
+  sikkerhed: false,
+};
+
+export const retentionErAfgjort = (klasse) => RETENTION_AFGJORT[klasse] === true;
+
+/**
+ * Partitioner der er ældre end deres klasses retention.
+ *
+ * `partitioner` er [{ klasse, aar, maaned }] — nøjagtig den form stien har.
+ * Ren funktion: den sletter ingenting og kender ingen database.
+ *
+ * ⚠ EN PARTITION ER FORFALDEN NÅR DEN ER HELT UDE AF VINDUET. Grænsen regnes
+ * på partitionens SLUTNING (første dag i næste måned), ikke dens start —
+ * ellers ville en post fra den 31. blive slettet en måned for tidligt.
+ *
+ * Svaret bærer `maaSlettes`, som er FALSK så længe klassens retention ikke er
+ * afgjort. Kalderen skal kunne se forskel på "den er gammel nok" og "vi må
+ * gøre noget ved den".
+ */
+export function forfaldnePartitioner(partitioner = [], nu = Date.now()) {
+  return partitioner
+    .filter((p) => KLASSER.includes(p.klasse))
+    .map((p) => {
+      const aar = Number(p.aar);
+      const maaned = Number(p.maaned);
+      if (!Number.isFinite(aar) || !Number.isFinite(maaned)) return null;
+      /* Slutningen af partitionen: kl. 00 den 1. i næste måned, UTC. */
+      const slutMs = Date.UTC(aar, maaned, 1);
+      const graenseMs = nu - retentionFor(p.klasse) * 30.44 * 86400000;
+      if (slutMs > graenseMs) return null;
+      return {
+        ...p,
+        maaneder: retentionFor(p.klasse),
+        maaSlettes: retentionErAfgjort(p.klasse),
+      };
+    })
+    .filter(Boolean);
+}
+
 /* Objekter hvor en ændring rører regnskabsgrundlaget. */
 const REGNSKABSOBJEKTER = new Set([
   "fakturaer", "indkoeb", "satser", "bookinger", "etaper", "countere",

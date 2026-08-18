@@ -1794,6 +1794,35 @@
         }
       },
 
+      // ══════════════════════════════════════════════════════════════
+      // RETENTIONSRAPPORTEN — hvad der VILLE blive ryddet op
+      // ══════════════════════════════════════════════════════════════
+      //
+      // Skrives af auditoprydning en gang om maaneden. Den sletter ingenting
+      // saa laenge RETENTION_AFGJORT er falsk — se noten i audit-regler.js:
+      // et job der slettede revisionsspor paa et tal ingen jurist har sagt
+      // god for, kan ikke goere det om.
+      //
+      // ⚠ RAPPORTEN BAERER INGEN AUDITPOSTER. Kun tenant, klasse, aar,
+      // maaned og et ANTAL. En auditpost kopieret ud i en rapport under
+      // udbyder/ havde forladt kundens tenant — og det er den graense
+      // beslutning 24 holder. $andet: false haandhaever det.
+      //
+      // ⚠ .write: false. Rapporten skrives af jobbet. Kunne en klient skrive
+      // den, kunne den skrive "intet forfaldent" og lukke spoergsmaalet.
+      "retention": {
+        ".read": "auth != null && auth.token.udbyder === true",
+        ".write": false,
+        "$dato": {
+          ".validate": "newData.hasChildren(['koertMs'])",
+          "koertMs": { ".validate": "newData.isNumber()" },
+          "iAlt": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+          "forfaldne": { "$i": { ".validate": "newData.hasChildren(['tenantId', 'klasse'])" } },
+          "slettede": { "$i": { ".validate": "newData.hasChildren(['tenantId', 'klasse'])" } },
+          "$andet": { ".validate": false }
+        }
+      },
+
       "kunder": {
         ".read": "auth != null && auth.token.udbyder === true",
         ".write": false,

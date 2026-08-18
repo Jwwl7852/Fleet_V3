@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 1425 tests. Starter emulatoren.
+npm test                            # 1440 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -333,8 +333,19 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 
-**Cloud Functions er den reelle flaskehals.** Tre ting venter på samme
-opsætning: skrivning af auditposter, KPI-aggregering og retention-sletning.
+**Cloud Functions er den reelle flaskehals.** Én ting venter: **KPI-aggregering**.
+
+⚠ **Skrivning af auditposter var allerede bygget** — `audit` er en onCall, kaldt
+fra `fleet/audit.js`. Den satte listen tre gange i træk uden at nogen læste den
+efter.
+
+⚠ **Retention-sletningen er bygget, og den sletter med vilje ingenting.**
+`auditoprydning` kører den 1. i måneden, finder de forfaldne partitioner og
+skriver dem til `udbyder/retention/<dato>` — men `RETENTION_AFGJORT` er falsk
+for alle tre klasser, og så er `maaSlettes` falsk. Et job der slettede
+revisionsspor på et tal ingen jurist har sagt god for, kan ikke gøre det om.
+Se rækken **Audit-retention** i tabellen over åbne spørgsmål: rapporten er dét
+spørgsmål, gjort synligt frem for udeladt.
 
 ⚠ **Claim-udstedelse fra `roller/` er taget af listen — den skal ikke bygges.**
 Beslutning 31 afgjorde at rollerne er FASTE: en vognmand der fjerner
@@ -599,7 +610,7 @@ den der skriver koden.
 |---|---|---|
 | **Momssatserne pr. linjeart** — hvornår er det 25 %, hvornår 0, hvornår omvendt betalingspligt? | En bogholder, **før første eksport** | Eksport af fakturagrundlag. `grundlag.js` nægter i dag eksport uden en sats pr. linje, og det er det rigtige svar så længe reglen er ukendt — men det betyder også at ingen kan eksportere |
 | **Retention på `sensitive/indberetninger`** — hvor længe skal en underskrift og en skadebeskrivelse gemmes? | Jurist eller DPO | Sletning. Underskriften er både en personoplysning og et **bevis**, og de to trækker i hver sin retning: databeskyttelsen siger slet, bevisbyrden siger gem. Forældelsesfristen på et erstatningskrav er formentlig det rigtige anker, men det er ikke et gæt vi skal tage |
-| **Audit-retention** | Samme | Sletning af `audit/`. Se BESLUTNINGER — den har været uafklaret siden sikkerhedsarbejdet og er ikke blevet mere afklaret af beslutning 25 |
+| **Audit-retention** | Samme | ⚠ **Mekanismen er nu bygget og venter kun på tallet.** `auditoprydning` finder de forfaldne partitioner og rapporterer dem til `udbyder/retention/`; den sletter intet, fordi `RETENTION_AFGJORT` er falsk. Når juristen svarer: sæt tallet i `RETENTION_MAANEDER`, sæt flaget, og skriv begrundelsen i BESLUTNINGER.md — i den rækkefølge. Prøven `⚠ INGEN RETENTION ER AFGJORT ENDNU` falder samme dag, og det er meningen |
 | **Fire-øjne på fakturagrundlag** — skal godkenderen være en anden end den der udarbejdede det? | Kunden | Ingenting endnu, men det ændrer `kanGodkende()`. Det er rigtigt i en stor virksomhed og forkert hos en vognmand med to på kontoret, hvor det ville betyde at grundlag aldrig blev godkendt. Hører som en indstilling pr. tenant — ikke som en regel vi vælger for dem |
 
 ⚠ **Ingen af de fire må besvares ved at gætte i koden.** Det er hele pointen

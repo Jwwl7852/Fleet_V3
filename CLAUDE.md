@@ -39,7 +39,8 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - Gemme beløb som float eller kroner. Øre som integer, ekskl. moms.
 - Overskrive en sats. Ny post med `gyldigFra`.
 - Skrive en reservation direkte. Brug `reservations.js`.
-- Skifte bookingtilstand uden `kanSkifte()`.
+- Skifte en etapetilstand uden `kanSkifteEtape()`. Der er ingen `kanSkifte()`
+  på en booking længere — beslutning 40: bookingens tilstand er afledt.
 - **Definere egne farver.** Brug tokens i `fleet.css`. Det er ikke længere en
   konvention: `npm run test:design` fejler på en farveværdi hvor som helst i
   `src/` uden for tokenfilen, og hooken kører den ved enhver ændring i `src/`.
@@ -88,8 +89,9 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Det er ikke et forbud der gælder i produktion; det er en **umulighed** der
   gælder overalt hvor der er en server. Overstyringen i `effektivBruger` er
   derfor kun meningsfuld i **demo**, hvor der ingen server er at være uenig
-  med. Skal en rigtig bruger have anden adgang, ændres rollen i `roller/` og
-  claim'et fornys.
+  med. Skal en rigtig bruger have anden adgang, tildeles en anden af de syv faste
+  roller med `skiftrolle`, som minter claim'et fra `ROLLE_PERMS` og kalder
+  `revokeRefreshTokens`. Der er ingen `roller/`-node at rette i.
   I dev skifter man **session**, ikke visning: `fleet/Brugervaelger.jsx` logger
   ud og ind som en anden seedet DEV-bruger, så perms skifter fordi *tokenet*
   skifter. `rolleskifte` er `miljoe === "demo"` — rør ikke den betingelse.
@@ -115,6 +117,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Et datasæt i et modul kan ikke nås af de andre, og så laver de deres egen
   kopi — det var Bil 104 med to nummerplader. `test/demo-kilder.test.mjs`
   fejler på det, og den er skrevet fordi mønstret er dukket op **seks gange**.
+- **Sætte et retention-tal og slette på det.** `RETENTION_MAANEDER` er 24 for
+  alle tre klasser, og det er FORELØBIGT — bogføringsloven trækker mod fem år,
+  GDPR mod kortere. `RETENTION_AFGJORT` er et selvstændigt felt af netop den
+  grund: `retentionFor()` svarer hvor længe, `retentionErAfgjort()` svarer om
+  vi tør handle på det. `auditoprydning` sletter kun når flaget er sandt og
+  rapporterer ellers til `udbyder/retention/`. Et slettet auditspor kan ikke
+  skaffes igen — samme regel som den manglende momssats: vi gætter ikke.
+  Sæt tallet, sæt flaget, og skriv begrundelsen i BESLUTNINGER.md — i den
+  rækkefølge.
+- **Lægge en auditpost i en rapport under `udbyder/`.** Rapporten bærer kun
+  tenant, klasse, år, måned og et ANTAL. En post kopieret derud havde forladt
+  kundens tenant — det er den grænse beslutning 24 holder, og reglens
+  `$andet: false` håndhæver den.
 - **Lægge et forslag på bookingen.** Det hører på ETAPEN, med alle sine
   felter — tid, pris, enheder og chauffør. Det lå begge steder indtil
   beslutning 40, og for et forløb med én etape var det det samme løfte
