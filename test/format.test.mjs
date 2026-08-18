@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { num, pct, km, kr, INTET } from "../src/fleet/format.js";
+import { num, pct, km, kr, INTET , deviation } from "../src/fleet/format.js";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ ET TAL DER IKKE ER BEREGNET, ER IKKE NUL
@@ -37,6 +37,32 @@ test("rigtige tal formateres uændret", () => {
   assert.equal(num(1234.5, 1), "1.234,5");
   assert.equal(pct(92), "92 %");
   assert.equal(km(1500), "1.500 km");
+});
+
+test("⚠ EN AFVIGELSE DER IKKE ER REGNET, ER IKKE UAENDRET", () => {
+  /* Her stod `const value = v || 0`, og null blev til "0,0 %" med neutral
+     tone — en PAASTAND om at intet havde flyttet sig. Det er samme fejl som
+     num() havde, og den er vaerre her: et noegletal der mangler, skriver
+     INTET og indroemmer det, mens en afvigelse paa nul lyder som en maaling
+     af stabilitet.
+
+     Den blev synlig da kpi/ holdt op med at vaere seedet: Dashboardet skrev
+     "0,0 % vs. budget" under en driftsomkostning der aldrig var regnet. */
+  for (const v of [null, undefined, NaN]) {
+    const d = deviation(v, { unit: "pct" });
+    assert.equal(d.text, INTET, `deviation(${String(v)}) skal skrive INTET`);
+    assert.equal(d.pil, "", "en pil uden et tal peger et sted ingen kan genfinde");
+    assert.equal(d.tone, "neutral");
+  }
+});
+
+test("⚠ NUL ER STADIG NUL — uaendret er et svar", () => {
+  /* Det er kun det UBESVAREDE der skiller sig ud. En afvigelse paa nul
+     betyder at tallet ikke har flyttet sig, og det skal kunne siges. */
+  const d = deviation(0, { unit: "pct" });
+  assert.equal(d.text, "0,0 %");
+  assert.equal(d.pil, "");
+  assert.equal(d.tone, "neutral");
 });
 
 test("⚠ kr() SKELNER IKKE — og det er med vilje", () => {

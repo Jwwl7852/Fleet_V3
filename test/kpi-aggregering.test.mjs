@@ -14,6 +14,7 @@ import {
   kundetal, ikkeFaktureretOere, disponeringstal,
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
   prisafvigelser, facilitytal, SERVICE_VINDUE_DAGE,
+  kpiSkelet, medFuldForm,
   deltaPct, deltaPoint, beregnKpi,
 } from "../src/fleet/kpi-aggregering.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
@@ -705,6 +706,83 @@ test("⚠ TRE FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
   assert.equal(t.klimaalarmerIDag, null);
   assert.equal(t.aabneSager, null);
   assert.equal(t.anslaaetServiceOere, null);
+});
+
+
+/* ---- Formen overlever ikke turen gennem RTDB --------------------------- */
+
+/** Det RTDB gør ved et objekt på vej ind: null forsvinder, tomt forsvinder. */
+const somRtdbGemmer = (v) => {
+  if (Array.isArray(v)) return v.length ? v : undefined;
+  if (!v || typeof v !== "object") return v === null ? undefined : v;
+  const ud = {};
+  for (const [k, x] of Object.entries(v)) {
+    const gemt = somRtdbGemmer(x);
+    if (gemt !== undefined) ud[k] = gemt;
+  }
+  return Object.keys(ud).length ? ud : undefined;
+};
+
+test("⚠ ET HELT DOMÆNE KAN FORSVINDE UD AF NODEN", () => {
+  /* Hovedet i kpi-aggregering.js lovede at "feltet SKAL med i objektet, så man
+     kan se af noden hvad der mangler". Det kan databasen ikke levere: RTDB
+     GEMMER IKKE null. Er hele domænet null, findes domænet ikke bagefter.
+
+     Målt på den udrullede base efter første rigtige aggregering: `bemanding`
+     var der overhovedet ikke, og Bemanding-skærmen læste
+     `k.bemanding.disponeret` og blev HVID. Det var ikke skærmens fejl — den
+     læste et felt aggregeringen havde skrevet. */
+  const beregnet = beregnKpi({ division: "gods", nu: NU });
+  assert.ok("bemanding" in beregnet, "aggregeringen skriver bemanding");
+
+  const iNoden = somRtdbGemmer(beregnet);
+  assert.equal(iNoden.bemanding, undefined,
+    "hvis den her holder op med at forsvinde, har RTDB ændret sig — eller " +
+    "bemanding har fået en kilde, og så skal prøven skrives om");
+  assert.equal(iNoden.afvigelser, undefined, "en tom liste forsvinder også");
+});
+
+test("⚠ medFuldForm() GIVER DOMÆNET TILBAGE", () => {
+  /* Oversættelsen hører ét sted — i useKpi — af samme grund som fraDb() i
+     grundlag.js: tyve skærme ville lave tyve varianter, og den næste ville
+     glemme den. */
+  const iNoden = somRtdbGemmer(beregnKpi({ division: "gods", nu: NU }));
+  const k = medFuldForm(iNoden, "gods");
+
+  assert.ok(k.bemanding, "domænet skal være der igen");
+  assert.equal(k.bemanding.disponeret, null, "null, ikke undefined og ikke 0");
+  assert.deepEqual(k.afvigelser, [], "en tom liste er et svar");
+});
+
+test("⚠ DET HENTEDE VINDER OVER SKELETTET", () => {
+  /* Skelettet må aldrig overskrive et rigtigt tal. Nul er en gyldig værdi —
+     "0 åbne fejl" er et svar — og en fletning der tog skelettet sidst, ville
+     gøre hvert nul til et hul. */
+  const k = medFuldForm(
+    { opgaver: { aabne: 0 }, flaade: { braendstofOere: 100 } }, "gods");
+  assert.equal(k.opgaver.aabne, 0, "nul er et svar, ikke et manglende tal");
+  assert.equal(k.flaade.braendstofOere, 100);
+  assert.equal(k.flaade.aktive, null, "det der ikke stod i noden, er null");
+});
+
+test("⚠ SKELETTET UDLEDES AF beregnKpi(), IKKE SKREVET AF", () => {
+  /* En håndskreven liste ville være et andet sted formen stod, og den ville
+     drive første gang nogen tilføjede et felt. Her kan den ikke: skelettet ER
+     beregningens svar, med bladene nulstillet. */
+  const beregnet = beregnKpi({ division: "gods", nu: NU });
+  const skelet = kpiSkelet("gods");
+  assert.deepEqual(Object.keys(skelet).sort(), Object.keys(beregnet).sort());
+  for (const [domaene, felter] of Object.entries(beregnet)) {
+    if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
+    assert.deepEqual(
+      Object.keys(skelet[domaene]).sort(), Object.keys(felter).sort(),
+      `${domaene} har ikke samme felter i skelettet`);
+  }
+});
+
+test("medFuldForm(null) er null — en afvisning bærer ingen form", () => {
+  /* Ingen tal oven på en afvisning. Se datatilstand.js og beslutning 26. */
+  assert.equal(medFuldForm(null, "gods"), null);
 });
 
 /* ---- Jobbet ------------------------------------------------------------ */

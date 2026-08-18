@@ -134,7 +134,25 @@ export function ugenr(ms) {
  * → { text, tone, good }  tone: "good" | "bad" | "neutral"
  */
 export function deviation(v, { betterWhen = "lower", unit = "num", dec } = {}) {
-  const value = v || 0;
+  /* ⚠ EN AFVIGELSE DER IKKE ER REGNET, ER IKKE "UÆNDRET".
+     Her stod `const value = v || 0`, og null blev derfor til "0,0 %" med
+     neutral tone — altså en PÅSTAND om at intet havde flyttet sig. Det er
+     samme fejl som num() havde, og den er værre her: et nøgletal der mangler,
+     skriver INTET og indrømmer det, mens en afvigelse på nul lyder som en
+     måling af stabilitet.
+
+     Den blev synlig da kpi/ holdt op med at være seedet: Dashboardet skrev
+     "0,0 % vs. budget" under en driftsomkostning der aldrig var regnet, og
+     "↘ −0,6 %-point" under en nedetid der var tom — det sidste fordi tallet
+     oven i købet var hardkodet i skærmen.
+
+     ⚠ NUL ER STADIG NUL. `deviation(0)` er "0,0 %" og betyder uændret; det
+     er kun det UBESVAREDE der nu skiller sig ud. Se num() ovenfor og
+     test/format.test.mjs. */
+  if (v == null || Number.isNaN(v)) {
+    return { text: INTET, pil: "", tone: "neutral", good: false };
+  }
+  const value = v;
   const good = betterWhen === "lower" ? value < 0 : value > 0;
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   const abs = Math.abs(value);
@@ -151,8 +169,22 @@ export function deviation(v, { betterWhen = "lower", unit = "num", dec } = {}) {
 }
 
 /** Afvigelse i procent af budget. Beregnes — skrives aldrig ind i basen. */
-export const deviationPct = (faktisk, budget) =>
-  !budget ? 0 : ((faktisk - budget) / budget) * 100;
+/**
+ * Afvigelsen i procent mellem et faktisk tal og et budget — eller `null`.
+ *
+ * ⚠ HER STOD `!budget ? 0`. Mangler budgettet, er afvigelsen ikke NUL — den
+ * er ukendt, og 0 betyder "præcis på budget". Dashboardet skrev
+ * "0,0 % vs. budget" under en driftsomkostning der aldrig var regnet, mod et
+ * budget der heller ikke fandtes. To ubesvarede tal blev til én rosende dom.
+ *
+ * ⚠ OG DET ER SAMME MØNSTER TRE STEDER: regnestykker på null giver STILLE et
+ * tal. `100 - null` er 100, `null / 100` er 0, og `!budget ? 0` er 0. Hver
+ * gang ser resultatet ud som en måling. Se noten ved deviation().
+ */
+export const deviationPct = (faktisk, budget) => {
+  if (!Number.isFinite(faktisk) || !Number.isFinite(budget) || budget === 0) return null;
+  return ((faktisk - budget) / budget) * 100;
+};
 
 /** Grader af alvor. Samme tre trin i alle moduler. */
 export const ALVOR = { hoej: "Høj", mellem: "Mellem", lav: "Lav" };

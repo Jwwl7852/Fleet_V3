@@ -45,6 +45,17 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - **Regne en KPI i jobbet.** `beregnKpi()` er ren og kender ingen database,
   så hele regnestykket kan prøves uden en emulator. Jobbet henter noderne og
   kalder den — regner det selv, kan det kun prøves ved at køre det.
+- **Regne videre på et `null`.** `100 - null` er 100, `null / 100` er 0, og
+  `!budget ? 0` er 0. Hver gang ser resultatet ud som en **måling**, og gaten
+  i `num()`/`deviation()` nås aldrig, fordi tallet er blevet rigtigt på vejen.
+  Dashboardet skrev "— / 100 %", "0,00 vs. sidste periode" og "0,0 % vs.
+  budget" for tre felter der aldrig var regnet. Tjek med `Number.isFinite()`
+  **før** regnestykket, ikke efter.
+- **Tro at `null` overlever en skrivning til RTDB.** Det gør det ikke: feltet
+  **slettes**, og er hele domænet null, forsvinder domænet. `bemanding` fandtes
+  ikke i noden efter første rigtige aggregering, og Bemanding-skærmen blev
+  hvid på `k.bemanding.disponeret`. Formen lægges tilbage af `medFuldForm()`
+  i `kpi-aggregering.js`, kaldt ét sted — i `useKpi`.
 - **Lade et ikke-beregnet tal se ud som nul.** `num`, `pct` og `km` skriver
   `INTET` (—) for `null` og `NaN`, og "0" for nul. En tom liste er et svar;
   et felt aggregeringen ikke kunne regne, er et ubesvaret spørgsmål. Skriver

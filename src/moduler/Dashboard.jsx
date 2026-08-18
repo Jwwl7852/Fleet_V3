@@ -14,7 +14,7 @@ import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
-import { kr, num, pct, dato, deviation, deviationPct } from "../fleet/format.js";
+import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon,
 } from "../fleet/ui.jsx";
@@ -39,13 +39,37 @@ const STATUSFORDELING = (k) => [
    ligger ΔE 7,1 fra hinanden og ville dumpe validatorens gulv, netop fordi
    farven dér ER encodingen. Se beslutning 30. */
 const HANDLINGER = (k) => [
-  { n: 3, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
+  /* ⚠ HER STOD n: 3 — ET HARDKODET TAL. Kortet sagde "3 nye indberetninger"
+     uanset hvad basen indeholdt, og det gjorde det i hver eneste tenant.
+     Reglen i CLAUDE.md er klar: mangler feltet i kpi/, defineres det i
+     demo-kpi.js — det hardkodes ikke i en skærm. Hardkoder man, har man to
+     opgaver senere i stedet for én, og imens står der et tal ingen kan spore.
+
+     ⚠ OG NODEN FINDES. `indberetninger` har regler og et indeks, men INTET
+     seeder den — den sjette node i den tilstand. Feltet er derfor null her og
+     får sin kilde samtidig med seedet. */
+  { n: k.flaade.nyeIndberetninger, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
   { n: k.flaade.udeAfDrift, t: "køretøjer ude af drift", til: "/flaade", link: "Se køretøjer", tone: "ikon-2", ikon: "lastbil" },
   { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "ikon-3", ikon: "ur" },
   { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "ikon-4", ikon: "seddel" },
   { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },
 ];
 
+
+/**
+ * Et beløb — eller INTET hvis det ikke er regnet.
+ *
+ * ⚠ kr() SKELNER IKKE MELLEM NUL OG UBESVARET, og det er en beslutning:
+ * `kr(0)` er "0 kr." og et rigtigt beløb, så kun kalderen kan vide om nul er
+ * et svar. Her er det ikke — og uden den her gate stod Dashboardet med
+ * "0 kr." i driftsomkostninger for en base hvor tallet aldrig var regnet.
+ *
+ * ⚠ DEN BLEV FØRST SYNLIG DA kpi/ HOLDT OP MED AT VÆRE SEEDET. Så længe
+ * provisioneringen skrev DEMO_KPI, havde hvert felt en værdi, og forskellen
+ * mellem "nul" og "ikke regnet" fandtes ikke på skærmen.
+ */
+const beloebEllerIntet = (oere, dec) =>
+  (Number.isFinite(oere) ? kr(oere, dec) : INTET);
 
 export default function Dashboard() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
@@ -88,7 +112,12 @@ export default function Dashboard() {
             <div key={h.t} className="fc-card fc-kpi" style={{ boxShadow: "none" }}>
               <div className={`fc-kpi-ico fc-tone-${h.tone}`}><Ikon navn={h.ikon} /></div>
               <div className="fc-kpi-txt">
-                <div style={{ fontWeight: 650 }}>{h.n} {h.t}</div>
+                {/* ⚠ {null} RENDERER INGENTING. Kortet stod med "køretøjer
+                    ude af drift" og INTET tal foran — ikke en streg, ikke et
+                    nul, bare et hul hvor tallet skulle være. React skriver
+                    ingenting for null, og teksten så ud som en overskrift.
+                    num() er den ene markør; se format.js. */}
+                <div style={{ fontWeight: 650 }}>{num(h.n)} {h.t}</div>
                 <Link className="fc-a" style={{ fontSize: 12.5 }} to={h.til}>{h.link}</Link>
               </div>
             </div>
@@ -98,22 +127,46 @@ export default function Dashboard() {
 
       <KpiRaekke>
         <KpiKort label="Åbne opgaver" vaerdi={num(k.opgaver.aabne)} />
+        {/* ⚠ HER STOD deviation(-0.6, …) — ET HARDKODET DELTA. Kortet viste
+            "↘ −0,6 %-point" under en nedetid der var UBESVARET: en pil der
+            pegede et sted ingen kunne genfinde, og som pegede samme vej i hver
+            eneste tenant. Værre end det hardkodede antal ovenfor, fordi en
+            afvigelse LIGNER en måling af noget der har ændret sig. */}
         <KpiKort label="Nedetid" vaerdi={pct(k.flaade.nedetidPct, 1)}
-                 afvigelse={deviation(-0.6, { betterWhen: "lower", unit: "pct" })} note="%-point" />
-        <KpiKort label="Driftsomkostninger" vaerdi={kr(k.oekonomi.driftsomkostningerOere)}
+                 afvigelse={deviation(k.flaade.nedetidDeltaPoint, { betterWhen: "lower", unit: "pct" })}
+                 note="%-point" />
+        {/* ⚠ kr() SKELNER IKKE — og det er med vilje: kun KALDEREN ved om nul
+            er et svar. Her er det ikke. Uden gaten stod der "0 kr." for et
+            tal ingen har regnet, og nul kroner i driftsomkostninger er en
+            påstand om en vognmand der ikke bruger penge. Se format.js. */}
+        <KpiKort label="Driftsomkostninger" vaerdi={beloebEllerIntet(k.oekonomi.driftsomkostningerOere)}
                  afvigelse={deviation(budgetAfvPct, { betterWhen: "lower", unit: "pct" })} note="vs. budget" />
-        <KpiKort label="Omkostning pr. km" vaerdi={kr(k.flaade.omkostningPrKmOere, 2)}
-                 afvigelse={deviation(k.flaade.omkostningPrKmDeltaOere / 100, { betterWhen: "lower", dec: 2 })}
+        {/* ⚠ null / 100 ER 0, IKKE null. Divisionen gik uden om deviation()s
+            gate, og kortet skrev "0,00 vs. sidste periode" for et delta der
+            aldrig var regnet. Regnestykker paa null giver STILLE et tal —
+            se noten ved deviationPct() i format.js. */}
+        <KpiKort label="Omkostning pr. km" vaerdi={beloebEllerIntet(k.flaade.omkostningPrKmOere, 2)}
+                 afvigelse={deviation(
+                   Number.isFinite(k.flaade.omkostningPrKmDeltaOere)
+                     ? k.flaade.omkostningPrKmDeltaOere / 100 : null,
+                   { betterWhen: "lower", dec: 2 })}
                  note="vs. sidste periode" />
         {/* Planlagt vs. akut vedligehold — feltet fandtes i kpi/ hele tiden.
             Budgetafvigelsen er ikke tabt: den beregnes ÉN gang og vises på
             Økonomi, hvor fortegnskonventionen fra beslutning 3 hører hjemme.
             Her stod den som det femte kort uden at være i mockuppen. */}
+        {/* ⚠ 100 − null ER 100, IKKE NaN. null bliver til 0 i et minusstykke,
+            og kortet skrev derfor "— / 100 %": den ene halvdel ubesvaret, den
+            anden skråsikker. To tal der summerer til 100 skal mangle SAMMEN.
+            En JSX-kommentar kan i øvrigt ikke stå MELLEM to attributter — den
+            læses som et spread, og byggeriet siger 'Expected "..."'. */}
         <KpiKort label="Planlagt vs. akut vedligehold"
-                 vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${pct(100 - k.oekonomi.planlagtVedligeholdPct)}`}
+                 vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${
+                   Number.isFinite(k.oekonomi.planlagtVedligeholdPct)
+                     ? pct(100 - k.oekonomi.planlagtVedligeholdPct) : INTET}`}
                  ekstra={<Fordelingsbjaelke pct={k.oekonomi.planlagtVedligeholdPct} />}
                  note={`Mål ${pct(70)} / ${pct(30)}`} />
-        <KpiKort label="Ikke-faktureret" vaerdi={kr(k.oekonomi.ikkeFaktureretOere)}
+        <KpiKort label="Ikke-faktureret" vaerdi={beloebEllerIntet(k.oekonomi.ikkeFaktureretOere)}
                  note="ekskl. moms" />
       </KpiRaekke>
 
@@ -206,12 +259,17 @@ export default function Dashboard() {
           {/* Bjælke KUN hvor der findes en nævner. "10 personer ledig" har
               ingen helhed at være en andel af, og en bjælke uden nævner ville
               være pynt der ligner en måling. */}
+          {/* ⚠ EN TEMPLATE-STRENG SKRIVER ORDET "null". Linjerne stod med
+              "null / null" og "null personer" i det øjeblik aggregeringen holdt
+              op med at gætte. num() er den ene markør — se format.js. */}
           <MiniLinje label="Chauffører disponeret"
-                     vaerdi={`${k.bemanding.chauffoerDisponeret} / ${k.bemanding.chauffoerPlanlagt}`}
+                     vaerdi={`${num(k.bemanding.chauffoerDisponeret)} / ${num(k.bemanding.chauffoerPlanlagt)}`}
                      andel={k.bemanding.chauffoerDisponeret / k.bemanding.chauffoerPlanlagt} />
           <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede}
                      prik={k.bemanding.underbemandede ? "bad" : "ok"} />
-          <MiniLinje label="Ledig kapacitet" vaerdi={`${k.bemanding.ledig} personer`} />
+          <MiniLinje label="Ledig kapacitet"
+                     vaerdi={Number.isFinite(k.bemanding.ledig)
+                       ? `${num(k.bemanding.ledig)} personer` : INTET} />
           <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)}
                      andel={kapacitet / 100} />
         </Kort>

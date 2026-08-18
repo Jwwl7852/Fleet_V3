@@ -158,6 +158,14 @@ export function udenKilde() {
       aktive: null, udeAfDrift: null, paaVaerksted: null, serviceInden30: null,
       omkostningPrKmOere: null, omkostningPrKmDeltaOere: null,
       nedetidPct: null,
+      /* ⚠ IKKE DIVISIONSSPØRGSMÅLET — en manglende KILDE. `indberetninger`
+         har regler og et indeks, men intet seeder den. Feltet stod som et
+         HARDKODET 3 i Dashboard.jsx, hvor det sagde det samme i hver tenant. */
+      nyeIndberetninger: null,
+      /* Nedetidens periodeafvigelse. Kræver både nedetiden selv — som venter
+         på divisionsspørgsmålet — og en forrige kørsel. Stod hardkodet som
+         deviation(-0.6, …). */
+      nedetidDeltaPoint: null,
     },
     bemanding: {
       planlagt: null, disponeret: null, ledig: null, underbemandede: null,
@@ -612,6 +620,57 @@ export function braendstofOere(indkoeb = [], division, nu = Date.now()) {
     .filter((i) => !IKKE_BRAENDSTOF.includes(i.varenummer))
     .filter((i) => Number.isFinite(i.dato) && i.dato >= fra && i.dato < til)
     .reduce((sum, i) => sum + indkoebBeloebOere(i), 0);
+}
+
+/**
+ * Nodens FULDE form, med `null` i hvert eneste blad.
+ *
+ * ⚠ RTDB GEMMER IKKE null. Et felt der skrives som null, BLIVER SLETTET — og
+ * er hele domænet null, forsvinder domænet. Målt på den udrullede base efter
+ * første rigtige aggregering: `bemanding` fandtes overhovedet ikke i noden,
+ * fordi alle ni felter var null. `afvigelser: []` forsvandt af samme grund.
+ *
+ * Det slår hovedet i denne fil ihjel som teknik: "Feltet SKAL med i objektet,
+ * så man kan se af noden hvad der mangler" kan databasen ikke levere.
+ * Bemanding-skærmen læste `k.bemanding.disponeret` og blev HVID.
+ *
+ * ⚠ SKELETTET UDLEDES AF beregnKpi() SELV, ikke skrevet af. En håndskreven
+ * liste ville være et andet sted formen stod, og den ville drive fra
+ * beregningen første gang nogen tilføjede et felt. Her kan den ikke:
+ * skelettet ER beregningens svar, med bladene nulstillet.
+ *
+ * Brugt af useKpi() til at lægge under det hentede, så en skærm altid får
+ * hvert domæne og hvert felt — og `num()` skriver INTET for dem der mangler,
+ * i stedet for at skærmen kaster.
+ */
+export function kpiSkelet(division = "gods") {
+  const fuld = beregnKpi({ division });
+  const ud = {};
+  for (const [domaene, vaerdi] of Object.entries(fuld)) {
+    if (Array.isArray(vaerdi)) { ud[domaene] = []; continue; }
+    if (!vaerdi || typeof vaerdi !== "object") { ud[domaene] = null; continue; }
+    ud[domaene] = Object.fromEntries(Object.keys(vaerdi).map((f) => [f, null]));
+  }
+  return ud;
+}
+
+/**
+ * Det hentede lagt oven på skelettet — ét domæne ad gangen.
+ *
+ * ⚠ IKKE EN DYB FLETNING. Formen er præcis to niveauer: domæne → felt. En
+ * generisk deep merge ville også flette `aktiverPrArt`s arter og `afvigelser`s
+ * poster sammen med et tomt skelet, og så ville en tom fordeling arve nøgler
+ * der ikke var i svaret.
+ */
+export function medFuldForm(hentet, division = "gods") {
+  if (!hentet) return null;
+  const skelet = kpiSkelet(division);
+  const ud = { ...skelet, ...hentet };
+  for (const [domaene, felter] of Object.entries(skelet)) {
+    if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
+    ud[domaene] = { ...felter, ...(hentet[domaene] || {}) };
+  }
+  return ud;
 }
 
 /**

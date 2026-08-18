@@ -339,9 +339,16 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
 kilde — og skriver begge i én opdatering.
 
-⚠ **16 felter har ingen kilde, og de er ÉT spørgsmål.** `udenKilde()` rummer
-nu kun `flaade` og `bemanding`, og alle 16 venter på det SAMME svar: kan
-flåden og bemandingen deles på division? Så længe listen var lang og blandet,
+⚠ **38 felter er `null` — og 16 af dem er ÉT spørgsmål.** Provisioneringen
+tæller dem nu ved hver kørsel og skelner mellem to slags: felter uden kilde og
+deltaer der venter på en forrige periode (18 stk. i en frisk base — de retter
+sig selv i nat).
+
+`udenKilde()` er ikke totalen; den er SAMLESTEDET for de kilder der mangler
+helt, og den rummer nu kun `flaade` og `bemanding`. De 16 felter dér venter
+på det SAMME svar: kan flåden og bemandingen deles på division? De øvrige ~22
+er null INDE i beregningen, hver med sin skrevne grund — `sager/` findes ikke,
+servicebesøgene har ingen node, budgettet er ikke besluttet. Så længe listen var lang og blandet,
 kunne man tro der var meget tilbage at *bygge*. Der er ét spørgsmål tilbage at
 **besvare**. En prøve i `test/kpi-aggregering.test.mjs` holder listen på de to
 domæner, så et nyt felt ikke kan gemme sig blandt dem.
@@ -660,10 +667,37 @@ mønstret dukker op efter `linjeBeloebOere` og `medPrisliste`: et regnestykke i
 en `demo-*.js` er kode der forsvinder den dag noden er rigtig. Den hedder nu
 `zonePar(zoner, sensorer)` og står i `facility.js`.
 
-⚠ **Nøgletalskortene viser stadig de SEEDEDE demotal i dev.** Provisioneringen
-skriver `DEMO_KPI` til `kpi/`, og `kpiaggregering` kører først 03:20 UTC — så
-"18 åbne ordrer" står i dag over en tabel med 6 rækker. De to er ikke uenige;
-de kommer bare fra hver sin kilde. Se det åbne spørgsmål nedenfor.
+✅ **Nøgletallene seedes ikke længere — de REGNES.** Provisioneringen skrev
+`DEMO_KPI` til `kpi/`, og dev viste derfor mockuppens tal oven på sine egne:
+"18 åbne ordrer" over en tabel med 6 rækker, "287 aktiver" over 15 hentede.
+Det brød husreglen om at opdigtede tal kun findes hvor der ikke er en database
+at spørge — dev **har** en. Provisioneringen henter nu noderne og kalder
+`beregnKpi()`, ad samme vej som det natlige job.
+
+⚠ **Og det afdækkede fem fejl som seedet havde skjult:**
+
+| Hvad | Hvorfor det ikke blev set |
+|---|---|
+| `bemanding` fandtes **ikke** i noden, og skærmen blev hvid | RTDB **gemmer ikke null**. Er hele domænet null, forsvinder domænet — og hovedet i `kpi-aggregering.js` lovede det modsatte. `medFuldForm()` lægger formen tilbage, ét sted |
+| "0 kr." i driftsomkostninger | `kr()` skelner ikke mellem nul og ubesvaret — det er en **beslutning**, og kalderen skal gate. Dashboardet gjorde det ikke |
+| "— / 100 %" i planlagt vs. akut | `100 - null` er **100**, ikke NaN |
+| "0,00 vs. sidste periode" | `null / 100` er **0** — divisionen gik uden om `deviation()`s gate |
+| "0,0 % vs. budget" | `deviationPct()` returnerede **0** når budgettet manglede. To ubesvarede tal blev til én rosende dom |
+
+Fællesnævneren: **et regnestykke på null giver stille et tal**, og resultatet
+ser ud som en måling. `deviation()` og `deviationPct()` skriver nu `INTET` for
+det ubesvarede — mens `deviation(0)` stadig er "0,0 %", fordi *uændret* er et
+svar.
+
+⚠ **To hardkodede tal stod i Dashboardet:** `n: 3` for "nye indberetninger" og
+`deviation(-0.6, …)` for nedetidens afvigelse. Begge sagde det samme i hver
+eneste tenant, og det sidste var en **pil** under et nøgletal der var tomt.
+Felterne hedder nu `flaade.nyeIndberetninger` og `flaade.nedetidDeltaPoint` og
+står i `demo-kpi.js` — kuren CLAUDE.md foreskriver.
+
+⚠ **`indberetninger` er en sjette node med regler og ingen data.** Den blokerer
+ingen KPI-felter ud over det ene ovenfor, og det er derfor den ikke stod på
+nogen liste.
 
 **Venter på aggregeringen.** Felterne er defineret, skærmene læser dem
 korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:

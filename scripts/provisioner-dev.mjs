@@ -43,7 +43,7 @@ import {
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
-import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
+import { beregnKpi } from "../src/fleet/kpi-aggregering.js";
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../src/fleet/demo-personale.js";
 import { DEMO_KUNDER } from "../src/fleet/demo-kunder.js";
@@ -166,8 +166,6 @@ export function forklarAuthFejl(kode) {
  * ingen skærm rører, driver fra sin kilde uden at nogen ser det.
  */
 export const SEED = [
-  { node: "kpi/gods/current", data: DEMO_KPI.gods, form: "objekt" },
-  { node: "kpi/bus/current", data: DEMO_KPI.bus, form: "objekt" },
   { node: "koeretoejer", data: DEMO_KOERETOEJER, form: "liste" },
   { node: "personale", data: DEMO_PERSONALE, form: "liste" },
   { node: "kompetencer", data: DEMO_KOMPETENCER, form: "liste" },
@@ -487,6 +485,75 @@ async function main() {
   }
   await db.ref(`tenants/${DEV_TENANT}/reservationer`).set(reservationer);
   console.log(`  ${"reservationer".padEnd(24)} ${antalResv} (udledt af etaperne)`);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ NØGLETALLENE SEEDES IKKE LÆNGERE — DE REGNES.
+
+     Her stod `kpi/gods/current` og `kpi/bus/current` med DEMO_KPI som data.
+     Det betød at dev viste MOCKUPPENS tal oven på sine egne: "18 åbne ordrer"
+     stod over en tabel med 6 rækker, og "287 aktiver" over 15 hentede. De to
+     var ikke uenige — de kom bare fra hver sin kilde, og kun den ene af dem
+     var kundens.
+
+     ⚠ OG DET BRØD EN HUSREGEL. Opdigtede tal findes KUN hvor der ikke er en
+     database at spørge (se datatilstand.js og beslutning 26). Dev HAR en
+     database. Så længe `kpi/` manglede kilder, var seedet den mindste onde;
+     nu er KILDER_DER_MANGLER tom, og undtagelsen har ingen grund tilbage.
+
+     ⚠ DE HENTES TILBAGE FRA BASEN, ikke fra demo-konstanterne. Det er den
+     SAMME vej jobbet går — læs noderne, kald beregnKpi() — og derfor prøver
+     det her seed også om det der lige blev skrevet, kan LÆSES som
+     aggregeringen forventer. En form der kun virker på vej ind, er ikke en
+     form.
+
+     ⚠ INGEN `forrige`. Deltaerne bliver null i en frisk base, og det er det
+     rigtige: der ER ingen forrige periode. Et opdigtet forrige-tal ville
+     give en pil der pegede et sted ingen kunne genfinde. Første natlige
+     kørsel arkiverer `current` og giver deltaerne deres grundlag.
+
+     Samme mønster som reservationerne ovenfor: udledt, ikke seedet.
+     ══════════════════════════════════════════════════════════════════════ */
+  const somRaekker = (v) => Object.entries(v || {}).map(([id, x]) => ({ id, ...x }));
+  const hentNode = async (n) =>
+    somRaekker((await db.ref(`tenants/${DEV_TENANT}/${n}`).once("value")).val());
+
+  const [
+    kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
+    kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer,
+  ] = await Promise.all([
+    "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
+    "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
+  ].map(hentNode));
+
+  const nuMs = Date.now();
+  for (const division of ["gods", "bus"]) {
+    const tal = beregnKpi({
+      division,
+      kunder: kpiKunder, etaper: kpiEtaper, grundlag: kpiGrundlag,
+      opgaver: kpiOpgaver, indkoeb: kpiIndkoeb, fakturaer: kpiFakturaer,
+      leverandoerer: kpiLeverandoerer,
+      facilityAktiver: kpiAktiver, facilityFejl: kpiFejl, facilitySensorer: kpiSensorer,
+      forrige: null, nu: nuMs,
+    });
+    await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);
+
+    /* ⚠ TO SLAGS null, OG DE MAA IKKE TAELLES SAMMEN. Foerste udgave af
+       den her linje skrev "56 felter uden kilde" — men de fleste af dem var
+       DELTAER, som er null fordi der ingen forrige koersel er i en frisk
+       base. Det er ikke et efterslaeb; det retter sig selv i nat.
+
+       Blandet sammen var tallet ubrugeligt til det ene det skal bruges til:
+       at man kan SE om en etape har flyttet noget. */
+    const blade = Object.values(tal)
+      .filter((v) => v && typeof v === "object" && !Array.isArray(v))
+      .flatMap((o) => Object.entries(o));
+    const erDelta = ([f]) => /Delta|Point$/.test(f);
+    const udenKilde = blade.filter(([, v]) => v === null).filter((x) => !erDelta(x)).length;
+    const udenForrige = blade.filter(([, v]) => v === null).filter(erDelta).length;
+    console.log(
+      `  ${`kpi/${division}/current`.padEnd(24)} beregnet — ${udenKilde} uden kilde, ` +
+      `${udenForrige} deltaer uden forrige periode`);
+  }
 
   /* 4. Håndhæver databasen den regelfil vi lige har prøvet 591 gange?
      Provisionering er det øjeblik hvor man sætter et miljø op — og det var

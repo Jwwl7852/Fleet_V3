@@ -17,6 +17,7 @@ import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand } from "./datatilstand.js";
+import { medFuldForm } from "./kpi-aggregering.js";
 
 export function useKpi() {
   const { tenantId, division, path, dage, bruger } = useFleet();
@@ -67,7 +68,19 @@ export function useKpi() {
         const vaerdi = snap.val();
         if (vaerdi) {
           setTilstand({ art: TILSTAND.ok, visDemo: false });
-          setData(vaerdi);
+          /* ⚠ LAGT OVEN PÅ NODENS FULDE FORM. RTDB gemmer ikke null: et felt
+             der aggregeringen skrev som null, er SLETTET når det kommer
+             tilbage — og er hele domænet null, findes domænet ikke.
+
+             Målt på den udrullede base: `bemanding` manglede helt, fordi alle
+             ni felter afventer divisionsspørgsmålet. Bemanding-skærmen læser
+             `k.bemanding.disponeret` og blev HVID. Det var ikke skærmens fejl
+             — den læste et felt aggregeringen havde skrevet.
+
+             Oversættelsen hører HER og ikke i hver skærm, af samme grund som
+             fraDb() i grundlag.js: tyve skærme ville lave tyve varianter, og
+             den næste ville glemme den. */
+          setData(medFuldForm(vaerdi, division));
         } else {
           setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
           setData(null);

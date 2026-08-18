@@ -17,6 +17,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { ROLLE_PERMS, harPerm, PERM } from "../src/fleet/permissions.js";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
@@ -227,8 +228,34 @@ describe("Seed-formen passer til det useListe læser", () => {
      hver eneste regel kræver den. Står den ikke, afviser alt. */
   it("seeder de noder skærmene faktisk læser", () => {
     const noder = SEED.map((s) => s.node);
-    for (const n of ["kpi/gods/current", "koeretoejer", "personale", "kompetencer", "kunder", "fravaer"]) {
+    for (const n of ["koeretoejer", "personale", "kompetencer", "kunder", "fravaer"]) {
       assert.ok(noder.includes(n), `${n} læses af en skærm, men seedes ikke`);
     }
+  });
+
+  it("⚠ NOEGLETALLENE SEEDES IKKE — DE REGNES", () => {
+    /* Her stod kpi/gods/current med DEMO_KPI som data, og dev viste derfor
+       MOCKUPPENS tal oven paa sine egne: "18 aabne ordrer" over en tabel med
+       6 raekker. Opdigtede tal findes KUN hvor der ikke er en database at
+       spoerge (beslutning 26) — og dev HAR en.
+
+       Saa laenge kpi/ manglede kilder, var seedet den mindste onde. Nu er
+       KILDER_DER_MANGLER tom, og undtagelsen har ingen grund tilbage.
+       Provisioneringen henter noderne og kalder beregnKpi(), ad samme vej
+       som det natlige job. */
+    const noder = SEED.map((s) => s.node);
+    for (const n of noder) {
+      assert.ok(!n.startsWith("kpi/"),
+        `${n} seedes — noegletal skal REGNES af de seedede noder`);
+    }
+    const kilde = readFileSync("scripts/provisioner-dev.mjs", "utf8");
+    assert.match(kilde, /beregnKpi\(\{/,
+      "provisioneringen kalder ikke beregnKpi()");
+    /* ⚠ IMPORTEN, IKKE ORDET. Foerste udgave af den her proeve matchede paa
+       /DEMO_KPI/ og blev roed af sin egen forklarende KOMMENTAR i
+       provisioneringen. En proeve der ikke kan skelne kode fra kommentar,
+       tvinger den naeste til at slette begrundelsen for at faa groent. */
+    assert.doesNotMatch(kilde, /^import .*DEMO_KPI/m,
+      "DEMO_KPI importeres stadig — saa er seedet kun flyttet");
   });
 });

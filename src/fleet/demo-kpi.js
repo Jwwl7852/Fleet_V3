@@ -34,6 +34,15 @@ export const DEMO_KPI = {
     flaade: {
       aktive: 42, udeAfDrift: 6, paaVaerksted: 3, serviceInden30: 9,
       omkostningPrKmOere: 342, omkostningPrKmDeltaOere: 21, nedetidPct: 3.8,
+      /* ⚠ STOD SOM ET HARDKODET 3 I Dashboard.jsx. Kortet sagde "3 nye
+         indberetninger" uanset basen. Feltet hører her — så er skærmen rigtig
+         med det samme, og det eneste der mangler, er aggregeringen. */
+      nyeIndberetninger: 3,
+      /* ⚠ PROCENTPOINT, ikke procent — og feltet stod som et HARDKODET
+         deviation(-0.6, …) i Dashboard.jsx. En afvigelse ligner en måling af
+         noget der har ændret sig; hardkodet pegede pilen samme vej i hver
+         tenant, under et nøgletal der var ubesvaret. */
+      nedetidDeltaPoint: -0.6,
       ikkeLinkedeFakturaer: 5,
       /* Beslutning 25: Indberetninger viser periodens braendstofudgift. Feltet
          defineres HER frem for at blive hardkodet i skaermen — saa er skaermen
@@ -157,6 +166,8 @@ export const DEMO_KPI = {
     flaade: {
       aktive: 18, udeAfDrift: 2, paaVaerksted: 1, serviceInden30: 4,
       omkostningPrKmOere: 268, omkostningPrKmDeltaOere: -9, nedetidPct: 2.4,
+      nyeIndberetninger: 2,
+      nedetidDeltaPoint: 0.3,
       ikkeLinkedeFakturaer: 2,
       braendstofOere: 74960000,
     },
