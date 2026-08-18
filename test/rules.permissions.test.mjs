@@ -56,7 +56,8 @@ before(async () => {
       navn: "Hydra-Grene Kolding", kategori: "reservedele", aktiv: true,
     });
     await set(ref(db, sti("indberetninger", "andres")), {
-      division: "gods", type: "braendstof", km: 100, oprettetAf: "enAnden",
+      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 100,
+      oprettetAf: "enAnden", oprettetMs: 1786000000000,
     });
   });
 });
@@ -211,7 +212,8 @@ describe("rolle-presets giver samme adgang som før", () => {
     const db = somRolle("uid-ch", "chauffoer");
     await assertSucceeds(
       set(ref(db, sti("indberetninger", "egen")), {
-        division: "gods", type: "braendstof", km: 184320, oprettetAf: "uid-ch",
+        division: "gods", art: "braendstof", forloeb: "ny", kmStand: 184320,
+        oprettetAf: "uid-ch", oprettetMs: 1786000000000,
       })
     );
     await assertFails(set(ref(db, sti("kunder", "k-ch")), KUNDE));
@@ -221,12 +223,14 @@ describe("rolle-presets giver samme adgang som før", () => {
   it("chaufføren må ikke rette en andens indberetning — admin må", async () => {
     const ch = somRolle("uid-ch2", "chauffoer");
     await assertFails(set(ref(ch, sti("indberetninger", "andres")), {
-      division: "gods", type: "braendstof", km: 999, oprettetAf: "enAnden",
+      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 999,
+      oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
 
     const adm = somRolle("uid-adm", "admin");
     await assertSucceeds(set(ref(adm, sti("indberetninger", "andres")), {
-      division: "gods", type: "braendstof", km: 999, oprettetAf: "enAnden",
+      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 999,
+      oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
   });
 

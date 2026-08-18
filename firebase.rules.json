@@ -260,6 +260,63 @@
           "fravaer": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)",
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)"
+          },
+
+          // ⚠ NODEN FANDTES IKKE — men CLAUDE.md beskrev dens regel som
+          // gaeldende: "sensitive/…/underskrift er write-once i reglerne
+          // (!data.exists())". Den regel stod ingen steder. En dokumenteret
+          // spaerring uden haandhaevelse er den vaerste slags: den staar i
+          // vejen for at nogen bygger den, og den stopper ingenting.
+          //
+          // indberetninger.js har hele tiden sagt hvad der skulle ske:
+          // PERM_SENSITIVE_LAES_PLANLAGT tilfoejes "i SAMME ombaering som
+          // reglerne og deres tests — ikke foer". Det er den ombaering.
+          //
+          // ⚠ NODEN FINDES FOR ALLE ARTER, ogsaa de fleste med et TOMT objekt.
+          // At et felt er skjult, er i sig selv en oplysning: skjulte vi kun
+          // skadebeskrivelsen naar der ER en skade, kunne man laese af
+          // haengelaasen at der skete noget. Samme indsigt som cargoValue.
+          "indberetninger": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+
+            "$id": {
+              // Den der skriver den klassificerede del, skal baade kunne
+              // skrive indberetningen og se det klassificerede — ellers kunne
+              // man skrive noget ind man ikke selv maatte laese igen.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+
+              "skadeBeskrivelse": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+
+              "modpart": {
+                "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+                "rolle": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "telefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "$andet": { ".validate": false }
+              },
+
+              // ⚠ WRITE-ONCE. Reglen CLAUDE.md allerede beskrev: en
+              // underskrift skrives én gang og rettes ALDRIG. En rettelse er
+              // en NY indberetning der henviser til den gamle. Et bevis der
+              // kan redigeres, beviser ingenting.
+              //
+              // !data.exists() paa selve underskriften — ikke paa et enkelt
+              // felt i den. Kunne man rette navnet bagefter, var det stadig
+              // en redigeret underskrift.
+              "underskrift": {
+                ".validate": "!data.exists() && newData.hasChildren(['navn', 'ms'])",
+                "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+                "billedeSti": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                // personId, ikke uid: det er hvem underskriften HANDLER OM.
+                // Modparten har som regel slet intet login, og feltet er
+                // derfor ofte null — navnet og stedet baerer beviset.
+                "personId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "stedTekst": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                "ms": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              },
+
+              "$andet": { ".validate": false }
+            }
           }
         },
         // VAERDIANSAETTELSE — eget undertrae, ikke en del af sensitive/.
@@ -907,13 +964,108 @@
         // målerstand, ikke km siden sidste tankning.
         "indberetninger": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
-          ".indexOn": ["oprettetMs", "koeretoejId", "type"],
+          // ⚠ HER STOD "type". Posterne baerer "art" — godsskade, reparation,
+          // koeretoejsskade, braendstof. TREDJE gang et indeks navngiver et
+          // felt der ikke findes (opgaver."dato", fakturaer."godkendelsesstatus").
+          // Det FEJLER ikke: RTDB henter hele noden ned og filtrerer i
+          // klienten med en advarsel i konsollen. Regningen kommer stille.
+          ".indexOn": ["oprettetMs", "koeretoejId", "art"],
           "$id": {
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|')) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
-            ".validate": "newData.hasChildren(['division'])",
+            // ⚠ NODEN VALIDEREDE KUN division. Alt andet var frit — en art
+            // vi ikke kender, et forloeb der ikke findes, en omkostning som
+            // streng. Og chauffoerer SKRIVER til den: det er den ene node
+            // hvor den mindst betroede rolle opretter poster.
+            ".validate": "newData.hasChildren(['art', 'forloeb', 'division', 'oprettetAf', 'oprettetMs'])",
+
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            }
+            },
+
+            // Ordlisterne staar i indberetninger.js (HAENDELSE_ART, FORLOEB).
+            // Her staar de som laengdetjek af samme grund som lagre.metode:
+            // en afskrift i regelfilen ville vaere et andet sted de stod, med
+            // sin egen udrulningscyklus. Proeverne holder demo op mod modulet.
+            "art": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "forloeb": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+
+            // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget — og
+            // .write ovenfor sammenligner netop det felt med auth.uid.
+            // Bytter man om, holder ejerskabstjekket op med at virke, fordi
+            // et personId aldrig matcher et uid.
+            //
+            // ⚠ OG DEN SKAL VAERE SKRIVERENS EGET uid VED OPRETTELSE.
+            // .write siger `!data.exists() || data.child(oprettetAf) == auth.uid`
+            // — altsaa: ejerskabet proeves kun ved REDIGERING. Ved oprettelse
+            // var feltet frit, og en chauffoer kunne oprette en indberetning i
+            // en KOLLEGAS navn. Han kunne saa ikke rette den bagefter, men
+            // sporet ville pege paa den forkerte, og auditloggen med.
+            // Fundet af proeven i test/rules.indberetninger.test.mjs.
+            //
+            // skrivAlle maa saette et andet uid: det er hele meningen med den
+            // permission — vaerkfoereren retter chauffoerens post.
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80 && (newData.val() === auth.uid || (auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|')))" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+
+            "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },
+            "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "indkoebId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoeb').child(newData.val()).exists()" },
+            "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 500" },
+
+            // Oere som integer. En float bliver 1849,999 i en sum.
+            "omkostningOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+            "ingenOmkostning": { ".validate": "newData.isBoolean()" },
+
+            // Braendstof: km er TOTAL maalerstand, ikke km siden sidst.
+            "kmStand": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "liter": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "adBlueLiter": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "prisPrLiterOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+
+            "tidsregistrering": {
+              "ankomstMs": { ".validate": "newData.isNumber()" },
+              "afgangMs": { ".validate": "newData.isNumber()" },
+              "registreretAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+              "registreretMs": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            },
+
+            "materialelinjer": {
+              "$linjeId": {
+                ".validate": "newData.hasChildren(['vare', 'maengde'])",
+                "vare": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+                "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                // TUSINDEDELE — MAENGDE_SKALA i indberetninger.js importeres
+                // fra grundlag.js. To skalaer fakturerer 1000x forkert.
+                "maengde": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+                "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+                // ⚠ INGEN EKSISTENSTJEK — OG DET ER ET AABENT SPOERGSMAAL,
+                // ikke en forglemmelse. `lagre` beskrives i moduler.js som
+                // "reservedelslageret under Indkoeb", men baerer i PRISER.md
+                // doegnsatser for KUNDERS opbevaring. Materialelinjens lagerId
+                // hedder i demo "lager-vaerksted" og "lager-hoved" — altsaa
+                // hverken det ene eller det andet.
+                //
+                // Et opslag her ville laase noden fast paa den ene laesning
+                // uden at nogen havde besluttet hvilken. Se README.
+                "lagerId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "faktureret": { ".validate": "newData.isBoolean()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
+            // ⚠ DE TRE KLASSIFICEREDE FELTER MAA IKKE STAA HER.
+            // skadeBeskrivelse, modpart og underskrift hoerer i
+            // sensitive/indberetninger — beslutning 17. Uden de her tre
+            // linjer kunne en skadebeskrivelse skrives paa hovedposten, som
+            // ENHVER med flaademodulet kan laese, og adskillelsen ville vaere
+            // en konvention frem for en spaerring.
+            "skadeBeskrivelse": { ".validate": false },
+            "modpart": { ".validate": false },
+            "underskrift": { ".validate": false },
+
+            "$andet": { ".validate": false }
           }
         },
 

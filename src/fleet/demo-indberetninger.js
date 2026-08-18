@@ -65,6 +65,29 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
 };
 
 export const DEMO_INDBERETNINGER = [
+  /* ⚠ DEN ENESTE MED forloeb: "ny" — OG DEN ER TILFØJET FORDI DEN MANGLEDE.
+     Sættet gik fra "afventerFaktura" og opefter, så `flaade.nyeIndberetninger`
+     gav 0 i begge divisioner: sandt for de data, men en tælling der kun kan
+     give 0, kan ikke tage fejl på en måde nogen opdager. Femte gang mønstret
+     dukker op — den åbne indkøbsordre, den planlagte facility-opgave, den
+     udførte opgave uden tid og lageret uden døgnsats.
+
+     ⚠ INGEN OMKOSTNING ENDNU, og det er ikke det samme som nul: skaden er
+     meldt, ingen har vurderet den. `ingenOmkostning` er heller ikke sat —
+     det felt er en BESLUTNING om at der ingen bliver, og den er ikke truffet. */
+  {
+    id: "ind-000", art: "koeretoejsskade", forloeb: "ny",
+    oprettetAf: "uid-lars", oprettetMs: NU - 2 * T,
+    /* ⚠ kt-106, IKKE kt-104. Foerste udgave laa paa kt-104, som allerede
+       har en aaben koeretoejsskade — og saa gik test/steder.test.mjs fra 1
+       til 2 aabne fejl paa den bil. En NY post maa ikke aendre et tal en
+       anden proeve holder fast i, medmindre det ER pointen. */
+    koeretoejId: "kt-106", bookingId: null, sagId: null, division: "gods",
+    beskrivelse: "Ridse i venstre sidepanel, opdaget ved afgangstjek",
+    omkostningOere: null, indkoebId: null, ingenOmkostning: null,
+    tidsregistrering: null, materialelinjer: [],
+  },
+
   {
     id: "ind-001",
     art: "godsskade",
@@ -206,7 +229,11 @@ export const DEMO_INDBERETNINGER = [
     adBlueLiter: 18,
     prisPrLiterOere: 1_242,
     omkostningOere: 51_170,
-    indkoebId: "ink-2026-0881",
+    /* ⚠ HER STOD "ink-2026-0881" — ET ID DER IKKE FANDTES. Indkøbslinjerne
+       hedder il-XXX, og feltet slår nu op i `indkoeb`. En hængende reference
+       ser LINKET ud og er det ikke; den er allerede talt som afstemt. Tredje
+       gang mønstret dukker op efter fakturaens "ik-001". */
+    indkoebId: "il-003",
     ingenOmkostning: null,
     tidsregistrering: null,
     materialelinjer: [],

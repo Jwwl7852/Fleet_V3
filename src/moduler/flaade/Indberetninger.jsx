@@ -21,17 +21,25 @@
  * fakturerer man til kostpris eller bogfører sin salgspris som en omkostning.
  * ---------------------------------------------------------------------------
  *
- * FASE 0: VISNING. indberetninger/ har ingen sensitive-node i
- * firebase.rules.json, og indberetninger.sensitiveLaes findes ikke i
- * permissions.js. Begge tilføjes i samme ombæring som reglerne og deres tests
- * — ikke før. Indtil da viser skærmen den LÅSTE tilstand, så man kan se at
- * feltet findes og er beskyttet.
+ * ⚠ FASEN ER OVRE. Her stod at `indberetninger/` ingen sensitive-node havde
+ * i firebase.rules.json, og at `indberetninger.sensitiveLaes` ikke fandtes i
+ * permissions.js — begge dele "tilføjes i samme ombæring som reglerne og
+ * deres tests, ikke før". Det er sket: noden findes, underskriften er
+ * write-once, permissionen er koordinatorens, og skærmen læser nu satellitten
+ * gennem `usePost()` frem for demo-sættet.
+ *
+ * ⚠ SATELLITTEN HENTES KUN NÅR BRUGEREN MÅ LÆSE DEN. Uden `maaSensitivt`
+ * ville hver visning give en `permission-denied` — altså en AFVIST læsning
+ * hver gang en disponent åbnede en indberetning. En afvisning er reglerne der
+ * VIRKER, men den skal ikke fremprovokeres af os selv.
  */
 import { useState } from "react";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
+import { usePost } from "../../fleet/usePost.js";
 import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
-import { harPerm } from "../../fleet/permissions.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
@@ -40,10 +48,9 @@ import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
   kanAfslutte, kanFaktureres,
   tidPaaStedetMin, forsinkelseMin, forbrugKmPrLiter,
-  PERM_SENSITIVE_LAES_PLANLAGT,
 } from "../../fleet/indberetninger.js";
 import {
-  DEMO_INDBERETNINGER, DEMO_INDBERETNINGER_SENSITIVE, demoTankninger,
+  demoTankninger,
 } from "../../fleet/demo-indberetninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { talFraAntal } from "../../fleet/grundlag.js";
@@ -56,19 +63,39 @@ export default function Indberetninger() {
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("ind-001");
 
-  if (henter) return <Henter hvad="indberetninger" />;
+  /* ⚠ NODEN, IKKE DEMOFILEN. `indberetninger` var den sjette node med regler
+     og ingen data — den blokerede kun ét KPI-felt, og Dashboardet hardkodede
+     tallet i stedet for at savne det.
+
+     ordnPaa: "art" og ikke "type". Indekset navngav "type", som ingen post
+     har; tredje gang det mønster dukkede op. */
+  const liste = useListe("indberetninger", {
+    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500,
+  });
+
+  const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
+  /* ⚠ id = null BETYDER "SPØRG IKKE". Hooket står ubetinget — hooks må ikke
+     kaldes betinget — mens selve læsningen først sker når brugeren må. */
+  const sensitiv = usePost("sensitive/indberetninger", maaSensitivt ? valgtId : null);
+
+  if (henter || liste.henter) return <Henter hvad="indberetninger" />;
+  /* En AFVIST læsning af listen er ikke en tom liste. */
+  if (blokerer(liste.tilstand)) {
+    return <Datatilstand tilstand={liste.tilstand} genprov={liste.genindlaes} />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  const valgt = DEMO_INDBERETNINGER.find((i) => i.id === valgtId) || null;
+  const raekker = liste.data;
+  const valgt = raekker.find((i) => i.id === valgtId) || null;
 
   /* AFLEDT af den viste liste — hører derfor ikke i kpi/. Labelen siger
      hvilket udsnit, så tallet ikke læses som en total. */
-  const aabne = DEMO_INDBERETNINGER.filter((i) => i.forloeb !== "afsluttet");
+  const aabne = raekker.filter((i) => i.forloeb !== "afsluttet");
   const kanIkkeAfsluttes = aabne.filter((i) => !kanAfslutte(i).ok && i.forloeb === "afventerFaktura");
-  const ufakturerede = DEMO_INDBERETNINGER.flatMap((i) =>
+  const ufakturerede = raekker.flatMap((i) =>
     (i.materialelinjer || []).filter((l) => kanFaktureres(i, l).ok)
   );
 
@@ -105,7 +132,7 @@ export default function Indberetninger() {
                 ) },
               { key: "oprettet", label: "Oprettet", render: (i) => dato(i.oprettetMs) },
             ]}
-            raekker={DEMO_INDBERETNINGER}
+            raekker={raekker}
             noegle={(i) => i.id}
             paaRaekke={(i) => setValgtId(i.id)}
             erValgt={(i) => i.id === valgtId}
@@ -114,7 +141,7 @@ export default function Indberetninger() {
         </Kort>
 
         {valgt
-          ? <Detaljer i={valgt} bruger={bruger} />
+          ? <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}} />
           : <Kort titel="Detaljer"><Tom>Vælg en indberetning.</Tom></Kort>}
       </Gitter>
     </div>
@@ -123,10 +150,12 @@ export default function Indberetninger() {
 
 /* ---- Detaljepanelet ---------------------------------------------------- */
 
-function Detaljer({ i, bruger }) {
+function Detaljer({ i, bruger, sensitivt }) {
   const afslut = kanAfslutte(i);
-  const maaSensitivt = harPerm(bruger?.perms, PERM_SENSITIVE_LAES_PLANLAGT);
-  const sensitivt = DEMO_INDBERETNINGER_SENSITIVE[i.id] || {};
+  /* ⚠ SAMME PERMISSION SOM HENTNINGEN OVENFOR. Gaten her afgør hvad der
+     TEGNES; reglen på `sensitive/indberetninger` afgør hvad der kan LÆSES.
+     Ligger kontrollen kun i skærmen, går et direkte kald uden om den. */
+  const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
 
   return (
     <Kort titel={HAENDELSE_ART[i.art]?.label || i.art}>

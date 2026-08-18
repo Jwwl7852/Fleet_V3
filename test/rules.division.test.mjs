@@ -114,7 +114,13 @@ describe("beslutning 15 — division som felt", () => {
     const db = som("admin1", "admin");
     const noder = [
       ["opgaver", { art: "vaerksted", dato: 1786000000000 }],
-      ["indberetninger", { type: "braendstof", km: 184320, oprettetAf: "admin1" }],
+      /* ⚠ EN RIGTIG INDBERETNING, IKKE DET MINDST MULIGE. Noden validerede
+         kun `division`; nu kræves art, forløb, oprettetAf og oprettetMs — og
+         chauffører SKRIVER til den, så det er den ene node hvor den mindst
+         betroede rolle opretter poster. Prøven skal ramme reglen, ikke
+         undersøge hvor lidt man kan slippe afsted med. */
+      ["indberetninger", { art: "braendstof", forloeb: "ny", kmStand: 184320,
+        liter: 410, oprettetAf: "admin1", oprettetMs: 1786000000000 }],
       /* ⚠ FIXTURET HAVDE beloebOere. Det er nu forbudt: linjens beloeb
          BEREGNES af antal x pris, og to kilder til samme tal kan drive fra
          hinanden. Posten her er en rigtig indkoebslinje — den proever

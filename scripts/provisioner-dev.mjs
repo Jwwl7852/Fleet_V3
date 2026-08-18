@@ -34,6 +34,9 @@ import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
+  DEMO_INDBERETNINGER, DEMO_INDBERETNINGER_SENSITIVE,
+} from "../src/fleet/demo-indberetninger.js";
+import {
   DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
 } from "../src/fleet/demo-indkoeb.js";
 import {
@@ -198,6 +201,18 @@ export const SEED = [
      forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt
      11 KPI-felter paa null. Samme form som etaper foer de blev seedet. */
   { node: "opgaver", data: DEMO_OPGAVER, form: "liste" },
+  /* ⚠ DEN SJETTE NODE MED REGLER OG INGEN DATA. Den blokerede kun ét
+     KPI-felt, og det er derfor den ikke stod på nogen liste — Dashboardet
+     hardkodede tallet i stedet.
+
+     ⚠ OG DE KLASSIFICEREDE FELTER LIGGER I EN SATELLIT, også i demo. Ikke
+     fordi demoen har brug for adgangskontrol, men fordi formen på noden er
+     det skærmen bygges imod. Noden findes for ALLE arter, de fleste med et
+     TOMT objekt: at et felt er skjult, er i sig selv en oplysning — skjulte
+     vi kun skadebeskrivelsen når der ER en skade, kunne man læse af
+     hængelåsen at der skete noget. */
+  { node: "indberetninger", data: DEMO_INDBERETNINGER, form: "liste" },
+  { node: "sensitive/indberetninger", data: DEMO_INDBERETNINGER_SENSITIVE, form: "objekt" },
   /* ⚠ INDKOEB HAVDE OGSAA REGLER OG INGEN DATA — og den havde mest af det:
      et indeks, en validering af hver eneste feltform og en kommentar om
      hvorfor prisen er hele oere. Alt sammen om en node der var tom. Den holdt
@@ -519,10 +534,11 @@ async function main() {
 
   const [
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
-    kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer,
+    kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer, kpiIndberetninger,
   ] = await Promise.all([
     "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
     "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
+    "indberetninger",
   ].map(hentNode));
 
   const nuMs = Date.now();
@@ -533,6 +549,7 @@ async function main() {
       opgaver: kpiOpgaver, indkoeb: kpiIndkoeb, fakturaer: kpiFakturaer,
       leverandoerer: kpiLeverandoerer,
       facilityAktiver: kpiAktiver, facilityFejl: kpiFejl, facilitySensorer: kpiSensorer,
+      indberetninger: kpiIndberetninger,
       forrige: null, nu: nuMs,
     });
     await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);

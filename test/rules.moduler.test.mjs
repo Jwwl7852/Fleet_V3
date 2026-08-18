@@ -44,7 +44,8 @@ let miljoe;
    valideres af reglerne, så den skal være rigtig. */
 const TESTDATA = {
   koeretoejer: { kt1: { art: "lastbil", status: "aktiv" } },
-  indberetninger: { i1: { art: "tankning", dato: "2026-08-01", forloeb: "afsluttet", oprettetAf: "u-x" } },
+  indberetninger: { i1: { division: "gods", art: "braendstof", forloeb: "afsluttet",
+    oprettetAf: "u-x", oprettetMs: 1786000000000 } },
   /* ⚠ lokationId SKAL pege paa en lokation der findes — reglen slaar den op.
      Uden lokationer her fejler skrivningen paa VALIDERING og ligner en
      modulspaerring. Prøven ville sige det rigtige af den forkerte grund. */

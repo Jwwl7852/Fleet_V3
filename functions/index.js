@@ -2726,7 +2726,7 @@ export const kpiaggregering = onSchedule(
       const rod = db.ref(`tenants/${tenantId}`);
       const [
         kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
-        facilityAktiver, facilityFejl, facilitySensorer,
+        facilityAktiver, facilityFejl, facilitySensorer, indberetninger,
       ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
@@ -2745,6 +2745,7 @@ export const kpiaggregering = onSchedule(
           rod.child("facility/aktiver").once("value").then((s) => raekker(s.val())),
           rod.child("facility/fejl").once("value").then((s) => raekker(s.val())),
           rod.child("facility/sensorer").once("value").then((s) => raekker(s.val())),
+          rod.child("indberetninger").once("value").then((s) => raekker(s.val())),
         ]);
 
       for (const division of KPI_DIVISIONER) {
@@ -2753,7 +2754,7 @@ export const kpiaggregering = onSchedule(
         const nyt = beregnKpi({
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
-          forrige, nu,
+          indberetninger, forrige, nu,
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

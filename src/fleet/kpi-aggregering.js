@@ -153,10 +153,7 @@ export function udenKilde() {
       aktive: null, udeAfDrift: null, paaVaerksted: null, serviceInden30: null,
       omkostningPrKmOere: null, omkostningPrKmDeltaOere: null,
       nedetidPct: null,
-      /* ⚠ IKKE DIVISIONSSPØRGSMÅLET — en manglende KILDE. `indberetninger`
-         har regler og et indeks, men intet seeder den. Feltet stod som et
-         HARDKODET 3 i Dashboard.jsx, hvor det sagde det samme i hver tenant. */
-      nyeIndberetninger: null,
+      /* nyeIndberetninger STÅR IKKE HER LÆNGERE — se beregnKpi(). */
       /* Nedetidens periodeafvigelse. Kræver både nedetiden selv — som venter
          på divisionsspørgsmålet — og en forrige kørsel. Stod hardkodet som
          deviation(-0.6, …). */
@@ -419,6 +416,26 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], di
 
 /** Servicevinduet: 30 dage frem, og alt der er overskredet. */
 export const SERVICE_VINDUE_DAGE = 30;
+
+/**
+ * Indberetninger i tilstanden `ny` for divisionen.
+ *
+ * ⚠ "NY" ER FORLØBETS FØRSTE TILSTAND, ikke "oprettet for nylig". Feltet
+ * hedder `nyeIndberetninger` og kunne læses som en tidsafgrænsning — men
+ * FORLOEB i indberetninger.js har seks tilstande, og `ny` betyder "meldt,
+ * ikke vurderet endnu". Det er den huskeliste kortet skal vise: en skade der
+ * er tre uger gammel og stadig ikke vurderet, hører ØVERST på den, ikke af.
+ *
+ * ⚠ DEN STOD SOM ET HARDKODET 3 i Dashboard.jsx og sagde det samme i hver
+ * eneste tenant. Noden har haft regler og et indeks hele tiden — den var bare
+ * tom, og fordi feltet kun blokerede ét kort, stod den ikke på nogen liste.
+ */
+export function indberetningstal(indberetninger = [], division) {
+  return {
+    nyeIndberetninger: indberetninger.filter(
+      (i) => iDivision(i, division) && i.forloeb === "ny").length,
+  };
+}
 
 /**
  * Facilitys nøgletal.
@@ -688,7 +705,7 @@ export const deltaPoint = (nyt, gammelt) => {
  */
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
-  indkoeb = [], fakturaer = [], leverandoerer = [],
+  indkoeb = [], fakturaer = [], leverandoerer = [], indberetninger = [],
   /* ⚠ FACILITY ER TRE LISTER, IKKE ÉN. Noden har børn — aktiver, fejl og
      sensorer — og de tælles hver for sig. Ét samlet argument ville have
      skjult hvilke af dem der faktisk blev læst. */
@@ -798,6 +815,7 @@ export function beregnKpi({
          indkøbslinjens division der spørges om, og den BÆRER en. Bilen gør
          ikke, og det er hele forskellen. */
       braendstofOere: braendstofOere(indkoeb, division, nu),
+      ...indberetningstal(indberetninger, division),
     },
 
     /* ⚠ TOM LISTE, IKKE null. Afvigelserne er en LISTE — findes der ingen,

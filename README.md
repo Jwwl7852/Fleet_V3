@@ -695,9 +695,28 @@ eneste tenant, og det sidste var en **pil** under et nøgletal der var tomt.
 Felterne hedder nu `flaade.nyeIndberetninger` og `flaade.nedetidDeltaPoint` og
 står i `demo-kpi.js` — kuren CLAUDE.md foreskriver.
 
-⚠ **`indberetninger` er en sjette node med regler og ingen data.** Den blokerer
-ingen KPI-felter ud over det ene ovenfor, og det er derfor den ikke stod på
-nogen liste.
+✅ **`indberetninger` er seedet — og den bar mere end ét manglende felt.**
+
+| Hvad | Tilstand før |
+|---|---|
+| `sensitive/indberetninger` | **Fandtes ikke i regelfilen** — men CLAUDE.md beskrev dens write-once-regel for underskriften som *gældende*. En dokumenteret spærring uden håndhævelse: den stod i vejen for at nogen byggede den, og den stoppede ingenting |
+| `indberetninger.sensitiveLaes` | Fandtes ikke i `permissions.js`. `indberetninger.js` bar den som `PERM_SENSITIVE_LAES_PLANLAGT` med en note om at den tilføjes "i SAMME ombæring som reglerne og deres tests" |
+| Hovedpostens validering | **Kun `division`.** Alt andet frit — og det er den ene node hvor den *mindst betroede* rolle opretter poster: chauffører skriver deres egne |
+| De tre klassificerede felter | Kunne skrives på hovedposten, som enhver med flådemodulet kan læse. Beslutning 17 var en konvention, ikke en spærring |
+| `.indexOn` | Navngav `type`; posterne bærer `art`. **Tredje gang** efter `opgaver."dato"` og `fakturaer."godkendelsesstatus"` |
+| Ejerskabstjekket | `!data.exists() \|\| oprettetAf == auth.uid` — altså kun ved **redigering**. En chauffør kunne *oprette* en indberetning i en kollegas navn. Fundet af prøven |
+
+⚠ **Permissionen er koordinatorens alene.** Samme snit som på bookingen: den
+der lukker sagen og håndterer fakturaen, skal kunne se hvad der står på spil.
+Disponenten får den ikke — han skal vide *at* bilen er på værksted, ikke hvad
+modparten hedder. Se **Rollegennemgang** når den tages.
+
+⚠ **`materialelinjer.lagerId` fik IKKE et eksistenstjek**, og det er et åbent
+spørgsmål frem for en forglemmelse: `lagre` beskrives i `moduler.js` som
+"reservedelslageret under Indkøb", men bærer i PRISER.md døgnsatser for
+*kunders* opbevaring. Demoens id'er (`lager-vaerksted`, `lager-hoved`) er
+hverken det ene eller det andet. Et opslag ville låse noden fast på én læsning
+uden at nogen havde besluttet hvilken.
 
 **Venter på aggregeringen.** Felterne er defineret, skærmene læser dem
 korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:

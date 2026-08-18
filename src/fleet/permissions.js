@@ -60,6 +60,17 @@ export const PERM = {
      rette kollegaens. */
   indberetningerSkrivAlle: "indberetninger.skrivAlle",
 
+  /* ⚠ DEN HER HAR VAERET PLANLAGT, IKKE GLEMT. indberetninger.js har
+     baaret den som PERM_SENSITIVE_LAES_PLANLAGT med en note om at den
+     tilfoejes "i SAMME ombaering som reglerne og deres tests — ikke foer".
+     Noden `sensitive/indberetninger` findes nu, og det er den ombaering.
+
+     Den daekker de tre felter i SENSITIVE_FELTER: skadebeskrivelsen,
+     modparten og underskriften. Det er bevismaterialet i en skadesag —
+     ikke driftsdata. En disponent skal vide AT bilen er paa vaerksted, ikke
+     hvad modparten hedder. */
+  indberetningerSensitiveLaes: "indberetninger.sensitiveLaes",
+
   /* --- Bookingflow. Svarer til OVERGANGE i booking-state.js. --- */
   bookingOpret: "booking.opret",
   bookingForeslaa: "booking.foreslaa",
@@ -295,6 +306,18 @@ export const ROLLE_PERMS = {
        medarbejderen er utilgængelig, ikke hvorfor.
        Ingen personaleSensitiveLaes: CPR og baggrundskontrol er ikke
        driftsdata. */
+
+    /* ⚠ DEN ENESTE DRIFTSROLLE MED indberetningerSensitiveLaes.
+       Samme snit som på bookingen: den der lukker sagen og håndterer
+       fakturaen, skal kunne se hvad der står på spil — skadebeskrivelsen,
+       modparten og underskriften ER bevismaterialet i en skadesag.
+
+       Disponenten får den IKKE. Han skal vide AT bilen er på værksted for at
+       kunne planlægge; hvad modparten hedder, ændrer ingen rute.
+       Chaufføren får den heller ikke: han skriver sine EGNE indberetninger
+       (ejerskabet tjekkes på `oprettetAf` i reglerne) og har intet ærinde i
+       andres skadesager. */
+    PERM.indberetningerSensitiveLaes,
   ],
 
   /**

@@ -160,7 +160,8 @@ describe("revisor-presettet", () => {
     for (const [node, post] of [
       ["kunder", { navn: "K", division: "gods", aktiv: true }],
       ["opgaver", { division: "gods" }],
-      ["indberetninger", { division: "gods", type: "braendstof", km: 1, oprettetAf: "uid-rev2" }],
+      ["indberetninger", { division: "gods", art: "braendstof", forloeb: "ny",
+        kmStand: 184320, liter: 410, oprettetAf: "uid-rev2", oprettetMs: 1786000000000 }],
     ]) {
       await assertFails(set(ref(db, `tenants/${MIN}/${node}/rev`), post));
     }
