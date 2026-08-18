@@ -1,13 +1,15 @@
 /* src/fleet/AppShell.jsx
  * Layout-rute: sidebar + topbar + <Outlet/>.
- * Modulerne har ikke egen sidebar, tenant-vælger eller periodevælger.
- * Skifter du periode her, ser alle moduler det via useFleet().
+ *
+ * ⚠ TOPBAREN HAR INGEN KONTROLLER LÆNGERE. Firmavælgeren, periodevælgeren og
+ * "Opdateret 22.43" er væk fra hver side — se noten nede ved <header>.
+ * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
+ * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useFleet, PERIODER, DEMO_ROLLER } from "./FleetContext.jsx";
+import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
 import { harModul } from "./moduler.js";
-import { klokke } from "./format.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
@@ -84,17 +86,12 @@ const ICO = {
 };
 
 export default function AppShell() {
-  const { tenant, tenants, tenantId, setTenantId, dage, setDage, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
+  const { tenant, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
   const { pathname } = useLocation();
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
-  /* Flaget staar paa HOVEDMODULET, ikke paa hvert barn: "alle undermoduler
-     under Fleet" er eet svar, og skrevet paa hvert barn ville det femte barn
-     mangle det uden at nogen saa det. */
-  const visFirma = !hoved.skjulFirma;
-  const visPeriode = !hoved.skjulPeriode;
 
   return (
     <>
@@ -202,40 +199,28 @@ export default function AppShell() {
               <h1>{modul.titel}</h1>
               <p>{modul.under}</p>
             </div>
-            {/* ⚠ SHELLEN EJER DE TRE KONTROLLER — OGSAA NAAR DE SKAL VAEK.
-                Et modul der skjulte firma- eller periodevaelgeren selv, skulle
-                tegne sin egen topbar for at goere det, og saa ejer det en af de
-                ting shellen ejer. Flaget staar derfor paa HOVEDMODULET i
-                nav.js, og shellen laeser det her.
+            {/* ⚠ HER LÅ FIRMAVÆLGEREN, PERIODEVÆLGEREN OG "Opdateret 22.43".
+                Alle tre er væk fra HVER side — ikke skjult pr. modul.
 
-                Fleet saetter begge: driftskalenderen har sin egen dag/uge/
-                maaned-vaelger, og to periodebegreber paa samme skaerm er to
-                svar paa eet spoergsmaal. Stemplet foelger periodevaelgeren —
-                "Opdateret 14.32" siger hvornaar PERIODENS tal blev hentet, og
-                uden perioden er der ikke noget det er stempel paa.
+                De tre var shellens, og det var rigtigt: et modul må ikke eje
+                dem. Men de var også de eneste tre kontroller i topbaren, og
+                de stod på hver eneste skærm uden at nogen brugte dem:
 
-                Kontrollerne er skjult, ikke fjernet: tilstanden ligger stadig i
-                FleetContext, saa division, tenant og periode er de samme naar
-                man gaar tilbage til Dashboardet. */}
-            {(visFirma || visPeriode) && (
-              <div className="fc-top-ctl">
-                {visFirma && (
-                  <select className="fc-ctl" aria-label="Virksomhed" value={tenantId}
-                          onChange={(e) => setTenantId(e.target.value)}>
-                    {tenants.map((t) => <option key={t.id} value={t.id}>{t.navn}</option>)}
-                  </select>
-                )}
-                {visPeriode && (
-                  <>
-                    <select className="fc-ctl" aria-label="Periode" value={dage}
-                            onChange={(e) => setDage(Number(e.target.value))}>
-                      {PERIODER.map((p) => <option key={p.dage} value={p.dage}>{p.label}</option>)}
-                    </select>
-                    <span className="fc-stamp">Opdateret {klokke(Date.now())}</span>
-                  </>
-                )}
-              </div>
-            )}
+                  Firmavælgeren  havde ÉN post uden for demo. Tenanten kommer
+                                 fra tokenets claim — en vælger med ét valg
+                                 er en kontrol der ligner et valg.
+                  Periodevælgeren blev læst af useListe og af INGEN skærm som
+                                 tekst. Perioden er der stadig; den står nu
+                                 fast på sin standard i FleetContext.
+                  Stemplet       sagde hvornår siden blev tegnet, ikke hvornår
+                                 tallene blev aggregeret. To forskellige ting,
+                                 ét klokkeslæt.
+
+                ⚠ TILSTANDEN ER IKKE FJERNET. `dage`, `tenantId` og `periode`
+                ligger stadig i FleetContext og driver stadig useListes
+                vinduer. Det er KONTROLLERNE der er væk, ikke begrebet — og
+                skal en periodevælger tilbage, hører den her i shellen igen,
+                aldrig i et modul. */}
           </header>
           <main className="fc-slot"><Outlet /></main>
         </div>

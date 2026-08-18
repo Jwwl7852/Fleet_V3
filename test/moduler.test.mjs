@@ -13,7 +13,21 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+/* Samme vandring som demo-kilder-linten. Den ligger her frem for i en delt
+   hjælpefil, fordi to prøvefiler der deler en hjælper, skal indlæses i den
+   rigtige rækkefølge — og en prøve skal kunne køres alene. */
+function alleFiler(mappe) {
+  const ud = [];
+  for (const navn of readdirSync(mappe)) {
+    const sti = join(mappe, navn);
+    if (statSync(sti).isDirectory()) ud.push(...alleFiler(sti));
+    else if (/\.(js|jsx)$/.test(navn)) ud.push(sti);
+  }
+  return ud;
+}
 
 import {
   MODUL, ALLE_MODULER, VALGFRIE_MODULER, OBLIGATORISKE_MODULER, UDEN_SKAERM,
@@ -258,31 +272,60 @@ describe("et underpunkt der låner en anden modulnode", () => {
   });
 });
 
-describe("topbarens kontroller skjules fra hovedmodulet", () => {
-  /* ⚠ SHELLEN EJER FIRMA- OG PERIODEVÆLGEREN — OGSÅ NÅR DE SKAL VÆK.
-     AppShell læser flagene af findHovedmodul(), ikke af findModul(). Et flag
-     skrevet på et BARN ville derfor blive ignoreret i tavshed: skærmen ser
-     præcis ud som før, og den næste ville skrive det på barn nummer to og tro
-     at det virkede. */
-  const boernMedFlag = NAV.flatMap((m) => m.born || [])
-    .filter((b) => b.skjulFirma !== undefined || b.skjulPeriode !== undefined);
+describe("topbaren har ingen kontroller", () => {
+  /* ⚠ HER STOD EN PRØVE OM skjulFirma/skjulPeriode.
+     De to flag skjulte firma- og periodevælgeren på Fleets skærme. Nu er de
+     tre kontroller — firmavælger, periodevælger og "Opdateret 22.43" —
+     fjernet fra HVER side, og et flag der altid er sandt, er en mekanisme
+     uden variation.
 
-  it("flagene står kun på hovedmoduler", () => {
-    assert.deepEqual(boernMedFlag.map((b) => b.key), [],
-      "skjulFirma/skjulPeriode på et underpunkt læses aldrig — sæt dem på hovedmodulet");
+     Prøven vender derfor: den holder fast i at de ikke kommer igen, og især
+     at de ikke kommer igen ET STED. Reglen fra CLAUDE.md står ved magt — et
+     modul må ikke bygge sin egen sidebar, tenant-vælger eller periodevælger
+     — og den er nu lettere at bryde, fordi shellen ikke længere har en at
+     kopiere fra. */
+  const shell = readFileSync("src/fleet/AppShell.jsx", "utf8");
+
+  it("⚠ SHELLEN TEGNER HVERKEN FIRMA- ELLER PERIODEVÆLGER", () => {
+    assert.doesNotMatch(shell, /aria-label="Virksomhed"/,
+      "firmavælgeren er tilbage i topbaren");
+    assert.doesNotMatch(shell, /aria-label="Periode"/,
+      "periodevælgeren er tilbage i topbaren");
+    assert.doesNotMatch(shell, /fc-stamp/,
+      "\"Opdateret\"-stemplet er tilbage i topbaren");
   });
 
-  it("AppShell læser dem af hovedmodulet, ikke af modulet", () => {
-    /* Filen læses som tekst, som ICO-prøven ovenfor: AppShell.jsx er JSX og
-       kan ikke indlæses i Node. */
-    const kilde = readFileSync("src/fleet/AppShell.jsx", "utf8");
-    assert.match(kilde, /const visFirma = !hoved.skjulFirma/);
-    assert.match(kilde, /const visPeriode = !hoved.skjulPeriode/);
+  it("⚠ OG INGEN SKÆRM BYGGER SIN EGEN", () => {
+    /* Det er den fejl reglen findes for. Shellen har ikke længere en vælger
+       at kopiere, og så er fristelsen til at bygge en i et modul større. */
+    const moduler = alleFiler("src/moduler");
+    const synder = [];
+    for (const sti of moduler) {
+      const kilde = readFileSync(sti, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of kilde.matchAll(/aria-label="(Virksomhed|Periode)"/g)) {
+        /* ⚠ DET ER <select>EN DER ER SHELLENS, IKKE ORDET.
+           Foerste udgave ledte efter etiketten hvor som helst — og faeldede
+           Fravaer, som har en FANERAEKKE med det navn (role="tablist"). En
+           proeve der faelder noget rigtigt, bliver slaaet fra. Og
+           Dashboardets egen dashboard-vaelger er ogsaa en <select> med
+           className="fc-ctl", saa stylingen er heller ikke signalet. Det er
+           KOMBINATIONEN af et select og shellens to etiketter. */
+        const foer = kilde.slice(Math.max(0, m.index - 200), m.index);
+        const sidsteTag = foer.lastIndexOf("<");
+        if (sidsteTag >= 0 && foer.slice(sidsteTag).startsWith("<select")) {
+          synder.push(`${sti} (${m[1]})`);
+        }
+      }
+    }
+    assert.deepEqual(synder, [],
+      "et modul tegner sin egen tenant- eller periodevælger — shellen ejer dem");
   });
 
-  it("⚠ FLEET SKJULER BEGGE — DEN HAR SIN EGEN TIDSVÆLGER", () => {
-    const fleet = NAV.find((m) => m.key === "flaade");
-    assert.equal(fleet.skjulFirma, true);
-    assert.equal(fleet.skjulPeriode, true);
+  it("⚠ FLAGENE ER VÆK FRA nav.js — ikke bare sat til false", () => {
+    /* Et flag ingen læser, er en mekanisme der ser ud som om den virker. */
+    const nav = readFileSync("src/fleet/nav.js", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.doesNotMatch(nav, /skjulFirma|skjulPeriode/,
+      "nav.js bærer stadig et flag AppShell ikke læser");
   });
 });

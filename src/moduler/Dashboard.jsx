@@ -9,14 +9,26 @@
  * kan Dashboard ikke længere sige "3 servicepunkter forfalder" mens Facility
  * siger 18 — det var tilfældet i mockupsene.
  */
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
+/* ⚠ MODUL bruges til NAVNET på et modul. Et eget map her ville være det
+   andet sted et modul hedder noget — og så ville Dashboardet kunne sige
+   "Indkøb" hvor sidebaren siger "Procure". Se moduler.js. */
+import { harModul, MODUL } from "../fleet/moduler.js";
+/* ⚠ KATALOGET LIGGER UDEN FOR SKÆRMEN, så feltstierne kan prøves mod
+   demo-kpi.js. Et kort der peger på et felt der ikke findes, ville skrive
+   INTET (—) i tavshed — og "—" ligner et ubesvaret nøgletal frem for en
+   tastefejl i en sti. Se dashboards.js. */
+import {
+  SAMLET, MODULKORT, kortTal, handlinger, tilgaengelige,
+} from "../fleet/dashboards.js";
+import { PRIORITET } from "../fleet/prioritet.js";
 import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -33,29 +45,17 @@ const STATUSFORDELING = (k) => [
   { navn: "Udført", antal: k.opgaver.udfoert },
 ];
 
-/* ⚠ TONERNE HER ER IKONACCENTER, IKKE STATUS- ELLER SERIEFARVER.
-   Farven forstærker; tallet, teksten og linket bærer betydningen alene.
-   Derfor må de fem ikke genbruges i en graf — mockuppens rød og orange
-   ligger ΔE 7,1 fra hinanden og ville dumpe validatorens gulv, netop fordi
-   farven dér ER encodingen. Se beslutning 30. */
-const HANDLINGER = (k) => [
-  /* ⚠ HER STOD n: 3 — ET HARDKODET TAL. Kortet sagde "3 nye indberetninger"
-     uanset hvad basen indeholdt, og det gjorde det i hver eneste tenant.
-     Reglen i CLAUDE.md er klar: mangler feltet i kpi/, defineres det i
-     demo-kpi.js — det hardkodes ikke i en skærm. Hardkoder man, har man to
-     opgaver senere i stedet for én, og imens står der et tal ingen kan spore.
+/* ⚠ KATALOGET FOR "KRÆVER HANDLING" LÅ HER SOM EN LOKAL const.
+   Det gør det ikke længere: Arbejdskøen og modulkortene skal vise de SAMME
+   tal, og et katalog i en JSX-fil kan ikke prøves mod kpi/. Det står nu i
+   fleet/dashboards.js sammen med modulkortene, og en prøve holder hver
+   eneste feltsti op mod demo-kpi.js.
 
-     ⚠ OG NODEN FINDES. `indberetninger` har regler og et indeks, men INTET
-     seeder den — den sjette node i den tilstand. Feltet er derfor null her og
-     får sin kilde samtidig med seedet. */
-  { n: k.flaade.nyeIndberetninger, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
-  { n: k.flaade.udeAfDrift, t: "enheder ude af drift", til: "/opsaetning/enheder", link: "Se enheder", tone: "ikon-2", ikon: "lastbil" },
-  { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "ikon-3", ikon: "ur" },
-  { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "ikon-4", ikon: "seddel" },
-  { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },
-];
-
-
+   ⚠ OG LISTEN ER IKKE LÆNGERE FAST. Før stod fem rækker med hver sit tal,
+   uanset om tallet var 0 — "0 fakturaer til godkendelse" er ikke en
+   handling, det er fraværet af en. handlinger() svarer kun med de rækker
+   der faktisk kræver noget, og et UBESVARET felt giver ingen række: null
+   er ikke nul, og en handling på et tal ingen har regnet, er en påstand. */
 /**
  * Et beløb — eller INTET hvis det ikke er regnet.
  *
@@ -73,25 +73,42 @@ const beloebEllerIntet = (oere, dec) =>
 
 export default function Dashboard() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division } = useFleet();
+  const { division, moduler } = useFleet();
+  const [params, saetParams] = useSearchParams();
+  /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
+     forskellige svar på "hvad må jeg se" ville være to steder at være
+     uenige. Billede 3's afkrydsning pr. bruger kommer i sin egen etape
+     sammen med rollemodellen. */
+  const harKundenModul = (m) => harModul(moduler, m);
+  const ALLE = tilgaengelige(harKundenModul);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
   /* Afledte tal BEREGNES her — de skrives ikke ind i basen to steder.
      Det er derfor kapacitetsgraden ikke længere kan være 84 % på Dashboard
-     og 83 % i Bemanding. */
+     og 83 % i Bemanding.
+
+     ⚠ KAPACITETSGRADEN STOD HER OG ER FLYTTET TIL dashboards.js.
+     Modulkortet regner den nu med kapacitetsgrad(), og regnestykket lå to
+     steder i det øjeblik kortet blev bygget af et katalog. Gaten fulgte med:
+     `null / 58 * 100` er 0 og ikke null, og 0 % kapacitet ligner en måling
+     af en flåde der står stille. */
   const budgetAfvPct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
-  const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
 
   /* Seks måneder, ikke tolv: kortet er en tredjedel bredt, og tolv søjler
      dér bliver til striber. Serien og etiketterne kommer fra demo-oekonomi,
      så Dashboard og Økonomi viser de SAMME måneder og de samme tal — lå
      regnestykket to steder, kunne de vise hver sit.
      Sidste punkt er det aktuelle tal fra kpi/, som på Økonomi. */
-  /* Beregnes ÉN gang — både farven og pilen skal komme fra samme deviation(),
-     ellers kan tallet være rødt og pilen pege den anden vej. */
-  const prisafv = deviation(k.indkoeb.indkoebsprisafvigelseSnitPct, { betterWhen: "lower", unit: "pct" });
+  /* ⚠ INDKØBSPRISAFVIGELSEN OG LEVERANCE TIL TIDEN STOD PÅ PROCURE-KORTET
+     OG ER IKKE MED LÆNGERE. Modulkortene bærer TRE tal hver, som i
+     mockuppen — et kort med fem linjer kan ikke skimmes, og det var derfor
+     de blev lavet om. De to tal er ikke tabt: de står på Procure selv, hvor
+     fortegnskonventionen fra beslutning 3 også hører hjemme.
+
+     Skal de tilbage, hører de i MODULKORT i dashboards.js — ikke som et
+     fjerde felt hardkodet her. */
 
   const { historik } = omkostningsserie(division);
   const serie = [...historik, k.oekonomi.driftsomkostningerOere].slice(-6);
@@ -102,29 +119,77 @@ export default function Dashboard() {
   /* Samme visningsregel som useListe: valgt division plus fælles. */
   const opgaver = DEMO_DASHBOARD_OPGAVER.filter((o) => o.division === division || o.division === "faelles");
 
+  /* ⚠ VALGET STÅR I URL'EN, ikke i en useState. Et dashboard man har
+     indstillet, skal overleve en genindlæsning og kunne sendes til en
+     kollega — og "kig på Fleet-dashboardet" er ubrugeligt uden et link.
+     Samme greb som Arbejdskøens ?vis=. */
+  const valgt = ALLE.some((d) => d.key === params.get("db")) ? params.get("db") : SAMLET;
+
+  /* ⚠ HANDLINGERNE ER DE SAMME TAL SOM KORTENE — samme katalog, samme
+     opslag i kpi/. Kom de fra hver sin kilde, kunne listen sige 7 og
+     Fleet-kortet 6 på den SAMME skærm. Se dashboards.js. */
+  const handler = handlinger(k, { harModulFn: harKundenModul })
+    .filter((h) => valgt === SAMLET || h.modul === valgt);
+
+  /* Samlet viser alle modulkort; et modul-dashboard viser sit eget. */
+  const kortNoegler = (valgt === SAMLET
+    ? ALLE.filter((d) => d.key !== SAMLET).map((d) => d.key)
+    : [valgt]).filter((m) => MODULKORT[m]);
+
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Kort titel="Kræver handling">
-        <KpiRaekke>
-          {HANDLINGER(k).map((h) => (
-            <div key={h.t} className="fc-card fc-kpi" style={{ boxShadow: "none" }}>
-              <div className={`fc-kpi-ico fc-tone-${h.tone}`}><Ikon navn={h.ikon} /></div>
-              <div className="fc-kpi-txt">
-                {/* ⚠ {null} RENDERER INGENTING. Kortet stod med "køretøjer
-                    ude af drift" og INTET tal foran — ikke en streg, ikke et
-                    nul, bare et hul hvor tallet skulle være. React skriver
-                    ingenting for null, og teksten så ud som en overskrift.
-                    num() er den ene markør; se format.js. */}
-                <div style={{ fontWeight: 650 }}>{num(h.n)} {h.t}</div>
-                <Link className="fc-a" style={{ fontSize: 12.5 }} to={h.til}>{h.link}</Link>
-              </div>
-            </div>
+      {/* ⚠ VÆLGEREN ER EN <select> OG IKKE FANER. Syv dashboards i en
+          fanerække ville brække på en bærbar, og listen vokser med hvert
+          modul vi sælger. */}
+      <div className="fc-kal-top">
+        <label className="fc-hint" htmlFor="db-vaelg">Vis dashboard:</label>
+        <select id="db-vaelg" className="fc-ctl" value={valgt}
+                onChange={(e) => saetParams(e.target.value === SAMLET
+                  ? {} : { db: e.target.value })}>
+          {ALLE.map((d) => (
+            <option key={d.key} value={d.key}>{d.label}</option>
           ))}
-        </KpiRaekke>
+        </select>
+        <span className="fc-hint">
+          {ALLE.find((d) => d.key === valgt)?.under}
+        </span>
+      </div>
+
+      <Kort titel="Prioriterede handlinger">
+        {/* ⚠ Handlingsliste ER EN PRIMITIV, OG DEN FANDTES I FORVEJEN.
+            Jeg skrev min egen markup med min egen .fc-handling-txt — og
+            klassenavnet var TAGET af netop den primitiv. css-navne-prøven
+            fangede det: den sidste regel vinder, og den vinder et andet
+            sted i appen end der hvor man arbejder.
+
+            Prioriteten bæres af ikonets tone, og modulet står i
+            underteksten — mockuppens to piller ville have krævet en
+            anden primitiv til den samme slags liste.
+
+            ⚠ KUN DE RÆKKER DER FAKTISK KRÆVER NOGET. Før stod fem rækker
+            fast, uanset om tallet var 0 — og "0 fakturaer til godkendelse"
+            er ikke en handling, det er fraværet af en. Et UBESVARET felt
+            giver heller ingen række: null er ikke nul. Se handlinger(). */}
+        <Handlingsliste
+          poster={handler.map((h) => ({
+            id: h.key,
+            til: h.sti,
+            tone: PRIORITET[h.prioritet].pill,
+            ikon: h.ikon,
+            tekst: h.tekst,
+            under: `${MODUL[h.modul]?.label || h.modul} · ${h.hvorfor}`,
+            antal: num(h.antal),
+          }))}
+        />
       </Kort>
 
+      {/* ⚠ TVÆRGÅENDE TAL HØRER PÅ DET SAMLEDE DASHBOARD. På et
+          modul-dashboard ville "Driftsomkostninger" og "Ikke-faktureret"
+          være tal fra et andet modul end det man har valgt — og så betyder
+          valget ingenting. */}
+      {valgt === SAMLET && (
       <KpiRaekke>
         <KpiKort label="Åbne opgaver" vaerdi={num(k.opgaver.aabne)} />
         {/* ⚠ HER STOD deviation(-0.6, …) — ET HARDKODET DELTA. Kortet viste
@@ -169,10 +234,12 @@ export default function Dashboard() {
         <KpiKort label="Ikke-faktureret" vaerdi={beloebEllerIntet(k.oekonomi.ikkeFaktureretOere)}
                  note="ekskl. moms" />
       </KpiRaekke>
+      )}
 
-      {/* Midterrækken. auto-fit, så kortet fylder pænt alene nu og de to
+      {valgt === SAMLET && (
+      /* Midterrækken. auto-fit, så kortet fylder pænt alene nu og de to
           øvrige (Omkostninger pr. måned, Største afvigelser) glider ind ved
-          siden af uden endnu en layoutændring. */}
+          siden af uden endnu en layoutændring. */
       <Gitter kolonner="repeat(auto-fit, minmax(320px, 1fr))">
         <Kort titel="Omkostninger pr. måned">
           <Soejlegraf
@@ -231,8 +298,20 @@ export default function Dashboard() {
           )}
         </Kort>
       </Gitter>
+      )}
 
-      <Gitter kolonner="minmax(0,2fr) repeat(3, minmax(0,1fr))">
+      {/* ⚠ ET KORT PR. MODUL, BYGGET AF KATALOGET — ikke tre håndskrevne.
+          Her stod Workforce, Facility og Procure som hver sit stykke JSX med
+          hver sin liste af MiniLinjer. Det fjerde modul ville have fået sit
+          eget, og det femte ville have set anderledes ud end de fire. */}
+      <Gitter kolonner="repeat(auto-fit, minmax(300px, 1fr))">
+        {kortNoegler.map((m) => (
+          <Modulkort key={m} modul={m} kort={MODULKORT[m]} kpi={k} />
+        ))}
+      </Gitter>
+
+      {valgt === SAMLET && (
+      <Gitter kolonner="minmax(0,1fr)">
         <Kort titel="Åbne opgaver der kræver opfølgning"
               handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
           <Tabel
@@ -254,58 +333,54 @@ export default function Dashboard() {
           />
         </Kort>
 
-        <Kort titel={<><Ikon navn="personer" farve="var(--fc-ikon-5)" /> Workforce i dag</>}
-              handling={<Link className="fc-a" to="/bemanding">Se Workforce</Link>}>
-          {/* Bjælke KUN hvor der findes en nævner. "10 personer ledig" har
-              ingen helhed at være en andel af, og en bjælke uden nævner ville
-              være pynt der ligner en måling. */}
-          {/* ⚠ EN TEMPLATE-STRENG SKRIVER ORDET "null". Linjerne stod med
-              "null / null" og "null personer" i det øjeblik aggregeringen holdt
-              op med at gætte. num() er den ene markør — se format.js. */}
-          <MiniLinje label="Chauffører disponeret"
-                     vaerdi={`${num(k.bemanding.chauffoerDisponeret)} / ${num(k.bemanding.chauffoerPlanlagt)}`}
-                     andel={k.bemanding.chauffoerDisponeret / k.bemanding.chauffoerPlanlagt} />
-          <MiniLinje label="Underbemandede vagter" vaerdi={k.bemanding.underbemandede}
-                     prik={k.bemanding.underbemandede ? "bad" : "ok"} />
-          <MiniLinje label="Ledig kapacitet"
-                     vaerdi={Number.isFinite(k.bemanding.ledig)
-                       ? `${num(k.bemanding.ledig)} personer` : INTET} />
-          <MiniLinje label="Kapacitetsgrad" vaerdi={pct(kapacitet, 0)}
-                     andel={kapacitet / 100} />
-        </Kort>
-
-        <Kort titel={<><Ikon navn="bygning" /> Facility</>}
-              handling={<Link className="fc-a" to="/facility">Gå til Facility</Link>}>
-          {/* Prikken siger hvor slemt tallet er — den er STATUS og bæres
-              altid sammen med tekst og tal. Tærsklerne er de samme som
-              Facility selv bruger. */}
-          <MiniLinje label="Servicepunkter forfalder" vaerdi={k.facility.servicepunkterForfalder}
-                     prik={k.facility.servicepunkterForfalder > 10 ? "bad" : k.facility.servicepunkterForfalder ? "warn" : "ok"} />
-          <MiniLinje label="Åbne facility-sager" vaerdi={k.facility.aabneSager}
-                     prik={k.facility.aabneSager > 5 ? "warn" : "ok"} />
-          <MiniLinje label="Planlagt vedligehold" vaerdi={k.facility.planlagtVedligehold} prik="ok" />
-          <MiniLinje label="Aktiver i drift" vaerdi={num(k.facility.aktiver)} prik="info" />
-        </Kort>
-
-        <Kort titel={<><Ikon navn="vogn" farve="var(--fc-ikon-2)" /> Procure</>}
-              handling={<Link className="fc-a" to="/indkoeb">Gå til Procure</Link>}>
-          <MiniLinje label="Fakturaer til godkendelse" vaerdi={k.indkoeb.fakturaerTilGodkendelse}
-                     prik={k.indkoeb.fakturaerTilGodkendelse > 5 ? "bad" : "ok"} />
-          <MiniLinje label="Åbne ordrer" vaerdi={k.indkoeb.aabneOrdrer} prik="info" />
-          {/* Indkøbsprisafvigelse — leverandørsiden, betterWhen 'lower'. Ikke det
-              samme tal som salgsprisafvigelsen på Kunder & Priser.
-              Værdien farves af deviation()s egen tone — ikke af en farve valgt
-              her, som kunne blive grøn for en overskridelse. */}
-          <MiniLinje label="Indkøbsprisafvigelse (snit)"
-                     vaerdi={
-                       <span className={`fc-${prisafv.tone}`}>{prisafv.pil} {prisafv.text}</span>
-                     } />
-          <MiniLinje label="Leverance til tiden" vaerdi={pct(k.indkoeb.leveranceTilTidenPct)}
-                     prik={k.indkoeb.leveranceTilTidenPct >= 90 ? "ok" : "warn"} />
-        </Kort>
       </Gitter>
+      )}
 
       <p className="fc-hint">Alle beløb er ekskl. moms, medmindre andet er angivet.</p>
     </div>
+  );
+}
+
+/* ---- Modulkortet ------------------------------------------------------ */
+
+/**
+ * Tre tal fra kpi/, eller en ærlig besked om hvad der mangler.
+ *
+ * ⚠ ET MODUL UDEN TAL FÅR ET KORT ALLIGEVEL. Warehouse har ét felt i kpi/
+ * og UnitBooking ingen. Udelod vi kortene, ville de to moduler se ud som
+ * noget der ikke findes; fyldte vi dem med tal, ville de se ud som
+ * målinger. Kortet skriver i stedet hvilke felter der skal beregnes — så
+ * står efterslæbet på skærmen frem for kun i README.
+ */
+function Modulkort({ modul, kort, kpi }) {
+  const navn = MODUL[modul]?.label || modul;
+  return (
+    <Kort
+      titel={<><Ikon navn={kort.ikon} farve={`var(--fc-${kort.tone})`} /> {navn}</>}
+      handling={<Link className="fc-a" to={kort.sti}>Gå til {navn}</Link>}
+    >
+      {kort.mangler ? (
+        <>
+          <Tom>Tallene aggregeres ikke endnu.</Tom>
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            {kort.hvorfor}
+          </p>
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Felter der mangler:{" "}
+            {kort.mangler.map((f, i) => (
+              <span key={f}>{i > 0 ? ", " : ""}<code>{f}</code></span>
+            ))}
+          </p>
+        </>
+      ) : (
+        kort.tal.map((post) => {
+          const t = kortTal(kpi, post);
+          /* ⚠ INTET (—) FOR ET UBESVARET TAL, ikke 0. num() og pct() bærer
+             gaten; her vælges kun hvilken af dem. Se format.js. */
+          const vist = t.form === "pct" ? pct(t.vaerdi, 0) : num(t.vaerdi);
+          return <MiniLinje key={post.label} label={t.label} vaerdi={vist} />;
+        })
+      )}
+    </Kort>
   );
 }

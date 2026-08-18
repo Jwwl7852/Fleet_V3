@@ -64,12 +64,12 @@ export const NAV = [
        `koeretoejer` og permissionen `koeretoejer.laes` er UÆNDREDE. Det er
        kun MENUPLADSEN der flyttede.
 
-       ⚠ skjulFirma/skjulPeriode ejes af shellen, også når kontrollerne skal
-       væk. Et modul der skjulte dem selv, skulle tegne sin egen topbar for
-       at gøre det — og så ville det eje en af de tre ting shellen ejer. */
+       ⚠ skjulFirma/skjulPeriode STOD HER OG ER VÆK IGEN. Flagene skjulte
+       firma- og periodevælgeren på Fleets skærme; nu er de tre kontroller
+       fjernet fra HVER side, og et flag der altid er sandt, er en mekanisme
+       uden variation. Se AppShell. */
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
     under: "Driftskalender og indberetninger",
-    skjulFirma: true, skjulPeriode: true,
     born: [
       { /* Beslutning 22's moenster igen: skaermen skifter navn, RUTEN goer ikke.
            Driftskalenderen er nu Fleets FORSIDE og ligger paa /flaade, hvor

@@ -933,3 +933,4 @@
 /* Skillestreger MELLEM prikkerne, ikke omkring dem — tre tal i en række skal
    læses som én skala og ikke som tre løsrevne felter. */
 .fc-pri-et + .fc-pri-et{border-left:1px solid var(--bc-line); padding-left:12px}
+
