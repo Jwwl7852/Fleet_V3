@@ -130,17 +130,62 @@ test("Brugerfunktionerne tager tenanten fra tokenet", () => {
     "en funktion læser tenant fra nyttelasten.");
 });
 
-test("Rollen afgør perms — de sendes ikke med", () => {
-  /* Kunne klienten sende en perms-liste, kunne en admin give sig selv noget
-     der ikke findes i noget preset, og rollegennemgangen ville ikke længere
-     beskrive virkeligheden. */
-  const kode = funktionskode();
-  assert.match(kode, /permStrengFraRolle\(rolle\)/,
-    "perms udledes ikke af rollen.");
-  assert.doesNotMatch(kode, /\bd\.perms\b/,
-    "en funktion læser perms fra nyttelasten.");
-});
+/**
+ * Kroppen af ÉN funktion — fra dens export og til den næste.
+ *
+ * ⚠ ET FAST ANTAL TEGN ER IKKE EN AFGRÆNSNING. Prøven læste 1800 tegn fra
+ * `export const opretbruger`, og den funktion er fem linjer lang — vinduet
+ * løb videre gennem skiftrolle og ind i rolleskrivs `d.perms`, og prøven
+ * meldte en overtrædelse i en funktion der ikke havde en.
+ *
+ * Samme fejl som i etapeskift-prøven, der læste ALT fra sit anker og ned.
+ * En prøve der læser en fil som tekst, skal afgrænse det den læser —
+ * ellers flytter dens betydning sig, hver gang nogen skriver noget
+ * nedenunder.
+ */
+function funktionskrop(kode, navn) {
+  const start = kode.indexOf(`export const ${navn} = onCall`);
+  assert.ok(start > 0, `${navn} findes ikke — er funktionen døbt om?`);
+  const naeste = kode.indexOf(String.fromCharCode(10) + "export const ", start + 1);
+  return naeste < 0 ? kode.slice(start) : kode.slice(start, naeste);
+}
 
+test("En BRUGERS perms kommer fra rollen — aldrig fra nyttelasten", () => {
+  /* ⚠ PRØVEN ER SNÆVRET IND MED BESLUTNING 31b, IKKE LEMPET.
+
+     Før forbød den `d.perms` nogen steder. Grunden var: kunne klienten
+     sende en perms-liste, kunne en admin give sig selv noget der ikke stod
+     i noget preset, og rollegennemgangen ville ikke længere beskrive
+     virkeligheden.
+
+     Den grund holder — for en BRUGER. Beslutning 31b lader kunden redigere
+     hvad en ROLLE indeholder, og `rolleskriv` læser derfor en liste fra
+     nyttelasten. Det er hele dens formål, og den validerer mod ALLE_PERMS.
+
+     Forskellen er ikke kosmetisk: en bruger får stadig sine perms af sin
+     rolle. Kunne opretbruger eller skiftrolle læse d.perms, var vi tilbage
+     ved den fejl den gamle prøve fandt. */
+  const kode = funktionskode();
+
+  /* Claim'et mintes af rollen — nu gennem tenantens egen definition. */
+  assert.match(kode, /permsForTenant\(/,
+    "perms udledes ikke af rollen længere.");
+
+  for (const navn of ["opretbruger", "skiftrolle", "spaerlogin"]) {
+    const krop = funktionskrop(kode, navn);
+    assert.doesNotMatch(krop, /\bd\.perms\b/,
+      `${navn} læser perms fra nyttelasten — en brugers perms kommer fra rollen.`);
+  }
+
+  /* ⚠ OG DEN ENE DER MÅ, SKAL VALIDERE. En ukendt streng i en rolle er en
+     adgang ingen regel kender — altså en adgang til ingenting, som SER UD
+     som om den gav noget. */
+  const rkrop = funktionskrop(kode, "rolleskriv");
+  assert.match(rkrop, /valideRolleperms\(/,
+    "rolleskriv validerer ikke listen mod ALLE_PERMS.");
+  assert.match(rkrop, /laaserUde\(/,
+    "rolleskriv spærrer ikke mod at låse sig selv ude.");
+});
 test("Et rolleskift fornyer tokenet", () => {
   /* ⚠ UDEN revokeRefreshTokens ER NEDGRADERINGEN EN PÆN KNAP. Brugeren
      beholder sine gamle claims indtil tokenet udløber af sig selv — man ville
@@ -167,10 +212,11 @@ test("Funktionerne rører kun brugere i egen tenant", () => {
   assert.match(kode, /function hentIEgenTenant[\s\S]*?customClaims\?\.tenant !== tenantId/,
     "hentIEgenTenant tjekker ikke tenanten.");
 
-  for (const navn of ["skiftrolle", "spaerlogin"]) {
-    const i = kode.indexOf(`export const ${navn} = onCall`);
-    assert.ok(i > 0, `${navn} findes ikke — er funktionen døbt om?`);
-    const krop = kode.slice(i, i + 1800);
+  /* ⚠ rolleskriv ER MED. Den henter en konto pr. bruger med rollen, og
+     uid'erne kommer fra tenantens eget indeks — men dét argument står kun
+     i en kommentar. Et implicit argument er ikke en kontrol. */
+  for (const navn of ["skiftrolle", "spaerlogin", "rolleskriv"]) {
+    const krop = funktionskrop(kode, navn);
     assert.match(krop, /hentIEgenTenant\(/, `${navn} går uden om hentIEgenTenant.`);
     assert.doesNotMatch(krop, /auth\.getUser\(/,
       `${navn} henter kontoen direkte — så er tenant-tjekket ikke garanteret.`);

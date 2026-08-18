@@ -964,6 +964,92 @@ Prøverne fulgte med: "chaufføren kan kun indberette og skrive i idébanken" he
 sådan, fordi det var sandt. Den hedder nu "chaufføren kan KUN indberette", og
 listen er udtømmende, så en ny skrivepermission på chaufføren fælder den.
 
+### 31b. Omgjort: kunden kan redigere sine roller — med to spærringer
+
+**Kunden har bedt om det, og beslutningen er truffet igen med åbne øjne.** En
+vognmand vil kunne tildele sine medarbejdere adgang efter stilling uden at
+skulle bede os om en kodeændring for hver variant. Afsnittet ovenfor bliver
+stående, fordi det er det eneste sted der står **hvad der går galt uden
+beslutningen** — og de to farer er ikke forsvundet. De er håndteret.
+
+#### Hvad vi opgav
+
+Roller er ikke længere faste. `permStrengFraRolle()` læste fra en **konstant**
+i `permissions.js`; claims mintes nu fra `tenants/<id>/roller/<rolle>/perms`.
+Der ligger altså et opslag i basen mellem "hvem er du" og "hvad må du", hvor
+der før var en kodelinje.
+
+Prisen er konkret og skal kendes: **en ændring i en rolle skal genudstede
+claims for HVER bruger med den rolle**, plus `revokeRefreshTokens` på dem alle.
+Gør den ikke det, virker den gamle adgang indtil tokenet udløber af sig selv —
+den fejltilstand `skiftrolle` allerede advarer imod, fordi den *ser ud som om
+den lykkedes*.
+
+#### Fare 1: at låse sig selv ude — nu spærret mekanisk
+
+> *"En vognmand der fjerner `booking.godkend` fra sin egen adminrolle har
+> lukket sig selv ude af sit eget system. Der findes ingen vej tilbage fra
+> klienten: adgangen til at rette rollen var selv en permission."*
+
+Det er stadig sandt, og derfor kan **to ting ikke lade sig gøre**:
+
+1. `brugere.skriv` — den permission der giver adgang til at redigere roller —
+   kan ikke fjernes fra den **sidste** rolle der har den.
+2. Man kan ikke fjerne den fra **sin egen** rolle, heller ikke selv om en anden
+   rolle også har den. En admin der vil degradere sig selv, skal have en anden
+   admin i huset til at gøre det.
+
+Spærringen ligger i den Cloud Function der skriver, ikke i skærmen. En kontrol
+der kun findes i frontend, er en pæn knap — og her ville den pæne knap koste
+kunden adgangen til sit eget system.
+
+#### Fare 2: to håndhævelsespunkter — undgået ved at noden ikke er ét
+
+Den anden indvending stod i regelfilen, og den er den stærkere af de to:
+
+> *"en node der KUNNE bestemme hvad en bruger må, ville være et andet
+> håndhævelsespunkt end tokenet — og to håndhævelsespunkter er ét for mange."*
+
+Der er et svar på den, og det er **hele designet**:
+
+> `roller/` er en **KILDE**, aldrig et **HÅNDHÆVELSESPUNKT**.
+
+Konkret betyder det tre ting:
+
+- `firebase.rules.json` læser **aldrig** `roller/`. Ingen regel må slå op i
+  noden for at afgøre noget; adgang afgøres fortsat udelukkende af
+  `auth.token.perms`. **En prøve håndhæver det** — finder den en regel der
+  refererer `roller`, falder den.
+- Noden er `.write: false`. Den skrives kun af `rolleskriv`, som minter claims
+  i samme ombæring. Kunne en klient skrive den direkte, ville noden og tokenet
+  kunne stå og være uenige indtil næste mint.
+- Rækkefølgen i funktionen er: validér → skriv noden → mint claims → tilbagekald
+  tokens. Fejler mintningen, er noden rettet og tokenet ikke — derfor logges
+  det, og rollen kan skrives igen.
+
+Så længe den regel holder, er der stadig **ét** sted adgang afgøres: tokenet.
+Noden er det sted man *redigerer* hvad der næste gang bliver mintet ind i det.
+
+#### Det der ikke ændrede sig
+
+- **De syv rollers NAVNE er stadig faste.** Man redigerer hvad en rolle
+  indeholder; man opfinder ikke en ottende. En ny rolle er stadig en ændring i
+  koden — med en begrundelse, prøver og en **brugerart i `priser.js`**, ellers
+  bliver den lydløst faktureret som *desktop*, den dyre af de to.
+- **Permissions-kataloget er stadig lukket.** Man kan kun sætte permissions der
+  står i `ALLE_PERMS`. En ukendt streng i en rolle ville være en adgang ingen
+  regel kender — altså en adgang til ingenting, som *ser ud* som om den gav
+  noget.
+- **Chaufføren kan stadig kun det han kan** som udgangspunkt. Kunden kan give
+  ham mere; det er dét der er hele pointen. Prøven der hedder "chaufføren kan
+  KUN indberette" prøver derfor **standardrollen** i `ROLLE_PERMS`, ikke hvad
+  en given tenant måtte have gjort ved sin.
+
+⚠ **Og `ROLLE_PERMS` forsvinder ikke.** Den er **standarden**: det en ny tenant
+får, og det en rolle falder tilbage på hvis noden mangler. En tenant uden
+`roller/` opfører sig præcis som før — og dét er hvad der gør ændringen sikker
+at udrulle.
+
 ---
 
 ## Sikkerhedsarbejdet i detaljer

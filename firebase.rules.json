@@ -186,6 +186,59 @@
         // her; den var bare ikke anvendt.
         //
         // Genindfoer den ikke uden at afgoere beslutning 31 om.
+        //
+        // ══════════════════════════════════════════════════════════════
+        // ⚠ OG DET ER SKET — BESLUTNING 31b. NODEN ER TILBAGE.
+        // ══════════════════════════════════════════════════════════════
+        //
+        // Kunden kan redigere sine roller. De to farer fra beslutning 31 er
+        // haandteret, ikke forsvundet:
+        //
+        //  1. AT LAASE SIG SELV UDE. `brugere.skriv` kan ikke fjernes fra
+        //     den sidste rolle der har den, og heller ikke fra ens egen.
+        //     Spaerringen ligger i laaserUde() i permissions.js og haandhaeves
+        //     af `rolleskriv` — ikke af skaermen.
+        //
+        //  2. TO HAANDHAEVELSESPUNKTER. Det var den staerkeste indvending, og
+        //     svaret er hele designet:
+        //
+        //         roller/ er en KILDE, aldrig et HAANDHAEVELSESPUNKT.
+        //
+        //     ⚠ INGEN REGEL I DEN HER FIL MAA SLAA OP I roller/.
+        //     Adgang afgoeres udelukkende af auth.token.perms. Slog en regel
+        //     op i noden, ville der vaere to steder adgang blev afgjort — og
+        //     de to ville staa og vaere uenige indtil naeste mint, fordi et
+        //     token er stille og en node er levende.
+        //     test/rules.roller.test.mjs faelder enhver regel der refererer
+        //     noden. Skriver du en, er det den proeve du skal laese.
+        //
+        // .write: false. Noden skrives KUN af `rolleskriv`, som minter claims
+        // i samme ombaering og tilbagekalder tokens. Kunne en klient skrive
+        // den direkte, ville noden sige eet og tokenet noget andet.
+        "roller": {
+          // .read er tenant-medlemskab: skaermen skal kunne vise hvad en
+          // rolle indeholder. Det er ikke foelsomt — det er kundens eget
+          // opslag over hvad hans egne roller betyder.
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": false,
+          "$rolle": {
+            // ⚠ ORDLISTEN STAAR I permissions.js. Her et laengdetjek, som paa
+            // opgaver.status: en afskrift i regelfilen ville vaere et andet
+            // sted de syv rollenavne stod, med sin egen udrulningscyklus.
+            ".validate": "newData.hasChildren(['perms'])",
+            "perms": {
+              // ⚠ ET ARRAY AF STRENGE, IKKE ET OBJEKT. Raekkefoelgen betyder
+              // noget: claim-strengen sammenlignes med contains(), og to
+              // brugere med de samme permissions i forskellig raekkefoelge
+              // ville faa to forskellige strenge. permsForTenant() sorterer
+              // efter katalogets orden foer mintningen.
+              "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" }
+            },
+            "aendretAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "aendretMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
 
 
         // ══════════════════════════════════════════════════════════════

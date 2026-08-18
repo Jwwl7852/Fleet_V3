@@ -54,7 +54,10 @@ import {
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
   CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
 } from "./delt/warehouse.js";
-import { ROLLE_PERMS, permStrengFraRolle, PERM } from "./delt/permissions.js";
+import {
+  ROLLE_PERMS, permStreng, permsForTenant,
+  valideRolleperms, laaserUde, PERM,
+} from "./delt/permissions.js";
 /* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
    delt/, saa kanGodkende(), kanEksportere() og nummerformatet er de SAMME
    funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
@@ -267,6 +270,33 @@ async function hentIEgenTenant(auth, maalUid, tenantId) {
   return bruger;
 }
 
+/**
+ * Tenantens egne rolledefinitioner, eller null.
+ *
+ * ⚠ null OG IKKE ET TOMT OBJEKT. permsForTenant() falder tilbage på
+ * ROLLE_PERMS når noden mangler — og en tenant uden `roller/` skal opføre
+ * sig PRÆCIS som før beslutning 31b. Et tomt objekt ville betyde det samme
+ * her, men det ville skjule forskellen mellem "ingen node" og "en node der
+ * er blevet tømt", og de to er ikke det samme spørgsmål.
+ */
+async function hentRoller(tenantId) {
+  const snap = await getDatabase().ref(`tenants/${tenantId}/roller`).once("value");
+  return snap.exists() ? snap.val() : null;
+}
+
+/**
+ * Claim-strengen for en rolle HOS DEN HER TENANT.
+ *
+ * ⚠ ALLE STEDER DER MINTER, SKAL BRUGE DEN HER. `opretbruger` og
+ * `skiftrolle` mintede fra konstanten; gør de det stadig, ville en kunde der
+ * har redigeret sin disponentrolle, få standarden tilbage næste gang han
+ * oprettede en disponent — og forskellen ville først vise sig som en adgang
+ * der manglede uden grund.
+ */
+async function claimForRolle(tenantId, rolle) {
+  return permStreng(permsForTenant(rolle, await hentRoller(tenantId)));
+}
+
 async function log(tenantId, uid, handling, objektId, note) {
   const nu = new Date();
   await getDatabase()
@@ -321,7 +351,12 @@ async function opretKonto({ tenantId, kalderUid, d }) {
   await auth.setCustomUserClaims(bruger.uid, {
     tenant: tenantId,
     rolle,
-    perms: permStrengFraRolle(rolle)
+    /* ⚠ FRA TENANTENS EGEN DEFINITION. Opretter en kunde en ny disponent,
+       skal han have DEN disponentrolle kunden har redigeret — ikke
+       standarden. Mintede vi konstanten her, ville den nye bruger have en
+       anden adgang end sine kolleger, og forskellen ville først vise sig
+       som noget der manglede uden grund. Se beslutning 31b. */
+    perms: await claimForRolle(tenantId, rolle)
   });
 
   await skrivIndeks(tenantId, bruger, rolle, false);
@@ -348,10 +383,13 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
   const auth = getAuth();
   const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
 
+  /* ⚠ FRA TENANTENS EGEN DEFINITION, IKKE FRA KONSTANTEN. Beslutning 31b:
+     har kunden redigeret rollen, er det DEN der skal mintes. Konstanten er
+     standarden man falder tilbage på, ikke svaret. */
   await auth.setCustomUserClaims(maalUid, {
     ...bruger.customClaims,
     rolle,
-    perms: permStrengFraRolle(rolle)
+    perms: await claimForRolle(tenantId, rolle)
   });
   /* ⚠ UDEN DEN HER ER NEDGRADERINGEN EN PÆN KNAP. Brugeren beholder sine
      gamle claims indtil tokenet udløber af sig selv — man ville tro man
@@ -365,6 +403,143 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
   return { ok: true };
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+   REDIGÉR EN ROLLE — BESLUTNING 31b
+
+   ⚠ ROLLERNE VAR FASTE, OG DET ER DE IKKE LÆNGERE. Den oprindelige
+   beslutning står stadig i BESLUTNINGER.md, fordi den er det eneste sted der
+   står HVAD DER GÅR GALT uden den. De to farer er håndteret:
+
+    1. AT LÅSE SIG SELV UDE. laaserUde() afviser to ting: at fjerne
+       brugere.skriv fra den SIDSTE rolle der har den, og at fjerne den fra
+       SIN EGEN rolle. Uden dem er det her den mest almindelige måde at
+       ødelægge en rolleadministration på — og der er ingen vej tilbage fra
+       klienten, fordi adgangen til at rette det var selv en permission.
+
+    2. TO HÅNDHÆVELSESPUNKTER. roller/ er en KILDE. Reglerne læser den
+       aldrig; adgang afgøres udelukkende af auth.token.perms. Se
+       firebase.rules.json og test/rules.roller.test.mjs.
+
+   ⚠ OG EN ÆNDRING RAMMER HVER BRUGER MED ROLLEN. Mintes claims ikke om, og
+   tilbagekaldes tokenet ikke, virker den gamle adgang indtil tokenet udløber
+   af sig selv — den fejltilstand skiftrolle allerede advarer imod, fordi den
+   SER UD som om den lykkedes.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const rolleskriv = onCall({ region: REGION }, async (req) => {
+  /* Samme vagt som de øvrige brugerfunktioner: brugere.skriv. Det er
+     PERMISSIONEN og ikke rollen — spørg hvad handlingen kræver. */
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const rolle = kortStreng(d.rolle, 30);
+  if (!ROLLE_PERMS[rolle]) {
+    /* ⚠ ROLLENAVNENE ER STADIG FASTE. Man redigerer hvad en rolle indeholder;
+       man opfinder ikke en ottende. En ny rolle er en ændring i koden — med
+       prøver og en brugerart i priser.js, ellers faktureres den lydløst som
+       desktop, den dyre af de to. Se beslutning 31. */
+    throw new HttpsError("invalid-argument",
+      `Ukendt rolle: ${d.rolle}. Rollenavnene er faste — man redigerer hvad de indeholder.`);
+  }
+
+  /* ⚠ HER LÆSES EN PERMS-LISTE FRA NYTTELASTEN — DET ENESTE STED.
+     En BRUGERS perms udledes stadig af hans rolle; det er en ROLLES
+     indhold der redigeres her, og det er hele beslutning 31b. Forskellen er
+     ikke kosmetisk: kunne opretbruger eller skiftrolle læse d.perms, kunne
+     en admin give sig selv noget der ikke stod i nogen rolle, og
+     rollegennemgangen ville ikke længere beskrive virkeligheden.
+     test/functions-delt.test.mjs holder de to fra hinanden. */
+  const perms = Array.isArray(d.perms)
+    ? d.perms.map((x) => kortStreng(x, 60)).filter(Boolean)
+    : null;
+  /* ⚠ SAMME VALIDERING SOM SKÆRMEN. En klientvalidering der ikke også står
+     her, er en pæn knap — og den ville kunne skrive en permission ingen
+     regel kender, altså en adgang til ingenting der SER UD som noget. */
+  const form = valideRolleperms(perms);
+  if (!form.ok) throw new HttpsError("invalid-argument", form.fejl);
+
+  const auth = getAuth();
+  /* ⚠ KALDERENS ROLLE FRA TOKENET, ikke fra et opslag. Den står i claim'et
+     (skiftrolle sætter den), og et ekstra getUser() ville være både en
+     rundtur mere og en konto hentet uden om hentIEgenTenant(). */
+  const egenRolle = kortStreng(req.auth?.token?.rolle, 30) || null;
+
+  const roller = await hentRoller(tenantId);
+  /* ⚠ SPÆRRINGEN LIGGER HER, IKKE I SKÆRMEN. Den svarer HVORFOR, ikke bare
+     at det ikke kan lade sig gøre — serveren afviser med den sætning skærmen
+     ville have vist. */
+  const grund = laaserUde(rolle, perms, roller || {}, { egenRolle });
+  if (grund) throw new HttpsError("failed-precondition", grund);
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE. Abonnementet er det eneste sted
+     spærringen ellers står. Modulet prøves IKKE: roller hører ikke til et
+     modul — de findes hos hver tenant uanset hvad han har købt. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  /* ---- 1. Noden ------------------------------------------------------ */
+  await rod.child(`roller/${rolle}`).set({
+    perms,
+    aendretAf: uid,
+    aendretMs: Date.now(),
+  });
+
+  /* ---- 2. Claims for HVER bruger med rollen -------------------------- */
+  /* ⚠ REKKEFØLGEN ER NODEN FØRST, SÅ CLAIMS. Fejler mintningen halvvejs, er
+     noden rettet og nogle tokens ikke — og så kan rollen skrives igen og
+     rette resten. Var rækkefølgen omvendt, ville et token kunne bære
+     permissions der ikke stod nogen steder. */
+  const claim = permStreng(permsForTenant(rolle, { ...(roller || {}), [rolle]: { perms } }));
+  const indeks = (await rod.child("brugere").once("value")).val() || {};
+  const ramte = Object.entries(indeks)
+    .filter(([, v]) => v?.rolle === rolle)
+    .map(([maalUid]) => maalUid);
+
+  let fornyet = 0;
+  const fejlede = [];
+  for (const maalUid of ramte) {
+    try {
+      /* ⚠ hentIEgenTenant(), IKKE auth.getUser(). Uid'erne kommer fra
+         tenantens eget indeks, så de ER i tenanten — men det argument står
+         kun her i en kommentar, og hjælperen tjekker det. En prøve fælder
+         enhver af brugerfunktionerne der henter en konto udenom, netop
+         fordi et implicit argument ikke er en kontrol. Hjælperen rydder
+         desuden en forældet indeksrække op, hvis kontoen er slettet uden om
+         systemet. */
+      const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
+      await auth.setCustomUserClaims(maalUid, {
+        ...bruger.customClaims, rolle, perms: claim,
+      });
+      /* ⚠ UDEN DEN HER ER ÆNDRINGEN EN PÆN KNAP. Brugeren beholder sine
+         gamle claims indtil tokenet udløber af sig selv — man ville tro man
+         havde fjernet en adgang, som stadig virkede. Det er den værste
+         fejltilstand, fordi den ser ud som om den lykkedes. */
+      await auth.revokeRefreshTokens(maalUid);
+      fornyet += 1;
+    } catch (e) {
+      /* ⚠ EN KONTO KAN VÆRE SLETTET UDEN OM SYSTEMET, og indekset overlever
+         den. Det må ikke vælte de øvrige — men det skal RAPPORTERES, ikke
+         sluges: en bruger hvis claims ikke blev fornyet, går rundt med den
+         gamle adgang. */
+      fejlede.push(maalUid);
+    }
+  }
+
+  await log(tenantId, uid, "tilstandsskift", rolle,
+    `roller ${rolle}: ${perms.length} perms, ${fornyet} fornyet` +
+    (fejlede.length ? `, ${fejlede.length} fejlede` : ""));
+
+  /* ⚠ SVARET SIGER HVOR MANGE DER IKKE BLEV FORNYET. Skærmen skal kunne
+     vise det: en ændring der lykkedes for otte ud af ni, er ikke en
+     ændring der lykkedes. */
+  return { ok: true, ramte: ramte.length, fornyet, fejlede };
+});
 export const spaerlogin = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);
   const d = req.data || {};

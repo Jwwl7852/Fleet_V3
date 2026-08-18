@@ -1,0 +1,207 @@
+/* test/roller.test.mjs
+ * Beslutning 31b — kunden kan redigere sine roller, og de to spærringer.
+ *
+ * ⚠ DEN HER FIL ER PRISEN FOR AT OMGØRE EN BESLUTNING.
+ *
+ * Beslutning 31 gjorde rollerne faste, fordi to ting kunne gå galt:
+ *
+ *   1. En vognmand fjerner `brugere.skriv` fra sin egen adminrolle og har
+ *      lukket sig ude af sit eget system. Der er ingen vej tilbage fra
+ *      klienten — adgangen til at rette det var selv en permission.
+ *   2. En node der kan bestemme hvad en bruger må, er et andet
+ *      håndhævelsespunkt end tokenet, og to er ét for mange.
+ *
+ * Farerne forsvandt ikke af at beslutningen blev omgjort. Nummer 1 er spærret
+ * mekanisk her; nummer 2 er besvaret ved at noden er en KILDE og aldrig et
+ * håndhævelsespunkt — det prøves i rules.permissions.test.mjs.
+ *
+ * Koer: npm test
+ */
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  PERM, ALLE_PERMS, ROLLE_PERMS, ALLE_ROLLER, permsFraRolle,
+  permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM, permStreng,
+} from "../src/fleet/permissions.js";
+import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
+
+describe("⚠ EN TENANT UDEN roller/ OPFØRER SIG PRÆCIS SOM FØR", () => {
+  /* Det er dét der gør ændringen sikker at udrulle: ingen eksisterende kunde
+     skifter adgang af at funktionen kommer. */
+
+  it("falder tilbage på standarden — ikke på ingenting, og ikke på alt", () => {
+    for (const rolle of ALLE_ROLLER) {
+      assert.deepEqual(permsForTenant(rolle, null), permsFraRolle(rolle), rolle);
+      assert.deepEqual(permsForTenant(rolle, undefined), permsFraRolle(rolle), rolle);
+      assert.deepEqual(permsForTenant(rolle, {}), permsFraRolle(rolle), rolle);
+    }
+  });
+
+  it("en rolle uden EGEN definition falder også tilbage", () => {
+    /* Noden findes, men kun for én rolle. De øvrige seks er standard. */
+    const roller = { chauffoer: { perms: [PERM.indberetningerSkriv] } };
+    assert.deepEqual(permsForTenant("disponent", roller), permsFraRolle("disponent"));
+    assert.deepEqual(permsForTenant("chauffoer", roller), [PERM.indberetningerSkriv]);
+  });
+
+  it("⚠ EN UKENDT ROLLE GIVER INGENTING — ikke alt", () => {
+    /* Fejler lukket, som permsFraRolle altid har gjort. En node kan ikke
+       opfinde en ottende rolle ved at have en nøgle mere. */
+    assert.deepEqual(permsForTenant("konge", { konge: { perms: ALLE_PERMS } }), []);
+  });
+});
+
+describe("noden er en kilde — men en filtreret én", () => {
+  it("⚠ UKENDTE PERMISSIONS KOMMER ALDRIG I ET TOKEN", () => {
+    /* En streng ingen regel kender, er en adgang til ingenting — som SER UD
+       som om den gav noget. Den skal ikke stå i et claim, hvor den ville ligne
+       en rettighed nogen har fået. */
+    const roller = { chauffoer: { perms: [PERM.indberetningerSkriv, "findes.ikke"] } };
+    assert.deepEqual(permsForTenant("chauffoer", roller), [PERM.indberetningerSkriv]);
+  });
+
+  it("⚠ REKKEFØLGEN ER KATALOGETS, IKKE NODENS", () => {
+    /* Claim-strengen sammenlignes med contains(). To brugere med de SAMME
+       permissions i forskellig rækkefølge ville få to forskellige strenge, og
+       en fejlsøgning der holdt to tokens op mod hinanden, ville se en forskel
+       der ikke er der. */
+    const a = permsForTenant("chauffoer", {
+      chauffoer: { perms: [PERM.indberetningerSkriv, PERM.opgaverSkriv] },
+    });
+    const b = permsForTenant("chauffoer", {
+      chauffoer: { perms: [PERM.opgaverSkriv, PERM.indberetningerSkriv] },
+    });
+    assert.deepEqual(a, b);
+    assert.equal(permStreng(a), permStreng(b));
+  });
+
+  it("en tom liste er et gyldigt svar — en rolle der ikke må noget", () => {
+    /* Ikke det samme som ingen node. Kunden kan tage alt fra en rolle; det er
+       kun NØGLEPERMISSIONEN der er spærret, og kun på den sidste rolle. */
+    assert.deepEqual(permsForTenant("chauffoer", { chauffoer: { perms: [] } }), []);
+  });
+});
+
+describe("valideRolleperms", () => {
+  it("godtager en liste af kendte permissions", () => {
+    assert.equal(valideRolleperms([PERM.opgaverSkriv, PERM.brugereSkriv]).ok, true);
+    assert.equal(valideRolleperms([]).ok, true);
+  });
+
+  it("afviser en ukendt permission — og navngiver den", () => {
+    const r = valideRolleperms([PERM.opgaverSkriv, "findes.ikke"]);
+    assert.equal(r.ok, false);
+    assert.match(r.fejl, /findes\.ikke/);
+  });
+
+  it("afviser en dublet", () => {
+    /* To gange den samme permission giver en claim-streng med et dobbelt
+       navn. Den virker, men den er ikke det nogen skrev. */
+    assert.equal(valideRolleperms([PERM.opgaverSkriv, PERM.opgaverSkriv]).ok, false);
+  });
+
+  it("afviser noget der ikke er en liste", () => {
+    for (const v of [null, undefined, "opgaver.skriv", { a: 1 }, 7]) {
+      assert.equal(valideRolleperms(v).ok, false, String(v));
+    }
+  });
+});
+
+describe("⚠ SPÆRRINGEN MOD AT LÅSE SIG SELV UDE", () => {
+  /* Den mest almindelige måde at ødelægge en rolleadministration på, og den
+     rammer netop den der prøver at stramme op. Beslutning 31 blev truffet for
+     den; 31b omgjorde beslutningen og beholdt beskyttelsen. */
+
+  it("nøglepermissionen er brugere.skriv", () => {
+    assert.equal(NOEGLEPERM, PERM.brugereSkriv);
+  });
+
+  it("⚠ MAN KAN IKKE FJERNE DEN FRA SIN EGEN ROLLE", () => {
+    /* Heller ikke selv om en anden rolle også har den. En admin der vil
+       degradere sig selv, skal have en anden admin i huset til at gøre det. */
+    const roller = {
+      admin: { perms: [...ALLE_PERMS] },
+      koordinator: { perms: [PERM.brugereSkriv] },
+    };
+    const grund = laaserUde("admin", [PERM.opgaverSkriv], roller, { egenRolle: "admin" });
+    assert.ok(grund, "det lykkedes at fjerne nøglepermissionen fra sin egen rolle");
+    assert.match(grund, /din egen rolle/i);
+  });
+
+  it("⚠ MAN KAN IKKE FJERNE DEN FRA DEN SIDSTE ROLLE DER HAR DEN", () => {
+    /* Standarden tæller med: en rolle uden egen definition bærer ROLLE_PERMS.
+       Her har KUN admin den, og det er admin der redigeres. */
+    const kunAdmin = Object.fromEntries(
+      ALLE_ROLLER.map((r) => [r, { perms: permsFraRolle(r).filter((p) => p !== NOEGLEPERM) }])
+    );
+    kunAdmin.admin = { perms: [...ALLE_PERMS] };
+
+    const grund = laaserUde("admin", [PERM.opgaverSkriv], kunAdmin, { egenRolle: "disponent" });
+    assert.ok(grund, "nøglepermissionen kunne forsvinde fra den sidste rolle");
+    assert.match(grund, /sidste rolle/i);
+  });
+
+  it("men den KAN fjernes, hvis en anden rolle har den", () => {
+    /* Spærringen er mod at lukke sig ude — ikke mod at rydde op. */
+    const roller = {
+      admin: { perms: [...ALLE_PERMS] },
+      koordinator: { perms: [PERM.brugereSkriv, PERM.opgaverSkriv] },
+    };
+    assert.equal(
+      laaserUde("koordinator", [PERM.opgaverSkriv], roller, { egenRolle: "admin" }),
+      null);
+  });
+
+  it("og en rolle der BEHOLDER den, spærres aldrig", () => {
+    assert.equal(laaserUde("admin", [...ALLE_PERMS], {}, { egenRolle: "admin" }), null);
+  });
+
+  it("⚠ SVARET ER EN SÆTNING, ikke et flag", () => {
+    /* Serveren afviser med den sætning skærmen ville have vist. "false" ville
+       ikke fortælle nogen hvad de skal gøre i stedet. */
+    const grund = laaserUde("admin", [], {}, { egenRolle: "admin" });
+    assert.ok(grund.length > 40 && /\.$/.test(grund.trim()), grund);
+  });
+});
+
+describe("⚠ ROLLE_PERMS FORSVINDER IKKE — den er standarden", () => {
+  it("de syv rollenavne står fast", () => {
+    /* Man redigerer hvad en rolle indeholder; man opfinder ikke en ottende.
+       En ny rolle er stadig en ændring i koden — med en brugerart i
+       priser.js, ellers faktureres den lydløst som desktop. */
+    assert.equal(ALLE_ROLLER.length, 7);
+    assert.deepEqual(Object.keys(ROLLE_PERMS).sort(), [...ALLE_ROLLER].sort());
+  });
+
+  it("admin har stadig alt som udgangspunkt", () => {
+    assert.deepEqual(ALLE_PERMS.filter((p) => !permsFraRolle("admin").includes(p)), []);
+  });
+
+  it("⚠ CHAUFFØREN KAN KUN INDBERETTE — som STANDARD", () => {
+    /* Prøven prøver nu standardrollen, ikke hvad en given tenant måtte have
+       gjort ved sin. Kunden KAN give chaufføren mere; det er hele pointen med
+       31b. Listen er udtømmende, så en ny skrivepermission på standarden
+       fælder den. */
+    const skriver = permsFraRolle("chauffoer").filter((p) => /skriv|godkend|opret/i.test(p));
+    assert.deepEqual(skriver, [PERM.indberetningerSkriv]);
+  });
+});
+
+describe("delingen med serveren", () => {
+  it("permissions.js er i DELTE_FILER", () => {
+    /* rolleskriv kalder valideRolleperms() og laaserUde(). Firebase deployer
+       kun functions/-mappen, så en import op gennem træet fejler i skyen —
+       ved DEPLOY, ikke ved test. */
+    assert.ok(DELTE_FILER.includes("permissions.js"));
+  });
+
+  it("⚠ SAMME FUNKTION AFGØR I SKÆRMEN OG PÅ SERVEREN", () => {
+    /* En klientvalidering der ikke også står på serveren, er en pæn knap — og
+       her ville den pæne knap kunne koste kunden adgangen til sit eget
+       system. */
+    for (const f of [valideRolleperms, laaserUde, permsForTenant]) {
+      assert.equal(typeof f, "function");
+    }
+  });
+});

@@ -266,52 +266,155 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
      ⚠ MEN SLUTNINGEN VAR FORKERT. Svaret var ikke at bygge funktionen; det
      var at rollerne er FASTE (beslutning 31). Noden er væk, og claim'et
      kommer fra ROLLE_PERMS. */
-  it("⚠ roller/ FINDES IKKE LÆNGERE — beslutning 31", () => {
-    /* Noden var tenantens egne rolledefinitioner, `.write: false` "indtil
-       den Cloud Function der udsteder claims, findes". Den funktion skal
-       ikke findes: rollerne er FASTE. En vognmand der fjerner
-       booking.godkend fra sin egen adminrolle, har lukket sig ude — og
-       adgangen til at rette det var selv en permission.
+  it("⚠ roller/ ER TILBAGE — MEN KUN SOM KILDE (beslutning 31b)", () => {
+    /* Noden var fjernet af beslutning 31: rollerne var faste, og der skulle
+       ikke findes en funktion der udstedte claims fra en node.
 
-       ⚠ OG DEN LAA TOM I MÅNEDSVIS. Ingen skrev den, ingen læste den. Det
-       er nøjagtig den døde overflade beslutning 31 fjernede idébanken for,
-       med sin egen begrundelse — den var bare ikke anvendt her. */
-    const regler = JSON.parse(
-      readFileSync("firebase.rules.json", "utf8")
-        .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10))
-    );
-    assert.equal(
-      regler.rules.tenants.$tenantId.roller, undefined,
-      "roller/ er tilbage. Genindfoeres den, afgoeres beslutning 31 om — og " +
-      "saa skal det staa i BESLUTNINGER.md, ikke i en regelfil."
-    );
+       Beslutning 31b omgjorde det — kunden kan redigere sine roller. Den
+       stærkeste indvending stod i regelfilen selv:
+
+         "en node der KUNNE bestemme hvad en bruger må, ville være et andet
+          håndhævelsespunkt end tokenet — og to håndhævelsespunkter er ét
+          for mange."
+
+       Svaret er hele designet, og DET er hvad prøven her håndhæver:
+
+           roller/ er en KILDE, aldrig et HÅNDHÆVELSESPUNKT.
+
+       Noden siger hvad der bliver mintet NÆSTE gang. Adgang afgøres
+       udelukkende af auth.token.perms. Slog en regel op i noden, ville de
+       to stå og være uenige indtil næste mint — et token er stille, en
+       node er levende. */
+    const raa = readFileSync("firebase.rules.json", "utf8");
+    const udenKommentarer = raa
+      .split(String.fromCharCode(10))
+      .filter((l) => !l.trim().startsWith("//"))
+      .join(String.fromCharCode(10));
+    const regler = JSON.parse(udenKommentarer);
+    const node = regler.rules.tenants.$tenantId.roller;
+
+    assert.ok(node, "roller/ mangler — beslutning 31b kræver noden");
+
+    /* ⚠ .write: false. Noden skrives KUN af rolleskriv, som minter claims i
+       samme ombæring. Kunne en klient skrive den direkte, ville noden sige
+       ét og tokenet noget andet indtil næste mint. */
+    assert.equal(node[".write"], false,
+      "roller/ er skrivbar fra en klient — så kan noden og tokenet blive uenige");
+
+    /* ══ DEN VIGTIGSTE LINJE I FILEN ══
+       INGEN regel må slå op i roller/. Prøven leder i HELE regelfilen efter
+       et child('roller')-opslag — det er sådan et andet håndhævelsespunkt
+       ville se ud. */
+    const opslag = "child(" + String.fromCharCode(39) + "roller" + String.fromCharCode(39) + ")";
+    assert.ok(!udenKommentarer.includes(opslag),
+      "en regel slår op i roller/. Så er der TO håndhævelsespunkter: noden og " +
+      "tokenet — og de er uenige indtil næste mint. Adgang afgøres af " +
+      "auth.token.perms og intet andet. Se beslutning 31b.");
   });
 
-  it("⚠ CLAIM'ET KOMMER FRA ROLLE_PERMS, ikke fra en node", async () => {
-    /* Der er ingen vej fra en databasenode til en permission, og det er med
-       vilje: en node der KUNNE bestemme hvad en bruger må, ville være et
-       andet håndhævelsespunkt end tokenet — og to håndhævelsespunkter er ét
-       for mange. */
+  it("⚠ ROLLENAVNENE ER STADIG FASTE — man redigerer indholdet", () => {
+    /* Beslutning 31b lod kunden redigere hvad en rolle INDEHOLDER. Den lod
+       ham ikke opfinde en ottende: en ny rolle er stadig en ændring i koden,
+       med prøver og en brugerart i priser.js — ellers faktureres den lydløst
+       som desktop, den dyre af de to. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    const i = kode.indexOf("export const rolleskriv = onCall");
+    assert.ok(i > 0, "rolleskriv findes ikke");
+    const krop = kode.slice(i, kode.indexOf(String.fromCharCode(10) + "export const ", i + 1));
+    assert.match(krop, /ROLLE_PERMS\[rolle\]/,
+      "rolleskriv prøver ikke rollenavnet mod de syv faste");
+  });
+  it("⚠ CLAIM'ET MINTES SERVER-SIDE — og noden er kilden, ikke dommeren", () => {
+    /* Prøven hed før "CLAIM'ET KOMMER FRA ROLLE_PERMS, ikke fra en node", og
+       begrundelsen var: en node der KUNNE bestemme hvad en bruger må, ville
+       være et andet håndhævelsespunkt end tokenet.
+
+       Beslutning 31b lader kunden redigere sine roller, så funktionerne SLÅR
+       nu op i noden. Indvendingen er ikke løst ved at ignorere den, men ved
+       at dele den i to:
+
+         KILDEN            roller/ — hvad der mintes NÆSTE gang. Funktioner
+                           læser den. Reglerne gør ALDRIG.
+         HÅNDHÆVELSEN      auth.token.perms — og intet andet.
+
+       At reglerne ikke læser noden, prøves i "roller/ ER TILBAGE" ovenfor.
+       Her prøves den anden halvdel: at mintningen sker på serveren og slår
+       igennem med det samme. */
     const kilde = readFileSync("functions/index.js", "utf8");
-    const blok = kilde.slice(kilde.indexOf("export const skiftrolle"));
-    assert.ok(blok.includes("permStrengFraRolle(rolle)"),
-      "skiftrolle udleder ikke perms af presettet");
-    const opslag = [".child(" + "\"roller", ".child(" + "`roller"];
-    assert.ok(!opslag.some((o) => kilde.includes(o)),
-      "en funktion slaar op i roller/ — noden findes ikke laengere");
+    const krop = (navn) => {
+      const i = kilde.indexOf(`export const ${navn} = onCall`);
+      assert.ok(i > 0, `${navn} findes ikke`);
+      const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", i + 1);
+      return naeste < 0 ? kilde.slice(i) : kilde.slice(i, naeste);
+    };
 
-    /* ⚠ OG EN NEDGRADERING SKAL SLÅ IGENNEM STRAKS. Uden
-       revokeRefreshTokens beholder brugeren sine gamle claims indtil
-       tokenet udløber af sig selv: man ville tro man havde fjernet en
-       adgang, som stadig virkede. */
-    assert.ok(blok.includes("revokeRefreshTokens"),
-      "en rolleaendring traeder ikke i kraft foer tokenet udloeber");
+    /* ⚠ ALLE STEDER DER MINTER, SKAL BRUGE TENANTENS EGEN DEFINITION.
+       Mintede ét af dem konstanten, ville en kunde der har redigeret sin
+       disponentrolle, få standarden tilbage næste gang han oprettede en
+       disponent — og forskellen ville vise sig som en adgang der manglede
+       uden grund. */
+    assert.match(krop("skiftrolle"), /claimForRolle\(tenantId, rolle\)/,
+      "skiftrolle minter ikke gennem tenantens egne rolledefinitioner");
+    assert.match(kilde, /function claimForRolle[\s\S]*?permsForTenant\(/,
+      "claimForRolle udleder ikke perms af rollen");
+
+    /* ⚠ OG EN ÆNDRING SKAL SLÅ IGENNEM STRAKS. Uden revokeRefreshTokens
+       beholder brugeren sine gamle claims indtil tokenet udløber af sig
+       selv: man ville tro man havde fjernet en adgang, som stadig virkede.
+       Det gælder nu BEGGE veje — et rolleskift og en rolleændring. */
+    for (const navn of ["skiftrolle", "rolleskriv"]) {
+      assert.match(krop(navn), /revokeRefreshTokens/,
+        `${navn} træder ikke i kraft før tokenet udløber`);
+    }
+
+    /* ⚠ OG KLIENTEN MINTER IKKE. Der findes ingen vej fra browseren til et
+       claim; setCustomUserClaims står kun i functions/.
+
+       ⚠ KOMMENTARERNE SKAL VÆK FØRST. permissions.js NÆVNER
+       setCustomUserClaims i en note om hvordan claims fornys — og en prøve
+       der fælder på en kommentar, fælder på det stik modsatte af det den
+       leder efter.
+
+       ⚠ OG DET SKAL VÆRE EN RIGTIG BLOKTILSTAND, ikke et præfikstjek.
+       Første forsyning filtrerede linjer der begyndte med `*`, `/*` eller
+       `//` — og permissions.js' blokkommentarer fortsætter med almindelig
+       indrykning uden stjerne. Nævnelsen på linje 30 slap igennem, og prøven
+       fældede en fil der ikke havde gjort noget.
+
+       Tilstandsmaskinen står her frem for en regex, fordi mønstret for en
+       blokkommentar selv er fuldt af skråstreger og stjerner — og en prøve
+       skal kunne læses af den der fælder den. */
+    const udenKommentarer = (tekst) => {
+      const ud = [];
+      let iBlok = false;
+      for (const linje of tekst.split(String.fromCharCode(10))) {
+        const t = linje.trim();
+        if (iBlok) {
+          if (t.includes("*" + "/")) iBlok = false;
+          continue;
+        }
+        if (t.startsWith("/" + "*")) {
+          if (!t.includes("*" + "/")) iBlok = true;
+          continue;
+        }
+        if (t.startsWith("//")) continue;
+        ud.push(linje);
+      }
+      return ud.join(String.fromCharCode(10));
+    };
+    const klient = udenKommentarer(readFileSync("src/fleet/permissions.js", "utf8"));
+    assert.doesNotMatch(klient, /setCustomUserClaims/,
+      "permissions.js minter claims — det hører på serveren");
   });
 
-  it("⚠ EN ROLLE KAN IKKE ÆNDRES — kun tildeles", () => {
-    /* Syv faste roller. Skal en betyde noget andet, er det en ændring i
-       permissions.js med en begrundelse, prøver og fornyede claims — ikke
-       et felt en kunde kan rette. */
+  it("⚠ ROLLENAVNENE ER FASTE — det er INDHOLDET kunden kan redigere", () => {
+    /* Prøven hed før "EN ROLLE KAN IKKE ÆNDRES — kun tildeles".
+
+       Beslutning 31b lod kunden redigere hvad en rolle indeholder. Den lod
+       ham ikke opfinde en ottende: en ny rolle er stadig en ændring i koden,
+       med en begrundelse, prøver og fornyede claims — og med en BRUGERART i
+       priser.js, ellers bliver den lydløst faktureret som desktop, den dyre
+       af de to. Det er stadig den vigtigste grund til at antallet er låst. */
     assert.equal(ALLE_ROLLER.length, 7,
       "antallet af roller er aendret — er der taget stilling til brugerarten " +
       "i priser.js? En ny rolle uden en ville lydloest blive faktureret som desktop.");

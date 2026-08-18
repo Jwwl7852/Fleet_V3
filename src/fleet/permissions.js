@@ -399,6 +399,108 @@ export const ROLLE_PERMS = {
 /** Permissions for en rolle. Ukendt rolle giver ingenting — ikke alt. */
 export const permsFraRolle = (rolle) => ROLLE_PERMS[rolle] || [];
 
+/* ══════════════════════════════════════════════════════════════════════════
+   BESLUTNING 31b — KUNDEN KAN REDIGERE SINE ROLLER
+
+   ROLLE_PERMS ovenfor er ikke længere det endelige svar; den er STANDARDEN.
+   En tenant kan have sine egne definitioner i `roller/<rolle>/perms`, og
+   claims mintes af `rolleskriv` fra dem.
+
+   ⚠ NODEN ER EN KILDE, ALDRIG ET HÅNDHÆVELSESPUNKT. firebase.rules.json
+   læser aldrig `roller/`; adgang afgøres udelukkende af auth.token.perms.
+   To håndhævelsespunkter ville være ét for mange — det var den stærkeste
+   indvending mod at gøre rollerne redigerbare, og det her er svaret på den.
+   En prøve fælder enhver regel der refererer noden.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * permsForTenant(rolle, roller) → listen der skal mintes.
+ *
+ * `roller` er tenantens node, eller null/undefined hvis den ikke findes.
+ *
+ * ⚠ EN TENANT UDEN NODEN OPFØRER SIG PRÆCIS SOM FØR. Det er dét der gør
+ * ændringen sikker at udrulle: ingen eksisterende kunde skifter adgang af at
+ * funktionen kommer. Falder noden væk, falder man tilbage på standarden —
+ * ikke på ingenting, og ikke på alt.
+ *
+ * ⚠ OG DER FILTRERES MOD ALLE_PERMS. En ukendt streng i noden er en adgang
+ * ingen regel kender — altså en adgang til ingenting, som SER UD som om den
+ * gav noget. Den skal ikke ende i et token, hvor den ville stå og ligne en
+ * rettighed nogen har fået.
+ *
+ * ⚠ REKKEFØLGEN ER KATALOGETS, IKKE NODENS. Claim-strengen er en tekst der
+ * sammenlignes med contains(); to brugere med de samme permissions i
+ * forskellig rækkefølge ville få to forskellige strenge, og en fejlsøgning
+ * der holder to tokens op mod hinanden, ville se en forskel der ikke er der.
+ */
+export function permsForTenant(rolle, roller) {
+  if (!ROLLE_PERMS[rolle]) return [];
+  const egne = roller?.[rolle]?.perms;
+  if (!Array.isArray(egne)) return permsFraRolle(rolle);
+  const valgt = new Set(egne);
+  return ALLE_PERMS.filter((p) => valgt.has(p));
+}
+
+/**
+ * Er listen gyldig som en rolledefinition?
+ *
+ * ⚠ SAMME FUNKTION I SKÆRMEN OG PÅ SERVEREN. En klientvalidering der ikke
+ * også står på serveren, er en pæn knap — og her ville den pæne knap kunne
+ * skrive en permission ingen regel kender.
+ */
+export function valideRolleperms(perms) {
+  if (!Array.isArray(perms)) return { ok: false, fejl: "Permissions skal være en liste." };
+  const ukendte = perms.filter((p) => !ALLE_PERMS.includes(p));
+  if (ukendte.length) {
+    return { ok: false, fejl: `Ukendte permissions: ${ukendte.join(", ")}.` };
+  }
+  if (new Set(perms).size !== perms.length) {
+    return { ok: false, fejl: "Den samme permission står to gange." };
+  }
+  return { ok: true, fejl: null };
+}
+
+/**
+ * ⚠ DEN PERMISSION DER IKKE MÅ FORSVINDE.
+ *
+ * `brugere.skriv` er adgangen til at redigere roller. Fjernes den fra den
+ * sidste rolle der har den, har kunden lukket sig ude af sit eget system, og
+ * der er ingen vej tilbage fra klienten — adgangen til at rette det var selv
+ * en permission. Det er nøjagtig den fare beslutning 31 blev truffet for, og
+ * den er ikke forsvundet af at beslutningen blev omgjort.
+ */
+export const NOEGLEPERM = PERM.brugereSkriv;
+
+/**
+ * laaserUde(rolle, nyePerms, roller, { egenRolle }) → grund, eller null.
+ *
+ * Svarer HVORFOR det ikke kan lade sig gøre, ikke bare at det ikke kan.
+ * Serveren afviser med den samme sætning skærmen viste.
+ */
+export function laaserUde(rolle, nyePerms = [], roller = {}, { egenRolle = null } = {}) {
+  const beholder = nyePerms.includes(NOEGLEPERM);
+  if (beholder) return null;
+
+  /* ⚠ DIN EGEN ROLLE FØRST. Selv om en anden rolle har permissionen, er det
+     her den mest almindelige måde at ødelægge en rolleadministration på: man
+     strammer op på sin egen rolle og opdager det bagefter. */
+  if (egenRolle && egenRolle === rolle) {
+    return `Du kan ikke fjerne ${NOEGLEPERM} fra din egen rolle. ` +
+      "En anden med adgang til brugere skal gøre det.";
+  }
+
+  /* Har nogen ANDEN rolle den stadig? Standarden tæller med: en rolle uden
+     egen definition i noden bærer ROLLE_PERMS. */
+  const andre = Object.keys(ROLLE_PERMS)
+    .filter((r) => r !== rolle)
+    .some((r) => permsForTenant(r, roller).includes(NOEGLEPERM));
+  if (!andre) {
+    return `${NOEGLEPERM} ville forsvinde fra den sidste rolle der har den. ` +
+      "Så kan ingen redigere roller igen — heller ikke for at fortryde.";
+  }
+  return null;
+}
+
 /**
  * Claim-strengen. Rør i begge ender og mellem hvert navn.
  * Det er denne der lægges i auth.token.perms.
