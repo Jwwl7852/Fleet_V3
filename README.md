@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local          # DEV-nøgler. Ikke prod.
 git config core.hooksPath .githooks # kører regel- og designtesten før commit
 npm run dev
-npm test                            # 1440 tests. Starter emulatoren.
+npm test                            # 1446 tests. Starter emulatoren.
 npm run test:design                 # kun designtokens. Ingen emulator, ~0,1 s.
 npm run regler:tjek                 # håndhæver databasen den regelfil du har?
 npm run delt:kopier                 # laegger audit-politikken ind i functions/delt/
@@ -523,6 +523,14 @@ dobbeltfakturering.
 
 **Reglen: et manglende KPI-tal defineres i `demo-kpi.js` — det hardkodes ikke
 i en skærm.**
+
+⚠ **Og et felt der ikke er beregnet, skal LIGNE det.** `num(null)` gav "0"
+indtil nu. Så længe `kpi/` blev seedet fra demo-sættet, havde hvert felt en
+værdi, og forskellen kunne ikke ses — men aggregeringen kommer til at skrive
+`null` for felter hvis KILDE ikke findes: `opgaver`, `indkoeb` og `facility`
+er ikke i databasen endnu. Skærmen ville have skrevet "0 åbne ordrer". Det er
+ikke en tom liste; det er et ubesvaret spørgsmål. `num`, `pct` og `km` skriver
+nu `INTET` (—) for null og NaN, og "0" for nul. Se `test/format.test.mjs`.
 
 `demo-kpi.js` *er* formen på `kpi/`-noden. Definerer man feltet der, er
 skærmen rigtig med det samme (`k.facility.aabneFejl`), og det eneste der

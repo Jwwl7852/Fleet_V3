@@ -35,9 +35,39 @@ export function oereFraKroner(tekst) {
   if (!Number.isFinite(n)) return null;
   return Math.round(n * 100);
 }
-export const num = (n, dec = 0) => nf(dec).format(n || 0);
-export const pct = (p, dec = 0) => nf(dec).format(p || 0) + " %";
-export const km = (n) => nf(0).format(n || 0) + " km";
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ ET TAL DER IKKE ER BEREGNET, ER IKKE NUL.
+ *
+ * `num(null)` gav "0" indtil KPI-aggregeringen skulle skrives. Så længe
+ * `kpi/` blev seedet fra demo-sættet, havde hvert felt en værdi, og forskellen
+ * kunne ikke ses. Den dag et aggregeringsjob skriver `null` for et felt hvis
+ * KILDE ikke findes — `indkoeb` er ikke i basen endnu — ville skærmen skrive
+ * "0 åbne ordrer". Det er ikke en tom liste; det er et ubesvaret spørgsmål,
+ * og de to må ikke se ens ud.
+ *
+ * Det er den samme regel som momssatsen der mangler, som en sats uden pris,
+ * og som `beregnNoegletal()` der returnerer null under MINDSTE_GRUNDLAG: vi
+ * gætter ikke, og vi skriver ikke et nul der ligner et regnestykke der er
+ * gået op.
+ *
+ * `INTET` er tegnet formatterne bruger. Der står ~96 hårdkodede "—" i
+ * skærmene endnu, og de er IKKE forkerte — de er det samme tegn. Det farlige
+ * ville være en anden markør: en skærm der skrev "n/a", "-" eller "·" for det
+ * samme, ville ikke kunne søges frem, og den næste ville tro der var forskel.
+ * `test/format.test.mjs` fejler på det.
+ *
+ * ⚠ NUL ER STADIG NUL. `num(0)` er "0" — en tom liste er et svar.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+export const INTET = "—";
+
+const talEllerIntet = (n, formater) =>
+  (n == null || Number.isNaN(n) ? INTET : formater(n));
+
+export const num = (n, dec = 0) => talEllerIntet(n, (x) => nf(dec).format(x));
+export const pct = (p, dec = 0) => talEllerIntet(p, (x) => nf(dec).format(x) + " %");
+export const km = (n) => talEllerIntet(n, (x) => nf(0).format(x) + " km");
 
 /** Millimeter → meter til VISNING. Længder gemmes som integer i millimeter —
  *  se samletLaengdeMm() i flaade.js. Vis meter, gem millimeter; en float ved

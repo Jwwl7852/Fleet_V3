@@ -36,6 +36,11 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   hos forbrugeren og læg det **ikke** i `kpi/`. Et gemt afledt tal driver fra
   sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
+- **Lade et ikke-beregnet tal se ud som nul.** `num`, `pct` og `km` skriver
+  `INTET` (—) for `null` og `NaN`, og "0" for nul. En tom liste er et svar;
+  et felt aggregeringen ikke kunne regne, er et ubesvaret spørgsmål. Skriver
+  du din egen markør — "n/a", "ingen data" — fejler `test/format.test.mjs`:
+  den næste ville tro der var forskel, og ingen af dem kan søges frem.
 - Gemme beløb som float eller kroner. Øre som integer, ekskl. moms.
 - Overskrive en sats. Ny post med `gyldigFra`.
 - Skrive en reservation direkte. Brug `reservations.js`.
