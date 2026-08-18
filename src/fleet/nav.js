@@ -81,6 +81,16 @@ export const NAV = [
         under: "Planlæg, følg op og håndtér driftsopgaver på tværs af enheder og værksteder." },
       { key: "indberetninger", sti: "/flaade/indberetninger", label: "Indberetninger",
         titel: "Indberetninger", under: "Reparation, skade, brændstof og fejl" },
+      /* ⚠ skjulINav: KØEN ER ET MÅL, IKKE ET MENUPUNKT. Man kommer hertil fra
+         en af Driftskalenderens fem kasser — enten i samme vindue eller i et
+         nyt — og udsnittet staar i ?vis=. Et menupunkt uden det ville aabne
+         "nye" for alle, uanset hvad man kiggede paa, og saa ville de fem tal
+         og listen kunne vaere uenige uden at nogen kunne se hvorfor.
+         Ruten SKAL findes: "Aabn i nyt vindue" er et rigtigt browservindue,
+         og et nyt vindue arver ingen React-tilstand. */
+      { key: "arbejdskoe", sti: "/flaade/koe", label: "Arbejdskø", skjulINav: true,
+        titel: "Fleet – arbejdskø",
+        under: "Én samlet kø for alle hændelser. Filtrér og prioritér." },
     ],
   },
   {

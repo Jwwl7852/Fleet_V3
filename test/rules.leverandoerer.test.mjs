@@ -253,10 +253,34 @@ describe("indkøb og fakturaer slår leverandøren op", () => {
     /* ⚠ EN KLIENTVALIDERING DER IKKE OGSÅ STÅR I REGLERNE, ER EN PÆN KNAP.
        valideIndkoeb() har hele tiden sagt "Leverandøren findes ikke." — men
        serveren tog imod posten alligevel. De to siger nu det samme. */
-    const regler = readFileSync("firebase.rules.json", "utf8");
-    const opslag = /child\('leverandoerer'\)\.child\(newData\.val\(\)\)\.exists\(\)/g;
-    const antal = (regler.match(opslag) || []).length;
-    assert.equal(antal, 2,
-      "både indkoeb.leverandoerId og fakturaer.leverandoerId skal slå op — de blev strammet sammen");
+    /* ⚠ HER STOD ET TAL: "antallet af opslag skal være 2". Det holdt indtil
+       en TREDJE node fik feltet — opgaver, da værkstedsbesøgene flyttede ind
+       — og så faldt prøven på noget der var RIGTIGT. Et tal siger kun hvor
+       mange; det siger ikke hvilke, og det vælter ved enhver udvidelse uden
+       at pege på hvad der mangler.
+
+       Prøven spørger nu hver node for sig. Får en fjerde node feltet, skal
+       den skrives ind her — og det er den rigtige slags arbejde: nogen har
+       taget stilling til om referencen skal slå op. */
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10))
+        .filter((l) => !l.trim().startsWith("//"))
+        .join(String.fromCharCode(10))
+    );
+    const t = regler.rules.tenants.$tenantId;
+    const steder = {
+      indkoeb: t.indkoeb.$indkoebId.leverandoerId,
+      fakturaer: t.fakturaer.$fakturaId.leverandoerId,
+      /* Kom med værkstedsbesøgene. Et værksted der er stavet forkert,
+         bliver en AFVISNING frem for en ny leverandør ingen kan finde. */
+      opgaver: t.opgaver.$opgaveId.leverandoerId,
+    };
+    const OPSLAG = "child(" + String.fromCharCode(39) + "leverandoerer" + String.fromCharCode(39) + ")";
+    for (const [node, regel] of Object.entries(steder)) {
+      assert.ok(regel, `${node}.leverandoerId har ingen regel`);
+      assert.ok(regel[".validate"].includes(OPSLAG),
+        `${node}.leverandoerId slår ikke leverandøren op — en hængende reference tages imod`);
+    }
   });
 });

@@ -3,6 +3,7 @@
  * statuschips eller tomme tilstande — så kan de heller ikke se
  * forskellige ud fra skærm til skærm.
  */
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { deviation } from "./format.js";
 
@@ -777,5 +778,113 @@ export function Formular({ onGem, gemmer, kanGemme = true, gemLabel = "Gem",
         {onAnnuller && <Knap type="button" onClick={onAnnuller} disabled={gemmer}>Annullér</Knap>}
       </div>
     </form>
+  );
+}
+
+/* ---- Faner ------------------------------------------------------------ */
+
+/**
+ * Faner({ faner, valgt, saet, label })
+ *
+ *   faner  [{ key, label, badge }]
+ *
+ * ⚠ LIGGER HER FREM FOR I DEN SKÆRM DER FØRST FIK BRUG FOR DEM. Markup'en stod
+ * inline i Sagsvisning.jsx, og Driftskalenderens hændelsespanel skulle bruge
+ * nøjagtig samme række. To fanerækker med hver sin aria-opmærkning opdages ikke
+ * ved at kigge på dem — den ene ville have `role="tablist"` og den anden ikke,
+ * og forskellen ses kun med en skærmlæser. Samme begrundelse som
+ * Gitterkalender og Sagsvisning.
+ *
+ * `badge` står PÅ fanen og ikke inde bag den: ligger der noget der kræver
+ * handling, skal man ikke først klikke ind for at opdage det. Det var
+ * karantænetallet i Sagsvisning, og det er antallet af fotos her.
+ */
+export function Faner({ faner = [], valgt, saet, label = "Faner" }) {
+  return (
+    <div className="fc-faner" role="tablist" aria-label={label}>
+      {faner.map((f) => (
+        <button
+          key={f.key} type="button" role="tab" className="fc-fane"
+          aria-selected={valgt === f.key} onClick={() => saet(f.key)}
+        >
+          {f.label}
+          {f.badge != null && f.badge !== "" && <span className="fc-fane-tal">{f.badge}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ---- Dialog ----------------------------------------------------------- */
+
+/**
+ * Dialog({ titel, under, handling, onLuk, bred, children })
+ *
+ * Et modalt panel. ⚠ IKKE window.alert/confirm — de blokerer hele tråden, og
+ * en skærm der venter på en browserdialog kan ikke vise hvorfor.
+ *
+ * TRE TING DER SKAL BLIVE STÅENDE:
+ *
+ *  1. ESCAPE LUKKER. En overlay uden tastaturvej ud er en fælde for den der
+ *     ikke bruger mus — og den er også den hurtigste vej ud for alle andre.
+ *  2. KLIK PÅ BAGGRUNDEN LUKKER, men kun når klikket BEGYNDTE der. Uden det
+ *     lukker dialogen når man markerer tekst indeni og slipper musen udenfor,
+ *     og så mister man det man var i gang med at kopiere.
+ *  3. role="dialog" + aria-modal + aria-labelledby. Uden dem er panelet bare
+ *     en div der ligger ovenpå, og en skærmlæser bliver stående i siden
+ *     nedenunder.
+ *
+ * ⚠ DEN FANGER IKKE FOKUS. En rigtig fokusfælde kræver at man kender alle
+ * fokuserbare børn og håndterer Tab i begge retninger; en halv fælde er værre
+ * end ingen, fordi den ser ud som om den virker. Panelet får fokus ved
+ * åbning, så tastaturet lander det rigtige sted — resten er et selvstændigt
+ * stykke arbejde.
+ */
+export function Dialog({ titel, under, handling, onLuk, bred = false, children }) {
+  const panel = useRef(null);
+  const nedPaaBaggrund = useRef(false);
+
+  useEffect(() => {
+    const paaTast = (e) => { if (e.key === "Escape") onLuk?.(); };
+    document.addEventListener("keydown", paaTast);
+    panel.current?.focus();
+    /* Baggrunden må ikke kunne scrolles bag et modalt panel: gør den det,
+       ruller siden nedenunder når man scroller i en lang tråd, og man står et
+       andet sted når dialogen lukkes. */
+    const foer = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", paaTast);
+      document.body.style.overflow = foer;
+    };
+  }, [onLuk]);
+
+  return (
+    <div
+      className="fc-dialog-baggrund"
+      onMouseDown={(e) => { nedPaaBaggrund.current = e.target === e.currentTarget; }}
+      onMouseUp={(e) => {
+        if (nedPaaBaggrund.current && e.target === e.currentTarget) onLuk?.();
+        nedPaaBaggrund.current = false;
+      }}
+    >
+      <div
+        className={`fc-dialog ${bred ? "fc-dialog-bred" : ""}`}
+        role="dialog" aria-modal="true" aria-labelledby="fc-dialog-titel"
+        tabIndex={-1} ref={panel}
+      >
+        <div className="fc-dialog-top">
+          <div>
+            <h2 id="fc-dialog-titel">{titel}</h2>
+            {under && <p className="fc-dialog-under">{under}</p>}
+          </div>
+          <div className="fc-dialog-top-h">
+            {handling}
+            <button type="button" className="fc-dialog-luk" onClick={onLuk} aria-label="Luk">×</button>
+          </div>
+        </div>
+        <div className="fc-dialog-krop">{children}</div>
+      </div>
+    </div>
   );
 }

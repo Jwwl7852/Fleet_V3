@@ -112,6 +112,12 @@ export default function Gitterkalender({
                     <button
                       key={b.id}
                       type="button"
+                      /* ⚠ ID'ET PAA ELEMENTET, saa en forbruger kan finde
+                         blokken under musen uden at gitteret skal kende til
+                         svaevekort. Gitteret bruges af tre skaerme, og et
+                         onHover-kald med sin egen tilstand ville have vaeret
+                         en fjerde ting de tre skulle vaere enige om. */
+                      data-blok={b.id}
                       className={`fc-gk-blok ${TONE_KLASSE[b.tone] || TONE_KLASSE.info} ` +
                                  `${b.konflikt ? "fc-gk-konflikt" : ""} ` +
                                  `${valgtId === b.id ? "fc-gk-valgt" : ""}`}

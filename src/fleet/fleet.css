@@ -56,6 +56,11 @@
   --fc-ikon-5-bg:var(--fc-accent-soft);
   --fc-ikon-6-bg:color-mix(in srgb, #008300 12%, #fff);
 
+  /* Modal baggrund. Sidebarens navy ved 44 %, ikke en neutral sort: en sort
+     overlay goer alle farver under sig graa-brune, en navy lader accenten
+     blive blaa. Se BESLUTNINGER.md — et token er en beslutning. */
+  --fc-overlay:rgba(16,26,48,.44);
+
   --fc-r:12px;
   --fc-sidebar:216px;
   --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
@@ -386,26 +391,38 @@
 /* Gitterkalender — ressourcer som rækker, tid som kolonner. Bruges af
    Værkstedskalender, Servicekalender og Disponering. Alt fra tokens. */
 .fc-gk{display:grid; grid-template-columns:180px 1fr; min-width:640px}
-.fc-gk-navn{padding:8px 10px; border-top:1px solid var(--bc-line); font-size:12.5px;
-  display:flex; flex-direction:column; gap:2px; justify-content:center}
-.fc-gk-hj{border-top:0}
+/* ⚠ NAVNET ER KLÆBET TIL VENSTRE. Ruller man vandret gennem fem uger, er en
+   blok uden sin enhed ubrugelig — man kan se at NOGET er på værksted, men ikke
+   hvad. z-index over cellerne, under det klæbende hoved. Baggrunden SKAL være
+   sat: uden den skinner blokkene igennem når de ruller ind under navnet. */
+.fc-gk-navn{padding:4px 10px; border-top:1px solid var(--bc-line); font-size:12px;
+  display:flex; flex-direction:column; gap:1px; justify-content:center;
+  position:sticky; left:0; z-index:2; background:var(--bc-card)}
+.fc-gk-hj{border-top:0; position:sticky; top:0; left:0; z-index:4;
+  background:var(--bc-card)}
 .fc-gk-navn-t{font-weight:650}
 .fc-gk-navn-u{color:var(--bc-muted); font-size:11.5px}
 .fc-gk-raekkepar{display:contents}
-.fc-gk-band{display:grid; grid-template-columns:repeat(var(--gk-slots),minmax(34px,1fr));
-  border-top:1px solid var(--bc-line); position:relative; min-height:44px; align-items:center}
-.fc-gk-hoved{border-top:0; min-height:0}
+/* 30 px frem for 44. Rækkerne var så høje at otte enheder fyldte skærmen, og
+   en vognmand med tredive kunne kun se en fjerdedel af sin flåde ad gangen. */
+.fc-gk-band{display:grid; grid-template-columns:repeat(var(--gk-slots),minmax(30px,1fr));
+  border-top:1px solid var(--bc-line); position:relative; min-height:30px; align-items:center}
+/* ⚠ HOVEDET KLÆBER. Uden det ruller datoerne op og ud af syne, og så tæller
+   man kolonner for at finde ud af hvilken dag en blok ligger på — præcis den
+   fejl et gitter der er én dag forskudt, laver af sig selv. */
+.fc-gk-hoved{border-top:0; min-height:0; position:sticky; top:0; z-index:3;
+  background:var(--bc-card)}
 .fc-gk-kol{grid-row:1; text-align:center; font-size:10.5px; color:#8b97a8; font-weight:650;
   padding:6px 2px; letter-spacing:.02em; white-space:nowrap; overflow:hidden}
-.fc-gk-celle{grid-row:1; height:100%; min-height:44px; border-left:1px solid var(--bc-line)}
+.fc-gk-celle{grid-row:1; height:100%; min-height:30px; border-left:1px solid var(--bc-line)}
 .fc-gk-celle:first-child{border-left:0}
 /* Kolonnen for nu. En kalender uden et "nu" tvinger brugeren til at tælle. */
 .fc-gk-nu{background:var(--fc-accent-soft)}
 .fc-gk-kol.fc-gk-nu{color:var(--bc-accent)}
 
 .fc-gk-blok{grid-row:1; z-index:1; display:flex; align-items:center; gap:4px;
-  min-width:0; border:1px solid transparent; border-radius:7px; padding:5px 8px;
-  margin:3px 2px; font:inherit; font-size:11.5px; font-weight:650; cursor:pointer;
+  min-width:0; border:1px solid transparent; border-radius:6px; padding:2px 7px;
+  margin:2px; font:inherit; font-size:11px; font-weight:650; cursor:pointer;
   overflow:hidden; text-align:left}
 .fc-gk-tekst{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 /* Pilen er ikke pynt: uden den læses en tre ugers blok som et kort besøg. */
@@ -787,3 +804,94 @@
   .fc-kpis{grid-template-columns:repeat(4,1fr)}
   a[href]:after{content:""}
 }
+
+/* ── Driftskalender ──────────────────────────────────────────────────────
+   Værktøjslinjen over gitteret, det lodrette udsnit og svævekortet. */
+
+/* Lodret scroll. ⚠ IKKE på .fc-scroll selv: den er vandret og bruges af hver
+   tabel i appen. Modifikatoren sættes kun hvor der ER mange rækker, og loftet
+   kommer fra en variabel, så et pop op-vindue kan sætte det højere. */
+.fc-gk-lodret{overflow-y:auto; max-height:var(--gk-maks, 430px)}
+
+.fc-kal-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:12px}
+.fc-kal-spring{margin-left:auto; display:flex; align-items:center; gap:8px}
+.fc-kal-periode{font-weight:650; font-size:13px; white-space:nowrap}
+
+/* Segmenteret vælger — Dag/Uge/Måned og 1 uge/2 uger/1 md. Samme form som
+   sidebarens Gods/Bus, men den klasse er sidebarens og må ikke deles: en
+   .fc-div i et modul ville arve sidebarens mørke bund. */
+.fc-seg{display:inline-flex; border:1px solid var(--bc-line); border-radius:9px;
+  overflow:hidden; background:var(--bc-card)}
+.fc-seg button{background:none; border:0; border-left:1px solid var(--bc-line);
+  padding:7px 12px; font:inherit; font-size:12.5px; font-weight:650;
+  color:var(--bc-muted); cursor:pointer; white-space:nowrap}
+.fc-seg button:first-child{border-left:0}
+.fc-seg button[aria-pressed="true"]{background:var(--fc-accent-soft); color:var(--bc-accent)}
+
+/* Prioritetsprikkerne på kassen. Tallet bærer, farven forstærker — derfor
+   står antallet som tekst ved siden af og ikke kun som en prik. */
+.fc-pri{display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+  font-size:11.5px; color:var(--bc-muted); margin-top:8px}
+.fc-pri-et{display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
+.fc-pri-prik{width:8px; height:8px; border-radius:50%; flex:0 0 auto;
+  background:var(--bc-muted)}
+.fc-pri-lav .fc-pri-prik{background:var(--bc-ok)}
+.fc-pri-normal .fc-pri-prik{background:var(--bc-warn)}
+.fc-pri-hoej .fc-pri-prik{background:var(--bc-block)}
+
+/* Knapperækken nederst på en kasse: Åbn her / Åbn i nyt vindue. */
+.fc-kasse-knapper{display:flex; gap:6px; align-items:center; margin-top:10px;
+  flex-wrap:wrap}
+
+/* ── Svævekort ───────────────────────────────────────────────────────────
+   ⚠ ET title-ATTRIBUT VAR IKKE NOK. Browserens egen boble kommer efter halvandet
+   sekund, forsvinder efter fem, kan ikke rumme en tabel, og findes slet ikke på
+   en berøringsskærm. Kortet her er ikke pynt: det svarer på "hvad sker der på
+   den her blok" uden at man mister sin plads i gitteret ved at klikke.
+   pointer-events:none — kortet må aldrig stjæle musen fra blokken under sig. */
+.fc-svaev{position:fixed; z-index:60; pointer-events:none;
+  background:var(--bc-card); border:1px solid var(--bc-line);
+  border-radius:10px; box-shadow:var(--fc-shadow); padding:11px 13px;
+  min-width:230px; max-width:320px; font-size:12px}
+.fc-svaev-t{font-weight:700; margin-bottom:7px; font-size:12.5px}
+.fc-svaev-r{display:flex; justify-content:space-between; gap:14px; padding:2px 0}
+.fc-svaev-r span:first-child{color:var(--bc-muted)}
+.fc-svaev-r span:last-child{font-weight:650; text-align:right}
+
+/* ── Dialog ──────────────────────────────────────────────────────────────
+   Baggrunden er --fc-overlay: sidebarens navy ved 44 %. Se BESLUTNINGER.md. */
+.fc-dialog-baggrund{position:fixed; inset:0; z-index:80; background:var(--fc-overlay);
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:32px 20px; overflow-y:auto}
+.fc-dialog{background:var(--bc-card); border-radius:var(--fc-r);
+  box-shadow:var(--fc-shadow); width:100%; max-width:640px; outline:0;
+  display:flex; flex-direction:column; max-height:calc(100vh - 64px)}
+.fc-dialog-bred{max-width:1020px}
+.fc-dialog-top{display:flex; align-items:flex-start; gap:14px; padding:18px 20px 14px;
+  border-bottom:1px solid var(--bc-line)}
+.fc-dialog-top h2{margin:0; font-size:16px; font-weight:700}
+.fc-dialog-top-h{margin-left:auto; display:flex; align-items:center; gap:8px;
+  flex:0 0 auto}
+.fc-dialog-under{margin:3px 0 0; font-size:12.5px; color:var(--bc-muted)}
+.fc-dialog-luk{background:none; border:0; font-size:22px; line-height:1;
+  color:var(--bc-muted); cursor:pointer; padding:0 4px}
+.fc-dialog-krop{padding:18px 20px 20px; overflow-y:auto}
+
+/* Fanetallet står PÅ fanen — ligger der noget der kræver handling, skal man
+   ikke først klikke ind for at opdage det. */
+.fc-fane-tal{display:inline-block; margin-left:6px; padding:1px 6px;
+  border-radius:9px; background:var(--fc-bg); color:var(--bc-muted);
+  font-size:11px; font-weight:700}
+
+/* Fotos i hændelsespanelet. Miniaturerne er attrapper — DEV har ingen
+   Storage-bucket, og det står skrevet på skærmen frem for kun her. */
+.fc-fotos{display:flex; gap:8px; flex-wrap:wrap}
+.fc-foto{width:78px; height:58px; border-radius:8px; border:1px solid var(--bc-line);
+  background:var(--fc-bg); display:flex; align-items:center; justify-content:center;
+  color:var(--bc-muted); font-size:10.5px; text-align:center; padding:4px}
+
+/* Filterrække — knapper der hører sammen, samlet til venstre. ⚠ IKKE .fc-row:
+   den er space-between og ville sprede "Lav" og "Høj" ud til hver sin kant,
+   som om de var to forskellige kontroller. */
+.fc-filterraekke{display:flex; align-items:center; gap:8px; flex-wrap:wrap}

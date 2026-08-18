@@ -169,6 +169,10 @@ const FORVENTEDE_TOKENS = {
   "--fc-ikon-4-bg": "color-mix(in srgb, #4a3aa7 12%, #fff)",
   "--fc-ikon-5-bg": "var(--fc-accent-soft)",
   "--fc-ikon-6-bg": "color-mix(in srgb, #008300 12%, #fff)",
+  /* Modal baggrund — en FLADE, ikke en status- eller kategorifarve. Den
+     encoder ingenting, saa validatorens gulve gaelder den ikke. Se
+     BESLUTNINGER.md, afsnittet "Et fjerde token". */
+  "--fc-overlay": "rgba(16,26,48,.44)",
   "--fc-r": "12px",
   "--fc-sidebar": "216px",
   "--fc-shadow": "0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04)",

@@ -120,6 +120,24 @@ const RANG = {
  * gang: ingen tal → ingen skærm → ingen bil → ingen tal. En lukket ring, og
  * den ramte den allerførste ting en kunde skal gøre.
  *
+ * ⚠ OG `demo` MÅ HELLER IKKE BLANKE. Den blokerede, og det gjorde HVER
+ * skærm der kombinerede blokerer() med <Datatilstand> HVID i demo-mode:
+ * blokerer() sagde ja, <Datatilstand> tegner med vilje ingenting for `demo`
+ * ("miljøbjælken siger det allerede"), og skærmen returnerede altså null.
+ * Fleet → Indberetninger, Facility ×3, Procure ×3, Kompetencer og Fakturering
+ * — ti skærme, tomme, uden en fejl i konsollen.
+ *
+ * README lover det modsatte med rene ord: "Uden .env.local kører appen i
+ * demo-mode med datasættene i fleet/demo-*.js. Ingen hvide skærme, ingen
+ * crash." Fejlen var usynlig, fordi alle der arbejder på repoet har en
+ * .env.local — demo-mode er den tilstand KUNDEN ser i en salgsdemo.
+ *
+ * ⚠ DET ER IKKE "DEMO-DATA OVEN PÅ EN AFVIST LÆSNING". Den regel gælder
+ * `naegtet`, og den er urørt: en permission-denied er reglerne der VIRKER, og
+ * den må aldrig fyldes ud med opdigtede tal. `demo` sættes KUN når der slet
+ * ikke er en database at spørge (harDb er falsk i dataTilstand) — og
+ * opdigtede tal findes netop kun dér. Se beslutning 26.
+ *
  * De øvrige tilstande blokerer stadig. En afvist eller fejlet læsning er
  * ikke en oplysning om at der er lidt data — det er en oplysning om at vi
  * ikke ved hvad der er.
@@ -138,7 +156,8 @@ const RANG = {
 export const blokerer = (tilstand) =>
   Boolean(tilstand) &&
   tilstand.art !== TILSTAND.ok &&
-  tilstand.art !== TILSTAND.ikkeAggregeret;
+  tilstand.art !== TILSTAND.ikkeAggregeret &&
+  tilstand.art !== TILSTAND.demo;
 
 export function vaerste(...tilstande) {
   return tilstande.filter(Boolean).reduce(

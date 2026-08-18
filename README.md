@@ -353,6 +353,85 @@ der findes, at et flag skrevet på et **barn** vælter prøven (AppShell læser 
 af hovedmodulet og ville ignorere det i tavshed), og at Enheder stadig kræver
 Fleet.
 
+### Driftskalenderen: fem kasser, ét regnestykke
+
+Fleets forside har fem tal — nye indberetninger, afventer planlægning,
+planlagte, kommende og forsinkede — hver med en **Åbn** og en **Åbn i nyt
+vindue**, der fører til arbejdskøen på `/flaade/koe?vis=<nøgle>`.
+
+⚠ **Tallene ligger ikke i `kpi/`, og det er undtagelsen — ikke et brud.** De er
+afledt af de lister skærmen alligevel henter, og "Kommende" afhænger af et
+vindue **brugeren selv sætter** (1 uge / 2 uger / 1 md. / 3 mdr.). Et
+aggregeret tal ville være regnet på ét vindue og stå forkert i de tre andre,
+uden at nogen kunne se hvilket. Regnestykket ligger i
+`fleet/driftskalender.js` — uden React, så det kan prøves.
+
+⚠ **Hvert kort tæller præcis den liste dets "Åbn" viser.** `driftstal()`
+returnerer `poster` ved siden af `antal`, og køen læser sit udsnit ud af den
+samme funktion. Skrev køen sit eget filter, kunne kortet sige 18 og listen vise
+14 — det er Indkøb → Fakturaer om igen.
+
+⚠ **Tre af de fem overlapper med vilje.** Kommende og forsinkede er begge
+UDSNIT af planlagte, og skærmen skriver "heraf". To tal der begge lyder som
+totaler, er beslutning 11 og 14 om igen.
+
+⚠ **En opgave uden `estimeretMin` er hverken forsinket eller til tiden.** Den
+har ingen slutning, og den tælles for sig i `udenVarighed` — ikke som rettidig.
+Et system der regnede den som grøn, ville sige "0 forsinkede" om en liste hvor
+en del ikke kunne afgøres.
+
+**"Afventer planlægning" er en TILSTAND, ikke et manglende tidspunkt.** Noden
+kræver `startMs` (hasChildren i regelfilen), så en opgave uden tidspunkt kan
+slet ikke gemmes. Tidspunktet er en pladsholder indtil nogen har taget
+stilling, og opgaven tegnes i sin egen tone.
+
+**Fleet tæller kun `art: "vaerksted"`.** `opgaver` rummer også facility-opgaver,
+og de har deres egen skærm i Facility → Servicekalender, som læser den **samme
+node**. Talte begge moduler dem med, ville det samme filterskift stå i to tal.
+Filteret ligger i skærmen og ikke i `driftstal()`, så Facility kan kalde den med
+sin egen art frem for at få sin egen kopi.
+
+### Værkstedsbesøgene blev opgaver
+
+`DEMO_BESOEG` i `demo-vaerksted.js` var et **datasæt nummer to for noden
+`opgaver`** — filen skrev det selv i sit eget hoved. Provisioneren seedede
+`opgaver`, mens Driftskalenderen tegnede demofilen: kasserne ville have talt
+noden og gitteret nedenunder demosættet.
+
+De otte poster ligger nu i `DEMO_OPGAVER` med deres oprindelige id'er (`vb-001`
+… `vb-008`), fordi `il-vb-00N` i `demo-indkoeb.js` peger tilbage på dem.
+`DEMO_BESOEG` findes stadig — som en **afledt visning**, så de otte filer der
+læser den, er urørte.
+
+⚠ **Det var ikke "en omdøbning", som først antaget.** Noden er lukket med
+`$andet: false`, og et besøg bar fire felter den ikke kendte: `fra`, `til`,
+`type` og `leverandoerId`. Vinduet blev til `startMs` + `estimeretMin`, og de to
+andre er nye felter i regelfilen — `arbejdstype` (**ikke** `type`: noden har
+allerede `art`, og et felt der kunne forveksles med den, er den fejl der har
+kostet os to gange) og `leverandoerId` med et **opslag** i `leverandoerer/`.
+
+⚠ **Og sammenlægningen afslørede to skjulte modsigelser med det samme:** Bil
+104 havde en intern reparation midt i sit besøg hos Mercedes Greve, og Lastbil
+106 et klimaservice mens den stod hos DAF. Begge var usynlige så længe de to
+sæt lå hver for sig. `demo-opgaver.js` har nu selvkontrollen der fanger
+opgave-mod-opgave på samme enhed — `demo-vaerksted.js` havde kun besøg mod
+besøg.
+
+### ⚠ Demo-mode var hvid — på ti skærme
+
+`blokerer()` blokerede på tilstanden `demo`, og `<Datatilstand>` tegner med
+vilje ingenting for `demo` ("miljøbjælken siger det allerede"). Hver skærm der
+kombinerede de to, returnerede altså **null**: Fleet → Indberetninger, Facility
+×3, Procure ×3, Kompetencer og Fakturering.
+
+README lover det modsatte med rene ord — "Ingen hvide skærme, ingen crash" — og
+fejlen var usynlig, fordi alle der arbejder på repoet har en `.env.local`.
+Demo-mode er den tilstand **kunden** ser i en salgsdemo.
+
+⚠ Det er **ikke** en lempelse af "vis ikke demo-data oven på en afvist
+læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
+ikke er en database at spørge — og opdigtede tal findes netop kun dér.
+
 ### Skærmene: 27 af 30 har indhold
 
 | | Skærme |

@@ -866,6 +866,33 @@ Rækkefølgen: **rettelsen her først**, derefter snapshottet i
 `test/design-tokens.test.mjs`. Retter man kun snapshottet, har man flyttet
 beslutningen ind i en testfil hvor ingen leder efter den — se beslutning 10.
 
+### Et fjerde token: `--fc-overlay`
+
+Driftskalenderens hændelsespanel er **modalt** — det lægger sig over skærmen,
+og baggrunden bag det skal dæmpes. Uden dæmpning kan man ikke se hvad der er
+aktivt: panelet ser ud som endnu et kort på siden, og man klikker videre i
+tabellen nedenunder uden at forstå hvorfor der ikke sker noget.
+
+Værdien er `rgba(16,26,48,.44)` — **sidebarens navy** (`--fc-navy`,
+`#101a30`) ved 44 %, ikke en neutral sort. En sort overlay gør alle farver
+under sig grå-brune; en navy overlay lader accenten blive blå. Det er samme
+flade der allerede ligger i `--fc-shadow`, så skyggen under panelet og
+dæmpningen bag det er den samme farve i to styrker.
+
+⚠ **Det er ikke en statusfarve, og det er ikke en kategorifarve.** Det er en
+FLADE — den betyder ingenting, den fjerner bare opmærksomhed. Derfor står den
+ikke i `--fc-serie-*` eller `--fc-ikon-*`: begge de paletter *encoder*
+noget, og validatorens gulve gælder dem. En overlay har intet at være læsbar
+imod.
+
+⚠ **Og den er et token frem for en rå `rgba()` i reglen.** Der findes præcis
+ét sted der dæmper baggrunden i dag; skulle der komme et til, ville to
+overlays i hver sin opacitet være to forskellige svar på "hvor meget skal der
+dæmpes" — og forskellen ses kun når de to står åbne efter hinanden.
+`test/design-tokens.test.mjs` fejler på en farveværdi hvor som helst i
+`src/` uden for tokenfilen, så alternativet var ikke "en rå værdi", det var
+"en rå værdi på undtagelseslisten".
+
 ### Tre paletter, ikke to
 
 Handlingsboksene på Dashboard krævede en **tredje**, og grunden er værd at

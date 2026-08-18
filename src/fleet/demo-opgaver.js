@@ -25,6 +25,11 @@
  */
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_PERSONALE } from "./demo-personale.js";
+/* ⚠ AFTALEN PAA SAGEN ER OPGAVENS TIDSPUNKT. Beslutning 20: staar de to ikke
+   med samme klokkeslaet, beskriver sagsvisningen og driftskalenderen hver sin
+   virkelighed — og det er 84-mod-83 igen. Tidspunktet hentes derfor FRA sagen
+   frem for at blive skrevet af. */
+import { demoSag } from "./demo-sag.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -36,10 +41,23 @@ const iDag = (timer, min = 0) => {
   return d.getTime();
 };
 
+/* Midnat n dage fra i dag, plus et klokkeslaet. Hjaelperen kommer fra
+   demo-vaerksted.js sammen med de otte vaerkstedsbesoeg, og den regner i faste
+   millisekunder — praecis som foer, saa tidspunkterne er uaendrede. */
+const dag = (n, time = 0) => {
+  const d = new Date(NU);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() + n * D + time * 3600000;
+};
+
+/** Minutter mellem to tidspunkter. Et besoeg baerer et VINDUE; en opgave
+ *  baerer en start og et estimat, og noden kender kun det sidste. */
+const minutter = (fra, til) => Math.round((til - fra) / 60000);
+
 export const DEMO_OPGAVER = [
   { id: "op-001", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Reparation – venstre baglygte",
-    personId: "larsAage", koeretoejId: "kt-012", status: "planlagt", prioritet: "normal",
+    personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "reparation", status: "planlagt", prioritet: "normal",
     estimeretMin: 90, faktiskMin: null, beloebOere: 125000 },
 
   /* ⚠ HED "Serviceeftersyn – 30.000 km", og det var Bil 104s service.
@@ -51,12 +69,12 @@ export const DEMO_OPGAVER = [
      250.000 km") gjorde det paa samme bil. Naeste er 270.000. */
   { id: "op-002", art: "vaerksted", division: "gods", startMs: iDag(9, 30),
     sted: "Kolding", beskrivelse: "Serviceeftersyn – 270.000 km",
-    personId: "reneThomsen", koeretoejId: "kt-078", status: "igang", prioritet: "hoej",
+    personId: "reneThomsen", koeretoejId: "kt-078", arbejdstype: "service", status: "igang", prioritet: "hoej",
     estimeretMin: 150, faktiskMin: 66, beloebOere: 210000 },
 
   { id: "op-003", art: "vaerksted", division: "gods", startMs: iDag(10, 0),
     sted: "Aarhus", beskrivelse: "Dækudskiftning – 2 aks. trailer",
-    personId: "peterIversen", koeretoejId: "kt-034", status: "igang", prioritet: "normal",
+    personId: "peterIversen", koeretoejId: "kt-034", arbejdstype: "daek", status: "igang", prioritet: "normal",
     estimeretMin: 60, faktiskMin: 27, beloebOere: 90000 },
 
   /* ⚠ STOD OGSÅ PÅ kt-077, den solgte trækker — den anden af to. En afgået
@@ -68,27 +86,41 @@ export const DEMO_OPGAVER = [
      det én linje. */
   { id: "op-004", art: "vaerksted", division: "gods", startMs: iDag(11, 0),
     sted: "Kolding", beskrivelse: "Fejlsøgning – ABS-fejl",
-    personId: "ibSoerensen", koeretoejId: "kt-v21", status: "afventer", prioritet: "hoej",
+    personId: "ibSoerensen", koeretoejId: "kt-v21", arbejdstype: "reparation", status: "afventer", prioritet: "hoej",
     estimeretMin: 120, faktiskMin: null, beloebOere: 240000 },
 
+  /* ⚠ STOD PAA kt-104 (Bil 104) OG KOLLIDEREDE MED vb-005.
+     Bil 104 er hos Mercedes Greve 18-08 kl. 08–16 efter aftalen paa sag
+     FLT-2026-00381 — og saa kan vores egen mekaniker ikke have den paa liften
+     samtidig. Konflikten var USYNLIG saa laenge besoegene laa i deres eget
+     datasaet; den kom frem i samme oejeblik de to blev til een node, og
+     gitteret tegnede den med det samme.
+
+     Den er flyttet til Bil 78, som er fri om eftermiddagen. Demo-data maa
+     ikke INDEHOLDE en konflikt: gitteret tegner overlap med vilje som noget
+     galt, og kan man ikke se forskel paa en fejl i dataene og en fejl i
+     gitteret, er markeringen ubrugelig. Se selvkontrollen nederst. */
   { id: "op-005", art: "vaerksted", division: "gods", startMs: iDag(13, 0),
     sted: "Aalborg", beskrivelse: "Reparation – lækage i hydraulik",
-    personId: "peterIversen", koeretoejId: "kt-104", status: "planlagt", prioritet: "lav",
+    personId: "peterIversen", koeretoejId: "kt-078", arbejdstype: "reparation", status: "planlagt", prioritet: "lav",
     estimeretMin: 105, faktiskMin: null, beloebOere: 160000 },
 
-  { id: "op-006", art: "vaerksted", division: "gods", startMs: iDag(14, 0),
+  /* ⚠ SAMME SLAGS: stod paa kt-106, som ligger hos DAF Fredericia i fire
+     doegn (vb-003, motorlampe/EGR). Flyttet til Bil 12 kl. 12.30, hvor der er
+     hul mellem op-001 og op-007. */
+  { id: "op-006", art: "vaerksted", division: "gods", startMs: iDag(12, 30),
     sted: "Kolding", beskrivelse: "Service – klimaanlæg",
-    personId: "reneThomsen", koeretoejId: "kt-106", status: "udfoert", prioritet: "normal",
+    personId: "reneThomsen", koeretoejId: "kt-012", arbejdstype: "service", status: "udfoert", prioritet: "normal",
     estimeretMin: 90, faktiskMin: 84, beloebOere: 135000 },
 
   { id: "op-007", art: "vaerksted", division: "gods", startMs: iDag(15, 30),
     sted: "Kolding", beskrivelse: "Synsklargøring",
-    personId: "larsAage", koeretoejId: "kt-012", status: "afventer", prioritet: "lav",
+    personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "syn", status: "afventer", prioritet: "lav",
     estimeretMin: 60, faktiskMin: null, beloebOere: 75000 },
 
   { id: "op-008", art: "vaerksted", division: "gods", startMs: iDag(8, 0) + D,
     sted: "Esbjerg", beskrivelse: "Lovpligtigt eftersyn",
-    personId: "janHolmgaard", koeretoejId: "kt-034", status: "planlagt", prioritet: "normal",
+    personId: "janHolmgaard", koeretoejId: "kt-034", arbejdstype: "syn", status: "planlagt", prioritet: "normal",
     estimeretMin: 165, faktiskMin: null, beloebOere: 275000 },
 
   /* Facility-opgaver har ingen ressource i flåden — arbejdet er på bygningen.
@@ -119,7 +151,7 @@ export const DEMO_OPGAVER = [
      moenster dukker op i det her datasaet. */
   { id: "op-010", art: "vaerksted", division: "bus", startMs: iDag(10, 30),
     sted: "Odense", beskrivelse: "Fordør lukker ikke i",
-    personId: "ibSoerensen", koeretoejId: "kt-b12", status: "indberettet",
+    personId: "ibSoerensen", koeretoejId: "kt-b12", arbejdstype: "reparation", status: "indberettet",
     estimeretMin: 75, faktiskMin: null, beloebOere: 54000 },
 
   /* ⚠ UDFØRT UDEN TIDSREGISTRERING — og det er hele pointen med posten.
@@ -135,7 +167,7 @@ export const DEMO_OPGAVER = [
      den fejl den findes for. */
   { id: "op-011", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Lygteskift, venstre for",
-    personId: "larsAage", koeretoejId: "kt-034", status: "udfoert", prioritet: "lav",
+    personId: "larsAage", koeretoejId: "kt-034", arbejdstype: "reparation", status: "udfoert", prioritet: "lav",
     estimeretMin: 30, faktiskMin: null, beloebOere: 42000 },
 
   /* --- To PLANLAGTE facility-opgaver ----------------------------------
@@ -161,7 +193,109 @@ export const DEMO_OPGAVER = [
     sted: "Aalborg", aktivId: "fa-lade1", beskrivelse: "Ladestandere – eftersyn før vinter",
     personId: "ibSoerensen", status: "planlagt", prioritet: "normal",
     estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
+
+  /* ══════════════════════════════════════════════════════════════════════
+     DE OTTE VÆRKSTEDSBESØG — DE LÅ I demo-vaerksted.js SOM DEMO_BESOEG.
+
+     ⚠ TO DATASÆT FOR ÉN NODE, OG FILEN INDRØMMEDE DET SELV. demo-vaerksted.js
+     skrev i sit eget hoved at "et værkstedsbesøg ER en opgave med art
+     'vaerksted' (beslutning 21)", og at posterne kun lå for sig "fordi
+     Disponering ikke er bygget endnu". Imens blev opgaver-noden seedet af
+     provisioneren, og Driftskalenderen tegnede den ANDEN halvdel — kasserne
+     ville have talt noden mens gitteret tegnede demofilen. To svar på samme
+     spørgsmål, ét klik fra hinanden.
+
+     ⚠ ID'ERNE ER BEVARET. il-vb-00N i demo-indkoeb.js peger tilbage hertil
+     med besoegId, og en flytning der omdøbte dem, ville have efterladt fire
+     hængende referencer — præcis den fejl der én gang blev "rettet" ved at
+     sætte feltet til null med en pæn begrundelse.
+
+     ⚠ ET BESØG BAR fra og til; EN OPGAVE BAERER startMs OG estimeretMin. Noden er
+     lukket med $andet: false, så fra/til ville være AFVIST — koden i
+     reservationFraOpgave() tog imod begge former, men den ene kunne aldrig
+     ligge i basen. Omregningen står ét sted, i minutter().
+
+     DEMO_BESOEG findes stadig — som en AFLEDT visning af de her poster. Se
+     demo-vaerksted.js.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* --- Udført, ligger bag os -------------------------------------- */
+  { id: "vb-001", art: "vaerksted", division: "gods", koeretoejId: "kt-078",
+    arbejdstype: "service", leverandoerId: "lv-scania",
+    beskrivelse: "Serviceeftersyn 250.000 km",
+    status: "udfoert", prioritet: "normal",
+    startMs: dag(-24, 7), estimeretMin: minutter(dag(-24, 7), dag(-24, 16)) },
+
+  { id: "vb-002", art: "vaerksted", division: "bus", koeretoejId: "kt-b16",
+    arbejdstype: "daek", leverandoerId: "lv-daekteam",
+    beskrivelse: "Fire nye dæk på foraksel og bogie",
+    status: "udfoert", prioritet: "lav",
+    startMs: dag(-11, 8), estimeretMin: minutter(dag(-11, 8), dag(-11, 13)) },
+
+  /* --- I gang lige nu. Skal stemme med status 'vaerksted' i demo-flaade --- */
+  { id: "vb-003", art: "vaerksted", division: "gods", koeretoejId: "kt-106",
+    arbejdstype: "reparation", leverandoerId: "lv-daf",
+    beskrivelse: "Motorlampe — fejlsøgning på EGR-ventil",
+    status: "igang", prioritet: "hoej",
+    startMs: dag(-2, 7), estimeretMin: minutter(dag(-2, 7), dag(2, 16)) },
+
+  /* Langt besøg der rækker ud over et to-ugers vindue. Det er her pilen skal
+     vises: klippet ved kanten læses tre uger som et kort besøg, og så
+     planlægger nogen en tur i en uge hvor traileren står på værksted. */
+  { id: "vb-004", art: "vaerksted", division: "gods", koeretoejId: "kt-tr42",
+    arbejdstype: "reparation", leverandoerId: "lv-schmitz",
+    beskrivelse: "Køleaggregat starter ikke — kompressor i restordre",
+    status: "igang", prioritet: "hoej",
+    startMs: dag(-1, 8), estimeretMin: minutter(dag(-1, 8), dag(18, 15)) },
+
+  /* --- Planlagt ---------------------------------------------------- */
+  /* ⚠ DEN HER ER AFTALEN FRA BESLUTNING 20.
+     Sag FLT-2026-00381 aftalte 18-08-2026 kl. 08.00–16.00 på Bil 104 med
+     Mercedes Greve. Står den ikke i kalenderen med de tidspunkter, beskriver
+     sagsvisningen og driftskalenderen hver sin virkelighed. Tidspunktet
+     LÆSES af sagen nedenfor frem for at blive skrevet af. */
+  { id: "vb-005", art: "vaerksted", division: "gods", koeretoejId: "kt-104",
+    arbejdstype: "service", leverandoerId: "lv-mercedes",
+    beskrivelse: "Serviceeftersyn 30.000 km",
+    status: "planlagt", prioritet: "normal",
+    sagId: "sag-flt-381",
+    startMs: null, estimeretMin: null },   // sættes fra sagen — se nedenfor
+
+  { id: "vb-006", art: "vaerksted", division: "gods", koeretoejId: "kt-034",
+    arbejdstype: "service", leverandoerId: "lv-man",
+    beskrivelse: "Serviceeftersyn 525.000 km",
+    status: "planlagt", prioritet: "normal",
+    startMs: dag(9, 7), estimeretMin: minutter(dag(9, 7), dag(9, 15)) },
+
+  { id: "vb-007", art: "vaerksted", division: "gods", koeretoejId: "kt-tr41",
+    arbejdstype: "syn", leverandoerId: "lv-applus",
+    beskrivelse: "Periodisk syn af trailer",
+    status: "planlagt", prioritet: "lav",
+    startMs: dag(30, 9), estimeretMin: minutter(dag(30, 9), dag(30, 12)) },
+
+  /* Scooteren står som `udeAfDrift` i flåden, ikke som `vaerksted` — den er
+     taget ud af drift mens den venter på en reservedel, og den er ikke på
+     værkstedet endnu. Besøget ligger derfor i FREMTIDEN. Gav vi den et besøg
+     der dækkede i dag, ville Fleet og Driftskalenderen sige hver sit om samme
+     scooter — og der er en prøve der fanger præcis det. */
+  { id: "vb-008", art: "vaerksted", division: "faelles", koeretoejId: "kt-s01",
+    arbejdstype: "reparation", leverandoerId: "lv-scooter",
+    beskrivelse: "Motorblok skiftes når reservedelen er kommet",
+    status: "planlagt", prioritet: "lav",
+    startMs: dag(10, 8), estimeretMin: minutter(dag(10, 8), dag(24, 16)) },
 ];
+
+/* Aftalen fra sagen skrives ind ÉT sted, så tidspunkterne ikke kan drive.
+   Flyttet med fra demo-vaerksted.js. */
+{
+  const sagen = demoSag("FLT-2026-00381");
+  for (const o of DEMO_OPGAVER) {
+    if (o.sagId === sagen?.id && sagen.aftale) {
+      o.startMs = sagen.aftale.fra;
+      o.estimeretMin = minutter(sagen.aftale.fra, sagen.aftale.til);
+    }
+  }
+}
 
 /* ---- Opslag, så skærmen ikke bygger sine egne ------------------------- */
 
@@ -207,6 +341,49 @@ if (import.meta.env?.DEV) {
        være bevidst; se README. */
     if ("kundeId" in o || "fakturerbar" in o) {
       console.warn(`demo-opgaver: ${o.id} har kundeId/fakturerbar. Opgaver er egen flåde — se README.`);
+    }
+  }
+
+  /* ⚠ TO OPGAVER PÅ SAMME ENHED SAMTIDIG ER EN KONFLIKT — OG DEN MÅ IKKE STÅ
+     I DEMO-DATA.
+
+     demo-vaerksted.js havde den her kontrol for BESØG mod BESØG. Den så ikke
+     en intern opgave mod et eksternt besøg, fordi de to lå i hver sit datasæt
+     — og da de blev lagt sammen til én node, kom to skjulte konflikter frem
+     med det samme: op-005 på Bil 104 mens den stod hos Mercedes Greve, og
+     op-006 på Lastbil 106 mens den stod hos DAF.
+
+     At det ikke kunne ses, ER pointen med sammenlægningen. Kontrollen står nu
+     hvor posterne står, og den dækker begge slags.
+
+     Gitteret TEGNER et overlap som noget galt (rødt og stribet), fordi
+     reservationsmodellen ville afvise den anden reservation. Ligger der
+     konflikter i demoen, kan man ikke se forskel på en fejl i dataene og en
+     fejl i gitteret — og så holder man op med at læse markeringen. */
+  const slutter = (o) => (Number.isFinite(o.startMs) && Number.isFinite(o.estimeretMin)
+    ? o.startMs + o.estimeretMin * 60000 : null);
+  const paaEnhed = new Map();
+  for (const o of DEMO_OPGAVER) {
+    const id = o.koeretoejId ?? o.aktivId ?? o.lokationId;
+    if (!id || slutter(o) === null) continue;
+    if (!paaEnhed.has(id)) paaEnhed.set(id, []);
+    paaEnhed.get(id).push(o);
+  }
+  for (const [id, mine] of paaEnhed) {
+    for (let i = 0; i < mine.length; i++) {
+      for (let j = i + 1; j < mine.length; j++) {
+        const a = mine[i];
+        const b = mine[j];
+        /* Halvåbent [start, slut) — som reservationsmodellen. To opgaver der
+           rører hinanden på minuttet, overlapper ikke. */
+        if (a.startMs < slutter(b) && b.startMs < slutter(a)) {
+          console.warn(
+            `demo-opgaver: ${a.id} og ${b.id} overlapper på ${id}. To opgaver på ` +
+            `samme enhed samtidig er en reservationskonflikt — gitteret tegner den ` +
+            `som en fejl, og så kan man ikke se forskel på data og gitter.`
+          );
+        }
+      }
     }
   }
 }

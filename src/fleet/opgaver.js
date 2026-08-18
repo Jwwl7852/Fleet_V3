@@ -60,13 +60,51 @@ export const ALLE_OPGAVE_ARTER = Object.keys(OPGAVE_ART);
 export const OPGAVE_STATUS = {
   indberettet: { label: "Indberettet", pill: "warn" },
   planlagt:    { label: "Planlagt",    pill: "info" },
-  igang:       { label: "I gang",      pill: "ok"   },
+  /* ⚠ warn, IKKE ok. "I gang" og "Udført" stod begge som ok — altså i samme
+     grønne — og de to er netop dem man skal kunne skelne på en kalender uden
+     at læse teksten: den ene betyder at bilen STADIG står på værkstedet.
+     Samme fejl som lav og normal begge i blåt i prioritetskataloget.
+     Mockuppens signaturforklaring siger det samme: Planlagt blå, I gang
+     ravgul, Fuldført grøn. */
+  igang:       { label: "I gang",      pill: "warn" },
   afventer:    { label: "Afventer",    pill: "warn" },
   udfoert:     { label: "Udført",      pill: "ok"   },
   annulleret:  { label: "Annulleret",  pill: "bad"  },
 };
 
 export const ALLE_OPGAVE_STATUS = Object.keys(OPGAVE_STATUS);
+
+/* ---- Hvilken slags arbejde ------------------------------------------- */
+
+/**
+ * ⚠ arbejdstype, IKKE type. Og det er ikke pedanteri.
+ *
+ * Noden har allerede `art` (vaerksted|facility). Et felt ved siden af der hed
+ * `type`, ville vaere praecis den forveksling der allerede har kostet os to
+ * gange: `indberetninger`' indeks navngav "type", mens hver post baerer "art",
+ * og `opgaver`' indeks navngav "dato", som ingen post har. Begge dele
+ * overlevede fordi et forkert feltnavn ikke FEJLER — RTDB henter hele noden
+ * ned og filtrerer i klienten, med en advarsel i konsollen og en regning i
+ * stilhed. Et navn der ikke kan forveksles med `art`, kan ikke laves om til
+ * den fejl.
+ *
+ * ⚠ OG DET ER SAMME ORDLISTE SOM INDKOEBETS OMKOSTNINGSTYPE. Det er ikke et
+ * sammenfald: naar vaerkstedet fakturerer et serviceeftersyn, ER omkostningens
+ * type det arbejde der blev udfoert. Laa der to lister, ville det hedde "Dæk"
+ * paa opgaven og "Dækskifte" paa indkoebet — og saa kan de ikke summeres i en
+ * rapport. Kataloget laa i demo-vaerksted.js, altsaa i en DEMO-fil, hvor et
+ * modul ikke kunne naa det uden at lave sin egen kopi.
+ */
+export const ARBEJDSTYPE = {
+  service: "Serviceeftersyn",
+  reparation: "Reparation",
+  daek: "Dæk",
+  syn: "Syn og godkendelse",
+  reservedele: "Reservedele",
+  skade: "Skade",
+};
+
+export const ALLE_ARBEJDSTYPER = Object.keys(ARBEJDSTYPE);
 
 /* ---- Art styrer feltskemaet ------------------------------------------ */
 
@@ -103,6 +141,10 @@ export const FELT = {
   beloebOere: "beloebOere",             // opgavens OMKOSTNING, ikke en indtægt
   /* vaerksted */
   koeretoejId: "koeretoejId",
+  arbejdstype: "arbejdstype",           // service | reparation | daek | …
+  /* ⚠ ET ID, IKKE ET NAVN. Vaerkstedet stod som fritekst i tre filer med hver
+     sin stavemaade at drive med, foer leverandoerer/ blev kilden. */
+  leverandoerId: "leverandoerId",
   estimeretMin: "estimeretMin",         // dagsvisningen er timer, ikke døgn
   faktiskMin: "faktiskMin",             // hvad der FAKTISK gik — se udenTidsregistrering
   besoegId: "besoegId",                 // værkstedsbesøget i kalenderen
@@ -121,12 +163,14 @@ const FAELLES = [
 const ALLE_FELTER = [
   FELT.startMs, FELT.beskrivelse, FELT.sted, FELT.status, FELT.prioritet,
   FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
+  FELT.arbejdstype, FELT.leverandoerId,
   FELT.estimeretMin, FELT.faktiskMin, FELT.personId, FELT.besoegId,
   FELT.beloebOere,
 ];
 
 export const ART_FELTER = {
-  vaerksted: [...FAELLES, FELT.koeretoejId, FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId],
+  vaerksted: [...FAELLES, FELT.koeretoejId, FELT.arbejdstype, FELT.leverandoerId,
+              FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId],
   facility: [...FAELLES, FELT.aktivId, FELT.lokationId],
 };
 
@@ -253,6 +297,12 @@ export function opgaveMangler(opgave = {}) {
      den kan ikke sorteres, og reglerne afviser den alligevel. */
   if (opgave.prioritet != null && !ALLE_PRIORITETER.includes(opgave.prioritet)) {
     mangler.push("prioritet (ukendt værdi)");
+  }
+  /* Samme skel som paa prioriteten: en MANGLENDE arbejdstype er lovlig — en
+     facility-opgave har ingen — men en UKENDT er en vaerdi der hverken kan
+     tegnes eller summeres mod indkoebet. */
+  if (opgave.arbejdstype != null && !ALLE_ARBEJDSTYPER.includes(opgave.arbejdstype)) {
+    mangler.push("arbejdstype (ukendt værdi)");
   }
   return mangler;
 }

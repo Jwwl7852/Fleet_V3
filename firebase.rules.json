@@ -929,6 +929,27 @@
             "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
 
             "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },
+
+            // ⚠ arbejdstype, IKKE "type". Noden har allerede "art"
+            // (vaerksted|facility), og et felt ved siden af der hed "type",
+            // ville vaere den forveksling der allerede har kostet os to gange:
+            // indberetningers indeks navngav "type" mens posterne baerer
+            // "art", og opgavers indeks navngav "dato", som ingen post har.
+            // Et forkert feltnavn FEJLER ikke — RTDB henter hele noden ned og
+            // filtrerer i klienten. Ordlisten staar i opgaver.js; her et
+            // laengdetjek, som paa "status".
+            //
+            // Valgfrit: en facility-opgave har ingen arbejdstype.
+            "arbejdstype": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+
+            // ⚠ ET OPSLAG, IKKE EN FRITEKST. Vaerkstedets navn stod som
+            // streng i tre demo-filer med hver sin stavemaade at drive med,
+            // foer leverandoerer/ blev kilden. Et eksistenstjek her er samme
+            // spaerring som paa koeretoejId: en opgave kan ikke pege paa et
+            // vaerksted der ikke findes, og en fejlstavning bliver en
+            // AFVISNING frem for en ny leverandoer ingen kan finde igen.
+            "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
+
             "aktivId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('aktiver').child(newData.val()).exists()" },
             "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
             "besoegId": { ".validate": "newData.isString() && newData.val().length <= 60" },

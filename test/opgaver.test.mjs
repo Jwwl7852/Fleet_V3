@@ -21,7 +21,6 @@ import {
 import { DEMO_BESOEG } from "../src/fleet/demo-vaerksted.js";
 
 const MIN = 60000;
-const T = 60 * MIN;
 /* Fast dag: mandag 10. august 2026 kl. 06.00. */
 const START = new Date(2026, 7, 10, 6, 0).getTime();
 const straek = (fraMin, varighedMin, ekstra = {}) => ({
@@ -107,7 +106,13 @@ describe("Art styrer feltskemaet", () => {
     const post = DEMO_OPGAVER.find((o) => o.art === "vaerksted");
     assert.ok(post, "ingen værkstedsopgave i demo-sættet");
     const paakraevede = felterFor("vaerksted")
-      .filter((f) => f !== FELT.besoegId);   /* valgfrit — ikke alle har et besøg */
+      /* ⚠ TO FELTER ER VALGFRIE, OG DE ER DET AF HVER SIN GRUND.
+         besoegId: ikke alle opgaver kom fra et besøg.
+         leverandoerId: en opgave UDEN leverandør udføres på VORES egen lift af
+         vores egen mekaniker — feltet er netop det der skiller intern
+         vedligehold fra et eksternt værkstedsbesøg, så et krav om det ville
+         gøre den ene halvdel af sættet ugyldig. */
+      .filter((f) => f !== FELT.besoegId && f !== FELT.leverandoerId);
     for (const f of paakraevede) {
       assert.ok(f in post, `kataloget lover "${f}", som ingen opgave har`);
     }

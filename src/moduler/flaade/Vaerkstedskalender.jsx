@@ -1,483 +1,687 @@
 /* src/moduler/flaade/Vaerkstedskalender.jsx
- * Flåde – service, reservationer & fakturaer
+ * Fleet → Driftskalender. Fleets forside.
  *
- * SAMMENLAGT af to mockups (beslutning 12). De havde hver sin fakturaformular
- * med næsten samme felter — to steder at uploade samme faktura.
+ * ⚠ FILNAVNET ER GAMMELT, RUTEN ER NY. Skærmen hed Værkstedskalender og lå på
+ * /flaade/vaerksted; den hedder Driftskalender og ligger på /flaade, hvor
+ * Enheder lå. Filen bliver liggende under samme navn af samme grund som mappen
+ * hedder flaade/ og noden koeretoejer/: et filnavn er billigt at skifte, men
+ * det er også det eneste sted "Værkstedskalender" stadig kan slås op fra en
+ * ældre commit. Se nav.js.
  *
- * ⚠ DEN FEJL KAN GENSKABES HER, OG DEN ER LIGE UDEN FOR DØREN.
- * Indkøb → Fakturaer er skærmen til fakturagodkendelse og afstemning. Bygger
- * man en fuld fakturaformular her, har man to godkendelsesflows med et nyt
- * navn. Reglerne peger på den rigtige opdeling:
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ SKÆRMEN LÆSER NODEN `opgaver` — IKKE DEMO_BESOEG.
  *
- *   indkoeb/<id>     .write med indkoeb.skriv   registreringen af omkostningen
- *   fakturaer/<id>   .write: FALSE              den bogførte faktura
+ * Indtil nu tegnede gitteret DEMO_BESOEG fra demo-vaerksted.js, mens
+ * provisioneren seedede `opgaver` med DEMO_OPGAVER. To datasæt for én node,
+ * og skærmen viste det ene mens nøgletallene blev regnet af det andet — det
+ * er Indkøb → Fakturaer om igen, ét klik fra hinanden. De otte besøg ligger nu
+ * i DEMO_OPGAVER, og DEMO_BESOEG er en afledt visning af dem.
  *
- * Formularen her registrerer altså et INDKØB i kontekst — bil, arbejdsordre,
- * omkostningstype, sagsnummer — og linker videre til Indkøb → Fakturaer for
- * godkendelse. Ét sted at registrere, ét sted at godkende. Byg ikke en
- * godkend-knap her.
+ * `useListe(node, { demo })` er vejen: sættet bruges KUN når der ingen
+ * database er.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * ⚠ INDKØB KRÆVER division, OG BILEN HAR INGEN. Reglerne validerer
- * hasChildren(['division']) på indkoeb/$id, mens beslutning 19 forbyder feltet
- * på koeretoejer/. Værdien kan ikke udledes af bilen, og formularen har derfor
- * et EKSPLICIT divisionsfelt. Bilvælgeren ved siden af må ikke antyde en — to
- * felter der ser ud som om det ene følger af det andet, er præcis den fælde
- * beslutning 19 lukkede.
+ * ⚠ DE FEM KASSER LIGGER IKKE I kpi/, OG DET ER UNDTAGELSEN — IKKE ET BRUD.
+ * De er afledt af de lister skærmen allerede henter, og "Kommende" afhænger af
+ * et interval brugeren selv sætter: et aggregeret tal ville være regnet på ét
+ * vindue og stå forkert i de tre andre. Regnestykket ligger i
+ * fleet/driftskalender.js — uden React, så det kan prøves. Se noten dér.
  *
- * ⚠ BELØB: ekskl. moms i ét felt, momsOere i et andet. ALDRIG ét felt med
- * inkl. moms. Totalen beregnes til visning og gemmes ikke — beslutning 2.
- * Mockuppen viste inkl. moms.
+ * ⚠ HVERT KORT TÆLLER PRÆCIS DEN LISTE DETS "ÅBN" VISER. driftstal() giver
+ * `poster` med tilbage, og køen får dem gennem sin URL — ikke gennem sin egen
+ * gentagelse af filteret. To filtre for samme spørgsmål driver.
  *
- * KALENDEREN LIGGER I fleet/Gitterkalender.jsx, ikke her. Servicekalender og
- * Disponering skal bruge nøjagtig samme gitter. Pilene og konfliktmarkeringen
- * er kontroller, ikke pynt — se noten i den fil.
- *
- * BOOKINGBLOKERINGER er reservationsmodellen gjort synlig: et værkstedsbesøg
- * skriver en reservation på KØRETØJET med kilde 'vaerksted' og prioritet 40 —
- * højere end booking, fordi en bil på værksted ikke kan køre, uanset hvad
- * disponenten har lovet. Fase 0 viser hvad reservationen VILLE blive, som
- * Ferie & fravær gør. Ingen skrivning.
- *
- * BESLUTNING 20: sagsvisningen med faner og demo-tråden. Visning, ingen
- * afsendelse. En faktura der kom ind på en sag kan registreres derfra —
- * sagsnummeret følger med posten.
+ * ⚠ INGEN SKRIVNING. "Planlæg aktivitet" fra mockuppen ville skrive en opgave
+ * OG sende en mail til leverandøren. Reservationskonflikter hører i en Cloud
+ * Function (to disponenter kan ramme samme sekund), og sagsbaseret mail er
+ * fase 0 — `sager/` findes ikke engang i firebase.rules.json. Knappen står
+ * derfor deaktiveret med begrundelsen på sig, som resten af platformen gør.
  */
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { useKpi } from "../../fleet/useKpi.js";
+import { Link, useNavigate } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato, datoTid, oereFraKroner } from "../../fleet/format.js";
-import { harPerm, PERM } from "../../fleet/permissions.js";
+import { num, dato, datoTid, klokke, kr, filstoerrelse } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Knap, Henter, Datatilstand,
-  Gitter, MiniLinje,
+  Kort, Tom, KpiRaekke, Tabel, Pille, Knap, Henter, Datatilstand,
+  Gitter, MiniLinje, Faner, Dialog,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
-import { ENHED } from "../../fleet/gitter.js";
-import Sagsvisning from "../../fleet/Sagsvisning.jsx";
-import { SAG_TILSTAND } from "../../fleet/sager.js";
-import { demoSagerFor } from "../../fleet/demo-sag.js";
-import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
-import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
-import { indkoebBeloebOere, FAKTURASTATUS } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE,
-  ALLE_OMKOSTNINGSTYPER, demoKoeretoejKaldenavn,
-} from "../../fleet/demo-vaerksted.js";
-import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
-import { reservationFraOpgave } from "../../fleet/opgaver.js";
-
-/* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
-   fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
-import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+  VISNING, ALLE_VISNINGER, FREMAD, STANDARD_FREMAD,
+  vindueFor, flyt, driftstal, slutter, raekkerIVindue,
+} from "../../fleet/driftskalender.js";
+import {
+  OPGAVE_STATUS, ARBEJDSTYPE, ressourceId, reservationFraOpgave,
+} from "../../fleet/opgaver.js";
+import { PRIORITET, prioritetFor } from "../../fleet/prioritet.js";
+import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
+import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
-const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+import { VEDHAEFTNING_TONE, VEDHAEFTNING_LABEL } from "../../fleet/sager.js";
+import { demoSagerFor } from "../../fleet/demo-sag.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
+import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
+import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 
-const DAG = 86400000;
-const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
+/* ---- De fem kasser ---------------------------------------------------- */
 
-/* Vinduet er 14 dage frem fra i går. Kort nok til at kolonnerne kan læses,
-   langt nok til at et typisk besøg er synligt — og de besøg der rækker
-   udenfor, får en pil frem for at blive klippet i stilhed. */
-const VINDUE_DAGE = 14;
+/**
+ * ⚠ KASSERNE ER DEFINERET ÉT STED, OG DEFINITIONEN FØLGER MED.
+ *
+ * `noegle` er den samme streng som Arbejdskøen tager i sin URL. Skrev skærmen
+ * "nye" i kortet og køen "ny" i sit filter, ville knappen åbne en tom liste
+ * ved siden af et tal der sagde 6 — og det ville ligne et datahul.
+ *
+ * `hvad` står PÅ skærmen, ikke kun her. Tre af de fem overlapper (kommende og
+ * forsinkede er begge udsnit af planlagte), og to tal der begge lyder som
+ * totaler, er beslutning 11 og 14 om igen.
+ */
+const KASSER = [
+  { noegle: "nye", label: "Nye indberetninger", tone: "ikon-1",
+    hvad: "Meldt af en chauffør og endnu ikke vurderet af en værkfører." },
+  { noegle: "afventer", label: "Afventer planlægning", tone: "ikon-3",
+    hvad: "Opgaver med status indberettet eller afventer — de har et tidspunkt, " +
+          "men det er en pladsholder indtil nogen har taget stilling." },
+  { noegle: "planlagt", label: "Planlagte aktiviteter", tone: "ikon-5",
+    hvad: "Planlagte og igangværende opgaver i alt." },
+  { noegle: "kommende", label: "Kommende aktiviteter", tone: "ikon-4",
+    hvad: "Heraf dem der starter inden for det valgte vindue. Et UDSNIT af de " +
+          "planlagte, ikke et tal ved siden af." },
+  { noegle: "forsinkede", label: "Forsinkede aktiviteter", tone: "ikon-2",
+    hvad: "Heraf dem hvis slutning ligger bag os. Også et udsnit." },
+];
 
-/* Reservationsbyggeren lå her som en lokal kopi, indtil Disponering fik brug
-   for den samme. Den ligger nu i fleet/opgaver.js som reservationFraOpgave()
-   og er generaliseret over arten — to skærme med hver sin kopi er den fejl vi
-   fangede i Bookingopsætnings divisionsfilter. */
+export default function Driftskalender() {
+  const { division } = useFleet();
+  const navigate = useNavigate();
 
-export default function Vaerkstedskalender() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
-  const { bruger } = useFleet();
-
-  /* ⚠ NODEN, IKKE EN KOPI. Her stod DEMO_INDKOEB fra demo-vaerksted.js —
-     et ANDET datasaet for `indkoeb`-noden, med fire poster den rigtige node
-     aldrig saa. De to bar ikke engang samme form: kopien havde `beloebOere`
-     direkte, som reglerne forbyder. De fire ligger nu i noden med `besoegId`
-     som spor tilbage hertil.
-
-     division: "alle" — vaerkstedet servicerer hele flaaden, og et besoeg paa
-     en bus hoerer paa kalenderen ogsaa naar Gods er valgt. */
-  const indkoeb = useListe("indkoeb", {
-    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+  /* ⚠ VINDUET ER BREDT, FORDI KALENDEREN KAN BLADRES. Gitteret flytter sig
+     klientside; hentningen gør ikke. Rækker man ud over det hentede interval,
+     står gitteret tomt — og det SIGES nedenfor frem for at ligne en tom uge.
+     useListe giver intervallet med tilbage netop til det. */
+  const opgaver = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
+    graense: 500, demo: DEMO_OPGAVER,
   });
-  const vaerkstedsindkoeb = indkoeb.data.filter((i) => i.besoegId);
+  const indberetninger = useListe("indberetninger", {
+    ordnPaa: "oprettetMs", vindue: "fremad", vindueDage: 180, fremDage: 30,
+    graense: 500, demo: DEMO_INDBERETNINGER,
+  });
+  /* Enhederne bærer ingen division (beslutning 19) — division:"alle" står
+     eksplicit, så det ikke ser ud som om det bare var heldigt. */
+  const enheder = useListe("koeretoejer", {
+    vindue: "alle", division: "alle", demo: DEMO_KOERETOEJER,
+  });
 
-  /* ⚠ HVILKE INDKOEB DER MANGLER EN FAKTURA — ikke hvilke fakturaer der
-     mangler et indkoeb. Det sidste er `flaade.ikkeLinkedeFakturaer` i kpi/,
-     og de to blev talt af hver sin funktion under naesten samme navn.
-     Her staar spoergsmaalet skrevet ud, saa det ikke kan forveksles. */
-  const udenFaktura = vaerkstedsindkoeb.filter(
-    (i) => i.fakturastatus === "mangler" || i.fakturastatus === "afvist");
+  const [visning, setVisning] = useState("uge");
+  const [anker, setAnker] = useState(() => Date.now());
+  const [fremDage, setFremDage] = useState(STANDARD_FREMAD);
+  const [valgtId, setValgtId] = useState(null);
+  const [svaev, setSvaev] = useState(null);
 
-  const [valgtBesoegId, setValgtBesoegId] = useState(null);
-  const [valgtSagId, setValgtSagId] = useState(null);
+  /* ⚠ KUN art "vaerksted". Fleets driftskalender er FLÅDENS arbejde.
+     `opgaver` rummer også facility-opgaver — en port der skal repareres, et
+     ventilationsfilter — og de har deres egen skærm i Facility →
+     Servicekalender, der læser den SAMME node. Talte begge moduler dem med,
+     ville det samme arbejde stå i to tal, og en vognmand der lagde dem sammen,
+     ville tælle sit filterskift to gange. Det er beslutning 11 og 14's fejl på
+     tværs af moduler.
 
-  const sager = demoSagerFor("flaade");
-  const sag = sager.find((s) => s.id === valgtSagId) || sager[0] || null;
+     Filteret ligger i SKÆRMEN og ikke i driftstal(): funktionen er den samme
+     for begge moduler, og Facility skal kunne kalde den med sin egen art frem
+     for at få sin egen kopi. */
+  const flaadeopgaver = useMemo(
+    () => opgaver.data.filter((o) => o.art === "vaerksted"), [opgaver.data]);
 
   const nu = Date.now();
-  const iDag = new Date(nu); iDag.setHours(0, 0, 0, 0);
-  const vindueFra = iDag.getTime() - DAG;
-  const vindueTil = vindueFra + VINDUE_DAGE * DAG;
+  const vindue = useMemo(() => vindueFor(visning, anker), [visning, anker]);
 
-  /* Kun biler der har noget i vinduet. Et gitter med 16 rækker hvoraf 11 er
-     tomme, skjuler de fem der betyder noget. */
-  const besoegIVindue = DEMO_BESOEG.filter((b) => b.fra < vindueTil && vindueFra < b.til);
+  const tal = useMemo(
+    () => driftstal({
+      opgaver: flaadeopgaver, indberetninger: indberetninger.data, nu, fremDage,
+    }),
+    [flaadeopgaver, indberetninger.data, nu, fremDage]);
+
+  const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+
+  /* ---- Gitterets rækker og blokke ---- */
+
   const raekker = useMemo(() => {
-    const ider = new Set(besoegIVindue.map((b) => b.koeretoejId));
-    return DEMO_KOERETOEJER
-      .filter((kt) => ider.has(kt.id))
-      .map((kt) => ({
-        id: kt.id,
-        label: kt.kaldenavn,
-        under: kt.navn,
-        pille: <Pille tone={KOERETOEJ_STATUS[kt.status]?.pill}>
-          {KOERETOEJ_STATUS[kt.status]?.label}
-        </Pille>,
-      }));
-  }, [vindueFra, vindueTil]);
+    const brugte = raekkerIVindue(flaadeopgaver, vindue.fra, vindue.til, enheder.data);
+    return brugte.map((kt) => ({
+      id: kt.id,
+      label: kt.kaldenavn,
+      under: kt.navn,
+      pille: <Pille tone={KOERETOEJ_STATUS[kt.status]?.pill}>
+        {KOERETOEJ_STATUS[kt.status]?.label}
+      </Pille>,
+    }));
+  }, [flaadeopgaver, enheder.data, vindue.fra, vindue.til]);
 
-  const blokke = besoegIVindue.map((b) => ({
-    id: b.id,
-    raekkeId: b.koeretoejId,
-    fra: b.fra,
-    til: b.til,
-    label: `${OMKOSTNINGSTYPE[b.type]} · ${lvNavn(b.leverandoerId)}`,
-    titel: b.beskrivelse,
-    tone: BESOEG_STATUS[b.status]?.tone,
-  }));
+  /* Samme liste som kasserne taeller — gitteret og tallene maa ikke vise
+     hver sit udsnit. */
+  const blokke = useMemo(() => flaadeopgaver
+    .filter((o) => Number.isFinite(o.startMs) && ressourceId(o))
+    .map((o) => {
+      const slut = slutter(o);
+      return {
+        id: o.id,
+        raekkeId: ressourceId(o),
+        fra: o.startMs,
+        /* ⚠ EN OPGAVE UDEN ESTIMAT FÅR ET SYNLIGT MINIMUM, IKKE ET GÆTTET
+           VINDUE. Én time er nok til at blokken kan ses og klikkes; den
+           foregiver ikke at være en varighed nogen har besluttet, og
+           `udenVarighed` tæller den for sig nedenfor. */
+        til: slut ?? o.startMs + 3600000,
+        label: [ARBEJDSTYPE[o.arbejdstype], o.leverandoerId ? lvNavn(o.leverandoerId) : null]
+          .filter(Boolean).join(" · ") || o.beskrivelse,
+        titel: o.beskrivelse,
+        tone: OPGAVE_STATUS[o.status]?.pill,
+      };
+    }), [flaadeopgaver]);
 
-  const valgtBesoeg = DEMO_BESOEG.find((b) => b.id === valgtBesoegId) || null;
+  const valgt = flaadeopgaver.find((o) => o.id === valgtId) || null;
 
-  if (henter) return <Henter hvad="nøgletal" />;
-  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
-     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
-     opretter hans første post sidder på en af dem. Se blokerer(). */
-  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
+  /* ---- Åbn en kø ---- */
 
-  const maaSkriveIndkoeb = harPerm(bruger?.perms, PERM.indkoebSkriv);
+  const koeSti = (noegle) =>
+    `/flaade/koe?vis=${noegle}&frem=${fremDage}&division=${division}`;
+  const aabnHer = (noegle) => navigate(koeSti(noegle));
+  /* ⚠ FULD SHELL I DET NYE VINDUE — ikke en bar visning. Vinduet er en rigtig
+     rute, så en disponent kan navigere videre derfra i stedet for at sidde
+     fast i én liste. Tenant, division og periode ligger i localStorage via
+     FleetContext og følger derfor med over. */
+  const aabnNytVindue = (noegle) =>
+    window.open(koeSti(noegle), `fc-koe-${noegle}`, "width=1280,height=900");
+
+  if (opgaver.henter || indberetninger.henter) return <Henter hvad="driftsopgaver" />;
+  /* En AFVIST læsning er ikke en tom liste. */
+  if (blokerer(opgaver.tilstand)) {
+    return <Datatilstand tilstand={opgaver.tilstand} genprov={opgaver.genindlaes} />;
+  }
+  if (blokerer(indberetninger.tilstand)) {
+    return <Datatilstand tilstand={indberetninger.tilstand} genprov={indberetninger.genindlaes} />;
+  }
+
+  /* ⚠ ER VI BLADRET UD AF DET HENTEDE? Så er gitteret tomt uden at noget er
+     tomt. Tavs afkortning med et ekstra trin. */
+  const udenfor = opgaver.interval &&
+    (vindue.fra < opgaver.interval.fra || vindue.til > opgaver.interval.til);
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {k && (
-        <KpiRaekke>
-          <KpiKort label="Aktive enheder" vaerdi={num(k.flaade.aktive)} />
-          <KpiKort label="Reserveret til værksted" vaerdi={num(k.flaade.paaVaerksted)} />
-          <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)} />
-          {/* Feltet er defineret i demo-kpi.js og læses herfra. Det er IKKE det
-              samme tal som indkoeb.fakturaerTilGodkendelse: "ikke-linket" og
-              "afventer godkendelse" er to tilstande, og at bruge det ene som det
-              andet er beslutning 11 og 14 om igen. Det er aggregeringen der
-              mangler, ikke skærmen — se KPI-efterslæbet i README. */}
-          <KpiKort label="Ikke-linkede fakturaer" vaerdi={num(k.flaade.ikkeLinkedeFakturaer)} />
-        </KpiRaekke>
-      )}
+      <Datatilstand tilstand={opgaver.tilstand} genprov={opgaver.genindlaes} />
 
-      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
+      {/* ---- De fem kasser ---- */}
+      <KpiRaekke>
+        {KASSER.map((k) => (
+          <Kasse
+            key={k.noegle}
+            kasse={k}
+            data={tal[k.noegle]}
+            fremDage={fremDage}
+            saetFremDage={setFremDage}
+            paaAabn={() => aabnHer(k.noegle)}
+            paaNytVindue={() => aabnNytVindue(k.noegle)}
+          />
+        ))}
+      </KpiRaekke>
 
-      <Kort titel={`Driftskalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}>
-        <Gitterkalender
-          raekker={raekker}
-          blokke={blokke}
-          fra={vindueFra}
-          til={vindueTil}
-          enhed={ENHED.dag}
-          valgtId={valgtBesoegId}
-          onVaelg={(b) => setValgtBesoegId(b.id === valgtBesoegId ? null : b.id)}
-          tom="Ingen værkstedsbesøg i perioden."
-        />
-        <p className="fc-hint" style={{ marginTop: 12 }}>
-          Kun biler med aktivitet i perioden vises. Gitteret ligger i{" "}
-          <b>fleet/Gitterkalender.jsx</b> og bruges også af Facility →
-          Servicekalender og af Disponering — samme gitter, andre rækker.
-        </p>
-      </Kort>
-
-      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <Blokeringer besoeg={valgtBesoeg} />
-        <IndkoebsForm
-          besoeg={valgtBesoeg}
-          sag={sag}
-          maaSkrive={maaSkriveIndkoeb}
-        />
-      </Gitter>
-
+      {/* ---- Kalenderen ---- */}
       <Kort
-        titel="Registrerede indkøb"
-        handling={<Link className="fc-a" to="/indkoeb/fakturaer">Godkend og afstem i Procure</Link>}
+        titel="Driftskalender"
+        handling={
+          <Knap onClick={() => window.open(
+            "/flaade/koe?vis=planlagt", "fc-kalender", "width=1440,height=980")}>
+            Åbn i nyt vindue
+          </Knap>
+        }
       >
-        <Tabel
-          /* ⚠ KOLONNERNE FØLGER NODENS FORM, ikke kopiens. Den gamle
-             DEMO_INDKOEB bar `fakturadatoMs`, `type`, `fakturanummer`,
-             `beloebOere` og `fakturaId` — INGEN af dem findes på en
-             indkøbslinje. Noden har `dato`, `kategori`, `reference`,
-             antal × pris og `fakturastatus`. To datasæt for én node deler
-             ikke nødvendigvis form, og her gjorde de det slet ikke. */
-          kolonner={[
-            { key: "dato", label: "Dato", render: (r) => dato(r.dato) },
-            { key: "koeretoejId", label: "Bil", render: (r) => <b>{demoKoeretoejKaldenavn(r.koeretoejId)}</b> },
-            { key: "vare", label: "Ydelse" },
-            { key: "leverandoerId", label: "Leverandør" },
-            { key: "division", label: "Division", render: (r) => <Pille tone="info">{DIVISIONER[r.division]}</Pille> },
-            /* Leverandørens EGET nummer — det man slår op i når man ringer. */
-            { key: "reference", label: "Fakturanr." },
-            /* ⚠ BEREGNET AF antal × pris, ALDRIG GEMT. To kilder til samme tal
-               kan drive fra hinanden, og så mangler en post uden at totalen
-               afslører det. Kopien gemte beløbet direkte. */
-            { key: "beloeb", label: "Ekskl. moms", num: true,
-              render: (r) => kr(indkoebBeloebOere(r)) },
-            { key: "momsOere", label: "Moms", num: true, render: (r) => kr(r.momsOere) },
-            { key: "total", label: "Total", num: true,
-              render: (r) => kr(indkoebBeloebOere(r) + (r.momsOere || 0)) },
-            { key: "fakturastatus", label: "Faktura",
-              render: (r) => <Pille tone={FAKTURASTATUS[r.fakturastatus]?.pill || "info"}>
-                {FAKTURASTATUS[r.fakturastatus]?.label || r.fakturastatus}</Pille> },
-          ]}
-          raekker={vaerkstedsindkoeb}
-          tom="Ingen indkøb registreret."
-        />
+        <div className="fc-kal-top">
+          <div className="fc-seg" role="group" aria-label="Tidsinterval">
+            {ALLE_VISNINGER.map((v) => (
+              <button key={v} type="button" aria-pressed={visning === v}
+                      onClick={() => setVisning(v)}>
+                {VISNING[v].label}
+              </button>
+            ))}
+          </div>
+          <div className="fc-kal-spring">
+            <Knap onClick={() => setAnker((a) => flyt(visning, a, -1))} aria-label="Forrige">←</Knap>
+            <span className="fc-kal-periode">
+              {visning === "dag"
+                ? dato(vindue.fra)
+                : `${dato(vindue.fra)} – ${dato(vindue.til - 1)}`}
+            </span>
+            <Knap onClick={() => setAnker((a) => flyt(visning, a, 1))} aria-label="Næste">→</Knap>
+            <Knap onClick={() => setAnker(Date.now())}>I dag</Knap>
+          </div>
+        </div>
+
+        {udenfor && (
+          <p className="fc-hint fc-bad" style={{ marginBottom: 10 }}>
+            ⚠ Du er bladret uden for det hentede interval
+            ({dato(opgaver.interval.fra)} – {dato(opgaver.interval.til)}).
+            Gitteret er tomt <b>fordi der ikke er hentet noget</b> — ikke fordi
+            der ikke er noget. Hentningen følger perioden, ikke kalenderens
+            pile.
+          </p>
+        )}
+
+        {/* ⚠ LODRET SCROLL PÅ EN MODIFIKATOR, ikke på .fc-scroll selv: den er
+            vandret og bruges af hver tabel i appen. Hovedet og navnekolonnen
+            klæber, så man ikke skal tælle kolonner for at finde dagen. */}
+        <div className="fc-gk-lodret">
+          <div
+            onMouseLeave={() => setSvaev(null)}
+            onMouseMove={(e) => {
+              const knap = e.target.closest?.("[data-blok]");
+              if (!knap) { setSvaev(null); return; }
+              const o = flaadeopgaver.find((x) => x.id === knap.dataset.blok);
+              if (o) setSvaev({ x: e.clientX, y: e.clientY, opgave: o });
+            }}
+          >
+            <Gitterkalender
+              raekker={raekker}
+              blokke={blokke}
+              fra={vindue.fra}
+              til={vindue.til}
+              enhed={vindue.enhed}
+              valgtId={valgtId}
+              onVaelg={(b) => setValgtId(b.id)}
+              tom="Ingen driftsopgaver i perioden."
+            />
+          </div>
+        </div>
+
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          {num(udenFaktura.length)} af {num(vaerkstedsindkoeb.length)} viste indkøb er
-          endnu ikke matchet mod en leverandørfaktura. <b>Totalen beregnes her</b> og
-          gemmes ikke — beløbet står som <b>beloebOere</b> ekskl. moms med{" "}
-          <b>momsOere</b> ved siden af, aldrig som ét inkl.-beløb. Blandes de to,
-          lægges inkl.-tal sammen med ekskl.-tal i en rapport.
+          Kun enheder med aktivitet i perioden vises —{" "}
+          <b>{num(raekker.length)} af {num(enheder.data.length)}</b>. Et gitter
+          med tredive rækker hvoraf femogtyve er tomme, skjuler de fem der
+          betyder noget. Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og
+          bruges også af Facility → Servicekalender og af Disponering.
+          {tal.udenVarighed.antal > 0 && (
+            <>
+              {" "}⚠ <b>{num(tal.udenVarighed.antal)}</b> planlagte opgaver har
+              intet estimat. De tegnes som én time, så de kan ses og klikkes —
+              men varigheden er <b>ikke</b> besluttet, og de kan hverken være
+              forsinkede eller til tiden.
+            </>
+          )}
         </p>
       </Kort>
 
-      <Kort titel="Værkstedssager">
-        <Tabel
-          kolonner={[
-            { key: "nummer", label: "Sagsnr.", render: (r) => <b>{r.nummer}</b> },
-            { key: "emne", label: "Emne" },
-            { key: "objektLabel", label: "Enhed" },
-            { key: "modpartNavn", label: "Værksted" },
-            { key: "harAftale", label: "Aftale",
-              render: (r) => (r.harAftale ? datoTid(r.aftaleFraMs) : <span className="fc-neutral">—</span>) },
-            { key: "antalKarantaene", label: "Karantæne", num: true,
-              render: (r) => (r.antalKarantaene > 0
-                ? <Pille tone="bad">{r.antalKarantaene}</Pille>
-                : <span className="fc-neutral">0</span>) },
-            { key: "tilstand", label: "Status",
-              render: (r) => <Pille tone={SAG_TILSTAND[r.tilstand]?.pill}>{SAG_TILSTAND[r.tilstand]?.label}</Pille> },
-            { key: "aabn", label: "",
-              render: (r) => (
-                <Knap onClick={() => setValgtSagId(r.id)} disabled={r.id === sag?.id}>
-                  {r.id === sag?.id ? "Vist" : "Åbn"}
-                </Knap>
-              ) },
-          ]}
-          raekker={sager}
-          tom="Ingen værkstedssager."
-        />
-        <p className="fc-hint" style={{ marginTop: 12 }}>
-          Sagsnummeret sættes i emnefeltet, når der sendes mail til værkstedet.
-          Værkstedet svarer normalt i Outlook, og <b>Re:</b> bevarer nummeret.
-          Aftalen på sagen står som et planlagt besøg i kalenderen ovenfor — samme
-          tidspunkter, ét sted.
-        </p>
-      </Kort>
+      {svaev && <Svaevekort svaev={svaev} lvNavn={lvNavn} />}
 
-      {sag && <Kort><Sagsvisning sag={sag} /></Kort>}
+      {valgt && (
+        <Haendelsespanel
+          opgave={valgt}
+          lvNavn={lvNavn}
+          enheder={enheder.data}
+          onLuk={() => setValgtId(null)}
+        />
+      )}
     </div>
   );
 }
 
-/* ---- Bookingblokeringer ---------------------------------------------- */
+/* ---- Kassen ----------------------------------------------------------- */
 
 /**
- * Reservationsmodellen gjort synlig. Kortet svarer på ét spørgsmål:
- * hvorfor kan disponenten ikke bruge bilen i den uge?
+ * ⚠ ET KpiKort MED EN KNAP INDENI VAR IKKE MULIGT. KpiKort er SELV et link
+ * (`til`), og et link inde i et link er ugyldigt markup — noten står allerede
+ * i Fleet → Enheder. Kassen her er derfor sin egen, med knapperne som
+ * knapper.
  */
-function Blokeringer({ besoeg }) {
-  if (!besoeg) {
-    return (
-      <Kort titel="Bookingblokeringer">
-        <Tom>Vælg et besøg i kalenderen for at se hvilken reservation det ville skrive.</Tom>
-      </Kort>
-    );
-  }
-  const r = reservationFraOpgave(besoeg);
-  const pri = prioritetFor(KILDE.vaerksted);
+function Kasse({ kasse, data, fremDage, saetFremDage, paaAabn, paaNytVindue }) {
+  const erKommende = kasse.noegle === "kommende";
+  return (
+    /* Samme skal som KpiKort — fc-card + fc-kpi + fc-kpi-txt. Klassenavnene
+       er delte, og en kasse med sine egne ville se anderledes ud end de
+       nøgletalskort den står ved siden af paa hver anden skaerm. */
+    <div className="fc-card fc-kpi">
+      <div className="fc-kpi-txt" style={{ width: "100%" }}>
+        <div className="fc-kpi-l">{kasse.label}</div>
+        <div className="fc-kpi-v">{num(data.antal)}</div>
+
+      {kasse.noegle === "nye" && <Prioritetsprikker fordeling={data} />}
+
+      {erKommende && (
+        /* ⚠ VINDUET ER BRUGERENS EGET, OG DET ER DERFOR TALLET IKKE KAN
+           AGGREGERES. Skifter man her, skifter både tallet og den liste
+           "Åbn" viser — de kan ikke komme ud af trit, fordi de er ét
+           regnestykke. */
+        <div className="fc-seg" role="group" aria-label="Vis frem" style={{ marginTop: 8 }}>
+          {FREMAD.map((f) => (
+            <button key={f.dage} type="button" aria-pressed={fremDage === f.dage}
+                    onClick={() => saetFremDage(f.dage)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+        <div className="fc-kasse-knapper">
+          <Knap variant="primaer" onClick={paaAabn}>Åbn</Knap>
+          <Knap onClick={paaNytVindue} title="Åbner køen i et nyt browservindue">
+            Åbn i nyt vindue
+          </Knap>
+        </div>
+        <p className="fc-hint" style={{ marginTop: 8 }}>{kasse.hvad}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ⚠ FIRE TAL, IKKE TRE. `uvurderet` tælles og VISES. En indberetning uden
+ * prioritet er ikke lavt prioriteret — den er ikke set af nogen endnu, og det
+ * er præcis det tal en værkfører skal handle på. Skjulte vi den, ville tre tal
+ * der summer til mindre end totalen, se ud som en regnefejl.
+ */
+function Prioritetsprikker({ fordeling }) {
+  return (
+    <div className="fc-pri">
+      {["lav", "normal", "hoej"].map((p) => (
+        <span key={p} className={`fc-pri-et fc-pri-${p}`}>
+          <span className="fc-pri-prik" />
+          {PRIORITET[p].label} {num(fordeling[p])}
+        </span>
+      ))}
+      {fordeling.uvurderet > 0 && (
+        <span className="fc-pri-et" title="Ikke set af en værkfører endnu">
+          <span className="fc-pri-prik" />
+          Ikke vurderet {num(fordeling.uvurderet)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ---- Svævekortet ------------------------------------------------------ */
+
+/**
+ * ⚠ ET title-ATTRIBUT VAR IKKE NOK, og blokken har stadig sit.
+ *
+ * Browserens egen boble kommer efter halvandet sekund, forsvinder efter fem,
+ * kan ikke rumme en tabel og findes slet ikke på en berøringsskærm. Kortet
+ * her svarer på "hvad sker der på den blok" uden at man mister sin plads i
+ * gitteret ved at klikke. `title` bliver stående, fordi den er den eneste der
+ * virker uden mus.
+ */
+function Svaevekort({ svaev, lvNavn }) {
+  const o = svaev.opgave;
+  const pri = prioritetFor(o);
+  const slut = slutter(o);
+  /* Holdes inden for vinduet: et kort der stikker ud over højre kant, kan
+     ikke læses, og et der lægger sig under musen, blinker. */
+  const x = Math.min(svaev.x + 16, (window.innerWidth || 1200) - 340);
+  const y = Math.min(svaev.y + 16, (window.innerHeight || 800) - 220);
 
   return (
-    <Kort
-      titel="Bookingblokeringer"
-      handling={<Pille tone={BESOEG_STATUS[besoeg.status]?.tone}>{BESOEG_STATUS[besoeg.status]?.label}</Pille>}
+    <div className="fc-svaev" style={{ left: x, top: y }} role="tooltip">
+      <div className="fc-svaev-t">{o.beskrivelse}</div>
+      <div className="fc-svaev-r"><span>Type</span><span>{ARBEJDSTYPE[o.arbejdstype] || "—"}</span></div>
+      {o.leverandoerId && (
+        <div className="fc-svaev-r"><span>Værksted</span><span>{lvNavn(o.leverandoerId)}</span></div>
+      )}
+      <div className="fc-svaev-r"><span>Start</span><span>{datoTid(o.startMs)}</span></div>
+      <div className="fc-svaev-r">
+        <span>Slut</span>
+        {/* ⚠ INTET, IKKE EN GÆTTET SLUTNING. Uden estimat er der ikke noget
+            sluttidspunkt — og "—" er svaret, ikke starttidspunktet igen. */}
+        <span>{slut ? datoTid(slut) : "— (intet estimat)"}</span>
+      </div>
+      <div className="fc-svaev-r">
+        <span>Status</span>
+        <span><Pille tone={OPGAVE_STATUS[o.status]?.pill}>{OPGAVE_STATUS[o.status]?.label}</Pille></span>
+      </div>
+      <div className="fc-svaev-r">
+        <span>Prioritet</span>
+        <span>{pri
+          ? <Pille tone={pri.pill}>{pri.label}</Pille>
+          : <span className="fc-neutral">— ikke vurderet</span>}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Hændelsespanelet ------------------------------------------------- */
+
+const PANEL_FANER = (sag) => [
+  { key: "overblik", label: "Overblik" },
+  { key: "kommunikation", label: "Kommunikation", badge: sag ? sag.beskeder.length : 0 },
+  { key: "filer", label: "Filer" },
+];
+
+/**
+ * Klik på en blok åbner den her. Mockuppens højre panel, som en dialog.
+ *
+ * ⚠ MODAL FREM FOR ET SIDEPANEL. Panelet skal kunne rumme en mailtråd og en
+ * filliste, og et sidepanel i den bredde ville have klemt gitteret sammen til
+ * en tredjedel — netop det gitteret blev komprimeret for at undgå.
+ */
+function Haendelsespanel({ opgave, lvNavn, enheder, onLuk }) {
+  const [fane, setFane] = useState("overblik");
+  /* ⚠ SAGEN SLÅS OP PÅ OPGAVENS sagId. `sager/` findes ikke i
+     firebase.rules.json endnu (beslutning 20 er fase 0), så opslaget går i
+     demo-sættet — og skærmen siger det, frem for at vise en tom fane der
+     ligner en sag uden beskeder. */
+  const sag = demoSagerFor("flaade").find((s) => s.id === opgave.sagId) || null;
+  const enhed = enheder.find((k) => k.id === opgave.koeretoejId) || null;
+  const pri = prioritetFor(opgave);
+
+  return (
+    <Dialog
+      bred
+      titel={opgave.beskrivelse}
+      under={[enhed?.kaldenavn, ARBEJDSTYPE[opgave.arbejdstype],
+              opgave.leverandoerId ? lvNavn(opgave.leverandoerId) : "Eget værksted"]
+        .filter(Boolean).join(" · ")}
+      handling={<Pille tone={OPGAVE_STATUS[opgave.status]?.pill}>
+        {OPGAVE_STATUS[opgave.status]?.label}</Pille>}
+      onLuk={onLuk}
     >
-      <MiniLinje label="Bil" vaerdi={<b>{demoKoeretoejKaldenavn(besoeg.koeretoejId)}</b>} />
-      <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
-      <MiniLinje label="Værksted" vaerdi={lvNavn(besoeg.leverandoerId)} />
-      <MiniLinje label="Fra" vaerdi={datoTid(besoeg.fra)} />
-      <MiniLinje label="Til" vaerdi={`${datoTid(besoeg.til)} (eksklusiv)`} />
-      {besoeg.sagsnummer && <MiniLinje label="Sag" vaerdi={besoeg.sagsnummer} />}
+      <Faner faner={PANEL_FANER(sag)} valgt={fane} saet={setFane} label="Hændelse" />
 
-      <div style={{ borderTop: "1px solid var(--bc-line)", margin: "12px 0" }} />
+      {fane === "overblik" && (
+        <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
+          <div>
+            <MiniLinje label="Enhed" vaerdi={<b>{enhed?.kaldenavn || opgave.koeretoejId}</b>} />
+            {enhed?.registrering && <MiniLinje label="Reg.nr." vaerdi={enhed.registrering} />}
+            <MiniLinje label="Type" vaerdi={ARBEJDSTYPE[opgave.arbejdstype] || "—"} />
+            <MiniLinje label="Udføres af" vaerdi={opgave.leverandoerId
+              ? lvNavn(opgave.leverandoerId)
+              : "Eget værksted"} />
+            <MiniLinje label="Start" vaerdi={datoTid(opgave.startMs)} />
+            <MiniLinje
+              label="Slut"
+              vaerdi={slutter(opgave)
+                ? datoTid(slutter(opgave))
+                : <span className="fc-neutral">— intet estimat</span>} />
+            <MiniLinje label="Prioritet" vaerdi={pri
+              ? <Pille tone={pri.pill}>{pri.label}</Pille>
+              : <span className="fc-neutral">— ikke vurderet</span>} />
+            {Number.isFinite(opgave.beloebOere) && (
+              <MiniLinje label="Estimeret omkostning" vaerdi={kr(opgave.beloebOere)} />
+            )}
+            {opgave.sagId && (
+              <MiniLinje label="Sag" vaerdi={sag
+                ? <code>{sag.nummer}</code>
+                : <span className="fc-neutral">{opgave.sagId}</span>} />
+            )}
+          </div>
+          <Reservationen opgave={opgave} />
+        </Gitter>
+      )}
 
+      {fane === "kommunikation" && <Kommunikation sag={sag} />}
+      {fane === "filer" && <Filer sag={sag} />}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+        <Knap variant="primaer" disabled
+              title="Skrivning er ikke bygget: en reservation skal skrives atomisk med opgaven, og to disponenter kan ramme samme sekund. Det hører i en Cloud Function.">
+          Marker udført
+        </Knap>
+        <Knap disabled title="Samme grund — se Kendte huller i README.">Flyt</Knap>
+        <Link className="fc-a" to="/flaade/indberetninger" style={{ alignSelf: "center" }}>
+          Se indberetninger
+        </Link>
+      </div>
+    </Dialog>
+  );
+}
+
+/**
+ * Reservationsmodellen gjort synlig. Kortet svarer på ét spørgsmål: hvorfor
+ * kan disponenten ikke bruge enheden i den periode?
+ */
+function Reservationen({ opgave }) {
+  let r = null;
+  let fejl = null;
+  try {
+    r = reservationFraOpgave(opgave);
+  } catch (e) {
+    /* ⚠ FEJLEN VISES, DEN SLUGES IKKE. reservationFraOpgave() kaster når der
+       ikke er noget vindue at reservere — og det er det rigtige svar: en
+       standardlængde ville spærre enheden i et tidsrum ingen har besluttet.
+       Fangede vi den i stilhed, ville panelet bare mangle et afsnit. */
+    fejl = e.message;
+  }
+
+  if (fejl) {
+    return (
+      <div>
+        <h3 style={{ fontSize: 13, margin: "0 0 8px" }}>Reservationens påvirkning</h3>
+        <p className="fc-hint fc-bad">
+          Opgaven kan <b>ikke</b> reservere sin enhed: {fejl}
+        </p>
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          Så længe den ikke kan, ser enheden <b>fri</b> ud i disponeringen — og
+          det er værre end en spærring man kan se.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, margin: "0 0 8px" }}>Reservationens påvirkning</h3>
       <MiniLinje label="Ressource" vaerdi={<code>{r.ressourceType}</code>} />
+      <MiniLinje label="Spærret fra" vaerdi={datoTid(r.fra)} />
+      <MiniLinje label="Spærret til" vaerdi={`${datoTid(r.til)} (eksklusiv)`} />
       <MiniLinje label="Kilde" vaerdi={<code>{r.kilde.type}</code>} />
       <MiniLinje
         label="Prioritet"
-        vaerdi={<><b>{pri}</b> — den højeste. Vinder over fravær, facility og booking</>}
-      />
-
-      <p className="fc-hint" style={{ marginTop: 12 }}>
-        En bil på værksted kan ikke køre, <b>uanset hvad disponenten har lovet</b>.
-        Derfor står værksted øverst: en booking der overlapper, bliver overskrevet
-        og annulleret med årsag — ikke slettet, så man kan forklare hvorfor en tur
-        blev flyttet.
+        vaerdi={<><b>{reservationsPrioritet(r.kilde.type)}</b>
+          {r.kilde.type === KILDE.vaerksted && " — den højeste"}</>} />
+      <p className="fc-hint" style={{ marginTop: 10 }}>
+        En enhed på værksted kan ikke køre, <b>uanset hvad disponenten har
+        lovet</b>. En booking der overlapper, bliver overskrevet og annulleret
+        med årsag — ikke slettet, så man kan forklare hvorfor en tur blev
+        flyttet.
       </p>
-      <p className="fc-hint" style={{ marginTop: 6, fontStyle: "italic" }}>
-        „{konfliktTekst(null, { kilde: { type: KILDE.vaerksted, reference: besoeg.id } })}“
-      </p>
-      <p className="fc-hint" style={{ marginTop: 12 }}>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
         <b>Reservationen skrives ikke endnu.</b> To disponenter kan ramme samme
-        sekund, så konfliktfriheden hører i en Cloud Function. Indtil da er{" "}
-        <b>reservationer/</b> ikke skrevet herfra, og det her er formen — ikke en
-        handling.
+        sekund, så konfliktfriheden hører i en Cloud Function. Det her er
+        <b> formen</b>, ikke en handling.
       </p>
-    </Kort>
+    </div>
   );
 }
 
-/* ---- Indkøbsregistrering --------------------------------------------- */
-
-/**
- * Registrerer et INDKØB, ikke en faktura. Se noten i toppen af filen: der er
- * ét sted at registrere og ét sted at godkende, og det her er det første.
- */
-function IndkoebsForm({ besoeg, sag, maaSkrive }) {
-  const [beloeb, setBeloeb] = useState("");
-  const [moms, setMoms] = useState("");
-  const [division, setDivision] = useState("");
-  const [type, setType] = useState(besoeg?.type || "");
-  const [fakturanummer, setFakturanummer] = useState("");
-  const [sagsnummer, setSagsnummer] = useState("");
-
-  const beloebOere = oereFraKroner(beloeb);
-  const momsOere = oereFraKroner(moms);
-  const total = (beloebOere || 0) + (momsOere || 0);
-
-  /* division er PÅKRÆVET af reglerne og kan ikke udledes af bilen. */
-  const mangler = [
-    !besoeg && "et besøg",
-    !division && "division",
-    !type && "omkostningstype",
-    beloebOere == null && "beløb",
-  ].filter(Boolean);
-
+function Kommunikation({ sag }) {
+  if (!sag) {
+    return (
+      <Tom>
+        Ingen sag på den her opgave. Mailtråden hænger på en <b>sag</b>, og
+        sagsnummeret sættes i emnefeltet når der skrives til værkstedet — se
+        beslutning 20.
+      </Tom>
+    );
+  }
   return (
-    <Kort
-      titel="Registrér indkøb"
-      handling={
-        <Link className="fc-a" to="/indkoeb/fakturaer">Godkendelse sker i Procure</Link>
-      }
-    >
-      {!besoeg ? (
-        <Tom>Vælg et besøg i kalenderen — indkøbet registreres på bilen og
-             arbejdsordren, ikke løsrevet.</Tom>
-      ) : (
-        <>
-          <MiniLinje label="Bil" vaerdi={<b>{demoKoeretoejKaldenavn(besoeg.koeretoejId)}</b>} />
-          <MiniLinje label="Arbejdsordre" vaerdi={<code>{besoeg.id}</code>} />
-          <MiniLinje label="Leverandør" vaerdi={lvNavn(besoeg.leverandoerId)} />
-
-          {/* ⚠ Divisionsfeltet står FOR SIG og udfyldes ikke af bilvalget.
-              Reglerne kræver det på indkoeb/, og bilen har det ikke
-              (beslutning 19). Fyldte vi det ud automatisk ud fra bilen, ville
-              vi genindføre præcis den kobling beslutning 19 fjernede. */}
-          <div className="fc-felt" style={{ marginTop: 12 }}>
-            <label htmlFor="ik-division">Division *</label>
-            <select id="ik-division" value={division} onChange={(e) => setDivision(e.target.value)}>
-              <option value="">Vælg division</option>
-              {Object.entries(DIVISIONER).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-          </div>
-          <p className="fc-hint" style={{ marginTop: -4, marginBottom: 12 }}>
-            Kan <b>ikke</b> udledes af bilen — en enhed har ingen division
-            (beslutning 19), men et indkøb er en transaktion og skal have én.
-            Vælg den der skal bære omkostningen.
-          </p>
-
-          <div className="fc-felt">
-            <label htmlFor="ik-type">Omkostningstype *</label>
-            <select id="ik-type" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">Vælg type</option>
-              {ALLE_OMKOSTNINGSTYPER.map((t) => (
-                <option key={t} value={t}>{OMKOSTNINGSTYPE[t]}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="fc-felt">
-            <label htmlFor="ik-fnr">Fakturanummer</label>
-            <input id="ik-fnr" value={fakturanummer}
-                   onChange={(e) => setFakturanummer(e.target.value)}
-                   placeholder="Leverandørens nummer" />
-          </div>
-
-          {/* Beslutning 20: en faktura der kom ind på en sag skal kunne
-              registreres derfra, så man kan gå fra posten tilbage til tråden. */}
-          <div className="fc-felt">
-            <label htmlFor="ik-sag">Sagsnummer</label>
-            <input id="ik-sag" value={sagsnummer || besoeg.sagsnummer || ""}
-                   onChange={(e) => setSagsnummer(e.target.value)}
-                   placeholder={sag ? sag.nummer : "FLT-ÅÅÅÅ-NNNNN"} />
-          </div>
-
-          {/* TO FELTER. Aldrig ét med inkl. moms. */}
-          <Gitter kolonner="1fr 1fr">
-            <div className="fc-felt">
-              <label htmlFor="ik-beloeb">Beløb ekskl. moms (kr.) *</label>
-              <input id="ik-beloeb" inputMode="decimal" value={beloeb}
-                     onChange={(e) => setBeloeb(e.target.value)} placeholder="0,00" />
-            </div>
-            <div className="fc-felt">
-              <label htmlFor="ik-moms">Moms (kr.)</label>
-              <input id="ik-moms" inputMode="decimal" value={moms}
-                     onChange={(e) => setMoms(e.target.value)} placeholder="0,00" />
-            </div>
-          </Gitter>
-
-          <div className="fc-sum">
-            <span>Total inkl. moms</span>
-            <span className="fc-sum-v">{kr(total)}</span>
-          </div>
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            Totalen <b>beregnes</b> og gemmes ikke. Basen får{" "}
-            <code>beloebOere: {beloebOere ?? "—"}</code> og{" "}
-            <code>momsOere: {momsOere ?? "—"}</code> — hele øre som integer, ekskl.
-            moms adskilt fra moms. Ét felt med inkl. moms ville betyde at en rapport
-            lægger inkl.-tal sammen med ekskl.-tal.
-          </p>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <Knap variant="primaer" disabled
-                  title={maaSkrive
-                    ? "Skrivning er ikke bygget endnu (fase 0)."
-                    : "Kræver indkoeb.skriv."}>
-              Registrér indkøb
-            </Knap>
-          </div>
-          {mangler.length > 0 && (
-            <p className="fc-hint" style={{ marginTop: 10 }}>
-              Mangler: {mangler.join(", ")}.
-            </p>
-          )}
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            Posten skrives til <b>indkoeb/</b> — ikke til <b>fakturaer/</b>, som er{" "}
-            <b>.write: false</b> og kun skrives af en Cloud Function. Matchning mod
-            leverandørens faktura, godkendelse og afstemning sker ét sted:{" "}
-            <Link className="fc-a" to="/indkoeb/fakturaer">Procure → Fakturaer</Link>.
-            Der er derfor ingen Godkend-knap her.
-          </p>
-        </>
+    <div>
+      <Tabel
+        kolonner={[
+          { key: "ms", label: "Tid", render: (b) => `${dato(b.ms)} ${klokke(b.ms)}` },
+          { key: "retning", label: "", render: (b) => (
+            <Pille tone={b.retning === "indgaaende" ? "info" : "ok"}>
+              {b.retning === "indgaaende" ? "Ind" : "Ud"}</Pille>) },
+          { key: "afsenderNavn", label: "Afsender" },
+          { key: "emne", label: "Emne" },
+        ]}
+        raekker={sag.beskeder}
+        tom="Ingen beskeder på sagen."
+      />
+      {sag.antalKarantaene > 0 && (
+        /* ⚠ KARANTÆNE RENDERES IKKE INLINE. Ikke gråtonet, ikke sammenklappet
+           — slet ikke. Renderes den i tråden, læser mennesket den og handler
+           på den, og så er karantænen en dekoration. Samme regel som at en
+           udløbet kompetence BLOKERER frem for at advare. */
+        <p className="fc-hint fc-bad" style={{ marginTop: 12 }}>
+          ⚠ <b>{num(sag.antalKarantaene)}</b> besked(er) er i karantæne og vises
+          ikke her. De frigives på sagen af en der har <code>sag.karantaeneFrigiv</code>.
+        </p>
       )}
-    </Kort>
+      <p className="fc-hint" style={{ marginTop: 12 }}>
+        Visning, ingen afsendelse. Modtagevej, parsing og scanning mangler —{" "}
+        <b>sager/</b> står ikke i <b>firebase.rules.json</b> endnu. Beslutning
+        20 er fase 0.
+      </p>
+    </div>
   );
 }
+
+function Filer({ sag }) {
+  const vedhaeftninger = (sag?.beskeder || []).flatMap((b) => b.vedhaeftninger || []);
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, margin: "0 0 8px" }}>Fotos</h3>
+      {/* ⚠ ATTRAPPER, OG DET STÅR PÅ SKÆRMEN. DEV har ingen Storage-bucket —
+          den kræver Blaze, og DEV står på Spark. Et upload-felt der så ud til
+          at virke, ville fejle først når nogen havde valgt en fil. Bucket'en
+          skal oprettes i europe-west1 sammen med en budgetalarm, og regionen
+          kan ikke ændres bagefter. Se README. */}
+      <div className="fc-fotos">
+        {[1, 2, 3].map((n) => (
+          <div key={n} className="fc-foto">Foto {n}</div>
+        ))}
+      </div>
+      <p className="fc-hint" style={{ marginTop: 10 }}>
+        ⚠ <b>Billederne er attrapper.</b> Der er ingen Storage-bucket i dette
+        miljø — den kræver Blaze, og regionen (<b>europe-west1</b>) kan ikke
+        ændres når den først er valgt. Upload bygges sammen med bucket'en og en
+        budgetalarm, ikke før.
+      </p>
+
+      <h3 style={{ fontSize: 13, margin: "18px 0 8px" }}>Dokumenter fra sagen</h3>
+      {/* ⚠ FELTET HEDDER filnavn, IKKE navn. Her stod `key: "navn"`, og
+          kolonnen stod TOM på skærmen mens statuspillen ved siden af så
+          rigtig ud — præcis den fejlklasse CLAUDE.md advarer om: et feltnavn
+          skrevet i et modul uden at blive holdt op mod dataene. Den fejler
+          ikke, den bliver bare tom, og en tom celle ligner en fil uden navn.
+
+          Statussen er heller ikke rå: VEDHAEFTNING_LABEL og _TONE står i
+          sager.js, og Sagsvisning bruger de samme to. Skrev vi `v.status`
+          direkte, ville skærmen sige "afventerScan" hvor sagsvisningen siger
+          "Afventer scanning". */}
+      <Tabel
+        kolonner={[
+          { key: "filnavn", label: "Fil", render: (v) => <b>{v.filnavn}</b> },
+          { key: "stoerrelse", label: "Størrelse", num: true,
+            render: (v) => filstoerrelse(v.stoerrelse) },
+          { key: "status", label: "Scanning",
+            render: (v) => <Pille tone={VEDHAEFTNING_TONE[v.status]}>
+              {VEDHAEFTNING_LABEL[v.status]}</Pille> },
+        ]}
+        raekker={vedhaeftninger}
+        tom={sag ? "Ingen vedhæftninger på sagen." : "Ingen sag på opgaven."}
+      />
+    </div>
+  );
+}
+

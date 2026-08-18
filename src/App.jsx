@@ -25,6 +25,7 @@ import Fravaer from "./moduler/Fravaer.jsx";
 import FlaadeOversigt from "./moduler/flaade/Oversigt.jsx";
 import Vaerkstedskalender from "./moduler/flaade/Vaerkstedskalender.jsx";
 import Indberetninger from "./moduler/flaade/Indberetninger.jsx";
+import Arbejdskoe from "./moduler/flaade/Arbejdskoe.jsx";
 import FacilityOversigt from "./moduler/facility/Oversigt.jsx";
 import Servicekalender from "./moduler/facility/Servicekalender.jsx";
 import Klima from "./moduler/facility/Klima.jsx";
@@ -345,6 +346,7 @@ export default function App() {
                 REDIRECTS, ikke en rute, saa der er eet sted skaermen naas fra. */}
             <Route path="flaade" element={<Vaerkstedskalender />} />
             <Route path="flaade/indberetninger" element={<Indberetninger />} />
+            <Route path="flaade/koe" element={<Arbejdskoe />} />
 
             <Route path="facility" element={<FacilityOversigt />} />
             <Route path="facility/servicekalender" element={<Servicekalender />} />

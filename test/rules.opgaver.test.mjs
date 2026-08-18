@@ -60,7 +60,16 @@ before(async () => {
     },
   });
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
-    await set(ref(ctx.database(), `tenants/${TENANT}/_findes`), true);
+    /* ⚠ EN GANG. ctx.database() kalder useEmulator() under motorhjelmen, og
+       et kald nummer to paa samme kontekst er en FATAL fejl i SDK'en. */
+    const db = ctx.database();
+    await set(ref(db, `tenants/${TENANT}/_findes`), true);
+    /* Et vaerksted at pege paa. leverandoerId slaar OP i reglerne — uden
+       posten her ville hver skrivning fejle paa VALIDERING og ligne en
+       manglende permission. */
+    await set(ref(db, `tenants/${TENANT}/leverandoerer/lv-daf`), {
+      navn: "DAF Trucks Fredericia", cvr: "30556612", kategori: "vaerksted",
+    });
   });
 });
 
@@ -248,5 +257,58 @@ describe("prioriteten er tre trin, og serveren kender dem", () => {
       assert.deepEqual(trin.split("|").sort(), forventet,
         `${node} kender ${trin} — prioritet.js kender ${ALLE_PRIORITETER}`);
     }
+  });
+});
+
+describe("værkstedsbesøgets to felter", () => {
+  /* ⚠ DE KOM MED SAMMENLÆGNINGEN. De otte værkstedsbesøg lå i deres eget
+     demo-datasæt med `type` og `leverandoerId`; da de blev flyttet ind i
+     `opgaver`, kunne de ikke gemmes — noden er lukket med $andet: false, og
+     ingen af de to felter fandtes. Prøven her er den anden halvdel af den
+     flytning: uden den kunne demo-sættet vise noget serveren afviser. */
+
+  it("tager arbejdstype og leverandoerId", async () => {
+    await assertSucceeds(set(ref(som("uid-a"), sti("vb-ok")), opgave({
+      art: "vaerksted", arbejdstype: "service", leverandoerId: "lv-daf",
+    })));
+  });
+
+  it("⚠ AFVISER ET VÆRKSTED DER IKKE FINDES", async () => {
+    /* Et opslag, ikke en fritekst. Værkstedets navn stod som streng i tre
+       demo-filer med hver sin stavemåde at drive med, før leverandoerer/ blev
+       kilden — og en fejlstavning skal blive en AFVISNING frem for en ny
+       leverandør ingen kan finde igen. Samme spærring som på koeretoejId. */
+    await assertFails(set(ref(som("uid-a"), sti("vb-fantom")), opgave({
+      art: "vaerksted", arbejdstype: "service", leverandoerId: "lv-findes-ikke",
+    })));
+  });
+
+  it("⚠ EN OPGAVE UDEN LEVERANDØR ER GYLDIG — det er eget værksted", async () => {
+    /* Feltet er netop det der skiller intern vedligehold fra et eksternt
+       besøg. Krævede reglen det, ville halvdelen af flådens arbejde — det
+       vores egen mekaniker laver på vores egen lift — ikke kunne gemmes. */
+    await assertSucceeds(set(ref(som("uid-a"), sti("vb-intern")), opgave({
+      art: "vaerksted", arbejdstype: "reparation",
+    })));
+  });
+
+  it("⚠ FELTET HEDDER arbejdstype — \"type\" AFVISES", async () => {
+    /* Noden har allerede `art`. Et felt ved siden af der hed `type`, ville
+       være den forveksling der har kostet os to gange: indberetningers indeks
+       navngav "type" mens posterne bærer "art", og opgavers navngav "dato".
+       $andet: false gør det til en afvisning frem for et felt der ligger og
+       ikke bliver læst. */
+    await assertFails(set(ref(som("uid-a"), sti("vb-type")), opgave({
+      art: "vaerksted", type: "service",
+    })));
+  });
+
+  it("⚠ OG fra/til AFVISES — en opgave bærer startMs og estimeretMin", async () => {
+    /* Et besøg bar et VINDUE. Koden i reservationFraOpgave() tager imod begge
+       former, men den ene kunne aldrig ligge i basen — og det var netop det
+       der gjorde sammenlægningen til mere end en omdøbning. */
+    await assertFails(set(ref(som("uid-a"), sti("vb-vindue")), opgave({
+      art: "vaerksted", fra: 1786000000000, til: 1786032400000,
+    })));
   });
 });

@@ -238,5 +238,10 @@ export function useListe(node, indstillinger = {}) {
   const data = efterbehandl(raa, {
     ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand,
   });
-  return { data, henter, fejl, tilstand, genindlaes, afkortet };
+  /* ⚠ VINDUET GIVES MED TILBAGE. En kalender der kan bladres, kan bladres
+     UD af det interval der blev hentet — og så står gitteret tomt uden at
+     noget er tomt. Det er tavs afkortning med et ekstra trin, præcis som
+     `afkortet` findes for. Skærmen kan nu sige det i stedet for at lade som
+     om der ikke er noget. null når vindue:"alle". */
+  return { data, henter, fejl, tilstand, genindlaes, afkortet, interval };
 }

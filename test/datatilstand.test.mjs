@@ -223,7 +223,22 @@ describe("useKpi falder ikke tilbage til demo", () => {
 const SKAERME_DER_IKKE_MAA_BLOKERE = [
   "src/moduler/flaade/Oversigt.jsx",
   "src/moduler/flaade/Indberetninger.jsx",
-  "src/moduler/flaade/Vaerkstedskalender.jsx",
+  /* ⚠ Vaerkstedskalender.jsx STOD HER OG ER TAGET UD — fordi den ikke længere
+     LÆSER kpi/.
+
+     Prøven nedenfor er hele tiden om ét mønster: en skærm der henter
+     nøgletal, må ikke blanke fordi aggregeringen mangler. Driftskalenderens
+     fem kasser er ikke nøgletal fra kpi/ — de er tællinger af de lister
+     skærmen alligevel henter (`opgaver` og `indberetninger`), og "Kommende"
+     afhænger af et vindue brugeren selv sætter. Se driftskalender.js.
+
+     ⚠ DET ER IKKE EN LEMPELSE. Skærmen blokerer stadig på en AFVIST læsning
+     af de to lister — `blokerer(opgaver.tilstand)` står der — og den kan ikke
+     komme til at blokere på manglende aggregering, fordi den ikke spørger om
+     nogen. Ringen den her prøve findes for, kan ikke lukkes om den.
+
+     Fjern den ikke bare fordi listen bliver kortere: skulle skærmen få et
+     KpiKort igen, skal den tilbage på listen samme dag. */
   "src/moduler/facility/Oversigt.jsx",
   "src/moduler/facility/Klima.jsx",
   "src/moduler/facility/Servicekalender.jsx",
