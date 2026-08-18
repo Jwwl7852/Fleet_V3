@@ -569,7 +569,7 @@ export default function Medarbejdere() {
                   {valgtesKompetencer.some((k) => !kanBlokere(k.type)) && (
                     <>
                       Bemærk at ikke alle typer kan blokere: førstehjælp, kran og EU-bevis
-                      registreres, men kan ikke udledes af et køretøj og indgår derfor ikke i{" "}
+                      registreres, men kan ikke udledes af en enhed og indgår derfor ikke i{" "}
                       <b>kraevedeKompetencer()</b>.{" "}
                     </>
                   )}

@@ -245,6 +245,29 @@ regnskabsbilag der er blevet uenigt med sig selv, kan ikke gøres enigt igen.
 Dertil ti permissions (`booking.godkend`, `booking.opret`,
 `booking.sensitiveLaes` …) i udstedte tokens, og noden `bookinger`.
 
+**Og Fleets ting hedder nu en enhed, ikke et køretøj.** Det er ikke et
+modulnavn — det er domæneordet — og halvdelen var lavet i forvejen:
+`ENHEDSART` er artskataloget, knappen hed **"Ny enhed"** og kolonnen
+**"Enhed"**, mens menuen sagde "Køretøjer". 37 strenge lukkede resten.
+Identifikatorerne står: noden `koeretoejer`, `koeretoejId`,
+`koeretoejIder`, `KOERETOEJ_STATUS` og prisfeltet `prKoeretoejOere`.
+
+⚠ **ORDET VAR TAGET, OG DET SKAL MAN VIDE.** `enheder/` **er en node** —
+Warehouses serienummer-sporede enheder, nøglet på serienummer med `vareId`,
+`kundeId` og `tilstand: paaLager|afsendt`. "Enhed" betyder derfor to ting på
+platformen: en lastbil i Fleet og en serienummeret vare i Warehouse.
+Kollisionen er **ældre end omdøbningen** — knappen "Ny enhed" stod i Fleet i
+forvejen — men den er nu synlig, og det er beslutning 11 og 14's fejl i et nyt
+sted. To ting man skal holde fast i:
+
+- Warehouse mærker **ikke** sine priser "pr. enhed". `ENHED` dér er
+  `stk`, `kolli`, `palle`, `kasse`, `kg`, `m3`, og labelet er
+  "Stk.", "Palle", "Kolli". De to møder derfor ikke hinanden i én tabel.
+- Abonnementsprislistens akse hedder nu **"Pr. enhed"** og tæller Fleets
+  enheder. Feltet bag hedder stadig `prKoeretoejOere` og står i to prislister
+  som et låst fakturagrundlag peger på — labelet skiftede, tallet og feltet
+  ikke.
+
 **Reglen der falder ud af de fire:** et modulnavn kan skiftes gratis indtil
 den første kunde krydser modulet af eller den første faktura peger på det.
 Derefter er det en migrering af data nogen har betalt efter. Mål det i den

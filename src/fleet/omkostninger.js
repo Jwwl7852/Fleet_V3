@@ -86,13 +86,13 @@ export function valideOmkostning(post = {}, { koeretoejer = [] } = {}) {
      den uden at nogen opdager det. */
   if (post.art === "bil") {
     const kt = koeretoejFraNoegle(id);
-    if (!kt) f.id = `En bilomkostning nøgles med ${BIL_PRAEFIKS}<køretøjets id>.`;
+    if (!kt) f.id = `En bilomkostning nøgles med ${BIL_PRAEFIKS}<enhedens id>.`;
     else if (koeretoejer.length && !koeretoejer.includes(kt)) {
-      f.id = "Ukendt køretøj.";
+      f.id = "Ukendt enhed.";
     }
     /* Navnet står på køretøjet. Skrives det også her, driver de to fra
        hinanden — og det var netop advarslen i den gamle JSX-fil. */
-    if (post.navn) f.navn = "Navnet står på køretøjet, ikke på satsen.";
+    if (post.navn) f.navn = "Navnet står på enheden, ikke på satsen.";
   } else if (!post.navn?.trim()) {
     f.navn = "Skriv et navn.";
   }

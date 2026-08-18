@@ -550,7 +550,7 @@ export function valideKoeretoej(post = {}) {
      feltet med .validate: false. Står det i formularen, er det en fejl i
      koden — ikke noget brugeren har gjort. */
   if (post.division !== undefined && post.division !== null) {
-    f.division = "Et køretøj har ingen division. Feltet må ikke sendes.";
+    f.division = "En enhed har ingen division. Feltet må ikke sendes.";
   }
 
   for (const k of Object.keys(f)) if (!f[k]) delete f[k];

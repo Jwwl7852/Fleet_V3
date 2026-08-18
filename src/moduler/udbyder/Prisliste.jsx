@@ -88,7 +88,7 @@ function Satser({ liste, visAlle }) {
             {ALLE_BRUGERARTER.map((a) => (
               <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
             ))}
-            <th className="fc-num">Pr. køretøj</th>
+            <th className="fc-num">Pr. enhed</th>
           </tr>
         </thead>
         <tbody>
@@ -432,7 +432,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                 {ALLE_BRUGERARTER.map((a) => (
                   <th key={a} className="fc-num">Pr. {BRUGERART[a].label.toLowerCase()}</th>
                 ))}
-                <th className="fc-num">Pr. køretøj</th>
+                <th className="fc-num">Pr. enhed</th>
               </tr>
             </thead>
             <tbody>
@@ -459,7 +459,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
                   ))}
                   <td className="fc-num">
                     <input className="fc-input-tal" inputMode="decimal"
-                           aria-label={`${MODUL[m].label} pr. køretøj`}
+                           aria-label={`${MODUL[m].label} pr. enhed`}
                            value={kronerFelt(p[m].prKoeretoejOere)}
                            onChange={(e) => saetSats(m, "prKoeretoejOere", e.target.value)} />
                   </td>
@@ -471,7 +471,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Kroner her, <b>øre</b> i basen. En sats på <b>0</b> faktureres ikke — så
-          kan Fleet koste pr. køretøj og Workforce pr. chauffør.
+          kan Fleet koste pr. enhed og Workforce pr. chauffør.
         </p>
         <p className="fc-hint" style={{ marginTop: 6 }}>
           ⚠ <b>Antallet er kundens, satsen er modulets.</b> Sætter du en
@@ -850,7 +850,7 @@ export default function Prisliste() {
                       </>
                     ) : <span className="fc-neutral">—</span>
                   ) },
-                { key: "kt", label: "Køretøjer", num: true,
+                { key: "kt", label: "Enheder", num: true,
                   render: (r) => (r.g ? num(r.g.hoejesteKoeretoejer) : <span className="fc-neutral">—</span>) },
                 { key: "rabat", label: "Rabat", num: true,
                   render: (r) => (r.g ? (r.g.rabatBps ? pct(bpsTilPct(r.g.rabatBps)) : "—")

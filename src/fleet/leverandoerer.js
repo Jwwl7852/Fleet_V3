@@ -564,7 +564,7 @@ export function valideIndkoeb(post = {}, { leverandoerer = [], koeretoejer = [],
   if (!["gods", "bus", "faelles"].includes(post.division)) {
     /* ⚠ DIVISION ER PÅKRÆVET og kan IKKE arves fra bilen — beslutning 19
        forbyder feltet dér. Den der registrerer, skal sætte den. */
-    f.division = "Vælg en division. Den kan ikke arves fra køretøjet.";
+    f.division = "Vælg en division. Den kan ikke arves fra enheden.";
   }
 
   if (!post.leverandoerId) f.leverandoerId = "Vælg en leverandør.";

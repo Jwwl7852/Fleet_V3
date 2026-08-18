@@ -225,7 +225,7 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
               19 forbyder feltet dér. Den der registrerer, sætter den. */}
           <Felt id="ik-div" label="Division" kraevet vaerdi={f.division} saet={saet("division")}
                 fejl={vis("division")}
-                hint="Kan ikke arves fra køretøjet: et køretøj har ingen division."
+                hint="Kan ikke arves fra enheden: en enhed har ingen division."
                 valgmuligheder={[
                   { vaerdi: "gods", label: "Gods" },
                   { vaerdi: "bus", label: "Bus" },
@@ -757,7 +757,7 @@ function Leverandoerkartotek({ division, leverandoerer }) {
         fritekst i tre demo-filer med hver sin stavemåde at drive med.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        <b>Division er tilladt her</b>, modsat på personale og køretøjer. Prøven er
+        <b>Division er tilladt her</b>, modsat på personale og enheder. Prøven er
         om feltet beskriver <b>leverandørens forretning</b> eller <b>vores
         organisation</b>: Mercedes Greve er et lastbilværksted, Crawford leverer
         porte til begge. Det er samme begrundelse som <code>faelles</code> på kunder

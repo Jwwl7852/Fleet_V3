@@ -62,7 +62,7 @@ export const MODUL = {
   flaade: {
     navKey: "flaade",
     label: "Fleet",
-    hvad: "Køretøjer, værkstedskalender og indberetninger.",
+    hvad: "Enheder, værkstedskalender og indberetninger.",
   },
   facility: {
     navKey: "facility",

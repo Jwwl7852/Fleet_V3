@@ -50,7 +50,7 @@ export default function Stopoversigt({ stop = [] }) {
       </ul>
 
       <p className="fc-hint" style={{ marginTop: 10 }}>
-        Planlagte stop — ikke køretøjernes position. FleetControl har ingen GPS.
+        Planlagte stop — ikke enhedernes position. FleetControl har ingen GPS.
       </p>
     </div>
   );

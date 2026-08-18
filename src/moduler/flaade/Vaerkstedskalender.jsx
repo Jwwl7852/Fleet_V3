@@ -164,7 +164,7 @@ export default function Vaerkstedskalender() {
     <div className="fc-grid" style={{ gap: 16 }}>
       {k && (
         <KpiRaekke>
-          <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)} />
+          <KpiKort label="Aktive enheder" vaerdi={num(k.flaade.aktive)} />
           <KpiKort label="Reserveret til værksted" vaerdi={num(k.flaade.paaVaerksted)} />
           <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)} />
           {/* Feltet er defineret i demo-kpi.js og læses herfra. Det er IKKE det
@@ -253,7 +253,7 @@ export default function Vaerkstedskalender() {
           kolonner={[
             { key: "nummer", label: "Sagsnr.", render: (r) => <b>{r.nummer}</b> },
             { key: "emne", label: "Emne" },
-            { key: "objektLabel", label: "Køretøj" },
+            { key: "objektLabel", label: "Enhed" },
             { key: "modpartNavn", label: "Værksted" },
             { key: "harAftale", label: "Aftale",
               render: (r) => (r.harAftale ? datoTid(r.aftaleFraMs) : <span className="fc-neutral">—</span>) },
@@ -399,7 +399,7 @@ function IndkoebsForm({ besoeg, sag, maaSkrive }) {
             </select>
           </div>
           <p className="fc-hint" style={{ marginTop: -4, marginBottom: 12 }}>
-            Kan <b>ikke</b> udledes af bilen — et køretøj har ingen division
+            Kan <b>ikke</b> udledes af bilen — en enhed har ingen division
             (beslutning 19), men et indkøb er en transaktion og skal have én.
             Vælg den der skal bære omkostningen.
           </p>

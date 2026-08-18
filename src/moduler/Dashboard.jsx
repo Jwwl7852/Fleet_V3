@@ -49,7 +49,7 @@ const HANDLINGER = (k) => [
      seeder den — den sjette node i den tilstand. Feltet er derfor null her og
      får sin kilde samtidig med seedet. */
   { n: k.flaade.nyeIndberetninger, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
-  { n: k.flaade.udeAfDrift, t: "køretøjer ude af drift", til: "/flaade", link: "Se køretøjer", tone: "ikon-2", ikon: "lastbil" },
+  { n: k.flaade.udeAfDrift, t: "enheder ude af drift", til: "/flaade", link: "Se enheder", tone: "ikon-2", ikon: "lastbil" },
   { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "ikon-3", ikon: "ur" },
   { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "ikon-4", ikon: "seddel" },
   { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },

@@ -49,8 +49,8 @@ const STAMDATA = [
     note: "Personen findes uden login. personId er ikke uid — beslutning 18." },
   { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Workforce → Kompetencer",
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
-  { hvad: "Køretøjer og påhæng", hvor: "/flaade", label: "Fleet → Køretøjer",
-    note: "Arten styrer feltskemaet. Ingen division på et køretøj — beslutning 19." },
+  { hvad: "Enheder og påhæng", hvor: "/flaade", label: "Fleet → Enheder",
+    note: "Arten styrer feltskemaet. Ingen division på en enhed — beslutning 19." },
   { hvad: "Kunder og prisgrupper", hvor: "/kunder", label: "Kunder & Priser",
     note: "Prisgruppen peger på et satssæt; satserne selv ligger i Bookingopsætning." },
   { hvad: "Satser og tillæg", hvor: "/booking/opsaetning", label: "Booking → Bookingopsætning",
@@ -131,7 +131,7 @@ export default function Generelt() {
           <p className="fc-hint" style={{ marginTop: 8 }}>
             En tredje division ville derfor være en <b>ændring i regelfilen</b>, ikke
             en række man tilføjer i en tabel. <b>Stamdata har ingen division</b> —
-            hverken en medarbejder eller et køretøj (beslutning 19); reglerne afviser
+            hverken en medarbejder eller en enhed (beslutning 19); reglerne afviser
             feltet.
           </p>
         </Kort>
@@ -152,7 +152,7 @@ export default function Generelt() {
         <p className="fc-hint" style={{ marginBottom: 12 }}>
           Stederne kommer fra <b>ét katalog</b> — <code>STED</code> i{" "}
           <code>fleet/steder.js</code>. Samme fire steder som personalet er
-          stationeret på og køretøjerne har hjemme. Et andet lokationsbegreb her
+          stationeret på og enhederne har hjemme. Et andet lokationsbegreb her
           ville være to stedlister, og så ville en bil i "Ålborg" ikke stå samme
           sted som en chauffør i "Aalborg" — uden at nogen kunne se det.
         </p>

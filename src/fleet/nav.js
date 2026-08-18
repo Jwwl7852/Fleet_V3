@@ -56,10 +56,10 @@ export const NAV = [
   },
   {
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
-    under: "Overblik over køretøjer, drift og økonomi",
+    under: "Overblik over enheder, drift og økonomi",
     born: [
-      { key: "flaadeOversigt", sti: "/flaade", label: "Køretøjer",
-        titel: "Fleet", under: "Overblik over køretøjer, drift og økonomi" },
+      { key: "flaadeOversigt", sti: "/flaade", label: "Enheder",
+        titel: "Fleet", under: "Overblik over enheder, drift og økonomi" },
       { key: "vaerksted", sti: "/flaade/vaerksted", label: "Værkstedskalender",
         titel: "Fleet – service, reservationer & fakturaer",
         under: "Værkstedsaktiviteter, bookingintegration og fakturalink." },

@@ -46,7 +46,7 @@ export const DEMO_SUPPORTSAGER = [
   {
     id: "sup-1024", nummer: "SUP-2026-01024", tenantId: "demo",
     kategori: "virkerIkke", prioritet: "hoej", status: "undersoeges",
-    emne: "Køretøj kan ikke gemmes",
+    emne: "Enhed kan ikke gemmes",
     beskrivelse:
       "Jeg kan ikke gemme Bil 104. Når jeg trykker Gem, sker der ingenting — " +
       "ingen fejlbesked, siden bliver bare stående.",

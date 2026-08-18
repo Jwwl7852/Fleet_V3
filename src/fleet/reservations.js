@@ -106,7 +106,7 @@ export function maksBelastning(reservationer, { fra, til }, felt) {
 /** Fritekst til brugeren om hvorfor en reservation kollidere. */
 export function konfliktTekst(ny, eksisterende) {
   const k = eksisterende.kilde;
-  if (k.type === KILDE.vaerksted) return `Køretøjet er reserveret til værksted (${k.reference || k.id}).`;
+  if (k.type === KILDE.vaerksted) return `Enheden er reserveret til værksted (${k.reference || k.id}).`;
   if (k.type === KILDE.fravaer) return `Medarbejderen har registreret fravær i perioden.`;
   if (k.type === KILDE.booking) return `Allerede reserveret til booking ${k.reference || k.id}.`;
   if (k.type === KILDE.facilitySag) return `Optaget af servicebesøg fra sag ${k.reference || k.id}.`;

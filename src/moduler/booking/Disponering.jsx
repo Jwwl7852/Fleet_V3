@@ -349,7 +349,7 @@ export default function Disponering() {
         <p className="fc-hint" style={{ marginTop: 12 }}>
           ⚠ <b>Fase 0 er en visning.</b> Der er ingen drag-and-drop og ingen skrivning.
           Feltet <b>Træk opgave hertil</b> er en attrap: rigtig disponering skriver
-          etapens køretøj og dens reservation i <b>én transaktion</b> fra en Cloud
+          etapens enhed og dens reservation i <b>én transaktion</b> fra en Cloud
           Function, og <code>etaper</code> er <b>.write: false</b> indtil den findes.
         </p>
       </Kort>

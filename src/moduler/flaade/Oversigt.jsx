@@ -358,7 +358,7 @@ function Enhedsformular({ enhed, sti, paaGemt, paaLuk }) {
         et tomt felt bliver udfyldt af den næste der ser det.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        Der er <b>ingen division</b> på et køretøj (beslutning 19), og reglerne
+        Der er <b>ingen division</b> på en enhed (beslutning 19), og reglerne
         afviser feltet. Valideringen her <b>spejler</b>{" "}
         <code>firebase.rules.json</code> — serveren validerer igen, og er de to
         uenige, er reglerne rigtige.
@@ -473,7 +473,7 @@ export default function FlaadeOversigt() {
               Kortet er SELV linket — mockuppen har både en chevron og en
               "Se køretøjer"-linje, men et link inde i et link er ugyldigt
               markup, og to veje til samme sted er én for meget. */}
-          <KpiKort label="Aktive køretøjer" vaerdi={num(k.flaade.aktive)}
+          <KpiKort label="Aktive enheder" vaerdi={num(k.flaade.aktive)}
                    ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/flaade" />
           <KpiKort label="Ude af drift" vaerdi={num(k.flaade.udeAfDrift)}
                    ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
@@ -529,7 +529,7 @@ export default function FlaadeOversigt() {
                    onChange={(e) => { setSoeg(e.target.value); setSide(1); }} />
           </div>
           <div className="fc-felt">
-            <label htmlFor="fl-art">Køretøjstype</label>
+            <label htmlFor="fl-art">Enhedstype</label>
             <select id="fl-art" value={art}
                     onChange={(e) => { setArt(e.target.value); setSide(1); }}>
               <option value="">Alle typer</option>
@@ -566,7 +566,7 @@ export default function FlaadeOversigt() {
       </Kort>
 
       <Kort
-        titel={`Køretøjer (${num(viste.length)})`}
+        titel={`Enheder (${num(viste.length)})`}
         handling={
           <div style={{ display: "flex", gap: 8 }}>
             <Knap disabled title="Eksport er ikke bygget endnu.">Eksportér</Knap>
@@ -655,7 +655,7 @@ export default function FlaadeOversigt() {
         </div>
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          Tabellen er <b>ikke</b> delt på Gods/Bus: et køretøj har ingen division,
+          Tabellen er <b>ikke</b> delt på Gods/Bus: en enhed har ingen division,
           men er defineret ved sin <b>art</b> — en påhængsvogn kan tilhøre både en
           gods- og en busvognmand. Toggle'en i toppen ændrer derfor ikke denne
           tabel. <b>Åbne fejl</b> og <b>nedetid</b> er regnet her af
@@ -776,7 +776,7 @@ export default function FlaadeOversigt() {
             </div>
             {!maaSkrive && (
               <p className="fc-hint" style={{ marginTop: 10 }}>
-                Din rolle kan ikke skrive køretøjer. Knapperne står der, fordi
+                Din rolle kan ikke skrive enheder. Knapperne står der, fordi
                 serveren afviser og fejlen skal kunne forklares — en skjult knap
                 lærer brugeren at funktionen ikke findes.
               </p>
@@ -840,7 +840,7 @@ export default function FlaadeOversigt() {
           </p>
         </Kort>
 
-        <Kort titel="Køretøjer med højeste omkostning pr. km"
+        <Kort titel="Enheder med højeste omkostning pr. km"
               handling={<Link className="fc-a" to="/oekonomi">Se omkostninger</Link>}>
           <Tabel
             kolonner={[
@@ -873,7 +873,7 @@ export default function FlaadeOversigt() {
           />
           <p className="fc-hint" style={{ marginTop: 10 }}>
             Mockuppen har en kurve pr. bil. Der findes <b>ingen tidsserie</b> pr.
-            køretøj — kun den aktuelle sats — så der står afvigelsen mod flådens
+            enhed — kun den aktuelle sats — så der står afvigelsen mod flådens
             gennemsnit i stedet. En kurve tegnet af ét punkt er en påstand om en
             udvikling, vi ikke kender.{" "}
             {k
