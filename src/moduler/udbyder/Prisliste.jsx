@@ -119,7 +119,7 @@ const prislisteCsv = (liste) =>
         navn: `Pr. ${BRUGERART[a].label.toLowerCase()}`,
         hent: (r) => csvOere(r.prBrugerOere?.[a] || 0),
       })),
-      { navn: "Pr. køretøj", hent: (r) => csvOere(r.prKoeretoejOere || 0) },
+      { navn: "Pr. enhed", hent: (r) => csvOere(r.prKoeretoejOere || 0) },
       { navn: "Momssats (%)", hent: () => liste.momssats },
       { navn: "Gælder fra", hent: () => dato(liste.gyldigFraMs) },
     ]
@@ -135,7 +135,7 @@ const grundlagCsv = (periode, raekker) =>
       { navn: "Modul", hent: ({ l }) => MODUL[l.modul]?.label || l.modul },
       { navn: "Type", hent: ({ l }) =>
           l.akse === "bruger" ? BRUGERART[l.brugerart]?.label || l.brugerart
-                              : l.akse === "koeretoej" ? "Køretøj" : "Abonnement" },
+                              : l.akse === "koeretoej" ? "Enhed" : "Abonnement" },
       { navn: "Enheder", hent: ({ l }) => l.enheder },
       { navn: "Dage", hent: ({ l }) => l.dage },
       { navn: "Dage i perioden", hent: ({ l }) => l.dageIPerioden },
@@ -155,7 +155,7 @@ const grundlagCsv = (periode, raekker) =>
 /** Linjens tekst. ⚠ MODULETS RIGTIGE NAVN — ikke et opdigtet produktnavn. */
 function linjetekst(l) {
   if (l.akse === "platform") return "Platformsadgang";
-  if (l.akse === "koeretoej") return "Køretøjer";
+  if (l.akse === "koeretoej") return "Enheder";
   if (l.akse === "bruger") {
     const navn = BRUGERART[l.brugerart]?.label || l.brugerart;
     /* ⚠ FRIMÆNGDEN STÅR I TEKSTEN, ikke i en fodnote. "1 · 3 inkluderet" er

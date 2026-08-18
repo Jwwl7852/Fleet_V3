@@ -123,7 +123,7 @@ export default function Indberetninger() {
               { key: "art", label: "Art",
                 render: (i) => HAENDELSE_ART[i.art]?.label || i.art },
               { key: "beskrivelse", label: "Hændelse" },
-              { key: "bil", label: "Køretøj", render: (i) => bilNavn(i.koeretoejId) },
+              { key: "bil", label: "Enhed", render: (i) => bilNavn(i.koeretoejId) },
               { key: "forloeb", label: "Forløb",
                 render: (i) => (
                   <Pille tone={FORLOEB[i.forloeb]?.pill || "info"}>
@@ -160,7 +160,7 @@ function Detaljer({ i, bruger, sensitivt }) {
   return (
     <Kort titel={HAENDELSE_ART[i.art]?.label || i.art}>
       <Gitter kolonner="1fr 1fr">
-        <MiniLinje label="Køretøj" vaerdi={bilNavn(i.koeretoejId)} />
+        <MiniLinje label="Enhed" vaerdi={bilNavn(i.koeretoejId)} />
         <MiniLinje label="Oprettet" vaerdi={datoTid(i.oprettetMs)} />
         {harFelt(i.art, FELT.kmStand) && Number.isFinite(i.kmStand) && (
           <MiniLinje label="Kilometerstand" vaerdi={kmFmt(i.kmStand)} />

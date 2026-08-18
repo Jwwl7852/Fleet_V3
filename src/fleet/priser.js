@@ -498,7 +498,7 @@ export const LINJEAKSE = {
   platform: { akse: "platform", label: "Platformsadgang", enhed: "abonnement" },
   basis: { akse: "basis", label: "Modul", enhed: "måned" },
   bruger: { akse: "bruger", label: "Brugere", enhed: "bruger" },
-  koeretoej: { akse: "koeretoej", label: "Køretøjer", enhed: "køretøj" },
+  koeretoej: { akse: "koeretoej", label: "Enheder", enhed: "enhed" },
 };
 
 /**

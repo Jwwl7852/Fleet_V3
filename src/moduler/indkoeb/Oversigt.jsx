@@ -282,7 +282,7 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
         <Feltraekke>
           {/* Et indkøb er købt TIL noget. Uden det er linjen et beløb uden
               ærinde, og ingen kan svare på om den hørte til. */}
-          <Felt id="ik-bil" label="Køretøj" vaerdi={f.koeretoejId} saet={saet("koeretoejId")}
+          <Felt id="ik-bil" label="Enhed" vaerdi={f.koeretoejId} saet={saet("koeretoejId")}
                 fejl={vis("koeretoejId")}
                 valgmuligheder={[{ vaerdi: "", label: "Ingen" },
                   ...koeretoejer.map((k2) => ({ vaerdi: k2.id, label: k2.kaldenavn || k2.navn }))]} />

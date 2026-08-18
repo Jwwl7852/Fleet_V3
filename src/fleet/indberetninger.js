@@ -30,7 +30,7 @@ import { ANTAL_SKALA, LINJE_ART } from "./grundlag.js";
 
 export const HAENDELSE_ART = {
   reparation:      { art: "reparation",      label: "Reparation",      paaKoeretoej: true,  sensitiv: false },
-  koeretoejsskade: { art: "koeretoejsskade", label: "Køretøjsskade",   paaKoeretoej: true,  sensitiv: true  },
+  koeretoejsskade: { art: "koeretoejsskade", label: "Enhedsskade",     paaKoeretoej: true,  sensitiv: true  },
   godsskade:       { art: "godsskade",       label: "Godsskade",       paaKoeretoej: false, sensitiv: true  },
   braendstof:      { art: "braendstof",      label: "Brændstof",       paaKoeretoej: true,  sensitiv: false },
 };

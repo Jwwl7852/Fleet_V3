@@ -268,6 +268,20 @@ sted. To ting man skal holde fast i:
   som et låst fakturagrundlag peger på — labelet skiftede, tallet og feltet
   ikke.
 
+⚠ **OG DE SIDSTE TI STRENGE BLEV FUNDET AF ET KLIK, IKKE AF ET GREP.**
+For at sortere identifikatorerne fra udelukkede jeg linjer der indeholdt
+`koeretoej` — og labelet stod på præcis de linjer:
+`{ key: "koeretoejIder", label: "Køretøj" }`. Filteret spiste det jeg ledte
+efter. Tilbage stod kolonnen i Forslag, feltet i Procure, arten
+"Køretøjsskade" og **CSV-eksportens "Pr. køretøj"**.
+
+`test/navne.test.mjs` gør det nu til en prøve i stedet for en gennemlæsning.
+Den **stripper kommentarerne først** — blok, linje og JSX — og leder kun i
+resten, fordi kommentarerne med vilje beholder de gamle ord: de står ved
+siden af `src/moduler/flaade/` og feltet `koeretoejId`. Undtagelserne er
+navngivne med en grund hver, og en prøve vælter en undtagelse der er blevet
+overflødig — den fældede sin egen første, da jeg skrev én for meget.
+
 **Reglen der falder ud af de fire:** et modulnavn kan skiftes gratis indtil
 den første kunde krydser modulet af eller den første faktura peger på det.
 Derefter er det en migrering af data nogen har betalt efter. Mål det i den

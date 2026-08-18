@@ -312,7 +312,7 @@ function Forslagstabel({ etape, valgtForslagId, setValgtForslagId, biler, person
                som på etapen: en trailer kan ikke køre alene, og et forslag der
                kun kunne pege på trækkeren, ville foreslå noget
                kanDisponeres() afviser. */
-            { key: "koeretoejIder", label: "Køretøj",
+            { key: "koeretoejIder", label: "Enhed",
               render: (f) => enhedsnavne(biler, f) },
             { key: "personId", label: "Chauffør",
               render: (f) => find(personale, f.personId)?.navn || f.personId },

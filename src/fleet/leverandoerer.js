@@ -605,7 +605,7 @@ export function valideIndkoeb(post = {}, { leverandoerer = [], koeretoejer = [],
   if (!Number.isFinite(Number(post.dato))) f.dato = "Datoen skal udfyldes.";
 
   if (post.koeretoejId && !koeretoejer.some((k) => k.id === post.koeretoejId)) {
-    f.koeretoejId = "Køretøjet findes ikke.";
+    f.koeretoejId = "Enheden findes ikke.";
   }
   if (post.lokationId && !lokationer.some((l) => l.id === post.lokationId)) {
     f.lokationId = "Lokationen findes ikke.";
