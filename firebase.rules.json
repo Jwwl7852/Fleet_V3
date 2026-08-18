@@ -1362,6 +1362,13 @@
             // og det der staar paa fakturaen der skal matches. Vores id duer
             // ikke til nogen af delene; leverandoeren kender det ikke.
             "reference": { ".validate": "newData.isString() && newData.val().length <= 60" },
+
+            // ⚠ SPORET TILBAGE TIL VAERKSTEDSBESOEGET. Uden feltet kan
+            // Vaerkstedskalenderen ikke vise sine egne omkostninger uden sit
+            // EGET datasaet — og det var praecis den kopi der fandtes:
+            // demo-vaerksted.js havde en DEMO_INDKOEB ved siden af den her
+            // node, med fire poster den anden aldrig saa.
+            "besoegId": { ".validate": "newData.isString() && newData.val().length <= 60" },
             "formaal": { ".validate": "newData.isString() && newData.val().length <= 200" },
 
             "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },

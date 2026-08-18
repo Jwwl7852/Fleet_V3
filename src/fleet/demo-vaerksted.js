@@ -170,38 +170,21 @@ for (const b of DEMO_BESOEG) {
  * `fakturaId` er null indtil Indkøb → Fakturaer har matchet posten mod
  * leverandørens faktura. Det er de poster "Ikke-linkede fakturaer" tæller.
  */
-export const DEMO_INDKOEB = [
-  {
-    id: "ik-001", besoegId: "vb-001", koeretoejId: "kt-078",
-    division: "gods", type: "service", leverandoerId: "lv-scania",
-    fakturanummer: "SK-2026-4471", fakturadatoMs: dag(-22),
-    beloebOere: 1842500, momsOere: 460625,
-    fakturaId: "fa-9001",
-  },
-  {
-    id: "ik-002", besoegId: "vb-002", koeretoejId: "kt-b16",
-    division: "bus", type: "daek", leverandoerId: "lv-daekteam",
-    fakturanummer: "DV-88213", fakturadatoMs: dag(-9),
-    beloebOere: 2960000, momsOere: 740000,
-    fakturaId: null,
-  },
-  {
-    id: "ik-003", besoegId: "vb-003", koeretoejId: "kt-106",
-    division: "gods", type: "reparation", leverandoerId: "lv-daf",
-    fakturanummer: "DAF-2026-1188", fakturadatoMs: dag(-1),
-    beloebOere: 1215000, momsOere: 303750,
-    fakturaId: null,
-  },
-  {
-    /* Kom ind på en SAG. Sagsnummeret følger med posten, så man kan gå fra
-       fakturaen tilbage til den tråd der aftalte arbejdet. */
-    id: "ik-004", besoegId: "vb-004", koeretoejId: "kt-tr42",
-    division: "gods", type: "reparation", leverandoerId: "lv-schmitz",
-    fakturanummer: "SSP-70412", fakturadatoMs: dag(0),
-    beloebOere: 3480000, momsOere: 870000,
-    fakturaId: null, sagsnummer: null,
-  },
-];
+/* ⚠ HER LÅ DEMO_INDKOEB — ET ANDET DATASÆT FOR `indkoeb`-NODEN.
+   Fire poster, med `beloebOere` direkte på hver: den form reglerne FORBYDER,
+   fordi beløbet beregnes af antal × pris. De blev aldrig seedet, og de fandtes
+   derfor kun her.
+
+   ⚠ OG DE KOSTEDE EN FORKERT RETTELSE. `fa-9001` pegede på `indkoebId:
+   "ik-001"`, som ikke fandtes i demo-indkoeb.js — så jeg satte feltet til
+   null med en note om at "en hængende reference er værre end ingen". Linjen
+   fandtes. Den lå her. Symptomet blev behandlet, årsagen stod tilbage.
+   `fa-9002` pegede tilsvarende på il-002 til 16.500 kr mens fakturaen var på
+   29.600 — jeg læste forskellen som afstemningsmateriale.
+
+   De fire ligger nu i DEMO_INDKOEBSLINJER som il-vb-00N, med `besoegId` som
+   spor tilbage hertil. Syvende gang mønstret med to datasæt for én ting. */
+
 
 /* ---- Opslag ---------------------------------------------------------- */
 
@@ -211,7 +194,11 @@ export const demoBesoegFor = (koeretoejId) =>
 export const demoBesoegNu = (nu = Date.now()) =>
   DEMO_BESOEG.filter((b) => nu >= b.fra && nu < b.til);
 
-export const demoIkkeLinkede = () => DEMO_INDKOEB.filter((i) => !i.fakturaId);
+/* ⚠ demoIkkeLinkede() ER OGSÅ VÆK. Den talte INDKØB uden en faktura, mens
+   `flaade.ikkeLinkedeFakturaer` i kpi/ tæller FAKTURAER uden et indkøb — to
+   forskellige spørgsmål under to næsten ens navne, på to skærme. Nøgletallets
+   definition er den der gælder; se ikkeLinkedeFakturaer() i
+   kpi-aggregering.js. */
 
 /** Totalen beregnes, den gemmes ikke. */
 export const totalOere = (i) => (i.beloebOere || 0) + (i.momsOere || 0);
@@ -301,25 +288,13 @@ if (import.meta.env?.DEV) {
     }
   }
 
-  /* Indkøbene skal pege på et besøg og en bil der findes, og bære division. */
-  const kendteBesoeg = new Set(DEMO_BESOEG.map((b) => b.id));
-  for (const i of DEMO_INDKOEB) {
-    if (!kendteBesoeg.has(i.besoegId)) {
-      console.warn(`demo-vaerksted: indkøb ${i.id} peger på ukendt besøg "${i.besoegId}".`);
-    }
-    if (!i.division) {
-      console.warn(
-        `demo-vaerksted: indkøb ${i.id} mangler division. Reglerne kræver den på ` +
-        `indkoeb/, og den kan ikke kopieres fra bilen — beslutning 19.`
-      );
-    }
-    if (!Number.isInteger(i.beloebOere) || !Number.isInteger(i.momsOere)) {
-      console.warn(
-        `demo-vaerksted: indkøb ${i.id} har beløb der ikke er hele øre. ` +
-        `Beslutning 2 — aldrig float.`
-      );
-    }
-  }
+  /* ⚠ KONTROLLEN AF INDKØBENE LÅ HER, og den læste DEMO_INDKOEB — datasættet
+     der er flyttet ind i demo-indkoeb.js. Den kørte kun under
+     `import.meta.env?.DEV`, så npm test så den ikke: suiten var grøn mens
+     skærmen kastede "DEMO_INDKOEB is not defined". Anden gang i dag.
+
+     Kontrollen er ikke tabt — den er flyttet med datasættet, hvor den kan
+     læse besøgene den peger på. Se selvkontrollen i demo-indkoeb.js. */
 
   /* Loft mod kpi/, som flåden. */
   const iAlt = (DEMO_KPI.gods?.flaade?.paaVaerksted || 0) + (DEMO_KPI.bus?.flaade?.paaVaerksted || 0);

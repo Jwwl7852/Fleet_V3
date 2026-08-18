@@ -695,6 +695,35 @@ eneste tenant, og det sidste var en **pil** under et nøgletal der var tomt.
 Felterne hedder nu `flaade.nyeIndberetninger` og `flaade.nedetidDeltaPoint` og
 står i `demo-kpi.js` — kuren CLAUDE.md foreskriver.
 
+⚠ **TO DEMO-DATASÆT FOR ÉN NODE — og det kostede en forkert rettelse.**
+
+`demo-vaerksted.js` havde en `DEMO_INDKOEB` med fire værkstedsindkøb, ved
+siden af `demo-indkoeb.js`' `DEMO_INDKOEBSLINJER`. Begge lå i `fleet/`, hvor
+et demosæt *hører hjemme*, så `test/demo-kilder.test.mjs` så dem ikke: den
+lint kiggede kun efter datasæt i **modulfiler**.
+
+Kun det ene blev seedet. Og de delte ikke form — kopien bar `beloebOere`
+direkte, som reglerne forbyder, fordi beløbet beregnes af antal × pris.
+
+Konsekvensen stod i to tidligere etaper, begge gange behandlet som symptom:
+
+| Hvad jeg så | Hvad jeg gjorde | Hvad det var |
+|---|---|---|
+| `fa-9001` pegede på `ik-001`, som ikke fandtes | Satte feltet til `null` — "en hængende reference er værre end ingen" | Linjen fandtes. Den lå i den anden fil |
+| `fa-9002` var på 29.600 kr, linjen på 16.500 | Læste forskellen som afstemningsmateriale | Forkert reference — den rigtige linje lå i den anden fil |
+
+De fire ligger nu i noden som `il-vb-00N` med `besoegId` som spor tilbage til
+værkstedsbesøget, alle ni fakturaer rammer en linje, og **hvert beløb stemmer**.
+Værkstedskalenderen læser noden; kolonnerne følger nodens form, ikke kopiens.
+
+⚠ **Linten er udvidet:** to demo-filer må ikke beskrive den samme node. Prøven
+er efterprøvet ved at genindføre `DEMO_INDKOEB` — den bliver rød.
+
+⚠ **Og der skulle en NY faktura til.** Da alt matchede, kunne "faktura uden
+match" ikke længere ses, og to prøver blev røde med netop den besked. `fa-9009`
+er den ene uden match — en leverandørfaktura uden registrering er hele grunden
+til at der afstemmes.
+
 ✅ **`indberetninger` er seedet — og den bar mere end ét manglende felt.**
 
 | Hvad | Tilstand før |

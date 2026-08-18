@@ -134,6 +134,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   et dev-stillads ved `auth == null`; det blev fjernet med login, som beslutning
   26 lovede. Genindfør det ikke — `dataTilstand()` kender ikke sit miljø, og det
   er med vilje. Se beslutning 26 og 28.
+- **Lave et demo-datasæt nummer to for den samme node.** `demo-vaerksted.js`
+  havde en `DEMO_INDKOEB` ved siden af `demo-indkoeb.js`' `DEMO_INDKOEBSLINJER`
+  — begge i `fleet/`, hvor et demosæt hører hjemme, så linten så dem ikke.
+  Kun det ene blev seedet, og de delte ikke engang form: kopien bar
+  `beloebOere` direkte, som reglerne forbyder.
+  ⚠ **Og det koster en forkert rettelse.** En faktura pegede på en linje der
+  "ikke fandtes" — den lå i den anden fil — så referencen blev sat til `null`
+  med en pæn begrundelse. Symptomet blev behandlet; årsagen stod.
+  `test/demo-kilder.test.mjs` fejler nu på to sæt for én node.
 - **Definere et demo-datasæt i en modulfil.** Det hører i `fleet/demo-*.js`.
   ⚠ **Et navn er ikke en beskyttelse.** Linten matchede før på `DEMO_`-præfikset,
   og `TILBUD`, `OPGAVER` og `FUNKTIONER` gled forbi den i tre forskellige

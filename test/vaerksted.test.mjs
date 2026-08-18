@@ -18,9 +18,11 @@ import {
 import { oereFraKroner, kr } from "../src/fleet/format.js";
 import { prioritetFor, KILDE, PRIORITET } from "../src/fleet/reservations.js";
 import {
-  DEMO_BESOEG, DEMO_INDKOEB, BESOEG_STATUS, OMKOSTNINGSTYPE,
+  DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE,
   demoBesoegFor, demoBesoegNu, totalOere,
 } from "../src/fleet/demo-vaerksted.js";
+import { DEMO_INDKOEBSLINJER } from "../src/fleet/demo-indkoeb.js";
+import { indkoebBeloebOere } from "../src/fleet/leverandoerer.js";
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { demoSag } from "../src/fleet/demo-sag.js";
@@ -172,6 +174,15 @@ describe("Overlap tegnes som konflikt", () => {
   });
 });
 
+/* ⚠ VÆRKSTEDETS INDKØB LÅ I demo-vaerksted.js SOM DEMO_INDKOEB — et andet
+   datasæt for `indkoeb`-noden, med fire poster den rigtige node aldrig så.
+   De ligger nu i DEMO_INDKOEBSLINJER, kendetegnet ved `besoegId`.
+
+   ⚠ OG BELØBET ER IKKE LÆNGERE ET FELT. Kopien bar `beloebOere` direkte;
+   noden forbyder det, fordi beløbet BEREGNES af antal × pris. Prøverne
+   herunder måler derfor gennem indkoebBeloebOere() — den ene funktion. */
+const VAERKSTEDSINDKOEB = DEMO_INDKOEBSLINJER.filter((i) => i.besoegId);
+
 describe("Beløb: øre som integer, moms for sig", () => {
   it("omregner danske kroner til hele øre", () => {
     assert.equal(oereFraKroner("8420,50"), 842050);
@@ -198,19 +209,24 @@ describe("Beløb: øre som integer, moms for sig", () => {
   });
 
   it("holder moms adskilt og beregner totalen frem for at gemme den", () => {
-    for (const i of DEMO_INDKOEB) {
-      assert.ok(Number.isInteger(i.beloebOere), `${i.id}: beloebOere er ikke integer`);
-      assert.ok(Number.isInteger(i.momsOere), `${i.id}: momsOere er ikke integer`);
+    assert.ok(VAERKSTEDSINDKOEB.length >= 4, "værkstedsindkøbene er forsvundet");
+    for (const i of VAERKSTEDSINDKOEB) {
+      /* ⚠ HVERKEN beloebOere ELLER totalOere MÅ STÅ PÅ POSTEN. Det første
+         forbyder reglerne — to kilder til samme tal kan drive fra hinanden —
+         og det andet er summen af de to. */
+      assert.equal("beloebOere" in i, false, `${i.id} har et gemt beløb`);
       assert.equal("totalOere" in i, false, `${i.id} har en gemt total`);
-      assert.equal(totalOere(i), i.beloebOere + i.momsOere);
+      assert.ok(Number.isInteger(indkoebBeloebOere(i)), `${i.id}: beløbet er ikke hele øre`);
+      assert.ok(Number.isInteger(i.momsOere), `${i.id}: momsOere er ikke integer`);
     }
     assert.equal(kr(842050), "8.421 kr.");
   });
 
   /* 25 % dansk moms. Fanger et demo-beløb hvor moms og beløb er byttet om. */
   it("har moms der svarer til 25 % af beløbet", () => {
-    for (const i of DEMO_INDKOEB) {
-      assert.equal(i.momsOere, Math.round(i.beloebOere * 0.25), `${i.id}: moms passer ikke`);
+    for (const i of VAERKSTEDSINDKOEB) {
+      assert.equal(i.momsOere, Math.round(indkoebBeloebOere(i) * 0.25),
+        `${i.id}: moms passer ikke`);
     }
   });
 });
@@ -231,7 +247,7 @@ describe("Demo-værkstedet hænger sammen med demo-flåden", () => {
     for (const b of DEMO_BESOEG) {
       assert.ok(kendte.has(b.koeretoejId), `${b.id} peger på ukendt bil "${b.koeretoejId}"`);
     }
-    for (const i of DEMO_INDKOEB) {
+    for (const i of VAERKSTEDSINDKOEB) {
       assert.ok(kendte.has(i.koeretoejId), `${i.id} peger på ukendt bil "${i.koeretoejId}"`);
     }
   });
@@ -339,7 +355,7 @@ describe("Aftalen fra beslutning 20 er besøget i kalenderen", () => {
 
 describe("Indkøbene bærer det reglerne kræver", () => {
   it("har en division på hver post — den kan ikke arves fra bilen", () => {
-    for (const i of DEMO_INDKOEB) {
+    for (const i of VAERKSTEDSINDKOEB) {
       assert.ok(["gods", "bus", "faelles"].includes(i.division), `${i.id}: ugyldig division`);
     }
   });
@@ -351,7 +367,7 @@ describe("Indkøbene bærer det reglerne kræver", () => {
 
   it("peger på et besøg der findes", () => {
     const besoeg = new Set(DEMO_BESOEG.map((b) => b.id));
-    for (const i of DEMO_INDKOEB) {
+    for (const i of VAERKSTEDSINDKOEB) {
       assert.ok(besoeg.has(i.besoegId), `${i.id} peger på ukendt besøg "${i.besoegId}"`);
     }
   });

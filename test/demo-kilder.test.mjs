@@ -13,8 +13,19 @@
  *   3. Sagens bil skulle rettes ind efter demo-flaade, da den blev kilden.
  *   4. DEMO_KUNDER lå som en lokal const inde i moduler/Kunder.jsx, hvor
  *      demo-bookinger ikke kunne nå den uden at lave sin egen kopi.
+ *   5. demo-vaerksted.js havde en DEMO_INDKOEB ved siden af demo-indkoeb.js'
+ *      DEMO_INDKOEBSLINJER — to datasæt for ÉN node, i to demo-filer.
+ *      Den her lint så dem ikke: begge lå i fleet/, hvor de "hører hjemme".
  *
- * Fire gange er ikke et tilfælde. Det er noget der vil ske igen, og det sker
+ *      ⚠ OG DEN KOSTEDE EN FORKERT RETTELSE. Fakturaen fa-9001 pegede på
+ *      indkoebId "ik-001", som ikke fandtes i demo-indkoeb.js — så feltet
+ *      blev sat til null med en note om at "en hængende reference er værre
+ *      end ingen". Linjen fandtes. Den lå i den anden fil og blev aldrig
+ *      seedet. fa-9002 pegede tilsvarende på en linje til 16.500 kr mens
+ *      fakturaen var på 29.600, og forskellen blev læst som
+ *      afstemningsmateriale. Symptomerne blev behandlet; årsagen stod.
+ *
+ * Fem gange er ikke et tilfælde. Det er noget der vil ske igen, og det sker
  * i god tro: man skriver et par rækker demo-data i den skærm man er i gang
  * med, og opdager først et halvt år senere at der er to sandheder.
  *
@@ -161,5 +172,63 @@ describe("Demo-data hører i fleet/, ikke i moduler/", () => {
       "Uden en selvkontrol opdages en drift mellem to demo-sæt først når nogen " +
       "kigger. Se demo-personale.js.\n" + uden.join("\n")
     );
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   To demo-filer må ikke beskrive den SAMME node
+   ══════════════════════════════════════════════════════════════════════ */
+describe("Én node, ét demo-datasæt", () => {
+  /* ⚠ LINTEN OVENFOR SÅ KUN MODULFILER. Begge sæt lå i fleet/ — altså dér
+     hvor et demo-datasæt HØRER hjemme — og reglen fangede dem derfor ikke.
+     Det der er galt, er ikke placeringen: det er at to filer beskriver den
+     samme node.
+
+     Kontrollen er en NAVNELIGHED, ikke en formanalyse: kan man ikke af navnet
+     se hvilken node sættet hører til, kan den næste heller ikke. Det er
+     præcis sådan DEMO_INDKOEB og DEMO_INDKOEBSLINJER kunne stå side om side
+     i et halvt år. */
+  const NODER = [
+    "INDKOEB", "FAKTURAER", "LEVERANDOERER", "KOERETOEJER", "PERSONALE",
+    "KOMPETENCER", "KUNDER", "ETAPER", "OPGAVER", "FRAVAER", "VARER",
+    "BEHOLDNING", "CARRIERS", "KASSER", "KASSEUDLAAN", "INDBERETNINGER",
+    "AKTIVER", "LOKATIONER", "ZONER", "GRUNDLAG", "LAGRE",
+  ];
+
+  it("har højst ét demo-datasæt pr. node", () => {
+    /* Hvilke filer eksporterer et sæt hvis navn begynder med nodens? */
+    const prNode = {};
+    for (const navn of readdirSync(FLEET).filter((n) => /^demo-.*\.js$/.test(n))) {
+      const tekst = readFileSync(join(FLEET, navn), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of tekst.matchAll(/export const (DEMO_[A-Z_]+)\s*=\s*\[/g)) {
+        const node = NODER.find((n) => m[1] === `DEMO_${n}` || m[1].startsWith(`DEMO_${n}`));
+        if (!node) continue;
+        (prNode[node] ||= []).push(`${navn}:${m[1]}`);
+      }
+    }
+
+    const dobbelte = Object.entries(prNode)
+      .filter(([, hvor]) => hvor.length > 1)
+      .map(([node, hvor]) => `${node} → ${hvor.join(" OG ")}`);
+
+    assert.deepEqual(dobbelte, [],
+      "To demo-datasæt for én node. De driver fra hinanden, og den ene bliver " +
+      "aldrig seedet — se hovedet i denne fil.\n" + dobbelte.join("\n"));
+  });
+
+  it("⚠ ET DATASÆT SOM INGEN NODE HAR, ER OGSÅ ET SVAR", () => {
+    /* Nogle sæt hører bevidst ingen node til: servicebesøg, supportsager,
+       tilbud, bemandingsplan. De skal kunne findes — men ikke forveksles med
+       et sæt der HAR en node og bare ikke er seedet. Listen her er derfor
+       ikke en fejl; den er en optælling. */
+    const uden = [];
+    for (const navn of readdirSync(FLEET).filter((n) => /^demo-.*\.js$/.test(n))) {
+      const tekst = readFileSync(join(FLEET, navn), "utf8");
+      for (const m of tekst.matchAll(/export const (DEMO_[A-Z_]+)\s*=\s*\[/g)) {
+        if (!NODER.some((n) => m[1].startsWith(`DEMO_${n}`))) uden.push(m[1]);
+      }
+    }
+    assert.ok(uden.length >= 1, "alle demo-sæt hører nu til en node — ret listen");
   });
 });

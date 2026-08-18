@@ -227,6 +227,51 @@ export const DEMO_INDKOEBSLINJER = [
     formaal: "Hovedkontor — kvartalets forbrugsartikler",
     fakturastatus: "afvist", godkendtAf: null, godkendtMs: null },
 
+  /* --- Værkstedsbesøgenes indkøb --------------------------------------
+     ⚠ DE HER FIRE LÅ I demo-vaerksted.js SOM ET EGET DATASÆT, `DEMO_INDKOEB`.
+     To demo-datasæt for den SAMME node — syvende gang mønstret dukker op, og
+     den dyreste af dem: `fa-9001` pegede på `indkoebId: "ik-001"`, og fordi
+     linjen ikke fandtes HER, satte jeg feltet til null med en note om at "en
+     hængende reference er værre end ingen". Linjen fandtes. Den lå bare i den
+     anden fil, og blev aldrig seedet.
+
+     ⚠ OG DE TO SÆT DELTE IKKE FORM. Det gamle bar `beloebOere` direkte —
+     som reglerne FORBYDER på `indkoeb`, fordi beløbet beregnes af antal ×
+     pris. Et værkstedsbesøg er én ydelse til én pris: `antal: 1`.
+
+     ⚠ `besoegId` ER SPORET TILBAGE. Uden det kan man ikke se hvilket besøg
+     regningen hørte til, og Værkstedskalenderen kunne ikke vise sine egne
+     omkostninger uden sit eget datasæt — altså præcis den kopi vi lige
+     fjernede. Feltet er tilladt i firebase.rules.json. */
+  { id: "il-vb-001", dato: dag(-22), aftaltLeveringMs: dag(-22), leveretMs: dag(-22),
+    leverandoerId: "lv-scania", division: "gods", besoegId: "vb-001",
+    reference: "SK-2026-4471",
+    vare: "Serviceeftersyn 30.000 km", kategori: "vaerksted", antal: 1, enhed: "stk",
+    prisPrEnhedOere: 1842500, momsOere: 460625,
+    koeretoejId: "kt-078", formaal: "Planlagt service — værkstedsbesøg",
+    fakturastatus: "bogfoert", godkendtAf: "Søren Dahl", godkendtMs: dag(-21) },
+  { id: "il-vb-002", dato: dag(-9), aftaltLeveringMs: dag(-9), leveretMs: dag(-9),
+    leverandoerId: "lv-daekteam", division: "bus", besoegId: "vb-002",
+    reference: "DV-88213",
+    vare: "Dækskifte, 4 stk.", kategori: "daek", antal: 1, enhed: "sæt",
+    prisPrEnhedOere: 2960000, momsOere: 740000,
+    koeretoejId: "kt-b16", formaal: "Dækskifte — værkstedsbesøg",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
+  { id: "il-vb-003", dato: dag(-1), aftaltLeveringMs: dag(-1), leveretMs: dag(-1),
+    leverandoerId: "lv-daf", division: "gods", besoegId: "vb-003",
+    reference: "DAF-2026-1188",
+    vare: "Reparation, kobling", kategori: "vaerksted", antal: 1, enhed: "stk",
+    prisPrEnhedOere: 1215000, momsOere: 303750,
+    koeretoejId: "kt-106", formaal: "Reparation — værkstedsbesøg",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
+  { id: "il-vb-004", dato: dag(0), aftaltLeveringMs: dag(0), leveretMs: dag(0),
+    leverandoerId: "lv-schmitz", division: "gods", besoegId: "vb-004",
+    reference: "SSP-70412",
+    vare: "Reparation, trailerbund", kategori: "vaerksted", antal: 1, enhed: "stk",
+    prisPrEnhedOere: 3480000, momsOere: 870000,
+    koeretoejId: "kt-tr42", formaal: "Reparation — værkstedsbesøg",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
+
   /* --- To BESTILTE, endnu ikke leverede -------------------------------
      ⚠ UDEN DEM VAR ALLE 46 LINJER LEVERET, og `indkoeb.aabneOrdrer` gav 0
      i både gods og bus. Nul var det rigtige svar på de data — og derfor
@@ -294,19 +339,23 @@ export const DEMO_FAKTURAER = [
   { id: "fa-9001", leverandoerId: "lv-scania", fakturanummer: "SK-2026-4471",
     fakturadatoMs: dag(-22), forfaldMs: dag(8), status: "bogfoert",
     beloebOere: 1842500, momsOere: 460625,
-    /* ⚠ HER STOD indkoebId: "ik-001" — et id der ikke fandtes. Alle
-       indkoebslinjer hedder il-XXX, og der er slet ingen scania-linje at
-       pege paa. En haengende reference er vaerre end ingen: skaermen viser et
-       tomt opslag, og ikkeLinkedeFakturaer taeller den som linket.
-       Null er det rigtige svar — en bogfoert faktura uden en registrering er
-       netop den uenighed afstemningen findes for. */
-    indkoebId: null, sagsnummer: null },
+    /* ⚠ HER STOD indkoebId: "ik-001", OG JEG SATTE DET TIL null.
+       Begrundelsen var at "der er slet ingen scania-linje at pege paa" — og
+       den var forkert. Linjen fandtes; den lå i demo-vaerksted.js som et
+       ANDET datasæt for den samme node, og blev aldrig seedet. Symptomet blev
+       behandlet, årsagen stod tilbage. Linjen hedder nu il-vb-001 og ligger
+       hvor den hører hjemme. */
+    indkoebId: "il-vb-001", sagsnummer: null },
   { id: "fa-9002", leverandoerId: "lv-daekteam", fakturanummer: "DV-88213",
     fakturadatoMs: dag(-9), forfaldMs: dag(21), status: "modtaget",
-    beloebOere: 2960000, momsOere: 740000, indkoebId: "il-002", sagsnummer: null },
+    /* ⚠ PEGEDE PÅ il-002 — DÆKTEAMS ANDEN LINJE, til 16.500 kr. Fakturaen er
+       på 29.600, og de to var derfor uenige med 13.100 kr uden at nogen kunne
+       se hvorfor. Jeg læste det som afstemningsmateriale; det var en forkert
+       reference, fordi den RIGTIGE linje lå i den anden demofil. */
+    beloebOere: 2960000, momsOere: 740000, indkoebId: "il-vb-002", sagsnummer: null },
   { id: "fa-9003", leverandoerId: "lv-daf", fakturanummer: "DAF-2026-1188",
     fakturadatoMs: dag(-1), forfaldMs: dag(29), status: "modtaget",
-    beloebOere: 1215000, momsOere: 303750, indkoebId: null, sagsnummer: null },
+    beloebOere: 1215000, momsOere: 303750, indkoebId: "il-vb-003", sagsnummer: null },
   { id: "fa-9004", leverandoerId: "lv-crawford", fakturanummer: "CR-551204",
     fakturadatoMs: dag(-4), forfaldMs: dag(26), status: "modtaget",
     beloebOere: 1284000, momsOere: 321000, indkoebId: "il-005",
@@ -323,7 +372,23 @@ export const DEMO_FAKTURAER = [
     beloebOere: 184500, momsOere: 46125, indkoebId: "il-010", sagsnummer: null },
   { id: "fa-9008", leverandoerId: "lv-schmitz", fakturanummer: "SSP-70412",
     fakturadatoMs: dag(0), forfaldMs: dag(30), status: "modtaget",
-    beloebOere: 3480000, momsOere: 870000, indkoebId: null, sagsnummer: null },
+    beloebOere: 3480000, momsOere: 870000, indkoebId: "il-vb-004", sagsnummer: null },
+
+  /* ⚠ DEN ENESTE UDEN MATCH — OG DEN ER TILFØJET FORDI DEN MANGLEDE.
+     Da værkstedsindkøbene kom ind i noden, fik ALLE otte fakturaer en linje
+     at pege på, og `demoUdenMatch()` gav en tom liste. To prøver blev røde
+     med netop den besked: "uden en faktura uden match kan tallet ikke ses
+     virke". Sjette gang det mønster har været nødvendigt.
+
+     ⚠ OG DET ER IKKE EN OPFUNDET TILSTAND. En leverandørfaktura der kommer
+     ind uden at nogen har registreret købet, er hele grunden til at der
+     afstemmes: enten har nogen glemt registreringen, eller også er fakturaen
+     ikke vores. Begge dele skal ses, og ingen af dem må bogføres af sig selv.
+     `indkoebId: null` her betyder "ikke matchet endnu" — modsat den hængende
+     reference, som betyder "matchet mod noget der ikke findes". */
+  { id: "fa-9009", leverandoerId: "lv-mercedes", fakturanummer: "MG-2026-3310",
+    fakturadatoMs: dag(-2), forfaldMs: dag(28), status: "modtaget",
+    beloebOere: 946000, momsOere: 236500, indkoebId: null, sagsnummer: null },
 ];
 
 /* ---- Afstemning: TRE TOTALER, TO AFVIGELSER ---------------------------- */
@@ -464,6 +529,29 @@ export const DEMO_LEVERANDOERSAGER = [
  */
 
 if (import.meta.env?.DEV) {
+  /* ⚠ VAERKSTEDSINDKOEBENES KONTROL, FLYTTET MED DATASAETTET.
+     De fire il-vb-00N laa i demo-vaerksted.js som DEMO_INDKOEB, og deres
+     kontrol laa dér med dem. Datasaettet er flyttet hertil; kontrollen skal
+     med, ellers er den taalt vaek i samme ombaering som den blev unoedvendig
+     — og det er praecis saadan en kontrol forsvinder uden at nogen ser det. */
+  for (const i of DEMO_INDKOEBSLINJER.filter((x) => x.besoegId)) {
+    if (!Number.isInteger(i.momsOere)) {
+      console.warn(`demo-indkoeb: ${i.id} har moms der ikke er hele oere.`);
+    }
+    if (i.momsOere !== Math.round(i.antal * i.prisPrEnhedOere * 0.25)) {
+      console.warn(
+        `demo-indkoeb: ${i.id} har moms der ikke er 25 % af beloebet. ` +
+        `Er de to byttet om?`
+      );
+    }
+    if ("beloebOere" in i) {
+      console.warn(
+        `demo-indkoeb: ${i.id} baerer et GEMT beloeb. Reglerne forbyder det — ` +
+        `det beregnes af antal x pris, og to kilder kan drive fra hinanden.`
+      );
+    }
+  }
+
   const lvIder = new Set(DEMO_LEVERANDOERER.map((l) => l.id));
   const linjeIder = new Set(DEMO_INDKOEBSLINJER.map((l) => l.id));
 

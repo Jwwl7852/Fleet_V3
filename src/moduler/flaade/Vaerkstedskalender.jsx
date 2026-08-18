@@ -45,6 +45,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, datoTid, oereFraKroner } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -60,9 +61,10 @@ import { SAG_TILSTAND } from "../../fleet/sager.js";
 import { demoSagerFor } from "../../fleet/demo-sag.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
+import { indkoebBeloebOere, FAKTURASTATUS } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_BESOEG, DEMO_INDKOEB, BESOEG_STATUS, OMKOSTNINGSTYPE,
-  ALLE_OMKOSTNINGSTYPER, demoIkkeLinkede, totalOere, demoKoeretoejKaldenavn,
+  DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE,
+  ALLE_OMKOSTNINGSTYPER, demoKoeretoejKaldenavn,
 } from "../../fleet/demo-vaerksted.js";
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
@@ -89,6 +91,26 @@ const VINDUE_DAGE = 14;
 export default function Vaerkstedskalender() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
   const { bruger } = useFleet();
+
+  /* ⚠ NODEN, IKKE EN KOPI. Her stod DEMO_INDKOEB fra demo-vaerksted.js —
+     et ANDET datasaet for `indkoeb`-noden, med fire poster den rigtige node
+     aldrig saa. De to bar ikke engang samme form: kopien havde `beloebOere`
+     direkte, som reglerne forbyder. De fire ligger nu i noden med `besoegId`
+     som spor tilbage hertil.
+
+     division: "alle" — vaerkstedet servicerer hele flaaden, og et besoeg paa
+     en bus hoerer paa kalenderen ogsaa naar Gods er valgt. */
+  const indkoeb = useListe("indkoeb", {
+    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+  });
+  const vaerkstedsindkoeb = indkoeb.data.filter((i) => i.besoegId);
+
+  /* ⚠ HVILKE INDKOEB DER MANGLER EN FAKTURA — ikke hvilke fakturaer der
+     mangler et indkoeb. Det sidste er `flaade.ikkeLinkedeFakturaer` i kpi/,
+     og de to blev talt af hver sin funktion under naesten samme navn.
+     Her staar spoergsmaalet skrevet ud, saa det ikke kan forveksles. */
+  const udenFaktura = vaerkstedsindkoeb.filter(
+    (i) => i.fakturastatus === "mangler" || i.fakturastatus === "afvist");
 
   const [valgtBesoegId, setValgtBesoegId] = useState(null);
   const [valgtSagId, setValgtSagId] = useState(null);
@@ -188,26 +210,37 @@ export default function Vaerkstedskalender() {
         handling={<Link className="fc-a" to="/indkoeb/fakturaer">Godkend og afstem i Indkøb</Link>}
       >
         <Tabel
+          /* ⚠ KOLONNERNE FØLGER NODENS FORM, ikke kopiens. Den gamle
+             DEMO_INDKOEB bar `fakturadatoMs`, `type`, `fakturanummer`,
+             `beloebOere` og `fakturaId` — INGEN af dem findes på en
+             indkøbslinje. Noden har `dato`, `kategori`, `reference`,
+             antal × pris og `fakturastatus`. To datasæt for én node deler
+             ikke nødvendigvis form, og her gjorde de det slet ikke. */
           kolonner={[
-            { key: "fakturadatoMs", label: "Dato", render: (r) => dato(r.fakturadatoMs) },
+            { key: "dato", label: "Dato", render: (r) => dato(r.dato) },
             { key: "koeretoejId", label: "Bil", render: (r) => <b>{demoKoeretoejKaldenavn(r.koeretoejId)}</b> },
-            { key: "type", label: "Type", render: (r) => OMKOSTNINGSTYPE[r.type] },
-            { key: "leverandoer", label: "Leverandør" },
+            { key: "vare", label: "Ydelse" },
+            { key: "leverandoerId", label: "Leverandør" },
             { key: "division", label: "Division", render: (r) => <Pille tone="info">{DIVISIONER[r.division]}</Pille> },
-            { key: "fakturanummer", label: "Fakturanr." },
-            { key: "beloebOere", label: "Ekskl. moms", num: true, render: (r) => kr(r.beloebOere) },
+            /* Leverandørens EGET nummer — det man slår op i når man ringer. */
+            { key: "reference", label: "Fakturanr." },
+            /* ⚠ BEREGNET AF antal × pris, ALDRIG GEMT. To kilder til samme tal
+               kan drive fra hinanden, og så mangler en post uden at totalen
+               afslører det. Kopien gemte beløbet direkte. */
+            { key: "beloeb", label: "Ekskl. moms", num: true,
+              render: (r) => kr(indkoebBeloebOere(r)) },
             { key: "momsOere", label: "Moms", num: true, render: (r) => kr(r.momsOere) },
-            /* Beregnet hos forbrugeren, ikke gemt. */
-            { key: "total", label: "Total", num: true, render: (r) => kr(totalOere(r)) },
-            { key: "fakturaId", label: "Linket", render: (r) => (r.fakturaId
-                ? <Pille tone="ok">Ja</Pille>
-                : <Pille tone="warn">Ikke linket</Pille>) },
+            { key: "total", label: "Total", num: true,
+              render: (r) => kr(indkoebBeloebOere(r) + (r.momsOere || 0)) },
+            { key: "fakturastatus", label: "Faktura",
+              render: (r) => <Pille tone={FAKTURASTATUS[r.fakturastatus]?.pill || "info"}>
+                {FAKTURASTATUS[r.fakturastatus]?.label || r.fakturastatus}</Pille> },
           ]}
-          raekker={DEMO_INDKOEB}
+          raekker={vaerkstedsindkoeb}
           tom="Ingen indkøb registreret."
         />
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          {num(demoIkkeLinkede().length)} af {num(DEMO_INDKOEB.length)} viste indkøb er
+          {num(udenFaktura.length)} af {num(vaerkstedsindkoeb.length)} viste indkøb er
           endnu ikke matchet mod en leverandørfaktura. <b>Totalen beregnes her</b> og
           gemmes ikke — beløbet står som <b>beloebOere</b> ekskl. moms med{" "}
           <b>momsOere</b> ved siden af, aldrig som ét inkl.-beløb. Blandes de to,
