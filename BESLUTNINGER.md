@@ -1641,3 +1641,30 @@ dataene.
 Provisioneringen udleder dem nu af etaperne med **den samme**
 `reservationerFraEtape()` som funktionen bruger. To udgaver ville betyde at dev
 viste et lager der var reserveret på én måde og produktion på en anden.
+
+### ⚠ Tilføjelse til 31: `roller/`-noden er væk
+
+Beslutningen blev truffet, og noden blev liggende. `tenants/<id>/roller/` stod
+i regelfilen som `.write: false` *"indtil den Cloud Function der udsteder
+claims, findes"* — og README førte den funktion som en af de otte der manglede.
+
+Den skal ikke findes. Det er den samme beslutning, læst til ende: er rollerne
+faste, er der ikke noget at udstede claims **fra**. Claim'et kommer fra
+`ROLLE_PERMS` i koden, mintet af `skiftrolle` og af provisioneringen, og
+`revokeRefreshTokens` gør en nedgradering øjeblikkelig.
+
+Noden var tom. Ingen skrev den, ingen læste den — kun to kommentarer nævnte
+den. Det er ordret den døde overflade beslutningen selv fjernede idébanken for:
+
+> En node ingen skærm læser, med en skriverettighed hver chauffør har, er død
+> overflade — og død overflade er noget nogen finder på at bruge til noget.
+
+⚠ **Og prøverne bar antagelsen videre.** Der stod *"roller/ skal være
+`.write: false` indtil claim-udstedelsen findes"* og *"åbnes noden for admin
+med `roller.skriv`, SKAL den her test opdateres"* — en test der forberedte en
+funktion beslutningen havde afskaffet. De prøver spørger nu om det rigtige: at
+noden ER væk, at claim'et kommer fra presettet, og at der ikke findes et opslag
+i `roller/` nogen steder i `functions/`.
+
+**Der er kun ét håndhævelsespunkt: tokenet.** En node der *kunne* bestemme hvad
+en bruger må, ville være et andet — og to håndhævelsespunkter er ét for mange.

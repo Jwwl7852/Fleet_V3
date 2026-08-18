@@ -158,37 +158,35 @@
           ".write": false
         },
 
-        // ROLLER — tenantens FAKTISKE rolledefinitioner.
+        // ══════════════════════════════════════════════════════════════
+        // ⚠ HER LAA `roller/`, OG DEN ER FJERNET — BESLUTNING 31
+        // ══════════════════════════════════════════════════════════════
         //
-        // roller/<rolleId>/{ navn, perms: ["booking.foreslaa", ...] }
+        // Noden var tenantens EGNE rolledefinitioner, .write: false "indtil
+        // den Cloud Function der udsteder claims, findes". Den funktion
+        // skal ikke findes.
         //
-        // perms er et ARRAY og ikke et map: RTDB-noegler maa ikke indeholde
-        // punktum, og permission-navnene gor. perms/booking.foreslaa: true er
-        // altsaa umuligt. Arrayet er ogsaa det permsFraRolle() returnerer.
+        // Beslutning 31: rollerne er FASTE. En vognmand der fjerner
+        // booking.godkend fra sin egen adminrolle, har lukket sig ude — og
+        // adgangen til at rette det var selv en permission. Skal en rolle
+        // betyde noget andet, er det en aendring i permissions.js og i
+        // denne fil, ikke et klik.
         //
-        // ROLLE_PERMS i permissions.js er provisioneringsstandarden: hvad en
-        // NY tenant faar ved oprettelse. Denne node er hvad tenanten faktisk
-        // har, og en kunde skal kunne fjerne fx booking.vaerdiLaes fra sin
-        // disponent-rolle uden at nogen skriver kode.
+        // Claim'et kommer derfor fra ROLLE_PERMS, mintet af `skiftrolle` og
+        // af provisioneringen. Der er ingen vej fra en databasenode til en
+        // permission, og det er med vilje: en node der KUNNE bestemme hvad
+        // en bruger maa, ville vaere et andet haandhaevelsespunkt end
+        // tokenet — og to haandhaevelsespunkter er eet for mange.
         //
-        // Claim'et forbliver haandhaevelsespunktet: reglerne slaar IKKE op
-        // her ved hver skrivning. Den Cloud Function der udsteder claims
-        // laeser noden, og en aendring traeder i kraft ved naeste
-        // token-fornyelse — eller straks med revokeRefreshTokens.
+        // ⚠ OG DEN BLEV LIGGENDE TOM I MAANEDSVIS. Ingen skrev den, ingen
+        // laeste den. Det er noejagtig den doede overflade beslutning 31
+        // fjernede idebanken for, med sin egen begrundelse: "en node ingen
+        // skaerm laeser, er doed overflade — og doed overflade er noget
+        // nogen finder paa at bruge til noget." Den begrundelse gjaldt ogsaa
+        // her; den var bare ikke anvendt.
         //
-        // .write: false INDTIL den funktion findes, og det er med vilje haardt
-        // frem for dokumenteret. Kunne man redigere en rolle nu, ville
-        // claim'et ikke blive opdateret: man ville tro man havde fjernet en
-        // permission, som stadig virkede. Det er den vaerste fejltilstand af
-        // alle, for den ser ud som om den lykkedes. En fejl er bedre end
-        // tavshed.
-        //
-        // Naar funktionen findes, aabnes den for admin med roller.skriv — og
-        // aendringer skal auditeres.
-        "roller": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
-          ".write": false
-        },
+        // Genindfoer den ikke uden at afgoere beslutning 31 om.
+
 
         // ══════════════════════════════════════════════════════════════
         // BRUGERINDEKSET — fordi en klient ikke kan liste konti

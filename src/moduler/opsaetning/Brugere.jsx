@@ -346,11 +346,14 @@ export default function Brugere() {
 
       <Kort titel="Rollerne">
         <p className="fc-hint" style={{ marginBottom: 12 }}>
-          ⚠ <b>Rollerne er faste.</b> Man tildeler dem — man ændrer dem ikke.{" "}
-          <code>tenants/&lt;id&gt;/roller</code> er <b>.write: false</b> i reglerne,
-          så det er ikke en konvention men en spærring. Beslutning 31: en vognmand
-          der fjernede <code>booking.godkend</code> fra sin egen adminrolle, havde
-          lukket sig selv ude af sit eget system.
+          ⚠ <b>Rollerne er faste.</b> Man tildeler dem — man ændrer dem ikke.
+          Der er ingen node at ændre dem i: <code>tenants/&lt;id&gt;/roller</code> lå
+          tom og <code>.write: false</code> i månedsvis og er nu <b>fjernet</b>.
+          Rollens indhold kommer fra <code>ROLLE_PERMS</code> i koden, og claim&#39;et
+          er det ene håndhævelsespunkt. Beslutning 31: en vognmand der fjernede{" "}
+          <code>booking.godkend</code> fra sin egen adminrolle, havde lukket sig
+          selv ude af sit eget system — og adgangen til at rette det var selv en
+          permission.
         </p>
         <Tabel
           kolonner={[

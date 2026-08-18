@@ -216,7 +216,7 @@ describe("Et fravalgt modul lukker sine noder", () => {
        ejendom. Lukkede de med, ville en kunde der kun har Dashboard ikke
        kunne se sine egne medarbejdere. */
     const db = somAdmin(UDEN);
-    for (const node of ["personale", "kpi", "opgaver", "satser", "fakturaer", "brugere", "roller"]) {
+    for (const node of ["personale", "kpi", "opgaver", "satser", "fakturaer", "brugere"]) {
       await assertSucceeds(get(ref(db, `tenants/${UDEN}/${node}`)));
     }
   });

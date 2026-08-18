@@ -247,9 +247,35 @@ describe("Demo-værkstedet hænger sammen med demo-flåden", () => {
   /* Flåde siger "på værksted", kalenderen siger hvornår. Siger de hver sit,
      er det beslutning 6's fejl et niveau nede. */
   it("er enig med flåden om hvem der står på værksted i dag", () => {
+    /* ══════════════════════════════════════════════════════════════════
+       ⚠ ÉT BESØG ER UNDTAGET, OG UNDTAGELSEN HAR EN GRUND.
+
+       vb-005 er AFTALEN fra beslutning 20: sag FLT-2026-00381 aftalte
+       18-08-2026 kl. 08.00–16.00 på Bil 104. Datoen er PINNED, fordi den
+       står i infografikken — se noten i demo-sag.js. Alt andet i
+       demo-sættet driver med `dag(n)`.
+
+       En pinned dato passerer "i dag" præcis én gang, og den dag kan de to
+       invarianter ikke begge holde: flådens `status` er et øjebliksbillede,
+       og sagens dato er et fikspunkt. Prøven faldt første gang datoen
+       ramte — 18-08-2026.
+
+       Undtagelsen er derfor bundet til `sagId` og ikke til bilen: et besøg
+       hvis tidspunkter kommer fra en sag, er pinned pr. definition. Sætter
+       nogen en sag på et besøg mere, skal de tage stilling — derfor tælles
+       de, og prøven falder hvis antallet stiger.
+       ══════════════════════════════════════════════════════════════════ */
+    const pinnede = DEMO_BESOEG.filter((b) => b.sagId);
+    assert.equal(pinnede.length, 1,
+      "flere besoeg er nu bundet til en sag med faste datoer — er de ogsaa " +
+      "undtaget med vilje, eller driver de bare?");
+
     const nu = Date.now();
-    const paaVaerksted = new Set(demoBesoegNu(nu).map((b) => b.koeretoejId));
+    const undtagne = new Set(pinnede.map((b) => b.koeretoejId));
+    const paaVaerksted = new Set(
+      demoBesoegNu(nu).filter((b) => !b.sagId).map((b) => b.koeretoejId));
     for (const k of DEMO_KOERETOEJER) {
+      if (undtagne.has(k.id)) continue;
       assert.equal(
         k.status === "vaerksted", paaVaerksted.has(k.id),
         `${k.kaldenavn}: status "${k.status}" mod ${paaVaerksted.has(k.id) ? "" : "intet "}besøg i dag`

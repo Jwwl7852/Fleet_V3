@@ -333,9 +333,15 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 
 ## Det tungeste tilbage
 
-**Cloud Functions er den reelle flaskehals.** Fire ting venter på samme
-opsætning: claim-udstedelse fra `roller/`, skrivning af auditposter,
-KPI-aggregering og retention-sletning.
+**Cloud Functions er den reelle flaskehals.** Tre ting venter på samme
+opsætning: skrivning af auditposter, KPI-aggregering og retention-sletning.
+
+⚠ **Claim-udstedelse fra `roller/` er taget af listen — den skal ikke bygges.**
+Beslutning 31 afgjorde at rollerne er FASTE: en vognmand der fjerner
+`booking.godkend` fra sin egen adminrolle, har lukket sig ude, og adgangen til
+at rette det var selv en permission. Claim&#39;et kommer fra `ROLLE_PERMS`, mintet
+af `skiftrolle`. Noden `roller/` lå tom og `.write: false` i månedsvis og er nu
+fjernet — det er den samme døde overflade beslutning 31 fjernede idébanken for.
 
 ⚠ **Bookingens tilstandsskift kom aldrig på listen igen** — det skal ikke
 bygges. Bookingens tilstand er AFLEDT af etaperne (`forloebstilstand()`), og

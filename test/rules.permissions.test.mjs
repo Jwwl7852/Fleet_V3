@@ -11,13 +11,10 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  initializeTestEnvironment,
-  assertSucceeds,
-  assertFails,
-} from "@firebase/rules-unit-testing";
+  initializeTestEnvironment, assertSucceeds, assertFails, } from "@firebase/rules-unit-testing";
 import { ref, set, get } from "firebase/database";
 import {
-  PERM, ALLE_PERMS, ROLLE_PERMS, permStreng, permStrengFraRolle, harPerm,
+  PERM, ALLE_PERMS, ROLLE_PERMS, permStreng, permStrengFraRolle, harPerm, ALLE_ROLLER, permsFraRolle,
 } from "../src/fleet/permissions.js";
 
 const T = "tenantPerm";
@@ -239,43 +236,72 @@ describe("rolle-presets giver samme adgang som før", () => {
 
 /* ---- Bookingflowet ------------------------------------------------- */
 
-describe("roller/ er inert indtil Cloud Function'en findes", () => {
-  /* Den vaerste fejltilstand af alle er den der SER UD som om den lykkedes.
-     Kunne man redigere roller/ nu, ville claim'et ikke blive opdateret: man
-     fjernede booking.vaerdiLaes fra disponent-rollen, fik ingen fejl, og
-     disponenten kunne stadig se vurderingen paa hvert vaerk. En afvisning er
-     bedre end tavshed.
+describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () => {
+  /* Her stod "roller/ er inert indtil Cloud Function'en findes", og
+     begrundelsen var rigtig: kunne man redigere noden uden at claim'et fulgte
+     med, ville man fjerne en permission, få ingen fejl, og adgangen ville
+     stadig virke — den værste fejltilstand af alle, fordi den ser ud som om
+     den lykkedes.
 
-     Aabnes noden for admin med roller.skriv, SKAL den her test opdateres i
-     samme aendring — og det er meningen at det gør ondt nok til at man taenker
-     over om claim-udstedelsen er paa plads. */
-  /* perms er et ARRAY, ikke et map. RTDB-noegler maa ikke indeholde punktum,
-     og permission-navnene gor — perms/booking.foreslaa: true er derfor
-     umuligt. Arrayet er ogsaa det permsFraRolle() allerede returnerer. */
-  it("ingen kan skrive i roller/ — heller ikke med alle permissions", async () => {
-    const db = medPerms("uid-roller", ALLE_PERMS);
-    const rolle = { navn: "Disponent", perms: [PERM.bookingForeslaa, PERM.kunderSkriv] };
-    await assertFails(set(ref(db, sti("roller", "disponent")), rolle));
-    await assertFails(set(ref(db, `${sti("roller", "disponent")}/perms`), [PERM.bookingForeslaa]));
-    await assertFails(set(ref(db, `tenants/${T}/roller`), { disponent: rolle }));
-  });
+     ⚠ MEN SLUTNINGEN VAR FORKERT. Svaret var ikke at bygge funktionen; det
+     var at rollerne er FASTE (beslutning 31). Noden er væk, og claim'et
+     kommer fra ROLLE_PERMS. */
+  it("⚠ roller/ FINDES IKKE LÆNGERE — beslutning 31", () => {
+    /* Noden var tenantens egne rolledefinitioner, `.write: false` "indtil
+       den Cloud Function der udsteder claims, findes". Den funktion skal
+       ikke findes: rollerne er FASTE. En vognmand der fjerner
+       booking.godkend fra sin egen adminrolle, har lukket sig ude — og
+       adgangen til at rette det var selv en permission.
 
-  it("reglen står som .write: false i filen, ikke som en betingelse der kan blive sand", () => {
+       ⚠ OG DEN LAA TOM I MÅNEDSVIS. Ingen skrev den, ingen læste den. Det
+       er nøjagtig den døde overflade beslutning 31 fjernede idébanken for,
+       med sin egen begrundelse — den var bare ikke anvendt her. */
     const regler = JSON.parse(
       readFileSync("firebase.rules.json", "utf8")
-        .split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")
+        .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10))
     );
-    assert.strictEqual(
-      regler.rules.tenants.$tenantId.roller[".write"], false,
-      "roller/ skal være .write: false indtil claim-udstedelsen findes. " +
-      "Uden den ville en rolleændring se ud som om den virkede, mens claim'et " +
-      "blev stående — og en fjernet permission ville stadig give adgang."
+    assert.equal(
+      regler.rules.tenants.$tenantId.roller, undefined,
+      "roller/ er tilbage. Genindfoeres den, afgoeres beslutning 31 om — og " +
+      "saa skal det staa i BESLUTNINGER.md, ikke i en regelfil."
     );
   });
 
-  it("men den kan læses, så en admin-skærm kan vise rollerne", async () => {
-    const db = medPerms("uid-rollerlaes", ALLE_PERMS);
-    await assertSucceeds(get(ref(db, `tenants/${T}/roller`)));
+  it("⚠ CLAIM'ET KOMMER FRA ROLLE_PERMS, ikke fra en node", async () => {
+    /* Der er ingen vej fra en databasenode til en permission, og det er med
+       vilje: en node der KUNNE bestemme hvad en bruger må, ville være et
+       andet håndhævelsespunkt end tokenet — og to håndhævelsespunkter er ét
+       for mange. */
+    const kilde = readFileSync("functions/index.js", "utf8");
+    const blok = kilde.slice(kilde.indexOf("export const skiftrolle"));
+    assert.ok(blok.includes("permStrengFraRolle(rolle)"),
+      "skiftrolle udleder ikke perms af presettet");
+    const opslag = [".child(" + "\"roller", ".child(" + "`roller"];
+    assert.ok(!opslag.some((o) => kilde.includes(o)),
+      "en funktion slaar op i roller/ — noden findes ikke laengere");
+
+    /* ⚠ OG EN NEDGRADERING SKAL SLÅ IGENNEM STRAKS. Uden
+       revokeRefreshTokens beholder brugeren sine gamle claims indtil
+       tokenet udløber af sig selv: man ville tro man havde fjernet en
+       adgang, som stadig virkede. */
+    assert.ok(blok.includes("revokeRefreshTokens"),
+      "en rolleaendring traeder ikke i kraft foer tokenet udloeber");
+  });
+
+  it("⚠ EN ROLLE KAN IKKE ÆNDRES — kun tildeles", () => {
+    /* Syv faste roller. Skal en betyde noget andet, er det en ændring i
+       permissions.js med en begrundelse, prøver og fornyede claims — ikke
+       et felt en kunde kan rette. */
+    assert.equal(ALLE_ROLLER.length, 7,
+      "antallet af roller er aendret — er der taget stilling til brugerarten " +
+      "i priser.js? En ny rolle uden en ville lydloest blive faktureret som desktop.");
+    for (const rolle of ALLE_ROLLER) {
+      assert.ok(permsFraRolle(rolle).length >= 0);
+    }
+    /* Admin har alt — ellers kunne administratoren ikke rydde op. */
+    assert.deepEqual(
+      ALLE_PERMS.filter((p) => !permsFraRolle("admin").includes(p)), [],
+      "admin mangler en permission og kan derfor ikke rydde op");
   });
 });
 
