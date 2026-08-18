@@ -18,7 +18,7 @@
  * beslutning 26: opdigtede tal findes KUN dér. Linten tæller derfor brug
  * UDEN FOR den faldbakke.
  *
- * ⚠ OG DEN ER ET LOFT, IKKE ET FORBUD. Der er 40 tilbage, og de fleste er
+ * ⚠ OG DEN ER ET LOFT, IKKE ET FORBUD. Der er 36 tilbage, og de fleste er
  * navneopslag — `demoBilNavn(id)` på en tabelrække, ikke et tal. De skal
  * væk, men ikke i én ombæring: en skærm ad gangen, med et klik bagefter.
  * Loftet kan kun gå NED. Falder den her prøve fordi tallet er steget, har
@@ -53,7 +53,7 @@ const NODE_FOR = {
 };
 
 /* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag. */
-const LOFT = 40;
+const LOFT = 36;
 
 const jsxFiler = (mappe) => {
   const ud = [];

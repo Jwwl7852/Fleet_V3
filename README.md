@@ -695,6 +695,28 @@ eneste tenant, og det sidste var en **pil** under et nøgletal der var tomt.
 Felterne hedder nu `flaade.nyeIndberetninger` og `flaade.nedetidDeltaPoint` og
 står i `demo-kpi.js` — kuren CLAUDE.md foreskriver.
 
+⚠ **RESERVATIONSNODEN MANGLEDE FRAVÆRET — og serveren kunne derfor ikke se det.**
+
+Målt på den udrullede base indeholdt `reservationer` **kun** bookinger:
+7 køretøj + 6 medarbejder, og **intet fravær**. Reglen på noden siger det
+modsatte: *"Skriver en reservation med kilde 'fravaer' på chaufføren, så en
+syg chauffør ikke kan disponeres."*
+
+`etapeskift` håndhæver de fem tjek mod netop den node. Et fravær der ikke står
+der, findes ikke for serveren — en booking kunne lande på en sygemeldt
+chauffør. Disponering-skærmen byggede sine **egne** af demo-fraværet og viste
+derfor en konflikt serveren ikke kendte: **skærmen VISER, funktionen
+HÅNDHÆVER**, og de to var uenige i den farlige retning.
+
+Provisioneringen udleder dem nu med den samme `reservationFraFravaer()`, og
+skærmen læser noden. Målt efter: 13 fra etaper + 10 fra fravær.
+
+⚠ **VÆRKSTEDSBESØGENE MANGLER STADIG — og det er et hul, ikke en detalje.**
+`besoeg` har **ingen node**. Reservationen med `kilde.type: vaerksted` og
+prioritet **40** — den højeste, højere end en booking — findes derfor kun i
+skærmen, og `etapeskift` kan ikke se at bilen står på liften. Skærmen bygger
+dem fortsat lokalt, med noten skrevet ved siden af.
+
 ⚠ **OG SKÆRMENE BLEV STÅENDE PÅ DEMOFILEN.** Da noderne blev seedet én for
 én, fulgte visningen ikke med. Målt: **47 steder** viste et demo-datasæt for
 en node der var seedet.

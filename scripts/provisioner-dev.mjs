@@ -44,6 +44,7 @@ import {
   DEMO_BYGNINGSOMKOSTNING,
 } from "../src/fleet/demo-facility.js";
 import { reservationerFraEtape } from "../src/fleet/etaper.js";
+import { reservationFraFravaer } from "../src/fleet/fravaer.js";
 import { sammenlignRegler, rapport, REGELFIL } from "./tjek-regler.mjs";
 
 import { beregnKpi } from "../src/fleet/kpi-aggregering.js";
@@ -498,8 +499,49 @@ async function main() {
       antalResv += 1;
     }
   }
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ OG EN SYG CHAUFFOER SKAL HELLER IKKE KUNNE DISPONERES.
+
+     Her stod KUN etapernes reservationer. Maalt paa den udrullede base:
+     7 koeretoej/booking og 6 medarbejder/booking — og INTET fravaer. Reglen i
+     firebase.rules.json siger det modsatte om noden: "Skriver en reservation
+     med kilde 'fravaer' paa chaufføren, saa en syg chauffoer ikke kan
+     disponeres."
+
+     Det er ikke en kosmetisk mangel. etapeskift haandhaever de fem tjek mod
+     reservationer, og et fravaer der ikke staar i noden, findes ikke for
+     serveren: en booking kunne lande paa en chauffoer der er sygemeldt.
+     Disponering-skaermen udledte sine EGNE af demo-fravaeret og viste derfor
+     en konflikt serveren ikke kendte — skaermen VISER, funktionen HAANDHAEVER,
+     og de to var uenige i den farlige retning.
+
+     ⚠ SAMME FUNKTION SOM SKAERMEN OG SERVEREN BRUGER. reservationFraFravaer()
+     baerer beslutningen om at hverken navn eller aarsag kommer med: posten er
+     synlig for enhver der kan laese reservationsnoden, og en helbredsoplysning
+     maa ikke laekke ud af sensitive/ ad bagvejen.
+     ══════════════════════════════════════════════════════════════════════ */
+  let antalFravaer = 0;
+  for (const f of DEMO_FRAVAER) {
+    let r;
+    try {
+      r = reservationFraFravaer(f);
+    } catch {
+      /* Et ufuldstaendigt fravaer reserverer ingenting. Funktionen kaster
+         frem for at gaette et tidsrum — se noten ved den. */
+      continue;
+    }
+    reservationer[r.ressourceType] ??= {};
+    reservationer[r.ressourceType][r.ressourceId] ??= {};
+    reservationer[r.ressourceType][r.ressourceId][`res-${f.id}`] = {
+      fra: r.fra, til: r.til, kilde: r.kilde,
+      oprettetAf: "provisioner", oprettetMs: Date.now(),
+    };
+    antalFravaer += 1;
+  }
+
   await db.ref(`tenants/${DEV_TENANT}/reservationer`).set(reservationer);
-  console.log(`  ${"reservationer".padEnd(24)} ${antalResv} (udledt af etaperne)`);
+  console.log(
+    `  ${"reservationer".padEnd(24)} ${antalResv} fra etaper, ${antalFravaer} fra fravær`);
 
   /* ══════════════════════════════════════════════════════════════════════
      ⚠ NØGLETALLENE SEEDES IKKE LÆNGERE — DE REGNES.

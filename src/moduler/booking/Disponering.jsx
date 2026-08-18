@@ -50,6 +50,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { num, pct, dato, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
@@ -67,13 +68,10 @@ import {
   reservationerFraEtape, graenseLabel, krydserGraense, tjekGeografi, enhedsIder,
   straekningFraEtape,
 } from "../../fleet/etaper.js";
-import { reservationFraFravaer } from "../../fleet/fravaer.js";
 import { TILSTAND } from "../../fleet/booking-state.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../../fleet/demo-personale.js";
 import { DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE } from "../../fleet/demo-vaerksted.js";
-import { DEMO_ETAPER, demoAabneEtaper } from "../../fleet/demo-etaper.js";
-import { DEMO_FRAVAER } from "../../fleet/demo-fravaer.js";
 
 /* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
    fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
@@ -104,8 +102,37 @@ const DAG_TIL_TIME = 18;
    læser den direkte fra basen. Byggede demo-sættet en anden form, ville de
    to sider stille det samme spørgsmål på hver sin måde, og kun den ene
    ville blive rettet den dag formen ændrede sig. */
-function byggReservationer() {
+/**
+ * Reservationerne fra NODEN, plus værkstedsbesøgene som ikke har en.
+ *
+ * ⚠ HER BLEV ALLE TRE KILDER BYGGET AF DEMO-DATA. Etaperne og fraværet ligger
+ * i `reservationer` — samme node `etapeskift` håndhæver imod — så skærmen
+ * stillede sit spørgsmål på sit eget grundlag og serveren på sit. To sider,
+ * ét spørgsmål, hver sin liste.
+ *
+ * ⚠ OG DE VAR IKKE ENS. Målt på den udrullede base indeholdt noden KUN
+ * bookinger: 7 køretøj + 6 medarbejder, og intet fravær. Skærmen viste en
+ * konflikt på en sygemeldt chauffør som serveren ikke kendte — skærmen VISER,
+ * funktionen HÅNDHÆVER, og de to var uenige i den farlige retning.
+ * Provisioneringen udleder nu fraværet med den samme
+ * `reservationFraFravaer()`.
+ *
+ * ⚠ VÆRKSTEDSBESØGENE BYGGES STADIG HER, og det er et hul der skal skrives
+ * ned frem for skjules: `besoeg` har INGEN node. Prioritet 40 — den højeste,
+ * højere end en booking — findes derfor kun i skærmen, og `etapeskift` kan
+ * ikke se at bilen står på liften. Se README.
+ */
+function byggReservationer(fraNoden) {
+  /* Noden er allerede på formen reservationer/<type>/<id>/<resId>;
+     tjekDisponering() slår op i netop den form, og serveren læser den
+     direkte fra basen. Her lægges besøgene oven i den samme form. */
   const ud = {};
+  for (const [type, prRessource] of Object.entries(fraNoden || {})) {
+    ud[type] = {};
+    for (const [resId, poster] of Object.entries(prRessource || {})) {
+      ud[type][resId] = Object.entries(poster || {}).map(([id, r]) => ({ id, ...r }));
+    }
+  }
   const laeg = (id, r) => {
     ud[r.ressourceType] ??= {};
     ud[r.ressourceType][r.ressourceId] ??= [];
@@ -113,14 +140,6 @@ function byggReservationer() {
   };
   for (const b of DEMO_BESOEG) {
     try { laeg(`r-${b.id}`, reservationFraOpgave(b)); } catch { /* ufuldstændig demo-post */ }
-  }
-  for (const f of DEMO_FRAVAER) {
-    try { laeg(`r-${f.id}`, reservationFraFravaer(f)); } catch { /* ditto */ }
-  }
-  for (const e of DEMO_ETAPER) {
-    try {
-      for (const [i, r] of reservationerFraEtape(e).entries()) laeg(`r-${e.id}-${i}`, r);
-    } catch { /* ditto */ }
   }
   return ud;
 }
@@ -150,7 +169,32 @@ export default function Disponering() {
   const ugeFra = D0;
   const ugeTil = D0 + 7 * DAG;
 
-  const reservationer = useMemo(byggReservationer, []);
+  /* ⚠ NODEN, IKKE EN KOPI. `reservationer` er et TRÆ — type → ressource →
+     reservation — og ikke en liste af poster. useListe giver derfor rækker
+     der ER ressourcetyperne ("koeretoej", "medarbejder"), med ressourcerne
+     som krop; træet samles igen nedenfor. Formen er nodens, ikke skærmens:
+     `tjekDisponering()` slår op i netop den, og serveren læser den direkte. */
+  const resv = useListe("reservationer", {
+    vindue: "alle", division: "alle", graense: 50,
+  });
+
+  /* ⚠ ETAPERNE ER OGSÅ EN NODE. De blev læst fra demo-sættet mens
+     `etapeskift` skrev til noden — så en etape man lige havde flyttet, stod
+     uændret i gitteret. division: "alle": gitteret viser hele flåden, og en
+     bus-etape hører på kalenderen også når Gods er valgt.
+
+     vindueDage dækker bagud; `fremDage` frem, fordi en disponeringskalender
+     per definition kigger FREM. useListe kaster hvis man sender både lig og
+     vindue, så det er det ene felt der bruges på tid. */
+  const etaperListe = useListe("etaper", {
+    ordnPaa: "fra", vindue: "fremad", fremDage: 60, vindueDage: 60,
+    division: "alle", graense: 500,
+  });
+  const etaper = etaperListe.data;
+  const fraNoden = useMemo(
+    () => Object.fromEntries(resv.data.map(({ id, ...prRessource }) => [id, prRessource])),
+    [resv.data]);
+  const reservationer = useMemo(() => byggReservationer(fraNoden), [fraNoden]);
   const personEfterId = new Map(DEMO_PERSONALE.map((p) => [p.id, p]));
   const bilEfterId = new Map(DEMO_KOERETOEJER.map((b) => [b.id, b]));
 
@@ -185,7 +229,7 @@ export default function Disponering() {
   }, [dagFra, dagTil, dagRaekker.length]);
 
   /* --- Ugesvisning: etaper --- */
-  const ugensEtaper = DEMO_ETAPER.filter(
+  const ugensEtaper = etaper.filter(
     (e) => enhedsIder(e).length && e.fra < ugeTil && ugeFra < e.til
   );
   const ugeRaekker = useMemo(() => {
@@ -219,7 +263,11 @@ export default function Disponering() {
     const kompetencer = DEMO_KOMPETENCER.filter((c) => c.personId === e.personId);
     /* Chaufførens strækninger i vinduet — køre-hviletid gælder personen, ikke
        turen, så alle hans ture skal med. */
-    const straekninger = DEMO_ETAPER
+    /* ⚠ ALLE HANS TURE, OGSÅ DEM UDEN FOR VINDUET. Køre-hviletid gælder
+       PERSONEN, ikke turen — men listen her er den hentede, og et vindue på
+       60 dage er bredere end døgn- og ugereglerne rækker. Hentede vi kun
+       ugen, ville en tur fra i søndags falde ud af ugesummen. */
+    const straekninger = etaper
       .filter((x) => x.personId === e.personId)
       .map(straekningFraEtape);
 
@@ -309,7 +357,7 @@ export default function Disponering() {
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Konflikter fund={fund} kpiTal={k.disponering.konflikter} />
         <div className="fc-grid">
-          <Uplanlagte />
+          <Uplanlagte etaper={etaper} />
           <Detalje post={valgt} personEfterId={personEfterId} />
         </div>
       </Gitter>
@@ -357,8 +405,15 @@ function Konflikter({ fund, kpiTal }) {
 
 /* ---- Uplanlagt: åbne etaper ------------------------------------------- */
 
-function Uplanlagte() {
-  const aabne = demoAabneEtaper();
+function Uplanlagte({ etaper }) {
+  /* ⚠ ETAPERNE KOMMER IND. De blev hentet i den ydre komponent, og en
+     underkomponent kan ikke se den variabel — praecis som KILDER i
+     Leverandoerer.jsx og sensitivt i Indberetninger.jsx. Byggeriet siger
+     ingenting: en ReferenceError ved rendering er ikke en byggefejl. */
+  /* ⚠ DE AABNE ETAPER KOM FRA demoAabneEtaper(), som filtrerer DEMO_ETAPER.
+     En AABEN etape venter paa en passende tur — det er hele grunden til at
+     skaermen findes — og den stod med demo-saettets, ikke kundens. */
+  const aabne = etaper.filter((e) => e.tilstand === "aaben");
   return (
     <Kort titel={`Uplanlagt (${aabne.length})`}>
       <Tabel
