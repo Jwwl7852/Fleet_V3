@@ -561,8 +561,9 @@ Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
 rettes.
 
 ⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
-optællingen: 16 felter venter på en kilde, og `KILDER_DER_MANGLER` navngiver
-den ene node der stadig mangler — `lagre`.
+optællingen: 16 felter venter på en kilde, og **`KILDER_DER_MANGLER` er tom**.
+Der er ikke flere noder uden data; de 16 felter venter på et SVAR, ikke på et
+seed.
 Får et domæne sin node, fjernes felterne ét sted, og prøven falder hvis
 optællingen ikke følger med.
 

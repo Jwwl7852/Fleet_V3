@@ -114,6 +114,44 @@ export const DEMO_OMKOSTNINGER = [
   },
 ];
 
+/* ---- Lagrene ------------------------------------------------------------
+ *
+ * ⚠ EGEN NODE, IKKE EN FJERDE `art`. `omkostninger` har et LUKKET enum
+ * (bil | passage | agent) i firebase.rules.json, og et lager bærer desuden
+ * `kapacitet`, som ikke er en sats. `lagre` har eksisteret som node hele
+ * tiden — den var bare tom.
+ *
+ * ⚠ OG DET VAR IKKE HARMLØST AT DEN VAR TOM. `omkostningsark()` byggede slet
+ * ikke `lagre`, og `beregnForloeb()` slår op i `satsark.lagre[lagerId]`.
+ * Hvert lagerophold ramte undefined og blev sprunget over i TAVSHED: fem døgn
+ * gav 0 øre og `estimeret: false`. Se test/pricing-forloeb.test.mjs.
+ *
+ * ⚠ TO SATSARTER PR. LAGER, OG DE MÅLER IKKE DET SAMME.
+ * `haandteringSatser` er ind/ud — ét greb, uanset hvor længe godset står.
+ * `satser` er døgnene. Slog man dem sammen, ville et ophold på én dag koste
+ * det samme som et på tredive, eller omvendt.
+ *
+ * ⚠ friDage LIGGER PÅ SATSEN, ikke i beregningen. Ændrer lageret sin
+ * friperiode, er det en NY sats med `gyldigFra` — beslutning 7. En konstant
+ * i koden ville ændre prisen på ophold der allerede er afregnet.
+ */
+export const DEMO_LAGRE = [
+  { id: "lag-kolding", navn: "Kolding", division: "gods", kapacitet: 420,
+    satser: sats(4500, "prLagerdoegn"),
+    haandteringSatser: sats(25000, "fastPrBooking") },
+  { id: "lag-aalborg", navn: "Aalborg", division: "faelles", kapacitet: 180,
+    satser: sats(5200, "prLagerdoegn"),
+    haandteringSatser: sats(28000, "fastPrBooking") },
+  /* ⚠ ODENSE HAR INGEN DØGNSATS — MED VILJE. Lageret findes, håndteringen er
+     aftalt, og døgnprisen er ikke forhandlet endnu. Uden en post som denne
+     ville "mangler sats" aldrig kunne ses i dev, og en tælling der kun kan
+     give det rigtige svar, kan ikke tage fejl på en måde nogen opdager.
+     Det er samme grund som den åbne indkøbsordre og den planlagte
+     facility-opgave. */
+  { id: "lag-odense", navn: "Kølehus Odense", division: "bus", kapacitet: 90,
+    haandteringSatser: sats(31000, "fastPrBooking") },
+];
+
 /* ══════════════════════════════════════════════════════════════════════════
    SELVKONTROL — kun i DEV.
    ⚠ TO SÆT DER PEGER PÅ HINANDEN. En tastefejl i et køretøjs-id giver en

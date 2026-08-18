@@ -510,12 +510,77 @@
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|lagre.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
           "$lagerId": {
-            ".validate": "newData.hasChildren(['division'])",
+            // ⚠ NODEN VALIDEREDE KUN division, og de to satslister havde et
+            // indeks men ingen form. Et beloeb kunne komme ind som FLOAT eller
+            // som en streng, og beslutning 2 stod dermed kun i en kommentar.
+            // Det er samme hul som "indkoeb" havde — og her var det vaerre,
+            // fordi INTET skrev til noden: den var tom, og en tom node kan
+            // ikke afsloere sin egen manglende validering.
+            ".validate": "newData.hasChildren(['navn', 'division'])",
+
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             },
-            "satser": { ".indexOn": ["gyldigFra"] },
-            "haandteringSatser": { ".indexOn": ["gyldigFra"] }
+
+            // Kapaciteten er PLADSER, ikke oere. Den er ikke en sats og hoerer
+            // derfor paa lageret selv.
+            "kapacitet": { ".validate": "newData.isNumber() && newData.val() > 0" },
+
+            // ⚠ TO SATSARTER, OG DE MAALER IKKE DET SAMME.
+            // haandteringSatser er ind/ud — ét greb, uanset hvor laenge godset
+            // staar. satser er doegnene. Slog man dem sammen, ville et ophold
+            // paa én dag koste det samme som et paa tredive, eller omvendt.
+            //
+            // Formen er den SAMME som satser/$gruppe/satser, og forbeholdet
+            // derovre gaelder ordret: reglen kan ikke forbyde en overskrivning
+            // uden ogsaa at forbyde en rettelse af en tastefejl samme dag. Den
+            // haandhaever FORMEN; beslutning 7 haandhaeves af skaermen.
+            "satser": {
+              ".indexOn": ["gyldigFra"],
+              "$satsId": {
+                ".validate": "newData.hasChildren(['gyldigFra', 'beloebOere', 'metode'])",
+                "gyldigFra": { ".validate": "newData.isNumber()" },
+                // Hele oere, som alt andet. En float bliver 1849,999 i en sum.
+                "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000000000" },
+                // ⚠ INGEN ENUM HER, OG DET FOELGER PRAECEDENSEN i
+                // satser/$gruppe/satser. Ordlisten er METODER i pricing.js, og
+                // en afskrift i regelfilen ville vaere et andet sted den stod —
+                // med sin egen udrulningscyklus. Foerste udkast af den her regel
+                // skrev prPalleDoegn og prKvadratmeterDoegn; de rigtige hedder
+                // prPalledoegn og prKvadratmeterdoegn. En proeve i
+                // test/pricing-forloeb.test.mjs holder demo-satserne op mod
+                // ALLE_METODER, saa formen prøves dér hvor listen bor.
+                "metode": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+                // ⚠ FRIDAGENE LIGGER PAA SATSEN, ikke i beregningen. Aendrer
+                // lageret sin friperiode, er det en NY sats med gyldigFra — en
+                // konstant i koden ville aendre prisen paa ophold der allerede
+                // er afregnet.
+                "friDage": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+                "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                "aktiv": { ".validate": "newData.isBoolean()" },
+                "oprettetAf": { ".validate": "newData.isString()" },
+                "oprettetMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
+            "haandteringSatser": {
+              ".indexOn": ["gyldigFra"],
+              "$satsId": {
+                ".validate": "newData.hasChildren(['gyldigFra', 'beloebOere', 'metode'])",
+                "gyldigFra": { ".validate": "newData.isNumber()" },
+                "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000000000" },
+                "metode": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+                "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                "aktiv": { ".validate": "newData.isBoolean()" },
+                "oprettetAf": { ".validate": "newData.isString()" },
+                "oprettetMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
+            "$andet": { ".validate": false }
           }
         },
 

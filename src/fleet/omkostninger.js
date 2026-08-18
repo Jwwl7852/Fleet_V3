@@ -126,9 +126,31 @@ const liste = (v) => (Array.isArray(v) ? v : Object.values(v || {}));
  * navn i databasen, fordi de tre arter ellers skulle valideres hver for sig —
  * og oversættelsen sker her, ét sted.
  */
-export function omkostningsark(raekker = [], { koeretoejer = [] } = {}) {
-  const ark = { biler: {}, poster: {}, agenter: {} };
+export function omkostningsark(raekker = [], { koeretoejer = [], lagre = [] } = {}) {
+  const ark = { biler: {}, poster: {}, agenter: {}, lagre: {} };
   const ktMap = Object.fromEntries(koeretoejer.map((k) => [k.id, k]));
+
+  /* ⚠ LAGRENE KOM ALDRIG MED I ARKET, OG DET VAR IKKE HARMLØST.
+     `beregnForloeb()` slår op i `satsark.lagre[lagerId]` — og den nøgle
+     fandtes ikke, så HVERT lagerophold ramte undefined og blev sprunget over
+     i tavshed. Et ophold på fem døgn gav 0 øre og `estimeret: false`: et
+     estimat der udgav sig for at være præcist, med hele lageromkostningen
+     væk. Se noten ved beregnForloeb().
+
+     ⚠ OG LAGRENE ER EN EGEN NODE, ikke en fjerde `art` i `omkostninger`.
+     Enumet dér er lukket (`bil|passage|agent`), og et lager bærer desuden
+     `kapacitet`, som ikke er en sats. De to kunne slås sammen — men det er en
+     beslutning om modellen, ikke en oversættelse, og den hører i PRISER.md. */
+  for (const l of lagre) {
+    if (!l?.id) continue;
+    ark.lagre[l.id] = {
+      navn: l.navn || l.id,
+      kapacitet: Number.isFinite(l.kapacitet) ? l.kapacitet : null,
+      division: l.division || "faelles",
+      satser: liste(l.satser),
+      haandteringSatser: liste(l.haandteringSatser),
+    };
+  }
 
   for (const r of raekker) {
     const satser = liste(r.satser);

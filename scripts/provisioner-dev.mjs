@@ -29,7 +29,7 @@ import {
 import {
   DEMO_REOLPLADSER, DEMO_VARER, DEMO_BEHOLDNING, DEMO_CARRIERS, DEMO_ENHEDER,
 } from "../src/fleet/demo-lager.js";
-import { DEMO_OMKOSTNINGER } from "../src/fleet/demo-omkostninger.js";
+import { DEMO_OMKOSTNINGER, DEMO_LAGRE } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
@@ -176,6 +176,15 @@ export const SEED = [
      Bookingopsaetning.jsx indtil PRISER.md etape 5; uden det her seed ville
      skaermen staa tom i dev, og eksempelberegningen ville vise "ingen sats". */
   { node: "omkostninger", data: DEMO_OMKOSTNINGER, form: "liste" },
+  /* ⚠ LAGRENE VAR DEN SIDSTE NODE UDEN DATA — og tomheden var ikke
+     harmloes. omkostningsark() byggede slet ikke `lagre`, og
+     beregnForloeb() slaar op i satsark.lagre[lagerId]: hvert lagerophold
+     ramte undefined og blev sprunget over i TAVSHED. Fem doegn gav 0 oere
+     og estimeret: false. Se test/pricing-forloeb.test.mjs.
+
+     Satserne er BOERN af posten, som prislisten paa en leverandoer. */
+  { node: "lagre", data: DEMO_LAGRE, form: "liste-med-boern",
+    boern: ["satser", "haandteringSatser"] },
   /* ⚠ GRUNDLAGET ER .write: false FOR ALLE, ogsaa admin — som beholdning og
      kasseudlaan. Provisioneringen koerer paa admin-SDK og gaar uden om
      reglerne; uden det her seed ville Fakturering staa tom i dev, og saa

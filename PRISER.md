@@ -28,7 +28,7 @@ prisliste er vores omsætning; vognmandens er hans.
 | Satsarket (biler, poster, agenter) | `omkostninger`-noden | ✅ Ude af JSX-filen i etape 5. ⚠ Det er **omkostninger**, ikke priser |
 | `satser`-noden | `firebase.rules.json` | Findes, med `gyldigFra`-indeks — men **intet skriver til den** |
 | Prisgruppe | `kunder/<id>.prisgruppe` | "A"/"B". Peger på et satssæt der ikke findes som data |
-| Lagersatser | `lagre/<id>/{satser,haandteringSatser}` | Node findes, bruges af `beregnForloeb()` |
+| Lagersatser | `lagre/<id>/{satser,haandteringSatser}` | ✅ Node, regler, data og prøver. ⚠ Rækken her sagde "bruges af `beregnForloeb()`" — den blev **slået op** af den, men `omkostningsark()` byggede aldrig `lagre`, så hvert opslag ramte `undefined` og opholdet blev sprunget over i tavshed |
 | Rabat i basispoint | `beloeb.js` | **Bygget.** `BPS_SKALA`, `rabatteretSatsOere()`, `pctTilBps()` |
 | Warehouse-ydelser | `warehouse.js` | `YDELSE` + `afregningslinjer()` bygget; satsopslaget injiceres udefra |
 

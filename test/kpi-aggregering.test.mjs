@@ -94,9 +94,14 @@ test("⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION", () => {
 
 test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
   /* Så efterslæbet kan tælles frem for at blive opdaget felt for felt. */
-  for (const n of ["lagre"]) {
-    assert.ok(KILDER_DER_MANGLER.includes(n));
-  }
+  /* ⚠ LISTEN ER TOM NU, OG DET ER PROEVENS SVAR.
+     Fem noder har staaet her: opgaver, indkoeb, fakturaer, leverandoerer og
+     facility — og `lagre` var den sidste. Der er ingen node uden data
+     tilbage. Bliver listen ikke-tom igen, er det fordi nogen har fundet et
+     nyt hul, og saa skal det navngives her frem for at blive opdaget felt
+     for felt. */
+  assert.deepEqual(KILDER_DER_MANGLER, [],
+    `endnu en kilde uden data: ${KILDER_DER_MANGLER.join(", ")}`);
   /* ⚠ LISTEN ER EN OPTÆLLING AF EFTERSLÆBET, IKKE EN FAST TEKST.
      `opgaver` faldt af den da noden blev seedet; `indkoeb` fulgte efter,
      sammen med `fakturaer`. Begge havde regler, indeks og validering — og

@@ -95,7 +95,13 @@ export const KILDER_DER_MANGLER = [
      FORBYDER `division` på aktiver, lokationer og fejl. Det var en forkert
      slutning: facility er FÆLLES, og et fælles tal skal vises begge steder,
      ikke skjules begge steder. Se den lange note ved UDEN_DIVISION. */
-  "lagre",
+  /* ⚠ LISTEN ER TOM. Alle fem noder der stod her — opgaver, indkoeb,
+     fakturaer, leverandoerer og facility — er bygget eller seedet, og 
+     var den sidste. Konstanten bliver staaende: den er formen for det
+     naeste hul, og en tom liste er et SVAR — der er ingen node uden data.
+
+     De 16 felter der stadig er null i udenKilde(), venter ikke paa et seed.
+     De venter paa et SVAR: kan flaaden og bemandingen deles paa division? */
 ];
 
 const DAG = 86400000;

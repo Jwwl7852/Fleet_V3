@@ -283,11 +283,30 @@ export function lagerUd(ophold) {
  * }
  * satsark.lagre: { [lagerId]: { navn, kapacitet, satser: [...], haandteringSatser: [...] } }
  *
- * → { etaper, lagerlinjer, totalOere, estimeret, snapshot }
+ * → { etaper, lagerlinjer, totalOere, estimeret, manglerSats, snapshot }
  *
  * estimeret er sandt hvis mindst én lagerlinje hviler på et estimat. Så ved
  * forbrugeren at tallet kan flytte sig, og kan skrive det — i stedet for at
  * vise et estimat som var det en faktura.
+ *
+ * ⚠ EN MANGLENDE SATS ER IKKE NUL, OG TRE STEDER TROEDE DEN VAR DET.
+ *
+ * Funktionen sprang tavst over et lagerophold hvis lageret ikke fandtes i
+ * arket, og over hver af de to satslinjer hvis satsen manglede på datoen.
+ * Kommentaren nede i løkken påstod at "lagerdagslinjen udelades ALDRIG. Der
+ * findes ingen kodesti hvor et estimat regnes uden den" — der fandtes tre.
+ *
+ * Målt: et ophold på fem døgn gav ingen lagerlinjer, totalOere 0 og
+ * estimeret false. Altså et estimat der udgav sig for at være præcist, og som
+ * manglede hele lageromkostningen. Det er værre end en fejl i tallet: tallet
+ * så FÆRDIGT ud.
+ *
+ * Nu står linjen der med beloebOere null og manglerSats true, og totalOere
+ * bliver null — samme regel som momssatsen der mangler, og som
+ * ikkeFaktureretOere(): en sum med et ubesvaret led er ikke en sum.
+ *
+ * ⚠ FUNKTIONEN HAVDE INGEN PRØVER. Det er sådan tre tavse spring overlevede
+ * i en fil hvor alt andet er prøvet. Se test/pricing-forloeb.test.mjs.
  */
 export function beregnForloeb(forloeb, satsark, { paaMs = Date.now() } = {}) {
   const snapshot = { beregnetMs: paaMs, satser: {} };
@@ -301,51 +320,81 @@ export function beregnForloeb(forloeb, satsark, { paaMs = Date.now() } = {}) {
   const lagerlinjer = [];
   for (const ophold of forloeb.lagerophold || []) {
     const lager = satsark.lagre?.[ophold.lagerId];
-    if (!lager) continue;
 
     const ud = lagerUd(ophold);
     const doegn = lagerdoegn(ophold.indMs, ud.ms);
 
-    const haandtering = satsPaa(lager.haandteringSatser, paaMs);
-    if (haandtering) {
-      const id = `lager:${ophold.lagerId}:haandtering`;
-      snapshot.satser[id] = { ...haandtering };
+    /* ⚠ ET UKENDT LAGER SPRINGES IKKE OVER. Godset har stået et sted, og
+       opholdet er en kendsgerning uanset om vi har satsen. `continue` her
+       gjorde hele opholdet usynligt — og fordi der så ingen linjer var, blev
+       summen 0 og estimatet "præcist". En linje man kan SE, er det eneste
+       der får nogen til at oprette lageret. */
+    if (!lager) {
       lagerlinjer.push({
-        id, navn: `Lagerhåndtering ind/ud – ${lager.navn}`,
-        antal: 1, beloebOere: linjebeloeb(haandtering, 1), estimeret: false,
-      });
-    }
-
-    /* Lagerdagslinjen udelades ALDRIG. Der findes ingen kodesti hvor et
-       estimat regnes uden den. */
-    const doegnsats = satsPaa(lager.satser, paaMs);
-    if (doegnsats) {
-      const id = `lager:${ophold.lagerId}:doegn`;
-      snapshot.satser[id] = { ...doegnsats };
-      const fri = doegnsats.friDage || 0;
-      lagerlinjer.push({
-        id,
-        navn: `Lagerdage – ${lager.navn}`,
+        id: `lager:${ophold.lagerId}:ukendt`,
+        navn: `Lagerophold – ukendt lager (${ophold.lagerId})`,
         antal: doegn,
-        friDage: fri,
-        fakturerbareDage: Math.max(0, doegn - fri),
-        beloebOere: linjebeloeb(doegnsats, doegn),
+        beloebOere: null,
+        manglerSats: true,
         estimeret: ud.estimeret,
         grundlag: ud.grundlag,
         udMs: ud.ms,
       });
+      continue;
     }
+
+    /* ⚠ BEGGE LINJER SKRIVES, OGSÅ UDEN SATS. Før stod hver af dem i sin
+       `if (sats)`, og en manglende sats blev derfor til INGEN linje frem for
+       til et synligt hul. Samme regel som afregningslinjer() i warehouse.js:
+       linjen står med prisen null og hedder "mangler sats". */
+    const haandtering = satsPaa(lager.haandteringSatser, paaMs);
+    const hId = `lager:${ophold.lagerId}:haandtering`;
+    if (haandtering) snapshot.satser[hId] = { ...haandtering };
+    lagerlinjer.push({
+      id: hId,
+      navn: `Lagerhåndtering ind/ud – ${lager.navn}`,
+      antal: 1,
+      beloebOere: haandtering ? linjebeloeb(haandtering, 1) : null,
+      manglerSats: !haandtering,
+      estimeret: false,
+    });
+
+    /* Lagerdagslinjen udelades ALDRIG. Nu passer sætningen: der er ingen
+       kodesti hvor et lagerophold ikke får sin døgnlinje. */
+    const doegnsats = satsPaa(lager.satser, paaMs);
+    const dId = `lager:${ophold.lagerId}:doegn`;
+    if (doegnsats) snapshot.satser[dId] = { ...doegnsats };
+    const fri = doegnsats?.friDage || 0;
+    lagerlinjer.push({
+      id: dId,
+      navn: `Lagerdage – ${lager.navn}`,
+      antal: doegn,
+      friDage: fri,
+      fakturerbareDage: Math.max(0, doegn - fri),
+      beloebOere: doegnsats ? linjebeloeb(doegnsats, doegn) : null,
+      manglerSats: !doegnsats,
+      estimeret: ud.estimeret,
+      grundlag: ud.grundlag,
+      udMs: ud.ms,
+    });
   }
 
-  const totalOere =
-    etaper.reduce((s, e) => s + e.totalOere, 0) +
-    lagerlinjer.reduce((s, l) => s + l.beloebOere, 0);
+  /* ⚠ EN SUM MED ET UBESVARET LED ER IKKE EN SUM. Manglede bare én sats,
+     ville en total uden den se fuldt så færdig ud som en rigtig — og den
+     ville være for LAV, hvilket er den retning ingen opdager. Samme regel
+     som ikkeFaktureretOere() og som momssatsen der mangler. */
+  const manglerSats = lagerlinjer.some((l) => l.manglerSats);
+  const totalOere = manglerSats
+    ? null
+    : etaper.reduce((s, e) => s + e.totalOere, 0) +
+      lagerlinjer.reduce((s, l) => s + l.beloebOere, 0);
 
   return {
     etaper,
     lagerlinjer,
     totalOere,
     estimeret: lagerlinjer.some((l) => l.estimeret),
+    manglerSats,
     snapshot,
   };
 }
