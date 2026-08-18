@@ -16,16 +16,16 @@ export const NAV = [
     under: "Operativt overblik og økonomi",
   },
   {
-    key: "booking", sti: "/booking", label: "Booking & Opgaver",
-    titel: "Booking & Opgaver",
+    key: "booking", sti: "/booking", label: "Planning",
+    titel: "Planning",
     under: "Fra forespørgsel til udført arbejde, dokumentation og fakturering.",
     born: [
       { key: "bookingOversigt", sti: "/booking", label: "Alle opgaver",
-        titel: "Booking & Opgaver", under: "Fra forespørgsel til udført arbejde, dokumentation og fakturering." },
+        titel: "Planning", under: "Fra forespørgsel til udført arbejde, dokumentation og fakturering." },
       { key: "nyForespoergsel", sti: "/booking/ny", label: "Ny forespørgsel",
-        titel: "Booking – ny transportforespørgsel", under: "Case-håndterer indsender forespørgsel til planlægning." },
+        titel: "Planning – ny transportforespørgsel", under: "Case-håndterer indsender forespørgsel til planlægning." },
       { key: "forslag", sti: "/booking/forslag/:id", label: "Forslag & reservation", skjulINav: true,
-        titel: "Booking – forslag & reservation", under: "Disponent har udarbejdet forslag. Koordinator godkender." },
+        titel: "Planning – forslag & reservation", under: "Disponent har udarbejdet forslag. Koordinator godkender." },
       { key: "disponering", sti: "/booking/disponering", label: "Disponering",
         titel: "Disponering", under: "Planlæg og disponér opgaver på biler og chauffører" },
       { /* Beslutning 22: skaermen hed Live-kort, og navnet lovede en sporing der

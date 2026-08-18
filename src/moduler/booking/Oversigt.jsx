@@ -1,5 +1,5 @@
 /* src/moduler/booking/Oversigt.jsx
- * Booking & Opgaver
+ * Planning (ruten og noden hedder stadig booking / bookinger)
  *
  * ⚠ TABELLEN VISER BOOKINGENS TILSTAND FRA booking-state.js — ikke en fri
  * statusstreng. Mockuppen havde tekster som "Afventer" og "Booket" skrevet i

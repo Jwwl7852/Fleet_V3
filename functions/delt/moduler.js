@@ -51,7 +51,7 @@ export const MODUL = {
   },
   booking: {
     navKey: "booking",
-    label: "Booking & Opgaver",
+    label: "Planning",
     hvad: "Forespørgsler, forslag, disponering og ruteoverblik.",
   },
   bemanding: {

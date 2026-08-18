@@ -1,5 +1,5 @@
 /* src/fleet/demo-opgaver.js
- * Demo-opgaver til Booking & Opgaver.
+ * Demo-opgaver til Planning.
  *
  * En OPGAVE er værksteds- eller facilityarbejde (beslutning 21) — den er ikke
  * en etape og ikke en booking. `art` styrer feltskemaet; se opgaver.js.

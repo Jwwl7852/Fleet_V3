@@ -212,7 +212,7 @@ obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
 Det gælder **filen**. Databasen er først dækket når `npm run regler:tjek` er grøn:
 reglerne var aldrig udrullet til DEV, og prøverne kunne ikke se det (beslutning 29).
 
-### To moduler har skiftet visningsnavn: Fleet og Procure
+### Fire moduler har skiftet navn — og kun ét skiftede nøgle
 
 **Flåde hedder Fleet, og Indkøb hedder Procure — men kun på skærmen.**
 Ruten er stadig `/flaade` og `/indkoeb`, noden hedder stadig `indkoeb`,
@@ -225,6 +225,30 @@ stien står i `firebase.rules.json`. En omdøbning af dem er en datamigrering
 plus en genudstedelse af alle tokens — ikke en tekstændring. Derfor skifter
 **navnet**, ikke **nøglen**.
 
+**Turtlebooking hedder Unitbooking, og det gik hele vejen** — navn, rute,
+modulnøgle, filnavne og mappe. **Booking & Opgaver hedder Planning, og det
+kunne ikke.** Forskellen er ikke en holdning; den blev **målt i den udrullede
+base**, hver gang, før en linje blev rørt.
+
+| Modul | Nyt navn | Nøglen skiftede | Fordi |
+|---|---|---|---|
+| Flåde | **Fleet** | nej | Nøglen `flaade` står i hver tenants `moduler/`-node |
+| Indkøb | **Procure** | nej | Dertil noden `indkoeb/` og permissionen `indkoeb.skriv` — mintet ind i udstedte tokens |
+| Turtlebooking | **Unitbooking** | **ja** | **Ingen tenant bar nøglen.** Noderne hedder `kasser`, `kasseudlaan`, `reolpladser` — ikke modulet |
+| Booking & Opgaver | **Planning** | nej | Nøglen `booking` står i to prislister under `udbyder/prisliste`, og den ene er peget på af et **låst fakturagrundlag** |
+
+⚠ **Det sidste er den vigtigste række.** Et frosset fakturagrundlag
+dokumenterer hvad der blev faktureret. Omdøbes modulnøglen i den prisliste
+det peger på, dokumenterer det noget andet end det der skete — og et
+regnskabsbilag der er blevet uenigt med sig selv, kan ikke gøres enigt igen.
+Dertil ti permissions (`booking.godkend`, `booking.opret`,
+`booking.sensitiveLaes` …) i udstedte tokens, og noden `bookinger`.
+
+**Reglen der falder ud af de fire:** et modulnavn kan skiftes gratis indtil
+den første kunde krydser modulet af eller den første faktura peger på det.
+Derefter er det en migrering af data nogen har betalt efter. Mål det i den
+**udrullede** base — ikke i koden, og ikke ved at huske.
+
 ⚠ **Og derfor er det ikke en blind erstatning.** `Indkøb` som *modulnavn*
 skifter til Procure; `indkøb` som *almindeligt dansk ord* gør ikke. Skærmen
 siger stadig "Registrér indkøb", "Indkøb i perioden" og
@@ -232,6 +256,13 @@ siger stadig "Registrér indkøb", "Indkøb i perioden" og
 modul. Samme skel på `Flåde` mod `flåden`: "Flåden er ikke en liste af
 biler" står uændret på Fleet-skærmen, fordi sætningen handler om flåden.
 Havde vi erstattet på ordet, ville tabellen have heddet "Procure i perioden".
+
+⚠ **Skarpest på Planning.** Ordet `booking` står 417 gange i `src/`, og kun
+**6** af dem var modulets navn. Resten er **tingen**: noden `bookinger`,
+`bookingId`, "bookingens tilstand er afledt", `fastPrBooking`. En booking er
+en transportopgave med etaper (beslutning 16) — den holder op med at hedde
+det, fordi menupunktet gør det. Derfor hedder underskærmen stadig
+**Bookingopsætning**: den opsætter bookinger.
 
 Kommentarer og filhoveder beholder de danske navne — de står ved siden af
 `src/moduler/flaade/` og `indkoeb/`, og en kommentar der sagde "Fleet" om

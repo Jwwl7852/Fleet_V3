@@ -77,7 +77,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Line A.",
     fejlMs: dag(-1, 8, 52),
     kontekst: {
-      kunde: "Nordisk Logistik A/S", side: "/booking", modul: "Booking",
+      kunde: "Nordisk Logistik A/S", side: "/booking", modul: "Planning",
       browser: "Edge 127", version: "FleetControl 3.0.0",
       brugerId: "uid-preben", tidspunkt: "17-08-2026 08:52",
       fejlId: null,
@@ -98,7 +98,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: null,
     fejlMs: null,
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/booking/forslag", modul: "Booking",
+      kunde: "DEMO Transport ApS", side: "/booking/forslag", modul: "Planning",
       browser: "Chrome 126", version: "FleetControl 3.0.0",
       brugerId: "uid-mette", tidspunkt: "18-08-2026 11:05", fejlId: null,
     },
