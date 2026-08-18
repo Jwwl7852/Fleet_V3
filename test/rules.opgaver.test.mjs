@@ -24,6 +24,7 @@ import { ref, set, update } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import { ALLE_OPGAVE_ARTER } from "../src/fleet/opgaver.js";
+import { ALLE_PRIORITETER } from "../src/fleet/prioritet.js";
 
 /* Egen tenant: node --test kører testfilerne parallelt. */
 const TENANT = "vognmandOpg";
@@ -160,6 +161,92 @@ describe("beslutning 21 — art på opgaver", () => {
     const felter = new Set(DEMO_OPGAVER.flatMap((o) => Object.keys(o)));
     for (const f of indeks) {
       assert.ok(felter.has(f), `.indexOn indekserer "${f}", som ingen opgave har`);
+    }
+  });
+});
+
+describe("prioriteten er tre trin, og serveren kender dem", () => {
+  /* ⚠ NODEN ER LUKKET MED $andet: false. Uden en regel for feltet kunne
+     prioriteten slet IKKE skrives — skærmen ville vise en vælger, serveren
+     ville afvise, og fejlen ville se ud som en manglende permission. */
+
+  it("tager hvert af de tre trin", async () => {
+    const db = som("uid-a");
+    for (const p of ALLE_PRIORITETER) {
+      await assertSucceeds(set(ref(db, sti(`pri-${p}`)),
+        opgave({ art: "vaerksted", prioritet: p })));
+    }
+  });
+
+  it("⚠ AFVISER LABELET. Værdien er \"normal\" — \"mellem\" er det man SKRIVER", async () => {
+    /* Den her er hele grunden til at ordlisten står som en regex og ikke som
+       et længdetjek. "mellem" er præcis det ord skærmen viser, og en
+       udvikler der skriver værdien af efter labelet, rammer det. Slap
+       reglen den igennem, ville posten hverken tælle som lav, mellem eller
+       høj på Driftskalenderen — den ville forsvinde mellem tre tal der
+       alle så rigtige ud. */
+    await assertFails(set(ref(som("uid-a"), sti("pri-label")),
+      opgave({ art: "vaerksted", prioritet: "mellem" })));
+  });
+
+  it("afviser en prioritet der slet ikke findes", async () => {
+    await assertFails(set(ref(som("uid-a"), sti("pri-x")),
+      opgave({ art: "vaerksted", prioritet: "kritisk" })));
+    await assertFails(set(ref(som("uid-a"), sti("pri-tal")),
+      opgave({ art: "vaerksted", prioritet: 1 })));
+  });
+
+  it("⚠ EN OPGAVE UDEN PRIORITET ER GYLDIG — 'ikke vurderet' er et svar", async () => {
+    /* Feltet står med vilje IKKE i hasChildren. Krævede vi det, ville den der
+       opretter, gætte — og så var alt "Mellem" og tallet ubrugeligt. Se
+       prioritet.js: prioritetFor() svarer null, aldrig PRIORITET.normal. */
+    await assertSucceeds(set(ref(som("uid-a"), sti("pri-uden")),
+      opgave({ art: "vaerksted" })));
+  });
+
+  it("⚠ SAMME ORDLISTE TRE STEDER — ikke en afskrift der kan drive", () => {
+    /* Tre noder bærer feltet: opgaver, indberetninger og plukordrer. Skrev
+       de hver sin ordliste, ville Driftskalenderens kasser tælle to noder
+       med hvert sit ordforråd — og de står side om side i den samme kø.
+
+       Prøven læser REGELFILEN og holder den op mod prioritet.js. En regex
+       over rå tekst ville have været sin egen fejlkilde; her parses JSON,
+       efter at kommentarlinjerne er strippet (regelfilen bærer //-noter,
+       som Firebase tillader og JSON.parse ikke).
+
+       ⚠ Og den kigger på ALLE tre. Rettede nogen kun den ene, ville de to
+       andre stå tilbage — det er præcis sådan de to demo-datasæt for én
+       node opstod. */
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10))
+        .filter((l) => !l.trim().startsWith("//"))
+        .join(String.fromCharCode(10))
+    );
+    const t = regler.rules.tenants.$tenantId;
+    const steder = {
+      opgaver: t.opgaver.$opgaveId.prioritet,
+      indberetninger: t.indberetninger.$id.prioritet,
+      plukordrer: t.plukordrer.$ordreId.prioritet,
+    };
+    /* "matches(/^(" og ")$/" skrives af tegn frem for som literaler, saa
+       proeven ikke selv skal escape en regex den handler om. */
+    const SKRAA = String.fromCharCode(47);
+    const AABN = "matches(" + SKRAA + String.fromCharCode(94) + "(";
+    const LUK = ")" + String.fromCharCode(36) + SKRAA;
+    const forventet = [...ALLE_PRIORITETER].sort();
+    for (const [node, regel] of Object.entries(steder)) {
+      assert.ok(regel, `${node} har ingen regel for prioritet — noden er lukket`);
+      /* Ordlisten hentes ved at klippe mellem to faste stumper frem for med
+         en regex. En regex om en regex er sin egen fejlkilde — og fejler den,
+         fejler den ved at finde INGENTING, hvilket ser ud som en manglende
+         regel frem for en daarlig proeve. */
+      const v = regel[".validate"];
+      const a = v.indexOf(AABN);
+      assert.ok(a >= 0, `${node}s prioritet valideres ikke mod en ordliste`);
+      const trin = v.slice(a + AABN.length, v.indexOf(LUK, a));
+      assert.deepEqual(trin.split("|").sort(), forventet,
+        `${node} kender ${trin} — prioritet.js kender ${ALLE_PRIORITETER}`);
     }
   });
 });

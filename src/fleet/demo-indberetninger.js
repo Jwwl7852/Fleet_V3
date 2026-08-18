@@ -76,6 +76,12 @@ export const DEMO_INDBERETNINGER = [
      meldt, ingen har vurderet den. `ingenOmkostning` er heller ikke sat —
      det felt er en BESLUTNING om at der ingen bliver, og den er ikke truffet. */
   {
+    /* ⚠ OG DEN ER OGSAA DEN ENESTE UDEN PRIORITET. De to hoerer sammen:
+       en indberetning med forloeb "ny" er lige kommet ind fra chaufføren, og
+       prioriteten saettes i TRIAGEN af en vaerkfoerer. "Ikke vurderet" er et
+       svar og faar sit eget tal paa Driftskalenderen — havde hver post en
+       prioritet, ville det tal altid vaere 0.
+       Se prioritet.js: prioritetFor() svarer null, ALDRIG PRIORITET.normal. */
     id: "ind-000", art: "koeretoejsskade", forloeb: "ny",
     oprettetAf: "uid-lars", oprettetMs: NU - 2 * T,
     /* ⚠ kt-106, IKKE kt-104. Foerste udgave laa paa kt-104, som allerede
@@ -92,6 +98,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-001",
     art: "godsskade",
     forloeb: "afventerFaktura",
+    prioritet: "hoej",
     oprettetAf: "uid-lars",              /* ⚠ UID: hvem der GJORDE det. */
     oprettetMs: NU - 2 * D + 9 * T,
     koeretoejId: "kt-012",
@@ -141,6 +148,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-002",
     art: "reparation",
     forloeb: "paaVaerksted",
+    prioritet: "hoej",
     oprettetAf: "uid-jesper",
     oprettetMs: NU - 5 * D,
     koeretoejId: "kt-078",
@@ -169,6 +177,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-003",
     art: "koeretoejsskade",
     forloeb: "afventerFaktura",
+    prioritet: "normal",
     oprettetAf: "uid-rene",
     oprettetMs: NU - 9 * D,
     koeretoejId: "kt-104",
@@ -190,6 +199,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-004",
     art: "reparation",
     forloeb: "afsluttet",
+    prioritet: "lav",
     oprettetAf: "uid-jesper",
     oprettetMs: NU - 21 * D,
     koeretoejId: "kt-106",
@@ -215,6 +225,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-005",
     art: "braendstof",
     forloeb: "afsluttet",
+    prioritet: "normal",
     oprettetAf: "uid-lars",
     oprettetMs: NU - 1 * D,
     koeretoejId: "kt-012",
@@ -243,6 +254,7 @@ export const DEMO_INDBERETNINGER = [
     id: "ind-006",
     art: "braendstof",
     forloeb: "afsluttet",
+    prioritet: "lav",
     oprettetAf: "uid-lars",
     oprettetMs: NU - 8 * D,
     koeretoejId: "kt-012",

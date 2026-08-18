@@ -39,7 +39,7 @@ const iDag = (timer, min = 0) => {
 export const DEMO_OPGAVER = [
   { id: "op-001", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Reparation – venstre baglygte",
-    personId: "larsAage", koeretoejId: "kt-012", status: "planlagt",
+    personId: "larsAage", koeretoejId: "kt-012", status: "planlagt", prioritet: "normal",
     estimeretMin: 90, faktiskMin: null, beloebOere: 125000 },
 
   /* ⚠ HED "Serviceeftersyn – 30.000 km", og det var Bil 104s service.
@@ -51,12 +51,12 @@ export const DEMO_OPGAVER = [
      250.000 km") gjorde det paa samme bil. Naeste er 270.000. */
   { id: "op-002", art: "vaerksted", division: "gods", startMs: iDag(9, 30),
     sted: "Kolding", beskrivelse: "Serviceeftersyn – 270.000 km",
-    personId: "reneThomsen", koeretoejId: "kt-078", status: "igang",
+    personId: "reneThomsen", koeretoejId: "kt-078", status: "igang", prioritet: "hoej",
     estimeretMin: 150, faktiskMin: 66, beloebOere: 210000 },
 
   { id: "op-003", art: "vaerksted", division: "gods", startMs: iDag(10, 0),
     sted: "Aarhus", beskrivelse: "Dækudskiftning – 2 aks. trailer",
-    personId: "peterIversen", koeretoejId: "kt-034", status: "igang",
+    personId: "peterIversen", koeretoejId: "kt-034", status: "igang", prioritet: "normal",
     estimeretMin: 60, faktiskMin: 27, beloebOere: 90000 },
 
   /* ⚠ STOD OGSÅ PÅ kt-077, den solgte trækker — den anden af to. En afgået
@@ -68,27 +68,27 @@ export const DEMO_OPGAVER = [
      det én linje. */
   { id: "op-004", art: "vaerksted", division: "gods", startMs: iDag(11, 0),
     sted: "Kolding", beskrivelse: "Fejlsøgning – ABS-fejl",
-    personId: "ibSoerensen", koeretoejId: "kt-v21", status: "afventer",
+    personId: "ibSoerensen", koeretoejId: "kt-v21", status: "afventer", prioritet: "hoej",
     estimeretMin: 120, faktiskMin: null, beloebOere: 240000 },
 
   { id: "op-005", art: "vaerksted", division: "gods", startMs: iDag(13, 0),
     sted: "Aalborg", beskrivelse: "Reparation – lækage i hydraulik",
-    personId: "peterIversen", koeretoejId: "kt-104", status: "planlagt",
+    personId: "peterIversen", koeretoejId: "kt-104", status: "planlagt", prioritet: "lav",
     estimeretMin: 105, faktiskMin: null, beloebOere: 160000 },
 
   { id: "op-006", art: "vaerksted", division: "gods", startMs: iDag(14, 0),
     sted: "Kolding", beskrivelse: "Service – klimaanlæg",
-    personId: "reneThomsen", koeretoejId: "kt-106", status: "udfoert",
+    personId: "reneThomsen", koeretoejId: "kt-106", status: "udfoert", prioritet: "normal",
     estimeretMin: 90, faktiskMin: 84, beloebOere: 135000 },
 
   { id: "op-007", art: "vaerksted", division: "gods", startMs: iDag(15, 30),
     sted: "Kolding", beskrivelse: "Synsklargøring",
-    personId: "larsAage", koeretoejId: "kt-012", status: "afventer",
+    personId: "larsAage", koeretoejId: "kt-012", status: "afventer", prioritet: "lav",
     estimeretMin: 60, faktiskMin: null, beloebOere: 75000 },
 
   { id: "op-008", art: "vaerksted", division: "gods", startMs: iDag(8, 0) + D,
     sted: "Esbjerg", beskrivelse: "Lovpligtigt eftersyn",
-    personId: "janHolmgaard", koeretoejId: "kt-034", status: "planlagt",
+    personId: "janHolmgaard", koeretoejId: "kt-034", status: "planlagt", prioritet: "normal",
     estimeretMin: 165, faktiskMin: null, beloebOere: 275000 },
 
   /* Facility-opgaver har ingen ressource i flåden — arbejdet er på bygningen.
@@ -99,7 +99,7 @@ export const DEMO_OPGAVER = [
        er under reparation, ser ledig ud. `sted` er en fritekst til
        mennesker; `aktivId` er det reservationen haenger paa. */
     sted: "Kolding", aktivId: "fa-port3", beskrivelse: "Port 3 – lukker langsomt",
-    personId: "kasperLykke", status: "afventer",
+    personId: "kasperLykke", status: "afventer", prioritet: "hoej",
     estimeretMin: 120, faktiskMin: null, beloebOere: 48000 },
 
   /* ⚠ STOD PAA kt-077 — en SOLGT TRAEKKER. En fordoer paa en traekker findes
@@ -107,6 +107,16 @@ export const DEMO_OPGAVER = [
      fundet af selvkontrollen i demo-dashboard.js, som sammenholder
      beskrivelser paa tvaers af datasaettene: Dashboard sagde Bus 12, det her
      saagde Bil 77. Selvkontrollen nedenfor fanger begge dele nu. */
+  /* ⚠ INGEN PRIORITET, OG DET ER MED VILJE. Den staar som `indberettet` —
+     altsaa lige kommet ind fra chaufføren og endnu ikke set af en vaerkfoerer.
+     Prioriteten saettes i TRIAGEN, ikke af den der melder fejlen, og
+     "ikke vurderet" er derfor et rigtigt svar med sit eget tal paa
+     Driftskalenderen.
+
+     ⚠ Og den findes for at tallet kan tage fejl. Havde HVER post en
+     prioritet, ville "uvurderede" altid vaere 0 — og en taelling der kun kan
+     give 0, kan ikke tage fejl paa en maade nogen opdager. Femte gang det
+     moenster dukker op i det her datasaet. */
   { id: "op-010", art: "vaerksted", division: "bus", startMs: iDag(10, 30),
     sted: "Odense", beskrivelse: "Fordør lukker ikke i",
     personId: "ibSoerensen", koeretoejId: "kt-b12", status: "indberettet",
@@ -125,7 +135,7 @@ export const DEMO_OPGAVER = [
      den fejl den findes for. */
   { id: "op-011", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Lygteskift, venstre for",
-    personId: "larsAage", koeretoejId: "kt-034", status: "udfoert",
+    personId: "larsAage", koeretoejId: "kt-034", status: "udfoert", prioritet: "lav",
     estimeretMin: 30, faktiskMin: null, beloebOere: 42000 },
 
   /* --- To PLANLAGTE facility-opgaver ----------------------------------
@@ -145,11 +155,11 @@ export const DEMO_OPGAVER = [
      og bus 2, og divisionsfilteret kan ses virke på rigtige data. */
   { id: "op-012", art: "facility", division: "faelles", startMs: iDag(9, 0),
     sted: "Kolding", aktivId: "fa-vent1", beskrivelse: "Ventilation, kontor – halvårligt filterskift",
-    personId: "kasperLykke", status: "planlagt",
+    personId: "kasperLykke", status: "planlagt", prioritet: "lav",
     estimeretMin: 90, faktiskMin: null, beloebOere: 36000 },
   { id: "op-013", art: "facility", division: "bus", startMs: iDag(13, 0),
     sted: "Aalborg", aktivId: "fa-lade1", beskrivelse: "Ladestandere – eftersyn før vinter",
-    personId: "ibSoerensen", status: "planlagt",
+    personId: "ibSoerensen", status: "planlagt", prioritet: "normal",
     estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
 ];
 

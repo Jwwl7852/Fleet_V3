@@ -52,6 +52,12 @@ export const DELTE_FILER = [
      proeve mod noejagtig de samme regler som formularen viser brugeren:
      samme valideBevaegelse(), samme virkningPaaBeholdning(), samme skala. */
   "warehouse.js",
+  /* ⚠ warehouse.js IMPORTERER prioritet.js, OG SAA SKAL DEN MED. Reglen er
+     ikke "importfri" — den er LUKKET UNDER IMPORT, og prioritet.js er det
+     tredje eksempel efter beloeb.js og booking-state.js. Kataloget deles
+     desuden af Fleets opgaver og indberetninger, saa den funktion der
+     validerer en opgave, proever mod noejagtig de tre trin skaermen viste. */
+  "prioritet.js",
   /* ⚠ DE TO HER ER IKKE IMPORTFRIE, og de er beviset på at reglen ovenfor er
      transitiv. booking-state.js importerer permissions.js; grundlag.js
      importerer booking-state.js og beloeb.js. Alle tre står på listen.

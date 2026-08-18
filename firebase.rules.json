@@ -890,6 +890,26 @@
             // paa lagre.metode: en afskrift ville vaere et andet sted den stod.
             "status": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
 
+            // ⚠ TRE TRIN, SKREVET UD — IKKE ET LAENGDETJEK.
+            // Modsat "status" ovenfor staar ordlisten HER som en regex, og de
+            // to er ikke inkonsekvente: en ukendt status er en tilstand
+            // skaermen ikke kan tegne, men den er stadig en tilstand. En
+            // ukendt PRIORITET er noget andet — den bliver sorteret, taalt og
+            // taelt, og en post med prioritet "mellem" (labelet, ikke
+            // vaerdien) ville lande usynligt mellem de tre trin og aldrig
+            // dukke op i nogen af de tre tal paa Driftskalenderen.
+            //
+            // ⚠ FELTET ER IKKE I hasChildren, OG DET ER MED VILJE. En
+            // indberetning kommer fra en chauffoer i marken; prioriteten
+            // saettes af den vaerkfoerer der triagerer. Kraevede vi den ved
+            // oprettelsen, ville chauffoeren gaette, og saa var alt "Mellem".
+            // "Ikke vurderet" er et svar — se prioritet.js.
+            //
+            // Vaerdierne er de samme som paa plukordrer: lav|normal|hoej.
+            // Labelet paa den midterste er "Mellem"; vaerdien er "normal" og
+            // skifter ikke, fordi den staar paa hver oprettet plukordre.
+            "prioritet": { ".validate": "newData.isString() && newData.val().matches(/^(lav|normal|hoej)$/)" },
+
             // ⚠ startMs, IKKE dato. Indekset navngav "dato", som ingen post
             // har — og MODULETS feltkatalog sagde det samme forkerte.
             "startMs": { ".validate": "newData.isNumber()" },
@@ -1023,6 +1043,16 @@
             // sin egen udrulningscyklus. Proeverne holder demo op mod modulet.
             "art": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
             "forloeb": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+
+            // ⚠ SAMME TRE TRIN SOM PAA opgaver/ OG plukordrer/, OG SAMME
+            // REGEX. Kataloget staar i prioritet.js. Skrev vi en fjerde
+            // ordliste her, ville "Driftskalenderens fem kasser" taelle
+            // indberetninger og opgaver med hver sit ordforraad — og de to
+            // staar side om side i den samme koe.
+            //
+            // Valgfrit, som paa opgaver: det er VAERKFOEREREN der prioriterer,
+            // ikke chaufføren der indberetter.
+            "prioritet": { ".validate": "newData.isString() && newData.val().matches(/^(lav|normal|hoej)$/)" },
 
             // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget — og
             // .write ovenfor sammenligner netop det felt med auth.uid.

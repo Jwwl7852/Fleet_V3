@@ -114,6 +114,26 @@ export const FORLOEB = {
 
 export const ALLE_FORLOEB = Object.keys(FORLOEB);
 
+/* ---- Prioritet -------------------------------------------------------- *
+ * ⚠ DEN LIGGER IKKE HER, OG DET ER MED VILJE. Kataloget staar i
+ * `prioritet.js` og deles med Fleets driftsopgaver og Warehouses plukordrer:
+ * tre trin, sat af et menneske, paa et stykke arbejde. Et fjerde katalog
+ * ville vaere to ordlister der ikke kan summeres paa to skaerme der viser
+ * den samme koe.
+ *
+ * ⚠ OG DEN STAAR IKKE I `FELT`. Det katalog er ART-specifikt — kmStand paa en
+ * reparation, liter paa en tankning — og `harFelt()` bruges til at UDELADE en
+ * raekke arten ikke har. Prioriteten hoerer paa alle fire arter, praecis som
+ * `forloeb` og `division`, og de staar heller ikke der. Laa den i FELT, skulle
+ * den skrives fire gange for altid at vaere sand.
+ *
+ * ⚠ FELTET ER VALGFRIT. En indberetning kommer fra en CHAUFFOER i marken;
+ * prioriteten saettes af den vaerkfoerer der triagerer. "Ikke vurderet" er et
+ * svar og taelles for sig paa Driftskalenderen — havde vi krævet feltet ved
+ * oprettelsen, ville chaufføren gætte, og så ville alt være "Mellem".
+ * `prioritetFor()` returnerer null for en post uden, ALDRIG PRIORITET.normal.
+ */
+
 /**
  * FEJLER LUKKET. En ukendt tilstand giver ingen lovlige skift — den åbner ikke
  * for alle. Samme regel som booking-state og som en ukendt rolle i

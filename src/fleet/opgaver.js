@@ -1,8 +1,12 @@
 /* src/fleet/opgaver.js
  * Opgaver som entitet. BESLUTNING 21 — art styrer feltskemaet.
  *
- * INGEN IMPORTS — samme grund som permissions.js og flaade.js: den Cloud
- * Function der validerer en opgave, skal kunne bruge nøjagtig samme katalog.
+ * ⚠ ÉN IMPORT, OG REGLEN ER IKKE "INGEN IMPORTS". Her stod netop det, og
+ * formuleringen var upræcis på samme måde som i kopier-delt.mjs: kravet er at
+ * listen er LUKKET UNDER IMPORT. Den Cloud Function der validerer en opgave,
+ * skal bruge nøjagtig samme katalog som skærmen, og `functions/`-mappen er det
+ * eneste der deployes — så alt hvad filen henter, skal med samme sted.
+ * `prioritet.js` er importfri og står i DELTE_FILER.
  *
  * ⚠ ARTEN ER `vaerksted` | `facility` — IKKE `vaerksted` | `langtur`.
  *
@@ -35,6 +39,8 @@
  *   dagsvisning   opgaver med art 'vaerksted' — varighed i timer
  *   ugesvisning   etaper — ETA over døgngrænser, grænseovergange, køre-hviletid
  */
+
+import { ALLE_PRIORITETER } from "./prioritet.js";
 
 /**
  * Hvad arbejdet udføres PÅ. Det er den ægte artsforskel i noden: en
@@ -86,6 +92,10 @@ export const ALLE_OPGAVE_STATUS = Object.keys(OPGAVE_STATUS);
 export const FELT = {
   /* Fælles */
   startMs: "startMs",
+  /* ⚠ TRE TRIN, OG DE ER IKKE FLEETS EGNE. Kataloget staar i prioritet.js og
+     deles med Warehouses plukordrer — samme spoergsmaal, samme ordliste.
+     Vaerdien er lav|normal|hoej; labelet paa den midterste er "Mellem". */
+  prioritet: "prioritet",
   beskrivelse: "beskrivelse",
   personId: "personId",                 // hvem der UDFØRER — ikke uid
   sted: "sted",
@@ -103,13 +113,13 @@ export const FELT = {
 
 const FAELLES = [
   FELT.startMs, FELT.beskrivelse, FELT.personId, FELT.sted,
-  FELT.status, FELT.beloebOere,
+  FELT.status, FELT.prioritet, FELT.beloebOere,
 ];
 
 /* Rækkefølgen her er visningsrækkefølgen. Ét sted, så to skærme ikke lister
    de samme felter forskelligt. */
 const ALLE_FELTER = [
-  FELT.startMs, FELT.beskrivelse, FELT.sted, FELT.status,
+  FELT.startMs, FELT.beskrivelse, FELT.sted, FELT.status, FELT.prioritet,
   FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
   FELT.estimeretMin, FELT.faktiskMin, FELT.personId, FELT.besoegId,
   FELT.beloebOere,
@@ -232,6 +242,17 @@ export function opgaveMangler(opgave = {}) {
   if (!["gods", "bus", "faelles"].includes(opgave.division)) mangler.push("division");
   if (opgave.art && !ressourceId(opgave)) {
     mangler.push(opgave.art === "vaerksted" ? "koeretoejId" : "aktivId eller lokationId");
+  }
+  /* ⚠ EN MANGLENDE PRIORITET ER IKKE EN MANGEL — EN UKENDT ER.
+     Feltet er valgfrit med vilje: en indberetning kommer fra en chauffoer i
+     marken, og prioriteten saettes af den vaerkfoerer der triagerer. "Ikke
+     vurderet" er et svar, og det staar paa skaermen som sit eget tal.
+     Havde vi krævet feltet, ville den der opretter, skulle gaette — og saa
+     ville alt vaere "Mellem" og tallet ubrugeligt.
+     En vaerdi UDEN FOR de tre trin er derimod en fejl: den kan ikke tegnes,
+     den kan ikke sorteres, og reglerne afviser den alligevel. */
+  if (opgave.prioritet != null && !ALLE_PRIORITETER.includes(opgave.prioritet)) {
+    mangler.push("prioritet (ukendt værdi)");
   }
   return mangler;
 }

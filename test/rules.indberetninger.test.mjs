@@ -25,9 +25,10 @@ import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, update } from "firebase/database";
 import { PERM, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 import { SENSITIVE_FELTER, ALLE_ARTER, ALLE_FORLOEB } from "../src/fleet/indberetninger.js";
+import { ALLE_PRIORITETER } from "../src/fleet/prioritet.js";
 
 const T = "tenantInd";
 const KT = "kt-012";
@@ -233,5 +234,50 @@ describe("sensitive/indberetninger", () => {
         `"${ord}" er skrevet af ind i regelfilen`);
     }
     assert.ok(ALLE_ARTER.length >= 4 && ALLE_FORLOEB.length === 6);
+  });
+});
+
+describe("prioriteten på en indberetning", () => {
+  /* ⚠ SAMME TRE TRIN SOM PÅ opgaver/. Driftskalenderen viser de to noder
+     side om side i den samme kø — havde de hver sit ordforråd, kunne
+     kasserne ikke summere dem. */
+
+  it("tager hvert af de tre trin", async () => {
+    const db = medPerms("uid-lars", ["indberetninger.skriv"]);
+    for (const p of ALLE_PRIORITETER) {
+      await assertSucceeds(set(ref(db, sti(`indberetninger/pri-${p}`)),
+        POST({ oprettetAf: "uid-lars", prioritet: p })));
+    }
+  });
+
+  it("⚠ AFVISER \"mellem\" — det er labelet, ikke værdien", async () => {
+    await assertFails(set(ref(medPerms("uid-lars", ["indberetninger.skriv"]),
+      sti("indberetninger/pri-label")),
+      POST({ oprettetAf: "uid-lars", prioritet: "mellem" })));
+  });
+
+  it("⚠ EN CHAUFFØRS INDBERETNING HAR INGEN PRIORITET — og skal kunne gemmes", async () => {
+    /* Det er hele grunden til at feltet er valgfrit. Chaufføren melder at
+       motorlampen lyser; om det haster, afgør værkføreren. Krævede reglen
+       feltet, ville chaufføren blive tvunget til at vurdere noget han ikke
+       kan vurdere — og "Mellem" ville stå på alt. */
+    await assertSucceeds(set(ref(medPerms("uid-lars", ["indberetninger.skriv"]),
+      sti("indberetninger/pri-uden")), POST({ oprettetAf: "uid-lars" })));
+  });
+
+  it("værkføreren kan sætte den bagefter", async () => {
+    /* Triagen er en RETTELSE af chaufførens post, og den kræver
+       indberetninger.skrivAlle — ejerskabstjekket i .write sammenligner
+       oprettetAf med auth.uid, og værkføreren er ikke chaufføren. */
+    await assertSucceeds(update(ref(medPerms("uid-vaerkfoerer",
+      ["indberetninger.skriv", "indberetninger.skrivAlle"]),
+      sti("indberetninger/pri-uden")), { prioritet: "hoej" }));
+  });
+
+  it("⚠ OG CHAUFFØREN KAN IKKE SÆTTE DEN PÅ EN KOLLEGAS POST", async () => {
+    /* Prioriteten ændrer ikke ejerskabsreglen. Uden skrivAlle er en
+       fremmed post lukket, uanset hvilket felt man rører. */
+    await assertFails(update(ref(medPerms("uid-anden", ["indberetninger.skriv"]),
+      sti("indberetninger/pri-uden")), { prioritet: "lav" }));
   });
 });

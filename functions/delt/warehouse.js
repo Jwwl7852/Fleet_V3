@@ -46,6 +46,12 @@
  * serveren skal validere mod NØJAGTIG de samme regler som skærmen viser.
  */
 
+/* ⚠ PRIORITETEN ER IKKE WAREHOUSES EGEN. Se noten ved geneksporten
+   nedenfor — Fleets driftsopgaver stiller samme spoergsmaal, og kataloget
+   staar derfor i prioritet.js. warehouse.js er i DELTE_FILER, og listen er
+   LUKKET UNDER IMPORT: prioritet.js maatte med samme sted. */
+import { PRIORITET, ALLE_PRIORITETER } from "./prioritet.js";
+
 /* ---- Varen ------------------------------------------------------------- */
 
 /**
@@ -688,13 +694,23 @@ export const ORDRE_SKIFT = {
 export const kanSkifteOrdre = (fra, til) =>
   Array.isArray(ORDRE_SKIFT[fra]) && ORDRE_SKIFT[fra].includes(til);
 
-export const PRIORITET = {
-  lav: { prioritet: "lav", label: "Lav", pill: "info", vaegt: 3 },
-  normal: { prioritet: "normal", label: "Normal", pill: "info", vaegt: 2 },
-  hoej: { prioritet: "hoej", label: "Høj", pill: "bad", vaegt: 1 },
-};
+/* ⚠ KATALOGET LAA HER, OG DET VAR IKKE LAENGERE KUN WAREHOUSES.
+   Fleets driftsopgaver og indberetninger stiller PRAECIS samme spoergsmaal —
+   hvor travlt er der med det her, sat af et menneske — og et andet katalog med
+   de samme tre trin ville vaere to ordlister der ikke kan summeres, paa to
+   skaerme der viser den samme slags koe.
 
-export const ALLE_PRIORITETER = Object.keys(PRIORITET);
+   Det staar nu i prioritet.js og GENEKSPORTERES her, saa Pluk.jsx og alt der
+   importerer fra warehouse.js er uaendret. Vaerdierne er de samme
+   (lav|normal|hoej), saa regelfilens matches() og enhver oprettet plukordre
+   staar uroert.
+
+   TO TING SKIFTEDE, OG BEGGE ER LABELS:
+     `normal`  hed "Normal", hedder nu "Mellem" — tre trin skal laeses som en
+               skala, og "Normal" lyder som en standardvaerdi frem for midten.
+     `lav`     var "info" (blaa) ligesom `normal`. To trin i samme farve er to
+               trin man skal laese for at skelne. Nu groen-gul-roed. */
+export { PRIORITET, ALLE_PRIORITETER };
 
 export function valideOrdre(post = {}, { kunder = [], varer = [], carriers = [] } = {}) {
   const f = {};
