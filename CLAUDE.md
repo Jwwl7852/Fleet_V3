@@ -134,6 +134,13 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   et dev-stillads ved `auth == null`; det blev fjernet med login, som beslutning
   26 lovede. Genindfør det ikke — `dataTilstand()` kender ikke sit miljø, og det
   er med vilje. Se beslutning 26 og 28.
+- **Vise et demo-datasæt for en node der ER seedet.** Da noderne blev seedet
+  én for én, blev skærmene stående på demofilen: Indkøb → Fakturaer viste ni
+  demo-fakturaer mens `indkoeb.fakturaerTilGodkendelse` blev regnet af de
+  rigtige — to svar på samme spørgsmål, ét klik fra hinanden.
+  `useListe(node, { demo: DEMO_X })` er den rigtige vej: sættet bruges KUN når
+  der ingen database er. `test/demo-i-skaerm.test.mjs` tæller brugen uden for
+  den faldbakke, og **nodens egen skærm må aldrig vise noget andet end noden**.
 - **Lave et demo-datasæt nummer to for den samme node.** `demo-vaerksted.js`
   havde en `DEMO_INDKOEB` ved siden af `demo-indkoeb.js`' `DEMO_INDKOEBSLINJER`
   — begge i `fleet/`, hvor et demosæt hører hjemme, så linten så dem ikke.

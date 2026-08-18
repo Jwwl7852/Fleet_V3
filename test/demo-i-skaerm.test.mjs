@@ -1,0 +1,134 @@
+/* test/demo-i-skaerm.test.mjs
+ * En skærm må ikke VISE et demo-datasæt for en node der er seedet.
+ *
+ * ⚠ HVORFOR DEN HER LINT FINDES, OG HVORFOR DEN ER ET LOFT.
+ *
+ * `demo-kilder.test.mjs` holder styr på HVOR et demosæt må ligge, og på at to
+ * filer ikke beskriver den samme node. Den siger intet om at bruge det.
+ *
+ * Og brugen er den fejl der bliver ved: da `opgaver`, `indkoeb`, `facility`,
+ * `leverandoerer`, `lagre` og `indberetninger` blev seedet én for én, viste
+ * skærmene stadig demofilen. Noden havde kundens data; skærmen havde
+ * mockuppens. Indkøb → Fakturaer viste ni demo-fakturaer mens
+ * `indkoeb.fakturaerTilGodkendelse` blev regnet af de rigtige — to svar på
+ * samme spørgsmål, ét klik fra hinanden.
+ *
+ * ⚠ `demo:`-FALDBAKKEN ER IKKE FEJLEN. `useListe(node, { demo: DEMO_X })`
+ * bruger kun sættet når der ingen database er, og det er netop reglen fra
+ * beslutning 26: opdigtede tal findes KUN dér. Linten tæller derfor brug
+ * UDEN FOR den faldbakke.
+ *
+ * ⚠ OG DEN ER ET LOFT, IKKE ET FORBUD. Der er 40 tilbage, og de fleste er
+ * navneopslag — `demoBilNavn(id)` på en tabelrække, ikke et tal. De skal
+ * væk, men ikke i én ombæring: en skærm ad gangen, med et klik bagefter.
+ * Loftet kan kun gå NED. Falder den her prøve fordi tallet er steget, har
+ * nogen tilføjet en ny; falder den fordi tallet er faldet, skal LOFT rettes.
+ *
+ * Koer: npm test
+ */
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { SEED } from "../scripts/provisioner-dev.mjs";
+
+const MODULER = "src/moduler";
+
+/* Demo-sæt hvis navn peger entydigt på en node. Er navnet tvetydigt, hører
+   sættet ikke hjemme her — så er det `demo-kilder.test.mjs`' ærinde. */
+const NODE_FOR = {
+  DEMO_KOERETOEJER: "koeretoejer", DEMO_PERSONALE: "personale",
+  DEMO_KOMPETENCER: "kompetencer", DEMO_KUNDER: "kunder",
+  DEMO_ETAPER: "etaper", DEMO_OPGAVER: "opgaver",
+  DEMO_INDBERETNINGER: "indberetninger", DEMO_FRAVAER: "fravaer",
+  DEMO_INDKOEBSLINJER: "indkoeb", DEMO_FAKTURAER: "fakturaer",
+  DEMO_LEVERANDOERER: "leverandoerer", DEMO_GRUNDLAG: "grundlag",
+  DEMO_OMKOSTNINGER: "omkostninger", DEMO_LAGRE: "lagre",
+  DEMO_AKTIVER: "facility/aktiver", DEMO_LOKATIONER: "facility/lokationer",
+  DEMO_ZONER: "facility/zoner", DEMO_FEJL: "facility/fejl",
+  DEMO_VARER: "varer", DEMO_BEHOLDNING: "beholdning", DEMO_CARRIERS: "carriers",
+  DEMO_KASSER: "kasser", DEMO_KASSETYPER: "kassetyper",
+  DEMO_KASSEUDLAAN: "kasseudlaan", DEMO_REOLPLADSER: "reolpladser",
+  DEMO_ENHEDER: "enheder",
+};
+
+/* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag. */
+const LOFT = 40;
+
+const jsxFiler = (mappe) => {
+  const ud = [];
+  for (const navn of readdirSync(mappe)) {
+    const sti = join(mappe, navn);
+    if (statSync(sti).isDirectory()) ud.push(...jsxFiler(sti));
+    else if (/\.jsx?$/.test(navn)) ud.push(sti);
+  }
+  return ud;
+};
+
+/** Brug af et demo-sæt uden for `demo:`-faldbakken, pr. fil. */
+function direkteBrug() {
+  const seedede = new Set(SEED.map((s) => s.node));
+  const fund = [];
+  for (const fil of jsxFiler(MODULER)) {
+    /* Kommentarer ud: en note der NÆVNER DEMO_X er ikke en brug. */
+    const kode = readFileSync(fil, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    for (const [navn, node] of Object.entries(NODE_FOR)) {
+      if (!seedede.has(node)) continue;
+      const alle = [...kode.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
+      if (!alle) continue;
+      const faldbakke = [...kode.matchAll(new RegExp(`demo:\\s*${navn}\\b`, "g"))].length;
+      /* Én forekomst er importlinjen. */
+      const direkte = alle - 1 - faldbakke;
+      if (direkte > 0) fund.push({ fil, navn, node, direkte });
+    }
+  }
+  return fund;
+}
+
+describe("En skærm viser noden, ikke demo-sættet", () => {
+  it(`har højst ${LOFT} direkte brug tilbage — og loftet kan kun gå ned`, () => {
+    const fund = direkteBrug();
+    const antal = fund.reduce((s, f) => s + f.direkte, 0);
+    const liste = fund
+      .map((f) => `  ${f.fil.replace(/\\/g, "/")}  ${f.navn} → ${f.node} ×${f.direkte}`)
+      .join("\n");
+
+    assert.ok(antal <= LOFT,
+      `${antal} direkte brug, loftet er ${LOFT}. En skærm der viser demo-sættet ` +
+      `for en SEEDET node, viser mockuppens tal frem for kundens.\n${liste}`);
+
+    assert.ok(antal >= LOFT - 4,
+      `kun ${antal} tilbage — sæt LOFT ned til ${antal}, ellers holder loftet op ` +
+      `med at betyde noget.`);
+  });
+
+  it("⚠ SKÆRMEN FOR EN NODE MÅ IKKE VISE DEMO-SÆTTET FOR NETOP DEN", () => {
+    /* Et navneopslag i en anden skærm er en detalje der venter. Men den skærm
+       der ER nodens — Fakturaer for `fakturaer`, Indberetninger for
+       `indberetninger` — må aldrig vise noget andet end noden. Det var dér de
+       to svar på samme spørgsmål opstod. */
+    const EJERE = [
+      ["indkoeb/Fakturaer.jsx", "DEMO_FAKTURAER"],
+      ["indkoeb/Oversigt.jsx", "DEMO_INDKOEBSLINJER"],
+      ["indkoeb/Leverandoerer.jsx", "DEMO_LEVERANDOERER"],
+      ["flaade/Indberetninger.jsx", "DEMO_INDBERETNINGER"],
+      ["flaade/Oversigt.jsx", "DEMO_KOERETOEJER"],
+      ["Medarbejdere.jsx", "DEMO_PERSONALE"],
+      ["Kompetencer.jsx", "DEMO_KOMPETENCER"],
+      ["facility/Oversigt.jsx", "DEMO_AKTIVER"],
+    ];
+    const syndere = [];
+    for (const [fil, navn] of EJERE) {
+      const sti = join(MODULER, fil);
+      const kode = readFileSync(sti, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      const alle = [...kode.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
+      const faldbakke = [...kode.matchAll(new RegExp(`demo:\\s*${navn}\\b`, "g"))].length;
+      if (alle - 1 - faldbakke > 0) syndere.push(`${fil} viser ${navn}`);
+    }
+    assert.deepEqual(syndere, [],
+      "Nodens egen skærm viser demo-sættet:\n" + syndere.join("\n"));
+  });
+});

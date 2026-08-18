@@ -602,7 +602,9 @@ export default function Medarbejdere() {
       </Gitter>
 
       <p className="fc-hint">
-        Demo-rosteren er et <b>udsnit</b> på {num(DEMO_PERSONALE.length)} personer, ikke hele
+        {/* ⚠ TALTE DEMO-SÆTTETS LÆNGDE, ikke de hentede raekker. Se samme
+            note i flaade/Oversigt.jsx. */}
+        Rosteren her er et <b>udsnit</b> paa {num(personale.length)} personer, ikke hele
         staben. Bemandings planlagte og disponerede kommer fra <b>kpi/</b> og er langt større
         tal — de to skal ikke gå op mod hinanden, og listen her er derfor ingen optælling af
         staben. Kompetencerne er til gengæld de samme poster som Bemanding viser: én kilde,

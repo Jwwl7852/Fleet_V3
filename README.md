@@ -695,6 +695,29 @@ eneste tenant, og det sidste var en **pil** under et nøgletal der var tomt.
 Felterne hedder nu `flaade.nyeIndberetninger` og `flaade.nedetidDeltaPoint` og
 står i `demo-kpi.js` — kuren CLAUDE.md foreskriver.
 
+⚠ **OG SKÆRMENE BLEV STÅENDE PÅ DEMOFILEN.** Da noderne blev seedet én for
+én, fulgte visningen ikke med. Målt: **47 steder** viste et demo-datasæt for
+en node der var seedet.
+
+De to der betød mest er rettet:
+
+| Skærm | Hvad den viste |
+|---|---|
+| **Indkøb → Fakturaer** | Hele skærmen for `fakturaer` kørte på demo-sættet, mens `indkoeb.fakturaerTilGodkendelse` blev regnet af noden |
+| **Flåde → Oversigt** | "Åbne fejl" pr. bil og de fire seneste hændelser kom fra `DEMO_INDBERETNINGER` |
+| **Kompetencer** | Talte udløbne beviser — det tal der afgør om en chauffør kan disponeres — på demofilen |
+
+⚠ **Og to hjælpetekster talte demoens længde**, i en sætning der forklarer at
+listen er et *udsnit*. En forklaring der måler noget andet end det den
+forklarer, er værre end ingen.
+
+`test/demo-i-skaerm.test.mjs` er **et loft, ikke et forbud**: 40 tilbage, og
+det kan kun gå ned. De fleste er navneopslag (`demoBilNavn(id)` på en række),
+ikke tal — de skal væk, men én skærm ad gangen med et klik bagefter. Prøven
+har desuden en hård regel: **nodens egen skærm må aldrig vise demo-sættet**.
+
+---
+
 ⚠ **TO DEMO-DATASÆT FOR ÉN NODE — og det kostede en forkert rettelse.**
 
 `demo-vaerksted.js` havde en `DEMO_INDKOEB` med fire værkstedsindkøb, ved

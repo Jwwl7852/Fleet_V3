@@ -99,7 +99,6 @@ import { HAENDELSE_ART, FORLOEB, aabneFejlFor } from "../../fleet/indberetninger
 import { stederI } from "../../fleet/steder.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_BESOEG } from "../../fleet/demo-vaerksted.js";
-import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
   KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular,
@@ -389,6 +388,17 @@ export default function FlaadeOversigt() {
      useListe kaster hvis man sender både lig og vindue. Arten filtreres
      klientside: RTDB kan kun filtrere på ét felt, og status er det rigtige at
      bruge det på. */
+  /* ⚠ INDBERETNINGERNE KOM FRA DEMOFILEN, og de bar to tal en kunde ville
+     læse som SINE: "Åbne fejl" pr. bil i tabellen, og de fire seneste
+     hændelser i panelet. Noden er seedet; skærmen viste demo-sættet.
+
+     division: "alle" — en indberetning bærer en division, men flådetabellen
+     viser hele flåden (bilen har ingen, beslutning 19). Filtrerede vi her,
+     ville en bus' åbne fejl forsvinde når Gods var valgt, og bilen se hel ud. */
+  const indb = useListe("indberetninger", {
+    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500,
+  });
+
   const { data: flaade, henter, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
@@ -448,7 +458,7 @@ export default function FlaadeOversigt() {
     .sort((a, b) => b.driftPrKmOere - a.driftPrKmOere)
     .slice(0, 3);
 
-  const senesteIndberetninger = [...DEMO_INDBERETNINGER]
+  const senesteIndberetninger = [...indb.data]
     .sort((a, b) => (b.oprettetMs || 0) - (a.oprettetMs || 0))
     .slice(0, 4);
 
@@ -619,7 +629,7 @@ export default function FlaadeOversigt() {
             { key: "naesteServiceMs", label: "Næste service",
               render: (r) => <ServiceCelle enhed={r} /> },
             { key: "aabneFejl", label: "Åbne fejl", midt: true, render: (r) => {
-                const n = aabneFejlFor(DEMO_INDBERETNINGER, r.id);
+                const n = aabneFejlFor(indb.data, r.id);
                 return <span className={`fc-antal fc-antal-${Math.min(n, 2)}`}>{n}</span>;
               } },
             /* AFLEDT af værkstedsbesøgene, klippet til shellens periode. */
@@ -876,7 +886,12 @@ export default function FlaadeOversigt() {
       </Gitter>
 
       <p className="fc-hint">
-        Demo-flåden er et <b>udsnit</b> på {num(DEMO_KOERETOEJER.length)} enheder, ikke hele
+        {/* ⚠ TALTE DEMO-SÆTTETS LÆNGDE, IKKE DE HENTEDE. Teksten forklarer
+            at listen er et UDSNIT — og saa maalte den paa demofilen, som
+            ikke er den liste der staar ovenfor naar noden svarer. En
+            forklaring der taeller noget andet end det den forklarer, er
+            vaerre end ingen. */}
+        Flaadelisten er et <b>udsnit</b> paa {num(flaade.length)} enheder, ikke hele
         flåden — nøgletallene øverst kommer fra <b>kpi/</b> og er langt større tal. De to
         skal ikke gå op mod hinanden: tabellen tæller sig selv og siger "af N hentede",
         og en optælling af hentede rækker er ikke et nøgletal. Alle beløb er ekskl. moms.

@@ -42,17 +42,46 @@ import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/f
 import { tjekKompetencer, PERSONALE_STATUS, kanDisponeres } from "../fleet/personale.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import { useKpi } from "../fleet/useKpi.js";
+import { useListe } from "../fleet/useListe.js";
 
 const NU = Date.now();
 
-const personNavn = (id) => DEMO_PERSONALE.find((p) => p.id === id)?.navn || id;
-const mineKompetencer = (personId) => DEMO_KOMPETENCER.filter((k) => k.personId === personId);
+/* ⚠ OPSLAGENE LÅ PÅ MODULNIVEAU MED DEMO-SÆTTET LUKKET INDE I SIG.
+   `personNavn(id)` og `mineKompetencer(personId)` læste DEMO_PERSONALE og
+   DEMO_KOMPETENCER direkte — så skærmen viste demofilen, også efter at begge
+   noder var seedet. Det er samme mønster som zonePar() og medPrisliste():
+   en modulkonstant kan ikke kende komponentens data, så den lukker demoen
+   inde. Nu tager de listen ind. */
+/* personNavn() er vaek: tabellen har personen selv paa raekken og behoever
+   ikke slaa navnet op. Den laa der kun fordi opslaget skulle et sted hen. */
+const mineKompetencer = (kompetencer, personId) =>
+  kompetencer.filter((k) => k.personId === personId);
 
 export default function Kompetencer() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+
+  /* ⚠ TO SEEDEDE NODER, OG SKÆRMEN VISTE DEMOFILEN FOR BEGGE. Den tæller
+     UDLØBNE BEVISER — det tal der afgør om en chauffør kan disponeres — og
+     det stod med mockuppens tal i hver eneste tenant.
+
+     division: "alle" på begge. Hverken personale eller kompetencer bærer
+     feltet (beslutning 19), og et filter ville derfor være en påstand om at
+     de gjorde. */
+  const pers = useListe("personale", {
+    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+    demo: DEMO_PERSONALE,
+  });
+  const komp = useListe("kompetencer", {
+    vindue: "alle", division: "alle", graense: 2000, demo: DEMO_KOMPETENCER,
+  });
+
   const [valgtId, setValgtId] = useState(null);
 
-  if (henter) return <Henter hvad="kompetencer" />;
+  if (henter || pers.henter || komp.henter) return <Henter hvad="kompetencer" />;
+  /* En AFVIST læsning er ikke et tomt kompetencekartotek. */
+  if (blokerer(komp.tilstand)) {
+    return <Datatilstand tilstand={komp.tilstand} genprov={komp.genindlaes} />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
@@ -61,8 +90,8 @@ export default function Kompetencer() {
   /* AFLEDT af listen skærmen allerede har — hører derfor ikke i kpi/.
      Samme sag som aktive klimaalarmer; et gemt afledt tal driver fra sit
      grundlag, og det er fejlen i bemanding.ledig. */
-  const udloebne = DEMO_KOMPETENCER.filter((x) => x.udloeberMs <= NU);
-  const snart = DEMO_KOMPETENCER.filter(
+  const udloebne = komp.data.filter((x) => x.udloeberMs <= NU);
+  const snart = komp.data.filter(
     (x) => x.udloeberMs > NU && serviceTone(x.udloeberMs, NU).dage <= 30
   );
   /* ⚠ DET TAL DER BETYDER NOGET: hvor mange af de udløbne der BLOKERER. En
@@ -70,10 +99,10 @@ export default function Kompetencer() {
      samlet optælling ville skjule forskellen. */
   const blokerende = udloebne.filter((x) => kanBlokere(x.type));
 
-  const raekker = DEMO_PERSONALE
+  const raekker = pers.data
     .filter((p) => p.status !== "fratraadt")
     .map((p) => {
-      const mine = mineKompetencer(p.id);
+      const mine = mineKompetencer(komp.data, p.id);
       return {
         p,
         mine,

@@ -40,6 +40,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation } from "../../fleet/format.js";
 import { harPerm } from "../../fleet/permissions.js";
@@ -52,29 +53,62 @@ import {
   PERM_GODKEND_MIDLERTIDIG,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, DEMO_FAKTURAER, demoAfstemning, demoUdenMatch,
+  DEMO_LEVERANDOERER, demoAfstemning,
 } from "../../fleet/demo-indkoeb.js";
 
 const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 export default function Fakturaer() {
   const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+
+  /* ⚠ NODEN, IKKE DEMOFILEN. Det er SKÆRMEN FOR `fakturaer`, og den viste
+     demo-sættets ni poster uanset hvad kunden havde — mens noden var seedet
+     og `indkoeb.fakturaerTilGodkendelse` blev regnet af den rigtige.
+     To svar på samme spørgsmål, ét klik fra hinanden.
+
+     ⚠ `.write: false` PÅ NODEN. Skærmen læser og godkender; selve
+     skrivningen hører i den Cloud Function der mangler. Læsningen skal
+     alligevel være den rigtige — ellers godkender man noget andet end det
+     der står i basen.
+
+     ordnPaa: "fakturadatoMs" — det er indekset noden faktisk har. Det hed
+     "godkendelsesstatus" indtil for få etaper siden, og INGEN post bar det. */
+  const liste = useListe("fakturaer", {
+    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500,
+  });
+  const indkoeb = useListe("indkoeb", {
+    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+  });
+
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
 
-  if (henter) return <Henter hvad="fakturaer" />;
+  if (henter || liste.henter || indkoeb.henter) return <Henter hvad="fakturaer" />;
+  /* En AFVIST læsning er ikke en tom fakturaliste. */
+  if (blokerer(liste.tilstand)) {
+    return <Datatilstand tilstand={liste.tilstand} genprov={liste.genindlaes} />;
+  }
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND_MIDLERTIDIG);
-  const valgt = DEMO_FAKTURAER.find((f) => f.id === valgtId) || null;
+  const fakturaer = liste.data;
+  const valgt = fakturaer.find((f) => f.id === valgtId) || null;
 
-  /* BEREGNET af listen — ikke et gemt tal. Det var fejl 2. */
-  const udenMatch = demoUdenMatch();
-  const tilGodkendelse = DEMO_FAKTURAER.filter((f) => f.status === "modtaget");
-  const godkendtDenneMaaned = DEMO_FAKTURAER.filter(
+  /* BEREGNET af listen — ikke et gemt tal. Det var fejl 2.
+
+     ⚠ "UDEN MATCH" ER NU MÅLT MOD NODEN. demoUdenMatch() så kun på om
+     `indkoebId` var tomt; her tæller også den HÆNGENDE reference — et id der
+     peger på en linje som ikke findes. Den ser matchet ud og er det ikke, og
+     er derfor den farligste af de to: den er allerede talt som afstemt.
+     Samme regel som ikkeLinkedeFakturaer() i kpi-aggregering.js. */
+  const findesIndkoeb = new Set(indkoeb.data.map((i) => i.id));
+  const udenMatch = fakturaer.filter(
+    (f) => !f.indkoebId || !findesIndkoeb.has(f.indkoebId));
+  const tilGodkendelse = fakturaer.filter((f) => f.status === "modtaget");
+  const godkendtDenneMaaned = fakturaer.filter(
     (f) => f.status === "godkendt" || f.status === "bogfoert"
   );
 
@@ -99,7 +133,7 @@ export default function Fakturaer() {
       <Afstemning />
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort titel={`Fakturaer (${DEMO_FAKTURAER.length})`}>
+        <Kort titel={`Fakturaer (${fakturaer.length})`}>
           <Tabel
             kolonner={[
               { key: "fakturanummer", label: "Fakturanr.", render: (r) => <b>{r.fakturanummer}</b> },
@@ -125,7 +159,7 @@ export default function Fakturaer() {
                     {r.id === valgtId ? "Vist" : "Vis"}
                   </Knap>) },
             ]}
-            raekker={DEMO_FAKTURAER}
+            raekker={fakturaer}
             tom="Ingen fakturaer."
           />
 
