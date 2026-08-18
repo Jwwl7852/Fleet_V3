@@ -2,7 +2,7 @@
  * Unitbooking – kalender og udlånsliste.
  *
  * ⚠ GITTERET ER IKKE BYGGET HER. `fleet/Gitterkalender.jsx` tegner ressourcer
- * × tid og bruges også af Værkstedskalender, Servicekalender og Disponering.
+ * × tid og bruges også af Driftskalender, Servicekalender og Disponering.
  * CLAUDE.md forbyder et fjerde: to gitre der læser det samme interval
  * forskelligt, opdages ikke ved at kigge på dem.
  *
@@ -190,7 +190,7 @@ export default function Kalender() {
           fremadrettet</b> — topbarens periodevælger ser bagud og hører til
           rapporterne. Alt der ligger længere ude, står i listen nedenfor.
           Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
-          Værkstedskalender, Servicekalender og Disponering.
+          Driftskalender, Servicekalender og Disponering.
         </p>
       </Kort>
 

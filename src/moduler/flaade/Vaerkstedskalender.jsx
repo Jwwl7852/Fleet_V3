@@ -178,7 +178,7 @@ export default function Vaerkstedskalender() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Kort titel={`Værkstedskalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}>
+      <Kort titel={`Driftskalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}>
         <Gitterkalender
           raekker={raekker}
           blokke={blokke}

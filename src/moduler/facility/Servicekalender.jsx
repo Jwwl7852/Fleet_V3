@@ -118,7 +118,7 @@ export default function Servicekalender() {
         <p className="fc-hint" style={{ marginTop: 12 }}>
           Rækkerne er de <b>ressourcer</b> besøgene binder. Et besøg uden et anlæg
           spærrer <b>hele lokationen</b> — gulvarbejdet i Hal B lukker også portene
-          i hallen. Gitteret er det samme som Værkstedskalender og Disponering
+          i hallen. Gitteret er det samme som Driftskalender og Disponering
           bruger.
         </p>
       </Kort>

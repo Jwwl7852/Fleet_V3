@@ -60,7 +60,10 @@ export const NAV = [
     born: [
       { key: "flaadeOversigt", sti: "/flaade", label: "Enheder",
         titel: "Fleet", under: "Overblik over enheder, drift og økonomi" },
-      { key: "vaerksted", sti: "/flaade/vaerksted", label: "Værkstedskalender",
+      { /* Beslutning 22's moenster igen: skaermen skifter navn, RUTEN goer ikke.
+           /flaade/vaerksted overlever, saa bogmaerker og links ikke doer af en
+           omdoebning — praecis som da Live-kort blev til Rute & status. */
+        key: "vaerksted", sti: "/flaade/vaerksted", label: "Driftskalender",
         titel: "Fleet – service, reservationer & fakturaer",
         under: "Værkstedsaktiviteter, bookingintegration og fakturalink." },
       { key: "indberetninger", sti: "/flaade/indberetninger", label: "Indberetninger",
