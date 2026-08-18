@@ -45,21 +45,21 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation } from "../../fleet/format.js";
 import { harPerm } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, kanGodkende,
-  PERM_GODKEND_MIDLERTIDIG,
+  PERM_GODKEND_MIDLERTIDIG
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_LEVERANDOERER, demoAfstemning,
+  DEMO_LEVERANDOERER, demoAfstemning
 } from "../../fleet/demo-indkoeb.js";
 
 const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 export default function Fakturaer() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
 
   /* ⚠ NODEN, IKKE DEMOFILEN. Det er SKÆRMEN FOR `fakturaer`, og den viste
      demo-sættets ni poster uanset hvad kunden havde — mens noden var seedet
@@ -74,10 +74,10 @@ export default function Fakturaer() {
      ordnPaa: "fakturadatoMs" — det er indekset noden faktisk har. Det hed
      "godkendelsesstatus" indtil for få etaper siden, og INGEN post bar det. */
   const liste = useListe("fakturaer", {
-    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500
   });
   const indkoeb = useListe("indkoeb", {
-    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500
   });
 
   const { bruger } = useFleet();
@@ -149,7 +149,7 @@ export default function Fakturaer() {
                   : <Pille tone="warn">Intet match</Pille>) },
               /* Beslutning 20: sporet tilbage til den tråd der aftalte arbejdet. */
               { key: "sagsnummer", label: "Sag", render: (r) => (r.sagsnummer
-                  ? <Link className="fc-a" to="/flaade/vaerksted"><code>{r.sagsnummer}</code></Link>
+                  ? <Link className="fc-a" to="/flaade"><code>{r.sagsnummer}</code></Link>
                   : <span className="fc-neutral">—</span>) },
               { key: "status", label: "Status",
                 render: (r) => <Pille tone={FAKTURASTATUS[r.status]?.pill}>

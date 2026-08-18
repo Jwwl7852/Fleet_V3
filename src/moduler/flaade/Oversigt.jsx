@@ -1,5 +1,17 @@
 /* src/moduler/flaade/Oversigt.jsx
- * Flåde – køretøjer
+ * Enheder — Opsætning → Enheder
+ *
+ * ⚠ SKÆRMEN LIGGER UNDER OPSÆTNING, FILEN LIGGER UNDER flaade/. Det er ikke
+ * en forglemmelse. Menupladsen flyttede, fordi Fleets menu kun skal vise det
+ * personalet ARBEJDER i — men modulnøglen er stadig `flaade`, noden er stadig
+ * `koeretoejer`, og permissionen er stadig `koeretoejer.laes`. De tre står i
+ * hver tenants moduler/-node, i firebase.rules.json og i udstedte tokens; en
+ * omdøbning af dem er en datamigrering plus en genudstedelse af alle tokens.
+ * Samme grænse som da Flåde blev til Fleet: NAVNET skifter, NØGLEN gør ikke.
+ *
+ * Derfor står punktet i nav.js med `kraeverModul: "flaade"`. Opsætning kan
+ * ikke fravælges, og uden det led ville en kunde UDEN Fleet få et menupunkt
+ * der åbner en afvist læsning i sin egen opsætning.
  *
  * DET HER ER STEDET HVOR EN ENHED OPRETTES. Datamodellen kom med beslutning 18.
  *
@@ -93,15 +105,15 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   ENHEDSART, ALLE_ARTER, ALLE_STATUS, KOERETOEJ_STATUS, GRUPPE, FELT,
   felterFor, harFelt, gruppeFor, erPaahaengt, kanDisponeres, kraevedeKompetencer,
-  KOMPETENCE_LABEL, ikonForArt, nedetidDage, valideKoeretoej, byggKoeretoej,
+  KOMPETENCE_LABEL, ikonForArt, nedetidDage, valideKoeretoej, byggKoeretoej
 } from "../../fleet/flaade.js";
 import { HAENDELSE_ART, FORLOEB, aabneFejlFor } from "../../fleet/indberetninger.js";
 import { stederI } from "../../fleet/steder.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_BESOEG } from "../../fleet/demo-vaerksted.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
-  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular,
+  Kort, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
+  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular
 } from "../../fleet/ui.jsx";
 import { vaerste, blokerer } from "../../fleet/datatilstand.js";
 import { gem, nyId } from "../../fleet/skriv.js";
@@ -122,7 +134,7 @@ const FELT_LABEL = {
   [FELT.saeder]: "Sæder",
   [FELT.naesteServiceMs]: "Næste service",
   [FELT.synMs]: "Syn",
-  [FELT.tachografNr]: "Tachograf",
+  [FELT.tachografNr]: "Tachograf"
 };
 
 function feltVaerdi(enhed, felt) {
@@ -194,7 +206,7 @@ const tomFormular = () => ({
   art: "lastbil", status: "aktiv", kaldenavn: "", navn: "", registrering: "",
   hjemsted: "", laengdeMm: "", driftPrKmOere: "", kmStand: "",
   naesteServiceKm: "", saeder: "", tachografNr: "", kranTonmeter: "",
-  kapacitetM3: "", kapacitetKg: "", afgangAarsag: "",
+  kapacitetM3: "", kapacitetKg: "", afgangAarsag: ""
 });
 
 const fraEnhed = (e) => ({
@@ -208,7 +220,7 @@ const fraEnhed = (e) => ({
   kranTonmeter: e.kranTonmeter ?? "",
   kapacitetM3: e.kapacitet?.m3 ?? "", kapacitetKg: e.kapacitet?.kg ?? "",
   afgangAarsag: e.afgangAarsag ?? "",
-  naesteServiceMs: e.naesteServiceMs, synMs: e.synMs,
+  naesteServiceMs: e.naesteServiceMs, synMs: e.synMs
 });
 
 /**
@@ -251,7 +263,7 @@ function Enhedsformular({ enhed, sti, paaGemt, paaLuk }) {
       foer: enhed || null,
       objekt: "koeretoejer",
       objektId: id,
-      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre
     });
     saetGemmer(false);
     saetSvar(r);
@@ -396,7 +408,7 @@ export default function FlaadeOversigt() {
      viser hele flåden (bilen har ingen, beslutning 19). Filtrerede vi her,
      ville en bus' åbne fejl forsvinde når Gods var valgt, og bilen se hel ud. */
   const indb = useListe("indberetninger", {
-    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500
   });
 
   const { data: flaade, henter, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
@@ -408,7 +420,7 @@ export default function FlaadeOversigt() {
     division: "alle",
     graense: 300,
     sorter: (a, b) => (a.kaldenavn || a.navn).localeCompare(b.kaldenavn || b.navn, "da"),
-    demo: DEMO_KOERETOEJER,
+    demo: DEMO_KOERETOEJER
   });
 
   if (henterKpi || henter) return <Henter hvad="flåden" />;
@@ -474,14 +486,14 @@ export default function FlaadeOversigt() {
               "Se køretøjer"-linje, men et link inde i et link er ugyldigt
               markup, og to veje til samme sted er én for meget. */}
           <KpiKort label="Aktive enheder" vaerdi={num(k.flaade.aktive)}
-                   ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/flaade" />
+                   ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/opsaetning/enheder" />
           <KpiKort label="Ude af drift" vaerdi={num(k.flaade.udeAfDrift)}
                    ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
                    note={`heraf ${num(k.flaade.paaVaerksted)} på værksted`}
-                   til="/flaade/vaerksted" />
+                   til="/flaade" />
           <KpiKort label="Service inden 30 dage" vaerdi={num(k.flaade.serviceInden30)}
                    ikon={<Ikon navn="ur" />} tone="ikon-3" rund
-                   til="/flaade/vaerksted" />
+                   til="/flaade" />
           {/* Driftsomkostning UDEN chauffør. Kalkulationsprisen inkl. chauffør
               er 8,40 kr og ligger i Bookingopsætning — beslutning 11.
               betterWhen:"lower" — en stigning i kroner pr. km er RØD, uanset at

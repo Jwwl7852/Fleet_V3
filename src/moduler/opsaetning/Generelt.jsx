@@ -49,7 +49,7 @@ const STAMDATA = [
     note: "Personen findes uden login. personId er ikke uid — beslutning 18." },
   { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Workforce → Kompetencer",
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
-  { hvad: "Enheder og påhæng", hvor: "/flaade", label: "Fleet → Enheder",
+  { hvad: "Enheder og påhæng", hvor: "/opsaetning/enheder", label: "Opsætning → Enheder",
     note: "Arten styrer feltskemaet. Ingen division på en enhed — beslutning 19." },
   { hvad: "Kunder og prisgrupper", hvor: "/kunder", label: "Kunder & Priser",
     note: "Prisgruppen peger på et satssæt; satserne selv ligger i Bookingopsætning." },

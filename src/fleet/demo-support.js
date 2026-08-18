@@ -20,8 +20,8 @@
  * fast vindue omkring fejltidspunktet — ikke tenantens log.
  */
 import {
-  SUPPORT_KATEGORI, SUPPORT_PRIORITET, SUPPORT_STATUS, KONTEKSTFELTER,
-  SUPPORT_NUMMER, kontekstFilter, klipUdtraek, adgangAktiv,
+  SUPPORT_KATEGORI, SUPPORT_PRIORITET, SUPPORT_STATUS,
+  SUPPORT_NUMMER, kontekstFilter, klipUdtraek, adgangAktiv
 } from "./support.js";
 
 const MIN = 60000;
@@ -37,7 +37,7 @@ const dag = (n, time = 0, min = 0) => D0 + n * DAG + time * T + min * MIN;
    fordi supportoverblikket skal kunne vise sager på tværs. */
 export const DEMO_TENANTS = {
   demo: "DEMO Transport ApS",
-  nordisk: "Nordisk Logistik A/S",
+  nordisk: "Nordisk Logistik A/S"
 };
 
 /* ---- Sagerne ----------------------------------------------------------- */
@@ -54,17 +54,17 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Martin K.",
     fejlMs: dag(0, 9, 14),
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Fleet",
+      kunde: "DEMO Transport ApS", side: "/opsaetning/enheder", modul: "Opsætning",
       browser: "Chrome 126", version: "FleetControl 3.0.0",
       brugerId: "uid-line", tidspunkt: "18-08-2026 09:14",
-      fejlId: "FC-ERR-SAVE-VEH-001",
+      fejlId: "FC-ERR-SAVE-VEH-001"
     },
     checkliste: [
       { id: "c1", tekst: "Kontrollér valideringsreglerne på koeretoejer/", klaret: true },
       { id: "c2", tekst: "Reproducér i DEV", klaret: true },
       { id: "c3", tekst: "Skriv en regeltest der fanger det", klaret: false },
       { id: "c4", tekst: "Bekræft hos kunden", klaret: false },
-    ],
+    ]
   },
   {
     id: "sup-1023", nummer: "SUP-2026-01023", tenantId: "nordisk",
@@ -80,12 +80,12 @@ export const DEMO_SUPPORTSAGER = [
       kunde: "Nordisk Logistik A/S", side: "/booking", modul: "Planning",
       browser: "Edge 127", version: "FleetControl 3.0.0",
       brugerId: "uid-preben", tidspunkt: "17-08-2026 08:52",
-      fejlId: null,
+      fejlId: null
     },
     checkliste: [
       { id: "c1", tekst: "Bekræft at etaper er .write: false — der skrives ikke reservationer endnu", klaret: true },
       { id: "c2", tekst: "Forklar kunden at konfliktkontrollen hører i Cloud Function", klaret: false },
-    ],
+    ]
   },
   {
     id: "sup-1022", nummer: "SUP-2026-01022", tenantId: "demo",
@@ -100,11 +100,11 @@ export const DEMO_SUPPORTSAGER = [
     kontekst: {
       kunde: "DEMO Transport ApS", side: "/booking/forslag", modul: "Planning",
       browser: "Chrome 126", version: "FleetControl 3.0.0",
-      brugerId: "uid-mette", tidspunkt: "18-08-2026 11:05", fejlId: null,
+      brugerId: "uid-mette", tidspunkt: "18-08-2026 11:05", fejlId: null
     },
     checkliste: [
       { id: "c1", tekst: "Bekræft: det er beslutning 5, ikke en fejl", klaret: false },
-    ],
+    ]
   },
   {
     id: "sup-1019", nummer: "SUP-2026-01019", tenantId: "nordisk",
@@ -117,15 +117,15 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Martin K.",
     fejlMs: dag(-2, 15, 33),
     kontekst: {
-      kunde: "Nordisk Logistik A/S", side: "/flaade/vaerksted", modul: "Fleet",
+      kunde: "Nordisk Logistik A/S", side: "/flaade", modul: "Fleet",
       browser: "Edge 127", version: "FleetControl 3.0.0",
       brugerId: "uid-preben", tidspunkt: "16-08-2026 15:33",
-      fejlId: "FC-SAG-KARANTAENE",
+      fejlId: "FC-SAG-KARANTAENE"
     },
     checkliste: [
       { id: "c1", tekst: "Bekræft afsenderadressen mod sagens parter[]", klaret: true },
       { id: "c2", tekst: "Vejled kunden i at frigive og tilføje parten", klaret: false },
-    ],
+    ]
   },
   {
     id: "sup-1016", nummer: "SUP-2026-01016", tenantId: "demo",
@@ -136,11 +136,11 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Line A.",
     fejlMs: null,
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/flaade", modul: "Fleet",
+      kunde: "DEMO Transport ApS", side: "/opsaetning/enheder", modul: "Opsætning",
       browser: "Firefox 129", version: "FleetControl 3.0.0",
-      brugerId: "uid-benjamin", tidspunkt: "12-08-2026 10:12", fejlId: null,
+      brugerId: "uid-benjamin", tidspunkt: "12-08-2026 10:12", fejlId: null
     },
-    checkliste: [{ id: "c1", tekst: "Henvist til Fleet → Ny enhed", klaret: true }],
+    checkliste: [{ id: "c1", tekst: "Henvist til Opsætning → Enheder → Ny enhed", klaret: true }]
   },
 ];
 
@@ -183,7 +183,7 @@ export const DEMO_SUPPORTBESKEDER = {
       tekst: "Hvor opretter man en påhængsvogn?" },
     { id: "b2", ms: dag(-6, 10, 40), fra: "support", navn: "Line A.",
       tekst: "Under Fleet → Ny enhed. Vælg arten 'Påhængsvogn'." },
-  ],
+  ]
 };
 
 /* ---- Auditudtrækket ---------------------------------------------------- */
@@ -212,7 +212,7 @@ export const DEMO_AUDITUDTRAEK = {
   "sup-1019": [
     { ms: dag(-2, 15, 31), handling: "laes", objekt: "sager", antal: 4, resultat: "ok" },
     { ms: dag(-2, 15, 33), handling: "adgangNaegtet", objekt: "sager", resultat: "afvist" },
-  ],
+  ]
 };
 
 /* ---- Supportadgang ----------------------------------------------------- */
@@ -224,7 +224,7 @@ export const DEMO_BEVILLINGER = {
     givetAf: "uid-dennis", givetMs: dag(0, 9, 40),
     udloeberMs: Date.now() + 2 * T,
     type: "readOnly", formaal: "Undersøge afvist skrivning på Bil 104",
-    tilbagekaldtMs: null,
+    tilbagekaldtMs: null
   },
   /* Udløbet — står som spor, den slettes ikke. */
   "sup-1019": {
@@ -232,8 +232,8 @@ export const DEMO_BEVILLINGER = {
     givetAf: "uid-preben", givetMs: dag(-2, 16, 0),
     udloeberMs: dag(-2, 20, 0),
     type: "readOnly", formaal: "Se karantænelisten på sagen",
-    tilbagekaldtMs: null,
-  },
+    tilbagekaldtMs: null
+  }
 };
 
 /* ---- Indeks pr. tenant ------------------------------------------------- */

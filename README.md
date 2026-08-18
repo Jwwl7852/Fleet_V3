@@ -312,6 +312,47 @@ Kommentarer og filhoveder beholder de danske navne — de står ved siden af
 `src/moduler/flaade/` og `indkoeb/`, og en kommentar der sagde "Fleet" om
 en mappe der hedder `flaade`, ville pege forkert.
 
+### Enheder flyttede til Opsætning — og det er samme snit én gang til
+
+Fleets menu skal kun vise det personalet **arbejder i**. Enhedskartoteket er
+stamdata: en bil oprettes én gang og røres sjældent igen, mens disponenten er i
+Driftskalenderen hver dag. Stod de side om side, lå den daglige skærm nummer to
+i en menu hvor nummer ét knap bruges.
+
+| | Før | Nu |
+|---|---|---|
+| Enheder | `/flaade` | **`/opsaetning/enheder`** |
+| Driftskalender | `/flaade/vaerksted` | **`/flaade`** — Fleets forside |
+| Indberetninger | `/flaade/indberetninger` | uændret |
+
+`/flaade/vaerksted` lever videre i `REDIRECTS`. Filen bliver liggende i
+`src/moduler/flaade/Oversigt.jsx`: **modulnøglen `flaade`, noden
+`koeretoejer` og permissionen `koeretoejer.laes` er uændrede**, præcis som da
+Flåde blev til Fleet. Det er menupladsen der flyttede, ikke ejerskabet.
+
+⚠ **Og det koster ét led man ikke kommer på af sig selv.** `koeretoejer` er
+modulspærret på `flaade` i `firebase.rules.json` — men Opsætning er
+`altid: true` og kan ikke fravælges. Uden `kraeverModul: "flaade"` på
+nav-punktet ville en kunde der **aldrig har købt Fleet**, få et menupunkt i sin
+egen opsætning der åbner en afvist læsning. En `permission-denied` er reglerne
+der *virker*; den skal bare ikke fremprovokeres af en menu vi selv har tegnet.
+Ruten findes stadig — tastes den, kommer `<Datatilstand>`, ikke en hvid skærm.
+
+**Firma- og periodevælgeren er væk fra Fleets skærme.** Driftskalenderen har sin
+egen dag/uge/måned-vælger, og to periodebegreber på samme skærm er to svar på ét
+spørgsmål. Stemplet "Opdateret 14.32" følger med periodevælgeren — uden perioden
+er der ikke noget det er stempel på. Det er **shellen** der skjuler dem, ud fra
+`skjulFirma`/`skjulPeriode` på hovedmodulet i `nav.js`: et modul der skjulte
+dem selv, skulle tegne sin egen topbar, og så ejede det en af de tre ting
+shellen ejer. Kontrollerne er skjult, ikke fjernet — tilstanden bliver i
+`FleetContext`, så tenant, division og periode er de samme når man går tilbage
+til Dashboardet.
+
+`test/moduler.test.mjs` holder begge dele: at `kraeverModul` peger på et modul
+der findes, at et flag skrevet på et **barn** vælter prøven (AppShell læser dem
+af hovedmodulet og ville ignorere det i tavshed), og at Enheder stadig kræver
+Fleet.
+
 ### Skærmene: 27 af 30 har indhold
 
 | | Skærme |

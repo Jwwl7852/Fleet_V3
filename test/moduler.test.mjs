@@ -208,3 +208,81 @@ describe("hvert menupunkt fører et sted hen", () => {
     }
   });
 });
+
+
+describe("et underpunkt der låner en anden modulnode", () => {
+  /* ⚠ HVORFOR DEN HER BLEV SKREVET.
+     Enheder flyttede fra Fleet til Opsætning, fordi Fleets menu kun skal vise
+     det personalet ARBEJDER i. Men noden er stadig `koeretoejer`, som er
+     modulspærret på `flaade` i firebase.rules.json — og Opsætning er
+     `altid: true` og kan ikke fravælges. Uden `kraeverModul` ville en kunde
+     der ALDRIG har købt Fleet, få et menupunkt i sin egen opsætning der åbner
+     en afvist læsning.
+
+     En permission-denied er reglerne der VIRKER. Den skal bare ikke
+     fremprovokeres af en menu vi selv har tegnet. */
+  const alleBoern = NAV.flatMap((m) => m.born || []);
+
+  it("kraeverModul peger på et modul der findes", () => {
+    /* Samme fejlklasse som navKey ovenfor: et filter på et navn ingen modul
+       har, er ikke en fejl der kaster — punktet forsvinder bare, for ALLE, og
+       ingen ser hvornår det skete. */
+    for (const b of alleBoern) {
+      if (!b.kraeverModul) continue;
+      assert.ok(ALLE_MODULER.includes(b.kraeverModul),
+        `nav-punktet "${b.key}" kræver modulet "${b.kraeverModul}", som ikke findes i moduler.js`);
+    }
+  });
+
+  it("⚠ ENHEDER KRÆVER FLEET, SELV OM DET LIGGER UNDER OPSÆTNING", () => {
+    /* Det konkrete tilfælde skrevet ud. Flytter nogen punktet tilbage — eller
+       fjerner leddet under en oprydning — falder prøven her og ikke først hos
+       den kunde der ikke har Fleet. */
+    const enheder = alleBoern.find((b) => b.key === "enheder");
+    assert.ok(enheder, "nav-punktet \"enheder\" findes ikke længere");
+    assert.equal(enheder.kraeverModul, "flaade");
+    assert.equal(enheder.sti, "/opsaetning/enheder");
+  });
+
+  it("et punkt under sit EGET modul kræver ikke et led", () => {
+    /* Den anden vej. `kraeverModul` på et barn der allerede ligger under det
+       modul, er støj: hovedpunktet er filtreret i forvejen, og et led der
+       aldrig kan være falsk, læses som om det betød noget. */
+    for (const m of NAV) {
+      for (const b of m.born || []) {
+        if (!b.kraeverModul) continue;
+        assert.notEqual(b.kraeverModul, m.key,
+          `"${b.key}" kræver "${b.kraeverModul}", som er dets eget modul — leddet kan aldrig være falsk`);
+      }
+    }
+  });
+});
+
+describe("topbarens kontroller skjules fra hovedmodulet", () => {
+  /* ⚠ SHELLEN EJER FIRMA- OG PERIODEVÆLGEREN — OGSÅ NÅR DE SKAL VÆK.
+     AppShell læser flagene af findHovedmodul(), ikke af findModul(). Et flag
+     skrevet på et BARN ville derfor blive ignoreret i tavshed: skærmen ser
+     præcis ud som før, og den næste ville skrive det på barn nummer to og tro
+     at det virkede. */
+  const boernMedFlag = NAV.flatMap((m) => m.born || [])
+    .filter((b) => b.skjulFirma !== undefined || b.skjulPeriode !== undefined);
+
+  it("flagene står kun på hovedmoduler", () => {
+    assert.deepEqual(boernMedFlag.map((b) => b.key), [],
+      "skjulFirma/skjulPeriode på et underpunkt læses aldrig — sæt dem på hovedmodulet");
+  });
+
+  it("AppShell læser dem af hovedmodulet, ikke af modulet", () => {
+    /* Filen læses som tekst, som ICO-prøven ovenfor: AppShell.jsx er JSX og
+       kan ikke indlæses i Node. */
+    const kilde = readFileSync("src/fleet/AppShell.jsx", "utf8");
+    assert.match(kilde, /const visFirma = !hoved.skjulFirma/);
+    assert.match(kilde, /const visPeriode = !hoved.skjulPeriode/);
+  });
+
+  it("⚠ FLEET SKJULER BEGGE — DEN HAR SIN EGEN TIDSVÆLGER", () => {
+    const fleet = NAV.find((m) => m.key === "flaade");
+    assert.equal(fleet.skjulFirma, true);
+    assert.equal(fleet.skjulPeriode, true);
+  });
+});

@@ -340,8 +340,10 @@ export default function App() {
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />
             <Route path="bemanding/fravaer" element={<Fravaer />} />
 
-            <Route path="flaade" element={<FlaadeOversigt />} />
-            <Route path="flaade/vaerksted" element={<Vaerkstedskalender />} />
+            {/* ⚠ DRIFTSKALENDEREN ER FLEETS FORSIDE. Enheder laa her og ligger nu
+                under Opsaetning — se nav.js. /flaade/vaerksted er en redirect i
+                REDIRECTS, ikke en rute, saa der er eet sted skaermen naas fra. */}
+            <Route path="flaade" element={<Vaerkstedskalender />} />
             <Route path="flaade/indberetninger" element={<Indberetninger />} />
 
             <Route path="facility" element={<FacilityOversigt />} />
@@ -381,6 +383,10 @@ export default function App() {
             <Route path="support/sag/:id" element={<Supportsag />} />
 
             <Route path="opsaetning" element={<Generelt />} />
+            {/* Enhedskartoteket. Komponenten bliver liggende i moduler/flaade/,
+                fordi modulnoeglen, noden og permissionen alle hedder flaade —
+                det er MENUPLADSEN der flyttede, ikke ejerskabet. */}
+            <Route path="opsaetning/enheder" element={<FlaadeOversigt />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
 

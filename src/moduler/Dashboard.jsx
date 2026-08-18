@@ -16,7 +16,7 @@ import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -49,7 +49,7 @@ const HANDLINGER = (k) => [
      seeder den — den sjette node i den tilstand. Feltet er derfor null her og
      får sin kilde samtidig med seedet. */
   { n: k.flaade.nyeIndberetninger, t: "nye indberetninger", til: "/flaade/indberetninger", link: "Se indberetninger", tone: "ikon-1", ikon: "dokument" },
-  { n: k.flaade.udeAfDrift, t: "enheder ude af drift", til: "/flaade", link: "Se enheder", tone: "ikon-2", ikon: "lastbil" },
+  { n: k.flaade.udeAfDrift, t: "enheder ude af drift", til: "/opsaetning/enheder", link: "Se enheder", tone: "ikon-2", ikon: "lastbil" },
   { n: k.opgaver.forsinkede, t: "opgaver forsinket", til: "/booking", link: "Se opgaver", tone: "ikon-3", ikon: "ur" },
   { n: k.indkoeb.fakturaerTilGodkendelse, t: "fakturaer til godkendelse", til: "/indkoeb/fakturaer", link: "Se fakturaer", tone: "ikon-4", ikon: "seddel" },
   { n: k.facility.servicepunkterForfalder, t: "servicepunkter forfalder", til: "/facility/servicekalender", link: "Se servicekalender", tone: "ikon-5", ikon: "skruenoegle" },
@@ -72,7 +72,7 @@ const beloebEllerIntet = (oere, dec) =>
   (Number.isFinite(oere) ? kr(oere, dec) : INTET);
 
 export default function Dashboard() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
@@ -96,7 +96,7 @@ export default function Dashboard() {
   const { historik } = omkostningsserie(division);
   const serie = [...historik, k.oekonomi.driftsomkostningerOere].slice(-6);
   const maanedsPunkter = maanedsEtiketter(6).map((m, i) => ({
-    label: m, vaerdier: [serie[i]],
+    label: m, vaerdier: [serie[i]]
   }));
 
   /* Samme visningsregel som useListe: valgt division plus fælles. */

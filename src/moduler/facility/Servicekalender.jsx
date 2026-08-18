@@ -26,7 +26,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje, Knap,
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje, Knap
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
@@ -35,7 +35,7 @@ import { reservationFraOpgave } from "../../fleet/opgaver.js";
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
 import {
-  DEMO_SERVICEBESOEG, DEMO_AKTIVER, DEMO_LOKATIONER, demoAktiv, demoLokation,
+  DEMO_SERVICEBESOEG, DEMO_AKTIVER, DEMO_LOKATIONER, demoAktiv, demoLokation
 } from "../../fleet/demo-facility.js";
 
 /* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
@@ -50,7 +50,7 @@ const VINDUE_DAGE = 10;
 const BESOEG_TONE = { planlagt: "info", igang: "warn", udfoert: "ok" };
 
 export default function Servicekalender() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const [valgtId, setValgtId] = useState(null);
 
   const iDag = new Date(); iDag.setHours(0, 0, 0, 0);
@@ -68,12 +68,12 @@ export default function Servicekalender() {
     return [
       ...DEMO_LOKATIONER.filter((l) => lokIder.has(l.id)).map((l) => ({
         id: l.id, label: l.navn, under: "Hele lokationen",
-        pille: <Pille tone="warn">Lokation</Pille>,
+        pille: <Pille tone="warn">Lokation</Pille>
       })),
       ...DEMO_AKTIVER.filter((a) => aktivIder.has(a.id)).map((a) => ({
         id: a.id, label: a.navn,
         under: `${AKTIV_ART[a.art]?.label} · ${demoLokation(a.lokationId)?.navn || ""}`,
-        pille: <Pille tone={AKTIV_STATUS[a.status]?.pill}>{AKTIV_STATUS[a.status]?.label}</Pille>,
+        pille: <Pille tone={AKTIV_STATUS[a.status]?.pill}>{AKTIV_STATUS[a.status]?.label}</Pille>
       })),
     ];
   }, [vindueFra, vindueTil]);
@@ -84,7 +84,7 @@ export default function Servicekalender() {
     fra: b.fra, til: b.til,
     label: `${lvNavn(b.leverandoerId)}${b.sagsnummer ? ` · ${b.sagsnummer}` : ""}`,
     titel: b.beskrivelse,
-    tone: BESOEG_TONE[b.status] || "info",
+    tone: BESOEG_TONE[b.status] || "info"
   }));
 
   if (henter) return <Henter hvad="servicekalenderen" />;
@@ -148,7 +148,7 @@ export default function Servicekalender() {
             Et servicebesøg er en <b>opgave med art facility</b> (beslutning 21) —
             samme form som et værkstedsbesøg, bare på et anlæg i stedet for en bil.
             Sagsnummeret kommer fra beslutning 20:{" "}
-            <Link className="fc-a" to="/flaade/vaerksted">se sagsvisningen</Link>.
+            <Link className="fc-a" to="/flaade">se sagsvisningen</Link>.
           </p>
         </Kort>
       </Gitter>

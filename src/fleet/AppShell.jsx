@@ -90,6 +90,11 @@ export default function AppShell() {
   const hoved = findHovedmodul(pathname);
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
+  /* Flaget staar paa HOVEDMODULET, ikke paa hvert barn: "alle undermoduler
+     under Fleet" er eet svar, og skrevet paa hvert barn ville det femte barn
+     mangle det uden at nogen saa det. */
+  const visFirma = !hoved.skjulFirma;
+  const visPeriode = !hoved.skjulPeriode;
 
   return (
     <>
@@ -118,7 +123,19 @@ export default function AppShell() {
                 Se fleet/moduler.js. */}
             {NAV.filter((m) => harModul(moduler, m.key)).map((m) => {
               const aktiv = hoved.key === m.key;
-              const born = (m.born || []).filter((b) => !b.skjulINav);
+              /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
+                 DEN SAMME. `skjulINav` er en detaljerute uden egen plads i
+                 menuen (/booking/forslag/:id). `kraeverModul` er et punkt der
+                 ligger under ET modul, men laeser EN ANDENS node — Enheder
+                 under Opsaetning laeser `koeretoejer`, som er modulspaerret
+                 paa `flaade` i reglerne. Opsaetning kan ikke fravaelges, saa
+                 uden det led ville en kunde uden Fleet faa et menupunkt der
+                 aabner en afvist laesning i sin egen opsaetning.
+                 Ruten findes stadig — det er menuen der tier, ikke adgangen
+                 der aendres. Se nav.js og moduler.js. */
+              const born = (m.born || [])
+                .filter((b) => !b.skjulINav)
+                .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul));
               return (
                 <div key={m.key}>
                   <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}>
@@ -185,17 +202,40 @@ export default function AppShell() {
               <h1>{modul.titel}</h1>
               <p>{modul.under}</p>
             </div>
-            <div className="fc-top-ctl">
-              <select className="fc-ctl" aria-label="Virksomhed" value={tenantId}
-                      onChange={(e) => setTenantId(e.target.value)}>
-                {tenants.map((t) => <option key={t.id} value={t.id}>{t.navn}</option>)}
-              </select>
-              <select className="fc-ctl" aria-label="Periode" value={dage}
-                      onChange={(e) => setDage(Number(e.target.value))}>
-                {PERIODER.map((p) => <option key={p.dage} value={p.dage}>{p.label}</option>)}
-              </select>
-              <span className="fc-stamp">Opdateret {klokke(Date.now())}</span>
-            </div>
+            {/* ⚠ SHELLEN EJER DE TRE KONTROLLER — OGSAA NAAR DE SKAL VAEK.
+                Et modul der skjulte firma- eller periodevaelgeren selv, skulle
+                tegne sin egen topbar for at goere det, og saa ejer det en af de
+                ting shellen ejer. Flaget staar derfor paa HOVEDMODULET i
+                nav.js, og shellen laeser det her.
+
+                Fleet saetter begge: driftskalenderen har sin egen dag/uge/
+                maaned-vaelger, og to periodebegreber paa samme skaerm er to
+                svar paa eet spoergsmaal. Stemplet foelger periodevaelgeren —
+                "Opdateret 14.32" siger hvornaar PERIODENS tal blev hentet, og
+                uden perioden er der ikke noget det er stempel paa.
+
+                Kontrollerne er skjult, ikke fjernet: tilstanden ligger stadig i
+                FleetContext, saa division, tenant og periode er de samme naar
+                man gaar tilbage til Dashboardet. */}
+            {(visFirma || visPeriode) && (
+              <div className="fc-top-ctl">
+                {visFirma && (
+                  <select className="fc-ctl" aria-label="Virksomhed" value={tenantId}
+                          onChange={(e) => setTenantId(e.target.value)}>
+                    {tenants.map((t) => <option key={t.id} value={t.id}>{t.navn}</option>)}
+                  </select>
+                )}
+                {visPeriode && (
+                  <>
+                    <select className="fc-ctl" aria-label="Periode" value={dage}
+                            onChange={(e) => setDage(Number(e.target.value))}>
+                      {PERIODER.map((p) => <option key={p.dage} value={p.dage}>{p.label}</option>)}
+                    </select>
+                    <span className="fc-stamp">Opdateret {klokke(Date.now())}</span>
+                  </>
+                )}
+              </div>
+            )}
           </header>
           <main className="fc-slot"><Outlet /></main>
         </div>

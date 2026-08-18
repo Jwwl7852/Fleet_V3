@@ -55,17 +55,30 @@ export const NAV = [
     ],
   },
   {
+    /* ⚠ FLEET ER DE TO DRIFTSSKÆRME — ENHEDER LIGGER UNDER OPSÆTNING.
+       Menuen skal kun vise det personalet ARBEJDER i. Enhedskartoteket er
+       stamdata: en bil oprettes én gang og røres sjældent igen, mens
+       disponenten er i Driftskalenderen hver dag. Stod de side om side, lå
+       den daglige skærm nummer to i en menu hvor nummer ét knap bruges.
+       Se `enheder` under opsaetning — modulnøglen `flaade`, noden
+       `koeretoejer` og permissionen `koeretoejer.laes` er UÆNDREDE. Det er
+       kun MENUPLADSEN der flyttede.
+
+       ⚠ skjulFirma/skjulPeriode ejes af shellen, også når kontrollerne skal
+       væk. Et modul der skjulte dem selv, skulle tegne sin egen topbar for
+       at gøre det — og så ville det eje en af de tre ting shellen ejer. */
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
-    under: "Overblik over enheder, drift og økonomi",
+    under: "Driftskalender og indberetninger",
+    skjulFirma: true, skjulPeriode: true,
     born: [
-      { key: "flaadeOversigt", sti: "/flaade", label: "Enheder",
-        titel: "Fleet", under: "Overblik over enheder, drift og økonomi" },
       { /* Beslutning 22's moenster igen: skaermen skifter navn, RUTEN goer ikke.
-           /flaade/vaerksted overlever, saa bogmaerker og links ikke doer af en
-           omdoebning — praecis som da Live-kort blev til Rute & status. */
-        key: "vaerksted", sti: "/flaade/vaerksted", label: "Driftskalender",
-        titel: "Fleet – service, reservationer & fakturaer",
-        under: "Værkstedsaktiviteter, bookingintegration og fakturalink." },
+           Driftskalenderen er nu Fleets FORSIDE og ligger paa /flaade, hvor
+           Enheder laa. /flaade/vaerksted lever videre som redirect (se
+           REDIRECTS), saa bogmaerker og links ikke doer af en flytning —
+           praecis som da Live-kort blev til Rute & status. */
+        key: "vaerksted", sti: "/flaade", label: "Driftskalender",
+        titel: "Fleet – driftskalender",
+        under: "Planlæg, følg op og håndtér driftsopgaver på tværs af enheder og værksteder." },
       { key: "indberetninger", sti: "/flaade/indberetninger", label: "Indberetninger",
         titel: "Indberetninger", under: "Reparation, skade, brændstof og fejl" },
     ],
@@ -228,6 +241,20 @@ export const NAV = [
     born: [
       { key: "generelt", sti: "/opsaetning", label: "Generelt",
         titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
+      /* ⚠ ENHEDER HØRER I OPSÆTNING, MEN NODEN ER FLEETS.
+         `koeretoejer` er modulspærret på `flaade` i firebase.rules.json —
+         både .read og .write. Opsætning er `altid: true` og kan ikke
+         fravælges, så uden `kraeverModul` ville en kunde UDEN Fleet få et
+         menupunkt der åbner en afvist læsning i sin egen opsætning. En
+         permission-denied er reglerne der VIRKER; den skal bare ikke
+         fremprovokeres af en menu vi selv har tegnet.
+
+         RUTEN findes uanset: taster han /opsaetning/enheder alligevel, får
+         han <Datatilstand> og ikke en hvid skærm. Menuen er en KOMMERCIEL
+         kontrol, reglerne er sikkerhedskontrollen — se moduler.js. */
+      { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
+        kraeverModul: "flaade",
+        titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
       { key: "brugere", sti: "/opsaetning/brugere", label: "Brugere & roller",
         titel: "Brugere & roller",
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Workforce → Medarbejdere." },
@@ -244,6 +271,10 @@ export const ALLE = NAV.flatMap((m) => (m.born ? m.born : [m]));
 export const REDIRECTS = [
   { fra: "/dispatch", til: "/booking/disponering" },
   { fra: "/tracking", til: "/booking/live-kort" },
+  /* Driftskalenderen flyttede op paa /flaade, da Enheder gik til Opsaetning.
+     Stien har staaet i sidebaren siden v3.0 og ligger i mindst een supportsags
+     kontekst (demo-sag.js) — den doer ikke af en menuomlaegning. */
+  { fra: "/flaade/vaerksted", til: "/flaade" },
 ];
 
 /** Slår modulet op ud fra pathname. Længste match vinder. */
