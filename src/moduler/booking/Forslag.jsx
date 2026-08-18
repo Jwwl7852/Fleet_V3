@@ -49,6 +49,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { useListe } from "../../fleet/useListe.js";
 import { enhedsIder, reservationerFraEtape, straekningFraEtape } from "../../fleet/etaper.js";
 import { kr, num, dato, datoTid } from "../../fleet/format.js";
 import {
@@ -63,22 +64,54 @@ import { PERM } from "../../fleet/permissions.js";
 import {
   DEMO_BOOKINGER, TRANSPORTTYPE, demoBooking, demoEtaperPaa,
 } from "../../fleet/demo-bookinger.js";
-import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
-import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
-import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
-import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../../fleet/demo-personale.js";
 
-const kunde = (id) => DEMO_KUNDER.find((k) => k.id === id);
-const bil = (id) => DEMO_KOERETOEJER.find((b) => b.id === id);
-const person = (id) => DEMO_PERSONALE.find((p) => p.id === id);
+/* ⚠ OPSLAGENE LÅ PÅ MODULNIVEAU MED DEMO-SÆTTET LUKKET INDE I SIG — og det
+   er ikke bare et navn: `bil(id)` fodrer `enheder`, som går direkte ind i
+   `tjekDisponering()`. Kanden der skulle prøves, var altså demoens bil og
+   ikke kundens. Fjerde gang mønstret dukker op efter zonePar(),
+   medPrisliste() og Kompetencers personNavn(). */
+const find = (liste, id) => liste.find((x) => x.id === id) || null;
 
 /** Enhederne på et forslag, som navne. En sættevogn er to. */
-const enhedsnavne = (f) =>
-  enhedsIder(f).map((id) => bil(id)?.kaldenavn || id).join(" + ") || "—";
+const enhedsnavne = (biler, f) =>
+  enhedsIder(f).map((id) => find(biler, id)?.kaldenavn || id).join(" + ") || "—";
 
 export default function Forslag() {
   const { id } = useParams();
   const { bruger } = useFleet();
+
+  /* ⚠ FEM NODER, OG DE ER IKKE PYNT. Skærmen er dér koordinatoren GODKENDER
+     et forslag, og `Tjekkene` kører de samme fem tjek som `etapeskift`
+     håndhæver. Kørte de på demo-sættet mens serveren læste noden, ville
+     skærmen sige ja hvor serveren siger nej — og brugeren har fået at vide at
+     det var i orden.
+
+     ⚠ RESERVATIONERNE ER DEN VIGTIGSTE. De blev bygget af DEMO_ETAPER alene,
+     altså UDEN fravær og uden værksted. En sygemeldt chauffør så ledig ud
+     her, mens noden nu bærer fraværet. */
+  const etaperListe = useListe("etaper", {
+    ordnPaa: "fra", vindue: "alle", division: "alle", graense: 500,
+  });
+  const resvListe = useListe("reservationer", {
+    vindue: "alle", division: "alle", graense: 50,
+  });
+  const bilListe = useListe("koeretoejer", {
+    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+  });
+  const persListe = useListe("personale", {
+    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+  });
+  const kompListe = useListe("kompetencer", {
+    vindue: "alle", division: "alle", graense: 2000,
+  });
+
+  /* ⚠ reservationer ER ET TRAE, ikke en liste: type → ressource →
+     reservation. useListe giver raekker der ER typerne; traeet samles her,
+     paa NODENS form — den samme tjekDisponering() slaar op i. */
+  const reservationsnode = Object.fromEntries(
+    resvListe.data.map(({ id, ...prRessource }) => [id, prRessource]));
+
+  const kundeListe = useListe("kunder", { vindue: "alle", graense: 500 });
 
   /* Uden et id i ruten falder vi tilbage på det forløb der faktisk afventer
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
@@ -112,7 +145,9 @@ export default function Forslag() {
 
   const etape = etaper.find((e) => e.id === etapeId) || foerste;
   const perms = bruger?.perms;
-  const k = kunde(booking.kundeId);
+  /* ⚠ KUNDEN KOMMER OGSAA FRA NODEN. Navnet paa forloebet er det
+     foerste koordinatoren laeser, og et demo-navn dér er en anden kunde. */
+  const k = find(kundeListe.data, booking.kundeId);
 
   /* Etapen som `kanSkifteEtape()` ser den — med det forslag brugeren har valgt
      lige NU, ikke det der ligger gemt. Ellers ville svaret ikke svare til det
@@ -138,7 +173,12 @@ export default function Forslag() {
      stadig i `etapeskift` — et direkte kald går ikke uden om noget.
      ══════════════════════════════════════════════════════════════════════ */
   const tjekraekker = etape && valgtForslag
-    ? tjekrakkerFor({ etape, forslag: valgtForslag })
+    ? tjekrakkerFor({
+      etape, forslag: valgtForslag,
+      biler: bilListe.data, personale: persListe.data,
+      kompetencer: kompListe.data, alleEtaper: etaperListe.data,
+      reservationsnode: reservationsnode,
+    })
     : [];
   const spaerret = tjekraekker.some((x) => x.tone === TONE.bad);
 
@@ -215,6 +255,8 @@ export default function Forslag() {
             etape={etape}
             valgtForslagId={valgtForslagId}
             setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
+            biler={bilListe.data}
+            personale={persListe.data}
           />
           <Godkendelse
             svar={godkendSvar} muligheder={muligheder}
@@ -242,7 +284,11 @@ export default function Forslag() {
 
 /* ---- Forslagene på etapen ---------------------------------------------- */
 
-function Forslagstabel({ etape, valgtForslagId, setValgtForslagId }) {
+function Forslagstabel({ etape, valgtForslagId, setValgtForslagId, biler, personale }) {
+  /* ⚠ LISTERNE KOMMER IND. Kolonnerne slaar navne op, og en
+     underkomponent kan ikke se den ydres variable — femte gang i denne
+     omgang, og byggeriet siger det ikke: en ReferenceError ved rendering er
+     ingen byggefejl. Kun et klik fanger den. */
   return (
     <Kort titel={`Forslag på etape nr. ${etape.nr ?? "?"} (${etape.forslag?.length || 0})`}
           under={`${etape.fraSted} → ${etape.tilSted} · ${TILSTAND[etape.tilstand]?.label}`}>
@@ -266,9 +312,10 @@ function Forslagstabel({ etape, valgtForslagId, setValgtForslagId }) {
                som på etapen: en trailer kan ikke køre alene, og et forslag der
                kun kunne pege på trækkeren, ville foreslå noget
                kanDisponeres() afviser. */
-            { key: "koeretoejIder", label: "Køretøj", render: enhedsnavne },
+            { key: "koeretoejIder", label: "Køretøj",
+              render: (f) => enhedsnavne(biler, f) },
             { key: "personId", label: "Chauffør",
-              render: (f) => person(f.personId)?.navn || f.personId },
+              render: (f) => find(personale, f.personId)?.navn || f.personId },
             { key: "afhentningMs", label: "Planlagt afhentning",
               render: (f) => datoTid(f.afhentningMs) },
             { key: "leveringMs", label: "Levering", render: (f) => datoTid(f.leveringMs) },
@@ -370,7 +417,10 @@ function Godkendelse({ svar, muligheder, rolle, valgtForslagId }) {
  * ⚠ OG DEN AFGØR INTET. Håndhævelsen ligger i `etapeskift`; det her er en
  * visning af hvad den vil svare.
  */
-export function tjekrakkerFor({ etape, forslag }) {
+export function tjekrakkerFor({
+  etape, forslag, biler = [], personale = [], kompetencer = [],
+  alleEtaper = [], reservationsnode = {},
+}) {
   /* Etapen som den ville se ud MED forslaget — det er den kombination der
      skal prøves, ikke den etapen bærer nu. */
   const paaEtapen = {
@@ -378,36 +428,48 @@ export function tjekrakkerFor({ etape, forslag }) {
     koeretoejIder: forslag.koeretoejIder,
     personId: forslag.personId,
   };
-  const enheder = enhedsIder(paaEtapen).map((id) => bil(id)).filter(Boolean);
-  const p = person(forslag.personId);
-  const kompetencer = DEMO_KOMPETENCER.filter((c) => c.personId === forslag.personId);
+
+  /* ⚠ KILDERNE KOMMER IND. De blev læst af demo-sæt lukket inde i
+     modulniveauets `bil()`, `person()` og DEMO_KOMPETENCER — og det er ikke
+     kosmetik: `enheder` går direkte ind i `kanBaere()` og `kanDisponeres()`.
+     Bilen der blev prøvet, var demoens og ikke kundens. */
+  const enheder = enhedsIder(paaEtapen).map((id) => find(biler, id)).filter(Boolean);
+  const p = find(personale, forslag.personId);
+  const mine = kompetencer.filter((c) => c.personId === forslag.personId);
 
   /* ⚠ KØRE-HVILETID GÆLDER PERSONEN, IKKE TUREN. Alle hans etaper skal med,
      ellers kan han få sin fjerde tur i træk fordi hver enkelt så lovlig ud
      for sig. */
-  const straekninger = DEMO_ETAPER
+  const straekninger = alleEtaper
     .filter((x) => x.personId === forslag.personId && x.id !== etape.id)
     .map(straekningFraEtape)
     .concat([straekningFraEtape(paaEtapen)]);
 
-  /* Reservationerne i nodeform — den samme form serveren læser. */
+  /* ⚠ RESERVATIONERNE KOMMER FRA NODEN — den samme serveren læser.
+     Her blev de bygget af DEMO_ETAPER alene, altså UDEN fravær og uden
+     værksted. En sygemeldt chauffør så ledig ud på netop den skærm hvor
+     koordinatoren GODKENDER: serveren ville have afvist, og brugeren havde
+     fået at vide at det var i orden.
+
+     Etapens egne reservationer trækkes fra — den skal ikke være i konflikt
+     med sig selv. `kilde.id` er etapens id; se reservationerFraEtape(). */
   const reservationer = {};
-  for (const e of DEMO_ETAPER) {
-    if (e.id === etape.id) continue;
-    for (const [i, r] of reservationerFraEtape(e).entries()) {
-      reservationer[r.ressourceType] ??= {};
-      reservationer[r.ressourceType][r.ressourceId] ??= [];
-      reservationer[r.ressourceType][r.ressourceId].push({ id: `r-${e.id}-${i}`, ...r });
+  for (const [type, prRessource] of Object.entries(reservationsnode)) {
+    for (const [resId, poster] of Object.entries(prRessource || {})) {
+      const andres = Object.entries(poster || {})
+        .map(([id, r]) => ({ id, ...r }))
+        .filter((r) => r.kilde?.id !== etape.id);
+      if (!andres.length) continue;
+      reservationer[type] ??= {};
+      reservationer[type][resId] = andres;
     }
   }
 
-  const raekker = tjekDisponering({
+  return tjekDisponering({
     reservationerForEtapen: reservationerFraEtape(paaEtapen),
-    enheder, person: p, kompetencer, reservationer, straekninger,
+    enheder, person: p, kompetencer: mine, reservationer, straekninger,
     gods: etape.maengde || {},
   });
-
-  return raekker;
 }
 
 function Tjekkene({ raekker, forslag }) {

@@ -711,6 +711,16 @@ HÅNDHÆVER**, og de to var uenige i den farlige retning.
 Provisioneringen udleder dem nu med den samme `reservationFraFravaer()`, og
 skærmen læser noden. Målt efter: 13 fra etaper + 10 fra fravær.
 
+⚠ **OG SAMME FEJL STOD PÅ FORSLAG-SKÆRMEN — hvor koordinatoren GODKENDER.**
+`tjekrakkerFor()` byggede sine reservationer af `DEMO_ETAPER` alene, altså
+uden fravær og uden værksted, og hentede bil, chauffør og kompetencer fra
+demo-sæt lukket inde i modulniveauets `bil()` og `person()`. Det er ikke
+kosmetik: `enheder` går direkte ind i `kanBaere()` og `kanDisponeres()`, så
+den bil der blev prøvet, var demoens.
+
+Konsekvensen er værre her end på Disponering: skærmen ville sige **ja** hvor
+serveren siger nej — og brugeren har fået at vide at det var i orden.
+
 ⚠ **VÆRKSTEDSBESØGENE MANGLER STADIG — og det er et hul, ikke en detalje.**
 `besoeg` har **ingen node**. Reservationen med `kilde.type: vaerksted` og
 prioritet **40** — den højeste, højere end en booking — findes derfor kun i
