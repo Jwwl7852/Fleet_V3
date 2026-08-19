@@ -147,9 +147,6 @@ export function standardlayout(dashboard, harModulFn = () => true) {
  */
 export function valideLayout(layout) {
   if (!Array.isArray(layout)) return { ok: false, fejl: "Layoutet skal være en liste." };
-  if (layout.length > MAKS_WIDGETS) {
-    return { ok: false, fejl: `Højst ${MAKS_WIDGETS} widgets på ét dashboard.` };
-  }
   const ukendte = layout.filter((k) => !ALLE_WIDGETS.includes(k));
   if (ukendte.length) return { ok: false, fejl: `Ukendte widgets: ${ukendte.join(", ")}.` };
   if (new Set(layout).size !== layout.length) {
@@ -159,12 +156,29 @@ export function valideLayout(layout) {
 }
 
 /**
- * ⚠ ET LOFT, OG DET ER IKKE VILKÅRLIGT. Tyve widgets på én forside er ikke et
- * overblik — det er en liste man scroller i, og så holder man op med at kigge
- * på den. Loftet står her frem for i skærmen, så serverens regel og
- * formularen siger det samme.
+ * ⚠ DER ER INTET LOFT PÅ ANTALLET — OG DET LOFT DER STOD HER, VAR EN
+ * SMAGSDOM FORKLÆDT SOM EN REGEL.
+ *
+ * `MAKS_WIDGETS = 12` blev begrundet med at "tyve widgets på én forside ikke
+ * er et overblik". Det er sandt om de fleste forsider og forkert om nogens:
+ * argumentet er en anbefaling, ikke en kendsgerning om systemet, og det stod
+ * håndhævet i BÅDE `valideLayout()` og i `firebase.rules.json`, hvor pladserne
+ * var talt til elleve.
+ *
+ * Layoutet er brugerens egen præference om sig selv. Det er hans skærm, og en
+ * grænse han ikke kan hæve, er en beslutning vi har taget på hans vegne uden
+ * at kunne begrunde den med andet end smag.
+ *
+ * ⚠ DER ER STADIG EN ØVRE GRÆNSE — den er bare ikke et TAL vi fandt på.
+ * `valideLayout()` afviser ukendte nøgler og dubletter, så et layout kan
+ * aldrig blive længere end kataloget. Loftet er antallet af widgets der
+ * findes, og det står ét sted: `WIDGETS`.
+ *
+ * ⚠ OG DET ER IKKE EN ADGANGSÆNDRING. Hvad en bruger må SE, afgøres af hans
+ * rolle og af kundens moduler — ikke af hvor mange kort der er plads til.
+ * Se noten i dashboardvisning.js om hvorfor en visning ikke er en adgang.
  */
-export const MAKS_WIDGETS = 12;
+export const ANTAL_WIDGETS = WIDGETS.length;
 
 /**
  * layoutFor(gemt, dashboard, harModulFn) → widget-nøgler der kan tegnes.

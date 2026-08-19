@@ -267,13 +267,23 @@
             // hinanden.
             "$dashboard": {
               ".validate": "$dashboard.matches(/^(samlet|flaade|facility|indkoeb|warehouse|unitbooking|bemanding)$/)",
-              // ⚠ ET LOFT PAA TOLV. Tyve widgets paa een forside er ikke et
-              // overblik, det er en liste man scroller i. Tallet staar ogsaa
-              // i widgets.js som MAKS_WIDGETS, og en prove holder de to ens.
+              // ⚠ HER STOD ET LOFT PAA TOLV — pladserne var talt til elleve.
+              // Det er vaek. Loftet var en SMAGSDOM ("tyve widgets er ikke et
+              // overblik"), og det er en anbefaling, ikke en kendsgerning om
+              // systemet. Layoutet er brugerens egen praeference om sin EGEN
+              // skaerm, og en graense han ikke kan haeve, er en beslutning
+              // taget paa hans vegne uden anden begrundelse end smag.
               //
-              // Reglerne kan ikke slaa op i et katalog, saa de proever FORMEN
-              // — en kort streng pr. plads. valideLayout() proever NAVNENE.
-              "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && $i.matches(/^([0-9]|1[01])$/)" }
+              // ⚠ DER ER STADIG EN OEVRE GRAENSE — den er bare ikke et tal vi
+              // fandt paa. valideLayout() afviser ukendte noegler og dubletter,
+              // saa et layout kan aldrig blive laengere end KATALOGET. Reglen
+              // kan ikke slaa op i et katalog og proever derfor kun FORMEN: en
+              // kort streng pr. plads, og pladsen skal vaere et tal.
+              //
+              // ⚠ OG DET ER IKKE EN ADGANGSAENDRING. Hvad en bruger maa se,
+              // afgoeres af hans rolle og af kundens moduler — ikke af hvor
+              // mange kort der er plads til. Se beslutning 43.
+              "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && $i.matches(/^[0-9]+$/)" }
             }
           }
         },

@@ -30,7 +30,6 @@ import {
    Cloud Function), og reglen er auth.uid === $uid. Se widgets.js. */
 import {
   widget, tilgaengeligeWidgets, standardlayout, layoutFor, valideLayout,
-  MAKS_WIDGETS,
 } from "../fleet/widgets.js";
 import { gem } from "../fleet/skriv.js";
 /* ⚠ EN VISNING, IKKE EN ADGANG — se dashboardvisning.js. Indstillingen
@@ -605,25 +604,19 @@ function Widgetkort({ nr, antal, noegle, kpi, redigerer, paaFlyt, paaFjern }) {
 function Widgetvaelger({ valgte, harModulFn, paaSlaaTil, paaFjern }) {
   const kan = tilgaengeligeWidgets(harModulFn);
   const grupper = [...new Set(kan.map((w) => w.modul))];
-  const fuldt = valgte.length >= MAKS_WIDGETS;
 
   return (
     <Kort titel="Tilpas forsiden">
+      {/* ⚠ HER STOD "N AF 12 PLADSER", OG DE TOLV VAR EN SMAGSDOM. Der er
+          intet loft på antallet: layoutet er brugerens egen præference om sin
+          egen skærm, og en grænse han ikke kan hæve, er en beslutning taget
+          på hans vegne uden anden begrundelse end smag. Den øvrige grænse er
+          kataloget selv — en widget kan kun stå én gang. Se widgets.js. */}
       <p className="fc-hint">
         Træk kortene ovenfor for at bytte om — eller brug pilene på hvert kort,
         hvis du hellere vil bruge tastaturet. {num(valgte.length)} af{" "}
-        {num(MAKS_WIDGETS)} pladser er i brug.
+        {num(kan.length)} tilgængelige widgets er valgt.
       </p>
-      {/* ⚠ ET LOFT, OG DET ER IKKE VILKÅRLIGT. Tyve widgets på én forside er
-          ikke et overblik — det er en liste man scroller i, og så holder man
-          op med at kigge på den. Tallet står i widgets.js, og reglen håndhæver
-          det samme loft på serveren. */}
-      {fuldt && (
-        <p className="fc-svar fc-svar-naegtet" role="alert">
-          Der er {num(MAKS_WIDGETS)} pladser, og de er i brug. Fjern en widget
-          for at sætte en anden ind.
-        </p>
-      )}
       {grupper.map((m) => (
         <div key={m} className="fc-widget-gruppe">
           <b>{MODUL[m]?.label || m}</b>
@@ -633,7 +626,6 @@ function Widgetvaelger({ valgte, harModulFn, paaSlaaTil, paaFjern }) {
               return (
                 <label key={w.key} className="fc-perm">
                   <input type="checkbox" checked={paa}
-                         disabled={!paa && fuldt}
                          onChange={() => (paa ? paaFjern(w.key) : paaSlaaTil(w.key))} />
                   <span>
                     <b>{w.label}</b>

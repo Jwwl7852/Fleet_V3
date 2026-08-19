@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  WIDGETS, ALLE_WIDGETS, MAKS_WIDGETS,
+  WIDGETS, ALLE_WIDGETS, ANTAL_WIDGETS,
   widget, tilgaengeligeWidgets, standardlayout, valideLayout, layoutFor,
 } from "../src/fleet/widgets.js";
 import { SAMLET, ALLE_DASHBOARDS } from "../src/fleet/dashboards.js";
@@ -174,12 +174,16 @@ describe("standardlayout", () => {
     for (const [m, n] of Object.entries(pr)) assert.ok(n <= 2, `${m}: ${n}`);
   });
 
-  it("⚠ STANDARDEN OVERHOLDER SELV LOFTET", () => {
+  it("⚠ STANDARDEN KAN GEMMES", () => {
     /* Ellers ville en bruger der trykker "Nulstil", få et udkast serveren
-       afviser — og knappen ville se ud som om den var i stykker. */
+       afviser — og knappen ville se ud som om den var i stykker.
+
+       ⚠ HER STOD OGSÅ "OVERHOLDER LOFTET". Loftet er væk: det var en
+       smagsdom, ikke en kendsgerning om systemet. Det der er tilbage, er
+       valideLayout() — og den er den rigtige prøve, for den er den serveren
+       spejler. */
     for (const d of ALLE_DASHBOARDS) {
       const l = standardlayout(d, alle);
-      assert.ok(l.length <= MAKS_WIDGETS, `${d}: ${l.length} widgets`);
       assert.equal(valideLayout(l).ok, true, `${d}: ${valideLayout(l).fejl}`);
     }
   });
@@ -203,9 +207,21 @@ describe("valideLayout", () => {
     assert.equal(valideLayout(["nedetid", "nedetid"]).ok, false);
   });
 
-  it("afviser mere end loftet", () => {
-    assert.equal(valideLayout(ALLE_WIDGETS.slice(0, MAKS_WIDGETS)).ok, true);
-    assert.equal(valideLayout(ALLE_WIDGETS.slice(0, MAKS_WIDGETS + 1)).ok, false);
+  it("⚠ TAGER HELE KATALOGET — der er intet loft på antallet", () => {
+    /* Det er brugerens egen skærm. En grænse han ikke kan hæve, er en
+       beslutning taget på hans vegne uden anden begrundelse end smag —
+       og den stod håndhævet både her og i firebase.rules.json. */
+    assert.equal(valideLayout(ALLE_WIDGETS).ok, true,
+      valideLayout(ALLE_WIDGETS).fejl);
+    assert.equal(ALLE_WIDGETS.length, ANTAL_WIDGETS);
+  });
+
+  it("⚠ OG KATALOGET ER STADIG GRÆNSEN", () => {
+    /* Uden loft er det dubletreglen og navnetjekket der binder: et layout
+       kan ikke blive længere end der er widgets. En ubegrænset liste af
+       gyldige nøgler findes ikke. */
+    assert.equal(valideLayout([...ALLE_WIDGETS, ALLE_WIDGETS[0]]).ok, false);
+    assert.equal(valideLayout([...ALLE_WIDGETS, "findesIkke"]).ok, false);
   });
 
   it("afviser noget der ikke er en liste", () => {
@@ -287,20 +303,24 @@ describe("⚠ DEN ENESTE NODE BRUGEREN SELV SKRIVER", () => {
       `regelfilen kender ${inder} — dashboards.js kender ${ALLE_DASHBOARDS}`);
   });
 
-  it("⚠ SAMME LOFT I REGLEN SOM I KATALOGET", () => {
-    /* Reglerne kan ikke slå op i et katalog, så de prøver indekset. Er de to
-       uenige, afviser serveren en widget skærmen lod brugeren sætte ind —
-       eller den lader tyve stå hvor skærmen sagde tolv. */
+  it("⚠ REGLEN HAR HELLER INTET LOFT PÅ PLADSEN", () => {
+    /* Loftet stod BEGGE steder, og reglen var den der bandt: pladserne var
+       talt til elleve i et mønster. Havde vi kun fjernet tallet i widgets.js,
+       ville serveren have afvist en widget skærmen lod brugeren sætte ind —
+       og fejlen ville komme ved GEM, ikke ved klikket. */
     const v = node().$uid.$dashboard.$i[".validate"];
-    const m = v.slice(v.indexOf("$i.matches("));
-    const inder = m.slice(m.indexOf("^(") + 2, m.indexOf(")$"));
-    /* Mønstret er en talrække; her prøves hvert indeks mod det. */
-    const re = new RegExp("^(" + inder + ")$");
-    for (let i = 0; i < MAKS_WIDGETS; i++) {
-      assert.ok(re.test(String(i)), `reglen afviser plads ${i} af ${MAKS_WIDGETS}`);
+    const m = /\$i\.matches\(\/([^/]+)\//.exec(v);
+    assert.ok(m, "reglen prøver ikke pladsen længere");
+    const re = new RegExp(m[1]);
+    /* Hver plads kataloget kan fylde — og et stykke over, for at vise at
+       det ikke er et loft men en FORM. */
+    for (const i of [0, 5, 11, 12, ANTAL_WIDGETS, ANTAL_WIDGETS + 50]) {
+      assert.ok(re.test(String(i)), `reglen afviser plads ${i}`);
     }
-    assert.ok(!re.test(String(MAKS_WIDGETS)),
-      `reglen tillader plads ${MAKS_WIDGETS} — loftet i widgets.js er ${MAKS_WIDGETS}`);
+    /* Men det skal stadig VÆRE en plads — ikke et navn. */
+    for (const ikke of ["a", "-1", "1.5", ""]) {
+      assert.ok(!re.test(ikke), `reglen tager "${ikke}" som en plads`);
+    }
   });
 });
 

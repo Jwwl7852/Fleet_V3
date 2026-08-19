@@ -2024,3 +2024,68 @@ hos en kunde.
 for at sige hvad satsen forudsætter, og båndene lægges når vognmandens egen
 BroBizz-aftale er læst — rabatten er progressiv på månedsbasis, så tallene er
 hans og ikke vores.
+
+## 43. Brugerens eget layout har intet loft
+
+Der stod et loft på **tolv** widgets, og det stod to steder: `MAKS_WIDGETS` i
+`widgets.js` og et mønster i `firebase.rules.json`, hvor pladserne var talt til
+elleve. Begrundelsen var skrevet ud begge steder:
+
+> ⚠ ET LOFT, OG DET ER IKKE VILKÅRLIGT. Tyve widgets på én forside er ikke et
+> overblik — det er en liste man scroller i, og så holder man op med at kigge
+> på den.
+
+Det er en god **anbefaling**. Det er ikke en kendsgerning om systemet, og det
+er forskellen der afgør om noget hører i en regel.
+
+Layoutet er brugerens egen præference om sin **egen** skærm — det er netop
+derfor det skrives af klienten med `auth.uid === $uid` og ikke af en Cloud
+Function. En grænse han ikke kan hæve, er en beslutning vi har taget på hans
+vegne, og den kan ikke begrundes med andet end smag. Vognmanden med to
+skærme på væggen har ikke det samme overblik som ham med en bærbar.
+
+### ⚠ Der er stadig en øvre grænse — den er bare ikke et tal vi fandt på
+
+`valideLayout()` afviser ukendte nøgler og dubletter. Et layout kan derfor
+aldrig blive længere end **kataloget**, og kataloget står ét sted: `WIDGETS`.
+Konstanten hedder nu `ANTAL_WIDGETS` og er *afledt* af listen frem for skrevet
+ved siden af den — et tal man skal huske at rette, bliver ikke rettet.
+
+Reglen kan ikke slå op i et katalog og prøver derfor kun **formen**: en kort
+streng pr. plads, og pladsen skal være et tal. Det er efterprøvet mod den
+udrullede base med en rigtig brugers token — alle 21 widgets gemmes, og en
+plads der ikke er et tal afvises stadig.
+
+⚠ **Loftet SKULLE fjernes begge steder.** Havde vi kun rettet `widgets.js`,
+ville serveren have afvist en widget skærmen lod brugeren sætte ind — og
+fejlen ville komme ved **Gem**, ikke ved klikket. Prøven i
+`test/widgets.test.mjs` læser regelfilen og holder de to sammen; den er
+skrevet om frem for slettet.
+
+### ⚠ Og hvad en bruger må SE, er ikke det samme spørgsmål
+
+Antallet var aldrig en adgangskontrol, og fjernelsen ændrer derfor ingen
+adgang. Men det er værd at skrive hvad der så ER gaten, fordi svaret ikke er
+det man skulle tro:
+
+| Gate | Hvad den gør | Hvad den ikke gør |
+|---|---|---|
+| Kundens **moduler** | Skjuler widgets for moduler kunden ikke har købt | Spærrer ikke tallet — det er en kommerciel kontrol (beslutning 33) |
+| `dashboardvisning` | En administrator skjuler et dashboard for én bruger | Spærrer ikke — den hedder derfor en **visning**, ikke en adgang |
+| Brugerens **rolle** | Afgør hvad han må i resten af systemet | Afgør i dag **ingenting** om widgets |
+
+⚠ **`kpi/` er læsbar for enhver indlogget bruger i tenanten.** Ingen
+permission, ingen modulklausul. En chauffør kan læse
+`tenants/<id>/kpi/<division>/oekonomi` direkte, uanset hvad hans forside viser.
+
+Skulle rollen afgøre hvilke widgets en bruger har **adgang** til — og ikke
+bare hvilke han bliver **tilbudt** — er det `kpi/` der skal deles op pr.
+domæne med en permission eller en modulklausul på hver. Det er en selvstændig
+ændring: `useKpi()` læser hele noden i ét kald, og en delvist afvist læsning
+er en `permission-denied`, som `dataTilstand()` behandler som blokerende.
+
+Indtil da ville et rollefilter i widgetvælgeren være en **pæn knap**: det
+ville skjule kortet og lade tallet stå åbent. Det er den værste slags kontrol,
+fordi den ser ud som om den virker — samme fælde som mockuppens
+"Dashboardadgange", der blev til `dashboardvisning` netop for at navnet ikke
+skulle love mere end platformen holder.

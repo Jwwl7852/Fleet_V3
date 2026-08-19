@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **42 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **43 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -376,6 +376,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   heller ikke redde opslaget: så ville indførelsen af bånd gøre prisen forkert
   i tavshed. Længden kommer fra `samletLaengdeMm()` — trækker PLUS trailer.
   Se beslutning 18, trin 3.
+- **Sætte et loft på brugerens eget layout.** Der stod tolv widgets, i BÅDE
+  `widgets.js` og regelfilen. Begrundelsen — "tyve widgets er ikke et
+  overblik" — er en god **anbefaling** og ikke en kendsgerning om systemet, og
+  det er forskellen der afgør om noget hører i en regel. Forsiden er brugerens
+  egen præference om hans EGEN skærm; derfor skrives den med
+  `auth.uid === $uid` og ikke af en funktion. Grænsen er kataloget:
+  `valideLayout()` afviser dubletter og ukendte nøgler.
+  ⚠ **Og antallet er ikke en adgangskontrol.** Hvad en bruger må SE, afgøres
+  af kundens moduler og af `dashboardvisning` — begge SKJULER, ingen af dem
+  spærrer. `kpi/` er læsbar for enhver indlogget bruger i tenanten, uden
+  permission og uden modulklausul. Et rollefilter i widgetvælgeren ville
+  derfor være en **pæn knap**: kortet væk, tallet åbent. Skal rollen afgøre
+  adgang, er det `kpi/` der skal deles op pr. domæne. Se beslutning 43.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
