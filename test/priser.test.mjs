@@ -1225,15 +1225,64 @@ describe("omkostningsarket ud af JSX-filen", () => {
   it("beregningen giver det samme som før flytningen", () => {
     /* ⚠ TALLENE ER DE SAMME. Flytningen skal kunne efterprøves: giver
        eksemplet et andet resultat, er det flytningen der er gået galt frem
-       for prismotoren. */
+       for prismotoren.
+
+       ⚠ FÆRGEN ER DEN ENE UNDTAGELSE, og den er en BESLUTNING og ikke en
+       drift: 215.000 øre var én takst for alle længder. Efter trin 3 af
+       beslutning 18 koster Femern efter kajmeter, og kt-012 er 6.200 mm —
+       altså båndet "indtil 10,0 m" til 133.800 øre. De øvrige fire linjer
+       står uændret, og det er dem der efterprøver flytningen. */
     const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
     const r = beregnBooking({
       bilId: "kt-012", kmEstimeret: 780, doegnParkering: 1,
-      agentId: "hthHamburg",
+      agentId: "hthHamburg", laengdeMm: 6200,
       passager: { "faerge:femern": 1, "parkering:europa": 1 },
     }, ark, { paaMs: Date.UTC(2026, 5, 1) });
     assert.equal(r.linjer.find((l) => l.id === "bil:kt-012").beloebOere, 780 * 840);
-    assert.equal(r.totalOere, 780 * 840 + 215000 + 45000 + 32500 + 125000);
+    assert.equal(r.linjer.find((l) => l.id === "post:faerge:femern").beloebOere, 133800);
+    assert.equal(r.manglerSats, false);
+    assert.equal(r.totalOere, 780 * 840 + 133800 + 45000 + 32500 + 125000);
+    /* Længden snapshottes sammen med satserne — beslutning 7 på en måling. */
+    assert.equal(r.snapshot.laengdeMm, 6200);
+  });
+
+  it("⚠ UDEN LÆNGDE ER FÆRGEN IKKE GRATIS — OG HELLER IKKE 2.150 KR", () => {
+    /* Det her er hele pointen med trin 3. Før sprang `brug()` linjen tavst
+       over på `if (!sats || !beloeb) return`, og en færge uden takst blev til
+       en tur uden færge: totalen så FÆRDIG ud og var 1.338 kr for lav.
+
+       Nu står linjen der med sin grund, og summen er `null` — en sum med et
+       ubesvaret led er ikke en sum. Samme regel som momssatsen der mangler. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
+    const uden = beregnBooking({
+      bilId: "kt-012", kmEstimeret: 780, doegnParkering: 1,
+      agentId: "hthHamburg",
+      passager: { "faerge:femern": 1 },
+    }, ark, { paaMs: Date.UTC(2026, 5, 1) });
+
+    const faerge = uden.linjer.find((l) => l.id === "post:faerge:femern");
+    assert.ok(faerge, "færgelinjen blev sprunget over — det var netop fejlen");
+    assert.equal(faerge.beloebOere, null);
+    assert.equal(faerge.manglerSats, true);
+    assert.equal(faerge.mangler, "laengde");
+    assert.match(faerge.navn, /længden på vogntoget er ikke oplyst/);
+    assert.equal(uden.manglerSats, true);
+    assert.equal(uden.totalOere, null, "en sum med et ubesvaret led er ikke en sum");
+  });
+
+  it("⚠ EN LÆNGDE UDEN FOR BÅNDENE ER IKKE DET DYRESTE BÅND", () => {
+    /* Femern har bånd til 18 m. Et vogntog på 19,4 m er et spørgsmål til
+       rederiet — ikke 2.530 kr. Et system der gætter rigtigt ni gange ud af
+       ti, lærer brugeren at stole på det tiende. */
+    const ark = omkostningsark(DEMO_OMKOSTNINGER, { koeretoejer: KT });
+    const r = beregnBooking({
+      bilId: "kt-012", kmEstimeret: 100, laengdeMm: 19400,
+      passager: { "faerge:femern": 1 },
+    }, ark, { paaMs: Date.UTC(2026, 5, 1) });
+    const faerge = r.linjer.find((l) => l.id === "post:faerge:femern");
+    assert.equal(faerge.mangler, "baand");
+    assert.equal(faerge.beloebOere, null);
+    assert.equal(r.totalOere, null);
   });
 
   it("⚠ EN BIL HAR INGEN DIVISION (beslutning 19)", () => {

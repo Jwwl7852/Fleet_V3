@@ -31,7 +31,7 @@ vilkårlige valg man lige så godt kunne lave om.
 | 15 | **Division er et felt, ikke en sti.** Tre værdier: `gods`, `bus`, `faelles`. Transaktioner hører til én afdeling. Reservationer og fravær har ingen og arver fra ressourcen. **Undtaget af beslutning 19:** personale og køretøjer har slet ingen division. | Sti ville give to kalendere for én chauffør med C+D — beslutning 4's fejl et niveau højere oppe. Dertil to `BKG-2026-00125`, to Kolding Kommune-poster der driver fra hinanden, og en dieselfaktura der ikke kan afstemmes mod leverandørens total. | `fleet/useListe.js` |
 | 16 | **Kombi-transport: en booking er et forløb med N etaper.** Tilstanden ligger på etapen, ikke på bookingen. `aaben` er en tilstand med frist. Lageret er en kapacitetsressource i den samme reservationsnode. Etaper ligger som **egen node** — se afsnittet nedenfor. | Gods kan afhentes af én bil, stå på eget lager i uger, og køre videre med en anden. Etape 1 kan være reserveret mens etape 2 venter på en passende tur. Uden etaper skulle bookingen have én tilstand for to ting der sker på hver sin tid. | `fleet/booking-state.js` |
 | 17 | **`securityLevel` og klassificerede søskendenoder.** `normal` \| `internal` \| `confidential` \| `restricted` på general. Følsomme felter ligger i `sensitive/<objekt>/<id>`, værdiansættelser i `vaerdi/<objekt>/<id>` — som søskende, ikke som børn. | En `.read` kaskaderer og kan ikke indsnævres på et barn. Som barn ville `.read` skulle flyttes ned på `<id>/general`, og så kan man ikke længere forespørge på noden — der ville ingen bookingliste være. Søskende koster ét ekstra opslag på en detaljeskærm og nul på en liste. Se afsnittet nedenfor. | `fleet/permissions.js` |
-| 18 | **Personale og flåde er entiteter.** Nøglen i `personale/` er et `personId`; `uid` er et valgfrit felt, der sættes hvis personen får et login. Flåden er ikke en liste af biler: `art` styrer skemaet, og en påhængt enhed kan ikke disponeres alene. Begge ligger i **basen** — enhver abonnementskombination har medarbejdere og materiel. | Modellen dækkede ikke det den påstod. Chauffører fandtes kun som navne i en kompetencetabel, så hverken Bemanding eller Kompetencer havde et sted at hente dem fra, og bus-divisionen havde ingen enhedstype at pege på. Bytter man `uid` og `personId` om, holder ejerskabstjekket i reglerne op med at virke: `oprettetAf === auth.uid` matcher aldrig et personId, og en chauffør har måske slet intet login. En person findes før sit login og efter det — kontoen lukkes ved fratrædelse, men en reservation fra tre år siden skal stadig kunne opløses til et navn. | `fleet/personale.js`, `fleet/flaade.js` |
+| 18 | **Personale og flåde er entiteter.** Nøglen i `personale/` er et `personId`; `uid` er et valgfrit felt, der sættes hvis personen får et login. Flåden er ikke en liste af biler: `art` styrer skemaet, og en påhængt enhed kan ikke disponeres alene. Begge ligger i **basen** — enhver abonnementskombination har medarbejdere og materiel. | Modellen dækkede ikke det den påstod. Chauffører fandtes kun som navne i en kompetencetabel, så hverken Bemanding eller Kompetencer havde et sted at hente dem fra, og bus-divisionen havde ingen enhedstype at pege på. Bytter man `uid` og `personId` om, holder ejerskabstjekket i reglerne op med at virke: `oprettetAf === auth.uid` matcher aldrig et personId, og en chauffør har måske slet intet login. En person findes før sit login og efter det — kontoen lukkes ved fratrædelse, men en reservation fra tre år siden skal stadig kunne opløses til et navn. ⚠ **Trin 3 stod åbent i månedsvis, og det kostede penge hver dag:** `laengdeMm` blev valideret som millimeter netop fordi 9,998 mod 10,002 afgør en færgetakst — og intet læste feltet. Se afsnittet nedenfor. | `fleet/personale.js`, `fleet/flaade.js` |
 | 19 | **Stamdata har ikke en division.** En medarbejder er defineret ved sine **kompetencer**, et køretøj ved sin **art**. Feltet er derfor forbudt på `personale/` og `koeretoejer/` — ikke bare valgfrit. `faelles` bevares på **kunder**, hvor værdien betyder at kundens forretning går på tværs. | Ingen abonnent har både gods og bus. En busvognmand har kun ét sæt tal, så der var aldrig noget at dele op. En påhængsvogn eller en varevogn kan tilhøre begge slags vognmænd, og det er præcis derfor feltet ikke sagde noget: det skulle udfyldes på hver bil uden at kunne begrundes på nogen af dem — og så blev det læst af nogen. Valgfrit havde ikke været nok; et felt der må stå der, bliver tastet. Omgør delvist beslutning 15. | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail: nummeret i emnefeltet er hele integrationen.** En sag får et nummer fra beslutning 8's counter — `FLT` i Fleet, `FAC` i Facility. Nummeret sættes i emnet, modtageren svarer normalt i Outlook, `Re:` bevarer det, og svaret lægges på sagen. Indgående mail er **uautentificeret input**: afsenderen valideres mod sagens parter, alt andet i karantæne. | Alternativet var en Outlook-integration hos hvert værksted og hver leverandør — altså hos nogen der ikke er vores kunde og ikke har nogen grund til at installere noget. Et emnefelt virker hos alle, i dag, uden at modtageren gør noget anderledes. Prisen er at kanalen står åben mod internettet, og det er dét afklaringerne nedenfor handler om. | `fleet/sager.js` |
 | 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `vaerksted` \| `langtur`. Feltskemaet pr. art står i `fleet/opgaver.js`, ikke i reglerne. Køre-hviletid er en **regel**, ikke et felt: den blokerer, men svaret bærer altid et forbehold, fordi vi kun kan se planen og ikke tachografen. | README foreslog `langtur`, men den formulering er ældre end beslutning 16. Da etaper kom som egen node, blev `langtur` en **dublet**: `fraSted`, `tilSted`, `koeretoejId`, `personId`, `maengde`, `senestMs` og `forslag[]` står allerede på etapen, og `matchAabneEtaper()` søger på etaper. To poster for én tildeling er præcis prototypens DE-QR 777 mod DE-KL 404, som beslutning 16 lukkede. Den ægte artsforskel i noden er hvad arbejdet udføres **på**: et køretøj eller et facility-aktiv. | `fleet/opgaver.js` |
@@ -1906,3 +1906,121 @@ og fejler på et mailmønster nummer to.
 teksten `kode.length < 12` i `functions/index.js` og holdt dermed to tal i
 sync. Et tal der holdes i sync af en prøve, er stadig to tal — funktionen
 importerer nu konstanten, og prøven læser efter importen.
+
+## Beslutning 18 i detaljer — trin 3: længdebåndet
+
+De to første trin gjorde personale og flåde til entiteter. Det tredje har stået
+åbent siden, og det var det eneste af dem der kostede penge hver dag.
+
+`laengdeMm` stod på hvert eneste køretøj. Det blev valideret som
+millimeter-integer, med en kommentar der forklarede hvorfor:
+
+> Længden er millimeter som integer — færgetakster har grænser ved 10 og 20 m,
+> og 9,998 mod 10,002 afgør prisen.
+
+Og **intet læste feltet**. `satsPaa()` tog den nyeste gyldige sats og gav den
+til alle. Færgen kostede det samme for en kassevogn på 5,99 m og for et
+modulvogntog på 19,8 m.
+
+Rødby–Puttgarden: **1.338 kr for 10 m, 2.530 kr for 18 m.** Forskellen er
+1.192 kr pr. overfart, og den gik den forkerte vej — den faste takst på 2.150
+kr var for høj for en solovogn og for lav for et vogntog. Det er værst på det
+sidste: estimatet var for lavt på præcis de ture hvor der er mindst luft.
+
+### Båndet ligger PÅ satsen
+
+```js
+satser: [
+  { gyldigFra, beloebOere: 133800, laengdeTilMm: 10000 },
+  { gyldigFra, beloebOere: 253000, laengdeFraMm: 10000, laengdeTilMm: 18000 },
+]
+```
+
+Alternativet var et niveau mere i noden — `satser: { "0-10000": [...] }` — og
+det ville have kostet to ting:
+
+1. **Kundepriser og omkostninger ville ikke længere have samme form.**
+   `satser/$gruppe/$postId/satser` og `omkostninger/$id/satser` valideres i dag
+   med de samme regler, og reglens egen kommentar siger *"Samme form som en
+   kundesats"*. Videresælger vognmanden færgen, er det det samme spørgsmål om
+   kajmeter, og to modeller ville betyde to svar.
+2. **Beslutning 7 skulle skrives om.** Stiger taksten for de lange vogntog,
+   skal det korte bånd stå uændret. Med båndet på satsen er det bare en ny post
+   med sin egen `gyldigFra` — nøjagtig som alt andet. Med båndet som et niveau
+   over satsen skulle versioneringen findes op igen, ét niveau nede.
+
+### ⚠ Intervallet er (fra, til] — og det er ikke en smagssag
+
+Rederierne udgiver taksten som *"indtil 10 m"* og *"over 10 m til 18 m"*. Et
+vogntog på præcis 10.000 mm hører derfor i det **billige** bånd.
+
+Læste vi det som `[fra, til)`, ville nøjagtig 10 m koste 1.192 kr for meget —
+og det er nøjagtig den grænse længden gemmes i millimeter for. Havde feltet
+været meter som float, ville spørgsmålet slet ikke kunne stilles: 10,0 mod
+10,0000001 er ikke en grænse, det er en afrundingsfejl.
+
+⚠ **Reglen kan ikke håndhæve læsningen.** En `.validate` ser én sats ad gangen
+og kan ikke sammenligne to. Den håndhæver formen — millimeter som helt tal — og
+læsningen står i `satsOpslag()` med sin prøve. Det er samme arbejdsdeling som
+`kanSkifteEtape()`: reglerne holder formen, funktionen holder betydningen.
+
+### ⚠ Og en båndløs sats redder ikke opslaget
+
+Første udgave brugte `gyldige.find((s) => iLaengdebaand(s, laengdeMm))`. Det
+ser rigtigt ud, og det er forkert: `iLaengdebaand()` svarer **sandt** for en
+sats uden bånd, fordi en sats uden bånd dækker alle længder.
+
+Stod der en gammel fast takst tilbage ved siden af de nye bånd, ville den
+altså redde opslaget for enhver længde — og så ville indførelsen af bånd gøre
+prisen forkert i **tavshed**, hvilket er præcis den fejl båndet skulle lukke.
+Kandidaterne filtreres nu på `harLaengdebaand` først.
+
+Prøven fandt det med det samme, fordi den var skrevet efter den sætning der
+stod i kommentaren i forvejen. Det er værd at holde fast i: kommentaren vidste
+det, koden gjorde ikke.
+
+### ⚠ Det afslørede en tavs fejl i beregnBooking()
+
+`brug()` sprang linjen over på `if (!sats || !beloeb) return`. Det er de samme
+tre tavse spring som `beregnForloeb()` blev rettet for — i funktionen lige over,
+med en ⚠-note i toppen om netop dét. En færge uden takst blev til **en tur uden
+færge**: totalen så færdig ud, og den var for lav.
+
+Nu står linjen der med `beloebOere: null` og `manglerSats: true`, og
+`totalOere` bliver `null`. En sum med et ubesvaret led er ikke en sum.
+
+⚠ **Og skærmen skal skrive det selv.** `kr()` skelner med vilje ikke mellem
+`null` og nul — kun kalderen ved om nul er et svar, og `kr(null)` er
+`"0 kr."`. På en overfart er nul aldrig svaret. Bookingopsætning skriver
+`INTET` på linjen og på summen, som `momsTekst()` i Fakturering.
+
+### Tre grunde, ikke ét null
+
+`satsOpslag()` svarer `{ sats, mangler }`:
+
+| `mangler` | Betyder | Rettelsen |
+|---|---|---|
+| `"sats"` | ingen gyldig sats på datoen | opret satsen |
+| `"laengde"` | posten er båndopdelt, og vi fik ingen længde | disponér en enhed |
+| `"baand"` | længden falder uden for alle bånd | spørg rederiet |
+
+Samme greb som forbeholdet i `tjekKoerehviletid()`: begrundelsen er en
+**returværdi**, ikke en note. Et `null` alene kan ikke skelne de tre, og de
+fører hvert sit sted hen.
+
+### Hvad der IKKE blev gættet
+
+Femern har bånd til 18 m og **intet derover**. Vi kender ikke taksten, og det
+nærmeste bånd er ikke svaret — et system der gætter rigtigt ni gange ud af ti,
+lærer brugeren at stole på det tiende. Demo-etape `et-001` er 19.820 mm og får
+derfor *"ingen takst for den længde"*.
+
+Det er med vilje at det står sådan i demo-sættet. Samme grund som Kølehus
+Odense uden døgnsats: kan "mangler takst" ikke ses i dev, opdages den først
+hos en kunde.
+
+`bro:storebaelt` hedder stadig *"(lastbil 10–20 m)"*. Taksten **er**
+10–20 m-taksten; vi kender bare ikke broens øvrige trin. Navnet bliver stående
+for at sige hvad satsen forudsætter, og båndene lægges når vognmandens egen
+BroBizz-aftale er læst — rabatten er progressiv på månedsbasis, så tallene er
+hans og ikke vores.

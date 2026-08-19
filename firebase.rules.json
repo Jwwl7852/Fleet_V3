@@ -917,6 +917,24 @@
                 "metode": { ".validate": "newData.isString() && newData.val().length <= 40" },
                 "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
                 "friDage": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                // LAENGDEBAAND — trin 3 af beslutning 18.
+                //
+                // En faerge tager betaling efter kajmeter: Roedby-Puttgarden
+                // koster 1.338 kr for 10 m og 2.530 kr for 18 m. Baandet
+                // ligger PAA satsen og ikke i et niveau for sig, saa
+                // kundepriser og omkostninger beholder samme form og hvert
+                // baand kan versioneres med sin egen gyldigFra.
+                //
+                // ⚠ MILLIMETER SOM INTEGER, som paa koeretoejet. Grænsen
+                // ligger ved 10 og 18 m, og 9,998 mod 10,002 afgoer prisen —
+                // en float ved en graense er en fejl der venter.
+                //
+                // Intervallet er (fra, til]: oevre graense INKLUSIV, fordi
+                // rederierne udgiver taksten som "indtil 10 m". Reglen kan
+                // ikke haandhaeve det — den haandhaever FORMEN. Laesningen
+                // staar i satsOpslag() i pricing.js, og en proeve holder den.
+                "laengdeFraMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                "laengdeTilMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
                 "aktiv": { ".validate": "newData.isBoolean()" },
                 "oprettetAf": { ".validate": "newData.isString()" },
                 "oprettetMs": { ".validate": "newData.isNumber()" },
@@ -961,6 +979,14 @@
                   "beloebOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
                   "metode": { ".validate": "newData.isString() && newData.val().length <= 40" },
                   "valuta": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{3}$/)" },
+                  // Samme laengdebaand som paa omkostninger — se noten dér.
+                  // ⚠ FELTET STAAR BEGGE STEDER FORDI FORMEN ER EEN. Videre-
+                  // fakturerer vognmanden faergen til kunden, er det samme
+                  // spoergsmaal: hvor mange kajmeter fylder vogntoget. Stod
+                  // det kun paa omkostningssiden, skulle kundeprisen enten
+                  // gaette eller finde paa sin egen model.
+                  "laengdeFraMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                  "laengdeTilMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
                   "aktiv": { ".validate": "newData.isBoolean()" },
                   "oprettetAf": { ".validate": "newData.isString()" },
                   "oprettetMs": { ".validate": "newData.isNumber()" },

@@ -29,8 +29,9 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { beregnBooking, METODER, satsPaa } from "../../fleet/pricing.js";
 import { omkostningsark } from "../../fleet/omkostninger.js";
+import { samletLaengdeMm } from "../../fleet/flaade.js";
 import { harModul } from "../../fleet/moduler.js";
-import { kr, num, dato } from "../../fleet/format.js";
+import { kr, num, dato, INTET } from "../../fleet/format.js";
 import { Kort, Tabel, Pille, Knap, Gitter, Tom, Henter, Datatilstand } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import { DEMO_OMKOSTNINGER } from "../../fleet/demo-omkostninger.js";
@@ -124,9 +125,22 @@ export default function Bookingopsaetning() {
     () => omkostningsark(raekker, { koeretoejer }),
     [raekker, koeretoejer]
   );
+  /* ⚠ LÆNGDEN ER EN INDDATA TIL PRISEN — trin 3 af beslutning 18. Færgen
+     tager betaling efter kajmeter, og uden den her linje ville eksemplet få
+     "længden er ikke oplyst" på hver eneste færgelinje.
+
+     ⚠ OG DEN KOMMER FRA samletLaengdeMm(), IKKE FRA BILENS EGET FELT. Et
+     eksempel med én bil ser ens ud i begge tilfælde — men et vogntog er
+     trækker PLUS trailer, og med bilens eget felt ville traileren være gratis
+     på færgen. Samme fejl som ét `koeretoejId` på en etape. */
+  const laengdeMm = useMemo(() => {
+    const bil = koeretoejer.find((k) => k.id === eksempel.bilId);
+    return bil ? samletLaengdeMm([bil]) : null;
+  }, [koeretoejer, eksempel.bilId]);
+
   const beregning = useMemo(
-    () => beregnBooking(eksempel, ark, { paaMs: periode.til }),
-    [eksempel, ark, periode.til]
+    () => beregnBooking({ ...eksempel, laengdeMm }, ark, { paaMs: periode.til }),
+    [eksempel, laengdeMm, ark, periode.til]
   );
 
   if (henter) return <Henter hvad="omkostningerne" />;
@@ -269,10 +283,28 @@ export default function Bookingopsaetning() {
                 : <b className="fc-bad">ingen sats</b>}
             </div>
 
+            {/* ⚠ LÆNGDEN STÅR PÅ EKSEMPLET, fordi den er en INDDATA til
+                færgetaksten og ikke en oplysning om bilen. Kan man ikke se
+                den, kan man heller ikke se hvorfor færgen koster det den
+                gør. Trin 3 af beslutning 18. */}
+            <div className="fc-linje">
+              <span>Længde (kajmeter)</span>
+              {Number.isFinite(laengdeMm)
+                ? <b>{num(laengdeMm / 1000, 2)} m</b>
+                : <b className="fc-bad">ikke oplyst</b>}
+            </div>
+
             <div style={{ marginTop: 14 }}>
               {beregning.linjer.map((l) => (
                 <div key={l.id} className="fc-linje">
-                  <span>{l.navn}</span><b>{kr(l.beloebOere, 2)}</b>
+                  <span>{l.navn}</span>
+                  {/* ⚠ EN LINJE UDEN TAKST SKRIVER IKKE "0 kr.". kr() skelner
+                      med vilje ikke — kun kalderen ved om nul er et svar, og
+                      her er det ikke: færgen sejler, vi kender bare ikke
+                      prisen. Se noten ved kr() i format.test.mjs. */}
+                  {l.manglerSats
+                    ? <b className="fc-bad">{INTET}</b>
+                    : <b>{kr(l.beloebOere, 2)}</b>}
                 </div>
               ))}
             </div>
@@ -280,9 +312,18 @@ export default function Bookingopsaetning() {
             <div className="fc-sum">
               <div>
                 <div style={{ fontWeight: 650 }}>Samlet estimeret bookingomkostning</div>
-                <div className="fc-hint">ekskl. moms</div>
+                <div className="fc-hint">
+                  {beregning.manglerSats
+                    ? "en eller flere takster mangler — summen kan ikke gøres op"
+                    : "ekskl. moms"}
+                </div>
               </div>
-              <div className="fc-sum-v">{kr(beregning.totalOere, 2)}</div>
+              {/* ⚠ EN SUM MED ET UBESVARET LED ER IKKE EN SUM. Skrev vi
+                  kr(null), stod der "0 kr." — og en for lav total er den
+                  retning ingen opdager. */}
+              <div className="fc-sum-v">
+                {beregning.totalOere === null ? INTET : kr(beregning.totalOere, 2)}
+              </div>
             </div>
           </Kort>
 

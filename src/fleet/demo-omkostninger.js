@@ -24,6 +24,7 @@
  * den enkeltes egen aftale — rabatten er progressiv på månedsbasis.
  */
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
+import { baandOverlap, baandLabel } from "./pricing.js";
 
 const START = Date.UTC(2026, 0, 1);
 const sats = (beloebOere, metode) => ({
@@ -43,14 +44,43 @@ export const DEMO_OMKOSTNINGER = [
 
   /* ---- Passager. Fælles: Storebælt koster det samme uanset afdeling. ---- */
   {
+    /* ⚠ TO BÅND, IKKE ÉN FAST TAKST. Trin 3 af beslutning 18: en færge tager
+       betaling efter kajmeter. Her stod 2.150 kr for alle længder, og det tal
+       var forkert i begge retninger — for højt for en solovogn og for lavt
+       for et vogntog.
+
+       ⚠ OG DER ER INTET BÅND OVER 18 M. Det er ikke en forglemmelse: vi
+       kender ikke taksten, og det nærmeste bånd er ikke svaret. `et-001` er
+       19.820 mm og får derfor "ingen takst for den længde" — en synlig
+       mangel man kan handle på, i stedet for en pris der er 1.192 kr for lav.
+       `et-007` har ingen bil endnu og får "længden er ikke oplyst".
+       Se satsOpslag() i pricing.js. */
     id: "faerge:femern", art: "passage", kategori: "faerge", division: "faelles",
-    navn: "Færge: Femern (Rødby–Puttgarden)", satser: sats(215000, "prPassage"),
+    navn: "Færge: Femern (Rødby–Puttgarden)",
+    satser: {
+      s1: {
+        gyldigFra: START, beloebOere: 133800, metode: "prPassage",
+        valuta: "DKK", aktiv: true, laengdeTilMm: 10000,
+      },
+      s2: {
+        gyldigFra: START, beloebOere: 253000, metode: "prPassage",
+        valuta: "DKK", aktiv: true, laengdeFraMm: 10000, laengdeTilMm: 18000,
+      },
+    },
   },
   {
     id: "faerge:oevrige", art: "passage", kategori: "faerge", division: "faelles",
     navn: "Færger (øvrige)", satser: sats(215000, "fastPrBooking"),
   },
   {
+    /* ⚠ LÆNGDEN STÅR I NAVNET OG IKKE I ET BÅND, og det er en KENDT mangel,
+       ikke en modsigelse. Taksten her ER 10–20 m-taksten; vi kender bare ikke
+       Storebælts øvrige trin, og et bånd vi fandt på, ville koste penge på
+       hver eneste tur. Navnet bliver stående netop for at sige hvad satsen
+       forudsætter — se README under trin 3 af beslutning 18.
+
+       Båndene lægges når vognmandens egen BroBizz-aftale er læst; rabatten
+       er progressiv på månedsbasis, så tallene er hans og ikke vores. */
     id: "bro:storebaelt", art: "passage", kategori: "bro", division: "faelles",
     navn: "Bro: Storebælt (lastbil 10–20 m)", satser: sats(88700, "prPassage"),
   },
@@ -173,6 +203,14 @@ if (import.meta.env?.DEV) {
     set.add(o.id);
     if (/[.#$[\]/]/.test(o.id)) {
       console.warn(`demo-omkostninger: "${o.id}" kan ikke vaere en RTDB-noegle.`);
+    }
+    /* ⚠ TO BAAND DER DAEKKER SAMME LAENGDE, ER TO PRISER PAA EEN TUR.
+       Opslaget ville tage det ene, og ingen kunne se hvorfor. */
+    for (const { a, b } of baandOverlap(Object.values(o.satser || {}))) {
+      console.warn(
+        `demo-omkostninger: ${o.id} har to satser der begge daekker samme laengde ` +
+        `(${baandLabel(a)} og ${baandLabel(b)}).`
+      );
     }
   }
 }

@@ -123,7 +123,7 @@ tilfældigt.
 | 15 | **Division er et felt, ikke en sti.** `gods` \| `bus` \| `faelles` | `fleet/useListe.js` |
 | 16 | Kombi-transport: en booking er et forløb med N etaper. Tilstanden ligger på **etapen** | `fleet/booking-state.js` |
 | 17 | **`securityLevel` + klassificerede søskendenoder** (`sensitive/`, `vaerdi/`) | `fleet/permissions.js` |
-| 18 | Personale og flåde er entiteter. `personId` er ikke `uid` | `fleet/personale.js`, `fleet/flaade.js` |
+| 18 | Personale og flåde er entiteter. `personId` er ikke `uid`. **Trin 3 er lukket:** `laengdeMm` LÆSES nu — en sats kan bære et længdebånd, og færgen koster efter kajmeter | `fleet/personale.js`, `fleet/flaade.js`, `fleet/pricing.js` |
 | 19 | Stamdata har ikke en division. Forbudt på `personale/` og `koeretoejer/` | `firebase.rules.json` |
 | 20 | **Sagsbaseret mail:** nummeret i emnefeltet er hele integrationen | `fleet/sager.js` |
 | 21 | **`opgaver.art` er `vaerksted` \| `facility`** — ikke `langtur`. En langtur *er* en etape. Køre-hviletid blokerer, men med forbehold | `fleet/opgaver.js`, `fleet/koerehviletid.js` |
@@ -474,10 +474,9 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
 
 ### Næste skridt, i den rækkefølge
 
-1. **Trin 3 af beslutning 18 — længdeintervaller i `satsPaa()`.** Det eneste
-   udestående af personale/flåde-arbejdet. Uden det er `laengdeMm` et felt
-   ingen læser, og færgetaksten er forkert med over tusind kroner: 10 m koster
-   1.338 kr på Rødby–Puttgarden, 18 m koster 2.530 kr.
+1. ~~**Trin 3 af beslutning 18 — længdeintervaller i `satsPaa()`.**~~ **Bygget.**
+   Se *Længdebåndet* nedenfor. Det der står tilbage, er ikke kode: de øvrige
+   passager mangler deres bånd, og tallene er vognmandens egne.
 2. **Modulabonnement.** Uafklaret: skal reglerne håndhæve abonnementet, eller
    er det kun navigation? En kommerciel grænse og en sikkerhedsgrænse giver
    meget forskellige regelfiler.
@@ -491,6 +490,85 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    Nu ved den det, og **den sidste datamodelbeslutning er truffet** —
    se beslutning 21. Skærmen læser **to noder**: `opgaver` med art `vaerksted`
    i dagsvisningen, `etaper` i ugesvisningen.
+
+### Længdebåndet — trin 3 af beslutning 18 er lukket
+
+`laengdeMm` stod på hvert eneste køretøj, blev valideret som millimeter-integer
+med en kommentar om at *"9,998 mod 10,002 afgør prisen"* — og **intet læste
+feltet**. Færgen kostede det samme for en kassevogn og for et modulvogntog.
+
+En sats kan nu bære et bånd:
+
+```js
+satser: [
+  { gyldigFra, beloebOere: 133800, laengdeTilMm: 10000 },                    // indtil 10,0 m
+  { gyldigFra, beloebOere: 253000, laengdeFraMm: 10000, laengdeTilMm: 18000 } // over 10,0 til 18,0 m
+]
+```
+
+**Båndet ligger på satsen, ikke i et niveau for sig.** Alternativet
+(`satser: { "0-10000": [...] }`) ville koste to ting: kundepriser og
+omkostninger ville ikke længere have samme form, og beslutning 7 skulle skrives
+om, fordi hvert bånd skal kunne versioneres for sig. Med båndet på satsen
+lægges en ny post med sin egen `gyldigFra` — nøjagtig som alt andet.
+
+**Intervallet er `(fra, til]` — øvre grænse inklusiv.** Rederierne udgiver
+taksten som *"indtil 10 m"*, så et vogntog på præcis 10.000 mm hører i det
+**billige** bånd. Læste vi det som `[fra, til)`, ville nøjagtig 10 m koste
+1.192 kr for meget. Reglen kan ikke håndhæve det — en `.validate` ser én sats
+ad gangen — så læsningen står i `satsOpslag()` og prøven holder den.
+
+**Længden kommer fra `samletLaengdeMm()`, altså trækker PLUS trailer.** Med
+bilens eget felt ville traileren være gratis på færgen. Det er samme fejl som
+ét `koeretoejId` på en etape, og den ville have været usynlig: prisen ville
+bare være for lav.
+
+#### ⚠ Og den fandt en tavs fejl i `beregnBooking()`
+
+`brug()` sprang linjen over på `if (!sats || !beloeb) return` — altså præcis de
+tre tavse spring `beregnForloeb()` blev rettet for, i den funktion der ligger
+lige over. En færge uden takst blev til **en tur uden færge**: totalen så
+færdig ud og var for lav.
+
+Nu står linjen der med `beloebOere: null` og `manglerSats: true`, og
+`totalOere` bliver `null`. En sum med et ubesvaret led er ikke en sum — samme
+regel som momssatsen der mangler og som `ikkeFaktureretOere()`.
+
+⚠ **Skærmen skal skrive det selv.** `kr()` skelner med vilje ikke mellem
+`null` og nul, fordi kun kalderen ved om nul er et svar — `kr(null)` er
+`"0 kr."`. På en overfart er nul aldrig svaret, så Bookingopsætning skriver
+`INTET` på linjen og på summen. Se `momsTekst()` i Fakturering for samme greb.
+
+#### Tre grunde, ikke ét `null`
+
+`satsOpslag()` svarer `{ sats, mangler }`, og `mangler` har hver sin rettelse:
+
+| `mangler` | Betyder | Rettelsen |
+|---|---|---|
+| `"sats"` | ingen gyldig sats på datoen | opret satsen |
+| `"laengde"` | posten er båndopdelt, og vi fik ingen længde | disponér en enhed på etapen |
+| `"baand"` | længden falder uden for alle bånd | spørg rederiet |
+
+Et `null` alene kan ikke skelne dem, og de tre fører hvert sit sted hen.
+
+#### Det der står tilbage — og det er ikke kode
+
+- **Kun Femern har bånd.** `bro:storebaelt` hedder stadig *"(lastbil 10–20 m)"*,
+  og taksten **er** 10–20 m-taksten. Vi kender bare ikke broens øvrige trin, og
+  et bånd vi fandt på, ville koste penge på hver eneste tur. Navnet bliver
+  stående netop for at sige hvad satsen forudsætter.
+- **Femern har intet bånd over 18 m.** Demo-etape `et-001` er 19.820 mm og får
+  derfor *"ingen takst for den længde"* — en synlig mangel man kan handle på, i
+  stedet for en pris der er 1.192 kr for lav. `et-007` har ingen bil endnu og
+  får *"længden er ikke oplyst"*.
+- **Tallene er vognmandens egne.** BroBizz-rabatten er progressiv på
+  månedsbasis, og færgetaksterne følger en aftale. Båndene lægges når hans
+  aftale er læst — ikke før.
+- **Der er ingen formular til at lægge et bånd endnu.** `valideSats()` og
+  `baandOverlap()` er bygget og prøvet, men Bookingopsætning viser satsarket;
+  den redigerer det ikke. To bånd der dækker samme længde, er to priser på én
+  tur, og `baandOverlap()` findes for at formularen kan afvise det **før**
+  satsen lægges — en sats overskrives ikke bagefter.
 
 ### Disponering står i fase 0 — de fem tjek kaldes, men blokerer ikke
 

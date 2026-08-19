@@ -361,6 +361,21 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   nøjagtig to tegn, så `@vognmand.dk` kunne oprettes og `@vognmand.com` kunne
   ikke. En prøve læser filerne som tekst og fejler på en kopi nummer to.
   Se beslutning 42.
+- **Prissætte en færge uden vogntogets længde.** En færge tager betaling efter
+  kajmeter: Rødby–Puttgarden er 1.338 kr for 10 m og 2.530 kr for 18 m. En sats
+  kan bære `laengdeFraMm`/`laengdeTilMm`, og `satsOpslag()` svarer
+  `{ sats, mangler }` — de tre grunde (`sats`, `laengde`, `baand`) har hver
+  sin rettelse, og et `null` alene kan ikke skelne dem.
+  ⚠ **Intervallet er (fra, til] — øvre grænse INKLUSIV**, fordi rederierne
+  skriver "indtil 10 m". Præcis 10.000 mm er det BILLIGE bånd; læste du det
+  omvendt, kostede nøjagtig 10 m 1.192 kr for meget. Reglen kan ikke håndhæve
+  det — en `.validate` ser én sats ad gangen — så læsningen står ét sted og
+  har en prøve.
+  ⚠ **Og et bånd der ikke findes, er ikke den nærmeste pris.** Falder længden
+  uden for alle bånd, er svaret INGEN sats. En båndløs sats ved siden af må
+  heller ikke redde opslaget: så ville indførelsen af bånd gøre prisen forkert
+  i tavshed. Længden kommer fra `samletLaengdeMm()` — trækker PLUS trailer.
+  Se beslutning 18, trin 3.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

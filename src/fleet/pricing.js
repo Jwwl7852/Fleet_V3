@@ -19,15 +19,165 @@ import { rabatteretSatsOere, BPS_SKALA } from "./beloeb.js";
 /* ---- Satsopslag -------------------------------------------------- */
 
 /**
- * Finder den sats der var gyldig på et givet tidspunkt.
- * satser: [{ gyldigFra: ms, beloebOere, metode, valuta, aktiv }]
+ * ══════════════════════════════════════════════════════════════════════
+ * LÆNGDEBÅND — trin 3 af beslutning 18
+ * ══════════════════════════════════════════════════════════════════════
+ *
+ * En færge tager ikke betaling pr. tur. Den tager betaling efter hvor mange
+ * meter kaj vogntoget optager, og forskellen er ikke til at overse:
+ * Rødby–Puttgarden koster **1.338 kr for 10 m og 2.530 kr for 18 m**. Uden
+ * båndet er `laengdeMm` et felt ingen læser, og estimatet er forkert med over
+ * tusind kroner på hver eneste tur mod syd.
+ *
+ * ⚠ BÅNDET LIGGER PÅ SATSEN, IKKE I ET NIVEAU FOR SIG.
+ * `satser: [{ gyldigFra, beloebOere, laengdeFraMm, laengdeTilMm }]` — en flad
+ * liste, som før. Alternativet var et niveau mere i noden
+ * (`satser: { "0-10000": [...] }`), og det ville koste to ting: kundepriser
+ * og omkostninger ville ikke længere have samme form, og beslutning 7 skulle
+ * skrives om, fordi hvert bånd skal kunne versioneres for sig. Med båndet på
+ * satsen versioneres ét bånd ved at lægge en ny post med sin egen
+ * `gyldigFra` — nøjagtig som alt andet.
+ *
+ * ⚠ INTERVALLET ER (fra, til] — ØVRE GRÆNSE INKLUSIV.
+ * Rederierne udgiver taksten som *"indtil 10 m"* og *"over 10 m til 18 m"*,
+ * og et vogntog på præcis 10.000 mm hører derfor i det FØRSTE bånd. Læste vi
+ * det som [fra, til), ville nøjagtig 10 m koste den dyre takst — og det er
+ * netop den grænse `valideKoeretoej()` gemmer længden i millimeter for:
+ * "9,998 mod 10,002 afgør prisen".
+ *
+ *   laengdeFraMm   udeladt = 0, altså ingen nedre grænse. EKSKLUSIV.
+ *   laengdeTilMm   udeladt = ingen øvre grænse. INKLUSIV.
+ *
+ * ⚠ ET BÅND DER IKKE FINDES, ER IKKE DEN NÆRMESTE PRIS.
+ * Har posten bånd, og falder længden uden for dem alle, er svaret **ingen
+ * sats** — ikke det dyreste bånd og ikke det nærmeste. Samme regel som
+ * momssatsen der mangler: et system der gætter rigtigt ni gange ud af ti,
+ * lærer brugeren at stole på det tiende. En 19,4 m kombination på en færge
+ * hvor vi kun kender taksten til 18 m, er et spørgsmål til rederiet.
+ *
+ * ⚠ OG EN SATS UDEN LÆNGDE ER HELLER IKKE SVARET.
+ * Bærer bare én af postens gyldige satser et bånd, er posten båndopdelt, og
+ * så kan den ikke prissættes uden at vide hvor langt vogntoget er. Faldt vi
+ * tilbage på en båndløs sats, ville en tur uden valgt bil få den gamle faste
+ * takst — og det er den fejl der ikke kan ses på tallet.
  */
-export function satsPaa(satser = [], paaMs = Date.now()) {
-  return (
-    satser
-      .filter((s) => s.aktiv !== false && s.gyldigFra <= paaMs)
-      .sort((a, b) => b.gyldigFra - a.gyldigFra)[0] || null
-  );
+
+/** Ingen grænse opad. Udeladt `laengdeTilMm` betyder det her. */
+const UDEN_OEVRE = Number.POSITIVE_INFINITY;
+
+/** Bærer satsen et længdebånd overhovedet? */
+export const harLaengdebaand = (sats) =>
+  Number.isFinite(sats?.laengdeFraMm) || Number.isFinite(sats?.laengdeTilMm);
+
+/**
+ * Ligger længden i satsens bånd? (fra, til].
+ * En sats uden bånd dækker alle længder — den svarer `true` på hvad som helst.
+ */
+export function iLaengdebaand(sats, laengdeMm) {
+  if (!harLaengdebaand(sats)) return true;
+  if (!Number.isFinite(laengdeMm)) return false;
+  const fra = Number.isFinite(sats.laengdeFraMm) ? sats.laengdeFraMm : 0;
+  const til = Number.isFinite(sats.laengdeTilMm) ? sats.laengdeTilMm : UDEN_OEVRE;
+  return laengdeMm > fra && laengdeMm <= til;
+}
+
+/** Læselig form: "indtil 10,0 m", "over 10,0 m til 18,0 m", "over 18,0 m". */
+export function baandLabel(sats) {
+  if (!harLaengdebaand(sats)) return "alle længder";
+  const m = (mm) => `${(mm / 1000).toFixed(1).replace(".", ",")} m`;
+  const fra = Number.isFinite(sats.laengdeFraMm) ? sats.laengdeFraMm : 0;
+  const til = Number.isFinite(sats.laengdeTilMm) ? sats.laengdeTilMm : null;
+  if (!fra) return `indtil ${m(til)}`;
+  if (til === null) return `over ${m(fra)}`;
+  return `over ${m(fra)} til ${m(til)}`;
+}
+
+/** De satser der var gyldige på et tidspunkt, nyeste først. */
+const gyldigePaa = (satser, paaMs) =>
+  (Array.isArray(satser) ? satser : Object.values(satser || {}))
+    .filter((s) => s && s.aktiv !== false && s.gyldigFra <= paaMs)
+    .sort((a, b) => b.gyldigFra - a.gyldigFra);
+
+/**
+ * Satsopslaget med sin BEGRUNDELSE.
+ *
+ * → { sats, mangler }
+ *
+ *   mangler === null        satsen er fundet
+ *   mangler === "sats"      der er ingen gyldig sats på datoen
+ *   mangler === "laengde"   posten er båndopdelt, og vi fik ingen længde
+ *   mangler === "baand"     længden falder uden for alle bånd
+ *
+ * ⚠ BEGRUNDELSEN ER EN RETURVÆRDI, IKKE EN NOTE. Samme greb som
+ * `tjekKoerehviletid()`s forbehold og som `manglerSats` i `beregnForloeb()`:
+ * skal skærmen kunne skrive HVORFOR linjen ikke har en pris, skal svaret
+ * bære det. Et `null` alene kan ikke skelne "vi har ingen takst endnu" fra
+ * "vi ved ikke hvor langt vogntoget er", og de to har hver sin rettelse.
+ */
+export function satsOpslag(satser = [], paaMs = Date.now(), { laengdeMm } = {}) {
+  const gyldige = gyldigePaa(satser, paaMs);
+  if (!gyldige.length) return { sats: null, mangler: "sats" };
+
+  if (!gyldige.some(harLaengdebaand)) return { sats: gyldige[0], mangler: null };
+
+  if (!Number.isFinite(laengdeMm) || laengdeMm <= 0) {
+    return { sats: null, mangler: "laengde" };
+  }
+  /* ⚠ KUN DE BÅNDBÆRENDE SATSER ER KANDIDATER — og den her linje var jeg ved
+     at glemme. `iLaengdebaand()` svarer sandt for en sats UDEN bånd, fordi en
+     sats uden bånd dækker alle længder. Uden filteret her ville en gammel
+     fast takst, der stod tilbage ved siden af de nye bånd, redde opslaget for
+     enhver længde — og så ville indførelsen af bånd gøre prisen forkert i
+     TAVSHED, hvilket er præcis den fejl båndet skulle lukke.
+     Prøven i test/laengdebaand.test.mjs fandt det. */
+  const traeffer = gyldige.filter(harLaengdebaand).find((s) => iLaengdebaand(s, laengdeMm));
+  return traeffer ? { sats: traeffer, mangler: null } : { sats: null, mangler: "baand" };
+}
+
+/** Sætningen der hører til `mangler`. ÉT sted, så skærm og prøve er enige. */
+export const MANGLERTEKST = {
+  sats: "ingen sats på datoen",
+  laengde: "længden på vogntoget er ikke oplyst",
+  baand: "ingen takst for den længde",
+};
+
+/**
+ * Finder den sats der var gyldig på et givet tidspunkt.
+ * satser: [{ gyldigFra, beloebOere, metode, valuta, aktiv, laengdeFraMm?, laengdeTilMm? }]
+ *
+ * ⚠ TYNDT LAG OVEN PÅ satsOpslag(). De kaldsteder der ikke prissætter en
+ * passage, skal ikke kende til bånd — men de må heller ikke kunne komme til
+ * at vælge en båndsats i blinde, og derfor går de gennem det samme opslag.
+ */
+export function satsPaa(satser = [], paaMs = Date.now(), muligheder = {}) {
+  return satsOpslag(satser, paaMs, muligheder).sats;
+}
+
+/**
+ * Bånd der overlapper hinanden inden for samme `gyldigFra`.
+ *
+ * To bånd der dækker den samme længde, er to priser på én tur, og opslaget
+ * ville tage det ene uden at nogen kunne se hvorfor. Formularen skal kunne
+ * afvise det FØR satsen lægges — en sats overskrives ikke bagefter.
+ *
+ * → [{ a, b }] for hvert par der overlapper.
+ */
+export function baandOverlap(satser = []) {
+  const liste = (Array.isArray(satser) ? satser : Object.values(satser || {}))
+    .filter((s) => s && s.aktiv !== false && harLaengdebaand(s));
+  const par = [];
+  for (let i = 0; i < liste.length; i++) {
+    for (let j = i + 1; j < liste.length; j++) {
+      const a = liste[i], b = liste[j];
+      if (a.gyldigFra !== b.gyldigFra) continue;
+      const aFra = Number.isFinite(a.laengdeFraMm) ? a.laengdeFraMm : 0;
+      const aTil = Number.isFinite(a.laengdeTilMm) ? a.laengdeTilMm : UDEN_OEVRE;
+      const bFra = Number.isFinite(b.laengdeFraMm) ? b.laengdeFraMm : 0;
+      const bTil = Number.isFinite(b.laengdeTilMm) ? b.laengdeTilMm : UDEN_OEVRE;
+      if (aFra < bTil && bFra < aTil) par.push({ a, b });
+    }
+  }
+  return par;
 }
 
 /** Beregningsmetoder. Metoden bestemmer hvad antal betyder. */
@@ -197,17 +347,47 @@ function linjebeloeb(sats, antal) {
  *   agenter:{ [agentId]: { navn, by, satser: [...] } }
  * }
  *
- * → { linjer, totalOere, snapshot }
+ * → { linjer, totalOere, manglerSats, snapshot }
  *   snapshot gemmes PÅ bookingen, så prisen kan genskabes bagefter.
+ *
+ * ⚠ booking.laengdeMm ER VOGNTOGETS SAMLEDE LÆNGDE, og den skal komme fra
+ * `samletLaengdeMm(enheder)` i flaade.js — trækkeren PLUS traileren. Færgen
+ * tager betaling efter kajmeter, ikke efter hvor mange køretøjer der er.
+ *
+ * ⚠ OG DEN SNAPSHOTTES SAMMEN MED SATSERNE. Retter nogen en trailers længde
+ * i morgen, må en faktura fra i går ikke ændre sig — det er beslutning 7
+ * anvendt på en måling i stedet for på en pris. Se noten ved
+ * `samletLaengdeMm()`.
+ *
+ * ⚠ EN MANGLENDE SATS ER IKKE NUL — OG DEN HER FUNKTION TROEDE DEN VAR DET.
+ * `brug()` sprang tavst linjen over på `if (!sats || !beloeb) return`, altså
+ * præcis de tre tavse spring `beregnForloeb()` blev rettet for. En færge uden
+ * takst blev til en tur uden færge, og totalen så FÆRDIG ud. Nu står linjen
+ * der med `beloebOere: null` og `manglerSats: true`, og totalen bliver
+ * `null` — en sum med et ubesvaret led er ikke en sum.
  */
 export function beregnBooking(booking, satsark, { paaMs = Date.now() } = {}) {
   const linjer = [];
-  const snapshot = { beregnetMs: paaMs, satser: {} };
+  const laengdeMm = Number.isFinite(booking.laengdeMm) ? booking.laengdeMm : null;
+  const snapshot = { beregnetMs: paaMs, laengdeMm, satser: {} };
 
   const brug = (id, sats, navn, antal, beloeb) => {
     if (!sats || !beloeb) return;
     snapshot.satser[id] = { ...sats };
-    linjer.push({ id, navn, antal, beloebOere: beloeb });
+    linjer.push({ id, navn, antal, beloebOere: beloeb, manglerSats: false });
+  };
+
+  /* ⚠ EN PASSAGE UDELADES ALDRIG. Ruten siger at færgen ER på turen; at vi
+     ikke kender taksten, er vores mangel og ikke rutens. Linjen står med sin
+     grund, så skærmen kan skrive den — og så nogen opretter satsen. */
+  const brugPassage = (id, navn, antal, opslag) => {
+    if (opslag.sats) {
+      return brug(id, opslag.sats, navn, antal, linjebeloeb(opslag.sats, antal));
+    }
+    linjer.push({
+      id, navn: `${navn} – ${MANGLERTEKST[opslag.mangler]}`, antal,
+      beloebOere: null, manglerSats: true, mangler: opslag.mangler,
+    });
   };
 
   /* 1. Km-omkostning for den valgte bil (inkl. chauffør) */
@@ -224,8 +404,11 @@ export function beregnBooking(booking, satsark, { paaMs = Date.now() } = {}) {
   for (const [postId, post] of Object.entries(satsark.poster || {})) {
     const antal = booking.passager?.[postId] ?? (post.altidPaaBooking ? 1 : 0);
     if (!antal && !post.altidPaaBooking) continue;
-    const s = satsPaa(post.satser, paaMs);
-    brug(`post:${postId}`, s, post.navn, antal, linjebeloeb(s, antal));
+    /* ⚠ HER — OG KUN HER — SPØRGES DER PÅ LÆNGDEN. Km-satsen hører til bilen
+       og agentens døgnpris til pladsen; det er PASSAGEN der tager betaling
+       efter kajmeter. Se længdebåndet ved satsOpslag(). */
+    brugPassage(`post:${postId}`, post.navn, antal,
+                satsOpslag(post.satser, paaMs, { laengdeMm }));
   }
 
   /* 3. Agentparkering — kun hvis der er valgt en agent */
@@ -237,8 +420,12 @@ export function beregnBooking(booking, satsark, { paaMs = Date.now() } = {}) {
          doegn, linjebeloeb({ ...s, metode: "prDoegn" }, doegn));
   }
 
-  const totalOere = linjer.reduce((sum, l) => sum + l.beloebOere, 0);
-  return { linjer, totalOere, snapshot };
+  /* ⚠ SAMME REGEL SOM I beregnForloeb(). Manglede bare én takst, ville en
+     total uden den se fuldt så færdig ud som en rigtig — og den ville være
+     for LAV, hvilket er den retning ingen opdager. */
+  const manglerSats = linjer.some((l) => l.manglerSats);
+  const totalOere = manglerSats ? null : linjer.reduce((sum, l) => sum + l.beloebOere, 0);
+  return { linjer, totalOere, manglerSats, snapshot };
 }
 
 /* ---- Forløb med flere etaper (beslutning 16) ----------------------- */
@@ -383,7 +570,12 @@ export function beregnForloeb(forloeb, satsark, { paaMs = Date.now() } = {}) {
      ville en total uden den se fuldt så færdig ud som en rigtig — og den
      ville være for LAV, hvilket er den retning ingen opdager. Samme regel
      som ikkeFaktureretOere() og som momssatsen der mangler. */
-  const manglerSats = lagerlinjer.some((l) => l.manglerSats);
+  /* ⚠ ETAPERNES EGNE HULLER TÆLLER MED. Før så den kun på lagerlinjerne, og
+     `beregnBooking()` sprang dengang en manglende passagetakst tavst over —
+     så et forløb med en færge uden takst havde en total der så færdig ud.
+     Nu bærer etapen sit eget `manglerSats`, og den forplanter sig. */
+  const manglerSats =
+    lagerlinjer.some((l) => l.manglerSats) || etaper.some((e) => e.manglerSats);
   const totalOere = manglerSats
     ? null
     : etaper.reduce((s, e) => s + e.totalOere, 0) +
@@ -412,9 +604,20 @@ export function beregnFraSnapshot(booking) {
  *  ændre satsen — så det fremgår hvem der afveg fra standardprisen. */
 export function medOverstyring(resultat, { id, navn, beloebOere, af, begrundelse }) {
   const linjer = resultat.linjer.map((l) =>
-    l.id === id ? { ...l, beloebOere, overstyret: { af, begrundelse, oprindelig: l.beloebOere } } : l
+    l.id === id
+      ? { ...l, beloebOere, manglerSats: false,
+          overstyret: { af, begrundelse, oprindelig: l.beloebOere } }
+      : l
   );
-  return { ...resultat, linjer, totalOere: linjer.reduce((s, l) => s + l.beloebOere, 0) };
+  /* ⚠ EN OVERSTYRING ER OGSÅ SVARET PÅ EN MANGLENDE TAKST. Disponenten der
+     skriver færgeprisen ind i hånden, har netop besvaret spørgsmålet — og
+     summen skal derfor kunne blive et tal igen. Er der ANDRE huller tilbage,
+     bliver den ved med at være null. */
+  const manglerSats = linjer.some((l) => l.manglerSats);
+  return {
+    ...resultat, linjer, manglerSats,
+    totalOere: manglerSats ? null : linjer.reduce((s, l) => s + l.beloebOere, 0),
+  };
 }
 
 export const formatLinje = (l) => `${l.navn}: ${kr(l.beloebOere, 2)}`;
@@ -458,6 +661,28 @@ export function valideSats(post = {}, { nu = Date.now() } = {}) {
 
   if (post.valuta && !/^[A-Z]{3}$/.test(post.valuta)) f.valuta = "Tre store bogstaver, fx DKK.";
   if (post.metode && !METODER[post.metode]) f.metode = "Ukendt beregningsmetode.";
+
+  /* ---- Længdebåndet. Trin 3 af beslutning 18 ------------------------
+     ⚠ MILLIMETER SOM INTEGER, som på køretøjet. Færgetaksten har sin grænse
+     ved 10 og 18 m, og 9,998 mod 10,002 afgør prisen — en float ved en
+     grænse er en fejl der venter. Samme disciplin som øre i beslutning 2. */
+  const baandFejl = (v, navn) => {
+    if (v === undefined || v === null) return null;
+    if (!Number.isInteger(v)) return `${navn} skal være millimeter som helt tal.`;
+    if (v < 0) return `${navn} kan ikke være negativ.`;
+    return null;
+  };
+  f.laengdeFraMm = baandFejl(post.laengdeFraMm, "Fra-længden");
+  f.laengdeTilMm = baandFejl(post.laengdeTilMm, "Til-længden");
+
+  if (!f.laengdeFraMm && !f.laengdeTilMm
+      && Number.isInteger(post.laengdeFraMm) && Number.isInteger(post.laengdeTilMm)
+      && post.laengdeFraMm >= post.laengdeTilMm) {
+    /* ⚠ ET TOMT BÅND ER VÆRRE END INTET BÅND. Det ville aldrig kunne rammes,
+       og posten ville se båndopdelt ud — så hver eneste tur fik "ingen takst
+       for den længde" uden at nogen kunne se hvorfor. */
+    f.laengdeTilMm = "Til-længden skal være større end fra-længden.";
+  }
 
   for (const k of Object.keys(f)) if (!f[k]) delete f[k];
   return f;
