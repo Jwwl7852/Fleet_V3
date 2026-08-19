@@ -17,7 +17,7 @@ gør.
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
-| **[ROLLER.md](ROLLER.md)** | Rollegennemgangen: hvad hver af de syv roller **faktisk** kan læse og skrive. Læsesiden er MÅLT mod det udrullede. ⚠ 48 af 55 stier er ens for alle syv |
+| **[ROLLER.md](ROLLER.md)** | Rollegennemgangen: hvad hver af de syv roller **faktisk** kan læse og skrive. Begge sider er MÅLT — læsning mod det udrullede, skrivning i emulatoren. ⚠ 48 af 55 læsestier er ens for alle syv; skrivningen er finkornet |
 | **[SPROG.md](SPROG.md)** | Seks sprog på hele platformen. **Ikke bygget** — dokumentet er listen over hvad der IKKE må oversættes, og de tre steder kravet støder ind i en beslutning |
 | **[CLAUDE.md](CLAUDE.md)** | Arbejdsregler hvis du bruger Claude Code |
 

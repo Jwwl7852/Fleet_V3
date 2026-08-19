@@ -14,17 +14,15 @@ seedede DEV-brugere mod det udrullede DEV-projekt, og hver node i regelfilen
 læses rigtigt. Nodelisten kommer fra regelfilen selv, så en ny node ikke kan
 glemmes.
 
-⚠ **Skrivesiden er IKKE målt på samme måde**, og det står der fordi det gør en
-forskel. En skrivning ville lægge affald i basen, og en fejlet skrivning kan
-fejle af den **forkerte grund** — validering frem for permission. Det er
-præcis den fælde `rules.division.test.mjs` advarer mod i sit eget hoved.
-Skrivesiden står derfor som **regelfilens krav**, citeret frem for udledt.
+Skrivesiden er **også målt** — men i EMULATOREN, ikke i DEV. En skrivning
+ville lægge affald i basen, og emulatoren kan smides væk. Den kører den samme
+regelfil som er udrullet, og `npm run regler:udrul` sammenligner de to.
 
-Og der er en grund til ikke at udlede den: mindst én regel er ikke en simpel
-OG. `indberetninger` er `(indberetninger.skriv OG posten er din egen) ELLER
-indberetninger.skrivAlle`. En naiv udledning gjorde noden admin-only i en
-tabel — mens virkeligheden er at **enhver chauffør må oprette sin egen**. En
-matrix man ikke kan stå inde for, er værre end ingen.
+⚠ **Første udgave af skrivetabellen var UDLEDT af regelfilen, og den var
+forkert.** `indberetninger` blev admin-only, fordi jeg læste
+`(skriv OG din egen post) ELLER skrivAlle` som en simpel OG. Virkeligheden er
+at enhver chauffør må oprette sin egen. En matrix man ikke kan stå inde for,
+er værre end ingen — og det er derfor den nu måles frem for at udledes.
 
 ---
 
@@ -125,64 +123,57 @@ er ikke om den virker, men om der er **for lidt** klassificeret.
 
 ---
 
-## Skrivning — regelfilens krav
+## Skrivning — målt i emulatoren
 
-Her er billedet det modsatte: **23 af 24 skrivbare noder skiller rollerne ad.**
-Skrivesiden er finkornet, og den er det ét sted — i reglerne.
+Her er billedet det modsatte af læsesiden: **skrivningen er finkornet**, og den
+er det ét sted — i reglerne.
+
+Målingen kører i `test/rules.rollematrix.test.mjs` mod den **samme regelfil**
+som er udrullet (`npm run regler:udrul` sammenligner de to, beslutning 29).
+Emulatoren kan skrives i og smides væk; DEV kan ikke.
+
+⚠ **Og fixturet prøves FØRST.** En afvisning kan komme fra en manglende
+permission **eller** fra en ugyldig post, og de to ser ens ud udefra. Derfor
+skriver admin hvert fixtur inden målingen: bliver det afvist, er posten
+forkert, og prøven siger **det** frem for at måle videre.
+
+Det er ikke en teoretisk forholdsregel. Første gang filen kørte, fangede den
+mit eget `varer`-fixtur: `kundeId` slår op i `kunder/`, kunden fandtes ikke i
+prøvetenanten, og en naiv måling ville have skrevet *"ingen rolle kan skrive
+varer"* i tabellen herunder.
+
+⚠ **Tenanten har ingen `moduler`-node.** Modulklausulerne falder tilbage på
+"alt er købt", så det der måles, er **permissionen alene**. Modulsiden er
+`rules.moduler.test.mjs`' ærinde.
 
 | Node | Kræver | chauff | caseha | dispon | koordi | lagerm | reviso | admin |
 |---|---|---|---|---|---|---|---|---|
-| `_findes` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `virksomhed` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `abonnement` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `moduler` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `brugerlayout/$uid` | kun sin egen (`auth.uid === $uid`) | egen | egen | egen | egen | egen | egen | egen |
-| `dashboardvisning` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `roller` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `brugere` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `sensitive/bookinger` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `sensitive/kunder` ⚠ | `kunder.skriv` + `kunder.sensitiveLaes` | **nej** | **nej** | **nej** | ja | **nej** | **nej** | ja |
-| `sensitive/koeretoejer` ⚠ | `koeretoejer.skriv` + `koeretoejer.sensitiveLaes` | **nej** | **nej** | ja | **nej** | **nej** | **nej** | ja |
-| `sensitive/personale` ⚠ | `personale.skriv` + `personale.sensitiveLaes` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `sensitive/fravaer` ⚠ | `fravaer.skriv` + `fravaer.sensitiveLaes` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `sensitive/indberetninger/$id` ⚠ | `indberetninger.skriv` + `indberetninger.sensitiveLaes` | **nej** | **nej** | **nej** | ja | **nej** | **nej** | ja |
-| `vaerdi/bookinger` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `personale/$personId` ⚠ | `personale.skriv` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `kompetencer/$kompetenceId` ⚠ | `kompetencer.skriv` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `kpi` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `reservationer` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `bookinger` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `etaper` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `lagre` ⚠ | `lagre.skriv` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `countere` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `grundlag` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `omkostninger` ⚠ | `satser.skriv` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `satser` ⚠ | `satser.skriv` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `opgaver` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `koeretoejer/$koeretoejId` ⚠ | `koeretoejer.skriv` | **nej** | **nej** | ja | **nej** | **nej** | **nej** | ja |
-| `indberetninger/$id` ⚠ | `indberetninger.skriv` + `indberetninger.skrivAlle` | **nej** | **nej** | **nej** | **nej** | **nej** | **nej** | ja |
-| `fravaer` ⚠ | `fravaer.skriv` | **nej** | ja | ja | ja | **nej** | **nej** | ja |
-| `facility` ⚠ | `facility.skriv` | **nej** | ja | ja | ja | **nej** | **nej** | ja |
-| `leverandoerer` ⚠ | `indkoeb.skriv` | **nej** | ja | ja | ja | **nej** | **nej** | ja |
-| `indkoeb` ⚠ | `indkoeb.skriv` | **nej** | ja | ja | ja | **nej** | **nej** | ja |
-| `fakturaer` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `kassetyper` ⚠ | `kasser.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `reolpladser` ⚠ | `reolpladser.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `kasser/$kasseId` ⚠ | `kasser.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `kasseudlaan/$udlaanId` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `varer` ⚠ | `varer.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `carriers` ⚠ | `carriers.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `bevaegelser/$bevaegelseId` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `beholdning/$noegle` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `enheder/$serienummer` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `plukordrer` ⚠ | `bevaegelser.skriv` | **nej** | **nej** | **nej** | **nej** | ja | **nej** | ja |
-| `optaellinger/$optaellingId` | **lukket — kun en funktion** | – | – | – | – | – | – | – |
-| `kunder` ⚠ | `kunder.skriv` | **nej** | ja | ja | ja | **nej** | **nej** | ja |
+| `kunder` | `kunder.skriv` | nej | **ja** | **ja** | **ja** | nej | nej | **ja** |
+| `koeretoejer` | `koeretoejer.skriv` | nej | nej | **ja** | nej | nej | nej | **ja** |
+| `personale` | `personale.skriv` | nej | nej | nej | nej | nej | nej | **ja** |
+| `kompetencer` | `kompetencer.skriv` | nej | nej | nej | nej | nej | nej | **ja** |
+| `fravaer` | `fravaer.skriv` | nej | **ja** | **ja** | **ja** | nej | nej | **ja** |
+| `leverandoerer` | `indkoeb.skriv` | nej | **ja** | **ja** | **ja** | nej | nej | **ja** |
+| `indkoeb` | `indkoeb.skriv` | nej | **ja** | **ja** | **ja** | nej | nej | **ja** |
+| `lagre` | `lagre.skriv` | nej | nej | nej | nej | nej | nej | **ja** |
+| `satser` | `satser.skriv` | nej | nej | nej | nej | nej | nej | **ja** |
+| `omkostninger` | `satser.skriv` | nej | nej | nej | nej | nej | nej | **ja** |
+| `varer` | `varer.skriv` | nej | nej | nej | nej | **ja** | nej | **ja** |
+| `reolpladser` | `reolpladser.skriv` | nej | nej | nej | nej | **ja** | nej | **ja** |
+| `brugerlayout/<uid>` | `auth.uid === $uid` | egen | egen | egen | egen | egen | egen | egen |
 
-⚠ **Læs `indberetninger`-rækken med forbehold.** Reglen er
-`(indberetninger.skriv OG din egen post) ELLER indberetninger.skrivAlle`.
-Tabellen kan ikke rumme det, og en chauffør **kan** oprette sin egen
-indberetning. Se `rules.indberetninger.test.mjs`, hvor det er demonstreret.
+### ⚠ En chauffør kan ikke skrive andet end sit eget layout
+
+Det er målt, ikke antaget — og det er den ene halvdel af modellen der virker
+som den skal. Den mindst betroede rolle kan ingenting ændre.
+
+⚠ **Med én undtagelse, og den står ikke i tabellen:** han kan oprette sin egen
+**indberetning**. Reglen er `(indberetninger.skriv OG posten er din egen)
+ELLER indberetninger.skrivAlle`, og den form kan en ja/nej-kolonne ikke rumme.
+Den er demonstreret i `rules.indberetninger.test.mjs`.
+
+⚠ **Og det var netop den regel der afslørede at en udledt matrix ikke duer.**
+Min første tabel læste `&&` hvor der stod `||` og gjorde noden admin-only.
 
 ### 19 noder kan slet ikke skrives af en klient
 
@@ -194,6 +185,14 @@ indberetning. Se `rules.indberetninger.test.mjs`, hvor det er demonstreret.
 Hver af dem har sin grund skrevet i regelfilen, og de er ikke manglende
 rettigheder — det er **veje** der er lukket, fordi handlingen rører mere end
 én post. Se beslutning 37, 39 og 45.
+
+### De klassificerede søskendenoder kræver TO permissions
+
+`sensitive/kunder` kræver `kunder.skriv` **og** `kunder.sensitiveLaes`, og
+tilsvarende for de øvrige. Det er beslutning 38's greb: en `.write` kaskaderer,
+så uden det andet led kunne en rolle skrive det klassificerede alene fordi den
+måtte skrive det almindelige. De står ikke i tabellen ovenfor, fordi fixturerne
+for dem hører sammen med `rules.klassificeret.test.mjs`.
 
 ---
 
@@ -238,10 +237,12 @@ chauffør *bør* kunne se — og det er ikke et teknisk spørgsmål.
 
 ## Det der ikke er målt
 
-- **Skrivning er ikke prøvet rolle for rolle mod en base.** Den rigtige måde er
-  i emulatoren, hvor der kan skrives frit og ryddes op — og med **rigtige**
-  poster, så en afvisning ikke kommer fra en manglende `division`. Det er en
-  etape for sig.
+- **De klassificerede søskendenoder er ikke i skrivematrixen.** De kræver TO
+  permissions (beslutning 38), og fixturerne for dem hører sammen med
+  `rules.klassificeret.test.mjs`. Kravet står citeret, men ikke målt.
+- **`indberetninger` er ikke i skrivematrixen.** Reglen er `(skriv OG din egen)
+  ELLER skrivAlle`, og en ja/nej-kolonne kan ikke rumme den. Den er
+  demonstreret i `rules.indberetninger.test.mjs`.
 - **`audit/`** ligger uden for tenanten og er ikke med. Kun admin og revisor har
   `audit.laes`.
 - **Skærmenes egne `harPerm()`-kald** er ikke krydset med tabellen. En skærm kan
