@@ -384,11 +384,13 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `auth.uid === $uid` og ikke af en funktion. Grænsen er kataloget:
   `valideLayout()` afviser dubletter og ukendte nøgler.
   ⚠ **Og antallet er ikke en adgangskontrol.** Hvad en bruger må SE, afgøres
-  af kundens moduler og af `dashboardvisning` — begge SKJULER, ingen af dem
-  spærrer. `kpi/` er læsbar for enhver indlogget bruger i tenanten, uden
-  permission og uden modulklausul. Et rollefilter i widgetvælgeren ville
-  derfor være en **pæn knap**: kortet væk, tallet åbent. Skal rollen afgøre
-  adgang, er det `kpi/` der skal deles op pr. domæne. Se beslutning 43.
+  af kundens **moduler** — som siden beslutning 44 SPÆRRER `kpi/` pr. domæne —
+  og af `dashboardvisning`, som stadig kun SKJULER.
+  ⚠ **Men rollen afgør stadig ingenting.** Modulklausulen gælder TENANTEN,
+  ikke brugeren, og alle syv roller har hver eneste læse-permission. Et
+  rollefilter i widgetvælgeren ville derfor stadig være en **pæn knap**:
+  kortet væk, tallet åbent. Skal rollen afgøre adgang, kræver det nye
+  læse-permissions fordelt på rollerne — se beslutning 43 og 44.
 - **Læse `kpi/` i ét kald.** Noden har ingen `.read` længere — den ligger på
   `kpi/<division>/<snapshot>/<domaene>` med modulets klausul, og en læsning af
   forælderen afvises for ALLE, også admin. `useKpi()` henter pr. domæne og

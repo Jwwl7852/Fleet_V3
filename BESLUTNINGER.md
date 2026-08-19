@@ -2074,9 +2074,20 @@ det man skulle tro:
 | `dashboardvisning` | En administrator skjuler et dashboard for én bruger | Spærrer ikke — den hedder derfor en **visning**, ikke en adgang |
 | Brugerens **rolle** | Afgør hvad han må i resten af systemet | Afgør i dag **ingenting** om widgets |
 
-⚠ **`kpi/` er læsbar for enhver indlogget bruger i tenanten.** Ingen
-permission, ingen modulklausul. En chauffør kan læse
-`tenants/<id>/kpi/<division>/oekonomi` direkte, uanset hvad hans forside viser.
+⚠ **`kpi/` var læsbar for enhver indlogget bruger i tenanten** da det her
+blev skrevet. Ingen permission, ingen modulklausul.
+
+**Beslutning 44 lukkede halvdelen af det** — dagen efter. Hvert domæne bærer nu
+sit MODULS klausul, så en kunde uden Økonomi ikke kan læse tallet. Den anden
+halvdel står: der er stadig ingen PERMISSION, modulet gælder TENANTEN, og en
+chauffør i et firma der HAR Økonomi, kan derfor stadig læse
+`tenants/<id>/kpi/<division>/current/oekonomi` direkte.
+
+⚠ **Og det er værd at bemærke hvordan det blev fundet.** Sætningen stod FIRE
+steder — her, i README, i `dashboardvisning.js` og i CLAUDE.md — og beslutning
+44 gjorde tre af dem forkerte uden at nogen prøve fejlede. En påstand der er
+skrevet af fire gange, bliver ikke rettet fire gange. Det er samme mønster som
+mailmønsteret i beslutning 42, bare i prosa.
 
 Skulle rollen afgøre hvilke widgets en bruger har **adgang** til — og ikke
 bare hvilke han bliver **tilbudt** — er det `kpi/` der skal deles op pr.

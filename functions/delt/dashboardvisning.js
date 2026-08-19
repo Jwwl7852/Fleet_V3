@@ -12,13 +12,10 @@
  * Mockuppen kalder skærmen "Dashboardadgange" og sætter en krone ved "ekstra
  * adgang". Det ville være et løfte platformen ikke kan holde:
  *
- *   `kpi/` er læsbar for ENHVER indlogget bruger i tenanten. Ingen
- *   permission, ingen modulklausul — se firebase.rules.json. En bruger der
- *   "nægtes" Warehouse-dashboardet, kan stadig læse
- *   `tenants/<id>/kpi/<division>/warehouse` direkte.
+ *   To brugere i samme firma ser NØJAGTIG det samme. Indstillingen her
+ *   skjuler et dashboard for den ene; den spærrer ingenting for ham.
  *
- * Så en afkrydsning her SKJULER et dashboard; den spærrer det ikke. Det er
- * nøjagtig samme skel som modullisten i moduler.js:
+ * Det er nøjagtig samme skel som modullisten i moduler.js:
  *
  *   "MENUEN SKJULER ET MODUL KUNDEN IKKE HAR KØBT — men det er en KOMMERCIEL
  *    kontrol, ikke en sikkerhedskontrol."
@@ -27,11 +24,26 @@
  * chauffør og TRO at tallene var utilgængelige for ham. Det er den værste
  * slags kontrol: den ser ud som om den virker.
  *
- * ⚠ VIL MAN HAVE DEN RIGTIGE SPÆRRING, er det `kpi/` der skal deles op — pr.
- * domæne, med en permission eller en modulklausul på hver. Det er en
- * selvstændig ændring: `useKpi()` læser hele noden, og en delvis afvist
- * læsning er en `permission-denied`, som `dataTilstand()` behandler som
- * blokerende. Se README.
+ * ⚠ HER STOD AT `kpi/` VAR LÆSBAR FOR ENHVER, UDEN PERMISSION OG UDEN
+ * MODULKLAUSUL. Halvdelen af det er ikke sandt længere.
+ *
+ * Beslutning 44 delte `kpi/` op pr. domæne, og hvert domæne bærer nu sit
+ * MODULS klausul: en kunde uden Warehouse kan ikke længere læse
+ * `tenants/<id>/kpi/<division>/current/warehouse`. Det var netop den
+ * opdeling den her note bad om.
+ *
+ * ⚠ MEN DEN ANDEN HALVDEL STÅR: der er stadig ingen PERMISSION i klausulen.
+ * Modulet gælder TENANTEN, ikke brugeren, og alle syv roller har hver eneste
+ * læse-permission — kun `audit.laes` skiller nogen ud. En chauffør i et firma
+ * der HAR Økonomi, kan derfor stadig læse `kpi/<division>/current/oekonomi`
+ * direkte, uanset hvad hans forside viser.
+ *
+ * Derfor er det stadig en VISNING. Skal rollen afgøre det, kræver det nye
+ * læse-permissions fordelt på de syv roller — en produktbeslutning, og en der
+ * koster en ombæring af tokens, fordi perms står i claims. Prøven i
+ * `test/dashboardvisning.test.mjs` vogter linjen: den kræver at klausulen ER
+ * der, og at en permission IKKE er. Kommer den, skal navnet og teksten på
+ * skærmen med.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
