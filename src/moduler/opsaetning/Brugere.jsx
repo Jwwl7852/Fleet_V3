@@ -77,9 +77,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
+import { harModul } from "../../fleet/moduler.js";
+import { DASHBOARDS, SAMLET as SAMLET_NOEGLE } from "../../fleet/dashboards.js";
 import {
   opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger, BRUGERSVAR,
-  skrivRolle, permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM
+  skrivRolle, permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM,
+  skrivDashboardvisning, synligeDashboards, skjulerAlt
 } from "../../fleet/brugere.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
@@ -189,7 +192,7 @@ function Opretformular({ kode, paaLuk, paaOprettet }) {
 }
 
 export default function Brugere() {
-  const { bruger, tenantId, tenant } = useFleet();
+  const { bruger, tenantId, tenant, moduler } = useFleet();
   /* ⚠ STRENGEN OM TIL EN LISTE. `bruger.perms` er claim-strengen |a|b|c|, og
      `.length` paa den er TEGNANTALLET — kortet skrev "688 permissions i dit
      token" om en administrator der har 41. harPerm() taaler begge former, saa
@@ -239,6 +242,22 @@ export default function Brugere() {
      opslag. Oversættelsen står ét sted. */
   const rolleNode = Object.fromEntries(
     (rolleraekker || []).map((r) => [r.id, { perms: r.perms || [] }]));
+
+  /* ⚠ EN VISNING, IKKE EN ADGANG. `kpi/` er læsbar for enhver i tenanten,
+     så en afkrydsning her SKJULER et dashboard — den spærrer det ikke.
+     Skærmen skriver det, så ingen slår Økonomi fra for en chauffør og TROR
+     at tallene er utilgængelige. Se dashboardvisning.js. */
+  const {
+    data: visningsraekker, genindlaes: genindlaesVisning
+  } = useListe("dashboardvisning", { vindue: "alle", division: "alle", demo: [] });
+  const visningPr = Object.fromEntries(
+    (visningsraekker || []).map((r) => {
+      const { id, ...rest } = r;
+      return [id, rest];
+    }));
+
+  /* Hvilken bruger der redigeres visning for, eller null. */
+  const [visningFor, setVisningFor] = useState(null);
 
   const efterHandling = (r) => {
     setArbejder(null);
@@ -360,6 +379,20 @@ export default function Brugere() {
                   ? <Pille tone="bad">Spærret</Pille>
                   : <Pille tone="ok">Aktivt</Pille>
               ) },
+            { key: "dashboards", label: "Dashboards", render: (r) => {
+              /* ⚠ TALLET, IKKE EN LISTE. Syv navne i en celle kan ikke
+                 læses; tallet siger om nogen har rørt indstillingen. */
+              const synlige = synligeDashboards(
+                visningPr[r.id], (m) => harModul(moduler, m)).length;
+              const alle = synligeDashboards(null, (m) => harModul(moduler, m)).length;
+              return (
+                <Knap disabled={!maaAdministrere}
+                      onClick={() => setVisningFor(visningFor === r.id ? null : r.id)}
+                      title="Hvilke dashboards brugeren får vist. Ikke en adgang — se noten.">
+                  {num(synlige)} af {num(alle)}
+                </Knap>
+              );
+            } },
             { key: "handling", label: "", render: (r) => (
                 /* ⚠ MAN KAN IKKE SPÆRRE SIG SELV. Funktionen afviser det, og
                    knappen skjules — den sidste administrator der gjorde det,
@@ -405,6 +438,17 @@ export default function Brugere() {
           der hænger indberetninger og reservationer på hende, og en post fra
           sidste år skal stadig kunne opløses til et navn.
         </p>
+        {visningFor && (
+          <Visningspanel
+            key={visningFor}
+            uid={visningFor}
+            navn={brugere.find((b) => b.id === visningFor)?.navn || visningFor}
+            visning={visningPr[visningFor]}
+            harModulFn={(m) => harModul(moduler, m)}
+            paaLuk={() => setVisningFor(null)}
+            paaGemt={() => { genindlaesVisning(); setVisningFor(null); }}
+          />
+        )}
       </Kort>
 
       <Kort
@@ -721,6 +765,113 @@ function Rolleeditor({ rolle, saetRolle, roller, rolleNode, egenRolle, paaGemt }
         håndhævelsespunkt: reglerne læser den aldrig, og adgang afgøres
         udelukkende af tokenet. Se beslutning 31b.
       </p>
+    </div>
+  );
+}
+
+/* ---- Hvilke dashboards en bruger får vist ------------------------------ */
+
+/**
+ * ⚠ DET ER EN VISNING, IKKE EN ADGANG — OG SKÆRMEN SIGER DET.
+ *
+ * Mockuppen kalder den "Dashboardadgange" og sætter en krone ved "ekstra
+ * adgang". Det ville være et løfte platformen ikke kan holde: `kpi/` er
+ * læsbar for ENHVER indlogget bruger i tenanten — ingen permission, ingen
+ * modulklausul. En bruger der "nægtes" Warehouse-dashboardet, kan stadig
+ * læse kpi/<division>/warehouse direkte.
+ *
+ * Kaldte vi det en adgang, ville nogen slå Økonomi fra for en chauffør og TRO
+ * at tallene var utilgængelige for ham. Det er den værste slags kontrol: den
+ * ser ud som om den virker.
+ *
+ * Vil man have den rigtige spærring, er det `kpi/` der skal deles op pr.
+ * domæne. Det er en selvstændig ændring — se dashboardvisning.js.
+ */
+function Visningspanel({ uid, navn, visning, harModulFn, paaLuk, paaGemt }) {
+  /* ⚠ ET FELT DER IKKE ER SAT, ER VIST. Kun et eksplicit false skjuler —
+     ellers ville et nyt modul være usynligt for hver bruger der havde en
+     indstilling fra før modulet fandtes. */
+  const [valgt, saetValgt] = useState(() => {
+    const ud = {};
+    for (const d of DASHBOARDS) ud[d.key] = visning?.[d.key] !== false;
+    return ud;
+  });
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  /* Kun de dashboards kunden overhovedet har. Et fravalgt modul har allerede
+     skjult sit dashboard, og en afkrydsning for noget kunden ikke har købt,
+     ville se ud som et valg der betød noget. */
+  const kanVaelges = DASHBOARDS.filter((d) => d.altid || harModulFn(d.key));
+
+  const somNode = Object.fromEntries(kanVaelges.map((d) => [d.key, valgt[d.key]]));
+  /* Den SAMME funktion serveren afviser med. */
+  const spaerring = skjulerAlt(somNode, harModulFn);
+
+  const gem = async () => {
+    saetGemmer(true);
+    saetSvar(null);
+    const r = await skrivDashboardvisning({ uid, visning: somNode });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div className="fc-rolleeditor" style={{ marginTop: 16 }}>
+      <Raekke>
+        <b>Dashboards for {navn}</b>
+        <Knap onClick={paaLuk}>Luk</Knap>
+      </Raekke>
+
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        ⚠ <b>Det er en visning, ikke en adgang.</b> Nøgletallene ligger i{" "}
+        <code>kpi/</code>, som <b>enhver</b> indlogget bruger i virksomheden kan
+        læse — der er hverken permission eller modulspærring på den. En
+        afkrydsning her <b>skjuler</b> et dashboard; den spærrer det ikke.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 6 }}>
+        Skal tallene være utilgængelige, er det <code>kpi/</code> der skal
+        deles op pr. modul med en permission på hver. Det er en selvstændig
+        ændring, og den er ikke lavet.
+      </p>
+
+      {spaerring && (
+        <p className="fc-svar fc-svar-naegtet" role="alert">{spaerring}</p>
+      )}
+
+      <div className="fc-permliste" style={{ maxHeight: "none" }}>
+        {kanVaelges.map((d) => (
+          <label key={d.key} className="fc-perm">
+            <input type="checkbox" checked={valgt[d.key]}
+                   onChange={() => {
+                     saetValgt((v) => ({ ...v, [d.key]: !v[d.key] }));
+                     saetSvar(null);
+                   }} />
+            <span>
+              <b>{d.label}</b>
+              <span className="fc-hint" style={{ display: "block" }}>{d.under}</span>
+            </span>
+            {/* ⚠ SAMLET KAN GIVES UDEN MODULERNE — og det er hele pointen med
+                den. En bogholder skal kunne se overblikket uden at have Fleet,
+                Warehouse og Facility hver for sig. */}
+            {d.key === SAMLET_NOEGLE && <Pille tone="info">på tværs</Pille>}
+          </label>
+        ))}
+      </div>
+
+      <Raekke style={{ marginTop: 14 }}>
+        <span className="fc-hint">
+          {num(kanVaelges.filter((d) => valgt[d.key]).length)} af
+          {" "}{num(kanVaelges.length)} vises
+        </span>
+        <Knap variant="primaer" onClick={gem}
+              disabled={gemmer || Boolean(spaerring)}>
+          {gemmer ? "Gemmer …" : "Gem"}
+        </Knap>
+      </Raekke>
+
+      <Formularsvar svar={svar} />
     </div>
   );
 }

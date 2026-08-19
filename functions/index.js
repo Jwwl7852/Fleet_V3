@@ -58,6 +58,7 @@ import {
   ROLLE_PERMS, permStreng, permsForTenant,
   valideRolleperms, laaserUde, PERM,
 } from "./delt/permissions.js";
+import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
    delt/, saa kanGodkende(), kanEksportere() og nummerformatet er de SAMME
    funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
@@ -539,6 +540,64 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
      vise det: en ændring der lykkedes for otte ud af ni, er ikke en
      ændring der lykkedes. */
   return { ok: true, ramte: ramte.length, fornyet, fejlede };
+});
+/* ══════════════════════════════════════════════════════════════════════════
+   HVILKE DASHBOARDS EN BRUGER FAAR VIST
+
+   ⚠ EN VISNING, IKKE EN ADGANG. kpi/ er laesbar for enhver i tenanten, saa
+   en afkrydsning her SKJULER et dashboard — den spaerrer det ikke. Hele
+   begrundelsen staar i delt/dashboardvisning.js og i regelfilen.
+
+   Funktionen findes alligevel, fordi indstillingen er en ADMINISTRATORS
+   beslutning om en ANDEN bruger. Kunne brugeren skrive sin egen, ville den
+   holde op med at betyde det administratoren satte.
+
+   ⚠ INGEN CLAIMS MINTES HER. Til forskel fra rolleskriv aendrer det her
+   ingenting om hvad brugeren MAA — kun hvad han faar serveret. Mintede vi
+   claims om, ville vi tilbagekalde et token for en visningsindstilling, og
+   brugeren ville blive logget ud fordi nogen slog et dashboard fra.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const dashboardvisningskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const maalUid = kortStreng(d.uid, 128);
+  if (!maalUid) throw new HttpsError("invalid-argument", "uid mangler.");
+
+  const visning = d.visning;
+  const form = valideVisning(visning);
+  if (!form.ok) throw new HttpsError("invalid-argument", form.fejl);
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  /* ⚠ BRUGEREN SKAL VAERE I TENANTEN. Uid'et kommer fra nyttelasten, og en
+     admin hos kunde A maa ikke kunne skrive en indstilling paa en bruger
+     hos kunde B. hentIEgenTenant() tjekker claim'et. */
+  await hentIEgenTenant(getAuth(), maalUid, tenantId);
+
+  /* ⚠ MAN KAN IKKE SKJULE ALT. En bruger uden et eneste dashboard lander
+     paa en tom forside, og Dashboard er `altid: true` i modulkataloget —
+     et system uden forside er ikke et system. Modullisten skal med, fordi
+     et fravalgt modul allerede har skjult sit dashboard. */
+  const moduler = (await rod.child("moduler").once("value")).val();
+  const harModulFn = (m) => !moduler || moduler[m] === true;
+  const grund = skjulerAlt(visning, harModulFn);
+  if (grund) throw new HttpsError("failed-precondition", grund);
+
+  await rod.child(`dashboardvisning/${maalUid}`).set(visning);
+  await log(tenantId, uid, "tilstandsskift", maalUid,
+    `dashboardvisning: ${Object.entries(visning).filter(([, v]) => v === false).length} skjult`);
+
+  return { ok: true };
 });
 export const spaerlogin = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);

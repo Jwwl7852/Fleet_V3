@@ -94,6 +94,10 @@ export const DELTE_FILER = [
      opgaver.js importerer prioritet.js, som allerede staar paa listen:
      kravet er transitivt. */
   "opgaver.js", "opgaveplan-regler.js",
+  /* ⚠ dashboardvisning.js IMPORTERER dashboards.js — listen er lukket under
+     import. dashboardvisningskriv proever mod noejagtig de samme regler som
+     skaermen viste: samme valideVisning(), samme skjulerAlt(). */
+  "dashboards.js", "dashboardvisning.js",
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
   /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele

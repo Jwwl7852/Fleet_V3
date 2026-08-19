@@ -215,6 +215,43 @@
         // .write: false. Noden skrives KUN af `rolleskriv`, som minter claims
         // i samme ombaering og tilbagekalder tokens. Kunne en klient skrive
         // den direkte, ville noden sige eet og tokenet noget andet.
+        // ══════════════════════════════════════════════════════════════
+        // HVILKE DASHBOARDS EN BRUGER FAAR VIST
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ DET ER EN VISNING, IKKE EN ADGANG. `kpi` ovenfor er laesbar for
+        // ENHVER indlogget bruger i tenanten — ingen permission, ingen
+        // modulklausul. En bruger der "naegtes" Warehouse-dashboardet, kan
+        // stadig laese kpi/<division>/warehouse direkte.
+        //
+        // Noden skjuler altsaa et dashboard; den spaerrer det ikke. Det er
+        // samme skel som modullisten: en KOMMERCIEL kontrol, ikke en
+        // sikkerhedskontrol. Kaldte vi det en adgang, ville nogen slaa
+        // OEkonomi fra for en chauffoer og TRO at tallene var utilgaengelige.
+        //
+        // Vil man have den rigtige spaerring, er det `kpi` der skal deles op
+        // pr. domaene med en permission paa hver. Se dashboardvisning.js.
+        //
+        // .write: false — indstillingen er en ADMINISTRATORS beslutning om
+        // en ANDEN bruger, og den hoerer derfor server-side. En bruger der
+        // kunne skrive sin egen, kunne give sig selv det samlede overblik
+        // tilbage; det ville ikke laekke noget, men indstillingen ville
+        // holde op med at betyde det administratoren satte.
+        "dashboardvisning": {
+          // .read er tenant-medlemskab: skaermen viser hver brugers
+          // indstilling, og en bruger skal kunne se sin egen.
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": false,
+          "$uid": {
+            // Kun dashboards vi kender, og kun sandt/falsk. Et ukendt navn
+            // ville vaere en indstilling for noget der ikke findes — og den
+            // ville blive staaende og se ud som om den betoed noget.
+            // Ordlisten staar i dashboards.js; her et moenster, fordi den er
+            // kort og lukket.
+            "$dashboard": { ".validate": "newData.isBoolean() && $dashboard.matches(/^(samlet|flaade|facility|indkoeb|warehouse|unitbooking|bemanding)$/)" }
+          }
+        },
+
         "roller": {
           // .read er tenant-medlemskab: skaermen skal kunne vise hvad en
           // rolle indeholder. Det er ikke foelsomt — det er kundens eget

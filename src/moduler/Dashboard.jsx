@@ -23,6 +23,11 @@ import { harModul, MODUL } from "../fleet/moduler.js";
 import {
   SAMLET, MODULKORT, kortTal, handlinger, tilgaengelige,
 } from "../fleet/dashboards.js";
+/* ⚠ EN VISNING, IKKE EN ADGANG — se dashboardvisning.js. Indstillingen
+   skjuler et dashboard i vælgeren; den spærrer ikke tallene, som ligger i en
+   kpi-node enhver i tenanten kan læse. */
+import { synligeDashboards } from "../fleet/dashboardvisning.js";
+import { usePost } from "../fleet/usePost.js";
 import { PRIORITET } from "../fleet/prioritet.js";
 import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
@@ -73,14 +78,24 @@ const beloebEllerIntet = (oere, dec) =>
 
 export default function Dashboard() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division, moduler } = useFleet();
+  const { division, moduler, bruger } = useFleet();
   const [params, saetParams] = useSearchParams();
   /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
      forskellige svar på "hvad må jeg se" ville være to steder at være
      uenige. Billede 3's afkrydsning pr. bruger kommer i sin egen etape
      sammen med rollemodellen. */
   const harKundenModul = (m) => harModul(moduler, m);
-  const ALLE = tilgaengelige(harKundenModul);
+  /* ⚠ BRUGERENS EGEN INDSTILLING, sat af en administrator. Findes den
+     ikke, ser han alt det kunden har købt — præcis som før. Det er dét
+     der gør ændringen sikker at udrulle: ingen mister en visning af at
+     funktionen kommer. */
+  const visning = usePost("dashboardvisning", bruger?.uid || null);
+  /* ⚠ .post, IKKE .data. usePost returnerer { post, henter, fejl, tilstand };
+     useListe returnerer { data }. Skrev man .data her, ville den vaere
+     undefined, synligeDashboards() ville falde tilbage paa "alt", og
+     indstillingen ville ALDRIG virke — mens skaermen saa helt rigtig ud. */
+  const ALLE = synligeDashboards(visning.post, harKundenModul);
+  void tilgaengelige;
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;

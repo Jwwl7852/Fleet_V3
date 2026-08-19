@@ -27,6 +27,10 @@ export {
   permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM,
 } from "./permissions.js";
 
+export {
+  synligeDashboards, valideVisning, skjulerAlt, ekstraSamlet,
+} from "./dashboardvisning.js";
+
 /* Funktionsnavnene er små bogstaver. Det er ikke smag: en 2. generations
    funktion bliver til en Cloud Run-tjeneste, og et tjenestenavn må kun være
    småt. Navnene her SKAL matche functions/index.js. */
@@ -39,6 +43,10 @@ export const FUNKTION = {
      mellem roller, rolleskriv ændrer hvad en rolle BETYDER — og rammer
      dermed hver bruger der har den. Se beslutning 31b. */
   rolleSkriv: "rolleskriv",
+  /* ⚠ EN VISNING, IKKE EN ADGANG. kpi/ er læsbar for enhver i tenanten,
+     så indstillingen SKJULER et dashboard — den spærrer det ikke. Se
+     dashboardvisning.js. */
+  dashboardvisning: "dashboardvisningskriv",
 };
 
 async function kald(navn, data) {
@@ -88,3 +96,14 @@ export const spaerLogin = ({ uid, spaerret }) => kald(FUNKTION.spaerLogin, { uid
  */
 export const skrivRolle = ({ rolle, perms }) =>
   kald(FUNKTION.rolleSkriv, { rolle, perms });
+
+/**
+ * Sæt hvilke dashboards en bruger får vist.
+ *
+ * ⚠ INGEN CLAIMS MINTES. Til forskel fra skrivRolle() ændrer det her
+ * ingenting om hvad brugeren MÅ — kun hvad han får serveret. Mintede vi
+ * claims om, ville brugeren blive logget ud fordi nogen slog et dashboard
+ * fra.
+ */
+export const skrivDashboardvisning = ({ uid, visning }) =>
+  kald(FUNKTION.dashboardvisning, { uid, visning });
