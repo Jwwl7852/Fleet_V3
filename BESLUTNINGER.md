@@ -2089,3 +2089,92 @@ ville skjule kortet og lade tallet stå åbent. Det er den værste slags kontrol
 fordi den ser ud som om den virker — samme fælde som mockuppens
 "Dashboardadgange", der blev til `dashboardvisning` netop for at navnet ikke
 skulle love mere end platformen holder.
+
+## 44. `kpi/` er delt på domæne — en visning blev til en spærring
+
+`kpi/` havde ÉN `.read`, og den krævede kun tenant-medlemskab. Ingen
+permission, ingen modulklausul. Følgen stod skrevet ned i `dashboardvisning.js`
+længe før den blev lukket:
+
+> `kpi/` er læsbar for ENHVER indlogget bruger i tenanten. En bruger der
+> "nægtes" Warehouse-dashboardet, kan stadig læse
+> `tenants/<id>/kpi/<division>/warehouse` direkte.
+>
+> Vil man have den rigtige spærring, er det `kpi/` der skal deles op — pr.
+> domæne, med en permission eller en modulklausul på hver.
+
+To ting var altså kun skjult, ikke spærret:
+
+1. **Modulet.** En kunde uden Økonomi kunne læse `kpi/gods/current/oekonomi` —
+   netop det tal han ikke havde købt adgang til at se en skærm for. Sidebaren
+   skjulte modulet (beslutning 33), widgetvælgeren skjulte kortet. Ingen af
+   delene rørte tallet.
+2. **Dashboardvisningen.** En administrators afkrydsning skjuler et dashboard
+   for én bruger; den spærrer det ikke.
+
+Punkt 1 er lukket her. Punkt 2 er stadig en visning — og det er med vilje, se
+nedenfor.
+
+### Hvert domæne bærer sit modul
+
+```
+kpi/<division>/<snapshot>/<domaene>     .read: tenant + abonnement + modul
+```
+
+⚠ **`.read` SKULLE væk fra toppen.** Den kaskaderer: blev den stående, ville
+klausulen på domænet være ren dekoration — ét kald mod
+`kpi/<division>/current` ville give alle ti domæner. Prøven der vogter det, er
+den vigtigste i `test/rules.kpi.test.mjs`, og den prøver også **admin**: det
+er ikke en rettighed, det er en vej.
+
+⚠ **Modulnavnet ER domænenavnet for syv af ti**, og det er nyttigt frem for
+tilfældigt: reglen kan ikke slå op i et katalog, men den kan skrive
+`moduler.child($domaene)`. De tre undtagelser står eksplicit:
+
+| Domæne | Modul | Hvorfor |
+|---|---|---|
+| `opgaver` | *ingen* | Spænder værksted (flaade) OG facility |
+| `afvigelser` | *ingen* | Indkøbs- OG salgsprisafvigelse (beslutning 14) |
+| `disponering` | `booking` | Domænet er opkaldt efter skærmen, modulet efter forretningen |
+
+De to uden modul er samme carve-out som noderne `opgaver`, `satser` og
+`fakturaer` i beslutning 33: en klausul på ét modul ville lukke tallet for en
+kunde der har det andet. Listen står i `KPI_DOMAENE` i `kpi-aggregering.js`, og
+en prøve holder den op mod `demo-kpi.js` — et domæne aggregeringen skriver men
+kataloget ikke kender, ville blive skrevet af serveren og aldrig hentet af
+klienten.
+
+### ⚠ Prisen: der findes ikke ét kald der henter det hele
+
+`useKpi()` henter nu **pr. domæne**, parallelt. Forælderen kan ikke læses, og
+det gælder også admin. Det er prisen for at kunne spærre ét domæne, og den er
+betalt ét sted.
+
+`laesbareDomaener()` er den samme liste reglen håndhæver, så klienten kun beder
+om det den må få — ellers ville hver sideindlæsning udløse en håndfuld
+`permission-denied` i konsollen, og **en afvisning skal betyde noget**.
+
+⚠ **Og formen lægges stadig på — også på et afvist domæne.** Uden det ville
+`k.oekonomi.budgetOere` kaste, og en skærm blive hvid hos en kunde der bare
+mangler et modul. Følgen er at et afvist domæne ser ud som et der ikke er
+**regnet**: begge skriver INTET (—). De to er ikke det samme, og forskellen
+ligger i `afviste` ved siden af tallene.
+
+### ⚠ Rollen afgør stadig ingenting — og det skal skrives, ikke antages
+
+Modulklausulen gælder **tenanten**, ikke brugeren. To brugere i samme firma ser
+nøjagtig det samme, og hver af de syv roller har hver eneste læse-permission —
+`koeretoejer.laes`, `personale.laes`, `kunder.laes`, `booking.laes`,
+`fravaer.laes` ligger alle i basen. Kun `audit.laes` skiller admin og revisor
+fra resten.
+
+Derfor er `dashboardvisning` **stadig** en visning og ikke en adgang, og
+navnet holder. Prøven i `dashboardvisning.test.mjs` er skrevet om til at
+vogte netop den linje: den kræver nu at domænet HAR en modulklausul, og at det
+IKKE har en permission. Den dag der står `perms.contains` i udtrykket, skal
+skærmens tekst og navnet med.
+
+Skal rollen afgøre hvad en bruger må se, kræver det **nye læse-permissions**
+fordelt på de syv roller — en produktbeslutning om hvem der ser pengene, og en
+der koster en ombæring af tokens, fordi perms står i claims. Det er
+rollegennemgangen, og den er ikke truffet her.

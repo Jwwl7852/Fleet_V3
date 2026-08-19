@@ -52,7 +52,22 @@ const LAESNING_NAEGTET = new Set(["_findes"]);
 /* BEHOLDERE. De har selv ingen .read — den ville kaskadere ned over alle
    objekterne derunder og ophæve hele opdelingen — men hvert objekt inde i
    dem har sin egen. Se beslutning 17. */
-const BEHOLDERE = new Set(["sensitive", "vaerdi"]);
+const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi"]);
+
+/* ⚠ kpi ER EN DYB BEHOLDER. sensitive/ og vaerdi/ har deres .read ÉT niveau
+   nede (sensitive/bookinger). kpi/ har den TRE niveauer nede — på
+   $division/$snapshot/$domaene — fordi det er domænet der bærer
+   modulklausulen (beslutning 44). Kontrollen går derfor NED til den finder en
+   .read, frem for at kigge præcis ét niveau. */
+const DYBE_BEHOLDERE = new Set(["kpi"]);
+
+/** Hver gren under en beholder skal ende i en .read — uanset hvor dybt. */
+function grenUdenRead(regel, sti = "") {
+  if (typeof regel?.[".read"] === "string") return [];
+  const born = Object.keys(regel || {}).filter((k) => !k.startsWith("."));
+  if (!born.length) return [sti || "(roden)"];
+  return born.flatMap((b) => grenUdenRead(regel[b], sti ? `${sti}/${b}` : b));
+}
 
 let miljoe;
 
@@ -149,6 +164,16 @@ describe("tenant-isolation — suiten skal have noget at teste", () => {
           `"${node}" er en beholder og må ikke have .read — den kaskaderer ned over alt derunder.`);
         const objekter = Object.keys(regel).filter((k) => !k.startsWith("."));
         assert.ok(objekter.length > 0, `Beholderen "${node}" er tom.`);
+
+        if (DYBE_BEHOLDERE.has(node)) {
+          /* Læsningen ligger længere nede end ét niveau. Kravet er det samme:
+             ingen gren må ende uden en .read, for så kan den ikke læses af
+             nogen — og det ville blive opdaget af en bruger. */
+          assert.deepEqual(grenUdenRead(regel), [],
+            `grene under "${node}" mangler .read`);
+          continue;
+        }
+
         for (const o of objekter) {
           assert.ok(typeof regel[o]?.[".read"] === "string",
             `"${node}/${o}" mangler .read. Uden den kan objektet ikke læses af nogen.`);

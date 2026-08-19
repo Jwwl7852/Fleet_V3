@@ -142,15 +142,29 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
 
   it("ingen node UDEN FOR tabellen har en modulklausul", () => {
     /* ⚠ DEN HER RETNING ER LIGE SÅ VIGTIG. Kom klausulen ved et uheld på
-       personale eller kpi, ville en kunde uden Bemanding ikke kunne se sine
-       egne medarbejdere — og det er base, ikke et modul. */
+       personale, ville en kunde uden Bemanding ikke kunne se sine egne
+       medarbejdere — og det er base, ikke et modul.
+
+       ⚠ ÉN UNDTAGELSE, OG DEN ER IKKE EN LEMPELSE. `kpi` er ikke ÉT moduls
+       ejendom — den er en beholder hvis BØRN hver har sit modul, og reglen
+       slår modulet op DYNAMISK med `child($domaene)`. Et opslag på en
+       wildcard gater altså ikke noden; det gater hvert domæne for sig, og
+       de to domæner uden modul (`opgaver`, `afvigelser`) står undtaget i
+       selve udtrykket. Se beslutning 44 og KPI_DOMAENE i kpi-aggregering.js.
+
+       En klausul på et FAST modulnavn ville stadig være en fejl — også på
+       kpi — og den fanges nedenfor. */
     const forkert = [];
     for (const r of alleRegler()) {
       if (typeof r.udtryk !== "string") continue;
       if (modulerFor(grundsti(r.sti)).length) continue;
-      if (/child\('moduler'\)/.test(r.udtryk) && !r.udtryk.includes("auth.token.udbyder")) {
-        forkert.push(`${r.sti}/${r.felt}`);
-      }
+      if (!/child\('moduler'\)/.test(r.udtryk)) continue;
+      if (r.udtryk.includes("auth.token.udbyder")) continue;
+      /* Slår den modulet op på en wildcard, er det en beholder der gater sine
+         børn hver for sig — ikke noden der er gatet. */
+      const dynamisk = /child\('moduler'\)\.child\(\$[A-Za-z]+\)/.test(r.udtryk);
+      if (dynamisk && r.sti.startsWith("kpi")) continue;
+      forkert.push(`${r.sti}/${r.felt}`);
     }
     assert.deepEqual(forkert, [], "noder uden for tabellen har en modulklausul.");
   });
@@ -217,13 +231,27 @@ describe("Et fravalgt modul lukker sine noder", () => {
   });
 
   it("lader BASEN være i fred", async () => {
-    /* ⚠ personale, kpi, opgaver, satser og fakturaer er ikke et moduls
-       ejendom. Lukkede de med, ville en kunde der kun har Dashboard ikke
-       kunne se sine egne medarbejdere. */
+    /* ⚠ personale, opgaver, satser og fakturaer er ikke et moduls ejendom.
+       Lukkede de med, ville en kunde der kun har Dashboard ikke kunne se sine
+       egne medarbejdere. */
     const db = somAdmin(UDEN);
-    for (const node of ["personale", "kpi", "opgaver", "satser", "fakturaer", "brugere"]) {
+    for (const node of ["personale", "opgaver", "satser", "fakturaer", "brugere"]) {
       await assertSucceeds(get(ref(db, `tenants/${UDEN}/${node}`)));
     }
+  });
+
+  it("⚠ kpi ER IKKE LÆNGERE ÉN NODE — basen er de to domæner uden modul", async () => {
+    /* `kpi` stod i listen ovenfor, og den kan ikke længere læses som node:
+       .read ligger på domænet med sin modulklausul (beslutning 44). Basen er
+       ikke væk — den er blevet PRÆCIS. `opgaver` og `afvigelser` spænder
+       flere moduler og er derfor åbne for enhver i tenanten; resten følger
+       modulet. */
+    const db = somAdmin(UDEN);
+    await assertFails(get(ref(db, `tenants/${UDEN}/kpi`)));
+    for (const d of ["opgaver", "afvigelser"]) {
+      await assertSucceeds(get(ref(db, `tenants/${UDEN}/kpi/gods/current/${d}`)));
+    }
+    await assertFails(get(ref(db, `tenants/${UDEN}/kpi/gods/current/oekonomi`)));
   });
 
   it("giver stadig ikke adgang til en ANDEN tenant", async () => {

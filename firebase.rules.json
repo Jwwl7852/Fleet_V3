@@ -573,9 +573,46 @@
 
         // Aggregerede nøgletal. Skrives kun af Cloud Functions — ellers kan
         // Dashboard og modulerne komme til at vise forskellige tal igen.
+        // ⚠ kpi/ ER DELT PAA DOMAENE. Der er INGEN .read her paa noden.
+        //
+        // Foer stod der een .read paa hele kpi/, og den kraevede kun
+        // tenant-medlemskab: ingen permission, ingen modulklausul. En kunde
+        // UDEN Oekonomi-modulet kunne laese
+        // tenants/<id>/kpi/gods/current/oekonomi direkte — netop det tal han
+        // ikke havde koebt adgang til at se en skaerm for. Sidebaren skjulte
+        // modulet, og widgetvaelgeren skjulte kortet; ingen af delene
+        // spaerrede tallet.
+        //
+        // Det stod skrevet ned i dashboardvisning.js som en KENDT
+        // begraensning: "en afkrydsning SKJULER et dashboard; den spaerrer det
+        // ikke. Vil man have den rigtige spaerring, er det kpi/ der skal deles
+        // op — pr. domaene, med en permission eller en modulklausul paa hver."
+        //
+        // ⚠ .read KASKADERER, saa den SKAL vaek fra toppen. Blev den staaende,
+        // ville en klausul paa domaenet vaere dekoration: en laesning af
+        // kpi/<division>/current ville stadig give alt.
+        //
+        // ⚠ FOELGEN ER AT useKpi() HENTER PR. DOMAENE. Man kan ikke laese
+        // foraelderen laengere — heller ikke som admin. Det er prisen, og den
+        // er betalt eet sted.
         "kpi": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
-          ".write": false
+          ".write": false,
+          "$division": {
+            "$snapshot": {
+              // Modulnavnet ER domaenenavnet for syv af ti, og derfor kan
+              // reglen slaa det op uden et katalog. De tre undtagelser staar
+              // eksplicit:
+              //   opgaver, afvigelser  spaender FLERE moduler — samme
+              //                        carve-out som noderne opgaver/satser/
+              //                        fakturaer i beslutning 33
+              //   disponering          hoerer til modulet 'booking'
+              // Listen staar i KPI_DOMAENE i kpi-aggregering.js, og en proeve
+              // holder de to op mod hinanden.
+              "$domaene": {
+                ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true))"
+              }
+            }
+          }
         },
 
         // Konfliktfrihed kan ikke garanteres fra klienten: to disponenter kan

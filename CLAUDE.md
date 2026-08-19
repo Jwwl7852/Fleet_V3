@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **43 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **44 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -389,6 +389,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   permission og uden modulklausul. Et rollefilter i widgetvælgeren ville
   derfor være en **pæn knap**: kortet væk, tallet åbent. Skal rollen afgøre
   adgang, er det `kpi/` der skal deles op pr. domæne. Se beslutning 43.
+- **Læse `kpi/` i ét kald.** Noden har ingen `.read` længere — den ligger på
+  `kpi/<division>/<snapshot>/<domaene>` med modulets klausul, og en læsning af
+  forælderen afvises for ALLE, også admin. `useKpi()` henter pr. domæne og
+  spørger kun om dem `laesbareDomaener()` siger ja til; ellers ville hver
+  sideindlæsning udløse en håndfuld `permission-denied`, og en afvisning skal
+  betyde noget.
+  ⚠ **Og `.read` må ikke komme tilbage på `kpi/`.** Den kaskaderer, så ét kald
+  ville give alle ti domæner og gøre klausulen til dekoration. Nye domæner
+  skal i `KPI_DOMAENE` i `kpi-aggregering.js` — et domæne aggregeringen
+  skriver, men kataloget ikke kender, bliver aldrig hentet af klienten.
+  ⚠ **Rollen afgør stadig ingenting om nøgletal.** Klausulen gælder TENANTEN,
+  og alle syv roller har hver eneste læse-permission. `dashboardvisning` er
+  derfor stadig en VISNING. Se beslutning 44.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

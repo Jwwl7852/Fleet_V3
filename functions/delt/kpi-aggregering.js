@@ -58,6 +58,72 @@ import {
  * 0 af 16 køretøjer, 0 af 35 medarbejdere og 0 af 80 kompetencer har feltet,
  * mens 14 af 14 kunder og 8 af 8 etaper har det.
  */
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * KPI-DOMÆNERNE OG DERES MODUL — grundlaget for at `kpi/` kan deles
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ HVORFOR DEN HER LISTE FINDES.
+ *
+ * `kpi/` var læsbar for ENHVER indlogget bruger i tenanten — ingen
+ * permission, ingen modulklausul. En chauffør kunne læse
+ * `tenants/<id>/kpi/gods/current/oekonomi` direkte, uanset hvad hans forside
+ * viste, og en kunde uden Økonomi-modulet kunne læse det tal han ikke havde
+ * købt adgang til at se en skærm for.
+ *
+ * Det var skrevet ned i `dashboardvisning.js` som en KENDT begrænsning:
+ *
+ *   "En afkrydsning her SKJULER et dashboard; den spærrer det ikke. Vil man
+ *    have den rigtige spærring, er det `kpi/` der skal deles op — pr. domæne,
+ *    med en permission eller en modulklausul på hver."
+ *
+ * Det er dét der sker her.
+ *
+ * ⚠ DOMÆNET HEDDER DET SAMME SOM MODULET — og det er ikke et tilfælde, det
+ * er nyttigt: reglen kan ikke slå op i et katalog, men den kan skrive
+ * `moduler.child($domaene)`. Syv af ti klarer sig med den ene linje.
+ *
+ * ⚠ TO DOMÆNER HAR INTET MODUL, og det er den samme carve-out som beslutning
+ * 33 lavede for noderne `opgaver`, `satser` og `fakturaer`: de spænder over
+ * FLERE moduler, og en klausul på ét af dem ville lukke tallet for en kunde
+ * der har det andet.
+ *
+ *   opgaver      værkstedsopgaver (flaade) OG facility-opgaver
+ *   afvigelser   indkøbsprisafvigelse (indkoeb) OG salgsprisafvigelse
+ *                (kunder/oekonomi) — se beslutning 14
+ *
+ * ⚠ OG ÉT HEDDER NOGET ANDET END SIT MODUL. `disponering` hører til
+ * `booking`; domænet er opkaldt efter skærmen, modulet efter forretningen.
+ */
+export const KPI_DOMAENE = {
+  opgaver: null,
+  flaade: "flaade",
+  bemanding: "bemanding",
+  facility: "facility",
+  indkoeb: "indkoeb",
+  kunder: "kunder",
+  oekonomi: "oekonomi",
+  afvigelser: null,
+  warehouse: "warehouse",
+  disponering: "booking",
+};
+
+export const ALLE_KPI_DOMAENER = Object.keys(KPI_DOMAENE);
+
+/** Domæner uden modulklausul — læsbare for enhver i tenanten. */
+export const KPI_UDEN_MODUL = ALLE_KPI_DOMAENER.filter((d) => !KPI_DOMAENE[d]);
+
+/**
+ * De domæner en kunde med DE her moduler overhovedet kan læse.
+ *
+ * ⚠ SAMME FUNKTION I SKÆRMEN OG I PRØVEN. `useKpi()` henter kun dem der står
+ * her — ellers ville hver eneste sideindlæsning bede om noget reglerne
+ * afviser, og en `permission-denied` ville stå i konsollen på hver tur.
+ * En afvisning skal betyde noget.
+ */
+export const laesbareDomaener = (harModulFn = () => true) =>
+  ALLE_KPI_DOMAENER.filter((d) => !KPI_DOMAENE[d] || harModulFn(KPI_DOMAENE[d]));
+
 export const UDEN_DIVISION = [
   "koeretoejer", "personale", "fravaer", "carriers", "varer", "kompetencer",
 ];

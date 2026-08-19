@@ -16,16 +16,21 @@ import { useEffect, useState, useCallback } from "react";
 import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
-import { TILSTAND, dataTilstand } from "./datatilstand.js";
-import { medFuldForm } from "./kpi-aggregering.js";
+import { TILSTAND, dataTilstand, erAfvist } from "./datatilstand.js";
+import { medFuldForm, laesbareDomaener } from "./kpi-aggregering.js";
+import { harModul } from "./moduler.js";
 
 export function useKpi() {
-  const { tenantId, division, path, dage, bruger } = useFleet();
+  const { tenantId, division, path, dage, bruger, moduler } = useFleet();
   const [data, setData] = useState(null);
   const [henter, setHenter] = useState(true);
   const [fejl, setFejl] = useState(null);
   const [tilstand, setTilstand] = useState({ art: TILSTAND.ok, visDemo: false });
   const [nonce, setNonce] = useState(0);
+  /* ⚠ HVILKE DOMÆNER SERVEREN AFVISTE. Tomt betyder ikke "alt er der" — det
+     betyder at intet blev afvist; et domæne kunden ikke har modulet til,
+     bliver slet ikke bedt om. Se laesbareDomaener(). */
+  const [afviste, setAfviste] = useState([]);
 
   const genindlaes = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -51,8 +56,50 @@ export function useKpi() {
 
     (async () => {
       try {
-        const snap = await db.ref(path(`kpi/${division}/current`)).once("value");
+        /* ⚠ ET DOMÆNE AD GANGEN — OG DET ER IKKE EN OPTIMERING.
+           `kpi/` har ingen `.read` længere; den ligger på hvert domæne med
+           sin modulklausul. En læsning af forælderen ville derfor blive
+           afvist for ALLE, også admin. Prisen for at kunne spærre `oekonomi`
+           for en kunde der ikke har modulet, er at der ikke findes ét kald
+           der henter det hele.
+
+           ⚠ VI BEDER KUN OM DEM VI MÅ FÅ. `laesbareDomaener()` er den samme
+           liste reglen håndhæver — ellers ville hver sideindlæsning udløse en
+           håndfuld `permission-denied` i konsollen, og en afvisning skal
+           betyde noget. Catch'en nedenfor er bæltet: modullisten kan være
+           forældet i forhold til det serveren mener. */
+        const oenskede = laesbareDomaener((m) => harModul(moduler, m));
+        const svar = await Promise.all(oenskede.map(async (d) => {
+          try {
+            const s = await db.ref(path(`kpi/${division}/current/${d}`)).once("value");
+            return { d, vaerdi: s.val(), afvist: false };
+          } catch (e) {
+            /* ⚠ EN AFVIST LÆSNING KASTER IKKE HELE SIDEN. Ét lukket domæne er
+               ikke det samme som en lukket base — den skelnen er hele grunden
+               til at hvert domæne hentes for sig.
+
+               ⚠ OG MØNSTRET SKRIVES IKKE AF. RTDB melder afvisning i `code`
+               eller i `message`, med tre stavemåder; `erAfvist()` kender dem
+               alle, og en kopi her ville før eller siden ramme forbi og kalde
+               en afvisning for en netværksfejl. */
+            if (erAfvist(e)) return { d, vaerdi: null, afvist: true };
+            throw e;
+          }
+        }));
         if (!aktiv) return;
+
+        const afviste = svar.filter((s) => s.afvist).map((s) => s.d);
+        /* ⚠ ALLE AFVIST ER EN AFVISNING — ikke et tomt datasæt. Sker det, er
+           det tenanten eller abonnementet der spærrer, ikke ét modul. */
+        if (oenskede.length && afviste.length === oenskede.length) {
+          setTilstand({ art: TILSTAND.naegtet, visDemo: false });
+          setData(null);
+          return;
+        }
+
+        const samlet = {};
+        for (const s of svar) if (s.vaerdi != null) samlet[s.d] = s.vaerdi;
+        setAfviste(afviste);
         /* ⚠ HER STOD `snap.val() || demo` — OG DET VAR EN FEJL DER VENTEDE.
            Begrundelsen var at appen ellers stod tom for en bruger der var
            logget korrekt ind. Det var rigtigt dengang alt var visning og der
@@ -65,7 +112,7 @@ export function useKpi() {
 
            En tom node er en TREDJE ting: ikke en fejl, ikke en afvisning, og
            ikke nul. Skærmen siger hvad der mangler. Se TILSTAND.ikkeAggregeret. */
-        const vaerdi = snap.val();
+        const vaerdi = Object.keys(samlet).length ? samlet : null;
         if (vaerdi) {
           setTilstand({ art: TILSTAND.ok, visDemo: false });
           /* ⚠ LAGT OVEN PÅ NODENS FULDE FORM. RTDB gemmer ikke null: et felt
@@ -80,6 +127,15 @@ export function useKpi() {
              Oversættelsen hører HER og ikke i hver skærm, af samme grund som
              fraDb() i grundlag.js: tyve skærme ville lave tyve varianter, og
              den næste ville glemme den. */
+          /* ⚠ FORMEN LÆGGES OGSÅ PÅ ET AFVIST DOMÆNE, og det er et bevidst
+             valg med en pris. Uden den ville `k.oekonomi.budgetOere` kaste, og
+             en skærm blive HVID hos en kunde der bare mangler et modul — den
+             fejl useKpi netop findes for at undgå.
+             Følgen er at et afvist domæne ser ud som et der ikke er REGNET:
+             begge skriver INTET (—). De to er ikke det samme, og forskellen
+             ligger i `afviste` ved siden af tallene. En skærm der vil sige
+             "du må ikke se det" frem for "ikke regnet endnu", skal spørge
+             den — se Dashboard. */
           setData(medFuldForm(vaerdi, division));
         } else {
           setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
@@ -97,9 +153,9 @@ export function useKpi() {
     })();
 
     return () => { aktiv = false; };
-  }, [tenantId, division, dage, path, nonce, bruger]);
+  }, [tenantId, division, dage, path, nonce, bruger, moduler]);
 
-  return { kpi: data, henter, fejl, tilstand, genindlaes };
+  return { kpi: data, henter, fejl, tilstand, genindlaes, afviste };
 }
 
 /* Demo-sættet ligger i demo-kpi.js — rent data, uden React, så en test og

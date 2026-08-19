@@ -28,10 +28,18 @@ import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 const alle = () => true;
 
 describe("⚠ DET ER EN VISNING, IKKE EN ADGANG", () => {
-  it("kpi/ er læsbar UDEN permission og UDEN modulklausul", () => {
-    /* Hele grunden til at indstillingen ikke må hedde en adgang. Får `kpi/`
-       en dag en permission eller en modulklausul, er den her prøve stedet at
-       opdage det — og så skal navnet og teksten på skærmen med. */
+  /* ⚠ DEN HER PRØVE FYREDE, OG DET VAR MENINGEN.
+     Den sagde: "Får kpi/ en dag en permission eller en modulklausul, er den
+     her prøve stedet at opdage det — og så skal navnet og teksten på skærmen
+     med." Modulklausulen kom i beslutning 44, og prøven blev rød.
+
+     Svaret på spørgsmålet den stiller, er NEJ: en modulklausul gælder
+     TENANTEN, ikke brugeren. To brugere i samme firma ser stadig det samme,
+     og indstillingen skjuler stadig kun. Navnet holder.
+
+     Den dag der står en PERMISSION i klausulen, er svaret et andet — og så
+     skal skærmens tekst og navnet med. Prøven vogter nu netop den linje. */
+  it("⚠ kpi/ HAR EN MODULKLAUSUL, MEN INGEN PERMISSION", () => {
     const regler = JSON.parse(
       readFileSync("firebase.rules.json", "utf8")
         .split(String.fromCharCode(10))
@@ -40,13 +48,18 @@ describe("⚠ DET ER EN VISNING, IKKE EN ADGANG", () => {
     );
     const kpi = regler.rules.tenants.$tenantId.kpi;
     assert.ok(kpi, "kpi-noden mangler");
-    const laes = kpi[".read"];
+    assert.equal(kpi[".read"], undefined,
+      "kpi/ har en .read igen — den kaskaderer og ophæver klausulen på domænet");
+
+    const laes = kpi.$division.$snapshot.$domaene[".read"];
+    assert.ok(laes.includes("child('moduler')"),
+      "domænet har ingen modulklausul — så er tallet åbent for en kunde der " +
+      "ikke har købt modulet, og beslutning 44 er rullet tilbage");
 
     assert.ok(!laes.includes("perms.contains"),
-      "kpi/ har fået en permission. Så ER dashboardvisningen tæt på en adgang, " +
-      "og både navnet og teksten på skærmen skal rettes.");
-    assert.ok(!laes.includes("child('moduler')"),
-      "kpi/ har fået en modulklausul — samme besked som ovenfor.");
+      "kpi/ har fået en PERMISSION. Så afgør brugerens rolle hvad han kan " +
+      "læse, og dashboardvisningen er tæt på at være en adgang — både navnet " +
+      "og teksten på skærmen skal rettes.");
   });
 
   it("skærmen kalder det ikke en adgang", () => {
