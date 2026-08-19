@@ -25,7 +25,7 @@ import {
   BRUGERART, ALLE_BRUGERARTER, brugerartFor, taelBrugere, taelKoeretoejer,
   AFGAAEDE_STATUS, tomPrisliste, tomPlatform, overFrimaengde, PLATFORM,
   validerPrisliste, gaeldendePrisliste,
-  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor, GYLDIG_FRA_TIDLIGST,
+  linjerForPeriode, abonnementstotaler, sammenfatMaalinger, maalingsdato, periodeGraenser, maalingerIPeriode, MOMSSATS, rabatFor,
 } from "../src/fleet/priser.js";
 import {
   ANTAL_SKALA, linjeBeloebOere, rabatteretSatsOere, BPS_SKALA, pctTilBps,
@@ -53,11 +53,6 @@ const PRISLISTE = {
   },
 };
 
-/** En prisliste uden frimaengde — til de proever hvor den ville forstyrre. */
-const UDEN_FRI = {
-  ...PRISLISTE,
-  platform: { ...PRISLISTE.platform, inkluderetBrugere: { chauffoer: 0, desktop: 0 } },
-};
 
 describe("Brugerarten kommer af rollen", () => {
   it("dækker HVER rolle i permissions.js", () => {

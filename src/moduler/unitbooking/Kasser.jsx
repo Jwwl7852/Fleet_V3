@@ -21,14 +21,14 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { num, dato } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
+  Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation,
 } from "../../fleet/unitbooking.js";
-import { gem, nyId } from "../../fleet/skriv.js";
+import { gem } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,

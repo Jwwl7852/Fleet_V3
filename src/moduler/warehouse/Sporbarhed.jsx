@@ -53,7 +53,7 @@ import {
 } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
-  BEVAEGELSE_ART, SPORING, ENHED, ENHED_TILSTAND, UDEN_BATCH,
+  BEVAEGELSE_ART, SPORING, ENHED, ENHED_TILSTAND,
   talFraMaengde, spor, partiPlacering, enhedsafvigelse,
 } from "../../fleet/warehouse.js";
 import {

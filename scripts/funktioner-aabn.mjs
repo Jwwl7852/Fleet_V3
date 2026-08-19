@@ -32,7 +32,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { NOEGLEFIL, tjekProjekt, laesNoegle } from "./provisioner-dev.mjs";
+import { tjekProjekt, laesNoegle } from "./provisioner-dev.mjs";
 
 const REGION = "europe-west1";
 const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");

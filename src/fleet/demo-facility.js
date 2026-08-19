@@ -25,7 +25,7 @@ import { DEMO_KPI } from "./demo-kpi.js";
 import { STED, erSted } from "./steder.js";
 import {
   AKTIV_ART, AKTIV_STATUS, ZONE_ART, LOKATION_TYPE, FEJL_STATUS,
-  alarmTilstand, gennemsnitTemperatur, elVarmeOere, bygningsomkostningOere, zonePar,
+  gennemsnitTemperatur, elVarmeOere, bygningsomkostningOere, zonePar,
   OMKOSTNINGSPOST,
 } from "./facility.js";
 import { opgaveMangler } from "./opgaver.js";

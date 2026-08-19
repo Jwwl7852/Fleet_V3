@@ -59,7 +59,7 @@ const bilNavn = (id) =>
   DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || id || "—";
 
 export default function Indberetninger() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("ind-001");
 

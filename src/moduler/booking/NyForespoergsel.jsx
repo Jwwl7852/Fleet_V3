@@ -21,9 +21,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, oereFraKroner } from "../../fleet/format.js";
+import { kr, oereFraKroner } from "../../fleet/format.js";
 import {
-  Kort, Tom, Pille, Knap, Gitter, MiniLinje, Fejl,
+  Kort, Pille, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte,

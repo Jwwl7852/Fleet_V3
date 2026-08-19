@@ -23,7 +23,7 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { dato, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, Tabel, Pille, Knap, Gitter, MiniLinje,
+  Kort, Tabel, Pille, Knap, Gitter, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   SUPPORT_KATEGORI, ALLE_KATEGORIER, SUPPORT_PRIORITET, ALLE_PRIORITETER,

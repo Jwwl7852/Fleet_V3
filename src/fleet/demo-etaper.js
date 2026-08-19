@@ -22,7 +22,7 @@
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "./demo-personale.js";
 import {
-  GRAENSEOVERGANG, tjekGeografi, krydserGraense, enhedsIder, koerselMinPaakraevet,
+  tjekGeografi, krydserGraense, enhedsIder, koerselMinPaakraevet,
 } from "./etaper.js";
 import { GRAENSE } from "./koerehviletid.js";
 import { kanDisponeres, kanBaere } from "./flaade.js";

@@ -19,7 +19,7 @@ import { oereFraKroner, kr } from "../src/fleet/format.js";
 import { prioritetFor, KILDE, PRIORITET } from "../src/fleet/reservations.js";
 import {
   DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE,
-  demoBesoegFor, demoBesoegNu, totalOere,
+  demoBesoegFor, demoBesoegNu,
 } from "../src/fleet/demo-vaerksted.js";
 import { DEMO_INDKOEBSLINJER } from "../src/fleet/demo-indkoeb.js";
 import { indkoebBeloebOere } from "../src/fleet/leverandoerer.js";

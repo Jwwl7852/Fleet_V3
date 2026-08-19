@@ -20,7 +20,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { num } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tabel, Knap, Felt, Feltraekke, Formular, Formularsvar,
+  Kort, Tabel, Knap, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Gitter, Ikon,
 } from "../../fleet/ui.jsx";
 import { pladsnavn, haller, valideReolplads } from "../../fleet/unitbooking.js";

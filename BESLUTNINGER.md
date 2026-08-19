@@ -1781,3 +1781,128 @@ i `roller/` nogen steder i `functions/`.
 
 **Der er kun ét håndhævelsespunkt: tokenet.** En node der *kunne* bestemme hvad
 en bruger må, ville være et andet — og to håndhævelsespunkter er ét for mange.
+
+## 41. Der er en linter, og den afgør ét spørgsmål
+
+`npm run build` er **grøn** når en underkomponent læser et navn der ikke findes
+i dens scope. Vite oversætter filen fint; fejlen sker først når React render'er
+komponenten — og så er skærmen hvid.
+
+Det er sket **fem gange**, hver gang i en underkomponent langt nede i en fil
+der ellers virkede:
+
+| Navnet | Filen |
+|---|---|
+| `KILDER` | `indkoeb/Leverandoerer.jsx` |
+| `sensitivt` | `flaade/Indberetninger.jsx` |
+| `useListe` | `flaade/Vaerkstedskalender.jsx` |
+| `etaper` | `booking/Uplanlagte.jsx` |
+| `biler` | `Forslagstabel` |
+
+Hver eneste blev fundet ved at **klikke** skærmen. Prøverne så dem ikke — de
+prøver domænelogikken, ikke JSX'en — og buildet så dem ikke. Det er den
+dyreste måde at finde en fejl på, og den finder kun det man kommer forbi.
+
+`no-undef` afgør det statisk, for hele træet, på under et sekund.
+
+### ⚠ Og derfor står der så få regler
+
+Fristelsen er `eslint:recommended` og 400 rettelser. Det ville være en anden
+opgave. Repoet har egne konventioner, de er skrevet ned og begrundet **her**,
+og en regelpakke der er uenig med dem, ville enten blive slået fra igen eller
+stille ændre koden efter en mening ingen har taget stilling til.
+
+Reglerne er dem der svarer med ja eller nej — findes navnet, eller findes det
+ikke — og ikke dem der har en holdning:
+
+    no-undef, no-unused-vars (kun imports og lokale, ikke argumenter),
+    no-dupe-keys, no-dupe-class-members, no-unsafe-negation, no-unreachable
+
+`no-use-before-define` stod der og blev fjernet igen: ni fund, nul fejl. Alle
+ni var samme mønster — en `const`-pilfunktion kaldt inde i en anden funktions
+krop, udført længe efter modulet er indlæst. Reglen kan ikke se forskel på
+"kaldes senere" og "læses nu", og **en regel der kun råber forkert, bliver
+slået fra** — og så fanger den heller ikke den ene gang den har ret.
+
+`no-unused-vars` ser med vilje ikke på argumenter. En ubrugt parameter er tit
+meningen — en render-funktion der får `(raekke, indeks)` og bruger den ene.
+Klagede linten over dem, ville man sætte `_` foran halvdelen af koden for at
+gøre værktøjet tilfreds, og så har det ændret koden uden at finde en fejl.
+
+### ⚠ Den fandt ingen manglende navne — og fire andre ting
+
+Nul `no-undef`. De fem kendte var rettet i forvejen. Fundene var alle
+`no-unused-vars`, og de delte sig i fire slags:
+
+1. **Glemte imports efter en omskrivning** — det store flertal, uden
+   betydning.
+2. **En regnet værdi der aldrig når skærmen.** `Prisliste.jsx` regner
+   `sidstRettet`, med en kommentar om hvad tallet betyder, og viser det ikke.
+   Samme mønster som dækningsgradsafvigelsen i Økonomi.
+3. **En tilstand uden en kontrol.** `booking/Oversigt.jsx` har `visAlle`, og
+   `setVisAlle` kaldes ingen steder — så udførte, afviste og annullerede
+   bookinger er **permanent** skjult, mens fodnoten under tabellen siger
+   *"Viser N af M hentede bookinger"*. Brugeren kan se at noget mangler og
+   ikke få det frem.
+4. **En afvist læsning der faldt igennem til et tomt svar.**
+   `Bookingopsaetning.jsx` regnede `tilstand` og importerede `Datatilstand` —
+   og brugte ingen af dem. Blev `omkostninger` afvist af reglerne, viste
+   skærmen et **tomt satsark** frem for at sige hvorfor. Det er beslutning 26
+   brudt på det værst tænkelige sted: arket er et prisgrundlag, og et
+   manglende færgetillæg er ikke en tom tabel man undrer sig over — det er et
+   tilbud der er for billigt.
+
+Punkt 4 er rettet. Punkt 2 og 3 står, med en note i koden og en
+`eslint-disable-next-line` der peger på den: rettelsen er en kontrol der skal
+tegnes og klikkes, og et navn der bare fjernes, tager beviset med sig.
+
+⚠ **De to sidste er grunden til at reglen ikke blev sat til `warn`.** En
+advarsel havde stået i outputtet og var blevet der.
+
+### ⚠ Og linten kostede næsten en fejl til
+
+Første gennemløb fjernede undervejs **387 afsluttende kommaer** i 45 filer —
+en stilændring ingen regel bad om, og som begravede de femten rigtige fund i
+et diff på 471 linjer. Værre: den samme omgang ændrede ejerkonsollens
+mailmønster fra `{2,}` til `{2}`. Se beslutning 42.
+
+**Et værktøj der rydder op, skal kunne gøre rede for hver linje det rører.**
+Kan det ikke det, er oprydningen selv en ændring ingen har besluttet.
+
+## 42. Mailmønsteret stod fire steder, og de var uenige
+
+Serveren afviste enhver adresse hvis topdomæne ikke var på **nøjagtig to
+tegn**. `functions/index.js` bar `/^[^\s@]+@[^\s@]+\.[^\s@]{2}$/` hvor klienten
+bar `{2,}`.
+
+Følgen: `jorn@vognmand.dk` kunne oprettes. `jorn@vognmand.com` kunne ikke —
+formularen sagde ja, og serveren svarede *"Ugyldig mailadresse"* uden at sige
+hvad der var galt med adressen. Det ramte **både** kundens egen
+brugeroprettelse (`opretbruger`) og ejerkonsollens førsteadmin (`kundeadmin`);
+de deler `opretKonto()`.
+
+Der var fire kopier i alt, og de gav tre forskellige svar:
+
+| Fil | Mønster | Godtager |
+|---|---|---|
+| `fleet/brugere-regler.js` | `{2,}` | `.dk`, `.com` |
+| `functions/index.js` | `{2}` | kun `.dk` |
+| `udbyder/Konsol.jsx` (inline) | `{2}` | kun `.dk` |
+| `fleet/dev-brugere.js` | `+` | også `.d` |
+
+⚠ **Hvorfor ingen opdagede det.** Prøven i `skrivning.test.mjs` prøvede
+`"lars-at-vognmand"` — en adresse uden krøllet a. Et mailmønster fejler ikke
+på det grove; det fejler på det almindelige, og `.dk` virkede. Og filens egen
+kommentar sagde *"⚠ SPEJLER FUNKTIONEN"* — men **et spejl kan ikke opdage sin
+egen drift**.
+
+Rettelsen er den samme som `kopier-delt.mjs` findes for: `brugere-regler.js`
+står nu i `DELTE_FILER`, serveren **importerer** `erGyldigMail` og
+`MINDSTE_KODE`, og de tre afskrifter er væk. `test/functions-delt.test.mjs`
+håndhæver at kopien er byte-identisk, og en prøve læser de fem filer som tekst
+og fejler på et mailmønster nummer to.
+
+⚠ **Kodekravets prøve var samme fælde, en tand mildere.** Den læste efter
+teksten `kode.length < 12` i `functions/index.js` og holdt dermed to tal i
+sync. Et tal der holdes i sync af en prøve, er stadig to tal — funktionen
+importerer nu konstanten, og prøven læser efter importen.

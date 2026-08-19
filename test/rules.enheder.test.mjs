@@ -22,7 +22,7 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
 import { ref, set, get } from "firebase/database";
-import { PERM, ALLE_PERMS, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
+import { ALLE_PERMS, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 import { ALLE_ENHED_TILSTANDE } from "../src/fleet/warehouse.js";
 
 const T = "tenantEnheder";

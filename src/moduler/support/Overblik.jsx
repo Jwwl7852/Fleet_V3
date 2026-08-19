@@ -25,7 +25,7 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { num, datoTid } from "../../fleet/format.js";
 import {
-  Kort, Tom, Tabel, Pille, KpiKort, KpiRaekke, Fejl,
+  Kort, Tom, Tabel, Pille, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
   SUPPORT_KATEGORI, SUPPORT_PRIORITET, SUPPORT_STATUS, ALLE_STATUS,

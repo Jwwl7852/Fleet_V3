@@ -31,7 +31,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useKpi } from "../../fleet/useKpi.js";
-import { useFleet } from "../../fleet/FleetContext.jsx";
+
 import { num, datoTid, deviation } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Henter, Datatilstand, Tom, Ikon, Sider,
@@ -39,7 +39,7 @@ import {
 } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
-  CARRIER_TYPE, ALLE_CARRIER_TYPER, CARRIER_STATUS, ALLE_CARRIER_STATUS,
+  CARRIER_TYPE, CARRIER_STATUS, ALLE_CARRIER_STATUS,
   EJERFORHOLD, ALLE_EJERFORHOLD, udenLokation, carrieroverblik,
   beholdningPaaCarrier, talFraMaengde, ENHED,
 } from "../../fleet/warehouse.js";

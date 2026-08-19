@@ -18,8 +18,8 @@ import {
 } from "../src/fleet/reservations.js";
 import { ledigeVinduer, slots, ENHED } from "../src/fleet/gitter.js";
 import {
-  GRAENSEOVERGANG, ALLE_GRAENSEOVERGANGE, graenseLabel, krydserGraense,
-  tjekGeografi, reservationerFraEtape,  enhedsIder,
+  ALLE_GRAENSEOVERGANGE, graenseLabel, krydserGraense,
+  tjekGeografi, reservationerFraEtape, enhedsIder,
 } from "../src/fleet/etaper.js";
 import { reservationFraOpgave } from "../src/fleet/opgaver.js";
 import {

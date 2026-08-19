@@ -22,7 +22,7 @@
 import { DEMO_KPI } from "./demo-kpi.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS,
-  afstem, fakturaTotalOere, parterFraLeverandoer,
+  afstem, parterFraLeverandoer,
 } from "./leverandoerer.js";
 
 const DAG = 86400000;
@@ -431,7 +431,6 @@ export const demoFakturaerFor = (leverandoerId) =>
 /** Fakturaer uden match mod et registreret indkøb. Det er dem "manglende
  *  match" tæller — BEREGNET af listen, ikke gemt. */
 export const demoUdenMatch = () => DEMO_FAKTURAER.filter((f) => !f.indkoebId && f.status !== "afvist");
-
 
 /* ---- Prislister. BESLUTNING 25 ---------------------------------------- */
 

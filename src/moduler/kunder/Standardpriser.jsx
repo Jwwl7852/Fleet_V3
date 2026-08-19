@@ -30,7 +30,7 @@ import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
-  kr, dato, num, iDagIso, isoTilMs, msTilIso, kronerFraOere,
+  kr, dato, num, iDagIso, isoTilMs, kronerFraOere,
 } from "../../fleet/format.js";
 import { oereFraKroner } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -39,7 +39,7 @@ import {
   Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
-  METODER, YDELSESKATEGORI, ALLE_YDELSESKATEGORIER,
+  METODER, YDELSESKATEGORI,
   STANDARDGRUPPE, standardPris, valideSats, ydelserForModuler, satsPaa,
 } from "../../fleet/pricing.js";
 import { gem, nyId } from "../../fleet/skriv.js";

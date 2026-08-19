@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **40 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **42 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -346,6 +346,21 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - **Give en enhed en `pladsId`.** Hylden er BEHOLDERENS adresse, som på
   beholdningsposten. To steder til samme kendsgerning driver fra hinanden
   første gang nogen flytter beholderen.
+- **Fjerne et navn linten klager over uden at spørge hvorfor det stod der.**
+  `no-unused-vars` fandt nul glemte imports værd at nævne — men den fandt en
+  afvist læsning der faldt igennem til et TOMT prisgrundlag, et tal der regnes
+  og aldrig vises, og en `visAlle` hvis `setVisAlle` ingen steder kaldes.
+  Fjerner du navnet, er fundet væk og fejlen tilbage. De to sidste står med en
+  `eslint-disable-next-line` og en note — se README under *Det linten fandt*.
+  Og linten er ikke en stilgennemgang: første gennemløb fjernede undervejs 387
+  afsluttende kommaer ingen regel havde bedt om, og begravede de rigtige fund.
+  Se beslutning 41.
+- **Skrive mailmønsteret af.** Der er ét, det hedder `erGyldigMail()` og står i
+  `brugere-regler.js` — som nu er en **delt** fil, ikke et spejl. Det stod fire
+  steder og gav tre svar: serveren afviste alt hvis topdomæne ikke var på
+  nøjagtig to tegn, så `@vognmand.dk` kunne oprettes og `@vognmand.com` kunne
+  ikke. En prøve læser filerne som tekst og fejler på en kopi nummer to.
+  Se beslutning 42.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

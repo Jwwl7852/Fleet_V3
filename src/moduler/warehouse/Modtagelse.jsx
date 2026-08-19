@@ -42,7 +42,7 @@ import {
 } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
-  CARRIER_TYPE, CARRIER_STATUS, EJERFORHOLD, kanPlaceres, udenLokation,
+  CARRIER_TYPE, CARRIER_STATUS, EJERFORHOLD, udenLokation,
   beholdningPaaCarrier, talFraMaengde, ENHED, PLADS_TYPE, PLADS_STATUS,
   rumfangMm3,
 } from "../../fleet/warehouse.js";

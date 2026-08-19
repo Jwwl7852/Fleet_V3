@@ -28,10 +28,11 @@ import { useMemo, useState } from "react";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { beregnBooking, METODER, satsPaa } from "../../fleet/pricing.js";
-import { omkostningsark, bilNoegle } from "../../fleet/omkostninger.js";
+import { omkostningsark } from "../../fleet/omkostninger.js";
 import { harModul } from "../../fleet/moduler.js";
 import { kr, num, dato } from "../../fleet/format.js";
 import { Kort, Tabel, Pille, Knap, Gitter, Tom, Henter, Datatilstand } from "../../fleet/ui.jsx";
+import { blokerer } from "../../fleet/datatilstand.js";
 import { DEMO_OMKOSTNINGER } from "../../fleet/demo-omkostninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 
@@ -129,6 +130,19 @@ export default function Bookingopsaetning() {
   );
 
   if (henter) return <Henter hvad="omkostningerne" />;
+
+  /* ⚠ SKÆRMEN HÅNDTEREDE KUN `henter`. `tilstand` blev regnet og
+     `Datatilstand` importeret — og INGEN af dem blev brugt. Blev læsningen af
+     `omkostninger` afvist, faldt den igennem til et TOMT satsark, og
+     skærmen sagde dermed "der er ingen tillæg" hvor sandheden var "du må
+     ikke se dem".
+
+     Det er værst netop her: arket er et PRISGRUNDLAG. Et manglende
+     færgetillæg er ikke en tom tabel man undrer sig over — det er et tilbud
+     der er for billigt. Se beslutning 26 og noten i datatilstand.js.
+
+     Fundet af `no-unused-vars`, ikke af et klik. */
+  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
   /* ⚠ BILEN KAN MANGLE, og så regnes der ikke videre på et gæt. Er
      køretøjet solgt eller Flåde fravalgt, står eksemplet uden km-linje —

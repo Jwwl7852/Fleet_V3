@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 
 import {
   UDEN_DIVISION, KILDER_DER_MANGLER, iDivision, udenKilde,
-  kundetal, ikkeFaktureretOere, disponeringstal,
+  kundetal, ikkeFaktureretOere,
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
   prisafvigelser, facilitytal, SERVICE_VINDUE_DAGE,
   kpiSkelet, medFuldForm,
@@ -302,7 +302,6 @@ test("⚠ HVERT FELT I demo-kpi SKRIVES OGSÅ AF AGGREGERINGEN", () => {
     "felter demo-kpi lover, men aggregeringen ikke skriver — skærmen får undefined");
 });
 
-
 /* ---- Indkøbet --------------------------------------------------------- */
 
 const DAGE = 86400000;
@@ -578,7 +577,6 @@ test("⚠ klarTilFakturering OG ikkeFaktureretForloeb ER SAMME TAL", () => {
   assert.equal(k.opgaver.klarTilFakturering, 1);
 });
 
-
 /* ---- Facility ---------------------------------------------------------- */
 
 const aktiv = (o = {}) => ({
@@ -707,7 +705,6 @@ test("⚠ TRE FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
   assert.equal(t.aabneSager, null);
   assert.equal(t.anslaaetServiceOere, null);
 });
-
 
 /* ---- Formen overlever ikke turen gennem RTDB --------------------------- */
 

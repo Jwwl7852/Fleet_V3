@@ -17,7 +17,7 @@
  *            Det er fordoblingen, gjort synlig.
  */
 
-import { LINJE_ART, byggGrundlag, ANTAL_SKALA } from "./grundlag.js";
+import { LINJE_ART, ANTAL_SKALA } from "./grundlag.js";
 
 const NU = Date.now();
 const D = 24 * 60 * 60 * 1000;

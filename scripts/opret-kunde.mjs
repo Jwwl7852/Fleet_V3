@@ -32,7 +32,7 @@ import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import {
-  NOEGLEFIL, PROD_PROJEKT, tjekProjekt, vurderIgnorering, forklarAuthFejl,
+  NOEGLEFIL, tjekProjekt, vurderIgnorering, forklarAuthFejl,
   laesKode, laesNoegle,
 } from "./provisioner-dev.mjs";
 import { claimsFor } from "../src/fleet/dev-brugere.js";

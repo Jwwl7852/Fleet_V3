@@ -58,7 +58,7 @@ const mineKompetencer = (kompetencer, personId) =>
   kompetencer.filter((k) => k.personId === personId);
 
 export default function Kompetencer() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
 
   /* ⚠ TO SEEDEDE NODER, OG SKÆRMEN VISTE DEMOFILEN FOR BEGGE. Den tæller
      UDLØBNE BEVISER — det tal der afgør om en chauffør kan disponeres — og

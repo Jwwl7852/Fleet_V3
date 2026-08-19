@@ -157,7 +157,7 @@ function byggReservationer(fraNoden) {
 /* ---- Skærmen ---------------------------------------------------------- */
 
 export default function Disponering() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
 

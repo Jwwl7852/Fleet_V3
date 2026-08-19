@@ -30,7 +30,7 @@ import {
 import { MODUL, ALLE_MODULER } from "../../fleet/moduler.js";
 import {
   BRUGERART, ALLE_BRUGERARTER, tomPrisliste, tomPlatform, validerPrisliste,
-  gaeldendePrisliste, periodeGraenser, MOMSSATS, PLATFORM,
+  gaeldendePrisliste, periodeGraenser, MOMSSATS,
 } from "../../fleet/priser.js";
 import { bpsTilPct, linjeBeloebOere } from "../../fleet/beloeb.js";
 import { csv, csvOere, filnavn } from "../../fleet/eksport.js";
@@ -564,6 +564,10 @@ export default function Prisliste() {
   const gaeldende = gaeldendePrisliste(lister, Date.now());
   /* "Sidst rettet" er hvornår en liste sidst blev LAGT — ikke hvornår en
      pris begyndte at gælde. Se noten i toppen. */
+  /* ⚠ REGNET, MEN VISES IKKE. Samme som dækningsgradsafvigelsen i Økonomi:
+     der står en forklaring på hvad tallet betyder, og tallet når aldrig
+     skærmen. Fundet af no-unused-vars; se README. */
+  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
   const sidstRettet = alle.reduce((m, l) => Math.max(m, l.oprettetMs || 0), 0);
 
   const g = periodeGraenser(periode);
@@ -622,7 +626,6 @@ export default function Prisliste() {
           <Knap onClick={genindlaes}>Prøv igen</Knap>
         </div>
       )}
-
 
       {ny && (
         <Nyliste udgangspunkt={gaeldende} paaLuk={() => saetNy(false)}

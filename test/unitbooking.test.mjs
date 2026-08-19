@@ -7,8 +7,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  KASSE_STATUS, ALLE_KASSE_STATUS, kraeverPlads,
-  UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, BINDENDE,
+  ALLE_KASSE_STATUS, kraeverPlads,
+  ALLE_UDLAAN_TILSTANDE, BINDENDE,
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
@@ -16,9 +16,9 @@ import {
   dageUde, historikForKasse, sagsoversigt,
 } from "../src/fleet/unitbooking.js";
 import {
-  NODE_MODUL, MODUL, ALLE_MODULER, UDEN_SKAERM, modulerFor,
+  NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
 } from "../src/fleet/moduler.js";
-import { PERM, ROLLE_PERMS, ALLE_ROLLER } from "../src/fleet/permissions.js";
+import { PERM, ROLLE_PERMS } from "../src/fleet/permissions.js";
 
 const D = (a, m, d) => Date.UTC(a, m - 1, d);
 

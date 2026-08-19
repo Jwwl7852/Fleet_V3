@@ -43,8 +43,17 @@ import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id;
 
 export default function BookingOversigt() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { bruger, division } = useFleet();
+  /* ⚠ DER ER INGEN KONTROL TIL AT SÆTTE DEN. `setVisAlle` kaldes ingen
+     steder, så `visAlle` er permanent false — og linje 77 skjuler dermed
+     ALTID udførte, afviste og annullerede. Fodnoten under tabellen siger
+     "Viser N af M hentede bookinger", så brugeren kan SE at noget mangler
+     uden at kunne få det frem.
+     Fundet af no-unused-vars. Ikke rettet her: rettelsen er en kontrol der
+     skal tegnes og klikkes, og den hører i en ombæring hvor skærmen kan
+     prøves. Står i README under det linten fandt. */
+  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
   const [visAlle, setVisAlle] = useState(false);
   const [fane, setFane] = useState("opgaver");
   const [enhedFilter, setEnhedFilter] = useState("");

@@ -24,7 +24,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, datoTid, klokke } from "../../fleet/format.js";
+import { num, datoTid, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, Tabel, Pille, Knap, Gitter, MiniLinje, Fejl,
 } from "../../fleet/ui.jsx";

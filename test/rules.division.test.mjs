@@ -12,14 +12,14 @@
  * kun bliver bekræftet i sit lykkelige tilfælde, er ikke afprøvet.
  */
 import { after, before, describe, it } from "node:test";
-import assert from "node:assert/strict";
+
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment,
   assertSucceeds,
   assertFails,
 } from "@firebase/rules-unit-testing";
-import { ref, set, update, get } from "firebase/database";
+import { ref, set, update } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 
 /* Egne tenant-id'er: node --test kører testfiler parallelt, og

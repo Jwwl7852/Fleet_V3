@@ -372,6 +372,7 @@ test("En medarbejder får aldrig en division", () => {
    ══════════════════════════════════════════════════════════════════════ */
 import {
   valideNyBruger, nytLoesen, MINDSTE_KODE, tolkBrugerfejl, BRUGERSVAR,
+  erGyldigMail,
 } from "../src/fleet/brugere-regler.js";
 
 const nyBruger = {
@@ -388,13 +389,62 @@ test("En ny bruger kræver navn, gyldig mail og en kendt rolle", () => {
 
 test("Kodekravet er det SAMME tal som funktionen håndhæver", () => {
   /* ⚠ STÅR DE TO FORSKELLIGE STEDER, afviser serveren en adgangskode
-     formularen godtog — og brugeren får en fejl han ikke kan handle på. */
+     formularen godtog — og brugeren får en fejl han ikke kan handle på.
+
+     ⚠ OG PRØVEN HER LÆSTE EFTER TALLET 12 SOM TEKST i functions/index.js.
+     Den holdt tallet i sync — og sagde intet om mailmønsteret to linjer
+     længere oppe, som var drevet. Et tal der holdes i sync af en prøve, er
+     stadig to tal. Nu importerer funktionen konstanten, og prøven læser
+     efter DEN. */
   assert.equal(MINDSTE_KODE, 12);
   const kode = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
-  assert.match(kode, /kode\.length < 12/,
-    "funktionen kræver ikke 12 tegn — så er de to ude af sync.");
+  assert.match(kode, /from "\.\/delt\/brugere-regler\.js"/,
+    "funktionen importerer ikke de delte brugerregler — så er de to ude af sync.");
+  assert.doesNotMatch(kode, /kode\.length < \d/,
+    "funktionen har igen sit eget tal for kodelængden.");
   assert.ok(valideNyBruger({ ...nyBruger, kode: "eeeeeeeeeee" }).kode, "11 tegn skal afvises");
   assert.deepEqual(valideNyBruger({ ...nyBruger, kode: "eeeeeeeeeeee" }), {}, "12 skal gå");
+});
+
+test("⚠ EN .com-ADRESSE SKAL KUNNE OPRETTES", () => {
+  /* Det kunne den ikke. Serveren stod med {2} hvor klienten havde {2,} —
+     et topdomæne på NØJAGTIG to tegn — så jorn@vognmand.dk gik igennem og
+     jorn@vognmand.com blev afvist med "Ugyldig mailadresse". Det ramte både
+     opretbruger og kundeadmin; de deler opretKonto().
+
+     ⚠ HVORFOR INGEN OPDAGEDE DET: prøven ovenfor prøvede kun
+     "lars-at-vognmand" — en adresse uden krøllet a. Et mailmønster fejler
+     ikke på det grove. Det fejler på det almindelige, og .dk virkede. */
+  for (const m of ["lars@vognmand.dk", "lars@vognmand.com", "a@b.info", "x@y.co.uk"]) {
+    assert.ok(erGyldigMail(m), `${m} skal godtages`);
+    assert.deepEqual(valideNyBruger({ ...nyBruger, email: m }), {}, `${m} skal godtages`);
+  }
+  for (const m of ["lars-at-vognmand", "lars@vognmand", "@vognmand.dk", "lars @vognmand.dk", "", null]) {
+    assert.equal(erGyldigMail(m), false, `${m} skal afvises`);
+  }
+});
+
+test("⚠ MAILMØNSTERET STÅR ÉT STED", () => {
+  /* Det stod FIRE steder: her, i functions/index.js, inline i ejerkonsollens
+     førsteadmin-formular og i dev-brugere.js. De fire var ikke ens — to af
+     dem afviste adresser de to andre godtog.
+
+     Prøven læser filerne som tekst, ligesom demo-kilder.test.mjs. En kopi
+     nummer to opdages ikke ved at kigge på den; den opdages den dag en kunde
+     ikke kan oprettes. */
+  const filer = [
+    "../functions/index.js",
+    "../src/moduler/udbyder/Konsol.jsx",
+    "../src/moduler/opsaetning/Brugere.jsx",
+    "../src/fleet/dev-brugere.js",
+    "../scripts/opret-kunde.mjs",
+  ];
+  for (const f of filer) {
+    const tekst = readFileSync(new URL(f, import.meta.url), "utf8");
+    assert.doesNotMatch(tekst, /\[\^\s@\]/,
+      `${f} har sin egen kopi af mailmønsteret. Der er ét, og det står i ` +
+      "brugere-regler.js — kopierne var uenige om .com.");
+  }
 });
 
 test("Det genererede løsen er langt nok og uden forvekslelige tegn", () => {

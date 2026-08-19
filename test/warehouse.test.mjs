@@ -8,9 +8,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  ENHED, ALLE_ENHEDER, SPORING, ALLE_SPORINGER, BATCH_MOENSTER,
+  ALLE_ENHEDER, ALLE_SPORINGER, BATCH_MOENSTER,
   valideVare, rumfangMm3,
-  PLADS_TYPE, ALLE_PLADS_TYPER, PLADS_STATUS, ALLE_PLADS_STATUS,
+  ALLE_PLADS_TYPER, ALLE_PLADS_STATUS,
   kanPlukkesFra, valideLagerfelter,
   BEVAEGELSE_ART, ALLE_BEVAEGELSE_ARTER, ABSOLUTTE_ARTER, valideBevaegelse,
   MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
@@ -18,14 +18,14 @@ import {
   beholdningPaaCarrier, validePlacering,
   beholdningPrVare, beholdningPaaPlads, underMinimum,
   LAGERSVAR, tolkLagerfejl,
-  ORDRE_TILSTAND, ALLE_ORDRE_TILSTANDE, KLIENT_ORDRE_TILSTANDE, kanSkifteOrdre,
+  ALLE_ORDRE_TILSTANDE, KLIENT_ORDRE_TILSTANDE, kanSkifteOrdre,
   valideOrdre, ordreFremdrift, kanFortrydeFrigivelse, plukkoe,
-  AFVIGELSESAARSAG, ALLE_AFVIGELSESAARSAGER, valideOptaelling,
+  ALLE_AFVIGELSESAARSAGER, valideOptaelling,
   noejagtighed, MINDSTE_OPTAELLINGER, afvigelserPrAarsag, forfaldneOptaellinger,
   YDELSE, ALLE_YDELSER, IKKE_AFREGNEDE_ARTER,
   afregningslinjer, afregningssum,
-  CARRIER_TYPE, ALLE_CARRIER_TYPER, EJERFORHOLD, ALLE_EJERFORHOLD,
-  CARRIER_STATUS, ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
+  ALLE_CARRIER_TYPER,
+  ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
   valideCarrier, carrieroverblik, kanPlaceres,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";

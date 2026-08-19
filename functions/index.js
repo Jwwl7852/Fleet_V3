@@ -81,6 +81,7 @@ import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
+import { erGyldigMail, MINDSTE_KODE } from "./delt/brugere-regler.js";
 import {
   taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste, sammenfatMaalinger,
   maalingerIPeriode, periodeGraenser, MOMSSATS, gaeldendePrisliste, linjerForPeriode
@@ -219,7 +220,10 @@ function kraevBrugeradmin(req) {
   return { uid: auth.uid, tenantId };
 }
 
-const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2}$/;
+/* ⚠ MOENSTERET SKREVES IKKE AF HER. Den her fil stod med {2} hvor
+   klienten havde {2,}, og forskellen var et topdomaene paa noejagtig to
+   tegn: en .dk-adresse kunne oprettes, en .com kunne ikke, og formularen
+   havde sagt ja. Se noten i delt/brugere-regler.js. */
 
 /** Indekset klienten kan læse. ⚠ INGEN CLAIMS OG INGEN LØSEN. */
 const indeksPost = (b, rolle, spaerret = false) => ({
@@ -320,7 +324,7 @@ async function log(tenantId, uid, handling, objektId, note) {
  */
 async function opretKonto({ tenantId, kalderUid, d }) {
   const email = kortStreng(d.email, 120);
-  if (!email || !MAIL_MOENSTER.test(email)) {
+  if (!email || !erGyldigMail(email)) {
     throw new HttpsError("invalid-argument", "Ugyldig mailadresse.");
   }
   const rolle = kortStreng(d.rolle, 30);
@@ -330,8 +334,8 @@ async function opretKonto({ tenantId, kalderUid, d }) {
   /* Løsenet sættes af den der opretter. Det sendes ikke retur og logges
      ikke — hverken her eller i auditposten. */
   const kode = typeof d.kode === "string" ? d.kode : "";
-  if (kode.length < 12) {
-    throw new HttpsError("invalid-argument", "Adgangskoden skal være mindst 12 tegn.");
+  if (kode.length < MINDSTE_KODE) {
+    throw new HttpsError("invalid-argument", `Adgangskoden skal være mindst ${MINDSTE_KODE} tegn.`);
   }
   const navn = kortStreng(d.navn, 80) || email;
 

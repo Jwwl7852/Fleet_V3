@@ -21,6 +21,7 @@
  * miljoe === "dev".
  */
 import { permStrengFraRolle, ROLLE_PERMS } from "./permissions.js";
+import { erGyldigMail } from "./brugere-regler.js";
 
 /** Tenanten de seedede brugere hører til. Samme id som TENANTS i App.jsx. */
 export const DEV_TENANT = "demo";
@@ -67,7 +68,10 @@ export function ejerkonto(mail) {
   if (!m) return null;
   /* Tavs frasortering ville betyde at man leder efter en konto der aldrig
      blev forsøgt oprettet. Hellere fejle på en tastefejl. */
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) {
+  /* ⚠ SAMME MØNSTER SOM ALLE ANDRE STEDER. Her stod en fjerde afskrift, og
+     den var LØSERE end de andre: den godtog et topdomæne på ét tegn. Fire
+     kopier af det samme spørgsmål gav fire svar. Se brugere-regler.js. */
+  if (!erGyldigMail(m)) {
     throw new Error(`VITE_DEV_EJER_MAIL ("${m}") ser ikke ud som en e-mailadresse.`);
   }
   return { email: m, rolle: "admin", navn: m.split("@")[0] };

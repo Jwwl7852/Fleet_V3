@@ -113,6 +113,19 @@ export const DELTE_FILER = [
      leverandoerer.js importerer selv format.js — som staar paa listen i
      forvejen. Lukningen holder. */
   "kpi-aggregering.js", "leverandoerer.js",
+  /* ⚠ brugere-regler.js KOM MED FORDI DEN VAR DREVET. Serveren havde skrevet
+     mailmoensteret af og stod med {2} hvor klienten havde {2,} — et
+     topdomaene paa noejagtig to tegn. jorn@vognmand.dk kunne oprettes,
+     jorn@vognmand.com kunne ikke, og serverens eneste svar var "Ugyldig
+     mailadresse".
+
+     Det er praecis den drift listen findes for at forhindre, og den havde
+     staaet i to funktioner: opretbruger (kundens admin) og kundeadmin
+     (ejerkonsollen) deler opretKonto().
+
+     Filen importerer permissions.js, som staar her i forvejen. Lukningen
+     holder. */
+  "brugere-regler.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

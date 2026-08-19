@@ -32,7 +32,7 @@
 
 import { naesteNummer, forloebstilstand } from "./booking-state.js";
 import {
-  ANTAL_SKALA, linjeBeloebOere, linjeMomsOere, totalerAfLinjer,
+  linjeBeloebOere, linjeMomsOere, totalerAfLinjer,
 } from "./beloeb.js";
 
 /* ---- Nummerserie ----------------------------------------------------- */
@@ -106,7 +106,7 @@ export const ALLE_LINJEARTER = Object.keys(LINJE_ART);
 export const GRUNDLAG_TILSTAND = {
   kladde:   { label: "Kladde",   pill: "info", redigerbar: true,  eksporterbar: false },
   godkendt: { label: "Godkendt", pill: "warn", redigerbar: false, eksporterbar: true  },
-  laast:    { label: "Låst",     pill: "ok",   redigerbar: false, eksporterbar: true  },
+  laast:    { label: "Låst", pill: "ok", redigerbar: false, eksporterbar: true  }
 };
 
 export const erRedigerbar = (g) => Boolean(GRUNDLAG_TILSTAND[g?.tilstand]?.redigerbar);

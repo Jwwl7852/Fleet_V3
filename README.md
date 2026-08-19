@@ -146,6 +146,8 @@ tilfældigt.
 | 38 | **Kundens pris ligger på kunden — og kræver derfor TO permissions.** `kunder/<id>/priser/<ydelseId>/satser/<id>`: enten en egen pris eller en rabat, aldrig begge. ⚠ `.write` kaskaderer, og `kunder.skriv` har casehandler, disponent og koordinator — `satser.skriv` har kun admin. Uden en `.validate` på `priser` der **også** kræver `satser.skriv`, ville prisen kunne sættes af flere end standardprisen kan, alene fordi den lå i en anden sti. ⚠ Hullet der bliver tilbage: `.validate` kører ikke ved en **sletning**, og det kan ikke lukkes med en regel — efterprøvet mod den udrullede base, ikke udledt | `fleet/pricing.js`, `firebase.rules.json` |
 | 39 | **Enheden er et eget objekt.** `enheder/<serienr>` bærer hvor ét stykke gods er — men samme kendsgerning som `beholdning`. Prisen betales tre steder: én atomisk skrivning, én enhed pr. bevægelse, og en **synlig** afvigelse | `fleet/warehouse.js`, `moduler/warehouse/Sporbarhed.jsx` |
 | 40 | **Forslaget hører på etapen.** Det lå både på bookingen (tid, pris) og på etapen (enheder, chauffør) — det samme løfte to steder. Følgen: der er kun ÉN overgangstabel, og bookingen har **ingen** tilstandsmaskine — dens tilstand er afledt | `fleet/booking-state.js`, `moduler/booking/Forslag.jsx` |
+| 41 | **Der er en linter, og den afgør ét spørgsmål.** `npm run build` er grøn når en underkomponent læser et navn der ikke findes — fejlen kommer først når React render'er, og så er skærmen hvid. Det er sket **fem gange**, og hver gang blev den fundet ved at klikke. Reglerne er kun dem der svarer ja eller nej; `eslint:recommended` ville være en holdning ingen har taget stilling til. ⚠ Den fandt nul manglende navne — men en afvist læsning der faldt igennem til et tomt prisgrundlag, et regnet tal der aldrig vises, og en tilstand uden en kontrol | `eslint.config.js` |
+| 42 | **Mailmønsteret stod fire steder, og de var uenige.** Serveren bar `{2}` hvor klienten bar `{2,}` — et topdomæne på nøjagtig to tegn. `jorn@vognmand.dk` kunne oprettes, `jorn@vognmand.com` kunne ikke, og svaret var *"Ugyldig mailadresse"*. Det ramte både `opretbruger` og `kundeadmin`; de deler `opretKonto()`. Prøven prøvede `"lars-at-vognmand"` og så det ikke: et mailmønster fejler ikke på det grove. `brugere-regler.js` er nu en **delt** fil, ikke et spejl | `fleet/brugere-regler.js`, `scripts/kopier-delt.mjs` |
 
 ## Struktur
 
@@ -532,6 +534,34 @@ der skal blive stående, også når de ser grimme ud:
 - **Overlap i samme række tegnes som konflikt**, ikke stablet i hver sin bane.
   På en eksklusiv ressource er et overlap noget `reserver()` ville afvise.
   Ser det pænt ud, skjuler gitteret en fejl i data.
+
+### Det linten fandt — og de to ting der står tilbage
+
+`npm run lint` kører seks regler, alle af den slags der svarer ja eller nej.
+Begrundelsen for at der ikke er flere, står i beslutning 41. Linten kører
+automatisk i `.githooks/pre-commit` når en `.js`, `.jsx` eller `.mjs` er
+ændret, og `npm test` kalder den før regelprøverne.
+
+Første gennemløb fandt **nul** `no-undef` — de fem hvide skærme var rettet i
+forvejen. Fundene var alle `no-unused-vars`, og to af dem er ikke ryddet op,
+fordi de er rigtige fejl med hver sin rettelse der skal kunne **klikkes**:
+
+- **`booking/Oversigt.jsx` — `visAlle` har ingen kontrol.** `setVisAlle`
+  kaldes ingen steder, så udførte, afviste og annullerede bookinger er
+  permanent skjult. Fodnoten under tabellen siger *"Viser N af M hentede
+  bookinger"*, så brugeren kan **se** at noget mangler uden at kunne få det
+  frem. Rettelsen er en kontrol i skærmen.
+- **`udbyder/Prisliste.jsx` — `sidstRettet` regnes og vises ikke.** Der står
+  en kommentar om hvad tallet betyder, og tallet når aldrig skærmen. Samme
+  mønster som dækningsgradsafvigelsen i Økonomi.
+
+Begge står med en `eslint-disable-next-line` og en note i koden der peger
+hertil. ⚠ **Navnene blev ikke bare fjernet:** et fjernet navn tager beviset
+med sig, og så er der ingen der ved at kontrollen mangler.
+
+Den tredje — `Bookingopsaetning.jsx`, hvor en afvist læsning faldt igennem
+til et tomt satsark — er rettet. Se beslutning 41.
+
 
 ### Demo-data skal kontrollere sig selv
 

@@ -1,11 +1,12 @@
 #!/bin/sh
 # FleetControl 3.0 — pre-commit
 #
-# To kontroller, hver med sin egen betingelse. Ingen af dem kører på hver
+# Tre kontroller, hver med sin egen betingelse. Ingen af dem kører på hver
 # commit: prisen betales af dem der rører det pågældende.
 #
 #   firebase.rules.json ændret  →  npm run test:rules
 #   src/ ændret                 →  npm run test:design
+#   .js/.jsx/.mjs ændret        →  npm run lint
 #
 # Betingelserne skal passe til det testen LÆSER. En farvetest der kun kørte
 # når regelfilen var i diffet, ville aldrig fyre — farver ændres ikke i
@@ -41,6 +42,35 @@ if printf '%s\n' "$STAGED" | grep -qE '^(src/|test/design-tokens\.test\.mjs$)'; 
   og derefter snapshottet i test/design-tokens.test.mjs — i den rækkefølge.
   Retter du kun snapshottet, har du flyttet en beslutning ind i en testfil,
   hvor ingen leder efter den.
+
+SLUT
+  fi
+fi
+
+# ---- Navne der ikke findes -----------------------------------------
+# Kører når som helst JavaScript er ændret — og det er hele pointen:
+# `npm run build` er GRØN når en underkomponent læser en variabel der ikke
+# findes i dens scope. Fejlen sker først når React render'er, og så er
+# skærmen hvid. Det er sket fem gange, og hver gang blev den fundet ved at
+# KLIKKE skærmen. Linten afgør det statisk for hele træet.
+if printf '%s\n' "$STAGED" | grep -qE '\.(js|jsx|mjs)$'; then
+  echo "JavaScript er ændret — kører npm run lint …"
+
+  if npm run --silent lint; then
+    echo "Linten er grøn."
+  else
+    FEJL=1
+    cat <<'SLUT'
+
+  Linten fejlede.
+
+  `no-undef` betyder et navn der ikke findes — den fejl giver en HVID skærm
+  i browseren, og buildet ser den ikke. `no-unused-vars` betyder oftest en
+  import der er glemt efter en omskrivning, men kan også betyde at noget er
+  REGNET og aldrig vist. Læs fundet, før du fjerner navnet.
+
+  Reglerne står i eslint.config.js, med begrundelsen for hvorfor der er så
+  få af dem.
 
 SLUT
   fi

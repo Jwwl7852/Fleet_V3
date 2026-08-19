@@ -94,7 +94,7 @@ const navnetPaa = (kunder, id) =>
 const momsTekst = (oere) => (oere === null ? "—" : kr(oere));
 
 export default function Fakturering() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("grl-002");
 

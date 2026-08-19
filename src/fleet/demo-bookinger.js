@@ -29,10 +29,7 @@
  */
 import { DEMO_KUNDER } from "./demo-kunder.js";
 import { DEMO_ETAPER } from "./demo-etaper.js";
-import { DEMO_KOERETOEJER } from "./demo-flaade.js";
-import { DEMO_PERSONALE } from "./demo-personale.js";
 import { forloebstilstand, TILSTAND } from "./booking-state.js";
-import { enhedsIder } from "./etaper.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -193,8 +190,11 @@ export const beregnetTilstand = (booking) =>
 
 if (import.meta.env?.DEV) {
   const kundeIder = new Set(DEMO_KUNDER.map((k) => k.id));
-  const bilIder = new Set(DEMO_KOERETOEJER.map((b) => b.id));
-  const folkIder = new Set(DEMO_PERSONALE.map((p) => p.id));
+  /* ⚠ HER STOD OGSÅ `bilIder` og `folkIder`, og de blev aldrig brugt.
+     De er levn fra dengang køretøjs- og personkontrollen lå her. Den flyttede
+     til demo-etaper.js sammen med data (beslutning 40) — se noten om
+     forslagene nedenfor — men sættene blev stående og lignede en kontrol der
+     fandtes. Fundet af no-unused-vars. */
 
   for (const b of DEMO_BOOKINGER) {
     if (!kundeIder.has(b.kundeId)) {

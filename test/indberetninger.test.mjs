@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  HAENDELSE_ART, FELT, felterFor, harFelt, SENSITIVE_FELTER,
+  FELT, harFelt, SENSITIVE_FELTER,
   FORLOEB, kanSkifteTil, kanAfslutte,
   byggTidsregistrering, tidPaaStedetMin, forsinkelseMin,
   byggUnderskrift, maaOverskriveUnderskrift,

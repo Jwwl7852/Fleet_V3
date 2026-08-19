@@ -22,7 +22,7 @@ import { useMemo } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { num, dato, ugenr } from "../../fleet/format.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, Tom, KpiKort, KpiRaekke,
+  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";

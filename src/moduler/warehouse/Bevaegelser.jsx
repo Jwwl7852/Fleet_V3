@@ -29,14 +29,14 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { num, datoTid } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
+  Kort, Tabel, Pille, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Ikon, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   BEVAEGELSE_ART, ALLE_BEVAEGELSE_ARTER, ABSOLUTTE_ARTER,
-  ENHED, SPORING, PLADS_STATUS, kanPlukkesFra,
-  MAENGDE_SKALA, maengdeFraTal, talFraMaengde,
+  ENHED, PLADS_STATUS, kanPlukkesFra,
+  maengdeFraTal, talFraMaengde,
   valideBevaegelse, beholdningsNoegle, UDEN_BATCH,
   CARRIER_STATUS, CARRIER_TYPE, kraeverLokation,
 } from "../../fleet/warehouse.js";

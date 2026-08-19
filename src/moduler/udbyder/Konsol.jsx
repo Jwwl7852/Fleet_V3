@@ -23,11 +23,11 @@
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { db, auth } from "../../firebase.js";
+import { db } from "../../firebase.js";
 import { dato, num, pct } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
-  Henter, Tom, Gitter, KpiKort, KpiRaekke,
+  Henter, Gitter, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
   MODUL, VALGFRIE_MODULER, OBLIGATORISKE_MODULER, harModul,
@@ -35,7 +35,7 @@ import {
 import {
   ABONNEMENT, ALLE_ABONNEMENTSTATUS, AARSAG, ALLE_AARSAGER, opbevaresTil,
 } from "../../fleet/abonnement.js";
-import { nytLoesen } from "../../fleet/brugere-regler.js";
+import { nytLoesen, erGyldigMail } from "../../fleet/brugere-regler.js";
 import {
   opretKunde, saetModuler, saetStatus, opretKundeadmin, saetAbonnement,
   valideNyKunde, foreslaaId,
@@ -480,7 +480,9 @@ function Foersteadmin({ kunde }) {
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
 
-  const kanGemme = Boolean(f.navn.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim()));
+  /* ⚠ HER STOD MØNSTERET SKREVET AF. Det var tredje kopi, og den kopi
+     serveren havde, var en anden. Se noten i brugere-regler.js. */
+  const kanGemme = Boolean(f.navn.trim() && erGyldigMail(f.email));
 
   const gem = async () => {
     saetGemmer(true);

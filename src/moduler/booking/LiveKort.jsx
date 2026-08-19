@@ -30,7 +30,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, klokke, datoTid } from "../../fleet/format.js";
+import { num, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, Tabel, Pille, Gitter, MiniLinje, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";

@@ -57,8 +57,8 @@ import {
 } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
-  MiniLinje, Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
+  Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
