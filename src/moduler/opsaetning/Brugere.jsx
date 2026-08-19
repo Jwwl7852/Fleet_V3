@@ -6,13 +6,34 @@
  * firebase.rules.json. Den viser det — den opfinder det ikke.
  *
  * ---------------------------------------------------------------------------
- * DE TRE ÅBNE SPØRGSMÅL HANDLER ALLE OM AT SKRIVE
+ * ⚠ KUNDEN KAN NU REDIGERE SINE ROLLER — BESLUTNING 31b
  *
- * FleetControl-spoergsmaal.md spørger: kan en kunde ændre en rolles indhold,
- * hvordan inviteres en bruger, og hvem spærrer et login. Ingen af dem blokerer
- * en LÆSESKÆRM, og skrivning er ikke bygget nogen steder. Det første er nu
- * besvaret — se beslutning 31 — og svaret var allerede håndhævet:
- * `roller/` er `.write: false` i reglerne.
+ * Her stod at spørgsmålet var besvaret med beslutning 31: rollerne var faste,
+ * og `roller/` var fjernet fra regelfilen. Kunden har bedt om det modsatte, og
+ * beslutningen er truffet igen med åbne øjne. Begge afsnit står i
+ * BESLUTNINGER.md, fordi det første er det eneste sted der står HVAD DER GÅR
+ * GALT uden det.
+ *
+ * De to farer er håndteret, ikke forsvundet:
+ *
+ *  1. AT LÅSE SIG SELV UDE. `brugere.skriv` kan ikke fjernes fra den SIDSTE
+ *     rolle der har den, og heller ikke fra ens EGEN. Editoren viser
+ *     spærringen FØR man trykker — men den ligger på SERVEREN. `laaserUde()`
+ *     er den samme funktion begge steder; en kontrol der kun fandtes her,
+ *     ville være en pæn knap, og den pæne knap ville koste kunden adgangen til
+ *     sit eget system.
+ *
+ *  2. TO HÅNDHÆVELSESPUNKTER. `roller/` er en KILDE, aldrig et
+ *     håndhævelsespunkt: reglerne læser den ALDRIG, og adgang afgøres
+ *     udelukkende af `auth.token.perms`. Noden siger hvad der bliver mintet
+ *     næste gang.
+ *
+ * ⚠ OG SKÆRMEN LÆSER NODEN, IKKE KONSTANTEN. Viste den `ROLLE_PERMS`, ville
+ * den stå med standarden mens brugerne gik rundt med noget andet i deres
+ * tokens — og begge tal ville se rigtige ud.
+ *
+ * De to øvrige åbne spørgsmål står: hvordan inviteres en bruger, og hvem
+ * spærrer et login.
  *
  * ---------------------------------------------------------------------------
  * ⚠ EN KLIENT KAN STADIG IKKE LISTE BRUGERE. Firebase Auth har ingen
@@ -39,10 +60,15 @@
  *
  * ---------------------------------------------------------------------------
  * BESLUTNING 28: PERMS KOMMER FRA TOKENET. En klient kan ikke ændre sit eget
- * token, og derfor kan intet på denne skærm ændre hvad nogen MÅ. Skal en
- * bruger have anden adgang, ændres rollen server-side og claim'et fornys —
- * med revokeRefreshTokens, ellers beholder brugeren sin gamle adgang indtil
- * tokenet udløber af sig selv.
+ * token, og derfor ændrer INTET på denne skærm noget af sig selv — hverken
+ * rolleskiftet eller rolleeditoren. Begge kalder en Cloud Function, som minter
+ * claims om og kalder revokeRefreshTokens. Uden det sidste beholder brugeren
+ * sin gamle adgang indtil tokenet udløber af sig selv, og det er den værste
+ * fejltilstand: den ser ud som om den lykkedes.
+ *
+ * ⚠ EN ROLLEÆNDRING RAMMER HVER BRUGER MED ROLLEN. Svaret bærer hvor mange
+ * der blev fornyet — en ændring der lykkedes for otte ud af ni, er ikke en
+ * ændring der lykkedes, og skærmen siger det.
  *
  * MEDARBEJDERE UDEN LOGIN hører under Bemanding → Medarbejdere. `personId` er
  * hvem noget HANDLER om; `uid` er hvem der GJORDE noget (beslutning 18). En
@@ -53,16 +79,17 @@ import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import {
   opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger, BRUGERSVAR,
+  skrivRolle, permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM
 } from "../../fleet/brugere.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
-  ALLE_ROLLER, ROLLE_LABEL, ROLLE_PERMS, ALLE_PERMS, PERM,
-  permsFraRolle, rolleHarPerm, harPerm,
+  ALLE_ROLLER, ROLLE_LABEL, ALLE_PERMS, PERM,
+  permsFraRolle, rolleHarPerm, harPerm, permsFraStreng
 } from "../../fleet/permissions.js";
 import { num } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Gitter, MiniLinje, Knap, Tom, KpiKort, KpiRaekke, Ikon,
-  Datatilstand, Felt, Feltraekke, Formular, Formularsvar,
+  Datatilstand, Felt, Feltraekke, Formular, Formularsvar, Raekke
 } from "../../fleet/ui.jsx";
 
 /**
@@ -139,7 +166,7 @@ function Opretformular({ kode, paaLuk, paaOprettet }) {
           <Felt id="br-rolle" label="Rolle" kraevet vaerdi={f.rolle} saet={saet("rolle")}
                 fejl={vis("rolle")}
                 valgmuligheder={ALLE_ROLLER.map((r) => ({
-                  vaerdi: r, label: ROLLE_LABEL[r]?.label || r,
+                  vaerdi: r, label: ROLLE_LABEL[r]?.label || r
                 }))} />
         </Feltraekke>
 
@@ -163,7 +190,12 @@ function Opretformular({ kode, paaLuk, paaOprettet }) {
 
 export default function Brugere() {
   const { bruger, tenantId, tenant } = useFleet();
-  const mineP = bruger?.perms || [];
+  /* ⚠ STRENGEN OM TIL EN LISTE. `bruger.perms` er claim-strengen |a|b|c|, og
+     `.length` paa den er TEGNANTALLET — kortet skrev "688 permissions i dit
+     token" om en administrator der har 41. harPerm() taaler begge former, saa
+     adgangstjekkene var rigtige hele tiden; det var kun taellingen der loej.
+     Se permsFraStreng() i permissions.js. */
+  const mineP = permsFraStreng(bruger?.perms);
   const maaAdministrere = harPerm(mineP, PERM.brugereSkriv);
 
   const [opretter, setOpretter] = useState(false);
@@ -173,17 +205,40 @@ export default function Brugere() {
      deaktiveres uden at hele tabellen fryser. */
   const [arbejder, setArbejder] = useState(null);
   const [svar, setSvar] = useState(null);
+  /* Hvilken rolle der redigeres, eller null. */
+  const [redigerer, setRedigerer] = useState(null);
 
   /* Brugerindekset. ⚠ IKKE Auth — se noten på kortet. */
   const {
-    data: brugere, tilstand: brugerTilstand, genindlaes: genindlaesBrugere,
+    data: brugere, tilstand: brugerTilstand, genindlaes: genindlaesBrugere
   } = useListe("brugere", {
     graense: 200,
     /* Ingen division: et login hører til en virksomhed, ikke en afdeling. */
     division: "alle",
     sorter: (a, b) => (a.navn || "").localeCompare(b.navn || "", "da"),
-    demo: [],
+    demo: []
   });
+
+  /* ⚠ TENANTENS EGNE ROLLEDEFINITIONER — BESLUTNING 31b.
+     Skærmen læste ROLLE_PERMS, altså standarden. Har kunden redigeret sin
+     disponentrolle, ville skærmen have vist noget andet end det brugerne
+     faktisk har i deres tokens — og det er den slags forskel ingen opdager,
+     fordi begge tal ser rigtige ud.
+
+     ⚠ NODEN ER EN KILDE, IKKE ET HÅNDHÆVELSESPUNKT. Den siger hvad der
+     bliver mintet næste gang; adgang afgøres af tokenet. Reglerne læser den
+     aldrig. Se beslutning 31b.
+
+     vindue:"alle" og division:"alle": en rolle har hverken et tidspunkt
+     eller en afdeling. */
+  const {
+    data: rolleraekker, genindlaes: genindlaesRoller
+  } = useListe("roller", { vindue: "alle", division: "alle", demo: [] });
+
+  /* useListe giver en LISTE med id pr. post; permsForTenant() vil have et
+     opslag. Oversættelsen står ét sted. */
+  const rolleNode = Object.fromEntries(
+    (rolleraekker || []).map((r) => [r.id, { perms: r.perms || [] }]));
 
   const efterHandling = (r) => {
     setArbejder(null);
@@ -207,10 +262,16 @@ export default function Brugere() {
     efterHandling(await spaerLogin({ uid: r.id, spaerret: !r.spaerret }));
   };
 
+  /* ⚠ EFFEKTIVE PERMISSIONS, ikke standarden. `egen` siger om kunden har
+     redigeret rollen — en rolle uden egen definition er ikke det samme som
+     en rolle der er redigeret til at ligne standarden, og forskellen er
+     værd at kunne se på skærmen. */
   const roller = ALLE_ROLLER.map((r) => ({
     id: r,
     ...ROLLE_LABEL[r],
-    perms: permsFraRolle(r),
+    perms: permsForTenant(r, rolleNode),
+    standard: permsFraRolle(r),
+    egen: Array.isArray(rolleNode[r]?.perms),
   }));
 
   return (
@@ -218,7 +279,9 @@ export default function Brugere() {
       <KpiRaekke>
         <KpiKort label="Roller" vaerdi={num(ALLE_ROLLER.length)}
                  ikon={<Ikon navn="skjold" />} tone="ikon-5" rund
-                 note="faste — kan ikke redigeres" />
+                 note={roller.some((r) => r.egen)
+                   ? `${num(roller.filter((r) => r.egen).length)} redigeret af jer`
+                   : "navnene er faste — indholdet kan redigeres"} />
         <KpiKort label="Permissions i kataloget" vaerdi={num(ALLE_PERMS.length)}
                  ikon={<Ikon navn="dokument" />} tone="ikon-4" rund
                  note="hver svarer til en regel" />
@@ -344,17 +407,46 @@ export default function Brugere() {
         </p>
       </Kort>
 
-      <Kort titel="Rollerne">
+      <Kort
+        titel="Rollerne"
+        handling={maaAdministrere
+          ? <Knap onClick={() => setRedigerer(redigerer ? null : "admin")}>
+              {redigerer ? "Luk redigering" : "Redigér en rolle"}
+            </Knap>
+          : null}
+      >
         <p className="fc-hint" style={{ marginBottom: 12 }}>
-          ⚠ <b>Rollerne er faste.</b> Man tildeler dem — man ændrer dem ikke.
-          Der er ingen node at ændre dem i: <code>tenants/&lt;id&gt;/roller</code> lå
-          tom og <code>.write: false</code> i månedsvis og er nu <b>fjernet</b>.
-          Rollens indhold kommer fra <code>ROLLE_PERMS</code> i koden, og claim&#39;et
-          er det ene håndhævelsespunkt. Beslutning 31: en vognmand der fjernede{" "}
-          <code>booking.godkend</code> fra sin egen adminrolle, havde lukket sig
-          selv ude af sit eget system — og adgangen til at rette det var selv en
-          permission.
+          ⚠ <b>Rollernes NAVNE er faste — indholdet kan I redigere.</b>{" "}
+          Beslutning 31 gjorde begge dele faste; <b>31b</b> omgjorde det halve.
+          Man tildeler stadig blandt de syv, og en ottende er en ændring i
+          koden — men hvad en rolle <i>betyder</i>, kan sættes her.
         </p>
+        <p className="fc-hint" style={{ marginBottom: 12 }}>
+          ⚠ <b>To ting kan ikke lade sig gøre</b>, og det er den beskyttelse
+          beslutning 31 blev truffet for: <code>{NOEGLEPERM}</code> kan ikke
+          fjernes fra den <b>sidste</b> rolle der har den, og heller ikke fra{" "}
+          <b>din egen</b>. En vognmand der fjernede den fra sin adminrolle,
+          havde lukket sig ude af sit eget system — og adgangen til at rette
+          det var selv en permission. Spærringen ligger på <b>serveren</b>,
+          ikke her.
+        </p>
+        <p className="fc-hint" style={{ marginBottom: 12 }}>
+          En ændring rammer <b>hver bruger med rollen</b>: claims mintes om og
+          tokens tilbagekaldes med det samme. Uden det ville den gamle adgang
+          virke indtil tokenet udløb af sig selv — og det ser ud som om det
+          lykkedes.
+        </p>
+
+        {redigerer && (
+          <Rolleeditor
+            rolle={redigerer}
+            saetRolle={setRedigerer}
+            roller={roller}
+            rolleNode={rolleNode}
+            egenRolle={bruger?.rolle || null}
+            paaGemt={() => { genindlaesRoller(); genindlaesBrugere(); }}
+          />
+        )}
         <Tabel
           kolonner={[
             { key: "label", label: "Rolle", render: (r) => (
@@ -365,8 +457,18 @@ export default function Brugere() {
               ) },
             { key: "antal", label: "Permissions", num: true,
               render: (r) => `${num(r.perms.length)} af ${num(ALLE_PERMS.length)}` },
-            { key: "hvorfor", label: "Hvorfor ikke mere", bredde: "46%",
+            { key: "hvorfor", label: "Hvorfor", bredde: "38%",
               render: (r) => <span className="fc-hint">{r.hvorfor}</span> },
+            { key: "egen", label: "Definition", render: (r) => (
+                /* ⚠ 'Standard' er ikke det samme som 'redigeret til at ligne
+                   standarden'. Har kunden gemt rollen, står den som jeres —
+                   også hvis indholdet er det samme. Forskellen betyder noget
+                   den dag vi ændrer en standard: en gemt rolle følger ikke
+                   med. */
+                r.egen
+                  ? <Pille tone="info">Jeres</Pille>
+                  : <span className="fc-neutral">Standard</span>
+              ) },
             { key: "din", label: "", render: (r) => (
                 r.id === bruger?.rolle ? <Pille tone="ok">Din rolle</Pille> : null
               ) },
@@ -397,7 +499,7 @@ export default function Brugere() {
                   /* Tom frem for et kryds: fraværet af en rettighed er det
                      normale, og et rødt kryds ville læse som en fejl. */
                   : <span className="fc-neutral" title="Nej">–</span>
-              ),
+              )
             })),
           ]}
           raekker={MATRIX}
@@ -480,6 +582,145 @@ export default function Brugere() {
           </p>
         </Kort>
       </Gitter>
+    </div>
+  );
+}
+
+/* ---- Rolleeditoren ---------------------------------------------------- */
+
+/**
+ * Sæt hvad en rolle indeholder. BESLUTNING 31b.
+ *
+ * ⚠ SPÆRRINGEN VISES FØR MAN TRYKKER, IKKE BAGEFTER.
+ * laaserUde() er den SAMME funktion serveren afviser med — den ligger i
+ * permissions.js, som står i DELTE_FILER. Skærmen svarer hurtigt; serveren
+ * afgør. Fandtes kontrollen kun her, var den en pæn knap, og den pæne knap
+ * ville koste kunden adgangen til sit eget system.
+ *
+ * ⚠ OG DEN FORKLARER HVORFOR. En grå knap uden en sætning er en gåde: man
+ * ved ikke om man mangler en rettighed, om noget er i stykker, eller om det
+ * man prøver på er forbudt med vilje.
+ */
+function Rolleeditor({ rolle, saetRolle, roller, rolleNode, egenRolle, paaGemt }) {
+  const valgt = roller.find((r) => r.id === rolle) || roller[0];
+  /* ⚠ NULSTILLES NÅR MAN SKIFTER ROLLE. Uden nøglen ville afkrydsningerne
+     fra den forrige rolle blive stående, og man ville gemme disponentens
+     permissions på koordinatoren. Se React-nøglen på komponenten. */
+  const [valgteP, saetValgteP] = useState(() => new Set(valgt.perms));
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const perms = ALLE_PERMS.filter((x) => valgteP.has(x));
+  const form = valideRolleperms(perms);
+  /* Den samme sætning serveren ville afvise med. */
+  const spaerring = laaserUde(valgt.id, perms, rolleNode, { egenRolle });
+
+  /* ⚠ ÆNDRET I FORHOLD TIL HVAD DER GÆLDER NU, ikke til standarden. Ellers
+     ville en rolle kunden allerede har redigeret, altid se ændret ud. */
+  const aendret = perms.length !== valgt.perms.length
+    || perms.some((x) => !valgt.perms.includes(x));
+
+  const skift = (perm) => {
+    saetValgteP((s) => {
+      const ny = new Set(s);
+      if (ny.has(perm)) ny.delete(perm); else ny.add(perm);
+      return ny;
+    });
+    saetSvar(null);
+  };
+
+  const gem = async () => {
+    saetGemmer(true);
+    saetSvar(null);
+    const r = await skrivRolle({ rolle: valgt.id, perms });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div className="fc-rolleeditor">
+      <Feltraekke>
+        <Felt id="re-rolle" label="Rolle" kraevet vaerdi={valgt.id}
+              saet={(v) => saetRolle(v)}
+              hint="Navnene er faste. En ottende rolle er en ændring i koden."
+              valgmuligheder={roller.map((r) => ({
+                vaerdi: r.id,
+                label: `${r.label}${r.egen ? " (jeres)" : ""}`,
+              }))} />
+      </Feltraekke>
+
+      {/* ⚠ SPÆRRINGEN STÅR OVER KNAPPEN, ikke under den. Man skal kunne se
+          hvorfor der ikke kan gemmes, mens man kigger på det man har rørt. */}
+      {spaerring && (
+        <p className="fc-svar fc-svar-naegtet" role="alert">{spaerring}</p>
+      )}
+      {!form.ok && (
+        <p className="fc-svar fc-svar-fejl" role="alert">{form.fejl}</p>
+      )}
+
+      <div className="fc-permliste">
+        {ALLE_PERMS.map((perm) => {
+          const paa = valgteP.has(perm);
+          const iStandard = valgt.standard.includes(perm);
+          return (
+            <label key={perm} className="fc-perm">
+              <input type="checkbox" checked={paa} onChange={() => skift(perm)} />
+              <code>{perm}</code>
+              {/* ⚠ HVAD STANDARDEN SIGER, ved siden af hvad I har valgt.
+                  Uden den kan man ikke se om man er ved at fjerne noget
+                  rollen plejede at have — og det er netop dét man vil vide
+                  når man strammer op. */}
+              {iStandard !== paa && (
+                <Pille tone={paa ? "ok" : "warn"}>
+                  {paa ? "tilføjet" : "fjernet"}
+                </Pille>
+              )}
+              {perm === NOEGLEPERM && <Pille tone="bad">nøgle</Pille>}
+            </label>
+          );
+        })}
+      </div>
+
+      <Raekke style={{ marginTop: 14 }}>
+        <span className="fc-hint">
+          {num(perms.length)} af {num(ALLE_PERMS.length)} permissions
+          {aendret ? " · ikke gemt" : ""}
+        </span>
+        <span style={{ display: "flex", gap: 8 }}>
+          <Knap onClick={() => saetValgteP(new Set(valgt.standard))}>
+            Sæt til standard
+          </Knap>
+          <Knap variant="primaer" onClick={gem}
+                disabled={gemmer || !aendret || !form.ok || Boolean(spaerring)}>
+            {gemmer ? "Gemmer …" : "Gem rollen"}
+          </Knap>
+        </span>
+      </Raekke>
+
+      <Formularsvar svar={svar} />
+
+      {/* ⚠ HVOR MANGE DER IKKE BLEV FORNYET. En ændring der lykkedes for otte
+          ud af ni, er ikke en ændring der lykkedes — den niende går rundt med
+          sin gamle adgang, og det ser ud som om det gik godt. */}
+      {svar?.ok && svar.data && (
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          {num(svar.data.fornyet)} af {num(svar.data.ramte)} brugere fik
+          fornyet deres adgang med det samme.
+          {svar.data.fejlede?.length > 0 && (
+            <> ⚠ <b>{num(svar.data.fejlede.length)} fejlede</b> og har stadig
+            deres gamle adgang. Gem rollen igen.</>
+          )}
+        </p>
+      )}
+
+      <p className="fc-hint" style={{ marginTop: 10 }}>
+        Ændringen skrives af <b>rolleskriv</b> på serveren, som minter claims
+        om og tilbagekalder tokens. <code>roller/</code> er{" "}
+        <b>.write: false</b> — noden er en <b>kilde</b>, ikke et
+        håndhævelsespunkt: reglerne læser den aldrig, og adgang afgøres
+        udelukkende af tokenet. Se beslutning 31b.
+      </p>
     </div>
   );
 }

@@ -434,13 +434,41 @@ test("En afvist handling er ikke en netværksfejl", async (t) => {
   });
 });
 
-test("Klienten sender aldrig tenant eller perms", () => {
-  /* Funktionen ignorerer dem alligevel — men et felt der ser ud til at
-     betyde noget og bliver ignoreret, er værre end intet felt. */
+test("Klienten sender aldrig en tenant — og aldrig en BRUGERS perms", () => {
+  /* Funktionen ignorerer tenanten alligevel — men et felt der ser ud til at
+     betyde noget og bliver ignoreret, er værre end intet felt. Og en admin
+     hos kunde A der selv måtte oplyse tenanten, kunne oprette en
+     administrator hos kunde B.
+
+     ⚠ PRØVEN ER SNÆVRET IND MED BESLUTNING 31b, IKKE LEMPET.
+     Den forbød `perms` nogen steder i filen. Grunden var: en BRUGERS
+     permissions udledes af hans rolle, og kunne klienten sende en liste,
+     kunne en admin give sig selv noget der ikke stod i noget preset.
+
+     Den grund holder. Men `skrivRolle()` sender en liste — det er en ROLLES
+     indhold, ikke en brugers, og det er hele beslutning 31b. Serveren
+     validerer den mod ALLE_PERMS og spærrer mod at låse sig ude.
+
+     Prøven ser derfor på hver eksporteret handling for sig. */
   const kilde = readFileSync(new URL("../src/fleet/brugere.js", import.meta.url), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "");
+
   assert.doesNotMatch(kilde, /tenant\s*[:,]/, "brugere.js sender en tenant med.");
-  assert.doesNotMatch(kilde, /perms\s*[:,]/, "brugere.js sender perms med.");
+
+  /* De tre BRUGER-handlinger må ikke bære en perms-liste. */
+  for (const navn of ["opretBruger", "skiftRolle", "spaerLogin"]) {
+    const i = kilde.indexOf(`export const ${navn}`);
+    assert.ok(i > 0, `${navn} findes ikke — er funktionen døbt om?`);
+    const naeste = kilde.indexOf("export const", i + 1);
+    const krop = naeste < 0 ? kilde.slice(i) : kilde.slice(i, naeste);
+    assert.doesNotMatch(krop, /perms\s*[:,]/,
+      `${navn} sender perms med — en brugers permissions kommer fra rollen.`);
+  }
+
+  /* ⚠ OG DEN ENE DER MÅ, SENDER EN ROLLE MED. Uden rollenavnet ville
+     serveren ikke vide hvad listen hørte til. */
+  assert.match(kilde, /skrivRolle = \(\{ rolle, perms \}\)/,
+    "skrivRolle sender ikke både rolle og perms");
 });
 
 test("Funktionsnavnene i klienten matcher dem der er udrullet", () => {
@@ -449,7 +477,7 @@ test("Funktionsnavnene i klienten matcher dem der er udrullet", () => {
      får man 404 fra en funktion man kan se i konsollen. */
   const klient = readFileSync(new URL("../src/fleet/brugere.js", import.meta.url), "utf8");
   const server = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
-  for (const navn of ["opretbruger", "skiftrolle", "spaerlogin"]) {
+  for (const navn of ["opretbruger", "skiftrolle", "spaerlogin", "rolleskriv"]) {
     assert.match(klient, new RegExp(`"${navn}"`), `klienten kender ikke ${navn}`);
     assert.match(server, new RegExp(`export const ${navn} = onCall`), `serveren har ikke ${navn}`);
   }

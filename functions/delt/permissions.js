@@ -515,6 +515,30 @@ export const permStreng = (perms = []) => (perms.length ? `|${perms.join("|")}|`
 export const permStrengFraRolle = (rolle) => permStreng(permsFraRolle(rolle));
 
 /**
+ * Claim-strengen tilbage til en liste. Tager også en liste, uændret.
+ *
+ * ⚠ DEN FANDTES IKKE, OG DET KOSTEDE TRE FORKERTE TAL PÅ SKÆRMEN.
+ * `bruger.perms` er strengen `|a|b|c|` — ikke et array. `harPerm()` tåler
+ * begge former, så adgangstjekkene var rigtige; men `perms.length` er
+ * TEGNANTALLET, og Brugere & roller skrev "688 permissions i dit token" om en
+ * administrator der har 41.
+ *
+ * Det er samme fejlklasse som `num(null)` der gav "0": et tal der er forkert
+ * på en måde ingen kan se, fordi det ser ud som et tal. Og det overlevede,
+ * fordi det ENESTE sted forskellen kunne ses, var en note under et nøgletal.
+ *
+ * ⚠ FILTRERET MOD ALLE_PERMS. En streng kan bære et navn kataloget ikke
+ * kender — fra et gammelt token, mintet før en permission blev fjernet. Den
+ * skal ikke tælles med som noget brugeren har.
+ */
+export function permsFraStreng(perms) {
+  if (Array.isArray(perms)) return perms.filter((p) => ALLE_PERMS.includes(p));
+  if (typeof perms !== "string" || !perms) return [];
+  const valgt = new Set(perms.split("|").filter(Boolean));
+  return ALLE_PERMS.filter((p) => valgt.has(p));
+}
+
+/**
  * harPerm(perms, perm) — tager både claim-strengen og et array, så kaldere
  * ikke skal huske hvilken form de har fat i.
  */
