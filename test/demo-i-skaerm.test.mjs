@@ -52,8 +52,13 @@ const NODE_FOR = {
   DEMO_ENHEDER: "enheder",
 };
 
-/* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag. */
-const LOFT = 30;
+/* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag.
+   30 → 23: Disponering læser nu `koeretoejer`, `personale`, `kompetencer`,
+   `leverandoerer` og `opgaver` fra noderne. Den byggede begge gitres RÆKKER
+   af `DEMO_KOERETOEJER` og filtrerede dem på de id'er kundens etaper peger
+   på — hos en rigtig kunde matcher de ingenting, så ugegitteret ville stå
+   tomt uden at nogen havde slettet en bil. */
+const LOFT = 23;
 
 const jsxFiler = (mappe) => {
   const ud = [];

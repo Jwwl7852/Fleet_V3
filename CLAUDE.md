@@ -411,23 +411,26 @@ kan ikke komme ud af sync.
 
 ## Kendte huller
 
-- Cloud Functions mangler: reservationskonflikter, bookingtilstandsskift med
-  rolletjek, nummerserier. Rules er `.write: false` på de noder.
-- **Disponerings datamodel er på plads** (beslutning 21). `opgaver.art` er
-  `vaerksted` | `facility` — **ikke** `langtur`. Skærmen læser to noder:
-  `opgaver` med art `vaerksted` i dagsvisningen, `etaper` i ugesvisningen.
-  Selve skærmen er ikke bygget.
-- **Disponering har tre forudsætninger** — se ARKITEKTUR. `kanDisponeres()`,
-  `kraevedeKompetencer()` + `tjekKompetencer()` og `kanBaere()` er bygget og
-  testet, men **intet kalder dem**. De hører i den Cloud Function der skriver
-  etapen, ikke i skærmen: ligger de i skærmen, omgår en direkte skrivning dem.
-  En udløbet kompetence skal **blokere**, ikke advare.
-- **Disponering skal bygges med etapemodellen i tankerne** (beslutning 16).
-  Det man disponerer, er en *etape* — ikke en booking. Etaper ligger i
-  `etaper/<etapeId>`, har deres egen tilstand, og `aaben` betyder at etapen
-  venter på en passende tur. Skærmen skal kunne vise åbne etaper ved siden af
-  planlagte, og den skal læse to noder: `etaper` og `opgaver`. Bygger du den
-  med én booking = én tur, er det en migrering bagefter.
+- **Cloud Functions: tre af tre er nu bygget — men én kun halvt.**
+  Reservationskonflikter (`tjekLedigMod()` i `etapeskift` og
+  `kasseudlaanskriv`) og etapens tilstandsskift med rolletjek (`etapeskift` —
+  bookingens tilstand er AFLEDT, beslutning 40) er der. Nummerserien er der
+  for **fakturagrundlag** (`naesteGrundlagsnummer`), men `naesteBookingNummer`
+  kaldes **ingen steder**: der findes ingen `bookingopret`, og `bookinger` er
+  `.write: false`. En booking kan altså ikke oprettes af en klient.
+- **Disponering er BYGGET som visning, og de fem tjek håndhæves — i
+  `etapeskift`, ikke i skærmen.** `kanDisponeres()`, `kraevedeKompetencer()`
+  + `tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og
+  `tjekKoerehviletid()` samles i `tjekDisponering()`, som BEGGE sider kalder.
+  Skærmen VISER; funktionen HÅNDHÆVER. Læg dem ikke i skærmen: en direkte
+  skrivning ville gå uden om. En udløbet kompetence **blokerer**.
+  `opgaver.art` er `vaerksted` | `facility` — **ikke** `langtur`
+  (beslutning 21), og det man disponerer er en **etape** (beslutning 16).
+  ⚠ **Det der mangler, er det interaktive gitter.** "Træk opgave hertil" er
+  en attrap, og det er et UI-spørgsmål nu: `etapeskift` findes at kalde.
+  ⚠ **Og værkstedsopgavens reservation bygges kun i skærmen** — prioritet 40
+  findes derfor ikke i noden, så `etapeskift` kan ikke se at bilen står på
+  liften. Kun `opgaveplanlaeg` skriver en. Se README.
 - **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
   parsing, afsendelse og scanning mangler. `sager/` findes ikke i
   `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,

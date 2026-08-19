@@ -24,6 +24,26 @@
  *  platformsspørgsmål: der er noget at kalde.
  * ═══════════════════════════════════════════════════════════════════════
  *
+ * ⚠ OG SKÆRMEN LÆSER NU DE NODER DEN PÅSTOD AT LÆSE.
+ *
+ * Hovedet her har hele tiden sagt at dagsvisningen læser `opgaver` med art
+ * `vaerksted`. Den læste `DEMO_BESOEG` — som selv var blevet en **afledt
+ * visning** af `DEMO_OPGAVER`, altså et demo-datasæt for en node der ER
+ * seedet. Og de to har ikke samme felter: besøget bar `fra`, `til` og `type`,
+ * noden bærer `startMs`, `estimeretMin` og `arbejdstype`. Detaljepanelet
+ * skrev derfor tomt på hver eneste rigtige opgave.
+ *
+ * ⚠ VÆRRE VAR RÆKKERNE. Begge gitre byggede deres rækker af
+ * `DEMO_KOERETOEJER` og filtrerede dem på de id'er kundens etaper peger på.
+ * Hos en rigtig kunde matcher de id'er ingenting — så **ugegitteret ville
+ * stå tomt**, uden at nogen havde slettet en bil. Samme mønster som
+ * Bookingopsætnings egen kopi af divisionsfilteret: usynlig indtil den ene
+ * side flyttede sig.
+ *
+ * Chaufføren, hans kompetencer og leverandørnavnet kom samme sted fra. En
+ * udløbet kompetence BLOKERER i `etapeskift`, og skærmen viste en anden
+ * mands beviser. Se `test/demo-i-skaerm.test.mjs` — loftet er sat ned.
+ *
  * DE FEM TJEK LIGGER I `fleet/disponering.js` — ÉT sted.
  *
  *   kanDisponeres()      en trailer kan ikke køre alene
@@ -69,15 +89,16 @@ import {
   straekningFraEtape,
 } from "../../fleet/etaper.js";
 import { TILSTAND } from "../../fleet/booking-state.js";
+import { OPGAVE_STATUS, ARBEJDSTYPE, ressourceId } from "../../fleet/opgaver.js";
+import { slutter, raekkerIVindue } from "../../fleet/driftskalender.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../../fleet/demo-personale.js";
-import { DEMO_BESOEG, BESOEG_STATUS, OMKOSTNINGSTYPE } from "../../fleet/demo-vaerksted.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 
 /* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
    fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
 import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
-const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 const DAG = 86400000;
 const T = 3600000;
@@ -117,15 +138,22 @@ const DAG_TIL_TIME = 18;
  * Provisioneringen udleder nu fraværet med den samme
  * `reservationFraFravaer()`.
  *
- * ⚠ VÆRKSTEDSBESØGENE BYGGES STADIG HER, og det er et hul der skal skrives
- * ned frem for skjules: `besoeg` har INGEN node. Prioritet 40 — den højeste,
- * højere end en booking — findes derfor kun i skærmen, og `etapeskift` kan
- * ikke se at bilen står på liften. Se README.
+ * ⚠ VÆRKSTEDSOPGAVERNE HAR INGEN RESERVATION I NODEN, og det er et hul der
+ * skal skrives ned frem for skjules. Prioritet 40 — den højeste, højere end
+ * en booking — bygges derfor her i skærmen, og `etapeskift` kan **ikke** se
+ * at bilen står på liften. Kun `opgaveplanlaeg` skriver en opgaves
+ * reservation, og de opgaver der blev oprettet før den funktion fandtes, har
+ * ingen. Se README.
+ *
+ * ⚠ MEN OPGAVERNE SELV KOMMER NU FRA NODEN. De blev bygget af `DEMO_BESOEG`,
+ * som siden er blevet en AFLEDT visning af `DEMO_OPGAVER` — altså et
+ * demo-datasæt for en node der er seedet. Skærmen spærrede for kundens biler
+ * på grundlag af vores demoværksteds besøg.
  */
-function byggReservationer(fraNoden) {
+function byggReservationer(fraNoden, vaerkstedsopgaver = []) {
   /* Noden er allerede på formen reservationer/<type>/<id>/<resId>;
      tjekDisponering() slår op i netop den form, og serveren læser den
-     direkte fra basen. Her lægges besøgene oven i den samme form. */
+     direkte fra basen. Her lægges opgaverne oven i den samme form. */
   const ud = {};
   for (const [type, prRessource] of Object.entries(fraNoden || {})) {
     ud[type] = {};
@@ -138,8 +166,12 @@ function byggReservationer(fraNoden) {
     ud[r.ressourceType][r.ressourceId] ??= [];
     ud[r.ressourceType][r.ressourceId].push({ id, ...r });
   };
-  for (const b of DEMO_BESOEG) {
-    try { laeg(`r-${b.id}`, reservationFraOpgave(b)); } catch { /* ufuldstændig demo-post */ }
+  for (const o of vaerkstedsopgaver) {
+    /* ⚠ EN OPGAVE UDEN VINDUE SPRINGES OVER — den kaster. `startMs` uden
+       `estimeretMin` er ikke et besøg af nul længde; det er et besøg vi ikke
+       kender længden på, og et gættet vindue ville spærre en bil i et
+       tidsrum ingen har besluttet. Se slutter() i driftskalender.js. */
+    try { laeg(`r-${o.id}`, reservationFraOpgave(o)); } catch { /* uden vindue */ }
   }
   return ud;
 }
@@ -191,28 +223,89 @@ export default function Disponering() {
     division: "alle", graense: 500,
   });
   const etaper = etaperListe.data;
+
+  /* ⚠ FIRE NODER MERE — OG DE VAR ALLE FIRE DEMOFILEN.
+     Gitterets RÆKKER blev bygget af `DEMO_KOERETOEJER`, chaufføren og hans
+     kompetencer af `demo-personale.js`, og dagsvisningen af `DEMO_BESOEG`.
+     Alle fire noder er seedet, så en rigtig kunde så vores demoflåde som
+     rækker — og fordi rækkerne filtreres på de id'er hans etaper peger på,
+     ville ugegitteret stå TOMT uden at nogen havde slettet en bil.
+
+     `division: "alle"`: gitteret viser hele flåden. Stamdata bærer i øvrigt
+     ikke feltet (beslutning 19), og en bus-etape hører på kalenderen også
+     når Gods er valgt. */
+  const koeretoejer = useListe("koeretoejer", {
+    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+  });
+  const personale = useListe("personale", {
+    division: "alle", vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
+  const kompetencer = useListe("kompetencer", {
+    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOMPETENCER,
+  });
+  const leverandoerer = useListe("leverandoerer", {
+    division: "alle", vindue: "alle", graense: 200, demo: DEMO_LEVERANDOERER,
+  });
+  /* ⚠ SAMME OPSLAG SOM DRIFTSKALENDEREN. Ét vindue, ét ordnPaa — to skærme
+     der læste den samme node forskelligt, ville vise hver sin dag. */
+  const opgaver = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
+    division: "alle", graense: 500, demo: DEMO_OPGAVER,
+  });
+
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
+
   const fraNoden = useMemo(
     () => Object.fromEntries(resv.data.map(({ id, ...prRessource }) => [id, prRessource])),
     [resv.data]);
-  const reservationer = useMemo(() => byggReservationer(fraNoden), [fraNoden]);
-  const personEfterId = new Map(DEMO_PERSONALE.map((p) => [p.id, p]));
-  const bilEfterId = new Map(DEMO_KOERETOEJER.map((b) => [b.id, b]));
 
   /* --- Dagsvisning: opgaver med art vaerksted --- */
-  const dagensOpgaver = DEMO_BESOEG.filter((b) => b.fra < dagTil && dagFra < b.til);
-  const dagRaekker = useMemo(() => {
-    const ider = new Set(dagensOpgaver.map((o) => o.koeretoejId));
-    return DEMO_KOERETOEJER.filter((b) => ider.has(b.id)).map((b) => ({
+  /* ⚠ ARTEN, IKKE ET DEMOSÆT. `opgaver` bærer både værksted og facility
+     (beslutning 21), og de to har ikke samme feltskema. Dagsvisningen er
+     værkstedet; facility har sin egen skærm på den SAMME node. */
+  const vaerkstedsopgaver = useMemo(
+    () => opgaver.data.filter((o) => o.art === "vaerksted"),
+    [opgaver.data]);
+
+  const reservationer = useMemo(
+    () => byggReservationer(fraNoden, vaerkstedsopgaver),
+    [fraNoden, vaerkstedsopgaver]);
+  const personEfterId = useMemo(
+    () => new Map(personale.data.map((p) => [p.id, p])), [personale.data]);
+  const bilEfterId = useMemo(
+    () => new Map(koeretoejer.data.map((b) => [b.id, b])), [koeretoejer.data]);
+
+  /* ⚠ VINDUET REGNES AF `startMs` + `slutter()`, IKKE AF `fra`/`til`.
+     Noden bærer ikke de to felter — det var `DEMO_BESOEG`, som er en afledt
+     visning. `slutter()` svarer `null` for en opgave uden estimat frem for at
+     regne videre på startMs; en opgave uden vindue kan ikke tegnes, men den
+     forsvinder ikke — `raekkerIVindue()` giver den et døgn så rækken findes,
+     og blokken får et synligt minimum. */
+  const dagensOpgaver = useMemo(() => vaerkstedsopgaver.filter((o) => {
+    if (!Number.isFinite(o.startMs)) return false;
+    const slut = slutter(o) ?? o.startMs + T;
+    return o.startMs < dagTil && dagFra < slut;
+  }), [vaerkstedsopgaver, dagFra, dagTil]);
+
+  const dagRaekker = useMemo(
+    () => raekkerIVindue(dagensOpgaver, dagFra, dagTil, koeretoejer.data).map((b) => ({
       id: b.id, label: b.kaldenavn, under: b.navn,
       pille: <Pille tone={KOERETOEJ_STATUS[b.status]?.pill}>{KOERETOEJ_STATUS[b.status]?.label}</Pille>,
-    }));
-  }, [dagFra, dagTil]);
+    })),
+    [dagensOpgaver, dagFra, dagTil, koeretoejer.data]);
 
-  const dagBlokke = dagensOpgaver.map((o) => ({
-    id: o.id, raekkeId: o.koeretoejId, fra: o.fra, til: o.til,
-    label: `${OMKOSTNINGSTYPE[o.type]} · ${lvNavn(o.leverandoerId)}`,
-    titel: o.beskrivelse, tone: BESOEG_STATUS[o.status]?.tone,
-  }));
+  const dagBlokke = useMemo(() => dagensOpgaver
+    .filter((o) => ressourceId(o))
+    .map((o) => ({
+      id: o.id, raekkeId: ressourceId(o), fra: o.startMs,
+      /* Én time er nok til at blokken kan ses og klikkes; den foregiver ikke
+         at være en varighed nogen har besluttet. Samme greb som gitteret i
+         Driftskalenderen. */
+      til: slutter(o) ?? o.startMs + T,
+      label: [ARBEJDSTYPE[o.arbejdstype], o.leverandoerId ? lvNavn(o.leverandoerId) : null]
+        .filter(Boolean).join(" · ") || o.beskrivelse,
+      titel: o.beskrivelse, tone: OPGAVE_STATUS[o.status]?.pill,
+    })), [dagensOpgaver, leverandoerer.data]);
 
   /* Drop-felterne beregnes af SAMME data som blokkene — se ledigeVinduer(). */
   const dagDropfelter = useMemo(() => {
@@ -238,10 +331,10 @@ export default function Disponering() {
        traileren se fri ud i hele turen — præcis den fejl reservationen på
        begge enheder findes for at undgå. */
     const ider = new Set(ugensEtaper.flatMap(enhedsIder));
-    return DEMO_KOERETOEJER.filter((b) => ider.has(b.id)).map((b) => ({
+    return koeretoejer.data.filter((b) => ider.has(b.id)).map((b) => ({
       id: b.id, label: b.kaldenavn, under: b.navn,
     }));
-  }, [ugeFra, ugeTil]);
+  }, [ugeFra, ugeTil, koeretoejer.data]);
 
   /* Én blok pr. (etape, enhed): turen tegnes på hver af sine enheders rækker. */
   const ugeBlokke = ugensEtaper.flatMap((e) => enhedsIder(e).map((raekkeId) => ({
@@ -260,7 +353,10 @@ export default function Disponering() {
   for (const e of ugensEtaper) {
     const enheder = enhedsIder(e).map((id) => bilEfterId.get(id)).filter(Boolean);
     const person = personEfterId.get(e.personId);
-    const kompetencer = DEMO_KOMPETENCER.filter((c) => c.personId === e.personId);
+    /* ⚠ KUNDENS BEVISER, IKKE DEMOSÆTTETS. En udløbet kompetence BLOKERER i
+       `etapeskift`, og skærmen skal vise det samme svar som serveren giver —
+       med demofilen viste den en anden chaufførs beviser. */
+    const hansKompetencer = kompetencer.data.filter((c) => c.personId === e.personId);
     /* Chaufførens strækninger i vinduet — køre-hviletid gælder personen, ikke
        turen, så alle hans ture skal med. */
     /* ⚠ ALLE HANS TURE, OGSÅ DEM UDEN FOR VINDUET. Køre-hviletid gælder
@@ -275,7 +371,8 @@ export default function Disponering() {
     for (const f of tjekDisponering({
       reservationerForEtapen: resv,
       enheder,
-      person, kompetencer, reservationer, straekninger, gods: e.maengde,
+      person, kompetencer: hansKompetencer, reservationer, straekninger,
+      gods: e.maengde,
     })) {
       fund.push({ ...f, id: `${e.id}-${fund.length}`, hvor: `${e.id} · ${e.fraSted} → ${e.tilSted}` });
     }
@@ -324,8 +421,9 @@ export default function Disponering() {
               dropfelter={{
                 felter: dagDropfelter,
                 tekst: "Træk opgave hertil",
-                titel: "Ikke bygget endnu. Disponering skrives af en Cloud Function der " +
-                       "reserverer atomisk — to disponenter kan ramme samme sekund.",
+                titel: "Ikke bygget endnu. Funktionen findes — etapeskift skriver " +
+                       "tilstand og reservationer atomisk — men gitteret kan endnu " +
+                       "ikke kalde den.",
               }}
               tom="Ingen værkstedsopgaver i dag."
             />
@@ -347,10 +445,15 @@ export default function Disponering() {
         )}
 
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          ⚠ <b>Fase 0 er en visning.</b> Der er ingen drag-and-drop og ingen skrivning.
-          Feltet <b>Træk opgave hertil</b> er en attrap: rigtig disponering skriver
-          etapens enhed og dens reservation i <b>én transaktion</b> fra en Cloud
-          Function, og <code>etaper</code> er <b>.write: false</b> indtil den findes.
+          ⚠ <b>Skærmen viser; den skriver ikke.</b> Feltet <b>Træk opgave hertil</b>{" "}
+          er stadig en attrap — men grunden er en anden nu.{" "}
+          <code>etapeskift</code> <b>findes</b>: den udfører etapens tilstandsskift
+          og skriver reservationerne i <b>én</b> atomisk opdatering, og den kører de
+          samme fem tjek som står herunder. <code>etaper</code> og{" "}
+          <code>reservationer</code> er <b>.write: false</b> for alle — vejen ind{" "}
+          <i>er</i> funktionen. Det der mangler, er det interaktive gitter, og det er
+          et UI-spørgsmål: der er noget at kalde. Et forslag godkendes i dag på{" "}
+          <Link className="fc-a" to="/booking/forslag">Forslag</Link>.
         </p>
       </Kort>
 
@@ -358,7 +461,7 @@ export default function Disponering() {
         <Konflikter fund={fund} kpiTal={k.disponering.konflikter} />
         <div className="fc-grid">
           <Uplanlagte etaper={etaper} />
-          <Detalje post={valgt} personEfterId={personEfterId} />
+          <Detalje post={valgt} personEfterId={personEfterId} lvNavn={lvNavn} />
         </div>
       </Gitter>
     </div>
@@ -391,10 +494,10 @@ function Konflikter({ fund, kpiTal }) {
       />
 
       <p className="fc-hint" style={{ marginTop: 12 }}>
-        Det er <b>første gang de fem tjek faktisk kaldes</b>. De har været bygget og
-        testet uden at nogen kaldte dem. Men de <b>blokerer ikke her</b> — de vises.
-        Håndhævelsen hører i den Cloud Function der skriver etapen; ligger den i
-        skærmen, kan en direkte skrivning gå uden om den.
+        De fem tjek <b>blokerer ikke her</b> — de vises. Håndhævelsen ligger i{" "}
+        <code>etapeskift</code>, som kalder <b>den samme</b>{" "}
+        <code>tjekDisponering()</code> og afviser med den samme sætning. Lå
+        kontrollen i skærmen, kunne en direkte skrivning gå uden om den.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
         {koerehviletidTekst(tjekKoerehviletid([]))}
@@ -440,7 +543,7 @@ function Uplanlagte({ etaper }) {
 
 /* ---- Detaljepanel ------------------------------------------------------ */
 
-function Detalje({ post, personEfterId }) {
+function Detalje({ post, personEfterId, lvNavn }) {
   if (!post) {
     return (
       <Kort titel="Detaljer">
@@ -452,12 +555,27 @@ function Detalje({ post, personEfterId }) {
   /* En etape har fraSted; en værkstedsopgave har et værksted. */
   const erEtape = Boolean(post.fraSted);
   if (!erEtape) {
+    /* ⚠ NODENS FELTNAVNE. Her stod `type`, `fra` og `til` — de tre felter
+       `DEMO_BESOEG` bar, og som noden IKKE har. Panelet skrev derfor tomt på
+       hver eneste rigtige opgave. Se noten ved FELT i opgaver.js: det er
+       tredje gang de navne har kostet noget. */
+    const slut = slutter(post);
     return (
       <Kort titel={post.beskrivelse}>
-        <MiniLinje label="Type" vaerdi={OMKOSTNINGSTYPE[post.type]} />
-        <MiniLinje label="Værksted" vaerdi={lvNavn(post.leverandoerId)} />
-        <MiniLinje label="Fra" vaerdi={klokke(post.fra)} />
-        <MiniLinje label="Til" vaerdi={`${klokke(post.til)} (eksklusiv)`} />
+        <MiniLinje label="Arbejdstype" vaerdi={ARBEJDSTYPE[post.arbejdstype] || "—"} />
+        <MiniLinje label="Værksted" vaerdi={post.leverandoerId ? lvNavn(post.leverandoerId) : "eget værksted"} />
+        <MiniLinje label="Start" vaerdi={Number.isFinite(post.startMs) ? klokke(post.startMs) : "—"} />
+        {/* ⚠ EN OPGAVE UDEN ESTIMAT HAR INGEN SLUTNING — og det er ikke det
+            samme som at den slutter med det samme. Gitteret giver den et
+            synligt minimum for at kunne tegne den; panelet siger sandheden. */}
+        <MiniLinje
+          label="Slut"
+          vaerdi={slut ? `${klokke(slut)} (eksklusiv)` : <span className="fc-bad">intet estimat</span>}
+        />
+        <MiniLinje label="Status" vaerdi={
+          <Pille tone={OPGAVE_STATUS[post.status]?.pill}>
+            {OPGAVE_STATUS[post.status]?.label || post.status}
+          </Pille>} />
         <MiniLinje label="Art" vaerdi={<code>{post.art}</code>} />
         <MiniLinje label="Division" vaerdi={post.division} />
       </Kort>

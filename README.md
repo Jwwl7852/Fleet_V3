@@ -484,12 +484,14 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    kunde kan ikke *liste* sine egne bookinger — `.read` på `bookinger` er alt
    eller intet. Det kræver en indeksnode pr. kunde, og den beslutning skal
    træffes før portalen bygges.
-4. **Disponering.** Den lå sidst med vilje: den læser de reservationer som
-   fravær og værksted skriver, og bygget først ville den disponere på en
-   kalender der ikke vidste noget om syge chauffører eller biler på værksted.
-   Nu ved den det, og **den sidste datamodelbeslutning er truffet** —
-   se beslutning 21. Skærmen læser **to noder**: `opgaver` med art `vaerksted`
-   i dagsvisningen, `etaper` i ugesvisningen.
+4. **Disponerings interaktive gitter.** Skærmen er bygget og læser nu sine
+   fem noder; `etapeskift` findes og håndhæver de fem tjek. Det der mangler,
+   er at gitteret kan **kalde** den — "Træk opgave hertil" er stadig en
+   attrap. Det er et UI-spørgsmål nu, ikke et platformsspørgsmål.
+   ⚠ **To ting hører med i samme ombæring:** værkstedsopgavens reservation
+   bygges kun i skærmen, så `etapeskift` kan ikke se at bilen står på liften
+   — og et forslag godkendes i dag på **Forslag**, så gitteret skal føre
+   derhen frem for at få sin egen kopi af den handling.
 
 ### Længdebåndet — trin 3 af beslutning 18 er lukket
 
@@ -570,29 +572,62 @@ Et `null` alene kan ikke skelne dem, og de tre fører hvert sit sted hen.
   tur, og `baandOverlap()` findes for at formularen kan afvise det **før**
   satsen lægges — en sats overskrives ikke bagefter.
 
-### Disponering står i fase 0 — de fem tjek kaldes, men blokerer ikke
+### Disponering læser noderne — og skriver stadig ikke
 
-Skærmen er bygget som **visning**. To faner, to noder: dagsvisningen læser
-`opgaver` med art `vaerksted` (timer, 06–18), ugesvisningen læser `etaper`
-(døgn, syv dage, ETA over døgngrænser og grænseovergange).
+Skærmen er en **visning**. To faner, to noder: dagsvisningen læser `opgaver`
+med art `vaerksted` (timer, 06–18), ugesvisningen læser `etaper` (døgn, syv
+dage, ETA over døgngrænser og grænseovergange).
 
-**Det er første gang de fem tjek faktisk kaldes.** De har været bygget og
-testet uden at nogen kaldte dem — `kanDisponeres()`, `kraevedeKompetencer()` +
-`tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og `tjekKoerehviletid()`.
-⚠ **Men de blokerer ikke.** At de kaldes betyder at man kan *se* hvad de siger,
-ikke at de er håndhævet. Håndhævelsen hører i den Cloud Function der skriver
-etapen; ligger den i skærmen, kan en direkte skrivning gå uden om den.
+**De fem tjek kaldes — og de håndhæves nu også, men ikke her.**
+`kanDisponeres()`, `kraevedeKompetencer()` + `tjekKompetencer()`, `kanBaere()`,
+`tjekLedigMod()` og `tjekKoerehviletid()` ligger i `fleet/disponering.js`, ét
+sted, og `etapeskift` kalder **den samme** `tjekDisponering()` og afviser med
+den samme sætning. Skærmen VISER; funktionen HÅNDHÆVER. Lå kontrollen i
+skærmen, kunne en direkte skrivning gå uden om den.
 
-Der er **ingen drag-and-drop og ingen skrivning**. "Træk opgave hertil" er en
-attrap der siger hvorfor i sin `title`. Bygger man det interaktive før Cloud
-Functions, bygger man det to gange — og anden gang er en migrering af data der
-blev skrevet forkert i mellemtiden.
+Der er stadig **ingen drag-and-drop**. "Træk opgave hertil" er en attrap — men
+grunden er en anden nu: `etaper` og `reservationer` er `.write: false` for
+alle, og vejen ind *er* `etapeskift`, som findes. Det der mangler, er det
+interaktive gitter, og det er et **UI-spørgsmål**: der er noget at kalde. Et
+forslag godkendes i dag på **Forslag**.
 
-`tjekLedig()` blev splittet for at gøre det muligt: logikken lå inde i en
-`async` funktion der krævede en database, så den fjerde af de fem tjek kunne
-ikke køre i demo-mode og kunne ikke testes. `tjekLedigMod()` er nu den rene
-kerne, `tjekLedig()` henter og delegerer. Samme greb som `gitter.js` og
-`demo-kpi.js`.
+#### ⚠ Fem noder blev læst fra demofilen — og rækkerne var det værste
+
+Hovedet i `Disponering.jsx` har hele tiden sagt at dagsvisningen læser
+`opgaver`. Den læste `DEMO_BESOEG` — som selv var blevet en **afledt visning**
+af `DEMO_OPGAVER`, altså et demo-datasæt for en node der er seedet. De to har
+ikke samme felter: besøget bar `fra`, `til` og `type`; noden bærer `startMs`,
+`estimeretMin` og `arbejdstype`. **Detaljepanelet skrev derfor tomt på hver
+eneste rigtige opgave** — tredje gang de feltnavne har kostet noget.
+
+⚠ **Værre var rækkerne.** Begge gitre byggede deres rækker af
+`DEMO_KOERETOEJER` og filtrerede dem på de id'er kundens etaper peger på. Hos
+en rigtig kunde matcher de id'er ingenting — så **ugegitteret ville stå tomt,
+uden at nogen havde slettet en bil.** Samme mønster som Bookingopsætnings egen
+kopi af divisionsfilteret: usynlig indtil den ene side flytter sig.
+
+Chaufføren, hans kompetencer og leverandørnavnet kom samme sted fra. Det er
+ikke kosmetik: **en udløbet kompetence blokerer i `etapeskift`**, og skærmen
+viste en anden mands beviser — skærmen sagde ja hvor serveren ville sige nej.
+
+Fem noder læses nu med `useListe(..., { demo: … })`: `koeretoejer`,
+`personale`, `kompetencer`, `leverandoerer` og `opgaver`. Loftet i
+`test/demo-i-skaerm.test.mjs` er sat **30 → 23**.
+
+⚠ **Loftet fangede det ikke — det TALTE det.** Debitten var kendt og skrevet
+ned; den var bare ikke betalt. Prøven `⚠ BEGGE GITRES RÆKKER KOMMER FRA
+koeretoejer` er skrevet så den fejler hvis nogen ruller det tilbage, og
+efterprøvet ved at gøre netop det.
+
+#### Hullet der står tilbage
+
+**Værkstedsopgavens reservation bygges stadig i skærmen.** Prioritet 40 — den
+højeste, højere end en booking — findes derfor kun i browseren, og
+`etapeskift` kan **ikke** se at bilen står på liften. Kun `opgaveplanlaeg`
+skriver en opgaves reservation, og de opgaver der blev oprettet før den
+funktion fandtes, har ingen. En opgave uden `estimeretMin` får slet ingen:
+`slutter()` svarer `null` frem for at gætte et vindue, og en bil må ikke
+spærres i et tidsrum ingen har besluttet.
 
 ### Gitterkalenderen er en genbrugskontrakt
 

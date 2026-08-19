@@ -28,6 +28,10 @@ import {
 import { DEMO_KOERETOEJER } from "../src/fleet/demo-flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../src/fleet/demo-personale.js";
 import { DEMO_BESOEG } from "../src/fleet/demo-vaerksted.js";
+import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
+import { ressourceId } from "../src/fleet/opgaver.js";
+import { slutter } from "../src/fleet/driftskalender.js";
+import { readFileSync } from "node:fs";
 import { kraevedeKompetencer } from "../src/fleet/flaade.js";
 import { tjekKompetencer } from "../src/fleet/personale.js";
 
@@ -387,5 +391,104 @@ describe("De tre kilder deler én reservationsnode", () => {
       Object.entries(PRIORITET).sort((a, b) => b[1] - a[1]).map(([k]) => k),
       ["vaerksted", "fravaer", "facilitySag", "booking", "manuel"]
     );
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   Skærmen læser noden — ikke demofilen
+   ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ KODEN, IKKE PROSAEN. Noterne i skærmen forklarer netop hvad der stod før,
+ * med navnene i — en prøve der også læste kommentarerne, ville straffe den
+ * der skrev ned hvorfor. Samme greb som i format.test.mjs.
+ */
+const udenKommentarer = (s) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+describe("Disponering læser de noder hovedet påstår", () => {
+  /* ⚠ UDEN KOMMENTARER. Reglen gælder KODEN — og noterne i filen forklarer
+     netop hvad der stod før, med navnene i. En prøve der også læste prosaen,
+     ville straffe den der skrev ned hvorfor. Samme greb som
+     format.test.mjs. */
+  const skaerm = udenKommentarer(
+    readFileSync("src/moduler/booking/Disponering.jsx", "utf8"));
+
+  it("⚠ DAGSVISNINGEN LÆSER `opgaver`, IKKE `DEMO_BESOEG`", () => {
+    /* Hovedet har hele tiden sagt "opgaver med art vaerksted". Den læste
+       DEMO_BESOEG — som selv er blevet en AFLEDT visning af DEMO_OPGAVER,
+       altså et demo-datasæt for en node der ER seedet. */
+    assert.match(skaerm, /useListe\("opgaver"/,
+      "dagsvisningen læser ikke noden");
+    assert.doesNotMatch(skaerm, /DEMO_BESOEG/,
+      "skærmen bruger stadig værkstedsbesøgene");
+    assert.doesNotMatch(skaerm, /OMKOSTNINGSTYPE/,
+      "OMKOSTNINGSTYPE hører til et besøg — noden bærer `arbejdstype`");
+  });
+
+  it("⚠ BEGGE GITRES RÆKKER KOMMER FRA `koeretoejer`", () => {
+    /* Den værste af de fem: rækkerne blev bygget af DEMO_KOERETOEJER og
+       filtreret på de id'er kundens etaper peger på. Hos en rigtig kunde
+       matcher de ingenting, så ugegitteret ville stå TOMT — uden at nogen
+       havde slettet en bil. Samme mønster som Bookingopsætnings egen kopi
+       af divisionsfilteret. */
+    assert.match(skaerm, /useListe\("koeretoejer"/);
+    assert.match(skaerm, /useListe\("personale"/);
+    assert.match(skaerm, /useListe\("kompetencer"/);
+    /* Demosættene må KUN stå som faldbakke — `demo:` i useListe. */
+    for (const navn of ["DEMO_KOERETOEJER", "DEMO_PERSONALE", "DEMO_KOMPETENCER",
+                        "DEMO_OPGAVER", "DEMO_LEVERANDOERER"]) {
+      const brug = [...skaerm.matchAll(new RegExp(navn, "g"))].length;
+      const somFaldbakke = [...skaerm.matchAll(new RegExp(`demo: ${navn}`, "g"))].length;
+      const iImport = 1;
+      assert.equal(brug, somFaldbakke + iImport,
+        `${navn} bruges uden for demo:-faldbakken i Disponering`);
+    }
+  });
+
+  it("⚠ VINDUET REGNES AF NODENS FELTER, med den DELTE funktion", () => {
+    /* `fra`/`til` var besøgets felter. Noden bærer `startMs` og
+       `estimeretMin`, og oversættelsen står i `slutter()` — ét sted, delt
+       med Driftskalenderen. To gitre der læste det samme interval
+       forskelligt, opdages ikke ved at kigge på dem. */
+    assert.match(skaerm, /slutter\(/, "skærmen regner slutningen selv");
+    assert.match(skaerm, /ressourceId\(/, "skærmen udleder rækken selv");
+    assert.match(skaerm, /raekkerIVindue\(/);
+  });
+});
+
+describe("Dagsvisningen har noget at vise", () => {
+  const vaerksted = DEMO_OPGAVER.filter((o) => o.art === "vaerksted");
+
+  it("demo-sættet bærer værkstedsopgaver med et starttidspunkt", () => {
+    /* En migrering der tømmer gitteret, ser ud som en rolig dag. */
+    assert.ok(vaerksted.length >= 5, `kun ${vaerksted.length} værkstedsopgaver`);
+    for (const o of vaerksted) {
+      assert.ok(Number.isFinite(o.startMs), `${o.id} mangler startMs`);
+      assert.ok(ressourceId(o), `${o.id} har ingen ressource at ligge på`);
+    }
+  });
+
+  it("⚠ EN OPGAVE UDEN ESTIMAT HAR INGEN SLUTNING — og det er ikke nul", () => {
+    /* `slutter()` svarer null frem for at regne videre på startMs. Gjorde
+       den det, ville hver opgave uden estimat stå som FORSINKET i det
+       øjeblik den blev oprettet. Gitteret giver den et synligt minimum;
+       detaljepanelet skriver "intet estimat". */
+    assert.equal(slutter({ startMs: 1000 }), null);
+    assert.equal(slutter({ startMs: 1000, estimeretMin: 0 }), null);
+    assert.equal(slutter({ startMs: 1000, estimeretMin: 60 }), 1000 + 3600000);
+  });
+
+  it("⚠ VÆRKSTEDSOPGAVEN SPÆRRER BILEN — prioritet 40", () => {
+    /* Reservationen bygges i skærmen, fordi de opgaver der blev oprettet før
+       `opgaveplanlaeg` fandtes, ikke har en i noden. Kilden SKAL være
+       `vaerksted`: en bekræftet værkstedsaftale må ikke tabe til en booking. */
+    const medVindue = vaerksted.filter((o) => slutter(o));
+    assert.ok(medVindue.length, "ingen af opgaverne har et vindue");
+    for (const o of medVindue) {
+      const r = reservationFraOpgave(o);
+      assert.equal(r.kilde.type, KILDE.vaerksted);
+      assert.equal(r.ressourceId, ressourceId(o));
+    }
   });
 });
