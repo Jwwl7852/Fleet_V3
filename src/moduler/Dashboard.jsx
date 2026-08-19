@@ -9,6 +9,7 @@
  * kan Dashboard ikke længere sige "3 servicepunkter forfalder" mens Facility
  * siger 18 — det var tilfældet i mockupsene.
  */
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
@@ -21,8 +22,17 @@ import { harModul, MODUL } from "../fleet/moduler.js";
    INTET (—) i tavshed — og "—" ligner et ubesvaret nøgletal frem for en
    tastefejl i en sti. Se dashboards.js. */
 import {
-  SAMLET, MODULKORT, kortTal, handlinger, tilgaengelige,
+  SAMLET, MODULKORT, kortTal, kpiVaerdi, handlinger, tilgaengelige,
 } from "../fleet/dashboards.js";
+/* ⚠ LAYOUTET ER BRUGERENS EGEN PRÆFERENCE OM SIG SELV — til forskel fra
+   dashboardvisning, som er en ADMINISTRATORS beslutning om en ANDEN bruger.
+   Derfor skrives det herfra gennem skriv.js’ ene vej ind (og ikke af en
+   Cloud Function), og reglen er auth.uid === $uid. Se widgets.js. */
+import {
+  widget, tilgaengeligeWidgets, standardlayout, layoutFor, valideLayout,
+  MAKS_WIDGETS,
+} from "../fleet/widgets.js";
+import { gem } from "../fleet/skriv.js";
 /* ⚠ EN VISNING, IKKE EN ADGANG — se dashboardvisning.js. Indstillingen
    skjuler et dashboard i vælgeren; den spærrer ikke tallene, som ligger i en
    kpi-node enhver i tenanten kan læse. */
@@ -33,7 +43,7 @@ import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste, Knap, Formularsvar
 } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
@@ -78,7 +88,7 @@ const beloebEllerIntet = (oere, dec) =>
 
 export default function Dashboard() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division, moduler, bruger } = useFleet();
+  const { division, moduler, bruger, path: sti } = useFleet();
   const [params, saetParams] = useSearchParams();
   /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
      forskellige svar på "hvad må jeg se" ville være to steder at være
@@ -96,6 +106,19 @@ export default function Dashboard() {
      indstillingen ville ALDRIG virke — mens skaermen saa helt rigtig ud. */
   const ALLE = synligeDashboards(visning.post, harKundenModul);
   void tilgaengelige;
+
+  /* ⚠ ET LAYOUT PR. DASHBOARD. Fleet-forsiden og det samlede overblik er to
+     forskellige sider med hvert sit formål; ét fælles layout ville betyde at
+     man ikke kunne have begge — og så ville vælgeren ovenfor kun skifte
+     overskrift. Noden er brugerlayout/<uid>/<dashboard>. */
+  const layout = usePost("brugerlayout", bruger?.uid || null);
+  /* ⚠ UDKASTET ER SIT EGET. Rettede vi direkte i det gemte, ville
+     "Annullér" ikke kunne bringe noget tilbage — og en fortrydelse der
+     ikke fortryder, er værre end ingen. */
+  const [redigerer, saetRedigerer] = useState(false);
+  const [udkast, saetUdkast] = useState(null);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -151,6 +174,59 @@ export default function Dashboard() {
     ? ALLE.filter((d) => d.key !== SAMLET).map((d) => d.key)
     : [valgt]).filter((m) => MODULKORT[m]);
 
+  /* ⚠ layoutFor() SKELNER MELLEM null OG []. Et layout der ALDRIG er gemt,
+     får standarden; et der er gemt tomt, ER tomt. Uden den forskel ville
+     standarden komme tilbage næste gang man besøgte siden, og gemmeknappen
+     ville se ud som om den ikke virkede. Se widgets.js. */
+  const gemt = layout.post?.[valgt] ?? null;
+  const viste = redigerer
+    ? (udkast || [])
+    : layoutFor(gemt, valgt, harKundenModul);
+
+  const nyt = (liste) => { saetUdkast(liste); saetSvar(null); };
+  const tilfoejWidget = (key) => nyt([...(udkast || []), key]);
+  const fjernWidget = (key) => nyt((udkast || []).filter((x) => x !== key));
+
+  /* ⚠ FLYTNING BÅDE MED MUS OG MED TASTATUR. Træk-og-slip alene er
+     ubrugeligt for den der ikke kan bruge en mus, og et layout man ikke kan
+     rette, er et layout man ikke har. Pilene kalder den SAMME funktion som
+     slippet — to flytterutiner ville før eller siden flytte forskelligt. */
+  const flytWidget = (fra, til) => {
+    const ny = [...(udkast || [])];
+    if (fra === til || til < 0 || til >= ny.length) return;
+    const [taget] = ny.splice(fra, 1);
+    ny.splice(til, 0, taget);
+    nyt(ny);
+  };
+
+  const gemLayout = async () => {
+    /* ⚠ DEN SAMME FUNKTION SOM REGLERNE. valideLayout() prøver NAVNENE;
+       reglen kan ikke slå op i et katalog og prøver FORMEN. En kontrol der
+       kun findes her, er en pæn knap. */
+    const kontrol = valideLayout(udkast || []);
+    if (!kontrol.ok) {
+      saetSvar({ ok: false, art: "fejl", besked: kontrol.fejl });
+      return;
+    }
+    saetGemmer(true);
+    /* ⚠ GENNEM skriv.js, IKKE db.ref() DIREKTE. Én vej ind, som der er én
+       vej ud i useListe — og en afvist skrivning bliver til en forklaring
+       frem for "prøv igen". */
+    const r = await gem({
+      sti: sti("brugerlayout/" + bruger?.uid + "/" + valgt),
+      data: udkast || [],
+      foer: gemt,
+      objekt: "brugerlayout",
+      objektId: bruger?.uid || null,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (!r.ok) return;
+    saetRedigerer(false);
+    saetUdkast(null);
+    layout.genindlaes();
+  };
+
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
@@ -170,7 +246,56 @@ export default function Dashboard() {
         <span className="fc-hint">
           {ALLE.find((d) => d.key === valgt)?.under}
         </span>
+        <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          {redigerer ? (
+            <>
+              <Knap onClick={() => nyt(standardlayout(valgt, harKundenModul))}>
+                Nulstil
+              </Knap>
+              <Knap onClick={() => {
+                saetRedigerer(false); saetUdkast(null); saetSvar(null);
+              }}>Annullér</Knap>
+              <Knap variant="primaer" onClick={gemLayout} disabled={gemmer}>
+                {gemmer ? "Gemmer …" : "Gem layout"}
+              </Knap>
+            </>
+          ) : (
+            <Knap onClick={() => {
+              saetRedigerer(true); saetUdkast(viste); saetSvar(null);
+            }}>Tilpas forside</Knap>
+          )}
+        </span>
       </div>
+
+      <Formularsvar svar={svar} />
+
+      {/* ⚠ BRUGERENS EGEN RÆKKE STÅR FØRST. Det er den man selv har sat
+          sammen; handlingerne nedenfor er dem systemet mener man skal se. */}
+      {viste.length > 0 && (
+        <KpiRaekke>
+          {viste.map((key, i) => (
+            <Widgetkort
+              key={key} nr={i} antal={viste.length} noegle={key} kpi={k}
+              redigerer={redigerer}
+              paaFlyt={flytWidget} paaFjern={fjernWidget}
+            />
+          ))}
+        </KpiRaekke>
+      )}
+
+      {redigerer && viste.length === 0 && (
+        <Tom>Ingen widgets valgt. Et tomt layout ER et valg — gemmer du det,
+          bliver forsiden stående uden rækken.</Tom>
+      )}
+
+      {redigerer && (
+        <Widgetvaelger
+          valgte={viste}
+          harModulFn={harKundenModul}
+          paaSlaaTil={tilfoejWidget}
+          paaFjern={fjernWidget}
+        />
+      )}
 
       <Kort titel="Prioriterede handlinger">
         {/* ⚠ Handlingsliste ER EN PRIMITIV, OG DEN FANDTES I FORVEJEN.
@@ -396,6 +521,132 @@ function Modulkort({ modul, kort, kpi }) {
           return <MiniLinje key={post.label} label={t.label} vaerdi={vist} />;
         })
       )}
+    </Kort>
+  );
+}
+
+/* ---- Widgets: brugerens egen række ------------------------------------ */
+
+/**
+ * Ét widgetkort.
+ *
+ * ⚠ SAMME KORT I BEGGE TILSTANDE. I redigering får det håndtag udenom, men
+ * tallet bliver stående — et layout man bygger på tomme kasser, kan man ikke
+ * se om giver mening.
+ */
+function Widgetkort({ nr, antal, noegle, kpi, redigerer, paaFlyt, paaFjern }) {
+  const w = widget(noegle);
+  /* ⚠ EN UKENDT NØGLE SPRINGES OVER, IKKE VIST SOM ET TOMT KORT.
+     valideLayout() fanger den ved SKRIVNINGEN, hvor der er nogen at sige det
+     til; her ville et opslag på null blive til en hvid skærm. */
+  if (!w) return null;
+
+  const raa = kpiVaerdi(kpi, w.felt);
+  /* ⚠ INTET (—) FOR ET UBESVARET FELT, ikke 0. Gaten sidder i num()/pct(),
+     og beloebEllerIntet() bærer den for kr(), som ikke skelner selv. */
+  const vist = w.form === "pct" ? pct(raa, 1)
+    : w.form === "kr" ? beloebEllerIntet(raa)
+    : w.form === "kr2" ? beloebEllerIntet(raa, 2)
+    : num(raa);
+
+  const kort = (
+    <KpiKort label={w.label} vaerdi={vist} rund
+             ikon={<Ikon navn={w.ikon} />} tone={w.tone} />
+  );
+  if (!redigerer) return kort;
+
+  return (
+    <div
+      className="fc-widget-red"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", String(nr));
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const fra = Number(e.dataTransfer.getData("text/plain"));
+        if (Number.isInteger(fra)) paaFlyt(fra, nr);
+      }}
+    >
+      {kort}
+      {/* ⚠ PILENE GØR PRÆCIS DET SAMME SOM TRÆKKET — samme flytWidget().
+          Træk-og-slip alene er ubrugeligt for den der ikke kan bruge en mus,
+          og et layout man ikke kan rette, er et layout man ikke har. */}
+      <div className="fc-widget-vaerktoej">
+        <button type="button" className="fc-widget-knap" title="Flyt til venstre"
+                onClick={() => paaFlyt(nr, nr - 1)} disabled={nr === 0}
+                aria-label={"Flyt " + w.label + " til venstre"}>{"\u2039"}</button>
+        <button type="button" className="fc-widget-knap" title="Flyt til højre"
+                onClick={() => paaFlyt(nr, nr + 1)} disabled={nr >= antal - 1}
+                aria-label={"Flyt " + w.label + " til højre"}>{"\u203a"}</button>
+        <button type="button" className="fc-widget-knap" title="Fjern"
+                onClick={() => paaFjern(noegle)}
+                aria-label={"Fjern " + w.label}>{"\u00d7"}</button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Kataloget man vælger fra.
+ *
+ * ⚠ FELTSTIEN STÅR PÅ HVER LINJE. En widget ER et felt i kpi/ med en
+ * præsentation — står stien der, kan man se hvorfor et kort skriver "—":
+ * feltet er ikke aggregeret endnu. Uden den ville stregen ligne en fejl i
+ * selve widgeten.
+ *
+ * ⚠ KUN DE MODULER KUNDEN HAR — uden undtagelser. En afkrydsning for et
+ * modul der ikke er købt, ville se ud som et valg der betyder noget, og
+ * tallet bagved er netop det kunden ikke har betalt for at se. Grupperne er
+ * modulernes, og navnet kommer fra MODUL — ikke fra et map her.
+ */
+function Widgetvaelger({ valgte, harModulFn, paaSlaaTil, paaFjern }) {
+  const kan = tilgaengeligeWidgets(harModulFn);
+  const grupper = [...new Set(kan.map((w) => w.modul))];
+  const fuldt = valgte.length >= MAKS_WIDGETS;
+
+  return (
+    <Kort titel="Tilpas forsiden">
+      <p className="fc-hint">
+        Træk kortene ovenfor for at bytte om — eller brug pilene på hvert kort,
+        hvis du hellere vil bruge tastaturet. {num(valgte.length)} af{" "}
+        {num(MAKS_WIDGETS)} pladser er i brug.
+      </p>
+      {/* ⚠ ET LOFT, OG DET ER IKKE VILKÅRLIGT. Tyve widgets på én forside er
+          ikke et overblik — det er en liste man scroller i, og så holder man
+          op med at kigge på den. Tallet står i widgets.js, og reglen håndhæver
+          det samme loft på serveren. */}
+      {fuldt && (
+        <p className="fc-svar fc-svar-naegtet" role="alert">
+          Der er {num(MAKS_WIDGETS)} pladser, og de er i brug. Fjern en widget
+          for at sætte en anden ind.
+        </p>
+      )}
+      {grupper.map((m) => (
+        <div key={m} className="fc-widget-gruppe">
+          <b>{MODUL[m]?.label || m}</b>
+          <div className="fc-permliste" style={{ maxHeight: "none" }}>
+            {kan.filter((w) => w.modul === m).map((w) => {
+              const paa = valgte.includes(w.key);
+              return (
+                <label key={w.key} className="fc-perm">
+                  <input type="checkbox" checked={paa}
+                         disabled={!paa && fuldt}
+                         onChange={() => (paa ? paaFjern(w.key) : paaSlaaTil(w.key))} />
+                  <span>
+                    <b>{w.label}</b>
+                    <span className="fc-hint" style={{ display: "block" }}>
+                      <code>{w.felt}</code>
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </Kort>
   );
 }

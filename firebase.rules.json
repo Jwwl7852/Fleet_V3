@@ -237,6 +237,47 @@
         // kunne skrive sin egen, kunne give sig selv det samlede overblik
         // tilbage; det ville ikke laekke noget, men indstillingen ville
         // holde op med at betyde det administratoren satte.
+        // ══════════════════════════════════════════════════════════════
+        // BRUGERENS EGET DASHBOARD-LAYOUT
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ DEN ENESTE NODE HVOR BRUGEREN SKRIVER SIN EGEN POST.
+        //
+        // Til forskel fra `dashboardvisning` ved siden af — som er en
+        // ADMINISTRATORS beslutning om en ANDEN bruger og derfor er
+        // .write: false — er et layout en praeference man har om SIG SELV.
+        // Der er ingen grund til at sende den gennem en Cloud Function: den
+        // roerer ingen andres data, den skal ikke skrives atomisk sammen med
+        // noget, og der er ingen konflikt hvis to faner gemmer samtidig.
+        //
+        // ⚠ auth.uid === $uid, IKKE bare tenant-medlemskab. Uden det led
+        // kunne enhver i virksomheden rette sine kollegers forside — og det
+        // ville ikke laekke noget, men det ville vaere en aendring ingen
+        // kunne forklare.
+        //
+        // ⚠ .read er hele tenanten, og det er med vilje: et layout er ikke
+        // foelsomt, og en administrator skal kunne se hvad en bruger har
+        // gjort ved sin forside naar han spoerger hvorfor et tal er vaek.
+        "brugerlayout": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          "$uid": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.uid === $uid",
+            // Eet layout pr. dashboard. Noeglerne er dashboards.js\u0027 —
+            // moenstret er en afskrift, og en prove holder de to op mod
+            // hinanden.
+            "$dashboard": {
+              ".validate": "$dashboard.matches(/^(samlet|flaade|facility|indkoeb|warehouse|unitbooking|bemanding)$/)",
+              // ⚠ ET LOFT PAA TOLV. Tyve widgets paa een forside er ikke et
+              // overblik, det er en liste man scroller i. Tallet staar ogsaa
+              // i widgets.js som MAKS_WIDGETS, og en prove holder de to ens.
+              //
+              // Reglerne kan ikke slaa op i et katalog, saa de proever FORMEN
+              // — en kort streng pr. plads. valideLayout() proever NAVNENE.
+              "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && $i.matches(/^([0-9]|1[01])$/)" }
+            }
+          }
+        },
+
         "dashboardvisning": {
           // .read er tenant-medlemskab: skaermen viser hver brugers
           // indstilling, og en bruger skal kunne se sin egen.
