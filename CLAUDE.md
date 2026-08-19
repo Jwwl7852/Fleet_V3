@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **44 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **45 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -404,6 +404,23 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   ⚠ **Rollen afgør stadig ingenting om nøgletal.** Klausulen gælder TENANTEN,
   og alle syv roller har hver eneste læse-permission. `dashboardvisning` er
   derfor stadig en VISNING. Se beslutning 44.
+- **Skrive en opgave uden om `opgaveplanlaeg`.** `opgaver` er `.write: false`,
+  og det er ikke en manglende rettighed — casehandler, disponent, koordinator
+  og admin HAR alle `opgaver.skriv`, og funktionen kræver den. Det er vejen
+  der er lukket, som på `kasseudlaan` (37) og `enheder` (39).
+  En opgave og dens RESERVATION bærer den samme kendsgerning: at enheden er
+  optaget. `reservationer` er `.write: false`, så en klient kunne kun skrive
+  den ene halvdel — og **en opgave uden reservation ser FRI ud i
+  disponeringen** mens bilen står på liften. Det er beslutning 4's fejl.
+  ⚠ **To veje er lukket med, og de skal genåbnes med hver sin funktion:** en
+  FACILITY-opgave (`opgaveplanlaeg` sætter `art: "vaerksted"`) og et
+  STATUSSKIFTE. Løsn ikke `.write` igen — et statusskifte rører også
+  reservationen.
+  ⚠ **Og `.validate` på `opgaver` kan ikke nås af en klient længere.** Blokken
+  beskriver stadig formen serveren skal overholde, men håndhævelsen ligger i
+  `opgaveMangler()` og `valideOpgaveplan()`. Skriv ikke en regelprøve der
+  "afviser" en opgave — den ville være grøn fordi skrivningen er lukket, ikke
+  fordi posten var forkert. Se beslutning 45.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
@@ -458,7 +475,8 @@ kan ikke komme ud af sync.
   en attrap, og det er et UI-spørgsmål nu: `etapeskift` findes at kalde.
   ⚠ **Og værkstedsopgavens reservation bygges kun i skærmen** — prioritet 40
   findes derfor ikke i noden, så `etapeskift` kan ikke se at bilen står på
-  liften. Kun `opgaveplanlaeg` skriver en. Se README.
+  liften. Kun `opgaveplanlaeg` skriver en, og siden beslutning 45 er den den
+  ENESTE vej ind i `opgaver`. Se README.
 - **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
   parsing, afsendelse og scanning mangler. `sager/` findes ikke i
   `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,

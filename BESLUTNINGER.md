@@ -2189,3 +2189,93 @@ Skal rollen afgøre hvad en bruger må se, kræver det **nye læse-permissions**
 fordelt på de syv roller — en produktbeslutning om hvem der ser pengene, og en
 der koster en ombæring af tokens, fordi perms står i claims. Det er
 rollegennemgangen, og den er ikke truffet her.
+
+## 45. `opgaver` er `.write: false` — vejen ind er `opgaveplanlaeg`
+
+Disciplinen var skrevet ned. Den var bare ikke håndhævet.
+
+`src/fleet/opgaveplan.js` har stået med det her i hovedet siden funktionen
+blev bygget:
+
+> ⚠ DER SKRIVES INTET HERFRA DIREKTE, OG DET ER IKKE EN MANGLENDE RETTIGHED.
+> `opgaver` ER skrivbar med `opgaver.skriv` — en disponent har den. Men
+> handlingen kan ikke udføres rigtigt fra en klient.
+
+Og reglen sagde `.write` med `opgaver.skriv`, som **casehandler, disponent,
+koordinator og admin** alle har. Ingen skærm brugte vejen — men den stod
+åben, og CLAUDE.md's egen sætning gælder: *en kontrol der kun findes i
+frontend, er ikke adgangskontrol, men en pæn knap.*
+
+### Hvad en klient kunne have gjort
+
+En opgave og dens **reservation** bærer den samme kendsgerning: at enheden er
+optaget. `reservationer` er `.write: false` for alle, så en klient kunne kun
+skrive den **ene** halvdel:
+
+- en opgave uden reservation — bilen ser **fri** ud i disponeringen mens den
+  står på liften. Det er beslutning 4's fejl, den samme som lukkede tre
+  kalendere der ikke kunne se hinanden.
+- eller et flyttet `startMs`, hvor reservationen blev stående. Så siger de to
+  hver sit om hvornår bilen er optaget, og ingen af dem er forkert alene.
+
+Dertil gør funktionen fire ting en regel ikke kan:
+
+| | |
+|---|---|
+| sætter `art` selv | ellers kunne den ene formular oprette den andens poster, og de to arter har ikke samme feltskema |
+| afviser en **solgt eller skrottet** enhed | opgaven ville ellers se helt normal ud i en tabel |
+| slår **leverandøren** op i `leverandoerer/` | en fejlstavning skal blive en afvisning, ikke en ny leverandør ingen kan finde igen |
+| prøver perioden med `tjekLedigMod()` | og **overskriver ikke**, heller ikke når prioritet 40 kunne. To disponenter kan ramme samme sekund |
+
+Det er samme snit som `kasseudlaan` (beslutning 37) og `enheder` (39).
+
+### ⚠ Permissionen består — det er vejen der er lukket, ikke retten
+
+`opgaver.skriv` bliver stående, og `opgaveplanlaeg` kræver den. Fjernede vi
+den, kunne funktionen ikke skelne en disponent fra en chauffør. Det er
+nøjagtig ordningen fra beslutning 37: *"det er ikke en manglende rettighed —
+lagermedarbejderen HAR `kasseudlaan.skriv`. Det er vejen der er lukket."*
+
+Beslutning 39 gik den anden vej — der findes med vilje **ingen**
+`enheder.skriv` — fordi en enhedsrække aldrig er en menneskelig beslutning.
+En opgave er.
+
+### ⚠ To veje blev lukket med, og de skal genåbnes med hver sin funktion
+
+1. **En facility-opgave.** `opgaveplanlaeg` sætter `art: "vaerksted"`.
+2. **Et statusskifte** (`indberettet → planlagt → igang → udfoert`).
+
+Ingen af de to blev skrevet af en klient i forvejen, så ingen kapacitet gik
+tabt. Men de skal bygges som funktioner frem for ved at løsne `.write` igen —
+en statusændring rører også reservationen.
+
+### ⚠ Prisen: fjorten prøver kunne ikke længere demonstrere det de hed
+
+`.validate`-reglerne på `opgaver` kan ikke nås af en klient mere. Blokken
+bliver stående — den beskriver formen serveren skal overholde, som på
+`kasseudlaan` — men prøverne kunne ikke blive stående uændret:
+
+- De syv der viste at reglen **tog imod** en rigtig post, kan ikke køre.
+- De syv der viste at den **afviste**, ville være blevet grønne af den
+  **forkerte grund**: fordi skrivningen er lukket, ikke fordi arten var
+  forkert. En prøve der ikke kan fejle for sin egen sætning, er værre end
+  ingen — den ser ud som dækning.
+
+Kravene er flyttet derhen hvor håndhævelsen nu ligger: `opgaveMangler()` og
+`valideOpgaveplan()` i `functions/delt/`, som funktionen og formularen kalder
+med de samme sætninger. Fire ting skiftede karakter:
+
+| Krav | Før | Nu |
+|---|---|---|
+| art påkrævet, ordliste | `.validate` | `opgaveMangler()` — og funktionen sætter arten selv |
+| division påkrævet | `.validate` | `opgaveMangler()` |
+| prioritetens tre trin | `.validate` | `opgaveMangler()` |
+| ukendte felter (`fra`, `til`, `type`) | `$andet: false` | funktionen bygger posten **felt for felt** fra en allowliste |
+
+Den sidste er blevet **stærkere**: en regel afviser hele skrivningen, men en
+allowliste kan slet ikke komme til at lade feltet slippe igennem — det bliver
+aldrig læst.
+
+Den ene kontrol der nu udelukkende ligger i funktionen, er **opslaget af
+leverandøren**: en ren funktion kan ikke slå op i en database. Den prøves ved
+at læse funktionen og ved at kalde den udrullede.

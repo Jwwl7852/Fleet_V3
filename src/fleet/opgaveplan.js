@@ -5,8 +5,9 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚠ DER SKRIVES INTET HERFRA DIREKTE, OG DET ER IKKE EN MANGLENDE RETTIGHED.
  *
- * `opgaver` ER skrivbar med `opgaver.skriv` — en disponent har den. Men
- * handlingen kan ikke udføres rigtigt fra en klient:
+ * `opgaver` er `.write: false`, og permissionen `opgaver.skriv` består —
+ * en disponent har den, og `opgaveplanlaeg` kræver den. Det er VEJEN der er
+ * lukket, ikke retten. Handlingen kan ikke udføres rigtigt fra en klient:
  *
  *   1. Opgaven og dens RESERVATION skal skrives sammen eller slet ikke.
  *      `reservationer` er `.write: false` for alle, netop derfor. Landede kun
@@ -19,6 +20,12 @@
  * ⚠ DERFOR ER DER HELLER INGEN gem() HER. `skriv.js` er vejen ind for det
  * klienten må skrive selv. Planlægningen går gennem serveren, og de to veje
  * skal ikke blandes sammen — samme snit som `udlaan.js` mod `skriv.js`.
+ *
+ * ⚠ OG I MÅNEDSVIS STOD DET KUN HER. Filen skrev i sit eget hoved at der
+ * ikke skrives herfra — mens `opgaver` havde `.write` med `opgaver.skriv`,
+ * som casehandler, disponent, koordinator og admin alle har. Disciplinen var
+ * beskrevet, ikke håndhævet, og en kontrol der kun findes i frontend, er en
+ * pæn knap. Beslutning 45 lukkede noden.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * ⚠ INGEN MAIL. Mockuppens "Send bekræftelse til leverandøren?" er beslutning

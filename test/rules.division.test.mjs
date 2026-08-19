@@ -110,11 +110,18 @@ describe("beslutning 15 — division som felt", () => {
     }
   });
 
-  it("kræver division på opgaver, indberetninger og indkøb", async () => {
+  /* ⚠ opgaver STOD I LISTEN HERUNDER OG ER TAGET UD. Noden er `.write: false`
+     efter beslutning 45 — vejen ind er `opgaveplanlaeg` — så prøven kunne
+     hverken vise at division kræves eller at den mangler; begge dele ville
+     være grønne fordi skrivningen er lukket.
+
+     Kravet er ikke væk, det er FLYTTET: `opgaveMangler()` og
+     `valideOpgaveplan()` kræver begge division, og
+     `test/rules.opgaver.test.mjs` prøver dem. Et krav der holdes af en prøve
+     som ikke kan fejle for sin egen sætning, er værre end ingen prøve. */
+  it("kræver division på indberetninger og indkøb", async () => {
     const db = som("admin1", "admin");
     const noder = [
-      ["opgaver", { art: "vaerksted", status: "planlagt", startMs: 1786000000000,
-                    estimeretMin: 90 }],
       /* ⚠ EN RIGTIG INDBERETNING, IKKE DET MINDST MULIGE. Noden validerede
          kun `division`; nu kræves art, forløb, oprettetAf og oprettetMs — og
          chauffører SKRIVER til den, så det er den ene node hvor den mindst

@@ -12,6 +12,30 @@
  * Filen tester derfor det reglen skal NÆGTE: en opgave uden art, og en opgave
  * med `langtur`, som netop IKKE er en gyldig art (se beslutning 21).
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ OG SÅ BLEV NODEN LUKKET (beslutning 45), OG HALVDELEN AF FILEN FLYTTEDE.
+ *
+ * `opgaver` er `.write: false`. En klient kan derfor ikke længere skrive en
+ * opgave — heller ikke en gyldig — og de prøver der DEMONSTREREDE at reglen
+ * tog imod en rigtig post, kan ikke køre.
+ *
+ * ⚠ VÆRRE: afvisningsprøverne ville blive stående og PASSERE, men af den
+ * forkerte grund. "afviser langtur" ville være grøn fordi skrivningen er
+ * lukket, ikke fordi arten er forkert — en prøve der ikke kan fejle for sin
+ * egen sætning, er værre end ingen, for den ser ud som dækning.
+ *
+ * Håndhævelsen ligger nu hvor skrivningen ligger: `opgaveMangler()` og
+ * `valideOpgaveplan()` i `functions/delt/`, som `opgaveplanlaeg` kalder — og
+ * som formularen kalder med de SAMME sætninger. Prøverne herunder spørger
+ * derfor DEM, og de to file-læsende prøver (indekset og prioritetens ordliste)
+ * står uændret: de handler om regelfilen, ikke om en skrivning.
+ *
+ * ⚠ ET FELT DER IKKE FINDES, AFVISES IKKE LÆNGERE AF EN REGEL. `$andet: false`
+ * kan ikke nås. Til gengæld bygger funktionen posten FELT FOR FELT fra en
+ * allowliste — `fra`, `til` og `type` bliver aldrig kopieret med. Det er en
+ * stærkere spærring end reglen var, og prøven nedenfor læser funktionen.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
  * Kør:  npm run test:rules
  */
 import { after, before, describe, it } from "node:test";
@@ -20,11 +44,14 @@ import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
-import { ref, set, update } from "firebase/database";
+import { ref, set, update, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import { ALLE_OPGAVE_ARTER } from "../src/fleet/opgaver.js";
 import { ALLE_PRIORITETER } from "../src/fleet/prioritet.js";
+import { opgaveMangler } from "../src/fleet/opgaver.js";
+import { valideOpgaveplan } from "../src/fleet/opgaveplan-regler.js";
+import { ALLE_PERMS, PERM, permStreng } from "../src/fleet/permissions.js";
 
 /* Egen tenant: node --test kører testfilerne parallelt. */
 const TENANT = "vognmandOpg";
@@ -77,11 +104,74 @@ after(async () => {
   await miljoe?.cleanup();
 });
 
-describe("beslutning 21 — art på opgaver", () => {
-  it("accepterer hver af de gyldige arter", async () => {
+describe("⚠ NODEN ER LUKKET — vejen ind er opgaveplanlaeg", () => {
+  /* Beslutning 45. Det er IKKE en manglende rettighed: casehandler,
+     disponent, koordinator og admin HAR alle `opgaver.skriv`, og funktionen
+     kræver den. Det er VEJEN der er lukket — samme snit som kasseudlaan
+     (37) og enheder (39). */
+
+  it("⚠ EN BRUGER MED opgaver.skriv AFVISES", async () => {
+    /* Den vigtigste prøve i filen. En opgave og dens RESERVATION bærer den
+       samme kendsgerning — at enheden er optaget — og `reservationer` er
+       `.write: false`. Kunne klienten skrive den ene halvdel, ville der stå
+       en opgave uden reservation, og bilen ser FRI ud i disponeringen mens
+       den står på liften. Det er beslutning 4's fejl. */
+    const db = miljoe.authenticatedContext("uid-kun-opgaver", {
+      tenant: TENANT, rolle: "disponent", perms: permStreng([PERM.opgaverSkriv]),
+    }).database();
+    await assertFails(set(ref(db, sti("o-forsoeg")), opgave({ art: "vaerksted" })));
+  });
+
+  it("⚠ HELLER IKKE MED ALLE PERMISSIONS", async () => {
+    const db = miljoe.authenticatedContext("uid-alt", {
+      tenant: TENANT, rolle: "admin", perms: permStreng(ALLE_PERMS),
+    }).database();
+    await assertFails(set(ref(db, sti("o-admin")), opgave({ art: "vaerksted" })));
+  });
+
+  it("en opdatering af en eksisterende opgave afvises også", async () => {
+    /* Det er ikke oprettelsen der er farlig — det er `startMs`. Flyttede en
+       klient vinduet, ville reservationen blive stående, og de to ville sige
+       hver sit om hvornår bilen er optaget. */
     const db = som("admin-opg");
+    await assertFails(update(ref(db, sti("o-seedet")), { startMs: 1786100000000 }));
+    await assertFails(update(ref(db, sti("o-seedet")), { status: "udfoert" }));
+  });
+
+  it("læsningen er uændret — det er skrivningen der er lukket", async () => {
+    const db = som("uid-laeser", "chauffoer");
+    await assertSucceeds(get(ref(db, `tenants/${TENANT}/opgaver`)));
+  });
+
+  it("⚠ REGELFILEN SIGER DET SAMME SOM FILEN HER", () => {
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10))
+    );
+    assert.equal(regler.rules.tenants.$tenantId.opgaver[".write"], false,
+      "opgaver er skrivbar igen — så kan en opgave landes uden sin reservation");
+  });
+
+  it("⚠ PERMISSIONEN BESTÅR — det er vejen der er lukket, ikke retten", () => {
+    /* Samme ordning som kasseudlaan: `opgaveplanlaeg` kræver
+       `opgaver.skriv`, så permissionen betyder stadig noget. Fjernede vi
+       den, ville funktionen ikke kunne skelne en disponent fra en chauffør. */
+    assert.ok(ALLE_PERMS.includes(PERM.opgaverSkriv));
+    const kode = readFileSync("functions/index.js", "utf8");
+    assert.match(kode, /perms\.includes\("\|opgaver\.skriv\|"\)/,
+      "opgaveplanlaeg prøver ikke længere permissionen");
+  });
+});
+
+describe("beslutning 21 — art på opgaver", () => {
+  /* ⚠ HÅNDHÆVELSEN LIGGER I opgaveMangler(), ikke i reglen. Noden er lukket,
+     så `.validate` kan ikke nås af en klient — den beskriver stadig FORMEN
+     serveren skal overholde, men det er den delte funktion der afgør. */
+
+  it("kender hver af de gyldige arter", () => {
     for (const art of ALLE_OPGAVE_ARTER) {
-      await assertSucceeds(set(ref(db, sti(`o-${art}`)), opgave({ art })));
+      assert.ok(!opgaveMangler({ ...opgave({ art }), koeretoejId: "kt-1", aktivId: "a-1" })
+        .includes("art"), `${art} blev afvist som art`);
     }
   });
 
@@ -91,58 +181,53 @@ describe("beslutning 21 — art på opgaver", () => {
     assert.deepEqual([...ALLE_OPGAVE_ARTER].sort(), ["facility", "vaerksted"]);
   });
 
-  it("afviser en opgave HELT uden art", async () => {
-    const db = som("admin-opg");
-    await assertFails(set(ref(db, sti("o-uden-art")), opgave()));
+  it("afviser en opgave HELT uden art", () => {
+    assert.ok(opgaveMangler(opgave()).includes("art"));
+    assert.ok(valideOpgaveplan(opgave()).fejl.art);
   });
 
   /* Den vigtigste afvisning i filen. `langtur` var den art README foreslog,
      før beslutning 16 gjorde den til en dublet af en etape. Bliver den gyldig
      igen, står en transportstrækning to steder — og så er vi tilbage ved
      DE-QR 777 mod DE-KL 404. */
-  it("afviser 'langtur' — en langtur er en etape, ikke en opgave", async () => {
-    const db = som("admin-opg");
-    await assertFails(set(ref(db, sti("o-langtur")), opgave({ art: "langtur" })));
+  it("afviser 'langtur' — en langtur er en etape, ikke en opgave", () => {
+    assert.ok(opgaveMangler(opgave({ art: "langtur" })).includes("art"));
+    /* Og funktionen sætter i øvrigt arten SELV — se prøven nederst. */
   });
 
-  it("afviser ukendte og forkert formede arter", async () => {
-    const db = som("admin-opg");
+  it("afviser ukendte og forkert formede arter", () => {
     for (const art of ["Vaerksted", "VAERKSTED", "vaerksted ", "", "vaerksted,facility", "service"]) {
-      await assertFails(
-        set(ref(db, sti("o-ugyldig")), opgave({ art })),
-        `art="${art}" burde afvises`
-      );
+      assert.ok(opgaveMangler(opgave({ art })).includes("art"), `art="${art}" burde afvises`);
     }
   });
 
-  it("afviser art som noget andet end en streng", async () => {
-    const db = som("admin-opg");
+  it("afviser art som noget andet end en streng", () => {
     for (const art of [true, 1, null]) {
-      await assertFails(set(ref(db, sti("o-type")), opgave({ art })));
+      assert.ok(opgaveMangler(opgave({ art })).includes("art"), `art=${art} burde afvises`);
     }
   });
 
   /* Division var påkrævet før beslutning 21 og er det stadig. Arten erstatter
      den ikke: en opgave er en TRANSAKTION og hører til én afdeling, mens
      arten siger hvad arbejdet udføres på. */
-  it("kræver stadig division ved siden af art", async () => {
-    const db = som("admin-opg");
-    const uden = { ...opgave({ art: "vaerksted" }) };
+  it("kræver stadig division ved siden af art", () => {
+    /* Arten erstatter den ikke: en opgave er en TRANSAKTION og hører til én
+       afdeling, mens arten siger hvad arbejdet udføres på. */
+    const uden = { ...opgave({ art: "vaerksted", koeretoejId: "kt-1" }) };
     delete uden.division;
-    await assertFails(set(ref(db, sti("o-uden-div")), uden));
+    assert.ok(opgaveMangler(uden).includes("division"));
+    assert.ok(valideOpgaveplan(uden).fejl.division);
   });
 
-  it("afviser at arten fjernes ved en opdatering", async () => {
-    const db = som("admin-opg");
-    await assertSucceeds(set(ref(db, sti("o-fjern")), opgave({ art: "vaerksted" })));
-    await assertFails(update(ref(db, sti("o-fjern")), { art: null }));
-  });
-
-  it("afviser at arten ændres til noget ugyldigt ved en opdatering", async () => {
-    const db = som("admin-opg");
-    await assertSucceeds(set(ref(db, sti("o-skift")), opgave({ art: "vaerksted" })));
-    await assertFails(update(ref(db, sti("o-skift")), { art: "langtur" }));
-    await assertSucceeds(update(ref(db, sti("o-skift")), { art: "facility" }));
+  it("⚠ ARTEN KAN IKKE ÆNDRES BAGEFTER — der er ingen vej til det", () => {
+    /* Her stod to prøver på at reglen afviste en opdatering af `art`. De
+       er blevet overflødige på den gode måde: der findes ingen klientvej til
+       at opdatere en opgave OVERHOVEDET. Skulle et statusskifte bygges, er
+       det en funktion — og så er det DEN der skal prøves.
+       Se "to veje er lukket med" i regelfilen. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    assert.doesNotMatch(kode, /opgaver\/\$\{[^}]*\}\/art/,
+      "en funktion skriver art på en eksisterende opgave");
   });
 
   /* Reglerne skal kunne forespørges på art — ellers kan Disponering ikke
@@ -179,11 +264,10 @@ describe("prioriteten er tre trin, og serveren kender dem", () => {
      prioriteten slet IKKE skrives — skærmen ville vise en vælger, serveren
      ville afvise, og fejlen ville se ud som en manglende permission. */
 
-  it("tager hvert af de tre trin", async () => {
-    const db = som("uid-a");
-    for (const p of ALLE_PRIORITETER) {
-      await assertSucceeds(set(ref(db, sti(`pri-${p}`)),
-        opgave({ art: "vaerksted", prioritet: p })));
+  it("tager hvert af de tre trin", () => {
+    for (const trin of ALLE_PRIORITETER) {
+      const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", prioritet: trin });
+      assert.deepEqual(opgaveMangler(post), [], `${trin} blev afvist`);
     }
   });
 
@@ -194,23 +278,26 @@ describe("prioriteten er tre trin, og serveren kender dem", () => {
        reglen den igennem, ville posten hverken tælle som lav, mellem eller
        høj på Driftskalenderen — den ville forsvinde mellem tre tal der
        alle så rigtige ud. */
-    await assertFails(set(ref(som("uid-a"), sti("pri-label")),
-      opgave({ art: "vaerksted", prioritet: "mellem" })));
+    const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", prioritet: "mellem" });
+    assert.ok(opgaveMangler(post).some((m) => m.startsWith("prioritet")));
+    assert.ok(valideOpgaveplan(post).fejl.prioritet);
   });
 
-  it("afviser en prioritet der slet ikke findes", async () => {
-    await assertFails(set(ref(som("uid-a"), sti("pri-x")),
-      opgave({ art: "vaerksted", prioritet: "kritisk" })));
-    await assertFails(set(ref(som("uid-a"), sti("pri-tal")),
-      opgave({ art: "vaerksted", prioritet: 1 })));
+  it("afviser en prioritet der slet ikke findes", () => {
+    for (const v of ["kritisk", 1]) {
+      const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", prioritet: v });
+      assert.ok(opgaveMangler(post).some((m) => m.startsWith("prioritet")), `prioritet=${v}`);
+    }
   });
 
   it("⚠ EN OPGAVE UDEN PRIORITET ER GYLDIG — 'ikke vurderet' er et svar", async () => {
     /* Feltet står med vilje IKKE i hasChildren. Krævede vi det, ville den der
        opretter, gætte — og så var alt "Mellem" og tallet ubrugeligt. Se
        prioritet.js: prioritetFor() svarer null, aldrig PRIORITET.normal. */
-    await assertSucceeds(set(ref(som("uid-a"), sti("pri-uden")),
-      opgave({ art: "vaerksted" })));
+    const post = opgave({ art: "vaerksted", koeretoejId: "kt-1" });
+    assert.deepEqual(opgaveMangler(post), []);
+    assert.equal(valideOpgaveplan(post).ok, false, "arbejdstype mangler stadig");
+    assert.equal(valideOpgaveplan({ ...post, arbejdstype: "service" }).ok, true);
   });
 
   it("⚠ SAMME ORDLISTE TRE STEDER — ikke en afskrift der kan drive", () => {
@@ -267,48 +354,71 @@ describe("værkstedsbesøgets to felter", () => {
      ingen af de to felter fandtes. Prøven her er den anden halvdel af den
      flytning: uden den kunne demo-sættet vise noget serveren afviser. */
 
-  it("tager arbejdstype og leverandoerId", async () => {
-    await assertSucceeds(set(ref(som("uid-a"), sti("vb-ok")), opgave({
-      art: "vaerksted", arbejdstype: "service", leverandoerId: "lv-daf",
-    })));
+  it("tager arbejdstype og leverandoerId", () => {
+    const post = opgave({
+      art: "vaerksted", koeretoejId: "kt-1",
+      arbejdstype: "service", leverandoerId: "lv-daf",
+    });
+    assert.deepEqual(opgaveMangler(post), []);
+    assert.equal(valideOpgaveplan(post).ok, true);
   });
 
-  it("⚠ AFVISER ET VÆRKSTED DER IKKE FINDES", async () => {
+  it("⚠ VÆRKSTEDET SLÅS OP — OG DET GØR FUNKTIONEN, IKKE REGLEN", () => {
     /* Et opslag, ikke en fritekst. Værkstedets navn stod som streng i tre
        demo-filer med hver sin stavemåde at drive med, før leverandoerer/ blev
        kilden — og en fejlstavning skal blive en AFVISNING frem for en ny
-       leverandør ingen kan finde igen. Samme spærring som på koeretoejId. */
-    await assertFails(set(ref(som("uid-a"), sti("vb-fantom")), opgave({
-      art: "vaerksted", arbejdstype: "service", leverandoerId: "lv-findes-ikke",
-    })));
+       leverandør ingen kan finde igen.
+
+       ⚠ REGLEN SLOG DET OP MED root.child(...). Den kan ikke nås længere, og
+       et opslag i en database kan ikke laves af en ren funktion — så den her
+       kontrol er DEN ENE der udelukkende ligger i `opgaveplanlaeg` nu.
+       Prøven læser funktionen; probet mod DEV kalder den. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    assert.match(kode, /leverandoerer\/\$\{leverandoerId\}/,
+      "opgaveplanlaeg slår ikke leverandøren op");
+    assert.match(kode, /Leverandøren \$\{leverandoerId\} findes ikke/);
   });
 
-  it("⚠ EN OPGAVE UDEN LEVERANDØR ER GYLDIG — det er eget værksted", async () => {
+  it("⚠ EN OPGAVE UDEN LEVERANDØR ER GYLDIG — det er eget værksted", () => {
     /* Feltet er netop det der skiller intern vedligehold fra et eksternt
-       besøg. Krævede reglen det, ville halvdelen af flådens arbejde — det
-       vores egen mekaniker laver på vores egen lift — ikke kunne gemmes. */
-    await assertSucceeds(set(ref(som("uid-a"), sti("vb-intern")), opgave({
-      art: "vaerksted", arbejdstype: "reparation",
-    })));
+       besøg. Krævede vi det, ville halvdelen af flådens arbejde — det vores
+       egen mekaniker laver på vores egen lift — ikke kunne gemmes. */
+    const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", arbejdstype: "reparation" });
+    assert.deepEqual(opgaveMangler(post), []);
+    assert.equal(valideOpgaveplan(post).ok, true);
   });
 
-  it("⚠ FELTET HEDDER arbejdstype — \"type\" AFVISES", async () => {
+  it("⚠ FELTET HEDDER arbejdstype — \"type\" AFVISES", () => {
     /* Noden har allerede `art`. Et felt ved siden af der hed `type`, ville
        være den forveksling der har kostet os to gange: indberetningers indeks
        navngav "type" mens posterne bærer "art", og opgavers navngav "dato".
        $andet: false gør det til en afvisning frem for et felt der ligger og
        ikke bliver læst. */
-    await assertFails(set(ref(som("uid-a"), sti("vb-type")), opgave({
-      art: "vaerksted", type: "service",
-    })));
+    const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", type: "service" });
+    assert.ok(valideOpgaveplan(post).fejl.arbejdstype,
+      "en post med 'type' i stedet for 'arbejdstype' blev godtaget");
+    /* Og `type` kommer aldrig i noden: funktionen bygger posten felt for felt. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    assert.doesNotMatch(kode, /type: kortStreng\(d\.type/);
   });
 
   it("⚠ OG fra/til AFVISES — en opgave bærer startMs og estimeretMin", async () => {
     /* Et besøg bar et VINDUE. Koden i reservationFraOpgave() tager imod begge
        former, men den ene kunne aldrig ligge i basen — og det var netop det
        der gjorde sammenlægningen til mere end en omdøbning. */
-    await assertFails(set(ref(som("uid-a"), sti("vb-vindue")), opgave({
-      art: "vaerksted", fra: 1786000000000, til: 1786032400000,
-    })));
+    /* ⚠ `$andet: false` KAN IKKE NÅS LÆNGERE, og spærringen er blevet
+       STÆRKERE: funktionen bygger posten felt for felt fra en allowliste, så
+       `fra` og `til` aldrig bliver kopieret med. En regel afviser hele
+       skrivningen; en allowliste kan ikke komme til at lade feltet slippe
+       igennem, fordi det aldrig bliver læst. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    const post = kode.slice(kode.indexOf("export const opgaveplanlaeg"));
+    const krop = post.slice(post.indexOf("const post = {"), post.indexOf("};", post.indexOf("const post = {")));
+    for (const felt of ["fra", "til", "type"]) {
+      assert.doesNotMatch(krop, new RegExp(`\\b${felt}:`),
+        `opgaveplanlaeg kopierer "${felt}" med i posten`);
+    }
+    assert.match(krop, /startMs:/);
+    assert.match(krop, /estimeretMin:/);
   });
 });

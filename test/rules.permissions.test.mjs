@@ -127,8 +127,6 @@ describe("serveren håndhæver permissions", () => {
   it("hver node kræver sin egen permission", async () => {
     const noder = [
       ["kunder", PERM.kunderSkriv, KUNDE],
-      ["opgaver", PERM.opgaverSkriv, { division: "gods", art: "vaerksted",
-        status: "planlagt", startMs: 1786000000000, estimeretMin: 90 }],
       ["koeretoejer", PERM.koeretoejerSkriv, { navn: "Volvo", art: "lastbil", status: "aktiv" }],
       ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
       ["indkoeb", PERM.indkoebSkriv, { division: "gods", dato: 1786000000000,
@@ -157,6 +155,28 @@ describe("serveren håndhæver permissions", () => {
         throw new Error(`"${node}" accepterede en bruger UDEN ${perm}`);
       });
     }
+  });
+
+  /* ⚠ opgaver STOD I LISTEN OVENFOR OG ER TAGET UD — men rækken forsvinder
+     ikke bare. Noden er `.write: false` efter beslutning 45, så halvdelen af
+     løkken ("en bruger med KUN opgaver.skriv accepteres") kan ikke længere
+     demonstreres. Den anden halvdel gælder nu for ALLE, og det er en
+     skærpelse frem for et tab. */
+  it("⚠ opgaver ER LUKKET FOR ALLE — også for den der HAR opgaver.skriv", async () => {
+    /* Permissionen består: `opgaveplanlaeg` kræver den, så den skelner
+       stadig en disponent fra en chauffør. Det er VEJEN der er lukket, ikke
+       retten — samme ordning som kasseudlaan (beslutning 37).
+
+       Grunden er at en opgave og dens RESERVATION bærer den samme
+       kendsgerning: at enheden er optaget. `reservationer` er `.write: false`,
+       så en klient kunne kun skrive den ene halvdel — og en opgave uden
+       reservation ser FRI ud i disponeringen. */
+    const post = { division: "gods", art: "vaerksted", status: "planlagt",
+                   startMs: 1786000000000, estimeretMin: 90 };
+    const kun = medPerms("uid-kun-opgaver", [PERM.opgaverSkriv]);
+    await assertFails(set(ref(kun, sti("opgaver", "nej1")), post));
+    const alt = medPerms("uid-alt-opgaver", ALLE_PERMS);
+    await assertFails(set(ref(alt, sti("opgaver", "nej2")), post));
   });
 });
 

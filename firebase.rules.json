@@ -1068,9 +1068,46 @@
         // eet doegns vindue — naar langturene ligger i etaper, er der ingen
         // langture i opgaver at traekke med, og filtreringen paa art koster
         // derfor kun een dags raekker klientside.
+        // ⚠ .write ER FALSE. VEJEN IND ER `opgaveplanlaeg`.
+        //
+        // Det er IKKE en manglende rettighed: casehandler, disponent,
+        // koordinator og admin HAR alle `opgaver.skriv`, og funktionen
+        // kraever den. Det er VEJEN der er lukket — samme snit som
+        // kasseudlaan (beslutning 37) og enheder (39).
+        //
+        // En opgave og dens RESERVATION baerer den samme kendsgerning: at
+        // enheden er optaget. De skal skrives sammen eller slet ikke.
+        // `reservationer` er .write: false for alle, saa en klient kunne kun
+        // skrive den ENE halvdel — og en opgave uden reservation ser FRI ud i
+        // disponeringen. Det er beslutning 4's fejl, en bil der kan bookes til
+        // Hamburg mens den staar paa liften.
+        //
+        // Dertil goer funktionen fire ting en regel ikke kan:
+        //   · saetter `art` selv, saa den ene formular ikke kan oprette den
+        //     andens poster
+        //   · afviser en SOLGT eller SKROTTET enhed
+        //   · slaar leverandoeren op og afviser et vaerksted der ikke findes
+        //   · proever perioden med tjekLedigMod() — og OVERSKRIVER ikke, heller
+        //     ikke naar prioritet 40 kunne. To disponenter kan ramme samme
+        //     sekund, og et klientsidetjek kan ikke forhindre det.
+        //
+        // Doeren stod aaben mens `opgaveplan.js` skrev i sit eget hoved at
+        // "der skrives intet herfra direkte". En kontrol der kun findes i
+        // frontend, er ikke adgangskontrol — den er en paen knap.
+        //
+        // .validate herunder er FORMEN serveren skal overholde. Den
+        // haandhaeves ikke paa admin-SDK'et — det goer valideOpgaveplan() og
+        // opgaveMangler() i functions/delt/, som er DE SAMME filer klienten
+        // proever mod. Samme ordning som kasseudlaan.
+        //
+        // ⚠ TO VEJE ER LUKKET MED, og de skal genaabnes med hver sin funktion
+        // frem for ved at loesne den her linje:
+        //   · en FACILITY-opgave. opgaveplanlaeg saetter art: "vaerksted".
+        //   · et STATUSSKIFT (indberettet → planlagt → igang → udfoert).
+        // Ingen af de to blev skrevet af en klient i forvejen. Se beslutning 43.
         "opgaver": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|opgaver.skriv|')",
+          ".write": false,
           // ⚠ startMs, IKKE dato. Indekset navngav et felt INGEN post har:
           // opgaverne baerer startMs. Det overlevede fordi ingen skaerm
           // forespurgte paa noden — den var demo-drevet. Et indeks paa et
