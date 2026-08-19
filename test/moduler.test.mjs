@@ -33,7 +33,7 @@ import {
   MODUL, ALLE_MODULER, VALGFRIE_MODULER, OBLIGATORISKE_MODULER, UDEN_SKAERM,
   harModul, modulsaet, ukendteModuler,
 } from "../src/fleet/moduler.js";
-import { NAV } from "../src/fleet/nav.js";
+import { NAV, ALLE, REDIRECTS } from "../src/fleet/nav.js";
 
 describe("modulkataloget svarer til menuen", () => {
   it("hvert modul peger på et navKey der findes", () => {
@@ -45,7 +45,15 @@ describe("modulkataloget svarer til menuen", () => {
        tegnes i sidebaren, for et menupunkt der fører til ingenting, lover
        noget produktet ikke kan. Navnet står i moduler.js, ikke her, så det
        er koden der siger hvad der mangler. */
-    const navKeys = new Set(NAV.map((m) => m.key));
+    /* ⚠ MINDST ÉT MENUPUNKT — IKKE NØDVENDIGVIS ET ØVERST.
+       Prøven så før kun på topniveauet. Da kundekartoteket og de to
+       prisskærme flyttede til Opsætning som stamdata, blev `kunder` det
+       første modul uden et hovedpunkt — og en prøve der insisterede på
+       topniveauet, ville have tvunget et tomt menupunkt frem bare for at
+       blive grøn. Kravet der betyder noget, er at navKey PEGER PÅ NOGET:
+       gør den ikke det, kan modulet hverken vises eller skjules, og fejlen
+       kaster ikke — punktet forsvinder bare, for alle. */
+    const navKeys = new Set(NAV.flatMap((m) => [m.key, ...(m.born || []).map((b) => b.key)]));
     for (const m of ALLE_MODULER) {
       if (UDEN_SKAERM.includes(m)) {
         assert.ok(!navKeys.has(MODUL[m].navKey),
@@ -56,12 +64,37 @@ describe("modulkataloget svarer til menuen", () => {
     }
   });
 
-  it("hvert menupunkt har et modul", () => {
+  it("hvert HOVEDpunkt har et modul", () => {
     /* Et menupunkt uden modul kan ikke sælges — og kan heller ikke skjules
-       for den kunde der ikke har købt det. */
+       for den kunde der ikke har købt det. Det gælder topniveauet, som
+       AppShell filtrerer på `m.key`; et BARN filtreres på `kraeverModul`,
+       og det har sin egen prøve længere nede. */
     const modulNav = new Set(ALLE_MODULER.map((m) => MODUL[m].navKey));
     for (const m of NAV) {
-      assert.ok(modulNav.has(m.key), `menupunktet "${m.key}" har intet modul`);
+      assert.ok(modulNav.has(m.key) || ALLE_MODULER.includes(m.key),
+        `menupunktet "${m.key}" har intet modul`);
+    }
+  });
+
+  it("⚠ ET MODUL UDEN HOVEDPUNKT SKJULES AF SINE BØRN", () => {
+    /* Det konkrete tilfælde skrevet ud. AppShell filtrerer topniveauet på
+       `m.key` og børnene på `kraeverModul`. Har et modul ingen af delene,
+       er der intet der skjuler det for den kunde der ikke har købt det —
+       og et menupunkt i Opsætning, som er `altid: true`, ville åbne en
+       afvist læsning hos enhver. */
+    const topKeys = new Set(NAV.map((m) => m.key));
+    const alleBoern = NAV.flatMap((m) => m.born || []);
+    for (const m of ALLE_MODULER) {
+      if (MODUL[m].altid || topKeys.has(MODUL[m].navKey)) continue;
+      const boern = alleBoern.filter((b) => b.kraeverModul === m);
+      assert.ok(boern.length > 0,
+        `modulet "${m}" har hverken et hovedpunkt eller et barn med ` +
+        `kraeverModul — intet i menuen kan skjules for den der ikke har det`);
+      /* Og så SKAL hvert eneste af modulets punkter bære leddet. Glemmes det
+         på ét, er netop dét punkt synligt for alle. */
+      const modulets = alleBoern.filter((b) => b.sti.startsWith("/opsaetning/")
+        && boern.some((x) => x.key === b.key));
+      assert.equal(modulets.length, boern.length);
     }
   });
 });
@@ -327,5 +360,76 @@ describe("topbaren har ingen kontroller", () => {
       .replace(/\/\*[\s\S]*?\*\//g, "");
     assert.doesNotMatch(nav, /skjulFirma|skjulPeriode/,
       "nav.js bærer stadig et flag AppShell ikke læser");
+  });
+});
+
+describe("⚠ EN FLYTNING MÅ IKKE SLÅ ET LINK IHJEL", () => {
+  /* ⚠ HVORFOR DEN HER BLEV SKREVET.
+     REDIRECTS havde ingen prøve. Tabellen findes for at v1.4-links, bogmærker
+     og stier i gamle mails overlever en menuomlægning — og den blev brugt
+     tre gange på én uge: Live-kort → Rute & status, Enheder → Opsætning, og
+     nu kundekartoteket og de to prisskærme.
+
+     En redirect fejler tavst i begge retninger. Peger `til` et sted der ikke
+     findes, lander brugeren på catch-all'en og dermed på forsiden — det ser
+     ud som et forældet link. Og lever `fra` stadig som en RIGTIG rute, når
+     redirecten aldrig frem, fordi den første match vinder. Ingen af delene
+     kaster. */
+  const app = readFileSync("src/App.jsx", "utf8");
+  const ruter = new Set(
+    [...app.matchAll(/<Route\s+path="([^"]*)"/g)].map((m) => m[1]));
+  const stier = new Set(ALLE.map((m) => m.sti));
+
+  it("hver redirect peger på en sti der findes i nav.js", () => {
+    for (const r of REDIRECTS) {
+      assert.ok(stier.has(r.til),
+        `redirecten ${r.fra} peger på "${r.til}", som ikke er et menupunkt — ` +
+        `brugeren lander på catch-all'en og dermed på forsiden`);
+    }
+  });
+
+  it("⚠ OG DEN GAMLE STI ER IKKE OGSÅ EN RIGTIG RUTE", () => {
+    /* Var den det, ville skærmen kunne nås ad TO veje — og så er der to
+       steder at rette den dag stien flytter igen. Det var netop grunden til
+       at /flaade/vaerksted blev en redirect og ikke fik lov at blive
+       stående som rute. */
+    for (const r of REDIRECTS) {
+      assert.ok(!stier.has(r.fra),
+        `"${r.fra}" er både en redirect og et menupunkt i nav.js`);
+      /* Redirecterne LÆGGES af REDIRECTS.map() og står derfor ikke som
+         literal <Route path="…"> i filen. Gør en af dem det alligevel, er
+         den skrevet i hånden ved siden af — og den vinder, fordi den første
+         match tæller. */
+      assert.ok(!ruter.has(r.fra.replace(/^\//, "")),
+        `"${r.fra}" står som en håndskrevet rute i App.jsx OGSÅ — den vinder ` +
+        `over redirecten, og så er skærmen nået ad to veje`);
+    }
+  });
+
+  it("⚠ ET ID I DEN ENE ENDE SKAL VÆRE I DEN ANDEN", () => {
+    /* <Navigate to="/opsaetning/aftalepriser"> ville sende hvert eneste
+       kundeprislink til den TOMME oversigt, og fejlen ville se ud som et
+       forældet link frem for en redirect der tabte noget. Videresend() i
+       App.jsx bygger målet af de samme parametre — så skal de også hedde
+       det samme i begge ender. */
+    const params = (sti) => sti.split("/").filter((d) => d.startsWith(":")).sort();
+    for (const r of REDIRECTS) {
+      assert.deepEqual(params(r.til), params(r.fra),
+        `${r.fra} → ${r.til} taber eller opfinder en parameter`);
+    }
+    assert.match(app, /function Videresend\(/,
+      "App.jsx bruger <Navigate> direkte — en redirect med et id taber det");
+  });
+
+  it("de gamle stamdatastier lever", () => {
+    /* Det konkrete tilfælde skrevet ud. De fem stier har stået i sidebaren
+       siden v3.0 og ligger i bogmærker og i mindst én supportsags kontekst. */
+    const fra = new Set(REDIRECTS.map((r) => r.fra));
+    for (const gammel of [
+      "/bemanding/medarbejdere", "/kunder", "/kunder/priser",
+      "/kunder/aftalepriser", "/kunder/aftalepriser/:kundeId",
+    ]) {
+      assert.ok(fra.has(gammel), `${gammel} er død — der er ingen redirect`);
+    }
   });
 });

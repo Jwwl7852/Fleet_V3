@@ -292,7 +292,7 @@ export default function Varer() {
         {!kunder.length ? (
           <Tom>
             En vare skal have en <b>kunde</b> — godset er ikke vores. Opret en
-            kunde under Kunder &amp; Priser først; ellers ville varen ligge på
+            kunde under Opsætning → Kunder først; ellers ville varen ligge på
             lageret uden at nogen vidste hvem der skulle have regningen.
           </Tom>
         ) : (

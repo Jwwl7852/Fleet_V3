@@ -242,7 +242,7 @@ export default function Kundepriser() {
         <select id="kp-kunde" value={kundeId || ""}
                 onChange={(e) => {
                   saetRedigerer(null); saetAaben(null);
-                  navigate(e.target.value ? `/kunder/aftalepriser/${e.target.value}` : "/kunder/aftalepriser");
+                  navigate(e.target.value ? `/opsaetning/aftalepriser/${e.target.value}` : "/opsaetning/aftalepriser");
                 }}>
           <option value="">Vælg en kunde …</option>
           {kunder.map((k) => (
@@ -262,7 +262,7 @@ export default function Kundepriser() {
         <Kort titel="Kundepriser">
           <p className="fc-hint">
             Vælg en kunde for at se hendes aftale. Uden en afvigelse gælder{" "}
-            <Link className="fc-a" to="/kunder/priser">standardprisen</Link> —
+            <Link className="fc-a" to="/opsaetning/priser">standardprisen</Link> —
             det er ikke et hul, det er hovedreglen.
           </p>
           {vaelger}
@@ -299,7 +299,7 @@ export default function Kundepriser() {
           )}
 
           <Kort titel={`Aftalepriser — ${kunde.navn}`}
-                handling={<Link className="fc-a" to="/kunder">Tilbage til kunderne</Link>}>
+                handling={<Link className="fc-a" to="/opsaetning/kunder">Tilbage til kunderne</Link>}>
             {vaelger}
 
             <div className="fc-grid" style={{ gap: 4, marginBottom: 10 }}>

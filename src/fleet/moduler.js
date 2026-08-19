@@ -110,8 +110,23 @@ export const MODUL = {
     label: "Warehouse",
     hvad: "Lagerhotel: kundens varer, lokationer, bevægelser og afregning.",
   },
+  /**
+   * ⚠ DET FØRSTE MODUL UDEN ET TOPNIVEAUPUNKT — og det er ikke et hul.
+   *
+   * Kundekartoteket og de to prisskærme er STAMDATA, og stamdata samles under
+   * Opsætning (samme snit som Enheder). Modulet findes uændret: noderne,
+   * permissionerne og prisen er de samme, og de fire menupunkter bærer
+   * `kraeverModul: "kunder"`, fordi Opsætning er `altid: true` og ikke kan
+   * fravælges. Uden det led ville en kunde der aldrig har købt modulet, få et
+   * menupunkt i sin egen opsætning der åbner en afvist læsning.
+   *
+   * `navKey` betyder derfor "mindst ÉT menupunkt", ikke "et menupunkt øverst".
+   * Kravet er stadig at det findes: et modul hvis navKey ikke peger på noget,
+   * kan hverken vises eller skjules, og fejlen kaster ikke — punktet
+   * forsvinder bare, for alle, uden at nogen ser hvornår det skete.
+   */
   kunder: {
-    navKey: "kunder",
+    navKey: "kunderOversigt",
     label: "Kunder & Priser",
     hvad: "Kundekartotek, aftaler, prisgrupper og tilbud.",
   },
@@ -129,7 +144,7 @@ export const MODUL = {
   opsaetning: {
     navKey: "opsaetning",
     label: "Opsætning",
-    hvad: "Virksomhed, brugere og roller.",
+    hvad: "Stamdata, brugere, roller og integrationer.",
     altid: true,
   },
 };

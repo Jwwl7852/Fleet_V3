@@ -8,7 +8,15 @@
  *
  * DET HER ER STEDET HVOR EN MEDARBEJDER OPRETTES. Ikke Opsætning → Brugere &
  * roller: dér oprettes et LOGIN. En chauffør har måske aldrig et, en vikar
- * sjældent, en kontormedarbejder begge. Derfor viser detaljepanelet
+ * sjældent, en kontormedarbejder begge.
+ *
+ * ⚠ OG DE TO ER NU NABOER I MENUEN. Skærmen lå under Workforce indtil
+ * stamdata blev samlet under Opsætning; nu står Medarbejdere og Brugere &
+ * roller side om side, og forvekslingen er dermed LETTERE end før, ikke
+ * sværere. Derfor siger begge punkters undertekst hvad forskellen er, og
+ * derfor står den her igen. Se beslutning 18.
+ *
+ * Derfor viser detaljepanelet
  * udtrykkeligt "Intet login" frem for at lade feltet være tomt — et tomt felt
  * ligner en mangel, og det er det ikke.
  *
@@ -71,13 +79,13 @@ import { harPerm, PERM } from "../fleet/permissions.js";
 import {
   ALLE_FUNKTIONER, FUNKTION_LABEL, PERSONALE_STATUS, ANSAETTELSESFORM,
   funktionerAf, harFunktion, kanDisponeres, ikonFor,
-  valideMedarbejder, byggMedarbejder,
+  valideMedarbejder, byggMedarbejder
 } from "../fleet/personale.js";
 import { KOMPETENCE_LABEL, kanBlokere } from "../fleet/flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
-  Ikon, Felt, Feltraekke, Formular,
+  Ikon, Felt, Feltraekke, Formular
 } from "../fleet/ui.jsx";
 import { gem, nyId } from "../fleet/skriv.js";
 import { AUDIT } from "../fleet/audit.js";
@@ -95,7 +103,7 @@ const isoFraMs = (ms) =>
 const tomMedarbejder = () => ({
   navn: "", status: "aktiv", ansaettelsesform: "fastansat",
   funktioner: {}, stationeret: "", telefon: "", email: "",
-  ansatIso: "", fratraadtIso: "",
+  ansatIso: "", fratraadtIso: ""
 });
 
 const fraPerson = (p) => ({
@@ -104,7 +112,7 @@ const fraPerson = (p) => ({
   ansaettelsesform: p.ansaettelsesform ?? "fastansat",
   funktioner: { ...(p.funktioner || {}) },
   stationeret: p.stationeret ?? "", telefon: p.telefon ?? "", email: p.email ?? "",
-  ansatIso: isoFraMs(p.ansatMs), fratraadtIso: isoFraMs(p.fratraadtMs),
+  ansatIso: isoFraMs(p.ansatMs), fratraadtIso: isoFraMs(p.fratraadtMs)
 });
 
 /**
@@ -151,7 +159,7 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
     const r = await gem({
       sti: sti(id), data: byggMedarbejder(f), foer: person || null,
       objekt: "personale", objektId: id,
-      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre
     });
     saetGemmer(false);
     saetSvar(r);
@@ -275,8 +283,8 @@ export default function Medarbejdere() {
      være det samme uden. Men så ville det se ud som om skærmen bare var
      heldig. Her står der at den ikke er delt, fordi staben ikke er det. */
   const {
-    data: personale, henter: henterPersonale, fejl: personaleFejl,
-    tilstand: personaleTilstand, genindlaes: genindlaesPersonale, afkortet,
+    data: personale, henter: henterPersonale,
+    tilstand: personaleTilstand, genindlaes: genindlaesPersonale, afkortet
   } = useListe("personale", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
@@ -289,7 +297,7 @@ export default function Medarbejdere() {
        Der logges ÉN post med antallet, aldrig rækkerne. Indtil Cloud
        Function'en findes, tælles fejlen og skærmen kører videre; se
        forbeholdet om klientside-læsningslogning i BESLUTNINGER.md. */
-    auditerSom: "personale",
+    auditerSom: "personale"
   });
 
   /* Kompetencerne hentes ÉN gang og deles ud på personerne i klienten. Et
@@ -297,13 +305,13 @@ export default function Medarbejdere() {
      noden er lille nok til at det ikke betaler sig. Ingen division her heller
      — reglerne afviser feltet på begge noder med .validate: false. */
   const {
-    data: kompetencer, henter: henterKompetencer, fejl: kompetenceFejl,
-    tilstand: kompetenceTilstand, genindlaes: genindlaesKompetencer,
+    data: kompetencer, henter: henterKompetencer,
+    tilstand: kompetenceTilstand, genindlaes: genindlaesKompetencer
   } = useListe("kompetencer", {
     ordnPaa: "udloeberMs",
     vindue: "alle",
     division: "alle",
-    demo: DEMO_KOMPETENCER,
+    demo: DEMO_KOMPETENCER
   });
 
   if (henterPersonale || henterKompetencer) return <Henter hvad="medarbejdere" />;

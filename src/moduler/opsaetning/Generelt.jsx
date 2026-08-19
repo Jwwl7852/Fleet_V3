@@ -45,13 +45,13 @@ import {
    fordi det spørgsmål — "hvor retter jeg det?" — er hele grunden til at nogen
    åbner Opsætning. Peger den forkert, leder man videre samme sted igen. */
 const STAMDATA = [
-  { hvad: "Medarbejdere", hvor: "/bemanding/medarbejdere", label: "Workforce → Medarbejdere",
+  { hvad: "Medarbejdere", hvor: "/opsaetning/medarbejdere", label: "Opsætning → Medarbejdere",
     note: "Personen findes uden login. personId er ikke uid — beslutning 18." },
   { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Workforce → Kompetencer",
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
   { hvad: "Enheder og påhæng", hvor: "/opsaetning/enheder", label: "Opsætning → Enheder",
     note: "Arten styrer feltskemaet. Ingen division på en enhed — beslutning 19." },
-  { hvad: "Kunder og prisgrupper", hvor: "/kunder", label: "Kunder & Priser",
+  { hvad: "Kunder og prisgrupper", hvor: "/opsaetning/kunder", label: "Opsætning → Kunder",
     note: "Prisgruppen peger på et satssæt; satserne selv ligger i Bookingopsætning." },
   { hvad: "Satser og tillæg", hvor: "/booking/opsaetning", label: "Booking → Bookingopsætning",
     note: "Versioneres med gyldigFra og overskrives aldrig — beslutning 7." },

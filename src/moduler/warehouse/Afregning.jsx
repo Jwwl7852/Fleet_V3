@@ -140,7 +140,7 @@ export default function Afregning() {
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel="Afregning"
-            handling={<Link className="fc-a" to="/kunder/priser">Se standardpriserne</Link>}>
+            handling={<Link className="fc-a" to="/opsaetning/priser">Se standardpriserne</Link>}>
         <p className="fc-hint">
           Perioden er <b>{dato(periode.fra)} – {dato(periode.til)}</b> og
           kommer fra vælgeren i toppen. Bevægelser tælles pr. ydelse, og
@@ -243,9 +243,9 @@ export default function Afregning() {
                 ⚠ {num(sum.mangler)}{" "}
                 {sum.mangler === 1 ? "linje mangler" : "linjer mangler"} en
                 sats, og summen kan derfor ikke gøres op. Sæt prisen under{" "}
-                <Link className="fc-a" to="/kunder/priser">Standardpriser</Link>{" "}
+                <Link className="fc-a" to="/opsaetning/priser">Standardpriser</Link>{" "}
                 — eller giv kunden sin egen under{" "}
-                <Link className="fc-a" to={`/kunder/aftalepriser/${kunde.id}`}>
+                <Link className="fc-a" to={`/opsaetning/aftalepriser/${kunde.id}`}>
                   Kundepriser
                 </Link>. En halv sum er værre end ingen: den ser ud som om den
                 er regnet ud.

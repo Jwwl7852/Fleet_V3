@@ -3,7 +3,7 @@
  * ikke kan komme ud af sync.
  */
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
@@ -151,6 +151,26 @@ function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
 
 /* Gemmer hvor man var på vej hen, så et dybt link ikke koster en ekstra
    navigation efter login. */
+/**
+ * En redirect der bærer sine parametre med.
+ *
+ * ⚠ <Navigate to="/opsaetning/aftalepriser"> VILLE TABE KUNDE-ID'ET.
+ * `/kunder/aftalepriser/:kundeId` peger på ÉN kundes priser, og et link
+ * uden parameteren lander på den tomme oversigt. Fejlen ville se ud som et
+ * forældet link frem for en redirect der tabte noget — og det er den slags
+ * forskel ingen kan se på skærmen.
+ *
+ * Målet bygges af de SAMME parametre som stien matchede med, så
+ * REDIRECTS kan skrive `:kundeId` i begge ender og betyde det samme.
+ */
+function Videresend({ til }) {
+  const params = useParams();
+  const maal = til
+    .split("/")
+    .map((del) => (del.startsWith(":") ? params[del.slice(1)] : del))
+    .join("/");
+  return <Navigate to={maal} replace />;
+}
 function TilLogin() {
   const l = useLocation();
   return <Navigate to="/login" replace state={{ fra: l.pathname + l.search }} />;
@@ -337,7 +357,6 @@ export default function App() {
             <Route path="booking/opsaetning" element={<Bookingopsaetning />} />
 
             <Route path="bemanding" element={<Bemanding />} />
-            <Route path="bemanding/medarbejdere" element={<Medarbejdere />} />
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />
             <Route path="bemanding/fravaer" element={<Fravaer />} />
 
@@ -372,10 +391,6 @@ export default function App() {
             <Route path="warehouse/sporbarhed" element={<Wmssporbarhed />} />
             <Route path="warehouse/volumen" element={<Wmsvolumen />} />
 
-            <Route path="kunder" element={<Kunder />} />
-            <Route path="kunder/priser" element={<Standardpriser />} />
-            <Route path="kunder/aftalepriser" element={<Kundepriser />} />
-            <Route path="kunder/aftalepriser/:kundeId" element={<Kundepriser />} />
 
             <Route path="oekonomi" element={<Oekonomi />} />
             <Route path="oekonomi/fakturering" element={<Fakturering />} />
@@ -389,12 +404,23 @@ export default function App() {
                 fordi modulnoeglen, noden og permissionen alle hedder flaade —
                 det er MENUPLADSEN der flyttede, ikke ejerskabet. */}
             <Route path="opsaetning/enheder" element={<FlaadeOversigt />} />
+            {/* ⚠ STAMDATA. Komponenterne bliver liggende i moduler/ og
+                moduler/kunder/, fordi modulnoeglerne, noderne og
+                permissionerne er uaendrede — det er MENUPLADSEN der
+                flyttede, ikke ejerskabet. De gamle stier lever videre som
+                REDIRECTS. */}
+            <Route path="opsaetning/medarbejdere" element={<Medarbejdere />} />
+            <Route path="opsaetning/kunder" element={<Kunder />} />
+            <Route path="opsaetning/priser" element={<Standardpriser />} />
+            <Route path="opsaetning/aftalepriser" element={<Kundepriser />} />
+            <Route path="opsaetning/aftalepriser/:kundeId" element={<Kundepriser />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}
             {REDIRECTS.map((r) => (
-              <Route key={r.fra} path={r.fra.slice(1)} element={<Navigate to={r.til} replace />} />
+              <Route key={r.fra} path={r.fra.slice(1)}
+                     element={<Videresend til={r.til} />} />
             ))}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

@@ -54,7 +54,7 @@ import { stationeringerFor, ikonFor } from "../fleet/personale.js";
 import { DEMO_BEMANDINGSPLAN } from "../fleet/demo-bemanding.js";
 import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap
 } from "../fleet/ui.jsx";
 
 /* Ugen regnes fra mandag. Hvilken kolonne der er "i dag" afhænger af hvornår
@@ -81,7 +81,7 @@ const celleTone = (c) =>
 
 
 export default function Bemanding() {
-  const { kpi: k, henter, fejl, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
@@ -100,7 +100,7 @@ export default function Bemanding() {
         (s, c) => ({
           planlagt: s.planlagt + c.planlagt,
           disponeret: s.disponeret + c.disponeret,
-          mangler: s.mangler + c.mangler,
+          mangler: s.mangler + c.mangler
         }),
         { planlagt: 0, disponeret: 0, mangler: 0 }
       );
@@ -214,7 +214,7 @@ export default function Bemanding() {
                       </span>
                     </div>
                   );
-                },
+                }
               })),
               /* Rækkesummen over de syv viste dage. Den hører ikke sammen med
                  nøgletallene ovenfor, som er "i dag" — derfor står den til
@@ -343,7 +343,7 @@ export default function Bemanding() {
         Bemandingsplanen er demo-data: der findes ingen vagtnode i datamodellen endnu.
         Personerne og deres kompetencer er derimod rigtige poster i <b>personale/</b> og{" "}
         <b>kompetencer/</b> — de vedligeholdes på{" "}
-        <Link className="fc-a" to="/bemanding/medarbejdere">Medarbejdere</Link>.
+        <Link className="fc-a" to="/opsaetning/medarbejdere">Medarbejdere</Link>.
         Nøgletallene ovenfor kommer fra KPI-noden og matcher Dashboard.
       </p>
     </div>

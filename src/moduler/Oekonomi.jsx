@@ -57,14 +57,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import {
-  DEMO_OMKOSTNINGSKATEGORIER, DEMO_DAEKNINGSGRAD_HISTORIK, DEMO_KLAR_TIL_FAKTURERING,
-  omkostningsserie, maanedsEtiketter,
+   DEMO_DAEKNINGSGRAD_HISTORIK, DEMO_KLAR_TIL_FAKTURERING,
+  omkostningsserie, maanedsEtiketter
 } from "../fleet/demo-oekonomi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct, alvorTone, ALVOR } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
-  Afvigelse, Soejlegraf, Linjegraf, MiniKurve, Ikon, Knap, Tom,
+  Afvigelse, Soejlegraf, Linjegraf, MiniKurve, Ikon, Knap, Tom
 } from "../fleet/ui.jsx";
 
 /* Rapporttype. Filteret rammer tabellen og omkostningsgrafen — ikke
@@ -132,6 +132,10 @@ export default function Oekonomi() {
   /* ÉN beregning. KPI-kortet og totalrækken læser begge herfra. */
   const budgetAfvigelseOere = k.oekonomi.driftsomkostningerOere - k.oekonomi.budgetOere;
   const budgetAfvigelsePct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
+  /* ⚠ REGNET, MEN VISES IKKE. Afvigelsen mod måldækningsgraden står ingen
+     steder på skærmen — tallet er beregnet og tabt. Fundet af
+     no-unused-vars; se README. */
+  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
   const daekningsgradAfv = k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct;
 
   /* Kategorierne foldes ud til den valgte division. Ét sæt tal, ikke to
@@ -148,7 +152,7 @@ export default function Oekonomi() {
     budgetOere: k.oekonomi.budgetOere,
     forrigeOere: forrigeSum,
     historik: historikTotal,
-    daekningsgradPct: k.oekonomi.daekningsgradPct,
+    daekningsgradPct: k.oekonomi.daekningsgradPct
   };
   const raekker = valgt ? [valgt] : [total, ...kategorier];
 
@@ -158,7 +162,7 @@ export default function Oekonomi() {
 
   const dgHistorik = DEMO_DAEKNINGSGRAD_HISTORIK[division] || DEMO_DAEKNINGSGRAD_HISTORIK.gods;
   const omkostningPunkter = MAANEDER.map((m, i) => ({
-    label: m, vaerdier: [omkostningSerie[i]],
+    label: m, vaerdier: [omkostningSerie[i]]
   }));
   /* ⚠ MÅLET ER EN SERIE, IKKE EN ETIKET. Tegnes det som en stiplet linje ved
      siden af den faktiske, kan man se hvornår man krydsede den — en pille der
@@ -166,7 +170,7 @@ export default function Oekonomi() {
   const daekningsgradPunkter = MAANEDER.map((m, i) => ({
     label: m,
     vaerdier: [i < 11 ? dgHistorik[i] : k.oekonomi.daekningsgradPct,
-               k.oekonomi.maalDaekningsgradPct],
+               k.oekonomi.maalDaekningsgradPct]
   }));
 
   const timer = k.oekonomi.driftstimer;
@@ -206,7 +210,7 @@ export default function Oekonomi() {
                  note="vs. budget · faktisk − budget" />
         {/* ⚠ PROCENTPOINT. 68 % der bliver til 72 % er +4 point, ikke +4 %. */}
         <KpiKort label="Dækningsgrad" vaerdi={pct(k.oekonomi.daekningsgradPct)}
-                 ikon={<Ikon navn="skjold" />} tone="ikon-6" rund til="/kunder"
+                 ikon={<Ikon navn="skjold" />} tone="ikon-6" rund til="/opsaetning/kunder"
                  {...afvig(k.oekonomi.daekningsgradDeltaPoint, { betterWhen: "higher" },
                            "procentpoint vs. forrige periode")} />
       </KpiRaekke>

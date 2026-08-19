@@ -58,7 +58,7 @@ import { DEMO_KUNDER, DEMO_TILBUD, TILBUD_STATUS } from "../fleet/demo-kunder.js
 import { kr, num, pct, dato, deviation, serviceTone, alvorTone, ALVOR } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
-  Afvigelse, Knap, Ikon, Tom,
+  Afvigelse, Knap, Ikon 
 } from "../fleet/ui.jsx";
 import { vaerste } from "../fleet/datatilstand.js";
 
@@ -73,7 +73,7 @@ const AFTALESTATUS = {
   aktiv: { label: "Aktiv", tone: "ok" },
   genforhandling: { label: "Genforhandling", tone: "warn" },
   udloeber: { label: "Udløber", tone: "warn" },
-  udloebet: { label: "Udløbet", tone: "bad" },
+  udloebet: { label: "Udløbet", tone: "bad" }
 };
 
 /* Demo-kunderne OG tilbuddene ligger i fleet/demo-kunder.js — ikke her.
@@ -133,13 +133,13 @@ export default function Kunder() {
      noden ned og filtrerer i klienten, uden at fejle. */
   const {
     data: kunder, henter: henterKunder, tilstand: kundeTilstand,
-    genindlaes: genindlaesKunder, afkortet,
+    genindlaes: genindlaesKunder, afkortet
   } = useListe("kunder", {
     ordnPaa: "aktiv",
     lig: true,
     graense: 200,
     sorter: (a, b) => b.omsaetningOere - a.omsaetningOere,
-    demo: DEMO_KUNDER,
+    demo: DEMO_KUNDER
   });
 
   if (henterKpi || henterKunder) return <Henter hvad="kunder og nøgletal" />;
@@ -198,11 +198,11 @@ export default function Kunder() {
         {/* Runde ikoner med chevron, som resten af appen. Tonerne er
             IKONACCENTER — farven forstærker, tallet og teksten bærer. */}
         <KpiKort label="Aktive kunder" vaerdi={num(k.kunder.aktive)}
-                 ikon={<Ikon navn="personer" />} tone="ikon-5" rund til="/kunder"
+                 ikon={<Ikon navn="personer" />} tone="ikon-5" rund til="/opsaetning/kunder"
                  {...afvig(k.kunder.aktiveDeltaPct, { betterWhen: "higher", unit: "pct" })} />
         <KpiKort label="Aftaler udløber" vaerdi={num(k.kunder.aftalerUdloeber)}
                  ikon={<Ikon navn="kalender" />} tone="ikon-2" rund
-                 note="inden for 30 dage" til="/kunder" />
+                 note="inden for 30 dage" til="/opsaetning/kunder" />
         <KpiKort label="Aktuelle tilbud" vaerdi={num(k.kunder.tilbud)}
                  ikon={<Ikon navn="maerkat" />} tone="ikon-4" rund
                  note={`${num(k.kunder.tilbudKraeverOpfoelgning)} kræver opfølgning`}
@@ -339,11 +339,11 @@ export default function Kunder() {
                 Linjen pegede på Bookingopsætning, og den henvisning var
                 forkert i samme øjeblik aftaleprisen fandtes. */}
             <p className="fc-hint" style={{ marginTop: 10 }}>
-              <Link className="fc-a" to={`/kunder/aftalepriser/${valgt.id}`}>
+              <Link className="fc-a" to={`/opsaetning/aftalepriser/${valgt.id}`}>
                 Se og sæt aftalepriser for {valgt.navn}
               </Link>{" "}
               — kundens egen pris eller rabat. Uden en afvigelse gælder{" "}
-              <Link className="fc-a" to="/kunder/priser">standardprisen</Link>.
+              <Link className="fc-a" to="/opsaetning/priser">standardprisen</Link>.
               Begge dele versioneres med <b>gyldigFra</b> og overskrives aldrig.
             </p>
           </Kort>

@@ -52,14 +52,14 @@ import { useListe } from "../../fleet/useListe.js";
 import { kr, num } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Tom, KpiKort, KpiRaekke,
-  Felt, Feltraekke, Knap, MiniLinje, Gitter,
+  Felt, Feltraekke, Knap, MiniLinje
 } from "../../fleet/ui.jsx";
 import {
   KAPACITETSGRUNDLAG, ALLE_KAPACITETSGRUNDLAG, TILBUDSHAANDTERINGER,
-  DOEGN_PR_MAANED, tilbudsberegning, kubikFraLinjer,
+  DOEGN_PR_MAANED, tilbudsberegning, kubikFraLinjer
 } from "../../fleet/volumen.js";
 import {
-  prisFor, STANDARDGRUPPE, PRISKILDE, LAGERYDELSER, METODER,
+  prisFor, STANDARDGRUPPE, PRISKILDE, LAGERYDELSER, METODER
 } from "../../fleet/pricing.js";
 import { MAENGDE_SKALA, talFraMaengde } from "../../fleet/warehouse.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
@@ -78,21 +78,21 @@ export default function Volumen() {
   const [maaneder, saetMaaneder] = useState("12");
   const [kundeId, saetKundeId] = useState("");
   const [haandtering, saetHaandtering] = useState({
-    "lager-handlingInd": "40", "lager-handlingUd": "40",
+    "lager-handlingInd": "40", "lager-handlingUd": "40"
   });
 
   const {
-    data: kunder, tilstand, genindlaes, henter,
+    data: kunder, tilstand, genindlaes, henter
   } = useListe("kunder", {
-    ordnPaa: "navn", vindue: "alle", graense: 200, demo: DEMO_KUNDER,
+    ordnPaa: "navn", vindue: "alle", graense: 200, demo: DEMO_KUNDER
   });
   const { data: standardposter } = useListe(`satser/${STANDARDGRUPPE}`, {
-    division: "alle", vindue: "alle", graense: 500, demo: [],
+    division: "alle", vindue: "alle", graense: 500, demo: []
   });
   /* Varerne bruges kun til rumfangsberegneren nederst — kunden har måske
      allerede sine varer i systemet, og så skal han ikke gætte sit eget m³. */
   const { data: varer } = useListe("varer", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_VARER,
+    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_VARER
   });
 
   if (henter) return <Henter hvad="priserne" />;
@@ -116,7 +116,7 @@ export default function Volumen() {
     maaneder: Number(maaneder) || 0,
     haandteringer: Object.fromEntries(
       TILBUDSHAANDTERINGER.map((h) => [h.ydelseId, skaleret(haandtering[h.ydelseId] || 0)])),
-    prisFor: slaaOp,
+    prisFor: slaaOp
   });
 
   const g = KAPACITETSGRUNDLAG[grundlag];
@@ -189,7 +189,7 @@ export default function Volumen() {
       </Kort>
 
       <Kort titel="Beregningen"
-            handling={<Link className="fc-a" to="/kunder/priser">Se priserne</Link>}>
+            handling={<Link className="fc-a" to="/opsaetning/priser">Se priserne</Link>}>
         <Tabel
           kolonner={[
             { key: "ydelse", label: "Ydelse" },
@@ -221,7 +221,7 @@ export default function Volumen() {
             kilde: l.kilde
               ? <Pille tone={PRISKILDE[l.kilde]?.tone}>{PRISKILDE[l.kilde]?.label}</Pille>
               : <Pille tone="warn">Mangler</Pille>,
-            beloeb: l.beloebOere == null ? "—" : kr(l.beloebOere),
+            beloeb: l.beloebOere == null ? "—" : kr(l.beloebOere)
           }))}
         />
 
@@ -237,7 +237,7 @@ export default function Volumen() {
             ⚠ <b>{udenPris.length === 1 ? "En ydelse mangler" : `${udenPris.length} ydelser mangler`} sin
             pris</b>, og summen kan derfor ikke gøres op:{" "}
             {udenPris.map((l) => LAGERYDELSER[l.ydelseId]?.navn || l.ydelseId).join(", ")}.
-            Sæt den under <Link className="fc-a" to="/kunder/priser">Kunder &amp; Priser</Link> —
+            Sæt den under <Link className="fc-a" to="/opsaetning/priser">Standardpriser</Link> —
             linjen udelades ikke, for så ville tilbuddet se komplet ud.
           </p>
         )}
@@ -259,7 +259,7 @@ export default function Volumen() {
           ]}
           raekker={beregning.forudsaetninger.map((f, i) => ({
             id: `f-${i}`, hvad: <b>{f.hvad}</b>, vaerdi: f.vaerdi,
-            note: <span className="fc-hint">{f.note}</span>,
+            note: <span className="fc-hint">{f.note}</span>
           }))}
         />
         <p className="fc-hint" style={{ marginTop: 8 }}>
@@ -296,7 +296,7 @@ export default function Volumen() {
                     /* ⚠ EN VARE UDEN MÅL TÆLLER IKKE SOM NUL. Den står med
                        en streg: et nul ville se ud som et regnestykke der er
                        gået op. */
-                    kubik: uden.length ? "mål mangler" : kubik.toFixed(3),
+                    kubik: uden.length ? "mål mangler" : kubik.toFixed(3)
                   };
                 })}
               />

@@ -309,7 +309,7 @@ export default function Brugere() {
                  note={`${num(mineP.length)} permissions i dit token`} />
         <KpiKort label="Medarbejdere uden login" vaerdi="Workforce"
                  ikon={<Ikon navn="bygning" />} tone="ikon-2" rund
-                 note="personId, ikke uid" til="/bemanding/medarbejdere" />
+                 note="personId, ikke uid" til="/opsaetning/medarbejdere" />
       </KpiRaekke>
 
       {/* ⚠ LISTEN KOMMER FRA ET INDEKS, IKKE FRA AUTH. Firebase Auth har
@@ -434,7 +434,7 @@ export default function Brugere() {
         <p className="fc-hint" style={{ marginTop: 8 }}>
           <b>Et login er ikke en person.</b> Spærrer du loginnet, bliver
           medarbejderen stående under{" "}
-          <Link className="fc-a" to="/bemanding/medarbejdere">Medarbejdere</Link> —
+          <Link className="fc-a" to="/opsaetning/medarbejdere">Medarbejdere</Link> —
           der hænger indberetninger og reservationer på hende, og en post fra
           sidste år skal stadig kunne opløses til et navn.
         </p>
@@ -622,7 +622,7 @@ export default function Brugere() {
             hænger reservationer, indberetninger og bookinger på{" "}
             <code>personId</code>, og reglerne afviser en sletning med{" "}
             <code>newData.exists()</code>. Kun loginnet spærres — se{" "}
-            <Link className="fc-a" to="/bemanding/medarbejdere">Medarbejdere</Link>.
+            <Link className="fc-a" to="/opsaetning/medarbejdere">Medarbejdere</Link>.
           </p>
         </Kort>
       </Gitter>

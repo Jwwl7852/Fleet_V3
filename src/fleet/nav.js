@@ -43,11 +43,6 @@ export const NAV = [
     born: [
       { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan",
         titel: "Workforce", under: "Overblik over bemanding og kapacitet" },
-      /* Medarbejdere er IKKE det samme som Brugere & roller under Opsætning.
-         Her oprettes personen; dér oprettes et login. En chauffør har måske
-         aldrig et login, en vikar sjældent. Se beslutning 18. */
-      { key: "medarbejdere", sti: "/bemanding/medarbejdere", label: "Medarbejdere",
-        titel: "Medarbejdere", under: "Opret og vedligehold personalet. Login oprettes under Opsætning → Brugere & roller." },
       { key: "kompetencer", sti: "/bemanding/kompetencer", label: "Kompetencer",
         titel: "Kompetencer & certifikater", under: "Gyldighed, udløb og påmindelser" },
       { key: "fravaer", sti: "/bemanding/fravaer", label: "Ferie & fravær",
@@ -195,30 +190,6 @@ export const NAV = [
     ],
   },
   {
-    key: "kunder", sti: "/kunder", label: "Kunder & Priser", titel: "Kunder & Priser",
-    under: "Overblik over kunder, aftaler og priser",
-    born: [
-      { key: "kunderOversigt", sti: "/kunder", label: "Kunder",
-        titel: "Kunder & Priser", under: "Overblik over kunder, aftaler og priser" },
-      /* ⚠ ALLE PRISER SAMLES HER. Plancherne til Warehouse har en egen
-         "Rater"-skaerm; den bygges ikke. Et andet sted at saette den samme
-         slags pris ville betyde at en vognmand skulle vedligeholde sine
-         priser to steder. Se PRISER.md. */
-      { key: "standardpriser", sti: "/kunder/priser", label: "Standardpriser",
-        titel: "Standardpriser",
-        under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
-      /* ⚠ TO LAG, IKKE TRE. Standardprisen gaelder alle; her saettes den
-         enkelte kundes afvigelse — enten en egen pris eller en rabat.
-         Prisgruppen baerer ikke laengere en pris. Se PRISER.md punkt 4.1. */
-      { key: "kundepriser", sti: "/kunder/aftalepriser", label: "Kundepriser",
-        titel: "Kundepriser",
-        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
-      { key: "kundepriserEn", sti: "/kunder/aftalepriser/:kundeId", label: "Kundepriser",
-        skjulINav: true, titel: "Kundepriser",
-        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
-    ],
-  },
-  {
     key: "oekonomi", sti: "/oekonomi", label: "Økonomi & Rapporter",
     titel: "Økonomi & Rapporter",
     under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver.",
@@ -247,7 +218,7 @@ export const NAV = [
   },
   {
     key: "opsaetning", sti: "/opsaetning", label: "Opsætning", titel: "Opsætning",
-    under: "Virksomhed, brugere, roller og integrationer",
+    under: "Stamdata, brugere, roller og integrationer",
     born: [
       { key: "generelt", sti: "/opsaetning", label: "Generelt",
         titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
@@ -265,9 +236,60 @@ export const NAV = [
       { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
         kraeverModul: "flaade",
         titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
+      /* ⚠ MEDARBEJDERE ER STAMDATA — DERFOR HER, IKKE I WORKFORCE.
+         Samme snit som Enheder ovenfor: en person oprettes én gang og røres
+         sjældent igen, mens bemandingsplanen bruges hver dag. Stod de side
+         om side, lå den daglige skærm nummer to i en menu hvor nummer ét
+         knap bruges.
+
+         ⚠ OG DET ER STADIG IKKE DET SAMME SOM BRUGERE & ROLLER, selv om de
+         nu er naboer. Her oprettes PERSONEN, dér et LOGIN. En chauffør har
+         måske aldrig et login, en vikar sjældent. `personId` er hvem det
+         handler om, `uid` er hvem der gjorde noget — se beslutning 18.
+         Naboskabet gør forvekslingen lettere, ikke sværere, så begge punkter
+         siger det i deres undertekst. */
+      { key: "medarbejdere", sti: "/opsaetning/medarbejdere", label: "Medarbejdere",
+        kraeverModul: "bemanding",
+        titel: "Medarbejdere",
+        under: "Personalets stamdata. Et LOGIN oprettes ved siden af under Brugere & roller — en chauffør har måske aldrig et." },
+
+      /* ⚠ KUNDER OG PRISER LÅ SOM ET EGET TOPPUNKT, "Kunder & Priser".
+         De er stamdata, og de ligger nu her — men modulet `kunder` findes
+         uændret, og de tre punkter bærer `kraeverModul: "kunder"` af samme
+         grund som Enheder bærer `flaade`: Opsætning er `altid: true` og kan
+         ikke fravælges, så uden leddet ville en kunde der aldrig har købt
+         modulet, få et menupunkt i sin egen opsætning der åbner en afvist
+         læsning. Menuen er den KOMMERCIELLE kontrol, reglerne er
+         sikkerhedskontrollen.
+
+         ⚠ `kunder` er dermed det første modul UDEN et topniveaupunkt. Det
+         er ikke et hul i modellen: et modul skal have mindst ÉT menupunkt,
+         ikke nødvendigvis et øverst. Se navKey i moduler.js. */
+      { key: "kunderOversigt", sti: "/opsaetning/kunder", label: "Kunder",
+        kraeverModul: "kunder",
+        titel: "Kunder & Priser", under: "Overblik over kunder, aftaler og priser" },
+      /* ⚠ ALLE PRISER SAMLES HER. Plancherne til Warehouse har en egen
+         "Rater"-skaerm; den bygges ikke. Et andet sted at saette den samme
+         slags pris ville betyde at en vognmand skulle vedligeholde sine
+         priser to steder. Se PRISER.md. */
+      { key: "standardpriser", sti: "/opsaetning/priser", label: "Standardpriser",
+        kraeverModul: "kunder",
+        titel: "Standardpriser",
+        under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
+      /* ⚠ TO LAG, IKKE TRE. Standardprisen gaelder alle; her saettes den
+         enkelte kundes afvigelse — enten en egen pris eller en rabat.
+         Prisgruppen baerer ikke laengere en pris. Se PRISER.md punkt 4.1. */
+      { key: "kundepriser", sti: "/opsaetning/aftalepriser", label: "Kundepriser",
+        kraeverModul: "kunder",
+        titel: "Kundepriser",
+        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
+      { key: "kundepriserEn", sti: "/opsaetning/aftalepriser/:kundeId", label: "Kundepriser",
+        kraeverModul: "kunder", skjulINav: true, titel: "Kundepriser",
+        under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
+
       { key: "brugere", sti: "/opsaetning/brugere", label: "Brugere & roller",
         titel: "Brugere & roller",
-        under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes under Workforce → Medarbejdere." },
+        under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer",
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
     ],
@@ -285,6 +307,22 @@ export const REDIRECTS = [
      Stien har staaet i sidebaren siden v3.0 og ligger i mindst een supportsags
      kontekst (demo-sag.js) — den doer ikke af en menuomlaegning. */
   { fra: "/flaade/vaerksted", til: "/flaade" },
+
+  /* ⚠ STAMDATA SAMLEDES UNDER OPSÆTNING. De fem stier her har stået i
+     sidebaren siden v3.0 og ligger i bogmærker, i mails og i mindst én
+     supportsags kontekst. En menuomlægning må ikke slå dem ihjel — det var
+     hele pointen med at /flaade/vaerksted overlevede sin egen flytning.
+
+     ⚠ OG ID'ET SKAL MED. `/kunder/aftalepriser/:kundeId` peger på ÉN kundes
+     priser. En redirect uden parameteren ville sende hvert eneste af de
+     links til den tomme oversigt — og fejlen ville se ud som et forældet
+     link frem for en redirect der tabte noget. Videresend() i App.jsx
+     bygger målet af de samme parametre. */
+  { fra: "/bemanding/medarbejdere", til: "/opsaetning/medarbejdere" },
+  { fra: "/kunder", til: "/opsaetning/kunder" },
+  { fra: "/kunder/priser", til: "/opsaetning/priser" },
+  { fra: "/kunder/aftalepriser", til: "/opsaetning/aftalepriser" },
+  { fra: "/kunder/aftalepriser/:kundeId", til: "/opsaetning/aftalepriser/:kundeId" },
 ];
 
 /** Slår modulet op ud fra pathname. Længste match vinder. */

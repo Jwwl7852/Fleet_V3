@@ -59,17 +59,17 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { dato, num } from "../fleet/format.js";
 import { harPerm, PERM } from "../fleet/permissions.js";
 import {
-  ALLE_FUNKTIONER, FUNKTION_LABEL, funktionerAf, harFunktion,
+  ALLE_FUNKTIONER, FUNKTION_LABEL, funktionerAf, harFunktion
 } from "../fleet/personale.js";
 import {
   FRAVAER_ART, TILSTAND, fravaerTilstand, sidsteDag, varighedDage,
-  reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning,
+  reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning
 } from "../fleet/fravaer.js";
 import { KILDE, RESSOURCE, konfliktTekst } from "../fleet/reservations.js";
 import { DEMO_PERSONALE } from "../fleet/demo-personale.js";
 import { DEMO_FRAVAER, DEMO_FRAVAER_SENSITIVE } from "../fleet/demo-fravaer.js";
 import {
-  Kort, Tabel, Pille, Henter, Fejl, Datatilstand, Tom, Gitter, MiniLinje, Knap,
+  Kort, Tabel, Pille, Henter, Fejl, Datatilstand, Tom, Gitter, MiniLinje, Knap
 } from "../fleet/ui.jsx";
 
 /* Perioden vises inklusivt: "14.08.2026 – 18.08.2026" for et fravær der er
@@ -101,7 +101,7 @@ export default function Fravaer() {
      division:"alle" står EKSPLICIT. Reglerne afviser feltet på fravaer/, så
      posterne har det ikke, og useListe viser divisionsløse rækker i begge
      toggles. Uden linjen ville det se ud som om skærmen bare var heldig. */
-  const { data: fravaer, henter, fejl, tilstand, genindlaes, afkortet } = useListe("fravaer", {
+  const { data: fravaer, henter, tilstand, genindlaes, afkortet } = useListe("fravaer", {
     ordnPaa: "fra",
     vindue: visAlle ? "alle" : "fremad",
     fremDage: 180,
@@ -113,12 +113,12 @@ export default function Fravaer() {
     /* Fravær er personoplysninger, også uden årsagen: at Lars var væk i seks
        dage er i sig selv en oplysning om Lars. auditerSom hører på
        forespørgslen og ikke i skærmen — ellers glemmes den. */
-    auditerSom: "fravaer",
+    auditerSom: "fravaer"
   });
 
   const { data: personale, henter: henterPersonale } = useListe("personale", {
     ordnPaa: "status", vindue: "alle", division: "alle",
-    demo: DEMO_PERSONALE,
+    demo: DEMO_PERSONALE
   });
 
   /* ⚠ DET EKSTRA OPSLAG. Årsagen hentes fra sensitive/fravaer/<id> — én post,
@@ -140,10 +140,10 @@ export default function Fravaer() {
      før skærmens tidlige return. Hooks må ikke kaldes betinget. */
   const aarsagId = visAarsagFor && visAarsagFor === valgtId ? valgtId : null;
   const {
-    post: valgtFoelsom, henter: henterAarsag, tilstand: aarsagTilstand,
+    post: valgtFoelsom, henter: henterAarsag, tilstand: aarsagTilstand
   } = usePost("sensitive/fravaer", aarsagId, {
     demo: DEMO_FRAVAER_SENSITIVE,
-    auditerSom: "fravaerSensitive",
+    auditerSom: "fravaerSensitive"
   });
 
   if (henter || henterPersonale) return <Henter hvad="fravær" />;
@@ -418,7 +418,7 @@ export default function Fravaer() {
         Fraværet hænger på et <b>personId</b> — ikke på et uid. En chauffør har måske
         aldrig et login, og kontoen kan lukkes ved fratrædelse uden at et fravær fra i
         fjor forsvinder. Personerne kommer fra{" "}
-        <Link className="fc-a" to="/bemanding/medarbejdere">Medarbejdere</Link>, som er
+        <Link className="fc-a" to="/opsaetning/medarbejdere">Medarbejdere</Link>, som er
         den ene kilde til staben. Der er endnu intet fraværsfelt i <b>kpi/</b>, så
         tallene ovenfor er "af N hentede" og ikke nøgletal.
       </p>
