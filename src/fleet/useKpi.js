@@ -19,6 +19,7 @@ import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand, erAfvist } from "./datatilstand.js";
 import { medFuldForm, laesbareDomaener } from "./kpi-aggregering.js";
 import { harModul } from "./moduler.js";
+import { harPerm } from "./permissions.js";
 
 export function useKpi() {
   const { tenantId, division, path, dage, bruger, moduler } = useFleet();
@@ -68,7 +69,13 @@ export function useKpi() {
            håndfuld `permission-denied` i konsollen, og en afvisning skal
            betyde noget. Catch'en nedenfor er bæltet: modullisten kan være
            forældet i forhold til det serveren mener. */
-        const oenskede = laesbareDomaener((m) => harModul(moduler, m));
+        const oenskede = laesbareDomaener(
+          (m) => harModul(moduler, m),
+          /* ⚠ OG BRUGERENS EGEN PERMISSION. Et nøgletal er ikke mildere end
+             sit grundlag: må han ikke læse `kunder/`, skal han heller ikke
+             kunne læse antallet af kunder ad bagvejen. Reglen håndhæver det;
+             det her sørger for at vi ikke beder om det. */
+          (p) => harPerm(bruger?.perms, p));
         const svar = await Promise.all(oenskede.map(async (d) => {
           try {
             const s = await db.ref(path(`kpi/${division}/current/${d}`)).once("value");

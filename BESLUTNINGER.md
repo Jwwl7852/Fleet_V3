@@ -2190,6 +2190,83 @@ fordelt på de syv roller — en produktbeslutning om hvem der ser pengene, og e
 der koster en ombæring af tokens, fordi perms står i claims. Det er
 rollegennemgangen, og den er ikke truffet her.
 
+### ⚠ Tilføjelse til 44: domænet arver sin kildes læse-permission
+
+Beslutning 44 lukkede `kpi/` pr. **modul**. Det gælder tenanten. `ROLLER.md`
+viste at rollen derefter stadig afgjorde ingenting, og pegede på tre veje. Den
+her er **A**, og den er den eneste af de tre der kunne vælges uden at gætte:
+
+> Et nøgletal er ikke mildere end sit grundlag. Må en bruger ikke læse
+> `kunder/`, skal han heller ikke kunne læse ANTALLET af kunder ad bagvejen.
+> Et aggregat er stadig kundens data — det er bare talt op.
+
+`kpi/<division>/<snapshot>/<domaene>` kræver nu, ud over modulet, de
+læse-permissions som de noder domænet er **regnet af** kræver.
+
+### ⚠ Og det er ÉT led i dag — det er ikke en halv løsning
+
+`KPI_KILDER` i `kpi-aggregering.js` siger hvad hvert domæne er regnet af. Det
+er en **kendsgerning om `beregnKpi()`**, læst ud af funktionen:
+
+| Domæne | Kilder | Kræver |
+|---|---|---|
+| `kunder` | `kunder` | **`kunder.laes`** |
+| `opgaver` | `opgaver`, `etaper`, `grundlag` | — |
+| `oekonomi` | `etaper`, `grundlag` | — |
+| `disponering` | `etaper` | — |
+| `indkoeb` | `indkoeb`, `fakturaer`, `leverandoerer` | — |
+| `facility` | `facility`, `opgaver`, `leverandoerer` | — |
+| `flaade` | `fakturaer`, `indkoeb`, `indberetninger` | — |
+| `bemanding`, `warehouse`, `afvigelser` | *ingen kilde* | — |
+
+Af de noder aggregeringen faktisk læser, er `kunder` den **eneste** der kræver
+en læse-permission. At skrive flere led ville være at gate på noget der ikke er
+grundlaget.
+
+⚠ **`flaade` peger IKKE på `koeretoejer`.** Kun ét flaadefelt kan regnes, og det
+kommer fra indkøbet: brændstoffet er en indkøbslinje, og den bærer en division
+hvor bilen ikke gør. Det er samme skel som i beslutning 19.
+
+⚠ **Tre domæner har ingen kilde overhovedet** — `bemanding`, `warehouse` og
+`afvigelser` står med `null` eller en tom liste. Et tomt grundlag kræver ingen
+permission, og det ville være en påstand at give det en.
+
+### ⚠ Det ændrer intet i dag — værdien er guarden
+
+Alle syv roller har `kunder.laes`, så ingen mister noget. Ledet er der for at
+den dag en læse-permission strammes, følger nøgletallet med **af sig selv**
+frem for at skulle huskes.
+
+Og for at det ikke kan drive: `test/rules.kpi.test.mjs` **udleder** kravet af
+regelfilen for hver af `KPI_KILDER`s noder og fejler hvis `KPI_PERM` og reglen
+er uenige. Får `flaade` en dag `koeretoejer` som kilde — det sker den dag
+divisionsspørgsmålet er besvaret — bliver prøven rød indtil `koeretoejer.laes`
+står begge steder.
+
+Prøven kræver desuden at et domæne højst har **én** krævet permission: kan
+reglen ikke bære formen, skal formen laves om frem for at blive rundet af.
+
+### ⚠ Tripwiren i dashboardvisning fyrede — og spurgte det forkerte
+
+Prøven fra beslutning 44 sagde: *"kommer der en permission, er dashboardvisningen
+tæt på at være en adgang, og både navnet og teksten på skærmen skal rettes."*
+Den blev rød her.
+
+Svaret er nej, og spørgsmålet var forkert stillet:
+
+> Permissionen siger hvad **rollen** må. Dashboardvisningen siger hvad **én
+> bruger** får vist. To brugere med samme rolle ser nøjagtig det samme, uanset
+> afkrydsningen.
+
+Det der **ville** afgøre sagen, er om en regel slår op i selve indstillingen.
+Så var "skjul" blevet til "spær", og navnet ville være en løgn den anden vej.
+Prøven vogter nu dét — og den er dermed blevet et skarpere spørgsmål af at
+have fyret.
+
+**B og C står stadig åbne** (se `ROLLER.md`): nye læse-permissions fordelt på
+rollerne, eller flere felter klassificeret i `vaerdi/`. Begge er
+produktbeslutninger.
+
 ## 45. `opgaver` er `.write: false` — vejen ind er `opgaveplanlaeg`
 
 Disciplinen var skrevet ned. Den var bare ikke håndhævet.

@@ -210,12 +210,20 @@ virker.
 
 ### Der er tre veje, og de er ikke lige store
 
-**A. KPI-domænet arver nodens læse-permission.**
-`kpi/<div>/current/kunder` kræver `kunder.laes`, `flaade` kræver
-`koeretoejer.laes`, og så videre. Ændrer **intet** i dag — alle har dem — men
-det er konsistent, og den dag en læse-permission strammes, følger nøgletallet
-automatisk med. Billig, og den kan ikke tages fejl af som en løsning på
-spørgsmålet.
+**A. KPI-domænet arver nodens læse-permission. — ✅ BYGGET**
+Se tilføjelsen til beslutning 44. `kpi/<div>/current/kunder` kræver
+`kunder.laes`, fordi et nøgletal ikke er mildere end sit grundlag.
+
+⚠ **Og det blev til ÉT led, ikke ti.** Da kilderne blev skrevet ned —
+`KPI_KILDER`, læst ud af `beregnKpi()` — viste det sig at `kunder` er den
+eneste node aggregeringen læser, som kræver en læse-permission. `flaade`
+peger fx slet ikke på `koeretoejer`: det ene flaadefelt der kan regnes,
+kommer fra indkøbet.
+
+Det ændrer intet i dag; alle syv roller har `kunder.laes`. Værdien er guarden:
+`test/rules.kpi.test.mjs` udleder kravet af kildernes egne regler og fejler
+hvis kataloget og regelfilen er uenige. Får `flaade` en dag `koeretoejer` som
+kilde, bliver den rød.
 
 **B. Nye læse-permissions pr. domæne.**
 `oekonomi.laes`, `indkoeb.laes` og så videre, fordelt på de syv roller. Det er
@@ -230,8 +238,10 @@ kunne de følsomme **tal** flyttes til `vaerdi/` — som bookingernes værdier
 allerede er. Det holder én mekanisme frem for to, men det er en ændring af
 noden, ikke af en regel, og aggregeringen skal skrive to steder.
 
-⚠ **Ingen af de tre kan vælges ud fra koden.** B og C er spørgsmål om hvad en
-chauffør *bør* kunne se — og det er ikke et teknisk spørgsmål.
+⚠ **B og C kan ikke vælges ud fra koden.** De er spørgsmål om hvad en chauffør
+*bør* kunne se — og det er ikke et teknisk spørgsmål. A kunne, og den er
+bygget; den flytter bare ikke noget i sig selv, fordi alle roller har alle
+læse-permissions. Det er stadig B eller C der skal til.
 
 ---
 

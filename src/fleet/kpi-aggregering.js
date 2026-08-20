@@ -109,15 +109,77 @@ export const ALLE_KPI_DOMAENER = Object.keys(KPI_DOMAENE);
 export const KPI_UDEN_MODUL = ALLE_KPI_DOMAENER.filter((d) => !KPI_DOMAENE[d]);
 
 /**
- * De domæner en kunde med DE her moduler overhovedet kan læse.
+ * ══════════════════════════════════════════════════════════════════════════
+ * HVAD HVERT DOMÆNE ER REGNET AF — og hvorfor det afgør hvem der må se det
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ ET NØGLETAL ER IKKE MILDERE END SIT GRUNDLAG. Må en bruger ikke læse
+ * `kunder/`, skal han heller ikke kunne læse ANTALLET af kunder ad bagvejen.
+ * Et aggregat er stadig kundens data — det er bare talt op.
+ *
+ * Beslutning 44 lukkede `kpi/` pr. modul. Det gælder TENANTEN. Det her led
+ * gælder BRUGEREN: domænet kræver de samme læse-permissions som de noder det
+ * er regnet af.
+ *
+ * ⚠ LISTEN ER EN KENDSGERNING OM `beregnKpi()`, ikke en hensigt. Den er læst
+ * ud af funktionen nedenfor, og en prøve holder de to sammen: får et domæne
+ * en ny kilde, skal listen med — ellers ville nøgletallet blive regnet af
+ * noget brugeren ikke må se, uden at nogen opdagede det.
+ *
+ * ⚠ TRE DOMÆNER HAR INGEN KILDE. `bemanding`, `warehouse` og `afvigelser`
+ * står med `null` eller en tom liste. Det er ikke en forglemmelse — flåden og
+ * bemandingen venter på divisionsspørgsmålet, og de to andre på en node. Et
+ * tomt grundlag kræver ingen permission, og det ville være en påstand at give
+ * det en.
+ */
+export const KPI_KILDER = {
+  opgaver: ["opgaver", "etaper", "grundlag"],
+  /* ⚠ IKKE `koeretoejer`. Kun ét flaadefelt kan regnes, og det kommer fra
+     INDKØBET — brændstoffet er en indkøbslinje, og den bærer en division
+     hvor bilen ikke gør. Resten er null. */
+  flaade: ["fakturaer", "indkoeb", "indberetninger"],
+  bemanding: [],
+  facility: ["facility", "opgaver", "leverandoerer"],
+  indkoeb: ["indkoeb", "fakturaer", "leverandoerer"],
+  kunder: ["kunder"],
+  oekonomi: ["etaper", "grundlag"],
+  afvigelser: [],
+  warehouse: [],
+  disponering: ["etaper"],
+};
+
+/**
+ * Den læse-permission et domæne kræver — eller `null`.
+ *
+ * ⚠ KUN ÉN I DAG, og det er selve pointen med at skrive listen ned. Af de
+ * noder aggregeringen læser, er `kunder` den eneste der kræver en
+ * læse-permission; `etaper`, `grundlag`, `opgaver`, `indkoeb`, `fakturaer`,
+ * `leverandoerer`, `facility` og `indberetninger` kræver kun tenant-medlemskab.
+ *
+ * Det ændrer altså **ingenting i dag** — alle syv roller har `kunder.laes`.
+ * Værdien ligger i at leddet ER der: den dag en læse-permission strammes,
+ * følger nøgletallet med af sig selv, i stedet for at blive husket.
+ *
+ * `test/rules.kpi.test.mjs` udleder tabellen her af REGLERNE for hver kilde og
+ * fejler hvis de to er uenige. Får `flaade` en dag `koeretoejer` som kilde,
+ * bliver prøven rød indtil `koeretoejer.laes` står her og i regelfilen.
+ */
+export const KPI_PERM = {
+  kunder: "kunder.laes",
+};
+
+/**
+ * De domæner en bruger overhovedet kan læse — modul OG permission.
  *
  * ⚠ SAMME FUNKTION I SKÆRMEN OG I PRØVEN. `useKpi()` henter kun dem der står
  * her — ellers ville hver eneste sideindlæsning bede om noget reglerne
  * afviser, og en `permission-denied` ville stå i konsollen på hver tur.
  * En afvisning skal betyde noget.
  */
-export const laesbareDomaener = (harModulFn = () => true) =>
-  ALLE_KPI_DOMAENER.filter((d) => !KPI_DOMAENE[d] || harModulFn(KPI_DOMAENE[d]));
+export const laesbareDomaener = (harModulFn = () => true, harPermFn = () => true) =>
+  ALLE_KPI_DOMAENER.filter((d) =>
+    (!KPI_DOMAENE[d] || harModulFn(KPI_DOMAENE[d]))
+    && (!KPI_PERM[d] || harPermFn(KPI_PERM[d])));
 
 export const UDEN_DIVISION = [
   "koeretoejer", "personale", "fravaer", "carriers", "varer", "kompetencer",

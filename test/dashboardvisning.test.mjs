@@ -28,18 +28,47 @@ import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 const alle = () => true;
 
 describe("⚠ DET ER EN VISNING, IKKE EN ADGANG", () => {
-  /* ⚠ DEN HER PRØVE FYREDE, OG DET VAR MENINGEN.
-     Den sagde: "Får kpi/ en dag en permission eller en modulklausul, er den
-     her prøve stedet at opdage det — og så skal navnet og teksten på skærmen
-     med." Modulklausulen kom i beslutning 44, og prøven blev rød.
+  /* ⚠ DEN HER PRØVE HAR FYRET TO GANGE NU, OG BEGGE GANGE VAR DET MENINGEN.
 
-     Svaret på spørgsmålet den stiller, er NEJ: en modulklausul gælder
-     TENANTEN, ikke brugeren. To brugere i samme firma ser stadig det samme,
-     og indstillingen skjuler stadig kun. Navnet holder.
+     Første gang kom modulklausulen (beslutning 44). Svaret var NEJ: et modul
+     gælder TENANTEN, ikke brugeren.
 
-     Den dag der står en PERMISSION i klausulen, er svaret et andet — og så
-     skal skærmens tekst og navnet med. Prøven vogter nu netop den linje. */
-  it("⚠ kpi/ HAR EN MODULKLAUSUL, MEN INGEN PERMISSION", () => {
+     Anden gang kom en PERMISSION — `kpi/.../kunder` kræver `kunder.laes`,
+     fordi domænet arver sin kildes læse-permission. Prøven sagde dengang
+     "så er dashboardvisningen tæt på at være en adgang". Det var forkert
+     stillet, og det er værd at skrive hvorfor:
+
+       En permission på nøgletallet siger hvad ROLLEN må. Dashboardvisningen
+       siger hvad ÉN BRUGER får VIST. To brugere med samme rolle ser stadig
+       nøjagtig det samme uanset afkrydsningen — den skjuler et dashboard,
+       den spærrer ingenting.
+
+     Prøven spurgte altså om noget der ikke afgør sagen. Det der VILLE afgøre
+     den, er om indstillingen selv bliver læst af en regel. Sker det, er
+     "skjul" blevet til "spær", og navnet er en løgn den anden vej.
+
+     ⚠ Den vogter nu netop dét. */
+  it("⚠ INGEN REGEL LÆSER dashboardvisning — så ville skjul være blevet spær", () => {
+    const raa = readFileSync("firebase.rules.json", "utf8")
+      .split(String.fromCharCode(10))
+      .filter((l) => !l.trim().startsWith("//"))
+      .join(String.fromCharCode(10));
+    const regler = JSON.parse(raa);
+
+    /* Noden har sine egne regler — dem skal der se bort fra. Det er OPSLAG
+       i indstillingen fra ANDRE noders regler der ville gøre den til en
+       adgang. */
+    const udenEgenNode = JSON.stringify({
+      ...regler.rules.tenants.$tenantId, dashboardvisning: undefined,
+    });
+    assert.ok(!udenEgenNode.includes("child('dashboardvisning')"),
+      "en regel slår op i dashboardvisning. Så SPÆRRER indstillingen, den " +
+      "skjuler ikke — og både navnet og teksten på skærmen skal rettes.");
+  });
+
+  it("kpi/ er stadig delt pr. domæne, og domænet bærer klausulerne", () => {
+    /* Kaskaden er den anden halvdel: en .read på kpi/ ville ophæve begge
+       klausuler på én gang. */
     const regler = JSON.parse(
       readFileSync("firebase.rules.json", "utf8")
         .split(String.fromCharCode(10))
@@ -47,19 +76,13 @@ describe("⚠ DET ER EN VISNING, IKKE EN ADGANG", () => {
         .join(String.fromCharCode(10))
     );
     const kpi = regler.rules.tenants.$tenantId.kpi;
-    assert.ok(kpi, "kpi-noden mangler");
     assert.equal(kpi[".read"], undefined,
       "kpi/ har en .read igen — den kaskaderer og ophæver klausulen på domænet");
-
     const laes = kpi.$division.$snapshot.$domaene[".read"];
     assert.ok(laes.includes("child('moduler')"),
-      "domænet har ingen modulklausul — så er tallet åbent for en kunde der " +
-      "ikke har købt modulet, og beslutning 44 er rullet tilbage");
-
-    assert.ok(!laes.includes("perms.contains"),
-      "kpi/ har fået en PERMISSION. Så afgør brugerens rolle hvad han kan " +
-      "læse, og dashboardvisningen er tæt på at være en adgang — både navnet " +
-      "og teksten på skærmen skal rettes.");
+      "domænet har ingen modulklausul — beslutning 44 er rullet tilbage");
+    assert.ok(laes.includes("perms.contains"),
+      "domænet arver ikke længere sin kildes læse-permission");
   });
 
   it("skærmen kalder det ikke en adgang", () => {

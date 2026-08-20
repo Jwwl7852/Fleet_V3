@@ -608,8 +608,32 @@
               //   disponering          hoerer til modulet 'booking'
               // Listen staar i KPI_DOMAENE i kpi-aggregering.js, og en proeve
               // holder de to op mod hinanden.
+              // ⚠ OG ET LED TIL: DOMAENET ARVER SIN KILDES LAESE-PERMISSION.
+              //
+              // Modulklausulen ovenfor gaelder TENANTEN. Det her gaelder
+              // BRUGEREN: et noegletal er ikke mildere end sit grundlag. Maa
+              // man ikke laese `kunder/`, skal man heller ikke kunne laese
+              // ANTALLET af kunder ad bagvejen — et aggregat er stadig kundens
+              // data, det er bare talt op.
+              //
+              // ⚠ KUN `kunder` I DAG, og det er ikke en halv loesning. Af de
+              // noder aggregeringen faktisk laeser, er `kunder` den ENESTE der
+              // kraever en laese-permission; etaper, grundlag, opgaver,
+              // indkoeb, fakturaer, leverandoerer, facility og indberetninger
+              // kraever kun tenant-medlemskab. At skrive flere led ville vaere
+              // at gate paa noget der ikke er grundlaget.
+              //
+              // Det aendrer INTET i dag — alle syv roller har kunder.laes.
+              // Vaerdien er at leddet ER der: den dag en laese-permission
+              // strammes, foelger noegletallet med af sig selv.
+              //
+              // KPI_KILDER og KPI_PERM i kpi-aggregering.js siger hvad hvert
+              // domaene er regnet af, og test/rules.kpi.test.mjs udleder
+              // kravet af REGLERNE for hver kilde og fejler hvis de to er
+              // uenige. Faar `flaade` en dag `koeretoejer` som kilde, bliver
+              // proeven roed indtil koeretoejer.laes staar begge steder.
               "$domaene": {
-                ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true))"
+                ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')))"
               }
             }
           }

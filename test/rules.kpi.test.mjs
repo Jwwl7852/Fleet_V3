@@ -28,9 +28,12 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
 import { ref, get } from "firebase/database";
-import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import {
+  permStrengFraRolle, permStreng, ALLE_PERMS, PERM,
+} from "../src/fleet/permissions.js";
 import {
   KPI_DOMAENE, ALLE_KPI_DOMAENER, KPI_UDEN_MODUL, laesbareDomaener,
+  KPI_KILDER, KPI_PERM,
 } from "../src/fleet/kpi-aggregering.js";
 
 /* To tenants: den ene har ALT, den anden har kun basen. Forskellen mellem dem
@@ -185,5 +188,111 @@ describe("kataloget og reglen beskriver det samme", () => {
     assert.match(kilde, /laesbareDomaener\(/);
     assert.doesNotMatch(kilde, /kpi\/\$\{division\}\/current`/,
       "useKpi henter stadig hele snapshottet — reglen afviser det");
+  });
+});
+
+describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
+  /* Modulklausulen gælder TENANTEN. Det her led gælder BRUGEREN: et nøgletal
+     er ikke mildere end sit grundlag. Må man ikke læse `kunder/`, skal man
+     heller ikke kunne læse ANTALLET af kunder ad bagvejen. */
+
+  /** Hvilke permissions kræver reglen for en node? */
+  const permsForNode = (node) => {
+    const regler = JSON.parse(readFileSync("firebase.rules.json", "utf8")
+      .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10)));
+    const t = regler.rules.tenants.$tenantId;
+    const v = t[node]?.[".read"];
+    if (typeof v !== "string") return [];
+    return [...v.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)].map((m) => m[1]);
+  };
+
+  it("⚠ KPI_PERM ER UDLEDT AF KILDERNE — ikke skrevet i hånden", () => {
+    /* Den vigtigste prøve. KPI_KILDER siger hvad hvert domæne er REGNET af;
+       reglerne siger hvad hver af de noder kræver. Tabellen skal være summen
+       af de to.
+
+       Får `flaade` en dag `koeretoejer` som kilde — det sker den dag
+       divisionsspørgsmålet er besvaret — bliver den her rød, indtil
+       `koeretoejer.laes` står både i KPI_PERM og i regelfilen. Uden den ville
+       nøgletallet blive regnet af noget brugeren ikke må se, og ingen ville
+       opdage det. */
+    const forventet = {};
+    for (const [domaene, kilder] of Object.entries(KPI_KILDER)) {
+      const kraevet = [...new Set(kilder.flatMap(permsForNode))];
+      assert.ok(kraevet.length <= 1,
+        `${domaene} har kilder med FLERE forskellige læse-permissions ` +
+        `(${kraevet.join(", ")}) — reglen kan kun bære én, og så skal formen laves om`);
+      if (kraevet.length) forventet[domaene] = kraevet[0];
+    }
+    assert.deepEqual(KPI_PERM, forventet,
+      "KPI_PERM svarer ikke til hvad kildernes egne regler kræver");
+  });
+
+  it("⚠ HVER KILDE ER EN NODE DER FINDES", () => {
+    /* En kilde der er stavet forkert, ville bidrage med NUL permissions — og
+       tabellen ovenfor ville se rigtig ud, mens leddet manglede. */
+    const regler = JSON.parse(readFileSync("firebase.rules.json", "utf8")
+      .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10)));
+    const noder = new Set(Object.keys(regler.rules.tenants.$tenantId));
+    for (const [domaene, kilder] of Object.entries(KPI_KILDER)) {
+      for (const k of kilder) {
+        assert.ok(noder.has(k), `${domaene} peger på "${k}", som ikke er en node`);
+      }
+    }
+  });
+
+  it("hvert domæne i kataloget har en kildeliste", () => {
+    assert.deepEqual(Object.keys(KPI_KILDER).sort(), [...ALLE_KPI_DOMAENER].sort());
+  });
+
+  it("regelfilen bærer det samme krav", () => {
+    const v = JSON.parse(readFileSync("firebase.rules.json", "utf8")
+      .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10)))
+      .rules.tenants.$tenantId.kpi.$division.$snapshot.$domaene[".read"];
+    for (const [domaene, perm] of Object.entries(KPI_PERM)) {
+      assert.ok(v.includes(`$domaene !== '${domaene}'`),
+        `reglen har intet led for ${domaene}`);
+      assert.ok(v.includes(`contains('|${perm}|')`),
+        `reglen kræver ikke ${perm}`);
+    }
+    /* Og ingen andre led — et led for et domæne uden en kilde ville gate på
+       noget der ikke er grundlaget. */
+    const led = [...v.matchAll(/\$domaene !== '([a-z]+)'/g)].map((m) => m[1]);
+    assert.deepEqual(led.sort(), Object.keys(KPI_PERM).sort());
+  });
+
+  it("⚠ UDEN kunder.laes ER DOMÆNET LUKKET — også med alle andre perms", async () => {
+    /* Demonstreret, ikke påstået. Og med ALLE andre permissions, så en
+       accept ikke kan skyldes noget andet led. */
+    const uden = miljoe.authenticatedContext("uid-uden-kunder", {
+      tenant: ALT, rolle: "admin",
+      perms: permStreng(ALLE_PERMS.filter((p) => p !== PERM.kunderLaes)),
+    }).database();
+    await assertFails(get(ref(uden, dom(ALT, "kunder"))));
+    /* De øvrige domæner er upåvirkede — leddet gælder kun `kunder`. */
+    await assertSucceeds(get(ref(uden, dom(ALT, "opgaver"))));
+    await assertSucceeds(get(ref(uden, dom(ALT, "oekonomi"))));
+  });
+
+  it("med kunder.laes kan han", async () => {
+    const med = miljoe.authenticatedContext("uid-med-kunder", {
+      tenant: ALT, rolle: "chauffoer", perms: permStreng([PERM.kunderLaes]),
+    }).database();
+    await assertSucceeds(get(ref(med, dom(ALT, "kunder"))));
+  });
+
+  it("laesbareDomaener() udelader det brugeren ikke må få", () => {
+    /* Ellers ville hver sideindlæsning bede om noget reglerne afviser. */
+    const alleModuler = () => true;
+    assert.ok(laesbareDomaener(alleModuler, () => true).includes("kunder"));
+    assert.ok(!laesbareDomaener(alleModuler, () => false).includes("kunder"));
+    /* Og de øvrige er upåvirkede af permissionen. */
+    assert.ok(laesbareDomaener(alleModuler, () => false).includes("opgaver"));
+  });
+
+  it("⚠ OG SKÆRMEN SPØRGER OM DEN", () => {
+    const kilde = readFileSync("src/fleet/useKpi.js", "utf8");
+    assert.match(kilde, /harPerm\(bruger\?\.perms, p\)/,
+      "useKpi sender ingen permissiontjek til laesbareDomaener");
   });
 });

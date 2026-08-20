@@ -401,9 +401,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   ville give alle ti domæner og gøre klausulen til dekoration. Nye domæner
   skal i `KPI_DOMAENE` i `kpi-aggregering.js` — et domæne aggregeringen
   skriver, men kataloget ikke kender, bliver aldrig hentet af klienten.
-  ⚠ **Rollen afgør stadig ingenting om nøgletal.** Klausulen gælder TENANTEN,
-  og alle syv roller har hver eneste læse-permission. `dashboardvisning` er
-  derfor stadig en VISNING. Se beslutning 44.
+  ⚠ **Og domænet arver sin kildes læse-permission.** `KPI_KILDER` siger hvad
+  hvert domæne er REGNET af, og `KPI_PERM` er udledt af det — i dag kun
+  `kunder` → `kunder.laes`. Får et domæne en ny kilde, skal begge med;
+  prøven udleder kravet af kildernes egne regler og fejler ellers.
+  ⚠ **Rollen afgør stadig reelt ingenting**, fordi alle syv roller har hver
+  eneste læse-permission. `dashboardvisning` er derfor stadig en VISNING —
+  og det der ville lave det om, er hvis en REGEL slog op i indstillingen.
+  Se beslutning 44 og ROLLER.md.
 - **Skrive en opgave uden om `opgaveplanlaeg`.** `opgaver` er `.write: false`,
   og det er ikke en manglende rettighed — casehandler, disponent, koordinator
   og admin HAR alle `opgaver.skriv`, og funktionen kræver den. Det er vejen

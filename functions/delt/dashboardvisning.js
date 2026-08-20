@@ -32,18 +32,28 @@
  * `tenants/<id>/kpi/<division>/current/warehouse`. Det var netop den
  * opdeling den her note bad om.
  *
- * ⚠ MEN DEN ANDEN HALVDEL STÅR: der er stadig ingen PERMISSION i klausulen.
- * Modulet gælder TENANTEN, ikke brugeren, og alle syv roller har hver eneste
- * læse-permission — kun `audit.laes` skiller nogen ud. En chauffør i et firma
- * der HAR Økonomi, kan derfor stadig læse `kpi/<division>/current/oekonomi`
- * direkte, uanset hvad hans forside viser.
+ * ⚠ OG SIDEN ER DER OGSÅ KOMMET EN PERMISSION — men den ændrer det ikke.
  *
- * Derfor er det stadig en VISNING. Skal rollen afgøre det, kræver det nye
- * læse-permissions fordelt på de syv roller — en produktbeslutning, og en der
- * koster en ombæring af tokens, fordi perms står i claims. Prøven i
- * `test/dashboardvisning.test.mjs` vogter linjen: den kræver at klausulen ER
- * der, og at en permission IKKE er. Kommer den, skal navnet og teksten på
- * skærmen med.
+ * `kpi/<division>/current/kunder` kræver `kunder.laes`, fordi et domæne arver
+ * sin kildes læse-permission: et nøgletal er ikke mildere end sit grundlag.
+ * Det er stadig ikke det samme som en adgang HER, og forskellen er værd at
+ * holde fast i:
+ *
+ *   Permissionen siger hvad ROLLEN må. Indstillingen her siger hvad ÉN
+ *   BRUGER får VIST. To brugere med samme rolle ser nøjagtig det samme,
+ *   uanset afkrydsningen.
+ *
+ * Dertil har alle syv roller hver eneste læse-permission — kun `audit.laes`
+ * skiller nogen ud — så en chauffør i et firma der HAR Økonomi, kan stadig
+ * læse `kpi/<division>/current/oekonomi` direkte.
+ *
+ * Derfor er det stadig en VISNING, og navnet holder.
+ *
+ * ⚠ DET DER VILLE LAVE DET OM, er hvis en REGEL slog op i indstillingen. Så
+ * ville "skjul" være blevet til "spær", og navnet ville være en løgn den
+ * anden vej. Prøven i `test/dashboardvisning.test.mjs` vogter netop dét —
+ * ikke længere blot om der findes en permission et sted i klausulen, hvilket
+ * viste sig at være det forkerte spørgsmål.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
