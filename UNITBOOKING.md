@@ -262,3 +262,54 @@ datamodel, regler, prøver, to-tre skærme med skrivning. Etape 5–8 er ovenpå
 Det er ikke noget der bliver færdigt i én omgang, og et modul der er halvt
 bygget, er værre end intet: nav-punktet står der og lover noget. Derfor tegnes
 `unitbooking` først i sidebaren, når etape 3 er inde.
+
+---
+
+## 6. Tre mockups kom til (20. august 2026)
+
+Tre plancher for UnitBooking: **Opsætning / Kasseliste**, **Udlån &
+reservationer** og **Kalender**. De viser et modul der er større end etape 1–6,
+og de tilføjer to ting modellen ikke har.
+
+### 6.1 Hvad de tre viser
+
+| Planche | Hvad |
+|---|---|
+| **Opsætning / Kasseliste** | Kasselisten flyttet til Opsætning. Fire nøgletal (kasser i alt, belægningsgrad, udlånt nu, samlet volumen i m² og m³). Filtre på type og undertype. Formularen "Opret ny kasse" med kasse-id, type, **undertype**, hjemplads, status, volumen (m² og m³) og noter — og en formular *inde i* formularen: "Opret ny type", markeret **kun for opsætningsbrugere** |
+| **Udlån & reservationer** | Fire nøgletal (reserveret, klargøres snart, ude nu, belægningsgrad). "Opret ny reservation" med sagsnr., kunde, type, undertype og tre datoer. "Ledige kasser i perioden" med Reservér-knap. "Aktive reservationer & udlån" med **næste handling** pr. række: Klargør → Udlever → Modtag retur |
+| **Kalender** | Gitter pr. kasse × tid. Dag/uge/måned, interval 1 uge / 2 uger / 1 md., **grupperet efter kasse-id eller sag**, fremhævning pr. art (klargøring/udlån/returnering). Hover giver et lille kort; klik giver et større med **mails og fotos**. Sidepanel "Kommende klargøringer", der kan minimeres. "Åbn næsten fuldskærm" |
+
+### 6.2 ⚠ To ting modellen ikke har
+
+**Undertype.** `kasser` bærer i dag `type` som en fri streng. Plancherne har
+`type` **og** `undertype` (Alukasse → Standard / Stor / XL), begge oprettet af
+en opsætningsbruger. Det er et **katalog**, ikke to felter: en undertype hører
+til én type, og en fritekst i to niveauer driver dobbelt så hurtigt som i ét.
+
+**Volumen i to enheder.** Planchen viser m² **og** m³ pr. kasse, og et samlet
+tal med en "red. volumen" ved siden af. `kasser` har i dag ingen af delene.
+⚠ Og `volumen.js` findes allerede til Warehouse — den skal genbruges, ikke
+skrives af.
+
+### 6.3 ⚠ Og én ting der ligner noget, der allerede er afgjort
+
+Planchens kalender er **det samme gitter** som Fleets driftskalender og
+Disponering: ressourcer × tid, med blokke i arter. `Gitterkalender.jsx` tegner
+det, og `gitter.js` regner det. CLAUDE.md: *byg ikke et kalendergitter til.*
+Kalenderen her er en **anvendelse** af det gitter, ikke et nyt.
+
+Det samme gælder hover og klik-popup: Fleet skal have dem (FLEET.md etape 4–5),
+og de to skærme må ikke få hver sin.
+
+### 6.4 Etaper
+
+| # | Hvad | Værdi alene | Status |
+|---|---|---|---|
+| 7 | **Type og undertype som katalog** — node, regler, prøver, og de to felter på kassen | Kasser kan klassificeres som planchen viser | |
+| 8 | **Volumen på kassen** (m², m³) + nøgletallene, gennem `volumen.js` | Belægning og volumen kan gøres op | |
+| 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | |
+| 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | |
+| 11 | **Kalenderen** — gruppering, fremhævning, sidepanel, fuldskærm | Overblik pr. kasse eller sag | |
+
+⚠ Etape 7 først. Undertypen står i formularerne på **alle tre** plancher og i
+filtrene på to af dem; bygges skærmene før katalogget, bygges de to gange.
