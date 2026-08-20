@@ -308,7 +308,7 @@ og de to skærme må ikke få hver sin.
 | 7 | **Type og undertype som katalog** — node, regler, prøver, og de to felter på kassen | Kasser kan klassificeres som planchen viser | ✅ |
 | 8 | **Volumen på kassen** — MÅL i mm, m²/m³ udledt + nøgletal | Belægning og volumen kan gøres op | ✅ |
 | 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | ✅ |
-| 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | |
+| 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | ✅ |
 | 11 | **Kalenderen** — gruppering, fremhævning, sidepanel, fuldskærm | Overblik pr. kasse eller sag | |
 
 ⚠ Etape 7 først. Undertypen står i formularerne på **alle tre** plancher og i
@@ -381,3 +381,37 @@ at lukke. Skal den flyttes, skal `kraeverModul` først kunne rumme to moduler.
 undertyper: en liste med alle typers undertyper blandet sammen ville have to
 "Standard" der betød hver sit. Et typeskift rydder det — ellers ville
 "Trækasse + XL" give en tom liste og se ud som om der ingen trækasser var.
+
+### 6.7 Etape 10 — én tydelig handling pr. række
+
+Skærmen fandtes: søg ledige i periode, reservér, og knapper for hvert lovligt
+skift. Planchens pointe var en anden — *"Du ved altid, hvad der skal gøres
+nu."*
+
+Før stod **alle** lovlige skift som ligeværdige knapper, så "Annullér" var
+lige så fremtrædende som "Klargør" — på en skærm hvor det ene sker hver dag og
+det andet sjældent. Kolonnen **Næste handling** bærer nu det ene skridt
+fremad; undtagelserne står i kolonnen efter.
+
+⚠ **Skridtet er skrevet ud, ikke "første element i `UDLAAN_SKIFT`".**
+Rækkefølgen dér er en visningsrækkefølge, og den dag nogen sorterer den
+alfabetisk, ville "annullér" blive næste skridt — og stå som den primære
+handling på hver eneste reservation. To prøver binder de to tabeller sammen i
+begge retninger: hvert skridt fremad skal være et lovligt skift, og hver
+tilstand med et lovligt fremadskift skal have et næste skridt.
+
+**Undertypen kan nu søges på**, som planchens "Opret ny reservation".
+⚠ Og den filtrerer kun **sammen med** typen: to typer kan have hver sin
+undertype med samme nøgle — `std` findes både på Alukasse og Klimakasse — så
+et filter på undertypen alene ville blande dem. `ledigeKasser()` afviser det,
+og skærmen tegner ikke feltet før en type er valgt.
+
+### ⚠ To af planchens nøgletal er ikke bygget
+
+| Planchen | Her | Hvorfor |
+|---|---|---|
+| Klargøres snart (48 t) | **Klargjort** | Vores tæller dem der ER klargjort. Planchens tæller dem der SKAL klargøres inden for to døgn — det er et andet og bedre tal, men det er ikke bygget |
+| Belægningsgrad 72 % | **Over tiden** | En procent af kasserne i brug står allerede på Kasselisten. "Over tiden" er derimod noget nogen skal handle på |
+
+De står her frem for at blive tegnet halvt: et nøgletal der hedder noget andet
+end det viser, er værre end et der mangler.

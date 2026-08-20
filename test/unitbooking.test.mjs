@@ -11,6 +11,7 @@ import {
   ALLE_UDLAAN_TILSTANDE, BINDENDE,
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
   undertyperFor, harUndertyper, mmFraCm, cmFraMm,
+  naesteSkift, NAESTE_SKIFT,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
@@ -715,5 +716,83 @@ describe("målene og volumen", () => {
     /* En kasse måles ikke skarpere end en millimeter. */
     assert.ok(valideKasse({ ...kasse, ...m, hoejdeCm: "95,55" }, ctx).hoejdeCm);
     assert.deepEqual(valideKasse({ ...kasse, ...m, hoejdeCm: "95,5" }, ctx), {});
+  });
+});
+
+describe("næste handling", () => {
+  /* ⚠ PLANCHEN: "Du ved altid, hvad der skal gøres nu." Der er ét rigtigt
+     næste skridt pr. tilstand; resten er undtagelser. */
+  it("er ét skridt fremad pr. tilstand", () => {
+    assert.equal(naesteSkift("booket"), "klargjort");
+    assert.equal(naesteSkift("klargjort"), "udlaant");
+    assert.equal(naesteSkift("udlaant"), "returneret");
+  });
+
+  it("en afsluttet tilstand har ingen", () => {
+    assert.equal(naesteSkift("returneret"), null);
+    assert.equal(naesteSkift("annulleret"), null);
+    assert.equal(naesteSkift("findes-ikke"), null);
+    assert.equal(naesteSkift(undefined), null);
+  });
+
+  it("⚠ ET SKRIDT FREMAD ER ALTID ET LOVLIGT SKIFT", () => {
+    /* Bindingen mellem de to tabeller. Uden den kunne NAESTE_SKIFT komme til
+       at pege på et skift serveren afviser — og knappen ville stå som den
+       primære handling og fejle hver gang. */
+    for (const [fra, til] of Object.entries(NAESTE_SKIFT)) {
+      assert.ok(UDLAAN_SKIFT[fra]?.includes(til), `${fra} → ${til}`);
+      assert.equal(kanSkifteUdlaan(fra, til), true, `${fra} → ${til}`);
+    }
+  });
+
+  it("⚠ HVER TILSTAND MED ET LOVLIGT SKIFT HAR ET NÆSTE SKRIDT", () => {
+    /* Den anden vej: kommer der en tilstand til i UDLAAN_SKIFT uden et skridt
+       fremad, står rækken uden primær knap — og så er "annullér" det eneste
+       man kan trykke på. */
+    for (const [fra, muligheder] of Object.entries(UDLAAN_SKIFT)) {
+      const fremad = muligheder.filter((t) => t !== "annulleret" && t !== "booket");
+      if (fremad.length) assert.ok(naesteSkift(fra), `${fra} mangler et næste skridt`);
+    }
+  });
+
+  it("⚠ INGEN GENVEJ FRA RESERVERET TIL UDLÅNT", () => {
+    /* Klargøringen er det ene sted hvor et menneske har kassen i hånden.
+       Springes den over, opdages en skade først hos museet. */
+    assert.notEqual(naesteSkift("booket"), "udlaant");
+    assert.equal(kanSkifteUdlaan("booket", "udlaant"), false);
+  });
+});
+
+describe("ledige kasser og undertypen", () => {
+  const kasser = {
+    "MDT-101": { type: "AL", undertype: "std", status: "ledig" },
+    "MDT-201": { type: "AL", undertype: "xl", status: "ledig" },
+    "MDT-105": { type: "TR", status: "ledig" },
+    "MDT-108": { type: "AL", undertype: "std", status: "udeAfDrift" },
+  };
+  const vindue = { fra: 1786000000000, til: 1787000000000 };
+
+  it("uden filter er alt der ikke er ude af drift, ledigt", () => {
+    const r = ledigeKasser(kasser, [], vindue).map((k) => k.id);
+    assert.deepEqual(r.sort(), ["MDT-101", "MDT-105", "MDT-201"]);
+  });
+
+  it("filtrerer på type", () => {
+    const r = ledigeKasser(kasser, [], { ...vindue, type: "AL" }).map((k) => k.id);
+    assert.deepEqual(r.sort(), ["MDT-101", "MDT-201"]);
+  });
+
+  it("filtrerer på type OG undertype", () => {
+    const r = ledigeKasser(kasser, [], { ...vindue, type: "AL", undertype: "xl" });
+    assert.deepEqual(r.map((k) => k.id), ["MDT-201"]);
+  });
+
+  it("⚠ UNDERTYPE UDEN TYPE FILTRERER ALT VÆK", () => {
+    /* To typer kan have hver sin undertype med samme nøgle — "std" findes både
+       på Alukasse og Klimakasse. Et filter på undertypen alene ville blande
+       dem, så det er ikke tilladt: skærmen tegner heller ikke feltet, før en
+       type er valgt. */
+    const r = ledigeKasser(kasser, [], { ...vindue, undertype: "std" });
+    assert.deepEqual(r, []);
   });
 });

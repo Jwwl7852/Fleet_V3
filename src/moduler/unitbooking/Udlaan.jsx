@@ -35,6 +35,7 @@ import {
 import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
+  undertyperFor, naesteSkift,
 } from "../../fleet/unitbooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
@@ -145,6 +146,7 @@ export default function Udlaan() {
   const [fraIso, saetFraIso] = useState(iDagIso);
   const [tilIso, saetTilIso] = useState(() => msTilIso(Date.now() + 14 * DAG));
   const [type, saetType] = useState("");
+  const [undertype, saetUndertype] = useState("");
   const [soeger, saetSoeger] = useState(false);
   const [reserverer, saetReserverer] = useState(null);
 
@@ -185,13 +187,17 @@ export default function Udlaan() {
   const periodeOk = Number.isFinite(fra) && Number.isFinite(til) && til >= fra;
 
   const ledige = periodeOk
-    ? ledigeKasser(kasseMap, udlaan, { fra, til, type: type || null })
+    ? ledigeKasser(kasseMap, udlaan, {
+      fra, til, type: type || null, undertype: undertype || null,
+    })
     : [];
 
   /* ⚠ AFLEDT AF LISTEN SKÆRMEN HAR. Ingen af tallene er et aggregat, og et
      gemt tal ville drive fra listen. Se undtagelsen i CLAUDE.md. */
   const antal = (t) => udlaan.filter((u) => u.tilstand === t).length;
   const nu = Date.now();
+  /* Undertyperne på den valgte type — ikke alle typers blandet sammen. */
+  const soegUndertyper = undertyperFor(typer.find((t) => t.id === type));
   const forsinkede = udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu);
 
   const q = soeg.trim().toLowerCase();
@@ -244,11 +250,32 @@ export default function Udlaan() {
           <div className="fc-felt">
             <label htmlFor="us-type">Type</label>
             <select id="us-type" value={type}
-                    onChange={(e) => { saetType(e.target.value); saetSoeger(false); }}>
+                    onChange={(e) => {
+                      saetType(e.target.value);
+                      /* ⚠ ET TYPESKIFT RYDDER UNDERTYPEN. To typer kan have
+                         hver sin undertype med samme nøgle — "std" findes både
+                         på Alukasse og Klimakasse — og en efterladt værdi ville
+                         søge efter en kombination der ikke findes. */
+                      saetUndertype("");
+                      saetSoeger(false);
+                    }}>
               <option value="">Alle typer</option>
               {typer.map((t) => <option key={t.id} value={t.id}>{t.navn}</option>)}
             </select>
           </div>
+          {/* Kun når en type er valgt, og kun hvis den HAR undertyper. */}
+          {soegUndertyper.length > 0 && (
+            <div className="fc-felt">
+              <label htmlFor="us-undertype">Undertype</label>
+              <select id="us-undertype" value={undertype}
+                      onChange={(e) => { saetUndertype(e.target.value); saetSoeger(false); }}>
+                <option value="">Alle undertyper</option>
+                {soegUndertyper.map((u) => (
+                  <option key={u.id} value={u.id}>{u.navn}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="fc-filtre-knapper">
             <Knap variant="primaer" disabled={!periodeOk}
                   onClick={() => { saetSoeger(true); saetReserverer(null); }}>
@@ -366,16 +393,33 @@ export default function Udlaan() {
                   {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
                 </Pille>
               ) },
+            /* ⚠ ÉN TYDELIG HANDLING PR. RÆKKE. Planchen: "Du ved altid, hvad
+               der skal gøres nu." Før stod alle lovlige skift som ligeværdige
+               knapper, og så er "Annullér" lige så fremtrædende som "Klargør"
+               — på en skærm hvor det ene sker hver dag og det andet sjældent.
+               Fremad-skridtet står her; undtagelserne står i kolonnen efter. */
+            { key: "naeste", label: "Næste handling", render: (u) => {
+                const t = naesteSkift(u.tilstand);
+                if (!t) return <span className="fc-neutral">afsluttet</span>;
+                return (
+                  <Knap variant="primaer"
+                        disabled={!maaSkrive || arbejder === u.id}
+                        title={maaSkrive ? SKIFTEFORKLARING[t]
+                          : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                        onClick={() => skift(u, t)}>
+                    {arbejder === u.id ? "…" : SKIFTELABEL[t] || t}
+                  </Knap>
+                );
+              } },
             { key: "handling", label: "", render: (u) => {
-                const muligheder = UDLAAN_SKIFT[u.tilstand] || [];
-                if (!muligheder.length) {
-                  return <span className="fc-neutral">afsluttet</span>;
-                }
+                /* Undtagelserne: alt andet end skridtet fremad. */
+                const muligheder = (UDLAAN_SKIFT[u.tilstand] || [])
+                  .filter((t) => t !== naesteSkift(u.tilstand));
+                if (!muligheder.length) return null;
                 return (
                   <span className="fc-med-ikon" style={{ gap: 6 }}>
                     {muligheder.map((t) => (
                       <Knap key={t}
-                            variant={t === "annulleret" || t === "booket" ? undefined : "primaer"}
                             disabled={!maaSkrive || arbejder === u.id}
                             title={maaSkrive ? SKIFTEFORKLARING[t]
                               : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}

@@ -124,6 +124,25 @@ export const UDLAAN_SKIFT = {
   annulleret: [],
 };
 
+/**
+ * Det ENE skridt fremad. Planchen kalder det "næste handling", og pointen er
+ * at man aldrig skal vælge: der er ét rigtigt næste skridt, og resten er
+ * undtagelser (annullér, rul klargøringen tilbage).
+ *
+ * ⚠ SKREVET UD, IKKE "FØRSTE ELEMENT I UDLAAN_SKIFT". Rækkefølgen i den
+ * liste er en visningsrækkefølge, og den dag nogen sorterer den alfabetisk,
+ * ville "annullér" blive til det næste skridt — og knappen ville stå som den
+ * primære handling på hver eneste reservation. En prøve binder de to sammen,
+ * så et skridt her altid er et lovligt skift dér.
+ */
+export const NAESTE_SKIFT = {
+  booket: "klargjort",
+  klargjort: "udlaant",
+  udlaant: "returneret",
+};
+
+export const naesteSkift = (tilstand) => NAESTE_SKIFT[tilstand] || null;
+
 /** Må udlånet skifte fra → til? Samme rolle som `kanSkifte()` i booking. */
 export const kanSkifteUdlaan = (fra, til) =>
   Array.isArray(UDLAAN_SKIFT[fra]) && UDLAAN_SKIFT[fra].includes(til);
@@ -512,11 +531,18 @@ export function sagsoversigt(udlaan = []) {
 }
 
 /** Kasser der er fri i hele perioden. Bruges af "søg ledige i periode". */
-export function ledigeKasser(kasser = {}, udlaan = [], { fra, til, type = null } = {}) {
+export function ledigeKasser(
+  kasser = {}, udlaan = [], { fra, til, type = null, undertype = null } = {},
+) {
   const alle = Object.entries(kasser).map(([id, k]) => ({ id, ...k }));
   return alle.filter((k) => {
     if (k.status === "udeAfDrift") return false;
     if (type && k.type !== type) return false;
+    /* ⚠ UNDERTYPEN FILTRERES KUN SAMMEN MED TYPEN. To typer kan have hver sin
+       undertype med samme nøgle — "std" findes både på Alukasse og
+       Klimakasse — så et filter på undertypen alene ville blande dem. Kalderen
+       tegner derfor heller ikke undertypefeltet, før en type er valgt. */
+    if (undertype && (!type || k.undertype !== undertype)) return false;
     return konflikter(udlaan, { kasseId: k.id, fra, til }).length === 0;
   });
 }
