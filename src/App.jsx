@@ -376,9 +376,11 @@ export default function App() {
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 
-            <Route path="unitbooking" element={<UnitbookingKasser />} />
+            {/* Kalenderen er modulets forside; kasselisten er stamdata og
+                ligger under Opsaetning. Se nav.js og REDIRECTS. */}
+            <Route path="unitbooking" element={<Unitbookingkalender />} />
             <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
-            <Route path="unitbooking/kalender" element={<Unitbookingkalender />} />
+            <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
             <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
             <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
             <Route path="warehouse" element={<Wmsvarer />} />

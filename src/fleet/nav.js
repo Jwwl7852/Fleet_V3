@@ -130,9 +130,16 @@ export const NAV = [
     key: "unitbooking", sti: "/unitbooking", label: "Unitbooking", titel: "Unitbooking",
     under: "Transportkasser, reolpladser og udlån",
     born: [
-      { key: "unitbookingKasser", sti: "/unitbooking", label: "Kasser",
-        titel: "Unitbooking – kasser", under: "Transportkasser, type, status og plads" },
-      { key: "unitbookingKalender", sti: "/unitbooking/kalender", label: "Kalender",
+      /* ⚠ KASSELISTEN ER FLYTTET TIL OPSAETNING (planche 1, UNITBOOKING.md
+         6.1). Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
+         hvor Kasser laa — samme snit som da Driftskalenderen overtog /flaade,
+         da Enheder gik til Opsaetning. /unitbooking/kalender lever videre som
+         redirect, saa et bogmaerke ikke doer af en menuomlaegning.
+         ⚠ Reolpladser BLIVER staaende her, og det er ikke en forglemmelse:
+         noden deles med Warehouse, og `kraeverModul` tager EEN streng. Under
+         Opsaetning med "unitbooking" ville hylderne forsvinde for en kunde
+         der kun har WMS — praecis den faelde `reolpladser.skriv` lukkede. */
+      { key: "unitbookingKalender", sti: "/unitbooking", label: "Kalender",
         titel: "Unitbooking – kalender",
         under: "Kasser × dage, og listen over hvad der skal ud og hjem" },
       { key: "kasseudlaan", sti: "/unitbooking/udlaan", label: "Udlån",
@@ -252,6 +259,12 @@ export const NAV = [
       { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
         kraeverModul: "flaade",
         titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
+      /* ⚠ KASSELISTEN ER STAMDATA — samme snit som Enheder ovenfor. Planche 1
+         flytter den hertil, og typerne oprettes samme sted. En kasse oprettes
+         een gang og roeres sjaeldent; det operationelle er udlaanet. */
+      { key: "unitbookingKasser", sti: "/opsaetning/kasser", label: "Kasseliste",
+        kraeverModul: "unitbooking",
+        titel: "Kasseliste", under: "Transportkasser: type, undertype, mål, status og plads" },
       /* ⚠ MEDARBEJDERE ER STAMDATA — DERFOR HER, IKKE I WORKFORCE.
          Samme snit som Enheder ovenfor: en person oprettes én gang og røres
          sjældent igen, mens bemandingsplanen bruges hver dag. Stod de side
@@ -334,6 +347,13 @@ export const REDIRECTS = [
      links til den tomme oversigt — og fejlen ville se ud som et forældet
      link frem for en redirect der tabte noget. Videresend() i App.jsx
      bygger målet af de samme parametre. */
+  /* ⚠ KALENDEREN OVERTOG /unitbooking, da Kasselisten gik til Opsaetning.
+     Stien /unitbooking/kalender har staaet i sidebaren siden modulet kom.
+     ⚠ Og prisen ved flytningen staar her, saa ingen tror den er gratis: et
+     bogmaerke til /unitbooking, sat da det var KASSELISTEN, lander nu paa
+     kalenderen. De to kan ikke skelnes — stien er den samme. Samme
+     omkostning som da Driftskalenderen overtog /flaade fra Enheder. */
+  { fra: "/unitbooking/kalender", til: "/unitbooking" },
   { fra: "/bemanding/medarbejdere", til: "/opsaetning/medarbejdere" },
   { fra: "/kunder", til: "/opsaetning/kunder" },
   { fra: "/kunder/priser", til: "/opsaetning/priser" },

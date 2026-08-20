@@ -230,6 +230,7 @@ export default function Kasser() {
   const [soeg, saetSoeg] = useState("");
   const [status, saetStatus] = useState("");
   const [type, saetType] = useState("");
+  const [undertype, saetUndertype] = useState("");
   const [side, saetSide] = useState(1);
 
   const maaSkrive = harPerm(bruger?.perms, PERM.kasserSkriv);
@@ -264,6 +265,7 @@ export default function Kasser() {
   const viste = kasser.filter((k) =>
     (!status || k.status === status) &&
     (!type || k.type === type) &&
+    (!undertype || k.undertype === undertype) &&
     (!q || k.id.toLowerCase().includes(q) ||
       pladsnavn(pladsMap[k.pladsId]).toLowerCase().includes(q)));
 
@@ -286,6 +288,8 @@ export default function Kasser() {
   /* ⚠ OG DEM UDEN MÅL TÆLLER IKKE MED — de RAPPORTERES. Talte de som nul,
      ville totalen se komplet ud mens en kasse manglede. Se volumenIalt(). */
   const volumen = volumenIalt(kasser);
+  /* Undertyperne paa den FILTREREDE type — ikke alle typers blandet sammen. */
+  const filterUndertyper = undertyperFor(typer.find((t) => t.id === type));
   const tal1 = (v) => v.toFixed(1).replace(".", ",");
 
   return (
@@ -352,11 +356,33 @@ export default function Kasser() {
           <div className="fc-felt">
             <label htmlFor="kf-type">Type</label>
             <select id="kf-type" value={type}
-                    onChange={(e) => { saetType(e.target.value); saetSide(1); }}>
+                    onChange={(e) => {
+                      saetType(e.target.value);
+                      /* ⚠ ET TYPESKIFT RYDDER UNDERTYPEFILTRET. Undertyperne
+                         hører til ÉN type, så "Trækasse + XL" ville give en tom
+                         liste og se ud som om der ingen trækasser var. */
+                      saetUndertype("");
+                      saetSide(1);
+                    }}>
               <option value="">Alle typer</option>
               {typer.map((t) => <option key={t.id} value={t.id}>{t.navn}</option>)}
             </select>
           </div>
+          {/* ⚠ FILTRET TEGNES KUN NÅR EN TYPE ER VALGT, og kun hvis den HAR
+              undertyper. En liste med alle typers undertyper blandet sammen
+              ville have to "Standard" der betød hver sit. */}
+          {filterUndertyper.length > 0 && (
+          <div className="fc-felt">
+            <label htmlFor="kf-undertype">Undertype</label>
+            <select id="kf-undertype" value={undertype}
+                    onChange={(e) => { saetUndertype(e.target.value); saetSide(1); }}>
+              <option value="">Alle undertyper</option>
+              {filterUndertyper.map((u) => (
+                <option key={u.id} value={u.id}>{u.navn}</option>
+              ))}
+            </select>
+          </div>
+          )}
         </div>
 
         {!typer.length || !pladser.length ? (

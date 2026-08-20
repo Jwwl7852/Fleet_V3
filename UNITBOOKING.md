@@ -307,7 +307,7 @@ og de to skærme må ikke få hver sin.
 |---|---|---|---|
 | 7 | **Type og undertype som katalog** — node, regler, prøver, og de to felter på kassen | Kasser kan klassificeres som planchen viser | ✅ |
 | 8 | **Volumen på kassen** — MÅL i mm, m²/m³ udledt + nøgletal | Belægning og volumen kan gøres op | ✅ |
-| 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | |
+| 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | ✅ |
 | 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | |
 | 11 | **Kalenderen** — gruppering, fremhævning, sidepanel, fuldskærm | Overblik pr. kasse eller sag | |
 
@@ -357,3 +357,27 @@ ser ud som en oplysning man har.
 ⚠ **Dem uden mål rapporteres.** Nøgletallet skriver *"1 uden mål"* frem for at
 tælle den som nul. Talte den nul, ville totalen se komplet ud mens en kasse
 manglede — samme regel som en afregningslinje uden sats.
+
+### 6.6 Etape 9 — Kasselisten er stamdata
+
+Kasselisten ligger nu på `/opsaetning/kasser` under **Opsætning**, som planche
+1 viser. Kalenderen er modulets forside og har overtaget `/unitbooking` —
+samme snit som da Driftskalenderen overtog `/flaade`, da Enheder gik til
+Opsætning.
+
+⚠ **Og prisen står skrevet.** `/unitbooking/kalender` lever videre som
+redirect, men et bogmærke til `/unitbooking`, sat dengang det var
+**kasselisten**, lander nu på kalenderen. De to kan ikke skelnes — stien er
+den samme. Det er samme omkostning som Fleet betalte, og den er billigere end
+at lade forsiden være tom.
+
+⚠ **Reolpladser blev stående under Unitbooking**, og det er ikke en
+forglemmelse. Noden deles med Warehouse, og `kraeverModul` tager **én**
+streng: under Opsætning med `"unitbooking"` ville hylderne forsvinde for en
+kunde der kun har WMS — præcis den fælde `reolpladser.skriv` blev oprettet for
+at lukke. Skal den flyttes, skal `kraeverModul` først kunne rumme to moduler.
+
+**Undertypefiltret** tegnes kun når en type er valgt, og kun hvis den har
+undertyper: en liste med alle typers undertyper blandet sammen ville have to
+"Standard" der betød hver sit. Et typeskift rydder det — ellers ville
+"Trækasse + XL" give en tom liste og se ud som om der ingen trækasser var.
