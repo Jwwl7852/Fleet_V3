@@ -107,12 +107,26 @@ export default function AppShell() {
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
 
           {/* Gods/Bus lå kun på Økonomi-skærmen i v2.0-mockupsene. Her gælder
-              den hele platformen, som i v1.4. */}
-          <div className="fc-div" role="group" aria-label="Forretningsområde">
-            {[["gods", "Gods"], ["bus", "Bus"]].map(([v, l]) => (
-              <button key={v} type="button" aria-pressed={division === v} onClick={() => setDivision(v)}>{l}</button>
-            ))}
-          </div>
+              den hele platformen, som i v1.4.
+
+              ⚠ MEN IKKE HVOR DEN INGENTING GØR. Et modul kan sætte
+              `udenDivision` i nav.js, og så tegnes vælgeren ikke. Fleet gør:
+              beslutning 19 forbyder division på `personale/` og
+              `koeretoejer/`, så knappen ville skifte en tilstand ingen af
+              modulets skærme læser — en pæn knap.
+
+              ⚠ TILSTANDEN RØRES IKKE. Vælgeren SKJULES; den nulstiller ikke
+              divisionen. Gik man fra Booking til Fleet og tilbage, ville et
+              skjult felt der samtidig ryddede valget, sende brugeren tilbage
+              til Gods uden at nogen havde trykket. Betingelsen står på
+              modulet og ikke på en rute her — shellen må ikke kende ruter. */}
+          {!hoved?.udenDivision && (
+            <div className="fc-div" role="group" aria-label="Forretningsområde">
+              {[["gods", "Gods"], ["bus", "Bus"]].map(([v, l]) => (
+                <button key={v} type="button" aria-pressed={division === v} onClick={() => setDivision(v)}>{l}</button>
+              ))}
+            </div>
+          )}
 
           <nav className="fc-nav" aria-label="Moduler">
             {/* ⚠ MENUEN SKJULER ET MODUL KUNDEN IKKE HAR KØBT — men det er en

@@ -111,9 +111,9 @@ mailsporet ikke findes endnu.
 
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
-| 1 | **Gods/Bus skjult i Fleet** (G1, delvist) | En knap der ikke gør noget, forsvinder | |
-| 2 | **Data i gitteret** — demo-opgaver der falder i indeværende uge | Kalenderen kan overhovedet ses arbejde | |
-| 3 | **Linjehøjden komprimeres** (K2b), målt på et fyldt gitter | Flere enheder på skærmen ad gangen | |
+| 1 | **Gods/Bus skjult i Fleet** (G1, delvist) | En knap der ikke gør noget, forsvinder | ✅ |
+| 2 | **Data i gitteret** — demo-opgaver der falder i indeværende uge | Kalenderen kan overhovedet ses arbejde | ✅ Provisioneren kørt |
+| 3 | **Linjehøjden komprimeres** (K2b), målt på et fyldt gitter | Flere enheder på skærmen ad gangen | ✅ 68 → 44 px |
 | 4 | **Hover-view** (K2d) | Man kan se hvad en blok er uden at åbne den | |
 | 5 | **Klik-popup** (K2e) med fotos — og mailsporet skrevet frem som manglende | Opgaven kan åbnes fra kalenderen | |
 | 6 | **Mails i popup'en** — kræver beslutning 20 fase 1 | Sagens korrespondance samlet | *afventer 3.2* |
@@ -121,3 +121,46 @@ mailsporet ikke findes endnu.
 Etape 1 er små. Etape 2 er den der låser resten op: uden data i vinduet kan
 hverken højde, hover eller popup prøves i browseren — og en kalenderændring
 der kun er set på et tomt gitter, er ikke efterprøvet.
+
+---
+
+## 5. Etape 1–3 er inde
+
+**Gods/Bus er skjult i Fleet.** Flaget står i `nav.js` som `udenDivision` og
+læses af shellen — betingelsen hører på modulet, ikke på en rute i AppShell.
+⚠ Tilstanden **røres ikke**: vælgeren skjules, den nulstiller ikke divisionen.
+Et skjult felt der samtidig ryddede valget, ville sende brugeren tilbage til
+Gods uden at nogen havde trykket.
+
+### ⚠ Og det tomme gitter var ikke kalenderens fejl
+
+Skærmen stod med *"Ingen driftsopgaver i perioden"*. Demo-opgaverne bruger
+relative datoer (`iDag(8,0)`), så de burde ligge i dag — men skærmen læser den
+**udrullede** base, ikke demo-filen. Målt i DEV: opgaverne var seedet **18.
+august** og lå derfor 2–3 dage før vinduet. Kun én af tretten faldt i den
+kommende uge.
+
+**Seedet demo-data med relative datoer ældes.** Det er ikke særligt for
+`opgaver` — hver node med `iDag()` eller `dag(n)` fryser på seed-tidspunktet, og
+en dev-base der har stået en uge, ser tom ud på hver kalenderskærm.
+
+⚠ **Og opgaverne kan ikke seedes alene.** `reservationer` bygges af **tre**
+kilder — etaper, fravær og opgaver — med de samme funktioner `etapeskift`
+bruger. Skrives kun opgaverne, driver reservationerne fra dem, og en opgave
+uden sin reservation ser FRI ud i disponeringen. Derfor kørte hele
+`provisioner:dev`. Prisen er, at den fornyer tokens: man bliver logget ud og
+skal logge ind igen.
+
+### ⚠ Linjehøjden var navnets, ikke indholdets
+
+Målt i browseren på et fyldt gitter: rækken var **68 px**, mens blokbåndet kun
+er 30. Navnekolonnen stablede tre ting lodret — navn (17), undertekst (17) og
+statuspille (23) plus polstring.
+
+Pillen står nu ved siden af navnet, og rækken er to linjer: **44 px**. Halvanden
+gang så mange enheder i samme højde. Pillen er samtidig mindre *her og kun her*
+— formen er den samme, størrelsen følger stedet.
+
+⚠ Ændringen ligger i `Gitterkalender.jsx` og rammer derfor også
+**Servicekalender og Disponering**. Det er med vilje (CLAUDE.md: byg ikke et
+kalendergitter til), men det skal ses efter i de to andre skærme.

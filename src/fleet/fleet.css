@@ -414,8 +414,26 @@
   position:sticky; left:0; z-index:2; background:var(--bc-card)}
 .fc-gk-hj{border-top:0; position:sticky; top:0; left:0; z-index:4;
   background:var(--bc-card)}
-.fc-gk-navn-t{font-weight:650}
-.fc-gk-navn-u{color:var(--bc-muted); font-size:11.5px}
+/* ⚠ RAEKKEHOEJDEN SATTES AF NAVNET, IKKE AF INDHOLDET. Navn, undertekst og
+   statuspille stod stablet lodret i en kolonne: 17 + 17 + 23 px plus
+   polstring gav en raekke paa 68 px, mens selve blokbaandet kun er 30. Med
+   seks enheder fyldte gitteret skaermen, og en vognmand med tredive kunne se
+   en femtedel af sin flaade.
+
+   Pillen staar nu VED SIDEN AF navnet, og raekken er to linjer i stedet for
+   tre. Maalt i browseren: 68 → 44 px, altsaa halvanden gang saa mange
+   enheder i samme hoejde. Det er komprimering, ikke en ny kalender —
+   Gitterkalender deles af Vaerkstedskalender, Servicekalender og
+   Disponering, saa aendringen rammer alle tre. Det er med vilje. */
+.fc-gk-navn-linje{display:flex; align-items:center; gap:6px; min-width:0}
+.fc-gk-navn-t{font-weight:650; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap}
+.fc-gk-navn-u{color:var(--bc-muted); font-size:11.5px; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+/* ⚠ PILLEN ER MINDRE HER END I EN TABEL, og kun her. Standardpillen er 23 px
+   hoej og ville alene bestemme foerste linjes hoejde. Formen er den samme —
+   det er stoerrelsen der foelger stedet. */
+.fc-gk-navn .fc-pill{padding:1px 6px; font-size:10px; line-height:1.5}
 .fc-gk-raekkepar{display:contents}
 /* 30 px frem for 44. Rækkerne var så høje at otte enheder fyldte skærmen, og
    en vognmand med tredive kunne kun se en fjerdedel af sin flåde ad gangen. */

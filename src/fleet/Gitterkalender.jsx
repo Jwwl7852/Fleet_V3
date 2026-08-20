@@ -80,10 +80,17 @@ export default function Gitterkalender({
             const mine = perRaekke.get(r.id) || [];
             return (
               <div key={r.id} className="fc-gk-raekkepar">
+                {/* ⚠ TO LINJER, IKKE TRE. Navn, undertekst og pille stod
+                    stablet lodret, og rækken blev 68 px — mens selve
+                    blokbåndet kun er 30. Det var navnekolonnen der bestemte
+                    højden, ikke indholdet. Pillen står nu ved siden af navnet.
+                    Se noten i fleet.css. */}
                 <div className="fc-gk-navn">
-                  <span className="fc-gk-navn-t">{r.label}</span>
+                  <span className="fc-gk-navn-linje">
+                    <span className="fc-gk-navn-t">{r.label}</span>
+                    {r.pille}
+                  </span>
                   {r.under && <span className="fc-gk-navn-u">{r.under}</span>}
-                  {r.pille}
                 </div>
                 <div className="fc-gk-band">
                   {/* Baggrundsceller — så tomme dage har en kant at aflæse på */}
