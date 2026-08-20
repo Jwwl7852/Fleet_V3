@@ -191,6 +191,10 @@ export const DEMO_ETAPER = [
     id: "et-008", bookingId: "bk-2026-00317", nr: 1,
     tilstand: "udfoert", division: "gods",
     fraSted: "København", tilSted: "Hamburg",
+    /* ⚠ ADRESSEN UDEN BYEN — den står i fraSted/tilSted. Transportlabelen
+       sætter dem sammen; to steder til samme by driver fra hinanden. */
+    fraAdresse: { navn: "Lager A – København", gade: "Havnegade 14", postnr: "1058" },
+    tilAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
     fra: dag(-3, 5), til: dag(-3, 17),
     etaMs: dag(-3, 16),
     graenseovergange: ["roedby"],
@@ -207,6 +211,8 @@ export const DEMO_ETAPER = [
     id: "et-007", bookingId: "bk-2026-00317", nr: 2,
     tilstand: "aaben", division: "gods",
     fraSted: "Hamburg", tilSted: "København",
+    fraAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
+    tilAdresse: { navn: "Fyn Køl & Frost A/S", gade: "Kølevej 8", postnr: "5220" },
     fra: dag(5, 6), til: dag(5, 18),
     etaMs: null,
     graenseovergange: ["roedby"],

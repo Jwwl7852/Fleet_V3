@@ -144,6 +144,90 @@ export function laesStregkode(kode) {
   };
 }
 
+/* ---- Rutelogikken og håndteringsmærkerne ------------------------------- */
+
+/**
+ * Linjen "STATUS / RUTELOGIK" nederst på mærkatet. Den er UDLEDT af typen —
+ * en gemt tekst ville sige noget andet end ruten første gang en etape kom til.
+ */
+export const RUTELOGIK = {
+  direkte: "Direkte transport fra A til B – ingen transit.",
+  viaTransit: "Via transit. Gods sendes A → Transit Hub → B.",
+  storage: "Via transit til lageropbevaring. Godset lagres efter ankomst.",
+};
+
+/**
+ * Håndteringsmærkerne. Nøglerne er nodeord; teksten er den engelske, der står
+ * på mærkatet, fordi et håndteringsmærke skal kunne læses på en rampe i
+ * Hamborg. Den danske forklaring er til skærmen.
+ *
+ * ⚠ EN ALLOWLISTE, IKKE FRI TEKST. Reglerne håndhæver den samme liste: et
+ * mærke ingen kender, ville blive trykt som et tomt felt på pallen.
+ */
+export const HAANDTERING = {
+  fragile: { label: "FRAGILE", dansk: "Skrøbeligt" },
+  denneSideOp: { label: "THIS SIDE UP", dansk: "Denne side op" },
+  holdToer: { label: "KEEP DRY", dansk: "Holdes tørt" },
+  gaffeltruck: { label: "FORKLIFT HERE", dansk: "Løft med gaffeltruck her" },
+  temperatur: { label: "TEMPERATURE SENSITIVE", dansk: "Temperaturfølsomt" },
+};
+
+export const ALLE_HAANDTERINGER = Object.keys(HAANDTERING);
+
+/** Mærkerne på beholderen, i katalogets rækkefølge — ikke i nøglernes. */
+export const haandteringerFor = (carrier) =>
+  ALLE_HAANDTERINGER.filter((m) => carrier?.haandtering?.[m] === true);
+
+/* ---- Adresser og mål --------------------------------------------------- */
+
+/**
+ * En adresseblok til mærkatet: navn, gade, "postnr by".
+ *
+ * ⚠ BYEN KOMMER UDEFRA. Etapen bærer byen som `fraSted`/`tilSted` og adressen
+ * uden by — samme kendsgerning må ikke stå to steder. Her sættes de sammen.
+ */
+export function adresseblok(adresse, by) {
+  if (!adresse && !by) return null;
+  const postnrBy = [adresse?.postnr, by].filter(Boolean).join(" ");
+  return {
+    navn: adresse?.navn || null,
+    gade: adresse?.gade || null,
+    postnrBy: postnrBy || null,
+  };
+}
+
+/** "120 x 80 x 95 cm" — millimeter er nodens enhed, centimeter er mærkatets. */
+export function maalTekst(carrier) {
+  const { laengdeMm, breddeMm, hoejdeMm } = carrier || {};
+  if (![laengdeMm, breddeMm, hoejdeMm].every((v) => Number.isFinite(v))) return null;
+  const cm = (mm) => String(Math.round(mm / 10));
+  return `${cm(laengdeMm)} x ${cm(breddeMm)} x ${cm(hoejdeMm)} cm`;
+}
+
+/** "3 kolli" eller "8 kolli + 1 stk." — som planchen skriver det. */
+export function kolliTekst(carrier) {
+  const kolli = carrier?.kolli;
+  const loese = carrier?.loesEnheder || 0;
+  if (!Number.isFinite(kolli)) return null;
+  return loese > 0 ? `${kolli} kolli + ${loese} stk.` : `${kolli} kolli`;
+}
+
+/**
+ * Serienummer og batch UDLEDES af beholdningen — de er ikke felter på
+ * beholderen.
+ *
+ * ⚠ FLERE ER IKKE ÉT. Bærer beholderen to batches, må mærkatet ikke vælge den
+ * ene: svaret er "flere", og så må man slå den op. Et gæt her ville sende en
+ * tilbagekaldelse efter det forkerte parti.
+ */
+export function sporing(poster = []) {
+  const unik = (felt) => [...new Set(poster.map((p) => p?.[felt]).filter(Boolean))];
+  const batches = unik("batch");
+  const serier = unik("serienr");
+  const svar = (v) => (v.length === 0 ? null : v.length === 1 ? v[0] : "flere");
+  return { batch: svar(batches), serienr: svar(serier) };
+}
+
 /* ---- Selve labelen ----------------------------------------------------- */
 
 /**
@@ -157,7 +241,8 @@ export function laesStregkode(kode) {
  * ud som en hel, og godset kører efter den.
  */
 export function byggLabel({
-  carrier, etaper = [], booking = null, kunde = null, plads = null, placeret,
+  carrier, etaper = [], booking = null, kunde = null, plads = null,
+  beholdning = [], placeret,
 } = {}) {
   const mangler = [];
   const kaede = sorteretKaede(etaper);
@@ -172,7 +257,8 @@ export function byggLabel({
      skifter transport dér hvor den første slutter — og det sted står allerede
      som `tilSted` på etape 1. Et selvstændigt transitfelt ville være det
      samme sted skrevet to gange. */
-  const transit = kaede.length > 1 ? foerste?.tilSted || null : null;
+  const harTransit = kaede.length > 1;
+  const transitBy = harTransit ? foerste?.tilSted || null : null;
 
   const bookingNummer = booking?.nummer || null;
   if (!bookingNummer) mangler.push("bookingNummer");
@@ -180,26 +266,53 @@ export function byggLabel({
   if (!kunde?.navn) mangler.push("kunde");
   if (!foerste?.fraSted) mangler.push("fraSted");
   if (!sidste?.tilSted) mangler.push("slutmaal");
-  if (kaede.length > 1 && !transit) mangler.push("transit");
+  if (harTransit && !transitBy) mangler.push("transit");
 
   /* Lokationen efter transit står kun på en storage-label — de to andre typer
      ender ikke på en hylde, og et tomt felt på mærkatet læses som "mangler". */
   const lokation = type === "storage" ? plads?.navn || plads?.id || null : null;
   if (type === "storage" && !lokation) mangler.push("lokation");
 
+  const { batch, serienr } = sporing(beholdning);
+
   return {
     type,
     typeLabel: type ? LABELTYPE[type].label : null,
+    rutelogik: type ? RUTELOGIK[type] : null,
     felter: {
+      /* Øverste række: de tre numre. */
       bookingNummer,
       carrierId: carrier?.id || null,
+      kundeRef: booking?.kundeRef || null,
+
+      /* Kunden og mængden. */
       kunde: kunde?.navn || null,
+      kundeAdresse: kunde
+        ? adresseblok(
+          { gade: kunde.adresse, postnr: kunde.postnr }, kunde.by,
+        )
+        : null,
+      kolli: kolliTekst(carrier),
+
+      /* Ruten — tre celler på de to transit-typer, to på den direkte. */
+      fra: adresseblok(foerste?.fraAdresse, foerste?.fraSted),
+      transit: harTransit ? adresseblok(foerste?.tilAdresse, transitBy) : null,
+      til: adresseblok(sidste?.tilAdresse, sidste?.tilSted),
       fraSted: foerste?.fraSted || null,
-      transit,
+      transitSted: transitBy,
       slutmaal: sidste?.tilSted || null,
       lokation,
+
+      /* Vægt, mål og sporing. */
+      vaegtGram: Number.isFinite(carrier?.vaegtGram) ? carrier.vaegtGram : null,
+      maal: maalTekst(carrier),
+      batch,
+      serienr,
+
+      godsbeskrivelse: carrier?.godsbeskrivelse || null,
       stregkode: stregkode(bookingNummer, carrier?.id),
     },
+    haandtering: haandteringerFor(carrier),
     mangler,
     kanTrykkes: mangler.length === 0,
   };

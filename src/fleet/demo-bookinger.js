@@ -149,6 +149,9 @@ export const DEMO_BOOKINGER = [
     /* DELVIST: nr. 1 er udført, nr. 2 venter stadig på en tur.
        Tilstanden herunder er AFLEDT — selvkontrollen efterprøver den. */
     id: "bk-2026-00317", nummer: "BKG-2026-00317", kundeId: "nordiskFragt",
+    /* Kundens eget rekvisitionsnummer. Det står på transportlabelen, fordi
+       modtageren søger på DET og ikke på vores bookingnummer. */
+    kundeRef: "REF-88421",
     tilstand: "delvist", division: "gods",
     fraSted: "København", tilSted: "Hamburg t/r",
     transporttype: "kombi", rutepraeference: "billigst",

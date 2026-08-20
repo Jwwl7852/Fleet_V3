@@ -678,6 +678,11 @@
             "harAabneEtaper": { ".validate": "newData.isBoolean()" },
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
             "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            // ⚠ KUNDENS EGET NUMMER, IKKE VORES — WAREHOUSE.md etape 16.
+            // Det staar paa transportlabelen, fordi modtageren soeger paa DET
+            // og ikke paa vores bookingnummer. Fri tekst med vilje: en kundes
+            // rekvisitionsnummer foelger hans system, ikke vores.
+            "kundeRef": { ".validate": "newData.isString() && newData.val().length <= 60" },
             // Append-only, som paa etapen: et tilstandsskift der kunne
             // slettes bagefter, kunne ikke forklares et halvt aar senere.
             "historik": {
@@ -723,6 +728,23 @@
             // chauffoer har maaske slet intet login. Se CLAUDE.md.
             "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
             "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // ⚠ ADRESSEN UDEN BYEN — WAREHOUSE.md etape 16. Transportlabelen
+            // skal baere en adresse man kan koere efter, og `fraSted`/`tilSted`
+            // er kun BYEN. Byen staar derfor IKKE her igen: samme kendsgerning
+            // to steder driver, og planlaegningen laeser fraSted. Maerkatet
+            // saetter dem sammen: navn, gade, "postnr fraSted".
+            "fraAdresse": {
+              "navn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+              "gade": { ".validate": "newData.isString() && newData.val().length <= 120" },
+              "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
+              "$andet": { ".validate": false }
+            },
+            "tilAdresse": {
+              "navn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+              "gade": { ".validate": "newData.isString() && newData.val().length <= 120" },
+              "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
+              "$andet": { ".validate": false }
+            },
             // ⚠ FORSLAGET LIGGER PAA ETAPEN — BESLUTNING 40. Det laa BAADE her
             // og paa bookingen: dér tid, pris og transittid, her enheder og
             // chauffoer. For et forloeb med een etape var det det samme loefte
@@ -2056,6 +2078,37 @@
             "laengdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
             "breddeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
             "hoejdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+
+            // ⚠ MAERKATETS FELTER — WAREHOUSE.md etape 16.
+            //
+            // Kolli er IKKE varelinjer. `beholdning` siger hvor meget af hvilke
+            // VARER der ligger i beholderen; kolli siger hvor mange PAKKER en
+            // lagermand kan taelle paa gulvet. Otte flyttekasser med toej i er
+            // otte kolli og kan vaere een varelinje. De to kan ikke udledes af
+            // hinanden, og et gaet paa maerkatet ville blive taelt ved
+            // modtagelsen.
+            "kolli": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            // "8 kolli + 1 stk." — det loese der ikke er pakket i noget.
+            "loesEnheder": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            // ⚠ GRAM SOM INTEGER, som millimeter og oere. Et komma i en vaegt
+            // er samme fejl som et komma i et beloeb: 74,5 kg bliver til 74 kg
+            // eller 745 kg afhaengigt af hvem der laeser.
+            "vaegtGram": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            // Godsbeskrivelsen paa maerkatet. Fri tekst, fordi det ER fri
+            // tekst: "Flyttekasser med personlige ejendele" kan ikke laves om
+            // til et katalog uden at tabe det den siger.
+            "godsbeskrivelse": { ".validate": "newData.isString() && newData.val().length <= 600" },
+            // ⚠ HAANDTERINGSMAERKER ER EN ALLOWLISTE, ikke fri tekst. Et
+            // maerke der ikke findes, ville blive trykt som et tomt felt paa
+            // pallen — og et haandteringsmaerke ingen forstaar, er vaerre end
+            // ingen. `temperatur` betyder temperaturfoelsomt gods; den
+            // konkrete graense hoerer i godsbeskrivelsen, indtil der er et
+            // felt til den.
+            "haandtering": {
+              "$maerke": {
+                ".validate": "newData.isBoolean() && $maerke.matches(/^(fragile|denneSideOp|holdToer|gaffeltruck|temperatur)$/)"
+              }
+            },
             "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
             "oprettetMs": { ".validate": "newData.isNumber()" },
             "oprettetAf": { ".validate": "newData.isString()" },
@@ -2285,6 +2338,14 @@
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
             },
+            // ⚠ KUNDENS ADRESSE — WAREHOUSE.md etape 16. Den staar paa
+            // transportlabelen under kundenavnet, og indtil nu fandtes den
+            // slet ikke: kartoteket bar navn, aftale og oekonomi, men ingen
+            // adresse. Byen staar HER (modsat etapens adresser), fordi en
+            // kunde ikke har et fraSted ved siden af.
+            "adresse": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 80" },
             // KUNDENS PRISAFVIGELSE — enten en egen pris eller en rabat paa
             // standardprisen. To lag, ikke tre: prisgruppen baerer ikke
             // laengere en pris. Se PRISER.md.

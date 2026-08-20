@@ -211,6 +211,15 @@ export const DEMO_CARRIERS = [
     id: "CRR-100248", type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
     kundeId: "fynKoel", etapeId: "et-007",
     laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950,
+    /* ⚠ MÆRKATETS FELTER (etape 16). Kolli er PAKKER, ikke varelinjer: tre
+       kasser med kølegods kan sagtens være én varelinje i beholdningen. */
+    kolli: 3, loesEnheder: 0, vaegtGram: 96000,
+    godsbeskrivelse:
+      "Kølegods i tre isolerede kasser.\n" +
+      "Indhold: fisk og skaldyr, pakket i is.\n" +
+      "Emballage: EPS-kasser med låg, spændt på pallen.\n" +
+      "Særlige forhold: skal stå køligt og må ikke vendes.",
+    haandtering: { fragile: true, denneSideOp: true, holdToer: true, temperatur: true },
   },
   {
     /* En engangs der er brugt op. En EJET kan ikke få den status. */

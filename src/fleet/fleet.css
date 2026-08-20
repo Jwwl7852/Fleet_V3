@@ -856,12 +856,59 @@
 .fc-stregkode-tal{font-family:ui-monospace, "Cascadia Mono", Menlo, monospace;
   font-size:12px; letter-spacing:.08em; color:var(--bc-text); margin-top:4px}
 
-.fc-maerkat-linje{display:flex; justify-content:space-between; gap:12px;
-  align-items:baseline; padding:3px 0}
-.fc-maerkat-linje > span{color:var(--bc-muted); font-size:12px}
+/* ⚠ TYPEFARVEN ER EN KATEGORIFARVE, ikke en status (beslutning 30): den siger
+   HVILKEN slags transport det er, ikke hvor slemt noget staar til. Derfor
+   genbruges ikonpaletten og accenten — der kom ingen nye tokens til. */
+.fc-maerkat{--maerkat-farve:var(--bc-accent);
+  border:1px solid var(--bc-line); border-radius:10px; overflow:hidden;
+  background:var(--bc-card); max-width:520px}
+.fc-maerkat-direkte{--maerkat-farve:var(--fc-ikon-6)}
+.fc-maerkat-viaTransit{--maerkat-farve:var(--bc-accent)}
+.fc-maerkat-storage{--maerkat-farve:var(--fc-ikon-4)}
 
-/* Slutmaalet er det ENE felt en chauffoer laeser paa afstand. */
-.fc-maerkat-maal{font-size:22px; font-weight:700; line-height:1.15}
+.fc-maerkat-band{background:var(--maerkat-farve); color:var(--bc-card);
+  display:flex; align-items:center; gap:10px; padding:9px 12px;
+  font-weight:700; font-size:15px; letter-spacing:.04em}
+.fc-maerkat-band svg{flex:0 0 auto}
+
+/* Celleraekkerne. Hver raekke har sine egne kolonner — planchen har 3, 2 og 3. */
+.fc-maerkat-raekke{display:grid; border-top:1px solid var(--bc-line)}
+.fc-maerkat-raekke:first-of-type{border-top:0}
+.fc-maerkat-celle{padding:7px 10px; border-left:1px solid var(--bc-line);
+  min-width:0}
+.fc-maerkat-celle:first-child{border-left:0}
+.fc-maerkat-etiket{font-size:9.5px; font-weight:700; letter-spacing:.06em;
+  color:var(--maerkat-farve); text-transform:uppercase; display:block;
+  margin-bottom:2px}
+.fc-maerkat-vaerdi{font-size:14px; font-weight:700; line-height:1.25;
+  overflow-wrap:anywhere}
+.fc-maerkat-under{font-size:11.5px; color:var(--bc-text); line-height:1.35;
+  overflow-wrap:anywhere}
+.fc-maerkat-tom{font-size:11.5px; color:var(--bc-muted)}
+
+/* Godsbeskrivelsen — planchens ramme i typens farve. */
+.fc-maerkat-gods{margin:8px 10px; padding:8px 10px; border-radius:7px;
+  border:1px solid var(--maerkat-farve)}
+.fc-maerkat-gods p{margin:0; font-size:11.5px; line-height:1.5;
+  white-space:pre-line}
+
+.fc-maerkat-status{padding:6px 10px; border-top:1px solid var(--bc-line);
+  font-size:11px; display:flex; gap:8px; align-items:baseline}
+
+.fc-maerkat-koder{display:flex; align-items:center; gap:14px;
+  padding:10px; border-top:1px solid var(--bc-line)}
+.fc-maerkat-koder .fc-stregkode{max-width:none; flex:1 1 auto}
+.fc-qrkode{flex:0 0 auto; width:86px; height:86px;
+  background:var(--fc-stregkode-bund)}
+.fc-qrkode rect{fill:var(--fc-stregkode)}
+
+/* Haandteringsmaerkerne nederst — samme antal celler som der er maerker. */
+.fc-maerkat-maerker{display:grid; border-top:1px solid var(--bc-line)}
+.fc-maerkat-maerke{padding:7px 4px; border-left:1px solid var(--bc-line);
+  text-align:center; color:var(--maerkat-farve)}
+.fc-maerkat-maerke:first-child{border-left:0}
+.fc-maerkat-maerke span{display:block; margin-top:3px; font-size:8.5px;
+  font-weight:700; letter-spacing:.03em; line-height:1.2}
 
 /* ── Driftskalender ──────────────────────────────────────────────────────
    Værktøjslinjen over gitteret, det lodrette udsnit og svævekortet. */

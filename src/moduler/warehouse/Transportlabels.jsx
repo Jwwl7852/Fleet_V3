@@ -31,12 +31,16 @@ import {
 } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import { CARRIER_TYPE } from "../../fleet/warehouse.js";
+import { beholdningPaaCarrier } from "../../fleet/warehouse.js";
 import {
-  LABELTYPE, ALLE_LABELTYPER, byggLabel,
+  LABELTYPE, ALLE_LABELTYPER, HAANDTERING, byggLabel,
 } from "../../fleet/transportlabel.js";
 import { bjaelker, bredde, STILLE_ZONE } from "../../fleet/stregkode128.js";
+import { qrFelter, qrBredde, QR_STILLE_ZONE } from "../../fleet/qrkode.js";
 
-import { DEMO_CARRIERS, DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
+import {
+  DEMO_CARRIERS, DEMO_REOLPLADSER, DEMO_BEHOLDNING,
+} from "../../fleet/demo-lager.js";
 import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
 import { DEMO_BOOKINGER } from "../../fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
@@ -87,6 +91,12 @@ export default function Transportlabels() {
   const { data: pladser } = useListe("reolpladser", {
     division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
   });
+  /* ⚠ SERIENUMMER OG BATCH ER IKKE FELTER PÅ BEHOLDEREN. De står på det gods
+     der ligger i den, og udledes derfor af beholdningen — to steder til samme
+     kendsgerning ville drive. */
+  const { data: beholdning } = useListe("beholdning", {
+    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+  });
 
   if (henter) return <Henter hvad="transportlabels" />;
 
@@ -114,6 +124,7 @@ export default function Transportlabels() {
       booking: etape ? bookingMap[etape.bookingId] : null,
       kunde: kundeMap[c.kundeId] || null,
       plads: plads ? { id: plads.id, navn: pladsnavn(plads) } : null,
+      beholdning: beholdningPaaCarrier(beholdning, c.id),
     });
   };
 
@@ -223,9 +234,12 @@ export default function Transportlabels() {
             {
               key: "rute", label: "Rute",
               render: ({ label }) => {
-                const { fraSted, transit, slutmaal } = label.felter;
+                /* ⚠ BYERNE, IKKE ADRESSEBLOKKENE. `transit` er et objekt med
+                   navn, gade og postnr — sat i en streng bliver den til
+                   "[object Object]", og det stod på skærmen. */
+                const { fraSted, transitSted, slutmaal } = label.felter;
                 if (!fraSted && !slutmaal) return "—";
-                return [fraSted, transit, slutmaal].filter(Boolean).join(" → ");
+                return [fraSted, transitSted, slutmaal].filter(Boolean).join(" → ");
               },
             },
             {
@@ -286,53 +300,147 @@ export default function Transportlabels() {
   );
 }
 
-/* Selve mærkatet. Ét felt pr. linje, og et felt der mangler, står som en
-   tydelig markering — ikke som en tom plads man kan overse. */
+
+/* ---- Selve mærkatet ---------------------------------------------------- */
+
+/**
+ * Mærkatet, bygget efter planchen: farvet bånd med transporttypen, tre numre,
+ * kunde og mængde, ruten i to eller tre celler, vægt/mål/sporing,
+ * godsbeskrivelsen i egen ramme, rutelogikken, QR + stregkode, og til sidst
+ * håndteringsmærkerne.
+ *
+ * ⚠ ET FELT UDEN KILDE STÅR SOM "—", IKKE SOM TOMT. Et tomt felt på et mærkat
+ * læses som en fejl i trykket; en streg siger at ingen har svaret. Og et felt
+ * mærkatet ikke kan undvære, spærrer trykket — se `mangler`.
+ */
 function LabelArk({ label, carrier }) {
   const f = label.felter;
-  const linje = (navn, vaerdi) => (
-    <div className="fc-maerkat-linje">
-      <span>{navn}</span>
-      <strong>{vaerdi || <span className="fc-hint">— mangler —</span>}</strong>
+
+  const celle = (etiket, indhold, under) => (
+    <div className="fc-maerkat-celle">
+      <span className="fc-maerkat-etiket">{etiket}</span>
+      <div className="fc-maerkat-vaerdi">
+        {indhold || <span className="fc-maerkat-tom">—</span>}
+      </div>
+      {under}
     </div>
   );
 
+  const adresse = (a) => {
+    if (!a) return null;
+    return (
+      <div className="fc-maerkat-under">
+        {a.gade && <div>{a.gade}</div>}
+        {a.postnrBy && <div>{a.postnrBy}</div>}
+      </div>
+    );
+  };
+
+  const kolonner = (n) => ({ gridTemplateColumns: `repeat(${n}, 1fr)` });
+  const rute = f.transit ? 3 : 2;
+
   return (
-    <div className="fc-maerkat fc-grid" style={{ gap: 8 }}>
-      <div className="fc-row" style={{ justifyContent: "space-between" }}>
-        <strong>{label.typeLabel || "Ukendt transporttype"}</strong>
-        <span className="fc-hint">
-          {label.type ? LABELTYPE[label.type].beskrivelse : ""}
-        </span>
+    <div className={`fc-maerkat fc-maerkat-${label.type || "viaTransit"}`}>
+      <div className="fc-maerkat-band">
+        <TypeIkon type={label.type} />
+        {label.typeLabel || "Ukendt transporttype"}
       </div>
 
-      {/* ⚠ SLUTMÅLET STÅR STORT. Det er det ene felt en chauffør læser på
-          afstand af en palle; resten slås op, når mærkatet er i hånden. */}
-      <div>
-        <div className="fc-hint">Slutmål</div>
-        <div className="fc-maerkat-maal">
-          {f.slutmaal || <span className="fc-hint">— mangler —</span>}
-        </div>
-        {f.transit && (
-          <div className="fc-hint">via {f.transit}</div>
+      {/* De tre numre. Kundens ref er hans eget — det er DET modtageren søger
+          på, og derfor står det ved siden af vores bookingnummer. */}
+      <div className="fc-maerkat-raekke" style={kolonner(3)}>
+        {celle("Booking ID", f.bookingNummer)}
+        {celle("Carrier ID", f.carrierId)}
+        {celle("Kundens ref.nr.", f.kundeRef)}
+      </div>
+
+      <div className="fc-maerkat-raekke" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        {celle("Kunde", f.kunde, adresse(f.kundeAdresse))}
+        {celle("Antal kolli / enheder", f.kolli)}
+      </div>
+
+      {/* Ruten. Den direkte label har to celler; de to andre har transitten
+          imellem — og storage slutter på en hylde frem for hos en modtager. */}
+      <div className="fc-maerkat-raekke" style={kolonner(rute)}>
+        {celle("Fra (A)", f.fra?.navn || f.fraSted, adresse(f.fra))}
+        {f.transit && celle(
+          "Transit hub", f.transit.navn || f.transitSted, adresse(f.transit),
+        )}
+        {label.type === "storage"
+          ? celle("Storage (lager / zone)", f.lokation, adresse(f.til))
+          : celle("Til (B)", f.til?.navn || f.slutmaal, adresse(f.til))}
+      </div>
+
+      <div className="fc-maerkat-raekke" style={kolonner(3)}>
+        {celle("Vægt", f.vaegtGram === null ? null : `${kg(f.vaegtGram)} kg`)}
+        {celle("Mål / dimensioner", f.maal,
+          f.maal ? <div className="fc-maerkat-under">(L x B x H)</div> : null)}
+        {/* ⚠ PLANCHEN SKRIVER "N/A" HER, OG DET GØR VI IKKE. Huset har ÉN
+            markør for "intet svar" — em-dashen i format.js — og en prøve
+            håndhæver det: den næste ville tro der var forskel på "N/A" og
+            "—", og ingen af dem kunne søges frem. */}
+        {celle(
+          "Serienr. / batch",
+          null,
+          (f.serienr || f.batch) && (
+            <div className="fc-maerkat-under">
+              {f.serienr && <div>SN: {f.serienr}</div>}
+              {f.batch && <div>Batch: {f.batch}</div>}
+            </div>
+          ),
         )}
       </div>
 
-      {linje("Booking", f.bookingNummer)}
-      {linje("Beholder", f.carrierId)}
-      {linje("Kunde", f.kunde)}
-      {linje("Fra", f.fraSted)}
-      {label.type === "storage" && linje("Lokation efter transit", f.lokation)}
-      {carrier?.note && linje("Note", carrier.note)}
+      <div className="fc-maerkat-gods">
+        <span className="fc-maerkat-etiket">
+          Goods detaljer / beskrivelse af indhold
+        </span>
+        {f.godsbeskrivelse
+          ? <p>{f.godsbeskrivelse}</p>
+          : (
+            <p className="fc-maerkat-tom">
+              Ingen godsbeskrivelse på beholderen.
+            </p>
+          )}
+      </div>
 
-      {/* ⚠ EN STREGKODE, IKKE KODEN SKREVET SOM TEKST. Første udgave skrev
-          bogstaverne, og mærkatet så komplet ud — men et mærkat der ikke kan
-          scannes, er hele grunden til at der er et mærkat. Tallet står under
-          stregerne, så et menneske kan taste det, hvis koden er snavset. */}
-      <Stregkode kode={f.stregkode} />
+      <div className="fc-maerkat-status">
+        <span className="fc-maerkat-etiket">Status / rutelogik</span>
+        <span>{label.rutelogik || "—"}</span>
+      </div>
+
+      {/* ⚠ TO KODER, ÉN NYTTELAST. QR'en læses af en telefon, stregkoden af
+          terminalens håndscanner. Bar de hver sit, ville mærkatet sige to
+          ting om den samme palle. */}
+      <div className="fc-maerkat-koder">
+        <QrKode kode={f.stregkode} />
+        <Stregkode kode={f.stregkode} />
+      </div>
+
+      {label.haandtering.length > 0 && (
+        <div
+          className="fc-maerkat-maerker"
+          style={kolonner(label.haandtering.length)}
+        >
+          {label.haandtering.map((m) => (
+            <div key={m} className="fc-maerkat-maerke" title={HAANDTERING[m].dansk}>
+              <MaerkeIkon maerke={m} />
+              <span>{HAANDTERING[m].label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
+/* Gram er nodens enhed; kilo er mærkatets. Ét decimal, og kun når der er et. */
+function kg(gram) {
+  const v = gram / 1000;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1).replace(".", ",");
+}
+
+/* ---- Stregerne og firkanterne ------------------------------------------ */
 
 /* Code 128 som SVG. Bredden er moduler, ikke pixels — så mærkatet kan skaleres
    uden at et modul bliver til halvanden og koden ulæselig. */
@@ -357,9 +465,9 @@ function Stregkode({ kode }) {
     );
   }
 
-  const HOEJDE = 60;
+  const HOEJDE = 46;
   return (
-    <div>
+    <div style={{ flex: "1 1 auto", minWidth: 0 }}>
       <svg
         className="fc-stregkode"
         viewBox={`0 0 ${bred} ${HOEJDE}`}
@@ -377,7 +485,98 @@ function Stregkode({ kode }) {
           />
         ))}
       </svg>
-      <div className="fc-stregkode-tal">{kode}</div>
+      <div className="fc-stregkode-tal" style={{ textAlign: "center" }}>{kode}</div>
     </div>
   );
 }
+
+/* QR som SVG — samme nyttelast som stregkoden. */
+function QrKode({ kode }) {
+  if (!kode) return null;
+  const felter = qrFelter(kode);
+  const bred = qrBredde(kode);
+  if (!felter || !bred) return null;
+
+  return (
+    <svg
+      className="fc-qrkode"
+      viewBox={`0 0 ${bred} ${bred}`}
+      role="img"
+      aria-label={`QR-kode ${kode}`}
+    >
+      {felter.map(({ x, y }) => (
+        <rect
+          key={`${x}-${y}`}
+          x={QR_STILLE_ZONE + x}
+          y={QR_STILLE_ZONE + y}
+          width={1}
+          height={1}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/* ---- Ikonerne ----------------------------------------------------------
+   Tegnet som streger frem for hentet: mærkatet skal kunne printes i sort/hvid
+   uden at et ikon forsvinder, og huset har ingen ikonpakke. */
+
+const TypeIkon = ({ type }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    {type === "direkte" && (
+      <>
+        <path d="M2 16V7h10v9" /><path d="M12 10h4l4 3v3h-8" />
+        <circle cx="7" cy="18" r="1.6" /><circle cx="17" cy="18" r="1.6" />
+      </>
+    )}
+    {type === "viaTransit" && (
+      <>
+        <path d="M3 20V9l9-5 9 5v11" /><path d="M8 20v-6h8v6" />
+        <path d="M10 11h4" />
+      </>
+    )}
+    {type === "storage" && (
+      <>
+        <path d="M3 20V9l9-5 9 5v11z" /><path d="M7 20v-7h10v7" />
+        <path d="M7 16h10" />
+      </>
+    )}
+  </svg>
+);
+
+const MaerkeIkon = ({ maerke }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    {maerke === "fragile" && (
+      <>
+        <path d="M8 3h8l-1 6a3 3 0 0 1-6 0z" /><path d="M12 12v7" />
+        <path d="M8 21h8" />
+      </>
+    )}
+    {maerke === "denneSideOp" && (
+      <>
+        <path d="M8 20V6" /><path d="M5 9l3-3 3 3" />
+        <path d="M16 20V6" /><path d="M13 9l3-3 3 3" />
+      </>
+    )}
+    {maerke === "holdToer" && (
+      <>
+        <path d="M3 13a9 9 0 0 1 18 0z" /><path d="M12 13v6a2 2 0 0 0 4 0" />
+      </>
+    )}
+    {maerke === "gaffeltruck" && (
+      <>
+        <path d="M3 5v11h8" /><path d="M11 16V9h5l3 4v3" />
+        <circle cx="7" cy="19" r="1.6" /><circle cx="16" cy="19" r="1.6" />
+        <path d="M20 4v10" />
+      </>
+    )}
+    {maerke === "temperatur" && (
+      <>
+        <path d="M10 14V5a2 2 0 0 1 4 0v9" />
+        <circle cx="12" cy="17" r="3" /><path d="M16 7h4" /><path d="M16 11h4" />
+      </>
+    )}
+  </svg>
+);

@@ -19,7 +19,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  LABELTYPE, ALLE_LABELTYPER, labeltypeFor, byggLabel,
+  LABELTYPE, ALLE_LABELTYPER, labeltypeFor, byggLabel, RUTELOGIK,
   stregkode, laesStregkode, sorteretKaede,
 } from "../src/fleet/transportlabel.js";
 
@@ -128,16 +128,19 @@ describe("labelen", () => {
     assert.equal(l.type, "storage");
     assert.equal(l.kanTrykkes, true);
     assert.deepEqual(l.mangler, []);
-    assert.deepEqual(l.felter, {
-      bookingNummer: "BKG-2026-00317",
-      carrierId: "CRR-100245",
-      kunde: "Nordisk Fragt A/S",
-      fraSted: "København",
-      transit: "Hamburg",
-      slutmaal: "Aalborg",
-      lokation: "Zone A · A-01-02",
-      stregkode: "BKG-2026-00317-CRR-100245",
-    });
+    /* De felter der SPÆRRER trykket. Resten af planchens felter — ref.nr.,
+       kolli, vægt, mål, sporing, godsbeskrivelse — er med i etape 16 og
+       spærrer IKKE: en beholder uden vægt er stadig et mærkat man kan sætte
+       på pallen, hvor et manglende slutmål ikke er. */
+    assert.equal(l.felter.bookingNummer, "BKG-2026-00317");
+    assert.equal(l.felter.carrierId, "CRR-100245");
+    assert.equal(l.felter.kunde, "Nordisk Fragt A/S");
+    assert.equal(l.felter.fraSted, "København");
+    assert.equal(l.felter.transitSted, "Hamburg");
+    assert.equal(l.felter.slutmaal, "Aalborg");
+    assert.equal(l.felter.lokation, "Zone A · A-01-02");
+    assert.equal(l.felter.stregkode, "BKG-2026-00317-CRR-100245");
+    assert.equal(l.rutelogik, RUTELOGIK.storage);
   });
 
   it("transitten er første leds ende — ikke et felt for sig", () => {
@@ -145,7 +148,7 @@ describe("labelen", () => {
       carrier: iTransit, etaper: [ETAPE_1, ETAPE_2],
       booking: BOOKING, kunde: KUNDE,
     });
-    assert.equal(l.felter.transit, "Hamburg");
+    assert.equal(l.felter.transitSted, "Hamburg");
     assert.equal(l.felter.slutmaal, "Aalborg");
   });
 

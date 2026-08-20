@@ -901,3 +901,83 @@ andre steder. En prøve holder det fast.
 Det er tredje gang i træk at et klik i den rigtige skærm har fundet noget
 hverken prøverne eller en probe kunne se — og alle tre gange var det noget der
 kun kan ses af et menneske der læser tallet.
+
+---
+
+## 10. Etape 16 — mærkatet fik sit design, og modellen fik sine felter
+
+Planchen med de tre labels (Direkte A → B, Via transit → destination, Storage
+via transit) viste et mærkat med langt mere på end etape 15 byggede: kundens
+eget ref.nr., antal kolli, vægt, gadeadresser i alle tre rutefelter, en
+godsbeskrivelse, serienr./batch, en QR ved siden af stregkoden og en række
+håndteringsmærker.
+
+### 10.1 Hvad modellen kunne, og hvad den ikke kunne
+
+| Feltet på planchen | Hvor det kom fra |
+|---|---|
+| Booking ID, Carrier ID | Fandtes |
+| Kundens ref.nr. | **Nyt:** `bookinger/<id>.kundeRef` |
+| Kunde + adresse | Navnet fandtes; **nyt:** `kunder/<id>.adresse/postnr/by` |
+| Antal kolli / enheder | **Nyt:** `carriers/<id>.kolli` og `.loesEnheder` |
+| Fra / Transit / Til med gade og postnr | **Nyt:** `etaper/<id>.fraAdresse` og `.tilAdresse` |
+| Vægt | **Nyt:** `carriers/<id>.vaegtGram` |
+| Mål / dimensioner | Fandtes (`laengdeMm` m.fl.), regnes om til cm |
+| Serienr. / batch | **Udledt** af `beholdning` — ikke et felt |
+| Goods detaljer | **Nyt:** `carriers/<id>.godsbeskrivelse` |
+| Status / rutelogik | **Udledt** af labeltypen |
+| Håndteringsmærker | **Nyt:** `carriers/<id>.haandtering/<mærke>` |
+
+⚠ **Kolli er ikke varelinjer.** `beholdning` siger hvor meget af hvilke VARER
+der ligger i beholderen; kolli siger hvor mange PAKKER en lagermand kan tælle
+på gulvet. Tre kasser kølegods kan være én varelinje. De to kan ikke udledes af
+hinanden, og et gæt ville blive talt efter ved modtagelsen.
+
+⚠ **Adressen bærer ikke byen.** Etapen har `fraSted`/`tilSted`, og det ER byen.
+`fraAdresse` har derfor kun navn, gade og postnummer; mærkatet sætter dem
+sammen. Stod byen begge steder, ville de drive fra hinanden — og
+planlægningen læser `fraSted`.
+
+⚠ **Serienummer og batch er udledt, og "flere" er et svar.** Bærer beholderen
+to batches, vælger mærkatet ikke den ene: et gæt her ville sende en
+tilbagekaldelse efter det forkerte parti.
+
+### 10.2 To koder, én nyttelast
+
+QR'en læses af en telefon, stregkoden af terminalens håndscanner. **Begge
+bærer den samme kode** — bar de hver sit, ville mærkatet sige to ting om den
+samme palle. QR-koderen står i `fleet/qrkode.js`, Code 128'eren i
+`fleet/stregkode128.js`.
+
+⚠ **Begge er efterprøvet med en fremmed implementering.** 240 QR-matricer
+sammenlignet modul for modul med zxings egen koder — nul afvigelser — og
+afkodet igen af zxings læser. Det fangede tre fejl i QR'en, som alle så ud som
+en rigtig QR: formatordet stod spejlvendt, anden formatkopi var delt 8 + 7 i
+stedet for 7 + 8, og strafferegel 3 talte kantens falske søgemønstre forkert,
+så koderen valgte masker en afkoder ikke kunne finde koden i.
+
+⚠ **Prøven fandt sin egen grænse.** ~4 % af koderne kunne zxings LÆSER ikke
+finde i et syntetisk billede. Zxings EGNE koder fejlede nøjagtig ens på de
+samme nyttelaster — matricerne var identiske — så det er læseren i prøven, ikke
+koderen.
+
+### 10.3 To steder hvor huset vandt over planchen
+
+- **`N/A` blev til `—`.** Planchen skriver "N/A" i serienr.-feltet. Huset har
+  ÉN markør for "intet svar", og en prøve håndhæver det: den næste ville tro
+  der var forskel, og ingen af dem kunne søges frem.
+- **`BK-2405-00123` blev til `BKG-2026-00317`.** Planchens bookingnummer er et
+  femte format ved siden af beslutning 8's `PRÆFIKS-ÅÅÅÅ-NNNNN`.
+
+### 10.4 Det der IKKE er gjort
+
+- **Intet fysisk format.** Et mærkat trykkes typisk 100×150 mm, men vi ved ikke
+  hvilken printer kunden har, og en `@page size` vi selv fandt på ville skalere
+  koderne skævt hos alle andre. En skævt skaleret stregkode scanner ikke.
+- **Ingen fysisk scanner.** Begge koder er læst af zxing fra et rent billede.
+  Papir, blæk og en håndscanner er ikke prøvet.
+- **DEV-basen har ikke de nye felter endnu.** Demo-filerne har dem, så mærkatet
+  kan ses i sin helhed dér; i den udrullede DEV-base står ref.nr., kolli, vægt,
+  adresser og godsbeskrivelse tomme, indtil nogen skriver dem.
+- **Ingen formular til felterne.** De kan skrives af en funktion eller et
+  script; der er endnu ingen skærm at taste dem i.
