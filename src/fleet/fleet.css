@@ -8,11 +8,38 @@
  * bevidst.
  */
 :root{
-  --bc-accent:#125bec;
-  --bc-card:#fff;
-  --bc-line:#e3e6ea;
-  --bc-text:#1f2733;
-  --bc-muted:#6b7684;
+  /* ⚠ FIRE FEMTEDELE AF SKAERMEN ER ET LYST FELT, og en femtedel af den ligger
+     paa maksimum. Maalt: 58,9 % af dashboardets pixels over 250 i lysstyrke,
+     85,5 % over 235. Det er MAENGDEN AF LYS der traetter et oeje over otte
+     timer — ikke kuloeren. Kortet og siden er derfor skaaret ned i toppen,
+     uden at en eneste kulør er flyttet. Beslutning 47.
+
+     ⚠ FOERSTE FORSOEG VAR FOR FORSIGTIGT OG BLEV MAALT NED. #fbfcfe lyder
+     som 97,3 % — men det er WCAG-lysstyrke, og i RAAT LYS er det stadig 252
+     af 255. Skaermens gennemsnit faldt 1,4 %, altsaa ingenting. Med #f4f6fa
+     falder andelen paa maksimum fra 58,9 % til 1,9 %, og det udsendte lys med
+     8 %. Forskellen mellem de to tal er hele pointen: gamma-korrigeret
+     lysstyrke svarer paa "hvor let er det at laese", raat lys svarer paa
+     "hvor meget lyser skaermen". Det sidste er det der traetter.
+
+     ⚠ OG KORTET BLEV LETTERE AT SE, IKKE SVAERERE: 1,07:1 mod siden blev
+     1,14:1, fordi siden falder mere end kortet. Det er FORHOLDET der baerer
+     layoutet, ikke den absolutte vaerdi. */
+  --bc-accent:#1552d8;
+  --bc-card:#f4f6fa;
+  /* ⚠ STREGEN SKULLE MED NED. #e3e6ea mod den nye side var 1,02:1 — kanten
+     forsvandt simpelthen dér hvor kortet moeder baggrunden. #d3d9e3 giver
+     1,16:1 mod siden, hvilket er PRAECIS det stregen havde mod kortet foer. */
+  --bc-line:#d3d9e3;
+  /* 11,4:1 mod kortet. AAA kraever 7:1 — vi laa paa 15,0, altsaa det dobbelte
+     af kravet, og naesten-sort paa rent hvidt er ikke det mest laeselige men
+     det mest blaendende. */
+  --bc-text:#2e3947;
+  /* ⚠ DEN HER VAR EN FEJL, IKKE EN JUSTERING. #6b7684 paa --fc-bg gav 4,3:1 —
+     UNDER AA paa 4,5. Den svage tekst under hvert KPI-tal og i hver
+     tabelundertekst stod for svagt paa hver eneste skaerm, og ingen havde
+     regnet efter. Nu 5,0:1. */
+  --bc-muted:#5c6675;
   --bc-ok:#1f9d55;
   --bc-warn:#c77700;
   --bc-block:#d64545;
@@ -25,9 +52,10 @@
      Beslutning 46.
 
      De to hoerer SAMMEN: en stregkode er sort paa hvidt, og bunden er lige saa
-     meget et maskinkrav som stregerne. --bc-card er #fff i dag, men den er
-     kortets baggrund og ville foelge et moerkt tema med — og saa forsvinder
-     koden. */
+     meget et maskinkrav som stregerne. ⚠ OG DET BLEV SANDT: beslutning 47
+     tog --bc-card fra #fff ned til #fbfcfe for at skaere toppen af lyset, og
+     havde stregkodens bund haengt paa kortet, var den fulgt med. Den er
+     et maskinkrav og staar fast. */
   --fc-stregkode:#000;
   --fc-stregkode-bund:#fff;
 
@@ -35,7 +63,7 @@
   --fc-navy-2:#18243f;
   --fc-navy-3:#22314f;
   --fc-accent-soft:#e8f0ff;
-  --fc-bg:#f5f7fa;
+  --fc-bg:#e4e8f0;
   --fc-ok-bg:#dcfce7;
   --fc-warn-bg:#fef3c7;
   --fc-bad-bg:#fee2e2;
@@ -43,7 +71,7 @@
   --fc-info-bg:#dbeafe;
   /* Kategoripalet — IKKE statusfarver. Se beslutning 30: statusfarver siger
      hvor slemt det er, kategorifarver siger hvilken ting det er. Slot 1 peger
-     på accenten frem for at gentage #125bec; beslutning 10 er kilden.
+     på accenten frem for at gentage #1552d8; beslutning 10 er kilden.
      Valideret med dataviz-validatoren mod hvid flade. */
   --fc-serie-1:var(--bc-accent);
   --fc-serie-2:#eb6834;
@@ -63,12 +91,12 @@
   --fc-ikon-4:#4a3aa7;   /* lilla */
   --fc-ikon-5:var(--bc-accent);  /* blå */
   --fc-ikon-6:#008300;   /* grøn — dataviz slot 6 */
-  --fc-ikon-1-bg:color-mix(in srgb, #e34948 13%, #fff);
-  --fc-ikon-2-bg:color-mix(in srgb, #eb6834 13%, #fff);
-  --fc-ikon-3-bg:color-mix(in srgb, #eda100 15%, #fff);
-  --fc-ikon-4-bg:color-mix(in srgb, #4a3aa7 12%, #fff);
+  --fc-ikon-1-bg:color-mix(in srgb, #e34948 13%, var(--bc-card));
+  --fc-ikon-2-bg:color-mix(in srgb, #eb6834 13%, var(--bc-card));
+  --fc-ikon-3-bg:color-mix(in srgb, #eda100 15%, var(--bc-card));
+  --fc-ikon-4-bg:color-mix(in srgb, #4a3aa7 12%, var(--bc-card));
   --fc-ikon-5-bg:var(--fc-accent-soft);
-  --fc-ikon-6-bg:color-mix(in srgb, #008300 12%, #fff);
+  --fc-ikon-6-bg:color-mix(in srgb, #008300 12%, var(--bc-card));
 
   /* Modal baggrund. Sidebarens navy ved 44 %, ikke en neutral sort: en sort
      overlay goer alle farver under sig graa-brune, en navy lader accenten
@@ -897,7 +925,14 @@
 @page{size:100mm 200mm; margin:0}
 
 @media print{
-  .fc-maerkat{max-width:none; width:100mm; border:0; border-radius:0}
+  /* ⚠ BUNDEN SKAL SIGES HOEJT. Maerkatet arvede sin hvide fra --bc-card, og
+     da beslutning 47 tog kortet ned til #f4f6fa for at skaere lyset paa
+     skaermen, fulgte PAPIRET med — en lysegraa flade under en stregkode, som
+     en termoprinter gengiver som raster. Det er noejagtig det tilfaelde
+     --fc-stregkode-bund blev oprettet til i beslutning 46: bunden er et
+     maskinkrav, ikke en flade der maa foelge et tema. */
+  .fc-maerkat{max-width:none; width:100mm; border:0; border-radius:0;
+    background:var(--fc-stregkode-bund)}
   /* Kortets overskrift og polstring hoerer skaermen til. Paa arket skal
      maerkatet begynde i hjoernet — etiketten er 100 mm bred, ikke 92. */
   .fc-maerkat-kort .fc-card-h{display:none}

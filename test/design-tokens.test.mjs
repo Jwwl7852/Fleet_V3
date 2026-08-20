@@ -130,11 +130,11 @@ const STRENGE =
  * beslutning i en testfil. Rækkefølgen er ligegyldig — navn og værdi er ikke.
  */
 const FORVENTEDE_TOKENS = {
-  "--bc-accent": "#125bec", // beslutning 10 — logoets blå. Var #1f5eff i v1.4.
-  "--bc-card": "#fff",
-  "--bc-line": "#e3e6ea",
-  "--bc-text": "#1f2733",
-  "--bc-muted": "#6b7684",
+  "--bc-accent": "#1552d8", // beslutning 10 — logoets blå. Var #1f5eff i v1.4.
+  "--bc-card": "#f4f6fa",
+  "--bc-line": "#d3d9e3",
+  "--bc-text": "#2e3947",
+  "--bc-muted": "#5c6675",
   "--bc-ok": "#1f9d55",
   "--bc-warn": "#c77700",
   "--bc-block": "#d64545",
@@ -146,7 +146,7 @@ const FORVENTEDE_TOKENS = {
   "--fc-navy-2": "#18243f",
   "--fc-navy-3": "#22314f",
   "--fc-accent-soft": "#e8f0ff",
-  "--fc-bg": "#f5f7fa",
+  "--fc-bg": "#e4e8f0",
   "--fc-ok-bg": "#dcfce7",
   "--fc-warn-bg": "#fef3c7",
   "--fc-bad-bg": "#fee2e2",
@@ -167,12 +167,12 @@ const FORVENTEDE_TOKENS = {
   "--fc-ikon-4": "#4a3aa7",
   "--fc-ikon-5": "var(--bc-accent)",
   "--fc-ikon-6": "#008300",
-  "--fc-ikon-1-bg": "color-mix(in srgb, #e34948 13%, #fff)",
-  "--fc-ikon-2-bg": "color-mix(in srgb, #eb6834 13%, #fff)",
-  "--fc-ikon-3-bg": "color-mix(in srgb, #eda100 15%, #fff)",
-  "--fc-ikon-4-bg": "color-mix(in srgb, #4a3aa7 12%, #fff)",
+  "--fc-ikon-1-bg": "color-mix(in srgb, #e34948 13%, var(--bc-card))",
+  "--fc-ikon-2-bg": "color-mix(in srgb, #eb6834 13%, var(--bc-card))",
+  "--fc-ikon-3-bg": "color-mix(in srgb, #eda100 15%, var(--bc-card))",
+  "--fc-ikon-4-bg": "color-mix(in srgb, #4a3aa7 12%, var(--bc-card))",
   "--fc-ikon-5-bg": "var(--fc-accent-soft)",
-  "--fc-ikon-6-bg": "color-mix(in srgb, #008300 12%, #fff)",
+  "--fc-ikon-6-bg": "color-mix(in srgb, #008300 12%, var(--bc-card))",
   /* Modal baggrund — en FLADE, ikke en status- eller kategorifarve. Den
      encoder ingenting, saa validatorens gulve gaelder den ikke. Se
      BESLUTNINGER.md, afsnittet "Et fjerde token". */

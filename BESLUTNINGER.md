@@ -2497,3 +2497,84 @@ gør koden ulæselig uden at nogen kan se det.
 tema, og det hører hverken i statuspaletten (beslutning 30's "hvor slemt er
 det") eller i kategoripaletten ("hvilken ting er det"). Det er en tredje slags
 farve: den som en maskine skal kunne måle.
+
+
+## 47. Skærmen er 85 % lyst felt — det er dét der trætter, ikke kuløren
+
+Der kom et forslag til "de mest behagelige farver at kigge på en hel dag", med
+fem gennemarbejdede plancher. Jeg målte dem pixel for pixel mod det vi har:
+
+| | Kortflade | Sidebaggrund | Sidebar |
+|---|---|---|---|
+| Forslaget | `#ffffff` | `#f6f7fb` | `#011633` |
+| FleetControl 3.0 | `#ffffff` | `#f5f7fa` | `#101a30` |
+
+Ét RGB-trin på baggrunden, nul på kortet. **Forslaget var den palet vi allerede
+havde.** Den røde tråd var tegnet efter en tråd der lå der i forvejen.
+
+⚠ **Og på selve spørgsmålet trak det den forkerte vej.** Målt med samme metode
+— andelen af skærmen over 250 i lysstyrke — ligger vores dashboard på 58,9 %,
+plancherne på 63,6–71,8 %. Tæller man hele det lyse felt med (235+), er begge
+på 82–86 %. Fire femtedele af skærmen er et lyst felt, og en femtedel af den er
+på maksimum. Dét er det der trætter et øje over otte timer. Kuløren er ikke
+problemet; **mængden af lys** er.
+
+### Hvad der blev ændret
+
+| Token | Før | Efter | Hvorfor |
+|---|---|---|---|
+| `--bc-card` | `#ffffff` (råt lys 255) | `#f4f6fa` (246) | Toppen af lyset skæres af |
+| `--fc-bg` | `#f5f7fa` (247) | `#e4e8f0` (232) | Siden bag kortene bærer det meste af arealet |
+| `--bc-line` | `#e3e6ea` | `#d3d9e3` | Kanten forsvandt mod den nye side — 1,02:1 |
+| `--bc-text` | `#1f2733` 15,0:1 | `#2e3947` 10,8:1 | AAA kræver 7:1 — vi lå på det dobbelte |
+| `--bc-muted` | `#6b7684` | `#5c6675` | Se fejlen nedenfor |
+| `--bc-accent` | `#125bec` | `#1552d8` | Følger med kortet ned, så 5,6:1 bliver 6,3:1 |
+
+⚠ **FØRSTE FORSØG VAR FOR FORSIGTIGT — OG DET VAR MÅLINGEN DER AFSLØREDE DET.**
+Jeg satte først kortet til `#fbfcfe` og kaldte det "97,3 % lysstyrke". Det tal
+er WCAG-lysstyrke, som er gamma-korrigeret; i **råt lys** er `#fbfcfe` stadig
+252 af 255. Skærmens gennemsnit faldt fra 227,7 til 224,5 — 1,4 %, altså
+ingenting. Med `#f4f6fa` falder andelen af skærmen på maksimum fra **58,9 % til
+1,9 %**, og det udsendte lys med **8 %**.
+
+Forskellen mellem de to tal er hele pointen: gamma-korrigeret lysstyrke svarer
+på *hvor let er det at læse*, råt lys svarer på *hvor meget lyser skærmen*. Det
+sidste er det der trætter over otte timer, og det var ikke det tal jeg regnede
+på først.
+
+⚠ **KORTET BLEV LETTERE AT SE, IKKE SVÆRERE.** Man skulle tro at et mørkere
+kort på en mørkere side udvisker skellet. Målt gør det det modsatte: 1,07:1
+bliver 1,14:1, fordi siden falder mere end kortet. Forholdet er det der bærer
+layoutet, ikke den absolutte værdi.
+
+⚠ **OG STREGEN SKULLE MED NED.** `--bc-line` på `#e3e6ea` gav **1,02:1** mod
+den nye side — kanten forsvandt dér hvor kortet møder baggrunden. `#d3d9e3`
+giver 1,16:1, hvilket er præcis det stregen havde mod kortet før. Et token der
+flyttes, trækker altid et andet med sig; det er derfor de står samlet ét sted.
+
+⚠ **MÅLINGEN FANDT EN FEJL DER ALLEREDE STOD DER.** `--bc-muted` på
+`--fc-bg` gav **4,3:1** — under AA på 4,5. Den svage tekst under hvert
+KPI-tal, hver hjælpelinje, hver undertekst i en tabelrække stod for svagt, på
+hver eneste skærm. Den er nu 5,0:1. Fejlen havde intet med forslaget at gøre;
+den blev fundet fordi nogen for første gang regnede efter.
+
+### Hvad der IKKE blev ændret, og hvorfor
+
+**Statusfarverne og kategoripaletten står.** Beslutning 30 skiller dem, og de er
+valideret mod hvid flade med dataviz-validatoren. Flyttes de, skal de valideres
+forfra mod den nye flade — det er sin egen etape, ikke en bibemærkning.
+
+**`--fc-stregkode-bund` blev stående på `#fff`.** Beslutning 46: bunden er
+lige så meget et maskinkrav som stregerne, og den må ikke følge kortets flade
+ned. Det er præcis det tilfælde tokenet blev oprettet for.
+
+**Der kom ikke et mørkt tema.** Mørk baggrund hjælper i et mørkt rum og skader i
+et lyst — lys tekst på mørk bund smører for de fleste med bygningsfejl i øjet.
+Det rigtige er derfor en **kontakt**, ikke en beslutning på brugerens vegne, og
+en kontakt kræver at hvert token får en mørk pendant. Egen etape.
+
+**Og skriften blev ikke rørt — endnu.** 68 % af tegnene på dashboardet står på
+13 px eller mindre, 37 % på 12,5 px eller mindre. Lille skrift med hård kontrast
+er den mest trættende kombination der findes, og den er et større håndtag end
+nogen palet. Men den flytter layout på hver skærm og hører derfor til sin egen
+etape, hvor der er plads til at se efter.
