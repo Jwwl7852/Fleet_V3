@@ -681,10 +681,19 @@ på rampen i Hamburg, ikke på skærmen.
 transporter at mærke, og skærmen siger det frem for at vise en tom tabel, der
 ligner en fejl (beslutning 32).
 
-⚠ **Én ting mangler i den udrullede DEV-base:** `demo/CRR-100248` bærer stadig
-`transportId: "TRP-2024-0514"`. Feltet er ukendt for reglerne nu, så enhver
-fremtidig skrivning til den post afvises af `$andet: false`. Rækken skal
-opdateres til `etapeId: "et-007"` — det er én `update()` med servicekontoen.
+**DEV er rettet med, og labelen er set tegnet.** `demo/CRR-100248` bar stadig
+`transportId: "TRP-2024-0514"` efter udrulningen — et felt reglerne ikke kender
+længere, så enhver fremtidig skrivning til posten ville være afvist af
+`$andet: false`. Én `update()` med servicekontoen satte `etapeId: "et-007"` og
+`transportId: null`. Efter: 0 beholdere med det gamle felt.
+
+⚠ **Og først dér kunne skærmen efterprøves.** Før rettelsen stod den med
+*"0 klar af 7"* og *ingen transport* på hver række — det rigtige svar, men også
+et svar hvor mærkatet aldrig blev tegnet. Efter rettelsen tegner CRR-100248 en
+**via transit**-label: BKG-2026-00317, Fyn Køl & Frost A/S, København → Hamburg
+→ København, stregkode `BKG-2026-00317-CRR-100248`, og Print-knappen er åben.
+Det er den samme lære som `useListe`-fejlen i etape 13: en tom tabel ligner et
+tomt lager, og kun et klik kan se forskel.
 
 ---
 
