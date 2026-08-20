@@ -10,6 +10,7 @@ import {
   ALLE_KASSE_STATUS, kraeverPlads,
   ALLE_UDLAAN_TILSTANDE, BINDENDE,
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
+  undertyperFor, harUndertyper,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
@@ -599,5 +600,72 @@ describe("serveren stempler det faktiske tidspunkt", () => {
        et ur der går forkert er ikke engang ond vilje. */
     assert.ok(!kilde.includes("d.udleveretMs"));
     assert.ok(!kilde.includes("d.returneretMs"));
+  });
+});
+
+describe("undertypen", () => {
+  /* ⚠ UNDERTYPEN LIGGER UNDER SIN TYPE. En egen node med et typeId kunne
+     drive: en undertype ville kunne pege på en type der var slettet, og to
+     typer kunne dele en undertype med samme navn. Nestet er koblingen
+     strukturel. Planchen (UNITBOOKING.md 6.1) har den i formularen på alle
+     tre skærme og i filtrene på to. */
+  const KATALOG = [
+    { id: "AL", navn: "Alukasse", undertyper: { std: { navn: "Standard" }, xl: { navn: "XL" } } },
+    { id: "TR", navn: "Trækasse" },
+  ];
+  const ctx = {
+    typer: ["AL", "TR"],
+    pladser: ["p1"],
+    katalog: KATALOG,
+  };
+  const kasse = { id: "MDT-101", type: "AL", status: "ledig", hjemPladsId: "p1", pladsId: "p1" };
+
+  it("undertyperne sorteres på navn, ikke på nøgle", () => {
+    assert.deepEqual(undertyperFor(KATALOG[0]).map((u) => u.id), ["std", "xl"]);
+    assert.deepEqual(undertyperFor(KATALOG[0]).map((u) => u.navn), ["Standard", "XL"]);
+  });
+
+  it("⚠ \"HAR UNDERTYPE\" ER UDLEDT, IKKE ET FELT", () => {
+    /* Planchens ja/nej. Et flag ved siden af listen ville være den samme
+       kendsgerning to steder, og de to ville blive uenige første gang nogen
+       slettede den sidste undertype. */
+    assert.equal(harUndertyper(KATALOG[0]), true);
+    assert.equal(harUndertyper(KATALOG[1]), false);
+    assert.equal(harUndertyper(undefined), false);
+    assert.deepEqual(undertyperFor(undefined), []);
+  });
+
+  it("en kasse uden undertype er gyldig — feltet er ikke påkrævet", () => {
+    /* En type kan have nul undertyper, og så har kassen ingen. Et påkrævet
+       felt ville tvinge en opfundet undertype frem på hver eneste kasse. */
+    assert.deepEqual(valideKasse(kasse, ctx), {});
+    assert.deepEqual(valideKasse({ ...kasse, type: "TR" }, ctx), {});
+  });
+
+  it("en undertype fra kassens egen type går igennem", () => {
+    assert.deepEqual(valideKasse({ ...kasse, undertype: "std" }, ctx), {});
+    assert.deepEqual(valideKasse({ ...kasse, undertype: "xl" }, ctx), {});
+  });
+
+  it("⚠ EN ANDEN TYPES UNDERTYPE AFVISES", () => {
+    /* Uden det led kunne en trækasse bære alukassens \"XL\", og filtret
+       \"Trækasse + XL\" ville vise en kasse der hverken var det ene eller det
+       andet. */
+    assert.ok(valideKasse({ ...kasse, type: "TR", undertype: "xl" }, ctx).undertype);
+    assert.ok(valideKasse({ ...kasse, undertype: "findes-ikke" }, ctx).undertype);
+  });
+
+  it("en type uden undertyper siger dét — ikke bare \"ukendt\"", () => {
+    const f = valideKasse({ ...kasse, type: "TR", undertype: "std" }, ctx);
+    assert.match(f.undertype, /ingen undertyper/);
+  });
+
+  it("uden katalog validerer den ikke undertypen — den gætter ikke", () => {
+    /* Samme mønster som `typer: []`: er listen ikke hentet endnu, afvises
+       intet. Serveren afgør alligevel. */
+    assert.deepEqual(
+      valideKasse({ ...kasse, undertype: "hvadsomhelst" }, { typer: [], pladser: ["p1"] }),
+      {},
+    );
   });
 });

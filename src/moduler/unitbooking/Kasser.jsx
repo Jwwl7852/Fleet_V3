@@ -26,7 +26,7 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
-  kraeverPlads, valideKasse, pladsnavn, naesteReservation,
+  kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
 } from "../../fleet/unitbooking.js";
 import { gem } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
@@ -37,7 +37,7 @@ import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const PR_SIDE = 12;
 
-const tomKasse = () => ({ id: "", type: "", status: "ledig", hjemPladsId: "", pladsId: "", note: "" });
+const tomKasse = () => ({ id: "", type: "", undertype: "", status: "ledig", hjemPladsId: "", pladsId: "", note: "" });
 
 function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
   const nyt = !kasse;
@@ -63,11 +63,25 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
     saetSvar(null);
   };
 
-  const ctx = { typer: typer.map((t) => t.id), pladser: pladser.map((p) => p.id) };
+  /* katalog: hele typerne, saa undertypen kan slaas op mod SIN egen type. */
+  const ctx = { typer: typer.map((t) => t.id), pladser: pladser.map((p) => p.id), katalog: typer };
   const fejl = valideKasse({ ...f, pladsId: f.pladsId || null }, ctx);
   const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
   const kanGemme = Object.keys(fejl).length === 0;
   const paaLager = kraeverPlads(f.status);
+
+  /* Undertyperne paa den VALGTE type — ikke alle typers. */
+  const undertyper = undertyperFor(typer.find((t) => t.id === f.type));
+
+  /* ⚠ ET TYPESKIFT RYDDER UNDERTYPEN. Uden det bliver en alukasses
+     "XL" staaende naar man skifter til Traekasse, og formularen sender en
+     kombination reglen afviser — med en fejl der peger paa undertypen,
+     mens brugeren rettede typen. */
+  const saetType = (v) => {
+    saetF((x) => ({ ...x, type: v, undertype: "" }));
+    saetRoert((x) => ({ ...x, type: true }));
+    saetSvar(null);
+  };
 
   const gemNu = async () => {
     saetVisAlle(true);
@@ -75,7 +89,11 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
     saetGemmer(true);
     const id = (kasse?.id || f.id).trim();
     const data = {
-      type: f.type, status: f.status, hjemPladsId: f.hjemPladsId,
+      type: f.type,
+      /* ⚠ NULSTILLES NAAR TYPEN SKIFTER — se saetType nedenfor. Null og ikke
+         tom streng: reglen kraever en streng der findes i katalogget. */
+      undertype: f.undertype || null,
+      status: f.status, hjemPladsId: f.hjemPladsId,
       pladsId: paaLager ? f.pladsId : null,
       note: f.note?.trim() || null,
     };
@@ -102,9 +120,21 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
           <Felt id="k-id" label="Kasse-id" kraevet vaerdi={nyt ? f.id : kasse.id}
                 saet={nyt ? saet("id") : undefined} readOnly={!nyt} fejl={vis("id")}
                 hint={nyt ? "Står på kassen. Fx MDT-101." : "Kan ikke ændres — der hænger udlån på id'et."} />
-          <Felt id="k-type" label="Type" kraevet vaerdi={f.type} saet={saet("type")}
+          <Felt id="k-type" label="Type" kraevet vaerdi={f.type} saet={saetType}
                 fejl={vis("type")}
                 valgmuligheder={typer.map((t) => ({ vaerdi: t.id, label: `${t.id} · ${t.navn}` }))} />
+          {/* ⚠ FELTET TEGNES KUN NÅR TYPEN HAR UNDERTYPER. Planchens
+              "Har undertype: ja/nej" er ikke et felt — den er udledt af om
+              der er nogen. En deaktiveret vælger der altid stod der, ville
+              være en kontrol der ikke kontrollerer noget, og en tom vælger
+              læses som "nogen har glemt at udfylde den". */}
+          {undertyper.length > 0 && (
+            <Felt id="k-undertype" label="Undertype" vaerdi={f.undertype}
+                  saet={saet("undertype")} fejl={vis("undertype")}
+                  hint="Valgfri. Hører til den valgte type."
+                  valgmuligheder={[{ vaerdi: "", label: "Ingen undertype" }]
+                    .concat(undertyper.map((u) => ({ vaerdi: u.id, label: u.navn })))} />
+          )}
           {/* ⚠ KUN DE TO DEN HER SKÆRM KAN OBSERVERE. `klargjort` og `udlaant`
               er FØLGER af et udlånsskifte og sættes af serveren sammen med
               udlånet. Kunne de vælges her, ville der findes en kasse der stod
@@ -293,6 +323,14 @@ export default function Kasser() {
                 { key: "id", label: "Kasse", render: (k) => <b>{k.id}</b> },
                 { key: "type", label: "Type",
                   render: (k) => typeMap[k.type]?.navn || k.type },
+                /* ⚠ EGEN KOLONNE, IKKE SAT SAMMEN MED TYPEN. Planchen har dem
+                   som to kolonner og to filtre, og "Alukasse · Stor" i én
+                   celle kunne hverken sorteres eller filtreres på undertypen
+                   alene. En kasse uden undertype står med en streg — typen
+                   har måske slet ingen, og et tomt felt læses som en fejl. */
+                { key: "undertype", label: "Undertype",
+                  render: (k) => undertyperFor(typeMap[k.type])
+                    .find((u) => u.id === k.undertype)?.navn || "—" },
                 { key: "status", label: "Status", render: (k) => (
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}

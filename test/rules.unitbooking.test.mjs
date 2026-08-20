@@ -54,7 +54,14 @@ before(async () => {
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     await set(ref(db, t("_findes")), true);
-    await set(ref(db, t("kassetyper/AL")), { navn: "Alukasse" });
+    /* ⚠ TO TYPER: en MED undertyper og en UDEN. Uden den sidste kunne
+       proeven ikke skelne "undertypen hoerer til en anden type" fra "typen
+       har slet ingen", og de to er forskellige fejl. */
+    await set(ref(db, t("kassetyper/AL")), {
+      navn: "Alukasse",
+      undertyper: { std: { navn: "Standard" }, xl: { navn: "XL" } },
+    });
+    await set(ref(db, t("kassetyper/TR")), { navn: "Traekasse" });
     await set(ref(db, t("reolpladser/p1")), {
       hal: "Hal 1", reol: "1", fag: "1", hylde: "6", plads: "1",
     });
@@ -170,5 +177,62 @@ describe("modellen og reglerne siger det samme", () => {
     for (const s of SELVVALGT_KASSE_STATUS) {
       assert.ok(linje.includes(s), `statusreglen mangler ${s}`);
     }
+  });
+});
+
+describe("undertypen skal høre til kassens egen type", () => {
+  /* ⚠ KRYDSFELT-REGEL. Uden det led kunne en trækasse bære alukassens "XL",
+     og filtret "Trækasse + XL" ville vise en kasse der hverken var det ene
+     eller det andet. Reglen læser newData.parent(), altså postens tilstand
+     EFTER skrivningen — derfor holder den også når kun undertypen rettes. */
+  const kasse = (ekstra) => ({
+    type: "AL", status: "ledig", hjemPladsId: "p1", pladsId: "p1", ...ekstra,
+  });
+
+  it("en undertype fra kassens egen type går igennem", async () => {
+    const db = som("lager-1");
+    await assertSucceeds(set(ref(db, t("kasser/MDT-U1")), kasse({ undertype: "std" })));
+  });
+
+  it("⚠ EN ANDEN TYPES UNDERTYPE AFVISES", async () => {
+    const db = som("lager-1");
+    await assertFails(set(ref(db, t("kasser/MDT-U2")),
+      kasse({ type: "TR", undertype: "xl" })));
+  });
+
+  it("en type uden undertyper kan ikke få en", async () => {
+    const db = som("lager-1");
+    await assertFails(set(ref(db, t("kasser/MDT-U3")),
+      kasse({ type: "TR", undertype: "std" })));
+  });
+
+  it("en ukendt undertype afvises", async () => {
+    const db = som("lager-1");
+    await assertFails(set(ref(db, t("kasser/MDT-U4")),
+      kasse({ undertype: "findes-ikke" })));
+  });
+
+  it("feltet er ikke påkrævet — en kasse uden undertype går igennem", async () => {
+    const db = som("lager-1");
+    await assertSucceeds(set(ref(db, t("kasser/MDT-U5")), kasse()));
+    await assertSucceeds(set(ref(db, t("kasser/MDT-U6")), kasse({ type: "TR" })));
+  });
+
+  it("⚠ EN DYB SKRIVNING AF KUN UNDERTYPEN KOMMER IKKE UDENOM REGLEN", async () => {
+    /* Det er her newData.parent() betyder noget: kassen findes med type AL,
+       og der skrives kun feltet. Kunne man sætte en trækasses undertype med
+       et enkeltfelt-skriv, ville krydsfelt-reglen være dekoration. */
+    const db = som("lager-1");
+    await assertSucceeds(set(ref(db, t("kasser/MDT-U7")), kasse()));
+    await assertSucceeds(set(ref(db, t("kasser/MDT-U7/undertype")), "xl"));
+    await assertFails(set(ref(db, t("kasser/MDT-U7/undertype")), "findes-ikke"));
+  });
+
+  it("undertyper i katalogget kræver et navn", async () => {
+    const db = som("lager-1");
+    await assertSucceeds(set(ref(db, t("kassetyper/AL/undertyper/ny")), { navn: "Ny" }));
+    await assertFails(set(ref(db, t("kassetyper/AL/undertyper/tom")), { beskrivelse: "x" }));
+    await assertFails(set(ref(db, t("kassetyper/AL/undertyper/lang")),
+      { navn: "x".repeat(61) }));
   });
 });

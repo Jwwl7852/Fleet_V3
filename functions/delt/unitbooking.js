@@ -207,7 +207,24 @@ export function valideReolplads(post = {}) {
  */
 export const KASSE_ID_MOENSTER = /^[A-Za-z0-9][A-Za-z0-9-]{1,29}$/;
 
-export function valideKasse(post = {}, { typer = [], pladser = [] } = {}) {
+/**
+ * Undertyperne på en type, som poster. ⚠ DE LIGGER UNDER TYPEN, ikke i en
+ * node ved siden af: en undertype hører til præcis én type, og med en egen
+ * node kunne den pege på en type der var slettet.
+ */
+export const undertyperFor = (type) =>
+  Object.entries(type?.undertyper || {})
+    .map(([id, u]) => ({ id, navn: u?.navn || id }))
+    .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
+
+/**
+ * ⚠ "HAR UNDERTYPE" ER IKKE ET FELT. Planchens ja/nej er UDLEDT af om der er
+ * nogen — et flag ved siden af listen ville være den samme kendsgerning to
+ * steder, og de to ville blive uenige første gang nogen slettede den sidste.
+ */
+export const harUndertyper = (type) => undertyperFor(type).length > 0;
+
+export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] } = {}) {
   const f = {};
 
   const id = (post.id || "").trim();
@@ -218,6 +235,25 @@ export function valideKasse(post = {}, { typer = [], pladser = [] } = {}) {
 
   if (!post.type?.trim()) f.type = "Vælg en kassetype.";
   else if (typer.length && !typer.includes(post.type)) f.type = "Ukendt kassetype.";
+
+  /* ⚠ UNDERTYPEN SKAL HØRE TIL KASSENS EGEN TYPE — og reglen siger det samme.
+     Uden det led kunne en alukasse bære en trækasses undertype, og filtret
+     "Alukasse + Stor" ville vise en kasse der hverken var det ene eller det
+     andet.
+
+     ⚠ OG DEN ER IKKE PÅKRÆVET. En type kan have nul undertyper, og så har
+     kassen ingen. Et påkrævet felt ville tvinge en opfundet undertype frem
+     på hver eneste kasse. */
+  const under = (post.undertype || "").trim();
+  if (under && katalog.length) {
+    const type = katalog.find((t) => t.id === post.type);
+    if (!type) f.undertype = "Vælg først en kassetype.";
+    else if (!undertyperFor(type).some((u) => u.id === under)) {
+      f.undertype = harUndertyper(type)
+        ? "Undertypen hører ikke til den valgte type."
+        : "Den valgte type har ingen undertyper.";
+    }
+  }
 
   if (!ALLE_KASSE_STATUS.includes(post.status)) f.status = "Vælg en status.";
 

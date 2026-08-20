@@ -1848,6 +1848,24 @@
             ".validate": "newData.hasChildren(['navn'])",
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            // ⚠ UNDERTYPEN LIGGER UNDER SIN TYPE — IKKE I EN NODE VED SIDEN AF.
+            // En undertype hoerer til praecis een type (Alukasse → Standard,
+            // Stor, XL), og med en egen node med et typeId kunne de to drive:
+            // en undertype ville kunne pege paa en type der var slettet, eller
+            // to typer kunne komme til at dele en undertype med samme navn.
+            // Nestet er koblingen STRUKTUREL og kan ikke brydes.
+            //
+            // ⚠ "Har undertype: ja/nej" fra planchen er IKKE et felt. En type
+            // uden undertyper har bare ingen boern her — et flag ved siden af
+            // listen ville vaere den samme kendsgerning to steder, og de to
+            // ville blive uenige foerste gang nogen slettede den sidste.
+            "undertyper": {
+              "$underId": {
+                ".validate": "newData.hasChildren(['navn'])",
+                "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "$andet": { ".validate": false }
+              }
+            },
             "$andet": { ".validate": false }
           }
         },
@@ -1896,6 +1914,17 @@
             // Samme regel som en solgt bil (beslutning 18).
             ".validate": "newData.hasChildren(['type', 'status', 'hjemPladsId'])",
             "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
+            // ⚠ UNDERTYPEN SKAL HOERE TIL KASSENS EGEN TYPE. Uden det sidste
+            // led kunne en alukasse faa en traekasses undertype, og filtret
+            // "Alukasse + Stor" ville vise en kasse der hverken var det ene
+            // eller det andet. newData.parent() er postens tilstand EFTER
+            // skrivningen, saa leddet holder ogsaa naar kun undertypen rettes.
+            //
+            // ⚠ FELTET ER IKKE PAAKRAEVET. En type kan have nul undertyper
+            // (planchens "Har undertype: nej"), og en kasse af den slags har
+            // ingen. Et paakraevet felt ville tvinge en opfundet undertype
+            // frem paa hver eneste kasse.
+            "undertype": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.parent().child('type').val()).child('undertyper').child(newData.val()).exists()" },
             // ⚠ KLIENTEN MAA KUN SAETTE ledig OG udeAfDrift. "booket" er
             // slet ikke en kassestatus mere — en reservation ER et udlaan, og
             // to steder til samme kendsgerning bliver uenige.

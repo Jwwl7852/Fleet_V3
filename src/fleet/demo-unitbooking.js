@@ -18,9 +18,22 @@ import { DEMO_REOLPLADSER } from "./demo-lager.js";
    to sæt. Skærmene importerer den direkte fra demo-lager.js. */
 
 export const DEMO_KASSETYPER = [
-  { id: "AL", navn: "Alukasse", beskrivelse: "Standard alukasse til lærred og ramme." },
+  /* ⚠ UNDERTYPERNE LIGGER UNDER TYPEN. Planchens "Har undertype: ja/nej" er
+     ikke et felt — den er UDLEDT af om der er nogen. Trækassen har ingen,
+     og det er med vilje: en type uden undertyper skal kunne ses i data, ellers
+     bliver feltet i praksis påkrævet. */
+  { id: "AL", navn: "Alukasse", beskrivelse: "Standard alukasse til lærred og ramme.",
+    undertyper: {
+      std: { navn: "Standard" },
+      stor: { navn: "Stor" },
+      xl: { navn: "XL" },
+    } },
   { id: "TR", navn: "Trækasse", beskrivelse: "Bygget efter mål, til skulptur og montre." },
-  { id: "KL", navn: "Klimakasse", beskrivelse: "Isoleret, med fugtbuffer." },
+  { id: "KL", navn: "Klimakasse", beskrivelse: "Isoleret, med fugtbuffer.",
+    undertyper: {
+      std: { navn: "Standard" },
+      stor: { navn: "Stor" },
+    } },
 ];
 
 
@@ -30,23 +43,23 @@ export const DEMO_KASSETYPER = [
  * Sættet er valgt så begge tilfælde kan ses på skærmen.
  */
 export const DEMO_KASSER = [
-  { id: "MDT-101", type: "AL", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h10-1" },
-  { id: "MDT-102", type: "AL", status: "ledig", hjemPladsId: "p-h1-r2-f1-h10-1", pladsId: "p-h1-r2-f1-h10-1" },
-  { id: "MDT-103", type: "AL", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h9-2" },
-  { id: "MDT-104", type: "AL", status: "klargjort", hjemPladsId: "p-h1-r2-f1-h9-2", pladsId: "p-h1-r2-f1-h9-2" },
+  { id: "MDT-101", type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h10-1" },
+  { id: "MDT-102", type: "AL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r2-f1-h10-1", pladsId: "p-h1-r2-f1-h10-1" },
+  { id: "MDT-103", type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h9-2" },
+  { id: "MDT-104", type: "AL", undertype: "stor", status: "klargjort", hjemPladsId: "p-h1-r2-f1-h9-2", pladsId: "p-h1-r2-f1-h9-2" },
   { id: "MDT-105", type: "TR", status: "ledig", hjemPladsId: "p-h1-r2-f1-h9-3", pladsId: "p-h1-r2-f1-h9-3" },
   /* ⚠ LEDIG, SELV OM DEN ER RESERVERET til september (ku-4). Kassen står
      fysisk på sin hylde — "booket" er ikke en kassestatus, det er et udlån.
      Sættet er valgt netop for at vise det tilfælde. */
   { id: "MDT-106", type: "TR", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
-  { id: "MDT-107", type: "KL", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
+  { id: "MDT-107", type: "KL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   {
     id: "MDT-108", type: "KL", status: "udeAfDrift", hjemPladsId: "p-h1-r1-f1-h6-1",
     pladsId: "p-h1-r1-f1-h6-1",
     note: "Fugtbuffer utæt efter transport. Afventer reparation.",
   },
-  { id: "MDT-201", type: "AL", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-1", pladsId: "p-h2-r1-f2-h3-1" },
-  { id: "MDT-202", type: "AL", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-2", pladsId: "p-h2-r1-f2-h3-2" },
+  { id: "MDT-201", type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-1", pladsId: "p-h2-r1-f2-h3-1" },
+  { id: "MDT-202", type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-2", pladsId: "p-h2-r1-f2-h3-2" },
 ];
 
 /* Tidspunkter som tal, som alle andre Ms-felter. */
