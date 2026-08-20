@@ -20,6 +20,7 @@ import assert from "node:assert/strict";
 
 import {
   LABELTYPE, ALLE_LABELTYPER, labeltypeFor, byggLabel, RUTELOGIK,
+  godsLinjer, MAKS_GODSLINJER,
   stregkode, laesStregkode, sorteretKaede,
 } from "../src/fleet/transportlabel.js";
 
@@ -200,5 +201,59 @@ describe("labelen", () => {
     assert.equal(l.type, null);
     assert.equal(l.kanTrykkes, false);
     assert.ok(l.mangler.includes("etape"));
+  });
+});
+
+describe("hvad der er plads til på arket", () => {
+  /* ⚠ TALLENE ER MÅLT, IKKE VALGT. På det færdige mærkat i browseren:
+     4 linjer = 182,8 mm, og hver linje derefter koster 4,6 mm.
+     7 linjer = 196,5 mm og passer på 200; 8 = 201,1 mm og løber over. */
+  it("syv linjer passer, otte gør ikke", () => {
+    const linje = "Kølegods i isolerede kasser.";
+    const syv = Array(7).fill(linje).join("\n");
+    const otte = Array(8).fill(linje).join("\n");
+    assert.equal(godsLinjer(syv), 7);
+    assert.equal(godsLinjer(otte), 8);
+    assert.ok(MAKS_GODSLINJER === 7);
+  });
+
+  it("ombrydning tæller med — en lang linje er flere", () => {
+    /* Beskrivelsen ombrydes ved 61 tegn med små bogstaver; 55 er sat som
+       grænse, fordi brede tegn ombryder tidligere. */
+    assert.equal(godsLinjer("x".repeat(54)), 1);
+    assert.equal(godsLinjer("x".repeat(56)), 2);
+    assert.equal(godsLinjer("x".repeat(111)), 3);
+    assert.equal(godsLinjer(""), 0);
+    assert.equal(godsLinjer(null), 0);
+  });
+
+  it("⚠ EN FOR LANG BESKRIVELSE SPÆRRER TRYKKET — den klippes ikke", () => {
+    /* En beskrivelse der forkortes i tavshed, er værre end en der spærrer:
+       "Må ikke vendes" kan stå i den linje der forsvandt. */
+    const carrier = {
+      ...paaHylden,
+      godsbeskrivelse: Array(9).fill("Kølegods i isolerede kasser.").join("\n"),
+    };
+    const l = byggLabel({
+      carrier, etaper: [ETAPE_1, ETAPE_2],
+      booking: BOOKING, kunde: KUNDE, plads: PLADS,
+    });
+    assert.equal(l.kanTrykkes, false);
+    assert.ok(l.mangler.includes("godsbeskrivelse"));
+    /* Teksten er der stadig — hele vejen. Det er trykket der er lukket. */
+    assert.equal(l.felter.godsbeskrivelse, carrier.godsbeskrivelse);
+    assert.equal(l.felter.godsLinjer, 9);
+  });
+
+  it("en beskrivelse der passer, spærrer ikke", () => {
+    const carrier = {
+      ...paaHylden,
+      godsbeskrivelse: Array(7).fill("Kølegods i isolerede kasser.").join("\n"),
+    };
+    const l = byggLabel({
+      carrier, etaper: [ETAPE_1, ETAPE_2],
+      booking: BOOKING, kunde: KUNDE, plads: PLADS,
+    });
+    assert.equal(l.kanTrykkes, true);
   });
 });

@@ -833,13 +833,51 @@
 
   /* ⚠ DEV-BANDET BLIVER STAAENDE, OG DET ER MED VILJE. Et proevemaerkat der
      ser ud som et rigtigt, kan havne paa rigtigt gods. Bandet tegnes kun naar
-     noeglen peger paa DEV, saa hos en kunde er det der ikke.
+     noeglen peger paa DEV, saa hos en kunde er det der ikke. */
+}
 
-     ⚠ OG DER ER INTET FYSISK FORMAT. Et maerkat trykkes typisk 100x150 mm paa
-     en labelprinter, men vi ved ikke hvilken printer kunden har — og en
-     @page size vi selv fandt paa, ville skalere koden forkert hos alle andre.
-     En stregkode der er skaleret skaevt, scanner ikke. Aabent, og det gaettes
-     ikke. */
+/* ── Transportlabelen paa papir ──────────────────────────────────────────
+   ⚠ 100 x 200 mm PAA EN ZEBRA 420. Formatet stod aabent, indtil det var
+   oplyst — en @page size vi selv fandt paa, ville skalere koderne skaevt.
+   Nu er det kendt, og saa er MODULBREDDEN afledt af det, ikke valgt:
+
+     Zebra 420 er 203 dpi → eet dot = 0,125 mm.
+     Code 128 med vores 25 tegn er 330 moduler inkl. stille zone.
+
+       1 dot pr. modul = 0,125 mm → 41 mm bred, men UNDER GS1's minimum
+                                    paa 0,25 mm. Den ville ikke scanne.
+       2 dots          = 0,250 mm → 82,6 mm. Passer, og rammer minimum.
+       3 dots          = 0,375 mm → 124 mm. Bredere end maerkatet.
+
+   To dots er altsaa det ENESTE der baade passer og kan scannes — og derfor
+   er stregkodens bredde laast til 82,6 mm og ikke sat i procent. En kode i
+   procent ville aendre modulbredde med sidebredden, og en modulbredde der
+   ikke er et helt antal dots, printer ujaevne bjaelker.
+
+   QR'en er 33 moduler inkl. stille zone; 4 dots pr. modul = 16,5 mm. */
+@page{size:100mm 200mm; margin:0}
+
+@media print{
+  .fc-maerkat{max-width:none; width:100mm; border:0; border-radius:0}
+  /* Kortets overskrift og polstring hoerer skaermen til. Paa arket skal
+     maerkatet begynde i hjoernet — etiketten er 100 mm bred, ikke 92. */
+  .fc-maerkat-kort .fc-card-h{display:none}
+  .fc-maerkat-kort .fc-card-b{padding:0}
+
+  /* Millimeter, ikke procent — se noten ovenfor. */
+  .fc-maerkat-koder .fc-stregkode{width:82.6mm; flex:0 0 auto; height:15mm}
+  .fc-maerkat-koder > div{flex:0 0 auto}
+  .fc-qrkode{width:16.5mm; height:16.5mm}
+
+  /* ⚠ TERMOPRINTEREN KENDER IKKE GRAAT. En Zebra 420 braender sorte prikker;
+     alt derimellem bliver til et raster, og en 9-punkts etiket i raster er
+     ikke til at laese. Derfor er hver tone paa maerkatet ren sort paa papir. */
+  .fc-maerkat .fc-maerkat-etiket,
+  .fc-maerkat .fc-maerkat-under,
+  .fc-maerkat .fc-maerkat-tom,
+  .fc-maerkat .fc-stregkode-tal{color:var(--fc-stregkode)}
+  .fc-maerkat-band{background:var(--fc-stregkode); color:var(--fc-stregkode-bund)}
+  .fc-maerkat-gods{border-color:var(--fc-stregkode)}
 }
 
 /* ── Transportlabel ──────────────────────────────────────────────────────

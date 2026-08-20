@@ -981,3 +981,52 @@ koderen.
   adresser og godsbeskrivelse tomme, indtil nogen skriver dem.
 - **Ingen formular til felterne.** De kan skrives af en funktion eller et
   script; der er endnu ingen skærm at taste dem i.
+
+### 10.5 Formatet kom: 100 × 200 mm på en Zebra 420
+
+Det åbne punkt i 10.4 er lukket. Og formatet afgør mere end papirstørrelsen —
+det afleder **modulbredden**, som er dét der bestemmer om koden kan scannes.
+
+En Zebra 420 er 203 dpi, altså ét dot = 0,125 mm. Vores Code 128 er 330
+moduler inklusive stille zone:
+
+| Dots pr. modul | Modulbredde | Kodens bredde | |
+|---|---|---|---|
+| 1 | 0,125 mm | 41 mm | Under GS1's minimum på 0,25 mm — scanner ikke |
+| **2** | **0,250 mm** | **82,6 mm** | Passer, og rammer minimum præcist |
+| 3 | 0,375 mm | 124 mm | Bredere end mærkatet |
+
+**To dots er det eneste der både passer og kan scannes.** Bredden er derfor
+låst til 82,6 mm og ikke sat i procent: en kode i procent ville skifte
+modulbredde med sidebredden, og en modulbredde der ikke er et helt antal dots,
+printer ujævne bjælker. QR'en er 33 moduler; 4 dots hver = 16,5 mm.
+
+⚠ **Termoprinteren kender ikke gråt.** Den brænder sorte prikker; alt derimellem
+bliver til et raster, og en 9-punkts etiket i raster kan ikke læses. Hver tone
+på mærkatet er derfor ren sort på papir, og typebåndet printer sort med hvid
+tekst. Farven er skærmens.
+
+### 10.6 ⚠ Og målingen fandt en grænse ingen havde sat
+
+Med formatet kendt kunne mærkatet måles på arket. Det viste, at
+**godsbeskrivelsen kan skubbe mærkatet ud over de 200 mm:**
+
+| Godsbeskrivelse | Mærkatets højde |
+|---|---|
+| 4 linjer | 182,8 mm |
+| 7 linjer | 196,5 mm |
+| 8 linjer | **201,1 mm — løber over på etiket nummer to** |
+
+Reglernes grænse på 600 tegn er altså for høj *til papiret* — men tegn er en
+dårlig målestok: 250 tegn fordelt på korte linjer fylder mere end 400 tegn i
+én blok. Grænsen er derfor sat på **linjer**: `MAKS_GODSLINJER = 7`, hvor
+ombrydning tælles med ved 55 tegn (målt til 61 med små bogstaver; 55 fordi
+brede tegn ombryder tidligere).
+
+⚠ **Der klippes ikke.** En godsbeskrivelse der forkortes i tavshed, er værre
+end en der spærrer trykket: *"Må ikke vendes"* kan stå i den linje der
+forsvandt. Overskrides grænsen, kommer `godsbeskrivelse` i `mangler`, og
+knappen er lukket — samme regel som et manglende slutmål.
+
+Tilbage af 10.4: ingen fysisk scanner er prøvet, og der er stadig ingen
+formular at taste felterne i.

@@ -33,7 +33,7 @@ import { pladsnavn } from "../../fleet/unitbooking.js";
 import { CARRIER_TYPE } from "../../fleet/warehouse.js";
 import { beholdningPaaCarrier } from "../../fleet/warehouse.js";
 import {
-  LABELTYPE, ALLE_LABELTYPER, HAANDTERING, byggLabel,
+  LABELTYPE, ALLE_LABELTYPER, HAANDTERING, byggLabel, MAKS_GODSLINJER,
 } from "../../fleet/transportlabel.js";
 import { bjaelker, bredde, STILLE_ZONE } from "../../fleet/stregkode128.js";
 import { qrFelter, qrBredde, QR_STILLE_ZONE } from "../../fleet/qrkode.js";
@@ -60,6 +60,8 @@ const MANGLER_TEKST = {
   slutmaal: "slutmålet",
   transit: "transitstedet",
   lokation: "lokationen på lageret",
+  /* Den ene der ikke mangler, men fylder for meget. */
+  godsbeskrivelse: `plads: godsbeskrivelsen fylder mere end ${MAKS_GODSLINJER} linjer`,
 };
 
 const manglerTekst = (n) => MANGLER_TEKST[n] || n;

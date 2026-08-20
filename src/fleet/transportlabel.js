@@ -228,6 +228,36 @@ export function sporing(poster = []) {
   return { batch: svar(batches), serienr: svar(serier) };
 }
 
+/* ---- Hvad der er plads til på arket ------------------------------------ */
+
+/**
+ * ⚠ MÆRKATET ER 100 × 200 mm, OG DET SÆTTER EN GRÆNSE FOR TEKSTEN.
+ *
+ * Målt i browseren på den færdige label: fire linjer godsbeskrivelse giver
+ * 182,8 mm, og hver linje derefter koster 4,6 mm. Syv linjer er 196,5 mm og
+ * passer; otte er 201,1 mm og løber over på etiket nummer to.
+ *
+ * Godsbeskrivelsen ombrydes ved 61 tegn med små bogstaver. 55 er sat som
+ * grænse, fordi store bogstaver og brede tegn ombryder tidligere — et estimat
+ * der er for optimistisk, ville lade et mærkat løbe over uden varsel.
+ *
+ * ⚠ OG DER KLIPPES IKKE. En godsbeskrivelse der bliver forkortet i tavshed,
+ * er værre end en der spærrer trykket: "Må ikke vendes" kan stå i den linje
+ * der forsvandt. Overskrides grænsen, kommer `godsbeskrivelse` i `mangler`,
+ * og knappen er lukket — samme regel som et manglende slutmål.
+ */
+export const MAKS_GODSLINJER = 7;
+export const TEGN_PR_LINJE = 55;
+
+/** Hvor mange linjer fylder beskrivelsen, når den ombrydes? */
+export function godsLinjer(tekst) {
+  if (!tekst) return 0;
+  return String(tekst).split("\n").reduce(
+    (sum, linje) => sum + Math.max(1, Math.ceil(linje.length / TEGN_PR_LINJE)),
+    0,
+  );
+}
+
 /* ---- Selve labelen ----------------------------------------------------- */
 
 /**
@@ -273,6 +303,11 @@ export function byggLabel({
   const lokation = type === "storage" ? plads?.navn || plads?.id || null : null;
   if (type === "storage" && !lokation) mangler.push("lokation");
 
+  /* Beskrivelsen må ikke skubbe mærkatet ud over de 200 mm — se
+     MAKS_GODSLINJER. Der klippes ikke; trykket spærres. */
+  const linjer = godsLinjer(carrier?.godsbeskrivelse);
+  if (linjer > MAKS_GODSLINJER) mangler.push("godsbeskrivelse");
+
   const { batch, serienr } = sporing(beholdning);
 
   return {
@@ -310,6 +345,7 @@ export function byggLabel({
       serienr,
 
       godsbeskrivelse: carrier?.godsbeskrivelse || null,
+      godsLinjer: linjer,
       stregkode: stregkode(bookingNummer, carrier?.id),
     },
     haandtering: haandteringerFor(carrier),
