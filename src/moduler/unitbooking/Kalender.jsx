@@ -18,11 +18,11 @@
  * til noget andet end det måler. Alt uden for vinduet står i listen nedenfor,
  * som rækker så langt frem der er lovet noget væk.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { num, dato, ugenr } from "../../fleet/format.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke
+  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -109,7 +109,13 @@ export default function Kalender() {
 
   const nu = Date.now();
   const iDag = new Date(nu); iDag.setHours(0, 0, 0, 0);
-  const vindueFra = iDag.getTime() - DAG;
+  /* ⚠ VINDUET VAR FAST OG UDEN NOGEN VEJ FREM. Otteogtyve dage fra i går, og
+     dag niogtyve fandtes ikke — hverken ved at rulle eller ved at klikke.
+     Kalenderen kunne kun svare på ét spørgsmål, og det var altid det samme.
+     Skubbet flytter en UGE ad gangen, ikke fire: springer man et helt vindue,
+     kan et udlån der ligger hen over kanten forsvinde uden at nogen ser det. */
+  const [skubUger, setSkubUger] = useState(0);
+  const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
   const vindueTil = vindueFra + VINDUE_DAGE * DAG;
 
   /* ⚠ EN ANNULLERET RESERVATION TEGNES IKKE. Den skete ikke, og en blok for
@@ -181,7 +187,14 @@ export default function Kalender() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}>
+      {/* ⚠ EN VEJ HJEM. Uden den kan man klikke sig fem uger ud og kun komme
+          tilbage ved at tælle klik baglæns — og så ved man ikke hvornår man er
+          hjemme igen. Knappen vises kun når man ER væk; ellers ville den sige
+          "gå hen hvor du står". */}
+      <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
+            handling={skubUger !== 0 && (
+              <Knap onClick={() => setSkubUger(0)}>I dag</Knap>
+            )}>
         <Gitterkalender
           raekker={raekker}
           blokke={blokke}
@@ -197,11 +210,15 @@ export default function Kalender() {
             { navn: "Måned", noegle: maanedNoegle },
             { navn: "Uge", noegle: ugeNoegle },
           ]}
-          tom="Ingen kasser er lovet væk i de næste fire uger."
+          onSkub={(retning) => setSkubUger((u) => u + retning)}
+          tom={skubUger === 0
+            ? "Ingen kasser er lovet væk i de næste fire uger."
+            : "Ingen kasser er lovet væk i den viste periode."}
         />
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          Kun kasser med et udlån i perioden vises. Vinduet er <b>fast og
-          fremadrettet</b> — topbarens periodevælger ser bagud og hører til
+          Kun kasser med et udlån i perioden vises. Vinduet er fire uger og
+          starter <b>fremadrettet</b> — pilene under kalenderen flytter det en
+          uge ad gangen. Topbarens periodevælger ser bagud og hører til
           rapporterne. Alt der ligger længere ude, står i listen nedenfor.
           Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
           Driftskalender, Servicekalender og Disponering.

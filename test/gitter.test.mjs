@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 
 import {
   slots, grupperSlots, maanedNoegle, ugeNoegle, slotDele, UGEDAG_KORT,
+  greb, skridt, HAANDTAG_MIN,
 } from "../src/fleet/gitter.js";
 
 describe("grupperede kolonneoverskrifter", () => {
@@ -107,5 +108,78 @@ describe("kolonneoverskriften i to linjer", () => {
     const d = slotDele(t, "time");
     assert.equal(d.over, null);
     assert.match(d.under, /^\d{2}[.:]\d{2}$/);
+  });
+});
+
+
+describe("rullebjaelken", () => {
+  /* ⚠ EN BJAELKE DER PEGER ÉT STED OG RULLER ET ANDET, opdages ikke ved at
+     kigge paa den. Derfor ligger regnestykket her og ikke i komponenten. */
+
+  it("haandtaget fylder samme del af banen som det synlige af det hele", () => {
+    const g = greb(0, 1773, 4202);
+    assert.equal(Math.round(g.del * 1000) / 1000, 0.422);
+    assert.equal(g.andel, 0);
+    assert.ok(g.kanRulle);
+  });
+
+  it("andelen foelger rullepositionen fra kant til kant", () => {
+    const skjult = 4202 - 1773;
+    assert.equal(greb(0, 1773, 4202).andel, 0);
+    assert.equal(greb(skjult, 1773, 4202).andel, 1);
+    assert.equal(Math.round(greb(skjult / 2, 1773, 4202).andel * 100), 50);
+  });
+
+  it("⚠ PASSER ALT PAA SKAERMEN, ER DER INTET AT TRAEKKE I", () => {
+    /* Et haandtag der fylder hele banen er ikke et haandtag — og en kontrol
+       man kan gribe fat i uden at der sker noget, er vaerre end ingen. */
+    const g = greb(0, 1773, 1773);
+    assert.equal(g.kanRulle, false);
+    assert.equal(g.vis, false);
+    assert.equal(g.del, 1);
+    assert.equal(g.andel, 0);
+  });
+
+  it("taaler nul og vaerdier uden for kanten", () => {
+    assert.equal(greb(0, 0, 0).vis, false);
+    assert.equal(greb(-500, 1773, 4202).andel, 0);
+    assert.equal(greb(99999, 1773, 4202).andel, 1);
+  });
+
+  it("et skridt er fire femtedele af en skaerm, ikke en hel", () => {
+    /* En stribe man kender igen fra forrige skaerm er det eneste der binder
+       de to sammen. */
+    const s = skridt(0, 1000, 4000, 1);
+    assert.equal(s.slags, "rul");
+    assert.equal(s.til, 800);
+  });
+
+  it("skridtet standser ved kanten og gaar ikke udenfor", () => {
+    assert.equal(skridt(0, 1000, 4000, -1).til, 0);
+    assert.equal(skridt(2900, 1000, 4000, 1).til, 3000);
+  });
+
+  it("⚠ VED KANTEN FLYTTER KLIKKET PERIODEN, NAAR KALDEREN KAN DET", () => {
+    assert.deepEqual(skridt(3000, 1000, 4000, 1, true), { slags: "skub", til: 1 });
+    assert.deepEqual(skridt(0, 1000, 4000, -1, true), { slags: "skub", til: -1 });
+    /* Midt i: stadig en rulning. Ellers sprang perioden mens der var mere at se. */
+    assert.equal(skridt(1500, 1000, 4000, 1, true).slags, "rul");
+  });
+
+  it("⚠ ER DER SLET INTET AT RULLE I, ER HVERT KLIK ET SKUB", () => {
+    /* Unitbookings vindue er otteogtyve dage og passer paa en bred skaerm.
+       En bjaelke der kun kunne rulle, ville vaere doed netop dér. */
+    assert.equal(skridt(0, 1773, 1773, 1, true).slags, "skub");
+    assert.equal(skridt(0, 1773, 1773, -1, true).slags, "skub");
+  });
+
+  it("kan kalderen ikke flytte perioden, staar man stille ved kanten", () => {
+    const s = skridt(0, 1773, 1773, 1, false);
+    assert.equal(s.slags, "rul");
+    assert.equal(s.til, 0);
+  });
+
+  it("haandtaget har et gulv man kan ramme med en mus", () => {
+    assert.ok(HAANDTAG_MIN >= 24);
   });
 });

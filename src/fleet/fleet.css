@@ -145,12 +145,20 @@
   padding:8px 11px; font:inherit; font-size:13px; color:var(--bc-text); cursor:pointer;
   box-shadow:var(--fc-shadow); min-height:38px}
 .fc-stamp{color:#8b97a8; font-size:12px; white-space:nowrap}
-.fc-slot{padding:0 26px 34px; flex:1}
+/* ⚠ min-width:0 ER IKKE PYNT — DET ER DET DER FÅR .fc-scroll TIL AT KLIPPE.
+   Et flex- og et gitterbarn har min-width:auto som udgangspunkt, altsaa "bliv
+   mindst saa bred som dit indhold". En kalender paa tres kolonner skubbede
+   derfor KORTET bredere end skaermen, og saa rullede hele SIDEN i stedet for
+   kalenderen. Maalt: .fc-scroll havde clientWidth 4202 ved et indhold paa
+   4202 — den klippede aldrig noget, og teksten "Scroll til hoejre for at se
+   laengere frem" beskrev noget der ikke skete. Samme fejl ramte hver eneste
+   brede tabel i .fc-scroll. */
+.fc-slot{padding:0 26px 34px; flex:1; min-width:0}
 
 /* Delte primitiver — modulerne skal ikke definere egne kort og tabeller */
 .fc-grid{display:grid; gap:14px}
 .fc-card{background:var(--bc-card); border:1px solid var(--bc-line);
-  border-radius:var(--fc-r); box-shadow:var(--fc-shadow)}
+  border-radius:var(--fc-r); box-shadow:var(--fc-shadow); min-width:0}
 .fc-card-h{padding:15px 17px 0; font-size:14.5px; font-weight:650}
 /* Korttitler med ikon (Bemanding, Facility, Indkøb). Ikonet er dæmpet —
    titlen skal læses, ikke ikonet. */
@@ -1171,3 +1179,30 @@
 .fc-gk-kol-dag{font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
   opacity:.75}
 .fc-gk-kol-dato{font-size:11px; font-weight:700}
+
+/* ── Rullebjaelken under kalenderen ──────────────────────────────────────
+   Gitteret er bredere end skaermen, og den eneste vej frem var et vandret
+   hjul de faerreste mus har. Skaermen sagde det med ORD — "Scroll til hoejre
+   for at se laengere frem" — fordi den ikke sagde det med en kontrol.
+
+   ⚠ HAANDTAGETS BREDDE ER ET MAAL: saa stor en del af banen som det synlige
+   er af det hele. Derfor staar bredden i style= og ikke her; det er data. */
+.fc-gk-rul{display:flex; align-items:center; gap:8px; margin-top:10px}
+.fc-gk-rul-pil{flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center;
+  border:1px solid var(--bc-line); border-radius:7px; background:var(--bc-card);
+  color:var(--bc-muted); font-size:15px; line-height:1; cursor:pointer; padding:0}
+.fc-gk-rul-pil:hover:not(:disabled){background:var(--fc-bg); color:var(--bc-text)}
+/* ⚠ EN SLUKKET PIL SKAL SES SLUKKET. Er man ved enden og pilen ser levende
+   ud, klikker man igen og tror skaermen haenger. */
+.fc-gk-rul-pil:disabled{opacity:.4; cursor:default}
+.fc-gk-rul-bane{position:relative; flex:1 1 auto; height:10px; border-radius:6px;
+  background:var(--fc-bg); border:1px solid var(--bc-line); cursor:pointer}
+.fc-gk-rul-greb{position:absolute; top:0; bottom:0; border-radius:6px;
+  background:var(--bc-accent); cursor:grab; touch-action:none}
+.fc-gk-rul-greb:active{cursor:grabbing}
+.fc-gk-rul-greb:focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px}
+/* Hele perioden er synlig: sporet er fyldt og kan ikke gribes. Blegere end
+   haandtaget, saa man kan se forskel paa "her er det hele" og "tag fat". */
+.fc-gk-rul-fuld{cursor:default}
+.fc-gk-rul-alt{position:absolute; inset:0; border-radius:6px;
+  background:var(--fc-accent-soft)}

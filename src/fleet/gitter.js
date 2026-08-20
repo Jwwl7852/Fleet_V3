@@ -260,3 +260,54 @@ export function slotDele(slot, enhed = ENHED.dag) {
     under: d.toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }),
   };
 }
+
+
+/* ── Rullebjaelken ───────────────────────────────────────────────────────
+   Regnestykket bag bjaelken under gitteret, uden React, saa det kan proeves.
+   Samme grund som resten af filen: en bjaelke der peger ét sted og ruller et
+   andet, opdages ikke ved at kigge paa den. */
+
+/** Mindste haandtag man kan ramme med en mus. Px. */
+export const HAANDTAG_MIN = 28;
+
+/**
+ * greb(venstre, synlig, ialt) -> { vis, kanRulle, del, andel }
+ *
+ *   del    haandtagets andel af banen — saa stor en del som det synlige er
+ *          af det hele. ⚠ ET MAAL, IKKE PYNT: med fast bredde ville
+ *          haandtaget paastaa det samme om fire uger og om ét doegn.
+ *   andel  hvor langt det staar henne, 0..1.
+ */
+export function greb(venstre, synlig, ialt) {
+  const skjult = (ialt || 0) - (synlig || 0);
+  const kanRulle = skjult > 1 && synlig > 0;
+  if (!synlig || !ialt) return { vis: false, kanRulle: false, del: 1, andel: 0 };
+  const v = Math.max(0, Math.min(kanRulle ? skjult : 0, venstre || 0));
+  return {
+    vis: kanRulle,
+    kanRulle,
+    del: Math.min(1, synlig / ialt),
+    andel: kanRulle ? v / skjult : 0,
+  };
+}
+
+/**
+ * skridt(venstre, synlig, ialt, retning, kanSkubbe)
+ *   -> { slags: "rul" | "skub", til }
+ *
+ * ⚠ PILEN GAAR VIDERE HVOR RULNINGEN SLIPPER. Er man ved kanten — eller er
+ * der slet ikke noget at rulle i — flytter det samme klik PERIODEN. For den
+ * der sidder med musen er det den samme bevaegelse: "vis mig laengere frem".
+ * Kan kalderen ikke flytte perioden, staar man stille ved kanten.
+ */
+export function skridt(venstre, synlig, ialt, retning, kanSkubbe = false) {
+  const skjult = Math.max(0, (ialt || 0) - (synlig || 0));
+  const v = Math.max(0, Math.min(skjult, venstre || 0));
+  const kanRulle = skjult > 1;
+  const kant = retning < 0 ? v <= 1 : v >= skjult - 1;
+  if (kanSkubbe && (!kanRulle || kant)) return { slags: "skub", til: retning };
+  /* Fire femtedele af en skaerm, ikke en hel: en stribe man kender igen fra
+     forrige skaerm er det eneste der binder de to sammen. */
+  const laengde = Math.max(1, Math.round(synlig * 0.8));
+  return { slags: "rul", til: Math.max(0, Math.min(skjult, v + retning * laengde)) };
+}

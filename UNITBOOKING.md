@@ -455,9 +455,58 @@ havde ret; prøven var forkert.
 | Planchen | Her |
 |---|---|
 | "Udvid til 2 skærme" | Ikke bygget. Kalenderen kan åbnes i et nyt vindue fra Fleet; her er der ingen knap |
-| "Udvidet visning" og interval-vælgeren "Uge" | Vinduet er fast fire uger frem. Se noten i `Kalender.jsx` om hvorfor det er fremadrettet |
+| "Udvidet visning" og interval-vælgeren "Uge" | Vinduet er fire uger. Længden kan ikke vælges — men det kan **flyttes**, se 6.9 |
 | "Kommende klargøringer" som kort med Klargør-knap | Findes som **Udlånsliste** — en tabel med uge, dato, hændelse, kasse, hjemplads, sag og tilstand. Den bærer mere, men kan ikke handles på |
 
 Den sidste er den værd at tage: planchens pointe er at man kan klargøre
 direkte fra kalenderen. Knappen findes på Udlån-skærmen, og at låne den hertil
 kræver at de to skærme deler den samme handling — ikke to kopier.
+
+### 6.9 Etape 12 — en vej frem og tilbage
+
+⚠ **Vinduet var fast, og dag niogtyve fandtes ikke.** Kalenderen viste
+otteogtyve dage fra i går og kunne kun svare på ét spørgsmål — altid det
+samme. Der var hverken en rulning eller en knap der førte videre; teksten sagde
+endda selv at vinduet var "fast og fremadrettet", som om det var et valg.
+
+Under gitteret sidder nu en **rullebjælke** med en pil i hver ende. Den ligger i
+`fleet/Gitterkalender.jsx` og gælder derfor også Driftskalender,
+Servicekalender og Disponering.
+
+| Situation | Hvad pilen gør |
+|---|---|
+| Gitteret er bredere end skærmen | Ruller fire femtedele af en skærm |
+| Man er ved kanten | Flytter perioden en uge |
+| Alt kan ses på én gang | Flytter perioden en uge — bjælken er der stadig |
+| Kalderen har ikke givet `onSkub` | Ruller kun; pilen slukkes ved kanten |
+
+⚠ **Håndtagets bredde er et mål, ikke pynt.** Det fylder samme del af banen
+som det synlige fylder af det hele. Med fast bredde ville det påstå det samme
+om fire uger som om ét døgn, og så kan man ikke se på det hvor meget der ligger
+udenfor.
+
+⚠ **Kan alt ses, er der intet håndtag.** Sporet fyldes i stedet. En kontrol man
+kan gribe fat i uden at der sker noget, er værre end ingen.
+
+⚠ **Skubbet flytter en uge, ikke fire.** Springer man et helt vindue, kan et
+udlån der ligger hen over kanten forsvinde uden at nogen ser det. En uge
+efterlader tre ugers overlap at genkende sig i.
+
+⚠ **Og der er en vej hjem.** Knappen **I dag** står i kortets hoved, men kun
+når man ER væk. Ellers ville den sige "gå hen hvor du står".
+
+Regnestykket — `greb()` og `skridt()` — ligger i `fleet/gitter.js` uden
+React og er prøvet i `test/gitter.test.mjs`. En bjælke der peger ét sted og
+ruller et andet, opdages ikke ved at kigge på den.
+
+#### ⚠ Den fejl bjælken afslørede
+
+`.fc-scroll` klippede ingenting. `.fc-card` og `.fc-slot` er gitter- og
+flexbørn, og de har `min-width:auto` som udgangspunkt — "bliv mindst så bred
+som dit indhold". Et bredt gitter skubbede derfor **kortet** bredere end
+skærmen, og så rullede hele **siden** i stedet for kalenderen. Målt:
+`clientWidth` 4202 ved et indhold på 4202 — den klippede aldrig noget.
+
+Det ramte hver eneste brede tabel i `.fc-scroll`, ikke kun kalenderen.
+`min-width:0` på de to er rettelsen.
+
