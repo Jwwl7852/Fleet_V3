@@ -219,6 +219,25 @@ export const undertyperFor = (type) =>
  */
 export const harUndertyper = (type) => undertyperFor(type).length > 0;
 
+/**
+ * Centimeter som tekst → hele millimeter. Null når feltet er tomt.
+ *
+ * ⚠ ÉT STED. Lagermanden måler i cm, noden bærer mm — som vægten tastes i kilo
+ * og gemmes i gram. To omregninger ville betyde to steder at tabe en faktor ti.
+ */
+export function mmFraCm(cm) {
+  if (cm === "" || cm === null || cm === undefined) return null;
+  const v = Number(String(cm).replace(",", "."));
+  if (!Number.isFinite(v)) return null;
+  return Math.round(v * 10);
+}
+
+/** Millimeter → centimeter som tekst til formularen. Komma, som dansk UI. */
+export function cmFraMm(mm) {
+  if (!Number.isFinite(mm)) return "";
+  return String(mm / 10).replace(".", ",");
+}
+
 export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] } = {}) {
   const f = {};
 
@@ -239,6 +258,37 @@ export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] 
      ⚠ OG DEN ER IKKE PÅKRÆVET. En type kan have nul undertyper, og så har
      kassen ingen. Et påkrævet felt ville tvinge en opfundet undertype frem
      på hver eneste kasse. */
+  /* ⚠ MÅLENE TASTES I CENTIMETER OG GEMMES I MILLIMETER. Det er cm en
+     lagermand måler i, og mm noden bærer — som vægten tastes i kilo og gemmes
+     i gram. Omregningen står ét sted, `mmFraCm()`, og et halvt millimeter
+     findes ikke: en kasse måles ikke skarpere end det.
+
+     ⚠ OG ALLE TRE ELLER INGEN. Et enkelt mål alene kan hverken give m² eller
+     m³, og `maalFraMm()` svarer `null` — men et felt der står udfyldt uden at
+     tælle med, ser ud som en oplysning man har. */
+  const maal = ["laengdeCm", "breddeCm", "hoejdeCm"];
+  const satte = maal.filter((m) => String(post[m] ?? "").trim() !== "");
+  for (const m of satte) {
+    const v = Number(String(post[m]).replace(",", "."));
+    const navn = { laengdeCm: "Længden", breddeCm: "Bredden", hoejdeCm: "Højden" }[m];
+    if (!Number.isFinite(v)) f[m] = `${navn} skal være et tal.`;
+    else if (v <= 0) f[m] = `${navn} skal være større end nul.`;
+    /* ⚠ MÅLT FØR AFRUNDINGEN, ikke efter. Første udgave spurgte
+       `mmFraCm(v) % 1 !== 0` — men mmFraCm RUNDER, så svaret var altid et
+       helt tal og kontrollen kunne aldrig udløses. 95,55 cm blev til 956 mm
+       i tavshed. Prøven fandt den; koden så rigtig ud. */
+    else if (Math.abs(v * 10 - Math.round(v * 10)) > 1e-9) {
+      f[m] = `${navn} kan højst have én decimal — en kasse måles ikke skarpere.`;
+    }
+  }
+  if (satte.length > 0 && satte.length < 3) {
+    for (const m of maal) {
+      if (!satte.includes(m) && !f[m]) {
+        f[m] = "Udfyld alle tre mål — ellers kan volumen ikke regnes.";
+      }
+    }
+  }
+
   const under = (post.undertype || "").trim();
   if (under && katalog.length) {
     const type = katalog.find((t) => t.id === post.type);

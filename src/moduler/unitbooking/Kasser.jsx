@@ -27,7 +27,9 @@ import {
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
+  mmFraCm, cmFraMm,
 } from "../../fleet/unitbooking.js";
+import { maalFraMm, volumenIalt } from "../../fleet/volumen.js";
 import { gem } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
@@ -37,11 +39,30 @@ import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const PR_SIDE = 12;
 
-const tomKasse = () => ({ id: "", type: "", undertype: "", status: "ledig", hjemPladsId: "", pladsId: "", note: "" });
+/* Volumen af formularens cm-felter. ⚠ Tallene rundes til to decimaler i
+   VISNINGEN — ikke i data. Et rundet maal gemt ville vaere en anden kasse. */
+const maalAfFelter = (f) => maalFraMm({
+  laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
+  hoejdeMm: mmFraCm(f.hoejdeCm),
+});
+const m2 = (f) => (maalAfFelter(f)?.m2 ?? 0).toFixed(2).replace('.', ',');
+const m3 = (f) => (maalAfFelter(f)?.m3 ?? 0).toFixed(2).replace('.', ',');
+
+const tomKasse = () => ({
+  id: "", type: "", undertype: "", status: "ledig", hjemPladsId: "", pladsId: "",
+  laengdeCm: "", breddeCm: "", hoejdeCm: "", note: "",
+});
 
 function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
   const nyt = !kasse;
-  const [f, saetF] = useState(() => (kasse ? { ...tomKasse(), ...kasse } : tomKasse()));
+  const [f, saetF] = useState(() => (kasse
+    ? {
+      ...tomKasse(), ...kasse,
+      /* Noden bærer mm; formularen viser cm. Se mmFraCm(). */
+      laengdeCm: cmFraMm(kasse.laengdeMm), breddeCm: cmFraMm(kasse.breddeMm),
+      hoejdeCm: cmFraMm(kasse.hoejdeMm),
+    }
+    : tomKasse()));
   const [roert, saetRoert] = useState({});
   const [visAlle, saetVisAlle] = useState(false);
   const [gemmer, saetGemmer] = useState(false);
@@ -94,6 +115,8 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
          tom streng: reglen kraever en streng der findes i katalogget. */
       undertype: f.undertype || null,
       status: f.status, hjemPladsId: f.hjemPladsId,
+      laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
+      hoejdeMm: mmFraCm(f.hoejdeCm),
       pladsId: paaLager ? f.pladsId : null,
       note: f.note?.trim() || null,
     };
@@ -153,6 +176,24 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
                   vaerdi={KASSE_STATUS[f.status]?.label || f.status}
                   hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
           )}
+        </Feltraekke>
+
+        {/* ⚠ MÅL, IKKE m² OG m³. Planchen har volumen som to indtastede felter;
+            to tal om den samme fysiske kasse kan blive uenige. Målene kan de
+            ikke — 120 × 80 × 95 cm ER 0,96 m² og 0,91 m³. Se maalFraMm(). */}
+        <Feltraekke>
+          <Felt id="k-laengde" label="Længde" vaerdi={f.laengdeCm}
+                saet={saet("laengdeCm")} fejl={vis("laengdeCm")} suffiks="cm" />
+          <Felt id="k-bredde" label="Bredde" vaerdi={f.breddeCm}
+                saet={saet("breddeCm")} fejl={vis("breddeCm")} suffiks="cm" />
+          <Felt id="k-hoejde" label="Højde" vaerdi={f.hoejdeCm}
+                saet={saet("hoejdeCm")} fejl={vis("hoejdeCm")} suffiks="cm"
+                hint={maalFraMm({
+                  laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
+                  hoejdeMm: mmFraCm(f.hoejdeCm),
+                })
+                  ? `${m2(f)} m² · ${m3(f)} m³`
+                  : "Alle tre, ellers kan volumen ikke regnes."} />
         </Feltraekke>
 
         <Feltraekke>
@@ -242,6 +283,10 @@ export default function Kasser() {
   const nu = Date.now();
   const reserveret = kasser.filter(
     (k) => k.status === "ledig" && naesteReservation(udlaan, k.id, nu)).length;
+  /* ⚠ OG DEM UDEN MÅL TÆLLER IKKE MED — de RAPPORTERES. Talte de som nul,
+     ville totalen se komplet ud mens en kasse manglede. Se volumenIalt(). */
+  const volumen = volumenIalt(kasser);
+  const tal1 = (v) => v.toFixed(1).replace(".", ",");
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -255,6 +300,10 @@ export default function Kasser() {
         <KpiKort label="Udlånt" vaerdi={num(antal("udlaant"))} note="ude hos kunde" />
         <KpiKort label="På lager" vaerdi={num(paaLager)}
                  note={`heraf ${num(antal("udeAfDrift"))} ude af drift`} />
+        <KpiKort label="Samlet volumen" vaerdi={`${tal1(volumen.m3)} m³`}
+                 note={volumen.uden.length
+                   ? `${tal1(volumen.m2)} m² gulvplads · ${num(volumen.uden.length)} uden mål`
+                   : `${tal1(volumen.m2)} m² gulvplads`} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
@@ -331,6 +380,16 @@ export default function Kasser() {
                 { key: "undertype", label: "Undertype",
                   render: (k) => undertyperFor(typeMap[k.type])
                     .find((u) => u.id === k.undertype)?.navn || "—" },
+                /* ⚠ ÉN KOLONNE MED BEGGE TAL. Planchen har to, men de er to
+                   visninger af det SAMME mål — og en tabel med ti kolonner
+                   læses ikke. Der er intet gemt felt at sortere på alligevel:
+                   tallene er afledt af længde × bredde × højde. */
+                { key: "volumen", label: "Volumen", render: (k) => {
+                  const m = maalFraMm(k);
+                  if (!m) return "—";
+                  const t = (v) => v.toFixed(2).replace(".", ",");
+                  return `${t(m.m2)} m² · ${t(m.m3)} m³`;
+                } },
                 { key: "status", label: "Status", render: (k) => (
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}

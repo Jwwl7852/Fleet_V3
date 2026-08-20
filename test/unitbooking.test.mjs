@@ -10,7 +10,7 @@ import {
   ALLE_KASSE_STATUS, kraeverPlads,
   ALLE_UDLAAN_TILSTANDE, BINDENDE,
   pladsnavn, haller, valideReolplads, valideKasse, valideUdlaan,
-  undertyperFor, harUndertyper,
+  undertyperFor, harUndertyper, mmFraCm, cmFraMm,
   overlapper, konflikter, ledigeKasser, KASSE_ID_MOENSTER,
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
@@ -667,5 +667,53 @@ describe("undertypen", () => {
       valideKasse({ ...kasse, undertype: "hvadsomhelst" }, { typer: [], pladser: ["p1"] }),
       {},
     );
+  });
+});
+
+describe("målene og volumen", () => {
+  /* ⚠ PLANCHEN HAR m² OG m³ SOM TO INDTASTEDE FELTER. To tal skrevet af et
+     menneske om den samme fysiske kasse kan blive uenige, og så har
+     "hvor stor er kassen" to svar. Målene kan de ikke: 120 × 80 × 95 cm ER
+     0,96 m² og 0,91 m³. Se maalFraMm() i volumen.js. */
+  const ctx = { typer: ["AL"], pladser: ["p1"] };
+  const kasse = { id: "MDT-101", type: "AL", status: "ledig", hjemPladsId: "p1", pladsId: "p1" };
+
+  it("centimeter tastes, millimeter gemmes", () => {
+    /* Ét sted. To omregninger ville være to steder at tabe en faktor ti. */
+    assert.equal(mmFraCm("120"), 1200);
+    assert.equal(mmFraCm("95,5"), 955);
+    assert.equal(mmFraCm("95.5"), 955);
+    assert.equal(mmFraCm(""), null);
+    assert.equal(mmFraCm("bred"), null);
+    assert.equal(cmFraMm(1200), "120");
+    assert.equal(cmFraMm(955), "95,5");
+    assert.equal(cmFraMm(null), "");
+  });
+
+  it("en kasse uden mål er gyldig — de er ikke påkrævede", () => {
+    assert.deepEqual(valideKasse(kasse, ctx), {});
+  });
+
+  it("⚠ ALLE TRE ELLER INGEN", () => {
+    /* Et enkelt mål alene kan hverken give m² eller m³, men et felt der står
+       udfyldt uden at tælle med, ser ud som en oplysning man har. */
+    const f = valideKasse({ ...kasse, laengdeCm: "120" }, ctx);
+    assert.ok(f.breddeCm);
+    assert.ok(f.hoejdeCm);
+    assert.equal(f.laengdeCm, undefined);
+    assert.deepEqual(
+      valideKasse({ ...kasse, laengdeCm: "120", breddeCm: "80", hoejdeCm: "95" }, ctx),
+      {},
+    );
+  });
+
+  it("et mål skal være et positivt tal med højst én decimal", () => {
+    const m = { laengdeCm: "120", breddeCm: "80" };
+    assert.ok(valideKasse({ ...kasse, ...m, hoejdeCm: "nul" }, ctx).hoejdeCm);
+    assert.ok(valideKasse({ ...kasse, ...m, hoejdeCm: "0" }, ctx).hoejdeCm);
+    assert.ok(valideKasse({ ...kasse, ...m, hoejdeCm: "-5" }, ctx).hoejdeCm);
+    /* En kasse måles ikke skarpere end en millimeter. */
+    assert.ok(valideKasse({ ...kasse, ...m, hoejdeCm: "95,55" }, ctx).hoejdeCm);
+    assert.deepEqual(valideKasse({ ...kasse, ...m, hoejdeCm: "95,5" }, ctx), {});
   });
 });

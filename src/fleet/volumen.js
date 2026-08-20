@@ -254,3 +254,52 @@ export function tilbudsberegning({
     ],
   };
 }
+
+/* ---- Målene på en enkelt ting ------------------------------------------ */
+
+/**
+ * maalFraMm({ laengdeMm, breddeMm, hoejdeMm }) → { m2, m3 } | null
+ *
+ * ⚠ TO TAL AF ÉT SÆT MÅL — IKKE TO FELTER. Planchen for Unitbooking har m²
+ * OG m³ som indtastede felter på hver kasse (UNITBOOKING.md 6.2). To tal
+ * tastet af et menneske om den samme fysiske kasse kan blive uenige, og så er
+ * spørgsmålet "hvor stor er kassen" pludselig noget man skal vælge mellem to
+ * svar på. Målene kan de ikke: 120 × 80 × 95 cm ER 0,96 m² og 0,91 m³.
+ *
+ * Det er samme greb som `kubikFraLinjer()` ovenfor, der regner af varens
+ * `laengdeMm` — og som `maalTekst()` på transportlabelen. Feltnavnene er
+ * bevidst de SAMME som på `varer` og `carriers`, så de tre kan læses af én
+ * funktion.
+ *
+ * ⚠ OG DEN GÆTTER IKKE. Mangler ét mål, er svaret `null` — ikke nul. En kasse
+ * uden mål skal kunne ses som "ved ikke", og et nul ville gøre den til den
+ * mindste kasse på lageret.
+ */
+export function maalFraMm(post = {}) {
+  const mm = [post.laengdeMm, post.breddeMm, post.hoejdeMm];
+  if (mm.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+  return {
+    m2: (mm[0] * mm[1]) / 1e6,          /* mm² → m² */
+    m3: (mm[0] * mm[1] * mm[2]) / 1e9,  /* mm³ → m³ */
+  };
+}
+
+/**
+ * Summen over en liste — og hvem der ikke kunne tælles med.
+ *
+ * ⚠ DEN UDEN MÅL RAPPORTERES, som i `kubikFraLinjer()`. Talte den som nul,
+ * ville totalen se komplet ud mens en kasse manglede — og et samlet volumen
+ * man ikke kan stole på, er værre end ingen.
+ */
+export function volumenIalt(poster = []) {
+  let m2 = 0;
+  let m3 = 0;
+  const uden = [];
+  for (const p of poster) {
+    const maal = maalFraMm(p);
+    if (!maal) { uden.push(p.id); continue; }
+    m2 += maal.m2;
+    m3 += maal.m3;
+  }
+  return { m2, m3, uden };
+}

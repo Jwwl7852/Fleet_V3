@@ -1925,6 +1925,17 @@
             // ingen. Et paakraevet felt ville tvinge en opfundet undertype
             // frem paa hver eneste kasse.
             "undertype": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.parent().child('type').val()).child('undertyper').child(newData.val()).exists()" },
+            // ⚠ MAALENE, IKKE m² OG m³. Planchen har volumen som TO indtastede
+            // felter pr. kasse; to tal tastet af et menneske om den samme
+            // fysiske kasse kan blive uenige, og saa er "hvor stor er kassen"
+            // et spoergsmaal med to svar. Maalene kan de ikke: 120x80x95 cm ER
+            // 0,96 m² og 0,91 m³. maalFraMm() i volumen.js regner dem.
+            //
+            // Feltnavnene er de SAMME som paa `varer` og `carriers`, saa de tre
+            // kan laeses af een funktion — kubikFraLinjer() goer det allerede.
+            "laengdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "breddeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "hoejdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
             // ⚠ KLIENTEN MAA KUN SAETTE ledig OG udeAfDrift. "booket" er
             // slet ikke en kassestatus mere — en reservation ER et udlaan, og
             // to steder til samme kendsgerning bliver uenige.

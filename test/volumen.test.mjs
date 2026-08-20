@@ -6,13 +6,13 @@
  * sælgeren bliver holdt fast på, når kunden viser sig at have 180 paller og
  * ikke 120.
  */
-import { test } from "node:test";
+import { test, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
   KAPACITETSGRUNDLAG, ALLE_KAPACITETSGRUNDLAG, TILBUDSHAANDTERINGER,
-  DOEGN_PR_MAANED, tilbudsberegning, kubikFraLinjer,
+  DOEGN_PR_MAANED, tilbudsberegning, kubikFraLinjer, maalFraMm, volumenIalt,
 } from "../src/fleet/volumen.js";
 import { LAGERYDELSER, METODER, ALLE_LAGERYDELSER } from "../src/fleet/pricing.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
@@ -305,4 +305,49 @@ test("⚠ SATSEN VISES MED TO DECIMALER — ellers kan tilbuddet ikke regnes eft
   const s = readFileSync("src/moduler/warehouse/Volumen.jsx", "utf8");
   assert.ok(/kr\(l\.satsOere, 2\)/.test(s),
     "satsen rundes til hele kroner — saa passer regnestykket ikke");
+});
+
+describe("målene på en enkelt ting", () => {
+  /* ⚠ TO TAL AF ÉT SÆT MÅL. Planchen for Unitbooking har m² OG m³ som
+     indtastede felter pr. kasse; to tal om den samme fysiske kasse kan blive
+     uenige. Målene kan de ikke. Se UNITBOOKING.md 6.2. */
+  const kasse = { id: "MDT-101", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950 };
+
+  it("regner m² og m³ af millimeter", () => {
+    const m = maalFraMm(kasse);
+    assert.equal(m.m2, 0.96);
+    /* 1200 × 800 × 950 mm³ = 912.000.000 mm³ = 0,912 m³ */
+    assert.ok(Math.abs(m.m3 - 0.912) < 1e-9);
+  });
+
+  it("⚠ GÆTTER IKKE — et manglende mål giver null, ikke nul", () => {
+    /* Et nul ville gøre kassen til den mindste på lageret. */
+    assert.equal(maalFraMm({ laengdeMm: 1200, breddeMm: 800 }), null);
+    assert.equal(maalFraMm({ ...kasse, hoejdeMm: 0 }), null);
+    assert.equal(maalFraMm({ ...kasse, breddeMm: -100 }), null);
+    assert.equal(maalFraMm({}), null);
+    assert.equal(maalFraMm(), null);
+  });
+
+  it("summen rapporterer dem uden mål", () => {
+    /* Talte de som nul, ville totalen se komplet ud mens en kasse manglede —
+       samme regel som en afregningslinje uden sats. */
+    const r = volumenIalt([kasse, { id: "MDT-108" }, { ...kasse, id: "MDT-102" }]);
+    assert.ok(Math.abs(r.m2 - 1.92) < 1e-9);
+    assert.ok(Math.abs(r.m3 - 1.824) < 1e-9);
+    assert.deepEqual(r.uden, ["MDT-108"]);
+  });
+
+  it("en tom liste er nul og ingen mangler", () => {
+    assert.deepEqual(volumenIalt([]), { m2: 0, m3: 0, uden: [] });
+  });
+
+  it("⚠ FELTNAVNENE ER DE SAMME SOM PÅ varer OG carriers", () => {
+    /* kubikFraLinjer() regner allerede af varens laengdeMm. Tre noder med tre
+       navne for det samme mål ville betyde tre funktioner. */
+    const kilde = readFileSync("src/fleet/volumen.js", "utf8");
+    for (const felt of ["laengdeMm", "breddeMm", "hoejdeMm"]) {
+      assert.ok(kilde.includes(felt), felt);
+    }
+  });
 });

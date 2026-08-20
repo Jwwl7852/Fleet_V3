@@ -305,11 +305,55 @@ og de to skærme må ikke få hver sin.
 
 | # | Hvad | Værdi alene | Status |
 |---|---|---|---|
-| 7 | **Type og undertype som katalog** — node, regler, prøver, og de to felter på kassen | Kasser kan klassificeres som planchen viser | |
-| 8 | **Volumen på kassen** (m², m³) + nøgletallene, gennem `volumen.js` | Belægning og volumen kan gøres op | |
+| 7 | **Type og undertype som katalog** — node, regler, prøver, og de to felter på kassen | Kasser kan klassificeres som planchen viser | ✅ |
+| 8 | **Volumen på kassen** — MÅL i mm, m²/m³ udledt + nøgletal | Belægning og volumen kan gøres op | ✅ |
 | 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | |
 | 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | |
 | 11 | **Kalenderen** — gruppering, fremhævning, sidepanel, fuldskærm | Overblik pr. kasse eller sag | |
 
 ⚠ Etape 7 først. Undertypen står i formularerne på **alle tre** plancher og i
 filtrene på to af dem; bygges skærmene før katalogget, bygges de to gange.
+
+### 6.5 Etape 7 og 8 er inde — og planchen blev fraveget to steder
+
+**Undertypen ligger under sin type.** En egen node med et `typeId` kunne
+drive: en undertype ville kunne pege på en type der var slettet, og to typer
+kunne dele en undertype med samme navn. Reglen er en krydsfelt-regel —
+undertypen skal høre til kassens **egen** type — og den holder også ved en dyb
+skrivning af kun feltet, fordi `newData.parent()` er postens tilstand efter
+skrivningen.
+
+⚠ **"Har undertype: ja/nej" er ikke et felt.** Den er udledt af om der er
+nogen. Trækassen har derfor bevidst ingen undertyper i demo-data: en type
+**uden** skal kunne ses, ellers bliver feltet i praksis påkrævet.
+
+⚠ **Og der kom ingen ny permission.** Planchen siger *"kun for
+opsætningsbrugere"*. `permissions.js` har en truffet beslutning: **to**
+permissions, ikke fire — `kasser.skriv` dækker stamdata (kasser, kassetyper,
+reolpladser). En tredje ville være et navn der altid blev givet sammen med den.
+
+### ⚠ Volumen blev til MÅL — planchens to felter blev tre
+
+Planchen har `m²` og `m³` som **indtastede felter** på hver kasse. To tal
+skrevet af et menneske om den samme fysiske kasse kan blive uenige, og så har
+*"hvor stor er kassen"* to svar man skal vælge imellem. Målene kan de ikke:
+120 × 80 × 95 cm **er** 0,96 m² og 0,91 m³.
+
+Kassen bærer derfor `laengdeMm`, `breddeMm`, `hoejdeMm` — **de samme feltnavne
+som `varer` og `carriers`**, så de tre kan læses af én funktion.
+`kubikFraLinjer()` gjorde det allerede for varer; `maalFraMm()` og
+`volumenIalt()` er de to nye, og de ligger i `volumen.js`.
+
+⚠ **Det rører ikke beslutningen om afregningsgrundlaget.** `KAPACITETSGRUNDLAG`
+siger stadig at man vælger ÉT af paller, m³ og m² — det handler om hvad der
+faktureres. Her handler det om hvor stor en kasse er, og det er ét spørgsmål
+med ét svar.
+
+⚠ **Centimeter tastes, millimeter gemmes** — ét sted (`mmFraCm()`), som vægten
+på transportlabelen. Og enten alle tre mål eller ingen: et enkelt mål alene
+kan hverken give m² eller m³, men et felt der står udfyldt uden at tælle med,
+ser ud som en oplysning man har.
+
+⚠ **Dem uden mål rapporteres.** Nøgletallet skriver *"1 uden mål"* frem for at
+tælle den som nul. Talte den nul, ville totalen se komplet ud mens en kasse
+manglede — samme regel som en afregningslinje uden sats.
