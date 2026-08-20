@@ -1030,3 +1030,49 @@ knappen er lukket — samme regel som et manglende slutmål.
 
 Tilbage af 10.4: ingen fysisk scanner er prøvet, og der er stadig ingen
 formular at taste felterne i.
+
+### 10.7 Formularen — og de tre felter der ikke kunne stå i den
+
+Mærkatets felter kan nu tastes på **Transportlabels** (`Redigér felter`):
+kolli, løse enheder, vægt, godsbeskrivelse og de fem håndteringsmærker.
+
+⚠ **Den ligger på label-skærmen og ikke på Beholdere.** Felterne hører til
+carrieren, men GRUNDEN til at udfylde dem er mærkatet: man ser hvad der
+mangler, og retter det uden at skifte skærm. Beholder-skærmen viser
+beholderens drift — indhold, placering, seneste bevægelse — og det er ikke
+det samme spørgsmål.
+
+⚠ **Den skriver med `flet: true`.** Beholderen bærer også type, status, plads
+og mål, som formularen ikke kender. Med `set()` ville et gemt mærkatfelt
+slette dem i tavshed — samme fælde som `reolpladser` lukkede.
+
+⚠ **Vægten tastes i kilo og gemmes i gram**, ét sted (`gramFraKilo()`), og
+både komma og punktum tages. Et komma i en vægt er samme fejl som et komma i
+et beløb.
+
+⚠ **En for lang godsbeskrivelse spærrer IKKE for at gemme.** Teksten er lovlig
+data op til reglernes 600 tegn; det er MÆRKATET der kun har plads til syv
+linjer. Kunne den ikke gemmes, ville folk forkorte den — og så mister lageret
+oplysningen, ikke bare papiret. Formularen tæller linjerne mens man skriver
+(*"9 af 7 linjer på mærkatet · 260 af 600 tegn"*) og advarer; trykket er
+spærret, indtil den er kortere.
+
+**Tre af planchens felter kunne ikke komme med, og det er ikke en
+forglemmelse:**
+
+| Felt | Node | Hvorfor ikke |
+|---|---|---|
+| Kundens ref.nr. | `bookinger` | `.write: false` — kun `etapeskift` skriver den |
+| Fra-/til-adresse | `etaper` | `.write: false` — samme grund |
+| Kundens adresse | `kunder` | Skrivbar, men kundekartoteket har **ingen** redigeringsformular i dag |
+
+De to første kræver hver sin Cloud Function, fordi en tilstand og dens
+reservation skal skrives atomisk (beslutning 16 og 40). En formular der
+altid ville blive afvist af reglerne, er værre end ingen — så skærmen
+**skriver det frem** i stedet, under formularen. Ellers ligner mærkatet bare
+ufuldstændigt, og nogen leder efter en knap der ikke findes.
+
+⚠ **Efterprøvet mod det UDRULLEDE**, ikke kun i emulatoren (beslutning 29):
+kolli sat fra 3 til 4 i browseren, læst tilbage fra DEV-basen som 4 — og de
+øvrige felter stod uændrede, så fletningen virker. Sat tilbage til 3 igennem
+formularen.

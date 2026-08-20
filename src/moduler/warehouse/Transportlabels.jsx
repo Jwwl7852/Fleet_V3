@@ -28,12 +28,17 @@ import { harModul } from "../../fleet/moduler.js";
 import { num } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Henter, Datatilstand, Tom, Sider,
+  Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
+import { gem } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import { CARRIER_TYPE } from "../../fleet/warehouse.js";
 import { beholdningPaaCarrier } from "../../fleet/warehouse.js";
 import {
-  LABELTYPE, ALLE_LABELTYPER, HAANDTERING, byggLabel, MAKS_GODSLINJER,
+  LABELTYPE, ALLE_LABELTYPER, HAANDTERING, ALLE_HAANDTERINGER, byggLabel,
+  MAKS_GODSLINJER, MAKS_GODSTEGN, godsLinjer,
+  valideMaerkatfelter, gramFraKilo, kiloFraGram,
 } from "../../fleet/transportlabel.js";
 import { bjaelker, bredde, STILLE_ZONE } from "../../fleet/stregkode128.js";
 import { qrFelter, qrBredde, QR_STILLE_ZONE } from "../../fleet/qrkode.js";
@@ -67,11 +72,12 @@ const MANGLER_TEKST = {
 const manglerTekst = (n) => MANGLER_TEKST[n] || n;
 
 export default function Transportlabels() {
-  const { moduler } = useFleet();
+  const { moduler, path } = useFleet();
   const [type, saetType] = useState("");
   const [soeg, saetSoeg] = useState("");
   const [side, saetSide] = useState(1);
   const [valgt, saetValgt] = useState(null);
+  const [redigerer, saetRedigerer] = useState(false);
 
   const harBooking = harModul(moduler, "booking");
 
@@ -259,7 +265,7 @@ export default function Transportlabels() {
           ]}
           raekker={paaSiden}
           noegle={({ carrier }) => carrier.id}
-          paaRaekke={({ carrier }) => saetValgt(carrier.id)}
+          paaRaekke={({ carrier }) => { saetValgt(carrier.id); saetRedigerer(false); }}
           erValgt={({ carrier }) => carrier.id === valgt}
           tom="Ingen beholdere at mærke."
         />
@@ -272,7 +278,10 @@ export default function Transportlabels() {
           className="fc-maerkat-kort"
           titel={`Label · ${aaben.carrier.id}`}
           handling={
-            <span className="fc-ikke-print">
+            <span className="fc-ikke-print fc-med-ikon" style={{ gap: 8 }}>
+              <Knap onClick={() => saetRedigerer((v) => !v)}>
+                {redigerer ? "Skjul felter" : "Redigér felter"}
+              </Knap>
               <Knap
                 variant="primaer"
                 disabled={!aaben.label.kanTrykkes}
@@ -293,6 +302,15 @@ export default function Transportlabels() {
 
           <LabelArk label={aaben.label} carrier={aaben.carrier} />
         </Kort>
+      )}
+
+      {aaben && redigerer && (
+        <Maerkatformular
+          carrier={aaben.carrier}
+          sti={path}
+          paaGemt={() => { saetRedigerer(false); genindlaes(); }}
+          paaLuk={() => saetRedigerer(false)}
+        />
       )}
 
       {!raekker.length && (
@@ -582,3 +600,186 @@ const MaerkeIkon = ({ maerke }) => (
     )}
   </svg>
 );
+
+/* ---- Formularen -------------------------------------------------------- */
+
+/**
+ * Mærkatets felter på beholderen.
+ *
+ * ⚠ DEN LIGGER HER OG IKKE PÅ BEHOLDER-SKÆRMEN, og det er et valg. Felterne
+ * hører til carrieren, men GRUNDEN til at udfylde dem er mærkatet: man ser
+ * hvad der mangler, og retter det uden at skifte skærm. Beholder-skærmen viser
+ * beholderens drift — indhold, placering, seneste bevægelse — og de to
+ * spørgsmål er ikke det samme.
+ *
+ * ⚠ TRE AF PLANCHENS FELTER KAN IKKE STÅ HER, og det er ikke en forglemmelse:
+ *
+ *   · kundens ref.nr.        `bookinger` er .write: false
+ *   · fra- og til-adresse    `etaper` er .write: false
+ *
+ * Begge noder skrives kun af `etapeskift`, fordi en tilstand og dens
+ * reservation skal skrives atomisk (beslutning 16 og 40). En formular her
+ * ville blive afvist af reglerne — og en knap der altid fejler, er værre end
+ * ingen knap. De kræver hver sin Cloud Function.
+ *
+ * Kundens adresse kan derimod skrives (`kunder` er åben med kunder.skriv), men
+ * den hører i kundekartoteket, som i dag slet ikke har en redigeringsformular.
+ */
+function Maerkatformular({ carrier, sti, paaGemt, paaLuk }) {
+  const [f, saetF] = useState(() => ({
+    kolli: Number.isFinite(carrier.kolli) ? String(carrier.kolli) : "",
+    loesEnheder: Number.isFinite(carrier.loesEnheder) ? String(carrier.loesEnheder) : "",
+    vaegtKg: kiloFraGram(carrier.vaegtGram),
+    godsbeskrivelse: carrier.godsbeskrivelse || "",
+    haandtering: { ...(carrier.haandtering || {}) },
+  }));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const skiftMaerke = (m) => {
+    saetF((x) => {
+      const naeste = { ...x.haandtering };
+      /* Et fravalgt mærke SLETTES frem for at stå som false. Reglen tager kun
+         booleans, og en node fuld af false ville se ud som fem beslutninger,
+         hvor der kun er truffet nul. */
+      if (naeste[m]) delete naeste[m];
+      else naeste[m] = true;
+      return { ...x, haandtering: naeste };
+    });
+    saetSvar(null);
+  };
+
+  const fejl = valideMaerkatfelter(f);
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  /* ⚠ ADVARSEL, IKKE EN FEJL. Teksten er lovlig data; det er MÆRKATET der kun
+     har plads til syv linjer. Kunne den ikke gemmes, ville folk forkorte den —
+     og så mister lageret oplysningen, ikke bare papiret. */
+  const linjer = godsLinjer(f.godsbeskrivelse);
+  const forLang = linjer > MAKS_GODSLINJER;
+
+  const heltalEller = (v) => {
+    if (v === "") return null;
+    const n = Number(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const r = await gem({
+      sti: sti(`carriers/${carrier.id}`),
+      data: {
+        kolli: heltalEller(f.kolli),
+        loesEnheder: heltalEller(f.loesEnheder),
+        vaegtGram: gramFraKilo(f.vaegtKg),
+        godsbeskrivelse: f.godsbeskrivelse.trim() || null,
+        /* Tom node frem for et objekt uden nøgler — RTDB gemmer ikke et tomt
+           objekt, og null siger det samme tydeligere. */
+        haandtering: Object.keys(f.haandtering).length ? f.haandtering : null,
+      },
+      /* ⚠ FLET. Beholderen bærer også type, status, plads og mål, som den her
+         formular ikke kender. Med set() ville et gemt mærkatfelt slette dem. */
+      flet: true,
+      foer: carrier, objekt: "carriers", objektId: carrier.id,
+      handling: AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <Kort className="fc-ikke-print" titel={`Mærkatets felter · ${carrier.id}`}>
+      <Formular
+        onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+        gemLabel="Gem mærkatfelter" onAnnuller={paaLuk} svar={svar}
+      >
+        <Feltraekke>
+          <Felt
+            id="mf-kolli" label="Antal kolli" type="number" min="0" step="1"
+            vaerdi={f.kolli} saet={saet("kolli")} fejl={vis("kolli")}
+            hint="Pakker man kan tælle — ikke varelinjer."
+          />
+          <Felt
+            id="mf-loese" label="Løse enheder" type="number" min="0" step="1"
+            vaerdi={f.loesEnheder} saet={saet("loesEnheder")}
+            fejl={vis("loesEnheder")}
+            hint="Det der ikke er pakket i noget. Står som «+ 1 stk.»."
+          />
+          <Felt
+            id="mf-vaegt" label="Vægt" vaerdi={f.vaegtKg} saet={saet("vaegtKg")}
+            fejl={vis("vaegtKg")} suffiks="kg"
+            hint="Bruttovægt med beholderen."
+          />
+        </Feltraekke>
+
+        <div className={`fc-felt${vis("godsbeskrivelse") ? " fc-felt-fejl" : ""}`}>
+          <label htmlFor="mf-gods">Godsbeskrivelse</label>
+          <textarea
+            id="mf-gods" rows={6} value={f.godsbeskrivelse}
+            onChange={(e) => saet("godsbeskrivelse")(e.target.value)}
+            aria-invalid={vis("godsbeskrivelse") ? "true" : undefined}
+            aria-describedby="mf-gods-hint"
+          />
+          <span className="fc-felt-hint" id="mf-gods-hint">
+            {`${linjer} af ${MAKS_GODSLINJER} linjer på mærkatet · `}
+            {`${f.godsbeskrivelse.length} af ${MAKS_GODSTEGN} tegn`}
+          </span>
+          {vis("godsbeskrivelse") && (
+            <span className="fc-felt-fejltekst" role="alert">
+              {vis("godsbeskrivelse")}
+            </span>
+          )}
+        </div>
+
+        {forLang && (
+          <p className="fc-svar fc-svar-fejl" role="alert">
+            ⚠ Beskrivelsen fylder {linjer} linjer, og mærkatet har plads til{" "}
+            {MAKS_GODSLINJER}. Den kan godt gemmes — men labelen kan ikke
+            trykkes, før den er kortere. Der klippes ikke: «Må ikke vendes» kan
+            stå i den linje der ville forsvinde.
+          </p>
+        )}
+
+        <fieldset className="fc-felt" style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend className="fc-felt-hint" style={{ padding: 0 }}>
+            Håndteringsmærker — de trykkes nederst på mærkatet
+          </legend>
+          <div className="fc-row" style={{ flexWrap: "wrap", gap: 14, marginTop: 6 }}>
+            {ALLE_HAANDTERINGER.map((m) => (
+              <label key={m} className="fc-med-ikon" style={{ gap: 6 }}>
+                <input
+                  type="checkbox" checked={Boolean(f.haandtering[m])}
+                  onChange={() => skiftMaerke(m)}
+                />
+                {HAANDTERING[m].dansk}
+                <span className="fc-hint">({HAANDTERING[m].label})</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </Formular>
+
+      {/* ⚠ DE TRE FELTER DER IKKE KAN STÅ HER. Skrives de ikke frem, ligner
+          mærkatet bare ufuldstændigt — og nogen leder efter en knap der ikke
+          findes. Se hovedet. */}
+      <p className="fc-svar">
+        <strong>Ikke herfra:</strong> kundens ref.nr. hører på bookingen, og
+        fra-/til-adresserne på etapen. Begge noder er lukket for klienten, fordi
+        en tilstand og dens reservation skal skrives sammen — de kræver hver sin
+        server-funktion. Kundens adresse hører i kundekartoteket.
+      </p>
+    </Kort>
+  );
+}

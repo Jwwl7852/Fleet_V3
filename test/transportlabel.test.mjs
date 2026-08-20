@@ -20,7 +20,8 @@ import assert from "node:assert/strict";
 
 import {
   LABELTYPE, ALLE_LABELTYPER, labeltypeFor, byggLabel, RUTELOGIK,
-  godsLinjer, MAKS_GODSLINJER,
+  godsLinjer, MAKS_GODSLINJER, MAKS_GODSTEGN,
+  valideMaerkatfelter, gramFraKilo, kiloFraGram,
   stregkode, laesStregkode, sorteretKaede,
 } from "../src/fleet/transportlabel.js";
 
@@ -255,5 +256,60 @@ describe("hvad der er plads til på arket", () => {
       booking: BOOKING, kunde: KUNDE, plads: PLADS,
     });
     assert.equal(l.kanTrykkes, true);
+  });
+});
+
+describe("formularens validering", () => {
+  /* ⚠ DEN AFGØR INGENTING — reglerne gør. Hvert led her har sit modstykke i
+     firebase.rules.json under carriers, og er de to uenige, er reglerne
+     rigtige. Prøverne holder dem sammen. */
+  it("tager tomme felter — ingen af dem er påkrævet", () => {
+    assert.deepEqual(valideMaerkatfelter({}), {});
+    assert.deepEqual(valideMaerkatfelter({
+      kolli: "", loesEnheder: "", vaegtKg: "", godsbeskrivelse: "",
+    }), {});
+  });
+
+  it("kolli tælles i hele stykker og kan ikke være negativt", () => {
+    assert.ok(valideMaerkatfelter({ kolli: "3,5" }).kolli);
+    assert.ok(valideMaerkatfelter({ kolli: "-1" }).kolli);
+    assert.ok(valideMaerkatfelter({ kolli: "tre" }).kolli);
+    assert.equal(valideMaerkatfelter({ kolli: "3" }).kolli, undefined);
+  });
+
+  it("vægten tastes i kilo og gemmes i gram", () => {
+    /* Et komma i en vægt er samme fejl som et komma i et beløb. */
+    assert.equal(gramFraKilo("96"), 96000);
+    assert.equal(gramFraKilo("96,5"), 96500);
+    assert.equal(gramFraKilo("96.5"), 96500);
+    assert.equal(gramFraKilo(""), null);
+    assert.equal(gramFraKilo("tung"), null);
+    assert.equal(kiloFraGram(96000), "96");
+    assert.equal(kiloFraGram(96500), "96,5");
+    assert.equal(kiloFraGram(null), "");
+  });
+
+  it("⚠ ET GRAM ER BUNDEN — reglen tager kun hele gram", () => {
+    assert.ok(valideMaerkatfelter({ vaegtKg: "96,5001" }).vaegtKg);
+    assert.equal(valideMaerkatfelter({ vaegtKg: "96,500" }).vaegtKg, undefined);
+    assert.ok(valideMaerkatfelter({ vaegtKg: "-1" }).vaegtKg);
+  });
+
+  it("⚠ FOR MANGE LINJER SPÆRRER IKKE FOR AT GEMME — kun for at trykke", () => {
+    /* Teksten er lovlig data op til 600 tegn; det er MÆRKATET der har plads
+       til syv linjer. Kunne den ikke gemmes, ville folk forkorte den, og så
+       mister lageret oplysningen — ikke bare papiret. */
+    const nilinjer = Array(9).fill("Kølegods i isolerede kasser.").join("\n");
+    assert.equal(godsLinjer(nilinjer) > MAKS_GODSLINJER, true);
+    assert.deepEqual(valideMaerkatfelter({ godsbeskrivelse: nilinjer }), {});
+  });
+
+  it("men reglernes tegngrænse spærrer", () => {
+    assert.ok(valideMaerkatfelter({
+      godsbeskrivelse: "x".repeat(MAKS_GODSTEGN + 1),
+    }).godsbeskrivelse);
+    assert.equal(valideMaerkatfelter({
+      godsbeskrivelse: "x".repeat(MAKS_GODSTEGN),
+    }).godsbeskrivelse, undefined);
   });
 });

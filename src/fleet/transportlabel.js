@@ -258,6 +258,78 @@ export function godsLinjer(tekst) {
   );
 }
 
+/* ---- Formularen -------------------------------------------------------- */
+
+/** Reglernes grænse. Står her, så formularen og serveren siger det samme. */
+export const MAKS_GODSTEGN = 600;
+
+/**
+ * Validering af mærkatets felter på beholderen.
+ *
+ * ⚠ DEN AFGØR INGENTING — reglerne gør. Den findes for at svare hurtigt, og
+ * hvert led her har sit modstykke i `firebase.rules.json` under `carriers`.
+ * Er de to uenige, er reglerne rigtige. Se CLAUDE.md.
+ *
+ * ⚠ VÆGTEN TASTES I KILO OG GEMMES I GRAM. Et komma i en vægt er samme fejl
+ * som et komma i et beløb: 74,5 kg bliver til 74 eller 745 alt efter hvem der
+ * læser. Derfor tages kilo som tekst her, med både komma og punktum, og
+ * omregnes ét sted — `gramFraKilo()`.
+ *
+ * ⚠ FOR LANG GODSBESKRIVELSE SPÆRRER IKKE FOR AT GEMME. Teksten er lovlig data
+ * op til 600 tegn; det er MÆRKATET der kun har plads til syv linjer. To
+ * forskellige spørgsmål, og de må ikke blandes: en beskrivelse man ikke kan
+ * gemme, ville presse folk til at forkorte den — og så mister lageret
+ * oplysningen, ikke bare papiret.
+ */
+export function valideMaerkatfelter(post = {}) {
+  const f = {};
+  const heltal = (v) => v === "" || v === null || v === undefined
+    ? null
+    : Number(String(v).replace(",", "."));
+
+  for (const [felt, navn] of [["kolli", "Kolli"], ["loesEnheder", "Løse enheder"]]) {
+    const v = heltal(post[felt]);
+    if (v === null) continue;
+    if (!Number.isFinite(v)) f[felt] = `${navn} skal være et tal.`;
+    else if (v < 0) f[felt] = `${navn} kan ikke være negativt.`;
+    else if (v % 1 !== 0) f[felt] = `${navn} tælles i hele stykker.`;
+  }
+
+  const kg = heltal(post.vaegtKg);
+  if (kg !== null) {
+    if (!Number.isFinite(kg)) f.vaegtKg = "Vægten skal være et tal.";
+    else if (kg < 0) f.vaegtKg = "Vægten kan ikke være negativ.";
+    else if (Math.round(kg * 1000) !== kg * 1000) {
+      /* Under ét gram er under termovægtens opløsning — og reglen tager kun
+         hele gram. */
+      f.vaegtKg = "Vægten kan højst have tre decimaler (ét gram).";
+    }
+  }
+
+  const tekst = post.godsbeskrivelse || "";
+  if (tekst.length > MAKS_GODSTEGN) {
+    f.godsbeskrivelse =
+      `Godsbeskrivelsen er ${tekst.length} tegn. Der er plads til ${MAKS_GODSTEGN}.`;
+  }
+
+  return f;
+}
+
+/** Kilo som tekst → hele gram. Null når feltet er tomt. */
+export function gramFraKilo(vaegtKg) {
+  if (vaegtKg === "" || vaegtKg === null || vaegtKg === undefined) return null;
+  const kg = Number(String(vaegtKg).replace(",", "."));
+  if (!Number.isFinite(kg)) return null;
+  return Math.round(kg * 1000);
+}
+
+/** Gram → kilo som tekst til formularen. Komma, som resten af dansk UI. */
+export function kiloFraGram(gram) {
+  if (!Number.isFinite(gram)) return "";
+  const kg = gram / 1000;
+  return (Number.isInteger(kg) ? String(kg) : String(kg)).replace(".", ",");
+}
+
 /* ---- Selve labelen ----------------------------------------------------- */
 
 /**
