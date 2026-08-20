@@ -452,9 +452,18 @@
 .fc-gk-nu{background:var(--fc-accent-soft)}
 .fc-gk-kol.fc-gk-nu{color:var(--bc-accent)}
 
+/* ⚠ BLOKKEN FYLDER RAEKKEN. Den var 22 px i en raekke paa 44 — halvdelen stod
+   tom omkring bjaelken, og kalenderen saa TYND ud selv naar der var arbejde i
+   den. Det er ikke det samme spoergsmaal som raekkehoejden: raekken bestemmer
+   hvor mange enheder man ser ad gangen, blokken hvor tydeligt arbejdet staar.
+   Foerste omgang komprimerede raekken og gjorde dermed forholdet vaerre.
+
+   `align-self:stretch` lader den fylde baandet; margenen holder luft mellem
+   to raekker, saa bjaelkerne ikke loeber sammen paa tvaers. */
 .fc-gk-blok{grid-row:1; z-index:1; display:flex; align-items:center; gap:4px;
-  min-width:0; border:1px solid transparent; border-radius:6px; padding:2px 7px;
-  margin:2px; font:inherit; font-size:11px; font-weight:650; cursor:pointer;
+  align-self:stretch; min-width:0; border:1px solid transparent;
+  border-radius:6px; padding:2px 7px;
+  margin:3px 2px; font:inherit; font-size:11px; font-weight:650; cursor:pointer;
   overflow:hidden; text-align:left}
 .fc-gk-tekst{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 /* Pilen er ikke pynt: uden den læses en tre ugers blok som et kort besøg. */
