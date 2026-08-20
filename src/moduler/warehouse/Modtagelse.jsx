@@ -233,8 +233,8 @@ export default function Modtagelse() {
                       </Pille>
                     ) },
                   { key: "transport", label: "Fra transport", render: (c) => (
-                      c.transportId
-                        ? <span className="fc-hint">{c.transportId}</span>
+                      c.etapeId
+                        ? <span className="fc-hint">{c.etapeId}</span>
                         : <span className="fc-neutral">—</span>
                     ) },
                   { key: "indhold", label: "Indhold", num: true, render: (c) => {
@@ -276,8 +276,8 @@ export default function Modtagelse() {
                        ? indhold.map((b) => `${vareMap[b.vareId]?.varenummer || b.vareId} · ${
                            num(talFraMaengde(b.antal), ENHED[vareMap[b.vareId]?.enhed]?.helTal ? 0 : 1)}`).join(" · ")
                        : "tom"} />
-          {carrier.transportId && (
-            <MiniLinje label="Fra transport" vaerdi={carrier.transportId} />
+          {carrier.etapeId && (
+            <MiniLinje label="Fra transport" vaerdi={carrier.etapeId} />
           )}
 
           <p className="fc-hint" style={{ marginTop: 12 }}><b>Vælg lokation</b></p>

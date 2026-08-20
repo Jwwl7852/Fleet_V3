@@ -476,11 +476,21 @@ bliver ved med at koste her.
 hænger på dem, og et id der forsvinder, gør historikken uforklarlig. De tages
 ud af drift med en status, som alt andet.
 
-**`TRP-2024-0513` mod `BK-2026-0513`.** Planchen bruger to id-serier: en
-"tilknyttet transport" i carrier-tabellen og et "booking-id" på labelen.
-⚠ Er en transport en **etape** (beslutning 16) eller et nyt objekt? Bliver det
-et nyt objekt ved siden af etapen, er det DE-QR 777 mod DE-KL 404 for tredje
-gang. Åbent, og det er det tungeste af de fire.
+**✅ BESVARET: `TRP-2024-0513` mod `BK-2026-0513`.** Planchen brugte to
+id-serier: en "tilknyttet transport" i carrier-tabellen og et "booking-id" på
+labelen. Spørgsmålet var, om en transport er en **etape** (beslutning 16) eller
+et nyt objekt — og det var det tungeste af de fire.
+
+**Svaret er etapen (beslutning 46).** Alt en transport har brug for, står der
+allerede: `fraSted`, `tilSted`, `etaMs`, `koeretoejIder`, `bookingId`. Et nyt
+objekt ved siden af ville være DE-QR 777 mod DE-KL 404 for tredje gang.
+
+Følgen er, at feltet hed forkert: `carriers.transportId` pegede på ingenting og
+stod uden fremmednøgle, netop fordi valget var åbent. Det hedder nu **`etapeId`**
+og har eksistenskontrol mod `etaper`, så planchens `TRP-` ikke længere kan
+skrives. ⚠ Omdøbningen blev **målt** i den udrullede DEV-base før den blev lavet
+— 7 beholdere, én bar feltet, og det var den seedede demo-række. Efter den
+første kunde havde den ikke været gratis.
 
 ### ⚠ 6.5 De fem nøgletal har ikke noget at læse
 
@@ -512,7 +522,7 @@ et kundeområde er reserveret til én kunde, hvilket ingen plads er i dag.
 | 12 | **Beholdningen flytter til carrier-niveau** — migrering af nøgle, bevægelser, pluk, optælling og deres prøver | Indholdet følger beholderen | ✅ |
 | 13 | **Nøgletallene** + skærmen **Carrier-overblik** | Planchen med KPI-kortene | ✅ |
 | 14 | **Transit & placering** — de fire trin, forslag til ledig lokation | Modtagelsen på gulvet | ✅ |
-| 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | |
+| 15 | **Transportlabels** — de tre typer, og hvad de betyder for etapemodellen | Godset kan mærkes | ✅ Beslutning 46: en transport ER en etape. `transportId` → `etapeId` med fremmednøgle |
 
 ⚠ **Skærmen er nummer tre i rækken, og det er ikke til at lave om på.** Den
 læser en node der ikke findes (11) og et indhold der ligger et andet sted end
@@ -640,6 +650,41 @@ af et.
 Proben kunne ikke se det: den udelod feltet **helt**, og så var der ingen
 `null` at koste om. Rettet i begge lag — serveren læser med `typeof`, og
 klienten sender slet ikke de felter arten ikke har.
+
+**Etape 15 er inde.** Skærmen **Transportlabels** (`/warehouse/labels`) tegner
+planchens tre typer, mærkatet felt for felt, og hvad der mangler før det kan
+trykkes. Logikken ligger i `src/fleet/transportlabel.js` — ikke i skærmen, så
+en kommende Cloud Function kan udstede den samme label.
+
+⚠ **Etapen kunne først bygges, da 6.4's fjerde punkt var afgjort** — og svaret
+blev **beslutning 46: en transport ER en etape**. Følgen var større end skærmen:
+feltet `carriers.transportId` hed forkert og stod uden fremmednøgle. Det hedder
+nu `etapeId` og valideres mod `etaper`, og omdøbningen blev målt i den udrullede
+base først (7 beholdere, én bar feltet, og det var demo-rækken).
+
+⚠ **Labelen er ingen node.** Typen udledes af etapekæden, felterne slås op i
+booking, kunde og plads. Et gemt mærkat ville drive fra sin booking første gang
+nogen rettede et slutmål — og så siger papiret på pallen og skærmen hver sit.
+Det er `bemanding.ledig` på et stykke papir.
+
+⚠ **Forskellen på "via transit" og "storage" er hylden**, ikke en status ved
+siden af: en beholder der læsses om på terminalen, får aldrig en `pladsId`; en
+der sættes på plads, gør. Samme svar som 6.4 gav på "ingen lokation".
+
+⚠ **En halv label trykkes ikke.** `byggLabel()` svarer med `mangler`, og
+knappen er spærret så længe der er ét felt tilbage. Et mærkat med et tomt
+slutmål ser ud som et helt mærkat, og godset kører efter det — fejlen opdages
+på rampen i Hamburg, ikke på skærmen.
+
+⚠ **Og labelen kræver Booking.** `etaper` er spærret af booking-modulet,
+`carriers` af warehouse. En kunde med lager men uden booking har ingen
+transporter at mærke, og skærmen siger det frem for at vise en tom tabel, der
+ligner en fejl (beslutning 32).
+
+⚠ **Én ting mangler i den udrullede DEV-base:** `demo/CRR-100248` bærer stadig
+`transportId: "TRP-2024-0514"`. Feltet er ukendt for reglerne nu, så enhver
+fremtidig skrivning til den post afvises af `$andet: false`. Rækken skal
+opdateres til `etapeId: "et-007"` — det er én `update()` med servicekontoen.
 
 ---
 

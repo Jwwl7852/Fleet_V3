@@ -107,7 +107,7 @@ export default function Carriers() {
     if (!q) return true;
     return (c.id || "").toLowerCase().includes(q) ||
       (c.note || "").toLowerCase().includes(q) ||
-      (c.transportId || "").toLowerCase().includes(q);
+      (c.etapeId || "").toLowerCase().includes(q);
   });
   const harFilter = Boolean(q || status || ejerforhold || zone);
   const nulstil = () => {
@@ -254,8 +254,8 @@ export default function Carriers() {
                     </Pille>
                   ) },
                 { key: "transport", label: "Transport", render: (c) => (
-                    c.transportId
-                      ? <span className="fc-hint">{c.transportId}</span>
+                    c.etapeId
+                      ? <span className="fc-hint">{c.etapeId}</span>
                       : <span className="fc-neutral">—</span>
                   ) },
                 /* ⚠ UDLEDT AF BEVÆGELSERNE. Et gemt "seneste bevægelse" på

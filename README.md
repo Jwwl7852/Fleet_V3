@@ -12,7 +12,7 @@ gør.
 | Fil | Hvad |
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 45 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 46 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -152,12 +152,13 @@ tilfældigt.
 | 43 | **Brugerens eget layout har intet loft.** Der stod tolv — i `widgets.js` OG i regelfilen, hvor pladserne var talt til elleve. Begrundelsen ("tyve widgets er ikke et overblik") er en god **anbefaling** og ikke en kendsgerning om systemet, og layoutet er brugerens præference om hans EGEN skærm. Grænsen er nu kataloget selv: `valideLayout()` afviser dubletter og ukendte nøgler, så et layout aldrig kan blive længere end der er widgets. ⚠ Antallet var aldrig en adgangskontrol — og rollen er det stadig ikke, men `kpi/` er ikke længere åben: modulklausulen kom i **beslutning 44** | `fleet/widgets.js`, `firebase.rules.json` |
 | 44 | **`kpi/` er delt på domæne.** Noden havde ÉN `.read` der kun krævede tenant-medlemskab — så en kunde uden Økonomi kunne læse `kpi/gods/current/oekonomi` direkte, mens sidebaren og widgetvælgeren blot SKJULTE det. `.read` ligger nu på `$division/$snapshot/$domaene` med modulets klausul, og den er VÆK fra toppen: den kaskaderer, så en `.read` på `kpi/` ville gøre klausulen til dekoration — også for admin. Prisen er at `useKpi()` henter pr. domæne. ⚠ **Og domænet arver sin kildes læse-permission** — `kunder` kræver `kunder.laes`, fordi et nøgletal ikke er mildere end sit grundlag. Det er det ENESTE led i dag: af de noder aggregeringen læser, kræver kun `kunder` en. Ændrer intet nu; guarden er at prøven udleder kravet af kildernes egne regler | `fleet/kpi-aggregering.js`, `fleet/useKpi.js`, `firebase.rules.json` |
 | 45 | **`opgaver` er `.write: false` — vejen ind er `opgaveplanlaeg`.** Disciplinen stod skrevet i `opgaveplan.js`'s eget hoved (*"der skrives intet herfra direkte"*) mens reglen tillod det: casehandler, disponent, koordinator og admin har alle `opgaver.skriv`. En opgave og dens **reservation** bærer samme kendsgerning, og `reservationer` er `.write: false` — en klient kunne skrive den ene halvdel, og en opgave uden reservation ser **fri** ud i disponeringen. Permissionen består; det er vejen der er lukket (som beslutning 37). ⚠ Prisen: fjorten regelprøver flyttede til `opgaveMangler()`/`valideOpgaveplan()`, fordi de ellers ville blive grønne af den forkerte grund | `firebase.rules.json`, `functions/index.js` |
+| 46 | **En transport ER en etape — og labelen gemmes ikke.** Planchen bar to id-serier for samme kendsgerning: `TRP-2024-0513` på beholderen og `BK-2026-0513` på mærkatet. Et transport-objekt ved siden af etapen ville være prototypens DE-QR 777 mod DE-KL 404 for tredje gang — alt en transport har brug for (`fraSted`, `tilSted`, `koeretoejIder`, `bookingId`) står allerede på etapen. `carriers.transportId` hed derfor forkert og stod **uden** fremmednøgle; feltet er nu `etapeId` med eksistenskontrol mod `etaper`. ⚠ Omdøbningen var gratis, fordi det blev **målt** i den udrullede DEV-base: 7 beholdere, én bar feltet, og det var den seedede demo-række. ⚠ Og stregkoden bærer ikke planchens `BK-…-C-000245` — den opfandt både et femte nummerformat (beslutning 8) og et løbenummer ved siden af beholderens eget id. ⚠ Labelen er **ingen node**: typen udledes af etapekæden, og et gemt mærkat ville drive fra sin booking | `fleet/transportlabel.js`, `firebase.rules.json` |
 
 ## Struktur
 
 ```
 src/
-  App.jsx              alle 48 ruter, genereret efter nav.js
+  App.jsx              alle 49 ruter, genereret efter nav.js
   firebase.js          ÉN initialisering. Moduler importerer db herfra.
   fleet/               kernen — modulerne må ikke duplikere noget herfra
     nav.js             sidebar + ruter, én kilde

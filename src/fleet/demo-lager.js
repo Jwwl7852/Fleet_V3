@@ -209,7 +209,7 @@ export const DEMO_CARRIERS = [
   {
     /* (4) I transit — og derfor uden plads. Reglerne afviser en plads her. */
     id: "CRR-100248", type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
-    kundeId: "fynKoel", transportId: "TRP-2024-0514",
+    kundeId: "fynKoel", etapeId: "et-007",
     laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950,
   },
   {

@@ -43,6 +43,7 @@ import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
 import Wmspluk from "./moduler/warehouse/Pluk.jsx";
 import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
 import Wmscarriers from "./moduler/warehouse/Carriers.jsx";
+import Wmslabels from "./moduler/warehouse/Transportlabels.jsx";
 import Wmsmodtagelse from "./moduler/warehouse/Modtagelse.jsx";
 import Wmsafregning from "./moduler/warehouse/Afregning.jsx";
 import Wmssporbarhed from "./moduler/warehouse/Sporbarhed.jsx";
@@ -386,6 +387,7 @@ export default function App() {
             <Route path="warehouse/pluk" element={<Wmspluk />} />
             <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
             <Route path="warehouse/carriers" element={<Wmscarriers />} />
+            <Route path="warehouse/labels" element={<Wmslabels />} />
             <Route path="warehouse/modtagelse" element={<Wmsmodtagelse />} />
             <Route path="warehouse/afregning" element={<Wmsafregning />} />
             <Route path="warehouse/sporbarhed" element={<Wmssporbarhed />} />

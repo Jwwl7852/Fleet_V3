@@ -26,6 +26,9 @@ const T = "tenantCarrier";
 const UDEN_MODUL = "tenantUdenWms";
 const PLADS = "p-a-01-02";
 const KUNDE = "k-nordisk";
+/* ⚠ TRANSPORTEN ER EN ETAPE — beslutning 46. Feltet hed transportId og stod
+   uden eksistenskontrol, så længe spørgsmålet var åbent (WAREHOUSE.md 6.4). */
+const ETAPE = "et-001";
 
 let miljoe;
 
@@ -65,6 +68,13 @@ before(async () => {
     });
     await set(ref(db, sti(`kunder/${KUNDE}`)), {
       navn: "Nordisk Transport", division: "gods", aktiv: true,
+    });
+    /* Etapen beholderen kan knyttes til. ⚠ Tenanten har IKKE booking-modulet,
+       og det er med vilje: reglens opslag læser træet og går uden om .read,
+       så en carrier kan bære et etapeId hos en kunde der ikke selv må liste
+       etaper. Samme asymmetri som kundeId har. */
+    await set(ref(db, sti(`etaper/${ETAPE}`)), {
+      division: "gods", bookingId: "bk-2026-00317", nr: 1,
     });
 
     /* En tenant der IKKE har Warehouse — modulspærringen prøves mod den. */
@@ -152,7 +162,32 @@ describe("formen på en carrier", () => {
     await assertFails(skriv("c-transit", { ...PAA_LAGER, status: "iTransit" }));
     await assertSucceeds(skriv("c-transit-ok", {
       type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
-      transportId: "TRP-2024-0514",
+      etapeId: ETAPE,
+    }));
+  });
+
+  /* ⚠ FREMMEDNØGLEN ER SELVE BESLUTNINGEN. Så længe det var uafgjort, om en
+     transport var en etape eller et nyt objekt, stod feltet som en fri streng
+     — planchens `TRP-2024-0513` ville være gået igennem. Gør den det stadig,
+     er beslutning 46 ikke håndhævet nogen steder, og labelen kan ikke slå sin
+     egen transport op. */
+  it("⚠ ET etapeId SKAL PEGE PÅ EN ETAPE DER FINDES", async () => {
+    await assertFails(skriv("c-trp", {
+      type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
+      etapeId: "TRP-2024-0513",
+    }));
+    await assertFails(skriv("c-tom-etape", {
+      type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
+      etapeId: "et-findes-ikke",
+    }));
+  });
+
+  /* Det gamle navn er væk, ikke bare ubrugt. En post der stadig bærer det,
+     ville stå med et felt ingen skærm læser. */
+  it("⚠ transportId ER IKKE ET FELT LÆNGERE", async () => {
+    await assertFails(skriv("c-gammelt-navn", {
+      type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
+      transportId: "TRP-2024-0513",
     }));
   });
 
@@ -217,7 +252,7 @@ describe("formen på en carrier", () => {
        skiftet. Det er én skrivning, ikke to. */
     await assertSucceeds(set(ref(db, carrierSti("CRR-dyb")), {
       type: "pallekasse", ejerforhold: "ejet", status: "iTransit",
-      kundeId: KUNDE, transportId: "TRP-1",
+      kundeId: KUNDE, etapeId: ETAPE,
     }));
   });
 });

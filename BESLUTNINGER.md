@@ -2356,3 +2356,105 @@ aldrig læst.
 Den ene kontrol der nu udelukkende ligger i funktionen, er **opslaget af
 leverandøren**: en ren funktion kan ikke slå op i en database. Den prøves ved
 at læse funktionen og ved at kalde den udrullede.
+
+## 46. En transport ER en etape — og labelen gemmes ikke
+
+Transportlabelen var det sidste af de tre plancher (WAREHOUSE.md 6.1), og den
+kunne ikke bygges, før ét spørgsmål var afgjort. Planchen brugte **to
+id-serier for den samme kendsgerning**:
+
+- `TRP-2024-0513` i carrier-tabellen, under overskriften *tilknyttet transport*
+- `BK-2026-0513` på selve mærkatet, som *booking-id*
+
+Er en transport en **etape** (beslutning 16), eller et nyt objekt ved siden af?
+WAREHOUSE.md 6.4 kaldte det det tungeste af de fire åbne punkter, og feltet
+`carriers.transportId` stod derfor med vilje som en **fri streng uden
+fremmednøgle** — en nøgle der pegede på en node vi ikke havde valgt, ville
+have låst valget.
+
+**Svaret er etapen.** Alt en transport har brug for, står der allerede:
+`fraSted`, `tilSted`, `etaMs`, `koeretoejIder`, `personId` og `bookingId`. Et
+transport-objekt ved siden af ville være prototypens DE-QR 777 mod DE-KL 404
+for **tredje** gang — beslutning 16 lukkede det for bookingen, beslutning 21
+lukkede det for langturen, og det her er den samme fejl med et nyt navn.
+
+### Så hed feltet forkert
+
+Et felt der hedder `transportId` og peger på `etaper`, er et navn der lyver om
+sin node. Det er præcis den fejl CLAUDE.md kalder *"et feltnavn i et modul uden
+at holde det op mod noden"* — den kostede `reservationFraOpgave()`, som aldrig
+kunne kaldes på en rigtig opgave, fordi den krævede `fra`/`til` mod en node der
+bar `startMs`.
+
+Feltet hedder nu **`etapeId`** og har eksistenskontrol mod `etaper`. Det er
+selve beslutningen, håndhævet: en beholder kan ikke længere bære planchens
+`TRP-2024-0513`.
+
+### ⚠ Omdøbningen blev MÅLT, ikke antaget
+
+Samme regel som modulomdøbningerne i CLAUDE.md: et nodenavn og et feltnavn står
+i kundens data, og de er dyre. En læse-probe mod den **udrullede** DEV-base:
+
+| | |
+|---|---|
+| tenants | 2 |
+| carriers i alt | 7 |
+| bar `transportId` | **1** — `demo/CRR-100248`, den seedede demo-række |
+
+Ingen kunde bar feltet. Omdøbningen var gratis **nu**, og den ville ikke have
+været det, når den første kunde havde mærket sit første gods.
+
+### ⚠ Etaper er spærret af booking-modulet, beholdere af warehouse
+
+En kunde med Warehouse men uden Booking har ingen etaper og kan derfor slet
+ikke sætte feltet. Det er rigtigt — uden bookinger findes der ingen transport
+at knytte beholderen til — men skærmen skal **sige** det frem for at vise en
+tom tabel, der ligner en fejl (beslutning 32). `useListe(..., { hent: false })`
+gør at der ikke engang spørges: en afvisning skal betyde noget (beslutning 26).
+
+Reglens opslag går derimod uden om `.read` — den læser træet — så en beholder
+kan godt bære et `etapeId` hos en tenant der ikke selv må liste etaper. Samme
+asymmetri som `kundeId` har.
+
+### ⚠ Stregkoden bærer ikke planchens nummer
+
+`BK-2026-0513-C-000245` indeholder to opfindelser:
+
+1. **`BK-` er et femte nummerformat.** Husets bookingnummer er
+   `BKG-ÅÅÅÅ-NNNNN` fra counteren i beslutning 8 — og hele grunden til at der
+   er ét format, er at der var fire i brug i v2.
+2. **`C-000245` er et løbenummer for beholderen** ved siden af dens eget id,
+   `CRR-100245`. Samme kendsgerning, to numre, og så driver de.
+
+Koden bygges derfor af de to id'er der findes i forvejen:
+`BKG-2026-00317-CRR-100245`. En scanning kan slås direkte op; en kode man
+først skal oversætte, er en kode nogen oversætter forkert. `laesStregkode()`
+skiller ved beholderens præfiks og ikke ved den sidste bindestreg — et naivt
+split ville gøre `BKG-2026-00317` til `BKG-2026`.
+
+### ⚠ Labelen er ingen node
+
+Der gemmes intet mærkat. Typen **udledes** af etapekæden, felterne slås op i
+booking, kunde og plads. Et gemt mærkat ville drive fra sin booking første gang
+nogen rettede et slutmål — og så ville papiret på pallen og skærmen sige hver
+sit. Det er `bemanding.ledig` på et stykke papir.
+
+De tre typer udledes sådan:
+
+| Type | Kendetegn |
+|---|---|
+| Direkte A → B | Kæden har **ét** led. Godset rører aldrig lageret |
+| Via transit → destination | Flere led, og beholderen har **ingen** `pladsId` — den læsses om |
+| Storage via transit | Flere led, og beholderen **har** en plads: den er sat på hylden |
+
+⚠ Forskellen på de to sidste er hylden, ikke en status ved siden af. Det er
+samme svar som 6.4 gav på *"ingen lokation"*: fraværet af `pladsId` **er**
+tilstanden.
+
+### ⚠ En halv label trykkes ikke
+
+`byggLabel()` svarer `{ felter, mangler, kanTrykkes }` som `satsOpslag()`
+svarer `{ sats, mangler }`. Et slutmål der ikke kendes, må ikke blive til en
+tom streng eller til afsenderadressen: godset kører efter det der står på
+mærkatet, og fejlen opdages på rampen i Hamburg — ikke her. Samme afvejning som
+momssatsen, der nægter eksporten frem for at antage 25 %.

@@ -165,6 +165,12 @@ export const NAV = [
       { key: "warehouseCarriers", sti: "/warehouse/carriers", label: "Beholdere",
         titel: "Warehouse – beholdere",
         under: "Carriers: indhold, placering og hvad der mangler at komme paa plads" },
+      /* ⚠ LABELEN ER IKKE EN NODE. Typen udledes af etapekaeden, felterne
+         slaas op, og intet gemmes — et gemt maerkat ville drive fra sin
+         booking foerste gang nogen rettede et slutmaal. */
+      { key: "warehouseLabels", sti: "/warehouse/labels", label: "Transportlabels",
+        titel: "Warehouse – transportlabels",
+        under: "De tre transporttyper, og hvad der mangler foer godset kan maerkes" },
       /* ⚠ AFREGNING, IKKE FAKTURERING. Skaermen viser hvad lageret KAN
          faktureres for; godkendelsen hoerer eet sted, i Indkoeb → Fakturaer
          (beslutning 12). To godkendelsesflows er den fejl beslutningen

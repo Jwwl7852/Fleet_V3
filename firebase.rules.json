@@ -2007,7 +2007,7 @@
         "carriers": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|carriers.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["status", "pladsId", "kundeId", "transportId"],
+          ".indexOn": ["status", "pladsId", "kundeId", "etapeId"],
           "$carrierId": {
             // ⚠ EN CARRIER SLETTES ALDRIG. Bevaegelseshistorikken haenger paa
             // id'et, og et id der forsvinder, goer historikken uforklarlig.
@@ -2037,12 +2037,21 @@
             // beholder der peger paa en kunde der ikke findes, kan ikke
             // afregnes.
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
-            // ⚠ INGEN EKSISTENSKONTROL PAA TRANSPORTEN ENDNU. Planchen bruger
-            // baade TRP- og BK-numre, og om en transport ER en etape eller et
-            // nyt objekt, er ikke afgjort (WAREHOUSE.md punkt 6.4). En
-            // fremmednoegle der peger paa en node vi ikke har valgt, ville
-            // laase valget.
-            "transportId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            // ⚠ EN TRANSPORT ER EN ETAPE — BESLUTNING 46. Feltet hed
+            // transportId og stod UDEN eksistenskontrol, fordi det ikke var
+            // afgjort om en transport var en etape eller et nyt objekt
+            // (WAREHOUSE.md punkt 6.4). Nu er det afgjort, og saa er baade
+            // navnet og fremmednoeglen en del af svaret: et felt der hedder
+            // transportId og peger paa etaper, er et navn der lyver om sin
+            // node — og det er praecis den fejl CLAUDE.md kalder "et feltnavn
+            // uden at holde det op mod noden".
+            //
+            // ⚠ ETAPER ER SPAERRET AF BOOKING-MODULET, carriers af warehouse.
+            // En kunde uden Booking har ingen etaper, og kan derfor ikke saette
+            // feltet overhovedet. Det er rigtigt: uden bookinger er der ingen
+            // transport at knytte beholderen til. Labelen siger det samme —
+            // byggLabel() spaerrer trykket frem for at gaette et slutmaal.
+            "etapeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('etaper').child(newData.val()).exists()" },
             // Millimeter som INTEGER — samme regel som varens maal.
             "laengdeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
             "breddeMm": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
