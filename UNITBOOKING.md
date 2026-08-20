@@ -309,7 +309,7 @@ og de to skærme må ikke få hver sin.
 | 8 | **Volumen på kassen** — MÅL i mm, m²/m³ udledt + nøgletal | Belægning og volumen kan gøres op | ✅ |
 | 9 | **Kasselisten flyttet til Opsætning** med filtre og "Opret ny kasse" | Stamdata står hvor stamdata står | ✅ |
 | 10 | **Udlån & reservationer** — én skærm med næste handling pr. række | Flowet reservation → klargøring → udlevering → retur kan køres ét sted | ✅ |
-| 11 | **Kalenderen** — gruppering, fremhævning, sidepanel, fuldskærm | Overblik pr. kasse eller sag | |
+| 11 | **Kalenderen** — grupperet hoved og tilstand i blokken | Overblik pr. kasse eller sag | ✅ delvist — se 6.8 |
 
 ⚠ Etape 7 først. Undertypen står i formularerne på **alle tre** plancher og i
 filtrene på to af dem; bygges skærmene før katalogget, bygges de to gange.
@@ -415,3 +415,49 @@ og skærmen tegner ikke feltet før en type er valgt.
 
 De står her frem for at blive tegnet halvt: et nøgletal der hedder noget andet
 end det viser, er værre end et der mangler.
+
+### 6.8 Etape 11 — kalenderen fik et hoved der kan læses
+
+Planchen for kalenderen kom 20. august. Kalenderen fandtes, og **alle fire
+nøgletal var allerede de rigtige** — Ud denne uge, Hjem denne uge, Bagud,
+Kasser i spil. Det der manglede, var hovedet.
+
+⚠ **Otteogtyve dage i én række kan ikke læses.** Vinduet er fire uger, og
+datoen stod i hver af de otteogtyve kolonner. Planchen har **tre** rækker:
+måned over uge over dag. Grupperingen flytter det man sjældent skifter op i
+sin egen række, så dagen kun bærer det den ikke kan undvære.
+
+`grupperSlots()` i `gitter.js` slår **naboslots** med samme nøgle sammen.
+⚠ Kun naboer: to spænd med samme nøgle der ikke rører hinanden, bliver to
+spænd — ellers ville ét august-spænd strække sig henover september.
+
+⚠ **Niveauerne er kalderens valg, ikke gitterets.** Fleets driftskalender
+viser én uge og har ingen brug for dem. Lå de i `Gitterkalender`, ville en
+uges visning få en "Måned"-række med ét felt.
+
+**Tilstanden står nu i blokken** — "Sag 4260 · Udlånt", som planchen. Farven
+alene kræver at man kender paletten, og på et printet eller sort/hvidt
+skærmbillede findes den ikke; så ville blokken kun sige et sagsnummer.
+Rækkens pille siger hvad kassen er **nu**; blokkens siger hvad **den her
+periode** er.
+
+⚠ **Og gitteret havde ingen egen prøvefil.** `gitter.js` blev prøvet
+indirekte gennem driftskalender- og disponeringsprøverne, som spørger om
+deres egne spørgsmål. `test/gitter.test.mjs` er ny.
+
+⚠ **Prøven fejlede på sin egen præmis.** "Kun naboer" brugte først lige/ulige
+dato og forventede ét spænd pr. slot — men 31. august og 1. september er
+**begge ulige** og er naboer, så de blev ét spænd, helt som de skulle. Koden
+havde ret; prøven var forkert.
+
+### ⚠ Tre ting fra planchen er ikke bygget
+
+| Planchen | Her |
+|---|---|
+| "Udvid til 2 skærme" | Ikke bygget. Kalenderen kan åbnes i et nyt vindue fra Fleet; her er der ingen knap |
+| "Udvidet visning" og interval-vælgeren "Uge" | Vinduet er fast fire uger frem. Se noten i `Kalender.jsx` om hvorfor det er fremadrettet |
+| "Kommende klargøringer" som kort med Klargør-knap | Findes som **Udlånsliste** — en tabel med uge, dato, hændelse, kasse, hjemplads, sag og tilstand. Den bærer mere, men kan ikke handles på |
+
+Den sidste er den værd at tage: planchens pointe er at man kan klargøre
+direkte fra kalenderen. Knappen findes på Udlån-skærmen, og at låne den hertil
+kræver at de to skærme deler den samme handling — ikke to kopier.

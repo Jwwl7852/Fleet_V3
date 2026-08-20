@@ -1135,3 +1135,12 @@
 .fc-widget-knap:disabled{opacity:.35; cursor:default}
 .fc-widget-gruppe{margin-top:14px}
 .fc-widget-gruppe > b{font-size:12.5px; color:var(--bc-muted)}
+
+/* ⚠ EKSTRA HOVEDRAEKKER — maaned over uge over dag. Et vindue paa
+   otteogtyve dage giver otteogtyve kolonner, og datoen i hver bliver
+   ulaeselig. Niveauerne baerer det man sjaeldent skifter, saa dagen kun
+   baerer det den ikke kan undvaere. Se grupperSlots() i gitter.js. */
+.fc-gk-niveau{border-bottom:1px solid var(--bc-line)}
+.fc-gk-gruppe{font-weight:700; font-size:11.5px; color:var(--bc-text);
+  border-left:1px solid var(--bc-line); text-align:center}
+.fc-gk-gruppe:first-child{border-left:0}

@@ -25,7 +25,7 @@ import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
-import { ENHED } from "../../fleet/gitter.js";
+import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
 } from "../../fleet/unitbooking.js";
@@ -144,7 +144,12 @@ export default function Kalender() {
     raekkeId: u.kasseId,
     /* ⚠ HER SKER OVERSÆTTELSEN, OG KUN HER. Se hovedet. */
     ...halvaabent(u),
-    label: `Sag ${u.sagsnummer}`,
+    /* ⚠ TILSTANDEN STÅR I BLOKKEN, ikke kun som farve. Planchen skriver
+       "Sag 4260 · Udlånt". Farven alene kræver at man kender paletten, og på
+       et printet eller sort/hvidt skærmbillede findes den ikke — så ville
+       blokken kun sige et sagsnummer. Rækkens pille siger hvad kassen er NU;
+       blokkens siger hvad DEN her periode er. */
+    label: `Sag ${u.sagsnummer} · ${UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}`,
     titel: u.beskrivelse || undefined,
     tone: UDLAAN_TILSTAND[u.tilstand]?.pill,
   }));
@@ -183,6 +188,15 @@ export default function Kalender() {
           fra={vindueFra}
           til={vindueTil}
           enhed={ENHED.dag}
+          /* ⚠ TRE HOVEDRÆKKER. Vinduet er fire uger, og otteogtyve datoer i
+             én række kan ikke læses — det var præcis sådan skærmen så ud.
+             Måneden og ugen står derfor for sig, som planchen viser. Fleets
+             kalender viser én uge og har ingen brug for dem; derfor er
+             niveauerne kalderens valg og ikke gitterets. */
+          niveauer={[
+            { navn: "Måned", noegle: maanedNoegle },
+            { navn: "Uge", noegle: ugeNoegle },
+          ]}
           tom="Ingen kasser er lovet væk i de næste fire uger."
         />
         <p className="fc-hint" style={{ marginTop: 12 }}>

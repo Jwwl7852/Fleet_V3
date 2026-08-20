@@ -17,7 +17,7 @@
  */
 
 import { overlapper } from "./reservations.js";
-import { klokke } from "./format.js";
+import { klokke, ugenr } from "./format.js";
 
 export const ENHED = { dag: "dag", time: "time" };
 
@@ -187,3 +187,40 @@ export function blokkePrRaekke(placerede) {
   for (const liste of kort.values()) liste.sort((a, b) => a.fra - b.fra);
   return kort;
 }
+
+/* ---- Grupperede kolonneoverskrifter ------------------------------------ */
+
+/**
+ * grupperSlots(slotListe, noegle) → [{ noegle, fra, antal }]
+ *
+ * Slår NABOSLOTS med samme nøgle sammen til ét spænd. Med den kan et gitter
+ * få flere hovedrækker — måned over uge over dag, som planchen for
+ * Unitbookings kalender viser.
+ *
+ * ⚠ HVORFOR DET ER NØDVENDIGT: et vindue på otteogtyve dage giver
+ * otteogtyve kolonner, og datoen i hver af dem bliver ulæselig. Grupperingen
+ * flytter det man SJÆLDENT skifter (måneden) op i sin egen række, så dagen
+ * kun skal bære det den ikke kan undvære.
+ *
+ * ⚠ KUN NABOER. To spænd med samme nøgle, der ikke rører hinanden, bliver to
+ * spænd — ellers ville et gitter der begyndte og sluttede i august, få ÉN
+ * august-celle henover september.
+ */
+export function grupperSlots(slotListe = [], noegle) {
+  if (typeof noegle !== "function") return [];
+  const ud = [];
+  for (const s of slotListe) {
+    const n = noegle(s);
+    const sidste = ud[ud.length - 1];
+    if (sidste && sidste.noegle === n) sidste.antal += 1;
+    else ud.push({ noegle: n, fra: s.fra, antal: 1 });
+  }
+  return ud;
+}
+
+/** Månedens navn — "aug. 2026". Ét sted, som slotLabel. */
+export const maanedNoegle = (slot) =>
+  new Date(slot.fra).toLocaleDateString("da-DK", { month: "short", year: "numeric" });
+
+/** Ugenummeret som tekst. Bruger ugenr() fra format.js. */
+export const ugeNoegle = (slot) => `Uge ${ugenr(slot.fra)}`;

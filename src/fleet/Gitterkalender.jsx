@@ -23,7 +23,10 @@
  *     På en eksklusiv ressource er et overlap noget reserver() ville afvise.
  *     Ser det pænt ud, skjuler gitteret en fejl i data.
  */
-import { ENHED, slots, slotLabel, erNu, laegUd, blokkePrRaekke } from "./gitter.js";
+import { Fragment } from "react";
+import {
+  ENHED, slots, slotLabel, erNu, laegUd, blokkePrRaekke, grupperSlots,
+} from "./gitter.js";
 import { Tom } from "./ui.jsx";
 
 const TONE_KLASSE = {
@@ -37,7 +40,8 @@ const TONE_KLASSE = {
 /**
  * Gitterkalender({ raekker, fra, til, enhed, blokke, valgtId, onVaelg, tom })
  *
- *   raekker  [{ id, label, under, pille }]
+ *   raekker   [{ id, label, under, pille }]
+ *   niveauer  [{ navn, noegle(slot) }] — ekstra hovedraekker (maaned, uge)
  *   blokke   [{ id, raekkeId, fra, til, label, tone }]
  *   enhed    "dag" (standard) | "time"
  *
@@ -47,6 +51,9 @@ export default function Gitterkalender({
   raekker = [], blokke = [], fra, til, enhed = ENHED.dag,
   valgtId = null, onVaelg, tom = "Ingen aktiviteter i perioden.",
   dropfelter = null,
+  /* Ekstra hovedraekker over dagene: [{ navn, noegle(slot) }]. Se noten ved
+     grupperSlots() — kalderen bestemmer, en uges visning har ingen brug. */
+  niveauer = [],
 }) {
   const slotListe = slots(fra, til, enhed);
   if (!slotListe.length || !raekker.length) return <Tom>{tom}</Tom>;
@@ -66,6 +73,25 @@ export default function Gitterkalender({
     <div>
       <div className="fc-scroll">
         <div className="fc-gk" style={{ "--gk-slots": slotListe.length }}>
+          {/* ⚠ FLERE HOVEDRÆKKER, NÅR VINDUET ER LANGT. Otteogtyve dage giver
+              otteogtyve kolonner, og datoen i hver af dem bliver ulæselig.
+              `niveauer` flytter det man SJÆLDENT skifter — måneden, ugen — op i
+              hver sin række, så dagen kun bærer det den ikke kan undvære.
+              Kalderen bestemmer; en uges visning har ingen brug for dem. */}
+          {niveauer.map((n, i) => (
+            <Fragment key={n.navn || i}>
+              <div className="fc-gk-navn fc-gk-hj fc-gk-niveau">{n.navn || ""}</div>
+              <div className="fc-gk-band fc-gk-hoved fc-gk-niveau">
+                {grupperSlots(slotListe, n.noegle).map((g) => (
+                  <div key={g.fra} className="fc-gk-kol fc-gk-gruppe"
+                       style={{ gridColumn: `span ${g.antal}` }}>
+                    {g.noegle}
+                  </div>
+                ))}
+              </div>
+            </Fragment>
+          ))}
+
           {/* Hoved */}
           <div className="fc-gk-navn fc-gk-hj" />
           <div className="fc-gk-band fc-gk-hoved">
