@@ -2458,3 +2458,42 @@ svarer `{ sats, mangler }`. Et slutmål der ikke kendes, må ikke blive til en
 tom streng eller til afsenderadressen: godset kører efter det der står på
 mærkatet, og fejlen opdages på rampen i Hamburg — ikke her. Samme afvejning som
 momssatsen, der nægter eksporten frem for at antage 25 %.
+
+### ⚠ Tilføjelse til 46: stregkoden var tekst — og dens sort er ikke en designfarve
+
+Første udgave af labelen skrev koden som **bogstaver**:
+`BKG-2026-00317-CRR-100248`. Et menneske kunne læse den, og præcis derfor
+overlevede fejlen en commit, en gennemlæsning og et klik i browseren — mærkatet
+så komplet ud. En scanner kan ikke læse tekst, og et mærkat der ikke kan
+scannes, er hele grunden til at der er et mærkat.
+
+Koden er nu en rigtig **Code 128 subset B** (`fleet/stregkode128.js`). Ikke
+Code 39: 25 tegn ville blive godt dobbelt så bredt og ikke kunne være på et
+mærkat. Ikke subset C: koden skifter mellem bogstaver og cifre hele vejen, så
+skiftene ville koste mere end de sparer — og hvert skift er et sted at tage
+fejl.
+
+**⚠ Tabellen fik sin godkendelse udefra.** En mønstertabel skrevet af efter
+standarden kan være internt konsistent og alligevel forkert, og en prøve der
+afkoder med **min egen** tabel ville sige ja til begge dele. Outputtet er
+derfor tegnet som et sort/hvidt billede og læst tilbage af **zxing**, en
+uafhængig implementering, som selv efterprøver kontrolcifret. Fem koder, alle
+korrekt afkodet. Zxing er ikke en afhængighed i repoet — den blev lånt til den
+ene kontrol, og modulstrengen ligger nu som et snapshot i prøven.
+
+⚠ **Og den kontrol fangede en påstand i mit eget hoved.** Filens kommentar
+henviste til "standardens eksempel PJJ123C → 54" — et tal jeg huskede frem for
+at slå op; funktionen svarer 55. Havde jeg skrevet en prøve på det tal, ville
+den have været rød af den forkerte grund. Beviset er afkodningen.
+
+### Stregkodens sort er et maskinkrav, ikke et designvalg
+
+Paletten havde ingen ren sort. `--bc-text` er `#1f2733` — en mørk blågrå, som
+er rigtig til tekst og forkert til en stregkode: kontrasten er scannerens
+tærskel, ikke en æstetisk afvejning, og en printer der gengiver den lidt lysere,
+gør koden ulæselig uden at nogen kan se det.
+
+`--fc-stregkode: #000` er derfor et token for sig. Det må **ikke** følge et
+tema, og det hører hverken i statuspaletten (beslutning 30's "hvor slemt er
+det") eller i kategoripaletten ("hvilken ting er det"). Det er en tredje slags
+farve: den som en maskine skal kunne måle.

@@ -34,6 +34,7 @@ import { CARRIER_TYPE } from "../../fleet/warehouse.js";
 import {
   LABELTYPE, ALLE_LABELTYPER, byggLabel,
 } from "../../fleet/transportlabel.js";
+import { bjaelker, bredde, STILLE_ZONE } from "../../fleet/stregkode128.js";
 
 import { DEMO_CARRIERS, DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
@@ -144,7 +145,7 @@ export default function Transportlabels() {
           beholder kan derfor ikke bære en transport. En spærring der ikke kan
           forklare sig selv, ligner en fejl — beslutning 32. */}
       {!harBooking && (
-        <Kort titel="Transportlabels kræver Booking">
+        <Kort className="fc-ikke-print" titel="Transportlabels kræver Booking">
           <p className="fc-svar">
             En label fortæller hvilken transport godset følger, og transporten
             er en <strong>etape</strong> på en booking. Uden Booking-modulet er
@@ -153,7 +154,10 @@ export default function Transportlabels() {
         </Kort>
       )}
 
+      {/* ⚠ LISTEN PRINTES IKKE. Et mærkat er ikke et skærmbillede med en label
+          på — se print-reglerne i fleet.css. */}
       <Kort
+        className="fc-ikke-print"
         titel={`Labels (${num(klar)} klar af ${num(raekker.length)})`}
         handling={
           <Link className="fc-a" to="/warehouse/carriers">Se beholderne</Link>
@@ -249,6 +253,7 @@ export default function Transportlabels() {
 
       {aaben && (
         <Kort
+          className="fc-maerkat-kort"
           titel={`Label · ${aaben.carrier.id}`}
           handling={
             <span className="fc-ikke-print">
@@ -286,14 +291,14 @@ export default function Transportlabels() {
 function LabelArk({ label, carrier }) {
   const f = label.felter;
   const linje = (navn, vaerdi) => (
-    <div className="fc-row" style={{ justifyContent: "space-between", gap: 12 }}>
-      <span className="fc-hint">{navn}</span>
+    <div className="fc-maerkat-linje">
+      <span>{navn}</span>
       <strong>{vaerdi || <span className="fc-hint">— mangler —</span>}</strong>
     </div>
   );
 
   return (
-    <div className="fc-grid" style={{ gap: 8 }}>
+    <div className="fc-maerkat fc-grid" style={{ gap: 8 }}>
       <div className="fc-row" style={{ justifyContent: "space-between" }}>
         <strong>{label.typeLabel || "Ukendt transporttype"}</strong>
         <span className="fc-hint">
@@ -301,21 +306,78 @@ function LabelArk({ label, carrier }) {
         </span>
       </div>
 
+      {/* ⚠ SLUTMÅLET STÅR STORT. Det er det ene felt en chauffør læser på
+          afstand af en palle; resten slås op, når mærkatet er i hånden. */}
+      <div>
+        <div className="fc-hint">Slutmål</div>
+        <div className="fc-maerkat-maal">
+          {f.slutmaal || <span className="fc-hint">— mangler —</span>}
+        </div>
+        {f.transit && (
+          <div className="fc-hint">via {f.transit}</div>
+        )}
+      </div>
+
       {linje("Booking", f.bookingNummer)}
       {linje("Beholder", f.carrierId)}
       {linje("Kunde", f.kunde)}
       {linje("Fra", f.fraSted)}
-      {/* Transit står kun på de to typer der HAR en. Et tomt felt på en
-          direkte label ville læses som noget der mangler. */}
-      {label.type !== "direkte" && linje("Transit", f.transit)}
-      {linje("Slutmål", f.slutmaal)}
       {label.type === "storage" && linje("Lokation efter transit", f.lokation)}
       {carrier?.note && linje("Note", carrier.note)}
 
-      {/* ⚠ KODEN ER DE TO ID'ER, IKKE EN NY SERIE. Se transportlabel.js:
-          planchens `BK-2026-0513-C-000245` opfandt både et femte nummerformat
-          og et løbenummer ved siden af beholderens eget id. */}
-      {linje("Stregkode", f.stregkode)}
+      {/* ⚠ EN STREGKODE, IKKE KODEN SKREVET SOM TEKST. Første udgave skrev
+          bogstaverne, og mærkatet så komplet ud — men et mærkat der ikke kan
+          scannes, er hele grunden til at der er et mærkat. Tallet står under
+          stregerne, så et menneske kan taste det, hvis koden er snavset. */}
+      <Stregkode kode={f.stregkode} />
+    </div>
+  );
+}
+
+/* Code 128 som SVG. Bredden er moduler, ikke pixels — så mærkatet kan skaleres
+   uden at et modul bliver til halvanden og koden ulæselig. */
+function Stregkode({ kode }) {
+  if (!kode) {
+    return (
+      <p className="fc-svar fc-svar-fejl" role="alert">
+        ⚠ Ingen stregkode: koden kan først bygges, når booking og beholder
+        begge er kendt.
+      </p>
+    );
+  }
+
+  const streger = bjaelker(kode);
+  const bred = bredde(kode);
+  if (!streger || !bred) {
+    /* Kun ASCII 32–126 kan kodes i subset B. Der gættes ikke på et tegn. */
+    return (
+      <p className="fc-svar fc-svar-fejl" role="alert">
+        ⚠ Koden «{kode}» indeholder tegn der ikke kan stregkodes.
+      </p>
+    );
+  }
+
+  const HOEJDE = 60;
+  return (
+    <div>
+      <svg
+        className="fc-stregkode"
+        viewBox={`0 0 ${bred} ${HOEJDE}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Stregkode ${kode}`}
+      >
+        {streger.map((b) => (
+          <rect
+            key={b.fra}
+            x={STILLE_ZONE + b.fra}
+            y={0}
+            width={b.bredde}
+            height={HOEJDE}
+          />
+        ))}
+      </svg>
+      <div className="fc-stregkode-tal">{kode}</div>
     </div>
   );
 }

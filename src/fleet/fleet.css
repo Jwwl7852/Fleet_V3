@@ -17,6 +17,20 @@
   --bc-warn:#c77700;
   --bc-block:#d64545;
 
+  /* ⚠ EN STREGKODES SORT ER ET MASKINKRAV, IKKE ET DESIGNVALG. --bc-text er
+     #1f2733 og rigtig til tekst; paa en stregkode er kontrasten scannerens
+     taerskel, og en printer der gengiver den lidt lysere, goer koden ulaeselig
+     uden at nogen kan se det. Den maa derfor ikke foelge et tema, og den
+     hoerer hverken i statuspaletten (beslutning 30) eller i kategoripaletten.
+     Beslutning 46.
+
+     De to hoerer SAMMEN: en stregkode er sort paa hvidt, og bunden er lige saa
+     meget et maskinkrav som stregerne. --bc-card er #fff i dag, men den er
+     kortets baggrund og ville foelge et moerkt tema med — og saa forsvinder
+     koden. */
+  --fc-stregkode:#000;
+  --fc-stregkode-bund:#fff;
+
   --fc-navy:#101a30;
   --fc-navy-2:#18243f;
   --fc-navy-3:#22314f;
@@ -803,7 +817,51 @@
   .fc-side-skift{break-before:page; page-break-before:always}
   .fc-kpis{grid-template-columns:repeat(4,1fr)}
   a[href]:after{content:""}
+
+  /* ⚠ ET MAERKAT ER IKKE EN SIDE. Foerste udgave printede HELE skaermen —
+     sidehoved, filtre og listen med — og saa er det ikke en label, men et
+     skaermbillede med en label paa. Er der et maerkat aabent, staar KUN det
+     paa arket.
+
+     :has() paa forfaedrene, fordi sidehovedet ligger over skaermens eget
+     traeae: modulet kan ikke naa .fc-top med en klasse paa sit eget rodelement. */
+  .fc-app:has(.fc-maerkat) .fc-top{display:none}
+  .fc-app:has(.fc-maerkat) .fc-slot > * > .fc-card:not(.fc-maerkat-kort){display:none}
+  /* Et maerkat maa ikke brydes over to ark — det kan man ikke saette paa en
+     palle. Samme regel som en tabelraekke. */
+  .fc-maerkat-kort{border:0 !important; break-inside:avoid}
+
+  /* ⚠ DEV-BANDET BLIVER STAAENDE, OG DET ER MED VILJE. Et proevemaerkat der
+     ser ud som et rigtigt, kan havne paa rigtigt gods. Bandet tegnes kun naar
+     noeglen peger paa DEV, saa hos en kunde er det der ikke.
+
+     ⚠ OG DER ER INTET FYSISK FORMAT. Et maerkat trykkes typisk 100x150 mm paa
+     en labelprinter, men vi ved ikke hvilken printer kunden har — og en
+     @page size vi selv fandt paa, ville skalere koden forkert hos alle andre.
+     En stregkode der er skaleret skaevt, scanner ikke. Aabent, og det gaettes
+     ikke. */
 }
+
+/* ── Transportlabel ──────────────────────────────────────────────────────
+   Maerkatet der foelger godset. WAREHOUSE.md etape 15. */
+
+/* ⚠ REN SORT PAA REN HVID, uanset tema. Kontrasten er scannerens taerskel,
+   ikke en aestetisk afvejning — se --fc-stregkode og beslutning 46. */
+.fc-stregkode{display:block; width:100%; max-width:360px; height:auto;
+  background:var(--fc-stregkode-bund)}
+.fc-stregkode rect{fill:var(--fc-stregkode)}
+
+/* Koden UNDER stregerne. Den er ikke pynt: kan scanneren ikke laese maerkatet
+   — snavs, en knaekket palle — skal et menneske kunne taste den. */
+.fc-stregkode-tal{font-family:ui-monospace, "Cascadia Mono", Menlo, monospace;
+  font-size:12px; letter-spacing:.08em; color:var(--bc-text); margin-top:4px}
+
+.fc-maerkat-linje{display:flex; justify-content:space-between; gap:12px;
+  align-items:baseline; padding:3px 0}
+.fc-maerkat-linje > span{color:var(--bc-muted); font-size:12px}
+
+/* Slutmaalet er det ENE felt en chauffoer laeser paa afstand. */
+.fc-maerkat-maal{font-size:22px; font-weight:700; line-height:1.15}
 
 /* ── Driftskalender ──────────────────────────────────────────────────────
    Værktøjslinjen over gitteret, det lodrette udsnit og svævekortet. */

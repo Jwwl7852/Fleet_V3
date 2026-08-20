@@ -138,6 +138,10 @@ const FORVENTEDE_TOKENS = {
   "--bc-ok": "#1f9d55",
   "--bc-warn": "#c77700",
   "--bc-block": "#d64545",
+  // Stregkodens sort — et maskinkrav, ikke en designfarve. Beslutning 46:
+  // kontrasten er scannerens tærskel, så den må ikke følge et tema.
+  "--fc-stregkode": "#000",
+  "--fc-stregkode-bund": "#fff",
   "--fc-navy": "#101a30",
   "--fc-navy-2": "#18243f",
   "--fc-navy-3": "#22314f",

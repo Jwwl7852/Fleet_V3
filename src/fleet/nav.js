@@ -170,7 +170,7 @@ export const NAV = [
          booking foerste gang nogen rettede et slutmaal. */
       { key: "warehouseLabels", sti: "/warehouse/labels", label: "Transportlabels",
         titel: "Warehouse – transportlabels",
-        under: "De tre transporttyper, og hvad der mangler foer godset kan maerkes" },
+        under: "De tre transporttyper, og hvad der mangler før godset kan mærkes" },
       /* ⚠ AFREGNING, IKKE FAKTURERING. Skaermen viser hvad lageret KAN
          faktureres for; godkendelsen hoerer eet sted, i Indkoeb → Fakturaer
          (beslutning 12). To godkendelsesflows er den fejl beslutningen
