@@ -43,8 +43,8 @@ ville være regnet på ét vindue og stå forkert i de tre andre. Se
 | K2a | Dag / uge / måned | ✅ `VISNING` |
 | K2b | Linjerne er for høje — komprimér | 🔧 **Mangler.** Se 2.1 |
 | K2c | Åbn kalenderen i eget vindue, med scroll ved mange enheder | ✅ "Åbn i nyt vindue" på kalenderkortet; `fc-gk-lodret` giver scroll |
-| K2d | Hover over en opgave giver et view af hvad der sker | 🔧 **Mangler** |
-| K2e | Klik åbner en popup med mails, fotos m.m. | 🔧 **Delvist.** Fotos findes; mails gør ikke — se 3.2 |
+| K2d | Hover over en opgave giver et view af hvad der sker | ✅ `Svaevekort` — titel, type, start, slut, status, prioritet |
+| K2e | Klik åbner en popup med mails, fotos m.m. | ✅ Tre faner: Overblik, Kommunikation, Filer. ⚠ Kommunikation er tom — se 3.2 |
 
 ---
 
@@ -114,8 +114,8 @@ mailsporet ikke findes endnu.
 | 1 | **Gods/Bus skjult i Fleet** (G1, delvist) | En knap der ikke gør noget, forsvinder | ✅ |
 | 2 | **Data i gitteret** — demo-opgaver der falder i indeværende uge | Kalenderen kan overhovedet ses arbejde | ✅ Provisioneren kørt |
 | 3 | **Linjehøjden komprimeres** (K2b), målt på et fyldt gitter | Flere enheder på skærmen ad gangen | ✅ 68 → 44 px |
-| 4 | **Hover-view** (K2d) | Man kan se hvad en blok er uden at åbne den | |
-| 5 | **Klik-popup** (K2e) med fotos — og mailsporet skrevet frem som manglende | Opgaven kan åbnes fra kalenderen | |
+| 4 | **Hover-view** (K2d) | Man kan se hvad en blok er uden at åbne den | ✅ Var bygget i forvejen |
+| 5 | **Klik-popup** (K2e) med fotos — og mailsporet skrevet frem som manglende | Opgaven kan åbnes fra kalenderen | ✅ Var bygget i forvejen |
 | 6 | **Mails i popup'en** — kræver beslutning 20 fase 1 | Sagens korrespondance samlet | *afventer 3.2* |
 
 Etape 1 er små. Etape 2 er den der låser resten op: uden data i vinduet kan
@@ -164,3 +164,37 @@ gang så mange enheder i samme højde. Pillen er samtidig mindre *her og kun her
 ⚠ Ændringen ligger i `Gitterkalender.jsx` og rammer derfor også
 **Servicekalender og Disponering**. Det er med vilje (CLAUDE.md: byg ikke et
 kalendergitter til), men det skal ses efter i de to andre skærme.
+
+---
+
+## 6. ⚠ Rettelse: etape 4 og 5 var bygget i forvejen
+
+Punkt 1.3 sagde først at hover-viewet **manglede**, og at klik-popup'en kun
+havde fotos. **Begge dele var forkert.** De var bygget:
+
+- **Hover** er `Svaevekort` i `Vaerkstedskalender.jsx`, koblet på `onMouseMove`
+  over `[data-blok]`. Efterprøvet i browseren: titel, type, start, slut,
+  status og prioritet.
+- **Klik** åbner en dialog med tre faner: **Overblik**, **Kommunikation** og
+  **Filer**. Både mails og fotos er der som visning.
+
+Filen bar endda en note om hvorfor `title` ikke rakte — *"browserens egen boble
+kommer efter halvandet sekund, kan ikke rumme en tabel og findes slet ikke på
+en berøringsskærm"*.
+
+### ⚠ Hvorfor det ikke blev opdaget
+
+Auditten blev lavet med **grep efter engelske ord i en dansk kodebase**:
+`hover`, `Mails`, `fuldskærm`. Koden hedder `svaev`, `beskeder` og
+`nyt vindue`. Nul træf blev læst som "findes ikke" — og et nul fra en søgning
+er ikke et svar, det er fraværet af et.
+
+Det rigtige greb var det der fandt fejlen til sidst: **åbn skærmen og prøv
+den.** Det er den samme lære som `useListe`-fejlen i WAREHOUSE.md (en tom
+tabel ligner et tomt lager) og som mærkatet, der ikke kunne ses tegnet, før
+DEV havde data. Et grep siger noget om FILEN; kun skærmen siger noget om
+programmet.
+
+**Følgen for planen:** af hele den skrevne kravliste står nu kun ét punkt
+tilbage — **mails med indhold**, som kræver beslutning 20's fase 1. Og
+"seneste", som stadig ikke er fundet.
