@@ -24,6 +24,22 @@ import { readFileSync } from "node:fs";
 
 const CSS = new URL("../src/fleet/fleet.css", import.meta.url);
 
+/**
+ * ⚠ FJERNER KOMMENTARER FØRST — ellers ser prøven kun 223 af 307
+ * grundregler. Regexen nedenfor kræver at en selektor står efter `}` eller
+ * filens begyndelse, og i denne fil står de fleste regler efter en KOMMENTAR.
+ * Så blev de usynlige, og prøven gav grønt lys på fem dubletter den ikke
+ * kunne se — deriblandt .fc-permliste, der var både en chip-liste og
+ * rolleeditorens gitter.
+ *
+ * Linjeskiftene beholdes, ét for ét, så linjenumrene i fejlbeskeden stadig
+ * peger på den rigtige linje. En fejlbesked med forkerte linjenumre er
+ * værre end ingen: man leder det forkerte sted.
+ */
+function udenKommentarer(css) {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (m) => "\n".repeat((m.match(/\n/g) || []).length));
+}
+
 /** Fjerner @media-blokke, så en responsiv overstyring ikke tæller som dublet. */
 function udenMedia(css) {
   let ud = "";
@@ -38,6 +54,11 @@ function udenMedia(css) {
         if (css[j] === "{") dybde++;
         else if (css[j] === "}" && --dybde === 0) break;
       }
+      /* ⚠ LINJESKIFTENE BLIVER, ét for ét. Sprang vi dem over, ville hver
+         @media-blok forskyde alle linjenumre efter sig, og fejlbeskeden
+         ville pege på en linje der ikke er den. Målt: uden dette stod
+         .fc-gk-kol-dato som "linje 1106" i stedet for 1173. */
+      for (let k = i; k <= j; k++) if (css[k] === "\n") ud += "\n";
       i = j;
       continue;
     }
@@ -54,7 +75,10 @@ function udenMedia(css) {
 function grundregler(css) {
   const fund = new Map();
   for (const m of css.matchAll(/(^|\})\s*([^{}@]+)\{/g)) {
-    const linje = css.slice(0, m.index).split("\n").length;
+    /* Talt frem til KRØLLEN, ikke til matchets begyndelse: matchet starter
+       ved den FORRIGE regels }, og så peger beskeden en regel for tidligt.
+       Målt: .fc-gk-kol-dato på linje 1176 blev meldt som 1173. */
+    const linje = css.slice(0, m.index + m[0].length).split("\n").length;
     for (const del of m[2].split(",")) {
       const s = del.trim();
       if (/^\.[a-zA-Z][\w-]*$/.test(s)) {
@@ -83,10 +107,20 @@ const BEVIDSTE_GRUPPER = {
   /* Donuttens to tekster deler modrotationen, så de står vandret i en
      figur der selv er drejet. Samme geometri, to størrelser. */
   "fc-donut-note": ".fc-donut-tal,.fc-donut-note{transform:rotate(90deg)…}",
+  "fc-donut-tal": ".fc-donut-tal,.fc-donut-note{transform:rotate(90deg)…}",
+  /* Taltfeltet arver rammen, baggrunden og højden fra den fælles felt-regel
+     og lægger KUN bredde, højrestilling og tabulartal oveni. Ville man
+     samle dem, skulle rammen skrives to gange — og så kan de skride fra
+     hinanden. Grupperingen tilføjer; den redefinerer ikke. */
+  "fc-input-tal": ".fc-felt input,…,.fc-input-tal{border:1px solid…} — fælles feltramme",
 };
 
 test("Ingen klasse får en grundregel den ikke selv ejer", () => {
-  const css = udenMedia(readFileSync(CSS, "utf8"));
+  /* ⚠ KOMMENTARERNE FØRST, SÅ @media. Omvendt reagerer udenMedia på ordet
+     "@media" inde i en KOMMENTAR — og springer så frem til næste { og
+     sluger de rigtige regler indtil dens }. Filen har den slags
+     kommentarer. */
+  const css = udenMedia(udenKommentarer(readFileSync(CSS, "utf8")));
   const dubletter = [...grundregler(css)]
     .filter(([navn, linjer]) => linjer.length > 1 && !BEVIDSTE_GRUPPER[navn])
     .map(([navn, linjer]) => `.${navn} (linje ${linjer.join(" og ")})`);
@@ -106,7 +140,7 @@ test("Et modul overtager ikke shellens klasser", () => {
      tabellen er SHELLENS. Et modul har ingen anledning til at redefinere
      dem, og gør det alligevel, rammer fejlen alle de andre skærme —
      ikke den man selv sidder i. Derfor opdages den ikke. */
-  const css = udenMedia(readFileSync(CSS, "utf8"));
+  const css = udenMedia(udenKommentarer(readFileSync(CSS, "utf8")));
   const regler = grundregler(css);
   for (const navn of ["fc-side", "fc-link", "fc-brand", "fc-slot", "fc-app",
                       "fc-card", "fc-table", "fc-kpi", "fc-pill", "fc-filtre",

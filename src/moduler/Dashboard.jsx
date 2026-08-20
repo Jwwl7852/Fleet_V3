@@ -620,7 +620,7 @@ function Widgetvaelger({ valgte, harModulFn, paaSlaaTil, paaFjern }) {
       {grupper.map((m) => (
         <div key={m} className="fc-widget-gruppe">
           <b>{MODUL[m]?.label || m}</b>
-          <div className="fc-permliste" style={{ maxHeight: "none" }}>
+          <div className="fc-permgitter" style={{ maxHeight: "none" }}>
             {kan.filter((w) => w.modul === m).map((w) => {
               const paa = valgte.includes(w.key);
               return (

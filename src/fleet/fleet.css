@@ -404,12 +404,14 @@
 
 /* Gitterkalender — ressourcer som rækker, tid som kolonner. Bruges af
    Værkstedskalender, Servicekalender og Disponering. Alt fra tokens. */
-.fc-gk{display:grid; grid-template-columns:180px 1fr; min-width:640px}
+.fc-gk{display:grid; grid-template-columns:180px 1fr; min-width:640px;
+  border:1px solid var(--bc-line); border-radius:8px; overflow:hidden}
 /* ⚠ NAVNET ER KLÆBET TIL VENSTRE. Ruller man vandret gennem fem uger, er en
    blok uden sin enhed ubrugelig — man kan se at NOGET er på værksted, men ikke
    hvad. z-index over cellerne, under det klæbende hoved. Baggrunden SKAL være
    sat: uden den skinner blokkene igennem når de ruller ind under navnet. */
 .fc-gk-navn{padding:4px 10px; border-top:1px solid var(--bc-line); font-size:12px;
+  border-right:1px solid var(--bc-line);
   display:flex; flex-direction:column; gap:1px; justify-content:center;
   position:sticky; left:0; z-index:2; background:var(--bc-card)}
 .fc-gk-hj{border-top:0; position:sticky; top:0; left:0; z-index:4;
@@ -443,9 +445,11 @@
    man kolonner for at finde ud af hvilken dag en blok ligger på — præcis den
    fejl et gitter der er én dag forskudt, laver af sig selv. */
 .fc-gk-hoved{border-top:0; min-height:0; position:sticky; top:0; z-index:3;
-  background:var(--bc-card)}
+  background:var(--bc-card); border-bottom:1px solid var(--bc-line)}
 .fc-gk-kol{grid-row:1; text-align:center; font-size:10.5px; color:#8b97a8; font-weight:650;
-  padding:6px 2px; letter-spacing:.02em; white-space:nowrap; overflow:hidden}
+  padding:6px 2px; letter-spacing:.02em; white-space:nowrap; overflow:hidden;
+  border-left:1px solid var(--bc-line);
+  display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.2}
 .fc-gk-celle{grid-row:1; height:100%; min-height:30px; border-left:1px solid var(--bc-line)}
 .fc-gk-celle:first-child{border-left:0}
 /* Kolonnen for nu. En kalender uden et "nu" tvinger brugeren til at tælle. */
@@ -728,18 +732,18 @@
   white-space:nowrap}
 
 /* ---- Linjegraf -------------------------------------------------------- */
-.fc-linje{position:relative; width:100%}
-.fc-linje-fig{width:100%; height:100%; display:block; overflow:visible}
+.fc-linjegraf{position:relative; width:100%}
+.fc-linjegraf-fig{width:100%; height:100%; display:block; overflow:visible}
 /* Faelles egenskaber paa en faelles klasse, ikke paa en gruppe af to.
    test/css-navne.test.mjs fangede den: en grupperegel plus en modifikator
    med samme navn ER to grundregler, og saa er det tilfaeldigt hvilken der
    vinder naeste gang nogen tilfoejer noget. */
-.fc-linje-serie{fill:none; stroke-width:.7;
+.fc-linjegraf-serie{fill:none; stroke-width:.7;
   vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round}
-.fc-linje-stiplet{stroke-dasharray:4 3}
+.fc-linjegraf-stiplet{stroke-dasharray:4 3}
 /* Punkterne ligger uden for svg'en: preserveAspectRatio="none" ville
    straekke en cirkel til en ellipse. */
-.fc-linje-prik{position:absolute; width:8px; height:8px; border-radius:50%;
+.fc-linjegraf-prik{position:absolute; width:8px; height:8px; border-radius:50%;
   transform:translate(-50%,-50%); box-shadow:0 0 0 2px var(--bc-card)}
 
 /* Ikon inde i en pille (godkendelsesstatus). Lille — pillen er tekst med et
@@ -1112,7 +1116,7 @@
    overskue konsekvensen af. */
 .fc-rolleeditor{border:1px solid var(--bc-line); border-radius:var(--fc-r);
   padding:16px; margin-bottom:16px; background:var(--fc-bg)}
-.fc-permliste{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+.fc-permgitter{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
   gap:2px; margin-top:12px; max-height:340px; overflow-y:auto;
   background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:10px; padding:8px}
@@ -1142,7 +1146,8 @@
    baerer det den ikke kan undvaere. Se grupperSlots() i gitter.js. */
 .fc-gk-niveau{border-bottom:1px solid var(--bc-line)}
 .fc-gk-gruppe{font-weight:700; font-size:11.5px; color:var(--bc-text);
-  border-left:1px solid var(--bc-line); text-align:center}
+  border-left:1px solid var(--bc-line); text-align:center;
+  flex-direction:row; justify-content:center}
 .fc-gk-gruppe:first-child{border-left:0}
 
 /* ⚠ GITTERET SKAL SES SOM ET GITTER. Kun cellerne havde en venstrekant, saa
@@ -1151,20 +1156,18 @@
    til at det ER et gitter og ikke en liste.
 
    Kanterne er tokenets, ikke en graatone: en ramme er stadig en farve nogen
-   skal vedligeholde. */
-.fc-gk{border:1px solid var(--bc-line); border-radius:8px; overflow:hidden}
-.fc-gk-kol{border-left:1px solid var(--bc-line)}
+   skal vedligeholde.
+
+   ⚠ SKILLELINJERNE STAAR I GRUNDREGLERNE LAENGERE OPPE, ikke her. Foerste
+   udgave satte dem her, og saa havde .fc-gk-kol, .fc-gk-navn og .fc-gk-hoved
+   hver TO regler — den sidste vinder, og den vinder et andet sted i appen end
+   der hvor man arbejder. Kun rammen om hele gitteret er ny og staar her. */
 .fc-gk-band > .fc-gk-kol:first-child{border-left:0}
-.fc-gk-hoved{border-bottom:1px solid var(--bc-line)}
-.fc-gk-navn{border-right:1px solid var(--bc-line)}
 /* Doegnets skel staar tydeligere end timernes — en uge laeses i uger. */
 .fc-gk-raekkepar .fc-gk-celle{border-left:1px solid var(--bc-line)}
 
 /* Ugedagen over datoen. To linjer koster hoejde EEN gang i hovedet og giver
-   plads i hver eneste kolonne. */
-.fc-gk-kol{display:flex; flex-direction:column; align-items:center; gap:1px;
-  line-height:1.2}
+   plads i hver eneste kolonne. Selve flex-opsaetningen staar i grundreglen. */
 .fc-gk-kol-dag{font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
   opacity:.75}
 .fc-gk-kol-dato{font-size:11px; font-weight:700}
-.fc-gk-gruppe{flex-direction:row; justify-content:center}

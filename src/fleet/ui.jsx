@@ -614,13 +614,13 @@ export function Linjegraf({ punkter = [], serier = [], format = (v) => v, hoejde
         </div>
       )}
 
-      <div className="fc-linje" style={{ height: hoejde }}>
-        <svg viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" className="fc-linje-fig"
+      <div className="fc-linjegraf" style={{ height: hoejde }}>
+        <svg viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" className="fc-linjegraf-fig"
              role="img" aria-label={`Udvikling over ${punkter.length} perioder`}>
           {serier.map((s, si) =>
             segmenter(si).map((seg, j) => (
               <polyline key={`${s.navn}-${j}`} points={seg.join(" ")}
-                        className={`fc-linje-serie${s.stiplet ? " fc-linje-stiplet" : ""}`}
+                        className={`fc-linjegraf-serie${s.stiplet ? " fc-linjegraf-stiplet" : ""}`}
                         stroke={s.stiplet ? "var(--bc-muted)" : SERIE_FARVER[si % SERIE_FARVER.length]} />
             ))
           )}
@@ -631,7 +631,7 @@ export function Linjegraf({ punkter = [], serier = [], format = (v) => v, hoejde
           const v = p.vaerdier[si];
           if (!Number.isFinite(v)) return null;
           return (
-            <span key={`${s.navn}-${i}`} className="fc-linje-prik"
+            <span key={`${s.navn}-${i}`} className="fc-linjegraf-prik"
                   title={`${p.label}: ${format(v)}`}
                   style={{
                     left: `${x(i)}%`, top: `${(y(v) / H) * 100}%`,

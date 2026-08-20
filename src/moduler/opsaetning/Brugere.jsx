@@ -703,7 +703,7 @@ function Rolleeditor({ rolle, saetRolle, roller, rolleNode, egenRolle, paaGemt }
         <p className="fc-svar fc-svar-fejl" role="alert">{form.fejl}</p>
       )}
 
-      <div className="fc-permliste">
+      <div className="fc-permgitter">
         {ALLE_PERMS.map((perm) => {
           const paa = valgteP.has(perm);
           const iStandard = valgt.standard.includes(perm);
@@ -840,7 +840,7 @@ function Visningspanel({ uid, navn, visning, harModulFn, paaLuk, paaGemt }) {
         <p className="fc-svar fc-svar-naegtet" role="alert">{spaerring}</p>
       )}
 
-      <div className="fc-permliste" style={{ maxHeight: "none" }}>
+      <div className="fc-permgitter" style={{ maxHeight: "none" }}>
         {kanVaelges.map((d) => (
           <label key={d.key} className="fc-perm">
             <input type="checkbox" checked={valgt[d.key]}
