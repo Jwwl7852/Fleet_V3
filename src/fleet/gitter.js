@@ -224,3 +224,39 @@ export const maanedNoegle = (slot) =>
 
 /** Ugenummeret som tekst. Bruger ugenr() fra format.js. */
 export const ugeNoegle = (slot) => `Uge ${ugenr(slot.fra)}`;
+
+/* ---- Kolonneoverskriften i to linjer ------------------------------------ */
+
+/**
+ * ⚠ UGEDAGEN SKREVET UD, IKKE SKÅRET AF EN LOKALSTRENG.
+ * `toLocaleDateString("da-DK", { weekday: "short" })` giver "man.", "tir.",
+ * "ons." — og et `.slice(0, 2)` på den er en antagelse om et format vi ikke
+ * ejer. Bliver den til "ma." i en anden Node-version, står der "ma" ét sted og
+ * "man" et andet. Listen her er indekseret med getDay(), og søndag er nul.
+ *
+ * De to bogstaver er entydige på dansk: ma, ti, on, to, fr, lø, sø — tirsdag
+ * og torsdag skilles af det andet bogstav.
+ */
+export const UGEDAG_KORT = ["Sø", "Ma", "Ti", "On", "To", "Fr", "Lø"];
+
+/**
+ * slotDele(slot, enhed) → { over, under }
+ *
+ * Overskriften delt i to linjer: ugedagen over datoen. En kolonne er smal, og
+ * "ons 19.08" på én linje bliver til "ons 19…" så snart vinduet er langt —
+ * altså mister man netop datoen. To linjer koster højde én gang i hovedet og
+ * giver plads i hver eneste kolonne.
+ *
+ * ⚠ DATOEN BEHOLDER SIN MÅNED. Planchen viser kun dagens tal, fordi den har en
+ * måned-række over sig. Fleets kalender har ikke, og en uge kan gå over et
+ * månedsskifte — 31.08 og 01.09 ville begge stå som et lille tal uden at man
+ * kunne se hvilken måned. Måneden er billig; en forkert dag er ikke.
+ */
+export function slotDele(slot, enhed = ENHED.dag) {
+  if (enhed === ENHED.time) return { over: null, under: klokke(slot.fra) };
+  const d = new Date(slot.fra);
+  return {
+    over: UGEDAG_KORT[d.getDay()],
+    under: d.toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }),
+  };
+}

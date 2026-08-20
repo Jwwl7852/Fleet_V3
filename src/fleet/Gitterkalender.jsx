@@ -25,7 +25,7 @@
  */
 import { Fragment } from "react";
 import {
-  ENHED, slots, slotLabel, erNu, laegUd, blokkePrRaekke, grupperSlots,
+  ENHED, slots, slotLabel, slotDele, erNu, laegUd, blokkePrRaekke, grupperSlots,
 } from "./gitter.js";
 import { Tom } from "./ui.jsx";
 
@@ -95,11 +95,19 @@ export default function Gitterkalender({
           {/* Hoved */}
           <div className="fc-gk-navn fc-gk-hj" />
           <div className="fc-gk-band fc-gk-hoved">
-            {slotListe.map((s) => (
-              <div key={s.fra} className={`fc-gk-kol ${erNu(s) ? "fc-gk-nu" : ""}`}>
-                {slotLabel(s, enhed)}
+            {slotListe.map((s) => {
+              /* ⚠ TO LINJER: ugedagen over datoen. "ons 19.08" på én linje
+                 bliver til "ons 19…" så snart vinduet er langt — altså mister
+                 man netop datoen. `title` bærer den fulde tekst. */
+              const { over, under } = slotDele(s, enhed);
+              return (
+              <div key={s.fra} className={`fc-gk-kol ${erNu(s) ? "fc-gk-nu" : ""}`}
+                   title={slotLabel(s, enhed)}>
+                {over && <span className="fc-gk-kol-dag">{over}</span>}
+                <span className="fc-gk-kol-dato">{under}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {raekker.map((r) => {

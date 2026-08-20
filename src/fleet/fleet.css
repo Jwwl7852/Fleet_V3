@@ -1144,3 +1144,27 @@
 .fc-gk-gruppe{font-weight:700; font-size:11.5px; color:var(--bc-text);
   border-left:1px solid var(--bc-line); text-align:center}
 .fc-gk-gruppe:first-child{border-left:0}
+
+/* ⚠ GITTERET SKAL SES SOM ET GITTER. Kun cellerne havde en venstrekant, saa
+   raekkerne flød sammen paa tvaers og hovedet stod loest over dem. Med en
+   ramme kan man foelge en kolonne ned og en raekke hen — det er hele grunden
+   til at det ER et gitter og ikke en liste.
+
+   Kanterne er tokenets, ikke en graatone: en ramme er stadig en farve nogen
+   skal vedligeholde. */
+.fc-gk{border:1px solid var(--bc-line); border-radius:8px; overflow:hidden}
+.fc-gk-kol{border-left:1px solid var(--bc-line)}
+.fc-gk-band > .fc-gk-kol:first-child{border-left:0}
+.fc-gk-hoved{border-bottom:1px solid var(--bc-line)}
+.fc-gk-navn{border-right:1px solid var(--bc-line)}
+/* Doegnets skel staar tydeligere end timernes — en uge laeses i uger. */
+.fc-gk-raekkepar .fc-gk-celle{border-left:1px solid var(--bc-line)}
+
+/* Ugedagen over datoen. To linjer koster hoejde EEN gang i hovedet og giver
+   plads i hver eneste kolonne. */
+.fc-gk-kol{display:flex; flex-direction:column; align-items:center; gap:1px;
+  line-height:1.2}
+.fc-gk-kol-dag{font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
+  opacity:.75}
+.fc-gk-kol-dato{font-size:11px; font-weight:700}
+.fc-gk-gruppe{flex-direction:row; justify-content:center}
