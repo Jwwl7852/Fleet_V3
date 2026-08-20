@@ -212,7 +212,11 @@ export const DEMO_ETAPER = [
     tilstand: "aaben", division: "gods",
     fraSted: "Hamburg", tilSted: "København",
     fraAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
-    tilAdresse: { navn: "Fyn Køl & Frost A/S", gade: "Kølevej 8", postnr: "5220" },
+    /* ⚠ POSTNUMMERET SKAL PASSE TIL BYEN. Etapen ender i København (tilSted),
+       og et postnummer fra Odense her ville stå på mærkatet som
+       "5220 København" — en adresse ingen kan køre efter. Turen er retur til
+       vores eget lager; kunden får godset kørt ud derfra. */
+    tilAdresse: { navn: "Lager A – København", gade: "Havnegade 14", postnr: "1058" },
     fra: dag(5, 6), til: dag(5, 18),
     etaMs: null,
     graenseovergange: ["roedby"],
