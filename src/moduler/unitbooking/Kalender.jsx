@@ -46,6 +46,7 @@ import {
   sagsblokke, sagstilstand, dageUde, naesteSkift,
   udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
   klargoeresSnart, returneresSnart, kassebelaegning, kanSkifteUdlaan, valideUdlaan,
+  udeAfDriftBlok,
   KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
 import {
@@ -223,7 +224,12 @@ export default function Kalender() {
   /* Kun ressourcer med noget i vinduet. Et gitter med hundrede rækker hvoraf
      seks har en blok, skjuler de seks. */
   const kasseraekker = useMemo(() => {
+    /* ⚠ OG KASSER DER ER UDE AF DRIFT. De har maaske intet udlaan i vinduet,
+       men de har en blok — og en blok uden en raekke tegnes ingen steder.
+       Var de udeladt, ville planchens roede felt forsvinde netop for de
+       kasser det handler om. */
     const ider = new Set(iVinduet.map((u) => u.kasseId));
+    for (const k of kasser) if (udeAfDriftBlok(k, vindueTil)) ider.add(k.id);
     return kasser.filter((k) => ider.has(k.id)).map((k) => ({
       id: k.id,
       label: k.id,
@@ -238,7 +244,7 @@ export default function Kalender() {
         </Pille>
       ),
     }));
-  }, [iVinduet, kasser, typer]);
+  }, [iVinduet, kasser, typer, vindueTil]);
 
   /* ⚠ TRE BLOKKE PR. UDLÅN, IKKE ÉN — planchens "fremhævning pr. art".
      Klargøring, udlån og returnering er tre stykker arbejde for tre
@@ -267,6 +273,30 @@ export default function Kalender() {
           .filter(Boolean).join(" — "),
         tone: UDLAAN_ART[b.art].pill,
       })));
+
+  /* ⚠ DEN FJERDE ART KOMMER IKKE FRA ET UDLÅN. De tre ovenfor er faser i én
+     reservation; `udeAfDrift` er en kendsgerning om KASSEN, uden sagsnummer og
+     uden kunde. Den tegnes i det samme gitter, fordi det er den samme række —
+     og fordi planchen har den i sin signaturforklaring.
+
+     ⚠ OG DEN HAR INGEN SLUTNING. Blokken løber til vinduets kant og får
+     gitterets pil. Sluttede den et sted, ville kalenderen vise kassen som FRI
+     efter den dato — og nogen ville planlægge et udlån på en kasse der stadig
+     er i stykker. Se udeAfDriftBlok(). */
+  const udeBlokke = arter.includes("udeAfDrift")
+    ? kasser.flatMap((k) => {
+      const b = udeAfDriftBlok(k, vindueTil);
+      if (!b) return [];
+      return [{
+        id: `uad__${k.id}`,
+        raekkeId: k.id,
+        ...halvaabent(b),
+        label: UDLAAN_ART.udeAfDrift.label,
+        titel: `Ude af drift siden ${dato(k.udeAfDriftFra)}. Kassen kan ikke loves væk.`,
+        tone: UDLAAN_ART.udeAfDrift.pill,
+      }];
+    })
+    : [];
 
   /* --- Grupperet efter SAG ------------------------------------------- */
 
@@ -309,7 +339,7 @@ export default function Kalender() {
 
   const efterSag = gruppering === "sag";
   const raekker = efterSag ? sagsraekker : kasseraekker;
-  const blokke = efterSag ? sagsblokListe : kasseblokke;
+  const blokke = efterSag ? sagsblokListe : [...kasseblokke, ...udeBlokke];
 
   if (henter) return <Henter hvad="kalenderen" />;
 

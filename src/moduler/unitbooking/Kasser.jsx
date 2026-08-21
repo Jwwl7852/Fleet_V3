@@ -18,7 +18,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, pct } from "../../fleet/format.js";
+import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
@@ -50,7 +50,7 @@ const m3 = (f) => (maalAfFelter(f)?.m3 ?? 0).toFixed(2).replace('.', ',');
 
 const tomKasse = () => ({
   id: "", type: "", undertype: "", status: "ledig", hjemPladsId: "", pladsId: "",
-  laengdeCm: "", breddeCm: "", hoejdeCm: "", note: "",
+  laengdeCm: "", breddeCm: "", hoejdeCm: "", note: "", udeAfDriftIso: "",
 });
 
 function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
@@ -61,6 +61,8 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
       /* Noden bærer mm; formularen viser cm. Se mmFraCm(). */
       laengdeCm: cmFraMm(kasse.laengdeMm), breddeCm: cmFraMm(kasse.breddeMm),
       hoejdeCm: cmFraMm(kasse.hoejdeMm),
+      udeAfDriftIso: Number.isFinite(kasse.udeAfDriftFra)
+        ? msTilIso(kasse.udeAfDriftFra) : "",
     }
     : tomKasse()));
   const [roert, saetRoert] = useState({});
@@ -86,8 +88,21 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
 
   /* katalog: hele typerne, saa undertypen kan slaas op mod SIN egen type. */
   const ctx = { typer: typer.map((t) => t.id), pladser: pladser.map((p) => p.id), katalog: typer };
-  const fejl = valideKasse({ ...f, pladsId: f.pladsId || null }, ctx);
-  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  /* ⚠ isoTilMs SAETTER KLOKKEN 12, IKKE MIDNAT — se format.js. En dato der
+     rykker sig en dag, opdages ikke ved at kigge paa den. */
+  const udeAfDriftFra = f.udeAfDriftIso ? isoTilMs(f.udeAfDriftIso) : null;
+  const fejl = valideKasse(
+    { ...f, pladsId: f.pladsId || null, udeAfDriftFra }, ctx);
+  /* ⚠ FEJLNØGLEN OG FELTNAVNET ER IKKE ALTID DET SAMME. Datoen hedder
+     `udeAfDriftIso` i formularen, men fejlen hedder `udeAfDriftFra` — og uden
+     det ekstra led ville feltet aldrig vise sin fejl, fordi det aldrig blev
+     "rørt" under det navn fejlen bar. Præcis den fælde står allerede skrevet
+     ned i Planlaegdialog, og den her formular havde den enkle udgave. Tredje
+     gang mønstret dukker op. */
+  const vis = (fejlNoegle, ...roerteNoegler) => {
+    const noegler = roerteNoegler.length ? roerteNoegler : [fejlNoegle];
+    return visAlle || noegler.some((k) => roert[k]) ? fejl[fejlNoegle] : null;
+  };
   const kanGemme = Object.keys(fejl).length === 0;
   const paaLager = kraeverPlads(f.status);
 
@@ -118,6 +133,10 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
       laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
       hoejdeMm: mmFraCm(f.hoejdeCm),
       pladsId: paaLager ? f.pladsId : null,
+      /* ⚠ KUN NAAR DEN ER UDE AF DRIFT. Bliver kassen ledig igen, ryddes
+         datoen: et felt der blev staaende, ville faa kalenderen til at tegne
+         en blok paa en kasse der virker. Status er sandheden. */
+      udeAfDriftFra: f.status === "udeAfDrift" ? udeAfDriftFra : null,
       note: f.note?.trim() || null,
     };
     const r = await gem({
@@ -177,6 +196,24 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
                   hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
           )}
         </Feltraekke>
+
+        {/* ⚠ FELTET TEGNES KUN NÅR KASSEN ER UDE AF DRIFT. En ude-af-drift-dato
+            på en kasse der virker, er et felt der altid står tomt — og et tomt
+            felt læses som noget nogen har glemt. Samme greb som undertypen, der
+            kun tegnes når typen HAR nogen.
+            ⚠ OG DEN ER PÅKRÆVET DÉR. Uden datoen kan kalenderen ikke tegne
+            "ude af drift" som andet end et flag; planchen har den som en blok,
+            og en blok kræver et startpunkt. Reglen kræver den på STATUS-feltet,
+            så en skrivning uden den bliver afvist. */}
+        {f.status === "udeAfDrift" && (
+          <Felt id="k-uad" label="Ude af drift siden" type="date" kraevet
+                vaerdi={f.udeAfDriftIso} saet={saet("udeAfDriftIso")}
+                fejl={vis("udeAfDriftFra", "udeAfDriftIso")}
+                max={iDagIso()}
+                hint="Hvornår gik den i stykker? Kan ikke ligge i fremtiden — det er
+                      en observation, ikke en plan. Kassen kan ikke loves væk så
+                      længe den står sådan." />
+        )}
 
         {/* ⚠ MÅL, IKKE m² OG m³. Planchen har volumen som to indtastede felter;
             to tal om den samme fysiske kasse kan blive uenige. Målene kan de

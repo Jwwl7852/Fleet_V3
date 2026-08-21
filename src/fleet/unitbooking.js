@@ -269,6 +269,32 @@ export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] 
   if (!post.type?.trim()) f.type = "Vælg en kassetype.";
   else if (typer.length && !typer.includes(post.type)) f.type = "Ukendt kassetype.";
 
+  /* ⚠ EN KASSE DER ER UDE AF DRIFT, SKAL HAVE EN DATO — og reglen siger det
+     samme, på STATUS-feltet. Uden datoen kan kalenderen ikke tegne "ude af
+     drift" som andet end et flag: planchen har den som en BLOK på kassens
+     række, og en blok kræver et startpunkt.
+
+     ⚠ OG DEN ER KUN PÅKRÆVET DÉR. En kasse der er ledig, har ingen
+     ude-af-drift-dato — et felt der altid skulle udfyldes, ville blive fyldt
+     med i dag på hver eneste kasse og gøre tallet ubrugeligt.
+
+     ⚠ DATOEN ÆNDRER IKKE HVAD DER ER LEDIGT. `ledigeKasser()` og
+     `kasseudlaanskriv` afviser på status NU, ikke på en periode — se noten
+     ved ledigeKasser(). En forventet reparationsdato er en FORVENTNING, og at
+     love en kasse væk på den er at love et museum en kasse der måske stadig er
+     i stykker. Datoen er dokumentation, ikke en planlægningsnøgle. */
+  if (post.status === "udeAfDrift") {
+    if (!Number.isFinite(post.udeAfDriftFra)) {
+      f.udeAfDriftFra = "Hvornår gik kassen i stykker? Uden datoen kan den ikke tegnes på kalenderen.";
+    } else if (post.udeAfDriftFra > Date.now()) {
+      /* ⚠ EN OBSERVATION LIGGER I FORTIDEN. Man kan opdage i dag at kassen gik
+         i stykker i fredags — men ikke at den går i stykker i næste uge. En
+         fremtidig dato ville være en planlagt nedetid, og det er noget andet
+         end en skade; se 6.24. */
+      f.udeAfDriftFra = "Datoen kan ikke ligge i fremtiden — det er en observation, ikke en plan.";
+    }
+  }
+
   /* ⚠ UNDERTYPEN SKAL HØRE TIL KASSENS EGEN TYPE — og reglen siger det samme.
      Uden det led kunne en alukasse bære en trækasses undertype, og filtret
      "Alukasse + Stor" ville vise en kasse der hverken var det ene eller det
@@ -818,6 +844,12 @@ export const UDLAAN_ART = {
   klargoering: { art: "klargoering", label: "Klargøring", pill: "warn" },
   udlaan:      { art: "udlaan",      label: "Udlån",      pill: "info" },
   returnering: { art: "returnering", label: "Returnering", pill: "ok" },
+  /* ⚠ DEN FJERDE KOMMER IKKE FRA ET UDLÅN. De tre ovenfor er faser i ÉN
+     reservation;  er en kendsgerning om KASSEN, og den har
+     hverken sagsnummer eller kunde. Den står her alligevel, fordi den tegnes i
+     det samme gitter og hører i den samme signaturforklaring — planchen har
+     fem farver. Se udeAfDriftBlok(). */
+  udeAfDrift:  { art: "udeAfDrift",  label: "Ude af drift", pill: "bad" },
 };
 
 export const ALLE_UDLAAN_ARTER = Object.keys(UDLAAN_ART);
@@ -901,4 +933,35 @@ export function returneresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_V
     bagud: poster.filter((u) => u.til < nu),
     poster,
   };
+}
+
+/**
+ * udeAfDriftBlok(kasse, vindueTil) → { art, fra, til } | null
+ *
+ * Kassens ude-af-drift-periode, som en blok på dens egen række.
+ *
+ * ⚠ DEN ER ÅBEN I DEN ENE ENDE, OG DET ER MED VILJE. En kasse er ude af drift
+ * indtil nogen har repareret den, og hvornår det sker, ved vi ikke. Der er
+ * derfor ingen `udeAfDriftTil`: et forventet reparationstidspunkt ville være
+ * et gæt, og et gæt der tegnes som en kant, læses som en aftale.
+ *
+ * Blokken løber derfor til vinduets ende, og gitteret giver den sin **pil** —
+ * samme mekanik som en værkstedsblok der rækker ud over perioden.
+ *
+ * ⚠ OG DET ER DEN SIKRE RETNING AT TAGE FEJL I. Sluttede blokken et sted, ville
+ * kalenderen vise kassen som **fri** efter den dato — og nogen ville planlægge
+ * et udlån på en kasse der stadig er i stykker. Reglen for returneringen var
+ * den modsatte: dér måtte vi ikke vise noget optaget som reglerne kalder frit.
+ * Her er faren omvendt, og derfor er svaret det også.
+ *
+ * ⚠ STATUS ER SANDHEDEN, IKKE DATOEN. Er kassen ikke `udeAfDrift` NU, er der
+ * ingen blok — også selv om feltet står tilbage fra sidste gang den var i
+ * stykker. Datoen siger hvornår det begyndte; statussen siger om det stadig
+ * gælder.
+ */
+export function udeAfDriftBlok(kasse = {}, vindueTil) {
+  if (kasse.status !== "udeAfDrift") return null;
+  if (!Number.isFinite(kasse.udeAfDriftFra) || !Number.isFinite(vindueTil)) return null;
+  if (kasse.udeAfDriftFra >= vindueTil) return null;
+  return { art: "udeAfDrift", fra: kasse.udeAfDriftFra, til: vindueTil };
 }

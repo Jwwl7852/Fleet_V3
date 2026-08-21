@@ -119,10 +119,25 @@ describe("kassens status: klienten sætter kun det den kan se", () => {
   it("accepterer de to selvvalgte", async () => {
     const db = som("lager-2");
     for (const status of SELVVALGT_KASSE_STATUS) {
+      /* ⚠ udeAfDrift KRÆVER SIN DATO. Kravet står på STATUS-feltet, ikke på
+         datoen: en `.validate` på et felt der ikke skrives, køres aldrig, så
+         en post uden datoen ville slippe igennem. Se 6.24. */
+      const ekstra = status === "udeAfDrift"
+        ? { udeAfDriftFra: 1700000000000 } : {};
       await assertSucceeds(set(ref(db, t(`kasser/MDT-92${
         SELVVALGT_KASSE_STATUS.indexOf(status)}`)),
-        kasse({ status, pladsId: "p1" })));
+        kasse({ status, pladsId: "p1", ...ekstra })));
     }
+  });
+
+  it("⚠ NÆGTER udeAfDrift UDEN EN DATO", async () => {
+    /* Uden datoen kan kalenderen ikke tegne blokken, og "ude af drift" er
+       tilbage til at være et flag. Kravet HÅNDHÆVES — det står ikke kun i
+       valideKasse(), som pladsId-leddet gjorde indtil en prøve fandt det to
+       etaper senere. */
+    const db = som("lager-2");
+    await assertFails(set(ref(db, t("kasser/MDT-930")),
+      kasse({ status: "udeAfDrift", pladsId: "p1" })));
   });
 
   it("nægter klargjort og udlaant på en NY kasse", async () => {

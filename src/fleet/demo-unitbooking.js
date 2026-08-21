@@ -42,6 +42,14 @@ export const DEMO_KASSETYPER = [
  * det var netop prototypens fejl at skrive "Udlånt hos kunde" som plads.
  * Sættet er valgt så begge tilfælde kan ses på skærmen.
  */
+/* Tidspunkter som tal, som alle andre Ms-felter.
+   ⚠ DEN STOD UNDER DEMO_KASSER, OG SAA KUNNE MODULET IKKE INDLAESES. MDT-108
+   fik en udeAfDriftFra, og et `const` der bruges FOER sin egen linje, er i
+   sin temporale doedzone: "Cannot access D before initialization". Praecis
+   den faelde staar skrevet ned i demo-vaerksted.js ved SAGEN — dér gjaldt den
+   en .map() laengere oppe. Her var det et array-literal. */
+const D = (a, m, d) => Date.UTC(a, m - 1, d);
+
 export const DEMO_KASSER = [
   { id: "MDT-101", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h10-1" },
   { id: "MDT-102", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "AL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r2-f1-h10-1", pladsId: "p-h1-r2-f1-h10-1" },
@@ -54,16 +62,18 @@ export const DEMO_KASSER = [
   { id: "MDT-106", laengdeMm: 1400, breddeMm: 900, hoejdeMm: 1000, type: "TR", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   { id: "MDT-107", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "KL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   {
+    /* ⚠ DEN ENESTE UDE AF DRIFT — og nu med en dato. Uden den kan
+       kalenderen ikke tegne den roede blok, og reglen afviser posten:
+       kravet staar paa STATUS-feltet, saa en skrivning uden datoen bliver
+       stoppet. Se 6.24. */
     id: "MDT-108", type: "KL", status: "udeAfDrift", hjemPladsId: "p-h1-r1-f1-h6-1",
+    udeAfDriftFra: D(2026, 7, 3),
     pladsId: "p-h1-r1-f1-h6-1",
     note: "Fugtbuffer utæt efter transport. Afventer reparation.",
   },
   { id: "MDT-201", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-1", pladsId: "p-h2-r1-f2-h3-1" },
   { id: "MDT-202", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-2", pladsId: "p-h2-r1-f2-h3-2" },
 ];
-
-/* Tidspunkter som tal, som alle andre Ms-felter. */
-const D = (a, m, d) => Date.UTC(a, m - 1, d);
 
 export const DEMO_KASSEUDLAAN = [
   {

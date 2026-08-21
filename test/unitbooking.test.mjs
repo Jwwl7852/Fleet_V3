@@ -18,7 +18,7 @@ import {
   dageUde, historikForKasse, sagsoversigt,
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
   sagsblokke, sagstilstand, SAGSTILSTAND_RANG, SKIFTELABEL,
-  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER, returneresSnart,
+  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER, returneresSnart, udeAfDriftBlok,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -1460,7 +1460,13 @@ describe("udlaansblokke", () => {
       assert.ok(UDLAAN_ART[a]?.label, `"${a}" har ingen etiket`);
       assert.ok(UDLAAN_ART[a]?.pill, `"${a}" har ingen tone`);
     }
-    assert.deepEqual(ALLE_UDLAAN_ARTER, ["klargoering", "udlaan", "returnering"]);
+    /* ⚠ DEN FJERDE KOMMER IKKE FRA ET UDLAAN. De tre foerste er faser i én
+       reservation; udeAfDrift er en kendsgerning om KASSEN, uden sagsnummer
+       og uden kunde. Den staar i samme katalog fordi den tegnes i samme
+       gitter og hoerer i samme signaturforklaring — planchen har fem farver,
+       og den femte (Inaktiv) er ikke en blokart. Se 6.21 og 6.24. */
+    assert.deepEqual(ALLE_UDLAAN_ARTER,
+      ["klargoering", "udlaan", "returnering", "udeAfDrift"]);
   });
 });
 
@@ -1687,5 +1693,103 @@ describe("kalenderens rækker", () => {
     const s = readFileSync(
       new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
     assert.match(s, /x\.fra <= nu && nu <= x\.til/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UDE AF DRIFT SOM BLOK — planchens femte farve, minus den ene
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("udeAfDriftBlok", () => {
+  const D = (a, m, d) => Date.UTC(a, m - 1, d);
+  const VT = D(2026, 9, 1);
+
+  it("⚠ DEN ER ÅBEN I DEN ENE ENDE", () => {
+    /* En kasse er ude af drift indtil nogen har repareret den, og hvornaar det
+       sker, ved vi ikke. Der er derfor ingen udeAfDriftTil: et forventet
+       reparationstidspunkt ville vaere et gaet, og et gaet der tegnes som en
+       kant, laeses som en aftale. Blokken loeber til vinduets ende og faar
+       gitterets PIL. */
+    const b = udeAfDriftBlok({ status: "udeAfDrift", udeAfDriftFra: D(2026, 8, 3) }, VT);
+    assert.equal(b.fra, D(2026, 8, 3));
+    assert.equal(b.til, VT);
+  });
+
+  it("⚠ OG DET ER DEN SIKRE RETNING AT TAGE FEJL I", () => {
+    /* Sluttede blokken et sted, ville kalenderen vise kassen som FRI efter den
+       dato — og nogen ville planlaegge et udlaan paa en kasse der stadig er i
+       stykker. Reglen for returneringen var den MODSATTE: dér maatte vi ikke
+       vise noget optaget som reglerne kalder frit. Her er faren omvendt. */
+    const b = udeAfDriftBlok({ status: "udeAfDrift", udeAfDriftFra: 1 }, VT);
+    assert.equal(b.til, VT, "blokken slutter før vinduet og viser kassen som fri");
+  });
+
+  it("⚠ STATUS ER SANDHEDEN, IKKE DATOEN", () => {
+    /* Er kassen ikke udeAfDrift NU, er der ingen blok — ogsaa selv om feltet
+       staar tilbage fra sidste gang den var i stykker. */
+    assert.equal(udeAfDriftBlok({ status: "ledig", udeAfDriftFra: 1 }, VT), null);
+    assert.equal(udeAfDriftBlok({ status: "udlaant", udeAfDriftFra: 1 }, VT), null);
+  });
+
+  it("uden dato er der ingen blok", () => {
+    assert.equal(udeAfDriftBlok({ status: "udeAfDrift" }, VT), null);
+  });
+
+  it("begynder den efter vinduet, tegnes den ikke", () => {
+    assert.equal(udeAfDriftBlok({ status: "udeAfDrift", udeAfDriftFra: VT + 1 }, VT), null);
+  });
+});
+
+describe("udeAfDriftFra på kassen", () => {
+  const grund = { id: "MDT-901", type: "AL", hjemPladsId: "p1", pladsId: "p1" };
+
+  it("⚠ PÅKRÆVET NÅR STATUS ER udeAfDrift", () => {
+    const f = valideKasse({ ...grund, status: "udeAfDrift" }, {});
+    assert.match(f.udeAfDriftFra, /Hvornår gik kassen i stykker/);
+  });
+
+  it("⚠ OG KUN DÉR", () => {
+    /* Et felt der altid skulle udfyldes, ville blive fyldt med "i dag" paa
+       hver eneste kasse og goere tallet ubrugeligt. */
+    assert.equal(valideKasse({ ...grund, status: "ledig" }, {}).udeAfDriftFra, undefined);
+  });
+
+  it("⚠ EN OBSERVATION LIGGER I FORTIDEN", () => {
+    /* Man kan opdage i dag at kassen gik i stykker i fredags — men ikke at den
+       gaar i stykker i naeste uge. En fremtidig dato ville vaere PLANLAGT
+       nedetid, og det er noget andet end en skade. */
+    const f = valideKasse(
+      { ...grund, status: "udeAfDrift", udeAfDriftFra: Date.now() + 86400000 }, {});
+    assert.match(f.udeAfDriftFra, /ikke ligge i fremtiden/);
+  });
+
+  it("en gyldig dato går igennem", () => {
+    const f = valideKasse(
+      { ...grund, status: "udeAfDrift", udeAfDriftFra: Date.now() - 86400000 }, {});
+    assert.equal(f.udeAfDriftFra, undefined);
+  });
+
+  it("⚠ OG DATOEN ÆNDRER IKKE HVAD DER ER LEDIGT", () => {
+    /* ledigeKasser() og kasseudlaanskriv afviser paa status NU, ikke paa en
+       periode — og det bliver staaende. En forventet reparationsdato er en
+       FORVENTNING, og at love en kasse vaek paa den er at love et museum en
+       kasse der maaske stadig er i stykker. */
+    const kilde = readFileSync(
+      new URL("../src/fleet/unitbooking.js", import.meta.url), "utf8");
+    const blok = kilde.slice(kilde.indexOf("export function ledigeKasser"));
+    assert.match(blok.slice(0, 600), /k\.status === "udeAfDrift"/);
+    assert.ok(!/udeAfDriftFra/.test(blok.slice(0, 600)),
+      "ledigeKasser er begyndt at regne på perioden");
+
+    const fn = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+    assert.match(fn, /kasse\.status === "udeAfDrift"/);
+  });
+
+  it("⚠ OG DEMO-SÆTTET HAR DEN — ellers kunne posten ikke gemmes", () => {
+    for (const k of DEMO_KASSER) {
+      if (k.status !== "udeAfDrift") continue;
+      assert.ok(Number.isFinite(k.udeAfDriftFra),
+        `${k.id} er ude af drift uden en dato — reglen ville afvise den`);
+    }
   });
 });

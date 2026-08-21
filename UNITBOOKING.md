@@ -1025,7 +1025,8 @@ Otte ting mere, som ikke stod i beskrivelsen:
 | **Kalendervisning Dag / Uge / Måned** — kolonnens *granularitet* | Ikke bygget. 6.13 byggede *intervallet*, som er noget andet |
 | **Filtre**-knap | Ikke bygget |
 | **"Nu"-markør** som mærket linje | Bygget — se 6.20 |
-| **Ude af drift** og **Inaktiv** som blokarter | Ikke bygget — signaturforklaringen har fem farver, vi har tre |
+| **Ude af drift** som blokart | Bygget — se 6.24 |
+| **Inaktiv** som blokart | Ikke bygget — se 6.21; det er et valg om hvad rækkerne er |
 | Klik-kortets **Rediger / Annuller booking** | Bygget — se 6.22 |
 | "Sidst opdateret" + **Opdater** | Bygget — se 6.22 |
 | Sag under kasse-id, **TYPE** som egen kolonne | Sagen er bygget; typen deler linje — se 6.23 |
@@ -1190,3 +1191,75 @@ er. Gav vi kun tallet, ville skærmen selv skulle filtrere `poster` på `< nu`
 igen — og så står prædikatet to steder alligevel. Og gav den ene et tal og den
 anden en liste, skulle en kalder huske hvilken der var hvilken; det er den
 slags forskel der overlever forkert.
+
+### 6.24 `udeAfDriftFra` — datoen der gør "ude af drift" til en blok
+
+6.21 skrev at planchens femte farve ikke kunne tegnes: *"`udeAfDrift` er en
+kassestatus, ikke et udlån — og `KASSE_STATUS` bærer ingen datoer."* Feltet er
+nu der, og blokken tegnes.
+
+⚠ **KRAVET STÅR PÅ `status`, IKKE PÅ DATOEN.** En `.validate` på et felt der
+**ikke skrives**, køres aldrig — skrev nogen bare `status: "udeAfDrift"` uden
+datoen, ville feltets egen regel ikke blive spurgt, og posten ville slippe
+igennem. Statussen skrives altid, så kravet skal stå dér. Det er samme greb som
+`pladsId`-leddet, hvor sidste led stod **kun** i `valideKasse()` og først blev
+fundet to etaper senere af en prøve.
+
+⚠ **DER ER INGEN `udeAfDriftTil`, OG DET ER EN BESLUTNING.** Planchen tegner en
+**bounded** rød blok. En kasse er ude af drift indtil nogen har repareret den,
+og hvornår det sker, ved vi ikke. Et forventet reparationstidspunkt ville være
+et gæt — og et gæt der tegnes som en kant, læses som en aftale.
+
+Blokken løber derfor til vinduets ende og får gitterets **pil**.
+
+⚠ **OG DET ER DEN SIKRE RETNING AT TAGE FEJL I.** Sluttede blokken et sted,
+ville kalenderen vise kassen som **fri** efter den dato — og nogen ville
+planlægge et udlån på en kasse der stadig er i stykker. Reglen for
+returneringen (6.19) var den **modsatte**: dér måtte vi ikke vise noget optaget
+som reglerne kalder frit. Her er faren omvendt, og derfor er svaret det også.
+
+⚠ **DATOEN ÆNDRER IKKE HVAD DER ER LEDIGT.** `ledigeKasser()` og
+`kasseudlaanskriv` afviser på **status nu**, ikke på en periode — og det bliver
+stående. To grunde:
+
+1. **De to skal blive ved med at være enige.** Gjorde klienten sin søgning
+   periodebaseret, ville skærmen tilbyde en kasse serveren stadig afviser. Det
+   er den fejlklasse dette repo navngiver oftest.
+2. **En reparationsdato er en forventning.** At love en kasse væk på den er at
+   love et museum en kasse der måske stadig er i stykker.
+
+Datoen er **dokumentation**, ikke en planlægningsnøgle. En prøve holder det:
+den fejler hvis `ledigeKasser()` begynder at nævne feltet.
+
+⚠ **EN OBSERVATION LIGGER I FORTIDEN.** Man kan opdage i dag at kassen gik i
+stykker i fredags — men ikke at den går i stykker i næste uge. En fremtidig dato
+ville være **planlagt nedetid**, og det er noget andet end en skade. Det er
+derfor datoen kan **bagdateres** og ikke sættes af serveren: modsat
+`udleveretMs` og `returneretMs`, som er målinger i en tilstandsmaskine serveren
+ejer, er det her et menneskes iagttagelse.
+
+⚠ **OG STATUS ER SANDHEDEN, IKKE DATOEN.** Er kassen ikke `udeAfDrift` nu, er
+der ingen blok — også selv om feltet står tilbage fra sidste gang. Formularen
+**rydder** feltet når kassen bliver ledig igen; blev det stående, ville
+kalenderen tegne en rød blok på en kasse der virker.
+
+#### To ting der skulle rettes med det samme
+
+⚠ **DEN UDRULLEDE MDT-108 BLEV UGYLDIG I DET ØJEBLIK REGLEN KOM.** Målt før:
+**én** kasse ude af drift i hele basen, og den havde ingen dato. Læsning virkede
+stadig, men enhver fremtidig rettelse af posten ville være blevet afvist — af et
+felt ingen rørte. Den er efterudfyldt fra demo-sættet, som er kilden til netop
+den post. ⚠ Og datoen blev **ikke gættet**: fandtes kassen ikke i sættet, blev
+den sprunget over og rapporteret.
+
+⚠ **OG DEMO-FILEN KUNNE IKKE INDLÆSES.** `D()` — hjælperen der laver datoerne —
+stod **under** `DEMO_KASSER`, og MDT-108 bruger den nu. Et `const` der bruges før
+sin egen linje, er i sin **temporale dødzone**: *"Cannot access 'D' before
+initialization"*. Præcis den fælde står allerede beskrevet i `demo-vaerksted.js`
+ved `SAGEN`, hvor den gjaldt en `.map()` længere oppe. Her var det et
+array-literal. Hjælperen er flyttet op.
+
+⚠ **Og formularens `vis()` fik det led den manglede** — tredje gang. Fejlnøglen
+hedder `udeAfDriftFra`, feltet `udeAfDriftIso`, og uden det ekstra led ville
+fejlen aldrig blive vist. Den fælde står skrevet ned i `Planlaegdialog.jsx`;
+`Udlaan.jsx` fik den i 6.12, og `Kasser.jsx` havde stadig den enkle udgave.

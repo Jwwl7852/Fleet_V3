@@ -1969,7 +1969,15 @@
             // uden om udlaanet, mens udlaanet stadig siger at museet har den.
             // Foerste led lader en uaendret status blive staaende, saa man kan
             // rette note eller type paa en kasse der er ude.
-            "status": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(ledig|udeAfDrift)$/) && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/))))" },
+            // ⚠ SIDSTE LED: EN KASSE DER ER UDE AF DRIFT, SKAL HAVE EN DATO.
+            // Kravet staar HER og ikke paa udeAfDriftFra, fordi en `.validate`
+            // paa et felt der ikke skrives, aldrig koeres: skrev nogen bare
+            // status: "udeAfDrift" uden datoen, ville feltets egen regel ikke
+            // blive spurgt, og posten ville slippe igennem. Statussen skrives
+            // altid, saa kravet skal staa dér.
+            // newData.parent() er postens tilstand EFTER skrivningen — samme
+            // greb som paa undertypen og paa kasseudlaanets klargoerSenest.
+            "status": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(ledig|udeAfDrift)$/) && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/)))) && (newData.val() !== 'udeAfDrift' || newData.parent().child('udeAfDriftFra').isNumber())" },
             "hjemPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
             // Den nuvaerende plads. ⚠ FRAVAERENDE naar kassen er udlaant —
             // en kasse hos kunden optager ikke en hylde. Prototypen skrev
@@ -1979,6 +1987,24 @@
             // findes i frontend, er ikke adgangskontrol — den blev fundet af
             // en proeve i etape 4, to etaper efter den blev skrevet.
             "pladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists() && newData.parent().child('status').val() !== 'udlaant'" },
+            // ⚠ HVORNAAR GIK DEN I STYKKER. Uden datoen kan kalenderen ikke
+            // tegne "ude af drift" som andet end et flag: planchen har den som
+            // en BLOK paa kassens raekke, og en blok kraever et startpunkt.
+            //
+            // ⚠ PAAKRAEVET NAAR STATUS ER udeAfDrift, og kun dér. Krydsfeltet
+            // staar paa STATUS frem for her, fordi en `.validate` paa et felt
+            // der ikke skrives, aldrig koeres — en post hvor feltet manglede,
+            // ville slippe igennem. Samme greb som pladsId-leddet ovenfor, hvor
+            // sidste led stod KUN i valideKasse() og blev fundet to etaper
+            // senere af en proeve.
+            //
+            // ⚠ OG DEN AENDRER IKKE HVAD DER ER LEDIGT. `ledigeKasser()` og
+            // `kasseudlaanskriv` afviser paa status NU, ikke paa en periode —
+            // og det bliver staaende. En forventet reparationsdato er en
+            // FORVENTNING, og at love en kasse vaek paa den er at love et
+            // museum en kasse der maaske stadig er i stykker. Datoen er
+            // dokumentation, ikke en planlaegningsnoegle. Se UNITBOOKING 6.24.
+            "udeAfDriftFra": { ".validate": "newData.isNumber()" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
             "$andet": { ".validate": false }
           }
