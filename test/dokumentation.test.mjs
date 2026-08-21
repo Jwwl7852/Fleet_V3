@@ -120,3 +120,108 @@ describe("README's liste over noder uden regler", () => {
     }
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PÅSTANDE DER VAR SANDE ÉN GANG
+
+   ⚠ HVORFOR AFSNITTET FINDES. `CLAUDE.md` læses ind i hver eneste session, og
+   den sagde to ting der var omgjort:
+
+     "Rollerne er faste."
+     "Der er ingen `roller/`-node at rette i."
+
+   Begge blev afgjort af **beslutning 31**, og **31b omgjorde dem**. Noden står
+   i regelfilen, kunden må redigere sine roller, og `rolleskriv` minter claims
+   i samme ombæring. README sagde oven i købet at noden var *fjernet*, og
+   ARKITEKTUR.md at den Cloud Function der skifter en etapes tilstand, "ikke
+   findes" — den hedder `etapeskift` og har gjort det længe.
+
+   En forkert instruktion er værre end ingen: den næste der læser den, lader
+   være med at bygge noget der er bygget, eller siger nej til noget der er
+   besluttet ja til.
+
+   ⚠ LISTEN ER IKKE EN ORDLISTE. Hver række har en LEVENDE betingelse: forbuddet
+   gælder kun så længe koden modsiger sætningen. Fjernes `rolleskriv` og noden
+   igen, må sætningen komme tilbage — og så er prøven grøn af den rigtige grund.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const FUNKTIONER = readFileSync("functions/index.js", "utf8");
+const PERMISSIONS = readFileSync("src/fleet/permissions.js", "utf8");
+
+const findesNode = (sti) => {
+  let n = REGLER.tenants?.$tenantId;
+  for (const del of sti.split("/")) { n = n?.[del]; if (!n) return false; }
+  return true;
+};
+const findesFunktion = (navn) => FUNKTIONER.includes(`export const ${navn} =`);
+
+const FORAELDEDE = [
+  {
+    fil: "CLAUDE.md",
+    tekst: "Der er ingen `roller/`-node at rette i",
+    saaLaenge: () => findesNode("roller") && findesFunktion("rolleskriv"),
+    hvorfor: "beslutning 31b: noden findes, og rolleskriv skriver den",
+  },
+  {
+    fil: "CLAUDE.md",
+    tekst: "**Rollerne er faste.**",
+    saaLaenge: () => findesFunktion("rolleskriv"),
+    hvorfor: "beslutning 31b: kunden må redigere hvad en rolle indeholder",
+  },
+  {
+    fil: "README.md",
+    tekst: "Noden `roller/` lå tom og `.write: false` i månedsvis og er nu",
+    saaLaenge: () => findesNode("roller"),
+    hvorfor: "noden er ikke fjernet — den står i firebase.rules.json",
+  },
+  {
+    fil: "ARKITEKTUR.md",
+    tekst: "med reservationen i en Cloud Function der ikke findes",
+    saaLaenge: () => findesFunktion("etapeskift"),
+    hvorfor: "etapeskift skifter tilstanden og skriver reservationen atomisk",
+  },
+  {
+    fil: "ARKITEKTUR.md",
+    tekst: "idébanken",
+    saaLaenge: () => !PERMISSIONS.includes("idebank") && !findesNode("idebank"),
+    hvorfor: "beslutning 22, udført i 31: rute, skærm, permission og node er væk",
+  },
+];
+
+describe("Påstande der var sande én gang", () => {
+  it("⚠ INGEN AF DEM STÅR I DOKUMENTATIONEN LÆNGERE", () => {
+    const staar = [];
+    for (const f of FORAELDEDE) {
+      if (!f.saaLaenge()) continue;
+      const fil = readFileSync(f.fil, "utf8");
+      if (fil.includes(f.tekst)) staar.push(`${f.fil}: "${f.tekst}" — ${f.hvorfor}`);
+    }
+    assert.deepEqual(staar, [],
+      "dokumentationen påstår noget koden modsiger. En forkert instruktion er "
+      + "værre end ingen — den næste lader være med at bygge noget der er bygget.");
+  });
+
+  /**
+   * ⚠ OG DEN GENERELLE UDGAVE: siger et dokument at en node er `.write: false`,
+   * skal den være det. Det er den påstand der oftest står i disse filer, og den
+   * er mekanisk kontrollerbar — modsat "rollerne er faste", som kræver en
+   * beslutning at afgøre.
+   */
+  it("⚠ EN NODE DER OMTALES SOM .write: false, ER DET", () => {
+    const forkerte = [];
+    for (const navn of ["README.md", "CLAUDE.md", "ARKITEKTUR.md"]) {
+      const fil = readFileSync(navn, "utf8");
+      for (const m of fil.matchAll(/`(\w+)` (?:er|og) `?\.write: false`?/g)) {
+        const node = m[1];
+        const n = REGLER.tenants?.$tenantId?.[node];
+        if (!n) continue;                       // ikke en tenant-node
+        const barn = Object.keys(n).find((k) => k.startsWith("$"));
+        const lukket = n[".write"] === false
+          || (barn && n[barn][".write"] === false);
+        if (!lukket) forkerte.push(`${navn}: "${node}" omtales som .write:false`);
+      }
+    }
+    assert.deepEqual(forkerte, [],
+      "en node omtales som lukket, men reglen tillader skrivning.");
+  });
+});

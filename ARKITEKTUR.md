@@ -268,16 +268,21 @@ Den Cloud Function der udsteder claims, læser `roller/`, og en ændring træder
 i kraft ved næste token-fornyelse — eller straks med `revokeRefreshTokens`,
 som allerede er påkrævet ved rolleskift.
 
-**`roller/` er `.write: false` indtil den funktion findes**, og det er med
-vilje hårdt frem for dokumenteret. Kunne man redigere en rolle nu, ville
-claim'et ikke blive opdateret: man ville tro, man havde fjernet en permission,
-som stadig virkede. Det er den værste fejltilstand af alle, for den ser ud som
-om den lykkedes. En fejl er bedre end tavshed. Der er en test der fastholder
-det.
+**`roller/` er `.write: false` — og bliver det.** Her stod "indtil den
+funktion findes". Den findes: `rolleskriv` (beslutning 31b). Grunden er derfor
+ikke længere at vente på noget, men den samme som på `opgaver` og
+`kasseudlaan`: det er **vejen** der er lukket, ikke retten. Funktionen skriver
+noden, minter claims og tilbagekalder tokens i én ombæring.
+
+⚠ **Og det er præcis dét den lukkede vej findes for.** Kunne en klient skrive
+noden direkte, ville claim'et ikke følge med: man ville tro, man havde fjernet
+en permission, som stadig virkede. Det er den værste fejltilstand af alle, for
+den ser ud som om den lykkedes. En fejl er bedre end tavshed. Der er en test
+der fastholder det.
 
 | Rolle | Kort sagt |
 |---|---|
-| `chauffoer` | Egne indberetninger, idébanken |
+| `chauffoer` | Egne indberetninger |
 | `casehandler` | Dataskrivning + opretter bookinger |
 | `disponent` | Samme + køretøjer, foreslår, afviser, udfører |
 | `koordinator` | Samme + **godkender**, returnerer, annullerer |
@@ -287,12 +292,20 @@ Disponenten har **ikke** `booking.godkend`. Beslutning 5 er nu et felt der
 mangler i en liste frem for en kommentar om hvem der ikke står der — og der er
 en test der fastholder det.
 
-**Bookingflowets permissions håndhæves endnu ikke i reglerne.** `bookinger` og
-`etaper` er `.write: false`, fordi tilstandsskiftet skal ske atomisk sammen
-med reservationen i en Cloud Function der ikke findes. Serveren afviser altså
-alle — strengere end nogen permission, men ikke granulært. Der er en test der
-fastholder `.write: false`, så ingen åbner noden uden at opdage at
-`booking.godkend` så ikke bliver tjekket af nogen.
+**Bookingflowets permissions håndhæves i `etapeskift`, ikke i reglerne.**
+`bookinger` og `etaper` er `.write: false`, fordi tilstandsskiftet skal ske
+atomisk sammen med reservationen. Her stod at funktionen "ikke findes" — den
+findes: `etapeskift` skifter etapens tilstand, prøver rolletjekket og skriver
+reservationen i én opdatering, og bookingens tilstand er **afledt** af
+etapernes (beslutning 40). Der er ingen `bookingskift`, og der skal ikke være
+en: to veje til ét felt.
+
+Noderne bliver `.write: false` — det er **vejen** der er lukket, ikke retten,
+som på `opgaver` (45) og `kasseudlaan` (37). Serveren afviser alle direkte
+skrivninger, hvilket er strengere end nogen permission, men ikke granulært;
+granulariteten ligger i funktionen. Der er en test der fastholder
+`.write: false`, så ingen åbner noden uden at opdage at `booking.godkend` så
+ikke bliver tjekket af nogen.
 
 ## Delvis afsløring lækker gennem udeladelsen
 
@@ -684,8 +697,11 @@ udfyldes ved at kigge på vores eget organisationsdiagram, er den forbudt.
   fordi noden er delt (beslutning 9), men med samme værdi.
 - **`opgaver`, `indberetninger` og `etaper` kræver stadig division.** De er
   transaktioner. Men værdien kan ikke længere kopieres fra køretøjet, og
-  skriveren skal sætte den selv. Det hører i den Cloud Function der endnu ikke
-  er skrevet; indtil da er `etaper` alligevel `.write: false`.
+  skriveren skal sætte den selv. ⚠ Her stod "det hører i den Cloud Function der
+  endnu ikke er skrevet" — funktionerne findes nu: `etapeskift`,
+  `opgaveplanlaeg` og `facilityplanlaeg` kræver alle feltet og gætter det
+  ikke. `indberetninger` skrives stadig direkte af klienten, og dér er det
+  reglens `.validate` der holder det.
 - `.indexOn` mistede `division` på begge noder. Intet forespurgte på den.
 
 ### Det åbne spørgsmål

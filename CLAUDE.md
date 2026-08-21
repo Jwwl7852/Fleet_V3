@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **53 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **54 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -132,9 +132,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Det er ikke et forbud der gælder i produktion; det er en **umulighed** der
   gælder overalt hvor der er en server. Overstyringen i `effektivBruger` er
   derfor kun meningsfuld i **demo**, hvor der ingen server er at være uenig
-  med. Skal en rigtig bruger have anden adgang, tildeles en anden af de syv faste
-  roller med `skiftrolle`, som minter claim'et fra `ROLLE_PERMS` og kalder
-  `revokeRefreshTokens`. Der er ingen `roller/`-node at rette i.
+  med. Skal en rigtig bruger have anden adgang, tildeles en anden af de syv
+  roller med `skiftrolle`, som minter claim'et og kalder
+  `revokeRefreshTokens`.
+  ⚠ **Og claim'et mintes fra TENANTENS EGEN rolle, ikke fra konstanten.**
+  Her stod "fra `ROLLE_PERMS`" og "der er ingen `roller/`-node at rette i" —
+  begge dele blev omgjort af **beslutning 31b**. Noden findes, kunden må
+  redigere sine roller, og `claimForRolle()` læser
+  `tenants/<id>/roller/<rolle>/perms`. `ROLLE_PERMS` er standarden man falder
+  tilbage på når noden mangler, ikke svaret.
   I dev skifter man **session**, ikke visning: `fleet/Brugervaelger.jsx` logger
   ud og ind som en anden seedet DEV-bruger, så perms skifter fordi *tokenet*
   skifter. `rolleskifte` er `miljoe === "demo"` — rør ikke den betingelse.
@@ -598,6 +604,18 @@ kan ikke komme ud af sync.
 - **Idébanken findes ikke længere i kundens installation.** Rute, skærm,
   `idebank.skriv` og `idebank`-noden er fjernet (beslutning 22, udført i 31).
   Genindfør den ikke — den lever som selvstændig `idebank.html`.
-- **Rollerne er faste.** `roller` er `.write: false`, og det skal det blive:
-  en vognmand der fjerner `booking.godkend` fra sin egen adminrolle, har lukket
-  sig ude, og adgangen til at rette det var selv en permission. Se beslutning 31.
+- **Tro at rollerne er faste.** Det var beslutning 31, og **31b omgjorde
+  det**: kunden må redigere hvad en rolle indeholder. De syv NAVNE er stadig
+  faste — man opfinder ikke en ottende.
+  ⚠ `roller` er stadig `.write: false`, men af en ANDEN grund end før: det er
+  **vejen** der er lukket, ikke retten. `rolleskriv` er den ene vej ind, og den
+  minter claims og kalder `revokeRefreshTokens` i samme ombæring — kunne en
+  klient skrive noden direkte, ville node og token stå og være uenige indtil
+  næste mint. Samme ordning som `opgaver` (45) og `kasseudlaan` (37).
+  ⚠ **Og `roller/` er en KILDE, aldrig et HÅNDHÆVELSESPUNKT.**
+  `firebase.rules.json` må aldrig slå op i noden — adgang afgøres udelukkende
+  af `auth.token.perms`, og en prøve falder hvis en regel nævner `roller`.
+  ⚠ **To ting kan ikke lade sig gøre**, og spærringen ligger i funktionen:
+  `brugere.skriv` kan ikke fjernes fra den sidste rolle der har den, og heller
+  ikke fra ens egen. En admin der vil degradere sig selv, skal have en anden
+  admin i huset. Se beslutning 31 og 31b.

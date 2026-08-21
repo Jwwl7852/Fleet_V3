@@ -3285,3 +3285,78 @@ ikke forkerte før; de var skrevet ud fra hvor reglen tilfældigvis lå.
 arver derfor nu sin forælders modul. Alternativet — at skrive hvert af de seks
 facility-børn ind i `NODE_MODUL` — ville have været seks nye steder at glemme
 et.
+
+## 54. `CLAUDE.md` sagde nej til noget der var besluttet ja til
+
+Instruktionsfilen læses ind i **hver eneste session**. Den sagde:
+
+> **Rollerne er faste.** `roller` er `.write: false`, og det skal det blive […]
+> Se beslutning 31.
+
+og, et andet sted:
+
+> Der er ingen `roller/`-node at rette i.
+
+Begge sætninger var rigtige da de blev skrevet. **Beslutning 31b omgjorde
+dem** — kunden bad om at kunne redigere sine roller, og det blev bygget: noden
+står i `firebase.rules.json`, `rolleskriv` skriver den, og
+`claimForRolle()` minter fra `tenants/<id>/roller/<rolle>/perms` med
+`ROLLE_PERMS` som **faldbakke**, ikke som svar.
+
+⚠ **En forkert instruktion er værre end ingen.** Den næste der læser den, lader
+være med at bygge noget der er bygget — eller siger nej til kunden om noget
+der er besluttet ja til. Det er samme skade som en `.validate` der beskriver en
+spærring der ikke håndhæves (52), bare med et menneske som håndhævelsespunkt.
+
+### Fem passager i tre filer
+
+| Fil | Sagde | Virkeligheden |
+|---|---|---|
+| `CLAUDE.md` | "Rollerne er faste" | 31b: kunden redigerer dem |
+| `CLAUDE.md` | "minter fra `ROLLE_PERMS`" og "der er ingen `roller/`-node" | `claimForRolle()` læser noden |
+| `README.md` | "Claim-udstedelse … skal ikke bygges" · "noden er nu **fjernet**" | `rolleskriv` findes; noden står i regelfilen |
+| `README.md` | rollespørgsmålet står som **ikke afgjort** | 31b afgjorde det |
+| `ARKITEKTUR.md` | "`.write: false` **indtil den funktion findes**" | funktionen findes |
+
+Og to til, fundet i samme gennemgang:
+
+| `ARKITEKTUR.md` | tilstandsskiftet venter på "en Cloud Function der ikke findes" | den hedder `etapeskift` |
+| `ARKITEKTUR.md` | chaufførrollen giver adgang til "idébanken" | fjernet i beslutning 22, udført i 31 |
+
+⚠ **Og grunden til at noden er lukket, er en ANDEN nu.** Før: fordi rollerne
+ikke måtte ændres. Nu: fordi det er **vejen** der er lukket, ikke retten —
+`rolleskriv` skriver noden, minter claims og kalder `revokeRefreshTokens` i én
+ombæring. Kunne en klient skrive direkte, ville node og token stå og være
+uenige indtil næste mint: man ville tro man havde fjernet en permission, som
+stadig virkede. Samme ordning som `opgaver` (45) og `kasseudlaan` (37) — og
+den forskel er værd at skrive, for et `.write: false` uden sin begrundelse
+bliver før eller siden læst som "her mangler noget".
+
+### Prøven — og hvorfor den ikke er en ordliste
+
+`test/dokumentation.test.mjs` fik et afsnit til: en tabel over sætninger der
+**ikke må stå**, hver med en **levende betingelse**.
+
+Forbuddet mod *"der er ingen `roller/`-node at rette i"* gælder kun så længe
+noden faktisk findes og `rolleskriv` er der. Fjernes de igen, må sætningen
+komme tilbage — og prøven er grøn af den **rigtige** grund. En ordliste ville
+være det modsatte: en regel om ordvalg, som nogen omgår ved at skrive det samme
+med andre ord.
+
+⚠ **Dertil den generelle udgave.** Siger et dokument at en node er
+`.write: false`, prøves det mod regelfilen. Det er den påstand der oftest står
+i de tre filer — ni steder om fire noder — og den er mekanisk kontrollerbar,
+modsat "rollerne er faste", som kræver en beslutning at afgøre.
+
+### Det mønster der bliver ved med at komme igen
+
+Tre etaper i træk har fundet det samme: **en påstand ingen prøvede.**
+
+- 52: en `.validate` beskrev en write-once der kunne omgås ved at slette først.
+- 53: `CLAUDE.md` sagde "hardslet ikke regnskabsdata" — 17 af 23 noder kunne
+  tømmes i ét kald.
+- 54: instruktionsfilen sagde nej til noget der var besluttet ja til.
+
+Fællestrækket er ikke sjusk. Det er at **dokumentation og regler ældes hver for
+sig**, mens kun koden bliver kørt. Svaret er hver gang det samme: gør påstanden
+kørbar, og lad listen være undtagelsen frem for reglen.
