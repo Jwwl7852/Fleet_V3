@@ -4182,3 +4182,59 @@ der er — og den der skulle svare, får aldrig spørgsmålet.
 
 Det er samme skel som de tre slags null i beslutning 62. Tabellen skriver nu
 **Afgjort** frem for **Ikke bygget**, hvor det er et svar der manglede.
+
+## 66. "Udvid til 2 skærme" var ikke en knap — det var en URL
+
+Planchens sidste ubyggede knap. `UNITBOOKING.md` 6.18 havde allerede skrevet
+hvorfor den ikke bare var et `window.open`:
+
+> *"Det hører sammen med at ruten skal kunne bære sin tilstand i URL'en, så det
+> nye vindue åbner på den samme uge og gruppering."*
+
+⚠ **Et nyt vindue er en ny indlæsning.** Al tilstand i `useState` begynder
+forfra. Uden URL'en ville den anden skærm åbne på standardvinduet — fire uger
+fra i dag, alle kasser, grupperet pr. kasse — mens den første stod på uge 36
+grupperet på sag. **To skærme der viser hver sit er det stik modsatte af hvad
+man beder om, når man siger "udvid".**
+
+Kalenderens visning ligger derfor i URL'en: `uger`, `skub`, `gruppering`, `type`
+og `undertype`. Samme greb som Arbejdskøens `?vis=` og `?frem=` — og det giver
+samtidig et link man kan sende: *"kig på uge 36, grupperet på sag."*
+
+### ⚠ Tre ting ligger IKKE i URL'en, og hver har sin grund
+
+**Tenant, division og periode.** De ligger i `localStorage` via `FleetContext`
+og er derfor allerede de samme i det nye vindue. Lå de begge steder, kunne de
+blive uenige — og så ville et link kunne åbne en anden kundes kalender end den
+man sendte.
+
+**`fuld`.** Den *initialiseres* fra `?fuld=1`, så det nye vindue åbner udfoldet
+— en skærm mere bruges til at se mere, og et vindue der åbnede med sidebar og
+listen nedenunder, ville bruge den anden skærm på det samme som den første. Men
+Escape lukker den, og **et tastetryk skal ikke skrive i adresselinjen**: en
+tilstand der ændrer sig ti gange i minuttet, hører ikke i en URL man kan sende
+videre.
+
+**`arter` (Fremhæv).** Den fremhæver *inde i* rækken og skjuler ingenting. Åbner
+det andet vindue med alle tre, viser det aldrig **mindre** end det første — og
+den retning er den sikre.
+
+### ⚠ `replace: true`, ellers fylder pilene historikken
+
+Hvert klik på en pil ville lægge en post i browserhistorikken. En disponent der
+har bladret ti uger frem og tilbage, skal ikke trykke tilbage ti gange for at
+komme ud af kalenderen.
+
+### ⚠ Og knappen vises ikke i fuldskærm
+
+Fuldskærm er en **flydende visning oven på siden** — den har ikke en anden skærm
+at brede sig til, og et vindue åbnet bag et overlay ser ud som om intet skete.
+De to knapper står derfor ved siden af hinanden i den normale visning, og
+titlen på hver siger hvad den gør: den ene giver kalenderen hele **bredden** af
+den skærm man har, den anden giver den en skærm **mere**.
+
+### Unitbooking mod plancherne
+
+Tilbage er **én** ting, og den venter ikke på kode: mails og fotos i klik-kortet.
+De hører til **beslutning 20**, som er fase 0 — `sager/` står ikke i
+`firebase.rules.json`, og der er hverken modtagevej eller afsendelse.

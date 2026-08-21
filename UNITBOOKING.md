@@ -954,10 +954,9 @@ kunne bære. `npm run test:design` fejlede på den med det samme. Et token er en
 **beslutning** (nr. 10), og en ny skyggeværdi skulle i så fald begrundes i
 BESLUTNINGER.md først. Det var den ikke værd; dialogen bruger den samme.
 
-**"Udvid til 2 skærme" er stadig ikke bygget** — det er en anden ting: at åbne
-kalenderen i et nyt browservindue, som Fleets driftskalender kan
-(`aabnNytVindue`). Det hører sammen med at ruten skal kunne bære sin tilstand i
-URL'en, så det nye vindue åbner på den samme uge og gruppering.
+**"Udvid til 2 skærme" er bygget — se 6.26.** Og forudsætningen her var den
+rigtige: ruten bærer nu sin tilstand i URL'en, så det nye vindue åbner på den
+samme uge, gruppering og filtrering.
 
 ### 6.19 Planchen kom, og den afgjorde tre ting
 
@@ -1338,3 +1337,43 @@ noget — type — frem for at få dem alle sammen med.
 ⚠ **Ude af drift er undtagelsen, og den var der før.** Sådan en kasse har måske
 intet udlån i vinduet, men den har en blok — og en blok uden en række tegnes
 ingen steder. Se 6.24.
+
+### 6.26 "Udvid til 2 skærme" — og hvorfor det var en URL frem for en knap
+
+6.18 skrev forudsætningen: *"ruten skal kunne bære sin tilstand i URL'en, så det
+nye vindue åbner på den samme uge og gruppering."* Den holdt.
+
+⚠ **Et nyt vindue er en ny indlæsning.** Al tilstand i `useState` begynder
+forfra. Uden URL'en ville den anden skærm åbne på standardvinduet — fire uger
+fra i dag, alle kasser — mens den første stod på uge 36 grupperet på sag. To
+skærme der viser hver sit er det stik modsatte af "udvid".
+
+Visningen ligger derfor i `?uger`, `?skub`, `?gruppering`, `?type` og
+`?undertype` — samme greb som Arbejdskøen — og det giver samtidig et link man
+kan sende: *"kig på uge 36, grupperet på sag."*
+
+⚠ **Tre ting ligger IKKE i URL'en.**
+
+- **Tenant, division og periode** ligger i `localStorage` via `FleetContext` og
+  er derfor allerede de samme i det nye vindue. Lå de begge steder, kunne de
+  blive uenige — og så kunne et link åbne en anden kundes kalender end den man
+  sendte.
+- **`fuld`** initialiseres fra `?fuld=1`, så vinduet åbner udfoldet — en skærm
+  mere bruges til at se mere. Men Escape lukker den, og **et tastetryk skal ikke
+  skrive i adresselinjen**: en tilstand der ændrer sig ti gange i minuttet,
+  hører ikke i en URL man kan sende videre.
+- **`arter` (Fremhæv)** skjuler ingenting — den fremhæver *inde i* rækken. Åbner
+  det andet vindue med alle tre, viser det aldrig **mindre** end det første, og
+  den retning er den sikre.
+
+⚠ **`replace: true`.** Hvert klik på en pil ville ellers lægge en post i
+browserhistorikken, og en disponent der har bladret ti uger frem og tilbage,
+skal ikke trykke tilbage ti gange for at komme ud af kalenderen.
+
+⚠ **Knappen vises ikke i fuldskærm.** Fuldskærm er en flydende visning oven på
+siden — den har ikke en anden skærm at brede sig til, og et vindue åbnet bag et
+overlay ser ud som om intet skete. De to knapper står ved siden af hinanden i
+den normale visning: den ene giver kalenderen hele **bredden** af den skærm man
+har, den anden giver den en skærm **mere**.
+
+Se beslutning 66.

@@ -142,3 +142,51 @@ describe("Kalenderen vælger ikke granulariteten ved siden af intervallet", () =
     assert.match(kal, /setType\(e\.target\.value\); setUndertype\(""\)/);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   "UDVID TIL 2 SKÆRME" — beslutning 66
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("Kalenderen kan åbnes på en anden skærm", () => {
+  const kal = udenKommentarer(
+    readFileSync("src/moduler/unitbooking/Kalender.jsx", "utf8"));
+
+  /**
+   * ⚠ ET NYT VINDUE ER EN NY INDLÆSNING. Al tilstand i useState begynder
+   * forfra, så uden URL'en ville den anden skærm åbne på standardvinduet —
+   * fire uger fra i dag, alle kasser. To skærme der viser hver sit er det
+   * stik modsatte af "udvid".
+   */
+  test("⚠ VISNINGEN LIGGER I URL'EN, IKKE I useState", () => {
+    assert.ok(kal.includes("useSearchParams()"), "visningen ligger ikke i URL'en");
+    for (const navn of ["skub", "uger", "gruppering", "type", "undertype"]) {
+      assert.ok(kal.includes('params.get("' + navn + '")')
+        || kal.includes('tal("' + navn + '"'),
+        navn + " læses ikke af URL'en");
+    }
+    /* Og de må ikke ALLIGEVEL ligge i useState — så ville de to kunne drive. */
+    assert.ok(!/useState\(STANDARD_UGER\)/.test(kal), "uger ligger stadig i useState");
+    assert.ok(!/const \[gruppering, setGruppering\] = useState/.test(kal));
+  });
+
+  test("⚠ OG DET NYE VINDUE ÅBNER PÅ DEN SAMME VISNING", () => {
+    assert.ok(kal.includes("new URLSearchParams(params)"),
+      "vinduet får ikke den nuværende visning med");
+    assert.ok(kal.includes('window.open("/unitbooking?"'),
+      "vinduet åbner ikke kalenderens egen rute");
+    /* ⚠ UDFOLDET: en skærm mere bruges til at se mere. */
+    assert.match(kal, /q\.set\("fuld", "1"\)/);
+  });
+
+  /* ⚠ replace: ellers fylder hvert klik på en pil browserhistorikken, og man
+     skal trykke tilbage ti gange for at komme ud af kalenderen. */
+  test("skriver ikke i browserhistorikken ved hvert klik", () => {
+    assert.match(kal, /\{ replace: true \}/);
+  });
+
+  /* ⚠ IKKE I FULDSKÆRM. En flydende visning har ikke en anden skærm at brede
+     sig til, og et vindue åbnet bag et overlay ser ud som om intet skete. */
+  test("knappen vises ikke i fuldskærm", () => {
+    assert.match(kal, /\{!fuld && \(\s*<Knap onClick=\{aabnNytVindue\}/);
+  });
+});

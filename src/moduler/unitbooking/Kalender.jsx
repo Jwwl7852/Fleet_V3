@@ -30,6 +30,7 @@
  * HVILKE grupperinger der giver mening, men ikke hvornår de er tomme.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -165,12 +166,50 @@ export default function Kalender() {
      Kalenderen kunne kun svare på ét spørgsmål, og det var altid det samme.
      Skubbet flytter en UGE ad gangen, ikke fire: springer man et helt vindue,
      kan et udlån der ligger hen over kanten forsvinde uden at nogen ser det. */
-  const [skubUger, setSkubUger] = useState(0);
+  /**
+   * ⚠ VISNINGEN LIGGER I URL'EN, IKKE I useState — OG DET ER "UDVID TIL 2
+   * SKÆRME"S FORUDSÆTNING.
+   *
+   * Knappen åbner kalenderen i et nyt vindue, og et nyt vindue er en ny
+   * indlæsning: al tilstand i `useState` begynder forfra. Uden URL'en ville
+   * det andet skærmbillede åbne på standardvinduet — fire uger fra i dag, alle
+   * kasser — og så viser de to skærme forskellige ting, hvilket er det stik
+   * modsatte af hvad man beder om når man siger "udvid".
+   *
+   * Det er samme greb som Arbejdskøen bruger (`?vis=` og `?frem=`), og det
+   * giver samtidig et link man kan sende: "kig på uge 36, grupperet på sag".
+   *
+   * ⚠ TENANT, DIVISION OG PERIODE FØLGER IKKE MED I URL'EN — de ligger i
+   * localStorage via FleetContext og er derfor allerede de samme i det nye
+   * vindue. Lå de begge steder, kunne de blive uenige.
+   */
+  const [params, saetParams] = useSearchParams();
+  const tal = (navn, standard) => {
+    const v = Number(params.get(navn));
+    return Number.isFinite(v) && params.get(navn) !== null ? v : standard;
+  };
+  /* ⚠ ÉN SKRIVNING PR. ÆNDRING, og `replace` så knappen ikke fylder
+     browserhistorikken: en disponent der har klikket sig frem og tilbage
+     mellem to uger, skal ikke trykke tilbage ti gange for at komme ud. */
+  const saetVisning = (aendring) => saetParams((p) => {
+    const ny = new URLSearchParams(p);
+    for (const [k, v] of Object.entries(aendring)) {
+      if (v === null || v === "" || v === undefined) ny.delete(k);
+      else ny.set(k, String(v));
+    }
+    return ny;
+  }, { replace: true });
+
+  const skubUger = tal("skub", 0);
+  const setSkubUger = (f) =>
+    saetVisning({ skub: (typeof f === "function" ? f(skubUger) : f) || null });
   /* ⚠ PLANCHENS INTERVAL-VÆLGER. Vinduet var låst på fire uger, og skærmen
      kunne kun svare på ét spørgsmål i én opløsning: "hvad sker der den her
      måned". En uge er et andet spørgsmål — "hvad skal der ske nu" — og på
      fire uger er kolonnerne så smalle at man tæller sig frem til dagen. */
-  const [uger, setUger] = useState(STANDARD_UGER);
+  const uger = VINDUER.some((v) => v.uger === tal("uger", 0))
+    ? tal("uger", STANDARD_UGER) : STANDARD_UGER;
+  const setUger = (v) => saetVisning({ uger: v });
   /* ⚠ GRANULARITETEN ER EN FØLGE AF LÆNGDEN, ikke et valg ved siden af —
      se VINDUER. Falder tilbage på dage, så en ukendt længde aldrig giver et
      gitter uden kolonner. */
@@ -189,13 +228,16 @@ export default function Kalender() {
    * rækken. Et filter der fjernede blokke, ville lade rækken stå tom og se ud
    * som en ledig kasse.
    */
-  const [type, setType] = useState("");
-  const [undertype, setUndertype] = useState("");
+  const type = params.get("type") || "";
+  const undertype = params.get("undertype") || "";
+  const setType = (v) => saetVisning({ type: v, undertype: null });
+  const setUndertype = (v) => saetVisning({ undertype: v });
   /* ⚠ PLANCHENS "grupperet efter kasse-id eller sag". De to svarer på hvert
      sit spørgsmål: kasserækken på "hvornår er DEN her kasse optaget",
      sagsrækken på "hvornår er udstillingen i gang". Det andet kan ikke læses
      af det første når en sag har fire kasser. */
-  const [gruppering, setGruppering] = useState("kasse");
+  const gruppering = params.get("gruppering") === "sag" ? "sag" : "kasse";
+  const setGruppering = (v) => saetVisning({ gruppering: v === "sag" ? "sag" : null });
   /* ⚠ PLANCHENS "Fremhæv". Alle tre er slået til fra start — en kalender der
      åbner med noget skjult, viser mindre end der er, og den der ikke ved at
      kontrollen findes, tror det er alt. */
@@ -204,7 +246,41 @@ export default function Kalender() {
   /* ⚠ PLANCHENS "Aabn naesten fuldskaerm". Problemet er BREDDE: otteogtyve
      kolonner skal dele skaermen med en sidebar paa 216 px. Hver kolonne der
      bliver bredere, er en dato man ikke skal knibe oejnene sammen for. */
-  const [fuld, setFuld] = useState(false);
+  /* ⚠ FULDSKÆRM INITIALISERES FRA URL'EN, MEN BLIVER LOKAL BAGEFTER.
+     Det nye vindue skal åbne udfoldet — det er hele pointen med en skærm mere.
+     Men Escape lukker den, og et tastetryk skal ikke skrive i adresselinjen:
+     en tilstand der ændrer sig ti gange i minuttet, hører ikke i en URL man
+     kan sende videre. */
+  const [fuld, setFuld] = useState(params.get("fuld") === "1");
+
+  /**
+   * ⚠ PLANCHENS "UDVID TIL 2 SKÆRME".
+   *
+   * Den er ikke det samme som fuldskærm: fuldskærm giver kalenderen hele
+   * BREDDEN af den skærm man har, og det her giver den en skærm MERE. En
+   * disponent med to skærme vil have kalenderen stående på den ene mens han
+   * arbejder i listen på den anden.
+   *
+   * ⚠ OG DET NYE VINDUE ÅBNER PÅ DEN SAMME VISNING. Det er hele grunden til
+   * at uge, gruppering og filter ligger i URL'en: et nyt vindue er en ny
+   * indlæsning, og uden dem ville den anden skærm vise fire uger fra i dag og
+   * alle kasser — altså noget andet end den man kiggede på.
+   *
+   * ⚠ FULD SHELL I DET NYE VINDUE, som Fleets driftskalender. Vinduet er en
+   * rigtig rute, så man kan navigere videre derfra i stedet for at sidde fast.
+   * Tenant, division og periode ligger i localStorage og følger med af sig
+   * selv.
+   *
+   * ⚠ OG DET ÅBNER UDFOLDET (fuld=1). En skærm mere bruges til at se mere; et
+   * vindue der åbnede med sidebar og listen nedenunder, ville bruge den anden
+   * skærm på det samme som den første.
+   */
+  const aabnNytVindue = () => {
+    const q = new URLSearchParams(params);
+    q.set("fuld", "1");
+    window.open("/unitbooking?" + q, "fc-unitbooking-kalender",
+      "width=1600,height=1000");
+  };
   /* Sat ved foerste render og ved hvert Opdater. ⚠ IKKE Date.now() i JSX:
      det ville skifte ved hver eneste gentegning og paastaa at listen lige var
      hentet, hver gang man trykkede paa noget. */
@@ -553,6 +629,19 @@ export default function Kalender() {
                         : "Giver kalenderen hele bredden. Escape lukker igen."}>
                   {fuld ? "Luk fuldskærm" : "Fuld skærm"}
                 </Knap>
+                {/* ⚠ IKKE DET SAMME SOM FULDSKÆRM. Den ene giver kalenderen
+                    hele bredden af DEN skærm man har; den her giver den en
+                    skærm MERE. Knappen står derfor ved siden af og siger det.
+                    ⚠ OG DEN VISES IKKE I FULDSKÆRM: en flydende visning har
+                    ikke en anden skærm at brede sig til, og en knap der åbnede
+                    et vindue bag et overlay, ville se ud som om intet skete. */}
+                {!fuld && (
+                  <Knap onClick={aabnNytVindue}
+                        title={"Åbner kalenderen i et nyt vindue på DEN SAMME uge, "
+                          + "gruppering og filtrering — så den kan stå på en anden skærm."}>
+                    Udvid til 2 skærme
+                  </Knap>
+                )}
               </span>
             }>
         {/* ⚠ SVÆVEKORTET KOMMER AF `data-blok` PÅ ELEMENTET, ikke af et
