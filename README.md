@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 48 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 49 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -156,6 +156,7 @@ tilfældigt.
 | 46 | **En transport ER en etape — og labelen gemmes ikke.** Planchen bar to id-serier for samme kendsgerning: `TRP-2024-0513` på beholderen og `BK-2026-0513` på mærkatet. Et transport-objekt ved siden af etapen ville være prototypens DE-QR 777 mod DE-KL 404 for tredje gang — alt en transport har brug for (`fraSted`, `tilSted`, `koeretoejIder`, `bookingId`) står allerede på etapen. `carriers.transportId` hed derfor forkert og stod **uden** fremmednøgle; feltet er nu `etapeId` med eksistenskontrol mod `etaper`. ⚠ Omdøbningen var gratis, fordi det blev **målt** i den udrullede DEV-base: 7 beholdere, én bar feltet, og det var den seedede demo-række. ⚠ Og stregkoden bærer ikke planchens `BK-…-C-000245` — den opfandt både et femte nummerformat (beslutning 8) og et løbenummer ved siden af beholderens eget id. ⚠ Labelen er **ingen node**: typen udledes af etapekæden, og et gemt mærkat ville drive fra sin booking | `fleet/transportlabel.js`, `firebase.rules.json` |
 | 47 | **Skærmen er 85 % lyst felt — det er dét der trætter, ikke kuløren.** Et farveforslag "til at kigge på en hel dag" viste sig målt at være den palet vi allerede havde: ét RGB-trin på baggrunden, nul på kortet. ⚠ Og det trak den forkerte vej — 63,6–71,8 % af plancherne ligger over 250 i lysstyrke mod vores 58,9 %. Kortet er nu `#f4f6fa` og siden `#e4e8f0`; andelen på maksimum falder fra 58,9 % til 21 %. ⚠ Mit første forsøg (`#fbfcfe`) var for forsigtigt og blev **målt ned**: 97,3 % WCAG-lysstyrke er stadig 252 af 255 i råt lys, og skærmens gennemsnit faldt 1,4 %. ⚠ Målingen fandt en fejl der allerede stod der: `--bc-muted` på `--fc-bg` var **4,3:1 — under AA**. ⚠ Og `--bc-line` og mærkatets printbund måtte følge med, ellers forsvandt kortets kant og labelen blev printet grå | `fleet/fleet.css`, `test/design-tokens.test.mjs` |
 | 48 | **Skriftstørrelser er ni tokens, ikke 24 tal spredt i filen.** Beslutning 47 pegede videre: **68 % af tegnene på dashboardet stod på 13 px eller mindre**, 37 % på 12,5 eller mindre — lille skrift med hård kontrast er den mest trættende kombination der findes. `fleet.css` havde 24 forskellige størrelser på 119 steder, otte med halve pixels (8,5 · 9,5 · 10,5 …). Samme fejl som rå farver var før beslutning 10: to tal der næsten er ens, er to lejligheder til at være uenige. Brødteksten er nu **14**, ikke 13. ⚠ Fire verdener, ikke én skala: skærmens tekst må vokse, men **mærkatet** (100 × 200 mm, afledt af 203 dpi — beslutning 46) og **donutens SVG-tekst** (`font-size:6` er seks viewBox-enheder, ikke pixels) må ikke. Ét gulv over alle 119 steder havde printet teksten ud over etiketten. ⚠ `.fc-table th` stod på **10,5 px** — hver eneste tabeloverskrift i programmet, det man læser først, var mindre end alt andet. ⚠ Kalenderens kolonne fik lov at vokse fra 30 til 34 px, fordi det blev **målt**: 180 + 28 × 34 = 1132 px mod 1240 til rådighed. Havde det ikke passet, skulle skriften være blevet stående — en kalender der ruller er værre end en med lille skrift | `fleet/fleet.css`, `test/skrift.test.mjs` |
+| 49 | **Gitteret flytter opgaver — `opgaveflyt`, og attrappen er væk.** "Træk opgave hertil" kunne ikke fokuseres eller klikkes; det man ville trække, er en **opdatering** af en post, og `opgaveplanlaeg` opretter kun ("INTET id. Serveren laver push-nøglen"). ⚠ Den krævede **ingen regelændring** — `opgaver` og `reservationer` er begge `.write: false` i forvejen; det blev målt frem for antaget. ⚠ To fælder, og begge kan kun ses i et regnestykke, derfor er `flytOpdatering()` **ren**: **samme ressource er samme nøgle** (et objekt har én værdi pr. nøgle, så "null den gamle + skriv den nye" på samme sti bliver til én af delene — landede `null` sidst, forsvandt reservationen mens bilen stod på liften), og **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id). ⚠ Og **et døgn er ikke 24 timer**: rå addition over sommertidsskiftet flytter et 07-besøg til 08. ⚠ **Blokkens tegning er ikke opgavens varighed** — en opgave uden estimat tegnes som én time, og regnedes `estimeretMin` af blokken, ville den time blive et rigtigt estimat. ⚠ **Arten flyttes ikke med**, og modulet følger den. En facility-opgave har **to** ressourcetyper: et træk fra en port til en hal skifter TYPE og rydder `aktivId` | `fleet/opgaveplan-regler.js`, `fleet/gitter.js`, `functions/index.js` |
 
 ## Struktur
 
@@ -492,14 +493,18 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    kunde kan ikke *liste* sine egne bookinger — `.read` på `bookinger` er alt
    eller intet. Det kræver en indeksnode pr. kunde, og den beslutning skal
    træffes før portalen bygges.
-4. **Disponerings interaktive gitter.** Skærmen er bygget og læser nu sine
-   fem noder; `etapeskift` findes og håndhæver de fem tjek. Det der mangler,
-   er at gitteret kan **kalde** den — "Træk opgave hertil" er stadig en
-   attrap. Det er et UI-spørgsmål nu, ikke et platformsspørgsmål.
-   ⚠ **To ting hører med i samme ombæring:** værkstedsopgavens reservation
-   bygges kun i skærmen, så `etapeskift` kan ikke se at bilen står på liften
-   — og et forslag godkendes i dag på **Forslag**, så gitteret skal føre
-   derhen frem for at få sin egen kopi af den handling.
+4. ~~**Disponerings interaktive gitter.**~~ **Bygget** — beslutning 49.
+   Dagsgitteret opretter og flytter gennem `opgaveplanlaeg` og `opgaveflyt`,
+   og det samme gælder Driftskalenderen og Servicekalenderen. Ugesgitteret
+   fører til **Forslag** frem for at få sin egen kopi af godkendelsen, og
+   linket dertil — som pegede på en rute uden id og landede på Dashboardet —
+   er rettet. Det der står tilbage, er ikke gitteret:
+   1. **De gamle opgaver mangler deres reservation** i noden. En bagudrettet
+      udfyldning, ikke et UI-spørgsmål.
+   2. **At OPRETTE en facility-opgave** kræver sin egen funktion —
+      `opgaveplanlaeg` sætter `art: "vaerksted"`.
+   3. **Et STATUSSKIFTE** kræver sin egen. Det rører også reservationen, så
+      `.write` må ikke løsnes igen.
 
 ### Længdebåndet — trin 3 af beslutning 18 er lukket
 
@@ -580,11 +585,29 @@ Et `null` alene kan ikke skelne dem, og de tre fører hvert sit sted hen.
   tur, og `baandOverlap()` findes for at formularen kan afvise det **før**
   satsen lægges — en sats overskrives ikke bagefter.
 
-### Disponering læser noderne — og skriver stadig ikke
+### Disponering: dagsgitteret skriver, ugesgitteret gør ikke
 
-Skærmen er en **visning**. To faner, to noder: dagsvisningen læser `opgaver`
-med art `vaerksted` (timer, 06–18), ugesvisningen læser `etaper` (døgn, syv
-dage, ETA over døgngrænser og grænseovergange).
+To faner, to noder: dagsvisningen læser `opgaver` med art `vaerksted` (timer,
+06–18), ugesvisningen læser `etaper` (døgn, syv dage, ETA over døgngrænser og
+grænseovergange).
+
+**Og de to grunde til at kun den ene skriver, er ikke den samme.**
+
+*Dag.* Et ledigt tidsrum åbner `Planlaegdialog` med bilen og tidspunktet
+udfyldt; en blok kan **trækkes** til et andet tidspunkt eller en anden bil.
+`opgaveplanlaeg` og `opgaveflyt` skriver opgaven **og** dens reservation i én
+atomisk opdatering — beslutning 45 og 49.
+
+*Uge.* Her flyttes der ingenting, og det er **ikke** et hul der mangler at
+blive lukket. Det man disponerer, er en **etape**, og en etape bindes ved at
+godkende et **forslag** — med tid, pris, enheder og chauffør. Et træk kan ikke
+udpege et forslag der ikke findes, og en skærm der lavede sit eget ud af hvor
+blokken blev sluppet, ville være en anden vej til det samme felt (beslutning
+40). Detaljepanelet **fører** til Forslag.
+
+⚠ **Og linket dertil havde aldrig virket.** Det pegede på `/booking/forslag`
+uden id, mens ruten er `/booking/forslag/:id` — så `path="*"` sendte brugeren
+til Dashboardet. Et link der lander et sted, ser ud til at virke.
 
 **De fem tjek kaldes — og de håndhæves nu også, men ikke her.**
 `kanDisponeres()`, `kraevedeKompetencer()` + `tjekKompetencer()`, `kanBaere()`,
@@ -593,11 +616,14 @@ sted, og `etapeskift` kalder **den samme** `tjekDisponering()` og afviser med
 den samme sætning. Skærmen VISER; funktionen HÅNDHÆVER. Lå kontrollen i
 skærmen, kunne en direkte skrivning gå uden om den.
 
-Der er stadig **ingen drag-and-drop**. "Træk opgave hertil" er en attrap — men
-grunden er en anden nu: `etaper` og `reservationer` er `.write: false` for
-alle, og vejen ind *er* `etapeskift`, som findes. Det der mangler, er det
-interaktive gitter, og det er et **UI-spørgsmål**: der er noget at kalde. Et
-forslag godkendes i dag på **Forslag**.
+Attrappen er væk (beslutning 49). Dagsblokkene kan **trækkes** — og
+**Shift + piletast** gør det samme, fordi en kontrol man kun kan tage fat i med
+en mus, ikke er en kontrol for alle. `etaper` og `reservationer` er stadig
+`.write: false` for alle; vejen ind *er* funktionerne.
+
+⚠ **En blok der rækker ud over vinduet, kan ikke trækkes.** Samme grund som
+pilene findes for: kan man ikke se hvor blokken begynder, kan man ikke sigte
+efter hvor den skal hen.
 
 #### ⚠ Fem noder blev læst fra demofilen — og rækkerne var det værste
 
@@ -629,21 +655,38 @@ efterprøvet ved at gøre netop det.
 
 #### Hullet der står tilbage
 
-**Værkstedsopgavens reservation bygges stadig i skærmen.** Prioritet 40 — den
-højeste, højere end en booking — findes derfor kun i browseren, og
-`etapeskift` kan **ikke** se at bilen står på liften. Kun `opgaveplanlaeg`
-skriver en opgaves reservation, og de opgaver der blev oprettet før den
-funktion fandtes, har ingen. En opgave uden `estimeretMin` får slet ingen:
-`slutter()` svarer `null` frem for at gætte et vindue, og en bil må ikke
-spærres i et tidsrum ingen har besluttet.
+**De gamle opgaver har ingen reservation i noden.** `opgaveplanlaeg` og
+`opgaveflyt` skriver den nu, men de opgaver der blev oprettet før de funktioner
+fandtes, har ingen — og `etapeskift` kan derfor ikke se at netop de biler står
+på liften. Skærmen bygger prioritet 40 i browseren for at kunne vise
+konflikten; serveren kender den ikke. **En bagudrettet udfyldning er sin egen
+opgave** og hører sammen med de to lukkede veje nedenfor.
+
+En opgave uden `estimeretMin` får slet ingen reservation: `slutter()` svarer
+`null` frem for at gætte et vindue, og en ressource må ikke spærres i et tidsrum
+ingen har besluttet. `kanFlyttes()` afviser sådan en opgave helt — af samme
+grund, og med den samme sætning på skærmen som serveren ville have svaret.
+
+⚠ **To veje ind i `opgaver` er stadig lukkede, og de skal genåbnes med hver sin
+funktion:** at OPRETTE en facility-opgave (`opgaveplanlaeg` sætter
+`art: "vaerksted"`), og et STATUSSKIFTE. `opgaveflyt` rører ingen af dem: den
+bevarer arten og rører ikke `status`.
 
 ### Gitterkalenderen er en genbrugskontrakt
 
 `fleet/Gitterkalender.jsx` tegner ressourcer som rækker og tid som kolonner.
-**Tre skærme skal bruge den samme:** Værkstedskalender (køretøjer × dage),
-Facility → Servicekalender (lokationer × dage) og Disponering (biler × timer,
-`enhed: "time"`). Byg ikke et fjerde gitter — to gitre der læser det samme
-interval forskelligt, opdages ikke ved at kigge på dem.
+**Fire skærme bruger den samme:** Driftskalender (køretøjer × dage),
+Facility → Servicekalender (lokationer og aktiver × dage), Disponering (biler ×
+timer, `enhed: "time"`) og Unitbookings kalender (kasser × dage). Byg ikke et
+femte gitter — to gitre der læser det samme interval forskelligt, opdages ikke
+ved at kigge på dem.
+
+⚠ **Gitteret flytter ingenting selv.** Med `onFlyt` regner det ud HVOR blokken
+blev sluppet — en række og et vindue — og hvad det så betyder, er kalderens
+sag. De tre første flytter `opgaver` gennem `opgaveflyt`; Unitbooking flytter
+kasseudlån og har sin egen vej ind (beslutning 37). Vidste gitteret hvilken
+funktion det skulle kalde, skulle den fjerde skærm rette i noget de tre andre
+ejer.
 
 Regnestykket ligger i `fleet/gitter.js` uden React, så det kan testes. To ting
 der skal blive stående, også når de ser grimme ud:

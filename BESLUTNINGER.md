@@ -2647,3 +2647,162 @@ bedre end en man kniber øjnene sammen over med femogtredive.
 designtokenprøven: en rå `font-size` i px uden for `:root` er en fejl, og de
 tre undtagelser — mærkatet, SVG-enhederne — står med navn og begrundelse. Uden
 den er skalaen tilbage til 24 tal om en måned.
+
+
+## 49. Gitteret flytter opgaver — attrappen "Træk opgave hertil" er væk
+
+Disponeringens dagsgitter havde et felt der sagde **Træk opgave hertil**. Det
+kunne ikke fokuseres, ikke klikkes, og `title` sagde ærligt at det ikke var
+bygget. Det var det rigtige valg dengang — en attrap der opfører sig som en
+kontrol, er værre end ingen. Feltet kom den 9. august sammen med skærmen selv;
+`etapeskift` gjorde spørgsmålet til et **UI-spørgsmål** den 17., og siden har
+der været noget at kalde.
+
+Nu skriver gitteret. Tre skærme, én funktion.
+
+### ⚠ Der er ÉN handling der findes, og det er ikke den attrappen lovede
+
+Jeg begyndte med at spørge hvad der overhovedet kan kaldes:
+
+| Handling | Vej ind | Fandtes? |
+|---|---|---|
+| Opret værkstedsopgave på bil + tid | `opgaveplanlaeg` | **Ja** |
+| Godkend et forslag på en etape | `etapeskift` + `valgtForslagId` | **Ja** — men forslaget skal findes i forvejen |
+| **Flyt** en eksisterende opgave | — | **Nej** |
+| Opret eller flyt en **etape** | — | **Nej.** `etaper` er `.write: false` |
+
+Så "Træk opgave hertil" kunne ikke bygges som et træk. Det man ville trække,
+er en uplanlagt opgave, og at give den en tid er en **opdatering** af en post —
+den tredje lukkede vej ved siden af facility-opgaven og statusskiftet.
+`opgaveplanlaeg` opretter kun: *"INTET id. Serveren laver push-nøglen."*
+
+Derfor kom `opgaveflyt`.
+
+### ⚠ Den krævede INGEN regelændring, og det var værd at måle først
+
+Jeg skrev selv at det ville være "en regelfil-ændring, `test:rules`,
+`regler:udrul` og `funktioner:udrul` oveni". Det var forkert. `opgaver` og
+`reservationer` er **begge** `.write: false` i forvejen, og reservationsposterne
+har slet ingen `.validate`. Vejen er lukket; funktionen er en ny dør i en mur
+der allerede står. Etapen blev mindre end lovet, fordi antagelsen blev holdt op
+mod filen frem for gentaget.
+
+### ⚠ To fælder, og de kan begge kun ses i et regnestykke
+
+Derfor ligger `flytOpdatering()` i `opgaveplan-regler.js` og er **ren** — samme
+grund som `beregnKpi()` ikke regnes i jobbet.
+
+**1. Samme ressource er samme nøgle.** Flytter man en opgave to timer frem på
+den SAMME bil, er den gamle og den nye reservationssti **det samme felt**. Et
+objekt har kun én værdi pr. nøgle, så "sæt den gamle til `null` og skriv den
+nye" bliver til én af delene — og **rækkefølgen i kildeteksten** afgør hvilken.
+Landede `null` sidst, forsvandt reservationen, og bilen så **fri** ud mens den
+stod på liften. Nulstillingen sker derfor kun når stien faktisk skifter.
+
+**2. Opgaven konflikter med sig selv.** `tjekLedigMod()` filtrerer på
+`r.id !== ny.id`, og reservationen fra `reservationFraOpgave()` bærer **intet
+id**. Uden det ville opgavens egen gamle reservation blive meldt som konflikt,
+og enhver flytning på samme bil ville blive afvist — af opgaven selv.
+
+**3. Og et døgn er ikke altid 24 timer.** `traekTil()` i `gitter.js` lægger
+ikke millisekunder til. Trak man en blok tre dage frem over sommertidsskiftet
+den 29. marts ved at lægge 3 × 86400000 til, ville et værkstedsbesøg der
+begynder kl. **07**, begynde kl. **08** bagefter. Blokkens forskydning *inde i*
+sin egen kolonne bevares og lægges på målkolonnens begyndelse. Prøven regner
+begge veje og ser dem være uenige.
+
+### ⚠ Blokkens tegning er ikke opgavens varighed
+
+Den vigtigste spærring er den mindst iøjnefaldende. En opgave uden estimat
+tegnes som **én time**, så den kan ses og klikkes — det har den gjort længe, og
+det er skrevet ned. Men regner en skærm flytningens nye `estimeretMin` ud af
+`blok.til − blok.fra`, bliver den time til et **rigtigt estimat**, og
+ressourcen er spærret i et tidsrum ingen har besluttet.
+
+Det er nøjagtig den standardlængde `reservationFraOpgave()` nægter at gætte, og
+den ville komme ind ad bagdøren. Derfor: skærmene sender **kun** starten,
+`kanFlyttes()` afviser en opgave uden estimat helt, og en prøve læser alle tre
+skærme som tekst og fejler hvis `estimeretMin` optræder i et `flytOpgave`-kald.
+
+### ⚠ Arten flyttes ikke med
+
+`opgaveplanlaeg` **sætter** `art: "vaerksted"`, fordi den opretter. Her ville
+det samme være en fejl: en flytning laver ingen ny post, og en funktion der
+kunne skifte arten, kunne lave en værkstedsopgave om til en facility-opgave —
+to feltskemaer, én post, og ingen af dem passer bagefter. Arten læses af noden,
+og **modulet følger den**: `vaerksted` → Fleet, `facility` → Facility. Spurgte
+vi altid om Fleet, kunne en kunde der kun har Facility, ikke flytte sine egne
+servicebesøg.
+
+⚠ **Og en facility-opgave har TO ressourcetyper.** Et besøg på et anlæg spærrer
+anlægget; et besøg uden anlæg spærrer **hele lokationen** — lukker man hallen,
+er alle porte i den også optaget. Trækkes et besøg fra en port til en hal,
+skifter reservationen altså **type**, ikke bare id, og `aktivId` skal **ryddes**:
+`ressourceId()` foretrækker anlægget, så bliver feltet stående, spærrer den
+stadig porten mens brugeren har sluppet blokken på hallen. Skærmen sender
+rækkens type med, netop for at serveren ikke skal gætte — og gættet her er
+forskellen på at lukke en port og at lukke et sted.
+
+### Hvad jeg fandt undervejs, og som ikke var en del af opgaven
+
+**Servicekalenderen læste ikke noden.** Den tegnede seks poster fra
+`demo-facility.js` — `DEMO_SERVICEBESOEG` — som **ikke var seedet**, mens
+`opgaver` blev seedet med `DEMO_OPGAVER`'s facility-opgaver, som var **helt
+andre**. `kpi.facility.planlagtVedligehold` blev regnet af noden; gitteret viste
+demofilen. Det er Indkøb → Fakturaer om igen, og det er **syvende gang**
+mønstret dukker op.
+
+⚠ **Og felterne var den samme fejl som `DEMO_BESOEG` bar.** Posterne havde
+`fra`, `til` og `estimatOere`; noden har `startMs`, `estimeretMin` og
+`beloebOere`, og den er lukket med `$andet: false` — de kunne **aldrig** være
+blevet gemt. Fjerde gang de tre navne har kostet noget. Detaljepanelet på
+skærmen læste `besoeg.fra` og ville have skrevet "Invalid Date" i begge ender
+på en rigtig post — tredje gang det panel-mønster fanges.
+
+Posterne ligger nu i `DEMO_OPGAVER` med deres id'er, og `DEMO_SERVICEBESOEG` er
+en **afledt visning**, som `DEMO_BESOEG` er det. Loftet i
+`test/demo-i-skaerm.test.mjs` går 23 → 20.
+
+**Linket til Forslag havde aldrig virket.** Disponering pegede på
+`/booking/forslag` **uden id**, mens ruten er `/booking/forslag/:id` — så
+`path="*"` sendte brugeren stille og roligt til Dashboardet. Et link der lander
+et sted, ser ud til at virke. Vejen til godkendelsen ligger nu på den etape man
+har valgt, hvor den hører hjemme.
+
+**`opgaveplanlaeg` loggede ikke.** Hver eneste anden skrivefunktion i
+`functions/index.js` skriver en auditpost; den her gjorde ikke. Hullet blev
+først synligt da flytningen kom til — havde kun DEN logget, kunne man se at en
+opgave var flyttet, men ikke at den nogensinde var oprettet. Begge logger nu.
+
+**Og `.validate` på `opgaver` beskrev en form serveren selv brød.**
+`oprettetAf`, `oprettetMs` og `sagId` blev skrevet af serveren og af
+provisioneringen, mens `$andet: false` sagde nej til alle tre. Det gjorde ingen
+skade — noden er `.write: false`, og admin-SDK'et går uden om reglerne — og
+**netop derfor** var det værd at rette: blokken er det eneste sted formen står
+skrevet, og en beskrivelse der ikke passer på de poster der faktisk ligger i
+noden, kan man ikke bruge til noget.
+
+### Tastaturet kan det samme som musen
+
+Blokken er en knap. Et træk må derfor ikke også være et klik — og
+`preventDefault()` på `pointerup` stopper **ikke** det efterfølgende `click`,
+så det er et flag der gør det. Tærsklen er fire pixels: uden den ville hvert
+klik være et træk på nul kolonner, og en hånd der ryster to pixels, kunne
+aldrig vælge en blok.
+
+**Shift + piletast flytter det samme som musen** — vandret i tid, lodret til en
+anden ressource. Rullebjælken fik tastatur af samme grund: en kontrol man kun
+kan tage fat i med en mus, er en kontrol halvdelen af skærmlæserne ikke har.
+
+⚠ **Og en blok der rækker ud over vinduet, kan ikke trækkes.** Det er samme
+grund som pilene findes for: kan man ikke se hvor blokken begynder, kan man
+ikke sigte efter hvor den skal hen — og forskellen ville være præcis så stor
+som den del der ligger uden for skærmen.
+
+### ⚠ Ugesgitteret skriver stadig ikke, og det er ikke et hul
+
+Det man disponerer dér, er en **etape**, og en etape bindes ved at **godkende
+et forslag** — med tid, pris, enheder og chauffør. Et træk kan ikke udpege et
+forslag der ikke findes, og en skærm der lavede sit eget ud af hvor blokken
+blev sluppet, ville være en anden vej til det samme felt. Det er beslutning 40,
+og den står. Gitteret **fører** til Forslag i stedet.

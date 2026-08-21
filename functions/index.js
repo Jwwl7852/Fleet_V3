@@ -76,7 +76,9 @@ import { tjekDisponering } from "./delt/disponering.js";
 /* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
-import { valideOpgaveplan } from "./delt/opgaveplan-regler.js";
+import {
+  valideOpgaveplan, valideOpgaveflyt, flytOpdatering,
+} from "./delt/opgaveplan-regler.js";
 import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
@@ -2876,6 +2878,31 @@ async function auditpartitioner(db, tenantId) {
   return ud;
 }
 
+/**
+ * Auditposten for en driftsopgave.
+ *
+ * ⚠ DEN FANDTES IKKE, OG DET VAR ET HUL. `opgaveplanlaeg` skrev en opgave OG
+ * en reservation uden at efterlade et spor, mens hver eneste anden
+ * skrivefunktion i filen logger. Hullet blev synligt da flytningen kom til:
+ * havde kun DEN logget, kunne man se at en opgave var flyttet, men ikke at den
+ * nogensinde var oprettet — og en log med huller i er svær at stole paa
+ * netop dér hvor man har brug for den.
+ */
+async function logOpgave(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "opgaver");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "opgaver", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    PLANLAEG EN DRIFTSOPGAVE — opgaven OG dens reservation, i EEN update().
 
@@ -3055,7 +3082,174 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
 
   await rod.update(opdatering);
 
+  await logOpgave(tenantId, uid, AUDIT.opret, opgaveId, null, post,
+    `opgave planlagt paa ${ny.ressourceType} ${ny.ressourceId}`);
+
   return { opgaveId, fra: ny.fra, til: ny.til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FLYT EN DRIFTSOPGAVE — beslutning 49
+
+   ⚠ HVORFOR DEN ER SIN EGEN FUNKTION OG IKKE ET FLAG PAA opgaveplanlaeg.
+   Den ene OPRETTER, den anden AENDRER, og de to stiller ikke de samme
+   spoergsmaal. `opgaveplanlaeg` SAETTER `art: "vaerksted"`, fordi den laver
+   posten; her ville det samme vaere en fejl — arten er allerede besluttet, og
+   en funktion der kunne skifte den, ville kunne lave en vaerkstedsopgave om
+   til en facility-opgave. To feltskemaer, én post, ingen af dem passer
+   bagefter.
+
+   ⚠ OG DEN AABNER IKKE EN VEJ REGLERNE HAR LUKKET. `opgaver` og
+   `reservationer` er begge `.write: false`, og de bliver det: de to baerer den
+   SAMME kendsgerning — at ressourcen er optaget — og en klient kan kun skrive
+   den ene halvdel ad gangen. En opgave uden en daekkende reservation ser FRI
+   ud i disponeringen. Beslutning 45, nu for en aendring frem for en
+   oprettelse.
+
+   ⚠ REGNESTYKKET LIGGER IKKE HER. `flytOpdatering()` er ren og staar i
+   opgaveplan-regler.js, saa de to faelder — samme sti er samme noegle, og
+   opgaven konflikter med sig selv — kan proeves uden en emulator. Se
+   test/opgaveflyt.test.mjs.
+
+   ⚠ ARTEN BESTEMMER MODULET. En vaerkstedsopgave kraever Fleet, en
+   facility-opgave kraever Facility. Spurgte vi altid om Fleet, kunne en kunde
+   der kun har Facility, ikke flytte sine egne servicebesoeg — og spurgte vi
+   ikke om noget, var funktionen en aaben doer rundt om modulspaerringen.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Hvilket modul arten hoerer under. Se noten ovenfor. */
+const MODUL_FOR_ART = { vaerksted: "flaade", facility: "facility" };
+
+export const opgaveflyt = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — samme som opgaveplanlaeg. At flytte en
+     opgave er at skrive den; der er ingen selvstaendig `opgaver.flyt`. */
+  if (!perms.includes("|opgaver.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke ændre driftsopgaver. Det kræver opgaver.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE. Uden de her blokke var funktionen en
+     aaben doer rundt om abonnements- og modulspaerringen. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  if (!opgaveId) throw new HttpsError("invalid-argument", "Der mangler et opgaveId.");
+
+  const foer = (await rod.child(`opgaver/${opgaveId}`).once("value")).val();
+  if (!foer) throw new HttpsError("not-found", `Opgaven ${opgaveId} findes ikke.`);
+
+  /* Modulet foelger opgavens EGEN art — den kommer fra noden, ikke fra
+     klienten. Se noten i hovedet. */
+  const modulnoegle = MODUL_FOR_ART[foer.art];
+  if (!modulnoegle) {
+    throw new HttpsError("failed-precondition",
+      `Opgaven har arten "${foer.art}", som ikke kan flyttes.`);
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child(modulnoegle).val() !== true) {
+    throw new HttpsError("permission-denied", `Modulet ${modulnoegle} er ikke aktivt.`);
+  }
+
+  const aendring = {
+    startMs: Number.isFinite(Number(d.startMs)) ? Number(d.startMs) : undefined,
+    estimeretMin: Number.isFinite(Number(d.estimeretMin)) ? Number(d.estimeretMin) : undefined,
+    ressourceType: kortStreng(d.ressourceType, 30) || undefined,
+    ressourceId: kortStreng(d.ressourceId, 60) || undefined,
+  };
+
+  /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
+  /* ⚠ SAMME FUNKTION, SAMME SAETNING. Skaermen kalder den ogsaa, og to
+     formuleringer af én spaerring er to forklaringer paa én ting. */
+  const form = valideOpgaveflyt(foer, aendring);
+  if (!form.ok) {
+    const foerste = Object.values(form.fejl)[0];
+    throw new HttpsError("invalid-argument", foerste);
+  }
+
+  /* ---- Findes raekken, og kan den bruges? ------------------------------ */
+  /* ⚠ EKSISTENSTJEKKET LIGGER PAA SERVEREN, fordi det er den der har basen.
+     valideOpgaveflyt() fik ingen `ressourcer` med ovenfor netop derfor —
+     klienten proever mod det den har i haanden, serveren mod noden. */
+  const { opdatering, efter, ny, gammelSti, nySti } =
+    flytOpdatering(opgaveId, foer, aendring, { uid, nu: Date.now() });
+
+  if (ny.ressourceType === "koeretoej") {
+    const kt = (await rod.child(`koeretoejer/${ny.ressourceId}`).once("value")).val();
+    if (!kt) throw new HttpsError("not-found", `Enheden ${ny.ressourceId} findes ikke.`);
+    /* ⚠ EN SOLGT ELLER SKROTTET ENHED KAN IKKE FAA EN OPGAVE — heller ikke en
+       flyttet. Posten bliver staaende i flaaden, men den kan ikke komme paa
+       vaerksted. Samme spaerring som ved oprettelsen. */
+    if (kt.status === "solgt" || kt.status === "skrottet") {
+      throw new HttpsError("failed-precondition",
+        `${kt.kaldenavn || ny.ressourceId} er ${kt.status} og kan ikke få en driftsopgave.`);
+    }
+  } else {
+    const sti = ny.ressourceType === "facilityAktiv"
+      ? `facility/aktiver/${ny.ressourceId}`
+      : `facility/lokationer/${ny.ressourceId}`;
+    const r = (await rod.child(sti).once("value")).val();
+    if (!r) throw new HttpsError("not-found", `Ressourcen ${ny.ressourceId} findes ikke.`);
+  }
+
+  /* ---- Er ressourcen ledig paa den NYE plads? -------------------------- */
+  const snap = await rod
+    .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
+    .once("value");
+  const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+
+  /* ⚠ `ny` BAERER SIT UDLEDTE ID, og det er ikke pynt: tjekLedigMod()
+     filtrerer paa `r.id !== ny.id`, saa uden det ville opgavens EGEN gamle
+     reservation blive meldt som konflikt. En flytning paa to timer paa samme
+     bil ville altid blive afvist — af opgaven selv. Se flytOpdatering(). */
+  const svar = tjekLedigMod(eksisterende, ny);
+  if (!svar.ok) {
+    const foerste = svar.konflikter[0];
+    const flere = svar.konflikter.length > 1
+      ? ` (+${svar.konflikter.length - 1} mere)` : "";
+    /* ⚠ DEN OVERSKRIVER IKKE, HELLER IKKE NAAR DEN KUNNE. At rydde en booking
+       af vejen er et etapeskift med aarsag og historik — `etapeskift`s
+       arbejde. Samme svar som opgaveplanlaeg giver. */
+    const raad = svar.kanOverskrive
+      ? " Opgaven har højere prioritet, men den rydder ikke selv en booking af" +
+        " vejen: flyt eller annullér turen først, så den kan forklares bagefter."
+      : "";
+    throw new HttpsError("failed-precondition",
+      (foerste.tekst || konfliktTekst(ny, foerste)) + flere + raad);
+  }
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  /* ⚠ Opgavens felter, den gamle reservation VAEK og den nye paa plads —
+     sammen eller slet ikke. Delte vi det i to kald, kunne halvdelen lande, og
+     den farlige halvdel er en opgave uden en daekkende reservation. */
+  await rod.update(opdatering);
+
+  /* ⚠ STIERNE KOMMER FRA flytOpdatering(), DE BYGGES IKKE IGEN HER. En anden
+     afskrift af det samme udtryk ville kunne blive uenig med den der faktisk
+     blev skrevet — og saa ville auditnoten sige noget andet end det der skete. */
+  await logOpgave(tenantId, uid, AUDIT.aendre, opgaveId, foer, efter,
+    gammelSti && gammelSti !== nySti
+      ? `opgave flyttet til ${ny.ressourceType} ${ny.ressourceId}`
+      : "opgave flyttet i tid");
+
+  return { opgaveId, fra: ny.fra, til: ny.til, ressourceId: ny.ressourceId };
 });
 
 export const auditoprydning = onSchedule(

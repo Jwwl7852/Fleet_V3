@@ -13,15 +13,24 @@
  * læser derfor to noder og blander dem aldrig sammen i ét gitter.
  *
  * ═══════════════════════════════════════════════════════════════════════
- *  ⚠ STADIG INGEN DRAG-AND-DROP — MEN TJEKKENE HÅNDHÆVES NU.
+ *  ⚠ DAGSGITTERET SKRIVER NU — UGESGITTERET GØR IKKE, OG DE TO GRUNDE ER
+ *  IKKE DEN SAMME.
  *
- *  `etapeskift` er bygget: den udfører etapens tilstandsskift server-side og
- *  skriver reservationerne i SAMME atomiske opdatering. `etaper` og
- *  `reservationer` er stadig `.write: false` for alle — vejen ind er
- *  funktionen.
+ *  DAG (opgaver). Et ledigt tidsrum åbner `Planlaegdialog` med bilen og
+ *  tidspunktet udfyldt; en blok kan TRÆKKES til et andet tidspunkt eller en
+ *  anden bil. `opgaveplanlaeg` og `opgaveflyt` skriver opgaven OG dens
+ *  reservation i én atomisk opdatering — beslutning 45 og 49.
  *
- *  Det interaktive gitter mangler stadig. Det er et UI-spørgsmål nu, ikke et
- *  platformsspørgsmål: der er noget at kalde.
+ *  UGE (etaper). Her flyttes der ingenting, og det er ikke et hul der mangler
+ *  at blive lukket. Det man disponerer, er en ETAPE, og en etape bindes ved at
+ *  GODKENDE ET FORSLAG — med tid, pris, enheder og chauffør. Et træk kan ikke
+ *  udpege et forslag der ikke findes, og en skærm der lavede sit eget forslag
+ *  ud af hvor blokken blev sluppet, ville være en anden vej til det samme felt
+ *  (beslutning 40). Detaljepanelet FØRER derfor til Forslag.
+ *
+ *  ⚠ OG LINKET DERTIL VAR I STYKKER. Det pegede på `/booking/forslag` uden id,
+ *  mens ruten er `/booking/forslag/:id` — så `path="*"` sendte brugeren til
+ *  Dashboardet. Et link der lander et forkert sted, ser ud til at virke.
  * ═══════════════════════════════════════════════════════════════════════
  *
  * ⚠ OG SKÆRMEN LÆSER NU DE NODER DEN PÅSTOD AT LÆSE.
@@ -74,7 +83,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { num, pct, dato, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
-  Gitter, MiniLinje,
+  Gitter, MiniLinje, Formularsvar,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
@@ -84,6 +93,11 @@ import {
 } from "../../fleet/flaade.js";
 import { tjekKoerehviletid, koerehviletidTekst } from "../../fleet/koerehviletid.js";
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
+import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
+import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+import { harPerm, PERM } from "../../fleet/permissions.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { harModul } from "../../fleet/moduler.js";
 import {
   reservationerFraEtape, graenseLabel, krydserGraense, tjekGeografi, enhedsIder,
   straekningFraEtape,
@@ -190,8 +204,16 @@ function byggReservationer(fraNoden, vaerkstedsopgaver = []) {
 
 export default function Disponering() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { division, bruger, moduler } = useFleet();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
+  /* `null` = lukket. Et objekt = åben med gitterets forslag i hånden. */
+  const [planlaegger, setPlanlaegger] = useState(null);
+  const [flytSvar, setFlytSvar] = useState(null);
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — og KUN til at tegne kontrollen. Serveren
+     spørger om den samme, og det er dér den afgøres. */
+  const maaPlanlaegge = harPerm(bruger?.perms, PERM.opgaverSkriv);
 
   const iDag = new Date(); iDag.setHours(0, 0, 0, 0);
   const D0 = iDag.getTime();
@@ -307,6 +329,43 @@ export default function Disponering() {
       titel: o.beskrivelse, tone: OPGAVE_STATUS[o.status]?.pill,
     })), [dagensOpgaver, leverandoerer.data]);
 
+  /* ---- Træk: flyt en værkstedsopgave — beslutning 49 ---- */
+
+  /**
+   * ⚠ SAMME FUNKTION SOM SERVEREN AFVISER MED. `kanFlyttes()` ligger i
+   * `opgaveplan-regler.js` og kopieres til `functions/delt/`; skærmen sætter
+   * markøren efter den, serveren afgør efter den. Skrev skærmen sin egen
+   * udgave, ville en blok se ud til at kunne trækkes og blive afvist i det
+   * øjeblik man slap den.
+   */
+  const kanFlytteBlok = (b) => {
+    if (!maaPlanlaegge) return "Kræver opgaver.skriv.";
+    const o = vaerkstedsopgaver.find((x) => x.id === b.id);
+    if (!o) return "Opgaven kunne ikke findes igen.";
+    const svar = kanFlyttes(o);
+    return svar.ok ? true : svar.aarsag;
+  };
+
+  /**
+   * ⚠ KUN STARTEN FLYTTES — VARIGHEDEN ER OPGAVENS EGEN.
+   * Blokkens `til` er ikke altid opgavens slutning: `dagBlokke` giver en
+   * opgave uden estimat ÉN TIME, så den kan ses og klikkes. Sendte vi
+   * `estimeretMin` regnet af blokken, ville den time blive et rigtigt estimat,
+   * og bilen ville være spærret i et tidsrum ingen har besluttet. `kanFlyttes`
+   * afviser i øvrigt sådan en opgave helt — af samme grund.
+   */
+  const paaFlyt = async (b, { raekkeId, fra }) => {
+    const o = vaerkstedsopgaver.find((x) => x.id === b.id);
+    if (!o) return;
+    setFlytSvar(await flytOpgave({
+      opgaveId: o.id, foer: o, startMs: fra,
+      ressourceType: "koeretoej", ressourceId: raekkeId,
+    }));
+    /* Genindlæs uanset udfaldet: lykkedes den, står gitteret ellers med den
+       gamle placering; blev den afvist, kan en anden have skrevet imens. */
+    opgaver.genindlaes();
+  };
+
   /* Drop-felterne beregnes af SAMME data som blokkene — se ledigeVinduer(). */
   const dagDropfelter = useMemo(() => {
     const felter = [];
@@ -418,12 +477,22 @@ export default function Disponering() {
               raekker={dagRaekker} blokke={dagBlokke}
               fra={dagFra} til={dagTil} enhed={ENHED.time}
               valgtId={valgtId} onVaelg={(b) => setValgtId(b.id === valgtId ? null : b.id)}
+              onFlyt={paaFlyt}
+              kanFlytte={kanFlytteBlok}
               dropfelter={{
                 felter: dagDropfelter,
-                tekst: "Træk opgave hertil",
-                titel: "Ikke bygget endnu. Funktionen findes — etapeskift skriver " +
-                       "tilstand og reservationer atomisk — men gitteret kan endnu " +
-                       "ikke kalde den.",
+                tekst: maaPlanlaegge ? "+ Planlæg her" : "Ledigt",
+                titel: maaPlanlaegge
+                  ? "Åbner Planlæg aktivitet med bilen og tidspunktet udfyldt. " +
+                    "opgaveplanlaeg skriver opgaven og dens reservation i én " +
+                    "atomisk opdatering."
+                  : "Ledigt tidsrum. At planlægge her kræver opgaver.skriv.",
+                /* ⚠ INGEN KNAP UDEN PERMISSION. Uden `paaFelt` er feltet ikke
+                   fokuserbart og har ingen klik-handler — og `titel` siger
+                   hvorfor. En knap der afvises af serveren, er en pæn knap. */
+                paaFelt: maaPlanlaegge
+                  ? (d) => setPlanlaegger({ koeretoejId: d.raekkeId, startMs: d.fra })
+                  : undefined,
               }}
               tom="Ingen værkstedsopgaver i dag."
             />
@@ -444,16 +513,24 @@ export default function Disponering() {
           </>
         )}
 
+        <Formularsvar svar={flytSvar} okTekst="Flyttet." />
+
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          ⚠ <b>Skærmen viser; den skriver ikke.</b> Feltet <b>Træk opgave hertil</b>{" "}
-          er stadig en attrap — men grunden er en anden nu.{" "}
-          <code>etapeskift</code> <b>findes</b>: den udfører etapens tilstandsskift
-          og skriver reservationerne i <b>én</b> atomisk opdatering, og den kører de
-          samme fem tjek som står herunder. <code>etaper</code> og{" "}
-          <code>reservationer</code> er <b>.write: false</b> for alle — vejen ind{" "}
-          <i>er</i> funktionen. Det der mangler, er det interaktive gitter, og det er
-          et UI-spørgsmål: der er noget at kalde. Et forslag godkendes i dag på{" "}
-          <Link className="fc-a" to="/booking/forslag">Forslag</Link>.
+          <b>Dagsgitteret skriver.</b> Et ledigt tidsrum åbner{" "}
+          <b>Planlæg aktivitet</b> med bilen og tidspunktet udfyldt, og en blok kan{" "}
+          <b>trækkes</b> til et andet tidspunkt eller en anden bil.{" "}
+          <code>opgaveplanlaeg</code> og <code>opgaveflyt</code> skriver opgaven{" "}
+          <b>og</b> dens reservation i én atomisk opdatering — <code>opgaver</code>{" "}
+          og <code>reservationer</code> er <b>.write: false</b> for alle, og de to
+          bærer den samme kendsgerning.
+        </p>
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          ⚠ <b>Ugesgitteret skriver ikke, og det er ikke et hul.</b> Det man
+          disponerer dér, er en <b>etape</b>, og en etape bindes ved at godkende et{" "}
+          <b>forslag</b> — med tid, pris, enheder og chauffør. Et træk kan ikke
+          udpege et forslag der ikke findes, og en skærm der lavede sit eget, ville
+          være en anden vej til det samme felt (beslutning 40). Vælg en blok, og gå
+          videre til <b>Forslag</b> fra panelet.
         </p>
       </Kort>
 
@@ -464,6 +541,22 @@ export default function Disponering() {
           <Detalje post={valgt} personEfterId={personEfterId} lvNavn={lvNavn} />
         </div>
       </Gitter>
+
+      {/* ⚠ SAMME DIALOG SOM DRIFTSKALENDEREN BRUGER. Den lå inde i
+          Vaerkstedskalender.jsx indtil beslutning 49; to formularer til den
+          SAMME node ville være to steder at være uenige om feltskemaet, og den
+          ene ville før eller siden glemme valideOpgaveplan(). */}
+      {planlaegger && (
+        <Planlaegdialog
+          enheder={koeretoejer.data}
+          leverandoerer={leverandoerer.data}
+          harProcure={harModul(moduler, "indkoeb")}
+          division={division}
+          foraf={planlaegger}
+          onLuk={() => setPlanlaegger(null)}
+          onGemt={() => { setPlanlaegger(null); opgaver.genindlaes(); }}
+        />
+      )}
     </div>
   );
 }
@@ -588,7 +681,21 @@ function Detalje({ post, personEfterId, lvNavn }) {
       titel={`${post.fraSted} → ${post.tilSted}`}
       handling={<Pille tone={TILSTAND[post.tilstand]?.pill}>{TILSTAND[post.tilstand]?.label}</Pille>}
     >
-      <MiniLinje label="Booking" vaerdi={<code>{post.bookingId}</code>} />
+      {/* ⚠ LINKET NEDERST PÅ SKÆRMEN PEGEDE PÅ `/booking/forslag` UDEN ID.
+          Ruten er `/booking/forslag/:id`, så `path="*"` sendte brugeren stille
+          og roligt til Dashboardet — et link der aldrig har virket, og som
+          ingen kunne se var i stykker, fordi det LANDEDE et sted.
+          Vejen til godkendelsen hører desuden her, ved den etape man har valgt,
+          og ikke i en fodnote: gitteret skal FØRE til Forslag frem for at få
+          sin egen kopi af handlingen. */}
+      <MiniLinje
+        label="Booking"
+        vaerdi={post.bookingId
+          ? <Link className="fc-a" to={`/booking/forslag/${post.bookingId}`}>
+              <code>{post.bookingId}</code> — se forslag
+            </Link>
+          : <span className="fc-bad">mangler</span>}
+      />
       <MiniLinje label="Etape" vaerdi={`nr. ${post.nr}`} />
       <MiniLinje label="Afgang" vaerdi={datoTid(post.fra)} />
       <MiniLinje label="ETA" vaerdi={post.etaMs ? datoTid(post.etaMs) : "—"} />

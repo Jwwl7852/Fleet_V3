@@ -311,3 +311,65 @@ export function skridt(venstre, synlig, ialt, retning, kanSkubbe = false) {
   const laengde = Math.max(1, Math.round(synlig * 0.8));
   return { slags: "rul", til: Math.max(0, Math.min(skjult, v + retning * laengde)) };
 }
+
+/* ── Træk ────────────────────────────────────────────────────────────────
+   At flytte en blok i gitteret. Beslutning 49.
+
+   ⚠ REGNESTYKKET LIGGER HER OG IKKE I KOMPONENTEN, af samme grund som resten
+   af filen: et gitter der lander blokken én kolonne ved siden af, opdages ikke
+   ved at kigge på det — man tror bare man ramte forkert. */
+
+/**
+ * maaTraekkes(placeret) → boolean
+ *
+ * ⚠ EN BLOK DER RÆKKER UD OVER VINDUET, KAN IKKE TRÆKKES.
+ *
+ * Det er den samme grund som pilene findes for. Rækker blokken ud over kanten,
+ * kan man ikke SE hvor den begynder — og en flytning regnes fra begyndelsen.
+ * Trak man i den klippede ende, ville opgaven flytte sig et andet sted hen end
+ * det man sigtede efter, og forskellen ville være præcis så stor som den del
+ * der ligger uden for skærmen. Udvid perioden, og træk så.
+ */
+export const maaTraekkes = (placeret) =>
+  Boolean(placeret) && !placeret.foerVindue && !placeret.efterVindue;
+
+/**
+ * traekTil(blok, slotListe, fraIndeks, tilIndeks) → { fra, til } | null
+ *
+ * Blokkens nye vindue, når den er trukket fra én kolonne til en anden.
+ *
+ * ⚠ VARIGHEDEN FØLGER MED, DEN STRÆKKES IKKE. Man flytter et værkstedsbesøg;
+ * man forlænger det ikke ved at trække i det. Skal det vare længere, er det et
+ * andet estimat — og estimatet er hvad vi TROR, ikke hvor blokken blev sluppet.
+ *
+ * ⚠ OG DEN LÆGGER IKKE MILLISEKUNDER TIL.
+ * Et døgn er ikke altid 24 timer: ved sommertidsskiftet er det 23 eller 25.
+ * Trak man en blok tre dage frem ved at lægge 3 × 86400000 til, ville den
+ * lande en time forskudt i marts og en time den anden vej i oktober — og et
+ * værkstedsbesøg der begynder kl. 07 ville pludselig begynde kl. 06. Derfor:
+ * blokkens forskydning INDE I sin egen kolonne bevares, og den lægges på
+ * MÅLKOLONNENS begyndelse. Samme grund som slots() bygges med Date.
+ */
+export function traekTil(blok, slotListe = [], fraIndeks, tilIndeks) {
+  if (!blok || !Number.isFinite(blok.fra) || !Number.isFinite(blok.til)) return null;
+  if (blok.til <= blok.fra) return null;
+  const fraSlot = slotListe[fraIndeks];
+  const tilSlot = slotListe[tilIndeks];
+  if (!fraSlot || !tilSlot) return null;
+
+  const iSlottet = blok.fra - fraSlot.fra;
+  const varighed = blok.til - blok.fra;
+  const fra = tilSlot.fra + iSlottet;
+  return { fra, til: fra + varighed };
+}
+
+/**
+ * slotUnder(slotListe, indeks) → { fra, til } | null
+ *
+ * Bekvemmelighed til komponenten: kolonnen et pointer-slip landede på. Står
+ * her frem for i JSX'en, så grænserne prøves ét sted.
+ */
+export const slotUnder = (slotListe = [], indeks) =>
+  (Number.isInteger(indeks) && indeks >= 0 && indeks < slotListe.length)
+    ? slotListe[indeks]
+    : null;

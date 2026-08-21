@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **48 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **49 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -218,13 +218,43 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   langtur uden det SPÆRRES — den gættes ikke, som en momssats ikke gættes.
   Og pausereglen ADVARER: en plan siger hvor meget der køres, ikke hvor
   pauserne ligger. Dagens og ugens sum blokerer uændret.
-- **Bygge drag-and-drop i Disponering før Cloud Functions.** En reservation
-  skal skrives atomisk sammen med etapens `koeretoejId`, og to disponenter kan
-  ramme samme sekund. Bygger du det interaktive nu, bygger du det to gange.
+- **Regne en flytnings nye varighed ud af blokkens tegning.** Et gitter giver
+  en opgave uden estimat ÉT SYNLIGT MINIMUM — én time — så den kan ses og
+  klikkes. Regner du `estimeretMin` af `blok.til - blok.fra`, bliver den time
+  til et **rigtigt estimat**, og ressourcen er spærret i et tidsrum ingen har
+  besluttet. Det er præcis den standardlængde `reservationFraOpgave()` nægter
+  at gætte, ind ad bagdøren. Skærmene sender **kun** starten; `kanFlyttes()`
+  afviser en opgave uden estimat helt. En prøve læser alle tre skærme som tekst
+  og fejler på `estimeretMin` i et `flytOpgave`-kald. Se beslutning 49.
+- **Skrive en opgave uden om `opgaveflyt`, eller lade den skifte art.**
+  `opgaveplanlaeg` SÆTTER `art: "vaerksted"`, fordi den opretter; `opgaveflyt`
+  BEVARER opgavens egen, fordi en flytning laver ingen ny post. En funktion der
+  kunne skifte arten, ville kunne lave en værkstedsopgave om til en
+  facility-opgave — to feltskemaer, én post, og ingen af dem passer bagefter.
+  ⚠ **Og modulet følger arten:** `vaerksted` → `flaade`, `facility` →
+  `facility`. Spørger du altid om Fleet, kan en kunde der kun har Facility,
+  ikke flytte sine egne servicebesøg.
+  ⚠ **Regnestykket ligger i `flytOpdatering()`, ikke i funktionen.** To fælder
+  kan kun ses dér: **samme ressource er samme nøgle** (et objekt har én værdi
+  pr. nøgle, så "null den gamle + skriv den nye" på samme sti bliver til én af
+  delene — og reservationen kan forsvinde mens bilen står på liften), og
+  **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på
+  `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id).
 - **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
-  ressourcer × tid og bruges af Værkstedskalender, Servicekalender og
-  Disponering. Regnestykket ligger i `gitter.js`. To gitre der læser det samme
-  interval forskelligt, opdages ikke ved at kigge på dem.
+  ressourcer × tid og bruges af Driftskalender, Servicekalender, Disponering
+  **og Unitbookings kalender**. Regnestykket ligger i `gitter.js`. To gitre der
+  læser det samme interval forskelligt, opdages ikke ved at kigge på dem.
+  ⚠ **Og gitteret flytter ingenting selv.** Med `onFlyt` svarer det HVOR
+  blokken blev sluppet; hvilken funktion det så betyder, er kalderens sag — de
+  tre første kalder `opgaveflyt`, Unitbooking har sin egen vej ind
+  (beslutning 37). Læg ikke et funktionsnavn ind i gitteret.
+  ⚠ **En blok der rækker ud over vinduet, kan ikke trækkes.** Samme grund som
+  pilene findes for: kan man ikke se hvor den begynder, kan man ikke sigte.
+- **Lægge millisekunder til for at flytte en blok en dag.** Et døgn er ikke
+  altid 24 timer — ved sommertidsskiftet er det 23 eller 25, og et
+  værkstedsbesøg der begynder kl. 07, ville begynde kl. 08 efter flytningen.
+  `traekTil()` bevarer blokkens forskydning INDE I sin kolonne og lægger den på
+  målkolonnens begyndelse. Samme grund som `slots()` bygges med `Date`.
 - **Bygge en fakturagodkendelse uden for Indkøb.** Værkstedskalender
   registrerer et **indkøb** i kontekst; godkendelse og afstemning sker ét sted:
   Indkøb → Fakturaer. `fakturaer/` er i øvrigt `.write: false`. To
@@ -480,6 +510,12 @@ kan ikke komme ud af sync.
   for **fakturagrundlag** (`naesteGrundlagsnummer`), men `naesteBookingNummer`
   kaldes **ingen steder**: der findes ingen `bookingopret`, og `bookinger` er
   `.write: false`. En booking kan altså ikke oprettes af en klient.
+- **`opgaver` har nu TO veje ind, og to der stadig er lukkede.**
+  `opgaveplanlaeg` opretter en værkstedsopgave, `opgaveflyt` flytter en opgave
+  af begge arter — begge skriver opgaven OG dens reservation i én `update()`.
+  Det der stadig kræver sin egen funktion, er at OPRETTE en facility-opgave og
+  et STATUSSKIFTE. Løsn ikke `.write` igen: et statusskifte rører også
+  reservationen. Se beslutning 45 og 49.
 - **Disponering er BYGGET som visning, og de fem tjek håndhæves — i
   `etapeskift`, ikke i skærmen.** `kanDisponeres()`, `kraevedeKompetencer()`
   + `tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og
@@ -488,12 +524,16 @@ kan ikke komme ud af sync.
   skrivning ville gå uden om. En udløbet kompetence **blokerer**.
   `opgaver.art` er `vaerksted` | `facility` — **ikke** `langtur`
   (beslutning 21), og det man disponerer er en **etape** (beslutning 16).
-  ⚠ **Det der mangler, er det interaktive gitter.** "Træk opgave hertil" er
-  en attrap, og det er et UI-spørgsmål nu: `etapeskift` findes at kalde.
-  ⚠ **Og værkstedsopgavens reservation bygges kun i skærmen** — prioritet 40
-  findes derfor ikke i noden, så `etapeskift` kan ikke se at bilen står på
-  liften. Kun `opgaveplanlaeg` skriver en, og siden beslutning 45 er den den
-  ENESTE vej ind i `opgaver`. Se README.
+  ⚠ **Det interaktive gitter ER bygget** — beslutning 49. Dagsgitteret
+  opretter og flytter opgaver; **ugesgitteret flytter ikke etaper**, og det er
+  ikke et hul: en etape bindes ved at GODKENDE ET FORSLAG, og et træk kan ikke
+  udpege et forslag der ikke findes. Gitteret **fører** til Forslag.
+  ⚠ **Det der står tilbage, er de GAMLE opgavers reservation.**
+  `opgaveplanlaeg` og `opgaveflyt` skriver den nu, men poster fra før de
+  funktioner fandtes, har ingen — så `etapeskift` kan ikke se at netop de biler
+  står på liften. Skærmen bygger prioritet 40 i browseren for at kunne VISE
+  konflikten; serveren kender den ikke. En bagudrettet udfyldning er sin egen
+  opgave. Se README.
 - **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
   parsing, afsendelse og scanning mangler. `sager/` findes ikke i
   `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,

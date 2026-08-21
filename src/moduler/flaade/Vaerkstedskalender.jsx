@@ -56,8 +56,7 @@ import { harModul } from "../../fleet/moduler.js";
 import { num, dato, datoTid, klokke, kr, filstoerrelse } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiRaekke, Tabel, Pille, Knap, Henter, Datatilstand,
-  Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon,
-  Felt, Feltraekke, Formular,
+  Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon, Formularsvar,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
@@ -66,14 +65,12 @@ import {
   vindueFor, flyt, driftstal, slutter, raekkerIVindue,
 } from "../../fleet/driftskalender.js";
 import {
-  OPGAVE_STATUS, ARBEJDSTYPE, ALLE_ARBEJDSTYPER, ressourceId, reservationFraOpgave,
+  OPGAVE_STATUS, ARBEJDSTYPE, ressourceId, reservationFraOpgave,
 } from "../../fleet/opgaver.js";
-import { PRIORITET, ALLE_PRIORITETER, prioritetFor } from "../../fleet/prioritet.js";
-import {
-  planlaegOpgave, valideOpgaveplan, PLANLAEGBAR_STATUS,
-} from "../../fleet/opgaveplan.js";
+import { PRIORITET, prioritetFor } from "../../fleet/prioritet.js";
+import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
+import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { isoTilMs, msTilIso } from "../../fleet/format.js";
 import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
@@ -159,6 +156,10 @@ export default function Driftskalender() {
   const [valgtId, setValgtId] = useState(null);
   const [svaev, setSvaev] = useState(null);
   const [planlaegger, setPlanlaegger] = useState(false);
+  /* Serverens svar paa en flytning. ⚠ EN AFVISNING ER ET SVAR, ikke en fejl:
+     "bilen er optaget" og "du maa ikke" er to forskellige ting, og de skal
+     kunne laeses. Se PLANSVAR i opgaveplan-regler.js. */
+  const [flytSvar, setFlytSvar] = useState(null);
 
   /* ⚠ KUN art "vaerksted". Fleets driftskalender er FLÅDENS arbejde.
      `opgaver` rummer også facility-opgaver — en port der skal repareres, et
@@ -222,6 +223,44 @@ export default function Driftskalender() {
     }), [flaadeopgaver]);
 
   const valgt = flaadeopgaver.find((o) => o.id === valgtId) || null;
+
+  /* ---- Træk: flyt en opgave i gitteret — beslutning 49 ---- */
+
+  /**
+   * ⚠ SPØRGSMÅLET STILLES FØR TRÆKKET, IKKE EFTER.
+   * En blok der ser ud til at kunne trækkes, og som afvises i det øjeblik man
+   * slipper den, lover noget. `kanFlyttes()` er den SAMME funktion serveren
+   * afviser med, så markøren og afvisningen ikke kan blive uenige.
+   */
+  const kanFlytteBlok = (b) => {
+    if (!maaPlanlaegge) return "Kræver opgaver.skriv.";
+    const o = flaadeopgaver.find((x) => x.id === b.id);
+    if (!o) return "Opgaven kunne ikke findes igen.";
+    const svar = kanFlyttes(o);
+    return svar.ok ? true : svar.aarsag;
+  };
+
+  /**
+   * ⚠ VARIGHEDEN SENDES IKKE MED, OG DET ER HELE POINTEN.
+   * Blokkens `til` er ikke altid opgavens slutning: en opgave uden estimat
+   * tegnes som ÉN TIME, så den kan ses og klikkes. Regnede vi `estimeretMin`
+   * ud af blokkens tegning, ville den time blive til et rigtigt estimat, og
+   * bilen ville være spærret i et tidsrum ingen har besluttet. Vi flytter
+   * STARTEN; varigheden er opgavens egen og bliver hvor den er.
+   */
+  const paaFlyt = async (b, { raekkeId, fra }) => {
+    const o = flaadeopgaver.find((x) => x.id === b.id);
+    if (!o) return;
+    const r = await flytOpgave({
+      opgaveId: o.id, foer: o, startMs: fra,
+      ressourceType: "koeretoej", ressourceId: raekkeId,
+    });
+    setFlytSvar(r);
+    /* ⚠ GENINDLÆS UANSET UDFALDET. Lykkedes den, står gitteret ellers med den
+       gamle placering; blev den afvist, kan en ANDEN have skrevet imens, og
+       så er det den friske virkelighed der skal tegnes. */
+    opgaver.genindlaes();
+  };
 
   /* ---- Åbn en kø ---- */
 
@@ -337,8 +376,14 @@ export default function Driftskalender() {
               enhed={vindue.enhed}
               valgtId={valgtId}
               onVaelg={(b) => setValgtId(b.id)}
+              onFlyt={paaFlyt}
+              kanFlytte={kanFlytteBlok}
               tom="Ingen driftsopgaver i perioden."
             />
+            {/* Serverens svar paa en flytning. En afvisning er et SVAR — se
+                PLANSVAR: "bilen er optaget" og "du maa ikke" er ikke det
+                samme, og de skal kunne skelnes. */}
+            <Formularsvar svar={flytSvar} okTekst="Flyttet." />
           </div>
         </div>
 
@@ -755,308 +800,3 @@ function Filer({ sag }) {
   );
 }
 
-/* ---- Planlæg aktivitet ------------------------------------------------ */
-
-/* Fejlnøgle → etiket. ⚠ SAMME ORD SOM PÅ FELTET. Skrev opsummeringen
-   "koeretoejId" hvor etiketten siger "Enhed", skulle brugeren oversætte vores
-   feltnavne for at finde det felt der mangler. */
-const FELTNAVN = {
-  koeretoejId: "Enhed",
-  arbejdstype: "Aktivitetstype",
-  status: "Status",
-  division: "Division",
-  startMs: "Startdato og -tid",
-  estimeretMin: "Varighed",
-  leverandoerId: "Udføres af",
-  prioritet: "Prioritet",
-  beskrivelse: "Beskrivelse",
-  art: "Art",
-  _node: "Noden afviser posten",
-};
-
-/**
- * ⚠ DEN SKRIVER GENNEM SERVEREN, IKKE GENNEM skriv.js.
- *
- * `opgaver` ER skrivbar med `opgaver.skriv` — men opgaven og dens RESERVATION
- * skal skrives sammen eller slet ikke, og `reservationer` er `.write: false`
- * for alle. Landede kun opgaven, ville enheden have et værkstedsbesøg uden at
- * være spærret, og så ser den FRI ud i disponeringen — værre end en spærring
- * man kan se. Dertil kan to disponenter ramme samme sekund.
- *
- * Hele begrundelsen står i `fleet/opgaveplan.js` og i functions/index.js.
- *
- * ⚠ VALIDERINGEN ER SERVERENS EGEN. valideOpgaveplan() ligger i delt/ og
- * kaldes begge steder. Formularen svarer HURTIGT; serveren AFGØR — og de to
- * siger det samme, fordi det er den samme funktion.
- *
- * ⚠ INGEN MAIL-BLOK. Mockuppen har "Send bekræftelse til leverandøren?".
- * Beslutning 20 er fase 0: `sager/` står ikke i firebase.rules.json, og der
- * er ingen afsendelse. En deaktiveret radiogruppe der sagde "ikke bygget",
- * ville være en attrap der opfører sig som en kontrol. Skærmen skriver i
- * stedet hvad der mangler.
- */
-function Planlaegdialog({ enheder, leverandoerer, harProcure, division, onLuk, onGemt }) {
-  /* Startforslag: i morgen kl. 08.00. ⚠ IKKE "nu" — en aktivitet man
-     planlægger, ligger frem i tiden, og et defaultet nu ville lave en
-     forsinket opgave i samme øjeblik den blev oprettet. */
-  const iMorgen = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(8, 0, 0, 0);
-    return d.getTime();
-  };
-
-  const [post, saetPost] = useState(() => ({
-    koeretoejId: "",
-    /* ⚠ DIVISIONEN FORESLÅS AF SHELLEN, IKKE AF ENHEDEN. Beslutning 19
-       forbyder feltet på koeretoejer/, og en formular der udfyldte det ud fra
-       bilen, ville genindføre præcis den kobling. Shellens valgte division er
-       et gæt brugeren kan se og rette — bilens ville være et gæt han ikke
-       kunne se. `faelles` findes ikke i shellen og vælges derfor manuelt. */
-    division,
-    arbejdstype: "",
-    status: "planlagt",
-    leverandoerId: "",
-    prioritet: "",
-    beskrivelse: "",
-    startIso: msTilIso(iMorgen()),
-    startTid: "08:00",
-    varighedMin: "",
-  }));
-  const [gemmer, saetGemmer] = useState(false);
-  const [svar, saetSvar] = useState(null);
-  /* ⚠ EN FEJL VISES FØRST NÅR FELTET ER RØRT — eller når man har trykket Gem.
-     Uden det stod hele formularen rød i det øjeblik den blev åbnet, og en
-     formular der skælder ud før man har skrevet noget, lærer man at overse.
-     Samme greb som Reolpladser, Medarbejdere, Brugere og fire andre — se
-     `vis()` dér. Det er repoets mønster, ikke et nyt. */
-  const [roert, saetRoert] = useState({});
-  const [visAlle, saetVisAlle] = useState(false);
-
-  const saet = (felt) => (v) => {
-    saetPost((p) => ({ ...p, [felt]: v }));
-    saetRoert((r) => ({ ...r, [felt]: true }));
-    /* Et svar hører til den post der blev sendt. Rører man et felt bagefter,
-       beskriver svaret ikke længere det man har foran sig. */
-    saetSvar(null);
-  };
-
-  /* ⚠ isoTilMs SÆTTER KLOKKEN 12, IKKE MIDNAT — se format.js. Klokkeslættet
-     lægges på bagefter i lokal tid, så en dato der er valgt i en vælger, ikke
-     bliver dagen før fordi et trin i kæden trak en time fra. */
-  const startMs = (() => {
-    const dag = isoTilMs(post.startIso);
-    if (!Number.isFinite(dag)) return null;
-    const [t, m] = String(post.startTid).split(":").map(Number);
-    if (!Number.isFinite(t) || !Number.isFinite(m)) return null;
-    const d = new Date(dag);
-    d.setHours(t, m, 0, 0);
-    return d.getTime();
-  })();
-
-  const udkast = {
-    art: "vaerksted",
-    koeretoejId: post.koeretoejId || null,
-    division: post.division,
-    arbejdstype: post.arbejdstype || null,
-    status: post.status,
-    beskrivelse: post.beskrivelse,
-    startMs,
-    estimeretMin: Number(post.varighedMin) || null,
-    leverandoerId: post.leverandoerId || null,
-    prioritet: post.prioritet || null,
-  };
-
-  const kontrol = valideOpgaveplan(udkast, {
-    enheder: enheder.map((k) => k.id),
-    leverandoerer: leverandoerer.map((l) => l.id),
-  });
-  /* ⚠ `vis()` STYRER KUN OM FEJLEN TEGNES — IKKE OM DEN GÆLDER.
-     `kanGemme` læser `kontrol.ok` uændret, så en urørt formular ikke kan
-     sendes bare fordi den ser pæn ud. De to spørgsmål er forskellige, og de
-     skal ikke svares af den samme variabel. */
-  const vis = (fejlNoegle, ...roerteNoegler) => {
-    /* ⚠ FEJLNØGLEN OG FELTNAVNET ER IKKE ALTID DET SAMME. Datoen hedder
-       `startIso` i formularen, men fejlen hedder `startMs`; varigheden hedder
-       `varighedMin`, fejlen `estimeretMin`. Uden det her led ville de to
-       felter aldrig vise deres fejl — de blev aldrig "rørt" under det navn
-       fejlen bar. */
-    const noegler = roerteNoegler.length ? roerteNoegler : [fejlNoegle];
-    return visAlle || noegler.some((k) => roert[k]) ? kontrol.fejl[fejlNoegle] : null;
-  };
-
-  /* ⚠ SLUTTIDSPUNKTET VISES, MEN GEMMES IKKE. Noden bærer startMs og
-     estimeretMin; en gemt slutning ville være det samme udsagn to steder og
-     drive første gang nogen rettede varigheden. */
-  const slutMs = Number.isFinite(startMs) && Number(post.varighedMin) > 0
-    ? startMs + Number(post.varighedMin) * 60000
-    : null;
-
-  const gem = async () => {
-    /* ⚠ FØRST NU VISES DE FELTER MAN ALDRIG RØRTE. Trykker man Gem på en halv
-       formular, skal man kunne se hvad der mangler — ikke bare at knappen er
-       grå. `kanGemme` har allerede stoppet kaldet; det her er forklaringen. */
-    saetVisAlle(true);
-    if (!kontrol.ok) return;
-    saetGemmer(true);
-    saetSvar(null);
-    const r = await planlaegOpgave(udkast);
-    saetGemmer(false);
-    saetSvar(r);
-    if (r.ok) onGemt();
-  };
-
-  const enhed = enheder.find((k) => k.id === post.koeretoejId) || null;
-
-  return (
-    <Dialog
-      titel="Planlæg aktivitet"
-      under="Opgaven og reservationen skrives sammen — eller slet ikke."
-      onLuk={onLuk}
-    >
-      {/* ⚠ KNAPPEN ER AKTIV, OGSÅ NÅR FORMULAREN ER UGYLDIG — OG DET ER MED
-          VILJE. Deaktiverede vi den, ville `saetVisAlle(true)` i gem() aldrig
-          kunne kaldes: brugeren ville se en grå knap og INGEN forklaring på
-          hvilke felter der manglede. Han har rørt otte af ti; de sidste to har
-          han aldrig set en fejl på.
-
-          ⚠ De syv andre formularer i repoet (Reolpladser, Medarbejdere,
-          Brugere, Varer, Bevægelser, Indkøb, Udlån) har præcis den døde gren:
-          de kalder saetVisAlle(true) i en funktion knappen forhindrer dem i at
-          nå. Det er ikke rettet her — det er en selvstændig oprydning — men
-          mønstret kopieres ikke videre.
-
-          gem() afviser selv: den sætter visAlle og returnerer, hvis kontrollen
-          ikke er ok. Der sendes altså aldrig noget ugyldigt afsted. */}
-      <Formular onGem={gem} gemmer={gemmer}
-                gemLabel="Planlæg aktivitet" onAnnuller={onLuk} svar={svar}>
-        <Felt id="pl-enhed" label="Enhed" kraevet
-              vaerdi={post.koeretoejId} saet={saet("koeretoejId")}
-              fejl={vis("koeretoejId")}
-              valgmuligheder={[
-                { vaerdi: "", label: "Vælg enhed" },
-                ...enheder
-                  /* ⚠ EN SOLGT ELLER SKROTTET ENHED KAN IKKE FÅ EN OPGAVE.
-                     Serveren afviser den, og en vælger der tilbød den, ville
-                     love noget der bliver sagt nej til bagefter. */
-                  .filter((k) => k.status !== "solgt" && k.status !== "skrottet")
-                  .map((k) => ({ vaerdi: k.id, label: `${k.kaldenavn} — ${k.navn}` })),
-              ]} />
-
-        <Feltraekke>
-          <Felt id="pl-type" label="Aktivitetstype" kraevet
-                vaerdi={post.arbejdstype} saet={saet("arbejdstype")}
-                fejl={vis("arbejdstype")}
-                valgmuligheder={[
-                  { vaerdi: "", label: "Vælg type" },
-                  ...ALLE_ARBEJDSTYPER.map((t) => ({ vaerdi: t, label: ARBEJDSTYPE[t] })),
-                ]} />
-          <Felt id="pl-status" label="Status" kraevet
-                vaerdi={post.status} saet={saet("status")}
-                fejl={vis("status")}
-                hint="Afventende, hvis arbejdet venter på en reservedel."
-                valgmuligheder={PLANLAEGBAR_STATUS.map((v) => ({
-                  vaerdi: v, label: OPGAVE_STATUS[v].label,
-                }))} />
-        </Feltraekke>
-
-        {/* ⚠ DIVISIONEN STÅR FOR SIG OG UDFYLDES IKKE AF ENHEDSVALGET.
-            Reglerne kræver den på opgaver/, og enheden HAR den ikke
-            (beslutning 19). To felter der ser ud som om det ene følger af det
-            andet, er præcis den fælde beslutningen lukkede. */}
-        <Felt id="pl-division" label="Division" kraevet
-              vaerdi={post.division} saet={saet("division")}
-              fejl={vis("division")}
-              hint="Kan ikke udledes af enheden — en enhed har ingen division."
-              valgmuligheder={[
-                { vaerdi: "gods", label: "Gods" },
-                { vaerdi: "bus", label: "Bus" },
-                { vaerdi: "faelles", label: "Fælles" },
-              ]} />
-
-        <Feltraekke>
-          <Felt id="pl-dato" label="Startdato" type="date" kraevet
-                vaerdi={post.startIso} saet={saet("startIso")}
-                fejl={vis("startMs", "startIso", "startTid")} />
-          <Felt id="pl-tid" label="Starttid" type="time" kraevet
-                vaerdi={post.startTid} saet={saet("startTid")} />
-          <Felt id="pl-varighed" label="Varighed" type="number" kraevet
-                suffiks="min" min="1"
-                vaerdi={post.varighedMin} saet={saet("varighedMin")}
-                fejl={vis("estimeretMin", "varighedMin")}
-                hint="Så længe er enheden spærret." />
-        </Feltraekke>
-
-        <Feltraekke>
-          <Felt id="pl-lev" label="Udføres af"
-                vaerdi={post.leverandoerId} saet={saet("leverandoerId")}
-                fejl={vis("leverandoerId")}
-                valgmuligheder={[
-                  { vaerdi: "", label: "Eget værksted" },
-                  ...leverandoerer
-                    .filter((l) => l.kategori === "vaerksted" || l.kategori === "daek")
-                    .map((l) => ({ vaerdi: l.id, label: l.navn })),
-                ]}
-                hint={harProcure
-                  ? undefined
-                  : "Kun eget værksted: leverandørkartoteket hører til Procure, som ikke er aktivt."} />
-          <Felt id="pl-pri" label="Prioritet"
-                vaerdi={post.prioritet} saet={saet("prioritet")}
-                fejl={vis("prioritet")}
-                /* ⚠ TOM ER ET SVAR. En opgave uden prioritet står som ikke
-                   vurderet og tælles for sig — se prioritet.js. */
-                hint="Tom betyder ikke vurderet — det er et svar."
-                valgmuligheder={[
-                  { vaerdi: "", label: "Ikke vurderet" },
-                  ...ALLE_PRIORITETER.map((v) => ({ vaerdi: v, label: PRIORITET[v].label })),
-                ]} />
-        </Feltraekke>
-
-        <Felt id="pl-besk" label="Beskrivelse" kraevet
-              vaerdi={post.beskrivelse} saet={saet("beskrivelse")}
-              fejl={vis("beskrivelse")}
-              placeholder="Hvad skal der laves?" maxLength={500} />
-
-        {enhed && slutMs && (
-          <div className="fc-sum" style={{ marginTop: 4 }}>
-            <span>{enhed.kaldenavn} er spærret</span>
-            <span className="fc-sum-v">
-              {datoTid(startMs)} – {datoTid(slutMs)}
-            </span>
-          </div>
-        )}
-
-        {visAlle && !kontrol.ok && (
-          /* ⚠ NAVNGIVER FELTERNE, ikke bare "udfyld formularen". Fejlene står
-             også ved hvert felt, men i en dialog med ti felter kan de to der
-             mangler, ligge uden for det man kigger på. */
-          <p className="fc-svar fc-svar-fejl" role="alert">
-            Mangler: {Object.keys(kontrol.fejl).map((k) => FELTNAVN[k] || k).join(", ")}.
-          </p>
-        )}
-
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          Sluttidspunktet <b>beregnes</b> og gemmes ikke. Noden bærer
-          {" "}<b>startMs</b> og <b>estimeretMin</b> — et gemt sluttidspunkt
-          ville være det samme udsagn to steder og drive første gang nogen
-          rettede varigheden.
-        </p>
-
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Der sendes ingen mail til leverandøren.</b> Mockuppens
-          {" "}“Send bekræftelse” er beslutning 20, og den er fase 0:
-          {" "}<b>sager/</b> står ikke i <b>firebase.rules.json</b>, og der er
-          hverken modtagevej eller afsendelse. Aftalen laves stadig i telefonen
-          eller i Outlook — men <b>sagsnummeret</b> kan ikke sættes herfra endnu.
-        </p>
-
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          Er enheden allerede optaget, <b>afvises</b> planlægningen med
-          {" "}<b>hvad</b> der spærrer. Et værkstedsbesøg har den højeste
-          prioritet, men det rydder <b>ikke</b> selv en booking af vejen: turen
-          skal flyttes eller annulleres først, så det kan forklares bagefter.
-        </p>
-      </Formular>
-    </Dialog>
-  );
-}

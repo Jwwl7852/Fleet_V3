@@ -65,6 +65,14 @@ export const LOGBARE_FELTER = new Set([
   // tid
   "gyldigFra", "fra", "til", "senestMs", "aftaleUdloeberMs", "forfaldMs",
   "sidsteAktivitetMs", "friDage",
+  /* ⚠ startMs OG estimeretMin ER PRÆCIS DET EN FLYTNING ÆNDRER — beslutning
+     49. `opgaveflyt` rører de to felter og opgavens ressource, og intet
+     andet. Stod de ikke her, kunne loggen fortælle AT opgaven blev flyttet,
+     men ikke fra tirsdag til fredag — og det er dét spørgsmål nogen ville
+     stille bagefter. Samme begrundelse som rabatBps: allowlisten findes for
+     at holde TASTET TEKST ude, ikke tal. `fra` og `til` stod her i forvejen,
+     og de er det samme vindue set fra reservationen. */
+  "startMs", "estimeretMin",
   // referencer og numre
   "nummer", "bookingId", "etapeNr", "kundeId", "koeretoejId", "personId",
   "lagerId", "leverandoerId", "valgtForslagId", "ressourceType", "ressourceId",
@@ -74,6 +82,12 @@ export const LOGBARE_FELTER = new Set([
      allowlisten findes for at holde tastet tekst ude af loggen. Skal man
      finde udlånet, står objektId der. */
   "kasseId",
+  /* ⚠ aktivId OG lokationId ER KONTROLLEREDE REFERENCER, som kasseId og
+     koeretoejId: reglerne kræver at de peger på noget der findes. En
+     facility-opgave kan flyttes fra ét anlæg til et andet — eller fra et
+     anlæg til HELE lokationen, hvilket spærrer alle porte i hallen. Uden de
+     to felter ville loggen ikke kunne sige hvad der blev spærret. */
+  "aktivId", "lokationId",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */

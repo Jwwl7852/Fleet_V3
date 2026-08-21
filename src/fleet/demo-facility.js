@@ -29,6 +29,15 @@ import {
   OMKOSTNINGSPOST,
 } from "./facility.js";
 import { opgaveMangler } from "./opgaver.js";
+/* ⚠ NODEN, IKKE EN KOPI. De seks servicebesoeg er facility-opgaver, og de
+   ligger dér hvor de bliver seedet. Se DEMO_SERVICEBESOEG nedenfor. */
+import { DEMO_OPGAVER } from "./demo-opgaver.js";
+import { demoSag } from "./demo-sag.js";
+
+/* Slaas op FOER visningen bygges — en const brugt i en .map() laengere oppe
+   ville vaere i sin temporale doedzone, og fejlen kommer foerst naar modulet
+   indlaeses. Samme greb som SAGEN i demo-vaerksted.js. */
+const FACSAGEN = demoSag("FAC-2026-00127");
 
 const DAG = 86400000;
 const T = 3600000;
@@ -185,44 +194,52 @@ export const DEMO_FEJL = [
 /* ---- Servicebesøg: OPGAVER MED ART facility ----------------------------- */
 
 /**
- * Beslutning 21. Posterne bærer `art` og `division` og valideres mod
- * opgaveMangler() i selvkontrollen — kunne de ikke gemmes i opgaver/, er
- * formen forkert her.
+ * Servicebesøgene som en VISNING af opgavenoden.
  *
- * `sagsnummer` er "Reserveret fra sag #1245" fra mockuppen. Reservationen
- * bygges af reservationFraOpgave() med kilde `facilitySag` og prioritet 20 —
- * den fjerde kilde krævede ingen ny kode.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ DE SEKS POSTER LÅ HER SOM ET SELVSTÆNDIGT DATASÆT — FOR EN NODE DER ER
+ * SEEDET. Det er præcis det mønster demo-kilder-prøven findes for, og det er
+ * tredje gang: først DEMO_BESOEG mod DEMO_OPGAVER, så Bil 104's to
+ * nummerplader, og så det her.
  *
- * Et besøg på `lokationId` uden `aktivId` spærrer HELE stedet: lukker man
- * hallen, er alle porte i den også optaget.
+ * Provisioneren seedede `opgaver` med DEMO_OPGAVER's facility-opgaver, mens
+ * Servicekalenderen tegnede DISSE seks. `kpi.facility.planlagtVedligehold`
+ * blev regnet af de første; skærmen viste de sidste. To svar på ét spørgsmål,
+ * ét klik fra hinanden — Indkøb → Fakturaer om igen.
+ *
+ * ⚠ OG FORMEN VAR FORKERT. Posterne bar `fra`, `til` og `estimatOere`; noden
+ * bærer `startMs`, `estimeretMin` og `beloebOere`, og den er lukket med
+ * `$andet: false`. De kunne aldrig være blevet gemt — nøjagtig som
+ * `reservationFraOpgave()` engang krævede `fra`/`til` og derfor aldrig kunne
+ * kaldes på en rigtig opgave.
+ *
+ * Posterne ligger nu i DEMO_OPGAVER med deres oprindelige id'er (fs-001 …),
+ * og det her er en afledt visning — samme greb som DEMO_BESOEG.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ HVAD DER GØR EN FACILITY-OPGAVE TIL ET SERVICEBESØG: `leverandoerId`.
+ * Ikke arten, ikke statussen. En facility-opgave uden leverandør udføres af
+ * vores egen mand (den bærer `personId`); en med leverandør er et besøg
+ * udefra. Samme skel som på værkstedsbesøgene.
+ *
+ * ⚠ `fra`/`til` ER VISNINGENS, IKKE NODENS. Otte steder læser dem. Noden
+ * kender kun starten og estimatet, og oversættelsen står her — ét sted.
  */
-export const DEMO_SERVICEBESOEG = [
-  { id: "fs-001", art: "facility", division: "faelles", status: "planlagt",
-    aktivId: "fa-port3", lokationId: "lok-halb",
-    fra: dag(1, 8), til: dag(1, 12), leverandoerId: "lv-crawford",
-    beskrivelse: "Udskiftning af portmotor", sagsnummer: "FAC-2026-00127", estimatOere: 1840000 },
-  { id: "fs-002", art: "facility", division: "faelles", status: "planlagt",
-    aktivId: "fa-frost1", lokationId: "lok-halb",
-    fra: dag(1, 7), til: dag(1, 15), leverandoerId: "lv-koelecenter",
-    beskrivelse: "Halvårligt serviceeftersyn på fryseanlæg", estimatOere: 960000 },
-  { id: "fs-003", art: "facility", division: "faelles", status: "igang",
-    aktivId: "fa-vask", lokationId: "lok-kolding",
-    fra: dag(-1, 7), til: dag(2, 16), leverandoerId: "lv-wash",
-    beskrivelse: "Vaskehal ude af drift — dysebom udskiftes", estimatOere: 3120000 },
-  { id: "fs-004", art: "facility", division: "faelles", status: "planlagt",
-    /* INGEN aktivId: hele hallen spærres, ikke ét anlæg. */
-    lokationId: "lok-halb",
-    fra: dag(4, 6), til: dag(4, 18), leverandoerId: "lv-gulv",
-    beskrivelse: "Epoxybehandling af gulv — hallen kan ikke bruges", estimatOere: 4450000 },
-  { id: "fs-005", art: "facility", division: "faelles", status: "planlagt",
-    aktivId: "fa-lade2", lokationId: "lok-kolding",
-    fra: dag(2, 9), til: dag(2, 13), leverandoerId: "lv-clever",
-    beskrivelse: "Fejlsøgning E14 på ladestander", estimatOere: 620000 },
-  { id: "fs-006", art: "facility", division: "faelles", status: "planlagt",
-    aktivId: "fa-port5", lokationId: "lok-aalborg",
-    fra: dag(5, 8), til: dag(5, 11), leverandoerId: "lv-crawford",
-    beskrivelse: "Årligt eftersyn", estimatOere: 740000 },
-];
+export const DEMO_SERVICEBESOEG = DEMO_OPGAVER
+  .filter((o) => o.art === "facility" && o.leverandoerId)
+  .map((o) => ({
+    ...o,
+    fra: o.startMs,
+    til: o.startMs + o.estimeretMin * MIN,
+    /* Sagsnummeret SLÅS OP frem for at stå på posten — `sager/` findes ikke i
+       firebase.rules.json endnu (beslutning 20 er fase 0), og et nummer på
+       opgaven ville være en afskrift der kunne drive fra sagen. */
+    sagsnummer: o.sagId && FACSAGEN?.id === o.sagId ? FACSAGEN.nummer : null,
+    /* Navnet `estimatOere` bliver stående i visningen: Facility → Oversigt
+       læser det. Feltet på NODEN hedder `beloebOere`, fordi det er en
+       OMKOSTNING og ikke en indtægt. */
+    estimatOere: o.beloebOere,
+  }));
 
 /* ---- Bygningsomkostninger: KOMPONENTERNE ------------------------------- */
 

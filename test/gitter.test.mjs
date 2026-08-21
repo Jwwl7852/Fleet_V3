@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import {
   slots, grupperSlots, maanedNoegle, ugeNoegle, slotDele, UGEDAG_KORT,
   greb, skridt, HAANDTAG_MIN,
+  ENHED, traekTil, maaTraekkes, slotUnder,
 } from "../src/fleet/gitter.js";
 
 describe("grupperede kolonneoverskrifter", () => {
@@ -181,5 +182,93 @@ describe("rullebjaelken", () => {
 
   it("haandtaget har et gulv man kan ramme med en mus", () => {
     assert.ok(HAANDTAG_MIN >= 24);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TRÆK — beslutning 49
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("træk i gitteret", () => {
+  const T = 3600000;
+
+  it("varigheden følger med — en blok strækkes ikke af at blive flyttet", () => {
+    /* Man flytter et vaerkstedsbesoeg; man forlaenger det ikke ved at traekke
+       i det. Skal det vare laengere, er det et andet ESTIMAT. */
+    const dag0 = new Date(2026, 7, 24).getTime();
+    const liste = slots(dag0, dag0 + 5 * 86400000);
+    const blok = { fra: dag0 + 8 * T, til: dag0 + 12 * T };
+    const ny = traekTil(blok, liste, 0, 2);
+    assert.equal(ny.til - ny.fra, blok.til - blok.fra);
+  });
+
+  it("⚠ ET DØGN ER IKKE ALTID 24 TIMER — og et 07-besøg må ikke blive til 08", () => {
+    /* Sommertiden begynder søndag den 29. marts 2026. Trak man en blok tre
+       dage frem ved at lægge 3 × 86400000 til, ville et værkstedsbesøg der
+       begynder kl. 07, begynde kl. 08 efter flytningen — en time ingen har
+       besluttet, på en bil der skal være der når værkstedet åbner.
+
+       Prøven er skrevet ved at regne begge veje og se dem være uenige. */
+    const start = new Date(2026, 2, 27).getTime();
+    const liste = slots(start, new Date(2026, 3, 3).getTime());
+    const blok = {
+      fra: new Date(2026, 2, 27, 7, 0).getTime(),
+      til: new Date(2026, 2, 27, 9, 0).getTime(),
+    };
+
+    const ny = traekTil(blok, liste, 0, 3);
+    assert.equal(new Date(ny.fra).getHours(), 7);
+    assert.equal(new Date(ny.fra).getDate(), 30);
+
+    /* Og det er ikke det samme som en råt tillagt varighed. */
+    assert.notEqual(ny.fra, blok.fra + 3 * 86400000);
+    assert.equal(new Date(blok.fra + 3 * 86400000).getHours(), 8);
+  });
+
+  it("tilbage over skiftet holder også", () => {
+    const start = new Date(2026, 2, 27).getTime();
+    const liste = slots(start, new Date(2026, 3, 3).getTime());
+    const blok = {
+      fra: new Date(2026, 2, 30, 7, 0).getTime(),
+      til: new Date(2026, 2, 30, 9, 0).getTime(),
+    };
+    const ny = traekTil(blok, liste, 3, 0);
+    assert.equal(new Date(ny.fra).getHours(), 7);
+    assert.equal(new Date(ny.fra).getDate(), 27);
+  });
+
+  it("en timekolonne flytter i timer", () => {
+    const d0 = new Date(2026, 7, 24, 6, 0).getTime();
+    const liste = slots(d0, d0 + 12 * T, ENHED.time);
+    const blok = { fra: d0 + 30 * 60000, til: d0 + 90 * 60000 };
+    const ny = traekTil(blok, liste, 0, 4);
+    assert.equal(ny.fra, d0 + 4 * T + 30 * 60000);
+  });
+
+  it("uden for kolonnerne flyttes der ingenting", () => {
+    const d0 = new Date(2026, 7, 24).getTime();
+    const liste = slots(d0, d0 + 3 * 86400000);
+    assert.equal(traekTil({ fra: d0, til: d0 + T }, liste, 0, 9), null);
+    assert.equal(traekTil({ fra: d0, til: d0 + T }, liste, -1, 1), null);
+    assert.equal(traekTil(null, liste, 0, 1), null);
+  });
+
+  it("⚠ EN BLOK DER RÆKKER UD OVER VINDUET, KAN IKKE TRÆKKES", () => {
+    /* Samme grund som pilene findes for: kan man ikke SE hvor blokken
+       begynder, kan man ikke sigte efter hvor den skal hen. Forskellen ville
+       være præcis så stor som den del der ligger uden for skærmen. */
+    assert.equal(maaTraekkes({ foerVindue: true, efterVindue: false }), false);
+    assert.equal(maaTraekkes({ foerVindue: false, efterVindue: true }), false);
+    assert.equal(maaTraekkes({ foerVindue: false, efterVindue: false }), true);
+    assert.equal(maaTraekkes(null), false);
+  });
+
+  it("slotUnder holder sig inden for listen", () => {
+    const d0 = new Date(2026, 7, 24).getTime();
+    const liste = slots(d0, d0 + 3 * 86400000);
+    assert.equal(slotUnder(liste, 0), liste[0]);
+    assert.equal(slotUnder(liste, 3), null);
+    assert.equal(slotUnder(liste, -1), null);
+    assert.equal(slotUnder(liste, 1.5), null);
   });
 });

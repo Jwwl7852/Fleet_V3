@@ -36,16 +36,19 @@
  * der mangler.
  */
 import { kaldFunktion } from "../firebase.js";
-import { PLANSVAR, tolkPlanfejl } from "./opgaveplan-regler.js";
+import { PLANSVAR, tolkPlanfejl, valideOpgaveflyt } from "./opgaveplan-regler.js";
 
 export {
   PLANSVAR, planBesked, tolkPlanfejl, valideOpgaveplan,
   PLANLAEGBAR_STATUS, MAKS_MINUTTER,
+  FLYTBAR_STATUS, FLYTBARE_TYPER, valideOpgaveflyt, flytEfter, erFlyttet,
+  kanFlyttes,
 } from "./opgaveplan-regler.js";
 
 /* Småt navn — en 2. generations funktion bliver en Cloud Run-tjeneste, og et
    tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
 export const PLANFUNKTION = "opgaveplanlaeg";
+export const FLYTFUNKTION = "opgaveflyt";
 
 /**
  * planlaegOpgave(post) → { ok, art, besked, data }
@@ -91,6 +94,57 @@ export async function planlaegOpgave(post) {
       return {
         ok: false, art: PLANSVAR.demo,
         besked: "Demo-tilstand: der er ingen server, så intet blev gemt.",
+        data: null,
+      };
+    }
+    return { ok: false, ...tolkPlanfejl(fejl), data: null };
+  }
+}
+
+/**
+ * flytOpgave({ opgaveId, startMs, estimeretMin, ressourceType, ressourceId })
+ *
+ * Gitterets egen handling: en række og et vindue. Beslutning 49.
+ *
+ * ⚠ SAMME SVARFORM SOM planlaegOpgave(), OG SAMME GRUND TIL AT DEN IKKE
+ * KASTER. En afvist flytning er et SVAR: "du må ikke", "bilen er optaget" og
+ * "der er ingen forbindelse" er tre forskellige ting, og kaster funktionen,
+ * bliver de til den samme røde boks.
+ *
+ * ⚠ DEN VALIDERER FØRST — MED SERVERENS EGEN FUNKTION.
+ * Ikke for at afgøre noget: serveren spørger igen, og den har basen. Det er
+ * for at svare med det samme når man slipper en blok et sted den ikke kan
+ * ligge — en tur til skyen for at få at vide at en udført opgave ikke kan
+ * flyttes, er et sekunds tavshed hvor gitteret ser i stykker ud.
+ *
+ * ⚠ OG DEN SENDER IKKE `art`. Serveren læser opgavens egen ud af noden. Kunne
+ * klienten oplyse den, kunne en værkstedsopgave gøres til en facility-opgave
+ * — to feltskemaer, én post.
+ */
+export async function flytOpgave({ opgaveId, foer, startMs, estimeretMin, ressourceType, ressourceId }) {
+  const aendring = { startMs, estimeretMin, ressourceType, ressourceId };
+
+  /* `foer` er posten skærmen allerede har i hånden. Har den den ikke, springes
+     forhåndssvaret over — serveren afviser stadig. */
+  if (foer) {
+    const form = valideOpgaveflyt(foer, aendring);
+    if (!form.ok) {
+      return {
+        ok: false, art: PLANSVAR.ugyldig,
+        besked: Object.values(form.fejl)[0], data: null,
+      };
+    }
+  }
+
+  try {
+    const svar = await kaldFunktion(FLYTFUNKTION, { opgaveId, ...aendring });
+    return { ok: true, art: PLANSVAR.ok, besked: null, data: svar?.data ?? null };
+  } catch (fejl) {
+    /* ⚠ DEMO-MODE ER IKKE EN FEJL. Der er ingen server at spørge. */
+    if (/ingen Firebase-app/i.test(String(fejl?.message))) {
+      return {
+        ok: false, art: PLANSVAR.demo,
+        besked: "Demo-tilstand: der er ingen server, så intet blev flyttet.",
         data: null,
       };
     }

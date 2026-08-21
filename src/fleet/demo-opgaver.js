@@ -195,6 +195,61 @@ export const DEMO_OPGAVER = [
     estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
 
   /* ══════════════════════════════════════════════════════════════════════
+     DE SEKS SERVICEBESØG — DE LÅ I demo-facility.js SOM DEMO_SERVICEBESOEG.
+
+     ⚠ ANDET DATASÆT FOR DEN SAMME NODE, FOR TREDJE GANG. Først DEMO_BESOEG,
+     så Bil 104's to nummerplader, og nu det her: `opgaver` blev seedet med
+     DEMO_OPGAVER's fire facility-opgaver, mens Servicekalenderen tegnede seks
+     HELT ANDRE poster fra demo-facility.js. `kpi.facility.planlagtVedligehold`
+     blev regnet af de fire; skærmen viste de seks. To svar på ét spørgsmål —
+     Indkøb → Fakturaer om igen.
+
+     ⚠ OG FELTNAVNENE VAR DEN SAMME FEJL SOM DEMO_BESOEG BAR. Posterne havde
+     `fra`, `til` og `estimatOere`; noden har `startMs`, `estimeretMin` og
+     `beloebOere`, og den er lukket med `$andet: false` — de kunne aldrig være
+     blevet gemt. Det er fjerde gang de tre navne koster noget.
+
+     ⚠ SAGSNUMMERET STÅR IKKE PÅ POSTEN. `sagId` gemmes, nummeret slås op —
+     samme greb som på værkstedsbesøgene. `sager/` findes ikke i
+     firebase.rules.json endnu (beslutning 20 er fase 0), og et nummer skrevet
+     af på opgaven ville drive fra sagen.
+
+     ⚠ ID'ERNE ER BEVARET som fs-00N, af samme grund som vb-00N blev det.
+     ══════════════════════════════════════════════════════════════════════ */
+  { id: "fs-001", art: "facility", division: "faelles", startMs: dag(1, 8),
+    aktivId: "fa-port3", lokationId: "lok-halb", leverandoerId: "lv-crawford",
+    beskrivelse: "Udskiftning af portmotor", status: "planlagt", prioritet: "normal",
+    /* Den ENE der har en sag: FAC-2026-00127 står på fa-port3 i demo-sag.js. */
+    sagId: "sag-fac-127",
+    estimeretMin: minutter(dag(1, 8), dag(1, 12)), faktiskMin: null, beloebOere: 1840000 },
+  { id: "fs-002", art: "facility", division: "faelles", startMs: dag(1, 7),
+    aktivId: "fa-frost1", lokationId: "lok-halb", leverandoerId: "lv-koelecenter",
+    beskrivelse: "Halvårligt serviceeftersyn på fryseanlæg", status: "planlagt", prioritet: "lav",
+    estimeretMin: minutter(dag(1, 7), dag(1, 15)), faktiskMin: null, beloebOere: 960000 },
+  /* ⚠ EN DER ER I GANG, og den er ikke pynt: `kanFlyttes()` afviser den, så
+     gitteret kan vise at en blok under arbejde ikke kan trækkes. Uden en
+     sådan post ville spærringen aldrig blive set i demo. */
+  { id: "fs-003", art: "facility", division: "faelles", startMs: dag(-1, 7),
+    aktivId: "fa-vask", lokationId: "lok-kolding", leverandoerId: "lv-wash",
+    beskrivelse: "Vaskehal ude af drift – dysebom udskiftes", status: "igang", prioritet: "hoej",
+    estimeretMin: minutter(dag(-1, 7), dag(2, 16)), faktiskMin: null, beloebOere: 3120000 },
+  /* ⚠ INTET aktivId: hele hallen spærres, ikke ét anlæg. Ressourcen bliver
+     `lokation` og ikke `facilityAktiv` — lukker man hallen, er alle porte i
+     den også optaget. Se reservationFraOpgave(). */
+  { id: "fs-004", art: "facility", division: "faelles", startMs: dag(4, 6),
+    lokationId: "lok-halb", leverandoerId: "lv-gulv",
+    beskrivelse: "Epoxybehandling af gulv – hallen kan ikke bruges", status: "planlagt", prioritet: "normal",
+    estimeretMin: minutter(dag(4, 6), dag(4, 18)), faktiskMin: null, beloebOere: 4450000 },
+  { id: "fs-005", art: "facility", division: "faelles", startMs: dag(2, 9),
+    aktivId: "fa-lade2", lokationId: "lok-kolding", leverandoerId: "lv-clever",
+    beskrivelse: "Fejlsøgning E14 på ladestander", status: "planlagt", prioritet: "normal",
+    estimeretMin: minutter(dag(2, 9), dag(2, 13)), faktiskMin: null, beloebOere: 620000 },
+  { id: "fs-006", art: "facility", division: "faelles", startMs: dag(5, 8),
+    aktivId: "fa-port5", lokationId: "lok-aalborg", leverandoerId: "lv-crawford",
+    beskrivelse: "Årligt eftersyn", status: "planlagt", prioritet: "lav",
+    estimeretMin: minutter(dag(5, 8), dag(5, 11)), faktiskMin: null, beloebOere: 740000 },
+
+  /* ══════════════════════════════════════════════════════════════════════
      DE OTTE VÆRKSTEDSBESØG — DE LÅ I demo-vaerksted.js SOM DEMO_BESOEG.
 
      ⚠ TO DATASÆT FOR ÉN NODE, OG FILEN INDRØMMEDE DET SELV. demo-vaerksted.js

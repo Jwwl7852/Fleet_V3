@@ -752,9 +752,13 @@ export const Feltraekke = ({ children }) => <div className="fc-feltraekke">{chil
  * systemet er i stykker — og han prøver igen, og igen. Tonen skal skille dem:
  * en afvisning er ikke rød på samme måde som en nedbrudt forbindelse.
  */
-export function Formularsvar({ svar }) {
+export function Formularsvar({ svar, okTekst = "Gemt." }) {
   if (!svar) return null;
-  if (svar.ok) return <p className="fc-svar fc-svar-ok" role="status">Gemt.</p>;
+  /* ⚠ "Gemt." ER IKKE ALTID DET DER SKETE. En blok der blev trukket til
+     tirsdag, blev FLYTTET — og en kvittering der siger noget andet end det
+     man lige gjorde, læser man forbi. Standarden bliver stående, så de
+     otte formularer der gemmer, ikke skal sige det hver for sig. */
+  if (svar.ok) return <p className="fc-svar fc-svar-ok" role="status">{okTekst}</p>;
   const tone = svar.art === "naegtet" ? "naegtet" : svar.art === "demo" ? "demo" : "fejl";
   return <p className={`fc-svar fc-svar-${tone}`} role="alert">{svar.besked}</p>;
 }

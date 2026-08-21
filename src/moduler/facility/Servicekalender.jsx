@@ -1,9 +1,28 @@
 /* src/moduler/facility/Servicekalender.jsx
  * Facility – servicekalender & reparationer
  *
- * SAMME GITTER SOM VÆRKSTEDSKALENDER OG DISPONERING. Rækkerne er lokationer
- * og aktiver i stedet for biler; alt andet er ens. Gitteret ligger i
- * fleet/Gitterkalender.jsx — byg ikke et fjerde.
+ * SKÆRMEN STYRER OPGAVERNE MED ART `facility`. Rækkerne er lokationer og
+ * aktiver i stedet for biler; alt andet er som Driftskalenderen. Gitteret
+ * ligger i fleet/Gitterkalender.jsx — byg ikke et fjerde.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ SKÆRMEN LÆSER NODEN `opgaver` — IKKE DEMO_SERVICEBESOEG.
+ *
+ * Indtil beslutning 49 tegnede den seks poster fra demo-facility.js, mens
+ * provisioneren seedede `opgaver` med DEMO_OPGAVER's facility-opgaver — som
+ * var HELT ANDRE poster. `kpi.facility.planlagtVedligehold` blev regnet af
+ * noden; gitteret viste demofilen. To svar på ét spørgsmål, ét klik fra
+ * hinanden — nøjagtig som Indkøb → Fakturaer, og som Driftskalenderens
+ * DEMO_BESOEG før den.
+ *
+ * ⚠ OG DE TO HAVDE IKKE SAMME FELTER. Besøget bar `fra`, `til` og
+ * `estimatOere`; noden bærer `startMs`, `estimeretMin` og `beloebOere`. Fjerde
+ * gang de tre navne har kostet noget. Posterne ligger nu i DEMO_OPGAVER, og
+ * DEMO_SERVICEBESOEG er en afledt visning af dem.
+ *
+ * `useListe(node, { demo })` er vejen: sættet bruges KUN når der ingen
+ * database er.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
  * DEN FJERDE RESERVATIONSKILDE. "Reserveret fra sag #1245" i mockuppen er en
  * reservation med kilde `facilitySag` og prioritet 20 — samme node som
@@ -13,10 +32,14 @@
  *
  * ⚠ ET BESØG UDEN aktivId SPÆRRER HELE LOKATIONEN. Lukker man hallen, er alle
  * porte i den også optaget — derfor er ressourcen `lokation` og ikke
- * `facilityAktiv`. De to er hver sin type i RESSOURCE.
+ * `facilityAktiv`. De to er hver sin type i RESSOURCE, og et træk mellem de to
+ * slags rækker skifter derfor TYPE og ikke bare id. Se flytEfter().
  *
- * FASE 0: VISNING. Panelet viser hvad reservationen VILLE blive, som Værksted
- * og Fravær gør. Der skrives ingenting.
+ * ⚠ SKÆRMEN FLYTTER, MEN DEN OPRETTER IKKE. `opgaveflyt` bevarer opgavens
+ * egen art og kan derfor flytte et servicebesøg; `opgaveplanlaeg` SÆTTER
+ * `art: "vaerksted"` og kan altså kun oprette værkstedsopgaver. At oprette en
+ * facility-opgave er stadig en lukket vej der skal genåbnes med sin EGEN
+ * funktion — se README. En knap her ville love noget serveren afviser.
  *
  * FACILITY ER FÆLLES — skærmen reagerer ikke på Gods/Bus. Aktiverne er de
  * samme uanset hvem der kører gennem porten.
@@ -24,76 +47,160 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
-import { kr, num, dato, datoTid } from "../../fleet/format.js";
+import { useListe } from "../../fleet/useListe.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { kr, num, dato, datoTid, klokke } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje, Knap
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
+  Gitter, MiniLinje, Knap, Formularsvar,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED } from "../../fleet/gitter.js";
-import { reservationFraOpgave } from "../../fleet/opgaver.js";
+import {
+  reservationFraOpgave, ressourceId, OPGAVE_STATUS,
+} from "../../fleet/opgaver.js";
+import { slutter } from "../../fleet/driftskalender.js";
+import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
-import {
-  DEMO_SERVICEBESOEG, DEMO_AKTIVER, DEMO_LOKATIONER, demoAktiv, demoLokation
-} from "../../fleet/demo-facility.js";
-
-/* Leverandørnavnet slås op — posterne bærer et leverandoerId, ikke en
-   fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
+/* ⚠ KUN SOM FALDBAKKE I useListe. Sættene bruges når der ingen database er.
+   Skærmen slår IKKE op i dem — det var netop dét der gjorde
+   DEMO_SERVICEBESOEG til et andet svar end noden. */
+import { DEMO_AKTIVER, DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
-const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
 
 const DAG = 86400000;
 const VINDUE_DAGE = 10;
 
-const BESOEG_TONE = { planlagt: "info", igang: "warn", udfoert: "ok" };
-
 export default function Servicekalender() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
+  const [flytSvar, setFlytSvar] = useState(null);
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne kontrollen. Serveren
+     spørger om den samme; det er dér den afgøres. */
+  const maaSkrive = harPerm(bruger?.perms, PERM.opgaverSkriv);
 
   const iDag = new Date(); iDag.setHours(0, 0, 0, 0);
   const vindueFra = iDag.getTime() - DAG;
   const vindueTil = vindueFra + VINDUE_DAGE * DAG;
 
-  const iVindue = DEMO_SERVICEBESOEG.filter((b) => b.fra < vindueTil && vindueFra < b.til);
+  /* ⚠ FACILITY ER FÆLLES: division "alle" står eksplicit, så det kan ses at
+     det er besluttet frem for overset. Et anlæg hører ikke til Gods eller Bus
+     — porten bruges af begge. Opgaven bærer feltet, aktivet gør ikke. */
+  const felles = { vindue: "alle", division: "alle", graense: 500 };
+  const lokationer = useListe("facility/lokationer", { ...felles, demo: DEMO_LOKATIONER });
+  const aktiver = useListe("facility/aktiver", { ...felles, demo: DEMO_AKTIVER });
+  const leverandoerer = useListe("leverandoerer", { ...felles, graense: 200, demo: DEMO_LEVERANDOERER });
+  /* ⚠ SAMME OPSLAG SOM DRIFTSKALENDEREN OG DISPONERINGEN. Ét vindue, ét
+     ordnPaa — tre skærme der læste den samme node forskelligt, ville vise
+     hver sin dag. */
+  const opgaver = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
+    division: "alle", graense: 500, demo: DEMO_OPGAVER,
+  });
+
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
+
+  /* ⚠ ARTEN, IKKE ET DEMOSÆT. Noden bærer både værksted og facility
+     (beslutning 21), og de to har ikke samme feltskema. Værkstedet har sin
+     egen skærm på den SAMME node. */
+  const facilityopgaver = useMemo(
+    () => opgaver.data.filter((o) => o.art === "facility"),
+    [opgaver.data]);
+
+  /* ⚠ VINDUET REGNES AF `startMs` + `slutter()`, IKKE AF `fra`/`til`.
+     Noden bærer ikke de to felter — det gjorde DEMO_SERVICEBESOEG, og det er
+     netop dét der gjorde den til et andet datasæt. En opgave uden estimat får
+     ét døgn, så rækken findes; den foregiver ikke en varighed nogen har
+     besluttet. */
+  const iVindue = useMemo(() => facilityopgaver.filter((o) => {
+    if (!Number.isFinite(o.startMs)) return false;
+    const slut = slutter(o) ?? o.startMs + DAG;
+    return o.startMs < vindueTil && vindueFra < slut;
+  }), [facilityopgaver, vindueFra, vindueTil]);
 
   /* Rækkerne er de RESSOURCER besøgene binder: et aktiv, eller en lokation når
      besøget spærrer hele stedet. Blandes de to, kan man ikke se at gulvarbejdet
      i Hal B lukker alle porte i hallen. */
+  const lokNavn = (id) => lokationer.data.find((l) => l.id === id)?.navn || "";
+
   const raekker = useMemo(() => {
     const aktivIder = new Set(iVindue.filter((b) => b.aktivId).map((b) => b.aktivId));
     const lokIder = new Set(iVindue.filter((b) => !b.aktivId).map((b) => b.lokationId));
     return [
-      ...DEMO_LOKATIONER.filter((l) => lokIder.has(l.id)).map((l) => ({
+      ...lokationer.data.filter((l) => lokIder.has(l.id)).map((l) => ({
         id: l.id, label: l.navn, under: "Hele lokationen",
         pille: <Pille tone="warn">Lokation</Pille>
       })),
-      ...DEMO_AKTIVER.filter((a) => aktivIder.has(a.id)).map((a) => ({
+      ...aktiver.data.filter((a) => aktivIder.has(a.id)).map((a) => ({
         id: a.id, label: a.navn,
-        under: `${AKTIV_ART[a.art]?.label} · ${demoLokation(a.lokationId)?.navn || ""}`,
+        under: `${AKTIV_ART[a.art]?.label} · ${lokNavn(a.lokationId)}`,
         pille: <Pille tone={AKTIV_STATUS[a.status]?.pill}>{AKTIV_STATUS[a.status]?.label}</Pille>
       })),
     ];
-  }, [vindueFra, vindueTil]);
+  }, [iVindue, lokationer.data, aktiver.data]);
 
-  const blokke = iVindue.map((b) => ({
-    id: b.id,
-    raekkeId: b.aktivId || b.lokationId,
-    fra: b.fra, til: b.til,
-    label: `${lvNavn(b.leverandoerId)}${b.sagsnummer ? ` · ${b.sagsnummer}` : ""}`,
-    titel: b.beskrivelse,
-    tone: BESOEG_TONE[b.status] || "info"
+  /* Hvilken slags række et id er. ⚠ GITTERET KENDER KUN ET id, og de to
+     ressourcetyper skal skilles ad: et træk fra en port til en hal skifter
+     TYPE, ikke bare id. */
+  const typeFor = (raekkeId) =>
+    aktiver.data.some((a) => a.id === raekkeId) ? "facilityAktiv" : "lokation";
+
+  const blokke = iVindue.map((o) => ({
+    id: o.id,
+    raekkeId: ressourceId(o),
+    fra: o.startMs,
+    til: slutter(o) ?? o.startMs + DAG,
+    label: [o.leverandoerId ? lvNavn(o.leverandoerId) : "eget personale", o.beskrivelse]
+      .filter(Boolean).join(" · "),
+    titel: o.beskrivelse,
+    tone: OPGAVE_STATUS[o.status]?.pill || "info"
   }));
 
-  if (henter) return <Henter hvad="servicekalenderen" />;
+  /* ---- Træk: flyt et servicebesøg — beslutning 49 ---- */
+
+  const kanFlytteBlok = (b) => {
+    if (!maaSkrive) return "Kræver opgaver.skriv.";
+    const o = facilityopgaver.find((x) => x.id === b.id);
+    if (!o) return "Opgaven kunne ikke findes igen.";
+    const svar = kanFlyttes(o);
+    return svar.ok ? true : svar.aarsag;
+  };
+
+  /**
+   * ⚠ RÆKKENS TYPE SENDES MED, IKKE KUN DENS ID.
+   * Trækkes et besøg fra Port 3 til Hal B, skifter reservationen fra
+   * `facilityAktiv` til `lokation` — og så spærrer den hele hallen frem for én
+   * port. Sendte vi kun id'et, skulle serveren gætte hvilken slags række det
+   * var, og et gæt her er forskellen på at lukke en port og at lukke en hal.
+   */
+  const paaFlyt = async (b, { raekkeId, fra }) => {
+    const o = facilityopgaver.find((x) => x.id === b.id);
+    if (!o) return;
+    setFlytSvar(await flytOpgave({
+      opgaveId: o.id, foer: o, startMs: fra,
+      ressourceType: typeFor(raekkeId), ressourceId: raekkeId,
+    }));
+    opgaver.genindlaes();
+  };
+
+  if (henter || opgaver.henter) return <Henter hvad="servicekalenderen" />;
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
+  /* En AFVIST læsning af selve noden er derimod ikke en tom kalender. */
+  if (blokerer(opgaver.tilstand)) {
+    return <Datatilstand tilstand={opgaver.tilstand} genprov={opgaver.genindlaes} />;
+  }
 
-  const valgt = DEMO_SERVICEBESOEG.find((b) => b.id === valgtId) || null;
+  const valgt = facilityopgaver.find((o) => o.id === valgtId) || null;
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -113,42 +220,66 @@ export default function Servicekalender() {
           raekker={raekker} blokke={blokke}
           fra={vindueFra} til={vindueTil} enhed={ENHED.dag}
           valgtId={valgtId} onVaelg={(b) => setValgtId(b.id === valgtId ? null : b.id)}
+          onFlyt={paaFlyt}
+          kanFlytte={kanFlytteBlok}
           tom="Ingen servicebesøg i perioden."
         />
+        <Formularsvar svar={flytSvar} okTekst="Flyttet." />
         <p className="fc-hint" style={{ marginTop: 12 }}>
           Rækkerne er de <b>ressourcer</b> besøgene binder. Et besøg uden et anlæg
           spærrer <b>hele lokationen</b> — gulvarbejdet i Hal B lukker også portene
           i hallen. Gitteret er det samme som Driftskalender og Disponering
           bruger.
         </p>
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          ⚠ <b>Trækker du et besøg fra et anlæg til en lokationsrække, skifter
+          reservationen TYPE</b> — fra <code>facilityAktiv</code> til{" "}
+          <code>lokation</code>. Så spærrer den hele hallen i stedet for én port.
+          Det er ikke en detalje: det er forskellen på at lukke en port og at
+          lukke stedet.
+        </p>
       </Kort>
 
       <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <Reservationen besoeg={valgt} />
+        <Reservationen besoeg={valgt} lvNavn={lvNavn} />
         <Kort titel="Servicebesøg">
           <Tabel
             kolonner={[
-              { key: "fra", label: "Dato", render: (r) => dato(r.fra) },
+              { key: "startMs", label: "Dato", render: (r) => (
+                  Number.isFinite(r.startMs)
+                    ? `${dato(r.startMs)} ${klokke(r.startMs)}`
+                    : <span className="fc-bad">mangler</span>) },
               { key: "hvad", label: "Hvad", render: (r) => (
-                  <b>{r.aktivId ? demoAktiv(r.aktivId)?.navn : demoLokation(r.lokationId)?.navn}</b>) },
-              { key: "leverandoerId", label: "Leverandør", render: (r) => lvNavn(r.leverandoerId) },
-              { key: "sagsnummer", label: "Sag", render: (r) => r.sagsnummer
-                  ? <code>{r.sagsnummer}</code>
-                  : <span className="fc-neutral">—</span> },
-              { key: "estimatOere", label: "Estimat", num: true, render: (r) => kr(r.estimatOere) },
+                  <b>{r.aktivId
+                    ? aktiver.data.find((a) => a.id === r.aktivId)?.navn || r.aktivId
+                    : lokNavn(r.lokationId) || r.lokationId}</b>) },
+              { key: "leverandoerId", label: "Udføres af", render: (r) => (
+                  r.leverandoerId ? lvNavn(r.leverandoerId) : "eget personale") },
+              { key: "status", label: "Status", render: (r) => (
+                  <Pille tone={OPGAVE_STATUS[r.status]?.pill}>
+                    {OPGAVE_STATUS[r.status]?.label || r.status}
+                  </Pille>) },
+              /* ⚠ beloebOere, IKKE estimatOere. Feltet på noden er en
+                 OMKOSTNING — værkstedet og facility servicerer vores egen
+                 bygning, og et beløb her kan ikke faktureres videre.
+                 `estimatOere` var demofilens navn, og det var netop dét der
+                 gjorde den til et andet datasæt. */
+              { key: "beloebOere", label: "Estimat", num: true, render: (r) => kr(r.beloebOere) },
               { key: "vaelg", label: "", render: (r) => (
                   <Knap onClick={() => setValgtId(r.id)} disabled={r.id === valgtId}>
                     {r.id === valgtId ? "Vist" : "Vis"}
                   </Knap>) },
             ]}
-            raekker={DEMO_SERVICEBESOEG}
+            raekker={facilityopgaver}
             tom="Ingen servicebesøg."
           />
           <p className="fc-hint" style={{ marginTop: 12 }}>
             Et servicebesøg er en <b>opgave med art facility</b> (beslutning 21) —
             samme form som et værkstedsbesøg, bare på et anlæg i stedet for en bil.
-            Sagsnummeret kommer fra beslutning 20:{" "}
-            <Link className="fc-a" to="/flaade">se sagsvisningen</Link>.
+            Tabellen viser <b>noden</b>, ikke et demosæt: den og gitteret læser
+            den samme liste.{" "}
+            <Link className="fc-a" to="/flaade">Se sagsvisningen</Link> — sagen
+            hører til beslutning 20, og den er fase 0.
           </p>
         </Kort>
       </Gitter>
@@ -158,7 +289,20 @@ export default function Servicekalender() {
 
 /* ---- Den fjerde reservationskilde ------------------------------------- */
 
-function Reservationen({ besoeg }) {
+/**
+ * ⚠ DEN LÆSTE BESØGETS `fra`, `til` OG `sagsnummer` — FELTER NODEN IKKE HAR.
+ *
+ * Præcis samme fejl som Disponerings detaljepanel havde, og det er tredje gang
+ * de navne koster noget. Da skærmen tegnede DEMO_SERVICEBESOEG, virkede det;
+ * på en rigtig post ville panelet have skrevet "Invalid Date" i begge ender og
+ * ingen sag. Noden bærer `startMs` og `estimeretMin`, og slutningen REGNES.
+ *
+ * ⚠ OG `lvNavn` KOM UDEFRA SOM EN MODUL-KONST bygget af demofilen. Den er nu
+ * en parameter, bygget af den hentede leverandørliste — en underkomponent kan
+ * ikke se den ydre komponents variabler, og en modul-konst der slog op i et
+ * demosæt, ville vise vores demoværksteds navne hos en rigtig kunde.
+ */
+function Reservationen({ besoeg, lvNavn }) {
   if (!besoeg) {
     return (
       <Kort titel="Reservation">
@@ -171,16 +315,27 @@ function Reservationen({ besoeg }) {
   try { r = reservationFraOpgave(besoeg); } catch (e) { byggefejl = e.message; }
   const pri = prioritetFor(KILDE.facilitySag);
   const heleStedet = !besoeg.aktivId;
+  const slut = slutter(besoeg);
 
   return (
     <Kort titel="Reservationen der ville blive skrevet">
       {byggefejl ? <Fejl>{byggefejl}</Fejl> : (
         <>
           <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
-          <MiniLinje label="Leverandør" vaerdi={lvNavn(besoeg.leverandoerId)} />
-          {besoeg.sagsnummer && <MiniLinje label="Sag" vaerdi={<code>{besoeg.sagsnummer}</code>} />}
-          <MiniLinje label="Fra" vaerdi={datoTid(besoeg.fra)} />
-          <MiniLinje label="Til" vaerdi={`${datoTid(besoeg.til)} (eksklusiv)`} />
+          <MiniLinje
+            label="Udføres af"
+            vaerdi={besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : "eget personale"}
+          />
+          <MiniLinje label="Fra" vaerdi={datoTid(besoeg.startMs)} />
+          {/* ⚠ EN OPGAVE UDEN ESTIMAT HAR INGEN SLUTNING, og det er ikke det
+              samme som at den slutter med det samme. Gitteret giver den et
+              synligt minimum for at kunne tegne den; panelet siger sandheden. */}
+          <MiniLinje
+            label="Til"
+            vaerdi={slut
+              ? `${datoTid(slut)} (eksklusiv)`
+              : <span className="fc-bad">intet estimat</span>}
+          />
 
           <div style={{ borderTop: "1px solid var(--bc-line)", margin: "12px 0" }} />
 
@@ -201,7 +356,11 @@ function Reservationen({ besoeg }) {
           )}
 
           <p className="fc-hint" style={{ marginTop: 12, fontStyle: "italic" }}>
-            „{konfliktTekst(r, { kilde: { type: KILDE.facilitySag, reference: besoeg.sagsnummer || besoeg.id } })}“
+            {/* ⚠ REFERENCEN ER OPGAVENS id, IKKE ET SAGSNUMMER. Nummeret stod
+                på demofilens poster; noden bærer det ikke, og `sager/` findes
+                ikke i firebase.rules.json endnu (beslutning 20 er fase 0). Et
+                nummer skrevet af på opgaven ville drive fra sagen. */}
+            „{konfliktTekst(r, { kilde: { type: KILDE.facilitySag, reference: besoeg.id } })}“
           </p>
           <p className="fc-hint" style={{ marginTop: 12 }}>
             <b>Den fjerde kilde krævede ingen ny kode.</b> Et servicebesøg er en opgave

@@ -1245,6 +1245,26 @@
             // flaade; et beloeb her kan ikke faktureres videre. Hele oere.
             "beloebOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
 
+            // ⚠ TRE FELTER SERVEREN SKREV, SOM BLOKKEN IKKE KENDTE.
+            // `opgaveplanlaeg` har hele tiden skrevet oprettetAf og oprettetMs,
+            // og demo-saettet baerer sagId — men $andet: false herunder sagde
+            // nej til alle tre. Det gjorde ingen skade, fordi noden er
+            // .write: false og admin-SDK'et gaar uden om reglerne. Og netop
+            // DERFOR er det vaerd at rette: blokken er det eneste sted formen
+            // staar skrevet, og en form der ikke passer paa de poster der
+            // faktisk ligger i noden, er en beskrivelse man ikke kan bruge til
+            // noget. Se beslutning 45 og 49.
+            //
+            // ⚠ oprettetAf ER ET uid — hvem der GJORDE det. Ikke personId, som
+            // er hvem opgaven handler om. De to maa ikke byttes om.
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+            // ⚠ sagId, IKKE sagsnummer. Nummeret er fritekst der kan drive fra
+            // sagen; id'et er referencen. `sager/` staar ikke i filen her endnu
+            // (beslutning 20 er fase 0), saa der er ingen eksistenskontrol at
+            // haenge den op paa — den kommer naar noden goer.
+            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+
             "$andet": { ".validate": false }
           }
         },

@@ -57,8 +57,14 @@ const NODE_FOR = {
    `leverandoerer` og `opgaver` fra noderne. Den byggede begge gitres RÆKKER
    af `DEMO_KOERETOEJER` og filtrerede dem på de id'er kundens etaper peger
    på — hos en rigtig kunde matcher de ingenting, så ugegitteret ville stå
-   tomt uden at nogen havde slettet en bil. */
-const LOFT = 23;
+   tomt uden at nogen havde slettet en bil.
+
+   23 → 20: Servicekalenderen læser nu `opgaver`, `facility/aktiver` og
+   `facility/lokationer` fra noderne. Den tegnede `DEMO_SERVICEBESOEG` — seks
+   poster der IKKE var seedet — mens `kpi.facility.planlagtVedligehold` blev
+   regnet af nodens facility-opgaver, som var helt andre. To svar på ét
+   spørgsmål, ét klik fra hinanden. Beslutning 49. */
+const LOFT = 20;
 
 const jsxFiler = (mappe) => {
   const ud = [];

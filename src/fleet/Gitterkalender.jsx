@@ -1,18 +1,27 @@
 /* src/fleet/Gitterkalender.jsx
  * Ressourcer som rækker, tid som kolonner, aktiviteter som blokke.
  *
- * LIGGER I fleet/ OG IKKE I ET MODUL, fordi tre skærme skal bruge nøjagtig
+ * LIGGER I fleet/ OG IKKE I ET MODUL, fordi FIRE skærme skal bruge nøjagtig
  * samme gitter:
  *
- *   Værkstedskalender   køretøjer × dage
- *   Servicekalender     lokationer og aktiver × dage
- *   Disponering         biler × timer (enhed: "time")
+ *   Driftskalender      køretøjer × dage        opgaver, art vaerksted
+ *   Servicekalender     lokationer og aktiver × dage   opgaver, art facility
+ *   Disponering         biler × timer (enhed: "time")  opgaver + etaper
+ *   Unitbookings kalender  kasser × dage        kasseudlaan
  *
  * Byggede hver skærm sit eget, ville de læse det samme interval forskelligt,
  * og et gitter der er én dag forskudt opdages ikke ved at kigge på det. Samme
  * begrundelse som Sagsvisning og Soejlegraf.
  *
  * Regnestykket ligger i gitter.js, uden React, så det kan testes.
+ *
+ * ⚠ GITTERET FLYTTER INGENTING SELV — beslutning 49.
+ * Med `onFlyt` kan en blok trækkes, og gitteret regner ud HVOR den blev
+ * sluppet: en række og et vindue. Hvad det så betyder — hvilken node, hvilken
+ * funktion, hvilke tjek — er kalderens sag. Tre af de fire skærme flytter
+ * `opgaver` gennem `opgaveflyt`; den fjerde flytter kasseudlån og har sin egen
+ * vej ind (beslutning 37). Vidste gitteret hvilken funktion det skulle kalde,
+ * ville den fjerde skærm skulle rette i noget de tre andre ejer.
  *
  * TO TING DER SKAL BLIVE STÅENDE, OGSÅ NÅR DE SER GRIMME UD:
  *
@@ -27,8 +36,16 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ENHED, slots, slotLabel, slotDele, erNu, laegUd, blokkePrRaekke, grupperSlots,
   greb as grebMaal, skridt as skridtMaal, HAANDTAG_MIN,
+  traekTil, maaTraekkes,
 } from "./gitter.js";
 import { Tom } from "./ui.jsx";
+
+/* ⚠ ET TRÆK ER IKKE ET KLIK, OG FORSKELLEN ER ET TAL.
+   Blokken er en knap: den vælges med et klik og viser sine detaljer. Uden en
+   tærskel ville hvert eneste klik være et træk på nul kolonner — altså en
+   flytning der ikke flytter noget, sendt til serveren. Og omvendt: uden den
+   ville en hånd der ryster to pixels, aldrig kunne vælge en blok. */
+const TRAEK_TAERSKEL = 4;
 
 /**
  * Rullebjaelken under gitteret.
@@ -214,8 +231,24 @@ export default function Gitterkalender({
   /* Flytter KALDERENS vindue, ikke rulningen. Uden den er pilene kun en
      rullebjaelke; med den er de ogsaa vejen til dag niogtyve. */
   onSkub = null,
+  /* ⚠ TRÆK ER TILVALG, IKKE STANDARD. Gitteret bruges af fire skaerme, og de
+     tre af dem flytter opgaver — den fjerde, Unitbookings kalender, flytter
+     KASSEUDLAAN, som har sin egen vej ind (`kasseudlaanskriv`, beslutning 37).
+     Et gitter der altid kunne traekke, ville love noget den skaerm ikke kan
+     holde. Uden `onFlyt` opfoerer blokkene sig praecis som foer.
+       onFlyt(blok, { raekkeId, fra, til })
+       kanFlytte(blok) → false spaerrer den ENKELTE blok, med en grund. */
+  onFlyt = null,
+  kanFlytte = null,
 }) {
   const rulRef = useRef(null);
+  /* ⚠ HOOKS FØR DEN TIDLIGE RETURN. `slotListe` beregnes nedenfor, men et tomt
+     gitter returnerer tidligt — og en useState efter den return ville aendre
+     antallet af hooks mellem to renders. Derfor staar traekket her. */
+  const [traek, setTraek] = useState(null);
+  const traekRef = useRef(null);
+  const varTraekRef = useRef(false);
+
   const slotListe = slots(fra, til, enhed);
   if (!slotListe.length || !raekker.length) return <Tom>{tom}</Tom>;
 
@@ -224,11 +257,113 @@ export default function Gitterkalender({
   const antalKonflikter = placerede.filter((p) => p.konflikt).length;
 
   /* Drop-felterne lægges ud med SAMME funktion som blokkene, så de ikke kan
-     være uenige om hvor der er plads. De er attrap i fase 0 — se noten i
-     Disponering. */
+     være uenige om hvor der er plads. Ét regnestykke, to visninger. */
   const placeredeDrop = dropfelter?.felter?.length
     ? blokkePrRaekke(laegUd(dropfelter.felter, slotListe))
     : new Map();
+
+  /* ---- Træk ---------------------------------------------------------- */
+
+  /** Kan DENNE blok flyttes? Tre ting skal passe, og de siger hver sit. */
+  const flytbar = (p) =>
+    Boolean(onFlyt) && maaTraekkes(p) && (!kanFlytte || kanFlytte(p) === true);
+
+  /** Hvorfor ikke — sætningen står på blokken, ikke i en konsol. */
+  const spaerring = (p) => {
+    if (!onFlyt) return null;
+    if (!maaTraekkes(p)) {
+      return "Blokken rækker ud over perioden og kan ikke trækkes — man kan " +
+             "ikke se hvor den begynder. Udvid perioden først.";
+    }
+    const svar = kanFlytte?.(p);
+    return typeof svar === "string" ? svar : null;
+  };
+
+  /* ⚠ HVILKEN CELLE ER PEGEREN OVER? Cellerne bærer sit rækkeid og sit
+     kolonneindeks som data-attributter, og opslaget sker med
+     elementFromPoint. Alternativet — at regne x/y om til en kolonne ud fra
+     gitterets bredde — ville være et ANDET regnestykke end det CSS bruger til
+     at tegne kolonnerne, og de to ville være uenige i kanten. Her spørger vi
+     browseren hvor den rent faktisk tegnede. */
+  const celleUnder = (x, y) => {
+    const e = document.elementFromPoint(x, y)?.closest?.("[data-raekke][data-slot]");
+    if (!e) return null;
+    return { raekkeId: e.dataset.raekke, indeks: Number(e.dataset.slot) };
+  };
+
+  const grebNed = (ev, p) => {
+    if (!flytbar(p)) return;
+    /* Kun den primære knap. Højreklik åbner en menu, og et træk der begyndte
+       under den, ville hænge fast. */
+    if (ev.button !== 0) return;
+    traekRef.current = { id: p.id, x0: ev.clientX, y0: ev.clientY, flyttet: false };
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+  };
+
+  const grebFlyt = (ev) => {
+    const t = traekRef.current;
+    if (!t || !ev.currentTarget.hasPointerCapture(ev.pointerId)) return;
+    if (!t.flyttet) {
+      const langt = Math.abs(ev.clientX - t.x0) + Math.abs(ev.clientY - t.y0);
+      if (langt < TRAEK_TAERSKEL) return;
+      t.flyttet = true;
+    }
+    setTraek({ id: t.id, over: celleUnder(ev.clientX, ev.clientY) });
+  };
+
+  const grebSlip = (ev, p) => {
+    const t = traekRef.current;
+    traekRef.current = null;
+    if (ev.currentTarget.hasPointerCapture(ev.pointerId)) {
+      ev.currentTarget.releasePointerCapture(ev.pointerId);
+    }
+    setTraek(null);
+    /* Bevægede den sig ikke, var det et klik. onClick tager over. */
+    if (!t || !t.flyttet) return;
+    /* ⚠ ET TRÆK DER BLEV SLUPPET, ER IKKE ET KLIK — OG preventDefault() PÅ
+       pointerup STOPPER IKKE KLIKKET. Browseren sender `click` bagefter
+       alligevel, så flaget her er det eneste der virker: onClick spørger om
+       det og nulstiller det. Uden det ville blokken også blive VALGT hver gang
+       den blev flyttet, og detaljepanelet ville skifte under hånden på den der
+       lige har flyttet noget andet. */
+    varTraekRef.current = true;
+
+    const maal = celleUnder(ev.clientX, ev.clientY);
+    if (!maal) return;
+    slipPaa(p, maal.raekkeId, maal.indeks);
+  };
+
+  /** Ét sted for både musen og tastaturet — de to må ikke regne forskelligt. */
+  const slipPaa = (p, raekkeId, indeks) => {
+    const ny = traekTil(p, slotListe, p.start, indeks);
+    if (!ny) return;
+    if (raekkeId === p.raekkeId && ny.fra === p.fra) return;   // slap hvor den lå
+    onFlyt(p, { raekkeId, fra: ny.fra, til: ny.til });
+  };
+
+  /**
+   * ⚠ TASTATURET KAN DET SAMME SOM MUSEN.
+   *
+   * Rullebjælken fik det af samme grund: en kontrol man kun kan tage fat i med
+   * en mus, er en kontrol halvdelen af skærmlæserne ikke har. Shift + pil
+   * flytter — vandret i tid, lodret til en anden ressource. Uden Shift ruller
+   * og navigerer pilene som de plejer, så den almindelige brug ikke ændrer sig.
+   */
+  const tastFlyt = (ev, p) => {
+    if (!ev.shiftKey || !flytbar(p)) return;
+    const raekkeIndeks = raekker.findIndex((r) => r.id === p.raekkeId);
+    const skridt = { ArrowLeft: -1, ArrowRight: 1 }[ev.key];
+    const spring = { ArrowUp: -1, ArrowDown: 1 }[ev.key];
+    if (skridt === undefined && spring === undefined) return;
+    ev.preventDefault();
+
+    if (skridt !== undefined) {
+      slipPaa(p, p.raekkeId, p.start + skridt);
+      return;
+    }
+    const naeste = raekker[raekkeIndeks + spring];
+    if (naeste) slipPaa(p, naeste.id, p.start);
+  };
 
   return (
     <div>
@@ -288,29 +423,57 @@ export default function Gitterkalender({
                   {r.under && <span className="fc-gk-navn-u">{r.under}</span>}
                 </div>
                 <div className="fc-gk-band">
-                  {/* Baggrundsceller — så tomme dage har en kant at aflæse på */}
+                  {/* Baggrundsceller — så tomme dage har en kant at aflæse på.
+                      ⚠ OG DE BÆRER DERES ADRESSE. `data-raekke` og `data-slot`
+                      er det elementFromPoint slår op i, når en blok slippes.
+                      Uden dem skulle et træk regne x/y om til en kolonne med
+                      et ANDET regnestykke end det CSS tegner efter — og de to
+                      ville være uenige netop i kanten mellem to kolonner. */}
                   {slotListe.map((s, i) => (
-                    <div key={s.fra} className={`fc-gk-celle ${erNu(s) ? "fc-gk-nu" : ""}`}
+                    <div key={s.fra}
+                         data-raekke={r.id} data-slot={i}
+                         className={`fc-gk-celle ${erNu(s) ? "fc-gk-nu" : ""} ` +
+                                    `${traek?.over?.raekkeId === r.id && traek?.over?.indeks === i
+                                      ? "fc-gk-maal" : ""}`}
                          style={{ gridColumn: i + 1 }} />
                   ))}
 
-                  {/* Drop-felter FØR blokkene, så en blok altid ligger
-                      øverst. Feltet er ikke en knap: det kan ikke fokuseres,
-                      det kan ikke klikkes, og title siger hvorfor. En attrap
-                      der opfører sig som en kontrol, er værre end ingen. */}
+                  {/* Drop-felter FØR blokkene, så en blok altid ligger øverst.
+                      ⚠ FELTET ER EN KNAP NÅR DER ER NOGET AT KALDE, OG ELLERS
+                      IKKE. Gav kalderen ingen `paaFelt`, kan det hverken
+                      fokuseres eller klikkes, og `title` siger hvorfor — en
+                      attrap der opfører sig som en kontrol, er værre end
+                      ingen. Med `paaFelt` er det en rigtig knap med et rigtigt
+                      tastaturfokus. */}
                   {(placeredeDrop.get(r.id) || []).map((d) => (
-                    <div
-                      key={d.id}
-                      className="fc-gk-drop"
-                      aria-disabled="true"
-                      style={{ gridColumn: `${d.start + 1} / ${d.slut + 2}` }}
-                      title={dropfelter.titel}
-                    >
-                      <span className="fc-gk-tekst">{dropfelter.tekst}</span>
-                    </div>
+                    dropfelter.paaFelt ? (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className="fc-gk-drop fc-gk-drop-kan"
+                        style={{ gridColumn: `${d.start + 1} / ${d.slut + 2}` }}
+                        title={dropfelter.titel}
+                        onClick={() => dropfelter.paaFelt(d)}
+                      >
+                        <span className="fc-gk-tekst">{dropfelter.tekst}</span>
+                      </button>
+                    ) : (
+                      <div
+                        key={d.id}
+                        className="fc-gk-drop"
+                        aria-disabled="true"
+                        style={{ gridColumn: `${d.start + 1} / ${d.slut + 2}` }}
+                        title={dropfelter.titel}
+                      >
+                        <span className="fc-gk-tekst">{dropfelter.tekst}</span>
+                      </div>
+                    )
                   ))}
 
-                  {mine.map((b, i) => (
+                  {mine.map((b, i) => {
+                    const kan = flytbar(b);
+                    const hvorfor = spaerring(b);
+                    return (
                     <button
                       key={b.id}
                       type="button"
@@ -322,7 +485,9 @@ export default function Gitterkalender({
                       data-blok={b.id}
                       className={`fc-gk-blok ${TONE_KLASSE[b.tone] || TONE_KLASSE.info} ` +
                                  `${b.konflikt ? "fc-gk-konflikt" : ""} ` +
-                                 `${valgtId === b.id ? "fc-gk-valgt" : ""}`}
+                                 `${valgtId === b.id ? "fc-gk-valgt" : ""} ` +
+                                 `${kan ? "fc-gk-kan-flyttes" : ""} ` +
+                                 `${traek?.id === b.id ? "fc-gk-traekkes" : ""}`}
                       style={{
                         gridColumn: `${b.start + 1} / ${b.slut + 2}`,
                         /* Konfliktende blokke forskydes NETOP SÅ MEGET at man
@@ -334,9 +499,21 @@ export default function Gitterkalender({
                         (b.konflikt ? "⚠ Overlapper en anden blok på samme ressource. " : "") +
                         (b.foerVindue ? "Begyndte før perioden. " : "") +
                         (b.efterVindue ? "Fortsætter efter perioden. " : "") +
-                        (b.titel || b.label || "")
+                        (b.titel || b.label || "") +
+                        (kan ? "\n\nTræk for at flytte. Shift + piletast gør det samme." : "") +
+                        (hvorfor ? `\n\n${hvorfor}` : "")
                       }
-                      onClick={() => onVaelg?.(b)}
+                      onPointerDown={(ev) => grebNed(ev, b)}
+                      onPointerMove={grebFlyt}
+                      onPointerUp={(ev) => grebSlip(ev, b)}
+                      onPointerCancel={(ev) => grebSlip(ev, b)}
+                      onKeyDown={(ev) => tastFlyt(ev, b)}
+                      onClick={() => {
+                        /* Se noten i grebSlip: et sluppet traek sender ogsaa
+                           et klik, og blokken maa ikke ogsaa blive VALGT. */
+                        if (varTraekRef.current) { varTraekRef.current = false; return; }
+                        onVaelg?.(b);
+                      }}
                     >
                       {b.foerVindue && <span className="fc-gk-pil">←</span>}
                       <span className="fc-gk-tekst">
@@ -344,7 +521,8 @@ export default function Gitterkalender({
                       </span>
                       {b.efterVindue && <span className="fc-gk-pil">→</span>}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -361,6 +539,18 @@ export default function Gitterkalender({
           <b>←</b> og <b>→</b> betyder at aktiviteten strækker sig ud over den viste
           periode. Blokken er <b>ikke</b> så kort som den ser ud — udvid perioden for
           at se hele forløbet.
+        </p>
+      )}
+      {/* ⚠ TRÆK ER USYNLIGT INDTIL MAN PRØVER. En blok der kan flyttes, ser ud
+          som en blok. Musemarkøren siger det til den der allerede har hånden
+          på den; linjen her siger det til den der ikke har — og den nævner
+          tastaturet, fordi en kontrol man kun kan nå med en mus, ikke er en
+          kontrol for alle. */}
+      {onFlyt && placerede.some(flytbar) && (
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          <b>Træk en blok</b> for at flytte den — til et andet tidspunkt eller en
+          anden række. <b>Shift + piletast</b> gør det samme fra tastaturet.
+          Serveren kører de samme tjek igen og afviser hvis pladsen er optaget.
         </p>
       )}
       {antalKonflikter > 0 && (
