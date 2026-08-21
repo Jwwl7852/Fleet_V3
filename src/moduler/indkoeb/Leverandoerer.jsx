@@ -65,6 +65,15 @@ export default function Leverandoerer() {
     data: indkoeb, henter: henterIndkoeb,
   } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500 });
 
+  /* ⚠ FAKTURAERNE ER EN SEEDET NODE, og leverandørernes nøgletal blev regnet
+     af demosættet: ni opdigtede fakturaer mod kundens egne. Skærmen RANGERER
+     leverandører på tallet, så et forkert grundlag er ikke en visningsfejl —
+     det er en anbefaling om hvem man skal handle med. */
+  const { data: fakturaer } = useListe("fakturaer", {
+    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500,
+    demo: DEMO_FAKTURAER,
+  });
+
   const [valgtId, setValgtId] = useState("lv-hydra");
 
   if (henter || henterLev || henterIndkoeb) return <Henter hvad="leverandører" />;
@@ -83,7 +92,12 @@ export default function Leverandoerer() {
      ".filter is not a function" inde i beregnNoegletal(), og skærmen bliver
      hvid. Det er den samme fejl fraDb() i grundlag.js findes for. */
   const leverandoerer = raa.map((l) => leverandoerFraDb(l, l.id));
-  const KILDER = { indkoeb, fakturaer: DEMO_FAKTURAER, sager: DEMO_LEVERANDOERSAGER };
+  /* ⚠ SAGERNE BLIVER I DEMOFILEN, OG DET ER IKKE EN FORGLEMMELSE.
+     `sager/` findes ikke i firebase.rules.json — beslutning 20 er fase 0 —
+     så der ER ingen node at læse. Et tomt array ville få hver leverandør til
+     at stå med nul reklamationer, og det ser ud som en måling. Faldbakken
+     bruges KUN når der ingen database er; her er der ingen node. */
+  const KILDER = { indkoeb, fakturaer, sager: DEMO_LEVERANDOERSAGER };
 
   const aktive = leverandoerer.filter((l) => l.aktiv);
   const valgt = leverandoerer.find((l) => l.id === valgtId) || null;

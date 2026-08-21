@@ -75,8 +75,16 @@ const NODE_FOR = {
    `etaper` gjorde — så linten sprang `DEMO_BOOKINGER` over: den tæller kun
    sæt for SEEDEDE noder. Bookingoversigten læste altså demofilen direkte, og
    loftet kunne ikke se det. Noden seedes nu, sættet står i NODE_FOR, og
-   skærmene er rettet i samme ombæring. Beslutning 56. */
-const LOFT = 17;
+   skærmene er rettet i samme ombæring. Beslutning 56.
+
+   17 → 10: HELE INDKØB læser nu noderne. Modulet havde seks: to
+   navneopslag bygget som MODUL-KONSTANTER af demofilen (`ktNavn`, `lvNavn`),
+   to lister sendt til en registreringsformular, og `DEMO_FAKTURAER` brugt som
+   grundlag for leverandørernes nøgletal to steder.
+   ⚠ Det sidste er det værste: skærmen RANGERER leverandører på tallet, så et
+   forkert grundlag er ikke en visningsfejl — det er en anbefaling om hvem man
+   skal handle med. Beslutning 63. */
+const LOFT = 10;
 
 const jsxFiler = (mappe) => {
   const ud = [];

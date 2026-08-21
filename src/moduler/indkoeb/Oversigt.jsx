@@ -70,7 +70,9 @@ import {
 import {
   DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
 } from "../../fleet/demo-indkoeb.js";
-import { demoLokation, DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i dem — se
+   navneopslagene nedenfor. */
+import { DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
@@ -82,8 +84,12 @@ const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
 /* ⚠ HER STOD lvNavn PÅ MODULNIVEAU, med demo-kartoteket lukket inde i sig.
    Den kan den ikke, når kartoteket HENTES: en modulkonstant kender ikke
    komponentens data. Den er nu et argument — se opslaget i tabellen. */
-const ktNavn = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || null;
-const ktPlade = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.registrering || null;
+/* ⚠ NAVNEOPSLAGENE LÅ SOM MODUL-KONSTANTER BYGGET AF DEMOFILEN.
+   Hos en rigtig kunde matcher de INGENTING: kolonnen "Enhed" ville stå tom på
+   hver eneste linje, og "Sted" ligeså — og en tabel med tomme navne ligner
+   data der mangler frem for et opslag der peger det forkerte sted. Det er
+   fjerde gang det mønster koster noget; se noten i Servicekalenderens
+   Reservationen-panel. De bygges nu af de hentede lister inde i komponenten. */
 
 /**
  * En afvigelse man ikke har, er ikke en afvigelse på nul.
@@ -344,6 +350,33 @@ export default function IndkoebOversigt() {
     ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
   });
 
+  /* ⚠ NODERNE, IKKE DEMOFILERNE. Tre lister som skærmen både SLÅR NAVNE OP I
+     og TILBYDER I FORMULAREN. Med demofilen ville registreringsformularen
+     tilbyde biler og steder der ikke findes i kundens base — og serveren
+     ville afvise et valg skærmen selv havde givet. Samme fejl som Ny
+     forespørgsel havde med kunderne (beslutning 55). */
+  const { data: koeretoejer } = useListe("koeretoejer", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+  });
+  const { data: lokationer } = useListe("facility/lokationer", {
+    vindue: "alle", division: "alle", graense: 200, demo: DEMO_LOKATIONER,
+  });
+  /* ⚠ FAKTURAERNE ER EN SEEDET NODE, og leverandørernes nøgletal blev regnet
+     af demosættet: ni opdigtede fakturaer mod kundens egne. To svar på ét
+     spørgsmål, ét klik fra hinanden — nøjagtig den fejl Indkøb → Fakturaer
+     havde. */
+  const { data: fakturaer } = useListe("fakturaer", {
+    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+    demo: DEMO_FAKTURAER,
+  });
+
+  /* Navneopslagene bygges af de hentede lister — ikke af en modul-konst.
+     En underkomponent kan ikke se dem, så de skal sendes med, hvis tabellen
+     flyttes ud. */
+  const ktNavn = (id) => koeretoejer.find((k) => k.id === id)?.kaldenavn || null;
+  const ktPlade = (id) => koeretoejer.find((k) => k.id === id)?.registrering || null;
+  const stedNavn = (id) => lokationer.find((l) => l.id === id)?.navn || null;
+
   const { bruger, division, periode, path } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
@@ -421,7 +454,7 @@ export default function IndkoebOversigt() {
       leverandoer: l,
       tal: beregnNoegletal(l, {
         indkoeb: iDivision,
-        fakturaer: DEMO_FAKTURAER,
+        fakturaer,
         sager: DEMO_LEVERANDOERSAGER,
       }),
     }))
@@ -504,8 +537,8 @@ export default function IndkoebOversigt() {
           key={linjeform}
           linje={linjeform === "ny" ? null : iDivision.find((l) => l.id === linjeform)}
           leverandoerer={leverandoerer}
-          koeretoejer={DEMO_KOERETOEJER}
-          lokationer={DEMO_LOKATIONER}
+          koeretoejer={koeretoejer}
+          lokationer={lokationer}
           sti={(id) => path(`indkoeb/${id}`)}
           paaGemt={() => { setLinjeform(null); genindlaes(); }}
           paaLuk={() => setLinjeform(null)}
@@ -537,7 +570,7 @@ export default function IndkoebOversigt() {
                ærinde, og så kan ingen svare på om den hørte til. */
             { key: "relateret", label: "Relateret enhed / opgave", bredde: "22%", render: (r) => {
                 const bil = ktNavn(r.koeretoejId);
-                const sted = demoLokation(r.lokationId)?.navn;
+                const sted = stedNavn(r.lokationId);
                 const hoved = bil
                   ? `${bil}${ktPlade(r.koeretoejId) ? ` (${ktPlade(r.koeretoejId)})` : ""}`
                   : sted;

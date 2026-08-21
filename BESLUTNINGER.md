@@ -3979,3 +3979,65 @@ en målrettet rettelse, ikke med en tilbagerulning af filen**, og
 `{ udenGrund: null }` på én linje og blev ikke fanget, hvilket lignede en vagt
 der ikke virkede. Anden gang blev feltet skrevet som de rigtige, og vagten faldt
 som den skulle.
+
+## 63. Indkøb rangerede leverandører på opdigtede fakturaer
+
+Alle tre Indkøb-skærme læste demofiler for noder der er seedet. Seks steder, og
+de er ikke lige alvorlige — men det værste er ikke en visningsfejl.
+
+### ⚠ Nøgletallene blev regnet af ni opdigtede fakturaer
+
+`beregnNoegletal()` fik `fakturaer: DEMO_FAKTURAER` **to steder**: i
+Indkøb → Oversigt (top 5-listen) og i Indkøb → Leverandører (hele
+performancetabellen). Skærmen **rangerer leverandører** på tallet, og
+`MINDSTE_GRUNDLAG` sørger for at et lille grundlag giver `null` frem for en
+procent — men grundlaget var kundens slet ikke.
+
+**Et forkert grundlag er her ikke en visningsfejl. Det er en anbefaling om hvem
+man skal handle med.** To leveringer og to hundrede ser ens ud i en tabel; ni
+opdigtede fakturaer og kundens egne gør det også.
+
+### ⚠ To navneopslag lå som modul-konstanter bygget af demofilen
+
+```js
+const ktNavn = (id) => DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || null;
+const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+```
+
+Hos en rigtig kunde matcher de **ingenting**: kolonnen *"Relateret enhed"* ville
+stå tom på hver eneste indkøbslinje, og leverandørkolonnen på hver eneste
+faktura. **En tabel med tomme navne ligner data der mangler** frem for et opslag
+der peger det forkerte sted.
+
+Det er tredje gang i denne omgang — Servicekalenderens `lvNavn` og
+Bookingoversigtens `opgavePerson`/`opgaveEnhed` var de to andre. Mønstret er
+altid det samme: et navneopslag ser uskyldigt ud, fordi det ikke er et *tal*.
+
+⚠ **Og en underkomponent kan ikke se den ydres variable.** Da `lvNavn` flyttede
+ind i komponenten, skulle den sendes med til `Godkendelse` — en ReferenceError
+ved rendering er ingen byggefejl, og kun et klik fanger den. Det er sjette gang
+den note skrives i dette repo.
+
+### ⚠ Formularen tilbød biler og steder der ikke findes
+
+Registreringsformularen fik `koeretoejer={DEMO_KOERETOEJER}` og
+`lokationer={DEMO_LOKATIONER}`. En rigtig kunde ville altså få en vælger fuld af
+vores demobiler — og serveren ville afvise et valg **skærmen selv havde
+tilbudt**. Nøjagtig samme fejl som Ny forespørgsel havde med kunderne
+(beslutning 55), og den ville have ramt den første rigtige indkøbslinje.
+
+### ⚠ Og én ting bliver i demofilen — med en grund
+
+`DEMO_LEVERANDOERSAGER` bruges stadig som kilde til reklamationer.
+**`sager/` findes ikke i `firebase.rules.json`** — beslutning 20 er fase 0 — så
+der *er* ingen node at læse. Et tomt array ville få hver leverandør til at stå
+med nul reklamationer, og nul ser ud som en måling.
+
+Det er samme skel som mellem de tre slags null i beslutning 62: **"ingen node"
+og "en tom node" er ikke det samme svar.**
+
+### Loftet
+
+`demo-i-skaerm.test.mjs` gik fra **17 til 10**. De ti der er tilbage, er
+navneopslag i Bemanding, LiveKort, Arbejdskøen, Indberetninger, Facility →
+Oversigt og Opsætning → Generelt — én skærm ad gangen, med et klik bagefter.

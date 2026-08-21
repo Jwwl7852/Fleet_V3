@@ -52,11 +52,19 @@ import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, kanGodkende,
   PERM_GODKEND_MIDLERTIDIG
 } from "../../fleet/leverandoerer.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i sættet. */
 import {
   DEMO_LEVERANDOERER, demoAfstemning
 } from "../../fleet/demo-indkoeb.js";
 
-const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+/* ⚠ HER STOD `const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id)`
+   — en MODUL-KONST bygget af demofilen, mens `leverandoerer` er en seedet
+   node. Hos en rigtig kunde ville leverandørkolonnen stå tom på hver eneste
+   faktura, og panelet ville vise et råt id. Det er samme fælde som
+   Servicekalenderens `lvNavn` var, og som Bookingoversigtens navneopslag var
+   — tredje gang. Opslaget bygges nu af den hentede liste inde i komponenten
+   og SENDES MED til underkomponenten: en underkomponent kan ikke se den ydres
+   variable, og en ReferenceError ved rendering er ingen byggefejl. */
 
 export default function Fakturaer() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
@@ -79,6 +87,12 @@ export default function Fakturaer() {
   const indkoeb = useListe("indkoeb", {
     ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500
   });
+  /* ⚠ LEVERANDØRERNE ER EN SEEDET NODE. Se noten ved importen. */
+  const leverandoerer = useListe("leverandoerer", {
+    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+    demo: DEMO_LEVERANDOERER,
+  });
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
 
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
@@ -177,7 +191,8 @@ export default function Fakturaer() {
           </p>
         </Kort>
 
-        <Godkendelse faktura={valgt} maaGodkende={maaGodkende} rolle={bruger?.rolle} />
+        <Godkendelse faktura={valgt} maaGodkende={maaGodkende} rolle={bruger?.rolle}
+                     lvNavn={lvNavn} />
       </Gitter>
     </div>
   );
@@ -238,7 +253,7 @@ function Afstemning() {
 
 /* ---- Godkendelse: hvad knappen VILLE gøre ------------------------------ */
 
-function Godkendelse({ faktura, maaGodkende, rolle }) {
+function Godkendelse({ faktura, maaGodkende, rolle, lvNavn }) {
   if (!faktura) {
     return (
       <Kort titel="Godkendelse">
