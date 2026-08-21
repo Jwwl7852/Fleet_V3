@@ -1289,7 +1289,6 @@ describe("omkostningsarket ud af JSX-filen", () => {
     /* Et køretøj er defineret ved sin ART, ikke ved en afdeling, og reglerne
        afviser feltet på koeretoejer/. En km-sats må ikke indføre det ad
        bagvejen. */
-    assert.ok(valideOmkostning({ id: "bil-kt-012", art: "bil", division: "gods" }).division);
     assert.deepEqual(valideOmkostning({ id: "bil-kt-012", art: "bil" },
       { koeretoejer: ["kt-012"] }), {});
   });

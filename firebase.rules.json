@@ -676,44 +676,53 @@
         // er betalt eet sted.
         "kpi": {
           ".write": false,
-          "$division": {
-            "$snapshot": {
-              // Modulnavnet ER domaenenavnet for syv af ti, og derfor kan
-              // reglen slaa det op uden et katalog. De tre undtagelser staar
-              // eksplicit:
-              //   opgaver, afvigelser  spaender FLERE moduler — samme
-              //                        carve-out som noderne opgaver/satser/
-              //                        fakturaer i beslutning 33
-              //   disponering          hoerer til modulet 'booking'
-              // Listen staar i KPI_DOMAENE i kpi-aggregering.js, og en proeve
-              // holder de to op mod hinanden.
-              // ⚠ OG ET LED TIL: DOMAENET ARVER SIN KILDES LAESE-PERMISSION.
-              //
-              // Modulklausulen ovenfor gaelder TENANTEN. Det her gaelder
-              // BRUGEREN: et noegletal er ikke mildere end sit grundlag. Maa
-              // man ikke laese `kunder/`, skal man heller ikke kunne laese
-              // ANTALLET af kunder ad bagvejen — et aggregat er stadig kundens
-              // data, det er bare talt op.
-              //
-              // ⚠ KUN `kunder` I DAG, og det er ikke en halv loesning. Af de
-              // noder aggregeringen faktisk laeser, er `kunder` den ENESTE der
-              // kraever en laese-permission; etaper, grundlag, opgaver,
-              // indkoeb, fakturaer, leverandoerer, facility og indberetninger
-              // kraever kun tenant-medlemskab. At skrive flere led ville vaere
-              // at gate paa noget der ikke er grundlaget.
-              //
-              // Det aendrer INTET i dag — alle syv roller har kunder.laes.
-              // Vaerdien er at leddet ER der: den dag en laese-permission
-              // strammes, foelger noegletallet med af sig selv.
-              //
-              // KPI_KILDER og KPI_PERM i kpi-aggregering.js siger hvad hvert
-              // domaene er regnet af, og test/rules.kpi.test.mjs udleder
-              // kravet af REGLERNE for hver kilde og fejler hvis de to er
-              // uenige. Faar `flaade` en dag `koeretoejer` som kilde, bliver
-              // proeven roed indtil koeretoejer.laes staar begge steder.
-              "$domaene": {
-                ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')))"
-              }
+          // ⚠ HER LAA ET "$division"-NIVEAU — kpi/<division>/<snapshot>/<domaene>.
+          // Aksen er fjernet i beslutning 70: ingen abonnent har baade gods
+          // og bus, saa jobbet skrev to grene med de samme tal for flaaden og
+          // bemandingen og forskellige for resten.
+          //
+          // ⚠ NIVEAUET VAR ET WILDCARD, IKKE EN OPREMSNING. Reglen matchede
+          // hvad som helst der stod dér, saa den her aendring ER en
+          // regelaendring og ikke bare en anden sti: laeste klienten et niveau
+          // hoejere UDEN at reglen fulgte med, ville "current" have matchet
+          // $division, domaenet have matchet $snapshot, og .read paa $domaene
+          // aldrig vaere naaet. Sti, regel og udrullede data flytter sammen.
+          "$snapshot": {
+            // Modulnavnet ER domaenenavnet for syv af ti, og derfor kan
+            // reglen slaa det op uden et katalog. De tre undtagelser staar
+            // eksplicit:
+            //   opgaver, afvigelser  spaender FLERE moduler — samme
+            //                        carve-out som noderne opgaver/satser/
+            //                        fakturaer i beslutning 33
+            //   disponering          hoerer til modulet 'booking'
+            // Listen staar i KPI_DOMAENE i kpi-aggregering.js, og en proeve
+            // holder de to op mod hinanden.
+            // ⚠ OG ET LED TIL: DOMAENET ARVER SIN KILDES LAESE-PERMISSION.
+            //
+            // Modulklausulen ovenfor gaelder TENANTEN. Det her gaelder
+            // BRUGEREN: et noegletal er ikke mildere end sit grundlag. Maa
+            // man ikke laese `kunder/`, skal man heller ikke kunne laese
+            // ANTALLET af kunder ad bagvejen — et aggregat er stadig kundens
+            // data, det er bare talt op.
+            //
+            // ⚠ KUN `kunder` I DAG, og det er ikke en halv loesning. Af de
+            // noder aggregeringen faktisk laeser, er `kunder` den ENESTE der
+            // kraever en laese-permission; etaper, grundlag, opgaver,
+            // indkoeb, fakturaer, leverandoerer, facility og indberetninger
+            // kraever kun tenant-medlemskab. At skrive flere led ville vaere
+            // at gate paa noget der ikke er grundlaget.
+            //
+            // Det aendrer INTET i dag — alle syv roller har kunder.laes.
+            // Vaerdien er at leddet ER der: den dag en laese-permission
+            // strammes, foelger noegletallet med af sig selv.
+            //
+            // KPI_KILDER og KPI_PERM i kpi-aggregering.js siger hvad hvert
+            // domaene er regnet af, og test/rules.kpi.test.mjs udleder
+            // kravet af REGLERNE for hver kilde og fejler hvis de to er
+            // uenige. Faar `flaade` en dag `koeretoejer` som kilde, bliver
+            // proeven roed indtil koeretoejer.laes staar begge steder.
+            "$domaene": {
+              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')))"
             }
           }
         },
@@ -760,7 +769,7 @@
             // skrevet ned endnu (fraAdresse-lignende fritekst, krav-lister), og et
             // afvisende $andet ville sige at posterne var ugyldige uden at nogen
             // kunne se hvilket felt. Formen strammes naar skaermene er faerdige.
-            ".validate": "newData.hasChildren(['kundeId', 'division', 'tilstand'])",
+            ".validate": "newData.hasChildren(['kundeId', 'tilstand'])",
 
             // ⚠ NUMMERET KOMMER FRA COUNTEREN (beslutning 8) og har EET format.
             // En afskrift af formatet her er billig og fanger den dag nogen
@@ -809,7 +818,7 @@
             // LOGBARE_FELTER i audit-regler.js.
             "harAabneEtaper": { ".validate": "newData.isBoolean()" },
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "division": { ".validate": false },
             // ⚠ KUNDENS EGET NUMMER, IKKE VORES — WAREHOUSE.md etape 16.
             // Det staar paa transportlabelen, fordi modtageren soeger paa DET
             // og ikke paa vores bookingnummer. Fri tekst med vilje: en kundes
@@ -838,10 +847,12 @@
           ".write": false,
           ".indexOn": ["tilstand", "bookingId", "senestMs"],
           "$etapeId": {
-            ".validate": "newData.hasChildren(['division'])",
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            },
+            // ⚠ SAMME SOM PAA kunder: her stod hasChildren(['division']), og det var
+            // nodens eneste krav. En etape UDEN bookingId er ikke en etape — den hoerer
+            // til et forloeb, og uden referencen kan bookingens tilstand ikke afledes
+            // (beslutning 40). Se beslutning 70.
+            ".validate": "newData.hasChildren(['bookingId'])",
+                        "division": { ".validate": false },
             // ⚠ EN ETAPE BAERER EN LISTE AF KOERETOEJER, IKKE EET.
             // En saettevognstur er traekker PLUS trailer, og de fem
             // disponeringstjek er skrevet til det: kanDisponeres() afviser en
@@ -953,12 +964,10 @@
             // Det er samme hul som "indkoeb" havde — og her var det vaerre,
             // fordi INTET skrev til noden: den var tom, og en tom node kan
             // ikke afsloere sin egen manglende validering.
-            ".validate": "newData.hasChildren(['navn', 'division'])",
+            ".validate": "newData.hasChildren(['navn'])",
 
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            },
+            "division": { ".validate": false },
 
             // Kapaciteten er PLADSER, ikke oere. Den er ikke en sats og hoerer
             // derfor paa lageret selv.
@@ -1065,7 +1074,7 @@
             "nummer": { ".validate": "newData.isString() && newData.val().matches(/^GRL-[0-9]{4}-[0-9]{5}$/)" },
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
             "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "division": { ".validate": false },
             "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|godkendt|laast)$/)" },
             // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
             "udarbejdetAf": { ".validate": "newData.isString()" },
@@ -1150,13 +1159,13 @@
             // koeretoej er defineret ved sin ART, ikke ved en afdeling, og
             // reglerne afviser feltet paa koeretoejer/. En km-sats maa ikke
             // indfoere det ad bagvejen.
-            ".validate": "newData.hasChildren(['art']) && (newData.child('art').val() !== 'bil' || (!newData.hasChild('navn') && !newData.hasChild('division'))) && (newData.child('art').val() === 'bil' || newData.hasChild('navn'))",
+            ".validate": "newData.hasChildren(['art']) && (newData.child('art').val() === 'bil' || newData.hasChild('navn'))",
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(bil|passage|agent)$/)" },
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
             "kategori": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "by": { ".validate": "newData.isString() && newData.val().length <= 80" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "division": { ".validate": false },
             // Vejafgiften kommer med uden at nogen vaelger den. Antallet af
             // faerger kommer fra RUTEN; vejafgiften goer ikke.
             "altidPaaBooking": { ".validate": "newData.isBoolean()" },
@@ -1336,10 +1345,10 @@
             // omkostning som float. Og opgaven RESERVERER nu sin ressource,
             // saa et forkert tidspunkt spaerrer en bil i et vindue ingen har
             // ment noget med.
-            ".validate": "newData.hasChildren(['art', 'division', 'status', 'startMs'])",
+            ".validate": "newData.hasChildren(['art', 'status', 'startMs'])",
 
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|facility)$/)" },
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "division": { ".validate": false },
 
             // Ordlisten staar i opgaver.js. Laengdetjek her, af samme grund som
             // paa lagre.metode: en afskrift ville vaere et andet sted den stod.
@@ -1541,11 +1550,9 @@
             // vi ikke kender, et forloeb der ikke findes, en omkostning som
             // streng. Og chauffoerer SKRIVER til den: det er den ene node
             // hvor den mindst betroede rolle opretter poster.
-            ".validate": "newData.hasChildren(['art', 'forloeb', 'division', 'oprettetAf', 'oprettetMs'])",
+            ".validate": "newData.hasChildren(['art', 'forloeb', 'oprettetAf', 'oprettetMs'])",
 
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            },
+            "division": { ".validate": false },
 
             // Ordlisterne staar i indberetninger.js (HAENDELSE_ART, FORLOEB).
             // Her staar de som laengdetjek af samme grund som lagre.metode:
@@ -1874,7 +1881,7 @@
             "cvr": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{8}$/)" },
 
             "kategori": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|reservedele|daek|braendstof|facility|kontor|transport)$/)" },
-            "division": { ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)" },
+            "division": { ".validate": false },
             // ⚠ EN LEVERANDOER SLETTES IKKE — han taget UD AF DRIFT. Hans
             // fakturaer og indkoebslinjer peger paa ham, og et regnskab der
             // henviser til en post der ikke findes, kan ikke efterproeves.
@@ -1947,10 +1954,8 @@
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
-            ".validate": "newData.hasChildren(['division', 'dato', 'leverandoerId', 'vare', 'antal', 'prisPrEnhedOere', 'fakturastatus'])",
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            },
+            ".validate": "newData.hasChildren(['dato', 'leverandoerId', 'vare', 'antal', 'prisPrEnhedOere', 'fakturastatus'])",
+            "division": { ".validate": false },
 
             // ⚠ NODEN VALIDEREDE KUN division. En pris kunne komme ind som
             // FLOAT — 18.5 i stedet for 1850 — og beslutning 2 stod dermed
@@ -2710,6 +2715,16 @@
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
           ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
           "$kundeId": {
+            // ⚠ HER STOD hasChildren(['division']) — OG DET VAR NODENS ENESTE KRAV.
+            // Da feltet blev fjernet (beslutning 70), forsvandt AL validering paa en
+            // kunde med det, og en post blev gyldig som et tomt objekt. Det blev MAALT:
+            // proeven "en pris paa en kunde der ikke findes, afvises" faldt, fordi
+            // kaskaden ned i satser/ ikke laengere havde noget at fejle paa.
+            // 
+            // ⚠ ET FELT DER FJERNES, KAN VAERE DET ENESTE DER HOLDT NODEN OPPE.
+            // Reglen kraever nu `navn` — det ene en kunde altid har, og det der goer
+            // forskel paa en rigtig post og et tastefejlet kundeId.
+            ".validate": "newData.hasChildren(['navn'])",
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
             // newData.exists(). Begge dele er noedvendige, og de stopper hver
             // sin ting: laa reglen paa noden, kunne ET kald tomme hele
@@ -2717,11 +2732,8 @@
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
             ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true) && newData.exists()",
-            ".validate": "newData.hasChildren(['division'])",
-            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
-            "division": {
-              ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
-            },
+                        "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
+            "division": { ".validate": false },
             // ⚠ KUNDENS ADRESSE — WAREHOUSE.md etape 16. Den staar paa
             // transportlabelen under kundenavnet, og indtil nu fandtes den
             // slet ikke: kartoteket bar navn, aftale og oekonomi, men ingen

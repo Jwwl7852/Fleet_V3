@@ -56,7 +56,7 @@ before(async () => {
     for (const [id, m] of Object.entries(moduler)) {
       await set(ref(db, t(id, "_findes")), true);
       await set(ref(db, t(id, "moduler")), m);
-      await set(ref(db, t(id, "kunder/k1")), { division: "faelles" });
+      await set(ref(db, t(id, "kunder/k1")), { navn: "Kunde 1" });
       await set(ref(db, t(id, "reolpladser/p1")), {
         hal: "Hal 1", reol: "1", fag: "1", hylde: "6", plads: "1",
       });

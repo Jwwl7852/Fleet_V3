@@ -30,7 +30,7 @@ const somRolle = (uid, rolle) =>
   miljoe.authenticatedContext(uid, { tenant: T, rolle, perms: permStrengFraRolle(rolle) }).database();
 
 const sti = (node, id) => `tenants/${T}/${node}/${id}`;
-const KUNDE = { navn: "Prøvekunde", division: "gods", aktiv: true };
+const KUNDE = { navn: "Prøvekunde", aktiv: true };
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
@@ -56,7 +56,7 @@ before(async () => {
       navn: "Hydra-Grene Kolding", kategori: "reservedele", aktiv: true,
     });
     await set(ref(db, sti("indberetninger", "andres")), {
-      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 100,
+      art: "braendstof", forloeb: "ny", kmStand: 100,
       oprettetAf: "enAnden", oprettetMs: 1786000000000,
     });
   });
@@ -129,7 +129,7 @@ describe("serveren håndhæver permissions", () => {
       ["kunder", PERM.kunderSkriv, KUNDE],
       ["koeretoejer", PERM.koeretoejerSkriv, { navn: "Volvo", art: "lastbil", status: "aktiv" }],
       ["fravaer", PERM.fravaerSkriv, { personId: "lars", fra: 1, til: 2 }],
-      ["indkoeb", PERM.indkoebSkriv, { division: "gods", dato: 1786000000000,
+      ["indkoeb", PERM.indkoebSkriv, { dato: 1786000000000,
         leverandoerId: "lv-hydra", vare: "Slange", antal: 1, prisPrEnhedOere: 1850,
         fakturastatus: "modtaget" }],
       /* ⚠ leverandoerer DELER indkoeb.skriv — den har ikke sin egen.
@@ -144,7 +144,7 @@ describe("serveren håndhæver permissions", () => {
          ét kald. En skrivning på gruppen selv afvises nu — og det er præcis
          forskellen prøven skal kunne se. */
       ["satser/gr", PERM.satserSkriv, { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }],
-      ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],
+      ["lagre", PERM.lagreSkriv, { navn: "Kolding" }],
     ];
     for (const [node, perm, post] of noder) {
       /* Navngiv noden i fejlen. Ellers siger en fejlende løkke kun
@@ -175,7 +175,7 @@ describe("serveren håndhæver permissions", () => {
        kendsgerning: at enheden er optaget. `reservationer` er `.write: false`,
        så en klient kunne kun skrive den ene halvdel — og en opgave uden
        reservation ser FRI ud i disponeringen. */
-    const post = { division: "gods", art: "vaerksted", status: "planlagt",
+    const post = { art: "vaerksted", status: "planlagt",
                    startMs: 1786000000000, estimeretMin: 90 };
     const kun = medPerms("uid-kun-opgaver", [PERM.opgaverSkriv]);
     await assertFails(set(ref(kun, sti("opgaver", "nej1")), post));
@@ -197,7 +197,7 @@ describe("ukendte og manglende permissions fejler lukket", () => {
       .database();
     for (const [node, post] of [
       ["kunder", KUNDE],
-      ["opgaver", { division: "gods" }],
+      ["opgaver", {}],
       ["satser", { post: {} }],
     ]) {
       await assertFails(set(ref(db, sti(node, "tastefejl")), post));
@@ -207,7 +207,7 @@ describe("ukendte og manglende permissions fejler lukket", () => {
   it("rollen alene giver ingenting — admin uden perms-claim afvises", async () => {
     const db = miljoe.authenticatedContext("uid-kunrolle", { tenant: T, rolle: "admin" }).database();
     await assertFails(set(ref(db, sti("kunder", "k-kunrolle")), KUNDE));
-    await assertFails(set(ref(db, sti("opgaver", "o-kunrolle")), { division: "gods" }));
+    await assertFails(set(ref(db, sti("opgaver", "o-kunrolle")), {}));
   });
 
   it("et tomt perms-claim giver ingenting", async () => {
@@ -237,24 +237,24 @@ describe("rolle-presets giver samme adgang som før", () => {
     const db = somRolle("uid-ch", "chauffoer");
     await assertSucceeds(
       set(ref(db, sti("indberetninger", "egen")), {
-        division: "gods", art: "braendstof", forloeb: "ny", kmStand: 184320,
+        art: "braendstof", forloeb: "ny", kmStand: 184320,
         oprettetAf: "uid-ch", oprettetMs: 1786000000000,
       })
     );
     await assertFails(set(ref(db, sti("kunder", "k-ch")), KUNDE));
-    await assertFails(set(ref(db, sti("opgaver", "o-ch")), { division: "gods" }));
+    await assertFails(set(ref(db, sti("opgaver", "o-ch")), {}));
   });
 
   it("chaufføren må ikke rette en andens indberetning — admin må", async () => {
     const ch = somRolle("uid-ch2", "chauffoer");
     await assertFails(set(ref(ch, sti("indberetninger", "andres")), {
-      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 999,
+      art: "braendstof", forloeb: "ny", kmStand: 999,
       oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
 
     const adm = somRolle("uid-adm", "admin");
     await assertSucceeds(set(ref(adm, sti("indberetninger", "andres")), {
-      division: "gods", art: "braendstof", forloeb: "ny", kmStand: 999,
+      art: "braendstof", forloeb: "ny", kmStand: 999,
       oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
   });
@@ -271,7 +271,7 @@ describe("rolle-presets giver samme adgang som før", () => {
     for (const rolle of ["casehandler", "disponent", "koordinator", "chauffoer"]) {
       const db = somRolle(`uid-s-${rolle}`, rolle);
       await assertFails(set(ref(db, sti("satser/gr", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
-      await assertFails(set(ref(db, sti("lagre", "l1")), { division: "gods", navn: "Kolding" }));
+      await assertFails(set(ref(db, sti("lagre", "l1")), { navn: "Kolding" }));
     }
     const adm = somRolle("uid-s-admin", "admin");
     await assertSucceeds(set(ref(adm, sti("satser/gr", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
@@ -476,6 +476,6 @@ describe("bookingflowet er stadig lukket for alle", () => {
   it("selv en admin med alle permissions kan ikke skrive bookinger eller etaper", async () => {
     const db = somRolle("uid-b", "admin");
     await assertFails(set(ref(db, sti("bookinger", "b1")), { nummer: "BKG-2026-00001" }));
-    await assertFails(set(ref(db, sti("etaper", "e1")), { division: "gods", bookingId: "b1" }));
+    await assertFails(set(ref(db, sti("etaper", "e1")), { bookingId: "b1" }));
   });
 });

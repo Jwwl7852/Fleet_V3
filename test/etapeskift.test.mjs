@@ -38,8 +38,7 @@ const ALLE_KOMP = ["c", "ce", "tachografkort", "eubevis"].map((type) => ({
 }));
 
 const etape = (o = {}) => ({
-  id: "et-1", bookingId: "bk-1", division: "gods",
-  fra: A, til: A + 8 * T,
+  id: "et-1", bookingId: "bk-1", fra: A, til: A + 8 * T,
   koeretoejIder: { "kt-1": true, "tr-1": true },
   personId: "p-1",
   maengde: { m3: 60, kg: 14000 },

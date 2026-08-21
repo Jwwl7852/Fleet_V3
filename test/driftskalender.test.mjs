@@ -30,7 +30,7 @@ const DAG = 86400000;
 const NU = new Date(2026, 7, 12, 10, 0).getTime();
 
 const opg = (id, o = {}) => ({
-  id, art: "vaerksted", division: "gods", koeretoejId: "kt-1",
+  id, art: "vaerksted", koeretoejId: "kt-1",
   status: "planlagt", startMs: NU + DAG, estimeretMin: 120, ...o,
 });
 

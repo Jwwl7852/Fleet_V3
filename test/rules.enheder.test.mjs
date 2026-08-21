@@ -75,7 +75,7 @@ before(async () => {
       hal: "Hovedlager", reol: "A01", fag: "02", hylde: "1", plads: "1",
     });
     await set(ref(db, sti(`kunder/${KUNDE}`)), {
-      navn: "Nordisk Transport", division: "gods", aktiv: true,
+      navn: "Nordisk Transport", aktiv: true,
     });
     await set(ref(db, sti(`carriers/${CARRIER}`)), {
       type: "pallekasse", ejerforhold: "ejet", status: "paaLager",

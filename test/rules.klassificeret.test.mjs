@@ -60,7 +60,7 @@ before(async () => {
     for (const t of [T, FREMMED]) {
       await set(ref(db, `tenants/${t}/_findes`), true);
       await set(ref(db, `tenants/${t}/bookinger/b1`), {
-        nummer: "BKG-2026-00001", division: "gods", securityLevel: "confidential",
+        nummer: "BKG-2026-00001", securityLevel: "confidential",
       });
       await set(ref(db, `tenants/${t}/sensitive/bookinger/b1`), {
         securityInformation: "Kræver følgebil",
@@ -203,7 +203,7 @@ describe("rolle-presets efter beslutning 17", () => {
 
 describe("securityLevel", () => {
   const kunde = (niveau) => ({
-    navn: "Kunde", division: "gods", aktiv: true,
+    navn: "Kunde", aktiv: true,
     ...(niveau === undefined ? {} : { securityLevel: niveau }),
   });
 

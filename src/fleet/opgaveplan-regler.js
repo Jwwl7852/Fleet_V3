@@ -19,7 +19,6 @@
  * Hver regel herunder har derfor sin modpart i regelfilen:
  *
  *   art              matches(/^(vaerksted|facility)$/)
- *   division         matches(/^(gods|bus|faelles)$/)
  *   status           længde ≤ 40, ordlisten i opgaver.js
  *   prioritet        matches(/^(lav|normal|hoej)$/)
  *   arbejdstype      længde ≤ 40, ordlisten i opgaver.js
@@ -178,9 +177,6 @@ export function valideOpgaveplan(post = {}, { enheder = null, leverandoerer = nu
      koeretoejer/, mens opgaver/ kræver det — værdien skal sættes af den der
      planlægger. Udfyldte formularen den ud fra bilen, ville vi genindføre
      præcis den kobling beslutning 19 fjernede. */
-  if (!["gods", "bus", "faelles"].includes(post.division)) {
-    f.division = "Vælg hvilken division der bærer opgaven. Den kan ikke udledes af enheden.";
-  }
 
   if (!PLANLAEGBAR_STATUS.includes(post.status)) {
     f.status = "En opgave man planlægger, er planlagt eller afventende — ikke i gang eller udført.";
@@ -291,9 +287,6 @@ export function valideFacilityopgave(
      er ikke altid fælles. Målt: `op-013`, eftersynet af busladestanderne i
      Aalborg, står som `bus`. Låste funktionen feltet til `faelles`, ville den
      post ikke kunne oprettes gennem skærmen der viser den. */
-  if (!["gods", "bus", "faelles"].includes(post.division)) {
-    f.division = "Vælg hvilken division der bærer omkostningen.";
-  }
 
   if (!PLANLAEGBAR_STATUS.includes(post.status)) {
     f.status = "Et besøg man planlægger, er planlagt eller afventende — ikke i gang eller udført.";

@@ -234,7 +234,7 @@ describe("Seed-formen passer til det useListe læser", () => {
   });
 
   it("⚠ NOEGLETALLENE SEEDES IKKE — DE REGNES", () => {
-    /* Her stod kpi/gods/current med DEMO_KPI som data, og dev viste derfor
+    /* Her stod kpi/current med DEMO_KPI som data, og dev viste derfor
        MOCKUPPENS tal oven paa sine egne: "18 aabne ordrer" over en tabel med
        6 raekker. Opdigtede tal findes KUN hvor der ikke er en database at
        spoerge (beslutning 26) — og dev HAR en.

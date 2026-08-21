@@ -29,7 +29,7 @@ const NU = Date.UTC(2026, 7, 24, 8, 0, 0);
 
 /** En værkstedsopgave som noden bærer den — nodens feltnavne, ikke besøgets. */
 const vaerksted = (x = {}) => ({
-  art: "vaerksted", division: "gods", status: "planlagt",
+  art: "vaerksted", status: "planlagt",
   koeretoejId: "kt-1", arbejdstype: "service",
   beskrivelse: "Serviceeftersyn",
   startMs: NU, estimeretMin: 120,
@@ -38,7 +38,7 @@ const vaerksted = (x = {}) => ({
 
 /** En facility-opgave. Ressourcen er et anlæg ELLER en hel lokation. */
 const facility = (x = {}) => ({
-  art: "facility", division: "faelles", status: "planlagt",
+  art: "facility", status: "planlagt",
   aktivId: "fa-port3",
   beskrivelse: "Portmotor udskiftes",
   startMs: NU, estimeretMin: 240,

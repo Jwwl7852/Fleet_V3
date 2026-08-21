@@ -24,7 +24,6 @@ import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { ALLE_MODULER, MODUL } from "../src/fleet/moduler.js";
 import { ALLE_PRIORITETER } from "../src/fleet/prioritet.js";
 
-const DIVISIONER = ["gods", "bus"];
 
 describe("katalogets nøgler er modulernes", () => {
   it("⚠ INGEN EGNE NAVNE — `flaade`, ikke `fleet`", () => {
@@ -64,16 +63,16 @@ describe("⚠ HVER FELTSTI RAMMER ET FELT DER FINDES", () => {
   /* Den vigtigste prøve i filen. Se hovedet: en forkert sti ser ud som et
      ubesvaret nøgletal, og den forskel kan ingen se på skærmen. */
 
-  it("modulkortenes tal findes i kpi/ — i BEGGE divisioner", () => {
+  /* ⚠ HER STOD "i BEGGE divisioner", og prøven løb gods og bus igennem hver
+     for sig. Der er ét sæt nu (beslutning 70) — og de to gennemløb var i
+     forvejen den samme påstand for hvert felt der ikke bar en division. */
+  it("modulkortenes tal findes i kpi/", () => {
     const mangler = [];
-    for (const division of DIVISIONER) {
-      const kpi = DEMO_KPI[division];
-      for (const [modul, kort] of Object.entries(MODULKORT)) {
-        for (const post of kort.tal || []) {
-          if (post.afledt) continue;
-          if (kpiVaerdi(kpi, post.felt) === null) {
-            mangler.push(`${division}/${modul} → ${post.felt}`);
-          }
+    for (const [modul, kort] of Object.entries(MODULKORT)) {
+      for (const post of kort.tal || []) {
+        if (post.afledt) continue;
+        if (kpiVaerdi(DEMO_KPI, post.felt) === null) {
+          mangler.push(`${modul} → ${post.felt}`);
         }
       }
     }
@@ -82,12 +81,8 @@ describe("⚠ HVER FELTSTI RAMMER ET FELT DER FINDES", () => {
 
   it("handlingernes tal findes også", () => {
     const mangler = [];
-    for (const division of DIVISIONER) {
-      for (const h of HANDLINGER) {
-        if (kpiVaerdi(DEMO_KPI[division], h.felt) === null) {
-          mangler.push(`${division}/${h.key} → ${h.felt}`);
-        }
-      }
+    for (const h of HANDLINGER) {
+      if (kpiVaerdi(DEMO_KPI, h.felt) === null) mangler.push(`${h.key} → ${h.felt}`);
     }
     assert.deepEqual(mangler, []);
   });
@@ -96,10 +91,10 @@ describe("⚠ HVER FELTSTI RAMMER ET FELT DER FINDES", () => {
     /* De tre skal ikke kunne skelnes af forbrugeren: skærmen skriver INTET
        for et manglende felt og for et null-felt. Svarede den undefined for en
        forkert sti, ville en tastefejl få sin egen visning. */
-    assert.equal(kpiVaerdi(DEMO_KPI.gods, "findes.ikke"), null);
-    assert.equal(kpiVaerdi(DEMO_KPI.gods, "flaade.findesIkke"), null);
+    assert.equal(kpiVaerdi(DEMO_KPI, "findes.ikke"), null);
+    assert.equal(kpiVaerdi(DEMO_KPI, "flaade.findesIkke"), null);
     assert.equal(kpiVaerdi(null, "flaade.aktive"), null);
-    assert.equal(kpiVaerdi(DEMO_KPI.gods, null), null);
+    assert.equal(kpiVaerdi(DEMO_KPI, null), null);
     /* Men et rigtigt nul er stadig nul — ikke null. */
     assert.equal(kpiVaerdi({ a: { b: 0 } }, "a.b"), 0);
   });
@@ -107,7 +102,7 @@ describe("⚠ HVER FELTSTI RAMMER ET FELT DER FINDES", () => {
 
 describe("de afledte tal", () => {
   it("kapacitetsgraden regnes af to felter der begge står i kpi/", () => {
-    const k = DEMO_KPI.gods;
+    const k = DEMO_KPI;
     assert.equal(kapacitetsgrad(k), (k.bemanding.disponeret / k.bemanding.planlagt) * 100);
   });
 
@@ -122,7 +117,7 @@ describe("de afledte tal", () => {
   });
 
   it("kortTal svarer ens for et felt og en afledning", () => {
-    const k = DEMO_KPI.gods;
+    const k = DEMO_KPI;
     const felt = kortTal(k, { felt: "flaade.aktive", label: "L", form: "antal" });
     assert.equal(felt.vaerdi, k.flaade.aktive);
     const afledt = kortTal(k, { afledt: "kapacitet", label: "L", form: "pct" });
@@ -169,10 +164,8 @@ describe("⚠ ET MODUL UDEN TAL SIGER DET — det udelades ikke", () => {
        en besked om et hul der er lukket. Det er værre end ingen besked. */
     for (const [modul, kort] of uden) {
       for (const f of kort.mangler) {
-        for (const division of DIVISIONER) {
-          assert.equal(kpiVaerdi(DEMO_KPI[division], f), null,
-            `${modul}: ${f} FINDES nu i kpi/ — fjern den fra mangler[]`);
-        }
+        assert.equal(kpiVaerdi(DEMO_KPI, f), null,
+          `${modul}: ${f} FINDES nu i kpi/ — fjern den fra mangler[]`);
       }
     }
   });
@@ -198,15 +191,15 @@ describe("prioriterede handlinger", () => {
   it("⚠ ET MODUL KUNDEN IKKE HAR, GIVER INGEN HANDLING", () => {
     /* Ellers stod der "5 fakturaer venter" hos en vognmand uden Procure —
        med et link til en skærm han ikke kan åbne. */
-    const kun = handlinger(DEMO_KPI.gods, { harModulFn: (m) => m === "flaade" });
+    const kun = handlinger(DEMO_KPI, { harModulFn: (m) => m === "flaade" });
     assert.ok(kun.length > 0);
     for (const h of kun) assert.equal(h.modul, "flaade");
   });
 
   it("bærer tallet med, så listen og kortet ikke kan være uenige", () => {
-    const alle = handlinger(DEMO_KPI.gods);
+    const alle = handlinger(DEMO_KPI);
     for (const h of alle) {
-      assert.equal(h.antal, kpiVaerdi(DEMO_KPI.gods, h.felt),
+      assert.equal(h.antal, kpiVaerdi(DEMO_KPI, h.felt),
         `${h.key} viser et andet tal end sit felt`);
     }
   });

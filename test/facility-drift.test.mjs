@@ -125,11 +125,9 @@ test("Aktivfordelingen folder til fem og bevarer summen", async (t) => {
 
   await t.test("demo-fordelingen summer til kpi.facility.aktiver", () => {
     /* Ellers beskriver donutten en anden aktivbase end nøgletallet over den. */
-    for (const div of ["gods", "bus"]) {
-      const f = DEMO_KPI[div].facility;
-      const sum = aktivFordeling(f.aktiverPrArt).reduce((s, d) => s + d.antal, 0);
-      assert.equal(sum, f.aktiver, `${div}: ${sum} ≠ ${f.aktiver}`);
-    }
+    const f = DEMO_KPI.facility;
+    const sum = aktivFordeling(f.aktiverPrArt).reduce((s, d) => s + d.antal, 0);
+    assert.equal(sum, f.aktiver, `${sum} ≠ ${f.aktiver}`);
   });
 });
 

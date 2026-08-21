@@ -197,12 +197,22 @@ describe("Facility som entitet", () => {
   });
 
   it("er et udsnit, ikke hele bestanden", () => {
-    assert.ok(DEMO_AKTIVER.length < DEMO_KPI.gods.facility.aktiver);
+    assert.ok(DEMO_AKTIVER.length < DEMO_KPI.facility.aktiver);
   });
 
-  /* Facility er fælles: porten er den samme uanset hvem der kører igennem. */
-  it("har ens facility-tal under gods og bus", () => {
-    assert.deepEqual(DEMO_KPI.gods.facility, DEMO_KPI.bus.facility);
+  /**
+   * ⚠ HER STOD "har ens facility-tal under gods og bus" — en prøve der vogtede
+   * at de to grene IKKE var forskellige.
+   *
+   * Den var rigtig, og den var samtidig en oplysning om at aksen ikke delte
+   * noget her: facility er fælles, porten er den samme uanset hvem der kører
+   * igennem den. Det samme gjaldt flåden og bemandingen (beslutning 19 og 69).
+   * Aksen er fjernet i 70, og der er ét sæt at sammenligne med ingenting.
+   */
+  it("⚠ ET SÆT, IKKE TO — der er ikke længere en gren at være uenig med", () => {
+    assert.ok(!("gods" in DEMO_KPI) && !("bus" in DEMO_KPI),
+      "demo-sættet er delt på division igen");
+    assert.ok(DEMO_KPI.facility?.aktiver > 0, "facility-tallene mangler helt");
   });
 });
 
@@ -243,7 +253,7 @@ describe("Servicebesøg er opgaver med art facility", () => {
     for (const b of DEMO_SERVICEBESOEG) {
       assert.deepEqual(opgaveMangler(b), [], `${b.id} kunne ikke gemmes som opgave`);
       assert.equal(b.art, "facility");
-      assert.equal(b.division, "faelles");
+      assert.equal(b.division, undefined, "servicebesøget bærer stadig division");
     }
   });
 
@@ -304,40 +314,36 @@ describe("KPI-felterne findes, så skærmene ikke hardkoder", () => {
     "aabneFejl", "klimaalarmerIDag", "sensorerAktive",
     "eksterneLeverandoerer", "anslaaetServiceOere",
   ]) {
-    it(`facility.${felt} er defineret i begge divisioner`, () => {
-      assert.ok(Number.isFinite(DEMO_KPI.gods.facility[felt]), `gods mangler ${felt}`);
-      assert.ok(Number.isFinite(DEMO_KPI.bus.facility[felt]), `bus mangler ${felt}`);
+    it(`facility.${felt} er defineret`, () => {
+      assert.ok(Number.isFinite(DEMO_KPI.facility[felt]), `mangler ${felt}`);
     });
   }
 
   it("flaade.ikkeLinkedeFakturaer er defineret", () => {
-    assert.ok(Number.isFinite(DEMO_KPI.gods.flaade.ikkeLinkedeFakturaer));
-    assert.ok(Number.isFinite(DEMO_KPI.bus.flaade.ikkeLinkedeFakturaer));
+    assert.ok(Number.isFinite(DEMO_KPI.flaade.ikkeLinkedeFakturaer));
   });
 
   /* De AFLEDTE tal må IKKE ligge i kpi/ — samme fejl som bemanding.ledig.
      Aktive alarmer regnes af måling + grænse, og et gemt tal ville drive. */
   it("gemmer ikke de afledte tal", () => {
-    for (const d of ["gods", "bus"]) {
-      assert.equal(DEMO_KPI[d].facility.klimaalarmerAktive, undefined,
-        "aktive alarmer er afledt og hører ikke i kpi/");
-      assert.equal(DEMO_KPI[d].facility.gennemsnitTempC, undefined,
-        "gennemsnittet beregnes af sensorerne");
-      assert.equal(DEMO_KPI[d].facility.bygningsomkostningOere, undefined,
-        "totalen summeres af komponenterne");
+    assert.equal(DEMO_KPI.facility.klimaalarmerAktive, undefined,
+      "aktive alarmer er afledt og hører ikke i kpi/");
+    assert.equal(DEMO_KPI.facility.gennemsnitTempC, undefined,
+      "gennemsnittet beregnes af sensorerne");
+    assert.equal(DEMO_KPI.facility.bygningsomkostningOere, undefined,
+      "totalen summeres af komponenterne");
 
-      /* ⚠ SAMME TAL SOM bygningsomkostningOere — UNDER ET ANDET NAVN.
-         Det stod på den PÅBUDTE liste tolv linjer længere oppe, mens navnet
-         nedenfor stod på den FORBUDTE. Prøven krævede altså at feltet fandtes
-         OG at det ikke fandtes; den var kun grøn fordi de to navne aldrig
-         blev holdt op mod hinanden.
+    /* ⚠ SAMME TAL SOM bygningsomkostningOere — UNDER ET ANDET NAVN.
+       Det stod på den PÅBUDTE liste tolv linjer længere oppe, mens navnet
+       nedenfor stod på den FORBUDTE. Prøven krævede altså at feltet fandtes
+       OG at det ikke fandtes; den var kun grøn fordi de to navne aldrig
+       blev holdt op mod hinanden.
 
-         Det er summen af `facility/omkostning`s fem komponenter, og
-         bygningsomkostningOere() regner den hos forbrugeren. Ingen skærm
-         læste kpi-feltet. Et gemt afledt tal driver fra sit grundlag —
-         `bemanding.ledig` en gang til. */
-      assert.equal(DEMO_KPI[d].facility.facilityOmkostningOere, undefined,
-        "facility-omkostningen er bygningsomkostningen under et andet navn");
-    }
+       Det er summen af `facility/omkostning`s fem komponenter, og
+       bygningsomkostningOere() regner den hos forbrugeren. Ingen skærm
+       læste kpi-feltet. Et gemt afledt tal driver fra sit grundlag —
+       `bemanding.ledig` en gang til. */
+    assert.equal(DEMO_KPI.facility.facilityOmkostningOere, undefined,
+      "facility-omkostningen er bygningsomkostningen under et andet navn");
   });
 });

@@ -396,29 +396,23 @@ if (import.meta.env?.DEV) {
   /* Fordelingen paa art SKAL summe til totalen. Goer den ikke det, viser
      donutten en anden aktivbase end nøgletallet over den — og det er
      84-mod-83 i en cirkel. */
-  const prArt = DEMO_KPI.gods?.facility?.aktiverPrArt || {};
+  const prArt = DEMO_KPI?.facility?.aktiverPrArt || {};
   const artSum = Object.values(prArt).reduce((s, v) => s + v, 0);
-  if (artSum !== (DEMO_KPI.gods?.facility?.aktiver || 0)) {
+  if (artSum !== (DEMO_KPI?.facility?.aktiver || 0)) {
     console.warn(
       `demo-facility: aktiverPrArt summer til ${artSum}, men kpi.facility.aktiver ` +
-      `siger ${DEMO_KPI.gods?.facility?.aktiver}. Donutten og noegletallet ville ` +
+      `siger ${DEMO_KPI?.facility?.aktiver}. Donutten og noegletallet ville ` +
       `beskrive hver sin aktivbase.`
     );
   }
 
   /* Loft mod kpi/, som flåden og fraværet. Facility er fælles, så tallet står
      ens under begge divisioner — derfor ét og ikke en sum. */
-  const iAlt = DEMO_KPI.gods?.facility?.aktiver || 0;
+  const iAlt = DEMO_KPI?.facility?.aktiver || 0;
   if (DEMO_AKTIVER.length > iAlt) {
     console.warn(
       `demo-facility: ${DEMO_AKTIVER.length} aktiver i demo, men kpi/ siger ${iAlt} i alt. ` +
       `Et udsnit kan ikke være større end totalen.`
-    );
-  }
-  if ((DEMO_KPI.gods?.facility?.aktiver || 0) !== (DEMO_KPI.bus?.facility?.aktiver || 0)) {
-    console.warn(
-      `demo-facility: kpi.facility.aktiver er forskellig under gods og bus. ` +
-      `Facility er fælles — porten er den samme uanset hvem der kører igennem den.`
     );
   }
 }

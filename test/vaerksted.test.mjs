@@ -325,7 +325,7 @@ describe("Demo-værkstedet hænger sammen med demo-flåden", () => {
   });
 
   it("har højst kpi/'s antal biler på værksted", () => {
-    const iAlt = (DEMO_KPI.gods?.flaade?.paaVaerksted || 0) + (DEMO_KPI.bus?.flaade?.paaVaerksted || 0);
+    const iAlt = (DEMO_KPI?.flaade?.paaVaerksted || 0);
     assert.ok(demoBesoegNu().length <= iAlt);
   });
 });
@@ -354,12 +354,6 @@ describe("Aftalen fra beslutning 20 er besøget i kalenderen", () => {
 });
 
 describe("Indkøbene bærer det reglerne kræver", () => {
-  it("har en division på hver post — den kan ikke arves fra bilen", () => {
-    for (const i of VAERKSTEDSINDKOEB) {
-      assert.ok(["gods", "bus", "faelles"].includes(i.division), `${i.id}: ugyldig division`);
-    }
-  });
-
   /* Bilen må ikke bære en division, heller ikke indirekte gennem indkøbet. */
   it("lader bilen være uden division", () => {
     for (const k of DEMO_KOERETOEJER) assert.equal("division" in k, false);

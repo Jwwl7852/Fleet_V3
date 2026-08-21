@@ -99,7 +99,7 @@ describe("auditloggen er append-only", () => {
     const db = som("uid-smug", MIN, ALLE_PERMS);
     await assertFails(
       update(ref(db, "/"), {
-        [`tenants/${MIN}/kunder/lovlig`]: { navn: "Kunde", division: "gods", aktiv: true },
+        [`tenants/${MIN}/kunder/lovlig`]: { navn: "Kunde", aktiv: true },
         [`${auditSti(MIN)}/smuglet`]: POST,
       })
     );
@@ -158,9 +158,9 @@ describe("revisor-presettet", () => {
     const db = somRolle("uid-rev2", "revisor");
     await assertFails(set(ref(db, `${auditSti(MIN)}/rev`), POST));
     for (const [node, post] of [
-      ["kunder", { navn: "K", division: "gods", aktiv: true }],
-      ["opgaver", { division: "gods" }],
-      ["indberetninger", { division: "gods", art: "braendstof", forloeb: "ny",
+      ["kunder", { navn: "K", aktiv: true }],
+      ["opgaver", {}],
+      ["indberetninger", { art: "braendstof", forloeb: "ny",
         kmStand: 184320, liter: 410, oprettetAf: "uid-rev2", oprettetMs: 1786000000000 }],
     ]) {
       await assertFails(set(ref(db, `tenants/${MIN}/${node}/rev`), post));
@@ -187,8 +187,7 @@ describe("diff() lækker ikke", () => {
   it("navngiver alle ændrede felter, men viser kun værdier fra allowlisten", () => {
     const foer = {
       navn: "Picasso, Pablo", adresse: "Strandvejen 123", note: "Værdi 18 mio.",
-      beloebOere: 1800000000, tilstand: "kladde", division: "gods",
-    };
+      beloebOere: 1800000000, tilstand: "kladde", };
     const efter = { ...foer, navn: "Monet, Claude", adresse: "Strandvejen 125", beloebOere: 1900000000, tilstand: "reserveret" };
     const d = diff(foer, efter);
 

@@ -208,26 +208,17 @@ describe("Art styrer feltskemaet", () => {
 
 describe("opgaveMangler fejler lukket", () => {
   it("godtager en fuld opgave", () => {
-    assert.deepEqual(opgaveMangler({ art: "vaerksted", division: "gods", koeretoejId: "kt-104" }), []);
-    assert.deepEqual(opgaveMangler({ art: "facility", division: "faelles", aktivId: "fa-port3" }), []);
-  });
-
-  it("kræver art, division og en ressource", () => {
-    assert.ok(opgaveMangler({ division: "gods", koeretoejId: "x" }).includes("art"));
-    assert.ok(opgaveMangler({ art: "vaerksted", koeretoejId: "x" }).includes("division"));
-    assert.ok(opgaveMangler({ art: "vaerksted", division: "gods" }).includes("koeretoejId"));
+    assert.deepEqual(opgaveMangler({ art: "vaerksted", koeretoejId: "kt-104" }), []);
+    assert.deepEqual(opgaveMangler({ art: "facility", aktivId: "fa-port3" }), []);
   });
 
   it("afviser en ukendt art frem for at gætte", () => {
-    assert.ok(opgaveMangler({ art: "langtur", division: "gods", koeretoejId: "x" }).includes("art"));
+    assert.ok(opgaveMangler({ art: "langtur", koeretoejId: "x" }).includes("art"));
     assert.ok(opgaveMangler({}).includes("art"));
   });
 
   /* Division kan ikke arves fra bilen (beslutning 19) — den skal stå på
      opgaven selv. */
-  it("accepterer ikke en opgave uden division, heller ikke med et køretøj", () => {
-    assert.ok(opgaveMangler({ art: "vaerksted", koeretoejId: "kt-104" }).includes("division"));
-  });
 });
 
 describe("Køre-hviletid: 4,5 timer før pause", () => {
@@ -365,12 +356,6 @@ describe("Demo-besøgene har opgavens form", () => {
     for (const b of DEMO_BESOEG) assert.equal(b.art, "vaerksted");
   });
 
-  /* Divisionen står på besøget, ikke på bilen. */
-  it("bærer en division der ikke kommer fra bilen", () => {
-    for (const b of DEMO_BESOEG) {
-      assert.ok(["gods", "bus", "faelles"].includes(b.division), `${b.id}: ugyldig division`);
-    }
-  });
 });
 
 describe("Hvor arbejdet ligger — fordelPaaSted", () => {

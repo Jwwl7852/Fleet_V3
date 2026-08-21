@@ -30,8 +30,7 @@ const START = Date.UTC(2026, 8, 14, 8, 0, 0);
 const SLUT = START + 11 * 3600000;
 
 const post = (x = {}) => ({
-  kundeId: "ku-1", division: "gods",
-  fraSted: "København", tilSted: "Hamburg",
+  kundeId: "ku-1", fraSted: "København", tilSted: "Hamburg",
   transporttype: "fuldlast",
   afhentningFleks: "timer2", leveringFleks: "halvdag",
   onsketAfhentningMs: START, onsketLeveringMs: SLUT,
@@ -131,9 +130,10 @@ describe("valideBooking", () => {
   });
 
   /* ⚠ DIVISIONEN KAN IKKE UDLEDES AF KUNDEN — beslutning 19. */
-  test("kræver en division", () => {
-    assert.equal(valideBooking(post({ division: undefined })).ok, false);
-    assert.equal(valideBooking(post({ division: "alle" })).ok, false);
+  /* ⚠ HER STOD "kræver en division". Feltet findes ikke længere
+     (beslutning 70), og en booking er gyldig uden det. */
+  test("⚠ ER GYLDIG UDEN DIVISION — feltet findes ikke", () => {
+    assert.equal(valideBooking(post({})).ok, true);
   });
 });
 

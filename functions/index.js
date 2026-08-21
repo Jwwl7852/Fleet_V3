@@ -3891,7 +3891,7 @@ export const auditoprydning = onSchedule(
 /* ══════════════════════════════════════════════════════════════════════════
    KPI-AGGREGERINGEN — det sidste punkt på listen
 
-   Beslutning 6: nøgletal læses ÉT sted, `tenants/<id>/kpi/<division>/current`,
+   Beslutning 6: nøgletal læses ÉT sted, `tenants/<id>/kpi/current`,
    og afledte tal beregnes hos forbrugeren. Noden har været seedet fra
    demo-sættet; her regnes den af de rigtige noder.
 
@@ -3900,14 +3900,14 @@ export const auditoprydning = onSchedule(
    beregningen kan prøves uden en emulator. Jobbet henter noderne og skriver
    svaret; det er alt.
 
-   ⚠ ET FELT UDEN KILDE BLIVER `null`. 52 af dem: `opgaver`, `indkoeb` og
-   `facility` findes ikke som noder, og `flaade` og `bemanding` kan ikke deles
-   på division, fordi stamdata ikke bærer feltet (beslutning 19). Skrev vi 0,
-   ville skærmen sige "0 åbne ordrer" — se noten i kpi-aggregering.js og
-   `INTET` i format.js.
+   ⚠ ET FELT UDEN KILDE BLIVER `null`, ikke 0. Skrev vi 0, ville skærmen sige
+   "0 åbne ordrer" om noget der aldrig var talt — se noten i
+   kpi-aggregering.js og `INTET` i format.js. Optællingen af hvor mange der
+   er, ligger på det `beregnKpi()` returnerer og ikke i et tal skrevet her;
+   den stod på 52 i denne kommentar længe efter at den var noget andet.
 
    ⚠ FORRIGE KØRSEL GEMMES, OG DET ER DELTAERNES ENESTE KILDE.
-   `kpi/<division>/forrige` er den forrige `current`. Uden den kan en
+   `kpi/forrige` er den forrige `current`. Uden den kan en
    periodeafvigelse ikke regnes, og første kørsel giver derfor `null` — ikke
    0 %, som ville betyde "uændret".
 
@@ -3917,7 +3917,11 @@ export const auditoprydning = onSchedule(
    bliver liggende. Det er med vilje: dev skal kunne vise en fuld skærm.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const KPI_DIVISIONER = ["gods", "bus"];
+/* ⚠ HER STOD EN KONSTANT MED DE TO DIVISIONER, og jobbet skrev ÉN
+   gren pr. division. Aksen er fjernet i beslutning 70: ingen abonnent har
+   både gods og bus, så den ene af de to grene beskrev en forretning kunden
+   ikke havde — og for flåden og bemandingen stod der de SAMME tal i begge
+   (beslutning 69). Der skrives nu ét sæt til `kpi/current`. */
 
 /** Rækker med id, som useListe læser dem. */
 const raekker = (v) => Object.entries(v || {}).map(([id, x]) => ({ id, ...x }));
@@ -3990,11 +3994,11 @@ export const kpiaggregering = onSchedule(
           rod.child("fravaer").once("value").then((s) => raekker(s.val())),
         ]);
 
-      for (const division of KPI_DIVISIONER) {
-        const sti = rod.child(`kpi/${division}`);
+      {
+        const sti = rod.child("kpi");
         const forrige = (await sti.child("current").once("value")).val();
         const nyt = beregnKpi({
-          division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
+          kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
           indberetninger, koeretoejer, personale, kompetencer, reservationer,
           bookinger, fravaer, forrige, nu
@@ -4009,7 +4013,7 @@ export const kpiaggregering = onSchedule(
         skrevet += 1;
       }
     }
-    console.log(`kpiaggregering: ${skrevet} divisioner skrevet for ${Object.keys(kunderIndeks).length} tenants.`);
+    console.log(`kpiaggregering: ${skrevet} af ${Object.keys(kunderIndeks).length} tenants skrevet.`);
     return null;
   }
 );

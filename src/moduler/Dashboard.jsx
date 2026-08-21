@@ -147,7 +147,7 @@ export default function Dashboard() {
      Skal de tilbage, hører de i MODULKORT i dashboards.js — ikke som et
      fjerde felt hardkodet her. */
 
-  const { historik } = omkostningsserie(division);
+  const { historik } = omkostningsserie();
   const serie = [...historik, k.oekonomi.driftsomkostningerOere].slice(-6);
   const maanedsPunkter = maanedsEtiketter(6).map((m, i) => ({
     label: m, vaerdier: [serie[i]]

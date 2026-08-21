@@ -66,7 +66,7 @@ const NU = Date.UTC(2026, 7, 1);
    lige slipper forbi, måler reglens kant frem for rollens ret. */
 const NODER = [
   { navn: "kunder", sti: (k) => `kunder/${k}`,
-    post: { navn: "Kolding Kommune", division: "gods", aktiv: true } },
+    post: { navn: "Kolding Kommune", aktiv: true } },
 
   { navn: "koeretoejer", sti: (k) => `koeretoejer/${k}`,
     post: { registrering: "AB 12 345", navn: "Volvo FH 500", art: "lastbil",
@@ -83,15 +83,15 @@ const NODER = [
 
   { navn: "leverandoerer", sti: (k) => `leverandoerer/${k}`,
     post: { navn: "Hydra-Grene Kolding", cvr: "18447291",
-            kategori: "reservedele", division: "gods", aktiv: true } },
+            kategori: "reservedele", aktiv: true } },
 
   { navn: "indkoeb", sti: (k) => `indkoeb/${k}`,
-    post: { division: "gods", dato: NU, leverandoerId: "lv-hydra",
+    post: { dato: NU, leverandoerId: "lv-hydra",
             vare: "Slange", antal: 12, prisPrEnhedOere: 1850,
             momsOere: 5550, fakturastatus: "modtaget" } },
 
   { navn: "lagre", sti: (k) => `lagre/${k}`,
-    post: { navn: "Kolding", division: "gods", kapacitet: 420 } },
+    post: { navn: "Kolding", kapacitet: 420 } },
 
   { navn: "satser", sti: (k) => `satser/standard/${k}`,
     post: { navn: "Palleplads pr. døgn", kategori: "lager" } },
@@ -136,7 +136,7 @@ before(async () => {
        "ingen rolle kan skrive varer" i tabellen. Det var netop dét
        fixtur-vagten ovenfor fangede, første gang filen kørte. */
     await set(ref(db, `tenants/${T}/kunder/k1`),
-      { navn: "Museum Sønderjylland", division: "gods", aktiv: true });
+      { navn: "Museum Sønderjylland", aktiv: true });
   });
 
   /* ── Måling: hver rolle, hver node ────────────────────────────────── */

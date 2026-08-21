@@ -1,5 +1,10 @@
 /* test/rules.division.test.mjs
- * Punkt 0 i den låste rækkefølge: .validate for beslutning 15.
+ * Punkt 0 i den låste rækkefølge: .validate — nu for beslutning 70.
+ *
+ * ⚠ FILEN HED SIG SELV EFTER EN AKSE DER IKKE FINDES. Navnet bliver stående:
+ * den prøver stadig at division-feltet er AFVIST, og det er den prøve der
+ * holder aksen ude af dataene. En fil der hedder noget andet, ville skulle
+ * findes af den næste der undrer sig over hvorfor feltet ikke må skrives.
  *
  * Kravet er at reglerne er AFPRØVET, ikke læst igennem. Derfor kører de her
  * mod databaseemulatoren med rigtige custom claims (tenant + rolle), præcis
@@ -77,163 +82,111 @@ after(async () => {
   await miljoe?.cleanup();
 });
 
-describe("beslutning 15 — division som felt", () => {
-  it("accepterer gods, bus og faelles på en kunde", async () => {
+/* ══════════════════════════════════════════════════════════════════════
+   AKSEN ER VÆK — beslutning 70
+
+   ⚠ HER STOD "beslutning 15 — division som felt": at feltet var PÅKRÆVET på
+   kunder, indberetninger, indkøb, opgaver, etaper og lagre, at det kun måtte
+   være gods|bus|faelles, og at det var FORBUDT på stamdata.
+
+   Halvdelen af den prøve er nu det modsatte, og den anden halvdel er blevet
+   almindelig: **feltet er forbudt overalt.** Beslutning 19's egen begrundelse
+   for forbuddet på stamdata gælder nu hver node —
+
+     "Et felt der må stå der uden at betyde noget, bliver tastet — og derefter
+      læst af nogen. .validate: false gør fejlen til en afvisning frem for en
+      vane."
+
+   ⚠ OG DERFOR ER DET false OG IKKE SLETTET. En manglende regel ville TILLADE
+   feltet: RTDB afviser kun det en .validate siger nej til. Slettede vi linjen,
+   ville division kunne skrives igen — og så ville aksen vende tilbage som
+   data, uden at nogen havde besluttet det og uden at noget fejlede.
+   ══════════════════════════════════════════════════════════════════════ */
+
+describe("beslutning 70 — division er forbudt overalt", () => {
+  /* De seks noder hvor feltet var PÅKRÆVET. Hver af dem afvises nu. */
+  /* ⚠ opgaver STÅR IKKE HER, og det er ikke en udeladelse: noden er
+     .write: false (beslutning 45), så en klient kan hverken skrive den med
+     eller uden feltet. Formen håndhæves af opgaveMangler() og
+     valideOpgaveplan() — se test/opgaveplan.test.mjs. En regelprøve her ville
+     være grøn fordi vejen er lukket, ikke fordi posten var rigtig. */
+  const PAAKRAEVET_FOER = [
+    ["kunder", () => kunde()],
+    ["lagre", () => ({ navn: "Kolding" })],
+    ["indberetninger", () => ({
+      art: "skade", forloeb: "intern", oprettetAf: "admin1", oprettetMs: 1786000000000,
+    })],
+  ];
+
+  /**
+   * ⚠ DEN VIGTIGSTE PRØVE I FILEN: posten er gyldig UDEN feltet.
+   *
+   * Var den ikke det, ville hver eneste skrivning i systemet være lukket —
+   * regel og data skal flytte sammen, og det er den halvdel der beviser at
+   * reglen fulgte med.
+   */
+  for (const [node, byg] of PAAKRAEVET_FOER) {
+    it(`${node} er gyldig UDEN division`, async () => {
+      const db = som("admin1", "admin");
+      await assertSucceeds(set(ref(db, sti(node, `u-${node}`)), byg()));
+    });
+
+    it(`${node} AFVISER division — også en gyldig værdi`, async () => {
+      const db = som("admin1", "admin");
+      for (const v of ["gods", "bus", "faelles"]) {
+        await assertFails(set(ref(db, sti(node, `m-${node}-${v}`)),
+          { ...byg(), division: v }));
+      }
+    });
+  }
+
+  /**
+   * ⚠ OG FELT FOR FELT. En .validate på et barn køres også når barnet skrives
+   * alene — men det er værd at måle, fordi det var netop sådan et smuthul
+   * beslutning 52 fandt et andet sted: reglen så rigtig ud og kunne omgås i
+   * to trin.
+   */
+  it("⚠ KAN MAN SNIGE FELTET IND BAGEFTER?", async () => {
     const db = som("admin1", "admin");
-    for (const division of ["gods", "bus", "faelles"]) {
-      await assertSucceeds(
-        set(ref(db, sti("kunder", `k-${division}`)), kunde({ division }))
-      );
-    }
+    await assertSucceeds(set(ref(db, sti("kunder", "k-snig")), kunde()));
+    await assertFails(set(ref(db, `${sti("kunder", "k-snig")}/division`), "gods"));
+    await assertFails(update(ref(db, sti("kunder", "k-snig")), { division: "gods" }));
   });
 
-  it("afviser en kunde HELT uden division", async () => {
+  /* Stamdata afviste det i forvejen (beslutning 19) og gør det stadig. */
+  it("stamdata afviser det stadig — nu af samme grund som alle andre", async () => {
     const db = som("admin1", "admin");
-    await assertFails(set(ref(db, sti("kunder", "k-mangler")), kunde()));
-  });
-
-  it("afviser en ukendt divisionsværdi", async () => {
-    const db = som("admin1", "admin");
-    for (const vaerdi of ["Gods", "GODS", "taxa", "", "faelles ", "gods,bus"]) {
-      await assertFails(
-        set(ref(db, sti("kunder", "k-ugyldig")), kunde({ division: vaerdi }))
-      );
-    }
-  });
-
-  it("afviser division som noget andet end en streng", async () => {
-    const db = som("admin1", "admin");
-    for (const vaerdi of [true, 1, null]) {
-      await assertFails(
-        set(ref(db, sti("kunder", "k-type")), kunde({ division: vaerdi }))
-      );
-    }
-  });
-
-  /* ⚠ opgaver STOD I LISTEN HERUNDER OG ER TAGET UD. Noden er `.write: false`
-     efter beslutning 45 — vejen ind er `opgaveplanlaeg` — så prøven kunne
-     hverken vise at division kræves eller at den mangler; begge dele ville
-     være grønne fordi skrivningen er lukket.
-
-     Kravet er ikke væk, det er FLYTTET: `opgaveMangler()` og
-     `valideOpgaveplan()` kræver begge division, og
-     `test/rules.opgaver.test.mjs` prøver dem. Et krav der holdes af en prøve
-     som ikke kan fejle for sin egen sætning, er værre end ingen prøve. */
-  it("kræver division på indberetninger og indkøb", async () => {
-    const db = som("admin1", "admin");
-    const noder = [
-      /* ⚠ EN RIGTIG INDBERETNING, IKKE DET MINDST MULIGE. Noden validerede
-         kun `division`; nu kræves art, forløb, oprettetAf og oprettetMs — og
-         chauffører SKRIVER til den, så det er den ene node hvor den mindst
-         betroede rolle opretter poster. Prøven skal ramme reglen, ikke
-         undersøge hvor lidt man kan slippe afsted med. */
-      ["indberetninger", { art: "braendstof", forloeb: "ny", kmStand: 184320,
-        liter: 410, oprettetAf: "admin1", oprettetMs: 1786000000000 }],
-      /* ⚠ FIXTURET HAVDE beloebOere. Det er nu forbudt: linjens beloeb
-         BEREGNES af antal x pris, og to kilder til samme tal kan drive fra
-         hinanden. Posten her er en rigtig indkoebslinje — den proever
-         division, ikke hvor lidt man kan slippe afsted med. */
-      ["indkoeb", { dato: 1786000000000, leverandoerId: "lv-hydra", vare: "Slange",
-                    antal: 12, prisPrEnhedOere: 1850, momsOere: 5550,
-                    fakturastatus: "modtaget" }],
-    ];
-    for (const [node, post] of noder) {
-      await assertFails(set(ref(db, sti(node, "uden")), post));
-      await assertSucceeds(set(ref(db, sti(node, "med")), { ...post, division: "gods" }));
-    }
-  });
-
-  /* BESLUTNING 19. Koeretoejer stod paa listen ovenfor indtil beslutning 19:
-     stamdata har ikke en division. En paahaengsvogn eller en varevogn kan
-     tilhoere baade en gods- og en busvognmand, saa feltet kunne ikke begrundes
-     paa den enkelte bil — og et felt der maa staa der uden at betyde noget,
-     bliver udfyldt og derefter laest af nogen.
-
-     Testen er vendt frem for slettet: den skal fastholde at feltet er FORBUDT,
-     ikke bare at det er valgfrit. Aabner nogen det igen, falder den. */
-  it("afviser division på køretøjer og personale — stamdata har ingen", async () => {
-    const db = som("admin1", "admin");
-
-    const bil = { navn: "Volvo FH 500", status: "aktiv", art: "lastbil" };
-    await assertSucceeds(set(ref(db, sti("koeretoejer", "k-uden")), bil));
-    await assertFails(set(ref(db, sti("koeretoejer", "k-med")), { ...bil, division: "gods" }));
-    await assertFails(set(ref(db, sti("koeretoejer", "k-faelles")), { ...bil, division: "faelles" }));
-    await assertFails(set(ref(db, `${sti("koeretoejer", "k-uden")}/division`), "bus"));
-
-    const person = { navn: "Lars Aage", status: "aktiv" };
-    await assertSucceeds(set(ref(db, sti("personale", "p-uden")), person));
-    await assertFails(set(ref(db, sti("personale", "p-med")), { ...person, division: "gods" }));
-    await assertFails(set(ref(db, sti("personale", "p-faelles")), { ...person, division: "faelles" }));
-    await assertFails(set(ref(db, `${sti("personale", "p-uden")}/division`), "bus"));
-  });
-
-  it("afviser division OG årsag på fravær — begge arves eller er følsomme", async () => {
-    const db = som("admin1", "admin");
-    const fravaer = { personId: "lars", fra: 1786000000000, til: 1786600000000 };
-    await assertSucceeds(set(ref(db, sti("fravaer", "f1")), fravaer));
-
-    /* Division arves fra medarbejderen. */
-    await assertFails(set(ref(db, sti("fravaer", "f2")), { ...fravaer, division: "gods" }));
-
-    /* ÅRSAGEN er en anden sag: "sygdom" er en helbredsoplysning og dermed
-       særlig kategori efter GDPR art. 9. Tilgængeligheden er planlægningsdata
-       — disponenten skal vide at Lars ikke er der 14.-18. juli — men ikke
-       hvorfor. `art` hører derfor i sensitive/fravaer og afvises her. */
-    await assertFails(set(ref(db, sti("fravaer", "f3")), { ...fravaer, art: "sygdom" }));
-    await assertFails(set(ref(db, sti("fravaer", "f1") + "/art"), "ferie"));
+    await assertFails(set(ref(db, sti("koeretoejer", "kt-div")),
+      { art: "lastbil", status: "aktiv", division: "gods" }));
+    await assertFails(set(ref(db, sti("personale", "p-div")),
+      { navn: "Anne", status: "aktiv", division: "faelles" }));
   });
 });
 
-describe("smuthuller", () => {
-  /* Det klassiske hul i RTDB: .validate på $id evalueres ikke nødvendigvis
-     når man skriver til et BARN af $id. Kan man skrive kunden i to trin og
-     ende med en post uden division, er reglen kun pynt. */
-  it("kan man snige sig uden om ved at skrive felt for felt?", async () => {
+describe("kpi-noden", () => {
+  it("er skrivebeskyttet for alle — kun Cloud Functions", async () => {
     const db = som("admin1", "admin");
-    await assertFails(set(ref(db, `${sti("kunder", "k-smutvej")}/navn`), "Snydekunde"));
+    await assertFails(set(ref(db, `tenants/${TENANT}/kpi/current`), { kunder: { aktive: 51 } }));
   });
 
-  it("kan man fjerne division fra en eksisterende post?", async () => {
+  /* ⚠ OG STIEN HAR ÉT NIVEAU MINDRE. Den gamle form var
+     kpi/<division>/<snapshot>/<domaene>; niveauet var et WILDCARD, så en
+     læsning på den gamle sti rammer nu $snapshot/$domaene med "gods" som
+     snapshot — og et domæne der ikke findes. Den skal fejle, ikke svare tomt
+     på noget der ligner et rigtigt sted. */
+  it("⚠ DEN GAMLE STI PEGER IKKE PÅ NOGET", async () => {
     const db = som("admin1", "admin");
-    const p = sti("kunder", "k-fjern");
-    await assertSucceeds(set(ref(db, p), kunde({ division: "gods" })));
-    await assertFails(update(ref(db, p), { division: null }));
-  });
-
-  /* Modprøven til smutvejen ovenfor. Hvis forældrereglen
-     hasChildren(['division']) kigger på det SKREVNE undertræ frem for det
-     flettede resultat, ville en helt almindelig navneretning på en gyldig
-     kunde også blive afvist — og så var reglen ubrugelig i praksis. */
-  it("men en almindelig feltopdatering på en gyldig post går stadig igennem", async () => {
-    const db = som("admin1", "admin");
-    const p = sti("kunder", "k-redigér");
-    await assertSucceeds(set(ref(db, p), kunde({ division: "gods" })));
-    await assertSucceeds(set(ref(db, `${p}/navn`), "Kolding Kommune, Teknik & Miljø"));
-    await assertSucceeds(update(ref(db, p), { navn: "Kolding Kommune", aktiv: false }));
-  });
-
-  it("kan man ændre division til noget ugyldigt bagefter?", async () => {
-    const db = som("admin1", "admin");
-    const p = sti("kunder", "k-aendre");
-    await assertSucceeds(set(ref(db, p), kunde({ division: "gods" })));
-    await assertFails(set(ref(db, `${p}/division`), "taxa"));
-    await assertSucceeds(set(ref(db, `${p}/division`), "faelles"));
+    await assertFails(set(ref(db, `tenants/${TENANT}/kpi/current/kunder`), { aktive: 1 }));
   });
 });
 
-/* Tenant-isolation ligger i rules.tenant.test.mjs — punkt 1. Her holder vi os
-   til rolle og division, så de to suiter ikke overlapper. */
-describe("rolle og division i samme skrivning", () => {
-  it("en chauffør må ikke skrive kunder, uanset gyldig division", async () => {
+describe("rollen afgør stadig", () => {
+  it("en chauffør må ikke skrive kunder", async () => {
     const db = som("chauffoer1", "chauffoer");
-    await assertFails(set(ref(db, sti("kunder", "k-chauffoer")), kunde({ division: "gods" })));
-  });
-
-  it("kpi-noden er skrivebeskyttet for alle — kun Cloud Functions", async () => {
-    const db = som("admin1", "admin");
-    await assertFails(set(ref(db, `tenants/${TENANT}/kpi/gods/current`), { kunder: { aktive: 51 } }));
+    await assertFails(set(ref(db, sti("kunder", "k-chauffoer")), kunde()));
   });
 });
+
 
 /* ══════════════════════════════════════════════════════════════════════
    Feltvalidering på køretøjer — forudsætningen for den første formular
@@ -413,7 +366,7 @@ describe("facility valideres på serveren", () => {
 describe("indkøb valideres på serveren", () => {
   const p = (id) => `tenants/${TENANT}/indkoeb/${id}`;
   const linje = (ekstra = {}) => ({
-    division: "gods", dato: 1e12, leverandoerId: "lv-hydra",
+    dato: 1e12, leverandoerId: "lv-hydra",
     vare: "Hydraulikslange 3/8\"", antal: 12, prisPrEnhedOere: 1850,
     fakturastatus: "modtaget", ...ekstra,
   });
@@ -476,6 +429,6 @@ describe("indkøb valideres på serveren", () => {
 
   it("tillader faelles — én dieselleverance dækker begge afdelinger", async () => {
     const db = som("admin1", "admin");
-    await assertSucceeds(set(ref(db, p("il-faelles")), linje({ division: "faelles" })));
+    await assertSucceeds(set(ref(db, p("il-faelles")), linje({})));
   });
 });

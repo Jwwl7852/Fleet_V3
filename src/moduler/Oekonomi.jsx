@@ -151,7 +151,7 @@ export default function Oekonomi() {
 
   /* Kategorierne foldes ud til den valgte division. Ét sæt tal, ikke to
      der kan drive fra hinanden. */
-  const { kategorier, historik: historikTotal } = omkostningsserie(division);
+  const { kategorier, historik: historikTotal } = omkostningsserie();
   const forrigeSum = kategorier.reduce((s, c) => s + c.forrigeOere, 0);
 
   const valgt = kategorier.find((c) => c.id === rapport) || null;
@@ -171,7 +171,7 @@ export default function Oekonomi() {
                                 : [...historikTotal, k.oekonomi.driftsomkostningerOere];
   const budgetMaanedligOere = valgt ? valgt.budgetOere : k.oekonomi.budgetOere;
 
-  const dgHistorik = DEMO_DAEKNINGSGRAD_HISTORIK[division] || DEMO_DAEKNINGSGRAD_HISTORIK.gods;
+  const dgHistorik = DEMO_DAEKNINGSGRAD_HISTORIK;
   const omkostningPunkter = MAANEDER.map((m, i) => ({
     label: m, vaerdier: [omkostningSerie[i]]
   }));

@@ -44,7 +44,7 @@ let miljoe;
    valideres af reglerne, så den skal være rigtig. */
 const TESTDATA = {
   koeretoejer: { kt1: { art: "lastbil", status: "aktiv" } },
-  indberetninger: { i1: { division: "gods", art: "braendstof", forloeb: "afsluttet",
+  indberetninger: { i1: { art: "braendstof", forloeb: "afsluttet",
     oprettetAf: "u-x", oprettetMs: 1786000000000 } },
   /* ⚠ lokationId SKAL pege paa en lokation der findes — reglen slaar den op.
      Uden lokationer her fejler skrivningen paa VALIDERING og ligner en
@@ -57,14 +57,14 @@ const TESTDATA = {
      leverandoerer/, og uden en post her ville skrivningen fejle paa
      VALIDERING og ligne en modulspaerring. */
   leverandoerer: { lev1: { navn: "Leverandoer", kategori: "braendstof", aktiv: true } },
-  indkoeb: { i1: { division: "gods", dato: "2026-08-01", leverandoerId: "lev1", vare: "Diesel", antal: 1000, prisPrEnhedOere: 1200, fakturastatus: "modtaget" } },
+  indkoeb: { i1: { dato: "2026-08-01", leverandoerId: "lev1", vare: "Diesel", antal: 1000, prisPrEnhedOere: 1200, fakturastatus: "modtaget" } },
   lagre: { l1: { navn: "Hovedlager" } },
   bookinger: { b1: { tilstand: "kladde" } },
   etaper: { e1: { tilstand: "aaben" } },
   reservationer: { r1: { fra: 1, til: 2 } },
   fravaer: { f1: { personId: "p1", fra: 1, til: 2 } },
   kompetencer: { k1: { personId: "p1", art: "adr" } },
-  kunder: { k1: { navn: "Kunde", division: "gods", aktiv: true } },
+  kunder: { k1: { navn: "Kunde", aktiv: true } },
 };
 
 function alleRegler() {
@@ -226,7 +226,7 @@ describe("Et fravalgt modul lukker sine noder", () => {
           { navn: "Port 9", art: "port", status: "idrift", lokationId: "l1" })
     );
     await assertFails(
-      set(ref(db, `tenants/${UDEN}/kunder/k9`), { navn: "Ny", division: "gods", aktiv: true })
+      set(ref(db, `tenants/${UDEN}/kunder/k9`), { navn: "Ny", aktiv: true })
     );
   });
 
@@ -249,9 +249,9 @@ describe("Et fravalgt modul lukker sine noder", () => {
     const db = somAdmin(UDEN);
     await assertFails(get(ref(db, `tenants/${UDEN}/kpi`)));
     for (const d of ["opgaver", "afvigelser"]) {
-      await assertSucceeds(get(ref(db, `tenants/${UDEN}/kpi/gods/current/${d}`)));
+      await assertSucceeds(get(ref(db, `tenants/${UDEN}/kpi/current/${d}`)));
     }
-    await assertFails(get(ref(db, `tenants/${UDEN}/kpi/gods/current/oekonomi`)));
+    await assertFails(get(ref(db, `tenants/${UDEN}/kpi/current/oekonomi`)));
   });
 
   it("giver stadig ikke adgang til en ANDEN tenant", async () => {

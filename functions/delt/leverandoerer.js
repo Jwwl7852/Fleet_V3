@@ -566,11 +566,6 @@ export const GRAENSE_INDKOEB = {
 export function valideIndkoeb(post = {}, { leverandoerer = [], koeretoejer = [], lokationer = [] } = {}) {
   const f = {};
 
-  if (!["gods", "bus", "faelles"].includes(post.division)) {
-    /* ⚠ DIVISION ER PÅKRÆVET og kan IKKE arves fra bilen — beslutning 19
-       forbyder feltet dér. Den der registrerer, skal sætte den. */
-    f.division = "Vælg en division. Den kan ikke arves fra enheden.";
-  }
 
   if (!post.leverandoerId) f.leverandoerId = "Vælg en leverandør.";
   else if (!leverandoerer.some((l) => l.id === post.leverandoerId)) {

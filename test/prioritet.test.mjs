@@ -128,7 +128,7 @@ describe("opgavekataloget kender feltet", () => {
   });
 
   it("⚠ opgaveMangler SIGER TIL VED EN UKENDT VÆRDI — ikke ved en manglende", () => {
-    const basis = { art: "vaerksted", division: "gods", koeretoejId: "kt-012" };
+    const basis = { art: "vaerksted", koeretoejId: "kt-012" };
     assert.deepEqual(opgaveMangler(basis), [], "en opgave uden prioritet er gyldig");
     assert.deepEqual(opgaveMangler({ ...basis, prioritet: "hoej" }), []);
     assert.deepEqual(opgaveMangler({ ...basis, prioritet: "mellem" }),

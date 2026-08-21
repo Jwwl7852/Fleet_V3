@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **69 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **70 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -117,7 +117,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   emulatoren. `.write` hører på **posten**, ikke på noden — den kaskaderer —
   og den skal ende på `&& newData.exists()`. De to steder hvor en sletning
   ER besluttet, står i `test/rules.sletning.test.mjs`. Se beslutning 53.
-- Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
+- **Genindføre `division`.** Aksen er fjernet i beslutning 70: ingen abonnent
+  har både gods og bus, og den opdeling kunden faktisk har, står i hans
+  **moduler**. Feltet er `.validate: false` på alle 18 steder i regelfilen —
+  **forbudt, ikke fjernet**, for en manglende regel ville TILLADE det, og så
+  ville aksen vende tilbage som data uden at nogen havde besluttet det.
+  ⚠ Og den kommer ikke tilbage stykkevis: der er **ingen** `divisionsfilter()`,
+  **ingen** `useListe`-indstilling der hedder `division` (den afviser en ukendt
+  indstilling højlydt), og **ingen** vælger i shellen. `test/division-fjernet.test.mjs`
+  og `test/rules.division.test.mjs` holder hver sin ende.
 - **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
   `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler
   om*: reservationer, fravær, opgaver, etaper, kompetencer. Bytter du om,
@@ -368,12 +376,17 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   registrerer et **indkøb** i kontekst; godkendelse og afstemning sker ét sted:
   Indkøb → Fakturaer. `fakturaer/` er i øvrigt `.write: false`. To
   godkendelsesflows er beslutning 12 om igen.
-- **Skrive divisionsfilteret igen.** Det står i `useListe` — og reglen er
-  ikke bare "valgt division plus fælles": en post **uden** division vises i
-  **begge**, ikke i ingen. Bookingopsætning havde sin egen kopi uden det led,
-  og fejlen var usynlig indtil beslutning 19 fjernede feltet fra bilerne —
-  så ville biltabellen stå tom i både Gods og Bus, uden at nogen havde
-  slettet en bil. Samme regel to steder, hvor den ene kopi driver.
+- **Fjerne et felt uden at spørge hvad der HOLDER noden oppe.**
+  `kunder` og `etaper` havde `.validate: hasChildren(['division'])`, og det
+  var nodens **eneste** krav. Da feltet gik i beslutning 70, forsvandt al
+  validering med det, og en kunde blev gyldig som et **tomt objekt** — så en
+  pris kunne hænge på et kundeId der var tastet forkert. Det blev målt: en
+  prøve om netop det faldt. Spørg hvad der bliver tilbage, ikke bare hvad der
+  går væk.
+  ⚠ **Og et regex der rydder data, kan ikke se forskel på et eksempel og et
+  modeksempel.** Strimlingen af `division: "gods"` ud af fixtures fjernede det
+  også i de assertions der skulle **afvise** det — otte prøver så i stykker ud,
+  mens reglen virkede.
 - **Læse et sagsnummer ud af brødteksten i en mail.** Kun emnefeltet — en
   brødtekst bærer citerede tidligere mails med andre sagsnumre, og så kan en
   fremmed videresende en gammel tråd og lande på en sag han intet har med at

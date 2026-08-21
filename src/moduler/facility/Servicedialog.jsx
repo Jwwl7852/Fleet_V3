@@ -89,7 +89,6 @@ export default function Servicedialog({
          hvem der kører gennem porten, og skærmen reagerer ikke på Gods/Bus.
          Men opgaven bærer hvem der BETALER, og det er ikke altid fælles:
          eftersynet af busladestanderne i Aalborg står som `bus`. */
-      division: "faelles",
       status: "planlagt",
       leverandoerId: "",
       prioritet: "",

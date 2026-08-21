@@ -30,7 +30,7 @@ const START = Date.UTC(2026, 7, 24, 8, 0, 0);
 
 /** En værkstedsopgave: kl. 08, estimeret to timer, altså spærret til kl. 10. */
 const opg = (x = {}) => ({
-  art: "vaerksted", division: "gods", status: "igang",
+  art: "vaerksted", status: "igang",
   koeretoejId: "kt-1", arbejdstype: "service", beskrivelse: "Service",
   startMs: START, estimeretMin: 120,
   ...x,
@@ -315,7 +315,7 @@ describe("facility", () => {
     /* Arten flyttes ikke med, og maskinen kender den ikke: en opgave er en
        opgave. Ressourcen foelger arten gennem reservationFraOpgave(). */
     const foer = {
-      art: "facility", division: "faelles", status: "igang",
+      art: "facility", status: "igang",
       lokationId: "lok-halb", beskrivelse: "Epoxygulv",
       startMs: START, estimeretMin: 720,
     };

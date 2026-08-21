@@ -61,7 +61,7 @@ describe("⚠ HVER WIDGET PEGER PÅ ET FELT DER FINDES", () => {
     const mangler = [];
     for (const d of DIVISIONER) {
       for (const w of WIDGETS) {
-        if (slaaOp(DEMO_KPI[d], w.felt) === undefined) mangler.push(`${d}: ${w.felt}`);
+        if (slaaOp(DEMO_KPI, w.felt) === undefined) mangler.push(`${d}: ${w.felt}`);
       }
     }
     assert.deepEqual(mangler, [],

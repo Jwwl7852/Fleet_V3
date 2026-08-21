@@ -84,24 +84,19 @@ describe("Fejl 2 — antallet beregnes af listen", () => {
   /* Et afledt tal hører ikke i kpi/ — samme sag som bemanding.ledig og
      aktive klimaalarmer. */
   it("gemmer ikke det afledte tal i kpi/", () => {
-    for (const d of ["gods", "bus"]) {
-      assert.equal(DEMO_KPI[d].indkoeb.manglendeMatch, undefined);
-      assert.equal(DEMO_KPI[d].indkoeb.afstemningsafvigelser, undefined);
-    }
+    assert.equal(DEMO_KPI.indkoeb.manglendeMatch, undefined);
+    assert.equal(DEMO_KPI.indkoeb.afstemningsafvigelser, undefined);
   });
 
   /* Skelettet hardkodede 21 mens kpi sagde 7 — og Dashboard viser kpi'ens tal. */
   it("har fakturaerTilGodkendelse i kpi/, så to skærme ikke siger hver sit", () => {
-    assert.ok(Number.isFinite(DEMO_KPI.gods.indkoeb.fakturaerTilGodkendelse));
-    assert.ok(Number.isFinite(DEMO_KPI.bus.indkoeb.fakturaerTilGodkendelse));
+    assert.ok(Number.isFinite(DEMO_KPI.indkoeb.fakturaerTilGodkendelse));
   });
 
   it("har de øvrige Indkøb-felter defineret frem for hardkodet", () => {
     for (const felt of ["varerTilGodkendelse", "manglerFaktura", "godkendtDenneMaaned",
                         "maanedensForbrugOere", "aabneOrdrer"]) {
-      for (const d of ["gods", "bus"]) {
-        assert.ok(Number.isFinite(DEMO_KPI[d].indkoeb[felt]), `${d}.indkoeb.${felt} mangler`);
-      }
+      assert.ok(Number.isFinite(DEMO_KPI.indkoeb[felt]), `indkoeb.${felt} mangler`);
     }
   });
 });
@@ -166,12 +161,6 @@ describe("Leverandøren er en entitet", () => {
 
   /* Division BESKRIVER LEVERANDØRENS FORRETNING — modsat personale og
      køretøjer, hvor den ville beskrive vores organisation (beslutning 19). */
-  it("har en gyldig division på hver leverandør", () => {
-    for (const l of DEMO_LEVERANDOERER) {
-      assert.ok(["gods", "bus", "faelles"].includes(l.division), `${l.id}: ugyldig division`);
-    }
-  });
-
   it("slår navnet op og fejler synligt på et ukendt id", () => {
     assert.equal(leverandoerNavn(DEMO_LEVERANDOERER, "lv-mercedes"), "Mercedes Greve");
     assert.match(leverandoerNavn(DEMO_LEVERANDOERER, "lv-findes-ikke"), /ukendt leverandør/);
@@ -300,12 +289,6 @@ describe("kanGodkende skelner mellem adgang og forudsætning", () => {
    Indkøbslinjerne
    ══════════════════════════════════════════════════════════════════════ */
 describe("Indkøbslinjerne bærer det reglerne kræver", () => {
-  it("har division på hver linje — den kan ikke arves fra bilen", () => {
-    for (const l of DEMO_INDKOEBSLINJER) {
-      assert.ok(["gods", "bus", "faelles"].includes(l.division), `${l.id}: ugyldig division`);
-    }
-  });
-
   it("bruger kendte fakturastatusser", () => {
     for (const l of DEMO_INDKOEBSLINJER) {
       assert.ok(FAKTURASTATUS[l.fakturastatus], `${l.id}: ukendt status`);
@@ -328,7 +311,7 @@ describe("Indkøbslinjerne bærer det reglerne kræver", () => {
     const aabne = DEMO_INDKOEBSLINJER.filter(
       (l) => l.fakturastatus !== "bogfoert" && l.fakturastatus !== "afvist"
     );
-    const iAlt = DEMO_KPI.gods.indkoeb.aabneOrdrer + DEMO_KPI.bus.indkoeb.aabneOrdrer;
+    const iAlt = DEMO_KPI.indkoeb.aabneOrdrer;
     assert.ok(aabne.length <= iAlt,
       `${aabne.length} åbne linjer i demo, men kpi/ siger ${iAlt} i alt`);
   });
@@ -349,11 +332,19 @@ describe("Indkøbslinjerne bærer det reglerne kræver", () => {
     }
   });
 
-  it("dækker begge divisioner og flere kategorier", () => {
-    const divisioner = new Set(DEMO_INDKOEBSLINJER.map((l) => l.division));
-    assert.ok(divisioner.size >= 2, "kun én division — filteret kan ikke ses virke");
+  /**
+   * ⚠ HER STOD "dækker begge divisioner", med begrundelsen *"kun én division —
+   * filteret kan ikke ses virke"*. Filteret findes ikke længere (beslutning
+   * 70), og kravet om to divisioner var et krav om at demo-data skulle bære et
+   * felt for at en kontrol kunne demonstreres. Kategorierne er den rigtige
+   * spredning: de siger noget om indkøbene selv.
+   */
+  it("dækker flere kategorier", () => {
     const kategorier = new Set(DEMO_INDKOEBSLINJER.map((l) => l.kategori));
     assert.ok(kategorier.size >= 4);
+    /* ⚠ OG INGEN LINJE BÆRER division — reglen afviser det nu. */
+    const med = DEMO_INDKOEBSLINJER.filter((l) => l.division !== undefined);
+    assert.deepEqual(med, [], "demo-linjer bærer stadig division, som reglen afviser");
   });
 });
 

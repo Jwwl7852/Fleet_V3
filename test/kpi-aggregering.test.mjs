@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  UDEN_DIVISION, KILDER_DER_MANGLER, iDivision, udenKilde,
+  UDEN_DIVISION, KILDER_DER_MANGLER, udenKilde,
   kundetal, ikkeFaktureretOere,
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
   prisafvigelser, facilitytal, SERVICE_VINDUE_DAGE,
@@ -26,29 +26,20 @@ const DAG = 86400000;
 
 /* ---- Divisionen -------------------------------------------------------- */
 
-test("⚠ EN POST UDEN DIVISION HØRER TIL BEGGE — ikke til ingen", () => {
-  /* Samme regel som divisionsfilteret i useListe. Da beslutning 19 fjernede
-     feltet fra bilerne, ville en kopi uden det her led have vist en tom
-     biltabel i BÅDE Gods og Bus, uden at nogen havde slettet en bil. */
-  assert.equal(iDivision({ division: "gods" }, "gods"), true);
-  assert.equal(iDivision({ division: "bus" }, "gods"), false);
-  assert.equal(iDivision({ division: "faelles" }, "gods"), true);
-  assert.equal(iDivision({}, "gods"), true, "en post uden division forsvandt");
-  assert.equal(iDivision({}, "bus"), true);
-});
+/* ⚠ HER STOD TO PRØVER OM AKSEN, og begge er nu historik:
 
-test("⚠ LISTEN OVER KILDER UDEN DIVISION ER MÅLT", () => {
-  /* Talt op mod den udrullede base: 0 af 16 køretøjer og 0 af 80 kompetencer
-     har feltet, mens 14 af 14 kunder og 8 af 8 etaper har det. Flytter nogen
-     en division ned på stamdata, bryder de beslutning 19 — og så skal den her
-     liste rettes bevidst. */
-  for (const n of ["koeretoejer", "personale", "kompetencer"]) {
-    assert.ok(UDEN_DIVISION.includes(n), `${n} mangler paa listen`);
-  }
-  for (const n of ["kunder", "etaper"]) {
-    assert.ok(!UDEN_DIVISION.includes(n), `${n} baerer en division og skal ikke staa der`);
-  }
-});
+   "EN POST UDEN DIVISION HØRER TIL BEGGE — ikke til ingen" prøvede
+   iDivision(). Funktionen findes ikke længere (beslutning 70), og dens
+   vigtigste led var selv oplysningen: "vis den i begge" er svaret man giver
+   når aksen ikke passer på dataene, og det svar gjaldt til sidst stamdata,
+   facility, flåden og bemandingen.
+
+   "LISTEN OVER KILDER UDEN DIVISION ER MÅLT" krævede at kunder og etaper
+   IKKE stod på listen over kilder uden division. Nu står alle noder der, og
+   listen har ingen modstykke at afgrænse sig mod.
+
+   At aksen holdes ude, prøves ét sted: test/division-fjernet.test.mjs for
+   klienten og test/rules.division.test.mjs for reglerne. */
 
 /* ══════════════════════════════════════════════════════════════════════════
    DEN VIGTIGSTE
@@ -69,7 +60,7 @@ test("⚠ ET FELT UDEN KILDE ER null — IKKE NUL", () => {
 test("felterne UDELADES ikke — de står med null", () => {
   /* Udelades de, får skærmen `undefined` og samme streg — men så står
      spørgsmålet ingen steder, og ingen kan se af noden hvad der mangler. */
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
   assert.ok("forsinkede" in k.opgaver, "opgaver.forsinkede er udeladt");
   assert.ok("aktiver" in k.facility);
   /* ⚠ STADIG PÅ OBJEKTET — men nu med et TAL. Feltet skal med uanset
@@ -106,8 +97,8 @@ test("⚠ FLÅDEN OG BEMANDINGEN DELES IKKE — SAMME TAL I BEGGE DIVISIONER", (
     ],
     nu: NU,
   };
-  const gods = beregnKpi({ ...ind, division: "gods" });
-  const bus = beregnKpi({ ...ind, division: "bus" });
+  const gods = beregnKpi({ ...ind });
+  const bus = beregnKpi({ ...ind });
 
   assert.equal(gods.flaade.aktive, 2, "de to aktive tælles begge");
   assert.equal(bus.flaade.aktive, gods.flaade.aktive,
@@ -127,7 +118,7 @@ test("⚠ FLÅDEN OG BEMANDINGEN DELES IKKE — SAMME TAL I BEGGE DIVISIONER", (
  * grunde ligner hinanden i noden uden at være det samme (beslutning 62).
  */
 test("⚠ DE OTTE DER BLIVER, HAR HVER SIN SLAGS GRUND", () => {
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
 
   /* INGEN KILDE: tallet kunne regnes, hvis nogen førte data. */
   for (const f of ["omkostningPrKmOere", "nedetidPct"]) {
@@ -221,7 +212,7 @@ test("⚠ EFTERSLÆBET TÆLLES PÅ NODEN, IKKE PÅ udenKilde()", () => {
     }
     return ud;
   };
-  const tomme = nuller(beregnKpi({ division: "gods", nu: NU }));
+  const tomme = nuller(beregnKpi({ nu: NU }));
 
   /* ⚠ ET LOFT, IKKE ET FACIT. Tallet svinger med hvad der fodres ind — uden
      data er alt null. Prøven findes for at fange at det VOKSER: et nyt felt
@@ -243,35 +234,35 @@ test("⚠ EFTERSLÆBET TÆLLES PÅ NODEN, IKKE PÅ udenKilde()", () => {
 
 /* ---- Det der kan regnes ------------------------------------------------ */
 
-test("kunder tælles pr. division, og fælles tæller i begge", () => {
+/* ⚠ HER STOD "kunder tælles pr. division, og fælles tæller i begge".
+   Aksen er fjernet (beslutning 70) — og prøven havde selv svaret i sit navn:
+   det den målte, var at "fælles" tællede med begge steder, altså at
+   opdelingen ikke delte de poster den handlede om. */
+test("aktive kunder tælles, inaktive gør ikke", () => {
   const kunder = [
-    { aktiv: true, division: "gods" },
-    { aktiv: true, division: "bus" },
-    { aktiv: true, division: "faelles" },
-    { aktiv: false, division: "gods" },
+    { aktiv: true }, { aktiv: true }, { aktiv: true }, { aktiv: false },
   ];
-  assert.equal(kundetal(kunder, "gods", NU).aktive, 2);
-  assert.equal(kundetal(kunder, "bus", NU).aktive, 2);
+  assert.equal(kundetal(kunder, NU).aktive, 3);
 });
 
 test("en aftale der udløber inden 30 dage, tælles — en der er udløbet, gør ikke", () => {
   const kunder = [
-    { aktiv: true, division: "gods", aftaleUdloeberMs: NU + 10 * DAG },
-    { aktiv: true, division: "gods", aftaleUdloeberMs: NU + 90 * DAG },
-    { aktiv: true, division: "gods", aftaleUdloeberMs: NU - 1 * DAG },
+    { aktiv: true, aftaleUdloeberMs: NU + 10 * DAG },
+    { aktiv: true, aftaleUdloeberMs: NU + 90 * DAG },
+    { aktiv: true, aftaleUdloeberMs: NU - 1 * DAG },
   ];
-  assert.equal(kundetal(kunder, "gods", NU).aftalerUdloeber, 1);
+  assert.equal(kundetal(kunder, NU).aftalerUdloeber, 1);
 });
 
 test("⚠ tilbud ER null — noden findes ikke", () => {
   /* Formen er ikke besluttet, og et tilbud kan gå til et EMNE der ikke er
      kunde endnu. Se demo-kunder.js. */
-  assert.equal(kundetal([], "gods", NU).tilbud, null);
+  assert.equal(kundetal([], NU).tilbud, null);
 });
 
 /* ---- ikkeFaktureretOere ------------------------------------------------- */
 
-const etape = (o) => ({ division: "gods", tilstand: "udfoert", ...o });
+const etape = (o) => ({ tilstand: "udfoert", ...o });
 
 test("⚠ UDFØRT ARBEJDE UDEN ET LÅST GRUNDLAG", () => {
   /* Beslutning 25. Godkendt er ikke nok — et godkendt grundlag kan stadig
@@ -281,7 +272,7 @@ test("⚠ UDFØRT ARBEJDE UDEN ET LÅST GRUNDLAG", () => {
     [
       { bookingId: "bk-1", tilstand: "laast", beloebOere: 10000 },
       { bookingId: "bk-2", tilstand: "godkendt", beloebOere: 25000 },
-    ], "gods");
+    ]);
   assert.equal(r.oere, 25000, "det laaste forloeb blev talt med");
   assert.equal(r.forloeb, 1);
 });
@@ -293,14 +284,14 @@ test("⚠ ET ERSTATTET GRUNDLAG TÆLLER IKKE SOM LÅST", () => {
     [
       { bookingId: "bk-1", tilstand: "laast", beloebOere: 10000, erstattetAfId: "g2" },
       { bookingId: "bk-1", tilstand: "godkendt", beloebOere: 12000 },
-    ], "gods");
+    ]);
   assert.equal(r.oere, 12000, "det erstattede grundlag lukkede forloebet");
 });
 
 test("⚠ ET FORLØB UDEN PRIS GØR HELE SUMMEN null", () => {
   /* En etape bærer ingen pris. Kan vi ikke se hvad et forløb er værd, kan vi
      ikke lægge det til — og en sum der mangler noget, ser ud som en sum. */
-  const r = ikkeFaktureretOere([etape({ bookingId: "bk-9" })], [], "gods");
+  const r = ikkeFaktureretOere([etape({ bookingId: "bk-9" })], []);
   assert.equal(r.oere, null);
   assert.equal(r.forloeb, 1, "antallet skal stadig kunne ses");
   assert.equal(r.udenPris, true);
@@ -308,7 +299,7 @@ test("⚠ ET FORLØB UDEN PRIS GØR HELE SUMMEN null", () => {
 
 test("kun udførte etaper tæller — en reserveret er ikke kørt", () => {
   const r = ikkeFaktureretOere(
-    [etape({ bookingId: "bk-1", tilstand: "reserveret" })], [], "gods");
+    [etape({ bookingId: "bk-1", tilstand: "reserveret" })], []);
   assert.equal(r.oere, 0);
   assert.equal(r.forloeb, 0);
 });
@@ -316,7 +307,7 @@ test("kun udførte etaper tæller — en reserveret er ikke kørt", () => {
 test("to etaper på samme forløb tælles én gang", () => {
   const r = ikkeFaktureretOere(
     [etape({ bookingId: "bk-1" }), etape({ bookingId: "bk-1" })],
-    [{ bookingId: "bk-1", tilstand: "kladde", beloebOere: 5000 }], "gods");
+    [{ bookingId: "bk-1", tilstand: "kladde", beloebOere: 5000 }]);
   assert.equal(r.oere, 5000, "forloebet blev talt to gange");
 });
 
@@ -325,15 +316,15 @@ test("to etaper på samme forløb tælles én gang", () => {
 test("⚠ EN DELTA ER null VED FØRSTE KØRSEL", () => {
   /* Der er ingen forrige at måle imod, og 0 % ville betyde "uændret" — en
      påstand vi ikke kan bakke op. */
-  const k = beregnKpi({ division: "gods", kunder: [{ aktiv: true }], forrige: null, nu: NU });
+  const k = beregnKpi({ kunder: [{ aktiv: true }], forrige: null, nu: NU });
   assert.equal(k.kunder.aktiveDeltaPct, null);
   assert.equal(k.oekonomi.ikkeFaktureretDeltaPct, null);
 });
 
 test("anden kørsel giver en delta", () => {
-  const forrige = beregnKpi({ division: "gods", kunder: [{ aktiv: true }], nu: NU });
+  const forrige = beregnKpi({ kunder: [{ aktiv: true }], nu: NU });
   const nyt = beregnKpi({
-    division: "gods", kunder: [{ aktiv: true }, { aktiv: true }], forrige, nu: NU,
+    kunder: [{ aktiv: true }, { aktiv: true }], forrige, nu: NU,
   });
   assert.equal(nyt.kunder.aktiveDeltaPct, 100);
 });
@@ -360,16 +351,16 @@ test("en delta mod et manglende tal er null, ikke en fejl", () => {
 test("⚠ AFVIGELSER ER EN TOM LISTE, IKKE null", () => {
   /* Findes der ingen afvigelser, er svaret en tom liste — og det ER et svar.
      null ville betyde "ikke beregnet". */
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
   assert.deepEqual(k.afvigelser, []);
 });
 
 test("de beregnede domæner findes også i demo-sættet", () => {
   /* demo-kpi.js ER nodens form. Skriver aggregeringen et domæne demo ikke
      kender, ville skærmen ikke læse det — og omvendt. */
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
   for (const domaene of ["kunder", "oekonomi", "disponering", "flaade", "bemanding"]) {
-    assert.ok(domaene in DEMO_KPI.gods, `demo-kpi mangler ${domaene}`);
+    assert.ok(domaene in DEMO_KPI, `demo-kpi mangler ${domaene}`);
     assert.ok(domaene in k, `aggregeringen mangler ${domaene}`);
   }
 });
@@ -387,9 +378,9 @@ test("⚠ HVERT FELT I demo-kpi SKRIVES OGSÅ AF AGGREGERINGEN", () => {
 
      Derfor på FELTNIVEAU. En kilde der mangler, skal stå i noden som null
      med et navn — ikke være fraværende. */
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
   const mangler = [];
-  for (const [domaene, felter] of Object.entries(DEMO_KPI.gods)) {
+  for (const [domaene, felter] of Object.entries(DEMO_KPI)) {
     if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
     for (const felt of Object.keys(felter)) {
       if (!(felt in (k[domaene] || {}))) mangler.push(`${domaene}.${felt}`);
@@ -422,7 +413,7 @@ test("⚠ HVERT FELT I demo-kpi SKRIVES OGSÅ AF AGGREGERINGEN", () => {
  * ⚠ DE TRE FELTER I `disponering` — to fik en kilde, ét fik en grund.
  */
 test("⚠ forsinkelsesrisiko ER ETA EFTER FRIST — og hullet står ved siden af", () => {
-  const e = (x) => ({ division: "gods", tilstand: "reserveret", ...x });
+  const e = (x) => ({ tilstand: "reserveret", ...x });
   const r = disponeringstal([
     /* ETA efter fristen: en risiko man kan nå at gøre noget ved. */
     e({ etaMs: 200, senestMs: 100 }),
@@ -434,7 +425,7 @@ test("⚠ forsinkelsesrisiko ER ETA EFTER FRIST — og hullet står ved siden af
     e({ senestMs: 100 }),
     /* En udført etape kan ikke blive forsinket. */
     e({ tilstand: "udfoert", etaMs: 200, senestMs: 100 }),
-  ], "gods");
+  ]);
   assert.equal(r.forsinkelsesrisiko, 1);
   assert.equal(r.udenEtaEllerFrist, 2);
 });
@@ -442,23 +433,23 @@ test("⚠ forsinkelsesrisiko ER ETA EFTER FRIST — og hullet står ved siden af
 test("⚠ konflikter ER null UDEN LISTERNE, ikke nul", () => {
   /* En aggregering der ikke fik sine biler, VED ikke at der er nul
      konflikter — den ved ingenting. Nul ville se ud som et rent hus. */
-  const etaper = [{ id: "e-1", division: "gods", tilstand: "reserveret" }];
-  assert.equal(disponeringstal(etaper, "gods").konflikter, null);
+  const etaper = [{ id: "e-1", tilstand: "reserveret" }];
+  assert.equal(disponeringstal(etaper).konflikter, null);
   assert.equal(
-    disponeringstal(etaper, "gods", { koeretoejer: [{ id: "kt-1" }] }).konflikter, 0,
+    disponeringstal(etaper, { koeretoejer: [{ id: "kt-1" }] }).konflikter, 0,
     "med listerne skal den kunne svare et tal");
 });
 
 test("⚠ ledigKapacitetPct BLIVER STÅENDE — definitionen mangler", () => {
   /* Ikke data der mangler: ledig i hvilken periode, målt i vogntimer, m³
      eller enheder? De tal peger forskellige veje. Se beslutning 60. */
-  assert.equal(disponeringstal([], "gods").ledigKapacitetPct, null);
+  assert.equal(disponeringstal([]).ledigKapacitetPct, null);
 });
 
 test("⚠ forsinkede ER \"SKULLE VÆRE FÆRDIG NU\", ikke \"startede for sent\"", () => {
   const nu = Date.UTC(2026, 8, 1, 12, 0, 0);
   const T = 3600000;
-  const o = (x) => ({ division: "gods", ...x });
+  const o = (x) => ({ ...x });
   const r = opgavetal([
     /* Planen sagde kl. 11 — den er forsinket. */
     o({ status: "planlagt", startMs: nu - 2 * T, estimeretMin: 60 }),
@@ -471,22 +462,22 @@ test("⚠ forsinkede ER \"SKULLE VÆRE FÆRDIG NU\", ikke \"startede for sent\""
        på en standardlængde ville gøre den forsinket på et tidspunkt ingen har
        besluttet. */
     o({ status: "planlagt", startMs: nu - 5 * T }),
-  ], "gods", nu);
+  ], nu);
   assert.equal(r.forsinkede, 1);
 });
 
 test("⚠ nyeBookinger ER null VED FØRSTE KØRSEL, ikke nul", () => {
   const bookinger = [
-    { division: "gods", oprettetMs: 900 },
-    { division: "gods", oprettetMs: 1200 },
-    { division: "bus", oprettetMs: 1200 },
+    { oprettetMs: 900 },
+    { oprettetMs: 1200 },
+    { oprettetMs: 1200 },
   ];
   /* Uden en forrige er der intet at måle fra — og 0 ville betyde "ingen nye
      bookinger", en påstand vi ikke kan bakke op. Samme regel som deltaPct(). */
-  assert.equal(opgavetal([], "gods", 2000, { bookinger }).nyeBookinger, null);
+  assert.equal(opgavetal([], 2000, { bookinger }).nyeBookinger, null);
   assert.equal(
-    opgavetal([], "gods", 2000, { bookinger, forrige: { beregnetMs: 1000 } }).nyeBookinger,
-    1, "tæller ikke fra forrige beregning, eller ignorerer divisionen");
+    opgavetal([], 2000, { bookinger, forrige: { beregnetMs: 1000 } }).nyeBookinger,
+    2, "tæller ikke fra forrige beregning");
 });
 
 test("⚠ udenTidsfrist BLIVER STÅENDE — noden har ikke feltet", () => {
@@ -494,19 +485,19 @@ test("⚠ udenTidsfrist BLIVER STÅENDE — noden har ikke feltet", () => {
      estimeretMin, og ingen af dem er en FRIST. Den nærmeste udlægning tælles
      allerede som `uplanlagte`, og to felter med samme tal under hvert sit
      navn er beslutning 6 brudt. Se beslutning 61. */
-  assert.equal(opgavetal([], "gods", 1).udenTidsfrist, null);
+  assert.equal(opgavetal([], 1).udenTidsfrist, null);
 });
 
 test("⚠ OG HVERT FELT AGGREGERINGEN SKRIVER, STÅR I demo-kpi", () => {
-  const k = beregnKpi({ division: "gods", nu: NU });
+  const k = beregnKpi({ nu: NU });
   const ukendte = [];
   for (const [domaene, felter] of Object.entries(k)) {
     if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
     /* Kun de domæner demofilen overhovedet beskriver — et helt nyt domæne
        fanges af prøven ovenfor. */
-    if (!(domaene in DEMO_KPI.gods)) continue;
+    if (!(domaene in DEMO_KPI)) continue;
     for (const felt of Object.keys(felter)) {
-      if (!(felt in DEMO_KPI.gods[domaene])) ukendte.push(`${domaene}.${felt}`);
+      if (!(felt in DEMO_KPI[domaene])) ukendte.push(`${domaene}.${felt}`);
     }
   }
   assert.deepEqual(ukendte, [],
@@ -519,7 +510,7 @@ const DAGE = 86400000;
 
 /** En indkøbslinje med det der skal til, og resten valgfrit. */
 const linje = (o = {}) => ({
-  id: o.id || "il-x", division: "gods", dato: NU - DAGE,
+  id: o.id || "il-x", dato: NU - DAGE,
   aftaltLeveringMs: NU - DAGE, leveretMs: NU - DAGE,
   leverandoerId: "lv-1", vare: "Ting", kategori: "reservedele",
   antal: 1, enhed: "stk", prisPrEnhedOere: 10000, fakturastatus: "bogfoert",
@@ -534,7 +525,7 @@ test("⚠ ÉN ORDRE MED TO LINJER ER ÉN ÅBEN ORDRE", () => {
     linje({ id: "a", reference: "ORD-1", leveretMs: null }),
     linje({ id: "b", reference: "ORD-1", leveretMs: null }),
     linje({ id: "c", reference: "ORD-2", leveretMs: null }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.aabneOrdrer, 2);
 });
 
@@ -544,12 +535,12 @@ test("⚠ EN LINJE UDEN REFERENCE TÆLLER FOR SIG SELV", () => {
   const t = indkoebstal([
     linje({ id: "a", leveretMs: null }),
     linje({ id: "b", leveretMs: null }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.aabneOrdrer, 2);
 });
 
 test("en leveret linje er ikke åben", () => {
-  const t = indkoebstal([linje({ id: "a", reference: "ORD-1" })], [], [], "gods", NU);
+  const t = indkoebstal([linje({ id: "a", reference: "ORD-1" })], [], [], NU);
   assert.equal(t.aabneOrdrer, 0);
 });
 
@@ -560,7 +551,7 @@ test("⚠ TIL TIDEN ER PÅ SEKUNDET, IKKE PÅ DAGEN", () => {
     linje({ id: "a", aftaltLeveringMs: NU, leveretMs: NU }),
     linje({ id: "b", aftaltLeveringMs: NU, leveretMs: NU + 1 }),
     linje({ id: "c", aftaltLeveringMs: NU, leveretMs: NU - 1 }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.leveranceTilTidenPct, 67);
 });
 
@@ -573,7 +564,7 @@ test("⚠ EN LINJE UDEN AFTALT TERMIN KAN IKKE VÆRE FORSINKET", () => {
     linje({ id: "b", aftaltLeveringMs: null }),
     linje({ id: "c", aftaltLeveringMs: null }),
     linje({ id: "d", aftaltLeveringMs: null }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.leveranceTilTidenPct, null,
     "én måling er ikke et grundlag — og 100 % ville se ud som en måling");
 });
@@ -585,7 +576,7 @@ test("⚠ MANGLER FAKTURA ER LINJENS EGET UDSAGN", () => {
   const t = indkoebstal([
     linje({ id: "a", fakturastatus: "mangler" }),
     linje({ id: "b", fakturastatus: "bogfoert" }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.manglerFaktura, 1);
 });
 
@@ -594,13 +585,15 @@ test("⚠ EN ULINKET FAKTURA TÆLLER I BEGGE DIVISIONER", () => {
      matchet, HAR den ingen — og skal ses begge steder, fordi ingen endnu ved
      hvem der skal betale den. Skjulte vi den begge steder, ville en ubetalt
      regning ligge uden at nogen havde den på sit kort. */
-  const ind = [linje({ id: "g", division: "gods" }), linje({ id: "b", division: "bus" })];
+  const ind = [linje({ id: "g" }), linje({ id: "b" })];
   const fak = [
     { id: "f1", status: "modtaget", indkoebId: "g" },
     { id: "f2", status: "modtaget", indkoebId: null },
   ];
-  assert.equal(indkoebstal(ind, fak, [], "gods", NU).fakturaerTilGodkendelse, 2);
-  assert.equal(indkoebstal(ind, fak, [], "bus", NU).fakturaerTilGodkendelse, 1);
+  /* ⚠ HER STOD TO PÅSTANDE — én pr. division — og den ulinkede faktura
+     tællede i begge. Det var oplysningen: en faktura uden linje HAR ingen
+     division, og den skulle derfor ses af alle. Nu er der ét svar. */
+  assert.equal(indkoebstal(ind, fak, [], NU).fakturaerTilGodkendelse, 2);
 });
 
 test("⚠ EN HÆNGENDE REFERENCE ER ULINKET", () => {
@@ -622,7 +615,7 @@ test("⚠ MÅNEDENS FORBRUG ER KALENDERMÅNEDEN", () => {
   const t = indkoebstal([
     linje({ id: "a", dato: Date.UTC(2026, 7, 1), antal: 2, prisPrEnhedOere: 5000 }),
     linje({ id: "b", dato: Date.UTC(2026, 6, 31), antal: 9, prisPrEnhedOere: 5000 }),
-  ], [], [], "gods", NU);
+  ], [], [], NU);
   assert.equal(t.maanedensForbrugOere, 10000, "juli-linjen skal ikke med");
 });
 
@@ -630,7 +623,7 @@ test("⚠ PRISAFVIGELSER ER null NÅR INTET KAN MÅLES", () => {
   /* En afvigelse kræver en aftalt pris at afvige fra. Uden et kartotek er der
      ingen — og 0 ville betyde "ingen afveg", som er en helt anden besked end
      "vi har ikke aftalen at måle mod". */
-  const t = indkoebstal([linje()], [], [], "gods", NU);
+  const t = indkoebstal([linje()], [], [], NU);
   assert.equal(t.indkoebsprisafvigelser, null);
   assert.equal(t.indkoebsprisafvigelseSnitPct, null);
 });
@@ -662,13 +655,13 @@ test("⚠ MÅLT MOD DEN PRIS DER GJALDT DA VI KØBTE", () => {
      selv om dagens pris er den dobbelte. */
   const iJuni = prisafvigelser(
     [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: juni, prisPrEnhedOere: 10000 })],
-    leverandoerer, "gods");
+    leverandoerer);
   assert.equal(iJuni.snitPct, 0, "juni-købet skal måles mod juni-prisen");
 
   /* Samme beløb købt i august er derimod 50 % UNDER den nye aftale. */
   const iAugust = prisafvigelser(
     [linje({ id: "b", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 10000 })],
-    leverandoerer, "gods");
+    leverandoerer);
   assert.equal(iAugust.snitPct, -50);
 });
 
@@ -681,7 +674,7 @@ test("⚠ EN LINJE UDEN AFTALT PRIS TÆLLER SLET IKKE MED", () => {
   const t = prisafvigelser([
     linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 12000 }),
     linje({ id: "b", leverandoerId: "lv-1", varenummer: "UKENDT", dato: NU, prisPrEnhedOere: 99999 }),
-  ], leverandoerer, "gods");
+  ], leverandoerer);
   assert.equal(t.snitPct, 20, "kun VARE-1 kan måles — 12000 mod 10000 er +20 %");
 });
 
@@ -692,8 +685,8 @@ test("⚠ GRÆNSEN AFHÆNGER AF AFTALEFORMEN", () => {
   const koeb = (id) => linje({
     id, leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 10400,
   });
-  const fast = prisafvigelser([koeb("a")], [lev({ aftaletype: "fastaftale" })], "gods");
-  const spot = prisafvigelser([koeb("a")], [lev({ aftaletype: "spot" })], "gods");
+  const fast = prisafvigelser([koeb("a")], [lev({ aftaletype: "fastaftale" })]);
+  const spot = prisafvigelser([koeb("a")], [lev({ aftaletype: "spot" })]);
   assert.equal(fast.snitPct, 4);
   assert.equal(spot.snitPct, 4, "samme tal");
   assert.equal(fast.antal, 1, "4 % er over grænsen på en fastaftale");
@@ -706,7 +699,7 @@ test("⚠ EN AFVIGELSE NEDAD ER OGSÅ EN AFVIGELSE", () => {
      prisliste for en god handel. */
   const t = prisafvigelser(
     [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 9000 })],
-    [lev()], "gods");
+    [lev()]);
   assert.equal(t.antal, 1);
   assert.equal(t.snitPct, -10);
 });
@@ -714,7 +707,7 @@ test("⚠ EN AFVIGELSE NEDAD ER OGSÅ EN AFVIGELSE", () => {
 test("en linje fra en ukendt leverandør kan ikke måles", () => {
   const t = prisafvigelser(
     [linje({ id: "a", leverandoerId: "lv-fantom", varenummer: "VARE-1", dato: NU })],
-    [lev()], "gods");
+    [lev()]);
   assert.equal(t.antal, null);
   assert.equal(t.snitPct, null);
 });
@@ -731,7 +724,7 @@ test("⚠ PRISLISTEN MÅ KOMME FRA BASEN SOM ET OBJEKT", () => {
   };
   const t = prisafvigelser(
     [linje({ id: "a", leverandoerId: "lv-1", varenummer: "VARE-1", dato: NU, prisPrEnhedOere: 11000 })],
-    [fraBasen], "gods");
+    [fraBasen]);
   assert.equal(t.snitPct, 10);
 });
 
@@ -741,7 +734,7 @@ test("⚠ BRÆNDSTOF SØGES PÅ KATEGORIEN, IKKE PÅ VARENAVNET", () => {
   const oere = braendstofOere([
     linje({ id: "a", kategori: "braendstof", varenummer: "DIESEL-B7", dato: NU, antal: 100, prisPrEnhedOere: 1000 }),
     linje({ id: "b", kategori: "reservedele", vare: "Dieselfilter", dato: NU, antal: 1, prisPrEnhedOere: 999900 }),
-  ], "gods", NU);
+  ], NU);
   assert.equal(oere, 100000);
 });
 
@@ -758,7 +751,7 @@ test("⚠ ADBLUE TÆLLER IKKE MED — DET ER ET ADDITIV", () => {
   const oere = braendstofOere([
     linje({ id: "a", kategori: "braendstof", varenummer: "DIESEL-B7", dato: NU, antal: 100, prisPrEnhedOere: 1000 }),
     linje({ id: "b", kategori: "braendstof", varenummer: "ADBLUE", dato: NU, antal: 900, prisPrEnhedOere: 682 }),
-  ], "gods", NU);
+  ], NU);
   assert.equal(oere, 100000, "AdBlue skal ikke tælle med i brændstoffet");
   assert.ok(IKKE_BRAENDSTOF.includes("ADBLUE"));
 });
@@ -779,11 +772,11 @@ test("⚠ klarTilFakturering OG ikkeFaktureretForloeb ER SAMME TAL", () => {
      grundlag. Regnede de hver sin gæng, kunne de vise hver sit tal for den
      samme liste — og ingen kunne se hvilken der løj. */
   const etaper = [
-    { id: "e1", division: "gods", tilstand: "udfoert", bookingId: "BKG-1" },
-    { id: "e2", division: "gods", tilstand: "udfoert", bookingId: "BKG-2" },
+    { id: "e1", tilstand: "udfoert", bookingId: "BKG-1" },
+    { id: "e2", tilstand: "udfoert", bookingId: "BKG-2" },
   ];
   const grundlag = [{ id: "g1", bookingId: "BKG-1", tilstand: "laast", beloebOere: 1000 }];
-  const k = beregnKpi({ division: "gods", etaper, grundlag, nu: NU });
+  const k = beregnKpi({ etaper, grundlag, nu: NU });
   assert.equal(k.opgaver.klarTilFakturering, k.oekonomi.ikkeFaktureretForloeb);
   assert.equal(k.opgaver.klarTilFakturering, 1);
 });
@@ -806,8 +799,8 @@ test("⚠ FACILITY ER FÆLLES — SAMME TAL I BEGGE DIVISIONER", () => {
      er FÆLLES, flåden skal DELES. At skjule et fælles tal begge steder er at
      stille et spørgsmål der allerede er besvaret. */
   const aktiver = [aktiv({ id: "a" }), aktiv({ id: "b" }), aktiv({ id: "c" })];
-  const gods = facilitytal({ aktiver, division: "gods", nu: NU });
-  const bus = facilitytal({ aktiver, division: "bus", nu: NU });
+  const gods = facilitytal({ aktiver, nu: NU });
+  const bus = facilitytal({ aktiver, nu: NU });
   assert.equal(gods.aktiver, 3);
   assert.deepEqual(gods.aktiver, bus.aktiver);
 });
@@ -824,7 +817,7 @@ test("⚠ EN OVERSKREDET SERVICE TÆLLER STADIG SOM FORFALDEN", () => {
       aktiv({ id: "senere", naesteServiceMs: NU + (SERVICE_VINDUE_DAGE + 1) * DAGE }),
       aktiv({ id: "uden" }),
     ],
-    division: "gods", nu: NU,
+    nu: NU,
   });
   assert.equal(t.servicepunkterForfalder, 3,
     "overskredet, snart og på kanten tæller — senere og uden dato gør ikke");
@@ -840,7 +833,7 @@ test("⚠ EN FEJL DER ER PLANLAGT, ER STADIG ÅBEN", () => {
       { id: "3", status: "igang" },
       { id: "4", status: "udbedret" },
     ],
-    division: "gods", nu: NU,
+    nu: NU,
   });
   assert.equal(t.aabneFejl, 3);
 });
@@ -855,7 +848,7 @@ test("⚠ EN SENSOR UDEN MÅLING ER IKKE AKTIV", () => {
       { id: "zo-3" },
       { id: "zo-4", aktuel: { tempC: 2 } },
     ],
-    division: "gods", nu: NU,
+    nu: NU,
   });
   assert.equal(t.sensorerAktive, 2, "en måling uden tidsstempel er ingen måling");
 });
@@ -871,7 +864,7 @@ test("⚠ aktiverPrArt SUMMERER TIL aktiver", () => {
       aktiv({ id: "c", art: "koeleanlaeg" }),
       aktiv({ id: "d", art: "alarm" }),
     ],
-    division: "gods", nu: NU,
+    nu: NU,
   });
   const sum = Object.values(t.aktiverPrArt).reduce((s, n) => s + n, 0);
   assert.equal(sum, t.aktiver);
@@ -886,23 +879,23 @@ test("⚠ PLANLAGT VEDLIGEHOLD ER EN OPGAVE, IKKE ET AKTIV", () => {
      Og DERFOR kan feltet deles på division, selv om aktivet ikke kan:
      opgaven bærer en. */
   const opgaver = [
-    { id: "o1", art: "facility", status: "planlagt", division: "gods" },
-    { id: "o2", art: "facility", status: "planlagt", division: "bus" },
-    { id: "o3", art: "facility", status: "afventer", division: "gods" },
-    { id: "o4", art: "vaerksted", status: "planlagt", division: "gods" },
+    { id: "o1", art: "facility", status: "planlagt" },
+    { id: "o2", art: "facility", status: "planlagt" },
+    { id: "o3", art: "facility", status: "afventer" },
+    { id: "o4", art: "vaerksted", status: "planlagt" },
   ];
   const aktiver = [aktiv({ id: "a", naesteServiceMs: NU + DAGE })];
-  assert.equal(facilitytal({ aktiver, opgaver, division: "gods", nu: NU }).planlagtVedligehold, 1);
-  assert.equal(facilitytal({ aktiver, opgaver, division: "bus", nu: NU }).planlagtVedligehold, 1);
+  assert.equal(facilitytal({ aktiver, opgaver, nu: NU }).planlagtVedligehold, 2,
+    "de to planlagte facility-opgaver tælles ikke længere begge");
 });
 
 test("⚠ EN UDGÅET LEVERANDØR ER IKKE EN VI KAN RINGE TIL", () => {
   const leverandoerer = [
-    { id: "l1", kategori: "facility", aktiv: true, division: "faelles" },
-    { id: "l2", kategori: "facility", aktiv: false, division: "faelles" },
-    { id: "l3", kategori: "daek", aktiv: true, division: "faelles" },
+    { id: "l1", kategori: "facility", aktiv: true },
+    { id: "l2", kategori: "facility", aktiv: false },
+    { id: "l3", kategori: "daek", aktiv: true },
   ];
-  const t = facilitytal({ leverandoerer, division: "gods", nu: NU });
+  const t = facilitytal({ leverandoerer, nu: NU });
   assert.equal(t.eksterneLeverandoerer, 1);
 });
 
@@ -910,7 +903,7 @@ test("⚠ TO FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
   /* klimaalarmerIDag kræver HISTORIK — og er noget andet end "alarmer der er
      aktive nu", som er afledt og bevidst holdes ude af kpi/.
      aabneSager venter på `sager/`, som ikke findes (beslutning 20, fase 0). */
-  const t = facilitytal({ aktiver: [aktiv()], division: "gods", nu: NU });
+  const t = facilitytal({ aktiver: [aktiv()], nu: NU });
   assert.equal(t.klimaalarmerIDag, null);
   assert.equal(t.aabneSager, null);
 });
@@ -928,17 +921,17 @@ test("⚠ TO FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
  */
 test("⚠ anslaaetServiceOere REGNES AF NODEN — samme sæt som planlagtVedligehold", () => {
   const opgaver = [
-    { art: "facility", status: "planlagt", division: "gods", beloebOere: 120000 },
-    { art: "facility", status: "planlagt", division: "faelles", beloebOere: 80000 },
+    { art: "facility", status: "planlagt", beloebOere: 120000 },
+    { art: "facility", status: "planlagt", beloebOere: 80000 },
     /* Afventer tælles IKKE: de to tal skal beskrive det samme sæt, ellers er
        summen divideret med antallet en pris pr. besøg der ikke findes. */
-    { art: "facility", status: "afventer", division: "gods", beloebOere: 999000 },
+    { art: "facility", status: "afventer", beloebOere: 999000 },
     /* En værkstedsopgave hører til Fleets egne tal. */
-    { art: "vaerksted", status: "planlagt", division: "gods", beloebOere: 999000 },
+    { art: "vaerksted", status: "planlagt", beloebOere: 999000 },
     /* Et besøg UDEN beløb tæller som nul, ikke som et gæt. */
-    { art: "facility", status: "planlagt", division: "gods" },
+    { art: "facility", status: "planlagt" },
   ];
-  const t = facilitytal({ aktiver: [aktiv()], opgaver, division: "gods", nu: NU });
+  const t = facilitytal({ aktiver: [aktiv()], opgaver, nu: NU });
   assert.equal(t.planlagtVedligehold, 3);
   assert.equal(t.anslaaetServiceOere, 200000);
 });
@@ -966,7 +959,7 @@ test("⚠ ET HELT DOMÆNE KAN FORSVINDE UD AF NODEN", () => {
      var der overhovedet ikke, og Bemanding-skærmen læste
      `k.bemanding.disponeret` og blev HVID. Det var ikke skærmens fejl — den
      læste et felt aggregeringen havde skrevet. */
-  const beregnet = beregnKpi({ division: "gods", nu: NU });
+  const beregnet = beregnKpi({ nu: NU });
   assert.ok("bemanding" in beregnet, "aggregeringen skriver bemanding");
 
   const iNoden = somRtdbGemmer(beregnet);
@@ -994,8 +987,8 @@ test("⚠ medFuldForm() GIVER DOMÆNET TILBAGE", () => {
   /* Oversættelsen hører ét sted — i useKpi — af samme grund som fraDb() i
      grundlag.js: tyve skærme ville lave tyve varianter, og den næste ville
      glemme den. */
-  const iNoden = somRtdbGemmer(beregnKpi({ division: "gods", nu: NU }));
-  const k = medFuldForm(iNoden, "gods");
+  const iNoden = somRtdbGemmer(beregnKpi({ nu: NU }));
+  const k = medFuldForm(iNoden);
 
   assert.ok(k.warehouse, "domænet skal være der igen");
   assert.equal(k.warehouse.carriereUdenLokationDelta, null,
@@ -1014,7 +1007,7 @@ test("⚠ DET HENTEDE VINDER OVER SKELETTET", () => {
      "0 åbne fejl" er et svar — og en fletning der tog skelettet sidst, ville
      gøre hvert nul til et hul. */
   const k = medFuldForm(
-    { opgaver: { aabne: 0 }, flaade: { braendstofOere: 100 } }, "gods");
+    { opgaver: { aabne: 0 }, flaade: { braendstofOere: 100 } });
   assert.equal(k.opgaver.aabne, 0, "nul er et svar, ikke et manglende tal");
   assert.equal(k.flaade.braendstofOere, 100);
   assert.equal(k.flaade.aktive, null, "det der ikke stod i noden, er null");
@@ -1024,7 +1017,7 @@ test("⚠ SKELETTET UDLEDES AF beregnKpi(), IKKE SKREVET AF", () => {
   /* En håndskreven liste ville være et andet sted formen stod, og den ville
      drive første gang nogen tilføjede et felt. Her kan den ikke: skelettet ER
      beregningens svar, med bladene nulstillet. */
-  const beregnet = beregnKpi({ division: "gods", nu: NU });
+  const beregnet = beregnKpi({ nu: NU });
   const skelet = kpiSkelet("gods");
   assert.deepEqual(Object.keys(skelet).sort(), Object.keys(beregnet).sort());
   for (const [domaene, felter] of Object.entries(beregnet)) {
@@ -1037,7 +1030,7 @@ test("⚠ SKELETTET UDLEDES AF beregnKpi(), IKKE SKREVET AF", () => {
 
 test("medFuldForm(null) er null — en afvisning bærer ingen form", () => {
   /* Ingen tal oven på en afvisning. Se datatilstand.js og beslutning 26. */
-  assert.equal(medFuldForm(null, "gods"), null);
+  assert.equal(medFuldForm(null), null);
 });
 
 /* ---- Jobbet ------------------------------------------------------------ */
@@ -1061,11 +1054,21 @@ test("⚠ FORRIGE KØRSEL GEMMES — deltaernes eneste kilde", () => {
   assert.ok(blok.includes("await sti.update(opdatering)"));
 });
 
-test("begge divisioner skrives", () => {
-  /* Konstanten staar FOER funktionen, saa den soeges i hele filen. */
-  assert.ok(kilde.includes("KPI_DIVISIONER = "), "divisionerne staar ikke som en konstant");
-  assert.ok(kilde.includes("gods") && kilde.includes("bus"));
-  assert.ok(blok.includes("of KPI_DIVISIONER"), "jobbet loeber ikke begge igennem");
+/**
+ * ⚠ HER STOD "begge divisioner skrives", og proeven kraevede en konstant
+ * KPI_DIVISIONER = ["gods", "bus"] og en loekke over den.
+ *
+ * Aksen er fjernet i beslutning 70: ingen abonnent har baade gods og bus, saa
+ * den ene af de to grene beskrev en forretning kunden ikke havde — og for
+ * flaaden, bemandingen og facility stod der de SAMME tal i begge.
+ */
+test("⚠ ÉT SAET SKRIVES, IKKE ET PR. DIVISION", () => {
+  assert.ok(!kilde.includes("KPI_DIVISIONER"),
+    "divisionsloekken er tilbage i jobbet");
+  assert.ok(blok.includes('rod.child("kpi")'),
+    "jobbet skriver ikke til kpi/ direkte");
+  /* Og stien har ét niveau mindre — samme form som reglen. */
+  assert.ok(!/kpi\/\$\{division\}/.test(blok), "den gamle sti staar endnu");
 });
 
 test("tenantlisten kommer fra udbyder/kunder", () => {

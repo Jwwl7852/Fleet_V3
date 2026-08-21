@@ -27,7 +27,6 @@ import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 const gyldig = (o = {}) => ({
   art: "vaerksted",
   koeretoejId: "kt-012",
-  division: "gods",
   arbejdstype: "service",
   status: "planlagt",
   beskrivelse: "Serviceeftersyn 30.000 km",
@@ -43,13 +42,15 @@ describe("valideOpgaveplan", () => {
     assert.equal(r.ok, true);
   });
 
-  it("⚠ DIVISIONEN KRÆVES, OG DEN KAN IKKE UDLEDES AF ENHEDEN", () => {
-    /* Beslutning 19 forbyder feltet på koeretoejer/, mens opgaver/ kræver det.
-       Udfyldte formularen det ud fra bilen, ville vi genindføre præcis den
-       kobling beslutningen fjernede — og sætningen siger det til brugeren. */
-    const r = valideOpgaveplan(gyldig({ division: null }));
-    assert.match(r.fejl.division, /kan ikke udledes af enheden/i);
-  });
+  /* ⚠ HER STOD "DIVISIONEN KRÆVES, OG DEN KAN IKKE UDLEDES AF ENHEDEN".
+     Begrundelsen var at beslutning 19 forbød feltet på koeretoejer/ mens
+     opgaver/ krævede det — og at en formular der udfyldte det ud fra bilen,
+     ville genindføre præcis den kobling.
+
+     ⚠ DEN SÆTNING VAR SELV OPLYSNINGEN. Et felt der er påkrævet, ikke kan
+     arves og ikke kan udledes, skal tastes af et menneske hver gang — og det
+     menneske vidste allerede hvilken forretning han arbejdede i. Feltet er
+     fjernet i beslutning 70. */
 
   it("⚠ VARIGHEDEN KRÆVES — uden den bliver enheden ikke spærret", () => {
     /* Uden estimeretMin har opgaven ingen slutning: reservationFraOpgave()

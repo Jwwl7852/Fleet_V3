@@ -30,7 +30,7 @@ const START = Date.UTC(2026, 8, 14, 8, 0, 0);
 
 /** Et gyldigt servicebesøg på ét anlæg. */
 const besoeg = (x = {}) => ({
-  art: "facility", division: "faelles", status: "planlagt",
+  art: "facility", status: "planlagt",
   aktivId: "fa-port3", beskrivelse: "Portmotor skiftes",
   startMs: START, estimeretMin: 240,
   ...x,
@@ -65,7 +65,7 @@ describe("valideFacilityopgave", () => {
   test("⚠ AFVISER EN VÆRKSTEDSOPGAVE, og omvendt", () => {
     assert.equal(valideFacilityopgave(besoeg({ art: "vaerksted" }), KATALOG).ok, false);
     const modsat = valideOpgaveplan({
-      art: "facility", division: "faelles", status: "planlagt",
+      art: "facility", status: "planlagt",
       aktivId: "fa-port3", beskrivelse: "x", startMs: START, estimeretMin: 60,
     });
     assert.equal(modsat.ok, false);
@@ -126,13 +126,13 @@ describe("valideFacilityopgave", () => {
    * eftersynet af busladestanderne i Aalborg, står som `bus`. Låste vi feltet,
    * kunne den post ikke oprettes gennem den skærm der viser den.
    */
-  test("⚠ TAGER IMOD ALLE TRE DIVISIONER", () => {
-    for (const d of ["gods", "bus", "faelles"]) {
-      assert.equal(valideFacilityopgave(besoeg({ division: d }), KATALOG).ok, true, d);
-    }
-    assert.equal(valideFacilityopgave(besoeg({ division: "alle" }), KATALOG).ok, false);
-    const bus = DEMO_OPGAVER.find((o) => o.art === "facility" && o.division === "bus");
-    assert.ok(bus, "demo-sættet har ingen facility-opgave uden for fælles længere");
+  /* ⚠ HER STOD "TAGER IMOD ALLE TRE DIVISIONER", og prøven krævede desuden at
+     demo-sættet havde en facility-opgave uden for fælles — altså at data bar
+     et felt, for at en kontrol kunne demonstreres. Aksen er væk (70). */
+  test("⚠ TAGER IKKE IMOD EN DIVISION LÆNGERE", () => {
+    assert.equal(valideFacilityopgave(besoeg({}), KATALOG).ok, true);
+    const med = DEMO_OPGAVER.filter((o) => o.division !== undefined);
+    assert.deepEqual(med, [], "demo-opgaver bærer stadig division, som reglen afviser");
   });
 
   test("kan kun oprette de to planlægbare statusser", () => {
@@ -152,7 +152,7 @@ describe("valideFacilityopgave", () => {
   test("⚠ MANGLENDE VARIGHED GIVER SAMME SÆTNING BEGGE STEDER", () => {
     const fac = valideFacilityopgave(besoeg({ estimeretMin: null }), KATALOG);
     const vk = valideOpgaveplan({
-      art: "vaerksted", division: "gods", status: "planlagt",
+      art: "vaerksted", status: "planlagt",
       koeretoejId: "kt-1", arbejdstype: "service", beskrivelse: "x",
       startMs: START, estimeretMin: null,
     });

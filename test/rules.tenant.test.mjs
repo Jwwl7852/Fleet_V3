@@ -85,7 +85,7 @@ const som = (uid, claims) =>
     .database();
 const udenLogin = () => miljoe.unauthenticatedContext().database();
 
-const POST = { navn: "Prøvepost", division: "gods", aktiv: true };
+const POST = { navn: "Prøvepost", aktiv: true };
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
@@ -108,10 +108,10 @@ before(async () => {
       await set(ref(db, `tenants/${t}/_findes`), true);
       await set(ref(db, `tenants/${t}/kunder/seed`), { ...POST, navn: `Kunde i ${t}` });
       await set(ref(db, `tenants/${t}/opgaver/seed`), {
-        division: "gods", art: "vaerksted", status: "planlagt",
+        art: "vaerksted", status: "planlagt",
         startMs: 1786000000000, estimeretMin: 90,
       });
-      await set(ref(db, `tenants/${t}/kpi/gods/current`), { kunder: { aktive: 3 } });
+      await set(ref(db, `tenants/${t}/kpi/current`), { kunder: { aktive: 3 } });
     }
     await set(ref(db, "brugerTenants/mig"), { tenant: MIN });
     await set(ref(db, "brugerTenants/enAnden"), { tenant: FREMMED });
@@ -274,7 +274,7 @@ describe("tenant-isolation — claim mod en tenant der ikke findes", () => {
   it("et opdigtet tenant-claim kan ikke oprette tenanten ved at skrive", async () => {
     const db = som("uid-spoeg", { tenant: SPOEGELSE, rolle: "admin" });
     await assertFails(set(ref(db, `tenants/${SPOEGELSE}/kunder/foerste`), POST));
-    await assertFails(set(ref(db, `tenants/${SPOEGELSE}/opgaver/foerste`), { division: "gods" }));
+    await assertFails(set(ref(db, `tenants/${SPOEGELSE}/opgaver/foerste`), {}));
   });
 
   it("markøren kan ikke bootstrappes fra klienten", async () => {

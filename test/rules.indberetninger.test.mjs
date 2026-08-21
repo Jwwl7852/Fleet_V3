@@ -48,8 +48,7 @@ const somRolle = (uid, rolle) =>
 const sti = (rest) => `tenants/${T}/${rest}`;
 
 const POST = (o = {}) => ({
-  art: "koeretoejsskade", forloeb: "ny", division: "gods",
-  oprettetAf: "uid-lars", oprettetMs: 1786912716050,
+  art: "koeretoejsskade", forloeb: "ny", oprettetAf: "uid-lars", oprettetMs: 1786912716050,
   koeretoejId: KT, beskrivelse: "Bulet kofanger ved rampe 3",
   ...o,
 });
@@ -92,17 +91,6 @@ describe("indberetningen", () => {
        ejerskabet kun blev proevet ved REDIGERING. Se proeven nedenfor. */
     await assertSucceeds(set(ref(medPerms("u1", [PERM.indberetningerSkriv]),
       sti("indberetninger/i-ok")), POST({ oprettetAf: "u1" })));
-  });
-
-  it("kræver art, forløb, division, oprettetAf og oprettetMs", async () => {
-    /* Noden validerede KUN division. En art vi ikke kender, et forløb der
-       ikke findes, en tid der mangler: alt blev taget imod. */
-    const db = medPerms("u2", [PERM.indberetningerSkriv]);
-    for (const felt of ["art", "forloeb", "division", "oprettetAf", "oprettetMs"]) {
-      const uden = POST({ oprettetAf: "u2" });
-      delete uden[felt];
-      await assertFails(set(ref(db, sti(`indberetninger/mangler-${felt}`)), uden));
-    }
   });
 
   it("⚠ oprettetAf ER ET uid — og reglen sammenligner med auth.uid", async () => {

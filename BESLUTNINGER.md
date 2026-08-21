@@ -4514,3 +4514,102 @@ division og modul er dermed den samme akse målt to gange. Sprængradius er
 målt: **711 linjer i 95 src-filer**, 178 i `functions/`, 317 i prøverne og 55 i
 reglerne — plus at `kpi/` **er stiformet efter division**. Det er ikke én
 etape, og det er sin egen beslutning.
+
+## 70. Gods/Bus var ikke en akse — den var modulerne, målt to gange
+
+Beslutning 9 gav platformen en Gods/Bus-vælger. Beslutning 15 gjorde division
+til et **påkrævet felt** på syv noder. Beslutning 19 forbød det på stamdata.
+Beslutning 44 lagde `kpi/` i en sti formet efter den. Fire beslutninger,
+1260 linjer, og et felt i hver transaktion.
+
+Kunden sagde det på én linje: *"En abonnent har jo alligevel kun de moduler han
+vil betale for."* Division og modul er den **samme akse målt to gange**.
+
+### Det aksen selv fortalte, i fire år
+
+Hvert af de her fund stod i koden, hver især begrundet og rimeligt. Sammen er
+de den samme sætning fire gange.
+
+| Hvad der stod | Hvad det betød |
+|---|---|
+| **141 af 158** `useListe`-kaldsteder sendte `division: "alle"` | filteret var **slået fra 89 %** af de steder det gjaldt |
+| `udenDivision: true` på hele Fleet-modulet i `nav.js` | et **helt modul** kunne ikke bære aksen |
+| `divisionsfilter()`s vigtigste led: *"en post UDEN division hører til BEGGE"* | svaret man giver **når aksen ikke passer på dataene** |
+| `demo-kpi.js` havde ens tal under gods og bus for flåde, bemanding og facility — med en **kontrol der vogtede at de var ens** | en opdeling der ikke delte, med en prøve der passede på at den ikke gjorde |
+| Beslutning 19's første sætning: *"ingen abonnent har både gods og bus"* | der var **aldrig** noget at dele op |
+
+⚠ **En undtagelse der bliver nødvendig for et helt modul, er ikke en
+undtagelse — det er en oplysning om at reglen er forkert.** `udenDivision` var
+det første sted maskineriet gav efter, og det gav efter fordi beslutning 19
+havde forbudt feltet på Fleets egne noder. Aksen kunne altså ikke bære det
+modul den skulle dele.
+
+### Tre etaper, fordi regel og data skal flytte sammen
+
+**1 — læsesiden.** Vælgeren, filteret, tilstanden. Rører hverken regler eller
+data; fuldt reversibelt. `FleetContext` beholdt værdien som en **konstant**,
+fordi feltet stadig var påkrævet i de udrullede regler: en skærm der oprettede
+en booking uden det, ville være blevet afvist.
+
+**2 og 3 — stien, reglen og dataene, samlet.** De kunne ikke skilles ad:
+
+- ⚠ `kpi/<division>/…` blev matchet af et **wildcard** `$division`. Læste
+  klienten et niveau højere uden at reglen fulgte med, ville "current" have
+  matchet `$division`, domænet have matchet `$snapshot`, og `.read` på
+  `$domaene` **aldrig være nået**. Det ville ikke have været en anden sti; det
+  ville have været en anden regel.
+- ⚠ Regnede vi ét sæt tal mens posterne stadig bar feltet, ville
+  `division: "gods"` have **filtreret de 16 bus-indkøb væk** — og tallet ville
+  se rigtigt ud.
+
+At der ingen kunder er i drift, gjorde etape 3 til en **oprydning** frem for en
+migrering: 154 poster og fire gamle `kpi`-grene, ryddet i én `update()`,
+efter reglerne var udrullet og verificeret med `regler:tjek`.
+
+### ⚠ Feltet er FORBUDT, ikke fjernet
+
+Alle 18 `division`-felter i regelfilen står som `".validate": false`.
+
+**En manglende regel ville TILLADE feltet** — RTDB afviser kun det en
+`.validate` siger nej til. Slettede vi linjen, kunne division skrives igen, og
+aksen ville vende tilbage **som data**, uden at nogen havde besluttet det og
+uden at noget fejlede. Det er beslutning 19's egen begrundelse, nu gældende
+overalt: *"Et felt der må stå der uden at betyde noget, bliver tastet — og
+derefter læst af nogen."*
+
+### ⚠ Og så det der kostede mest at opdage
+
+**Et felt der fjernes, kan være det eneste der holder noden oppe.**
+
+`kunder` og `etaper` havde `.validate: "newData.hasChildren(['division'])"` —
+og det var nodens **eneste** krav. Da feltet gik, forsvandt al validering med
+det, og en kunde blev gyldig som et **tomt objekt**.
+
+Det blev målt, ikke gættet: prøven *"en pris på en kunde der ikke findes,
+afvises"* faldt. Den hvilede på at kaskaden ned i `satser/` havde noget at
+fejle på — og en pris kunne nu hænge på et kundeId der var tastet forkert.
+Begge noder har nu et rigtigt krav (`navn` og `bookingId`), hvilket filens
+egne noter i forvejen efterlyste: *"NODEN VALIDEREDE KUN division."*
+
+⚠ **Og en blind strimling tog de NEGATIVE prøver med.** Scriptet der fjernede
+`division: "gods"` ud af fixtures, fjernede det også i de assertions der skulle
+**afvise** det — så `assertFails` skrev en gyldig post og fejlede. Otte prøver
+så ud til at være i stykker, mens reglen virkede. **Et regex der rydder data,
+kan ikke se forskel på et eksempel og et modeksempel.**
+
+⚠ **Og et loft kan blive for lavt uden at nogen ændrer et tal.** `demo-kpi`'s
+flådetal var **gods**-halvdelen; da de to grene blev til én, blev de pludselig
+et loft for hele rosteren — som har 12 biler til service inden 30 dage mod
+gods-grenens 9. Antallene er lagt sammen; **procenterne og satserne er ikke**:
+3,8 % og 2,4 % giver ikke 6,2 %, for et forholdstal skal vægtes.
+
+### Hvad der IKKE skete
+
+⚠ **`bus` blev ikke et modul.** Navnet er hverken taget eller bygget —
+kundens ord var at *hvis* programmet skal kunne bus, kopieres gods til et
+selvstændigt modul. Det er sin egen beslutning, og den træffes den dag der er
+en buskunde. Indtil da er der ingen halvt bygget bus-vej at snuble over.
+
+⚠ **Beslutning 9, 15 og 44 er ikke slettet fra listen.** De var rigtige da de
+blev truffet, og rækken der siger hvorfor de ikke er det længere, er den eneste
+måde den næste kan se hvad der gik galt uden dem.

@@ -55,7 +55,7 @@ const dag = (n, time = 0) => {
 const minutter = (fra, til) => Math.round((til - fra) / 60000);
 
 export const DEMO_OPGAVER = [
-  { id: "op-001", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
+  { id: "op-001", art: "vaerksted", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Reparation – venstre baglygte",
     personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "reparation", status: "planlagt", prioritet: "normal",
     estimeretMin: 90, faktiskMin: null, beloebOere: 125000 },
@@ -67,12 +67,12 @@ export const DEMO_OPGAVER = [
      104 med to nummerplader.
      Bil 78 navngives efter kilometerstand som vb-001 ("Serviceeftersyn
      250.000 km") gjorde det paa samme bil. Naeste er 270.000. */
-  { id: "op-002", art: "vaerksted", division: "gods", startMs: iDag(9, 30),
+  { id: "op-002", art: "vaerksted", startMs: iDag(9, 30),
     sted: "Kolding", beskrivelse: "Serviceeftersyn – 270.000 km",
     personId: "reneThomsen", koeretoejId: "kt-078", arbejdstype: "service", status: "igang", prioritet: "hoej",
     estimeretMin: 150, faktiskMin: 66, beloebOere: 210000 },
 
-  { id: "op-003", art: "vaerksted", division: "gods", startMs: iDag(10, 0),
+  { id: "op-003", art: "vaerksted", startMs: iDag(10, 0),
     sted: "Aarhus", beskrivelse: "Dækudskiftning – 2 aks. trailer",
     personId: "peterIversen", koeretoejId: "kt-034", arbejdstype: "daek", status: "igang", prioritet: "normal",
     estimeretMin: 60, faktiskMin: 27, beloebOere: 90000 },
@@ -84,7 +84,7 @@ export const DEMO_OPGAVER = [
      aktiv, står i Kolding som opgavens sted siger, og har ingen anden
      opgave; en ABS-fejl passer på en Crafter. Skal den på en anden bil, er
      det én linje. */
-  { id: "op-004", art: "vaerksted", division: "gods", startMs: iDag(11, 0),
+  { id: "op-004", art: "vaerksted", startMs: iDag(11, 0),
     sted: "Kolding", beskrivelse: "Fejlsøgning – ABS-fejl",
     personId: "ibSoerensen", koeretoejId: "kt-v21", arbejdstype: "reparation", status: "afventer", prioritet: "hoej",
     estimeretMin: 120, faktiskMin: null, beloebOere: 240000 },
@@ -100,7 +100,7 @@ export const DEMO_OPGAVER = [
      ikke INDEHOLDE en konflikt: gitteret tegner overlap med vilje som noget
      galt, og kan man ikke se forskel paa en fejl i dataene og en fejl i
      gitteret, er markeringen ubrugelig. Se selvkontrollen nederst. */
-  { id: "op-005", art: "vaerksted", division: "gods", startMs: iDag(13, 0),
+  { id: "op-005", art: "vaerksted", startMs: iDag(13, 0),
     sted: "Aalborg", beskrivelse: "Reparation – lækage i hydraulik",
     personId: "peterIversen", koeretoejId: "kt-078", arbejdstype: "reparation", status: "planlagt", prioritet: "lav",
     estimeretMin: 105, faktiskMin: null, beloebOere: 160000 },
@@ -108,24 +108,24 @@ export const DEMO_OPGAVER = [
   /* ⚠ SAMME SLAGS: stod paa kt-106, som ligger hos DAF Fredericia i fire
      doegn (vb-003, motorlampe/EGR). Flyttet til Bil 12 kl. 12.30, hvor der er
      hul mellem op-001 og op-007. */
-  { id: "op-006", art: "vaerksted", division: "gods", startMs: iDag(12, 30),
+  { id: "op-006", art: "vaerksted", startMs: iDag(12, 30),
     sted: "Kolding", beskrivelse: "Service – klimaanlæg",
     personId: "reneThomsen", koeretoejId: "kt-012", arbejdstype: "service", status: "udfoert", prioritet: "normal",
     estimeretMin: 90, faktiskMin: 84, beloebOere: 135000 },
 
-  { id: "op-007", art: "vaerksted", division: "gods", startMs: iDag(15, 30),
+  { id: "op-007", art: "vaerksted", startMs: iDag(15, 30),
     sted: "Kolding", beskrivelse: "Synsklargøring",
     personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "syn", status: "afventer", prioritet: "lav",
     estimeretMin: 60, faktiskMin: null, beloebOere: 75000 },
 
-  { id: "op-008", art: "vaerksted", division: "gods", startMs: iDag(8, 0) + D,
+  { id: "op-008", art: "vaerksted", startMs: iDag(8, 0) + D,
     sted: "Esbjerg", beskrivelse: "Lovpligtigt eftersyn",
     personId: "janHolmgaard", koeretoejId: "kt-034", arbejdstype: "syn", status: "planlagt", prioritet: "normal",
     estimeretMin: 165, faktiskMin: null, beloebOere: 275000 },
 
   /* Facility-opgaver har ingen ressource i flåden — arbejdet er på bygningen.
      `faelles` fordi porten bruges af begge divisioner. */
-  { id: "op-009", art: "facility", division: "faelles", startMs: iDag(9, 0),
+  { id: "op-009", art: "facility", startMs: iDag(9, 0),
     /* ⚠ AKTIVET, IKKE KUN STEDET. Uden aktivId kan opgaven ikke
        reservere noget: reservationFraOpgave() afviser den, og en port der
        er under reparation, ser ledig ud. `sted` er en fritekst til
@@ -149,7 +149,7 @@ export const DEMO_OPGAVER = [
      prioritet, ville "uvurderede" altid vaere 0 — og en taelling der kun kan
      give 0, kan ikke tage fejl paa en maade nogen opdager. Femte gang det
      moenster dukker op i det her datasaet. */
-  { id: "op-010", art: "vaerksted", division: "bus", startMs: iDag(10, 30),
+  { id: "op-010", art: "vaerksted", startMs: iDag(10, 30),
     sted: "Odense", beskrivelse: "Fordør lukker ikke i",
     personId: "ibSoerensen", koeretoejId: "kt-b12", arbejdstype: "reparation", status: "indberettet",
     estimeretMin: 75, faktiskMin: null, beloebOere: 54000 },
@@ -165,7 +165,7 @@ export const DEMO_OPGAVER = [
      rækken skal ses: der ligger et beløb der ser færdigt ud, men ingen har
      målt tiden bag det. Fjernede vi beløbet, ville posten ikke længere vise
      den fejl den findes for. */
-  { id: "op-011", art: "vaerksted", division: "gods", startMs: iDag(8, 0),
+  { id: "op-011", art: "vaerksted", startMs: iDag(8, 0),
     sted: "Kolding", beskrivelse: "Lygteskift, venstre for",
     personId: "larsAage", koeretoejId: "kt-034", arbejdstype: "reparation", status: "udfoert", prioritet: "lav",
     estimeretMin: 30, faktiskMin: null, beloebOere: 42000 },
@@ -184,12 +184,13 @@ export const DEMO_OPGAVER = [
      `facility.aktiver` ikke kan.
 
      Den ene er `faelles` (tæller i begge), den anden `bus` — så viser gods 1
-     og bus 2, og divisionsfilteret kan ses virke på rigtige data. */
-  { id: "op-012", art: "facility", division: "faelles", startMs: iDag(9, 0),
+     og bus 2. ⚠ Divisionen er fjernet i beslutning 70 — spredningen der
+     betyder noget nu, er ARTEN og STATUSSEN. */
+  { id: "op-012", art: "facility", startMs: iDag(9, 0),
     sted: "Kolding", aktivId: "fa-vent1", beskrivelse: "Ventilation, kontor – halvårligt filterskift",
     personId: "kasperLykke", status: "planlagt", prioritet: "lav",
     estimeretMin: 90, faktiskMin: null, beloebOere: 36000 },
-  { id: "op-013", art: "facility", division: "bus", startMs: iDag(13, 0),
+  { id: "op-013", art: "facility", startMs: iDag(13, 0),
     sted: "Aalborg", aktivId: "fa-lade1", beskrivelse: "Ladestandere – eftersyn før vinter",
     personId: "ibSoerensen", status: "planlagt", prioritet: "normal",
     estimeretMin: 150, faktiskMin: null, beloebOere: 62000 },
@@ -228,35 +229,35 @@ export const DEMO_OPGAVER = [
 
      `fs-004` har med vilje KUN en lokation: hele hallen spærres.
      ══════════════════════════════════════════════════════════════════════ */
-  { id: "fs-001", art: "facility", division: "faelles", startMs: dag(1, 8),
+  { id: "fs-001", art: "facility", startMs: dag(1, 8),
     aktivId: "fa-port3", leverandoerId: "lv-crawford",
     beskrivelse: "Udskiftning af portmotor", status: "planlagt", prioritet: "normal",
     /* Den ENE der har en sag: FAC-2026-00127 står på fa-port3 i demo-sag.js. */
     sagId: "sag-fac-127",
     estimeretMin: minutter(dag(1, 8), dag(1, 12)), faktiskMin: null, beloebOere: 1840000 },
-  { id: "fs-002", art: "facility", division: "faelles", startMs: dag(1, 7),
+  { id: "fs-002", art: "facility", startMs: dag(1, 7),
     aktivId: "fa-frost1", leverandoerId: "lv-koelecenter",
     beskrivelse: "Halvårligt serviceeftersyn på fryseanlæg", status: "planlagt", prioritet: "lav",
     estimeretMin: minutter(dag(1, 7), dag(1, 15)), faktiskMin: null, beloebOere: 960000 },
   /* ⚠ EN DER ER I GANG, og den er ikke pynt: `kanFlyttes()` afviser den, så
      gitteret kan vise at en blok under arbejde ikke kan trækkes. Uden en
      sådan post ville spærringen aldrig blive set i demo. */
-  { id: "fs-003", art: "facility", division: "faelles", startMs: dag(-1, 7),
+  { id: "fs-003", art: "facility", startMs: dag(-1, 7),
     aktivId: "fa-vask", leverandoerId: "lv-wash",
     beskrivelse: "Vaskehal ude af drift – dysebom udskiftes", status: "igang", prioritet: "hoej",
     estimeretMin: minutter(dag(-1, 7), dag(2, 16)), faktiskMin: null, beloebOere: 3120000 },
   /* ⚠ INTET aktivId: hele hallen spærres, ikke ét anlæg. Ressourcen bliver
      `lokation` og ikke `facilityAktiv` — lukker man hallen, er alle porte i
      den også optaget. Se reservationFraOpgave(). */
-  { id: "fs-004", art: "facility", division: "faelles", startMs: dag(4, 6),
+  { id: "fs-004", art: "facility", startMs: dag(4, 6),
     lokationId: "lok-halb", leverandoerId: "lv-gulv",
     beskrivelse: "Epoxybehandling af gulv – hallen kan ikke bruges", status: "planlagt", prioritet: "normal",
     estimeretMin: minutter(dag(4, 6), dag(4, 18)), faktiskMin: null, beloebOere: 4450000 },
-  { id: "fs-005", art: "facility", division: "faelles", startMs: dag(2, 9),
+  { id: "fs-005", art: "facility", startMs: dag(2, 9),
     aktivId: "fa-lade2", leverandoerId: "lv-clever",
     beskrivelse: "Fejlsøgning E14 på ladestander", status: "planlagt", prioritet: "normal",
     estimeretMin: minutter(dag(2, 9), dag(2, 13)), faktiskMin: null, beloebOere: 620000 },
-  { id: "fs-006", art: "facility", division: "faelles", startMs: dag(5, 8),
+  { id: "fs-006", art: "facility", startMs: dag(5, 8),
     aktivId: "fa-port5", leverandoerId: "lv-crawford",
     beskrivelse: "Årligt eftersyn", status: "planlagt", prioritet: "lav",
     estimeretMin: minutter(dag(5, 8), dag(5, 11)), faktiskMin: null, beloebOere: 740000 },
@@ -287,20 +288,20 @@ export const DEMO_OPGAVER = [
      ══════════════════════════════════════════════════════════════════════ */
 
   /* --- Udført, ligger bag os -------------------------------------- */
-  { id: "vb-001", art: "vaerksted", division: "gods", koeretoejId: "kt-078",
+  { id: "vb-001", art: "vaerksted", koeretoejId: "kt-078",
     arbejdstype: "service", leverandoerId: "lv-scania",
     beskrivelse: "Serviceeftersyn 250.000 km",
     status: "udfoert", prioritet: "normal",
     startMs: dag(-24, 7), estimeretMin: minutter(dag(-24, 7), dag(-24, 16)) },
 
-  { id: "vb-002", art: "vaerksted", division: "bus", koeretoejId: "kt-b16",
+  { id: "vb-002", art: "vaerksted", koeretoejId: "kt-b16",
     arbejdstype: "daek", leverandoerId: "lv-daekteam",
     beskrivelse: "Fire nye dæk på foraksel og bogie",
     status: "udfoert", prioritet: "lav",
     startMs: dag(-11, 8), estimeretMin: minutter(dag(-11, 8), dag(-11, 13)) },
 
   /* --- I gang lige nu. Skal stemme med status 'vaerksted' i demo-flaade --- */
-  { id: "vb-003", art: "vaerksted", division: "gods", koeretoejId: "kt-106",
+  { id: "vb-003", art: "vaerksted", koeretoejId: "kt-106",
     arbejdstype: "reparation", leverandoerId: "lv-daf",
     beskrivelse: "Motorlampe — fejlsøgning på EGR-ventil",
     status: "igang", prioritet: "hoej",
@@ -309,7 +310,7 @@ export const DEMO_OPGAVER = [
   /* Langt besøg der rækker ud over et to-ugers vindue. Det er her pilen skal
      vises: klippet ved kanten læses tre uger som et kort besøg, og så
      planlægger nogen en tur i en uge hvor traileren står på værksted. */
-  { id: "vb-004", art: "vaerksted", division: "gods", koeretoejId: "kt-tr42",
+  { id: "vb-004", art: "vaerksted", koeretoejId: "kt-tr42",
     arbejdstype: "reparation", leverandoerId: "lv-schmitz",
     beskrivelse: "Køleaggregat starter ikke — kompressor i restordre",
     status: "igang", prioritet: "hoej",
@@ -321,20 +322,20 @@ export const DEMO_OPGAVER = [
      Mercedes Greve. Står den ikke i kalenderen med de tidspunkter, beskriver
      sagsvisningen og driftskalenderen hver sin virkelighed. Tidspunktet
      LÆSES af sagen nedenfor frem for at blive skrevet af. */
-  { id: "vb-005", art: "vaerksted", division: "gods", koeretoejId: "kt-104",
+  { id: "vb-005", art: "vaerksted", koeretoejId: "kt-104",
     arbejdstype: "service", leverandoerId: "lv-mercedes",
     beskrivelse: "Serviceeftersyn 30.000 km",
     status: "planlagt", prioritet: "normal",
     sagId: "sag-flt-381",
     startMs: null, estimeretMin: null },   // sættes fra sagen — se nedenfor
 
-  { id: "vb-006", art: "vaerksted", division: "gods", koeretoejId: "kt-034",
+  { id: "vb-006", art: "vaerksted", koeretoejId: "kt-034",
     arbejdstype: "service", leverandoerId: "lv-man",
     beskrivelse: "Serviceeftersyn 525.000 km",
     status: "planlagt", prioritet: "normal",
     startMs: dag(9, 7), estimeretMin: minutter(dag(9, 7), dag(9, 15)) },
 
-  { id: "vb-007", art: "vaerksted", division: "gods", koeretoejId: "kt-tr41",
+  { id: "vb-007", art: "vaerksted", koeretoejId: "kt-tr41",
     arbejdstype: "syn", leverandoerId: "lv-applus",
     beskrivelse: "Periodisk syn af trailer",
     status: "planlagt", prioritet: "lav",
@@ -345,7 +346,7 @@ export const DEMO_OPGAVER = [
      værkstedet endnu. Besøget ligger derfor i FREMTIDEN. Gav vi den et besøg
      der dækkede i dag, ville Fleet og Driftskalenderen sige hver sit om samme
      scooter — og der er en prøve der fanger præcis det. */
-  { id: "vb-008", art: "vaerksted", division: "faelles", koeretoejId: "kt-s01",
+  { id: "vb-008", art: "vaerksted", koeretoejId: "kt-s01",
     arbejdstype: "reparation", leverandoerId: "lv-scooter",
     beskrivelse: "Motorblok skiftes når reservedelen er kommet",
     status: "planlagt", prioritet: "lav",

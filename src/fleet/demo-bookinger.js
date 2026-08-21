@@ -66,8 +66,7 @@ const dag = (n, time = 0) => D0 + n * DAG + time * T;
 export const DEMO_BOOKINGER = [
   {
     id: "bk-2026-00311", nummer: "BKG-2026-00311", kundeId: "nordiskFragt",
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Hamburg",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Hamburg",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
     /* ⚠ ET uid, IKKE ET NAVN. Her stod "Mette Kjær" på alle otte poster —
        mens demo-indberetninger.js skriver "uid-lars". `oprettetAf` er hvem
@@ -83,8 +82,7 @@ export const DEMO_BOOKINGER = [
   },
   {
     id: "bk-2026-00312", nummer: "BKG-2026-00312", kundeId: "koldingKommune",
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Berlin",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Berlin",
     transporttype: "delparti", rutepraeference: "billigst",
     oprettetMs: dag(-5), oprettetAf: "uid-mette",
     omsaetningOere: 2260000,
@@ -94,8 +92,7 @@ export const DEMO_BOOKINGER = [
   },
   {
     id: "bk-2026-00313", nummer: "BKG-2026-00313", kundeId: "nordiskFragt",
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Amsterdam",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Amsterdam",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
     oprettetMs: dag(-4), oprettetAf: "uid-soeren",
     omsaetningOere: 3120000,
@@ -108,8 +105,7 @@ export const DEMO_BOOKINGER = [
        bliver synlig: disponenten har lavet forslagene og må ikke godkende dem.
        Se Forslag-skærmen. */
     id: "bk-2026-00314", nummer: "BKG-2026-00314", kundeId: "fynKoel",
-    tilstand: "afventerKoord", division: "gods",
-    fraSted: "København", tilSted: "Paris",
+    tilstand: "afventerKoord", fraSted: "København", tilSted: "Paris",
     transporttype: "temperatur", rutepraeference: "hurtigst",
     oprettetMs: dag(-3), oprettetAf: "uid-mette",
     omsaetningOere: 4180000,
@@ -124,8 +120,7 @@ export const DEMO_BOOKINGER = [
   },
   {
     id: "bk-2026-00315", nummer: "BKG-2026-00315", kundeId: "koldingKommune",
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "München",
+    tilstand: "reserveret", fraSted: "København", tilSted: "München",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
     oprettetMs: dag(-2), oprettetAf: "uid-soeren",
     omsaetningOere: 3480000,
@@ -135,8 +130,7 @@ export const DEMO_BOOKINGER = [
   },
   {
     id: "bk-2026-00316", nummer: "BKG-2026-00316", kundeId: "aalborgIndustri",
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Aalborg",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Aalborg",
     transporttype: "delparti", rutepraeference: "billigst",
     oprettetMs: dag(-2), oprettetAf: "uid-mette",
     omsaetningOere: 780000,
@@ -151,8 +145,7 @@ export const DEMO_BOOKINGER = [
     /* Kundens eget rekvisitionsnummer. Det står på transportlabelen, fordi
        modtageren søger på DET og ikke på vores bookingnummer. */
     kundeRef: "REF-88421",
-    tilstand: "delvist", division: "gods",
-    fraSted: "København", tilSted: "Hamburg t/r",
+    tilstand: "delvist", fraSted: "København", tilSted: "Hamburg t/r",
     transporttype: "kombi", rutepraeference: "billigst",
     oprettetMs: dag(-8), oprettetAf: "uid-soeren",
     omsaetningOere: 2940000,
@@ -164,8 +157,7 @@ export const DEMO_BOOKINGER = [
     /* En forespørgsel der endnu ikke er sendt til planlægning. Uden den kan
        Ny forespørgsel ikke vise hvad byggSkifte() ville skrive. */
     id: "bk-2026-00318", nummer: "BKG-2026-00318", kundeId: "koldingStaal",
-    tilstand: "kladde", division: "gods",
-    fraSted: "Odense", tilSted: "Rotterdam",
+    tilstand: "kladde", fraSted: "Odense", tilSted: "Rotterdam",
     transporttype: "farligtGods", rutepraeference: "undgaaFaerge",
     oprettetMs: dag(0, 9), oprettetAf: "uid-mette",
     omsaetningOere: 3960000,

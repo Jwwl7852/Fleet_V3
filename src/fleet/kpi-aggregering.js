@@ -68,7 +68,7 @@ import { reservationerFraEtape, enhedsIder, straekningFraEtape } from "./etaper.
  *
  * `kpi/` var læsbar for ENHVER indlogget bruger i tenanten — ingen
  * permission, ingen modulklausul. En chauffør kunne læse
- * `tenants/<id>/kpi/gods/current/oekonomi` direkte, uanset hvad hans forside
+ * `tenants/<id>/kpi/current/oekonomi` direkte, uanset hvad hans forside
  * viste, og en kunde uden Økonomi-modulet kunne læse det tal han ikke havde
  * købt adgang til at se en skærm for.
  *
@@ -208,7 +208,7 @@ export const UDEN_DIVISION = [
  *   FACILITY er FÆLLES, og feltet er forbudt fordi delingen ikke giver
  *   mening → svaret er hele basen, vist begge steder.
  *
- * Det er samme regel som iDivision(): en post uden division hører til BEGGE,
+ * Det var samme regel som iDivision() bar, dengang der var en akse: en post
  * ikke til ingen. At skrive null for facility ville have været at stille et
  * spørgsmål der allerede var besvaret — og at holde tolv felter tomme for at
  * få dem til at ligne flåden. */
@@ -243,17 +243,23 @@ export const KILDER_DER_MANGLER = [
 
 const DAG = 86400000;
 
-/**
- * Hører posten til divisionen?
- *
- * ⚠ EN POST UDEN DIVISION HØRER TIL BEGGE — ikke til ingen. Det er samme
- * regel som divisionsfilteret i `useListe`, og den er ikke en detalje: da
- * beslutning 19 fjernede feltet fra bilerne, ville en kopi uden det her led
- * have vist en tom biltabel i både Gods og Bus, uden at nogen havde slettet
- * en bil.
- */
-export const iDivision = (post, division) =>
-  !post?.division || post.division === division || post.division === "faelles";
+/* ⚠ HER LÅ iDivision(post, division) — fjernet i beslutning 70.
+
+   Reglen var: en post UDEN division hører til BEGGE, ikke til ingen. Det led
+   var det vigtigste i funktionen — uden det ville beslutning 19's fjernelse af
+   feltet fra bilerne have tømt biltabellen i begge divisioner, uden at nogen
+   havde slettet en bil.
+
+   ⚠ OG DET LED VAR SELV OPLYSNINGEN. "Vis den i begge" er svaret man giver,
+   når aksen ikke passer på dataene — og det svar gjaldt til sidst stamdata
+   (19), facility, flåden og bemandingen (69). En opdeling hvor svaret oftest
+   er "begge", deler ikke noget.
+
+   ⚠ OG DEN MÅ IKKE KOMME TILBAGE SOM ET FILTER PÅ null. En `iDivision(post,
+   null)` der svarer true på alt, ville se harmløs ud og være en akse der
+   ligger og venter: det næste kaldsted sender en rigtig værdi, og så er
+   halvdelen af tallene væk uden at noget fejler. Der er ikke et filter der
+   slipper alt igennem — der er intet filter. */
 
 /**
  * Felterne der ikke kan regnes, med `null` og et navn.
@@ -302,11 +308,10 @@ export function udenKilde() {
  * ikke besluttet, og et tilbud kan gå til et EMNE der ikke er kunde endnu.
  * Se demo-kunder.js.
  */
-export function kundetal(kunder = [], division, nu = Date.now()) {
-  const mine = kunder.filter((k) => iDivision(k, division));
+export function kundetal(kunder = [], nu = Date.now()) {
   return {
-    aktive: mine.filter((k) => k.aktiv !== false).length,
-    aftalerUdloeber: mine.filter(
+    aktive: kunder.filter((k) => k.aktiv !== false).length,
+    aftalerUdloeber: kunder.filter(
       (k) => Number.isFinite(k.aftaleUdloeberMs)
         && k.aftaleUdloeberMs > nu
         && k.aftaleUdloeberMs - nu <= 30 * DAG).length,
@@ -362,14 +367,14 @@ export function kundetal(kunder = [], division, nu = Date.now()) {
  * `forloeb` står ved siden af, så man kan se hvor meget der ikke kunne
  * prissættes.
  */
-export function ikkeFaktureretOere(etaper = [], grundlag = [], division) {
+export function ikkeFaktureretOere(etaper = [], grundlag = []) {
   const laasteForloeb = new Set(
     grundlag
       .filter((g) => g.tilstand === "laast" && !g.erstattetAfId && g.bookingId)
       .map((g) => g.bookingId));
 
   const udfoerte = etaper.filter(
-    (e) => iDivision(e, division) && e.tilstand === "udfoert" && e.bookingId);
+    (e) => e.tilstand === "udfoert" && e.bookingId);
 
   const ufaktureret = [
     ...new Set(udfoerte.filter((e) => !laasteForloeb.has(e.bookingId)).map((e) => e.bookingId)),
@@ -408,14 +413,13 @@ export function ikkeFaktureretOere(etaper = [], grundlag = [], division) {
  * Regnede vi komplementet, ville en oprydning i annullerede se ud som nyt
  * arbejde.
  */
-export function opgavetal(opgaver = [], division, nu = Date.now(), {
+export function opgavetal(opgaver = [], nu = Date.now(), {
   /* ⚠ BOOKINGERNE KOM MED FOR `nyeBookinger`. Feltet tæller bookinger, ikke
      opgaver — det står i `opgaver`-domænet fordi det er ARBEJDE der kommer
      ind, og det er den skærm der spørger. */
   bookinger = [], forrige = null,
 } = {}) {
-  const mine = opgaver.filter((o) => iDivision(o, division));
-  const medStatus = (s) => mine.filter((o) => o.status === s).length;
+  const medStatus = (s) => opgaver.filter((o) => o.status === s).length;
   const AABNE = ["indberettet", "planlagt", "igang", "afventer"];
 
   const startetIDag = (o) => {
@@ -426,7 +430,7 @@ export function opgavetal(opgaver = [], division, nu = Date.now(), {
   };
 
   return {
-    aabne: mine.filter((o) => AABNE.includes(o.status)).length,
+    aabne: opgaver.filter((o) => AABNE.includes(o.status)).length,
     indberettet: medStatus("indberettet"),
     planlagt: medStatus("planlagt"),
     igang: medStatus("igang"),
@@ -435,13 +439,13 @@ export function opgavetal(opgaver = [], division, nu = Date.now(), {
     annulleret: medStatus("annulleret"),
     /* Indberettet = set, men ikke planlagt endnu. Det ER uplanlagt. */
     uplanlagte: medStatus("indberettet"),
-    igangIDag: mine.filter((o) => o.status === "igang" && startetIDag(o)).length,
+    igangIDag: opgaver.filter((o) => o.status === "igang" && startetIDag(o)).length,
 
     /* ⚠ TIDSREGISTRERINGEN ER `faktiskMin`. En udført opgave uden den er
        netop den række Booking-oversigten beder om: omkostningen er stadig et
        estimat. Kun UDFØRTE tæller — en opgave der er i gang, mangler ikke
        sin tid, den er ikke færdig med at bruge den. */
-    udenTidsregistrering: mine.filter(
+    udenTidsregistrering: opgaver.filter(
       (o) => o.status === "udfoert" && !Number.isFinite(o.faktiskMin)).length,
 
     /* ⚠ IKKE DET SAMME SOM `udfoert`. Det tal er en OPTÆLLING AF NODEN:
@@ -472,7 +476,7 @@ export function opgavetal(opgaver = [], division, nu = Date.now(), {
      * gøre den forsinket på et tidspunkt ingen har besluttet — samme regel
      * som `reservationFraOpgave()` nægter at gætte et vindue.
      */
-    forsinkede: mine.filter((o) => {
+    forsinkede: opgaver.filter((o) => {
       if (o.status === "udfoert" || o.status === "annulleret") return false;
       if (!Number.isFinite(o.startMs) || !Number.isFinite(o.estimeretMin)) return false;
       return o.startMs + o.estimeretMin * 60000 < nu;
@@ -506,7 +510,7 @@ export function opgavetal(opgaver = [], division, nu = Date.now(), {
      */
     nyeBookinger: Number.isFinite(forrige?.beregnetMs)
       ? bookinger.filter(
-          (b) => iDivision(b, division) && Number.isFinite(b.oprettetMs)
+          (b) => Number.isFinite(b.oprettetMs)
             && b.oprettetMs > forrige.beregnetMs).length
       : null,
   };
@@ -521,19 +525,18 @@ export function opgavetal(opgaver = [], division, nu = Date.now(), {
  * funktion der kun mangler sine lister. Det tredje —
  * `ledigKapacitetPct` — er en anden slags: se nedenfor.
  */
-export function disponeringstal(etaper = [], division, {
+export function disponeringstal(etaper = [], {
   koeretoejer = [], personale = [], kompetencer = [], reservationer = {},
 } = {}) {
-  const mine = etaper.filter((e) => iDivision(e, division));
 
   /* ⚠ KUN DE AKTIVE. En udført eller annulleret etape kan ikke blive forsinket,
      og talte de med, ville tallet vokse med historikken frem for med
      problemerne. */
-  const aktive = mine.filter((e) => e.tilstand !== "udfoert" && e.tilstand !== "annulleret");
+  const aktive = etaper.filter((e) => e.tilstand !== "udfoert" && e.tilstand !== "annulleret");
 
   return {
-    planlagteOpgaver: mine.filter((e) => e.tilstand === "reserveret").length,
-    aabneEtaper: mine.filter((e) => e.tilstand === "aaben").length,
+    planlagteOpgaver: etaper.filter((e) => e.tilstand === "reserveret").length,
+    aabneEtaper: etaper.filter((e) => e.tilstand === "aaben").length,
 
     /**
      * ⚠ LEDIG KAPACITET ER IKKE EN MÅLING — DET ER EN DEFINITION DER MANGLER.
@@ -637,18 +640,22 @@ export const deltaPct = (nyt, gammelt) => {
  *
  * ⚠ EN FAKTURA HAR INGEN DIVISION. Den arver den fra den indkøbslinje den
  * er matchet mod. En faktura der IKKE er matchet, har derfor ingen — og
- * hører dermed til BEGGE divisioner, efter samme regel som iDivision().
+ * hørte dermed til BEGGE divisioner — og siden beslutning 70 er der kun ét sted.
  * Det er ikke en teknikalitet: en umatchet faktura hører til begge, fordi
  * ingen endnu ved hvem der skal betale den. Det er netop derfor den skal ses.
  */
-export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], division, nu = Date.now()) {
-  const mine = indkoeb.filter((i) => iDivision(i, division));
-  const linje = new Map(indkoeb.map((i) => [i.id, i]));
+export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], nu = Date.now()) {
+  /* ⚠ HER STOD ET OPSLAG `linje` FRA indkoebId TIL INDKØBSLINJEN, og et filter
+     der gav fakturaen sin linjes division. Linten fandt navnet som ubrugt, og
+     efter beslutning 67 er spørgsmålet hvorfor det stod der — ikke om det kan
+     slettes. Svaret: opslaget fandtes UDELUKKENDE for at arve divisionen. Med
+     aksen væk (beslutning 70) er det ægte dødt, og fakturaerne bruges hele.
 
-  /* Fakturaens division kommer fra dens linje; er der ingen linje, er der
-     ingen division — og posten hører til begge. */
-  const mineFakturaer = fakturaer.filter(
-    (f) => iDivision(linje.get(f?.indkoebId) || null, division));
+     ⚠ Noten over funktionen holder stadig: en umatchet faktura skal ses,
+     fordi ingen endnu ved hvem der skal betale den. Det var argumentet for at
+     lade den slippe gennem filteret — og nu er der ikke et filter at slippe
+     igennem. */
+  const mineFakturaer = fakturaer;
 
   /* ⚠ MÅNEDEN ER KALENDERMÅNEDEN OMKRING `nu`, i UTC — samme døgngrænse som
      opgavetal() bruger. Ikke "de sidste 30 dage": et forbrug der skal holdes
@@ -664,18 +671,18 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], di
      tæller for sig selv; de ER hver sin bestilling.
      Åben = ikke leveret. Der er ingen ordrestatus i modellen, og der skal
      ikke opfindes en: `leveretMs` ER svaret på om varen er kommet. */
-  const aabne = mine.filter((i) => !Number.isFinite(i.leveretMs));
+  const aabne = indkoeb.filter((i) => !Number.isFinite(i.leveretMs));
   const aabneOrdrer = new Set(aabne.map((i) => i.reference || i.id)).size;
 
   /* ⚠ GODKENDT ER LINJENS EGEN GODKENDELSE, IKKE FAKTURAENS. `godkendtAf`
      står på linjer hvis fakturastatus er både "modtaget" og "bogfoert" —
      altså er det ikke fakturaen der er godkendt, men indkøbet. Varer der er
      kommet ind som ingen har skrevet under på, er den huskeliste kortet viser. */
-  const varerTilGodkendelse = mine.filter(
+  const varerTilGodkendelse = indkoeb.filter(
     (i) => Number.isFinite(i.leveretMs) && !Number.isFinite(i.godkendtMs)).length;
 
-  const levering = leveringspraecision(mine);
-  const afvig = prisafvigelser(indkoeb, leverandoerer, division);
+  const levering = leveringspraecision(indkoeb);
+  const afvig = prisafvigelser(indkoeb, leverandoerer);
 
   return {
     aabneOrdrer,
@@ -688,10 +695,10 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], di
        fakturapost peger på. Det er afstemningen, og den kan kun stilles pr.
        leverandør, hvor man ved at man har alle fakturaerne. På hele noden
        ville den tælle enhver linje hvis faktura ligger i et andet system. */
-    manglerFaktura: mine.filter((i) => i.fakturastatus === "mangler").length,
+    manglerFaktura: indkoeb.filter((i) => i.fakturastatus === "mangler").length,
 
-    godkendtDenneMaaned: mine.filter((i) => iMaaneden(i.godkendtMs)).length,
-    maanedensForbrugOere: mine
+    godkendtDenneMaaned: indkoeb.filter((i) => iMaaneden(i.godkendtMs)).length,
+    maanedensForbrugOere: indkoeb
       .filter((i) => iMaaneden(i.dato))
       .reduce((sum, i) => sum + indkoebBeloebOere(i), 0),
 
@@ -730,10 +737,10 @@ export const SERVICE_VINDUE_DAGE = 30;
  * eneste tenant. Noden har haft regler og et indeks hele tiden — den var bare
  * tom, og fordi feltet kun blokerede ét kort, stod den ikke på nogen liste.
  */
-export function indberetningstal(indberetninger = [], division) {
+export function indberetningstal(indberetninger = []) {
   return {
     nyeIndberetninger: indberetninger.filter(
-      (i) => iDivision(i, division) && i.forloeb === "ny").length,
+      (i) => i.forloeb === "ny").length,
   };
 }
 
@@ -753,9 +760,9 @@ export function indberetningstal(indberetninger = [], division) {
  */
 export function facilitytal({
   aktiver = [], fejl = [], sensorer = [], opgaver = [], leverandoerer = [],
-  division, nu = Date.now(),
+  nu = Date.now(),
 } = {}) {
-  const mineOpgaver = opgaver.filter((o) => iDivision(o, division));
+  const mineOpgaver = opgaver;
 
   /* ⚠ OVERSKREDET TÆLLER MED. "Forfalder" er ikke "forfalder snart" — en
      service der skulle have været lavet for en måned siden, er ikke holdt op
@@ -809,7 +816,7 @@ export function facilitytal({
        ikke en vi kan ringe til. */
     eksterneLeverandoerer: leverandoerer.filter(
       (l) => l.aktiv !== false && l.kategori === "facility"
-        && iDivision(l, division)).length,
+        ).length,
 
     /* ⚠ KRÆVER HISTORIK, ikke en tilstand. "Alarmer udløst I DAG" er noget
        andet end "alarmer der er aktive NU" — det sidste er AFLEDT af måling
@@ -867,13 +874,12 @@ export function facilitytal({
  *
  * Returnerer `{antal, snitPct}`, begge `null` hvis intet kunne måles.
  */
-export function prisafvigelser(indkoeb = [], leverandoerer = [], division) {
+export function prisafvigelser(indkoeb = [], leverandoerer = []) {
   const kartotek = new Map(
     leverandoerer.map((l) => [l.id, leverandoerFraDb(l, l.id)]));
 
   const maalte = [];
   for (const i of indkoeb) {
-    if (!iDivision(i, division)) continue;
     const lev = kartotek.get(i.leverandoerId);
     if (!lev) continue;
     const aftalt = prisPaa(lev, i.varenummer, i.dato);
@@ -947,12 +953,12 @@ export const IKKE_BRAENDSTOF = ["ADBLUE"];
  * Samme måned som maanedensForbrugOere: brændstof er en delmængde af den,
  * og to forskellige perioder ville gøre andelen umulig at regne.
  */
-export function braendstofOere(indkoeb = [], division, nu = Date.now()) {
+export function braendstofOere(indkoeb = [], nu = Date.now()) {
   const d = new Date(nu);
   const fra = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
   const til = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
   return indkoeb
-    .filter((i) => iDivision(i, division) && i.kategori === "braendstof")
+    .filter((i) => i.kategori === "braendstof")
     .filter((i) => !IKKE_BRAENDSTOF.includes(i.varenummer))
     .filter((i) => Number.isFinite(i.dato) && i.dato >= fra && i.dato < til)
     .reduce((sum, i) => sum + indkoebBeloebOere(i), 0);
@@ -979,8 +985,13 @@ export function braendstofOere(indkoeb = [], division, nu = Date.now()) {
  * hvert domæne og hvert felt — og `num()` skriver INTET for dem der mangler,
  * i stedet for at skærmen kaster.
  */
-export function kpiSkelet(division = "gods") {
-  const fuld = beregnKpi({ division });
+/**
+ * ⚠ INGEN division-PARAMETER LÆNGERE. Den blev sendt videre til beregnKpi()
+ * alene for at skelettet skulle have samme form som det rigtige tal — og den
+ * form er nu den samme for alle, fordi aksen er væk (beslutning 70).
+ */
+export function kpiSkelet() {
+  const fuld = beregnKpi({});
   const ud = {};
   for (const [domaene, vaerdi] of Object.entries(fuld)) {
     if (Array.isArray(vaerdi)) { ud[domaene] = []; continue; }
@@ -998,9 +1009,9 @@ export function kpiSkelet(division = "gods") {
  * poster sammen med et tomt skelet, og så ville en tom fordeling arve nøgler
  * der ikke var i svaret.
  */
-export function medFuldForm(hentet, division = "gods") {
+export function medFuldForm(hentet) {
   if (!hentet) return null;
-  const skelet = kpiSkelet(division);
+  const skelet = kpiSkelet();
   const ud = { ...skelet, ...hentet };
   for (const [domaene, felter] of Object.entries(skelet)) {
     if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
@@ -1208,7 +1219,7 @@ export function bemandingstal(personale = [], kompetencer = [], fravaer = [],
 }
 
 export function beregnKpi({
-  division, kunder = [], etaper = [], grundlag = [], opgaver = [],
+  kunder = [], etaper = [], grundlag = [], opgaver = [],
   /* ⚠ DE FIRE KOM TIL FOR `disponering.konflikter`. De fem tjek er en REN
      funktion, men den skal have sine lister — og uden dem svarer feltet null
      frem for nul: en aggregering der ikke fik sine biler, ved ikke at der er
@@ -1229,13 +1240,13 @@ export function beregnKpi({
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
-  const kunde = kundetal(kunder, division, nu);
-  const ikkeFakt = ikkeFaktureretOere(etaper, grundlag, division);
-  const disp = disponeringstal(etaper, division, {
+  const kunde = kundetal(kunder, nu);
+  const ikkeFakt = ikkeFaktureretOere(etaper, grundlag);
+  const disp = disponeringstal(etaper, {
     koeretoejer, personale, kompetencer, reservationer,
   });
-  const opg = opgavetal(opgaver, division, nu, { bookinger, forrige });
-  const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
+  const opg = opgavetal(opgaver, nu, { bookinger, forrige });
+  const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, nu);
   /* ⚠ INGEN division-PARAMETER TIL DE TO. Det er ikke en forglemmelse: feltet
      er FORBUDT på koeretoejer og personale, og tallet er det samme i begge
      divisioner. En parameter der ikke bruges, ville få den næste til at tro at
@@ -1244,7 +1255,7 @@ export function beregnKpi({
   const bem = bemandingstal(personale, kompetencer, fravaer, etaper, nu);
   const fac = facilitytal({
     aktiver: facilityAktiver, fejl: facilityFejl, sensorer: facilitySensorer,
-    opgaver, leverandoerer, division, nu,
+    opgaver, leverandoerer, nu,
   });
 
   return {
@@ -1398,8 +1409,8 @@ export function beregnKpi({
       /* ⚠ BRÆNDSTOFFET KOMMER FRA INDKØBET, IKKE FRA BILERNE — og det er
          derfor det er delt på division mens bilerne ikke er: det er
          indkøbslinjens division der spørges om, og den BÆRER en. */
-      braendstofOere: braendstofOere(indkoeb, division, nu),
-      ...indberetningstal(indberetninger, division),
+      braendstofOere: braendstofOere(indkoeb, nu),
+      ...indberetningstal(indberetninger),
     },
 
     /**

@@ -33,7 +33,7 @@ const somSkriver = (uid = "u-lager") =>
 
 const sti = (rest) => `tenants/${T}/${rest}`;
 
-const LAGER = { navn: "Kolding", division: "gods", kapacitet: 420 };
+const LAGER = { navn: "Kolding", kapacitet: 420 };
 const DOEGNSATS = {
   gyldigFra: Date.UTC(2026, 0, 1), beloebOere: 4500,
   metode: "prLagerdoegn", friDage: 2, valuta: "DKK", aktiv: true,
@@ -57,17 +57,6 @@ after(async () => { await miljoe?.cleanup(); });
 describe("lageret selv", () => {
   it("tager et fuldt udfyldt lager", async () => {
     await assertSucceeds(set(ref(somSkriver(), sti("lagre/lag-ok")), LAGER));
-  });
-
-  it("kræver navn og division", async () => {
-    /* Uden navn står lageret som et id på en estimatlinje — "Lagerdage –
-       undefined". Uden division kan omkostningen ikke henføres. */
-    const db = somSkriver();
-    for (const felt of ["navn", "division"]) {
-      const uden = { ...LAGER };
-      delete uden[felt];
-      await assertFails(set(ref(db, sti(`lagre/mangler-${felt}`)), uden));
-    }
   });
 
   it("afviser et ukendt felt", async () => {

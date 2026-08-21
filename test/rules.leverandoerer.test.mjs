@@ -45,7 +45,6 @@ const LEVERANDOER = {
   navn: "Hydra-Grene Kolding",
   cvr: "18447291",
   kategori: "reservedele",
-  division: "gods",
   aktiv: true,
   kontaktEmail: "salg@hydra-grene.dk",
   kontaktTelefon: "75 52 11 00",
@@ -137,18 +136,6 @@ describe("leverandøren som entitet", () => {
       set(ref(db, levSti("aft-fri")), { ...LEVERANDOER, aftale: { type: "haandslag" } }));
   });
 
-  it("⚠ DIVISION ER TILLADT HER — modsat på personale og køretøjer", async () => {
-    /* Prøven er om feltet beskriver LEVERANDØRENS forretning eller VORES
-       organisation. Mercedes Greve er et lastbilværksted; Crawford leverer
-       porte til begge. Beslutning 19 forbyder feltet dér hvor det ville
-       beskrive vores egen opdeling — her kan det begrundes på posten selv. */
-    const db = somIndkoeber();
-    for (const d of ["gods", "bus", "faelles"]) {
-      await assertSucceeds(set(ref(db, levSti(`div-${d}`)), { ...LEVERANDOER, division: d }));
-    }
-    await assertFails(set(ref(db, levSti("div-fri")), { ...LEVERANDOER, division: "kurer" }));
-  });
-
   it("afviser et ukendt felt", async () => {
     const db = somIndkoeber();
     await assertFails(
@@ -233,7 +220,7 @@ describe("prislisten ligger på leverandøren", () => {
    ══════════════════════════════════════════════════════════════════════ */
 describe("indkøb og fakturaer slår leverandøren op", () => {
   const INDKOEB = {
-    division: "gods", dato: 1786831200000, leverandoerId: LEV,
+    dato: 1786831200000, leverandoerId: LEV,
     vare: "Hydraulikslange", antal: 12, prisPrEnhedOere: 1850,
     fakturastatus: "modtaget",
   };

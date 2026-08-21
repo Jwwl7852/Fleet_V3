@@ -706,9 +706,8 @@ async function main() {
   })();
 
   const nuMs = Date.now();
-  for (const division of ["gods", "bus"]) {
+  {
     const tal = beregnKpi({
-      division,
       kunder: kpiKunder, etaper: kpiEtaper, grundlag: kpiGrundlag,
       opgaver: kpiOpgaver, indkoeb: kpiIndkoeb, fakturaer: kpiFakturaer,
       leverandoerer: kpiLeverandoerer,
@@ -719,7 +718,7 @@ async function main() {
       bookinger: kpiBookinger, fravaer: kpiFravaer,
       forrige: null, nu: nuMs,
     });
-    await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);
+    await db.ref(`tenants/${DEV_TENANT}/kpi/current`).set(tal);
 
     /* ⚠ TO SLAGS null, OG DE MAA IKKE TAELLES SAMMEN. Foerste udgave af
        den her linje skrev "56 felter uden kilde" — men de fleste af dem var
@@ -735,7 +734,7 @@ async function main() {
     const udenKilde = blade.filter(([, v]) => v === null).filter((x) => !erDelta(x)).length;
     const udenForrige = blade.filter(([, v]) => v === null).filter(erDelta).length;
     console.log(
-      `  ${`kpi/${division}/current`.padEnd(24)} beregnet — ${udenKilde} uden kilde, ` +
+      `  ${"kpi/current".padEnd(24)} beregnet — ${udenKilde} uden kilde, ` +
       `${udenForrige} deltaer uden forrige periode`);
   }
 

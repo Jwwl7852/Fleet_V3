@@ -69,7 +69,7 @@ before(async () => {
       await set(ref(db, `tenants/${t}/virksomhed`), { navn: `Kunde ${t}`, cvr: "12345678" });
       await set(ref(db, `tenants/${t}/moduler`), { dashboard: true, flaade: true });
       /* Lidt drift at prøve at nå. */
-      await set(ref(db, `tenants/${t}/kunder/k1`), { navn: "Hemmelig kunde", division: "gods", aktiv: true });
+      await set(ref(db, `tenants/${t}/kunder/k1`), { navn: "Hemmelig kunde", aktiv: true });
       await set(ref(db, `tenants/${t}/koeretoejer/kt1`), { art: "lastbil", status: "aktiv" });
     }
     await set(ref(db, `udbyder/kunder/${T_A}`), { oprettetMs: 1e12, status: "aktiv" });
@@ -130,7 +130,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     await assertFails(set(ref(db, `udbyder/kunder/nyKunde`), { oprettetMs: 1 }));
     await assertFails(set(ref(db, `tenants/${T_A}/virksomhed/navn`), "Overtaget"));
     await assertFails(set(ref(db, `tenants/${T_A}/moduler/facility`), true));
-    await assertFails(set(ref(db, `tenants/${T_A}/kunder/k2`), { navn: "X", division: "gods", aktiv: true }));
+    await assertFails(set(ref(db, `tenants/${T_A}/kunder/k2`), { navn: "X", aktiv: true }));
   });
 });
 

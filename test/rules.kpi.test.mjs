@@ -3,7 +3,7 @@
  *
  * ⚠ HVORFOR DEN FINDES. Noden havde ÉN `.read`, og den krævede kun
  * tenant-medlemskab: ingen permission, ingen modulklausul. En kunde uden
- * Økonomi-modulet kunne læse `tenants/<id>/kpi/gods/current/oekonomi` direkte
+ * Økonomi-modulet kunne læse `tenants/<id>/kpi/current/oekonomi` direkte
  * — netop det tal han ikke havde købt adgang til at se en skærm for.
  * Sidebaren skjulte modulet, og widgetvælgeren skjulte kortet; ingen af
  * delene spærrede tallet.
@@ -52,7 +52,7 @@ const som = (tenantId, rolle = "disponent") =>
   }).database();
 
 const dom = (tenantId, domaene) =>
-  `tenants/${tenantId}/kpi/gods/current/${domaene}`;
+  `tenants/${tenantId}/kpi/current/${domaene}`;
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
@@ -91,14 +91,14 @@ describe("⚠ FORÆLDEREN ER LUKKET — ellers er klausulen dekoration", () => {
        ti domæner, og modulklausulen nedenunder ville aldrig blive nået. */
     for (const rolle of ["admin", "disponent", "chauffoer"]) {
       const db = som(ALT, rolle);
-      await assertFails(get(ref(db, `tenants/${ALT}/kpi/gods/current`)));
+      await assertFails(get(ref(db, `tenants/${ALT}/kpi/current`)));
       await assertFails(get(ref(db, `tenants/${ALT}/kpi`)));
     }
   });
 
   it("⚠ HELLER IKKE ADMIN — det er ikke en rettighed, det er en vej", async () => {
     const db = som(ALT, "admin");
-    await assertFails(get(ref(db, `tenants/${ALT}/kpi/gods`)));
+    await assertFails(get(ref(db, `tenants/${ALT}/kpi`)));
   });
 
   it("regelfilen har ingen .read på selve kpi-noden", () => {
@@ -110,7 +110,7 @@ describe("⚠ FORÆLDEREN ER LUKKET — ellers er klausulen dekoration", () => {
     const kpi = regler.rules.tenants.$tenantId.kpi;
     assert.equal(kpi[".read"], undefined, "kpi/ har fået en .read igen");
     assert.equal(kpi[".write"], false);
-    assert.ok(kpi.$division.$snapshot.$domaene[".read"], "domænet har ingen .read");
+    assert.ok(kpi.$snapshot.$domaene[".read"], "domænet har ingen .read");
   });
 });
 
@@ -172,7 +172,7 @@ describe("kataloget og reglen beskriver det samme", () => {
        blive skrevet af serveren og aldrig hentet af klienten — og hullet
        ville ligne et felt der ventede på at blive regnet. */
     const { DEMO_KPI } = await import("../src/fleet/demo-kpi.js");
-    assert.deepEqual(Object.keys(DEMO_KPI.gods).sort(), [...ALLE_KPI_DOMAENER].sort());
+    assert.deepEqual(Object.keys(DEMO_KPI).sort(), [...ALLE_KPI_DOMAENER].sort());
   });
 
   it("laesbareDomaener() svarer det samme som reglen", () => {
@@ -248,7 +248,7 @@ describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
   it("regelfilen bærer det samme krav", () => {
     const v = JSON.parse(readFileSync("firebase.rules.json", "utf8")
       .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10)))
-      .rules.tenants.$tenantId.kpi.$division.$snapshot.$domaene[".read"];
+      .rules.tenants.$tenantId.kpi.$snapshot.$domaene[".read"];
     for (const [domaene, perm] of Object.entries(KPI_PERM)) {
       assert.ok(v.includes(`$domaene !== '${domaene}'`),
         `reglen har intet led for ${domaene}`);

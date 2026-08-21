@@ -220,11 +220,11 @@ if (import.meta.env?.DEV) {
   }
 
   /* Loft mod kpi/, som flåden. */
-  const iAlt = (DEMO_KPI.gods?.flaade?.paaVaerksted || 0) + (DEMO_KPI.bus?.flaade?.paaVaerksted || 0);
+  const iAlt = DEMO_KPI?.flaade?.paaVaerksted || 0;
   if (paaVaerkstedNu.size > iAlt) {
     console.warn(
       `demo-vaerksted: ${paaVaerkstedNu.size} biler er på værksted i dag, men kpi/ siger ` +
-      `${iAlt} i hele flåden (gods + bus). Et udsnit kan ikke være større end totalen.`
+      `${iAlt} i hele flåden. Et udsnit kan ikke være større end totalen.`
     );
   }
 }

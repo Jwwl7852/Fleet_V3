@@ -67,14 +67,14 @@ before(async () => {
       hal: "Hovedlager", reol: "A01", fag: "02", hylde: "1", plads: "1",
     });
     await set(ref(db, sti(`kunder/${KUNDE}`)), {
-      navn: "Nordisk Transport", division: "gods", aktiv: true,
+      navn: "Nordisk Transport", aktiv: true,
     });
     /* Etapen beholderen kan knyttes til. ⚠ Tenanten har IKKE booking-modulet,
        og det er med vilje: reglens opslag læser træet og går uden om .read,
        så en carrier kan bære et etapeId hos en kunde der ikke selv må liste
        etaper. Samme asymmetri som kundeId har. */
     await set(ref(db, sti(`etaper/${ETAPE}`)), {
-      division: "gods", bookingId: "bk-2026-00317", nr: 1,
+      bookingId: "bk-2026-00317", nr: 1,
     });
 
     /* En tenant der IKKE har Warehouse — modulspærringen prøves mod den. */

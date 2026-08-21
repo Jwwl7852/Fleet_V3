@@ -78,7 +78,7 @@ describe("⚠ DET ER EN VISNING, IKKE EN ADGANG", () => {
     const kpi = regler.rules.tenants.$tenantId.kpi;
     assert.equal(kpi[".read"], undefined,
       "kpi/ har en .read igen — den kaskaderer og ophæver klausulen på domænet");
-    const laes = kpi.$division.$snapshot.$domaene[".read"];
+    const laes = kpi.$snapshot.$domaene[".read"];
     assert.ok(laes.includes("child('moduler')"),
       "domænet har ingen modulklausul — beslutning 44 er rullet tilbage");
     assert.ok(laes.includes("perms.contains"),

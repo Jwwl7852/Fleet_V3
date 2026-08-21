@@ -55,8 +55,7 @@ export const DEMO_OMKOSTNINGER = [
        mangel man kan handle på, i stedet for en pris der er 1.192 kr for lav.
        `et-007` har ingen bil endnu og får "længden er ikke oplyst".
        Se satsOpslag() i pricing.js. */
-    id: "faerge:femern", art: "passage", kategori: "faerge", division: "faelles",
-    navn: "Færge: Femern (Rødby–Puttgarden)",
+    id: "faerge:femern", art: "passage", kategori: "faerge", navn: "Færge: Femern (Rødby–Puttgarden)",
     satser: {
       s1: {
         gyldigFra: START, beloebOere: 133800, metode: "prPassage",
@@ -69,8 +68,7 @@ export const DEMO_OMKOSTNINGER = [
     },
   },
   {
-    id: "faerge:oevrige", art: "passage", kategori: "faerge", division: "faelles",
-    navn: "Færger (øvrige)", satser: sats(215000, "fastPrBooking"),
+    id: "faerge:oevrige", art: "passage", kategori: "faerge", navn: "Færger (øvrige)", satser: sats(215000, "fastPrBooking"),
   },
   {
     /* ⚠ LÆNGDEN STÅR I NAVNET OG IKKE I ET BÅND, og det er en KENDT mangel,
@@ -81,65 +79,54 @@ export const DEMO_OMKOSTNINGER = [
 
        Båndene lægges når vognmandens egen BroBizz-aftale er læst; rabatten
        er progressiv på månedsbasis, så tallene er hans og ikke vores. */
-    id: "bro:storebaelt", art: "passage", kategori: "bro", division: "faelles",
-    navn: "Bro: Storebælt (lastbil 10–20 m)", satser: sats(88700, "prPassage"),
+    id: "bro:storebaelt", art: "passage", kategori: "bro", navn: "Bro: Storebælt (lastbil 10–20 m)", satser: sats(88700, "prPassage"),
   },
   {
-    id: "bro:oeresund", art: "passage", kategori: "bro", division: "faelles",
-    navn: "Bro: Øresund", satser: sats(91000, "prPassage"),
+    id: "bro:oeresund", art: "passage", kategori: "bro", navn: "Bro: Øresund", satser: sats(91000, "prPassage"),
   },
   {
     /* ⚠ EUROTUNNEL ER CALAIS–FOLKESTONE. I mockuppen lå den på ruten
        København–Hamburg. Én vej, så den tælles ikke dobbelt ved retur. */
-    id: "tunnel:eurotunnel", art: "passage", kategori: "tunnel", division: "faelles",
-    navn: "Eurotunnel (Calais–Folkestone)", satser: sats(235000, "prPassageEnVej"),
+    id: "tunnel:eurotunnel", art: "passage", kategori: "tunnel", navn: "Eurotunnel (Calais–Folkestone)", satser: sats(235000, "prPassageEnVej"),
   },
   {
-    id: "parkering:europa", art: "passage", kategori: "parkering", division: "faelles",
-    navn: "Parkering Europa (gennemsnit)", satser: sats(45000, "prDoegn"),
+    id: "parkering:europa", art: "passage", kategori: "parkering", navn: "Parkering Europa (gennemsnit)", satser: sats(45000, "prDoegn"),
   },
   {
     /* ⚠ `altidPaaBooking` — vejafgiften kommer med uden at nogen vælger den.
        Antallet af færger kommer fra RUTEN; vejafgiften gør ikke. */
     id: "vejafgift:miljoezoner", art: "passage", kategori: "vejafgift",
-    division: "faelles", altidPaaBooking: true,
+    altidPaaBooking: true,
     navn: "Vejafgifter / miljøzoner", satser: sats(32500, "fastPrBooking"),
   },
 
   /* ---- Agenter. En agent hører til ÉN afdeling. ------------------------- */
   {
-    id: "hthHamburg", art: "agent", by: "Hamburg", division: "gods",
-    navn: "HTH Logistics GmbH", note: "Indendørs parkering",
+    id: "hthHamburg", art: "agent", by: "Hamburg", navn: "HTH Logistics GmbH", note: "Indendørs parkering",
     satser: sats(125000, "prDoegn"),
   },
   {
-    id: "transportsParis", art: "agent", by: "Paris", division: "gods",
-    navn: "Transports Parisien SARL", note: "Sikret område",
+    id: "transportsParis", art: "agent", by: "Paris", navn: "Transports Parisien SARL", note: "Sikret område",
     satser: sats(105000, "prDoegn"),
   },
   {
-    id: "euroTransAms", art: "agent", by: "Amsterdam", division: "gods",
-    navn: "EuroTrans BV", note: "Parkeringsplads med overvågning",
+    id: "euroTransAms", art: "agent", by: "Amsterdam", navn: "EuroTrans BV", note: "Parkeringsplads med overvågning",
     satser: sats(95000, "prDoegn"),
   },
   {
-    id: "bavariaMuenchen", art: "agent", by: "München", division: "gods",
-    navn: "Bavaria Logistics GmbH", note: "Overdækket parkering",
+    id: "bavariaMuenchen", art: "agent", by: "München", navn: "Bavaria Logistics GmbH", note: "Overdækket parkering",
     satser: sats(115000, "prDoegn"),
   },
   {
-    id: "milanoCargo", art: "agent", by: "Milano", division: "gods",
-    navn: "Milano Cargo SRL", note: "Indhegnet areal",
+    id: "milanoCargo", art: "agent", by: "Milano", navn: "Milano Cargo SRL", note: "Indhegnet areal",
     satser: sats(110000, "prDoegn"),
   },
   {
-    id: "bruxTrans", art: "agent", by: "Bruxelles", division: "gods",
-    navn: "BruxTrans SA", note: "Åbent område",
+    id: "bruxTrans", art: "agent", by: "Bruxelles", navn: "BruxTrans SA", note: "Åbent område",
     satser: sats(90000, "prDoegn"),
   },
   {
-    id: "berlinBusPark", art: "agent", by: "Berlin", division: "bus",
-    navn: "Berlin Bus Park GmbH", note: "Buspladser med chaufførfaciliteter",
+    id: "berlinBusPark", art: "agent", by: "Berlin", navn: "Berlin Bus Park GmbH", note: "Buspladser med chaufførfaciliteter",
     satser: sats(85000, "prDoegn"),
   },
 ];
@@ -166,10 +153,10 @@ export const DEMO_OMKOSTNINGER = [
  * i koden ville ændre prisen på ophold der allerede er afregnet.
  */
 export const DEMO_LAGRE = [
-  { id: "lag-kolding", navn: "Kolding", division: "gods", kapacitet: 420,
+  { id: "lag-kolding", navn: "Kolding", kapacitet: 420,
     satser: sats(4500, "prLagerdoegn"),
     haandteringSatser: sats(25000, "fastPrBooking") },
-  { id: "lag-aalborg", navn: "Aalborg", division: "faelles", kapacitet: 180,
+  { id: "lag-aalborg", navn: "Aalborg", kapacitet: 180,
     satser: sats(5200, "prLagerdoegn"),
     haandteringSatser: sats(28000, "fastPrBooking") },
   /* ⚠ ODENSE HAR INGEN DØGNSATS — MED VILJE. Lageret findes, håndteringen er
@@ -178,7 +165,7 @@ export const DEMO_LAGRE = [
      give det rigtige svar, kan ikke tage fejl på en måde nogen opdager.
      Det er samme grund som den åbne indkøbsordre og den planlagte
      facility-opgave. */
-  { id: "lag-odense", navn: "Kølehus Odense", division: "bus", kapacitet: 90,
+  { id: "lag-odense", navn: "Kølehus Odense", kapacitet: 90,
     haandteringSatser: sats(31000, "fastPrBooking") },
 ];
 

@@ -317,13 +317,16 @@ export function reservationFraOpgave(opgave) {
  * Er posten gyldig efter reglernes krav? Til UI-feedback — reglerne er
  * kontrollen. Fejler lukket: en ukendt art giver falsk.
  *
- * ⚠ division er PÅKRÆVET og kan ikke arves fra køretøjet (beslutning 19).
+ * ⚠ HER STOD AT division ER PÅKRÆVET og ikke kan arves fra køretøjet. Feltet
+ * er fjernet helt i beslutning 70 — og netop den sætning var oplysningen: et
+ * felt der er påkrævet og hverken kan arves eller udledes, skal tastes af et
+ * menneske hver gang, og det menneske vidste allerede hvilken forretning han
+ * arbejdede i.
  * Skriveren skal sætte den selv.
  */
 export function opgaveMangler(opgave = {}) {
   const mangler = [];
   if (!OPGAVE_ART[opgave.art]) mangler.push("art");
-  if (!["gods", "bus", "faelles"].includes(opgave.division)) mangler.push("division");
   if (opgave.art && !ressourceId(opgave)) {
     mangler.push(opgave.art === "vaerksted" ? "koeretoejId" : "aktivId eller lokationId");
   }

@@ -279,12 +279,6 @@ describe("Demo-etaperne", () => {
     }
   });
 
-  it("har division på hver etape — reglerne kræver den", () => {
-    for (const e of DEMO_ETAPER) {
-      assert.ok(["gods", "bus", "faelles"].includes(e.division), `${e.id}: ugyldig division`);
-    }
-  });
-
   it("er geografisk konsistente", () => {
     for (const e of DEMO_ETAPER) {
       const r = tjekGeografi(e);

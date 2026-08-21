@@ -216,7 +216,7 @@ describe("Demo-flåden er én kilde for de andre skærme", () => {
    fastholdes, er at udsnittet aldrig påstår mere end platformen. */
 describe("Demo-flåden modsiger ikke kpi/", () => {
   const total = (felt) =>
-    (DEMO_KPI.gods?.flaade?.[felt] || 0) + (DEMO_KPI.bus?.flaade?.[felt] || 0);
+    (DEMO_KPI?.flaade?.[felt] || 0);
 
   for (const [felt, taeller] of [
     ["aktive", () => demoAntal("aktiv")],

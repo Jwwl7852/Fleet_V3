@@ -1,5 +1,5 @@
 /* src/fleet/useKpi.js
- * Nøgletal læses ÉT sted: tenants/<id>/kpi/<gods|bus>/current
+ * Nøgletal læses ÉT sted: tenants/<id>/kpi/current
  *
  * Dashboard og modulerne læser samme felter. Derfor kan Dashboard ikke
  * længere sige "3 servicepunkter forfalder" mens Facility siger 18 —
@@ -8,30 +8,19 @@
  *
  * once() frem for on() — egress koster, og disse tal skal ikke være live.
  *
- * ⚠ HER STOD AT DEMO-SÆTTET ER DELT PÅ DIVISION *"ligesom den rigtige node"*
- * — og at et fælles sæt ville gøre Gods/Bus-skiftet virkningsløst i demo.
- * Aksen er fjernet (beslutning 70), og der er ikke længere noget at skifte.
+ * ⚠ HER STOD AT DEMO-SÆTTET ER DELT PÅ DIVISION *"ligesom den rigtige node"*,
+ * og at stien bar en gren pr. division. Begge dele er væk med beslutning 70.
  *
- * ⚠ GRENEN I STIEN ER DER ENDNU, som en KONSTANT og ikke som en tilstand.
- * `kpi/` er stiformet efter division — `kpi/<division>/<snapshot>/<domaene>`
- * (beslutning 44) — og reglen matcher den med et wildcard `$division`. At
- * læse et niveau højere ville derfor ikke bare være en anden sti; det ville
- * ramme en anden regel. **Stien skifter form sammen med reglen og de
- * udrullede data, ikke før** — det er etape 2 af beslutning 70.
+ * ⚠ STIEN SKIFTEDE FORM SAMMEN MED REGLEN, ikke før. `kpi/<division>/…` blev
+ * matchet af et **wildcard** `$division`, så en klient der læste et niveau
+ * højere uden at reglen fulgte med, ville have fået "current" til at matche
+ * `$division`, domænet til at matche `$snapshot` — og `.read` på `$domaene`
+ * ville aldrig være nået. Det ville ikke have været en anden sti; det ville
+ * have været en anden regel.
  */
 import { useEffect, useState, useCallback } from "react";
 import { useFleet } from "./FleetContext.jsx";
 
-/**
- * ⚠ EN REST AF EN AKSE DER ER FJERNET, og den står med navn frem for som et
- * "gods" spredt i tre strenge.
- *
- * Beslutning 70 fjernede divisionen, men `kpi/` bærer den stadig i sin STI, og
- * regelfilen matcher niveauet med et wildcard. Et hardkodet "gods" tre steder
- * ville være tre steder at glemme; ét navn er ét sted at slette, og navnet
- * siger hvad det er — en gren, ikke en division.
- */
-const KPI_GREN = "gods";
 import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand, erAfvist } from "./datatilstand.js";
@@ -57,7 +46,7 @@ export function useKpi() {
     let aktiv = true;
     setHenter(true);
     setFejl(null);
-    const demo = DEMO_KPI[KPI_GREN] || DEMO_KPI.gods;
+    const demo = DEMO_KPI;
 
     /* FØR forespørgslen. Manglende database og manglende bruger er begge
        tilstande vi kender op front — de skal ikke fanges som fejl, og uden
@@ -96,7 +85,7 @@ export function useKpi() {
           (p) => harPerm(bruger?.perms, p));
         const svar = await Promise.all(oenskede.map(async (d) => {
           try {
-            const s = await db.ref(path(`kpi/${KPI_GREN}/current/${d}`)).once("value");
+            const s = await db.ref(path(`kpi/current/${d}`)).once("value");
             return { d, vaerdi: s.val(), afvist: false };
           } catch (e) {
             /* ⚠ EN AFVIST LÆSNING KASTER IKKE HELE SIDEN. Ét lukket domæne er
@@ -161,7 +150,7 @@ export function useKpi() {
              ligger i `afviste` ved siden af tallene. En skærm der vil sige
              "du må ikke se det" frem for "ikke regnet endnu", skal spørge
              den — se Dashboard. */
-          setData(medFuldForm(vaerdi, KPI_GREN));
+          setData(medFuldForm(vaerdi));
         } else {
           setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
           setData(null);

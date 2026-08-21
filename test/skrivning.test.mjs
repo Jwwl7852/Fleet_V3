@@ -258,7 +258,7 @@ test("En lokation kræver navn, type, sted og et helt areal", () => {
 test("En indkøbspris indtastes i kroner og gemmes som hele øre", async (t) => {
   const ctxI = { leverandoerer: [{ id: "lv-a" }] };
   const god = {
-    division: "gods", dato: 1e12, leverandoerId: "lv-a", vare: "Slange",
+    dato: 1e12, leverandoerId: "lv-a", vare: "Slange",
     antal: "12", prisKr: "18,50", kategori: "reservedele", fakturastatus: "modtaget",
   };
 
@@ -279,12 +279,6 @@ test("En indkøbspris indtastes i kroner og gemmes som hele øre", async (t) => 
   await t.test("tre nuller for meget fanges", () => {
     /* Ikke en forretningsregel — et loft der fanger en tastefejl. */
     assert.match(valideIndkoeb({ ...god, prisKr: "18500000000" }, ctxI).prisKr, /tre nuller/);
-  });
-
-  await t.test("division er påkrævet og kan ikke arves fra bilen", () => {
-    /* Beslutning 19 forbyder feltet på et køretøj, så der er intet at arve. */
-    assert.ok(valideIndkoeb({ ...god, division: "" }, ctxI).division);
-    assert.match(valideIndkoeb({ ...god, division: "" }, ctxI).division, /arves/);
   });
 
   await t.test("linjens beløb sendes ALDRIG med", () => {

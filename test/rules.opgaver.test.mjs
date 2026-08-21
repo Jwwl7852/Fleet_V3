@@ -69,7 +69,6 @@ const sti = (id) => `tenants/${TENANT}/opgaver/${id}`;
    navngav og som ingen post har. Noden kraever nu startMs, fordi opgaven
    RESERVERER sin ressource og et vindue skal kunne regnes. */
 const opgave = (ekstra = {}) => ({
-  division: "gods",
   status: "planlagt",
   startMs: 1786000000000,
   estimeretMin: 90,
@@ -210,15 +209,6 @@ describe("beslutning 21 — art på opgaver", () => {
   /* Division var påkrævet før beslutning 21 og er det stadig. Arten erstatter
      den ikke: en opgave er en TRANSAKTION og hører til én afdeling, mens
      arten siger hvad arbejdet udføres på. */
-  it("kræver stadig division ved siden af art", () => {
-    /* Arten erstatter den ikke: en opgave er en TRANSAKTION og hører til én
-       afdeling, mens arten siger hvad arbejdet udføres på. */
-    const uden = { ...opgave({ art: "vaerksted", koeretoejId: "kt-1" }) };
-    delete uden.division;
-    assert.ok(opgaveMangler(uden).includes("division"));
-    assert.ok(valideOpgaveplan(uden).fejl.division);
-  });
-
   it("⚠ ARTEN KAN IKKE ÆNDRES BAGEFTER — der er ingen vej til det", () => {
     /* Her stod to prøver på at reglen afviste en opdatering af `art`. De
        er blevet overflødige på den gode måde: der findes ingen klientvej til

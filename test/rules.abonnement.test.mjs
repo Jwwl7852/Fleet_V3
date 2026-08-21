@@ -94,7 +94,7 @@ before(async () => {
          `kunder` blive afvist af den ANDEN spærring — og prøven ville være
          grøn af den forkerte grund. */
       await set(ref(db, `tenants/${t}/moduler`), ALLE_MODULER_TIL);
-      await set(ref(db, `tenants/${t}/kunder/k1`), { navn: "Kunde", division: "gods", aktiv: true });
+      await set(ref(db, `tenants/${t}/kunder/k1`), { navn: "Kunde", aktiv: true });
       await set(ref(db, `tenants/${t}/koeretoejer/kt1`), { art: "lastbil", status: "aktiv" });
       await set(ref(db, `tenants/${t}/kpi/flaade`), { aktive: 3 });
     }
@@ -193,7 +193,7 @@ describe("Et aktivt abonnement mærkes ikke", () => {
   it("lader admin skrive", async () => {
     await assertSucceeds(
       set(ref(somAdmin(AKTIV), `tenants/${AKTIV}/kunder/k2`),
-          { navn: "Ny kunde", division: "gods", aktiv: true })
+          { navn: "Ny kunde", aktiv: true })
     );
   });
 });
@@ -206,7 +206,7 @@ describe("En tenant UDEN abonnement-node er aktiv", () => {
     await assertSucceeds(get(ref(somAdmin(UDEN), `tenants/${UDEN}/kunder`)));
     await assertSucceeds(
       set(ref(somAdmin(UDEN), `tenants/${UDEN}/kunder/k2`),
-          { navn: "Ny kunde", division: "gods", aktiv: true })
+          { navn: "Ny kunde", aktiv: true })
     );
   });
 });
@@ -229,7 +229,7 @@ for (const [navn, tenant] of [["paused", PAUSED], ["opsagt", OPSAGT]]) {
     it("afviser skrivning", async () => {
       await assertFails(
         set(ref(somAdmin(tenant), `tenants/${tenant}/kunder/k9`),
-            { navn: "Ny kunde", division: "gods", aktiv: true })
+            { navn: "Ny kunde", aktiv: true })
       );
     });
 

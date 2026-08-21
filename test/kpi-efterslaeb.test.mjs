@@ -64,7 +64,7 @@ const nullFelter = (o, sti = "") => {
 /* ⚠ UDEN INDDATA. Så er tallet en EGENSKAB ved koden og ikke ved en base:
    det kan regnes af enhver der kører prøven, og det ændrer sig kun når nogen
    lægger et felt i noden eller giver et felt en kilde. */
-const FELTER = nullFelter(beregnKpi({ division: "gods", nu: 1_800_000_000_000 })).length;
+const FELTER = nullFelter(beregnKpi({ nu: 1_800_000_000_000 })).length;
 
 /**
  * De fire steder tallet står, med den formulering hver af dem bruger.

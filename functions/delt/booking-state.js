@@ -391,9 +391,6 @@ export function valideBooking(post = {}, { kunder = null } = {}) {
   /* ⚠ DIVISIONEN KAN IKKE UDLEDES AF KUNDEN. Samme grund som på opgaven:
      stamdata bærer ikke feltet (beslutning 19), og en booking der arvede den
      fra kunden, ville genindføre koblingen. */
-  if (!["gods", "bus", "faelles"].includes(post.division)) {
-    f.division = "Vælg hvilken division der bærer forløbet.";
-  }
 
   if (!post.fraSted?.trim()) f.fraSted = "Hvor skal godset hentes?";
   if (!post.tilSted?.trim()) f.tilSted = "Hvor skal det leveres?";
@@ -476,7 +473,6 @@ export function bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer 
       bookingId,
       nr: i + 1,
       tilstand: NY_ETAPE_TILSTAND,
-      division: post.division,
       fraSted: s.fraSted,
       tilSted: s.tilSted,
       oprettetAf: uid,
@@ -500,7 +496,6 @@ export function bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer 
   const booking = {
     nummer,
     kundeId: post.kundeId,
-    division: post.division,
     tilstand: forloeb.tilstand,
     harAabneEtaper: forloeb.harAabneEtaper,
     fraSted: post.fraSted,

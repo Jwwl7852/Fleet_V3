@@ -241,7 +241,7 @@ describe("Demo-fraværet hænger sammen med demo-personalet", () => {
 describe("Demo-fraværet modsiger ikke kpi/", () => {
   it("har færre fraværende i dag end der er ubesatte vagter", () => {
     const gab = ["gods", "bus"].reduce((s, d) => {
-      const b = DEMO_KPI[d]?.bemanding || {};
+      const b = DEMO_KPI?.bemanding || {};
       return s + Math.max(0, (b.planlagt || 0) - (b.disponeret || 0));
     }, 0);
     const iDag = DEMO_FRAVAER.filter((f) => erAktivt(f)).length;

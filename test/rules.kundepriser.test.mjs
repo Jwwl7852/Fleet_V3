@@ -65,7 +65,7 @@ before(async () => {
     const db = ctx.database();
     await set(ref(db, `tenants/${T}/_findes`), true);
     await set(ref(db, sti(`kunder/${KUNDE}`)), {
-      navn: "Nordisk Transport", division: "gods", aktiv: true,
+      navn: "Nordisk Transport", aktiv: true,
     });
   });
 });
@@ -131,7 +131,7 @@ describe("kundeprisen kraever BEGGE permissions", () => {
   it("prisen kan ikke smugles med i en skrivning af hele kunden", async () => {
     const db = medPerms("uid-hel-kunde", [PERM.kunderSkriv]);
     await assertFails(set(ref(db, sti(`kunder/${KUNDE}`)), {
-      navn: "Nordisk Transport", division: "gods", aktiv: true,
+      navn: "Nordisk Transport", aktiv: true,
       priser: { [YDELSE]: { satser: { smuglet: EGEN_PRIS } } },
     }));
   });

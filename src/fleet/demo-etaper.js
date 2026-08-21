@@ -55,8 +55,7 @@ export const UDELUKKER_HINANDEN = [["bro:storebaelt", "faerge:femern"]];
 export const DEMO_ETAPER = [
   {
     id: "et-001", bookingId: "bk-2026-00311", nr: 1,
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Hamburg",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Hamburg",
     fra: dag(0, 5), til: dag(0, 16),
     etaMs: dag(0, 15) + 30 * 60000,
     /* Femern-ruten: Rødby–Puttgarden. IKKE Storebælt — se noten i toppen. */
@@ -70,8 +69,7 @@ export const DEMO_ETAPER = [
   },
   {
     id: "et-002", bookingId: "bk-2026-00312", nr: 1,
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Berlin",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Berlin",
     fra: dag(1, 4), til: dag(1, 19),
     etaMs: dag(1, 18),
     graenseovergange: ["roedby"],
@@ -85,8 +83,7 @@ export const DEMO_ETAPER = [
   {
     /* Løber over en døgngrænse — ugesvisningens egentlige formål. */
     id: "et-003", bookingId: "bk-2026-00313", nr: 1,
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Amsterdam",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Amsterdam",
     fra: dag(2, 3), til: dag(3, 14),
     etaMs: dag(3, 13),
     graenseovergange: ["padborg"],
@@ -99,8 +96,7 @@ export const DEMO_ETAPER = [
   },
   {
     id: "et-004", bookingId: "bk-2026-00314", nr: 1,
-    tilstand: "afventerKoord", division: "gods",
-    fraSted: "København", tilSted: "Paris",
+    tilstand: "afventerKoord", fraSted: "København", tilSted: "Paris",
     fra: dag(3, 2), til: dag(4, 18),
     etaMs: dag(4, 17),
     graenseovergange: ["padborg"],
@@ -151,8 +147,7 @@ export const DEMO_ETAPER = [
   },
   {
     id: "et-005", bookingId: "bk-2026-00315", nr: 1,
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "München",
+    tilstand: "reserveret", fraSted: "København", tilSted: "München",
     fra: dag(4, 4), til: dag(5, 17),
     etaMs: dag(5, 16),
     graenseovergange: ["padborg"],
@@ -169,8 +164,7 @@ export const DEMO_ETAPER = [
        selvkontrollen kan ikke fastholde modsigelsen mellem flaget og en
        grænseovergang, fordi der aldrig er et tilfælde hvor flaget er sandt. */
     id: "et-006", bookingId: "bk-2026-00316", nr: 1,
-    tilstand: "reserveret", division: "gods",
-    fraSted: "København", tilSted: "Aalborg",
+    tilstand: "reserveret", fraSted: "København", tilSted: "Aalborg",
     fra: dag(1, 6), til: dag(1, 15),
     etaMs: dag(1, 14),
     graenseovergange: [],
@@ -189,8 +183,7 @@ export const DEMO_ETAPER = [
        usynligt. Sammen med den åbne nr. 2 nedenfor giver bk-2026-00317
        netop `delvist`. */
     id: "et-008", bookingId: "bk-2026-00317", nr: 1,
-    tilstand: "udfoert", division: "gods",
-    fraSted: "København", tilSted: "Hamburg",
+    tilstand: "udfoert", fraSted: "København", tilSted: "Hamburg",
     /* ⚠ ADRESSEN UDEN BYEN — den står i fraSted/tilSted. Transportlabelen
        sætter dem sammen; to steder til samme by driver fra hinanden. */
     fraAdresse: { navn: "Lager A – København", gade: "Havnegade 14", postnr: "1058" },
@@ -209,8 +202,7 @@ export const DEMO_ETAPER = [
     /* Åben etape: venter på en passende tur, og bærer en frist. Uden
        senestMs fyldes lageret med gods ingen henter (beslutning 16). */
     id: "et-007", bookingId: "bk-2026-00317", nr: 2,
-    tilstand: "aaben", division: "gods",
-    fraSted: "Hamburg", tilSted: "København",
+    tilstand: "aaben", fraSted: "Hamburg", tilSted: "København",
     fraAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
     /* ⚠ POSTNUMMERET SKAL PASSE TIL BYEN. Etapen ender i København (tilSted),
        og et postnummer fra Odense her ville stå på mærkatet som

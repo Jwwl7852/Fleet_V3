@@ -145,7 +145,7 @@ function MedGrundlag({ maal, format = (v) => v, tone }) {
    om hvorfor klokken er 12 og ikke midnat. */
 
 const tomLinje = () => ({
-  division: "gods", datoIso: iDagIso(), leverandoerId: "",
+  datoIso: iDagIso(), leverandoerId: "",
   vare: "", varenummer: "", antal: "", enhed: "stk",
   prisKr: "", momsKr: "", kategori: "reservedele", fakturastatus: "mangler",
   reference: "", formaal: "", koeretoejId: "", lokationId: "",

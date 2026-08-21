@@ -50,12 +50,12 @@ const D = 864e5;
    udsnit af DEMO_OPGAVER. Indtil da står de som de stod, så Dashboard viser
    det samme som før flytningen. */
 export const DEMO_DASHBOARD_OPGAVER = [
-  { id: 1, ms: Date.now() - 3 * D, division: "gods", enhed: "Bil 155", type: "Reparation", besk: "Palleløfter vil ikke løfte", ansv: "Lars Aage", status: "Indberettet", tone: "warn", est: 650000, alvor: "hoej" },
-  { id: 2, ms: Date.now() - 4 * D, division: "gods", enhed: "Bil 104", type: "Service", besk: "Serviceeftersyn 30.000 km", ansv: "Rene Thomsen", status: "Planlagt", tone: "info", est: 320000, alvor: "mellem" },
-  { id: 3, ms: Date.now() - 5 * D, division: "faelles", enhed: "Porte – Port 3", type: "Facility", besk: "Port lukker langsomt", ansv: "Benjamin", status: "Afventer", tone: "warn", est: 480000, alvor: "hoej" },
-  { id: 4, ms: Date.now() - 6 * D, division: "gods", enhed: "Lastbil 106", type: "Reparation", besk: "Motorlampe lyser", ansv: "Lars Aage", status: "I gang", tone: "ok", est: 1200000, alvor: "hoej" },
-  { id: 5, ms: Date.now() - 7 * D, division: "gods", enhed: "Truck 2", type: "Service", besk: "Gaffeljustering og smøring", ansv: "Benjamin", status: "Planlagt", tone: "info", est: 180000, alvor: "lav" },
-  { id: 6, ms: Date.now() - 8 * D, division: "bus", enhed: "Bus 12", type: "Reparation", besk: "Fordør lukker ikke i", ansv: "Rene Thomsen", status: "Indberettet", tone: "warn", est: 540000, alvor: "hoej" },
+  { id: 1, ms: Date.now() - 3 * D, enhed: "Bil 155", type: "Reparation", besk: "Palleløfter vil ikke løfte", ansv: "Lars Aage", status: "Indberettet", tone: "warn", est: 650000, alvor: "hoej" },
+  { id: 2, ms: Date.now() - 4 * D, enhed: "Bil 104", type: "Service", besk: "Serviceeftersyn 30.000 km", ansv: "Rene Thomsen", status: "Planlagt", tone: "info", est: 320000, alvor: "mellem" },
+  { id: 3, ms: Date.now() - 5 * D, enhed: "Porte – Port 3", type: "Facility", besk: "Port lukker langsomt", ansv: "Benjamin", status: "Afventer", tone: "warn", est: 480000, alvor: "hoej" },
+  { id: 4, ms: Date.now() - 6 * D, enhed: "Lastbil 106", type: "Reparation", besk: "Motorlampe lyser", ansv: "Lars Aage", status: "I gang", tone: "ok", est: 1200000, alvor: "hoej" },
+  { id: 5, ms: Date.now() - 7 * D, enhed: "Truck 2", type: "Service", besk: "Gaffeljustering og smøring", ansv: "Benjamin", status: "Planlagt", tone: "info", est: 180000, alvor: "lav" },
+  { id: 6, ms: Date.now() - 8 * D, enhed: "Bus 12", type: "Reparation", besk: "Fordør lukker ikke i", ansv: "Rene Thomsen", status: "Indberettet", tone: "warn", est: 540000, alvor: "hoej" },
 ];
 
 /* ---- Selvkontrol ------------------------------------------------------- */

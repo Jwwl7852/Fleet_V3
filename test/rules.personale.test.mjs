@@ -106,8 +106,8 @@ describe("personale", () => {
   it("afviser division på en person — også faelles", async () => {
     const db = medPerms("uid-div", ALLE_PERMS);
     await assertSucceeds(set(ref(db, sti("personale", "p-div")), PERSON));
-    await assertFails(set(ref(db, sti("personale", "p-div2")), { ...PERSON, division: "faelles" }));
-    await assertFails(set(ref(db, sti("personale", "p-div3")), { ...PERSON, division: "gods" }));
+    await assertFails(set(ref(db, sti("personale", "p-div2")), { ...PERSON, division: "gods" }));
+    await assertFails(set(ref(db, sti("personale", "p-div3")), { ...PERSON, division: "faelles" }));
     await assertFails(set(ref(db, sti("personale", "p-div") + "/division"), "bus"));
   });
 
@@ -163,10 +163,6 @@ describe("kompetencer", () => {
     await assertFails(set(ref(uden, sti("kompetencer", "kmp2")), KOMP));
   });
 
-  it("har ingen division — den arves fra personen", async () => {
-    const db = medPerms("uid-kdiv", ALLE_PERMS);
-    await assertFails(set(ref(db, sti("kompetencer", "kmp3")), { ...KOMP, division: "gods" }));
-  });
 });
 
 /* ---- Flåden --------------------------------------------------------- */

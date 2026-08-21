@@ -43,7 +43,6 @@ const GRUNDLAG = {
   nummer: "GRL-2026-00311",
   kundeId: KUNDE,
   bookingId: "bk-2026-00311",
-  division: "gods",
   tilstand: "kladde",
   udarbejdetAf: "uid-mette",
   udarbejdetMs: 1786000000000,
@@ -69,7 +68,7 @@ before(async () => {
     const db = ctx.database();
     await set(ref(db, `tenants/${T}/_findes`), true);
     await set(ref(db, sti(`kunder/${KUNDE}`)), {
-      navn: "Nordisk Transport", division: "gods", aktiv: true,
+      navn: "Nordisk Transport", aktiv: true,
     });
     /* Skrevet uden om reglerne — som en Cloud Function ville. */
     await set(ref(db, sti("grundlag/grl-001")), GRUNDLAG);

@@ -294,8 +294,9 @@ if (import.meta.env?.DEV) {
   /* --- Loftet mod kpi/. Se noten ovenfor for hvorfor det er et loft og ikke
          en lighed. DEMO_KPI importeres statisk fra demo-kpi.js — den har ingen
          React i sig, så den samme kontrol kan køre i test/flaade.test.mjs. --- */
-  const total = (felt) =>
-    (DEMO_KPI.gods?.flaade?.[felt] || 0) + (DEMO_KPI.bus?.flaade?.[felt] || 0);
+  /* ⚠ HER BLEV GODS OG BUS LAGT SAMMEN. Der er ét sæt nu (beslutning 70), og
+     summen er derfor tallet selv. */
+  const total = (felt) => DEMO_KPI?.flaade?.[felt] || 0;
 
   const loft = [
     ["aktive", demoAntal("aktiv")],

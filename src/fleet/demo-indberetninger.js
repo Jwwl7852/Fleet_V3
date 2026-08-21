@@ -88,8 +88,7 @@ export const DEMO_INDBERETNINGER = [
        har en aaben koeretoejsskade — og saa gik test/steder.test.mjs fra 1
        til 2 aabne fejl paa den bil. En NY post maa ikke aendre et tal en
        anden proeve holder fast i, medmindre det ER pointen. */
-    koeretoejId: "kt-106", bookingId: null, sagId: null, division: "gods",
-    beskrivelse: "Ridse i venstre sidepanel, opdaget ved afgangstjek",
+    koeretoejId: "kt-106", bookingId: null, sagId: null, beskrivelse: "Ridse i venstre sidepanel, opdaget ved afgangstjek",
     omkostningOere: null, indkoebId: null, ingenOmkostning: null,
     tidsregistrering: null, materialelinjer: [],
   },
@@ -104,7 +103,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-012",
     bookingId: "bk-2026-00311",          /* → der ER en kunde at fakturere. */
     sagId: "sag-flt-00381",              /* ⚠ HAR en sag. ER ikke en sag. */
-    division: "gods",
     beskrivelse: "Gods forskubbet under transport, Rødby–København",
     omkostningOere: null,
     indkoebId: null,
@@ -154,7 +152,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-078",
     bookingId: null,
     sagId: null,
-    division: "gods",
     beskrivelse: "Bremseslidtage bagaksel, konstateret ved eftersyn",
     kmStand: 412_880,
     omkostningOere: null,
@@ -183,7 +180,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-104",
     bookingId: null,
     sagId: "sag-flt-00377",
-    division: "gods",
     beskrivelse: "Skade på højre sidespejl ved manøvrering",
     kmStand: 288_140,
     omkostningOere: null,
@@ -205,7 +201,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-106",
     bookingId: null,
     sagId: null,
-    division: "gods",
     beskrivelse: "Fejlkode AdBlue-dosering",
     kmStand: 96_400,
     omkostningOere: null,
@@ -231,7 +226,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-012",
     bookingId: null,
     sagId: null,
-    division: "gods",
     beskrivelse: "Tankning, Circle K Køge",
     kmStand: 331_420,
     liter: 412,
@@ -260,7 +254,6 @@ export const DEMO_INDBERETNINGER = [
     koeretoejId: "kt-012",
     bookingId: null,
     sagId: null,
-    division: "gods",
     beskrivelse: "Tankning, Shell Rødby",
     kmStand: 328_960,
     liter: 388,
