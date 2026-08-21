@@ -74,10 +74,36 @@ describe("Art styrer feltskemaet", () => {
     assert.equal(harFelt("vaerksted", FELT.aktivId), false);
   });
 
-  /* Dagsvisningen er timer, ikke døgn — varigheden hører på værkstedsopgaven. */
-  it("giver kun værkstedsopgaven en varighed i minutter", () => {
-    assert.equal(harFelt("vaerksted", FELT.estimeretMin), true);
-    assert.equal(harFelt("facility", FELT.estimeretMin), false);
+  /**
+   * ⚠ HER STOD DET MODSATTE, OG DET VAR FORKERT.
+   *
+   * Prøven hed "giver kun værkstedsopgaven en varighed i minutter" og slog
+   * fast at `harFelt("facility", estimeretMin)` var FALSK, med begrundelsen
+   * "dagsvisningen er timer, ikke døgn". Målt i demo-sættet: alle ni
+   * facility-opgaver bærer feltet, Servicekalenderen regner hver eneste blok
+   * af `slutter(o)` — som læser netop estimatet — og
+   * `reservationFraOpgave()` KASTER uden det, uanset art.
+   *
+   * Et felt reservationen regnes af, kan ikke stå uden for artens skema: uden
+   * det kan et servicebesøg ikke spærre sit anlæg, og så ser anlægget FRIT ud
+   * mens der bliver arbejdet på det. Det er beslutning 4's fejl.
+   */
+  it("giver BEGGE arter en varighed — reservationen regnes af den", () => {
+    for (const a of ALLE_OPGAVE_ARTER) {
+      assert.equal(harFelt(a, FELT.estimeretMin), true, `${a} mangler estimeretMin`);
+      assert.equal(harFelt(a, FELT.faktiskMin), true, `${a} mangler faktiskMin`);
+    }
+  });
+
+  /* ⚠ `opgavestatus` SKRIVER `faktiskMin` UANSET ART (beslutning 50). Var
+     feltet uden for facilitys skema, ville funktionen skrive et felt arten
+     ikke har — og `kpi.opgaver.udenTidsregistrering` tæller på tværs. */
+  it("giver kun værkstedsopgaven en arbejdstype", () => {
+    assert.equal(harFelt("vaerksted", FELT.arbejdstype), true);
+    /* Ingen af de ni facility-opgaver bærer den, og ordlisten er værkstedets
+       — den deles med Procures omkostningstype. Et felt tilføjet fordi det
+       KUNNE give mening, er et gæt. */
+    assert.equal(harFelt("facility", FELT.arbejdstype), false);
   });
 
   it("giver begge arter de fælles felter", () => {
@@ -90,6 +116,31 @@ describe("Art styrer feltskemaet", () => {
     const f = felterFor("vaerksted");
     assert.ok(f.indexOf(FELT.startMs) < f.indexOf(FELT.beloebOere));
     assert.deepEqual(f, felterFor("vaerksted"), "rækkefølgen skal være stabil");
+  });
+
+  /**
+   * ⚠ OG DEN OMVENDTE RETNING — den der manglede.
+   *
+   * Prøven nedenfor spørger "lover kataloget noget ingen post har". Den
+   * modsatte — "bærer posterne noget kataloget ikke lover" — fandtes for
+   * flåden (demo-flaade.js' selvkontrol) og ikke for opgaver, og derfor
+   * overlevede det at facility-skemaet manglede `estimeretMin`,
+   * `leverandoerId` og `faktiskMin`, mens begge arter bar `sagId`.
+   *
+   * Et katalog der ikke matcher dataene, er værre end intet katalog: skærmen
+   * spørger `harFelt()` og får NEJ til et felt der står på hver eneste post.
+   */
+  it("⚠ INGEN POST BÆRER ET FELT DENS ART IKKE HAR", () => {
+    /* Nøgler der ikke er felter: id'et er postens eget, arten er skemaet
+       selv, og divisionen kræves af reglerne for begge arter. */
+    const IKKE_FELTER = new Set(["id", "art", "division", "oprettetAf", "oprettetMs"]);
+    for (const o of DEMO_OPGAVER) {
+      for (const [felt, v] of Object.entries(o)) {
+        if (v == null || IKKE_FELTER.has(felt)) continue;
+        assert.ok(harFelt(o.art, felt),
+          `${o.id} (${o.art}) bærer "${felt}", som arten ikke har. Se ART_FELTER.`);
+      }
+    }
   });
 
   it("⚠ KATALOGET NAVNGIVER FELTER OPGAVERNE FAKTISK HAR", () => {
@@ -106,15 +157,43 @@ describe("Art styrer feltskemaet", () => {
     const post = DEMO_OPGAVER.find((o) => o.art === "vaerksted");
     assert.ok(post, "ingen værkstedsopgave i demo-sættet");
     const paakraevede = felterFor("vaerksted")
-      /* ⚠ TO FELTER ER VALGFRIE, OG DE ER DET AF HVER SIN GRUND.
+      /* ⚠ TRE FELTER ER VALGFRIE, OG DE ER DET AF HVER SIN GRUND.
          besoegId: ikke alle opgaver kom fra et besøg.
          leverandoerId: en opgave UDEN leverandør udføres på VORES egen lift af
          vores egen mekaniker — feltet er netop det der skiller intern
          vedligehold fra et eksternt værkstedsbesøg, så et krav om det ville
-         gøre den ene halvdel af sættet ugyldig. */
-      .filter((f) => f !== FELT.besoegId && f !== FELT.leverandoerId);
+         gøre den ene halvdel af sættet ugyldig.
+         sagId: en opgave kan komme fra en sag (beslutning 20) eller fra en
+         værkfører der planlægger direkte. Feltet stod på posterne før det stod
+         i kataloget — det var netop dét den omvendte prøve ovenfor fandt. */
+      .filter((f) => f !== FELT.besoegId && f !== FELT.leverandoerId
+                  && f !== FELT.sagId);
     for (const f of paakraevede) {
       assert.ok(f in post, `kataloget lover "${f}", som ingen opgave har`);
+    }
+  });
+
+  /* ⚠ SAMME PRØVE FOR FACILITY. Den fandtes kun for værksted, og det er derfor
+     facility-skemaet kunne love mindre end posterne bar uden at nogen så det. */
+  it("⚠ KATALOGET NAVNGIVER OGSÅ FACILITY-OPGAVENS FELTER", () => {
+    const poster = DEMO_OPGAVER.filter((o) => o.art === "facility");
+    assert.ok(poster.length, "ingen facility-opgave i demo-sættet");
+    /* ⚠ `leverandoerId` OG `personId` ER SVAR PÅ DET SAMME SPØRGSMÅL — hvem
+       udfører arbejdet — og en post bærer det ene eller det andet. Et krav om
+       begge ville betyde at hvert eksternt servicebesøg også skulle udpege en
+       af vores egne. `aktivId`/`lokationId` er enten-eller af samme slags og
+       prøves for sig nedenfor. */
+    const valgfri = new Set([FELT.leverandoerId, FELT.personId, FELT.sagId,
+                             FELT.sted, FELT.faktiskMin,
+                             FELT.lokationId, FELT.aktivId]);
+    for (const f of felterFor("facility")) {
+      if (valgfri.has(f)) continue;
+      assert.ok(poster.every((o) => f in o),
+        `kataloget lover "${f}", som en facility-opgave ikke har`);
+    }
+    /* Ressourcen er enten-eller, men den ENE af de to skal stå på hver post. */
+    for (const o of poster) {
+      assert.ok(o.aktivId || o.lokationId, `${o.id} har hverken aktiv eller lokation`);
     }
   });
 

@@ -56,13 +56,14 @@ import {
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
-import { ENHED } from "../../fleet/gitter.js";
+import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
 import {
   reservationFraOpgave, ressourceId, OPGAVE_STATUS,
 } from "../../fleet/opgaver.js";
 import { slutter } from "../../fleet/driftskalender.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Statusskifte from "../../fleet/Statusskifte.jsx";
+import Servicedialog from "./Servicedialog.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
@@ -82,6 +83,9 @@ export default function Servicekalender() {
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
   const [flytSvar, setFlytSvar] = useState(null);
+  /* `false` = lukket, `{}` = åben uden forslag, `{aktivId|lokationId, startMs}`
+     = åbnet fra et ledigt felt i gitteret. Se Servicedialog. */
+  const [planlaegger, setPlanlaegger] = useState(false);
 
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne kontrollen. Serveren
      spørger om den samme; det er dér den afgøres. */
@@ -191,6 +195,44 @@ export default function Servicekalender() {
     opgaver.genindlaes();
   };
 
+  /* ---- Klik på et ledigt felt: planlæg her — beslutning 51 ---- */
+
+  /* ⚠ SAMME REGNESTYKKE SOM BLOKKENE. `ledigeVinduer()` læser de blokke der
+     allerede er lagt ud, så feltet og blokken ikke kan være uenige om hvor der
+     er plads. Ét regnestykke, to visninger — som i Disponering. */
+  const dropfelter = useMemo(() => {
+    const felter = [];
+    for (const r of raekker) {
+      const mine = blokke.filter((b) => b.raekkeId === r.id);
+      for (const [i, v] of ledigeVinduer(mine, vindueFra, vindueTil).entries()) {
+        felter.push({ id: `drop-${r.id}-${i}`, raekkeId: r.id, fra: v.fra, til: v.til });
+      }
+    }
+    return felter;
+  }, [vindueFra, vindueTil, raekker.length, iVindue.length]);
+
+  /**
+   * ⚠ ET DØGN HAR INGEN KLOKKE, OG MIDNAT ER IKKE ET SVAR.
+   *
+   * Gitteret her tæller i DAGE, så feltets `fra` er lokal midnat. Sendte vi
+   * den videre, ville formularen foreslå kl. 00.00 for et servicebesøg —
+   * et tidspunkt ingen har valgt, som ser ud som en beslutning. Klokken
+   * lægges derfor på her, og den er den samme som formularens eget forslag
+   * for en tom dag. Disponerings dagsgitter har problemet ikke: dér er en
+   * kolonne en TIME, og klikket peger på et rigtigt klokkeslæt.
+   */
+  const paaLedigtFelt = (d) => {
+    const start = new Date(d.fra);
+    start.setHours(8, 0, 0, 0);
+    /* ⚠ RÆKKENS TYPE, IKKE KUN DENS ID — samme skel som i paaFlyt. Et felt på
+       en lokationsrække planlægger et besøg der spærrer HELE stedet. */
+    const type = typeFor(d.raekkeId);
+    setPlanlaegger({
+      ...(type === "facilityAktiv" ? { aktivId: d.raekkeId } : { lokationId: d.raekkeId }),
+      startMs: start.getTime(),
+    });
+  };
+
   if (henter || opgaver.henter) return <Henter hvad="servicekalenderen" />;
   /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
      aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
@@ -216,13 +258,35 @@ export default function Servicekalender() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Kort titel={`Servicekalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}>
+      <Kort
+        titel={`Servicekalender · ${dato(vindueFra)} – ${dato(vindueTil - 1)}`}
+        handling={
+          <Knap variant="primaer" onClick={() => setPlanlaegger({})}
+                disabled={!maaSkrive}
+                title={maaSkrive ? undefined : "Kræver opgaver.skriv."}>
+            Planlæg service
+          </Knap>
+        }
+      >
         <Gitterkalender
           raekker={raekker} blokke={blokke}
           fra={vindueFra} til={vindueTil} enhed={ENHED.dag}
           valgtId={valgtId} onVaelg={(b) => setValgtId(b.id === valgtId ? null : b.id)}
           onFlyt={paaFlyt}
           kanFlytte={kanFlytteBlok}
+          dropfelter={{
+            felter: dropfelter,
+            tekst: maaSkrive ? "+ Planlæg her" : "Ledigt",
+            titel: maaSkrive
+              ? "Åbner Planlæg service med anlægget og dagen udfyldt. " +
+                "facilityplanlaeg skriver besøget og dets reservation i én " +
+                "atomisk opdatering."
+              : "Ledigt tidsrum. At planlægge her kræver opgaver.skriv.",
+            /* ⚠ INGEN KNAP UDEN PERMISSION. Uden `paaFelt` er feltet hverken
+               fokuserbart eller klikbart, og `titel` siger hvorfor. En knap
+               serveren afviser, er en pæn knap. */
+            paaFelt: maaSkrive ? paaLedigtFelt : undefined,
+          }}
           tom="Ingen servicebesøg i perioden."
         />
         <Formularsvar svar={flytSvar} okTekst="Flyttet." />
@@ -231,6 +295,13 @@ export default function Servicekalender() {
           spærrer <b>hele lokationen</b> — gulvarbejdet i Hal B lukker også portene
           i hallen. Gitteret er det samme som Driftskalender og Disponering
           bruger.
+        </p>
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          <b>Gitteret opretter nu også.</b> Et ledigt felt åbner <b>Planlæg
+          service</b> med anlægget og dagen udfyldt — og et felt på en
+          lokationsrække planlægger et besøg der spærrer <b>hele stedet</b>.
+          ⚠ Rækkerne er kun de ressourcer der allerede har et besøg; et anlæg
+          uden besøg planlægges med knappen foroven.
         </p>
         <p className="fc-hint" style={{ marginTop: 8 }}>
           ⚠ <b>Trækker du et besøg fra et anlæg til en lokationsrække, skifter
@@ -288,6 +359,17 @@ export default function Servicekalender() {
           </p>
         </Kort>
       </Gitter>
+
+      {planlaegger && (
+        <Servicedialog
+          aktiver={aktiver.data}
+          lokationer={lokationer.data}
+          leverandoerer={leverandoerer.data}
+          foraf={planlaegger}
+          onLuk={() => setPlanlaegger(false)}
+          onGemt={() => { setPlanlaegger(false); opgaver.genindlaes(); genindlaes(); }}
+        />
+      )}
     </div>
   );
 }

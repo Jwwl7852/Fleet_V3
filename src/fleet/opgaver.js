@@ -151,11 +151,19 @@ export const FELT = {
   /* facility */
   aktivId: "aktivId",
   lokationId: "lokationId",
+  /* ⚠ SAGEN — OG DEN STOD PÅ POSTERNE, IKKE I KATALOGET.
+     Målt: 18 værkstedsopgaver og 9 facility-opgaver i demo-sættet bærer
+     `sagId`, og regelfilens `.validate` fik feltet ved beslutning 45. Kun
+     kataloget manglede det.
+     ⚠ Den er FÆLLES og ikke facilitys egen: begge arter kan komme fra en sag.
+     `besoegId` er noget andet — det er værkstedsbesøget i kalenderen, altså
+     hvor opgaven blev PLANLAGT, ikke hvad den handler om. */
+  sagId: "sagId",
 };
 
 const FAELLES = [
   FELT.startMs, FELT.beskrivelse, FELT.personId, FELT.sted,
-  FELT.status, FELT.prioritet, FELT.beloebOere,
+  FELT.status, FELT.prioritet, FELT.beloebOere, FELT.sagId,
 ];
 
 /* Rækkefølgen her er visningsrækkefølgen. Ét sted, så to skærme ikke lister
@@ -165,13 +173,40 @@ const ALLE_FELTER = [
   FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
   FELT.arbejdstype, FELT.leverandoerId,
   FELT.estimeretMin, FELT.faktiskMin, FELT.personId, FELT.besoegId,
-  FELT.beloebOere,
+  FELT.sagId, FELT.beloebOere,
 ];
 
+/**
+ * ⚠ FACILITY-SKEMAET LOVEDE MINDRE END POSTERNE BAR — OG PRØVEN SÅ DET IKKE.
+ *
+ * Her stod `facility: [...FAELLES, aktivId, lokationId]`, og en prøve slog
+ * fast at `harFelt("facility", "estimeretMin")` var FALSK med begrundelsen
+ * "dagsvisningen er timer, ikke døgn — varigheden hører på
+ * værkstedsopgaven". Målt i demo-sættet: **alle ni** facility-opgaver bærer
+ * `estimeretMin`, seks bærer `leverandoerId`, og Servicekalenderen regner
+ * hver eneste blok af `slutter(o)`, som læser netop estimatet.
+ *
+ * Værre: `reservationFraOpgave()` KASTER uden det, uanset art — et
+ * servicebesøg uden varighed kan ikke spærre sit anlæg. Et felt reservationen
+ * regnes af, kan ikke stå uden for artens skema.
+ *
+ * ⚠ OG PRØVEN VAR ENSRETTET. Den holdt kataloget op mod en VÆRKSTEDSOPGAVE og
+ * spurgte kun "lover kataloget noget ingen post har". Den modsatte retning —
+ * "bærer posterne noget kataloget ikke lover" — fandtes for flåden
+ * (demo-flaade.js) og ikke for opgaver. Begge retninger prøves nu, for begge
+ * arter.
+ *
+ * ⚠ `arbejdstype` BLEV UDENFOR, og det er ikke en forglemmelse. Ingen af de
+ * ni facility-opgaver bærer den, ordlisten er værkstedets og deles med
+ * Procures omkostningstype (service, reparation, dæk, syn …), og et felt der
+ * blev tilføjet fordi det KUNNE give mening, er et gæt. Kataloget beskriver
+ * hvad posterne har.
+ */
 export const ART_FELTER = {
   vaerksted: [...FAELLES, FELT.koeretoejId, FELT.arbejdstype, FELT.leverandoerId,
               FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId],
-  facility: [...FAELLES, FELT.aktivId, FELT.lokationId],
+  facility: [...FAELLES, FELT.aktivId, FELT.lokationId, FELT.leverandoerId,
+             FELT.estimeretMin, FELT.faktiskMin],
 };
 
 export const harFelt = (art, felt) => (ART_FELTER[art] || []).includes(felt);

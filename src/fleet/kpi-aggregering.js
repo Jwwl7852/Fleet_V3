@@ -256,7 +256,7 @@ export function udenKilde() {
   return {
     /* ⚠ FACILITY STÅR IKKE LÆNGERE HER. Noden er seedet, og felterne
        regnes af facilitytal() — også de tre der stadig er null
-       (klimaalarmerIDag, aabneSager, anslaaetServiceOere). De er null INDE i
+       (klimaalarmerIDag og aabneSager). De er null INDE i
        regnestykket, med grunden ved sig: et null med en grund hører hos
        beregningen, og kun de HELT ukendte kilder samles her.
 
@@ -598,6 +598,13 @@ export function facilitytal({
     prArt[a.art] = (prArt[a.art] || 0) + 1;
   }
 
+  /* ⚠ ÉT SÆT, TO TAL. `planlagtVedligehold` og `anslaaetServiceOere` skal
+     beskrive de SAMME besøg — står de ved siden af hinanden på skærmen, er
+     summen divideret med antallet ellers en pris pr. besøg der ikke findes.
+     Listen bygges derfor én gang her. */
+  const planlagteBesoeg = mineOpgaver.filter(
+    (o) => o.art === "facility" && o.status === "planlagt");
+
   return {
     aktiver: aktiver.length,
 
@@ -623,8 +630,7 @@ export function facilitytal({
        aktiv med en fremtidig service. Opgaven er ARBEJDET, aktivet er
        GENSTANDEN. Talte vi aktiver, ville "planlagt vedligehold" stige hver
        gang nogen købte en port. */
-    planlagtVedligehold: mineOpgaver.filter(
-      (o) => o.art === "facility" && o.status === "planlagt").length,
+    planlagtVedligehold: planlagteBesoeg.length,
 
     /* ⚠ EKSTERNE — altså leverandører i facility-kategorien, ikke vores egne
        folk. `aktiv` skal med: en leverandør vi er holdt op med at bruge, er
@@ -643,9 +649,27 @@ export function facilitytal({
     /* `sager/` findes ikke — beslutning 20 er fase 0, kun visning. */
     aabneSager: null,
 
-    /* Servicebesøgene har ingen node. De ligger i demo-facility.js med
-       `estimatOere`, men der er intet sted at skrive dem hen endnu. */
-    anslaaetServiceOere: null,
+    /**
+     * ⚠ HER STOD `null` MED EN FORÆLDET GRUND: "servicebesøgene har ingen
+     * node. De ligger i demo-facility.js med `estimatOere`."
+     *
+     * Begge dele holdt op med at være sandt ved beslutning 49: besøgene ER
+     * `opgaver` med art `facility`, feltet hedder `beloebOere`, og
+     * Servicekalenderen læser noden. Kilden har altså ligget der siden — og et
+     * felt der får en kilde, skal ud af efterslæbet, ikke blive stående med en
+     * begrundelse der peger på en fil ingen læser mere.
+     *
+     * ⚠ SAMME SÆT SOM `planlagtVedligehold`, OG DET ER IKKE dovenskab: de to
+     * tal står ved siden af hinanden på skærmen. Talte det ene også
+     * `afventer`, ville "anslået omkostning divideret med planlagte besøg"
+     * være en pris pr. besøg der ikke findes.
+     *
+     * ⚠ ET BESØG UDEN BELØB TÆLLER SOM NUL, ikke som et gæt. Formularen
+     * spørger ikke om prisen — den kendes sjældent når arbejdet bestilles —
+     * og et estimat opfundet her ville se ud som en måling.
+     */
+    anslaaetServiceOere: planlagteBesoeg.reduce(
+      (sum, o) => sum + (Number.isFinite(o.beloebOere) ? o.beloebOere : 0), 0),
   };
 }
 

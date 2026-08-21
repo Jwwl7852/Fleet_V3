@@ -695,15 +695,41 @@ test("⚠ EN UDGÅET LEVERANDØR ER IKKE EN VI KAN RINGE TIL", () => {
   assert.equal(t.eksterneLeverandoerer, 1);
 });
 
-test("⚠ TRE FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
+test("⚠ TO FACILITY-FELTER ER STADIG null, MED HVER SIN GRUND", () => {
   /* klimaalarmerIDag kræver HISTORIK — og er noget andet end "alarmer der er
      aktive nu", som er afledt og bevidst holdes ude af kpi/.
-     aabneSager venter på `sager/`, som ikke findes (beslutning 20, fase 0).
-     anslaaetServiceOere venter på servicebesøgene, som ingen node har. */
+     aabneSager venter på `sager/`, som ikke findes (beslutning 20, fase 0). */
   const t = facilitytal({ aktiver: [aktiv()], division: "gods", nu: NU });
   assert.equal(t.klimaalarmerIDag, null);
   assert.equal(t.aabneSager, null);
-  assert.equal(t.anslaaetServiceOere, null);
+});
+
+/**
+ * ⚠ DET TREDJE FELT FIK SIN KILDE — OG HAVDE HAFT DEN LÆNGE.
+ *
+ * `anslaaetServiceOere` stod som null med begrundelsen "servicebesøgene har
+ * ingen node; de ligger i demo-facility.js med `estimatOere`". Begge dele
+ * holdt op med at være sandt ved beslutning 49: besøgene ER `opgaver` med art
+ * `facility`, feltet hedder `beloebOere`, og Servicekalenderen læser noden.
+ *
+ * Et felt der får en kilde, skal ud af efterslæbet — ellers tæller optællingen
+ * ting der kunne regnes, og så holder man op med at tro på tallet.
+ */
+test("⚠ anslaaetServiceOere REGNES AF NODEN — samme sæt som planlagtVedligehold", () => {
+  const opgaver = [
+    { art: "facility", status: "planlagt", division: "gods", beloebOere: 120000 },
+    { art: "facility", status: "planlagt", division: "faelles", beloebOere: 80000 },
+    /* Afventer tælles IKKE: de to tal skal beskrive det samme sæt, ellers er
+       summen divideret med antallet en pris pr. besøg der ikke findes. */
+    { art: "facility", status: "afventer", division: "gods", beloebOere: 999000 },
+    /* En værkstedsopgave hører til Fleets egne tal. */
+    { art: "vaerksted", status: "planlagt", division: "gods", beloebOere: 999000 },
+    /* Et besøg UDEN beløb tæller som nul, ikke som et gæt. */
+    { art: "facility", status: "planlagt", division: "gods" },
+  ];
+  const t = facilitytal({ aktiver: [aktiv()], opgaver, division: "gods", nu: NU });
+  assert.equal(t.planlagtVedligehold, 3);
+  assert.equal(t.anslaaetServiceOere, 200000);
 });
 
 /* ---- Formen overlever ikke turen gennem RTDB --------------------------- */

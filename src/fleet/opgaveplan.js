@@ -41,7 +41,7 @@ import {
 } from "./opgaveplan-regler.js";
 
 export {
-  PLANSVAR, planBesked, tolkPlanfejl, valideOpgaveplan,
+  PLANSVAR, planBesked, tolkPlanfejl, valideOpgaveplan, valideFacilityopgave,
   PLANLAEGBAR_STATUS, MAKS_MINUTTER,
   FLYTBAR_STATUS, FLYTBARE_TYPER, valideOpgaveflyt, flytEfter, erFlyttet,
   kanFlyttes,
@@ -51,6 +51,13 @@ export {
 /* Småt navn — en 2. generations funktion bliver en Cloud Run-tjeneste, og et
    tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
 export const PLANFUNKTION = "opgaveplanlaeg";
+/* ⚠ SIT EGET NAVN, IKKE ET FLAG PÅ DEN FØRSTE. Arten er feltskemaet, og en
+   funktion der tog den udefra, ville skulle bære begge — og så kunne
+   Driftskalenderen oprette facilitys poster. Se opgaveplan-regler.js.
+   ⚠ OG NAVNET SIGER MODULET, ikke handlingen: modulspærringen er den anden
+   halvdel af forskellen. `opgaveplanlaeg` kræver Fleet, `facilityplanlaeg`
+   kræver Facility — en kunde der kun har det ene, skal kunne bruge det. */
+export const FACILITYFUNKTION = "facilityplanlaeg";
 export const FLYTFUNKTION = "opgaveflyt";
 export const STATUSFUNKTION = "opgavestatus";
 
@@ -197,6 +204,52 @@ export async function skiftOpgaveStatus({ opgaveId, foer, status, faktiskMin }) 
       return {
         ok: false, art: PLANSVAR.demo,
         besked: "Demo-tilstand: der er ingen server, så intet blev ændret.",
+        data: null,
+      };
+    }
+    return { ok: false, ...tolkPlanfejl(fejl), data: null };
+  }
+}
+
+/**
+ * planlaegFacilityopgave(post) → { ok, art, besked, data }
+ *
+ * Servicekalenderens vej ind. Samme svarform som de tre andre, og den kaster
+ * aldrig: "du må ikke", "anlægget er optaget" og "der er ingen forbindelse"
+ * er tre forskellige ting.
+ *
+ * ⚠ DEN SENDER IKKE `art`. Serveren SÆTTER `facility`. Kom arten udefra,
+ * kunne en kunde uden Fleet oprette en værkstedsopgave gennem Facilitys dør.
+ *
+ * ⚠ ENTEN `aktivId` ELLER `lokationId`. Begge felter på én post reserverer
+ * anlægget og lader lokationen stå som en påstand ingen læser — og et besøg
+ * uden anlæg spærrer HELE stedet, hvilket er forskellen på at lukke en port
+ * og at lukke en hal.
+ */
+export async function planlaegFacilityopgave(post) {
+  try {
+    const svar = await kaldFunktion(FACILITYFUNKTION, {
+      /* undefined frem for null — se planlaegOpgave(). Her er det ikke bare
+         pænhed: netop DE TO felter er hinandens alternativ, og et `null` ville
+         være et svar på et spørgsmål der ikke blev stillet. */
+      aktivId: post.aktivId || undefined,
+      lokationId: post.lokationId || undefined,
+      division: post.division,
+      status: post.status,
+      startMs: post.startMs,
+      estimeretMin: post.estimeretMin,
+      beskrivelse: post.beskrivelse,
+      leverandoerId: post.leverandoerId || undefined,
+      prioritet: post.prioritet || undefined,
+      sted: post.sted || undefined,
+      personId: post.personId || undefined,
+    });
+    return { ok: true, art: PLANSVAR.ok, besked: null, data: svar?.data ?? null };
+  } catch (fejl) {
+    if (/ingen Firebase-app/i.test(String(fejl?.message))) {
+      return {
+        ok: false, art: PLANSVAR.demo,
+        besked: "Demo-tilstand: der er ingen server, så intet blev gemt.",
         data: null,
       };
     }

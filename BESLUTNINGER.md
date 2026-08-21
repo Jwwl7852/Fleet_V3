@@ -2942,3 +2942,134 @@ Det er samme fejl som prøven der søgte efter `.fc-btn` i hele `fleet.css` og
 fandt en længere selektor. En prøve der leder det forkerte sted, er værre end
 ingen: den fejler på det rigtige og fjerner grunden til at skrive noget ned.
 Begge stripper nu kommentarer først.
+
+## 51. Facility kunne flytte og afslutte sine servicebesøg — men ikke oprette et
+
+`opgaver` er `.write: false` (beslutning 45), og indtil nu havde noden **tre**
+veje ind: `opgaveplanlaeg` opretter, `opgaveflyt` flytter (49), `opgavestatus`
+skifter status (50). De to sidste er art-agnostiske og virkede derfor for
+Facility. Den første er det ikke: den **sætter** `art: "vaerksted"`.
+
+Servicekalenderen skrev selv, hvad det betød:
+
+> ⚠ SKÆRMEN FLYTTER, MEN DEN OPRETTER IKKE. […] At oprette en facility-opgave
+> er stadig en lukket vej der skal genåbnes med sin EGEN funktion — se README.
+> **En knap her ville love noget serveren afviser.**
+
+`facilityplanlaeg` er den funktion, og den er den **sidste** lukkede vej ind i
+noden.
+
+### ⚠ Hvorfor det ikke er et art-flag på `opgaveplanlaeg`
+
+To ting skiller de to funktioner ad, og **begge er spærringer**:
+
+1. **Feltskemaet.** `art` ER skemaet (beslutning 21). En værkstedsopgave
+   hænger på et køretøj og har en arbejdstype; et servicebesøg hænger på et
+   anlæg eller en hel lokation og har ingen. En funktion med et flag skulle
+   bære begge skemaer — og så er der intet tilbage af den spærring
+   `art !== "vaerksted"` er.
+2. **Modulet.** `opgaveplanlaeg` kræver `moduler.flaade`; den nye kræver
+   `moduler.facility`. Spurgte begge om Fleet, kunne en kunde der **kun** har
+   Facility, ikke planlægge sit eget servicebesøg. Og lå begge arter i én
+   funktion, ville arten fra klienten vælge hvilken dør der blev banket på.
+
+Det er samme snit som mellem `opgaveplanlaeg` og `opgaveflyt`: den ene
+OPRETTER, den anden ÆNDRER, og de stiller ikke de samme spørgsmål.
+
+### ⚠ Et anlæg **eller** et sted — ikke begge
+
+`ressourceId()` foretrækker `aktivId`. En post med begge felter reserverer
+altså **anlægget**, mens lokationen står som en påstand ingen læser — og
+anlæggets lokation står allerede på anlægget. Det er samme regel som at en
+enhed ikke får en `pladsId`: to steder til samme kendsgerning driver fra
+hinanden første gang nogen flytter porten til en anden hal.
+
+**Målt: fem af de ni facility-opgaver i demo-sættet bar begge felter**, og alle
+fem var **enige** med aktivets eget `lokationId`. Sådan ser en dublet ud lige
+indtil den ikke gør. De fem er ryddet, og en selvkontrol fanger den næste.
+
+Enten-eller er desuden bygget ind i **vælgeren**: ressourcen er ét felt med
+værdier som `aktiv:fa-port3` og `lok:lok-halb`. En form der ikke kan skrive den
+forkerte post, er bedre end en validering der afviser den bagefter.
+
+⚠ Og et besøg **uden** anlæg spærrer **hele lokationen** — ressourcen bliver
+`lokation`, ikke `facilityAktiv`. Lukker man hallen, er alle porte i den også
+optaget.
+
+### ⚠ Anlæggets status spærrer ikke — modsat køretøjets
+
+`opgaveplanlaeg` afviser en **solgt** eller **skrottet** enhed: den er ude af
+flåden for altid, og en opgave på den ville se helt normal ud i en tabel.
+
+Den nye funktion har med vilje **ingen** tilsvarende spærring. Et anlæg med
+status `fejl` eller `udeAfDrift` er præcis det et servicebesøg findes for — en
+spærring dér ville forbyde at bestille reparationen af den port der er gået i
+stykker. Forskellen er ikke inkonsekvens: den ene status er **endelig**, den
+anden er **det der skal laves om**.
+
+Statussen står i stedet i vælgerens etiket, så man kan se hvad man bestiller
+til.
+
+### ⚠ Divisionen låses ikke til `faelles`
+
+Skærmen reagerer ikke på Gods/Bus — anlæggene er de samme uanset hvem der kører
+gennem porten. Men opgaven bærer **hvem der betaler**, og det er ikke altid
+fælles: **målt** står `op-013`, eftersynet af busladestanderne i Aalborg, som
+`bus`. Låste funktionen feltet, kunne den post ikke oprettes gennem den skærm
+der viser den. `faelles` er derfor **forslaget**, ikke låsen.
+
+### ⚠ Det kataloget lovede, og det posterne bar
+
+Undervejs viste `ART_FELTER` sig at være uenigt med noden — femte gang et
+feltnavn har kostet noget her:
+
+| Felt | Kataloget sagde | Posterne bar |
+|---|---|---|
+| `estimeretMin` | kun værksted | **alle ni** facility-opgaver |
+| `leverandoerId` | kun værksted | seks af ni |
+| `faktiskMin` | kun værksted | skrives af `opgavestatus` for **begge** arter |
+| `sagId` | ingen af dem | **begge** arter, og regelfilen kender feltet |
+
+Prøven der skulle fange det, hed *"giver kun værkstedsopgaven en varighed i
+minutter"* og **slog det modsatte fast** med begrundelsen "dagsvisningen er
+timer, ikke døgn". Men `reservationFraOpgave()` **kaster** uden `estimeretMin`,
+uanset art: et servicebesøg uden varighed kan ikke spærre sit anlæg, og så ser
+anlægget frit ud mens der bliver arbejdet på det. Et felt reservationen regnes
+af, kan ikke stå uden for artens skema.
+
+⚠ **Og prøven var ensrettet.** Den spurgte kun "lover kataloget noget ingen
+post har". Den modsatte retning — "bærer posterne noget kataloget ikke lover" —
+fandtes for flåden og ikke for opgaver. Begge retninger prøves nu, for begge
+arter. Det er nøjagtig den fejlklasse README allerede navngiver: *et katalog
+der ikke matcher dataene, er værre end intet katalog* — her bare vendt om, så
+skærmen fik **nej** til et felt der står på hver eneste post.
+
+`arbejdstype` blev **udenfor**: ingen facility-opgave bærer den, og ordlisten
+er værkstedets — den deles med Procures omkostningstype. Et felt tilføjet fordi
+det *kunne* give mening, er et gæt.
+
+### ⚠ Det gitteret ikke kan, og hvorfor knappen findes
+
+Rækkerne i Servicekalenderen er kun de ressourcer der **allerede** har et
+besøg. Et ledigt felt åbner formularen med anlægget og dagen udfyldt, men et
+anlæg uden besøg har ingen række — derfor står knappen "Planlæg service"
+foroven, hvor hele kartoteket kan vælges.
+
+⚠ **Og et døgn har ingen klokke.** Gitteret her tæller i dage, så feltets `fra`
+er lokal midnat. Sendt videre ville formularen foreslå kl. 00.00 — et tidspunkt
+ingen har valgt, som ser ud som en beslutning. Klokkeslættet lægges på ved
+klikket. Disponerings dagsgitter har problemet ikke: dér er en kolonne en time.
+
+### Det der stadig ikke holdes af datamodellen
+
+En reservation på `lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to
+forskellige stier. Et gulvarbejde i Hal B spærrer derfor **ikke** porten i den
+hal — hverken her eller i `opgaveflyt`, som har haft det hul siden 49. Skærmen
+siger det rigtige ("lukker man hallen, er alle porte i den også optaget");
+datamodellen håndhæver det ikke.
+
+Det er skrevet ned frem for lappet: en indeslutningsregel er sin egen
+beslutning — den skal gælde begge veje, i begge funktioner og i
+`tjekDisponering()` — og et halvt tjek i **én** af dem ville være værre end
+ingen, fordi skærmen så ville vise en ledighed serveren afviser i det ene
+tilfælde og ikke i det andet.

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **50 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **51 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -37,7 +37,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
-  `null` for de 52 felter hvis kilde ikke findes — og feltet UDELADES ikke:
+  `null` for de 51 felter hvis kilde ikke findes — og feltet UDELADES ikke:
   står det med null, kan man se af noden at spørgsmålet er stillet. Får et
   felt en kilde, fjernes det fra `udenKilde()` ét sted.
   ⚠ Og **flåden og bemandingen kan ikke deles på division**: stamdata bærer
@@ -488,10 +488,9 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   optaget. `reservationer` er `.write: false`, så en klient kunne kun skrive
   den ene halvdel — og **en opgave uden reservation ser FRI ud i
   disponeringen** mens bilen står på liften. Det er beslutning 4's fejl.
-  ⚠ **To veje er lukket med, og de skal genåbnes med hver sin funktion:** en
-  FACILITY-opgave (`opgaveplanlaeg` sætter `art: "vaerksted"`) og et
-  STATUSSKIFTE. Løsn ikke `.write` igen — et statusskifte rører også
-  reservationen.
+  ⚠ **Begge de lukkede veje er nu genåbnet med hver sin funktion:**
+  `facilityplanlaeg` opretter et servicebesøg (beslutning 51) og
+  `opgavestatus` skifter status (50). Løsn ikke `.write` igen.
   ⚠ **Og `.validate` på `opgaver` kan ikke nås af en klient længere.** Blokken
   beskriver stadig formen serveren skal overholde, men håndhævelsen ligger i
   `opgaveMangler()` og `valideOpgaveplan()`. Skriv ikke en regelprøve der
@@ -539,12 +538,17 @@ kan ikke komme ud af sync.
   for **fakturagrundlag** (`naesteGrundlagsnummer`), men `naesteBookingNummer`
   kaldes **ingen steder**: der findes ingen `bookingopret`, og `bookinger` er
   `.write: false`. En booking kan altså ikke oprettes af en klient.
-- **`opgaver` har nu TRE veje ind, og ÉN der stadig er lukket.**
-  `opgaveplanlaeg` opretter en værkstedsopgave, `opgaveflyt` flytter en opgave
-  af begge arter, og `opgavestatus` skifter dens status — alle tre skriver
-  opgaven OG dens reservation i én `update()`. Det der stadig kræver sin egen
-  funktion, er at OPRETTE en facility-opgave. Løsn ikke `.write` igen.
-  Se beslutning 45, 49 og 50.
+- **`opgaver` har nu FIRE veje ind, og ingen der er lukket.**
+  `opgaveplanlaeg` opretter en værkstedsopgave, `facilityplanlaeg` et
+  servicebesøg, `opgaveflyt` flytter en opgave af begge arter, og
+  `opgavestatus` skifter dens status — alle fire skriver opgaven OG dens
+  reservation i én `update()`. Løsn ikke `.write` igen: det er stadig
+  vejen der er lukket, ikke retten. Se beslutning 45, 49, 50 og 51.
+  ⚠ **Det der ikke holdes af datamodellen:** en reservation på
+  `lokation/<id>` og en på `facilityAktiv/<id>` er to stier, så et
+  gulvarbejde i en hal spærrer ikke portene i den. Skærmen siger det
+  rigtige; reglen findes ikke. En indeslutningsregel er sin egen
+  beslutning — byg den ikke halvt i én funktion.
 - **Disponering er BYGGET som visning, og de fem tjek håndhæves — i
   `etapeskift`, ikke i skærmen.** `kanDisponeres()`, `kraevedeKompetencer()`
   + `tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og

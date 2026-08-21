@@ -237,6 +237,111 @@ export function valideOpgaveplan(post = {}, { enheder = null, leverandoerer = nu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   AT PLANLÆGGE ET SERVICEBESØG — den sidste lukkede vej
+
+   ⚠ HVORFOR DET IKKE ER ET FLAG PÅ valideOpgaveplan().
+
+   `art` er ikke en variant af den samme post — den er FELTSKEMAET
+   (beslutning 21). En værkstedsopgave hænger på et køretøj og har en
+   arbejdstype; et servicebesøg hænger på et anlæg eller en hel lokation og
+   har ingen. En funktion med et art-flag ville skulle bære begge skemaer, og
+   så er der ingenting tilbage af den spærring `art !== "vaerksted"` er:
+   Driftskalenderen kunne oprette facilitys poster og omvendt.
+
+   ⚠ OG DET GÆLDER OGSÅ SERVEREN. `facilityplanlaeg` SÆTTER `art: "facility"`
+   ligesom `opgaveplanlaeg` sætter `vaerksted`. Kom arten udefra, ville
+   modulspærringen kunne omgås: en kunde uden Fleet kunne oprette en
+   værkstedsopgave gennem Facilitys dør.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * valideFacilityopgave(post, { aktiver, lokationer, leverandoerer }) → { ok, fejl }
+ *
+ * Samme form og samme svar som `valideOpgaveplan()`, og de deler `tidsfelter()`
+ * — et servicebesøg og et værkstedsbesøg spærrer hver sin ressource på præcis
+ * samme måde, og sætningen om en manglende varighed skal være den samme.
+ */
+export function valideFacilityopgave(
+  post = {}, { aktiver = null, lokationer = null, leverandoerer = null } = {}
+) {
+  const f = {};
+
+  /* ⚠ KUN FACILITY HERFRA — modstykket til `art !== "vaerksted"` ovenfor. */
+  if (post.art !== "facility") {
+    f.art = "Servicekalenderen planlægger facility-opgaver. Værkstedet har sin egen skærm.";
+  }
+
+  /* ⚠ ENTEN ET ANLÆG ELLER ET STED — IKKE BEGGE.
+     `ressourceId()` foretrækker `aktivId`, så en post med begge felter
+     reserverer ANLÆGGET og lader lokationen stå som en påstand ingen læser.
+     Og anlæggets lokation står allerede på anlægget: to steder til samme
+     kendsgerning driver fra hinanden første gang nogen flytter porten til en
+     anden hal. Det er samme regel som at en enhed ikke får en `pladsId`.
+     ⚠ MÅLT: fem af de ni facility-opgaver i demo-sættet bar begge felter. */
+  if (post.aktivId && post.lokationId) {
+    f.aktivId =
+      "Vælg enten et anlæg eller hele lokationen — ikke begge. Anlæggets " +
+      "lokation står på anlægget.";
+  } else if (!post.aktivId && !post.lokationId) {
+    f.aktivId = "Vælg hvilket anlæg besøget står på — eller hele lokationen.";
+  } else if (post.aktivId && aktiver && !aktiver.includes(post.aktivId)) {
+    f.aktivId = "Ukendt anlæg.";
+  } else if (post.lokationId && lokationer && !lokationer.includes(post.lokationId)) {
+    f.lokationId = "Ukendt lokation.";
+  }
+
+  /* ⚠ DIVISIONEN SÆTTES IKKE TIL `faelles` AF SIG SELV.
+     Skærmen reagerer ikke på Gods/Bus — anlæggene er de samme uanset hvem der
+     kører gennem porten — men opgaven bærer stadig HVEM DER BETALER, og det
+     er ikke altid fælles. Målt: `op-013`, eftersynet af busladestanderne i
+     Aalborg, står som `bus`. Låste funktionen feltet til `faelles`, ville den
+     post ikke kunne oprettes gennem skærmen der viser den. */
+  if (!["gods", "bus", "faelles"].includes(post.division)) {
+    f.division = "Vælg hvilken division der bærer omkostningen.";
+  }
+
+  if (!PLANLAEGBAR_STATUS.includes(post.status)) {
+    f.status = "Et besøg man planlægger, er planlagt eller afventende — ikke i gang eller udført.";
+  }
+
+  /* ⚠ INGEN ARBEJDSTYPE. Arten HAR ikke feltet (se ART_FELTER), og ordlisten
+     er værkstedets. Et felt arten ikke har, er ikke et tomt felt — det er en
+     post der ikke passer på sit eget skema. */
+  if (post.arbejdstype) {
+    f.arbejdstype = "Et servicebesøg har ingen arbejdstype — ordlisten er værkstedets.";
+  }
+
+  if (post.leverandoerId && leverandoerer && !leverandoerer.includes(post.leverandoerId)) {
+    f.leverandoerId = "Ukendt leverandør.";
+  }
+
+  if (post.prioritet != null && !ALLE_PRIORITETER.includes(post.prioritet)) {
+    f.prioritet = "Ukendt prioritet.";
+  }
+
+  tidsfelter(post, f);
+
+  if (typeof post.beskrivelse === "string" && post.beskrivelse.length > 500) {
+    f.beskrivelse = "Højst 500 tegn.";
+  }
+  if (!post.beskrivelse?.trim()) {
+    f.beskrivelse = "Skriv hvad der skal laves.";
+  }
+
+  /* Nodens eget katalog til sidst — samme greb som i valideOpgaveplan().
+     ⚠ NODEN NAVNGIVER RESSOURCEN "aktivId eller lokationId", og det er ikke
+     et feltnavn. Uden oversættelsen ville den manglende ressource stå BÅDE
+     ved feltet og som en nodefejl nederst — to sætninger om én mangel. */
+  const NODENOEGLE = { "aktivId eller lokationId": "aktivId" };
+  for (const mangel of opgaveMangler(post)) {
+    const noegle = NODENOEGLE[mangel] || mangel;
+    if (!f[noegle]) f._node = `Noden afviser posten: ${mangel}.`;
+  }
+
+  return { ok: Object.keys(f).length === 0, fejl: f };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    AT FLYTTE EN OPGAVE — beslutning 49
 
    ⚠ EN FLYTNING ER IKKE EN OPRETTELSE, OG DEN ER HELLER IKKE TO SKRIVNINGER.

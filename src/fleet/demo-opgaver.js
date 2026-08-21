@@ -216,21 +216,33 @@ export const DEMO_OPGAVER = [
 
      ⚠ ID'ERNE ER BEVARET som fs-00N, af samme grund som vb-00N blev det.
      ══════════════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ FEM AF DE HER POSTER BAR BÅDE `aktivId` OG `lokationId`.
+
+     De to er hinandens ALTERNATIV, ikke to felter man udfylder sammen:
+     `ressourceId()` foretrækker aktivet, så lokationen stod som en påstand
+     ingen læser — og anlæggets lokation står allerede på anlægget. Målt:
+     alle fem var ENIGE med aktivets eget `lokationId`, hvilket er præcis
+     hvordan en dublet ser ud lige indtil nogen flytter porten til en anden
+     hal. Det er samme regel som at en enhed ikke får en `pladsId`.
+
+     `fs-004` har med vilje KUN en lokation: hele hallen spærres.
+     ══════════════════════════════════════════════════════════════════════ */
   { id: "fs-001", art: "facility", division: "faelles", startMs: dag(1, 8),
-    aktivId: "fa-port3", lokationId: "lok-halb", leverandoerId: "lv-crawford",
+    aktivId: "fa-port3", leverandoerId: "lv-crawford",
     beskrivelse: "Udskiftning af portmotor", status: "planlagt", prioritet: "normal",
     /* Den ENE der har en sag: FAC-2026-00127 står på fa-port3 i demo-sag.js. */
     sagId: "sag-fac-127",
     estimeretMin: minutter(dag(1, 8), dag(1, 12)), faktiskMin: null, beloebOere: 1840000 },
   { id: "fs-002", art: "facility", division: "faelles", startMs: dag(1, 7),
-    aktivId: "fa-frost1", lokationId: "lok-halb", leverandoerId: "lv-koelecenter",
+    aktivId: "fa-frost1", leverandoerId: "lv-koelecenter",
     beskrivelse: "Halvårligt serviceeftersyn på fryseanlæg", status: "planlagt", prioritet: "lav",
     estimeretMin: minutter(dag(1, 7), dag(1, 15)), faktiskMin: null, beloebOere: 960000 },
   /* ⚠ EN DER ER I GANG, og den er ikke pynt: `kanFlyttes()` afviser den, så
      gitteret kan vise at en blok under arbejde ikke kan trækkes. Uden en
      sådan post ville spærringen aldrig blive set i demo. */
   { id: "fs-003", art: "facility", division: "faelles", startMs: dag(-1, 7),
-    aktivId: "fa-vask", lokationId: "lok-kolding", leverandoerId: "lv-wash",
+    aktivId: "fa-vask", leverandoerId: "lv-wash",
     beskrivelse: "Vaskehal ude af drift – dysebom udskiftes", status: "igang", prioritet: "hoej",
     estimeretMin: minutter(dag(-1, 7), dag(2, 16)), faktiskMin: null, beloebOere: 3120000 },
   /* ⚠ INTET aktivId: hele hallen spærres, ikke ét anlæg. Ressourcen bliver
@@ -241,11 +253,11 @@ export const DEMO_OPGAVER = [
     beskrivelse: "Epoxybehandling af gulv – hallen kan ikke bruges", status: "planlagt", prioritet: "normal",
     estimeretMin: minutter(dag(4, 6), dag(4, 18)), faktiskMin: null, beloebOere: 4450000 },
   { id: "fs-005", art: "facility", division: "faelles", startMs: dag(2, 9),
-    aktivId: "fa-lade2", lokationId: "lok-kolding", leverandoerId: "lv-clever",
+    aktivId: "fa-lade2", leverandoerId: "lv-clever",
     beskrivelse: "Fejlsøgning E14 på ladestander", status: "planlagt", prioritet: "normal",
     estimeretMin: minutter(dag(2, 9), dag(2, 13)), faktiskMin: null, beloebOere: 620000 },
   { id: "fs-006", art: "facility", division: "faelles", startMs: dag(5, 8),
-    aktivId: "fa-port5", lokationId: "lok-aalborg", leverandoerId: "lv-crawford",
+    aktivId: "fa-port5", leverandoerId: "lv-crawford",
     beskrivelse: "Årligt eftersyn", status: "planlagt", prioritet: "lav",
     estimeretMin: minutter(dag(5, 8), dag(5, 11)), faktiskMin: null, beloebOere: 740000 },
 
@@ -396,6 +408,22 @@ if (import.meta.env?.DEV) {
        være bevidst; se README. */
     if ("kundeId" in o || "fakturerbar" in o) {
       console.warn(`demo-opgaver: ${o.id} har kundeId/fakturerbar. Opgaver er egen flåde — se README.`);
+    }
+    /* ⚠ ET ANLÆG ELLER ET STED — IKKE BEGGE. Fem af posterne bar begge, og
+       de var alle enige med aktivets eget lokationId; sådan ser en dublet ud
+       lige indtil nogen flytter anlægget. `ressourceId()` læser kun aktivet,
+       så lokationen ville stå som en påstand ingen kan se er forkert.
+       `facilityplanlaeg` afviser det nu — beslutning 51. */
+    if (o.art === "facility" && o.aktivId && o.lokationId) {
+      console.warn(
+        `demo-opgaver: ${o.id} har både aktivId og lokationId. De er hinandens ` +
+        `alternativ — anlæggets lokation står på anlægget.`
+      );
+    }
+    /* Og den ene af de to SKAL stå der: uden en ressource kan besøget ikke
+       reserveres, og så ser anlægget frit ud mens der bliver arbejdet på det. */
+    if (o.art === "facility" && !o.aktivId && !o.lokationId) {
+      console.warn(`demo-opgaver: ${o.id} har hverken aktivId eller lokationId.`);
     }
   }
 

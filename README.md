@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 50 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 51 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -158,6 +158,7 @@ tilfældigt.
 | 48 | **Skriftstørrelser er ni tokens, ikke 24 tal spredt i filen.** Beslutning 47 pegede videre: **68 % af tegnene på dashboardet stod på 13 px eller mindre**, 37 % på 12,5 eller mindre — lille skrift med hård kontrast er den mest trættende kombination der findes. `fleet.css` havde 24 forskellige størrelser på 119 steder, otte med halve pixels (8,5 · 9,5 · 10,5 …). Samme fejl som rå farver var før beslutning 10: to tal der næsten er ens, er to lejligheder til at være uenige. Brødteksten er nu **14**, ikke 13. ⚠ Fire verdener, ikke én skala: skærmens tekst må vokse, men **mærkatet** (100 × 200 mm, afledt af 203 dpi — beslutning 46) og **donutens SVG-tekst** (`font-size:6` er seks viewBox-enheder, ikke pixels) må ikke. Ét gulv over alle 119 steder havde printet teksten ud over etiketten. ⚠ `.fc-table th` stod på **10,5 px** — hver eneste tabeloverskrift i programmet, det man læser først, var mindre end alt andet. ⚠ Kalenderens kolonne fik lov at vokse fra 30 til 34 px, fordi det blev **målt**: 180 + 28 × 34 = 1132 px mod 1240 til rådighed. Havde det ikke passet, skulle skriften være blevet stående — en kalender der ruller er værre end en med lille skrift | `fleet/fleet.css`, `test/skrift.test.mjs` |
 | 49 | **Gitteret flytter opgaver — `opgaveflyt`, og attrappen er væk.** "Træk opgave hertil" kunne ikke fokuseres eller klikkes; det man ville trække, er en **opdatering** af en post, og `opgaveplanlaeg` opretter kun ("INTET id. Serveren laver push-nøglen"). ⚠ Den krævede **ingen regelændring** — `opgaver` og `reservationer` er begge `.write: false` i forvejen; det blev målt frem for antaget. ⚠ To fælder, og begge kan kun ses i et regnestykke, derfor er `flytOpdatering()` **ren**: **samme ressource er samme nøgle** (et objekt har én værdi pr. nøgle, så "null den gamle + skriv den nye" på samme sti bliver til én af delene — landede `null` sidst, forsvandt reservationen mens bilen stod på liften), og **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id). ⚠ Og **et døgn er ikke 24 timer**: rå addition over sommertidsskiftet flytter et 07-besøg til 08. ⚠ **Blokkens tegning er ikke opgavens varighed** — en opgave uden estimat tegnes som én time, og regnedes `estimeretMin` af blokken, ville den time blive et rigtigt estimat. ⚠ **Arten flyttes ikke med**, og modulet følger den. En facility-opgave har **to** ressourcetyper: et træk fra en port til en hal skifter TYPE og rydder `aktivId` | `fleet/opgaveplan-regler.js`, `fleet/gitter.js`, `functions/index.js` |
 | 50 | **Opgavens statusmaskine havde seks tilstande og nul veje imellem dem.** En driftsopgave kunne oprettes og flyttes, men aldrig meldes i gang eller udført — mens Arbejdskøen viste statusserne og `kpi.opgaver` talte dem op. ⚠ **Et statusskifte rører reservationen**, og det er derfor det er en serversag: en annulleret opgave skal give bilen fri igen, en udført skal holde op med at spærre den, og `reservationer` er `.write: false` — en klient kunne kun skrive den ene halvdel. ⚠ `udfoert` kan **kun** nås fra `igang` (et besøg meldes ikke færdigt uden at nogen har haft bilen på liften — som klargøringstrinnet i 37), man kan ikke **af-starte** et arbejde, og `udfoert`/`annulleret` er **endestationer**. ⚠ **Reservationen afkortes til nu — men forlænges ALDRIG:** løb arbejdet over sin tid, kan perioden allerede være lovet væk, og en udvidelse ville lave et overlap modellen afviser. Meldes den færdig før den begyndte, fjernes den. `afkortet: true` fordi flaget er vigtigere end tallet. ⚠ **Tre tal, tre betydninger:** `estimeretMin` er hvad vi troede, reservationens `til` hvor længe RESSOURCEN var optaget, `faktiskMin` hvor længe ARBEJDET tog — en bil kan holde på liften i seks timer og blive arbejdet på i to. ⚠ `faktiskMin` er **valgfri**, og svaret stod allerede i koden: `kpi.opgaver.udenTidsregistrering` tæller dem der mangler. Et krævet felt ville blive udfyldt med fiktion | `fleet/opgaveplan-regler.js`, `fleet/Statusskifte.jsx`, `functions/index.js` |
+| 51 | **Facility kunne flytte og afslutte sine servicebesøg — men ikke oprette et.** `opgaveplanlaeg` SÆTTER `art: "vaerksted"`, så den sidste lukkede vej ind i `opgaver` krævede sin egen funktion — Servicekalenderen skrev det selv: *"En knap her ville love noget serveren afviser."* ⚠ **Ikke et art-flag**, og begge grunde er spærringer: `art` ER feltskemaet (21), og modulet er `facility` mod `flaade` — spurgte begge om Fleet, kunne en kunde der KUN har Facility, ikke planlægge sit eget besøg. ⚠ **Et anlæg ELLER et sted, ikke begge:** `ressourceId()` foretrækker aktivet, så lokationen ville stå som en påstand ingen læser — og anlæggets lokation står på anlægget. Målt: **fem af ni** demo-poster bar begge, alle fem enige med aktivets eget felt. Enten-eller er bygget ind i **vælgeren**. ⚠ **Anlæggets status spærrer ikke** — modsat en solgt bil er en port i stykker præcis det et servicebesøg findes for. ⚠ **Divisionen låses ikke til `faelles`:** opgaven bærer hvem der BETALER, og `op-013` står som `bus`. ⚠ Undervejs: `ART_FELTER.facility` lovede **mindre** end posterne bar (`estimeretMin` på alle ni, `leverandoerId` på seks, `sagId` på begge arter) — og prøven slog det modsatte fast. Et felt reservationen regnes af, kan ikke stå uden for artens skema; begge retninger prøves nu | `fleet/opgaveplan-regler.js`, `moduler/facility/Servicedialog.jsx`, `functions/index.js` |
 
 ## Struktur
 
@@ -505,9 +506,19 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    annulleret opgave giver bilen fri, en udført afkorter reservationen til nu.
    Knapperne tegnes af `OPGAVE_OVERGANGE`, ét sted, og bruges af alle tre
    skærme.
-6. **At OPRETTE en facility-opgave.** Den ENESTE lukkede vej der er tilbage —
-   `opgaveplanlaeg` sætter `art: "vaerksted"`, så Servicekalenderen kan flytte
-   og skifte status på sine besøg, men ikke lave nye. Kræver sin egen funktion.
+6. ~~**At OPRETTE en facility-opgave.**~~ **Bygget** — beslutning 51.
+   `facilityplanlaeg` er noden `opgaver`' **fjerde og sidste** vej ind.
+   Servicekalenderen har nu både en knap og et klikbart ledigt felt.
+   ⚠ **Ikke et art-flag på `opgaveplanlaeg`:** `art` ER feltskemaet, og
+   modulet er `facility` mod `flaade`. Spurgte begge om Fleet, kunne en
+   kunde der kun har Facility, ikke planlægge sit eget servicebesøg.
+   ⚠ **Det der IKKE er lukket:** en reservation på `lokation/lok-halb` og
+   en på `facilityAktiv/fa-port3` er to stier, så et gulvarbejde i Hal B
+   spærrer **ikke** porten i den hal — hverken her eller i `opgaveflyt`.
+   Skærmen siger det rigtige; datamodellen håndhæver det ikke. En
+   indeslutningsregel er sin egen beslutning: den skal gælde begge veje, i
+   begge funktioner og i `tjekDisponering()`, og et halvt tjek i én af dem
+   ville være værre end ingen.
 
 ### Længdebåndet — trin 3 af beslutning 18 er lukket
 
@@ -671,13 +682,23 @@ En opgave uden `estimeretMin` får slet ingen reservation: `slutter()` svarer
 ingen har besluttet. `kanFlyttes()` afviser sådan en opgave helt — af samme
 grund, og med den samme sætning på skærmen som serveren ville have svaret.
 
-**Det der står tilbage, er ÉN lukket vej:** at **oprette** en facility-opgave.
-`opgaveplanlaeg` sætter `art: "vaerksted"`, så Servicekalenderen kan flytte og
-skifte status på sine besøg, men ikke lave nye. Det kræver sin egen funktion.
+**Der er ikke flere lukkede veje.** `facilityplanlaeg` opretter et
+servicebesøg (beslutning 51), og `opgaver` har dermed **fire** veje ind — alle
+fire skriver opgaven og dens reservation i én atomisk opdatering. Noden bliver
+`.write: false`: det er vejen der er lukket, ikke retten.
 
-*(Statusskiftet stod her indtil beslutning 50. `opgavestatus` er bygget:
-`opgaver` har nu tre veje ind, og alle tre skriver opgaven og dens reservation
-i én atomisk opdatering.)*
+*(Her stod først at statusskiftet manglede, derefter at oprettelsen af en
+facility-opgave gjorde. Begge er bygget — 50 og 51.)*
+
+⚠ **Det der IKKE er lukket, er en indeslutningsregel.** En reservation på
+`lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to forskellige stier,
+så et gulvarbejde i Hal B spærrer **ikke** porten i den hal — hverken i
+`facilityplanlaeg` eller i `opgaveflyt`, som har haft hullet siden 49.
+Servicekalenderen siger det rigtige ("lukker man hallen, er alle porte i den
+også optaget"); datamodellen håndhæver det ikke. Reglen skal gælde begge veje,
+i begge funktioner og i `tjekDisponering()` — et halvt tjek i én af dem ville
+være værre end ingen, fordi skærmen så viste en ledighed serveren afviser i det
+ene tilfælde og ikke i det andet.
 
 ### Gitterkalenderen er en genbrugskontrakt
 
@@ -1253,7 +1274,6 @@ korrekt, og demo-værdierne er konsistente med de øvrige demo-datasæt:
 | `bemanding.fravaerIDag` | Fraværende i dag. Ferie & fravær har ingen KpiRække indtil da |
 | `facility.aabneSager`, `.aabneSagerDelta` | Åbne sager pr. lokation. ⚠ `sager/` findes ikke — beslutning 20 er fase 0, kun visning |
 | `facility.klimaalarmerIDag` | Alarmer udløst i døgnet. Kræver historik — modsat *aktive* alarmer, som beregnes |
-| `facility.anslaaetServiceOere` | Estimat på planlagte servicebesøg. ⚠ Servicebesøgene har **ingen node**: de ligger i `demo-facility.js` med `estimatOere`, men der er intet sted at skrive dem hen. Servicekalenderen læser dem derfor stadig fra demofilen — den eneste facility-skærm der gør |
 | `kunder.aktiveDeltaPct`, `.daekningsbidragDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke det samme som dækningsgradens afvigelse mod **målet**, som er procentpoint og står under `oekonomi` — samme ord, to regnestykker, og de kan pege hver sin vej |
 | `oekonomi.driftsomkostningerDeltaPct`, `.ikkeFaktureretDeltaPct` | Periodeafvigelser i **procent**. ⚠ Ikke budgetafvigelsen — den udledes af `driftsomkostningerOere − budgetOere` og må aldrig gemmes |
 | `oekonomi.daekningsgradDeltaPoint` | ⚠ **Procentpoint** mod forrige periode. 68 % der bliver til 72 % er +4 point |

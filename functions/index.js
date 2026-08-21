@@ -77,7 +77,7 @@ import { tjekDisponering } from "./delt/disponering.js";
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
 import {
-  valideOpgaveplan, valideOpgaveflyt, flytOpdatering,
+  valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
   kanSkifteOpgave, statusOpdatering,
 } from "./delt/opgaveplan-regler.js";
 import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
@@ -3098,6 +3098,180 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
 
   await logOpgave(tenantId, uid, AUDIT.opret, opgaveId, null, post,
     `opgave planlagt paa ${ny.ressourceType} ${ny.ressourceId}`);
+
+  return { opgaveId, fra: ny.fra, til: ny.til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PLANLAEG ET SERVICEBESOEG — den sidste lukkede vej ind i `opgaver`
+
+   ⚠ HVORFOR DEN ER SIN EGEN FUNKTION OG IKKE ET ART-FLAG PAA opgaveplanlaeg.
+   To ting skiller dem ad, og begge er spaerringer:
+
+     1. FELTSKEMAET. `art` ER skemaet (beslutning 21) — en vaerkstedsopgave
+        haenger paa et koeretoej og har en arbejdstype, et servicebesoeg
+        haenger paa et anlaeg eller en hel lokation og har ingen. En funktion
+        med et flag skulle baere begge skemaer, og saa er der ingenting
+        tilbage af den spaerring `art !== "vaerksted"` er.
+     2. MODULET. `opgaveplanlaeg` kraever `moduler.flaade`; den her kraever
+        `moduler.facility`. Spurgte begge om Fleet, kunne en kunde der KUN har
+        Facility, ikke planlaegge sit eget servicebesoeg — og laa begge arter
+        i EEN funktion, ville arten fra klienten vaelge hvilken doer der blev
+        banket paa.
+
+   ⚠ ET BESOEG UDEN `aktivId` SPAERRER HELE LOKATIONEN, og det er ikke en
+   detalje: lukker man hallen, er alle porte i den ogsaa optaget.
+   `reservationFraOpgave()` giver derfor ressourcetypen `lokation` frem for
+   `facilityAktiv`.
+
+   ⚠ OG DEN OMVENDTE VEJ HOLDES IKKE AF DATAMODELLEN. En reservation paa
+   `lokation/lok-halb` og en paa `facilityAktiv/fa-port3` er to forskellige
+   stier, saa et gulvarbejde i Hal B spaerrer IKKE porten i den hal — hverken
+   her eller i `opgaveflyt`. Det er et kendt hul, ikke en overset detalje: en
+   indeslutningsregel er sin egen beslutning, og et halvt tjek i EEN af de to
+   funktioner ville vaere vaerre end ingen. Se README.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ opgaver.skriv, IKKE facility.skriv. Spoerg hvad handlingen kraever, ikke
+     hvem brugeren er — og det den skriver, er en post i `opgaver`. Modulet er
+     et andet spoergsmaal og staar nedenfor: permissionen siger hvad BRUGEREN
+     maa, modulklausulen hvad KUNDEN har koebt. */
+  if (!perms.includes("|opgaver.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke planlægge servicebesøg. Det kræver opgaver.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("facility").val() !== true) {
+    throw new HttpsError("permission-denied", "Facility-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const aktivId = kortStreng(d.aktivId, 60);
+  const lokationId = kortStreng(d.lokationId, 60);
+
+  const post = {
+    /* ⚠ ARTEN SAETTES HER, IKKE AF KLIENTEN — modstykket til opgaveplanlaeg. */
+    art: "facility",
+    division: kortStreng(d.division, 20),
+    status: kortStreng(d.status, 40),
+    beskrivelse: kortStreng(d.beskrivelse, 500),
+    startMs: Number.isFinite(Number(d.startMs)) ? Number(d.startMs) : null,
+    estimeretMin: Number.isFinite(Number(d.estimeretMin)) ? Number(d.estimeretMin) : null,
+  };
+  /* ⚠ KUN DET FELT DER BLEV SENDT. Skrev vi begge og lod det ene vaere tomt,
+     ville posten baere en lokation ingen laeser — se valideFacilityopgave(). */
+  if (aktivId) post.aktivId = aktivId;
+  if (lokationId) post.lokationId = lokationId;
+
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  const prioritet = kortStreng(d.prioritet, 20);
+  const sted = kortStreng(d.sted, 60);
+  const personId = kortStreng(d.personId, 60);
+  if (leverandoerId) post.leverandoerId = leverandoerId;
+  if (prioritet) post.prioritet = prioritet;
+  if (sted) post.sted = sted;
+  if (personId) post.personId = personId;
+
+  /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
+  const form = valideFacilityopgave(post);
+  if (!form.ok) {
+    const foerste = Object.values(form.fejl)[0];
+    throw new HttpsError("invalid-argument", foerste);
+  }
+  const mangler = opgaveMangler(post);
+  if (mangler.length) {
+    throw new HttpsError("invalid-argument",
+      `Noden afviser posten: ${mangler.join(", ")}.`);
+  }
+
+  /* ---- Findes ressourcen? --------------------------------------------- */
+  /* ⚠ INGEN STATUSSPAERRING PAA ANLAEGGET, og det er en forskel fra
+     `opgaveplanlaeg`. Dér afvises en SOLGT eller SKROTTET enhed, fordi den er
+     ude af flaaden for altid. Et anlaeg med status `fejl` eller `udeAfDrift`
+     er derimod praecis det et servicebesoeg findes for — en spaerring dér
+     ville forbyde at bestille reparationen af den port der er i stykker. */
+  if (aktivId) {
+    const a = (await rod.child(`facility/aktiver/${aktivId}`).once("value")).val();
+    if (!a) throw new HttpsError("not-found", `Anlægget ${aktivId} findes ikke.`);
+  } else {
+    const l = (await rod.child(`facility/lokationer/${lokationId}`).once("value")).val();
+    if (!l) throw new HttpsError("not-found", `Lokationen ${lokationId} findes ikke.`);
+  }
+
+  if (leverandoerId) {
+    const lv = (await rod.child(`leverandoerer/${leverandoerId}`).once("value")).val();
+    if (!lv) throw new HttpsError("not-found", `Leverandøren ${leverandoerId} findes ikke.`);
+  }
+
+  /* ---- Reservationen, bygget EET sted --------------------------------- */
+  let ny;
+  try {
+    ny = reservationFraOpgave(post);
+  } catch (e) {
+    throw new HttpsError("invalid-argument", e.message);
+  }
+
+  /* ---- Er ressourcen ledig? ------------------------------------------- */
+  const snap = await rod
+    .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
+    .once("value");
+  const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+
+  const svar = tjekLedigMod(eksisterende, ny);
+  if (!svar.ok) {
+    /* ⚠ ET SERVICEBESOEG HAR PRIORITET 20 og taber til vaerksted (40) og
+       fravaer (30) — men VINDER over en booking (10). Og det overskriver
+       stadig ikke: at rydde en booking af vejen er et etapetilstandsskift med
+       aarsag og historik, og det er `etapeskift`s arbejde. Samme svar som
+       opgaveplanlaeg giver. */
+    const foerste = svar.konflikter[0];
+    const flere = svar.konflikter.length > 1
+      ? ` (+${svar.konflikter.length - 1} mere)` : "";
+    const raad = svar.kanOverskrive
+      ? " Servicebesøget har højere prioritet, men det rydder ikke selv en" +
+        " booking af vejen: flyt eller annullér turen først, så den kan" +
+        " forklares bagefter."
+      : "";
+    throw new HttpsError("failed-precondition",
+      (foerste.tekst || konfliktTekst(ny, foerste)) + flere + raad);
+  }
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  const opgaveId = rod.child("opgaver").push().key;
+  const nu = Date.now();
+
+  const opdatering = {};
+  opdatering[`opgaver/${opgaveId}`] = { ...post, oprettetAf: uid, oprettetMs: nu };
+  opdatering[`reservationer/${ny.ressourceType}/${ny.ressourceId}/res-${opgaveId}`] = {
+    fra: ny.fra, til: ny.til,
+    kilde: ny.kilde,
+    oprettetAf: uid,
+    oprettetMs: nu,
+  };
+
+  await rod.update(opdatering);
+
+  await logOpgave(tenantId, uid, AUDIT.opret, opgaveId, null, post,
+    `servicebesoeg planlagt paa ${ny.ressourceType} ${ny.ressourceId}`);
 
   return { opgaveId, fra: ny.fra, til: ny.til };
 });
