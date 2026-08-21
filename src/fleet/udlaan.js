@@ -47,13 +47,20 @@ async function kald(data) {
  * det selv — ellers kunne klargøringen springes over ved at oprette udlånet
  * direkte som udlånt.
  */
-export const opretUdlaan = ({ kasseId, sagsnummer, kundeId, beskrivelse, fra, til }) =>
+export const opretUdlaan = ({
+  kasseId, sagsnummer, kundeId, beskrivelse, fra, til, klargoerSenest,
+}) =>
   kald({
     handling: "opret",
     kasseId, sagsnummer,
     kundeId: kundeId || undefined,
     beskrivelse: beskrivelse || undefined,
     fra, til,
+    /* ⚠ VALGFRI — se noten på `klargoerSenest` i firebase.rules.json.
+       `undefined` UDELADER feltet, og et udlån uden den falder uden for
+       "Klargøres snart" — som tæller dem uden dato FOR SIG, frem for at lade
+       som om tallet er en fuld optælling. */
+    klargoerSenest: Number.isFinite(klargoerSenest) ? klargoerSenest : undefined,
   });
 
 /** Klargør, udlever, modtag retur, annullér. */
@@ -61,11 +68,18 @@ export const skiftUdlaan = ({ udlaanId, til }) =>
   kald({ handling: "skift", udlaanId, til });
 
 /** Ret sagsnummer, periode eller beskrivelse — kun mens den er booket. */
-export const retUdlaan = ({ udlaanId, sagsnummer, kundeId, beskrivelse, fra, til }) =>
+export const retUdlaan = ({
+  udlaanId, sagsnummer, kundeId, beskrivelse, fra, til, klargoerSenest,
+}) =>
   kald({
     handling: "ret",
     udlaanId, sagsnummer,
     kundeId: kundeId || undefined,
     beskrivelse: beskrivelse || undefined,
     fra, til,
+    /* ⚠ HER ER `null` OG `undefined` IKKE DET SAMME, og det er ikke pedanteri:
+       serveren spreder den GAMLE post ind over den nye, så et udeladt felt
+       ARVES. Skal datoen kunne ryddes igen, skal det siges eksplicit — ellers
+       ville en rettelse hvor man tømmer feltet, lade den gamle dato stå. */
+    klargoerSenest: Number.isFinite(klargoerSenest) ? klargoerSenest : null,
   });

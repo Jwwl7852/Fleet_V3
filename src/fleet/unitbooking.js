@@ -363,6 +363,18 @@ export function valideUdlaan(post = {}, { kasser = [] } = {}) {
     f.til = "Slut kan ikke ligge før start.";
   }
 
+  /* ⚠ VALGFRI, MEN IKKE FRI. Klargøringen sker FØR kassen kører — en dato
+     efter afhentningen beskriver noget der ikke kan lade sig gøre. Reglen
+     siger det samme (`<= fra`), og det er dér det afgøres; det her svarer
+     hurtigt. */
+  if (post.klargoerSenest != null) {
+    if (!Number.isFinite(post.klargoerSenest)) {
+      f.klargoerSenest = "Vælg en dato, eller lad feltet stå tomt.";
+    } else if (Number.isFinite(post.fra) && post.klargoerSenest > post.fra) {
+      f.klargoerSenest = "Kassen skal være pakket før den hentes.";
+    }
+  }
+
   if (!ALLE_UDLAAN_TILSTANDE.includes(post.tilstand)) f.tilstand = "Vælg en tilstand.";
 
   if (post.beskrivelse && post.beskrivelse.length > 300) {
@@ -617,5 +629,56 @@ export function kassebelaegning(kasser = []) {
     kanBruges,
     udeAfDrift,
     ialt,
+  };
+}
+
+/* ---- Klargøres snart --------------------------------------------------- */
+
+/**
+ * ⚠ PLANCHENS NØGLETAL TÆLLER DEM DER **SKAL** KLARGØRES, ikke dem der ER
+ * klargjort. Skærmen havde "Klargjort", og de to er ikke det samme tal: det
+ * ene er arbejde der er gjort, det andet er arbejde der venter. Et lager hvor
+ * alt er klargjort og intet forestår, og et lager hvor intet er klargjort og
+ * ti kasser skal ud i morgen, ser ens ud på det første.
+ */
+export const KLARGOER_VINDUE_TIMER = 48;
+
+/**
+ * klargoeresSnart(udlaan, nu, timer) → { antal, bagud, udenDato, poster }
+ *
+ * De udlån der stadig er `booket` og skal være pakket inden for vinduet.
+ *
+ * ⚠ KUN `booket` TÆLLER. Er udlånet allerede `klargjort`, er arbejdet gjort;
+ * er det `udlaant`, er kassen kørt. En tælling der tog dem med, ville vokse
+ * af at arbejdet blev udført — og så kan man ikke bruge den til at planlægge.
+ *
+ * ⚠ DE OVERSKREDNE TÆLLER MED, OG DE TÆLLES OGSÅ FOR SIG. Et udlån der skulle
+ * have været pakket i går, er ikke holdt op med at skulle pakkes. Faldt det
+ * ud af tallet fordi fristen var passeret, ville listen blive kortere netop
+ * som den blev mere presserende — og den kasse ville forsvinde fra den eneste
+ * skærm der viser den. `bagud` står ved siden af, så de kan skelnes.
+ *
+ * ⚠ OG `udenDato` ER IKKE NUL — DET ER ET UBESVARET SPØRGSMÅL.
+ * `klargoerSenest` er valgfri, så et udlån uden den kan hverken tælles med
+ * eller tælles fra: vi ved ikke hvornår den skal pakkes. Tallet ville påstå at
+ * være en fuld optælling, og det er den ikke. Antallet gives med tilbage, og
+ * skærmen skriver det ud — samme greb som `udeAfDrift` på belægningsgraden og
+ * `volumenIalt()`s `uden`: det der ikke kunne regnes med, rapporteres frem for
+ * at blive rundet ned til nul.
+ */
+export function klargoeresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_VINDUE_TIMER) {
+  const graense = nu + timer * 3600000;
+  const booket = udlaan.filter((u) => u?.tilstand === "booket");
+
+  const udenDato = booket.filter((u) => !Number.isFinite(u.klargoerSenest)).length;
+  const poster = booket
+    .filter((u) => Number.isFinite(u.klargoerSenest) && u.klargoerSenest <= graense)
+    .sort((a, b) => a.klargoerSenest - b.klargoerSenest);
+
+  return {
+    antal: poster.length,
+    bagud: poster.filter((u) => u.klargoerSenest < nu).length,
+    udenDato,
+    poster,
   };
 }

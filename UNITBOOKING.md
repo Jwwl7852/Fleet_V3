@@ -571,10 +571,10 @@ Mails og fotos i det store kort hører til **beslutning 20**, som er fase 0:
 | Planchen | Her | |
 |---|---|---|
 | Reserveret, Ude nu | Bygget | ✅ |
-| **Klargøres snart (48 t)** | **Klargjort** — tæller dem der ER klargjort | ❌ |
+| **Klargøres snart (48 t)** | Bygget — `klargoeresSnart()`, ved siden af "Klargjort" | ✅ |
 | **Belægningsgrad** | Bygget — `kassebelaegning()`, ved siden af "Over tiden" | ✅ |
 | Opret reservation: sagsnr., kunde, type, undertype | Bygget | ✅ |
-| **Tre datoer** | Et udlån bærer kun `fra` og `til` | ❌ |
+| **Tre datoer** | Bygget — `klargoerSenest`, valgfri | ✅ |
 | Ledige kasser i perioden med Reservér | Bygget | ✅ |
 | Aktive udlån med **næste handling** | Bygget, 6.7 | ✅ |
 
@@ -610,7 +610,7 @@ fra noget nogen glemte.
 #### Rækkefølgen, hvis der bygges
 
 1. ~~**Belægningsgraden.**~~ **Bygget** — se 6.11.
-2. **Klargøringsdato → "Klargøres snart".** En regeletape. Feltet først.
+2. ~~**Klargøringsdato → "Klargøres snart".**~~ **Bygget** — se 6.12.
 3. **Kalenderens interval-vælger.** Ren UI oven på `Gitterkalender`.
 4. **Gruppering efter sag.** Kræver at konfliktspørgsmålet ovenfor afgøres.
 5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
@@ -657,3 +657,51 @@ belægningen 50 %.
 `belaegningPaaPlads()` — om en **hylde** er optaget. Det er præcis de to der
 blev forvekslet i begrundelsen ovenfor, og et navn der ikke kan forveksles,
 kan ikke gøre det igen.
+
+### 6.12 Klargøringsdatoen — planchens tredje dato, og det nøgletal den bærer
+
+De to punkter var ét hul. "Klargøres snart (48 t)" tæller dem der **skal**
+klargøres inden for to døgn, og modellen vidste ikke hvornår: `kasseudlaan`
+bar `fra` og `til`. Feltet først, tallet bagefter.
+
+⚠ **`klargoerSenest` ER VALGFRI, OG DET ER EN BESLUTNING.** De udlån der
+allerede ligger i basen, har den ikke — et påkrævet felt ville gøre hver
+eneste af dem ugyldig efter reglerne, og en rettelse af et sagsnummer ville
+blive afvist på et felt ingen rørte. Samme holdning som `faktiskMin` på
+opgaver (beslutning 50): **hullet tælles frem for at spærre.**
+
+⚠ **Og derfor giver `klargoeresSnart()` `udenDato` med tilbage.** Uden det
+ville tallet påstå at være en fuld optælling, og det er det ikke: et udlån
+uden dato kan hverken tælles med eller fra, fordi vi ikke ved hvornår det skal
+pakkes. Kortet skriver det ud. Samme greb som `udeAfDrift` ved siden af
+belægningsgraden og `uden` i `volumenIalt()`.
+
+⚠ **KUN `booket` TÆLLER.** Er udlånet klargjort, er arbejdet gjort; er det
+udlånt, er kassen kørt. En tælling der tog dem med, ville **vokse af at
+arbejdet blev udført** — og så kan den ikke bruges til at planlægge efter.
+
+⚠ **DE OVERSKREDNE TÆLLER MED.** Et udlån der skulle have været pakket i går,
+er ikke holdt op med at skulle pakkes. Faldt det ud af tallet fordi fristen var
+passeret, ville listen blive kortere netop som den blev mere presserende, og
+den kasse ville forsvinde fra den eneste skærm der viser den. `bagud` står ved
+siden af, så de to kan skelnes.
+
+⚠ **DATOEN KAN IKKE LIGGE EFTER AFHENTNINGEN.** Man pakker før kassen kører.
+Reglen håndhæver det med `newData.parent().child('fra')` — postens tilstand
+**efter** skrivningen — så den holder også ved en dyb skrivning af kun feltet.
+Samme greb som på `til`, og som på undertypens krydsfelt-regel i 6.5.
+
+⚠ **OG FORMULAREN FORESLÅR IKKE EN DATO.** En dato dagen før afhentningen
+ville blive godkendt uden at blive læst, og så stod et gæt i noden som en
+beslutning — og nøgletallet ville tælle på opdigtede datoer. Tomt er et svar.
+
+⚠ **`null` OG `undefined` ER IKKE DET SAMME I `retUdlaan()`.** Serveren spreder
+den gamle post ind over den nye, så et udeladt felt **arves**. Skal datoen
+kunne ryddes igen, skal det siges eksplicit — ellers ville en rettelse hvor man
+tømmer feltet, lade den gamle dato stå.
+
+⚠ **Og formularens `vis()` fik det led Planlaegdialog har skrevet ned.**
+Fejlnøglen hedder `klargoerSenest`, feltet `klargoerIso` — uden det ekstra led
+ville feltet aldrig vise sin fejl, fordi det aldrig blev "rørt" under det navn
+fejlen bar. Præcis den fælde står allerede beskrevet i `Planlaegdialog.jsx`;
+den her formular havde den enkle udgave.

@@ -2014,6 +2014,23 @@
             // de kan sorteres, sammenlignes og regnes paa uden tidszone.
             "fra": { ".validate": "newData.isNumber()" },
             "til": { ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('fra').val()" },
+            // ⚠ PLANCHENS TREDJE DATO — hvornaar kassen SENEST skal vaere
+            // pakket. Uden den kan "Klargoeres snart (48 t)" ikke regnes: det
+            // taeller dem der SKAL klargoeres inden for to doegn, og modellen
+            // vidste ikke hvornaar.
+            //
+            // ⚠ VALGFRI, OG DET ER EN BESLUTNING. De udlaan der allerede
+            // ligger i basen, har den ikke — et paakraevet felt ville goere
+            // hver eneste af dem ugyldig efter reglerne. Uden datoen falder
+            // udlaanet bare uden for taellingen, og noegletallet siger selv
+            // hvor mange der ikke har den. Samme holdning som faktiskMin paa
+            // opgaver: hullet TAELLES frem for at spaerre.
+            //
+            // ⚠ OG DEN KAN IKKE LIGGE EFTER AFHENTNINGEN. Man pakker foer
+            // kassen koerer. newData.parent() er postens tilstand EFTER
+            // skrivningen, saa reglen holder ogsaa ved en dyb skrivning af
+            // kun det her felt — samme greb som paa `til`.
+            "klargoerSenest": { ".validate": "newData.isNumber() && newData.val() <= newData.parent().child('fra').val()" },
             "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(booket|klargjort|udlaant|returneret|annulleret)$/)" },
             // ⚠ uid, IKKE personId. Det er hvem der GJORDE noget.
             "oprettetAf": { ".validate": "newData.isString()" },

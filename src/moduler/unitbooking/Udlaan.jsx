@@ -36,6 +36,7 @@ import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
   undertyperFor, naesteSkift, kassebelaegning,
+  klargoeresSnart, KLARGOER_VINDUE_TIMER,
 } from "../../fleet/unitbooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
@@ -66,7 +67,14 @@ const SKIFTEFORKLARING = {
 /* ---- Reservationsformularen -------------------------------------------- */
 
 function Reservationsformular({ kasse, fra, til, kunder, kundetilstand, paaGemt, paaLuk }) {
-  const [f, saetF] = useState({ sagsnummer: "", kundeId: "", beskrivelse: "" });
+  /* ⚠ INTET FORESLÅET KLARGØRINGSTIDSPUNKT. En dato dagen før afhentningen
+     ville blive godkendt uden at blive læst, og så stod et gæt i noden som en
+     beslutning — og "Klargøres snart" ville tælle på opdigtede datoer. Tomt
+     er et svar: udlånet falder uden for tællingen, og tallet siger selv hvor
+     mange der mangler den. */
+  const [f, saetF] = useState({
+    sagsnummer: "", kundeId: "", beskrivelse: "", klargoerIso: "",
+  });
   const [roert, saetRoert] = useState({});
   const [visAlle, saetVisAlle] = useState(false);
   const [gemmer, saetGemmer] = useState(false);
@@ -81,9 +89,22 @@ function Reservationsformular({ kasse, fra, til, kunder, kundetilstand, paaGemt,
   /* ⚠ SAMME valideUdlaan() SOM SERVEREN. Filen er kopieret til
      functions/delt/, og en prøve fejler hvis de to ikke er identiske. Skærmen
      svarer hurtigt; serveren afgør. */
-  const post = { ...f, kasseId: kasse.id, fra, til, tilstand: "booket" };
+  /* ⚠ isoTilMs SÆTTER KLOKKEN 12, IKKE MIDNAT — se format.js. `new Date("…")`
+     er midnat UTC, og trækkes der en time et sted i kæden, bliver det dagen
+     før. En klargøringsfrist der rykker sig en dag, opdages ikke ved at kigge
+     på den. */
+  const klargoerSenest = f.klargoerIso ? isoTilMs(f.klargoerIso) : null;
+  const post = { ...f, kasseId: kasse.id, fra, til, tilstand: "booket", klargoerSenest };
   const fejl = valideUdlaan(post, {});
-  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  /* ⚠ FEJLNØGLEN OG FELTNAVNET ER IKKE ALTID DET SAMME. Datoen hedder
+     `klargoerIso` i formularen, men fejlen hedder `klargoerSenest` — og uden
+     det ekstra led ville feltet aldrig vise sin fejl, fordi det aldrig blev
+     "rørt" under det navn fejlen bar. Samme greb som `vis()` i
+     Planlaegdialog, hvor præcis den fælde står skrevet ned. */
+  const vis = (fejlNoegle, ...roerteNoegler) => {
+    const noegler = roerteNoegler.length ? roerteNoegler : [fejlNoegle];
+    return visAlle || noegler.some((k) => roert[k]) ? fejl[fejlNoegle] : null;
+  };
   const kanGemme = Object.keys(fejl).length === 0;
 
   const gemNu = async () => {
@@ -94,6 +115,7 @@ function Reservationsformular({ kasse, fra, til, kunder, kundetilstand, paaGemt,
       kasseId: kasse.id, sagsnummer: f.sagsnummer,
       kundeId: f.kundeId || null, beskrivelse: f.beskrivelse || null,
       fra, til,
+      klargoerSenest: Number.isFinite(klargoerSenest) ? klargoerSenest : undefined,
     });
     saetGemmer(false);
     saetSvar(r);
@@ -129,6 +151,19 @@ function Reservationsformular({ kasse, fra, til, kunder, kundetilstand, paaGemt,
             </p>
           ) : null}
         </Feltraekke>
+        {/* ⚠ PLANCHENS TREDJE DATO. Uden den kan "Klargøres snart" ikke
+            regnes — nøgletallet tæller dem der SKAL pakkes inden for to døgn,
+            og modellen vidste ikke hvornår. Feltet er valgfrit: de udlån der
+            allerede ligger i basen, har det ikke, og et påkrævet felt ville
+            gøre hver eneste af dem ugyldig efter reglerne. */}
+        <Felt id="u-klargoer" label="Klargøres senest" type="date"
+              vaerdi={f.klargoerIso} saet={saet("klargoerIso")}
+              fejl={vis("klargoerSenest", "klargoerIso")}
+              max={msTilIso(fra)}
+              hint={`Valgfri. Kan ikke ligge efter afhentningen ${dato(fra)} — `
+                + "kassen pakkes før den kører. Uden dato tælles udlånet ikke "
+                + "med under „Klargøres snart“, men det siges på kortet."} />
+
         <Felt id="u-besk" label="Beskrivelse" vaerdi={f.beskrivelse}
               saet={saet("beskrivelse")} fejl={vis("beskrivelse")}
               hint="Fx udstillingens navn. Til jer selv." />
@@ -202,6 +237,8 @@ export default function Udlaan() {
   /* ⚠ SAMME FUNKTION SOM KASSELISTEN BRUGER — se noten ved kortet. Skærmen
      henter kasselisten i forvejen til søgningen efter ledige. */
   const bel = kassebelaegning(kasser);
+  /* Planchens fjerde noegletal — se noten ved kortet. */
+  const klargoer = klargoeresSnart(udlaan, nu);
 
   const q = soeg.trim().toLowerCase();
   const viste = udlaan.filter((u) =>
@@ -225,6 +262,19 @@ export default function Udlaan() {
         <KpiKort label="Reserveret" vaerdi={num(antal("booket"))}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund
                  note="lovet væk, står stadig på hylden" />
+        {/* ⚠ PLANCHENS NØGLETAL TÆLLER DEM DER SKAL KLARGØRES, ikke dem der
+            ER klargjort. De to er ikke det samme: det ene er arbejde der er
+            gjort, det andet arbejde der venter. Begge står her nu — et lager
+            hvor alt er pakket og intet forestår, og et hvor intet er pakket og
+            ti kasser skal ud i morgen, så ens på det gamle kort.
+            ⚠ Og `udenDato` hører til tallet: uden den ville det påstå at være
+            en fuld optælling. Samme greb som `udeAfDrift` ved siden af. */}
+        <KpiKort label={`Klargøres inden ${KLARGOER_VINDUE_TIMER} t`}
+                 vaerdi={num(klargoer.antal)}
+                 note={[
+                   klargoer.bagud ? `${num(klargoer.bagud)} er bagud` : null,
+                   klargoer.udenDato ? `${num(klargoer.udenDato)} uden dato` : null,
+                 ].filter(Boolean).join(" · ") || "intet haster"} />
         <KpiKort label="Klargjort" vaerdi={num(antal("klargjort"))} note="pakket, klar til afhentning" />
         <KpiKort label="Ude nu" vaerdi={num(antal("udlaant"))} note="hos kunden" />
         {/* ⚠ EN OVERSKREDET RETURDATO ER IKKE EN FEJL I SYSTEMET — den er en

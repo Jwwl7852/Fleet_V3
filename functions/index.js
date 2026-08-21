@@ -1410,6 +1410,13 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       beskrivelse: kortStreng(d.beskrivelse, 300),
       fra: Number(d.fra),
       til: Number(d.til),
+      /* ⚠ VALGFRI. Er den ikke sendt med, skrives feltet ikke — og udlaanet
+         falder uden for "Klargoeres snart", som TAELLER dem uden dato for sig.
+         `undefined` og ikke null: RTDB afviser undefined ved en skrivning, men
+         her bruges det til at UDELADE feltet, og valideUdlaan() springer over
+         paa null. Se noten paa klargoerSenest i firebase.rules.json. */
+      ...(Number.isFinite(Number(d.klargoerSenest))
+        ? { klargoerSenest: Number(d.klargoerSenest) } : {}),
       /* ⚠ TILSTANDEN VÆLGES IKKE AF KLIENTEN. Et nyt udlån er `booket`.
          Kunne den sendes med, kunne man springe klargøringen over ved at
          oprette udlånet direkte som `udlaant`. */
@@ -1540,7 +1547,13 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
       kundeId: kortStreng(d.kundeId, 60),
       beskrivelse: kortStreng(d.beskrivelse, 300),
       fra: Number(d.fra),
-      til: Number(d.til)
+      til: Number(d.til),
+      /* Samme som ved oprettelsen. ⚠ Og en dato der FJERNES, skal kunne
+         fjernes: sendes feltet ikke, arves `foer`s vaerdi af spredningen
+         ovenfor — derfor nulstilles den eksplicit naar klienten sender null. */
+      ...(Number.isFinite(Number(d.klargoerSenest))
+        ? { klargoerSenest: Number(d.klargoerSenest) }
+        : d.klargoerSenest === null ? { klargoerSenest: null } : {})
     };
 
     const fejl = valideUdlaan(post, {});

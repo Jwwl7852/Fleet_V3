@@ -16,7 +16,7 @@ import {
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
-  kassebelaegning, I_BRUG_STATUS,
+  kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -953,5 +953,125 @@ describe("belægningsgraden er den samme begge steder", () => {
     for (const f of SKAERME) {
       assert.match(laes(f), /pct\(bel\.pct\)/, `${f} formaterer procenten selv`);
     }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KLARGØRES SNART — planchens tredje nøgletal, og dens tredje dato
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("klargoeresSnart", () => {
+  const NU = Date.UTC(2026, 7, 24, 8, 0, 0);
+  const T = 3600000;
+  const u = (id, tilstand, klargoerSenest) => ({ id, tilstand, klargoerSenest });
+
+  it("⚠ TÆLLER DEM DER SKAL KLARGØRES, ikke dem der ER klargjort", () => {
+    /* De to er ikke det samme tal: det ene er arbejde der er gjort, det andet
+       arbejde der venter. Et lager hvor alt er pakket og intet forestaar, og
+       et hvor intet er pakket og ti kasser skal ud i morgen, saa ens paa det
+       gamle kort. */
+    const r = klargoeresSnart([
+      u("a", "booket", NU + 10 * T),
+      u("b", "klargjort", NU + 1 * T),
+      u("c", "udlaant", NU + 1 * T),
+    ], NU);
+    assert.equal(r.antal, 1);
+    assert.deepEqual(r.poster.map((x) => x.id), ["a"]);
+  });
+
+  it("⚠ EN TÆLLING DER VOKSER AF AT ARBEJDET BLIVER GJORT, ER UBRUGELIG", () => {
+    /* Derfor kun `booket`. Klargoeres kassen, forsvinder den ud af tallet —
+       det er hele pointen med det. */
+    const foer = klargoeresSnart([u("a", "booket", NU + 2 * T)], NU);
+    const efter = klargoeresSnart([u("a", "klargjort", NU + 2 * T)], NU);
+    assert.equal(foer.antal, 1);
+    assert.equal(efter.antal, 0);
+  });
+
+  it("⚠ DE OVERSKREDNE TÆLLER MED — og tælles også for sig", () => {
+    /* Et udlaan der skulle have vaeret pakket i gaar, er ikke holdt op med at
+       skulle pakkes. Faldt det ud af tallet fordi fristen var passeret, ville
+       listen blive kortere netop som den blev mere presserende. */
+    const r = klargoeresSnart([
+      u("bagud", "booket", NU - 20 * T),
+      u("snart", "booket", NU + 5 * T),
+    ], NU);
+    assert.equal(r.antal, 2);
+    assert.equal(r.bagud, 1);
+  });
+
+  it("vinduet er 48 timer, og det kan sættes", () => {
+    const liste = [u("a", "booket", NU + 40 * T), u("b", "booket", NU + 80 * T)];
+    assert.equal(KLARGOER_VINDUE_TIMER, 48);
+    assert.equal(klargoeresSnart(liste, NU).antal, 1);
+    assert.equal(klargoeresSnart(liste, NU, 100).antal, 2);
+  });
+
+  it("⚠ udenDato ER IKKE NUL — DET ER ET UBESVARET SPØRGSMÅL", () => {
+    /* Feltet er valgfrit, saa et udlaan uden det kan hverken taelles med eller
+       fra: vi ved ikke hvornaar det skal pakkes. Tallet ville paastaa at vaere
+       en fuld optaelling. Samme greb som udeAfDrift paa belaegningsgraden og
+       `uden` i volumenIalt(). */
+    const r = klargoeresSnart([
+      u("a", "booket", NU + 1 * T),
+      u("b", "booket", undefined),
+      u("c", "booket", null),
+    ], NU);
+    assert.equal(r.antal, 1);
+    assert.equal(r.udenDato, 2);
+  });
+
+  it("de mest presserende står først", () => {
+    const r = klargoeresSnart([
+      u("sen", "booket", NU + 20 * T),
+      u("tidlig", "booket", NU + 2 * T),
+    ], NU);
+    assert.deepEqual(r.poster.map((x) => x.id), ["tidlig", "sen"]);
+  });
+});
+
+describe("klargoerSenest på udlånet", () => {
+  const FRA = Date.UTC(2026, 8, 1);
+  const grund = { kasseId: "MDT-101", sagsnummer: "4260", fra: FRA, til: FRA + 5 * 86400000, tilstand: "booket" };
+
+  it("⚠ KAN IKKE LIGGE EFTER AFHENTNINGEN", () => {
+    /* Man pakker foer kassen koerer. Reglen siger det samme (`<= fra`), og det
+       er dér det afgoeres; det her svarer hurtigt. */
+    const f = valideUdlaan({ ...grund, klargoerSenest: FRA + 86400000 }, {});
+    assert.match(f.klargoerSenest, /pakket før den hentes/);
+  });
+
+  it("samme dag er i orden", () => {
+    assert.equal(valideUdlaan({ ...grund, klargoerSenest: FRA }, {}).klargoerSenest, undefined);
+  });
+
+  it("⚠ OG DEN ER VALGFRI — de udlån der allerede ligger i basen, har den ikke", () => {
+    /* Et paakraevet felt ville goere hver eneste af dem ugyldig efter
+       reglerne. Samme holdning som faktiskMin paa opgaver: hullet TAELLES
+       frem for at spaerre. */
+    assert.equal(Object.keys(valideUdlaan(grund, {})).length, 0);
+    assert.equal(Object.keys(valideUdlaan({ ...grund, klargoerSenest: null }, {})).length, 0);
+  });
+
+  it("men den skal være et tal hvis den er der", () => {
+    const f = valideUdlaan({ ...grund, klargoerSenest: "i morgen" }, {});
+    assert.match(f.klargoerSenest, /Vælg en dato/);
+  });
+
+  it("⚠ OG REGLEN SIGER DET SAMME SOM FUNKTIONEN", () => {
+    /* En klientvalidering der ikke ogsaa staar i firebase.rules.json, er en
+       paen knap. Reglen bruger newData.parent() — postens tilstand EFTER
+       skrivningen — saa den holder ogsaa ved en dyb skrivning af kun feltet. */
+    const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
+    assert.match(regler, /"klargoerSenest":\s*\{\s*"\.validate":\s*"newData\.isNumber\(\) && newData\.val\(\) <= newData\.parent\(\)\.child\('fra'\)\.val\(\)"/);
+  });
+
+  it("⚠ OG DEN STÅR IKKE I hasChildren — den er valgfri i reglen også", () => {
+    /* Stod den dér, ville hver eneste eksisterende post vaere ugyldig, og en
+       rettelse af et sagsnummer ville blive afvist paa et felt ingen roerte. */
+    const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
+    const blok = regler.slice(regler.indexOf('"kasseudlaan"'));
+    const krav = blok.slice(blok.indexOf("hasChildren"), blok.indexOf("hasChildren") + 120);
+    assert.ok(!krav.includes("klargoerSenest"), "klargoerSenest er gjort påkrævet");
   });
 });
