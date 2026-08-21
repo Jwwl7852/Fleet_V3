@@ -530,3 +530,165 @@ export function bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer 
 
   return { opdatering, booking, etaper };
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FORSLAGET — beslutning 58
+
+   ⚠ ET FORSLAG ER IKKE EN RESERVATION. Det siger hvem og hvad der KUNNE køre
+   turen; først når koordinatoren godkender, bindes ressourcerne. Derfor
+   spærrer et forslag ingenting, og derfor kan der ligge tre ad gangen.
+
+   ⚠ OG DISPONENTEN MÅ IKKE GODKENDE SIT EGET — beslutning 5. Det er hele
+   grunden til at forslaget og godkendelsen er to skridt: `booking.foreslaa`
+   skriver forslaget, `booking.godkend` vælger det.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ FORSLAGENE ER NØGLET PÅ DERES EGET id — DE ER IKKE EN ARRAY.
+ *
+ * RTDB har ingen arrays: en array skrevet råt bliver til et objekt med
+ * nøglerne "0", "1", "2", og de nøgler FLYTTER SIG når en post fjernes. Det
+ * er ikke teoretisk her — regelfilen kræver at `valgtForslagId` peger på en
+ * nøgle der findes, og et valg der pegede på "1", ville pege på et andet
+ * forslag i det øjeblik det første blev trukket tilbage.
+ *
+ * Målt i DEV før rettelsen: `et-004/forslag` lå med nøglerne 0, 1, 2 og
+ * bar sit `id` INDE i objektet — en form regelfilens `$andet: false` afviser,
+ * og som `valgtForslagId` aldrig kunne matche. `etapeskift` fandt alligevel
+ * forslaget, fordi den søgte på `f.id` frem for på nøglen; serveren og reglen
+ * var altså uenige om hvor forslagets identitet bor.
+ *
+ * Funktionen her er det ene sted formen oversættes til en liste — sorteret på
+ * `nr`, så to skærme ikke viser forslagene i hver sin rækkefølge.
+ */
+export function forslagListe(etape) {
+  const f = etape?.forslag;
+  if (!f) return [];
+  return Object.entries(f)
+    .map(([id, v]) => ({ ...v, id }))
+    .sort((a, b) => (a.nr ?? 0) - (b.nr ?? 0));
+}
+
+/**
+ * ⚠ ET FORSLAG SKRIVES KUN HVOR DISPONENTEN ARBEJDER.
+ *
+ * `afventerPlan` (den er sendt til planlægning), `aaben` (den venter på en
+ * passende tur) og `returneret` (koordinatoren har sendt den tilbage). IKKE
+ * `afventerKoord`: dér står koordinatoren og tager stilling, og et forslag
+ * der kom til undervejs, ville ændre det der bliver besluttet — under den der
+ * beslutter. Og ikke `kladde`: en forespørgsel der ikke er sendt til
+ * planlægning, er ikke disponentens endnu.
+ */
+export const FORSLAGBARE_TILSTANDE = ["afventerPlan", "aaben", "returneret"];
+
+/** Højst tre. Se valideForslag(). */
+export const MAKS_FORSLAG = 3;
+
+/**
+ * valideForslag(forslag, etape, { biler, personale }) → { ok, fejl }
+ *
+ * Samme form og samme svar som `valideBooking()` og `valideOpgaveplan()`, og
+ * serveren kalder den SAMME funktion.
+ */
+export function valideForslag(forslag = {}, etape = {}, { biler = null, personale = null } = {}) {
+  const f = {};
+
+  if (!FORSLAGBARE_TILSTANDE.includes(etape.tilstand)) {
+    f.tilstand = etape.tilstand === "afventerKoord"
+      ? "Koordinatoren er ved at tage stilling. Et nyt forslag hører til efter en returnering."
+      : `Der kan ikke foreslås på en etape der er ${TILSTAND[etape.tilstand]?.label || etape.tilstand}.`;
+  }
+
+  /* ⚠ TRE ER LOFTET, OG DET ER EN BESLUTNING. Mockuppen viser 1-3, og
+     koordinatoren skal kunne sammenligne dem uden at scrolle. Et fjerde
+     forslag er ikke mere information — det er en beslutning der ikke er
+     truffet. Trækkes et tilbage, bliver der plads igen. */
+  const findes = forslagListe(etape);
+  if (findes.length >= MAKS_FORSLAG) {
+    f._antal = `Der er allerede ${MAKS_FORSLAG} forslag. Træk et tilbage for at lave et nyt.`;
+  }
+
+  const ider = Object.keys(forslag.koeretoejIder || {});
+  if (!ider.length) {
+    f.koeretoejIder = "Vælg mindst én enhed. En sættevogn er trækker PLUS trailer.";
+  } else if (biler && ider.some((id) => !biler.includes(id))) {
+    f.koeretoejIder = "Ukendt enhed.";
+  }
+
+  /* ⚠ CHAUFFØREN ER PÅKRÆVET — reglen kræver den, og et forslag uden en
+     chauffør kan ikke blive til en reservation: `etapeskift` afviser det med
+     "Forslaget mangler enten køretøj eller chauffør". Bedre at sige det her. */
+  if (!forslag.personId) {
+    f.personId = "Vælg hvem der kører.";
+  } else if (personale && !personale.includes(forslag.personId)) {
+    f.personId = "Ukendt medarbejder.";
+  }
+
+  const a = forslag.afhentningMs, l = forslag.leveringMs;
+  if (!Number.isFinite(a)) f.afhentningMs = "Hvornår hentes godset?";
+  if (!Number.isFinite(l)) f.leveringMs = "Hvornår leveres det?";
+  if (Number.isFinite(a) && Number.isFinite(l) && l <= a) {
+    f.leveringMs = "Levering skal ligge efter afhentning.";
+  }
+
+  /* ⚠ TRANSITTIDEN ER IKKE VINDUET. Et forslag der løber over 40 timer,
+     betyder ikke at der køres i 40 — chaufføren sover undervejs, og
+     køre-hviletidstjekket regner på KØRSEL. Det er samme skel som mellem en
+     etapes vindue og dens `koerselMin`. */
+  if (forslag.transitTimer != null
+      && (!Number.isFinite(forslag.transitTimer) || forslag.transitTimer <= 0)) {
+    f.transitTimer = "Transittiden er timer i kørsel — ikke hele vinduet.";
+  }
+
+  if (forslag.estimatOere != null
+      && (!Number.isFinite(forslag.estimatOere) || forslag.estimatOere % 1 !== 0
+          || forslag.estimatOere < 0)) {
+    f.estimatOere = "Beløbet skal være hele ører.";
+  }
+
+  if (typeof forslag.note === "string" && forslag.note.length > 300) {
+    f.note = "Højst 300 tegn.";
+  }
+
+  return { ok: Object.keys(f).length === 0, fejl: f };
+}
+
+/**
+ * forslagOpdatering(etapeId, forslagId, forslag, etape) → { opdatering, post }
+ *
+ * BYGGER, SKRIVER IKKE — som `flytOpdatering()` og `bookingOpdatering()`.
+ *
+ * ⚠ NUMMERET ER EN PLADS I RÆKKEN, IKKE ET id. Koordinatoren taler om
+ * "forslag 2", og nummeret skal derfor være stabilt for de forslag der ligger
+ * der. Det tildeles som det næste ledige — ikke som `antal + 1`, for så ville
+ * to forslag få nr. 3 hvis nr. 2 blev trukket tilbage.
+ */
+export function forslagOpdatering(etapeId, forslagId, forslag, etape = {}) {
+  if (!etapeId || !forslagId) throw new Error("forslagOpdatering: id mangler.");
+
+  const brugte = new Set(forslagListe(etape).map((f) => f.nr));
+  let nr = 1;
+  while (brugte.has(nr)) nr += 1;
+
+  const post = {
+    nr,
+    koeretoejIder: forslag.koeretoejIder,
+    personId: forslag.personId,
+    afhentningMs: forslag.afhentningMs,
+    leveringMs: forslag.leveringMs,
+  };
+  /* Valgfrie felter udelades frem for at stå tomme — RTDB sletter alligevel
+     et null, og et felt der ikke blev udfyldt, er noget andet end et tomt. */
+  if (Number.isFinite(forslag.transitTimer)) post.transitTimer = forslag.transitTimer;
+  if (Number.isFinite(forslag.estimatOere)) post.estimatOere = forslag.estimatOere;
+  if (forslag.note?.trim()) post.note = forslag.note.trim();
+
+  return {
+    /* ⚠ ÉN STI, OG DEN RØRER IKKE ETAPEN SELV. Et forslag ændrer ikke
+       tilstanden — det er `etapeskift`s arbejde — og en opdatering der skrev
+       begge dele, ville være to beslutninger i ét kald. */
+    opdatering: { [`etaper/${etapeId}/forslag/${forslagId}`]: post },
+    post,
+  };
+}

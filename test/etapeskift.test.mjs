@@ -244,11 +244,57 @@ test("⚠ etapeskift KALDER tjekDisponering OG AFVISER PÅ DEN", () => {
     "der afvises ikke paa en spaerring");
 });
 
+/** Kommentarer ud: en note der NÆVNER et navn er ikke en brug. Den fælde er
+    dukket op fire gange i denne omgang — se beslutning 50, 53 og 55. */
+const udenKommentarer = (s) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
 test("⚠ SERVEREN AFVISER MED SKÆRMENS EGEN SÆTNING", () => {
   /* To formuleringer af den samme spærring ville være to forklaringer på én
-     ting — og brugeren ville se den ene og få den anden. */
-  assert.ok(/spaerringer\[0\]\.tekst/.test(blok),
+     ting — og brugeren ville se den ene og få den anden.
+
+     ⚠ SÆTNINGEN BYGGES NU I `spaerringerFor()`, ikke inde i `etapeskift`.
+     Den blev flyttet dertil fordi `forslagskriv` kører NØJAGTIG de samme tjek
+     når forslaget LAVES — og skal svare med den samme sætning. To kopier af
+     opslagene ville være to steder at være uenige om hvad "alt de fem tjek
+     skal bruge" betyder. Prøven læser derfor hele filen, ikke kun blokken. */
+  assert.ok(/spaerringer\[0\]\.tekst/.test(kilde),
     "afvisningen bygger sin egen tekst i stedet for at bruge tjekkets");
+  assert.ok(kilde.includes("async function spaerringerFor("),
+    "de fem tjek ligger ikke ét sted");
+  assert.ok(blok.includes("spaerringerFor("),
+    "etapeskift kører ikke de fælles tjek");
+});
+
+/**
+ * ⚠ OG FORSLAGSKRIVNINGEN KØRER DE SAMME.
+ *
+ * Ikke for at spærre for evigt — der går tid mellem forslag og godkendelse,
+ * og det er ved godkendelsen afgørelsen falder. Men et forslag koordinatoren
+ * ikke KAN godkende, er et løfte til en kunde der ikke kan holdes, og
+ * disponenten skal have sit nej med det samme. Beslutning 58.
+ */
+test("⚠ forslagskriv KØRER DE SAMME FEM TJEK", () => {
+  const start = kilde.indexOf("export const forslagskriv");
+  assert.ok(start >= 0, "functions/index.js har ingen forslagskriv");
+  const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", start + 1);
+  /* ⚠ KOMMENTARERNE UD. Blokken FORKLARER at den kræver booking.foreslaa og
+     IKKE booking.godkend — og en prøve der søgte råt, ville falde over netop
+     den forklaring. Fjerde gang i denne omgang; se beslutning 50 og 53. */
+  const fblok = udenKommentarer(
+    naeste < 0 ? kilde.slice(start) : kilde.slice(start, naeste));
+
+  assert.ok(fblok.includes("spaerringerFor("), "forslaget prøves ikke mod de fem tjek");
+  assert.ok(fblok.includes("valideForslag("), "formen prøves ikke med skærmens funktion");
+  /* ⚠ booking.foreslaa — IKKE booking.godkend. Beslutning 5. */
+  assert.ok(fblok.includes('perms.includes("|booking.foreslaa|")'));
+  assert.ok(!fblok.includes("booking.godkend"),
+    "forslagskriv kræver godkendelsespermissionen");
+  /* ⚠ ET FORSLAG SPÆRRER INGENTING. */
+  assert.ok(!/opdatering\[.reservationer/.test(fblok),
+    "et forslag skriver en reservation");
+  /* ⚠ OG DET RØRER IKKE TILSTANDEN — det er etapeskifts arbejde. */
+  assert.ok(!fblok.includes("tilTilstand"), "forslaget skifter etapens tilstand");
 });
 
 test("⚠ TILSTANDSSKIFTET GÅR GENNEM kanSkifteEtape — den SAMME som skærmen", () => {
@@ -535,9 +581,19 @@ test("⚠ INGEN SKÆRM KALDER DEN GAMLE MASKINE", () => {
 });
 
 test("Forslag-skærmen læser etapens forslag og skriver gennem etapeskift", () => {
-  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8");
-  assert.ok(s.includes("demoEtaperPaa("), "skaermen henter ikke forloebets etaper");
-  assert.ok(s.includes("etape.forslag"), "skaermen laeser ikke etapens forslag");
+  /* ⚠ KOMMENTARERNE UD FØRST. Prøven krævede før at skærmen kaldte
+     `demoEtaperPaa(` — og da den holdt op med det (beslutning 56), blev den
+     grøn alligevel, fordi en KOMMENTAR nævnte navnet. Tredje gang i denne
+     omgang at en prøve leder det forkerte sted; se beslutning 53 og 55. */
+  const s = readFileSync("src/moduler/booking/Forslag.jsx", "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(s.includes('useListe("etaper"'), "skaermen henter ikke forloebets etaper fra noden");
+  assert.ok(!s.includes("demoEtaperPaa("), "skaermen henter stadig etaperne fra demofilen");
+  /* ⚠ `forslag` ER ET OBJEKT I NODEN, nøglet på forslagets eget id.
+     `forslagListe()` er det ene sted formen oversættes. Beslutning 58. */
+  assert.ok(s.includes("forslagListe("), "skaermen laeser ikke etapens forslag");
+  assert.ok(!/etape\.forslag\??\.length/.test(s),
+    "skaermen behandler forslag som en array");
   assert.ok(s.includes("skiftEtape("), "skaermen skriver ikke gennem etapeskift");
   /* ⚠ OG DEN VISER DE FEM TJEK FØR MAN TRYKKER. Serveren kører dem igen og
      afviser med samme sætning, men at se dem først er forskellen på at vælge

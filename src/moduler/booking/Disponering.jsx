@@ -83,7 +83,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { num, pct, dato, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
-  Gitter, MiniLinje, Formularsvar,
+  Gitter, MiniLinje, Formularsvar, Knap,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
@@ -96,6 +96,7 @@ import { reservationFraOpgave } from "../../fleet/opgaver.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
 import Statusskifte from "../../fleet/Statusskifte.jsx";
+import Forslagsdialog from "./Forslagsdialog.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
@@ -103,7 +104,8 @@ import {
   reservationerFraEtape, graenseLabel, krydserGraense, tjekGeografi, enhedsIder,
   straekningFraEtape,
 } from "../../fleet/etaper.js";
-import { TILSTAND } from "../../fleet/booking-state.js";
+import {
+  FORSLAGBARE_TILSTANDE, TILSTAND } from "../../fleet/booking-state.js";
 import { OPGAVE_STATUS, ARBEJDSTYPE, ressourceId } from "../../fleet/opgaver.js";
 import { slutter, raekkerIVindue } from "../../fleet/driftskalender.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -208,6 +210,8 @@ export default function Disponering() {
   const { division, bruger, moduler } = useFleet();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
+  /* `null` = lukket. Ellers etapen der foreslås på. */
+  const [foreslaar, setForeslaar] = useState(null);
   /* `null` = lukket. Et objekt = åben med gitterets forslag i hånden. */
   const [planlaegger, setPlanlaegger] = useState(null);
   const [flytSvar, setFlytSvar] = useState(null);
@@ -215,6 +219,9 @@ export default function Disponering() {
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og KUN til at tegne kontrollen. Serveren
      spørger om den samme, og det er dér den afgøres. */
   const maaPlanlaegge = harPerm(bruger?.perms, PERM.opgaverSkriv);
+  /* ⚠ EN ANDEN PERMISSION END GODKENDELSEN — beslutning 5. Disponenten
+     laver forslagene og må ikke godkende sit eget. */
+  const maaForeslaa = harPerm(bruger?.perms, PERM.bookingForeslaa);
 
   const iDag = new Date(); iDag.setHours(0, 0, 0, 0);
   const D0 = iDag.getTime();
@@ -543,9 +550,21 @@ export default function Disponering() {
             post={valgt} personEfterId={personEfterId} lvNavn={lvNavn}
             maaSkrive={maaPlanlaegge}
             onSkiftet={() => opgaver.genindlaes()}
+            maaForeslaa={maaForeslaa}
+            onForeslaa={() => setForeslaar(valgt)}
           />
         </div>
       </Gitter>
+
+      {foreslaar && (
+        <Forslagsdialog
+          etape={foreslaar}
+          biler={koeretoejer.data}
+          personale={personale.data}
+          onLuk={() => setForeslaar(null)}
+          onGemt={() => { setForeslaar(null); etaper.genindlaes?.(); }}
+        />
+      )}
 
       {/* ⚠ SAMME DIALOG SOM DRIFTSKALENDEREN BRUGER. Den lå inde i
           Vaerkstedskalender.jsx indtil beslutning 49; to formularer til den
@@ -641,7 +660,8 @@ function Uplanlagte({ etaper }) {
 
 /* ---- Detaljepanel ------------------------------------------------------ */
 
-function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet }) {
+function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet,
+                   maaForeslaa, onForeslaa }) {
   if (!post) {
     return (
       <Kort titel="Detaljer">
@@ -725,6 +745,24 @@ function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet }) {
           ? Object.entries(post.passager).map(([p, n]) => `${p} ×${n}`).join(", ")
           : "—"}
       />
+      {/* ⚠ HER STOPPEDE FLOWET. Panelet FØRTE til Forslag — men Forslag
+          VÆLGER mellem forslag, og ingenting kunne lave et. Overgangen
+          `afventerPlan → afventerKoord` kræver `kraeverForslag`, altså en
+          forudsætning ingen kunne opfylde. Se beslutning 58. */}
+      {FORSLAGBARE_TILSTANDE.includes(post.tilstand) && (
+        <div style={{ marginTop: 14 }}>
+          <Knap variant="primaer" onClick={onForeslaa} disabled={!maaForeslaa}
+                title={maaForeslaa ? undefined : `Kræver ${PERM.bookingForeslaa}.`}>
+            Foreslå tur
+          </Knap>
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Et forslag <b>spærrer ingenting</b> — reservationen skrives når
+            koordinatoren godkender. Og det må <b>du ikke selv</b>
+            (beslutning 5).
+          </p>
+        </div>
+      )}
+
       <p className="fc-hint" style={{ marginTop: 12 }}>
         Passagerne er prismotorens input — <b>beregnForloeb()</b> regner på dem.
         De skal være geografisk mulige: Storebælt og Femern udelukker hinanden,

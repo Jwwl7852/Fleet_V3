@@ -63,3 +63,34 @@ async function kald(data) {
  */
 export const skiftEtape = ({ etapeId, tilTilstand, valgtForslagId, begrundelse, senestMs }) =>
   kald({ etapeId, tilTilstand, valgtForslagId, begrundelse, senestMs });
+
+/* Småt navn — se ETAPEFUNKTION. */
+export const FORSLAGFUNKTION = "forslagskriv";
+
+/**
+ * Skriv et forslag på en etape.
+ *
+ * ⚠ DET ER IKKE ET TILSTANDSSKIFT, og derfor sin egen funktion. Disponenten
+ * laver et forslag, ser på det, laver et til — og sender dem først når han er
+ * færdig. Lå skrivningen i overgangen, kunne der kun laves ÉT ad gangen, og de
+ * 1–3 forslag koordinatoren skal SAMMENLIGNE, ville være umulige.
+ *
+ * ⚠ OG DET SPÆRRER INGENTING. Reservationen skrives når koordinatoren
+ * godkender; tre forslag ville ellers spærre tre biler for én tur.
+ *
+ * ⚠ MEN DE FEM TJEK KØRER ALLIGEVEL. Serveren bruger den samme
+ * `tjekDisponering()` som ved godkendelsen, så disponenten får sit nej med det
+ * samme frem for hos koordinatoren. Et forslag der ikke kan godkendes, er et
+ * løfte til en kunde der ikke kan holdes.
+ *
+ * ⚠ INTET id OG INTET nr. Serveren laver push-nøglen og tildeler det næste
+ * ledige nummer — ikke `antal + 1`, for så ville to forslag få nr. 3 hvis
+ * nr. 2 blev trukket tilbage.
+ */
+export const skrivForslag = ({
+  etapeId, koeretoejIder, personId, afhentningMs, leveringMs,
+  transitTimer, estimatOere, note,
+}) => kald({
+  etapeId, koeretoejIder, personId, afhentningMs, leveringMs,
+  transitTimer, estimatOere, note,
+});

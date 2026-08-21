@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **57 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **58 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -209,6 +209,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   tenant, klasse, år, måned og et ANTAL. En post kopieret derud havde forladt
   kundens tenant — det er den grænse beslutning 24 holder, og reglens
   `$andet: false` håndhæver den.
+- **Skrive et forslag uden om `forslagskriv`, eller lægge det i et
+  etapeskift.** Et forslag er ikke et tilstandsskift: disponenten laver et,
+  ser på det, laver et til, og sender dem først når han er færdig. Lå
+  skrivningen i overgangen, kunne der kun laves ÉT ad gangen.
+  ⚠ **Det spærrer ingenting** — reservationen skrives når koordinatoren
+  godkender. Tre forslag ville ellers spærre tre biler for én tur.
+  ⚠ **Men de fem tjek køres alligevel**, med den SAMME `spaerringerFor()` som
+  ved godkendelsen. Et forslag koordinatoren ikke kan godkende, er et løfte
+  til en kunde der ikke kan holdes.
+  ⚠ **Og forslagene er NØGLET på deres eget id — de er ikke en array.** RTDB
+  har ingen arrays, `$andet: false` forbyder et `id` inde i posten, og
+  `valgtForslagId` skal pege på en nøgle der findes. Brug `forslagListe()`;
+  den er det ene sted formen oversættes. Se beslutning 58.
 - **Lægge et forslag på bookingen.** Det hører på ETAPEN, med alle sine
   felter — tid, pris, enheder og chauffør. Det lå begge steder indtil
   beslutning 40, og for et forløb med én etape var det det samme løfte

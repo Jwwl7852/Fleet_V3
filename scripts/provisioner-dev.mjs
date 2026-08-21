@@ -207,7 +207,13 @@ export const SEED = [
      ⚠ Og det blev først synligt da `bookingopret` kom (beslutning 55): en
      nyoprettet booking landede i en node ingen skærm læste. */
   { node: "bookinger", data: DEMO_BOOKINGER, form: "liste" },
-  { node: "etaper", data: DEMO_ETAPER, form: "liste" },
+  /* ⚠ FORSLAGENE SKAL NØGLES PÅ DERES EGET id. Med `form: "liste"` blev
+     etapens `forslag`-array skrevet råt, og RTDB gjorde den til nøglerne
+     0, 1, 2 med id'et liggende INDE i posten. Reglen kræver at
+     `valgtForslagId` peger på en nøgle der findes — så et valg kunne aldrig
+     matche, og nøglerne ville dertil FLYTTE SIG når et forslag blev trukket
+     tilbage. Se beslutning 58. */
+  { node: "etaper", data: DEMO_ETAPER, form: "liste-med-boern", boern: ["forslag"] },
   /* ⚠ OPGAVERNE HAR HAFT REGLER OG INGEN DATA. Noden er skrivbar med
      opgaver.skriv og har et indeks — men intet seedede den, og ingen skaerm
      forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt

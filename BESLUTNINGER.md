@@ -3597,3 +3597,93 @@ Tilstanden, reservationen på hver ressource, og bookingens **afledte** tilstand
 Hentede skærmen kun etaperne igen efter et skift, ville tabellen ovenfor stå med
 den gamle bookingtilstand — og det er præcis den uenighed Bookingoversigten
 findes for at gøre **synlig**. Alle tre lister hentes derfor på ny.
+
+## 58. Forslaget kunne ikke laves
+
+Beslutning 57 gav etapemaskinen sine døre. Én af dem var stadig låst indefra:
+overgangen `afventerPlan → afventerKoord` kræver `kraeverForslag`, og **intet
+kunne lave et forslag**.
+
+`etapeskift` **læser** `etape.forslag` når koordinatoren godkender, men skriver
+det aldrig. `etaper` er `.write: false`. Ingen skærm byggede et. Disponering
+*førte* til Forslag — og Forslag **vælger** mellem forslag der allerede findes.
+Bookingflowet stoppede altså præcis dér hvor disponenten skulle arbejde.
+
+### ⚠ Og forslagene lå i en form reglerne forbyder
+
+Målt i DEV før rettelsen: `et-004/forslag` lå med nøglerne **0, 1, 2** og bar
+sit `id` **inde i** objektet. Tre ting var galt på én gang:
+
+- **RTDB har ingen arrays.** Provisionerens egen kommentar siger det —
+  *"nøglerne FLYTTER SIG når en post fjernes"* — og `sammeNode()` findes netop
+  for at nøgle børn på deres eget id. `etaper` blev seedet med `form: "liste"`,
+  så etapen selv blev nøglet og dens `forslag`-array skrevet råt.
+- **`$andet: false`** i regelfilen forbyder `id` inde i et forslag.
+- **`valgtForslagId` skal pege på en NØGLE der findes.** Med nøglerne 0/1/2 og
+  id'erne fs-a/fs-b/fs-c kunne et valg aldrig matche — og havde det matchet,
+  ville "1" pege på et andet forslag i det øjeblik det første blev trukket
+  tilbage.
+
+⚠ **Serveren fandt alligevel forslaget**, fordi den søgte på `f.id` frem for på
+nøglen. Serveren og reglen var altså uenige om **hvor forslagets identitet
+bor** — og det virkede kun fordi demo-sættet bar begge dele. `forslagListe()`
+er nu det ene sted formen oversættes til en liste, sorteret på `nr`.
+
+### `forslagskriv` — og hvorfor den ikke er et led i `etapeskift`
+
+Et forslag er **ikke** et tilstandsskift. Disponenten laver et, ser på det,
+laver et til, og sender dem først når han er færdig. Lå skrivningen i
+overgangen, kunne der kun laves **ét ad gangen** — og de 1–3 forslag
+koordinatoren skal **sammenligne**, ville være umulige.
+
+⚠ **Et forslag spærrer ingenting.** Reservationen skrives når koordinatoren
+godkender. Skrev vi en her, ville tre forslag spærre tre biler for én tur — og
+de to af dem for ingenting.
+
+⚠ **Men de fem tjek køres alligevel.** Ikke for at spærre for evigt — der går
+tid mellem forslag og godkendelse, og det er ved godkendelsen afgørelsen
+falder. Men **et forslag koordinatoren ikke kan godkende, er et løfte til en
+kunde der ikke kan holdes**, og disponenten skal have sit nej med det samme.
+
+⚠ **Og opslagene ligger ét sted.** `spaerringerFor()` er trukket ud af
+`etapeskift`, så begge kaldere bruger den samme — med den samme sætning. To
+kopier ville være to steder at være uenige om hvad *"alt de fem tjek skal
+bruge"* betyder: en glemt kompetenceliste her og en fuld dér.
+
+⚠ **`booking.foreslaa`, ikke `booking.godkend`.** Beslutning 5: disponenten
+laver forslagene og må ikke godkende sit eget. To permissions er hele grunden
+til at der er to skridt.
+
+### Tre er loftet, og nummeret er en plads i rækken
+
+Mockuppen viser 1–3, og koordinatoren skal kunne sammenligne dem uden at
+scrolle. Et fjerde forslag er ikke mere information — det er en beslutning der
+ikke er truffet. Trækkes et tilbage, bliver der plads igen.
+
+⚠ **Nummeret tildeles som det næste LEDIGE, ikke som `antal + 1`.**
+Koordinatoren taler om "forslag 2", og med `antal + 1` ville to forslag få
+nr. 3 hvis nr. 2 blev trukket tilbage.
+
+### ⚠ En sættevogn er to enheder — også i formularen
+
+Feltet er en liste, og enhederne slås til og fra hver for sig. Et multiselect
+ville skjule at det er et **valg** at tage traileren med; `kanDisponeres()`
+afviser en trailer uden trækkende enhed, og et forslag der kun kunne pege på
+trækkeren, ville foreslå noget serveren siger nej til.
+
+⚠ **Og transittiden er kørsel, ikke vinduet.** En tur til Paris løber over 40
+timer, og chaufføren sover undervejs. Samme skel som mellem en etapes vindue og
+dens `koerselMin`.
+
+### To prøver der ledte det forkerte sted — tredje og fjerde gang
+
+En prøve krævede at Forslag-skærmen kaldte `demoEtaperPaa(`. Da skærmen holdt
+op med det i beslutning 56, blev prøven **grøn alligevel** — fordi en
+**kommentar** nævnte navnet. Og min egen nye prøve på `forslagskriv` faldt over
+funktionens egen kommentar om at den kræver `booking.foreslaa` og *ikke*
+`booking.godkend`.
+
+Det er samme fejl som `.fc-btn`-søgningen og reolpladsudsnittet i beslutning 53:
+**et udsnit der ikke er afgrænset, og en søgning der ikke fjerner
+kommentarerne, måler noget andet end det man tror.** Begge stripper nu
+kommentarer først.

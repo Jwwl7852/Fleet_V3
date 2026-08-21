@@ -68,7 +68,8 @@ import {
 } from "./delt/grundlag.js";
 import {
   valideBooking, bookingOpdatering, naesteBookingnummer,
-  kanSkifteEtape, byggEtapeSkifte, forloebstilstand
+  kanSkifteEtape, byggEtapeSkifte, forloebstilstand,
+  valideForslag, forslagOpdatering, forslagListe,
 } from "./delt/booking-state.js";
 import {
   reservationerFraEtape, enhedsIder, straekningFraEtape
@@ -2624,6 +2625,64 @@ async function hentReservationer(rod, poster) {
   return ud;
 }
 
+/**
+ * De fem disponeringstjek for en etape SOM DEN VILLE SE UD med et forslag.
+ *
+ * ⚠ SAMME OPSLAG TIL BEGGE KALDERE. `etapeskift` kører dem naar forslaget
+ * GODKENDES, `forslagskriv` naar det LAVES — og de skal svare det samme, med
+ * den samme saetning. Laa opslagene to steder, ville "alt de fem tjek skal
+ * bruge" kunne drive: en glemt kompetenceliste her og en fuld dér.
+ *
+ * ⚠ OG KOERE-HVILETID GAELDER PERSONEN, IKKE TUREN. Alle chaufføerens etaper
+ * skal med, ellers kan han faa sin fjerde tur i traek fordi hver enkelt saa
+ * lovlig ud for sig.
+ */
+async function spaerringerFor(rod, etape, paaEtapen) {
+  const ider = enhedsIder(paaEtapen);
+  const enheder = [];
+  for (const id of ider) {
+    const k = (await rod.child(`koeretoejer/${id}`).once("value")).val();
+    if (!k) throw new HttpsError("not-found", `Køretøjet ${id} findes ikke.`);
+    enheder.push({ ...k, id });
+  }
+  const p = (await rod.child(`personale/${paaEtapen.personId}`).once("value")).val();
+  if (!p) throw new HttpsError("not-found", `Medarbejderen ${paaEtapen.personId} findes ikke.`);
+  const person = { ...p, id: paaEtapen.personId };
+
+  const alleKomp = (await rod.child("kompetencer").once("value")).val() || {};
+  const kompetencer = Object.entries(alleKomp)
+    .map(([id, v]) => ({ id, ...v }))
+    .filter((c) => c.personId === person.id);
+
+  const alleEtaper = (await rod.child("etaper").once("value")).val() || {};
+  const straekninger = Object.entries(alleEtaper)
+    .map(([id, v]) => ({ id, ...v }))
+    .filter((x) => x.personId === person.id && x.id !== etape.id)
+    .map(straekningFraEtape)
+    .concat([straekningFraEtape(paaEtapen)]);
+
+  const nye = reservationerFraEtape(paaEtapen);
+  const reservationer = await hentReservationer(rod, nye);
+
+  const raekker = tjekDisponering({
+    reservationerForEtapen: nye,
+    enheder, person, kompetencer, reservationer, straekninger,
+    gods: etape.maengde || {}
+  });
+  const spaerringer = raekker.filter((r) => r.tone === "bad");
+
+  /* ⚠ SERVERENS AFVISNING ER SKAERMENS EGEN SAETNING. Se hovedet i
+     disponering.js: to formuleringer af den samme spaerring ville vaere to
+     forklaringer paa én ting. */
+  const fejl = spaerringer.length
+    ? new HttpsError("failed-precondition",
+        `${spaerringer[0].tjek}: ${spaerringer[0].tekst}` +
+        (spaerringer.length > 1 ? ` (+${spaerringer.length - 1} mere)` : ""))
+    : null;
+
+  return { spaerringer, raekker, nye, fejl };
+}
+
 export const etapeskift = onCall({ region: REGION }, async (req) => {
   const auth = req.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
@@ -2675,8 +2734,14 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
   if (tilTilstand === "reserveret") {
     /* Forslaget siger HVEM og HVAD. Etapen bærer det først når skiftet er
        skrevet — indtil da er forslaget det eneste sted det står. */
-    const forslag = Object.values(etape.forslag || {})
-      .find((f) => f.id === (valgtForslagId ?? etape.valgtForslagId));
+    /* ⚠ FORSLAGET SLÅS OP PÅ SIN NØGLE, IKKE PÅ ET id INDE I OBJEKTET.
+       Her stod `.find((f) => f.id === …)`, og det virkede kun fordi
+       demo-sættet bar sit id INDE i posten — en form regelfilens
+       `$andet: false` afviser, og som reglens krav om at `valgtForslagId`
+       peger på en nøgle der FINDES, aldrig kunne opfylde. Serveren og reglen
+       var altså uenige om hvor forslagets identitet bor. Se beslutning 58. */
+    const forslagId = valgtForslagId ?? etape.valgtForslagId;
+    const forslag = (etape.forslag || {})[forslagId];
     if (!forslag) {
       throw new HttpsError("failed-precondition",
         "Det valgte forslag findes ikke på etapen.");
@@ -2693,50 +2758,15 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
         "Forslaget mangler enten køretøj eller chauffør.");
     }
 
-    /* ---- Alt de fem tjek skal bruge -------------------------------- */
-    const enheder = [];
-    for (const id of ider) {
-      const k = (await rod.child(`koeretoejer/${id}`).once("value")).val();
-      if (!k) throw new HttpsError("not-found", `Køretøjet ${id} findes ikke.`);
-      enheder.push({ ...k, id });
-    }
-    const p = (await rod.child(`personale/${paaEtapen.personId}`).once("value")).val();
-    if (!p) throw new HttpsError("not-found", `Medarbejderen ${paaEtapen.personId} findes ikke.`);
-    const person = { ...p, id: paaEtapen.personId };
-
-    const alleKomp = (await rod.child("kompetencer").once("value")).val() || {};
-    const kompetencer = Object.entries(alleKomp)
-      .map(([id, v]) => ({ id, ...v }))
-      .filter((c) => c.personId === person.id);
-
-    /* ⚠ KØRE-HVILETID GÆLDER PERSONEN, IKKE TUREN. Alle chaufførens etaper
-       skal med, ellers kan han få sin fjerde tur i træk fordi hver enkelt så
-       lovlig ud for sig. */
-    const alleEtaper = (await rod.child("etaper").once("value")).val() || {};
-    const straekninger = Object.entries(alleEtaper)
-      .map(([id, v]) => ({ id, ...v }))
-      .filter((x) => x.personId === person.id && x.id !== etape.id)
-      .map(straekningFraEtape)
-      .concat([straekningFraEtape(etape)]);
-
-    const nye = reservationerFraEtape(paaEtapen);
-    const reservationer = await hentReservationer(rod, nye);
-
     /* ---- DE FEM TJEK, OG DE BLOKERER ------------------------------- */
-    const raekker = tjekDisponering({
-      reservationerForEtapen: nye,
-      enheder, person, kompetencer, reservationer, straekninger,
-      gods: etape.maengde || {}
-    });
-    spaerringer = raekker.filter((r) => r.tone === "bad");
-    if (spaerringer.length) {
-      /* ⚠ SERVERENS AFVISNING ER SKÆRMENS EGEN SÆTNING. Se hovedet i
-         disponering.js: to formuleringer af den samme spærring ville være to
-         forklaringer på én ting. */
-      throw new HttpsError("failed-precondition",
-        `${spaerringer[0].tjek}: ${spaerringer[0].tekst}` +
-        (spaerringer.length > 1 ? ` (+${spaerringer.length - 1} mere)` : ""));
-    }
+    /* ⚠ ÉT STED. `forslagskriv` kører nøjagtig de samme tjek når forslaget
+       LAVES, så disponenten får svaret med det samme frem for et nej hos
+       koordinatoren. To kopier af opslagene ville være to steder at være
+       uenige om hvad "alt de fem tjek skal bruge" betyder. */
+    const tjek = await spaerringerFor(rod, etape, paaEtapen);
+    spaerringer = tjek.spaerringer;
+    if (spaerringer.length) throw tjek.fejl;
+    const nye = tjek.nye;
 
     /* ---- Etapen får sine ressourcer, og de bindes ------------------ */
     opdatering[`etaper/${etapeId}/koeretoejIder`] =
@@ -2917,6 +2947,119 @@ async function logOpgave(tenantId, uid, handling, id, foer, efter, note) {
       note: note ?? null
     });
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SKRIV ET FORSLAG PAA EN ETAPE — beslutning 58
+
+   ⚠ HVORFOR DEN FINDES: DER VAR INGEN VEJ TIL AT LAVE ET FORSLAG.
+   `etapeskift` LAESER `etape.forslag` naar koordinatoren godkender, men
+   skriver det aldrig, og `etaper` er `.write: false`. Overgangen
+   `afventerPlan → afventerKoord` kraever `kraeverForslag` — altsaa en
+   forudsaetning ingenting kunne opfylde. Bookingflowet stoppede dér.
+
+   ⚠ OG DEN ER SIN EGEN FUNKTION, IKKE ET LED I etapeskift.
+   Et forslag er ikke et tilstandsskift: disponenten laver et, ser paa det,
+   laver et til, og sender dem foerst naar han er faerdig. Skrev vi forslaget
+   som en del af overgangen, kunne der kun laves EET ad gangen — og de 1-3
+   forslag koordinatoren skal SAMMENLIGNE, ville vaere umulige.
+
+   ⚠ ET FORSLAG SPAERRER INGENTING. Reservationen skrives foerst naar
+   koordinatoren godkender. Skrev vi en her, ville tre forslag spaerre tre
+   biler for én tur — og de to af dem for ingenting.
+
+   ⚠ DE FEM TJEK KOERES ALLIGEVEL, med den SAMME `spaerringerFor()` som
+   `etapeskift`. Ikke for at spaerre for evigt, men for at sige nej MED DET
+   SAMME: et forslag koordinatoren ikke kan godkende, er et loefte til en
+   kunde der ikke kan holdes. Godkendelsen proever igen, for der gaar tid
+   imellem — og det er DER afgoerelsen falder.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const forslagskriv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ booking.foreslaa — IKKE booking.godkend. Beslutning 5: disponenten
+     laver forslagene og maa ikke godkende sit eget. To permissions er hele
+     grunden til at der er to skridt. */
+  if (!perms.includes("|booking.foreslaa|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke lave forslag. Det kræver booking.foreslaa.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("booking").val() !== true) {
+    throw new HttpsError("permission-denied", "Planning-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const etape = await hentEtape(rod, kortStreng(d.etapeId, 60));
+
+  const tal = (v) => (v === null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
+  const ider = {};
+  for (const id of Array.isArray(d.koeretoejIder) ? d.koeretoejIder : []) {
+    const k = kortStreng(id, 60);
+    if (k) ider[k] = true;
+  }
+
+  const forslag = {
+    koeretoejIder: ider,
+    personId: kortStreng(d.personId, 60),
+    afhentningMs: tal(d.afhentningMs),
+    leveringMs: tal(d.leveringMs),
+    transitTimer: tal(d.transitTimer),
+    estimatOere: tal(d.estimatOere),
+    note: kortStreng(d.note, 300) || null,
+  };
+
+  /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
+  const form = valideForslag(forslag, etape);
+  if (!form.ok) {
+    throw new HttpsError("invalid-argument", Object.values(form.fejl)[0]);
+  }
+
+  /* ---- De fem tjek — den SAMME funktion som ved godkendelsen ----------- */
+  /* ⚠ ETAPEN SOM DEN VILLE SE UD MED FORSLAGET. Det er den kombination der
+     skal holde — ikke etapen som den staar nu, hvor hverken enhed eller
+     chauffoer er sat. Samme greb som `etapeskift` bruger paa vej til
+     `reserveret`. */
+  const paaEtapen = {
+    ...etape,
+    koeretoejIder: forslag.koeretoejIder,
+    personId: forslag.personId,
+    fra: forslag.afhentningMs,
+    til: forslag.leveringMs,
+  };
+  const tjek = await spaerringerFor(rod, etape, paaEtapen);
+  if (tjek.spaerringer.length) throw tjek.fejl;
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  /* ⚠ DEN ROERER IKKE ETAPENS TILSTAND. Et forslag aendrer ikke hvor etapen
+     staar; at sende forslagene til koordinatoren er et `etapeskift`. To
+     beslutninger i eet kald ville vaere en beslutning ingen havde truffet. */
+  const forslagId = rod.child(`etaper/${etape.id}/forslag`).push().key;
+  const bygget = forslagOpdatering(etape.id, forslagId, forslag, etape);
+  await rod.update(bygget.opdatering);
+
+  await logOpgave(tenantId, uid, AUDIT.opret, etape.id, null,
+    { forslagNr: bygget.post.nr, personId: forslag.personId },
+    `forslag ${bygget.post.nr} paa etape ${etape.id}`);
+
+  return { forslagId, nr: bygget.post.nr, antal: forslagListe(etape).length + 1 };
+});
 
 /* ══════════════════════════════════════════════════════════════════════════
    OPRET EN BOOKING — beslutning 55

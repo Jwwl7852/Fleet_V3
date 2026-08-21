@@ -57,7 +57,7 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte, tilgaengeligeEtapeHandlinger,
-  TRANSPORTTYPE,
+  TRANSPORTTYPE, forslagListe,
 } from "../../fleet/booking-state.js";
 import { tjekDisponering, TONE } from "../../fleet/disponering.js";
 import { skiftEtape } from "../../fleet/disponer.js";
@@ -135,12 +135,17 @@ export default function Forslag() {
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
   const booking = bookingListe.data.find((b) => b.id === id)
     || bookingListe.data.find((b) =>
-      etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && e.forslag?.length))
+      etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && forslagListe(e).length))
     || null;
 
   const etaper = booking ? etaperPaa(booking.id) : [];
   /* Den etape der har noget at tage stilling til, kommer først. */
-  const foerste = etaper.find((e) => e.forslag?.length) || etaper[0] || null;
+  /* ⚠ `forslag` ER ET OBJEKT I NODEN, ikke en array — nøglet på forslagets
+     eget id, fordi RTDB ingen arrays har og `valgtForslagId` skal pege på en
+     nøgle der findes. `forslagListe()` er det ene sted formen oversættes, og
+     den sorterer på `nr`, så to skærme ikke viser dem i hver sin rækkefølge.
+     Se beslutning 58. */
+  const foerste = etaper.find((e) => forslagListe(e).length) || etaper[0] || null;
 
   const [etapeId, setEtapeId] = useState(foerste?.id || null);
   const [valgtForslagId, setValgtForslagId] = useState(null);
@@ -176,7 +181,8 @@ export default function Forslag() {
     ? kanSkifteEtape(somValgt, "reserveret", perms, { begrundelse })
     : { ok: false, aarsag: "Forløbet har ingen etape." };
 
-  const valgtForslag = (etape?.forslag || []).find((f) => f.id === valgtForslagId) || null;
+  const forslag = forslagListe(etape);
+  const valgtForslag = forslag.find((f) => f.id === valgtForslagId) || null;
 
   /* ══════════════════════════════════════════════════════════════════════
      ⚠ TJEKKENE AFGØR OGSÅ OM KNAPPEN ER AKTIV.
@@ -275,6 +281,7 @@ export default function Forslag() {
         <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
           <Forslagstabel
             etape={etape}
+            forslag={forslag}
             valgtForslagId={valgtForslagId}
             setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
             biler={bilListe.data}
@@ -306,15 +313,18 @@ export default function Forslag() {
 
 /* ---- Forslagene på etapen ---------------------------------------------- */
 
-function Forslagstabel({ etape, valgtForslagId, setValgtForslagId, biler, personale }) {
+function Forslagstabel({ etape, forslag, valgtForslagId, setValgtForslagId, biler, personale }) {
   /* ⚠ LISTERNE KOMMER IND. Kolonnerne slaar navne op, og en
      underkomponent kan ikke se den ydres variable — femte gang i denne
      omgang, og byggeriet siger det ikke: en ReferenceError ved rendering er
-     ingen byggefejl. Kun et klik fanger den. */
+     ingen byggefejl. Kun et klik fanger den.
+     ⚠ SJETTE GANG: `forslag` kom til her, da noden holdt op med at bære en
+     array. Kommentaren ovenfor stod der allerede — og fælden gentog sig
+     alligevel i den samme fil. */
   return (
-    <Kort titel={`Forslag på etape nr. ${etape.nr ?? "?"} (${etape.forslag?.length || 0})`}
+    <Kort titel={`Forslag på etape nr. ${etape.nr ?? "?"} (${forslag.length})`}
           under={`${etape.fraSted} → ${etape.tilSted} · ${TILSTAND[etape.tilstand]?.label}`}>
-      {etape.forslag?.length ? (
+      {forslag.length ? (
         /* ⚠ HELE RÆKKEN VÆLGER, ikke kun radioen. Et forslag er en linje med
            otte kolonner, og en 4 px knap yderst til venstre er det eneste
            sted man må ramme — det er ikke betjening, det er en prøve i
@@ -347,7 +357,7 @@ function Forslagstabel({ etape, valgtForslagId, setValgtForslagId, biler, person
               render: (f) => kr(f.estimatOere) },
             { key: "note", label: "Note" },
           ]}
-          raekker={etape.forslag}
+          raekker={forslag}
           noegle={(f) => f.id}
         />
       ) : (
