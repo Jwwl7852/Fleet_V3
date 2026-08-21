@@ -1575,3 +1575,60 @@ describe("\"Nu\"-markøren", () => {
     assert.match(gk(), /nuSlot >= 0/);
   });
 });
+
+describe("klik-kortet på kalenderen", () => {
+  const kal = () => readFileSync(
+    new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
+
+  it("⚠ \"REDIGER BOOKING\" VAR EN DØR DER MANGLEDE TIL ET RUM DER FANDTES", () => {
+    /* retUdlaan() staar i udlaan.js, og handling === "ret" staar i
+       kasseudlaanskriv — begge bygget, begge udrullet. INGEN skaerm kaldte
+       dem. Samme slags hul som naesteBookingNummer, der findes og aldrig
+       kaldes: en vej der er bygget men ikke har en indgang, kan ikke proeves
+       af nogen der bruger programmet. */
+    assert.match(kal(), /retUdlaan\(\{/);
+    const fn = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+    assert.match(fn, /d\.handling === "ret"/);
+  });
+
+  it("⚠ OG DEN KAN KUN RETTES MENS DEN ER booket", () => {
+    /* Serveren afviser resten. Er kassen klargjort, staar den pakket til en
+       bestemt periode; er den udlaant, er den hos kunden. At flytte datoerne
+       bagefter ville beskrive noget andet end det der skete. */
+    assert.match(kal(), /u\.tilstand === "booket"/);
+    const fn = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
+    const blok = fn.slice(fn.indexOf('d.handling === "ret"'));
+    assert.match(blok.slice(0, 1200), /booket/);
+  });
+
+  it("⚠ ANNULLÉR GÅR GENNEM DEN DELTE HANDLING", () => {
+    /* kasseudlaan er .write: false, og skiftUdlaan() er den ENE vej ind. */
+    assert.match(kal(), /skiftUdlaan\(\{ udlaanId: u\.id, til: "annulleret" \}\)/);
+    assert.match(kal(), /kanSkifteUdlaan\(u\.tilstand, "annulleret"\)/);
+  });
+
+  it("⚠ OG MAILS OG FOTOS ER IKKE TEGNET", () => {
+    /* Planchens "Relateret indhold" er beslutning 20, og den er fase 0:
+       sager/ staar ikke i firebase.rules.json. Et afsnit der sagde "3 mails"
+       uden at kunne aabne dem, ville vaere en attrap. Skaermen SIGER det. */
+    const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
+    assert.ok(!/"sager"/.test(regler), "sager/ findes nu — 6.21's forbehold skal opdateres");
+    assert.match(kal(), /Ingen mails og fotos endnu/);
+  });
+
+  it("⚠ OG KORTET ÅBNES IKKE FRA EN SAGSBLOK", () => {
+    /* En sagsblok er FLERE udlaan flettet sammen (6.14), og der er ikke ét at
+       vise. Et kort der viste ét af dem, ville paastaa at vaere hele sagen. */
+    assert.match(kal(), /if \(efterSag\) return;/);
+  });
+
+  it("⚠ OG SKÆRMEN SIGER HVORNÅR DEN BLEV HENTET", () => {
+    /* useListe henter med once(), ikke on() — skaermen opdaterer sig IKKE af
+       sig selv. En kalender uden et tidsstempel kan ikke skelnes fra en der
+       har staaet aaben siden i morges, og saa planlaegger man efter tal en
+       anden har aendret imens. */
+    assert.match(kal(), /Hentet \{datoTid\(hentetMs\)\}/);
+    assert.match(kal(), /Listen opdateres ikke af sig selv/);
+    assert.match(kal(), /setHentetMs\(Date\.now\(\)\)/);
+  });
+});

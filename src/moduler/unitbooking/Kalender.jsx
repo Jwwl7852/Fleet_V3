@@ -33,11 +33,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { skiftUdlaan } from "../../fleet/udlaan.js";
-import { num, dato, pct, ugenr } from "../../fleet/format.js";
+import { skiftUdlaan, retUdlaan } from "../../fleet/udlaan.js";
+import { num, dato, datoTid, pct, ugenr, msTilIso, isoTilMs } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
-  Formularsvar, Donut,
+  Formularsvar, Donut, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -45,7 +45,7 @@ import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
   sagsblokke, sagstilstand, dageUde, naesteSkift,
   udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
-  klargoeresSnart, returneresSnart, kassebelaegning,
+  klargoeresSnart, returneresSnart, kassebelaegning, kanSkifteUdlaan, valideUdlaan,
   KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
 import {
@@ -167,6 +167,12 @@ export default function Kalender() {
      kolonner skal dele skaermen med en sidebar paa 216 px. Hver kolonne der
      bliver bredere, er en dato man ikke skal knibe oejnene sammen for. */
   const [fuld, setFuld] = useState(false);
+  /* Sat ved foerste render og ved hvert Opdater. ⚠ IKKE Date.now() i JSX:
+     det ville skifte ved hver eneste gentegning og paastaa at listen lige var
+     hentet, hver gang man trykkede paa noget. */
+  const [hentetMs, setHentetMs] = useState(() => Date.now());
+  /* Det valgte udlaan — planchens klik-kort. */
+  const [valgtId, setValgtId] = useState(null);
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne knappen. Serveren
      spørger om den samme, og `kasseudlaan` er `.write: false`. */
   const { bruger } = useFleet();
@@ -295,6 +301,11 @@ export default function Kalender() {
   const bel = kassebelaegning(kasser);
   const klargoer = klargoeresSnart(udlaan, nu);
   const retur = returneresSnart(udlaan, nu);
+
+  /* ⚠ ID'ET ER SAMMENSAT ved gruppering pr. kasse — se udlaansblokke().
+     Ved gruppering pr. sag er blokken FLERE udlaan flettet sammen, og der er
+     ikke ét at vise; kortet aabnes derfor kun fra en kasseraekke. */
+  const valgt = valgtId ? udlaan.find((u) => u.id === valgtId) || null : null;
 
   const liste = haendelser(udlaan, nu);
 
@@ -446,6 +457,14 @@ export default function Kalender() {
           fra={vindueFra}
           til={vindueTil}
           enhed={ENHED.dag}
+          valgtId={efterSag ? null : (valgtId ? blokke.find((b) => b.id.startsWith(valgtId + "__"))?.id : null)}
+          onVaelg={(b) => {
+            /* ⚠ KUN FRA EN KASSERAEKKE. En sagsblok er FLERE udlaan flettet
+               sammen (6.14), og der er ikke ét at vise. */
+            if (efterSag) return;
+            const id = String(b.id).split("__")[0];
+            setValgtId((x) => (x === id ? null : id));
+          }}
           /* ⚠ MÅNED OVER UGE OVER DAG. Ved fire uger er otteogtyve datoer i
              én række ulæselige — det var præcis sådan skærmen så ud. Måneden
              og ugen står derfor for sig, som planchen viser.
@@ -474,6 +493,17 @@ export default function Kalender() {
           Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
           Driftskalender, Servicekalender og Disponering.
         </p>
+        {/* ⚠ HVORNÅR BLEV DET HER HENTET? En kalender uden et tidsstempel kan
+            ikke skelnes fra en der har stået åben siden i morges — og så
+            planlægger man efter tal en anden har ændret imens. `useListe`
+            henter med `once()`, ikke `on()`, så skærmen opdaterer sig IKKE af
+            sig selv. Så skal den sige det. */}
+        <p className="fc-hint fc-row" style={{ marginTop: 8 }}>
+          <span>Hentet {datoTid(hentetMs)}. Listen opdateres ikke af sig selv.</span>
+          <Knap onClick={() => { genindlaes(); setHentetMs(Date.now()); }}>
+            Opdater
+          </Knap>
+        </p>
       </Kort>
       </Fuldskaerm>
 
@@ -487,6 +517,22 @@ export default function Kalender() {
         maaSkrive={maaSkrive}
         paaSkiftet={genindlaes}
       />
+
+      {/* ⚠ PLANCHENS KLIK-KORT. Hover giver det lille; et klik giver det her,
+          med hele reservationen og de to handlinger. Det står UNDER kalenderen
+          frem for oven på den: et kort der dækker gitteret, skjuler netop den
+          sammenhæng man klikkede for at forstå. */}
+      {valgt && (
+        <Udlaanskort
+          udlaan={valgt}
+          kasse={kasser.find((k) => k.id === valgt.kasseId) || null}
+          typeNavn={typeNavn}
+          pladsMap={pladsMap}
+          maaSkrive={maaSkrive}
+          onLuk={() => setValgtId(null)}
+          paaSkiftet={() => { genindlaes(); setHentetMs(Date.now()); }}
+        />
+      )}
 
       {svaev && (
         <Svaevekort
@@ -761,6 +807,238 @@ function Fuldskaerm({ naar, children }) {
   return (
     <div className="fc-fuld" role="region" aria-label="Udlånskalender i fuld skærm">
       {children}
+    </div>
+  );
+}
+
+/* ---- Klik-kortet -------------------------------------------------------- */
+
+/**
+ * Planchens store kort: klik på en blok, og se hele reservationen.
+ *
+ * ⚠ "REDIGER BOOKING" VAR EN DØR DER MANGLEDE TIL ET RUM DER ALLEREDE FANDTES.
+ * `retUdlaan()` står i `udlaan.js`, og `handling === "ret"` står i
+ * `kasseudlaanskriv` — begge bygget, begge udrullet. Ingen skærm kaldte dem.
+ * Det er samme slags hul som `naesteBookingNummer`, der findes og aldrig
+ * kaldes: en vej der er bygget men ikke har en indgang, kan ikke prøves af
+ * nogen der bruger programmet.
+ *
+ * ⚠ OG DEN KAN KUN RETTES MENS DEN ER `booket`. Serveren afviser resten, og
+ * det er ikke en manglende rettighed: er kassen klargjort, står den pakket til
+ * en bestemt periode, og er den udlånt, er den hos kunden. At flytte datoerne
+ * bagefter ville beskrive noget andet end det der skete. Formularen tegnes
+ * derfor ikke — og kortet siger hvorfor, frem for at vise en grå knap.
+ *
+ * ⚠ MAILS OG FOTOS ER IKKE HER. Planchen har et "Relateret indhold" med tre
+ * mails og tolv billeder. Det er beslutning 20, og den er FASE 0: `sager/`
+ * står ikke i `firebase.rules.json`, så der er hverken en node at læse fra
+ * eller en regel der giver adgang. Et afsnit der sagde "3 mails" uden at kunne
+ * åbne dem, ville være en attrap der opfører sig som en kontrol.
+ */
+function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, paaSkiftet }) {
+  const [redigerer, saetRedigerer] = useState(false);
+  const [arbejder, saetArbejder] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const kanRettes = u.tilstand === "booket";
+  const ude = dageUde(u);
+
+  const annuller = async () => {
+    saetArbejder(true);
+    saetSvar(null);
+    const r = await skiftUdlaan({ udlaanId: u.id, til: "annulleret" });
+    saetArbejder(false);
+    saetSvar(r);
+    if (r.ok) paaSkiftet();
+  };
+
+  return (
+    <Kort
+      titel={`Sag ${u.sagsnummer} · ${u.kasseId}`}
+      handling={<Knap onClick={onLuk}>Luk</Knap>}
+    >
+      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
+        <div>
+          <MiniLinje label="Kasse" vaerdi={<b>{u.kasseId}</b>} />
+          {kasse && <MiniLinje label="Type" vaerdi={typeNavn(kasse.type)} />}
+          {kasse && (
+            <MiniLinje label="Hjemplads" vaerdi={pladsnavn(pladsMap[kasse.hjemPladsId])} />
+          )}
+          <MiniLinje
+            label="Tilstand"
+            vaerdi={
+              <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
+                {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
+              </Pille>}
+          />
+        </div>
+        <div>
+          {/* ⚠ PLANCHENS TRE DATOER. Klargøringen er valgfri (6.12), og den
+              siger det frem for at stå tom — et tomt felt læses som en dato
+              nogen har glemt at udfylde. */}
+          <MiniLinje
+            label="Klargøres senest"
+            vaerdi={Number.isFinite(u.klargoerSenest)
+              ? dato(u.klargoerSenest)
+              : <span className="fc-neutral">— ikke sat</span>}
+          />
+          <MiniLinje label="Afgår" vaerdi={dato(u.fra)} />
+          <MiniLinje label="Returnerer" vaerdi={dato(u.til)} />
+          {/* ⚠ MÅLT ELLER PLANLAGT — flaget er vigtigere end tallet. `fra`/`til`
+              er AFTALEN; udleveretMs og returneretMs er hvad der skete.
+              Beslutning 37. */}
+          <MiniLinje
+            label={ude.faktisk ? "Ude (målt)" : "Ude (planlagt)"}
+            vaerdi={`${num(ude.dage)} dage`}
+          />
+        </div>
+      </Gitter>
+
+      {u.beskrivelse && (
+        <p className="fc-hint" style={{ marginTop: 12 }}>{u.beskrivelse}</p>
+      )}
+
+      {redigerer ? (
+        <Rediger
+          udlaan={u}
+          onLuk={() => saetRedigerer(false)}
+          paaGemt={() => { saetRedigerer(false); paaSkiftet(); }}
+        />
+      ) : (
+        <>
+          <Raekke style={{ marginTop: 14 }}>
+            <Knap
+              disabled={!maaSkrive || !kanRettes}
+              title={!maaSkrive
+                ? `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`
+                : kanRettes
+                  ? "Ret sagsnummer, kunde, periode og klargøringsfrist."
+                  : "Kun en reservation der endnu er booket, kan rettes. Se nedenfor."}
+              onClick={() => saetRedigerer(true)}
+            >
+              Rediger booking
+            </Knap>
+            <Knap
+              disabled={!maaSkrive || !kanSkifteUdlaan(u.tilstand, "annulleret") || arbejder}
+              title={maaSkrive
+                ? SKIFTEFORKLARING.annulleret
+                : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+              onClick={annuller}
+            >
+              Annullér booking
+            </Knap>
+          </Raekke>
+
+          <Formularsvar svar={svar} okTekst="Reservationen er annulleret." />
+
+          {!kanRettes && (
+            <p className="fc-hint" style={{ marginTop: 10 }}>
+              ⚠ <b>Kun en reservation der endnu er booket, kan rettes.</b> Er
+              kassen klargjort, står den pakket til en bestemt periode; er den
+              udlånt, er den hos kunden. At flytte datoerne bagefter ville
+              beskrive noget andet end det der skete. Serveren afviser det —
+              det er ikke en manglende rettighed.
+            </p>
+          )}
+
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            ⚠ <b>Ingen mails og fotos endnu.</b> Planchens „Relateret indhold“ er{" "}
+            <b>beslutning 20</b>, og den er fase 0: <code>sager/</code> står ikke
+            i <b>firebase.rules.json</b>, så der er hverken en node at læse fra
+            eller en regel der giver adgang. Et afsnit der sagde „3 mails“ uden
+            at kunne åbne dem, ville være en attrap.
+          </p>
+        </>
+      )}
+    </Kort>
+  );
+}
+
+/**
+ * Rettelsen. ⚠ SAMME `valideUdlaan()` SOM SERVEREN — filen er kopieret til
+ * `functions/delt/`, og en prøve fejler hvis de to ikke er identiske. Skærmen
+ * svarer hurtigt; serveren afgør.
+ *
+ * ⚠ OG KASSEN KAN IKKE BYTTES. Skal udlånet flyttes til en anden kasse, er det
+ * en annullering og en ny reservation — ellers ville historikken på den første
+ * kasse forsvinde uden spor. Serveren håndhæver det; feltet findes ikke her.
+ */
+function Rediger({ udlaan: u, onLuk, paaGemt }) {
+  const [f, saetF] = useState(() => ({
+    sagsnummer: u.sagsnummer || "",
+    beskrivelse: u.beskrivelse || "",
+    fraIso: msTilIso(u.fra),
+    tilIso: msTilIso(u.til),
+    klargoerIso: Number.isFinite(u.klargoerSenest) ? msTilIso(u.klargoerSenest) : "",
+  }));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const fra = isoTilMs(f.fraIso);
+  const til = isoTilMs(f.tilIso);
+  const klargoerSenest = f.klargoerIso ? isoTilMs(f.klargoerIso) : null;
+  const post = { ...u, ...f, fra, til, klargoerSenest };
+  const fejl = valideUdlaan(post, {});
+  /* ⚠ FEJLNØGLEN OG FELTNAVNET ER IKKE DET SAMME — se noten i
+     Reservationsformularen og i Planlaegdialog. */
+  const vis = (fejlNoegle, ...roerte) => {
+    const noegler = roerte.length ? roerte : [fejlNoegle];
+    return visAlle || noegler.some((k) => roert[k]) ? fejl[fejlNoegle] : null;
+  };
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const r = await retUdlaan({
+      udlaanId: u.id,
+      sagsnummer: f.sagsnummer,
+      kundeId: u.kundeId || null,
+      beskrivelse: f.beskrivelse || null,
+      fra, til,
+      klargoerSenest: Number.isFinite(klargoerSenest) ? klargoerSenest : null,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel="Gem ændringer" onAnnuller={onLuk} svar={svar}>
+        <Felt id="r-sag" label="Sagsnummer" kraevet vaerdi={f.sagsnummer}
+              saet={saet("sagsnummer")} fejl={vis("sagsnummer")} />
+        <Feltraekke>
+          <Felt id="r-fra" label="Afgår" type="date" kraevet vaerdi={f.fraIso}
+                saet={saet("fraIso")} fejl={vis("fra", "fraIso")} />
+          <Felt id="r-til" label="Returnerer" type="date" kraevet vaerdi={f.tilIso}
+                saet={saet("tilIso")} fejl={vis("til", "tilIso")} />
+        </Feltraekke>
+        <Felt id="r-klargoer" label="Klargøres senest" type="date"
+              vaerdi={f.klargoerIso} saet={saet("klargoerIso")}
+              fejl={vis("klargoerSenest", "klargoerIso")}
+              max={f.fraIso}
+              hint="Valgfri. Kan ikke ligge efter afgangen — kassen pakkes før den kører." />
+        <Felt id="r-besk" label="Beskrivelse" vaerdi={f.beskrivelse}
+              saet={saet("beskrivelse")} fejl={vis("beskrivelse")} maxLength={300} />
+
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          ⚠ <b>Kassen kan ikke byttes.</b> Skal udlånet flyttes til en anden
+          kasse, er det en <b>annullering og en ny reservation</b> — ellers ville
+          historikken på den første kasse forsvinde uden spor. Serveren håndhæver
+          det.
+        </p>
+      </Formular>
     </div>
   );
 }

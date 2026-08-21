@@ -570,7 +570,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | **Interval 1 uge / 2 uger / 1 md.** | Bygget — 1 / 2 / 4 uger. Se 6.13 om hvorfor ikke en kalendermåned | ✅ |
 | **Fremhævning pr. art** (klargøring/udlån/returnering) | Bygget — tre blokke, se 6.19 | ✅ |
 | **Hover → lille kort** | Bygget — Unitbookings EGET, se 6.15 | ✅ |
-| **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
+| **Klik → større kort med mails og fotos** | Kortet er bygget (6.22); mails og fotos venter på beslutning 20 | ⚠ |
 | Sidepanel "Kommende klargøringer", kan minimeres | Bygget — med Klargør-knappen, se 6.16 | ✅ |
 | "Åbn næsten fuldskærm" | Bygget — se 6.18 | ✅ |
 
@@ -1026,8 +1026,8 @@ Otte ting mere, som ikke stod i beskrivelsen:
 | **Filtre**-knap | Ikke bygget |
 | **"Nu"-markør** som mærket linje | Bygget — se 6.20 |
 | **Ude af drift** og **Inaktiv** som blokarter | Ikke bygget — signaturforklaringen har fem farver, vi har tre |
-| Klik-kortets **Rediger / Annuller booking** | Ikke bygget |
-| "Sidst opdateret" + **Opdater** | Ikke bygget |
+| Klik-kortets **Rediger / Annuller booking** | Bygget — se 6.22 |
+| "Sidst opdateret" + **Opdater** | Bygget — se 6.22 |
 | Sag under kasse-id, **TYPE** som egen kolonne | Delvist |
 
 ### 6.20 Nøgletalsrækken og "Nu"-markøren
@@ -1095,3 +1095,56 @@ slet ikke: kalenderen viser kun kasser med et udlån i vinduet, netop fordi et
 gitter med hundrede rækker hvoraf seks har en blok, skjuler de seks. Planchen
 ser ud til at vise dem gråtonede i stedet. Det er et **valg om hvad rækkerne
 er**, ikke en blokart — og det skal afgøres før det bygges.
+
+### 6.22 Klik-kortet — og en dør der manglede til et rum der allerede fandtes
+
+Planchen har et stort kort med hele reservationen og to knapper: **Rediger
+booking** og **Annuller booking**.
+
+⚠ **OG "REDIGER" VAR IKKE NY FUNKTIONALITET — DET VAR EN MANGLENDE INDGANG.**
+`retUdlaan()` står i `udlaan.js`. `handling === "ret"` står i
+`kasseudlaanskriv`, med validering, konflikttjek og auditpost. **Begge er
+bygget. Begge er udrullet. Ingen skærm kaldte dem.**
+
+Det er samme slags hul som `naesteBookingNummer`, som CLAUDE.md noterer *"kaldes
+ingen steder"*. En vej der er bygget men ikke har en dør, kan ikke prøves af
+nogen der bruger programmet — og den bliver ikke opdaget af en prøve, for den
+virker jo.
+
+⚠ **DEN KAN KUN RETTES MENS DEN ER `booket`.** Serveren afviser resten, og det
+er ikke en manglende rettighed: er kassen klargjort, står den pakket til en
+bestemt periode; er den udlånt, er den hos kunden. At flytte datoerne bagefter
+ville beskrive noget andet end det der skete. Kortet **siger hvorfor** frem for
+at vise en grå knap uden forklaring.
+
+⚠ **OG KASSEN KAN IKKE BYTTES.** Skal udlånet flyttes til en anden kasse, er det
+en annullering og en ny reservation — ellers ville historikken på den første
+kasse forsvinde uden spor. Serveren håndhæver det; feltet findes ikke i
+formularen.
+
+⚠ **MAILS OG FOTOS ER IKKE TEGNET.** Planchens "Relateret indhold" viser *3
+mails* og *12 billeder*. Det er **beslutning 20**, og den er fase 0: `sager/`
+står ikke i `firebase.rules.json`, så der er hverken en node at læse fra eller
+en regel der giver adgang. Et afsnit der sagde "3 mails" uden at kunne åbne
+dem, ville være en attrap der opfører sig som en kontrol. Kortet skriver i
+stedet hvad der mangler — og en prøve fejler den dag `sager/` kommer i
+regelfilen, så forbeholdet ikke bliver stående efter det er blevet forkert.
+
+⚠ **KORTET ÅBNES IKKE FRA EN SAGSBLOK.** Den er flere udlån flettet sammen
+(6.14), og der er ikke ét at vise.
+
+⚠ **OG DET STÅR UNDER KALENDEREN, IKKE OVEN PÅ DEN.** Planchen lægger det som
+en flydende dialog. Et kort der dækker gitteret, skjuler netop den sammenhæng
+man klikkede for at forstå — og på en kalender er nabo­blokkene halvdelen af
+svaret.
+
+#### "Hentet …" og Opdater
+
+`useListe` henter med `once()`, ikke `on()` — **skærmen opdaterer sig ikke af
+sig selv.** En kalender uden et tidsstempel kan ikke skelnes fra en der har
+stået åben siden i morges, og så planlægger man efter tal en anden har ændret
+imens. Tidsstemplet står nu under gitteret med en Opdater-knap ved siden af.
+
+⚠ **Og det er en `useState`, ikke `Date.now()` i JSX'en.** Sidstnævnte ville
+skifte ved hver eneste gentegning og påstå at listen lige var hentet, hver gang
+man trykkede på noget.
