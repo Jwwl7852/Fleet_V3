@@ -546,3 +546,81 @@ export function ledigeKasser(
     return konflikter(udlaan, { kasseId: k.id, fra, til }).length === 0;
   });
 }
+
+/* ---- Belægningsgraden -------------------------------------------------- */
+
+/**
+ * ⚠ NAVNET ER `kassebelaegning`, IKKE `belaegning` — OG DET ER IKKE PEDANTERI.
+ *
+ * `reolplads.js` har `belaegningPaaPlads()` og `belaegningPrPlads()`, og de
+ * svarer på noget HELT andet: om en **hylde** er optaget. Det er et fysisk
+ * spørgsmål om lagerpladsen. Det her er en procent af **kasserne** der er i
+ * brug.
+ *
+ * De to blev allerede forvekslet én gang: UNITBOOKING.md begrundede at
+ * planchens belægningsgrad ikke blev bygget med at den "allerede står på
+ * Kasselisten" — den stod ingen steder, og det nærmeste var hyldetallet.
+ * En begrundelse der peger på et tal med samme ordstamme, afgjorde at et andet
+ * tal ikke blev bygget. Et navn der ikke kan forveksles, kan ikke det.
+ */
+
+/**
+ * Hvilke tilstande der tæller som I BRUG.
+ *
+ * ⚠ `klargjort` TÆLLER MED. Kassen står ganske vist stadig på sin hylde, men
+ * den er pakket til en bestemt sag og kan ikke loves væk til nogen anden. En
+ * belægningsgrad der kun talte de fysisk udleverede, ville sige at lageret var
+ * ledigt om fredagen, hvor hver eneste kasse var pakket til mandag.
+ *
+ * ⚠ Og `booket` er IKKE en kassetilstand. Det er udlånets. En booket kasse står
+ * som `ledig` indtil nogen klargør den — se SELVVALGT_KASSE_STATUS. Tallet her
+ * er derfor et øjebliksbillede af LAGERET, ikke af kalenderen.
+ */
+export const I_BRUG_STATUS = ["klargjort", "udlaant"];
+
+/**
+ * kassebelaegning(kasser) → { pct, iBrug, kanBruges, udeAfDrift, ialt }
+ *
+ * Hvor stor en del af de brugbare kasser der er i brug LIGE NU.
+ *
+ * ⚠ NÆVNEREN ER DE BRUGBARE, IKKE ALLE. En kasse der er ude af drift, er
+ * hverken i brug eller til rådighed — den er taget ud af regnestykket. Talte vi
+ * den med i nævneren, ville et lager hvor halvdelen er i stykker, vise 50 % og
+ * ligne noget der stod halvt stille, mens hver eneste brugbare kasse var ude.
+ *
+ * ⚠ MEN SÅ SKAL ANTALLET STÅ VED SIDEN AF. Når nævneren krymper, STIGER
+ * procenten hver gang en kasse går i stykker — og et tal der ser bedre ud af
+ * at noget går i stykker, er farligt alene. Derfor giver funktionen
+ * `udeAfDrift` med tilbage, og skærmene skriver det ud. Samme greb som
+ * `dageUde()` i beslutning 37: flaget hører til tallet.
+ *
+ * ⚠ UDEN BRUGBARE KASSER ER SVARET `null` — IKKE 0. Nul brugbare kasser
+ * betyder at spørgsmålet ikke kan besvares, og 0 % ville sige at lageret stod
+ * helt stille. `pct()` skriver `—` for null. Det er den samme gate som
+ * `num()`: "et felt der ikke kunne regnes, er et ubesvaret spørgsmål".
+ *
+ * ⚠ OG DER ER INTET `MINDSTE_GRUNDLAG` HER, selv om den ligner et nøgletal der
+ * skulle have et. `beregnNoegletal()` i leverandoerer.js nægter under en
+ * grænse, fordi den estimerer en RATE ud fra få leveringer — to og to hundrede
+ * ser ens ud i en tabel. Det her er en OPTÆLLING: er én af to kasser ude, ER
+ * belægningen 50 %. Et tal der er målt på hele populationen, kan ikke have for
+ * lidt grundlag.
+ *
+ * ⚠ OG TALLET HØRER IKKE I `kpi/`. Det er afledt af den kasseliste skærmen
+ * allerede henter, og et gemt afledt tal driver fra sit grundlag — det er
+ * fejlen i `bemanding.ledig`. Se undtagelsen i CLAUDE.md.
+ */
+export function kassebelaegning(kasser = []) {
+  const ialt = kasser.length;
+  const udeAfDrift = kasser.filter((k) => k?.status === "udeAfDrift").length;
+  const kanBruges = ialt - udeAfDrift;
+  const iBrug = kasser.filter((k) => I_BRUG_STATUS.includes(k?.status)).length;
+
+  return {
+    pct: kanBruges > 0 ? (iBrug / kanBruges) * 100 : null,
+    iBrug,
+    kanBruges,
+    udeAfDrift,
+    ialt,
+  };
+}

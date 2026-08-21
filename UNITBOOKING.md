@@ -572,7 +572,7 @@ Mails og fotos i det store kort hører til **beslutning 20**, som er fase 0:
 |---|---|---|
 | Reserveret, Ude nu | Bygget | ✅ |
 | **Klargøres snart (48 t)** | **Klargjort** — tæller dem der ER klargjort | ❌ |
-| **Belægningsgrad** | **Over tiden** | ❌ |
+| **Belægningsgrad** | Bygget — `kassebelaegning()`, ved siden af "Over tiden" | ✅ |
 | Opret reservation: sagsnr., kunde, type, undertype | Bygget | ✅ |
 | **Tre datoer** | Et udlån bærer kun `fra` og `til` | ❌ |
 | Ledige kasser i perioden med Reservér | Bygget | ✅ |
@@ -594,7 +594,7 @@ en regeletape, ikke et felt i en formular.
 | Planchen | Her | |
 |---|---|---|
 | Kasser i alt, Udlånt, Samlet volumen i m² og m³ | Bygget | ✅ |
-| **Belægningsgrad** | Findes ikke | ❌ |
+| **Belægningsgrad** | Bygget — **samme** funktion som Udlån bruger | ✅ |
 | Filtre på type og undertype | Bygget, 6.6 | ✅ |
 | Opret ny kasse med undertype, mål, hjemplads, noter | Bygget, 6.5 og 6.6 | ✅ |
 | **"Opret ny type" INDE i kasseformularen** | Ligger på **Reolpladser**-skærmen | ⚠ |
@@ -609,13 +609,51 @@ fra noget nogen glemte.
 
 #### Rækkefølgen, hvis der bygges
 
-1. **Belægningsgraden.** Billigst — den regnes af kasser og udlån vi allerede
-   henter, og hører på begge skærme. Ingen node, ingen funktion, ingen regel.
-   ⚠ Den skal **ikke** i `kpi/`: den er afledt af lister skærmen har i forvejen,
-   og et gemt afledt tal driver fra sit grundlag. Det er fejlen i
-   `bemanding.ledig` — se CLAUDE.md.
+1. ~~**Belægningsgraden.**~~ **Bygget** — se 6.11.
 2. **Klargøringsdato → "Klargøres snart".** En regeletape. Feltet først.
 3. **Kalenderens interval-vælger.** Ren UI oven på `Gitterkalender`.
 4. **Gruppering efter sag.** Kræver at konfliktspørgsmålet ovenfor afgøres.
 5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
    dele det. Det store kort med mails og fotos venter på beslutning 20.
+
+### 6.11 Belægningsgraden — og hvorfor nævneren er den interessante halvdel
+
+Planchens fjerde nøgletal står nu på **begge** skærme, og det er den **samme**
+funktion: `kassebelaegning()` i `unitbooking.js`. To skærme der begge sagde
+"belægningsgrad" og regnede hver sit, ville være beslutning 6 brudt — og
+forskellen ville se ud som et datahul frem for to regnestykker.
+
+⚠ **NÆVNEREN ER DE BRUGBARE KASSER, IKKE ALLE.** En kasse der er ude af drift,
+er hverken i brug eller til rådighed. Talte vi den med, ville et lager hvor
+halvdelen er i stykker, vise 50 % og ligne noget der stod halvt stille — mens
+hver eneste brugbare kasse var ude hos en kunde.
+
+⚠ **Men så skal antallet stå ved siden af.** Når nævneren krymper, **stiger**
+procenten hver gang en kasse går i stykker. Målt på et konstrueret sæt: 5
+udlånte og 5 ude af drift giver **100 %** — korrekt, og ubrugeligt alene.
+Derfor giver funktionen `udeAfDrift` med tilbage, og begge kort skriver det ud.
+Flaget hører til tallet, som i `dageUde()`.
+
+⚠ **`klargjort` TÆLLER MED.** Kassen står stadig på sin hylde, men den er
+pakket til en bestemt sag og kan ikke loves væk til nogen anden. Talte vi kun
+de fysisk udleverede, ville lageret se ledigt ud om fredagen, hvor hver eneste
+kasse var pakket til mandag.
+
+⚠ **Og `booket` er ikke en kassestatus** — det er udlånets. En booket kasse
+står som `ledig` indtil nogen klargør den. Tallet er derfor et øjebliksbillede
+af **lageret**, ikke af kalenderen.
+
+⚠ **Uden brugbare kasser er svaret `null`, ikke 0.** Nul brugbare betyder at
+spørgsmålet ikke kan besvares; 0 % ville sige at lageret stod helt stille.
+`pct()` skriver `—`.
+
+⚠ **Og der er intet `MINDSTE_GRUNDLAG`,** selv om den ligner et nøgletal der
+skulle have et. `beregnNoegletal()` nægter under en grænse, fordi den estimerer
+en **rate** ud fra få leveringer — to og to hundrede ser ens ud i en tabel. Det
+her er en **optælling** på hele populationen: er én af to kasser ude, ER
+belægningen 50 %.
+
+⚠ **Navnet er `kassebelaegning`, ikke `belaegning`.** `reolplads.js` har
+`belaegningPaaPlads()` — om en **hylde** er optaget. Det er præcis de to der
+blev forvekslet i begrundelsen ovenfor, og et navn der ikke kan forveksles,
+kan ikke gøre det igen.

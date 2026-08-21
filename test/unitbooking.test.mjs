@@ -16,6 +16,7 @@ import {
   SELVVALGT_KASSE_STATUS, AFSLUTTET, UDLAAN_SKIFT, kanSkifteUdlaan,
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
+  kassebelaegning, I_BRUG_STATUS,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -794,5 +795,163 @@ describe("ledige kasser og undertypen", () => {
        type er valgt. */
     const r = ledigeKasser(kasser, [], { ...vindue, undertype: "std" });
     assert.deepEqual(r, []);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BELÆGNINGSGRADEN — planchens fjerde nøgletal
+
+   ⚠ DEN VAR IKKE BYGGET, OG BEGRUNDELSEN FOR AT LADE VÆRE VAR FORKERT.
+   UNITBOOKING.md skrev at "en procent af kasserne i brug står allerede på
+   Kasselisten". Den stod ingen steder. Det nærmeste var `belaegningPaaPlads()`
+   i reolplads.js — som svarer på om en HYLDE er optaget. Se 6.10.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("kassebelaegning", () => {
+  const k = (status, antal = 1) =>
+    Array.from({ length: antal }, (_, i) => ({ id: `${status}-${i}`, status }));
+
+  it("tæller klargjorte OG udlånte som i brug", () => {
+    /* ⚠ En klargjort kasse staar stadig paa sin hylde, men den er pakket til
+       en bestemt sag og kan ikke loves vaek til nogen anden. Talte vi kun de
+       fysisk udleverede, ville lageret se ledigt ud om fredagen, hvor hver
+       eneste kasse var pakket til mandag. */
+    const b = kassebelaegning([...k("ledig", 5), ...k("klargjort", 2), ...k("udlaant", 3)]);
+    assert.equal(b.iBrug, 5);
+    assert.equal(b.kanBruges, 10);
+    assert.equal(b.pct, 50);
+  });
+
+  it("⚠ NÆVNEREN ER DE BRUGBARE, IKKE ALLE", () => {
+    /* En kasse der er ude af drift, er hverken i brug eller til raadighed.
+       Talte vi den med i naevneren, ville et lager hvor halvdelen er i
+       stykker, vise 50 % og ligne noget der stod halvt stille — mens hver
+       eneste brugbare kasse var ude hos en kunde. */
+    const b = kassebelaegning([...k("udlaant", 5), ...k("udeAfDrift", 5)]);
+    assert.equal(b.pct, 100);
+    assert.equal(b.kanBruges, 5);
+    assert.equal(b.ialt, 10);
+  });
+
+  it("⚠ OG DERFOR KOMMER udeAfDrift MED TILBAGE", () => {
+    /* Naar naevneren krymper, STIGER procenten hver gang en kasse gaar i
+       stykker. Et tal der ser bedre ud af at noget gaar i stykker, er farligt
+       alene — antallet skal staa ved siden af. Samme greb som dageUde():
+       flaget hoerer til tallet. */
+    const b = kassebelaegning([...k("udlaant", 5), ...k("udeAfDrift", 5)]);
+    assert.equal(b.udeAfDrift, 5);
+    assert.notEqual(b.ialt, b.kanBruges);
+  });
+
+  it("⚠ UDEN BRUGBARE KASSER ER SVARET null — IKKE 0", () => {
+    /* Nul brugbare kasser betyder at spoergsmaalet ikke kan besvares. 0 %
+       ville sige at lageret stod helt stille, og det er et andet udsagn.
+       pct() skriver — for null. Samme gate som num(). */
+    assert.equal(kassebelaegning(k("udeAfDrift", 3)).pct, null);
+    assert.equal(kassebelaegning([]).pct, null);
+  });
+
+  it("⚠ INTET MINDSTE_GRUNDLAG — det er en optælling, ikke et estimat", () => {
+    /* beregnNoegletal() i leverandoerer.js naegter under en graense, fordi den
+       estimerer en RATE ud fra faa leveringer: to og to hundrede ser ens ud i
+       en tabel. Det her er maalt paa HELE populationen — er én af to kasser
+       ude, ER belaegningen 50 %. */
+    assert.equal(kassebelaegning([...k("ledig"), ...k("udlaant")]).pct, 50);
+  });
+
+  it("et tomt lager og et fuldt lager kan skelnes", () => {
+    assert.equal(kassebelaegning(k("ledig", 4)).pct, 0);
+    assert.equal(kassebelaegning(k("udlaant", 4)).pct, 100);
+  });
+
+  it("hver status i I_BRUG_STATUS er en status kataloget kender", () => {
+    /* En tastefejl her ville lydloest udelade en tilstand fra taelleren, og
+       tallet ville vaere for lavt uden at nogen kunne se hvorfor. */
+    for (const s of I_BRUG_STATUS) {
+      assert.ok(ALLE_KASSE_STATUS.includes(s), `"${s}" er ingen kendt kassestatus`);
+    }
+  });
+
+  it("⚠ booket ER IKKE EN KASSESTATUS", () => {
+    /* Det er UDLAANETS tilstand. En booket kasse staar som `ledig` indtil
+       nogen klargoer den — se SELVVALGT_KASSE_STATUS. Tallet er et
+       oejebliksbillede af LAGERET, ikke af kalenderen. */
+    assert.equal(ALLE_KASSE_STATUS.includes("booket"), false);
+    assert.equal(I_BRUG_STATUS.includes("booket"), false);
+  });
+
+  it("den tåler poster uden status", () => {
+    /* Et hul i data maa ikke faa taelleren til at kaste. En post uden status
+       er hverken i brug eller ude af drift — den taeller kun i naevneren, og
+       det er det aerlige svar: kassen findes. */
+    const b = kassebelaegning([...k("udlaant", 1), { id: "x" }, null]);
+    assert.equal(b.iBrug, 1);
+    assert.equal(b.ialt, 3);
+  });
+
+  it("⚠ DEN HEDDER IKKE belaegning() — reolplads.js har allerede det ord", () => {
+    /* belaegningPaaPlads() svarer om en HYLDE er optaget. De to blev allerede
+       forvekslet én gang: UNITBOOKING.md begrundede at planchens nøgletal ikke
+       blev bygget med at det "allerede stod på Kasselisten". Se 6.10. */
+    const kilde = readFileSync(new URL("../src/fleet/unitbooking.js", import.meta.url), "utf8");
+    assert.ok(!/export (function|const) belaegning\b/.test(kilde),
+      "unitbooking.js eksporterer et navn der kan forveksles med hyldebelægningen");
+  });
+
+  it("⚠ OG DEN LIGGER IKKE I kpi/", () => {
+    /* Tallet er afledt af den kasseliste skaermen allerede henter, og et gemt
+       afledt tal driver fra sit grundlag — fejlen i bemanding.ledig. Se
+       undtagelsen i CLAUDE.md. */
+    const kpi = readFileSync(new URL("../src/fleet/kpi-aggregering.js", import.meta.url), "utf8");
+    assert.ok(!/kassebelaegning|belaegningsgradPct.*kasse/i.test(kpi),
+      "belægningsgraden er lagt i kpi/ — den er afledt og hører hos forbrugeren");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ÉT TAL, TO SKÆRME
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("belægningsgraden er den samme begge steder", () => {
+  const laes = (fil) =>
+    readFileSync(new URL(`../src/moduler/unitbooking/${fil}`, import.meta.url), "utf8");
+  const SKAERME = ["Kasser.jsx", "Udlaan.jsx"];
+
+  it("begge kalder kassebelaegning()", () => {
+    /* Planchen har tallet paa BEGGE skaerme. To skaerme der begge sagde
+       "belaegningsgrad" og regnede hver sit, ville vaere beslutning 6 brudt —
+       og forskellen ville se ud som et datahul frem for to regnestykker. */
+    for (const f of SKAERME) {
+      assert.match(laes(f), /kassebelaegning\(kasser\)/,
+        `${f} regner belægningsgraden selv`);
+    }
+  });
+
+  it("⚠ OG INGEN AF DEM REGNER DEN SELV", () => {
+    /* En procent regnet i en skaerm er en kopi der driver. Proeven leder efter
+       en division med "kasser.length" eller "length * 100" i naerheden. */
+    for (const f of SKAERME) {
+      const kode = laes(f).replace(/\/\*[\s\S]*?\*\//g, "");
+      assert.ok(!/\/\s*kasser\.length\s*\)?\s*\*\s*100/.test(kode),
+        `${f} har sin egen procentudregning`);
+    }
+  });
+
+  it("⚠ OG BEGGE SKRIVER `ude af drift` VED SIDEN AF TALLET", () => {
+    /* Naevneren er de BRUGBARE kasser, saa procenten STIGER hver gang en kasse
+       gaar i stykker. Et tal der ser bedre ud af at noget gaar i stykker, maa
+       ikke staa alene. */
+    for (const f of SKAERME) {
+      assert.match(laes(f), /bel\.udeAfDrift/,
+        `${f} viser procenten uden at sige hvor mange der er ude af drift`);
+    }
+  });
+
+  it("⚠ OG TALLET FORMATERES MED pct(), ikke med en egen streng", () => {
+    /* pct() skriver INTET (—) for null. En egen `${x} %` ville skrive
+       "null %" den dag der ikke er en eneste brugbar kasse. */
+    for (const f of SKAERME) {
+      assert.match(laes(f), /pct\(bel\.pct\)/, `${f} formaterer procenten selv`);
+    }
   });
 });

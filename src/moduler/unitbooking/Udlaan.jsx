@@ -25,7 +25,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
+import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
@@ -35,7 +35,7 @@ import {
 import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
-  undertyperFor, naesteSkift,
+  undertyperFor, naesteSkift, kassebelaegning,
 } from "../../fleet/unitbooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
@@ -199,6 +199,9 @@ export default function Udlaan() {
   /* Undertyperne på den valgte type — ikke alle typers blandet sammen. */
   const soegUndertyper = undertyperFor(typer.find((t) => t.id === type));
   const forsinkede = udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu);
+  /* ⚠ SAMME FUNKTION SOM KASSELISTEN BRUGER — se noten ved kortet. Skærmen
+     henter kasselisten i forvejen til søgningen efter ledige. */
+  const bel = kassebelaegning(kasser);
 
   const q = soeg.trim().toLowerCase();
   const viste = udlaan.filter((u) =>
@@ -231,6 +234,17 @@ export default function Udlaan() {
                  note={forsinkede.length
                    ? forsinkede.map((u) => u.kasseId).slice(0, 3).join(", ")
                    : "alle er hjemme til tiden"} />
+        {/* ⚠ NØJAGTIG SAMME TAL SOM PÅ KASSELISTEN, fordi det er den SAMME
+            funktion. To skærme der begge sagde "belægningsgrad" og regnede
+            hver sit, ville være beslutning 6 brudt — og forskellen ville se
+            ud som et datahul frem for to regnestykker.
+            ⚠ Og noten hører til tallet: nævneren er de BRUGBARE kasser, så
+            procenten stiger hver gang en kasse går i stykker. */}
+        <KpiKort label="Belægningsgrad" vaerdi={pct(bel.pct)}
+                 note={bel.pct === null
+                   ? "ingen brugbare kasser at regne på"
+                   : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare` +
+                     (bel.udeAfDrift ? ` · ${num(bel.udeAfDrift)} ude af drift` : "")} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />

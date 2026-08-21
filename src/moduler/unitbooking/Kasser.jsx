@@ -18,7 +18,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato } from "../../fleet/format.js";
+import { num, dato, pct } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
@@ -27,7 +27,7 @@ import {
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
-  mmFraCm, cmFraMm,
+  mmFraCm, cmFraMm, kassebelaegning,
 } from "../../fleet/unitbooking.js";
 import { maalFraMm, volumenIalt } from "../../fleet/volumen.js";
 import { gem } from "../../fleet/skriv.js";
@@ -288,6 +288,12 @@ export default function Kasser() {
   /* ⚠ OG DEM UDEN MÅL TÆLLER IKKE MED — de RAPPORTERES. Talte de som nul,
      ville totalen se komplet ud mens en kasse manglede. Se volumenIalt(). */
   const volumen = volumenIalt(kasser);
+  /* ⚠ PLANCHENS FJERDE NØGLETAL, OG DET VAR IKKE BYGGET. UNITBOOKING.md
+     begrundede det med at tallet "allerede står på Kasselisten" — altså her.
+     Det gjorde det ikke. Regnestykket ligger i `unitbooking.js`, så Udlån
+     kan vise NØJAGTIG det samme tal; to skærme med hver sin belægningsgrad
+     ville være beslutning 6 brudt. Se UNITBOOKING.md 6.10. */
+  const bel = kassebelaegning(kasser);
   /* Undertyperne paa den FILTREREDE type — ikke alle typers blandet sammen. */
   const filterUndertyper = undertyperFor(typer.find((t) => t.id === type));
   const tal1 = (v) => v.toFixed(1).replace(".", ",");
@@ -302,6 +308,15 @@ export default function Kasser() {
                    ? `heraf ${num(reserveret)} lovet væk i en periode`
                    : "klar til udlån"} />
         <KpiKort label="Udlånt" vaerdi={num(antal("udlaant"))} note="ude hos kunde" />
+        {/* ⚠ NOTEN ER IKKE PYNT. Nævneren er de BRUGBARE kasser, så procenten
+            STIGER hver gang en kasse går i stykker — og et tal der ser bedre
+            ud af at noget går i stykker, må ikke stå alene. Antallet ude af
+            drift hører til tallet, som flaget hører til dageUde(). */}
+        <KpiKort label="Belægningsgrad" vaerdi={pct(bel.pct)}
+                 note={bel.pct === null
+                   ? "ingen brugbare kasser at regne på"
+                   : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare` +
+                     (bel.udeAfDrift ? ` · ${num(bel.udeAfDrift)} ude af drift` : "")} />
         <KpiKort label="På lager" vaerdi={num(paaLager)}
                  note={`heraf ${num(antal("udeAfDrift"))} ude af drift`} />
         <KpiKort label="Samlet volumen" vaerdi={`${tal1(volumen.m3)} m³`}
