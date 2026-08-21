@@ -39,6 +39,7 @@ import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
+  sagsblokke, sagstilstand,
 } from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
@@ -145,6 +146,11 @@ export default function Kalender() {
      måned". En uge er et andet spørgsmål — "hvad skal der ske nu" — og på
      fire uger er kolonnerne så smalle at man tæller sig frem til dagen. */
   const [uger, setUger] = useState(STANDARD_UGER);
+  /* ⚠ PLANCHENS "grupperet efter kasse-id eller sag". De to svarer på hvert
+     sit spørgsmål: kasserækken på "hvornår er DEN her kasse optaget",
+     sagsrækken på "hvornår er udstillingen i gang". Det andet kan ikke læses
+     af det første når en sag har fire kasser. */
+  const [gruppering, setGruppering] = useState("kasse");
   const vindueDage = uger * 7;
   const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
   const vindueTil = vindueFra + vindueDage * DAG;
@@ -160,9 +166,9 @@ export default function Kalender() {
   const typeNavn = (id) => typer.find((t) => t.id === id)?.navn || id;
   const pladsMap = Object.fromEntries(pladser.map((p) => [p.id, p]));
 
-  /* Kun kasser med noget i vinduet. Et gitter med hundrede rækker hvoraf
+  /* Kun ressourcer med noget i vinduet. Et gitter med hundrede rækker hvoraf
      seks har en blok, skjuler de seks. */
-  const raekker = useMemo(() => {
+  const kasseraekker = useMemo(() => {
     const ider = new Set(iVinduet.map((u) => u.kasseId));
     return kasser.filter((k) => ider.has(k.id)).map((k) => ({
       id: k.id,
@@ -176,7 +182,7 @@ export default function Kalender() {
     }));
   }, [iVinduet, kasser, typer]);
 
-  const blokke = iVinduet.map((u) => ({
+  const kasseblokke = iVinduet.map((u) => ({
     id: u.id,
     raekkeId: u.kasseId,
     /* ⚠ HER SKER OVERSÆTTELSEN, OG KUN HER. Se hovedet. */
@@ -190,6 +196,49 @@ export default function Kalender() {
     titel: u.beskrivelse || undefined,
     tone: UDLAAN_TILSTAND[u.tilstand]?.pill,
   }));
+
+  /* --- Grupperet efter SAG ------------------------------------------- */
+
+  /* ⚠ EN SAGSRÆKKE ER IKKE EN EKSKLUSIV RESSOURCE. Gitteret tegner overlap i
+     samme række som en KONFLIKT — med vilje, fordi to udlån på ÉN kasse er
+     noget `konflikter()` ville afvise. Men et museum låner et helt sæt til én
+     udstilling: fire kasser i samme periode er det normale. Lagde vi de fire
+     udlån råt i sagens række, ville hver eneste udstilling stå som fire røde
+     konfliktblokke. `sagsblokke()` fletter dem — se noten dér. */
+  const sagsperioder = useMemo(() => sagsblokke(iVinduet), [iVinduet]);
+
+  const sagsraekker = useMemo(() => {
+    const set = new Map();
+    for (const b of sagsperioder) {
+      if (set.has(b.sagsnummer)) continue;
+      const foerste = iVinduet.find((u) => u.sagsnummer === b.sagsnummer);
+      set.set(b.sagsnummer, {
+        id: b.sagsnummer,
+        label: `Sag ${b.sagsnummer}`,
+        under: foerste?.beskrivelse || "",
+      });
+    }
+    return [...set.values()];
+  }, [sagsperioder, iVinduet]);
+
+  const sagsblokListe = sagsperioder.map((b, i) => {
+    const t = sagstilstand(b.tilstande);
+    return {
+      id: `${b.sagsnummer}-${i}`,
+      raekkeId: b.sagsnummer,
+      ...halvaabent(b),
+      /* Antallet står i blokken: det er hele forskellen på de to grupperinger,
+         og uden det ville en sag med fire kasser se ud som en med én. */
+      label: `${b.kasser.length} ${b.kasser.length === 1 ? "kasse" : "kasser"} · ` +
+             `${UDLAAN_TILSTAND[t]?.label || t}`,
+      titel: b.kasser.join(", "),
+      tone: UDLAAN_TILSTAND[t]?.pill,
+    };
+  });
+
+  const efterSag = gruppering === "sag";
+  const raekker = efterSag ? sagsraekker : kasseraekker;
+  const blokke = efterSag ? sagsblokListe : kasseblokke;
 
   if (henter) return <Henter hvad="kalenderen" />;
 
@@ -229,6 +278,17 @@ export default function Kalender() {
                     uger frem og skifter til én uges visning, vil man se den
                     uge man kigger på — ikke hoppe hjem. Startdatoen står fast;
                     det er kun længden der ændrer sig. */}
+                {/* ⚠ GRUPPERINGEN ER ET SPØRGSMÅL, IKKE EN VISNING. Kassen
+                    svarer "hvornår er den her kasse optaget"; sagen svarer
+                    "hvornår er udstillingen i gang". Med fire kasser på én sag
+                    kan det andet ikke læses af det første. */}
+                <Faner
+                  faner={[
+                    { key: "kasse", label: "Pr. kasse" },
+                    { key: "sag", label: "Pr. sag" },
+                  ]}
+                  valgt={gruppering} saet={setGruppering} label="Gruppering"
+                />
                 <Faner
                   faner={VINDUER.map((v) => ({ key: String(v.uger), label: v.label }))}
                   valgt={String(uger)}

@@ -682,3 +682,75 @@ export function klargoeresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_V
     poster,
   };
 }
+
+/* ---- Kalenderen grupperet efter SAG ------------------------------------ */
+
+/**
+ * sagsblokke(udlaan) → [{ sagsnummer, fra, til, kasser, tilstande }]
+ *
+ * Én sags udlån slået sammen til de perioder hvor sagen er i gang.
+ *
+ * ⚠ EN SAGSRÆKKE ER IKKE EN EKSKLUSIV RESSOURCE, OG DET ER HELE POINTEN.
+ * Gitteret tegner overlap i SAMME række som en KONFLIKT — med vilje, fordi et
+ * overlap på én kasse er noget `konflikter()` ville afvise. Men et museum
+ * låner et helt sæt til én udstilling: fire kasser i nøjagtig samme periode er
+ * det NORMALE, ikke en fejl. Lagde vi de fire udlån råt i sagens række, ville
+ * hver eneste udstilling stå som fire røde konfliktblokke oven i hinanden.
+ *
+ * Derfor flettes de: perioder der overlapper eller rører hinanden, bliver til
+ * ÉN blok, og blokken bærer hvor mange kasser der er i den.
+ *
+ * ⚠ MEN DE FLETTES KUN NÅR DE HÆNGER SAMMEN. Går kasserne ud i bølger — to i
+ * august, to i november — er det to blokke. En enkelt blok fra august til
+ * november ville påstå at sagen holdt kasser i tre måneder, hvor lageret var
+ * frit imellem. Samme regel som `ledigeVinduer()`: hullet er også et svar.
+ *
+ * ⚠ OG DET ER UDLÅNETS EGNE `fra`/`til` — INKLUSIVE I BEGGE ENDER. Gitteret
+ * regner halvåbent, og oversættelsen sker med `halvaabent()` hos kalderen,
+ * ÉT sted. Gjorde vi den her, ville den ske to gange.
+ */
+export function sagsblokke(udlaan = []) {
+  const prSag = new Map();
+  for (const u of udlaan) {
+    if (!u?.sagsnummer) continue;
+    if (!Number.isFinite(u.fra) || !Number.isFinite(u.til)) continue;
+    if (!prSag.has(u.sagsnummer)) prSag.set(u.sagsnummer, []);
+    prSag.get(u.sagsnummer).push(u);
+  }
+
+  const ud = [];
+  for (const [sagsnummer, liste] of prSag) {
+    const sorteret = [...liste].sort((a, b) => a.fra - b.fra);
+    let loeb = null;
+    for (const u of sorteret) {
+      /* ⚠ `<=` OG IKKE `<`. To udlån hvor det ene slutter den 5. og det andet
+         begynder den 6., hænger sammen: sagen har kasser ude uden afbrydelse.
+         Et hul på nul dage er ikke et hul. */
+      if (loeb && u.fra <= loeb.til + DAG_MS) {
+        loeb.til = Math.max(loeb.til, u.til);
+        loeb.kasser.push(u.kasseId);
+        loeb.tilstande.push(u.tilstand);
+      } else {
+        loeb = {
+          sagsnummer, fra: u.fra, til: u.til,
+          kasser: [u.kasseId], tilstande: [u.tilstand],
+        };
+        ud.push(loeb);
+      }
+    }
+  }
+  return ud.sort((a, b) => a.fra - b.fra);
+}
+
+/**
+ * Den tilstand en sagsblok skal TEGNES med, når dens kasser er i hver sin.
+ *
+ * ⚠ DEN MEST BINDENDE VINDER, IKKE DEN FØRSTE. Er én kasse ude og tre booket,
+ * er sagen i gang — og en blok der sagde "Booket", ville få den til at ligne
+ * noget der endnu ikke var sket. Rækkefølgen er den samme som forløbets:
+ * udlånt er længere fremme end klargjort, som er længere fremme end booket.
+ */
+export const SAGSTILSTAND_RANG = ["udlaant", "klargjort", "booket", "returneret", "annulleret"];
+
+export const sagstilstand = (tilstande = []) =>
+  SAGSTILSTAND_RANG.find((t) => tilstande.includes(t)) || tilstande[0] || null;

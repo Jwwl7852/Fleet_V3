@@ -76,6 +76,53 @@ export const DEMO_KASSEUDLAAN = [
     beskrivelse: "Levende Landskaber.",
     fra: D(2026, 3, 2), til: D(2026, 3, 22), tilstand: "returneret",
   },
+
+  /* ══════════════════════════════════════════════════════════════════════
+     EN UDSTILLING MED FIRE KASSER I SAMME PERIODE — sag 4412.
+
+     ⚠ SÆTTET HAVDE IKKE ÉN SAG MED MERE END ÉN KASSE. Målt: fire sager, fire
+     kasser, én hver — og det samme i den udrullede base (3 udlån, 3 sager,
+     største sag 1 kasse). Det er ikke sådan forretningen ser ud: et museum
+     låner et helt sæt til én udstilling. §2.6 citerer selv en rigtig sag —
+     "SMK/4357/ Levende Landskaber/23.03.2026 – 18.10.2026/MIW".
+
+     Og det kunne ikke SES at det manglede: hver skærm så rigtig ud, fordi én
+     kasse pr. sag tegner det samme som ingen gruppering. Først da kalenderen
+     skulle kunne gruppere efter SAG, blev det tydeligt at der ikke fandtes
+     data hvor de to grupperinger ville se forskellige ud.
+
+     ⚠ OG DEN LØSER EN UENIGHED DER ALLEREDE STOD DER. MDT-103 stod som
+     `udlaant` — men dens eneste udlån var `returneret` fra marts. Altså en
+     kasse der var ude, uden nogen der havde den. Det er ordret den fejl
+     KASSE_STATUS' hoved beskriver som grunden til at `udlaant` ikke kan
+     vælges i hånden. Den kunne ikke bare sættes til `ledig`: dens hjemplads er
+     optaget af MDT-104, og en kasse på lager skal stå et sted. Den hører til
+     her, i et udlån der ER i gang.
+     ══════════════════════════════════════════════════════════════════════ */
+  {
+    id: "ku-5", kasseId: "MDT-103", sagsnummer: "4412",
+    beskrivelse: "Nordisk Lys — vandreudstilling, sæt 1 af 4.",
+    fra: D(2026, 8, 10), til: D(2026, 9, 25), tilstand: "udlaant",
+  },
+  {
+    id: "ku-6", kasseId: "MDT-102", sagsnummer: "4412",
+    beskrivelse: "Nordisk Lys — vandreudstilling, sæt 2 af 4.",
+    fra: D(2026, 8, 24), til: D(2026, 9, 25), tilstand: "booket",
+  },
+  {
+    id: "ku-7", kasseId: "MDT-105", sagsnummer: "4412",
+    beskrivelse: "Nordisk Lys — vandreudstilling, sæt 3 af 4.",
+    fra: D(2026, 8, 24), til: D(2026, 9, 25), tilstand: "booket",
+    /* ⚠ DEN ENE MED EN KLARGØRINGSFRIST. Beslutningen var at feltet er
+       VALGFRIT (6.12), og et sæt hvor alle fire havde den, ville skjule at
+       "Klargøres snart" tæller dem uden dato for sig. */
+    klargoerSenest: D(2026, 8, 23),
+  },
+  {
+    id: "ku-8", kasseId: "MDT-107", sagsnummer: "4412",
+    beskrivelse: "Nordisk Lys — vandreudstilling, sæt 4 af 4.",
+    fra: D(2026, 8, 24), til: D(2026, 9, 25), tilstand: "booket",
+  },
   {
     id: "ku-3", kasseId: "MDT-104", sagsnummer: "4334",
     beskrivelse: "En Dag på Stranden.",
@@ -156,6 +203,27 @@ if (import.meta.env?.DEV) {
         kasse.status !== u.tilstand) {
       console.warn(
         `demo-unitbooking: udlån ${u.id} er ${u.tilstand}, men ${kasse.id} står som ${kasse.status}.`);
+    }
+  }
+
+  /* ⚠ OG DEN ANDEN VEJ — DEN RETNING DER BETYDER NOGET.
+     Kontrollen ovenfor går udlån → kasse: er et udlån i gang, skal kassen sige
+     det samme. Den fanger IKKE en kasse der siger `udlaant` uden at der findes
+     et udlån at pege på — og det er præcis den fejl KASSE_STATUS' hoved
+     beskriver som grunden til at `udlaant` ikke kan vælges i hånden: *"der
+     ville findes en kasse der stod som udlånt uden et udlån at pege på, og
+     ingen kunne se hvem der havde den."*
+
+     MDT-103 stod sådan: `udlaant`, med et udlån der var `returneret` i marts.
+     Sættet så rigtigt ud i hver eneste skærm, fordi ingen spurgte den her vej. */
+  for (const k of DEMO_KASSER) {
+    if (!["klargjort", "udlaant"].includes(k.status)) continue;
+    const passer = DEMO_KASSEUDLAAN.some(
+      (u) => u.kasseId === k.id && u.tilstand === k.status);
+    if (!passer) {
+      console.warn(
+        `demo-unitbooking: ${k.id} står som ${k.status}, men intet udlån er ` +
+        `${k.status}. En kasse der er ude uden at nogen har den, kan ikke findes igen.`);
     }
   }
 }

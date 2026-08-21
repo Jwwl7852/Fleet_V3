@@ -17,11 +17,16 @@ import {
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
+  sagsblokke, sagstilstand, SAGSTILSTAND_RANG,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
 } from "../src/fleet/moduler.js";
 import { PERM, ROLLE_PERMS } from "../src/fleet/permissions.js";
+/* ⚠ DEMO-SÆTTET PRØVES HER, ikke kun af sin egen selvkontrol. Kontrollen i
+   `demo-unitbooking.js` kører bag `import.meta.env?.DEV` og altså ALDRIG i
+   node — den advarer i browserens konsol, hvor ingen ser efter. */
+import { DEMO_KASSER, DEMO_KASSEUDLAAN } from "../src/fleet/demo-unitbooking.js";
 
 const D = (a, m, d) => Date.UTC(a, m - 1, d);
 
@@ -1073,5 +1078,132 @@ describe("klargoerSenest på udlånet", () => {
     const blok = regler.slice(regler.indexOf('"kasseudlaan"'));
     const krav = blok.slice(blok.indexOf("hasChildren"), blok.indexOf("hasChildren") + 120);
     assert.ok(!krav.includes("klargoerSenest"), "klargoerSenest er gjort påkrævet");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KALENDEREN GRUPPERET EFTER SAG
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("sagsblokke", () => {
+  const D = (a, m, d) => Date.UTC(a, m - 1, d);
+  const u = (id, sag, kasse, fra, til, tilstand = "booket") =>
+    ({ id, sagsnummer: sag, kasseId: kasse, fra, til, tilstand });
+
+  it("⚠ FIRE KASSER I SAMME PERIODE BLIVER ÉN BLOK, IKKE FIRE KONFLIKTER", () => {
+    /* Gitteret tegner overlap i samme raekke som en KONFLIKT — med vilje,
+       fordi to udlaan paa ÉN kasse er noget konflikter() ville afvise. Men et
+       museum laaner et helt saet til én udstilling. Lagde vi de fire raat i
+       sagens raekke, ville hver eneste udstilling staa som fire roede
+       konfliktblokke oven i hinanden. */
+    const b = sagsblokke([
+      u("a", "4412", "MDT-101", D(2026, 8, 24), D(2026, 9, 25)),
+      u("b", "4412", "MDT-102", D(2026, 8, 24), D(2026, 9, 25)),
+      u("c", "4412", "MDT-103", D(2026, 8, 24), D(2026, 9, 25)),
+      u("d", "4412", "MDT-105", D(2026, 8, 24), D(2026, 9, 25)),
+    ]);
+    assert.equal(b.length, 1);
+    assert.equal(b[0].kasser.length, 4);
+    assert.equal(b[0].fra, D(2026, 8, 24));
+    assert.equal(b[0].til, D(2026, 9, 25));
+  });
+
+  it("blokken spænder fra den første afgang til den sidste retur", () => {
+    const b = sagsblokke([
+      u("a", "4412", "MDT-101", D(2026, 8, 10), D(2026, 9, 1)),
+      u("b", "4412", "MDT-102", D(2026, 8, 24), D(2026, 9, 25)),
+    ]);
+    assert.equal(b.length, 1);
+    assert.equal(b[0].fra, D(2026, 8, 10));
+    assert.equal(b[0].til, D(2026, 9, 25));
+  });
+
+  it("⚠ MEN DE FLETTES KUN NÅR DE HÆNGER SAMMEN", () => {
+    /* Gaar kasserne ud i boelger — én i august, én i november — er det TO
+       blokke. Én blok fra august til november ville paastaa at sagen holdt
+       kasser i tre maaneder, hvor lageret var frit imellem. */
+    const b = sagsblokke([
+      u("a", "4412", "MDT-101", D(2026, 8, 1), D(2026, 8, 10)),
+      u("b", "4412", "MDT-102", D(2026, 11, 1), D(2026, 11, 10)),
+    ]);
+    assert.equal(b.length, 2);
+  });
+
+  it("⚠ ET HUL PÅ NUL DAGE ER IKKE ET HUL", () => {
+    /* Slutter den ene den 10. og begynder den anden den 11., har sagen kasser
+       ude uden afbrydelse. To blokke ville tegne en pause der ikke findes. */
+    const b = sagsblokke([
+      u("a", "4412", "MDT-101", D(2026, 8, 1), D(2026, 8, 10)),
+      u("b", "4412", "MDT-102", D(2026, 8, 11), D(2026, 8, 20)),
+    ]);
+    assert.equal(b.length, 1);
+    assert.equal(b[0].til, D(2026, 8, 20));
+  });
+
+  it("to sager blandes ikke sammen", () => {
+    const b = sagsblokke([
+      u("a", "4412", "MDT-101", D(2026, 8, 1), D(2026, 8, 20)),
+      u("b", "4413", "MDT-102", D(2026, 8, 1), D(2026, 8, 20)),
+    ]);
+    assert.equal(b.length, 2);
+    assert.deepEqual(b.map((x) => x.sagsnummer).sort(), ["4412", "4413"]);
+  });
+
+  it("poster uden sagsnummer eller uden periode springes over", () => {
+    /* Sagsnummeret er den eneste noegle ud af systemet; uden det er der ingen
+       raekke at haenge blokken paa. */
+    assert.deepEqual(sagsblokke([
+      { id: "x", kasseId: "MDT-101", fra: D(2026, 8, 1), til: D(2026, 8, 2) },
+      u("y", "4412", "MDT-102", undefined, D(2026, 8, 2)),
+      null,
+    ]), []);
+  });
+});
+
+describe("sagstilstand", () => {
+  it("⚠ DEN MEST BINDENDE VINDER, IKKE DEN FØRSTE", () => {
+    /* Er én kasse ude og tre booket, er sagen I GANG — og en blok der sagde
+       "Booket", ville faa den til at ligne noget der endnu ikke var sket. */
+    assert.equal(sagstilstand(["booket", "booket", "udlaant"]), "udlaant");
+    assert.equal(sagstilstand(["booket", "klargjort"]), "klargjort");
+    assert.equal(sagstilstand(["booket"]), "booket");
+  });
+
+  it("rangen er forløbets rækkefølge, og hver værdi findes", () => {
+    for (const t of SAGSTILSTAND_RANG) {
+      assert.ok(ALLE_UDLAAN_TILSTANDE.includes(t), `"${t}" er ingen kendt udlånstilstand`);
+    }
+    assert.ok(SAGSTILSTAND_RANG.indexOf("udlaant") < SAGSTILSTAND_RANG.indexOf("booket"));
+  });
+
+  it("en tom liste giver null frem for at gætte", () => {
+    assert.equal(sagstilstand([]), null);
+  });
+});
+
+describe("⚠ DEMO-SÆTTET SKAL KUNNE VISE FORSKELLEN", () => {
+  it("mindst én sag har flere kasser i samme periode", () => {
+    /* Uden den ville de to grupperinger tegne det samme, og hverken en
+       udvikler eller en bruger kunne se om sagsvisningen virkede. Maalt foer
+       den blev bygget: fire sager, én kasse hver — og det samme i den
+       udrullede base. */
+    const flere = sagsblokke(DEMO_KASSEUDLAAN.filter((x) => x.tilstand !== "annulleret"))
+      .filter((b) => b.kasser.length > 1);
+    assert.ok(flere.length >= 1,
+      "ingen sag har flere kasser — sagsvisningen kan ikke skelnes fra kassevisningen");
+    assert.ok(flere[0].kasser.length >= 3);
+  });
+
+  it("⚠ OG INGEN KASSE STÅR SOM UDLÅNT UDEN ET UDLÅN AT PEGE PÅ", () => {
+    /* MDT-103 gjorde: `udlaant`, med et udlaan der var `returneret` i marts.
+       Det er ordret den fejl KASSE_STATUS' hoved beskriver som grunden til at
+       `udlaant` ikke kan vaelges i haanden — "ingen kunne se hvem der havde
+       den". Selvkontrollen i demofilen gik kun udlaan → kasse. */
+    for (const k of DEMO_KASSER) {
+      if (!["klargjort", "udlaant"].includes(k.status)) continue;
+      assert.ok(
+        DEMO_KASSEUDLAAN.some((x) => x.kasseId === k.id && x.tilstand === k.status),
+        `${k.id} står som ${k.status}, men intet udlån er det`);
+    }
   });
 });

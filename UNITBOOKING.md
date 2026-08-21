@@ -545,7 +545,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 |---|---|---|
 | Gitter kasse × tid | Bygget | ✅ |
 | Måned over uge over dag i hovedet | Bygget, 6.8 | ✅ |
-| **Grupperet efter kasse-id ELLER sag** | Rækkerne er **altid** kasser | ❌ |
+| **Grupperet efter kasse-id ELLER sag** | Bygget — se 6.14 | ✅ |
 | **Interval 1 uge / 2 uger / 1 md.** | Bygget — 1 / 2 / 4 uger. Se 6.13 om hvorfor ikke en kalendermåned | ✅ |
 | **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
 | **Hover → lille kort** | Findes ikke. Driftskalenderen HAR et `Svaevekort` | ❌ |
@@ -612,7 +612,7 @@ fra noget nogen glemte.
 1. ~~**Belægningsgraden.**~~ **Bygget** — se 6.11.
 2. ~~**Klargøringsdato → "Klargøres snart".**~~ **Bygget** — se 6.12.
 3. ~~**Kalenderens interval-vælger.**~~ **Bygget** — se 6.13.
-4. **Gruppering efter sag.** Kræver at konfliktspørgsmålet ovenfor afgøres.
+4. ~~**Gruppering efter sag.**~~ **Bygget** — se 6.14.
 5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
    dele det. Det store kort med mails og fotos venter på beslutning 20.
 
@@ -748,3 +748,64 @@ et lille skridt: springer man et helt vindue, kan et udlån der ligger hen over
 kanten forsvinde uden at nogen ser det. Ved én uges visning er et skridt så et
 helt vindue — men dér er der syv kolonner, og en blok der rækker udenfor, får
 sin pil. Pilen er beskyttelsen, ikke overlappet.
+
+### 6.14 Gruppering efter sag — og den måling der skulle komme først
+
+Planchen har "grupperet efter kasse-id **eller** sag". De to svarer på hvert
+sit spørgsmål: kasserækken på *"hvornår er den her kasse optaget"*, sagsrækken
+på *"hvornår er udstillingen i gang"*.
+
+⚠ **MEN DER FANDTES INGEN DATA HVOR DE TO VILLE SE FORSKELLIGE UD.** Målt før
+en linje blev skrevet: demo-sættet havde **fire sager, én kasse hver**, og den
+udrullede DEV-base **tre udlån, tre sager, største sag én kasse**. Med én kasse
+pr. sag tegner sagsvisningen nøjagtig det samme som kassevisningen — funktionen
+ville se ud til at virke og bevise ingenting.
+
+Og det kunne ikke ses at det manglede: hver skærm så rigtig ud. Først da
+grupperingen skulle bygges, blev det tydeligt.
+
+Sag **4412 — Nordisk Lys** er derfor kommet til: fire kasser, samme periode,
+én af dem allerede udlånt. Det er sådan forretningen ser ud — §2.6 citerer selv
+`SMK/4357/ Levende Landskaber/23.03.2026 – 18.10.2026/MIW`.
+
+⚠ **OG DEN AFGØR SPØRGSMÅLET OM KONFLIKTER.** Gitteret tegner overlap i samme
+række som en **konflikt** — med vilje, fordi to udlån på ÉN kasse er noget
+`konflikter()` ville afvise. Men fire kasser til én udstilling i samme periode
+er det **normale**. Lagde vi de fire udlån råt i sagens række, ville hver eneste
+udstilling stå som fire røde konfliktblokke.
+
+`sagsblokke()` fletter dem til én blok, der bærer **hvor mange kasser** der er i
+den. Antallet i blokken er hele forskellen på de to grupperinger.
+
+⚠ **MEN DE FLETTES KUN NÅR DE HÆNGER SAMMEN.** Går kasserne ud i bølger — to i
+august, to i november — er det **to** blokke. Én blok fra august til november
+ville påstå at sagen holdt kasser i tre måneder, hvor lageret var frit imellem.
+Samme regel som `ledigeVinduer()`: hullet er også et svar.
+⚠ Og et hul på **nul dage** er ikke et hul: slutter den ene den 10. og begynder
+den anden den 11., har sagen kasser ude uden afbrydelse.
+
+⚠ **DEN MEST BINDENDE TILSTAND VINDER.** Er én kasse ude og tre booket, er
+sagen **i gang** — en blok der sagde "Booket", ville få den til at ligne noget
+der endnu ikke var sket. `SAGSTILSTAND_RANG` er forløbets egen rækkefølge.
+
+### ⚠ Og målingen fandt en uenighed der allerede stod der
+
+**MDT-103 stod som `udlaant` — men dens eneste udlån var `returneret` fra
+marts.** Altså en kasse der var ude, uden nogen der havde den.
+
+Det er ordret den fejl `KASSE_STATUS`' hoved beskriver som grunden til at
+`udlaant` ikke kan vælges i hånden: *"der ville findes en kasse der stod som
+udlånt uden et udlån at pege på — og ingen kunne se hvem der havde den."*
+
+⚠ **Selvkontrollen gik kun den ene vej.** Den spurgte udlån → kasse: er et
+udlån i gang, skal kassen sige det samme. Den spurgte ikke kasse → udlån, og
+det er dén retning fejlen sad i. Begge veje nu.
+
+⚠ **Og kassen kunne ikke bare sættes til `ledig`:** dens hjemplads er optaget
+af MDT-104, og en kasse på lager skal stå et sted. Den hører til i et udlån der
+**er** i gang — og det er nu sag 4412.
+
+⚠ **Selvkontrollen kører aldrig i prøverne.** Den ligger bag
+`import.meta.env?.DEV` og advarer i browserens konsol, hvor ingen ser efter.
+`test/unitbooking.test.mjs` prøver derfor demo-sættet direkte: mindst én sag
+med flere kasser, og ingen kasse der er ude uden et udlån.
