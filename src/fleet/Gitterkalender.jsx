@@ -36,7 +36,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ENHED, slots, slotLabel, slotDele, erNu, laegUd, blokkePrRaekke, grupperSlots,
   greb as grebMaal, skridt as skridtMaal, HAANDTAG_MIN,
-  traekTil, maaTraekkes,
+  traekTil, maaTraekkes, nyttigeNiveauer,
 } from "./gitter.js";
 import { Tom } from "./ui.jsx";
 
@@ -225,8 +225,12 @@ export default function Gitterkalender({
   raekker = [], blokke = [], fra, til, enhed = ENHED.dag,
   valgtId = null, onVaelg, tom = "Ingen aktiviteter i perioden.",
   dropfelter = null,
-  /* Ekstra hovedraekker over dagene: [{ navn, noegle(slot) }]. Se noten ved
-     grupperSlots() — kalderen bestemmer, en uges visning har ingen brug. */
+  /* Ekstra hovedraekker over dagene: [{ navn, noegle(slot) }].
+     ⚠ KALDEREN SIGER HVILKE GRUPPERINGER DER GIVER MENING FOR HANS DATA; det
+     er stadig hans valg (UNITBOOKING.md 6.8). Men om en af dem har noget at
+     VISE, afhaenger af det vindue der er valgt lige nu — og kolonnerne kender
+     kun gitteret. En raekke med ét felt der spaender hele vinduet, siger
+     "august" én gang og koster en hel raekke; se niveauErNyttigt(). */
   niveauer = [],
   /* Flytter KALDERENS vindue, ikke rulningen. Uden den er pilene kun en
      rullebjaelke; med den er de ogsaa vejen til dag niogtyve. */
@@ -374,7 +378,7 @@ export default function Gitterkalender({
               `niveauer` flytter det man SJÆLDENT skifter — måneden, ugen — op i
               hver sin række, så dagen kun bærer det den ikke kan undvære.
               Kalderen bestemmer; en uges visning har ingen brug for dem. */}
-          {niveauer.map((n, i) => (
+          {nyttigeNiveauer(slotListe, niveauer).map((n, i) => (
             <Fragment key={n.navn || i}>
               <div className="fc-gk-navn fc-gk-hj fc-gk-niveau">{n.navn || ""}</div>
               <div className="fc-gk-band fc-gk-hoved fc-gk-niveau">

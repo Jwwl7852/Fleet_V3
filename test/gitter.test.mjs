@@ -9,11 +9,13 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   slots, grupperSlots, maanedNoegle, ugeNoegle, slotDele, UGEDAG_KORT,
   greb, skridt, HAANDTAG_MIN,
   ENHED, traekTil, maaTraekkes, slotUnder,
+  niveauErNyttigt, nyttigeNiveauer,
 } from "../src/fleet/gitter.js";
 
 describe("grupperede kolonneoverskrifter", () => {
@@ -270,5 +272,62 @@ describe("træk i gitteret", () => {
     assert.equal(slotUnder(liste, 3), null);
     assert.equal(slotUnder(liste, -1), null);
     assert.equal(slotUnder(liste, 1.5), null);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HOVEDRÆKKER DER IKKE HAR NOGET AT VISE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("niveauErNyttigt", () => {
+  const d = (aar, maaned, dag) => new Date(aar, maaned, dag).getTime();
+  const NIVEAUER = [
+    { navn: "Måned", noegle: maanedNoegle },
+    { navn: "Uge", noegle: ugeNoegle },
+  ];
+
+  it("⚠ ÉN UGES VINDUE FÅR HVERKEN MÅNED ELLER UGE", () => {
+    /* Begge ville vaere ÉT felt der spaender hele vinduet — to raekker der
+       siger det samme som datoen i forvejen goer (slotDele beholder
+       maaneden i hver kolonne). Det er praecis det UNITBOOKING.md 6.8
+       advarer imod: "en uges visning ville faa en Maaned-raekke med ét felt". */
+    const uge = slots(d(2026, 7, 24), d(2026, 7, 31));
+    assert.deepEqual(nyttigeNiveauer(uge, NIVEAUER), []);
+  });
+
+  it("fire uger hen over et månedsskifte får begge", () => {
+    const fire = slots(d(2026, 7, 24), d(2026, 8, 21));
+    assert.deepEqual(nyttigeNiveauer(fire, NIVEAUER).map((n) => n.navn),
+      ["Måned", "Uge"]);
+  });
+
+  it("⚠ FIRE UGER INDEN FOR ÉN MÅNED FÅR KUN UGEN", () => {
+    /* Maaneden ville vaere ét felt. Den forsvinder uden tab: datoen i hver
+       kolonne baerer maaneden — se noten ved slotDele(). */
+    const fire = slots(d(2026, 8, 1), d(2026, 8, 29));
+    assert.deepEqual(nyttigeNiveauer(fire, NIVEAUER).map((n) => n.navn), ["Uge"]);
+  });
+
+  it("⚠ ET NIVEAU MED ÉN GRUPPE PR. KOLONNE TEGNER DAGSRÆKKEN OM IGEN", () => {
+    /* En gruppering hvor hver kolonne bliver sin egen gruppe, siger ikke
+       noget nyt — den gentager raekken under sig med andre ord. */
+    const fire = slots(d(2026, 7, 24), d(2026, 8, 21));
+    const perDag = { navn: "Dag", noegle: (s) => String(s.fra) };
+    assert.equal(niveauErNyttigt(fire, perDag), false);
+  });
+
+  it("den tåler et tomt vindue og en manglende nøgle", () => {
+    assert.equal(niveauErNyttigt([], maanedNoegle), false);
+    assert.equal(niveauErNyttigt(slots(d(2026, 7, 24), d(2026, 8, 21)), null), false);
+    assert.deepEqual(nyttigeNiveauer([], NIVEAUER), []);
+  });
+
+  it("⚠ OG GITTERET BRUGER DEN — ellers ville hver kalder regne det selv", () => {
+    /* Uden det ville en interval-vaelger tvinge hver af de fire skaerme til at
+       udlede det samme, og den dag en af dem glemte det, ville en uges visning
+       faa en tom hovedraekke. */
+    const kilde = readFileSync(
+      new URL("../src/fleet/Gitterkalender.jsx", import.meta.url), "utf8");
+    assert.match(kilde, /nyttigeNiveauer\(slotListe, niveauer\)/);
   });
 });

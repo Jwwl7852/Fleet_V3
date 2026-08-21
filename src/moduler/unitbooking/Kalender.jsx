@@ -12,17 +12,28 @@
  * hos museet. Oversættelsen sker ét sted, i `unitbooking.js`, og den er prøvet
  * mod `overlapper()` på hver kombination i ti dage.
  *
- * ⚠ VINDUET ER FREMADRETTET OG FAST. Shellens periodevælger er BAGUD
- * ("Seneste 30 dage") — den svarer på hvad der er sket, og en booking handler
- * om hvad der skal ske. At låne den knap ville være at bruge et instrument
- * til noget andet end det måler. Alt uden for vinduet står i listen nedenfor,
- * som rækker så langt frem der er lovet noget væk.
+ * ⚠ VINDUET ER FREMADRETTET. Shellens periodevælger er BAGUD ("Seneste 30
+ * dage") — den svarer på hvad der er sket, og en booking handler om hvad der
+ * skal ske. At låne den knap ville være at bruge et instrument til noget andet
+ * end det måler. Alt uden for vinduet står i listen nedenfor, som rækker så
+ * langt frem der er lovet noget væk.
+ *
+ * ⚠ MEN DET ER IKKE FAST LÆNGERE. Længden vælges — 1, 2 eller 4 uger — og
+ * pilene flytter en uge ad gangen. Låst på fire uger kunne skærmen kun svare
+ * på ét spørgsmål i én opløsning, og på otteogtyve kolonner er dagen så smal
+ * at man tæller sig frem til den.
+ *
+ * ⚠ OG HOVEDRÆKKERNE FØLGER MED AF SIG SELV. Ved én uges visning ville
+ * "Måned" og "Uge" hver få ÉT felt der spænder hele vinduet — to rækker der
+ * siger det samme som datoen i forvejen gør. Gitteret dropper et niveau der
+ * kun har én gruppe; se niveauErNyttigt() i gitter.js. Kalderen siger stadig
+ * HVILKE grupperinger der giver mening, men ikke hvornår de er tomme.
  */
 import { useMemo, useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { num, dato, ugenr } from "../../fleet/format.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap
+  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -36,11 +47,25 @@ import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const DAG = 86400000;
 
-/* Fire uger frem fra i går. Kort nok til at kolonnerne kan læses på en
-   skærm, langt nok til at et typisk udlån er synligt — og de udlån der
-   rækker udenfor, får en pil af gitteret frem for at blive klippet i
-   stilhed. Se de to ting Gitterkalenderen holder fast i. */
-const VINDUE_DAGE = 28;
+/**
+ * Hvor langt vinduet kan være. Planchen har "1 uge / 2 uger / 1 md."
+ *
+ * ⚠ FIRE UGER, IKKE "1 MÅNED", OG DET ER IKKE SJUSK. En kalendermåned er
+ * 28–31 dage, så et vindue på en måned ville begynde og slutte midt i en uge —
+ * og "Uge"-rækken i hovedet ville få en halv uge i hver ende. Fire uger er
+ * fire hele uger, og skubbet flytter netop en uge. Forskellen er højst tre
+ * dage; en hovedrække der ikke passer med sine egne grupper, er en fejl man
+ * ser hver gang.
+ *
+ * ⚠ OG STANDARDEN BLIVER FIRE UGER. Det var det eneste vindue der fandtes før,
+ * og den der åbner skærmen, skal se det samme som i går.
+ */
+const VINDUER = [
+  { uger: 1, label: "1 uge" },
+  { uger: 2, label: "2 uger" },
+  { uger: 4, label: "4 uger" },
+];
+const STANDARD_UGER = 4;
 
 /* Listen rækker et år frem. Længere er der ikke nogen der planlægger, og en
    liste med alt er en liste ingen læser. */
@@ -115,8 +140,14 @@ export default function Kalender() {
      Skubbet flytter en UGE ad gangen, ikke fire: springer man et helt vindue,
      kan et udlån der ligger hen over kanten forsvinde uden at nogen ser det. */
   const [skubUger, setSkubUger] = useState(0);
+  /* ⚠ PLANCHENS INTERVAL-VÆLGER. Vinduet var låst på fire uger, og skærmen
+     kunne kun svare på ét spørgsmål i én opløsning: "hvad sker der den her
+     måned". En uge er et andet spørgsmål — "hvad skal der ske nu" — og på
+     fire uger er kolonnerne så smalle at man tæller sig frem til dagen. */
+  const [uger, setUger] = useState(STANDARD_UGER);
+  const vindueDage = uger * 7;
   const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
-  const vindueTil = vindueFra + VINDUE_DAGE * DAG;
+  const vindueTil = vindueFra + vindueDage * DAG;
 
   /* ⚠ EN ANNULLERET RESERVATION TEGNES IKKE. Den skete ikke, og en blok for
      den ville få kassen til at se optaget ud i en periode hvor den er fri.
@@ -182,7 +213,7 @@ export default function Kalender() {
                    ? bagud.map((h) => h.kasseId).slice(0, 3).join(", ")
                    : "intet er skredet"} />
         <KpiKort label="Kasser i spil" vaerdi={num(raekker.length)}
-                 note={`af ${num(kasser.length)} i de næste ${VINDUE_DAGE} dage`} />
+                 note={`af ${num(kasser.length)} i de viste ${num(vindueDage)} dage`} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
@@ -192,20 +223,35 @@ export default function Kalender() {
           hjemme igen. Knappen vises kun når man ER væk; ellers ville den sige
           "gå hen hvor du står". */}
       <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
-            handling={skubUger !== 0 && (
-              <Knap onClick={() => setSkubUger(0)}>I dag</Knap>
-            )}>
+            handling={
+              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* ⚠ VÆLGEREN NULSTILLER IKKE SKUBBET. Har man bladret tre
+                    uger frem og skifter til én uges visning, vil man se den
+                    uge man kigger på — ikke hoppe hjem. Startdatoen står fast;
+                    det er kun længden der ændrer sig. */}
+                <Faner
+                  faner={VINDUER.map((v) => ({ key: String(v.uger), label: v.label }))}
+                  valgt={String(uger)}
+                  saet={(v) => setUger(Number(v))}
+                  label="Vindue"
+                />
+                {skubUger !== 0 && <Knap onClick={() => setSkubUger(0)}>I dag</Knap>}
+              </span>
+            }>
         <Gitterkalender
           raekker={raekker}
           blokke={blokke}
           fra={vindueFra}
           til={vindueTil}
           enhed={ENHED.dag}
-          /* ⚠ TRE HOVEDRÆKKER. Vinduet er fire uger, og otteogtyve datoer i
-             én række kan ikke læses — det var præcis sådan skærmen så ud.
-             Måneden og ugen står derfor for sig, som planchen viser. Fleets
-             kalender viser én uge og har ingen brug for dem; derfor er
-             niveauerne kalderens valg og ikke gitterets. */
+          /* ⚠ MÅNED OVER UGE OVER DAG. Ved fire uger er otteogtyve datoer i
+             én række ulæselige — det var præcis sådan skærmen så ud. Måneden
+             og ugen står derfor for sig, som planchen viser.
+             ⚠ OG DE FORSVINDER SELV VED KORTE VINDUER. Ved én uge ville hver
+             af de to få ÉT felt der spænder alt — to rækker der siger det
+             samme som datoen i forvejen gør. Gitteret dropper et niveau med
+             kun én gruppe; kalderen siger stadig HVILKE grupperinger der
+             giver mening for hans data. Se niveauErNyttigt(). */
           niveauer={[
             { navn: "Måned", noegle: maanedNoegle },
             { navn: "Uge", noegle: ugeNoegle },
@@ -216,10 +262,12 @@ export default function Kalender() {
             : "Ingen kasser er lovet væk i den viste periode."}
         />
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          Kun kasser med et udlån i perioden vises. Vinduet er fire uger og
-          starter <b>fremadrettet</b> — pilene under kalenderen flytter det en
-          uge ad gangen. Topbarens periodevælger ser bagud og hører til
-          rapporterne. Alt der ligger længere ude, står i listen nedenfor.
+          Kun kasser med et udlån i perioden vises. Vinduet starter{" "}
+          <b>fremadrettet</b>, længden vælges foroven, og pilene under
+          kalenderen flytter det <b>én uge</b> ad gangen — også ved fire ugers
+          visning, så et udlån hen over kanten ikke kan springes over.
+          Topbarens periodevælger ser bagud og hører til rapporterne. Alt der
+          ligger længere ude, står i listen nedenfor.
           Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
           Driftskalender, Servicekalender og Disponering.
         </p>

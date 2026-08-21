@@ -373,3 +373,35 @@ export const slotUnder = (slotListe = [], indeks) =>
   (Number.isInteger(indeks) && indeks >= 0 && indeks < slotListe.length)
     ? slotListe[indeks]
     : null;
+
+/**
+ * niveauErNyttigt(slotListe, noegle) → boolean
+ *
+ * Bærer en hovedrække overhovedet information for det viste vindue?
+ *
+ * ⚠ TO MÅDER EN RÆKKE KAN VÆRE TOM FOR INDHOLD, og de ser ikke ens ud:
+ *
+ *   ÉN gruppe   Hele vinduet ligger i samme måned, så "Måned"-rækken er ét
+ *               felt der spænder alt. Den siger "august" én gang og koster en
+ *               hel række — og datoen i hver kolonne bærer måneden i forvejen
+ *               (se slotDele). Ved en uges visning gælder det samme for ugen.
+ *   ÉN pr. slot En gruppering hvor hver kolonne bliver sin egen gruppe, tegner
+ *               dagsrækken om igen med andre ord.
+ *
+ * ⚠ OG DEN HØRER I GITTERET, IKKE HOS KALDEREN. UNITBOOKING.md 6.8 siger at
+ * niveauerne er kalderens valg — og det er de stadig: kalderen siger HVILKE
+ * grupperinger der giver mening for hans data. Men om en af dem har noget at
+ * vise, afhænger af det vindue der er valgt NU, og det er gitteret der kender
+ * kolonnerne. Uden det her ville en interval-vælger tvinge hver kalder til at
+ * regne det samme ud selv — og den dag en af dem glemte det, ville en uges
+ * visning få en "Måned"-række med ét felt. Præcis det 6.8 advarer imod.
+ */
+export function niveauErNyttigt(slotListe = [], noegle) {
+  if (!slotListe.length || typeof noegle !== "function") return false;
+  const grupper = grupperSlots(slotListe, noegle);
+  return grupper.length > 1 && grupper.length < slotListe.length;
+}
+
+/** De af niveauerne der har noget at vise for netop det her vindue. */
+export const nyttigeNiveauer = (slotListe = [], niveauer = []) =>
+  niveauer.filter((n) => niveauErNyttigt(slotListe, n?.noegle));

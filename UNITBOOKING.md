@@ -473,7 +473,7 @@ havde ret; prøven var forkert.
 | Planchen | Her |
 |---|---|
 | "Udvid til 2 skærme" | Ikke bygget. Kalenderen kan åbnes i et nyt vindue fra Fleet; her er der ingen knap |
-| "Udvidet visning" og interval-vælgeren "Uge" | Vinduet er fire uger. Længden kan ikke vælges — men det kan **flyttes**, se 6.9 |
+| "Udvidet visning" og interval-vælgeren "Uge" | **Længden kan nu vælges** — 1 / 2 / 4 uger, se 6.13. "Udvidet visning" er stadig ikke bygget |
 | "Kommende klargøringer" som kort med Klargør-knap | Findes som **Udlånsliste** — en tabel med uge, dato, hændelse, kasse, hjemplads, sag og tilstand. Den bærer mere, men kan ikke handles på |
 
 Den sidste er den værd at tage: planchens pointe er at man kan klargøre
@@ -546,7 +546,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | Gitter kasse × tid | Bygget | ✅ |
 | Måned over uge over dag i hovedet | Bygget, 6.8 | ✅ |
 | **Grupperet efter kasse-id ELLER sag** | Rækkerne er **altid** kasser | ❌ |
-| **Interval 1 uge / 2 uger / 1 md.** | Fast 28 dage. Vinduet kan **flyttes** (6.9), ikke skaleres | ❌ |
+| **Interval 1 uge / 2 uger / 1 md.** | Bygget — 1 / 2 / 4 uger. Se 6.13 om hvorfor ikke en kalendermåned | ✅ |
 | **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
 | **Hover → lille kort** | Findes ikke. Driftskalenderen HAR et `Svaevekort` | ❌ |
 | **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
@@ -611,7 +611,7 @@ fra noget nogen glemte.
 
 1. ~~**Belægningsgraden.**~~ **Bygget** — se 6.11.
 2. ~~**Klargøringsdato → "Klargøres snart".**~~ **Bygget** — se 6.12.
-3. **Kalenderens interval-vælger.** Ren UI oven på `Gitterkalender`.
+3. ~~**Kalenderens interval-vælger.**~~ **Bygget** — se 6.13.
 4. **Gruppering efter sag.** Kræver at konfliktspørgsmålet ovenfor afgøres.
 5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
    dele det. Det store kort med mails og fotos venter på beslutning 20.
@@ -705,3 +705,46 @@ Fejlnøglen hedder `klargoerSenest`, feltet `klargoerIso` — uden det ekstra le
 ville feltet aldrig vise sin fejl, fordi det aldrig blev "rørt" under det navn
 fejlen bar. Præcis den fælde står allerede beskrevet i `Planlaegdialog.jsx`;
 den her formular havde den enkle udgave.
+
+### 6.13 Interval-vælgeren — og hovedrækkerne der forsvinder af sig selv
+
+Vinduet var låst på fire uger. Skærmen kunne svare på ét spørgsmål i én
+opløsning — *"hvad sker der den her måned"* — og på otteogtyve kolonner er
+dagen så smal at man tæller sig frem til den. Nu vælges længden: **1, 2 eller
+4 uger.**
+
+⚠ **FIRE UGER, IKKE "1 MÅNED", OG DET ER IKKE SJUSK.** Planchen skriver "1
+md.". En kalendermåned er 28–31 dage, så et månedsvindue ville begynde og
+slutte **midt i en uge** — og "Uge"-rækken i hovedet ville få en halv uge i
+hver ende. Fire uger er fire hele uger, og skubbet flytter netop en uge.
+Forskellen er højst tre dage; en hovedrække der ikke passer med sine egne
+grupper, er en fejl man ser hver eneste gang.
+
+⚠ **HOVEDRÆKKERNE FØLGER MED AF SIG SELV — OG DET VAR DEN EGENTLIGE OPGAVE.**
+Ved én uges visning ville "Måned" og "Uge" hver få **ét felt der spænder hele
+vinduet**: to rækker der siger det samme som datoen i forvejen gør, for
+`slotDele()` beholder måneden i hver kolonne. Det er præcis det 6.8 advarede
+imod — *"lå de i Gitterkalender, ville en uges visning få en Måned-række med ét
+felt"*.
+
+`niveauErNyttigt()` i `gitter.js` afgør det: et niveau vises kun hvis det har
+**mere end én** gruppe og **færre grupper end kolonner**. Den første betingelse
+fjerner rækken der siger "august" én gang; den anden fjerner en gruppering der
+bare tegner dagsrækken om igen med andre ord.
+
+⚠ **Og valget er stadig kalderens.** Kalderen siger HVILKE grupperinger der
+giver mening for hans data — Fleets driftskalender har ingen. Men om en af dem
+har noget at **vise**, afhænger af det vindue der er valgt lige nu, og
+kolonnerne kender kun gitteret. Lå filtreringen hos kalderen, skulle hver af de
+fire skærme udlede det samme, og den dag én af dem glemte det, ville en kort
+visning få en tom hovedrække.
+
+⚠ **VÆLGEREN NULSTILLER IKKE SKUBBET.** Har man bladret tre uger frem og
+skifter til én uges visning, skal man se den uge man kigger på — ikke hoppe
+hjem. Startdatoen står fast; det er kun længden der ændrer sig.
+
+⚠ **OG SKRIDTET ER ÉN UGE VED ALLE TRE LÆNGDER.** Ved fire uger er det bevidst
+et lille skridt: springer man et helt vindue, kan et udlån der ligger hen over
+kanten forsvinde uden at nogen ser det. Ved én uges visning er et skridt så et
+helt vindue — men dér er der syv kolonner, og en blok der rækker udenfor, får
+sin pil. Pilen er beskyttelsen, ikke overlappet.
