@@ -103,6 +103,26 @@
      blive blaa. Se BESLUTNINGER.md — et token er en beslutning. */
   --fc-overlay:rgba(16,26,48,.44);
 
+  /* ── Skriftskalaen ────────────────────────────────────────────────────
+     ⚠ FILEN HAVDE 24 FORSKELLIGE STOERRELSER PAA 119 STEDER, otte af dem med
+     halve pixels. Ingen havde besluttet en skala; hver skaerm valgte et tal
+     der saa rigtigt ud dér. Det er samme fejl som raa farver var foer
+     beslutning 10: to tal der naesten er ens, er to lejligheder til at vaere
+     uenige. Beslutning 48.
+
+     ⚠ OG 68 % AF TEGNENE STOD PAA 13 px ELLER MINDRE. Lille skrift med haard
+     kontrast er den mest traettende kombination der findes — et stoerre
+     haandtag end nogen palet. Broedteksten er nu 14. */
+  --fc-t-tight:11px;  /* kun hvor bredden er fysisk laast — gitterets kolonner */
+  --fc-t-xs:12px;     /* mindste tekst paa skaermen, tabeloverskrifter */
+  --fc-t-s:13px;      /* bitekst, hjaelpelinjer */
+  --fc-t-m:14px;      /* BROEDTEKST — tabelceller, knapper, felter */
+  --fc-t-l:15px;      /* kortoverskrifter */
+  --fc-t-xl:17px;     /* afsnitsoverskrifter */
+  --fc-t-2xl:21px;
+  --fc-t-3xl:25px;
+  --fc-t-4xl:34px;    /* KPI-tal */
+
   --fc-r:12px;
   --fc-sidebar:216px;
   --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
@@ -134,45 +154,45 @@
 
 .fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
   display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}
-.fc-brand{padding:0 8px; font-size:21px; font-weight:800; letter-spacing:-.02em; color:#fff}
+.fc-brand{padding:0 8px; font-size:var(--fc-t-2xl); font-weight:800; letter-spacing:-.02em; color:#fff}
 .fc-brand b{color:var(--bc-accent)}
-.fc-ver{padding:0 8px; color:var(--bc-accent); font-size:11px; font-weight:700}
-.fc-tenant{padding:10px 8px 12px; color:#cbd5e1; font-size:12px; font-weight:600}
+.fc-ver{padding:0 8px; color:var(--bc-accent); font-size:var(--fc-t-xs); font-weight:700}
+.fc-tenant{padding:10px 8px 12px; color:#cbd5e1; font-size:var(--fc-t-s); font-weight:600}
 
 .fc-div{display:flex; gap:4px; background:var(--fc-navy-2); padding:4px; border-radius:9px; margin:0 4px 14px}
 .fc-div button{flex:1; border:0; background:transparent; color:#94a3b8; cursor:pointer;
-  padding:7px 0; border-radius:6px; font:inherit; font-weight:600; font-size:13px}
+  padding:7px 0; border-radius:6px; font:inherit; font-weight:600; font-size:var(--fc-t-m)}
 .fc-div button[aria-pressed="true"]{background:var(--bc-accent); color:#fff}
 
 .fc-nav{display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto}
 .fc-link{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
-  color:#c3ccda; text-decoration:none; font-size:13.5px; font-weight:500}
+  color:#c3ccda; text-decoration:none; font-size:var(--fc-t-m); font-weight:500}
 .fc-link:hover{background:var(--fc-navy-2); color:#fff}
 .fc-link.fc-on{background:var(--bc-accent); color:#fff; font-weight:600}
 .fc-link svg{width:17px; height:17px; flex:0 0 17px; stroke:currentColor; fill:none; stroke-width:1.9}
 .fc-sub{display:flex; flex-direction:column; margin:2px 0 4px 27px;
   border-left:1px solid var(--fc-navy-3); padding-left:9px}
-.fc-sublink{color:#9aa7b8; text-decoration:none; font-size:12.5px; padding:6px 8px; border-radius:6px}
+.fc-sublink{color:#9aa7b8; text-decoration:none; font-size:var(--fc-t-s); padding:6px 8px; border-radius:6px}
 .fc-sublink:hover{color:#fff; background:var(--fc-navy-2)}
 .fc-sublink.fc-on{color:#fff; font-weight:600}
 
 .fc-foot{border-top:1px solid var(--fc-navy-3); padding-top:12px; margin-top:8px}
 .fc-who{display:flex; gap:9px; align-items:center; padding:4px 6px}
 .fc-av{width:31px; height:31px; border-radius:50%; background:var(--fc-navy-3); color:#fff;
-  display:grid; place-items:center; font-size:11px; font-weight:700; flex:0 0 31px}
-.fc-who-n{color:#fff; font-size:12.5px; font-weight:600}
-.fc-who-r{color:#94a3b8; font-size:11px}
+  display:grid; place-items:center; font-size:var(--fc-t-xs); font-weight:700; flex:0 0 31px}
+.fc-who-n{color:#fff; font-size:var(--fc-t-s); font-weight:600}
+.fc-who-r{color:#94a3b8; font-size:var(--fc-t-xs)}
 
 .fc-main{flex:1; min-width:0; display:flex; flex-direction:column}
 .fc-top{display:flex; align-items:flex-start; gap:14px; padding:22px 26px 14px; flex-wrap:wrap}
 .fc-top-h{flex:1; min-width:220px}
-.fc-top-h h1{margin:0; font-size:25px; font-weight:700; letter-spacing:-.02em}
-.fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:13px}
+.fc-top-h h1{margin:0; font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em}
+.fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:var(--fc-t-m)}
 .fc-top-ctl{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
 .fc-ctl{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
-  padding:8px 11px; font:inherit; font-size:13px; color:var(--bc-text); cursor:pointer;
+  padding:8px 11px; font:inherit; font-size:var(--fc-t-m); color:var(--bc-text); cursor:pointer;
   box-shadow:var(--fc-shadow); min-height:38px}
-.fc-stamp{color:#8b97a8; font-size:12px; white-space:nowrap}
+.fc-stamp{color:#8b97a8; font-size:var(--fc-t-s); white-space:nowrap}
 /* ⚠ min-width:0 ER IKKE PYNT — DET ER DET DER FÅR .fc-scroll TIL AT KLIPPE.
    Et flex- og et gitterbarn har min-width:auto som udgangspunkt, altsaa "bliv
    mindst saa bred som dit indhold". En kalender paa tres kolonner skubbede
@@ -187,7 +207,7 @@
 .fc-grid{display:grid; gap:14px}
 .fc-card{background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:var(--fc-r); box-shadow:var(--fc-shadow); min-width:0}
-.fc-card-h{padding:15px 17px 0; font-size:14.5px; font-weight:650}
+.fc-card-h{padding:15px 17px 0; font-size:var(--fc-t-l); font-weight:650}
 /* Korttitler med ikon (Bemanding, Facility, Indkøb). Ikonet er dæmpet —
    titlen skal læses, ikke ikonet. */
 .fc-card-h>span{display:inline-flex; align-items:center; gap:8px; min-width:0}
@@ -195,20 +215,20 @@
   stroke:none; color:var(--bc-muted)}
 .fc-card-b{padding:15px 17px}
 .fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
-.fc-kpi-l{color:var(--bc-muted); font-size:12.5px; font-weight:500}
-.fc-kpi-v{font-size:23px; font-weight:700; letter-spacing:-.02em; margin:1px 0 2px}
-.fc-kpi-d{font-size:11.5px; font-weight:600}
+.fc-kpi-l{color:var(--bc-muted); font-size:var(--fc-t-s); font-weight:500}
+.fc-kpi-v{font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em; margin:1px 0 2px}
+.fc-kpi-d{font-size:var(--fc-t-xs); font-weight:600}
 .fc-midt{text-align:center}
 .fc-bad{color:var(--bc-block)} .fc-good{color:var(--bc-ok)} .fc-neutral{color:#8b97a8}
 
 .fc-table{width:100%; border-collapse:collapse}
-.fc-table th{text-align:left; vertical-align:bottom; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+.fc-table th{text-align:left; vertical-align:bottom; font-size:var(--fc-t-xs); letter-spacing:.06em; text-transform:uppercase;
   color:#8b97a8; font-weight:650; padding:0 12px 9px; white-space:nowrap}
 /* ⚠ TABULARTAL I HVER CELLE. fc-num hoejrestiller de rene talkolonner, men
    i en venstrestillet kolonne med tal — "12 m³", datoer, "3 af 14" — har
    cifrene forskellig bredde i Inter, og saa danser kolonnen. Her faar hvert
    ciffer samme bredde, saa de staar under hinanden uanset justering. */
-.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:13px;
+.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:var(--fc-t-m);
   font-variant-numeric:tabular-nums}
 .fc-table tbody tr:hover{background:#fafbfd}
 /* Valgt raekke i en klikbar tabel. Bruger accent-tokenet frem for en ny farve,
@@ -247,14 +267,14 @@
    blev til en side man skulle rulle i.
    Radius og kant arves fra faelles-reglen — kun maalene aendres, saa feltet
    stadig ligner et felt. */
-.fc-num .fc-input-pct{max-width:58px; min-height:19px; padding:1px 6px; font-size:12.5px}
+.fc-num .fc-input-pct{max-width:58px; min-height:19px; padding:1px 6px; font-size:var(--fc-t-s)}
 .fc-med-suffiks{display:inline-flex; align-items:baseline; gap:5px}
-.fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:650}
+.fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:var(--fc-t-xs); font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-pill-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-pill-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
 .fc-pill-info{background:var(--fc-info-bg); color:var(--fc-info)}
-.fc-a{color:var(--bc-accent); font-weight:600; font-size:13px; text-decoration:none}
+.fc-a{color:var(--bc-accent); font-weight:600; font-size:var(--fc-t-m); text-decoration:none}
 .fc-a:hover{text-decoration:underline}
 
 @media (prefers-reduced-motion:reduce){.fc-app *{transition:none!important; animation:none!important}}
@@ -285,7 +305,7 @@
 .fc-kpi{display:flex; gap:12px; padding:16px 17px; align-items:flex-start}
 .fc-kpi-txt{min-width:0}
 .fc-kpi-ico{width:52px; height:52px; border-radius:14px; display:grid; place-items:center;
-  flex:0 0 52px; font-size:15px; font-weight:700}
+  flex:0 0 52px; font-size:var(--fc-t-l); font-weight:700}
 .fc-tone-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-tone-warn{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-tone-bad{background:var(--fc-bad-bg); color:var(--bc-block)}
@@ -311,7 +331,7 @@
 /* Klikbart KPI-kort med chevron. */
 .fc-kpi-link{text-decoration:none; color:inherit}
 .fc-kpi-link:hover .fc-kpi-l{color:var(--bc-accent)}
-.fc-kpi-pil{color:var(--bc-muted); font-size:19px; line-height:1; align-self:center}
+.fc-kpi-pil{color:var(--bc-muted); font-size:var(--fc-t-2xl); line-height:1; align-self:center}
 
 .fc-empty{padding:34px 20px; text-align:center; color:var(--bc-muted)}
 .fc-empty p{margin:0 auto 12px; max-width:48ch}
@@ -321,7 +341,7 @@
 .fc-empty-warn{color:var(--bc-warn)}
 
 .fc-btn{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
-  padding:8px 13px; font:inherit; font-size:13px; font-weight:600; color:var(--bc-text);
+  padding:8px 13px; font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-text);
   cursor:pointer; min-height:38px}
 .fc-btn:hover{background:#fafbfd}
 .fc-btn-primaer{background:var(--bc-accent); border-color:var(--bc-accent); color:#fff}
@@ -334,7 +354,7 @@
    den er tom. Med space-between flyttede tallets højrekant sig efter hvor
    lang etiketten var, og så stod tallene ikke i en kolonne man kan løbe ned
    ad. tabular-nums gør at 1-taller fylder som 8-taller. */
-.fc-mini{display:flex; align-items:center; gap:10px; padding:6px 0; font-size:13px}
+.fc-mini{display:flex; align-items:center; gap:10px; padding:6px 0; font-size:var(--fc-t-m)}
 .fc-mini>span{flex:1; min-width:0; color:var(--bc-muted);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .fc-mini>b{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
@@ -366,16 +386,16 @@
 /* Rollevælger i sidebarens fod. KUN i demo-mode — se AppShell. */
 .fc-demo-rolle{margin-top:10px; padding:9px 10px; border-radius:8px;
   background:var(--fc-navy-2); border:1px dashed var(--fc-navy-3)}
-.fc-demo-rolle label{display:block; color:#9aa7b8; font-size:10.5px;
+.fc-demo-rolle label{display:block; color:#9aa7b8; font-size:var(--fc-t-xs);
   font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px}
 .fc-demo-rolle select{width:100%; background:var(--fc-navy-3); color:#fff;
   border:1px solid var(--fc-navy-3); border-radius:6px; padding:6px 8px;
-  font:inherit; font-size:12.5px}
-.fc-demo-rolle span{display:block; margin-top:6px; color:#8b97a8; font-size:10.5px; line-height:1.35}
+  font:inherit; font-size:var(--fc-t-s)}
+.fc-demo-rolle span{display:block; margin-top:6px; color:#8b97a8; font-size:var(--fc-t-xs); line-height:1.35}
 
 .fc-side-btn{width:100%; text-align:left; background:var(--fc-navy-2);
   border:1px solid var(--fc-navy-3); color:#cbd5e1; padding:9px 11px; border-radius:8px;
-  font:inherit; font-size:12.5px; cursor:pointer; margin-top:8px}
+  font:inherit; font-size:var(--fc-t-s); cursor:pointer; margin-top:8px}
 .fc-side-btn:hover{background:var(--fc-navy-3); color:#fff}
 .fc-who-txt{min-width:0}
 .fc-who-n,.fc-who-r{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -383,24 +403,24 @@
 .fc-faner{display:flex; gap:2px; border-bottom:1px solid var(--bc-line); margin-bottom:16px;
   overflow-x:auto}
 .fc-fane{background:none; border:0; border-bottom:2px solid transparent; padding:10px 14px;
-  font:inherit; font-size:13.5px; font-weight:600; color:var(--bc-muted); cursor:pointer; white-space:nowrap}
+  font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-muted); cursor:pointer; white-space:nowrap}
 .fc-fane[aria-selected="true"]{color:var(--bc-accent); border-bottom-color:var(--bc-accent)}
 
 .fc-felt{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
-.fc-felt label{font-size:12px; font-weight:600; color:var(--bc-muted)}
+.fc-felt label{font-size:var(--fc-t-s); font-weight:600; color:var(--bc-muted)}
 .fc-felt input,.fc-felt select,.fc-felt textarea,.fc-input-tal{border:1px solid var(--bc-line); border-radius:8px;
-  padding:9px 11px; font:inherit; font-size:13px; min-height:38px; background:var(--bc-card); color:var(--bc-text)}
+  padding:9px 11px; font:inherit; font-size:var(--fc-t-m); min-height:38px; background:var(--bc-card); color:var(--bc-text)}
 /* Tal i en tabelcelle. ⚠ ARVER FELTETS UDSEENDE frem for at faa sit eget:
    to inputstile ville drive, og den ene ville se ud som et andet produkt.
    Ingen egne farver — se designtesten. */
 .fc-input-tal{width:96px; text-align:right; font-variant-numeric:tabular-nums}
 
-.fc-hint{font-size:12px; color:var(--bc-muted); margin:0}
+.fc-hint{font-size:var(--fc-t-s); color:var(--bc-muted); margin:0}
 
 .fc-sum{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
   border-top:1px solid var(--bc-line); margin-top:12px; padding-top:12px}
-.fc-sum-v{font-size:21px; font-weight:700; color:var(--bc-accent); font-variant-numeric:tabular-nums}
-.fc-linje{display:flex; justify-content:space-between; gap:12px; padding:7px 0; font-size:13px;
+.fc-sum-v{font-size:var(--fc-t-2xl); font-weight:700; color:var(--bc-accent); font-variant-numeric:tabular-nums}
+.fc-linje{display:flex; justify-content:space-between; gap:12px; padding:7px 0; font-size:var(--fc-t-m);
   border-bottom:1px solid var(--bc-line)}
 .fc-linje:last-of-type{border-bottom:0}
 
@@ -410,13 +430,13 @@
 .fc-traad{display:flex; flex-direction:column; gap:12px}
 .fc-besked{border:1px solid var(--bc-line); border-radius:10px; overflow:hidden}
 .fc-besked-h{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px;
-  padding:9px 13px; border-bottom:1px solid var(--bc-line); font-size:12.5px}
+  padding:9px 13px; border-bottom:1px solid var(--bc-line); font-size:var(--fc-t-s)}
 .fc-besked-hvem{font-weight:650}
-.fc-besked-adr{color:var(--bc-muted); font-size:12px; word-break:break-all}
-.fc-besked-tid{margin-left:auto; color:var(--bc-muted); font-size:12px; white-space:nowrap;
+.fc-besked-adr{color:var(--bc-muted); font-size:var(--fc-t-s); word-break:break-all}
+.fc-besked-tid{margin-left:auto; color:var(--bc-muted); font-size:var(--fc-t-s); white-space:nowrap;
   font-variant-numeric:tabular-nums}
-.fc-besked-b{padding:12px 13px; font-size:13px; white-space:pre-wrap; word-break:break-word}
-.fc-besked-emne{padding:0 13px 10px; font-size:12px; color:var(--bc-muted)}
+.fc-besked-b{padding:12px 13px; font-size:var(--fc-t-m); white-space:pre-wrap; word-break:break-word}
+.fc-besked-emne{padding:0 13px 10px; font-size:var(--fc-t-s); color:var(--bc-muted)}
 /* Udgående får vores egen accentflade, indgående en neutral. Ikke omvendt:
    det er de indgående der er interessante, og de skal ikke se "godkendte" ud. */
 .fc-besked-ud{background:var(--fc-accent-soft); border-color:#c9dbff}
@@ -428,7 +448,7 @@
 .fc-karantaene{border:1px solid var(--bc-block); border-radius:10px; overflow:hidden}
 .fc-karantaene .fc-besked-h{background:var(--fc-bad-bg); border-bottom-color:#f3bcbc;
   color:var(--bc-block)}
-.fc-karantaene-note{padding:10px 13px; font-size:12.5px; color:var(--bc-block);
+.fc-karantaene-note{padding:10px 13px; font-size:var(--fc-t-s); color:var(--bc-block);
   background:var(--fc-bad-bg); border-top:1px solid #f3bcbc}
 
 /* Aftalefeltet. Tre linjer — tidspunkt, sted, status — plus den sætning den
@@ -436,7 +456,7 @@
    maskinen gættede. */
 .fc-aftale{border:1px solid var(--bc-line); border-radius:10px; padding:13px}
 .fc-aftale-citat{margin:10px 0 0; padding:9px 12px; border-left:3px solid var(--bc-accent);
-  background:var(--fc-bg); font-size:12.5px; color:var(--bc-muted); font-style:italic}
+  background:var(--fc-bg); font-size:var(--fc-t-s); color:var(--bc-muted); font-style:italic}
 
 /* Gitterkalender — ressourcer som rækker, tid som kolonner. Bruges af
    Værkstedskalender, Servicekalender og Disponering. Alt fra tokens. */
@@ -446,7 +466,7 @@
    blok uden sin enhed ubrugelig — man kan se at NOGET er på værksted, men ikke
    hvad. z-index over cellerne, under det klæbende hoved. Baggrunden SKAL være
    sat: uden den skinner blokkene igennem når de ruller ind under navnet. */
-.fc-gk-navn{padding:4px 10px; border-top:1px solid var(--bc-line); font-size:12px;
+.fc-gk-navn{padding:4px 10px; border-top:1px solid var(--bc-line); font-size:var(--fc-t-s);
   border-right:1px solid var(--bc-line);
   display:flex; flex-direction:column; gap:1px; justify-content:center;
   position:sticky; left:0; z-index:2; background:var(--bc-card)}
@@ -466,23 +486,23 @@
 .fc-gk-navn-linje{display:flex; align-items:center; gap:6px; min-width:0}
 .fc-gk-navn-t{font-weight:650; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap}
-.fc-gk-navn-u{color:var(--bc-muted); font-size:11.5px; overflow:hidden;
+.fc-gk-navn-u{color:var(--bc-muted); font-size:var(--fc-t-xs); overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap}
 /* ⚠ PILLEN ER MINDRE HER END I EN TABEL, og kun her. Standardpillen er 23 px
    hoej og ville alene bestemme foerste linjes hoejde. Formen er den samme —
    det er stoerrelsen der foelger stedet. */
-.fc-gk-navn .fc-pill{padding:1px 6px; font-size:10px; line-height:1.5}
+.fc-gk-navn .fc-pill{padding:1px 6px; font-size:var(--fc-t-tight); line-height:1.5}
 .fc-gk-raekkepar{display:contents}
 /* 30 px frem for 44. Rækkerne var så høje at otte enheder fyldte skærmen, og
    en vognmand med tredive kunne kun se en fjerdedel af sin flåde ad gangen. */
-.fc-gk-band{display:grid; grid-template-columns:repeat(var(--gk-slots),minmax(30px,1fr));
+.fc-gk-band{display:grid; grid-template-columns:repeat(var(--gk-slots),minmax(34px,1fr));
   border-top:1px solid var(--bc-line); position:relative; min-height:30px; align-items:center}
 /* ⚠ HOVEDET KLÆBER. Uden det ruller datoerne op og ud af syne, og så tæller
    man kolonner for at finde ud af hvilken dag en blok ligger på — præcis den
    fejl et gitter der er én dag forskudt, laver af sig selv. */
 .fc-gk-hoved{border-top:0; min-height:0; position:sticky; top:0; z-index:3;
   background:var(--bc-card); border-bottom:1px solid var(--bc-line)}
-.fc-gk-kol{grid-row:1; text-align:center; font-size:10.5px; color:#8b97a8; font-weight:650;
+.fc-gk-kol{grid-row:1; text-align:center; font-size:var(--fc-t-xs); color:#8b97a8; font-weight:650;
   padding:6px 2px; letter-spacing:.02em; white-space:nowrap; overflow:hidden;
   border-left:1px solid var(--bc-line);
   display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.2}
@@ -503,7 +523,7 @@
 .fc-gk-blok{grid-row:1; z-index:1; display:flex; align-items:center; gap:4px;
   align-self:stretch; min-width:0; border:1px solid transparent;
   border-radius:6px; padding:2px 7px;
-  margin:3px 2px; font:inherit; font-size:11px; font-weight:650; cursor:pointer;
+  margin:3px 2px; font:inherit; font-size:var(--fc-t-xs); font-weight:650; cursor:pointer;
   overflow:hidden; text-align:left}
 .fc-gk-tekst{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 /* Pilen er ikke pynt: uden den læses en tre ugers blok som et kort besøg. */
@@ -519,7 +539,7 @@
    slået fra. En attrap der opfører sig som en kontrol, er værre end ingen. */
 .fc-gk-drop{grid-row:1; z-index:0; display:flex; align-items:center; justify-content:center;
   border:1px dashed var(--bc-line); border-radius:7px; margin:5px 2px; padding:4px 6px;
-  color:#9aa7b8; font-size:11px; font-weight:600; overflow:hidden;
+  color:#9aa7b8; font-size:var(--fc-t-xs); font-weight:600; overflow:hidden;
   background:repeating-linear-gradient(45deg,
     rgba(139,151,168,.05) 0 5px, rgba(139,151,168,0) 5px 10px);
   /* cursor:default og ingen hover — men IKKE pointer-events:none, for saa
@@ -545,11 +565,11 @@
   display:grid; place-items:center}
 .fc-handling-ico svg{width:18px; height:18px; fill:currentColor}
 .fc-handling-txt{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
-.fc-handling-txt b{font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.fc-handling-txt span{color:var(--bc-muted); font-size:11.5px;
+.fc-handling-txt b{font-size:var(--fc-t-m); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-handling-txt span{color:var(--bc-muted); font-size:var(--fc-t-xs);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.fc-handling-tal{font-size:13px; font-variant-numeric:tabular-nums}
-.fc-handling-pil{color:var(--bc-muted); font-size:17px; line-height:1}
+.fc-handling-tal{font-size:var(--fc-t-m); font-variant-numeric:tabular-nums}
+.fc-handling-pil{color:var(--bc-muted); font-size:var(--fc-t-xl); line-height:1}
 
 /* Udnyttelse: tal og bjaelke i samme celle. Bjaelken alene kan ikke aflaeses. */
 .fc-udn{display:flex; align-items:center; gap:9px; justify-content:flex-end}
@@ -569,8 +589,8 @@
 .fc-celle{display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:2px; width:74px; min-height:54px; margin:0 auto; padding:6px 5px;
   border-radius:9px; border:1px solid; line-height:1.2}
-.fc-celle b{font-size:13px; font-variant-numeric:tabular-nums}
-.fc-celle > span{font-size:10.5px; opacity:.9; font-variant-numeric:tabular-nums}
+.fc-celle b{font-size:var(--fc-t-m); font-variant-numeric:tabular-nums}
+.fc-celle > span{font-size:var(--fc-t-xs); opacity:.9; font-variant-numeric:tabular-nums}
 .fc-celle-spor{width:100%; height:3px; border-radius:2px; margin-top:2px;
   background:currentColor; opacity:.22}
 .fc-celle-fyld{display:block; height:100%; border-radius:2px; background:currentColor}
@@ -585,7 +605,7 @@
 
 /* Legende. Prikkerne er de samme som statusprikkerne i minilinjerne. */
 .fc-legende{display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;
-  font-size:12px; color:var(--bc-muted)}
+  font-size:var(--fc-t-s); color:var(--bc-muted)}
 .fc-legende .fc-prik{margin-left:6px}
 .fc-legende .fc-prik:first-child{margin-left:0}
 
@@ -595,12 +615,12 @@
   place-items:center; background:var(--fc-accent-soft); color:var(--bc-accent)}
 .fc-funk-ico svg{width:26px; height:26px; fill:currentColor}
 .fc-funk-txt{display:flex; flex-direction:column; gap:1px; min-width:0}
-.fc-funk-txt span{font-size:11.5px; color:var(--bc-muted)}
+.fc-funk-txt span{font-size:var(--fc-t-xs); color:var(--bc-muted)}
 
 /* Hvor arbejdet ligger. Soejlen er andelen af det TRAVLESTE sted, ikke af
    totalen — ellers bliver alle soejler korte naar arbejdet er spredt. */
 .fc-steder{list-style:none; margin:0; padding:0}
-.fc-steder li{display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13px}
+.fc-steder li{display:flex; align-items:center; gap:10px; padding:7px 0; font-size:var(--fc-t-m)}
 .fc-steder li+li{border-top:1px solid var(--bc-line)}
 .fc-steder-navn{flex:0 0 33%; min-width:0; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap}
@@ -613,7 +633,7 @@
 /* Dagens plan — tidslinje. Klokkeslættet er kolonne, ikke indledning: de skal
    kunne løbes ned ad. */
 .fc-plan{list-style:none; margin:0; padding:0}
-.fc-plan li{display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px}
+.fc-plan li{display:flex; align-items:center; gap:10px; padding:8px 0; font-size:var(--fc-t-m)}
 .fc-plan li+li{border-top:1px solid var(--bc-line)}
 .fc-plan-tid{width:42px; flex:0 0 42px; color:var(--bc-muted);
   font-variant-numeric:tabular-nums}
@@ -635,14 +655,14 @@
    procent kan sammenlignes ned ad listen. */
 .fc-afvig{list-style:none; margin:0; padding:0; counter-reset:afvig}
 .fc-afvig li{display:flex; align-items:center; gap:10px; padding:9px 0;
-  border-bottom:1px solid var(--bc-line); font-size:13px}
+  border-bottom:1px solid var(--bc-line); font-size:var(--fc-t-m)}
 .fc-afvig li:last-child{border-bottom:0}
 .fc-afvig li::before{counter-increment:afvig; content:counter(afvig);
-  color:var(--bc-muted); font-size:11.5px; font-weight:650; width:12px; flex:0 0 12px}
+  color:var(--bc-muted); font-size:var(--fc-t-xs); font-weight:650; width:12px; flex:0 0 12px}
 .fc-afvig-txt{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
 .fc-afvig-txt b{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.fc-afvig-txt span{color:var(--bc-muted); font-size:11.5px}
-.fc-afvig-tal{font-size:12px; font-weight:650; white-space:nowrap;
+.fc-afvig-txt span{color:var(--bc-muted); font-size:var(--fc-t-xs)}
+.fc-afvig-tal{font-size:var(--fc-t-s); font-weight:650; white-space:nowrap;
   font-variant-numeric:tabular-nums}
 
 /* Donut. Figur til venstre, legende til højre — legenden bærer tallene, fordi
@@ -660,13 +680,13 @@
 
 .fc-donut-legende{list-style:none; margin:0; padding:0; flex:1; min-width:190px;
   display:flex; flex-direction:column; gap:7px}
-.fc-donut-legende li{display:flex; align-items:center; gap:8px; font-size:13px}
+.fc-donut-legende li{display:flex; align-items:center; gap:8px; font-size:var(--fc-t-m)}
 /* Navnet skubber tallene ud til højre, så de står på linje og kan sammenlignes. */
 .fc-donut-navn{flex:1; min-width:0; color:var(--bc-muted);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .fc-donut-legende b{font-variant-numeric:tabular-nums}
 .fc-donut-pct{width:44px; text-align:right; color:var(--bc-muted);
-  font-size:12px; font-variant-numeric:tabular-nums}
+  font-size:var(--fc-t-s); font-variant-numeric:tabular-nums}
 
 /* Grafer. Søjlefarverne sættes af Soejlegraf ud fra en tone, ikke af modulet —
    samme regel som Pille. Alt kommer fra tokens ovenfor. */
@@ -678,10 +698,10 @@
 .fc-graf-maal{position:absolute; left:0; right:0; border-top:1px dashed var(--bc-muted);
   pointer-events:none}
 .fc-graf-x{display:flex; gap:4px; margin-top:6px}
-.fc-graf-x span{flex:1; min-width:0; text-align:center; font-size:10.5px; color:var(--bc-muted);
+.fc-graf-x span{flex:1; min-width:0; text-align:center; font-size:var(--fc-t-xs); color:var(--bc-muted);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .fc-graf-legend{display:flex; flex-wrap:wrap; gap:14px; margin-bottom:10px}
-.fc-graf-navn{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--bc-muted)}
+.fc-graf-navn{display:flex; align-items:center; gap:6px; font-size:var(--fc-t-s); color:var(--bc-muted)}
 .fc-graf-prik{width:9px; height:9px; border-radius:3px; display:inline-block}
 .fc-graf-streg{width:13px; border-top:1px dashed var(--bc-muted); display:inline-block}
 
@@ -690,7 +710,7 @@
    Prod fra et deployet site viser ingen bjælke: en advarsel man ser hele
    tiden, holder man op med at se. */
 .fc-miljoe{display:flex; align-items:center; justify-content:center; gap:10px;
-  padding:9px 16px; font-size:13.5px; font-weight:700; letter-spacing:.01em;
+  padding:9px 16px; font-size:var(--fc-t-m); font-weight:700; letter-spacing:.01em;
   text-align:center; color:#fff}
 .fc-miljoe b{font-weight:800; letter-spacing:.06em; text-transform:uppercase}
 .fc-miljoe span{font-weight:500; opacity:.92}
@@ -713,12 +733,12 @@
 .fc-pager{display:flex; align-items:center; gap:4px; justify-content:flex-end}
 .fc-pag,.fc-pag-pil{min-width:30px; height:30px; padding:0 7px; border-radius:8px;
   border:1px solid var(--bc-line); background:var(--bc-card); color:var(--bc-text);
-  font:inherit; font-size:12.5px; cursor:pointer; font-variant-numeric:tabular-nums}
+  font:inherit; font-size:var(--fc-t-s); cursor:pointer; font-variant-numeric:tabular-nums}
 .fc-pag:hover,.fc-pag-pil:hover:not(:disabled){border-color:var(--bc-accent)}
 .fc-pag-nu{background:var(--bc-accent); border-color:var(--bc-accent); color:var(--bc-card);
   font-weight:650}
 .fc-pag-pil:disabled{opacity:.4; cursor:default}
-.fc-pag-hul{padding:0 2px; color:var(--bc-muted); font-size:12.5px}
+.fc-pag-hul{padding:0 2px; color:var(--bc-muted); font-size:var(--fc-t-s)}
 
 /* ---- Filterlinje som eget kort --------------------------------------- */
 /* ⚠ .fc-filtre FANDTES ALLEREDE og bruges af de andre skærmes filterrække.
@@ -738,16 +758,16 @@
 .fc-med-ikon-svag svg{color:var(--bc-muted)}
 /* To linjer i servicecellen: datoen, og hvor langt der er til den i km. */
 .fc-tolinje{display:flex; flex-direction:column; gap:1px; line-height:1.3}
-.fc-tolinje span{font-size:11px; color:var(--bc-muted); font-variant-numeric:tabular-nums}
+.fc-tolinje span{font-size:var(--fc-t-xs); color:var(--bc-muted); font-variant-numeric:tabular-nums}
 /* Antal aabne fejl. Nul er ikke en advarsel — den er groen og daempet. */
 .fc-antal{display:inline-grid; place-items:center; min-width:24px; height:22px; padding:0 6px;
-  border-radius:7px; font-size:12px; font-weight:650; font-variant-numeric:tabular-nums}
+  border-radius:7px; font-size:var(--fc-t-s); font-weight:650; font-variant-numeric:tabular-nums}
 .fc-antal-0{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-antal-1{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-antal-2{background:var(--fc-bad-bg); color:var(--bc-block)}
 /* Placering 1-2-3 i omkostningslisten. */
 .fc-rang{display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%;
-  font-size:12px; font-weight:700; color:var(--bc-card); flex:0 0 26px}
+  font-size:var(--fc-t-s); font-weight:700; color:var(--bc-card); flex:0 0 26px}
 .fc-rang-1{background:var(--fc-ikon-1)} .fc-rang-2{background:var(--fc-ikon-2)}
 .fc-rang-3{background:var(--fc-ikon-3)}
 
@@ -762,9 +782,9 @@
 .fc-lokrk-nu{background:var(--fc-accent-soft)}
 .fc-lokrk-nu:hover{background:var(--fc-accent-soft)}
 .fc-lokrk-txt{display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; line-height:1.3}
-.fc-lokrk-txt b{font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.fc-lokrk-txt span{font-size:11px; color:var(--bc-muted)}
-.fc-lokrk-m2{font-size:12px; color:var(--bc-muted); font-variant-numeric:tabular-nums;
+.fc-lokrk-txt b{font-size:var(--fc-t-m); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fc-lokrk-txt span{font-size:var(--fc-t-xs); color:var(--bc-muted)}
+.fc-lokrk-m2{font-size:var(--fc-t-s); color:var(--bc-muted); font-variant-numeric:tabular-nums;
   white-space:nowrap}
 
 /* ---- Linjegraf -------------------------------------------------------- */
@@ -802,22 +822,22 @@
 
 /* Trend i en tabelcelle: kurve OG tal. Kurven staar aldrig alene. */
 .fc-trend{display:inline-flex; align-items:center; gap:9px; justify-content:flex-end;
-  white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:650; font-size:12px}
+  white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:650; font-size:var(--fc-t-s)}
 /* Faktureringens to store tal, som i mockuppen. */
 .fc-fakt{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
 .fc-fakt-ico{width:46px; height:46px; border-radius:12px; display:grid; place-items:center;
   flex:0 0 46px}
 .fc-fakt-ico svg{width:24px; height:24px; fill:currentColor}
 .fc-fakt-tal{display:flex; flex-direction:column; line-height:1.2}
-.fc-fakt-tal b{font-size:20px; font-weight:700; letter-spacing:-.02em;
+.fc-fakt-tal b{font-size:var(--fc-t-2xl); font-weight:700; letter-spacing:-.02em;
   font-variant-numeric:tabular-nums}
-.fc-fakt-tal span{font-size:11.5px; color:var(--bc-muted)}
+.fc-fakt-tal span{font-size:var(--fc-t-xs); color:var(--bc-muted)}
 
 /* Permission- og punktlister i Opsaetning. */
 .fc-permliste{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .fc-permliste li{background:var(--fc-bg); border:1px solid var(--bc-line); border-radius:7px;
-  padding:3px 8px; font-size:11.5px}
-.fc-liste{margin:10px 0 0; padding-left:20px; color:var(--bc-muted); font-size:12.5px;
+  padding:3px 8px; font-size:var(--fc-t-xs)}
+.fc-liste{margin:10px 0 0; padding-left:20px; color:var(--bc-muted); font-size:var(--fc-t-s);
   line-height:1.6}
 
 /* ---- Formular --------------------------------------------------------- */
@@ -825,17 +845,17 @@
 .fc-felt-kraev{color:var(--bc-block)}
 .fc-felt-ind{display:flex; align-items:center; gap:8px}
 .fc-felt-ind input,.fc-felt-ind select{flex:1; min-width:0}
-.fc-felt-suf{color:var(--bc-muted); font-size:12px; white-space:nowrap}
-.fc-felt-hint{display:block; margin-top:4px; color:var(--bc-muted); font-size:11.5px; line-height:1.4}
+.fc-felt-suf{color:var(--bc-muted); font-size:var(--fc-t-s); white-space:nowrap}
+.fc-felt-hint{display:block; margin-top:4px; color:var(--bc-muted); font-size:var(--fc-t-xs); line-height:1.4}
 /* Fejlen staar VED feltet, ikke i en liste i toppen — ellers skal brugeren
    lede efter hvad den handler om. */
-.fc-felt-fejltekst{display:block; margin-top:4px; color:var(--bc-block); font-size:11.5px;
+.fc-felt-fejltekst{display:block; margin-top:4px; color:var(--bc-block); font-size:var(--fc-t-xs);
   font-weight:600}
 .fc-felt-fejl input,.fc-felt-fejl select{border-color:var(--bc-block)}
 .fc-formular-knapper{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap}
 /* ⚠ TRE TONER, IKKE TO. En afvist skrivning er ikke en nedbrudt forbindelse:
    reglerne VIRKER, og farven maa ikke sige "i stykker". */
-.fc-svar{margin:14px 0 0; padding:10px 12px; border-radius:9px; font-size:12.5px;
+.fc-svar{margin:14px 0 0; padding:10px 12px; border-radius:9px; font-size:var(--fc-t-s);
   font-weight:600}
 .fc-svar-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
 .fc-svar-naegtet{background:var(--fc-warn-bg); color:var(--bc-warn)}
@@ -850,7 +870,7 @@
 .fc-afkryds{display:flex; flex-wrap:wrap; gap:8px}
 .fc-afkryds-punkt{display:inline-flex; align-items:center; gap:7px; cursor:pointer;
   border:1px solid var(--bc-line); border-radius:9px; padding:7px 11px;
-  font-size:12.5px; background:var(--bc-card)}
+  font-size:var(--fc-t-s); background:var(--bc-card)}
 .fc-afkryds-punkt:hover{border-color:var(--bc-accent)}
 .fc-afkryds-punkt input{margin:0; cursor:pointer}
 .fc-afkryds-punkt:has(input:checked){border-color:var(--bc-accent);
@@ -1033,7 +1053,7 @@
 .fc-kal-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   margin-bottom:12px}
 .fc-kal-spring{margin-left:auto; display:flex; align-items:center; gap:8px}
-.fc-kal-periode{font-weight:650; font-size:13px; white-space:nowrap}
+.fc-kal-periode{font-weight:650; font-size:var(--fc-t-m); white-space:nowrap}
 
 /* Segmenteret vælger — Dag/Uge/Måned og 1 uge/2 uger/1 md. Samme form som
    sidebarens Gods/Bus, men den klasse er sidebarens og må ikke deles: en
@@ -1041,7 +1061,7 @@
 .fc-seg{display:inline-flex; border:1px solid var(--bc-line); border-radius:9px;
   overflow:hidden; background:var(--bc-card)}
 .fc-seg button{background:none; border:0; border-left:1px solid var(--bc-line);
-  padding:7px 12px; font:inherit; font-size:12.5px; font-weight:650;
+  padding:7px 12px; font:inherit; font-size:var(--fc-t-s); font-weight:650;
   color:var(--bc-muted); cursor:pointer; white-space:nowrap}
 .fc-seg button:first-child{border-left:0}
 .fc-seg button[aria-pressed="true"]{background:var(--fc-accent-soft); color:var(--bc-accent)}
@@ -1049,7 +1069,7 @@
 /* Prioritetsprikkerne på kassen. Tallet bærer, farven forstærker — derfor
    står antallet som tekst ved siden af og ikke kun som en prik. */
 .fc-pri{display:flex; gap:12px; flex-wrap:wrap; align-items:center;
-  font-size:11.5px; color:var(--bc-muted); margin-top:8px}
+  font-size:var(--fc-t-xs); color:var(--bc-muted); margin-top:8px}
 .fc-pri-et{display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
 .fc-pri-prik{width:8px; height:8px; border-radius:50%; flex:0 0 auto;
   background:var(--bc-muted)}
@@ -1070,8 +1090,8 @@
 .fc-svaev{position:fixed; z-index:60; pointer-events:none;
   background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:10px; box-shadow:var(--fc-shadow); padding:11px 13px;
-  min-width:230px; max-width:320px; font-size:12px}
-.fc-svaev-t{font-weight:700; margin-bottom:7px; font-size:12.5px}
+  min-width:230px; max-width:320px; font-size:var(--fc-t-s)}
+.fc-svaev-t{font-weight:700; margin-bottom:7px; font-size:var(--fc-t-s)}
 .fc-svaev-r{display:flex; justify-content:space-between; gap:14px; padding:2px 0}
 .fc-svaev-r span:first-child{color:var(--bc-muted)}
 .fc-svaev-r span:last-child{font-weight:650; text-align:right}
@@ -1087,11 +1107,11 @@
 .fc-dialog-bred{max-width:1020px}
 .fc-dialog-top{display:flex; align-items:flex-start; gap:14px; padding:18px 20px 14px;
   border-bottom:1px solid var(--bc-line)}
-.fc-dialog-top h2{margin:0; font-size:16px; font-weight:700}
+.fc-dialog-top h2{margin:0; font-size:var(--fc-t-xl); font-weight:700}
 .fc-dialog-top-h{margin-left:auto; display:flex; align-items:center; gap:8px;
   flex:0 0 auto}
-.fc-dialog-under{margin:3px 0 0; font-size:12.5px; color:var(--bc-muted)}
-.fc-dialog-luk{background:none; border:0; font-size:22px; line-height:1;
+.fc-dialog-under{margin:3px 0 0; font-size:var(--fc-t-s); color:var(--bc-muted)}
+.fc-dialog-luk{background:none; border:0; font-size:var(--fc-t-3xl); line-height:1;
   color:var(--bc-muted); cursor:pointer; padding:0 4px}
 .fc-dialog-krop{padding:18px 20px 20px; overflow-y:auto}
 
@@ -1099,14 +1119,14 @@
    ikke først klikke ind for at opdage det. */
 .fc-fane-tal{display:inline-block; margin-left:6px; padding:1px 6px;
   border-radius:9px; background:var(--fc-bg); color:var(--bc-muted);
-  font-size:11px; font-weight:700}
+  font-size:var(--fc-t-xs); font-weight:700}
 
 /* Fotos i hændelsespanelet. Miniaturerne er attrapper — DEV har ingen
    Storage-bucket, og det står skrevet på skærmen frem for kun her. */
 .fc-fotos{display:flex; gap:8px; flex-wrap:wrap}
 .fc-foto{width:78px; height:58px; border-radius:8px; border:1px solid var(--bc-line);
   background:var(--fc-bg); display:flex; align-items:center; justify-content:center;
-  color:var(--bc-muted); font-size:10.5px; text-align:center; padding:4px}
+  color:var(--bc-muted); font-size:var(--fc-t-xs); text-align:center; padding:4px}
 
 /* Filterrække — knapper der hører sammen, samlet til venstre. ⚠ IKKE .fc-row:
    den er space-between og ville sprede "Lav" og "Høj" ud til hver sin kant,
@@ -1123,7 +1143,7 @@
 .fc-delknap{position:relative; display:inline-flex; flex:0 0 auto; gap:1px;
   background:var(--bc-card); border-radius:9px}
 .fc-delknap-h{background:var(--bc-accent); color:#fff; border:0; cursor:pointer;
-  font:inherit; font-size:12.5px; font-weight:650; padding:7px 13px;
+  font:inherit; font-size:var(--fc-t-s); font-weight:650; padding:7px 13px;
   border-radius:9px 0 0 9px; min-height:34px}
 .fc-delknap-pil{background:var(--bc-accent); color:#fff; cursor:pointer;
   border:0; padding:0 8px;
@@ -1134,7 +1154,7 @@
   background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:11px; box-shadow:var(--fc-shadow); padding:5px; min-width:196px}
 .fc-delknap-post{display:flex; align-items:center; gap:10px; width:100%;
-  background:none; border:0; cursor:pointer; font:inherit; font-size:12.5px;
+  background:none; border:0; cursor:pointer; font:inherit; font-size:var(--fc-t-s);
   color:var(--bc-text); padding:9px 11px; border-radius:8px; text-align:left}
 .fc-delknap-post:hover{background:var(--fc-bg)}
 .fc-delknap-post svg{width:16px; height:16px; flex:0 0 auto; fill:none;
@@ -1144,8 +1164,8 @@
    Ikon øverst, handlingen modsat, så tallet står alene i midten. */
 .fc-kasse-top{display:flex; align-items:flex-start; justify-content:space-between;
   gap:12px; margin-bottom:14px}
-.fc-kasse-l{color:var(--bc-muted); font-size:13px; font-weight:600}
-.fc-kasse-v{font-size:34px; font-weight:700; letter-spacing:-.025em;
+.fc-kasse-l{color:var(--bc-muted); font-size:var(--fc-t-m); font-weight:600}
+.fc-kasse-v{font-size:var(--fc-t-4xl); font-weight:700; letter-spacing:-.025em;
   line-height:1.05; margin:2px 0 10px}
 /* Skillestreger MELLEM prikkerne, ikke omkring dem — tre tal i en række skal
    læses som én skala og ikke som tre løsrevne felter. */
@@ -1164,9 +1184,9 @@
   background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:10px; padding:8px}
 .fc-perm{display:flex; align-items:center; gap:8px; padding:6px 8px;
-  border-radius:7px; font-size:12.5px; cursor:pointer}
+  border-radius:7px; font-size:var(--fc-t-s); cursor:pointer}
 .fc-perm:hover{background:var(--fc-bg)}
-.fc-perm code{font-size:11.5px}
+.fc-perm code{font-size:var(--fc-t-xs)}
 
 /* ---- Widgets: brugerens eget dashboardlayout -------------------------- */
 /* Kun i redigeringstilstand. Kortet selv er et helt almindeligt .fc-kpi —
@@ -1177,18 +1197,18 @@
 .fc-widget-vaerktoej{position:absolute; top:6px; right:6px; display:flex; gap:2px}
 .fc-widget-knap{border:1px solid var(--bc-line); background:var(--bc-card);
   color:var(--bc-muted); border-radius:6px; width:22px; height:22px; padding:0;
-  font-size:13px; line-height:1; cursor:pointer}
+  font-size:var(--fc-t-m); line-height:1; cursor:pointer}
 .fc-widget-knap:hover:enabled{background:var(--fc-bg); color:var(--bc-text)}
 .fc-widget-knap:disabled{opacity:.35; cursor:default}
 .fc-widget-gruppe{margin-top:14px}
-.fc-widget-gruppe > b{font-size:12.5px; color:var(--bc-muted)}
+.fc-widget-gruppe > b{font-size:var(--fc-t-s); color:var(--bc-muted)}
 
 /* ⚠ EKSTRA HOVEDRAEKKER — maaned over uge over dag. Et vindue paa
    otteogtyve dage giver otteogtyve kolonner, og datoen i hver bliver
    ulaeselig. Niveauerne baerer det man sjaeldent skifter, saa dagen kun
    baerer det den ikke kan undvaere. Se grupperSlots() i gitter.js. */
 .fc-gk-niveau{border-bottom:1px solid var(--bc-line)}
-.fc-gk-gruppe{font-weight:700; font-size:11.5px; color:var(--bc-text);
+.fc-gk-gruppe{font-weight:700; font-size:var(--fc-t-xs); color:var(--bc-text);
   border-left:1px solid var(--bc-line); text-align:center;
   flex-direction:row; justify-content:center}
 .fc-gk-gruppe:first-child{border-left:0}
@@ -1211,9 +1231,9 @@
 
 /* Ugedagen over datoen. To linjer koster hoejde EEN gang i hovedet og giver
    plads i hver eneste kolonne. Selve flex-opsaetningen staar i grundreglen. */
-.fc-gk-kol-dag{font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
+.fc-gk-kol-dag{font-size:var(--fc-t-tight); text-transform:uppercase; letter-spacing:.06em;
   opacity:.75}
-.fc-gk-kol-dato{font-size:11px; font-weight:700}
+.fc-gk-kol-dato{font-size:var(--fc-t-xs); font-weight:700}
 
 /* ── Rullebjaelken under kalenderen ──────────────────────────────────────
    Gitteret er bredere end skaermen, og den eneste vej frem var et vandret
@@ -1225,7 +1245,7 @@
 .fc-gk-rul{display:flex; align-items:center; gap:8px; margin-top:10px}
 .fc-gk-rul-pil{flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center;
   border:1px solid var(--bc-line); border-radius:7px; background:var(--bc-card);
-  color:var(--bc-muted); font-size:15px; line-height:1; cursor:pointer; padding:0}
+  color:var(--bc-muted); font-size:var(--fc-t-l); line-height:1; cursor:pointer; padding:0}
 .fc-gk-rul-pil:hover:not(:disabled){background:var(--fc-bg); color:var(--bc-text)}
 /* ⚠ EN SLUKKET PIL SKAL SES SLUKKET. Er man ved enden og pilen ser levende
    ud, klikker man igen og tror skaermen haenger. */

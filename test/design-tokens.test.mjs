@@ -177,6 +177,18 @@ const FORVENTEDE_TOKENS = {
      encoder ingenting, saa validatorens gulve gaelder den ikke. Se
      BESLUTNINGER.md, afsnittet "Et fjerde token". */
   "--fc-overlay": "rgba(16,26,48,.44)",
+  /* Skriftskalaen — beslutning 48. Ni trin i stedet for 24 tal spredt i
+     filen. Vaerdierne staar her af samme grund som farverne: et token er en
+     truffet beslutning, og en skala der kan skride er ingen skala. */
+  "--fc-t-tight": "11px",
+  "--fc-t-xs": "12px",
+  "--fc-t-s": "13px",
+  "--fc-t-m": "14px",
+  "--fc-t-l": "15px",
+  "--fc-t-xl": "17px",
+  "--fc-t-2xl": "21px",
+  "--fc-t-3xl": "25px",
+  "--fc-t-4xl": "34px",
   "--fc-r": "12px",
   "--fc-sidebar": "216px",
   "--fc-shadow": "0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04)",

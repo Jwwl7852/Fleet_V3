@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **46 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **48 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -74,6 +74,18 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   derefter snapshottet i `test/design-tokens.test.mjs`. Retter du kun
   snapshottet, har du flyttet beslutningen ind i en testfil hvor ingen leder
   efter den.
+- **Sætte en `font-size` i px.** Skalaen er ni tokens — `--fc-t-tight` (11) til
+  `--fc-t-4xl` (34) — og brødteksten er `--fc-t-m`, **14 px, ikke 13**. Filen
+  havde 24 forskellige størrelser på 119 steder, otte med halve pixels, fordi
+  hver skærm valgte et tal der så rigtigt ud dér; 68 % af tegnene på
+  dashboardet stod på 13 px eller mindre. `test/skrift.test.mjs` fejler på et
+  råt tal uden for `:root`.
+  ⚠ **Tre steder står med vilje uden for skalaen**, og de står med navn og
+  begrundelse i prøven: mærkatet er 100 × 200 mm fysisk (beslutning 46), og
+  donutens `font-size:6` er seks **viewBox-enheder**, ikke pixels — et
+  px-token dér gør tallet dobbelt så stort som figuren. Hører din størrelse
+  virkelig udenfor, så skriv begrundelsen; kan du ikke det, hører den i
+  skalaen. Se beslutning 48.
 - Bruge `on()` hvor `once()` rækker.
 - Hardslette regnskabsdata.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.

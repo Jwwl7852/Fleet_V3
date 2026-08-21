@@ -2578,3 +2578,72 @@ en kontakt kræver at hvert token får en mørk pendant. Egen etape.
 er den mest trættende kombination der findes, og den er et større håndtag end
 nogen palet. Men den flytter layout på hver skærm og hører derfor til sin egen
 etape, hvor der er plads til at se efter.
+
+
+## 48. Skriftstørrelser var 24 tal spredt i filen — nu er de ni beslutninger
+
+Beslutning 47 endte med at pege videre: **68 % af tegnene på dashboardet stod på
+13 px eller mindre, 37 % på 12,5 px eller mindre.** Lille skrift med hård
+kontrast er den mest trættende kombination der findes, og den er et større
+håndtag end nogen palet. Så jeg talte efter.
+
+`fleet.css` havde **24 forskellige skriftstørrelser på 119 steder**, otte af
+dem med halve pixels: 8,5 · 9,5 · 10,5 · 11,5 · 12,5 · 13,5 · 14,5. Ingen havde
+besluttet en skala; hver skærm havde valgt et tal der så rigtigt ud dér.
+
+⚠ **Det er nøjagtig samme fejl som rå farver var før beslutning 10.** Et tal der
+kun står ét sted, er en indstilling. Tyve tal der næsten er ens, er tyve
+lejligheder til at være uenige — og forskellen mellem 12 og 12,5 px er ikke en
+beslutning nogen har truffet, det er en der er gledet ind.
+
+### ⚠ Fire verdener, ikke én skala
+
+Det vigtigste fund var at tallene ikke hørte til samme sag:
+
+| Verden | Eksempler | Må den vokse? |
+|---|---|---|
+| Skærmens læsetekst | `.fc-table td` 13, `.fc-hint` 12, `.fc-table th` **10,5** | Ja — det er her problemet er |
+| Mærkatet på papir | `.fc-maerkat-etiket` 9,5, `.fc-stregkode-tal` 12 | **Nej.** 100 × 200 mm er fysisk, og modulbredden er afledt af 203 dpi. Beslutning 46 |
+| SVG-enheder | `.fc-donut-tal` 6, `.fc-donut-note` 2,6 | Nej — det er **viewBox-enheder**, ikke pixels. De skalerer med figuren |
+| Gitterets kolonner | `.fc-gk-kol-dag` 9,5, `.fc-gk-blok` 11 | Kun hvis kolonnen får lov at blive bredere |
+
+Havde jeg lagt ét gulv over alle 119 steder, ville mærkatet være vokset ud over
+etiketten og donutens tekst være blevet ulæselig stor — begge dele uden at nogen
+kunne se det på skærmen.
+
+### Skalaen
+
+Ni trin, og hvert eneste af dem er et token:
+
+| Token | px | Erstatter | Hvad |
+|---|---|---|---|
+| `--fc-t-tight` | 11 | 9,5 · 10 | Kun hvor bredden er fysisk låst |
+| `--fc-t-xs` | 12 | 10,5 · 11 · 11,5 | Mindste tekst på skærmen |
+| `--fc-t-s` | 13 | 12 · 12,5 | Bitekst, hjælpelinjer |
+| `--fc-t-m` | 14 | 13 · 13,5 | **Brødtekst** — tabelceller, knapper, felter |
+| `--fc-t-l` | 15 | 14 · 14,5 · 15 | Kortoverskrifter |
+| `--fc-t-xl` | 17 | 16 · 17 | Afsnitsoverskrifter |
+| `--fc-t-2xl` | 21 | 19 · 20 · 21 | |
+| `--fc-t-3xl` | 25 | 22 · 23 · 25 | |
+| `--fc-t-4xl` | 34 | 34 | KPI-tal |
+
+⚠ **`.fc-table th` var 10,5 px.** Hver eneste tabeloverskrift i hele
+programmet — det man læser først for at finde ud af hvad en kolonne betyder —
+stod mindre end alt andet. Den er nu 12.
+
+⚠ **Og kalenderen fik lov at vokse, fordi der var plads.** Kolonnens minimum går
+fra 30 til 34 px. Målt: 180 + 28 × 34 = 1132 px, og en 1280-skærm har 1240 til
+rådighed. Havde det ikke passet, skulle teksten være blevet stående — en
+kalender der ruller er værre end en kalender med lille skrift.
+
+### Hvad det koster
+
+Brødteksten vokser 7,7 %, den mindste tekst 14,3 %. Det er plads, og pladsen
+skal tages et sted: rækker bliver højere, og der er færre linjer på en skærm.
+Det er byttet, og det er bevidst — en tabel man kan læse med tredive rækker er
+bedre end en man kniber øjnene sammen over med femogtredive.
+
+⚠ **Prøven `test/skrift.test.mjs` holder skalaen.** Samme form som
+designtokenprøven: en rå `font-size` i px uden for `:root` er en fejl, og de
+tre undtagelser — mærkatet, SVG-enhederne — står med navn og begrundelse. Uden
+den er skalaen tilbage til 24 tal om en måned.
