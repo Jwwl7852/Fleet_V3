@@ -23,6 +23,7 @@
 import { DEMO_PERSONALE } from "./demo-personale.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { FRAVAER_ART, erAktivt, overlapper } from "./fravaer.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const DAG = 86400000;
 
@@ -105,7 +106,7 @@ export const demoFravaerendeIDag = (nu = Date.now()) =>
  * siger til — og de samme kontroller ligger som tests i test/fravaer.test.mjs,
  * så de også fanges af .githooks/pre-commit.
  */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-fravaer", () => {
   const kendtePersoner = new Set(DEMO_PERSONALE.map((p) => p.id));
 
   for (const f of DEMO_FRAVAER) {
@@ -184,4 +185,4 @@ if (import.meta.env?.DEV) {
       `disponeret — de to demo-sæt modsiger hinanden.`
     );
   }
-}
+});

@@ -27,6 +27,7 @@
 import {
   AFSENDER_STATUS, VEDHAEFTNING_STATUS, sagsnummerFraEmne, vurderAfsender,
 } from "./sager.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 /* Faste tidspunkter, ikke Date.now()-forskydninger. Aftalen i infografikken
    er 18-08-2026 kl. 08.00, og en demo hvor datoen flytter sig, kan ikke
@@ -280,7 +281,7 @@ export const demoSag = (nummer) => DEMO_SAGER.find((s) => s.nummer === nummer) |
  *   3. Et emnefelt hvor sagsnummeret ikke kan genkendes. Så ville beskeden
  *      i virkeligheden aldrig være landet på sagen.
  */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-sag", () => {
   for (const sag of DEMO_SAGER) {
     const ctx = { parter: sag.parter, egneDomaener: DEMO_EGNE_DOMAENER };
 
@@ -320,4 +321,4 @@ if (import.meta.env?.DEV) {
       );
     }
   }
-}
+});

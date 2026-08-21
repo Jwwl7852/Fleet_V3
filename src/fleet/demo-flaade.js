@@ -32,6 +32,7 @@
 import { STED } from "./steder.js";
 import { ALLE_ARTER, ENHEDSART, KOERETOEJ_STATUS, harFelt, FELT } from "./flaade.js";
 import { DEMO_KPI } from "./demo-kpi.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -251,7 +252,7 @@ export const demoServiceInden30 = (nu = Date.now()) =>
  * det enten fordi nogen har tilføjet for mange enheder, eller fordi kpi/ er
  * skruet ned — og begge dele skal siges højt.
  */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-flaade", () => {
   /* --- Formkrav reglerne håndhæver. Fanges her, før en skrivning fejler. --- */
   for (const k of DEMO_KOERETOEJER) {
     if ("division" in k) {
@@ -315,4 +316,4 @@ if (import.meta.env?.DEV) {
       );
     }
   }
-}
+});

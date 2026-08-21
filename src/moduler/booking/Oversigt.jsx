@@ -284,7 +284,7 @@ export default function BookingOversigt() {
           </div>
           <Knap onClick={() => { setEnhedFilter(""); setStatusFilter(""); }}>Nulstil</Knap>
           <p className="fc-hint" style={{ margin: 0, flex: 1, minWidth: 200 }}>
-            Periode og afdeling vælges i topbaren — de gælder hele platformen.
+            Perioden vælges i topbaren — den gælder hele platformen.
           </p>
         </div>
       </Kort>

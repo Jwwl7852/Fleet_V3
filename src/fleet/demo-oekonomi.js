@@ -15,6 +15,7 @@
  * Alle beløb i ØRE, ekskl. moms (beslutning 2).
  */
 import { DEMO_KPI } from "./demo-kpi.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -93,24 +94,36 @@ export const DEMO_KLAR_TIL_FAKTURERING = [
    kigger — og her ER invarianten den skærmen handler om: summerer
    kategorierne ikke til nøgletallet, siger tabellens rækker og dens totalrække
    hver sit. Den stod som en kommentar før; nu bliver den kontrolleret. */
-if (import.meta.env?.DEV) {
-  for (const division of ["gods", "bus"]) {
+/* ⚠ HER LØB EN LØKKE OVER ["gods", "bus"] MED `DEMO_KPI[division]`.
+   Aksen blev fjernet i beslutning 70, og sættet er fladt — så opslaget gav
+   `undefined`, og `.oekonomi` på det KASTEDE.
+
+   ⚠ OG EN SELVKONTROL DER KASTER, TAGER HELE APPEN MED. Den kører på
+   MODULNIVEAU, så undtagelsen sker mens modulet indlæses: hver skærm der
+   importerer `omkostningsserie()` — Planning blandt dem — blev en HVID
+   SIDE. En kontrol der skal ADVARE, må aldrig kunne fejle hårdere end det
+   den advarer om. Se beslutning 74. */
+selvkontrol("demo-oekonomi", () => {
+  try {
     const { kategorier } = omkostningsserie();
     const faktisk = kategorier.reduce((s, c) => s + c.faktiskOere, 0);
     const budget = kategorier.reduce((s, c) => s + c.budgetOere, 0);
-    const kpi = DEMO_KPI[division].oekonomi;
+    const kpi = DEMO_KPI?.oekonomi || {};
     if (faktisk !== kpi.driftsomkostningerOere) {
       console.warn(
-        `demo-oekonomi: ${division} kategorier summer til ${faktisk} øre, men ` +
+        `demo-oekonomi: kategorierne summer til ${faktisk} øre, men ` +
         `kpi.oekonomi.driftsomkostningerOere er ${kpi.driftsomkostningerOere}. ` +
         `Totalrækken og nøgletallet ville sige hver sit.`
       );
     }
     if (budget !== kpi.budgetOere) {
       console.warn(
-        `demo-oekonomi: ${division} budget summer til ${budget} øre, men ` +
+        `demo-oekonomi: budgettet summer til ${budget} øre, men ` +
         `kpi.oekonomi.budgetOere er ${kpi.budgetOere}.`
       );
     }
+  } catch (e) {
+    /* ⚠ ADVARER OM SIG SELV FREM FOR AT TAGE APPEN MED. */
+    console.warn("demo-oekonomi: selvkontrollen kunne ikke køre —", e.message);
   }
-}
+});

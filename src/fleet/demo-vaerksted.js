@@ -44,6 +44,7 @@ import { DEMO_OPGAVER } from "./demo-opgaver.js";
 import {
   ARBEJDSTYPE, ALLE_ARBEJDSTYPER, OPGAVE_STATUS, opgaveMangler,
 } from "./opgaver.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 /* ---- Omkostningstyper ------------------------------------------------ */
 
@@ -130,7 +131,7 @@ export function demoKoeretoejKaldenavn(koeretoejId) {
 
 /* ---- Selvkontrol ------------------------------------------------------ */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-vaerksted", () => {
   const kendteBiler = new Set(DEMO_KOERETOEJER.map((k) => k.id));
   const nu = Date.now();
 
@@ -227,4 +228,4 @@ if (import.meta.env?.DEV) {
       `${iAlt} i hele flåden. Et udsnit kan ikke være større end totalen.`
     );
   }
-}
+});

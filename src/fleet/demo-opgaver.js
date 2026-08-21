@@ -30,6 +30,7 @@ import { DEMO_PERSONALE } from "./demo-personale.js";
    virkelighed — og det er 84-mod-83 igen. Tidspunktet hentes derfor FRA sagen
    frem for at blive skrevet af. */
 import { demoSag } from "./demo-sag.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -378,7 +379,7 @@ export const opgaveEnhed = (id) => {
  * opdigtet "Bil 12" der ikke findes i flåden, er præcis den fejl
  * test/demo-kilder.test.mjs er skrevet for — se README om demo-datasæt.
  */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-opgaver", () => {
   for (const o of DEMO_OPGAVER) {
     /* ⚠ EN SOLGT ELLER SKROTTET BIL KAN IKKE HAVE EN AABEN OPGAVE. Den stod
        der: op-010 var en busdoer paa en solgt traekker. Posten bliver staaende
@@ -470,4 +471,4 @@ if (import.meta.env?.DEV) {
       }
     }
   }
-}
+});

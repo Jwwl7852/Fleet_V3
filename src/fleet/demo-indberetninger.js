@@ -24,6 +24,7 @@
 import {
   HAENDELSE_ART, FORLOEB, MAENGDE_SKALA, SENSITIVE_FELTER,
 } from "./indberetninger.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 24 * 60 * 60 * 1000;
@@ -276,7 +277,7 @@ export const demoTankninger = (koeretoejId) =>
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-indberetninger", () => {
   for (const i of DEMO_INDBERETNINGER) {
     if (!HAENDELSE_ART[i.art]) {
       console.warn(`demo-indberetninger: ${i.id} har ukendt art "${i.art}".`);
@@ -343,4 +344,4 @@ if (import.meta.env?.DEV) {
       "regnes på differencen, og pointen i beslutning 25 bliver usynlig."
     );
   }
-}
+});

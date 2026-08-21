@@ -12,19 +12,18 @@
  */
 
 import { DEMO_KPI } from "./demo-kpi.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 86400000;
 /* Demo-datasæt til useListe(). Bruges når der ikke er en database, og som
    fallback hvis læsningen fejler. Beløb i hele øre, ekskl. moms.
 
-   division står EKSPLICIT på hver post — ingen arver en default. Ellers kan
-   man ikke se om filteret virker eller bare falder tilbage.
-
-   Kunder er stamdata, så alle tre værdier er lovlige. Aalborg Industri
-   (medarbejderbusser + fragt) og Kolding Kommune (skolebusser +
-   containerkørsel) er "faelles" og står derfor på BEGGE divisioners lister
-   med samme tal. Det er ikke en dublet — det er én kunde.
+   ⚠ HER STOD AT division SKAL STÅ EKSPLICIT PÅ HVER POST, og at Aalborg
+   Industri og Kolding Kommune var "faelles" fordi de køber både busser og
+   fragt. Det var rigtigt om KUNDERNE og forkert om os: feltet er fjernet
+   (beslutning 70), fordi ingen abonnent har begge forretninger — så der var
+   ingen to lister at stå på.
 
    KENDT SKÆVHED: omsaetningOere og daekningsbidragOere er periodeafhængige
    tal på en stamdatanode. For en fælles kunde burde de være opgjort pr.
@@ -159,7 +158,7 @@ export const DEMO_TILBUD = [
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-kunder", () => {
   const kundeIder = new Set(DEMO_KUNDER.map((k) => k.id));
 
   for (const t of DEMO_TILBUD) {
@@ -196,4 +195,4 @@ if (import.meta.env?.DEV) {
       );
     }
   }
-}
+});

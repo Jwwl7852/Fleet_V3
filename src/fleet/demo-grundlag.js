@@ -18,6 +18,7 @@
  */
 
 import { LINJE_ART, ANTAL_SKALA } from "./grundlag.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 24 * 60 * 60 * 1000;
@@ -145,7 +146,7 @@ export const DEMO_GRUNDLAG = [
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-grundlag", () => {
   const ider = new Set(DEMO_GRUNDLAG.map((g) => g.id));
 
   for (const g of DEMO_GRUNDLAG) {
@@ -199,4 +200,4 @@ if (import.meta.env?.DEV) {
       "vise at eksporten spærres, og det åbne spørgsmål bliver usynligt."
     );
   }
-}
+});

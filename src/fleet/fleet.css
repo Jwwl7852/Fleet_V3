@@ -685,7 +685,7 @@
 .fc-plan-person{flex:0 0 20%; min-width:0; color:var(--bc-muted);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
-/* Filterrække. Periode og afdeling står IKKE her — shellen ejer dem. */
+/* Filterrække. Perioden står IKKE her — shellen ejer den. */
 .fc-filtre{display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap}
 .fc-filtre .fc-felt{margin-bottom:0; min-width:180px}
 

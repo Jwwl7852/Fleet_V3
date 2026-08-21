@@ -23,6 +23,7 @@ import {
   SUPPORT_KATEGORI, SUPPORT_PRIORITET, SUPPORT_STATUS,
   SUPPORT_NUMMER, kontekstFilter, klipUdtraek, adgangAktiv
 } from "./support.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const MIN = 60000;
 const T = 3600000;
@@ -253,7 +254,7 @@ export const demoUdtraek = (sag) =>
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-support", () => {
   const tenantIder = Object.keys(DEMO_TENANTS);
 
   for (const s of DEMO_SUPPORTSAGER) {
@@ -326,4 +327,4 @@ if (import.meta.env?.DEV) {
       console.warn(`demo-support: bevilling på ${b.sagsnummer} udløber før den blev givet.`);
     }
   }
-}
+});

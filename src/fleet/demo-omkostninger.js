@@ -25,6 +25,7 @@
  */
 import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { baandOverlap, baandLabel } from "./pricing.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const START = Date.UTC(2026, 0, 1);
 const sats = (beloebOere, metode) => ({
@@ -175,7 +176,7 @@ export const DEMO_LAGRE = [
    MANGLENDE linje i estimatet, ikke en fejl — og et estimat der er for lavt,
    ligner et godt tilbud.
    ══════════════════════════════════════════════════════════════════════════ */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-omkostninger", () => {
   const kt = new Set(DEMO_KOERETOEJER.map((k) => k.id));
   for (const o of DEMO_OMKOSTNINGER) {
     if (o.art !== "bil") continue;
@@ -200,4 +201,4 @@ if (import.meta.env?.DEV) {
       );
     }
   }
-}
+});

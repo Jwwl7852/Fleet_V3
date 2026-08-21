@@ -17,6 +17,7 @@
  * der bliver tilbage i skaermen, kontrollerer data den ikke laengere ejer.
  */
 import { DEMO_KPI } from "./demo-kpi.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 /* [planlagt, disponeret] pr. dag. oevrige er de seks dage der ikke er i dag,
    i ugerækkefølge.
@@ -102,4 +103,6 @@ function tjekPlanModKpi() {
   }
 }
 
-if (import.meta.env?.DEV) tjekPlanModKpi();
+/* ⚠ ENLINJEFORMEN ER SAMME FÆLDE. Kontrollen kører på modulniveau, og kaster
+   den, bliver hver skærm der importerer filen en hvid side. Se beslutning 74. */
+selvkontrol("demo-bemanding", tjekPlanModKpi);

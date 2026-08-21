@@ -32,6 +32,7 @@ import { DEMO_ETAPER } from "./demo-etaper.js";
 import {
   forloebstilstand, TILSTAND, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
 } from "./booking-state.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -182,7 +183,7 @@ export const beregnetTilstand = (booking) =>
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-bookinger", () => {
   const kundeIder = new Set(DEMO_KUNDER.map((k) => k.id));
   /* ⚠ HER STOD OGSÅ `bilIder` og `folkIder`, og de blev aldrig brugt.
      De er levn fra dengang køretøjs- og personkontrollen lå her. Den flyttede
@@ -213,8 +214,13 @@ if (import.meta.env?.DEV) {
         console.warn(`demo-bookinger: ${b.nummer} har ukendt ${felt} "${b[felt]}".`);
       }
     }
-    if (!b.division) {
-      console.warn(`demo-bookinger: ${b.nummer} mangler division.`);
+    /* ⚠ VENDT OM I BESLUTNING 74. Her stod "mangler division" — feltet er
+       FORBUDT siden 70, og reglen afviser en booking der bærer det. */
+    if (b.division !== undefined) {
+      console.warn(
+        `demo-bookinger: ${b.nummer} bærer division. Feltet er forbudt siden `
+        + "beslutning 70, og reglen afviser skrivningen."
+      );
     }
 
     /* ⚠ DET DENORMALISEREDE FELT MOD SIT GRUNDLAG.
@@ -280,4 +286,4 @@ if (import.meta.env?.DEV) {
       console.warn(`demo-bookinger: etape ${e.id} peger på ukendt booking "${e.bookingId}".`);
     }
   }
-}
+});

@@ -11,6 +11,7 @@
  * ikke er en database at spørge.
  */
 import { DEMO_REOLPLADSER } from "./demo-lager.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 /* ⚠ REOLPLADSERNE LIGGER I demo-lager.js. Noden deles med Warehouse, og et
    demo-datasæt hører ét sted — ellers laver den anden skærm sin egen kopi.
@@ -156,7 +157,7 @@ export const DEMO_KASSEUDLAAN = [
    Kontrollen kører kun i DEV. Den er den samme slags som i demo-vaerksted.js,
    og den er skrevet fordi mønstret er dukket op seks gange i dette repo.
    ══════════════════════════════════════════════════════════════════════════ */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-unitbooking", () => {
   const typer = new Set(DEMO_KASSETYPER.map((t) => t.id));
   const pladser = new Set(DEMO_REOLPLADSER.map((p) => p.id));
   const kasser = new Set(DEMO_KASSER.map((k) => k.id));
@@ -236,4 +237,4 @@ if (import.meta.env?.DEV) {
         `${k.status}. En kasse der er ude uden at nogen har den, kan ikke findes igen.`);
     }
   }
-}
+});

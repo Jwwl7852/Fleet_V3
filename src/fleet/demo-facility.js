@@ -33,6 +33,7 @@ import { opgaveMangler } from "./opgaver.js";
    ligger dér hvor de bliver seedet. Se DEMO_SERVICEBESOEG nedenfor. */
 import { DEMO_OPGAVER } from "./demo-opgaver.js";
 import { demoSag } from "./demo-sag.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 /* Slaas op FOER visningen bygges — en const brugt i en .map() laengere oppe
    ville vaere i sin temporale doedzone, og fejlen kommer foerst naar modulet
@@ -269,7 +270,7 @@ export const demoAabneFejl = () => DEMO_FEJL.filter((f) => f.status !== "udbedre
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-facility", () => {
   const lokIder = new Set(DEMO_LOKATIONER.map((l) => l.id));
   const aktivIder = new Set(DEMO_AKTIVER.map((a) => a.id));
   const zoneIder = new Set(DEMO_ZONER.map((z) => z.id));
@@ -415,4 +416,4 @@ if (import.meta.env?.DEV) {
       `Et udsnit kan ikke være større end totalen.`
     );
   }
-}
+});

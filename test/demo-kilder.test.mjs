@@ -165,13 +165,39 @@ describe("Demo-data hører i fleet/, ikke i moduler/", () => {
     for (const navn of readdirSync(FLEET).filter((n) => /^demo-.*\.js$/.test(n))) {
       if (navn === "demo-kpi.js" || navn === "demo-kunder.js") continue;
       const tekst = readFileSync(join(FLEET, navn), "utf8");
-      if (!/import\.meta\.env\?\.DEV/.test(tekst)) uden.push(navn);
+      if (!/selvkontrol\(/.test(tekst)) uden.push(navn);
     }
     assert.deepEqual(
       uden, [],
       "Uden en selvkontrol opdages en drift mellem to demo-sæt først når nogen " +
       "kigger. Se demo-personale.js.\n" + uden.join("\n")
     );
+  });
+
+  /**
+   * ⚠ OG DEN SKAL GÅ GENNEM selvkontrol() — ikke et bart
+   * `if (import.meta.env?.DEV)`.
+   *
+   * En kontrol i en demo-fil kører på MODULNIVEAU. Kaster den, sker det mens
+   * modulet indlæses, og **hver skærm der importerer filen bliver en hvid
+   * side**. Det skete: `demo-oekonomi.js` slog op i `DEMO_KPI[division]`
+   * efter at aksen var fjernet (beslutning 70), og Planning kunne ikke åbnes.
+   *
+   * ⚠ EN KONTROL DER SKAL ADVARE, MÅ ALDRIG KUNNE FEJLE HÅRDERE END DET DEN
+   * ADVARER OM. Den fandtes for at fange et forkert TAL på en skærm; prisen
+   * blev en app der ikke startede. `selvkontrol()` fanger og advarer om sig
+   * selv — et tavst catch ville gøre en kontrol der er holdt op med at virke,
+   * til en ingen savner. Se beslutning 74.
+   */
+  it("⚠ INGEN DEMO-FIL KØRER EN KONTROL DER KAN KASTE", () => {
+    const bare = [];
+    for (const navn of readdirSync(FLEET).filter((n) => /^demo-.*\.js$/.test(n))) {
+      const tekst = readFileSync(join(FLEET, navn), "utf8");
+      if (/^if \(import\.meta\.env\?\.DEV\) \{/m.test(tekst)) bare.push(navn);
+    }
+    assert.deepEqual(bare, [],
+      "en selvkontrol står uden om selvkontrol() — kaster den, bliver hver "
+      + "skærm der importerer filen en hvid side");
   });
 });
 

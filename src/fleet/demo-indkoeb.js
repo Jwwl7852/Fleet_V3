@@ -25,6 +25,7 @@ import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS,
   afstem, parterFraLeverandoer,
 } from "./leverandoerer.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const DAG = 86400000;
 const iDag = new Date();
@@ -515,7 +516,7 @@ export const DEMO_LEVERANDOERSAGER = [
  * tror at grønne prøver betyder at demo-sættet er læst.
  */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-indkoeb", () => {
   /* ⚠ VAERKSTEDSINDKOEBENES KONTROL, FLYTTET MED DATASAETTET.
      De fire il-vb-00N laa i demo-vaerksted.js som DEMO_INDKOEB, og deres
      kontrol laa dér med dem. Datasaettet er flyttet hertil; kontrollen skal
@@ -643,4 +644,4 @@ if (import.meta.env?.DEV) {
       `åbne ordrer i alt. Et udsnit kan ikke være større end totalen.`
     );
   }
-}
+});

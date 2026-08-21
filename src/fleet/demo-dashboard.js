@@ -42,6 +42,7 @@ import { DEMO_KOERETOEJER } from "./demo-flaade.js";
 import { DEMO_OPGAVER } from "./demo-opgaver.js";
 import { DEMO_BESOEG } from "./demo-vaerksted.js";
 import { ALVOR } from "./format.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const D = 864e5;
 
@@ -60,15 +61,16 @@ export const DEMO_DASHBOARD_OPGAVER = [
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-dashboard", () => {
   const kaldenavne = new Set(DEMO_KOERETOEJER.map((k) => k.kaldenavn).filter(Boolean));
 
   for (const o of DEMO_DASHBOARD_OPGAVER) {
     if (!ALVOR[o.alvor]) {
       console.warn(`demo-dashboard: ${o.id} har ukendt alvor "${o.alvor}".`);
     }
-    if (!["gods", "bus", "faelles"].includes(o.division)) {
-      console.warn(`demo-dashboard: ${o.id} har ugyldig division "${o.division}".`);
+    /* ⚠ VENDT OM I BESLUTNING 74 — se demo-bookinger.js. */
+    if (o.division !== undefined) {
+      console.warn(`demo-dashboard: ${o.id} bærer division, som er forbudt siden 70.`);
     }
     /* ⚠ ENHEDEN ER EN STRENG, IKKE ET ID. Det er selve problemet med listen:
        "Bil 104" kan ikke slås op, den kan kun sammenlignes. Findes navnet
@@ -129,4 +131,4 @@ if (import.meta.env?.DEV) {
       }
     }
   }
-}
+});

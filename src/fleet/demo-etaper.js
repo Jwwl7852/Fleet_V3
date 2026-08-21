@@ -26,6 +26,7 @@ import {
 } from "./etaper.js";
 import { GRAENSE } from "./koerehviletid.js";
 import { kanDisponeres, kanBaere } from "./flaade.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -275,7 +276,7 @@ export const demoEtaperIVindue = (fra, til) =>
 
 /* ---- Selvkontrol ------------------------------------------------------- */
 
-if (import.meta.env?.DEV) {
+selvkontrol("demo-etaper", () => {
   const biler = new Set(DEMO_KOERETOEJER.map((k) => k.id));
   const bilEfterId = new Map(DEMO_KOERETOEJER.map((k) => [k.id, k]));
   const folk = new Set(DEMO_PERSONALE.map((p) => p.id));
@@ -432,4 +433,4 @@ if (import.meta.env?.DEV) {
       );
     }
   }
-}
+});

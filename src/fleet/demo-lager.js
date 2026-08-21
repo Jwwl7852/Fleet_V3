@@ -17,6 +17,7 @@
  * opdigtede tal findes kun hvor der ikke er en database at spørge.
  */
 import { DEMO_KUNDER } from "./demo-kunder.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 export const DEMO_REOLPLADSER = [
   /* Unitbookings oprindelige — uden WMS-felter. De SKAL blive stående
@@ -240,7 +241,7 @@ export const DEMO_CARRIERS = [
    ⚠ TRE SÆT DER PEGER PÅ HINANDEN. En tastefejl i et id giver en tom celle,
    ikke en fejl. Mønstret er dukket op seks gange i dette repo.
    ══════════════════════════════════════════════════════════════════════════ */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-lager", () => {
   const pladser = new Set(DEMO_REOLPLADSER.map((p) => p.id));
   const varer = new Map(DEMO_VARER.map((v) => [v.id, v]));
   const kunder = new Set(DEMO_KUNDER.map((k) => k.id));
@@ -367,4 +368,4 @@ if (import.meta.env?.DEV) {
   for (const [n, raekker] of paaLager) {
     console.warn(`demo-lager: ${raekker} enhed(er) i ${n} uden en beholdningspost.`);
   }
-}
+});

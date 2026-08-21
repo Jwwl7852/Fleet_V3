@@ -4848,3 +4848,65 @@ tal-form: en afvist læsning ville komme til at ligne et tomt datasæt.
 > *"Tallene beregnes af en aggregering der endnu ikke er bygget."*
 
 Den er bygget. Se beslutning 72.
+
+## 74. En selvkontrol der skulle advare om et forkert tal, gjorde Planning til en hvid side
+
+Kunden meldte: *"Planning er helt blank side."* Ikke tom — **blank**. Det er et
+nedbrud, ikke en tilstand.
+
+Konsollen sagde det på én linje:
+
+> `TypeError: Cannot read properties of undefined (reading 'oekonomi')`
+> `at demo-oekonomi.js:101`
+
+### Hvad der var sket
+
+`demo-oekonomi.js` havde en selvkontrol der løb over `["gods", "bus"]` og slog
+op i `DEMO_KPI[division].oekonomi`. Beslutning 70 fjernede aksen og gjorde
+sættet fladt — så opslaget gav `undefined`, og `.oekonomi` på det kastede.
+
+⚠ **Kontrollen kører på MODULNIVEAU.** Undtagelsen skete altså mens modulet
+blev indlæst, ikke når kontrollen fandt noget galt. **Hver skærm der importerer
+`omkostningsserie()` blev en hvid side.**
+
+### ⚠ En kontrol der skal advare, må aldrig kunne fejle hårdere end det den advarer om
+
+Kontrollen fandtes for at fange en drift mellem to demo-sæt — et problem der
+viser **et forkert tal på en skærm**. Prisen for at have den blev **en app der
+ikke starter**.
+
+Det er ikke en detalje ved netop den kontrol. Der var **23** af dem i
+demo-filerne, og **19 stod uden noget værn**. Enhver af dem kunne gøre det
+samme, den dag et datasæt ændrede form.
+
+`selvkontrol(navn, fn)` i `src/fleet/selvkontrol.js` er nu den ene vej: den
+kører kun i DEV, den fanger, og den **advarer om sig selv**. Efterprøvet ved at
+lægge en `null.kaster()` ind i en kontrol — modulet indlæses stadig.
+
+⚠ **Og den advarer, den tier ikke.** Et tavst `catch` ville gøre en kontrol der
+er holdt op med at virke, til en kontrol ingen savner — samme fejl som en lint
+der springer noget over: **den siger ikke nej, den siger ingenting.**
+
+### ⚠ Fejlen kom fra et sted prøverne ikke kigger
+
+2335 prøver var grønne. Ingen af dem indlæser `demo-oekonomi.js` i et
+DEV-miljø, for `import.meta.env?.DEV` er falsk under node — så kontrollen kørte
+aldrig i prøverne og kunne ikke kaste dér.
+
+**Det er værd at kende formen på:** kode der kun kører i DEV, prøves ikke af en
+suite der kører i node. Prøven i `demo-kilder.test.mjs` kan derfor ikke køre
+kontrollerne; den kan kun kræve at de går gennem `selvkontrol()`. Det er den
+rigtige slags prøve for det her — den prøver **vejen**, ikke resultatet.
+
+### Tre døde kontroller vendt om
+
+`demo-bookinger.js`, `demo-dashboard.js` og `demo-kunder.js` advarede om at en
+post **manglede** `division`. Feltet er forbudt siden 70, så de kunne aldrig
+fejle — og heller aldrig sige noget. De advarer nu om det modsatte: bærer en
+demopost feltet, ville reglen afvise skrivningen, og det skal ses her frem for
+som en `permission-denied` på en formular.
+
+### Og en tekst der pegede på en knap der ikke findes
+
+Planning skrev *"Periode og **afdeling** vælges i topbaren"*. Afdelingsvælgeren
+blev fjernet i beslutning 70. Nu står der kun perioden.

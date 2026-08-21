@@ -45,6 +45,7 @@
 import { serviceTone } from "./format.js";
 import { KOMPETENCE, KOMPETENCE_LABEL } from "./flaade.js";
 import { DEMO_KPI } from "./demo-kpi.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 const NU = Date.now();
 const D = 86400000;
@@ -438,7 +439,7 @@ export const demoForaeldreloeseKompetencer = () =>
    hentes med et dynamisk import, fordi useKpi trækker FleetContext.jsx med;
    datasættet er flyttet ud netop for at den slags kontrol også kan køres af en
    test. Se demo-kpi.js. */
-if (import.meta.env?.DEV) {
+selvkontrol("demo-personale", () => {
   const inden30 = demoUdloeberInden30();
   /* Feltet står stadig under begge divisioner i kpi/ — noden er delt
      (beslutning 9) — men vaerdien er den samme, fordi staben er den samme.
@@ -461,4 +462,4 @@ if (import.meta.env?.DEV) {
       `(${udenPerson.map((k) => k.personId).join(", ")}).`
     );
   }
-}
+});
