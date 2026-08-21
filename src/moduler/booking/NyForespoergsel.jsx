@@ -4,9 +4,16 @@
  * Rolle: casehandler. Det er her forløbet begynder — en forespørgsel oprettes
  * som `kladde` og sendes til planlægning med overgangen til `afventerPlan`.
  *
- * ⚠ GEM VISER HVAD byggEtapeSkifte() VILLE SKRIVE. Der skrives ingenting
- * (fase 0). Knappen er gated på kanSkifteEtape(), så en rolle uden `booking.opret` får det
- * samme nej som serveren ville give — skift rolle i sidebaren og se.
+ * ⚠ SKÆRMEN SKRIVER NU. Her stod "der skrives ingenting (fase 0)".
+ * `bookingopret` skriver bookingen OG dens etaper i ÉN atomisk opdatering og
+ * henter nummeret fra counteren — beslutning 55.
+ *
+ * ⚠ ÉN KNAP, IKKE TO. Der stod "Send til planlægning" og "Gem som kladde",
+ * begge deaktiverede. Oprettelsen laver en KLADDE; at sende den til
+ * planlægning er et etapeskift (`etapeskift`, kladde → afventerPlan) og
+ * dermed et andet kald. De to kan ikke lægges sammen atomisk, og en kæde der
+ * lykkes halvt ville efterlade et forløb i en tilstand brugeren ikke bad om.
+ * En kladde han kan SE og sende videre, er det ærlige svar.
  *
  * ⚠ BOOKINGNUMMERET KOMMER FRA EN COUNTER, ALDRIG FRA EN OPTÆLLING.
  * naesteBookingnummer() kører en transaction mod countere/booking/<år>
@@ -21,18 +28,22 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { useListe } from "../../fleet/useListe.js";
 import { kr, oereFraKroner } from "../../fleet/format.js";
 import {
-  Kort, Pille, Knap, Gitter, MiniLinje,
+  Kort, Pille, Knap, Gitter, MiniLinje, Formularsvar, Datatilstand,
 } from "../../fleet/ui.jsx";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte,
+  TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
 } from "../../fleet/booking-state.js";
 import { PERM } from "../../fleet/permissions.js";
 import { harPerm } from "../../fleet/permissions.js";
-import {
-  TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
-} from "../../fleet/demo-bookinger.js";
+import { opretBooking, valideBooking } from "../../fleet/booking.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. `kunder` ER en seedet node, og skærmen
+   læste demosættet DIREKTE — så vælgeren tilbød kunder der ikke findes i
+   basen, og serveren ville svare "Kunden findes ikke" på et valg skærmen selv
+   havde tilbudt. Samme fejl som Indkøb → Fakturaer havde. */
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 
 const TOM = {
@@ -49,7 +60,18 @@ const tilMs = (v) => (v ? new Date(v).getTime() : null);
 export default function NyForespoergsel() {
   const { bruger, division } = useFleet();
   const [f, setF] = useState(TOM);
-  const saet = (n) => (e) => setF((x) => ({ ...x, [n]: e.target.value }));
+  const [gemmer, setGemmer] = useState(false);
+  const [svarPost, setSvarPost] = useState(null);
+  const saet = (n) => (e) => {
+    setF((x) => ({ ...x, [n]: e.target.value }));
+    /* Et svar hører til den post der blev sendt. Rører man et felt bagefter,
+       beskriver svaret ikke længere det man har foran sig. */
+    setSvarPost(null);
+  };
+
+  /* ⚠ NODEN, IKKE DEMOSÆTTET. Se importen. Divisionsfilteret ligger i
+     useListe — en post UDEN division hører til begge, ikke til ingen. */
+  const kunder = useListe("kunder", { division, graense: 500, demo: DEMO_KUNDER });
 
   const omsaetningOere = oereFraKroner(f.omsaetning);
 
@@ -66,13 +88,39 @@ export default function NyForespoergsel() {
   const svar = kanSkifteEtape(kladde, "afventerPlan", bruger?.perms);
   const maaOprette = harPerm(bruger?.perms, PERM.bookingOpret);
 
-  const mangler = [
-    !f.kundeId && "kunde",
-    !f.fraSted && "afhentningssted",
-    !f.tilSted && "leveringssted",
-    !tilMs(f.onsketAfhentning) && "ønsket afhentning",
-    omsaetningOere == null && "omsætning",
-  ].filter(Boolean);
+  /* ⚠ SERVERENS EGEN VALIDERING, IKKE EN LISTE VED SIDEN AF.
+     Her stod en håndskrevet `mangler`-liste med fem felter — og den kendte
+     ikke fleksibiliteten, rækkefølgen på tidspunkterne eller at beløbet skal
+     være hele ører. `valideBooking()` ligger i `booking-state.js`, som er
+     delt, og `bookingopret` kalder præcis den samme. To formuleringer af én
+     spærring er to forklaringer på én ting. */
+  const udkast = {
+    kundeId: f.kundeId || null,
+    division,
+    fraSted: f.fraSted,
+    tilSted: f.tilSted,
+    transporttype: f.transporttype,
+    rutepraeference: f.rutepraeference || null,
+    afhentningFleks: f.afhentningFleks,
+    leveringFleks: f.leveringFleks,
+    onsketAfhentningMs: tilMs(f.onsketAfhentning),
+    onsketLeveringMs: tilMs(f.onsketLevering),
+    omsaetningOere,
+    kundekrav: f.kundekrav,
+    krav: f.krav.split(",").map((k) => k.trim()).filter(Boolean),
+  };
+  const kontrol = valideBooking(udkast, { kunder: kunder.data.map((k) => k.id) });
+  const mangler = Object.values(kontrol.fejl);
+
+  const gem = async () => {
+    if (!kontrol.ok) return;
+    setGemmer(true);
+    setSvarPost(null);
+    const r = await opretBooking(udkast);
+    setGemmer(false);
+    setSvarPost(r);
+    if (r.ok) setF(TOM);
+  };
 
   const opdatering = byggEtapeSkifte(kladde, "afventerPlan", {
     rolle: bruger?.rolle, bruger: bruger?.uid, begrundelse: null,
@@ -93,13 +141,21 @@ export default function NyForespoergsel() {
             <Link className="fc-a" to="/booking/forslag/bk-2026-00314">Se forslagstrinnet</Link>.
           </p>
 
+          {/* ⚠ EN AFVIST LÆSNING ER IKKE EN TOM KUNDELISTE. Uden den her
+              ville vælgeren bare stå tom, og brugeren ville tro at der ingen
+              kunder var — se datatilstand.js. */}
+          <Datatilstand tilstand={kunder.tilstand} genprov={kunder.genindlaes} />
+
           <Gitter kolonner="1fr 1fr">
             <div className="fc-felt">
               <label htmlFor="nf-kunde">Kunde *</label>
               <select id="nf-kunde" value={f.kundeId} onChange={saet("kundeId")}>
                 <option value="">Vælg kunde</option>
-                {DEMO_KUNDER
-                  .filter((k) => k.division === division || k.division === "faelles")
+                {kunder.data
+                  /* ⚠ EN INAKTIV KUNDE FÅR INGEN NY BOOKING — serveren afviser
+                     den, og en vælger der tilbød den, ville love noget der
+                     bliver sagt nej til bagefter. */
+                  .filter((k) => k.aktiv !== false)
                   .map((k) => <option key={k.id} value={k.id}>{k.navn}</option>)}
               </select>
             </div>
@@ -187,19 +243,31 @@ export default function NyForespoergsel() {
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-            <Knap variant="primaer" disabled
-                  title={maaOprette
-                    ? "Skrivning er ikke bygget endnu (fase 0)."
-                    : `Kræver ${PERM.bookingOpret}.`}>
-              Send til planlægning
-            </Knap>
-            <Knap disabled title="Skrivning er ikke bygget endnu (fase 0).">
-              Gem som kladde
+            {/* ⚠ KNAPPEN ER AKTIV SELV OM FORMULAREN ER UGYLDIG — så listen
+                nedenfor kan nå at forklare hvad der mangler. `gem()` afviser
+                selv; der sendes aldrig noget ugyldigt afsted. Deaktiveret på
+                permissionen, derimod: en knap serveren afviser, er en pæn
+                knap. */}
+            <Knap variant="primaer" onClick={gem}
+                  disabled={!maaOprette || gemmer}
+                  title={maaOprette ? undefined : `Kræver ${PERM.bookingOpret}.`}>
+              {gemmer ? "Opretter …" : "Opret forespørgsel"}
             </Knap>
           </div>
+          <Formularsvar svar={svarPost}
+                        okTekst={svarPost?.data?.nummer
+                          ? `Oprettet som ${svarPost.data.nummer} — kladde med én etape.`
+                          : "Oprettet."} />
           {mangler.length > 0 && (
-            <p className="fc-hint" style={{ marginTop: 10 }}>Mangler: {mangler.join(", ")}.</p>
+            <p className="fc-hint" style={{ marginTop: 10 }}>Mangler: {mangler.join(" ")}</p>
           )}
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            Forespørgslen oprettes som <b>kladde med én etape</b>. At sende den
+            til planlægning er et <b>etapeskift</b> — et andet kald, som
+            <b> Forslag</b> og <b>Disponering</b> laver. De to kan ikke lægges
+            sammen atomisk, og en kæde der lykkes halvt ville efterlade
+            forløbet i en tilstand ingen bad om.
+          </p>
         </Kort>
 
         <div className="fc-grid">
@@ -218,7 +286,10 @@ export default function NyForespoergsel() {
             </p>
           </Kort>
 
-          <Kort titel="Hvad Gem ville skrive">
+          {/* ⚠ KORTET HED "Hvad Gem ville skrive" — det var rigtigt dengang
+              der ikke blev skrevet noget. Nu skriver knappen, og kortet viser
+              det NÆSTE skridt: hvad etapeskiftet til planlægning ville sætte. */}
+          <Kort titel="Næste skridt: send til planlægning">
             <MiniLinje label="tilstand" vaerdi={<code>{opdatering.tilstand}</code>} />
             <MiniLinje label="sidstAendretAf" vaerdi={<code>{String(opdatering.sidstAendretAf)}</code>} />
             <MiniLinje label="historik" vaerdi={<code>{historikNoegle}</code>} />

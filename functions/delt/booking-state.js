@@ -46,6 +46,49 @@ export const TILSTAND = {
   udfoert:           { label: "Udført",                 pill: "ok"    },
 };
 
+
+/* ---- Hvad forespørgslen beskriver ------------------------------------- *
+ *
+ * ⚠ DE TRE KATALOGER LÅ I `demo-bookinger.js` — ALTSÅ I EN DEMOFIL.
+ *
+ * Nøjagtig samme sted som `ARBEJDSTYPE` lå, før den flyttede til
+ * `opgaver.js`: et modul kunne ikke nå dem uden at importere et demosæt, og
+ * den der ikke ville det, ville lave sin egen kopi. Tre skærme importerede
+ * dem derfra — Ny forespørgsel, Forslag og Bookingoversigt — og serveren
+ * kunne slet ikke, for `functions/` deployer kun `delt/`, hvor demofiler
+ * ikke hører hjemme.
+ *
+ * Nu står de her, hvor `TILSTAND` står, og `valideBooking()` prøver imod
+ * dem — det samme sted klienten tegner vælgeren fra.
+ */
+
+export const TRANSPORTTYPE = {
+  fuldlast: "Fuldlast (FTL)",
+  delparti: "Delparti (LTL)",
+  temperatur: "Temperaturreguleret",
+  farligtGods: "Farligt gods (ADR)",
+  kombi: "Kombineret transport",
+};
+export const ALLE_TRANSPORTTYPER = Object.keys(TRANSPORTTYPE);
+
+export const RUTEPRAEFERENCE = {
+  hurtigst: "Hurtigste rute",
+  billigst: "Billigste rute",
+  undgaaFaerge: "Undgå færger",
+  kunMotorvej: "Kun motorvej",
+};
+export const ALLE_RUTEPRAEFERENCER = Object.keys(RUTEPRAEFERENCE);
+
+/** Hvor meget afhentning og levering må rykke sig. Uden fleksibilitet kan
+ *  matchningen ikke lægge to forsendelser sammen. */
+export const FLEKSIBILITET = {
+  fast: "Fast tidspunkt",
+  timer2: "± 2 timer",
+  halvdag: "± en halv dag",
+  dag1: "± en dag",
+};
+export const ALLE_FLEKSIBILITETER = Object.keys(FLEKSIBILITET);
+
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ DER ER KUN ÉN OVERGANGSTABEL — BESLUTNING 40.
 
@@ -295,3 +338,195 @@ export async function naesteNummer(db, path, { praefiks, serie, rod = null }) {
  *  (countere/booking/<år>), så eksisterende tællere er uberørte. */
 export const naesteBookingnummer = (db, path) =>
   naesteNummer(db, path, { praefiks: "BKG", serie: "booking" });
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AT OPRETTE EN BOOKING — beslutning 55
+
+   ⚠ EN BOOKING ER ET FORLØB, OG DEN KAN IKKE OPRETTES ALENE.
+   Beslutning 16: det man disponerer er en ETAPE, og bookingen er forløbet de
+   hænger på. En booking uden etaper ville være en forespørgsel ingen kan
+   planlægge — og `forloebstilstand([])` svarer allerede `kladde` på præcis
+   den tomme liste. Derfor skrives bookingen og dens etaper SAMMEN eller slet
+   ikke, som opgaven og dens reservation (45).
+
+   ⚠ OG TILSTANDEN SÆTTES IKKE — DEN REGNES.
+   Beslutning 40: bookingens tilstand er AFLEDT af etaperne. Kunne den sættes
+   her, ville der være to veje til ét felt, og den ene ville før eller siden
+   være uenig med den anden. `bookingOpdatering()` kalder derfor
+   `forloebstilstand()` på de etaper den selv er ved at skrive.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ EN NY BOOKING BEGYNDER SOM `kladde`, OG DET ER IKKE ET VALG.
+ *
+ * Alt andet ville springe et led over i maskinen: `afventerPlan` betyder at
+ * en casehandler har SENDT den til planlægning, og det skift er en handling
+ * med sin egen permission (`booking.opret` på overgangen). Kunne
+ * oprettelsen sætte den direkte, ville "gem kladde" og "send til
+ * planlægning" være den samme knap — og en halvfærdig forespørgsel ville
+ * lande hos disponenten.
+ */
+export const NY_ETAPE_TILSTAND = "kladde";
+
+/**
+ * valideBooking(post, { kunder, etaper }) → { ok, fejl }
+ *
+ * `fejl` er et map felt → sætning, som `valideOpgaveplan()`. Serveren kalder
+ * den SAMME funktion og afviser med den samme sætning.
+ *
+ * `kunder` er en liste af id'er. Sendes den ikke med, springes
+ * eksistenstjekket over: klienten har listen i hånden, serveren slår op i
+ * basen, og ingen af de to gætter på den andens vegne.
+ */
+export function valideBooking(post = {}, { kunder = null } = {}) {
+  const f = {};
+
+  if (!post.kundeId) {
+    f.kundeId = "Vælg hvilken kunde forespørgslen hører til.";
+  } else if (kunder && !kunder.includes(post.kundeId)) {
+    f.kundeId = "Ukendt kunde.";
+  }
+
+  /* ⚠ DIVISIONEN KAN IKKE UDLEDES AF KUNDEN. Samme grund som på opgaven:
+     stamdata bærer ikke feltet (beslutning 19), og en booking der arvede den
+     fra kunden, ville genindføre koblingen. */
+  if (!["gods", "bus", "faelles"].includes(post.division)) {
+    f.division = "Vælg hvilken division der bærer forløbet.";
+  }
+
+  if (!post.fraSted?.trim()) f.fraSted = "Hvor skal godset hentes?";
+  if (!post.tilSted?.trim()) f.tilSted = "Hvor skal det leveres?";
+
+  if (!ALLE_TRANSPORTTYPER.includes(post.transporttype)) {
+    f.transporttype = "Vælg hvilken slags transport det er.";
+  }
+  if (post.rutepraeference != null && !ALLE_RUTEPRAEFERENCER.includes(post.rutepraeference)) {
+    f.rutepraeference = "Ukendt rutepræference.";
+  }
+
+  /* ⚠ FLEKSIBILITETEN ER PÅKRÆVET, OG DEN GÆTTES IKKE. Uden et spænd kan
+     matchningen ikke lægge to forsendelser sammen, og hver forespørgsel bliver
+     sin egen tur. En default på "fast" ville se ud som et svar kunden havde
+     givet — og det er det dyreste af de fire. */
+  for (const felt of ["afhentningFleks", "leveringFleks"]) {
+    if (!ALLE_FLEKSIBILITETER.includes(post[felt])) {
+      f[felt] = "Vælg hvor meget tidspunktet må rykke sig. Uden det kan turen ikke lægges sammen med andre.";
+    }
+  }
+
+  /* ⚠ ØNSKET AFHENTNING SKAL LIGGE FØR LEVERING. To tidspunkter i den forkerte
+     rækkefølge kan ikke planlægges, og fejlen ville først vise sig som en
+     etape hvor `til` er mindre end `fra` — dér hvor reglen afviser den, langt
+     fra det felt der blev tastet forkert. */
+  const a = post.onsketAfhentningMs, l = post.onsketLeveringMs;
+  if (a != null && !Number.isFinite(a)) f.onsketAfhentningMs = "Ugyldigt tidspunkt.";
+  if (l != null && !Number.isFinite(l)) f.onsketLeveringMs = "Ugyldigt tidspunkt.";
+  if (Number.isFinite(a) && Number.isFinite(l) && l <= a) {
+    f.onsketLeveringMs = "Levering skal ligge efter afhentning.";
+  }
+
+  /* ⚠ BELØBET ER ØRE SOM HELTAL. En float bliver 1849,999 i en sum — og det
+     her tal ender på et fakturagrundlag. */
+  if (post.omsaetningOere != null
+      && (!Number.isFinite(post.omsaetningOere) || post.omsaetningOere % 1 !== 0
+          || post.omsaetningOere < 0)) {
+    f.omsaetningOere = "Beløbet skal være hele ører.";
+  }
+
+  if (typeof post.kundekrav === "string" && post.kundekrav.length > 500) {
+    f.kundekrav = "Højst 500 tegn.";
+  }
+  if (typeof post.kundeRef === "string" && post.kundeRef.length > 60) {
+    f.kundeRef = "Højst 60 tegn.";
+  }
+
+  return { ok: Object.keys(f).length === 0, fejl: f };
+}
+
+/**
+ * bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer })
+ *   → { opdatering, booking, etaper }
+ *
+ * BYGGER, SKRIVER IKKE — samme mønster som `flytOpdatering()`, og af samme
+ * grund: funktionen er ren og kender ingen database, så regnestykket kan
+ * prøves uden en emulator.
+ *
+ * ⚠ ÉN ETAPE PR. STRÆKNING, OG MINDST ÉN. Kalderen bestemmer hvor mange;
+ * en forespørgsel fra skærmen har én (fra → til), og et kombineret forløb
+ * kan have flere. Er listen tom, kastes der — en booking uden etaper er en
+ * forespørgsel ingen kan planlægge.
+ */
+export function bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer }) {
+  if (!bookingId) throw new Error("bookingOpdatering: bookingId mangler.");
+  if (!Array.isArray(etapeIder) || !etapeIder.length) {
+    throw new Error("bookingOpdatering: en booking uden etaper kan ikke planlægges.");
+  }
+  if (!nummer) throw new Error("bookingOpdatering: nummeret kommer fra counteren.");
+
+  const straekninger = post.straekninger?.length
+    ? post.straekninger
+    : [{ fraSted: post.fraSted, tilSted: post.tilSted }];
+  if (straekninger.length !== etapeIder.length) {
+    throw new Error("bookingOpdatering: der skal være ét id pr. strækning.");
+  }
+
+  const etaper = straekninger.map((s, i) => {
+    const e = {
+      bookingId,
+      nr: i + 1,
+      tilstand: NY_ETAPE_TILSTAND,
+      division: post.division,
+      fraSted: s.fraSted,
+      tilSted: s.tilSted,
+      oprettetAf: uid,
+      oprettetMs: nu,
+    };
+    /* ⚠ FRA OG SENEST SÆTTES KUN PÅ FØRSTE OG SIDSTE, og kun hvis kunden har
+       ønsket et tidspunkt. Et forløb med tre etaper har ét afhentnings- og ét
+       leveringsønske — mellemtiderne er noget disponenten finder, ikke noget
+       kunden har sagt. Gættede vi dem, ville et forslag blive prøvet mod et
+       vindue ingen har besluttet. */
+    if (i === 0 && Number.isFinite(post.onsketAfhentningMs)) e.fra = post.onsketAfhentningMs;
+    if (i === straekninger.length - 1 && Number.isFinite(post.onsketLeveringMs)) {
+      e.senestMs = post.onsketLeveringMs;
+    }
+    return e;
+  });
+
+  /* ⚠ TILSTANDEN REGNES AF ETAPERNE — beslutning 40. Se hovedet. */
+  const forloeb = forloebstilstand(etaper);
+
+  const booking = {
+    nummer,
+    kundeId: post.kundeId,
+    division: post.division,
+    tilstand: forloeb.tilstand,
+    harAabneEtaper: forloeb.harAabneEtaper,
+    fraSted: post.fraSted,
+    tilSted: post.tilSted,
+    transporttype: post.transporttype,
+    oprettetAf: uid,
+    oprettetMs: nu,
+  };
+  /* Valgfrie felter udelades frem for at stå tomme: et felt der ikke blev
+     udfyldt, er noget andet end et felt der blev udfyldt med ingenting — og
+     RTDB sletter alligevel et null. */
+  const maaske = {
+    rutepraeference: post.rutepraeference,
+    omsaetningOere: post.omsaetningOere,
+    onsketAfhentningMs: post.onsketAfhentningMs,
+    afhentningFleks: post.afhentningFleks,
+    onsketLeveringMs: post.onsketLeveringMs,
+    leveringFleks: post.leveringFleks,
+    kundekrav: post.kundekrav?.trim() || undefined,
+    kundeRef: post.kundeRef?.trim() || undefined,
+  };
+  for (const [k, v] of Object.entries(maaske)) if (v != null && v !== "") booking[k] = v;
+  if (post.krav?.length) booking.krav = post.krav;
+
+  const opdatering = { [`bookinger/${bookingId}`]: booking };
+  etapeIder.forEach((id, i) => { opdatering[`etaper/${id}`] = etaper[i]; });
+
+  return { opdatering, booking, etaper };
+}

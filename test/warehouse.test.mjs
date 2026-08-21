@@ -444,7 +444,15 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
   it("læser kunden af varen frem for af nyttelasten", () => {
     /* ⚠ ELLERS KAN EN BEVÆGELSE AFREGNES TIL EN ANDEN KUNDE end den varen
        tilhører. Klienten sender den ikke, og serveren tager den ikke imod. */
-    const blok = kilde.slice(kilde.indexOf("export const bevaegelseskriv"));
+    /* ⚠ UDSNITTET SKAL SLUTTE HVOR FUNKTIONEN GØR. Her stod
+       `kilde.slice(start)` — altså resten af filen — og prøven fandt derfor
+       et `kundeId: kortStreng(d.kundeId` i en HELT anden funktion
+       (`bookingopret`, hvor kunden legitimt kommer fra klienten). Samme fejl
+       som reolpladsprøven i beslutning 53: et udsnit der ikke er afgrænset,
+       måler noget andet end det man tror. */
+    const start = kilde.indexOf("export const bevaegelseskriv");
+    const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", start + 1);
+    const blok = naeste < 0 ? kilde.slice(start) : kilde.slice(start, naeste);
     assert.ok(blok.includes("post.kundeId = vare.kundeId"));
     /* ⚠ KUN I DEN HER FUNKTION. `kasseudlaanskriv` tager legitimt imod en
        kundeId fra klienten — dér er kunden en oplysning om udlånet, ikke en

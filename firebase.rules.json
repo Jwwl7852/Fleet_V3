@@ -741,6 +741,59 @@
           ".write": false,
           ".indexOn": ["tilstand", "oprettetMs", "kundeId"],
           "$bookingId": {
+            // ⚠ NODEN VALIDEREDE SEKS FELTER — OG POSTERNE BAERER ATTEN.
+            // tilstand, harAabneEtaper, kundeId, division, kundeRef og historik
+            // stod her. Alt andet var frit: et nummer som tal, en omsaetning som
+            // float, en transporttype vi ikke kender. Samme hul som opgaver
+            // havde foer beslutning 45.
+            //
+            // ⚠ OG BLOKKEN KAN IKKE NAAS AF EN KLIENT. Noden er .write: false, og
+            // admin-SDK'et gaar uden om reglerne — den her blok er altsaa
+            // BESKRIVELSEN af den form serveren skal overholde, ikke en
+            // haandhaevelse. Haandhaevelsen ligger i valideBooking() og
+            // bookingOpdatering(), som begge sider kalder. Skriv ikke en
+            // regelproeve der "afviser" en booking: den ville vaere groen fordi
+            // skrivningen er lukket, ikke fordi posten var forkert. Se
+            // beslutning 45 og 55.
+            //
+            // ⚠ INGEN $andet: false. Otte demo-bookinger baerer felter der ikke er
+            // skrevet ned endnu (fraAdresse-lignende fritekst, krav-lister), og et
+            // afvisende $andet ville sige at posterne var ugyldige uden at nogen
+            // kunne se hvilket felt. Formen strammes naar skaermene er faerdige.
+            ".validate": "newData.hasChildren(['kundeId', 'division', 'tilstand'])",
+
+            // ⚠ NUMMERET KOMMER FRA COUNTEREN (beslutning 8) og har EET format.
+            // En afskrift af formatet her er billig og fanger den dag nogen
+            // skriver et loebenummer uden aarstal.
+            "nummer": { ".validate": "newData.isString() && newData.val().matches(/^BKG-[0-9]{4}-[0-9]{5}$/)" },
+
+            "fraSted": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "tilSted": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+
+            // Ordlisterne staar i booking-state.js. Laengdetjek her, som paa
+            // opgaver.status: en afskrift ville vaere et andet sted de stod.
+            "transporttype": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "rutepraeference": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "afhentningFleks": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "leveringFleks": { ".validate": "newData.isString() && newData.val().length <= 20" },
+
+            "onsketAfhentningMs": { ".validate": "newData.isNumber()" },
+            // ⚠ LEVERING EFTER AFHENTNING. Et forloeb med omvendt raekkefoelge kan
+            // ikke planlaegges, og fejlen ville foerst vise sig som en etape hvor
+            // til < fra — langt fra det felt der blev tastet forkert.
+            "onsketLeveringMs": { ".validate": "newData.isNumber() && (!newData.parent().child('onsketAfhentningMs').exists() || newData.val() > newData.parent().child('onsketAfhentningMs').val())" },
+
+            // ⚠ HELE OERE, EKSKL. MOMS — beslutning 2. En float bliver 1849,999 i
+            // en sum, og det her tal ender paa et fakturagrundlag.
+            "omsaetningOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+
+            // ⚠ uid, IKKE ET NAVN. Det er hvem der GJORDE det. Demosaettet skrev
+            // "Mette Kjaer" paa alle otte poster, mens indberetningerne skrev et
+            // uid — to slags vaerdi i det samme felt.
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+
+            "kundekrav": { ".validate": "newData.isString() && newData.val().length <= 500" },
             // ⚠ TILSTANDEN ER AFLEDT AF ETAPERNE. forloebstilstand() regner
             // den ud, og den skrives af PRAECIS EEN ting: etapeskift, i samme
             // opdatering som etapeskiftet selv. Der findes ikke et

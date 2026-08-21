@@ -15,12 +15,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte, forloebstilstand, tilgaengeligeEtapeHandlinger,
+  TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
 } from "../src/fleet/booking-state.js";
 import { PERM, ROLLE_PERMS, permStrengFraRolle, harPerm } from "../src/fleet/permissions.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
 import { enhedsIder } from "../src/fleet/etaper.js";
 import {
-  DEMO_BOOKINGER, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
+  DEMO_BOOKINGER,
   demoBooking, demoEtaperPaa, beregnetTilstand,
 } from "../src/fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../src/fleet/demo-kunder.js";

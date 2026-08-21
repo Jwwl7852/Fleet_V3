@@ -871,9 +871,9 @@ function Fuldskaerm({ naar, children }) {
  * ⚠ "REDIGER BOOKING" VAR EN DØR DER MANGLEDE TIL ET RUM DER ALLEREDE FANDTES.
  * `retUdlaan()` står i `udlaan.js`, og `handling === "ret"` står i
  * `kasseudlaanskriv` — begge bygget, begge udrullet. Ingen skærm kaldte dem.
- * Det er samme slags hul som `naesteBookingNummer`, der findes og aldrig
- * kaldes: en vej der er bygget men ikke har en indgang, kan ikke prøves af
- * nogen der bruger programmet.
+ * Det var samme slags hul som `naesteBookingnummer()`, der fandtes og aldrig
+ * blev kaldt — lukket i beslutning 55. En vej der er bygget men ikke har en
+ * indgang, kan ikke prøves af nogen der bruger programmet.
  *
  * ⚠ OG DEN KAN KUN RETTES MENS DEN ER `booket`. Serveren afviser resten, og
  * det er ikke en manglende rettighed: er kassen klargjort, står den pakket til

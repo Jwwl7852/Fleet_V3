@@ -3360,3 +3360,109 @@ Tre etaper i træk har fundet det samme: **en påstand ingen prøvede.**
 Fællestrækket er ikke sjusk. Det er at **dokumentation og regler ældes hver for
 sig**, mens kun koden bliver kørt. Svaret er hver gang det samme: gør påstanden
 kørbar, og lad listen være undtagelsen frem for reglen.
+
+## 55. Man kunne ikke oprette en booking
+
+Det er forløbets begyndelse — booking → etape → disponering → fakturagrundlag
+— og den lå på en attrap. `bookinger` og `etaper` er begge `.write: false`,
+der fandtes ingen `bookingopret`, og `naesteBookingnummer()`, som har ligget i
+`booking-state.js` hele tiden, blev **kaldt ingen steder**. README har
+navngivet hullet i månedsvis:
+
+> *"En booking kan altså ikke oprettes af en klient."*
+
+Skærmen fandtes til gengæld, fuldt udfyldt: `NyForespoergsel.jsx` med kunde,
+strækning, transporttype, tidspunkter, fleksibilitet, omsætning og krav — og
+to **deaktiverede** knapper med teksten *"Skrivning er ikke bygget endnu (fase
+0)"*.
+
+### ⚠ Tre ting kan ikke gøres rigtigt fra en klient
+
+1. **Bookingen og dens etaper skal skrives sammen.** En booking uden etaper er
+   en forespørgsel ingen kan planlægge; en etape uden sin booking hører ikke
+   til noget. Det er beslutning 45's begrundelse igen, med et andet par.
+2. **Nummeret kommer fra en counter i en transaction** (beslutning 8), og
+   `countere` er `.write: false`. To casehandlere der opretter i samme sekund,
+   ville ellers få samme nummer.
+3. **Tilstanden er afledt** (beslutning 40). `bookingOpdatering()` kalder
+   `forloebstilstand()` på de etaper den selv skriver; en `tilstand` fra
+   klienten ville være den anden vej til ét felt.
+
+### ⚠ Én knap, ikke to
+
+Der stod *"Send til planlægning"* og *"Gem som kladde"*. Oprettelsen laver en
+**kladde**; at sende den til planlægning er et **etapeskift** (`etapeskift`,
+kladde → afventerPlan) og dermed et andet kald. De to kan ikke lægges sammen
+atomisk, og en kæde der lykkes halvt, ville efterlade forløbet i en tilstand
+brugeren ikke bad om. En kladde han kan **se** og sende videre, er det ærlige
+svar.
+
+### ⚠ Ingen reservation
+
+En kladde-etape spærrer ingenting. Reservationen kommer når et **forslag**
+godkendes, og det er `etapeskift`s arbejde. Skrev oprettelsen en, ville en
+forespørgsel spærre en bil ingen havde disponeret — beslutning 4's fejl fra
+den anden ende.
+
+### Tre fund undervejs, og de er hver sin klasse
+
+⚠ **Katalogerne lå i en demofil.** `TRANSPORTTYPE`, `RUTEPRAEFERENCE` og
+`FLEKSIBILITET` stod i `demo-bookinger.js`. Tre skærme importerede dem derfra,
+og **serveren kunne slet ikke nå dem**: `functions/` deployer kun sin egen
+mappe, og et demosæt hører ikke i `delt/`. Præcis samme sted `ARBEJDSTYPE` lå,
+før den flyttede til `opgaver.js`. De står nu i `booking-state.js`, hvor
+`TILSTAND` står, og `valideBooking()` prøver imod dem — uden en re-eksport fra
+demofilen, for to importstier til ét katalog er to steder at være uenige om
+hvor det bor.
+
+⚠ **Skærmen valgte kunde ud af demosættet.** `DEMO_KUNDER.filter(...)` stod
+direkte i vælgeren, mens `kunder` er en **seedet node**. Vælgeren ville altså
+tilbyde kunder der ikke findes i basen, og serveren ville svare *"Kunden findes
+ikke"* på et valg skærmen selv havde tilbudt. Det er samme fejl som Indkøb →
+Fakturaer, og den ville have ramt den allerførste rigtige booking.
+
+⚠ **`oprettetAf` bar et NAVN.** Alle otte demo-bookinger skrev "Mette Kjær"
+eller "Søren Dahl", mens `demo-indberetninger.js` skriver `uid-lars`.
+`oprettetAf` er hvem der **gjorde** noget, og det er et uid — CLAUDE.md siger
+det, og `bookingopret` skriver `auth.uid`. Et navn her ville betyde at
+demosættet og noden bar to slags værdi i samme felt, og at Forslag-skærmen
+viste et pænt navn i demo og et råt uid i drift. Demoen bærer nu uids, og
+skærmen viser feltet som `<code>` — et råt uid er sandt; et gættet navn ville
+ikke være.
+
+### ⚠ Counteren stod på nul under 318 udstedte numre
+
+**Målt i DEV:** otte bookinger med numre op til `BKG-2026-00318`, og
+`countere/booking/2026` fandtes **ikke**. Den første rigtige booking ville have
+fået `BKG-2026-00001` — altså en serie der begynder forfra **under** de numre
+der allerede er udstedt, og som ville kollidere ved den 318.
+
+Counteren er efterudfyldt til det højeste udstedte nummer. ⚠ Og det blev
+**læst af posterne**, ikke gættet: en post hvis nummer ikke passer til
+formatet, springes over og rapporteres frem for at trække serien ned.
+
+Det er samme slags fund som `MDT-108` uden `udeAfDriftFra` (51): en regel eller
+en mekanisme der kommer til, gør noget der allerede ligger i basen, forkert —
+og det skal måles, ikke antages.
+
+### Nodens form står nu skrevet
+
+`bookinger/$id` validerede **seks** felter; posterne bærer **atten**. Nummeret
+kunne være et tal, omsætningen en float, transporttypen hvad som helst. Blokken
+beskriver nu formen — inklusive at levering skal ligge efter afhentning.
+
+⚠ **Og den kan ikke nås af en klient.** Noden er `.write: false`, og
+admin-SDK'et går uden om reglerne, så blokken er **beskrivelsen** af den form
+serveren skal overholde — ikke håndhævelsen. Den ligger i `valideBooking()` og
+`bookingOpdatering()`, som begge sider kalder. Skriv ikke en regelprøve der
+"afviser" en booking: den ville være grøn fordi skrivningen er lukket, ikke
+fordi posten var forkert. Se beslutning 45.
+
+### Og en prøve der målte det forkerte
+
+Warehouse-prøven *"læser kunden af varen frem for af nyttelasten"* klippede
+`functions/index.js` fra `export const bevaegelseskriv` og **hele vejen ned** —
+og fandt derfor `kundeId: kortStreng(d.kundeId` i `bookingopret`, hvor kunden
+legitimt kommer fra klienten. Præcis samme fejl som reolpladsprøven i
+beslutning 53: **et udsnit der ikke er afgrænset, måler noget andet end det man
+tror.** Den slutter nu hvor funktionen gør.

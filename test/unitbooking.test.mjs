@@ -1594,9 +1594,9 @@ describe("klik-kortet på kalenderen", () => {
   it("⚠ \"REDIGER BOOKING\" VAR EN DØR DER MANGLEDE TIL ET RUM DER FANDTES", () => {
     /* retUdlaan() staar i udlaan.js, og handling === "ret" staar i
        kasseudlaanskriv — begge bygget, begge udrullet. INGEN skaerm kaldte
-       dem. Samme slags hul som naesteBookingNummer, der findes og aldrig
-       kaldes: en vej der er bygget men ikke har en indgang, kan ikke proeves
-       af nogen der bruger programmet. */
+       dem. Samme slags hul som naesteBookingnummer(), der fandtes og aldrig
+       blev kaldt — lukket i beslutning 55. En vej der er bygget men ikke har
+       en indgang, kan ikke proeves af nogen der bruger programmet. */
     assert.match(kal(), /retUdlaan\(\{/);
     const fn = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
     assert.match(fn, /d\.handling === "ret"/);

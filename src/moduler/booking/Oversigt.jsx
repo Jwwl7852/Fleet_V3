@@ -35,9 +35,9 @@ import {
   DEMO_OPGAVER, opgavePerson, opgaveEnhed,
 } from "../../fleet/demo-opgaver.js";
 import {
-  TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger,
+  TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger, TRANSPORTTYPE,
 } from "../../fleet/booking-state.js";
-import { DEMO_BOOKINGER, TRANSPORTTYPE, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
+import { DEMO_BOOKINGER, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 
 const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id;

@@ -57,12 +57,13 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte, tilgaengeligeEtapeHandlinger,
+  TRANSPORTTYPE,
 } from "../../fleet/booking-state.js";
 import { tjekDisponering, TONE } from "../../fleet/disponering.js";
 import { skiftEtape } from "../../fleet/disponer.js";
 import { PERM } from "../../fleet/permissions.js";
 import {
-  DEMO_BOOKINGER, TRANSPORTTYPE, demoBooking, demoEtaperPaa,
+  DEMO_BOOKINGER, demoBooking, demoEtaperPaa,
 } from "../../fleet/demo-bookinger.js";
 
 /* ⚠ OPSLAGENE LÅ PÅ MODULNIVEAU MED DEMO-SÆTTET LUKKET INDE I SIG — og det
@@ -210,7 +211,11 @@ export default function Forslag() {
             <MiniLinje label="Omsætning" vaerdi={kr(booking.omsaetningOere)} />
             <MiniLinje label="Krav" vaerdi={booking.krav?.length ? booking.krav.join(", ") : "—"} />
             <MiniLinje label="Kundekrav" vaerdi={booking.kundekrav || "—"} />
-            <MiniLinje label="Oprettet af" vaerdi={`${booking.oprettetAf} · ${dato(booking.oprettetMs)}`} />
+            {/* ⚠ `oprettetAf` ER ET uid, ikke et navn — se demo-bookinger.js.
+                At slå navnet op kræver `brugere`-noden, som skærmen ikke
+                henter; et råt uid er sandt, et gættet navn ville ikke være. */}
+            <MiniLinje label="Oprettet af"
+                       vaerdi={<><code>{booking.oprettetAf}</code> · {dato(booking.oprettetMs)}</>} />
           </div>
         </Gitter>
 

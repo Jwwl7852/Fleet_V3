@@ -29,7 +29,9 @@
  */
 import { DEMO_KUNDER } from "./demo-kunder.js";
 import { DEMO_ETAPER } from "./demo-etaper.js";
-import { forloebstilstand, TILSTAND } from "./booking-state.js";
+import {
+  forloebstilstand, TILSTAND, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
+} from "./booking-state.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -44,29 +46,20 @@ const dag = (n, time = 0) => D0 + n * DAG + time * T;
 /* Vokabular ét sted. Skriver hver formular sine egne, hedder det "Stykgods"
    på den ene skærm og "Stykgods/parti" på den næste — og så kan de ikke
    tælles sammen. */
-export const TRANSPORTTYPE = {
-  fuldlast: "Fuldlast (FTL)",
-  delparti: "Delparti (LTL)",
-  temperatur: "Temperaturreguleret",
-  farligtGods: "Farligt gods (ADR)",
-  kombi: "Kombineret transport",
-};
+/* ⚠ TRANSPORTTYPE, RUTEPRAEFERENCE OG FLEKSIBILITET STOD HER — OG DE ER
+   FLYTTET TIL `booking-state.js`.
 
-export const RUTEPRAEFERENCE = {
-  hurtigst: "Hurtigste rute",
-  billigst: "Billigste rute",
-  undgaaFaerge: "Undgå færger",
-  kunMotorvej: "Kun motorvej",
-};
+   De er KATALOGER, ikke demodata: skærmene tegner deres vælgere af dem, og
+   `valideBooking()` prøver imod dem. Præcis samme sted som `ARBEJDSTYPE` lå,
+   før den flyttede til `opgaver.js` — et modul kunne ikke nå dem uden at
+   importere et demosæt, og den der ikke ville det, ville lave sin egen kopi.
 
-/** Hvor meget afhentning og levering må rykke sig. Uden fleksibilitet kan
- *  matchningen ikke lægge to forsendelser sammen. */
-export const FLEKSIBILITET = {
-  fast: "Fast tidspunkt",
-  timer2: "± 2 timer",
-  halvdag: "± en halv dag",
-  dag1: "± en dag",
-};
+   ⚠ OG SERVEREN KUNNE SLET IKKE NÅ DEM. `functions/` deployer kun sin egen
+   mappe, og et demosæt hører ikke i `delt/`. Så længe kataloget lå her, kunne
+   `bookingopret` ikke prøve en transporttype mod den liste skærmen tegnede.
+
+   Der er med vilje ingen re-eksport herfra: to importstier til ét katalog er
+   to steder at være uenige om hvor det bor. */
 
 /* ---- Bookinger --------------------------------------------------------- */
 
@@ -76,7 +69,13 @@ export const DEMO_BOOKINGER = [
     tilstand: "reserveret", division: "gods",
     fraSted: "København", tilSted: "Hamburg",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
-    oprettetMs: dag(-6), oprettetAf: "Mette Kjær",
+    /* ⚠ ET uid, IKKE ET NAVN. Her stod "Mette Kjær" på alle otte poster —
+       mens demo-indberetninger.js skriver "uid-lars". `oprettetAf` er hvem
+       der GJORDE noget, og det er et uid (CLAUDE.md). `bookingopret` skriver
+       auth.uid, så et navn her ville betyde at demosættet og noden bar to
+       forskellige slags værdi i samme felt — og Forslag-skærmen ville vise et
+       pænt navn i demo og et råt uid i drift. */
+    oprettetMs: dag(-6), oprettetAf: "uid-mette",
     omsaetningOere: 1845000,
     onsketAfhentningMs: dag(0, 5), afhentningFleks: "timer2",
     onsketLeveringMs: dag(0, 16), leveringFleks: "halvdag",
@@ -87,7 +86,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "reserveret", division: "gods",
     fraSted: "København", tilSted: "Berlin",
     transporttype: "delparti", rutepraeference: "billigst",
-    oprettetMs: dag(-5), oprettetAf: "Mette Kjær",
+    oprettetMs: dag(-5), oprettetAf: "uid-mette",
     omsaetningOere: 2260000,
     onsketAfhentningMs: dag(1, 4), afhentningFleks: "halvdag",
     onsketLeveringMs: dag(1, 19), leveringFleks: "dag1",
@@ -98,7 +97,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "reserveret", division: "gods",
     fraSted: "København", tilSted: "Amsterdam",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
-    oprettetMs: dag(-4), oprettetAf: "Søren Dahl",
+    oprettetMs: dag(-4), oprettetAf: "uid-soeren",
     omsaetningOere: 3120000,
     onsketAfhentningMs: dag(2, 3), afhentningFleks: "timer2",
     onsketLeveringMs: dag(3, 14), leveringFleks: "halvdag",
@@ -112,7 +111,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "afventerKoord", division: "gods",
     fraSted: "København", tilSted: "Paris",
     transporttype: "temperatur", rutepraeference: "hurtigst",
-    oprettetMs: dag(-3), oprettetAf: "Mette Kjær",
+    oprettetMs: dag(-3), oprettetAf: "uid-mette",
     omsaetningOere: 4180000,
     onsketAfhentningMs: dag(3, 2), afhentningFleks: "fast",
     onsketLeveringMs: dag(4, 18), leveringFleks: "timer2",
@@ -128,7 +127,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "reserveret", division: "gods",
     fraSted: "København", tilSted: "München",
     transporttype: "fuldlast", rutepraeference: "hurtigst",
-    oprettetMs: dag(-2), oprettetAf: "Søren Dahl",
+    oprettetMs: dag(-2), oprettetAf: "uid-soeren",
     omsaetningOere: 3480000,
     onsketAfhentningMs: dag(4, 4), afhentningFleks: "timer2",
     onsketLeveringMs: dag(5, 17), leveringFleks: "halvdag",
@@ -139,7 +138,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "reserveret", division: "gods",
     fraSted: "København", tilSted: "Aalborg",
     transporttype: "delparti", rutepraeference: "billigst",
-    oprettetMs: dag(-2), oprettetAf: "Mette Kjær",
+    oprettetMs: dag(-2), oprettetAf: "uid-mette",
     omsaetningOere: 780000,
     onsketAfhentningMs: dag(1, 6), afhentningFleks: "dag1",
     onsketLeveringMs: dag(1, 15), leveringFleks: "dag1",
@@ -155,7 +154,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "delvist", division: "gods",
     fraSted: "København", tilSted: "Hamburg t/r",
     transporttype: "kombi", rutepraeference: "billigst",
-    oprettetMs: dag(-8), oprettetAf: "Søren Dahl",
+    oprettetMs: dag(-8), oprettetAf: "uid-soeren",
     omsaetningOere: 2940000,
     onsketAfhentningMs: dag(-3, 5), afhentningFleks: "halvdag",
     onsketLeveringMs: dag(9, 12), leveringFleks: "dag1",
@@ -168,7 +167,7 @@ export const DEMO_BOOKINGER = [
     tilstand: "kladde", division: "gods",
     fraSted: "Odense", tilSted: "Rotterdam",
     transporttype: "farligtGods", rutepraeference: "undgaaFaerge",
-    oprettetMs: dag(0, 9), oprettetAf: "Mette Kjær",
+    oprettetMs: dag(0, 9), oprettetAf: "uid-mette",
     omsaetningOere: 3960000,
     onsketAfhentningMs: dag(6, 6), afhentningFleks: "timer2",
     onsketLeveringMs: dag(7, 16), leveringFleks: "halvdag",
@@ -211,6 +210,16 @@ if (import.meta.env?.DEV) {
     }
     if (!RUTEPRAEFERENCE[b.rutepraeference]) {
       console.warn(`demo-bookinger: ${b.nummer} har ukendt rutepræference "${b.rutepraeference}".`);
+    }
+    /* ⚠ FLEKSIBILITETEN BLEV ALDRIG KONTROLLERET. Selvkontrollen prøvede
+       tilstand, transporttype og rutepræference — men ikke de to felter
+       matchningen står og falder med. `valideBooking()` kræver dem nu, og et
+       demosæt der ikke ville kunne oprettes gennem skærmen, er et sæt der
+       viser noget systemet ikke kan lave. */
+    for (const felt of ["afhentningFleks", "leveringFleks"]) {
+      if (!FLEKSIBILITET[b[felt]]) {
+        console.warn(`demo-bookinger: ${b.nummer} har ukendt ${felt} "${b[felt]}".`);
+      }
     }
     if (!b.division) {
       console.warn(`demo-bookinger: ${b.nummer} mangler division.`);

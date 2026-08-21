@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **54 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **55 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -554,13 +554,16 @@ kan ikke komme ud af sync.
 
 ## Kendte huller
 
-- **Cloud Functions: tre af tre er nu bygget — men én kun halvt.**
-  Reservationskonflikter (`tjekLedigMod()` i `etapeskift` og
-  `kasseudlaanskriv`) og etapens tilstandsskift med rolletjek (`etapeskift` —
-  bookingens tilstand er AFLEDT, beslutning 40) er der. Nummerserien er der
-  for **fakturagrundlag** (`naesteGrundlagsnummer`), men `naesteBookingNummer`
-  kaldes **ingen steder**: der findes ingen `bookingopret`, og `bookinger` er
-  `.write: false`. En booking kan altså ikke oprettes af en klient.
+- **Cloud Functions: nummerserien er hel.** Reservationskonflikter
+  (`tjekLedigMod()` i `etapeskift` og `kasseudlaanskriv`) og etapens
+  tilstandsskift med rolletjek (`etapeskift` — bookingens tilstand er AFLEDT,
+  beslutning 40) er der. Og `bookingopret` skriver nu bookingen OG dens etaper
+  i én opdatering med nummeret fra `naesteBookingnummer()` — som stavedes
+  forkert her (`…Nummer`) og blev kaldt ingen steder. Se beslutning 55.
+  ⚠ **Oprettelsen laver en KLADDE.** At sende den til planlægning er et
+  etapeskift og dermed et andet kald; de to kan ikke lægges sammen atomisk.
+  ⚠ **Og den skriver ingen reservation** — den kommer når et forslag
+  godkendes.
 - **`opgaver` har nu FIRE veje ind, og ingen der er lukket.**
   `opgaveplanlaeg` opretter en værkstedsopgave, `facilityplanlaeg` et
   servicebesøg, `opgaveflyt` flytter en opgave af begge arter, og

@@ -1107,10 +1107,11 @@ booking** og **Annuller booking**.
 `kasseudlaanskriv`, med validering, konflikttjek og auditpost. **Begge er
 bygget. Begge er udrullet. Ingen skærm kaldte dem.**
 
-Det er samme slags hul som `naesteBookingNummer`, som CLAUDE.md noterer *"kaldes
-ingen steder"*. En vej der er bygget men ikke har en dør, kan ikke prøves af
-nogen der bruger programmet — og den bliver ikke opdaget af en prøve, for den
-virker jo.
+Det var samme slags hul som `naesteBookingnummer()`, der lå i
+`booking-state.js` og blev kaldt ingen steder — **det blev lukket i beslutning
+55**, hvor `bookingopret` endelig kaldte den. En vej der er bygget men ikke
+har en dør, kan ikke prøves af nogen der bruger programmet — og den bliver
+ikke opdaget af en prøve, for den virker jo.
 
 ⚠ **DEN KAN KUN RETTES MENS DEN ER `booket`.** Serveren afviser resten, og det
 er ikke en manglende rettighed: er kassen klargjort, står den pakket til en

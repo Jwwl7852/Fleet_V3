@@ -67,6 +67,7 @@ import {
   naesteGrundlagsnummer, fraDb, kanLaase
 } from "./delt/grundlag.js";
 import {
+  valideBooking, bookingOpdatering, naesteBookingnummer,
   kanSkifteEtape, byggEtapeSkifte, forloebstilstand
 } from "./delt/booking-state.js";
 import {
@@ -2916,6 +2917,125 @@ async function logOpgave(tenantId, uid, handling, id, foer, efter, note) {
       note: note ?? null
     });
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OPRET EN BOOKING — beslutning 55
+
+   ⚠ HVORFOR DEN ER SIN EGEN FUNKTION OG IKKE EN KLIENTSKRIVNING.
+   `bookinger` og `etaper` er begge `.write: false`, og de skal skrives
+   SAMMEN: en booking uden etaper er en foresporgsel ingen kan planlaegge, og
+   en etape uden sin booking er en straekning der ikke hoerer til noget.
+   Landede kun den ene halvdel, ville Bookingoversigten vise et forloeb hvis
+   dele ikke findes. Det er samme grund som opgaven og dens reservation (45).
+
+   ⚠ OG NUMMERET KAN KUN KOMME HERFRA. Beslutning 8: et nummer kommer fra en
+   COUNTER i en transaction, aldrig fra en optaelling af eksisterende poster.
+   To casehandlere der opretter i samme sekund, ville ellers faa samme nummer
+   — og en optaelling ville dertil give et nyt nummer til den samme booking,
+   hvis en gammel blev taget ud af drift. En klient kan ikke koere den
+   transaction: `countere` er `.write: false`.
+
+   ⚠ TILSTANDEN SAETTES IKKE — DEN REGNES. Beslutning 40: bookingens tilstand
+   er AFLEDT af etaperne, og `bookingOpdatering()` kalder `forloebstilstand()`
+   paa de etaper den selv skriver. En `tilstand` fra klienten ville vaere den
+   anden vej til eet felt.
+
+   ⚠ INGEN RESERVATION. En kladde-etape spaerrer ingenting: reservationen
+   kommer naar et FORSLAG godkendes, og det er `etapeskift`s arbejde. Skrev vi
+   en her, ville en foresporgsel spaerre en bil ingen havde disponeret.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const bookingopret = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN. `booking.opret` har casehandler — det er den
+     rolle der tager imod foresporgslen — og admin. */
+  if (!perms.includes("|booking.opret|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke oprette bookinger. Det kræver booking.opret.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("booking").val() !== true) {
+    throw new HttpsError("permission-denied", "Planning-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const tal = (v) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : null);
+
+  const post = {
+    kundeId: kortStreng(d.kundeId, 60),
+    division: kortStreng(d.division, 20),
+    fraSted: kortStreng(d.fraSted, 120),
+    tilSted: kortStreng(d.tilSted, 120),
+    transporttype: kortStreng(d.transporttype, 40),
+    rutepraeference: kortStreng(d.rutepraeference, 40) || null,
+    afhentningFleks: kortStreng(d.afhentningFleks, 20),
+    leveringFleks: kortStreng(d.leveringFleks, 20),
+    onsketAfhentningMs: tal(d.onsketAfhentningMs),
+    onsketLeveringMs: tal(d.onsketLeveringMs),
+    omsaetningOere: tal(d.omsaetningOere),
+    kundekrav: kortStreng(d.kundekrav, 500) || null,
+    kundeRef: kortStreng(d.kundeRef, 60) || null,
+    krav: Array.isArray(d.krav) ? d.krav.map((k) => kortStreng(k, 60)).filter(Boolean).slice(0, 20) : [],
+  };
+
+  /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
+  const form = valideBooking(post);
+  if (!form.ok) {
+    throw new HttpsError("invalid-argument", Object.values(form.fejl)[0]);
+  }
+
+  /* ---- Findes kunden? -------------------------------------------------- */
+  const kunde = (await rod.child(`kunder/${post.kundeId}`).once("value")).val();
+  if (!kunde) throw new HttpsError("not-found", `Kunden ${post.kundeId} findes ikke.`);
+  /* ⚠ EN INAKTIV KUNDE FAAR INGEN NY BOOKING. Posten bliver staaende —
+     regnskabsdata hardslettes ikke — men et forloeb paa en kunde vi er holdt
+     op med at koere for, er en fejl ingen opdager i en tabel. Samme tjek som
+     opgaveplanlaeg laver paa en solgt enhed. */
+  if (kunde.aktiv === false) {
+    throw new HttpsError("failed-precondition",
+      `${kunde.navn || post.kundeId} er ikke en aktiv kunde.`);
+  }
+
+  /* ---- Nummeret: en transaction, ikke en optaelling -------------------- */
+  const nummer = await naesteBookingnummer(db, (sti) => `tenants/${tenantId}/${sti}`);
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  const bookingId = rod.child("bookinger").push().key;
+  const straekninger = [{ fraSted: post.fraSted, tilSted: post.tilSted }];
+  const etapeIder = straekninger.map(() => rod.child("etaper").push().key);
+  const nu = Date.now();
+
+  let bygget;
+  try {
+    bygget = bookingOpdatering(bookingId, etapeIder, { ...post, straekninger }, { uid, nu, nummer });
+  } catch (e) {
+    throw new HttpsError("invalid-argument", e.message);
+  }
+
+  await rod.update(bygget.opdatering);
+
+  await logOpgave(tenantId, uid, AUDIT.opret, bookingId, null,
+    { nummer, kundeId: post.kundeId, division: post.division }, `booking ${nummer} oprettet`);
+
+  return { bookingId, nummer, etapeIder };
+});
 
 /* ══════════════════════════════════════════════════════════════════════════
    PLANLAEG EN DRIFTSOPGAVE — opgaven OG dens reservation, i EEN update().
