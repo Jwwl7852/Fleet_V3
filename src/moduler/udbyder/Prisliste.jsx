@@ -564,10 +564,10 @@ export default function Prisliste() {
   const gaeldende = gaeldendePrisliste(lister, Date.now());
   /* "Sidst rettet" er hvornår en liste sidst blev LAGT — ikke hvornår en
      pris begyndte at gælde. Se noten i toppen. */
-  /* ⚠ REGNET, MEN VISES IKKE. Samme som dækningsgradsafvigelsen i Økonomi:
-     der står en forklaring på hvad tallet betyder, og tallet når aldrig
-     skærmen. Fundet af no-unused-vars; se README. */
-  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
+  /* ⚠ HER STOD "REGNET, MEN VISES IKKE". Tallet nåede aldrig skærmen, og
+     kommentaren ovenfor forklarede hvad det betød — til ingen. Det står nu i
+     kortets hoved, hvor man kan se hvornår kataloget sidst blev rørt uden at
+     åbne en liste. Se beslutning 67. */
   const sidstRettet = alle.reduce((m, l) => Math.max(m, l.oprettetMs || 0), 0);
 
   const g = periodeGraenser(periode);
@@ -683,6 +683,20 @@ export default function Prisliste() {
           </span>
         }
       >
+        {/* ⚠ "SIDST LAGT", IKKE "GÆLDER FRA". De to er forskellige spørgsmål:
+            en liste kan LÆGGES i dag og GÆLDE fra næste kvartal, og tabellen
+            nedenunder svarer allerede på det andet i to kolonner. Det her
+            svarer på "har nogen rørt kataloget siden sidst" — ét spørgsmål om
+            hele kataloget, som derfor hører over tabellen og ikke i den.
+            ⚠ Og den står i kroppen frem for i `handling`: den skulle så have
+            været en ny prop på det DELTE `Kort`, og en oplysning der gælder
+            én skærm, hører ikke i skallen. */}
+        {sidstRettet > 0 && (
+          <p className="fc-hint" style={{ marginTop: 0 }}>
+            Sidst lagt <b>{dato(sidstRettet)}</b> — det er hvornår en liste blev
+            lagt ind, ikke hvornår en pris begyndte at gælde.
+          </p>
+        )}
         {!alle.length ? (
           <Tom>
             Ingen prisliste endnu. Uden en nægter generatoren at gøre en periode

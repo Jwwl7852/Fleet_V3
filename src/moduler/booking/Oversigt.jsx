@@ -61,15 +61,21 @@ import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 export default function BookingOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { bruger, division } = useFleet();
-  /* ⚠ DER ER INGEN KONTROL TIL AT SÆTTE DEN. `setVisAlle` kaldes ingen
-     steder, så `visAlle` er permanent false — og linje 77 skjuler dermed
-     ALTID udførte, afviste og annullerede. Fodnoten under tabellen siger
-     "Viser N af M hentede bookinger", så brugeren kan SE at noget mangler
-     uden at kunne få det frem.
-     Fundet af no-unused-vars. Ikke rettet her: rettelsen er en kontrol der
-     skal tegnes og klikkes, og den hører i en ombæring hvor skærmen kan
-     prøves. Står i README under det linten fandt. */
-  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
+/**
+   * ⚠ HER STOD "DER ER INGEN KONTROL TIL AT SÆTTE DEN".
+   *
+   * `setVisAlle` blev kaldt ingen steder, så udførte, afviste og annullerede
+   * forløb var **permanent skjult**. Fodnoten sagde *"Viser N af M hentede
+   * bookinger"* — altså kunne brugeren SE at noget manglede uden at kunne få
+   * det frem. Det er værre end at skjule det i stilhed: man ved der er noget,
+   * og der er ingen vej til det.
+   *
+   * ⚠ OG STANDARDEN BLIVER STADIG "SKJUL DEM". En bookingoversigt er en
+   * arbejdsliste: det man skal handle på, er de forløb der ikke er færdige.
+   * Et afsluttet forløb er historik, og med et år på bagen ville de fylde
+   * listen. Kontrollen er derfor en KNAP man kan trykke, ikke en standard der
+   * ændres. Fundet af no-unused-vars — se beslutning 41 og 67.
+   */
   const [visAlle, setVisAlle] = useState(false);
   const [fane, setFane] = useState("opgaver");
   const [enhedFilter, setEnhedFilter] = useState("");
@@ -142,6 +148,11 @@ export default function BookingOversigt() {
   });
 
   const FAERDIGE = new Set(["udfoert", "afvist", "annulleret"]);
+  /* ⚠ TÆLLES AF DEN GENBEREGNEDE TILSTAND (`vist`), ikke af bookingens gemte
+     felt. Ellers ville et forløb hvis felt er drevet fra sine etaper, blive
+     skjult eller vist efter det forkerte af de to — og det er netop den
+     uenighed skærmen findes for at gøre synlig. */
+  const skjulte = raekker.filter((r) => FAERDIGE.has(r.vist)).length;
   const viste = visAlle ? raekker : raekker.filter((r) => !FAERDIGE.has(r.vist));
   const drevne = raekker.filter((r) => r.drevet);
 
@@ -367,10 +378,24 @@ export default function BookingOversigt() {
           eneste etape er det; er noget i hus og noget ikke, er det{" "}
           <Pille tone="warn">{TILSTAND.delvist.label}</Pille>.
         </p>
-        <p className="fc-hint" style={{ marginTop: 8 }}>
-          Viser {num(viste.length)} af {num(raekker.length)} hentede bookinger i{" "}
-          <b>{division}</b>. Tallene øverst kommer fra <code>kpi/</code> og dækker hele
-          platformen — de skal ikke gå op mod tabellen.
+        <p className="fc-hint fc-row" style={{ marginTop: 8 }}>
+          <span>
+            Viser {num(viste.length)} af {num(raekker.length)} hentede bookinger i{" "}
+            <b>{division}</b>. Tallene øverst kommer fra <code>kpi/</code> og dækker hele
+            platformen — de skal ikke gå op mod tabellen.
+          </span>
+          {/* ⚠ KNAPPEN SIGER HVOR MANGE DER ER SKJULT, ikke bare "vis alle".
+              Et tal gør forskellen på en knap man overvejer og en man ignorerer:
+              "Vis 3 afsluttede" er en oplysning, "Vis alle" er en indstilling. */}
+          {skjulte > 0 && (
+            <Knap onClick={() => setVisAlle((v) => !v)}
+                  title={visAlle
+                    ? "Skjuler udførte, afviste og annullerede forløb igen."
+                    : "Udførte, afviste og annullerede forløb er historik — de "
+                      + "skjules som standard, fordi listen er en arbejdsliste."}>
+              {visAlle ? "Skjul afsluttede" : `Vis ${num(skjulte)} afsluttede`}
+            </Knap>
+          )}
         </p>
         </>
         )}

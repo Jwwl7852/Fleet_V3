@@ -13,10 +13,10 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 66 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 67 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
-| **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
+| **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Bygget** — tilbage er mails og fotos i klik-kortet, som venter på beslutning 20 |
 | **[ARKITEKTUR.md](ARKITEKTUR.md)** | Datamodellen: noder, konventioner, adgang, egress |
 | **[ROLLER.md](ROLLER.md)** | Rollegennemgangen: hvad hver af de syv roller **faktisk** kan læse og skrive. Begge sider er MÅLT — læsning mod det udrullede, skrivning i emulatoren. ⚠ 48 af 55 læsestier er ens for alle syv; skrivningen er finkornet |
 | **[SPROG.md](SPROG.md)** | Seks sprog på hele platformen. **Ikke bygget** — dokumentet er listen over hvad der IKKE må oversættes, og de tre steder kravet støder ind i en beslutning |
@@ -174,6 +174,7 @@ tilfældigt.
 | 64 | **Loftet er nul — og Rute & status havde stået tom for alle.** `demo-i-skaerm.test.mjs` gik **30 → 23 → 20 → 17 → 10 → 0** over seks etaper; den er ikke længere et loft man kan pege på en undtagelse i. ⚠ **Den sidste skærm var i stykker på en måde ingen kunne se:** LiveKort filtrerede på `e.koeretoejId` — **et felt ingen etape har**. Feltet hedder `koeretoejIder` siden sættevognen kom til, og målt: **0 af 8** etaper har entalsformen. Filteret matchede ingenting, og skærmen stod tom for alle, også i demo. Det fejlede ikke; det viste bare ingenting — samme klasse som `opgaver`' indeks der navngav `dato`. **Et forkert feltnavn er tavst.** ⚠ **To sæt læses stadig direkte og tælles ikke med:** `DEMO_LEVERANDOERSAGER` og `demoHaendelser` — deres noder findes ikke, og et tomt array ville give "nul reklamationer" og "ingen meldinger", som begge ser ud som målinger. ⚠ Og syvende gang: **en underkomponent kan ikke se den ydres variable** — hvert opslag der flyttede ind i komponenten, skulle sendes med som prop | `test/demo-i-skaerm.test.mjs`, `moduler/booking/LiveKort.jsx` m.fl. |
 | 65 | **Unitbookings tre tvetydige punkter — afgjort, ikke gættet.** De stod som *"ikke bygget"*, hvilket lyder som noget nogen skal nå, og var noget nogen skulle **svare** på. ⚠ **Dag/Uge/Måned:** granulariteten er en FØLGE af intervallet — 1 og 2 uger med dage, 4 uger med **ugekolonner** (fem i stedet for otteogtyve). To vælgere om tid ville tvinge brugeren til at forstå forskellen på "hvor langt" og "hvor fint". **Prisen står på skærmen:** en ugekolonne kan ikke skelne et 3-dages udlån fra et 7-dages, og det er MÅLT i en prøve. ⚠ **Ugen begynder mandag** (`getDay()` giver 0 for søndag), og **en uge er ikke 7 × 24 timer** over sommertidsskiftet. ⚠ **Filtre-knappen filtrerer RÆKKERNE** på type og undertype — samme ordliste som Kasser-skærmen. Ikke blokkene: et filter der fjernede blokke, ville lade rækken stå tom, og **en tom række ligner en ledig kasse**. ⚠ **"Inaktiv" bygges ikke:** et gitter med hundrede rækker hvoraf seks har en blok, skjuler de seks — og skærmen skriver det, for **en udeladelse man kan se, er et valg; en man ikke kan se, er en fejl** | `fleet/gitter.js`, `moduler/unitbooking/Kalender.jsx`, `UNITBOOKING.md` |
 | 66 | **"Udvid til 2 skærme" var ikke en knap — det var en URL.** Planchens sidste ubyggede knap, og 6.18 havde allerede skrevet hvorfor: ruten skal kunne bære sin tilstand. ⚠ **Et nyt vindue er en ny indlæsning** — al `useState` begynder forfra, så uden URL'en ville den anden skærm åbne på fire uger fra i dag og alle kasser, mens den første stod på uge 36 grupperet på sag. **To skærme der viser hver sit er det stik modsatte af "udvid".** Visningen ligger nu i `?uger`, `?skub`, `?gruppering`, `?type`, `?undertype` — samme greb som Arbejdskøen — og giver samtidig et link man kan sende. ⚠ **Tre ting ligger IKKE i URL'en:** tenant/division/periode (de er i localStorage, og to steder kunne blive uenige), `fuld` (den initialiseres fra `?fuld=1`, men **et tastetryk skal ikke skrive i adresselinjen**), og `arter` (den skjuler ingenting, så det andet vindue viser aldrig MINDRE — den sikre retning). ⚠ `replace: true`, ellers skal man trykke tilbage ti gange for at komme ud af kalenderen. ⚠ Og knappen vises ikke i fuldskærm: **et vindue åbnet bag et overlay ser ud som om intet skete** | `moduler/unitbooking/Kalender.jsx`, `test/gitter-uge.test.mjs` |
+| 67 | **Tre navne linten fandt fik en kontrol, ikke en sletning.** Beslutning 41 skrev hvorfor de ikke bare blev fjernet — *"et fjernet navn tager beviset med sig"* — men en `eslint-disable` er en **udsættelse, ikke en beslutning**, og den kan sidde i årevis. ⚠ **`booking/Oversigt.jsx`: det værste var fodnoten.** `setVisAlle` blev aldrig kaldt, så afsluttede forløb var permanent skjult — mens teksten under tabellen sagde *"Viser N af M hentede bookinger"*. **Brugeren fik at vide at der var noget han ikke kunne se, og der var ingen vej til det**; at skjule i stilhed havde været bedre. Standarden blev IKKE vendt om (listen er en arbejdsliste), og knappen siger **hvor mange** — *"Vis 3 afsluttede"* er en oplysning, *"Vis alle"* er en indstilling man ignorerer. Tallet tælles af den **genberegnede** tilstand, ikke af det gemte felt. ⚠ **`udbyder/Prisliste.jsx`:** `sidstRettet` blev regnet med en kommentar der forklarede tallet **til ingen**. Nu i kortets krop — ikke som en ny prop på det DELTE `Kort` — og teksten siger *"sidst lagt"*, ikke *"gælder fra"*: en liste kan lægges i dag og gælde fra næste kvartal. ⚠ **`Oekonomi.jsx`: her lå en rigtig fejl under.** README talte to fund; koden havde tre, og det tredje var ikke "samme mønster" — `daekningsgradPct - maalDaekningsgradPct` er `x − null = x`, altså et **null der ser ud som en måling**, og gaten i `deviation()` nås aldrig. Den var **usynlig så længe tallet ikke blev vist**. Et ubrugt navn kan altså også være et forkert regnestykke, og man finder kun det andet ved at spørge hvorfor navnet stod der. ⚠ Prøven er **tosidet**: navnet skal bruges OG dæmpningen være væk — ellers kan fundet "rettes" ved at slette navnet | `booking/Oversigt.jsx`, `udbyder/Prisliste.jsx`, `Oekonomi.jsx`, `test/linten-fandt.test.mjs` |
 
 ## Struktur
 
@@ -742,7 +743,7 @@ der skal blive stående, også når de ser grimme ud:
   På en eksklusiv ressource er et overlap noget `reserver()` ville afvise.
   Ser det pænt ud, skjuler gitteret en fejl i data.
 
-### Det linten fandt — og de to ting der står tilbage
+### Det linten fandt — og hvorfor et ubrugt navn ikke bare slettes
 
 `npm run lint` kører seks regler, alle af den slags der svarer ja eller nej.
 Begrundelsen for at der ikke er flere, står i beslutning 41. Linten kører
@@ -750,24 +751,34 @@ automatisk i `.githooks/pre-commit` når en `.js`, `.jsx` eller `.mjs` er
 ændret, og `npm test` kalder den før regelprøverne.
 
 Første gennemløb fandt **nul** `no-undef` — de fem hvide skærme var rettet i
-forvejen. Fundene var alle `no-unused-vars`, og to af dem er ikke ryddet op,
-fordi de er rigtige fejl med hver sin rettelse der skal kunne **klikkes**:
+forvejen. Fundene var alle `no-unused-vars`, og **de er alle rettet nu**. Men
+måden de blev rettet på, er pointen.
 
-- **`booking/Oversigt.jsx` — `visAlle` har ingen kontrol.** `setVisAlle`
-  kaldes ingen steder, så udførte, afviste og annullerede bookinger er
-  permanent skjult. Fodnoten under tabellen siger *"Viser N af M hentede
-  bookinger"*, så brugeren kan **se** at noget mangler uden at kunne få det
-  frem. Rettelsen er en kontrol i skærmen.
-- **`udbyder/Prisliste.jsx` — `sidstRettet` regnes og vises ikke.** Der står
-  en kommentar om hvad tallet betyder, og tallet når aldrig skærmen. Samme
-  mønster som dækningsgradsafvigelsen i Økonomi.
+⚠ **Navnene blev ikke bare fjernet.** Et fjernet navn tager beviset med sig, og
+så er der ingen der ved at kontrollen mangler. De stod derfor et stykke tid med
+en `eslint-disable-next-line` og en note — hvilket er det rigtige den dag, men
+**en dæmpning er en udsættelse, ikke en beslutning**, og den kan sidde i årevis.
 
-Begge står med en `eslint-disable-next-line` og en note i koden der peger
-hertil. ⚠ **Navnene blev ikke bare fjernet:** et fjernet navn tager beviset
-med sig, og så er der ingen der ved at kontrollen mangler.
+- **`Bookingopsaetning.jsx`** — en afvist læsning faldt igennem til et tomt
+  satsark. Rettet i beslutning 41.
+- **`booking/Oversigt.jsx` — `visAlle` havde ingen kontrol.** Afsluttede
+  forløb var permanent skjult, mens fodnoten sagde *"Viser N af M hentede
+  bookinger"* — **brugeren fik at vide at der var noget han ikke kunne se, og
+  der var ingen vej til det.** Har nu en knap der siger hvor mange.
+- **`udbyder/Prisliste.jsx` — `sidstRettet` blev regnet og vist ingen
+  steder.** Står nu øverst i "Prislister", med teksten *"sidst lagt"* frem for
+  *"gælder fra"*.
+- **`Oekonomi.jsx` — dækningsgradsafvigelsen.** ⚠ **Den stod her som en
+  bisætning** (*"samme mønster"*) og var ikke registreret som et fund. Den bar
+  **en fejl mere:** `daekningsgradPct - maalDaekningsgradPct` er `x − null = x`
+  — et `null` der ser ud som en måling, og gaten i `deviation()` nås aldrig.
+  Den var **usynlig så længe tallet ikke blev vist**.
 
-Den tredje — `Bookingopsaetning.jsx`, hvor en afvist læsning faldt igennem
-til et tomt satsark — er rettet. Se beslutning 41.
+⚠ **Et navn linten klager over, kan være et ubrugt navn OG et forkert
+regnestykke** — og man finder kun det andet ved at spørge hvorfor navnet stod
+der. `test/linten-fandt.test.mjs` er tosidet: navnet skal **bruges**, og
+dæmpningen skal være **væk**. Ellers kan fundet "rettes" ved at slette navnet.
+Se beslutning 41 og 67.
 
 
 ### Demo-data skal kontrollere sig selv

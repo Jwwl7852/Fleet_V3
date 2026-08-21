@@ -4238,3 +4238,90 @@ den skærm man har, den anden giver den en skærm **mere**.
 Tilbage er **én** ting, og den venter ikke på kode: mails og fotos i klik-kortet.
 De hører til **beslutning 20**, som er fase 0 — `sager/` står ikke i
 `firebase.rules.json`, og der er hverken modtagevej eller afsendelse.
+
+## 67. Tre navne linten fandt, og hvorfor de fik en kontrol frem for en sletning
+
+`npm run lint` fandt tre navne der blev **regnet og aldrig brugt**. Beslutning
+41 skrev hvorfor de ikke bare blev slettet:
+
+> *Et fjernet navn tager beviset med sig, og så er der ingen der ved at
+> kontrollen mangler.*
+
+De stod derfor med en `eslint-disable-next-line` og en note der pegede på
+README. Det var det rigtige at gøre **den dag** — men en dæmpning er en
+udsættelse, ikke en beslutning, og den kan sidde i årevis. Her er de tre, og
+hver af dem viste sig at være en anden fejl end "et ubrugt navn".
+
+### `booking/Oversigt.jsx` — det værste var fodnoten
+
+`setVisAlle` blev kaldt ingen steder, så udførte, afviste og annullerede forløb
+var **permanent skjult**. Og under tabellen stod:
+
+> *"Viser N af M hentede bookinger"*
+
+⚠ **Brugeren fik altså at vide at der var noget han ikke kunne se, og der var
+ingen vej til det.** At skjule i stilhed havde været bedre end at skilte med
+det. Det er en variant af den samme fejl som en pæn knap: oplysningen findes,
+handlingen gør ikke.
+
+⚠ **Men standarden blev IKKE vendt om.** En bookingoversigt er en
+**arbejdsliste** — det man skal handle på, er de forløb der ikke er færdige, og
+et afsluttet forløb er historik. Med et år på bagen ville de fylde listen ved
+hver indlæsning. Rettelsen er derfor en **knap**, ikke en ændret standard.
+
+⚠ **Og knappen siger hvor mange.** *"Vis alle"* er en indstilling man
+ignorerer; *"Vis 3 afsluttede"* er en oplysning man forholder sig til. Tallet
+tælles af den **genberegnede** tilstand (`vist`), ikke af bookingens gemte felt
+— de to kan være uenige, og det er netop den uenighed skærmen findes for at
+gøre synlig. Talte knappen af det gemte felt, kunne den love et forløb frem som
+filteret bagefter skjuler.
+
+### `udbyder/Prisliste.jsx` — en kommentar der forklarede noget til ingen
+
+`sidstRettet` blev regnet, og over den stod en note om hvad tallet betød.
+Tallet nåede aldrig skærmen. Det står nu øverst i "Prislister".
+
+⚠ **"Sidst lagt", ikke "gælder fra".** To forskellige spørgsmål: en liste kan
+**lægges** i dag og **gælde** fra næste kvartal, og tabellen svarer allerede på
+det andet i to kolonner. Blandes de sammen, læser man en dato som en
+ikrafttrædelse den ikke er — så teksten siger forskellen.
+
+⚠ **Og den står i kortets krop, ikke i en ny prop på `Kort`.** `Kort` er delt af
+hver skærm i appen. En oplysning der gælder én skærm, hører ikke i skallen —
+det er den samme grænse som sidebaren og periodevælgeren har.
+
+### `moduler/Oekonomi.jsx` — og her lå der en rigtig fejl under
+
+README talte **to** fund. Koden havde **tre**: dækningsgradsafvigelsen var kun
+nævnt i en bisætning som *"samme mønster"*. Den var ikke samme mønster — den
+havde en fejl mere i sig:
+
+```js
+const daekningsgradAfv = k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct;
+```
+
+⚠ **`x - null` er `x`, og `null - y` er `−y`.** Begge ser ud som **målinger**,
+og gaten i `deviation()` nås aldrig, fordi tallet er blevet rigtigt på vejen.
+Det er præcis den fejl CLAUDE.md advarer mod, og den sad her og ventede — den
+var **usynlig så længe tallet ikke blev vist**. Et navn linten klager over, kan
+altså være et ubrugt navn *og* et forkert regnestykke, og man finder kun det
+andet ved at spørge hvorfor navnet stod der.
+
+Tallet står nu under grafen i "Dækningsgrad mod målsætning", og der tjekkes med
+`Number.isFinite()` **før** subtraktionen.
+
+⚠ **Grafen og tallet svarer på hver sit,** og begge bliver stående: grafen viser
+**hvornår** man krydsede målet — derfor er målet tegnet som en serie og ikke som
+en etiket — og tallet viser **hvor langt** der er lige nu.
+
+⚠ **Procentpoint, ikke procent.** 68 % der bliver 72 % er +4 point. Og
+`deviation()` kender ikke en `unit` der hedder `"point"` — den falder igennem
+til `num` og **taber ordet i tavshed** — så enheden skrives i teksten.
+
+### Prøven er tosidet, og det er hele pointen
+
+`test/linten-fandt.test.mjs` kræver **både** at navnet bruges **og** at
+`eslint-disable` er væk. Uden det første kan man dæmpe linten igen; uden det
+andet kan man "rette" fundet ved at slette navnet. Begge veje fører tilbage til
+en skærm der mangler en kontrol, uden at nogen kan se det — og det var
+udgangspunktet.

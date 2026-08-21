@@ -132,11 +132,22 @@ export default function Oekonomi() {
   /* ÉN beregning. KPI-kortet og totalrækken læser begge herfra. */
   const budgetAfvigelseOere = k.oekonomi.driftsomkostningerOere - k.oekonomi.budgetOere;
   const budgetAfvigelsePct = deviationPct(k.oekonomi.driftsomkostningerOere, k.oekonomi.budgetOere);
-  /* ⚠ REGNET, MEN VISES IKKE. Afvigelsen mod måldækningsgraden står ingen
-     steder på skærmen — tallet er beregnet og tabt. Fundet af
-     no-unused-vars; se README. */
-  // eslint-disable-next-line no-unused-vars -- se noten ovenfor
-  const daekningsgradAfv = k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct;
+  /* ⚠ HER STOD "REGNET, MEN VISES IKKE". Tallet blev beregnet og tabt, og
+     noten forklarede hvad det betød — til ingen. Det står nu under grafen i
+     "Dækningsgrad mod målsætning", som er det ene sted på skærmen hvor målet
+     overhovedet nævnes. Se beslutning 67.
+
+     ⚠ OG SUBTRAKTIONEN VAR SELV EN FÆLDE. `daekningsgradPct - null` er
+     `daekningsgradPct`, og `null - maal` er `-maal` — begge ser ud som
+     MÅLINGER, og gaten i `pct()` nås aldrig, fordi tallet er blevet rigtigt
+     på vejen. Der skal tjekkes FØR regnestykket, ikke efter. Fejlen var
+     usynlig så længe tallet ikke blev vist; det er den slags der venter på
+     at nogen finder brug for den. */
+  const daekningsgradAfv =
+    Number.isFinite(k.oekonomi.daekningsgradPct)
+    && Number.isFinite(k.oekonomi.maalDaekningsgradPct)
+      ? k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct
+      : null;
 
   /* Kategorierne foldes ud til den valgte division. Ét sæt tal, ikke to
      der kan drive fra hinanden. */
@@ -263,6 +274,18 @@ export default function Oekonomi() {
             serier={[{ navn: "Dækningsgrad" }, { navn: `Mål ${pct(k.oekonomi.maalDaekningsgradPct)}`, stiplet: true }]}
             format={(v) => pct(v)}
           />
+          {/* ⚠ PROCENTPOINT, IKKE PROCENT — og `deviation()` frem for en
+              håndskrevet streng, så fortegnets farve er den samme her som i
+              hvert andet af appens tal. Grafen viser HVORNÅR man krydsede
+              målet; tallet viser HVOR LANGT der er lige nu, og de to
+              spørgsmål har hver sit svar. */}
+          <p className="fc-row" style={{ marginTop: 10 }}>
+            <span className="fc-hint">
+              Mod målet på {pct(k.oekonomi.maalDaekningsgradPct)}, i procentpoint
+            </span>
+            <Afvigelse vaerdi={deviation(daekningsgradAfv,
+              { betterWhen: "higher", dec: 1 })} />
+          </p>
           <p className="fc-hint" style={{ marginTop: 10 }}>
             Står uden for rapportfilteret: dækningsgrad er forholdet mellem omsætning og
             omkostninger og findes ikke pr. omkostningskategori. <b>Målet er tegnet som
