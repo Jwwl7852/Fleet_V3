@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **64 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **65 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -331,6 +331,14 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   fordi en annulleret TUR er en aftale med en kunde der brydes; en driftsopgave
   er vores egen disposition. Vigtigere: en begrundelse ville være fritekst på
   vej mod auditloggen, og allowlisten findes for at holde tastet tekst ude.
+- **Give gitteret en fjerde enhed uden at sige hvad den koster.** `ENHED` er
+  `dag` | `time` | `uge`. Ugekolonner findes fordi otteogtyve dagskolonner
+  ikke kan læses — men **en ugekolonne kan ikke skelne et 3-dages udlån fra et
+  7-dages**, og det skal stå på skærmen. En visning der ser præcis ud uden at
+  være det, er værre end en grov visning der siger det.
+  ⚠ **Og ugen begynder mandag:** `getDay()` giver 0 for søndag. En uge er
+  desuden ikke 7 × 24 timer over sommertidsskiftet — byg kolonnerne med
+  `Date`. Se beslutning 65.
 - **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
   ressourcer × tid og bruges af Driftskalender, Servicekalender, Disponering
   **og Unitbookings kalender**. Regnestykket ligger i `gitter.js`. To gitre der

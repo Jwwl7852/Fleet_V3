@@ -19,7 +19,20 @@
 import { overlapper } from "./reservations.js";
 import { klokke, ugenr } from "./format.js";
 
-export const ENHED = { dag: "dag", time: "time" };
+/**
+ * ⚠ TRE ENHEDER, OG DEN TREDJE KOM MED EN PRIS.
+ *
+ * `uge` findes fordi 28 dagskolonner ikke kan læses — det var hele grunden til
+ * at måned- og ugerækkerne kom over gitteret. Med ugekolonner er der syv
+ * kolonner i stedet for otteogtyve.
+ *
+ * ⚠ MEN EN UGEKOLONNE KAN IKKE SKELNE ET 3-DAGES UDLÅN FRA ET 7-DAGES.
+ * Blokken fylder den uge den rører, og det er en RIGTIG upræcished — ikke en
+ * fejl. Kalderen skal skrive det på skærmen, som Unitbookings kalender gør:
+ * en visning der ser præcis ud og ikke er det, er værre end en grov visning
+ * der siger det.
+ */
+export const ENHED = { dag: "dag", time: "time", uge: "uge" };
 
 /** Loft på antal kolonner. Rammes det, er vinduet for bredt til et gitter —
  *  så hører spørgsmålet i en liste eller et nøgletal. Vi afkorter ikke i
@@ -40,12 +53,21 @@ export function slots(fra, til, enhed = ENHED.dag) {
   const d = new Date(fra);
   if (enhed === ENHED.time) d.setMinutes(0, 0, 0);
   else d.setHours(0, 0, 0, 0);
+  /* ⚠ UGEN BEGYNDER MANDAG. `getDay()` giver 0 for søndag, så søndag skal
+     syv dage tilbage og ikke nul. En uge der begyndte om søndagen, ville
+     lægge fredag og lørdag i hver sin kolonne — og en tur hen over weekenden
+     ville se ud som to. */
+  if (enhed === ENHED.uge) {
+    const ugedag = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - ugedag);
+  }
 
   const ud = [];
   while (d.getTime() < til) {
     const start = d.getTime();
     const naeste = new Date(start);
     if (enhed === ENHED.time) naeste.setHours(naeste.getHours() + 1);
+    else if (enhed === ENHED.uge) naeste.setDate(naeste.getDate() + 7);
     else naeste.setDate(naeste.getDate() + 1);
     ud.push({ fra: start, til: naeste.getTime() });
 
@@ -64,6 +86,8 @@ export function slots(fra, til, enhed = ENHED.dag) {
  *  måde. */
 export function slotLabel(slot, enhed = ENHED.dag) {
   if (enhed === ENHED.time) return klokke(slot.fra);
+  /* Ugenummeret er det man taler i på et lager: "den skal ud i uge 34". */
+  if (enhed === ENHED.uge) return `Uge ${ugenr(slot.fra)}`;
   return new Date(slot.fra)
     .toLocaleDateString("da-DK", { weekday: "short", day: "2-digit", month: "2-digit" })
     .replace(".", "");
@@ -254,6 +278,14 @@ export const UGEDAG_KORT = ["Sø", "Ma", "Ti", "On", "To", "Fr", "Lø"];
  */
 export function slotDele(slot, enhed = ENHED.dag) {
   if (enhed === ENHED.time) return { over: null, under: klokke(slot.fra) };
+  /* ⚠ UGENUMMERET OVER DATOEN, ikke ugedagen: en ugekolonne har syv af dem.
+     Datoen er mandagen, så man kan se HVILKEN uge 34 er. */
+  if (enhed === ENHED.uge) {
+    return {
+      over: `Uge ${ugenr(slot.fra)}`,
+      under: new Date(slot.fra).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }),
+    };
+  }
   const d = new Date(slot.fra);
   return {
     over: UGEDAG_KORT[d.getDay()],

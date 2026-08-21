@@ -4109,3 +4109,76 @@ gang**. Nul ser ud som en måling.
 gang et opslag flyttede fra modulniveau ind i komponenten, skulle det sendes med
 som prop — `Detaljer`, `Godkendelse`, `Tidslinje`. En ReferenceError ved
 rendering er ingen byggefejl, og kun et klik fanger den.
+
+## 65. Unitbookings tre tvetydige punkter — afgjort, ikke gættet
+
+`UNITBOOKING.md` 6.10 sluttede med tre ting fra planchen der ikke kunne bygges
+af planchen alene. De havde stået som *"ikke bygget"* — hvilket lyder som noget
+nogen skal nå, og var noget nogen skulle **svare** på. De er nu stillet som
+spørgsmål og besvaret.
+
+### Dag / Uge / Måned → kolonnerne følger intervallet
+
+Planchen har en granularitetsvælger **ved siden af** interval-vælgeren. To
+kontroller der begge handler om tid, tvinger brugeren til at forstå forskellen
+på *"hvor langt"* og *"hvor fint"* før han kan bruge nogen af dem.
+
+1 og 2 uger tegnes derfor med dagskolonner; 4 uger med **ugekolonner** — fem i
+stedet for otteogtyve. Det var netop de otteogtyve der gjorde det nødvendigt at
+lægge måned- og ugerækker over gitteret.
+
+⚠ **Og prisen står på skærmen.** En ugekolonne kan ikke skelne et 3-dages udlån
+fra et 7-dages: blokken fylder den uge den rører. **Målt i en prøve** — de to
+lægges ud på nøjagtig de samme kolonner — og skærmen skriver det, når
+kolonnerne er uger. En visning der ser præcis ud uden at være det, er værre end
+en grov visning der siger det. Samme holdning som forbeholdet i
+`tjekKoerehviletid()`.
+
+⚠ **Ugen begynder mandag.** `getDay()` giver 0 for søndag, så søndag skal syv
+dage tilbage og ikke nul — ellers ville fredag og lørdag ligge i hver sin
+kolonne, og en tur hen over weekenden se ud som to.
+
+⚠ **Og en uge er ikke 7 × 24 timer.** Over sommertidsskiftet er den 167 eller
+169, så kolonnerne bygges med `Date` af samme grund som dagene. En prøve lægger
+vinduet hen over skiftet.
+
+### Filtre-knappen → rækkerne, på type og undertype
+
+Rækkerne **er** kasser, og aksen er type og undertype — den **samme ordliste**
+Kasser-skærmen filtrerer på, via `undertyperFor()`. To filtre over samme
+kartotek med hver sin ordliste ville være to steder at være uenige om hvad en
+undertype er.
+
+⚠ **Det er ikke et blokfilter.** *Fremhæv art* står allerede over gitteret og
+fremhæver klargøring, udlån og returnering **inde i** rækken. Et filter der
+fjernede blokke, ville lade rækken stå tom — og **en tom række ligner en ledig
+kasse**.
+
+⚠ **Kun ved gruppering pr. kasse**, for en sag har ikke en kassetype. Og
+undertypen nulstilles når typen skifter: en undertype fra en anden type ville
+filtrere alting væk og ligne en tom kalender.
+
+### "Inaktiv" → bygges ikke, og det er beslutningen
+
+Planchens femte farve. Kalenderen viser kun kasser der har et udlån i vinduet —
+eller er ude af drift — og det bliver stående:
+
+> Et gitter med hundrede rækker hvoraf seks har en blok, skjuler de seks.
+
+En gråtonet række er stadig en række der fylder. Med ti kasser i dev ser det
+harmløst ud; med hundrede drukner de aktive.
+
+⚠ **Skærmen skriver det.** *"Kun kasser med et udlån i perioden vises."* **En
+udeladelse man kan se, er et valg; en man ikke kan se, er en fejl.** Og med
+Filtre-knappen kan man nu snævre rækkerne ind på den akse der betyder noget.
+
+### ⚠ Og "ikke bygget" var den forkerte etiket
+
+Alle tre stod i tabellen som *"Ikke bygget"* — samme ord som de ting der bare
+manglede arbejde. To af dem ventede på et **svar**, og den tredje skulle
+**afgøres til nej**. En liste hvor "venter på kode" og "venter på en beslutning"
+ser ens ud, får den der læser den, til at tro der er mere tilbage at bygge end
+der er — og den der skulle svare, får aldrig spørgsmålet.
+
+Det er samme skel som de tre slags null i beslutning 62. Tabellen skriver nu
+**Afgjort** frem for **Ikke bygget**, hvor det er et svar der manglede.

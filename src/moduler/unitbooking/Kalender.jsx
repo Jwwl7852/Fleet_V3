@@ -46,6 +46,7 @@ import {
   sagsblokke, sagstilstand, dageUde, naesteSkift,
   udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
   klargoeresSnart, returneresSnart, kassebelaegning, kanSkifteUdlaan, valideUdlaan,
+  undertyperFor,
   udeAfDriftBlok,
   KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
@@ -69,10 +70,26 @@ const DAG = 86400000;
  * ⚠ OG STANDARDEN BLIVER FIRE UGER. Det var det eneste vindue der fandtes før,
  * og den der åbner skærmen, skal se det samme som i går.
  */
+/**
+ * ⚠ KOLONNENS GRANULARITET FØLGER INTERVALLET — DER ER IKKE TO VÆLGERE.
+ *
+ * Planchen har en Dag/Uge/Måned-vælger ved siden af interval-vælgeren. To
+ * kontroller der begge handler om tid, og som ligner hinanden, tvinger
+ * brugeren til at forstå forskellen på "hvor langt" og "hvor fint" før han kan
+ * bruge nogen af dem. Granulariteten er derfor en FØLGE af længden:
+ *
+ *   1 og 2 uger → dagskolonner    (7 og 14 kolonner)
+ *   4 uger      → ugekolonner     (5 kolonner i stedet for 28)
+ *
+ * ⚠ OG PRISEN STÅR PÅ SKÆRMEN. En ugekolonne kan ikke skelne et 3-dages udlån
+ * fra et 7-dages: blokken fylder den uge den rører. Det er en rigtig
+ * upræcished, ikke en fejl — og en visning der ser præcis ud uden at være det,
+ * er værre end en grov visning der siger det.
+ */
 const VINDUER = [
-  { uger: 1, label: "1 uge" },
-  { uger: 2, label: "2 uger" },
-  { uger: 4, label: "4 uger" },
+  { uger: 1, label: "1 uge", enhed: ENHED.dag },
+  { uger: 2, label: "2 uger", enhed: ENHED.dag },
+  { uger: 4, label: "4 uger", enhed: ENHED.uge },
 ];
 const STANDARD_UGER = 4;
 
@@ -154,6 +171,26 @@ export default function Kalender() {
      måned". En uge er et andet spørgsmål — "hvad skal der ske nu" — og på
      fire uger er kolonnerne så smalle at man tæller sig frem til dagen. */
   const [uger, setUger] = useState(STANDARD_UGER);
+  /* ⚠ GRANULARITETEN ER EN FØLGE AF LÆNGDEN, ikke et valg ved siden af —
+     se VINDUER. Falder tilbage på dage, så en ukendt længde aldrig giver et
+     gitter uden kolonner. */
+  const enhed = VINDUER.find((v) => v.uger === uger)?.enhed || ENHED.dag;
+
+  /**
+   * ⚠ PLANCHENS FILTRE-KNAP FILTRERER RÆKKERNE, IKKE BLOKKENE.
+   *
+   * Rækkerne ER kasser, og den akse man skiller dem på, er type og undertype —
+   * den SAMME ordliste Kasser-skærmen filtrerer på, hentet fra det samme
+   * katalog. To filtre over samme kartotek med hver sin ordliste ville være to
+   * steder at være uenige om hvad en undertype er.
+   *
+   * ⚠ OG DET ER IKKE ET BLOKFILTER. "Fremhæv art" står allerede over gitteret
+   * og gør noget andet: den fremhæver klargøring, udlån og returnering INDE i
+   * rækken. Et filter der fjernede blokke, ville lade rækken stå tom og se ud
+   * som en ledig kasse.
+   */
+  const [type, setType] = useState("");
+  const [undertype, setUndertype] = useState("");
   /* ⚠ PLANCHENS "grupperet efter kasse-id eller sag". De to svarer på hvert
      sit spørgsmål: kasserækken på "hvornår er DEN her kasse optaget",
      sagsrækken på "hvornår er udstillingen i gang". Det andet kan ikke læses
@@ -230,7 +267,15 @@ export default function Kalender() {
        kasser det handler om. */
     const ider = new Set(iVinduet.map((u) => u.kasseId));
     for (const k of kasser) if (udeAfDriftBlok(k, vindueTil)) ider.add(k.id);
-    return kasser.filter((k) => ider.has(k.id)).map((k) => ({
+    return kasser
+      .filter((k) => ider.has(k.id))
+      /* ⚠ FILTERET LIGGER PÅ RÆKKERNE, EFTER "har den noget i vinduet".
+         Lå det før, ville en kasse uden aktivitet kunne komme med tilbage
+         gennem filteret — og hele grunden til at rækkerne er begrænsede, er
+         at seks blokke i hundrede rækker ikke kan ses. */
+      .filter((k) => !type || k.type === type)
+      .filter((k) => !undertype || k.undertype === undertype)
+      .map((k) => ({
       id: k.id,
       label: k.id,
       /* ⚠ SAGEN STÅR UNDER KASSE-ID'ET, som planchen. Uden den kan man se
@@ -244,7 +289,7 @@ export default function Kalender() {
         </Pille>
       ),
     }));
-  }, [iVinduet, kasser, typer, vindueTil]);
+  }, [iVinduet, kasser, typer, vindueTil, type, undertype]);
 
   /* ⚠ TRE BLOKKE PR. UDLÅN, IKKE ÉN — planchens "fremhævning pr. art".
      Klargøring, udlån og returnering er tre stykker arbejde for tre
@@ -441,6 +486,35 @@ export default function Kalender() {
                   saet={(v) => setUger(Number(v))}
                   label="Vindue"
                 />
+
+                {/* ⚠ PLANCHENS FILTRE-KNAP — PÅ RÆKKERNE, IKKE PÅ BLOKKENE.
+                    ⚠ KUN VED GRUPPERING PR. KASSE. En sagsrække er en SAG, og
+                    en sag har ikke en kassetype; et filter der ikke gjorde
+                    noget, ville være en pæn knap. */}
+                {gruppering === "kasse" && (
+                  <>
+                    <select aria-label="Filtrér på type" value={type}
+                            onChange={(e) => { setType(e.target.value); setUndertype(""); }}>
+                      <option value="">Alle typer</option>
+                      {typer.map((t) => (
+                        <option key={t.id} value={t.id}>{t.navn || t.id}</option>
+                      ))}
+                    </select>
+                    {/* ⚠ UNDERTYPEN FØLGER TYPEN, og den nulstilles når typen
+                        skifter: en undertype fra en anden type ville filtrere
+                        alting væk og ligne en tom kalender. Samme greb som i
+                        kasseformularen. */}
+                    {type && undertyperFor(typer.find((t) => t.id === type)).length > 0 && (
+                      <select aria-label="Filtrér på undertype" value={undertype}
+                              onChange={(e) => setUndertype(e.target.value)}>
+                        <option value="">Alle undertyper</option>
+                        {undertyperFor(typer.find((t) => t.id === type)).map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    )}
+                  </>
+                )}
                 {/* ⚠ PLANCHENS "Fremhæv" — kun ved gruppering pr. kasse.
                     En sagsrække er FLERE udlån flettet sammen (6.14), og der
                     findes ingen enkelt art at fremhæve; en kontakt der ikke
@@ -508,7 +582,7 @@ export default function Kalender() {
           blokke={blokke}
           fra={vindueFra}
           til={vindueTil}
-          enhed={ENHED.dag}
+          enhed={enhed}
           valgtId={efterSag ? null : (valgtId ? blokke.find((b) => b.id.startsWith(valgtId + "__"))?.id : null)}
           onVaelg={(b) => {
             /* ⚠ KUN FRA EN KASSERAEKKE. En sagsblok er FLERE udlaan flettet
@@ -535,7 +609,23 @@ export default function Kalender() {
             : "Ingen kasser er lovet væk i den viste periode."}
         />
         </div>
+        {/* ⚠ PRISEN VED UGEKOLONNER STÅR PÅ SKÆRMEN. En blok fylder den
+            uge den rører, så et 3-dages udlån og et 7-dages ser ens ud. En
+            visning der ser præcis ud uden at være det, er værre end en grov
+            visning der siger det — samme holdning som forbeholdet i
+            tjekKoerehviletid(). */}
+        {enhed === ENHED.uge && (
+          <p className="fc-hint" style={{ marginTop: 12 }}>
+            ⚠ <b>Kolonnerne er uger.</b> En blok fylder hele den uge den rører,
+            så et udlån på tre dage og et på syv ser ens ud. Vælg{" "}
+            <b>1 eller 2 uger</b> foroven for at se de enkelte dage.
+          </p>
+        )}
         <p className="fc-hint" style={{ marginTop: 12 }}>
+          {/* ⚠ RÆKKERNE ER ET VALG, IKKE EN MANGEL. Planchen har "Inaktiv" som
+              femte farve; her vises kasser uden aktivitet slet ikke. Et gitter
+              med hundrede rækker hvoraf seks har en blok, skjuler de seks —
+              og en gråtonet række er stadig en række der fylder. Se 6.25. */}
           Kun kasser med et udlån i perioden vises. Vinduet starter{" "}
           <b>fremadrettet</b>, længden vælges foroven, og pilene under
           kalenderen flytter det <b>én uge</b> ad gangen — også ved fire ugers

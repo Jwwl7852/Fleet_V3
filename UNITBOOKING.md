@@ -1022,11 +1022,11 @@ Otte ting mere, som ikke stod i beskrivelsen:
 | På planchen | Status |
 |---|---|
 | **Fem** nøgletal på kalenderen, med donut | Bygget — se 6.20 |
-| **Kalendervisning Dag / Uge / Måned** — kolonnens *granularitet* | Ikke bygget. 6.13 byggede *intervallet*, som er noget andet |
-| **Filtre**-knap | Ikke bygget |
+| **Kalendervisning Dag / Uge / Måned** — kolonnens *granularitet* | Afgjort: kolonnerne FØLGER intervallet — se 6.25 |
+| **Filtre**-knap | Bygget — filtrerer RÆKKERNE på type og undertype, se 6.25 |
 | **"Nu"-markør** som mærket linje | Bygget — se 6.20 |
 | **Ude af drift** som blokart | Bygget — se 6.24 |
-| **Inaktiv** som blokart | Ikke bygget — se 6.21; det er et valg om hvad rækkerne er |
+| **Inaktiv** som blokart | **Afgjort: bygges ikke.** Kun kasser med aktivitet — se 6.25 |
 | Klik-kortets **Rediger / Annuller booking** | Bygget — se 6.22 |
 | "Sidst opdateret" + **Opdater** | Bygget — se 6.22 |
 | Sag under kasse-id, **TYPE** som egen kolonne | Sagen er bygget; typen deler linje — se 6.23 |
@@ -1264,3 +1264,77 @@ array-literal. Hjælperen er flyttet op.
 hedder `udeAfDriftFra`, feltet `udeAfDriftIso`, og uden det ekstra led ville
 fejlen aldrig blive vist. Den fælde står skrevet ned i `Planlaegdialog.jsx`;
 `Udlaan.jsx` fik den i 6.12, og `Kasser.jsx` havde stadig den enkle udgave.
+
+### 6.25 De tre tvetydige punkter er afgjort
+
+6.10's liste sluttede med tre ting fra planchen der ikke kunne bygges af
+planchen alene. De er stillet som spørgsmål og besvaret.
+
+#### Dag / Uge / Måned → **kolonnerne følger intervallet**
+
+Planchen har en granularitetsvælger **ved siden af** interval-vælgeren. To
+kontroller der begge handler om tid, og som ligner hinanden, tvinger brugeren
+til at forstå forskellen på *"hvor langt"* og *"hvor fint"* før han kan bruge
+nogen af dem.
+
+Granulariteten er derfor en **følge** af længden:
+
+| Interval | Kolonner | Antal |
+|---|---|---|
+| 1 uge | dage | 7 |
+| 2 uger | dage | 14 |
+| 4 uger | **uger** | 5 |
+
+⚠ **Og prisen står på skærmen.** En ugekolonne kan ikke skelne et 3-dages udlån
+fra et 7-dages: blokken fylder den uge den rører. Det er **målt i en prøve** —
+de to lægges ud på nøjagtig de samme kolonner — og skærmen skriver det, når
+kolonnerne er uger. En visning der ser præcis ud uden at være det, er værre end
+en grov visning der siger det. Samme holdning som forbeholdet i
+`tjekKoerehviletid()`.
+
+⚠ **Ugen begynder mandag.** `getDay()` giver 0 for søndag, så søndag skal syv
+dage tilbage og ikke nul. En uge der begyndte om søndagen, ville lægge fredag og
+lørdag i hver sin kolonne — og en tur hen over weekenden ville se ud som to.
+
+⚠ **Og en uge er ikke 7 × 24 timer.** Over sommertidsskiftet er den 167 eller
+169. Kolonnerne bygges med `Date` af samme grund som dagene gør; en prøve
+lægger vinduet hen over skiftet.
+
+#### Filtre-knappen → **rækkerne, på type og undertype**
+
+Rækkerne **er** kasser, og den akse man skiller dem på, er type og undertype —
+den **samme ordliste** Kasser-skærmen filtrerer på, hentet fra det samme
+katalog med `undertyperFor()`. To filtre over samme kartotek med hver sin
+ordliste ville være to steder at være uenige om hvad en undertype er.
+
+⚠ **Det er ikke et blokfilter.** *Fremhæv art* står allerede over gitteret og
+gør noget andet: den fremhæver klargøring, udlån og returnering **inde i**
+rækken. Et filter der fjernede blokke, ville lade rækken stå tom — og en tom
+række ligner en **ledig kasse**.
+
+⚠ **Kun ved gruppering pr. kasse.** En sagsrække er en sag, og en sag har ikke
+en kassetype; et filter der ikke gjorde noget, ville være en pæn knap.
+
+⚠ **Og undertypen nulstilles når typen skifter.** En undertype fra en anden type
+ville filtrere alting væk og ligne en tom kalender. Samme greb som i
+kasseformularen.
+
+#### "Inaktiv" → **kun kasser med aktivitet, og det er en beslutning**
+
+Planchens femte farve bliver **ikke** bygget. Kalenderen viser kun kasser der
+har et udlån i vinduet — eller er ude af drift — og det er ikke en mangel:
+
+> Et gitter med hundrede rækker hvoraf seks har en blok, skjuler de seks.
+
+En gråtonet række er stadig en række der fylder. Med ti kasser i dev ser det
+harmløst ud; med hundrede drukner de aktive, og det er præcis den fejl
+rækkefiltreringen findes for.
+
+⚠ **Skærmen skriver det.** *"Kun kasser med et udlån i perioden vises."* En
+udeladelse man kan se, er et valg; en man ikke kan se, er en fejl. Og med
+Filtre-knappen kan man nu selv snævre rækkerne ind på den akse der betyder
+noget — type — frem for at få dem alle sammen med.
+
+⚠ **Ude af drift er undtagelsen, og den var der før.** Sådan en kasse har måske
+intet udlån i vinduet, men den har en blok — og en blok uden en række tegnes
+ingen steder. Se 6.24.
