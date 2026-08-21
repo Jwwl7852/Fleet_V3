@@ -139,7 +139,11 @@ describe("serveren håndhæver permissions", () => {
          BESLUTTET frem for overset: en bruger uden indkoeb.skriv afvises
          stadig, og det er halvdelen der betyder noget. */
       ["leverandoerer", PERM.indkoebSkriv, { navn: "Ny Leverandoer", kategori: "daek" }],
-      ["satser", PERM.satserSkriv, { post: { satser: [] } }],
+      /* ⚠ STIEN ER GRUPPE/POST, IKKE BARE GRUPPE. `.write` flyttede ned på
+         postniveau i beslutning 53, så et helt prisgrundlag ikke kan tømmes i
+         ét kald. En skrivning på gruppen selv afvises nu — og det er præcis
+         forskellen prøven skal kunne se. */
+      ["satser/gr", PERM.satserSkriv, { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }],
       ["lagre", PERM.lagreSkriv, { division: "gods", navn: "Kolding" }],
     ];
     for (const [node, perm, post] of noder) {
@@ -266,11 +270,25 @@ describe("rolle-presets giver samme adgang som før", () => {
   it("kun admin må skrive satser og lagre", async () => {
     for (const rolle of ["casehandler", "disponent", "koordinator", "chauffoer"]) {
       const db = somRolle(`uid-s-${rolle}`, rolle);
-      await assertFails(set(ref(db, sti("satser", "p1")), { post: {} }));
+      await assertFails(set(ref(db, sti("satser/gr", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
       await assertFails(set(ref(db, sti("lagre", "l1")), { division: "gods", navn: "Kolding" }));
     }
     const adm = somRolle("uid-s-admin", "admin");
-    await assertSucceeds(set(ref(adm, sti("satser", "p1")), { post: {} }));
+    await assertSucceeds(set(ref(adm, sti("satser/gr", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
+  });
+
+  /**
+   * ⚠ OG HELE GRUPPEN KAN IKKE SKRIVES I ÉT KALD — beslutning 53.
+   *
+   * Før lå `.write` på `satser`, og den kaskaderer: én `set()` kunne
+   * erstatte eller TØMME hele prisgrundlaget. Målt på tværs af regelfilen
+   * kunne 17 af 23 noder tømmes sådan. Reglen ligger nu på posten.
+   */
+  it("⚠ EN HEL SATSGRUPPE KAN HVERKEN SKRIVES ELLER TØMMES I ÉT KALD", async () => {
+    const adm = somRolle("uid-s-admin2", "admin");
+    await assertSucceeds(set(ref(adm, sti("satser/gr2", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
+    await assertFails(set(ref(adm, sti("satser", "gr2")), { p1: { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } } }));
+    await assertFails(set(ref(adm, sti("satser", "gr2")), null));
   });
 });
 

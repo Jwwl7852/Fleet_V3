@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **52 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **53 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -87,7 +87,13 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   virkelig udenfor, så skriv begrundelsen; kan du ikke det, hører den i
   skalaen. Se beslutning 48.
 - Bruge `on()` hvor `once()` rækker.
-- Hardslette regnskabsdata.
+- **Hardslette noget som helst — og tro at `skriv.js` forhindrer det.** Det
+  gør den ikke: `db.ref().remove()` går uden om klientbiblioteket. Reglerne
+  er det eneste der gælder, og de sagde intet: **20 af 23 poster kunne
+  hardslettes, og 17 af 23 HELE noder kunne tømmes i ét kald**, målt i
+  emulatoren. `.write` hører på **posten**, ikke på noden — den kaskaderer —
+  og den skal ende på `&& newData.exists()`. De to steder hvor en sletning
+  ER besluttet, står i `test/rules.sletning.test.mjs`. Se beslutning 53.
 - Lægge division i stien. Det er et felt: `gods` | `bus` | `faelles`.
 - **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
   `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler

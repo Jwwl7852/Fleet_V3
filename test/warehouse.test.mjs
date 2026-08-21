@@ -343,12 +343,26 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
     /* ⚠ EN NODE TO MODULER DELER, KAN IKKE GATES AF DET ENE MODULS RETTIGHED.
        En WMS-medarbejder hos en kunde uden Unitbooking ville ellers ikke
        kunne oprette en hylde. */
-    const regler = readFileSync("firebase.rules.json", "utf8");
-    const blok = regler.slice(regler.indexOf('"reolpladser": {'));
-    const skriv = blok.slice(0, blok.indexOf('".indexOn"'));
+    /* ⚠ REGLEN LÆSES DÉR HVOR DEN LIGGER, ikke ud af et tekstudsnit.
+       Udsnittet gik fra '"reolpladser": {' til '".indexOn"', fordi `.write`
+       stod øverst på noden. I beslutning 53 flyttede den ned på `$pladsId` —
+       under `.indexOn` — og så var udsnittet tomt og prøven grøn af den
+       forkerte grund. En prøve der leder det forkerte sted, er værre end
+       ingen. */
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8").replace(/^\s*\/\/.*$/gm, "")
+    ).rules;
+    const skriv = regler.tenants.$tenantId.reolpladser.$pladsId[".write"];
+    assert.ok(typeof skriv === "string", "reolpladser/$pladsId har ingen .write");
     assert.ok(skriv.includes("|reolpladser.skriv|"));
     assert.ok(!skriv.includes("|kasser.skriv|"),
       "reolpladser kræver stadig kasser.skriv");
+    /* ⚠ OG DEN LIGGER PÅ POSTEN, IKKE PÅ NODEN. Lå den på `reolpladser`,
+       kunne ét kald tømme hele hyldekortoteket. Se beslutning 53. */
+    assert.equal(regler.tenants.$tenantId.reolpladser[".write"], undefined,
+      "reolpladser har fået .write tilbage på nodeniveau");
+    assert.ok(skriv.includes("newData.exists()"),
+      "en hylde kan hardslettes igen");
   });
 });
 

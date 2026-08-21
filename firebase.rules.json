@@ -388,19 +388,63 @@
           },
           "kunder": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)"
+            // ⚠ .write LIGGER PAA POSTEN, IKKE PAA NODEN — beslutning 53.
+            // Laa den her, kunne ET kald tomme hele den klassificerede
+            // satellit. MAALT: det kunne den, for alle fire.
+            "$id": {
+              // ⚠ newData.exists(): en klassificeret post forsvinder ikke.
+              // Reglerne binder KLIENTEN; en sletning der virkelig skal ske —
+              // en GDPR-sletning af en medarbejder — hoerer hos servicekontoen,
+              // som gaar uden om reglerne. Retten til at blive glemt bliver
+              // altsaa ikke spaerret her; den flyttes hen hvor den kan besluttes
+              // og logges.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && auth.token.perms != null && auth.token.perms.contains('|kunder.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true) && newData.exists()"
+            }
           },
           "koeretoejer": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)"
+            // ⚠ .write LIGGER PAA POSTEN, IKKE PAA NODEN — beslutning 53.
+            // Laa den her, kunne ET kald tomme hele den klassificerede
+            // satellit. MAALT: det kunne den, for alle fire.
+            "$id": {
+              // ⚠ newData.exists(): en klassificeret post forsvinder ikke.
+              // Reglerne binder KLIENTEN; en sletning der virkelig skal ske —
+              // en GDPR-sletning af en medarbejder — hoerer hos servicekontoen,
+              // som gaar uden om reglerne. Retten til at blive glemt bliver
+              // altsaa ikke spaerret her; den flyttes hen hvor den kan besluttes
+              // og logges.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|koeretoejer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true) && newData.exists()"
+            }
           },
           "personale": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|')"
+            // ⚠ .write LIGGER PAA POSTEN, IKKE PAA NODEN — beslutning 53.
+            // Laa den her, kunne ET kald tomme hele den klassificerede
+            // satellit. MAALT: det kunne den, for alle fire.
+            "$id": {
+              // ⚠ newData.exists(): en klassificeret post forsvinder ikke.
+              // Reglerne binder KLIENTEN; en sletning der virkelig skal ske —
+              // en GDPR-sletning af en medarbejder — hoerer hos servicekontoen,
+              // som gaar uden om reglerne. Retten til at blive glemt bliver
+              // altsaa ikke spaerret her; den flyttes hen hvor den kan besluttes
+              // og logges.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|personale.skriv|') && auth.token.perms != null && auth.token.perms.contains('|personale.sensitiveLaes|') && newData.exists()"
+            }
           },
           "fravaer": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)",
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)"
+            // ⚠ .write LIGGER PAA POSTEN, IKKE PAA NODEN — beslutning 53.
+            // Laa den her, kunne ET kald tomme hele den klassificerede
+            // satellit. MAALT: det kunne den, for alle fire.
+            "$id": {
+              // ⚠ newData.exists(): en klassificeret post forsvinder ikke.
+              // Reglerne binder KLIENTEN; en sletning der virkelig skal ske —
+              // en GDPR-sletning af en medarbejder — hoerer hos servicekontoen,
+              // som gaar uden om reglerne. Retten til at blive glemt bliver
+              // altsaa ikke spaerret her; den flyttes hen hvor den kan besluttes
+              // og logges.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && auth.token.perms != null && auth.token.perms.contains('|fravaer.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()"
+            }
           },
 
           // ⚠ NODEN FANDTES IKKE — men CLAUDE.md beskrev dens regel som
@@ -824,8 +868,14 @@
         // tjekLedig() naar den summerer belastningen over et tidsrum.
         "lagre": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|lagre.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
           "$lagerId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|lagre.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
             // ⚠ NODEN VALIDEREDE KUN division, og de to satslister havde et
             // indeks men ingen form. Et beloeb kunne komme ind som FLOAT eller
             // som en streng, og beslutning 2 stod dermed kun i en kommentar.
@@ -1014,8 +1064,14 @@
         // PRISER.md etape 5. Skaermen viste et satsark ingen kunne rette.
         "omkostninger": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
           "$id": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true) && newData.exists()",
             // ⚠ EN BILOMKOSTNING BAERER INTET NAVN OG INGEN DIVISION.
             // Navnet staar paa koeretoejet — skrives det ogsaa her, driver de
             // to fra hinanden, og det var netop advarslen i den gamle
@@ -1077,9 +1133,15 @@
         // en rettelse i dag prisen på en booking fra sidste kvartal.
         "satser": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|')",
           "$gruppe": {
             "$postId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.skriv|') && newData.exists()",
               // ⚠ VALIDERINGEN KOM MED PRISERNE. Noden har vaeret her siden
               // beslutning 7, men INTET skrev til den — satsarket stod som en
               // const i Bookingopsaetning.jsx. Nu skal den baere kundepriser,
@@ -1518,9 +1580,15 @@
         // en division, ville han være syg i gods og rask i bus.
         "fravaer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)",
           ".indexOn": ["fra"],
           "$fravaerId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['personId'])",
             "division": { ".validate": false },
             "art": { ".validate": false },
@@ -1534,11 +1602,17 @@
         // laenge ingen skrev, var det harmloest. Piloten skriver.
         "facility": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true)",
 
           "lokationer": {
             ".indexOn": ["type"],
             "$lokationId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               ".validate": "newData.hasChildren(['navn', 'type'])",
               "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
               "type": { ".validate": "newData.isString() && newData.val().matches(/^(hovedkontor|depot|lager|vaerksted)$/)" },
@@ -1557,6 +1631,13 @@
           "aktiver": {
             ".indexOn": ["lokationId", "status", "naesteServiceMs"],
             "$aktivId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               ".validate": "newData.hasChildren(['navn', 'art', 'status', 'lokationId'])",
               "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
               // ⚠ art ER UDSTYRSTYPEN, ikke opgave.art. Samme feltnavn, to
@@ -1582,6 +1663,13 @@
           "zoner": {
             ".indexOn": ["lokationId"],
             "$zoneId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               ".validate": "newData.hasChildren(['navn', 'art', 'lokationId'])",
               "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
               "art": { ".validate": "newData.isString() && newData.val().matches(/^(frost|koel|tempereret|kontor)$/)" },
@@ -1604,6 +1692,13 @@
           // temperaturer for samme zoner.
           "sensorer": {
             "$zoneId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               // ⚠ INGEN graenser HER. Se noten paa zoner. .validate: false
               // afviser feltet, saa fejlen ikke kan indfoeres ved et uheld.
               "graenser": { ".validate": false },
@@ -1627,6 +1722,13 @@
           "fejl": {
             ".indexOn": ["aktivId", "status", "meldtMs"],
             "$fejlId": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               ".validate": "newData.hasChildren(['aktivId', 'status', 'alvor', 'meldtMs'])",
               "aktivId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('aktiver').child(newData.val()).exists()" },
               "status": { ".validate": "newData.isString() && newData.val().matches(/^(ny|planlagt|igang|udbedret)$/)" },
@@ -1645,6 +1747,13 @@
           // kunne drive fra komponenterne; her er der ingen at drive fra.
           "omkostning": {
             "$post": {
+              // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+              // newData.exists(). Begge dele er noedvendige, og de stopper hver
+              // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+              // registret — og uden leddet kunne en enkelt post hardslettes.
+              // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+              // Se beslutning 53.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|facility.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('facility').val() === true) && newData.exists()",
               ".validate": "newData.isNumber() && newData.val() >= 0 && $post.matches(/^(el|varme|vand|ventilation|alarm)$/)"
             }
           }
@@ -1674,10 +1783,16 @@
         // Indkoeb.
         "leverandoerer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
           ".indexOn": ["aktiv", "kategori", "navn"],
 
           "$leverandoerId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['navn', 'kategori'])",
 
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
@@ -1752,9 +1867,15 @@
         // afdelinger. Fordelingsnøglen for fælles omkostninger er udskudt.
         "indkoeb": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
           ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
           "$indkoebId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['division', 'dato', 'leverandoerId', 'vare', 'antal', 'prisPrEnhedOere', 'fakturastatus'])",
             "division": {
               ".validate": "newData.isString() && newData.val().matches(/^(gods|bus|faelles)$/)"
@@ -1912,8 +2033,14 @@
 
         "kassetyper": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
           "$typeId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['navn'])",
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 200" },
@@ -1946,9 +2073,15 @@
         // steder.js lavede for hjemsted.
         "reolpladser": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|reolpladser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["hal"],
           "$pladsId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|reolpladser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['hal', 'reol', 'fag', 'hylde', 'plads'])",
             "hal": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
             "reol": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 10" },
@@ -1977,7 +2110,11 @@
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
           ".indexOn": ["status", "type", "pladsId"],
           "$kasseId": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|')",
+            // ⚠ SIDSTE LED: EN KASSE FORSVINDER IKKE — DEN FAAR EN STATUS.
+            // .validate koeres ikke ved en sletning, saa uden leddet kunne en
+            // kasse med et udlaan bag sig fjernes helt, mens udlaanet blev
+            // staaende og pegede paa ingenting. Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|kasser.skriv|') && newData.exists()",
             // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
             // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
             // Samme regel som en solgt bil (beslutning 18).
@@ -2133,9 +2270,15 @@
         // ting, og derfor to noder frem for een med et flag.
         "varer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|varer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["kundeId", "varenummer", "varegruppe"],
           "$vareId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|varer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['kundeId', 'varenummer', 'navn', 'enhed', 'sporing'])",
             // ⚠ VAREN ER KUNDENS. Uden en gyldig kunde kan bevaegelsen ikke
             // afregnes, og saa er varen paa lageret uden en modpart.
@@ -2180,9 +2323,15 @@
         // en beholder — samme faelde som reolpladser.skriv lukkede.
         "carriers": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|carriers.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["status", "pladsId", "kundeId", "etapeId"],
           "$carrierId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|carriers.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && newData.exists()",
             // ⚠ EN CARRIER SLETTES ALDRIG. Bevaegelseshistorikken haenger paa
             // id'et, og et id der forsvinder, goer historikken uforklarlig.
             // En egen beholder der gaar i stykker, faar udeAfDrift; en
@@ -2399,9 +2548,15 @@
         // hvem der koerer det hvorhen. En 3PL har begge dele.
         "plukordrer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|bevaegelser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["kundeId", "tilstand", "afgangMs", "prioritet"],
           "$ordreId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|bevaegelser.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['kundeId', 'nummer', 'tilstand', 'prioritet', 'afgangMs', 'afsendCarrierId', 'linjer'])",
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
             "nummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
@@ -2482,9 +2637,15 @@
 
         "kunder": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
-          ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true)",
           ".indexOn": ["navn", "aftaleUdloeberMs", "aktiv"],
           "$kundeId": {
+            // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
+            // newData.exists(). Begge dele er noedvendige, og de stopper hver
+            // sin ting: laa reglen paa noden, kunne ET kald tomme hele
+            // registret — og uden leddet kunne en enkelt post hardslettes.
+            // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
+            // Se beslutning 53.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|kunder.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('kunder').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['division'])",
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "division": {

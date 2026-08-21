@@ -3184,3 +3184,104 @@ Det er den samme guard som `test/rules.tenant.test.mjs` er for reglerne selv —
 en liste der ikke kontrolleres, driver. Og det var netop drift der gjorde, at
 en spærring alle troede var på plads, kunne omgås i to trin uden at nogen
 kiggede efter.
+
+## 53. Hele kunderegistret kunne slettes med ét kald
+
+Beslutning 52 lukkede én sletning. Så spurgte jeg hvor mange andre der stod
+åbne, og målte det i emulatoren med en bruger der har **alle** permissions —
+altså den adgang admin i forvejen har:
+
+> **20 af 23 poster kunne hardslettes.**
+> **17 af 23 HELE noder kunne tømmes i ét kald.**
+
+Hele kunderegistret. Hele prisgrundlaget. Alle indkøb. Alle facility-data. Og
+`sensitive/personale` — den klassificerede personalemappe — i én `remove()`.
+
+`CLAUDE.md` har hele tiden sagt *"hardslet ikke regnskabsdata"*, `skriv.js` har
+med vilje ingen `slet()`, og en prøve læser filen som tekst og fejler på
+`.remove()`. Alt det handler om **klientbiblioteket**. `db.ref().remove()` går
+uden om det, og en disciplin der kun findes i frontend, er ikke adgangskontrol
+— det er den samme sætning som punkt 3 i den låste rækkefølge.
+
+### To fejl, og de er hver sin
+
+**1. `.write` lå på NODEN.** Den kaskaderer nedad: tilladelsen til at skrive
+én post var samtidig tilladelse til at overskrive eller tømme hele noden. Det
+er samme kendsgerning som beslutning 17 bygger på for `.read`, og som
+beslutning 52 løb ind i — tredje gang den koster noget.
+
+**2. Ingen `newData.exists()`.** En `.validate` køres ikke ved en sletning, så
+formkravene sagde intet om at forsvinde.
+
+⚠ **Og idiomet fandtes allerede.** `newData.exists()` stod på præcis **tre**
+noder — `koeretoejer`, `personale`, `kompetencer` — fordi nogen tænkte over det
+dér og ikke de tyve andre steder. Det er repoets kendte mønster: en rigtig regel
+skrevet ét sted, som ingen holdt op mod de andre.
+
+### Hvad der er lukket
+
+`.write` er flyttet ned på **postniveau** på 18 stier og har fået leddet:
+
+`lagre` · `omkostninger` · `satser` · `fravaer` · `leverandoerer` · `indkoeb` ·
+`kassetyper` · `reolpladser` · `varer` · `carriers` · `plukordrer` · `kunder` ·
+`kasser` · `facility/{lokationer, aktiver, zoner, sensorer, fejl, omkostning}`
+
+Og de fire klassificerede satellitter — `sensitive/{kunder, koeretoejer,
+personale, fravaer}` — fik et `$id`-led de slet ikke havde: reglen lå på noden,
+og satellitten var derfor en `remove()` fra at være væk.
+
+Efter: **0 af 23 noder kan tømmes, og 2 poster kan slettes.**
+
+⚠ **`satser` er den vigtigste af dem.** Beslutning 7 siger at en sats
+*overskrives aldrig* — man lægger en ny post med `gyldigFra`. Reglen håndhævede
+det mod en **overskrivning** og ikke mod en **sletning**, og et prisgrundlag man
+kan fjerne, versionerer ingenting. Nøjagtig samme forhold som mellem
+`.validate` og write-once i 52.
+
+### De to der MÅ slettes — og hvorfor
+
+- **`brugerlayout/$uid`.** Brugerens egen forside er en præference om hans egen
+  skærm, ikke en post om noget der er sket. Reglen er `auth.uid === $uid`, så
+  han kan kun rydde sin egen (beslutning 43).
+- **`indberetninger/$id` uden underskrift**, og dens satellit. `FORLOEB` har
+  ingen `annulleret`, så uden den åbning ville en fejloprettet indberetning stå
+  for altid. Er den underskrevet, er begge dele låst (beslutning 52).
+
+Listen er **undtagelsen, ikke reglen**. Står en sti der, er det fordi nogen har
+besluttet det.
+
+### ⚠ Reglerne binder klienten — ikke servicekontoen
+
+Det er svaret på det ene sted hvor en sletning virkelig skal kunne ske: en
+GDPR-sletning af en medarbejder. Admin-SDK'et går uden om reglerne, så retten
+til at blive glemt bliver ikke spærret her — den flyttes hen hvor den kan
+besluttes og **logges**, i stedet for at ligge som en knap i en browser. Samme
+snit som `auditoprydning`, der rapporterer frem for at slette på et tal ingen
+jurist har sagt god for.
+
+### Prøven er en ADFÆRDSPRØVE, ikke en tekstsøgning
+
+`test/rules.sletning.test.mjs` læser **stierne ud af regelfilen** — som
+nodelisten i `rules.tenant.test.mjs` — og prøver hver af dem: kan posten
+slettes, kan noden tømmes. En ny node med en for løs regel fejler dermed uden
+at nogen har husket at skrive et testtilfælde.
+
+⚠ **Og den kan ikke laves til en strengsøgning.** `indberetninger` bærer
+`newData.exists()` inde i et ELLER, fordi en uskreven post må trækkes tilbage.
+En søgning efter strengen ville sige "lukket" om en node der er åben med vilje
+— og dermed være grøn af den forkerte grund. Det er den samme fælde som prøven
+der klippede regelteksten fra `"reolpladser": {` til `".indexOn"`: da `.write`
+flyttede ned under indekset, blev udsnittet tomt og prøven grøn. Den læser nu
+reglen dér hvor den ligger.
+
+### Hvad flytningen kostede
+
+Fire prøver blev røde, og alle fire læste `.write` **på nodeniveau**. De var
+ikke forkerte før; de var skrevet ud fra hvor reglen tilfældigvis lå.
+
+⚠ **Og én af dem pegede på en rigtig mangel.** `modulerFor()` slog kun op på
+**eksakt** nodenavn, så `facility/lokationer` var "uden for tabellen" selv om
+`facility` står i den. Et modul er en spærring for et helt **træ**, og et barn
+arver derfor nu sin forælders modul. Alternativet — at skrive hvert af de seks
+facility-børn ind i `NODE_MODUL` — ville have været seks nye steder at glemme
+et.

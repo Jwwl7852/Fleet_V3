@@ -298,9 +298,21 @@ export const NODE_MODUL = {
  * bare `false`. Så ville modulklausulen lydløst holde op med at matche.
  */
 export const modulerFor = (node) => {
-  const v = NODE_MODUL[node];
-  if (!v) return [];
-  return Array.isArray(v) ? v : [v];
+  /* ⚠ ET BARN ARVER SIN FORAELDERS MODUL, og det er ikke en bekvemmelighed.
+     `facility` staar i tabellen; `facility/lokationer` gør ikke — men den
+     ligger UNDER den, og et modul er en spærring for et helt træ.
+
+     Det blev synligt da .write flyttede fra `facility` ned på hver af de seks
+     børns postniveau (beslutning 53). Uden arven ville prøven i
+     rules.moduler.test.mjs sige at seks nye regler bar en klausul for en node
+     "uden for tabellen" — og den rigtige rettelse ville se ud som at fjerne
+     klausulen. Alternativet, at skrive hvert barn ind i tabellen, ville være
+     seks nye steder at glemme et. */
+  for (let sti = node; sti; sti = sti.includes("/") ? sti.slice(0, sti.lastIndexOf("/")) : "") {
+    const v = NODE_MODUL[sti];
+    if (v) return Array.isArray(v) ? v : [v];
+  }
+  return [];
 };
 
 /** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */
