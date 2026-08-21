@@ -98,15 +98,13 @@ export default function Fravaer() {
      hent et vindue der er bredt nok, og stram klientside. 120 dage dækker en
      barselsorlov, som er det længste fravær i praksis.
 
-     division:"alle" står EKSPLICIT. Reglerne afviser feltet på fravaer/, så
-     posterne har det ikke, og useListe viser divisionsløse rækker i begge
-     toggles. Uden linjen ville det se ud som om skærmen bare var heldig. */
+     Reglerne afviser `division` på `fravaer/`, så posterne har det ikke —
+     og siden beslutning 70 er der ingen akse at vise dem på. */
   const { data: fravaer, henter, tilstand, genindlaes, afkortet } = useListe("fravaer", {
     ordnPaa: "fra",
     vindue: visAlle ? "alle" : "fremad",
     fremDage: 180,
     vindueDage: 120,
-    division: "alle",
     graense: 300,
     sorter: (a, b) => a.fra - b.fra,
     demo: DEMO_FRAVAER,
@@ -117,8 +115,7 @@ export default function Fravaer() {
   });
 
   const { data: personale, henter: henterPersonale } = useListe("personale", {
-    ordnPaa: "status", vindue: "alle", division: "alle",
-    demo: DEMO_PERSONALE
+    ordnPaa: "status", vindue: "alle", demo: DEMO_PERSONALE
   });
 
   /* ⚠ DET EKSTRA OPSLAG. Årsagen hentes fra sensitive/fravaer/<id> — én post,

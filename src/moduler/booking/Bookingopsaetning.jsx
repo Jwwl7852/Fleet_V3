@@ -116,7 +116,7 @@ export default function Bookingopsaetning() {
      hvis tenanten har Flåde — uden modulet findes noden ikke, og svaret ville
      være en afvisning frem for et tomt satsark. */
   const { data: koeretoejer } = useListe("koeretoejer", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
     hent: harModul(moduler, "flaade"),
   });
 

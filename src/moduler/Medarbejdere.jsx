@@ -278,17 +278,15 @@ export default function Medarbejdere() {
      det er ærligt: det ER en anden forespørgsel. Søgning og funktion filtreres
      derimod i klienten og koster ingenting.
 
-     division:"alle" er sat EKSPLICIT. Posterne har ingen division, og
-     useListe viser divisionsløse rækker i begge toggles — så resultatet ville
-     være det samme uden. Men så ville det se ud som om skærmen bare var
-     heldig. Her står der at den ikke er delt, fordi staben ikke er det. */
+     Staben er ikke delt, og posterne har ingen division (beslutning 19).
+     Aksen er fjernet helt i 70 — staben var et af de steder hvor den aldrig
+     passede. */
   const {
     data: personale, henter: henterPersonale,
     tilstand: personaleTilstand, genindlaes: genindlaesPersonale, afkortet
   } = useListe("personale", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
-    division: "alle",
     graense: 300,
     sorter: (a, b) => a.navn.localeCompare(b.navn, "da"),
     demo: DEMO_PERSONALE,
@@ -310,7 +308,6 @@ export default function Medarbejdere() {
   } = useListe("kompetencer", {
     ordnPaa: "udloeberMs",
     vindue: "alle",
-    division: "alle",
     demo: DEMO_KOMPETENCER
   });
 

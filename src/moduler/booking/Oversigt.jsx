@@ -91,10 +91,10 @@ export default function BookingOversigt() {
      deres booking: tilstanden regnes af ALLE forløbets etaper, og en etape
      der forsvandt ud af summen, ville gøre et delvist forløb til et færdigt. */
   const etapeListe = useListe("etaper", {
-    vindue: "alle", division: "alle", graense: 1000, demo: DEMO_ETAPER,
+    vindue: "alle", graense: 1000, demo: DEMO_ETAPER,
   });
   const kundeListe = useListe("kunder", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KUNDER,
+    vindue: "alle", graense: 500, demo: DEMO_KUNDER,
   });
   const opgaveListe = useListe("opgaver", {
     ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
@@ -106,10 +106,10 @@ export default function BookingOversigt() {
      et råt id. Et navneopslag er ikke uskyldigt, fordi det ikke er et tal:
      en tabel med tomme navne ligner data der mangler. */
   const bilListe = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
   const persListe = useListe("personale", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
 
   if (henter) return <Henter hvad="nøgletal" />;

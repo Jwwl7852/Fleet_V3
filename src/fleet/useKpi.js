@@ -8,12 +8,30 @@
  *
  * once() frem for on() — egress koster, og disse tal skal ikke være live.
  *
- * Demo-sættet er delt på division ligesom den rigtige node. Var det ét
- * fælles sæt, ville Gods/Bus-skiftet ikke ændre et eneste tal i demo-mode,
- * og beslutning 9 ville kun være implementeret på stien.
+ * ⚠ HER STOD AT DEMO-SÆTTET ER DELT PÅ DIVISION *"ligesom den rigtige node"*
+ * — og at et fælles sæt ville gøre Gods/Bus-skiftet virkningsløst i demo.
+ * Aksen er fjernet (beslutning 70), og der er ikke længere noget at skifte.
+ *
+ * ⚠ GRENEN I STIEN ER DER ENDNU, som en KONSTANT og ikke som en tilstand.
+ * `kpi/` er stiformet efter division — `kpi/<division>/<snapshot>/<domaene>`
+ * (beslutning 44) — og reglen matcher den med et wildcard `$division`. At
+ * læse et niveau højere ville derfor ikke bare være en anden sti; det ville
+ * ramme en anden regel. **Stien skifter form sammen med reglen og de
+ * udrullede data, ikke før** — det er etape 2 af beslutning 70.
  */
 import { useEffect, useState, useCallback } from "react";
 import { useFleet } from "./FleetContext.jsx";
+
+/**
+ * ⚠ EN REST AF EN AKSE DER ER FJERNET, og den står med navn frem for som et
+ * "gods" spredt i tre strenge.
+ *
+ * Beslutning 70 fjernede divisionen, men `kpi/` bærer den stadig i sin STI, og
+ * regelfilen matcher niveauet med et wildcard. Et hardkodet "gods" tre steder
+ * ville være tre steder at glemme; ét navn er ét sted at slette, og navnet
+ * siger hvad det er — en gren, ikke en division.
+ */
+const KPI_GREN = "gods";
 import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand, erAfvist } from "./datatilstand.js";
@@ -22,7 +40,7 @@ import { harModul } from "./moduler.js";
 import { harPerm } from "./permissions.js";
 
 export function useKpi() {
-  const { tenantId, division, path, dage, bruger, moduler } = useFleet();
+  const { tenantId, path, dage, bruger, moduler } = useFleet();
   const [data, setData] = useState(null);
   const [henter, setHenter] = useState(true);
   const [fejl, setFejl] = useState(null);
@@ -39,7 +57,7 @@ export function useKpi() {
     let aktiv = true;
     setHenter(true);
     setFejl(null);
-    const demo = DEMO_KPI[division] || DEMO_KPI.gods;
+    const demo = DEMO_KPI[KPI_GREN] || DEMO_KPI.gods;
 
     /* FØR forespørgslen. Manglende database og manglende bruger er begge
        tilstande vi kender op front — de skal ikke fanges som fejl, og uden
@@ -78,7 +96,7 @@ export function useKpi() {
           (p) => harPerm(bruger?.perms, p));
         const svar = await Promise.all(oenskede.map(async (d) => {
           try {
-            const s = await db.ref(path(`kpi/${division}/current/${d}`)).once("value");
+            const s = await db.ref(path(`kpi/${KPI_GREN}/current/${d}`)).once("value");
             return { d, vaerdi: s.val(), afvist: false };
           } catch (e) {
             /* ⚠ EN AFVIST LÆSNING KASTER IKKE HELE SIDEN. Ét lukket domæne er
@@ -143,7 +161,7 @@ export function useKpi() {
              ligger i `afviste` ved siden af tallene. En skærm der vil sige
              "du må ikke se det" frem for "ikke regnet endnu", skal spørge
              den — se Dashboard. */
-          setData(medFuldForm(vaerdi, division));
+          setData(medFuldForm(vaerdi, KPI_GREN));
         } else {
           setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
           setData(null);
@@ -160,7 +178,7 @@ export function useKpi() {
     })();
 
     return () => { aktiv = false; };
-  }, [tenantId, division, dage, path, nonce, bruger, moduler]);
+  }, [tenantId, dage, path, nonce, bruger, moduler]);
 
   return { kpi: data, henter, fejl, tilstand, genindlaes, afviste };
 }

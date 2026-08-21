@@ -155,18 +155,19 @@ export default function Reolpladser() {
   const maaSkrive = harPerm(bruger?.perms, PERM.kasserSkriv);
 
   /* ⚠ INGEN DIVISION. En reolplads hører til en hal, ikke til gods eller bus.
-     `division: "alle"` står eksplicit, så det ikke ser ud som om skærmen bare
-     var heldig — samme begrundelse som i Flåde. */
+     Hele listen hentes — der er ingen akse at dele den på (beslutning 70),
+     og der var ingen at dele den på før heller: samme begrundelse som i
+     Flåde. */
   const { data: pladser, tilstand, genindlaes, henter } = useListe("reolpladser", {
-    division: "alle", graense: 500, demo: DEMO_REOLPLADSER,
+    graense: 500, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
   const { data: typer } = useListe("kassetyper", {
-    division: "alle", graense: 100, demo: DEMO_KASSETYPER,
+    graense: 100, demo: DEMO_KASSETYPER,
     sorter: (a, b) => (a.navn || "").localeCompare(b.navn || "", "da"),
   });
   const { data: kasser } = useListe("kasser", {
-    division: "alle", graense: 1000, demo: DEMO_KASSER,
+    graense: 1000, demo: DEMO_KASSER,
   });
 
   if (henter) return <Henter hvad="reolpladserne" />;

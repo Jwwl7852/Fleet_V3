@@ -294,31 +294,31 @@ export default function Pluk() {
   const [svar, saetSvar] = useState(null);
 
   const { data: ordrer, tilstand, genindlaes, henter } = useListe("plukordrer", {
-    division: "alle", graense: 1000, demo: [],
+    graense: 1000, demo: [],
     sorter: (a, b) => (a.afgangMs || 0) - (b.afgangMs || 0),
   });
   const { data: bevaegelser, genindlaes: genBev } = useListe("bevaegelser", {
-    division: "alle", graense: 2000, demo: [],
+    graense: 2000, demo: [],
   });
   const { data: beholdning, genindlaes: genBeh } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
     sorter: (a, b) => (a.varenummer || "").localeCompare(b.varenummer || "", "da"),
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
   /* ⚠ GODSET LIGGER I EN BEHOLDER (etape 12). Både plukket og
      afsendelsesstedet er beholdere; hylden er beholderens adresse. */
   const { data: carriers } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
     sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
   const { data: kunder } = useListe("kunder", {
-    division: "alle", graense: 500, demo: DEMO_KUNDER,
+    graense: 500, demo: DEMO_KUNDER,
   });
 
   if (henter) return <Henter hvad="plukordrerne" />;

@@ -275,22 +275,22 @@ export default function Kasser() {
   /* Ingen division på en kasse — den hører til en hal. Eksplicit, så det ikke
      ser ud som om skærmen bare var heldig. */
   const { data: kasser, tilstand, genindlaes, henter } = useListe("kasser", {
-    division: "alle", graense: 1000, demo: DEMO_KASSER,
+    graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 500, demo: DEMO_REOLPLADSER,
+    graense: 500, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
   const { data: typer } = useListe("kassetyper", {
-    division: "alle", graense: 100, demo: DEMO_KASSETYPER,
+    graense: 100, demo: DEMO_KASSETYPER,
   });
   /* ⚠ HERFRA KOMMER "RESERVERET". Det er IKKE en kassestatus — en reservation
      ER et udlån, og et flag på kassen ville være samme kendsgerning gemt to
      steder. Prisen for at gøre det rigtigt er den her ekstra læsning; til
      gengæld står der hvilken sag og hvornår, og ikke bare "booket". */
   const { data: udlaan } = useListe("kasseudlaan", {
-    division: "alle", graense: 2000, demo: DEMO_KASSEUDLAAN,
+    graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
 
   if (henter) return <Henter hvad="kasserne" />;

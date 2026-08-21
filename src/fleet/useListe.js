@@ -83,12 +83,25 @@ export { MAX_PARTITIONER, FAELLES, maanedsSegmenter, hentListe };
  * hvorfor en booking mangler.
  */
 export function useListe(node, indstillinger = {}) {
-  const { periode, path, tenantId, division: valgtDivision, bruger } = useFleet();
+  const { periode, path, tenantId, bruger } = useFleet();
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
-    filtrer, sorter, division: divisionsTilstand = "shell",
+    filtrer, sorter,
     partition, live = false, demo, auditerSom, hent = true,
+    ...ukendte
   } = indstillinger;
+
+  /* ⚠ `division` VAR EN INDSTILLING HER ("shell" | "alle"), og den er væk med
+     beslutning 70. Et kaldsted der stadig sender den, filtrerer ikke noget —
+     og det ville være tavst. Derfor fejler den højlydt: konfigurationsfejl er
+     statiske pr. kaldsted og skal ses første gang skærmen åbnes. */
+  const uventede = Object.keys(ukendte);
+  if (uventede.length) {
+    throw new Error(
+      `useListe("${node}"): ukendte indstillinger: ${uventede.join(", ")}. `
+      + "division blev fjernet i beslutning 70 — aksen findes ikke længere."
+    );
+  }
 
   /* Konfigurationsfejl er statiske pr. kaldsted — de skal fejle højlydt
      første gang skærmen åbnes, ikke give et halvt resultat. */
@@ -233,11 +246,11 @@ export function useListe(node, indstillinger = {}) {
     return () => { aktiv = false; };
   }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger, hent]);
 
-  /* Divisionen filtreres HER, ikke i effekten. Derfor genhenter et skift
-     mellem Gods og Bus ikke — det er øjeblikkeligt og koster ingen egress. */
-  const data = efterbehandl(raa, {
-    ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand,
-  });
+  /* ⚠ HER STOD DIVISIONSFILTERET, og noten forklarede at et skift mellem Gods
+     og Bus var øjeblikkeligt fordi filtreringen lå her og ikke i effekten. Det
+     var rigtigt, og hele den optimering er nu overflødig: der er ikke noget at
+     skifte mellem. Se beslutning 70. */
+  const data = efterbehandl(raa, { ordnPaa, interval, lig, filtrer, sorter });
   /* ⚠ VINDUET GIVES MED TILBAGE. En kalender der kan bladres, kan bladres
      UD af det interval der blev hentet — og så står gitteret tomt uden at
      noget er tomt. Det er tavs afkortning med et ekstra trin, præcis som

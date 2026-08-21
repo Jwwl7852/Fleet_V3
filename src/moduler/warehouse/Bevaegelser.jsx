@@ -65,22 +65,22 @@ export default function Bevaegelser() {
   const [filter, saetFilter] = useState("");
 
   const { data: bevaegelser, tilstand, genindlaes, henter } = useListe("bevaegelser", {
-    division: "alle", graense: 500, demo: [],
+    graense: 500, demo: [],
     sorter: (a, b) => (b.tidspunktMs || 0) - (a.tidspunktMs || 0),
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
     sorter: (a, b) => (a.varenummer || "").localeCompare(b.varenummer || "", "da"),
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
   const { data: beholdning, genindlaes: genindlaesBeholdning } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: carriers, genindlaes: genindlaesCarriers } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
     sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
 

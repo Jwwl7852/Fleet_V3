@@ -133,28 +133,31 @@ export function somServeren(raekker, { ordnPaa, interval, lig, graense }) {
   return ud;
 }
 
-/* Visningsreglen: den valgte division PLUS fælles. En kunde der køber både
-   gods og bus står på begge lister med samme tal.
-   En post UDEN division vises i begge — ikke i ingen. Skjuler den sig,
-   forsvinder en fejlskrevet booking fra begge toggles, og fejlen opdages
-   først når nogen spørger hvorfor en tur mangler. */
-export function divisionsfilter(raekker, valgt, tilstand) {
-  if (tilstand === "alle") return raekker;
-  return raekker.filter(
-    (r) => r.division == null || r.division === valgt || r.division === FAELLES
-  );
-}
+/* ⚠ HER LÅ divisionsfilter() — fjernet i beslutning 70.
+
+   Reglen var: den valgte division PLUS fælles, og en post UDEN division i
+   BEGGE. Det led var det vigtigste i hele funktionen — beslutning 19 fjernede
+   division fra bilerne, og uden det ville biltabellen have stået tom i både
+   Gods og Bus uden at nogen havde slettet en bil.
+
+   ⚠ OG DET ER VÆRD AT LÆGGE MÆRKE TIL HVAD DET LED VAR. "Vis den i begge" er
+   svaret man giver, når aksen ikke passer på dataene. Det gjaldt stamdata fra
+   19, det gjaldt facility, og til sidst gjaldt det flåden og bemandingen
+   (beslutning 69). Hver gang aksen ikke passede, var svaret "begge" — og en
+   opdeling hvor svaret ofte er "begge", deler ikke noget.
+
+   Aksen er fjernet. Kunden er enten godsvognmand eller busvognmand, og det
+   han HAR, står i hans moduler. */
 
 /* Klientsidedelen. Køres på BÅDE ægte og demo-data, så en fejl i et filter
    dukker op i demo-mode i stedet for først i produktion. */
 export function efterbehandl(raekker, {
-  ordnPaa, interval, lig, filtrer, sorter, valgtDivision, divisionsTilstand,
+  ordnPaa, interval, lig, filtrer, sorter,
 }) {
   let ud = raekker;
   if (ordnPaa && lig === undefined && interval) {
     ud = ud.filter((r) => r[ordnPaa] >= interval.fra && r[ordnPaa] < interval.til);
   }
-  ud = divisionsfilter(ud, valgtDivision, divisionsTilstand);
   if (filtrer) ud = ud.filter(filtrer);
   if (sorter) ud = [...ud].sort(sorter);
   return ud;

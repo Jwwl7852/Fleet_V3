@@ -241,20 +241,20 @@ export default function Disponering() {
      som krop; træet samles igen nedenfor. Formen er nodens, ikke skærmens:
      `tjekDisponering()` slår op i netop den, og serveren læser den direkte. */
   const resv = useListe("reservationer", {
-    vindue: "alle", division: "alle", graense: 50,
+    vindue: "alle", graense: 50,
   });
 
   /* ⚠ ETAPERNE ER OGSÅ EN NODE. De blev læst fra demo-sættet mens
      `etapeskift` skrev til noden — så en etape man lige havde flyttet, stod
-     uændret i gitteret. division: "alle": gitteret viser hele flåden, og en
-     bus-etape hører på kalenderen også når Gods er valgt.
+     uændret i gitteret. Gitteret viser hele flåden — der er ingen division
+     at dele den på længere (beslutning 70).
 
      vindueDage dækker bagud; `fremDage` frem, fordi en disponeringskalender
      per definition kigger FREM. useListe kaster hvis man sender både lig og
      vindue, så det er det ene felt der bruges på tid. */
   const etaperListe = useListe("etaper", {
     ordnPaa: "fra", vindue: "fremad", fremDage: 60, vindueDage: 60,
-    division: "alle", graense: 500,
+    graense: 500,
   });
   const etaper = etaperListe.data;
 
@@ -265,26 +265,25 @@ export default function Disponering() {
      rækker — og fordi rækkerne filtreres på de id'er hans etaper peger på,
      ville ugegitteret stå TOMT uden at nogen havde slettet en bil.
 
-     `division: "alle"`: gitteret viser hele flåden. Stamdata bærer i øvrigt
-     ikke feltet (beslutning 19), og en bus-etape hører på kalenderen også
-     når Gods er valgt. */
+     Gitteret viser hele flåden. Stamdata bar i forvejen ikke feltet
+     (beslutning 19), og aksen findes ikke længere (70). */
   const koeretoejer = useListe("koeretoejer", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
   const personale = useListe("personale", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
+    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
   const kompetencer = useListe("kompetencer", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KOMPETENCER,
+    vindue: "alle", graense: 500, demo: DEMO_KOMPETENCER,
   });
   const leverandoerer = useListe("leverandoerer", {
-    division: "alle", vindue: "alle", graense: 200, demo: DEMO_LEVERANDOERER,
+    vindue: "alle", graense: 200, demo: DEMO_LEVERANDOERER,
   });
   /* ⚠ SAMME OPSLAG SOM DRIFTSKALENDEREN. Ét vindue, ét ordnPaa — to skærme
      der læste den samme node forskelligt, ville vise hver sin dag. */
   const opgaver = useListe("opgaver", {
     ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
-    division: "alle", graense: 500, demo: DEMO_OPGAVER,
+    graense: 500, demo: DEMO_OPGAVER,
   });
 
   const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);

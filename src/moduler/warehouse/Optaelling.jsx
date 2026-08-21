@@ -54,23 +54,23 @@ export default function Optaelling() {
   const [resultat, saetResultat] = useState(null);
 
   const { data: optaellinger, tilstand, genindlaes, henter } = useListe("optaellinger", {
-    division: "alle", graense: 2000, demo: [],
+    graense: 2000, demo: [],
     sorter: (a, b) => (b.tidspunktMs || 0) - (a.tidspunktMs || 0),
   });
   const { data: beholdning, genindlaes: genBeh } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
   });
   /* ⚠ DER TÆLLES I EN BEHOLDER, IKKE PÅ EN HYLDE (etape 12). Hylden vises
      stadig — den er beholderens adresse, og den der skal ud og tælle, skal
      vide hvor han går hen. */
   const { data: carriers } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
   });
 
   if (henter) return <Henter hvad="optællingerne" />;

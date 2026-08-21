@@ -49,8 +49,9 @@
  *
  * INGEN DIVISION. Et køretøj har ingen (beslutning 19), og reglerne afviser
  * feltet. Byg ikke et divisionsfelt ind i en formular — det ville fejle ved
- * skrivningen. Skærmen reagerer derfor heller ikke på Gods/Bus-toggle'en;
- * division:"alle" står eksplicit, så det ikke ser ud som om den bare var heldig.
+ * skrivningen. ⚠ Her stod desuden at skærmen ikke reagerer på
+ * Gods/Bus-toggle'en. Den toggle findes ikke længere (beslutning 70), og
+ * flåden var netop et af de steder hvor aksen aldrig passede.
  *
  * SKRIVNING ER IKKE BYGGET. Knapperne står der, deaktiverede, med forklaringen.
  *
@@ -404,11 +405,10 @@ export default function FlaadeOversigt() {
      læse som SINE: "Åbne fejl" pr. bil i tabellen, og de fire seneste
      hændelser i panelet. Noden er seedet; skærmen viste demo-sættet.
 
-     division: "alle" — en indberetning bærer en division, men flådetabellen
-     viser hele flåden (bilen har ingen, beslutning 19). Filtrerede vi her,
-     ville en bus' åbne fejl forsvinde når Gods var valgt, og bilen se hel ud. */
+     Flådetabellen viser hele flåden; bilen bærer ingen division (beslutning
+     19), og aksen er fjernet helt (70). */
   const indb = useListe("indberetninger", {
-    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500
+    ordnPaa: "oprettetMs", vindueDage: 400, graense: 500
   });
 
   const { data: flaade, henter, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
@@ -417,7 +417,6 @@ export default function FlaadeOversigt() {
     /* EKSPLICIT. Posterne har ingen division (beslutning 19), og useListe
        viser divisionsløse rækker i begge toggles — så resultatet ville være
        det samme uden. Men så ville det se ud som om skærmen var heldig. */
-    division: "alle",
     graense: 300,
     sorter: (a, b) => (a.kaldenavn || a.navn).localeCompare(b.kaldenavn || b.navn, "da"),
     demo: DEMO_KOERETOEJER

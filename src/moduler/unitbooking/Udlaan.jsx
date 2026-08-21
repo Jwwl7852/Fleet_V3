@@ -173,25 +173,25 @@ export default function Udlaan() {
   const [svar, saetSvar] = useState(null);
 
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
-    division: "alle", graense: 2000, demo: DEMO_KASSEUDLAAN,
+    graense: 2000, demo: DEMO_KASSEUDLAAN,
     sorter: (a, b) => (b.fra || 0) - (a.fra || 0),
   });
   const { data: kasser } = useListe("kasser", {
-    division: "alle", graense: 1000, demo: DEMO_KASSER,
+    graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 500, demo: DEMO_REOLPLADSER,
+    graense: 500, demo: DEMO_REOLPLADSER,
   });
   const { data: typer } = useListe("kassetyper", {
-    division: "alle", graense: 100, demo: DEMO_KASSETYPER,
+    graense: 100, demo: DEMO_KASSETYPER,
   });
   /* ⚠ KUNDER KAN VÆRE UTILGÆNGELIGE, og det er ikke en fejl: `kunder` er sit
      eget modul, og en unitbooking-kunde behøver ikke have det. Feltet udelades
      i så fald — et påkrævet felt mod en node man ikke må læse, ville gøre
      skærmen ubrugelig for præcis den rolle der bruger den. */
   const { data: kunder, tilstand: kundetilstand } = useListe("kunder", {
-    division: "alle", graense: 500, demo: [],
+    graense: 500, demo: [],
   });
 
   if (henter) return <Henter hvad="udlånene" />;

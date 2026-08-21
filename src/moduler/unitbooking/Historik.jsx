@@ -80,17 +80,17 @@ export default function Historik() {
   const [soeg, saetSoeg] = useState("");
 
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
-    division: "alle", graense: 2000, demo: DEMO_KASSEUDLAAN,
+    graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
   const { data: kasser } = useListe("kasser", {
-    division: "alle", graense: 1000, demo: DEMO_KASSER,
+    graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
   const { data: typer } = useListe("kassetyper", {
-    division: "alle", graense: 100, demo: DEMO_KASSETYPER,
+    graense: 100, demo: DEMO_KASSETYPER,
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 500, demo: DEMO_REOLPLADSER,
+    graense: 500, demo: DEMO_REOLPLADSER,
   });
 
   if (henter) return <Henter hvad="historikken" />;

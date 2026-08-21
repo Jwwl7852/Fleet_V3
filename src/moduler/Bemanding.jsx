@@ -88,7 +88,7 @@ export default function Bemanding() {
      medarbejderstab uden hjemsted frem for et opslag der peger det forkerte
      sted. */
   const personale = useListe("personale", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();

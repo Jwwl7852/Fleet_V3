@@ -82,14 +82,14 @@ export default function Fakturaer() {
      ordnPaa: "fakturadatoMs" — det er indekset noden faktisk har. Det hed
      "godkendelsesstatus" indtil for få etaper siden, og INGEN post bar det. */
   const liste = useListe("fakturaer", {
-    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500
+    ordnPaa: "fakturadatoMs", vindueDage: 400, graense: 500
   });
   const indkoeb = useListe("indkoeb", {
-    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500
+    ordnPaa: "dato", vindueDage: 400, graense: 500
   });
   /* ⚠ LEVERANDØRERNE ER EN SEEDET NODE. Se noten ved importen. */
   const leverandoerer = useListe("leverandoerer", {
-    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "navn", vindue: "alle", graense: 500,
     demo: DEMO_LEVERANDOERER,
   });
   const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);

@@ -82,25 +82,25 @@ export default function Sporbarhed() {
   const {
     data: bevaegelser, tilstand, genindlaes, henter,
   } = useListe("bevaegelser", {
-    division: "alle", vindue: "alle", graense: 5000, demo: [],
+    vindue: "alle", graense: 5000, demo: [],
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_VARER,
+    vindue: "alle", graense: 2000, demo: DEMO_VARER,
   });
   const { data: beholdning } = useListe("beholdning", {
-    division: "alle", vindue: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    vindue: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: carriers } = useListe("carriers", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    vindue: "alle", graense: 2000, demo: DEMO_CARRIERS,
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    vindue: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
   });
   const { data: enheder } = useListe("enheder", {
-    division: "alle", vindue: "alle", graense: 5000, demo: DEMO_ENHEDER,
+    vindue: "alle", graense: 5000, demo: DEMO_ENHEDER,
   });
   const { data: kunder } = useListe("kunder", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KUNDER,
+    vindue: "alle", graense: 500, demo: DEMO_KUNDER,
   });
 
   if (henter) return <Henter hvad="sporet" />;

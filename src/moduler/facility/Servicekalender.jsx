@@ -98,7 +98,7 @@ export default function Servicekalender() {
   /* ⚠ FACILITY ER FÆLLES: division "alle" står eksplicit, så det kan ses at
      det er besluttet frem for overset. Et anlæg hører ikke til Gods eller Bus
      — porten bruges af begge. Opgaven bærer feltet, aktivet gør ikke. */
-  const felles = { vindue: "alle", division: "alle", graense: 500 };
+  const felles = { vindue: "alle", graense: 500 };
   const lokationer = useListe("facility/lokationer", { ...felles, demo: DEMO_LOKATIONER });
   const aktiver = useListe("facility/aktiver", { ...felles, demo: DEMO_AKTIVER });
   const leverandoerer = useListe("leverandoerer", { ...felles, graense: 200, demo: DEMO_LEVERANDOERER });
@@ -107,7 +107,7 @@ export default function Servicekalender() {
      hver sin dag. */
   const opgaver = useListe("opgaver", {
     ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
-    division: "alle", graense: 500, demo: DEMO_OPGAVER,
+    graense: 500, demo: DEMO_OPGAVER,
   });
 
   const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);

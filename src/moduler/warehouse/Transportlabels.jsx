@@ -84,26 +84,26 @@ export default function Transportlabels() {
   const {
     data: carriers, tilstand, genindlaes, henter,
   } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
     sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
   const { data: etaper } = useListe("etaper", {
-    division: "alle", graense: 2000, demo: DEMO_ETAPER, hent: harBooking,
+    graense: 2000, demo: DEMO_ETAPER, hent: harBooking,
   });
   const { data: bookinger } = useListe("bookinger", {
-    division: "alle", graense: 2000, demo: DEMO_BOOKINGER, hent: harBooking,
+    graense: 2000, demo: DEMO_BOOKINGER, hent: harBooking,
   });
   const { data: kunder } = useListe("kunder", {
-    division: "alle", graense: 2000, demo: DEMO_KUNDER,
+    graense: 2000, demo: DEMO_KUNDER,
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
   });
   /* ⚠ SERIENUMMER OG BATCH ER IKKE FELTER PÅ BEHOLDEREN. De står på det gods
      der ligger i den, og udledes derfor af beholdningen — to steder til samme
      kendsgerning ville drive. */
   const { data: beholdning } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
 
   if (henter) return <Henter hvad="transportlabels" />;

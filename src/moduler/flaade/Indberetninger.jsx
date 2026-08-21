@@ -73,12 +73,12 @@ export default function Indberetninger() {
      ordnPaa: "art" og ikke "type". Indekset navngav "type", som ingen post
      har; tredje gang det mønster dukkede op. */
   const liste = useListe("indberetninger", {
-    ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "oprettetMs", vindueDage: 400, graense: 500,
   });
 
   /* ⚠ KUN SOM FALDBAKKE. Flåden er en seedet node. */
   const enheder = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
   const bilNavn = (id) =>
     enheder.data.find((k) => k.id === id)?.kaldenavn || id || "—";

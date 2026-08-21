@@ -56,10 +56,10 @@ export default function RuteOgStatus() {
     ordnPaa: "fra", vindue: "alle", graense: 500, demo: DEMO_ETAPER,
   });
   const bilListe = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
   const persListe = useListe("personale", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
 
   const bil = (id) => bilListe.data.find((b) => b.id === id);

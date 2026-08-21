@@ -65,16 +65,17 @@ export const NAV = [
        uden variation. Se AppShell. */
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
     under: "Driftskalender og indberetninger",
-    /* ⚠ INGEN GODS/BUS HER — OG DET ER IKKE EN SMAGSSAG.
-       Beslutning 19: stamdata har ikke en division, og feltet er FORBUDT paa
-       `personale/` og `koeretoejer/`. En divisionsvaelger over Fleets skaerme
-       skifter derfor en tilstand ingen af skaermene laeser — en paen knap.
-       Den skjules HER og ikke i AppShell: shellen maa ikke kende ruter, og
-       naeste modul med samme forhold skal kunne saette det samme flag.
-       ⚠ Beslutning 9 staar ved magt: Gods/Bus gaelder stadig hele platformen.
-       Det er kun visningen dette modul der er slaaet fra.
-       ⚠ Og Workforce laeser den SAMME node (`personale`) — se FLEET.md 3.3. */
-    udenDivision: true,
+    /* ⚠ HER STOD `udenDivision: true` — flaget der slog Gods/Bus-vaelgeren fra
+       for netop dette modul, fordi beslutning 19 forbyder division paa
+       `personale/` og `koeretoejer/`, og knappen derfor ville skifte en
+       tilstand ingen af skaermene laeser.
+
+       Argumentet var rigtigt og gjaldt bredere end nogen saa: naar aksen ikke
+       kunne baere Fleets egne skaerme, var den heller ikke den akse kunden
+       arbejder paa. Den er fjernet helt i beslutning 70, og flaget har dermed
+       intet at slaa fra. Undtagelsen var det foerste sted maskineriet gav
+       efter — den slags er vaerd at laegge maerke til, foer man bygger flere
+       undtagelser. */
     born: [
       { /* Beslutning 22's moenster igen: skaermen skifter navn, RUTEN goer ikke.
            Driftskalenderen er nu Fleets FORSIDE og ligger paa /flaade, hvor

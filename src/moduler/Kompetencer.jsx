@@ -64,15 +64,14 @@ export default function Kompetencer() {
      UDLØBNE BEVISER — det tal der afgør om en chauffør kan disponeres — og
      det stod med mockuppens tal i hver eneste tenant.
 
-     division: "alle" på begge. Hverken personale eller kompetencer bærer
-     feltet (beslutning 19), og et filter ville derfor være en påstand om at
-     de gjorde. */
+     Hverken personale eller kompetencer bærer `division` (beslutning 19), og
+     aksen findes ikke længere (70). */
   const pers = useListe("personale", {
-    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "status", vindue: "alle", graense: 500,
     demo: DEMO_PERSONALE,
   });
   const komp = useListe("kompetencer", {
-    vindue: "alle", division: "alle", graense: 2000, demo: DEMO_KOMPETENCER,
+    vindue: "alle", graense: 2000, demo: DEMO_KOMPETENCER,
   });
 
   const [valgtId, setValgtId] = useState(null);

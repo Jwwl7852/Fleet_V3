@@ -52,25 +52,26 @@ export default function Leverandoerer() {
      ikke: `leverandoerer` stod slet ikke i firebase.rules.json, selv om BÅDE
      indkoeb og fakturaer har indekseret leverandoerId siden de blev skrevet.
 
-     ⚠ division: "alle". Leverandøren BÆRER en division (modsat et køretøj —
-     se beslutning 19), men skærmen er hele kartoteket: Crawford leverer til
-     begge, og en indkøber i Gods skal kunne se hvem Bus handler med når han
-     skal finde en ny dækleverandør. Havde vi delt, ville en leverandør
+     ⚠ SKÆRMEN ER HELE KARTOTEKET. Leverandøren bar en division indtil
+     beslutning 70 — men allerede før den var argumentet mod at filtrere her
+     stærkt: Crawford leverer til begge, og en indkøber skulle kunne se hvem
+     den anden afdeling handlede med når han skulle finde en ny
+     dækleverandør. Havde vi delt, ville en leverandør
      forsvinde ud af listen uden at nogen havde ændret noget. */
   const {
     data: raa, henter: henterLev, tilstand: levTilstand, genindlaes: genindlaesLev,
-  } = useListe("leverandoerer", { ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500 });
+  } = useListe("leverandoerer", { ordnPaa: "navn", vindue: "alle", graense: 500 });
 
   const {
     data: indkoeb, henter: henterIndkoeb,
-  } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500 });
+  } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, graense: 500 });
 
   /* ⚠ FAKTURAERNE ER EN SEEDET NODE, og leverandørernes nøgletal blev regnet
      af demosættet: ni opdigtede fakturaer mod kundens egne. Skærmen RANGERER
      leverandører på tallet, så et forkert grundlag er ikke en visningsfejl —
      det er en anbefaling om hvem man skal handle med. */
   const { data: fakturaer } = useListe("fakturaer", {
-    ordnPaa: "fakturadatoMs", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "fakturadatoMs", vindueDage: 400, graense: 500,
     demo: DEMO_FAKTURAER,
   });
 

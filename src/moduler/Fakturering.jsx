@@ -107,7 +107,7 @@ export default function Fakturering() {
     data: raaGrundlag, tilstand: grundlagTilstand, genindlaes: genindlaesGrundlag,
     henter: henterGrundlag,
   } = useListe("grundlag", {
-    division: "alle", ordnPaa: "udarbejdetMs", vindueDage: 365, graense: 500,
+    ordnPaa: "udarbejdetMs", vindueDage: 365, graense: 500,
     demo: DEMO_GRUNDLAG,
   });
   /* ⚠ OVERSAT VED LÆSNINGEN, ÉN GANG. RTDB har ingen arrays: `linjer` og
@@ -120,10 +120,10 @@ export default function Fakturering() {
   /* Etaperne afgoer om et grundlag kan godkendes — kanGodkende() spoerger
      forloebstilstand(), ikke et filter her. */
   const { data: etaper } = useListe("etaper", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_ETAPER,
+    vindue: "alle", graense: 2000, demo: DEMO_ETAPER,
   });
   const { data: kunder } = useListe("kunder", {
-    division: "alle", vindue: "alle", graense: 500, demo: DEMO_KUNDER,
+    vindue: "alle", graense: 500, demo: DEMO_KUNDER,
   });
 
   if (henter || henterGrundlag) return <Henter hvad="fakturagrundlag" />;

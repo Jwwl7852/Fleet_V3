@@ -347,7 +347,7 @@ export default function IndkoebOversigt() {
      anden division. Et filter der ikke kan vælge det der står i tabellen,
      ligner en tom database. */
   const { data: raaLeverandoerer } = useListe("leverandoerer", {
-    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "navn", vindue: "alle", graense: 500,
   });
 
   /* ⚠ NODERNE, IKKE DEMOFILERNE. Tre lister som skærmen både SLÅR NAVNE OP I
@@ -356,17 +356,17 @@ export default function IndkoebOversigt() {
      ville afvise et valg skærmen selv havde givet. Samme fejl som Ny
      forespørgsel havde med kunderne (beslutning 55). */
   const { data: koeretoejer } = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+    vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
   const { data: lokationer } = useListe("facility/lokationer", {
-    vindue: "alle", division: "alle", graense: 200, demo: DEMO_LOKATIONER,
+    vindue: "alle", graense: 200, demo: DEMO_LOKATIONER,
   });
   /* ⚠ FAKTURAERNE ER EN SEEDET NODE, og leverandørernes nøgletal blev regnet
      af demosættet: ni opdigtede fakturaer mod kundens egne. To svar på ét
      spørgsmål, ét klik fra hinanden — nøjagtig den fejl Indkøb → Fakturaer
      havde. */
   const { data: fakturaer } = useListe("fakturaer", {
-    ordnPaa: "dato", vindueDage: 400, division: "alle", graense: 500,
+    ordnPaa: "dato", vindueDage: 400, graense: 500,
     demo: DEMO_FAKTURAER,
   });
 

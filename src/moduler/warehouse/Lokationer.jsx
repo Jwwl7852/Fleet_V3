@@ -188,23 +188,23 @@ export default function Lokationer() {
   const maaSkrive = harPerm(bruger?.perms, PERM.reolpladserSkriv);
 
   const { data: pladser, tilstand, genindlaes, henter } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
   const { data: beholdning } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
   });
   const { data: carriers } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
   });
   /* ⚠ KUN HVIS TENANTEN HAR UNITBOOKING. Se noten i hovedet: uden modulet
      findes noden ikke, og svaret ville være en afvisning frem for et tomt
      lager. */
   const { data: kasser } = useListe("kasser", {
-    division: "alle", graense: 2000, demo: DEMO_KASSER,
+    graense: 2000, demo: DEMO_KASSER,
     hent: harModul(moduler, "unitbooking"),
   });
 

@@ -132,10 +132,10 @@ export default function Driftskalender() {
     ordnPaa: "oprettetMs", vindue: "fremad", vindueDage: 180, fremDage: 30,
     graense: 500, demo: DEMO_INDBERETNINGER,
   });
-  /* Enhederne bærer ingen division (beslutning 19) — division:"alle" står
-     eksplicit, så det ikke ser ud som om det bare var heldigt. */
+  /* Enhederne bærer ingen division (beslutning 19), og aksen er fjernet
+     (70) — hele kartoteket hentes. */
   const enheder = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", demo: DEMO_KOERETOEJER,
+    vindue: "alle", demo: DEMO_KOERETOEJER,
   });
   /* ⚠ NODEN, IKKE DEMO-SÆTTET — og den er spærret af ET ANDET MODUL.
      `leverandoerer` er modulspærret på `indkoeb` i firebase.rules.json, og
@@ -148,7 +148,7 @@ export default function Driftskalender() {
      Formularen siger det så på skærmen frem for at tilbyde en tom vælger. */
   const harProcure = harModul(moduler, "indkoeb");
   const leverandoerer = useListe("leverandoerer", {
-    vindue: "alle", division: "alle", hent: harProcure, demo: DEMO_LEVERANDOERER,
+    vindue: "alle", hent: harProcure, demo: DEMO_LEVERANDOERER,
   });
 
   const [visning, setVisning] = useState("uge");

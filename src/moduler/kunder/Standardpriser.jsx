@@ -123,7 +123,7 @@ export default function Standardpriser() {
   /* Hele gruppen i ét kald — ydelserne er få, og fire visninger af det samme
      datasæt kan ikke sige hver sit. */
   const { data: poster, tilstand, genindlaes, henter } = useListe(
-    `satser/${STANDARDGRUPPE}`, { division: "alle", graense: 500, demo: [] });
+    `satser/${STANDARDGRUPPE}`, { graense: 500, demo: [] });
 
   if (henter) return <Henter hvad="standardpriserne" />;
 

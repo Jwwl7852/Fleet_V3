@@ -87,12 +87,12 @@ export default function Volumen() {
     ordnPaa: "navn", vindue: "alle", graense: 200, demo: DEMO_KUNDER
   });
   const { data: standardposter } = useListe(`satser/${STANDARDGRUPPE}`, {
-    division: "alle", vindue: "alle", graense: 500, demo: []
+    vindue: "alle", graense: 500, demo: []
   });
   /* Varerne bruges kun til rumfangsberegneren nederst — kunden har måske
      allerede sine varer i systemet, og så skal han ikke gætte sit eget m³. */
   const { data: varer } = useListe("varer", {
-    division: "alle", vindue: "alle", graense: 2000, demo: DEMO_VARER
+    vindue: "alle", graense: 2000, demo: DEMO_VARER
   });
 
   if (henter) return <Henter hvad="priserne" />;

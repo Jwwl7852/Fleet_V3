@@ -71,7 +71,14 @@ export default function NyForespoergsel() {
 
   /* ⚠ NODEN, IKKE DEMOSÆTTET. Se importen. Divisionsfilteret ligger i
      useListe — en post UDEN division hører til begge, ikke til ingen. */
-  const kunder = useListe("kunder", { division, graense: 500, demo: DEMO_KUNDER });
+  /* ⚠ HER STOD `{ division, … }`, og det var en latent fejl: indstillingen
+     hed `division` og tog `"shell" | "alle"`, men fik VÆRDIEN `"gods"`. Den
+     virkede ved et tilfælde — alt der ikke er `"alle"`, opfører sig som
+     `"shell"` — så en tastefejl i navnet ville have givet præcis samme
+     opførsel. Indstillingen findes ikke længere (beslutning 70), og
+     `useListe` afviser nu en ukendt indstilling højlydt frem for at gøre
+     ingenting. */
+  const kunder = useListe("kunder", { graense: 500, demo: DEMO_KUNDER });
 
   const omsaetningOere = oereFraKroner(f.omsaetning);
 

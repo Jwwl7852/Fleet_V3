@@ -91,19 +91,19 @@ export default function Forslag() {
      altså UDEN fravær og uden værksted. En sygemeldt chauffør så ledig ud
      her, mens noden nu bærer fraværet. */
   const etaperListe = useListe("etaper", {
-    ordnPaa: "fra", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "fra", vindue: "alle", graense: 500,
   });
   const resvListe = useListe("reservationer", {
-    vindue: "alle", division: "alle", graense: 50,
+    vindue: "alle", graense: 50,
   });
   const bilListe = useListe("koeretoejer", {
-    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "status", vindue: "alle", graense: 500,
   });
   const persListe = useListe("personale", {
-    ordnPaa: "status", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "status", vindue: "alle", graense: 500,
   });
   const kompListe = useListe("kompetencer", {
-    vindue: "alle", division: "alle", graense: 2000,
+    vindue: "alle", graense: 2000,
   });
 
   /* ⚠ reservationer ER ET TRAE, ikke en liste: type → ressource →
@@ -122,7 +122,7 @@ export default function Forslag() {
      En booking oprettet med `bookingopret` (beslutning 55) kunne slet ikke
      åbnes her. */
   const bookingListe = useListe("bookinger", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_BOOKINGER,
+    vindue: "alle", graense: 500, demo: DEMO_BOOKINGER,
   });
 
   /* Etaperne pr. booking — af NODENS liste, den samme skærmen regner

@@ -106,14 +106,14 @@ export default function Arbejdskoe() {
     graense: 500, demo: DEMO_INDBERETNINGER,
   });
   const enheder = useListe("koeretoejer", {
-    vindue: "alle", division: "alle", demo: DEMO_KOERETOEJER,
+    vindue: "alle", demo: DEMO_KOERETOEJER,
   });
   /* ⚠ NODEN, IKKE DEMOFILEN. `enhedNavn` lige nedenfor blev allerede bygget
      af den hentede liste; `lvNavn` gjorde ikke — og de to stod side om side.
      Hos en rigtig kunde ville værkstedets navn stå tomt på hver række, mens
      bilens stod rigtigt. */
   const leverandoerer = useListe("leverandoerer", {
-    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+    ordnPaa: "navn", vindue: "alle", graense: 500,
     demo: DEMO_LEVERANDOERER,
   });
 

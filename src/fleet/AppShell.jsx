@@ -90,7 +90,7 @@ const ICO = {
 };
 
 export default function AppShell() {
-  const { tenant, division, setDivision, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
+  const { tenant, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
   const { pathname } = useLocation();
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
@@ -106,27 +106,18 @@ export default function AppShell() {
           <div className="fc-ver">version 3.0</div>
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
 
-          {/* Gods/Bus lå kun på Økonomi-skærmen i v2.0-mockupsene. Her gælder
-              den hele platformen, som i v1.4.
+          {/* ⚠ HER STOD GODS/BUS-VÆLGEREN — beslutning 9, fjernet i 70.
+              Argumentet der bar den, faldt sammen med sin egen præmis:
+              beslutning 19 skrev at "ingen abonnent har både gods og bus", og
+              en vælger mellem to ting hvoraf kunden kun har den ene, vælger
+              ikke noget. Den skiftede en tilstand der filtrerede en liste,
+              hvor den ene af de to udgaver altid var tom.
 
-              ⚠ MEN IKKE HVOR DEN INGENTING GØR. Et modul kan sætte
-              `udenDivision` i nav.js, og så tegnes vælgeren ikke. Fleet gør:
-              beslutning 19 forbyder division på `personale/` og
-              `koeretoejer/`, så knappen ville skifte en tilstand ingen af
-              modulets skærme læser — en pæn knap.
-
-              ⚠ TILSTANDEN RØRES IKKE. Vælgeren SKJULES; den nulstiller ikke
-              divisionen. Gik man fra Booking til Fleet og tilbage, ville et
-              skjult felt der samtidig ryddede valget, sende brugeren tilbage
-              til Gods uden at nogen havde trykket. Betingelsen står på
-              modulet og ikke på en rute her — shellen må ikke kende ruter. */}
-          {!hoved?.udenDivision && (
-            <div className="fc-div" role="group" aria-label="Forretningsområde">
-              {[["gods", "Gods"], ["bus", "Bus"]].map(([v, l]) => (
-                <button key={v} type="button" aria-pressed={division === v} onClick={() => setDivision(v)}>{l}</button>
-              ))}
-            </div>
-          )}
+              ⚠ OG DET VAR IKKE EN KOSMETISK KNAP. Den bar et FELT på syv
+              noder, en sti i `kpi/`, et filter i `useListe` og en
+              `udenDivision`-undtagelse på hvert modul. Alt sammen for en akse
+              der duplikerede den kunden allerede har: sine MODULER. Se
+              beslutning 70. */}
 
           <nav className="fc-nav" aria-label="Moduler">
             {/* ⚠ MENUEN SKJULER ET MODUL KUNDEN IKKE HAR KØBT — men det er en

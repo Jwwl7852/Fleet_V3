@@ -49,8 +49,8 @@ export default function Klima() {
      også efter at noden var seedet. Nu tager den zoner og sensorer ind, og de
      to skærme kan ikke længere parre forskelligt.
 
-     division: "alle" — facility er fælles; reglerne forbyder feltet. */
-  const felles = { vindue: "alle", division: "alle", graense: 500 };
+     Facility er fælles, og reglerne forbyder `division` på noderne. */
+  const felles = { vindue: "alle", graense: 500 };
   const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
   const sen = useListe("facility/sensorer", felles);
 

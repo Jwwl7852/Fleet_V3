@@ -188,14 +188,14 @@ export default function Varer() {
   const maaSkrive = harPerm(bruger?.perms, PERM.varerSkriv);
 
   const { data: varer, tilstand, genindlaes, henter } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
     sorter: (a, b) => (a.varenummer || "").localeCompare(b.varenummer || "", "da"),
   });
   const { data: beholdning } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: kunder } = useListe("kunder", {
-    division: "alle", graense: 500, demo: DEMO_KUNDER,
+    graense: 500, demo: DEMO_KUNDER,
   });
 
   if (henter) return <Henter hvad="varekartoteket" />;

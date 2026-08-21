@@ -208,7 +208,7 @@ export default function Kundepriser() {
   const {
     data: standardposter, tilstand: satsTilstand, genindlaes: genindlaesSatser,
     henter: henterSatser,
-  } = useListe(`satser/${STANDARDGRUPPE}`, { division: "alle", graense: 500, demo: [] });
+  } = useListe(`satser/${STANDARDGRUPPE}`, { graense: 500, demo: [] });
 
   if (henterKunder || henterSatser) return <Henter hvad="kunder og priser" />;
 

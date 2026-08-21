@@ -217,7 +217,6 @@ export default function Brugere() {
   } = useListe("brugere", {
     graense: 200,
     /* Ingen division: et login hører til en virksomhed, ikke en afdeling. */
-    division: "alle",
     sorter: (a, b) => (a.navn || "").localeCompare(b.navn || "", "da"),
     demo: []
   });
@@ -232,11 +231,11 @@ export default function Brugere() {
      bliver mintet næste gang; adgang afgøres af tokenet. Reglerne læser den
      aldrig. Se beslutning 31b.
 
-     vindue:"alle" og division:"alle": en rolle har hverken et tidspunkt
+     vindue:"alle": en rolle har hverken et tidspunkt
      eller en afdeling. */
   const {
     data: rolleraekker, genindlaes: genindlaesRoller
-  } = useListe("roller", { vindue: "alle", division: "alle", demo: [] });
+  } = useListe("roller", { vindue: "alle", demo: [] });
 
   /* useListe giver en LISTE med id pr. post; permsForTenant() vil have et
      opslag. Oversættelsen står ét sted. */
@@ -249,7 +248,7 @@ export default function Brugere() {
      at tallene er utilgængelige. Se dashboardvisning.js. */
   const {
     data: visningsraekker, genindlaes: genindlaesVisning
-  } = useListe("dashboardvisning", { vindue: "alle", division: "alle", demo: [] });
+  } = useListe("dashboardvisning", { vindue: "alle", demo: [] });
   const visningPr = Object.fromEntries(
     (visningsraekker || []).map((r) => {
       const { id, ...rest } = r;

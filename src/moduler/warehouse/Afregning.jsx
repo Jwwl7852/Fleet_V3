@@ -70,10 +70,10 @@ export default function Afregning() {
      indekseret (`tidspunktMs`), og en afregning må ikke hente hele
      bevægelseshistorikken ned for at smide 99 % af den væk. */
   const { data: bevaegelser } = useListe("bevaegelser", {
-    division: "alle", ordnPaa: "tidspunktMs", graense: 5000, demo: [],
+    ordnPaa: "tidspunktMs", graense: 5000, demo: [],
   });
   const { data: standardposter } = useListe(`satser/${STANDARDGRUPPE}`, {
-    division: "alle", vindue: "alle", graense: 500, demo: [],
+    vindue: "alle", graense: 500, demo: [],
   });
 
   if (henter) return <Henter hvad="afregningen" />;

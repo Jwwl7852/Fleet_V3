@@ -312,27 +312,26 @@ export default function FacilityOversigt() {
      liste: lokationer, aktiver, fejl, zoner og sensorer. Skærmen læste dem
      alle fra demo-facility.js indtil noden blev seedet.
 
-     ⚠ division: "alle" PÅ ALLE FEM, og det er ikke en genvej. Reglerne
-     FORBYDER `division` på lokationer, aktiver og fejl — facility er
-     fælles. Står det eksplicit, kan man se at det er besluttet frem for
-     overset; det er samme begrundelse som på køretøjerne.
+     ⚠ REGLERNE FORBYDER `division` PÅ LOKATIONER, AKTIVER OG FEJL — facility
+     er fælles, og det var det allerede før aksen blev fjernet (beslutning 70).
+     Samme begrundelse som på køretøjerne.
 
      ⚠ vindue: "alle" fordi ingen af dem er en tidsserie. Et aktiv har en
      næste service, ikke en dato det "hører til"; filtrerede vi på shellens
      periode, ville halvdelen af portene forsvinde når nogen valgte en uge. */
-  const felles = { vindue: "alle", division: "alle", graense: 500 };
+  const felles = { vindue: "alle", graense: 500 };
   const lok = useListe("facility/lokationer", { ordnPaa: "type", ...felles });
   const akt = useListe("facility/aktiver", { ordnPaa: "naesteServiceMs", ...felles });
   const fej = useListe("facility/fejl", { ordnPaa: "meldtMs", ...felles });
   const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
   /* ⚠ KUN SOM FALDBAKKE. `personale` er en seedet node. */
   const pers = useListe("personale", {
-    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
   const personNavn = (personId) =>
     pers.data.find((p) => p.id === personId)?.navn || "—";
   /* Sensorerne er nøglet på ZONEN — en zone har én måling ad gangen. */
-  const sen = useListe("facility/sensorer", { vindue: "alle", division: "alle", graense: 500 });
+  const sen = useListe("facility/sensorer", { vindue: "alle", graense: 500 });
 
   const { bruger, path } = useFleet();
   const [valgtLokId, setValgtLokId] = useState(null);

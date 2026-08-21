@@ -61,20 +61,20 @@ export default function Carriers() {
   const {
     data: carriers, tilstand, genindlaes, henter, afkortet,
   } = useListe("carriers", {
-    division: "alle", graense: 2000, demo: DEMO_CARRIERS,
+    graense: 2000, demo: DEMO_CARRIERS,
     sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
   const { data: pladser } = useListe("reolpladser", {
-    division: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
+    graense: 2000, demo: DEMO_REOLPLADSER,
   });
   const { data: beholdning } = useListe("beholdning", {
-    division: "alle", graense: 5000, demo: DEMO_BEHOLDNING,
+    graense: 5000, demo: DEMO_BEHOLDNING,
   });
   const { data: varer } = useListe("varer", {
-    division: "alle", graense: 2000, demo: DEMO_VARER,
+    graense: 2000, demo: DEMO_VARER,
   });
   const { data: bevaegelser } = useListe("bevaegelser", {
-    division: "alle", graense: 2000, demo: [],
+    graense: 2000, demo: [],
   });
 
   if (henter) return <Henter hvad="beholderne" />;

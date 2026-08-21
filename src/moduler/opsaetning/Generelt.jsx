@@ -83,7 +83,7 @@ export default function Generelt() {
      Et tal på en opsætningsskærm er det sted man går hen for at se hvad man
      HAR — og det er værre at vise et forkert tal her end at vise ingenting. */
   const lok = useListe("facility/lokationer", {
-    ordnPaa: "type", vindue: "alle", division: "alle", graense: 200,
+    ordnPaa: "type", vindue: "alle", graense: 200,
     demo: DEMO_LOKATIONER,
   });
 
