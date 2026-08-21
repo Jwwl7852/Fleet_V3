@@ -4041,3 +4041,71 @@ og "en tom node" er ikke det samme svar.**
 `demo-i-skaerm.test.mjs` gik fra **17 til 10**. De ti der er tilbage, er
 navneopslag i Bemanding, LiveKort, Arbejdskøen, Indberetninger, Facility →
 Oversigt og Opsætning → Generelt — én skærm ad gangen, med et klik bagefter.
+
+## 64. Loftet er nul — og Rute & status havde stået tom for alle
+
+De sidste ti direkte opslag i demofiler er væk. `demo-i-skaerm.test.mjs` gik
+**30 → 23 → 20 → 17 → 10 → 0** over seks etaper, og den er ikke længere et loft
+man kan pege på en undtagelse i: **det er et forbud.**
+
+⚠ **Et demosæt må stadig stå som `demo:`-faldbakke.** Det er hele reglen fra
+beslutning 26: opdigtede tal findes KUN dér hvor der ingen database er. Linten
+tæller brug **uden for** den faldbakke.
+
+### ⚠ Og den sidste skærm var i stykker på en måde ingen kunne se
+
+`LiveKort.jsx` — Rute & status — filtrerede sine ture sådan:
+
+```js
+.filter((e) => e.koeretoejId && …)
+```
+
+**Ingen etape har `koeretoejId`.** Feltet hedder `koeretoejIder` (flertal) og
+har gjort det siden sættevognen kom til: en tur optager trækker **plus**
+trailer. Målt i demo-sættet: **0 af 8** etaper har entalsformen, 7 har
+flertalsformen.
+
+Filteret matchede altså ingenting, og **skærmen stod tom for alle — også i
+demo.** Det fejlede ikke; det viste bare ingenting.
+
+Det er præcis samme klasse som `opgaver`' indeks der navngav `dato`, og som
+modulets `FELT`-katalog der lovede `varighedMin`: **et forkert feltnavn er
+tavst.** RTDB henter hele noden ned og filtrerer i klienten, og en `.filter()`
+på et felt der ikke findes, svarer bare "ingen".
+
+⚠ **Og ruten hører til den TRÆKKENDE enhed.** En trailer har ingen rute af sig
+selv. Tabellen viser derfor `enhedsIder(e)[0]`, mens detaljepanelet viser dem
+begge — *"Volvo FH + Trailer 41"* — fordi det er dér man skal kunne se at turen
+optager to.
+
+### To sæt læses stadig direkte — og de tælles ikke med
+
+| Sæt | Hvorfor |
+|---|---|
+| `DEMO_LEVERANDOERSAGER` | `sager/` findes ikke (beslutning 20 er fase 0) |
+| `demoHaendelser` | `statushaendelser` findes hverken i reglerne eller i SEED — de kommer fra **chaufførens meldinger, og appen er ikke bygget** |
+
+Begge er "ingen node", ikke "en tom node". Et tomt array ville få hver
+leverandør til at stå med nul reklamationer og hver tur med "ingen meldinger" —
+og **"ingen meldinger" er netop den oplysning skærmen giver om en tur der ER i
+gang**. Nul ser ud som en måling.
+
+### Hvad de sidste seks skærme kostede
+
+- **Arbejdskøen** byggede `enhedNavn` af noden og `lvNavn` af demofilen — de to
+  stod side om side, så bilens navn ville stå rigtigt og værkstedets tomt.
+- **Indberetninger** havde `bilNavn` som modul-konst; kolonnen ville vise et råt
+  id.
+- **Bemanding** slog stationeringer op i demofilen; kolonnen "Steder" ville stå
+  tom på hver funktion.
+- **Facility → Oversigt** havde både navneopslaget og **vælgeren i
+  aktivformularen** på demosættet — formularen ville tilbyde folk der ikke
+  findes.
+- **Opsætning → Generelt** viste vores fem demolokationer som kundens egne. Det
+  er en **læseskærm over kundens opsætning**: det sted man går hen for at se
+  hvad man HAR. Et forkert tal dér er værre end intet tal.
+
+⚠ **Og syvende gang: en underkomponent kan ikke se den ydres variable.** Hver
+gang et opslag flyttede fra modulniveau ind i komponenten, skulle det sendes med
+som prop — `Detaljer`, `Godkendelse`, `Tidslinje`. En ReferenceError ved
+rendering er ingen byggefejl, og kun et klik fanger den.

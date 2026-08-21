@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **63 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **64 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -192,6 +192,9 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `useListe(node, { demo: DEMO_X })` er den rigtige vej: sættet bruges KUN når
   der ingen database er. `test/demo-i-skaerm.test.mjs` tæller brugen uden for
   den faldbakke, og **nodens egen skærm må aldrig vise noget andet end noden**.
+  ⚠ **Tallet er NUL, og det er et forbud — ikke et loft.** Det gik 30 → 0 over
+  seks etaper. To sæt læses stadig direkte, fordi deres node ikke findes:
+  `DEMO_LEVERANDOERSAGER` og `demoHaendelser`. Se beslutning 64.
 - **Lave et demo-datasæt nummer to for den samme node.** `demo-vaerksted.js`
   havde en `DEMO_INDKOEB` ved siden af `demo-indkoeb.js`' `DEMO_INDKOEBSLINJER`
   — begge i `fleet/`, hvor et demosæt hører hjemme, så linten så dem ikke.

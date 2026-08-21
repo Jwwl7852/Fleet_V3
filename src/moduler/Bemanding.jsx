@@ -49,6 +49,8 @@
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
+import { useListe } from "../fleet/useListe.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. `personale` er en seedet node. */
 import { demoKompetencerMedNavn, DEMO_PERSONALE } from "../fleet/demo-personale.js";
 import { stationeringerFor, ikonFor } from "../fleet/personale.js";
 import { DEMO_BEMANDINGSPLAN } from "../fleet/demo-bemanding.js";
@@ -81,6 +83,13 @@ const celleTone = (c) =>
 
 
 export default function Bemanding() {
+  /* ⚠ STATIONERINGERNE BLEV SLÅET OP I DEMOFILEN. Hos en rigtig kunde ville
+     kolonnen "Steder" stå tom på hver funktion — og en tom kolonne ligner en
+     medarbejderstab uden hjemsted frem for et opslag der peger det forkerte
+     sted. */
+  const personale = useListe("personale", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { division } = useFleet();
 
@@ -105,7 +114,7 @@ export default function Bemanding() {
         { planlagt: 0, disponeret: 0, mangler: 0 }
       );
       return { id: f.id, navn: f.navn, uge, iDag: uge[I_DAG], ialt,
-               steder: stationeringerFor(DEMO_PERSONALE, f.id) };
+               steder: stationeringerFor(personale.data, f.id) };
     })
     /* En funktion uden planlagte timer i divisionen findes ikke der. */
     .filter((f) => f.uge.some((c) => c.planlagt > 0));

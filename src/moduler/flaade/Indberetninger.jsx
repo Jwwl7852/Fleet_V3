@@ -55,8 +55,11 @@ import {
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { talFraAntal } from "../../fleet/grundlag.js";
 
-const bilNavn = (id) =>
-  DEMO_KOERETOEJER.find((k) => k.id === id)?.kaldenavn || id || "—";
+/* ⚠ HER STOD `bilNavn` SOM EN MODUL-KONST BYGGET AF DEMOFILEN. Hos en rigtig
+   kunde matcher den ingenting, og kolonnen "Enhed" ville stå med et råt id på
+   hver eneste indberetning. Opslaget bygges nu af den hentede liste — og
+   SENDES MED til Detaljer, for en underkomponent kan ikke se den ydres
+   variable. */
 
 export default function Indberetninger() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
@@ -72,6 +75,13 @@ export default function Indberetninger() {
   const liste = useListe("indberetninger", {
     ordnPaa: "oprettetMs", vindueDage: 400, division: "alle", graense: 500,
   });
+
+  /* ⚠ KUN SOM FALDBAKKE. Flåden er en seedet node. */
+  const enheder = useListe("koeretoejer", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+  });
+  const bilNavn = (id) =>
+    enheder.data.find((k) => k.id === id)?.kaldenavn || id || "—";
 
   const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
   /* ⚠ id = null BETYDER "SPØRG IKKE". Hooket står ubetinget — hooks må ikke
@@ -141,7 +151,8 @@ export default function Indberetninger() {
         </Kort>
 
         {valgt
-          ? <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}} />
+          ? <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}}
+                      bilNavn={bilNavn} />
           : <Kort titel="Detaljer"><Tom>Vælg en indberetning.</Tom></Kort>}
       </Gitter>
     </div>
@@ -150,7 +161,7 @@ export default function Indberetninger() {
 
 /* ---- Detaljepanelet ---------------------------------------------------- */
 
-function Detaljer({ i, bruger, sensitivt }) {
+function Detaljer({ i, bruger, sensitivt, bilNavn }) {
   const afslut = kanAfslutte(i);
   /* ⚠ SAMME PERMISSION SOM HENTNINGEN OVENFOR. Gaten her afgør hvad der
      TEGNES; reglen på `sensitive/indberetninger` afgør hvad der kan LÆSES.

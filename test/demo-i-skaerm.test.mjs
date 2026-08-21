@@ -18,11 +18,26 @@
  * beslutning 26: opdigtede tal findes KUN dér. Linten tæller derfor brug
  * UDEN FOR den faldbakke.
  *
- * ⚠ OG DEN ER ET LOFT, IKKE ET FORBUD. Der er 30 tilbage, og de fleste er
- * navneopslag — `demoBilNavn(id)` på en tabelrække, ikke et tal. De skal
- * væk, men ikke i én ombæring: en skærm ad gangen, med et klik bagefter.
- * Loftet kan kun gå NED. Falder den her prøve fordi tallet er steget, har
- * nogen tilføjet en ny; falder den fordi tallet er faldet, skal LOFT rettes.
+ * ⚠ DEN VAR ET LOFT. NU ER DEN ET FORBUD.
+ *
+ * Den begyndte på 30, og de fleste var navneopslag — `demoBilNavn(id)` på en
+ * tabelrække, ikke et tal. Det lød uskyldigt, og det er netop dét der gjorde
+ * dem svære at få øje på: hos en rigtig kunde matcher opslaget INGENTING, og
+ * en tabel med tomme navne ligner data der mangler frem for et opslag der
+ * peger det forkerte sted.
+ *
+ * 30 → 23 → 20 → 17 → 10 → 0, én skærm ad gangen med et klik bagefter.
+ * Loftet er nul, og det kan ikke gå op igen: der er ikke længere en skærm at
+ * pege på som undtagelse.
+ *
+ * ⚠ ET DEMOSÆT MÅ STADIG STÅ SOM `demo:`-FALDBAKKE. Det er hele reglen fra
+ * beslutning 26: opdigtede tal findes KUN dér hvor der ingen database er.
+ * Linten tæller brug UDEN FOR den faldbakke.
+ *
+ * ⚠ OG TO SÆT BLIVER LÆST DIREKTE MED VILJE — de er ikke talt med, fordi
+ * deres node ikke findes: `DEMO_LEVERANDOERSAGER` (reklamationer) og
+ * `demoHaendelser` (chaufførens meldinger). Der ER ingen node at læse, og et
+ * tomt array ville se ud som en måling — se beslutning 63 og 64.
  *
  * Koer: npm test
  */
@@ -84,7 +99,7 @@ const NODE_FOR = {
    ⚠ Det sidste er det værste: skærmen RANGERER leverandører på tallet, så et
    forkert grundlag er ikke en visningsfejl — det er en anbefaling om hvem man
    skal handle med. Beslutning 63. */
-const LOFT = 10;
+const LOFT = 0;
 
 const jsxFiler = (mappe) => {
   const ud = [];
@@ -119,7 +134,7 @@ function direkteBrug() {
 }
 
 describe("En skærm viser noden, ikke demo-sættet", () => {
-  it(`har højst ${LOFT} direkte brug tilbage — og loftet kan kun gå ned`, () => {
+  it(`har ${LOFT} direkte brug tilbage — og det er et forbud, ikke et loft`, () => {
     const fund = direkteBrug();
     const antal = fund.reduce((s, f) => s + f.direkte, 0);
     const liste = fund
@@ -130,9 +145,12 @@ describe("En skærm viser noden, ikke demo-sættet", () => {
       `${antal} direkte brug, loftet er ${LOFT}. En skærm der viser demo-sættet ` +
       `for en SEEDET node, viser mockuppens tal frem for kundens.\n${liste}`);
 
-    assert.ok(antal >= LOFT - 4,
-      `kun ${antal} tilbage — sæt LOFT ned til ${antal}, ellers holder loftet op ` +
-      `med at betyde noget.`);
+    /* ⚠ VED NUL ER DER INGEN NEDRE GRÆNSE AT HOLDE. Så længe loftet var et
+       tal over nul, skulle det følge med ned — ellers holdt det op med at
+       betyde noget. Nu er reglen bare: ingen. */
+    assert.equal(LOFT, 0,
+      "loftet er nul og kan ikke gå op igen — der er ikke længere en skærm at "
+      + "pege på som undtagelse.");
   });
 
   it("⚠ SKÆRMEN FOR EN NODE MÅ IKKE VISE DEMO-SÆTTET FOR NETOP DEN", () => {

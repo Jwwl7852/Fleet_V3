@@ -30,6 +30,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { useListe } from "../../fleet/useListe.js";
 import { num, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, Tabel, Pille, Gitter, MiniLinje, KpiKort, KpiRaekke,
@@ -38,24 +39,60 @@ import {
   HAENDELSE, planlagteStop, seneste, naesteStop, erAfsluttet,
   afvigelseFraPlan, stilhedMin, stilhedTone,
 } from "../../fleet/rutestatus.js";
-import { graenseLabel, krydserGraense } from "../../fleet/etaper.js";
+import { graenseLabel, krydserGraense, enhedsIder } from "../../fleet/etaper.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe — undtagen `demoHaendelser`, som ikke HAR en
+   node. Se noten ved opslagene nedenfor. */
 import { DEMO_ETAPER, demoHaendelser } from "../../fleet/demo-etaper.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
-
-const bil = (id) => DEMO_KOERETOEJER.find((b) => b.id === id);
-const person = (id) => DEMO_PERSONALE.find((p) => p.id === id);
 
 export default function RuteOgStatus() {
   const { division } = useFleet();
   const [valgtId, setValgtId] = useState(null);
 
-  /* Kun etaper der er tildelt en bil — en åben etape har ingen rute at følge. */
-  const relevante = DEMO_ETAPER
-    .filter((e) => e.koeretoejId && (e.division === division || e.division === "faelles"))
+  /* ⚠ NODERNE, IKKE DEMOFILERNE. Divisionsfilteret ligger i useListe — en post
+     UDEN division hører til begge, ikke til ingen. */
+  const etapeListe = useListe("etaper", {
+    ordnPaa: "fra", vindue: "alle", graense: 500, demo: DEMO_ETAPER,
+  });
+  const bilListe = useListe("koeretoejer", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+  });
+  const persListe = useListe("personale", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
+
+  const bil = (id) => bilListe.data.find((b) => b.id === id);
+  const person = (id) => persListe.data.find((p) => p.id === id);
+
+  /**
+   * ⚠ SKÆRMEN FILTREREDE PÅ `e.koeretoejId` — ET FELT INGEN ETAPE HAR.
+   *
+   * Etapen bærer `koeretoejIder` (flertal) siden sættevognen kom til: en tur
+   * optager trækker PLUS trailer. Målt i demo-sættet: **0 af 8** etaper har
+   * `koeretoejId`, 7 har `koeretoejIder`. Filteret matchede altså ingenting,
+   * og skærmen stod TOM for alle — også i demo.
+   *
+   * Det fejlede ikke; det viste bare ingenting. Præcis samme klasse som
+   * `opgaver`' indeks der navngav `dato`, og som modulets `FELT`-katalog der
+   * lovede `varighedMin`. Et forkert feltnavn er tavst.
+   *
+   * ⚠ OG RUTEN HØRER TIL DEN TRÆKKENDE ENHED. En trailer har ingen rute af sig
+   * selv; `enhedsIder()` giver etapens enheder, og den første er den der
+   * kører. Det er samme grund som `kanDisponeres()` afviser en trailer alene.
+   */
+  const relevante = etapeListe.data
+    .filter((e) => enhedsIder(e).length)
     .sort((a, b) => a.fra - b.fra);
 
   const raekker = relevante.map((e) => {
+    /* ⚠ MELDINGERNE HAR INGEN NODE, OG DET ER IKKE EN FORGLEMMELSE.
+       `statushaendelser` findes hverken i `firebase.rules.json` eller i SEED:
+       de kommer fra chaufførens meldinger, og APPEN ER IKKE BYGGET. Et tomt
+       array ville få hver tur til at stå som "ingen meldinger" — og det er
+       netop den oplysning skærmen giver om en tur der ER i gang. Faldbakken
+       bruges KUN når der ingen database er; her er der ingen node.
+       Se beslutning 22 og hovedet i denne fil. */
     const h = demoHaendelser(e.id);
     const naeste = naesteStop(e, h);
     const afsluttet = erAfsluttet(h);
@@ -109,7 +146,10 @@ export default function RuteOgStatus() {
                           onClick={() => setValgtId(r.id)}>
                     {r.fraSted} → {r.tilSted}
                   </button>) },
-              { key: "koeretoejId", label: "Bil", render: (r) => bil(r.koeretoejId)?.kaldenavn },
+              /* ⚠ ENHEDERNE, IKKE "enheden". En sættevogn er trækker plus
+                 trailer, og den der KØRER, er den første. */
+              { key: "koeretoejIder", label: "Bil",
+                render: (r) => bil(enhedsIder(r)[0])?.kaldenavn || "—" },
               { key: "personId", label: "Chauffør", render: (r) => person(r.personId)?.navn },
               { key: "fra", label: "Afgang", render: (r) => datoTid(r.fra) },
               { key: "etaMs", label: "Forventet fremme",
@@ -143,7 +183,7 @@ export default function RuteOgStatus() {
           </p>
         </Kort>
 
-        <Tidslinje tur={valgt} />
+        <Tidslinje tur={valgt} bil={bil} person={person} />
       </Gitter>
     </div>
   );
@@ -151,7 +191,10 @@ export default function RuteOgStatus() {
 
 /* ---- Tidslinjen: plan og meldinger ved siden af hinanden --------------- */
 
-function Tidslinje({ tur }) {
+/* ⚠ OPSLAGENE KOMMER IND. De var modul-konstanter bygget af demofilerne; nu
+   bygges de af de hentede lister, og en underkomponent kan ikke se den ydres
+   variable. Syvende gang den note skrives i dette repo. */
+function Tidslinje({ tur, bil, person }) {
   if (!tur) {
     return <Kort titel="Rute"><Tom>Vælg en tur i listen.</Tom></Kort>;
   }
@@ -167,7 +210,8 @@ function Tidslinje({ tur }) {
           ? <Pille tone="ok">Afsluttet</Pille>
           : <Pille tone="warn">Undervejs</Pille>}
       >
-        <MiniLinje label="Bil" vaerdi={bil(tur.koeretoejId)?.kaldenavn || "—"} />
+        <MiniLinje label="Bil"
+                   vaerdi={enhedsIder(tur).map((id) => bil(id)?.kaldenavn || id).join(" + ") || "—"} />
         <MiniLinje label="Chauffør" vaerdi={person(tur.personId)?.navn || "—"} />
         <MiniLinje label="Afgang" vaerdi={datoTid(tur.fra)} />
         <MiniLinje label="Forventet fremme" vaerdi={tur.etaMs ? datoTid(tur.etaMs) : "—"} />

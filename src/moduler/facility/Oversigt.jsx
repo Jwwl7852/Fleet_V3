@@ -89,10 +89,13 @@ const afvig = (vaerdi, opts) =>
     ? { afvigelse: deviation(vaerdi, opts), note: "vs. forrige periode" }
     : { note: "afvigelsen er ikke aggregeret endnu" };
 
-/* Navnet på den ansvarlige. ⚠ personId, ALDRIG uid — det er hvem det HANDLER
-   om, ikke hvem der gjorde noget. En facilityansvarlig har måske intet login. */
-const personNavn = (personId) =>
-  DEMO_PERSONALE.find((p) => p.id === personId)?.navn || "—";
+/* ⚠ HER STOD `personNavn` SOM EN MODUL-KONST BYGGET AF DEMOFILEN — og
+   vælgeren i aktivformularen fik det samme sæt. Hos en rigtig kunde ville
+   kolonnen "Ansvarlig" stå med en streg på hver række, og formularen ville
+   tilbyde folk der ikke findes i basen. Opslaget bygges nu af den hentede
+   liste inde i komponenten.
+   ⚠ personId, ALDRIG uid — det er hvem det HANDLER om, ikke hvem der gjorde
+   noget. En facilityansvarlig har måske intet login. */
 
 /**
  * Estimatet på et anlægs NÆSTE planlagte servicebesøg.
@@ -322,6 +325,12 @@ export default function FacilityOversigt() {
   const akt = useListe("facility/aktiver", { ordnPaa: "naesteServiceMs", ...felles });
   const fej = useListe("facility/fejl", { ordnPaa: "meldtMs", ...felles });
   const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
+  /* ⚠ KUN SOM FALDBAKKE. `personale` er en seedet node. */
+  const pers = useListe("personale", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
+  const personNavn = (personId) =>
+    pers.data.find((p) => p.id === personId)?.navn || "—";
   /* Sensorerne er nøglet på ZONEN — en zone har én måling ad gangen. */
   const sen = useListe("facility/sensorer", { vindue: "alle", division: "alle", graense: 500 });
 
@@ -503,7 +512,7 @@ export default function FacilityOversigt() {
           aktiv={aktivform === "ny" ? null : akt.data.find((a) => a.id === aktivform)}
           lokationer={lok.data}
           zoner={zoner}
-          personale={DEMO_PERSONALE.filter((p) => p.status === "aktiv")}
+          personale={pers.data.filter((p) => p.status === "aktiv")}
           sti={(under) => path(`facility/${under}`)}
           paaGemt={() => { setAktivform(null); genindlaes(); }}
           paaLuk={() => setAktivform(null)}

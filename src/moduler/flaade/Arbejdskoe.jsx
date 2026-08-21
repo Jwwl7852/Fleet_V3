@@ -108,6 +108,14 @@ export default function Arbejdskoe() {
   const enheder = useListe("koeretoejer", {
     vindue: "alle", division: "alle", demo: DEMO_KOERETOEJER,
   });
+  /* ⚠ NODEN, IKKE DEMOFILEN. `enhedNavn` lige nedenfor blev allerede bygget
+     af den hentede liste; `lvNavn` gjorde ikke — og de to stod side om side.
+     Hos en rigtig kunde ville værkstedets navn stå tomt på hver række, mens
+     bilens stod rigtigt. */
+  const leverandoerer = useListe("leverandoerer", {
+    ordnPaa: "navn", vindue: "alle", division: "alle", graense: 500,
+    demo: DEMO_LEVERANDOERER,
+  });
 
   /* ⚠ KUN art "vaerksted". Fleets driftskalender er FLÅDENS arbejde.
      `opgaver` rummer også facility-opgaver — en port der skal repareres, et
@@ -132,7 +140,7 @@ export default function Arbejdskoe() {
 
   const enhedNavn = (id) =>
     enheder.data.find((k) => k.id === id)?.kaldenavn || id || "—";
-  const lvNavn = (id) => leverandoerNavn(DEMO_LEVERANDOERER, id);
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
 
   const udsnit = UDSNIT[vis];
   const raa = tal[vis]?.poster || [];

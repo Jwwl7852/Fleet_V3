@@ -34,6 +34,8 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { miljoe } from "../../firebase.js";
 import { ALLE_STEDER } from "../../fleet/steder.js";
+import { useListe } from "../../fleet/useListe.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. `facility/lokationer` er en seedet node. */
 import { DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { LOKATION_TYPE } from "../../fleet/facility.js";
 import { num } from "../../fleet/format.js";
@@ -76,11 +78,20 @@ export default function Generelt() {
   const { tenantId, tenant, tenants, division, dage } = useFleet();
   const m = MILJOE_TONE[miljoe] || { tone: "warn", label: String(miljoe) };
 
+  /* ⚠ NODEN, IKKE DEMOFILEN. Skærmen er en LÆSESKÆRM over kundens opsætning,
+     og kortet "Lokationer" viste vores fem demolokationer som om de var hans.
+     Et tal på en opsætningsskærm er det sted man går hen for at se hvad man
+     HAR — og det er værre at vise et forkert tal her end at vise ingenting. */
+  const lok = useListe("facility/lokationer", {
+    ordnPaa: "type", vindue: "alle", division: "alle", graense: 200,
+    demo: DEMO_LOKATIONER,
+  });
+
   /* Lokationerne grupperes på sted, så man kan se at STED-kataloget og
      bygningsdata er ét og samme vokabular. */
   const perSted = ALLE_STEDER.map((s) => ({
     sted: s,
-    lokationer: DEMO_LOKATIONER.filter((l) => l.sted === s),
+    lokationer: lok.data.filter((l) => l.sted === s),
   }));
 
   return (
@@ -92,7 +103,7 @@ export default function Generelt() {
         <KpiKort label="Divisioner" vaerdi="Gods og bus"
                  ikon={<Ikon navn="lastbil" />} tone="ikon-2" rund
                  note="et felt, ikke en sti — beslutning 15" />
-        <KpiKort label="Lokationer" vaerdi={num(DEMO_LOKATIONER.length)}
+        <KpiKort label="Lokationer" vaerdi={num(lok.data.length)}
                  ikon={<Ikon navn="stednaal" />} tone="ikon-6" rund
                  note={`på ${num(ALLE_STEDER.length)} steder`} til="/facility" />
         <KpiKort label="Miljø" vaerdi={m.label}
