@@ -431,7 +431,7 @@ og skærmen tegner ikke feltet før en type er valgt.
 
 | Planchen | Her | Hvorfor |
 |---|---|---|
-| Klargøres snart (48 t) | **Klargjort** | Vores tæller dem der ER klargjort. Planchens tæller dem der SKAL klargøres inden for to døgn — det er et andet og bedre tal, men det er ikke bygget |
+| Klargøres snart | **Klargjort** | Vores talte dem der ER klargjort. Planchens tæller dem der SKAL klargøres. Bygget i 6.12 — og vinduet rettet til syv dage i 6.19 |
 | Belægningsgrad 72 % | **Over tiden** | "Over tiden" er noget nogen skal handle på. Belægningsgraden er ikke bygget — se rettelsen nedenfor |
 
 De står her frem for at blive tegnet halvt: et nøgletal der hedder noget andet
@@ -568,7 +568,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | Måned over uge over dag i hovedet | Bygget, 6.8 | ✅ |
 | **Grupperet efter kasse-id ELLER sag** | Bygget — se 6.14 | ✅ |
 | **Interval 1 uge / 2 uger / 1 md.** | Bygget — 1 / 2 / 4 uger. Se 6.13 om hvorfor ikke en kalendermåned | ✅ |
-| **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
+| **Fremhævning pr. art** (klargøring/udlån/returnering) | Bygget — tre blokke, se 6.19 | ✅ |
 | **Hover → lille kort** | Bygget — Unitbookings EGET, se 6.15 | ✅ |
 | **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
 | Sidepanel "Kommende klargøringer", kan minimeres | Bygget — med Klargør-knappen, se 6.16 | ✅ |
@@ -958,3 +958,74 @@ BESLUTNINGER.md først. Det var den ikke værd; dialogen bruger den samme.
 kalenderen i et nyt browservindue, som Fleets driftskalender kan
 (`aabnNytVindue`). Det hører sammen med at ruten skal kunne bære sin tilstand i
 URL'en, så det nye vindue åbner på den samme uge og gruppering.
+
+### 6.19 Planchen kom, og den afgjorde tre ting
+
+⚠ **MEN FØRST: DER KOM TO PLANCHER, OG DE ER IKKE SAMME SYSTEM.**
+
+| | Planche A | Planche B |
+|---|---|---|
+| Hvad udlejes | `MDT-101 · Alukasse` — **transportkasser til kunst** | `Kasse 40' HC`, `20' DV` — **skibscontainere** |
+| Til hvem | Sag 4231, museer | `Renovering, Aalborg` · Nordbyg A/S · byggeplads |
+| Skala | 40 aktive enheder | **1.248** ude, 566 ledige |
+| Shell | Mørk sidebar, **Gods/Bus** | Lys sidebar, modul-dropdown, ingen division |
+
+**Planche A er Unitbooking** — den matcher noderne, demo-data og shellen helt
+ned til `MDT-101` og `Alukasse`. B er et andet produkt; se noten om `warehouse`
+i 2.1, som er reserveret til netop noget andet.
+
+⚠ **Men B bekræftede to ting, og det er værd at have med:** begge plancher
+skriver **"Næste 7 dage"**, og begge viser belægningsgraden som en **donut delt
+på tilstand** (B: Udlejet 1.248 / Klargøring 186 / Ledige 566). Det er den
+opdeling `kassebelaegning()` regner — så 6.11's status-baserede tal står.
+
+#### Fremhævning pr. art — tre blokke, ikke ét
+
+6.17 skrev at punktet ikke kunne bygges af beskrivelsen. Planchen viser det:
+hver reservation står som **tre blokke efter hinanden** — gul `Klargøring`,
+blå `Udlån`, grøn `Returnering`. Tre stykker arbejde for tre forskellige
+mennesker på tre forskellige dage; en enkelt bjælke fra afgang til retur viser
+ingen af dem.
+
+⚠ **OG DE OVERLAPPER IKKE.** Det var den ene af de tre tolkninger 6.17 frygtede:
+gitteret tegner overlap i samme række som en **konflikt**, så tre arter oven på
+hinanden ville have tegnet hver eneste reservation rød. De ligger i forlængelse
+— klargøringen slutter hvor udlånet begynder.
+
+⚠ **RETURNERINGEN ER DEN SIDSTE DAG AF UDLÅNET, IKKE DAGEN EFTER.** Planchen
+kan læses begge veje: den grønne blok ligger yderst, og om den er inde i
+perioden eller efter den, kan ikke ses. Vi vælger **inde i**, fordi
+`overlapper()` og `konflikter()` regner `til` som sidste dag kassen er optaget.
+Lå returneringen dagen efter, ville kalenderen tegne kassen som optaget en dag
+hvor **modellen siger den er fri** — og en anden reservation kunne lovligt
+lægges dér, oven i en grøn blok. Et gitter der viser noget optaget som reglerne
+kalder frit, er værre end et der viser for lidt.
+
+⚠ **ET ENDAGSUDLÅN DELES IKKE**, og en klargøringsdato **på** afgangsdagen giver
+ingen egen blok. En tom blok tegner ingenting; to blokke på én dag ville
+overlappe.
+
+⚠ **OG UDEN `klargoerSenest` ER DER KUN TO.** Feltet er valgfrit (6.12), og en
+gættet klargøringsdag ville tegne arbejde ingen har planlagt.
+
+#### Klargøringsvinduet: syv dage, ikke otteogfyrre timer
+
+`KLARGOER_VINDUE_TIMER` var 48. Det var **mit gæt** ud fra ordet *"snart"* i
+6.1's beskrivelse. Begge plancher skriver **"Næste 7 dage"** — både på
+nøgletallet og på sidepanelet — så tallet er rettet, og skærmene skriver nu
+dage frem for timer.
+
+#### Og planchen viser mere end 6.1 fortalte
+
+Otte ting mere, som ikke stod i beskrivelsen:
+
+| På planchen | Status |
+|---|---|
+| **Fem** nøgletal på kalenderen, med donut | Vi har fire, og andre |
+| **Kalendervisning Dag / Uge / Måned** — kolonnens *granularitet* | Ikke bygget. 6.13 byggede *intervallet*, som er noget andet |
+| **Filtre**-knap | Ikke bygget |
+| **"Nu"-markør** som mærket linje | Gitteret markerer kun kolonnen |
+| **Ude af drift** og **Inaktiv** som blokarter | Ikke bygget — signaturforklaringen har fem farver, vi har tre |
+| Klik-kortets **Rediger / Annuller booking** | Ikke bygget |
+| "Sidst opdateret" + **Opdater** | Ikke bygget |
+| Sag under kasse-id, **TYPE** som egen kolonne | Delvist |

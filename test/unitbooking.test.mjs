@@ -18,6 +18,7 @@ import {
   dageUde, historikForKasse, sagsoversigt,
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
   sagsblokke, sagstilstand, SAGSTILSTAND_RANG, SKIFTELABEL,
+  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -1005,11 +1006,14 @@ describe("klargoeresSnart", () => {
     assert.equal(r.bagud, 1);
   });
 
-  it("vinduet er 48 timer, og det kan sættes", () => {
-    const liste = [u("a", "booket", NU + 40 * T), u("b", "booket", NU + 80 * T)];
-    assert.equal(KLARGOER_VINDUE_TIMER, 48);
+  it("vinduet er syv dage, og det kan sættes", () => {
+    /* ⚠ 48 TIMER VAR MIT GÆT ud fra ordet "snart" i §6.1's beskrivelse.
+       Planchen siger "Næste 7 dage" — både på nøgletallet og på
+       sidepanelet — og billedet afgjorde det. */
+    const liste = [u("a", "booket", NU + 100 * T), u("b", "booket", NU + 400 * T)];
+    assert.equal(KLARGOER_VINDUE_TIMER, 7 * 24);
     assert.equal(klargoeresSnart(liste, NU).antal, 1);
-    assert.equal(klargoeresSnart(liste, NU, 100).antal, 2);
+    assert.equal(klargoeresSnart(liste, NU, 500).antal, 2);
   });
 
   it("⚠ udenDato ER IKKE NUL — DET ER ET UBESVARET SPØRGSMÅL", () => {
@@ -1361,5 +1365,112 @@ describe("næsten fuldskærm på kalenderen", () => {
 
   it("knappen siger hvad der sker, og hvordan man kommer ud", () => {
     assert.match(kal(), /Escape lukker igen/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DE TRE ARTER — planchens "fremhævning pr. art"
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("udlaansblokke", () => {
+  const D = (a, m, d) => Date.UTC(a, m - 1, d);
+  const DAG = 86400000;
+  const arter = (b) => b.map((x) => x.art);
+
+  it("⚠ TRE BLOKKE, OG DE OVERLAPPER IKKE", () => {
+    /* Gitteret tegner overlap i samme raekke som en KONFLIKT — med vilje.
+       Tre arter oven paa hinanden ville tegne hver eneste reservation roed. */
+    const b = udlaansblokke({
+      klargoerSenest: D(2026, 8, 18), fra: D(2026, 8, 20), til: D(2026, 8, 24),
+    });
+    assert.deepEqual(arter(b), ["klargoering", "udlaan", "returnering"]);
+    for (let i = 1; i < b.length; i++) {
+      assert.ok(b[i].fra > b[i - 1].til,
+        `${b[i].art} begynder før ${b[i - 1].art} er slut`);
+    }
+  });
+
+  it("⚠ KLARGØRINGEN LIGGER FØR AFGANGEN", () => {
+    /* Det er hele grunden til at klargoerSenest blev et felt (6.12). */
+    const b = udlaansblokke({
+      klargoerSenest: D(2026, 8, 18), fra: D(2026, 8, 20), til: D(2026, 8, 24),
+    });
+    assert.equal(b[0].fra, D(2026, 8, 18));
+    assert.equal(b[0].til, D(2026, 8, 19));
+  });
+
+  it("⚠ UDEN DATO ER DER INGEN KLARGØRINGSBLOK — den gættes ikke", () => {
+    /* Feltet er valgfrit, og en gaettet klargoeringsdag ville tegne arbejde
+       ingen har planlagt. Samme holdning som en varighed der ikke gaettes. */
+    const b = udlaansblokke({ fra: D(2026, 8, 20), til: D(2026, 8, 24) });
+    assert.deepEqual(arter(b), ["udlaan", "returnering"]);
+  });
+
+  it("⚠ RETURNERINGEN ER DEN SIDSTE DAG AF UDLÅNET, IKKE DAGEN EFTER", () => {
+    /* overlapper() og konflikter() regner `til` som sidste dag kassen er
+       optaget. Laa returneringen dagen EFTER, ville kalenderen tegne kassen
+       som optaget en dag hvor modellen siger den er fri — og en anden
+       reservation kunne lovligt lægges dér, oven i en groen blok. */
+    const b = udlaansblokke({ fra: D(2026, 8, 20), til: D(2026, 8, 24) });
+    const ret = b.find((x) => x.art === "returnering");
+    assert.equal(ret.fra, D(2026, 8, 24));
+    assert.equal(ret.til, D(2026, 8, 24));
+    /* Og ingen blok raekker ud over udlaanets egen periode. */
+    assert.equal(Math.max(...b.map((x) => x.til)), D(2026, 8, 24));
+  });
+
+  it("⚠ ET ENDAGSUDLÅN DELES IKKE", () => {
+    /* Der er ikke plads til to blokke, og en tom udlaansblok ville tegne
+       ingenting. Saa er det ét udlaan — det er stadig sandt. */
+    const b = udlaansblokke({ fra: D(2026, 8, 20), til: D(2026, 8, 20) });
+    assert.deepEqual(arter(b), ["udlaan"]);
+  });
+
+  it("en klargøringsdato PÅ afgangsdagen giver ingen egen blok", () => {
+    /* Pakkes kassen samme dag den koerer, er der ingen dag foer at tegne. */
+    const b = udlaansblokke({
+      klargoerSenest: D(2026, 8, 20), fra: D(2026, 8, 20), til: D(2026, 8, 24),
+    });
+    assert.deepEqual(arter(b), ["udlaan", "returnering"]);
+  });
+
+  it("en post uden periode giver ingen blokke", () => {
+    assert.deepEqual(udlaansblokke({}), []);
+    assert.deepEqual(udlaansblokke({ fra: D(2026, 8, 24), til: D(2026, 8, 20) }), []);
+  });
+
+  it("⚠ OG BLOKKENE DÆKKER PRÆCIS UDLÅNETS EGEN PERIODE", () => {
+    /* Summen af de tre maa hverken vaere kortere eller laengere end
+       klargoerSenest → til. Et hul ville tegne en fri dag midt i et udlaan. */
+    const u = { klargoerSenest: D(2026, 8, 18), fra: D(2026, 8, 20), til: D(2026, 8, 24) };
+    const b = udlaansblokke(u);
+    assert.equal(Math.min(...b.map((x) => x.fra)), u.klargoerSenest);
+    assert.equal(Math.max(...b.map((x) => x.til)), u.til);
+    const dage = b.reduce((s, x) => s + (x.til - x.fra) / DAG + 1, 0);
+    assert.equal(dage, (u.til - u.klargoerSenest) / DAG + 1);
+  });
+
+  it("hver art har en etiket og en tone", () => {
+    for (const a of ALLE_UDLAAN_ARTER) {
+      assert.ok(UDLAAN_ART[a]?.label, `"${a}" har ingen etiket`);
+      assert.ok(UDLAAN_ART[a]?.pill, `"${a}" har ingen tone`);
+    }
+    assert.deepEqual(ALLE_UDLAAN_ARTER, ["klargoering", "udlaan", "returnering"]);
+  });
+});
+
+describe("⚠ KLARGØRINGSVINDUET ER SYV DAGE", () => {
+  it("planchen siger \"Næste 7 dage\" begge steder", () => {
+    /* Mine 48 timer var et gaet ud fra ordet "snart" i §6.1's beskrivelse.
+       Billedet afgjorde det — baade noegletallet og sidepanelet siger syv. */
+    assert.equal(KLARGOER_VINDUE_TIMER, 7 * 24);
+  });
+
+  it("og skærmene skriver dage, ikke timer", () => {
+    for (const sti of ["src/moduler/unitbooking/Udlaan.jsx",
+                       "src/moduler/unitbooking/Kalender.jsx"]) {
+      const s = readFileSync(new URL(`../${sti}`, import.meta.url), "utf8");
+      assert.match(s, /KLARGOER_VINDUE_TIMER \/ 24/, `${sti} skriver stadig timer`);
+    }
   });
 });

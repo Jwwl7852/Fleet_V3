@@ -640,13 +640,17 @@ export function kassebelaegning(kasser = []) {
 /* ---- Klargøres snart --------------------------------------------------- */
 
 /**
+ * ⚠ SYV DAGE, IKKE TO DØGN — planchen siger "Næste 7 dage" begge steder, både
+ * på nøgletallet og på sidepanelet. Mine 48 timer var et gæt ud fra ordet
+ * "snart" i §6.1's beskrivelse; billedet afgjorde det.
+ *
  * ⚠ PLANCHENS NØGLETAL TÆLLER DEM DER **SKAL** KLARGØRES, ikke dem der ER
  * klargjort. Skærmen havde "Klargjort", og de to er ikke det samme tal: det
  * ene er arbejde der er gjort, det andet er arbejde der venter. Et lager hvor
  * alt er klargjort og intet forestår, og et lager hvor intet er klargjort og
  * ti kasser skal ud i morgen, ser ens ud på det første.
  */
-export const KLARGOER_VINDUE_TIMER = 48;
+export const KLARGOER_VINDUE_TIMER = 7 * 24;
 
 /**
  * klargoeresSnart(udlaan, nu, timer) → { antal, bagud, udenDato, poster }
@@ -792,3 +796,70 @@ export const SKIFTEFORKLARING = {
   annulleret: "Reservationen falder bort. Kassen bliver ledig igen.",
   booket: "Klargøringen rulles tilbage. Reservationen består.",
 };
+
+/* ---- De tre arter i et udlån -------------------------------------------- */
+
+/**
+ * ⚠ ET UDLÅN ER TRE TING PÅ EN KALENDER, IKKE ÉN.
+ *
+ * Planchen tegner hver reservation som tre blokke efter hinanden: en gul
+ * KLARGØRING, en blå UDLÅN og en grøn RETURNERING. Det er ikke pynt — det er
+ * tre stykker arbejde for tre forskellige mennesker på tre forskellige dage,
+ * og en enkelt bjælke fra afgang til retur viser ingen af dem.
+ *
+ * ⚠ OG DE OVERLAPPER IKKE. Gitteret tegner overlap i samme række som en
+ * KONFLIKT — med vilje, fordi to udlån på ÉN kasse er noget `konflikter()`
+ * ville afvise. De tre arter ligger derfor i forlængelse af hinanden, ikke
+ * oven på: klargøringen slutter hvor udlånet begynder.
+ */
+export const UDLAAN_ART = {
+  klargoering: { art: "klargoering", label: "Klargøring", pill: "warn" },
+  udlaan:      { art: "udlaan",      label: "Udlån",      pill: "info" },
+  returnering: { art: "returnering", label: "Returnering", pill: "ok" },
+};
+
+export const ALLE_UDLAAN_ARTER = Object.keys(UDLAAN_ART);
+
+/**
+ * udlaansblokke(u) → [{ art, fra, til }]
+ *
+ * Udlånets tre arter som perioder, **inklusive i begge ender** — som resten af
+ * modellen. Kalderen oversætter til gitterets halvåbne interval med
+ * `halvaabent()`, ÉT sted.
+ *
+ * ⚠ KLARGØRINGEN LIGGER FØR AFGANGEN, og det er hele grunden til at
+ * `klargoerSenest` blev et felt (6.12). Uden datoen er der ingen klargøringsblok
+ * — den gættes ikke, som en varighed ikke gættes. Så er der to blokke.
+ *
+ * ⚠ RETURNERINGEN ER DEN SIDSTE DAG AF UDLÅNET, IKKE DAGEN EFTER.
+ * Planchen kan læses begge veje: den grønne blok ligger yderst til højre, og
+ * om den er inde i perioden eller efter den, kan ikke ses. Vi vælger INDE i.
+ *
+ * Grunden er at `overlapper()` og `konflikter()` regner `til` som sidste dag
+ * kassen er optaget. Lagde vi returneringen dagen EFTER, ville kalenderen
+ * tegne kassen som optaget en dag hvor modellen siger den er fri — og en anden
+ * reservation kunne lovligt lægges dér, oven i en grøn blok. Et gitter der
+ * viser noget optaget som reglerne kalder frit, er værre end et der viser for
+ * lidt.
+ *
+ * ⚠ ET ENDAGSUDLÅN DELES IKKE. Er `fra` og `til` den samme dag, er der ikke
+ * plads til to blokke, og en tom udlånsblok ville tegne ingenting. Så er det
+ * ét udlån — det er stadig sandt.
+ */
+export function udlaansblokke(u = {}) {
+  if (!Number.isFinite(u.fra) || !Number.isFinite(u.til) || u.til < u.fra) return [];
+
+  const ud = [];
+  if (Number.isFinite(u.klargoerSenest) && u.klargoerSenest < u.fra) {
+    ud.push({ art: "klargoering", fra: u.klargoerSenest, til: u.fra - DAG_MS });
+  }
+
+  if (u.til === u.fra) {
+    ud.push({ art: "udlaan", fra: u.fra, til: u.til });
+    return ud;
+  }
+
+  ud.push({ art: "udlaan", fra: u.fra, til: u.til - DAG_MS });
+  ud.push({ art: "returnering", fra: u.til, til: u.til });
+  return ud;
+}

@@ -134,7 +134,7 @@ function Reservationsformular({ kasse, fra, til, kunder, kundetilstand, paaGemt,
           ) : null}
         </Feltraekke>
         {/* ⚠ PLANCHENS TREDJE DATO. Uden den kan "Klargøres snart" ikke
-            regnes — nøgletallet tæller dem der SKAL pakkes inden for to døgn,
+            regnes — nøgletallet tæller dem der SKAL pakkes inden for syv dage,
             og modellen vidste ikke hvornår. Feltet er valgfrit: de udlån der
             allerede ligger i basen, har det ikke, og et påkrævet felt ville
             gøre hver eneste af dem ugyldig efter reglerne. */}
@@ -251,7 +251,7 @@ export default function Udlaan() {
             ti kasser skal ud i morgen, så ens på det gamle kort.
             ⚠ Og `udenDato` hører til tallet: uden den ville det påstå at være
             en fuld optælling. Samme greb som `udeAfDrift` ved siden af. */}
-        <KpiKort label={`Klargøres inden ${KLARGOER_VINDUE_TIMER} t`}
+        <KpiKort label={`Klargøres · næste ${KLARGOER_VINDUE_TIMER / 24} dage`}
                  vaerdi={num(klargoer.antal)}
                  note={[
                    klargoer.bagud ? `${num(klargoer.bagud)} er bagud` : null,

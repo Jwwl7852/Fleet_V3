@@ -44,6 +44,7 @@ import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
   sagsblokke, sagstilstand, dageUde, naesteSkift,
+  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
   klargoeresSnart, KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
 import {
@@ -156,6 +157,10 @@ export default function Kalender() {
      sagsrækken på "hvornår er udstillingen i gang". Det andet kan ikke læses
      af det første når en sag har fire kasser. */
   const [gruppering, setGruppering] = useState("kasse");
+  /* ⚠ PLANCHENS "Fremhæv". Alle tre er slået til fra start — en kalender der
+     åbner med noget skjult, viser mindre end der er, og den der ikke ved at
+     kontrollen findes, tror det er alt. */
+  const [arter, setArter] = useState(ALLE_UDLAAN_ARTER);
   const [svaev, setSvaev] = useState(null);
   /* ⚠ PLANCHENS "Aabn naesten fuldskaerm". Problemet er BREDDE: otteogtyve
      kolonner skal dele skaermen med en sidebar paa 216 px. Hver kolonne der
@@ -207,20 +212,33 @@ export default function Kalender() {
     }));
   }, [iVinduet, kasser, typer]);
 
-  const kasseblokke = iVinduet.map((u) => ({
-    id: u.id,
-    raekkeId: u.kasseId,
-    /* ⚠ HER SKER OVERSÆTTELSEN, OG KUN HER. Se hovedet. */
-    ...halvaabent(u),
-    /* ⚠ TILSTANDEN STÅR I BLOKKEN, ikke kun som farve. Planchen skriver
-       "Sag 4260 · Udlånt". Farven alene kræver at man kender paletten, og på
-       et printet eller sort/hvidt skærmbillede findes den ikke — så ville
-       blokken kun sige et sagsnummer. Rækkens pille siger hvad kassen er NU;
-       blokkens siger hvad DEN her periode er. */
-    label: `Sag ${u.sagsnummer} · ${UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}`,
-    titel: u.beskrivelse || undefined,
-    tone: UDLAAN_TILSTAND[u.tilstand]?.pill,
-  }));
+  /* ⚠ TRE BLOKKE PR. UDLÅN, IKKE ÉN — planchens "fremhævning pr. art".
+     Klargøring, udlån og returnering er tre stykker arbejde for tre
+     forskellige mennesker på tre forskellige dage, og en enkelt bjælke fra
+     afgang til retur viser ingen af dem. De ligger i FORLÆNGELSE af hinanden,
+     ikke oven på: gitteret ville ellers tegne dem som en konflikt. Se
+     udlaansblokke().
+
+     ⚠ OG ID'ET BÆRER BEGGE DELE. Svævekortet slår op på `data-blok`, og det
+     skal kunne finde UDLÅNET igen — ikke bare arten. */
+  const kasseblokke = iVinduet.flatMap((u) =>
+    udlaansblokke(u)
+      .filter((b) => arter.includes(b.art))
+      .map((b) => ({
+        id: `${u.id}__${b.art}`,
+        raekkeId: u.kasseId,
+        /* ⚠ HER SKER OVERSÆTTELSEN, OG KUN HER. Se hovedet. */
+        ...halvaabent(b),
+        /* ⚠ ARTEN STÅR I BLOKKEN, ikke kun som farve. Farven alene kræver at
+           man kender paletten, og på et printet eller sort/hvidt skærmbillede
+           findes den ikke — så ville blokken kun sige et sagsnummer. Rækkens
+           pille siger hvad kassen er NU; blokkens siger hvad DEN her periode
+           er for noget. */
+        label: `${UDLAAN_ART[b.art].label} · Sag ${u.sagsnummer}`,
+        titel: [u.beskrivelse, `Udlånet er ${UDLAAN_TILSTAND[u.tilstand]?.label}`]
+          .filter(Boolean).join(" — "),
+        tone: UDLAAN_ART[b.art].pill,
+      })));
 
   /* --- Grupperet efter SAG ------------------------------------------- */
 
@@ -321,6 +339,33 @@ export default function Kalender() {
                   saet={(v) => setUger(Number(v))}
                   label="Vindue"
                 />
+                {/* ⚠ PLANCHENS "Fremhæv" — kun ved gruppering pr. kasse.
+                    En sagsrække er FLERE udlån flettet sammen (6.14), og der
+                    findes ingen enkelt art at fremhæve; en kontakt der ikke
+                    gjorde noget, ville være en pæn knap.
+                    ⚠ OG DEN SIDSTE KAN IKKE SLÅS FRA. Et gitter uden en eneste
+                    art er et tomt gitter, og det ligner en tom periode frem
+                    for et filter man selv har sat. */}
+                {gruppering === "kasse" && ALLE_UDLAAN_ARTER.map((a) => {
+                  const paa = arter.includes(a);
+                  const sidste = paa && arter.length === 1;
+                  return (
+                    <Knap
+                      key={a}
+                      variant={paa ? "primaer" : "sekundaer"}
+                      aria-pressed={paa}
+                      disabled={sidste}
+                      title={sidste
+                        ? "Mindst én art skal vises — et tomt gitter ligner en tom periode."
+                        : `${paa ? "Skjul" : "Vis"} ${UDLAAN_ART[a].label.toLowerCase()}`}
+                      onClick={() => setArter((x) => (paa
+                        ? x.filter((y) => y !== a)
+                        : ALLE_UDLAAN_ARTER.filter((y) => x.includes(y) || y === a)))}
+                    >
+                      {UDLAAN_ART[a].label}
+                    </Knap>
+                  );
+                })}
                 {skubUger !== 0 && <Knap onClick={() => setSkubUger(0)}>I dag</Knap>}
                 {/* ⚠ "NÆSTEN", IKKE HELT. Der er en kant hele vejen rundt, og
                     baggrunden bliver stående. Et element der dækker hver
@@ -347,7 +392,12 @@ export default function Kalender() {
             if (efterSag) return;
             const knap = e.target.closest?.("[data-blok]");
             if (!knap) { setSvaev(null); return; }
-            const u = iVinduet.find((x) => x.id === knap.dataset.blok);
+            /* ⚠ ID'ET ER SAMMENSAT siden arterne blev tre: udlånets id, to
+               understreger, og arten. Kortet viser UDLÅNET, ikke arten — det
+               er den samme reservation uanset hvilken af de tre blokke musen
+               står på. Se udlaansblokke(). */
+            const u = iVinduet.find(
+              (x) => x.id === String(knap.dataset.blok).split("__")[0]);
             if (u) setSvaev({ x: e.clientX, y: e.clientY, udlaan: u });
           }}
         >
@@ -586,8 +636,8 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
         <p className="fc-hint">
           {klargoer.antal
             ? <>
-                <b>{num(klargoer.antal)}</b> skal klargøres inden{" "}
-                {KLARGOER_VINDUE_TIMER} timer
+                <b>{num(klargoer.antal)}</b> skal klargøres inden for{" "}
+                {KLARGOER_VINDUE_TIMER / 24} dage
                 {klargoer.bagud ? <> — heraf <b className="fc-bad">{num(klargoer.bagud)}</b> bagud</> : null}.
               </>
             : "Intet haster."}
@@ -624,7 +674,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
                 } },
             ]}
             raekker={klargoer.poster}
-            tom="Ingen kasser skal klargøres inden for de næste to døgn."
+            tom="Ingen kasser skal klargøres inden for de næste syv dage."
           />
 
           <Formularsvar svar={svar} okTekst="Kassen er klargjort." />
