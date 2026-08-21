@@ -18,7 +18,7 @@ import {
   dageUde, historikForKasse, sagsoversigt,
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
   sagsblokke, sagstilstand, SAGSTILSTAND_RANG, SKIFTELABEL,
-  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
+  udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER, returneresSnart,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -1472,5 +1472,106 @@ describe("⚠ KLARGØRINGSVINDUET ER SYV DAGE", () => {
       const s = readFileSync(new URL(`../${sti}`, import.meta.url), "utf8");
       assert.match(s, /KLARGOER_VINDUE_TIMER \/ 24/, `${sti} skriver stadig timer`);
     }
+  });
+});
+
+describe("returneresSnart", () => {
+  const NU = Date.UTC(2026, 7, 24, 8, 0, 0);
+  const T = 3600000;
+  const u = (id, tilstand, til) => ({ id, tilstand, til });
+
+  it("⚠ KUN udlaant TÆLLER", () => {
+    /* Er kassen ikke koert endnu, kan den ikke komme hjem. En taelling der tog
+       `booket` med, ville taelle den samme kasse i begge ender. */
+    const r = returneresSnart([
+      u("ude", "udlaant", NU + 10 * T),
+      u("booket", "booket", NU + 10 * T),
+      u("hjemme", "returneret", NU + 10 * T),
+    ], NU);
+    assert.deepEqual(r.poster.map((x) => x.id), ["ude"]);
+  });
+
+  it("⚠ OG bagud ER DEN VIGTIGSTE HALVDEL", () => {
+    /* En kasse der ikke er kommet hjem, er ikke en fejl i systemet — det er en
+       kasse nogen skal ringe om. Den maa ikke gemmes vaek i et tal der bare
+       hedder "kommende". */
+    const r = returneresSnart([
+      u("over", "udlaant", NU - 30 * T),
+      u("snart", "udlaant", NU + 10 * T),
+    ], NU);
+    assert.equal(r.antal, 2);
+    assert.equal(r.bagud, 1);
+  });
+
+  it("⚠ INTET udenDato — `til` er påkrævet på et udlån", () => {
+    /* Modsat klargoerSenest, som er valgfri (6.12). Der findes derfor ikke et
+       udlaan hvis returnering vi ikke kender, og et felt der altid var nul,
+       ville faa de to noegletal til at se ud som om de havde det samme
+       forbehold. */
+    assert.equal("udenDato" in returneresSnart([], NU), false);
+  });
+
+  it("de mest presserende står først", () => {
+    const r = returneresSnart([
+      u("sen", "udlaant", NU + 100 * T),
+      u("tidlig", "udlaant", NU + 2 * T),
+    ], NU, 500);
+    assert.deepEqual(r.poster.map((x) => x.id), ["tidlig", "sen"]);
+  });
+});
+
+describe("kalenderens fem nøgletal", () => {
+  const kal = () => readFileSync(
+    new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
+
+  it("planchens fem står på skærmen", () => {
+    const s = kal();
+    for (const l of ["Belægningsgrad", "Kommende klargøringer", "Udlån aktive",
+                     "Returneringer kommende", "Kasser i spil"]) {
+      assert.ok(s.includes(`label="${l}"`), `nøgletallet "${l}" mangler`);
+    }
+  });
+
+  it("⚠ OG \"BAGUD\" ER IKKE FORSVUNDET", () => {
+    /* Det gamle kort havde sin egen note: en kasse der ikke er kommet hjem, er
+       ikke en fejl i systemet, men en kasse nogen skal ringe om — og den maa
+       ikke gemmes vaek. Kortet er vaek; tallet er flyttet ind i
+       returneringskortets note, hvor det staar ved siden af det tal det
+       hoerer til. */
+    assert.match(kal(), /retur\.bagud/);
+    assert.match(kal(), /OVER TIDEN/);
+  });
+
+  it("⚠ OG DE REGNES AF LISTERNE, IKKE AF kpi/", () => {
+    /* De er afledte, og et gemt afledt tal driver fra sit grundlag — fejlen i
+       bemanding.ledig. Se undtagelsen i CLAUDE.md. */
+    assert.match(kal(), /kassebelaegning\(kasser\)/);
+    assert.match(kal(), /klargoeresSnart\(udlaan, nu\)/);
+    assert.match(kal(), /returneresSnart\(udlaan, nu\)/);
+    assert.ok(!/useKpi/.test(kal()), "kalenderen henter nøgletal fra kpi/");
+  });
+});
+
+describe("\"Nu\"-markøren", () => {
+  const gk = () => readFileSync(
+    new URL("../src/fleet/Gitterkalender.jsx", import.meta.url), "utf8");
+
+  it("⚠ EN MÆRKET LINJE, IKKE KUN EN FARVET KOLONNE", () => {
+    /* En kolonne der lyser svagt, siger "her er noget" — ikke "her er nu". Ved
+       fire ugers visning er hver kolonne 34 px, og baggrundsfarven forsvinder
+       mellem blokkene. */
+    assert.match(gk(), /fc-gk-nulinje/);
+    assert.match(gk(), /<span>Nu<\/span>/);
+  });
+
+  it("⚠ KUN FØRSTE RÆKKE BÆRER ORDET", () => {
+    /* Stod "Nu" paa hver eneste raekke, ville tredive kasser give tredive
+       maerkater i én lodret stribe — og saa laeser man ingen af dem. */
+    assert.match(gk(), /r\.id === raekker\[0\]\?\.id/);
+  });
+
+  it("⚠ OG LIGGER NUET UDEN FOR VINDUET, TEGNES DEN IKKE", () => {
+    /* En linje i kanten ville paastaa at nuet var lige dér. */
+    assert.match(gk(), /nuSlot >= 0/);
   });
 });

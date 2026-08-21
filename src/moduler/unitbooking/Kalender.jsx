@@ -34,10 +34,10 @@ import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { skiftUdlaan } from "../../fleet/udlaan.js";
-import { num, dato, ugenr } from "../../fleet/format.js";
+import { num, dato, pct, ugenr } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
-  Formularsvar,
+  Formularsvar, Donut,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -45,7 +45,8 @@ import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
   sagsblokke, sagstilstand, dageUde, naesteSkift,
   udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER,
-  klargoeresSnart, KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
+  klargoeresSnart, returneresSnart, kassebelaegning,
+  KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
@@ -285,25 +286,63 @@ export default function Kalender() {
 
   if (henter) return <Henter hvad="kalenderen" />;
 
+  /* ---- Planchens fem nøgletal ---- */
+  /* ⚠ ALLE AF LISTER SKÆRMEN ALLEREDE HENTER, ikke af `kpi/`. De er afledte,
+     og et gemt afledt tal driver fra sit grundlag — fejlen i `bemanding.ledig`.
+     Se undtagelsen i CLAUDE.md. */
+  const antalMedStatus = (s) => kasser.filter((k) => k.status === s).length;
+  const antalUdlaant = udlaan.filter((u) => u.tilstand === "udlaant").length;
+  const bel = kassebelaegning(kasser);
+  const klargoer = klargoeresSnart(udlaan, nu);
+  const retur = returneresSnart(udlaan, nu);
+
   const liste = haendelser(udlaan, nu);
-  const denneUge = liste.filter((h) => h.naar >= iDag.getTime() && h.naar < iDag.getTime() + 7 * DAG);
-  const bagud = liste.filter((h) => h.naar < iDag.getTime() && mangler(h, nu));
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      {/* ⚠ PLANCHENS FEM NØGLETAL. Skærmen havde fire andre — Ud denne uge,
+          Hjem denne uge, Bagud, Kasser i spil — og de svarede på ugen frem for
+          på lageret.
+
+          ⚠ MEN "BAGUD" MÅTTE IKKE FORSVINDE. Kortets egen note sagde at en
+          kasse der ikke er kommet hjem, ikke er en fejl i systemet, men en
+          kasse nogen skal ringe om — og at den ikke måtte gemmes væk. Den er
+          derfor ikke slettet, men flyttet ind i returneringskortets note, hvor
+          den står ved siden af det tal den hører til. */}
       <KpiRaekke>
-        <KpiKort label="Ud denne uge"
-                 vaerdi={num(denneUge.filter((h) => h.art === "ud").length)}
-                 note="skal pakkes og afhentes" />
-        <KpiKort label="Hjem denne uge"
-                 vaerdi={num(denneUge.filter((h) => h.art === "hjem").length)}
-                 note="skal modtages og sættes på plads" />
-        {/* ⚠ DEN HER MÅ IKKE GEMMES VÆK. En kasse der ikke er kommet hjem, er
-            ikke en fejl i systemet — det er en kasse nogen skal ringe om. */}
-        <KpiKort label="Bagud" vaerdi={num(bagud.length)}
-                 note={bagud.length
-                   ? bagud.map((h) => h.kasseId).slice(0, 3).join(", ")
-                   : "intet er skredet"} />
+        {/* ⚠ DONUTEN DELER PÅ TILSTAND, ikke på periode. Begge plancher viser
+            den sådan — den anden med Udlejet / Klargøring / Ledige ved siden af
+            tallet. Det er den opdeling kassebelaegning() regner. */}
+        <KpiKort
+          label="Belægningsgrad"
+          vaerdi={pct(bel.pct)}
+          note={bel.udeAfDrift
+            ? `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`
+            : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare`}
+          ekstra={
+            <Donut
+              dele={[
+                { navn: "Udlånt", antal: antalMedStatus("udlaant") },
+                { navn: "Klargjort", antal: antalMedStatus("klargjort") },
+                { navn: "Ledige", antal: antalMedStatus("ledig") },
+              ]}
+              midteTekst={pct(bel.pct)}
+            />
+          }
+        />
+        <KpiKort label="Kommende klargøringer" vaerdi={num(klargoer.antal)}
+                 note={[
+                   `næste ${KLARGOER_VINDUE_TIMER / 24} dage`,
+                   klargoer.bagud ? `${num(klargoer.bagud)} bagud` : null,
+                   klargoer.udenDato ? `${num(klargoer.udenDato)} uden dato` : null,
+                 ].filter(Boolean).join(" · ")} />
+        <KpiKort label="Udlån aktive" vaerdi={num(antalUdlaant)}
+                 note="kasser ude hos en kunde" />
+        {/* ⚠ "BAGUD" BOR HER NU. Se noten øverst — den må ikke gemmes væk. */}
+        <KpiKort label="Returneringer kommende" vaerdi={num(retur.antal)}
+                 note={retur.bagud
+                   ? `næste ${KLARGOER_VINDUE_TIMER / 24} dage · ${num(retur.bagud)} OVER TIDEN`
+                   : `næste ${KLARGOER_VINDUE_TIMER / 24} dage · intet er skredet`} />
         <KpiKort label="Kasser i spil" vaerdi={num(raekker.length)}
                  note={`af ${num(kasser.length)} i de viste ${num(vindueDage)} dage`} />
       </KpiRaekke>

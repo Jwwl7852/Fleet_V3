@@ -863,3 +863,40 @@ export function udlaansblokke(u = {}) {
   ud.push({ art: "returnering", fra: u.til, til: u.til });
   return ud;
 }
+
+/**
+ * returneresSnart(udlaan, nu, timer) → { antal, bagud, poster }
+ *
+ * De kasser der skal HJEM inden for vinduet. Planchens fjerde nøgletal.
+ *
+ * ⚠ DEN LIGNER `klargoeresSnart()` MED VILJE, MEN DEN ER IKKE DEN SAMME.
+ * De spørger til hvert sit felt i hver sin tilstand: klargøringen til
+ * `klargoerSenest` på et `booket` udlån, returneringen til `til` på et
+ * `udlaant`. En fælles funktion med fire parametre ville skulle fortælle
+ * kalderen hvilket felt og hvilken tilstand hver gang — og så er det to
+ * funktioner med ekstra trin.
+ *
+ * ⚠ KUN `udlaant` TÆLLER. Er kassen ikke kørt endnu, kan den ikke komme hjem.
+ * En tælling der tog `booket` med, ville tælle den samme kasse i begge ender.
+ *
+ * ⚠ OG `bagud` ER DEN VIGTIGSTE HALVDEL. En kasse der ikke er kommet hjem, er
+ * ikke en fejl i systemet — det er en kasse nogen skal ringe om. Den må ikke
+ * gemmes væk i et tal der bare hedder "kommende".
+ *
+ * ⚠ INTET `udenDato`. `til` er PÅKRÆVET på et udlån — modsat `klargoerSenest`,
+ * som er valgfri (6.12). Der findes derfor ikke et udlån hvis returnering vi
+ * ikke kender, og et felt der altid var nul, ville få de to nøgletal til at se
+ * ud som om de havde det samme forbehold.
+ */
+export function returneresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_VINDUE_TIMER) {
+  const graense = nu + timer * 3600000;
+  const poster = udlaan
+    .filter((u) => u?.tilstand === "udlaant" && Number.isFinite(u.til) && u.til <= graense)
+    .sort((a, b) => a.til - b.til);
+
+  return {
+    antal: poster.length,
+    bagud: poster.filter((u) => u.til < nu).length,
+    poster,
+  };
+}

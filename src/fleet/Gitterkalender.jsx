@@ -256,6 +256,10 @@ export default function Gitterkalender({
   const slotListe = slots(fra, til, enhed);
   if (!slotListe.length || !raekker.length) return <Tom>{tom}</Tom>;
 
+  /* Hvilken kolonne er "nu"? -1 naar nuet ligger uden for vinduet — og saa
+     tegnes linjen ikke. En linje i kanten ville paastaa at nuet var lige dér. */
+  const nuSlot = slotListe.findIndex((s) => erNu(s));
+
   const placerede = laegUd(blokke, slotListe);
   const perRaekke = blokkePrRaekke(placerede);
   const antalKonflikter = placerede.filter((p) => p.konflikt).length;
@@ -427,6 +431,21 @@ export default function Gitterkalender({
                   {r.under && <span className="fc-gk-navn-u">{r.under}</span>}
                 </div>
                 <div className="fc-gk-band">
+                  {/* ⚠ EN MÆRKET LINJE FOR "NU", ikke kun en farvet kolonne.
+                      En kolonne der lyser svagt, siger "her er noget" — ikke
+                      "her er nu". Ved fire ugers visning er hver kolonne 34 px,
+                      og baggrundsfarven forsvinder mellem blokkene. Planchen
+                      har en lodret linje med ordet på.
+                      ⚠ KUN PÅ FØRSTE RÆKKE BÆRER DEN ORDET. Stod "Nu" på hver
+                      eneste række, ville tredive kasser give tredive mærkater
+                      i én lodret stribe — og så læser man ingen af dem. */}
+                  {nuSlot >= 0 && (
+                    <div className="fc-gk-nulinje" aria-hidden="true"
+                         style={{ gridColumn: nuSlot + 1 }}>
+                      {r.id === raekker[0]?.id && <span>Nu</span>}
+                    </div>
+                  )}
+
                   {/* Baggrundsceller — så tomme dage har en kant at aflæse på.
                       ⚠ OG DE BÆRER DERES ADRESSE. `data-raekke` og `data-slot`
                       er det elementFromPoint slår op i, når en blok slippes.

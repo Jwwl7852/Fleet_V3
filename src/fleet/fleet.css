@@ -511,6 +511,16 @@
 /* Kolonnen for nu. En kalender uden et "nu" tvinger brugeren til at tælle. */
 .fc-gk-nu{background:var(--fc-accent-soft)}
 .fc-gk-kol.fc-gk-nu{color:var(--bc-accent)}
+/* ⚠ EN MAERKET LINJE, IKKE KUN EN FARVET KOLONNE. En kolonne der lyser svagt,
+   siger "her er noget" — ikke "her er nu". Paa fire ugers visning er hver
+   kolonne 34 px, og en baggrundsfarve i den bredde forsvinder mellem
+   blokkene. Planchen har en lodret linje med ordet paa. Den staar OVER
+   cellerne og UNDER blokkene, saa den ikke skjuler noget man kan klikke paa. */
+.fc-gk-nulinje{grid-row:1; z-index:2; position:relative; pointer-events:none;
+  border-left:2px dashed var(--bc-block); align-self:stretch; margin:0}
+.fc-gk-nulinje>span{position:absolute; top:-9px; left:-15px;
+  background:var(--bc-block); color:var(--bc-card); border-radius:6px;
+  padding:0 5px; font-size:var(--fc-t-tight); font-weight:700; letter-spacing:.04em}
 
 /* ⚠ BLOKKEN FYLDER RAEKKEN. Den var 22 px i en raekke paa 44 — halvdelen stod
    tom omkring bjaelken, og kalenderen saa TYND ud selv naar der var arbejde i

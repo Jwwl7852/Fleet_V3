@@ -1021,11 +1021,77 @@ Otte ting mere, som ikke stod i beskrivelsen:
 
 | På planchen | Status |
 |---|---|
-| **Fem** nøgletal på kalenderen, med donut | Vi har fire, og andre |
+| **Fem** nøgletal på kalenderen, med donut | Bygget — se 6.20 |
 | **Kalendervisning Dag / Uge / Måned** — kolonnens *granularitet* | Ikke bygget. 6.13 byggede *intervallet*, som er noget andet |
 | **Filtre**-knap | Ikke bygget |
-| **"Nu"-markør** som mærket linje | Gitteret markerer kun kolonnen |
+| **"Nu"-markør** som mærket linje | Bygget — se 6.20 |
 | **Ude af drift** og **Inaktiv** som blokarter | Ikke bygget — signaturforklaringen har fem farver, vi har tre |
 | Klik-kortets **Rediger / Annuller booking** | Ikke bygget |
 | "Sidst opdateret" + **Opdater** | Ikke bygget |
 | Sag under kasse-id, **TYPE** som egen kolonne | Delvist |
+
+### 6.20 Nøgletalsrækken og "Nu"-markøren
+
+Kalenderen havde fire nøgletal — *Ud denne uge, Hjem denne uge, Bagud, Kasser i
+spil* — og de svarede på **ugen** frem for på lageret. Planchen har fem, og de
+svarer på noget andet: **Belægningsgrad** (med donut), **Kommende klargøringer**,
+**Udlån aktive**, **Returneringer kommende**, **Kasser i spil**.
+
+⚠ **MEN "BAGUD" MÅTTE IKKE FORSVINDE.** Kortets egen note sagde det:
+*"En kasse der ikke er kommet hjem, er ikke en fejl i systemet — det er en kasse
+nogen skal ringe om."* Og: *"DEN HER MÅ IKKE GEMMES VÆK."* Et kort der bliver
+slettet i en oprydning, tager sin begrundelse med sig.
+
+Tallet er derfor ikke væk, men **flyttet ind i returneringskortets note**, hvor
+det står ved siden af det tal det hører til: *"næste 7 dage · 2 OVER TIDEN"*.
+Samme greb som `udeAfDrift` ved siden af belægningsgraden og `udenDato` ved
+siden af klargøringerne — det der kvalificerer et tal, står på tallet.
+
+⚠ **`returneresSnart()` LIGNER `klargoeresSnart()` MED VILJE, MEN ER IKKE DEN
+SAMME.** De spørger til hvert sit felt i hver sin tilstand: klargøringen til
+`klargoerSenest` på et `booket` udlån, returneringen til `til` på et `udlaant`.
+En fælles funktion med fire parametre skulle fortælle kalderen hvilket felt og
+hvilken tilstand hver gang — og så er det to funktioner med ekstra trin.
+
+⚠ **OG DEN HAR INTET `udenDato`.** `til` er **påkrævet** på et udlån, modsat
+`klargoerSenest` (6.12). Der findes derfor ikke et udlån hvis returnering vi
+ikke kender, og et felt der altid var nul, ville få de to nøgletal til at se ud
+som om de havde det samme forbehold.
+
+#### "Nu"-markøren
+
+Gitteret markerede kun kolonnen med en svag baggrundsfarve. **En kolonne der
+lyser svagt, siger "her er noget" — ikke "her er nu".** Ved fire ugers visning
+er hver kolonne 34 px, og farven forsvinder mellem blokkene. Planchen har en
+lodret linje med ordet på.
+
+⚠ **KUN FØRSTE RÆKKE BÆRER ORDET.** Stod "Nu" på hver eneste række, ville
+tredive kasser give tredive mærkater i én lodret stribe — og så læser man ingen
+af dem.
+
+⚠ **OG LIGGER NUET UDEN FOR VINDUET, TEGNES DEN IKKE.** En linje klemt ind i
+kanten ville påstå at nuet var lige dér. Har man bladret tre uger frem, er der
+ingen linje — og det er svaret.
+
+⚠ Linjen ligger **over cellerne og under blokkene**, så den ikke skjuler noget
+man kan klikke på, og den har `pointer-events:none`.
+
+### ⚠ 6.21 To af planchens blokarter kan ikke tegnes endnu
+
+Signaturforklaringen har **fem** farver: Klargøring, Udlån, Returnering, **Ude
+af drift**, **Inaktiv**. Vi har de tre første (6.19). De to sidste kan ikke
+bygges af planchen alene:
+
+**Ude af drift** er en **kassestatus**, ikke et udlån — og `KASSE_STATUS`
+bærer ingen datoer. På planchen står MDT-103's røde blok over nogle få dage midt
+i ugen, altså med en **periode** modellen ikke har. At tegne den hen over hele
+vinduet ville påstå at kassen var i stykker også de dage der ligger bagud, og at
+tegne den fra i dag ville påstå noget om fremtiden. Det kræver et felt —
+`udeAfDriftFra`, og formentlig et `-Til` — og det er en regeletape, ikke en
+farve.
+
+**Inaktiv** er formentlig en kasse **uden aktivitet i perioden**. Dem tegner vi
+slet ikke: kalenderen viser kun kasser med et udlån i vinduet, netop fordi et
+gitter med hundrede rækker hvoraf seks har en blok, skjuler de seks. Planchen
+ser ud til at vise dem gråtonede i stedet. Det er et **valg om hvad rækkerne
+er**, ikke en blokart — og det skal afgøres før det bygges.
