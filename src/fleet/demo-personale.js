@@ -444,12 +444,15 @@ selvkontrol("demo-personale", () => {
   /* Feltet står stadig under begge divisioner i kpi/ — noden er delt
      (beslutning 9) — men vaerdien er den samme, fordi staben er den samme.
      Begge tjekkes, saa en aendring kun det ene sted ogsaa fanges. */
-  for (const division of ["gods", "bus"]) {
-    const forventet = DEMO_KPI[division]?.bemanding?.kompetencerUdloeber;
-    if (inden30 !== forventet) {
+  /* ⚠ HER LØB EN LØKKE OVER BEGGE DIVISIONER, og opslaget gav `undefined`
+     efter beslutning 70 — så `inden30 !== undefined` var ALTID sand, og
+     kontrollen advarede FALSK to gange ved hver indlæsning. Se beslutning 75. */
+  {
+    const forventet = DEMO_KPI?.bemanding?.kompetencerUdloeber;
+    if (Number.isFinite(forventet) && inden30 !== forventet) {
       console.warn(
         `demo-personale: ${inden30} kompetencer udløber inden for 30 dage, ` +
-        `men kpi.${division}.bemanding.kompetencerUdloeber siger ${forventet}. ` +
+        `men kpi.bemanding.kompetencerUdloeber siger ${forventet}. ` +
         `Bemanding viser nu et nøgletal der modsiger sin egen tabel — se noten ved DEMO_KOMPETENCER.`
       );
     }

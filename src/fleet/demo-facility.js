@@ -340,8 +340,20 @@ selvkontrol("demo-facility", () => {
     if (b.aktivId && !aktivIder.has(b.aktivId)) {
       console.warn(`demo-facility: ${b.id} peger på ukendt aktiv "${b.aktivId}".`);
     }
-    if (!lokIder.has(b.lokationId)) {
+    /* ⚠ EN LOKATION ER VALGFRI PÅ ET BESØG — og kontrollen krævede den.
+       Et facility-besøg rammer ENTEN et aktiv ELLER en lokation: fem af seks
+       peger på en port eller et fryseanlæg, som selv har en adresse. Linjen
+       ovenfor har altid haft sit `b.aktivId &&`; den her manglede det.
+
+       ⚠ DEN ADVAREDE FEM GANGE VED HVER SIDEINDLÆSNING, og advarslerne var
+       falske. Det er dyrere end en manglende kontrol: en konsol fuld af støj
+       lærer folk at lade være med at læse den, og så forsvinder de RIGTIGE
+       advarsler i mængden. Se beslutning 75. */
+    if (b.lokationId && !lokIder.has(b.lokationId)) {
       console.warn(`demo-facility: ${b.id} peger på ukendt lokation "${b.lokationId}".`);
+    }
+    if (!b.aktivId && !b.lokationId) {
+      console.warn(`demo-facility: ${b.id} rammer hverken et aktiv eller en lokation.`);
     }
     if (!(b.til > b.fra)) console.warn(`demo-facility: ${b.id} har til <= fra.`);
   }

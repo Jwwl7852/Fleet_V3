@@ -265,19 +265,16 @@ export default function Planlaegdialog({
                 }))} />
         </Feltraekke>
 
-        {/* ⚠ DIVISIONEN STÅR FOR SIG OG UDFYLDES IKKE AF ENHEDSVALGET.
-            Reglerne kræver den på opgaver/, og enheden HAR den ikke
-            (beslutning 19). To felter der ser ud som om det ene følger af det
-            andet, er præcis den fælde beslutningen lukkede. */}
-        <Felt id="pl-division" label="Division" kraevet
-              vaerdi={post.division} saet={saet("division")}
-              fejl={vis("division")}
-              hint="Kan ikke udledes af enheden — en enhed har ingen division."
-              valgmuligheder={[
-                { vaerdi: "gods", label: "Gods" },
-                { vaerdi: "bus", label: "Bus" },
-                { vaerdi: "faelles", label: "Fælles" },
-              ]} />
+        {/* ⚠ HER STOD EN PÅKRÆVET "DIVISION"-VÆLGER, og den overlevede
+            beslutning 70 med tre valgmuligheder til et felt reglerne AFVISER.
+
+            ⚠ DET VAR VÆRRE END DØD KODE. Feltet var markeret `kraevet`, mens
+            hverken valideringen eller skrivningen kendte det længere — så
+            brugeren skulle udfylde noget der ingen steder blev læst, og som
+            ville have fået skrivningen afvist hvis den var. En formular er
+            det sted en beslutning bliver til noget nogen taster.
+
+            Fjernet i beslutning 75. */}
 
         <Feltraekke>
           <Felt id="pl-dato" label="Startdato" type="date" kraevet

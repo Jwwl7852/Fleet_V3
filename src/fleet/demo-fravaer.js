@@ -173,10 +173,17 @@ selvkontrol("demo-fravaer", () => {
      beviser ikke at demo-sættene er enige om hver enkelt person. Den præcise
      kontrol kræver bemanding.fravaerIDag, som ikke findes i kpi/ endnu; se
      KPI-efterslæbet i README. */
-  const gab = ["gods", "bus"].reduce((s, d) => {
-    const b = DEMO_KPI[d]?.bemanding || {};
-    return s + Math.max(0, (b.planlagt || 0) - (b.disponeret || 0));
-  }, 0);
+  /* ⚠ HER BLEV GODS OG BUS LAGT SAMMEN, og opslagene gav `undefined` efter
+     beslutning 70 — så `gab` blev 0, og kontrollen ADVAREDE FALSK ved hvert
+     eneste fravær. En falsk advarsel er værre end en manglende: den lærer
+     folk at ignorere konsollen. Se beslutning 75.
+
+     ⚠ OG `planlagt` ER null I DAG (der findes ingen vagtplan, beslutning 69),
+     så gabet kan ikke regnes. Kontrollen springer over med sin grund frem for
+     at regne på `|| 0` — det er præcis `100 - null`-fælden. */
+  const b = DEMO_KPI?.bemanding || {};
+  if (!Number.isFinite(b.planlagt) || !Number.isFinite(b.disponeret)) return;
+  const gab = Math.max(0, b.planlagt - b.disponeret);
   const iDagAntal = demoFravaerendeIDag().length;
   if (iDagAntal > gab) {
     console.warn(

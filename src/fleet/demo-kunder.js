@@ -179,19 +179,26 @@ selvkontrol("demo-kunder", () => {
   }
 
   /* Loft mod kpi/: et udsnit kan ikke være større end totalen. */
-  for (const div of ["gods", "bus"]) {
-    const mine = DEMO_TILBUD.filter((t) => t.division === div);
-    const loft = DEMO_KPI[div]?.kunder?.tilbud || 0;
+  /* ⚠ HER FILTREREDES TILBUD PÅ `division`, et felt der ikke findes længere
+     (beslutning 70) — så listen var altid tom og loftet altid 0. **Tavst
+     død.** Kontrollen ser nu på hele sættet. Se beslutning 75. */
+  {
+    /* ⚠ FØRSTE RETTELSE SATTE `div = "alle"` OG LÆSTE `DEMO_KPI[div]` — altså
+       `DEMO_KPI["alle"]`, som er undefined. Loftet blev 0, og kontrollen
+       advarede falsk. En genvej der beholder den gamle FORM, arver den gamle
+       fejl. Se beslutning 75. */
+    const mine = DEMO_TILBUD;
+    const loft = DEMO_KPI?.kunder?.tilbud || 0;
     if (mine.length > loft) {
       console.warn(
-        `demo-kunder: ${mine.length} tilbud i ${div}, men kpi.${div}.kunder.tilbud siger ${loft}.`
+        `demo-kunder: ${mine.length} tilbud i demo, men kpi.kunder.tilbud siger ${loft}.`
       );
     }
     const kraever = mine.filter((t) => TILBUD_STATUS[t.status]?.kraeverOpfoelgning).length;
-    const kraeverLoft = DEMO_KPI[div]?.kunder?.tilbudKraeverOpfoelgning || 0;
+    const kraeverLoft = DEMO_KPI?.kunder?.tilbudKraeverOpfoelgning || 0;
     if (kraever > kraeverLoft) {
       console.warn(
-        `demo-kunder: ${kraever} tilbud kræver opfølgning i ${div}, men kpi/ siger ${kraeverLoft}.`
+        `demo-kunder: ${kraever} tilbud kræver opfølgning, men kpi/ siger ${kraeverLoft}.`
       );
     }
   }

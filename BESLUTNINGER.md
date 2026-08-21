@@ -4910,3 +4910,76 @@ som en `permission-denied` på en formular.
 
 Planning skrev *"Periode og **afdeling** vælges i topbaren"*. Afdelingsvælgeren
 blev fjernet i beslutning 70. Nu står der kun perioden.
+
+## 75. Faldet fra beslutning 70, gennemgået frem for afventet
+
+Fjernelsen af divisionsaksen havde nu produceret fejl **tre gange**: elleve
+skrivestier der stadig satte feltet (72), `demo-indkoeb`'s `undefined` i et
+seed (72), og nedbruddet i `demo-oekonomi` der gjorde Planning til en hvid side
+(74). Tre gange er et mønster, ikke uheld — så resten blev gennemgået frem for
+at vente på den fjerde.
+
+### ⚠ En påkrævet vælger til et felt reglerne afviser
+
+`Planlaegdialog.jsx` tegnede stadig en **`kraevet`** "Division"-vælger med tre
+valgmuligheder. Hverken valideringen eller skrivningen kendte feltet længere —
+så brugeren skulle udfylde noget der ingen steder blev læst, og som ville have
+fået skrivningen afvist hvis det var.
+
+**En formular er det sted en beslutning bliver til noget nogen taster.** Et
+felt der overlever en fjernelse dér, er dyrere end et der overlever i en
+kommentar.
+
+### ⚠ Fire selvkontroller: to advarede FALSK, to var tavst døde
+
+Da `selvkontrol()` (74) holdt op med at lade dem kaste, kom det frem hvad de
+faktisk gjorde:
+
+| Fil | Hvad den gjorde | Hvorfor |
+|---|---|---|
+| `demo-personale` | advarede **falsk**, to gange pr. indlæsning | `inden30 !== undefined` er altid sandt |
+| `demo-fravaer` | advarede **falsk** ved hvert fravær | `gab` blev 0 af to `undefined` |
+| `demo-bemanding` | **tavst død** | `if (!forventet) continue` sprang over |
+| `demo-kunder` | **tavst død** | filtrerede på et felt der ikke findes |
+
+Dertil `demo-etaper`, som advarede **otte gange** om at etaper *manglede*
+`division` — et felt der er forbudt.
+
+⚠ **En falsk advarsel er dyrere end en manglende.** Konsollen havde 24
+advarsler, hvoraf de fleste var forkerte; efter gennemgangen 11, som alle siger
+noget. **Støj lærer folk at lade være med at læse — og så forsvinder de
+rigtige fund i mængden.**
+
+### ⚠ En kontrol der krævede et felt der er valgfrit
+
+`demo-facility` advarede fem gange pr. indlæsning om at et servicebesøg *"peger
+på ukendt lokation undefined"*. Et facility-besøg rammer **enten** et aktiv
+**eller** en lokation — fem af seks peger på en port eller et fryseanlæg, som
+selv har en adresse. Linjen lige over havde sit `b.aktivId &&`; den her
+manglede det. Den har advaret falsk hele tiden.
+
+### Demo-tallene var stadig gods-halvdelen
+
+Ligesom flåden i 70: `bemanding`, `indkoeb` og `kunder` bar gods-grenens tal,
+og de blev pludselig et loft for det SAMLEDE demo-sæt. Lagt sammen.
+
+⚠ **Men ikke `underbemandede`.** Den er **afledt** — summen af (planlagt −
+disponeret) pr. dag — og et afledt tal regnes af det samlede grundlag, ikke som
+en sum af to delsummer. 6 + 2 gav 8; den samlede plan giver **7**.
+Selvkontrollen fangede det. Det er samme skel som i 70, hvor antallene blev
+lagt sammen og procenterne ikke.
+
+### ⚠ Og en genvej der beholdt den gamle FORM, arvede den gamle fejl
+
+Første rettelse af `demo-kunder` satte `const div = "alle"` for at ændre mindst
+muligt — og læste så `DEMO_KPI["alle"]`, som er `undefined`. Loftet blev 0, og
+kontrollen advarede falsk videre. **At beholde formen for at holde ændringen
+lille er præcis dét der bærer fejlen med over.**
+
+### Hvad der står tilbage, og er ægte
+
+Efter gennemgangen advarer konsollen om ting der faktisk er noget: en etape der
+er disponeret på en bil på værksted, ingen booking der afventer koordinator med
+et forslag, to indberetninger uden post i sensitive-noden, og en
+zonetemperatur der ikke kan regnes. **Alle sammen har været usynlige** — enten
+fordi kontrollen var død, eller fordi den druknede i falske.

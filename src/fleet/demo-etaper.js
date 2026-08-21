@@ -302,7 +302,10 @@ selvkontrol("demo-etaper", () => {
     if (!(e.til > e.fra)) {
       console.warn(`demo-etaper: ${e.id} har til <= fra.`);
     }
-    if (!e.division) {
+    /* ⚠ VENDT OM I BESLUTNING 75 — den fjerde af sin slags. Her stod
+       "mangler division", og feltet er FORBUDT siden 70: kontrollen advarede
+       otte gange ved hver sideindlæsning om noget der var rigtigt. */
+    if (e.division !== undefined) {
       console.warn(
         `demo-etaper: ${e.id} mangler division. Reglerne kræver den på etaper/, og ` +
         `den kan ikke kopieres fra køretøjet (beslutning 19).`

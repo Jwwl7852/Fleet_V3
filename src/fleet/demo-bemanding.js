@@ -31,38 +31,42 @@ import { selvkontrol } from "./selvkontrol.js";
    84-mod-83 om igen. Terminal blev udskilt af Lager og fik sine tal DERFRA,
    ikke lagt oveni; underkontrollen nederst i filen fanger det, hvis nogen
    glemmer det næste gang. */
+/* ⚠ HER STOD TO GRENE PR. RÆKKE — `gods` og `bus` — og de var DISJUNKTE:
+   chaufføren havde sine tal under gods og nul under bus, buschaufføren
+   omvendt. Det var den samme kendsgerning delt på en akse der ikke fandtes.
+
+   Grenene er LAGT SAMMEN i beslutning 75, og det er rigtigt fordi tallene er
+   ANTAL MENNESKER: 20 gods-chauffører plus 0 bus-chauffører er 20, og 12
+   mekanikere plus 2 er 14. En sum ville have været forkert på et FORHOLDSTAL
+   — 3,8 % og 2,4 % giver ikke 6,2 % — og det er netop derfor flådens
+   procenter IKKE blev lagt sammen i beslutning 70.
+
+   ⚠ SEKS AF SYV RÆKKER VAR DISJUNKTE (nul i den ene gren), og mekanikeren var
+   den ene der ikke var. Det blev målt felt for felt før sammenlægningen frem
+   for antaget — havde flere overlappet, ville summen have været en påstand
+   om en stab ingen havde talt. */
 export const DEMO_BEMANDINGSPLAN = [
   { id: "chauffoer", navn: "Chauffør",
-    gods: { iDag: [20, 18], oevrige: [[22, 22], [24, 24], [24, 24], [26, 26], [12, 12], [6, 6]] },
-    bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
-
+    iDag: [20, 18],
+    oevrige: [[22, 22], [24, 24], [24, 24], [26, 26], [12, 12], [6, 6]] },
   { id: "buschauffoer", navn: "Buschauffør",
-    gods: { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] },
-    bus:  { iDag: [24, 21], oevrige: [[22, 22], [24, 24], [24, 24], [24, 24], [18, 18], [12, 12]] } },
-
+    iDag: [24, 21],
+    oevrige: [[22, 22], [24, 24], [24, 24], [24, 24], [18, 18], [12, 12]] },
   { id: "mekaniker", navn: "Mekaniker",
-    gods: { iDag: [12, 10], oevrige: [[10, 10], [12, 12], [12, 12], [12, 12], [6, 6], [0, 0]] },
-    bus:  { iDag: [2, 1],   oevrige: [[2, 2], [2, 2], [2, 2], [2, 2], [1, 1], [0, 0]] } },
-
-  /* Lager og Terminal delte tidligere én række. De er to funktioner i
-     kataloget og to grupper i personale/ — Mette Sørensen har begge,
-     Nadia Krarup kun terminal — så de er også to rækker her. Tallene er
-     FLYTTET fra Lager, ikke opfundet: 12/9 blev til 8/5 + 4/4. */
+    iDag: [14, 11],
+    oevrige: [[12, 12], [14, 14], [14, 14], [14, 14], [7, 7], [0, 0]] },
   { id: "lager", navn: "Lagermedarbejder",
-    gods: { iDag: [8, 5],   oevrige: [[7, 7], [7, 7], [7, 6], [7, 7], [3, 3], [0, 0]] },
-    bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
-
+    iDag: [8, 5],
+    oevrige: [[7, 7], [7, 7], [7, 6], [7, 7], [3, 3], [0, 0]] },
   { id: "terminal", navn: "Terminalmedarbejder",
-    gods: { iDag: [4, 4],   oevrige: [[3, 3], [3, 3], [3, 3], [3, 3], [1, 1], [0, 0]] },
-    bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
-
+    iDag: [4, 4],
+    oevrige: [[3, 3], [3, 3], [3, 3], [3, 3], [1, 1], [0, 0]] },
   { id: "disponent", navn: "Disponent",
-    gods: { iDag: [6, 6],   oevrige: [[6, 6], [6, 6], [6, 6], [6, 6], [3, 3], [2, 2]] },
-    bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
-
+    iDag: [6, 6],
+    oevrige: [[6, 6], [6, 6], [6, 6], [6, 6], [3, 3], [2, 2]] },
   { id: "administration", navn: "Administration",
-    gods: { iDag: [8, 5],   oevrige: [[6, 6], [6, 6], [6, 6], [6, 5], [0, 0], [0, 0]] },
-    bus:  { iDag: [0, 0],   oevrige: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]] } },
+    iDag: [8, 5],
+    oevrige: [[6, 6], [6, 6], [6, 6], [6, 5], [0, 0], [0, 0]] },
 ];
 /**
  * Selvkontrol i dev — som demo-personale.js gør mod kompetencetallet.
@@ -73,13 +77,18 @@ export const DEMO_BEMANDINGSPLAN = [
  * at lægge fire vagter oveni i stedet for at flytte dem.
  */
 function tjekPlanModKpi() {
-  for (const division of ["gods", "bus"]) {
-    const forventet = DEMO_KPI[division]?.bemanding;
-    if (!forventet) continue;
+  /* ⚠ HER LØB EN LØKKE OVER ["gods", "bus"] MED `DEMO_KPI[division]`.
+     Sættet er fladt (beslutning 70), så opslaget gav `undefined` — og
+     `if (!forventet) continue` sprang derfor kontrollen over. **Den var
+     tavst død**: den kunne ikke fejle, men den kunne heller ikke sige noget.
+     Se beslutning 75. */
+  {
+    const forventet = DEMO_KPI?.bemanding;
+    if (!forventet) return;
 
     let planlagt = 0, disponeret = 0, underbemandede = 0;
     for (const f of DEMO_BEMANDINGSPLAN) {
-      const saet = f[division];
+      const saet = f;
       planlagt += saet.iDag[0];
       disponeret += saet.iDag[1];
       /* underbemandede tælles over HELE ugen — også de øvrige dage. */
@@ -89,13 +98,15 @@ function tjekPlanModKpi() {
     const afvig = [
       ["planlagt", planlagt, forventet.planlagt],
       ["disponeret", disponeret, forventet.disponeret],
-      ["ledig", planlagt - disponeret, forventet.ledig],
+      /* ⚠ `ledig` ER FJERNET FRA kpi/ (beslutning 71) — den er AFLEDT og
+         regnes hos forbrugeren. En sammenligning mod et felt der ikke
+         findes, gav "14 ≠ undefined" ved hver indlæsning. */
       ["underbemandede", underbemandede, forventet.underbemandede],
     ].filter(([, faktisk, vil]) => faktisk !== vil);
 
     if (afvig.length) {
       console.warn(
-        `Bemanding: ugeplanen summer ikke til kpi.${division}.bemanding — ` +
+        "Bemanding: ugeplanen summer ikke til kpi.bemanding — " +
         afvig.map(([felt, f, v]) => `${felt} ${f} ≠ ${v}`).join(", ") +
         ". Skærmen viser nu et nøgletal der modsiger sin egen tabel."
       );

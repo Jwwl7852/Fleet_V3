@@ -79,7 +79,15 @@ export const DEMO_KPI = {
        fordi det er AFLEDT, og demofilen skal passe i begge retninger: lovede
        den et felt aggregeringen ikke skriver, ville skærmen vise et tal i demo
        og en streg i drift. */
-    planlagt: 58, disponeret: 48, underbemandede: 6,
+    /* ⚠ HELE STABEN, ikke gods-halvdelen — samme rettelse som flåden fik.
+       Ugeplanen summer til 84 planlagte og 70 disponerede; stod her 58 og 48,
+       ville selvkontrollen sige at skærmen modsiger sin egen tabel, og den
+       ville have ret. 58+26 og 48+22. */
+    /* ⚠ underbemandede ER 7, IKKE 6+2. De to andre tal er ANTAL og kunne
+       lægges sammen; det her er et AFLEDT tal — summen af (planlagt −
+       disponeret) pr. dag — og det regnes af den SAMLEDE plan, ikke som en
+       sum af to delsummer. Selvkontrollen regner det og sagde 7 ≠ 8. */
+    planlagt: 84, disponeret: 70, underbemandede: 7,
     /* kompetencerUdloeber er IKKE delt på division (beslutning 19). Staben
        er én, så tallet er det samme her og under bus. Stod der to
        forskellige, ville Bemanding vise et andet tal ved et toggle-skift
@@ -119,7 +127,9 @@ export const DEMO_KPI = {
     },
   },
   indkoeb: {
-    aabneOrdrer: 18, fakturaerTilGodkendelse: 7, indkoebsprisafvigelser: 5,
+    /* ⚠ HELE INDKØBET: 18+7 og 7+3. Demo-sættet har 53 linjer, og et udsnit
+       kan ikke være større end totalen — se selvkontrollen i demo-indkoeb.js. */
+    aabneOrdrer: 25, fakturaerTilGodkendelse: 10, indkoebsprisafvigelser: 7,
     varerTilGodkendelse: 8, manglerFaktura: 24, godkendtDenneMaaned: 86,
     maanedensForbrugOere: 12284500,
     leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
@@ -132,7 +142,8 @@ export const DEMO_KPI = {
     prisafvigelserDelta: 2, leveranceTilTidenDeltaPoint: 5,
   },
   kunder: {
-    aktive: 51, aftalerUdloeber: 7, tilbud: 12, tilbudKraeverOpfoelgning: 5,
+    /* ⚠ HELE KUNDEKARTOTEKET: 51+17, 7+3, 12+6, 5+2. */
+    aktive: 68, aftalerUdloeber: 10, tilbud: 18, tilbudKraeverOpfoelgning: 7,
     daekningsbidragOere: 31184000,
     /* Periodeafvigelser — de kraever historik og kan ikke regnes af de
        hentede kunder. aktiveDeltaPct er procent; daekningsbidragDeltaPct

@@ -48,7 +48,6 @@
  */
 import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
-import { useFleet } from "../fleet/FleetContext.jsx";
 import { useListe } from "../fleet/useListe.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. `personale` er en seedet node. */
 import { demoKompetencerMedNavn, DEMO_PERSONALE } from "../fleet/demo-personale.js";
@@ -96,7 +95,6 @@ export default function Bemanding() {
     vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
   /**
@@ -118,7 +116,10 @@ export default function Bemanding() {
   /* Ugen sættes sammen med iDag-sættet i den kolonne der faktisk ER i dag. */
   const funktioner = DEMO_BEMANDINGSPLAN
     .map((f) => {
-      const saet = f[division] || f.gods;
+      /* ⚠ HER STOD `f[division] || f.gods` — planen var nøglet på en akse der
+         er væk (beslutning 70), og faldbakken skjulte det: den ramte altid
+         `gods`, så bus-halvdelen af staben var usynlig på skærmen. */
+      const saet = f;
       let j = 0;
       const uge = DAGE.map((dag, i) => {
         const [planlagt, disponeret] = i === I_DAG ? saet.iDag : saet.oevrige[j++];
