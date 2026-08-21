@@ -152,8 +152,27 @@ export function useKpi() {
              den — se Dashboard. */
           setData(medFuldForm(vaerdi));
         } else {
+          /**
+           * ⚠ FORMEN, IKKE null — og det er forskellen på en skærm med et hul
+           * i og en hvid skærm.
+           *
+           * Her stod `setData(null)`, og fire skærme læser `k.` hele vejen
+           * ned: Workforce, Planning, Disponering og Kunder. De returnerede
+           * derfor på `if (!k)` **før** de tegnede deres tabeller — og en
+           * kunde med 35 medarbejdere i basen så en tom Workforce, fordi
+           * NØGLETALLENE manglede.
+           *
+           * Det blev målt på en rigtig tenant: `kpi`-noden var tom, og ti
+           * skærme så i stykker ud af én manglende node.
+           *
+           * ⚠ SKELLET ER IKKE VÆK — det er flyttet derhen hvor det hører.
+           * `tilstand` siger stadig `ikkeAggregeret`, så skærmen kan sige det
+           * ÉN gang øverst; felterne er null og skriver INTET (—), som de
+           * skal. Dashboard og Økonomi har intet under nøgletallene og
+           * blokerer stadig — se noten ved blokerer().
+           */
           setTilstand({ art: TILSTAND.ikkeAggregeret, visDemo: false });
-          setData(null);
+          setData(medFuldForm({}));
         }
       } catch (e) {
         if (!aktiv) return;

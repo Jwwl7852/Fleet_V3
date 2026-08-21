@@ -117,6 +117,7 @@ import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
    fritekststreng. Fem filer havde hver sin stavemåde at drive med. */
 import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+import { blokerer } from "../../fleet/datatilstand.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -416,7 +417,21 @@ export default function Disponering() {
   })));
 
   if (henter) return <Henter hvad="disponering" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /**
+   * ⚠ BLOKÉR KUN PÅ DET DER FAKTISK BLOKERER.
+   *
+   * Her stod `if (!k) return …` — og skærmen blankede når nøgletallene
+   * manglede, selv om tabellerne nedenunder læses DIREKTE fra basen og havde
+   * indhold. En kunde med data i basen så en tom skærm.
+   *
+   * `blokerer()` er sand for en AFVISNING og for manglende forbindelse — der
+   * er intet at tegne — og falsk for "ikke aggregeret endnu", som er en
+   * oplysning. Nøgletallene bærer da null og skriver INTET (—), og
+   * `<Datatilstand>` siger hvorfor ÉN gang. Se beslutning 73.
+   */
+  if (blokerer(tilstand)) {
+    return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  }
 
   /* --- Tjekkene, kørt på det viste vindue --- */
   const fund = [];

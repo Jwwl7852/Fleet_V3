@@ -59,6 +59,7 @@ import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
    to skærme hver sin vej, ville vi have 84-mod-83 uden et gemt felt at give
    skylden. Se beslutning 71. */
 import { ledig, kapacitetsgrad } from "../fleet/dashboards.js";
+import { blokerer } from "../fleet/datatilstand.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap
 } from "../fleet/ui.jsx";
@@ -98,7 +99,21 @@ export default function Bemanding() {
   const { division } = useFleet();
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /**
+   * ⚠ BLOKÉR KUN PÅ DET DER FAKTISK BLOKERER.
+   *
+   * Her stod `if (!k) return …` — og skærmen blankede når nøgletallene
+   * manglede, selv om tabellerne nedenunder læses DIREKTE fra basen og havde
+   * indhold. En kunde med data i basen så en tom skærm.
+   *
+   * `blokerer()` er sand for en AFVISNING og for manglende forbindelse — der
+   * er intet at tegne — og falsk for "ikke aggregeret endnu", som er en
+   * oplysning. Nøgletallene bærer da null og skriver INTET (—), og
+   * `<Datatilstand>` siger hvorfor ÉN gang. Se beslutning 73.
+   */
+  if (blokerer(tilstand)) {
+    return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  }
 
   /* Ugen sættes sammen med iDag-sættet i den kolonne der faktisk ER i dag. */
   const funktioner = DEMO_BEMANDINGSPLAN

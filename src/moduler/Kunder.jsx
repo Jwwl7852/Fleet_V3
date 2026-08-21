@@ -61,6 +61,7 @@ import {
   Afvigelse, Knap, Ikon 
 } from "../fleet/ui.jsx";
 import { vaerste } from "../fleet/datatilstand.js";
+import { blokerer } from "../fleet/datatilstand.js";
 
 /* Prisgruppen vælger hvilket satssæt en booking regner med. Selve satserne
    ligger i Bookingopsætning — de har gyldigFra og overskrives aldrig. */
@@ -143,7 +144,21 @@ export default function Kunder() {
   });
 
   if (henterKpi || henterKunder) return <Henter hvad="kunder og nøgletal" />;
-  if (!k) return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} tom="Nøgletallene kunne ikke hentes." />;
+  /**
+   * ⚠ BLOKÉR KUN PÅ DET DER FAKTISK BLOKERER.
+   *
+   * Her stod `if (!k) return …` — og skærmen blankede når nøgletallene
+   * manglede, selv om tabellerne nedenunder læses DIREKTE fra basen og havde
+   * indhold. En kunde med data i basen så en tom skærm.
+   *
+   * `blokerer()` er sand for en AFVISNING og for manglende forbindelse — der
+   * er intet at tegne — og falsk for "ikke aggregeret endnu", som er en
+   * oplysning. Nøgletallene bærer da null og skriver INTET (—), og
+   * `<Datatilstand>` siger hvorfor ÉN gang. Se beslutning 73.
+   */
+  if (blokerer(kpiTilstand)) {
+    return <Datatilstand tilstand={kpiTilstand} genprov={genindlaesKpi} tom="Nøgletallene kunne ikke hentes." />;
+  }
 
   const genindlaesAlt = () => { genindlaesKpi(); genindlaesKunder(); };
 

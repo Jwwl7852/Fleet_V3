@@ -4779,3 +4779,72 @@ Og rådataene hænger sammen: 16 enheder (11 aktive, 2 på værksted, 1 ude af
 drift, 1 solgt, 1 skrottet), 35 medarbejdere (32 aktive, 2 på orlov, 1
 fratrådt), 27 opgaver hvoraf 23 er åbne, 0 uden estimat — og én udløbet
 kompetence, som blokerer en disponering.
+
+## 73. Ti skærme så i stykker ud af én manglende node — og fire af dem havde deres data i behold
+
+Kunden meldte: *"Jeg kan intet se på dashboard. På planning er der også tomt.
+På disponering er der tomt. Workforce er også hel tom. Der mangler nøgletal til
+Kompetencer, Indberetninger, servicekalenderen, Klima & Energi, og på Procure
+alle tre undermenuer."*
+
+Ti skærme. **Én årsag:** `kpi`-noden var tom.
+
+⚠ **Og den var tom fordi jeg havde tømt den.** Beslutning 70's dataoprydning
+slettede de gamle `kpi/gods`- og `kpi/bus`-grene for **begge** tenants, og jeg
+genskabte kun den ene. En oprydning der rammer bredere end den etape der
+udløste den, er ikke færdig når prøverne er grønne.
+
+### ⚠ Rapporten delte sig præcis på en linje i koden
+
+| Kunden sagde | Skærme | Hvad de gjorde |
+|---|---|---|
+| *"tomt"* | Dashboard, Workforce, Planning, Disponering | `if (!k) return` — blankede **før** de tegnede noget |
+| *"mangler nøgletal"* | Kompetencer, Indberetninger, Servicekalender, Klima, Procure ×3 | tegnede deres lister, viste `—` i tallene |
+
+Den anden gruppe opførte sig rigtigt. Den første skjulte data der fandtes:
+Workforce har **35 medarbejdere** i basen, Planning og Disponering **syv
+opslag hver**, Kunder sit kartotek. Alle fire returnerede før første tabel.
+
+### ⚠ Kriteriet fandtes i forvejen — det var anvendt forkert
+
+`datatilstand.js` skrev det selv, ved siden af `blokerer()`:
+
+> *"Skellet er ikke 'hvilke skærme er vigtige', men: har skærmen noget under
+> nøgletallene som den læser DIREKTE fra basen? Har den det — en tabel man kan
+> oprette i — må den ikke blokere."*
+
+Og listede så **seks** skærme som undtagelser. Målt:
+
+| Skærm | `useListe`-kald | Må den blokere? |
+|---|---|---|
+| Dashboard | **0** | ja |
+| Økonomi | **0** | ja |
+| Kunder | 1 | **nej** |
+| Bemanding | 1 | **nej** |
+| Booking-oversigten | 6 | **nej** |
+| Disponering | 7 | **nej** |
+
+**Reglen var rigtig og anvendt forkert på fire af seks.** Det er den værste
+slags fejl at få øje på: den ser begrundet ud, for begrundelsen står der.
+Prøven regner derfor kriteriet **ud af skærmene selv** frem for at holde en
+liste ved lige.
+
+### Én ændring bar de fire
+
+`useKpi` satte `null` når noden var tom. En skærm der læser `k.bemanding.
+disponeret`, kaster på det — derfor `if (!k) return`. Nu sætter den
+`medFuldForm({})`: hvert domæne med `null`-felter.
+
+Så skriver `num()` `INTET` (—) i hvert tal, `<Datatilstand>` siger ÉN gang
+hvorfor, og tabellerne nedenunder tegnes. Skellet er ikke væk — det er flyttet
+derhen hvor det hører: i `tilstand`, ikke i om objektet findes.
+
+⚠ **Men en AFVISNING giver stadig `null`.** *Ingen tal oven på en
+permission-denied* er beslutning 26, og et skelet ville være den samme fejl i
+tal-form: en afvist læsning ville komme til at ligne et tomt datasæt.
+
+### ⚠ Og beskeden på den skærm en ny kunde ser først
+
+> *"Tallene beregnes af en aggregering der endnu ikke er bygget."*
+
+Den er bygget. Se beslutning 72.

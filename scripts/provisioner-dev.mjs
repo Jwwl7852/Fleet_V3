@@ -504,9 +504,23 @@ async function main() {
     }
   }
 
-  const moduler = (await db.ref(`tenants/${valgt}/moduler`).once("value")).val() || {};
+  const moduler = (await db.ref(`tenants/${valgt}/moduler`).once("value")).val();
   const regeltekst = readFileSync("firebase.rules.json", "utf8");
+
+  /**
+   * ⚠ SAMME LOGIK SOM REGLEN, LED FOR LED — inklusive det første.
+   *
+   * Reglen er `!moduler.exists() || moduler.child(X).val() === true`: en tenant
+   * UDEN en `moduler`-node har adgang til ALT. Det er ikke en genvej; det er
+   * hvordan en tenant der endnu ikke er modulopdelt, kan bruges.
+   *
+   * ⚠ FØRSTE UDGAVE HER SKREV `?? {}` OG GLEMTE DET LED — og `demo` har ingen
+   * `moduler`-node. Resultatet: **27 af 31 noder blev sprunget over**, og
+   * dev-tenanten stod tilbage med fire. En filterkopi der er 90 % rigtig,
+   * afviser præcis dét reglen tillader.
+   */
   const harModulet = (node) => {
+    if (!moduler) return true;
     const m = modulForNode(node, regeltekst);
     return !m || moduler[m] === true;
   };

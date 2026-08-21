@@ -57,6 +57,7 @@ import {
 import { DEMO_BOOKINGER } from "../../fleet/demo-bookinger.js";
 import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
+import { blokerer } from "../../fleet/datatilstand.js";
 
 export default function BookingOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
@@ -113,7 +114,21 @@ export default function BookingOversigt() {
   });
 
   if (henter) return <Henter hvad="nøgletal" />;
-  if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  /**
+   * ⚠ BLOKÉR KUN PÅ DET DER FAKTISK BLOKERER.
+   *
+   * Her stod `if (!k) return …` — og skærmen blankede når nøgletallene
+   * manglede, selv om tabellerne nedenunder læses DIREKTE fra basen og havde
+   * indhold. En kunde med data i basen så en tom skærm.
+   *
+   * `blokerer()` er sand for en AFVISNING og for manglende forbindelse — der
+   * er intet at tegne — og falsk for "ikke aggregeret endnu", som er en
+   * oplysning. Nøgletallene bærer da null og skriver INTET (—), og
+   * `<Datatilstand>` siger hvorfor ÉN gang. Se beslutning 73.
+   */
+  if (blokerer(tilstand)) {
+    return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
+  }
 
   const kundeNavn = (id) => kundeListe.data.find((x) => x.id === id)?.navn || id;
   const opgavePerson = (id) => persListe.data.find((x) => x.id === id)?.navn || id;

@@ -142,16 +142,25 @@ const RANG = {
  * ikke en oplysning om at der er lidt data — det er en oplysning om at vi
  * ikke ved hvad der er.
  *
- * ⚠ SEKS SKÆRME KALDER DEN IKKE, OG DET ER MED VILJE.
- * Dashboard, Økonomi, Kunder, Bemanding, Booking-oversigten og Disponering
- * er BYGGET af nøgletal — kroppen læser `k.` hele vejen ned. Uden dem er der
- * ikke en skærm med et hul i; der er intet tilbage at tegne, og hvert felt
+ * ⚠ TO SKÆRME KALDER DEN IKKE, OG DET ER MED VILJE.
+ * Dashboard og Økonomi er BYGGET af nøgletal — de har **nul** kald til
+ * `useListe`, så uden tallene er der intet tilbage at tegne, og hvert felt
  * skulle sige "ikke aggregeret". Beskeden ÉN gang er det ærlige svar.
  *
- * Skellet er derfor ikke "hvilke skærme er vigtige", men: har skærmen noget
- * under nøgletallene som den læser DIREKTE fra basen? Har den det — en
- * tabel man kan oprette i — må den ikke blokere. Har den det ikke, er
- * beskeden hele indholdet.
+ * Skellet er ikke "hvilke skærme er vigtige", men: **har skærmen noget under
+ * nøgletallene som den læser DIREKTE fra basen?** Har den det — en tabel man
+ * kan oprette i — må den ikke blokere. Har den det ikke, er beskeden hele
+ * indholdet.
+ *
+ * ⚠ HER STOD SEKS, OG KRITERIET VAR RIGTIGT — DET VAR ANVENDT FORKERT.
+ * Kunder, Bemanding, Booking-oversigten og Disponering stod på listen, og de
+ * har henholdsvis 2, 1, 7 og 7 kald til `useListe`. De blankede altså en
+ * skærm fuld af data, fordi nøgletallene manglede.
+ *
+ * Det blev målt på en rigtig tenant hvis `kpi`-node var tom: **ti skærme så i
+ * stykker ud af én manglende node**, og fire af dem havde deres indhold i
+ * behold. En regel der er skrevet rigtigt og anvendt forkert, er svær at få
+ * øje på — den ser jo begrundet ud. Se beslutning 73.
  */
 export const blokerer = (tilstand) =>
   Boolean(tilstand) &&
