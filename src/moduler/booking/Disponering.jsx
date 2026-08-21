@@ -97,6 +97,7 @@ import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
 import Statusskifte from "../../fleet/Statusskifte.jsx";
 import Forslagsdialog from "./Forslagsdialog.jsx";
+import { traekForslag } from "../../fleet/disponer.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
@@ -105,7 +106,7 @@ import {
   straekningFraEtape,
 } from "../../fleet/etaper.js";
 import {
-  FORSLAGBARE_TILSTANDE, TILSTAND } from "../../fleet/booking-state.js";
+  FORSLAGBARE_TILSTANDE, aktiveForslag, kanTraekkeForslag, MAKS_FORSLAG, TILSTAND } from "../../fleet/booking-state.js";
 import { OPGAVE_STATUS, ARBEJDSTYPE, ressourceId } from "../../fleet/opgaver.js";
 import { slutter, raekkerIVindue } from "../../fleet/driftskalender.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -212,6 +213,9 @@ export default function Disponering() {
   const [valgtId, setValgtId] = useState(null);
   /* `null` = lukket. Ellers etapen der foreslås på. */
   const [foreslaar, setForeslaar] = useState(null);
+  /* Id'et på det forslag der trækkes lige nu — så knappen kan sige det. */
+  const [traekker, setTraekker] = useState(null);
+  const [traekSvar, setTraekSvar] = useState(null);
   /* `null` = lukket. Et objekt = åben med gitterets forslag i hånden. */
   const [planlaegger, setPlanlaegger] = useState(null);
   const [flytSvar, setFlytSvar] = useState(null);
@@ -552,9 +556,19 @@ export default function Disponering() {
             onSkiftet={() => opgaver.genindlaes()}
             maaForeslaa={maaForeslaa}
             onForeslaa={() => setForeslaar(valgt)}
+            traekker={traekker}
+            onTraek={async (f) => {
+              setTraekker(f.id);
+              const r = await traekForslag({ etapeId: valgt.id, forslagId: f.id });
+              setTraekker(null);
+              setTraekSvar(r);
+              if (r.ok) etaper.genindlaes?.();
+            }}
           />
         </div>
       </Gitter>
+
+      <Formularsvar svar={traekSvar} okTekst="Forslaget er trukket tilbage." />
 
       {foreslaar && (
         <Forslagsdialog
@@ -661,7 +675,7 @@ function Uplanlagte({ etaper }) {
 /* ---- Detaljepanel ------------------------------------------------------ */
 
 function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet,
-                   maaForeslaa, onForeslaa }) {
+                   maaForeslaa, onForeslaa, onTraek, traekker }) {
   if (!post) {
     return (
       <Kort titel="Detaljer">
@@ -751,8 +765,39 @@ function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet,
           forudsætning ingen kunne opfylde. Se beslutning 58. */}
       {FORSLAGBARE_TILSTANDE.includes(post.tilstand) && (
         <div style={{ marginTop: 14 }}>
-          <Knap variant="primaer" onClick={onForeslaa} disabled={!maaForeslaa}
-                title={maaForeslaa ? undefined : `Kræver ${PERM.bookingForeslaa}.`}>
+          {/* ⚠ DE AKTIVE FORSLAG STÅR HER, MED EN VEJ TILBAGE.
+              Loftet er tre, og uden en tilbagetrækning var en etape med tre
+              forslag LÅST: koordinatoren kan returnere den og bede om nye, og
+              disponenten kunne ikke lave dem. Beslutning 59. */}
+          {aktiveForslag(post).length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              {aktiveForslag(post).map((f) => {
+                const maa = kanTraekkeForslag(post, f.id);
+                return (
+                  <div key={f.id} className="fc-sum">
+                    <span>Forslag {f.nr} · {datoTid(f.afhentningMs)}</span>
+                    <Knap disabled={!maaForeslaa || !maa.ok || traekker === f.id}
+                          title={maaForeslaa ? maa.aarsag || undefined
+                                             : `Kræver ${PERM.bookingForeslaa}.`}
+                          onClick={() => onTraek(f)}>
+                      {traekker === f.id ? "Trækker …" : "Træk tilbage"}
+                    </Knap>
+                  </div>
+                );
+              })}
+              <p className="fc-hint">
+                {aktiveForslag(post).length} af {MAKS_FORSLAG} aktive. Et trukket
+                forslag <b>slettes ikke</b> — det bliver liggende med et
+                tidspunkt, for koordinatoren har måske set det.
+              </p>
+            </div>
+          )}
+          <Knap variant="primaer" onClick={onForeslaa}
+                disabled={!maaForeslaa || aktiveForslag(post).length >= MAKS_FORSLAG}
+                title={!maaForeslaa ? `Kræver ${PERM.bookingForeslaa}.`
+                  : aktiveForslag(post).length >= MAKS_FORSLAG
+                    ? `Der er ${MAKS_FORSLAG} aktive forslag. Træk et tilbage.`
+                    : undefined}>
             Foreslå tur
           </Knap>
           <p className="fc-hint" style={{ marginTop: 8 }}>

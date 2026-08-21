@@ -899,6 +899,24 @@
                 // beloeb i dette hus er en integer i oere, ekskl. moms.
                 "estimatOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
                 "note": { ".validate": "newData.isString() && newData.val().length <= 300" },
+                // ⚠ ET TRUKKET FORSLAG SLETTES IKKE — DET FAAR ET TIDSPUNKT.
+                //
+                // Loftet er tre, og uden en vej tilbage var en etape med tre forslag
+                // laast for altid: koordinatoren kan RETURNERE den og bede om nye,
+                // og disponenten kunne ikke lave dem. Det var en blindgyde bygget
+                // ind i beslutning 58.
+                //
+                // ⚠ OG DET ER EN STATUS, IKKE EN SLETNING — beslutning 53. Et forslag
+                // koordinatoren HAR set, og som saa forsvandt, kan ikke forklares et
+                // halvt aar senere. Samme regel som paa etapens historik.
+                //
+                // ⚠ REGLEN KAN IKKE HINDRE AT valgtForslagId PEGER PAA ET TRUKKET
+                // FORSLAG — en .validate ser eet felt ad gangen. `etapeskift` afviser
+                // det, og det staar i en proeve. Se beslutning 59.
+                "trukketMs": { ".validate": "newData.isNumber()" },
+                // uid: hvem der GJORDE det. Ikke personId — det er ikke hvem forslaget
+                // handler om.
+                "trukketAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
                 "$andet": { ".validate": false }
               }
             },

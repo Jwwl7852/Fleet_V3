@@ -580,6 +580,19 @@ export function forslagListe(etape) {
  * beslutter. Og ikke `kladde`: en forespørgsel der ikke er sendt til
  * planlægning, er ikke disponentens endnu.
  */
+/**
+ * ⚠ ET TRUKKET FORSLAG BLIVER LIGGENDE — beslutning 59.
+ *
+ * Det slettes ikke: et forslag koordinatoren HAR set, og som saa forsvandt,
+ * kan ikke forklares et halvt år senere. Det er samme regel som på etapens
+ * historik, og samme svar som beslutning 53 gav på hardsletning i det hele
+ * taget — en post tages ud af drift med en status, ikke ved at forsvinde.
+ */
+export const erTrukket = (f) => Number.isFinite(f?.trukketMs);
+
+/** De forslag der stadig gælder. Det er DEM loftet tælles på. */
+export const aktiveForslag = (etape) => forslagListe(etape).filter((f) => !erTrukket(f));
+
 export const FORSLAGBARE_TILSTANDE = ["afventerPlan", "aaben", "returneret"];
 
 /** Højst tre. Se valideForslag(). */
@@ -604,9 +617,13 @@ export function valideForslag(forslag = {}, etape = {}, { biler = null, personal
      koordinatoren skal kunne sammenligne dem uden at scrolle. Et fjerde
      forslag er ikke mere information — det er en beslutning der ikke er
      truffet. Trækkes et tilbage, bliver der plads igen. */
-  const findes = forslagListe(etape);
+  /* ⚠ LOFTET TÆLLER DE AKTIVE. Talte det alle, ville et trukket forslag
+     blive ved med at optage sin plads — og sætningen "træk et tilbage for at
+     lave et nyt" ville være usand. Det var den blindgyde beslutning 59
+     lukkede. */
+  const findes = aktiveForslag(etape);
   if (findes.length >= MAKS_FORSLAG) {
-    f._antal = `Der er allerede ${MAKS_FORSLAG} forslag. Træk et tilbage for at lave et nyt.`;
+    f._antal = `Der er allerede ${MAKS_FORSLAG} aktive forslag. Træk et tilbage for at lave et nyt.`;
   }
 
   const ider = Object.keys(forslag.koeretoejIder || {});
@@ -667,6 +684,10 @@ export function valideForslag(forslag = {}, etape = {}, { biler = null, personal
 export function forslagOpdatering(etapeId, forslagId, forslag, etape = {}) {
   if (!etapeId || !forslagId) throw new Error("forslagOpdatering: id mangler.");
 
+  /* ⚠ NUMRENE TÆLLES PÅ ALLE, OGSÅ DE TRUKNE. Koordinatoren har måske set
+     "forslag 2"; genbrugte vi nummeret til et nyt, ville en samtale om
+     forslag 2 pege på to forskellige ting. Pladsen bliver ledig, nummeret gør
+     ikke. */
   const brugte = new Set(forslagListe(etape).map((f) => f.nr));
   let nr = 1;
   while (brugte.has(nr)) nr += 1;
@@ -691,4 +712,48 @@ export function forslagOpdatering(etapeId, forslagId, forslag, etape = {}) {
     opdatering: { [`etaper/${etapeId}/forslag/${forslagId}`]: post },
     post,
   };
+}
+
+/**
+ * kanTraekkeForslag(etape, forslagId) → { ok, aarsag }
+ *
+ * ⚠ SAMME TILSTANDE SOM DER MÅ SKRIVES I. Står etapen hos koordinatoren
+ * (`afventerKoord`), ville et forslag der forsvandt undervejs, ændre det der
+ * bliver besluttet — under den der beslutter. Skal det trækkes, returnerer
+ * koordinatoren etapen først; det er netop hvad `returneret` er til.
+ */
+export function kanTraekkeForslag(etape = {}, forslagId) {
+  if (!FORSLAGBARE_TILSTANDE.includes(etape.tilstand)) {
+    return {
+      ok: false,
+      aarsag: etape.tilstand === "afventerKoord"
+        ? "Koordinatoren er ved at tage stilling. Bed om at få etapen returneret først."
+        : `Der kan ikke trækkes forslag på en etape der er ${TILSTAND[etape.tilstand]?.label || etape.tilstand}.`,
+    };
+  }
+  const f = (etape.forslag || {})[forslagId];
+  if (!f) return { ok: false, aarsag: "Forslaget findes ikke på etapen." };
+  if (erTrukket(f)) return { ok: false, aarsag: "Forslaget er allerede trukket tilbage." };
+  return { ok: true };
+}
+
+/**
+ * traekOpdatering(etapeId, forslagId, { uid, nu }) → { opdatering }
+ *
+ * ⚠ TO FELTER, IKKE EN SLETNING. Og `valgtForslagId` ryddes hvis den peger på
+ * netop dette forslag: et valg der pegede på noget trukket, ville være en
+ * godkendelse der ventede på at ske. `etapeskift` afviser det også — men et
+ * felt der peger på noget der ikke gælder, skal ikke blive stående og se
+ * gyldigt ud.
+ */
+export function traekOpdatering(etapeId, forslagId, etape, { uid, nu }) {
+  if (!etapeId || !forslagId) throw new Error("traekOpdatering: id mangler.");
+  const opdatering = {
+    [`etaper/${etapeId}/forslag/${forslagId}/trukketMs`]: nu,
+    [`etaper/${etapeId}/forslag/${forslagId}/trukketAf`]: uid,
+  };
+  if (etape?.valgtForslagId === forslagId) {
+    opdatering[`etaper/${etapeId}/valgtForslagId`] = null;
+  }
+  return { opdatering };
 }

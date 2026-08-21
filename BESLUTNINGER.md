@@ -3687,3 +3687,75 @@ Det er samme fejl som `.fc-btn`-søgningen og reolpladsudsnittet i beslutning 53
 **et udsnit der ikke er afgrænset, og en søgning der ikke fjerner
 kommentarerne, måler noget andet end det man tror.** Begge stripper nu
 kommentarer først.
+
+## 59. Loftet på tre var en blindgyde
+
+Beslutning 58 satte loftet til tre forslag og skrev i sin egen validering:
+
+> *"Der er allerede 3 forslag. **Træk et tilbage** for at lave et nyt."*
+
+Der var ingen vej tilbage. Ingenting kunne trække et forslag, og `etaper` er
+`.write: false`.
+
+⚠ **Og det var værre end en irritation.** Den overgang koordinatoren bruger til
+at bede om **nye** forslag — `afventerKoord → returneret`, derefter *"Send nye
+forslag"* — kræver `kraeverForslag`, og de tre gamle opfyldte kravet. Etapen
+kunne altså gå frem og tilbage mellem disponent og koordinator i al evighed med
+de samme tre forslag, hvoraf ingen duede.
+
+Sætningen i valideringen var altså en instruktion i noget der ikke kunne lade
+sig gøre — samme klasse som README's *"træk opgave hertil"* før beslutning 49.
+
+### ⚠ Det slettes ikke — det får et tidspunkt
+
+`trukketMs` og `trukketAf`. Ikke en sletning, og ikke fordi reglerne forbyder
+det (beslutning 53 gælder klienten; en Cloud Function kunne godt), men fordi
+**et forslag koordinatoren HAR set, og som så forsvandt, ikke kan forklares et
+halvt år senere**. Det er samme regel som på etapens historik, og samme svar som
+53 gav i det hele taget: en post tages ud af drift med en status.
+
+⚠ **`trukketAf` er et uid** — hvem der GJORDE det. Ikke `personId`; det er ikke
+hvem forslaget handler om.
+
+### To ting der kunne have været halve
+
+⚠ **Loftet tæller de AKTIVE.** Talte det alle, ville et trukket forslag blive
+ved med at optage sin plads, og sætningen *"træk et tilbage for at lave et
+nyt"* ville stadig være usand — bare på en måde der var sværere at få øje på.
+
+⚠ **Men nummeret genbruges IKKE.** Koordinatoren har måske set "forslag 2"; gav
+vi nummeret til et nyt, ville en samtale om forslag 2 pege på to forskellige
+ting. **Pladsen bliver ledig, nummeret gør ikke.** De to tællinger er derfor
+adskilt med vilje: `aktiveForslag()` for loftet, `forslagListe()` for numrene.
+
+### ⚠ Reglen kan ikke hindre et valg der peger på noget trukket
+
+En `.validate` ser ét felt ad gangen, så regelfilen kan ikke sige *"`valgtForslagId`
+må ikke pege på et trukket forslag"*. Det er lukket to steder i stedet:
+
+- `traekOpdatering()` **rydder** `valgtForslagId` hvis den peger på netop det
+  forslag — et felt der peger på noget der ikke gælder, skal ikke blive stående
+  og se gyldigt ud.
+- `etapeskift` **afviser** en godkendelse af et trukket forslag. Uden det kunne
+  en godkendelse binde en bil til et forslag disponenten havde taget tilbage.
+
+To spærringer i den rigtige rækkefølge er bedre end én der først siger nej til
+sidst.
+
+### ⚠ Ikke mens koordinatoren tager stilling
+
+Tilbagetrækningen gælder de samme tilstande som skrivningen — `afventerPlan`,
+`aaben`, `returneret`. Står etapen hos koordinatoren, ville et forslag der
+forsvandt undervejs, ændre det der bliver besluttet **under den der beslutter**.
+Skal det trækkes, returneres etapen først; det er netop hvad `returneret` er
+til.
+
+### Én funktion, to handlinger
+
+`forslagskriv` fik `handling: "opret" | "traek"` — som `kasseudlaanskriv`. De
+rører samme node med samme permission og samme forudsætninger, og en anden
+funktion ville betyde en anden kopi af tenant-, abonnements- og modultjekket.
+
+⚠ Det er **ikke** et flag der ændrer hvad posten ER (som en `art` ville være) —
+det er hvad der sker med den. Den skelnen er hele grunden til at
+`opgaveplanlaeg` og `facilityplanlaeg` er to funktioner, mens det her er én.

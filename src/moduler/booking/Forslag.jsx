@@ -57,7 +57,7 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   TILSTAND, kanSkifteEtape, byggEtapeSkifte, tilgaengeligeEtapeHandlinger,
-  TRANSPORTTYPE, forslagListe,
+  TRANSPORTTYPE, forslagListe, aktiveForslag, erTrukket,
 } from "../../fleet/booking-state.js";
 import { tjekDisponering, TONE } from "../../fleet/disponering.js";
 import { skiftEtape } from "../../fleet/disponer.js";
@@ -135,7 +135,7 @@ export default function Forslag() {
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
   const booking = bookingListe.data.find((b) => b.id === id)
     || bookingListe.data.find((b) =>
-      etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && forslagListe(e).length))
+      etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && aktiveForslag(e).length))
     || null;
 
   const etaper = booking ? etaperPaa(booking.id) : [];
@@ -145,7 +145,7 @@ export default function Forslag() {
      nøgle der findes. `forslagListe()` er det ene sted formen oversættes, og
      den sorterer på `nr`, så to skærme ikke viser dem i hver sin rækkefølge.
      Se beslutning 58. */
-  const foerste = etaper.find((e) => forslagListe(e).length) || etaper[0] || null;
+  const foerste = etaper.find((e) => aktiveForslag(e).length) || etaper[0] || null;
 
   const [etapeId, setEtapeId] = useState(foerste?.id || null);
   const [valgtForslagId, setValgtForslagId] = useState(null);
@@ -181,7 +181,12 @@ export default function Forslag() {
     ? kanSkifteEtape(somValgt, "reserveret", perms, { begrundelse })
     : { ok: false, aarsag: "Forløbet har ingen etape." };
 
-  const forslag = forslagListe(etape);
+  /* ⚠ ET TRUKKET FORSLAG KAN IKKE VÆLGES — beslutning 59. Det bliver
+     liggende, fordi koordinatoren måske HAR set det, men det er ikke længere
+     et bud: `etapeskift` afviser en godkendelse af det, og en radioknap der
+     førte til et nej, ville være en attrap. */
+  const forslag = aktiveForslag(etape);
+  const trukne = forslagListe(etape).filter(erTrukket);
   const valgtForslag = forslag.find((f) => f.id === valgtForslagId) || null;
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -282,6 +287,7 @@ export default function Forslag() {
           <Forslagstabel
             etape={etape}
             forslag={forslag}
+            trukne={trukne}
             valgtForslagId={valgtForslagId}
             setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
             biler={bilListe.data}
@@ -313,7 +319,7 @@ export default function Forslag() {
 
 /* ---- Forslagene på etapen ---------------------------------------------- */
 
-function Forslagstabel({ etape, forslag, valgtForslagId, setValgtForslagId, biler, personale }) {
+function Forslagstabel({ etape, forslag, trukne = [], valgtForslagId, setValgtForslagId, biler, personale }) {
   /* ⚠ LISTERNE KOMMER IND. Kolonnerne slaar navne op, og en
      underkomponent kan ikke se den ydres variable — femte gang i denne
      omgang, og byggeriet siger det ikke: en ReferenceError ved rendering er
@@ -362,9 +368,23 @@ function Forslagstabel({ etape, forslag, valgtForslagId, setValgtForslagId, bile
         />
       ) : (
         <Tom>
-          Etapen har ingen forslag. Disponenten laver dem — det er den anden
-          halvdel af beslutning 5.
+          Etapen har {trukne.length ? "ingen AKTIVE forslag" : "ingen forslag"}.
+          Disponenten laver dem — det er den anden halvdel af beslutning 5.
         </Tom>
+      )}
+
+      {/* ⚠ DE TRUKNE STÅR MED, MEN IKKE SOM ET VALG. De slettes ikke — et
+          forslag koordinatoren HAR set, og som så forsvandt, kan ikke
+          forklares et halvt år senere. Men de er ikke længere et bud, og
+          `etapeskift` afviser en godkendelse af dem. Beslutning 59. */}
+      {trukne.length > 0 && (
+        <p className="fc-hint" style={{ marginTop: 12 }}>
+          <b>{trukne.length} trukket tilbage</b> —{" "}
+          {trukne.map((f) => `nr. ${f.nr}`).join(", ")}. De står ikke som et
+          valg: disponenten har taget dem af bordet, og en godkendelse ville
+          blive afvist. Nummeret genbruges ikke, så en samtale om
+          "forslag 2" bliver ved med at pege på det samme.
+        </p>
       )}
     </Kort>
   );

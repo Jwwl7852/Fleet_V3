@@ -69,7 +69,8 @@ import {
 import {
   valideBooking, bookingOpdatering, naesteBookingnummer,
   kanSkifteEtape, byggEtapeSkifte, forloebstilstand,
-  valideForslag, forslagOpdatering, forslagListe,
+  valideForslag, forslagOpdatering,
+  kanTraekkeForslag, traekOpdatering, erTrukket, aktiveForslag,
 } from "./delt/booking-state.js";
 import {
   reservationerFraEtape, enhedsIder, straekningFraEtape
@@ -2746,6 +2747,14 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
       throw new HttpsError("failed-precondition",
         "Det valgte forslag findes ikke på etapen.");
     }
+    /* ⚠ ET TRUKKET FORSLAG KAN IKKE GODKENDES — beslutning 59. Reglen kan
+       ikke hindre at `valgtForslagId` peger paa et: en .validate ser eet felt
+       ad gangen. Uden det her tjek kunne en godkendelse binde en bil til et
+       forslag disponenten havde taget tilbage. */
+    if (erTrukket(forslag)) {
+      throw new HttpsError("failed-precondition",
+        "Forslaget er trukket tilbage og kan ikke godkendes. Bed disponenten om et nyt.");
+    }
 
     const paaEtapen = {
       ...etape,
@@ -3008,6 +3017,32 @@ export const forslagskriv = onCall({ region: REGION }, async (req) => {
   const d = req.data || {};
   const etape = await hentEtape(rod, kortStreng(d.etapeId, 60));
 
+  /* ⚠ TO HANDLINGER PAA EEN FUNKTION — som `kasseudlaanskriv`. De rører
+     samme node med samme permission og samme forudsætninger, og en anden
+     funktion ville betyde en anden kopi af tenant-, abonnements- og
+     modultjekket ovenfor. Det er ikke et flag der aendrer HVAD posten er
+     (som en art ville vaere) — det er hvad der sker med den. */
+  const handling = kortStreng(d.handling, 20) || "opret";
+  if (!["opret", "traek"].includes(handling)) {
+    throw new HttpsError("invalid-argument", `Ukendt handling: ${handling}`);
+  }
+
+  if (handling === "traek") {
+    const forslagId = kortStreng(d.forslagId, 60);
+    /* ⚠ SKAERMENS EGEN FUNKTION. Samme saetning begge steder. */
+    const maa = kanTraekkeForslag(etape, forslagId);
+    if (!maa.ok) throw new HttpsError("failed-precondition", maa.aarsag);
+
+    const bygget = traekOpdatering(etape.id, forslagId, etape, { uid, nu: Date.now() });
+    await rod.update(bygget.opdatering);
+
+    await logOpgave(tenantId, uid, AUDIT.tilstandsskift, etape.id, null,
+      { forslagNr: (etape.forslag || {})[forslagId]?.nr ?? null },
+      `forslag trukket tilbage paa etape ${etape.id}`);
+
+    return { forslagId, trukket: true, aktive: aktiveForslag(etape).length - 1 };
+  }
+
   const tal = (v) => (v === null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
   const ider = {};
   for (const id of Array.isArray(d.koeretoejIder) ? d.koeretoejIder : []) {
@@ -3058,7 +3093,7 @@ export const forslagskriv = onCall({ region: REGION }, async (req) => {
     { forslagNr: bygget.post.nr, personId: forslag.personId },
     `forslag ${bygget.post.nr} paa etape ${etape.id}`);
 
-  return { forslagId, nr: bygget.post.nr, antal: forslagListe(etape).length + 1 };
+  return { forslagId, nr: bygget.post.nr, aktive: aktiveForslag(etape).length + 1 };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

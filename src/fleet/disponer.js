@@ -94,3 +94,19 @@ export const skrivForslag = ({
   etapeId, koeretoejIder, personId, afhentningMs, leveringMs,
   transitTimer, estimatOere, note,
 });
+
+/**
+ * Træk et forslag tilbage.
+ *
+ * ⚠ DET SLETTES IKKE — det får et tidspunkt og et uid. Et forslag
+ * koordinatoren HAR set, og som så forsvandt, kan ikke forklares et halvt år
+ * senere; det er samme regel som på etapens historik, og samme svar som
+ * beslutning 53 gav på hardsletning i det hele taget.
+ *
+ * ⚠ OG DET ER GRUNDEN TIL AT LOFTET KAN NÅS UDEN AT LÅSE NOGET. Med tre
+ * forslag og ingen vej tilbage var en etape låst for altid — koordinatoren
+ * kunne RETURNERE den og bede om nye, og disponenten kunne ikke lave dem.
+ * Se beslutning 59.
+ */
+export const traekForslag = ({ etapeId, forslagId }) =>
+  kald({ handling: "traek", etapeId, forslagId });

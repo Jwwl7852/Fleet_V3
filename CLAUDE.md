@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **58 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **59 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -218,6 +218,11 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   ⚠ **Men de fem tjek køres alligevel**, med den SAMME `spaerringerFor()` som
   ved godkendelsen. Et forslag koordinatoren ikke kan godkende, er et løfte
   til en kunde der ikke kan holdes.
+  ⚠ **Et trukket forslag SLETTES ikke** — det får `trukketMs` og
+  `trukketAf`. Loftet tæller de AKTIVE, men nummeret genbruges ikke: pladsen
+  bliver ledig, nummeret gør ikke. Og `etapeskift` afviser en godkendelse af
+  et trukket forslag, fordi reglen ikke kan hindre at `valgtForslagId` peger
+  på et. Se beslutning 59.
   ⚠ **Og forslagene er NØGLET på deres eget id — de er ikke en array.** RTDB
   har ingen arrays, `$andet: false` forbyder et `id` inde i posten, og
   `valgtForslagId` skal pege på en nøgle der findes. Brug `forslagListe()`;
