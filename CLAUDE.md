@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **49 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **50 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -240,6 +240,35 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   delene — og reservationen kan forsvinde mens bilen står på liften), og
   **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på
   `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id).
+- **Forlænge en reservation når et arbejde løb over sin tid.** `opgavestatus`
+  AFKORTER ved `udfoert` — `min(til, nu)` — og forlænger **aldrig**. Løb
+  arbejdet over, kan perioden allerede være lovet væk til en booking, og en
+  udvidelse ville lave et overlap datamodellen afviser og gitteret tegner som
+  en konflikt der ikke er nogens skyld. Overskridelsen ses på opgaven, hvor
+  `faktiskMin` er større end `estimeretMin`.
+  ⚠ **Og flaget er vigtigere end tallet.** Uden `afkortet: true` kan man ikke
+  se forskel på et besøg der VAR kort og et der SLUTTEDE tidligt. Hvad planen
+  sagde, står på opgaven som `startMs + estimeretMin` — læg det ikke på
+  reservationen også.
+- **Regne `faktiskMin` af reservationens vindue.** Tre tal, tre betydninger:
+  `estimeretMin` er hvad vi TROEDE (og det reservationen regnes af),
+  reservationens `til` er hvor længe RESSOURCEN var optaget, og `faktiskMin` er
+  hvor længe ARBEJDET tog. En bil kan holde på liften i seks timer og blive
+  arbejdet på i to, fordi en reservedel manglede.
+  ⚠ **Og `faktiskMin` er VALGFRI.** Et krævet felt ville blive udfyldt med
+  fiktion af den der ikke ved det, og tallet bruges til at vurdere estimater.
+  `kpi.opgaver.udenTidsregistrering` TÆLLER dem der mangler — hullet er
+  synligt frem for spærret. Fjern ikke den tælling: uden den er valgfriheden
+  bare et hul ingen kan se. Se beslutning 50.
+- **Tegne statusknapper i en skærm.** `fleet/Statusskifte.jsx` tegner dem af
+  `OPGAVE_OVERGANGE`, og serveren afviser med den SAMME `kanSkifteOpgave()`.
+  En knap uden en overgang er en pæn knap; en overgang uden en knap er en vej
+  ingen kan finde. Fire skærme viser den samme opgave — byggede hver sin
+  knaprække, ville den ene tilbyde et skift serveren afviser.
+  ⚠ **Og der er ingen begrundelse ved annullering.** `etapeskift` kræver en,
+  fordi en annulleret TUR er en aftale med en kunde der brydes; en driftsopgave
+  er vores egen disposition. Vigtigere: en begrundelse ville være fritekst på
+  vej mod auditloggen, og allowlisten findes for at holde tastet tekst ude.
 - **Bygge et kalendergitter til.** `fleet/Gitterkalender.jsx` tegner
   ressourcer × tid og bruges af Driftskalender, Servicekalender, Disponering
   **og Unitbookings kalender**. Regnestykket ligger i `gitter.js`. To gitre der
@@ -510,12 +539,12 @@ kan ikke komme ud af sync.
   for **fakturagrundlag** (`naesteGrundlagsnummer`), men `naesteBookingNummer`
   kaldes **ingen steder**: der findes ingen `bookingopret`, og `bookinger` er
   `.write: false`. En booking kan altså ikke oprettes af en klient.
-- **`opgaver` har nu TO veje ind, og to der stadig er lukkede.**
+- **`opgaver` har nu TRE veje ind, og ÉN der stadig er lukket.**
   `opgaveplanlaeg` opretter en værkstedsopgave, `opgaveflyt` flytter en opgave
-  af begge arter — begge skriver opgaven OG dens reservation i én `update()`.
-  Det der stadig kræver sin egen funktion, er at OPRETTE en facility-opgave og
-  et STATUSSKIFTE. Løsn ikke `.write` igen: et statusskifte rører også
-  reservationen. Se beslutning 45 og 49.
+  af begge arter, og `opgavestatus` skifter dens status — alle tre skriver
+  opgaven OG dens reservation i én `update()`. Det der stadig kræver sin egen
+  funktion, er at OPRETTE en facility-opgave. Løsn ikke `.write` igen.
+  Se beslutning 45, 49 og 50.
 - **Disponering er BYGGET som visning, og de fem tjek håndhæves — i
   `etapeskift`, ikke i skærmen.** `kanDisponeres()`, `kraevedeKompetencer()`
   + `tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og

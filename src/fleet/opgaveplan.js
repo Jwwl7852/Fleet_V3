@@ -36,19 +36,23 @@
  * der mangler.
  */
 import { kaldFunktion } from "../firebase.js";
-import { PLANSVAR, tolkPlanfejl, valideOpgaveflyt } from "./opgaveplan-regler.js";
+import {
+  PLANSVAR, tolkPlanfejl, valideOpgaveflyt, kanSkifteOpgave,
+} from "./opgaveplan-regler.js";
 
 export {
   PLANSVAR, planBesked, tolkPlanfejl, valideOpgaveplan,
   PLANLAEGBAR_STATUS, MAKS_MINUTTER,
   FLYTBAR_STATUS, FLYTBARE_TYPER, valideOpgaveflyt, flytEfter, erFlyttet,
   kanFlyttes,
+  OPGAVE_OVERGANGE, RESERVATION_VED, kanSkifteOpgave, statusOpdatering, afkortTil,
 } from "./opgaveplan-regler.js";
 
 /* Småt navn — en 2. generations funktion bliver en Cloud Run-tjeneste, og et
    tjenestenavn må kun være småt. Navnet SKAL matche functions/index.js. */
 export const PLANFUNKTION = "opgaveplanlaeg";
 export const FLYTFUNKTION = "opgaveflyt";
+export const STATUSFUNKTION = "opgavestatus";
 
 /**
  * planlaegOpgave(post) → { ok, art, besked, data }
@@ -145,6 +149,54 @@ export async function flytOpgave({ opgaveId, foer, startMs, estimeretMin, ressou
       return {
         ok: false, art: PLANSVAR.demo,
         besked: "Demo-tilstand: der er ingen server, så intet blev flyttet.",
+        data: null,
+      };
+    }
+    return { ok: false, ...tolkPlanfejl(fejl), data: null };
+  }
+}
+
+/**
+ * skiftOpgaveStatus({ opgaveId, foer, status, faktiskMin })
+ *
+ * Opgavens eget statsmaskineri — beslutning 50. IKKE etapens: `opgaver.status`
+ * (indberettet → planlagt → igang → udfoert) er et andet maskineri end etapens
+ * `tilstand`, og de to må ikke blandes sammen. Se beslutning 16 og 21.
+ *
+ * ⚠ SAMME SVARFORM SOM DE TO ANDRE, og den kaster aldrig: "du må ikke",
+ * "det skift findes ikke" og "der er ingen forbindelse" er tre forskellige
+ * ting, og kaster funktionen, bliver de til den samme røde boks.
+ *
+ * ⚠ DEN SVARER FØRST SELV — med serverens egen maskine. Ikke for at afgøre
+ * noget: serveren spørger igen. Det er for at kunne tegne knapperne rigtigt og
+ * svare med det samme, frem for et sekunds tavshed efterfulgt af et nej.
+ *
+ * ⚠ `faktiskMin` ER VALGFRI. En værkfører der lukker ti opgaver, ved ikke
+ * nødvendigvis hvor længe hver af dem tog, og et krævet felt ville blive
+ * udfyldt med fiktion. `kpi.opgaver.udenTidsregistrering` TÆLLER dem der
+ * mangler — hullet er synligt frem for spærret.
+ */
+export async function skiftOpgaveStatus({ opgaveId, foer, status, faktiskMin }) {
+  if (foer) {
+    const tjek = kanSkifteOpgave(foer, status);
+    if (!tjek.ok) {
+      return { ok: false, art: PLANSVAR.ugyldig, besked: tjek.aarsag, data: null };
+    }
+  }
+
+  try {
+    const svar = await kaldFunktion(STATUSFUNKTION, {
+      opgaveId, status,
+      /* undefined frem for null: en callable dropper feltet, og et felt der
+         ikke sendes, er noget andet end et felt der sendes tomt. */
+      faktiskMin: Number.isFinite(faktiskMin) ? faktiskMin : undefined,
+    });
+    return { ok: true, art: PLANSVAR.ok, besked: null, data: svar?.data ?? null };
+  } catch (fejl) {
+    if (/ingen Firebase-app/i.test(String(fejl?.message))) {
+      return {
+        ok: false, art: PLANSVAR.demo,
+        besked: "Demo-tilstand: der er ingen server, så intet blev ændret.",
         data: null,
       };
     }

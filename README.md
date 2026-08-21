@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 49 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 50 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -157,6 +157,7 @@ tilfældigt.
 | 47 | **Skærmen er 85 % lyst felt — det er dét der trætter, ikke kuløren.** Et farveforslag "til at kigge på en hel dag" viste sig målt at være den palet vi allerede havde: ét RGB-trin på baggrunden, nul på kortet. ⚠ Og det trak den forkerte vej — 63,6–71,8 % af plancherne ligger over 250 i lysstyrke mod vores 58,9 %. Kortet er nu `#f4f6fa` og siden `#e4e8f0`; andelen på maksimum falder fra 58,9 % til 21 %. ⚠ Mit første forsøg (`#fbfcfe`) var for forsigtigt og blev **målt ned**: 97,3 % WCAG-lysstyrke er stadig 252 af 255 i råt lys, og skærmens gennemsnit faldt 1,4 %. ⚠ Målingen fandt en fejl der allerede stod der: `--bc-muted` på `--fc-bg` var **4,3:1 — under AA**. ⚠ Og `--bc-line` og mærkatets printbund måtte følge med, ellers forsvandt kortets kant og labelen blev printet grå | `fleet/fleet.css`, `test/design-tokens.test.mjs` |
 | 48 | **Skriftstørrelser er ni tokens, ikke 24 tal spredt i filen.** Beslutning 47 pegede videre: **68 % af tegnene på dashboardet stod på 13 px eller mindre**, 37 % på 12,5 eller mindre — lille skrift med hård kontrast er den mest trættende kombination der findes. `fleet.css` havde 24 forskellige størrelser på 119 steder, otte med halve pixels (8,5 · 9,5 · 10,5 …). Samme fejl som rå farver var før beslutning 10: to tal der næsten er ens, er to lejligheder til at være uenige. Brødteksten er nu **14**, ikke 13. ⚠ Fire verdener, ikke én skala: skærmens tekst må vokse, men **mærkatet** (100 × 200 mm, afledt af 203 dpi — beslutning 46) og **donutens SVG-tekst** (`font-size:6` er seks viewBox-enheder, ikke pixels) må ikke. Ét gulv over alle 119 steder havde printet teksten ud over etiketten. ⚠ `.fc-table th` stod på **10,5 px** — hver eneste tabeloverskrift i programmet, det man læser først, var mindre end alt andet. ⚠ Kalenderens kolonne fik lov at vokse fra 30 til 34 px, fordi det blev **målt**: 180 + 28 × 34 = 1132 px mod 1240 til rådighed. Havde det ikke passet, skulle skriften være blevet stående — en kalender der ruller er værre end en med lille skrift | `fleet/fleet.css`, `test/skrift.test.mjs` |
 | 49 | **Gitteret flytter opgaver — `opgaveflyt`, og attrappen er væk.** "Træk opgave hertil" kunne ikke fokuseres eller klikkes; det man ville trække, er en **opdatering** af en post, og `opgaveplanlaeg` opretter kun ("INTET id. Serveren laver push-nøglen"). ⚠ Den krævede **ingen regelændring** — `opgaver` og `reservationer` er begge `.write: false` i forvejen; det blev målt frem for antaget. ⚠ To fælder, og begge kan kun ses i et regnestykke, derfor er `flytOpdatering()` **ren**: **samme ressource er samme nøgle** (et objekt har én værdi pr. nøgle, så "null den gamle + skriv den nye" på samme sti bliver til én af delene — landede `null` sidst, forsvandt reservationen mens bilen stod på liften), og **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id). ⚠ Og **et døgn er ikke 24 timer**: rå addition over sommertidsskiftet flytter et 07-besøg til 08. ⚠ **Blokkens tegning er ikke opgavens varighed** — en opgave uden estimat tegnes som én time, og regnedes `estimeretMin` af blokken, ville den time blive et rigtigt estimat. ⚠ **Arten flyttes ikke med**, og modulet følger den. En facility-opgave har **to** ressourcetyper: et træk fra en port til en hal skifter TYPE og rydder `aktivId` | `fleet/opgaveplan-regler.js`, `fleet/gitter.js`, `functions/index.js` |
+| 50 | **Opgavens statusmaskine havde seks tilstande og nul veje imellem dem.** En driftsopgave kunne oprettes og flyttes, men aldrig meldes i gang eller udført — mens Arbejdskøen viste statusserne og `kpi.opgaver` talte dem op. ⚠ **Et statusskifte rører reservationen**, og det er derfor det er en serversag: en annulleret opgave skal give bilen fri igen, en udført skal holde op med at spærre den, og `reservationer` er `.write: false` — en klient kunne kun skrive den ene halvdel. ⚠ `udfoert` kan **kun** nås fra `igang` (et besøg meldes ikke færdigt uden at nogen har haft bilen på liften — som klargøringstrinnet i 37), man kan ikke **af-starte** et arbejde, og `udfoert`/`annulleret` er **endestationer**. ⚠ **Reservationen afkortes til nu — men forlænges ALDRIG:** løb arbejdet over sin tid, kan perioden allerede være lovet væk, og en udvidelse ville lave et overlap modellen afviser. Meldes den færdig før den begyndte, fjernes den. `afkortet: true` fordi flaget er vigtigere end tallet. ⚠ **Tre tal, tre betydninger:** `estimeretMin` er hvad vi troede, reservationens `til` hvor længe RESSOURCEN var optaget, `faktiskMin` hvor længe ARBEJDET tog — en bil kan holde på liften i seks timer og blive arbejdet på i to. ⚠ `faktiskMin` er **valgfri**, og svaret stod allerede i koden: `kpi.opgaver.udenTidsregistrering` tæller dem der mangler. Et krævet felt ville blive udfyldt med fiktion | `fleet/opgaveplan-regler.js`, `fleet/Statusskifte.jsx`, `functions/index.js` |
 
 ## Struktur
 
@@ -498,13 +499,15 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    og det samme gælder Driftskalenderen og Servicekalenderen. Ugesgitteret
    fører til **Forslag** frem for at få sin egen kopi af godkendelsen, og
    linket dertil — som pegede på en rute uden id og landede på Dashboardet —
-   er rettet. Det der står tilbage, er ikke gitteret:
-   1. **De gamle opgaver mangler deres reservation** i noden. En bagudrettet
-      udfyldning, ikke et UI-spørgsmål.
-   2. **At OPRETTE en facility-opgave** kræver sin egen funktion —
-      `opgaveplanlaeg` sætter `art: "vaerksted"`.
-   3. **Et STATUSSKIFTE** kræver sin egen. Det rører også reservationen, så
-      `.write` må ikke løsnes igen.
+   er rettet.
+5. ~~**Opgavens statusmaskine.**~~ **Bygget** — beslutning 50. `opgavestatus`
+   skifter status OG reservationens følge i én atomisk opdatering: en
+   annulleret opgave giver bilen fri, en udført afkorter reservationen til nu.
+   Knapperne tegnes af `OPGAVE_OVERGANGE`, ét sted, og bruges af alle tre
+   skærme.
+6. **At OPRETTE en facility-opgave.** Den ENESTE lukkede vej der er tilbage —
+   `opgaveplanlaeg` sætter `art: "vaerksted"`, så Servicekalenderen kan flytte
+   og skifte status på sine besøg, men ikke lave nye. Kræver sin egen funktion.
 
 ### Længdebåndet — trin 3 af beslutning 18 er lukket
 
@@ -655,22 +658,26 @@ efterprøvet ved at gøre netop det.
 
 #### Hullet der står tilbage
 
-**De gamle opgaver har ingen reservation i noden.** `opgaveplanlaeg` og
-`opgaveflyt` skriver den nu, men de opgaver der blev oprettet før de funktioner
-fandtes, har ingen — og `etapeskift` kan derfor ikke se at netop de biler står
-på liften. Skærmen bygger prioritet 40 i browseren for at kunne vise
-konflikten; serveren kender den ikke. **En bagudrettet udfyldning er sin egen
-opgave** og hører sammen med de to lukkede veje nedenfor.
+⚠ **„De gamle opgaver mangler deres reservation" var TOMT — målt, ikke antaget.**
+Her stod at opgaver oprettet før `opgaveplanlaeg` fandtes, ingen reservation
+har, og at `etapeskift` derfor ikke kan se at netop de biler står på liften.
+Målt på den udrullede DEV-base før en udfyldning blev bygget: **21 opgaver, 0
+uden reservation, 0 uden vindue.** Provisioneren skriver dem med den SAMME
+`reservationFraOpgave()`, og efter beslutning 45 findes der ingen anden vej ind
+i noden. Punktet er ikke et efterslæb — det er en egenskab der holder.
 
 En opgave uden `estimeretMin` får slet ingen reservation: `slutter()` svarer
 `null` frem for at gætte et vindue, og en ressource må ikke spærres i et tidsrum
 ingen har besluttet. `kanFlyttes()` afviser sådan en opgave helt — af samme
 grund, og med den samme sætning på skærmen som serveren ville have svaret.
 
-⚠ **To veje ind i `opgaver` er stadig lukkede, og de skal genåbnes med hver sin
-funktion:** at OPRETTE en facility-opgave (`opgaveplanlaeg` sætter
-`art: "vaerksted"`), og et STATUSSKIFTE. `opgaveflyt` rører ingen af dem: den
-bevarer arten og rører ikke `status`.
+**Det der står tilbage, er ÉN lukket vej:** at **oprette** en facility-opgave.
+`opgaveplanlaeg` sætter `art: "vaerksted"`, så Servicekalenderen kan flytte og
+skifte status på sine besøg, men ikke lave nye. Det kræver sin egen funktion.
+
+*(Statusskiftet stod her indtil beslutning 50. `opgavestatus` er bygget:
+`opgaver` har nu tre veje ind, og alle tre skriver opgaven og dens reservation
+i én atomisk opdatering.)*
 
 ### Gitterkalenderen er en genbrugskontrakt
 

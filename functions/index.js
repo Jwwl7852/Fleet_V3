@@ -78,6 +78,7 @@ import { tjekDisponering } from "./delt/disponering.js";
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
 import {
   valideOpgaveplan, valideOpgaveflyt, flytOpdatering,
+  kanSkifteOpgave, statusOpdatering,
 } from "./delt/opgaveplan-regler.js";
 import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
@@ -3250,6 +3251,110 @@ export const opgaveflyt = onCall({ region: REGION }, async (req) => {
       : "opgave flyttet i tid");
 
   return { opgaveId, fra: ny.fra, til: ny.til, ressourceId: ny.ressourceId };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SKIFT EN DRIFTSOPGAVES STATUS — beslutning 50
+
+   ⚠ HVORFOR DET IKKE ER ET FELT EN KLIENT KAN SAETTE.
+   Et statusskifte roerer RESERVATIONEN: en annulleret opgave skal give bilen
+   fri igen, og en udfoert skal holde op med at spaerre den. `reservationer` er
+   `.write: false` for alle, saa en klient kunne kun skrive den ene halvdel —
+   og den farlige halvdel er en bil der ser optaget ud i timer hvor den er fri,
+   eller fri mens den staar paa liften. Beslutning 45's begrundelse, tredje
+   gang efter `opgaveplanlaeg` og `opgaveflyt`.
+
+   ⚠ MASKINEN LIGGER IKKE HER. `OPGAVE_OVERGANGE` og `statusOpdatering()` staar
+   i opgaveplan-regler.js og er rene, saa foelgerne kan proeves uden en
+   emulator — samme grund som `beregnKpi()` ikke regnes i jobbet. Se
+   test/opgavestatus.test.mjs.
+
+   ⚠ OG SKAERMEN VISER DEN SAMME MASKINE. `kanSkifteOpgave()` tegner knapperne
+   og afviser her. Skrev serveren sin egen udgave, ville skaermen tilbyde et
+   skift der blev sagt nej til bagefter — uden at nogen kunne se hvorfor.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const opgavestatus = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — som paa de to andre. At skifte en opgaves
+     status er at skrive den; der er ingen selvstaendig `opgaver.status`. */
+  if (!perms.includes("|opgaver.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke ændre driftsopgaver. Det kræver opgaver.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE. Uden de her blokke var funktionen en
+     aaben doer rundt om abonnements- og modulspaerringen. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const tilStatus = kortStreng(d.status, 40);
+  if (!opgaveId) throw new HttpsError("invalid-argument", "Der mangler et opgaveId.");
+
+  const foer = (await rod.child(`opgaver/${opgaveId}`).once("value")).val();
+  if (!foer) throw new HttpsError("not-found", `Opgaven ${opgaveId} findes ikke.`);
+
+  /* Modulet foelger opgavens EGEN art — den kommer fra noden, ikke fra
+     klienten. Samme katalog som opgaveflyt bruger. */
+  const modulnoegle = MODUL_FOR_ART[foer.art];
+  if (!modulnoegle) {
+    throw new HttpsError("failed-precondition",
+      `Opgaven har arten "${foer.art}", som ikke kan skifte status.`);
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child(modulnoegle).val() !== true) {
+    throw new HttpsError("permission-denied", `Modulet ${modulnoegle} er ikke aktivt.`);
+  }
+
+  /* ---- Maa skiftet ske? ----------------------------------------------- */
+  /* ⚠ SAMME MASKINE SOM SKAERMEN TEGNER KNAPPERNE EFTER. */
+  const tjek = kanSkifteOpgave(foer, tilStatus);
+  if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsag);
+
+  /* ⚠ faktiskMin PROEVES, DEN TAGES IKKE FOR PAALYDENDE. Reglen paa noden
+     kraever isNumber() og >= 0, og den er `.write: false` — saa det er HER
+     kontrollen ligger. Et negativt tal ville staa i en rapport som en opgave
+     der tog minus tid. */
+  const raaFaktisk = Number(d.faktiskMin);
+  if (d.faktiskMin != null && (!Number.isFinite(raaFaktisk) || raaFaktisk < 0)) {
+    throw new HttpsError("invalid-argument",
+      "Faktisk tid skal være et helt antal minutter, og den kan ikke være negativ.");
+  }
+  const faktiskMin = Number.isFinite(raaFaktisk) && raaFaktisk >= 0
+    ? Math.round(raaFaktisk)
+    : undefined;
+
+  /* ---- EEN SKRIVNING --------------------------------------------------- */
+  /* ⚠ Statussen og reservationens foelge lander sammen eller slet ikke. Delte
+     vi det i to kald, kunne halvdelen lande — og en annulleret opgave hvis
+     reservation blev staaende, spaerrer en bil ingen har brug for. */
+  const { opdatering, efter } = statusOpdatering(opgaveId, foer, tilStatus, {
+    faktiskMin, uid, nu: Date.now(),
+  });
+
+  await rod.update(opdatering);
+
+  await logOpgave(tenantId, uid, AUDIT.tilstandsskift, opgaveId, foer, efter,
+    `opgave ${opgaveId} ${foer.status} -> ${tilStatus}`);
+
+  return { opgaveId, status: tilStatus };
 });
 
 export const auditoprydning = onSchedule(

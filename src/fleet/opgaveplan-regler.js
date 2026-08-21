@@ -1,6 +1,6 @@
 /* src/fleet/opgaveplan-regler.js
- * Hvornår en driftsopgave kan planlægges og FLYTTES, og hvordan et nej skal
- * forstås.
+ * Hvornår en driftsopgave kan planlægges, FLYTTES og SKIFTE STATUS, og hvordan
+ * et nej skal forstås.
  *
  * ⚠ POLITIK, IKKE TRANSPORT — sjette gang efter samme mønster (audit-regler,
  * skriv-regler, brugere-regler, udbyder-regler, udlaan-regler). Filen kan
@@ -483,4 +483,205 @@ export function flytOpdatering(opgaveId, foer, aendring, { uid, nu }) {
   };
 
   return { opdatering, efter, ny: nyRes, gammelSti, nySti };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AT SKIFTE EN OPGAVES STATUS — beslutning 50
+
+   ⚠ MASKINEN HAVDE SEKS TILSTANDE OG NUL VEJE IMELLEM DEM.
+   `opgaveplanlaeg` opretter som `planlagt` eller `afventer`, `opgaveflyt`
+   rører ikke `status`, og `opgaver` er `.write: false`. En værkstedsopgave
+   kunne altså oprettes og flyttes, men aldrig meldes i gang eller udført —
+   mens Arbejdskøen og Driftskalenderen viste statusser og talte dem op.
+
+   ⚠ OG ET STATUSSKIFTE RØRER RESERVATIONEN. Det er hele grunden til at det
+   ikke bare er et felt en klient kan sætte: en annulleret opgave skal give
+   bilen fri igen, og en udført skal holde op med at spærre den. Landede kun
+   den ene halvdel, ville bilen enten se optaget ud i timer hvor den er fri,
+   eller fri mens den stod på liften. Beslutning 45's begrundelse, tredje gang.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Hvilke skift der findes. Samme form som ETAPE_OVERGANGE og UDLAAN_SKIFT.
+ *
+ * ⚠ `udfoert` OG `annulleret` ER ENDESTATIONER. Der er ingen vej tilbage —
+ * samme regel som at en returneret kasse ikke kan sendes ud igen: skal
+ * arbejdet gøres om, er det en NY opgave. En vej tilbage ville betyde at et
+ * afsluttet forløb kunne genåbnes, og så er "udført" ikke et svar man kan
+ * regne på.
+ *
+ * ⚠ OG DER ER INGEN VEJ FRA `igang` TILBAGE TIL `planlagt`.
+ * Man kan ikke af-starte et stykke arbejde. Bilen HAR været på liften, og en
+ * status der sagde andet, ville beskrive noget der ikke skete. Er den sat i
+ * gang ved en fejl, er svaret `annulleret` med en begrundelse — ikke en
+ * fortrydelse der ikke efterlader spor.
+ *
+ * `afventer` går BEGGE veje mod `igang`: arbejdet kan stoppe fordi en
+ * reservedel mangler, og fortsætte når den kommer.
+ */
+export const OPGAVE_OVERGANGE = {
+  indberettet: ["planlagt", "annulleret"],
+  planlagt: ["igang", "afventer", "annulleret"],
+  afventer: ["planlagt", "igang", "annulleret"],
+  igang: ["afventer", "udfoert", "annulleret"],
+  udfoert: [],
+  annulleret: [],
+};
+
+/** Hvad der sker med reservationen ved hvert skift. Se noterne nedenfor. */
+export const RESERVATION_VED = {
+  planlagt: "uaendret",
+  igang: "uaendret",
+  afventer: "uaendret",
+  /* Bilen er kørt fra værkstedet. Se afkortTil(). */
+  udfoert: "afkort",
+  /* Arbejdet skete aldrig. Samme regel som etapeskift: EN ANNULLERET TUR SKAL
+     GIVE BILEN FRI IGEN — bliver reservationen stående, leder den næste
+     disponent efter en bil der står lige der. */
+  annulleret: "frigiv",
+};
+
+/**
+ * kanSkifteOpgave(opgave, tilStatus) → { ok, aarsag }
+ *
+ * Svarer, afgør ikke. Skærmen tegner knapperne efter den; serveren afviser med
+ * den. To formuleringer af én spærring er to forklaringer på én ting.
+ */
+export function kanSkifteOpgave(opgave, tilStatus) {
+  if (!opgave || !OPGAVE_ART[opgave.art]) {
+    return { ok: false, aarsag: "Opgaven findes ikke, eller dens art er ukendt." };
+  }
+  const fra = opgave.status;
+  if (!OPGAVE_OVERGANGE[fra]) {
+    return { ok: false, aarsag: `Ukendt status "${fra}".` };
+  }
+  if (fra === tilStatus) {
+    return { ok: false, aarsag: "Opgaven står allerede der." };
+  }
+  if (!ALLE_OPGAVE_STATUS.includes(tilStatus)) {
+    return { ok: false, aarsag: `Ukendt status "${tilStatus}".` };
+  }
+  if (!OPGAVE_OVERGANGE[fra].includes(tilStatus)) {
+    const navn = (s) => OPGAVE_STATUS[s]?.label || s;
+    /* ⚠ ENDESTATIONERNE FÅR DERES EGEN SÆTNING. "Udført kan ikke blive til
+       planlagt" forklarer ingenting; "et afsluttet forløb genåbnes ikke"
+       siger hvorfor, og hvad man så gør i stedet. */
+    if (!OPGAVE_OVERGANGE[fra].length) {
+      return {
+        ok: false,
+        aarsag: `Opgaven er "${navn(fra)}", og det er en endestation. Et afsluttet ` +
+                "forløb genåbnes ikke — skal arbejdet gøres om, er det en ny opgave.",
+      };
+    }
+    return {
+      ok: false,
+      aarsag: `"${navn(fra)}" kan ikke blive til "${navn(tilStatus)}". ` +
+              `Herfra kan den blive: ${OPGAVE_OVERGANGE[fra].map(navn).join(", ")}.`,
+    };
+  }
+  return { ok: true, aarsag: null };
+}
+
+/**
+ * afkortTil(reservation, nu) → nyt `til`, eller null hvis den skal fjernes
+ *
+ * ⚠ EN UDFØRT OPGAVE SKAL HOLDE OP MED AT SPÆRRE. Meldes et besøg færdigt kl.
+ * 11, mens reservationen løb til 16, ser bilen optaget ud i fem timer hvor den
+ * er fri — og så leder den næste disponent efter en bil der står lige der.
+ *
+ * ⚠ MEN DEN FORLÆNGES ALDRIG. Løb arbejdet OVER sin tid, er "afkort til nu" i
+ * virkeligheden en UDVIDELSE — og fremtiden er måske allerede givet væk: en
+ * booking kan lovligt være startet da reservationen udløb. En udvidelse ville
+ * lave et overlap datamodellen afviser, og gitteret tegner det som en konflikt
+ * der ikke er nogens skyld. Overskridelsen kan i stedet ses på opgaven, hvor
+ * `faktiskMin` er større end `estimeretMin`.
+ *
+ * ⚠ OG MELDES DEN FÆRDIG FØR DEN BEGYNDTE, spærrede den aldrig noget. Et
+ * vindue med `til <= fra` findes ikke i modellen, så reservationen fjernes
+ * frem for at blive et tomt interval ingen kan tolke.
+ */
+export function afkortTil(reservation, nu) {
+  if (!reservation) return null;
+  const { fra, til } = reservation;
+  if (!Number.isFinite(fra) || !Number.isFinite(til)) return null;
+  if (nu <= fra) return null;
+  return Math.min(til, nu);
+}
+
+/**
+ * statusOpdatering(opgaveId, foer, tilStatus, { faktiskMin, uid, nu })
+ *   → { opdatering, efter, reservationssti }
+ *
+ * Statussen OG reservationens følge, i ÉN multi-path-opdatering. Ren — den
+ * kender ingen database, så følgerne kan prøves uden en emulator.
+ *
+ * ⚠ TRE TAL, TRE BETYDNINGER, OG DE MÅ IKKE UDLEDES AF HINANDEN:
+ *
+ *   estimeretMin        hvad vi TROEDE arbejdet ville tage. Reservationens
+ *                       grundlag, fordi et krav på fremtiden kun kan bygge på
+ *                       en forventning.
+ *   reservationens til  hvor længe RESSOURCEN var optaget. Efter et afkort er
+ *                       det en måling, ikke en plan.
+ *   faktiskMin          hvor længe ARBEJDET tog. En bil kan stå på liften i
+ *                       seks timer og blive arbejdet på i to, fordi en
+ *                       reservedel manglede.
+ *
+ * Regnede vi `faktiskMin` af det afkortede vindue, ville de fire ventetimer
+ * blive til arbejdstid — og tallet bruges til at vurdere estimater. Det er
+ * derfor mennesket angiver det, og derfor `kpi.opgaver.udenTidsregistrering`
+ * TÆLLER dem der mangler frem for at spærre skiftet.
+ */
+export function statusOpdatering(opgaveId, foer, tilStatus, { faktiskMin, uid, nu }) {
+  const efter = { ...foer, status: tilStatus };
+  const opdatering = { [`opgaver/${opgaveId}/status`]: tilStatus };
+
+  /* ⚠ VALGFRIT, OG null ER ET SVAR. En værkfører der lukker ti opgaver, ved
+     ikke nødvendigvis hvor længe hver af dem tog, og et krævet felt ville
+     blive udfyldt med fiktion. `udenTidsregistrering` gør hullet synligt —
+     se kpi-aggregering.js. */
+  if (tilStatus === "udfoert" && Number.isFinite(faktiskMin) && faktiskMin >= 0) {
+    opdatering[`opgaver/${opgaveId}/faktiskMin`] = faktiskMin;
+    efter.faktiskMin = faktiskMin;
+  }
+
+  /* ---- Reservationens følge ------------------------------------------ */
+  let sti = null;
+  let res = null;
+  try {
+    res = reservationFraOpgave({ ...foer, id: opgaveId });
+    sti = `reservationer/${res.ressourceType}/${res.ressourceId}/res-${opgaveId}`;
+  } catch {
+    /* Uden vindue blev der aldrig skrevet en reservation. Der er intet at
+       røre — og en sti bygget på et gættet vindue ville ramme en anden
+       opgaves post. Samme forbehold som i flytOpdatering(). */
+  }
+
+  if (sti) {
+    const virkning = RESERVATION_VED[tilStatus];
+    if (virkning === "frigiv") {
+      opdatering[sti] = null;
+    } else if (virkning === "afkort") {
+      const nyTil = afkortTil(res, nu);
+      /* ⚠ HELE POSTEN SKRIVES, IKKE KUN `til`. En multi-path-opdatering med
+         `…/res-x/til` ville lade de andre felter stå — men fjernes posten
+         senere, er det ÉN nøgle der skal nulstilles, og to skrivemåder for
+         den samme post er to steder at være uenige om dens form. */
+      if (nyTil === null) opdatering[sti] = null;
+      else if (nyTil < res.til) {
+        opdatering[sti] = {
+          fra: res.fra, til: nyTil, kilde: res.kilde,
+          oprettetAf: uid, oprettetMs: nu,
+          /* ⚠ FLAGET ER VIGTIGERE END TALLET — samme regel som dageUde() i
+             Unitbooking. Uden det læses "til kl. 11" som en plan der altid
+             sagde 11, og man kan ikke se forskel på et besøg der VAR kort og
+             et der SLUTTEDE tidligt. Hvad planen sagde, står stadig på
+             opgaven: startMs + estimeretMin. Ingen dublet. */
+          afkortet: true,
+        };
+      }
+      /* nyTil === res.til: arbejdet løb tiden ud. Intet at rette. */
+    }
+  }
+
+  return { opdatering, efter, reservationssti: sti };
 }

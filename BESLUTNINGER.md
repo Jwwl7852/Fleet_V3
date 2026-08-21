@@ -2806,3 +2806,139 @@ et forslag** — med tid, pris, enheder og chauffør. Et træk kan ikke udpege e
 forslag der ikke findes, og en skærm der lavede sit eget ud af hvor blokken
 blev sluppet, ville være en anden vej til det samme felt. Det er beslutning 40,
 og den står. Gitteret **fører** til Forslag i stedet.
+
+
+## 50. Opgavens statusmaskine havde seks tilstande og nul veje imellem dem
+
+Efter beslutning 49 kunne en driftsopgave **oprettes** og **flyttes**. Den kunne
+ikke meldes i gang, og den kunne ikke meldes udført. `opgaveplanlaeg` opretter
+som `planlagt` eller `afventer`, `opgaveflyt` rører ikke `status`, og `opgaver`
+er `.write: false` — så der var ingen vej.
+
+Imens **viste** Arbejdskøen statusserne, Driftskalenderen farvede blokkene
+efter dem, og `kpi.opgaver` talte dem op. Seks tilstande, seks farver, og intet
+der kunne skifte imellem dem. Driftskalenderen havde to grå knapper — "Marker
+udført" og "Flyt" — med begrundelsen at skrivningen hørte i en Cloud Function.
+Begge findes nu.
+
+### ⚠ Et statusskifte er ikke et felt — det rører reservationen
+
+Det er hele grunden til at det er en serversag og ikke en `set()`. En annulleret
+opgave skal **give bilen fri igen**; en udført skal **holde op med at spærre**
+den. `reservationer` er `.write: false`, så en klient kunne kun skrive den ene
+halvdel — og den farlige halvdel er en bil der ser optaget ud i timer hvor den
+er fri, eller fri mens den står på liften. Beslutning 45's begrundelse, tredje
+gang efter `opgaveplanlaeg` og `opgaveflyt`.
+
+### Maskinen
+
+| Fra | Kan blive | Reservationen |
+|---|---|---|
+| `indberettet` | planlagt, annulleret | uændret / frigives |
+| `planlagt` | igang, afventer, annulleret | uændret / frigives |
+| `afventer` | planlagt, igang, annulleret | uændret / frigives |
+| `igang` | afventer, **udført**, annulleret | uændret / **afkortes** / frigives |
+| `udfoert` | — | |
+| `annulleret` | — | |
+
+⚠ **`udfoert` kan kun nås fra `igang`.** Et værkstedsbesøg kan ikke meldes
+færdigt uden at nogen har haft bilen på liften — samme spærring som
+klargøringstrinnet på et kasseudlån, hvor genvejen fra `booket` til `udlaant`
+er lukket med vilje (beslutning 37).
+
+⚠ **Man kan ikke af-starte et arbejde.** `igang → planlagt` findes ikke. Bilen
+HAR været på liften, og en status der sagde andet, ville beskrive noget der
+ikke skete. Er den startet ved en fejl, er svaret `annulleret`.
+
+⚠ **`udfoert` og `annulleret` er endestationer.** Ingen vej tilbage — som der
+ingen er fra `returneret`. Skal arbejdet gøres om, er det en **ny opgave**.
+
+### ⚠ Afkortningen, og de tre tal der ikke må udledes af hinanden
+
+Meldes et besøg færdigt kl. 11, mens reservationen løb til 16, ser bilen
+optaget ud i fem timer hvor den er fri — og så leder den næste disponent efter
+en bil der står lige der. Reservationen **afkortes til nu**.
+
+⚠ **Men den forlænges aldrig.** Løb arbejdet OVER sin tid, er "afkort til nu" i
+virkeligheden en **udvidelse** — og fremtiden er måske allerede givet væk: en
+booking kan lovligt være startet da reservationen udløb. En udvidelse ville
+lave et overlap datamodellen afviser, og gitteret ville tegne en konflikt der
+ikke er nogens skyld. `afkortTil()` tager derfor `min(til, nu)`.
+
+⚠ **Og meldes den færdig FØR den begyndte, spærrede den aldrig noget.** Et
+vindue med `til <= fra` findes ikke i modellen, så reservationen fjernes frem
+for at blive et tomt interval ingen kan tolke.
+
+⚠ **Flaget er vigtigere end tallet** — samme regel som `dageUde()` i
+Unitbooking. Uden `afkortet: true` læses "til kl. 11" som en plan der altid
+sagde 11, og man kan ikke se forskel på et besøg der **var** kort og et der
+**sluttede tidligt**. Hvad planen sagde, står stadig på opgaven som
+`startMs + estimeretMin` — ingen dublet.
+
+**Tre tal, tre betydninger:**
+
+| | Hvad det er |
+|---|---|
+| `estimeretMin` | hvad vi **troede**. Reservationens grundlag — et krav på fremtiden kan kun bygge på en forventning |
+| reservationens `til` | hvor længe **ressourcen** var optaget. Efter et afkort er det en måling, ikke en plan |
+| `faktiskMin` | hvor længe **arbejdet** tog |
+
+En bil kan holde på liften i seks timer og blive arbejdet på i to, fordi en
+reservedel manglede. Regnede vi `faktiskMin` af det afkortede vindue, ville de
+fire ventetimer blive til arbejdstid — og tallet bruges til at vurdere
+estimater.
+
+### ⚠ `faktiskMin` er valgfri, og svaret stod allerede i koden
+
+Jeg var på vej til at kræve feltet — vi gætter jo ikke. Men `kpi-aggregering.js`
+har siden beslutning 6 talt `opgaver.udenTidsregistrering`: *udførte opgaver
+uden `faktiskMin`*. Designet havde allerede besluttet at hullet skulle **tælles
+og vises**, ikke spærres.
+
+Og det er det rigtige svar: en værkfører der lukker ti opgaver, ved ikke
+nødvendigvis hvor længe hver af dem tog, og et krævet felt ville blive udfyldt
+med **fiktion**. Et tal ingen kender, bliver ikke rigtigt af at være
+obligatorisk. Dialogen siger det direkte — lad feltet stå tomt, så tælles
+opgaven med under "uden tidsregistrering".
+
+Det er en anden slags manglende tal end den manglende momssats: dér **nægter**
+vi, fordi et gæt ville blive til et bilag. Her tæller vi, fordi et gæt ville
+blive til en måling. Begge dele undgår at opfinde tallet.
+
+### Én knaprække, fire skærme
+
+`fleet/Statusskifte.jsx` tegner knapperne **af maskinen** — ikke af en liste i
+komponenten. En knap uden en overgang er en pæn knap; en overgang uden en knap
+er en vej ingen kan finde. Driftskalenderen, Servicekalenderen og Disponering
+bruger den samme, og serveren afviser med **den samme** `kanSkifteOpgave()`.
+
+⚠ **Ingen begrundelse ved annullering.** `etapeskift` kræver en, fordi en
+annulleret TUR er en aftale med en kunde der brydes; en driftsopgave er vores
+egen disposition. Og vigtigere: en begrundelse ville være **fritekst på vej mod
+auditloggen**, og allowlisten i `audit-regler.js` findes netop for at holde
+tastet tekst ude. Noten på auditposten skrives af serveren, af felter den selv
+kender.
+
+### ⚠ Og et efterslæb viste sig at være tomt — målt, ikke antaget
+
+README har siden beslutning 45 sagt at "de opgaver der blev oprettet før
+`opgaveplanlaeg` fandtes, har ingen reservation", og at `etapeskift` derfor
+ikke kan se at netop de biler står på liften. Jeg målte den udrullede DEV-base
+før jeg byggede en udfyldning: **21 opgaver, 0 uden reservation, 0 uden
+vindue.** Provisioneren skriver dem med den SAMME `reservationFraOpgave()`, og
+efter beslutning 45 findes der ingen anden vej ind i noden.
+
+Punktet er altså ikke et efterslæb. Det er en egenskab der holder — og nu er
+den målt frem for påstået, i begge retninger.
+
+### Prøven der ledte det forkerte sted
+
+To af de nye prøver læste skærmene råt og faldt over **mine egne kommentarer**:
+den der forklarer at knapperne tegnes af `OPGAVE_OVERGANGE`, og den der siger
+at attrappen "Marker udført" er væk. Begge er beskrivelser af at reglen er
+**overholdt**, og de blev læst som brud.
+
+Det er samme fejl som prøven der søgte efter `.fc-btn` i hele `fleet.css` og
+fandt en længere selektor. En prøve der leder det forkerte sted, er værre end
+ingen: den fejler på det rigtige og fjerner grunden til at skrive noget ned.
+Begge stripper nu kommentarer først.

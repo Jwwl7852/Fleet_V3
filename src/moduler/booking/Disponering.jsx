@@ -95,6 +95,7 @@ import { tjekKoerehviletid, koerehviletidTekst } from "../../fleet/koerehviletid
 import { reservationFraOpgave } from "../../fleet/opgaver.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+import Statusskifte from "../../fleet/Statusskifte.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
@@ -538,7 +539,11 @@ export default function Disponering() {
         <Konflikter fund={fund} kpiTal={k.disponering.konflikter} />
         <div className="fc-grid">
           <Uplanlagte etaper={etaper} />
-          <Detalje post={valgt} personEfterId={personEfterId} lvNavn={lvNavn} />
+          <Detalje
+            post={valgt} personEfterId={personEfterId} lvNavn={lvNavn}
+            maaSkrive={maaPlanlaegge}
+            onSkiftet={() => opgaver.genindlaes()}
+          />
         </div>
       </Gitter>
 
@@ -636,7 +641,7 @@ function Uplanlagte({ etaper }) {
 
 /* ---- Detaljepanel ------------------------------------------------------ */
 
-function Detalje({ post, personEfterId, lvNavn }) {
+function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet }) {
   if (!post) {
     return (
       <Kort titel="Detaljer">
@@ -671,6 +676,13 @@ function Detalje({ post, personEfterId, lvNavn }) {
           </Pille>} />
         <MiniLinje label="Art" vaerdi={<code>{post.art}</code>} />
         <MiniLinje label="Division" vaerdi={post.division} />
+        {/* ⚠ SAMME KNAPPER SOM DRIFTSKALENDEREN OG SERVICEKALENDEREN.
+            Komponenten tegner dem af `OPGAVE_OVERGANGE`, så de tre skærme ikke
+            kan blive uenige om hvilke skift der findes — og serveren afviser
+            med den SAMME maskine. Beslutning 50. */}
+        <div style={{ marginTop: 14 }}>
+          <Statusskifte opgave={post} maaSkrive={maaSkrive} onSkiftet={onSkiftet} />
+        </div>
       </Kort>
     );
   }

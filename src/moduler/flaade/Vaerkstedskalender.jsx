@@ -70,6 +70,7 @@ import {
 import { PRIORITET, prioritetFor } from "../../fleet/prioritet.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+import Statusskifte from "../../fleet/Statusskifte.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
@@ -422,6 +423,13 @@ export default function Driftskalender() {
           opgave={valgt}
           lvNavn={lvNavn}
           enheder={enheder.data}
+          maaSkrive={maaPlanlaegge}
+          /* ⚠ PANELET LUKKES IKKE AF SIG SELV EFTER ET SKIFT. Et statusskifte
+             er ikke nødvendigvis det sidste man gør ved en opgave — man kan
+             sætte den i gang og derefter kigge på reservationen. Men listen
+             SKAL genindlæses, ellers står pillen på den gamle status mens
+             serveren har den nye. */
+          onSkiftet={() => opgaver.genindlaes()}
           onLuk={() => setValgtId(null)}
         />
       )}
@@ -579,7 +587,7 @@ const PANEL_FANER = (sag) => [
  * filliste, og et sidepanel i den bredde ville have klemt gitteret sammen til
  * en tredjedel — netop det gitteret blev komprimeret for at undgå.
  */
-function Haendelsespanel({ opgave, lvNavn, enheder, onLuk }) {
+function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet }) {
   const [fane, setFane] = useState("overblik");
   /* ⚠ SAGEN SLÅS OP PÅ OPGAVENS sagId. `sager/` findes ikke i
      firebase.rules.json endnu (beslutning 20 er fase 0), så opslaget går i
@@ -636,15 +644,22 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk }) {
       {fane === "kommunikation" && <Kommunikation sag={sag} />}
       {fane === "filer" && <Filer sag={sag} />}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
-        <Knap variant="primaer" disabled
-              title="Skrivning er ikke bygget: en reservation skal skrives atomisk med opgaven, og to disponenter kan ramme samme sekund. Det hører i en Cloud Function.">
-          Marker udført
-        </Knap>
-        <Knap disabled title="Samme grund — se Kendte huller i README.">Flyt</Knap>
-        <Link className="fc-a" to="/flaade/indberetninger" style={{ alignSelf: "center" }}>
-          Se indberetninger
-        </Link>
+      {/* ⚠ HER STOD TO DEAKTIVEREDE KNAPPER — "Marker udført" og "Flyt" — med
+          begrundelsen at skrivningen hørte i en Cloud Function. Den findes nu:
+          `opgavestatus` skifter status OG reservationens følge i én atomisk
+          opdatering (beslutning 50), og flytningen er `opgaveflyt`, som kaldes
+          fra gitteret ved at trække blokken (beslutning 49).
+          Knapperne tegnes af maskinen i `OPGAVE_OVERGANGE`, ikke af en liste
+          her — en knap uden en overgang er en pæn knap, og en overgang uden en
+          knap er en vej ingen kan finde. */}
+      <div style={{ marginTop: 18 }}>
+        <Statusskifte opgave={opgave} maaSkrive={maaSkrive} onSkiftet={onSkiftet} />
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          <b>Flyt</b> opgaven ved at <b>trække blokken</b> i kalenderen — til et
+          andet tidspunkt eller en anden enhed. <b>Shift + piletast</b> gør det
+          samme.{" "}
+          <Link className="fc-a" to="/flaade/indberetninger">Se indberetninger</Link>
+        </p>
       </div>
     </Dialog>
   );

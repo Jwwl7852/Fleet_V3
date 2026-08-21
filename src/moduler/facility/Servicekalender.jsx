@@ -62,6 +62,7 @@ import {
 } from "../../fleet/opgaver.js";
 import { slutter } from "../../fleet/driftskalender.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
+import Statusskifte from "../../fleet/Statusskifte.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
@@ -241,7 +242,11 @@ export default function Servicekalender() {
       </Kort>
 
       <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <Reservationen besoeg={valgt} lvNavn={lvNavn} />
+        <Reservationen
+          besoeg={valgt} lvNavn={lvNavn}
+          maaSkrive={maaSkrive}
+          onSkiftet={() => opgaver.genindlaes()}
+        />
         <Kort titel="Servicebesøg">
           <Tabel
             kolonner={[
@@ -302,7 +307,7 @@ export default function Servicekalender() {
  * ikke se den ydre komponents variabler, og en modul-konst der slog op i et
  * demosæt, ville vise vores demoværksteds navne hos en rigtig kunde.
  */
-function Reservationen({ besoeg, lvNavn }) {
+function Reservationen({ besoeg, lvNavn, maaSkrive, onSkiftet }) {
   if (!besoeg) {
     return (
       <Kort titel="Reservation">
@@ -367,9 +372,20 @@ function Reservationen({ besoeg, lvNavn }) {
             med art <b>facility</b>, og <code>reservationFraOpgave()</code> giver
             allerede kilde <b>facilitySag</b>. Beslutning 4 er én node, fire kilder.
           </p>
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            <b>Reservationen skrives ikke endnu.</b> Konfliktfriheden hører i en Cloud
-            Function — to skrivninger kan ramme samme sekund.
+          {/* ⚠ HER STOD "Reservationen skrives ikke endnu — konfliktfriheden
+              hører i en Cloud Function". Den findes: `opgaveflyt` flytter
+              besøget og dets reservation atomisk (beslutning 49), og
+              `opgavestatus` skifter status og reservationens følge
+              (beslutning 50). Begge prøver ledigheden server-side, hvor to
+              skrivninger i samme sekund kan afgøres. */}
+          <div style={{ marginTop: 14 }}>
+            <Statusskifte opgave={besoeg} maaSkrive={maaSkrive} onSkiftet={onSkiftet} />
+          </div>
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            <b>Flyt</b> besøget ved at <b>trække blokken</b> i kalenderen. Slippes
+            den på en <b>lokationsrække</b>, spærrer den hele stedet i stedet for
+            ét anlæg — og det er ikke en detalje, det er forskellen på at lukke en
+            port og at lukke en hal.
           </p>
         </>
       )}
