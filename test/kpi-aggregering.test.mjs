@@ -302,6 +302,34 @@ test("⚠ HVERT FELT I demo-kpi SKRIVES OGSÅ AF AGGREGERINGEN", () => {
     "felter demo-kpi lover, men aggregeringen ikke skriver — skærmen får undefined");
 });
 
+/**
+ * ⚠ OG DEN ANDEN VEJ — DEN MANGLEDE.
+ *
+ * Prøven ovenfor spørger kun "lover demo-kpi noget aggregeringen ikke
+ * skriver". Da `disponering.udenEtaEllerFrist` kom til, gik den derfor
+ * igennem: aggregeringen skrev et felt demofilen ikke kendte, og demo-mode
+ * ville have vist `undefined` for netop det tal.
+ *
+ * Det er præcis den ensrettede prøve beslutning 55 fandt for `ART_FELTER` —
+ * samme fejl, en anden fil. `demo-kpi.js` **ER nodens form**, og formen skal
+ * passe i begge retninger.
+ */
+test("⚠ OG HVERT FELT AGGREGERINGEN SKRIVER, STÅR I demo-kpi", () => {
+  const k = beregnKpi({ division: "gods", nu: NU });
+  const ukendte = [];
+  for (const [domaene, felter] of Object.entries(k)) {
+    if (!felter || typeof felter !== "object" || Array.isArray(felter)) continue;
+    /* Kun de domæner demofilen overhovedet beskriver — et helt nyt domæne
+       fanges af prøven ovenfor. */
+    if (!(domaene in DEMO_KPI.gods)) continue;
+    for (const felt of Object.keys(felter)) {
+      if (!(felt in DEMO_KPI.gods[domaene])) ukendte.push(`${domaene}.${felt}`);
+    }
+  }
+  assert.deepEqual(ukendte, [],
+    "aggregeringen skriver felter demo-kpi ikke kender — demo-mode viser undefined");
+});
+
 /* ---- Indkøbet --------------------------------------------------------- */
 
 const DAGE = 86400000;

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **59 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **60 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -31,6 +31,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `demo-kpi.js` — den fil *er* nodens form. Så er skærmen rigtig, og det
   eneste der mangler er aggregeringen. Hardkoder du, har du to opgaver senere
   i stedet for én. Tilføj feltet til KPI-efterslæbet i README.
+  ⚠ **Og `demo-kpi.js` skal passe i BEGGE retninger.** Prøven spurgte kun om
+  demofilen lovede noget aggregeringen ikke skrev; den modsatte vej manglede,
+  og **ti felter stod som `undefined` i demo-mode**. Skriver aggregeringen et
+  felt, skal demofilen kende det. Se beslutning 60.
+  ⚠ **Og et null skal have en GRUND, ikke bare mangle en kilde.**
+  `disponering.ledigKapacitetPct` er null fordi spørgsmålet ikke er stillet
+  færdigt — ledig i hvilken periode, målt i hvad — mens `forsinkelsesrisiko`
+  og `konflikter` HAVDE en kilde der aldrig blev spurgt. De to slags null ser
+  ens ud i noden og er det ikke.
   **Undtagelsen:** er tallet *afledt* af data skærmen allerede har — en
   gennemsnitstemperatur, en aktiv alarm, en sum af komponenter — så beregn det
   hos forbrugeren og læg det **ikke** i `kpi/`. Et gemt afledt tal driver fra

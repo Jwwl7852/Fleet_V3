@@ -30,6 +30,10 @@ export const DEMO_KPI = {
       aabne: 47, indberettet: 12, planlagt: 10, igang: 9, afventer: 7, udfoert: 9,
       forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, udenTidsregistrering: 7, klarTilFakturering: 12,
       udfoerteOpgaver: 214,
+      /* ⚠ TRE FELTER AGGREGERINGEN SKREV, SOM DEMOFILEN IKKE KENDTE — og
+         demo-mode viste derfor `undefined` for dem. Fundet af den omvendte
+         prøve; se beslutning 60. */
+      annulleret: 3, udenTidsfrist: 5, aabneDeltaPct: -4.5,
     },
     flaade: {
       aktive: 42, udeAfDrift: 6, paaVaerksted: 3, serviceInden30: 9,
@@ -56,6 +60,10 @@ export const DEMO_KPI = {
          forskellige, ville Bemanding vise et andet tal ved et toggle-skift
          uden at en eneste kompetence havde ændret sig. */
       chauffoerPlanlagt: 20, chauffoerDisponeret: 18, kompetencerUdloeber: 8,
+      /* ⚠ TO FELTER TIL DER MANGLEDE. De er null i aggregeringen — flåden og
+         bemandingen kan ikke deles på division (beslutning 19) — men de skal
+         stå i demofilen, for den ER nodens form. */
+      medarbejdereAktive: 35, fravaerIDag: 4,
     },
     /* Facility er FAELLES: tallene er ens under gods og bus, fordi porten er
        den samme uanset hvem der koerer igennem den. */
@@ -112,6 +120,10 @@ export const DEMO_KPI = {
       ikkeFaktureretOere: 18624000, daekningsgradPct: 72, maalDaekningsgradPct: 70,
       driftstimer: 2840,
       planlagtVedligeholdPct: 72,
+      /* ⚠ TRE FELTER AGGREGERINGEN SKREV, SOM DEMOFILEN IKKE KENDTE.
+         `ikkeFaktureretForloeb` er ANTALLET bag `ikkeFaktureretOere` — se
+         beslutning 25 om hvad beløbet betyder. */
+      ikkeFaktureretForloeb: 6, planlagtPct: 64, akutPct: 36,
       /* PERIODEAFVIGELSER, og de er noget ANDET end budgetafvigelsen.
          Budgetafvigelsen udledes af de to felter ovenfor og staar derfor
          ikke her. De tre nedenfor sammenligner med FORRIGE PERIODE og
@@ -154,7 +166,15 @@ export const DEMO_KPI = {
        ⚠ ENS I BEGGE DIVISIONER, som facility-tallene: lageret er fælles, og
        en beholder bliver ikke til to af at man skifter toggle. */
     warehouse: { carriereUdenLokationDelta: 3 },
-    disponering: { planlagteOpgaver: 22, ledigKapacitetPct: 18, forsinkelsesrisiko: 2, konflikter: 4 },
+    /* ⚠ `udenEtaEllerFrist` ER HULLET VED SIDEN AF TALLET. En etape uden ETA
+       eller uden frist kan ikke vurderes for forsinkelse, og den tælles derfor
+       ikke med i risikoen — men den skal kunne SES, ellers ser et lille tal ud
+       som et rent hus. Samme greb som opgaver.udenTidsregistrering. */
+    disponering: {
+      planlagteOpgaver: 22, aabneEtaper: 5, planlagteOpgaverDeltaPct: 8.3,
+      ledigKapacitetPct: 18, forsinkelsesrisiko: 2, udenEtaEllerFrist: 3,
+      konflikter: 4,
+    },
   },
 
   bus: {
@@ -162,6 +182,8 @@ export const DEMO_KPI = {
       aabne: 19, indberettet: 5, planlagt: 4, igang: 3, afventer: 3, udfoert: 4,
       forsinkede: 2, nyeBookinger: 3, igangIDag: 8, uplanlagte: 3, udenTidsregistrering: 3, klarTilFakturering: 6,
       udfoerteOpgaver: 96,
+      /* Se noten under gods. */
+      annulleret: 1, udenTidsfrist: 2, aabneDeltaPct: 2.1,
     },
     flaade: {
       aktive: 18, udeAfDrift: 2, paaVaerksted: 1, serviceInden30: 4,
@@ -175,6 +197,8 @@ export const DEMO_KPI = {
       planlagt: 26, disponeret: 22, ledig: 4, underbemandede: 2,
       /* Samme tal som under gods — se noten der. */
       chauffoerPlanlagt: 24, chauffoerDisponeret: 21, kompetencerUdloeber: 8,
+      /* Se noten under gods. */
+      medarbejdereAktive: 35, fravaerIDag: 4,
     },
     /* Facility er FAELLES: tallene er ens under gods og bus, fordi porten er
        den samme uanset hvem der koerer igennem den. */
@@ -220,6 +244,8 @@ export const DEMO_KPI = {
       ikkeFaktureretOere: 7240000, daekningsgradPct: 68, maalDaekningsgradPct: 70,
       driftstimer: 1120,
       planlagtVedligeholdPct: 64,
+      /* Se noten under gods. */
+      ikkeFaktureretForloeb: 2, planlagtPct: 58, akutPct: 42,
       /* Samme tre felter som under gods — se noten der om procentpoint. */
       driftsomkostningerDeltaPct: 2.9, ikkeFaktureretDeltaPct: 6.2,
       daekningsgradDeltaPoint: -2,
@@ -235,6 +261,10 @@ export const DEMO_KPI = {
     ],
     /* Samme felt som under gods — lageret er fælles. Se noten der. */
     warehouse: { carriereUdenLokationDelta: 3 },
-    disponering: { planlagteOpgaver: 9, ledigKapacitetPct: 12, forsinkelsesrisiko: 1, konflikter: 2 },
+    disponering: {
+      planlagteOpgaver: 9, aabneEtaper: 2, planlagteOpgaverDeltaPct: -3.1,
+      ledigKapacitetPct: 12, forsinkelsesrisiko: 1, udenEtaEllerFrist: 1,
+      konflikter: 2,
+    },
   },
 };

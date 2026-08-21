@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 59 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 60 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -167,6 +167,7 @@ tilfældigt.
 | 57 | **Maskinen havde ni tilstande og én dør.** `skiftEtape()` blev kaldt fra ÉT sted — Forslag, som afgør `afventerKoord`. Seks andre overgange havde ingen knap der kunne trykkes: *Send til planlægning*, *Annullér*, *Tag af venteliste*, *Markér udført*, *Annullér etape*, *Genåbn etape*. En booking oprettet med `bookingopret` begyndte som `kladde` og kunne **aldrig komme videre**. ⚠ **Og Bookingoversigten listede dem endda** — genereret af maskinen, hvilket er rigtigt — men hver knap var `disabled` med *"Skrivning er ikke bygget (fase 0)"*. Maskinen så hel ud, netop fordi tabellen var komplet. `fleet/Etapeskifte.jsx` tegner nu de samme handlinger og kalder `etapeskift`, som afviser med den SAMME `kanSkifteEtape()` — samme snit som `Statusskifte.jsx`. ⚠ **De forslagsbærende overgange tegnes IKKE der:** et forslag laves hvor turen kan SES, og en knap der åbnede en dialog man ikke kunne udfylde, ville være en attrap — komponenten skriver i stedet HVOR man gør det. ⚠ **Begrundelsen må ikke gøre knappen grå**, for så kunne man aldrig nå at give den; dialogen spørger. Og den er fritekst der hører på etapens historik, ikke i auditloggen. ⚠ Prøven går hver overgang i tabellen igennem og kræver en dør — **en ny overgang uden en dør fejler uden at nogen har skrevet et testtilfælde** | `fleet/Etapeskifte.jsx`, `moduler/booking/Oversigt.jsx`, `test/etapeskifte.test.mjs` |
 | 58 | **Forslaget kunne ikke laves.** Overgangen `afventerPlan → afventerKoord` kræver `kraeverForslag` — og intet kunne skrive et: `etapeskift` LÆSER `etape.forslag`, men skriver det aldrig, `etaper` er `.write: false`, og Forslag-skærmen VÆLGER mellem forslag der allerede findes. ⚠ **Og de lå i en form reglerne forbyder:** målt i DEV lå `et-004/forslag` med nøglerne **0, 1, 2** og sit `id` INDE i posten — RTDB har ingen arrays, `$andet: false` forbyder `id`, og `valgtForslagId` skal pege på en NØGLE der findes. Serveren fandt dem alligevel, fordi den søgte på `f.id`: server og regel var uenige om hvor identiteten bor. `forslagListe()` er nu det ene sted formen oversættes. ⚠ **`forslagskriv` er sin egen funktion, ikke et led i `etapeskift`:** et forslag er ikke et tilstandsskift, og lå skrivningen i overgangen, kunne der kun laves ÉT ad gangen — de 1–3 forslag koordinatoren skal SAMMENLIGNE, ville være umulige. ⚠ **Det spærrer ingenting** (tre forslag ville ellers spærre tre biler for én tur) — **men de fem tjek køres alligevel**, med den SAMME `spaerringerFor()` som ved godkendelsen: et forslag koordinatoren ikke kan godkende, er et løfte til en kunde der ikke kan holdes. ⚠ `booking.foreslaa`, ikke `booking.godkend` — beslutning 5. ⚠ Nummeret er det næste **ledige**, ikke `antal + 1`: ellers ville to forslag få nr. 3 hvis nr. 2 blev trukket tilbage | `fleet/booking-state.js`, `moduler/booking/Forslagsdialog.jsx`, `functions/index.js` |
 | 59 | **Loftet på tre var en blindgyde.** Beslutning 58 skrev i sin egen validering *"træk et tilbage for at lave et nyt"* — og der var ingen vej tilbage. ⚠ **Værre end en irritation:** overgangen koordinatoren bruger til at bede om NYE forslag (`returneret` → *Send nye forslag*) kræver `kraeverForslag`, og de tre gamle opfyldte kravet. Etapen kunne gå frem og tilbage i al evighed med tre forslag hvoraf ingen duede. ⚠ **Det slettes ikke — det får `trukketMs` og `trukketAf`.** Ikke fordi reglerne forbyder en sletning (53 gælder klienten), men fordi et forslag koordinatoren HAR set, og som så forsvandt, ikke kan forklares et halvt år senere. ⚠ **Loftet tæller de AKTIVE — men nummeret genbruges IKKE:** pladsen bliver ledig, nummeret gør ikke, for en samtale om "forslag 2" skal blive ved med at pege på det samme. ⚠ **Reglen kan ikke hindre at `valgtForslagId` peger på noget trukket** — en `.validate` ser ét felt ad gangen — så `traekOpdatering()` rydder valget, og `etapeskift` afviser en godkendelse af et trukket forslag. ⚠ **Ikke mens koordinatoren tager stilling:** et forslag der forsvandt undervejs, ville ændre det der bliver besluttet under den der beslutter | `fleet/booking-state.js`, `functions/index.js`, `firebase.rules.json` |
+| 60 | **To af tre null-felter havde en kilde — den blev bare aldrig spurgt.** `kpi.disponering` havde `ledigKapacitetPct`, `forsinkelsesrisiko` og `konflikter` på null. Etaperne bærer `etaMs` og `senestMs`, og `tjekDisponering()` er en REN funktion der kun manglede sine fire lister. ⚠ **En ETA efter fristen — ikke en frist der er overskredet:** det ene er en risiko man kan nå at gøre noget ved, det andet en kendsgerning. Og en etape uden ETA eller frist tælles ikke med; hullet står ved siden af som `udenEtaEllerFrist`, for **et lavt tal uden hullet ser ud som et rent hus**. ⚠ **En etape med tre spærringer tæller én gang** — det man handler på, er turen. ⚠ **Uden listerne er svaret `null`, ikke nul:** en aggregering der ikke fik sine biler, VED ikke at der er nul konflikter. ⚠ **`ledigKapacitetPct` bliver stående** — ikke fordi data mangler, men fordi spørgsmålet ikke er stillet færdigt: ledig i hvilken periode, målt i vogntimer, m³ eller enheder? ⚠ Undervejs: **provisioneringen og jobbet regnede ikke det samme** (dev ville vise en streg hvor natten viste et tal), og **feltniveau-prøven var ensrettet** — ti felter var allerede sluppet igennem og stod som `undefined` i demo-mode. Samme ensrettede prøve som beslutning 55 fandt for `ART_FELTER` | `fleet/kpi-aggregering.js`, `fleet/demo-kpi.js`, `scripts/provisioner-dev.mjs` |
 
 ## Struktur
 
@@ -790,19 +791,29 @@ beslutning 19's åbne spørgsmål der stikker op gennem demo-data.
 rigtige noder. Den arkiverer forrige kørsel som `forrige` — deltaernes eneste
 kilde — og skriver begge i én opdatering.
 
-⚠ **38 felter er `null` — og 16 af dem er ÉT spørgsmål.** Provisioneringen
-tæller dem nu ved hver kørsel og skelner mellem to slags: felter uden kilde og
+⚠ **34 felter er `null` — og 16 af dem er ÉT spørgsmål.** Provisioneringen
+tæller dem ved hver kørsel og skelner mellem to slags: felter uden kilde og
 deltaer der venter på en forrige periode (18 stk. i en frisk base — de retter
-sig selv i nat).
+sig selv i nat). ⚠ **Tallet er MÅLT ved hver provisionering**, ikke skrevet af:
+det stod på 38 længe efter at fire felter havde fået en kilde.
 
 `udenKilde()` er ikke totalen; den er SAMLESTEDET for de kilder der mangler
 helt, og den rummer nu kun `flaade` og `bemanding`. De 16 felter dér venter
-på det SAMME svar: kan flåden og bemandingen deles på division? De øvrige ~22
+på det SAMME svar: kan flåden og bemandingen deles på division? De øvrige ~18
 er null INDE i beregningen, hver med sin skrevne grund — `sager/` findes ikke,
-servicebesøgene har ingen node, budgettet er ikke besluttet. Så længe listen var lang og blandet,
-kunne man tro der var meget tilbage at *bygge*. Der er ét spørgsmål tilbage at
-**besvare**. En prøve i `test/kpi-aggregering.test.mjs` holder listen på de to
-domæner, så et nyt felt ikke kan gemme sig blandt dem.
+budgettet er ikke besluttet, og *ledig kapacitet* mangler en **definition**
+frem for data. Så længe listen var lang og blandet, kunne man tro der var meget
+tilbage at *bygge*. Der er ét spørgsmål tilbage at **besvare**. En prøve i
+`test/kpi-aggregering.test.mjs` holder listen på de to domæner, så et nyt felt
+ikke kan gemme sig blandt dem.
+
+⚠ **`disponering` er nu afgjort — alle tre veje.** `forsinkelsesrisiko` og
+`konflikter` HAVDE en kilde; den blev bare aldrig spurgt. Etaperne bærer
+`etaMs` og `senestMs`, og de fem tjek er en ren funktion der kun manglede sine
+lister. `ledigKapacitetPct` bliver stående som null — ikke fordi dataene
+mangler, men fordi spørgsmålet ikke er stillet færdigt: ledig kapacitet i
+hvilken periode, og målt i vogntimer, m³ eller enheder? De tre tal peger
+forskellige veje. Se beslutning 60.
 
 ⚠ **Efterslæbet tælles nu på FELTNIVEAU.** Prøven sammenlignede kun
 *domæner*, og seks felter gemte sig under den — `opgaver.udenTidsregistrering`,

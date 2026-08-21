@@ -460,7 +460,21 @@ export default function Disponering() {
       <KpiRaekke>
         <KpiKort label="Planlagte opgaver" vaerdi={num(k.disponering.planlagteOpgaver)} />
         <KpiKort label="Uplanlagte" vaerdi={num(k.opgaver.uplanlagte)} />
-        <KpiKort label="Ledig kapacitet" vaerdi={pct(k.disponering.ledigKapacitetPct)} />
+        {/* ⚠ LEDIG KAPACITET STÅR MED EN STREG, OG DEN BLIVER STÅENDE.
+            Det er ikke et manglende seed: "ledig kapacitet i hvilken periode,
+            og målt i hvad" er et spørgsmål der ikke er stillet færdigt.
+            Vogntimer, m³ og antal enheder peger forskellige veje. En streg er
+            et ubesvaret spørgsmål; et tal ville være et gæt der ser ud som en
+            måling. Se beslutning 60. */}
+        <KpiKort label="Ledig kapacitet" vaerdi={pct(k.disponering.ledigKapacitetPct)}
+                 note="definitionen mangler" />
+        {/* ⚠ HULLET STÅR VED SIDEN AF TALLET. En etape uden ETA eller uden
+            frist kan ikke vurderes, og uden tællingen ville et lavt tal se ud
+            som et rent hus. Samme greb som opgaver.udenTidsregistrering. */}
+        <KpiKort label="Forsinkelsesrisiko" vaerdi={num(k.disponering.forsinkelsesrisiko)}
+                 note={k.disponering.udenEtaEllerFrist
+                   ? `${k.disponering.udenEtaEllerFrist} kan ikke vurderes`
+                   : "ETA efter frist"} />
         <KpiKort label="Konflikter" vaerdi={num(k.disponering.konflikter)} note="hele platformen" />
       </KpiRaekke>
 

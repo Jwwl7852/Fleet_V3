@@ -45,6 +45,12 @@ import {
   prisPaa, leverandoerFraDb, AFTALETYPE,
   PRISAFVIGELSE_GRAENSE_FAST_PCT, PRISAFVIGELSE_GRAENSE_SPOT_PCT,
 } from "./leverandoerer.js";
+/* ⚠ DE FEM TJEK KOM MED — OG DE VAR ALLEREDE DELT.
+   `disponering.konflikter` skal svare det SAMME som skærmen og `etapeskift`,
+   og en afskrift her ville være et tredje sted reglerne stod. Begge filer er
+   i forvejen i functions/delt/, så lukningen under import holder. */
+import { tjekDisponering } from "./disponering.js";
+import { reservationerFraEtape, enhedsIder, straekningFraEtape } from "./etaper.js";
 
 /**
  * Kilder der IKKE bærer en division, og derfor ikke kan deles.
@@ -428,14 +434,101 @@ export function opgavetal(opgaver = [], division, nu = Date.now()) {
 }
 
 /** Disponeringen, af etaperne. */
-export function disponeringstal(etaper = [], division) {
+/**
+ * ⚠ TO AF DE TRE NULL-FELTER HAVDE EN KILDE — DEN BLEV BARE IKKE SPURGT.
+ *
+ * `forsinkelsesrisiko` og `konflikter` stod som null med begrundelsen "ingen
+ * kilde". Etaperne bærer både `etaMs` og `senestMs`, og de fem tjek er en ren
+ * funktion der kun mangler sine lister. Det tredje —
+ * `ledigKapacitetPct` — er en anden slags: se nedenfor.
+ */
+export function disponeringstal(etaper = [], division, {
+  koeretoejer = [], personale = [], kompetencer = [], reservationer = {},
+} = {}) {
   const mine = etaper.filter((e) => iDivision(e, division));
+
+  /* ⚠ KUN DE AKTIVE. En udført eller annulleret etape kan ikke blive forsinket,
+     og talte de med, ville tallet vokse med historikken frem for med
+     problemerne. */
+  const aktive = mine.filter((e) => e.tilstand !== "udfoert" && e.tilstand !== "annulleret");
+
   return {
     planlagteOpgaver: mine.filter((e) => e.tilstand === "reserveret").length,
     aabneEtaper: mine.filter((e) => e.tilstand === "aaben").length,
+
+    /**
+     * ⚠ LEDIG KAPACITET ER IKKE EN MÅLING — DET ER EN DEFINITION DER MANGLER.
+     *
+     * Ledig kapacitet i HVILKEN periode, og målt i HVAD? Vogntimer, m³, kg
+     * eller antal enheder uden en reservation lige nu? De fire tal peger
+     * forskellige veje: en flåde hvor hver bil kører én time om dagen, er
+     * 96 % ledig i timer og 0 % ledig i enheder.
+     *
+     * Feltet står derfor med null og en begrundelse — ikke fordi dataene
+     * mangler, men fordi spørgsmålet ikke er stillet færdigt. Samme holdning
+     * som den manglende momssats: vi gætter ikke, og et tal der ser ud som en
+     * måling, er værre end en streg.
+     */
     ledigKapacitetPct: null,
-    forsinkelsesrisiko: null,
-    konflikter: null,
+
+    /**
+     * ⚠ EN ETA EFTER FRISTEN — ikke "en frist der er overskredet".
+     *
+     * De to er forskellige spørgsmål: det ene er en RISIKO man kan nå at gøre
+     * noget ved, det andet er en kendsgerning. Feltet hedder risiko, og det
+     * er derfor ETA'en der sammenlignes med `senestMs`.
+     *
+     * ⚠ OG EN ETAPE UDEN ETA ELLER UDEN FRIST TÆLLES IKKE MED. Den kan ikke
+     * vurderes, og et gæt ville lægge sig oveni tallet som en måling — samme
+     * grund som `opgaver.udenTidsregistrering` tæller hullet frem for at
+     * fylde det ud. Hullet står i `udenEtaEllerFrist` ved siden af, så det
+     * kan ses hvor stort grundlaget er.
+     */
+    forsinkelsesrisiko: aktive.filter(
+      (e) => Number.isFinite(e.etaMs) && Number.isFinite(e.senestMs) && e.etaMs > e.senestMs
+    ).length,
+
+    udenEtaEllerFrist: aktive.filter(
+      (e) => !Number.isFinite(e.etaMs) || !Number.isFinite(e.senestMs)
+    ).length,
+
+    /**
+     * ⚠ SAMME FUNKTION SOM SKÆRMEN OG SERVEREN — `tjekDisponering()`.
+     *
+     * Disponering regner det samme på det VISTE VINDUE og skriver eksplicit
+     * at de to udsnit er forskellige. Tallet her er hele platformen, og det er
+     * hele grunden til at det hører i `kpi/`: Dashboardet henter hverken
+     * etaper, biler eller reservationer, så det kan ikke regne det selv.
+     *
+     * ⚠ EN ETAPE MED TRE SPÆRRINGER TÆLLER ÉN GANG. Det man skal handle på,
+     * er turen — ikke bemærkningerne. Talte vi rækkerne, ville en enkelt
+     * umulig disponering se ud som tre problemer.
+     *
+     * ⚠ OG UDEN LISTERNE ER SVARET null, IKKE NUL. En aggregering der ikke
+     * fik sine biler, ved ikke at der er nul konflikter — den ved ingenting,
+     * og nul ville se ud som et rent hus.
+     */
+    konflikter: koeretoejer.length
+      ? aktive.filter((e) => {
+          const enheder = enhedsIder(e).map(
+            (id) => koeretoejer.find((k) => k.id === id)).filter(Boolean);
+          if (!enheder.length) return false;
+          const person = personale.find((x) => x.id === e.personId) || null;
+          if (!person) return false;
+          const raekker = tjekDisponering({
+            reservationerForEtapen: reservationerFraEtape(e),
+            enheder,
+            person,
+            kompetencer: kompetencer.filter((c) => c.personId === person.id),
+            reservationer,
+            straekninger: etaper
+              .filter((x) => x.personId === person.id)
+              .map(straekningFraEtape),
+            gods: e.maengde || {},
+          });
+          return raekker.some((r) => r.tone === "bad");
+        }).length
+      : null,
   };
 }
 
@@ -857,6 +950,11 @@ export const deltaPoint = (nyt, gammelt) => {
  */
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
+  /* ⚠ DE FIRE KOM TIL FOR `disponering.konflikter`. De fem tjek er en REN
+     funktion, men den skal have sine lister — og uden dem svarer feltet null
+     frem for nul: en aggregering der ikke fik sine biler, ved ikke at der er
+     nul konflikter. */
+  koeretoejer = [], personale = [], kompetencer = [], reservationer = {},
   indkoeb = [], fakturaer = [], leverandoerer = [], indberetninger = [],
   /* ⚠ FACILITY ER TRE LISTER, IKKE ÉN. Noden har børn — aktiver, fejl og
      sensorer — og de tælles hver for sig. Ét samlet argument ville have
@@ -867,7 +965,9 @@ export function beregnKpi({
   const tomme = udenKilde();
   const kunde = kundetal(kunder, division, nu);
   const ikkeFakt = ikkeFaktureretOere(etaper, grundlag, division);
-  const disp = disponeringstal(etaper, division);
+  const disp = disponeringstal(etaper, division, {
+    koeretoejer, personale, kompetencer, reservationer,
+  });
   const opg = opgavetal(opgaver, division, nu);
   const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
   const fac = facilitytal({

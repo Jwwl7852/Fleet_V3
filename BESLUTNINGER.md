@@ -3759,3 +3759,85 @@ funktion ville betyde en anden kopi af tenant-, abonnements- og modultjekket.
 ⚠ Det er **ikke** et flag der ændrer hvad posten ER (som en `art` ville være) —
 det er hvad der sker med den. Den skelnen er hele grunden til at
 `opgaveplanlaeg` og `facilityplanlaeg` er to funktioner, mens det her er én.
+
+## 60. To af tre null-felter havde en kilde — den blev bare aldrig spurgt
+
+`kpi.disponering` havde tre felter på `null`: `ledigKapacitetPct`,
+`forsinkelsesrisiko` og `konflikter`. De stod der som "ingen kilde", og det var
+kun sandt for det ene.
+
+- **`forsinkelsesrisiko`** kunne regnes af etaperne alene. De bærer både
+  `etaMs` og `senestMs`, og har gjort det hele tiden.
+- **`konflikter`** kunne regnes af `tjekDisponering()` — en **ren** funktion
+  der bare manglede sine fire lister. Den samme funktion skærmen viser og
+  `etapeskift` håndhæver.
+- **`ledigKapacitetPct`** kunne ikke, og bliver stående. Se nedenfor.
+
+### ⚠ En ETA efter fristen — ikke en frist der er overskredet
+
+De to er forskellige spørgsmål: det ene er en **risiko** man kan nå at gøre
+noget ved, det andet er en kendsgerning. Feltet hedder risiko, så det er ETA'en
+der sammenlignes med `senestMs`.
+
+⚠ **Og en etape uden ETA eller uden frist tælles ikke med.** Den kan ikke
+vurderes, og et gæt ville lægge sig oveni tallet som en måling. Hullet står
+derfor ved siden af som `udenEtaEllerFrist` — samme greb som
+`opgaver.udenTidsregistrering`, og af samme grund: **et lavt tal uden hullet ved
+siden af ser ud som et rent hus.**
+
+### ⚠ En etape med tre spærringer tæller én gang
+
+Det man skal handle på, er **turen** — ikke bemærkningerne. Talte vi rækkerne
+fra `tjekDisponering()`, ville en enkelt umulig disponering se ud som tre
+problemer.
+
+⚠ **Og uden listerne er svaret `null`, ikke nul.** En aggregering der ikke fik
+sine biler, *ved* ikke at der er nul konflikter — den ved ingenting. Nul ville
+se ud som et rent hus; det er samme forskel som mellem `—` og `0` i `num()`.
+
+⚠ **Tallet hører i `kpi/` og ikke hos forbrugeren**, selv om Disponering regner
+noget der ligner. Dashboardet henter hverken etaper, biler eller reservationer,
+så det kan ikke regne det selv — og Disponering skriver eksplicit at dens eget
+tal er det **viste vindue**, mens KPI-tallet er hele platformen.
+
+### ⚠ Ledig kapacitet er ikke data der mangler — det er en definition
+
+Ledig kapacitet i **hvilken** periode, og målt i **hvad**? Vogntimer, m³, kg
+eller antal enheder uden en reservation lige nu? De fire tal peger forskellige
+veje: en flåde hvor hver bil kører én time om dagen, er 96 % ledig i timer og
+0 % ledig i enheder.
+
+Feltet bliver derfor stående som `null` **med sin begrundelse**, og kortet på
+skærmen siger *"definitionen mangler"*. Samme holdning som den manglende
+momssats: vi gætter ikke, og et tal der ser ud som en måling, er værre end en
+streg.
+
+### To ting fundet undervejs
+
+⚠ **Provisioneringen og jobbet regnede ikke det samme.** Da jobbet fik de fire
+nye lister, viste provisioneringen stadig `null` for `konflikter` — den kaldte
+`beregnKpi()` med sit eget, kortere input. Dev ville altså have vist en streg
+hvor natten viste et tal, og ingen af dem var forkerte hver for sig. Begge
+kaldere henter nu de samme lister.
+
+⚠ **Og feltniveau-prøven var ensrettet.** Den spurgte kun *"lover demo-kpi
+noget aggregeringen ikke skriver"*. Den modsatte retning manglede — så
+`udenEtaEllerFrist` gled igennem, og demo-mode ville have vist `undefined` for
+netop det tal.
+
+**Målt da prøven kom: ti felter var allerede sluppet igennem** —
+`bemanding.medarbejdereAktive`, `.fravaerIDag`, `opgaver.annulleret`,
+`.udenTidsfrist`, `.aabneDeltaPct`, `oekonomi.ikkeFaktureretForloeb`,
+`.planlagtPct`, `.akutPct`, `disponering.aabneEtaper` og
+`.planlagteOpgaverDeltaPct`. Alle ti stod som `undefined` i demo-mode.
+
+Det er nøjagtig den ensrettede prøve beslutning 55 fandt for `ART_FELTER` —
+samme fejl, en anden fil. **`demo-kpi.js` ER nodens form, og formen skal passe
+i begge retninger.**
+
+### Tallet i README var skrevet af
+
+Der stod *"38 felter er null"*. Provisioneringen tæller dem ved hver kørsel og
+skrev **36**, længe før denne etape. Efter: **34**. Tallet står nu med en note
+om at det er målt — et efterslæb man skriver af, holder op med at være et
+efterslæb og bliver til et indtryk.

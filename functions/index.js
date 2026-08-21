@@ -3935,6 +3935,7 @@ export const kpiaggregering = onSchedule(
       const [
         kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
         facilityAktiver, facilityFejl, facilitySensorer, indberetninger,
+        koeretoejer, personale, kompetencer, reservationer,
       ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
@@ -3954,6 +3955,28 @@ export const kpiaggregering = onSchedule(
           rod.child("facility/fejl").once("value").then((s) => raekker(s.val())),
           rod.child("facility/sensorer").once("value").then((s) => raekker(s.val())),
           rod.child("indberetninger").once("value").then((s) => raekker(s.val())),
+          /* ⚠ DE FIRE SIDSTE KOM TIL FOR `disponering.konflikter`. De fem tjek
+             er en REN funktion — men den skal have sine lister, og uden dem
+             svarer feltet null frem for nul: en aggregering der ikke fik sine
+             biler, ved ikke at der er nul konflikter. */
+          rod.child("koeretoejer").once("value").then((s) => raekker(s.val())),
+          rod.child("personale").once("value").then((s) => raekker(s.val())),
+          rod.child("kompetencer").once("value").then((s) => raekker(s.val())),
+          /* ⚠ RESERVATIONER ER ET TRAE, IKKE EN LISTE: <type>/<id>/<resId>.
+             `raekker()` ville lave typerne om til poster med et id. Formen er
+             den `tjekDisponering()` slaar op i, og den bygges her frem for i
+             regnestykket — jobbet henter, funktionen regner. */
+          rod.child("reservationer").once("value").then((s) => {
+            const raa = s.val() || {};
+            const ud = {};
+            for (const [type, paaType] of Object.entries(raa)) {
+              ud[type] = {};
+              for (const [id, poster] of Object.entries(paaType || {})) {
+                ud[type][id] = Object.entries(poster || {}).map(([rid, v]) => ({ id: rid, ...v }));
+              }
+            }
+            return ud;
+          }),
         ]);
 
       for (const division of KPI_DIVISIONER) {
@@ -3962,7 +3985,8 @@ export const kpiaggregering = onSchedule(
         const nyt = beregnKpi({
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
-          indberetninger, forrige, nu
+          indberetninger, koeretoejer, personale, kompetencer, reservationer,
+          forrige, nu
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

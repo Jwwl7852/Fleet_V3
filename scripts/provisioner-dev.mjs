@@ -672,11 +672,31 @@ async function main() {
   const [
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
     kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer, kpiIndberetninger,
+    kpiKoeretoejer, kpiPersonale, kpiKompetencer,
   ] = await Promise.all([
     "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
     "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
     "indberetninger",
+    /* ⚠ DE TRE KOM TIL MED `disponering.konflikter`. Jobbet i
+       functions/index.js henter de SAMME lister — og gjorde provisioneringen
+       det ikke, ville dev vise null hvor natten viser et tal. To regnestykker
+       med hvert sit input er to svar på ét spørgsmål. */
+    "koeretoejer", "personale", "kompetencer",
   ].map(hentNode));
+
+  /* ⚠ RESERVATIONERNE ER ET TRAE, IKKE EN LISTE — og de er lige blevet
+     skrevet ovenfor. Formen er den `tjekDisponering()` slaar op i:
+     <type>/<id>/[poster]. */
+  const kpiReservationer = (() => {
+    const ud = {};
+    for (const [type, paaType] of Object.entries(reservationer || {})) {
+      ud[type] = {};
+      for (const [id, poster] of Object.entries(paaType || {})) {
+        ud[type][id] = Object.entries(poster || {}).map(([rid, v]) => ({ id: rid, ...v }));
+      }
+    }
+    return ud;
+  })();
 
   const nuMs = Date.now();
   for (const division of ["gods", "bus"]) {
@@ -687,8 +707,9 @@ async function main() {
       leverandoerer: kpiLeverandoerer,
       facilityAktiver: kpiAktiver, facilityFejl: kpiFejl, facilitySensorer: kpiSensorer,
       indberetninger: kpiIndberetninger,
+      koeretoejer: kpiKoeretoejer, personale: kpiPersonale,
+      kompetencer: kpiKompetencer, reservationer: kpiReservationer,
       forrige: null, nu: nuMs,
-
     });
     await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);
 
