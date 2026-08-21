@@ -411,10 +411,28 @@ og skærmen tegner ikke feltet før en type er valgt.
 | Planchen | Her | Hvorfor |
 |---|---|---|
 | Klargøres snart (48 t) | **Klargjort** | Vores tæller dem der ER klargjort. Planchens tæller dem der SKAL klargøres inden for to døgn — det er et andet og bedre tal, men det er ikke bygget |
-| Belægningsgrad 72 % | **Over tiden** | En procent af kasserne i brug står allerede på Kasselisten. "Over tiden" er derimod noget nogen skal handle på |
+| Belægningsgrad 72 % | **Over tiden** | "Over tiden" er noget nogen skal handle på. Belægningsgraden er ikke bygget — se rettelsen nedenfor |
 
 De står her frem for at blive tegnet halvt: et nøgletal der hedder noget andet
 end det viser, er værre end et der mangler.
+
+⚠ **OG BEGRUNDELSEN FOR DEN ANDEN VAR FORKERT.**
+
+Her stod at belægningsgraden blev udeladt fra Udlån-skærmen fordi *"en procent
+af kasserne i brug står allerede på Kasselisten"*. Det gør den ikke.
+Kasselisten har **Kasser i alt, Ledige, Udlånt, På lager og Samlet volumen** —
+tallet findes ingen steder i modulet.
+
+Det er værre end et manglende nøgletal: det er en begrundelse der **afgjorde**
+at noget ikke blev bygget, og som pegede på noget der ikke fandtes. Havde
+nogen slået efter, ville de have troet at tallet var dækket ét klik væk.
+
+⚠ **Og `belaegningPaaPlads()` i `reolplads.js` er ikke det samme.** Den svarer
+om en **hylde** er optaget — et fysisk spørgsmål om lagerpladsen. Planchens
+belægningsgrad er en **procent af kasserne** der er i brug. To ting med samme
+ordstamme, og det er præcis sådan en forveksling opstår.
+
+Belægningsgraden mangler altså på **begge** plancher — se listen i 6.10.
 
 ### 6.8 Etape 11 — kalenderen fik et hoved der kan læses
 
@@ -510,3 +528,94 @@ skærmen, og så rullede hele **siden** i stedet for kalenderen. Målt:
 Det ramte hver eneste brede tabel i `.fc-scroll`, ikke kun kalenderen.
 `min-width:0` på de to er rettelsen.
 
+
+### 6.10 Hvad der stadig mangler i forhold til plancherne — talt op
+
+⚠ **DOKUMENTET HER KENDTE FEM AF TOLV.** 6.7 listede to nøgletal og 6.8 tre
+ting fra kalenderen. En gennemgang af de tre skærme mod 6.1 fandt syv mere,
+og den ene af de fem havde en begrundelse der pegede på noget der ikke fandtes.
+
+Det er derfor listen står samlet her frem for spredt ud i etapeafsnittene: en
+mangel der er nævnt i forbifarten under den etape hvor den opstod, kan ikke
+tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
+
+#### Kalender
+
+| Planchen | Her | |
+|---|---|---|
+| Gitter kasse × tid | Bygget | ✅ |
+| Måned over uge over dag i hovedet | Bygget, 6.8 | ✅ |
+| **Grupperet efter kasse-id ELLER sag** | Rækkerne er **altid** kasser | ❌ |
+| **Interval 1 uge / 2 uger / 1 md.** | Fast 28 dage. Vinduet kan **flyttes** (6.9), ikke skaleres | ❌ |
+| **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
+| **Hover → lille kort** | Findes ikke. Driftskalenderen HAR et `Svaevekort` | ❌ |
+| **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
+| Sidepanel "Kommende klargøringer", kan minimeres | **Udlånslisten** — bærer mere, kan ikke handles på | ⚠ |
+| "Åbn næsten fuldskærm" | Findes ikke | ❌ |
+
+⚠ **Gruppering efter sag er ikke bare andre rækker.** En sag kan have flere
+kasser i den samme periode, og gitteret tegner overlap i én række som en
+**KONFLIKT** — med vilje, fordi et overlap på en eksklusiv ressource er noget
+`reserver()` ville afvise. En sagsrække er ikke eksklusiv, så enten skal
+gitteret vide det, eller også skal en sagsrække vise noget andet end sine
+enkelte udlån. Det skal afgøres før der bygges.
+
+⚠ **Og svævekortet må ikke bygges her.** Se 6.3: Fleet skal have det samme, og
+de to skærme må ikke få hver sit. Det betyder at Driftskalenderens `Svaevekort`
+skal løftes op i `fleet/` — ikke at der skal skrives et til.
+Mails og fotos i det store kort hører til **beslutning 20**, som er fase 0:
+`sager/` står ikke i `firebase.rules.json`.
+
+#### Udlån & reservationer
+
+| Planchen | Her | |
+|---|---|---|
+| Reserveret, Ude nu | Bygget | ✅ |
+| **Klargøres snart (48 t)** | **Klargjort** — tæller dem der ER klargjort | ❌ |
+| **Belægningsgrad** | **Over tiden** | ❌ |
+| Opret reservation: sagsnr., kunde, type, undertype | Bygget | ✅ |
+| **Tre datoer** | Et udlån bærer kun `fra` og `til` | ❌ |
+| Ledige kasser i perioden med Reservér | Bygget | ✅ |
+| Aktive udlån med **næste handling** | Bygget, 6.7 | ✅ |
+
+⚠ **DEN TREDJE DATO OG "KLARGØRES SNART" ER DET SAMME HUL.** Planchens fjerde
+nøgletal kræver at man ved HVORNÅR der skal klargøres, og modellen har ingen
+klargøringsdato: `kasseudlaan` bærer `fra` og `til`. De to punkter kan ikke
+bygges hver for sig, og det er den rigtige rækkefølge — feltet først, tallet
+bagefter.
+
+⚠ **Og en klargøringsdato er ikke gratis.** Den skal valideres mod `fra` (man
+klargør ikke efter afhentningen), den hører i `firebase.rules.json` som resten
+af udlånet, og `kasseudlaanskriv` er den eneste vej ind (beslutning 37). Det er
+en regeletape, ikke et felt i en formular.
+
+#### Opsætning / Kasseliste
+
+| Planchen | Her | |
+|---|---|---|
+| Kasser i alt, Udlånt, Samlet volumen i m² og m³ | Bygget | ✅ |
+| **Belægningsgrad** | Findes ikke | ❌ |
+| Filtre på type og undertype | Bygget, 6.6 | ✅ |
+| Opret ny kasse med undertype, mål, hjemplads, noter | Bygget, 6.5 og 6.6 | ✅ |
+| **"Opret ny type" INDE i kasseformularen** | Ligger på **Reolpladser**-skærmen | ⚠ |
+
+⚠ **Typeformularen er en bevidst fravigelse — men den var ikke skrevet ned.**
+En kassetype er stamdata, og stamdata står hvor stamdata står; det var hele
+pointen i etape 9. En formular inde i en formular betyder desuden at man kan
+oprette en type midt i en halvt udfyldt kasse, og så skal den halve kasse
+overleve at den anden formular gemmer. Det er værd at holde fast i — men det
+er en fravigelse, og en fravigelse ingen har skrevet ned, er ikke til at skelne
+fra noget nogen glemte.
+
+#### Rækkefølgen, hvis der bygges
+
+1. **Belægningsgraden.** Billigst — den regnes af kasser og udlån vi allerede
+   henter, og hører på begge skærme. Ingen node, ingen funktion, ingen regel.
+   ⚠ Den skal **ikke** i `kpi/`: den er afledt af lister skærmen har i forvejen,
+   og et gemt afledt tal driver fra sit grundlag. Det er fejlen i
+   `bemanding.ledig` — se CLAUDE.md.
+2. **Klargøringsdato → "Klargøres snart".** En regeletape. Feltet først.
+3. **Kalenderens interval-vælger.** Ren UI oven på `Gitterkalender`.
+4. **Gruppering efter sag.** Kræver at konfliktspørgsmålet ovenfor afgøres.
+5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
+   dele det. Det store kort med mails og fotos venter på beslutning 20.
