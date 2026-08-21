@@ -15,7 +15,7 @@ import {
   indkoebstal, ikkeLinkedeFakturaer, braendstofOere, IKKE_BRAENDSTOF,
   prisafvigelser, facilitytal, SERVICE_VINDUE_DAGE,
   kpiSkelet, medFuldForm,
-  deltaPct, deltaPoint, beregnKpi,
+  deltaPct, deltaPoint, beregnKpi, opgavetal, disponeringstal,
 } from "../src/fleet/kpi-aggregering.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
@@ -314,6 +314,92 @@ test("⚠ HVERT FELT I demo-kpi SKRIVES OGSÅ AF AGGREGERINGEN", () => {
  * samme fejl, en anden fil. `demo-kpi.js` **ER nodens form**, og formen skal
  * passe i begge retninger.
  */
+/**
+ * ⚠ TRE BARE NULLER — TO AF DEM HAVDE EN KILDE.
+ *
+ * `forsinkede`, `udenTidsfrist` og `nyeBookinger` stod uden en eneste linje
+ * begrundelse, mens `udfoerteOpgaver` lige ovenover havde sin skrevet ned. Et
+ * null uden en grund kan ikke skelnes fra et felt nogen har glemt.
+ */
+/**
+ * ⚠ DE TRE FELTER I `disponering` — to fik en kilde, ét fik en grund.
+ */
+test("⚠ forsinkelsesrisiko ER ETA EFTER FRIST — og hullet står ved siden af", () => {
+  const e = (x) => ({ division: "gods", tilstand: "reserveret", ...x });
+  const r = disponeringstal([
+    /* ETA efter fristen: en risiko man kan nå at gøre noget ved. */
+    e({ etaMs: 200, senestMs: 100 }),
+    /* ETA før fristen: i orden. */
+    e({ etaMs: 50, senestMs: 100 }),
+    /* ⚠ KAN IKKE VURDERES. Tælles ikke med i risikoen — men skal kunne SES,
+       ellers ser et lavt tal ud som et rent hus. */
+    e({ etaMs: 200 }),
+    e({ senestMs: 100 }),
+    /* En udført etape kan ikke blive forsinket. */
+    e({ tilstand: "udfoert", etaMs: 200, senestMs: 100 }),
+  ], "gods");
+  assert.equal(r.forsinkelsesrisiko, 1);
+  assert.equal(r.udenEtaEllerFrist, 2);
+});
+
+test("⚠ konflikter ER null UDEN LISTERNE, ikke nul", () => {
+  /* En aggregering der ikke fik sine biler, VED ikke at der er nul
+     konflikter — den ved ingenting. Nul ville se ud som et rent hus. */
+  const etaper = [{ id: "e-1", division: "gods", tilstand: "reserveret" }];
+  assert.equal(disponeringstal(etaper, "gods").konflikter, null);
+  assert.equal(
+    disponeringstal(etaper, "gods", { koeretoejer: [{ id: "kt-1" }] }).konflikter, 0,
+    "med listerne skal den kunne svare et tal");
+});
+
+test("⚠ ledigKapacitetPct BLIVER STÅENDE — definitionen mangler", () => {
+  /* Ikke data der mangler: ledig i hvilken periode, målt i vogntimer, m³
+     eller enheder? De tal peger forskellige veje. Se beslutning 60. */
+  assert.equal(disponeringstal([], "gods").ledigKapacitetPct, null);
+});
+
+test("⚠ forsinkede ER \"SKULLE VÆRE FÆRDIG NU\", ikke \"startede for sent\"", () => {
+  const nu = Date.UTC(2026, 8, 1, 12, 0, 0);
+  const T = 3600000;
+  const o = (x) => ({ division: "gods", ...x });
+  const r = opgavetal([
+    /* Planen sagde kl. 11 — den er forsinket. */
+    o({ status: "planlagt", startMs: nu - 2 * T, estimeretMin: 60 }),
+    /* Begynder først om en time. Ikke forsinket — planlagt. */
+    o({ status: "planlagt", startMs: nu + T, estimeretMin: 60 }),
+    /* Udført og annulleret kan ikke være forsinkede. */
+    o({ status: "udfoert", startMs: nu - 5 * T, estimeretMin: 60 }),
+    o({ status: "annulleret", startMs: nu - 5 * T, estimeretMin: 60 }),
+    /* ⚠ UDEN ESTIMAT: ingen slutning at være forsinket i forhold til. Et gæt
+       på en standardlængde ville gøre den forsinket på et tidspunkt ingen har
+       besluttet. */
+    o({ status: "planlagt", startMs: nu - 5 * T }),
+  ], "gods", nu);
+  assert.equal(r.forsinkede, 1);
+});
+
+test("⚠ nyeBookinger ER null VED FØRSTE KØRSEL, ikke nul", () => {
+  const bookinger = [
+    { division: "gods", oprettetMs: 900 },
+    { division: "gods", oprettetMs: 1200 },
+    { division: "bus", oprettetMs: 1200 },
+  ];
+  /* Uden en forrige er der intet at måle fra — og 0 ville betyde "ingen nye
+     bookinger", en påstand vi ikke kan bakke op. Samme regel som deltaPct(). */
+  assert.equal(opgavetal([], "gods", 2000, { bookinger }).nyeBookinger, null);
+  assert.equal(
+    opgavetal([], "gods", 2000, { bookinger, forrige: { beregnetMs: 1000 } }).nyeBookinger,
+    1, "tæller ikke fra forrige beregning, eller ignorerer divisionen");
+});
+
+test("⚠ udenTidsfrist BLIVER STÅENDE — noden har ikke feltet", () => {
+  /* Og det er ikke et manglende seed: en opgave bærer startMs og
+     estimeretMin, og ingen af dem er en FRIST. Den nærmeste udlægning tælles
+     allerede som `uplanlagte`, og to felter med samme tal under hvert sit
+     navn er beslutning 6 brudt. Se beslutning 61. */
+  assert.equal(opgavetal([], "gods", 1).udenTidsfrist, null);
+});
+
 test("⚠ OG HVERT FELT AGGREGERINGEN SKRIVER, STÅR I demo-kpi", () => {
   const k = beregnKpi({ division: "gods", nu: NU });
   const ukendte = [];

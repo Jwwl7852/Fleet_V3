@@ -3935,7 +3935,7 @@ export const kpiaggregering = onSchedule(
       const [
         kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
         facilityAktiver, facilityFejl, facilitySensorer, indberetninger,
-        koeretoejer, personale, kompetencer, reservationer,
+        koeretoejer, personale, kompetencer, reservationer, bookinger,
       ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
@@ -3977,6 +3977,12 @@ export const kpiaggregering = onSchedule(
             }
             return ud;
           }),
+          /* ⚠ BOOKINGERNE KOM MED FOR `opgaver.nyeBookinger` — arbejde der er
+             kommet ind siden forrige beregning. ⚠ OG DEN STÅR SIDST FORDI
+             RÆKKEFØLGEN ER KONTRAKTEN: destruktureringen ovenfor matcher
+             positionerne her, og et led indsat i midten ville give
+             `koeretoejer` bookingerne — uden at noget fejlede. */
+          rod.child("bookinger").once("value").then((s) => raekker(s.val())),
         ]);
 
       for (const division of KPI_DIVISIONER) {
@@ -3986,7 +3992,7 @@ export const kpiaggregering = onSchedule(
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
           indberetninger, koeretoejer, personale, kompetencer, reservationer,
-          forrige, nu
+          bookinger, forrige, nu
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

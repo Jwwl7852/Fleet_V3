@@ -3841,3 +3841,72 @@ Der stod *"38 felter er null"*. Provisioneringen tæller dem ved hver kørsel og
 skrev **36**, længe før denne etape. Efter: **34**. Tallet står nu med en note
 om at det er målt — et efterslæb man skriver af, holder op med at være et
 efterslæb og bliver til et indtryk.
+
+## 61. Tre bare nuller — to af dem havde en kilde
+
+`kpi.opgaver` havde fire null-felter. Det ene, `udfoerteOpgaver`, havde sin
+begrundelse skrevet ned: det er en **periodesum**, og perioden er ikke
+besluttet. De tre andre — `forsinkede`, `udenTidsfrist` og `nyeBookinger` —
+stod uden en eneste linje.
+
+⚠ **Et null uden en begrundelse kan ikke skelnes fra et felt nogen har glemt.**
+Det er samme fund som beslutning 60 gjorde i `disponering`, én domænerække
+længere nede: to af de tre havde en kilde hele tiden.
+
+### `forsinkede` — "skulle være færdig nu", ikke "startede for sent"
+
+Opgaven bærer `startMs` og `estimeretMin`, og summen er hvad planen sagde. Er
+den passeret, og opgaven hverken udført eller annulleret, er arbejdet forsinket.
+En opgave der ikke er begyndt endnu, er **ikke** forsinket — den er planlagt.
+
+⚠ **Og en opgave uden estimat tælles ikke med.** Den har ingen slutning at være
+forsinket i forhold til, og et gæt på en standardlængde ville gøre den forsinket
+på et tidspunkt ingen har besluttet — samme regel som `reservationFraOpgave()`
+nægter at gætte et vindue.
+
+### `nyeBookinger` — nye siden forrige beregning
+
+Der er ikke en "periode" i noden at tælle i; det er præcis `udfoerteOpgaver`'
+problem. Men der **er** et tidspunkt at måle fra: `forrige.beregnetMs`, som
+deltaerne allerede regner imod. Jobbet kører natligt, så tallet er *"kommet ind
+siden i går"*.
+
+⚠ **Og `null` ved første kørsel, ikke nul.** Der er ingen forrige at måle fra,
+og 0 ville betyde "ingen nye bookinger" — en påstand vi ikke kan bakke op.
+Præcis samme regel som `deltaPct()`.
+
+⚠ **Feltet tæller bookinger, ikke opgaver**, og står alligevel i
+`opgaver`-domænet. Det er ikke sjusk: det er **arbejde der kommer ind**, og det
+er den skærm der spørger. Men det betød at aggregeringen skulle have en liste
+mere.
+
+### `udenTidsfrist` bliver stående — og nu med en grund
+
+"Uden tidsfrist" har ikke et felt i noden. En opgave bærer `startMs` (hvornår
+den er planlagt) og `estimeretMin` (hvor længe den tager) — **ingen af dem er en
+frist**. Den nærmeste udlægning, *"opgaver uden et planlagt tidspunkt"*, tælles
+allerede som `uplanlagte`, og to felter med samme tal under hvert sit navn er
+beslutning 6 brudt.
+
+Feltet venter altså på et **felt** eller på et **andet spørgsmål** — ikke på et
+seed. Det er samme slags null som `ledigKapacitetPct` fik i beslutning 60, og
+det er værd at holde adskilt fra "ingen kilde": **de to slags null ser ens ud i
+noden og er det ikke.**
+
+### ⚠ Rækkefølgen er kontrakten
+
+Jobbet henter sine noder med `Promise.all` og destrukturerer resultatet efter
+**position**. Da `bookinger` kom til, lagde jeg først opslaget ind i midten —
+og så ville `koeretoejer` have fået bookingerne, `personale` fået bilerne, og
+**intet ville have fejlet**: alle fire er lister af objekter med et `id`.
+Konflikttjekket ville bare have slået op i det forkerte.
+
+Den kom med som den **sidste** i begge lister, og det står skrevet begge steder.
+Det er samme klasse som `MAENGDE_SKALA` importeret frem for afskrevet: to
+rækkefølger der skal passe sammen, og som ingen prøve holder øje med.
+
+### Målt
+
+Uden kilde: **36 → 34 → 33** over to etaper. `nyeBookinger` tæller ikke med i
+faldet, fordi den er null i en frisk base **med vilje** — den får sit tal ved
+anden kørsel.

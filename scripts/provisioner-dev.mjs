@@ -672,7 +672,7 @@ async function main() {
   const [
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
     kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer, kpiIndberetninger,
-    kpiKoeretoejer, kpiPersonale, kpiKompetencer,
+    kpiKoeretoejer, kpiPersonale, kpiKompetencer, kpiBookinger,
   ] = await Promise.all([
     "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
     "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
@@ -682,6 +682,9 @@ async function main() {
        det ikke, ville dev vise null hvor natten viser et tal. To regnestykker
        med hvert sit input er to svar på ét spørgsmål. */
     "koeretoejer", "personale", "kompetencer",
+    /* ⚠ BOOKINGERNE KOM MED FOR `opgaver.nyeBookinger`. ⚠ Og rækkefølgen ER
+       kontrakten: destruktureringen ovenfor matcher positionerne her. */
+    "bookinger",
   ].map(hentNode));
 
   /* ⚠ RESERVATIONERNE ER ET TRAE, IKKE EN LISTE — og de er lige blevet
@@ -709,6 +712,7 @@ async function main() {
       indberetninger: kpiIndberetninger,
       koeretoejer: kpiKoeretoejer, personale: kpiPersonale,
       kompetencer: kpiKompetencer, reservationer: kpiReservationer,
+      bookinger: kpiBookinger,
       forrige: null, nu: nuMs,
     });
     await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);

@@ -394,7 +394,12 @@ export function ikkeFaktureretOere(etaper = [], grundlag = [], division) {
  * Regnede vi komplementet, ville en oprydning i annullerede se ud som nyt
  * arbejde.
  */
-export function opgavetal(opgaver = [], division, nu = Date.now()) {
+export function opgavetal(opgaver = [], division, nu = Date.now(), {
+  /* ⚠ BOOKINGERNE KOM MED FOR `nyeBookinger`. Feltet tæller bookinger, ikke
+     opgaver — det står i `opgaver`-domænet fordi det er ARBEJDE der kommer
+     ind, og det er den skærm der spørger. */
+  bookinger = [], forrige = null,
+} = {}) {
   const mine = opgaver.filter((o) => iDivision(o, division));
   const medStatus = (s) => mine.filter((o) => o.status === s).length;
   const AABNE = ["indberettet", "planlagt", "igang", "afventer"];
@@ -432,9 +437,64 @@ export function opgavetal(opgaver = [], division, nu = Date.now()) {
        de udførte opgaver bliver liggende. */
     udfoerteOpgaver: null,
 
-    forsinkede: null,
+    /**
+     * ⚠ TRE BARE NULLER STOD HER UDEN EN ENESTE LINJE.
+     *
+     * `udfoerteOpgaver` ovenfor havde sin grund skrevet ned; de her tre havde
+     * ingenting. Et null uden en begrundelse kan ikke skelnes fra et felt
+     * nogen har glemt — og to af dem havde en kilde hele tiden.
+     */
+
+    /**
+     * ⚠ FORSINKET ER "SKULLE VÆRE FÆRDIG NU" — ikke "startede for sent".
+     *
+     * Opgaven bærer `startMs` og `estimeretMin`, og summen er hvad planen
+     * sagde. Er den passeret, og opgaven hverken udført eller annulleret, er
+     * arbejdet forsinket. En opgave der ikke er begyndt endnu, er ikke
+     * forsinket — den er planlagt.
+     *
+     * ⚠ OG EN OPGAVE UDEN ESTIMAT TÆLLES IKKE MED. Den har ingen slutning at
+     * være forsinket i forhold til, og et gæt på en standardlængde ville
+     * gøre den forsinket på et tidspunkt ingen har besluttet — samme regel
+     * som `reservationFraOpgave()` nægter at gætte et vindue.
+     */
+    forsinkede: mine.filter((o) => {
+      if (o.status === "udfoert" || o.status === "annulleret") return false;
+      if (!Number.isFinite(o.startMs) || !Number.isFinite(o.estimeretMin)) return false;
+      return o.startMs + o.estimeretMin * 60000 < nu;
+    }).length,
+
+    /**
+     * ⚠ DEN BLIVER STÅENDE — OG NU MED EN GRUND.
+     *
+     * "Uden tidsfrist" har ikke et felt i noden. En opgave bærer `startMs`
+     * (hvornår den er planlagt) og `estimeretMin` (hvor længe den tager) —
+     * ingen af dem er en FRIST. Den nærmeste udlægning, "opgaver uden et
+     * planlagt tidspunkt", tælles allerede som `uplanlagte`, og to felter
+     * med samme tal under hvert sit navn er beslutning 6 brudt.
+     *
+     * Feltet venter altså på et FELT eller på et andet spørgsmål — ikke på et
+     * seed. Se beslutning 61.
+     */
     udenTidsfrist: null,
-    nyeBookinger: null,
+
+    /**
+     * ⚠ NYE SIDEN FORRIGE BEREGNING — samme periode som deltaerne.
+     *
+     * Der er ikke en "periode" i noden at tælle i, og det er samme problem som
+     * `udfoerteOpgaver` har. Men der ER et tidspunkt at måle fra:
+     * `forrige.beregnetMs`, som deltaerne allerede regner imod. Jobbet kører
+     * natligt, så tallet er "kommet ind siden i går".
+     *
+     * ⚠ OG null VED FØRSTE KØRSEL, ikke nul. Der er ingen forrige at måle fra,
+     * og 0 ville betyde "ingen nye bookinger" — en påstand vi ikke kan bakke
+     * op. Præcis samme regel som `deltaPct()`.
+     */
+    nyeBookinger: Number.isFinite(forrige?.beregnetMs)
+      ? bookinger.filter(
+          (b) => iDivision(b, division) && Number.isFinite(b.oprettetMs)
+            && b.oprettetMs > forrige.beregnetMs).length
+      : null,
   };
 }
 
@@ -965,6 +1025,10 @@ export function beregnKpi({
      sensorer — og de tælles hver for sig. Ét samlet argument ville have
      skjult hvilke af dem der faktisk blev læst. */
   facilityAktiver = [], facilityFejl = [], facilitySensorer = [],
+  /* ⚠ BOOKINGERNE KOM MED FOR `opgaver.nyeBookinger` — arbejde der er kommet
+     ind siden forrige beregning. Feltet tæller bookinger, ikke opgaver; det
+     står i opgaver-domænet fordi det er ARBEJDE der kommer ind. */
+  bookinger = [],
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
@@ -973,7 +1037,7 @@ export function beregnKpi({
   const disp = disponeringstal(etaper, division, {
     koeretoejer, personale, kompetencer, reservationer,
   });
-  const opg = opgavetal(opgaver, division, nu);
+  const opg = opgavetal(opgaver, division, nu, { bookinger, forrige });
   const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
   const fac = facilitytal({
     aktiver: facilityAktiver, fejl: facilityFejl, sensorer: facilitySensorer,
