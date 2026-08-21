@@ -163,7 +163,6 @@ export default function Planlaegdialog({
   const udkast = {
     art: "vaerksted",
     koeretoejId: post.koeretoejId || null,
-    division: post.division,
     arbejdstype: post.arbejdstype || null,
     status: post.status,
     beskrivelse: post.beskrivelse,

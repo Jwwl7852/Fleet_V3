@@ -82,7 +82,6 @@ export async function planlaegOpgave(post) {
   try {
     const svar = await kaldFunktion(PLANFUNKTION, {
       koeretoejId: post.koeretoejId,
-      division: post.division,
       arbejdstype: post.arbejdstype,
       status: post.status,
       startMs: post.startMs,
@@ -234,7 +233,6 @@ export async function planlaegFacilityopgave(post) {
          være et svar på et spørgsmål der ikke blev stillet. */
       aktivId: post.aktivId || undefined,
       lokationId: post.lokationId || undefined,
-      division: post.division,
       status: post.status,
       startMs: post.startMs,
       estimeretMin: post.estimeretMin,

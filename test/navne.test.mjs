@@ -111,10 +111,6 @@ const UNDTAGET = [
     hvorfor: "console.warn til en udvikler, ved siden af `koeretoejId`. "
       + "Dev-beskeder følger kodens navne, ikke skærmens.",
   },
-  {
-    fil: "src/fleet/demo-indkoeb.js", ord: "køretøj",
-    hvorfor: "Samme: en selvkontrol der navngiver feltet `koeretoejId`.",
-  },
 ];
 
 /**

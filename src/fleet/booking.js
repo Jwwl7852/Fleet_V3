@@ -55,7 +55,6 @@ export async function opretBooking(post) {
   try {
     const svar = await kaldFunktion(BOOKINGFUNKTION, {
       kundeId: post.kundeId,
-      division: post.division,
       fraSted: post.fraSted,
       tilSted: post.tilSted,
       transporttype: post.transporttype,

@@ -130,7 +130,6 @@ export default function Servicedialog({
     art: "facility",
     aktivId: valgtRessource.aktivId || null,
     lokationId: valgtRessource.lokationId || null,
-    division: post.division,
     status: post.status,
     beskrivelse: post.beskrivelse,
     startMs,

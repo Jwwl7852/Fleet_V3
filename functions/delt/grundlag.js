@@ -259,7 +259,7 @@ export const linjerUdenMoms = (grundlag) =>
  * UDEN bookingId — og et lagergrundlag ville kunne blive spærret af en etape
  * det intet har med at gøre.
  */
-export function byggGrundlag({ bookingId, periode, kundeId, division = "faelles", linjer = [], udarbejdetAf }, nu = Date.now()) {
+export function byggGrundlag({ bookingId, periode, kundeId, linjer = [], udarbejdetAf }, nu = Date.now()) {
   const harForloeb = Boolean(bookingId);
   const harPeriode = Boolean(periode?.fra && periode?.til);
   if (harForloeb && harPeriode) {
@@ -276,7 +276,6 @@ export function byggGrundlag({ bookingId, periode, kundeId, division = "faelles"
     bookingId: bookingId ?? null,
     periode: harPeriode ? { fra: periode.fra, til: periode.til } : null,
     kundeId: kundeId ?? null,
-    division,
     tilstand: "kladde",
     linjer,
     udarbejdetAf,
@@ -538,7 +537,6 @@ export function erstat(gammelt, { nytId, linjer, bruger, begrundelse }, nu = Dat
     ...byggGrundlag({
       bookingId: gammelt.bookingId,
       kundeId: gammelt.kundeId,
-      division: gammelt.division,
       linjer: linjer ?? gammelt.linjer ?? [],
       udarbejdetAf: bruger,
     }, nu),

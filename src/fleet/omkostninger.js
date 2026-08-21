@@ -97,8 +97,11 @@ export function valideOmkostning(post = {}, { koeretoejer = [] } = {}) {
     f.navn = "Skriv et navn.";
   }
 
-  if (post.division && !/^(gods|bus|faelles)$/.test(post.division)) {
-    f.division = "Division skal være gods, bus eller fælles.";
+  /* ⚠ HER STOD EN VÆRDIKONTROL AF `division`. Feltet er FORBUDT siden
+     beslutning 70, så kontrollen er vendt om: en post der bærer det, ville
+     blive afvist af reglen — og formularen skal sige det, ikke serveren. */
+  if (post.division !== undefined) {
+    f.division = "Division findes ikke længere — se beslutning 70.";
   }
   /* ⚠ EN BIL HAR INGEN DIVISION (beslutning 19). Et køretøj er defineret ved
      sin art, ikke ved en afdeling, og reglerne afviser feltet på
@@ -146,7 +149,6 @@ export function omkostningsark(raekker = [], { koeretoejer = [], lagre = [] } = 
     ark.lagre[l.id] = {
       navn: l.navn || l.id,
       kapacitet: Number.isFinite(l.kapacitet) ? l.kapacitet : null,
-      division: l.division || "faelles",
       satser: liste(l.satser),
       haandteringSatser: liste(l.haandteringSatser),
     };
@@ -170,14 +172,12 @@ export function omkostningsark(raekker = [], { koeretoejer = [], lagre = [] } = 
     } else if (r.art === "passage") {
       ark.poster[r.id] = {
         navn: r.navn, kategori: r.kategori || null,
-        division: r.division || "faelles",
         altidPaaBooking: r.altidPaaBooking === true,
         satser,
       };
     } else if (r.art === "agent") {
       ark.agenter[r.id] = {
         navn: r.navn, by: r.by || null, note: r.note || null,
-        division: r.division || "faelles",
         satser,
       };
     }

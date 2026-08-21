@@ -55,14 +55,13 @@ async function kald(data) {
  *
  * ⚠ NUMMERET SENDES IKKE MED. Det kommer fra counteren, server-side.
  */
-export const opretGrundlag = ({ kundeId, bookingId, periode, division, linjer }) =>
+export const opretGrundlag = ({ kundeId, bookingId, periode, linjer }) =>
   kald({
     handling: "opret",
     kundeId,
     bookingId: bookingId || undefined,
     periodeFra: periode?.fra ?? undefined,
     periodeTil: periode?.til ?? undefined,
-    division: division || undefined,
     linjer,
   });
 

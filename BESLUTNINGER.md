@@ -4690,3 +4690,92 @@ prøvede og kunne ikke", og feltet ville stå i noden som et ubesvaret spørgsm�
 Det er ikke ubesvaret — det hører ikke hjemme. Efterslæbet gik 45 → 44, og det
 er den ene af de to måder tallet må falde på: et felt får en kilde, eller et
 felt viser sig ikke at være et felt.
+
+## 72. En kunde med syv moduler og nul rækker — og beskeden der sagde noget forkert
+
+`nordvest` (Nordvest Transport ApS, CVR 38472911) stod med syv moduler og
+**tre noder**: `_findes`, `moduler`, `virksomhed`. Ingen medarbejdere, ingen
+enheder, ingen opgaver. Man kunne hverken se om tallene passer eller hvordan
+designet ser ud med indhold i.
+
+### ⚠ Og skærmen sagde noget der ikke var sandt længere
+
+> *"Tallene beregnes af en aggregering der endnu ikke er bygget — se
+> KPI-efterslæbet i README."*
+
+Aggregeringen **er** bygget: `kpiaggregering` kører hver nat og `beregnKpi()`
+regner 44 felters værd. Beskeden stod på den skærm en ny kunde ser **først**,
+og den fortalte ham at systemet manglede noget der fandtes.
+
+Den siger nu at tallene beregnes **hver nat** af de data der står i basen — og
+den siger stadig hvorfor det ikke er nul: *"0 aktive enheder ville være en
+påstand om at virksomheden ingen har."*
+
+⚠ **Første udgave skrev "0 aktive køretøjer", og `test/navne.test.mjs` fangede
+det med det samme.** Fleets ting er en **enhed**; ordet blev skiftet 37 steder,
+og en ny streng må ikke lægge det tilbage. Prøven virkede.
+
+### Én vej ind, ikke to
+
+Provisioneren kunne det hele — den var bare bundet til `demo`. Den tager nu
+`--tenant=<id>`, og to ting er anderledes for en kundes tenant:
+
+⚠ **Der oprettes ingen brugere.** DEV-kontiene har kendte adgangskoder fra
+`.env.local` og findes for at prøve claims-kæden i en browser. Oprettet i en
+kundes tenant ville kunden have syv konti han ikke kender — med fulde perms.
+
+⚠ **Seedet følger kundens moduler**, og mappingen **læses ud af regelfilen**.
+Reglens `.read` bærer allerede klausulen `moduler').child('<modul>')`; en liste
+i scriptet ville være den samme kendsgerning to steder, og den ene ville drive
+— nøjagtig den fejl beslutning 70 fjernede en hel akse for.
+
+⚠ **Og et seed må ikke oprette en tenant.** `kundeopret` skriver også posten i
+`udbyder/kunder`, som natjobbet henter sin tenantliste fra. En tenant oprettet
+af et seed ville få data og **aldrig** få nøgletal — og det ville ligne en fejl
+i aggregeringen.
+
+### ⚠ En afledt post arver ikke sit modulfilter af sig selv
+
+Første kørsel mod `nordvest` så rigtig ud og var det ikke. Målt bagefter:
+
+- **13 reservationer med `kilde.type: "booking"`** — på etaper der ikke var
+  seedet, fordi kunden ikke har Booking-modulet. **Tretten enheder så OPTAGET
+  ud af en tur ingen kunne slå op.**
+- **En bookingtæller på 318** hos en kunde uden bookinger. Hans første booking
+  ville hedde `BKG-2026-00319`, som om der lå tre hundrede før den.
+
+Begge blev bygget af `DEMO_ETAPER` og `DEMO_BOOKINGER` **uden om** filteret,
+fordi de er *afledte* poster og ikke SEED-rækker. Filteret sad på tabellen; de
+her to sad ved siden af den.
+
+### ⚠ Hullet fra beslutning 70, fundet af et seed og ikke af en prøve
+
+Seedet fejlede med:
+
+> `set failed: value argument contains undefined in property 'tenants.nordvest.indkoeb.il-h-DIESEL-B7-11.division'`
+
+Beslutning 70 fjernede `division` fra **valideringen** og fra **dataene** — men
+**elleve skrivestier satte det stadig**: `booking.js`, `fakturering.js`,
+`grundlag.js`, `leverandoerer.js`, `omkostninger.js` (tre steder),
+`opgaveplan.js` (to), `Planlaegdialog.jsx`, `Servicedialog.jsx`,
+`Afregning.jsx` og `indkoeb/Oversigt.jsx`.
+
+⚠ **Det er CLAUDE.md's advarsel spejlvendt.** Reglen er at en klientvalidering
+skal stå i reglerne; her var det omvendt — en regel der afviser noget klienten
+stadig skriver. Resultatet er det samme: de to er uenige, og serveren vinder i
+tavshed. Brugeren ville have fået `permission-denied` på en formular der ser
+rigtig ud.
+
+`omkostninger.js` var værst: `division: l.division || "faelles"` satte feltet
+**ubetinget**, tre steder — så hver eneste skrivning ville være blevet afvist.
+
+### Tallene passer
+
+Ni nøgletal regnet efter mod rådataene i `nordvest`: flåde (aktive, på
+værksted, ude af drift, service inden 30), bemanding (medarbejdere, fravær i
+dag, kompetencer), facility (aktiver) og opgaver (åbne). **Ni af ni stemmer.**
+
+Og rådataene hænger sammen: 16 enheder (11 aktive, 2 på værksted, 1 ude af
+drift, 1 solgt, 1 skrottet), 35 medarbejdere (32 aktive, 2 på orlov, 1
+fratrådt), 27 opgaver hvoraf 23 er åbne, 0 uden estimat — og én udløbet
+kompetence, som blokerer en disponering.

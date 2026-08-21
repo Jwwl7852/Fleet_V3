@@ -153,7 +153,7 @@ const tomLinje = () => ({
 
 const fraLinje = (l) => ({
   ...tomLinje(),
-  division: l.division, datoIso: msTilIso(l.dato), leverandoerId: l.leverandoerId,
+  datoIso: msTilIso(l.dato), leverandoerId: l.leverandoerId,
   vare: l.vare ?? "", varenummer: l.varenummer ?? "",
   antal: l.antal ?? "", enhed: l.enhed ?? "stk",
   prisKr: kronerFraOere(l.prisPrEnhedOere),

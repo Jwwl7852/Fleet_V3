@@ -257,10 +257,12 @@ export const Datatilstand = ({ tilstand, genprov, tom }) => {
           <b>Nøgletallene er ikke aggregeret for den her virksomhed endnu.</b>
         </p>
         <p className="fc-hint" style={{ marginTop: 6 }}>
-          Det er ikke en fejl, og det er ikke nul. Tallene beregnes af en
-          aggregering der endnu ikke er bygget — se KPI-efterslæbet i README.
-          Data du selv opretter, vises på de skærme der læser direkte fra
-          basen.
+          Det er ikke en fejl, og det er ikke nul — <b>0 aktive enheder</b>{" "}
+          ville være en påstand om at virksomheden ingen har.
+          Nøgletallene beregnes <b>hver nat</b> af de data der står i basen, så
+          de kommer af sig selv når der er noget at regne på. Indtil da viser
+          de skærme der læser direkte fra basen — enheder, medarbejdere,
+          opgaver — det du har oprettet.
         </p>
       </div>
     );

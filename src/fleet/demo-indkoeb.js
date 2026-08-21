@@ -12,7 +12,8 @@
  * kan drive fra antal × pris.
  *
  * ⚠ DIVISION ER PÅKRÆVET PÅ ET INDKØB. Reglerne validerer
- * hasChildren(['division']) på indkoeb/$id. Værdien kan ikke arves fra
+ * ⚠ HER STOD AT REGLEN KRÆVEDE hasChildren(['division']). Feltet er forbudt
+ * siden beslutning 70. Værdien kunne i øvrigt aldrig arves fra
  * køretøjet (beslutning 19) — den skal sættes af den der registrerer.
  *
  * ⚠ INGEN GEMTE TOTALER. Afstemningens tre summer regnes af listerne, og de
@@ -138,7 +139,7 @@ function maanedligeIndkoeb() {
       linjer.push({
         id: `il-h-${v.varenummer}-${m}`,
         dato: d, aftaltLeveringMs: d, leveretMs: d,
-        leverandoerId: v.leverandoerId, division: v.division,
+        leverandoerId: v.leverandoerId,
         reference: `HIST-${v.varenummer}-${m}`,
         vare: v.vare, varenummer: v.varenummer, kategori: v.kategori,
         antal: v.antal, enhed: v.enhed, prisPrEnhedOere: prisOere,
@@ -548,11 +549,6 @@ if (import.meta.env?.DEV) {
     if (!AFTALETYPE[l.aftale?.type]) {
       console.warn(`demo-indkoeb: ${l.id} har ukendt aftaletype "${l.aftale?.type}".`);
     }
-    /* Division BESKRIVER LEVERANDØRENS FORRETNING — se prøven i
-       leverandoerer.js. Den er tilladt her, modsat på personale og køretøjer. */
-    if (!["gods", "bus", "faelles"].includes(l.division)) {
-      console.warn(`demo-indkoeb: ${l.id} har ugyldig division "${l.division}".`);
-    }
     /* E-mailen bliver sagens startliste af parter (beslutning 20). Mangler
        den, kan en sag på leverandøren ikke tage imod svar. */
     if (!parterFraLeverandoer(l).length) {
@@ -567,10 +563,14 @@ if (import.meta.env?.DEV) {
     if (!lvIder.has(l.leverandoerId)) {
       console.warn(`demo-indkoeb: linje ${l.id} peger på ukendt leverandør "${l.leverandoerId}".`);
     }
-    if (!["gods", "bus", "faelles"].includes(l.division)) {
+    /* ⚠ HER STOD EN KONTROL AF `division`. Feltet er FORBUDT nu (beslutning
+       70), og kontrollen er vendt om: bærer en demolinje det, ville reglen
+       afvise skrivningen — og seedet fejlede præcis sådan, med
+       "value argument contains undefined in property … .division". */
+    if (l.division !== undefined) {
       console.warn(
-        `demo-indkoeb: linje ${l.id} mangler gyldig division. Reglerne kræver den på ` +
-        `indkoeb/, og den kan ikke arves fra køretøjet (beslutning 19).`
+        `demo-indkoeb: linje ${l.id} bærer division. Feltet er forbudt på ` +
+        `indkoeb/ siden beslutning 70, og reglen afviser skrivningen.`
       );
     }
     if (!Number.isInteger(l.prisPrEnhedOere) || l.prisPrEnhedOere < 0) {

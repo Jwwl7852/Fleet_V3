@@ -107,7 +107,6 @@ export default function Afregning() {
     const r = await opretGrundlag({
       kundeId: kunde.id,
       periode: { fra: periode.fra, til: periode.til },
-      division: kunde.division,
       linjer: tilGrundlag,
     });
     saetArbejder(false);

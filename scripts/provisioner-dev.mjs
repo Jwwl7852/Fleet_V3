@@ -13,7 +13,19 @@
  * "afvist" på hver eneste skærm. Det er trin 1 af en grund.
  *
  * Kør:
- *   node scripts/provisioner-dev.mjs
+ *   node scripts/provisioner-dev.mjs                  → tenanten "demo"
+ *   node scripts/provisioner-dev.mjs --tenant=nordvest → en RIGTIG kunde
+ *
+ * ⚠ MED --tenant OPRETTES DER INGEN BRUGERE. DEV-brugerne hører til
+ * dev-tenanten; en kundes tenant skal ikke pludselig have syv konti med
+ * kendte adgangskoder, fordi nogen ville se data på en skærm.
+ *
+ * ⚠ OG SEEDET FØLGER KUNDENS MODULER. En kunde uden Booking skal ikke have
+ * bookinger — noden ville være ulæselig for ham (modulklausulen i reglerne),
+ * så tallene ville regnes af data ingen kan se. Hvilket modul en node hører
+ * til, LÆSES UD AF REGELFILEN og står ikke i en liste her: en liste nummer to
+ * driver, og det er hele grunden til at nodelisten i rules.tenant.test.mjs
+ * også læses derfra.
  *
  * Kræver en servicekontonøgle til DEV i .serviceaccount-dev.json (gitignored,
  * hentes i Firebase-konsollen under Projektindstillinger → Tjenestekonti) og
@@ -316,6 +328,31 @@ export const SEED = [
  * fra NØGLEN. Derfor nøgles der på id, og id'et fjernes fra værdien: to
  * kilder til samme felt er præcis den slags der kan nå at blive uenige.
  */
+/**
+ * Hvilket modul spærrer noden? — læst ud af `firebase.rules.json`.
+ *
+ * Reglens `.read` bærer klausulen `moduler').child('<modul>').val() === true`
+ * for de noder der hører til et modul. Er der ingen klausul, hører noden til
+ * alle (fx `brugere`, `countere`).
+ *
+ * ⚠ LÆST, IKKE SKREVET AF. En liste her ville være den samme kendsgerning to
+ * steder, og den ene ville drive — præcis den fejl beslutning 70 fjernede en
+ * hel akse for.
+ */
+export function modulForNode(node, regeltekst) {
+  const rod = node.split("/")[0];
+  const linjer = regeltekst.replace(/^\s*\/\/.*$/gm, "").split("\n");
+  const i = linjer.findIndex((l) => l.trim().startsWith(`"${rod}": {`));
+  if (i < 0) return null;
+  /* Kun nodens EGEN .read — den første efter dens åbning. */
+  for (let j = i + 1; j < Math.min(i + 8, linjer.length); j += 1) {
+    if (!linjer[j].includes('".read"')) continue;
+    const m = linjer[j].match(/child\('moduler'\)\.child\('(\w+)'\)\.val\(\) === true/);
+    return m ? m[1] : null;
+  }
+  return null;
+}
+
 export function somNode(raekker) {
   const ud = {};
   for (const { id, ...resten } of raekker) {
@@ -446,10 +483,45 @@ async function main() {
   const auth = getAuth(app);
   const db = getDatabase(app);
 
-  console.log(`Provisionerer ${noegle.project_id}, tenant "${DEV_TENANT}".\n`);
+  /* ⚠ EN ANDEN TENANT END DEV'S ER EN KUNDE, og så skal to ting være
+     anderledes: der oprettes INGEN brugere, og seedet følger kundens moduler.
+     Begge dele er sikkerhed, ikke pænhed — se hovedet. */
+  const valgt = (process.argv.find((a) => a.startsWith("--tenant=")) || "").slice(9)
+    || DEV_TENANT;
+  const erDev = valgt === DEV_TENANT;
+
+  /* ⚠ TENANTEN SKAL FINDES I FORVEJEN når den ikke er dev's. Et seed der
+     OPRETTER en tenant, ville lave en kunde uden om `kundeopret` — og dermed
+     uden en post i `udbyder/kunder`, som natjobbet henter sin tenantliste
+     fra. Kunden ville få data og aldrig få nøgletal. */
+  if (!erDev) {
+    const findes = (await db.ref(`tenants/${valgt}/_findes`).once("value")).val();
+    if (!findes) {
+      throw new Error(
+        `Tenanten "${valgt}" findes ikke. Opret den med kundeopret først — `
+        + "et seed må ikke være en bagdør til at oprette en kunde."
+      );
+    }
+  }
+
+  const moduler = (await db.ref(`tenants/${valgt}/moduler`).once("value")).val() || {};
+  const regeltekst = readFileSync("firebase.rules.json", "utf8");
+  const harModulet = (node) => {
+    const m = modulForNode(node, regeltekst);
+    return !m || moduler[m] === true;
+  };
+
+  console.log(`Provisionerer ${noegle.project_id}, tenant "${valgt}".`);
+  if (!erDev) {
+    console.log(
+      `  moduler: ${Object.entries(moduler).filter(([, v]) => v === true).map(([k]) => k).join(", ") || "(ingen)"}`
+      + "\n  brugere: springes over — DEV-konti hører ikke i en kundes tenant"
+    );
+  }
+  console.log("");
 
   /* 1. Tenant-markøren. Uden den afviser hver regel alt. */
-  await db.ref(`tenants/${DEV_TENANT}/_findes`).set(true);
+  await db.ref(`tenants/${valgt}/_findes`).set(true);
   console.log("  _findes            sat");
 
   /* 2. Brugere og claims. Ejerkontoen — hvis der er sat en — provisioneres
@@ -457,7 +529,7 @@ async function main() {
      andet sted fra end alle andres, er den der bliver glemt når rettighederne
      skal gennemgås. */
   const ejer = ejerkonto(process.env.VITE_DEV_EJER_MAIL || laesFraEnvLocal("VITE_DEV_EJER_MAIL"));
-  for (const b of ejer ? [...DEV_BRUGERE, ejer] : DEV_BRUGERE) {
+  for (const b of erDev ? (ejer ? [...DEV_BRUGERE, ejer] : DEV_BRUGERE) : []) {
     let bruger;
     try {
       bruger = await auth.getUserByEmail(b.email);
@@ -466,7 +538,7 @@ async function main() {
       if (e.code !== "auth/user-not-found") throw e;
       bruger = await auth.createUser({ email: b.email, password: kode, displayName: b.navn });
     }
-    await auth.setCustomUserClaims(bruger.uid, claimsFor(b.rolle, DEV_TENANT));
+    await auth.setCustomUserClaims(bruger.uid, claimsFor(b.rolle, valgt));
 
     /* Uden det beholder en allerede indlogget session sine GAMLE claims,
        indtil tokenet udløber af sig selv. Man ville tro man havde ændret
@@ -478,13 +550,28 @@ async function main() {
 
   /* 3. Demo-data under de noder skærmene faktisk læser. */
   console.log("");
+  let sprunget = 0;
   for (const { node, data, form, boern } of SEED) {
+    /* ⚠ EN NODE KUNDEN IKKE KAN LÆSE, SKAL HELLER IKKE SEEDES. Modulklausulen
+       i reglerne ville afvise hans læsning — så dataene ville ligge der,
+       tælle med i nøgletallene, og ikke kunne ses. Et tal regnet af data ingen
+       kan se, er værre end intet tal. */
+    if (!harModulet(node)) {
+      sprunget += 1;
+      continue;
+    }
     const nyttelast = form === "liste-med-boern"
       ? sammeNode(data, boern)
       : form === "liste" ? somNode(data) : data;
-    await db.ref(`tenants/${DEV_TENANT}/${node}`).set(nyttelast);
+    await db.ref(`tenants/${valgt}/${node}`).set(nyttelast);
     const antal = form === "objekt" ? "objekt" : `${data.length} rækker`;
     console.log(`  ${node.padEnd(24)} ${antal}`);
+  }
+
+  /* ⚠ EN UDELADELSE MAN KAN SE, ER ET VALG; en man ikke kan se, er en fejl.
+     Samme regel som gitteret skriver når det skjuler tomme rækker. */
+  if (sprunget) {
+    console.log(`  (${sprunget} noder sprunget over — kunden har ikke modulet)`);
   }
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -504,7 +591,11 @@ async function main() {
   const BUNDET = ["reserveret", "udfoert"];
   const reservationer = {};
   let antalResv = 0;
-  for (const e of DEMO_ETAPER) {
+  /* ⚠ EN RESERVATION UDEN SIN KILDE ER VÆRRE END INGEN. Etaperne seedes kun
+     hvis kunden har Booking-modulet — og uden dem ville de her reservationer
+     pege på ture der ikke findes: tretten enheder der ser OPTAGET ud af noget
+     ingen kan slå op. Det blev målt på nordvest, ikke antaget. */
+  for (const e of harModulet("etaper") ? DEMO_ETAPER : []) {
     if (!BUNDET.includes(e.tilstand)) continue;
     for (const [i, r] of reservationerFraEtape(e).entries()) {
       reservationer[r.ressourceType] ??= {};
@@ -593,7 +684,7 @@ async function main() {
     antalOpgaver += 1;
   }
 
-  await db.ref(`tenants/${DEV_TENANT}/reservationer`).set(reservationer);
+  await db.ref(`tenants/${valgt}/reservationer`).set(reservationer);
   console.log(
     `  ${"reservationer".padEnd(24)} ${antalResv} fra etaper, ${antalFravaer} fra fravær, ` +
     `${antalOpgaver} fra opgaver`);
@@ -613,18 +704,24 @@ async function main() {
      ══════════════════════════════════════════════════════════════════════ */
   const hoejesteNummer = {};
   let udenNummer = 0;
-  for (const b of DEMO_BOOKINGER) {
+  /* ⚠ OG TÆLLEREN FØLGER MODULET. En kunde uden Booking har ingen bookinger og
+     skal ikke have en bookingtæller stående på 318 — den ville få hans FØRSTE
+     booking (den dag han køber modulet) til at hedde BKG-2026-00319, som om
+     der lå tre hundrede før den. Målt på nordvest. */
+  for (const b of harModulet("bookinger") ? DEMO_BOOKINGER : []) {
     const m = /^BKG-(\d{4})-(\d{5})$/.exec(b.nummer || "");
     if (!m) { udenNummer += 1; continue; }
     hoejesteNummer[m[1]] = Math.max(hoejesteNummer[m[1]] || 0, Number(m[2]));
   }
   for (const [aar, n] of Object.entries(hoejesteNummer)) {
-    await db.ref(`tenants/${DEV_TENANT}/countere/booking/${aar}`).set(n);
+    await db.ref(`tenants/${valgt}/countere/booking/${aar}`).set(n);
   }
-  console.log(
-    `  ${"countere/booking".padEnd(24)} ` +
-    Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
-    (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
+  if (Object.keys(hoejesteNummer).length) {
+    console.log(
+      `  ${"countere/booking".padEnd(24)} ` +
+      Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
+      (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
+  }
 
   /* ⚠ OG HVER ETAPE SKAL PEGE PÅ EN BOOKING DER FINDES. Før bookingerne kom
      i SEED, gjorde ingen af dem det — og det kunne ikke ses, fordi
@@ -667,7 +764,7 @@ async function main() {
      ══════════════════════════════════════════════════════════════════════ */
   const somRaekker = (v) => Object.entries(v || {}).map(([id, x]) => ({ id, ...x }));
   const hentNode = async (n) =>
-    somRaekker((await db.ref(`tenants/${DEV_TENANT}/${n}`).once("value")).val());
+    somRaekker((await db.ref(`tenants/${valgt}/${n}`).once("value")).val());
 
   const [
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
@@ -718,7 +815,7 @@ async function main() {
       bookinger: kpiBookinger, fravaer: kpiFravaer,
       forrige: null, nu: nuMs,
     });
-    await db.ref(`tenants/${DEV_TENANT}/kpi/current`).set(tal);
+    await db.ref(`tenants/${valgt}/kpi/current`).set(tal);
 
     /* ⚠ TO SLAGS null, OG DE MAA IKKE TAELLES SAMMEN. Foerste udgave af
        den her linje skrev "56 felter uden kilde" — men de fleste af dem var

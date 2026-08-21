@@ -612,7 +612,6 @@ export function valideIndkoeb(post = {}, { leverandoerer = [], koeretoejer = [],
 
 export function byggIndkoeb(post) {
   const ud = {
-    division: post.division,
     dato: Number(post.dato),
     leverandoerId: post.leverandoerId,
     vare: post.vare.trim(),

@@ -21,7 +21,7 @@
    hvilket læser som demo-data frem for en virksomhed.
 
    Bemærk også at facility-tallene er ENS i de to sæt. Værkstedet, portene
-   og vaskehallen er fælles aktiver (division: "faelles"), og de bliver ikke
+   og vaskehallen er fælles aktiver, og de bliver ikke
    flere af at man skifter toggle. Det er ikke en fejl i demo-data — det er
    fælles-begrebet der slår igennem i aggregeringen. */
 export const DEMO_KPI = {
