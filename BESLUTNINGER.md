@@ -3531,3 +3531,69 @@ derfor stået på lintens liste over "detaljer der venter". Men hos en rigtig
 kunde matcher de **ingenting**: kolonnen ville stå tom eller vise et råt id, og
 en tabel med tomme navne ligner data der mangler. De læser nu `personale` og
 `koeretoejer` fra noderne.
+
+## 57. Maskinen havde ni tilstande og én dør
+
+Beslutning 55 gav bookingen en oprettelse, 56 gjorde den synlig — og så stod
+den stille. `skiftEtape()` blev kaldt fra **ét** sted: Forslag-skærmen, som
+afgør `afventerKoord`. Alt andet i `ETAPE_OVERGANGE` havde ingen knap der
+kunne trykkes:
+
+| Fra → til | Handling |
+|---|---|
+| `kladde → afventerPlan` | Send til planlægning |
+| `kladde → annulleret` | Annullér |
+| `aaben → afventerPlan` | Tag af venteliste |
+| `reserveret → udfoert` | Markér udført |
+| `reserveret → annulleret` | Annullér etape |
+| `afvist → afventerPlan` | Genåbn etape |
+
+En booking oprettet med `bookingopret` begyndte som `kladde` og kunne **aldrig
+komme videre**.
+
+⚠ **Og Bookingoversigten listede dem endda.** Kortet *"Hvad du må lige nu"*
+genererede rækken af `tilgaengeligeEtapeHandlinger()` — hvilket er rigtigt —
+men hver knap var `disabled` med titlen *"Skrivning er ikke bygget (fase 0)"*.
+Maskinen så hel ud, netop fordi tabellen var komplet.
+
+### `fleet/Etapeskifte.jsx` — samme snit som `Statusskifte.jsx`
+
+Knapperne tegnes af maskinen, ikke af en liste i filen, og serveren afviser med
+den **samme** `kanSkifteEtape()`. Skærmen VISER; `etapeskift` HÅNDHÆVER.
+Komponenten ligger i `fleet/` fordi flere skærme viser den samme etape — byggede
+hver sin knaprække, ville de før eller siden være uenige om hvilke skift der
+findes.
+
+⚠ **De forslagsbærende overgange tegnes IKKE her.** *Send forslag*, *Foreslå
+matchet tur* og *Godkend valgt forslag* kræver et forslag på etapen, og et
+forslag laves der hvor man kan **se** turen — i Disponering og Forslag. En knap
+her ville åbne en dialog man ikke kunne udfylde. Komponenten skriver i stedet
+**hvor** man gør det: en henvisning er en vej, en deaktiveret knap er en attrap.
+Det er samme svar som "Træk opgave hertil" fik i beslutning 49.
+
+⚠ **Begrundelsen må ikke gøre knappen grå.** Overgange med `kraeverBegrundelse`
+eller `kraeverFrist` åbner en dialog; blev knappen deaktiveret fordi feltet var
+tomt, kunne man aldrig nå at udfylde det. Forhåndssvaret spørger derfor
+maskinen **som om** begrundelsen var givet, og dialogen kræver den bagefter.
+
+⚠ **Og begrundelsen er fritekst der ikke må i auditloggen.** Den står på
+etapens historik, hvor den hører til sagen; `LOGBARE_FELTER` er en allowliste
+netop for at holde tastet tekst ude. Det er den modsatte afvejning af
+`opgavestatus` (beslutning 50), hvor der bevidst **ikke** kræves en
+begrundelse: en annulleret TUR er en aftale med en kunde der brydes, en
+driftsopgave er vores egen disposition.
+
+### Prøven spørger maskinen, ikke skærmen
+
+`test/etapeskifte.test.mjs` går hver eneste overgang i tabellen igennem og
+kræver at den kan nås: de forslagsbærende fra Disponering eller Forslag, alle
+andre fra `Etapeskifte`. **En ny overgang uden en dør fejler dermed uden at
+nogen har husket at skrive et testtilfælde** — samme greb som nodelisten i
+`rules.tenant.test.mjs`.
+
+### ⚠ Et skift rører tre noder
+
+Tilstanden, reservationen på hver ressource, og bookingens **afledte** tilstand.
+Hentede skærmen kun etaperne igen efter et skift, ville tabellen ovenfor stå med
+den gamle bookingtilstand — og det er præcis den uenighed Bookingoversigten
+findes for at gøre **synlig**. Alle tre lister hentes derfor på ny.

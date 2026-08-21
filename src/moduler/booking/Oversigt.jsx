@@ -45,6 +45,7 @@ import {
   Gitter, Handlingsliste, Ikon,
 } from "../../fleet/ui.jsx";
 import Stopoversigt from "../../fleet/Stopoversigt.jsx";
+import Etapeskifte from "../../fleet/Etapeskifte.jsx";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -407,7 +408,17 @@ export default function BookingOversigt() {
         </Kort>
       </Gitter>
 
-      <Handlinger raekker={viste} perms={bruger?.perms} rolle={bruger?.rolle} />
+      {/* ⚠ ET SKIFT RØRER TRE NODER — etapen, dens reservationer og
+          bookingens AFLEDTE tilstand — så alle tre lister skal hentes igen.
+          Hentede vi kun etaperne, ville tabellen ovenfor stå med den gamle
+          bookingtilstand, og det er netop den slags uenighed skærmen findes
+          for at gøre synlig. */}
+      <Handlinger raekker={viste} perms={bruger?.perms} rolle={bruger?.rolle}
+                  onSkiftet={() => {
+                    etapeListe.genindlaes();
+                    bookingListe.genindlaes();
+                    genindlaes();
+                  }} />
     </div>
   );
 }
@@ -422,7 +433,7 @@ const timer = (min) => (min == null ? "—" : `${(min / 60).toFixed(1).replace("
  * Knapperne GENERERES af tilstandsmaskinen plus permissions. Ingen håndskreven
  * knaprække — skifter man rolle i demo-vælgeren, ændrer listen sig af sig selv.
  */
-function Handlinger({ raekker, perms, rolle }) {
+function Handlinger({ raekker, perms, rolle, onSkiftet }) {
   /* ⚠ HANDLINGERNE HØRER TIL ETAPEN, IKKE TIL FORLØBET — beslutning 40.
      Panelet spurgte før `tilgaengeligeHandlinger(booking.vist)`, men
      bookingens tilstand er AFLEDT: den er ikke noget nogen kan skifte. Det
@@ -455,15 +466,14 @@ function Handlinger({ raekker, perms, rolle }) {
               render: (g) => `nr. ${g.e.nr ?? "?"} · ${g.e.fraSted} → ${g.e.tilSted}` },
             { key: "tilstand", label: "Tilstand",
               render: (g) => <Pille tone={TILSTAND[g.e.tilstand]?.pill}>{TILSTAND[g.e.tilstand]?.label}</Pille> },
+            /* ⚠ HER STOD DEAKTIVEREDE KNAPPER MED "Skrivning er ikke bygget
+               (fase 0)". Listen var rigtig — den blev genereret af maskinen —
+               men ingen af knapperne kunne trykkes, og en etape oprettet med
+               `bookingopret` kunne derfor aldrig forlade `kladde`.
+               `Etapeskifte` tegner de samme handlinger og KALDER
+               `etapeskift`, som afviser med den samme `kanSkifteEtape()`. */
             { key: "handlinger", label: "Tilgængelige handlinger", render: (g) => (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {g.muligheder.map((m) => (
-                    <Knap key={m.til} disabled
-                          title={`Kræver ${m.kraeverPerm}. Skrivning er ikke bygget (fase 0).`}>
-                      {m.handling}
-                    </Knap>
-                  ))}
-                </div>) },
+                <Etapeskifte etape={g.e} perms={perms} onSkiftet={onSkiftet} />) },
           ]}
           raekker={grupper}
           noegle={(g) => g.e.id}
@@ -476,6 +486,10 @@ function Handlinger({ raekker, perms, rolle }) {
         må bruge. Skift rolle i sidebaren og se listen ændre sig.
         {" "}⚠ Handlingerne står på <b>etapen</b>, ikke på forløbet: bookingens
         tilstand er afledt af sine etaper og er ikke noget nogen skifter.
+        {" "}⚠ De skift der kræver et <b>forslag</b>, står ikke som knapper her —
+        et forslag laves hvor turen kan ses, i <b>Disponering</b> og{" "}
+        <b>Forslag</b>. En knap der åbnede en dialog man ikke kunne udfylde,
+        ville være en attrap.
       </p>
     </Kort>
   );

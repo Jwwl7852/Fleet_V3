@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **56 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **57 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -278,6 +278,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `kpi.opgaver.udenTidsregistrering` TÆLLER dem der mangler — hullet er
   synligt frem for spærret. Fjern ikke den tælling: uden den er valgfriheden
   bare et hul ingen kan se. Se beslutning 50.
+- **Tegne knapper til et ETAPESKIFT i en skærm.** `fleet/Etapeskifte.jsx`
+  tegner dem af `tilgaengeligeEtapeHandlinger()`, og `etapeskift` afviser med
+  den SAMME `kanSkifteEtape()`.
+  ⚠ **De forslagsbærende overgange hører ikke der.** *Send forslag*, *Foreslå
+  matchet tur* og *Godkend valgt forslag* kræver et forslag på etapen, og et
+  forslag laves hvor turen kan SES — i Disponering og Forslag. En knap andre
+  steder ville åbne en dialog man ikke kunne udfylde.
+  ⚠ **Og begrundelsen må ikke gøre knappen grå:** så kunne man aldrig nå at
+  give den. Dialogen spørger, og teksten hører på etapens historik — ikke i
+  auditloggen. Se beslutning 57.
 - **Tegne statusknapper i en skærm.** `fleet/Statusskifte.jsx` tegner dem af
   `OPGAVE_OVERGANGE`, og serveren afviser med den SAMME `kanSkifteOpgave()`.
   En knap uden en overgang er en pæn knap; en overgang uden en knap er en vej
