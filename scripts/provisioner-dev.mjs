@@ -672,7 +672,7 @@ async function main() {
   const [
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
     kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer, kpiIndberetninger,
-    kpiKoeretoejer, kpiPersonale, kpiKompetencer, kpiBookinger,
+    kpiKoeretoejer, kpiPersonale, kpiKompetencer, kpiBookinger, kpiFravaer,
   ] = await Promise.all([
     "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
     "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
@@ -685,6 +685,10 @@ async function main() {
     /* ⚠ BOOKINGERNE KOM MED FOR `opgaver.nyeBookinger`. ⚠ Og rækkefølgen ER
        kontrakten: destruktureringen ovenfor matcher positionerne her. */
     "bookinger",
+    /* ⚠ FRAVÆRET KOM MED FOR `bemanding.fravaerIDag` (beslutning 69). Jobbet
+       henter den SAMME node, og gjorde provisioneringen det ikke, ville dev
+       vise 0 hvor natten viser et tal — en nul der ligner en måling. */
+    "fravaer",
   ].map(hentNode));
 
   /* ⚠ RESERVATIONERNE ER ET TRAE, IKKE EN LISTE — og de er lige blevet
@@ -712,7 +716,7 @@ async function main() {
       indberetninger: kpiIndberetninger,
       koeretoejer: kpiKoeretoejer, personale: kpiPersonale,
       kompetencer: kpiKompetencer, reservationer: kpiReservationer,
-      bookinger: kpiBookinger,
+      bookinger: kpiBookinger, fravaer: kpiFravaer,
       forrige: null, nu: nuMs,
     });
     await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);

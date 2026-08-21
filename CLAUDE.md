@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **68 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **69 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -50,11 +50,21 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
-  `null` for de **17** felter hvis kilde ikke findes — og feltet UDELADES ikke:
-  står det med null, kan man se af noden at spørgsmålet er stillet. Får et
-  felt en kilde, fjernes det fra `udenKilde()` ét sted.
-  ⚠ Og **flåden og bemandingen kan ikke deles på division**: stamdata bærer
-  ikke feltet (beslutning 19). At udlede det af arten ville være et gæt.
+  `null` for de **45** felter der ikke kan regnes — og feltet UDELADES ikke:
+  står det med null, kan man se af noden at spørgsmålet er stillet.
+  ⚠ **Tallet tælles på NODEN, ikke på `udenKilde()`.** Samlestedet rummer kun
+  ÉN slags null — de helt ukendte kilder — og den er tom i dag. Da flåden og
+  bemandingen fik deres kilde, gik den fra 17 til 0, men **kun ni af de sytten
+  blev besvaret**; de otte flyttede ind i `flaadetal()` og `bemandingstal()`.
+  Et efterslæb der bliver mindre af at et null flytter sig, er ikke blevet
+  mindre. `test/kpi-efterslaeb.test.mjs` tæller på det `beregnKpi()` returnerer.
+  ⚠ Og **flåden og bemandingen deles IKKE på division** — men det er ikke
+  længere et åbent spørgsmål. Beslutning 19's første sætning holder: *ingen
+  abonnent har både gods og bus*, så der var aldrig noget at dele op. De regnes
+  ÉN gang og står med samme værdi i begge divisioner. **Udled ikke en division
+  af arten eller af brugen:** målt på DEV har 15 af 16 køretøjer og 29 af 35
+  medarbejdere aldrig været på en etape, og `hjemsted` er en garage, ikke en
+  afdeling — Kolding har fire trækkere og en buschauffør. Se beslutning 69.
 - **Regne en KPI i jobbet.** `beregnKpi()` er ren og kender ingen database,
   så hele regnestykket kan prøves uden en emulator. Jobbet henter noderne og
   kalder den — regner det selv, kan det kun prøves ved at køre det.

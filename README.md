@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 68 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 69 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Bygget** — tilbage er mails og fotos i klik-kortet, som venter på beslutning 20 |
@@ -176,6 +176,7 @@ tilfældigt.
 | 66 | **"Udvid til 2 skærme" var ikke en knap — det var en URL.** Planchens sidste ubyggede knap, og 6.18 havde allerede skrevet hvorfor: ruten skal kunne bære sin tilstand. ⚠ **Et nyt vindue er en ny indlæsning** — al `useState` begynder forfra, så uden URL'en ville den anden skærm åbne på fire uger fra i dag og alle kasser, mens den første stod på uge 36 grupperet på sag. **To skærme der viser hver sit er det stik modsatte af "udvid".** Visningen ligger nu i `?uger`, `?skub`, `?gruppering`, `?type`, `?undertype` — samme greb som Arbejdskøen — og giver samtidig et link man kan sende. ⚠ **Tre ting ligger IKKE i URL'en:** tenant/division/periode (de er i localStorage, og to steder kunne blive uenige), `fuld` (den initialiseres fra `?fuld=1`, men **et tastetryk skal ikke skrive i adresselinjen**), og `arter` (den skjuler ingenting, så det andet vindue viser aldrig MINDRE — den sikre retning). ⚠ `replace: true`, ellers skal man trykke tilbage ti gange for at komme ud af kalenderen. ⚠ Og knappen vises ikke i fuldskærm: **et vindue åbnet bag et overlay ser ud som om intet skete** | `moduler/unitbooking/Kalender.jsx`, `test/gitter-uge.test.mjs` |
 | 67 | **Tre navne linten fandt fik en kontrol, ikke en sletning.** Beslutning 41 skrev hvorfor de ikke bare blev fjernet — *"et fjernet navn tager beviset med sig"* — men en `eslint-disable` er en **udsættelse, ikke en beslutning**, og den kan sidde i årevis. ⚠ **`booking/Oversigt.jsx`: det værste var fodnoten.** `setVisAlle` blev aldrig kaldt, så afsluttede forløb var permanent skjult — mens teksten under tabellen sagde *"Viser N af M hentede bookinger"*. **Brugeren fik at vide at der var noget han ikke kunne se, og der var ingen vej til det**; at skjule i stilhed havde været bedre. Standarden blev IKKE vendt om (listen er en arbejdsliste), og knappen siger **hvor mange** — *"Vis 3 afsluttede"* er en oplysning, *"Vis alle"* er en indstilling man ignorerer. Tallet tælles af den **genberegnede** tilstand, ikke af det gemte felt. ⚠ **`udbyder/Prisliste.jsx`:** `sidstRettet` blev regnet med en kommentar der forklarede tallet **til ingen**. Nu i kortets krop — ikke som en ny prop på det DELTE `Kort` — og teksten siger *"sidst lagt"*, ikke *"gælder fra"*: en liste kan lægges i dag og gælde fra næste kvartal. ⚠ **`Oekonomi.jsx`: her lå en rigtig fejl under.** README talte to fund; koden havde tre, og det tredje var ikke "samme mønster" — `daekningsgradPct - maalDaekningsgradPct` er `x − null = x`, altså et **null der ser ud som en måling**, og gaten i `deviation()` nås aldrig. Den var **usynlig så længe tallet ikke blev vist**. Et ubrugt navn kan altså også være et forkert regnestykke, og man finder kun det andet ved at spørge hvorfor navnet stod der. ⚠ Prøven er **tosidet**: navnet skal bruges OG dæmpningen være væk — ellers kan fundet "rettes" ved at slette navnet | `booking/Oversigt.jsx`, `udbyder/Prisliste.jsx`, `Oekonomi.jsx`, `test/linten-fandt.test.mjs` |
 | 68 | **Et tal der stod fire steder var forkert tre af gangene.** Antallet af KPI-felter uden kilde: `CLAUDE.md` sagde **51**, README og kodekommentaren sagde **16**, og `udenKilde()` returnerede **17**. ⚠ **CLAUDE.md var 34 for høj** — i den fil der OVERSTYRER hvordan der arbejdes. ⚠ **Et for højt efterslæb er ikke en afrunding:** tallet er det eneste der siger hvor meget der mangler, og en opgave der ser tre gange så stor ud, bliver ikke taget. Den anden vej er lige så slem — 16 hvor der er 17 er ét felt ingen leder efter (`flaade.nedetidDeltaPoint`). ⚠ **Og fejlen var kendt:** README beskriver præcis driften et afsnit længere oppe (*"det stod på 38 længe efter at fire felter havde fået en kilde"*), og svaret dengang var at rette i hånden — derfor drev det igen. Tallet læses nu **ud af `udenKilde()`**, og en omformulering får prøven til at fejle med vilje. ⚠ **Dertil et hul der aldrig var der:** *"de GAMLE opgavers reservation"* stod som en opgave; målt på DEV er det **27 opgaver, 0 uden reservation**. **En beskrevet opgave der ikke findes, koster mere end en manglende** — den næste bygger et udfyldningsscript mod en node der er `.write: false`. Vagten er levende: løsnes `.write`, må sætningen komme tilbage | `test/kpi-efterslaeb.test.mjs`, `test/dokumentation.test.mjs`, `CLAUDE.md`, `README.md` |
+| 69 | **Flåden og bemandingen ventede aldrig på data — svaret stod i beslutning 19's første sætning.** Sytten felter havde stået null med begrundelsen *"kan de deles på division?"* Det lyder som et spørgsmål om HVORDAN; det var et spørgsmål om OM, og 19 svarede nej for længe siden: *"ingen abonnent har både gods og bus … der var aldrig noget at dele op."* ⚠ **De tre udledninger blev MÅLT på DEV, ikke vurderet:** efter brugen er **død** (15 af 16 køretøjer og 29 af 35 medarbejdere har aldrig været på en etape), hjemsted er en **garage** og ikke en afdeling (Kolding har fire trækkere og en buschauffør), og arten er kun et gæt hvis man tvinger den til at være binær. ⚠ **Ni felter regnes nu** — og funktionerne tager **ingen division-parameter**, fordi en parameter der ikke kan bruges, får den næste til at tro at den kan. ⚠ **Fælderne:** en solgt bil er ikke ude af drift, en overskreden service er ikke "inden 30 dage", fraværet er en PERIODE, disponeret er PERSONER og ikke etaper, `driftPrKmOere` er en SATS (lagt sammen kunne tallet **aldrig afvige fra budgettet, fordi det ER budgettet**), og nedetid af `paaVaerksted / aktive` er et øjebliksbillede klædt ud som en periode. ⚠ **Og det der gør den større end sine ni felter:** `udenKilde()` gik 17 → 0, men **kun ni blev besvaret** — de otte flyttede ind i funktionerne. **Et efterslæb der bliver mindre af at et null flytter sig, er ikke blevet mindre.** Optællingen ligger nu på noden | `fleet/kpi-aggregering.js`, `functions/index.js`, `test/flaade-bemanding.test.mjs` |
 
 ## Struktur
 
@@ -816,10 +817,10 @@ sig selv i nat). ⚠ **Tallet er MÅLT ved hver provisionering**, ikke skrevet a
 det stod på 38 længe efter at fire felter havde fået en kilde.
 
 `udenKilde()` er ikke totalen; den er SAMLESTEDET for de kilder der mangler
-helt, og den rummer nu kun `flaade` og `bemanding`. De 17 felter dér venter
-på det SAMME svar: kan flåden og bemandingen deles på division? De øvrige ~18
-er null INDE i beregningen, hver med sin skrevne grund — `sager/` findes ikke,
-budgettet er ikke besluttet, og *ledig kapacitet* mangler en **definition**
+helt, og den er nu **tom**: flåden og bemandingen fik deres kilde i beslutning
+69, og der er ingen node uden data tilbage. De øvrige er null INDE i
+beregningen, hver med sin skrevne grund — `sager/` findes ikke, budgettet er
+ikke besluttet, og *ledig kapacitet* mangler en **definition**
 frem for data. Så længe listen var lang og blandet, kunne man tro der var meget
 tilbage at *bygge*. Der er ét spørgsmål tilbage at **besvare**. En prøve i
 `test/kpi-aggregering.test.mjs` holder listen på de to domæner, så et nyt felt
@@ -1061,19 +1062,31 @@ står der et tal ingen kan spore.
 Derfor er listen herunder **felter der skal beregnes**, ikke skærme der skal
 rettes.
 
-⚠ **Og efterslæbet er nu MÅLT.** `udenKilde()` i `kpi-aggregering.js` er
-optællingen: **17** felter venter på en kilde, og **`KILDER_DER_MANGLER` er
-tom**. Der er ikke flere noder uden data; de 17 felter venter på et SVAR, ikke
-på et seed. Får et domæne sin node, fjernes felterne ét sted.
+⚠ **Og efterslæbet er nu MÅLT — men ikke dér hvor det stod.**
 
-⚠ **Og tallet er ikke længere skrevet i hånden.** Det stod fire steder — her,
-to steder mere, i `CLAUDE.md` og i en kodekommentar — og var forkert tre af
-gangene: `CLAUDE.md` sagde **51**, resten sagde **16**, og `udenKilde()`
-returnerede **17**. Afsnittet ovenfor beskriver præcis den drift (*"det stod
+Her stod at `udenKilde()` **er** optællingen. **Det var den aldrig.**
+Samlestedet rummer én slags null — de helt ukendte kilder — og på sit højeste
+stod den på 17, mens det færdige objekt havde 45. Resten var null INDE i
+regnestykkerne, hver med sin grund, og de tæller lige så meget for den der
+venter på tallet.
+
+⚠ **Det blev synligt da flåden og bemandingen fik deres kilde** (beslutning
+69): `udenKilde()` gik **17 → 0**, men kun ni af de sytten blev BESVARET. De
+otte flyttede ind i `flaadetal()` og `bemandingstal()`. **Et efterslæb der
+bliver mindre af at et null flytter sig, er ikke blevet mindre** — og havde
+tallet stået på samlestedet, ville efterslæbet have set lukket ud.
+
+Optællingen ligger derfor på det `beregnKpi()` faktisk returnerer: uden inddata
+står **45** felter som null i noden. Med demo-basens rigtige data og en forrige
+kørsel er tallet **31** — forskellen er deltaerne, som kun mangler en kørsel
+mere. `KILDER_DER_MANGLER` er fortsat tom: der er ingen node uden data.
+
+⚠ **Og tallet er ikke skrevet i hånden.** Det stod fire steder og var forkert
+tre af gangene — `CLAUDE.md` sagde **51**, README og kodekommentaren **16**, og
+`udenKilde()` **17**. Afsnittet ovenfor beskriver præcis den drift (*"det stod
 på 38 længe efter at fire felter havde fået en kilde"*), og svaret dengang var
-at rette i hånden. Det drev igen. `test/kpi-efterslaeb.test.mjs` læser nu
-tallet **ud af `udenKilde()`** og kræver at hvert af de fire steder siger det
-samme. Se beslutning 68.
+at rette i hånden. Det drev igen. `test/kpi-efterslaeb.test.mjs` regner nu
+tallet og kræver at teksterne siger det samme. Se beslutning 68 og 69.
 
 ⚠ **`opgaver` var den første af dem, og den havde regler og ingen data.**
 Noden er skrivbar med `opgaver.skriv` og har et indeks — men intet seedede
@@ -1385,7 +1398,7 @@ den der skriver koden.
 |---|---|---|
 | **Momssatserne pr. linjeart** — hvornår er det 25 %, hvornår 0, hvornår omvendt betalingspligt? | En bogholder, **før første eksport** | Eksport af fakturagrundlag. `grundlag.js` nægter i dag eksport uden en sats pr. linje, og det er det rigtige svar så længe reglen er ukendt — men det betyder også at ingen kan eksportere |
 | **Retention på `sensitive/indberetninger`** — hvor længe skal en underskrift og en skadebeskrivelse gemmes? | Jurist eller DPO | Sletning. Underskriften er både en personoplysning og et **bevis**, og de to trækker i hver sin retning: databeskyttelsen siger slet, bevisbyrden siger gem. Forældelsesfristen på et erstatningskrav er formentlig det rigtige anker, men det er ikke et gæt vi skal tage |
-| **Kan flåden og bemandingen deles på division?** ⚠ Et køretøj har INGEN division (beslutning 19), og målt på den udrullede base har 0 af 16 køretøjer, 0 af 35 medarbejdere og 0 af 80 kompetencer feltet — mens 14 af 14 kunder og 8 af 8 etaper har det. `kpi/gods/flaade.aktive` kan derfor ikke regnes | Kunden, eller en beslutning | 17 flåde- og bemandingsfelter i `kpi/`, som i dag er `null`. **Tre veje:** (a) udled af ARTEN — bus og minibus er bus, resten er gods. Det er et gæt: en varevogn kan køre for busafdelingen. (b) Udled af BRUGEN — en bil hører til de divisioner den har kørt etaper for. Ægte data, men en bil der aldrig har kørt, hører ingen steder, og "ude af drift" er en status og ikke en brug. (c) Lad dem være udelte — samme tal i begge, hvilket bryder beslutning 9's mening med vælgeren |
+| **Skal `bus` være et MODUL frem for en division?** ⚠ Divisionsspørgsmålet for flåden og bemandingen er **besvaret** (beslutning 69): ingen abonnent har både gods og bus, så de deles ikke. Men det efterlader et større spørgsmål kunden selv rejste — en abonnent har alligevel kun de moduler han betaler for, så **division og modul er den samme akse målt to gange** | Kunden | Målt sprængradius: **711 linjer i 95 `src/`-filer**, 178 i `functions/`, 317 i prøverne og 55 i reglerne — plus at `kpi/` **er stiformet** efter division (`kpi/<division>/<snapshot>/<domaene>`, beslutning 44). Det er to migreringer og ikke én etape. ⚠ Og de fem `.validate`-noder der KRÆVER division (`bookinger`, `etaper`, `lagre`, `opgaver`, `indberetninger`, `indkoeb`, `kunder`) skal have et svar hver |
 | **Audit-retention** | Samme | ⚠ **Mekanismen er nu bygget og venter kun på tallet.** `auditoprydning` finder de forfaldne partitioner og rapporterer dem til `udbyder/retention/`; den sletter intet, fordi `RETENTION_AFGJORT` er falsk. Når juristen svarer: sæt tallet i `RETENTION_MAANEDER`, sæt flaget, og skriv begrundelsen i BESLUTNINGER.md — i den rækkefølge. Prøven `⚠ INGEN RETENTION ER AFGJORT ENDNU` falder samme dag, og det er meningen |
 | **Fire-øjne på fakturagrundlag** — skal godkenderen være en anden end den der udarbejdede det? | Kunden | Ingenting endnu, men det ændrer `kanGodkende()`. Det er rigtigt i en stor virksomhed og forkert hos en vognmand med to på kontoret, hvor det ville betyde at grundlag aldrig blev godkendt. Hører som en indstilling pr. tenant — ikke som en regel vi vælger for dem |
 

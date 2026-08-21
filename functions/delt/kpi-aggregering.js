@@ -239,8 +239,11 @@ export const KILDER_DER_MANGLER = [
      var den sidste. Konstanten bliver staaende: den er formen for det
      naeste hul, og en tom liste er et SVAR — der er ingen node uden data.
 
-     De 17 felter der stadig er null i udenKilde(), venter ikke paa et seed.
-     De venter paa et SVAR: kan flaaden og bemandingen deles paa division? */
+     ⚠ OG udenKilde() ER SELV TOM NU. Flaaden og bemandingen fik deres kilde
+     i beslutning 69 — spoergsmaalet "kan de deles paa division" var besvaret
+     hele tiden i beslutning 19's foerste saetning: ingen abonnent har baade
+     gods og bus. Det der stadig er null, staar INDE i regnestykkerne med hver
+     sin grund; optaellingen ligger paa noden og ikke her. */
 ];
 
 const DAG = 86400000;
@@ -280,34 +283,18 @@ export function udenKilde() {
        begrundelsen ved sig: de kræver leverandørens prisliste, og
        leverandoerer/ findes ikke som node. Et null med en grund hører hos
        regnestykket; det er kun de HELT ukendte kilder der samles her. */
-    /* ⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION — se hovedet.
-       Felterne står med null frem for at blive udeladt: så kan man se af
-       noden at spørgsmålet er stillet og ikke besvaret. */
-    flaade: {
-      /* ⚠ ikkeLinkedeFakturaer OG braendstofOere STÅR IKKE HER.
-         De BEREGNES — se beregnKpi() — og stod de med null her, ville de
-         tælle med i efterslæbet. udenKilde() ER optællingen; er den to for
-         høj, holder man op med at tro på tallet. Felterne kommer på objektet
-         i beregnKpi(), og feltniveau-prøven mod demo-kpi holder dem der. */
-      aktive: null, udeAfDrift: null, paaVaerksted: null, serviceInden30: null,
-      omkostningPrKmOere: null, omkostningPrKmDeltaOere: null,
-      nedetidPct: null,
-      /* nyeIndberetninger STÅR IKKE HER LÆNGERE — se beregnKpi(). */
-      /* Nedetidens periodeafvigelse. Kræver både nedetiden selv — som venter
-         på divisionsspørgsmålet — og en forrige kørsel. Stod hardkodet som
-         deviation(-0.6, …). */
-      nedetidDeltaPoint: null,
-    },
-    bemanding: {
-      /* ⚠ ALLE NI VENTER PÅ DET SAMME SVAR: kan bemandingen deles på division?
-         Stamdata bærer ikke feltet (beslutning 19), og at udlede det af
-         medarbejderens ture ville være et gæt. Se hovedet i udenKilde() —
-         begrundelsen står ét sted, og den her linje peger på den, så et null
-         her ikke kan læses som et felt nogen har glemt. */
-      planlagt: null, disponeret: null, ledig: null, underbemandede: null,
-      chauffoerPlanlagt: null, chauffoerDisponeret: null,
-      kompetencerUdloeber: null, medarbejdereAktive: null, fravaerIDag: null,
-    },
+    /* ⚠ FLÅDEN OG BEMANDINGEN STÅR IKKE LÆNGERE HER — se flaadetal() og
+       bemandingstal(). Divisionsspørgsmålet er besvaret (beslutning 69):
+       ingen abonnent har både gods og bus, så der er ikke noget at dele op,
+       og felterne kunne regnes.
+
+       ⚠ DE SYV DER STADIG ER null, ER null INDE I DE TO FUNKTIONER, hver med
+       sin skrevne grund ved siden af regnestykket — og grundene er af TO
+       slags: nedetiden og omkostningen pr. km har en KILDE vi ikke fører,
+       mens vagtplanen og "underbemandet" ikke har et SPØRGSMÅL der er stillet
+       færdigt. De to ser ens ud i noden og er det ikke.
+
+       Kun de HELT ukendte kilder samles her — og der er ingen tilbage. */
   };
 }
 
@@ -1045,6 +1032,186 @@ export const deltaPoint = (nyt, gammelt) => {
  * `forrige` er sidste kørsels objekt for samme division, eller null. Deltaer
  * regnes af den; første kørsel giver `null` overalt.
  */
+/* ══════════════════════════════════════════════════════════════════════════
+   FLÅDEN OG BEMANDINGEN — beslutning 69
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ HER LÅ EFTERSLÆBETS SIDSTE STORE POST, og den ventede ikke på data.
+
+   De 17 felter stod i udenKilde() med begrundelsen "kan flåden og bemandingen
+   deles på division?" Spørgsmålet er nu besvaret, og svaret var IKKE en
+   udledning: **ingen abonnent har både gods og bus.** Det er beslutning 19's
+   egen første sætning, og den holder — en busvognmand har kun ét sæt tal, så
+   der var aldrig noget at dele op.
+
+   Derfor deles de ikke. Hver af de to funktioner nedenfor tæller på HELE
+   tenantens flåde og personale, og resultatet står med samme værdi under
+   begge divisioner i kpi/. Det er ikke en afrunding — det er hvad tallet ER.
+   Præcis som bemanding.kompetencerUdloeber allerede gjorde det (beslutning
+   19: "ét tal, ikke fem i gods og tre i bus. Summen er uændret").
+
+   ⚠ OG iDivision() BRUGES IKKE HER, med vilje. Den ville give det samme svar
+   — en post uden division hører til begge — men den ville få det til at ligne
+   et FILTER der tilfældigvis slipper alt igennem. Der er ikke noget at
+   filtrere: feltet er FORBUDT på koeretoejer og personale, håndhævet med
+   .validate: false i reglerne. Et filter mod et forbudt felt er en linje den
+   næste bruger tid på at forstå.
+
+   ⚠ DET DER STADIG ER null, ER null AF EN ANDEN GRUND END FØR. Ikke længere
+   "vi ved ikke om det kan deles" — men hver sin skrevne grund, ved siden af
+   regnestykket.
+*/
+
+/**
+ * Flådens nøgletal. Tælles på hele tenantens flåde — se noten ovenfor.
+ *
+ * ⚠ STATUS ER KILDEN, IKKE OPGAVERNE. En bil er "på værksted" fordi dens
+ * status siger det — ikke fordi der findes en værkstedsopgave på den. De to
+ * kan være uenige (en opgave kan være planlagt til på fredag), og to kilder
+ * til ét tal er den fejl der står skrevet over hele dette repo. Statussen er
+ * posten OM bilen; opgaven er et stykke arbejde.
+ */
+export function flaadetal(koeretoejer = [], nu = Date.now()) {
+  const medStatus = (s) => koeretoejer.filter((k) => k?.status === s).length;
+
+  return {
+    aktive: medStatus("aktiv"),
+    udeAfDrift: medStatus("udeAfDrift"),
+    paaVaerksted: medStatus("vaerksted"),
+
+    /* ⚠ KUN FREMAD. Et serviceinterval der ligger BAGUD, er overskredet og
+       ikke "inden 30 dage" — det er et andet og værre tal, og lagt sammen med
+       de kommende ville det se ud som om der var god tid. Samme afgrænsning
+       som kundetal().aftalerUdloeber. */
+    serviceInden30: koeretoejer.filter(
+      (k) => Number.isFinite(k?.naesteServiceMs)
+        && k.naesteServiceMs > nu
+        && k.naesteServiceMs - nu <= 30 * DAG).length,
+
+    /**
+     * ⚠ INGEN KILDE — og driftPrKmOere er ikke den.
+     *
+     * Feltet på bilen er en SATS: hvad vi regner med at den koster pr. km.
+     * Nøgletallet spørger om noget andet — hvad flåden FAKTISK kostede pr.
+     * kørt kilometer. Lagde vi satserne sammen, ville tallet aldrig kunne
+     * afvige fra budgettet, fordi det ER budgettet. Det ser ud som en måling
+     * og er en gentagelse af vores eget gæt.
+     *
+     * Det rigtige grundlag er brændstof- og værkstedsomkostninger pr. periode
+     * over kørte kilometer. omkostninger/ er ikke det: den er et katalog over
+     * satser for agenter, parkering og færger — ikke et driftsregnskab.
+     */
+    omkostningPrKmOere: null,
+    /* Følger af ovenstående: uden tallet er der ingen afvigelse at regne. */
+    omkostningPrKmDeltaOere: null,
+
+    /**
+     * ⚠ INGEN KILDE — nedetid kræver en VARIGHED, og der registreres kun en
+     * tilstand.
+     *
+     * status: "vaerksted" siger at bilen er ude NU. Nedetid i procent spørger
+     * hvor stor en del af perioden den var det, og det kan kun regnes hvis der
+     * findes et spor over hvornår statussen skiftede. Der er ingen historik på
+     * køretøjet, og opgavens reservation dækker kun de besøg der blev
+     * planlagt gennem opgaveplanlaeg — ikke en bil der blev stående.
+     *
+     * ⚠ AT REGNE DET AF paaVaerksted / aktive VILLE VÆRE ET ØJEBLIKSBILLEDE
+     * KLÆDT UD SOM EN PERIODE. To biler på liften i dag ud af elleve er ikke
+     * "18 % nedetid" — det er 18 % lige nu, og tallet ville hoppe med hver
+     * kørsel af jobbet uden at driften havde ændret sig.
+     */
+    nedetidPct: null,
+    nedetidDeltaPoint: null,
+  };
+}
+
+/**
+ * Bemandingens nøgletal. Tælles på hele tenantens personale — se noten øverst.
+ *
+ * ⚠ FRAVÆRET ER EN PERIODE, IKKE EN DAG. En post har fra og til, og "fravær i
+ * dag" er dem hvis periode SPÆNDER om nu. Talte man dem der begynder i dag,
+ * ville en sygemelding på tre uger tælle med på dag ét og være væk på dag to.
+ */
+export function bemandingstal(personale = [], kompetencer = [], fravaer = [],
+                              etaper = [], nu = Date.now()) {
+  const aktive = personale.filter((p) => p?.status === "aktiv");
+
+  /* ⚠ DISPONERET ER PERSONER, IKKE ETAPER. En chauffør med tre etaper i dag er
+     én disponeret person. Talte vi etaper, ville tallet kunne overstige
+     antallet af ansatte — og det står ved siden af "aktive". */
+  const iDag = etaper.filter((e) => {
+    const fra = e?.fra ?? e?.startMs;
+    const til = e?.til ?? e?.slutMs;
+    return Number.isFinite(fra) && Number.isFinite(til) && fra <= nu + DAG && til >= nu;
+  });
+  const disponerede = new Set(iDag.map((e) => e?.personId).filter(Boolean));
+
+  const erChauffoer = (p) =>
+    Boolean(p?.funktioner?.chauffoer || p?.funktioner?.buschauffoer);
+  const idTilPerson = new Map(personale.map((p) => [p?.id, p]));
+
+  return {
+    medarbejdereAktive: aktive.length,
+
+    fravaerIDag: fravaer.filter(
+      (f) => Number.isFinite(f?.fra) && Number.isFinite(f?.til)
+        && f.fra <= nu && f.til >= nu).length,
+
+    /* ⚠ KUN FREMAD, som serviceintervallet. En kompetence der ALLEREDE er
+       udløbet, BLOKERER en disponering (tjekDisponering) og er ikke en
+       advarsel om noget der kommer. Lagt sammen ville de to skjule hinanden. */
+    kompetencerUdloeber: kompetencer.filter(
+      (k) => Number.isFinite(k?.udloeberMs)
+        && k.udloeberMs > nu
+        && k.udloeberMs - nu <= 30 * DAG).length,
+
+    disponeret: disponerede.size,
+    chauffoerDisponeret: [...disponerede]
+      .filter((id) => erChauffoer(idTilPerson.get(id))).length,
+
+    /**
+     * ⚠ INTET SPØRGSMÅL — der findes ingen VAGTPLAN.
+     *
+     * "Planlagt" er ikke det samme som "ansat": det er hvor mange der var sat
+     * på vagt i dag. Uden en vagtplan er der intet at tælle, og at sætte det
+     * lig med medarbejdereAktive ville påstå at hver ansat er på arbejde hver
+     * dag — ferie, orlov, deltid og weekend forsvandt i ét tal.
+     *
+     * ⚠ OG DET ER ET ANDET null END nedetidPct. Nedetiden har en kilde vi ikke
+     * fører; vagtplanen har ingen entitet overhovedet. vagter/ står hverken i
+     * firebase.rules.json eller i ARKITEKTUR.md.
+     */
+    planlagt: null,
+    chauffoerPlanlagt: null,
+
+    /**
+     * ⚠ INTET SPØRGSMÅL — "underbemandet" kræver et BEHOV at måle imod.
+     *
+     * En vagt er underbemandet når der mangler folk på den. Der er ingen vagt,
+     * og der er ingen norm for hvor mange en tur kræver. Tallet kan altså ikke
+     * regnes for lidt — det kan slet ikke stilles, før nogen har svaret på
+     * hvad en vagt er hos denne kunde.
+     */
+    underbemandede: null,
+
+    /**
+     * ⚠ ledig ER IKKE null FORDI DEN MANGLER EN KILDE — den skal UD.
+     *
+     * Den er præcis planlagt − disponeret, altså et AFLEDT tal, gemt. Det er
+     * fejlen CLAUDE.md navngiver ved netop dette felt: et gemt afledt tal
+     * driver fra sit grundlag, og så viser skærmen to tal der ikke går op.
+     * Reglen er at det beregnes hos FORBRUGEREN og ikke lægges i kpi/.
+     *
+     * ⚠ DEN STÅR ALLIGEVEL ENDNU, og det er ikke dovenskab. bemanding.ledig er
+     * en WIDGET i kataloget, og valideLayout() afviser ukendte nøgler — fjernes
+     * feltet uden at gemte forsider ryddes, får hver bruger der har widgeten
+     * "Ukendte widgets: bemanding.ledig" næste gang han gemmer sin forside.
+     * Fjernelsen er derfor en MIGRERING og sin egen etape. Se beslutning 69.
+     */
+    ledig: null,
+  };
+}
+
 export function beregnKpi({
   division, kunder = [], etaper = [], grundlag = [], opgaver = [],
   /* ⚠ DE FIRE KOM TIL FOR `disponering.konflikter`. De fem tjek er en REN
@@ -1052,6 +1219,9 @@ export function beregnKpi({
      frem for nul: en aggregering der ikke fik sine biler, ved ikke at der er
      nul konflikter. */
   koeretoejer = [], personale = [], kompetencer = [], reservationer = {},
+  /* ⚠ FRAVÆRET KOM TIL FOR bemanding.fravaerIDag. Noden bærer ingen division
+     (beslutning 19), og posten er en PERIODE med fra/til — ikke en dag. */
+  fravaer = [],
   indkoeb = [], fakturaer = [], leverandoerer = [], indberetninger = [],
   /* ⚠ FACILITY ER TRE LISTER, IKKE ÉN. Noden har børn — aktiver, fejl og
      sensorer — og de tælles hver for sig. Ét samlet argument ville have
@@ -1071,6 +1241,12 @@ export function beregnKpi({
   });
   const opg = opgavetal(opgaver, division, nu, { bookinger, forrige });
   const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, division, nu);
+  /* ⚠ INGEN division-PARAMETER TIL DE TO. Det er ikke en forglemmelse: feltet
+     er FORBUDT på koeretoejer og personale, og tallet er det samme i begge
+     divisioner. En parameter der ikke bruges, ville få den næste til at tro at
+     den kunne bruges. Se beslutning 69. */
+  const fl = flaadetal(koeretoejer, nu);
+  const bem = bemandingstal(personale, kompetencer, fravaer, etaper, nu);
   const fac = facilitytal({
     aktiver: facilityAktiver, fejl: facilityFejl, sensorer: facilitySensorer,
     opgaver, leverandoerer, division, nu,
@@ -1208,21 +1384,38 @@ export function beregnKpi({
       planlagteOpgaverDeltaPct: deltaPct(
         disp.planlagteOpgaver, forrige?.disponering?.planlagteOpgaver),
     },
-    /* ⚠ ET ENESTE FELT UNDER `flaade` KAN REGNES — og det er ikke et hul i
-       det åbne divisionsspørgsmål. De øvrige flaadefelter mangler fordi
-       KØRETØJET ikke bærer en division; en ulinket faktura mangler ikke en
-       division, den HAR ingen, og skal derfor ses i begge. De to slags null
-       ligner hinanden i noden og er ikke det samme spørgsmål. */
+    /**
+     * ⚠ flaade ER DET ENE DOMÆNE DER BLANDER TO SLAGS FELTER, og det er ikke
+     * rod — det er hvad flåden er.
+     *
+     * flaadetal() tæller BILERNE, som ikke bærer en division (beslutning 19),
+     * så tallet er det samme i gods og bus. De tre andre kilder spørger om
+     * noget andet: en indkøbslinje og en indberetning BÆRER en division, og
+     * deres tal er derfor forskellige i de to.
+     *
+     * Her stod tidligere "ét eneste felt under flaade kan regnes". Det var
+     * sandt så længe divisionsspørgsmålet var åbent; nu kan de alle på nær de
+     * fire der mangler en kilde. Se beslutning 69.
+     */
     flaade: {
-      ...tomme.flaade,
+      ...fl,
       ikkeLinkedeFakturaer: ikkeLinkedeFakturaer(fakturaer, indkoeb),
-      /* ⚠ BRÆNDSTOFFET KOMMER FRA INDKØBET, IKKE FRA BILERNE. Derfor kan
-         det regnes selv om resten af `flaade` ikke kan: det er
-         indkøbslinjens division der spørges om, og den BÆRER en. Bilen gør
-         ikke, og det er hele forskellen. */
+      /* ⚠ BRÆNDSTOFFET KOMMER FRA INDKØBET, IKKE FRA BILERNE — og det er
+         derfor det er delt på division mens bilerne ikke er: det er
+         indkøbslinjens division der spørges om, og den BÆRER en. */
       braendstofOere: braendstofOere(indkoeb, division, nu),
       ...indberetningstal(indberetninger, division),
     },
+
+    /**
+     * ⚠ bemanding STOD IKKE I RETURSÆTNINGEN FØR — den kom udelukkende fra
+     * `...tomme`, altså som ni null. Det er værd at bemærke, fordi det er
+     * netop den slags et domæne kan forsvinde på: er hele domænet null, bliver
+     * det SLETTET af RTDB ved skrivningen, og skærmen bliver hvid på
+     * `k.bemanding.disponeret`. Det skete, og medFuldForm() findes af den
+     * grund. Nu har domænet rigtige tal, og formen holder af sig selv.
+     */
+    bemanding: bem,
 
     /* ⚠ TOM LISTE, IKKE null. Afvigelserne er en LISTE — findes der ingen,
        er svaret en tom liste, og det er et svar. Se demo-kpi.js. */

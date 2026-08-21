@@ -82,15 +82,67 @@ test("felterne UDELADES ikke — de står med null", () => {
   assert.ok("aktive" in k.flaade, "flaade.aktive er udeladt");
 });
 
-test("⚠ FLÅDEN OG BEMANDINGEN KAN IKKE DELES PÅ DIVISION", () => {
-  /* Et køretøj er ikke gods eller bus; det er en lastbil. At udlede
-     divisionen af ARTEN ville være et gæt: en varevogn kan køre for
-     busafdelingen. */
-  const gods = beregnKpi({ division: "gods", nu: NU });
-  const bus = beregnKpi({ division: "bus", nu: NU });
-  assert.equal(gods.flaade.aktive, null);
-  assert.equal(bus.flaade.aktive, null);
-  assert.equal(gods.bemanding.disponeret, null);
+/**
+ * ⚠ HER STOD "KAN IKKE DELES PÅ DIVISION", og prøven krævede at felterne var
+ * null. Spørgsmålet er nu besvaret (beslutning 69) og svaret var ikke en
+ * udledning: **ingen abonnent har både gods og bus** — beslutning 19's egen
+ * første sætning. Der var aldrig noget at dele op.
+ *
+ * ⚠ DE DELES ALTSÅ IKKE — DE REGNES ÉN GANG. Og prøven vender: hvor den før
+ * krævede null, kræver den nu at gods og bus giver det SAMME tal. Bliver de
+ * forskellige, har nogen udledt en division af arten eller af brugen, og det
+ * er netop det gæt beslutning 19 forbyder.
+ */
+test("⚠ FLÅDEN OG BEMANDINGEN DELES IKKE — SAMME TAL I BEGGE DIVISIONER", () => {
+  const ind = {
+    koeretoejer: [
+      { status: "aktiv", art: "traekker" },
+      { status: "aktiv", art: "bus" },
+      { status: "vaerksted", art: "lastbil" },
+    ],
+    personale: [
+      { id: "p1", status: "aktiv", funktioner: { chauffoer: true } },
+      { id: "p2", status: "aktiv", funktioner: { buschauffoer: true } },
+    ],
+    nu: NU,
+  };
+  const gods = beregnKpi({ ...ind, division: "gods" });
+  const bus = beregnKpi({ ...ind, division: "bus" });
+
+  assert.equal(gods.flaade.aktive, 2, "de to aktive tælles begge");
+  assert.equal(bus.flaade.aktive, gods.flaade.aktive,
+    "flåden er delt på division — et køretøj bærer ikke feltet (beslutning 19)");
+  assert.equal(bus.bemanding.medarbejdereAktive, gods.bemanding.medarbejdereAktive,
+    "bemandingen er delt på division");
+
+  /* ⚠ OG BUSSEN TÆLLER MED I GODS. Det ser forkert ud og er rigtigt: en
+     abonnent har kun den ene forretning, så "gods" er hele flåden hos en
+     godsvognmand. Sorterede vi bussen fra her, havde vi udledt divisionen af
+     arten — og så ville en varevogn i busafdelingen forsvinde ud af begge. */
+  assert.equal(gods.flaade.aktive, 2, "bussen er sorteret fra efter art");
+});
+
+/**
+ * ⚠ DET DER STADIG ER null, ER DET AF EN ANDEN GRUND END FØR — og de to
+ * grunde ligner hinanden i noden uden at være det samme (beslutning 62).
+ */
+test("⚠ DE OTTE DER BLIVER, HAR HVER SIN SLAGS GRUND", () => {
+  const k = beregnKpi({ division: "gods", nu: NU });
+
+  /* INGEN KILDE: tallet kunne regnes, hvis nogen førte data. */
+  for (const f of ["omkostningPrKmOere", "nedetidPct"]) {
+    assert.equal(k.flaade[f], null, `flaade.${f} er begyndt at gætte`);
+  }
+  /* INTET SPØRGSMÅL: der er ingen entitet at tælle på. */
+  for (const f of ["planlagt", "underbemandede"]) {
+    assert.equal(k.bemanding[f], null, `bemanding.${f} er begyndt at gætte`);
+  }
+
+  /* ⚠ OG ledig ER DEN TREDJE SLAGS: den er AFLEDT og skal helt UD af kpi/.
+     Den står endnu, fordi den er en widget i kataloget og valideLayout()
+     afviser ukendte nøgler — fjernelsen er en migrering. Se beslutning 69. */
+  assert.equal(k.bemanding.ledig, null,
+    "ledig er begyndt at blive regnet — den er afledt og hører hos forbrugeren");
 });
 
 test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
@@ -132,16 +184,61 @@ test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
     assert.ok(!UDEN_DIVISION.includes(n),
       `${n} står som ubesvarlig — men facility er fælles, ikke udelt`);
   }
-  const antal = Object.values(udenKilde()).reduce((s, o) => s + Object.keys(o).length, 0);
-  assert.ok(antal >= 12, `kun ${antal} felter uden kilde — er noget begyndt at gaette?`);
+  /**
+   * ⚠ udenKilde() ER TOM NU — OG DET ER IKKE DET SAMME SOM AT EFTERSLÆBET ER
+   * LUKKET.
+   *
+   * Her stod `antal >= 12` med teksten "er noget begyndt at gætte?", og lige
+   * under: "udenKilde() ER optællingen". **Det var den aldrig.** Målt på det
+   * FULDE objekt med rigtige data og en forrige kørsel: 31 felter er null,
+   * mens udenKilde() på sit højeste rummede 17. Resten stod null INDE i
+   * regnestykkerne, hver med sin grund — og de tæller lige så meget.
+   *
+   * ⚠ DA FLÅDEN OG BEMANDINGEN FIK DERES KILDE, GIK udenKilde() FRA 17 TIL 0
+   * — men kun otte af de sytten blev BESVARET. De øvrige otte flyttede ind i
+   * flaadetal() og bemandingstal(). **Et efterslæb der bliver mindre af at et
+   * null flytter sig, er ikke blevet mindre.** Derfor tæller prøven nedenfor
+   * på det færdige objekt og ikke på samlestedet.
+   */
+  assert.deepEqual(udenKilde(), {},
+    "udenKilde() har fået poster igen — så skal teksterne om efterslæbet med");
+});
 
-  /* ⚠ OG NU ER DE TILBAGEVÆRENDE FELTER ÉT SPØRGSMÅL, IKKE MANGE.
-     udenKilde() indeholder kun `flaade` og `bemanding` — alle 16 felter
-     venter på det SAMME svar: kan flåden og bemandingen deles på division?
-     Så længe listen var lang og blandet, kunne man tro at der var meget
-     tilbage at bygge. Der er ét spørgsmål tilbage at BESVARE. */
-  assert.deepEqual(Object.keys(udenKilde()).sort(), ["bemanding", "flaade"],
-    "udenKilde() rummer andet end divisionsspørgsmålet");
+/**
+ * ⚠ OPTÆLLINGEN LIGGER PÅ DET FÆRDIGE OBJEKT, ikke på et samlested.
+ *
+ * Det er hele lærestykket fra beslutning 68 og 69: et tal om hvor meget der
+ * mangler, skal læses ud af det der faktisk skrives i noden. Ellers kan
+ * efterslæbet gøres mindre ved at flytte et null.
+ */
+test("⚠ EFTERSLÆBET TÆLLES PÅ NODEN, IKKE PÅ udenKilde()", () => {
+  const nuller = (o, sti = "") => {
+    const ud = [];
+    for (const [k, v] of Object.entries(o || {})) {
+      const s = sti ? `${sti}.${k}` : k;
+      if (v === null) ud.push(s);
+      else if (v && typeof v === "object" && !Array.isArray(v)) ud.push(...nuller(v, s));
+    }
+    return ud;
+  };
+  const tomme = nuller(beregnKpi({ division: "gods", nu: NU }));
+
+  /* ⚠ ET LOFT, IKKE ET FACIT. Tallet svinger med hvad der fodres ind — uden
+     data er alt null. Prøven findes for at fange at det VOKSER: et nyt felt
+     der lægges i noden uden en kilde, skal ses. */
+  assert.ok(tomme.length <= 50,
+    `${tomme.length} null-felter uden data — noget er lagt i noden uden kilde`);
+  assert.ok(tomme.length >= 8,
+    "der er næsten ingen null tilbage — så skal README's efterslæb skrives om");
+
+  /* De otte i flåde og bemanding er navngivet, så et nyt ikke glider ind. */
+  const iDeTo = tomme.filter((f) => f.startsWith("flaade.") || f.startsWith("bemanding."));
+  assert.deepEqual(iDeTo.sort(), [
+    "bemanding.chauffoerPlanlagt", "bemanding.ledig",
+    "bemanding.planlagt", "bemanding.underbemandede",
+    "flaade.nedetidDeltaPoint", "flaade.nedetidPct",
+    "flaade.omkostningPrKmDeltaOere", "flaade.omkostningPrKmOere",
+  ], "flåden eller bemandingen har fået et null der ikke er begrundet");
 });
 
 /* ---- Det der kan regnes ------------------------------------------------ */
@@ -873,9 +970,23 @@ test("⚠ ET HELT DOMÆNE KAN FORSVINDE UD AF NODEN", () => {
   assert.ok("bemanding" in beregnet, "aggregeringen skriver bemanding");
 
   const iNoden = somRtdbGemmer(beregnet);
-  assert.equal(iNoden.bemanding, undefined,
-    "hvis den her holder op med at forsvinde, har RTDB ændret sig — eller " +
-    "bemanding har fået en kilde, og så skal prøven skrives om");
+
+  /**
+   * ⚠ PRØVEN SAGDE SELV HVAD DER SKULLE SKE: *"eller bemanding har fået en
+   * kilde, og så skal prøven skrives om"*. Det er sket (beslutning 69), og
+   * domænet forsvinder ikke længere — det har rigtige tal.
+   *
+   * ⚠ MEN KENDSGERNINGEN SKAL STADIG PRØVES, for den er ikke gået væk: er
+   * HVERT felt i et domæne null, findes domænet ikke i noden. Uden data er
+   * `warehouse` netop sådan et domæne, og den prøver reglen nu — ellers
+   * ville medFuldForm()'s grund til at findes forsvinde ud af prøverne
+   * sammen med bemandingen.
+   */
+  assert.ok(iNoden.bemanding, "bemanding har rigtige tal nu og skal blive i noden");
+  assert.equal(iNoden.bemanding.ledig, undefined,
+    "et enkelt null-felt forsvinder stadig, også når domænet bliver");
+  assert.equal(iNoden.warehouse, undefined,
+    "et domæne hvor ALT er null, forsvinder — det er hele grunden til medFuldForm()");
   assert.equal(iNoden.afvigelser, undefined, "en tom liste forsvinder også");
 });
 
@@ -886,8 +997,15 @@ test("⚠ medFuldForm() GIVER DOMÆNET TILBAGE", () => {
   const iNoden = somRtdbGemmer(beregnKpi({ division: "gods", nu: NU }));
   const k = medFuldForm(iNoden, "gods");
 
-  assert.ok(k.bemanding, "domænet skal være der igen");
-  assert.equal(k.bemanding.disponeret, null, "null, ikke undefined og ikke 0");
+  assert.ok(k.warehouse, "domænet skal være der igen");
+  assert.equal(k.warehouse.carriereUdenLokationDelta, null,
+    "null, ikke undefined og ikke 0");
+  /* ⚠ OG FELTET INDE I ET DOMÆNE DER OVERLEVEDE. bemanding bliver nu i noden,
+     men `ledig` forsvinder — skelettet skal lægge netop det felt tilbage,
+     ellers bliver skærmen hvid på k.bemanding.ledig i stedet for på
+     k.bemanding. Samme fejl, ét niveau dybere. */
+  assert.ok(k.bemanding, "domænet skal være der");
+  assert.equal(k.bemanding.ledig, null, "det enkelte null-felt kom ikke tilbage");
   assert.deepEqual(k.afvigelser, [], "en tom liste er et svar");
 });
 

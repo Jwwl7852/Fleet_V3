@@ -4401,3 +4401,116 @@ Resten af `CLAUDE.md`'s tal-påstande blev målt i samme ombæring og holdt: syv
 roller, tre retentionklasser alle på 24, ni skrifttokens, `ENHED` er
 `dag | time | uge`, `opgaver.art` er `vaerksted | facility`, `sager/` står
 stadig ikke i reglerne, og alle fire veje ind i `opgaver` findes.
+
+## 69. Flåden og bemandingen ventede aldrig på data — svaret stod i beslutning 19's første sætning
+
+Sytten KPI-felter havde stået som `null` i månedsvis med begrundelsen:
+
+> *"Kan flåden og bemandingen deles på division?"*
+
+Det lyder som et spørgsmål om **hvordan** man deler. Det var det ikke. Svaret
+stod øverst i beslutning 19, skrevet dengang og aldrig læst siden:
+
+> *"Ingen abonnent har både gods og bus; en busvognmand har kun ét sæt tal, så
+> der var aldrig noget at dele op."*
+
+⚠ **Spørgsmålet var altså ikke hvordan, men OM — og svaret var nej.** Ni af de
+sytten felter kunne regnes samme dag.
+
+### De tre udledninger, målt frem for vurderet
+
+README bød tre veje: udled af **arten**, af **brugen**, eller lad dem være
+udelte. Alle tre blev målt på den udrullede DEV-base før noget blev bygget:
+
+| Vej | Målt | Dom |
+|---|---|---|
+| Efter **brugen** | 15 af 16 køretøjer og 29 af 35 medarbejdere har **aldrig** været på en etape | ikke svær — **død** |
+| Efter **hjemsted** | Kolding har fire trækkere **og** en buschauffør; Vejle har en bus **og** en påhængsvogn | en **garage**, ikke en afdeling |
+| Efter **arten** | 3 busser, 11 gods, 2 hverken (truck, scooter) | kun et gæt hvis man tvinger det til at være **binært** |
+
+⚠ **Den tredje række er den interessante.** Modellen har en tredje værdi —
+`faelles` — og beslutning 19's egne modeksempler (varevognen, påhængsvognen)
+er præcis dem der lander dér. Udledningen var altså mulig. Den blev bare
+overflødig, da præmissen holdt: har kunden kun én forretning, er "gods" hele
+flåden hos en godsvognmand.
+
+### Hvad der regnes nu
+
+**Flåden:** `aktive`, `udeAfDrift`, `paaVaerksted`, `serviceInden30`.
+**Bemandingen:** `medarbejdereAktive`, `fravaerIDag`, `kompetencerUdloeber`,
+`disponeret`, `chauffoerDisponeret`.
+
+Målt på demo-basen: 11 aktive biler, 2 på værksted, 9 til service inden 30
+dage; 32 aktive medarbejdere, 2 fraværende i dag, 7 kompetencer der udløber.
+
+⚠ **Funktionerne tager ingen `division`-parameter, og det er selve
+beslutningen.** Feltet er forbudt på `koeretoejer` og `personale`. En
+parameter der ikke kunne bruges, ville få den næste til at tro at den kunne —
+og så ville nogen filtrere på et felt der aldrig står der og få nul biler i
+begge divisioner **uden at noget fejlede**.
+
+### Fælderne i regnestykkerne
+
+- ⚠ **En solgt bil er ikke ude af drift — den er ikke vores.** Talte den med,
+  ville flåden se ud til at få et voksende problem hver gang nogen solgte en
+  gammel lastbil, og tallet kunne aldrig blive bedre.
+- ⚠ **En overskreden service er ikke "inden 30 dage".** Den er overskredet —
+  et andet og værre tal. Lagt sammen ville en bil der skulle have været til syn
+  i marts, se ud som noget der er god tid til.
+- ⚠ **Fraværet er en PERIODE, ikke en dag.** Talte man dem der *begynder* i
+  dag, ville en sygemelding på tre uger tælle med på dag ét og være væk på dag
+  to — og bemandingen ville se hel ud mens en tredjedel var hjemme.
+- ⚠ **Disponeret er PERSONER, ikke etaper.** En chauffør med tre ture er én
+  disponeret. Talte vi etaper, kunne tallet overstige antallet af ansatte — og
+  det står ved siden af "aktive medarbejdere", hvor det læses som en andel.
+- ⚠ **`driftPrKmOere` er en SATS, ikke en måling,** og derfor er
+  `omkostningPrKmOere` stadig null selv om feltet står på hver eneste bil.
+  Lagde vi satserne sammen, kunne tallet **aldrig afvige fra budgettet, fordi
+  det ER budgettet.**
+- ⚠ **Nedetid kræver en varighed.** `paaVaerksted / aktive` ville være et
+  øjebliksbillede klædt ud som en periode: to biler på liften ud af elleve er
+  ikke "18 % nedetid", det er 18 % *lige nu*, og tallet ville hoppe med hver
+  kørsel af jobbet uden at driften havde ændret sig.
+
+### ⚠ Og så det der gør beslutningen større end sine ni felter
+
+Da de to domæner fik deres kilde, gik `udenKilde()` fra **17 til 0**.
+
+**Efterslæbet så dermed lukket ud — og kun ni af de sytten var besvaret.** De
+otte andre flyttede bare ind i `flaadetal()` og `bemandingstal()`, hvor de står
+som null med hver sin grund.
+
+⚠ **Et efterslæb der bliver mindre af at et null flytter sig, er ikke blevet
+mindre.** README kaldte `udenKilde()` *"optællingen"* — det var den aldrig:
+på sit højeste rummede den 17, mens det færdige objekt havde **45**. Resten
+stod null inde i regnestykkerne, og de tæller lige så meget for den der venter
+på tallet.
+
+Optællingen ligger derfor nu på det `beregnKpi()` faktisk returnerer.
+Beslutning 68 gjorde tallet afledt; denne her gjorde det til det **rigtige**
+tal. De hører sammen: et tal med én kilde er ikke nok, hvis kilden måler det
+forkerte.
+
+### Hvad der bevidst IKKE blev gjort
+
+⚠ **`bemanding.ledig` er ikke fjernet, selv om den skal væk.** Den er præcis
+`planlagt − disponeret` — CLAUDE.md navngiver netop dette felt som fejlen ved
+et gemt afledt tal. Men `bemanding.ledig` er en **widget i kataloget**, og
+`valideLayout()` afviser ukendte nøgler: fjernes feltet uden at gemte forsider
+ryddes, får hver bruger der har widgeten *"Ukendte widgets: bemanding.ledig"*
+næste gang han gemmer sin forside. **Det er en migrering, og den bygges ikke
+halvt** — se punktet i README.
+
+### ⚠ Og præmissen er nu en forudsætning, ikke en antagelse
+
+Beslutning 19's første sætning bærer nu ni nøgletal. Holder den op med at være
+sand — får én kunde både gods og bus — er tallene forkerte i begge divisioner
+på én gang, og der findes ingen prøve der kan opdage det, fordi det er en
+kendsgerning om kundernes forretning og ikke om koden.
+
+Kunden har selv peget på den anden vej: **bus bør være et modul, ikke en
+division.** En abonnent har alligevel kun de moduler han betaler for, og
+division og modul er dermed den samme akse målt to gange. Sprængradius er
+målt: **711 linjer i 95 src-filer**, 178 i `functions/`, 317 i prøverne og 55 i
+reglerne — plus at `kpi/` **er stiformet efter division**. Det er ikke én
+etape, og det er sin egen beslutning.

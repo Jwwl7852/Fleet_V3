@@ -20,6 +20,19 @@
  * bliver ikke taget. Den forkerte retning er lige så slem: står der 16 hvor
  * der er 17, er der et felt ingen leder efter.
  *
+ * ⚠ OG SÅ VISTE TALLET SIG AT VÆRE DET FORKERTE TAL.
+ *
+ * Dagen efter fik flåden og bemandingen deres kilde (beslutning 69), og
+ * `udenKilde()` gik fra 17 til **0**. Men kun ni af de sytten blev BESVARET;
+ * de øvrige otte flyttede ind i `flaadetal()` og `bemandingstal()`, hvor de
+ * står som null med hver sin grund.
+ *
+ * **Et efterslæb der bliver mindre af at et null flytter sig, er ikke blevet
+ * mindre.** Og README kaldte `udenKilde()` "optællingen" — den var aldrig
+ * det: målt på det færdige objekt med rigtige data og en forrige kørsel står
+ * der **31** null, mod 17 på samlestedets højeste.
+ *
+ * Prøven tæller derfor nu på det objekt `beregnKpi()` faktisk returnerer.
  * Samme greb som `test/rules.tenant.test.mjs`, hvor nodelisten læses ud af
  * regelfilen: tallet har ÉN kilde, og dokumentationen holdes op mod den.
  *
@@ -29,11 +42,29 @@ import test, { describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { udenKilde, KILDER_DER_MANGLER } from "../src/fleet/kpi-aggregering.js";
+import { beregnKpi, udenKilde, KILDER_DER_MANGLER } from "../src/fleet/kpi-aggregering.js";
 
-/** Sandheden. Alt andet i denne fil holdes op mod den. */
-const FELTER = Object.values(udenKilde())
-  .reduce((n, d) => n + Object.keys(d).length, 0);
+/**
+ * Sandheden: null-felterne i det objekt der faktisk skrives i noden.
+ *
+ * ⚠ IKKE `udenKilde()`. Den er ét SAMLESTED for én slags null — de helt
+ * ukendte kilder — og den er tom i dag. Et null inde i et regnestykke tæller
+ * lige så meget for den der venter på tallet.
+ */
+const nullFelter = (o, sti = "") => {
+  const ud = [];
+  for (const [k, v] of Object.entries(o || {})) {
+    const s = sti ? `${sti}.${k}` : k;
+    if (v === null) ud.push(s);
+    else if (v && typeof v === "object" && !Array.isArray(v)) ud.push(...nullFelter(v, s));
+  }
+  return ud;
+};
+
+/* ⚠ UDEN INDDATA. Så er tallet en EGENSKAB ved koden og ikke ved en base:
+   det kan regnes af enhver der kører prøven, og det ændrer sig kun når nogen
+   lægger et felt i noden eller giver et felt en kilde. */
+const FELTER = nullFelter(beregnKpi({ division: "gods", nu: 1_800_000_000_000 })).length;
 
 /**
  * De fire steder tallet står, med den formulering hver af dem bruger.
@@ -45,24 +76,26 @@ const FELTER = Object.values(udenKilde())
  */
 const STEDER = [
   { fil: "CLAUDE.md",
-    moenster: /`null` for de \*\*(\d+)\*\* felter hvis kilde ikke findes/ },
+    moenster: /`null` for de \*\*(\d+)\*\* felter der ikke kan regnes/ },
   { fil: "README.md",
-    moenster: /rummer nu kun `flaade` og `bemanding`\. De (\d+) felter dér venter/ },
-  { fil: "README.md",
-    moenster: /optællingen: \*\*(\d+)\*\* felter venter på en kilde/ },
-  { fil: "README.md",
-    moenster: /uden data; de (\d+) felter venter på et SVAR/ },
-  { fil: "src/fleet/kpi-aggregering.js",
-    moenster: /De (\d+) felter der stadig er null i udenKilde\(\)/ },
+    moenster: /står \*\*(\d+)\*\* felter som null i noden/ },
 ];
 
 describe("Efterslæbets tal har én kilde", () => {
-  test("⚠ udenKilde() ER OPTÆLLINGEN, og den er ikke tom", () => {
+  test("⚠ TALLET LÆSES AF NODEN, IKKE AF SAMLESTEDET", () => {
     assert.ok(FELTER > 0, "efterslæbet er tomt — så skal teksterne skrives om, ikke tælles");
-    /* Domænerne er navngivet, så et felt der flytter domæne kan ses. */
-    assert.deepEqual(Object.keys(udenKilde()).sort(), ["bemanding", "flaade"],
-      "udenKilde() rummer andre domæner end flåden og bemandingen — "
-      + "teksterne siger at de to venter på det SAMME svar, og det holder så ikke");
+
+    /**
+     * ⚠ udenKilde() MÅ GERNE VÆRE TOM — men den må ikke være OPTÆLLINGEN.
+     * Da flåden fik sin kilde, gik den fra 17 til 0 mens otte af felterne blot
+     * flyttede ind i en funktion. Havde tallet stået på samlestedet, ville
+     * efterslæbet have set lukket ud.
+     */
+    const paaSamlestedet = Object.values(udenKilde())
+      .reduce((n, d) => n + Object.keys(d).length, 0);
+    assert.ok(FELTER > paaSamlestedet,
+      "samlestedet rummer lige så meget som noden — så er et null flyttet "
+      + "tilbage, eller optællingen er begyndt at læse det forkerte sted");
   });
 
   /**
@@ -90,7 +123,7 @@ describe("Efterslæbets tal har én kilde", () => {
     const fundet = [];
     for (const fil of ["CLAUDE.md", "README.md"]) {
       const tekst = readFileSync(fil, "utf8");
-      for (const m of tekst.matchAll(/(\d+) felter (?:dér )?venter/g)) {
+      for (const m of tekst.matchAll(/(\d+) felter (?:dér )?venter på en kilde/g)) {
         if (Number(m[1]) !== FELTER) fundet.push(`${fil}: "${m[0]}"`);
       }
     }
@@ -108,8 +141,12 @@ describe("KILDER_DER_MANGLER er stadig tom — og det er et svar", () => {
    */
   test("⚠ ER DEN IKKE TOM, ER README's PÅSTAND FORKERT", () => {
     const readme = readFileSync("README.md", "utf8");
-    const paastaar = readme.includes("`KILDER_DER_MANGLER` er\ntom")
-      || readme.includes("`KILDER_DER_MANGLER` er tom");
+    /* ⚠ TÅLER EN OMBRYDNING OG ET INDSKUD. Sætningen står i løbende tekst, så
+       "er tom", "er\ntom" og "er fortsat tom" er den SAMME påstand. En prøve
+       der faldt på et linjeskift, ville blive slået fra frem for forstået —
+       og så var vagten væk uden at nogen havde besluttet det. */
+    const paastaar =
+      /`KILDER_DER_MANGLER`\s+er\s+(?:fortsat\s+|stadig\s+)?tom/.test(readme);
     if (KILDER_DER_MANGLER.length) {
       assert.ok(!paastaar,
         "KILDER_DER_MANGLER har fået poster igen, men README siger stadig den er tom: "

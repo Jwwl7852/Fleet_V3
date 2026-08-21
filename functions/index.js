@@ -3935,7 +3935,7 @@ export const kpiaggregering = onSchedule(
       const [
         kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
         facilityAktiver, facilityFejl, facilitySensorer, indberetninger,
-        koeretoejer, personale, kompetencer, reservationer, bookinger,
+        koeretoejer, personale, kompetencer, reservationer, bookinger, fravaer,
       ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
@@ -3983,6 +3983,11 @@ export const kpiaggregering = onSchedule(
              positionerne her, og et led indsat i midten ville give
              `koeretoejer` bookingerne — uden at noget fejlede. */
           rod.child("bookinger").once("value").then((s) => raekker(s.val())),
+          /* ⚠ FRAVÆRET KOM TIL FOR `bemanding.fravaerIDag` (beslutning 69), og
+             det står EFTER bookingerne af nøjagtig samme grund som de står
+             sidst: rækkefølgen er kontrakten. Et led indsat i midten ville
+             give `koeretoejer` fraværet — og intet ville fejle. */
+          rod.child("fravaer").once("value").then((s) => raekker(s.val())),
         ]);
 
       for (const division of KPI_DIVISIONER) {
@@ -3992,7 +3997,7 @@ export const kpiaggregering = onSchedule(
           division, kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
           indberetninger, koeretoejer, personale, kompetencer, reservationer,
-          bookinger, forrige, nu
+          bookinger, fravaer, forrige, nu
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers
