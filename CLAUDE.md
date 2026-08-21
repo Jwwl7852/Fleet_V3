@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **67 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **68 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -50,7 +50,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   sit grundlag; det er fejlen i `bemanding.ledig`.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
-  `null` for de 51 felter hvis kilde ikke findes — og feltet UDELADES ikke:
+  `null` for de **17** felter hvis kilde ikke findes — og feltet UDELADES ikke:
   står det med null, kan man se af noden at spørgsmålet er stillet. Får et
   felt en kilde, fjernes det fra `udenKilde()` ét sted.
   ⚠ Og **flåden og bemandingen kan ikke deles på division**: stamdata bærer
@@ -645,12 +645,13 @@ kan ikke komme ud af sync.
   opretter og flytter opgaver; **ugesgitteret flytter ikke etaper**, og det er
   ikke et hul: en etape bindes ved at GODKENDE ET FORSLAG, og et træk kan ikke
   udpege et forslag der ikke findes. Gitteret **fører** til Forslag.
-  ⚠ **Det der står tilbage, er de GAMLE opgavers reservation.**
-  `opgaveplanlaeg` og `opgaveflyt` skriver den nu, men poster fra før de
-  funktioner fandtes, har ingen — så `etapeskift` kan ikke se at netop de biler
-  står på liften. Skærmen bygger prioritet 40 i browseren for at kunne VISE
-  konflikten; serveren kender den ikke. En bagudrettet udfyldning er sin egen
-  opgave. Se README.
+  ⚠ **HER STOD ET HUL DER IKKE VAR DER.** "De gamle opgaver mangler deres
+  reservation" stod som noget nogen skulle rydde op i. Målt på den udrullede
+  DEV-base: **27 opgaver, 0 uden reservation, 0 uden estimat.** Det er ikke et
+  efterslæb — det er en egenskab der holder, fordi alle fire veje ind skriver
+  opgaven og dens reservation i én `update()`, og der ikke findes en femte.
+  **Byg ikke en bagudrettet udfyldning; der er intet at fylde ud.**
+  Se beslutning 68.
 - **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
   parsing, afsendelse og scanning mangler. `sager/` findes ikke i
   `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,

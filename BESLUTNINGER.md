@@ -4325,3 +4325,79 @@ til `num` og **taber ordet i tavshed** — så enheden skrives i teksten.
 andet kan man "rette" fundet ved at slette navnet. Begge veje fører tilbage til
 en skærm der mangler en kontrol, uden at nogen kan se det — og det var
 udgangspunktet.
+
+## 68. Et tal der stod fire steder var forkert tre af gangene — og et hul der aldrig var der
+
+To fund i den samme gennemgang, og de er samme fejl set fra hver sin side:
+**dokumentation der ikke bliver målt, driver — og driften går altid mod at der
+er MERE tilbage end der er.**
+
+### Efterslæbet: 51, 16, 16, 16 — og 17
+
+Antallet af KPI-felter uden kilde stod skrevet i hånden fire steder:
+
+| Sted | Sagde | Rigtigt |
+|---|---|---|
+| `CLAUDE.md` | **51** | 17 |
+| `README.md` (to steder) | 16 | 17 |
+| kommentaren i `kpi-aggregering.js` | 16 | 17 |
+| `udenKilde()` | — | **17** |
+
+⚠ **`CLAUDE.md` var 34 for høj.** Det er den fil der *overstyrer* hvordan der
+arbejdes i repoet, og den påstod at aggregeringen manglede tre gange så meget
+som den gjorde.
+
+⚠ **Et for højt efterslæb er ikke en harmløs afrunding.** Tallet er det eneste
+der siger hvor meget der mangler. Ser opgaven tre gange så stor ud som den er,
+bliver den ikke taget — man udskyder noget der kunne være gjort. Og den
+modsatte retning er lige så slem: står der 16 hvor der er 17, er der ét felt
+ingen leder efter. (Det var `flaade.nedetidDeltaPoint`, tilføjet uden at
+tælleren fulgte med.)
+
+⚠ **Og fejlen var allerede kendt.** README beskriver præcis den drift et afsnit
+længere oppe:
+
+> *"det stod på 38 længe efter at fire felter havde fået en kilde"*
+
+Svaret **dengang** var at rette tallet i hånden. Det er derfor det drev igen.
+En håndholdt optælling har ingen hukommelse; det eneste der virker, er at
+tallet **kun findes ét sted** og at teksterne holdes op mod det.
+`test/kpi-efterslaeb.test.mjs` læser tallet ud af `udenKilde()` og kræver at
+alle fire steder siger det samme — efterprøvet ved at føje et felt til
+`udenKilde()`, hvorpå alle fire falder.
+
+⚠ **En omformulering får prøven til at fejle,** og det er med vilje. Skriver
+nogen sætningen om, skal de også se tallet. En prøve der stiltiende holdt op
+med at kigge, ville være værre end ingen — det var jo netop sådan de tre
+forkerte tal overlevede.
+
+### Hullet der ikke var der
+
+`CLAUDE.md` stod med:
+
+> *"Det der står tilbage, er de GAMLE opgavers reservation. `opgaveplanlaeg` og
+> `opgaveflyt` skriver den nu, men poster fra før de funktioner fandtes, har
+> ingen … En bagudrettet udfyldning er sin egen opgave."*
+
+Målt på den udrullede DEV-base: **27 opgaver, 0 uden reservation, 0 uden
+estimat.** README havde målt det samme (på 21 opgaver) og skrevet punktet ud;
+`CLAUDE.md` blev ikke rettet med.
+
+⚠ **En beskrevet opgave der ikke findes, koster mere end en manglende.** Den
+næste bygger et udfyldningsscript mod en node hvor hver post allerede har sin
+reservation — og gør det mod en node der er `.write: false`, så scriptet ikke
+engang kan køre. Tid brugt på at "rette" noget der holder.
+
+⚠ **Og det holder af en grund der kan efterprøves:** alle fire veje ind skriver
+opgaven og dens reservation i én `update()`, og `opgaver` er `.write: false`,
+så der findes ingen femte. Vagten i `test/dokumentation.test.mjs` er derfor
+**levende**: løsnes `.write` igen, må sætningen komme tilbage — for så kan
+hullet opstå. Det er lukningen der gør det umuligt, ikke en oprydning nogen
+lavede.
+
+### Hvad der blev målt og holdt
+
+Resten af `CLAUDE.md`'s tal-påstande blev målt i samme ombæring og holdt: syv
+roller, tre retentionklasser alle på 24, ni skrifttokens, `ENHED` er
+`dag | time | uge`, `opgaver.art` er `vaerksted | facility`, `sager/` står
+stadig ikke i reglerne, og alle fire veje ind i `opgaver` findes.

@@ -234,7 +234,7 @@ export const KILDER_DER_MANGLER = [
      var den sidste. Konstanten bliver staaende: den er formen for det
      naeste hul, og en tom liste er et SVAR — der er ingen node uden data.
 
-     De 16 felter der stadig er null i udenKilde(), venter ikke paa et seed.
+     De 17 felter der stadig er null i udenKilde(), venter ikke paa et seed.
      De venter paa et SVAR: kan flaaden og bemandingen deles paa division? */
 ];
 

@@ -181,6 +181,34 @@ const FORAELDEDE = [
     hvorfor: "etapeskift skifter tilstanden og skriver reservationen atomisk",
   },
   {
+    /**
+     * ⚠ ET HUL DER ALDRIG VAR DER. CLAUDE.md skrev at opgaver oprettet før
+     * `opgaveplanlaeg` fandtes, mangler deres reservation, og at en
+     * bagudrettet udfyldning derfor var "sin egen opgave". Målt på den
+     * udrullede DEV-base: **27 opgaver, 0 uden reservation.**
+     *
+     * Sætningen er dyrere end den ser ud. Den beskriver et stykke arbejde der
+     * ikke findes, i den fil der OVERSTYRER hvordan der arbejdes i repoet — så
+     * den næste bygger et udfyldningsscript mod en node hvor hver eneste post
+     * allerede har sin reservation, og "retter" dermed ingenting mod en node
+     * der er `.write: false`.
+     *
+     * ⚠ BETINGELSEN ER LEVENDE. Løsnes `.write` på `opgaver` igen, KAN der
+     * komme poster ind uden reservation — og så må sætningen stå igen. Det er
+     * netop lukningen der gør hullet umuligt, ikke en oprydning nogen lavede.
+     */
+    fil: "CLAUDE.md",
+    tekst: "Det der står tilbage, er de GAMLE opgavers reservation",
+    saaLaenge: () =>
+      REGLER.tenants?.$tenantId?.opgaver?.[".write"] === false
+      && ["opgaveplanlaeg", "facilityplanlaeg", "opgaveflyt", "opgavestatus"]
+        .every(findesFunktion),
+    hvorfor:
+      "beslutning 68: målt på DEV — 27 opgaver, 0 uden reservation. Alle fire "
+      + "veje ind skriver opgaven og dens reservation i én update(), og "
+      + "opgaver er .write: false, så der findes ingen femte",
+  },
+  {
     fil: "ARKITEKTUR.md",
     tekst: "idébanken",
     saaLaenge: () => !PERMISSIONS.includes("idebank") && !findesNode("idebank"),
