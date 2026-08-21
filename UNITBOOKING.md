@@ -571,7 +571,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
 | **Hover → lille kort** | Bygget — Unitbookings EGET, se 6.15 | ✅ |
 | **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
-| Sidepanel "Kommende klargøringer", kan minimeres | **Udlånslisten** — bærer mere, kan ikke handles på | ⚠ |
+| Sidepanel "Kommende klargøringer", kan minimeres | Bygget — med Klargør-knappen, se 6.16 | ✅ |
 | "Åbn næsten fuldskærm" | Findes ikke | ❌ |
 
 ⚠ **Gruppering efter sag er ikke bare andre rækker.** En sag kan have flere
@@ -873,3 +873,55 @@ ingen kan se. Beslutning 37.
 
 **Det store klik-kort med mails og fotos er stadig ikke bygget.** Det hører til
 beslutning 20, som er fase 0: `sager/` står ikke i `firebase.rules.json`.
+
+### 6.16 Kommende klargøringer — den knap 6.8 selv pegede på
+
+6.8 skrev om planchens sidepanel: *"Den sidste er den værd at tage: planchens
+pointe er at man kan klargøre direkte fra kalenderen. Knappen findes på
+Udlån-skærmen, og at låne den hertil kræver at de to skærme deler den samme
+handling — ikke to kopier."*
+
+De deler den. `kasseudlaan` er `.write: false`, og `skiftUdlaan()` er den ENE
+vej ind (beslutning 37) — der findes ingen handling at kopiere. Det der **ikke**
+var delt, var **ordene på knappen**: `SKIFTELABEL` og `SKIFTEFORKLARING` lå i
+`Udlaan.jsx`. To skærme med hver sin etiket for det samme skift er to
+forklaringer på én ting, præcis som to formuleringer af en spærring. De ligger
+nu i `unitbooking.js`.
+
+⚠ **OG SKRIDTET SLÅS OP, DET SKRIVES IKKE.** `naesteSkift()` siger hvad der
+kommer efter `booket`, og det er den **samme** tabel serveren håndhæver. Skrev
+panelet `"klargjort"` direkte, ville det være en knap der kunne blive ulovlig
+uden at nogen rettede den. En prøve binder de to: næste skridt fra `booket`
+skal være et lovligt skift efter `UDLAAN_SKIFT`.
+
+⚠ **LISTEN ER `klargoeresSnart()` — DEN SAMME SOM NØGLETALLET** (6.12). To
+lister for ét spørgsmål ville kunne blive uenige, og forskellen ville se ud som
+et datahul frem for to filtre.
+
+⚠ **DEN KAN MINIMERES, MEN DEN FORSVINDER IKKE.** Planchen har en knap. En
+lukket tilstand hvor panelet var **væk**, ville skjule de kasser der haster —
+netop for den der ryddede op i sin skærm. Sammenklappet står tallet stadig, og
+det siger hvor mange der er **bagud**.
+
+⚠ **OG DE UDEN FRIST STÅR PÅ SKÆRMEN.** `klargoerSenest` er valgfri, så et
+udlån uden den kan hverken tælles med eller fra. Uden linjen ville listen
+påstå at være fuldstændig.
+
+### ⚠ 6.17 Art-fremhævningen kan ikke afgøres af beskrivelsen
+
+§6.1 skriver *"fremhævning pr. art (klargøring/udlån/returnering)"*. Det er
+det ene punkt tilbage der ikke kan bygges af teksten alene, og det skyldes
+gitteret:
+
+- Tre **blokke** i samme række overlapper, og gitteret tegner overlap som en
+  **KONFLIKT** — med vilje (se 6.14). Tre arter pr. udlån ville altså tegne
+  hver eneste reservation rød.
+- Tre **segmenter inde i én blok** kræver at `Gitterkalender` kan tegne en
+  blok i dele. Det er en ændring i et gitter **fire** skærme deler, og den
+  skal begrundes af mere end en parentes i en tabel.
+- Og "returnering" er et **tidspunkt**, ikke et spænd. Et døgn bredt? Eller en
+  markering i kanten af udlånsblokken?
+
+Blokken bærer i dag sin **tilstand** som farve og som tekst — "Sag 4260 ·
+Udlånt" (6.8). Det er ikke det samme som planchens tre arter, og forskellen
+skal ses på billedet frem for gættes. **Punktet venter på plancen.**

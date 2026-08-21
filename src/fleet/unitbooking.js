@@ -754,3 +754,36 @@ export const SAGSTILSTAND_RANG = ["udlaant", "klargjort", "booket", "returneret"
 
 export const sagstilstand = (tilstande = []) =>
   SAGSTILSTAND_RANG.find((t) => tilstande.includes(t)) || tilstande[0] || null;
+
+/* ---- Ordene på et udlånsskifte ------------------------------------------ */
+
+/**
+ * ⚠ DE LÅ I `Udlaan.jsx`, OG SÅ FIK KALENDEREN BRUG FOR DEM.
+ *
+ * Planchens sidepanel har en **Klargør**-knap, og §6.8 skrev selv at "at låne
+ * den hertil kræver at de to skærme deler den samme handling — ikke to
+ * kopier". Handlingen deles i forvejen: `skiftUdlaan()` er den ENE vej ind,
+ * fordi `kasseudlaan` er `.write: false`. Det der IKKE var delt, var ordene på
+ * knappen — og to skærme med hver sin etiket for det samme skift er to
+ * forklaringer på én ting, præcis som to formuleringer af en spærring.
+ *
+ * ⚠ VERBET, IKKE TILSTANDEN. "Klargjort" på en knap læses som en oplysning om
+ * hvad udlånet ER; "Klargør" som noget man gør. Samme skel som `ETIKET` i
+ * Statusskifte.jsx.
+ */
+export const SKIFTELABEL = {
+  klargjort: "Klargør",
+  udlaant: "Udlevér",
+  returneret: "Modtag retur",
+  annulleret: "Annullér",
+  booket: "Fortryd klargøring",
+};
+
+/** Hvad skiftet gør ved KASSEN, i én sætning. Står på knappens title. */
+export const SKIFTEFORKLARING = {
+  klargjort: "Kassen pakkes og sættes til klargjort. Den bliver stående på sin hylde.",
+  udlaant: "Kassen forlader huset. Den mister sin reolplads — hylden bliver fri.",
+  returneret: "Kassen er kommet hjem og sættes tilbage på sin hjemplads.",
+  annulleret: "Reservationen falder bort. Kassen bliver ledig igen.",
+  booket: "Klargøringen rulles tilbage. Reservationen består.",
+};

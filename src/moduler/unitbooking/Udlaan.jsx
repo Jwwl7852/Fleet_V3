@@ -35,7 +35,7 @@ import {
 import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
-  undertyperFor, naesteSkift, kassebelaegning,
+  undertyperFor, naesteSkift, kassebelaegning, SKIFTELABEL, SKIFTEFORKLARING,
   klargoeresSnart, KLARGOER_VINDUE_TIMER,
 } from "../../fleet/unitbooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
@@ -45,24 +45,6 @@ import {
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 
 const DAG = 86400000;
-
-/** Etiketten på knappen for et skift. Verbet, ikke tilstanden. */
-const SKIFTELABEL = {
-  klargjort: "Klargør",
-  udlaant: "Udlevér",
-  returneret: "Modtag retur",
-  annulleret: "Annullér",
-  booket: "Fortryd klargøring",
-};
-
-/** Hvad skiftet gør ved kassen, i én sætning. Står på knappens title. */
-const SKIFTEFORKLARING = {
-  klargjort: "Kassen pakkes og sættes til klargjort. Den bliver stående på sin hylde.",
-  udlaant: "Kassen forlader huset. Den mister sin reolplads — hylden bliver fri.",
-  returneret: "Kassen er kommet hjem og sættes tilbage på sin hjemplads.",
-  annulleret: "Reservationen falder bort. Kassen bliver ledig igen.",
-  booket: "Klargøringen rulles tilbage. Reservationen består.",
-};
 
 /* ---- Reservationsformularen -------------------------------------------- */
 

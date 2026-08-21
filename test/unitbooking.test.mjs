@@ -17,7 +17,7 @@ import {
   virkningPaaKasse, reservationerFor, naesteReservation, halvaabent, iVindue,
   dageUde, historikForKasse, sagsoversigt,
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
-  sagsblokke, sagstilstand, SAGSTILSTAND_RANG,
+  sagsblokke, sagstilstand, SAGSTILSTAND_RANG, SKIFTELABEL,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -1259,5 +1259,70 @@ describe("⚠ DE TO SVÆVEKORT ER IKKE DET SAMME", () => {
        forvejen, er det forkert paa en maade ingen kan se. Beslutning 37. */
     const unit = laes("src/moduler/unitbooking/Kalender.jsx");
     assert.match(unit, /ude\.faktisk \? "Ude \(målt\)" : "Ude \(planlagt\)"/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KOMMENDE KLARGØRINGER — panelet med den knap der var hele pointen
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("klargøringspanelet på kalenderen", () => {
+  const laes = (sti) => readFileSync(new URL(`../${sti}`, import.meta.url), "utf8");
+  const kal = () => laes("src/moduler/unitbooking/Kalender.jsx");
+
+  it("⚠ SAMME HANDLING SOM UDLÅN-SKÆRMEN — ikke en kopi", () => {
+    /* §6.8: "at laane den hertil kraever at de to skaerme deler den samme
+       handling — ikke to kopier". `kasseudlaan` er .write: false, saa der ER
+       kun én vej ind. Panelet maa ikke bygge sin egen. */
+    assert.match(kal(), /skiftUdlaan\(\{ udlaanId: u\.id, til \}\)/);
+    assert.ok(!/db\.ref\(/.test(kal()), "kalenderen skriver uden om serveren");
+  });
+
+  it("⚠ SKRIDTET SLÅS OP, DET SKRIVES IKKE", () => {
+    /* naesteSkift() er den SAMME tabel serveren haandhaever. Skrev panelet
+       "klargjort" direkte, ville det vaere en knap der kunne blive ulovlig
+       uden at nogen rettede den. */
+    assert.match(kal(), /naesteSkift\(u\.tilstand\)/);
+    assert.equal(naesteSkift("booket"), "klargjort");
+    assert.ok(kanSkifteUdlaan("booket", naesteSkift("booket")),
+      "næste skridt fra booket er ikke et lovligt skift");
+  });
+
+  it("⚠ ORDENE PÅ KNAPPEN LIGGER ÉT STED", () => {
+    /* SKIFTELABEL laa i Udlaan.jsx. To skaerme med hver sin etiket for det
+       samme skift er to forklaringer paa én ting. */
+    for (const sti of ["src/moduler/unitbooking/Udlaan.jsx",
+                       "src/moduler/unitbooking/Kalender.jsx"]) {
+      assert.match(laes(sti), /SKIFTELABEL/, `${sti} bruger ikke kataloget`);
+      assert.ok(!/const SKIFTELABEL = \{/.test(laes(sti)),
+        `${sti} har sin egen kopi af etiketterne`);
+    }
+    assert.equal(SKIFTELABEL.klargjort, "Klargør");
+  });
+
+  it("⚠ LISTEN ER DEN SAMME SOM NØGLETALLET", () => {
+    /* To lister for ét spoergsmaal ville kunne blive uenige, og forskellen
+       ville se ud som et datahul frem for to filtre. */
+    assert.match(kal(), /klargoeresSnart\(udlaan, nu\)/);
+  });
+
+  it("⚠ DEN KAN MINIMERES, MEN DEN FORSVINDER IKKE", () => {
+    /* En lukket tilstand hvor panelet var VAEK, ville skjule de kasser der
+       haster — netop for den der ryddede op i sin skaerm. Sammenklappet staar
+       tallet stadig, og siger hvor mange der er bagud. */
+    const s = kal();
+    assert.match(s, /\{aaben \? "Skjul" : "Vis"\}/);
+    assert.match(s, /klargoer\.bagud/);
+  });
+
+  it("⚠ OG DE UDEN FRIST STÅR PÅ SKÆRMEN", () => {
+    /* klargoerSenest er valgfri (6.12). Uden linjen ville listen paastaa at
+       vaere fuldstaendig. */
+    assert.match(kal(), /klargoer\.udenDato/);
+  });
+
+  it("knappen kræver kasseudlaan.skriv", () => {
+    assert.match(kal(), /harPerm\(bruger\?\.perms, PERM\.kasseudlaanSkriv\)/);
+    assert.match(kal(), /disabled=\{!maaSkrive/);
   });
 });

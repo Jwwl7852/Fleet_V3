@@ -31,15 +31,20 @@
  */
 import { useMemo, useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { harPerm, PERM } from "../../fleet/permissions.js";
+import { skiftUdlaan } from "../../fleet/udlaan.js";
 import { num, dato, ugenr } from "../../fleet/format.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner
+  Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
+  Formularsvar,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
-  sagsblokke, sagstilstand, dageUde,
+  sagsblokke, sagstilstand, dageUde, naesteSkift,
+  klargoeresSnart, KLARGOER_VINDUE_TIMER, SKIFTELABEL, SKIFTEFORKLARING,
 } from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
@@ -152,6 +157,10 @@ export default function Kalender() {
      af det første når en sag har fire kasser. */
   const [gruppering, setGruppering] = useState("kasse");
   const [svaev, setSvaev] = useState(null);
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne knappen. Serveren
+     spørger om den samme, og `kasseudlaan` er `.write: false`. */
+  const { bruger } = useFleet();
+  const maaSkrive = harPerm(bruger?.perms, PERM.kasseudlaanSkriv);
   const vindueDage = uger * 7;
   const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
   const vindueTil = vindueFra + vindueDage * DAG;
@@ -352,6 +361,17 @@ export default function Kalender() {
         </p>
       </Kort>
 
+      {/* ⚠ PLANCHENS SIDEPANEL — og §6.8 skrev selv at det der manglede, var
+          KNAPPEN: "man kan klargøre direkte fra kalenderen". Handlingen er den
+          samme som Udlån-skærmens, fordi der kun findes én. */}
+      <Klargoeringspanel
+        klargoer={klargoeresSnart(udlaan, nu)}
+        kasser={kasser}
+        pladsMap={pladsMap}
+        maaSkrive={maaSkrive}
+        paaSkiftet={genindlaes}
+      />
+
       {svaev && (
         <Svaevekort
           svaev={svaev}
@@ -480,5 +500,128 @@ function Svaevekort({ svaev, kasse, typeNavn, pladsMap }) {
         </span>
       </div>
     </div>
+  );
+}
+
+/* ---- Kommende klargøringer ---------------------------------------------- */
+
+/**
+ * Planchens sidepanel — men med den knap der er hele pointen.
+ *
+ * ⚠ §6.8 SKREV SELV HVAD DER MANGLEDE: *"planchens pointe er at man kan
+ * klargøre direkte fra kalenderen. Knappen findes på Udlån-skærmen, og at låne
+ * den hertil kræver at de to skærme deler den samme handling — ikke to
+ * kopier."* Det gør de: `skiftUdlaan()` i `udlaan.js` er den ENE vej ind,
+ * fordi `kasseudlaan` er `.write: false`. Der er ingen handling at kopiere —
+ * og ordene på knappen ligger nu også ét sted, i `unitbooking.js`.
+ *
+ * ⚠ OG SKRIDTET SLÅS OP, DET SKRIVES IKKE. `naesteSkift()` siger hvad der
+ * kommer efter `booket`, og det er den SAMME tabel serveren håndhæver. Skrev
+ * panelet "klargjort" direkte, ville det være en knap der kunne blive ulovlig
+ * uden at nogen rettede den.
+ *
+ * ⚠ LISTEN ER `klargoeresSnart()` — DEN SAMME SOM NØGLETALLET. To lister for
+ * ét spørgsmål ville kunne blive uenige, og forskellen ville se ud som et
+ * datahul frem for to filtre. Se 6.12.
+ *
+ * ⚠ DEN KAN MINIMERES, MEN DEN FORSVINDER IKKE. Planchen har en knap; en
+ * lukket tilstand hvor panelet var VÆK, ville skjule de kasser der haster —
+ * netop for den der ryddede op i sin skærm. Sammenklappet står tallet stadig,
+ * og siger hvor mange der er bagud.
+ */
+function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }) {
+  const [aaben, saetAaben] = useState(true);
+  const [arbejder, saetArbejder] = useState(null);
+  const [svar, saetSvar] = useState(null);
+  const nu = Date.now();
+
+  const hjemplads = (kasseId) =>
+    pladsnavn(pladsMap[kasser.find((k) => k.id === kasseId)?.hjemPladsId]);
+
+  const skift = async (u) => {
+    /* ⚠ SKRIDTET FRA TABELLEN, ikke en streng. Se hovedet. */
+    const til = naesteSkift(u.tilstand);
+    if (!til) return;
+    saetArbejder(u.id);
+    saetSvar(null);
+    const r = await skiftUdlaan({ udlaanId: u.id, til });
+    saetArbejder(null);
+    saetSvar(r);
+    if (r.ok) paaSkiftet();
+  };
+
+  return (
+    <Kort
+      titel={`Kommende klargøringer (${num(klargoer.antal)})`}
+      handling={<Knap onClick={() => saetAaben((a) => !a)}>{aaben ? "Skjul" : "Vis"}</Knap>}
+    >
+      {!aaben ? (
+        <p className="fc-hint">
+          {klargoer.antal
+            ? <>
+                <b>{num(klargoer.antal)}</b> skal klargøres inden{" "}
+                {KLARGOER_VINDUE_TIMER} timer
+                {klargoer.bagud ? <> — heraf <b className="fc-bad">{num(klargoer.bagud)}</b> bagud</> : null}.
+              </>
+            : "Intet haster."}
+        </p>
+      ) : (
+        <>
+          <Tabel
+            kolonner={[
+              /* ⚠ EN OVERSKREDEN FRIST SKAL SES. Den er ikke faldet ud af
+                 listen — se klargoeresSnart() — og den skal heller ikke ligne
+                 de andre. */
+              { key: "klargoerSenest", label: "Senest", render: (u) => (
+                  u.klargoerSenest < nu
+                    ? <span className="fc-bad">{dato(u.klargoerSenest)} — bagud</span>
+                    : dato(u.klargoerSenest)) },
+              { key: "kasseId", label: "Kasse", render: (u) => <b>{u.kasseId}</b> },
+              { key: "hjem", label: "Hjemplads", render: (u) => (
+                  <span className="fc-hint">{hjemplads(u.kasseId)}</span>) },
+              { key: "sagsnummer", label: "Sag" },
+              { key: "handling", label: "", render: (u) => {
+                  const til = naesteSkift(u.tilstand);
+                  return (
+                    <Knap
+                      variant="primaer"
+                      disabled={!maaSkrive || !til || arbejder === u.id}
+                      title={maaSkrive
+                        ? SKIFTEFORKLARING[til]
+                        : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+                      onClick={() => skift(u)}
+                    >
+                      {SKIFTELABEL[til] || "—"}
+                    </Knap>
+                  );
+                } },
+            ]}
+            raekker={klargoer.poster}
+            tom="Ingen kasser skal klargøres inden for de næste to døgn."
+          />
+
+          <Formularsvar svar={svar} okTekst="Kassen er klargjort." />
+
+          {klargoer.udenDato > 0 && (
+            /* ⚠ DE UDEN DATO ER IKKE NUL — DE ER ET UBESVARET SPØRGSMÅL.
+               `klargoerSenest` er valgfri (6.12), og et udlån uden den kan
+               hverken tælles med eller fra. Stod det ikke her, ville listen
+               påstå at være fuldstændig. */
+            <p className="fc-hint" style={{ marginTop: 10 }}>
+              ⚠ <b>{num(klargoer.udenDato)}</b> reservationer har ingen
+              klargøringsfrist og kan derfor hverken tælles med eller fra. De
+              står under <b>Udlån</b>.
+            </p>
+          )}
+
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            Knappen er <b>den samme handling</b> som på Udlån-skærmen —{" "}
+            <code>kasseudlaanskriv</code> skriver udlånet og kassen i én
+            transaktion. <code>kasseudlaan</code> er <b>.write: false</b>, så
+            der er ingen anden vej ind at kopiere.
+          </p>
+        </>
+      )}
+    </Kort>
   );
 }
