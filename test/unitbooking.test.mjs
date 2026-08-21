@@ -1207,3 +1207,57 @@ describe("⚠ DEMO-SÆTTET SKAL KUNNE VISE FORSKELLEN", () => {
     }
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SVÆVEKORTET — Fleet og Unitbooking er to forretninger
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("⚠ DE TO SVÆVEKORT ER IKKE DET SAMME", () => {
+  const laes = (sti) => readFileSync(new URL(`../${sti}`, import.meta.url), "utf8");
+
+  it("hver skærm har sit eget, og de viser hver sin entitets felter", () => {
+    /* UNITBOOKING.md 6.3 sagde at de to skærme ikke maatte faa hver sit — en
+       ANALOGI til gitteret. Analogien holder ikke: gitteret er en FORM,
+       svaevekortet er INDHOLD. En `opgave` og et `kasseudlaan` har ingenting
+       til faelles. */
+    const fleet = laes("src/moduler/flaade/Vaerkstedskalender.jsx");
+    const unit = laes("src/moduler/unitbooking/Kalender.jsx");
+    assert.match(fleet, /function Svaevekort\(/);
+    assert.match(unit, /function Svaevekort\(/);
+
+    /* Fleets felter findes ikke paa et udlaan … */
+    assert.match(fleet, /arbejdstype/);
+    assert.match(fleet, /prioritetFor/);
+    /* … og udlaanets findes ikke paa en opgave. */
+    assert.match(unit, /sagsnummer/);
+    assert.match(unit, /dageUde\(/);
+  });
+
+  it("⚠ MEN UDSEENDET ER FÆLLES — og det er det gennem CSS", () => {
+    /* `.fc-svaev` staar i fleet.css med sin placering, sin skygge og sine to
+       kolonner. Aendres hvordan et svaevekort SER ud, sker det ét sted. Der
+       skal ingen delt komponent til for det. */
+    const css = laes("src/fleet/fleet.css");
+    assert.match(css, /\.fc-svaev\{/);
+    for (const sti of ["src/moduler/flaade/Vaerkstedskalender.jsx",
+                       "src/moduler/unitbooking/Kalender.jsx"]) {
+      assert.match(laes(sti), /className="fc-svaev"/, `${sti} tegner sin egen ramme`);
+      assert.match(laes(sti), /fc-svaev-r/, `${sti} tegner sine egne rækker`);
+    }
+  });
+
+  it("⚠ OG UNITBOOKINGS VISER IKKE ET SVÆVEKORT PÅ EN SAGSBLOK", () => {
+    /* En sagsblok er FLERE udlaan flettet sammen. Et kort der viste ét af dem,
+       ville paastaa at vaere hele sagen. */
+    const unit = laes("src/moduler/unitbooking/Kalender.jsx");
+    assert.match(unit, /if \(efterSag\) return;/);
+  });
+
+  it("⚠ OG DEN VISER OM 'UDE' ER MÅLT ELLER PLANLAGT", () => {
+    /* dageUde() giver {dage, faktisk}, og flaget er vigtigere end tallet:
+       uden det laeses "20 dage" som en maaling, og er kassen kommet hjem i
+       forvejen, er det forkert paa en maade ingen kan se. Beslutning 37. */
+    const unit = laes("src/moduler/unitbooking/Kalender.jsx");
+    assert.match(unit, /ude\.faktisk \? "Ude \(målt\)" : "Ude \(planlagt\)"/);
+  });
+});

@@ -298,8 +298,29 @@ Disponering: ressourcer × tid, med blokke i arter. `Gitterkalender.jsx` tegner
 det, og `gitter.js` regner det. CLAUDE.md: *byg ikke et kalendergitter til.*
 Kalenderen her er en **anvendelse** af det gitter, ikke et nyt.
 
-Det samme gælder hover og klik-popup: Fleet skal have dem (FLEET.md etape 4–5),
-og de to skærme må ikke få hver sin.
+⚠ **MEN DET GJALDT IKKE HOVER OG KLIK-POPUP, OG DET STOD HER SOM OM DET GJORDE.**
+
+Her stod: *"Det samme gælder hover og klik-popup: Fleet skal have dem (FLEET.md
+etape 4–5), og de to skærme må ikke få hver sin."* Det var en **analogi** til
+gitteret, og analogien holder ikke.
+
+**Gitteret er en FORM; svævekortet er INDHOLD.** Gitteret tegner ressourcer ×
+tid uanset hvad en blok betyder — derfor må der kun være ét, og derfor kan et
+gitter der læser intervallet én dag forskudt, ikke opdages ved at kigge på det.
+Svævekortet viser en **entitets felter**. En `opgave` og et `kasseudlaan` har
+ingenting til fælles: forskellige noder, forskellige feltskemaer, forskellige
+kataloger. Af de tredive linjer i Fleets `Svaevekort` er seksogtyve rent
+opgave-specifikke — `arbejdstype`, `leverandoerId`, `estimeretMin`,
+`prioritetFor()`.
+
+Et fælles svævekort ville derfor skulle tage et *felt-array* ind fra begge
+skærme, og så er det ikke en delt komponent længere — det er en tabel med en
+ramme om. **Fleet og Unitbooking er to forretninger.**
+
+⚠ **DET DER ER FÆLLES, ER UDSEENDET — OG DET ER DET ALLEREDE.** `.fc-svaev`
+står i `fleet.css` med sin placering, sin skygge og sine to kolonner. Begge
+skærme bruger de samme klasser, og en ændring af hvordan et svævekort SER ud,
+sker ét sted. Der skal ingen ny abstraktion til.
 
 ### 6.4 Etaper
 
@@ -548,7 +569,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | **Grupperet efter kasse-id ELLER sag** | Bygget — se 6.14 | ✅ |
 | **Interval 1 uge / 2 uger / 1 md.** | Bygget — 1 / 2 / 4 uger. Se 6.13 om hvorfor ikke en kalendermåned | ✅ |
 | **Fremhævning pr. art** (klargøring/udlån/returnering) | Blokken farves efter **tilstand** | ⚠ |
-| **Hover → lille kort** | Findes ikke. Driftskalenderen HAR et `Svaevekort` | ❌ |
+| **Hover → lille kort** | Bygget — Unitbookings EGET, se 6.15 | ✅ |
 | **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
 | Sidepanel "Kommende klargøringer", kan minimeres | **Udlånslisten** — bærer mere, kan ikke handles på | ⚠ |
 | "Åbn næsten fuldskærm" | Findes ikke | ❌ |
@@ -613,8 +634,8 @@ fra noget nogen glemte.
 2. ~~**Klargøringsdato → "Klargøres snart".**~~ **Bygget** — se 6.12.
 3. ~~**Kalenderens interval-vælger.**~~ **Bygget** — se 6.13.
 4. ~~**Gruppering efter sag.**~~ **Bygget** — se 6.14.
-5. **Svævekortet løftet op i `fleet/`.** Rører Fleet, og de to skærme skal
-   dele det. Det store kort med mails og fotos venter på beslutning 20.
+5. ~~**Svævekortet.**~~ **Bygget** — men IKKE løftet op i `fleet/`; se 6.15.
+   Det store kort med mails og fotos venter stadig på beslutning 20.
 
 ### 6.11 Belægningsgraden — og hvorfor nævneren er den interessante halvdel
 
@@ -809,3 +830,46 @@ af MDT-104, og en kasse på lager skal stå et sted. Den hører til i et udlån 
 `import.meta.env?.DEV` og advarer i browserens konsol, hvor ingen ser efter.
 `test/unitbooking.test.mjs` prøver derfor demo-sættet direkte: mindst én sag
 med flere kasser, og ingen kasse der er ude uden et udlån.
+
+### 6.15 Svævekortet — og hvorfor 6.3 var en analogi der ikke holdt
+
+6.3 skrev: *"Det samme gælder hover og klik-popup: Fleet skal have dem, og de
+to skærme må ikke få hver sin."* Sætningen stod som en **udvidelse** af
+argumentet om gitteret. Den er nu rettet, fordi de to ting ikke er ens.
+
+**Gitteret er en FORM. Svævekortet er INDHOLD.**
+
+Gitteret tegner ressourcer × tid uanset hvad en blok betyder — det er derfor
+der kun må være ét, og derfor et gitter der læser intervallet én dag forskudt,
+ikke kan opdages ved at kigge på det. Et svævekort viser en **entitets felter**.
+En `opgave` og et `kasseudlaan` har ingenting til fælles: forskellige noder,
+forskellige feltskemaer, forskellige kataloger.
+
+Målt på Fleets eget `Svaevekort`: af tredive linjer er **seksogtyve** rent
+opgave-specifikke — `arbejdstype`, `leverandoerId`, `estimeretMin`,
+`prioritetFor()`, `OPGAVE_STATUS`. Ingen af dem findes på et udlån. Omvendt
+viser Unitbookings kort `sagsnummer`, hjemplads, klargøringsfrist og
+`dageUde()` — ingen af dem findes på en opgave.
+
+Et fælles kort skulle tage et **felt-array** ind fra begge skærme. Så er det
+ikke en delt komponent længere; det er en tabel med en ramme om, og hver skærm
+skal alligevel bestemme hvert eneste felt. Det er ikke en genbrugskontrakt som
+`Gitterkalender` — det er en indpakning der skjuler at de to skærme er to
+forretninger.
+
+⚠ **DET DER ER FÆLLES, ER UDSEENDET — OG DET VAR DET ALLEREDE.** `.fc-svaev`
+står i `fleet.css` med sin placering, sin skygge og sine to kolonner. Begge
+skærme bruger de samme klasser, så en ændring af hvordan et svævekort SER ud,
+sker ét sted. Der skulle ingen ny abstraktion til.
+
+⚠ **OG DER ER INTET SVÆVEKORT PÅ EN SAGSBLOK.** En sagsblok er **flere** udlån
+flettet sammen (6.14); et kort der viste ét af dem, ville påstå at være hele
+sagen. Ved gruppering pr. sag er kortet slået fra.
+
+⚠ **Kortet siger om "ude" er MÅLT eller PLANLAGT.** `dageUde()` svarer
+`{dage, faktisk}`, og flaget er vigtigere end tallet: uden det læses "20 dage"
+som en måling, og er kassen kommet hjem i forvejen, er det forkert på en måde
+ingen kan se. Beslutning 37.
+
+**Det store klik-kort med mails og fotos er stadig ikke bygget.** Det hører til
+beslutning 20, som er fase 0: `sager/` står ikke i `firebase.rules.json`.

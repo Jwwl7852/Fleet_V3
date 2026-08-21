@@ -39,7 +39,7 @@ import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
 import {
   UDLAAN_TILSTAND, BINDENDE, KASSE_STATUS, halvaabent, iVindue, pladsnavn,
-  sagsblokke, sagstilstand,
+  sagsblokke, sagstilstand, dageUde,
 } from "../../fleet/unitbooking.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
@@ -151,6 +151,7 @@ export default function Kalender() {
      sagsrækken på "hvornår er udstillingen i gang". Det andet kan ikke læses
      af det første når en sag har fire kasser. */
   const [gruppering, setGruppering] = useState("kasse");
+  const [svaev, setSvaev] = useState(null);
   const vindueDage = uger * 7;
   const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
   const vindueTil = vindueFra + vindueDage * DAG;
@@ -298,6 +299,23 @@ export default function Kalender() {
                 {skubUger !== 0 && <Knap onClick={() => setSkubUger(0)}>I dag</Knap>}
               </span>
             }>
+        {/* ⚠ SVÆVEKORTET KOMMER AF `data-blok` PÅ ELEMENTET, ikke af et
+            onHover i gitteret. Gitteret bruges af fire skærme, og et
+            hover-kald med sin egen tilstand ville have været en femte ting de
+            fire skulle være enige om. Se noten ved blokken i Gitterkalender.
+            ⚠ OG KUN VED GRUPPERING PR. KASSE. En sagsblok er FLERE udlån
+            flettet sammen (se sagsblokke()); et kort der viste ét af dem,
+            ville påstå at være hele sagen. */}
+        <div
+          onMouseLeave={() => setSvaev(null)}
+          onMouseMove={(e) => {
+            if (efterSag) return;
+            const knap = e.target.closest?.("[data-blok]");
+            if (!knap) { setSvaev(null); return; }
+            const u = iVinduet.find((x) => x.id === knap.dataset.blok);
+            if (u) setSvaev({ x: e.clientX, y: e.clientY, udlaan: u });
+          }}
+        >
         <Gitterkalender
           raekker={raekker}
           blokke={blokke}
@@ -321,6 +339,7 @@ export default function Kalender() {
             ? "Ingen kasser er lovet væk i de næste fire uger."
             : "Ingen kasser er lovet væk i den viste periode."}
         />
+        </div>
         <p className="fc-hint" style={{ marginTop: 12 }}>
           Kun kasser med et udlån i perioden vises. Vinduet starter{" "}
           <b>fremadrettet</b>, længden vælges foroven, og pilene under
@@ -332,6 +351,15 @@ export default function Kalender() {
           Driftskalender, Servicekalender og Disponering.
         </p>
       </Kort>
+
+      {svaev && (
+        <Svaevekort
+          svaev={svaev}
+          kasse={kasser.find((k) => k.id === svaev.udlaan.kasseId) || null}
+          typeNavn={typeNavn}
+          pladsMap={pladsMap}
+        />
+      )}
 
       <Kort titel={`Udlånsliste · ${num(liste.length)} hændelser`}>
         <Tabel
@@ -377,6 +405,80 @@ export default function Kalender() {
           afhentningen historik, og kun returen står tilbage.
         </p>
       </Kort>
+    </div>
+  );
+}
+
+/* ---- Svævekortet -------------------------------------------------------- */
+
+/**
+ * ⚠ UNITBOOKING HAR SIT EGET, OG DET ER IKKE EN KOPI AF FLEETS.
+ *
+ * UNITBOOKING.md 6.3 sagde at de to skærme ikke måtte få hver sit svævekort —
+ * en analogi til gitteret. Analogien holder ikke: **gitteret er en FORM,
+ * svævekortet er INDHOLD.** Gitteret tegner ressourcer × tid uanset hvad en
+ * blok betyder. Et svævekort viser en ENTITETS felter, og et `kasseudlaan` og
+ * en `opgave` har ingenting til fælles — forskellige noder, forskellige
+ * feltskemaer, forskellige kataloger. Fleets kort viser `arbejdstype`,
+ * `leverandoerId` og `prioritet`; ingen af de tre findes på et udlån.
+ *
+ * Et fælles kort skulle tage et felt-array ind fra begge skærme, og så er det
+ * ikke en delt komponent længere — det er en tabel med en ramme om.
+ *
+ * ⚠ DET DER ER FÆLLES, ER UDSEENDET, og det er det allerede: `.fc-svaev` står
+ * i `fleet.css` med sin placering, sin skygge og sine to kolonner. Ændres
+ * hvordan et svævekort SER ud, sker det ét sted.
+ */
+function Svaevekort({ svaev, kasse, typeNavn, pladsMap }) {
+  const u = svaev.udlaan;
+  /* Holdes inden for vinduet: et kort der stikker ud over højre kant, kan ikke
+     læses, og et der lægger sig under musen, blinker. */
+  const x = Math.min(svaev.x + 16, (window.innerWidth || 1200) - 340);
+  const y = Math.min(svaev.y + 16, (window.innerHeight || 800) - 220);
+
+  /* ⚠ MÅLT ELLER PLANLAGT — FLAGET ER VIGTIGERE END TALLET. `fra`/`til` er
+     AFTALEN; `udleveretMs`/`returneretMs` er hvad der skete. Uden skellet
+     læses "20 dage" som en måling, og er kassen kommet hjem i forvejen, er
+     det forkert på en måde ingen kan se. Se dageUde() og beslutning 37. */
+  const ude = dageUde(u);
+
+  return (
+    <div className="fc-svaev" style={{ left: x, top: y }} role="tooltip">
+      <div className="fc-svaev-t">Sag {u.sagsnummer}</div>
+      {u.beskrivelse && (
+        <div className="fc-svaev-r"><span>Arbejde</span><span>{u.beskrivelse}</span></div>
+      )}
+      <div className="fc-svaev-r"><span>Kasse</span><span>{u.kasseId}</span></div>
+      {kasse && (
+        <div className="fc-svaev-r"><span>Type</span><span>{typeNavn(kasse.type)}</span></div>
+      )}
+      {kasse && (
+        <div className="fc-svaev-r">
+          <span>Hjemplads</span><span>{pladsnavn(pladsMap[kasse.hjemPladsId])}</span>
+        </div>
+      )}
+      {/* ⚠ INKLUSIVE I BEGGE ENDER. Et udlån 1.–15. er også ude den 15.
+          Gitteret regner halvåbent, og oversættelsen sker i halvaabent() — men
+          det man LÆSER her, er aftalen som den blev indgået. */}
+      <div className="fc-svaev-r"><span>Fra</span><span>{dato(u.fra)}</span></div>
+      <div className="fc-svaev-r"><span>Til</span><span>{dato(u.til)}</span></div>
+      {Number.isFinite(u.klargoerSenest) && (
+        <div className="fc-svaev-r">
+          <span>Klargøres senest</span><span>{dato(u.klargoerSenest)}</span>
+        </div>
+      )}
+      <div className="fc-svaev-r">
+        <span>{ude.faktisk ? "Ude (målt)" : "Ude (planlagt)"}</span>
+        <span>{num(ude.dage)} dage</span>
+      </div>
+      <div className="fc-svaev-r">
+        <span>Tilstand</span>
+        <span>
+          <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
+            {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
+          </Pille>
+        </span>
+      </div>
     </div>
   );
 }
