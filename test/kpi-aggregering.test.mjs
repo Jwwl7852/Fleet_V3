@@ -953,3 +953,62 @@ test("begge divisioner skrives", () => {
 test("tenantlisten kommer fra udbyder/kunder", () => {
   assert.ok(blok.includes('db.ref("udbyder/kunder")'));
 });
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HVERT null SKAL HAVE EN GRUND — beslutning 62
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ HVORFOR PRØVEN FINDES.
+ *
+ * Beslutning 60 og 61 fandt det samme to gange: felter der stod som `null`
+ * uden en linje begrundelse — og hvor kilden havde ligget der hele tiden.
+ * `forsinkelsesrisiko`, `konflikter` og `forsinkede` kunne alle regnes; de
+ * stod som null fordi ingen havde spurgt.
+ *
+ * ⚠ ET null UDEN EN BEGRUNDELSE KAN IKKE SKELNES FRA ET FELT NOGEN HAR GLEMT.
+ * Og de tre slags null ligner hinanden i noden:
+ *
+ *   · ingen KILDE      — noden findes ikke (`sager/`, `tilbud/`)
+ *   · intet SPØRGSMÅL  — definitionen mangler (`ledigKapacitetPct`)
+ *   · ingen FORRIGE    — deltaen venter på i nat
+ *
+ * Prøven kræver ikke at man vælger den rigtige — kun at man skriver hvilken.
+ * Den kan ikke afgøre om begrundelsen er SAND; den kan afgøre om nogen har
+ * taget stilling. Det er forskellen på en liste man læser og en man holder op
+ * med at læse.
+ */
+test("⚠ HVERT null-FELT I AGGREGERINGEN HAR EN BEGRUNDELSE", () => {
+  const linjer = readFileSync("src/fleet/kpi-aggregering.js", "utf8")
+    .replace(/\r\n/g, "\n").split("\n");
+
+  /* ⚠ KPI_DOMAENE ER IKKE NØGLETAL. Den er domæne → modul, og `null` dér
+     betyder "hører ikke til et modul" — ikke "kunne ikke regnes". */
+  const start = linjer.findIndex((l) => l.includes("export const KPI_DOMAENE"));
+  const slut = linjer.findIndex((l, i) => i > start && l.trim() === "};");
+
+  /** En linje der KUN sætter null-felter — også flere på samme linje. */
+  const erNullLinje = (l) => {
+    const t = l.trim();
+    if (!t) return false;
+    return /^([A-Za-z][\w]*: null,\s*)+$/.test(t) || /^[A-Za-z][\w]*: null,?$/.test(t);
+  };
+  const erKommentar = (l) => /(\*\/|^\s*\/\/|^\s*\*|\/\*)/.test(l);
+
+  const uden = [];
+  for (let i = 0; i < linjer.length; i++) {
+    if (i >= start && i <= slut) continue;
+    if (!erNullLinje(linjer[i])) continue;
+    /* Er vi midt i et løb, er begrundelsen givet ved løbets begyndelse. */
+    let j = i - 1;
+    while (j >= 0 && linjer[j].trim() === "") j--;
+    if (j >= 0 && erNullLinje(linjer[j])) continue;
+    if (j >= 0 && erKommentar(linjer[j])) continue;
+    uden.push(`linje ${i + 1}: ${linjer[i].trim()}`);
+  }
+
+  assert.deepEqual(uden, [],
+    "null-felter uden en begrundelse. Skriv HVILKEN slags null det er — ingen "
+    + "kilde, intet spørgsmål, eller ingen forrige kørsel. Se beslutning 62.");
+});

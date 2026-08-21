@@ -3910,3 +3910,72 @@ rækkefølger der skal passe sammen, og som ingen prøve holder øje med.
 Uden kilde: **36 → 34 → 33** over to etaper. `nyeBookinger` tæller ikke med i
 faldet, fordi den er null i en frisk base **med vilje** — den får sit tal ved
 anden kørsel.
+
+## 62. Hvert null skal have en grund — og nu kræver en prøve det
+
+Beslutning 60 og 61 fandt det samme to gange: felter der stod som `null` **uden
+en linje begrundelse** — og hvor kilden havde ligget der hele tiden.
+`forsinkelsesrisiko`, `konflikter` og `forsinkede` kunne alle regnes; de stod
+som null fordi ingen havde spurgt.
+
+Det er ikke to tilfælde. Det er et mønster, og det havde **tretten** eksempler
+tilbage: fem under `kunder` og otte under `oekonomi`.
+
+### ⚠ Tre slags null, og de ligner hinanden i noden
+
+| Slags | Venter på | Eksempel |
+|---|---|---|
+| **Ingen kilde** | at noden bliver bygget | `kunder.tilbud` — `tilbud/` findes ikke |
+| **Intet spørgsmål** | at nogen definerer tallet | `disponering.ledigKapacitetPct` |
+| **Ingen forrige** | at jobbet kører i nat | alle deltaer i en frisk base |
+
+Prøven kræver **ikke** at man vælger den rigtige — kun at man **skriver
+hvilken**. Den kan ikke afgøre om begrundelsen er sand; den kan afgøre om nogen
+har taget stilling. Det er forskellen på en liste man læser, og en man holder op
+med at læse.
+
+### Det den fandt undervejs
+
+⚠ **`driftsomkostningerOere` stod med en forældet grund:** *"Uden `indkoeb` er
+der ingen driftsomkostninger at lægge sammen."* `indkoeb` har været seedet
+længe, og `indkoebstal()` regner allerede `maanedensForbrugOere` af netop de
+linjer. Kilden manglede ikke — **perioden** gjorde. Et samlet beløb over hele
+noden ville vokse med historikken frem for med forbruget.
+
+⚠ **`kunder.daekningsbidragOere` mangler sit ene led.** Omsætningen findes nu på
+bookingen (beslutning 55), men omkostningen pr. **kunde** gør ikke: en
+indkøbslinje hører til en leverandør, en opgave til en enhed. Regnede vi
+bidraget af omsætningen alene, ville hver kunde stå med **100 % margin** — et
+tal der ser ud som en måling. Samme grund som `100 - null` er forbudt.
+
+⚠ **`oekonomi.driftstimer` er tre spørgsmål i ét navn:** chaufførens,
+køretøjets eller værkstedets timer? `opgaver.faktiskMin` findes, men det er hvor
+længe der blev **arbejdet på** en enhed — ikke hvor længe den var i drift. To
+tal der hedder det samme og betyder hver sit, er beslutning 11 og 14's fejl.
+
+⚠ **`planlagtPct` og `akutPct` har samme manglende felt som
+`planlagtVedligeholdPct`:** opgaven har `art`, status og prioritet, men intet
+felt for planlagt/akut. At læse `prioritet: hoej` som akut ville være et gæt —
+og de to tal supplerer hinanden til 100, så **et gæt i det ene bliver til en
+løgn i det andet**.
+
+### ⚠ Og et løb af nuller deler én begrundelse
+
+`bemanding`s ni felter venter alle på det samme svar — kan bemandingen deles på
+division? Begrundelsen står ét sted, i hovedet af `udenKilde()`, og feltet har
+nu en linje der **peger på den**. Prøven accepterer en kommentar over et helt
+løb, ikke over hver linje: et krav om ni ens kommentarer ville producere støj
+frem for stillingtagen.
+
+### ⚠ Og jeg slettede etapens egne rettelser undervejs
+
+For at fjerne et prøvefelt kørte jeg `git checkout` på filen — og rullede
+dermed alle ukommitterede ændringer i den tilbage. De var heldigvis skrevet af
+et script og kunne køres på igen.
+
+To ting kom ud af det, og de er værd at skrive ned: **et prøvefelt fjernes med
+en målrettet rettelse, ikke med en tilbagerulning af filen**, og
+**efterprøvningen skal ligne det den prøver** — mit første prøvefelt stod som
+`{ udenGrund: null }` på én linje og blev ikke fanget, hvilket lignede en vagt
+der ikke virkede. Anden gang blev feltet skrevet som de rigtige, og vagten faldt
+som den skulle.

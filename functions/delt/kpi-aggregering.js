@@ -299,6 +299,11 @@ export function udenKilde() {
       nedetidDeltaPoint: null,
     },
     bemanding: {
+      /* ⚠ ALLE NI VENTER PÅ DET SAMME SVAR: kan bemandingen deles på division?
+         Stamdata bærer ikke feltet (beslutning 19), og at udlede det af
+         medarbejderens ture ville være et gæt. Se hovedet i udenKilde() —
+         begrundelsen står ét sted, og den her linje peger på den, så et null
+         her ikke kan læses som et felt nogen har glemt. */
       planlagt: null, disponeret: null, ledig: null, underbemandede: null,
       chauffoerPlanlagt: null, chauffoerDisponeret: null,
       kompetencerUdloeber: null, medarbejdereAktive: null, fravaerIDag: null,
@@ -323,9 +328,36 @@ export function kundetal(kunder = [], division, nu = Date.now()) {
       (k) => Number.isFinite(k.aftaleUdloeberMs)
         && k.aftaleUdloeberMs > nu
         && k.aftaleUdloeberMs - nu <= 30 * DAG).length,
+    /**
+     * ⚠ ET TILBUD ER IKKE EN BOOKING, OG DER ER INGEN NODE TIL DET.
+     *
+     * Bookingen er AFTALEN; tilbuddet er det der kom før — og som måske aldrig
+     * blev til noget. At tælle bookinger som tilbud ville gøre hitraten til
+     * 100 % pr. definition. Feltet venter altså på en ENTITET, ikke på et
+     * seed: `tilbud/` findes hverken i `firebase.rules.json` eller i
+     * ARKITEKTUR.md.
+     */
     tilbud: null,
     tilbudKraeverOpfoelgning: null,
+
+    /**
+     * ⚠ HALVDELEN AF ET DÆKNINGSBIDRAG ER ET MISVISENDE TAL.
+     *
+     * Omsætningen findes nu — bookingen bærer `omsaetningOere` (beslutning
+     * 55). Omkostningen pr. KUNDE gør ikke: en indkøbslinje hører til en
+     * leverandør og en division, en opgave til en enhed. Ingen af dem peger
+     * på den kunde turen blev kørt for.
+     *
+     * Regnede vi bidraget af omsætningen alene, ville hver kunde stå med
+     * 100 % margin — et tal der ser ud som en måling og er et regnestykke der
+     * mangler sit ene led. Samme grund som `100 - null` er forbudt.
+     */
     daekningsbidragOere: null,
+
+    /* ⚠ DELTAERNE ER null FORDI GRUNDLAGET ER DET. `aktive` kan regnes, men
+       dens delta kræver en FORRIGE kørsel; `daekningsbidrag` mangler selve
+       tallet. To slags null igen — den ene venter på i nat, den anden på en
+       kilde. */
     aktiveDeltaPct: null,
     daekningsbidragDeltaPct: null,
   };
@@ -1099,14 +1131,67 @@ export function beregnKpi({
       ikkeFaktureretOere: ikkeFakt.oere,
       ikkeFaktureretForloeb: ikkeFakt.forloeb,
       ikkeFaktureretDeltaPct: deltaPct(ikkeFakt.oere, forrige?.oekonomi?.ikkeFaktureretOere),
-      /* Uden `indkoeb` er der ingen driftsomkostninger at lægge sammen. */
+      /**
+       * ⚠ HER STOD "UDEN `indkoeb` ER DER INGEN DRIFTSOMKOSTNINGER AT LÆGGE
+       * SAMMEN" — OG `indkoeb` HAR VÆRET DER SIDEN NODEN BLEV SEEDET.
+       *
+       * Kilden mangler ikke; PERIODEN gør. Driftsomkostninger er et tal man
+       * måler mod et budget, og et samlet beløb over hele noden ville vokse
+       * med historikken frem for med forbruget. `indkoeb.maanedensForbrugOere`
+       * er den ene periode der ER defineret, og den regnes allerede.
+       *
+       * Samme slags null som `opgaver.udfoerteOpgaver`: en periodesum uden en
+       * besluttet periode.
+       */
       driftsomkostningerOere: null,
+      /* Grundlaget er null, så afvigelsen er det også. */
       driftsomkostningerDeltaPct: null,
+
+      /**
+       * ⚠ TO TAL KUNDEN SÆTTER — DE KAN IKKE UDLEDES AF NOGET.
+       *
+       * Et budget er en beslutning, ikke en måling, og et måltal for
+       * dækningsgraden er det samme. De findes i ingen node, og der er ingen
+       * formel der kan gætte dem. Feltet venter på en INDTASTNING og på et
+       * sted at gemme den — se det åbne spørgsmål i README.
+       *
+       * ⚠ OG BUDGETAFVIGELSEN MÅ ALDRIG GEMMES. Den udledes af
+       * `driftsomkostningerOere − budgetOere` hos forbrugeren; et gemt afledt
+       * tal driver fra sit grundlag. Det er fejlen i `bemanding.ledig`.
+       */
       budgetOere: null,
-      daekningsgradPct: null,
       maalDaekningsgradPct: null,
+
+      /**
+       * ⚠ DÆKNINGSGRADEN KRÆVER BEGGE LED I SAMME PERIODE.
+       *
+       * Omsætningen findes nu på bookingen; omkostningen mangler sin periode
+       * (se ovenfor). Et tal regnet af det ene led ville være en margin på
+       * 100 %.
+       */
+      daekningsgradPct: null,
+      /* Procentpoint mod forrige periode — og grundlaget er null. */
       daekningsgradDeltaPoint: null,
+
+      /**
+       * ⚠ HVILKE TIMER? Chaufførens, køretøjets eller værkstedets?
+       *
+       * `opgaver.faktiskMin` findes, men det er hvor længe der blev ARBEJDET
+       * PÅ en enhed — ikke hvor længe den var i drift. De to tal ville hedde
+       * det samme og betyde hver sit, og det er beslutning 11 og 14's fejl.
+       * Feltet venter på et spørgsmål der er stillet færdigt.
+       */
       driftstimer: null,
+
+      /**
+       * ⚠ SAMME MANGLENDE FELT SOM `planlagtVedligeholdPct` NEDENFOR.
+       *
+       * En opgave har `art` (vaerksted | facility), en status og en prioritet
+       * — men intet felt der siger om arbejdet var PLANLAGT eller AKUT. At
+       * læse `prioritet: hoej` som akut ville være et gæt, og de to tal
+       * supplerer hinanden til 100: et gæt i det ene bliver til en løgn i det
+       * andet.
+       */
       planlagtPct: null,
       akutPct: null,
       /* ⚠ KAN IKKE UDLEDES AF `opgaver`. En opgave har `art`

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **61 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **62 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -35,6 +35,10 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   demofilen lovede noget aggregeringen ikke skrev; den modsatte vej manglede,
   og **ti felter stod som `undefined` i demo-mode**. Skriver aggregeringen et
   felt, skal demofilen kende det. Se beslutning 60.
+  ⚠ **Og et null skal have en GRUND — en prøve kræver det.** Der er TRE
+  slags, og de ligner hinanden i noden: ingen KILDE, intet SPØRGSMÅL, ingen
+  FORRIGE kørsel. Skriv hvilken; prøven kan ikke afgøre om begrundelsen er
+  sand, men den kan afgøre om nogen har taget stilling. Se beslutning 62.
   ⚠ **Og et null skal have en GRUND, ikke bare mangle en kilde.**
   `disponering.ledigKapacitetPct` er null fordi spørgsmålet ikke er stillet
   færdigt — ledig i hvilken periode, målt i hvad — mens `forsinkelsesrisiko`
