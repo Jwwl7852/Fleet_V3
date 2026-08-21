@@ -201,6 +201,23 @@ export default function Kalender() {
     [udlaan, vindueFra, vindueTil]);
 
   const typeNavn = (id) => typer.find((t) => t.id === id)?.navn || id;
+
+  /**
+   * Hvilken sag kassen er på NU — som planchen viser under kasse-id'et.
+   *
+   * ⚠ EN LISTE, IKKE EN STRENG, og det er ikke pedanteri: er kassen ikke på
+   * nogen sag i dag, skal der ikke stå "· " efter typen. Et tomt led i en
+   * sammensat linje ser ud som en manglende værdi frem for som et svar.
+   *
+   * ⚠ OG DET ER NU, IKKE I VINDUET. Rækkens undertekst svarer på "hvad laver
+   * den her kasse lige nu" — blokkene svarer på perioden. Slog vi det op i
+   * vinduet, ville en kasse med tre udlån få tre sagsnumre i én linje.
+   */
+  const nuvaerendeSag = (kasseId) => {
+    const u = udlaan.find((x) => x.kasseId === kasseId
+      && BINDENDE.includes(x.tilstand) && x.fra <= nu && nu <= x.til);
+    return u ? [`Sag ${u.sagsnummer}`] : [];
+  };
   const pladsMap = Object.fromEntries(pladser.map((p) => [p.id, p]));
 
   /* Kun ressourcer med noget i vinduet. Et gitter med hundrede rækker hvoraf
@@ -210,7 +227,11 @@ export default function Kalender() {
     return kasser.filter((k) => ider.has(k.id)).map((k) => ({
       id: k.id,
       label: k.id,
-      under: typeNavn(k.type),
+      /* ⚠ SAGEN STÅR UNDER KASSE-ID'ET, som planchen. Uden den kan man se
+         AT kassen er optaget, men ikke af hvem — og det er det spørgsmål
+         nogen ringer om. Typen står i samme linje frem for i sin egen
+         kolonne; se noten i 6.23. */
+      under: [typeNavn(k.type), ...nuvaerendeSag(k.id)].join(" · "),
       pille: (
         <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
           {KASSE_STATUS[k.status]?.label || k.status}
@@ -344,15 +365,16 @@ export default function Kalender() {
         <KpiKort label="Kommende klargøringer" vaerdi={num(klargoer.antal)}
                  note={[
                    `næste ${KLARGOER_VINDUE_TIMER / 24} dage`,
-                   klargoer.bagud ? `${num(klargoer.bagud)} bagud` : null,
+                   klargoer.bagud.length ? `${num(klargoer.bagud.length)} bagud` : null,
                    klargoer.udenDato ? `${num(klargoer.udenDato)} uden dato` : null,
                  ].filter(Boolean).join(" · ")} />
         <KpiKort label="Udlån aktive" vaerdi={num(antalUdlaant)}
                  note="kasser ude hos en kunde" />
         {/* ⚠ "BAGUD" BOR HER NU. Se noten øverst — den må ikke gemmes væk. */}
         <KpiKort label="Returneringer kommende" vaerdi={num(retur.antal)}
-                 note={retur.bagud
-                   ? `næste ${KLARGOER_VINDUE_TIMER / 24} dage · ${num(retur.bagud)} OVER TIDEN`
+                 note={retur.bagud.length
+                   ? `${num(retur.bagud.length)} OVER TIDEN: ` +
+                     retur.bagud.map((u) => u.kasseId).slice(0, 3).join(", ")
                    : `næste ${KLARGOER_VINDUE_TIMER / 24} dage · intet er skredet`} />
         <KpiKort label="Kasser i spil" vaerdi={num(raekker.length)}
                  note={`af ${num(kasser.length)} i de viste ${num(vindueDage)} dage`} />
@@ -723,7 +745,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
             ? <>
                 <b>{num(klargoer.antal)}</b> skal klargøres inden for{" "}
                 {KLARGOER_VINDUE_TIMER / 24} dage
-                {klargoer.bagud ? <> — heraf <b className="fc-bad">{num(klargoer.bagud)}</b> bagud</> : null}.
+                {klargoer.bagud.length ? <> — heraf <b className="fc-bad">{num(klargoer.bagud.length)}</b> bagud</> : null}.
               </>
             : "Intet haster."}
         </p>

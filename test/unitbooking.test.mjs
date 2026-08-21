@@ -1003,7 +1003,12 @@ describe("klargoeresSnart", () => {
       u("snart", "booket", NU + 5 * T),
     ], NU);
     assert.equal(r.antal, 2);
-    assert.equal(r.bagud, 1);
+    /* ⚠ bagud ER EN LISTE, IKKE ET TAL. Kaldere skal bruge BEGGE dele:
+       kortet viser antallet, noten viser HVILKE kasser det er. Gav vi kun
+       tallet, ville skaermen selv skulle filtrere `poster` paa `< nu` igen —
+       og saa staar praedikatet to steder. Det var netop den dublet der opstod
+       paa Udlaan-skaermen. */
+    assert.deepEqual(r.bagud.map((x) => x.id), ["bagud"]);
   });
 
   it("vinduet er syv dage, og det kan sættes", () => {
@@ -1500,7 +1505,7 @@ describe("returneresSnart", () => {
       u("snart", "udlaant", NU + 10 * T),
     ], NU);
     assert.equal(r.antal, 2);
-    assert.equal(r.bagud, 1);
+    assert.deepEqual(r.bagud.map((x) => x.id), ["over"]);
   });
 
   it("⚠ INTET udenDato — `til` er påkrævet på et udlån", () => {
@@ -1630,5 +1635,57 @@ describe("klik-kortet på kalenderen", () => {
     assert.match(kal(), /Hentet \{datoTid\(hentetMs\)\}/);
     assert.match(kal(), /Listen opdateres ikke af sig selv/);
     assert.match(kal(), /setHentetMs\(Date\.now\(\)\)/);
+  });
+});
+
+describe("⚠ \"OVER TIDEN\" REGNES ÉT STED", () => {
+  const laes = (sti) => readFileSync(new URL(`../${sti}`, import.meta.url), "utf8");
+
+  it("Udlån-skærmen har ikke sit eget filter længere", () => {
+    /* `udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu)` er ordret
+       det returneresSnart() regner som sin `bagud`. To steder, ét spoergsmaal
+       — og den dag "over tiden" skulle betyde noget andet, ville kun det ene
+       sted blive rettet. Dubletten opstod da kalenderen fik sit
+       returneringstal; den var altsaa ny, ikke gammel. */
+    const s = laes("src/moduler/unitbooking/Udlaan.jsx").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(!/tilstand === "udlaant" && u\.til < nu/.test(s),
+      "Udlån-skærmen regner stadig 'over tiden' selv");
+    assert.match(s, /returneresSnart\(udlaan, nu\)\.bagud/);
+  });
+
+  it("og begge skærme bruger den samme funktion", () => {
+    for (const sti of ["src/moduler/unitbooking/Udlaan.jsx",
+                       "src/moduler/unitbooking/Kalender.jsx"]) {
+      assert.match(laes(sti), /returneresSnart\(/, `${sti} bruger den ikke`);
+    }
+  });
+
+  it("⚠ OG DE TO bagud HAR SAMME FORM", () => {
+    /* klargoeresSnart og returneresSnart ligner hinanden med vilje. Gav den
+       ene et tal og den anden en liste, ville en kalder skulle huske hvilken
+       der var hvilken — og det er den slags forskel der overlever forkert. */
+    const NU = Date.UTC(2026, 7, 24);
+    assert.ok(Array.isArray(klargoeresSnart([], NU).bagud));
+    assert.ok(Array.isArray(returneresSnart([], NU).bagud));
+  });
+});
+
+describe("kalenderens rækker", () => {
+  it("⚠ SAGEN STÅR UNDER KASSE-ID'ET", () => {
+    /* Uden den kan man se AT kassen er optaget, men ikke af hvem — og det er
+       det spoergsmaal nogen ringer om. */
+    const s = readFileSync(
+      new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
+    assert.match(s, /nuvaerendeSag\(k\.id\)/);
+    assert.match(s, /Sag \$\{u\.sagsnummer\}/);
+  });
+
+  it("⚠ OG DEN SVARER PÅ NU, IKKE PÅ VINDUET", () => {
+    /* Raekkens undertekst svarer paa "hvad laver den her kasse lige nu" —
+       blokkene svarer paa perioden. Slog vi det op i vinduet, ville en kasse
+       med tre udlaan faa tre sagsnumre i én linje. */
+    const s = readFileSync(
+      new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
+    assert.match(s, /x\.fra <= nu && nu <= x\.til/);
   });
 });

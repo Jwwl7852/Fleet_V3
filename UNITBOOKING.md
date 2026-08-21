@@ -1028,7 +1028,7 @@ Otte ting mere, som ikke stod i beskrivelsen:
 | **Ude af drift** og **Inaktiv** som blokarter | Ikke bygget — signaturforklaringen har fem farver, vi har tre |
 | Klik-kortets **Rediger / Annuller booking** | Bygget — se 6.22 |
 | "Sidst opdateret" + **Opdater** | Bygget — se 6.22 |
-| Sag under kasse-id, **TYPE** som egen kolonne | Delvist |
+| Sag under kasse-id, **TYPE** som egen kolonne | Sagen er bygget; typen deler linje — se 6.23 |
 
 ### 6.20 Nøgletalsrækken og "Nu"-markøren
 
@@ -1148,3 +1148,45 @@ imens. Tidsstemplet står nu under gitteret med en Opdater-knap ved siden af.
 ⚠ **Og det er en `useState`, ikke `Date.now()` i JSX'en.** Sidstnævnte ville
 skifte ved hver eneste gentegning og påstå at listen lige var hentet, hver gang
 man trykkede på noget.
+
+### 6.23 Sagen under kasse-id'et — og en dublet jeg selv lavede
+
+Planchen viser rækkens navn i **to kolonner**: `MDT-101` med *Sag 4231*
+nedenunder, og **TYPE** for sig. Sagen er nu bygget; typen deler linje med den:
+*"Alukasse · Sag 4231"*.
+
+⚠ **TYPEN FÅR IKKE SIN EGEN KOLONNE, OG DET ER EN AFVEJNING.** Navnekolonnen
+ligger i `Gitterkalender`, som **fire** skærme deler. En ekstra kolonne dér
+ville skulle bæres af Driftskalenderen, Servicekalenderen og Disponeringen
+også — for en gevinst der er justering, ikke information. Sagen er derimod
+information: uden den kan man se **at** kassen er optaget, men ikke **af hvem**,
+og det er det spørgsmål nogen ringer om.
+
+⚠ **OG UNDERTEKSTEN SVARER PÅ NU, IKKE PÅ VINDUET.** Rækken siger *"hvad laver
+den her kasse lige nu"*; blokkene siger hvad perioden er. Slog vi sagen op i
+vinduet, ville en kasse med tre udlån få tre sagsnumre i én linje.
+
+### ⚠ "Over tiden" blev regnet tre steder — og jeg lavede den ene af dem
+
+Da kalenderen fik sit returneringstal (6.20), kom `returneresSnart()` til. Dens
+`bagud` regner ordret det Udlån-skærmen allerede regnede i et lokalt filter:
+
+```
+udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu)
+```
+
+Og prædikatet stod **et tredje sted** — inde i udlånstabellens `periode`-kolonne,
+hvor pillen *"over tiden"* tegnes. Tre steder, ét udsagn.
+
+⚠ **Det er ikke en gammel synd. Den ene halvdel var min, og den var én commit
+gammel.** Det er præcis derfor den er værd at rette nu: dubletter er billigst
+at fjerne mens man kan huske at man lavede dem. Bookingopsætnings egen kopi af
+divisionsfilteret var usynlig i månedsvis, indtil beslutning 19 flyttede
+grundlaget under den.
+
+⚠ **OG `bagud` BLEV EN LISTE, IKKE ET TAL** — i **begge** funktioner. Kaldere
+skal bruge begge dele: kortet viser antallet, noten viser *hvilke* kasser det
+er. Gav vi kun tallet, ville skærmen selv skulle filtrere `poster` på `< nu`
+igen — og så står prædikatet to steder alligevel. Og gav den ene et tal og den
+anden en liste, skulle en kalder huske hvilken der var hvilken; det er den
+slags forskel der overlever forkert.

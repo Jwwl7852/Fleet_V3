@@ -661,6 +661,13 @@ export const KLARGOER_VINDUE_TIMER = 7 * 24;
  * er det `udlaant`, er kassen kørt. En tælling der tog dem med, ville vokse
  * af at arbejdet blev udført — og så kan man ikke bruge den til at planlægge.
  *
+ * ⚠ `bagud` ER EN LISTE, IKKE ET TAL — og det gælder begge funktioner.
+ * Kaldere skal bruge BEGGE dele: kortet viser antallet, noten viser hvilke
+ * kasser det er. Gav vi kun tallet, ville skærmen selv skulle filtrere `poster`
+ * paa `< nu` igen — og saa staar praedikatet to steder. Det var netop den
+ * dublet der opstod paa Udlaan-skaermen, hvor et lokalt `forsinkede` regnede
+ * det samme som `returneresSnart()`.
+ *
  * ⚠ DE OVERSKREDNE TÆLLER MED, OG DE TÆLLES OGSÅ FOR SIG. Et udlån der skulle
  * have været pakket i går, er ikke holdt op med at skulle pakkes. Faldt det
  * ud af tallet fordi fristen var passeret, ville listen blive kortere netop
@@ -686,7 +693,7 @@ export function klargoeresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_V
 
   return {
     antal: poster.length,
-    bagud: poster.filter((u) => u.klargoerSenest < nu).length,
+    bagud: poster.filter((u) => u.klargoerSenest < nu),
     udenDato,
     poster,
   };
@@ -896,7 +903,7 @@ export function returneresSnart(udlaan = [], nu = Date.now(), timer = KLARGOER_V
 
   return {
     antal: poster.length,
-    bagud: poster.filter((u) => u.til < nu).length,
+    bagud: poster.filter((u) => u.til < nu),
     poster,
   };
 }

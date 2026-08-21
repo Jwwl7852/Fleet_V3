@@ -36,7 +36,7 @@ import {
   UDLAAN_TILSTAND, ALLE_UDLAAN_TILSTANDE, UDLAAN_SKIFT,
   KASSE_STATUS, pladsnavn, konflikter, ledigeKasser, valideUdlaan,
   undertyperFor, naesteSkift, kassebelaegning, SKIFTELABEL, SKIFTEFORKLARING,
-  klargoeresSnart, KLARGOER_VINDUE_TIMER,
+  klargoeresSnart, returneresSnart, KLARGOER_VINDUE_TIMER,
 } from "../../fleet/unitbooking.js";
 import { opretUdlaan, skiftUdlaan } from "../../fleet/udlaan.js";
 import {
@@ -215,7 +215,16 @@ export default function Udlaan() {
   const nu = Date.now();
   /* Undertyperne på den valgte type — ikke alle typers blandet sammen. */
   const soegUndertyper = undertyperFor(typer.find((t) => t.id === type));
-  const forsinkede = udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu);
+  /* ⚠ DEN HER STOD SOM ET LOKALT FILTER, OG DET VAR EN DUBLET.
+     `udlaan.filter((u) => u.tilstand === "udlaant" && u.til < nu)` er ordret
+     det `returneresSnart()` regner som sin `bagud`. To steder, ét spørgsmål —
+     og den dag "over tiden" skulle betyde noget andet (en frist? en
+     karensdag?), ville kun det ene sted blive rettet. Det er samme mønster som
+     Bookingopsætnings egen kopi af divisionsfilteret.
+
+     Dubletten opstod da kalenderen fik sit returneringstal; den var altså
+     ikke gammel, men ny — og derfor værd at rette med det samme. */
+  const forsinkede = returneresSnart(udlaan, nu).bagud;
   /* ⚠ SAMME FUNKTION SOM KASSELISTEN BRUGER — se noten ved kortet. Skærmen
      henter kasselisten i forvejen til søgningen efter ledige. */
   const bel = kassebelaegning(kasser);
@@ -254,7 +263,7 @@ export default function Udlaan() {
         <KpiKort label={`Klargøres · næste ${KLARGOER_VINDUE_TIMER / 24} dage`}
                  vaerdi={num(klargoer.antal)}
                  note={[
-                   klargoer.bagud ? `${num(klargoer.bagud)} er bagud` : null,
+                   klargoer.bagud.length ? `${num(klargoer.bagud.length)} er bagud` : null,
                    klargoer.udenDato ? `${num(klargoer.udenDato)} uden dato` : null,
                  ].filter(Boolean).join(" · ") || "intet haster"} />
         <KpiKort label="Klargjort" vaerdi={num(antal("klargjort"))} note="pakket, klar til afhentning" />
@@ -429,7 +438,12 @@ export default function Udlaan() {
             { key: "periode", label: "Periode", render: (u) => (
                 <>
                   {dato(u.fra)} – {dato(u.til)}
-                  {u.tilstand === "udlaant" && u.til < nu && (
+                  {/* ⚠ SAMME LISTE SOM NØGLETALLET, ikke det samme prædikat
+                      skrevet igen. Her stod `u.tilstand === "udlaant" &&
+                      u.til < nu` — tredje sted med samme udsagn, og den dag
+                      "over tiden" skulle betyde noget andet, ville pillen og
+                      tallet være uenige på den samme skærm. */}
+                  {forsinkede.some((x) => x.id === u.id) && (
                     <> <Pille tone="bad">over tiden</Pille></>
                   )}
                 </>
