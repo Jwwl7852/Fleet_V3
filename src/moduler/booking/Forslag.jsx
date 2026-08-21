@@ -63,7 +63,7 @@ import { tjekDisponering, TONE } from "../../fleet/disponering.js";
 import { skiftEtape } from "../../fleet/disponer.js";
 import { PERM } from "../../fleet/permissions.js";
 import {
-  DEMO_BOOKINGER, demoBooking, demoEtaperPaa,
+  DEMO_BOOKINGER,
 } from "../../fleet/demo-bookinger.js";
 
 /* ⚠ OPSLAGENE LÅ PÅ MODULNIVEAU MED DEMO-SÆTTET LUKKET INDE I SIG — og det
@@ -113,15 +113,32 @@ export default function Forslag() {
     resvListe.data.map(({ id, ...prRessource }) => [id, prRessource]));
 
   const kundeListe = useListe("kunder", { vindue: "alle", graense: 500 });
+  /* ⚠ BOOKINGEN KOM FRA DEMOFILEN — MENS ETAPERNE KOM FRA NODEN.
+     Skærmen hentede allerede `etaper`, `reservationer`, `koeretoejer`,
+     `personale` og `kompetencer` fra basen, men slog BOOKINGEN op i
+     `demoBooking()` og dens etaper i `demoEtaperPaa()`. Så blev
+     reservationstjekket regnet af nodens etaper, mens forløbet på skærmen var
+     et helt andet — to svar på ét spørgsmål, i den samme visning.
+     En booking oprettet med `bookingopret` (beslutning 55) kunne slet ikke
+     åbnes her. */
+  const bookingListe = useListe("bookinger", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_BOOKINGER,
+  });
+
+  /* Etaperne pr. booking — af NODENS liste, den samme skærmen regner
+     reservationer af. */
+  const etaperPaa = (bookingId) => etaperListe.data
+    .filter((e) => e.bookingId === bookingId)
+    .sort((a, b) => (a.nr || 0) - (b.nr || 0));
 
   /* Uden et id i ruten falder vi tilbage på det forløb der faktisk afventer
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
-  const booking = demoBooking(id)
-    || DEMO_BOOKINGER.find((b) =>
-      demoEtaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && e.forslag?.length))
+  const booking = bookingListe.data.find((b) => b.id === id)
+    || bookingListe.data.find((b) =>
+      etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && e.forslag?.length))
     || null;
 
-  const etaper = booking ? demoEtaperPaa(booking.id) : [];
+  const etaper = booking ? etaperPaa(booking.id) : [];
   /* Den etape der har noget at tage stilling til, kommer først. */
   const foerste = etaper.find((e) => e.forslag?.length) || etaper[0] || null;
 

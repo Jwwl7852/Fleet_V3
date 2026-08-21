@@ -50,6 +50,10 @@ const NODE_FOR = {
   DEMO_KASSER: "kasser", DEMO_KASSETYPER: "kassetyper",
   DEMO_KASSEUDLAAN: "kasseudlaan", DEMO_REOLPLADSER: "reolpladser",
   DEMO_ENHEDER: "enheder",
+  /* ⚠ KOM MED FORDI NODEN BLEV SEEDET. `bookinger` stod ikke i SEED — kun
+     `etaper` gjorde — så linten sprang sættet over, og Bookingoversigten
+     kunne læse demofilen direkte uden at nogen så det. Se beslutning 56. */
+  DEMO_BOOKINGER: "bookinger",
 };
 
 /* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag.
@@ -63,8 +67,16 @@ const NODE_FOR = {
    `facility/lokationer` fra noderne. Den tegnede `DEMO_SERVICEBESOEG` — seks
    poster der IKKE var seedet — mens `kpi.facility.planlagtVedligehold` blev
    regnet af nodens facility-opgaver, som var helt andre. To svar på ét
-   spørgsmål, ét klik fra hinanden. Beslutning 49. */
-const LOFT = 20;
+   spørgsmål, ét klik fra hinanden. Beslutning 49.
+
+   20 → 17: Bookingoversigten og Forslag læser nu `bookinger`, `etaper`,
+   `opgaver`, `kunder`, `koeretoejer` og `personale` fra noderne.
+   ⚠ OG TALLET VAR FOR LAVT HELE TIDEN. `bookinger` stod ikke i SEED — kun
+   `etaper` gjorde — så linten sprang `DEMO_BOOKINGER` over: den tæller kun
+   sæt for SEEDEDE noder. Bookingoversigten læste altså demofilen direkte, og
+   loftet kunne ikke se det. Noden seedes nu, sættet står i NODE_FOR, og
+   skærmene er rettet i samme ombæring. Beslutning 56. */
+const LOFT = 17;
 
 const jsxFiler = (mappe) => {
   const ud = [];
@@ -129,6 +141,13 @@ describe("En skærm viser noden, ikke demo-sættet", () => {
       ["Medarbejdere.jsx", "DEMO_PERSONALE"],
       ["Kompetencer.jsx", "DEMO_KOMPETENCER"],
       ["facility/Oversigt.jsx", "DEMO_AKTIVER"],
+      /* ⚠ BOOKINGOVERSIGTEN ER `bookinger`s EGEN SKÆRM, og den læste
+         demofilen direkte — usynligt, fordi noden ikke var seedet og linten
+         derfor sprang sættet over. Forslag hentede oven i købet ETAPERNE fra
+         noden og BOOKINGEN fra demofilen, altså to svar i den samme visning.
+         Se beslutning 56. */
+      ["booking/Oversigt.jsx", "DEMO_BOOKINGER"],
+      ["booking/Forslag.jsx", "DEMO_BOOKINGER"],
     ];
     const syndere = [];
     for (const [fil, navn] of EJERE) {

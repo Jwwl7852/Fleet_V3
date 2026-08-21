@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **55 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **56 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -166,6 +166,12 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   bil på værksted spærrede ingenting, og `etapeskift` kunne disponere den.
   Funktionen virkede kun fordi alle kaldsteder fodrede den med et BESØG.
   Nodens navne gælder: de står i reglerne, i `.indexOn` og på hver post.
+- **Tro at `demo-i-skaerm.test.mjs` fanger enhver demo-visning.** Den tæller
+  kun sæt for noder der står i `SEED`. `bookinger` gjorde ikke — kun `etaper`
+  — så Bookingoversigten kunne læse demofilen direkte, og loftet stod grønt
+  imens. **En lint der springer noget over, siger ikke nej; den siger
+  ingenting.** Seeder du en node, hører sættet i `NODE_FOR`, og nodens egen
+  skærm på ejerlisten. Se beslutning 56.
 - **Vise et demo-datasæt for en node der ER seedet.** Da noderne blev seedet
   én for én, blev skærmene stående på demofilen: Indkøb → Fakturaer viste ni
   demo-fakturaer mens `indkoeb.fakturaerTilGodkendelse` blev regnet af de

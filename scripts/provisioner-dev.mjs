@@ -32,6 +32,7 @@ import {
 import { DEMO_OMKOSTNINGER, DEMO_LAGRE } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+import { DEMO_BOOKINGER } from "../src/fleet/demo-bookinger.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
   DEMO_INDBERETNINGER, DEMO_INDBERETNINGER_SENSITIVE,
@@ -197,6 +198,15 @@ export const SEED = [
      provisioneringen gaar uden om reglerne. Uden dem staar Disponerings
      ugesvisning tom i dev — og saa ville ingen opdage at etapeskift ikke kan
      kaldes. */
+  /* ⚠ BOOKINGERNE VAR IKKE SEEDET — MEN ETAPERNE VAR.
+     Hver etape bærer et `bookingId`, og i en frisk base pegede alle otte på
+     bookinger der ikke fandtes. Det så man ikke: Bookingoversigten læste
+     `DEMO_BOOKINGER` DIREKTE, så skærmen viste otte forløb mens noden var
+     tom. To svar på ét spørgsmål — og det ene kom slet ikke fra databasen.
+
+     ⚠ Og det blev først synligt da `bookingopret` kom (beslutning 55): en
+     nyoprettet booking landede i en node ingen skærm læste. */
+  { node: "bookinger", data: DEMO_BOOKINGER, form: "liste" },
   { node: "etaper", data: DEMO_ETAPER, form: "liste" },
   /* ⚠ OPGAVERNE HAR HAFT REGLER OG INGEN DATA. Noden er skrivbar med
      opgaver.skriv og har et indeks — men intet seedede den, og ingen skaerm
@@ -583,6 +593,46 @@ async function main() {
     `${antalOpgaver} fra opgaver`);
 
   /* ══════════════════════════════════════════════════════════════════════
+     ⚠ COUNTEREN SKAL KENDE DET HØJESTE NUMMER DER ALLEREDE ER UDSTEDT.
+
+     Bookingerne bærer BKG-2026-00311 og opefter. Uden de her linjer står
+     `countere/booking/<år>` på nul, og den første booking `bookingopret`
+     laver, får BKG-2026-00001 — en serie der begynder FORFRA under de numre
+     der allerede findes, og som kolliderer ved den 318.
+
+     ⚠ TALLET LÆSES AF POSTERNE, IKKE GÆTTET. En post hvis nummer ikke passer
+     til formatet, springes over og rapporteres frem for at trække serien ned.
+     Det er ikke en optælling — beslutning 8 forbyder optællingen som
+     NUMMERKILDE — det er en efterudfyldning af en tæller der aldrig blev sat.
+     ══════════════════════════════════════════════════════════════════════ */
+  const hoejesteNummer = {};
+  let udenNummer = 0;
+  for (const b of DEMO_BOOKINGER) {
+    const m = /^BKG-(\d{4})-(\d{5})$/.exec(b.nummer || "");
+    if (!m) { udenNummer += 1; continue; }
+    hoejesteNummer[m[1]] = Math.max(hoejesteNummer[m[1]] || 0, Number(m[2]));
+  }
+  for (const [aar, n] of Object.entries(hoejesteNummer)) {
+    await db.ref(`tenants/${DEV_TENANT}/countere/booking/${aar}`).set(n);
+  }
+  console.log(
+    `  ${"countere/booking".padEnd(24)} ` +
+    Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
+    (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
+
+  /* ⚠ OG HVER ETAPE SKAL PEGE PÅ EN BOOKING DER FINDES. Før bookingerne kom
+     i SEED, gjorde ingen af dem det — og det kunne ikke ses, fordi
+     Bookingoversigten læste demofilen direkte. En dinglende reference her er
+     samme fejl som fakturaen der pegede på en linje i den anden demofil. */
+  const bookingIder = new Set(DEMO_BOOKINGER.map((b) => b.id));
+  const dinglende = DEMO_ETAPER.filter((e) => e.bookingId && !bookingIder.has(e.bookingId));
+  if (dinglende.length) {
+    console.warn(
+      `  ⚠ ${dinglende.length} etape(r) peger på en booking der ikke findes: ` +
+      dinglende.map((e) => `${e.id}→${e.bookingId}`).join(", "));
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
      ⚠ NØGLETALLENE SEEDES IKKE LÆNGERE — DE REGNES.
 
      Her stod `kpi/gods/current` og `kpi/bus/current` med DEMO_KPI som data.
@@ -632,6 +682,7 @@ async function main() {
       facilityAktiver: kpiAktiver, facilityFejl: kpiFejl, facilitySensorer: kpiSensorer,
       indberetninger: kpiIndberetninger,
       forrige: null, nu: nuMs,
+
     });
     await db.ref(`tenants/${DEV_TENANT}/kpi/${division}/current`).set(tal);
 

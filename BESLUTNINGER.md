@@ -3466,3 +3466,68 @@ og fandt derfor `kundeId: kortStreng(d.kundeId` i `bookingopret`, hvor kunden
 legitimt kommer fra klienten. Præcis samme fejl som reolpladsprøven i
 beslutning 53: **et udsnit der ikke er afgrænset, måler noget andet end det man
 tror.** Den slutter nu hvor funktionen gør.
+
+## 56. En nyoprettet booking var usynlig
+
+Beslutning 55 gjorde det muligt at oprette en booking. Så prøvede jeg at finde
+den, og den var der ikke — hverken i Bookingoversigten eller i Forslag.
+
+**Bookingoversigten læste `DEMO_BOOKINGER` direkte.** Ingen `useListe`, ingen
+faldbakke: skærmen viste otte demoforløb, og noden lige ved siden af blev aldrig
+spurgt. Det samme gjaldt `DEMO_OPGAVER`, `DEMO_KUNDER` og navneopslagene
+`opgavePerson()`/`opgaveEnhed()`, som slår op i `DEMO_PERSONALE` og
+`DEMO_KOERETOEJER`.
+
+**Og Forslag var værre, fordi den var halvt rigtig.** Den hentede `etaper`,
+`reservationer`, `koeretoejer`, `personale`, `kompetencer` og `kunder` fra
+noderne — men slog **bookingen** op i `demoBooking()` og dens etaper i
+`demoEtaperPaa()`. Reservationstjekket blev altså regnet af nodens etaper, mens
+forløbet på skærmen var et helt andet. To svar på ét spørgsmål **i den samme
+visning**.
+
+### ⚠ Linten fandtes, og den kunne ikke se det
+
+`test/demo-i-skaerm.test.mjs` er skrevet præcis mod den her fejl. Den tæller
+kun sæt for **seedede** noder — og `bookinger` **stod ikke i SEED**.
+
+Det er det egentlige fund: provisioneren seedede `etaper` men ikke deres
+`bookinger`. I en frisk base pegede hver eneste etapes `bookingId` derfor på
+en booking der **ikke fandtes**, og ingen så det, fordi den ene skærm der
+kunne have vist tomheden, læste demofilen.
+
+⚠ **En lint der springer noget over, siger ikke "nej" — den siger ingenting.**
+Loftet stod på 20 og var grønt, mens to skærme viste mockuppens forløb.
+Noden er nu i SEED, sættet i `NODE_FOR`, og begge skærme står på ejerlisten:
+*nodens egen skærm må aldrig vise noget andet end noden*. Loftet er 20 → 17.
+
+### Counteren følger med i seedet
+
+Bookingerne bærer `BKG-2026-00311` og opefter, og `countere/booking/<år>`
+fandtes ikke. Provisioneren sætter den nu til det højeste udstedte nummer —
+**læst af posterne, ikke gættet**: en post hvis nummer ikke passer til
+formatet, springes over og rapporteres frem for at trække serien ned.
+
+⚠ Det er **ikke** en optælling. Beslutning 8 forbyder optællingen som
+*nummerkilde*; det her er en efterudfyldning af en tæller der aldrig blev sat.
+Uden den ville den første booking `bookingopret` laver, få `BKG-2026-00001` —
+en serie der begynder forfra under de numre der allerede findes.
+
+Dertil en selvkontrol: peger en etape på en booking der ikke er i sættet,
+siger provisioneringen det. Det er samme slags dinglende reference som
+fakturaen der pegede på en linje i den anden demofil.
+
+### ⚠ Etaperne må ikke divisionsfiltreres væk fra deres booking
+
+Bookingens tilstand **regnes** af alle forløbets etaper (beslutning 40).
+Hentede skærmen etaperne med det almindelige divisionsfilter, ville en etape
+kunne falde ud af summen — og et **delvist** forløb ville blive læst som
+færdigt. Opslaget står derfor med `division: "alle"`, mens bookingerne selv
+filtreres som alt andet.
+
+### Navneopslag er ikke uskyldige
+
+`opgavePerson()` og `opgaveEnhed()` returnerer et navn, ikke et tal, og de har
+derfor stået på lintens liste over "detaljer der venter". Men hos en rigtig
+kunde matcher de **ingenting**: kolonnen ville stå tom eller vise et råt id, og
+en tabel med tomme navne ligner data der mangler. De læser nu `personale` og
+`koeretoejer` fra noderne.

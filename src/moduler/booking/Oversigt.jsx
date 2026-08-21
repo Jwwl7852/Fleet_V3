@@ -18,11 +18,26 @@
  * læses som færdigt eller være usynligt. BKG-2026-00317 har en udført etape
  * og en åben — den er delvist.
  *
- * FASE 0: VISNING. Ingen tilstandsskift skrives.
+ * ⚠ SKÆRMEN LÆSER NODERNE — IKKE DEMOFILERNE.
+ *
+ * Den læste `DEMO_BOOKINGER`, `DEMO_OPGAVER` og `DEMO_KUNDER` direkte, og
+ * alle tre noder er seedet. Det blev synligt i det øjeblik `bookingopret` kom
+ * (beslutning 55): en nyoprettet booking landede i `bookinger` og var
+ * **usynlig** — skærmen viste otte demoforløb ved siden af.
+ *
+ * ⚠ Og etaperne kom fra `demoEtaperPaa()`, mens tilstanden GENBEREGNES af
+ * dem. Bookingen i noden og etaperne i demofilen ville altså aldrig kunne
+ * være uenige — fordi de slet ikke handlede om det samme forløb.
+ *
+ * `useListe(node, { demo })` er vejen: sættet bruges KUN når der ingen
+ * database er.
+ *
+ * FASE 0: VISNING. Ingen tilstandsskift skrives herfra.
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
+import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, klokke } from "../../fleet/format.js";
 import {
@@ -31,16 +46,16 @@ import {
 } from "../../fleet/ui.jsx";
 import Stopoversigt from "../../fleet/Stopoversigt.jsx";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
-import {
-  DEMO_OPGAVER, opgavePerson, opgaveEnhed,
-} from "../../fleet/demo-opgaver.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
+import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
+import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 import {
   TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger, TRANSPORTTYPE,
 } from "../../fleet/booking-state.js";
-import { DEMO_BOOKINGER, demoEtaperPaa } from "../../fleet/demo-bookinger.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i dem. */
+import { DEMO_BOOKINGER } from "../../fleet/demo-bookinger.js";
+import { DEMO_ETAPER } from "../../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
-
-const kundeNavn = (id) => DEMO_KUNDER.find((k) => k.id === id)?.navn || id;
 
 export default function BookingOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
@@ -59,18 +74,61 @@ export default function BookingOversigt() {
   const [enhedFilter, setEnhedFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  /* ⚠ DIVISIONSFILTERET LIGGER I useListe — ikke her. Reglen er ikke bare
+     "valgt division plus fælles": en post UDEN division vises i BEGGE. En
+     kopi af det led ville drive, som Bookingopsætnings gjorde. */
+  const bookingListe = useListe("bookinger", {
+    vindue: "alle", graense: 500, demo: DEMO_BOOKINGER,
+  });
+  /* ⚠ ETAPERNE ER ET EGET OPSLAG, og de må IKKE divisionsfiltreres væk fra
+     deres booking: tilstanden regnes af ALLE forløbets etaper, og en etape
+     der forsvandt ud af summen, ville gøre et delvist forløb til et færdigt. */
+  const etapeListe = useListe("etaper", {
+    vindue: "alle", division: "alle", graense: 1000, demo: DEMO_ETAPER,
+  });
+  const kundeListe = useListe("kunder", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KUNDER,
+  });
+  const opgaveListe = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
+    graense: 500, demo: DEMO_OPGAVER,
+  });
+  /* ⚠ NAVNEOPSLAGENE KOM OGSÅ FRA DEMOFILEN. `opgavePerson()` og
+     `opgaveEnhed()` slår op i DEMO_PERSONALE og DEMO_KOERETOEJER — hos en
+     rigtig kunde matcher de ingenting, og kolonnen ville stå tom eller vise
+     et råt id. Et navneopslag er ikke uskyldigt, fordi det ikke er et tal:
+     en tabel med tomme navne ligner data der mangler. */
+  const bilListe = useListe("koeretoejer", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_KOERETOEJER,
+  });
+  const persListe = useListe("personale", {
+    vindue: "alle", division: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
+
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
 
-  /* Samme visningsregel som useListe: valgt division plus fælles, og en post
-     uden division vises i begge. */
-  const iDivision = DEMO_BOOKINGER.filter(
-    (b) => b.division == null || b.division === division || b.division === "faelles"
-  );
+  const kundeNavn = (id) => kundeListe.data.find((x) => x.id === id)?.navn || id;
+  const opgavePerson = (id) => persListe.data.find((x) => x.id === id)?.navn || id;
+  const opgaveEnhed = (id) => {
+    const b = bilListe.data.find((x) => x.id === id);
+    return b ? (b.kaldenavn || b.navn || id) : null;
+  };
+
+  /* Etaperne pr. booking — ét opslag, så tabellen ikke søger listen igennem
+     for hver række. */
+  const etaperPaa = new Map();
+  for (const e of etapeListe.data) {
+    if (!e.bookingId) continue;
+    if (!etaperPaa.has(e.bookingId)) etaperPaa.set(e.bookingId, []);
+    etaperPaa.get(e.bookingId).push(e);
+  }
+
+  const iDivision = bookingListe.data;
 
   /* Tilstanden GENBEREGNES. Det lagrede felt er en denormalisering. */
   const raekker = iDivision.map((b) => {
-    const etaper = demoEtaperPaa(b.id);
+    const etaper = (etaperPaa.get(b.id) || []).sort((x, y) => (x.nr || 0) - (y.nr || 0));
     const afledt = etaper.length ? forloebstilstand(etaper) : null;
     return {
       ...b,
@@ -90,9 +148,10 @@ export default function BookingOversigt() {
      Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
      Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder.
      En post uden division vises i BEGGE — se useListe. */
-  const opgaverIDivision = DEMO_OPGAVER.filter(
-    (o) => o.division == null || o.division === division || o.division === "faelles"
-  );
+  /* ⚠ NODEN, IKKE DEMOSÆTTET — og divisionsfilteret ligger i useListe.
+     Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
+     Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder. */
+  const opgaverIDivision = opgaveListe.data;
 
   /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
      og den står allerede i topbaren. */
