@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **70 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **71 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -47,10 +47,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   **Undtagelsen:** er tallet *afledt* af data skærmen allerede har — en
   gennemsnitstemperatur, en aktiv alarm, en sum af komponenter — så beregn det
   hos forbrugeren og læg det **ikke** i `kpi/`. Et gemt afledt tal driver fra
-  sit grundlag; det er fejlen i `bemanding.ledig`.
+  sit grundlag; det var fejlen i `bemanding.ledig`, **rettet i beslutning 71**.
+  ⚠ **Afledningen hører i `AFLEDT` i `dashboards.js`, ét sted.** Både
+  modulkortene og widget-kataloget peger på den med `afledt:` i stedet for
+  `felt:`, og `kortTal()` er det ene opslag der kender begge. Regner to
+  skærme det samme tal hver sin vej, har du 84-mod-83 igen — bare uden et gemt
+  felt at give skylden. Det stod i `Bemanding.jsx`, hvor kapacitetsgraden blev
+  regnet råt: `48 / null` er **Infinity**.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
-  `null` for de **45** felter der ikke kan regnes — og feltet UDELADES ikke:
+  `null` for de **44** felter der ikke kan regnes — og feltet UDELADES ikke:
   står det med null, kan man se af noden at spørgsmålet er stillet.
   ⚠ **Tallet tælles på NODEN, ikke på `udenKilde()`.** Samlestedet rummer kun
   ÉN slags null — de helt ukendte kilder — og den er tom i dag. Da flåden og

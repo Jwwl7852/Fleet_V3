@@ -75,7 +75,11 @@ export const DEMO_KPI = {
     braendstofOere: 184240000,
   },
   bemanding: {
-    planlagt: 58, disponeret: 48, ledig: 10, underbemandede: 6,
+    /* ⚠ `ledig: 10` STOD HER — 58 − 48. Feltet forlod `kpi/` i beslutning 71
+       fordi det er AFLEDT, og demofilen skal passe i begge retninger: lovede
+       den et felt aggregeringen ikke skriver, ville skærmen vise et tal i demo
+       og en streg i drift. */
+    planlagt: 58, disponeret: 48, underbemandede: 6,
     /* kompetencerUdloeber er IKKE delt på division (beslutning 19). Staben
        er én, så tallet er det samme her og under bus. Stod der to
        forskellige, ville Bemanding vise et andet tal ved et toggle-skift

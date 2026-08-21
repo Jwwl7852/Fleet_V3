@@ -77,8 +77,22 @@ export const WIDGETS = [
   /* Workforce */
   { key: "underbemandede", label: "Underbemandede vagter", modul: "bemanding",
     felt: "bemanding.underbemandede", form: "antal", ikon: "personer", tone: "ikon-1" },
+  /**
+   * ⚠ NØGLEN ER UÆNDRET, OG DET ER HELE POINTEN.
+   *
+   * `bemanding.ledig` forlod `kpi/` (beslutning 71), men widgeten hedder
+   * stadig `ledigKapacitet` — og det er DEN streng der står i brugernes gemte
+   * forsider. Havde vi fjernet widgeten, ville `valideLayout()` afvise hvert
+   * gemt layout der indeholdt den, med *"Ukendte widgets: ledigKapacitet"* —
+   * første gang brugeren rørte sin forside, og for en ændring han ikke havde
+   * bedt om.
+   *
+   * ⚠ EN MIGRERING VAR ALTSÅ IKKE PRISEN FOR AT FJERNE FELTET. Prisen var at
+   * finde ud af at `felt` og `afledt` er to måder at nå det samme tal på —
+   * og at kataloget i dashboards.js allerede kunne begge dele.
+   */
   { key: "ledigKapacitet", label: "Ledig kapacitet", modul: "bemanding",
-    felt: "bemanding.ledig", form: "antal", ikon: "personer", tone: "ikon-6" },
+    afledt: "ledig", form: "antal", ikon: "personer", tone: "ikon-6" },
   { key: "kompetencerUdloeber", label: "Kompetencer udløber", modul: "bemanding",
     felt: "bemanding.kompetencerUdloeber", form: "antal", ikon: "maerkat", tone: "ikon-3" },
 

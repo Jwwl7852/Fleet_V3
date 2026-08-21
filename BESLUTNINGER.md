@@ -4613,3 +4613,80 @@ en buskunde. Indtil da er der ingen halvt bygget bus-vej at snuble over.
 ⚠ **Beslutning 9, 15 og 44 er ikke slettet fra listen.** De var rigtige da de
 blev truffet, og rækken der siger hvorfor de ikke er det længere, er den eneste
 måde den næste kan se hvad der gik galt uden dem.
+
+## 71. Husets navngivne fejl lå der stadig — og migreringen der skulle koste, fandtes ikke
+
+`bemanding.ledig` var **eksemplet**. Ni steder i koden henviser til den som
+*den* kendte fejl — `facility.js`, `reolplads.js`, `transportlabel.js`,
+`unitbooking.js` (to steder), `warehouse.js` (fire steder) — alle med samme
+sætning: *"et gemt afledt tal driver fra sit grundlag."*
+
+Og feltet lå der stadig. Den var `planlagt − disponeret`, gemt i `kpi/`.
+
+### ⚠ Prisen for at fjerne den var ikke det den så ud som
+
+Beslutning 69 lod feltet blive med denne begrundelse:
+
+> *"`bemanding.ledig` er en WIDGET i kataloget, og `valideLayout()` afviser
+> ukendte nøgler — fjernes feltet uden at gemte forsider ryddes, får hver
+> bruger 'Ukendte widgets' næste gang han gemmer."*
+
+**Det var rigtigt om mekanismen og forkert om strengen.** Widget-nøglen hedder
+`ledigKapacitet`, ikke `bemanding.ledig` — feltnavnet står kun i widgetens
+`felt`. Og kataloget i `dashboards.js` kunne **i forvejen** pege på en
+`afledt:` i stedet for et `felt:`; mekanismen fandtes, brugt af
+`kapacitetsgrad`.
+
+⚠ **Migreringen var altså aldrig prisen. Prisen var at læse hvad der faktisk
+stod.** Widgeten hedder det samme, gemte forsider er urørte, og feltet er ude.
+
+### Det ene opslag
+
+`kortTal()` i `dashboards.js` kendte allerede forskellen på et felt og en
+afledning — *"ét opslag for begge slags tal, så skærmen ikke skal kende
+forskellen"*. Men `Dashboard.jsx` slog widgets op med `kpiVaerdi(kpi, w.felt)`
+**direkte**, uden om det. En widget med `afledt` ville have slået op på
+`undefined` og tegnet en streg: **et tal der findes, vist som et der ikke gør.**
+
+Begge går nu gennem `kortTal()`. Og en prøve kræver at hver widget har
+**præcis én** af de to: to kilder til ét tal er fejlen igen, ingen af dem er en
+streg for evigt.
+
+### ⚠ Og så fandt etapen en fejl den ikke ledte efter
+
+`Bemanding.jsx` regnede kapacitetsgraden selv:
+
+```js
+const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
+```
+
+Råt. `48 / null` er **Infinity**, `null / 58` er **0** — og 0 % kapacitet
+ligner en måling af en flåde der står stille. Gaten i `pct()` nås aldrig, fordi
+tallet er blevet rigtigt på vejen.
+
+`kapacitetsgrad()` i `dashboards.js` har haft gaten hele tiden, plus et
+`p === 0`-led. **To skærme, samme tal, to regnestykker — og den ene var
+forkert.** Det er 84-mod-83, og det stod midt i den fil hvis egen note
+forklarer hvorfor `ledig` var en fejl.
+
+### ⚠ Gaten havde ingen prøve
+
+Efterprøvningen: jeg fjernede `Number.isFinite`-leddet fra `ledig()` og kørte
+suiten. **Ingen prøve faldt.**
+
+Det er samme fund som ved divisionsfilteret i beslutning 70 — den regel
+CLAUDE.md fremhæver som den vigtigste, uden en eneste prøve i hele sin levetid.
+En gate uden en prøve er en kommentar. `test/dashboards.test.mjs` dækker den
+nu, efterprøvet ved at fjerne gaten igen.
+
+### Hvad tallet siger i dag
+
+`null`. `planlagt` har ingen kilde — der findes ingen vagtplan (beslutning 69)
+— og "ledig kapacitet" uden at vide hvor mange der var på vagt, er et gæt.
+Skærmen skriver `—`, og det er det rigtige svar.
+
+⚠ **Feltet er FJERNET, ikke sat til null.** Et `ledig: null` ville betyde "vi
+prøvede og kunne ikke", og feltet ville stå i noden som et ubesvaret spørgsmål.
+Det er ikke ubesvaret — det hører ikke hjemme. Efterslæbet gik 45 → 44, og det
+er den ene af de to måder tallet må falde på: et felt får en kilde, eller et
+felt viser sig ikke at være et felt.

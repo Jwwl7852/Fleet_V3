@@ -204,21 +204,22 @@ describe("Bemandingens tal", () => {
   });
 
   /**
-   * ⚠ ledig ER AFLEDT OG SKAL UD AF kpi/ — den er præcis
-   * `planlagt − disponeret`. CLAUDE.md navngiver dette felt som fejlen: et
-   * gemt afledt tal driver fra sit grundlag.
+   * ⚠ ledig ER UDE AF kpi/ — beslutning 71.
    *
-   * Den står endnu, fordi `bemanding.ledig` er en WIDGET i kataloget og
-   * `valideLayout()` afviser ukendte nøgler — fjernes feltet uden at gemte
-   * forsider ryddes, får hver bruger der har widgeten "Ukendte widgets" næste
-   * gang han gemmer sin forside. Fjernelsen er en migrering og sin egen etape.
+   * Den var præcis `planlagt − disponeret`, altså et gemt afledt tal, og
+   * husets navngivne eksempel på fejlen. Nu regnes den af `ledig()` i
+   * dashboards.js, hos forbrugeren.
+   *
+   * ⚠ PRØVEN KRÆVER undefined OG IKKE null. Et `ledig: null` ville betyde
+   * "vi prøvede og kunne ikke" — og feltet ville stå i noden som et
+   * ubesvaret spørgsmål. Det er ikke ubesvaret; det hører ikke hjemme.
    */
-  test("⚠ ledig BLIVER IKKE BEREGNET — DEN ER AFLEDT", () => {
+  test("⚠ ledig SKRIVES IKKE — den hører hos forbrugeren", () => {
     const b = bemandingstal(PERSONALE, [], [], [
       { personId: "p1", fra: NU - 100, til: NU + 100 },
     ], NU);
-    assert.equal(b.ledig, null,
-      "ledig er begyndt at blive regnet — et gemt afledt tal driver fra sit grundlag");
+    assert.ok(!("ledig" in b),
+      "ledig er tilbage i kpi/ — et gemt afledt tal driver fra sit grundlag");
   });
 });
 

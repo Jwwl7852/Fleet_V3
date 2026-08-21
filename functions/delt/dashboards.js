@@ -131,7 +131,7 @@ export const MODULKORT = {
          blev rettet; det er præcis fejlen i `bemanding.ledig`. */
       { afledt: "kapacitet", label: "Kapacitetsgrad", form: "pct" },
       { felt: "bemanding.underbemandede", label: "Underbemandede vagter", form: "antal" },
-      { felt: "bemanding.ledig", label: "Ledige kapaciteter", form: "antal" },
+      { afledt: "ledig", label: "Ledige kapaciteter", form: "antal" },
     ],
   },
 
@@ -195,8 +195,38 @@ export function kapacitetsgrad(kpi) {
   return (d / p) * 100;
 }
 
-/** De afledte tal, slået op på samme måde som felterne. Ét sted. */
-export const AFLEDT = { kapacitet: kapacitetsgrad };
+/**
+ * ledig(kpi) → antal, eller null.
+ *
+ * ⚠ DEN VAR ET GEMT FELT I `kpi/`, og den var husets navngivne eksempel på
+ * fejlen: et gemt afledt tal driver fra sit grundlag. Ni steder i koden
+ * henviser til "bemanding.ledig" som DEN kendte fejl — og feltet lå der
+ * stadig. Nu regnes den her, af de to tal den er forskellen mellem.
+ *
+ * ⚠ GATEN STÅR FØR SUBTRAKTIONEN, ikke efter. `null - 48` er −48 og
+ * `58 - null` er 58 — begge ser ud som MÅLINGER, og `num()` når aldrig at
+ * skrive INTET, fordi tallet er blevet rigtigt på vejen. Samme fælde som
+ * beslutning 67 fandt i dækningsgradsafvigelsen.
+ *
+ * ⚠ OG DEN ER null I DAG, fordi `planlagt` er det: der findes ingen vagtplan
+ * (beslutning 69). Det er det rigtige svar — "ledig kapacitet" uden at vide
+ * hvor mange der var på vagt, er ikke et tal, det er et gæt.
+ */
+export function ledig(kpi) {
+  const p = kpi?.bemanding?.planlagt;
+  const d = kpi?.bemanding?.disponeret;
+  if (!Number.isFinite(p) || !Number.isFinite(d)) return null;
+  return p - d;
+}
+
+/**
+ * De afledte tal, slået op på samme måde som felterne. Ét sted.
+ *
+ * ⚠ OG KATALOGET I widgets.js BRUGER DET SAMME. Ellers ville en widget og et
+ * modulkort med samme navn kunne regne hver sin vej — 84 mod 83 i ny
+ * forklædning, og det er netop den fejl den her afledning findes for at rette.
+ */
+export const AFLEDT = { kapacitet: kapacitetsgrad, ledig };
 
 /**
  * kortTal(kpi, post) → { label, vaerdi, form }

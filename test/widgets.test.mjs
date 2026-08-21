@@ -23,11 +23,10 @@ import {
   WIDGETS, ALLE_WIDGETS, ANTAL_WIDGETS,
   widget, tilgaengeligeWidgets, standardlayout, valideLayout, layoutFor,
 } from "../src/fleet/widgets.js";
-import { SAMLET, ALLE_DASHBOARDS } from "../src/fleet/dashboards.js";
+import { SAMLET, ALLE_DASHBOARDS, AFLEDT } from "../src/fleet/dashboards.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { ALLE_MODULER, MODUL } from "../src/fleet/moduler.js";
 
-const DIVISIONER = ["gods", "bus"];
 const alle = () => true;
 
 const slaaOp = (kpi, sti) =>
@@ -55,17 +54,36 @@ const regler = () => JSON.parse(
 );
 
 describe("⚠ HVER WIDGET PEGER PÅ ET FELT DER FINDES", () => {
-  it("hver `felt` kan slås op i kpi/ for hver division", () => {
-    /* Den vigtigste prøve i filen. Et felt der ikke findes, skriver "—" —
-       og "—" betyder "ikke aggregeret endnu". */
+  /**
+   * Den vigtigste prøve i filen. Et felt der ikke findes, skriver "—" — og
+   * "—" betyder "ikke aggregeret endnu", ikke "nul".
+   *
+   * ⚠ EN WIDGET HAR NU ENTEN ET `felt` ELLER ET `afledt`, og prøven skal
+   * kende begge. Ellers ville den have fanget `bemanding.ledig`s flytning som
+   * en fejl — og den næste ville have "rettet" den ved at lægge feltet tilbage
+   * i `kpi/`. Se beslutning 71.
+   */
+  it("hvert tal kan slås op — som felt eller som afledning", () => {
     const mangler = [];
-    for (const d of DIVISIONER) {
-      for (const w of WIDGETS) {
-        if (slaaOp(DEMO_KPI, w.felt) === undefined) mangler.push(`${d}: ${w.felt}`);
+    for (const w of WIDGETS) {
+      if (w.afledt) {
+        if (!(w.afledt in AFLEDT)) mangler.push(`afledt: ${w.afledt} findes ikke i AFLEDT`);
+        continue;
       }
+      if (slaaOp(DEMO_KPI, w.felt) === undefined) mangler.push(w.felt);
     }
     assert.deepEqual(mangler, [],
       "felter uden en form i demo-kpi.js — definér dem DER, hardkod dem ikke");
+  });
+
+  /* ⚠ OG PRÆCIS ÉN AF DE TO, aldrig begge og aldrig ingen. En widget med både
+     et felt og en afledning har to kilder til ét tal; en uden nogen af dem
+     tegner en streg for evigt. */
+  it("⚠ HVER WIDGET HAR ENTEN felt ELLER afledt", () => {
+    for (const w of WIDGETS) {
+      assert.equal(Boolean(w.felt) !== Boolean(w.afledt), true,
+        `${w.key}: har ${w.felt ? "felt" : "intet felt"} og ${w.afledt ? "afledt" : "ingen afledning"}`);
+    }
   });
 
   it("nøglerne er entydige", () => {
@@ -356,7 +374,15 @@ describe("skærmen", () => {
 
   it("kortene har ikke deres egne tal", () => {
     /* Dashboardet henter ingen moduldata. Regnede en widget sit eget tal,
-       måtte skærmen hente den nodes data ned for hver valgt widget. */
-    assert.match(skaerm, /kpiVaerdi\(kpi, w\.felt\)/);
+       måtte skærmen hente den nodes data ned for hver valgt widget.
+
+       ⚠ HER STOD `kpiVaerdi(kpi, w.felt)`. Opslaget går nu gennem
+       `kortTal()`, som er det SAMME opslag modulkortene bruger — og som
+       kender forskellen på et felt og en afledning, så skærmen ikke skal.
+       Kravet er uændret: tallet kommer fra kpi-objektet, ikke fra en node
+       skærmen selv har hentet. */
+    assert.match(skaerm, /kortTal\(kpi, w\)/);
+    assert.ok(!/useListe\(/.test(skaerm) || /demo/.test(skaerm),
+      "dashboardet er begyndt at hente moduldata selv");
   });
 });

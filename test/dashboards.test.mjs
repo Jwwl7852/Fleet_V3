@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 
 import {
   SAMLET, DASHBOARDS, ALLE_DASHBOARDS, MODULKORT, HANDLINGER,
-  tilgaengelige, kpiVaerdi, kapacitetsgrad, kortTal, handlinger,
+  tilgaengelige, kpiVaerdi, kapacitetsgrad, ledig, kortTal, handlinger,
 } from "../src/fleet/dashboards.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { ALLE_MODULER, MODUL } from "../src/fleet/moduler.js";
@@ -114,6 +114,49 @@ describe("de afledte tal", () => {
     /* Og en nævner på nul er ikke uendelig kapacitet. */
     assert.equal(kapacitetsgrad({ bemanding: { disponeret: 48, planlagt: 0 } }), null);
     assert.equal(kapacitetsgrad(null), null);
+  });
+
+  /**
+   * ⚠ ledig(kpi) — beslutning 71.
+   *
+   * Den var et GEMT felt i `kpi/` og husets navngivne eksempel på fejlen: ni
+   * andre steder i koden henviser til "bemanding.ledig" som DEN kendte fejl,
+   * mens feltet lå der stadig. Nu regnes den her.
+   */
+  it("ledig er forskellen mellem planlagt og disponeret", () => {
+    assert.equal(ledig({ bemanding: { planlagt: 58, disponeret: 48 } }), 10);
+    assert.equal(ledig({ bemanding: { planlagt: 12, disponeret: 12 } }), 0,
+      "nul ledige er et SVAR, ikke et manglende tal");
+  });
+
+  /**
+   * ⚠ GATEN STÅR FØR SUBTRAKTIONEN, og prøven findes fordi den ikke gjorde:
+   * gaten blev fjernet i en efterprøvning, og **ingen** prøve faldt.
+   *
+   * `null - 48` er **−48** og `58 - null` er **58**. Begge ser ud som
+   * MÅLINGER — "−48 ledige" og "58 ledige" — og `num()` når aldrig at skrive
+   * INTET, fordi tallet er blevet rigtigt på vejen. Samme fælde som
+   * beslutning 67 fandt i dækningsgradsafvigelsen, og som CLAUDE.md advarer
+   * mod i sin egen liste.
+   */
+  it("⚠ GATEN STÅR FØR SUBTRAKTIONEN — null − 48 er −48, ikke null", () => {
+    assert.equal(ledig({ bemanding: { planlagt: null, disponeret: 48 } }), null);
+    assert.equal(ledig({ bemanding: { planlagt: 58, disponeret: null } }), null);
+    assert.equal(ledig({ bemanding: {} }), null);
+    assert.equal(ledig(null), null);
+  });
+
+  /**
+   * ⚠ OG DEN ER null MOD DEMO-SÆTTET I DAG, fordi `planlagt` er det: der
+   * findes ingen vagtplan (beslutning 69). Det er det rigtige svar — "ledig
+   * kapacitet" uden at vide hvor mange der var på vagt, er et gæt.
+   *
+   * Får vagtplanen en kilde, bliver den her rød, og så skal noten skrives om
+   * frem for at prøven bliver slået fra.
+   */
+  it("⚠ ER null MOD DEMO-SÆTTET — vagtplanen findes ikke", () => {
+    assert.equal(DEMO_KPI.bemanding.ledig, undefined,
+      "ledig er tilbage i demo-sættet — feltet skrives ikke af aggregeringen");
   });
 
   it("kortTal svarer ens for et felt og en afledning", () => {

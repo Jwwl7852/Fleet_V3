@@ -1200,21 +1200,17 @@ export function bemandingstal(personale = [], kompetencer = [], fravaer = [],
      */
     underbemandede: null,
 
-    /**
-     * ⚠ ledig ER IKKE null FORDI DEN MANGLER EN KILDE — den skal UD.
-     *
-     * Den er præcis planlagt − disponeret, altså et AFLEDT tal, gemt. Det er
-     * fejlen CLAUDE.md navngiver ved netop dette felt: et gemt afledt tal
-     * driver fra sit grundlag, og så viser skærmen to tal der ikke går op.
-     * Reglen er at det beregnes hos FORBRUGEREN og ikke lægges i kpi/.
-     *
-     * ⚠ DEN STÅR ALLIGEVEL ENDNU, og det er ikke dovenskab. bemanding.ledig er
-     * en WIDGET i kataloget, og valideLayout() afviser ukendte nøgler — fjernes
-     * feltet uden at gemte forsider ryddes, får hver bruger der har widgeten
-     * "Ukendte widgets: bemanding.ledig" næste gang han gemmer sin forside.
-     * Fjernelsen er derfor en MIGRERING og sin egen etape. Se beslutning 69.
-     */
-    ledig: null,
+    /* ⚠ HER LÅ `ledig` — husets navngivne eksempel på et gemt afledt tal, og
+       det lå der stadig mens ni andre steder i koden henviste til det som DEN
+       kendte fejl. Det er ude i beslutning 71: tallet er præcis
+       `planlagt − disponeret` og regnes af `ledig()` i dashboards.js, hos
+       forbrugeren.
+
+       ⚠ OG DET KOSTEDE INGEN MIGRERING. Frygten var at widget-nøglen ville
+       blive ugyldig — men nøglen hedder `ledigKapacitet`, ikke feltnavnet, og
+       kataloget kunne i forvejen pege på en AFLEDNING i stedet for et felt.
+       Prisen var at læse hvad der faktisk stod, ikke at rydde brugernes
+       forsider. */
   };
 }
 

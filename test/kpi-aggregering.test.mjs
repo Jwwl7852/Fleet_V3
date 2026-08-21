@@ -129,11 +129,11 @@ test("⚠ DE OTTE DER BLIVER, HAR HVER SIN SLAGS GRUND", () => {
     assert.equal(k.bemanding[f], null, `bemanding.${f} er begyndt at gætte`);
   }
 
-  /* ⚠ OG ledig ER DEN TREDJE SLAGS: den er AFLEDT og skal helt UD af kpi/.
-     Den står endnu, fordi den er en widget i kataloget og valideLayout()
-     afviser ukendte nøgler — fjernelsen er en migrering. Se beslutning 69. */
-  assert.equal(k.bemanding.ledig, null,
-    "ledig er begyndt at blive regnet — den er afledt og hører hos forbrugeren");
+  /* ⚠ OG ledig ER DEN TREDJE SLAGS — den var AFLEDT og er nu HELT UDE
+     (beslutning 71). Et `ledig: null` ville betyde "vi prøvede og kunne
+     ikke"; feltet er ikke ubesvaret, det hører ikke hjemme. */
+  assert.ok(!("ledig" in k.bemanding),
+    "ledig er tilbage i kpi/ — et gemt afledt tal driver fra sit grundlag");
 });
 
 test("⚠ HVER KILDE DER MANGLER, ER NAVNGIVET", () => {
@@ -225,7 +225,7 @@ test("⚠ EFTERSLÆBET TÆLLES PÅ NODEN, IKKE PÅ udenKilde()", () => {
   /* De otte i flåde og bemanding er navngivet, så et nyt ikke glider ind. */
   const iDeTo = tomme.filter((f) => f.startsWith("flaade.") || f.startsWith("bemanding."));
   assert.deepEqual(iDeTo.sort(), [
-    "bemanding.chauffoerPlanlagt", "bemanding.ledig",
+    "bemanding.chauffoerPlanlagt",
     "bemanding.planlagt", "bemanding.underbemandede",
     "flaade.nedetidDeltaPoint", "flaade.nedetidPct",
     "flaade.omkostningPrKmDeltaOere", "flaade.omkostningPrKmOere",
@@ -976,7 +976,12 @@ test("⚠ ET HELT DOMÆNE KAN FORSVINDE UD AF NODEN", () => {
    * sammen med bemandingen.
    */
   assert.ok(iNoden.bemanding, "bemanding har rigtige tal nu og skal blive i noden");
-  assert.equal(iNoden.bemanding.ledig, undefined,
+  /* ⚠ ET ENKELT null-FELT FORSVINDER STADIG, også når domænet bliver.
+     Prøven brugte `ledig` til at vise det; feltet er væk helt (beslutning
+     71), og `planlagt` er nu det der bærer pointen. Vælg altid et felt der
+     ER null her — et der er FJERNET ville give undefined af den forkerte
+     grund, og prøven ville stå grøn uden at måle noget. */
+  assert.equal(iNoden.bemanding.planlagt, undefined,
     "et enkelt null-felt forsvinder stadig, også når domænet bliver");
   assert.equal(iNoden.warehouse, undefined,
     "et domæne hvor ALT er null, forsvinder — det er hele grunden til medFuldForm()");
@@ -998,7 +1003,7 @@ test("⚠ medFuldForm() GIVER DOMÆNET TILBAGE", () => {
      ellers bliver skærmen hvid på k.bemanding.ledig i stedet for på
      k.bemanding. Samme fejl, ét niveau dybere. */
   assert.ok(k.bemanding, "domænet skal være der");
-  assert.equal(k.bemanding.ledig, null, "det enkelte null-felt kom ikke tilbage");
+  assert.equal(k.bemanding.planlagt, null, "det enkelte null-felt kom ikke tilbage");
   assert.deepEqual(k.afvigelser, [], "en tom liste er et svar");
 });
 

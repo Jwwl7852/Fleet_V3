@@ -22,7 +22,7 @@ import { harModul, MODUL } from "../fleet/moduler.js";
    INTET (—) i tavshed — og "—" ligner et ubesvaret nøgletal frem for en
    tastefejl i en sti. Se dashboards.js. */
 import {
-  SAMLET, MODULKORT, kortTal, kpiVaerdi, handlinger, tilgaengelige,
+  SAMLET, MODULKORT, kortTal, handlinger, tilgaengelige,
 } from "../fleet/dashboards.js";
 /* ⚠ LAYOUTET ER BRUGERENS EGEN PRÆFERENCE OM SIG SELV — til forskel fra
    dashboardvisning, som er en ADMINISTRATORS beslutning om en ANDEN bruger.
@@ -540,7 +540,12 @@ function Widgetkort({ nr, antal, noegle, kpi, redigerer, paaFlyt, paaFjern }) {
      til; her ville et opslag på null blive til en hvid skærm. */
   if (!w) return null;
 
-  const raa = kpiVaerdi(kpi, w.felt);
+  /* ⚠ SAMME OPSLAG SOM MODULKORTENE — `kortTal()` kender forskellen på et
+     FELT og en AFLEDNING, så skærmen ikke skal. Her stod `kpiVaerdi(kpi,
+     w.felt)` direkte, og en widget med `afledt` ville derfor have slået op på
+     `undefined` og tegnet en streg — et tal der findes, vist som et der ikke
+     gør. Se beslutning 71. */
+  const { vaerdi: raa } = kortTal(kpi, w);
   /* ⚠ INTET (—) FOR ET UBESVARET FELT, ikke 0. Gaten sidder i num()/pct(),
      og beloebEllerIntet() bærer den for kr(), som ikke skelner selv. */
   const vist = w.form === "pct" ? pct(raa, 1)

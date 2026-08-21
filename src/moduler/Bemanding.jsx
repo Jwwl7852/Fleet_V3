@@ -55,6 +55,10 @@ import { demoKompetencerMedNavn, DEMO_PERSONALE } from "../fleet/demo-personale.
 import { stationeringerFor, ikonFor } from "../fleet/personale.js";
 import { DEMO_BEMANDINGSPLAN } from "../fleet/demo-bemanding.js";
 import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
+/* ⚠ ÉT STED FOR AFLEDNINGEN. Dashboard læser den samme funktion — regnede de
+   to skærme hver sin vej, ville vi have 84-mod-83 uden et gemt felt at give
+   skylden. Se beslutning 71. */
+import { ledig, kapacitetsgrad } from "../fleet/dashboards.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap
 } from "../fleet/ui.jsx";
@@ -121,7 +125,16 @@ export default function Bemanding() {
 
   /* Afledt — intet af det gemmes. Kapacitetsgraden er den samme formel som
      Dashboard bruger, på de samme felter. */
-  const kapacitet = (k.bemanding.disponeret / k.bemanding.planlagt) * 100;
+  /* ⚠ HER STOD REGNESTYKKET RÅT: `disponeret / planlagt * 100`.
+     `48 / null` er **Infinity** og `null / 58` er **0** — og 0 % kapacitet
+     ligner en måling af en flåde der står stille. Gaten i `pct()` nås aldrig,
+     fordi tallet er blevet rigtigt på vejen.
+
+     ⚠ OG DASHBOARD REGNEDE DEN ALLEREDE ANDERLEDES. `kapacitetsgrad()` i
+     dashboards.js har haft gaten — og et `p === 0`-led oveni — hele tiden.
+     To skærme, samme tal, to regnestykker: det er 84-mod-83, og her var det
+     den ene af dem der var forkert. Se beslutning 71. */
+  const kapacitet = kapacitetsgrad(k);
   const udnyttelse = (f) => (f.iDag.planlagt ? (f.iDag.disponeret / f.iDag.planlagt) * 100 : 0);
 
   const aabneVagter = funktioner
@@ -148,10 +161,15 @@ export default function Bemanding() {
         <KpiKort label="Disponeret i dag" vaerdi={num(k.bemanding.disponeret)}
                  ikon={<Ikon navn="personer" />} tone="ikon-5" rund
                  note={`af ${num(k.bemanding.planlagt)} planlagte · ${pct(kapacitet, 0)} kapacitet`} />
-        {/* ⚠ ledig er et GEMT afledt tal og et kendt hul — se noten i toppen.
-            Det læses her fordi Dashboard læser det; regner de to skærme hver
-            sin vej, har vi 84-mod-83 igen i ny forklædning. */}
-        <KpiKort label="Ledig kapacitet" vaerdi={num(k.bemanding.ledig)}
+        {/* ⚠ HER LÆSTE SKÆRMEN `k.bemanding.ledig` — et GEMT afledt tal, og
+            husets navngivne eksempel på fejlen. Feltet forlod `kpi/` i
+            beslutning 71, og tallet regnes nu af `ledig()` i dashboards.js.
+
+            ⚠ SAMME FUNKTION SOM DASHBOARD BRUGER. Regnede de to skærme hver
+            sin vej, ville vi have 84-mod-83 igen — bare uden et gemt felt at
+            give skylden. Det er hele grunden til at afledningen har ét sted
+            og ikke står inline her. */}
+        <KpiKort label="Ledig kapacitet" vaerdi={num(ledig(k))}
                  ikon={<Ikon navn="afspil" />} tone="ikon-6" rund note="personer i dag" />
         <KpiKort label="Underbemandede vagter" vaerdi={num(k.bemanding.underbemandede)}
                  ikon={<Ikon navn="advarsel" />} tone="ikon-2" rund note="denne uge" />
