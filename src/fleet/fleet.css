@@ -1290,3 +1290,23 @@
 .fc-gk-rul-fuld{cursor:default}
 .fc-gk-rul-alt{position:absolute; inset:0; border-radius:6px;
   background:var(--fc-accent-soft)}
+
+/* ── Naesten fuldskaerm ──────────────────────────────────────────────────
+   ⚠ KALENDERENS PROBLEM ER BREDDE. Otteogtyve kolonner skal dele en skaerm
+   med en sidebar paa 216 px og et kort med sin egen polstring. Planchen har
+   derfor en "Aabn naesten fuldskaerm" — og det er ikke pynt: hver kolonne der
+   bliver bredere, er en dato man ikke skal knibe oejnene sammen for.
+
+   ⚠ OG DET ER "NAESTEN". Der er en kant hele vejen rundt, og kortet beholder
+   sin baggrund. Et element der daekker hver eneste pixel, ser ud som en ny
+   side — og saa leder man efter browserens tilbageknap i stedet for at lukke
+   det. Kanten siger at man staar OVEN PAA noget.
+
+   ⚠ DEN LIGGER UNDER DIALOGEN. z-index 80 er `.fc-dialog-baggrund`; det her er
+   50. En dialog aabnet fra en fuldskaermsvisning skal stadig kunne ses. */
+.fc-fuld{position:fixed; inset:14px; z-index:50; display:flex; flex-direction:column;
+  background:var(--bc-bg); border:1px solid var(--bc-line); border-radius:var(--fc-r);
+  box-shadow:var(--fc-shadow); padding:12px; overflow:auto}
+/* Kortet inde i skal kunne blive hoejt: gitteret vokser med antallet af
+   raekker, og en fast hoejde ville klippe dem. */
+.fc-fuld>.fc-card{flex:1; min-height:0}

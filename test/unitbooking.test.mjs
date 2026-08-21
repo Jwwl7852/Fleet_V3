@@ -1326,3 +1326,40 @@ describe("klargøringspanelet på kalenderen", () => {
     assert.match(kal(), /disabled=\{!maaSkrive/);
   });
 });
+
+describe("næsten fuldskærm på kalenderen", () => {
+  const kal = () => readFileSync(
+    new URL("../src/moduler/unitbooking/Kalender.jsx", import.meta.url), "utf8");
+  const css = () => readFileSync(
+    new URL("../src/fleet/fleet.css", import.meta.url), "utf8");
+
+  it("⚠ ESCAPE LUKKER DEN", () => {
+    /* En visning der daekker skaermen og kun kan forlades med en
+       museklik-knap, er en faelde — og den der er endt i den, leder efter
+       browserens tilbageknap, som foerer helt vaek fra siden. */
+    assert.match(kal(), /e\.key === "Escape"/);
+    assert.match(kal(), /removeEventListener\("keydown"/);
+  });
+
+  it("⚠ DEN LIGGER UNDER DIALOGEN", () => {
+    /* En dialog aabnet fra en fuldskaermsvisning skal stadig kunne ses.
+       .fc-dialog-baggrund er 80; .fc-fuld skal vaere lavere. */
+    const s = css();
+    const fuld = Number(s.match(/\.fc-fuld\{[^}]*z-index:(\d+)/)[1]);
+    const dialog = Number(s.match(/\.fc-dialog-baggrund\{[^}]*z-index:(\d+)/)[1]);
+    assert.ok(fuld < dialog, `fuldskærm (${fuld}) ligger over dialogen (${dialog})`);
+  });
+
+  it("⚠ OG DEN ER \"NÆSTEN\" — der er en kant hele vejen rundt", () => {
+    /* Et element der daekker hver eneste pixel, ser ud som en NY SIDE, og saa
+       leder man efter browserens tilbageknap. Kanten siger at man staar OVEN
+       PAA noget. `inset:0` ville vaere hele skaermen. */
+    const regel = css().match(/\.fc-fuld\{[^}]*\}/)[0];
+    assert.match(regel, /inset:\d+px/);
+    assert.ok(!/inset:0/.test(regel), "fuldskærmen dækker hver eneste pixel");
+  });
+
+  it("knappen siger hvad der sker, og hvordan man kommer ud", () => {
+    assert.match(kal(), /Escape lukker igen/);
+  });
+});

@@ -572,7 +572,7 @@ tælles. Og en liste man ikke kan tælle, kan man ikke stole på.
 | **Hover → lille kort** | Bygget — Unitbookings EGET, se 6.15 | ✅ |
 | **Klik → større kort med mails og fotos** | Findes ikke | ❌ |
 | Sidepanel "Kommende klargøringer", kan minimeres | Bygget — med Klargør-knappen, se 6.16 | ✅ |
-| "Åbn næsten fuldskærm" | Findes ikke | ❌ |
+| "Åbn næsten fuldskærm" | Bygget — se 6.18 | ✅ |
 
 ⚠ **Gruppering efter sag er ikke bare andre rækker.** En sag kan have flere
 kasser i den samme periode, og gitteret tegner overlap i én række som en
@@ -925,3 +925,36 @@ gitteret:
 Blokken bærer i dag sin **tilstand** som farve og som tekst — "Sag 4260 ·
 Udlånt" (6.8). Det er ikke det samme som planchens tre arter, og forskellen
 skal ses på billedet frem for gættes. **Punktet venter på plancen.**
+
+### 6.18 Næsten fuldskærm — og hvorfor "næsten" er ordet
+
+Kalenderens problem er **bredde**. Otteogtyve kolonner skal dele skærmen med en
+sidebar på 216 px og et kort med sin egen polstring, og hver kolonne der bliver
+bredere, er en dato man ikke skal knibe øjnene sammen for. Planchen har derfor
+en knap, og den er nu bygget.
+
+⚠ **"NÆSTEN", OG DET ER IKKE ET KOMPROMIS.** Der er en kant hele vejen rundt,
+og baggrunden bliver stående. Et element der dækker **hver eneste pixel**, ser
+ud som en ny side — og så leder man efter browserens tilbageknap i stedet for
+at lukke visningen. Tilbageknappen fører helt væk fra skærmen. Kanten siger at
+man står **oven på** noget. En prøve fejler på `inset:0`.
+
+⚠ **ESCAPE LUKKER DEN.** En visning der dækker skærmen og kun kan forlades med
+en museklik-knap, er en fælde. Samme greb som dialogen bruger, og knappens
+`title` siger det, så det ikke skal gættes.
+
+⚠ **OG DEN LIGGER UNDER DIALOGEN.** `.fc-fuld` er z-index 50,
+`.fc-dialog-baggrund` er 80. En dialog åbnet fra en fuldskærmsvisning skal
+stadig kunne ses — ellers ville en Reservér-formular forsvinde bag den
+kalender man åbnede den fra. En prøve læser begge tal og holder rækkefølgen.
+
+⚠ **Skyggen er `--fc-shadow`, ikke en ny værdi.** Første forsøg havde
+`0 8px 28px rgba(...)` — en kraftigere skygge, som en flydende visning godt
+kunne bære. `npm run test:design` fejlede på den med det samme. Et token er en
+**beslutning** (nr. 10), og en ny skyggeværdi skulle i så fald begrundes i
+BESLUTNINGER.md først. Det var den ikke værd; dialogen bruger den samme.
+
+**"Udvid til 2 skærme" er stadig ikke bygget** — det er en anden ting: at åbne
+kalenderen i et nyt browservindue, som Fleets driftskalender kan
+(`aabnNytVindue`). Det hører sammen med at ruten skal kunne bære sin tilstand i
+URL'en, så det nye vindue åbner på den samme uge og gruppering.

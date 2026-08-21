@@ -29,7 +29,7 @@
  * kun har én gruppe; se niveauErNyttigt() i gitter.js. Kalderen siger stadig
  * HVILKE grupperinger der giver mening, men ikke hvornår de er tomme.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -157,10 +157,25 @@ export default function Kalender() {
      af det første når en sag har fire kasser. */
   const [gruppering, setGruppering] = useState("kasse");
   const [svaev, setSvaev] = useState(null);
+  /* ⚠ PLANCHENS "Aabn naesten fuldskaerm". Problemet er BREDDE: otteogtyve
+     kolonner skal dele skaermen med en sidebar paa 216 px. Hver kolonne der
+     bliver bredere, er en dato man ikke skal knibe oejnene sammen for. */
+  const [fuld, setFuld] = useState(false);
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne knappen. Serveren
      spørger om den samme, og `kasseudlaan` er `.write: false`. */
   const { bruger } = useFleet();
   const maaSkrive = harPerm(bruger?.perms, PERM.kasseudlaanSkriv);
+
+  /* ⚠ ESCAPE LUKKER DEN. En visning der dækker skærmen og kun kan forlades med
+     en museklik-knap, er en fælde — og den der er endt i den, leder efter
+     browserens tilbageknap, som fører helt væk fra siden. Samme greb som
+     dialogen bruger. */
+  useEffect(() => {
+    if (!fuld) return undefined;
+    const paaTast = (e) => { if (e.key === "Escape") setFuld(false); };
+    window.addEventListener("keydown", paaTast);
+    return () => window.removeEventListener("keydown", paaTast);
+  }, [fuld]);
   const vindueDage = uger * 7;
   const vindueFra = iDag.getTime() - DAG + skubUger * 7 * DAG;
   const vindueTil = vindueFra + vindueDage * DAG;
@@ -281,6 +296,7 @@ export default function Kalender() {
           tilbage ved at tælle klik baglæns — og så ved man ikke hvornår man er
           hjemme igen. Knappen vises kun når man ER væk; ellers ville den sige
           "gå hen hvor du står". */}
+      <Fuldskaerm naar={fuld}>
       <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
             handling={
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -306,6 +322,16 @@ export default function Kalender() {
                   label="Vindue"
                 />
                 {skubUger !== 0 && <Knap onClick={() => setSkubUger(0)}>I dag</Knap>}
+                {/* ⚠ "NÆSTEN", IKKE HELT. Der er en kant hele vejen rundt, og
+                    baggrunden bliver stående. Et element der dækker hver
+                    eneste pixel, ser ud som en NY SIDE — og så leder man efter
+                    browserens tilbageknap i stedet for at lukke det. */}
+                <Knap onClick={() => setFuld((f) => !f)}
+                      title={fuld
+                        ? "Luk fuldskærm. Escape gør det samme."
+                        : "Giver kalenderen hele bredden. Escape lukker igen."}>
+                  {fuld ? "Luk fuldskærm" : "Fuld skærm"}
+                </Knap>
               </span>
             }>
         {/* ⚠ SVÆVEKORTET KOMMER AF `data-blok` PÅ ELEMENTET, ikke af et
@@ -360,6 +386,7 @@ export default function Kalender() {
           Driftskalender, Servicekalender og Disponering.
         </p>
       </Kort>
+      </Fuldskaerm>
 
       {/* ⚠ PLANCHENS SIDEPANEL — og §6.8 skrev selv at det der manglede, var
           KNAPPEN: "man kan klargøre direkte fra kalenderen". Handlingen er den
@@ -623,5 +650,28 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
         </>
       )}
     </Kort>
+  );
+}
+
+/**
+ * Pakker sit indhold ind i en næsten-fuldskærm, eller lader det stå.
+ *
+ * ⚠ "NÆSTEN", OG DET ER IKKE ET KOMPROMIS. Der er en kant hele vejen rundt, og
+ * baggrunden bliver stående. Et element der dækker hver eneste pixel, ser ud
+ * som en NY SIDE — og så leder man efter browserens tilbageknap i stedet for
+ * at lukke det. Kanten siger at man står oven på noget.
+ *
+ * ⚠ OG DEN LIGGER UNDER DIALOGEN. `.fc-fuld` er z-index 50,
+ * `.fc-dialog-baggrund` er 80: en dialog åbnet herfra skal stadig kunne ses.
+ *
+ * ⚠ Escape lukker den — se `useEffect` i skærmen. En visning der dækker
+ * skærmen og kun kan forlades med en museklik-knap, er en fælde.
+ */
+function Fuldskaerm({ naar, children }) {
+  if (!naar) return children;
+  return (
+    <div className="fc-fuld" role="region" aria-label="Udlånskalender i fuld skærm">
+      {children}
+    </div>
   );
 }
