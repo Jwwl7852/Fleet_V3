@@ -25,7 +25,7 @@ import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
-import { ref, set, get, update } from "firebase/database";
+import { ref, set, get, update, remove } from "firebase/database";
 import { PERM, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 import { SENSITIVE_FELTER, ALLE_ARTER, ALLE_FORLOEB } from "../src/fleet/indberetninger.js";
 import { ALLE_PRIORITETER } from "../src/fleet/prioritet.js";
@@ -209,6 +209,61 @@ describe("sensitive/indberetninger", () => {
       set(ref(db, sti("sensitive/indberetninger/i-felt/underskrift/navn")), "En anden"));
   });
 
+  /**
+   * ⚠ DE TO PRØVER OVENFOR SAGDE AT REGLEN HOLDT — OG INGEN AF DEM SLETTEDE
+   * FØRST.
+   *
+   * `.validate` køres IKKE ved en sletning. Det er samme kendsgerning som
+   * beslutning 38 navngav for `priser`, og den kostede det samme her: MÅLT i
+   * emulatoren kunne en bruger med `indberetninger.skriv` +
+   * `sensitiveLaes` fjerne underskriften, tømme den med en `update`, eller
+   * slette hele den klassificerede post — og bagefter skrive en ny.
+   * Write-once var brudt i to trin.
+   *
+   * En `.validate` siger hvad der må STÅ, aldrig hvad der må FORSVINDE.
+   */
+  it("⚠ EN UNDERSKRIFT KAN HELLER IKKE SLETTES OG SKRIVES OM", async () => {
+    const db = medPerms("s3b", SKRIVER);
+    const s = sti("sensitive/indberetninger/i-slet/underskrift");
+    await assertSucceeds(set(ref(db, s), UNDERSKRIFT));
+    await assertFails(remove(ref(db, s)));
+    /* Og den samme sletning skrevet som en update med null. */
+    await assertFails(
+      update(ref(db, sti("sensitive/indberetninger/i-slet")), { underskrift: null }));
+  });
+
+  it("⚠ HELLER IKKE VED AT SLETTE HELE DEN KLASSIFICEREDE POST", async () => {
+    /* Havde spærringen kun stået på feltet, var vejen udenom ét niveau oppe. */
+    const db = medPerms("s3c", SKRIVER);
+    await assertSucceeds(
+      set(ref(db, sti("sensitive/indberetninger/i-hele/underskrift")), UNDERSKRIFT));
+    await assertFails(remove(ref(db, sti("sensitive/indberetninger/i-hele"))));
+  });
+
+  /**
+   * ⚠ OG SPÆRRINGEN DÆKKER MERE END UNDERSKRIFTEN SELV.
+   *
+   * Kunne skadebeskrivelsen rettes bagefter, ville underskriften bevise noget
+   * andet end det der blev skrevet under på — og så er den lige så lidt værd
+   * som en der kunne redigeres. Hele posten er derfor frosset.
+   *
+   * ⚠ RÆKKEFØLGEN ER DERMED BESTEMT: beskrivelse og modpart FØRST,
+   * underskrift SIDST. Det er også den rigtige vej rundt.
+   */
+  it("⚠ EN UNDERSKREVET POST ER FROSSET — OGSÅ FELTERNE VED SIDEN AF", async () => {
+    const db = medPerms("s3d", SKRIVER);
+    const post = sti("sensitive/indberetninger/i-frost");
+    await assertSucceeds(set(ref(db, post), {
+      skadeBeskrivelse: "Bulet kofanger, ridser i lakken",
+    }));
+    /* Før underskriften: rettelser er i orden. */
+    await assertSucceeds(set(ref(db, `${post}/skadeBeskrivelse`), "Bulet kofanger"));
+    await assertSucceeds(set(ref(db, `${post}/underskrift`), UNDERSKRIFT));
+    /* Efter: intet mere. */
+    await assertFails(set(ref(db, `${post}/skadeBeskrivelse`), "Ikke så slemt endda"));
+    await assertFails(set(ref(db, `${post}/modpart`), { navn: "En anden" }));
+  });
+
   it("kræver navn og tidspunkt på en underskrift", async () => {
     const db = medPerms("s5", SKRIVER);
     for (const felt of ["navn", "ms"]) {
@@ -217,6 +272,38 @@ describe("sensitive/indberetninger", () => {
       await assertFails(
         set(ref(db, sti(`sensitive/indberetninger/i-u-${felt}/underskrift`)), uden));
     }
+  });
+
+  /**
+   * ⚠ OG HALVDELEN AF EN SPÆRRING ER EN NY FEJL.
+   *
+   * Da den klassificerede post blev frosset, kunne HOVEDPOSTEN stadig slettes
+   * af sin ejer — og de to ligger på det SAMME id. Resultatet ville være et
+   * bevis der peger på ingenting: en underskrift der ikke kan fjernes, på en
+   * skade ingen kan finde igen. Før spærringen kunne begge dele slettes, og
+   * de var i det mindste enige.
+   *
+   * ⚠ EN USKREVEN POST MÅ STADIG TRÆKKES TILBAGE. `FORLOEB` har ingen
+   * `annulleret`, så uden det ville en fejloprettet indberetning stå for
+   * altid. Det er sletning af et BEVIS der er lukket, ikke sletning.
+   */
+  it("⚠ EN UNDERSKREVET INDBERETNING KAN IKKE SLETTES — BEVISET BLIVER FORÆLDRELØST", async () => {
+    const ejer = medPerms("s7", [PERM.indberetningerSkriv]);
+    const begge = medPerms("s7", SKRIVER);
+
+    /* Uden underskrift: ejeren må trække sin egen post tilbage. */
+    await assertSucceeds(set(ref(ejer, sti("indberetninger/i-fjern")), POST({ oprettetAf: "s7" })));
+    await assertSucceeds(remove(ref(ejer, sti("indberetninger/i-fjern"))));
+
+    /* Med underskrift: nej. */
+    await assertSucceeds(set(ref(ejer, sti("indberetninger/i-bevis")), POST({ oprettetAf: "s7" })));
+    await assertSucceeds(
+      set(ref(begge, sti("sensitive/indberetninger/i-bevis/underskrift")), UNDERSKRIFT));
+    await assertFails(remove(ref(ejer, sti("indberetninger/i-bevis"))));
+
+    /* Men den må stadig RETTES — et forløb skal kunne skride frem. */
+    await assertSucceeds(
+      update(ref(ejer, sti("indberetninger/i-bevis")), { forloeb: "vurderet" }));
   });
 
   it("afviser et ukendt felt i satellitten", async () => {

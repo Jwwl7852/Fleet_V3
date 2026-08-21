@@ -424,7 +424,42 @@
               // Den der skriver den klassificerede del, skal baade kunne
               // skrive indberetningen og se det klassificerede — ellers kunne
               // man skrive noget ind man ikke selv maatte laese igen.
-              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+              //
+              //
+              // ⚠ SIDSTE LED: EN UNDERSKREVET POST ER FROSSET.
+              //
+              // Underskriften havde `.validate: "!data.exists()"`, og to proever
+              // sagde at den holdt. Ingen af dem SLETTEDE foerst — og en
+              // .validate koeres IKKE ved en sletning. MAALT i emulatoren kunne
+              // en bruger med indberetninger.skriv + sensitiveLaes:
+              //   remove() underskriften                  → TILLADT
+              //   update({underskrift: null})             → TILLADT
+              //   remove() HELE den klassificerede post   → TILLADT
+              // og derefter skrive en ny underskrift      → TILLADT.
+              // Write-once var altsaa brudt i to trin.
+              //
+              // ⚠ OG DET DAEKKER MERE END UNDERSKRIFTEN SELV. Kunne
+              // skadeBeskrivelsen rettes bagefter, ville underskriften bevise
+              // noget andet end det der blev skrevet under paa — og saa er den
+              // lige saa lidt vaerd som en der kunne redigeres. Derfor er hele
+              // posten frossen, ikke kun feltet. En rettelse er en NY
+              // indberetning der henviser til den gamle; det er det samme svar
+              // som feltet allerede gav.
+              //
+              // ⚠ DET KAN IKKE LOESES PAA BARNET. .write kaskaderer ned, og et
+              // strammere barn kan ikke tilbagekalde en forfaders tilladelse —
+              // samme kendsgerning som beslutning 17 bygger paa for .read.
+              // Leddet staar derfor HER, hvor skrivningen tillades.
+              //
+              // ⚠ RAEKKEFOELGEN ER DERMED BESTEMT: beskrivelse og modpart
+              // FOERST, underskrift SIDST. Det er ogsaa den rigtige vej rundt —
+              // man skriver under paa noget der staar der i forvejen. Skaermen
+              // er ren visning i dag, saa der er intet floew at braekke; det
+              // blev maalt, ikke antaget.
+              //
+              // Samme fejlklasse som beslutning 38 navngav: en .validate siger
+              // hvad der maa STAA, aldrig hvad der maa FORSVINDE.
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|') && auth.token.perms != null && auth.token.perms.contains('|indberetninger.sensitiveLaes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true) && !data.child('underskrift').exists()",
 
               "skadeBeskrivelse": { ".validate": "newData.isString() && newData.val().length <= 2000" },
 
@@ -1354,7 +1389,21 @@
           // klienten med en advarsel i konsollen. Regningen kommer stille.
           ".indexOn": ["oprettetMs", "koeretoejId", "art"],
           "$id": {
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|')) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+            //
+            // ⚠ SIDSTE LED: EN UNDERSKREVET INDBERETNING KAN IKKE SLETTES.
+            //
+            // Ejeren maa slette sin egen post — en fejloprettet indberetning
+            // skal kunne trækkes tilbage, og der er ingen `annulleret` i
+            // FORLOEB at saette den til i stedet. Men den klassificerede
+            // satellit er FROSSET naar den er underskrevet, og den ligger paa
+            // det SAMME id. Uden det her led kunne hovedposten forsvinde under
+            // en underskrift der ikke kan slettes: et bevis der peger paa
+            // ingenting, og en skade ingen kan finde igen.
+            //
+            // ⚠ DET ER SPAERRINGEN PAA DEN KLASSIFICEREDE POST DER GOER DET
+            // NOEDVENDIGT. Foer den kunne begge dele slettes, og de to var i
+            // det mindste enige. Halvdelen af en spaerring er en ny fejl.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|')) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true) && (newData.exists() || !root.child('tenants').child($tenantId).child('sensitive').child('indberetninger').child($id).child('underskrift').exists())",
             // ⚠ NODEN VALIDEREDE KUN division. Alt andet var frit — en art
             // vi ikke kender, et forloeb der ikke findes, en omkostning som
             // streng. Og chauffoerer SKRIVER til den: det er den ene node

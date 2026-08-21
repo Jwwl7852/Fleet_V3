@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 51 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 52 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Plan, ikke bygget** |
@@ -159,6 +159,7 @@ tilfældigt.
 | 49 | **Gitteret flytter opgaver — `opgaveflyt`, og attrappen er væk.** "Træk opgave hertil" kunne ikke fokuseres eller klikkes; det man ville trække, er en **opdatering** af en post, og `opgaveplanlaeg` opretter kun ("INTET id. Serveren laver push-nøglen"). ⚠ Den krævede **ingen regelændring** — `opgaver` og `reservationer` er begge `.write: false` i forvejen; det blev målt frem for antaget. ⚠ To fælder, og begge kan kun ses i et regnestykke, derfor er `flytOpdatering()` **ren**: **samme ressource er samme nøgle** (et objekt har én værdi pr. nøgle, så "null den gamle + skriv den nye" på samme sti bliver til én af delene — landede `null` sidst, forsvandt reservationen mens bilen stod på liften), og **opgaven konflikter med sig selv** (`tjekLedigMod()` filtrerer på `r.id !== ny.id`, og `reservationFraOpgave()` bærer intet id). ⚠ Og **et døgn er ikke 24 timer**: rå addition over sommertidsskiftet flytter et 07-besøg til 08. ⚠ **Blokkens tegning er ikke opgavens varighed** — en opgave uden estimat tegnes som én time, og regnedes `estimeretMin` af blokken, ville den time blive et rigtigt estimat. ⚠ **Arten flyttes ikke med**, og modulet følger den. En facility-opgave har **to** ressourcetyper: et træk fra en port til en hal skifter TYPE og rydder `aktivId` | `fleet/opgaveplan-regler.js`, `fleet/gitter.js`, `functions/index.js` |
 | 50 | **Opgavens statusmaskine havde seks tilstande og nul veje imellem dem.** En driftsopgave kunne oprettes og flyttes, men aldrig meldes i gang eller udført — mens Arbejdskøen viste statusserne og `kpi.opgaver` talte dem op. ⚠ **Et statusskifte rører reservationen**, og det er derfor det er en serversag: en annulleret opgave skal give bilen fri igen, en udført skal holde op med at spærre den, og `reservationer` er `.write: false` — en klient kunne kun skrive den ene halvdel. ⚠ `udfoert` kan **kun** nås fra `igang` (et besøg meldes ikke færdigt uden at nogen har haft bilen på liften — som klargøringstrinnet i 37), man kan ikke **af-starte** et arbejde, og `udfoert`/`annulleret` er **endestationer**. ⚠ **Reservationen afkortes til nu — men forlænges ALDRIG:** løb arbejdet over sin tid, kan perioden allerede være lovet væk, og en udvidelse ville lave et overlap modellen afviser. Meldes den færdig før den begyndte, fjernes den. `afkortet: true` fordi flaget er vigtigere end tallet. ⚠ **Tre tal, tre betydninger:** `estimeretMin` er hvad vi troede, reservationens `til` hvor længe RESSOURCEN var optaget, `faktiskMin` hvor længe ARBEJDET tog — en bil kan holde på liften i seks timer og blive arbejdet på i to. ⚠ `faktiskMin` er **valgfri**, og svaret stod allerede i koden: `kpi.opgaver.udenTidsregistrering` tæller dem der mangler. Et krævet felt ville blive udfyldt med fiktion | `fleet/opgaveplan-regler.js`, `fleet/Statusskifte.jsx`, `functions/index.js` |
 | 51 | **Facility kunne flytte og afslutte sine servicebesøg — men ikke oprette et.** `opgaveplanlaeg` SÆTTER `art: "vaerksted"`, så den sidste lukkede vej ind i `opgaver` krævede sin egen funktion — Servicekalenderen skrev det selv: *"En knap her ville love noget serveren afviser."* ⚠ **Ikke et art-flag**, og begge grunde er spærringer: `art` ER feltskemaet (21), og modulet er `facility` mod `flaade` — spurgte begge om Fleet, kunne en kunde der KUN har Facility, ikke planlægge sit eget besøg. ⚠ **Et anlæg ELLER et sted, ikke begge:** `ressourceId()` foretrækker aktivet, så lokationen ville stå som en påstand ingen læser — og anlæggets lokation står på anlægget. Målt: **fem af ni** demo-poster bar begge, alle fem enige med aktivets eget felt. Enten-eller er bygget ind i **vælgeren**. ⚠ **Anlæggets status spærrer ikke** — modsat en solgt bil er en port i stykker præcis det et servicebesøg findes for. ⚠ **Divisionen låses ikke til `faelles`:** opgaven bærer hvem der BETALER, og `op-013` står som `bus`. ⚠ Undervejs: `ART_FELTER.facility` lovede **mindre** end posterne bar (`estimeretMin` på alle ni, `leverandoerId` på seks, `sagId` på begge arter) — og prøven slog det modsatte fast. Et felt reservationen regnes af, kan ikke stå uden for artens skema; begge retninger prøves nu | `fleet/opgaveplan-regler.js`, `moduler/facility/Servicedialog.jsx`, `functions/index.js` |
+| 52 | **Write-once var ikke write-once — man skulle bare slette først.** Underskriften på en indberetning havde `.validate: "!data.exists()"`, CLAUDE.md beskrev den som gældende, og **to prøver sagde at den holdt**. Ingen af dem slettede først — og en `.validate` køres **ikke** ved en sletning. ⚠ **Målt i emulatoren:** `remove()` underskriften, `update({underskrift:null})` og `remove()` hele den klassificerede post svarede alle TILLADT, og en ny underskrift bagefter ligeså. Brudt i to trin. Samme fejlklasse som beslutning 38 navngav for `priser`, ét niveau dybere: **en `.validate` siger hvad der må STÅ, aldrig hvad der må FORSVINDE.** ⚠ **Og det kunne ikke løses på barnet:** `.write` kaskaderer, og et strammere barn kan ikke tilbagekalde en forfaders tilladelse — beslutning 17's kendsgerning, den anden vej. ⚠ **Spærringen dækker mere end feltet:** kunne `skadeBeskrivelse` rettes bagefter, ville underskriften bevise noget andet end det der blev skrevet under på. Hele den underskrevne post er frossen — og rækkefølgen er dermed bestemt: beskrivelse først, underskrift sidst. ⚠ **Halvdelen af en spærring er en ny fejl:** hovedposten kunne stadig slettes af sin ejer, på det SAMME id, og så pegede beviset på ingenting. Den kan nu ikke slettes hvis der findes en underskrift — men en **uskreven** post må stadig trækkes tilbage, for `FORLOEB` har ingen `annulleret`. ⚠ Fundet fordi READMEs nodetabel var drevet: **fem af tolv rækker** sagde "mangler regler" om noder der havde dem, og rækken om underskriften sagde at spærringen ikke fandtes — derfor kiggede ingen på om den virkede | `firebase.rules.json`, `test/rules.indberetninger.test.mjs`, `test/dokumentation.test.mjs` |
 
 ## Struktur
 
@@ -957,23 +958,30 @@ regel afviser RTDB alt — der er ingen åben dør, kun en manglende.
 
 | Node | Bemærkning |
 |---|---|
-| `facility/lokationer` | |
-| `facility/aktiver` | |
-| `facility/zoner` | Bærer grænserne. `facility/sensorer` har regler i forvejen |
+| ~~`facility/lokationer`~~ | ✅ **Bygget.** Navn og type valideres; `sted` er fri tekst med vilje — stederne er denne tenants, og et katalog i regelfilen ville betyde en udrulning pr. nyt depot |
+| ~~`facility/aktiver`~~ | ✅ **Bygget.** Indekseret på `lokationId`, `status` og `naesteServiceMs` |
+| ~~`facility/zoner`~~ | ✅ **Bygget.** Bærer grænserne. `facility/sensorer` havde regler i forvejen |
 | `sager`, `sensitive/sager` | Beslutning 20. Permissions `sag.*` mangler af samme grund |
 | `support/sager`, `support/beskeder` | ⚠ I **toppen**, ikke under `tenants/` — som `audit/`, fordi `.read` kaskaderer. Reglen pr. sag sammenligner `tenantId` med claim'et |
 | `tenants/<t>/supportsager` | Indeks. Kun id'er |
 | `support/countere` | Global counter — sagsnumre er vores, ikke kundens |
-| `leverandoerer` | ⚠ `leverandoerId` er **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
+| ~~`leverandoerer`~~ | ✅ **Bygget.** ⚠ `leverandoerId` var **allerede indekseret** på `indkoeb` og `fakturaer` — modellen regnede med noden, længe før den blev skrevet |
 | `prislister/<leverandoerId>` | Beslutning 25. Ligger **for sig**, ikke på leverandøren: flere års historik skal ikke hentes med hver oversigt |
 | ~~`grundlag`~~ | ✅ **Bygget.** Noden findes, Fakturering læser den, og `grundlagskriv` skriver den: opret (med nummer fra counteren), godkend og lås. Noden er `.write: false` for **alle**, også admin. ⚠ To permissions, fordi det er to handlinger: `grundlag.skriv` udarbejder, `grundlag.godkend` godkender og låser — casehandleren har kun den første |
-| `sensitive/indberetninger` | Beslutning 25. Skadebeskrivelse, modpart og **underskrift**. Permissionen `indberetninger.sensitiveLaes` mangler af samme grund som `sag.*` |
-| `sensitive/indberetninger/<id>/underskrift` | ⚠ Skal have `".write": "!data.exists()"`. Write-once er en **regel**, ikke en konvention — en underskrift der kan redigeres bagefter, beviser ingenting |
+| ~~`sensitive/indberetninger`~~ | ✅ **Bygget.** Skadebeskrivelse, modpart og **underskrift**, og `indberetninger.sensitiveLaes` findes. ⚠ Det er den ene node hvor den **mindst betroede** rolle opretter poster — chauffører skriver deres egne indberetninger |
+| `sensitive/indberetninger/<id>/underskrift` | ✅ Write-once — og det holdt **ikke** af sig selv. `.validate` køres ikke ved en sletning, så underskriften kunne fjernes og skrives om i to trin. Hele den underskrevne post er nu **frossen**, og hovedposten kan ikke slettes under den. Se **beslutning 52** |
 
 | ~~`enheder`~~ | ✅ **Bygget** (WAREHOUSE.md etape 9). `enheder/<serienr>` — ét stykke gods med sit eget serienummer. Nøglen ER serienummeret, så samme tegnregel som batchen gælder. ⚠ Noden er `.write: false` for **alle**, og der findes med vilje **ingen** `enheder.skriv`: rækken bærer samme kendsgerning som `beholdning`, og de to skrives i ÉN atomisk opdatering af `bevaegelseskriv`. To skrivere ville være to sandheder |
 
 Listen står her, så den ikke ligger spredt i tre dokumenter. Tilføjer du en
 node, hører den enten i reglerne eller på denne liste.
+
+⚠ **Og nu prøves det.** Fem af tolv rækker sagde "mangler regler" om noder der
+havde dem — og en af dem var underskriftens write-once, som derfor stod som
+**ikke bygget** mens den i virkeligheden var bygget og kunne omgås. En liste
+over det der mangler, er kun brugbar hvis den bliver kortere når noget bliver
+bygget. `test/dokumentation.test.mjs` læser tabellen ud af README og fejler på
+en node der står begge steder. Se beslutning 52.
 
 ### ⚠ `ikkeFaktureretOere` betyder noget andet efter beslutning 25
 

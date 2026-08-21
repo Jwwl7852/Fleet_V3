@@ -3073,3 +3073,114 @@ beslutning — den skal gælde begge veje, i begge funktioner og i
 `tjekDisponering()` — og et halvt tjek i **én** af dem ville være værre end
 ingen, fordi skærmen så ville vise en ledighed serveren afviser i det ene
 tilfælde og ikke i det andet.
+
+## 52. Write-once var ikke write-once — man skulle bare slette først
+
+En underskrift på en indberetning er bevismateriale. Reglen sagde det, CLAUDE.md
+sagde det, og **to prøver sagde at det holdt**:
+
+```
+"underskrift": { ".validate": "!data.exists() && newData.hasChildren(['navn','ms'])" }
+```
+
+Ingen af de to prøver **slettede først**. Og en `.validate` køres ikke ved en
+sletning.
+
+### Målt i emulatoren, ikke udledt
+
+En bruger med `indberetninger.skriv` **og** `indberetninger.sensitiveLaes` —
+altså den rolle der i forvejen må skrive det klassificerede:
+
+| Handling | Før |
+|---|---|
+| overskriv underskriften direkte | afvist ✅ |
+| ret ét felt i den | afvist ✅ |
+| `remove()` underskriften | **tilladt** |
+| `update({ underskrift: null })` | **tilladt** |
+| `remove()` hele den klassificerede post | **tilladt** |
+| skriv en ny underskrift bagefter | **tilladt** |
+
+Write-once var altså brudt i **to trin**. Det er samme fejlklasse som
+beslutning 38 navngav for `priser` — *"`.validate` kører ikke ved en sletning,
+og det kan ikke lukkes med en regel"* — og den er nu dukket op igen ét niveau
+dybere. Sætningen skal derfor stå kortere og hårdere:
+
+> **En `.validate` siger hvad der må STÅ, aldrig hvad der må FORSVINDE.**
+
+### ⚠ Og det kunne ikke løses på barnet
+
+`.write` **kaskaderer nedad**, og et strammere barn kan ikke tilbagekalde en
+forfaders tilladelse. Det er nøjagtig den kendsgerning beslutning 17 bygger på
+for `.read` — her bare den anden vej. En `".write": false` på `underskrift`
+ville ikke gøre noget som helst, fordi `$id` allerede har givet lov.
+
+Leddet står derfor **hvor skrivningen tillades**: på `$id`. Og `newData` er
+posten **efter** skrivningen — også når det er et barn der forsvinder, eller
+hele posten.
+
+### ⚠ Spærringen dækker mere end underskriften selv
+
+Første udgave var `(!data.child('underskrift').exists() ||
+newData.child('underskrift').exists())`: underskriften skal stadig findes
+bagefter. Målingen viste at det ikke rakte — `skadeBeskrivelse` kunne stadig
+rettes **efter** underskriften. Så beviser underskriften noget andet end det
+der blev skrevet under på, og den er lige så lidt værd som en der kunne
+redigeres.
+
+Reglen er derfor den simplere og strammere: **en underskrevet post er frossen.**
+
+```
+&& !data.child('underskrift').exists()
+```
+
+⚠ **Rækkefølgen er dermed bestemt:** beskrivelse og modpart FØRST, underskrift
+SIDST. Det er også den rigtige vej rundt — man skriver under på noget der står
+der i forvejen. Og der er intet flow at brække: skærmen er ren visning i dag,
+og det blev **målt**, ikke antaget.
+
+### ⚠ Halvdelen af en spærring er en ny fejl
+
+Da den klassificerede post blev frosset, kunne **hovedposten** stadig slettes
+af sin ejer — og de to ligger på det **samme id**. Resultatet ville være et
+bevis der peger på ingenting: en underskrift der ikke kan fjernes, på en skade
+ingen kan finde igen. Før spærringen kunne begge dele slettes, og de var i det
+mindste **enige**.
+
+Hovedpostens `.write` fik derfor sit eget led: den må ikke slettes, hvis der
+findes en underskrift på det id.
+
+⚠ **En UNDERSKREVET post kan ikke trækkes tilbage — en uskreven kan.** `FORLOEB`
+har ingen `annulleret`, så uden den åbning ville en fejloprettet indberetning
+stå for altid. Det er sletning af et **bevis** der er lukket, ikke sletning.
+
+### Målt i den udrullede base
+
+**Én** underskrevet indberetning i DEV (`ind-001`), og den har sin hovedpost.
+Reglen gør altså ingen eksisterende post ugyldig — modsat `udeAfDriftFra`
+(beslutning 51's naboetape), hvor den ene ramte post skulle efterudfyldes.
+
+### Hvad målingen kom af — README's nodetabel var drevet
+
+Jeg kom til reglen fra listen *"Noder der er dokumenteret, men mangler regler"*.
+Rækken om underskriften sagde *"⚠ Skal have `.write: !data.exists()`"* — altså
+at reglen manglede. Den fandtes. Det gjorde fire andre rækker også:
+
+| Række | Tabellen sagde | Virkeligheden |
+|---|---|---|
+| `facility/lokationer` | mangler regler | **har regler** |
+| `facility/aktiver` | mangler regler | **har regler** |
+| `facility/zoner` | mangler regler | **har regler** |
+| `leverandoerer` | mangler regler | **har regler** |
+| `sensitive/indberetninger` | mangler regler | **har regler** — og den er den ene node hvor den mindst betroede rolle skriver |
+
+Fem af tolv rækker var forkerte. En liste over det der mangler, er kun
+brugbar hvis den bliver kortere når noget bliver bygget — ellers er den en
+opgaveliste man holder op med at læse. Tabellens egen sidste linje siger det:
+*"Tilføjer du en node, hører den enten i reglerne eller på denne liste."* Nu
+**prøves** det: `test/dokumentation.test.mjs` læser tabellen ud af README og
+fejler på en node der står begge steder.
+
+Det er den samme guard som `test/rules.tenant.test.mjs` er for reglerne selv —
+en liste der ikke kontrolleres, driver. Og det var netop drift der gjorde, at
+en spærring alle troede var på plads, kunne omgås i to trin uden at nogen
+kiggede efter.

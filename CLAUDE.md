@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **51 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **52 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -318,9 +318,20 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   lagertrækket i Indkøb er to. Slås de sammen, fakturerer du til kostpris
   eller bogfører din salgspris som en omkostning. Og `MAENGDE_SKALA`
   **importeres** fra `grundlag.js` — to skalaer fakturerer 1000× forkert.
-- **Skrive en underskrift to gange.** `sensitive/…/underskrift` er write-once
-  i reglerne (`!data.exists()`). En rettelse er en NY indberetning der
-  henviser til den gamle. Et bevis der kan redigeres, beviser ingenting.
+- **Skrive en underskrift to gange — eller slette den først.** En underskrevet
+  post er FROSSET: `sensitive/indberetninger/$id` afviser enhver skrivning når
+  der findes en `underskrift`, og hovedposten kan ikke slettes under den.
+  ⚠ **Leddet står på `$id`, ikke på feltet.** `.write` kaskaderer, så et
+  strammere barn kan ikke tilbagekalde en forfaders tilladelse — og en
+  `.validate` køres slet ikke ved en sletning. Feltets `!data.exists()` alene
+  kunne omgås i to trin: slet, og skriv om. Det blev målt.
+  ⚠ **Rækkefølgen er dermed bestemt:** beskrivelse og modpart FØRST,
+  underskrift SIDST. En rettelse er en NY indberetning der henviser til den
+  gamle. Se beslutning 52.
+- **Tro at en `.validate` beskytter mod en SLETNING.** Den siger hvad der må
+  STÅ, aldrig hvad der må FORSVINDE. Skal noget ikke kunne fjernes, hører det
+  i den `.write` der tillader skrivningen — og `newData` er posten EFTER, også
+  når det er et barn eller hele posten der forsvinder. Beslutning 38 og 52.
 - **Vise et nøgletal uden sit grundlag.** `beregnNoegletal()` returnerer
   `null` under `MINDSTE_GRUNDLAG`, og skærmen skal skrive "for lidt
   grundlag" — ikke en streg. To leveringer og to hundrede ser ens ud i en
