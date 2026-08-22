@@ -5277,3 +5277,62 @@ strimle kommentarer — og noten der forklarer at feltet er *fjernet*,
 indeholder ordet. **Femte gang den fælde dukker op i dette repo.** En prøve der
 læser kilde som tekst, skal fjerne kommentarerne først; ellers er den enten
 grøn af sin egen dokumentation eller rød af den.
+
+## 80. Behovet melder sig ind — Procures trin 1
+
+Etape 2 af beslutning 78: `behovskriv`, indbakken grupperet på kilde, og
+indmeldingen ved siden af.
+
+⚠ **Indmeldingen er responsiv, ikke en app.** Planchen viser den som en
+mobilskærm; kunden valgte web frem for at vente på mobilappen. Én rute, én
+kode, og en medarbejder åbner den på telefonen uden at installere noget.
+Layoutet er `auto-fit` med et minimum — samme greb som `.fc-kpis` og
+`.fc-feltraekke` — så spalterne klapper sammen af sig selv uden en media query.
+
+### ⚠ Antallet er valgfrit, og det er en beslutning
+
+Den der melder ind, ved hvad han mangler — ikke hvor mange der er i en pakke.
+Et krævet felt ville blive udfyldt med et gæt af den der ikke ved det, **og
+gættet ville gå med i en bestilling**. Mangler det, sætter den der bestiller
+det.
+
+Det trækker tre ting med sig:
+
+- Skærmen skriver **`—`** for et ubesvaret antal, ikke `0`. Et nul er en
+  påstand om at der ikke skal bestilles noget.
+- Feltet sendes som `undefined`, ikke som `Number("")`. **`Number("") === 0`**
+  — en tom rubrik ville blive til et svar.
+- `behovTilLinje()` **kaster** frem for at gætte 1, når behovet lægges i en
+  bestilling. Samme holdning som `reservationFraOpgave()` har til en opgave
+  uden estimat.
+
+### ⚠ Et afvist behov slettes ikke
+
+Det får en tilstand og en grund. Uden grunden er afvisningen en tavshed, og
+**den samme mangel bliver meldt ind igen i næste uge**. Funktionen kræver
+begrundelsen, og et behov der allerede er bestilt, kan ikke afvises — så skal
+ordren annulleres i stedet.
+
+### Det linten fandt, som ville have ramt hver kommende node
+
+`demo-kilder.test.mjs` henfører et demo-sæt til sin node ud fra navnet, og tog
+det **første** match: `DEMO_INDKOEBSBEHOV` begynder med `DEMO_INDKOEB`, så
+behovene blev henført til `indkoeb` og meldt som "to datasæt for én node".
+
+⚠ **Det ramte i samme øjeblik noden blev født**, og det ville ramme igen for
+enhver node hvis navn begynder som en anden — `indkoebsordrer` er den næste.
+Det **længste** match vinder nu.
+
+### ⚠ Og skærmen viste nul, hvilket var rigtigt
+
+Første kørsel i browseren: 0 behov, selv om demo-sættet har ti. Noden fandtes
+og var tom, og `useListe(node, { demo })` bruger kun sættet når der **ingen
+database er** — beslutning 56 og 64. Skærmen gjorde det rigtige; noden manglede
+et seed. En seedet node må aldrig vise noget andet end sig selv.
+
+### Det der ikke er bygget, siger det selv
+
+Planchens billede- og taleoptagelse står som en sætning på skærmen frem for
+som deaktiverede knapper: *"De kræver fillagring med sine egne adgangsregler
+pr. virksomhed, og det er sin egen opgave."* En attrap der ligner en knap,
+læres at blive trykket på.

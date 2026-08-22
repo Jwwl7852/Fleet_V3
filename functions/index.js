@@ -79,6 +79,7 @@ import { tjekDisponering } from "./delt/disponering.js";
 /* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
+import { valideBehov } from "./delt/procure.js";
 import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
   kanSkifteOpgave, statusOpdatering,
@@ -3883,6 +3884,159 @@ export const auditoprydning = onSchedule(
     return null;
   }
 );
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BEHOVSKRIV — den eneste vej ind i `indkoebsbehov` (beslutning 78, etape 2)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ NODEN ER `.write: false`, OG DET ER VEJEN DER ER LUKKET, IKKE RETTEN.
+   Casehandler, disponent og admin HAR `indkoeb.skriv`, og funktionen kraever
+   den samme. Men et behov der bliver til en ordre, aendrer TO poster — og de
+   skal skrives atomisk. Kunne en klient skrive den ene halvdel, ville et
+   behov kunne staa som "bestilt" uden en ordre der findes.
+
+   ⚠ OG FORMEN HAANDHAEVES AF `valideBehov()`, ikke af en kopi her.
+   Skaermens formular kalder den samme funktion, saa serveren afviser med den
+   SAMME saetning brugeren allerede har set. To formuleringer af én spaerring
+   er to forklaringer paa én ting.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const behovskriv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  if (!perms.includes("|indkoeb.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke melde et indkøbsbehov ind. Det kræver indkoeb.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE, og reglerne er det eneste sted
+     abonnements- og modulspaerringen ellers staar. Uden de her blokke var
+     funktionen en aaben doer rundt om begge. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("indkoeb").val() !== true) {
+    throw new HttpsError("permission-denied", "Procure-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const handling = d.handling === "afvis" ? "afvis" : "opret";
+
+  /* ── AFVIS ────────────────────────────────────────────────────────────── */
+  if (handling === "afvis") {
+    const id = kortStreng(d.id, 60);
+    if (!id) throw new HttpsError("invalid-argument", "Intet behov at afvise.");
+    const snap = await rod.child(`indkoebsbehov/${id}`).once("value");
+    if (!snap.exists()) throw new HttpsError("not-found", "Behovet findes ikke.");
+    const foer = snap.val();
+
+    /* ⚠ ET AFVIST BEHOV SLETTES IKKE. Det faar en tilstand og en grund —
+       samme regel som resten af systemet: en post tages ud af drift med en
+       status, ikke ved at forsvinde. Ellers kan man ikke se at nogen HAR
+       meldt ind, og den samme mangel bliver meldt ind igen i naeste uge. */
+    if (foer.status === "bestilt") {
+      throw new HttpsError("failed-precondition",
+        "Behovet er allerede bestilt og kan ikke afvises. Annullér ordren i stedet.");
+    }
+    const begrundelse = kortStreng(d.begrundelse, 250);
+    if (!begrundelse) {
+      throw new HttpsError("invalid-argument",
+        "Angiv en begrundelse. Den der meldte ind, skal kunne se hvorfor.");
+    }
+    const efter = {
+      ...foer, status: "afvist",
+      afvistAf: uid, afvistMs: Date.now(), begrundelse,
+    };
+    await rod.child(`indkoebsbehov/${id}`).set(efter);
+    await logProcure(tenantId, uid, AUDIT.tilstandsskift, "indkoebsbehov", id,
+      foer, efter, "behov afvist");
+    return { ok: true, id };
+  }
+
+  /* ── OPRET ────────────────────────────────────────────────────────────── */
+  const post = {
+    vare: kortStreng(d.vare, 200),
+    kilde: kortStreng(d.kilde, 20),
+    status: "nyt",
+    oprettetAf: uid,
+    oprettetMs: Date.now(),
+  };
+  /* ⚠ DE VALGFRIE SAETTES KUN NAAR DE ER DER. Et `undefined` i en RTDB-skrivning
+     kaster, og et `null` ville slette feltet — begge dele er stoej i en post
+     der lige er oprettet. */
+  const maaske = {
+    antal: Number.isFinite(d.antal) ? d.antal : undefined,
+    enhed: kortStreng(d.enhed, 20) || undefined,
+    prioritet: kortStreng(d.prioritet, 10) || undefined,
+    note: kortStreng(d.note, 250) || undefined,
+    varenummer: kortStreng(d.varenummer, 60) || undefined,
+    /* ⚠ personId, IKKE uid. `anmoderId` er hvem behovet HANDLER OM — den
+       medarbejder der mangler noget. `oprettetAf` er hvem der gjorde det.
+       Bytter man om, matcher et ejerskabstjek aldrig. Se CLAUDE.md. */
+    anmoderId: kortStreng(d.anmoderId, 60) || undefined,
+    leverandoerId: kortStreng(d.leverandoerId, 60) || undefined,
+  };
+  for (const [k, v] of Object.entries(maaske)) if (v !== undefined) post[k] = v;
+
+  /* ⚠ SAMME FUNKTION SOM SKAERMEN. Se noten i hovedet. */
+  const svar = valideBehov(post);
+  if (!svar.ok) {
+    const foerste = Object.values(svar.fejl)[0];
+    throw new HttpsError("invalid-argument", foerste || "Behovet er ikke gyldigt.");
+  }
+
+  /* ⚠ LEVERANDOEREN SKAL FINDES. Et behov der peger paa et leverandoerId der
+     ikke er der, ville give en bestilling uden en modtager — og fejlen ville
+     foerst vise sig naar nogen skulle sende den. Samme tjek som indkoeb har. */
+  if (post.leverandoerId) {
+    const lev = await rod.child(`leverandoerer/${post.leverandoerId}`).once("value");
+    if (!lev.exists()) {
+      throw new HttpsError("invalid-argument", "Leverandøren findes ikke.");
+    }
+  }
+
+  const ref = rod.child("indkoebsbehov").push();
+  await ref.set(post);
+  await logProcure(tenantId, uid, AUDIT.opret, "indkoebsbehov", ref.key,
+    null, post, `behov "${post.vare}" meldt ind fra ${post.kilde}`);
+  return { ok: true, id: ref.key };
+});
+
+/**
+ * Auditpost for Procures noder.
+ *
+ * ⚠ KUN FELTER PAA ALLOWLISTEN FAAR DERES VAERDI MED — `diff()` sorterer, og
+ * `vare` og `note` er FRITEKST fra den der melder ind. Allowlisten findes for
+ * at holde tastet tekst ude af loggen; noten herunder er vores egen saetning
+ * og ikke brugerens.
+ */
+async function logProcure(tenantId, uid, handling, objekt, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, objekt);
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt, objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    KPI-AGGREGERINGEN — det sidste punkt på listen

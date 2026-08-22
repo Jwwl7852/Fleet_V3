@@ -219,6 +219,8 @@ describe("Én node, ét demo-datasæt", () => {
     "KOMPETENCER", "KUNDER", "ETAPER", "OPGAVER", "FRAVAER", "VARER",
     "BEHOLDNING", "CARRIERS", "KASSER", "KASSEUDLAAN", "INDBERETNINGER",
     "AKTIVER", "LOKATIONER", "ZONER", "GRUNDLAG", "LAGRE",
+    /* Procures proces — beslutning 78. */
+    "INDKOEBSBEHOV", "INDKOEBSORDRER",
   ];
 
   it("har højst ét demo-datasæt pr. node", () => {
@@ -228,7 +230,15 @@ describe("Én node, ét demo-datasæt", () => {
       const tekst = readFileSync(join(FLEET, navn), "utf8")
         .replace(/\/\*[\s\S]*?\*\//g, "");
       for (const m of tekst.matchAll(/export const (DEMO_[A-Z_]+)\s*=\s*\[/g)) {
-        const node = NODER.find((n) => m[1] === `DEMO_${n}` || m[1].startsWith(`DEMO_${n}`));
+        /* ⚠ DET LÆNGSTE MATCH VINDER, ikke det første.
+           `DEMO_INDKOEBSBEHOV` begynder med `DEMO_INDKOEB`, så en søgning der
+           tager det første træf, henfører behovene til `indkoeb` — og
+           rapporterer to sæt for én node, hvor der er ét sæt for hver af to.
+           Det ramte med det samme da `indkoebsbehov` blev født, og det ville
+           ramme igen for enhver node hvis navn begynder som en anden. */
+        const node = NODER
+          .filter((n) => m[1] === `DEMO_${n}` || m[1].startsWith(`DEMO_${n}`))
+          .sort((a, b) => b.length - a.length)[0];
         if (!node) continue;
         (prNode[node] ||= []).push(`${navn}:${m[1]}`);
       }

@@ -52,6 +52,7 @@ import {
 import {
   DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
 } from "../src/fleet/demo-indkoeb.js";
+import { DEMO_INDKOEBSBEHOV } from "../src/fleet/demo-procure.js";
 import {
   DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
   DEMO_BYGNINGSOMKOSTNING,
@@ -266,6 +267,11 @@ export const SEED = [
      og de noegler flytter sig naar en post fjernes. */
   { node: "leverandoerer", data: DEMO_LEVERANDOERER, form: "liste-med-boern",
     boern: ["prisliste"] },
+  /* ⚠ TRIN 1 I PROCURES PROCES — beslutning 78. Noden er `.write: false`,
+     saa den kan kun fyldes herfra eller af `behovskriv`. Uden seedet staar
+     skaermen tom, og demo-saettet maa IKKE traede i stedet: en seedet node
+     skal vise sig selv (beslutning 56 og 64). */
+  { node: "indkoebsbehov", data: DEMO_INDKOEBSBEHOV, form: "liste" },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
   /* ⚠ FACILITY HELE VEJEN NU. Lokationerne kom foerst, fordi indkoebets

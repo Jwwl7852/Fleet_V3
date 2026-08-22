@@ -120,6 +120,14 @@ export const NAV = [
     born: [
       { key: "indkoebOversigt", sti: "/indkoeb", label: "Procure & vareforbrug",
         titel: "Procure & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
+      /* ⚠ TRIN 1 AF FEM, og den staar foerst efter overblikket — som paa
+         planche 5. Raekkefoelgen i menuen ER processen: behov, bestilling,
+         godkendelse, faktura. En menu der er sorteret efter hvad der blev
+         bygget foerst, laerer ingen hvordan det haenger sammen.
+         Se beslutning 78. */
+      { key: "indkoebsbehov", sti: "/indkoeb/behov", label: "Indkøbsbehov",
+        titel: "Indmeldte behov",
+        under: "Behov indsendt fra snedkeri, lager, kontor eller som kontantkøb." },
       { key: "fakturaer", sti: "/indkoeb/fakturaer", label: "Fakturaer & afstemning",
         titel: "Fakturagodkendelse & afstemning",
         under: "Indkøb matches med leverandørfakturaer, godkendes og afstemmes mod regnskabsgrundlaget." },

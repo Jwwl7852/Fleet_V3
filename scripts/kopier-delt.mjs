@@ -35,6 +35,10 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
    Tilføjer du en fil, så følg dens imports hele vejen ned. */
 export const DELTE_FILER = [
+  /* ⚠ procure.js ER DELT fordi behovskriv og skærmens formular kalder den
+     SAMME valideBehov(). Serveren afviser med den sætning brugeren allerede
+     har set — to formuleringer af én spærring er to forklaringer på én ting. */
+  "procure.js",
   "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",
   /* ⚠ beloeb.js SKAL MED FØR priser.js KAN BRUGES SERVER-SIDE. Den funktion
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med

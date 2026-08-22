@@ -30,6 +30,7 @@ import FacilityOversigt from "./moduler/facility/Oversigt.jsx";
 import Servicekalender from "./moduler/facility/Servicekalender.jsx";
 import Klima from "./moduler/facility/Klima.jsx";
 import IndkoebOversigt from "./moduler/indkoeb/Oversigt.jsx";
+import Indkoebsbehov from "./moduler/indkoeb/Behov.jsx";
 import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
 import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
 import UnitbookingKasser from "./moduler/unitbooking/Kasser.jsx";
@@ -373,6 +374,8 @@ export default function App() {
             <Route path="facility/klima" element={<Klima />} />
 
             <Route path="indkoeb" element={<IndkoebOversigt />} />
+            <Route path="indkoeb/behov" element={<Indkoebsbehov />} />
+
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 
