@@ -82,6 +82,43 @@ describe("Filteret er væk og kommer ikke tilbage stykkevis", () => {
   });
 });
 
+describe("Serveren skriver ikke feltet", () => {
+  /**
+   * ⚠ DEN FARLIGSTE UDGAVE AF FEJLEN. Admin-SDK'et går uden om ALLE regler —
+   * også `.validate` — så en Cloud Function der skriver `division`, lægger
+   * feltet i noden **uden at noget siger fra**. En klient ville få en
+   * `permission-denied` og opdage det; en funktion får ingenting.
+   *
+   * Beslutning 70 fejede `src/` og glemte `functions/`: fire funktioner
+   * skrev det stadig, og `grundlagskriv` satte det UBETINGET med
+   * `|| "faelles"`. Se beslutning 79.
+   */
+  test("⚠ INGEN CLOUD FUNCTION SKRIVER division", () => {
+    const kilde = udenKommentarer(readFileSync("functions/index.js", "utf8"));
+    const fundet = [...kilde.matchAll(/^\s*division:.*$/gm)].map((m) => m[0].trim());
+    assert.deepEqual(fundet, [],
+      "en funktion skriver division. Admin-SDK'et går uden om .validate, så "
+      + "feltet lander i noden i tavshed.");
+  });
+
+  /**
+   * ⚠ OG HELLER IKKE I AUDITLOGGEN. Allowlisten findes for at holde fritekst
+   * ude; et felt der ikke kan skrives, hører ikke på den.
+   *
+   * ⚠ OG PRØVEN SKAL STRIMLE KOMMENTARER FØRST. Første udgave gjorde ikke, og
+   * den faldt på **sin egen forklaring** — noten der siger at feltet er
+   * fjernet, indeholder ordet. Det er femte gang den fælde dukker op i dette
+   * repo: en prøve der læser kilde som tekst, skal fjerne kommentarerne, ellers
+   * er den enten grøn af sin egen dokumentation eller rød af den.
+   */
+  test("⚠ division STÅR IKKE PÅ AUDITLISTEN", () => {
+    const kilde = udenKommentarer(readFileSync("src/fleet/audit-regler.js", "utf8"));
+    const liste = kilde.slice(kilde.indexOf("LOGBARE_FELTER"));
+    assert.ok(!/"division"/.test(liste.slice(0, 1200)),
+      "division står på LOGBARE_FELTER, men feltet findes ikke");
+  });
+});
+
 describe("Shellen har ingen vælger", () => {
   const shell = udenKommentarer(readFileSync("src/fleet/AppShell.jsx", "utf8"));
 
@@ -119,17 +156,20 @@ describe("Konteksten har ingen tilstand at skifte", () => {
   });
 
   /**
-   * ⚠ VÆRDIEN ER DER ENDNU, OG DET ER MED VILJE — men kun indtil etape 3.
+   * ⚠ HER KRÆVEDE PRØVEN AT VÆRDIEN VAR EN KONSTANT — og noten sagde "men kun
+   * indtil etape 3". Etape 3 kørte, feltet blev forbudt overalt, og
+   * konstanten blev stående i to måneders arbejde uden at nogen læste den.
    *
-   * `division` er stadig et PÅKRÆVET felt på syv noder i de udrullede regler.
-   * Fjernede vi værdien nu, ville hver skærm der opretter en booking, skrive
-   * en post reglen afviser. Feltet og reglen forlader systemet i SAMME
-   * ombæring — et af delene alene lukker skrivningen.
+   * ⚠ EN PRØVE DER BESKRIVER ET MELLEMSTADIE, SKAL SELV SIGE HVORNÅR DET ER
+   * OVRE. Den her gjorde det i en kommentar; kommentaren blev ikke læst, og
+   * prøven stod grøn om noget der var færdigt. Nu kræver den det modsatte.
+   * Se beslutning 79.
    */
-  test("⚠ VÆRDIEN ER EN KONSTANT, IKKE ET VALG", () => {
-    assert.match(ctx, /const division = "gods";/,
-      "division er ikke længere en konstant — er etape 3 kørt, skal prøven "
-      + "skrives om, og så skal feltet også være væk af reglerne");
+  test("⚠ KONSTANTEN ER OGSÅ VÆK", () => {
+    assert.ok(!/const divisions*=/.test(ctx),
+      "konstanten er tilbage — en værdi ingen læser, er en akse der ligger og venter");
+    assert.ok(!/^s*division,s*$/m.test(ctx),
+      "konteksten udstiller stadig en division");
   });
 
   test("den gemmes ikke i localStorage", () => {

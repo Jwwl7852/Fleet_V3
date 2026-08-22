@@ -29,7 +29,6 @@
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { num, klokke, datoTid } from "../../fleet/format.js";
 import {
@@ -47,7 +46,6 @@ import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 
 export default function RuteOgStatus() {
-  const { division } = useFleet();
   const [valgtId, setValgtId] = useState(null);
 
   /* ⚠ NODERNE, IKKE DEMOFILERNE. Divisionsfilteret ligger i useListe — en post
@@ -136,7 +134,10 @@ export default function RuteOgStatus() {
       </Kort>
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort titel={`Ture i ${division}`}>
+        {/* ⚠ TITLEN SAGDE "Ture i gods" — af en konstant, ikke af et valg.
+            Aksen er væk (beslutning 70), og en overskrift der navngiver en
+            opdeling der ikke findes, er værre end ingen. Se 79. */}
+        <Kort titel="Ture med en tildelt enhed">
           <Tabel
             kolonner={[
               { key: "rute", label: "Rute", render: (r) => (

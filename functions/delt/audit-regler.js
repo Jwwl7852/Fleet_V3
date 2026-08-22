@@ -61,7 +61,11 @@ export const LOGBARE_FELTER = new Set([
   "tilstand", "status", "aftalestatus", "aktiv", "annulleret", "slettet",
   "harAabneEtaper",
   // klassifikation
-  "division", "art", "prisgruppe", "kategori", "type", "metode", "valuta",
+  /* ⚠ "division" STOD HER og er fjernet i beslutning 79. Feltet findes ikke
+     siden 70, og en allowliste der tillader noget der ikke kan skrives, er en
+     linje den naeste bruger tid paa. Listen findes for at holde FRITEKST ude —
+     ikke for at vaere fuldstaendig. */
+  "art", "prisgruppe", "kategori", "type", "metode", "valuta",
   // tid
   "gyldigFra", "fra", "til", "senestMs", "aftaleUdloeberMs", "forfaldMs",
   "sidsteAktivitetMs", "friDage",

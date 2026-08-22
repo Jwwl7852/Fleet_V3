@@ -2417,7 +2417,6 @@ export const grundlagskriv = onCall({ region: REGION }, async (req) => {
       bookingId: kortStreng(d.bookingId, 60) || null,
       periode,
       kundeId,
-      division: kortStreng(d.division, 10) || "faelles",
       linjer,
       udarbejdetAf: uid
     });
@@ -3158,7 +3157,6 @@ export const bookingopret = onCall({ region: REGION }, async (req) => {
 
   const post = {
     kundeId: kortStreng(d.kundeId, 60),
-    division: kortStreng(d.division, 20),
     fraSted: kortStreng(d.fraSted, 120),
     tilSted: kortStreng(d.tilSted, 120),
     transporttype: kortStreng(d.transporttype, 40),
@@ -3210,7 +3208,7 @@ export const bookingopret = onCall({ region: REGION }, async (req) => {
   await rod.update(bygget.opdatering);
 
   await logOpgave(tenantId, uid, AUDIT.opret, bookingId, null,
-    { nummer, kundeId: post.kundeId, division: post.division }, `booking ${nummer} oprettet`);
+    { nummer, kundeId: post.kundeId }, `booking ${nummer} oprettet`);
 
   return { bookingId, nummer, etapeIder };
 });
@@ -3280,7 +3278,6 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
        poster — og de to har ikke samme feltskema. */
     art: "vaerksted",
     koeretoejId: kortStreng(d.koeretoejId, 60),
-    division: kortStreng(d.division, 20),
     arbejdstype: kortStreng(d.arbejdstype, 40),
     status: kortStreng(d.status, 40),
     beskrivelse: kortStreng(d.beskrivelse, 500),
@@ -3469,7 +3466,6 @@ export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
   const post = {
     /* ⚠ ARTEN SAETTES HER, IKKE AF KLIENTEN — modstykket til opgaveplanlaeg. */
     art: "facility",
-    division: kortStreng(d.division, 20),
     status: kortStreng(d.status, 40),
     beskrivelse: kortStreng(d.beskrivelse, 500),
     startMs: Number.isFinite(Number(d.startMs)) ? Number(d.startMs) : null,

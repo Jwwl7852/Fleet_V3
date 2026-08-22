@@ -48,7 +48,6 @@ const FELTNAVN = {
   koeretoejId: "Enhed",
   arbejdstype: "Aktivitetstype",
   status: "Status",
-  division: "Division",
   startMs: "Startdato og -tid",
   estimeretMin: "Varighed",
   leverandoerId: "Udføres af",
@@ -80,7 +79,7 @@ const FELTNAVN = {
  * stedet hvad der mangler.
  */
 export default function Planlaegdialog({
-  enheder, leverandoerer, harProcure, division, onLuk, onGemt,
+  enheder, leverandoerer, harProcure, onLuk, onGemt,
   /* Gitterets forslag: { koeretoejId, startMs, varighedMin }. Se hovedet —
      det er et forslag, ikke en lås. */
   foraf = null,
@@ -107,14 +106,10 @@ export default function Planlaegdialog({
 
     return {
       koeretoejId: foraf?.koeretoejId || "",
-      /* ⚠ DIVISIONEN FORESLÅS AF SHELLEN, IKKE AF ENHEDEN. Beslutning 19
-         forbyder feltet på koeretoejer/, og en formular der udfyldte det ud fra
-         bilen, ville genindføre præcis den kobling. Shellens valgte division er
-         et gæt brugeren kan se og rette — bilens ville være et gæt han ikke
-         kunne se. `faelles` findes ikke i shellen og vælges derfor manuelt.
-         ⚠ OG DET GÆLDER OGSÅ ET KLIK I GITTERET: rækken ER en bil, og bilen
-         bærer ikke feltet. `foraf` foreslår derfor aldrig en division. */
-      division,
+      /* ⚠ HER BLEV DIVISIONEN FORESLÅET AF SHELLEN — fordi beslutning 19
+         forbød feltet på bilen, og en formular der udledte det af enheden,
+         ville have genindført koblingen. Argumentet holdt, og aksen holdt op
+         med at findes i beslutning 70. Se 79. */
       arbejdstype: "",
       status: "planlagt",
       leverandoerId: "",

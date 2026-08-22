@@ -209,7 +209,7 @@ function byggReservationer(fraNoden, vaerkstedsopgaver = []) {
 
 export default function Disponering() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division, bruger, moduler } = useFleet();
+  const { bruger, moduler } = useFleet();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
   /* `null` = lukket. Ellers etapen der foreslås på. */
@@ -617,7 +617,6 @@ export default function Disponering() {
           enheder={koeretoejer.data}
           leverandoerer={leverandoerer.data}
           harProcure={harModul(moduler, "indkoeb")}
-          division={division}
           foraf={planlaegger}
           onLuk={() => setPlanlaegger(null)}
           onGemt={() => { setPlanlaegger(null); opgaver.genindlaes(); }}
@@ -737,7 +736,9 @@ function Detalje({ post, personEfterId, lvNavn, maaSkrive, onSkiftet,
             {OPGAVE_STATUS[post.status]?.label || post.status}
           </Pille>} />
         <MiniLinje label="Art" vaerdi={<code>{post.art}</code>} />
-        <MiniLinje label="Division" vaerdi={post.division} />
+        {/* ⚠ HER STOD EN "Division"-LINJE. Feltet findes ikke siden
+            beslutning 70, så den viste `undefined` — en tom værdi med en
+            etiket, hvilket ligner et felt der bare ikke er udfyldt. Se 79. */}
         {/* ⚠ SAMME KNAPPER SOM DRIFTSKALENDEREN OG SERVICEKALENDEREN.
             Komponenten tegner dem af `OPGAVE_OVERGANGE`, så de tre skærme ikke
             kan blive uenige om hvilke skift der findes — og serveren afviser

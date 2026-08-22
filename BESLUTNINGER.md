@@ -5228,3 +5228,52 @@ Efter kundens svar: **e-mailen sendes ikke** (udkast med kopiknap; ordren
 markeres sendt når et menneske har sendt den), **der uploades ingen filer**
 (knapperne står deaktiverede med begrundelsen på skærmen), og **behovsindmelding
 bygges responsivt i webappen** frem for at vente på en mobilapp.
+
+## 79. Serveren skrev stadig et felt reglerne forbyder — og ingenting sagde fra
+
+På vej ind i Procures etape 2 faldt blikket på `opgaveplanlaeg`, som satte
+`division: kortStreng(d.division, 20)`. Feltet blev forbudt i beslutning 70.
+
+⚠ **Og det er den farligste udgave af fejlen.** Admin-SDK'et går uden om ALLE
+regler — også `.validate`. En klient der skriver et forbudt felt, får en
+`permission-denied` og opdager det med det samme. **En Cloud Function får
+ingenting**; feltet lander i noden i tavshed.
+
+Fire funktioner gjorde det: `bookingopret`, `opgaveplanlaeg`,
+`facilityplanlaeg` og `grundlagskriv` — den sidste **ubetinget**, med
+`kortStreng(d.division, 10) || "faelles"`. Hver eneste grundlagsskrivning
+lagde altså feltet ind igen.
+
+Dertil stod `"division"` på `LOGBARE_FELTER` — en allowliste der tillader
+noget der ikke kan skrives.
+
+### Og de sidste tre læsere i skærmene
+
+- `Disponering.jsx` tegnede **`<MiniLinje label="Division" vaerdi={post.division} />`**
+  — en etiket med en tom værdi, hvilket ligner et felt der bare ikke er
+  udfyldt.
+- `LiveKort.jsx` skrev **"Ture i gods"** som korttitel, af en konstant og ikke
+  af et valg.
+- `Planlaegdialog.jsx` foreslog stadig divisionen fra shellen.
+
+⚠ **Alle tre læste `FleetContext`'s `const division = "gods"`** — konstanten
+jeg lod stå i beslutning 70's etape 1, fordi feltet dengang var *påkrævet* i de
+udrullede regler. Etape 3 fjernede kravet, og konstanten blev stående. **En
+værdi ingen læser, er en akse der ligger og venter.**
+
+### ⚠ Prøven beskrev et mellemstadie og sagde ikke hvornår det var ovre
+
+`division-fjernet.test.mjs` krævede at konstanten fandtes, med noten *"men kun
+indtil etape 3"*. Etape 3 kørte. Kommentaren blev ikke læst, og **prøven stod
+grøn om noget der var færdigt** — den holdt aktivt liv i resten.
+
+En prøve der beskriver et midlertidigt trin, skal selv kunne se at trinnet er
+ovre. Den her kræver nu det modsatte.
+
+### ⚠ Og min egen prøve faldt på sin egen forklaring
+
+Vagten mod `"division"` i `LOGBARE_FELTER` læste filen som tekst uden at
+strimle kommentarer — og noten der forklarer at feltet er *fjernet*,
+indeholder ordet. **Femte gang den fælde dukker op i dette repo.** En prøve der
+læser kilde som tekst, skal fjerne kommentarerne først; ellers er den enten
+grøn af sin egen dokumentation eller rød af den.

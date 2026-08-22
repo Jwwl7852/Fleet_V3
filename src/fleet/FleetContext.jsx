@@ -44,24 +44,11 @@ export function FleetProvider({
   const start = gemt();
   const [tenantId, setTenantId] = useState(start.tenantId || tenants[0]?.id || "demo");
   const [dage, setDage] = useState(start.dage || 30);
-  /**
-   * ⚠ INGEN TILSTAND LÆNGERE — OG HELLER INGEN SETTER.
-   *
-   * Gods/Bus var en tilstand med en vælger i shellen (beslutning 9). Aksen er
-   * fjernet i beslutning 70: ingen abonnent har både gods og bus, så vælgeren
-   * valgte ikke noget, og filteret var slået fra på **141 af 158**
-   * useListe-kaldsteder.
-   *
-   * ⚠ VÆRDIEN BLIVER STÅENDE ÉT SKRIDT ENDNU, og det er ikke halvhjertet.
-   * `division` er stadig et **påkrævet felt** på syv noder i de udrullede
-   * regler, så en skærm der opretter en booking, SKAL skrive den — ellers
-   * afvises hver eneste skrivning. Feltet og reglen forlader systemet i samme
-   * ombæring (etape 3), for et af delene alene ville lukke skrivningen.
-   *
-   * Den er derfor en konstant og ikke en `useState`: intet kan ændre den, og
-   * `setDivision` findes ikke — en setter der findes, bliver kaldt.
-   */
-  const division = "gods";
+  /* ⚠ HER STOD `const division = "gods"` — en konstant der blev stående
+     efter beslutning 70, fordi feltet dengang stadig var PÅKRÆVET i de
+     udrullede regler. Det er det ikke længere: feltet er forbudt overalt, og
+     de sidste tre læsere er ryddet i beslutning 79. En konstant ingen læser,
+     er en akse der ligger og venter. */
   /* Kun meningsfuld i demo-mode — se saetDemoRolle nedenfor. */
   const [demoRolle, setDemoRolle] = useState(demo ? (start.demoRolle || null) : null);
 
@@ -132,7 +119,6 @@ export function FleetProvider({
     () => ({
       tenantId, tenant, tenants, setTenantId,
       dage, periode, setDage,
-      division,
       moduler,
       path, bruger: effektivBruger, logUd,
       /* demo er false i produktion, og så er demoRolle altid null og
