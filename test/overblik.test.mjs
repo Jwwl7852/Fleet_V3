@@ -79,17 +79,17 @@ describe("Fire tal regnes, det femte kan ikke", () => {
   });
 
   /**
-   * ⚠ EN HÆNGENDE REFERENCE TÆLLER SOM UDEN MATCH. Et ordreId der peger på
+   * ⚠ EN HÆNGENDE REFERENCE TÆLLER SOM UDEN MATCH. Et destinationId der peger på
    * noget som ikke findes, ser matchet ud og er det ikke — og den er allerede
    * talt som afstemt. Det er den farligste af de to.
    */
-  test("⚠ EN HÆNGENDE ordreId TÆLLER SOM UDEN MATCH", () => {
-    assert.match(SKAERM, /f\.ordreId && !findesOrdre\.has\(f\.ordreId\)/);
+  test("⚠ EN HÆNGENDE destinationId TÆLLER SOM UDEN MATCH", () => {
+    assert.match(SKAERM, /f\.destinationId && !findesOrdre\.has\(f\.destinationId\)/);
     const findes = new Set(DEMO_INDKOEBSORDRER.map((o) => o.id));
-    const haenger = { id: "x", ordreId: "findes-ikke", status: "modtaget" };
+    const haenger = { id: "x", destinationArt: "procure", destinationId: "findes-ikke", status: "modtaget" };
     assert.equal(matchtilstand(haenger), "matchet",
       "matchtilstand() ser kun på om feltet er sat — derfor skal skærmen tjekke at det RAMMER");
-    assert.ok(!findes.has(haenger.ordreId));
+    assert.ok(!findes.has(haenger.destinationId));
   });
 
   /**

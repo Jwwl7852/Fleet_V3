@@ -54,6 +54,7 @@ import {
   MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
+import { Modulfakturaer } from "../../fleet/Modulfakturaer.jsx";
 import {
   AKTIV_ART, AKTIV_STATUS, FEJL_STATUS, LOKATION_TYPE,
   ALLE_AKTIV_ARTER, ALLE_AKTIV_STATUS,
@@ -661,6 +662,10 @@ export default function FacilityOversigt() {
           </p>
         </Kort>
       </Gitter>
+
+      {/* ⚠ SAMME FAKTURAER SOM FAKTURACENTERET — ikke et andet sæt.
+          Modulet ejer sagen; centeret ejer fakturaen (beslutning 86). */}
+      <Modulfakturaer art="facility" />
     </div>
   );
 }

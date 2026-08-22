@@ -56,6 +56,7 @@ import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
 import Kundepriser from "./moduler/kunder/Kundepriser.jsx";
 import Kunder from "./moduler/Kunder.jsx";
 import Oekonomi from "./moduler/Oekonomi.jsx";
+import Fakturacenter from "./moduler/oekonomi/Fakturacenter.jsx";
 import Fakturering from "./moduler/Fakturering.jsx";
 import Generelt from "./moduler/opsaetning/Generelt.jsx";
 import Brugere from "./moduler/opsaetning/Brugere.jsx";
@@ -406,6 +407,7 @@ export default function App() {
 
 
             <Route path="oekonomi" element={<Oekonomi />} />
+            <Route path="oekonomi/fakturacenter" element={<Fakturacenter />} />
             <Route path="oekonomi/fakturering" element={<Fakturering />} />
 
             <Route path="support" element={<Hjaelp />} />

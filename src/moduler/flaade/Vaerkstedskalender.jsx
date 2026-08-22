@@ -59,6 +59,7 @@ import {
   Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon, Formularsvar,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
+import { Modulfakturaer } from "../../fleet/Modulfakturaer.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import {
   VISNING, ALLE_VISNINGER, FREMAD, STANDARD_FREMAD,
@@ -433,6 +434,16 @@ export default function Driftskalender() {
           onLuk={() => setValgtId(null)}
         />
       )}
+
+      {/* ⚠ MODULETS FORSIDE ER `/flaade` — DEN HER SKAERM. Kortet laa
+          foerst i `flaade/Oversigt.jsx`, som TRODS NAVNET er routet til
+          Opsaetning → Enheder: koeretoejsregistret, stamdata. En liste over
+          vaerkstedsfakturaer hoerer hvor arbejdet er, ikke i et register.
+          Et filnavn er ikke en placering.
+
+          ⚠ SAMME FAKTURAER SOM FAKTURACENTERET — ikke et andet saet.
+          Modulet ejer sagen; centeret ejer fakturaen (beslutning 86). */}
+      <Modulfakturaer art="fleet" />
     </div>
   );
 }
@@ -811,6 +822,7 @@ function Filer({ sag }) {
         raekker={vedhaeftninger}
         tom={sag ? "Ingen vedhæftninger på sagen." : "Ingen sag på opgaven."}
       />
+
     </div>
   );
 }

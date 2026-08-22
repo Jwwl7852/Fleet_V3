@@ -202,7 +202,11 @@ describe("Begge beløb er ekskl. moms", () => {
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Matchet er en afgørelse, ikke en score", () => {
   test("de tre tilstande kan alle vises", () => {
-    assert.equal(matchtilstand({ ordreId: "o1" }), "matchet");
+    assert.equal(matchtilstand({ destinationArt: "procure", destinationId: "o1" }), "matchet");
+    /* ⚠ OG EN ANDEN ARTS DESTINATION ER IKKE ET PROCURE-MATCH. Feltet er
+       faelles siden beslutning 86; uden artstjekket ville en faktura placeret
+       paa en Fleet-sag taelle som matchet mod en ordre der ikke findes. */
+    assert.equal(matchtilstand({ destinationArt: "fleet", destinationId: "op-1" }), "manglerMatch");
     assert.equal(matchtilstand({ ikkeMatchbar: true }), "ikkeMatchbar");
     assert.equal(matchtilstand({}), "manglerMatch");
     for (const k of Object.keys(MATCHTILSTAND)) {
@@ -228,7 +232,7 @@ describe("Matchet er en afgørelse, ikke en score", () => {
   });
 
   test("det samme match to gange er ikke et match", () => {
-    assert.equal(kanMatche(faktura({ ordreId: "o1" }), ordre()).ok, false);
+    assert.equal(kanMatche(faktura({ destinationId: "o1" }), ordre()).ok, false);
   });
 
   /**
@@ -325,12 +329,28 @@ describe("Et kontantkøb er en indkøbslinje", () => {
    DEMO-SÆTTET
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Demo-sættet viser alle tre matchtilstande", () => {
-  const matchede = DEMO_FAKTURAER.map((f) => f.ordreId).filter(Boolean);
+  const matchede = DEMO_FAKTURAER.map((f) => f.destinationId).filter(Boolean);
 
-  test("⚠ ALLE TRE TILSTANDE FINDES", () => {
+  /**
+   * ⚠ `ikkeMatchbar` ER AFLØST AF `destinationArt: "ingen"` (beslutning 86).
+   *
+   * Her stod at alle TRE `MATCHTILSTAND` skulle findes i demo. Den tredje —
+   * `ikkeMatchbar` — er ikke længere en tilstand på fakturaen: "ingen
+   * destination" er ét svar blandt fem i det fælles destinationsfelt. To
+   * felter for ét svar driver, og Procure-skærmen ville læse det gamle mens
+   * Fakturacenteret skrev det nye.
+   *
+   * Procures LINSE har stadig tre tilstande, men den tredje aflæses nu af
+   * destinationen. Prøven vogter dét der gælder: at Procure ser MATCHET og
+   * MANGLENDE MATCH, og at en faktura placeret et andet sted ikke tælles
+   * som procure-matchet.
+   */
+  test("⚠ PROCURES LINSE SER MATCHET OG MANGLENDE MATCH", () => {
     const set = new Set(DEMO_FAKTURAER.map(matchtilstand));
+    assert.ok(set.has("matchet"), "ingen procure-matchet faktura i demo");
+    assert.ok(set.has("manglerMatch"), "hver faktura er matchet — så kan listen ikke ses virke");
     for (const k of Object.keys(MATCHTILSTAND)) {
-      assert.ok(set.has(k), `ingen faktura er "${k}" — tilstanden kan ikke ses`);
+      assert.ok(MATCHTILSTAND[k].label && MATCHTILSTAND[k].tone, `${k} kan ikke vises`);
     }
   });
 
@@ -341,12 +361,13 @@ describe("Demo-sættet viser alle tre matchtilstande", () => {
     }
   });
 
-  /* ⚠ ET ordreId SKAL RAMME. En hængende reference ser matchet ud og er det
+  /* ⚠ ET destinationId SKAL RAMME. En hængende reference ser matchet ud og er det
      ikke — og den er allerede talt som afstemt. */
-  test("⚠ INTET ordreId HÆNGER", () => {
+  test("⚠ INTET destinationId HÆNGER", () => {
     const findes = new Set(DEMO_INDKOEBSORDRER.map((o) => o.id));
-    for (const f of DEMO_FAKTURAER.filter((x) => x.ordreId)) {
-      assert.ok(findes.has(f.ordreId), `${f.id} peger på ordren "${f.ordreId}", som ikke findes`);
+    for (const f of DEMO_FAKTURAER.filter((x) => x.destinationArt === "procure")) {
+      assert.ok(findes.has(f.destinationId),
+        `${f.id} peger på ordren "${f.destinationId}", som ikke findes`);
     }
   });
 
@@ -355,8 +376,8 @@ describe("Demo-sættet viser alle tre matchtilstande", () => {
    * afvigelsen ud som et fund — og den er vores egen.
    */
   test("⚠ EN MATCHET FAKTURA STEMMER MED SIN ORDRE", () => {
-    for (const f of DEMO_FAKTURAER.filter((x) => x.ordreId)) {
-      const o = DEMO_INDKOEBSORDRER.find((x) => x.id === f.ordreId);
+    for (const f of DEMO_FAKTURAER.filter((x) => x.destinationArt === "procure")) {
+      const o = DEMO_INDKOEBSORDRER.find((x) => x.id === f.destinationId);
       assert.equal(matchAfvigelseOere(f, o), 0,
         `${f.id} og ${o.nummer} er uenige om beløbet i demo`);
     }
@@ -369,7 +390,7 @@ describe("Demo-sættet viser alle tre matchtilstande", () => {
    */
   test("⚠ DEMO HAR BÅDE ET 100 %-MATCH OG ET SVAGERE", () => {
     const scorer = DEMO_FAKTURAER
-      .filter((f) => !f.ordreId && !f.ikkeMatchbar)
+      .filter((f) => !f.destinationId && !f.ikkeMatchbar)
       .flatMap((f) => matchForslag(f, DEMO_INDKOEBSORDRER, { matchede }).map((x) => x.score));
     assert.ok(scorer.includes(100), "intet nummertræf i demo");
     assert.ok(scorer.some((s) => s < 100), "hvert forslag er et nummertræf");
@@ -398,16 +419,16 @@ describe("Skærmen viser, serveren håndhæver", () => {
      ser én post ad gangen — så leddet står i funktionen. */
   test("⚠ SERVEREN AFVISER TO FAKTURAER PÅ SAMME BESTILLING", () => {
     const blok = funktion("fakturamatch");
-    assert.match(blok, /orderByChild\("ordreId"\)\.equalTo\(ordreId\)/);
+    assert.match(blok, /orderByChild\("destinationId"\)\.equalTo\(ordreId\)/);
     assert.match(blok, /allerede matchet med en anden faktura/);
   });
 
   /* Og forespørgslen skal have sit indeks — ellers henter RTDB hele noden ned
      og filtrerer i klienten med en advarsel i konsollen. */
-  test("⚠ ordreId ER INDEKSERET PÅ fakturaer", () => {
+  test("⚠ destinationId ER INDEKSERET PÅ fakturaer", () => {
     const i = REGELFIL.indexOf('"fakturaer": {');
     const blok = REGELFIL.slice(i, i + 2500);
-    assert.match(blok, /"\.indexOn": \[[^\]]*"ordreId"/);
+    assert.match(blok, /"\.indexOn": \[[^\]]*"destinationId"/);
   });
 
   /* ⚠ "INGEN AF FORSLAGENE PASSER" KRÆVER EN GRUND. */

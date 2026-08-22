@@ -83,6 +83,9 @@ import {
   nyBeholdning,
 } from "./delt/forbrugsvarer.js";
 import {
+  DESTINATIONSART, kanSaetteDestination,
+} from "./delt/fakturacenter.js";
+import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
   valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
   kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
@@ -4458,22 +4461,24 @@ export const fakturamatch = onCall({ region: REGION }, async (req) => {
     }
     opdatering[`${sti}/ikkeMatchbar`] = true;
     opdatering[`${sti}/ikkeMatchbarGrund`] = grund;
-    opdatering[`${sti}/ordreId`] = null;
+    opdatering[`${sti}/destinationArt`] = null;
+    opdatering[`${sti}/destinationId`] = null;
     opdatering[`${sti}/matchetAf`] = null;
     opdatering[`${sti}/matchetMs`] = null;
     note = `markeret ikke-matchbar: ${grund}`;
   } else if (d.handling === "fjern") {
-    if (!faktura.ordreId) {
+    if (!faktura.destinationId) {
       throw new HttpsError("failed-precondition", "Fakturaen er ikke matchet.");
     }
     if (faktura.status === "bogfoert") {
       throw new HttpsError("failed-precondition",
         "Fakturaen er bogfoert. Matchet kan ikke aendres bagefter.");
     }
-    opdatering[`${sti}/ordreId`] = null;
+    opdatering[`${sti}/destinationArt`] = null;
+    opdatering[`${sti}/destinationId`] = null;
     opdatering[`${sti}/matchetAf`] = null;
     opdatering[`${sti}/matchetMs`] = null;
-    note = `match til ${faktura.ordreId} fjernet`;
+    note = `match til ${faktura.destinationId} fjernet`;
   } else {
     const ordreId = kortStreng(d.ordreId, 60);
     if (!ordreId) throw new HttpsError("invalid-argument", "Vaelg en bestilling.");
@@ -4489,7 +4494,7 @@ export const fakturamatch = onCall({ region: REGION }, async (req) => {
        dublet eller en delfakturering, og begge dele skal et menneske tage
        stilling til. Reglen kan ikke haandhaeve det — en .validate ser én post
        ad gangen — saa leddet staar her. */
-    const alle = await rod.child("fakturaer").orderByChild("ordreId").equalTo(ordreId).once("value");
+    const alle = await rod.child("fakturaer").orderByChild("destinationId").equalTo(ordreId).once("value");
     let optaget = null;
     alle.forEach((barn) => { if (barn.key !== fakturaId) optaget = barn.key; });
     if (optaget) {
@@ -4497,7 +4502,11 @@ export const fakturamatch = onCall({ region: REGION }, async (req) => {
         `Bestillingen ${ordre.nummer} er allerede matchet med en anden faktura.`);
     }
 
-    opdatering[`${sti}/ordreId`] = ordreId;
+    /* ⚠ ARTEN SKRIVES MED. Feltet er faelles (beslutning 86), og et id uden
+       en art er et link ingen kan foelge — reglen afviser det ogsaa: hvad
+       id'et skal RAMME, afhaenger af arten. */
+    opdatering[`${sti}/destinationArt`] = "procure";
+    opdatering[`${sti}/destinationId`] = ordreId;
     opdatering[`${sti}/matchetAf`] = uid;
     opdatering[`${sti}/matchetMs`] = Date.now();
     opdatering[`${sti}/ikkeMatchbar`] = null;
@@ -4507,7 +4516,7 @@ export const fakturamatch = onCall({ region: REGION }, async (req) => {
 
   await db.ref().update(opdatering);
   await logProcure(tenantId, uid, AUDIT.aendre, "fakturaer", fakturaId,
-    { indkoebId: faktura.ordreId ?? null }, { indkoebId: opdatering[`${sti}/ordreId`] ?? null }, note);
+    { indkoebId: faktura.destinationId ?? null }, { indkoebId: opdatering[`${sti}/destinationId`] ?? null }, note);
 
   return { ok: true };
 });
@@ -4804,6 +4813,99 @@ export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => 
     `${post.art}: ${post.antal}`);
 
   return { ok: true, id: ref.key, beholdning: post.efter };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURADESTINATION — hvor fakturaen hoerer HEN (beslutning 86)
+   ══════════════════════════════════════════════════════════════════════════
+
+   Fakturacenteret er en PLATFORMFUNKTION, ikke et modul: `Økonomi &
+   Rapporter` staar ikke i modulkataloget, og `fakturaer/` har med vilje
+   ingen modulklausul. En faktura kan hoere til et hvilket som helst modul,
+   saa den maa ikke ligge bag ét af dem.
+
+   ⚠ MEN DESTINATIONEN GOER. En kunde uden Facility maa ikke kunne placere
+   en faktura paa en facility-sag: posten ville pege paa en node hans regler
+   afviser, og "kan ikke laeses" ligner "findes ikke". Modulet laeses af
+   NODEN — kom det fra klienten, kunne den sende hvad som helst.
+
+   ⚠ OG DEN KRAEVER INGEN NY PERMISSION. At placere en faktura er at
+   registrere hvad den hoerer til; at sige god for at der skal betales, er
+   `indkoeb.godkend` (beslutning 82). De to er forskellige handlinger, og de
+   ligger i hver sin funktion — `fakturastatus` er den anden.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const fakturadestination = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid } = await procureDoer(req, {});
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  if (!fakturaId) throw new HttpsError("invalid-argument", "fakturaId mangler.");
+
+  const snap = await rod.child(`fakturaer/${fakturaId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
+  const faktura = { ...snap.val(), id: fakturaId };
+
+  const art = kortStreng(d.art, 20);
+  const id = kortStreng(d.id, 60);
+  const begrundelse = kortStreng(d.begrundelse, 250);
+
+  /* ⚠ MODULERNE LAESES AF NODEN. Kom de fra klienten, kunne den placere en
+     faktura paa et modul kunden ikke har — og forslaget paa skaermen er
+     filtreret paa netop den liste. Fravaerende node = ALLE moduler, praecis
+     som reglen laeser den (`!moduler.exists() || …`). */
+  const modulSnap = await rod.child("moduler").once("value");
+  const moduler = modulSnap.exists() ? modulSnap.val() : null;
+
+  /* ⚠ SAMME kanSaetteDestination() SOM SKAERMEN. Skaermen VISER; funktionen
+     HAANDHAEVER, og den afviser med den saetning brugeren allerede har set. */
+  const kan = kanSaetteDestination(faktura, { art, id, begrundelse }, { moduler });
+  if (!kan.ok) {
+    const kode = kan.aarsag.startsWith("Virksomheden har ikke")
+      ? "permission-denied" : "failed-precondition";
+    throw new HttpsError(kode, kan.aarsag);
+  }
+
+  /* ⚠ MAALET SKAL FINDES. En haengende reference er vaerre end ingen: den
+     ser placeret ud og er det ikke, og den er allerede talt som afklaret.
+     Reglen tjekker det ogsaa — men admin-SDK'et gaar uden om .validate, saa
+     leddet skal staa her. */
+  if (art !== "ingen") {
+    const node = DESTINATIONSART[art].node;
+    const maal = await rod.child(`${node}/${id}`).once("value");
+    if (!maal.exists()) {
+      throw new HttpsError("not-found", `Destinationen findes ikke i ${node}.`);
+    }
+    /* ⚠ OG ARTEN SKAL PASSE MED OPGAVENS EGEN ART. Fleet og Facility deler
+       noden `opgaver`; uden det her led kunne en vaerkstedsopgave placeres
+       som en facility-sag, og modulfilteret ovenfor ville vaere omgaaet. */
+    const forventet = DESTINATIONSART[art].opgaveart;
+    if (forventet && maal.child("art").val() !== forventet) {
+      throw new HttpsError("failed-precondition",
+        `Opgaven er ikke en ${DESTINATIONSART[art].label.toLowerCase()}.`);
+    }
+  }
+
+  const nu = Date.now();
+  const sti = `tenants/${tenantId}/fakturaer/${fakturaId}`;
+  const opdatering = {
+    [`${sti}/destinationArt`]: art,
+    [`${sti}/destinationId`]: art === "ingen" ? null : id,
+    [`${sti}/destinationGrund`]: art === "ingen" ? begrundelse : null,
+    [`${sti}/matchetAf`]: uid,
+    [`${sti}/matchetMs`]: nu,
+    /* ⚠ `ikkeMatchbar` ER AFLOEST AF `destinationArt: "ingen"`, og den maa
+       ikke blive staaende: to felter for ét svar driver, og Procure-skaermen
+       laeser stadig det gamle. */
+    [`${sti}/ikkeMatchbar`]: null,
+    [`${sti}/ikkeMatchbarGrund`]: null,
+  };
+
+  await db.ref().update(opdatering);
+  await logProcure(tenantId, uid, AUDIT.aendre, "fakturaer", fakturaId,
+    { art: faktura.destinationArt ?? null }, { art },
+    art === "ingen" ? `uden destination: ${begrundelse}` : `placeret paa ${art}/${id}`);
+
+  return { ok: true, art, id: art === "ingen" ? null : id };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

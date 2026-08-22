@@ -889,7 +889,8 @@ function Procureoverblik({
      som afstemt. Samme regel som på fakturaskærmen. */
   const findesOrdre = new Set(ordrer.map((o) => o.id));
   const udenMatch = fakturaer.filter(
-    (f) => matchtilstand(f) === "manglerMatch" || (f.ordreId && !findesOrdre.has(f.ordreId)));
+    (f) => matchtilstand(f) === "manglerMatch"
+      || (f.destinationArt === "procure" && f.destinationId && !findesOrdre.has(f.destinationId)));
 
   /* Indbakken: de nyeste åbne behov, med det forslag Bestillinger ville give.
      ⚠ SAMME `kladdelinjer()` SOM BESTILLINGSSKÆRMEN. To opslag der svarede

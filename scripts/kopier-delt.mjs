@@ -40,6 +40,7 @@ export const DELTE_FILER = [
      har set — to formuleringer af én spærring er to forklaringer på én ting. */
   "procure.js",
   "forbrugsvarer.js",
+  "fakturacenter.js",
   "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",
   /* ⚠ beloeb.js SKAL MED FØR priser.js KAN BRUGES SERVER-SIDE. Den funktion
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med

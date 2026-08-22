@@ -903,7 +903,11 @@ export const MATCHTILSTAND = {
 
 /** matchtilstand(faktura) → nøglen i MATCHTILSTAND. */
 export function matchtilstand(faktura) {
-  if (faktura?.ordreId) return "matchet";
+  /* ⚠ ARTEN SKAL MED. Feltet er faelles nu (beslutning 86): en faktura
+     placeret paa en Fleet-sag har ogsaa et `destinationId`, og uden at
+     spoerge om arten ville Procure kalde den "matchet" — mod en ordre der
+     ikke findes. */
+  if (faktura?.destinationArt === "procure" && faktura?.destinationId) return "matchet";
   if (faktura?.ikkeMatchbar) return "ikkeMatchbar";
   return "manglerMatch";
 }
@@ -916,7 +920,7 @@ export function matchtilstand(faktura) {
 export function kanMatche(faktura, ordre) {
   if (!faktura) return { ok: false, aarsag: "Ingen faktura valgt." };
   if (!ordre) return { ok: false, aarsag: "Vælg en bestilling." };
-  if (faktura.ordreId === ordre.id) {
+  if (faktura.destinationId === ordre.id) {
     return { ok: false, aarsag: "Fakturaen er allerede matchet med den bestilling." };
   }
   /* ⚠ EN BOGFØRT FAKTURA MATCHES IKKE OM. Posten er sendt til regnskabet, og

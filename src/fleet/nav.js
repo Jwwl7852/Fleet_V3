@@ -243,8 +243,26 @@ export const NAV = [
       { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik",
         titel: "Økonomi & Rapporter",
         under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
+      /* ⚠ NODEN ER FAELLES — SKAERMEN HOERER TIL ØKONOMI-MODULET.
+         De to er ikke det samme, og forskellen blev maalt frem for antaget:
+         `oekonomi` ER et modul, og et VALGFRIT et (nordvest har det ikke).
+
+         `fakturaer/` har med vilje ingen modulklausul — en faktura kan
+         hoere til et hvilket som helst modul, saa den maa ikke ligge bag
+         ét af dem. Derfor kan en kunde UDEN Økonomi stadig se sine
+         fakturaer: gennem Procures egen linse. Det han mangler, er den
+         TVAERGAAENDE visning — og den er dét Økonomi-modulet saelger.
+         Se beslutning 86.
+
+         ⚠ OG DEN STAAR FOER Fakturering. De to ord ligner hinanden og
+         betyder noget forskelligt: FakturaCENTERET er de fakturaer vi
+         MODTAGER; Fakturering er det vi SENDER. Raekkefoelgen siger hvad
+         der kommer ind foerst. */
+      { key: "fakturacenter", sti: "/oekonomi/fakturacenter", label: "Fakturacenter",
+        titel: "Fakturacenter",
+        under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure." },
       { key: "fakturering", sti: "/oekonomi/fakturering", label: "Fakturering",
-        titel: "Fakturering", under: "Opgaver klar til fakturering" },
+        titel: "Fakturering", under: "Opgaver klar til fakturering — det vi SENDER" },
     ],
   },
   {

@@ -406,8 +406,48 @@ export const DEMO_FAKTURAER = [
      `indkoebId: null` her betyder "ikke matchet endnu" — modsat den hængende
      reference, som betyder "matchet mod noget der ikke findes". */
   { id: "fa-9009", leverandoerId: "lv-mercedes", fakturanummer: "MG-2026-3310",
-    fakturadatoMs: dag(-2), forfaldMs: dag(28), status: "modtaget",
+    fakturadatoMs: dag(-2), forfaldMs: dag(28), status: "modtaget", kilde: "mail",
     beloebOere: 946000, momsOere: 236500, indkoebId: null, sagsnummer: null },
+
+  /* ══════════════════════════════════════════════════════════════════
+     FAKTURACENTERETS TRE ANDRE DESTINATIONER (beslutning 86)
+
+     Uden dem kan skærmen kun vise Procure-destinationen — og hele pointen
+     er at ÉN faktura kan høre til en Fleet-sag, en Facility-sag, en
+     Procure-ordre eller en lagervare. Et demo-sæt hvor fire ud af fem
+     arter aldrig forekommer, kan ikke vise at destinationen er fælles.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ⚠ ET STÆRKT FLEET-MATCH: bilens kaldenavn OG nummerplade står på
+     fakturaen, leverandøren er værkstedet, og datoen ligger efter arbejdet.
+     Det er sådan en rigtig værkstedsfaktura ser ud — leverandøren skriver
+     "Bil 78", ikke vores interne id. */
+  { id: "fa-9012", leverandoerId: "lv-scania", fakturanummer: "SC-2026-8841",
+    fakturadatoMs: dag(-6), forfaldMs: dag(24), status: "modtaget", kilde: "mail",
+    reference: "Bil 78 / DE 78 901 — reparation",
+    /* ⚠ PLACERET, ikke bare foreslået. Uden mindst én placeret faktura pr.
+       art kan modulernes egne linser ikke ses virke — de ville stå tomme og
+       ligne en fejl frem for et tomt udsnit. */
+    destinationArt: "fleet", destinationId: "vb-001",
+    matchetAf: "uid-jens", matchetMs: dag(-5),
+    beloebOere: 1247500, momsOere: 311875, indkoebId: null, sagsnummer: null },
+
+  /* ⚠ ET FACILITY-MATCH PÅ ANLÆGGETS NAVN. Crawford leverer porte, og
+     porten står i fakturateksten. */
+  { id: "fa-9013", leverandoerId: "lv-crawford", fakturanummer: "CR-551318",
+    fakturadatoMs: dag(-1), forfaldMs: dag(29), status: "modtaget", kilde: "upload",
+    reference: "Serviceeftersyn Port 3",
+    destinationArt: "facility", destinationId: "fs-001",
+    matchetAf: "uid-jens", matchetMs: dag(0),
+    beloebOere: 1840000, momsOere: 460000, indkoebId: null, sagsnummer: null },
+
+  /* ⚠ EN LAGERFAKTURA. Varenummeret på vores egen forbrugsvare står på
+     bilaget — det er dét der gør den til en lagerdestination og ikke bare
+     et indkøb. */
+  { id: "fa-9014", leverandoerId: "lv-kontorland", fakturanummer: "KL-10233",
+    fakturadatoMs: dag(-4), forfaldMs: dag(26), status: "modtaget", kilde: "mobil",
+    reference: "AH10-12 arbejdshandsker",
+    beloebOere: 19200, momsOere: 4800, indkoebId: null, sagsnummer: null },
 
   /* ══════════════════════════════════════════════════════════════════
      MATCHETS TRE TILSTANDE (beslutning 83, planche 1)
@@ -426,7 +466,8 @@ export const DEMO_FAKTURAER = [
   { id: "fa-9010", leverandoerId: "lv-mercedes", fakturanummer: "MG-2026-3298",
     fakturadatoMs: dag(-15), forfaldMs: dag(15), status: "bogfoert",
     beloebOere: 276000, momsOere: 69000, indkoebId: null, sagsnummer: null,
-    reference: "BST-2026-00040", ordreId: "ord-003",
+    kilde: "mail",
+    reference: "BST-2026-00040", destinationArt: "procure", destinationId: "ord-003",
     matchetAf: "uid-jens", matchetMs: dag(-14), bogfoertMs: dag(-13) },
 
   /* ⚠ IKKE MATCHBAR — MED SIN GRUND. "Ingen af forslagene passer" er et
@@ -436,8 +477,13 @@ export const DEMO_FAKTURAER = [
   { id: "fa-9011", leverandoerId: "lv-wash", fakturanummer: "WS-2026-114",
     fakturadatoMs: dag(-8), forfaldMs: dag(22), status: "godkendt",
     beloebOere: 248000, momsOere: 62000, indkoebId: null, sagsnummer: null,
-    ikkeMatchbar: true,
-    ikkeMatchbarGrund: "Abonnement paa vaskehallen — der er ingen bestilling bag, og der kommer en hver maaned." },
+    /* ⚠ HER STOD `ikkeMatchbar: true`. Feltet er afløst af
+       `destinationArt: "ingen"` (beslutning 86): "ingen destination" er ét
+       svar blandt fem, ikke et flag ved siden af. To felter for ét svar
+       driver — og Procure-skærmen ville læse det gamle mens Fakturacenteret
+       skrev det nye. */
+    kilde: "mail", destinationArt: "ingen",
+    destinationGrund: "Abonnement på vaskehallen — der er ingen bestilling bag, og der kommer en hver måned." },
 ];
 
 /* ---- Afstemning: TRE TOTALER, TO AFVIGELSER ---------------------------- */

@@ -2331,12 +2331,12 @@
           // et felt ingen post baerer, fejler ikke — RTDB henter hele noden ned
           // og filtrerer i klienten med en advarsel i konsollen. Samme fejl som
           // opgaver."dato". Feltnavnet stod ogsaa afskrevet i leverandoerer.js.
-          // ⚠ ordreId KOM MED FORDI fakturamatch SPOERGER PAA DEN.
+          // ⚠ destinationId KOM MED FORDI fakturamatch SPOERGER PAA DEN.
           // `orderByChild("ordreId")` uden indeks FEJLER IKKE — RTDB henter
           // hele noden ned og filtrerer i klienten med en advarsel i
           // konsollen. Det er noejagtig den fejl der stod her foer, hvor
           // indekset pegede paa "godkendelsesstatus", et felt ingen post bar.
-          ".indexOn": ["fakturadatoMs", "leverandoerId", "status", "ordreId"],
+          ".indexOn": ["fakturadatoMs", "leverandoerId", "status", "destinationId", "destinationArt"],
 
           "$fakturaId": {
             // Noden er .write: false, saa det her er ikke en spaerring mod en
@@ -2369,24 +2369,54 @@
             // fravaerende (fakturaen er ikke afstemt endnu), men peger den, skal
             // den ramme. Demoen havde "ik-001" hvor alle linjer hedder il-XXX,
             // og saa taeller ikkeLinkedeFakturaer den som linket.
+            // ⚠ DEN HER ER IKKE DESTINATIONEN. indkoebId er hvilken LINJE
+            // fakturaen daekker — hvad vi MODTOG. destinationArt/-Id er hvor
+            // fakturaen HOERER HEN. De to kan pege forskellige steder, og gør
+            // de det, er det en oplysning: en faktura der daekker en linje vi
+            // aldrig bestilte, skal ses.
             "indkoebId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoeb').child(newData.val()).exists()" },
 
             // ══════════════════════════════════════════════════════════
             // MATCHET (beslutning 83, planche 1)
             //
-            // ⚠ TO LINK-FELTER, OG DE SVARER PAA HVER SIT SPOERGSMAAL.
-            // indkoebId er hvilken LINJE fakturaen daekker — hvad vi MODTOG.
-            // ordreId er hvilken BESTILLING den betaler — hvad vi BAD OM.
-            // Det er dét planchen matcher paa, og det er hele grunden til at
-            // mailudkastet beder om bestillingsnummeret paa fakturaen
-            // (beslutning 81).
+            // ══════════════════════════════════════════════════════════
+            // DESTINATIONEN (beslutning 86) — hvor fakturaen hoerer HEN
             //
-            // ⚠ MATCHSCOREN GEMMES IKKE. Den regnes af de to poster hos
+            // ⚠ HER STOD "ordreId", OG DET VAR ÉT MODULS SVAR PAA ET FAELLES
+            // SPOERGSMAAL. En faktura kan hoere til en Fleet-sag, en
+            // Facility-sag, en Procure-ordre eller en lagervare — og med et
+            // felt pr. modul ville de fire vaere fire steder at spoerge, og
+            // "hvor hoerer den hen" et spoergsmaal uden ét svar.
+            //
+            // ⚠ TO FLADE FELTER OG IKKE ET OBJEKT. .indexOn kan kun pege paa
+            // et DIREKTE barn, og fakturamatch skal kunne spoerge "er den her
+            // ordre allerede taget". Et destination/{art,id} ville vaere
+            // paenere og uindekserbart.
+            //
+            // ⚠ OG OMDOEBNINGEN VAR BILLIG NU OG DYR SENERE. Maalt i den
+            // udrullede base foer en linje blev roert: 20 fakturaer i alt,
+            // alle seedede. Samme argument som modulomdoebningerne — det sker
+            // foer den foerste kunde krydser feltet af, eller slet ikke.
+            //
+            // ⚠ SIDEGEVINST: "ordreId" betoed i forvejen TO ting i basen — en
+            // indkoebsordre her og en PLUKORDRE i Warehouse. Det navn holder
+            // op med at vaere tvetydigt.
+            //
+            // ⚠ MATCHSCOREN GEMMES STADIG IKKE. Den regnes af posterne hos
             // forbrugeren; et gemt tal driver fra sit grundlag foerste gang
-            // nogen retter et beloeb, og et sikkerhedstal der ser praecist ud
-            // uden at vaere det, er vaerre end intet. Det der gemmes, er
-            // AFGOERELSEN: hvilken ordre, hvem, hvornaar.
-            "ordreId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoebsordrer').child(newData.val()).exists()" },
+            // nogen retter et beloeb. Det der gemmes, er AFGOERELSEN.
+            "destinationArt": { ".validate": "newData.isString() && newData.val().matches(/^(fleet|facility|procure|lager|ingen)$/)" },
+            // ⚠ EN HAENGENDE REFERENCE ER VAERRE END INGEN — og hvad den skal
+            // ramme, afhaenger af arten. Fleet og Facility peger begge paa
+            // "opgaver": det er SAMME node med hver sin art (CLAUDE.md).
+            "destinationId": { ".validate": "newData.isString() && newData.val().length > 0 && ( (newData.parent().child('destinationArt').val() === 'procure' && root.child('tenants').child($tenantId).child('indkoebsordrer').child(newData.val()).exists()) || ((newData.parent().child('destinationArt').val() === 'fleet' || newData.parent().child('destinationArt').val() === 'facility') && root.child('tenants').child($tenantId).child('opgaver').child(newData.val()).exists()) || (newData.parent().child('destinationArt').val() === 'lager' && root.child('tenants').child($tenantId).child('forbrugsvarer').child(newData.val()).exists()) )" },
+            // ⚠ "INGEN DESTINATION" KRAEVER EN GRUND. Uden den staar fakturaen
+            // som uafklaret uden at nogen kan se hvorfor, og den naeste
+            // begynder forfra paa det samme opslag.
+            "destinationGrund": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            // ⚠ KILDEN ER IKKE DESTINATIONEN. Planchen siger det selv:
+            // "Invoice-mail er kun én kanal, ikke fundamentet."
+            "kilde": { ".validate": "newData.isString() && newData.val().matches(/^(mail|upload|mobil|sag|registreret)$/)" },
             "matchetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
             "matchetMs": { ".validate": "newData.isNumber()" },
             // ⚠ "INGEN AF FORSLAGENE PASSER" ER ET SVAR, ikke en tom tilstand.

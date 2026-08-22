@@ -122,21 +122,28 @@ export default function Fakturaer() {
   /* ⚠ "UDEN MATCH" MÅLES MOD NODEN, og en HÆNGENDE reference tæller med — et
      id der peger på noget som ikke findes, ser matchet ud og er det ikke. */
   const findesOrdre = new Set(ordrer.data.map((o) => o.id));
+  /* ⚠ OG ARTEN SKAL MED (beslutning 86). Feltet er faelles: en faktura
+     placeret paa en Fleet-sag baerer ogsaa et `destinationId`, og uden
+     artstjekket ville den taelle som matchet mod en ordre der ikke findes.
+     ⚠ Den taeller heller ikke som UDEN match her — den ER placeret, bare
+     et andet sted. Procure-skaermen er én linse paa de faelles fakturaer. */
+  const erProcure = (f) => f.destinationArt === "procure";
   const udenMatch = fakturaer.filter(
-    (f) => !f.ikkeMatchbar && (!f.ordreId || !findesOrdre.has(f.ordreId)));
+    (f) => !f.ikkeMatchbar && !f.destinationArt
+      || (erProcure(f) && f.destinationId && !findesOrdre.has(f.destinationId)));
   const tilGodkendelse = fakturaer.filter((f) => f.status === "modtaget");
   const godkendtDenneMaaned = fakturaer.filter(
     (f) => f.status === "godkendt" || f.status === "bogfoert");
   const udenBilag = kontantUdenBilag(indkoeb.data);
 
   /* Forslagene til den valgte. Regnes her — de gemmes ikke. */
-  const matchede = fakturaer.map((f) => f.ordreId).filter(Boolean);
+  const matchede = fakturaer.map((f) => f.destinationId).filter(Boolean);
   const forslag = valgt
-    ? matchForslag(valgt, ordrer.data, { matchede: matchede.filter((id) => id !== valgt.ordreId) })
+    ? matchForslag(valgt, ordrer.data, { matchede: matchede.filter((id) => id !== valgt.destinationId) })
     : [];
-  const valgtOrdre = ordrer.data.find((o) => o.id === (valgtOrdreId || valgt?.ordreId)) || null;
+  const valgtOrdre = ordrer.data.find((o) => o.id === (valgtOrdreId || valgt?.destinationId)) || null;
 
-  const vaelg = (f) => { setValgtId(f.id); setValgtOrdreId(f.ordreId || null); setSvar(null); };
+  const vaelg = (f) => { setValgtId(f.id); setValgtOrdreId(f.destinationId || null); setSvar(null); };
 
   const koer = async (fn) => {
     setArbejder(true);
@@ -272,7 +279,7 @@ export default function Fakturaer() {
                       onClick={() => setDialog({ art: "ikkeMatchbar" })}>
                   Markér som ikke-matchbar
                 </Knap>
-                {valgt.ordreId && (
+                {valgt.destinationId && (
                   <Knap disabled={arbejder || !maaSkrive}
                         onClick={() => koer(() => matchFaktura({ fakturaId: valgt.id, handling: "fjern" }))}>
                     Fjern match
@@ -349,9 +356,9 @@ export default function Fakturaer() {
                     <Pille tone={MATCHTILSTAND[matchtilstand(r)].tone}>
                       {MATCHTILSTAND[matchtilstand(r)].label}
                     </Pille>
-                    {r.ordreId && (
+                    {r.destinationId && (
                       <div className="fc-hint">
-                        <code>{ordrer.data.find((o) => o.id === r.ordreId)?.nummer || r.ordreId}</code>
+                        <code>{ordrer.data.find((o) => o.id === r.destinationId)?.nummer || r.destinationId}</code>
                       </div>
                     )}
                   </>

@@ -5983,3 +5983,141 @@ vogter den nu.
 **5. Demo-sættet var uenigt med `demo-kpi.js`.** Fire varer er på eller under
 deres minimum; demofilen lovede tre. Selvkontrollen fandt det, før skærmen nåede
 at vise Overblikket ét tal og Varelageret et andet.
+
+
+## 86. Fakturacenteret — ét sted, én sandhed
+
+Ét fælles sted for fakturaer på tværs af Fleet, Facility og Procure, under
+Økonomi & Rapporter. Tre plancher.
+
+### ⚠ Ingen ny node — den fælles node fandtes allerede
+
+Det første spørgsmål var om der skulle en `fakturacenter/`-node til. Svaret
+stod i regelfilen, og det havde stået der længe: *"fakturaer er en af de TRE
+TVETYDIGE NODER der står i basen, fordi den røres af to skærme — en klausul på
+det ene modul ville spærre det andet."*
+
+Planchen siger det samme med andre ord: **Fakturacenteret ejer fakturaen;
+modulet ejer sagen.** En node ved siden af ville være den samme kendsgerning to
+steder, og hver skærm skulle huske at lægge dem sammen. Det er
+`bemanding.ledig`, de to demo-sæt og Bil 104 med to nummerplader.
+
+Fakturacenteret er altså en **skærm** og et **destinationsbegreb** på den node
+der er.
+
+### ⚠ Noden er fælles — skærmen er ikke
+
+Jeg skrev først at Økonomi & Rapporter var base og ikke et modul, og byggede
+prøven på det. **Det var forkert, og det blev fanget ved at måle:** `oekonomi`
+er et modul, og et **valgfrit** et — nordvest har det ikke.
+
+Forskellen betyder noget. `fakturaer/` har ingen modulklausul, så en kunde uden
+Økonomi kan stadig **se** sine fakturaer — gennem Procures egen linse. Det han
+mangler, er den **tværgående** visning, og den er dét modulet sælger. Fulgte
+noden modulet, ville hans Procure-skærm blive tom af at han ikke købte Økonomi.
+
+### ⚠ `ordreId` var ét moduls svar på et fælles spørgsmål
+
+Feltet hed `ordreId` og pegede på en indkøbsordre. Men en faktura kan høre til
+en **Fleet-sag**, en **Facility-sag**, en **Procure-ordre** eller en
+**lagervare** — og med et felt pr. modul ville "hvor hører den hen" være fire
+steder at spørge.
+
+Det er nu `destinationArt` + `destinationId`.
+
+⚠ **To flade felter og ikke et objekt.** `.indexOn` kan kun pege på et
+**direkte** barn, og `fakturamatch` skal kunne spørge "er den her ordre
+allerede taget". Et `destination/{art,id}` ville være pænere og uindekserbart.
+
+⚠ **Omdøbningen var billig nu og dyr senere.** Målt i den udrullede base før en
+linje blev rørt: **20 fakturaer i alt**, alle seedede. Samme argument som
+modulomdøbningerne — det sker før den første kunde krydser feltet af, eller
+slet ikke.
+
+⚠ **Sidegevinst:** `ordreId` betød i forvejen **to** ting i basen — en
+indkøbsordre her og en **plukordre** i Warehouse. Derfor blev omdøbningen lavet
+med navngivne mønstre i navngivne filer: en blind søg-og-erstat ville have
+døbt plukordrerne om, og så havde tvetydigheden bare flyttet sig.
+
+### ⚠ Der er ingen warehouse-destination, selv om planchen tegner en
+
+Planchens femte kasse hedder *"Warehouse / øvrigt — lager, internt forbrug
+m.m."*. Warehouse er 3PL: **kundens** gods, som **vi** fakturerer for. Der
+kommer ingen leverandørfaktura ind på den forretning — pengene går den anden
+vej. Kassen svarer altså ikke til noget indgående bilag.
+
+Det der findes, er vores eget forbrugslager, og det hedder `forbrugsvarer`
+(beslutning 85). Arten hedder derfor **`lager`**. At kalde den warehouse ville
+være femte gang et lagernavn dækkede over et andet.
+
+### Scoren, og hvad den bygger på
+
+Samme holdning som `matchForslag()` (beslutning 83): en score er en påstand om
+sikkerhed, og den skal kunne efterprøves. Signalerne står **under** tallet, så
+den der godkender, kan se om de 96 % kommer af et sagsnummer eller af at
+beløbet tilfældigvis lignede.
+
+⚠ **Kun et nummer giver 100.** Alt andet er en slutning, og en slutning må ikke
+se ud som en kendsgerning ved siden af en knap der hedder *Godkend match*.
+
+⚠ **Køretøjet genkendes på kaldenavn eller nummerplade — ikke på id'et.**
+Leverandøren skriver "Bil 78" eller "DE 78 901"; vores interne id har han
+aldrig set.
+
+⚠ **Og en anden leverandørs sag foreslås ikke.** Mercedes sender ikke en regning
+for Crawfords portarbejde. Undtagelsen er den fysiske genkendelse: står bilen
+eller anlægget på fakturaen, er en forkert leverandør en fejl vi skal **se**.
+
+⚠ **Procure gendigtes ikke.** `matchForslag()` **er** scoringen for en
+indkøbsordre — den kender bestillingsnummeret, én-faktura-pr-ordre-reglen og
+beløbet ekskl. moms. Et andet regnestykke ville give Fakturacenteret og Procure
+hver sit svar på ét spørgsmål, to klik fra hinanden.
+
+### Modulerne afgør hvad der overhovedet foreslås
+
+En kunde uden Facility ser aldrig en facility-destination: forslaget ville pege
+på en node hans regler afviser, og *"kan ikke læses"* ligner *"findes ikke"*.
+Modulerne læses af **noden**, ikke af kaldet — kom de fra klienten, kunne den
+placere en faktura på et modul kunden ikke har.
+
+⚠ **Fraværende node = alle moduler**, præcis som reglen læser den
+(`!moduler.exists() || …`). En filterkopi der er 90 % rigtig, afviser præcis
+dét reglen tillader — det er beslutning 56's fund.
+
+⚠ **Og arten skal passe med opgavens egen art.** Fleet og Facility deler noden
+`opgaver`; uden det led kunne en værkstedsopgave placeres som en facility-sag,
+og modulfilteret ville være omgået i ét hop.
+
+### At placere og at godkende er to handlinger
+
+Placeringen kræver ingen ny permission — den registrerer hvad fakturaen hører
+til. At sige god for at der skal betales, er `indkoeb.godkend` (beslutning 82),
+og det ligger i `fakturastatus`. En knap der gjorde begge dele, ville lade den
+der konterer, betale.
+
+⚠ **Og "ingen destination" er et SVAR**, ikke en tom tilstand — med en grund.
+Det afløser `ikkeMatchbar`: to felter for ét svar driver, og Procure-skærmen
+ville læse det gamle mens Fakturacenteret skrev det nye.
+
+### Tre linser, ét sæt
+
+`Modulfakturaer.jsx` er **én** komponent, ikke én pr. modul. Fleet og Facility
+stiller det samme spørgsmål mod den samme node med hver sin art; to kopier
+ville drive. Der er ingen knapper i den: man placerer og godkender i centeret.
+
+### Det arbejdet fandt
+
+**1. Et filnavn er ikke en placering.** Fleet-linsen blev lagt i
+`flaade/Oversigt.jsx` — som **trods navnet** er routet til Opsætning →
+Enheder, altså køretøjsregistret. En liste over værkstedsfakturaer hører hvor
+arbejdet er. Det blev opdaget ved at **åbne skærmen**, ikke ved at læse filen.
+
+**2. Og så ramte ankret forkert igen.** Flytningen brugte
+`lastIndexOf("</div>…")` og landede i filens **sidste** komponent — et
+vedhæftningspanel — i stedet for i den eksporterede skærm. En fil med otte
+komponenter har otte slutninger. Fjerde gang samme fælde i denne session (82,
+83, 85, 86), og hver gang med et lidt andet ansigt.
+
+**3. Prøven byggede på en antagelse jeg ikke havde målt.** Den krævede at
+`oekonomi` **ikke** var et modul. Det er det. Havde jeg ikke kørt den, ville
+skærmens egen tekst have påstået noget forkert om produktet.

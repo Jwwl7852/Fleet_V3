@@ -93,6 +93,43 @@ export async function skiftFaktura({ fakturaId, til, begrundelse } = {}) {
 }
 
 /**
+ * saetDestination({ fakturaId, art, id, begrundelse }) → { ok, … }
+ *
+ * ⚠ FAKTURACENTERETS VEJ IND. `matchFaktura()` ovenfor er PROCURES linse på
+ * det samme felt: den siger "den her ORDRE", og serveren skriver arten med.
+ * Den her siger arten selv, fordi den skal kunne pege på en Fleet-sag, en
+ * Facility-sag, en lagervare — eller svare "ingen".
+ *
+ * ⚠ TO VEJE TIL ÉT FELT ER ÉN FOR MANGE, og det er de ikke: begge ender i
+ * samme to felter på fakturaen, og begge går gennem `kanSaetteDestination()`
+ * henholdsvis `kanMatche()`. Procure-skærmen beholder sin, fordi den kender
+ * bestillingsnummeret og én-faktura-pr-ordre-reglen; Fakturacenteret kender
+ * modulerne. Ingen af dem gætter på den andens område.
+ *
+ * ⚠ OG "ingen" KRÆVER EN GRUND. Uden den står fakturaen som uafklaret uden
+ * at nogen kan se hvorfor, og den næste begynder forfra på det samme opslag.
+ */
+export async function saetDestination({ fakturaId, art, id, begrundelse } = {}) {
+  if (!fakturaId) return { ok: false, art: "afvist", besked: "Vælg en faktura.", data: null };
+  if (!art) return { ok: false, art: "afvist", besked: "Vælg en destination.", data: null };
+  if (art !== "ingen" && !id) {
+    return { ok: false, art: "afvist", besked: "Vælg hvad fakturaen hører til.", data: null };
+  }
+  if (art === "ingen" && !String(begrundelse || "").trim()) {
+    return {
+      ok: false, art: "afvist", data: null,
+      besked: "Skriv hvorfor ingen af destinationerne passer.",
+    };
+  }
+  return kald("fakturadestination", {
+    fakturaId,
+    art,
+    id: art === "ingen" ? undefined : id,
+    begrundelse: begrundelse ? String(begrundelse).trim() : undefined,
+  }, "Destinationen blev afvist.");
+}
+
+/**
  * gemKontantkoeb(post) → { ok, … }
  *
  * ⚠ DET BLIVER EN `indkoeb`-LINJE, ikke en post i en node ved siden af. Et
