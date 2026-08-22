@@ -173,6 +173,26 @@ export const DEMO_INDKOEBSLINJER = [
     prisPrEnhedOere: 1850, lokationId: "lok-kolding",
     koeretoejId: "kt-104", formaal: "Reparation — hydraulikslange, tipkasse",
     fakturastatus: "modtaget", godkendtAf: "Søren Dahl", godkendtMs: dag(-1) },
+  /* ⚠ ET KONTANTKØB ER EN INDKØBSLINJE — IKKE EN NODE VED SIDEN AF.
+     `indkoeb` ER det vi har købt; et kontant køb er nøjagtig det, bare
+     betalt på en anden måde. En egen node ville være den samme
+     kendsgerning to steder, og leverandørernes nøgletal, varelageret og
+     hvert beløb i modulet skulle huske at lægge de to sammen.
+
+     ⚠ OG DEN HAR INGEN `fakturastatus`. Der KOMMER ingen faktura;
+     "mangler" ville lade købet stå i hver optælling af det vi venter på,
+     og listen over manglende bilag kunne aldrig tømmes.
+
+     ⚠ `bilagId` MANGLER MED VILJE. Der er ingen fillagring endnu, og
+     manglen TÆLLES af `kontantUdenBilag()` frem for at spærre — uden et
+     eksempel kan den tælling ikke ses virke. */
+  { id: "il-kontant-1", dato: dag(-5), leverandoerId: "lv-kontorland",
+    vare: "Arbejdshandsker str. 10", varenummer: "AH10-12", kategori: "kontor",
+    antal: 12, enhed: "par", prisPrEnhedOere: 1600, momsOere: 4800,
+    betalingsform: "kontant", udlaegAf: "uid-michael", oprettetAf: "uid-mette",
+    oprettetMs: dag(-5),
+    formaal: "Købt lokalt — lageret løb tør." },
+
   { id: "il-002", dato: dag(-3), aftaltLeveringMs: dag(-1), leveretMs: dag(-1), leverandoerId: "lv-daekteam", reference: "DT-2026-77812",
     vare: "Dæk 315/70 R22.5", varenummer: "DAEK-31570", kategori: "daek", antal: 4, enhed: "stk",
     prisPrEnhedOere: 412500, lokationId: "lok-kolding",
@@ -359,8 +379,18 @@ export const DEMO_FAKTURAER = [
   { id: "fa-9007", leverandoerId: "lv-kontorland", fakturanummer: "KL-9982",
     fakturadatoMs: dag(-12), forfaldMs: dag(18), status: "afvist",
     beloebOere: 184500, momsOere: 46125, indkoebId: "il-010", sagsnummer: null },
+  /* ⚠ DEN HER BÆRER VORES BESTILLINGSNUMMER, og det er hele grunden til at
+     mailudkastet beder om det (beslutning 81): med nummeret er matchet 100 %
+     og uden er det en slutning. Uden ét eksempel i sættet kan forskellen
+     mellem de to ikke ses på skærmen.
+
+     ⚠ OG BESTILLINGEN AFVENTER STADIG GODKENDELSE. Det er ikke en opdigtet
+     tilstand: leverandøren sender når han har leveret, ikke når vi er blevet
+     enige internt. Systemet spærrer ikke matchet — det viser bestillingens
+     tilstand ved siden af, så den der godkender regningen, kan se det. */
   { id: "fa-9008", leverandoerId: "lv-schmitz", fakturanummer: "SSP-70412",
     fakturadatoMs: dag(0), forfaldMs: dag(30), status: "modtaget",
+    reference: "BST-2026-00045",
     beloebOere: 3480000, momsOere: 870000, indkoebId: "il-vb-004", sagsnummer: null },
 
   /* ⚠ DEN ENESTE UDEN MATCH — OG DEN ER TILFØJET FORDI DEN MANGLEDE.
@@ -378,6 +408,36 @@ export const DEMO_FAKTURAER = [
   { id: "fa-9009", leverandoerId: "lv-mercedes", fakturanummer: "MG-2026-3310",
     fakturadatoMs: dag(-2), forfaldMs: dag(28), status: "modtaget",
     beloebOere: 946000, momsOere: 236500, indkoebId: null, sagsnummer: null },
+
+  /* ══════════════════════════════════════════════════════════════════
+     MATCHETS TRE TILSTANDE (beslutning 83, planche 1)
+
+     Uden alle tre kan skærmen kun ses virke i det tilfælde der tilfældigvis
+     står i sættet — og "manglende match" er den eneste af dem der ikke er
+     en afgørelse. En liste hvor hver post mangler noget, holder man op med
+     at kigge på; det er hele grunden til at de to andre findes.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ⚠ MATCHET — og BOGFØRT, så den låste tilstand også kan ses. En bogført
+     faktura kan hverken matches om eller godkendes igen: posten er sendt
+     til regnskabet, og en ændring bagefter gør en afstemning der stemte,
+     til en der ikke gør. Beløbet er ordrens sum ekskl. moms — de to SKAL
+     være ens i den ende, ellers er afvigelsen 25 % og systematisk. */
+  { id: "fa-9010", leverandoerId: "lv-mercedes", fakturanummer: "MG-2026-3298",
+    fakturadatoMs: dag(-15), forfaldMs: dag(15), status: "bogfoert",
+    beloebOere: 276000, momsOere: 69000, indkoebId: null, sagsnummer: null,
+    reference: "BST-2026-00040", ordreId: "ord-003",
+    matchetAf: "uid-jens", matchetMs: dag(-14), bogfoertMs: dag(-13) },
+
+  /* ⚠ IKKE MATCHBAR — MED SIN GRUND. "Ingen af forslagene passer" er et
+     SVAR, ikke en tom tilstand; uden flaget står fakturaen for evigt på
+     listen over dem der mangler et match. Og uden grunden begynder den
+     næste forfra på det samme opslag. */
+  { id: "fa-9011", leverandoerId: "lv-wash", fakturanummer: "WS-2026-114",
+    fakturadatoMs: dag(-8), forfaldMs: dag(22), status: "godkendt",
+    beloebOere: 248000, momsOere: 62000, indkoebId: null, sagsnummer: null,
+    ikkeMatchbar: true,
+    ikkeMatchbarGrund: "Abonnement paa vaskehallen — der er ingen bestilling bag, og der kommer en hver maaned." },
 ];
 
 /* ---- Afstemning: TRE TOTALER, TO AFVIGELSER ---------------------------- */

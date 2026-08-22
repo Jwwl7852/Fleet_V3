@@ -732,3 +732,342 @@ export const GODKENDELSESGRUND = {
      reglen. */
   ugyldigRegel: { label: "Reglen mangler en grænse", tone: "bad" },
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURAMATCH OG KONTANTKØB — beslutning 78, etape 5 (planche 1)
+   ══════════════════════════════════════════════════════════════════════════
+
+   Planchen viser tre ting ved siden af hinanden: de modtagne fakturaer, et
+   forslag til hvilken BESTILLING hver enkelt hører til — med en score i
+   procent — og et felt til at registrere et kontant køb.
+
+   ⚠ SCOREN ER EN PÅSTAND OM SIKKERHED, OG DEN SKAL KUNNE EFTERPRØVES.
+   "92 %" må ikke være en fornemmelse. Den regnes af navngivne signaler, og
+   `matchForslag()` returnerer HVILKE der slog til — så den der bekræfter,
+   kan se om de 92 % kommer af et bestillingsnummer eller af at beløbet
+   tilfældigvis lignede.
+
+   ⚠ OG KUN ET BESTILLINGSNUMMER GIVER FULD SCORE. Alt andet er en slutning:
+   samme leverandør, nogenlunde samme beløb, nogenlunde samme uge. Det er
+   grunden til at `mailudkast()` beder om nummeret på fakturaen (beslutning
+   81) — uden det kan matchet kun gættes, og to bestillinger til samme firma i
+   samme uge ser så ens ud.
+
+   ⚠ SCOREN GEMMES IKKE. Den regnes hos forbrugeren af de poster den handler
+   om. Et gemt tal driver fra sit grundlag første gang nogen retter et beløb —
+   det er `bemanding.ledig` (beslutning 71), og her ville det være et
+   sikkerhedstal der så præcist ud og ikke var det. Det der GEMMES, er
+   AFGØRELSEN: hvilken ordre, hvem der bekræftede, hvornår.
+*/
+
+/**
+ * ⚠ BEGGE BELØB SKAL VÆRE EKSKL. MOMS. Fakturaens `beloebOere` er ekskl.,
+ * momsen er sit eget felt — og ordrens linjer er ekskl. Sammenlignede vi
+ * fakturaens INKL.-tal med ordrens EKSKL.-tal, ville hver eneste
+ * beløbssammenligning være 25 % forkert, systematisk, og se ud som om
+ * leverandøren havde overfaktureret.
+ *
+ * ⚠ DET ER IKKE HYPOTETISK: planchens egen detaljerude skriver fakturaen som
+ * *"23.031 kr. inkl. moms"* og den matchede ordre som *"23.031 kr. ekskl.
+ * moms"*. Det er det SAMME tal med to forskellige mærkater — de kan ikke
+ * begge være rigtige, og en af dem er 25 % ved siden af.
+ */
+export const MATCHSIGNAL = {
+  nummer: { label: "Bestillingsnummer på fakturaen", vaegt: 100 },
+  leverandoer: { label: "Samme leverandør", vaegt: 45 },
+  beloeb: { label: "Samme beløb (ekskl. moms)", vaegt: 35 },
+  beloebNaer: { label: "Beløb tæt på", vaegt: 18 },
+  dato: { label: "Tæt på hinanden i tid", vaegt: 20 },
+};
+
+/** Hvor tæt to beløb må være for at tælle som "tæt på". 2 % af ordren. */
+export const BELOEB_TOLERANCE_BPS = 200;
+
+/** Hvor længe efter en bestilling en faktura stadig er sandsynlig. */
+export const MATCH_VINDUE_DAGE = 90;
+
+/**
+ * ⚠ ET FORSLAG UNDER DET HER VISES IKKE. En liste med et 12 %-forslag
+ * inviterer til at nogen bekræfter det for at komme videre — og en dårlig
+ * match er værre end ingen, fordi den ser afsluttet ud.
+ */
+export const MATCH_MINDSTE_SCORE = 40;
+
+/** Hele kroner ud af hele øre, til en sammenligning der tåler afrunding. */
+const naerNok = (a, b, bps) => {
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return false;
+  if (a === b) return true;
+  const stoerst = Math.max(Math.abs(a), Math.abs(b));
+  if (!stoerst) return false;
+  return (Math.abs(a - b) * 10000) / stoerst <= bps;
+};
+
+/** Ordrenummeret som det kan stå på en faktura — med eller uden bindestreger. */
+const nummerform = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/**
+ * matchForslag(faktura, ordrer) → [{ ordre, score, signaler, sumOere }]
+ *
+ * Sorteret bedst først, og kun dem over `MATCH_MINDSTE_SCORE`.
+ *
+ * ⚠ EN ORDRE DER ALLEREDE ER MATCHET, FORESLÅS IKKE. To fakturaer på samme
+ * bestilling er enten en dublet eller en delfakturering, og begge dele skal
+ * et menneske tage stilling til — ikke et forslag der ser rutinemæssigt ud.
+ *
+ * ⚠ OG EN KLADDE FORESLÅS HELLER IKKE. En bestilling der aldrig blev sendt,
+ * kan ikke have udløst en faktura; stod den på listen, ville et tilfældigt
+ * beløbssammenfald kunne "afslutte" en kladde ingen har bestilt.
+ */
+export function matchForslag(faktura, ordrer = [], { matchede = [] } = {}) {
+  if (!faktura) return [];
+  const brugte = new Set(matchede.filter(Boolean));
+  const fakturaTekst = nummerform(`${faktura.fakturanummer || ""} ${faktura.reference || ""} ${faktura.note || ""}`);
+
+  const ud = [];
+  for (const o of ordrer) {
+    if (brugte.has(o.id)) continue;
+    if (o.status === "kladde" || o.status === "annulleret" || o.status === "afvist") continue;
+
+    const signaler = [];
+    /* ⚠ NUMMERET ER AFGØRENDE, IKKE ET SIGNAL BLANDT FLERE. Står ordrens
+       nummer på fakturaen, er der ikke noget at gætte om. */
+    if (o.nummer && fakturaTekst.includes(nummerform(o.nummer))) {
+      signaler.push("nummer");
+    }
+    if (faktura.leverandoerId && faktura.leverandoerId === o.leverandoerId) {
+      signaler.push("leverandoer");
+    }
+
+    const sum = ordreSumOere(o);
+    if (Number.isInteger(faktura.beloebOere) && sum > 0) {
+      if (faktura.beloebOere === sum) signaler.push("beloeb");
+      else if (naerNok(faktura.beloebOere, sum, BELOEB_TOLERANCE_BPS)) signaler.push("beloebNaer");
+    }
+
+    const dage = Number.isFinite(faktura.fakturadatoMs) && Number.isFinite(o.oprettetMs)
+      ? (faktura.fakturadatoMs - o.oprettetMs) / 86400000
+      : null;
+    /* Fakturaen kommer EFTER bestillingen. En faktura dateret før ordren er
+       ikke "tæt på" — den er et andet køb. */
+    if (dage !== null && dage >= -1 && dage <= MATCH_VINDUE_DAGE) signaler.push("dato");
+
+    if (!signaler.length) continue;
+
+    /**
+     * ⚠ EN ANDEN LEVERANDØRS ORDRE FORESLÅS IKKE — uanset hvad beløbet er.
+     *
+     * Circle K sender ikke en regning for Dækteams bestilling. Uden det her
+     * led kunne beløb + dato alene give 55 %, og et forslag på over halvdelen
+     * ser rigtigt nok ud til at nogen bekræfter det for at komme videre. Det
+     * blev målt på et opdigtet sæt, hvor en ordre til lv-hydra blev foreslået
+     * til en faktura fra lv-daek, fordi de to tilfældigvis kostede det samme.
+     *
+     * Undtagelsen er nummeret: står vores bestillingsnummer på fakturaen, er
+     * en forkert leverandoerId på den ene af de to en FEJL vi skal se, ikke
+     * en grund til at skjule sammenhængen.
+     */
+    if (!signaler.includes("nummer") && !signaler.includes("leverandoer")) continue;
+
+    /**
+     * ⚠ ET NUMMERTRÆF GIVER 100, ALT ANDET HØJST 95.
+     *
+     * Uden nummeret er matchet en SLUTNING — samme leverandør, nogenlunde
+     * samme beløb, nogenlunde samme uge. En slutning må ikke kunne se ud som
+     * en kendsgerning; loftet er dét der holder de to fra hinanden på
+     * skærmen, hvor tallet står ved siden af en knap der hedder "Bekræft".
+     */
+    const raa = signaler.reduce((s, k) => s + MATCHSIGNAL[k].vaegt, 0);
+    const score = signaler.includes("nummer") ? 100 : Math.min(95, raa);
+    if (score < MATCH_MINDSTE_SCORE) continue;
+
+    ud.push({ ordre: o, score, signaler, sumOere: sum });
+  }
+
+  return ud.sort((a, b) => b.score - a.score || (b.ordre.oprettetMs || 0) - (a.ordre.oprettetMs || 0));
+}
+
+/**
+ * Fakturaens tilstande på matchsiden — IKKE dens godkendelsesstatus.
+ *
+ * ⚠ TO SPØRGSMÅL, IKKE ÉT. "Hvilken bestilling hører den til" og "må den
+ * betales" er uafhængige: en faktura kan være matchet og afvist, eller
+ * godkendt uden nogensinde at have haft en bestilling (et kontantkøb bagud).
+ * Slog vi dem sammen i ét `status`-felt, kunne man ikke skrive den ene uden
+ * at påstå noget om den anden.
+ */
+export const MATCHTILSTAND = {
+  matchet: { label: "Matchet", tone: "ok" },
+  manglerMatch: { label: "Manglende match", tone: "warn" },
+  ikkeMatchbar: { label: "Ikke matchbar", tone: "info" },
+};
+
+/** matchtilstand(faktura) → nøglen i MATCHTILSTAND. */
+export function matchtilstand(faktura) {
+  if (faktura?.ordreId) return "matchet";
+  if (faktura?.ikkeMatchbar) return "ikkeMatchbar";
+  return "manglerMatch";
+}
+
+/**
+ * kanMatche(faktura, ordre) → { ok, aarsag }
+ *
+ * Svarer, afgør ikke — skærmen viser, `fakturamatch` håndhæver med den samme.
+ */
+export function kanMatche(faktura, ordre) {
+  if (!faktura) return { ok: false, aarsag: "Ingen faktura valgt." };
+  if (!ordre) return { ok: false, aarsag: "Vælg en bestilling." };
+  if (faktura.ordreId === ordre.id) {
+    return { ok: false, aarsag: "Fakturaen er allerede matchet med den bestilling." };
+  }
+  /* ⚠ EN BOGFØRT FAKTURA MATCHES IKKE OM. Posten er sendt til regnskabet, og
+     et match der ændrer sig bagefter, gør en afstemning der stemte, til en
+     der ikke gør — uden at nogen kan se hvorfor. */
+  if (faktura.status === "bogfoert") {
+    return { ok: false, aarsag: "Fakturaen er bogført. Matchet kan ikke ændres bagefter." };
+  }
+  if (ordre.status === "kladde") {
+    return {
+      ok: false,
+      aarsag: "Bestillingen er en kladde — den er aldrig sendt, så den kan ikke have udløst en faktura.",
+    };
+  }
+  if (ordre.status === "annulleret" || ordre.status === "afvist") {
+    return {
+      ok: false,
+      aarsag: `Bestillingen er ${(ORDRESTATUS[ordre.status]?.label || ordre.status).toLowerCase()}.`,
+    };
+  }
+  return { ok: true, aarsag: null };
+}
+
+/**
+ * afvigelse mellem faktura og ordre, i hele øre. Positiv = fakturaen er højere.
+ *
+ * ⚠ BEGGE EKSKL. MOMS. Se noten ved MATCHSIGNAL. Og `null` når det ene tal
+ * mangler — `0` ville betyde "de er ens", hvilket er noget helt andet end
+ * "vi ved det ikke". `100 - null` er 100; det er den fælde CLAUDE.md kalder
+ * at regne videre på et null.
+ */
+export function matchAfvigelseOere(faktura, ordre) {
+  const sum = ordreSumOere(ordre);
+  if (!Number.isInteger(faktura?.beloebOere) || !ordre || sum <= 0) return null;
+  return faktura.beloebOere - sum;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KONTANTKØB
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ ET KONTANTKØB ER IKKE EN NY NODE. Det er en `indkoeb`-linje.
+
+   `indkoeb` ER "det vi har købt" — en registrering bagud. Et kontant køb er
+   nøjagtig dét, bare betalt på en anden måde. En node ved siden af ville være
+   den samme kendsgerning to steder: leverandørernes nøgletal, varelageret,
+   Overblik og hvert eneste beløb i modulet ville skulle huske at lægge de to
+   sammen — og de ville ikke. Det er `bemanding.ledig` og de to demo-sæt om
+   igen, denne gang med penge.
+
+   ⚠ BETALINGSFORMEN ER ET FELT, IKKE EN STATUS. `fakturastatus` svarer på
+   "har vi fået regningen"; `betalingsform` svarer på "hvordan betalte vi".
+   Lagde vi "kontant" ind i `fakturastatus`, ville et kontantkøb for evigt
+   stå som en linje der mangler sin faktura — og fremgå af hver optælling af
+   det vi skylder.
+
+   ⚠ OG DET ER ET UDLÆG, indtil nogen siger andet. `udlaegAf` er hvem der
+   lagde ud — et `uid`, fordi det er hvem der GJORDE noget.
+*/
+
+export const BETALINGSFORM = {
+  faktura: { label: "Faktura", tone: "info" },
+  kontant: { label: "Kontant / udlæg", tone: "warn" },
+};
+export const ALLE_BETALINGSFORMER = Object.keys(BETALINGSFORM);
+
+/**
+ * valideKontantkoeb(post) → { ok, fejl }
+ *
+ * ⚠ KVITTERINGEN ER IKKE ET KRAV I KODEN, OG DET ER EN BESLUTNING. Der er
+ * ingen fillagring endnu (kundens valg), så et krævet felt ville være
+ * uopfyldeligt — og et krav man ikke kan opfylde, bliver til et felt man
+ * skriver "ja" i. Manglen TÆLLES i stedet, som `kpi.opgaver.udenTidsregistrering`
+ * gør det (beslutning 50): synlig frem for spærret.
+ */
+export function valideKontantkoeb(post = {}) {
+  const f = {};
+
+  if (!tekst(post.vare, 120)) f.vare = "Skriv hvad der blev købt.";
+  if (!tekst(post.leverandoerId, 60)) f.leverandoerId = "Vælg hvor det blev købt.";
+  if (!Number.isFinite(post.antal) || post.antal <= 0) {
+    f.antal = "Antallet skal være større end nul.";
+  }
+  /* ⚠ HELE ØRE, EKSKL. MOMS — som alle beløb. En kvittering viser INKL., og
+     det er præcis derfor feltet hedder noget andet end det der står på
+     bonnen: den der taster, skal se forskellen. */
+  if (!Number.isInteger(post.prisPrEnhedOere) || post.prisPrEnhedOere < 0) {
+    f.prisPrEnhedOere = "Beløbet skal være i hele kroner, ekskl. moms.";
+  }
+  if (post.momsOere !== undefined && post.momsOere !== null
+      && (!Number.isInteger(post.momsOere) || post.momsOere < 0)) {
+    f.momsOere = "Momsen skal være i hele kroner.";
+  }
+  if (!tekst(post.udlaegAf, 128)) f.udlaegAf = "Vælg hvem der lagde ud.";
+  if (!Number.isFinite(post.dato) || post.dato <= 0) f.dato = "Sæt datoen for købet.";
+  if (post.betalingsform !== "kontant") {
+    f.betalingsform = "Et kontantkøb skal bære betalingsform \"kontant\".";
+  }
+  if (post.note !== undefined && post.note !== null && String(post.note).length > 250) {
+    f.note = "Noten er for lang (højst 250 tegn).";
+  }
+  if (post.division !== undefined) {
+    f.division = "Division findes ikke længere — se beslutning 70.";
+  }
+
+  return { ok: Object.keys(f).length === 0, fejl: f };
+}
+
+/**
+ * kontantkoebLinje(post, { uid, nu }) → linjen `indkoeb` skal bære.
+ *
+ * BYGGER, SKRIVER IKKE — samme mønster som `behovTilLinje()`.
+ *
+ * ⚠ `fakturastatus` SÆTTES IKKE TIL "mangler". Der KOMMER ingen faktura;
+ * "mangler" ville lade købet stå i hver optælling af det vi venter på, og en
+ * liste over manglende bilag ville aldrig kunne tømmes.
+ */
+export function kontantkoebLinje(post, { uid, nu } = {}) {
+  const svar = valideKontantkoeb({ ...post, udlaegAf: post.udlaegAf || uid, betalingsform: "kontant" });
+  if (!svar.ok) {
+    throw new Error(`kontantkoebLinje: ${Object.values(svar.fejl)[0]}`);
+  }
+  return {
+    vare: post.vare,
+    antal: post.antal,
+    prisPrEnhedOere: post.prisPrEnhedOere,
+    leverandoerId: post.leverandoerId,
+    dato: post.dato,
+    betalingsform: "kontant",
+    udlaegAf: post.udlaegAf || uid,
+    /* ⚠ HVEM DER REGISTREREDE, ER IKKE HVEM DER LAGDE UD. En kontorassistent
+       taster en kollegas bon; `oprettetAf` er hende, `udlaegAf` er ham, og
+       pengene skal til ham. Samme skel som uid mod personId. */
+    oprettetAf: uid,
+    oprettetMs: nu,
+    ...(post.enhed ? { enhed: post.enhed } : {}),
+    ...(post.varenummer ? { varenummer: post.varenummer } : {}),
+    ...(post.kategori ? { kategori: post.kategori } : {}),
+    ...(Number.isInteger(post.momsOere) ? { momsOere: post.momsOere } : {}),
+    ...(post.koeretoejId ? { koeretoejId: post.koeretoejId } : {}),
+    ...(post.note ? { formaal: String(post.note).slice(0, 200) } : {}),
+  };
+}
+
+/**
+ * kontantUdenBilag(linjer) → de kontantkøb der mangler deres kvittering.
+ *
+ * ⚠ TÆLLES, IKKE SPÆRRES. Der er ingen fillagring endnu, så et krav ville
+ * være uopfyldeligt — men et hul ingen kan se, bliver ikke lukket. Fjern
+ * ikke tællingen når fillagringen kommer; så bliver den først rigtig.
+ */
+export function kontantUdenBilag(linjer = []) {
+  return linjer.filter((l) => l.betalingsform === "kontant" && !l.bilagId);
+}

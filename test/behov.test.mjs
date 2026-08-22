@@ -84,8 +84,15 @@ describe("Skærmen og serveren er enige", () => {
        kopi", hvilket ikke var sandt. En prøve der fejler på en TILFØJELSE i
        stedet for på det den vogter, lærer den næste at rette prøven i stedet
        for koden. */
+    /* ⚠ OG HELLER IKKE ET VINDUE PÅ 200 TEGN. Anden udgave krævede at
+       `valideBehov` stod inden for 200 tegn før `from "./delt/procure.js"`,
+       og den faldt igen da etape 5 lagde to navne mere i den samme import.
+       En prøve der måler AFSTAND I TEGN, måler formatering — ikke det den
+       vogter. Nu tages selve importsætningen ud og læses. */
     const importen = SERVER.slice(0, SERVER.indexOf("initializeApp()"));
-    assert.match(importen, /\bvalideBehov\b[\s\S]{0,200}?from "\.\/delt\/procure\.js";/,
+    const saetning = importen.match(/import \{([^}]*)\} from "\.\/delt\/procure\.js";/);
+    assert.ok(saetning, "functions/index.js importerer slet ikke fra delt/procure.js");
+    assert.match(saetning[1], /\bvalideBehov\b/,
       "behovskriv har sin egen kopi af formen");
     assert.match(SERVER, /const svar = valideBehov\(post\);/,
       "behovskriv kalder ikke valideBehov");

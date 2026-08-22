@@ -18,6 +18,7 @@
  * overgang uden en knap er en vej ingen kan finde.
  */
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { usePost } from "../../fleet/usePost.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
@@ -189,24 +190,38 @@ export default function Godkendelser() {
           </p>
         </Kort>
 
-        {/* ⚠ GEMT, IKKE HÅNDHÆVET — OG DET STÅR PÅ SKÆRMEN.
-            `fakturaer/` er `.write: false`, og der findes ingen funktion der
-            skriver den. En kontakt man kunne slå til, ville love noget
-            systemet ikke holder — og et løfte man opdager er tomt, er værre
-            end en funktion der siger den mangler. Samme mønster som
-            filuploaden på Indkøbsbehov. */}
+        {/* ⚠ KONTAKTEN VAR LÅST INDTIL BESLUTNING 83, og låsen var ikke
+            pænhed: der fandtes ingen funktion der skrev `fakturaer/`, så en
+            regel man kunne slå til, ville love noget systemet ikke holdt.
+            `fakturastatus` håndhæver den nu — og så ville låsen selv være
+            usandheden. */}
         <Kort titel="Kræv fakturagodkendelse"
-              handling={<Kontakt aktiv={false} disabled label="Kræv fakturagodkendelse"
-                                 saet={() => {}} />}>
+              handling={<Kontakt aktiv={nuvaerende.fakturagodkendelse.aktiv}
+                                 disabled={!maaSaetteRegler}
+                                 label="Kræv fakturagodkendelse"
+                                 saet={(v) => saet("fakturagodkendelse", "aktiv", v)} />}>
           <p className="fc-hint" style={{ marginTop: 0 }}>
             Kræver godkendelse af fakturaer før betaling.
           </p>
+          <Felt id="fgodkender" label="Godkender" valgmuligheder={brugervalg}
+                disabled={!maaSaetteRegler || !nuvaerende.fakturagodkendelse.aktiv}
+                vaerdi={nuvaerende.fakturagodkendelse.godkenderUid}
+                saet={(v) => saet("fakturagodkendelse", "godkenderUid", v)} />
           <p className="fc-hint">
-            <b>Reglen er ikke bygget endnu.</b> <code>fakturaer/</code> er{" "}
-            <b>.write: false</b>, og der findes ingen funktion der skriver den —
-            det er trin 4 i processen og hører i sin egen etape. Kontakten står
-            derfor låst: <b>en regel der kan slås til uden at nogen håndhæver
-            den, er et løfte systemet ikke holder.</b>
+            {nuvaerende.fakturagodkendelse.aktiv
+              ? <>Kun den valgte kan godkende en faktura. Selve godkendelsen
+                 sker på <Link className="fc-a" to="/indkoeb/fakturaer">Fakturaer
+                 &amp; afstemning</Link>.</>
+              : <>Reglen er slået fra — alle med <code>{PERM.indkoebGodkend}</code>{" "}
+                 kan godkende en faktura.</>}
+          </p>
+          {/* ⚠ OG DET DER STADIG IKKE ER BYGGET, SIGER DET. Reglen håndhæves;
+              betalingen findes ikke. To forskellige mangler må ikke læses
+              som én. */}
+          <p className="fc-hint">
+            <b>Der betales ikke fra systemet.</b> Reglen afgør hvem der må
+            sige god for regningen — ikke hvornår pengene sendes. Bogføring
+            sætter en tilstand og sender intet til et regnskabssystem.
           </p>
         </Kort>
 

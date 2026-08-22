@@ -5613,3 +5613,140 @@ nu et bart sæt når noden selv er posten.
 **7. ASCII i en brugervendt tekst.** Menupunkternes `under` sagde *"saet
 virksomhedens beloebsgraense"*. Kommentarer i denne base skrives med ae/oe/aa;
 en tekst der **vises**, gør ikke.
+
+
+## 83. Fakturaen finder sin bestilling — Procures trin 4
+
+Etape 5 af beslutning 78: matchet, godkendelsen og kontantkøbet. Planche 1.
+
+### ⚠ Scoren er en påstand om sikkerhed, og den skal kunne efterprøves
+
+Planchen skriver "92 % match". Et sådant tal må ikke være en fornemmelse med to
+decimaler. `matchForslag()` regner det af **navngivne signaler** og returnerer
+hvilke der slog til, så skærmen kan skrive dem under scoren — den der
+bekræfter, skal kunne se om de 92 % kommer af et bestillingsnummer eller af at
+beløbet tilfældigvis lignede.
+
+⚠ **Kun et bestillingsnummer giver 100.** Alt andet er en slutning: samme
+leverandør, nogenlunde samme beløb, nogenlunde samme uge. Loftet på 95 er dét
+der holder de to fra hinanden på en skærm hvor tallet står ved siden af en knap
+der hedder *Bekræft*. Det er hele grunden til at `mailudkast()` beder om
+nummeret på fakturaen (beslutning 81).
+
+⚠ **Og scoren gemmes ikke.** Den regnes af de to poster hos forbrugeren; et
+gemt tal driver fra sit grundlag første gang nogen retter et beløb — det er
+`bemanding.ledig` (71), og her ville det være et sikkerhedstal der så præcist
+ud uden at være det. Det der gemmes, er **afgørelsen**: hvilken ordre, hvem,
+hvornår.
+
+⚠ **En anden leverandørs ordre foreslås aldrig.** Circle K sender ikke en
+regning for Dækteams bestilling. Uden det led gav beløb + dato alene 55 %, og
+et forslag på over halvdelen ser rigtigt nok ud til at nogen bekræfter det for
+at komme videre. Det blev målt på et opdigtet sæt. Undtagelsen er nummeret: står
+vores bestillingsnummer på fakturaen, er en forkert leverandør en **fejl vi skal
+se**, ikke en grund til at skjule sammenhængen.
+
+### ⚠ Planchen sammenlignede inkl. moms med ekskl. moms
+
+Detaljeruden skriver fakturaen som *"23.031 kr. inkl. moms"* og den matchede
+ordre som *"23.031 kr. ekskl. moms"*. Det er **det samme tal med to mærkater** —
+de kan ikke begge være rigtige, og den ene er 25 % ved siden af.
+
+Sammenlignede vi sådan, ville hver eneste beløbssammenligning være systematisk
+forkert og se ud som om leverandøren havde overfaktureret. Alt der måles her, er
+ekskl. moms i begge ender; momsen står som sit eget felt, som beslutning 2
+kræver.
+
+⚠ **Og afvigelsen er `null` når et af tallene mangler — ikke 0.** Et nul betyder
+"de er ens", hvilket er noget helt andet end "vi ved det ikke".
+
+### ⚠ Et kontantkøb er en indkøbslinje — ikke en node ved siden af
+
+Etapeplanen sagde *"node `kontantkoeb`"*. Det blev omgjort, og grunden er den
+samme som alle de andre gange: `indkoeb` **er** det vi har købt, en registrering
+bagud, og et kontant køb er nøjagtig det — bare betalt på en anden måde.
+
+En egen node ville være den samme kendsgerning to steder. Leverandørernes
+nøgletal, varelageret, Overblik og hvert eneste beløb i modulet skulle huske at
+lægge de to sammen, og **de ville ikke**. Det er `bemanding.ledig`, de to
+demo-sæt og Bil 104's to nummerplader om igen, denne gang med penge.
+
+⚠ **Betalingsformen er et FELT, ikke en status.** `fakturastatus` svarer på "har
+vi fået regningen"; `betalingsform` på "hvordan betalte vi". Lagde vi "kontant"
+ind i `fakturastatus`, ville købet stå som en linje der mangler sin faktura for
+evigt — og listen over manglende bilag kunne aldrig tømmes. Derfor får en
+kontantlinje **ingen** `fakturastatus` overhovedet.
+
+⚠ **Og `udlaegAf` er ikke `oprettetAf`.** En kontorassistent taster en kollegas
+bon; pengene skal til kollegaen. Samme skel som uid mod personId.
+
+⚠ **Kvitteringen kræves ikke, den TÆLLES.** Der er ingen fillagring (kundens
+valg), så et krav ville være uopfyldeligt — og et krav man ikke kan opfylde,
+bliver til et felt man skriver "ja" i. `kontantUdenBilag()` gør hullet synligt
+i stedet. Fjern ikke tællingen når fillagringen kommer; så bliver den først
+rigtig. Samme greb som `kpi.opgaver.udenTidsregistrering` (beslutning 50).
+
+### To link-felter, og de svarer på hver sit spørgsmål
+
+`indkoebId` er hvilken **linje** fakturaen dækker — hvad vi modtog. `ordreId` er
+hvilken **bestilling** den betaler — hvad vi bad om. Det er dét planchen matcher
+på. De to kan drive fra hinanden, og gør de det, er det en oplysning: en faktura
+der dækker en linje vi aldrig bestilte, skal ses.
+
+⚠ **Én faktura pr. bestilling.** To fakturaer på samme ordre er enten en dublet
+eller en delfakturering, og begge dele skal et menneske tage stilling til.
+Reglen kan ikke håndhæve det — en `.validate` ser én post ad gangen — så leddet
+står i `fakturamatch`, med `orderByChild("ordreId")`. Og feltet er **indekseret**:
+uden indekset fejler forespørgslen ikke, RTDB henter hele noden ned og filtrerer
+i klienten med en advarsel i konsollen. Det er præcis den fejl der stod her før,
+hvor indekset pegede på `godkendelsesstatus`, et felt ingen post bar.
+
+⚠ **"Ingen af forslagene passer" er et SVAR**, ikke en tom tilstand — og det
+kræver en grund. Uden flaget står fakturaen for evigt på listen over dem der
+mangler et match, og en liste der ikke kan tømmes, holder man op med at kigge
+på. Uden grunden begynder den næste forfra på det samme opslag.
+
+### Beslutning 82's anden kontakt fik sin vej ind
+
+`fakturagodkendelse` var **gemt, ikke håndhævet**, og kontakten stod låst med sin
+begrundelse. `fakturastatus` håndhæver den nu, og så ville låsen selv være
+usandheden — den er væk.
+
+⚠ **Man bogfører ikke noget der ikke er godkendt.** Planchens egen fodnote siger
+det: *"Efter godkendelse bogføres og sendes til regnskabssystemet."*
+
+⚠ **Og en bogført faktura er en endestation.** Hverken match eller godkendelse
+kan ændres bagefter: posten er sendt til regnskabet, og en ændring ville gøre en
+afstemning der stemte, til en der ikke gør — uden at nogen kan se hvorfor.
+
+⚠ **Men der sendes intet til et regnskabssystem.** Bogføring sætter en tilstand.
+Der er ingen integration, og en knap der påstod det, ville få nogen til at holde
+op med at bogføre manuelt. Det står på skærmen.
+
+### Det prøverne og planchen fandt
+
+**1. Ankret fandtes to steder — igen.** `indkoebId` står i BÅDE `grundlag` og
+`fakturaer`, præcis som `godkendtAf`/`godkendtMs` gjorde i beslutning 82.
+Patchen tæller nu træffene og **nægter at skrive** hvis der er mere end ét; den
+fejlede højlydt frem for at lægge fire felter i den forkerte node.
+
+**2. To prøver målte formatering.** `behov.test.mjs` krævede at `valideBehov`
+stod inden for **200 tegn** før `from "./delt/procure.js"` — og faldt da etape 5
+lagde tre navne mere i den samme import. En prøve der måler afstand i tegn,
+måler formatering, ikke det den vogter. Den tager nu importsætningen ud og læser
+den. Anden gang samme prøve er faldet på en tilføjelse.
+
+**3. En prøve holdt en lås fast der var blevet forkert.**
+`godkendelse.test.mjs` krævede at fakturakontakten var **låst**. Den er
+håndhævet nu, og prøven vendte med — den vogter at kontakten er bundet til
+reglen, og at skærmen stadig siger at der ikke betales herfra. Tredje gang det
+mønster dukker op (79, 82, 83).
+
+**4. `fakturastatus` på en kontantlinje.** `indkoeb.test.mjs` krævede en kendt
+`fakturastatus` på hver linje. Et kontantkøb har ingen, og det er pointen —
+prøven **asserterer** det nu frem for at springe linjen over.
+
+**5. Demo-sættet kunne ikke vise forskellen mellem 100 % og 83 %.** Uden et
+nummertræf i sættet ville skærmens vigtigste skel — kendsgerning mod slutning —
+aldrig kunne ses. `fa-9008` bærer nu et bestillingsnummer, og `ord-007` er
+tilføjet så samme leverandør har både en matchet og en foreslåelig ordre.

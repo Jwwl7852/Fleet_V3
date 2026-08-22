@@ -445,14 +445,28 @@ describe("Noden er lukket, og formen står i reglerne", () => {
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Skærmen siger hvad den gør og ikke gør", () => {
   /**
-   * ⚠ FAKTURAGODKENDELSEN ER GEMT, IKKE HÅNDHÆVET — OG DET STÅR PÅ SKÆRMEN.
-   * `fakturaer/` er `.write: false`, og der findes ingen funktion der skriver
-   * den. En kontakt man kunne slå til, ville love noget systemet ikke holder.
+   * ⚠ KONTAKTEN VAR LÅST — OG ER DET IKKE LÆNGERE.
+   *
+   * Her stod at fakturareglen skulle være låst, fordi `fakturaer/` var
+   * `.write: false` og ingen funktion skrev den: en regel man kunne slå til
+   * uden at nogen håndhævede den, er et løfte systemet ikke holder.
+   *
+   * `fakturastatus` håndhæver den nu (beslutning 83), og så ville LÅSEN selv
+   * være usandheden. Prøven vender derfor med: den vogter at kontakten er
+   * bundet til reglen, og at der stadig står hvad systemet IKKE gør —
+   * at der ikke betales herfra.
+   *
+   * ⚠ EN PRØVE DER BESKRIVER ET MELLEMSTADIE, SKAL SELV KUNNE SE AT DET ER
+   * OVRE. Det er samme fælde som beslutning 79 fandt i `division-fjernet`,
+   * og som `PERM_GODKEND_MIDLERTIDIG` var i beslutning 82.
    */
-  test("⚠ FAKTURAREGLEN ER LÅST, MED SIN GRUND", () => {
-    assert.match(SKAERM, /Reglen er ikke bygget endnu/);
-    assert.match(SKAERM, /aktiv=\{false\} disabled/,
-      "kontakten til fakturagodkendelse kan slås til uden at nogen håndhæver den");
+  test("⚠ FAKTURAREGLEN ER LEVENDE, OG GRÆNSEN FOR DEN STÅR", () => {
+    assert.ok(!/Reglen er ikke bygget endnu/.test(SKAERM),
+      "kontakten står stadig som ubygget, men fakturastatus håndhæver den");
+    assert.match(SKAERM, /saet\("fakturagodkendelse", "aktiv", v\)/,
+      "kontakten er ikke bundet til reglen");
+    assert.match(SKAERM, /Der betales ikke fra systemet/,
+      "skærmen lover en betaling der ikke findes");
   });
 
   /* ⚠ TOM STRENG ER IKKE NUL. `Number("")` er 0, og en grænse på 0 kr. betyder

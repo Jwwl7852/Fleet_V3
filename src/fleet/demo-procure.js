@@ -188,6 +188,23 @@ export const DEMO_INDKOEBSORDRER = [
      kan kun han godkende, er hans egne ordrer ellers en blindgyde. Den er
      tilladt og markeres — se `selvgodkendt` i `ordreOpdatering()`. Uden et
      eksempel kan den markering ikke ses virke. */
+  /* ⚠ TO SENDTE ORDRER TIL SAMME LEVERANDØR, og det er ikke pynt: den ene
+     er MATCHET med en faktura, den anden er den fakturaen uden match kan
+     foreslås mod. Med kun én kunne skærmen vise enten et forslag eller et
+     match — aldrig begge, og så kan man ikke se at de er to tilstande.
+
+     ⚠ OG DE ER FRA SAMME FIRMA MED VILJE. Det er præcis det tilfælde
+     `mailudkast()` beder om bestillingsnummeret for (beslutning 81): to
+     bestillinger til samme leverandør i samme uge ser ens ud, og uden
+     nummeret kan matchet kun gættes. */
+  { id: "ord-007", nummer: "BST-2026-00046", leverandoerId: "lv-mercedes",
+    status: "sendt", oprettetAf: "uid-jens", oprettetMs: NU - 200 * T,
+    linjer: {
+      "l-1": { vare: "Mekanikertime", varenummer: "TIME-MEK", antal: 10,
+               enhed: "time", prisPrEnhedOere: 84500 },
+      "l-2": { vare: "Motorolie 5W30", varenummer: "OLIE-5W30", antal: 22,
+               enhed: "l", prisPrEnhedOere: 4600 },
+    } },
   { id: "ord-006", nummer: "BST-2026-00045", leverandoerId: "lv-schmitz",
     status: "afventerGodkendelse", oprettetAf: "uid-mikkel", oprettetMs: NU - 30 * T,
     bestillerId: "mikkelLarsen",

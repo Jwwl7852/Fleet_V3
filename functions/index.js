@@ -82,6 +82,7 @@ import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
   valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
   kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
+  kanMatche, kontantkoebLinje,
 } from "./delt/procure.js";
 import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
@@ -4372,6 +4373,287 @@ export const ordrestatus = onCall({ region: REGION }, async (req) => {
       : `${ordre.status} → ${opdatering.status}`);
 
   return { ok: true, status: opdatering.status, automatisk: Boolean(opdatering.godkendtAutomatisk) };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PROCURES TRIN 4 — fakturaen (beslutning 83, planche 1)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ EN FAELLES DOER FOR DE TRE. De laeser samme tenant, samme abonnement og
+   samme node; skrev hver sin kopi af de fire opslag, ville den ene faa rettet
+   sin modulklausul og de to andre ikke.
+
+   ⚠ MEN `fakturaer` HAR INGEN MODULKLAUSUL, og det er besluttet frem for
+   glemt: noden roeres af TO moduler, saa en klausul paa det ene ville
+   spaerre det andet. Se noten i regelfilen. Derfor tager doeren imod hvilket
+   modul der skal kraeves — og for fakturaerne er svaret ingen.
+   ══════════════════════════════════════════════════════════════════════════ */
+async function procureDoer(req, { perm, modul }) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  if (perm && !perms.includes(`|${perm}|`)) {
+    throw new HttpsError("permission-denied", `Det kræver ${perm}.`);
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  if (modul) {
+    const moduler = await rod.child("moduler").once("value");
+    if (moduler.exists() && moduler.child(modul).val() !== true) {
+      throw new HttpsError("permission-denied", `Modulet ${modul} er ikke aktivt.`);
+    }
+  }
+  return { db, rod, tenantId, uid: auth.uid, perms };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURAMATCH — hvilken bestilling betaler fakturaen
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ SCOREN SENDES IKKE MED, OG DEN GEMMES IKKE. Klienten siger hvilken
+   ORDRE; serveren skriver afgoerelsen. Kom scoren udefra, ville den vaere en
+   paastand vi gemte uden at kunne efterproeve — og et sikkerhedstal der ser
+   praecist ud uden at vaere det, er vaerre end intet tal.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const fakturamatch = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv" });
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  if (!fakturaId) throw new HttpsError("invalid-argument", "fakturaId mangler.");
+
+  const fSnap = await rod.child(`fakturaer/${fakturaId}`).once("value");
+  if (!fSnap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
+  const faktura = { ...fSnap.val(), id: fakturaId };
+
+  const sti = `tenants/${tenantId}/fakturaer/${fakturaId}`;
+  const opdatering = {};
+  let note;
+
+  if (d.handling === "ikkeMatchbar") {
+    /* ⚠ "INGEN AF FORSLAGENE PASSER" KRAEVER EN GRUND. Uden den staar
+       fakturaen som uafklaret uden at nogen kan se hvorfor — og den naeste
+       der kigger, begynder forfra paa det samme opslag. */
+    const grund = kortStreng(d.grund, 250);
+    if (!grund) {
+      throw new HttpsError("invalid-argument",
+        "Skriv hvorfor ingen af bestillingerne passer. Uden en grund begynder "
+        + "den naeste forfra paa det samme opslag.");
+    }
+    opdatering[`${sti}/ikkeMatchbar`] = true;
+    opdatering[`${sti}/ikkeMatchbarGrund`] = grund;
+    opdatering[`${sti}/ordreId`] = null;
+    opdatering[`${sti}/matchetAf`] = null;
+    opdatering[`${sti}/matchetMs`] = null;
+    note = `markeret ikke-matchbar: ${grund}`;
+  } else if (d.handling === "fjern") {
+    if (!faktura.ordreId) {
+      throw new HttpsError("failed-precondition", "Fakturaen er ikke matchet.");
+    }
+    if (faktura.status === "bogfoert") {
+      throw new HttpsError("failed-precondition",
+        "Fakturaen er bogfoert. Matchet kan ikke aendres bagefter.");
+    }
+    opdatering[`${sti}/ordreId`] = null;
+    opdatering[`${sti}/matchetAf`] = null;
+    opdatering[`${sti}/matchetMs`] = null;
+    note = `match til ${faktura.ordreId} fjernet`;
+  } else {
+    const ordreId = kortStreng(d.ordreId, 60);
+    if (!ordreId) throw new HttpsError("invalid-argument", "Vaelg en bestilling.");
+    const oSnap = await rod.child(`indkoebsordrer/${ordreId}`).once("value");
+    if (!oSnap.exists()) throw new HttpsError("not-found", "Bestillingen findes ikke.");
+    const ordre = { ...oSnap.val(), id: ordreId };
+
+    /* ⚠ SAMME kanMatche() SOM SKAERMEN. Skaermen VISER; funktionen HAANDHAEVER. */
+    const kan = kanMatche(faktura, ordre);
+    if (!kan.ok) throw new HttpsError("failed-precondition", kan.aarsag);
+
+    /* ⚠ ÉN FAKTURA PR. BESTILLING. To fakturaer paa samme ordre er enten en
+       dublet eller en delfakturering, og begge dele skal et menneske tage
+       stilling til. Reglen kan ikke haandhaeve det — en .validate ser én post
+       ad gangen — saa leddet staar her. */
+    const alle = await rod.child("fakturaer").orderByChild("ordreId").equalTo(ordreId).once("value");
+    let optaget = null;
+    alle.forEach((barn) => { if (barn.key !== fakturaId) optaget = barn.key; });
+    if (optaget) {
+      throw new HttpsError("failed-precondition",
+        `Bestillingen ${ordre.nummer} er allerede matchet med en anden faktura.`);
+    }
+
+    opdatering[`${sti}/ordreId`] = ordreId;
+    opdatering[`${sti}/matchetAf`] = uid;
+    opdatering[`${sti}/matchetMs`] = Date.now();
+    opdatering[`${sti}/ikkeMatchbar`] = null;
+    opdatering[`${sti}/ikkeMatchbarGrund`] = null;
+    note = `matchet med ${ordre.nummer}`;
+  }
+
+  await db.ref().update(opdatering);
+  await logProcure(tenantId, uid, AUDIT.aendre, "fakturaer", fakturaId,
+    { indkoebId: faktura.ordreId ?? null }, { indkoebId: opdatering[`${sti}/ordreId`] ?? null }, note);
+
+  return { ok: true };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURASTATUS — godkend, afvis, bogfoer
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ HER FIK BESLUTNING 82's ANDEN KONTAKT SIN VEJ IND. Var
+   `godkendelsesregler.fakturagodkendelse` slaaet til, kraever betalingen en
+   godkendelse — og reglen laeses af NODEN, ikke af kaldet.
+
+   ⚠ OG DEN KRAEVER indkoeb.godkend. At sige god for at der skal betales, er
+   en anden handling end at registrere et koeb; det var hele beslutning 82.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const fakturastatus = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid, perms } = await procureDoer(req, {});
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  const til = kortStreng(d.til, 30);
+  if (!fakturaId) throw new HttpsError("invalid-argument", "fakturaId mangler.");
+  if (!["godkendt", "afvist", "bogfoert"].includes(til)) {
+    throw new HttpsError("invalid-argument", `Ukendt tilstand: ${d.til}`);
+  }
+
+  const snap = await rod.child(`fakturaer/${fakturaId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
+  const faktura = snap.val();
+
+  /* ⚠ EN BOGFOERT FAKTURA ER EN ENDESTATION. Posten er sendt til regnskabet;
+     en aendring bagefter goer en afstemning der stemte, til en der ikke goer. */
+  if (faktura.status === "bogfoert") {
+    throw new HttpsError("failed-precondition", "Fakturaen er bogfoert.");
+  }
+
+  if (til === "bogfoert") {
+    /* ⚠ MAN BOGFOERER IKKE NOGET DER IKKE ER GODKENDT. Planchens fodnote
+       siger det selv: "Efter godkendelse bogfoeres og sendes til
+       regnskabssystemet." */
+    if (faktura.status !== "godkendt") {
+      throw new HttpsError("failed-precondition",
+        "Fakturaen skal godkendes foer den kan bogfoeres.");
+    }
+  } else {
+    if (!perms.includes(`|${PERM.indkoebGodkend}|`)) {
+      throw new HttpsError("permission-denied",
+        `Det kraever ${PERM.indkoebGodkend}. At sige god for en regning er en `
+        + "anden handling end at registrere et koeb.");
+    }
+    const rSnap = await rod.child("godkendelsesregler").once("value");
+    const regler = rSnap.exists() ? rSnap.val() : STANDARD_GODKENDELSESREGLER;
+    const fg = regler.fakturagodkendelse || {};
+    /* ⚠ ER REGLEN SLAAET TIL, ER DET DEN UDPEGEDE DER AFGOER. Er den slaaet
+       fra, raekker permissionen — det er hele meningen med at kunne slaa den
+       fra: en lille virksomhed hvor samme person goer begge dele. */
+    if (fg.aktiv && fg.godkenderUid && fg.godkenderUid !== uid) {
+      throw new HttpsError("permission-denied",
+        "Kun den udpegede godkender kan afgoere den her faktura.");
+    }
+  }
+
+  const begrundelse = kortStreng(d.begrundelse, 250);
+  if (til === "afvist" && !begrundelse) {
+    throw new HttpsError("invalid-argument",
+      "Skriv hvorfor. En afvist regning skal kunne forklares til leverandoeren.");
+  }
+
+  const nu = Date.now();
+  const sti = `tenants/${tenantId}/fakturaer/${fakturaId}`;
+  const opdatering = { [`${sti}/status`]: til };
+  if (til === "godkendt") {
+    opdatering[`${sti}/godkendtAf`] = uid;
+    opdatering[`${sti}/godkendtMs`] = nu;
+  }
+  if (til === "afvist") {
+    opdatering[`${sti}/afvistAf`] = uid;
+    opdatering[`${sti}/afvistMs`] = nu;
+  }
+  if (til === "bogfoert") opdatering[`${sti}/bogfoertMs`] = nu;
+  if (begrundelse) opdatering[`${sti}/begrundelse`] = begrundelse;
+
+  await db.ref().update(opdatering);
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "fakturaer", fakturaId,
+    { status: faktura.status }, { status: til }, `${faktura.status} → ${til}`);
+
+  return { ok: true, status: til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KONTANTKOEBSKRIV — et koeb der allerede er betalt
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ DET SKRIVES SOM EN indkoeb-LINJE, ikke i en node ved siden af. `indkoeb`
+   ER det vi har koebt; et kontantkoeb er noejagtig det, bare betalt paa en
+   anden maade. En egen node ville vaere den samme kendsgerning to steder, og
+   hvert beloeb i modulet skulle huske at laegge dem sammen.
+
+   ⚠ MEN VEJEN GAAR GENNEM EN FUNKTION, selv om `indkoeb` er skrivbar med
+   indkoeb.skriv. Formen skal bygges ét sted: `betalingsform`, `udlaegAf` og
+   `oprettetAf` er tre felter en formular ville kunne saette hver sin vej, og
+   den der taster en kollegas bon, maa ikke kunne skrive sig selv som den der
+   lagde ud.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const kontantkoebskriv = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, {
+    perm: "indkoeb.skriv", modul: "indkoeb",
+  });
+
+  const d = req.data || {};
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  if (!leverandoerId) throw new HttpsError("invalid-argument", "Vaelg hvor det blev koebt.");
+  const lev = await rod.child(`leverandoerer/${leverandoerId}`).once("value");
+  if (!lev.exists()) throw new HttpsError("invalid-argument", "Leverandoeren findes ikke.");
+
+  /* ⚠ udlaegAf SKAL VAERE EN BRUGER I HUSET. Pengene skal til nogen; et uid
+     der ikke findes, er et udlaeg ingen faar tilbage. */
+  const udlaegAf = kortStreng(d.udlaegAf, 128) || uid;
+  const b = await rod.child(`brugere/${udlaegAf}`).once("value");
+  if (!b.exists()) {
+    throw new HttpsError("invalid-argument", "Den valgte er ikke bruger i virksomheden.");
+  }
+
+  let linje;
+  try {
+    linje = kontantkoebLinje({
+      vare: kortStreng(d.vare, 120),
+      leverandoerId,
+      antal: Number.isFinite(d.antal) ? d.antal : 1,
+      prisPrEnhedOere: d.prisPrEnhedOere,
+      momsOere: Number.isInteger(d.momsOere) ? d.momsOere : undefined,
+      enhed: kortStreng(d.enhed, 20) || undefined,
+      kategori: kortStreng(d.kategori, 30) || undefined,
+      koeretoejId: kortStreng(d.koeretoejId, 60) || undefined,
+      note: kortStreng(d.note, 250) || undefined,
+      dato: Number.isFinite(d.dato) ? d.dato : Date.now(),
+      udlaegAf,
+    }, { uid, nu: Date.now() });
+  } catch (e) {
+    throw new HttpsError("invalid-argument", e.message);
+  }
+
+  const ref = rod.child("indkoeb").push();
+  await ref.set(linje);
+
+  await logProcure(tenantId, uid, AUDIT.opret, "indkoeb", ref.key, null,
+    { leverandoerId, antal: linje.antal, prisPrEnhedOere: linje.prisPrEnhedOere },
+    "kontantkoeb registreret");
+
+  return { ok: true, id: ref.key };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

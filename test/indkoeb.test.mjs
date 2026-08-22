@@ -302,6 +302,20 @@ describe("kanGodkende skelner mellem adgang og forudsætning", () => {
 describe("Indkøbslinjerne bærer det reglerne kræver", () => {
   it("bruger kendte fakturastatusser", () => {
     for (const l of DEMO_INDKOEBSLINJER) {
+      /**
+       * ⚠ ET KONTANTKØB HAR INGEN fakturastatus, OG DET ER POINTEN.
+       *
+       * Der KOMMER ingen faktura. Satte vi "mangler", ville købet stå i
+       * hver optælling af det vi venter på — og listen over manglende bilag
+       * kunne aldrig tømmes. Betalingsformen er et FELT, ikke en status:
+       * fakturastatus svarer på "har vi fået regningen", betalingsform på
+       * "hvordan betalte vi". Se beslutning 83.
+       */
+      if (l.betalingsform === "kontant") {
+        assert.equal(l.fakturastatus, undefined,
+          `${l.id}: et kontantkøb venter ikke på en faktura`);
+        continue;
+      }
       assert.ok(FAKTURASTATUS[l.fakturastatus], `${l.id}: ukendt status`);
     }
     for (const f of DEMO_FAKTURAER) {
