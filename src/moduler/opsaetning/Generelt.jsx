@@ -38,6 +38,7 @@ import { useListe } from "../../fleet/useListe.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. `facility/lokationer` er en seedet node. */
 import { DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { LOKATION_TYPE } from "../../fleet/facility.js";
+import { ALLE_MODULER, harModul } from "../../fleet/moduler.js";
 import { num } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Gitter, MiniLinje, Knap, KpiKort, KpiRaekke, Ikon,
@@ -52,7 +53,7 @@ const STAMDATA = [
   { hvad: "Kompetencer og beviser", hvor: "/bemanding/kompetencer", label: "Workforce → Kompetencer",
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
   { hvad: "Enheder og påhæng", hvor: "/opsaetning/enheder", label: "Opsætning → Enheder",
-    note: "Arten styrer feltskemaet. Ingen division på en enhed — beslutning 19." },
+    note: "Arten styrer feltskemaet." },
   { hvad: "Kunder og prisgrupper", hvor: "/opsaetning/kunder", label: "Opsætning → Kunder",
     note: "Prisgruppen peger på et satssæt; satserne selv ligger i Bookingopsætning." },
   { hvad: "Satser og tillæg", hvor: "/booking/opsaetning", label: "Booking → Bookingopsætning",
@@ -75,7 +76,13 @@ const MILJOE_TONE = {
 };
 
 export default function Generelt() {
-  const { tenantId, tenant, tenants, division, dage } = useFleet();
+  const { tenantId, tenant, tenants, dage, moduler } = useFleet();
+
+  /* ⚠ SPURGT MED harModul(), IKKE TALT PÅ NODEN. Den ene kender reglen om
+     at en manglende node betyder ALLE, og at de obligatoriske altid er med.
+     En optælling her ville være en kopi af den regel — og kopien ville
+     drive. */
+  const aktiveModuler = ALLE_MODULER.filter((m) => harModul(moduler, m));
   const m = MILJOE_TONE[miljoe] || { tone: "warn", label: String(miljoe) };
 
   /* ⚠ NODEN, IKKE DEMOFILEN. Skærmen er en LÆSESKÆRM over kundens opsætning,
@@ -100,9 +107,31 @@ export default function Generelt() {
         <KpiKort label="Virksomhed" vaerdi={tenant?.navn || tenantId}
                  ikon={<Ikon navn="bygning" />} tone="ikon-5" rund
                  note={`tenant-id: ${tenantId}`} />
-        <KpiKort label="Divisioner" vaerdi="Gods og bus"
-                 ikon={<Ikon navn="lastbil" />} tone="ikon-2" rund
-                 note="et felt, ikke en sti — beslutning 15" />
+        {/* ⚠ HER STOD "Divisioner: Gods og bus". Aksen gik i beslutning 70,
+            og kortet blev stående — på den ene skærm hvor en kunde læser
+            HVAD HAN HAR KØBT. Det er den værste slags forældet tekst: den
+            sælger en funktion produktet ikke har.
+
+            Modulerne er dét kunden faktisk er delt op efter. Se beslutning
+            70 og 87. */}
+        {/* ⚠ EN MANGLENDE moduler-NODE BETYDER ALLE, IKKE INGEN.
+
+            Første udgave af kortet skrev `Object.keys(moduler || {}).length`
+            og sagde **"Moduler: 0"** på demo-tenanten — som ikke HAR noden,
+            og derfor har dem alle. Det blev set på skærmen, ikke i koden.
+
+            Reglen læser den samme vej: `!moduler.exists() || …`. `harModul()`
+            gør det ét sted, og det er dét sted der skal spørges — en
+            optælling ved siden af er en filterkopi, og en filterkopi der er
+            90 % rigtig, afviser præcis dét reglen tillader (beslutning 56).
+
+            Tredje gang samme fælde: seedet i 56, mit eget destinationsfilter
+            i 86, og her. Se beslutning 87. */}
+        <KpiKort label="Moduler" vaerdi={num(aktiveModuler.length)}
+                 ikon={<Ikon navn="kasse" />} tone="ikon-2" rund
+                 note={moduler
+                   ? "opdelingen er moduler, ikke divisioner"
+                   : "ingen moduler-node — kunden har dem alle"} />
         <KpiKort label="Lokationer" vaerdi={num(lok.data.length)}
                  ikon={<Ikon navn="stednaal" />} tone="ikon-6" rund
                  note={`på ${num(ALLE_STEDER.length)} steder`} til="/facility" />
@@ -129,21 +158,29 @@ export default function Generelt() {
           </p>
         </Kort>
 
-        <Kort titel="Divisioner">
-          <MiniLinje label="Aktiv nu"
-                     vaerdi={<Pille tone="info">{division === "bus" ? "Bus" : "Gods"}</Pille>} />
-          <MiniLinje label="Lovlige værdier" vaerdi={<code>gods · bus · faelles</code>} />
+        <Kort titel="Opdelingen">
+          {/* ⚠ HER STOD ET "Divisioner"-KORT MED GODS OG BUS. Aksen gik i
+              beslutning 70 — ingen abonnent har både gods og bus — og kortet
+              blev stående på den ene skærm hvor en kunde læser hvad han har
+              købt. Værre: `Aktiv nu` læste shellens `division`, som er
+              `undefined`, og skrev derfor altid "Gods".
+
+              Det er ikke en tekst der bare var forældet. Den beskrev et
+              produkt vi ikke har. Se beslutning 87. */}
+          <MiniLinje label="Kunden er delt op efter" vaerdi={<b>moduler</b>} />
           <p className="fc-hint" style={{ marginTop: 10 }}>
-            Gods og bus er <b>hele platformens</b> inddeling (beslutning 9) og skiftes
-            i toppen — ikke her. Division er et <b>felt</b> på transaktionen, ikke en
-            sti i databasen (beslutning 15): <code>gods</code>, <code>bus</code> eller{" "}
-            <code>faelles</code>, valideret i reglerne.
+            Der er <b>ingen gods/bus-akse</b>. Den blev fjernet i beslutning 70,
+            fordi <b>ingen abonnent har begge</b> — og den opdeling en kunde
+            faktisk har, står i hans <b>moduler</b>.
           </p>
           <p className="fc-hint" style={{ marginTop: 8 }}>
-            En tredje division ville derfor være en <b>ændring i regelfilen</b>, ikke
-            en række man tilføjer i en tabel. <b>Stamdata har ingen division</b> —
-            hverken en medarbejder eller en enhed (beslutning 19); reglerne afviser
-            feltet.
+            Feltet er <code>.validate: false</code> på hver eneste node —
+            <b>forbudt, ikke fjernet</b>, så en manglende regel ikke stiltiende
+            tillader aksen at komme tilbage som data.
+          </p>
+          <p className="fc-hint" style={{ marginTop: 8 }}>
+            Skal en kunde have både gods og bus, er svaret <b>to moduler</b> —
+            ikke en akse på tværs af alle noder.
           </p>
         </Kort>
 

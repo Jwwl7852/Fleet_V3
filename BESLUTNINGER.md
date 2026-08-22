@@ -6121,3 +6121,116 @@ komponenter har otte slutninger. Fjerde gang samme fælde i denne session (82,
 **3. Prøven byggede på en antagelse jeg ikke havde målt.** Den krævede at
 `oekonomi` **ikke** var et modul. Det er det. Havde jeg ikke kørt den, ville
 skærmens egen tekst have påstået noget forkert om produktet.
+
+---
+
+## 87. Divisionsefterslæbet — aksen levede i skærmene, ikke i reglerne
+
+Beslutning 70 fjernede gods/bus-aksen. 79 tog resten i shellen, konteksten,
+`useListe`, Cloud Functions og auditlisten. To prøvefiler holder hver sin
+ende — `test/division-fjernet.test.mjs` og `test/rules.division.test.mjs` —
+og de var grønne hele vejen.
+
+Alligevel stod der **77 levende forekomster i 17 modulfiler**, målt da
+Procures overblik blev bygget (84). Procure blev ryddet dér (−26). De sidste
+51 er væk nu.
+
+### ⚠ En lint der springer noget over, siger ikke nej — den siger ingenting
+
+Grunden til at aksen kunne overleve to beslutninger om sin egen død er banal:
+**ingen af prøverne læste `src/moduler/`.** De læste shellen, konteksten,
+`useListe`, regelfilen og `functions/` — præcis de steder aksen var blevet
+fjernet fra, og ingen af de steder den blev brugt.
+
+Det er samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger`
+(beslutning 56): en lint der ikke dækker et sted, giver ikke et svagt svar
+dér — den giver intet svar, og en tom liste ser ud som et rent hus.
+
+Anden gang mønstret koster noget i denne base.
+
+### ⚠ Det var ikke kosmetik
+
+Jeg gik ind i det med en forventning om at rette variabelnavne. Det holdt
+ikke:
+
+**1. En vej ind der var lukket i begge retninger.**
+`facility/Servicedialog.jsx` havde et **påkrævet** Division-felt på en post
+der skrives til `opgaver` — en node hvis regel siger
+`"division": { ".validate": false }`. Vælger man en værdi, afviser serveren.
+Vælger man ingen, klager formularen. **Servicebesøg kunne ikke oprettes fra
+den dialog**, og det stod der uden at nogen havde skrevet det ned.
+
+Det er nøjagtig den samme fejl Procure havde (84), i et andet modul, fundet
+med den samme metode: at spørge hvad reglen siger om det felt formularen
+kræver.
+
+**2. Et kort der solgte en funktion produktet ikke har.**
+`opsaetning/Generelt.jsx` — den ene skærm hvor en kunde læser hvad han har
+købt — havde et nøgletalskort med teksten **"Divisioner: Gods og bus"** og et
+kort der forklarede opdelingen. Ikke en variabel: en påstand, på skrift, til
+kunden.
+
+Kortet hedder nu **Moduler**, og teksten forklarer at opdelingen ER modulerne.
+
+**3. Fire filtre der sammenlignede to `undefined`.**
+`x.division === division`, hvor `division` kom fra `useFleet()` (som holdt op
+med at levere den i 79) og `x.division` aldrig havde stået i noden. De slap
+igennem fordi `undefined === undefined` er sandt — **filteret var en no-op der
+så ud som en afgrænsning.** Havde ét eneste demo-datasæt båret feltet, ville
+halvdelen af rækkerne være forsvundet fra fire skærme.
+
+**4. `Kunder.jsx` skrev altid "aktive i alt i godsafdelingen".**
+Uanset kunde, uanset tenant.
+
+**5. En URL-parameter ingen læste.**
+Værkstedskalenderen linkede til arbejdskøen med `&division=${division}` —
+altså bogstaveligt `&division=undefined`. Arbejdskøen har aldrig spurgt efter
+parameteren. Dertil en `division`-prop til en dialog der ikke nævner den med
+ét ord. **En parameter ingen læser, er ikke en parameter; den er en påstand om
+at modtageren gør noget.**
+
+**6. To variabelnavne der løj.**
+`iDivision` og `opgaverIDivision` på lister der ikke er delt op efter noget.
+Et navn er en påstand om indholdet, og den her var forkert i to år.
+
+### ⚠ Tallet er nu nul, og det er et forbud — ikke et loft
+
+I 84 skrev jeg et loft på 51 der kun måtte gå ned. Loftet er væk; linten
+læser hele `src/moduler/` og fejler på **enhver** levende forekomst.
+
+**Én undtagelse, og den er ikke en lempelse:** en tekst der forklarer at
+feltet IKKE findes. Der står syv tilbage — på Enheder, Medarbejdere, Facility,
+Procure og Opsætning — og de skal blive. De er det eneste sted en læser får at
+vide hvorfor der ikke er en gods/bus-vælger, og **en prøve der råber ad det
+korrekte, bliver slået fra.**
+
+Dertil en anden prøve, som er den der virkelig lukker døren: **ingen skærm må
+destrukturere `division` ud af `useFleet()`.** Alle seks fund ovenfor havde
+det til fælles. Konteksten holdt op med at levere feltet i 79, men
+**destruktureringen fejler ikke** — den giver `undefined`, tavst, for evigt.
+Det er derfor de kunne blive stående.
+
+### Det arbejdet fandt
+
+**1. "Moduler: 0" — tredje gang samme fælde.**
+Kortet regnede `Object.keys(moduler || {}).length`, og demo-tenanten har
+**ingen** `moduler`-node. Det betyder ALLE moduler, ikke ingen — reglen læser
+det sådan (`!moduler.exists() || …`), `harModul()` gør det ét sted, og jeg
+havde selv skrevet det ned to gange (56 og 86). Kortet sagde "0" til en kunde
+der har tolv.
+
+Det blev set **på skærmen**, ikke i koden. En optælling ved siden af
+`harModul()` er en filterkopi, og en filterkopi der er 90 % rigtig, afviser
+præcis dét reglen tillader.
+
+**2. Jeg slettede for meget, og prøverne fangede det.**
+Patchen der skrev den nye lint, erstattede fra blokkens start til filens
+**sidste** `});`. Blokken var indsat før de eksisterende `describe`s, så alle
+ti oprindelige prøver — om shellen, konteksten, `useListe`, funktionerne og
+auditlisten — røg med i samme skrivning. **Et anker der spænder over "resten
+af filen", er ikke et anker.** Genskabt fra `git show HEAD:`, og den nye blok
+lagt sidst.
+
+Femte gang i denne session at et anker rammer et andet sted end det jeg mente
+(82, 83, 85, 86, 87). Hver gang med et lidt andet ansigt; hver gang samme
+årsag — jeg beskrev et sted ved noget der ikke er entydigt.

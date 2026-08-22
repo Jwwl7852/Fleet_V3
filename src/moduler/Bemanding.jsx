@@ -270,7 +270,7 @@ export default function Bemanding() {
                 ) },
             ]}
             raekker={funktioner.filter((f) => f.ialt.planlagt > 0)}
-            tom="Ingen funktioner planlagt i denne division."
+            tom="Ingen funktioner planlagt."
           />
         </Kort>
 

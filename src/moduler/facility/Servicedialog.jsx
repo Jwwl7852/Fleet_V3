@@ -38,7 +38,6 @@ const FELTNAVN = {
   aktivId: "Anlæg eller lokation",
   lokationId: "Lokation",
   status: "Status",
-  division: "Division",
   startMs: "Startdato og -tid",
   estimeretMin: "Varighed",
   leverandoerId: "Udføres af",
@@ -214,18 +213,16 @@ export default function Servicedialog({
                 valgmuligheder={PLANLAEGBAR_STATUS.map((v) => ({
                   vaerdi: v, label: OPGAVE_STATUS[v].label,
                 }))} />
-          {/* ⚠ DIVISIONEN STÅR PÅ OPGAVEN, IKKE PÅ ANLÆGGET. Reglerne kræver
-              den, og anlægget har den ikke — porten bruges af begge
-              divisioner. Fælles er forslaget; hvem der betaler, er et valg. */}
-          <Felt id="sv-division" label="Division" kraevet
-                vaerdi={post.division} saet={saet("division")}
-                fejl={vis("division")}
-                hint="Hvem bærer omkostningen. Anlægget har ingen division."
-                valgmuligheder={[
-                  { vaerdi: "faelles", label: "Fælles" },
-                  { vaerdi: "gods", label: "Gods" },
-                  { vaerdi: "bus", label: "Bus" },
-                ]} />
+          {/* ⚠ HER STOD ET PÅKRÆVET Division-FELT, og det gjorde vejen ind
+              LUKKET I BEGGE RETNINGER: `opgaver`-reglen har
+              `"division": { ".validate": false }` siden beslutning 70, så en
+              valgt værdi blev AFVIST af serveren — og uden en værdi klagede
+              formularen. Et krævet felt der ikke kan udfyldes rigtigt, er
+              ikke en validering; det er en blindgyde.
+
+              Noten sagde "reglerne kræver den". Det gjorde de, indtil 70.
+              En kommentar der beskriver en regel der er væk, holder feltet
+              i live. Se beslutning 87. */}
         </Feltraekke>
 
         <Feltraekke>

@@ -58,7 +58,7 @@ const TOM = {
 const tilMs = (v) => (v ? new Date(v).getTime() : null);
 
 export default function NyForespoergsel() {
-  const { bruger, division } = useFleet();
+  const { bruger } = useFleet();
   const [f, setF] = useState(TOM);
   const [gemmer, setGemmer] = useState(false);
   const [svarPost, setSvarPost] = useState(null);
@@ -103,7 +103,6 @@ export default function NyForespoergsel() {
      spærring er to forklaringer på én ting. */
   const udkast = {
     kundeId: f.kundeId || null,
-    division,
     fraSted: f.fraSted,
     tilSted: f.tilSted,
     transporttype: f.transporttype,
@@ -302,7 +301,6 @@ export default function NyForespoergsel() {
             <MiniLinje label="historik" vaerdi={<code>{historikNoegle}</code>} />
             <MiniLinje label="omsaetningOere"
                        vaerdi={<code>{omsaetningOere == null ? "—" : omsaetningOere}</code>} />
-            <MiniLinje label="division" vaerdi={<code>{division}</code>} />
             <p className="fc-hint" style={{ marginTop: 10 }}>
               Beløbet gemmes i <b>hele øre, ekskl. moms</b> — {kr(omsaetningOere || 0)} bliver{" "}
               <code>{omsaetningOere ?? 0}</code>. Aldrig en float, og aldrig ét felt med

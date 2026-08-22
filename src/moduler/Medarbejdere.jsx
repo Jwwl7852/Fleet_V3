@@ -29,7 +29,7 @@
  *  1. `funktioner` er et MAP, ikke et array. Kolonnen bruger funktionerAf()
  *     fra personale.js, så rækkefølgen er katalogets og ikke objektets. En
  *     person kan være både mekaniker og chauffør — Peter Iversen er det.
- *  2. `division` findes ikke på en medarbejder — beslutning 19. Feltet havde
+ *  2. `division` findes ikke på en medarbejder — beslutning 19, og aksen er helt væk i 70. Feltet havde
  *     sin egen kolonne her, og `faelles` betød "kører begge dele". Det er
  *     væk: en medarbejder er defineret ved sine KOMPETENCER og virker i alle
  *     moduler tenanten har adgang til. Ulrik Bang med C/E og D er ikke
@@ -247,7 +247,7 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
         opløses til et navn.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        Der er <b>ingen division</b> på en medarbejder (beslutning 19). Hun er
+        Der er <b>ingen division</b> på en medarbejder (beslutning 19, og aksen er væk i 70). Hun er
         defineret ved sine <b>kompetencer</b>, ikke ved en afdeling, og
         reglerne afviser feltet. <b>CPR og privatadresse</b> hører i{" "}
         <code>sensitive/personale</code> bag en egen læseregel — de kan ikke
@@ -278,7 +278,7 @@ export default function Medarbejdere() {
      det er ærligt: det ER en anden forespørgsel. Søgning og funktion filtreres
      derimod i klienten og koster ingenting.
 
-     Staben er ikke delt, og posterne har ingen division (beslutning 19).
+     Staben er ikke delt, og posterne har ingen division (beslutning 19, og aksen er væk i 70).
      Aksen er fjernet helt i 70 — staben var et af de steder hvor den aldrig
      passede. */
   const {

@@ -123,7 +123,7 @@ const afvig = (vaerdi, opts, note = "vs. forrige periode") =>
 
 export default function Oekonomi() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { dage, division } = useFleet();
+  const { dage } = useFleet();
   const [rapport, setRapport] = useState("alle");
 
   if (henter) return <Henter hvad="nøgletal" />;
@@ -191,7 +191,10 @@ export default function Oekonomi() {
 
   /* Faktureringsklare opgaver er transaktioner — ingen "faelles". */
   const klarTilFakturering = DEMO_KLAR_TIL_FAKTURERING
-    .filter((r) => r.division === division)
+    /* ⚠ HER STOD `.filter((r) => r.division === division)`, hvor BEGGE sider
+       var `undefined` efter beslutning 70 — filteret slap kun igennem fordi
+       `undefined === undefined` er sandt. Et filter der virker ved et
+       tilfælde, holder op med at virke uden varsel. Se beslutning 87. */
     .slice(0, 5);
 
   /* ⚠ SAMME FELT SOM DASHBOARD. Mockuppens fejl var ikke kortet — den var en

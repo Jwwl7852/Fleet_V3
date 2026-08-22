@@ -114,7 +114,7 @@ const KASSER = [
 ];
 
 export default function Driftskalender() {
-  const { division, bruger, moduler } = useFleet();
+  const { bruger, moduler } = useFleet();
   const navigate = useNavigate();
   /* ⚠ PERMISSIONEN, IKKE ROLLEN. Og den er KUN til at tegne knappen —
      serveren spørger om den samme, og det er dér den afgøres. En kontrol der
@@ -266,12 +266,17 @@ export default function Driftskalender() {
 
   /* ---- Åbn en kø ---- */
 
+  /* ⚠ `&division=…` STOD I URL'EN, OG INGEN LÆSTE DEN. Arbejdskøen har
+     aldrig spurgt efter parameteren, og efter beslutning 70 var værdien
+     `undefined` — så linket sagde bogstaveligt `division=undefined`. En
+     parameter ingen læser, er ikke en parameter; den er en påstand om at
+     modtageren gør noget. Se beslutning 87. */
   const koeSti = (noegle) =>
-    `/flaade/koe?vis=${noegle}&frem=${fremDage}&division=${division}`;
+    `/flaade/koe?vis=${noegle}&frem=${fremDage}`;
   const aabnHer = (noegle) => navigate(koeSti(noegle));
   /* ⚠ FULD SHELL I DET NYE VINDUE — ikke en bar visning. Vinduet er en rigtig
      rute, så en disponent kan navigere videre derfra i stedet for at sidde
-     fast i én liste. Tenant, division og periode ligger i localStorage via
+     fast i én liste. Tenant og periode ligger i localStorage via
      FleetContext og følger derfor med over. */
   const aabnNytVindue = (noegle) =>
     window.open(koeSti(noegle), `fc-koe-${noegle}`, "width=1280,height=900");
@@ -408,12 +413,14 @@ export default function Driftskalender() {
 
       {svaev && <Svaevekort svaev={svaev} lvNavn={lvNavn} />}
 
+      {/* ⚠ HER BLEV `division` SENDT MED SOM PROP OG ALDRIG LÆST.
+          Planlaegdialog nævner den ikke med ét ord. En prop der ikke bruges,
+          er en aftale der ikke findes. Se beslutning 87. */}
       {planlaegger && (
         <Planlaegdialog
           enheder={enheder.data}
           leverandoerer={leverandoerer.data}
           harProcure={harProcure}
-          division={division}
           onLuk={() => setPlanlaegger(false)}
           onGemt={() => { setPlanlaegger(false); opgaver.genindlaes(); }}
         />

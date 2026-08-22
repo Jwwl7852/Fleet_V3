@@ -47,7 +47,7 @@
  *     Panelet fortæller hvad der ligger der frem for at lade som om det ikke
  *     findes — beslutning 17 gjort synlig.
  *
- * INGEN DIVISION. Et køretøj har ingen (beslutning 19), og reglerne afviser
+ * INGEN DIVISION. Et køretøj har ingen (beslutning 19, og aksen er væk i 70), og reglerne afviser
  * feltet. Byg ikke et divisionsfelt ind i en formular — det ville fejle ved
  * skrivningen. ⚠ Her stod desuden at skærmen ikke reagerer på
  * Gods/Bus-toggle'en. Den toggle findes ikke længere (beslutning 70), og
@@ -371,7 +371,7 @@ function Enhedsformular({ enhed, sti, paaGemt, paaLuk }) {
         et tomt felt bliver udfyldt af den næste der ser det.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        Der er <b>ingen division</b> på en enhed (beslutning 19), og reglerne
+        Der er <b>ingen division</b> på en enhed (beslutning 19, og aksen er væk i 70), og reglerne
         afviser feltet. Valideringen her <b>spejler</b>{" "}
         <code>firebase.rules.json</code> — serveren validerer igen, og er de to
         uenige, er reglerne rigtige.
@@ -414,7 +414,7 @@ export default function FlaadeOversigt() {
   const { data: flaade, henter, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
     ordnPaa: "status",
     ...(visAlle ? { vindue: "alle" } : { lig: "aktiv" }),
-    /* EKSPLICIT. Posterne har ingen division (beslutning 19), og useListe
+    /* EKSPLICIT. Posterne har ingen division (beslutning 19, og aksen er væk i 70), og useListe
        viser divisionsløse rækker i begge toggles — så resultatet ville være
        det samme uden. Men så ville det se ud som om skærmen var heldig. */
     graense: 300,

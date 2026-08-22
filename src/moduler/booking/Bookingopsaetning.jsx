@@ -101,7 +101,7 @@ const EKSEMPLER = {
    useListe ejer reglen nu, som filens gamle kommentar selv bad om. */
 
 export default function Bookingopsaetning() {
-  const { periode, division, moduler } = useFleet();
+  const { periode, moduler } = useFleet();
   const [fane, setFane] = useState("satser");
   const [aendret, setAendret] = useState(false);
 
@@ -120,7 +120,11 @@ export default function Bookingopsaetning() {
     hent: harModul(moduler, "flaade"),
   });
 
-  const eksempel = EKSEMPLER[division] || EKSEMPLER.gods;
+  /* ⚠ HER STOD `EKSEMPLER[division] || EKSEMPLER.gods`, og `division` er
+     `undefined` siden beslutning 70 — så faldbakken var det eneste der nogen
+     sinde blev brugt. Et opslag der altid rammer sit fallback, er ikke et
+     opslag. Se beslutning 87. */
+  const eksempel = EKSEMPLER.gods;
   const ark = useMemo(
     () => omkostningsark(raekker, { koeretoejer }),
     [raekker, koeretoejer]

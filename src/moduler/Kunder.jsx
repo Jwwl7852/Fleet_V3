@@ -120,7 +120,7 @@ export function afvigelseAlvor(oere) {
 
 export default function Kunder() {
   const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
-  const { dage, division } = useFleet();
+  const { dage } = useFleet();
   const [prisgruppe, setPrisgruppe] = useState("");
   const [aftale, setAftale] = useState("");
   const [ansvarlig, setAnsvarlig] = useState("");
@@ -163,7 +163,7 @@ export default function Kunder() {
   const genindlaesAlt = () => { genindlaesKpi(); genindlaesKunder(); };
 
   /* Filtrene arbejder på de hentede rækker. Værdilisterne udledes af samme
-     rækker — står der ingen kunde på Peter Lund i denne division, skal han
+     rækker — står der ingen kunde på Peter Lund, skal han
      ikke kunne vælges og give nul rækker. */
   const aftaletyper = [...new Set(kunder.map((r) => r.aftale).filter(Boolean))].sort((a, b) => a.localeCompare(b, "da"));
   const ansvarlige = [...new Set(kunder.map((r) => r.ansvarlig).filter(Boolean))].sort((a, b) => a.localeCompare(b, "da"));
@@ -193,9 +193,10 @@ export default function Kunder() {
 
   /* Tilbud følger samme visningsregel. Et tilbud er en transaktion, så der
      er ingen "faelles" at tage højde for. */
-  const tilbud = DEMO_TILBUD
-    .filter((t) => t.division === division)
-    .sort((a, b) => a.gyldigTilMs - b.gyldigTilMs);
+  /* ⚠ HER STOD `.filter((t) => t.division === division)`, hvor BEGGE sider
+     var `undefined` efter beslutning 70 — filteret slap kun igennem fordi
+     `undefined === undefined` er sandt. Se beslutning 87. */
+  const tilbud = [...DEMO_TILBUD].sort((a, b) => a.gyldigTilMs - b.gyldigTilMs);
 
   /* Afledte tal beregnes her — de skrives ikke ind i basen et andet sted.
      Dækningsgraden er Økonomis felt; den læses, ikke genudregnet. */
@@ -276,10 +277,13 @@ export default function Kunder() {
             handling={<Link className="fc-a" to="/booking/opsaetning">Se satser og prisgrupper</Link>}>
         <p className="fc-hint" style={{ marginBottom: 12 }}>
           Viser de {num(hovedtabel.length)} største af {num(filtrerede.length)} filtrerede,
-          {" "}{num(k.kunder.aktive)} aktive i alt i{" "}
-          {division === "bus" ? "busafdelingen" : "godsafdelingen"}. Kunder mærket{" "}
-          <Pille tone="info">Fælles</Pille> køber begge dele og står på begge lister med
-          samme tal — det er én kunde, ikke en dublet. Prisgruppen bestemmer hvilket
+          {" "}{num(k.kunder.aktive)} aktive i alt.
+          {/* ⚠ HER STOD "aktive i alt i godsafdelingen" — udregnet af shellens
+              `division`, som er `undefined` siden beslutning 70. Sætningen sagde
+              derfor ALTID "godsafdelingen" til en kunde der ikke har afdelinger.
+              Og noten om at en "Fælles"-kunde står på begge lister, beskrev to
+              lister der ikke findes. Se beslutning 87. */}
+          {" "}Prisgruppen bestemmer hvilket
           satssæt en booking regner med; satserne redigeres i Bookingopsætning, hvor de
           får <b>gyldigFra</b> og aldrig overskrives. Ellers ændrer en rettelse i dag
           prisen på en faktura fra sidste kvartal.
@@ -289,9 +293,6 @@ export default function Kunder() {
             { key: "navn", label: "Kunde", render: (r) => (
                 <>
                   <b>{r.navn}</b>
-                  {r.division === "faelles" && (
-                    <> <Pille tone="info">Fælles</Pille></>
-                  )}
                 </>
               ) },
             { key: "aftale", label: "Aftaletype" },
@@ -339,8 +340,6 @@ export default function Kunder() {
             <MiniLinje label="Aftaletype" vaerdi={valgt.aftale} />
             <MiniLinje label="Prisgruppe" vaerdi={PRISGRUPPER[valgt.prisgruppe] || valgt.prisgruppe} />
             <MiniLinje label="Ansvarlig" vaerdi={valgt.ansvarlig} />
-            <MiniLinje label="Division"
-                       vaerdi={valgt.division === "faelles" ? "Fælles — gods og bus" : (valgt.division === "bus" ? "Bus" : "Gods")} />
             <MiniLinje label="Sidste aktivitet" vaerdi={dato(valgt.sidsteAktivitetMs)} />
             <MiniLinje label="Aftalen udløber"
                        vaerdi={<>{dato(valgt.aftaleUdloeberMs)}{" "}
@@ -478,7 +477,7 @@ export default function Kunder() {
                 ) },
             ]}
             raekker={tilbud}
-            tom="Ingen tilbud i divisionen."
+            tom="Ingen aktuelle tilbud."
           />
           <p className="fc-hint" style={{ marginTop: 10 }}>
             {num(k.kunder.tilbudKraeverOpfoelgning)} af {num(k.kunder.tilbud)} aktuelle

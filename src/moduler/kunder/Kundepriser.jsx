@@ -303,9 +303,6 @@ export default function Kundepriser() {
             {vaelger}
 
             <div className="fc-grid" style={{ gap: 4, marginBottom: 10 }}>
-              <MiniLinje label="Division"
-                         vaerdi={kunde.division === "faelles" ? "Fælles — gods og bus"
-                           : kunde.division === "bus" ? "Bus" : "Gods"} />
               {/* ⚠ PRISGRUPPEN BÆRER IKKE LÆNGERE EN PRIS (PRISER.md 4.1).
                   Feltet står stadig på kundeposten og filtrerer i
                   kundeoversigten — det er navnet der er holdt op med at

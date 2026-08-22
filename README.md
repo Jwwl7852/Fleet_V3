@@ -194,6 +194,7 @@ tilfældigt.
 | 84 | **Overblikket — Procures femte skærm, og hvad den afslørede.** Procesbånd, fem kort og indbakken. ⚠ **Fire tal regnes af listerne** (undtagelsen i CLAUDE.md), og "kræver handling" er ikke "findes" — et bestilt behov ligger på en ordre. ⚠ **Det femte kan ikke regnes:** `forbrugsvarer` findes ikke, og Warehouses lager er KUNDENS gods — et tal derfra ville bede os bestille noget en kunde mangler. `null` med sin grund; efterslæbet 44 → 45. ⚠ **Planchen viste to tal to gange** — bunden er derfor genveje uden tal. ⚠ **Og det nye kort afslørede et nul der var løgn:** `ordnPaa: "dato"` på en node hvis datofelt hedder `fakturadatoMs`. RTDB fejler ikke — listen kom hjem TOM, og "0 uden match" ser ud som en afstemning der går op. ⚠ **Divisionsaksen levede i skærmene: 77 forekomster i 17 modulfiler.** Værst et **påkrævet** Division-felt på en node hvis regel FORBYDER feltet — vejen ind var lukket i begge retninger, og linten kiggede aldrig i `src/moduler/`. Procure ryddet (−26), resten står som et loft der kun må gå ned | `moduler/indkoeb/Oversigt.jsx`, `fleet/kpi-aggregering.js`, `test/division-fjernet.test.mjs`, `test/overblik.test.mjs` |
 | 85 | **Varelageret — fjerde gang et lagernavn skal skilles fra et andet.** `forbrugsvarer` er VORES egne handsker og strækfilm; `varer` er Warehouses **kundegods** med påkrævet `kundeId`, `lagre` er reservedelslageret, og `warehouse` er reserveret. Alternativet — at regne kortet af Warehouse — ville bede os bestille noget en KUNDE mangler. ⚠ **Retningen kommer af ARTEN, ikke af et fortegn:** fire arter, altid positivt antal — et minus på et forbrug ville trække to gange. ⚠ **En optælling SÆTTER**, den lægger ikke til; uden den art skal den der tæller, regne forskellen i hovedet, og en fejl dér ser bagefter ud som svind. ⚠ **En negativ beholdning spærres ikke** — det skete jo, og en afvisning ville lade den rigtige hændelse gå tabt for at beskytte et tal der allerede var galt. ⚠ **Rækken og tallet i én `update()`** (39), men driften mellem dem vises på skærmen (71). ⚠ **Minimum er valgfrit, og manglen tælles** — "0 under minimum" betyder ellers både "fyldt op" og "ingen grænse". ⚠ **Og tre warehouse-prøver ankrede på hele regelfilen** og målte den forkerte node | `fleet/forbrugsvarer.js`, `fleet/varelager.js`, `moduler/indkoeb/Varelager.jsx`, `functions/index.js`, `firebase.rules.json` |
 | 86 | **Fakturacenteret — ét sted, én sandhed.** Alle fakturaer ind ét sted; systemet foreslår destinationen. ⚠ **Ingen ny node** — `fakturaer/` ER den fælles node, og regelfilen sagde hvorfor: den har med vilje ingen modulklausul. ⚠ **Men noden er fælles og skærmen er ikke:** `oekonomi` ER et modul (målt, ikke antaget — min første prøve påstod det modsatte). En kunde uden Økonomi ser stadig sine fakturaer gennem Procures linse; det han mangler, er den TVÆRGÅENDE visning. ⚠ **`ordreId` var ét moduls svar på et fælles spørgsmål** → `destinationArt` + `destinationId`. Flade felter, fordi `.indexOn` kun kan pege på et direkte barn. Målt: 20 fakturaer, alle seedede — billigt nu, dyrt senere. Og `ordreId` betød i forvejen TO ting (indkøbsordre og **plukordre**). ⚠ **Ingen warehouse-destination:** 3PL er kundens gods, som VI fakturerer for — der kommer ingen leverandørfaktura ind på den forretning. Arten hedder `lager`. ⚠ **Kun et nummer giver 100 %**, og bilen genkendes på kaldenavn/plade — ikke på vores id, som leverandøren aldrig har set. ⚠ **Og et filnavn er ikke en placering:** `flaade/Oversigt.jsx` er trods navnet Opsætning → Enheder | `fleet/fakturacenter.js`, `moduler/oekonomi/Fakturacenter.jsx`, `fleet/Modulfakturaer.jsx`, `functions/index.js`, `firebase.rules.json` |
+| 87 | **Divisionsefterslæbet — aksen levede i skærmene, ikke i reglerne.** 70 fjernede aksen, 79 tog resten i shellen og reglerne, og to prøvefiler var grønne hele vejen — **fordi ingen af dem læste `src/moduler/`**. En lint der springer noget over, siger ikke nej; den siger ingenting (2. gang, jf. 56). ⚠ **Og det var ikke kosmetik:** `facility/Servicedialog.jsx` havde et **påkrævet** Division-felt på `opgaver`, hvis regel har `.validate: false` på feltet — **servicebesøg kunne ikke oprettes**, i begge retninger. Opsætning → Generelt havde et kort der sagde **"Divisioner: Gods og bus"** til kunden. Fire filtre sammenlignede `x.division === division`, hvor **begge sider var `undefined`** — en no-op der så ud som en afgrænsning. `Kunder.jsx` skrev altid "i godsafdelingen". Værkstedskalenderen sendte `&division=undefined` i en URL ingen læste. To navne løj: `iDivision`, `opgaverIDivision`. ⚠ **Loftet er nu et forbud** — nul levende forekomster, med én undtagelse for de syv sætninger der forklarer at feltet ikke findes (en prøve der råber ad det korrekte, bliver slået fra). Dertil: **ingen skærm må destrukturere `division` ud af `useFleet()`** — det havde alle seks fund til fælles, og **en destrukturering af et felt der ikke findes, er tavs**. ⚠ **"Moduler: 0" var tredje gang** en manglende `moduler`-node blev læst som INGEN i stedet for ALLE (56, 86, 87) — set på skærmen, ikke i koden. ⚠ **Og jeg slettede for meget:** patchens anker spændte til filens sidste `});` og åd de ti oprindelige prøver; genskabt fra git | 14 modulskærme, `test/division-fjernet.test.mjs` |
 
 ## Struktur
 
@@ -1423,20 +1424,14 @@ den der skriver koden.
 med at `grundlag.js` kaster frem for at sætte 25 %: et system der gætter
 rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende gæt.
 
-## Divisionsefterslæbet
+## Divisionsefterslæbet — lukket i beslutning 87
 
 Gods/Bus-aksen blev fjernet i **beslutning 70** og fik sine sidste rester ryddet
 i **79** — i shellen, konteksten, `useListe`, Cloud Functions, reglerne og
-auditlisten. Prøven `test/division-fjernet.test.mjs` dækker præcis de steder.
+auditlisten. Prøven `test/division-fjernet.test.mjs` dækkede præcis de steder.
 
 ⚠ **Og den kiggede aldrig i `src/moduler/`.** Målt da Procures overblik blev
 bygget: **77 levende forekomster i 17 modulfiler** — kode, ikke kommentarer.
-
-Den værste var ikke kosmetisk. `indkoeb/Oversigt.jsx` havde et **påkrævet
-Division-felt** i registreringsformularen, mens `indkoeb`-reglen har
-`"division": { ".validate": false }`. Vælger man en værdi, **afviser serveren
-skrivningen**; vælger man ingen, klager formularen. Vejen ind var lukket i
-begge retninger, og ingen prøve sagde noget.
 
 ⚠ **En lint der springer noget over, siger ikke nej — den siger ingenting.**
 Samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger` (beslutning
@@ -1445,20 +1440,33 @@ Samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger` (beslutning
 | | Antal | Hvor |
 |---|---|---|
 | Målt (beslutning 84) | **77** | 17 modulfiler |
-| Ryddet i Procure | −26 | `indkoeb/Oversigt.jsx`, `indkoeb/Leverandoerer.jsx` |
-| **Tilbage** | **51** | 15 filer — se prøvens fejlbesked for listen |
+| Ryddet i Procure (84) | −26 | `indkoeb/Oversigt.jsx`, `indkoeb/Leverandoerer.jsx` |
+| Ryddet i resten (87) | −51 | 14 modulskærme |
+| **Tilbage** | **0** | — |
 
-Loftet står i `DIVISIONSLOFT` og **må kun gå ned**. For `src/moduler/indkoeb/`
-er tallet **nul** — et forbud, ikke et loft: modulet er bygget færdigt, og et
-loft på hele mappen ville ikke opdage at aksen kom tilbage ét sted mens den
-forsvandt et andet.
+**`DIVISIONSLOFT` findes ikke længere.** Tallet er nul for hele
+`src/moduler/`, og det er et **forbud**, ikke et loft: et loft kan ikke
+opdage at aksen kommer tilbage ét sted mens den forsvinder et andet.
 
-De 51 er ikke harmløse. Blandt dem er mindst ét mere påkrævet Division-felt
-(`facility/Servicedialog.jsx`) på en node hvis regel forbyder feltet, og en
-håndfuld filtre der sammenligner `undefined` med `undefined` og derfor kun
-virker ved et tilfælde. **Ryd dem modulvis**, som Procure blev ryddet, og sæt
-loftet ned i samme ombæring.
+⚠ **Én undtagelse, og den er ikke en lempelse.** Syv sætninger forklarer at
+feltet IKKE findes — på Enheder, Medarbejdere, Facility, Procure og
+Opsætning. De skal blive: de er det eneste sted en læser får at vide hvorfor
+der ikke er en gods/bus-vælger, og **en prøve der råber ad det korrekte,
+bliver slået fra.** `FORKLARER_FRAVAERET` i prøven er den undtagelse.
 
+⚠ **Og den anden prøve er den der virkelig lukker døren:** ingen skærm må
+destrukturere `division` ud af `useFleet()`. Alle fundene havde det til
+fælles. Konteksten holdt op med at levere feltet i 79, men **en
+destrukturering af et felt der ikke findes, fejler ikke** — den giver
+`undefined`, tavst. Det er derfor de kunne blive stående.
+
+Hvad de 51 faktisk var, står i beslutning 87. Kort: et **påkrævet**
+Division-felt i `facility/Servicedialog.jsx` på en node hvis regel forbyder
+feltet (servicebesøg kunne ikke oprettes, i begge retninger), et
+nøgletalskort på Opsætning → Generelt der sagde **"Divisioner: Gods og bus"**
+til kunden, fire filtre der sammenlignede to `undefined`, `Kunder.jsx` der
+altid skrev "i godsafdelingen", et `&division=undefined` i en URL ingen
+læste, og to variabelnavne der løj.
 ## Låst rækkefølge
 
 Sikkerhedsarbejdet er prioriteret én gang, og rækkefølgen ligger fast. Hvert

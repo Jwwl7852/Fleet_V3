@@ -174,7 +174,7 @@ export default function RuteOgStatus() {
                 } },
             ]}
             raekker={raekker}
-            tom="Ingen ture med en tildelt bil i divisionen."
+            tom="Ingen ture med en tildelt enhed."
           />
           <p className="fc-hint" style={{ marginTop: 12 }}>
             <b>Afvigelse</b> er <b>ukendt</b> når chaufføren ikke har meldt noget der

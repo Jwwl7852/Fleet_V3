@@ -38,84 +38,6 @@ const filer = (rod, ud = []) => {
 const SRC = filer("src");
 const MODULER = filer("src/moduler");
 
-/* ══════════════════════════════════════════════════════════════════════════
-   ⚠ LINTEN KIGGEDE ALDRIG I `src/moduler/` — OG DET VAR DER AKSEN LEVEDE
-   ══════════════════════════════════════════════════════════════════════════
-
-   Beslutning 70 fjernede aksen; 79 tog de sidste rester i shellen,
-   konteksten, `useListe`, Cloud Functions og auditlisten. Prøverne herover
-   dækker præcis de steder — og **ingen af dem læser en modulskærm**.
-
-   Målt da Procures overblik blev bygget: **77 levende forekomster i 17
-   modulfiler**. Ikke kommentarer — kode. Og den værste var ikke kosmetisk:
-   `indkoeb/Oversigt.jsx` havde et **påkrævet Division-felt** i
-   registreringsformularen, mens `indkoeb`-reglen har
-   `"division": { ".validate": false }`. Vælger man en værdi, afviser
-   serveren skrivningen; vælger man ingen, klager formularen. **Vejen ind
-   var lukket i begge retninger, og ikke én prøve sagde noget.**
-
-   ⚠ EN LINT DER SPRINGER NOGET OVER, SIGER IKKE NEJ — DEN SIGER INGENTING.
-   Det er samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger`
-   (beslutning 56), og det er anden gang mønstret koster noget.
-
-   ⚠ LOFTET ER MÅLT, IKKE VALGT — og det er et LOFT, ikke et forbud endnu.
-   At rette alle 17 filer i én ombæring er en anden opgave end at bygge
-   Procure færdig, og en prøve der kræver det, ville blive slået fra. Tallet
-   må kun gå NED. Går det op, har nogen skrevet aksen ind i en skærm igen.
-
-   51 = 77 minus de 26 i `src/moduler/indkoeb/`, som blev ryddet i
-   beslutning 84. Se README under *Divisionsefterslæbet*.
-   ══════════════════════════════════════════════════════════════════════════ */
-const DIVISIONSLOFT = 51;
-
-describe("Aksen lever endnu i modulskærmene — og listen må kun blive kortere", () => {
-  test("⚠ HØJST DIVISIONSLOFT LEVENDE FOREKOMSTER I src/moduler/", () => {
-    const fund = [];
-    for (const f of MODULER) {
-      const kode = udenKommentarer(readFileSync(f, "utf8"));
-      const linjer = kode.split(/\r?\n/)
-        .map((l, i) => [i + 1, l])
-        .filter(([, l]) => /\bdivision(er)?\b|DIVISION/i.test(l));
-      for (const [n, l] of linjer) fund.push(`${f}:${n}  ${l.trim().slice(0, 70)}`);
-    }
-    assert.ok(
-      fund.length <= DIVISIONSLOFT,
-      `${fund.length} levende forekomster af division i src/moduler/, loftet er `
-      + `${DIVISIONSLOFT}. Aksen er fjernet (beslutning 70) — en skærm der `
-      + `filtrerer, viser eller KRÆVER den, arbejder mod reglerne.\n  `
-      + fund.join("\n  "));
-  });
-
-  /**
-   * ⚠ OG PROCURE ER RYDDET — DET MÅ IKKE KOMME TILBAGE.
-   *
-   * Modulet er bygget færdigt i beslutning 78–84, og aksen er ude af alle
-   * dets skærme. Et loft på hele `src/moduler/` ville ikke opdage at der kom
-   * ét ind i Procure igen, hvis nogen samtidig fjernede ét andet sted. For
-   * den mappe er tallet derfor NUL — et forbud, ikke et loft.
-   *
-   * ⚠ ÉN UNDTAGELSE: en tekst der forklarer at feltet IKKE findes. Den
-   * advarer om aksen frem for at bruge den, og en prøve der råber ad det
-   * korrekte, bliver slået fra.
-   */
-  test("⚠ INGEN DIVISION I src/moduler/indkoeb/ — ET FORBUD", () => {
-    const fund = [];
-    for (const f of MODULER.filter((x) => x.includes("indkoeb"))) {
-      const kode = udenKommentarer(readFileSync(f, "utf8"));
-      for (const [i, l] of kode.split(/\r?\n/).entries()) {
-        if (!/\bdivision(er)?\b|DIVISION/i.test(l)) continue;
-        /* En sætning om at feltet ikke findes, er ikke en brug af det. */
-        if (/findes ikke|ikke længere|er fjernet|gjorde det heller ikke/i.test(l)) continue;
-        fund.push(`${f}:${i + 1}  ${l.trim().slice(0, 70)}`);
-      }
-    }
-    assert.deepEqual(fund, [],
-      "Procure er ryddet for aksen i beslutning 84. En skærm der filtrerer, "
-      + "viser eller kræver `division`, arbejder mod reglerne — feltet er "
-      + "`.validate: false` på hver eneste node.\n  " + fund.join("\n  "));
-  });
-});
-
 describe("Filteret er væk og kommer ikke tilbage stykkevis", () => {
   /**
    * ⚠ FUNKTIONEN SELV. Genindføres den, er aksen tilbage — også selv om
@@ -254,5 +176,94 @@ describe("Konteksten har ingen tilstand at skifte", () => {
   test("den gemmes ikke i localStorage", () => {
     assert.ok(!/JSON\.stringify\(\{[^}]*division/.test(ctx),
       "en gemt division ville blive læst tilbage som et valg nogen havde truffet");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ LINTEN KIGGEDE ALDRIG I `src/moduler/` — OG DET VAR DER AKSEN LEVEDE
+   ══════════════════════════════════════════════════════════════════════════
+
+   Beslutning 70 fjernede aksen; 79 tog de sidste rester i shellen,
+   konteksten, `useListe`, Cloud Functions og auditlisten. Prøverne herover
+   dækker præcis de steder — og **ingen af dem læste en modulskærm**.
+
+   Målt da Procures overblik blev bygget (beslutning 84): **77 levende
+   forekomster i 17 modulfiler**. Ikke kommentarer — kode.
+
+   ⚠ EN LINT DER SPRINGER NOGET OVER, SIGER IKKE NEJ — DEN SIGER INGENTING.
+   Samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger`
+   (beslutning 56), og anden gang mønstret kostede noget.
+
+   ══ HVAD DE 77 FAKTISK VAR ══
+
+   Procure blev ryddet i 84 (−26). Resten i **beslutning 87**, og det var
+   ikke kosmetik:
+
+     · `facility/Servicedialog.jsx` havde et **påkrævet Division-felt** på
+       `opgaver`, hvis regel har `"division": { ".validate": false }`. Vælger
+       man en værdi, afviser serveren; vælger man ingen, klager formularen.
+       **Vejen ind var lukket i begge retninger** — nøjagtig samme fejl som
+       Procure havde, i et andet modul.
+     · `opsaetning/Generelt.jsx` havde et nøgletalskort der sagde
+       **"Divisioner: Gods og bus"** — på den ene skærm hvor en kunde læser
+       hvad han har købt. En tekst der sælger en funktion produktet ikke har.
+     · Fire filtre sammenlignede `x.division === division`, hvor **begge
+       sider var `undefined`** — de slap kun igennem fordi
+       `undefined === undefined` er sandt.
+     · `Kunder.jsx` skrev altid **"aktive i alt i godsafdelingen"**.
+     · Værkstedskalenderen sendte `&division=undefined` i en URL **ingen
+       læste**, og en `division`-prop til en dialog der ikke nævner den.
+     · To variabelnavne løj: `iDivision` og `opgaverIDivision` på lister der
+       ikke er delt. **Et navn er en påstand.**
+
+   ⚠ TALLET ER NU NUL, OG DET ER ET FORBUD — IKKE ET LOFT.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⚠ ÉN UNDTAGELSE, OG DEN ER IKKE EN LEMPELSE: en tekst der forklarer at
+ * feltet IKKE findes. Den advarer om aksen frem for at bruge den, og **en
+ * prøve der råber ad det korrekte, bliver slået fra**. Otte sætninger står
+ * tilbage af netop den slags — på Enheder, Medarbejdere, Facility, Procure
+ * og Opsætning — og de skal blive: de er det eneste sted en læser får at
+ * vide hvorfor der ikke er en gods/bus-vælger.
+ */
+const FORKLARER_FRAVAERET = /findes ikke|ikke længere|er fjernet|er væk|ingen division|gjorde det heller ikke|ikke divisioner|ikke\s+delt/i;
+
+describe("Aksen findes ikke i modulskærmene — og kommer ikke tilbage", () => {
+  test("⚠ INGEN LEVENDE division I src/moduler/ — ET FORBUD", () => {
+    const fund = [];
+    for (const f of MODULER) {
+      const kode = udenKommentarer(readFileSync(f, "utf8"));
+      for (const [i, l] of kode.split(/\r?\n/).entries()) {
+        if (!/\bdivision(er)?\b|DIVISION/i.test(l)) continue;
+        if (FORKLARER_FRAVAERET.test(l)) continue;
+        fund.push(`${f}:${i + 1}  ${l.trim().slice(0, 70)}`);
+      }
+    }
+    assert.deepEqual(fund, [],
+      "Aksen er fjernet (beslutning 70 og 87). En skærm der filtrerer, viser "
+      + "eller KRÆVER `division`, arbejder mod reglerne — feltet er "
+      + "`.validate: false` på hver eneste node, så en skrivning bliver afvist "
+      + "og et filter sammenligner to `undefined`.\n  " + fund.join("\n  "));
+  });
+
+  /**
+   * ⚠ OG SHELLEN GIVER DEN IKKE UD LÆNGERE.
+   *
+   * Alle de fund ovenfor havde én ting til fælles: de læste `division` fra
+   * `useFleet()`. Konteksten holdt op med at levere den i beslutning 79 —
+   * men **destruktureringen fejler ikke**, den giver bare `undefined`, og
+   * det er præcis derfor de kunne blive stående i årevis uden at nogen så
+   * noget. En destrukturering af et felt der ikke findes, er tavs.
+   */
+  test("⚠ INGEN SKÆRM TRÆKKER division UD AF useFleet()", () => {
+    const fund = [];
+    for (const f of MODULER) {
+      const kode = udenKommentarer(readFileSync(f, "utf8"));
+      for (const m of kode.matchAll(/const \{([^}]*)\}\s*=\s*useFleet\(\)/g)) {
+        if (/\bdivision\b/.test(m[1])) fund.push(`${f}: ${m[1].trim()}`);
+      }
+    }
+    assert.deepEqual(fund, [], "en skærm destrukturerer division ud af shellen — den er `undefined` og har været det siden beslutning 79.\n  " + fund.join("\n  "));
   });
 });

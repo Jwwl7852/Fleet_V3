@@ -62,7 +62,7 @@ import { blokerer } from "../../fleet/datatilstand.js";
 
 export default function BookingOversigt() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { bruger, division } = useFleet();
+  const { bruger } = useFleet();
 /**
    * ⚠ HER STOD "DER ER INGEN KONTROL TIL AT SÆTTE DEN".
    *
@@ -147,10 +147,13 @@ export default function BookingOversigt() {
     etaperPaa.get(e.bookingId).push(e);
   }
 
-  const iDivision = bookingListe.data;
+  /* ⚠ NAVNET LØJ. `iDivision` sagde "divisionens bookinger", og useListe
+     deler ikke på noget siden beslutning 70 — et navn er en påstand om en
+     opdeling der ikke findes. Se beslutning 87. */
+  const alleBookinger = bookingListe.data;
 
   /* Tilstanden GENBEREGNES. Det lagrede felt er en denormalisering. */
-  const raekker = iDivision.map((b) => {
+  const raekker = alleBookinger.map((b) => {
     const etaper = (etaperPaa.get(b.id) || []).sort((x, y) => (x.nr || 0) - (y.nr || 0));
     const afledt = etaper.length ? forloebstilstand(etaper) : null;
     return {
@@ -179,11 +182,11 @@ export default function BookingOversigt() {
   /* ⚠ NODEN, IKKE DEMOSÆTTET — og divisionsfilteret ligger i useListe.
      Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
      Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder. */
-  const opgaverIDivision = opgaveListe.data;
+  const alleOpgaver = opgaveListe.data;
 
   /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
      og den står allerede i topbaren. */
-  const opgaver = opgaverIDivision
+  const opgaver = alleOpgaver
     .filter((o) => !enhedFilter || o.koeretoejId === enhedFilter)
     .filter((o) => !statusFilter || o.status === statusFilter)
     .sort((a, b) => a.startMs - b.startMs);
@@ -192,14 +195,14 @@ export default function BookingOversigt() {
      flåden. Et filter med tomme valg lærer brugeren at filtre ikke virker.
      Filteret er på ENHED og ikke på kunde: en opgave hænger på et køretøj,
      fordi værkstedet servicerer egen flåde. */
-  const enhedsvalg = [...new Set(opgaverIDivision.map((o) => o.koeretoejId).filter(Boolean))]
+  const enhedsvalg = [...new Set(alleOpgaver.map((o) => o.koeretoejId).filter(Boolean))]
     .map((id) => ({ id, navn: opgaveEnhed(id) }))
     .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
 
   /* Dagens plan udledes af opgaverne — det er ikke et nyt datasæt. */
   const dagStart = new Date(); dagStart.setHours(0, 0, 0, 0);
   const dagSlut = dagStart.getTime() + 86400000;
-  const dagensPlan = opgaverIDivision
+  const dagensPlan = alleOpgaver
     .filter((o) => o.startMs >= dagStart.getTime() && o.startMs < dagSlut)
     .sort((a, b) => a.startMs - b.startMs);
 
@@ -397,8 +400,11 @@ export default function BookingOversigt() {
         </p>
         <p className="fc-hint fc-row" style={{ marginTop: 8 }}>
           <span>
-            Viser {num(viste.length)} af {num(raekker.length)} hentede bookinger i{" "}
-            <b>{division}</b>. Tallene øverst kommer fra <code>kpi/</code> og dækker hele
+            {/* ⚠ HER STOD "…hentede bookinger i <b>{division}</b>". Feltet er
+                `undefined` siden beslutning 70, så sætningen skrev "i " og
+                stoppede. Se beslutning 87. */}
+            Viser {num(viste.length)} af {num(raekker.length)} hentede bookinger.
+            Tallene øverst kommer fra <code>kpi/</code> og dækker hele
             platformen — de skal ikke gå op mod tabellen.
           </span>
           {/* ⚠ KNAPPEN SIGER HVOR MANGE DER ER SKJULT, ikke bare "vis alle".

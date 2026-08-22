@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **86 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **87 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -139,6 +139,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   **ingen** `useListe`-indstilling der hedder `division` (den afviser en ukendt
   indstilling højlydt), og **ingen** vælger i shellen. `test/division-fjernet.test.mjs`
   og `test/rules.division.test.mjs` holder hver sin ende.
+  ⚠ **Og prøven læser nu også `src/moduler/`, hvor aksen faktisk levede.**
+  Den kiggede aldrig derind, og derfor stod der **77 forekomster i 17
+  modulfiler** to beslutninger efter at aksen var fjernet — heriblandt et
+  **påkrævet** Division-felt på en node hvis regel forbyder feltet, så
+  servicebesøg slet ikke kunne oprettes fra dialogen. Tallet er nul, og det
+  er et forbud: kun en sætning der forklarer at feltet IKKE findes, går fri.
+  Og **ingen skærm må destrukturere `division` ud af `useFleet()`** —
+  konteksten leverer det ikke, men destruktureringen fejler ikke; den giver
+  `undefined`, tavst, og det er derfor de kunne blive stående.
+  Se beslutning 87.
 - **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
   `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler
   om*: reservationer, fravær, opgaver, etaper, kompetencer. Bytter du om,

@@ -87,7 +87,7 @@ const beloebEllerIntet = (oere, dec) =>
 
 export default function Dashboard() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
-  const { division, moduler, bruger, path: sti } = useFleet();
+  const { moduler, bruger, path: sti } = useFleet();
   const [params, saetParams] = useSearchParams();
   /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
      forskellige svar på "hvad må jeg se" ville være to steder at være
@@ -154,7 +154,10 @@ export default function Dashboard() {
   }));
 
   /* Samme visningsregel som useListe: valgt division plus fælles. */
-  const opgaver = DEMO_DASHBOARD_OPGAVER.filter((o) => o.division === division || o.division === "faelles");
+  /* ⚠ FILTERET ER VÆK, IKKE FLYTTET. Det sammenlignede `o.division` med
+     shellens `division`, og efter beslutning 70 var begge `undefined` — så
+     det passerede alt ved et tilfælde. Se beslutning 87. */
+  const opgaver = DEMO_DASHBOARD_OPGAVER;
 
   /* ⚠ VALGET STÅR I URL'EN, ikke i en useState. Et dashboard man har
      indstillet, skal overleve en genindlæsning og kunne sendes til en
