@@ -81,26 +81,26 @@ export function parterFraLeverandoer(l) {
 }
 
 /**
- * Må denne rolle godkende en faktura?
+ * Må denne bruger godkende en faktura?
  *
- * ⚠ DEN BRUGER indkoeb.skriv I DAG, OG DET ER EN MIDLERTIDIG LØSNING.
+ * ⚠ DEN VAR MIDLERTIDIG, OG ER DET IKKE LÆNGERE. Her stod `indkoeb.skriv`
+ * med noten om at permissionen skal skilles ud "når reglerne åbnes". Det
+ * skete i beslutning 82: `indkoeb.godkend` findes, og `ordrestatus` kræver
+ * den.
  *
- * Der findes ingen `fakturaer.godkend` i permission-kataloget, fordi
- * `fakturaer/` er `.write: false` — ingen kan skrive noden, så der har ikke
- * været noget at kontrollere. Når reglerne åbnes, skal permissionen skilles
- * ud, og det er ikke en oprydning i navngivningen:
+ * AT GODKENDE ER EN ANDEN HANDLING END AT BESTILLE. Den der bestiller varen,
+ * og den der siger god for regningen, er i en virksomhed med adskilte
+ * funktioner BEVIDST to personer — det er hele pointen med en attestationsgang.
+ * Delte de én permission, kunne den samme medarbejder bestille hos sin svoger
+ * og godkende sit eget køb, og beløbsgrænsen på planche 2 ville være pynt.
  *
- * AT GODKENDE EN FAKTURA ER EN ANDEN HANDLING END AT REGISTRERE ET INDKØB.
- * Den der bestiller varen, og den der godkender regningen for den, er i en
- * virksomhed med adskilte funktioner BEVIDST to personer — det er hele
- * pointen med en attestationsgang. Deler de én permission, kan den samme
- * medarbejder bestille hos sin svoger og godkende sin egen faktura.
- *
- * Det er nøjagtig samme argument som beslutning 5: disponenten laver
- * forslaget, koordinatoren godkender det. Ikke fordi disponenten er mindre
- * betroet, men fordi to sæt øjne fanger det ét sæt ikke gør.
+ * ⚠ MEN SELVE FAKTURAGODKENDELSEN ER STADIG IKKE HÅNDHÆVET. `fakturaer/` er
+ * `.write: false`, og der er ingen funktion der skriver den — det er trin 4 i
+ * Procures proces og hører i sin egen etape. Permissionen er den rigtige;
+ * vejen mangler. Skærmen siger det.
  */
-export const PERM_GODKEND_MIDLERTIDIG = "indkoeb.skriv";
+export const PERM_GODKEND = "indkoeb.godkend";
+
 
 /* ---- Afstemning -------------------------------------------------------- */
 
@@ -163,7 +163,7 @@ export function kanGodkende(faktura, harPermission) {
   if (!harPermission) {
     return {
       ok: false,
-      aarsag: `Du mangler adgangen "${PERM_GODKEND_MIDLERTIDIG}" til at godkende en faktura.`,
+      aarsag: `Du mangler adgangen "${PERM_GODKEND}" til at godkende en faktura.`,
     };
   }
   if (faktura.status === "godkendt" || faktura.status === "bogfoert") {

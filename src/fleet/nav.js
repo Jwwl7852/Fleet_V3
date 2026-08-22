@@ -130,8 +130,12 @@ export const NAV = [
         under: "Behov indsendt fra snedkeri, lager, kontor eller som kontantkøb." },
       /* ⚠ TRIN 2. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
       { key: "bestillinger", sti: "/indkoeb/bestillinger", label: "Bestillinger",
-        titel: "Bestillingskladder & leverandoerforslag",
-        under: "Aabne behov med automatisk leverandoerforslag, samlet i én bestilling pr. leverandoer." },
+        titel: "Bestillingskladder & leverandørforslag",
+        under: "Åbne behov med automatisk leverandørforslag, samlet i én bestilling pr. leverandør." },
+      /* ⚠ TRIN 3. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
+      { key: "godkendelser", sti: "/indkoeb/godkendelser", label: "Godkendelse af indkøb",
+        titel: "Godkendelse af indkøb",
+        under: "Godkend indkøb, der kræver din godkendelse — og sæt virksomhedens beløbsgrænse." },
       { key: "fakturaer", sti: "/indkoeb/fakturaer", label: "Fakturaer & afstemning",
         titel: "Fakturagodkendelse & afstemning",
         under: "Indkøb matches med leverandørfakturaer, godkendes og afstemmes mod regnskabsgrundlaget." },

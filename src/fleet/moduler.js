@@ -238,6 +238,7 @@ export const NODE_MODUL = {
      Procure har hverken behov at melde ind eller ordrer at sende. */
   indkoebsbehov: "indkoeb",
   indkoebsordrer: "indkoeb",
+  godkendelsesregler: "indkoeb",
 
   bookinger: "booking",
   /* ⚠ OMKOSTNINGER ER IKKE PRISER. `satser` er hvad KUNDEN betaler;

@@ -2028,6 +2028,17 @@
             "bestillerId": { ".validate": "newData.isString()" },
             "godkendtAf": { ".validate": "newData.isString()" },
             "godkendtMs": { ".validate": "newData.isNumber()" },
+            // ⚠ ET FLAG DER SIGER OM ET MENNESKE KIGGEDE.
+            // En ordre under beloebsgraensen godkendes uden at nogen har set
+            // den, og den faar derfor INGEN godkendtAf — et uid dér ville
+            // paastaa at en person sagde god for den. Uden flaget kan man
+            // ikke se forskel paa et indkoeb nogen godkendte, og et der bare
+            // var lille nok. Samme forhold som 'afkortet' paa reservationen.
+            "godkendtAutomatisk": { ".validate": "newData.isBoolean()" },
+            // ⚠ OG PAA SELVGODKENDELSE. Reglen navngiver ÉN godkender, og
+            // laegger han selv ordren, kan kun han godkende den — ellers var
+            // posten en blindgyde. Det er tilladt, og det skal kunne SES.
+            "selvgodkendt": { ".validate": "newData.isBoolean()" },
             "afvistAf": { ".validate": "newData.isString()" },
             "afvistMs": { ".validate": "newData.isNumber()" },
             "begrundelse": { ".validate": "newData.isString() && newData.val().length <= 250" },
@@ -2058,6 +2069,57 @@
             "division": { ".validate": false },
             "$andet": { ".validate": false }
           }
+        },
+
+        // ══════════════════════════════════════════════════════════════════
+        // GODKENDELSESREGLER — Procures trin 3 (beslutning 82, planche 2)
+        //
+        // Virksomhedens EGEN politik: skal et indkoeb over et beloeb
+        // godkendes, og af hvem. To regler, hver med sin kontakt, og begge
+        // KAN SLAAS FRA — kunden bad udtrykkeligt om det: en lille virksomhed
+        // hvor samme person bestiller og godkender, faar intet ud af et
+        // ekstra trin.
+        //
+        // ⚠ NODEN ER ET OBJEKT, IKKE EN LISTE. Der er ÉN politik pr. tenant.
+        // En liste ville invitere til to raekker der er uenige om graensen,
+        // og saa ville "hvilken gaelder" vaere et spoergsmaal uden svar.
+        //
+        // ⚠ ".write: false", OG DET ER IKKE EN MANGLENDE RETTIGHED.
+        // Vejen gaar gennem godkendelsesregelskriv, som kraever
+        // brugere.skriv — IKKE indkoeb.skriv. Den der rammer loftet, maa
+        // ikke kunne haeve det; et loft der kan haeves af den der rammer det,
+        // er ikke et loft. Det er praecis den skelnen beslutning 24 rettede
+        // 23 paa, og her koster den penge.
+        //
+        // ⚠ OG DEN ER LAESBAR FOR ALLE I TENANTEN. Hvem der skal godkende, er
+        // ikke foelsomt — og en skaerm der ikke kan laese reglen, kan ikke
+        // sige HVORFOR en ordre venter.
+        "godkendelsesregler": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": false,
+          ".validate": "newData.hasChildren(['overBeloeb', 'fakturagodkendelse'])",
+          "overBeloeb": {
+            ".validate": "newData.hasChild('aktiv')",
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            // Hele oere som integer, som alle beloeb — 5.000 kr er 500000.
+            // ⚠ % 1 === 0 og ikke toInt(): RTDB-regler har ingen toInt, og
+            // filen kunne slet ikke indlaeses den dag det blev proevet.
+            "graenseOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000000000" },
+            // ⚠ uid, IKKE personId. Godkenderen GOER noget — han skal have et
+            // login. En chauffoer har maaske slet intet.
+            "godkenderUid": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "$andet": { ".validate": false }
+          },
+          "fakturagodkendelse": {
+            ".validate": "newData.hasChild('aktiv')",
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "godkenderUid": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "$andet": { ".validate": false }
+          },
+          "aendretAf": { ".validate": "newData.isString()" },
+          "aendretMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+          "division": { ".validate": false },
+          "$andet": { ".validate": false }
         },
 
         // beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland

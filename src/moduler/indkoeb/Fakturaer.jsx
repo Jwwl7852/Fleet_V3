@@ -50,7 +50,7 @@ import {
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, kanGodkende,
-  PERM_GODKEND_MIDLERTIDIG
+  PERM_GODKEND
 } from "../../fleet/leverandoerer.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i sættet. */
 import {
@@ -107,7 +107,7 @@ export default function Fakturaer() {
      opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND_MIDLERTIDIG);
+  const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND);
   const fakturaer = liste.data;
   const valgt = fakturaer.find((f) => f.id === valgtId) || null;
 
@@ -293,20 +293,25 @@ function Godkendelse({ faktura, maaGodkende, rolle, lvNavn }) {
         </p>
       )}
 
+      {/* ⚠ PERMISSIONEN ER SKILT UD — HANDLINGEN ER IKKE BYGGET.
+          To forskellige mangler, og de må ikke læses som én. */}
       <p className="fc-hint" style={{ marginTop: 12 }}>
-        Knappen bruger <code>{PERM_GODKEND_MIDLERTIDIG}</code> — <b>midlertidigt</b>.
-        Der findes ingen <code>fakturaer.godkend</code>, fordi noden er{" "}
-        <b>.write: false</b> og der derfor ikke har været noget at kontrollere.
-      </p>
-      <p className="fc-hint" style={{ marginTop: 8 }}>
-        <b>Den skal skilles ud, når reglerne åbnes.</b> At godkende en faktura er en
-        anden handling end at registrere et indkøb: den der bestiller varen, og den
-        der godkender regningen, er i en virksomhed med adskilte funktioner{" "}
-        <b>bevidst to personer</b>. Deler de én permission, kan samme medarbejder
-        bestille hos sin svoger og godkende sin egen faktura. Det er nøjagtig samme
-        argument som beslutning 5 —{" "}
+        Knappen bruger <code>{PERM_GODKEND}</code>. Den var{" "}
+        <code>indkoeb.skriv</code> indtil beslutning 82: at godkende er en anden
+        handling end at bestille, og den der bestiller varen og den der siger god
+        for regningen, er i en virksomhed med adskilte funktioner{" "}
+        <b>bevidst to personer</b>. Delte de én permission, kunne samme medarbejder
+        bestille hos sin svoger og godkende sit eget køb. Samme argument som
+        beslutning 5 —{" "}
         <Link className="fc-a" to="/booking/forslag/bk-2026-00314">disponent og
         koordinator</Link>.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        <b>Men selve godkendelsen er ikke bygget her.</b> <code>fakturaer/</code> er{" "}
+        <b>.write: false</b>, og der findes ingen funktion der skriver den — det er
+        trin 4 i Procures proces og hører i sin egen etape. Knappen viser hvad den{" "}
+        <i>ville</i> gøre. Ordrernes godkendelse er derimod åben, og den ligger på{" "}
+        <Link className="fc-a" to="/indkoeb/godkendelser">Godkendelse af indkøb</Link>.
       </p>
     </Kort>
   );

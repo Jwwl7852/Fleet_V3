@@ -112,6 +112,29 @@ export const PERM = {
   grundlagSkriv: "grundlag.skriv",
   grundlagGodkend: "grundlag.godkend",
 
+  /* --- Procures godkendelse (beslutning 82) ---
+   *
+   * ⚠ DEN HER HAR VÆRET PLANLAGT, IKKE GLEMT. `leverandoerer.js` bar den som
+   * `PERM_GODKEND_MIDLERTIDIG = "indkoeb.skriv"` med noten om at den skal
+   * skilles ud "når reglerne åbnes". Ordrernes godkendelse er nu åbnet —
+   * `ordrestatus` — og det er den ombæring.
+   *
+   * AT GODKENDE ET INDKØB ER EN ANDEN HANDLING END AT BESTILLE DET. Den der
+   * bestiller varen, og den der siger god for regningen, er i en virksomhed
+   * med adskilte funktioner BEVIDST to personer. Deler de én permission, kan
+   * den samme medarbejder bestille hos sin svoger og godkende sit eget køb —
+   * og hele beløbsgrænsen på planche 2 er så en pæn knap.
+   *
+   * Samme argument som beslutning 5: disponenten foreslår, koordinatoren
+   * godkender. Ikke fordi disponenten er mindre betroet, men fordi to sæt
+   * øjne fanger det ét sæt ikke gør.
+   *
+   * ⚠ OG DEN DÆKKER OGSÅ FAKTURAEN. Det er den samme handling — at sige god
+   * for at der skal betales — og en `fakturaer.godkend` ved siden af ville
+   * skulle gives til nøjagtig de samme. Noderne er delt fordi TINGENE er to;
+   * adgangen er én. Samme snit som `lagre.skriv` og `satser.skriv`. */
+  indkoebGodkend: "indkoeb.godkend",
+
   /* --- Audit --- */
   /* Læsning af auditloggen. Loggen er selv følsom: den afslører hvilke kunder
      der bliver kigget på, og af hvem. Derfor er den ikke synlig for enhver i
@@ -307,6 +330,9 @@ export const ROLLE_PERMS = {
        det grundlag den bliver faktureret på. */
     PERM.grundlagSkriv,
     PERM.grundlagGodkend,
+    /* Samme snit igen: den der godkender grundlaget vi fakturerer PÅ,
+       godkender også de indkøb vi selv betaler. */
+    PERM.indkoebGodkend,
     /* Ingen fravaerSensitiveLaes: disponeringen har brug for at vide at
        medarbejderen er utilgængelig, ikke hvorfor.
        Ingen personaleSensitiveLaes: CPR og baggrundskontrol er ikke

@@ -32,6 +32,7 @@ import Klima from "./moduler/facility/Klima.jsx";
 import IndkoebOversigt from "./moduler/indkoeb/Oversigt.jsx";
 import Indkoebsbehov from "./moduler/indkoeb/Behov.jsx";
 import Bestillinger from "./moduler/indkoeb/Bestillinger.jsx";
+import Godkendelser from "./moduler/indkoeb/Godkendelser.jsx";
 import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
 import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
 import UnitbookingKasser from "./moduler/unitbooking/Kasser.jsx";
@@ -378,6 +379,7 @@ export default function App() {
             <Route path="indkoeb/behov" element={<Indkoebsbehov />} />
 
             <Route path="indkoeb/bestillinger" element={<Bestillinger />} />
+            <Route path="indkoeb/godkendelser" element={<Godkendelser />} />
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
 

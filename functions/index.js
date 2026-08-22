@@ -80,6 +80,8 @@ import { tjekDisponering } from "./delt/disponering.js";
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
 import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
+  valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
+  kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
 } from "./delt/procure.js";
 import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
@@ -4184,6 +4186,192 @@ export const ordreskriv = onCall({ region: REGION }, async (req) => {
     `bestilling ${nummer} oprettet med ${Object.keys(linjer).length} linjer`);
 
   return { ok: true, id: ordreRef.key, nummer };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GODKENDELSESREGELSKRIV — virksomhedens egen politik (beslutning 82)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ KRAEVER brugere.skriv — IKKE indkoeb.skriv.
+
+   Den der rammer loftet, maa ikke kunne haeve det. Med indkoeb.skriv kunne
+   enhver der bestiller, saette sin egen beloebsgraense til hundrede
+   millioner og godkende sig selv ud af hele planche 2. Et loft der kan
+   haeves af den der rammer det, er ikke et loft — det er praecis det
+   beslutning 24 rettede 23 paa, og her koster det penge.
+
+   ⚠ OG REGLEN KAN SLAAS FRA. Kunden bad udtrykkeligt om det: en lille
+   virksomhed hvor samme person bestiller og godkender, faar intet ud af et
+   ekstra trin. At kunne slaa den fra er en FUNKTION, ikke et hul — men det
+   er en beslutning en administrator tager, ikke en bestiller.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const godkendelsesregelskriv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  if (!perms.includes(`|${PERM.brugereSkriv}|`)) {
+    throw new HttpsError("permission-denied",
+      "Godkendelsesreglerne saettes af en administrator. Den der bestiller, "
+      + "maa ikke kunne haeve sit eget loft.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("indkoeb").val() !== true) {
+    throw new HttpsError("permission-denied", "Procure-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const ob = d.overBeloeb || {};
+  const fg = d.fakturagodkendelse || {};
+
+  /* ⚠ FORMEN BYGGES HER, IKKE TAGET IND. Et objekt udefra kunne baere felter
+     reglen forbyder — og admin-SDK'et gaar uden om .validate, saa de ville
+     lande i noden i tavshed. Samme grund som ordren bygges af behovet. */
+  const regler = {
+    overBeloeb: {
+      aktiv: ob.aktiv === true,
+      ...(Number.isInteger(ob.graenseOere) ? { graenseOere: ob.graenseOere } : {}),
+      ...(kortStreng(ob.godkenderUid, 128) ? { godkenderUid: kortStreng(ob.godkenderUid, 128) } : {}),
+    },
+    fakturagodkendelse: {
+      aktiv: fg.aktiv === true,
+      ...(kortStreng(fg.godkenderUid, 128) ? { godkenderUid: kortStreng(fg.godkenderUid, 128) } : {}),
+    },
+    aendretAf: uid,
+    aendretMs: Date.now(),
+  };
+
+  const svar = valideGodkendelsesregler(regler);
+  if (!svar.ok) {
+    throw new HttpsError("invalid-argument",
+      Object.values(svar.fejl)[0] || "Reglerne er ikke gyldige.");
+  }
+
+  /* ⚠ GODKENDEREN SKAL FINDES SOM BRUGER. En uid der ikke staar i
+     brugerindekset, er en koe ingen toemmer — ordren ville vente paa nogen
+     der ikke kan logge ind. uid og ikke personId: godkenderen GOER noget. */
+  for (const felt of [regler.overBeloeb, regler.fakturagodkendelse]) {
+    if (!felt.aktiv || !felt.godkenderUid) continue;
+    const b = await rod.child(`brugere/${felt.godkenderUid}`).once("value");
+    if (!b.exists()) {
+      throw new HttpsError("invalid-argument",
+        "Den valgte godkender er ikke bruger i virksomheden.");
+    }
+  }
+
+  const foer = (await rod.child("godkendelsesregler").once("value")).val();
+  await rod.child("godkendelsesregler").set(regler);
+
+  await logProcure(tenantId, uid, AUDIT.aendre, "godkendelsesregler", tenantId,
+    foer ? { aktiv: foer.overBeloeb?.aktiv ?? null, graenseOere: foer.overBeloeb?.graenseOere ?? null } : null,
+    { aktiv: regler.overBeloeb.aktiv, graenseOere: regler.overBeloeb.graenseOere ?? null },
+    "godkendelsesregler aendret");
+
+  return { ok: true };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ORDRESTATUS — bestillingens tilstandsskift (beslutning 82)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ SAMME kanSkifteIndkoebsordre() SOM SKAERMEN. Skaermen tegner knapperne af
+   den og VISER; funktionen HAANDHAEVER, og den afviser med den sætning
+   brugeren allerede har set. To formuleringer af én spaerring er to
+   forklaringer paa én ting.
+
+   ⚠ OG "SEND TIL GODKENDELSE" ENDER MAASKE PAA godkendt. Er reglen slaaet
+   fra, eller er beloebet under graensen, er der ingen at vente paa — en koe
+   med en post ingen skal roere, laerer folk at ignorere koeen. Regnestykket
+   ligger i ordreOpdatering(), hvor det kan proeves uden en emulator.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const ordrestatus = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("indkoeb").val() !== true) {
+    throw new HttpsError("permission-denied", "Procure-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const ordreId = kortStreng(d.ordreId, 60);
+  const til = kortStreng(d.til, 30);
+  if (!ordreId) throw new HttpsError("invalid-argument", "ordreId mangler.");
+  if (!til) throw new HttpsError("invalid-argument", "Ingen tilstand at skifte til.");
+
+  const snap = await rod.child(`indkoebsordrer/${ordreId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Bestillingen findes ikke.");
+  const ordre = { ...snap.val(), id: ordreId };
+
+  /* ⚠ REGLERNE LAESES AF NODEN, IKKE AF KLIENTEN. Kom graensen ind i kaldet,
+     kunne den der bestiller, sende sin egen. Mangler noden, gaelder
+     standarden — og standarden er INGEN godkendelse, saa en eksisterende
+     kunde ikke pludselig faar en koe han ikke har bedt om. */
+  const rSnap = await rod.child("godkendelsesregler").once("value");
+  const regler = rSnap.exists() ? rSnap.val() : STANDARD_GODKENDELSESREGLER;
+
+  const kan = kanSkifteIndkoebsordre(ordre, til, { perms, regler, uid });
+  if (!kan.ok) {
+    /* ⚠ EN MANGLENDE PERMISSION ER permission-denied; alt andet er en
+       kendsgerning om ORDREN. De to skal kunne skelnes af den der ser dem. */
+    const kode = kan.aarsag?.startsWith("Det kræver ") ? "permission-denied" : "failed-precondition";
+    throw new HttpsError(kode, kan.aarsag);
+  }
+
+  const begrundelse = kortStreng(d.begrundelse, 250);
+  if (kan.kraeverBegrundelse && !begrundelse) {
+    throw new HttpsError("invalid-argument",
+      "Skriv hvorfor. Uden en grund er afvisningen en tavshed, og den samme "
+      + "bestilling bliver lagt igen i naeste uge.");
+  }
+
+  const opdatering = ordreOpdatering(ordre, til, {
+    uid, nu: Date.now(), begrundelse, regler,
+  });
+
+  const stier = {};
+  for (const [felt, vaerdi] of Object.entries(opdatering)) {
+    stier[`tenants/${tenantId}/indkoebsordrer/${ordreId}/${felt}`] = vaerdi;
+  }
+  await db.ref().update(stier);
+
+  const krav = kraeverGodkendelse(ordre, regler);
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "indkoebsordrer", ordreId,
+    { status: ordre.status }, { status: opdatering.status },
+    opdatering.godkendtAutomatisk
+      ? `godkendt automatisk — ${krav.grund}`
+      : `${ordre.status} → ${opdatering.status}`);
+
+  return { ok: true, status: opdatering.status, automatisk: Boolean(opdatering.godkendtAutomatisk) };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

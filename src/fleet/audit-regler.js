@@ -51,6 +51,11 @@ export const LOGBARE_FELTER = new Set([
      ville lede efter. Allowlisten findes for at holde tastet tekst ude, ikke
      tal. */
   "rabatBps",
+  /* ⚠ BELOEBSGRAENSEN FOR GODKENDELSE (beslutning 82). Et loft nogen kan
+     haeve, skal kunne haeves EFTERPROEVELIGT — ellers er "hvem satte den til
+     hundrede millioner" et spoergsmaal uden svar. Det er et tal, ikke
+     fritekst, og det hoerer praecis paa listen af den grund. */
+  "graenseOere",
   "kmEstimeret", "maengde", "doegnParkering",
   // tilstand og status
   "tilstand", "status", "aftalestatus", "aktiv", "annulleret", "slettet",

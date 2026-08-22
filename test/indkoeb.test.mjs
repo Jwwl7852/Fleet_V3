@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS,
   afstem, fakturaTotalOere, kanGodkende, leverandoerNavn, parterFraLeverandoer,
-  PERM_GODKEND_MIDLERTIDIG, mestKoebteVarer, snitprisPrMaaned, indkoebBeloebOere,
+  PERM_GODKEND, mestKoebteVarer, snitprisPrMaaned, indkoebBeloebOere,
 } from "../src/fleet/leverandoerer.js";
 import {
   DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_AFSTEMNING,
@@ -278,10 +278,21 @@ describe("kanGodkende skelner mellem adgang og forudsætning", () => {
     assert.equal(kanGodkende(null, true).ok, false);
   });
 
-  /* Midlertidig løsning — den skal skilles ud, og hvorfor står i
-     leverandoerer.js. */
-  it("bruger indkoeb.skriv indtil fakturaer.godkend findes", () => {
-    assert.equal(PERM_GODKEND_MIDLERTIDIG, "indkoeb.skriv");
+  /**
+   * ⚠ DEN VAR MIDLERTIDIG, OG PRØVEN HOLDT DEN FAST. Her stod
+   * `assert.equal(PERM_GODKEND_MIDLERTIDIG, "indkoeb.skriv")` — altså en
+   * prøve der ville blive RØD den dag manglen blev rettet. En prøve der
+   * beskriver et mellemstadie, skal selv kunne se at det er ovre; ellers
+   * lærer den næste at rette prøven i stedet for koden. Det er samme fælde
+   * som beslutning 79 fandt i `division-fjernet`.
+   *
+   * Nu vogter den det der faktisk gælder: at godkendelsen IKKE deler
+   * permission med bestillingen.
+   */
+  it("⚠ GODKENDELSE DELER IKKE PERMISSION MED BESTILLING", () => {
+    assert.equal(PERM_GODKEND, "indkoeb.godkend");
+    assert.notEqual(PERM_GODKEND, "indkoeb.skriv",
+      "den der bestiller, kan godkende sit eget køb");
   });
 });
 

@@ -71,6 +71,7 @@ const NODE_FOR = {
   DEMO_BOOKINGER: "bookinger",
   /* Procures to foerste trin — begge seedes, saa begge hoerer her. */
   DEMO_INDKOEBSBEHOV: "indkoebsbehov", DEMO_INDKOEBSORDRER: "indkoebsordrer",
+  DEMO_GODKENDELSESREGLER: "godkendelsesregler",
 };
 
 /* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag.

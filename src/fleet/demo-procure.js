@@ -8,6 +8,7 @@
 import { selvkontrol } from "./selvkontrol.js";
 import {
   valideBehov, valideOrdre, linjeListe, ALLE_BEHOVKILDER, BEHOVSTATUS,
+  valideGodkendelsesregler, kraeverGodkendelse, ordreSumOere, ORDRESTATUS,
 } from "./procure.js";
 
 const NU = Date.now();
@@ -159,7 +160,64 @@ export const DEMO_INDKOEBSORDRER = [
       "l-1": { vare: "Motorolie 5W30", varenummer: "OLIE-5W30", antal: 60,
                enhed: "l", prisPrEnhedOere: 4600 },
     } },
+
+  /* ⚠ TRE ORDRER DER FAKTISK VENTER — planche 2's kø. Uden dem tegner
+     Godkendelsesskærmen en tom tabel, og så kan hverken beløbsgrænsen,
+     knapperne eller grunden til at en ordre venter, ses virke.
+
+     ⚠ OG DE LIGGER ALLE OVER GRÆNSEN PÅ 5.000 KR. En ordre under grænsen
+     ville aldrig NÅ køen — den godkendes automatisk af `ordreOpdatering()`.
+     Stod en sådan her med status "afventerGodkendelse", ville demo vise en
+     tilstand serveren ikke kan producere, og skærmen ville se forkert ud
+     på præcis den måde ingen opdager. Selvkontrollen måler det. */
+  { id: "ord-004", nummer: "BST-2026-00043", leverandoerId: "lv-daekteam",
+    status: "afventerGodkendelse", oprettetAf: "uid-thomas", oprettetMs: NU - 60 * T,
+    bestillerId: "michaelHansen",
+    linjer: {
+      "l-1": { vare: "Dæk 385/65 R22.5", varenummer: "DAEK-38565", antal: 4,
+               enhed: "stk", prisPrEnhedOere: 498000 },
+    } },
+  { id: "ord-005", nummer: "BST-2026-00044", leverandoerId: "lv-hydra",
+    status: "afventerGodkendelse", oprettetAf: "uid-lars", oprettetMs: NU - 44 * T,
+    bestillerId: "larsPetersen", note: "Haster — bilen står stille.",
+    linjer: {
+      "l-1": { vare: "Bremseklods, akselsæt", varenummer: "BRK-22", antal: 6,
+               enhed: "sæt", prisPrEnhedOere: 89500 },
+    } },
+  /* ⚠ DEN HER ER LAGT AF GODKENDEREN SELV. Reglen navngiver ÉN person, og
+     kan kun han godkende, er hans egne ordrer ellers en blindgyde. Den er
+     tilladt og markeres — se `selvgodkendt` i `ordreOpdatering()`. Uden et
+     eksempel kan den markering ikke ses virke. */
+  { id: "ord-006", nummer: "BST-2026-00045", leverandoerId: "lv-schmitz",
+    status: "afventerGodkendelse", oprettetAf: "uid-mikkel", oprettetMs: NU - 30 * T,
+    bestillerId: "mikkelLarsen",
+    linjer: {
+      "l-1": { vare: "Sideruder, sæt", varenummer: "RUD-12", antal: 5,
+               enhed: "sæt", prisPrEnhedOere: 142000 },
+    } },
 ];
+
+/**
+ * Virksomhedens godkendelsespolitik — planche 2 (beslutning 82).
+ *
+ * ⚠ ÉT OBJEKT, IKKE EN LISTE. Der er én politik pr. virksomhed. To rækker
+ * der var uenige om grænsen, ville gøre "hvilken gælder" til et spørgsmål
+ * uden svar.
+ *
+ * ⚠ BELØBET I HELE ØRE. Planchens 5.000 kr. er 500000 — som alle beløb.
+ *
+ * ⚠ OG FAKTURAGODKENDELSEN STÅR SLÅET FRA MED VILJE. Reglen er gemt, men
+ * INTET håndhæver den endnu: `fakturaer/` er `.write: false`, og der findes
+ * ingen funktion der skriver den. Slået til ville den love noget systemet
+ * ikke holder — og et løfte man opdager er tomt, er værre end en funktion
+ * der siger den mangler. Skærmen siger det.
+ */
+export const DEMO_GODKENDELSESREGLER = {
+  overBeloeb: { aktiv: true, graenseOere: 500000, godkenderUid: "uid-mikkel" },
+  fakturagodkendelse: { aktiv: false },
+  aendretAf: "uid-jens",
+  aendretMs: NU - 400 * T,
+};
 
 /* ══════════════════════════════════════════════════════════════════════════
    Selvkontrol
@@ -257,6 +315,53 @@ selvkontrol("demo-procure", () => {
     console.warn(
       "demo-procure: ordrerne står alle i samme tilstand — så kan udkastpanelets "
       + "filter ikke ses virke."
+    );
+  }
+  for (const o of DEMO_INDKOEBSORDRER) {
+    if (!ORDRESTATUS[o.status]) {
+      console.warn(`demo-procure: ${o.id} har ukendt tilstand "${o.status}".`);
+    }
+  }
+
+  /* ⚠ REGLERNE SKAL KUNNE GEMMES — noden er `.write: false`, så det her sæt
+     er det eneste sted formen kan brydes uden at nogen ser det. */
+  const r = valideGodkendelsesregler(DEMO_GODKENDELSESREGLER);
+  if (!r.ok) {
+    console.warn(
+      "demo-procure: godkendelsesreglerne kunne ikke gemmes — "
+      + Object.entries(r.fejl).map(([f, m]) => `${f}: ${m}`).join(", ")
+    );
+  }
+
+  /**
+   * ⚠ EN VENTENDE ORDRE SKAL FAKTISK KRÆVE GODKENDELSE.
+   *
+   * Ligger den under beløbsgrænsen, ville serveren have godkendt den
+   * automatisk — den kan altså ikke stå i køen. Et demo-sæt der viser en
+   * tilstand serveren ikke kan producere, får skærmen til at se rigtig ud
+   * på præcis den måde ingen opdager: knapperne virker, tallene passer, og
+   * rækken burde ikke være der.
+   */
+  for (const o of DEMO_INDKOEBSORDRER) {
+    if (o.status !== "afventerGodkendelse") continue;
+    const krav = kraeverGodkendelse(o, DEMO_GODKENDELSESREGLER);
+    if (!krav.kraever) {
+      console.warn(
+        `demo-procure: ${o.id} venter på godkendelse, men beløbet `
+        + `(${ordreSumOere(o) / 100} kr.) er under grænsen — serveren ville have `
+        + "godkendt den automatisk, så den kan ikke stå i køen."
+      );
+    }
+  }
+
+  /* ⚠ OG MINDST ÉN AF DEM SKAL VÆRE LAGT AF GODKENDEREN SELV. Ellers kan
+     markeringen "godkendt af den der bestilte" ikke ses virke. */
+  const godkender = DEMO_GODKENDELSESREGLER.overBeloeb.godkenderUid;
+  const venter = DEMO_INDKOEBSORDRER.filter((o) => o.status === "afventerGodkendelse");
+  if (venter.length && !venter.some((o) => o.oprettetAf === godkender)) {
+    console.warn(
+      "demo-procure: ingen ventende ordre er lagt af godkenderen selv — så kan "
+      + "selvgodkendelsen ikke ses."
     );
   }
 });

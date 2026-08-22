@@ -5468,3 +5468,148 @@ Serierne står nu som **data** i én tabel, med ét regnestykke og ét modulfilt
 i forslagskolonnen og i statuskolonnen, og to ens pille på én linje læses som
 to forskellige problemer. Forslagskolonnen siger nu **hvorfor**: *"Ingen
 tidligere leverance"*.
+
+
+## 82. Godkendelsen — Procures trin 3
+
+Etape 4 af beslutning 78: beløbsgrænsen, køen og `indkoeb.godkend`. Planche 2.
+
+### ⚠ Reglen kan slås fra, og det er en funktion
+
+Planchen har et helt kort til det: *"Godkendelsesfunktionen kan slås fra, hvis
+din virksomhed er lille, eller hvis samme person både bestiller og godkender."*
+Kunden bad udtrykkeligt om det.
+
+Det er forskellen på en **regel** og en **spærring**: reglen er virksomhedens
+egen politik, ikke systemets. Derfor kan den redigeres — og derfor står
+standarden på **fra**: en tenant uden noden opfører sig præcis som i dag.
+Faldt standarden tilbage på "godkendelse påkrævet", ville hver eksisterende
+kunde få en kø han ikke havde bedt om, første gang funktionen blev udrullet.
+Samme greb som `permsForTenant()` bruger på `roller/`.
+
+### ⚠ Men den der rammer loftet, må ikke kunne hæve det
+
+`godkendelsesregelskriv` kræver **`brugere.skriv`**, ikke `indkoeb.skriv`.
+Med bestillerens egen permission kunne enhver sætte sin grænse til hundrede
+millioner og godkende sig selv ud af hele planche 2 — og et loft der kan hæves
+af den der rammer det, er ikke et loft. Det er præcis den skelnen beslutning
+24 rettede 23 på; her koster den penge frem for et auditspor.
+
+Af samme grund læser `ordrestatus` reglerne af **noden**, aldrig af kaldet.
+Kom grænsen ind udefra, var permissionstjekket omgået i ét hop.
+
+### ⚠ At godkende er en anden handling end at bestille
+
+`indkoeb.godkend` findes nu, og den er ikke `indkoeb.skriv`. Den der bestiller
+varen, og den der siger god for regningen, er i en virksomhed med adskilte
+funktioner **bevidst to personer**; delte de én permission, kunne den samme
+medarbejder bestille hos sin svoger og godkende sit eget køb.
+
+Det var **planlagt, ikke glemt**: `leverandoerer.js` bar den som
+`PERM_GODKEND_MIDLERTIDIG = "indkoeb.skriv"` med noten om at den skal skilles
+ud "når reglerne åbnes". Ordrernes godkendelse er nu åbnet, og det er den
+ombæring. Koordinatoren får den — samme snit som `grundlag.godkend`.
+
+⚠ **Aliasset er ikke beholdt.** En funktion der findes, bliver kaldt, og et
+navn der stadig hedder MIDLERTIDIG, fortæller den næste at spørgsmålet er
+åbent. Det er besvaret.
+
+### ⚠ Nul er ikke "slået fra"
+
+En **aktiv** regel uden grænse er ugyldig, og indtil den er rettet **spærrer
+den alt**. Fejler lukket, som permission-strengen gør.
+
+Faldt den tilbage på 0, skulle alt godkendes; på uendelig skulle intet. De to
+er hinandens modsætning, og begge ser ud som "reglen er slået til". At slå
+reglen fra er **kontakten**, ikke et tomt felt — og derfor skriver skærmen
+`null` og ikke `0` for et tømt beløbsfelt: `Number("")` er 0.
+
+Tilsvarende er en aktiv regel uden godkender ugyldig: ordren ville stå i køen
+uden at nogen var udpeget. Synligt for alle, ansvar for ingen.
+
+### ⚠ Godkendt automatisk er ikke godkendt
+
+Er beløbet under grænsen, er der ingen at vente på — en kø med en post ingen
+skal røre, lærer folk at ignorere køen. `ordreOpdatering()` sender derfor
+"send til godkendelse" direkte videre til `godkendt`.
+
+⚠ **Men den får intet `godkendtAf`.** Et uid dér ville påstå at en person
+kiggede. `godkendtAutomatisk: true` siger hvad der skete, og **flaget er
+vigtigere end tidspunktet**: uden det kan man ikke se forskel på et indkøb
+nogen sagde god for, og et der bare var lille nok. Samme forhold som
+`afkortet` har til reservationen (beslutning 50).
+
+⚠ **Og grænsen læses som "overstiger", ikke "mindst".** Planchens egen knap
+siger *"når et indkøb overstiger det angivne beløb"* — præcis 5.000 kr. er
+altså ikke over. De to sætninger på planchen er uenige om det nøjagtige beløb
+(*"under"* mod *"overstiger"*), og forskellen er ét indkøb ud af hundrede.
+Knappens tekst vinder, og valget har en prøve.
+
+### ⚠ Godkenderen må godkende sine egne — og det markeres
+
+Reglen navngiver **én** person. Krævede vi derudover to par øjne, kunne hans
+egne ordrer **aldrig** godkendes: en blindgyde i data, ikke en kontrol.
+Planchen svarer selv — kortet *"Kan slås fra"* siger at funktionen bør slås
+fra netop når samme person bestiller og godkender.
+
+Så det er tilladt, og `selvgodkendt: true` sættes af serveren. **En
+fire-øjne-regel der ikke kan opfyldes, er værre end en selvgodkendelse man kan
+se.** Skærmen siger det både før (i Anmoder-kolonnen) og efter.
+
+⚠ **Til gengæld kan ingen ANDEN afgøre ordren** — heller ikke en admin. Havde
+enhver med permissionen kunnet godkende, var godkenderfeltet på planchen pynt.
+
+### Fakturagodkendelsen er gemt, ikke håndhævet
+
+Planchens anden kontakt hører til `fakturaer/`, som er `.write: false` og ikke
+har nogen funktion der skriver den — det er trin 4 og hører i sin egen etape.
+Feltet står i noden (så formen er kendt, jf. reglen om `demo-kpi.js`), men
+**kontakten er låst med sin begrundelse på skærmen**. En regel der kan slås til
+uden at nogen håndhæver den, er et løfte systemet ikke holder. Samme mønster
+som filuploaden på Indkøbsbehov.
+
+### Det prøverne og browseren fandt
+
+**1. To felter landede i den forkerte node.** `godkendtAutomatisk` og
+`selvgodkendt` skulle på `indkoebsordrer` og havnede på `grundlag`:
+`String.replace` tager det **første** træf, og `godkendtAf`/`godkendtMs` står i
+begge noder — fakturagrundlaget godkendes også. **Et anker der findes to
+steder, er ikke et anker.** Reglerne sagde ingenting, fordi et ekstra tilladt
+boolsk felt ikke brænder noget af; prøven fangede det. Patchen tæller nu
+træffene og nægter at skrive, hvis der er mere end ét.
+
+**2. En ventende demo-ordre var under grænsen.** `ord-006` stod på 1.420 kr. i
+en kø hvis grænse er 5.000 — en tilstand **serveren ikke kan producere**,
+fordi den ville være godkendt automatisk. Et demo-sæt der viser sådan en
+række, får skærmen til at se rigtig ud på præcis den måde ingen opdager:
+knapperne virker, tallene passer, og rækken burde ikke være der.
+Selvkontrollen måler det nu.
+
+**3. Brugerindekset skrev sig aldrig i DEV.** `tenants/<id>/brugere/<uid>` er
+det eneste sted en klient kan slå et navn op på et uid, og den blev kun skrevet
+af `opretbruger` — som DEV-konti aldrig går igennem. Noden var **tom**:
+godkender-vælgeren havde ingen at vælge, og Anmoder-kolonnen viste rå uid'er.
+
+**4. Demo-sæt kan ikke kende et Firebase-uid.** `DEMO_GODKENDELSESREGLER`
+udpegede `"uid-mikkel"`. Seedet råt udpeger reglen en godkender der ikke kan
+logge ind: køen står der, knappen er grå for **alle**, og grunden peger på et
+spøgelse. Provisioneringen oversætter nu pladsholdere til rigtige konti — via
+en tabel **pladsholder → ROLLE**, ikke → uid, fordi rollen er dét demoen mener,
+og uid'et skifter hver gang basen bygges op igen. 22 referencer omskrives.
+
+**5. En prøve holdt en mangel fast.** `indkoeb.test.mjs` havde
+`assert.equal(PERM_GODKEND_MIDLERTIDIG, "indkoeb.skriv")` — altså en prøve der
+ville blive **rød den dag manglen blev rettet**. Samme fælde som beslutning 79
+fandt i `division-fjernet`. Den vogter nu det der faktisk gælder: at
+godkendelsen ikke deler permission med bestillingen.
+
+**6. `usePost` kunne ikke læse en node der selv er en post.** Den byggede
+`${node}/${id}`, og `godkendelsesregler` har ingen forælder at gå gennem.
+Første forsøg pakkede demo-sættet ind i `{ godkendelsesregler: … }` for at
+komme forbi opslaget — og **det skjulte faldbakken for `demo-i-skaerm`-linten**,
+som tæller `demo: DEMO_X` og læste indpakningen som direkte brug. Hooket tager
+nu et bart sæt når noden selv er posten.
+
+**7. ASCII i en brugervendt tekst.** Menupunkternes `under` sagde *"saet
+virksomhedens beloebsgraense"*. Kommentarer i denne base skrives med ae/oe/aa;
+en tekst der **vises**, gør ikke.

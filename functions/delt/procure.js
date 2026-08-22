@@ -430,3 +430,310 @@ export function behovTilLinje(behov, { prisPrEnhedOere }) {
     behovId: behov.id,
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GODKENDELSE — beslutning 78, etape 4 (planche 2)
+   ══════════════════════════════════════════════════════════════════════════
+
+   Planchen har to regler, hver med sin kontakt: **godkendelse over beløb** og
+   **kræv fakturagodkendelse**. Og et kort ved siden af der siger at begge
+   **kan slås fra** — en lille virksomhed hvor samme person både bestiller og
+   godkender, får intet ud af et ekstra trin.
+
+   ⚠ AT KUNNE SLÅS FRA ER EN FUNKTION, IKKE EN MANGEL. Kunden bad om det
+   udtrykkeligt, og det er forskellen på en regel og en spærring: reglen er
+   virksomhedens egen politik, ikke systemets. Derfor kan den redigeres — men
+   ikke af hvem som helst, se `godkendelsesregelskriv`.
+*/
+
+/**
+ * Standarden når noden ikke findes.
+ *
+ * ⚠ EN TENANT UDEN NODEN SKAL OPFØRE SIG PRÆCIS SOM I DAG, og i dag er der
+ * ingen godkendelse. Faldt vi tilbage på "godkendelse påkrævet", ville hver
+ * eksisterende kunde få en kø han ikke havde bedt om, første gang funktionen
+ * blev udrullet. Samme greb som `permsForTenant()`: standarden er dét der
+ * gjaldt før noden fandtes.
+ *
+ * ⚠ OG DEN ER EN KONSTANT, IKKE ET SKØN. Formen står her, så `kraeverGodkendelse()`
+ * kan læse den uden at kende en database — som `beregnKpi()`.
+ */
+export const STANDARD_GODKENDELSESREGLER = {
+  overBeloeb: { aktiv: false, graenseOere: null, godkenderUid: null },
+  fakturagodkendelse: { aktiv: false, godkenderUid: null },
+};
+
+/**
+ * valideGodkendelsesregler(regler) → { ok, fejl }
+ *
+ * ⚠ EN AKTIV REGEL UDEN GRÆNSE ER UGYLDIG — den må ikke falde tilbage på et
+ * tal. Nul ville betyde at ALT skal godkendes; uendelig ville betyde at intet
+ * skal. De to er hinandens modsætning, og begge ser ud som "reglen er slået
+ * til". At slå reglen FRA er kontakten, ikke et tomt felt.
+ *
+ * ⚠ OG EN AKTIV REGEL UDEN GODKENDER ER EN KØ INGEN TØMMER. Ordren ville stå
+ * i `afventerGodkendelse` uden at nogen var udpeget — synligt for alle,
+ * ansvar for ingen.
+ */
+export function valideGodkendelsesregler(regler = {}) {
+  const f = {};
+  const ob = regler.overBeloeb;
+  const fg = regler.fakturagodkendelse;
+
+  if (!ob || typeof ob !== "object") {
+    f.overBeloeb = "Reglen for beløbsgrænse mangler.";
+  } else if (typeof ob.aktiv !== "boolean") {
+    f.overBeloeb = "Reglen skal være slået til eller fra.";
+  } else if (ob.aktiv) {
+    /* ⚠ HELE ØRE SOM INTEGER, som alle beløb. 5.000 kr er 500000. */
+    if (!Number.isInteger(ob.graenseOere) || ob.graenseOere < 0) {
+      f.graenseOere = "Sæt en beløbsgrænse i hele kroner.";
+    } else if (ob.graenseOere > 10000000000) {
+      f.graenseOere = "Beløbsgrænsen er urimeligt høj.";
+    }
+    if (!tekst(ob.godkenderUid, 128)) {
+      /* ⚠ uid, IKKE personId. Godkenderen GØR noget — han skal have et login,
+         og en chauffør har måske slet intet. Se CLAUDE.md. */
+      f.godkenderUid = "Vælg hvem der skal godkende.";
+    }
+  }
+
+  if (!fg || typeof fg !== "object") {
+    f.fakturagodkendelse = "Reglen for fakturagodkendelse mangler.";
+  } else if (typeof fg.aktiv !== "boolean") {
+    f.fakturagodkendelse = "Reglen skal være slået til eller fra.";
+  } else if (fg.aktiv && !tekst(fg.godkenderUid, 128)) {
+    f.fakturaGodkenderUid = "Vælg hvem der skal godkende fakturaer.";
+  }
+
+  return { ok: Object.keys(f).length === 0, fejl: f };
+}
+
+/**
+ * kraeverGodkendelse(ordre, regler) → { kraever, grund, graenseOere, godkenderUid }
+ *
+ * ⚠ REGNET ÉT STED, AF BEGGE SIDER. Skærmen viser hvad der vil ske; `ordrestatus`
+ * afgør det. Lå regnestykket i skærmen, kunne en ordre sendes direkte til
+ * `godkendt` af et kald der gik uden om den — og "godkendes automatisk" ville
+ * betyde "ingen kiggede, og ingen skulle".
+ *
+ * ⚠ OG DEN SAMMENLIGNER MED >, IKKE >=. Planchen skriver *"Kræver godkendelse,
+ * når et indkøb overstiger det angivne beløb"* og *"Indkøb under 5.000 kr.
+ * godkendes automatisk"*. Præcis 5.000 kr. er altså IKKE over grænsen. De to
+ * sætninger er uenige om det nøjagtige beløb — den ene siger "under", den
+ * anden "overstiger" — og forskellen er ét indkøb ud af hundrede. Vi følger
+ * knappens egen tekst: *overstiger*.
+ */
+export function kraeverGodkendelse(ordre, regler) {
+  const r = regler?.overBeloeb || STANDARD_GODKENDELSESREGLER.overBeloeb;
+  const sum = ordreSumOere(ordre);
+
+  if (!r.aktiv) {
+    return { kraever: false, grund: "reglenErFra", graenseOere: null, godkenderUid: null };
+  }
+  /* ⚠ EN AKTIV REGEL UDEN GRÆNSE KRÆVER GODKENDELSE. Den er ugyldig, og et
+     ugyldigt loft må ikke lade noget slippe igennem — fejler LUKKET, som
+     permission-strengen gør. */
+  if (!Number.isInteger(r.graenseOere)) {
+    return { kraever: true, grund: "ugyldigRegel", graenseOere: null, godkenderUid: r.godkenderUid || null };
+  }
+  return {
+    kraever: sum > r.graenseOere,
+    grund: sum > r.graenseOere ? "overBeloeb" : "underGraensen",
+    graenseOere: r.graenseOere,
+    godkenderUid: r.godkenderUid || null,
+  };
+}
+
+/**
+ * Ordrens overgange.
+ *
+ * ⚠ EN TABEL, IKKE EN RÆKKE IF-SÆTNINGER. Skærmen tegner knapperne af den, og
+ * `ordrestatus` afviser med den — en knap uden en overgang er en pæn knap; en
+ * overgang uden en knap er en vej ingen kan finde. Samme mønster som
+ * `OPGAVE_OVERGANGE` og `tilgaengeligeEtapeHandlinger()`.
+ *
+ * ⚠ `sendt` SÆTTES AF ET MENNESKE. Systemet sender ingen mail (beslutning 81),
+ * så en automatisk overgang dertil ville være en påstand. Derfor er
+ * *"Markér som sendt"* en handling og ikke en følge.
+ *
+ * ⚠ OG DER ER INGEN VEJ TILBAGE FRA `modtaget`. Varen står på hylden; skal
+ * noget sendes retur, er det en kreditnota — en anden post, ikke en tilbagerulning.
+ */
+export const ORDRE_OVERGANGE = {
+  kladde: [
+    { til: "afventerGodkendelse", label: "Send til godkendelse", perm: "indkoeb.skriv" },
+    { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
+  ],
+  afventerGodkendelse: [
+    { til: "godkendt", label: "Godkend", perm: "indkoeb.godkend" },
+    /* ⚠ EN AFVISNING KRÆVER EN GRUND. Uden den er den en tavshed, og den
+       samme bestilling bliver lagt igen i næste uge — nøjagtig som et afvist
+       behov (beslutning 80). */
+    { til: "afvist", label: "Afvis", perm: "indkoeb.godkend", kraeverBegrundelse: true },
+  ],
+  godkendt: [
+    { til: "sendt", label: "Markér som sendt", perm: "indkoeb.skriv" },
+    { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
+  ],
+  sendt: [
+    { til: "modtaget", label: "Markér som modtaget", perm: "indkoeb.skriv" },
+    { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
+  ],
+  afvist: [],
+  modtaget: [],
+  annulleret: [],
+};
+
+/**
+ * kanSkifteIndkoebsordre(ordre, til, { perms, regler, uid }) → { ok, aarsag }
+ *
+ * ⚠ HEDDER IKKE `kanSkifteOrdre`. Det navn er optaget af warehouse'ens
+ * plukordrer, og `functions/index.js` importerer begge. To funktioner med
+ * samme navn i én fil er ikke et navnesammenstød man opdager — den ene vinder
+ * i tavshed.
+ *
+ * Svarer, afgør ikke. Skærmen tegner knapperne efter den; serveren afviser med
+ * den samme sætning skærmen viste.
+ */
+export function kanSkifteIndkoebsordre(ordre, til, { perms = "", regler, uid } = {}) {
+  if (!ordre || !ORDRE_OVERGANGE[ordre.status]) {
+    return { ok: false, aarsag: "Ordren findes ikke, eller dens tilstand er ukendt." };
+  }
+  const muligt = ORDRE_OVERGANGE[ordre.status];
+  if (!muligt.length) {
+    return {
+      ok: false,
+      aarsag: `En ordre der er ${(ORDRESTATUS[ordre.status]?.label || ordre.status).toLowerCase()}, er afsluttet.`,
+    };
+  }
+  const overgang = muligt.find((o) => o.til === til);
+  if (!overgang) {
+    const navne = muligt.map((o) => ORDRESTATUS[o.til]?.label || o.til).join(", ");
+    return {
+      ok: false,
+      aarsag: `Herfra kan ordren kun blive: ${navne}.`,
+    };
+  }
+  if (!String(perms).includes(`|${overgang.perm}|`)) {
+    return { ok: false, aarsag: `Det kræver ${overgang.perm}.` };
+  }
+
+  /**
+   * ⚠ DEN UDPEGEDE GODKENDER ER DEN DER GODKENDER.
+   *
+   * Reglen navngiver ÉN person. Krævede vi derudover at det ikke måtte være
+   * den der bestilte, kunne en ordre lagt af godkenderen selv ALDRIG
+   * godkendes — en blindgyde i data, ikke en kontrol. Planchen svarer selv på
+   * det: kortet *"Kan slås fra"* siger at funktionen bør slås fra netop når
+   * samme person bestiller og godkender.
+   *
+   * Så vi tillader det — og MARKERER det. `selvgodkendt` sættes af serveren,
+   * og skærmen skriver "godkendt af den der bestilte". En fire-øjne-regel der
+   * ikke kan opfyldes, er værre end en selvgodkendelse man kan se.
+   */
+  if (til === "godkendt" || til === "afvist") {
+    const udpeget = regler?.overBeloeb?.godkenderUid;
+    if (udpeget && uid && udpeget !== uid) {
+      return {
+        ok: false,
+        aarsag: "Kun den udpegede godkender kan afgøre den her ordre.",
+      };
+    }
+  }
+
+  return { ok: true, aarsag: null, kraeverBegrundelse: Boolean(overgang.kraeverBegrundelse) };
+}
+
+/**
+ * tilgaengeligeOrdreHandlinger(ordre, { perms, regler, uid }) → [{ til, label, ok, aarsag }]
+ *
+ * ⚠ DE UMULIGE FALDER IKKE UD — de står med deres grund. En knap der forsvinder,
+ * efterlader spørgsmålet "hvorfor kan jeg ikke det her?"; en grå knap med en
+ * forklaring svarer på det. Samme greb som `tilgaengeligeEtapeHandlinger()`.
+ */
+export function tilgaengeligeOrdreHandlinger(ordre, kontekst = {}) {
+  return (ORDRE_OVERGANGE[ordre?.status] || []).map((o) => {
+    const svar = kanSkifteIndkoebsordre(ordre, o.til, kontekst);
+    return {
+      til: o.til,
+      label: o.label,
+      kraeverBegrundelse: Boolean(o.kraeverBegrundelse),
+      ok: svar.ok,
+      aarsag: svar.aarsag,
+    };
+  });
+}
+
+/**
+ * ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler }) → felterne der skal skrives
+ *
+ * BYGGER, SKRIVER IKKE — samme mønster som `flytOpdatering()` og
+ * `reservationFraOpgave()`. Regnestykket ligger her, hvor det kan prøves uden
+ * en emulator.
+ *
+ * ⚠ "SEND TIL GODKENDELSE" ENDER MÅSKE PÅ `godkendt`. Er reglen slået fra,
+ * eller er beløbet under grænsen, er der ingen at vente på — og en kø med en
+ * post ingen skal røre, lærer folk at ignorere køen.
+ *
+ * ⚠ MEN DEN AUTOMATISKE GODKENDELSE FÅR INGEN `godkendtAf`. Et uid dér ville
+ * påstå at en person kiggede. `godkendtAutomatisk: true` siger hvad der skete,
+ * og flaget er vigtigere end tidspunktet — uden det kan man ikke se forskel på
+ * et indkøb nogen sagde god for, og et der bare var lille nok.
+ */
+export function ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler } = {}) {
+  const ud = {};
+
+  if (til === "afventerGodkendelse") {
+    const krav = kraeverGodkendelse(ordre, regler);
+    if (!krav.kraever) {
+      ud.status = "godkendt";
+      ud.godkendtMs = nu;
+      ud.godkendtAutomatisk = true;
+      return ud;
+    }
+    ud.status = "afventerGodkendelse";
+    return ud;
+  }
+
+  ud.status = til;
+  if (til === "godkendt") {
+    ud.godkendtAf = uid;
+    ud.godkendtMs = nu;
+    ud.godkendtAutomatisk = false;
+    /* ⚠ SELVGODKENDELSE MARKERES. Se noten i kanSkifteIndkoebsordre(). */
+    if (ordre?.oprettetAf && ordre.oprettetAf === uid) ud.selvgodkendt = true;
+  }
+  if (til === "afvist") {
+    ud.afvistAf = uid;
+    ud.afvistMs = nu;
+  }
+  if (til === "sendt") ud.sendtMs = nu;
+  if (til === "modtaget") ud.modtagetMs = nu;
+  if (begrundelse) ud.begrundelse = begrundelse;
+
+  return ud;
+}
+
+/**
+ * ventendeOrdrer(ordrer, regler) → [{ ordre, sumOere, grund }]
+ *
+ * Køen på planchen: kun de der faktisk venter på et menneske, med grunden til
+ * at de gør det. Sorteret ældst først — den der har ventet længst, er den der
+ * spærrer noget.
+ */
+export function ventendeOrdrer(ordrer = [], regler) {
+  return ordrer
+    .filter((o) => o.status === "afventerGodkendelse")
+    .map((o) => ({ ordre: o, sumOere: ordreSumOere(o), grund: kraeverGodkendelse(o, regler).grund }))
+    .sort((a, b) => (a.ordre.oprettetMs || 0) - (b.ordre.oprettetMs || 0));
+}
+
+/** Grunden til at en ordre venter, som en sætning man kan læse i en tabel. */
+export const GODKENDELSESGRUND = {
+  overBeloeb: { label: "Over beløb", tone: "warn" },
+  /* ⚠ EN UGYLDIG REGEL SKAL SES, IKKE SKJULES. Den spærrer alt, og hvis det
+     bare stod "Over beløb", ville man lede efter beløbet frem for efter
+     reglen. */
+  ugyldigRegel: { label: "Reglen mangler en grænse", tone: "bad" },
+};

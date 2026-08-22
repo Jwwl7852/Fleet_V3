@@ -1356,3 +1356,61 @@
   font:inherit; font-size:var(--fc-t-m); color:var(--bc-text);
   background:var(--bc-card); border:1px solid var(--bc-line); border-radius:6px}
 .fc-tal-ind input:disabled{background:var(--fc-bg); color:var(--bc-muted)}
+
+/* ── Godkendelse af indkoeb (beslutning 82, planche 2) ───────────────────
+
+   ⚠ TRE KORT VED SIDEN AF HINANDEN, MEN IKKE MED FASTE SPALTER. auto-fit
+   med et minimum — samme greb som .fc-kpis — saa de klapper under hinanden
+   paa en smal skaerm uden en media query. Reglerne skal kunne saettes fra en
+   telefon; det er samme svar som indmeldingen paa Indkoebsbehov fik. */
+.fc-regelraekke{display:grid; gap:14px;
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr))}
+
+/* Knapper i en tabelcelle. ⚠ De maa kunne bryde: to knapper og en lang
+   leverandoer i samme raekke skubber ellers tabellen vandret ud af kortet. */
+.fc-knapper{display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end}
+
+/* Procesbaandet: fire trin med en streg imellem.
+
+   ⚠ EN <ol>, IKKE FIRE <div>. Det ER en ordnet raekkefoelge — en
+   skaermlaeser skal kunne sige "3 af 4", og raekkefoelgen er hele pointen:
+   menuen og baandet fortaeller den samme proces. */
+.fc-proces{display:flex; flex-wrap:wrap; gap:10px; margin:0; padding:0;
+  list-style:none; align-items:center}
+.fc-proces-trin{display:flex; align-items:center; gap:10px; flex:1 1 190px;
+  min-width:0}
+.fc-proces-trin+.fc-proces-trin{position:relative; padding-left:14px}
+/* Stregen mellem to trin. Den er dekoration og maa ikke laeses op. */
+.fc-proces-trin+.fc-proces-trin::before{content:""; position:absolute; left:0;
+  top:50%; width:10px; height:2px; background:var(--bc-line)}
+.fc-proces-ikon{display:inline-flex; align-items:center; justify-content:center;
+  width:38px; height:38px; flex:0 0 38px; border-radius:50%;
+  background:var(--fc-bg); border:1px solid var(--bc-line)}
+.fc-proces-ikon svg{width:19px; height:19px; fill:var(--bc-muted)}
+.fc-proces-naa{background:var(--fc-accent-soft); border-color:var(--bc-accent)}
+.fc-proces-naa svg{fill:var(--bc-accent)}
+.fc-proces-tekst{display:flex; flex-direction:column; min-width:0}
+.fc-proces-tekst b{font-size:var(--fc-t-m)}
+
+/* Kontakten paa planchen.
+
+   ⚠ EN RIGTIG <input type=checkbox> INDENI, skjult men ikke fjernet.
+   display:none ville tage den ud af tabuleringen og ud af skaermlaeserens
+   traeae — og saa er kontakten en tegning man kun kan bruge med en mus.
+   Den staar derfor gennemsigtig oven paa sporet. */
+.fc-kontakt{position:relative; display:inline-flex; width:42px; height:24px;
+  flex:0 0 42px; cursor:pointer}
+.fc-kontakt input{position:absolute; inset:0; width:100%; height:100%; margin:0;
+  opacity:0; cursor:pointer}
+.fc-kontakt input:disabled{cursor:not-allowed}
+.fc-kontakt-spor{position:absolute; inset:0; border-radius:12px;
+  background:var(--bc-line); transition:background .12s}
+.fc-kontakt-spor::after{content:""; position:absolute; top:3px; left:3px;
+  width:18px; height:18px; border-radius:50%; background:var(--bc-card);
+  box-shadow:var(--fc-shadow); transition:transform .12s}
+.fc-kontakt-til .fc-kontakt-spor{background:var(--bc-accent)}
+.fc-kontakt-til .fc-kontakt-spor::after{transform:translateX(18px)}
+/* Fokus skal kunne SES — kontakten har ingen anden markering. */
+.fc-kontakt input:focus-visible+.fc-kontakt-spor{outline:2px solid var(--bc-accent);
+  outline-offset:2px}
+.fc-kontakt input:disabled+.fc-kontakt-spor{opacity:.45}

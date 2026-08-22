@@ -52,7 +52,9 @@ import {
 import {
   DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
 } from "../src/fleet/demo-indkoeb.js";
-import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER } from "../src/fleet/demo-procure.js";
+import {
+  DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER,
+} from "../src/fleet/demo-procure.js";
 import { ORDRESERIE, ORDRE_PRAEFIKS } from "../src/fleet/procure.js";
 import {
   DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
@@ -279,6 +281,12 @@ export const SEED = [
      seedes, er en node demo-i-skaerm springer over — saa kunne skaermen
      laese demofilen direkte uden at loftet saa det (beslutning 56). */
   { node: "indkoebsordrer", data: DEMO_INDKOEBSORDRER, form: "liste" },
+  /* ⚠ ET OBJEKT, IKKE EN LISTE — der er ÉN politik pr. virksomhed. Og den
+     SKAL seedes sammen med ordrerne: tre af dem staar i koeen fordi de er
+     over graensen, og uden reglen ville graensen vaere ukendt, standarden
+     "ingen godkendelse" gaelde, og de tre raekker staa i en koe serveren
+     ikke kunne have lavet. Se beslutning 82. */
+  { node: "godkendelsesregler", data: DEMO_GODKENDELSESREGLER, form: "objekt" },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
   /* ⚠ FACILITY HELE VEJEN NU. Lokationerne kom foerst, fordi indkoebets
@@ -556,6 +564,12 @@ async function main() {
      andet sted fra end alle andres, er den der bliver glemt når rettighederne
      skal gennemgås. */
   const ejer = ejerkonto(process.env.VITE_DEV_EJER_MAIL || laesFraEnvLocal("VITE_DEV_EJER_MAIL"));
+  /* ⚠ ROLLE → uid. Demo-data kan ikke kende et Firebase-uid — det laves af
+     Auth ved oprettelsen — og alle referencer til en BRUGER i demo-sættene er
+     derfor pladsholdere. De skal oversættes her, hvor de rigtige uid'er
+     findes. Uden det peger godkendelsesreglen paa nogen der ikke kan logge
+     ind, og koeen er en post der venter paa et spoegelse. */
+  const uidFor = {};
   for (const b of erDev ? (ejer ? [...DEV_BRUGERE, ejer] : DEV_BRUGERE) : []) {
     let bruger;
     try {
@@ -572,6 +586,22 @@ async function main() {
        adgangen, og den gamle ville stadig virke — den værste fejltilstand,
        fordi den ser ud som om den lykkedes. Se ARKITEKTUR om rolleskift. */
     await auth.revokeRefreshTokens(bruger.uid);
+    uidFor[b.rolle] = bruger.uid;
+
+    /* ⚠ BRUGERINDEKSET SKREV SIG IKKE SELV. `tenants/<id>/brugere/<uid>` er
+       det eneste sted en klient kan slaa et navn op paa et uid — auditloggen,
+       Brugere & roller og godkendelsens "Anmoder"-kolonne laeser alle den.
+       Den blev skrevet af `opretbruger`, som DEV-konti aldrig gaar igennem,
+       saa noden var TOM i DEV: skaermene viste raa uid'er, og
+       godkender-vaelgeren havde ingen at vaelge. Formen er den samme som
+       `indeksPost()` i functions/index.js. */
+    await db.ref(`tenants/${valgt}/brugere/${bruger.uid}`).set({
+      email: b.email,
+      navn: b.navn || b.email,
+      rolle: b.rolle,
+      spaerret: false,
+      opdateretMs: Date.now(),
+    });
     console.log(`  ${b.rolle.padEnd(18)} ${b.email}`);
   }
 
@@ -767,6 +797,63 @@ async function main() {
         Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
         (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ DEMO-SÆTTENES BRUGER-PLADSHOLDERE OVERSÆTTES TIL RIGTIGE uid'er.
+
+     Demo-sættene skriver `oprettetAf: "uid-mikkel"` og lignende. Ingen af
+     dem er et Firebase-uid — de KAN ikke være det, for uid'et laves først
+     når kontoen oprettes, og et demo-sæt er en fil i repoet.
+
+     Seedet råt betyder det to ting, og begge ser ud som fejl i koden:
+
+       1. Skærmene viser "uid-thomas" i en Anmoder-kolonne, fordi opslaget i
+          brugerindekset ikke finder noget, og faldbakken er uid'et selv.
+       2. `godkendelsesregler` udpeger en godkender der ikke kan logge ind.
+          Køen ville stå der, knappen ville være grå for ALLE, og grunden
+          ("kun den udpegede godkender kan afgøre den her ordre") ville pege
+          på et spøgelse.
+
+     ⚠ TABELLEN ER PLADSHOLDER → ROLLE, IKKE → uid. Rollen er dét demoen
+     faktisk mener — godkenderen er koordinatoren, samme snit som
+     `grundlag.godkend` — og uid'et skifter hver gang en DEV-base bygges op
+     igen. Skrev vi uid'et, skulle tabellen rettes efter hver oprydning.
+     ══════════════════════════════════════════════════════════════════════ */
+  const PLADSHOLDER_ROLLE = {
+    "uid-mikkel": "koordinator",
+    "uid-thomas": "disponent",
+    "uid-lars": "casehandler",
+    "uid-jens": "admin",
+    "uid-michael": "lagermedarbejder",
+    "uid-anders": "chauffoer",
+    "uid-mette": "casehandler",
+  };
+  const rigtigt = (pladsholder) => uidFor[PLADSHOLDER_ROLLE[pladsholder]] || null;
+
+  let omskrevet = 0;
+  const omskrivOprettetAf = async (node, poster) => {
+    if (!harModulet(node)) return;
+    for (const post of poster) {
+      const nyt = rigtigt(post.oprettetAf);
+      if (!nyt) continue;
+      await db.ref(`tenants/${valgt}/${node}/${post.id}/oprettetAf`).set(nyt);
+      omskrevet += 1;
+    }
+  };
+  await omskrivOprettetAf("indkoebsordrer", DEMO_INDKOEBSORDRER);
+  await omskrivOprettetAf("indkoebsbehov", DEMO_INDKOEBSBEHOV);
+
+  if (harModulet("godkendelsesregler")) {
+    const godkenderUid = rigtigt(DEMO_GODKENDELSESREGLER.overBeloeb.godkenderUid);
+    if (godkenderUid) {
+      await db.ref(`tenants/${valgt}/godkendelsesregler/overBeloeb/godkenderUid`)
+        .set(godkenderUid);
+      omskrevet += 1;
+    }
+  }
+  if (omskrevet) {
+    console.log(`  ${"uid-pladsholdere".padEnd(24)} ${omskrevet} omskrevet til rigtige konti`);
   }
 
   /* ⚠ OG HVER ETAPE SKAL PEGE PÅ EN BOOKING DER FINDES. Før bookingerne kom

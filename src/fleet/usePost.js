@@ -67,7 +67,14 @@ export function usePost(node, id, indstillinger = {}) {
 
     const demoPost = () => {
       const d = demoRef.current;
-      return (typeof d === "function" ? d(id) : d?.[id]) ?? null;
+      if (typeof d === "function") return d(id) ?? null;
+      /* ⚠ ER NODEN SELV EN POST, ER SÆTTET SELV SVARET. `godkendelsesregler`
+         er ét objekt pr. tenant — der er ingen søskende at nøgle på, og et
+         opslag på id ville give undefined. At pakke sættet ind i
+         `{ godkendelsesregler: … }` bare for at komme forbi opslaget er en
+         omvej der desuden skjuler faldbakken for `demo-i-skaerm`-linten: den
+         tæller `demo: DEMO_X`, og en indpakning ser ud som direkte brug. */
+      return (node ? d?.[id] : d) ?? null;
     };
 
     /* FØR forespørgslen. Uden bruger sendes den slet ikke — se datatilstand.js. */
@@ -83,7 +90,11 @@ export function usePost(node, id, indstillinger = {}) {
 
     (async () => {
       try {
-        const snap = await db.ref(path(`${node}/${id}`)).once("value");
+        /* ⚠ EN NODE DER SELV ER EN POST. `godkendelsesregler` er ét objekt pr.
+           tenant og ikke en liste — der ER ingen forælder at gå gennem, og
+           `${node}/${id}` ville give en dobbelt skråstreg. Kald med node = null
+           og id = nodenavnet. Demo-opslaget er uændret: sættet nøgles på id. */
+        const snap = await db.ref(path(node ? `${node}/${id}` : id)).once("value");
         if (!aktiv) return;
         setTilstand({ art: TILSTAND.ok, visDemo: false });
         setPost(snap.val() ?? null);
