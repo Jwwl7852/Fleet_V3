@@ -34,10 +34,17 @@
  * beslutning 26: opdigtede tal findes KUN dér hvor der ingen database er.
  * Linten tæller brug UDEN FOR den faldbakke.
  *
- * ⚠ OG TO SÆT BLIVER LÆST DIREKTE MED VILJE — de er ikke talt med, fordi
- * deres node ikke findes: `DEMO_LEVERANDOERSAGER` (reklamationer) og
- * `demoHaendelser` (chaufførens meldinger). Der ER ingen node at læse, og et
- * tomt array ville se ud som en måling — se beslutning 63 og 64.
+ * ⚠ ÉT SÆT BLIVER LÆST DIREKTE MED VILJE — `demoHaendelser` (chaufførens
+ * meldinger). Der ER ingen node at læse, og et tomt array ville se ud som en
+ * måling — se beslutning 63 og 64.
+ *
+ * ⚠ HER STOD DER TO. `DEMO_LEVERANDOERSAGER` blev fodret ind i
+ * `beregnNoegletal()` med samme begrundelse — *"et tomt array ville få hver
+ * leverandør til at stå med nul reklamationer"* — og **den begrundelse var
+ * forkert**: `maal(0, 0)` giver `null`, ikke nul. På en præmis der aldrig
+ * holdt, stod et demo-datasæt side om side med kundens rigtige indkøb på en
+ * skærm der RANGERER leverandører. Svartiden siger nu *"kilden findes ikke"*.
+ * Se beslutning 91.
  *
  * Koer: npm test
  */

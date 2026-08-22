@@ -36,12 +36,10 @@ import {
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE,
-  beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG,
+  beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG, maalTekst,
   gaeldendePrisliste, kommendePriser, indkoebBeloebOere, leverandoerFraDb,
 } from "../../fleet/leverandoerer.js";
-import {
-  DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
-} from "../../fleet/demo-indkoeb.js";
+import { DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 
@@ -62,8 +60,13 @@ export default function Leverandoerer() {
     data: raa, henter: henterLev, tilstand: levTilstand, genindlaes: genindlaesLev,
   } = useListe("leverandoerer", { ordnPaa: "navn", vindue: "alle", graense: 500 });
 
+  /* ⚠ `afkortet` TAGES MED, OG DET ER IKKE PYNT. Nævneren i
+     `andelAfIndkoebPct` er tenantens SAMLEDE indkøb; ramte listen sit loft,
+     kender vi den ikke, og en andel regnet af et udsnit er beslutning 6's
+     fejl med et procenttegn på. Oplysningen har ligget i `useListe` hele
+     tiden — den blev bare ikke sendt videre. Se beslutning 91. */
   const {
-    data: indkoeb, henter: henterIndkoeb,
+    data: indkoeb, henter: henterIndkoeb, afkortet: indkoebAfkortet,
   } = useListe("indkoeb", { ordnPaa: "dato", vindueDage: 400, graense: 500 });
 
   /* ⚠ FAKTURAERNE ER EN SEEDET NODE, og leverandørernes nøgletal blev regnet
@@ -93,12 +96,17 @@ export default function Leverandoerer() {
      ".filter is not a function" inde i beregnNoegletal(), og skærmen bliver
      hvid. Det er den samme fejl fraDb() i grundlag.js findes for. */
   const leverandoerer = raa.map((l) => leverandoerFraDb(l, l.id));
-  /* ⚠ SAGERNE BLIVER I DEMOFILEN, OG DET ER IKKE EN FORGLEMMELSE.
-     `sager/` findes ikke i firebase.rules.json — beslutning 20 er fase 0 —
-     så der ER ingen node at læse. Et tomt array ville få hver leverandør til
-     at stå med nul reklamationer, og det ser ud som en måling. Faldbakken
-     bruges KUN når der ingen database er; her er der ingen node. */
-  const KILDER = { indkoeb, fakturaer, sager: DEMO_LEVERANDOERSAGER };
+  /* ⚠ SAGERNE ER TAGET UD, OG BEGRUNDELSEN FOR AT HAVE DEM VAR FORKERT.
+     Her stod: *"Et tomt array ville få hver leverandør til at stå med nul
+     reklamationer, og det ser ud som en måling."* Det passer ikke —
+     `maal(0, 0)` giver `vaerdi: null`, altså "for lidt grundlag", ikke nul.
+     Præmissen holdt aldrig, og på den præmis blev et demo-datasæt vist ved
+     siden af kundens rigtige indkøb og fakturaer.
+
+     `sager/` findes ikke i `firebase.rules.json` (beslutning 20 er fase 0),
+     og det siger `sagerFindes: false` nu — så svartiden står som **"kilden
+     findes ikke"** frem for at låne et tal fra en demofil. Se beslutning 91. */
+  const KILDER = { indkoeb, fakturaer, sager: [], sagerFindes: false, indkoebAfkortet };
 
   const aktive = leverandoerer.filter((l) => l.aktiv);
   const valgt = leverandoerer.find((l) => l.id === valgtId) || null;
@@ -179,11 +187,17 @@ export default function Leverandoerer() {
  */
 function Tal({ m, vis, enhed, tone }) {
   if (!m.nokData) {
-    return (
-      <span className="fc-hint" title={`Regnet på ${m.grundlag} ${enhed}. Der skal mindst ${MINDSTE_GRUNDLAG} til.`}>
-        for lidt grundlag
-      </span>
-    );
+    /* ⚠ TRE GRUNDE, IKKE ÉN. Her stod "for lidt grundlag" på hvert eneste
+       tomt felt — også på dem hvor grundlaget var rigeligt og nævneren var et
+       udsnit, og på dem hvor noden slet ikke findes. De tre peger på hver sin
+       handling: vent, hent bredere, eller byg noden. Teksten står ét sted, i
+       `leverandoerer.js`. Se beslutning 91. */
+    const titel = m.aarsag === "udsnit"
+      ? "Nævneren er et hentet vindue der ramte sit loft — en andel af et udsnit er ikke en andel."
+      : m.aarsag === "ingenKilde"
+        ? "Noden findes ikke endnu — se beslutning 20."
+        : `Regnet på ${m.grundlag} ${enhed}. Der skal mindst ${MINDSTE_GRUNDLAG} til.`;
+    return <span className="fc-hint" title={titel}>{maalTekst(m)}</span>;
   }
   const tekst = vis(m.vaerdi);
   return (

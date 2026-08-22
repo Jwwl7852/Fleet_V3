@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import {
   prisPaa, gaeldendePrisliste, kommendePriser,
-  beregnNoegletal, MINDSTE_GRUNDLAG,
+  beregnNoegletal, MINDSTE_GRUNDLAG, maalTekst, MAALING_AARSAG,
   prisafvigelseTone, PRISAFVIGELSE_GRAENSE_FAST_PCT,
 } from "../src/fleet/leverandoerer.js";
 
@@ -148,9 +148,29 @@ test("en ubesvaret sag har ingen svartid — den har en alder", () => {
        blande "de svarer langsomt" med "de har ikke svaret". */
     { leverandoerId: "lv-mercedes", oprettetMs: NU - 30 * D, foersteSvarMs: null },
   ];
-  const n = beregnNoegletal(lev(), { sager });
+  /* ⚠ `sagerFindes` SKAL SIGES. Regnestykket er uændret; det der er nyt, er at
+     kalderen skal erklære at kilden findes. Uden flaget kan et tomt array
+     ikke skelnes fra "de har aldrig svaret" — og `sager/` findes ikke i
+     `firebase.rules.json` endnu. Se beslutning 91. */
+  const n = beregnNoegletal(lev(), { sager, sagerFindes: true });
   assert.equal(n.svartidTimer.grundlag, 3);
   assert.equal(n.svartidTimer.vaerdi, 4);
+  assert.equal(n.svartidTimer.aarsag, null);
+});
+
+/**
+ * ⚠ EN KILDE DER IKKE FINDES, ER IKKE ET TYNDT GRUNDLAG.
+ *
+ * De to peger på hver sin handling: byg noden, eller vent på flere sager.
+ * Skærmen skrev "for lidt grundlag" på begge, og på den præmis blev et
+ * demo-datasæt fodret ind ved siden af kundens rigtige indkøb — for ellers
+ * "ville der stå nul". Det ville der ikke: `maal(0, 0)` giver null.
+ */
+test("⚠ UDEN sagerFindes ER SVARTIDEN 'kilden findes ikke'", () => {
+  const n = beregnNoegletal(lev(), { sager: [] });
+  assert.equal(n.svartidTimer.vaerdi, null);
+  assert.equal(n.svartidTimer.aarsag, "ingenKilde");
+  assert.equal(maalTekst(n.svartidTimer), "kilden findes ikke");
 });
 
 test("andelen af indkøbet regnes af ALT indkøb, ikke kun leverandørens eget", () => {
@@ -221,4 +241,85 @@ test("SAMME TAL, TO BETYDNINGER: 4 % på en fastaftale er et brud, på spot er d
 test("ukendt afvigelse farves neutralt, ikke grønt", () => {
   /* Grønt ville betyde "i orden", og det ved vi ikke. */
   assert.equal(prisafvigelseTone(lev(), null), "info");
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ EN ANDEL AF ET UDSNIT ER IKKE EN ANDEL — beslutning 91
+   ══════════════════════════════════════════════════════════════════════════
+
+   `andelAfIndkoebPct` er tællerens andel af NÆVNEREN, og nævneren er
+   tenantens samlede indkøb. Skærmene henter et vindue med en grænse på 500.
+   Ramte listen loftet, er summen et UDSNIT — og en andel regnet af et udsnit
+   er beslutning 6's fejl med et procenttegn på.
+
+   ⚠ OG GRUNDLAGET AFSLØREDE DET IKKE, fordi det tælles på TÆLLEREN. En liste
+   med kun én leverandørs linjer gav **100 %** med et grundlag der så
+   tilstrækkeligt ud. Det er ikke en visningsfejl: skærmen rangerer
+   leverandører, og "de står for 100 % af vores indkøb" er en anbefaling om at
+   finde en anden.
+
+   Begge skærme HAVDE oplysningen — `useListe` svarer `afkortet`, og
+   Indkøbsoversigten skriver den endda på skærmen — den blev bare ikke sendt
+   videre til regnestykket. */
+
+test("⚠ EN AFKORTET LISTE GIVER INGEN ANDEL", () => {
+  const alle = [
+    indkoeb(1, { beloebOere: 25_000_00 }),
+    indkoeb(2, { beloebOere: 25_000_00 }),
+    indkoeb(3, { beloebOere: 25_000_00 }),
+  ];
+  const hel = beregnNoegletal(lev(), { indkoeb: alle });
+  assert.equal(hel.andelAfIndkoebPct.vaerdi, 100, "uden andre leverandører ER andelen 100");
+
+  const udsnit = beregnNoegletal(lev(), { indkoeb: alle, indkoebAfkortet: true });
+  assert.equal(udsnit.andelAfIndkoebPct.vaerdi, null);
+  assert.equal(udsnit.andelAfIndkoebPct.aarsag, "udsnit");
+  assert.equal(maalTekst(udsnit.andelAfIndkoebPct), "kan ikke regnes af et udsnit");
+});
+
+test("⚠ MEN GRUNDLAGET FØLGER MED ALLIGEVEL", () => {
+  /* "Vi har tre indkøb hos dem, og vi kan stadig ikke sige andelen" er en
+     anden oplysning end "vi har nul". Uden tallet ville et afkortet svar se
+     ud som et tomt. */
+  const alle = [indkoeb(1), indkoeb(2), indkoeb(3)];
+  const n = beregnNoegletal(lev(), { indkoeb: alle, indkoebAfkortet: true });
+  assert.equal(n.andelAfIndkoebPct.grundlag, 3);
+});
+
+test("⚠ EN AFKORTET LISTE RØRER IKKE DE ANDRE FEM TAL", () => {
+  /* Kun andelen har en NÆVNER der skal være fuldstændig. De andre fem er
+     regnet på leverandørens egne linjer, og de er lige så rigtige i et
+     udsnit — bliver de også nullet, siger skærmen "vi ved ingenting" om en
+     leverandør vi ved en hel del om. */
+  const alle = [
+    indkoeb(1, { aftaltLeveringMs: NU, leveretMs: NU - 3600000 }),
+    indkoeb(2, { aftaltLeveringMs: NU, leveretMs: NU - 3600000 }),
+    indkoeb(3, { aftaltLeveringMs: NU, leveretMs: NU + 3600000 }),
+  ];
+  const n = beregnNoegletal(lev(), { indkoeb: alle, indkoebAfkortet: true });
+  assert.equal(n.leveringspraecisionPct.nokData, true);
+  assert.equal(n.leveringspraecisionPct.vaerdi, 67);
+  assert.equal(n.manglendeFakturaer.vaerdi, 3);
+});
+
+test("⚠ ET TAL UDEN VÆRDI BÆRER ALTID EN GRUND", () => {
+  /* Prøven kan ikke afgøre om grunden er SAND — men den kan afgøre om nogen
+     har taget stilling. Samme greb som `null`-begrundelserne i kpi/. */
+  const n = beregnNoegletal(lev(), { indkoeb: [indkoeb(1)], indkoebAfkortet: true });
+  for (const [navn, m] of Object.entries(n)) {
+    if (navn === "omsaetningOere") continue;
+    if (m.nokData) {
+      assert.equal(m.aarsag, null, `${navn} har både en værdi og en grund`);
+    } else {
+      assert.ok(MAALING_AARSAG[m.aarsag], `${navn} står tomt uden en kendt grund`);
+    }
+  }
+});
+
+test("de tre grunde har hver sin tekst — og ingen af dem er en streg", () => {
+  const tekster = Object.values(MAALING_AARSAG);
+  assert.equal(new Set(tekster).size, tekster.length, "to grunde deler tekst");
+  for (const t of tekster) {
+    assert.ok(t.length > 3 && t !== "—", `"${t}" siger ikke noget`);
+  }
 });

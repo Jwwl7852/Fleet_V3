@@ -64,12 +64,12 @@ import {
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
-  leverandoerNavn, beregnNoegletal, mestKoebteVarer, snitprisPrMaaned,
+  leverandoerNavn, beregnNoegletal, maalTekst, mestKoebteVarer, snitprisPrMaaned,
   indkoebBeloebOere, leverandoerFraDb,
   prisafvigelseTone, valideIndkoeb, byggIndkoeb,
 } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
+  DEMO_FAKTURAER,
 } from "../../fleet/demo-indkoeb.js";
 import {
   DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER,
@@ -154,9 +154,17 @@ function godkendelse(l) {
  */
 function MedGrundlag({ maal, format = (v) => v, tone }) {
   if (!maal?.nokData) {
+    /* ⚠ TRE GRUNDE, IKKE ÉN — og teksten står ét sted. To skærme viser de
+       samme tal, og de skrev begge "for lidt grundlag" på et felt hvor
+       grundlaget var rigeligt og nævneren var et udsnit. Se beslutning 91. */
     return (
-      <span className="fc-neutral" title={`${maal?.grundlag ?? 0} af mindst ${MINDSTE_GRUNDLAG} observationer`}>
-        for lidt grundlag
+      <span className="fc-neutral"
+            title={maal?.aarsag === "udsnit"
+              ? "Nævneren er et hentet vindue der ramte sit loft."
+              : maal?.aarsag === "ingenKilde"
+                ? "Noden findes ikke endnu — se beslutning 20."
+                : `${maal?.grundlag ?? 0} af mindst ${MINDSTE_GRUNDLAG} observationer`}>
+        {maalTekst(maal)}
       </span>
     );
   }
@@ -513,10 +521,17 @@ export default function IndkoebOversigt() {
     .filter((l) => l.aktiv)
     .map((l) => ({
       leverandoer: l,
+      /* ⚠ SKÆRMEN VIDSTE AT LISTEN VAR AFKORTET — den skriver det endda
+         nedenfor — og sendte den alligevel ind som NÆVNER i
+         `andelAfIndkoebPct`. En andel af et udsnit er ikke en andel.
+         `sager/` findes ikke, og et tomt array skal ikke læses som
+         "de har aldrig svaret". Se beslutning 91. */
       tal: beregnNoegletal(l, {
         indkoeb: alleLinjer,
         fakturaer,
-        sager: DEMO_LEVERANDOERSAGER,
+        sager: [],
+        sagerFindes: false,
+        indkoebAfkortet: afkortet,
       }),
     }))
     .sort((a, b) => b.tal.omsaetningOere - a.tal.omsaetningOere)

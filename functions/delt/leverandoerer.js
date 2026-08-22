@@ -308,10 +308,48 @@ const indkoebMs = (i) => (Number.isFinite(i?.dato) ? i.dato : i?.datoMs);
 const indkoebEnhedsprisOere = (i) =>
   Number.isInteger(i?.prisPrEnhedOere) ? i.prisPrEnhedOere : i?.prisOere;
 
+/**
+ * ⚠ ET TOMT FELT SKAL SIGE HVORFOR — DER ER TRE SLAGS.
+ *
+ * Skærmen skrev "for lidt grundlag" på hvert eneste tal uden værdi, og det er
+ * kun den ene af dem. De andre to er noget helt andet, og de peger på hver
+ * sin handling:
+ *
+ *   forLidt      vi har målt, men for få gange. Køb mere hos dem, så kommer
+ *                tallet. HANDLING: vent.
+ *   udsnit       vi har tallene, men vi har ikke DEM ALLE — nævneren er et
+ *                hentet vindue. HANDLING: hent bredere, eller aggregér.
+ *   ingenKilde   noden findes ikke. HANDLING: byg den.
+ *
+ * Det er den samme skelnen CLAUDE.md kræver af hvert `null` i `kpi/`
+ * (beslutning 62), flyttet ned til det tal en indkøber kigger på. En
+ * fællestekst gør de tre til ét problem ingen kan gøre noget ved.
+ */
+export const MAALING_AARSAG = {
+  forLidt: "for lidt grundlag",
+  udsnit: "kan ikke regnes af et udsnit",
+  ingenKilde: "kilden findes ikke",
+};
+
+/** Teksten der skal stå i feltet. Ét sted — to skærme viser de samme tal. */
+export const maalTekst = (maaling) =>
+  MAALING_AARSAG[maaling?.aarsag] || MAALING_AARSAG.forLidt;
+
 const maal = (vaerdi, grundlag) => ({
   vaerdi: grundlag >= MINDSTE_GRUNDLAG ? vaerdi : null,
   grundlag,
   nokData: grundlag >= MINDSTE_GRUNDLAG,
+  aarsag: grundlag >= MINDSTE_GRUNDLAG ? null : "forLidt",
+});
+
+/**
+ * Et tal vi ikke kan regne — af en anden grund end at grundlaget er tyndt.
+ *
+ * ⚠ GRUNDLAGET FØLGER MED ALLIGEVEL. "Vi har 40 indkøb hos dem, og vi kan
+ * stadig ikke sige andelen" er en anden oplysning end "vi har to".
+ */
+const intetMaal = (aarsag, grundlag) => ({
+  vaerdi: null, grundlag, nokData: false, aarsag,
 });
 
 /**
@@ -364,7 +402,26 @@ export function leveringspraecision(indkoeb = []) {
  */
 export function beregnNoegletal(
   leverandoer,
-  { indkoeb = [], fakturaer = [], sager = [] } = {},
+  {
+    indkoeb = [], fakturaer = [], sager = [],
+    /**
+     * ⚠ RAMTE LISTEN SIT LOFT? Det afgør om `andelAfIndkoeb` overhovedet kan
+     * regnes. Nævneren er tenantens SAMLEDE indkøb, og skærmen henter et
+     * vindue med en grænse — er den ramt, er summen et UDSNIT, og en andel
+     * regnet af et udsnit er beslutning 6's fejl med et procenttegn på.
+     *
+     * `useListe` svarer `afkortet`, så oplysningen fandtes allerede. Den blev
+     * bare ikke sendt videre.
+     */
+    indkoebAfkortet = false,
+    /**
+     * ⚠ FINDES `sager/` OVERHOVEDET? Den gør ikke — beslutning 20 er fase 0 —
+     * og et tomt array skal derfor ikke læses som "de har aldrig svaret".
+     * Uden flaget kan svartiden ikke skelne "ingen node" fra "for få sager",
+     * og de to peger på hver sin handling: byg noden, eller vent.
+     */
+    sagerFindes = false,
+  } = {},
   paaMs = Date.now()
 ) {
   const id = leverandoer?.id;
@@ -433,9 +490,20 @@ export function beregnNoegletal(
        manglende faktura ER én manglende faktura, uanset hvor få indkøb der
        ligger bag. En tærskel ville skjule den første, og det er netop den man
        skal reagere på. */
-    manglendeFakturaer: { vaerdi: manglendeFakturaer, grundlag: mine.length, nokData: true },
-    svartidTimer: maal(svartidTimer, besvarede.length),
-    andelAfIndkoebPct: maal(andelAfIndkoebPct, mine.length),
+    manglendeFakturaer: {
+      vaerdi: manglendeFakturaer, grundlag: mine.length, nokData: true, aarsag: null,
+    },
+    svartidTimer: sagerFindes
+      ? maal(svartidTimer, besvarede.length)
+      : intetMaal("ingenKilde", 0),
+    /* ⚠ EN ANDEL AF ET UDSNIT ER IKKE EN ANDEL. Nævneren er tenantens
+       SAMLEDE indkøb; er listen afkortet, kender vi den ikke. Uden det her
+       led svarede funktionen **100 %** på en liste der kun rummede én
+       leverandør — med et grundlag der så tilstrækkeligt ud, fordi grundlaget
+       tælles på TÆLLEREN. Det er beslutning 6's fejl med et procenttegn på. */
+    andelAfIndkoebPct: indkoebAfkortet
+      ? intetMaal("udsnit", mine.length)
+      : maal(andelAfIndkoebPct, mine.length),
     /* Ikke et af de seks — men det tal de andre skal ses i lyset af. */
     omsaetningOere: mineOere,
   };

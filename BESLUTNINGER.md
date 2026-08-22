@@ -6564,3 +6564,93 @@ ulovlig.
 **4. Ingen regelændring.** `reservationer` er `.write: false`, og reglerne har
 aldrig kunnet udtrykke "ingen overlap" — det er hele grunden til at vejen ind
 er en funktion. Indeslutningen hører samme sted som resten af konflikttjekket.
+
+---
+
+## 91. En andel af et udsnit er ikke en andel
+
+`beregnNoegletal()` regner seks tal pr. leverandør, og skærmen **rangerer**
+leverandører efter dem. Et forkert tal her er ikke en visningsfejl; det er en
+anbefaling om hvem man skal handle med — det står allerede i beslutning 63.
+
+To af de seks var forkerte på hver sin måde, og begge fejl var **usynlige**.
+
+### ⚠ 1. Andelen blev regnet af et hentet vindue
+
+`andelAfIndkoebPct` er leverandørens andel af tenantens **samlede** indkøb.
+Nævneren kom fra `useListe("indkoeb", { vindueDage: 400, graense: 500 })` — et
+vindue med et loft.
+
+Ramte listen loftet, var summen et **udsnit**, og andelen dermed *"en total ud
+af et udsnit"*: præcis den fejl beslutning 6 er skrevet om.
+
+⚠ **Og grundlaget afslørede det ikke, fordi det tælles på TÆLLEREN.** En liste
+der kun rummede én leverandørs linjer, gav **100 %** med et grundlag der så
+tilstrækkeligt ud. Jeg skrev det selv ned som en risiko i gennemgangen af hvad
+der manglede; her er den målt og lukket.
+
+⚠ **Begge skærme HAVDE oplysningen.** `useListe` returnerer `afkortet`, og
+Indkøbsoversigten skriver den endda ud under tabellen — *"Der er flere end de
+500 hentede"* — og sendte så den samme afkortede liste ind som nævner. **Den
+sande oplysning lå ét felt væk fra det forkerte tal.**
+
+`indkoebAfkortet` er nu et argument, og andelen bliver `null` med grunden
+`udsnit`. De andre fem tal røres ikke: kun andelen har en nævner der skal være
+fuldstændig.
+
+### ⚠ 2. Et demo-datasæt stod side om side med kundens egne tal
+
+Svartiden regnes af `sager`, og `sager/` findes ikke i `firebase.rules.json`
+(beslutning 20 er fase 0). Skærmen fodrede derfor `DEMO_LEVERANDOERSAGER` ind
+— **ved siden af kundens rigtige indkøb og fakturaer** — og begrundelsen stod
+i koden:
+
+> *"Et tomt array ville få hver leverandør til at stå med nul reklamationer, og
+> det ser ud som en måling."*
+
+**Den præmis holder ikke.** `maal(0, 0)` giver `vaerdi: null`, fordi grundlaget
+er under `MINDSTE_GRUNDLAG` — altså "for lidt grundlag", ikke "nul". Sætningen
+var aldrig blevet prøvet, og på den blev et demosæt stående i to skærme, og
+`demo-i-skaerm.test.mjs` bar det som en navngiven undtagelse.
+
+⚠ **"Der er ingen node" er ikke i sig selv en grund til at vise opdigtede
+tal.** Grunden skal være at der ingen DATABASE er (beslutning 26). Findes
+databasen og mangler noden, er det rigtige svar at sige det.
+
+`sagerFindes: false` siger det nu, og svartiden står som **"kilden findes
+ikke"**. Undtagelseslisten går fra to sæt til ét.
+
+### De tre slags tomt felt
+
+Begge skærme skrev **"for lidt grundlag"** i hvert eneste felt uden værdi. Det
+er kun den ene af tre, og de peger på hver sin handling:
+
+| Grund | Betyder | Handling |
+|---|---|---|
+| `forLidt` | vi har målt, men for få gange | vent |
+| `udsnit` | vi har tallene, men ikke dem alle | hent bredere, eller aggregér |
+| `ingenKilde` | noden findes ikke | byg den |
+
+Det er den samme skelnen CLAUDE.md kræver af hvert `null` i `kpi/`
+(beslutning 62), flyttet ned til det tal en indkøber kigger på. Teksten står i
+`MAALING_AARSAG` — **ét** sted, fordi to skærme viser de samme tal og begge
+havde hver sin kopi af sætningen.
+
+En prøve kræver nu at **hvert** tal uden værdi bærer en kendt grund. Den kan
+ikke afgøre om grunden er sand; den kan afgøre om nogen har taget stilling.
+
+### Det arbejdet fandt
+
+**1. Prøven skulle rettes, ikke omgås.** `en ubesvaret sag har ingen svartid`
+faldt, fordi den ikke erklærede at kilden fandtes. Regnestykket er uændret —
+det nye krav er at kalderen siger hvor tallet kommer fra. Prøven siger det nu,
+og en ny prøve dækker flaget.
+
+**2. Ingen deploy.** `leverandoerer.js` er en delt fil, så kopien i
+`functions/delt/` er opdateret — men **ingen Cloud Function importerer den**.
+Der er intet at rulle ud, og reglerne er urørte.
+
+**3. Demosættet bliver stående, som nodens form.** Ingen skærm læser det
+længere. Det står som formen `sager/` skal have for at svartiden kan regnes —
+`oprettetMs` og `foersteSvarMs` — på samme måde som `demo-kpi.js` *er* formen
+på `kpi/`. Når noden bygges, hører sættet som `demo:`-faldbakke i `useListe`.

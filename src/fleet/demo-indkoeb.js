@@ -596,6 +596,17 @@ export const DEMO_LEVERANDOERER = LEVERANDOERER_BASIS.map((l) => ({
  * ⚠ DEN SIDSTE ER UBESVARET MED VILJE. En ubesvaret sag har ingen svartid, den
  * har en alder; regnede vi den med som en meget lang svartid, ville tallet
  * blande "de svarer langsomt" med "de har ikke svaret".
+ *
+ * ⚠ INGEN SKÆRM LÆSER DEN LÆNGERE — OG DET ER MENINGEN. Den blev fodret ind i
+ * `beregnNoegletal()` ved siden af kundens RIGTIGE indkøb og fakturaer, på en
+ * skærm der rangerer leverandører. Begrundelsen — *"et tomt array ville vise
+ * nul reklamationer"* — holdt ikke: `maal(0, 0)` giver `null`. Svartiden står
+ * nu som *"kilden findes ikke"*, fordi `sager/` ikke er i regelfilen.
+ *
+ * Sættet bliver stående som **nodens form**, på samme måde som `demo-kpi.js`
+ * er formen på `kpi/`: når `sager/` bygges (beslutning 20), er det de felter
+ * svartiden skal bruge — `oprettetMs` og `foersteSvarMs` — og så hører det som
+ * `demo:`-faldbakke i `useListe`. Se beslutning 91.
  */
 export const DEMO_LEVERANDOERSAGER = [
   { id: "ls-1", leverandoerId: "lv-mercedes", oprettetMs: dag(-20), foersteSvarMs: dag(-20) + 3 * 3600000 },

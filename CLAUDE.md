@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **90 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **91 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -255,8 +255,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   der ingen database er. `test/demo-i-skaerm.test.mjs` tæller brugen uden for
   den faldbakke, og **nodens egen skærm må aldrig vise noget andet end noden**.
   ⚠ **Tallet er NUL, og det er et forbud — ikke et loft.** Det gik 30 → 0 over
-  seks etaper. To sæt læses stadig direkte, fordi deres node ikke findes:
-  `DEMO_LEVERANDOERSAGER` og `demoHaendelser`. Se beslutning 64.
+  seks etaper. **Ét** sæt læses stadig direkte, fordi dets node ikke findes:
+  `demoHaendelser`. Se beslutning 64.
+  ⚠ **Og "der er ingen node" er ikke i sig selv en grund.**
+  `DEMO_LEVERANDOERSAGER` stod på undtagelseslisten med begrundelsen *"et tomt
+  array ville vise nul reklamationer, og nul ser ud som en måling"* — og den
+  var forkert: `maal(0, 0)` giver `null`. Undtagelsen hvilede på en påstand
+  ingen havde prøvet, og imens stod opdigtede tal side om side med kundens
+  rigtige indkøb på en skærm der RANGERER leverandører. Prøv præmissen, og
+  sig **hvorfor** tallet mangler i stedet: `MAALING_AARSAG` skelner mellem
+  *for lidt grundlag*, *et udsnit* og *ingen kilde*. Se beslutning 91.
 - **Lave et demo-datasæt nummer to for den samme node.** `demo-vaerksted.js`
   havde en `DEMO_INDKOEB` ved siden af `demo-indkoeb.js`' `DEMO_INDKOEBSLINJER`
   — begge i `fleet/`, hvor et demosæt hører hjemme, så linten så dem ikke.
