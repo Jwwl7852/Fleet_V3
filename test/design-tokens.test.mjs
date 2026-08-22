@@ -135,9 +135,13 @@ const FORVENTEDE_TOKENS = {
   "--bc-line": "#d3d9e3",
   "--bc-text": "#2e3947",
   "--bc-muted": "#5c6675",
-  "--bc-ok": "#1f9d55",
-  "--bc-warn": "#c77700",
-  "--bc-block": "#d64545",
+  /* ⚠ MØRKNET I BESLUTNING 77. Statusfarven er TEKSTEN i en pille — "Udført",
+     "Forsinket", "Afventer" — og lå på 3,1–4,1:1 mod AA's 4,5. Kuløren er
+     bevaret; kun lyset er skruet ned, og til den MINDSTE værdi der når kravet
+     mod både kortet og pillen. */
+  "--bc-ok": "#197f45",
+  "--bc-warn": "#a16000",
+  "--bc-block": "#ba3c3c",
   // Stregkodens sort — et maskinkrav, ikke en designfarve. Beslutning 46:
   // kontrasten er scannerens tærskel, så den må ikke følge et tema.
   "--fc-stregkode": "#000",
@@ -162,14 +166,28 @@ const FORVENTEDE_TOKENS = {
   /* Ikonaccenter, beslutning 30 — en tredje palet, adskilt fra serierne
      fordi farven her er forstærkning og ikke encoding. */
   "--fc-ikon-1": "#e34948",
-  "--fc-ikon-2": "#eb6834",
-  "--fc-ikon-3": "#eda100",
+  /* ⚠ MØRKNET I BESLUTNING 77 til 3:1 i deres egen cirkel — kravet for et
+     IKKE-tekstligt element (WCAG 1.4.11). Gul lå på 1,80:1, den værste måling
+     i hele paletten. Ikke til 4,5: det ville have gjort gul til brun på hvert
+     KPI-kort for to rangbadgers skyld.
+     ⚠ OG VÆRDIEN ER LØST KOBLET. Den bløde flade er en BLANDING af farven
+     selv (13/15 % i kortet), så en mørkning trækker fladen med ned og æder en
+     del af sin egen gevinst. Første forsøg regnede mod den GAMLE flade og
+     landede på 2,98 og 2,87 — under kravet, efter en rettelse der skulle nå
+     det. Målingen fangede det. */
+  "--fc-ikon-2": "#d65f2f",
+  "--fc-ikon-3": "#af7700",
   "--fc-ikon-4": "#4a3aa7",
   "--fc-ikon-5": "var(--bc-accent)",
   "--fc-ikon-6": "#008300",
   "--fc-ikon-1-bg": "color-mix(in srgb, #e34948 13%, var(--bc-card))",
-  "--fc-ikon-2-bg": "color-mix(in srgb, #eb6834 13%, var(--bc-card))",
-  "--fc-ikon-3-bg": "color-mix(in srgb, #eda100 15%, var(--bc-card))",
+  /* ⚠ FØLGER MED DERES FARVE. Blandingen er 13/15 % af ikonfarven i kortet,
+     så et token der mørknes, trækker sin egen bløde flade med. Blev de stående
+     på den gamle farve, ville cirklen og dens indhold komme fra hver sin
+     generation — og kontrasten jeg lige har regnet, ville være regnet på noget
+     andet end det der tegnes. Se beslutning 77. */
+  "--fc-ikon-2-bg": "color-mix(in srgb, #d65f2f 13%, var(--bc-card))",
+  "--fc-ikon-3-bg": "color-mix(in srgb, #af7700 15%, var(--bc-card))",
   "--fc-ikon-4-bg": "color-mix(in srgb, #4a3aa7 12%, var(--bc-card))",
   "--fc-ikon-5-bg": "var(--fc-accent-soft)",
   "--fc-ikon-6-bg": "color-mix(in srgb, #008300 12%, var(--bc-card))",

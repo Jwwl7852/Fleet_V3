@@ -40,9 +40,9 @@
      tabelundertekst stod for svagt paa hver eneste skaerm, og ingen havde
      regnet efter. Nu 5,0:1. */
   --bc-muted:#5c6675;
-  --bc-ok:#1f9d55;
-  --bc-warn:#c77700;
-  --bc-block:#d64545;
+  --bc-ok:#197f45;
+  --bc-warn:#a16000;
+  --bc-block:#ba3c3c;
 
   /* ⚠ EN STREGKODES SORT ER ET MASKINKRAV, IKKE ET DESIGNVALG. --bc-text er
      #1f2733 og rigtig til tekst; paa en stregkode er kontrasten scannerens
@@ -86,14 +86,14 @@
      gulve; disse er ikke. Blandes de to, arver en graf en palet der ikke
      kan bestå — mockuppens rød og orange ligger ΔE 7,1 fra hinanden. */
   --fc-ikon-1:#e34948;   /* rød */
-  --fc-ikon-2:#eb6834;   /* orange */
-  --fc-ikon-3:#eda100;   /* gul */
+  --fc-ikon-2:#d65f2f;   /* orange */
+  --fc-ikon-3:#af7700;   /* gul */
   --fc-ikon-4:#4a3aa7;   /* lilla */
   --fc-ikon-5:var(--bc-accent);  /* blå */
   --fc-ikon-6:#008300;   /* grøn — dataviz slot 6 */
   --fc-ikon-1-bg:color-mix(in srgb, #e34948 13%, var(--bc-card));
-  --fc-ikon-2-bg:color-mix(in srgb, #eb6834 13%, var(--bc-card));
-  --fc-ikon-3-bg:color-mix(in srgb, #eda100 15%, var(--bc-card));
+  --fc-ikon-2-bg:color-mix(in srgb, #d65f2f 13%, var(--bc-card));
+  --fc-ikon-3-bg:color-mix(in srgb, #af7700 15%, var(--bc-card));
   --fc-ikon-4-bg:color-mix(in srgb, #4a3aa7 12%, var(--bc-card));
   --fc-ikon-5-bg:var(--fc-accent-soft);
   --fc-ikon-6-bg:color-mix(in srgb, #008300 12%, var(--bc-card));
@@ -805,10 +805,17 @@
 .fc-antal-1{background:var(--fc-warn-bg); color:var(--bc-warn)}
 .fc-antal-2{background:var(--fc-bad-bg); color:var(--bc-block)}
 /* Placering 1-2-3 i omkostningslisten. */
+/* ⚠ HER STOD HVID TEKST PÅ IKONFARVEN — 3,65 / 2,96 / 2,00:1 mod AA's 4,5.
+   Gul kan ikke baere hvid tekst, og roed kan ikke baere moerk: INGEN
+   tekstfarve klarer alle tre. At moerkne ikonpaletten til 4,5 ville have
+   gjort gul til brun paa hvert KPI-kort for to skaermes skyld.
+   Badgen bruger nu den BLOEDE flade — samme moenster som pillerne — med
+   almindelig broedtekst: 9,2-9,7:1. Rangfarven staar stadig som fyld, og
+   fladen er synlig mod kortet (1,11-1,17:1). Se beslutning 77. */
 .fc-rang{display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%;
-  font-size:var(--fc-t-s); font-weight:700; color:var(--bc-card); flex:0 0 26px}
-.fc-rang-1{background:var(--fc-ikon-1)} .fc-rang-2{background:var(--fc-ikon-2)}
-.fc-rang-3{background:var(--fc-ikon-3)}
+  font-size:var(--fc-t-s); font-weight:700; color:var(--bc-text); flex:0 0 26px}
+.fc-rang-1{background:var(--fc-ikon-1-bg)} .fc-rang-2{background:var(--fc-ikon-2-bg)}
+.fc-rang-3{background:var(--fc-ikon-3-bg)}
 
 /* ---- Lokationsraekke (Facility) --------------------------------------- */
 /* Klikbar raekke der styrer driftskortet. Knap og ikke en div: den aendrer

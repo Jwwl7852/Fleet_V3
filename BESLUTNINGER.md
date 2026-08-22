@@ -5055,3 +5055,78 @@ variabelnavn.
 
 **En prøve der råber ad det korrekte, bliver slået fra.** Og så er vagten væk
 uden at nogen har besluttet det.
+
+## 77. Statusfarverne stod under AA på hver eneste skærm
+
+Beslutning 47 satte metoden: **mål skærmen, bedøm den ikke.** Den fandt dengang
+en fejl der allerede stod der — `--bc-muted` på 4,3:1 — *"fordi nogen for
+første gang regnede efter."* Nu er der data på skærmene, og målingen blev kørt
+på **hvert tokenpar der faktisk bruges sammen**.
+
+Otte par lå under kravet. Seks af dem er de tre statusfarver.
+
+| Par | Før | Krav | Efter |
+|---|---|---|---|
+| grøn på kort | 3,23:1 | 4,5 | **4,66:1** |
+| grøn i sin pille | 3,18:1 | 4,5 | **4,59:1** |
+| gul på kort | 3,20:1 | 4,5 | **4,63:1** |
+| gul i sin pille | 3,11:1 | 4,5 | **4,50:1** |
+| rød på kort | 4,05:1 | 4,5 | **5,11:1** |
+| rød i sin pille | 3,58:1 | 4,5 | **4,52:1** |
+
+⚠ **Det er ikke pynt — det er ORDENE.** `.fc-pill-ok` sætter statusfarven som
+`color`, ikke som en prik: "Udført", "Forsinket", "Afventer", "Afvist" ER
+farven. Det er den tekst en disponent scanner ned gennem en tabel med
+syvogtyve rækker, og den har stået under AA hele tiden.
+
+| Token | Før | Efter | Lys |
+|---|---|---|---|
+| `--bc-ok` | `#1f9d55` | `#197f45` | 81 % |
+| `--bc-warn` | `#c77700` | `#a16000` | 81 % |
+| `--bc-block` | `#d64545` | `#ba3c3c` | 87 % |
+
+⚠ **KULØREN ER BEVARET, KUN LYSET ER SKRUET NED.** Forholdet mellem kanalerne
+er uændret; en farve der skifter tone for at nå et tal, er en anden farve. Og
+værdien er den **mindste** der når kravet mod BEGGE flader — kortet og pillen —
+fundet ved at prøve trin for trin frem for at vælge noget der så rigtigt ud.
+
+### ⚠ Ikonerne i deres cirkler er en ANDEN grænse
+
+`.fc-tone-ikon-N` er en cirkel med et ikon. Et ikon er et **ikke-tekstligt**
+element, og kravet er 3:1 (WCAG 1.4.11), ikke 4,5.
+
+| | Før | Efter |
+|---|---|---|
+| ikon 2 (orange) | 2,59:1 | **3,01:1** |
+| ikon 3 (gul) | **1,80:1** | **3,04:1** |
+
+De øvrige fire lå over i forvejen. Gul på 1,80:1 var den værste måling i hele
+paletten — et ikon man dårligt kunne se på sin egen baggrund.
+
+⚠ **Og de rører IKKE graferne.** `--fc-ikon-*` er *"en TREDJE palet, og med
+vilje adskilt fra `--fc-serie-*`"* — det stod i filen i forvejen, og det er
+grunden til at mørkningen kan gøres uden at en kurve skifter farve.
+
+### ⚠ Rangbadgen kunne ikke reddes ved at flytte et token
+
+`.fc-rang` er et tal i en farvet cirkel — hvid tekst på ikonfarven:
+
+| | Hvid tekst | Mørk tekst |
+|---|---|---|
+| rang 1 (rød) | 3,65:1 | 2,96:1 |
+| rang 2 (orange) | 2,96:1 | 3,66:1 |
+| rang 3 (gul) | **2,00:1** | 5,41:1 |
+
+**Ingen af de to tekstfarver klarer alle tre.** Gul kan ikke bære hvid tekst,
+og rød kan ikke bære mørk. At mørkne ikonpaletten til 4,5:1 ville løse det —
+men gul ville gå fra `#eda100` til `#8e6100`, altså brun, på hvert eneste
+KPI-kort. **En rettelse der ændrer alle skærme for to skærmes skyld, er ikke
+en rettelse.**
+
+Badgen bruger i stedet den BLØDE flade — samme mønster som pillerne — med
+almindelig brødtekst: **9,2–9,7:1**. Rangfarven bliver stående som fyld, og
+fladen er stadig synlig mod kortet (1,11–1,17:1, samme orden som kortet mod
+siden på 1,14).
+
+⚠ **Og farven bar aldrig informationen alene.** Tallet i cirklen siger 1, 2, 3.
+Farven forstærker; den forklarer ikke.
