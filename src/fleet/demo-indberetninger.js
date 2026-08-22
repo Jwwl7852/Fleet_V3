@@ -59,10 +59,17 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
   /* ⚠ TOMME OBJEKTER MED VILJE. Findes noden kun når der ER noget at skjule,
      kan man læse af hængelåsen at der skete en skade. Delvis afsløring lækker
      gennem udeladelsen — samme indsigt som ved cargoValue i ARKITEKTUR. */
+  /* ⚠ TOMME POSTER ER MENINGEN. Findes noden kun når der ER noget at skjule,
+     kan man læse af HÆNGELÅSEN at der skete en skade — uden at have adgang til
+     den. Derfor har hver indberetning en post, også de tomme. ind-000 og
+     ind-006 manglede deres, og selvkontrollen sagde det ved hver indlæsning;
+     advarslen druknede i de falske (beslutning 75). */
+  "ind-000": {},
   "ind-002": {},
   "ind-003": {},
   "ind-004": {},
   "ind-005": {},
+  "ind-006": {},
 };
 
 export const DEMO_INDBERETNINGER = [

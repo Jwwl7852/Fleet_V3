@@ -4983,3 +4983,75 @@ er disponeret på en bil på værksted, ingen booking der afventer koordinator m
 et forslag, to indberetninger uden post i sensitive-noden, og en
 zonetemperatur der ikke kan regnes. **Alle sammen har været usynlige** — enten
 fordi kontrollen var død, eller fordi den druknede i falske.
+
+## 76. En disponent kunne aldrig sende et forslag — og det virkede i demo
+
+De fire ægte fund fra beslutning 75's oprydning skulle rettes. Tre af dem var
+kontroller der kiggede forkert. Den fjerde førte til noget andet.
+
+### ⚠ Overgangen der var lukket i produktion
+
+`kanSkifteEtape()` talte forslagene sådan:
+
+```js
+if (o.kraeverForslag && !(post.forslag?.length > 0)) …
+```
+
+Forslagene er **nøglet på deres eget id** i noden (beslutning 58). `.length`
+på et nøglet objekt er `undefined`, og `undefined > 0` er falsk. **En
+disponent med tre forslag på etapen fik *"Der skal være mindst ét forslag."***
+
+Tre overgange var dermed lukkede: *Send forslag*, *Foreslå matchet tur* og
+*Send nye forslag*.
+
+⚠ **Og det virkede i demo.** Demo-sættet bærer forslagene som en **array**,
+hvor `.length` giver det rigtige tal. Fejlen var usynlig præcis dér hvor man
+leder — på den skærm man åbner først, med de data man har ved hånden.
+
+⚠ **Den ramte serveren.** `etapeskift` kalder den SAMME funktion på det den
+læser af noden. Skærmen og serveren var enige; begge tog fejl. Det er den
+sjældne fejl som beslutning 15's princip — én funktion, begge sider — ikke
+beskytter mod: enighed er ikke rigtighed.
+
+⚠ **Og fælden stod skrevet ned.** Beslutning 58, ordret:
+
+> *"Og forslagene er NØGLET på deres eget id — de er ikke en array. … Brug
+> `forslagListe()`; den er det ene sted formen oversættes."*
+
+Sætningen stod der. Koden gjorde noget andet. **En regel man har skrevet ned,
+er ikke en regel man har håndhævet** — og det er hele grunden til at prøven i
+`test/forslagform.test.mjs` forbyder **mønstret** og ikke bare retter de fem
+forekomster.
+
+### De tre kontroller der kiggede forkert
+
+- ⚠ **`demo-bookinger` spurgte om en BOOKING med et `forslag`.** Beslutning 40
+  flyttede forslagene til etapen; ingen booking har båret feltet siden. Den
+  advarede ved hver indlæsning om noget der var i orden — og den rigtige
+  kontrol stod tyve linjer længere oppe. **En kontrol der overlever en
+  modelændring, bliver en løgn.**
+- ⚠ **`demo-facility` kaldte `zonePar()` uden argumenter.** Funktionen har
+  defaults, så listen blev tom, gennemsnittet `null`, og
+  `Math.abs(null − 16.9)` er 16,9. Med `demoZonePar()` er tallet **præcis
+  16,90**: rekonstruktionen holdt hele tiden.
+- ⚠ **`demo-indberetninger` manglede to tomme poster.** Findes
+  `sensitive/`-noden kun når der ER noget at skjule, kan man læse af
+  **hængelåsen** at der skete en skade — uden at have adgang. Derfor har hver
+  indberetning en post, også de tomme.
+
+### Og et fund der ikke var en kontrolfejl
+
+`et-006` stod **reserveret** på Lastbil 106 — status `vaerksted`, med en
+igangværende værkstedsopgave. `tjekDisponering()` ville have afvist den, så
+demo-sættet viste data der ikke kunne opstå. Flyttet til kt-104, som er fri og
+kan bære lasten (44 m³ / 9.200 kg mod 48 / 12.000).
+
+### ⚠ Og prøven råbte først ad den rigtige kode
+
+Første udgave af `forslagform.test.mjs` forbød `forslag.length` og pegede på
+`Forslag.jsx`, hvor `const forslag = aktiveForslag(etape)` er en **rigtig
+array**. Mønstret rammer nu feltadgang — `.forslag.length` — og ikke et
+variabelnavn.
+
+**En prøve der råber ad det korrekte, bliver slået fra.** Og så er vagten væk
+uden at nogen har besluttet det.

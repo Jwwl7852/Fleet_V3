@@ -381,7 +381,13 @@ selvkontrol("demo-facility", () => {
 
   /* Det tal mockuppen tog fejl af. Holder rekonstruktionen ikke, er noten
      ved DEMO_SENSORER forkert. */
-  const tempererede = zonePar().filter((p) => p.zone.art === "tempereret");
+  /* ⚠ HER STOD `zonePar()` UDEN ARGUMENTER. Funktionen tager (zoner,
+     sensorer) og har defaults, så den gav en TOM liste — gennemsnittet blev
+     null, og `Math.abs(null - 16.9)` er 16,9, altså større end 0,05.
+     Kontrollen advarede ved hver indlæsning om at rekonstruktionen ikke holdt.
+     Den holder: med de rigtige argumenter er tallet præcis 16,90.
+     `demoZonePar()` er wrapperen der bærer dem. Se beslutning 76. */
+  const tempererede = demoZonePar().filter((p) => p.zone.art === "tempereret");
   const snit = gennemsnitTemperatur(tempererede);
   if (Math.abs(snit - 16.9) > 0.05) {
     console.warn(

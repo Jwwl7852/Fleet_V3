@@ -183,7 +183,28 @@ function pruvOvergang(overgange, post, tilTilstand, perms, { begrundelse } = {})
   const o = (overgange[post.tilstand] || []).find((x) => x.til === tilTilstand);
   if (!o) return { ok: false, aarsag: `Kan ikke gå fra ${TILSTAND[post.tilstand]?.label} til ${TILSTAND[tilTilstand]?.label}.` };
   if (!harPerm(perms, o.kraeverPerm)) return { ok: false, aarsag: `Du mangler adgangen "${o.kraeverPerm}" til at udføre "${o.handling}".` };
-  if (o.kraeverForslag && !(post.forslag?.length > 0)) return { ok: false, aarsag: "Der skal være mindst ét forslag." };
+  /**
+   * ⚠ forslagListe(), IKKE .length — og forskellen er en overgang der ALDRIG
+   * kunne gennemføres i produktion.
+   *
+   * Her stod `post.forslag?.length > 0`. Forslagene er NØGLET på deres eget
+   * id i noden (beslutning 58), så `.length` er `undefined` på alt der er
+   * læst fra databasen — og `undefined > 0` er falsk. En disponent med tre
+   * forslag på etapen fik *"Der skal være mindst ét forslag."*
+   *
+   * ⚠ OG DET VIRKEDE I DEMO. Demo-sættet bærer forslagene som en ARRAY, hvor
+   * `.length` giver det rigtige tal. Fejlen kunne altså ikke ses på den ene
+   * skærm man kigger på først — den viste sig kun med rigtige data.
+   *
+   * ⚠ DEN RAMTE SERVEREN. `etapeskift` kalder den samme funktion på det den
+   * læser af noden, så "Send forslag", "Foreslå matchet tur" og "Send nye
+   * forslag" var alle tre lukkede. Det er præcis den fælde beslutning 58
+   * skrev ned: *"Brug forslagListe(); den er det ene sted formen oversættes."*
+   * Se beslutning 76.
+   */
+  if (o.kraeverForslag && forslagListe(post).length === 0) {
+    return { ok: false, aarsag: "Der skal være mindst ét forslag." };
+  }
   if (o.kraeverValgtForslag && !post.valgtForslagId) return { ok: false, aarsag: "Vælg et forslag før godkendelse." };
   if (o.kraeverBegrundelse && !begrundelse?.trim()) return { ok: false, aarsag: "Angiv en begrundelse." };
   if (o.kraeverFrist && !post.senestMs) return { ok: false, aarsag: "En åben etape skal have en frist — ellers kan lageret fyldes op uden at nogen ser det." };

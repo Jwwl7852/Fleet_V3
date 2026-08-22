@@ -52,6 +52,7 @@ import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 import {
   TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger, TRANSPORTTYPE,
+  forslagListe,
 } from "../../fleet/booking-state.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i dem. */
 import { DEMO_BOOKINGER } from "../../fleet/demo-bookinger.js";
@@ -368,7 +369,8 @@ export default function BookingOversigt() {
                 </>) },
             { key: "omsaetningOere", label: "Omsætning", num: true,
               render: (r) => kr(r.omsaetningOere) },
-            { key: "aabn", label: "", render: (r) => (r.forslag?.length
+            /* ⚠ forslagListe(), ikke .length — se beslutning 76. */
+            { key: "aabn", label: "", render: (r) => (forslagListe(r).length
                 ? <Link className="fc-a" to={`/booking/forslag/${r.id}`}>Se forslag</Link>
                 : <span className="fc-neutral">—</span>) },
           ]}

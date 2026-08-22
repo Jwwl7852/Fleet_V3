@@ -27,6 +27,7 @@ import {
 import { GRAENSE } from "./koerehviletid.js";
 import { kanDisponeres, kanBaere } from "./flaade.js";
 import { selvkontrol } from "./selvkontrol.js";
+import { forslagListe } from "./booking-state.js";
 
 const DAG = 86400000;
 const T = 3600000;
@@ -171,7 +172,13 @@ export const DEMO_ETAPER = [
     graenseovergange: [],
     kunDanmark: true,
     passager: { "bro:storebaelt": 1 },
-    koeretoejIder: { "kt-106": true }, personId: "dorteEnevoldsen",
+    /* ⚠ HER STOD kt-106 — Lastbil 106, som har status "vaerksted" OG en
+       igangværende værkstedsopgave. Etapen var RESERVERET, altså en
+       disponering `tjekDisponering()` ville have afvist: demo-sættet viste
+       data der ikke kunne opstå. Selvkontrollen sagde det ved hver
+       indlæsning, og advarslen druknede i de falske (beslutning 75).
+       kt-104 er fri og aktiv, og dens eneste opgave ligger fem dage før. */
+    koeretoejIder: { "kt-104": true }, personId: "dorteEnevoldsen",
     koerselMin: 480,
     maengde: { m3: 44, kg: 9200 },
     forslag: [], valgtForslagId: null, senestMs: null,
@@ -362,7 +369,8 @@ selvkontrol("demo-etaper", () => {
      sættet selv.
      ══════════════════════════════════════════════════════════════════════ */
   for (const e of DEMO_ETAPER) {
-    if ((e.forslag?.length || 0) > 3) {
+    /* ⚠ forslagListe(), ikke .length — se beslutning 58 og 76. */
+    if (forslagListe(e).length > 3) {
       console.warn();
     }
     if (e.valgtForslagId && !(e.forslag || []).some((f) => f.id === e.valgtForslagId)) {

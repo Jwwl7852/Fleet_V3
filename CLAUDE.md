@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **75 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **76 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -267,6 +267,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   har ingen arrays, `$andet: false` forbyder et `id` inde i posten, og
   `valgtForslagId` skal pege på en nøgle der findes. Brug `forslagListe()`;
   den er det ene sted formen oversættes. Se beslutning 58.
+  ⚠ **Og den sætning var IKKE nok.** `kanSkifteEtape()` talte alligevel med
+  `post.forslag?.length` — `undefined` på nodeform — så en disponent med tre
+  forslag fik *"Der skal være mindst ét forslag."* **Tre overgange var lukkede
+  i produktion, og det virkede i demo**, fordi demo-sættet bruger arrays.
+  Fejlen ramte også serveren: `etapeskift` kalder samme funktion, så skærm og
+  server var ENIGE og begge forkerte. `test/forslagform.test.mjs` forbyder
+  nu **mønstret** `.forslag.length` i hele `src/` og i `functions/` — en
+  regel man har skrevet ned, er ikke en regel man har håndhævet.
+  Se beslutning 76.
 - **Lægge et forslag på bookingen.** Det hører på ETAPEN, med alle sine
   felter — tid, pris, enheder og chauffør. Det lå begge steder indtil
   beslutning 40, og for et forløb med én etape var det det samme løfte

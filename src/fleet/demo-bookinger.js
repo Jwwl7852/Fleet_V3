@@ -31,6 +31,7 @@ import { DEMO_KUNDER } from "./demo-kunder.js";
 import { DEMO_ETAPER } from "./demo-etaper.js";
 import {
   forloebstilstand, TILSTAND, TRANSPORTTYPE, RUTEPRAEFERENCE, FLEKSIBILITET,
+  forslagListe,
 } from "./booking-state.js";
 import { selvkontrol } from "./selvkontrol.js";
 
@@ -253,7 +254,7 @@ selvkontrol("demo-bookinger", () => {
        ville være tom uden at nogen kunne se hvorfor. */
     if (b.tilstand === "afventerKoord") {
       const medForslag = DEMO_ETAPER.filter(
-        (e) => e.bookingId === b.id && (e.forslag?.length || 0) > 0);
+        (e) => e.bookingId === b.id && forslagListe(e).length > 0);
       if (!medForslag.length) {
         console.warn(
           `demo-bookinger: ${b.nummer} afventer koordinator, men ingen af dens ` +
@@ -270,14 +271,14 @@ selvkontrol("demo-bookinger", () => {
     );
   }
 
-  /* Og uden en booking i afventerKoord kan Forslag-skærmen ikke vise
-     beslutning 5 — disponenten der ikke må godkende sit eget forslag. */
-  if (!DEMO_BOOKINGER.some((b) => b.tilstand === "afventerKoord" && b.forslag?.length)) {
-    console.warn(
-      `demo-bookinger: ingen booking afventer koordinator med forslag. Forslag-skærmen ` +
-      `kan ikke vise beslutning 5.`
-    );
-  }
+  /* ⚠ HER STOD EN DUBLET DER KIGGEDE DET FORKERTE STED: den spurgte om en
+     BOOKING med et `forslag`, men beslutning 40 flyttede forslagene til
+     ETAPEN, og ingen booking har båret feltet siden. Den advarede derfor ved
+     hver indlæsning om noget der var i orden.
+
+     Kontrollen findes i forvejen og rigtigt — pr. booking, på dens etaper, et
+     stykke længere oppe. **En kontrol der overlever en modelændring, bliver en
+     løgn**, og to kontroller om det samme er én der driver. Se beslutning 76. */
 
   /* Hver etape skal høre til en booking der findes. */
   const bookingIder = new Set(DEMO_BOOKINGER.map((b) => b.id));
