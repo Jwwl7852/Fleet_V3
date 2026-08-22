@@ -55,6 +55,9 @@ import {
 import {
   DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER,
 } from "../src/fleet/demo-procure.js";
+import {
+  DEMO_FORBRUGSVARER, DEMO_FORBRUGSVAREBEVAEGELSER,
+} from "../src/fleet/demo-forbrugsvarer.js";
 import { ORDRESERIE, ORDRE_PRAEFIKS } from "../src/fleet/procure.js";
 import {
   DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
@@ -287,6 +290,13 @@ export const SEED = [
      "ingen godkendelse" gaelde, og de tre raekker staa i en koe serveren
      ikke kunne have lavet. Se beslutning 82. */
   { node: "godkendelsesregler", data: DEMO_GODKENDELSESREGLER, form: "objekt" },
+  /* ⚠ PROCURES EGET VARELAGER — ikke Warehouses `varer`, som er KUNDENS
+     gods. Og de to noder hoerer SAMMEN: beholdningen paa varen er summen
+     af bevaegelserne, og seedede vi kun den ene, ville skaermens
+     `beholdningsafvigelse()` vise en drift vi selv havde lavet.
+     Se beslutning 85. */
+  { node: "forbrugsvarer", data: DEMO_FORBRUGSVARER, form: "liste" },
+  { node: "forbrugsvarebevaegelser", data: DEMO_FORBRUGSVAREBEVAEGELSER, form: "liste" },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
   /* ⚠ FACILITY HELE VEJEN NU. Lokationerne kom foerst, fordi indkoebets
@@ -903,6 +913,7 @@ async function main() {
     kpiKunder, kpiEtaper, kpiGrundlag, kpiOpgaver, kpiIndkoeb, kpiFakturaer,
     kpiLeverandoerer, kpiAktiver, kpiFejl, kpiSensorer, kpiIndberetninger,
     kpiKoeretoejer, kpiPersonale, kpiKompetencer, kpiBookinger, kpiFravaer,
+    kpiForbrugsvarer,
   ] = await Promise.all([
     "kunder", "etaper", "grundlag", "opgaver", "indkoeb", "fakturaer",
     "leverandoerer", "facility/aktiver", "facility/fejl", "facility/sensorer",
@@ -919,6 +930,14 @@ async function main() {
        henter den SAMME node, og gjorde provisioneringen det ikke, ville dev
        vise 0 hvor natten viser et tal — en nul der ligner en måling. */
     "fravaer",
+    /* ⚠ PROCURES EGET VARELAGER (beslutning 85), og det står SIDST af samme
+       grund som bookingerne og fraværet: rækkefølgen ER kontrakten.
+
+       ⚠ OG DET SKAL HENTES BEGGE STEDER. Uden det her led ville
+       `lavBeholdning` blive skrevet som 0 i noden, mens Varelageret regner
+       4 af de samme rækker — to svar på ét spørgsmål, ét klik fra hinanden.
+       Det er nøjagtig det de tre noter herover advarer om. */
+    "forbrugsvarer",
   ].map(hentNode));
 
   /* ⚠ RESERVATIONERNE ER ET TRAE, IKKE EN LISTE — og de er lige blevet
@@ -946,6 +965,7 @@ async function main() {
       koeretoejer: kpiKoeretoejer, personale: kpiPersonale,
       kompetencer: kpiKompetencer, reservationer: kpiReservationer,
       bookinger: kpiBookinger, fravaer: kpiFravaer,
+      forbrugsvarer: kpiForbrugsvarer,
       forrige: null, nu: nuMs,
     });
     await db.ref(`tenants/${valgt}/kpi/current`).set(tal);

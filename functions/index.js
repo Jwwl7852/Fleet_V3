@@ -79,6 +79,10 @@ import { tjekDisponering } from "./delt/disponering.js";
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
 import {
+  valideForbrugsvare, valideBevaegelse as valideForbrugsvarebevaegelse,
+  nyBeholdning,
+} from "./delt/forbrugsvarer.js";
+import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
   valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
   kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
@@ -4657,6 +4661,152 @@ export const kontantkoebskriv = onCall({ region: REGION }, async (req) => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
+   FORBRUGSVARER — Procures eget varelager (beslutning 85)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ IKKE `varer`. Den node er Warehouses, hvor godset er KUNDENS og kundeId
+   er paakraevet. Det her er vores egne handsker, straekfilm og filtre.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const forbrugsvareskriv = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, {
+    perm: "indkoeb.skriv", modul: "indkoeb",
+  });
+
+  const d = req.data || {};
+  const id = kortStreng(d.id, 60);
+
+  /* ⚠ FORMEN BYGGES HER, IKKE TAGET IND. Admin-SDK'et gaar uden om
+     .validate, saa et objekt udefra kunne lande med felter reglen forbyder. */
+  const post = {
+    navn: kortStreng(d.navn, 120),
+    enhed: kortStreng(d.enhed, 20) || "stk",
+  };
+  if (kortStreng(d.varenummer, 60)) post.varenummer = kortStreng(d.varenummer, 60);
+  if (kortStreng(d.note, 250)) post.note = kortStreng(d.note, 250);
+  if (kortStreng(d.leverandoerId, 60)) post.leverandoerId = kortStreng(d.leverandoerId, 60);
+  /* ⚠ MINIMUM ER VALGFRIT, og `null` betyder UDTRYKKELIGT "ingen graense" —
+     ikke "uaendret". Uden den skelnen kunne en graense aldrig fjernes igen. */
+  if (Number.isFinite(d.minimumBeholdning)) post.minimumBeholdning = d.minimumBeholdning;
+
+  const svar = valideForbrugsvare(post);
+  if (!svar.ok) {
+    throw new HttpsError("invalid-argument",
+      Object.values(svar.fejl)[0] || "Varen er ikke gyldig.");
+  }
+
+  if (post.leverandoerId) {
+    const lev = await rod.child(`leverandoerer/${post.leverandoerId}`).once("value");
+    if (!lev.exists()) throw new HttpsError("invalid-argument", "Leverandoeren findes ikke.");
+  }
+
+  if (id) {
+    const findes = await rod.child(`forbrugsvarer/${id}`).once("value");
+    if (!findes.exists()) throw new HttpsError("not-found", "Varen findes ikke.");
+    /* ⚠ BEHOLDNINGEN ROERES IKKE HER. Den er summen af bevaegelser, og et
+       felt en formular kunne saette, ville vaere en femte art ingen har
+       besluttet — og den ville ikke staa i historikken. Skal tallet rettes,
+       er det en OPTAELLING. */
+    const opdatering = {};
+    for (const [felt, vaerdi] of Object.entries(post)) {
+      opdatering[`tenants/${tenantId}/forbrugsvarer/${id}/${felt}`] = vaerdi;
+    }
+    /* Fjernet graense skal kunne fjernes. */
+    if (d.minimumBeholdning === null) {
+      opdatering[`tenants/${tenantId}/forbrugsvarer/${id}/minimumBeholdning`] = null;
+    }
+    await getDatabase().ref().update(opdatering);
+    await logProcure(tenantId, uid, AUDIT.aendre, "forbrugsvarer", id,
+      { antal: findes.val()?.minimumBeholdning ?? null },
+      { antal: post.minimumBeholdning ?? null }, "forbrugsvare rettet");
+    return { ok: true, id };
+  }
+
+  post.oprettetAf = uid;
+  post.oprettetMs = Date.now();
+  /* En ny vare har beholdning nul. Den foerste modtagelse er en bevaegelse. */
+  post.beholdning = 0;
+
+  const ref = rod.child("forbrugsvarer").push();
+  await ref.set(post);
+  await logProcure(tenantId, uid, AUDIT.opret, "forbrugsvarer", ref.key, null,
+    { antal: post.minimumBeholdning ?? null }, "forbrugsvare oprettet");
+
+  return { ok: true, id: ref.key };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FORBRUGSVAREBEVAEGELSE — raekken og tallet i ÉN update()
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ SAMME KENDSGERNING TO FORMER. Bevaegelsen er raekken, beholdningen er
+   tallet — og de skrives atomisk sammen eller slet ikke. Deler man
+   skrivningen i to kald, kan halvdelen lande, og saa er uenigheden vores
+   egen. Samme ordning som enheder/beholdning (beslutning 39).
+
+   ⚠ OG BEHOLDNINGEN MAA GAA I MINUS. Et forbrug der bringer tallet under nul,
+   SKETE: nogen tog de sidste fem handsker, og tallet var forkert i forvejen.
+   Afviste vi bevaegelsen, ville den rigtige haendelse gaa tabt for at beskytte
+   et tal der allerede var galt — og den der staar med en tom kasse, faar at
+   vide at han tager fejl. Svaret er en OPTAELLING; indtil da er minus beviset
+   paa at der mangler en bevaegelse.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid } = await procureDoer(req, {
+    perm: "indkoeb.skriv", modul: "indkoeb",
+  });
+
+  const d = req.data || {};
+  const forbrugsvareId = kortStreng(d.forbrugsvareId, 60);
+  if (!forbrugsvareId) throw new HttpsError("invalid-argument", "Vaelg en vare.");
+
+  const snap = await rod.child(`forbrugsvarer/${forbrugsvareId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Varen findes ikke.");
+  const vare = { ...snap.val(), id: forbrugsvareId };
+
+  const nu = Date.now();
+  const post = {
+    forbrugsvareId,
+    art: kortStreng(d.art, 20),
+    antal: Number(d.antal),
+    ms: nu,
+    uid,
+  };
+  if (kortStreng(d.note, 250)) post.note = kortStreng(d.note, 250);
+  if (kortStreng(d.ordreId, 60)) post.ordreId = kortStreng(d.ordreId, 60);
+
+  const svar = valideForbrugsvarebevaegelse(post, { vare });
+  if (!svar.ok) {
+    throw new HttpsError("invalid-argument",
+      Object.values(svar.fejl)[0] || "Bevaegelsen er ikke gyldig.");
+  }
+
+  if (post.ordreId) {
+    const o = await rod.child(`indkoebsordrer/${post.ordreId}`).once("value");
+    if (!o.exists()) throw new HttpsError("invalid-argument", "Bestillingen findes ikke.");
+  }
+
+  /* ⚠ REGNET MED SAMME nyBeholdning() SOM SKAERMEN VISER. To regnestykker
+     ville kunne blive uenige om en optaelling — den SAETTER, den laegger
+     ikke til. */
+  post.foer = Number.isFinite(vare.beholdning) ? vare.beholdning : 0;
+  post.efter = nyBeholdning(vare, post);
+
+  const ref = rod.child("forbrugsvarebevaegelser").push();
+  const sti = `tenants/${tenantId}`;
+  await db.ref().update({
+    [`${sti}/forbrugsvarebevaegelser/${ref.key}`]: post,
+    [`${sti}/forbrugsvarer/${forbrugsvareId}/beholdning`]: post.efter,
+    [`${sti}/forbrugsvarer/${forbrugsvareId}/sidstBevaegetMs`]: nu,
+  });
+
+  await logProcure(tenantId, uid, AUDIT.aendre, "forbrugsvarer", forbrugsvareId,
+    { antal: post.foer }, { antal: post.efter },
+    `${post.art}: ${post.antal}`);
+
+  return { ok: true, id: ref.key, beholdning: post.efter };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
    KPI-AGGREGERINGEN — det sidste punkt på listen
 
    Beslutning 6: nøgletal læses ÉT sted, `tenants/<id>/kpi/current`,
@@ -4707,7 +4857,7 @@ export const kpiaggregering = onSchedule(
       const [
         kunder, etaper, grundlag, opgaver, indkoeb, fakturaer, leverandoerer,
         facilityAktiver, facilityFejl, facilitySensorer, indberetninger,
-        koeretoejer, personale, kompetencer, reservationer, bookinger, fravaer,
+        koeretoejer, personale, kompetencer, reservationer, bookinger, fravaer, forbrugsvarer,
       ] =
         await Promise.all([
           rod.child("kunder").once("value").then((s) => raekker(s.val())),
@@ -4760,6 +4910,13 @@ export const kpiaggregering = onSchedule(
              sidst: rækkefølgen er kontrakten. Et led indsat i midten ville
              give `koeretoejer` fraværet — og intet ville fejle. */
           rod.child("fravaer").once("value").then((s) => raekker(s.val())),
+          /* ⚠ PROCURES EGET VARELAGER (beslutning 85) — ikke Warehouses
+             `varer`, som er KUNDENS gods. Og det staar SIDST af samme grund
+             som de to ovenfor: raekkefoelgen ER kontrakten.
+
+             ⚠ OG PROVISIONERINGEN HENTER DEN SAMME NODE. Gjorde kun det ene
+             det, ville dev vise ét tal og natten et andet. */
+          rod.child("forbrugsvarer").once("value").then((s) => raekker(s.val())),
         ]);
 
       {
@@ -4769,7 +4926,7 @@ export const kpiaggregering = onSchedule(
           kunder, etaper, grundlag, opgaver, indkoeb, fakturaer,
           leverandoerer, facilityAktiver, facilityFejl, facilitySensorer,
           indberetninger, koeretoejer, personale, kompetencer, reservationer,
-          bookinger, fravaer, forrige, nu
+          bookinger, fravaer, forbrugsvarer, forrige, nu
         });
 
         /* ⚠ ÉN SKRIVNING. Arkivet og det nye tal lander sammen — ellers

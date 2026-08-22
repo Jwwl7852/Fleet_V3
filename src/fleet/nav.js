@@ -141,6 +141,12 @@ export const NAV = [
         under: "Match fakturaer mod bestillinger, godkend dem — eller registrér et kontant køb." },
       { key: "leverandoerer", sti: "/indkoeb/leverandoerer", label: "Leverandører",
         titel: "Leverandører", under: "Performance, aftaler og priser" },
+      /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS.
+         Fjerde gang et lagernavn skal skilles fra et andet i den her base;
+         se forbrugsvarer.js og beslutning 85. */
+      { key: "varelager", sti: "/indkoeb/varelager", label: "Varelager",
+        titel: "Varelager — vores egne forbrugsvarer",
+        under: "Beholdning, minimum og bevægelser. Et lavt lager bliver til et indkøbsbehov." },
     ],
   },
   {

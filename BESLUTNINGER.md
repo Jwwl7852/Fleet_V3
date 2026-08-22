@@ -5848,3 +5848,138 @@ venter dér (`facility/Servicedialog.jsx`).
 ⚠ **Og variablen hed `iDivision`.** Et navn er en påstand: "divisionens
 linjer" får den næste til at tro at der ER en opdeling. Den hedder nu
 `alleLinjer`, som er hvad den er.
+
+
+## 85. Varelageret — fjerde gang et lagernavn skal skilles fra et andet
+
+Procures **eget** varelager: `forbrugsvarer` og `forbrugsvarebevaegelser`. Det
+er kortet "Lav lagerbeholdning" på planche 5, som stod som `null` i beslutning
+84 fordi kilden ikke fandtes.
+
+### ⚠ Hvem godset TILHØRER er hele forskellen
+
+| Node | Hvis gods | Hvad det er |
+|---|---|---|
+| `varer` + `beholdning` | **Kundens** | Warehouse, 3PL. `kundeId` er PÅKRÆVET |
+| `lagre` | Vores | Reservedelslageret under Fleet, med satser |
+| `warehouse` | — | **Reserveret** til et kommende modul (se CLAUDE.md) |
+| `forbrugsvarer` | **Vores egne** | Handsker, strækfilm, papir, filtre |
+
+Det er ikke pedanteri. Det alternativ der lå lige for — at regne kortet af
+`varer`/`beholdning` — ville få Procure til at **bede os bestille noget en
+kunde mangler**. Det er den samme navnekollision som `warehouse` mod `lagre`,
+og her ville den koste et indkøb.
+
+### ⚠ Retningen kommer af arten, ikke af et fortegn
+
+Fire arter: `modtaget`, `forbrug`, `svind`, `optaelling`. `antal` er **altid
+positivt**.
+
+`antal: -3` alene siger at beholdningen faldt med tre — ikke OM det var
+forbrug, svind eller en rettelse. De tre kræver hver sin handling: forbrug er
+normalt, svind skal undersøges, og en korrektion er en indrømmelse af at tallet
+var forkert. Ét felt der bare hed "ændring", ville gøre dem uskelnelige
+bagefter — og en formular der tillod begge fortegn, ville få nogen til at taste
+minus på et forbrug og trække to gange.
+
+⚠ **En optælling SÆTTER, den lægger ikke til.** Den bærer det **talte** antal.
+Uden den art skulle den der tæller, taste "korrektion −2" og regne forskellen i
+hovedet — og en fejl i det hovedregnestykke ser bagefter ud som svind.
+
+⚠ **Og svind kræver en grund.** Et tal der forsvinder uden forklaring, bliver
+ikke undersøgt, og svind er netop dét man skal undersøge. Forbrug kræver ingen:
+det er hvad varen er til.
+
+### ⚠ En negativ beholdning spærres ikke — den vises
+
+Fristelsen er at afvise et forbrug der bringer tallet under nul. Men **det
+skete jo**: nogen tog de sidste fem handsker, og tallet var forkert i forvejen.
+
+Afviste vi bevægelsen, ville den rigtige hændelse gå tabt for at beskytte et
+tal der allerede var galt — og den der står med en tom kasse, får at vide at
+han tager fejl. Det rigtige svar er en **optælling**. Indtil da er minus
+beviset på at der mangler en bevægelse.
+
+Det er samme holdning som `enhedsafvigelse()` i Warehouse (beslutning 39):
+**en uenighed er en manglende bevægelse, ikke et tal der skal rettes i
+stilhed.**
+
+### Rækken og tallet i én `update()` — og driften på skærmen
+
+Bevægelsen og beholdningen bærer den samme kendsgerning, det ene som en række
+og det andet som et tal. De skrives atomisk sammen eller slet ikke; deler man
+skrivningen i to kald, kan halvdelen lande, og så er uenigheden vores egen.
+Samme ordning som `enheder`/`beholdning` (39) og `kasseudlaan` (37).
+
+⚠ **Men et gemt afledt tal driver** — det er `bemanding.ledig` (71). Derfor
+regner `beholdningAfBevaegelser()` det forfra, og `beholdningsafvigelse()`
+viser forskellen **på skærmen**. En drift der ikke kan ses, bliver ikke rettet.
+
+⚠ **Og beholdningen tastes ikke.** `forbrugsvareskriv` rører den kun ved
+oprettelse, og da til nul. Et felt en formular kunne sætte, ville være en femte
+bevægelsesart ingen har besluttet — og den ville ikke stå i historikken.
+
+### ⚠ Minimum er valgfrit, og manglen tælles
+
+En vare uden grænse har ingen "lav"-tilstand. Sattes den til 0 som standard,
+ville varen **aldrig** være lav; sattes den til et tal, havde vi opfundet en
+indkøbspolitik på kundens vegne.
+
+⚠ **Men "0 under minimum" betyder både "alt er fyldt op" og "ingen har sat en
+grænse".** Derfor to felter: `lavBeholdning` og `forbrugsvarerUdenGraense`.
+Samme greb som `kpi.opgaver.udenTidsregistrering` (beslutning 50) — hullet er
+synligt frem for spærret.
+
+⚠ **Og `null` skal kunne sendes.** Tom streng bliver `null` (= ingen grænse),
+ikke `0`; og `undefined` betyder "rør den ikke". Uden den skelnen kunne en
+grænse aldrig fjernes igen — og en grænse man ikke kan fjerne, bliver sat til
+et højt tal i stedet, hvor den ligner en beslutning.
+
+### Loopet er lukket: et lavt lager bliver til et behov
+
+"Meld som behov" står **kun** på de lave — en knap på hver række ville gøre
+indbakken til en indkøbsliste over alt vi ejer. Behovet bærer **intet antal**:
+vi ved at varen er lav, ikke hvor meget der skal købes. Antallet er valgfrit på
+et behov netop af den grund (beslutning 80), og et gæt — "op til minimum", "en
+pakke" — ville gå med i en bestilling.
+
+Dermed løber Procure hele vejen rundt: lager → behov → bestilling → godkendelse
+→ faktura → afstemning.
+
+### Det prøverne fandt
+
+**1. To prøver fra beslutning 84 fyrede som aftalt.** Den ene krævede at
+`lavBeholdning` var `null`; den anden krævede at `forbrugsvarer` **ikke**
+fandtes, med noten *"når den gør, skal tallet regnes"*. Begge blev røde i samme
+kørsel, og de pegede på hvad der skulle rettes.
+
+⚠ **Det er sådan en prøve om et mellemstadie skal opføre sig.** Beslutning 79,
+82 og 83 fandt tre der blev stående **grønne** om noget der var ovre. Den her
+fejlede det sekund manglen blev lukket.
+
+**2. Tre warehouse-prøver ankrede på hele regelfilen.** De søgte med
+`regler.indexOf('"beholdning": {')` og `find(l => l.includes('"art"'))` — og
+`forbrugsvarer` har også et `beholdning`-felt og en `art`-regel med
+`modtaget`, tidligere i filen. Prøverne målte derfor **den forkerte node** og
+sagde at warehouse-modellen var brudt.
+
+⚠ **Et anker der findes to steder, er ikke et anker.** Tredje gang samme fælde
+(82, 83, 85) — men første gang den ramte en prøve frem for et patch-script. De
+afgrænser nu til nodens egen krop.
+
+**3. Aggregeringen fik ikke sin nye node.** `beregnKpi()` regnede
+`lavBeholdning`, men hverken provisioneringen eller det natlige job hentede
+`forbrugsvarer`. Tallet ville være skrevet som **0** i noden mens Varelageret
+regnede **4** af de samme rækker — to svar på ét spørgsmål, ét klik fra
+hinanden. Tre noter i provisioneringen advarer ordret om præcis det, for
+`koeretoejer`, `bookinger` og `fravaer`. Begge veje henter nu noden.
+
+**4. Noten under kortet blev en usandhed.** Overblikkets femte kort sagde
+*"varelageret er ikke bygget endnu"*. Da noden kom, fik tallet sin værdi — og
+teksten stod uændret under et rigtigt tal. **En tekst der siger at noget ikke
+er bygget, er den slags der overlever fordi ingen læser den igen.** En prøve
+vogter den nu.
+
+**5. Demo-sættet var uenigt med `demo-kpi.js`.** Fire varer er på eller under
+deres minimum; demofilen lovede tre. Selvkontrollen fandt det, før skærmen nåede
+at vise Overblikket ét tal og Varelageret et andet.

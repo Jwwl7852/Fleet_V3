@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **84 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **85 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -56,7 +56,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   regnet råt: `48 / null` er **Infinity**.
 - Skrive en afvigelse som streng. Brug `deviation()` fra `format.js`.
 - **Lade aggregeringen gætte et felt uden kilde.** `beregnKpi()` skriver
-  `null` for de **45** felter der ikke kan regnes — og feltet UDELADES ikke:
+  `null` for de **44** felter der ikke kan regnes — og feltet UDELADES ikke:
   står det med null, kan man se af noden at spørgsmålet er stillet.
   ⚠ **Tallet tælles på NODEN, ikke på `udenKilde()`.** Samlestedet rummer kun
   ÉN slags null — de helt ukendte kilder — og den er tom i dag. Da flåden og

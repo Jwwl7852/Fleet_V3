@@ -226,8 +226,29 @@ describe("bevægelser og beholdning skrives kun af serveren", () => {
 describe("modellen og reglerne siger det samme", () => {
   const regler = readFileSync("firebase.rules.json", "utf8");
 
+  /**
+   * ⚠ SLÅ OP I ÉN NODE, IKKE I HELE FILEN.
+   *
+   * Prøverne herunder søgte med `regler.indexOf('"beholdning": {')` og med
+   * `find(l => l.includes('"art"'))` — på HELE regelfilen. Det virkede
+   * indtil Procure fik sit eget varelager (beslutning 85): `forbrugsvarer`
+   * har også et `beholdning`-felt og en `art`-regel med `modtaget`, og de
+   * står TIDLIGERE i filen. Prøverne målte derfor den forkerte node og
+   * sagde at warehouse-modellen var brudt.
+   *
+   * ⚠ ET ANKER DER FINDES TO STEDER, ER IKKE ET ANKER. Samme fælde som
+   * beslutning 82 og 83 fandt i patch-scripts — her ramte den en prøve.
+   * `blok()` afgrænser til nodens egen krop.
+   */
+  const blok = (navn) => {
+    const start = regler.indexOf(`\n        "${navn}": {`);
+    if (start < 0) throw new Error(`noden ${navn} findes ikke i regelfilen`);
+    const slut = regler.indexOf('\n        "', start + 1);
+    return regler.slice(start, slut < 0 ? regler.length : slut);
+  };
+
   it("kender de otte arter og ikke flere", async () => {
-    const linje = regler.split(/\r?\n/).find((l) =>
+    const linje = blok("bevaegelser").split(/\r?\n/).find((l) =>
       l.includes('"art"') && l.includes("modtag"));
     assert.ok(linje, "fandt ikke artreglen");
     for (const a of ["modtag", "putaway", "flyt", "pluk", "afsend", "retur",
@@ -239,8 +260,8 @@ describe("modellen og reglerne siger det samme", () => {
   it("afviser en negativ beholdning", () => {
     /* ⚠ EN HYLDE KAN IKKE RUMME MINUS TOLV PALLER. En beholdning der kan gå i
        minus, skjuler den bevægelse der manglede. */
-    const blok = regler.slice(regler.indexOf('"beholdning": {'));
-    const antal = blok.split(/\r?\n/).find((l) => l.includes('"antal"'));
+    const krop = blok("beholdning");
+    const antal = krop.split(/\r?\n/).find((l) => l.includes('"antal"'));
     assert.ok(antal.includes(">= 0"), "beholdningen kan gå i minus");
   });
 
@@ -248,13 +269,12 @@ describe("modellen og reglerne siger det samme", () => {
     /* Etape 12. Bar posten OGSÅ en pladsId, ville de to drive fra hinanden
        første gang nogen flyttede beholderen — og hylden ville vise varer der
        fysisk stod et andet sted. */
-    const blok = regler.slice(regler.indexOf('"beholdning": {'),
-                              regler.indexOf('"plukordrer"'));
-    assert.ok(blok.includes("hasChildren(['carrierId', 'vareId', 'antal'])"),
+    const krop = blok("beholdning");
+    assert.ok(krop.includes("hasChildren(['carrierId', 'vareId', 'antal'])"),
       "beholdningen kræver ikke en beholder");
-    assert.ok(!blok.includes('"pladsId"'),
+    assert.ok(!krop.includes('"pladsId"'),
       "beholdningsposten bærer stadig en hylde");
-    assert.ok(blok.includes("child('carriers').child(newData.val()).exists()"),
+    assert.ok(krop.includes("child('carriers').child(newData.val()).exists()"),
       "beholderen prøves ikke mod carriers-noden");
   });
 
@@ -262,13 +282,12 @@ describe("modellen og reglerne siger det samme", () => {
     /* To slags bevægelser deler noden: en godsbevægelse har vare, kunde og
        antal; en placering flytter selve beholderen. Krydsreglen holder dem
        adskilt, så en placering ikke kan bære et antal ingen kan forklare. */
-    const blok = regler.slice(regler.indexOf('"bevaegelser": {'),
-                              regler.indexOf('"beholdning": {'));
-    assert.ok(blok.includes("newData.child('art').val() === 'putaway'"),
+    const krop = blok("bevaegelser");
+    assert.ok(krop.includes("newData.child('art').val() === 'putaway'"),
       "reglerne skelner ikke de to slags bevægelser");
-    assert.ok(blok.includes("!newData.hasChild('vareId')"),
+    assert.ok(krop.includes("!newData.hasChild('vareId')"),
       "en placering kan bære en vare");
-    assert.ok(blok.includes("!newData.hasChild('tilPladsId')"),
+    assert.ok(krop.includes("!newData.hasChild('tilPladsId')"),
       "en godsbevægelse kan bære en hylde");
   });
 });

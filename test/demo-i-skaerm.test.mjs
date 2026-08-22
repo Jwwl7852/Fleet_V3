@@ -72,6 +72,8 @@ const NODE_FOR = {
   /* Procures to foerste trin — begge seedes, saa begge hoerer her. */
   DEMO_INDKOEBSBEHOV: "indkoebsbehov", DEMO_INDKOEBSORDRER: "indkoebsordrer",
   DEMO_GODKENDELSESREGLER: "godkendelsesregler",
+  DEMO_FORBRUGSVARER: "forbrugsvarer",
+  DEMO_FORBRUGSVAREBEVAEGELSER: "forbrugsvarebevaegelser",
 };
 
 /* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag.

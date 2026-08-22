@@ -931,12 +931,15 @@ function Procureoverblik({
         <KpiKort label="Fakturaer uden match" vaerdi={num(udenMatch.length)}
                  note="i de hentede"
                  ikon={<Ikon navn="seddel" />} tone="ikon-2" rund til="/indkoeb/fakturaer" />
-        {/* ⚠ INTET TAL, OG DET ER SVARET. `forbrugsvarer` findes ikke, og
-            Warehouses lager er KUNDENS gods. Et tal derfra ville bede os
-            bestille noget en kunde mangler. */}
+        {/* ⚠ TALLET STOD SOM — INDTIL `forbrugsvarer` FANDTES (beslutning 85).
+            Det er Procures EGET varelager; Warehouses `varer` er KUNDENS gods,
+            og et tal derfra ville bede os bestille noget en kunde mangler.
+            Noten er rettet med: en tekst der siger at noget ikke er bygget,
+            er en usandhed så snart det er. */}
         <KpiKort label="Lav lagerbeholdning" vaerdi={num(lavBeholdning)}
-                 note="varelageret er ikke bygget endnu"
-                 ikon={<Ikon navn="advarsel" />} tone="ikon-1" rund />
+                 note="varer på eller under deres minimum"
+                 ikon={<Ikon navn="advarsel" />} tone="ikon-1" rund
+                 til="/indkoeb/varelager" />
       </KpiRaekke>
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">

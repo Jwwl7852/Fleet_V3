@@ -2072,6 +2072,86 @@
         },
 
         // ══════════════════════════════════════════════════════════════════
+        // FORBRUGSVARER — Procures EGET varelager (beslutning 85)
+        //
+        // ⚠ IKKE "varer". Den node er Warehouses, hvor godset er KUNDENS og
+        // kundeId er PAAKRAEVET. Det her er vores egne forbrugsvarer:
+        // handsker, straekfilm, papir, filtre. Fjerde gang et lagernavn skal
+        // skilles fra et andet i den her base — se noten i forbrugsvarer.js.
+        //
+        // ⚠ OG SKELLET ER IKKE PEDANTERI. Overblikkets kort "Lav
+        // lagerbeholdning" stod som null indtil den her node fandtes, netop
+        // fordi alternativet — at regne det af varer/beholdning — ville faa
+        // Procure til at bede os bestille noget en KUNDE mangler.
+        // Se beslutning 84.
+        //
+        // ⚠ write:false PAA BEGGE, OG DET ER VEJEN DER ER LUKKET.
+        // Beholdningen og bevaegelsen baerer den SAMME kendsgerning — det ene
+        // som et tal, det andet som en raekke — og de skrives atomisk sammen
+        // eller slet ikke. Deler man skrivningen i to kald, kan halvdelen
+        // lande, og saa er uenigheden vores egen. Samme ordning som
+        // enheder/beholdning (beslutning 39) og kasseudlaan (37).
+        "forbrugsvarer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": false,
+          ".indexOn": ["navn", "varenummer"],
+          "$vareId": {
+            ".validate": "newData.hasChildren(['navn', 'enhed'])",
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            // ⚠ MINIMUM ER VALGFRIT. En vare uden graense har ingen "lav"-tilstand.
+            // Nul som standard ville betyde ALDRIG lav; et tal ville vaere en
+            // indkoebspolitik vi havde opfundet paa kundens vegne. Manglen taelles
+            // af udenGraense() og vises paa skaermen.
+            "minimumBeholdning": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            // ⚠ BEHOLDNINGEN SKRIVES KUN SAMMEN MED EN BEVAEGELSE. Den maa gerne
+            // vaere negativ: et forbrug der bringer tallet under nul, SKETE — og
+            // afviste vi det, ville den rigtige haendelse gaa tabt for at beskytte
+            // et tal der allerede var galt. Den negative beholdning er beviset paa
+            // at der mangler en bevaegelse. Svaret er en OPTAELLING.
+            "beholdning": { ".validate": "newData.isNumber()" },
+            "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
+            "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "sidstBevaegetMs": { ".validate": "newData.isNumber()" },
+            "division": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // Bevaegelserne. Append-only i praksis: en post rettes ikke, den
+        // modsvares af en ny. En OPTAELLING er rettelsen.
+        "forbrugsvarebevaegelser": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": false,
+          ".indexOn": ["forbrugsvareId", "ms"],
+          "$bevaegelseId": {
+            ".validate": "newData.hasChildren(['forbrugsvareId', 'art', 'antal', 'ms', 'uid'])",
+            "forbrugsvareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('forbrugsvarer').child(newData.val()).exists()" },
+            // ⚠ FIRE ARTER, IKKE ET FORTEGN. antal: -3 alene siger at tallet faldt
+            // — ikke OM det var forbrug, svind eller en optaelling der rettede en
+            // fejl. De tre kraever hver sin handling.
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtaget|forbrug|svind|optaelling)$/)" },
+            // ⚠ ALTID POSITIVT. Retningen kommer af ARTEN. Et minus paa et forbrug
+            // ville traekke to gange.
+            "antal": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "ms": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            // uid — hvem der GJORDE det. Ikke personId.
+            "uid": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            // Beholdningen FOER og EFTER, saa en raekke kan laeses alene.
+            "foer": { ".validate": "newData.isNumber()" },
+            "efter": { ".validate": "newData.isNumber()" },
+            // Kom varen ind paa en bestilling, staar sporet her.
+            "ordreId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoebsordrer').child(newData.val()).exists()" },
+            "division": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
+        },
+        // ══════════════════════════════════════════════════════════════════
         // GODKENDELSESREGLER — Procures trin 3 (beslutning 82, planche 2)
         //
         // Virksomhedens EGEN politik: skal et indkoeb over et beloeb

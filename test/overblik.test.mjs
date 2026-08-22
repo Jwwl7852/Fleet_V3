@@ -93,29 +93,71 @@ describe("Fire tal regnes, det femte kan ikke", () => {
   });
 
   /**
-   * ⚠ DET FEMTE TAL ER null MED EN GRUND — INGEN KILDE.
+   * ⚠ DE TO PRØVER HER STOD OMVENDT — OG DE FYREDE SOM AFTALT.
    *
-   * "Lav lagerbeholdning" kræver `forbrugsvarer`, Procures EGET varelager, og
-   * noden findes ikke. Warehouses `varer`/`beholdning` er KUNDENS gods (3PL,
-   * `kundeId` er påkrævet dér); regnede vi kortet af dem, ville Procure bede
-   * os bestille noget en KUNDE mangler.
+   * I beslutning 84 var `lavBeholdning` `null` med grunden **ingen kilde**,
+   * og en prøve ved siden af krævede at `forbrugsvarer` IKKE fandtes — med
+   * noten "når den gør, skal tallet regnes". Noden kom i beslutning 85, og
+   * begge prøver blev røde i samme kørsel.
+   *
+   * ⚠ DET ER SÅDAN EN PRØVE OM ET MELLEMSTADIE SKAL OPFØRE SIG. Beslutning
+   * 79, 82 og 83 fandt tre der blev stående grønne om noget der var ovre;
+   * den her fejlede det sekund manglen blev lukket, og pegede på hvad der
+   * så skulle rettes. Se `PERM_GODKEND_MIDLERTIDIG` for den modsatte slags.
    */
-  test("⚠ lavBeholdning ER null I BÅDE AGGREGERINGEN OG DEMOFILEN", () => {
-    const k = beregnKpi({});
-    assert.equal(k.indkoeb.lavBeholdning, null,
-      "feltet er regnet — der findes ingen kilde at regne det af");
-    assert.ok("lavBeholdning" in k.indkoeb,
-      "feltet er udeladt. Står det med null, kan man se af noden at spørgsmålet ER stillet");
+  test("⚠ lavBeholdning REGNES AF forbrugsvarer — IKKE AF WAREHOUSES varer", () => {
+    /* Uden varer er svaret nul, ikke null: noden findes, den er bare tom. */
+    assert.equal(beregnKpi({}).indkoeb.lavBeholdning, 0);
+
+    const k = beregnKpi({
+      forbrugsvarer: [
+        { id: "a", beholdning: 2, minimumBeholdning: 5 },
+        { id: "b", beholdning: 50, minimumBeholdning: 10 },
+        { id: "c", beholdning: 1 },
+      ],
+    });
+    assert.equal(k.indkoeb.lavBeholdning, 1, "kun den under sin grænse er lav");
+    /* ⚠ OG DEN UDEN GRÆNSE TÆLLES FOR SIG. Uden det tal betyder "0 under
+       minimum" både "alt er fyldt op" og "ingen har sat en grænse". */
+    assert.equal(k.indkoeb.forbrugsvarerUdenGraense, 1);
+
     /* ⚠ DEMOFILEN SKAL PASSE I BEGGE RETNINGER (beslutning 60). */
-    assert.ok("lavBeholdning" in DEMO_KPI.indkoeb,
-      "aggregeringen skriver et felt demofilen ikke kender");
+    for (const felt of ["lavBeholdning", "forbrugsvarerUdenGraense"]) {
+      assert.ok(felt in DEMO_KPI.indkoeb,
+        `aggregeringen skriver ${felt}, som demofilen ikke kender`);
+    }
   });
 
-  /* ⚠ OG NODEN `forbrugsvarer` FINDES IKKE ENDNU. Kom den, skal feltet regnes
-     — og så skal den her prøve falde, så nogen husker at rette kortet. */
-  test("⚠ forbrugsvarer FINDES IKKE ENDNU — når den gør, skal tallet regnes", () => {
-    assert.ok(!/"forbrugsvarer": \{/.test(REGELFIL),
-      "noden findes nu. Regn lavBeholdning af den, og fjern null'en med sin grund");
+  /**
+   * ⚠ OG DEN MÅ IKKE REGNES AF WAREHOUSES LAGER.
+   *
+   * `varer`/`beholdning` er KUNDENS gods — 3PL, med et påkrævet `kundeId`.
+   * Et tal derfra ville få Procure til at bede os bestille noget en KUNDE
+   * mangler. Det er den samme navnekollision som `warehouse` mod `lagre`,
+   * og her ville den koste et indkøb.
+   */
+  test("⚠ WAREHOUSES varer PÅVIRKER IKKE lavBeholdning", () => {
+    const k = beregnKpi({
+        varer: [{ id: "x", kundeId: "k1" }, { id: "y", kundeId: "k2" }],
+        beholdning: [{ id: "b1", antal: 0 }],
+    });
+    assert.equal(k.indkoeb.lavBeholdning, 0,
+      "kundens gods tælles som vores eget lager");
+  });
+
+  /**
+   * ⚠ OG NOTEN UNDER TALLET SKAL FØLGE MED.
+   *
+   * Kortet sagde "varelageret er ikke bygget endnu" mens tallet stod som —.
+   * Da noden kom (beslutning 85), fik tallet sin værdi, og noten blev en
+   * usandhed under et rigtigt tal. En tekst der siger at noget ikke er
+   * bygget, er den slags der overlever fordi ingen læser den igen.
+   */
+  test("⚠ NOTEN PÅSTÅR IKKE AT VARELAGERET MANGLER", () => {
+    assert.ok(!/ikke bygget endnu/.test(SKAERM),
+      "kortet siger stadig at varelageret mangler — noden findes");
+    assert.ok(SKAERM.includes('til="/indkoeb/varelager"'),
+      "kortet fører ingen steder hen");
   });
 
   test("⚠ SKÆRMEN SKRIVER — OG IKKE 0 FOR DET UBEREGNEDE", () => {

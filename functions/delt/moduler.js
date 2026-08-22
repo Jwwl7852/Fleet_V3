@@ -244,6 +244,8 @@ export const NODE_MODUL = {
   indkoebsbehov: "indkoeb",
   indkoebsordrer: "indkoeb",
   godkendelsesregler: "indkoeb",
+  forbrugsvarer: "indkoeb",
+  forbrugsvarebevaegelser: "indkoeb",
 
   bookinger: "booking",
   /* ⚠ OMKOSTNINGER ER IKKE PRISER. `satser` er hvad KUNDEN betaler;

@@ -49,6 +49,7 @@ import {
    `disponering.konflikter` skal svare det SAMME som skærmen og `etapeskift`,
    og en afskrift her ville være et tredje sted reglerne stod. Begge filer er
    i forvejen i functions/delt/, så lukningen under import holder. */
+import { laveVarer, udenGraense } from "./forbrugsvarer.js";
 import { tjekDisponering } from "./disponering.js";
 import { reservationerFraEtape, enhedsIder, straekningFraEtape } from "./etaper.js";
 
@@ -644,7 +645,13 @@ export const deltaPct = (nyt, gammelt) => {
  * Det er ikke en teknikalitet: en umatchet faktura hører til begge, fordi
  * ingen endnu ved hvem der skal betale den. Det er netop derfor den skal ses.
  */
-export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], nu = Date.now()) {
+export function indkoebstal(
+  indkoeb = [], fakturaer = [], leverandoerer = [], nu = Date.now(),
+  /* ⚠ PROCURES EGET VARELAGER, IKKE WAREHOUSES. `forbrugsvarer` er vores
+     handsker og strækfilm; `varer`/`beholdning` er KUNDENS gods. Se
+     beslutning 84 og 85. */
+  forbrugsvarer = [],
+) {
   /* ⚠ HER STOD ET OPSLAG `linje` FRA indkoebId TIL INDKØBSLINJEN, og et filter
      der gav fakturaen sin linjes division. Linten fandt navnet som ubrugt, og
      efter beslutning 67 er spørgsmålet hvorfor det stod der — ikke om det kan
@@ -720,23 +727,27 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], nu
     indkoebsprisafvigelseSnitPct: afvig.snitPct,
 
     /**
-     * ⚠ null FORDI DER INGEN KILDE ER — og det er den ene af de tre slags.
+     * ⚠ HER STOD null MED "INGEN KILDE" SOM GRUND — og kilden findes nu.
      *
-     * Procures Overblik har et kort der hedder "Lav lagerbeholdning"
-     * (planche 5). Tallet kan ikke regnes: Procures EGET varelager er
-     * noden `forbrugsvarer`, og den findes ikke endnu.
+     * Noden er `forbrugsvarer`: Procures EGNE forbrugsvarer. Den blev lagt
+     * i beslutning 85 netop fordi det alternativ der lå lige for — at regne
+     * kortet af Warehouses `varer`/`beholdning` — ville få Procure til at
+     * bede os bestille noget en **kunde** mangler. Det er 3PL-gods med et
+     * påkrævet `kundeId`, ikke vores.
      *
-     * ⚠ OG DET ER IKKE `varer`/`beholdning`. De hører til Warehouse, hvor
-     * godset er KUNDENS — det er 3PL, og `kundeId` er påkrævet dér. Regnede
-     * vi kortet af dem, ville Procure vise hvor lidt en KUNDE har på lager,
-     * og bede os bestille det. Det er den samme navnekollision som
-     * `warehouse` mod `lagre` (se CLAUDE.md), og her ville den koste et
-     * indkøb.
-     *
-     * Feltet står med null frem for at mangle: står det i noden, kan man se
-     * af noden at spørgsmålet ER stillet. Se beslutning 62 og 84.
+     * ⚠ OG KUN VARER MED EN GRÆNSE TÆLLER. En vare uden `minimumBeholdning`
+     * har ingen "lav"-tilstand; talte vi den med som lav, ville hver ny
+     * vare straks stå på listen, og talte vi den som fyldt op, ville vi
+     * påstå noget vi ikke ved. Manglen tælles for sig — se `udenGraense()`
+     * — og skærmen viser begge tal, for ellers betyder "0 under minimum"
+     * både "alt er fyldt op" og "ingen har sat en grænse".
      */
-    lavBeholdning: null,
+    lavBeholdning: laveVarer(forbrugsvarer).length,
+
+    /* ⚠ OG DE UDEN GRÆNSE TÆLLES MED. Uden dem er tallet ovenfor tvetydigt.
+       Samme greb som `opgaver.udenTidsregistrering` (beslutning 50): hullet
+       er synligt frem for spærret. */
+    forbrugsvarerUdenGraense: udenGraense(forbrugsvarer).length,
   };
 }
 
@@ -1252,6 +1263,8 @@ export function beregnKpi({
      ind siden forrige beregning. Feltet tæller bookinger, ikke opgaver; det
      står i opgaver-domænet fordi det er ARBEJDE der kommer ind. */
   bookinger = [],
+  /* Procures EGET varelager — se indkoebstal(). Ikke Warehouses varer. */
+  forbrugsvarer = [],
   forrige = null, nu = Date.now(),
 }) {
   const tomme = udenKilde();
@@ -1261,7 +1274,7 @@ export function beregnKpi({
     koeretoejer, personale, kompetencer, reservationer,
   });
   const opg = opgavetal(opgaver, nu, { bookinger, forrige });
-  const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, nu);
+  const ind = indkoebstal(indkoeb, fakturaer, leverandoerer, nu, forbrugsvarer);
   /* ⚠ INGEN division-PARAMETER TIL DE TO. Det er ikke en forglemmelse: feltet
      er FORBUDT på koeretoejer og personale, og tallet er det samme i begge
      divisioner. En parameter der ikke bruges, ville få den næste til at tro at
