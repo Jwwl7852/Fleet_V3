@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **92 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **93 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -674,6 +674,21 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   når man læser det — bookinger reserverer jo. Fejlen kan kun ses ved at
   spørge om en tenant har DATA i en node hans moduler ikke ejer.
   Se beslutning 92.
+- **Sælge et modul der ikke kan virke alene.** `MODUL_KRAEVER` siger hvad et
+  modul kræver, og listen er **udledt af `firebase.rules.json`**: et modul M
+  kræver N, hvis en node M ejer har et *påkrævet* felt der peger på en node N
+  ejer. I dag `booking → kunder` og `warehouse → kunder`, fordi `bookinger`,
+  `varer`, `enheder` og `plukordrer` alle har et påkrævet `kundeId`.
+  Brug `manglendeKrav()` — `kundeopret`, `kundemoduler` og konsollen kalder
+  den samme.
+  ⚠ **Der tilføjes ikke automatisk.** Et manglende modul er noget kunden ikke
+  har købt; at slå det til ville forære det væk eller fakturere for noget han
+  ikke bad om. Afvis, og sig hvad der mangler — som med momssatsen.
+  ⚠ **Det er ikke nav-punkternes `kraeverModul`**, som skjuler et MENUPUNKT.
+  En skjult menu gør bare et ubrugeligt modul usynligt.
+  ⚠ **Og delt ejerskab er ikke et krav:** `reolpladser` ejes af både
+  unitbooking og warehouse, så en unitbooking-kunde har den allerede.
+  Se beslutning 93.
 - **Opfinde en id-konvention i den fil der PEGER.** `materialelinjer.lagerId`
   sagde `lager-hoved` mens lagrene hedder `lag-kolding`; `ind-006.indkoebId`
   sagde `ink-2026-0844` mens linjerne hedder `il-003`. Tre konventioner for

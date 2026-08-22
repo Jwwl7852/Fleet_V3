@@ -6750,3 +6750,90 @@ Det er sin egen beslutning: enten skal provisioneringen springe de noder over
 som tenantens `moduler` ikke ejer, eller også skal en tenant uden Planning
 ikke have et fakturagrundlag. Begge dele ændrer hvad DEV *er*, og det er ikke
 en oprydning man laver i forbifarten.
+
+---
+
+## 93. Et modul der ikke kan virke alene, sælges ikke alene
+
+`kundemoduler` tog imod enhver kombination af kendte moduler. Kombinationen
+**Planning uden Kunder** var ikke forbudt — den var bare umulig.
+
+`bookinger` har `hasChildren(['kundeId', 'tilstand'])`. `kunder` er sit eget
+modul, og modulklausulen lukker noden for en kunde der ikke har det. En kunde
+med Planning og uden Kunder kan altså **ikke oprette én eneste booking**:
+reglen kræver et `kundeId`, og noden det peger på er lukket for ham.
+
+Han har betalt for et modul der afviser hver skrivning, og det ville først
+vise sig hos ham.
+
+### ⚠ Kravene er UDLEDT, ikke skrevet af
+
+Et modul M kræver modul N, hvis en node M ejer har et **påkrævet** felt der
+peger på en node N ejer. Regnet ud af `firebase.rules.json`:
+
+| Node | Påkrævet felt | → | Modul |
+|---|---|---|---|
+| `bookinger` | `kundeId` | `kunder` | booking → **kunder** |
+| `varer` | `kundeId` | `kunder` | warehouse → **kunder** |
+| `enheder` | `kundeId` | `kunder` | warehouse → **kunder** |
+| `plukordrer` | `kundeId` | `kunder` | warehouse → **kunder** |
+
+To krav, og begge er sande om produktet: en booking er for en kunde, og
+lagerhotellets gods tilhører en kunde.
+
+`test/modulkrav.test.mjs` regner listen ud af regelfilen igen og holder den op
+mod `MODUL_KRAEVER`. Får en node et nyt påkrævet felt der krydser en
+modulgrænse, bliver prøven rød — og så skal nogen tage stilling, frem for at
+opdage det hos en kunde.
+
+⚠ **Og et felt prøven ikke kender, kan skjule et krav.** Springer den et
+påkrævet `*Id` over, siger den ikke "intet krav" — den siger ingenting. Derfor
+kræver den at hvert påkrævet `*Id`-felt har en kendt målnode; den fandt
+`plukordrer.afsendCarrierId` med det samme.
+
+⚠ **Delt ejerskab er ikke et krav.** `reolpladser` ejes af BÅDE `unitbooking`
+og `warehouse`, og den første udgave af udledningen læste det som *"unitbooking
+kræver warehouse"*. En unitbooking-kunde HAR noden; et krav der peger på noget
+han allerede har, er støj der ville have kostet ham et modul.
+
+### ⚠ Der tilføjes ikke automatisk
+
+Den nærliggende rettelse er at slå `kunder` til for ham. Den er forkert i
+begge retninger: enten forærer vi et modul væk, eller også fakturerer vi for
+noget han ikke har bedt om.
+
+`kundeopret` og `kundemoduler` **afviser** og siger hvad der mangler. Samme
+retning som at en momssats ikke gættes: det rigtige svar er at spørge.
+
+⚠ **Begge veje ind.** Stod tjekket kun i `kundemoduler`, kunne en kunde fødes
+med en umulig kombination.
+
+### Hvad det IKKE er
+
+**Nav-punkternes `kraeverModul`** skjuler et menupunkt for en kunde der
+mangler modulet bag det. Det her er om modulet overhovedet kan bruges — en
+skjult menu ville bare gøre et ubrugeligt modul usynligt.
+
+Konsollen viser kravet og slår Gem fra, men det er kun for at man ikke skal
+gætte hvorfor: **serveren afviser med den samme funktion.** Skærmen VISER;
+funktionen HÅNDHÆVER.
+
+### Det arbejdet fandt
+
+**1. Ingen tenant bryder kravet i dag** — målt på begge før håndhævelsen blev
+slået til. `demo` har alle moduler; `nordvest` har hverken booking, warehouse
+eller kunder. Havde en kunde stået i en umulig kombination, ville et krav
+indført bagfra have låst ham ude af sin egen konsol.
+
+**2. Målingen kom af et andet spørgsmål.** Jeg talte hvor mange skærme der
+læser en node et andet modul ejer: **36 steder**. De fleste er legitime
+afhængigheder — Planning har brug for køretøjer, Warehouse for kunder — og de
+skal ikke alle blive til krav. En skærm der viser et leverandørnavn, skal
+kunne undvære det; en node med et påkrævet `kundeId` kan ikke. **Reglerne er
+den eneste kilde der kan skelne de to**, og det er derfor kravet udledes af
+dem frem for af skærmene.
+
+**3. `ALLE_MODULER` skulle flyttes op.** `manglendeKrav()` læser den, og en
+konstant der bruges før sin egen erklæring kaster *"Cannot access before
+initialization"* ved **import** — altså hele modulet, ikke bare funktionen.
+Samme fælde som selvkontrollen i `demo-indkoeb.js` (beslutning 74).

@@ -31,6 +31,7 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   MODUL, VALGFRIE_MODULER, OBLIGATORISKE_MODULER, harModul,
+  manglendeKrav, kravtekst,
 } from "../../fleet/moduler.js";
 import {
   ABONNEMENT, ALLE_ABONNEMENTSTATUS, AARSAG, ALLE_AARSAGER, opbevaresTil,
@@ -189,6 +190,13 @@ function Moduler({ kunde, paaGemt }) {
   const tilfoejet = valgte.filter((m) => !nuHar.includes(m));
   const modulerAendret = fjernet.length > 0 || tilfoejet.length > 0;
 
+  /* ⚠ ET MODUL DER IKKE KAN VIRKE ALENE. `bookinger` og `varer` har et
+     PÅKRÆVET `kundeId`, så Planning eller Warehouse uden Kunder er et
+     modul kunden ikke kan bruge til noget — reglen afviser hver
+     skrivning. Serveren afviser med den SAMME funktion; knappen her er
+     kun til for at man ikke skal gætte hvorfor. Se beslutning 93. */
+  const mangler = manglendeKrav(valgte);
+
   const tilBps = (v) => {
     if (String(v).trim() === "") return 0;
     const n = Number(String(v).replace(",", "."));
@@ -292,8 +300,22 @@ function Moduler({ kunde, paaGemt }) {
         </div>
       )}
 
+      {mangler.length > 0 && (
+        <div className="fc-empty fc-empty-bad" style={{ marginTop: 12 }}>
+          <p><b>{kravtekst(mangler)}.</b></p>
+          <p className="fc-hint" style={{ marginTop: 6 }}>
+            En booking og en lagervare bærer begge et <b>påkrævet kundeId</b>,
+            og kundekartoteket er sit eget modul. Uden det afviser reglerne
+            hver eneste skrivning — kunden ville betale for et modul han ikke
+            kan bruge. Vælg <b>Kunder &amp; Priser</b> til, eller fravælg
+            modulet.
+          </p>
+        </div>
+      )}
+
       <div className="fc-formular-knapper" style={{ marginTop: 12 }}>
-        <Knap variant="primaer" disabled={!modulerAendret || gemmerModuler}
+        <Knap variant="primaer"
+              disabled={!modulerAendret || gemmerModuler || mangler.length > 0}
               onClick={gemModuler}
               title="Gælder med det samme.">
           {gemmerModuler ? "Gemmer …" : "Gem moduler"}

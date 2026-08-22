@@ -151,6 +151,74 @@ export const MODUL = {
 
 export const ALLE_MODULER = Object.keys(MODUL);
 
+/* ⚠ ALLE_MODULER STÅR FØR KRAVBLOKKEN MED VILJE. `manglendeKrav()` læser
+   den, og en konstant der bruges før sin egen erklæring, kaster
+   "Cannot access before initialization" ved IMPORT — altså hele modulet,
+   ikke bare funktionen. Samme fælde som selvkontrollen i demo-indkoeb.js. */
+/* ══════════════════════════════════════════════════════════════════════════
+   HVAD ET MODUL KRÆVER FOR OVERHOVEDET AT VIRKE — beslutning 93
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ IKKE EN SMAGSSAG. Kravene er UDLEDT af `firebase.rules.json`: et modul M
+   kræver modul N, hvis en node M ejer har et **påkrævet** felt der peger på
+   en node N ejer.
+
+     bookinger  hasChildren(['kundeId', …])  → kunder
+     varer      hasChildren(['kundeId', …])  → kunder
+     enheder    hasChildren(['kundeId', …])  → kunder
+     plukordrer hasChildren(['kundeId', …])  → kunder
+
+   Sælges Planning uden Kunder, kan kunden **ikke oprette én eneste
+   booking**: reglen kræver et `kundeId`, og noden det peger på er lukket for
+   ham. Han har betalt for et modul der afviser hver skrivning.
+
+   ⚠ OG DET ER IKKE ET SKÆRMSPØRGSMÅL. Nav-punkternes `kraeverModul` skjuler
+   et MENUPUNKT; det her er om modulet kan bruges. En skjult menu ville bare
+   gøre et ubrugeligt modul usynligt.
+
+   ⚠ DER TILFØJES IKKE AUTOMATISK. Et manglende modul er noget kunden ikke
+   har købt, og at slå det til for ham ville være at give noget væk — eller
+   at fakturere for noget han ikke bad om. `kundemoduler` AFVISER og siger
+   hvad der mangler. Samme retning som momssatsen: vi gætter ikke.
+
+   ⚠ TALLET ER TO, OG DET SKAL BLIVE VED AT VÆRE UDLEDT.
+   `test/modulkrav.test.mjs` regner listen ud af regelfilen igen og fejler
+   hvis den ikke passer med tabellen her. Får en node et nyt påkrævet felt
+   der krydser en modulgrænse, bliver prøven rød — og så skal nogen tage
+   stilling, frem for at opdage det hos en kunde. */
+export const MODUL_KRAEVER = {
+  booking: ["kunder"],
+  warehouse: ["kunder"],
+};
+
+/**
+ * Hvilke moduler mangler, hvis kunden får præcis `valgte`?
+ *
+ * → `[{ modul, kraever }]`, tom når alt er i orden.
+ *
+ * ⚠ DE OBLIGATORISKE TÆLLER MED. `dashboard`, `support` og `opsaetning` er
+ * `altid: true` og står sjældent i en nyttelast — men de ER der, og et krav
+ * til dem skal ikke kunne fælde et gyldigt valg.
+ */
+export function manglendeKrav(valgte = []) {
+  const har = new Set([...valgte, ...ALLE_MODULER.filter((m) => MODUL[m].altid)]);
+  const mangler = [];
+  for (const modul of har) {
+    for (const kraever of MODUL_KRAEVER[modul] || []) {
+      if (!har.has(kraever)) mangler.push({ modul, kraever });
+    }
+  }
+  return mangler;
+}
+
+/** Sætningen brugeren skal læse. Ét sted — konsollen og serveren siger det samme. */
+export const kravtekst = (mangler = []) =>
+  mangler
+    .map(({ modul, kraever }) =>
+      `${MODUL[modul]?.label || modul} kræver ${MODUL[kraever]?.label || kraever}`)
+    .join(", ");
+
+
 /** De moduler en kunde kan vælge til og fra. */
 export const VALGFRIE_MODULER = ALLE_MODULER.filter((m) => !MODUL[m].altid);
 

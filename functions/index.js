@@ -98,7 +98,9 @@ import {
 import {
   tjekLedigMod, konfliktTekst, indeslutninger, tjekLedigIndesluttet,
 } from "./delt/reservations.js";
-import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
+import {
+  modulsaet, ukendteModuler, ALLE_MODULER, manglendeKrav, kravtekst,
+} from "./delt/moduler.js";
 import {
   ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER, historikposter, valideHistorikpost,
 } from "./delt/abonnement.js";
@@ -750,6 +752,14 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
   if (ukendte.length) {
     throw new HttpsError("invalid-argument", `Ukendte moduler: ${ukendte.join(", ")}`);
   }
+  /* ⚠ OGSAA VED OPRETTELSEN. Stod tjekket kun i `kundemoduler`, kunne en
+     kunde fødes med en kombination der ikke kan bruges — og så ville den
+     første fejl vise sig hos ham, ikke her. Se beslutning 93. */
+  const manglerVedOpret = manglendeKrav(valgte);
+  if (manglerVedOpret.length) {
+    throw new HttpsError("failed-precondition",
+      `${kravtekst(manglerVedOpret)}. Vælg det til, eller fravælg modulet.`);
+  }
 
   /* ⚠ OVERSKRIVER IKKE. En eksisterende tenant har data og brugere, og et
      "opret" der stille nulstillede virksomhedsnavnet ville være en meget dyr
@@ -806,6 +816,23 @@ export const kundemoduler = onCall({ region: REGION }, async (req) => {
   if (ukendte.length) {
     throw new HttpsError("invalid-argument", `Ukendte moduler: ${ukendte.join(", ")}`);
   }
+
+  /* ⚠ ET MODUL DER IKKE KAN VIRKE ALENE, SÆLGES IKKE ALENE.
+     `bookinger`, `varer`, `enheder` og `plukordrer` har alle et PÅKRÆVET
+     `kundeId`, og `kunder` er et modul for sig. Sælges Planning eller
+     Warehouse uden Kunder, afviser reglen hver eneste skrivning — kunden
+     har betalt for et modul der ikke kan bruges til noget.
+
+     ⚠ DER TILFØJES IKKE AUTOMATISK. Et manglende modul er noget kunden
+     ikke har købt; at slå det til for ham ville enten forære det væk eller
+     fakturere for noget han ikke bad om. Vi afviser og siger hvad der
+     mangler. Se beslutning 93. */
+  const mangler = manglendeKrav(d.moduler);
+  if (mangler.length) {
+    throw new HttpsError("failed-precondition",
+      `${kravtekst(mangler)}. Vælg det til, eller fravælg modulet.`);
+  }
+
   if (!(await kundeFindes(id))) {
     throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
   }
