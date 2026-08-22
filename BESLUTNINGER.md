@@ -6299,3 +6299,147 @@ filen er skrevet direkte frem for genereret: **en streng fuld af escapes er
 præcis den slags der overlever en kopiering forkert.** Samme lærestreg som
 `` `n ``-fælden i beslutning 82 — et værktøj der næsten kan noget, koster mere
 end det sparer.
+
+---
+
+## 89. Abonnementshistorikken — og et dokument der modsagde sig selv
+
+`tenants/<id>/abonnementHistorik` er nu bygget: én append-only log over hvad
+der blev ændret i en kundes abonnement, skrevet af `kundeopret`,
+`kundemoduler`, `kundestatus` og `kundeabonnement` i **samme opdatering** som
+ændringen selv.
+
+### ⚠ Det første fund var ikke kode — det var en modsigelse
+
+ABONNEMENT.md sagde begge dele om den samme node:
+
+> **Afsnit 6, punkt 2:** *"`abonnementHistorik` — skrevet af `kundestatus` og
+> `kundemoduler` i samme kald som auditposten. Den er værdifuld fra første dag
+> og umulig at lave bagud."* … *"Punkt 2 er det eneste der bliver dyrere af at
+> vente."*
+
+> **Afsnit 7:** *"Afsnit 2 foreslog `abonnementHistorik`. Den er droppet."*
+
+Ét dokument, to afsnit, modsat svar. Jeg læste selv afsnit 6 først og
+rapporterede noden som **manglende og hastende** — og opdagede først afsnit 7
+da arbejdet var i gang.
+
+**Afsnit 7 havde ret om det den handlede om.** Den daglige måling
+(`udbyder/maalinger/<kunde>/<dato>`) kom EFTER afsnit 2 blev skrevet, og den
+bærer både status og modulliste. `sammenfatMaalinger()` regner `moduldage` og
+`dageFaktureres` af den. **Regningen er en optælling af dage, og den optælling
+findes allerede.**
+
+En historik der også talte dage, ville være to kilder til ét tal — og så
+skulle nogen afgøre hvilken der havde ret om en faktura der var sendt. Det er
+`bemanding.ledig` (71) og Bil 104 med to nummerplader, med penge på.
+
+### ⚠ Men afsnit 7 lukkede et spørgsmål den ikke havde stillet
+
+Den skrev: *"Auditloggen beholder sin egen post: den svarer på hvem der slog
+modulet fra."*
+
+Det gør den ikke. Målt i koden:
+
+| | Hvad auditposten faktisk bærer |
+|---|---|
+| `kundemoduler` | noten `moduler; fravalgt: warehouse` — **et TILVALG står der overhovedet ikke** |
+| `kundeabonnement` | `rabat 1500 bps` som fri tekst. Ingen "før" |
+| Alle | `note` afkortet ved 120 tegn, `LOGBARE_FELTER` filtrerer værdier væk |
+| Alle | retention 24 måneder, mens bogføringspligten peger mod fem år |
+
+En sætning der siger at et spørgsmål er dækket, er farligere end ingen
+sætning: den får nogen til at lade være med at kigge. Samme fejlklasse som
+README's nodetabel i beslutning 52 og Status-tallene i 88 — tre gange i denne
+uge, og hver gang var det dokumentationen der løj, ikke koden.
+
+### Hvad den så er
+
+**Hvem, hvad, før, efter og hvorfor — aldrig et dagsantal.**
+
+| Art | Bærer |
+|---|---|
+| `modul` | `modul`, `til` |
+| `status` | `status`, `aarsag` (allowliste, valgfri) |
+| `rabat` | `rabatBps`, `foerBps`, og `modul` når det er en modulrabat |
+
+⚠ **`rabat` stod ikke i forslaget, og den er den vigtigste af de tre.**
+`linjerForPeriode()` får ÉN `rabatBps` for hele perioden — den der står på
+abonnementet når grundlaget genereres. **En rabat sat den 20. prissætter også
+de nitten dage der allerede er gået**, og det sker i tavshed. Dagene kan
+tælles i målingerne; rabatskiftet kan kun ses i loggen.
+
+### ⚠ Posterne udledes af FORSKELLEN, ikke af kaldet
+
+Ejerkonsollen sender hele modulsættet hver gang der trykkes Gem, også når
+intet er ændret. Loggede vi kaldet, ville der stå en post hver gang nogen
+kiggede og gemte igen — **og en log fuld af hændelser der ikke skete, kan ikke
+bruges til at forklare en regning.**
+
+`historikposter({ foer, efter })` kan ikke lyve om det: ændrede intet sig, er
+listen tom, og der skrives ingenting. Et kald der slår Warehouse til og
+Facility fra, giver **to** poster — det var to ting der skete.
+
+Og en rettet årsag giver også en post, selvom statussen er den samme: sættes
+en kunde på pause med `betaling` og rettes årsagen bagefter, ville en log der
+kun så på statussen stå med den forkerte grund for altid.
+
+### ⚠ Kun udbyderen læser den — og det var besluttet i forvejen
+
+Historikken er den ene node under en tenant som **kunden ikke må læse**.
+Grunden står i `abonnement.js` og er ældre end noden: om `aarsag` står der at
+*"hvorfor han er lukket, hører i en samtale, ikke i en skærm."* En log kunden
+kunne åbne, ville sige "Manglende betaling" på hans egen skærm.
+
+Naboen `abonnement` **er** kundens, fordi låseskærmen skal kunne tegne status
+— og den viser aldrig årsagen. Reglen har med vilje ingen abonnementsklausul:
+skal ejeren forstå hvorfor en kunde blev sat på pause, er det præcis mens
+kunden ER på pause.
+
+`test/rules.abonnement.test.mjs` holder listen over regler med udbyder-claim'et
+— den er nu ni lang, og hver ny er *"en udvidelse af den anden krydsning af
+tenant-grænsen, og den skal besluttes, ikke opdages."*
+
+### Vejen ind
+
+`.write: false`, som `opgaver` (45), `kasseudlaan` (37), `enheder` (39) og
+`roller` (31b). Det er vejen der er lukket, ikke retten: en append-only log en
+klient kunne skrive i, kunne også **rettes** i — `.write` kaskaderer, så en
+tilladelse på noden ville give hver eneste post med.
+
+⚠ **Og `.validate`-blokken kan ikke nås af nogen.** Klienten stoppes af
+`.write: false`; Admin SDK går uden om begge dele. Formen håndhæves derfor af
+`valideHistorikpost()`, og reglen beskriver den. Samme arbejdsdeling som
+`valideOpgaveplan()` — og en prøve holder de to allowlister ens, felt for felt,
+så `$andet: false` og `HISTORIK_FELTER` ikke kan drive.
+
+### Udgangspunktet er også en hændelse
+
+`kundeopret` skriver kundens startmoduler og `aktiv` som poster. Skrev vi kun
+ÆNDRINGER, ville loggens første post være det første fravalg, og så kunne man
+ikke se hvad kunden startede med. **En log der begynder ved den anden
+hændelse, kan ikke rekonstruere den første tilstand.**
+
+For kunder oprettet før i dag findes den ikke. Målt i DEV: **én kunde i
+indekset, 0 historikposter, 12 dages målinger.** Konsollen siger det på
+skærmen frem for at tegne en tom liste, der ligner "der er aldrig sket noget".
+
+### Det arbejdet fandt
+
+**1. En rod-opdatering er et `set()` på hver af sine nøgler.**
+`kundestatus` bar allerede en advarsel om `set()` mod `update()`: et `set()`
+ville tørre `rabatBps`, `interval` og `startetMs` væk, og *"rabatten ville
+forsvinde lydløst, og den næste faktura ville være til fuld pris."* Den samme
+fælde findes én etage højere: en multi-path update med
+`tenants/<id>/abonnement` som **nøgle** sætter hele noden. Felterne skrives
+derfor ét ad gangen med hver sin sti.
+
+**2. Generatoren var bygget, og jeg havde lige sagt det modsatte.**
+I gennemgangen af hvad der mangler, skrev jeg at generatoren og eksporten ikke
+var bygget. `grundlagopret` **er** generatoren — den fryser en periode og
+afviser at overskrive. Kun eksporten mangler, og `eksporter()` kaldes stadig
+ingen steder.
+
+**3. To lag backslash forsvandt igen.** Politikken blev først skrevet gennem
+en heredoc, og både `\|` og `/\*/g` blev spist. Filerne er skrevet direkte —
+anden gang på to etaper, og lærestregen fra 88 står ved magt.

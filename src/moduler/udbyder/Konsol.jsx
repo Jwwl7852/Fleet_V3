@@ -34,6 +34,7 @@ import {
 } from "../../fleet/moduler.js";
 import {
   ABONNEMENT, ALLE_ABONNEMENTSTATUS, AARSAG, ALLE_AARSAGER, opbevaresTil,
+  HISTORIK_ART, historikListe, historiktekst,
 } from "../../fleet/abonnement.js";
 import { nytLoesen, erGyldigMail } from "../../fleet/brugere-regler.js";
 import {
@@ -72,6 +73,70 @@ async function hentKunder() {
 }
 
 /* ---- Delskærme --------------------------------------------------------- */
+
+/**
+ * Abonnementshistorikken for én kunde.
+ *
+ * ⚠ HENTES FØRST NÅR KUNDEN ÅBNES. Kundelisten koster allerede tre opslag pr.
+ * kunde; et fjerde for en log ingen kan se i listen, ville gøre forsiden
+ * langsommere for at vise noget der ikke står der.
+ *
+ * ⚠ OG DEN VISER IKKE ET TAL. Hvor mange dage kunden havde et modul, tælles i
+ * `udbyder/maalinger` — det er DEN der bliver til en regning. Stod der et
+ * dagsantal her også, ville nogen før eller siden lægge de to sammen eller
+ * vælge den forkerte. Se beslutning 89.
+ */
+function Historik({ kunde }) {
+  const [poster, saetPoster] = useState(null);
+  const [fejl, saetFejl] = useState(false);
+
+  useEffect(() => {
+    let levende = true;
+    saetPoster(null);
+    saetFejl(false);
+    db.ref(`tenants/${kunde.id}/abonnementHistorik`).once("value")
+      .then((s) => { if (levende) saetPoster(historikListe(s.val())); })
+      .catch(() => { if (levende) saetFejl(true); });
+    return () => { levende = false; };
+  }, [kunde.id]);
+
+  if (fejl) {
+    return (
+      <p className="fc-hint">
+        Historikken kunne ikke hentes. Noden læses kun med udbyderadgang.
+      </p>
+    );
+  }
+  if (poster === null) return <Henter hvad="historikken" />;
+
+  return (
+    <>
+      <Tabel
+        kolonner={[
+          { key: "ms", label: "Hvornår", render: (p) => dato(p.ms) },
+          { key: "art", label: "Slags",
+            render: (p) => (
+              <Pille tone={p.art === "status" ? "warn" : "info"}>
+                {HISTORIK_ART[p.art]?.label || p.art}
+              </Pille>
+            ) },
+          { key: "hvad", label: "Hvad skete der", render: (p) => historiktekst(p) },
+          { key: "af", label: "Af", render: (p) => <code>{p.afUid}</code> },
+        ]}
+        raekker={poster}
+        /* ⚠ IKKE "ingen ændringer". En tom liste betyder her to helt
+           forskellige ting, og den ene er ikke en oplysning om kunden. */
+        tom="Ingen historik. Loggen kom med beslutning 89 og kan ikke laves bagud — er kunden ældre, står hans ændringer kun i auditloggen."
+      />
+      <p className="fc-hint" style={{ marginTop: 10 }}>
+        Loggen er <b>append-only</b> og skrives i samme opdatering som selve
+        ændringen. Den forklarer <b>hvem og hvorfor</b> — hvor mange dage
+        kunden havde et modul, tælles i den daglige måling, som er dét
+        fakturagrundlaget regnes af.
+      </p>
+    </>
+  );
+}
 
 function Statuspille({ abonnement }) {
   const status = abonnement?.status || "aktiv";
@@ -711,6 +776,12 @@ export default function Konsol({ bruger }) {
             </Kort>
           </div>
         </Gitter>
+      )}
+
+      {aaben && (
+        <Kort titel={`Historik — ${aaben.virksomhed?.navn || aaben.id}`}>
+          <Historik kunde={aaben} />
+        </Kort>
       )}
 
       <p className="fc-hint">

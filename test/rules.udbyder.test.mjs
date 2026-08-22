@@ -10,7 +10,8 @@
  * Beslutning 24 tillod den FØRSTE krydsning (support) én gang, fordi hver
  * krydsning er et sted hvor en fejl giver én kunde adgang til en andens.
  * Den her er den anden. Prøven findes for at holde den så smal som den blev
- * skrevet: nøjagtig to noder pr. tenant, ingen af dem operationelle.
+ * skrevet: nøjagtig fire noder pr. tenant, ingen af dem operationelle — og
+ * den fjerde gaar KUN til udbyderen, ikke tilbage til kunden (beslutning 89).
  *
  * ⚠ SUITEN DÆKKER SIG SELV IND. Nodelisten læses ud af firebase.rules.json,
  * som i rules.tenant.test.mjs. Tilføjer nogen en node, og giver den ved et
@@ -47,14 +48,21 @@ function nodeliste() {
   return Object.keys(t).filter((k) => !k.startsWith(".") && !k.startsWith("$"));
 }
 
-/* De TRE noder udbyderen MED VILJE må læse. Står de her, er det fordi nogen
+/* De FIRE noder udbyderen MED VILJE må læse. Står de her, er det fordi nogen
    har besluttet det — alt andet skal fejle.
 
    ⚠ abonnement kom til med ejerkonsollen. Den er kundeposten, ikke kundedata:
    status, hvornår den blev ændret og af hvem. Konsollen kan ikke vise en
    kundeliste med "aktiv / på pause" uden den — og kunden selv skal kunne
    læse den, for det er DEN node der lukker alle de andre. */
-const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler", "abonnement"];
+/* ⚠ abonnementHistorik kom til med beslutning 89, og den er den FJERDE — men
+   den er ikke som de tre andre: den er læsbar for udbyderen ALENE. Kunden må
+   ikke se den, fordi `aarsag` står i posten, og om årsagen siger abonnement.js
+   at *"hvorfor han er lukket, hører i en samtale, ikke i en skærm."*
+
+   Retningen er altså den modsatte af de tre: `abonnement` krydser grænsen ud
+   til udbyderen OG bliver hos kunden; historikken bliver kun hos udbyderen. */
+const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler", "abonnement", "abonnementHistorik"];
 
 before(async () => {
   miljoe = await initializeTestEnvironment({
@@ -96,7 +104,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
   });
 
-  it("kan læse virksomhed, moduler og abonnement — og PRÆCIS de tre", async () => {
+  it("kan læse virksomhed, moduler, abonnement og historikken — og PRÆCIS de fire", async () => {
     const db = somUdbyder();
     for (const node of TILLADT_FOR_UDBYDER) {
       await assertSucceeds(get(ref(db, `tenants/${T_A}/${node}`)));
@@ -146,6 +154,22 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     const db = somKunde();
     await assertSucceeds(get(ref(db, `tenants/${T_A}/virksomhed`)));
     await assertSucceeds(get(ref(db, `tenants/${T_A}/moduler`)));
+  });
+
+  /**
+   * ⚠ HELLER IKKE SIN EGEN ABONNEMENTSHISTORIK.
+   *
+   * Den er den ene node under tenanten som KUNDEN ikke må læse, og det er
+   * ikke en stramning for stramningens skyld: `aarsag` står i posten, og om
+   * årsagen siger `abonnement.js` at *"hvorfor han er lukket, hører i en
+   * samtale, ikke i en skærm."* En log kunden kunne åbne, ville sige
+   * "Manglende betaling" på hans egen skærm.
+   *
+   * Naboen `abonnement` ER hans, fordi låseskærmen skal kunne tegne status —
+   * og den viser aldrig årsagen. Se beslutning 89.
+   */
+  it("kan IKKE læse sin egen abonnementshistorik", async () => {
+    await assertFails(get(ref(somKunde(), `tenants/${T_A}/abonnementHistorik`)));
   });
 
   it("kan IKKE læse en anden kundes virksomhed eller moduler", async () => {

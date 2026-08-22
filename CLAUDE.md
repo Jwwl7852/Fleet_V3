@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **88 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **89 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -149,6 +149,27 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   konteksten leverer det ikke, men destruktureringen fejler ikke; den giver
   `undefined`, tavst, og det er derfor de kunne blive stående.
   Se beslutning 87.
+- **Gøre `abonnementHistorik` til en faktureringskilde.** Regningen tælles i
+  `udbyder/maalinger/<kunde>/<dato>` — `sammenfatMaalinger()` regner
+  `moduldage` og `dageFaktureres` af den. Loggen bærer **hvem, hvad, før,
+  efter og hvorfor**, og **aldrig et dagsantal**: to kilder til ét tal driver,
+  og så skal nogen afgøre hvilken der havde ret om en faktura der er sendt.
+  En prøve forbyder generatoren at læse noden.
+  ⚠ **Og kunden må ikke læse den.** Den er den ene node under en tenant hvor
+  `.read` kun er udbyderens: `aarsag` står i posten, og om årsagen står der i
+  `abonnement.js` at *"hvorfor han er lukket, hører i en samtale, ikke i en
+  skærm."* Naboen `abonnement` er kundens, fordi låseskærmen skal tegne
+  status — men den viser aldrig årsagen.
+  ⚠ **Posterne udledes af FORSKELLEN, ikke af kaldet.** Konsollen sender hele
+  modulsættet hver gang der trykkes Gem. Brug `historikposter({foer, efter})`;
+  logger du kaldet, står der en post hver gang nogen kiggede og gemte igen.
+  Se beslutning 89.
+- **Skrive en node som ÉN nøgle i en rod-opdatering.** `update()` på roden er
+  et `set()` på hver af sine nøgler — `{"tenants/x/abonnement": {...}}` sætter
+  hele noden og tørrer `rabatBps`, `interval` og `startetMs` væk. Skriv felt
+  for felt: `tenants/x/abonnement/status`. Det er samme fælde som `set()` mod
+  `update()`, én etage højere oppe, og den rammer stille: rabatten forsvinder,
+  og næste faktura er til fuld pris.
 - **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
   `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler
   om*: reservationer, fravær, opgaver, etaper, kompetencer. Bytter du om,

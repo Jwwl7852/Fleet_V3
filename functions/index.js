@@ -97,7 +97,9 @@ import {
 } from "./delt/opgaveplan-regler.js";
 import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
-import { ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER } from "./delt/abonnement.js";
+import {
+  ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER, historikposter, valideHistorikpost,
+} from "./delt/abonnement.js";
 import { totalerAfLinjer } from "./delt/beloeb.js";
 import { erGyldigMail, MINDSTE_KODE } from "./delt/brugere-regler.js";
 import {
@@ -706,6 +708,32 @@ function kraevKundeId(d) {
 const kundeFindes = async (id) =>
   (await getDatabase().ref(`tenants/${id}/_findes`).once("value")).exists();
 
+/**
+ * Læg historikposterne i den opdatering der bærer selve ændringen.
+ *
+ * ⚠ SAMME update(), IKKE ET KALD MERE. Landede ændringen uden sin post,
+ * ville loggen mangle en hændelse der skete; landede posten uden ændringen,
+ * ville den forklare en tilstand kunden ikke har. Det er samme greb som
+ * `bevaegelseskriv` bruger på rækken og beholdningen (beslutning 39) og alle
+ * fire veje ind i `opgaver` bruger på opgaven og dens reservation.
+ *
+ * ⚠ OG FORMEN PRØVES HER, IKKE AF REGLEN. Admin SDK går uden om både `.write`
+ * og `.validate`, så `.validate`-blokken på noden beskriver formen uden at
+ * kunne håndhæve den mod os selv. `valideHistorikpost()` er håndhævelsen —
+ * samme arbejdsdeling som `valideOpgaveplan()` på `opgaver` (beslutning 45).
+ */
+function medHistorik(db, id, opdatering, poster) {
+  for (const post of poster) {
+    const fejl = valideHistorikpost(post, { kendteModuler: ALLE_MODULER });
+    if (fejl.length) {
+      throw new HttpsError("internal", `Ugyldig historikpost: ${fejl.join(" ")}`);
+    }
+    const noegle = db.ref(`tenants/${id}/abonnementHistorik`).push().key;
+    opdatering[`tenants/${id}/abonnementHistorik/${noegle}`] = post;
+  }
+  return opdatering;
+}
+
 export const kundeopret = onCall({ region: REGION }, async (req) => {
   const ejerUid = kraevUdbyder(req);
   const d = req.data || {};
@@ -745,6 +773,18 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
      kunden selv. */
   await db.ref(`udbyder/kunder/${id}`).set({ oprettetMs: nu });
 
+  /* ⚠ UDGANGSPUNKTET ER OGSÅ EN HÆNDELSE. Skrev vi kun ÆNDRINGER, ville
+     loggens første post være det første fravalg — og så kunne man ikke se
+     hvad kunden startede med. En log der begynder ved den anden hændelse,
+     kan ikke rekonstruere den første tilstand.
+
+     For kunder oprettet FØR beslutning 89 findes den ikke, og den kan ikke
+     laves bagud: skærmen siger det frem for at tegne en tom liste, der ligner
+     "der er aldrig sket noget". */
+  await db.ref().update(medHistorik(db, id, {}, historikposter({
+    foer: {}, efter: { moduler, status: "aktiv" }, afUid: ejerUid, ms: nu,
+  })));
+
   await log(id, ejerUid, AUDIT.opret, id, "kunde oprettet");
 
   /* ⚠ INGEN DEMO-DATA. Kunden skal se sit eget system tomt og opdage hvad
@@ -777,11 +817,23 @@ export const kundemoduler = onCall({ region: REGION }, async (req) => {
      auditposten — så det kan ses hvad der blev lukket, og hvornår. */
   const fjernet = Object.keys(foer).filter((m) => foer[m] === true && efter[m] !== true);
 
-  await db.ref(`tenants/${id}/moduler`).set(efter);
+  /* ⚠ ET KALD ER IKKE EN HÆNDELSE. Konsollen sender hele modulsættet hver
+     gang der trykkes Gem, også når intet er ændret — historikposterne udledes
+     derfor af FORSKELLEN. Loggede vi kaldet, ville der stå en post hver gang
+     nogen kiggede og gemte igen, og en log fuld af hændelser der ikke skete,
+     kan ikke bruges til at forklare en faktura. Se beslutning 89. */
+  const nu = Date.now();
+  const poster = historikposter({
+    foer: { moduler: foer }, efter: { moduler: efter }, afUid: ejerUid, ms: nu,
+  });
+
+  await db.ref().update(
+    medHistorik(db, id, { [`tenants/${id}/moduler`]: efter }, poster));
+
   await log(id, ejerUid, AUDIT.aendre, id,
     fjernet.length ? `moduler; fravalgt: ${fjernet.join(",")}` : "moduler");
 
-  return { ok: true, moduler: Object.keys(efter), fjernet };
+  return { ok: true, moduler: Object.keys(efter), fjernet, historik: poster.length };
 });
 
 export const kundestatus = onCall({ region: REGION }, async (req) => {
@@ -810,11 +862,29 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
      `aarsag` nulstilles med vilje, når der ikke er angivet nogen: en gammel
      årsag der blev stående efter en genåbning, ville forklare den forkerte
      hændelse. */
+  const db = getDatabase();
+  const nu = Date.now();
+  const foer = (await db.ref(`tenants/${id}/abonnement`).once("value")).val() || {};
   const post = {
-    status, aendretMs: Date.now(), aendretAf: ejerUid,
+    status, aendretMs: nu, aendretAf: ejerUid,
     aarsag: aarsag || null
   };
-  await getDatabase().ref(`tenants/${id}/abonnement`).update(post);
+
+  /* ⚠ FELT FOR FELT I ROD-OPDATERINGEN, IKKE NODEN SOM ÉN NØGLE. En
+     multi-path update med `tenants/<id>/abonnement` som nøgle ville SÆTTE
+     hele noden — og så var rabatBps, interval og startetMs væk. Det er
+     nøjagtig den fælde kommentaren ovenfor advarer om ved set() mod update(),
+     én etage højere oppe: en rod-opdatering er et set() på hver af sine
+     nøgler. */
+  const opdatering = {};
+  for (const [felt, vaerdi] of Object.entries(post)) {
+    opdatering[`tenants/${id}/abonnement/${felt}`] = vaerdi;
+  }
+
+  const poster = historikposter({
+    foer, efter: { status, aarsag: aarsag || null }, afUid: ejerUid, ms: nu,
+  });
+  await db.ref().update(medHistorik(db, id, opdatering, poster));
   /* ⚠ INGEN KONTO RØRES. Spærringen ligger på tenanten — beslutning 32.
      Sattes `disabled` på kundens logins, kunne genåbningen ikke rulles
      tilbage: de der var spærret individuelt ville blive åbnet med. */
@@ -1099,7 +1169,25 @@ export const kundeabonnement = onCall({ region: REGION }, async (req) => {
     throw new HttpsError("invalid-argument", "Intet at ændre.");
   }
 
-  await getDatabase().ref(`tenants/${id}/abonnement`).update(post);
+  const db = getDatabase();
+  const foer = (await db.ref(`tenants/${id}/abonnement`).once("value")).val() || {};
+
+  /* Felt for felt — samme grund som i kundestatus: en rod-opdatering med
+     noden som nøgle ville sætte den og tørre statussen væk. */
+  const opdatering = {};
+  for (const [felt, vaerdi] of Object.entries(post)) {
+    opdatering[`tenants/${id}/abonnement/${felt}`] = vaerdi;
+  }
+
+  /* ⚠ RABATSKIFTET ER DEN ENE ÆNDRING MÅLINGERNE IKKE KAN SE. `maaldagligt`
+     skriver status, moduler, brugere og køretøjer — ikke rabatten. Og
+     `linjerForPeriode()` får ÉN rabatBps for hele perioden, nemlig den der
+     står når grundlaget genereres: en rabat sat den 20. prissætter også de
+     nitten dage der allerede er gået. Uden historikken kan ingen se hvornår
+     det skete. Se beslutning 89. */
+  const poster = historikposter({ foer, efter: post, afUid: ejerUid, ms: post.aendretMs });
+  await db.ref().update(medHistorik(db, id, opdatering, poster));
+
   /* ⚠ RABATTEN ER ET TAL PÅ ALLOWLISTEN og må derfor stå i loggen. Kunden
      skal kunne se hvad der blev aftalt om hans egen regning. */
   await log(id, ejerUid, AUDIT.aendre, id,

@@ -132,30 +132,45 @@ kunne se det.
 
 ### Historikken — ÉN log, ikke to
 
+**Bygget i beslutning 89.** Som den ser ud nu:
+
 ```
-tenants/<id>/abonnementHistorik/<pushId>/
+tenants/<id>/abonnementHistorik/<pushId>/     .write: false, .read: KUN udbyder
   ms, afUid
-  art:    "modul" | "status"
-  modul:  "bemanding"        // art = modul
-  til:    true | false       // art = modul
-  status: "paused"           // art = status
-  aarsag: "betaling"         // art = status, allowliste
+  art:      "modul" | "status" | "rabat"
+  modul:    "bemanding"      // art = modul, og art = rabat pr. modul
+  til:      true | false     // art = modul
+  status:   "paused"         // art = status
+  aarsag:   "betaling"       // art = status, allowliste, valgfri
+  rabatBps: 1500             // art = rabat
+  foerBps:  0                // art = rabat
 ```
 
-Forslaget foreslog `modulHistorik`. **Statussen har samme problem:** en kunde
-der sættes på pause den 8. og genåbnes den 21., skal faktureres for to
-stykker af måneden — og `abonnement.status` kender kun nuet. To logs for det
-samme spørgsmål ("hvad havde kunden hvornår") ville drive.
+Forslaget foreslog `modulHistorik`. **Statussen hører i samme log:** to logs
+for det samme spørgsmål ("hvad blev ændret hvornår") ville drive.
 
-⚠ **Hvorfor ikke bare auditloggen?** Den skrives allerede ved hvert
-modulskift. Men den er skrevet til at kunne *stilles nogen til regnskab*, ikke
-til at *regne penge*: `note` er en afkortet streng på 120 tegn,
-`LOGBARE_FELTER` filtrerer værdier væk, og retention er 24 måneder mens
-bogføringspligten peger mod fem år. **En log man fakturerer efter, må ikke
-kunne afkortes.** De to skrives i samme kald, og de svarer på hver sit.
+⚠ **`rabat` er den tredje art, og den stod ikke i forslaget.** Den hører her
+af en grund de to andre ikke har: `linjerForPeriode()` får ÉN `rabatBps` for
+hele perioden — den der står når grundlaget genereres — så en rabat sat den
+20. prissætter også de nitten dage der allerede er gået. Dagene kan tælles i
+målingerne; rabatskiftet kan kun ses i loggen.
 
-⚠ **Historik kan ikke laves bagud.** Nordvest og demo har ingen. Første
-periode må faktureres på nuværende tilstand, og det skal stå på grundlaget.
+⚠ **Hvorfor ikke bare auditloggen?** Den skrives ved hvert modulskift, men den
+er skrevet til at kunne *stille nogen til regnskab*, ikke til at *forklare en
+regning*: `note` er afkortet ved 120 tegn, `LOGBARE_FELTER` filtrerer værdier
+væk, retention er 24 måneder mens bogføringspligten peger mod fem år — og
+noten fra `kundemoduler` nævner **kun de fravalgte** moduler. De to skrives i
+samme kald og svarer på hver sit.
+
+⚠ **KUN UDBYDEREN LÆSER DEN.** `aarsag` står i posten, og om årsagen står der
+i `abonnement.js`: *"hvorfor han er lukket, hører i en samtale, ikke i en
+skærm."* Naboen `abonnement` er kundens, fordi låseskærmen skal kunne tegne
+status — men den viser aldrig årsagen.
+
+⚠ **Historik kan ikke laves bagud.** Målt i DEV da mekanismen kom: én kunde i
+indekset (`nordvest`), **0 historikposter og 12 dages målinger**. Konsollen
+siger det på skærmen frem for at tegne en tom liste, der ligner "der er aldrig
+sket noget".
 
 ### Fakturagrundlaget — frosset
 
@@ -247,18 +262,39 @@ vænnet sig til den.
 
 ## 6. Rækkefølge
 
-1. **Reglerne for `abonnement`s tre nye felter + `udbyder/prisliste`.**
+1. ✅ **Reglerne for `abonnement`s tre nye felter + `udbyder/prisliste`.**
    Prøver, `regler:udrul`, efterprøvet mod driften.
-2. **`abonnementHistorik`** — skrevet af `kundestatus` og `kundemoduler` i
-   samme kald som auditposten. Den er værdifuld fra første dag og umulig at
-   lave bagud.
-3. **Prisliste-skærmen** i konsollen, og rabat pr. kunde.
-4. **Generatoren** — én funktion, der fryser en periode og aldrig rører den
-   igen. Med `laas` og `erstat` som i `grundlag.js`: en rettelse er et **nyt**
-   grundlag der henviser til det gamle, ikke en redigering.
-5. **Eksporten.**
+2. ✅ **`abonnementHistorik`** — bygget i **beslutning 89**, men *ikke* som
+   punktet her beskrev den. Se advarslen nedenfor.
+3. ✅ **Prisliste-skærmen** i konsollen, og rabat pr. kunde. `/main/priser`.
+4. ✅ **Generatoren** — `grundlagopret`. Den fryser en periode og rører den
+   aldrig igen; findes grundlaget, afvises kaldet.
+5. **Eksporten.** Ikke bygget. `eksporter()` bygger objektet og **kaldes
+   ingen steder** — og momssatsen pr. linjeart spærrer den alligevel.
 
-Punkt 2 er det eneste der bliver dyrere af at vente.
+⚠ **PUNKT 2 OG AFSNIT 7 MODSAGDE HINANDEN I MÅNEDSVIS.**
+
+Her stod *"skrevet af `kundestatus` og `kundemoduler` i samme kald som
+auditposten … værdifuld fra første dag og umulig at lave bagud"*, mens afsnit
+7 i det SAMME dokument skrev: *"Afsnit 2 foreslog `abonnementHistorik`. Den er
+droppet."* To afsnit, ét dokument, modsat svar — og punktet her stod som det
+eneste der blev dyrere af at vente, hvilket gjorde modsigelsen dyr at læse
+forkert.
+
+**Afsnit 7 havde ret om det den handlede om:** historikken må ikke være
+faktureringsgrundlaget. Det er `udbyder/maalinger`, som tæller DAGE, og to
+kilder til samme tal driver.
+
+**Men den lukkede et spørgsmål den ikke havde stillet.** Afsnit 7 skrev at
+*"auditloggen beholder sin egen post: den svarer på hvem"* — og det gør den
+ikke godt nok. `kundemoduler` skriver noten `moduler; fravalgt: warehouse`:
+**tilvalgte moduler står der slet ikke**, rabatten står som en afkortet
+streng, og hele noten er skåret ved 120 tegn med retention på 24 måneder mens
+bogføringspligten peger mod fem år.
+
+Historikken er derfor bygget som **struktureret hændelseslog** — hvem, hvad,
+hvorfra, hvortil og hvorfor — og **aldrig som et dagsantal**. Se beslutning
+89 og `abonnement.js`.
 
 ---
 
@@ -274,15 +310,25 @@ rekonstruere en top: en kunde med 30 chauffører den 3. og 8 den 31. ville
 blive faktureret for 8. Vælger man toppen, *skal* der samples — og en
 sampling kan ikke laves bagud.
 
-### Målingen erstatter den hændelseslog jeg selv foreslog
+### Målingen erstatter hændelsesloggen SOM FAKTURERINGSGRUNDLAG
 
-Afsnit 2 foreslog `abonnementHistorik`. Den er droppet. En daglig måling
+Afsnit 2 foreslog `abonnementHistorik` som det der skulle gøre en delvis måned
+fakturerbar. **Den rolle er droppet, og det står ved magt.** En daglig måling
 bærer **både** modullisten og statussen, så moduldage kan tælles direkte —
 dage hvor modulet var slået til. To kilder til "hvad havde kunden hvornår"
 ville drive fra hinanden, og målingen skal alligevel findes.
 
-Auditloggen beholder sin egen post: den svarer på **hvem** der slog modulet
-fra, og det er et andet spørgsmål end hvad der skal faktureres.
+⚠ **HER STOD DER MERE, OG DET VAR FORKERT.** Der stod: *"Auditloggen beholder
+sin egen post: den svarer på hvem der slog modulet fra."* Det gør den ikke.
+`kundemoduler` skriver noten `moduler; fravalgt: warehouse` — **et TILVALG
+står der overhovedet ikke**, rabatten står som `rabat 1500 bps` i fri tekst,
+noten er afkortet ved 120 tegn, `LOGBARE_FELTER` filtrerer værdier væk, og
+retention er 24 måneder.
+
+Sætningen fik altså et spørgsmål til at se besvaret ud. Derfor findes
+`abonnementHistorik` alligevel — men **kun** som struktureret hændelseslog med
+hvem, hvad, før, efter og hvorfor. Den bærer **intet dagsantal**, og en prøve
+forbyder generatoren at læse den. Se beslutning 89.
 
 ### Én måling i døgnet
 

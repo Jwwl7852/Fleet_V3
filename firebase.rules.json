@@ -153,6 +153,68 @@
 
           "$andet": { ".validate": false }
         },
+        // ══════════════════════════════════════════════════════════════
+        // ABONNEMENTSHISTORIKKEN — append-only, og ikke en faktureringskilde
+        // ══════════════════════════════════════════════════════════════
+        //
+        // Hvem aendrede hvad hvornaar, og hvorfor. Skrives af kundemoduler,
+        // kundestatus og kundeabonnement i SAMME opdatering som aendringen
+        // selv — landede den ene halvdel uden den anden, ville loggen
+        // forklare en tilstand kunden ikke har.
+        //
+        // ⚠ DEN ER IKKE GRUNDLAGET FOR REGNINGEN. Det er
+        // udbyder/maalinger/<kunde>/<dato>, som taeller DAGE. To kilder til
+        // samme tal driver — og en uenighed om en faktura der allerede er
+        // sendt, kan ingen afgoere bagefter. Loggen svarer paa HVEM og
+        // HVORFOR, som en maaling ikke kan. Se beslutning 89.
+        //
+        // ⚠ .write: false, OG DET ER VEJEN DER ER LUKKET — ikke retten.
+        // Samme ordning som opgaver (45), kasseudlaan (37) og roller (31b).
+        // En append-only log som en klient kunne skrive i, kunne ogsaa
+        // rettes i: `.write` kaskaderer, saa en tilladelse paa noden ville
+        // give hver eneste post med.
+        //
+        // ⚠ OG .validate HERUNDER KAN IKKE NAAS AF EN KLIENT. Den beskriver
+        // formen serveren skal overholde; haandhaevelsen ligger i
+        // valideHistorikpost() i abonnement.js, fordi Admin SDK gaar uden om
+        // baade .write og .validate. Skriv ikke en regelproeve der "afviser"
+        // en forkert post — den ville vaere groen fordi vejen er lukket.
+        //
+        // ⚠ KUN UDBYDEREN LAESER DEN — IKKE KUNDEN, OG DET ER ALLEREDE
+        // BESLUTTET ET ANDET STED. `aarsag` staar i posten, og om aarsagen
+        // siger abonnement.js: *"Den vises ikke for kunden — hvorfor han er
+        // lukket, hoerer i en samtale, ikke i en skaerm."* En log kunden
+        // kunne laese, ville sige "betaling" paa hans egen skaerm.
+        //
+        // Naboen `abonnement` ER laesbar for kunden, fordi laaseskaermen skal
+        // kunne tegne status. Den viser aldrig aarsagen. Historikken har
+        // ingen tilsvarende grund.
+        "abonnementHistorik": {
+          ".read": "auth != null && auth.token.udbyder === true",
+          ".write": false,
+          "$postId": {
+            ".validate": "newData.hasChildren(['ms', 'afUid', 'art'])",
+            "ms": { ".validate": "newData.isNumber()" },
+            "afUid": { ".validate": "newData.isString() && newData.val().length > 0" },
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(modul|status|rabat)$/)" },
+
+            // art = modul
+            "modul": { ".validate": "newData.isString() && newData.val().length > 0" },
+            "til": { ".validate": "newData.isBoolean()" },
+
+            // art = status. Samme allowliste som auditposten bruger; to
+            // lister ville betyde at en aarsag kunne staa i den ene log og
+            // ikke i den anden.
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|paused|opsagt)$/)" },
+            "aarsag": { ".validate": "newData.isString() && newData.val().matches(/^(betaling|kundeoensket|proeveperiodeUdloebet|fejloprettet)$/)" },
+
+            // art = rabat. Basispoint som heltal, som paa abonnementet.
+            "rabatBps": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000" },
+            "foerBps": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000" },
+
+            "$andet": { ".validate": false }
+          }
+        },
         "moduler": {
           ".read": "auth != null && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
           ".write": false

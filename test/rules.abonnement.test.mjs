@@ -165,6 +165,21 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
        laeses, og skaermen viste 'ingen prisliste endnu'. */
     assert.deepEqual(undtaget.map((r) => r.sti).sort(), [
       "/tenants/$tenantId/abonnement/.read",
+      /* ⚠ DEN NIENDE: abonnementshistorikken (beslutning 89). Den er den
+         ENESTE af dem der er laesbar for udbyderen ALENE — kunden faar den
+         ikke. Grunden staar i abonnement.js og er aeldre end noden: `aarsag`
+         staar i posten, og *"hvorfor han er lukket, hoerer i en samtale, ikke
+         i en skaerm."*
+
+         Naboen `abonnement` ER kundens, fordi laaseskaermen skal kunne tegne
+         status — men den viser aldrig aarsagen. Historikken har ingen
+         tilsvarende grund til at krydse den vej.
+
+         Og den har med vilje INGEN abonnementsklausul: skal ejeren forstaa
+         hvorfor en kunde blev sat paa pause, er det praecis mens kunden ER
+         paa pause. En klausul her ville lukke loggen i det oejeblik den blev
+         relevant. */
+      "/tenants/$tenantId/abonnementHistorik/.read",
       "/tenants/$tenantId/moduler/.read",
       "/tenants/$tenantId/virksomhed/.read",
       "/udbyder/fakturagrundlag/.read",
