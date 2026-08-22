@@ -195,6 +195,7 @@ tilfældigt.
 | 85 | **Varelageret — fjerde gang et lagernavn skal skilles fra et andet.** `forbrugsvarer` er VORES egne handsker og strækfilm; `varer` er Warehouses **kundegods** med påkrævet `kundeId`, `lagre` er reservedelslageret, og `warehouse` er reserveret. Alternativet — at regne kortet af Warehouse — ville bede os bestille noget en KUNDE mangler. ⚠ **Retningen kommer af ARTEN, ikke af et fortegn:** fire arter, altid positivt antal — et minus på et forbrug ville trække to gange. ⚠ **En optælling SÆTTER**, den lægger ikke til; uden den art skal den der tæller, regne forskellen i hovedet, og en fejl dér ser bagefter ud som svind. ⚠ **En negativ beholdning spærres ikke** — det skete jo, og en afvisning ville lade den rigtige hændelse gå tabt for at beskytte et tal der allerede var galt. ⚠ **Rækken og tallet i én `update()`** (39), men driften mellem dem vises på skærmen (71). ⚠ **Minimum er valgfrit, og manglen tælles** — "0 under minimum" betyder ellers både "fyldt op" og "ingen grænse". ⚠ **Og tre warehouse-prøver ankrede på hele regelfilen** og målte den forkerte node | `fleet/forbrugsvarer.js`, `fleet/varelager.js`, `moduler/indkoeb/Varelager.jsx`, `functions/index.js`, `firebase.rules.json` |
 | 86 | **Fakturacenteret — ét sted, én sandhed.** Alle fakturaer ind ét sted; systemet foreslår destinationen. ⚠ **Ingen ny node** — `fakturaer/` ER den fælles node, og regelfilen sagde hvorfor: den har med vilje ingen modulklausul. ⚠ **Men noden er fælles og skærmen er ikke:** `oekonomi` ER et modul (målt, ikke antaget — min første prøve påstod det modsatte). En kunde uden Økonomi ser stadig sine fakturaer gennem Procures linse; det han mangler, er den TVÆRGÅENDE visning. ⚠ **`ordreId` var ét moduls svar på et fælles spørgsmål** → `destinationArt` + `destinationId`. Flade felter, fordi `.indexOn` kun kan pege på et direkte barn. Målt: 20 fakturaer, alle seedede — billigt nu, dyrt senere. Og `ordreId` betød i forvejen TO ting (indkøbsordre og **plukordre**). ⚠ **Ingen warehouse-destination:** 3PL er kundens gods, som VI fakturerer for — der kommer ingen leverandørfaktura ind på den forretning. Arten hedder `lager`. ⚠ **Kun et nummer giver 100 %**, og bilen genkendes på kaldenavn/plade — ikke på vores id, som leverandøren aldrig har set. ⚠ **Og et filnavn er ikke en placering:** `flaade/Oversigt.jsx` er trods navnet Opsætning → Enheder | `fleet/fakturacenter.js`, `moduler/oekonomi/Fakturacenter.jsx`, `fleet/Modulfakturaer.jsx`, `functions/index.js`, `firebase.rules.json` |
 | 87 | **Divisionsefterslæbet — aksen levede i skærmene, ikke i reglerne.** 70 fjernede aksen, 79 tog resten i shellen og reglerne, og to prøvefiler var grønne hele vejen — **fordi ingen af dem læste `src/moduler/`**. En lint der springer noget over, siger ikke nej; den siger ingenting (2. gang, jf. 56). ⚠ **Og det var ikke kosmetik:** `facility/Servicedialog.jsx` havde et **påkrævet** Division-felt på `opgaver`, hvis regel har `.validate: false` på feltet — **servicebesøg kunne ikke oprettes**, i begge retninger. Opsætning → Generelt havde et kort der sagde **"Divisioner: Gods og bus"** til kunden. Fire filtre sammenlignede `x.division === division`, hvor **begge sider var `undefined`** — en no-op der så ud som en afgrænsning. `Kunder.jsx` skrev altid "i godsafdelingen". Værkstedskalenderen sendte `&division=undefined` i en URL ingen læste. To navne løj: `iDivision`, `opgaverIDivision`. ⚠ **Loftet er nu et forbud** — nul levende forekomster, med én undtagelse for de syv sætninger der forklarer at feltet ikke findes (en prøve der råber ad det korrekte, bliver slået fra). Dertil: **ingen skærm må destrukturere `division` ud af `useFleet()`** — det havde alle seks fund til fælles, og **en destrukturering af et felt der ikke findes, er tavs**. ⚠ **"Moduler: 0" var tredje gang** en manglende `moduler`-node blev læst som INGEN i stedet for ALLE (56, 86, 87) — set på skærmen, ikke i koden. ⚠ **Og jeg slettede for meget:** patchens anker spændte til filens sidste `});` og åd de ti oprindelige prøver; genskabt fra git | 14 modulskærme, `test/division-fjernet.test.mjs` |
+| 88 | **Status-afsnittet — et tal ingen prøve holder, driver.** README's Status er dét afsnit dokumentet selv beder én læse efter en pause. Det stod med **957 tests** da der var 2619, og med **27 af 30 skærme** da der var 54 — og overskriften og tabellen to linjer under den var uenige med hinanden, 27 mod 29. ⚠ **Ingen af tallene var løgn da de blev skrevet.** De blev det af at produktet voksede: Warehouse med elleve skærme, Unitbooking med fire, Procure med fire nye. **Et tal skrevet i hånden kan kun blive forkert.** ⚠ **Samme fejlklasse som 52**, som er grunden til at `dokumentation.test.mjs` findes: en drevet tabel sagde at en spærring MANGLEDE, og derfor kiggede ingen på om den virkede. Den fil vogtede tabellen; tallene ved siden af var uvogtede. ⚠ **`statustal.test.mjs` læser nu skærmtallet ud af `nav.js`** — det ene sted en rute kan opstå — og prøvefiltallet ud af `test/`, og kræver at hver række, totalen OG overskriften siger det samme. ⚠ **Det samlede prøvetal står der ikke længere:** det kan kun måles ved at KØRE suiten, og **en prøve kan ikke tælle sig selv**. ⚠ **Og tre lag backslash forsvandt undervejs** — `\|` → `|` → `|`, og `/*/g` → `/*/g`. Tabellen læses nu med `split("|")`, og filen er skrevet direkte frem for genereret | `README.md`, `test/statustal.test.mjs` |
 
 ## Struktur
 
@@ -252,12 +253,26 @@ src/
 
 ## Status
 
-Opdateret 9. august 2026. **Start her efter en pause.**
+Opdateret 22. august 2026. **Start her efter en pause.**
 
-**Kernen er på plads.** Nitten byggeklodser i `fleet/` er i brug på tværs af
-skærme, og **957 tests** kører via `npm test`. `.githooks/pre-commit` gør dem
-obligatoriske dér hvor de hører til: regeltestene når `firebase.rules.json`
-ændres, designtestene når `src/` ændres.
+⚠ **TALLENE HERUNDER ER MÅLTE, IKKE SKREVNE.** Der stod *957 tests* og
+*27 af 30 skærme* i månedsvis; der var 2619 og 54. Overskriften og tabellen
+under den var endda uenige med hinanden — 27 mod 29 — og det er dét afsnit
+man læser efter en pause. Et forkert tal i Status er samme fejlklasse som
+beslutning 52: en drevet tabel sagde at en spærring manglede, og derfor
+kiggede ingen på om den virkede.
+
+**Derfor står der ikke længere et tal her som ingen prøve holder.**
+`test/dokumentation.test.mjs` læser skærmtallet ud af `nav.js` og
+prøvefiltallet ud af `test/`, og fejler hvis README siger noget andet. Det
+samlede antal prøver står der IKKE: det kan kun måles ved at køre suiten, og
+et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
+en kendsgerning.
+
+**Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
+skærme, og **104 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+gør dem obligatoriske dér hvor de hører til: regeltestene når
+`firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
 Det gælder **filen**. Databasen er først dækket når `npm run regler:tjek` er grøn:
 reglerne var aldrig udrullet til DEV, og prøverne kunne ikke se det (beslutning 29).
@@ -482,18 +497,45 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 27 af 30 har indhold
+### Skærmene: 54 i alt, og alle har indhold
 
-| | Skærme |
+⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
+(29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
+og begge forkerte. De blev skrevet dengang Warehouse, Unitbooking og
+Procures fire nye skærme ikke fandtes — og så voksede produktet fra dem.
+
+**Tallet læses nu ud af `nav.js`**, som er det ene sted en rute kan opstå
+(en skærm uden nav-post kan ikke nås, og en nav-post uden skærm er en menu
+der fører til ingenting). `test/dokumentation.test.mjs` fejler hvis rækkerne
+herunder ikke passer med katalogets.
+
+| Modul | Skærme | |
+|---|---|---|
+| Dashboard | 1 | referencemodulet — start her når du skriver et nyt |
+| Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
+| Workforce | 3 | Bemandingsplan, Kompetencer, Ferie & fravær |
+| Fleet | 3 | heraf Arbejdskø som skjult detaljerute |
+| Facility | 3 | Overblik & fejl, Servicekalender, Klima & energi |
+| Procure | 7 | Overblik, Behov, Bestillinger, Godkendelser, Fakturaer, Leverandører, Varelager |
+| Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
+| Warehouse | 11 | modulet med flest skærme |
+| Økonomi & Rapporter | 3 | Overblik, **Fakturacenter**, Fakturering |
+| Support | 3 | heraf Supportsag som skjult detaljerute |
+| Opsætning | 10 | heraf Kundepriser pr. kunde som skjult detaljerute |
+| **I alt** | **54** | **50 i menuen, 4 skjulte detaljeruter** |
+
+| | |
 |---|---|
-| **Bygget (29)** | Dashboard *(referencemodul — start her når du skriver et nyt)*, Bookingopsætning, Kunder & Priser, Økonomi & Rapporter, Bemanding, Medarbejdere, Flåde, Ferie & fravær, Værkstedskalender, Disponering, Facility ×3, Booking-oversigt, Ny forespørgsel, Forslag, Indkøb ×2, Rute & status, Integrationer, Support ×3, **Fakturagrundlag**, **Indberetninger**, **Kompetencer**, **Leverandører**, **Opsætning → Generelt**, **Opsætning → Brugere & roller** |
-| **Bygget som LÆSESKÆRME** | De to Opsætning-skærme viser hvad der findes — tenant, divisioner, lokationer, roller og permissions — og har **al skrivning deaktiveret med en begrundelse**. De åbne spørgsmål i `FleetControl-spoergsmaal.md` handler alle om at ændre, og de blokerer ikke en visning. Spørgsmålene står **på skærmen**, ikke kun i en fil |
+| **Bygget som LÆSESKÆRME** | Opsætning → Generelt og Brugere & roller viser hvad der findes — tenant, moduler, lokationer, roller og permissions — og har **al skrivning deaktiveret med en begrundelse**. De åbne spørgsmål i `FleetControl-spoergsmaal.md` handler alle om at ændre, og de blokerer ikke en visning. Spørgsmålene står **på skærmen**, ikke kun i en fil |
+| **Kun demo-data** | De tre Support-skærme læser `demo-support.js` direkte, fordi `support/sager` ikke findes i `firebase.rules.json`. Det er lovligt netop dér hvor der ingen node er at spørge — se beslutning 64 |
 | **Fjernet** | Idébank. Beslutning 22 afgjorde at den ikke hører i kundens installation; rute, skærm, `idebank.skriv` og noden i regelfilen er væk (beslutning 31) |
-
 Hver skeletfil har en kommentar i toppen med hvad der skal bygges og hvilke
-fejl fra mockuppen der skal undgås. **Læs den før du rører filen.** De tre der
-venter, har fået deres produktvalg i beslutning 22 — men detaljerne mangler,
-og de må ikke bygges på gæt. Se afsnittet nedenfor.
+fejl fra mockuppen der skal undgås. **Læs den før du rører filen.**
+
+⚠ **"Alle har indhold" er ikke det samme som "alle er færdige".** Fem
+skærme venter stadig på et SVAR frem for på kode — se *De fem skærme der
+venter* nedenfor. De har fået deres produktvalg i beslutning 22; det er
+detaljerne der mangler, og de må ikke bygges på gæt.
 
 ⚠ **De fire fra beslutning 25 er bygget på ANTAGELSER.** Fakturagrundlag,
 Indberetninger, Kompetencer og Leverandører står på hvordan vi *tror* en

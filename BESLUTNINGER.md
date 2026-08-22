@@ -6234,3 +6234,68 @@ lagt sidst.
 Femte gang i denne session at et anker rammer et andet sted end det jeg mente
 (82, 83, 85, 86, 87). Hver gang med et lidt andet ansigt; hver gang samme
 årsag — jeg beskrev et sted ved noget der ikke er entydigt.
+
+---
+
+## 88. Status-afsnittet — et tal ingen prøve holder, driver
+
+README's **Status** er det afsnit dokumentet selv beder én læse efter en
+pause: *"Start her."* Det stod med **957 tests** da der var 2619, og med
+**27 af 30 skærme** da der var 54.
+
+Værre: overskriften sagde 27, og tabellen to linjer under den sagde **29**. To
+tal om det samme, med et blankt mellemrum imellem, uenige med hinanden — og
+ingen af dem kunne se den anden.
+
+### Ingen af dem var løgn da de blev skrevet
+
+Det er hele pointen. 957 var rigtigt engang. 27 af 30 var rigtigt engang. De
+blev forkerte af at produktet voksede: Warehouse kom med elleve skærme,
+Unitbooking med fire, Procure med fire nye, og Fakturacenteret med én.
+
+**Et tal skrevet i hånden kan kun blive forkert.** Det kan aldrig blive mere
+rigtigt af sig selv.
+
+### ⚠ Samme fejlklasse som beslutning 52
+
+`test/dokumentation.test.mjs` findes fordi fem af tolv rækker i README's
+nodetabel sagde "mangler regler" om noder der havde dem — og en af dem var
+underskriftens write-once, som derfor stod som **ikke bygget** mens den i
+virkeligheden var bygget og kunne omgås. Fordi rækken sagde at reglen ikke var
+der, kiggede ingen på om den virkede.
+
+Den fil vogter **tabellen**. Tallene ved siden af den var uvogtede.
+
+### Hvad der nu måles
+
+`test/statustal.test.mjs` læser skærmtallet ud af `nav.js` — det ene sted en
+rute kan opstå — og prøvefiltallet ud af `test/`. README's tabel har én række
+pr. modul, og prøven kræver at hver række, totalen **og overskriften** siger
+det samme som kataloget.
+
+| | |
+|---|---|
+| Skærme | **54** — 50 i menuen, 4 skjulte detaljeruter |
+| Prøvefiler | **104** |
+
+⚠ **Det samlede prøvetal står der ikke længere.** Det kan kun måles ved at
+KØRE suiten, og **en prøve kan ikke tælle sig selv**. Et tal ingen prøve kan
+holde, hører ikke i et dokument der bliver læst som en kendsgerning — så det
+er erstattet af antallet af prøve*filer*, som kan tælles med `readdirSync`.
+
+Det er den samme skelnen som `RETENTION_AFGJORT` gør for retention: forskellen
+mellem hvad vi **ved** og hvad vi **påstår**.
+
+### Det arbejdet fandt
+
+**Tre lag backslash forsvandt undervejs.** Prøven blev først skrevet af et
+patch-script gennem en heredoc, og hver runde spiste et lag: `\|` blev til
+`\|` blev til `|`, og regexet `/^\| ([^|]+?) \|/` endte som `/^| ([^|]+?) |/`
+— *"Nothing to repeat"*. Anden gang blev `/\*/g` til `/*/g`, som ikke engang
+er et regex.
+
+Rettelsen er ikke et lag mere escaping. Tabellen læses med `split("|")`, og
+filen er skrevet direkte frem for genereret: **en streng fuld af escapes er
+præcis den slags der overlever en kopiering forkert.** Samme lærestreg som
+`` `n ``-fælden i beslutning 82 — et værktøj der næsten kan noget, koster mere
+end det sparer.
