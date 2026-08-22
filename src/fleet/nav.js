@@ -128,6 +128,10 @@ export const NAV = [
       { key: "indkoebsbehov", sti: "/indkoeb/behov", label: "Indkøbsbehov",
         titel: "Indmeldte behov",
         under: "Behov indsendt fra snedkeri, lager, kontor eller som kontantkøb." },
+      /* ⚠ TRIN 2. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
+      { key: "bestillinger", sti: "/indkoeb/bestillinger", label: "Bestillinger",
+        titel: "Bestillingskladder & leverandoerforslag",
+        under: "Aabne behov med automatisk leverandoerforslag, samlet i én bestilling pr. leverandoer." },
       { key: "fakturaer", sti: "/indkoeb/fakturaer", label: "Fakturaer & afstemning",
         titel: "Fakturagodkendelse & afstemning",
         under: "Indkøb matches med leverandørfakturaer, godkendes og afstemmes mod regnskabsgrundlaget." },

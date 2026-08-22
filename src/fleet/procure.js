@@ -223,6 +223,176 @@ export function ordreSumOere(ordre) {
   }, 0);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   LEVERANDØRFORSLAG — beslutning 78, etape 3
+   ══════════════════════════════════════════════════════════════════════════
+
+   Planchen skriver "Automatisk forslag" ved hver linje. Forslaget er et
+   OPSLAG i det vi allerede ved, ikke en anbefaling: hvem har leveret præcis
+   den vare før, og hvad kostede den.
+
+   ⚠ ET FORSLAG UDEN GRUNDLAG ER ET GÆT, OG DET SKAL SIGE FRA.
+   `foreslaaLeverandoer()` svarer `null` når ingen har leveret varen — ikke
+   den billigste leverandør i kartoteket, ikke den man handlede med sidst.
+   Planchen har en tilstand for det: **"Leverandør mangler"** med en
+   "Opret kreditor"-knap. Den tilstand findes fordi svaret findes.
+
+   ⚠ OG PRISEN FØLGER MED FORSLAGET. Et forslag der navngiver en leverandør
+   uden at sige hvad varen kostede sidst, flytter bare spørgsmålet: den der
+   bestiller, skal alligevel slå det op. To halve svar er ikke ét helt.
+*/
+
+/**
+ * foreslaaLeverandoer(vare, indkoebslinjer, { varenummer, nu }) → forslag | null
+ *
+ * Forslaget er den leverandør der har leveret varen SENEST, med den pris.
+ *
+ * ⚠ SENEST, IKKE BILLIGST. En pris fra 2019 er ikke et tilbud — den er et
+ * historisk tal, og en bestilling lagt på den bliver afvist af leverandøren
+ * eller faktureret til noget andet. Den seneste pris er den eneste der kan
+ * bruges til at anslå et beløb i dag.
+ *
+ * ⚠ OG VARENUMMERET VINDER OVER NAVNET. "Motorolie 10W-40" og
+ * "Motorolie 10W40, 5 l" er den samme vare skrevet af to mennesker; et
+ * varenummer er det ene sted de kan mødes. Findes det ikke, falder den
+ * tilbage på et normaliseret navn — og siger hvad den matchede på, så den der
+ * bestiller kan se om opslaget var stærkt eller svagt.
+ */
+export function foreslaaLeverandoer(vare, indkoebslinjer = [], { varenummer } = {}) {
+  const normal = (x) => String(x || "").toLowerCase().replace(/[\s,.\-]+/g, " ").trim();
+  const vn = String(varenummer || "").trim().toLowerCase();
+  const navn = normal(vare);
+  if (!navn && !vn) return null;
+
+  const traef = indkoebslinjer.filter((l) => {
+    if (vn && String(l.varenummer || "").trim().toLowerCase() === vn) return true;
+    return !vn && normal(l.vare) === navn;
+  });
+  if (!traef.length) return null;
+
+  /* Seneste leverance. `dato` er ms på en indkøbslinje. */
+  const seneste = traef.reduce((a, b) => ((b.dato || 0) > (a.dato || 0) ? b : a));
+  if (!seneste.leverandoerId) return null;
+
+  return {
+    leverandoerId: seneste.leverandoerId,
+    prisPrEnhedOere: Number.isInteger(seneste.prisPrEnhedOere)
+      ? seneste.prisPrEnhedOere : null,
+    enhed: seneste.enhed || null,
+    sidstKoebtMs: seneste.dato || null,
+    /* ⚠ HVAD DER BLEV MATCHET PÅ. Et varenummertræf er stærkt; et navnetræf
+       kan være to forskellige varer med samme ord. Den der bestiller, skal
+       kunne se forskellen frem for at stole lige meget på begge. */
+    grundlag: vn ? "varenummer" : "navn",
+    antalTidligere: traef.length,
+  };
+}
+
+/**
+ * kladdelinjer(behov, indkoebslinjer) → [{ behov, forslag }]
+ *
+ * ⚠ ET BEHOV UDEN FORSLAG FALDER IKKE UD AF LISTEN. Det står med
+ * `forslag: null`, og skærmen viser "Leverandør mangler". Skjulte vi det,
+ * ville en mangel forsvinde præcis fordi den er en mangel — og den der
+ * bestiller, ville tro at alt var dækket.
+ */
+export function kladdelinjer(behov = [], indkoebslinjer = []) {
+  return behov.map((b) => ({
+    behov: b,
+    forslag: foreslaaLeverandoer(b.vare, indkoebslinjer, { varenummer: b.varenummer }),
+  }));
+}
+
+/**
+ * grupperPaaLeverandoer(linjer) → [{ leverandoerId, linjer }]
+ *
+ * ⚠ ÉN ORDRE PR. LEVERANDØR. Man sender ikke én bestilling til tre firmaer,
+ * og et bestillingsnummer der dækkede flere, kunne ikke bruges som reference
+ * på nogen af fakturaerne. Planchen viser præcis det: tre udkast, tre numre.
+ *
+ * De uden forslag samles under `null` — de kan ikke bestilles endnu, og de
+ * skal kunne ses samlet.
+ */
+export function grupperPaaLeverandoer(linjer = []) {
+  const kort = new Map();
+  for (const l of linjer) {
+    const id = l.forslag?.leverandoerId ?? null;
+    if (!kort.has(id)) kort.set(id, []);
+    kort.get(id).push(l);
+  }
+  return [...kort.entries()].map(([leverandoerId, ls]) => ({ leverandoerId, linjer: ls }));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   E-MAILUDKAST — beslutning 78, etape 3
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ ET UDKAST, IKKE EN AFSENDELSE. Kunden valgte det: mail UD af systemet er
+   beslutning 20's fase 1, og der er hverken afsendelsesvej, afsenderadresse
+   pr. tenant eller et spor af hvad der blev sendt til hvem. En knap der så ud
+   som "send", men lagde en mail i en kø der ikke findes, ville være værre end
+   ingen knap.
+
+   Udkastet bygges, vises og kan kopieres. Ordren markeres SENDT når et
+   menneske har sendt den — og det er en tilstand nogen sætter, ikke noget
+   systemet påstår.
+*/
+
+/** Beløb i hele øre → "1.250,00 kr." Kun til udkastets tekst. */
+function kr(oere) {
+  if (!Number.isInteger(oere)) return "—";
+  return `${(oere / 100).toLocaleString("da-DK", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })} kr.`;
+}
+
+/**
+ * mailudkast(ordre, { leverandoer }) → { emne, brodtekst, tilEmail }
+ *
+ * ⚠ BESTILLINGSNUMMERET STÅR I EMNET, og teksten beder om at få det med på
+ * fakturaen. Det er hele grunden til at nummeret findes: uden det på
+ * fakturaen kan matchet i trin 5 kun gættes ud fra beløb og leverandør — og
+ * to bestillinger til samme firma i samme uge ser så ens ud.
+ *
+ * ⚠ OG TEKSTEN INDEHOLDER INGEN PRISER UDEN GRUNDLAG. En linje uden pris
+ * skriver "—", ikke 0: en bestilling der beder om noget til nul kroner, er
+ * en aftale ingen har indgået.
+ */
+export function mailudkast(ordre, { leverandoer } = {}) {
+  const linjer = linjeListe(ordre);
+  const sum = ordreSumOere(ordre);
+  const nummer = ordre?.nummer || "(uden nummer)";
+  const navn = leverandoer?.navn || "leverandøren";
+
+  const punkter = linjer.map((l) => {
+    const antal = Number.isFinite(l.antal) ? l.antal : "?";
+    const enhed = l.enhed ? ` ${l.enhed}` : "";
+    const pris = Number.isInteger(l.prisPrEnhedOere)
+      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : " — pris ikke oplyst";
+    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+  });
+
+  return {
+    tilEmail: leverandoer?.kontaktEmail || null,
+    emne: `Ordre ${nummer}${linjer.length === 1 ? ` – ${linjer[0].vare}` : ""}`,
+    brodtekst: [
+      `Til ${navn}`,
+      "",
+      `Vi bestiller hermed følgende under ordrenummer ${nummer}:`,
+      "",
+      ...punkter,
+      "",
+      `I alt (ekskl. moms): ${sum > 0 ? kr(sum) : "—"}`,
+      "",
+      /* ⚠ DEN VIGTIGSTE LINJE I MAILEN. Uden nummeret på fakturaen kan
+         matchet i trin 5 kun gættes. */
+      `Angiv venligst bestillingsnummer ${nummer} på fakturaen.`,
+      "",
+      "Med venlig hilsen",
+    ].join("\n"),
+  };
+}
+
 /**
  * behovTilLinje(behov) → linjen en bestilling skal bære.
  *

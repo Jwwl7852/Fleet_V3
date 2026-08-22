@@ -77,7 +77,15 @@ describe("Skærmen og serveren er enige", () => {
    * formularen sige ja til noget serveren siger nej til.
    */
   test("⚠ SERVEREN BRUGER valideBehov FRA DEN DELTE FIL", () => {
-    assert.match(SERVER, /import \{ valideBehov \} from "\.\/delt\/procure\.js";/,
+    /* ⚠ MØNSTRET ER "valideBehov ET STED i importen fra delt/procure.js" —
+       ikke den nøjagtige importlinje. Den første udgave krævede
+       `import { valideBehov } from …` ord for ord, og den faldt da etape 3
+       lagde `valideOrdre` ved siden af: prøven sagde "behovskriv har sin egen
+       kopi", hvilket ikke var sandt. En prøve der fejler på en TILFØJELSE i
+       stedet for på det den vogter, lærer den næste at rette prøven i stedet
+       for koden. */
+    const importen = SERVER.slice(0, SERVER.indexOf("initializeApp()"));
+    assert.match(importen, /\bvalideBehov\b[\s\S]{0,200}?from "\.\/delt\/procure\.js";/,
       "behovskriv har sin egen kopi af formen");
     assert.match(SERVER, /const svar = valideBehov\(post\);/,
       "behovskriv kalder ikke valideBehov");

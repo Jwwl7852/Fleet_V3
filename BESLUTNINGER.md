@@ -5336,3 +5336,135 @@ Planchens billede- og taleoptagelse står som en sætning på skærmen frem for
 som deaktiverede knapper: *"De kræver fillagring med sine egne adgangsregler
 pr. virksomhed, og det er sin egen opgave."* En attrap der ligner en knap,
 læres at blive trykket på.
+
+
+## 81. Bestillingen samles — Procures trin 2
+
+Etape 3 af beslutning 78: kladden med det automatiske leverandørforslag,
+`ordreskriv`, og e-mailudkastet. Planche 3.
+
+### ⚠ Forslaget er et OPSLAG, ikke en anbefaling
+
+`foreslaaLeverandoer()` svarer på ét spørgsmål: **hvem har leveret præcis den
+vare før, og hvad kostede den.** Findes svaret ikke, er svaret `null` — ikke
+den billigste i kartoteket, og ikke den man handlede med sidst. Planchen har en
+egen tilstand for det, **"Leverandør mangler"**, og den tilstand findes fordi
+svaret findes.
+
+Et forslag der faldt tilbage på "den vi handler mest med", ville anbefale nogen
+at købe hos et firma der aldrig har haft varen — og det ville se *klogere* ud
+end det tomme svar. Samme holdning som momssatsen der ikke gættes: et system
+der gætter rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende.
+
+⚠ **Senest, ikke billigst.** En pris fra 2019 er ikke et tilbud; den er et
+historisk tal, og en bestilling lagt på den bliver afvist af leverandøren eller
+faktureret til noget andet. Kun den seneste pris kan bruges til at anslå et
+beløb i dag — og derfor hedder tallet på skærmen **"anslået"**, med noten om at
+linjer uden pris ikke tæller med.
+
+⚠ **Varenummeret slår navnet, og forslaget siger hvilket.** "Motorolie 5W-30"
+og "Motorolie 5W30" er én vare for et menneske og to for en maskine — Bil 104
+med to nummerplader, denne gang på en oliedunk. Men et navnetræf **kan** være
+to forskellige varer med samme ord, så grundlaget står på skærmen: *"Match på
+varenummer"* mod *"Match på varenavn — kontrollér at det er den rigtige vare"*.
+To lige stærke formuleringer ville gøre den svage til den stærke.
+
+### ⚠ Én ordre pr. leverandør
+
+Man sender ikke én bestilling til tre firmaer, og et bestillingsnummer der
+dækkede flere, kunne ikke bruges som reference på nogen af fakturaerne.
+`grupperPaaLeverandoer()` samler derfor kladden i én blok pr. leverandør, og de
+uden forslag under `null`.
+
+⚠ **De uden forslag skjules ikke.** En mangel der forsvinder fordi den er en
+mangel, får den der bestiller til at tro at alt er dækket. De står samlet, med
+begrundelsen på skærmen og uden en afkrydsningsboks der ikke kan bruges.
+
+### ⚠ Serveren bygger linjen af behovet
+
+Klienten sender `behovId`, et antal og en pris — **ikke varen**. Kom varen
+udefra, kunne ordren bede om noget andet end behovet sagde, og sporet tilbage
+ville pege på et løfte der ikke blev holdt. Sporet går begge veje: behovet får
+sit `ordreId`, linjen sit `behovId`.
+
+⚠ **Og ordren og behovenes tilstand skrives i ÉN `update()`.** Delt i to kunne
+halvdelen lande — et behov der stod som bestilt uden en ordre, ville være en
+vare ingen havde købt og ingen kunne bestille igen. Samme regel som
+`enheder`/`beholdning` (39) og `opgaver`/`reservationer` (45).
+
+⚠ **Et behov kan kun bestilles én gang.** `ordreskriv` afviser et behov der
+allerede er `bestilt` eller `afvist` med `failed-precondition` — og skærmen
+tager dem ud af kladden, så knappen ikke er en fælde. To bestillinger lagt kort
+efter hinanden kunne ellers begge tage det samme behov med.
+
+### ⚠ Udkastet sendes ikke, og skærmen siger det
+
+Kundens valg. Mail **ud** af systemet er beslutning 20's fase 1, og der er
+hverken afsendelsesvej, afsenderadresse pr. virksomhed eller et spor af hvad
+der blev sendt til hvem. Udkastet bygges, vises og kan kopieres; ordren
+markeres **sendt** af et menneske der har sendt den.
+
+En knap der så ud som "send", men lagde mailen i en kø der ikke findes, ville
+være værre end ingen knap — og en tilstand systemet *påstod*, ville gøre sporet
+forkert. Derfor er en ny ordre altid `kladde`.
+
+⚠ **Nummeret står i emnet, og teksten beder om det på fakturaen.** Det er hele
+grunden til at nummeret findes: uden det kan matchet i trin 5 kun gættes ud fra
+beløb og leverandør, og to bestillinger til samme firma i samme uge ser så ens
+ud. En linje uden pris skriver "—" og ikke 0 — en bestilling der beder om noget
+til nul kroner, er en aftale ingen har indgået.
+
+### Beløbet regnes, det gemmes ikke
+
+Ordren bærer **intet** `sum`-felt. Et gemt totalbeløb driver fra sine linjer
+første gang nogen retter et antal — det er `bemanding.ledig` (71), og her er
+tallet penge. `ordreSumOere()` regner hos forbrugeren, og en linje uden pris
+tæller ikke som nul.
+
+### ⚠ Linjerne er nøglet, ikke en array
+
+RTDB har ingen arrays. `linjeListe()` er det ene sted formen oversættes — som
+`forslagListe()` — og demo-sættet bærer den form **noden** har. Et demo-sæt med
+en array ville lade skærmen virke i demo og fejle mod noden: præcis den
+forskel der lukkede tre etapeovergange i produktion mens demo stod grønt
+(beslutning 76).
+
+### Det prøverne fandt
+
+**1. Demo-sættet kunne ikke vise sin egen funktion.** Ingen af de ti åbne behov
+matchede en eneste indkøbslinje, så hver eneste linje viste "Leverandør
+mangler" — den halvdel af skærmen der slår op i `indkoeb`, tegnede aldrig et
+forslag. Et demo-sæt hvor en funktion kun kan ses *fejle*, er ikke et demo-sæt.
+To behov er tilføjet: ét der matcher på varenummer, ét der kun matcher på navn,
+og det sidste **uden antal**, så tilstanden *"Sæt et antal"* også kan ses.
+
+**2. To prøver læste ind i naboen.** `⚠ ORDRE OG BEHOV SKRIVES I ÉN update()`
+tog 8000 tegn efter `export const ordreskriv` og talte to `.update(` — den ene
+lå i den **næste** funktion. En prøve der læser ind i naboen, siger noget om
+naboen. Den bruger nu funktionens faktiske krop.
+
+**3. En prøve fejlede på en tilføjelse.** `behov.test.mjs` krævede
+`import { valideBehov } from "./delt/procure.js";` **ord for ord**, og faldt da
+`valideOrdre` blev lagt ved siden af — med beskeden *"behovskriv har sin egen
+kopi af formen"*, hvilket ikke var sandt. En prøve der fejler på noget andet
+end det den vogter, lærer den næste at rette **prøven** i stedet for koden.
+Samme rettelse i `seed-tenant.test.mjs`, hvor
+`harModulet("bookinger") ? DEMO_BOOKINGER : []` stod ord for ord.
+
+**4. Nummerserien havde ingen tæller.** Demo-ordrerne bærer BST-2026-00040 og
+opefter; uden en efterudfyldning ville den første rigtige bestilling hedde
+BST-2026-00001 — en serie der begynder forfra **under** numre der allerede
+findes. Det var nøjagtig den fejl blokken i provisioneren blev skrevet for at
+lukke for bookingerne, og den nærliggende rettelse var at kopiere blokken.
+Serierne står nu som **data** i én tabel, med ét regnestykke og ét modulfilter.
+
+**5. Filen har CRLF.** Et flerlinjet anker skrevet med `\n` matcher ingenting i
+`provisioner-dev.mjs`, og fejlen ser ud som *"koden er lavet om"* frem for
+*"ankeret er forkert"*. Dertil: `$` efterfulgt af en backtick er et
+**specialtegn** i `String.replace`'s strengform, og en regex-hale som
+`(\d{5})$` + backtick sprængte filen midt i en template literal.
+
+**6. Den samme advarsel to gange på én række.** "Leverandør mangler" stod både
+i forslagskolonnen og i statuskolonnen, og to ens pille på én linje læses som
+to forskellige problemer. Forslagskolonnen siger nu **hvorfor**: *"Ingen
+tidligere leverance"*.

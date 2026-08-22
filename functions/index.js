@@ -70,8 +70,7 @@ import {
   valideBooking, bookingOpdatering, naesteBookingnummer,
   kanSkifteEtape, byggEtapeSkifte, forloebstilstand,
   valideForslag, forslagOpdatering,
-  kanTraekkeForslag, traekOpdatering, erTrukket, aktiveForslag,
-} from "./delt/booking-state.js";
+  kanTraekkeForslag, traekOpdatering, erTrukket, aktiveForslag, naesteNummer } from "./delt/booking-state.js";
 import {
   reservationerFraEtape, enhedsIder, straekningFraEtape
 } from "./delt/etaper.js";
@@ -79,7 +78,9 @@ import { tjekDisponering } from "./delt/disponering.js";
 /* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
-import { valideBehov } from "./delt/procure.js";
+import {
+  valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
+} from "./delt/procure.js";
 import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
   kanSkifteOpgave, statusOpdatering,
@@ -4037,6 +4038,153 @@ async function logProcure(tenantId, uid, handling, objekt, id, foer, efter, note
       note: note ?? null
     });
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ORDRESKRIV — behov bliver til en bestilling (beslutning 78, etape 3)
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ TO POSTER, ÉN SKRIVNING. Ordren oprettes OG behovene faar deres
+   `ordreId` og status `bestilt` i den SAMME `update()`. Det er hele grunden
+   til at `indkoebsbehov` og `indkoebsordrer` begge er `.write: false`:
+   landede den ene halvdel, ville et behov staa som bestilt uden en ordre der
+   findes — eller en ordre pege paa behov der stadig ligger i indbakken.
+
+   ⚠ NUMMERET KOMMER FRA TAELLEREN, IKKE FRA EN OPTAELLING.
+   `naesteNummer()` med serien `indkoebsordre` — samme mekanisme som
+   bookingnumrene (beslutning 8 og 55). En optaelling som nummerkilde giver to
+   ordrer samme nummer den dag to bestillinger rammer samme sekund.
+
+   ⚠ OG ÉN ORDRE PR. LEVERANDOER. Funktionen tager ét leverandoerId og de
+   behov der hoerer til. Man sender ikke én bestilling til tre firmaer, og et
+   nummer der daekkede flere, kunne ikke bruges som reference paa nogen af
+   fakturaerne.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const ordreskriv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  if (!perms.includes("|indkoeb.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke oprette en bestilling. Det kræver indkoeb.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+  const sti = (p) => `tenants/${tenantId}/${p}`;
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("indkoeb").val() !== true) {
+    throw new HttpsError("permission-denied", "Procure-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  if (!leverandoerId) throw new HttpsError("invalid-argument", "Vælg en leverandør.");
+
+  const lev = await rod.child(`leverandoerer/${leverandoerId}`).once("value");
+  if (!lev.exists()) throw new HttpsError("invalid-argument", "Leverandøren findes ikke.");
+
+  /* ⚠ LINJERNE BYGGES AF BEHOVENE PAA SERVEREN, ikke af det klienten sender.
+     Kom linjen udefra, kunne en vare og et antal vaere noget andet end det
+     behovet siger — og sporet tilbage ville pege paa et behov der lovede
+     noget andet end ordren beder om. Klienten sender ID'er og priser. */
+  const oenskede = Array.isArray(d.linjer) ? d.linjer : [];
+  if (!oenskede.length) {
+    throw new HttpsError("invalid-argument", "En bestilling skal have mindst én linje.");
+  }
+
+  const linjer = {};
+  const behovOpdatering = {};
+  for (const [i, oensket] of oenskede.entries()) {
+    const behovId = kortStreng(oensket?.behovId, 60);
+    if (!behovId) throw new HttpsError("invalid-argument", "En linje mangler sit behov.");
+
+    const snap = await rod.child(`indkoebsbehov/${behovId}`).once("value");
+    if (!snap.exists()) {
+      throw new HttpsError("not-found", `Behovet ${behovId} findes ikke.`);
+    }
+    const behov = { ...snap.val(), id: behovId };
+
+    /* ⚠ ET BEHOV KAN KUN BESTILLES ÉN GANG. Uden det her led kunne to
+       bestillinger lagt kort efter hinanden begge tage det samme behov med —
+       og varen ville blive koebt to gange. */
+    if (behov.status === "bestilt") {
+      throw new HttpsError("failed-precondition",
+        `"${behov.vare}" er allerede bestilt på ${behov.ordreId || "en anden ordre"}.`);
+    }
+    if (behov.status === "afvist") {
+      throw new HttpsError("failed-precondition",
+        `"${behov.vare}" er afvist og kan ikke bestilles.`);
+    }
+
+    /* ⚠ ANTALLET KAN SAETTES HER — det er DEN der bestiller, der ved det.
+       Behovet maa gerne vaere uden; `behovTilLinje()` kaster hvis der stadig
+       ikke er et, frem for at gaette 1. */
+    const antal = Number.isFinite(oensket.antal) ? oensket.antal : behov.antal;
+    const pris = oensket.prisPrEnhedOere;
+    let linje;
+    try {
+      linje = behovTilLinje({ ...behov, antal }, { prisPrEnhedOere: pris });
+    } catch (e) {
+      throw new HttpsError("invalid-argument", e.message);
+    }
+
+    linjer[`l-${i + 1}`] = linje;
+    behovOpdatering[sti(`indkoebsbehov/${behovId}/status`)] = "bestilt";
+    behovOpdatering[sti(`indkoebsbehov/${behovId}/ordreId`)] = null; // sættes nedenfor
+  }
+
+  const nummer = await naesteNummer(db, sti, {
+    praefiks: ORDRE_PRAEFIKS, serie: ORDRESERIE,
+  });
+
+  const ordre = {
+    nummer,
+    leverandoerId,
+    /* ⚠ TILSTANDEN ER `kladde`, IKKE `sendt`. Mailen sendes ikke af systemet
+       (kundens valg), saa "sendt" er noget et menneske saetter naar han HAR
+       sendt den. En tilstand systemet paastod, ville goere sporet forkert. */
+    status: "kladde",
+    oprettetAf: uid,
+    oprettetMs: Date.now(),
+    linjer,
+  };
+  if (kortStreng(d.bestillerId, 60)) ordre.bestillerId = kortStreng(d.bestillerId, 60);
+  if (kortStreng(d.note, 250)) ordre.note = kortStreng(d.note, 250);
+
+  const svar = valideOrdre(ordre);
+  if (!svar.ok) {
+    throw new HttpsError("invalid-argument",
+      Object.values(svar.fejl)[0] || "Bestillingen er ikke gyldig.");
+  }
+
+  const ordreRef = rod.child("indkoebsordrer").push();
+  const opdatering = { [sti(`indkoebsordrer/${ordreRef.key}`)]: ordre };
+  for (const n of Object.keys(behovOpdatering)) {
+    opdatering[n] = n.endsWith("/ordreId") ? ordreRef.key : behovOpdatering[n];
+  }
+
+  /* ⚠ ÉN update(). Ordren og behovenes tilstand lander sammen eller slet ikke. */
+  await db.ref().update(opdatering);
+
+  await logProcure(tenantId, uid, AUDIT.opret, "indkoebsordrer", ordreRef.key,
+    null, { nummer, leverandoerId, status: ordre.status },
+    `bestilling ${nummer} oprettet med ${Object.keys(linjer).length} linjer`);
+
+  return { ok: true, id: ordreRef.key, nummer };
+});
 
 /* ══════════════════════════════════════════════════════════════════════════
    KPI-AGGREGERINGEN — det sidste punkt på listen

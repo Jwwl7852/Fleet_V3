@@ -69,6 +69,8 @@ const NODE_FOR = {
      `etaper` gjorde — så linten sprang sættet over, og Bookingoversigten
      kunne læse demofilen direkte uden at nogen så det. Se beslutning 56. */
   DEMO_BOOKINGER: "bookinger",
+  /* Procures to foerste trin — begge seedes, saa begge hoerer her. */
+  DEMO_INDKOEBSBEHOV: "indkoebsbehov", DEMO_INDKOEBSORDRER: "indkoebsordrer",
 };
 
 /* ⚠ MÅLT, IKKE ANSLÅET. Tallet er talt op på den kode der står i dag.

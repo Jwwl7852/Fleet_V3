@@ -123,8 +123,33 @@ describe("En kundes tenant behandles anderledes end dev's", () => {
   test("⚠ RESERVATIONER OG TÆLLER FØLGER OGSÅ MODULET", () => {
     assert.match(KILDE, /harModulet\("etaper"\) \? DEMO_ETAPER : \[\]/,
       "etapernes reservationer skrives uanset om etaperne blev seedet");
-    assert.match(KILDE, /harModulet\("bookinger"\) \? DEMO_BOOKINGER : \[\]/,
-      "bookingtælleren sættes uanset om kunden har modulet");
+    /* ⚠ MÅLT PÅ LØKKEN, IKKE PÅ ÉN SERIE. Her stod
+       `harModulet("bookinger") ? DEMO_BOOKINGER : []` ord for ord, og prøven
+       faldt da Procure fik sin egen serie og de to blev til ét regnestykke
+       over en tabel — den sagde "bookingtælleren sættes uanset modulet",
+       hvilket ikke var sandt. Det den skal vogte, er at HVER serie er
+       modulspærret, ikke hvordan den ene er skrevet. */
+    assert.match(KILDE, /harModulet\(modul\) \? poster : \[\]/,
+      "tællerne sættes uanset om kunden har modulet");
+  });
+
+  /**
+   * ⚠ OG HVER NUMMERSERIE SKAL STÅ I TABELLEN.
+   *
+   * Tælleren er en TÆLLER, ikke en optælling (beslutning 8) — men den skal
+   * kende det højeste nummer der allerede er udstedt, ellers begynder serien
+   * forfra under numre der findes. Det gjaldt bookingerne, og det gælder
+   * bestillingerne: demo-ordrerne bærer BST-2026-00040 og opefter.
+   *
+   * En serie der seedes uden at komme i tabellen, opdages først den dag nogen
+   * opretter den første rigtige post — og så er nummeret allerede udstedt.
+   */
+  test("⚠ HVER SEEDET NUMMERSERIE HAR EN TÆLLER", () => {
+    const serier = KILDE.slice(KILDE.indexOf("const SERIER = ["),
+      KILDE.indexOf("];", KILDE.indexOf("const SERIER = [")));
+    assert.match(serier, /praefiks: "BKG"/, "bookingserien står ikke i tabellen");
+    assert.match(serier, /praefiks: ORDRE_PRAEFIKS/,
+      "bestillingsserien står ikke i tabellen — BST-numrene begynder forfra");
   });
 });
 

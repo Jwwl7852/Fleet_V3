@@ -52,7 +52,8 @@ import {
 import {
   DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, DEMO_LEVERANDOERER,
 } from "../src/fleet/demo-indkoeb.js";
-import { DEMO_INDKOEBSBEHOV } from "../src/fleet/demo-procure.js";
+import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER } from "../src/fleet/demo-procure.js";
+import { ORDRESERIE, ORDRE_PRAEFIKS } from "../src/fleet/procure.js";
 import {
   DEMO_LOKATIONER, DEMO_AKTIVER, DEMO_ZONER, DEMO_SENSORER, DEMO_FEJL,
   DEMO_BYGNINGSOMKOSTNING,
@@ -272,6 +273,12 @@ export const SEED = [
      skaermen tom, og demo-saettet maa IKKE traede i stedet: en seedet node
      skal vise sig selv (beslutning 56 og 64). */
   { node: "indkoebsbehov", data: DEMO_INDKOEBSBEHOV, form: "liste" },
+  /* ⚠ TRIN 2. Ordrerne skal med i SAMME ombaering som behovene: tre af
+     behovene staar som "bestilt" og peger paa en ordre, og seedede vi kun
+     behovene, ville de pege paa noget der ikke findes. Og en node der ikke
+     seedes, er en node demo-i-skaerm springer over — saa kunne skaermen
+     laese demofilen direkte uden at loftet saa det (beslutning 56). */
+  { node: "indkoebsordrer", data: DEMO_INDKOEBSORDRER, form: "liste" },
   { node: "indkoeb", data: DEMO_INDKOEBSLINJER, form: "liste" },
   { node: "fakturaer", data: DEMO_FAKTURAER, form: "liste" },
   /* ⚠ FACILITY HELE VEJEN NU. Lokationerne kom foerst, fordi indkoebets
@@ -722,25 +729,44 @@ async function main() {
      Det er ikke en optælling — beslutning 8 forbyder optællingen som
      NUMMERKILDE — det er en efterudfyldning af en tæller der aldrig blev sat.
      ══════════════════════════════════════════════════════════════════════ */
-  const hoejesteNummer = {};
-  let udenNummer = 0;
-  /* ⚠ OG TÆLLEREN FØLGER MODULET. En kunde uden Booking har ingen bookinger og
-     skal ikke have en bookingtæller stående på 318 — den ville få hans FØRSTE
-     booking (den dag han køber modulet) til at hedde BKG-2026-00319, som om
-     der lå tre hundrede før den. Målt på nordvest. */
-  for (const b of harModulet("bookinger") ? DEMO_BOOKINGER : []) {
-    const m = /^BKG-(\d{4})-(\d{5})$/.exec(b.nummer || "");
-    if (!m) { udenNummer += 1; continue; }
-    hoejesteNummer[m[1]] = Math.max(hoejesteNummer[m[1]] || 0, Number(m[2]));
-  }
-  for (const [aar, n] of Object.entries(hoejesteNummer)) {
-    await db.ref(`tenants/${valgt}/countere/booking/${aar}`).set(n);
-  }
-  if (Object.keys(hoejesteNummer).length) {
-    console.log(
-      `  ${"countere/booking".padEnd(24)} ` +
-      Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
-      (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
+  /* ⚠ ÉN TABEL, IKKE ÉN BLOK PR. SERIE. Her stod regnestykket kun for
+     bookingerne, og da Procure fik sin egen serie (beslutning 81), var den
+     nærliggende rettelse at kopiere blokken. To kopier af den samme
+     efterudfyldning driver — den ene ville få rettet sin modulklausul og den
+     anden ikke. Serierne står nu som DATA, og der er ét regnestykke. */
+  const SERIER = [
+    { serie: "booking", praefiks: "BKG", modul: "bookinger", poster: DEMO_BOOKINGER },
+    /* ⚠ OG PROCURES SERIE SKAL MED. Demo-ordrerne bærer BST-2026-00040 og
+       opefter; uden den her linje står tælleren på nul, og den første
+       bestilling "ordreskriv" laver, hedder BST-2026-00001 — en serie der
+       begynder FORFRA under numre der allerede findes. Det er nøjagtig den
+       fejl blokken her blev skrevet for at lukke for bookingerne. */
+    { serie: ORDRESERIE, praefiks: ORDRE_PRAEFIKS, modul: "indkoeb",
+      poster: DEMO_INDKOEBSORDRER },
+  ];
+
+  for (const { serie, praefiks, modul, poster } of SERIER) {
+    const hoejesteNummer = {};
+    let udenNummer = 0;
+    /* ⚠ OG TÆLLEREN FØLGER MODULET. En kunde uden Booking har ingen bookinger
+       og skal ikke have en bookingtæller stående på 318 — den ville få hans
+       FØRSTE booking (den dag han køber modulet) til at hedde BKG-2026-00319,
+       som om der lå tre hundrede før den. Målt på nordvest. */
+    const form = new RegExp("^" + praefiks + "-(\\d{4})-(\\d{5})$");
+    for (const post of harModulet(modul) ? poster : []) {
+      const m = form.exec(post.nummer || "");
+      if (!m) { udenNummer += 1; continue; }
+      hoejesteNummer[m[1]] = Math.max(hoejesteNummer[m[1]] || 0, Number(m[2]));
+    }
+    for (const [aar, n] of Object.entries(hoejesteNummer)) {
+      await db.ref(`tenants/${valgt}/countere/${serie}/${aar}`).set(n);
+    }
+    if (Object.keys(hoejesteNummer).length) {
+      console.log(
+        `  ${("countere/" + serie).padEnd(24)} ` +
+        Object.entries(hoejesteNummer).map(([a, n]) => `${a}: ${n}`).join(", ") +
+        (udenNummer ? ` (${udenNummer} uden gyldigt nummer sprunget over)` : ""));
+    }
   }
 
   /* ⚠ OG HVER ETAPE SKAL PEGE PÅ EN BOOKING DER FINDES. Før bookingerne kom
