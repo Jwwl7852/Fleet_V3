@@ -6654,3 +6654,99 @@ Der er intet at rulle ud, og reglerne er urørte.
 længere. Det står som formen `sager/` skal have for at svartiden kan regnes —
 `oprettetMs` og `foersteSvarMs` — på samme måde som `demo-kpi.js` *er* formen
 på `kpi/`. Når noden bygges, hører sættet som `demo:`-faldbakke i `useListe`.
+
+---
+
+## 92. Reservationer var bookingens — og låste en kunde ude af sine egne data
+
+`NODE_MODUL` sagde `reservationer: "booking"`, og regelfilen håndhævede det:
+noden kunne kun læses af en kunde med Planning-modulet.
+
+**Det er den ene node hvor fire moduler mødes.** Beslutning 4 er skrevet om
+netop dét: booking, værksted, facility-sag og fravær skriver til den SAMME
+node, så de fire kan se hinanden. Gates den på den ene, forsvinder de tre
+andre.
+
+### Målt, ikke antaget
+
+DEV-kunden `nordvest` har Fleet, Facility, Bemanding, Procure, Dashboard,
+Opsætning og Support — **ingen Planning**.
+
+| Kilde | Reservationer |
+|---|---|
+| `vaerksted` | 18 |
+| `fravaer` | 10 |
+| `facilitySag` | 9 |
+| `booking` | **0** |
+| **I alt** | **37, alle låst for ham** |
+
+**Ikke én af hans 37 reservationer kom fra en booking.** Driftskalenderen,
+Servicekalenderen og enhver ledighedsvisning fik `permission-denied` på data
+hans egne moduler havde skrevet.
+
+⚠ **Og systemet skrev dem for ham.** `opgaveplanlaeg`, `facilityplanlaeg`,
+`opgaveflyt` og `opgavestatus` skriver opgaven **og dens reservation** i én
+opdatering — med admin-SDK, som går uden om reglerne. Han kunne altså oprette
+et værkstedsbesøg og aldrig se det igen. Det er beslutning 45's fejl spejlvendt:
+dér kunne en klient skrive den ene halvdel; her kan han ikke læse den anden.
+
+⚠ **Det blev fundet ved at spørge basen, ikke ved at læse tabellen.** Et script
+gik hver node i `NODE_MODUL` igennem og spurgte: *har denne tenant DATA i en
+node hans moduler ikke ejer?* Svaret var én node. Havde jeg læst tabellen
+igennem i stedet, ville `reservationer: "booking"` have set rigtigt ud —
+bookinger reserverer jo.
+
+### Rettelsen
+
+`reservationer` flytter i **basen**, hos `opgaver`, `satser` og `fakturaer`.
+De fire har det samme til fælles: **en node der hører til flere moduler, kan
+ikke gates af det ene uden at det andet går i stykker.**
+
+`test/rules.moduler.test.mjs` udleder reglerne af tabellen, så flytningen
+rettede regelfilen og prøven i samme greb. Dertil en prøve der bærer selve
+kravet: en tenant uden Planning får en **værkstedsreservation** lagt ind og
+skal kunne læse den.
+
+⚠ **Alternativet — "har mindst ét af de fire moduler" — blev valgt fra**, og
+begrundelsen står allerede i `moduler.js`: det er en regel ingen kan læse sig
+til bagefter, og den slags regler bliver forkert ændret.
+
+### Og så fandt målingen to referencer der pegede på ingenting
+
+Undervejs blev **alle 72 referencefelter** i regelfilen talt op: **51 har et
+eksistenstjek, 21 har ikke.** Nogle af de 21 kan ikke få et — de peger på
+noder der ikke findes (`sager/`, bilag i Storage). Men et felt uden tjek
+betyder at demo-dataene er det eneste sted fejlen kan fanges.
+
+To af dem var forkerte, og begge var seedet ud i basen:
+
+| Reference | Pegede på | Findes |
+|---|---|---|
+| `indberetninger → materialelinjer → lagerId` | `lager-hoved`, `lager-vaerksted` | lagrene hedder `lag-kolding`, `lag-aalborg`, `lag-odense` |
+| `indberetninger/ind-006.indkoebId` | `ink-2026-0844` | linjerne hedder `il-001` … `il-054` |
+
+**Tre id-konventioner for to noder, opfundet i den fil der pegede.** Det er Bil
+104 med to nummerplader, på tværs af filer i stedet for inden i én.
+
+`test/demo-referencer.test.mjs` går hvert seedet sæt igennem og kræver at
+**hvert** felt der ender på `Id`, enten har en målnode eller står med en
+**grund**. Et nyt felt kan ikke glide forbi ved at være ukendt — samme greb som
+nodelisten i `rules.tenant.test.mjs`. Den fandt `indkoebId`; jeg havde kun
+fundet `lagerId` ved at kigge.
+
+⚠ **Den udrullede base bærer stadig de to.** Rettelsen ligger i demo-filerne,
+og basen får den først ved næste provisionering. Jeg kørte den ikke: en
+gen-seedning overskriver noder, og det der er oprettet gennem appen siden
+sidst, hører ikke til at forsvinde uden at nogen har bedt om det.
+
+### Det der IKKE blev rettet, og hvorfor det står her
+
+**Seedet respekterer ikke kundens moduler.** `nordvest` har fire
+fakturagrundlag og syv indberetninger med `bookingId` — og hans `bookinger`
+er tom, fordi han ikke har modulet. Referencerne peger på bookinger der findes
+i `demo` og ikke hos ham.
+
+Det er sin egen beslutning: enten skal provisioneringen springe de noder over
+som tenantens `moduler` ikke ejer, eller også skal en tenant uden Planning
+ikke have et fakturagrundlag. Begge dele ændrer hvad DEV *er*, og det er ikke
+en oprydning man laver i forbifarten.

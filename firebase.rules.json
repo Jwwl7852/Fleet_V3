@@ -793,8 +793,28 @@
         // ramme samme sekund. Skrivning går gennem en Cloud Function der
         // tjekker overlap i en transaction.
         // Ingen division her — reservationen arver fra ressourcen.
+        //
+        // ⚠ OG INGEN MODULKLAUSUL — NODEN HOERER I BASEN (beslutning 92).
+        //
+        // Her stod `moduler.booking === true`, og det laaste en kunde ude af
+        // sine EGNE data. Noden er hele pointen i beslutning 4: booking,
+        // vaerksted, facility-sag og fravaer skriver til den SAMME node, saa
+        // de fire kan se hinanden. Gates den paa den ene, forsvinder de tre
+        // andre.
+        //
+        // Maalt paa DEV-kunden `nordvest` (Fleet, Facility, Bemanding,
+        // Procure — ingen Planning): 37 reservationer, og ikke én af dem kom
+        // fra en booking. 18 vaerksted, 9 facility-sag, 10 fravaer. Hans
+        // Driftskalender og Servicekalender fik permission-denied paa data
+        // hans egne moduler havde skrevet — og `opgaveplanlaeg` skrev dem
+        // for ham med admin-SDK, som gaar uden om reglerne.
+        //
+        // Samme grund som `opgaver`, `satser` og `fakturaer` staar i basen.
+        // NODE_MODUL i moduler.js er sandheden, og rules.moduler.test.mjs
+        // udleder sig af den: kommer linjen tilbage i tabellen, kommer
+        // klausulen tilbage her — og laasen med den.
         "reservationer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
           "$ressourceType": {
             "$ressourceId": {

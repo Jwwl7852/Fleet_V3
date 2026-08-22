@@ -192,17 +192,35 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
    må ikke have den. Tilføjer nogen en node uden at tage stilling, fejler
    prøven — det er samme greb som nodelisten i rules.tenant.test.mjs.
 
-   ⚠ TRE NODER STÅR MED VILJE UDEN FOR: opgaver, satser og fakturaer. De
-   hører hver til TO moduler:
+   ⚠ FIRE NODER STÅR MED VILJE UDEN FOR: opgaver, satser, fakturaer og
+   reservationer. De hører hver til FLERE moduler:
 
-     opgaver    art er `vaerksted` | `facility` (beslutning 21)
-     satser     prisgrupper hører til Kunder, kalkulationsprisen til Booking
-     fakturaer  ligger i Indkøb, men Økonomi læser dem
+     opgaver        art er `vaerksted` | `facility` (beslutning 21)
+     satser         prisgrupper hører til Kunder, kalkulationsprisen til Booking
+     fakturaer      ligger i Indkøb, men Økonomi læser dem
+     reservationer  FIRE kilder mødes i den (beslutning 4)
 
    En node der hører til to moduler, kan ikke gates af det ene uden at det
    andet går i stykker. Alternativet — "har mindst ét af modulerne" — er en
    regel ingen kan læse sig til bagefter, og den slags regler bliver forkert
    ændret. De står derfor i BASEN.
+
+   ⚠ RESERVATIONER STOD SOM BOOKINGENS, OG DET VAR MÅLBART FORKERT.
+   Noden er hele pointen i beslutning 4: booking, værksted, facility-sag og
+   fravær skriver til den SAMME node, så de fire kan se hinanden. Gates den
+   på `booking`, kan en kunde med Fleet og Facility men uden Planning ikke
+   læse én eneste af sine egne reservationer — heller ikke dem hans egne
+   moduler har skrevet.
+
+   Målt på DEV-kunden `nordvest` (Fleet, Facility, Bemanding, Procure — ingen
+   Planning): **37 reservationer, og ikke én af dem kommer fra en booking.**
+   18 værksted, 9 facility-sag, 10 fravær. Hele Driftskalenderen,
+   Servicekalenderen og enhver ledighedsvisning stod med en afvist læsning
+   på data hans egne moduler havde skrevet.
+
+   ⚠ Og `opgaveplanlaeg`, `facilityplanlaeg`, `opgaveflyt` og `opgavestatus`
+   SKRIVER den for ham — med admin-SDK, som går uden om reglerne. Han kunne
+   altså oprette et værkstedsbesøg og aldrig se det igen. Se beslutning 92.
 
    ⚠ personale, kompetencer og kpi er heller ikke gatede. personale ligger i
    basen fordi enhver abonnementskombination har medarbejdere (se
@@ -251,7 +269,11 @@ export const NODE_MODUL = {
   "sensitive/bookinger": "booking",
   "vaerdi/bookinger": "booking",
   etaper: "booking",
-  reservationer: "booking",
+  /* ⚠ `reservationer` STOD HER, OG DEN ER FLYTTET I BASEN — beslutning 92.
+     Fire kilder mødes i noden, og tre af dem hører til andre moduler. Se
+     forklaringen i hovedet. Sæt den ikke tilbage: prøven udleder reglerne af
+     tabellen, så en linje her lukker straks en kunde ude af sine egne
+     værksteds- og fraværsreservationer. */
 
   fravaer: "bemanding",
   "sensitive/fravaer": "bemanding",

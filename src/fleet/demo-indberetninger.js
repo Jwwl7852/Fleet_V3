@@ -131,7 +131,7 @@ export const DEMO_INDBERETNINGER = [
     materialelinjer: [
       {
         vare: "Bobleplast", varenummer: "BP-500",
-        maengde: m(12), enhed: "m", lagerId: "lager-hoved",
+        maengde: m(12), enhed: "m", lagerId: "lag-kolding",
         /* ⚠ ALLEREDE FAKTURERET. Et nyt forsøg skal afvises frem for at lave
            linje nummer to — se kanFaktureres(). */
         grundlagslinjeId: "grl-004-l4",
@@ -139,7 +139,7 @@ export const DEMO_INDBERETNINGER = [
       },
       {
         vare: "Spændebånd 5 m", varenummer: "SB-050",
-        maengde: m(4), enhed: "stk", lagerId: "lager-hoved",
+        maengde: m(4), enhed: "stk", lagerId: "lag-kolding",
         /* Ikke faktureret endnu — den kan blive til en grundlagslinje. */
         grundlagslinjeId: null,
         lagertraekId: "lt-2026-0413",
@@ -169,7 +169,7 @@ export const DEMO_INDBERETNINGER = [
     materialelinjer: [
       {
         vare: "Bremseklodser, sæt", varenummer: "BK-441",
-        maengde: m(1), enhed: "sæt", lagerId: "lager-vaerksted",
+        maengde: m(1), enhed: "sæt", lagerId: "lag-kolding",
         grundlagslinjeId: null,
         lagertraekId: null,
       },
@@ -268,7 +268,12 @@ export const DEMO_INDBERETNINGER = [
     adBlueLiter: 16,
     prisPrLiterOere: 1_268,
     omkostningOere: 49_198,
-    indkoebId: "ink-2026-0844",
+    /* ⚠ `ink-2026-0844` PEGEDE PÅ INGENTING. Indkøbslinjerne hedder `il-001`
+       og frem; `ink-…` var en tredje id-konvention opfundet i denne fil. Den
+       rigtige linje er `il-003` — Circle K's tankkort på **samme bil**,
+       kt-012. Fundet af `demo-referencer.test.mjs`, ikke ved at kigge.
+       Se beslutning 92. */
+    indkoebId: "il-003",
     ingenOmkostning: null,
     tidsregistrering: null,
     materialelinjer: [],

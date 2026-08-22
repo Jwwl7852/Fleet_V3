@@ -169,13 +169,20 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
     assert.deepEqual(forkert, [], "noder uden for tabellen har en modulklausul.");
   });
 
-  it("de tre tvetydige noder står i basen", () => {
+  it("de FIRE tvetydige noder står i basen", () => {
     /* opgaver har to arter, satser to forbrugere, fakturaer to skærme.
        Står de her, er det fordi nogen har besluttet det. */
     /* ⚠ `grundlag` kom til med fakturagrundlagets node. Det roeres af
        BOOKING (turen), WAREHOUSE (lagerafregningen) og OEKONOMI (skaermen) —
        en klausul paa eet af dem ville spaerre de to andre. */
-    for (const node of ["opgaver", "satser", "fakturaer", "grundlag", "personale", "kompetencer", "kpi"]) {
+    /* ⚠ `reservationer` KOM TIL I BESLUTNING 92, og den var den dyreste af
+       dem: fire kilder mødes i noden (beslutning 4), og den stod som
+       BOOKINGENS. Målt på DEV-kunden `nordvest` — Fleet, Facility,
+       Bemanding, Procure, ingen Planning — 37 reservationer, og ikke én
+       fra en booking: 18 værksted, 9 facility-sag, 10 fravær. Alle låst
+       for ham, mens `opgaveplanlaeg` skrev dem med admin-SDK. */
+    for (const node of ["opgaver", "satser", "fakturaer", "grundlag", "reservationer",
+                        "personale", "kompetencer", "kpi"]) {
       if (node === "kompetencer") continue;  /* kompetencer ER bemanding */
       assert.equal(NODE_MODUL[node], undefined, `${node} er blevet gatet af et modul.`);
     }
@@ -235,9 +242,33 @@ describe("Et fravalgt modul lukker sine noder", () => {
        Lukkede de med, ville en kunde der kun har Dashboard ikke kunne se sine
        egne medarbejdere. */
     const db = somAdmin(UDEN);
-    for (const node of ["personale", "opgaver", "satser", "fakturaer", "brugere"]) {
+    for (const node of ["personale", "opgaver", "satser", "fakturaer", "brugere",
+                        "reservationer"]) {
       await assertSucceeds(get(ref(db, `tenants/${UDEN}/${node}`)));
     }
+  });
+
+  /**
+   * ⚠ OG DEN HER ER DEN DER BÆRER BESLUTNING 92.
+   *
+   * `reservationer` stod som bookingens, og en kunde med Fleet og Facility
+   * men uden Planning kunne derfor ikke læse ÉN eneste af sine egne
+   * reservationer — heller ikke dem hans værksted og hans facility-sager
+   * havde skrevet. Hele Driftskalenderen og Servicekalenderen fik
+   * permission-denied på data hans egne moduler producerede.
+   *
+   * Prøven ovenfor siger at noden er læsbar. Den her siger hvorfor det
+   * betyder noget: den lægger en VÆRKSTEDSRESERVATION ind og kræver at han
+   * kan se den.
+   */
+  it("⚠ EN VÆRKSTEDSRESERVATION ER LÆSBAR UDEN PLANNING-MODULET", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(
+        ref(ctx.database(), `tenants/${UDEN}/reservationer/koeretoej/kt-1/res-1`),
+        { fra: 1e12, til: 1e12 + 3600000, kilde: { type: "vaerksted", id: "o-1" } });
+    });
+    const db = somAdmin(UDEN);
+    await assertSucceeds(get(ref(db, `tenants/${UDEN}/reservationer/koeretoej/kt-1`)));
   });
 
   it("⚠ kpi ER IKKE LÆNGERE ÉN NODE — basen er de to domæner uden modul", async () => {

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **91 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **92 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -661,6 +661,27 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `opgaveMangler()` og `valideOpgaveplan()`. Skriv ikke en regelprøve der
   "afviser" en opgave — den ville være grøn fordi skrivningen er lukket, ikke
   fordi posten var forkert. Se beslutning 45.
+- **Gate en node på ét modul, når flere moduler skriver til den.** Fire noder
+  står i BASEN af netop den grund: `opgaver` (to arter), `satser` (to
+  forbrugere), `fakturaer` (to skærme) og **`reservationer`** (fire kilder —
+  booking, værksted, facility-sag og fravær, beslutning 4).
+  ⚠ **`reservationer` stod som bookingens, og det blev målt hvad det kostede:**
+  DEV-kunden `nordvest` har Fleet, Facility, Bemanding og Procure men ingen
+  Planning — **37 reservationer, ikke én fra en booking, alle låst for ham**.
+  Og de fire veje ind i `opgaver` skrev dem for ham med admin-SDK, som går
+  uden om reglerne: han kunne oprette et værkstedsbesøg og aldrig se det igen.
+  ⚠ **Spørg BASEN, ikke tabellen.** `reservationer: "booking"` ser rigtigt ud
+  når man læser det — bookinger reserverer jo. Fejlen kan kun ses ved at
+  spørge om en tenant har DATA i en node hans moduler ikke ejer.
+  Se beslutning 92.
+- **Opfinde en id-konvention i den fil der PEGER.** `materialelinjer.lagerId`
+  sagde `lager-hoved` mens lagrene hedder `lag-kolding`; `ind-006.indkoebId`
+  sagde `ink-2026-0844` mens linjerne hedder `il-003`. Tre konventioner for
+  to noder, begge seedet ud i basen — og **51 af 72 referencefelter i
+  regelfilen har et eksistenstjek, 21 har ikke**, så reglerne fangede intet.
+  `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
+  seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
+  **med en grund**.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke
