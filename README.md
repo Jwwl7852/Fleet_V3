@@ -197,6 +197,7 @@ tilfældigt.
 | 87 | **Divisionsefterslæbet — aksen levede i skærmene, ikke i reglerne.** 70 fjernede aksen, 79 tog resten i shellen og reglerne, og to prøvefiler var grønne hele vejen — **fordi ingen af dem læste `src/moduler/`**. En lint der springer noget over, siger ikke nej; den siger ingenting (2. gang, jf. 56). ⚠ **Og det var ikke kosmetik:** `facility/Servicedialog.jsx` havde et **påkrævet** Division-felt på `opgaver`, hvis regel har `.validate: false` på feltet — **servicebesøg kunne ikke oprettes**, i begge retninger. Opsætning → Generelt havde et kort der sagde **"Divisioner: Gods og bus"** til kunden. Fire filtre sammenlignede `x.division === division`, hvor **begge sider var `undefined`** — en no-op der så ud som en afgrænsning. `Kunder.jsx` skrev altid "i godsafdelingen". Værkstedskalenderen sendte `&division=undefined` i en URL ingen læste. To navne løj: `iDivision`, `opgaverIDivision`. ⚠ **Loftet er nu et forbud** — nul levende forekomster, med én undtagelse for de syv sætninger der forklarer at feltet ikke findes (en prøve der råber ad det korrekte, bliver slået fra). Dertil: **ingen skærm må destrukturere `division` ud af `useFleet()`** — det havde alle seks fund til fælles, og **en destrukturering af et felt der ikke findes, er tavs**. ⚠ **"Moduler: 0" var tredje gang** en manglende `moduler`-node blev læst som INGEN i stedet for ALLE (56, 86, 87) — set på skærmen, ikke i koden. ⚠ **Og jeg slettede for meget:** patchens anker spændte til filens sidste `});` og åd de ti oprindelige prøver; genskabt fra git | 14 modulskærme, `test/division-fjernet.test.mjs` |
 | 88 | **Status-afsnittet — et tal ingen prøve holder, driver.** README's Status er dét afsnit dokumentet selv beder én læse efter en pause. Det stod med **957 tests** da der var 2619, og med **27 af 30 skærme** da der var 54 — og overskriften og tabellen to linjer under den var uenige med hinanden, 27 mod 29. ⚠ **Ingen af tallene var løgn da de blev skrevet.** De blev det af at produktet voksede: Warehouse med elleve skærme, Unitbooking med fire, Procure med fire nye. **Et tal skrevet i hånden kan kun blive forkert.** ⚠ **Samme fejlklasse som 52**, som er grunden til at `dokumentation.test.mjs` findes: en drevet tabel sagde at en spærring MANGLEDE, og derfor kiggede ingen på om den virkede. Den fil vogtede tabellen; tallene ved siden af var uvogtede. ⚠ **`statustal.test.mjs` læser nu skærmtallet ud af `nav.js`** — det ene sted en rute kan opstå — og prøvefiltallet ud af `test/`, og kræver at hver række, totalen OG overskriften siger det samme. ⚠ **Det samlede prøvetal står der ikke længere:** det kan kun måles ved at KØRE suiten, og **en prøve kan ikke tælle sig selv**. ⚠ **Og tre lag backslash forsvandt undervejs** — `\|` → `|` → `|`, og `/*/g` → `/*/g`. Tabellen læses nu med `split("|")`, og filen er skrevet direkte frem for genereret | `README.md`, `test/statustal.test.mjs` |
 | 89 | **Abonnementshistorikken — og et dokument der modsagde sig selv.** `tenants/<id>/abonnementHistorik`, append-only, skrevet af fire funktioner i SAMME opdatering som ændringen. ⚠ **Første fund var ikke kode:** ABONNEMENT.md sagde begge dele om noden — afsnit 6 kaldte den hastende, afsnit 7 skrev at den var **droppet**. ⚠ **Afsnit 7 havde ret om sit eget:** regningen tælles i `udbyder/maalinger`, som kom EFTER afsnit 2 blev skrevet. To kilder til ét dagsantal driver — `bemanding.ledig` med penge på. ⚠ **Men den lukkede et spørgsmål den ikke havde stillet:** *"auditloggen svarer på hvem"*. Målt: `kundemoduler` skriver kun de FRAVALGTE i en note på 120 tegn, rabatten står som fri tekst uden et "før", og retention er 24 mdr. mod bogføringens fem år. ⚠ **Derfor: hvem, hvad, før, efter og hvorfor — aldrig et dagsantal**, og en prøve forbyder generatoren at læse den. ⚠ **`rabat` er tredje art og stod ikke i forslaget:** `linjerForPeriode()` får ÉN `rabatBps` for hele perioden, så **en rabat sat den 20. prissætter også de nitten dage der er gået** — i tavshed. ⚠ **Posterne udledes af FORSKELLEN, ikke af kaldet** — konsollen gemmer hele modulsættet hver gang, og en log fuld af hændelser der ikke skete, kan ikke forklare en regning. ⚠ **Kun udbyderen læser den:** `aarsag` står i posten, og *"hvorfor han er lukket, hører i en samtale"*. Niende regel med udbyder-claim'et. ⚠ **Og en rod-opdatering er et `set()` på hver af sine nøgler** — `tenants/<id>/abonnement` som nøgle ville tørre rabatten væk, samme fælde som filen allerede advarede om én etage nede | `fleet/abonnement.js`, `functions/index.js`, `firebase.rules.json`, `moduler/udbyder/Konsol.jsx` |
+| 90 | **Hallen og porten er ét rum — indeslutningen.** `reservationFraOpgave()` har siden 51 båret sætningen *"lukker man hallen, er alle porte i den også optaget"* — og datamodellen håndhævede den ikke. En reservation på `lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to STIER, og `tjekLedigMod()` ser kun én ad gangen: to håndværkere kunne bookes ind i samme rum. ⚠ **`indeslutninger()` + `tjekLedigIndesluttet()`** i den delte `reservations.js`, brugt af `facilityplanlaeg` OG `opgaveflyt`. ⚠ **Begge veje** — var den kun den ene, ville rækkefølgen afgøre udfaldet. ⚠ **Ingen kaskade mellem søskende:** port 3 spærrer ikke port 5, ellers lukkede ét besøg et helt anlægsområde. ⚠ **Og ingen reservation pr. port:** det er KONTROLLEN der er udvidet, ikke posterne — N poster for ét arbejde ville drive fra hinanden første gang én blev flyttet. ⚠ **Konflikten siger hvor den kom fra** (`viaRessourceId`): *"Ressourcen er optaget"* på en port der står tom, er ubrugelig. ⚠ **Og `kanOverskrive` kræver dem alle** — ellers rydder en tving det ene og efterlader det andet. ⚠ **Skærmen tegner hallens blok som en SKYGGE** på de porte den lukker, i samme liste som `ledigeVinduer()` regner af — ét regnestykke, to visninger. ⚠ **`tjekDisponering()` fik den ikke, og det er MÅLT:** en etape binder kun `koeretoej` og `medarbejder`, som ingen indeslutning har. Et kald dér ville være en no-op der lignede dækning. ⚠ **To prøver holdt den gamle form i live** — én krævede ordret `tjekLedigMod(`, én krævede PRÆCIS én sti under `reservationer/`. **En prøve der tæller, siger nej til en udvidelse den ikke har en mening om** | `fleet/reservations.js`, `functions/index.js`, `facility/Servicekalender.jsx`, `test/indeslutning.test.mjs` |
 
 ## Struktur
 
@@ -271,7 +272,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **105 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **106 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -591,13 +592,13 @@ straks en fejl: mønstret var versalfølsomt, så et håndtastet
    ⚠ **Ikke et art-flag på `opgaveplanlaeg`:** `art` ER feltskemaet, og
    modulet er `facility` mod `flaade`. Spurgte begge om Fleet, kunne en
    kunde der kun har Facility, ikke planlægge sit eget servicebesøg.
-   ⚠ **Det der IKKE er lukket:** en reservation på `lokation/lok-halb` og
-   en på `facilityAktiv/fa-port3` er to stier, så et gulvarbejde i Hal B
-   spærrer **ikke** porten i den hal — hverken her eller i `opgaveflyt`.
-   Skærmen siger det rigtige; datamodellen håndhæver det ikke. En
-   indeslutningsregel er sin egen beslutning: den skal gælde begge veje, i
-   begge funktioner og i `tjekDisponering()`, og et halvt tjek i én af dem
-   ville være værre end ingen.
+   ⚠ **Indeslutningen er nu lukket — beslutning 90.** En reservation på
+   `lokation/lok-halb` og en på `facilityAktiv/fa-port3` er stadig to
+   stier, men ét fysisk rum: `indeslutninger()` siger hvilke andre stier
+   der beskriver samme rum, og `tjekLedigIndesluttet()` kører tjekket mod
+   dem alle. Begge veje, i **begge** funktioner — og Servicekalenderen
+   tegner hallens blok som en skygge på de porte den lukker, så skærmen
+   ikke tilbyder en tid serveren afviser.
 
 ### Længdebåndet — trin 3 af beslutning 18 er lukket
 
@@ -769,15 +770,29 @@ fire skriver opgaven og dens reservation i én atomisk opdatering. Noden bliver
 *(Her stod først at statusskiftet manglede, derefter at oprettelsen af en
 facility-opgave gjorde. Begge er bygget — 50 og 51.)*
 
-⚠ **Det der IKKE er lukket, er en indeslutningsregel.** En reservation på
-`lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to forskellige stier,
-så et gulvarbejde i Hal B spærrer **ikke** porten i den hal — hverken i
-`facilityplanlaeg` eller i `opgaveflyt`, som har haft hullet siden 49.
-Servicekalenderen siger det rigtige ("lukker man hallen, er alle porte i den
-også optaget"); datamodellen håndhæver det ikke. Reglen skal gælde begge veje,
-i begge funktioner og i `tjekDisponering()` — et halvt tjek i én af dem ville
-være værre end ingen, fordi skærmen så viste en ledighed serveren afviser i det
-ene tilfælde og ikke i det andet.
+⚠ **Indeslutningsreglen er bygget — beslutning 90.** En reservation på
+`lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to forskellige stier
+og ét fysisk rum. Hullet havde stået siden 49 i `facilityplanlaeg` og
+`opgaveflyt`, mens `reservationFraOpgave()` hele tiden bar sætningen *"lukker
+man hallen, er alle porte i den også optaget"*. Skærmen sagde det rigtige;
+datamodellen håndhævede det ikke.
+
+`indeslutninger()` i `reservations.js` siger hvilke andre stier der beskriver
+samme rum; `tjekLedigIndesluttet()` kører `tjekLedigMod()` mod dem alle og
+mærker hver konflikt med **hvor** den kom fra. Tre ting er værd at kende:
+
+- **Begge veje.** Var den kun den ene, ville rækkefølgen afgøre udfaldet: book
+  hallen først, og porten kunne stadig tages.
+- **Ingen kaskade mellem søskende.** To porte i samme hal er uafhængige. Ellers
+  ville ét servicebesøg lukke et helt anlægsområde.
+- **Ingen reservation pr. port.** Et blok på hallen er ÉN reservation; det er
+  KONTROLLEN der er udvidet. N poster for ét arbejde ville drive fra hinanden
+  første gang én blev flyttet — `bemanding.ledig` igen.
+
+⚠ **Og `tjekDisponering()` fik den ikke, fordi den ikke kan bruge den.** En
+etape binder `koeretoej` og `medarbejder` (`reservationerFraEtape()`) —
+ingen af dem har en indeslutning, og `indeslutninger()` svarer `[]` for dem.
+Et kald dér ville være en no-op der lignede dækning. Målt frem for antaget.
 
 ### Gitterkalenderen er en genbrugskontrakt
 

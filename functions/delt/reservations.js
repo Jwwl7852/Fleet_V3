@@ -226,6 +226,108 @@ export function tjekLedigMod(eksisterende = [], ny, opts = {}) {
   return { ok: konflikter.length === 0, konflikter, kanOverskrive };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   INDESLUTNING — hallen og porten er det samme fysiske rum
+   ══════════════════════════════════════════════════════════════════════════
+
+   `reservationFraOpgave()` har hele tiden båret sætningen:
+
+     *"En facility-opgave binder ENTEN et anlæg ELLER et helt sted … Lukker
+     man hallen, er alle porte i den også optaget."*
+
+   Datamodellen har bare aldrig håndhævet den. En reservation på
+   `lokation/lok-halb` og en på `facilityAktiv/fa-port3` er **to stier**, og
+   `tjekLedigMod()` ser kun én ad gangen — så et gulvarbejde i Hal B spærrede
+   ikke porten i den, og to håndværkere kunne bookes ind i samme rum uden at
+   nogen kunne se det. Skærmen sagde det rigtige; reglen fandtes ikke.
+
+   ⚠ DEN GÆLDER BEGGE VEJE. Var den kun den ene, ville rækkefølgen afgøre
+   udfaldet: book hallen først, og porten kunne stadig tages. Et halvt tjek er
+   værre end ingen, fordi det ligner et helt.
+
+   ⚠ MEN DEN KASKADERER IKKE MELLEM SØSKENDE. To porte i samme hal er
+   uafhængige — at servicere port 3 spærrer ikke port 5. Kun hal ↔ port.
+   Gjorde den det, ville ét servicebesøg lukke et helt anlægsområde, og så
+   ville folk holde op med at bruge lokationen som ressource.
+
+   ⚠ OG DER SKRIVES IKKE EN RESERVATION PR. PORT. Et blok på hallen er ÉN
+   reservation; den udvidede KONTROL er det der binder dem sammen. N poster
+   for ét arbejde ville se ud som N bookinger, skulle frigives hver for sig,
+   og ville drive fra hinanden første gang én af dem blev flyttet. Samme grund
+   som `bemanding.ledig` ikke gemmes (beslutning 71).
+
+   Se beslutning 90. */
+
+/**
+ * De ANDRE reservationsstier der beskriver det samme fysiske rum.
+ *
+ * `aktiver` er `facility/aktiver` som den står i noden: `{ <id>: { lokationId } }`.
+ * Mangler den, er svaret tomt — og det er den rigtige retning: en kalder der
+ * ikke har hentet anlæggene, skal ikke få et falsk "ledigt". Derfor kræver
+ * `tjekLedigIndesluttet()` at kalderen selv leverer grupperne.
+ */
+export function indeslutninger(ny, { aktiver = {} } = {}) {
+  if (!ny?.ressourceType || !ny?.ressourceId) return [];
+
+  if (ny.ressourceType === RESSOURCE.lokation) {
+    return Object.entries(aktiver || {})
+      .filter(([, a]) => a?.lokationId === ny.ressourceId)
+      .map(([id]) => ({ ressourceType: RESSOURCE.facilityAktiv, ressourceId: id }));
+  }
+
+  if (ny.ressourceType === RESSOURCE.facilityAktiv) {
+    const lokationId = aktiver?.[ny.ressourceId]?.lokationId;
+    return lokationId ? [{ ressourceType: RESSOURCE.lokation, ressourceId: lokationId }] : [];
+  }
+
+  return [];
+}
+
+/**
+ * tjekLedigMod() på tværs af de indesluttede ressourcer.
+ *
+ * `grupper` er `[{ ressourceType, ressourceId, reservationer }]`, og kalderen
+ * har hentet dem — her er ingen database. Den EGNE ressource hører med i
+ * listen; er den ikke der, prøves den ikke.
+ *
+ * ⚠ KONFLIKTEN SIGER HVOR DEN KOM FRA. En besked der bare lyder "Ressourcen
+ * er optaget" på en port der står tom, er ubrugelig — man går hen og kigger.
+ * Hver konflikt bærer derfor `viaRessourceType`/`viaRessourceId`, og teksten
+ * siger det: *"Hallen er optaget …"*.
+ */
+export function tjekLedigIndesluttet(ny, grupper = [], opts = {}) {
+  const konflikter = [];
+  let kanOverskrive = true;
+
+  for (const g of grupper) {
+    const mod = { ...ny, ressourceType: g.ressourceType, ressourceId: g.ressourceId };
+    const svar = tjekLedigMod(g.reservationer || [], mod, opts);
+    if (svar.ok) continue;
+
+    const egen = g.ressourceType === ny.ressourceType && g.ressourceId === ny.ressourceId;
+    for (const k of svar.konflikter) {
+      konflikter.push(egen ? k : {
+        ...k,
+        viaRessourceType: g.ressourceType,
+        viaRessourceId: g.ressourceId,
+        tekst: `${indeslutningsord(ny.ressourceType)} ${k.tekst}`,
+      });
+    }
+    /* ⚠ EN OVERSKRIVNING SKAL KUNNE DÆKKE DEM ALLE. Kunne man overskrive
+       porten men ikke hallen, ville en "tving" rydde det ene og efterlade det
+       andet — og arbejdet ville stå i et rum der stadig var optaget. */
+    if (!svar.kanOverskrive) kanOverskrive = false;
+  }
+
+  return { ok: konflikter.length === 0, konflikter, kanOverskrive };
+}
+
+/** Hvad man skal kigge efter, sagt forfra. */
+const indeslutningsord = (ressourceType) =>
+  ressourceType === RESSOURCE.lokation
+    ? "Et anlæg på stedet er optaget:"
+    : "Hele stedet er optaget:";
+
 /**
  * Opretter en reservation. Kaster hvis der er en konflikt af højere eller
  * samme prioritet — så "Ingen konflikter fundet" i UI'et betyder noget.

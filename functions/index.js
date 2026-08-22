@@ -95,7 +95,9 @@ import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
   kanSkifteOpgave, statusOpdatering,
 } from "./delt/opgaveplan-regler.js";
-import { tjekLedigMod, konfliktTekst } from "./delt/reservations.js";
+import {
+  tjekLedigMod, konfliktTekst, indeslutninger, tjekLedigIndesluttet,
+} from "./delt/reservations.js";
 import { modulsaet, ukendteModuler, ALLE_MODULER } from "./delt/moduler.js";
 import {
   ALLE_ABONNEMENTSTATUS, ALLE_AARSAGER, historikposter, valideHistorikpost,
@@ -3625,12 +3627,26 @@ export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
   }
 
   /* ---- Er ressourcen ledig? ------------------------------------------- */
-  const snap = await rod
-    .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
-    .once("value");
-  const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+  /* ⚠ OG ER RUMMET LEDIGT? En reservation på `lokation/lok-halb` og en på
+     `facilityAktiv/fa-port3` er to STIER, men ét fysisk rum: lukker man
+     hallen, er porten i den også optaget. Anlæggene hentes derfor med, og
+     tjekket køres mod hele indeslutningen. Se beslutning 90. */
+  const aktiver = (await rod.child("facility/aktiver").once("value")).val() || {};
+  const stier = [
+    { ressourceType: ny.ressourceType, ressourceId: ny.ressourceId },
+    ...indeslutninger(ny, { aktiver }),
+  ];
+  const grupper = await Promise.all(stier.map(async (s) => {
+    const snap = await rod
+      .child(`reservationer/${s.ressourceType}/${s.ressourceId}`)
+      .once("value");
+    return {
+      ...s,
+      reservationer: Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v })),
+    };
+  }));
 
-  const svar = tjekLedigMod(eksisterende, ny);
+  const svar = tjekLedigIndesluttet(ny, grupper);
   if (!svar.ok) {
     /* ⚠ ET SERVICEBESOEG HAR PRIORITET 20 og taber til vaerksted (40) og
        fravaer (30) — men VINDER over en booking (10). Og det overskriver
@@ -3792,16 +3808,34 @@ export const opgaveflyt = onCall({ region: REGION }, async (req) => {
   }
 
   /* ---- Er ressourcen ledig paa den NYE plads? -------------------------- */
-  const snap = await rod
-    .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
-    .once("value");
-  const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+  /* ⚠ OG ER RUMMET LEDIGT? Samme udvidelse som i `facilityplanlaeg`: hallen
+     og porten i den er to STIER og ét fysisk rum. Var tjekket kun i
+     oprettelsen, kunne man oprette lovligt og FLYTTE ind i en optaget hal —
+     og et halvt tjek er værre end ingen, fordi det ligner et helt.
+     Anlæggene hentes kun for facility-arten; en værkstedsopgave paa et
+     koeretoej har ingen indeslutning. Se beslutning 90. */
+  const aktiver = ny.ressourceType === "koeretoej"
+    ? {}
+    : (await rod.child("facility/aktiver").once("value")).val() || {};
+  const stier = [
+    { ressourceType: ny.ressourceType, ressourceId: ny.ressourceId },
+    ...indeslutninger(ny, { aktiver }),
+  ];
+  const grupper = await Promise.all(stier.map(async (s) => {
+    const snap = await rod
+      .child(`reservationer/${s.ressourceType}/${s.ressourceId}`)
+      .once("value");
+    return {
+      ...s,
+      reservationer: Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v })),
+    };
+  }));
 
   /* ⚠ `ny` BAERER SIT UDLEDTE ID, og det er ikke pynt: tjekLedigMod()
      filtrerer paa `r.id !== ny.id`, saa uden det ville opgavens EGEN gamle
      reservation blive meldt som konflikt. En flytning paa to timer paa samme
      bil ville altid blive afvist — af opgaven selv. Se flytOpdatering(). */
-  const svar = tjekLedigMod(eksisterende, ny);
+  const svar = tjekLedigIndesluttet(ny, grupper);
   if (!svar.ok) {
     const foerste = svar.konflikter[0];
     const flere = svar.konflikter.length > 1

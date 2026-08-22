@@ -469,8 +469,19 @@ describe("opgaveflyt håndhæver det skærmen viser", () => {
     /* Det ENE sted funktionen naevner noden, er dér den LAESER hvad der
        allerede staar paa ressourcen. Selve POSTENS sti — den med res-id'et —
        bygges kun ét sted, og det er i flytOpdatering(). */
+    /* ⚠ KRAVET ER PAA POSTENS STI, IKKE PAA ANTALLET AF LAESNINGER.
+       Proeven kraevede foer PRAECIS én sti, og faldt da indeslutningen
+       (beslutning 90) tilfoejede en laesning MERE — hallens, naar der
+       reserveres paa en port. Den laesning er rigtig; det der stadig ikke maa
+       ske, er at funktionen bygger POSTENS sti med res-id'et selv.
+
+       En proeve der taeller, siger nej til en udvidelse den ikke har en
+       mening om. Den spoerger nu om det den faktisk skal beskytte: to
+       segmenter efter `reservationer/`, aldrig tre. */
     const stier = blok.match(/`reservationer\/[^`]*`/g) || [];
-    assert.deepEqual(stier, ["`reservationer/${ny.ressourceType}/${ny.ressourceId}`"],
+    assert.ok(stier.length > 0, "funktionen laeser slet ikke reservationer");
+    const forDybe = stier.filter((s) => s.split("/").length > 3);
+    assert.deepEqual(forDybe, [],
       "funktionen bygger selv reservationspostens sti i stedet for at bruge flytOpdatering()");
   });
 

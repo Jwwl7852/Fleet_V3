@@ -65,7 +65,9 @@ import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Statusskifte from "../../fleet/Statusskifte.jsx";
 import Servicedialog from "./Servicedialog.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { KILDE, prioritetFor, konfliktTekst } from "../../fleet/reservations.js";
+import {
+  KILDE, prioritetFor, konfliktTekst, indeslutninger,
+} from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Sættene bruges når der ingen database er.
    Skærmen slår IKKE op i dem — det var netop dét der gjorde
@@ -157,7 +159,7 @@ export default function Servicekalender() {
   const typeFor = (raekkeId) =>
     aktiver.data.some((a) => a.id === raekkeId) ? "facilityAktiv" : "lokation";
 
-  const blokke = iVindue.map((o) => ({
+  const egneBlokke = iVindue.map((o) => ({
     id: o.id,
     raekkeId: ressourceId(o),
     fra: o.startMs,
@@ -168,10 +170,58 @@ export default function Servicekalender() {
     tone: OPGAVE_STATUS[o.status]?.pill || "info"
   }));
 
+  /* ---- Indeslutningen: hallen og porten er det samme rum — beslutning 90 -- */
+
+  /**
+   * ⚠ SKÆRMEN SKAL VISE DET SERVEREN HÅNDHÆVER.
+   *
+   * `facilityplanlaeg` og `opgaveflyt` afviser nu et besøg på Port 3 mens Hal
+   * B er lukket — de to reservationer er to STIER og ét fysisk rum. Regnede
+   * gitteret stadig hver række for sig, ville det tilbyde et ledigt felt
+   * serveren afviser, og det er den værste af de to fejl: man har allerede
+   * lovet håndværkeren en tid.
+   *
+   * Blokken TEGNES som en skygge på de rækker den lukker, frem for at feltet
+   * bare forsvinder. En plads man ikke kan bruge og ikke kan se hvorfor,
+   * bliver ikke forstået — den bliver rapporteret som en fejl.
+   */
+  const aktiverMap = useMemo(
+    () => Object.fromEntries(aktiver.data.map((a) => [a.id, { lokationId: a.lokationId }])),
+    [aktiver.data]);
+
+  const navnFor = (id) =>
+    lokationer.data.find((l) => l.id === id)?.navn
+    || aktiver.data.find((a) => a.id === id)?.navn
+    || id;
+
+  const skygger = useMemo(() => raekker.flatMap((r) => {
+    const ider = indeslutninger(
+      { ressourceType: typeFor(r.id), ressourceId: r.id }, { aktiver: aktiverMap }
+    ).map((x) => x.ressourceId);
+    return egneBlokke
+      .filter((b) => ider.includes(b.raekkeId))
+      .map((b) => ({
+        id: `skygge-${r.id}-${b.id}`,
+        raekkeId: r.id,
+        fra: b.fra, til: b.til,
+        label: `Optaget: ${navnFor(b.raekkeId)}`,
+        titel: `${navnFor(b.raekkeId)} er lukket i perioden — ${b.titel || "servicebesøg"}`,
+        tone: "info",
+        skygge: navnFor(b.raekkeId),
+      }));
+  }), [raekker, egneBlokke, aktiverMap]);
+
+  const blokke = [...egneBlokke, ...skygger];
+
   /* ---- Træk: flyt et servicebesøg — beslutning 49 ---- */
 
   const kanFlytteBlok = (b) => {
     if (!maaSkrive) return "Kræver opgaver.skriv.";
+    /* ⚠ EN SKYGGE ER IKKE EN BLOK MAN KAN TAGE FAT I. Den står på den række
+       den LUKKER, ikke på den række besøget hører til — og en flytning her
+       ville skulle gætte hvilken af de to der var ment. Grunden siges frem
+       for et tavst nej: uden den ligner skyggen en blok der er gået i stå. */
+    if (b.skygge) return `Besøget hører til ${b.skygge} — flyt det dér.`;
     const o = facilityopgaver.find((x) => x.id === b.id);
     if (!o) return "Opgaven kunne ikke findes igen.";
     const svar = kanFlyttes(o);
@@ -203,13 +253,18 @@ export default function Servicekalender() {
   const dropfelter = useMemo(() => {
     const felter = [];
     for (const r of raekker) {
+      /* ⚠ SKYGGERNE TÆLLER MED. De ligger allerede i `blokke` med rækkens
+         eget id, så et ledigt felt kan ikke opstå oven på en hal der er
+         lukket — og skærmen tilbyder dermed ikke en tid serveren afviser.
+         Det er hele pointen med at skyggen er en BLOK og ikke en klasse på
+         en celle: ét regnestykke bærer både tegningen og ledigheden. */
       const mine = blokke.filter((b) => b.raekkeId === r.id);
       for (const [i, v] of ledigeVinduer(mine, vindueFra, vindueTil).entries()) {
         felter.push({ id: `drop-${r.id}-${i}`, raekkeId: r.id, fra: v.fra, til: v.til });
       }
     }
     return felter;
-  }, [vindueFra, vindueTil, raekker.length, iVindue.length]);
+  }, [vindueFra, vindueTil, raekker.length, blokke.length]);
 
   /**
    * ⚠ ET DØGN HAR INGEN KLOKKE, OG MIDNAT ER IKKE ET SVAR.

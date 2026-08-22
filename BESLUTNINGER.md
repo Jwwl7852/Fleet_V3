@@ -6443,3 +6443,124 @@ ingen steder.
 **3. To lag backslash forsvandt igen.** Politikken blev først skrevet gennem
 en heredoc, og både `\|` og `/\*/g` blev spist. Filerne er skrevet direkte —
 anden gang på to etaper, og lærestregen fra 88 står ved magt.
+
+---
+
+## 90. Hallen og porten er ét rum — indeslutningen
+
+`reservationFraOpgave()` har båret sætningen siden facility-opgaverne blev
+bygget:
+
+> *"En facility-opgave binder ENTEN et anlæg ELLER et helt sted … Lukker man
+> hallen, er alle porte i den også optaget."*
+
+Datamodellen har aldrig håndhævet den. En reservation på `lokation/lok-halb`
+og en på `facilityAktiv/fa-port3` er **to stier**, og `tjekLedigMod()` ser kun
+én ad gangen. Et gulvarbejde i Hal B spærrede ikke porten i den, og to
+håndværkere kunne bookes ind i samme rum uden at nogen kunne se det.
+
+Hullet stod skrevet i README siden beslutning 49 — med en advarsel der viste
+sig at være præcis den rigtige: *"en indeslutningsregel er sin egen
+beslutning: den skal gælde begge veje, i begge funktioner, og et halvt tjek i
+én af dem ville være værre end ingen."*
+
+### Hvad der er bygget
+
+`indeslutninger(ny, { aktiver })` i `reservations.js` svarer på **hvilke andre
+stier der beskriver det samme fysiske rum**. `tjekLedigIndesluttet()` kører
+`tjekLedigMod()` mod dem alle og samler svaret.
+
+Begge er rene funktioner uden database, i en **delt** fil, så skærmen og
+serveren regner med det samme.
+
+### De tre valg der ligger i den
+
+**1. Begge veje.** Hal → porte, og port → hal. Var den kun den ene, ville
+**rækkefølgen afgøre udfaldet**: book hallen først, og porten kunne stadig
+tages bagefter. Et halvt tjek er værre end ingen, fordi det ligner et helt.
+
+**2. Ingen kaskade mellem søskende.** To porte i samme hal er uafhængige — at
+servicere port 3 spærrer ikke port 5. Gjorde den det, ville ét servicebesøg
+lukke et helt anlægsområde, og så ville folk holde op med at bruge lokationen
+som ressource for at undgå det.
+
+**3. Ingen reservation pr. port.** Et blok på hallen er **én** reservation; det
+er KONTROLLEN der er udvidet, ikke posterne. N poster for ét arbejde ville se
+ud som N bookinger på skærmen, skulle frigives hver for sig, og ville drive fra
+hinanden første gang én af dem blev flyttet. Samme grund som `bemanding.ledig`
+ikke gemmes (beslutning 71).
+
+### ⚠ Konflikten siger hvor den kom fra
+
+*"Ressourcen er optaget i perioden"* på en port der står tom, er ubrugelig —
+man går hen og kigger, og porten ER tom. Hver indesluttet konflikt bærer derfor
+`viaRessourceType`/`viaRessourceId`, og teksten begynder med *"Hele stedet er
+optaget:"* eller *"Et anlæg på stedet er optaget:"*.
+
+En egen konflikt bærer **ingen** `via` og ser ud præcis som før.
+
+### ⚠ Og en overskrivning skal dække dem alle
+
+`kanOverskrive` er kun sandt hvis hver eneste gruppe kan overskrives. Kunne man
+overskrive porten men ikke hallen, ville en `tving` rydde det ene og efterlade
+det andet — og arbejdet ville stå i et rum der stadig var optaget.
+
+### Skærmen viser det serveren håndhæver
+
+Servicekalenderen regnede hver række for sig. Med serverens nye afvisning ville
+den have tilbudt et ledigt felt der blev afvist ved klik — **den værste af de
+to fejl, fordi man allerede har lovet håndværkeren en tid.**
+
+Hallens blok tegnes nu som en **skygge** på de rækker den lukker, og skyggerne
+ligger i den SAMME `blokke`-liste som `ledigeVinduer()` regner de ledige felter
+af. Ét regnestykke, to visninger — som i Disponering.
+
+⚠ **Skyggen er en blok, ikke en klasse på en celle.** Var den kun en farve,
+skulle ledigheden regnes et andet sted, og de to kunne blive uenige. Og en
+plads man ikke kan bruge og ikke kan se hvorfor, bliver ikke forstået — den
+bliver rapporteret som en fejl. Skyggen kan ikke trækkes, og grunden siges:
+*"Besøget hører til Hal B — flyt det dér."*
+
+### ⚠ `tjekDisponering()` fik den ikke, og det er målt
+
+README krævede reglen *"i begge funktioner og i `tjekDisponering()`"*. De to
+funktioner har den. Den tredje har den ikke, fordi den ikke kan bruge den:
+`reservationerFraEtape()` binder **`koeretoej` og `medarbejder`**, og ingen af
+dem har en indeslutning — `indeslutninger()` svarer `[]` for begge.
+
+Et kald dér ville være en no-op der lignede dækning. Det er værre end ingen
+kode: den næste ville tro spørgsmålet var stillet.
+
+### Det arbejdet fandt
+
+**1. To prøver holdt den gamle form i live, og begge var værd at rette.**
+
+`facilityopgave.test.mjs` krævede ordret `tjekLedigMod(` i funktionen. Den
+guardede noget rigtigt — *at ledigheden overhovedet prøves* — men i en form der
+gjorde udvidelsen til en fejl. Den kræver nu `tjekLedigIndesluttet(` og
+**forbyder** det smalle tjek.
+
+`opgaveflyt.test.mjs` krævede **præcis én** sti under `reservationer/`. Kravet
+var i virkeligheden at funktionen ikke må bygge POSTENS sti — den med res-id'et
+— fordi den hører i `flytOpdatering()`. Indeslutningen tilføjer en LÆSNING mere,
+og den er rigtig. Prøven spørger nu om stiens dybde frem for om antallet: **en
+prøve der tæller, siger nej til en udvidelse den ikke har en mening om.**
+
+**2. Anlæggene hentes af serveren.** Kunne klienten sende `aktiver` med, kunne
+den sende et tomt map — og så var indeslutningen væk uden at nogen kunne se
+det. En prøve kræver at begge funktioner læser `facility/aktiver` selv.
+
+**3. Målt i den udrullede base, ikke antaget.** Nordvest har fem lokationer
+og femten anlæg — Hal B alene har tre — og der ligger reservationer på
+**både** `lokation` (1 ressource) og `facilityAktiv` (7). Formen hullet
+krævede, findes altså i drift.
+
+**Kollisioner lige nu: 0 af 9 facility-reservationer.** Det er ikke et
+argument for at hullet var harmløst — det er en oplysning om at der ikke er
+noget at rydde op i. Havde der stået overlap, ville de skulle afgøres af et
+menneske: en reservation kan ikke bare fjernes fordi en ny regel gør den
+ulovlig.
+
+**4. Ingen regelændring.** `reservationer` er `.write: false`, og reglerne har
+aldrig kunnet udtrykke "ingen overlap" — det er hele grunden til at vejen ind
+er en funktion. Indeslutningen hører samme sted som resten af konflikttjekket.

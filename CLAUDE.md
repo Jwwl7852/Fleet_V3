@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **89 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **90 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -704,11 +704,17 @@ kan ikke komme ud af sync.
   `opgavestatus` skifter dens status — alle fire skriver opgaven OG dens
   reservation i én `update()`. Løsn ikke `.write` igen: det er stadig
   vejen der er lukket, ikke retten. Se beslutning 45, 49, 50 og 51.
-  ⚠ **Det der ikke holdes af datamodellen:** en reservation på
-  `lokation/<id>` og en på `facilityAktiv/<id>` er to stier, så et
-  gulvarbejde i en hal spærrer ikke portene i den. Skærmen siger det
-  rigtige; reglen findes ikke. En indeslutningsregel er sin egen
-  beslutning — byg den ikke halvt i én funktion.
+  ⚠ **Hallen og porten er ÉT rum, og det håndhæves nu.** En reservation på
+  `lokation/<id>` og en på `facilityAktiv/<id>` er to stier. Brug
+  `indeslutninger()` + `tjekLedigIndesluttet()` fra `reservations.js` — aldrig
+  `tjekLedigMod()` alene på en facility-ressource. Den gælder **begge veje**
+  (ellers afgør rækkefølgen udfaldet), **ikke mellem søskende** (to porte i
+  samme hal er uafhængige), og der skrives **ingen reservation pr. port** —
+  det er kontrollen der er udvidet, ikke posterne. Anlæggene hentes af
+  SERVEREN: kunne klienten sende dem, kunne den sende et tomt map.
+  ⚠ **`tjekDisponering()` har den ikke, og det er målt:** en etape binder kun
+  `koeretoej` og `medarbejder`, og de har ingen indeslutning. Et kald dér
+  ville være en no-op der lignede dækning. Se beslutning 90.
 - **Disponering er BYGGET som visning, og de fem tjek håndhæves — i
   `etapeskift`, ikke i skærmen.** `kanDisponeres()`, `kraevedeKompetencer()`
   + `tjekKompetencer()`, `kanBaere()`, `tjekLedigMod()` og

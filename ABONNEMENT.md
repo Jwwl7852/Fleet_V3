@@ -269,8 +269,15 @@ vænnet sig til den.
 3. ✅ **Prisliste-skærmen** i konsollen, og rabat pr. kunde. `/main/priser`.
 4. ✅ **Generatoren** — `grundlagopret`. Den fryser en periode og rører den
    aldrig igen; findes grundlaget, afvises kaldet.
-5. **Eksporten.** Ikke bygget. `eksporter()` bygger objektet og **kaldes
-   ingen steder** — og momssatsen pr. linjeart spærrer den alligevel.
+5. ✅ **Eksporten.** `prislisteCsv()` og `grundlagCsv()` i `Prisliste.jsx`.
+   ⚠ **Beløbet regnes ikke i eksporten** — det står på linjen som det blev
+   frosset; en genberegning kunne give et andet tal end fakturaen.
+
+   ⚠ **Og den er IKKE spærret af momsspørgsmålet.** Det er to forskellige
+   fakturaer: vores egen til vognmanden har `MOMSSATS = 25` fast, mens
+   KUNDENS fakturagrundlag har en sats pr. linjeart som ingen bogholder har
+   svaret på endnu. `priser.js` siger det selv ved konstanten. Jeg blandede
+   dem sammen én gang; de to hedder næsten det samme og er ikke det samme.
 
 ⚠ **PUNKT 2 OG AFSNIT 7 MODSAGDE HINANDEN I MÅNEDSVIS.**
 

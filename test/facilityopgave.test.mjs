@@ -278,7 +278,13 @@ describe("facilityplanlaeg håndhæver det skærmen viser", () => {
 
   test("⚠ PRØVER LEDIGHEDEN, OG OVERSKRIVER IKKE", () => {
     const b = udenKommentarer(blok);
-    assert.ok(b.includes("tjekLedigMod("), "ledigheden prøves ikke");
+    /* ⚠ HELE RUMMET, IKKE ÉN STI. Her stod `tjekLedigMod(` indtil beslutning
+       90. Det tjek ser kun den ene ressource — og en reservation på
+       `lokation/lok-halb` og en på `facilityAktiv/fa-port3` er to stier og ét
+       fysisk rum. `tjekLedigIndesluttet()` er det samme tjek kørt mod hele
+       indeslutningen; kommer det smalle tilbage, er hullet tilbage. */
+    assert.ok(b.includes("tjekLedigIndesluttet("), "ledigheden prøves ikke på hele rummet");
+    assert.ok(!b.includes("const svar = tjekLedigMod("), "det smalle tjek er tilbage");
     assert.ok(b.includes("failed-precondition"), "en optaget ressource giver ikke et svar");
     assert.ok(!b.includes("kanOverskrive ?" + " true"), "den overskriver");
   });
