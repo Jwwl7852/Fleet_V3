@@ -236,6 +236,13 @@ export const NODE_MODUL = {
      Det er ikke noget en tenant uden indkoebsmodulet skal kunne laese. */
   leverandoerer: "indkoeb",
   lagre: "indkoeb",
+  /* ⚠ TRIN 1 OG 2 I PROCURES PROCES — beslutning 78. Et BEHOV er ikke en
+     ordre, og en ordre er ikke en indkoebslinje: `indkoeb` er linjer der
+     allerede ER koebt, altsaa en registrering bagud. De to nye baerer
+     processen FOER koebet, og de hoerer til det samme modul: en kunde uden
+     Procure har hverken behov at melde ind eller ordrer at sende. */
+  indkoebsbehov: "indkoeb",
+  indkoebsordrer: "indkoeb",
 
   bookinger: "booking",
   /* ⚠ OMKOSTNINGER ER IKKE PRISER. `satser` er hvad KUNDEN betaler;

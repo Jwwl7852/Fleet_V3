@@ -1939,6 +1939,127 @@
           }
         },
 
+        // ══════════════════════════════════════════════════════════════════
+        // INDKOEBSBEHOV — trin 1 i Procures proces (beslutning 78)
+        // ══════════════════════════════════════════════════════════════════
+        //
+        // Et BEHOV er ikke en ordre. Det er en medarbejder der siger "vi
+        // mangler traeplader" — fra snedkeriet, lageret, kontoret eller som
+        // et kontantkoeb. Det er trin 1 af fem, og det fandtes ikke: noden
+        // `indkoeb` er LINJER der allerede er koebt, altsaa en registrering
+        // BAGUD.
+        //
+        // ⚠ .write: false, OG DET ER VEJEN DER ER LUKKET, IKKE RETTEN.
+        // Casehandler, disponent og admin HAR `indkoeb.skriv`. Men et behov
+        // der bliver til en ordre, aendrer TO poster — behovet faar sin
+        // ordrereference, og ordren faar sin linje — og de skal skrives
+        // atomisk eller slet ikke. Kunne en klient skrive den ene halvdel,
+        // ville et behov kunne staa som "bestilt" uden en ordre der findes.
+        // Samme ordning som opgaver (45), kasseudlaan (37) og enheder (39).
+        //
+        // ⚠ KILDEN ER ET FELT MED FIRE VAERDIER, ikke en fri streng. Planchen
+        // grupperer indbakken paa den, og en femte stavemaade ville lave en
+        // gruppe mere som ingen har besluttet.
+        "indkoebsbehov": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": false,
+          // Indbakken sorteres paa tidspunkt og filtreres paa kilde og status.
+          ".indexOn": ["oprettetMs", "kilde", "status"],
+          "$behovId": {
+            // ⚠ VAREN ER FRITEKST HER, og det er med vilje: den der melder
+            // ind, ved hvad han mangler, ikke hvad det hedder i kataloget.
+            // Koblingen til `forbrugsvarer` sker naar nogen laegger behovet i
+            // en bestilling — ikke naar det meldes.
+            ".validate": "newData.hasChildren(['vare', 'kilde', 'status', 'oprettetMs', 'oprettetAf'])",
+            "vare": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+            "kilde": { ".validate": "newData.isString() && newData.val().matches(/^(snedkeri|lager|kontor|kontantkoeb)$/)" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(nyt|klarTilBestilling|iKladde|bestilt|afvist)$/)" },
+            "prioritet": { ".validate": "newData.isString() && newData.val().matches(/^(lav|mellem|hoej)$/)" },
+            "antal": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            // ⚠ HVEM DET HANDLER OM, IKKE HVEM DER GJORDE DET. `anmoderId` er
+            // et personId; `oprettetAf` er et uid. Byttes de om, holder
+            // ejerskabstjek op med at virke — se CLAUDE.md.
+            "anmoderId": { ".validate": "newData.isString()" },
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "leverandoerId": { ".validate": "newData.isString()" },
+            // Saettes naar behovet laegges i en bestilling.
+            "ordreId": { ".validate": "newData.isString()" },
+            "afvistAf": { ".validate": "newData.isString()" },
+            "afvistMs": { ".validate": "newData.isNumber()" },
+            "begrundelse": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            // ⚠ INGEN division — aksen er fjernet i beslutning 70.
+            "division": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ══════════════════════════════════════════════════════════════════
+        // INDKOEBSORDRER — trin 2 (beslutning 78)
+        // ══════════════════════════════════════════════════════════════════
+        //
+        // ⚠ NUMMERET KOMMER FRA EN TAELLER, IKKE FRA EN OPTAELLING.
+        // `countere/indkoebsordre/<aar>`, samme mekanisme som bookingnumrene
+        // (beslutning 8 og 55). En optaelling som nummerkilde giver to ordrer
+        // det samme nummer den dag to bestillinger rammer samme sekund.
+        //
+        // ⚠ OG LINJERNE LIGGER PAA ORDREN, ikke som en node ved siden af.
+        // En ordre UDEN linjer er ikke en ordre; laa de hver for sig, kunne
+        // den ene halvdel lande.
+        "indkoebsordrer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".write": false,
+          ".indexOn": ["status", "leverandoerId", "oprettetMs"],
+          "$ordreId": {
+            ".validate": "newData.hasChildren(['nummer', 'leverandoerId', 'status', 'oprettetMs', 'oprettetAf'])",
+            // BST-2026-00001. Formatet er laast her, saa en haandskrevet post
+            // ikke kan komme ind i serien med et andet moenster.
+            "nummer": { ".validate": "newData.isString() && newData.val().matches(/^BST-[0-9]{4}-[0-9]{5}$/)" },
+            "leverandoerId": { ".validate": "newData.isString() && newData.val().length > 0" },
+            // ⚠ godkendt OG afvist er egne tilstande, ikke et flag ved siden
+            // af. Godkendelsen er trin 3, og en ordre der er sendt uden at
+            // vaere godkendt, skal kunne ses paa tilstanden alene.
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerGodkendelse|godkendt|afvist|sendt|modtaget|annulleret)$/)" },
+            "oprettetAf": { ".validate": "newData.isString()" },
+            "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "bestillerId": { ".validate": "newData.isString()" },
+            "godkendtAf": { ".validate": "newData.isString()" },
+            "godkendtMs": { ".validate": "newData.isNumber()" },
+            "afvistAf": { ".validate": "newData.isString()" },
+            "afvistMs": { ".validate": "newData.isNumber()" },
+            "begrundelse": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            "sendtMs": { ".validate": "newData.isNumber()" },
+            "modtagetMs": { ".validate": "newData.isNumber()" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
+            "linjer": {
+              "$linjeId": {
+                ".validate": "newData.hasChildren(['vare', 'antal', 'prisPrEnhedOere'])",
+                "vare": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+                "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "antal": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+                // ⚠ HELE OERE SOM INTEGER, ekskl. moms — som alle beloeb.
+                // ⚠ `% 1 === 0` OG IKKE `toInt()`. RTDB-regler har ingen
+                // toInt — filen kunne slet ikke indlaeses, og emulatoren
+                // sagde det med det samme. Det er den fejl der engang
+                // overlevede gennemlaesning i maanedsvis, fordi ingen koerte
+                // reglerne. Loftet er 100 mio. kr. pr. enhed, som paa de
+                // oevrige beloeb.
+                "prisPrEnhedOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10000000000" },
+                // Behovet linjen kom fra, saa sporet gaar begge veje.
+                "behovId": { ".validate": "newData.isString()" },
+                "forbrugsvareId": { ".validate": "newData.isString()" },
+                "$andet": { ".validate": false }
+              }
+            },
+            "division": { ".validate": false },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // beloebOere er ALTID ekskl. moms. momsOere er et separat felt. Bland
         // dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.
         // faelles er en lovlig division her: én dieselleverance dækker begge

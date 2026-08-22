@@ -5130,3 +5130,101 @@ siden på 1,14).
 
 ⚠ **Og farven bar aldrig informationen alene.** Tallet i cirklen siger 1, 2, 3.
 Farven forstærker; den forklarer ikke.
+
+## 78. Procures plancher viser en proces der ikke fandtes
+
+Fem plancher for Procure, og afstanden er ikke visuel. Femtrinsoverskriften på
+overbliksplanchen siger det selv — **Behov → Bestilling → Godkendelse →
+Faktura → Afstemning** — og målt mod regelfilen fandtes **trin 1–3 ikke som
+noget som helst**.
+
+| Planchen kræver | Node |
+|---|---|
+| Indkøbsbehov (indmeldt fra snedkeri, lager, kontor) | — |
+| Indkøbsordre med nummer | — |
+| Godkendelsesregler (beløbsgrænse, godkender) | — |
+| Kontantkøb med kvittering | — |
+| Varer, indkøb, fakturaer, leverandører | ✅ |
+
+⚠ **`indkoeb`-noden er LINJER DER ALLEREDE ER KØBT** — en registrering bagud.
+Hele plancherne handler om det der sker *før* pengene er brugt.
+
+### ⚠ Varelageret er vores eget, og det var jeg ved at få galt fat i
+
+Jeg foreslog at fjerne "Varelager" fra Procures menu, fordi `varer`-noden
+tilhører `warehouse`-modulet og ville stå tom for en Procure-kunde. Kunden
+rettede: **Warehouses varer er KUNDERNES gods (3PL), Procures varelager er
+vores eget.** Koden sagde det i forvejen, i `Varer.jsx`:
+
+> *"⚠ VAREN ER KUNDENS. Det er 3PL: vi opbevarer andres gods … Derfor er
+> `kundeId` påkrævet."*
+
+Alle seks demo-varer bærer et `kundeId`. **To forskellige ting, og
+navnesammenfaldet var mit, ikke systemets.** Procures varelager får sin egen
+node, `forbrugsvarer`, med beholdningen afledt af bevægelser som i beslutning
+39 — ikke et tal nogen skriver i hånden.
+
+### Hvad etape 1 lagde
+
+`indkoebsbehov` og `indkoebsordrer`, begge `.write: false`.
+
+⚠ **Det er vejen der er lukket, ikke retten.** Casehandler, disponent og admin
+HAR `indkoeb.skriv`. Men et behov der bliver til en ordre, ændrer **to poster**
+— behovet får sin ordrereference, ordren sin linje — og de skal skrives
+atomisk eller slet ikke. Kunne en klient skrive den ene halvdel, ville et behov
+kunne stå som "bestilt" uden en ordre der findes. Samme ordning som `opgaver`
+(45), `kasseudlaan` (37) og `enheder` (39).
+
+Nummerserien er `BST-ÅÅÅÅ-NNNNN` på `countere/indkoebsordre/<år>` — **tælleren,
+ikke en optælling** (beslutning 8).
+
+### ⚠ Reglerne kunne slet ikke indlæses, og emulatoren sagde det straks
+
+Første udkast skrev `newData.val() === newData.val().toInt()` for "hele øre".
+RTDB har ingen `toInt`:
+
+> `firebase.rules.json:2045:92: No such method/property 'toInt'.`
+
+**Hele filen kunne ikke indlæses.** Det er nøjagtig den fejl der engang
+overlevede gennemlæsning og flere redigeringer i månedsvis, fordi ingen kørte
+reglerne — og den blev fanget i første kørsel, fordi prøven er obligatorisk.
+Husets egen form er `% 1 === 0`, og den stod 27 steder i forvejen.
+
+### ⚠ Og seks prøver målte ingenting mens de så grundige ud
+
+Jeg skrev prøver der skulle vise at `.validate` afviser en post uden `vare`.
+De brugte `withSecurityRulesDisabled` for at komme uden om `.write: false` —
+men den slår **alle** regler fra, også `.validate`. Posten blev taget imod, og
+prøven var rød af den forkerte grund.
+
+CLAUDE.md havde skrevet det ned om `opgaver` i forvejen:
+
+> *"Skriv ikke en regelprøve der 'afviser' en opgave — den ville være grøn
+> fordi skrivningen er lukket, ikke fordi posten var forkert."*
+
+**På en node med `.write: false` kan en regelprøve kun måle at vejen er
+lukket.** Formen hører i en ren funktion: `valideBehov()` og `valideOrdre()` i
+`fleet/procure.js`, prøvet i `test/procure.test.mjs` — samme forhold som
+`opgaveMangler()` har til `opgaver`.
+
+### To ting der er skrevet ind fra tidligere fejl
+
+⚠ **`linjeListe()` findes fordi `forslagListe()` gjorde.** Linjerne er nøglet
+på deres eget id, og `.length` på et nøglet objekt er `undefined`. Det kostede
+tre lukkede overgange i beslutning 76, og fælden er den samme her.
+
+⚠ **`behovTilLinje()` gætter ikke et antal.** Mangler behovet et, kaster den
+frem for at sætte 1 — en bestilling på "1 stk." fordi ingen skrev noget, er et
+tal nogen kommer til at stole på, og det bliver købt. Samme holdning som
+`reservationFraOpgave()` har til en opgave uden estimat.
+
+⚠ **Og summen regnes hos forbrugeren.** Et gemt totalbeløb driver fra sine
+linjer første gang nogen retter et antal — `bemanding.ledig` igen, denne gang
+med penge på.
+
+### Det der ikke bygges, og som siger det selv
+
+Efter kundens svar: **e-mailen sendes ikke** (udkast med kopiknap; ordren
+markeres sendt når et menneske har sendt den), **der uploades ingen filer**
+(knapperne står deaktiverede med begrundelsen på skærmen), og **behovsindmelding
+bygges responsivt i webappen** frem for at vente på en mobilapp.
