@@ -133,6 +133,11 @@ export const DEMO_KPI = {
     varerTilGodkendelse: 8, manglerFaktura: 24, godkendtDenneMaaned: 86,
     maanedensForbrugOere: 12284500,
     leveranceTilTidenPct: 92, indkoebsprisafvigelseSnitPct: 7,
+    /* ⚠ INGEN KILDE: `forbrugsvarer` findes ikke endnu, og Warehouses
+       `varer`/`beholdning` er KUNDENS gods — ikke vores. Se beslutning 84.
+       Feltet står her fordi demofilen ER nodens form, i BEGGE retninger
+       (beslutning 60): skriver aggregeringen et felt, skal demoen kende det. */
+    lavBeholdning: null,
     /* Periodeafvigelser. De KRAEVER historik og hoerer derfor i kpi/.
        ⚠ leveranceTilTidenDeltaPoint er PROCENTPOINT, ikke procent. 92 %
        der stiger til 97 % er +5 point, ikke +5 %. Blandes de to, staar der

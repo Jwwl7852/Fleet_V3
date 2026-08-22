@@ -1446,3 +1446,43 @@
    har tre afsnit, og en skaermlaeser skal kunne springe mellem dem. */
 .fc-underoverskrift{margin:16px 0 6px; font-size:var(--fc-t-l); font-weight:700;
   color:var(--bc-text); padding-top:12px; border-top:1px solid var(--bc-line)}
+
+/* ── Procures overblik (beslutning 84, planche 5) ────────────────────────
+
+   ⚠ TRINBAANDET ER EN <ol> MED FEM <a>, ikke fem tegninger. Det ER en
+   ordnet raekkefoelge — en skaermlaeser skal kunne sige "3 af 5" — og hvert
+   trin FOERER et sted hen. Et baand man ikke kan klikke paa, er et billede
+   af en proces; det her er indgangen til den. */
+.fc-trinbaand{display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0;
+  list-style:none; align-items:stretch}
+.fc-trin{flex:1 1 200px; min-width:0}
+/* Stregen mellem to trin. Dekoration — den maa ikke laeses op. */
+.fc-trin+.fc-trin{position:relative; padding-left:12px}
+.fc-trin+.fc-trin::before{content:""; position:absolute; left:0; top:50%;
+  width:8px; height:2px; background:var(--bc-line)}
+.fc-trin-link{display:flex; align-items:center; gap:11px; height:100%;
+  padding:11px; border-radius:var(--fc-r); border:1px solid var(--bc-line);
+  background:var(--bc-card); color:var(--bc-text); text-decoration:none}
+.fc-trin-link:hover{border-color:var(--bc-accent); background:var(--fc-accent-soft)}
+.fc-trin-link:focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px}
+.fc-trin-nr{display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; flex:0 0 32px; border-radius:50%;
+  background:var(--fc-accent-soft); color:var(--bc-accent);
+  font-size:var(--fc-t-m); font-weight:700}
+.fc-trin-tekst{display:flex; flex-direction:column; min-width:0}
+.fc-trin-tekst b{font-size:var(--fc-t-m)}
+
+/* "Saadan virker det" — en nummereret liste, ikke fire kort. */
+.fc-saadan{display:flex; flex-direction:column; gap:12px; margin:0; padding:0;
+  list-style:none}
+.fc-saadan-trin{display:flex; gap:11px; align-items:flex-start}
+.fc-saadan-trin>span:last-child{display:flex; flex-direction:column; gap:2px;
+  min-width:0}
+.fc-saadan-nr{display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; flex:0 0 26px; border-radius:50%;
+  background:var(--fc-accent-soft); color:var(--bc-accent);
+  font-size:var(--fc-t-s); font-weight:700}
+
+/* Genveje UDEN tal. Se noten i Procureoverblik om hvorfor. */
+.fc-genveje{display:flex; flex-wrap:wrap; gap:14px; margin-top:16px;
+  padding-top:12px; border-top:1px solid var(--bc-line)}

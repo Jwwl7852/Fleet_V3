@@ -5750,3 +5750,101 @@ prøven **asserterer** det nu frem for at springe linjen over.
 nummertræf i sættet ville skærmens vigtigste skel — kendsgerning mod slutning —
 aldrig kunne ses. `fa-9008` bærer nu et bestillingsnummer, og `ord-007` er
 tilføjet så samme leverandør har både en matchet og en foreslåelig ordre.
+
+
+## 84. Overblikket — Procures femte skærm, og hvad den afslørede
+
+Etape 6 af beslutning 78, den sidste: modulets forside. Planche 5.
+
+### Processen er en vejviser, ikke en tilstand
+
+Planchen tegner fem nummererede trin: behov → bestilling → godkendelse →
+faktura → afstemning. Det er **forløbet**, ikke hvor en bestemt post står, og
+derfor er hvert trin et **link** til det sted arbejdet gøres.
+
+Et bånd der fremhævede "det aktive trin", ville påstå at modulet har én
+tilstand ad gangen. Det har fem køer der løber samtidig.
+
+### ⚠ Fire tal regnes af listerne, det femte kan ikke regnes
+
+De fire — åbne behov, åbne bestillinger, ventende godkendelser, fakturaer uden
+match — er **afledt af lister skærmen alligevel henter**. Det er undtagelsen i
+CLAUDE.md: så beregnes de hos forbrugeren og lægges ikke i `kpi/`. Et gemt tal
+ville drive fra sit grundlag, og "5 afventer godkendelse" ved siden af en kø
+med tre er værre end intet tal.
+
+⚠ **Og "kræver handling" er ikke "findes".** Et afvist behov er der taget
+stilling til, og et bestilt ligger på en ordre. Talte vi dem med, ville tallet
+vokse med arbejde der ER gjort — og et tal der aldrig falder, holder man op med
+at kigge på. Samme sted: en **åben bestilling** er *sendt, ikke modtaget*. En
+kladde er aldrig sendt, og en annulleret er ikke åben.
+
+⚠ **Det femte er `null` med en grund: ingen KILDE.** "Lav lagerbeholdning"
+kræver `forbrugsvarer` — Procures **eget** varelager — og noden findes ikke.
+
+Og den må **ikke** regnes af Warehouses `varer`/`beholdning`: dét er **kundens**
+gods (3PL, `kundeId` er påkrævet dér). Regnede vi kortet af dem, ville Procure
+bede os bestille noget en KUNDE mangler. Det er den samme navnekollision som
+`warehouse` mod `lagre`, og her ville den koste et indkøb. Feltet står i
+`kpi/` med `null` og sin begrundelse, og kortet skriver `—`. Efterslæbet gik
+fra 44 til 45.
+
+### ⚠ Planchen viste to af tallene to gange
+
+Den har fire bundkort: "Bestillinger 12" og "Fakturaer 4" står **både** øverst
+og nederst på samme skærm. To visninger af ét tal er to steder der kan nå at
+blive uenige — det er beslutning 11 og 14, og det var mockuppens "8 mod 16" på
+fakturaskærmen. Bunden er derfor rene **genveje uden tal**.
+
+### ⚠ Og så viste det nye kort et nul der var løgn
+
+Overblikket sagde **"Fakturaer uden match: 0"** mens fakturaskærmen sagde 9.
+
+`indkoeb/Oversigt.jsx` hentede fakturaerne med `ordnPaa: "dato"`. **En faktura
+har intet `dato`-felt** — den har `fakturadatoMs`, som de to andre skærme
+sorterer på, og som står i `.indexOn`. RTDB fejler ikke på et ukendt felt:
+tidsvinduet filtrerede på noget ingen post bærer, og **listen kom hjem tom**.
+
+Nøgletallene på samme skærm kom fra `kpi/` og stod rigtigt imens, så der var
+intet at se. Fejlen har ligget der siden skærmen blev bygget, og den blev først
+synlig da et **andet** tal blev regnet af den samme liste.
+
+⚠ **Det tavse nul var det farligste af de to tal.** "Ni uden match" er en
+huskeliste; "nul uden match" er en afstemning der går op. Samme fælde som
+`opgaver."dato"` og som indekset der pegede på `godkendelsesstatus`.
+
+### ⚠ Divisionsaksen levede i skærmene — 77 steder
+
+Beslutning 70 fjernede aksen. Beslutning 79 tog resterne i shellen, konteksten,
+`useListe`, Cloud Functions, reglerne og auditlisten, og skrev en prøve der
+dækker **præcis de steder**.
+
+**Ingen af dem læser en modulskærm.** Målt her: **77 levende forekomster i 17
+modulfiler** — kode, ikke kommentarer.
+
+Den værste var ikke kosmetisk. Registreringsformularen i `indkoeb/Oversigt.jsx`
+havde et **påkrævet Division-felt**, mens `indkoeb`-reglen har
+`"division": { ".validate": false }`. Vælger man en værdi, **afviser serveren
+skrivningen**; vælger man ingen, klager formularen. **Vejen ind var lukket i
+begge retninger**, og ikke én prøve sagde noget.
+
+Dertil i samme fil: en Division-kolonne der tegnede `undefined` på hver række,
+en fodtekst der skrev "Viser 5 af 12 i **undefined**", og to leverandørfiltre
+der sammenlignede `l.division === division` hvor **begge sider var
+`undefined`** — de slap kun igennem fordi `undefined === undefined` er sandt.
+Et filter der virker ved et tilfælde, holder op med at virke uden varsel.
+
+⚠ **En lint der springer noget over, siger ikke nej — den siger ingenting.**
+Det er samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger`
+(beslutning 56), og det er anden gang mønstret koster noget.
+
+**Procure er ryddet — 26 forekomster — og for den mappe er tallet nu et forbud
+på nul.** For resten af `src/moduler/` står et **loft på 51 der kun må gå ned**;
+at rette 15 filer mere er en anden opgave end at bygge Procure færdig, og en
+prøve der krævede det hele på én gang, ville blive slået fra. Listen står i
+README under *Divisionsefterslæbet*, og mindst ét mere påkrævet Division-felt
+venter dér (`facility/Servicedialog.jsx`).
+
+⚠ **Og variablen hed `iDivision`.** Et navn er en påstand: "divisionens
+linjer" får den næste til at tro at der ER en opdeling. Den hedder nu
+`alleLinjer`, som er hvad den er.

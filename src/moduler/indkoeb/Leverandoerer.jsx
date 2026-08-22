@@ -212,7 +212,9 @@ function Detaljer({ l, kilder }) {
         <MiniLinje label="Kategori" vaerdi={LEVERANDOER_KATEGORI[l.kategori]} />
         {/* Division BESKRIVER LEVERANDØRENS FORRETNING — derfor tilladt her,
             modsat på personale og køretøjer. Se prøven i leverandoerer.js. */}
-        <MiniLinje label="Division" vaerdi={l.division} />
+        {/* ⚠ HER STOD EN "Division"-LINJE. Feltet gik i beslutning 70 og er
+            `.validate: false` paa noden — linjen tegnede altsaa en tom vaerdi
+            paa hver eneste leverandoer. Se beslutning 84. */}
         <MiniLinje label="Aftaleform" vaerdi={AFTALETYPE[l.aftale?.type]?.label || "—"} />
         {l.aftale?.rabatPct != null && (
           <MiniLinje label="Aftalt rabat" vaerdi={pct(l.aftale.rabatPct)} />

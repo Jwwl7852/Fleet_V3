@@ -718,6 +718,25 @@ export function indkoebstal(indkoeb = [], fakturaer = [], leverandoerer = [], nu
        ingen aftale at afvige fra, og 0 ville lyde som "ingen afveg". */
     indkoebsprisafvigelser: afvig.antal,
     indkoebsprisafvigelseSnitPct: afvig.snitPct,
+
+    /**
+     * ⚠ null FORDI DER INGEN KILDE ER — og det er den ene af de tre slags.
+     *
+     * Procures Overblik har et kort der hedder "Lav lagerbeholdning"
+     * (planche 5). Tallet kan ikke regnes: Procures EGET varelager er
+     * noden `forbrugsvarer`, og den findes ikke endnu.
+     *
+     * ⚠ OG DET ER IKKE `varer`/`beholdning`. De hører til Warehouse, hvor
+     * godset er KUNDENS — det er 3PL, og `kundeId` er påkrævet dér. Regnede
+     * vi kortet af dem, ville Procure vise hvor lidt en KUNDE har på lager,
+     * og bede os bestille det. Det er den samme navnekollision som
+     * `warehouse` mod `lagre` (se CLAUDE.md), og her ville den koste et
+     * indkøb.
+     *
+     * Feltet står med null frem for at mangle: står det i noden, kan man se
+     * af noden at spørgsmålet ER stillet. Se beslutning 62 og 84.
+     */
+    lavBeholdning: null,
   };
 }
 

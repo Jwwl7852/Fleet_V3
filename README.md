@@ -191,6 +191,7 @@ tilfældigt.
 | 81 | **Bestillingen samles — Procures trin 2.** Kladden med automatisk leverandørforslag, `ordreskriv`, og e-mailudkastet. ⚠ **Forslaget er et OPSLAG, ikke en anbefaling:** hvem har leveret præcis den vare før, og hvad kostede den. Findes svaret ikke, er svaret `null` — planchen har en egen tilstand for det, og den findes fordi svaret findes. ⚠ **Senest, ikke billigst** — en pris fra 2019 er ikke et tilbud. ⚠ **Varenummeret slår navnet, og forslaget siger hvilket:** et navnetræf kan være to varer med samme ord, og to lige stærke formuleringer ville gøre den svage til den stærke. ⚠ **Én ordre pr. leverandør** — et nummer der dækkede flere, kunne ikke bruges som reference på nogen af fakturaerne. ⚠ **Serveren bygger linjen af BEHOVET**, og ordren og behovenes tilstand lander i én `update()`. ⚠ **Udkastet sendes ikke, og skærmen siger det** — en knap der lagde mailen i en kø der ikke findes, er værre end ingen knap. ⚠ **Og demo-sættet kunne ikke vise sin egen funktion:** ingen af de ti åbne behov matchede en indkøbslinje, så hver linje viste "Leverandør mangler". Et demo-sæt hvor en funktion kun kan ses *fejle*, er ikke et demo-sæt | `fleet/procure.js`, `fleet/bestilling.js`, `moduler/indkoeb/Bestillinger.jsx`, `functions/index.js`, `scripts/provisioner-dev.mjs` |
 | 82 | **Godkendelsen — Procures trin 3.** Beløbsgrænse, kø og `indkoeb.godkend`. ⚠ **Reglen kan slås FRA, og det er en funktion** — kunden bad om det, og standarden er fra, så en eksisterende kunde ikke får en kø han ikke har bedt om. ⚠ **Men den der rammer loftet, må ikke kunne hæve det:** `godkendelsesregelskriv` kræver `brugere.skriv`, ikke `indkoeb.skriv`, og `ordrestatus` læser grænsen af NODEN — kom den ind udefra, var tjekket omgået i ét hop. ⚠ **`indkoeb.godkend` var planlagt, ikke glemt** — `PERM_GODKEND_MIDLERTIDIG` er væk. ⚠ **Nul er ikke "slået fra":** en aktiv regel uden grænse spærrer ALT (fejler lukket), for 0 og uendelig ser begge ud som "slået til" og er hinandens modsætning. ⚠ **Godkendt automatisk er ikke godkendt** — under grænsen får ordren `godkendtAutomatisk: true` og INTET `godkendtAf`; et uid dér ville påstå at en person kiggede. ⚠ **Godkenderen må godkende sit eget** — ellers var hans egne ordrer en blindgyde — men det markeres. ⚠ **Og to felter landede i `grundlag` i stedet for `indkoebsordrer`:** `godkendtAf`/`godkendtMs` står i begge noder, så ankret fandtes to steder. Et anker der findes to steder, er ikke et anker | `fleet/procure.js`, `fleet/godkendelse.js`, `moduler/indkoeb/Godkendelser.jsx`, `functions/index.js`, `firebase.rules.json`, `scripts/provisioner-dev.mjs` |
 | 83 | **Fakturaen finder sin bestilling — Procures trin 4.** Match, godkendelse og kontantkøb. ⚠ **Scoren er en påstand om sikkerhed:** den regnes af navngivne signaler, skærmen viser HVILKE der slog til, og **kun et bestillingsnummer giver 100 %** — alt andet er en slutning, og en slutning må ikke se ud som en kendsgerning ved siden af en Bekræft-knap. ⚠ **Scoren gemmes ikke** — afgørelsen gør. ⚠ **En anden leverandørs ordre foreslås aldrig:** beløb + dato alene gav 55 %, og et forslag over halvdelen bliver bekræftet for at komme videre. ⚠ **Planchen sammenlignede INKL. moms med EKSKL. moms** — det samme tal med to mærkater, 25 % ved siden af, systematisk. ⚠ **Et kontantkøb er en `indkoeb`-linje, ikke en node ved siden af** (etapeplanen sagde en node; det blev omgjort): en egen node ville være den samme kendsgerning to steder, og hvert beløb i modulet skulle huske at lægge dem sammen. **Betalingsformen er et felt, ikke en status** — "kontant" i `fakturastatus` ville lade købet vente på en faktura der aldrig kommer. ⚠ **Og ankret fandtes to steder igen** — `indkoebId` står i både `grundlag` og `fakturaer`; patchen tæller nu træffene og nægter at skrive | `fleet/procure.js`, `fleet/faktura.js`, `moduler/indkoeb/Fakturaer.jsx`, `functions/index.js`, `firebase.rules.json` |
+| 84 | **Overblikket — Procures femte skærm, og hvad den afslørede.** Procesbånd, fem kort og indbakken. ⚠ **Fire tal regnes af listerne** (undtagelsen i CLAUDE.md), og "kræver handling" er ikke "findes" — et bestilt behov ligger på en ordre. ⚠ **Det femte kan ikke regnes:** `forbrugsvarer` findes ikke, og Warehouses lager er KUNDENS gods — et tal derfra ville bede os bestille noget en kunde mangler. `null` med sin grund; efterslæbet 44 → 45. ⚠ **Planchen viste to tal to gange** — bunden er derfor genveje uden tal. ⚠ **Og det nye kort afslørede et nul der var løgn:** `ordnPaa: "dato"` på en node hvis datofelt hedder `fakturadatoMs`. RTDB fejler ikke — listen kom hjem TOM, og "0 uden match" ser ud som en afstemning der går op. ⚠ **Divisionsaksen levede i skærmene: 77 forekomster i 17 modulfiler.** Værst et **påkrævet** Division-felt på en node hvis regel FORBYDER feltet — vejen ind var lukket i begge retninger, og linten kiggede aldrig i `src/moduler/`. Procure ryddet (−26), resten står som et loft der kun må gå ned | `moduler/indkoeb/Oversigt.jsx`, `fleet/kpi-aggregering.js`, `test/division-fjernet.test.mjs`, `test/overblik.test.mjs` |
 
 ## Struktur
 
@@ -1091,7 +1092,7 @@ bliver mindre af at et null flytter sig, er ikke blevet mindre** — og havde
 tallet stået på samlestedet, ville efterslæbet have set lukket ud.
 
 Optællingen ligger derfor på det `beregnKpi()` faktisk returnerer: uden inddata
-står **44** felter som null i noden. Med demo-basens rigtige data og en forrige
+står **45** felter som null i noden. Med demo-basens rigtige data og en forrige
 kørsel er tallet **31** — forskellen er deltaerne, som kun mangler en kørsel
 mere. `KILDER_DER_MANGLER` er fortsat tom: der er ingen node uden data.
 
@@ -1419,6 +1420,42 @@ den der skriver koden.
 ⚠ **Ingen af de fire må besvares ved at gætte i koden.** Det er hele pointen
 med at `grundlag.js` kaster frem for at sætte 25 %: et system der gætter
 rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende gæt.
+
+## Divisionsefterslæbet
+
+Gods/Bus-aksen blev fjernet i **beslutning 70** og fik sine sidste rester ryddet
+i **79** — i shellen, konteksten, `useListe`, Cloud Functions, reglerne og
+auditlisten. Prøven `test/division-fjernet.test.mjs` dækker præcis de steder.
+
+⚠ **Og den kiggede aldrig i `src/moduler/`.** Målt da Procures overblik blev
+bygget: **77 levende forekomster i 17 modulfiler** — kode, ikke kommentarer.
+
+Den værste var ikke kosmetisk. `indkoeb/Oversigt.jsx` havde et **påkrævet
+Division-felt** i registreringsformularen, mens `indkoeb`-reglen har
+`"division": { ".validate": false }`. Vælger man en værdi, **afviser serveren
+skrivningen**; vælger man ingen, klager formularen. Vejen ind var lukket i
+begge retninger, og ingen prøve sagde noget.
+
+⚠ **En lint der springer noget over, siger ikke nej — den siger ingenting.**
+Samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger` (beslutning
+56). Anden gang mønstret koster noget.
+
+| | Antal | Hvor |
+|---|---|---|
+| Målt (beslutning 84) | **77** | 17 modulfiler |
+| Ryddet i Procure | −26 | `indkoeb/Oversigt.jsx`, `indkoeb/Leverandoerer.jsx` |
+| **Tilbage** | **51** | 15 filer — se prøvens fejlbesked for listen |
+
+Loftet står i `DIVISIONSLOFT` og **må kun gå ned**. For `src/moduler/indkoeb/`
+er tallet **nul** — et forbud, ikke et loft: modulet er bygget færdigt, og et
+loft på hele mappen ville ikke opdage at aksen kom tilbage ét sted mens den
+forsvandt et andet.
+
+De 51 er ikke harmløse. Blandt dem er mindst ét mere påkrævet Division-felt
+(`facility/Servicedialog.jsx`) på en node hvis regel forbyder feltet, og en
+håndfuld filtre der sammenligner `undefined` med `undefined` og derfor kun
+virker ved et tilfælde. **Ryd dem modulvis**, som Procure blev ryddet, og sæt
+loftet ned i samme ombæring.
 
 ## Låst rækkefølge
 

@@ -50,6 +50,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
+import { usePost } from "../../fleet/usePost.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
   kr, num, pct, dato, deviation, oereFraKroner, kronerFraOere,
@@ -70,6 +71,13 @@ import {
 import {
   DEMO_FAKTURAER, DEMO_LEVERANDOERSAGER,
 } from "../../fleet/demo-indkoeb.js";
+import {
+  DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER,
+} from "../../fleet/demo-procure.js";
+import {
+  BEHOVKILDE, BEHOVSTATUS, kladdelinjer, ventendeOrdrer,
+  matchtilstand, STANDARD_GODKENDELSESREGLER,
+} from "../../fleet/procure.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i dem — se
    navneopslagene nedenfor. */
 import { DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
@@ -79,7 +87,29 @@ import { AUDIT } from "../../fleet/audit.js";
 
 const PR_SIDE = 5;
 const MAANED = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-const DIVISIONER = { gods: "Gods", bus: "Bus", faelles: "Fælles" };
+/* ⚠ HER STOD `const DIVISIONER = { gods, bus, faelles }`, OG DEN BLEV LÆST.
+
+   Aksen gik i beslutning 70 og blev fjernet af shellen, konteksten,
+   `useListe`, funktionerne, reglerne og auditlisten i 79. Den blev IKKE
+   fjernet af skærmene, og linten kiggede aldrig i `src/moduler/`.
+
+   ⚠ EN LINT DER SPRINGER NOGET OVER, SIGER IKKE NEJ — DEN SIGER INGENTING.
+   Målt i dag: 77 levende forekomster i 17 modulfiler. Her var de 22, og
+   de gjorde faktisk skade:
+
+     · Registreringsformularen havde et PÅKRÆVET Division-felt, og
+       `indkoeb`-reglen har `"division": { ".validate": false }`. Vælger man
+       en værdi, AFVISER serveren skrivningen; vælger man ingen, klager
+       formularen. Vejen ind var lukket i begge retninger.
+     · Tabellen havde en Division-kolonne der tegnede `undefined` på hver
+       eneste række, fordi ingen post bærer feltet længere.
+     · Fodteksten skrev "Viser 5 af 12 i **undefined**".
+     · To leverandørfiltre sammenlignede `l.division === division`, hvor
+       BEGGE sider er `undefined` — de slap kun igennem fordi
+       `undefined === undefined` er sandt. Et filter der virker ved et
+       tilfælde, holder op med at virke uden varsel.
+
+   Se beslutning 84. */
 
 /* ⚠ HER STOD lvNavn PÅ MODULNIVEAU, med demo-kartoteket lukket inde i sig.
    Den kan den ikke, når kartoteket HENTES: en modulkonstant kender ikke
@@ -227,16 +257,11 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
                 hint="En entitet, ikke en fritekst — så navnet ikke får tre stavemåder."
                 valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
                   ...leverandoerer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
-          {/* ⚠ DIVISION ER PÅKRÆVET og kan IKKE arves fra bilen — beslutning
-              19 forbyder feltet dér. Den der registrerer, sætter den. */}
-          <Felt id="ik-div" label="Division" kraevet vaerdi={f.division} saet={saet("division")}
-                fejl={vis("division")}
-                hint="Kan ikke arves fra enheden: en enhed har ingen division."
-                valgmuligheder={[
-                  { vaerdi: "gods", label: "Gods" },
-                  { vaerdi: "bus", label: "Bus" },
-                  { vaerdi: "faelles", label: "Fælles — dækker begge" },
-                ]} />
+          {/* ⚠ HER STOD ET PÅKRÆVET DIVISION-FELT, og det gjorde vejen ind
+              lukket: `indkoeb`-reglen forbyder feltet (beslutning 70), så en
+              valgt værdi blev AFVIST af serveren — og uden en værdi klagede
+              formularen. Et krævet felt der ikke kan udfyldes rigtigt, er
+              ikke en validering; det er en blindgyde. Se beslutning 84. */}
         </Feltraekke>
 
         <Feltraekke>
@@ -365,10 +390,40 @@ export default function IndkoebOversigt() {
      af demosættet: ni opdigtede fakturaer mod kundens egne. To svar på ét
      spørgsmål, ét klik fra hinanden — nøjagtig den fejl Indkøb → Fakturaer
      havde. */
+  /* ⚠ HER STOD `ordnPaa: "dato"`, OG EN FAKTURA HAR INTET `dato`-FELT.
+
+     Datoen hedder `fakturadatoMs` — det er dét de to andre skærme sorterer
+     på, og dét der står i `.indexOn`. Følgen var ikke en fejl man kan se:
+     tidsvinduet filtrerede på et felt ingen post bærer, så listen kom hjem
+     TOM. Nøgletallene ovenfor kommer fra `kpi/` og stod rigtigt imens.
+
+     Det blev fundet fordi Overblikkets nye kort sagde "Fakturaer uden match:
+     0" mens fakturaskærmen sagde 9. **To skærme, samme spørgsmål, to svar** —
+     og det tavse nul var det farligste af dem: nul uden match ser ud som en
+     afstemning der går op. Se beslutning 84.
+
+     ⚠ Samme fælde som `opgaver."dato"` og som indekset der pegede på
+     `godkendelsesstatus`: RTDB fejler ikke på et ukendt felt. */
   const { data: fakturaer } = useListe("fakturaer", {
-    ordnPaa: "dato", vindueDage: 400, graense: 500,
+    ordnPaa: "fakturadatoMs", vindueDage: 400, graense: 500,
     demo: DEMO_FAKTURAER,
   });
+
+  /* ⚠ OVERBLIKKETS FIRE FØRSTE TAL REGNES AF DE HER LISTER — de står IKKE i
+     `kpi/`. Det er undtagelsen i CLAUDE.md: er tallet afledt af data skærmen
+     alligevel har, beregnes det hos forbrugeren. Et gemt tal ville drive fra
+     sit grundlag, og her ville "5 afventer godkendelse" kunne stå ved siden
+     af en kø med tre. */
+  const { data: behov } = useListe("indkoebsbehov", {
+    ordnPaa: "oprettetMs", vindue: "alle", graense: 500, demo: DEMO_INDKOEBSBEHOV,
+  });
+  const { data: ordrer } = useListe("indkoebsordrer", {
+    ordnPaa: "oprettetMs", vindue: "alle", graense: 300, demo: DEMO_INDKOEBSORDRER,
+  });
+  const { post: regelPost } = usePost(null, "godkendelsesregler", {
+    demo: DEMO_GODKENDELSESREGLER,
+  });
+  const { data: brugere } = useListe("brugere", { vindue: "alle", graense: 200 });
 
   /* Navneopslagene bygges af de hentede lister — ikke af en modul-konst.
      En underkomponent kan ikke se dem, så de skal sendes med, hvis tabellen
@@ -377,7 +432,7 @@ export default function IndkoebOversigt() {
   const ktPlade = (id) => koeretoejer.find((k) => k.id === id)?.registrering || null;
   const stedNavn = (id) => lokationer.find((l) => l.id === id)?.navn || null;
 
-  const { bruger, division, periode, path } = useFleet();
+  const { bruger, periode, path } = useFleet();
   const [kategori, setKategori] = useState("");
   const [status, setStatus] = useState("");
   const [leverandoer, setLeverandoer] = useState("");
@@ -400,8 +455,11 @@ export default function IndkoebOversigt() {
 
   const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
-  /* useListe har allerede delt på division — se noten ved kaldet. */
-  const iDivision = indkoebslinjer;
+  /* ⚠ HER STOD `const iDivision = indkoebslinjer` med noten "useListe har
+     allerede delt på division". Den deler ikke længere (beslutning 70), og
+     et navn der siger "divisionens linjer", er en påstand om en opdeling der
+     ikke findes. Navnet er nu det listen ER. */
+  const alleLinjer = indkoebslinjer;
 
   /* ⚠ OVERSAT FRA BASEN. `prisliste` er et objekt i RTDB og en array i
      domænekoden — prisPaa() filtrerer på den, og beregnNoegletal() kalder
@@ -413,7 +471,7 @@ export default function IndkoebOversigt() {
   /* ⚠ TABELLEN VISER SHELLENS PERIODE. Historikken bagud er prisgrafens
      grundlag og hører ikke i en liste over "ordrer og fakturaer" — den ville
      drukne de aktuelle i tolv måneders løbende dieselkøb. */
-  const iPerioden = iDivision.filter((l) => l.dato >= periode.fra && l.dato <= periode.til);
+  const iPerioden = alleLinjer.filter((l) => l.dato >= periode.fra && l.dato <= periode.til);
 
   const viste = iPerioden.filter((l) =>
     (!kategori || l.kategori === kategori) &&
@@ -431,7 +489,7 @@ export default function IndkoebOversigt() {
   const vistForbrugOere = viste.reduce((s, l) => s + indkoebBeloebOere(l), 0);
 
   /* Mest købte: over divisionens linjer i perioden, ikke over historikken. */
-  const topVarer = mestKoebteVarer(iPerioden.length ? iPerioden : iDivision);
+  const topVarer = mestKoebteVarer(iPerioden.length ? iPerioden : alleLinjer);
 
   /* ⚠ TOLV MÅNEDER DELT I TO HALVÅR. Serien "forrige periode" er de seks
      måneder FØR de seks viste, forskudt så samme x-position sammenligner
@@ -439,8 +497,8 @@ export default function IndkoebOversigt() {
      sæson og ikke leverandør. */
   const nu = Date.now();
   const seksMdr = 182 * 86400000;
-  const aktuel = snitprisPrMaaned(iDivision, { varenummer: "DIESEL-B7", maaneder: 6, nu });
-  const forrige = snitprisPrMaaned(iDivision, { varenummer: "DIESEL-B7", maaneder: 6, nu: nu - seksMdr });
+  const aktuel = snitprisPrMaaned(alleLinjer, { varenummer: "DIESEL-B7", maaneder: 6, nu });
+  const forrige = snitprisPrMaaned(alleLinjer, { varenummer: "DIESEL-B7", maaneder: 6, nu: nu - seksMdr });
   const prisPunkter = aktuel.map((p, i) => ({
     label: MAANED[p.maaned],
     vaerdier: [p.snitOere / 100, forrige[i] ? forrige[i].snitOere / 100 : null],
@@ -448,12 +506,15 @@ export default function IndkoebOversigt() {
 
   /* Leverandørernes objektive tal. Prislisten skal med — prisafvigelsen måles
      mod den pris der GJALDT DA VI KØBTE, og den står i prislisten. */
+  /* ⚠ KUN `aktiv`. Her stod `&& (l.division === division || l.division ===
+     "faelles")`, og begge sider var `undefined` efter beslutning 70 — filteret
+     slap kun igennem fordi `undefined === undefined` er sandt. */
   const performance = leverandoerer
-    .filter((l) => l.aktiv && (l.division === division || l.division === "faelles"))
+    .filter((l) => l.aktiv)
     .map((l) => ({
       leverandoer: l,
       tal: beregnNoegletal(l, {
-        indkoeb: iDivision,
+        indkoeb: alleLinjer,
         fakturaer,
         sager: DEMO_LEVERANDOERSAGER,
       }),
@@ -463,6 +524,13 @@ export default function IndkoebOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Procureoverblik
+        behov={behov} ordrer={ordrer} fakturaer={fakturaer}
+        leverandoerer={leverandoerer} brugere={brugere} indkoebslinjer={alleLinjer}
+        regler={regelPost || STANDARD_GODKENDELSESREGLER}
+        lavBeholdning={k?.indkoeb?.lavBeholdning ?? null}
+      />
+
       {k && (
         <KpiRaekke>
           {/* Runde ikoner med chevron, som resten af appen. Tonerne er
@@ -495,7 +563,6 @@ export default function IndkoebOversigt() {
                     onChange={(e) => { setLeverandoer(e.target.value); setSide(1); }}>
               <option value="">Alle leverandører</option>
               {leverandoerer
-                .filter((l) => l.division === division || l.division === "faelles")
                 .map((l) => <option key={l.id} value={l.id}>{l.navn}</option>)}
             </select>
           </div>
@@ -535,7 +602,7 @@ export default function IndkoebOversigt() {
       {linjeform && (
         <Indkoebsformular
           key={linjeform}
-          linje={linjeform === "ny" ? null : iDivision.find((l) => l.id === linjeform)}
+          linje={linjeform === "ny" ? null : alleLinjer.find((l) => l.id === linjeform)}
           leverandoerer={leverandoerer}
           koeretoejer={koeretoejer}
           lokationer={lokationer}
@@ -596,9 +663,7 @@ export default function IndkoebOversigt() {
             { key: "fakturastatus", label: "Status",
               render: (r) => <Pille tone={FAKTURASTATUS[r.fakturastatus]?.pill}>
                 {FAKTURASTATUS[r.fakturastatus]?.label}</Pille> },
-            /* Division står eksplicit — den kan ikke arves fra bilen. */
-            { key: "division", label: "Division",
-              render: (r) => <Pille tone="info">{DIVISIONER[r.division]}</Pille> },
+
           ]}
           raekker={paaSiden}
           tom={harFilter ? "Ingen indkøb passer på filtrene."
@@ -607,7 +672,7 @@ export default function IndkoebOversigt() {
 
         <div className="fc-row" style={{ marginTop: 12, gap: 12, flexWrap: "wrap" }}>
           <p className="fc-hint" style={{ margin: 0 }}>
-            Viser {num(paaSiden.length)} af {num(viste.length)} i <b>{DIVISIONER[division]}</b> til{" "}
+            Viser {num(paaSiden.length)} af {num(viste.length)} til{" "}
             <b>{kr(vistForbrugOere)}</b> ekskl. moms. Det er det <b>viste udsnit</b> —
             månedens forbrug i <code>kpi/</code> dækker hele perioden, og de to skal
             ikke gå op mod hinanden.
@@ -628,8 +693,7 @@ export default function IndkoebOversigt() {
           Beløbet pr. linje <b>beregnes</b> af antal × pris pr. enhed og gemmes ikke.
           Prisen står i <b>hele øre</b> — 18,50 kr/stk er <code>1850</code>. En float
           ville blive 1849,999 i en sum, og så går afstemningen ikke op med en øre
-          ingen kan forklare. <b>Division</b> står eksplicit, fordi den ikke kan arves
-          fra bilen: beslutning 19 forbyder feltet dér.
+          ingen kan forklare.
         </p>
       </Kort>
 
@@ -724,7 +788,7 @@ export default function IndkoebOversigt() {
             ]}
             raekker={performance}
             noegle={(r) => r.leverandoer.id}
-            tom="Ingen aktive leverandører i divisionen."
+            tom="Ingen aktive leverandører."
           />
           <p className="fc-hint" style={{ marginTop: 10 }}>
             ⚠ <b>Ingen stjerner og ingen samlet score.</b> Mockuppen har begge dele;
@@ -742,20 +806,236 @@ export default function IndkoebOversigt() {
         </Kort>
       </Gitter>
 
-      <Leverandoerkartotek division={division} leverandoerer={leverandoerer} />
+      <Leverandoerkartotek leverandoerer={leverandoerer} />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PROCURES OVERBLIK — planche 5, beslutning 84
+   ══════════════════════════════════════════════════════════════════════════
+
+   Modulets forside: hele processen fra behov til afstemning, de tal der
+   kræver en handling, og indbakken.
+
+   ⚠ PROCESBÅNDET ER EN VEJVISER, IKKE EN TILSTAND. Planchen tegner fem
+   nummererede trin. Det er FORLØBET — ikke hvor en bestemt post står — og
+   derfor er hvert trin et LINK til det sted arbejdet gøres. Et bånd der
+   fremhævede "det aktive trin", ville påstå at modulet har én tilstand ad
+   gangen; det har fem køer der løber samtidig.
+
+   ⚠ FIRE AF DE FEM TAL REGNES HER, IKKE I `kpi/`. De er afledt af lister
+   skærmen alligevel henter — undtagelsen i CLAUDE.md. Et gemt tal ville
+   drive fra sit grundlag, og "5 afventer godkendelse" ved siden af en kø
+   med tre er værre end intet tal.
+
+   ⚠ DET FEMTE KAN IKKE REGNES, OG DET SIGER DET. "Lav lagerbeholdning"
+   kræver `forbrugsvarer` — Procures EGET varelager — og noden findes ikke.
+   Warehouses `varer`/`beholdning` er KUNDENS gods (3PL), så et tal derfra
+   ville bede os bestille noget en kunde mangler. Feltet står som `null` i
+   `kpi/` med den grund, og kortet skriver `—`.
+
+   ⚠ OG PLANCHENS FIRE BUNDKORT ER IKKE GENTAGET. Den viser "Bestillinger
+   12" og "Fakturaer 4" BÅDE i toppen og i bunden — det samme tal to steder
+   på én skærm. To visninger af ét tal er to steder der kan nå at blive
+   uenige; det er beslutning 11 og 14, og det var mockuppens "8 mod 16" på
+   fakturaskærmen. Bunden er derfor rene GENVEJE uden tal.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const TRIN = [
+  { nr: 1, label: "Behov", under: "Indkøbsbehov oprettes i organisationen",
+    til: "/indkoeb/behov" },
+  { nr: 2, label: "Bestilling", under: "Ordre oprettes og sendes til leverandør",
+    til: "/indkoeb/bestillinger" },
+  { nr: 3, label: "Godkendelse", under: "Ordre og beløb godkendes i henhold til regler",
+    til: "/indkoeb/godkendelser" },
+  { nr: 4, label: "Faktura", under: "Faktura modtages og bogføres",
+    til: "/indkoeb/fakturaer" },
+  { nr: 5, label: "Afstemning", under: "Match og afstemning afsluttes",
+    til: "/indkoeb/fakturaer" },
+];
+
+const SAADAN = [
+  { nr: 1, label: "Opret behov",
+    under: "Find den vare du mangler, og meld den ind — fra telefonen hvis du står ved reolen." },
+  { nr: 2, label: "Bestil og godkend",
+    under: "Forslaget finder leverandøren. Over beløbsgrænsen skal en godkender sige god." },
+  { nr: 3, label: "Modtag og bogfør",
+    under: "Fakturaen matches mod bestillingen — bestillingsnummeret gør matchet sikkert." },
+  { nr: 4, label: "Afstem og afslut",
+    under: "Tre uafhængige opgørelser holdes op mod hinanden. Uenighed er en oplysning." },
+];
+
+function Procureoverblik({
+  behov, ordrer, fakturaer, leverandoerer, brugere, indkoebslinjer, regler, lavBeholdning,
+}) {
+  const lvNavn = (id) => leverandoerer.find((l) => l.id === id)?.navn || null;
+  const brugerNavn = (uid) => {
+    const b = brugere.find((x) => x.id === uid);
+    return b?.navn || b?.email || uid || "—";
+  };
+
+  /* ⚠ "KRÆVER HANDLING" ER IKKE "FINDES". Et afvist behov er der taget
+     stilling til, og et bestilt ligger på en ordre — begge ville puste
+     tallet op med arbejde der er gjort. */
+  const aabneBehov = behov.filter(
+    (b) => b.status !== "bestilt" && b.status !== "afvist");
+  /* Åben bestilling = sendt, men ikke modtaget. En kladde er ikke sendt, og
+     en annulleret er ikke åben. */
+  const aabneOrdrer = ordrer.filter((o) => o.status === "sendt");
+  const koe = ventendeOrdrer(ordrer, regler);
+  /* ⚠ EN HÆNGENDE REFERENCE TÆLLER MED. Et ordreId der peger på noget som
+     ikke findes, ser matchet ud og er det ikke — og den er allerede talt
+     som afstemt. Samme regel som på fakturaskærmen. */
+  const findesOrdre = new Set(ordrer.map((o) => o.id));
+  const udenMatch = fakturaer.filter(
+    (f) => matchtilstand(f) === "manglerMatch" || (f.ordreId && !findesOrdre.has(f.ordreId)));
+
+  /* Indbakken: de nyeste åbne behov, med det forslag Bestillinger ville give.
+     ⚠ SAMME `kladdelinjer()` SOM BESTILLINGSSKÆRMEN. To opslag der svarede
+     hver sit på "hvem leverer den vare", ville sende folk to steder hen. */
+  const indbakke = kladdelinjer(
+    [...aabneBehov].sort((a, b) => (b.oprettetMs || 0) - (a.oprettetMs || 0)).slice(0, 5),
+    indkoebslinjer);
+
+  return (
+    <div className="fc-grid" style={{ gap: 16 }}>
+      <Kort titel="Indkøbsprocessen">
+        <ol className="fc-trinbaand">
+          {TRIN.map((t) => (
+            <li key={t.nr} className="fc-trin">
+              <Link className="fc-trin-link" to={t.til}>
+                <span className="fc-trin-nr" aria-hidden="true">{t.nr}</span>
+                <span className="fc-trin-tekst">
+                  <b>{t.label}</b>
+                  <span className="fc-hint">{t.under}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </Kort>
+
+      <KpiRaekke>
+        <KpiKort label="Behov kræver handling" vaerdi={num(aabneBehov.length)}
+                 note="meldt ind, ikke bestilt"
+                 ikon={<Ikon navn="dokument" />} tone="ikon-4" rund til="/indkoeb/behov" />
+        <KpiKort label="Åbne bestillinger" vaerdi={num(aabneOrdrer.length)}
+                 note="sendt, ikke modtaget"
+                 ikon={<Ikon navn="vogn" />} tone="ikon-6" rund til="/indkoeb/bestillinger" />
+        <KpiKort label="Afventer godkendelse" vaerdi={num(koe.length)}
+                 note={koe.length
+                   ? `ældste ventet siden ${dato(koe[0].ordre.oprettetMs)}`
+                   : "køen er tom"}
+                 ikon={<Ikon navn="klokke" />} tone="ikon-3" rund til="/indkoeb/godkendelser" />
+        <KpiKort label="Fakturaer uden match" vaerdi={num(udenMatch.length)}
+                 note="i de hentede"
+                 ikon={<Ikon navn="seddel" />} tone="ikon-2" rund til="/indkoeb/fakturaer" />
+        {/* ⚠ INTET TAL, OG DET ER SVARET. `forbrugsvarer` findes ikke, og
+            Warehouses lager er KUNDENS gods. Et tal derfra ville bede os
+            bestille noget en kunde mangler. */}
+        <KpiKort label="Lav lagerbeholdning" vaerdi={num(lavBeholdning)}
+                 note="varelageret er ikke bygget endnu"
+                 ikon={<Ikon navn="advarsel" />} tone="ikon-1" rund />
+      </KpiRaekke>
+
+      <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
+        <Kort
+          titel={`Indbakke for indkøbsbehov (${num(aabneBehov.length)})`}
+          handling={<Link className="fc-a" to="/indkoeb/behov">Se alle behov</Link>}
+        >
+          <Tabel
+            raekker={indbakke}
+            noegle={(r) => r.behov.id}
+            tom="Ingen åbne behov. De kommer fra snedkeri, lager og kontor."
+            kolonner={[
+              {
+                key: "vare", label: "Vare",
+                render: (r) => (
+                  <>
+                    <b>{r.behov.vare}</b>
+                    <div className="fc-hint">{r.behov.varenummer || "uden varenummer"}</div>
+                  </>
+                ),
+              },
+              {
+                key: "kilde", label: "Kilde",
+                render: (r) => BEHOVKILDE[r.behov.kilde] || r.behov.kilde,
+              },
+              {
+                key: "af", label: "Oprettet af",
+                render: (r) => (
+                  <>
+                    {brugerNavn(r.behov.oprettetAf)}
+                    <div className="fc-hint">{dato(r.behov.oprettetMs)}</div>
+                  </>
+                ),
+              },
+              {
+                key: "status", label: "Status",
+                render: (r) => (
+                  <Pille tone={BEHOVSTATUS[r.behov.status]?.tone}>
+                    {BEHOVSTATUS[r.behov.status]?.label || r.behov.status}
+                  </Pille>
+                ),
+              },
+              {
+                /* ⚠ SAMME OPSLAG SOM BESTILLINGSSKÆRMEN, og det siger fra
+                   når der intet er. Et gæt ville være værre end ingenting. */
+                key: "forslag", label: "Foreslået leverandør",
+                render: (r) => (r.forslag
+                  ? lvNavn(r.forslag.leverandoerId) || r.forslag.leverandoerId
+                  : <span className="fc-hint">Ingen tidligere leverance</span>),
+              },
+              {
+                key: "antal", label: "Antal", num: true,
+                /* ⚠ ET UBESVARET ANTAL SKRIVER —, IKKE 0. Feltet er valgfrit
+                   med vilje (beslutning 80); et nul ville være en påstand om
+                   at der ikke skal bestilles noget. */
+                render: (r) => (Number.isFinite(r.behov.antal)
+                  ? `${num(r.behov.antal)} ${r.behov.enhed || ""}`.trim()
+                  : num(null)),
+              },
+            ]}
+          />
+        </Kort>
+
+        <Kort titel="Sådan virker det">
+          <ol className="fc-saadan">
+            {SAADAN.map((t) => (
+              <li key={t.nr} className="fc-saadan-trin">
+                <span className="fc-saadan-nr" aria-hidden="true">{t.nr}</span>
+                <span>
+                  <b>{t.label}</b>
+                  <span className="fc-hint">{t.under}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          {/* ⚠ PLANCHEN GENTOG TO AF TALLENE I FIRE BUNDKORT. Det samme tal
+              to steder på én skærm er to steder der kan nå at blive uenige —
+              mockuppens "8 mod 16" på fakturaskærmen. Genvejene bærer derfor
+              ingen tal. */}
+          <div className="fc-genveje">
+            <Link className="fc-a" to="/indkoeb/leverandoerer">Leverandører</Link>
+            <Link className="fc-a" to="/indkoeb/bestillinger">Bestillinger</Link>
+            <Link className="fc-a" to="/indkoeb/godkendelser">Godkendelser</Link>
+            <Link className="fc-a" to="/indkoeb/fakturaer">Fakturaer</Link>
+          </div>
+        </Kort>
+      </Gitter>
     </div>
   );
 }
 
 /* ---- Leverandøren som entitet ------------------------------------------ */
 
-function Leverandoerkartotek({ division, leverandoerer }) {
+function Leverandoerkartotek({ leverandoerer }) {
   /* ⚠ LISTEN KOMMER IND, DEN HENTES IKKE HER. To useListe-kald på samme node
      i samme skærm er to hentninger af de samme rækker — og to steder der kan
      nå at vise hver sit, hvis kun det ene genindlæses. */
-  const viste = leverandoerer.filter(
-    (l) => l.division === division || l.division === "faelles"
-  );
+  /* ⚠ ALLE. Her stod et divisionsfilter hvor begge sider var `undefined`. */
+  const viste = leverandoerer;
 
   return (
     <Kort
@@ -772,15 +1052,14 @@ function Leverandoerkartotek({ division, leverandoerer }) {
               {AFTALETYPE[r.aftale.type]?.label}
               {r.aftale.rabatPct ? ` · ${r.aftale.rabatPct} %` : ""}
             </Pille> },
-          { key: "division", label: "Division",
-            render: (r) => <Pille tone="info">{DIVISIONER[r.division]}</Pille> },
+
           { key: "kontaktEmail", label: "Kontakt",
             render: (r) => <a className="fc-a" href={`mailto:${r.kontaktEmail}`}>{r.kontaktEmail}</a> },
           { key: "aktiv", label: "Status",
             render: (r) => (r.aktiv ? <Pille tone="ok">Aktiv</Pille> : <Pille tone="bad">Inaktiv</Pille>) },
         ]}
         raekker={viste}
-        tom="Ingen leverandører i divisionen."
+        tom="Ingen leverandører."
       />
 
       <p className="fc-hint" style={{ marginTop: 12 }}>
@@ -790,11 +1069,12 @@ function Leverandoerkartotek({ division, leverandoerer }) {
         fritekst i tre demo-filer med hver sin stavemåde at drive med.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
-        <b>Division er tilladt her</b>, modsat på personale og enheder. Prøven er
-        om feltet beskriver <b>leverandørens forretning</b> eller <b>vores
-        organisation</b>: Mercedes Greve er et lastbilværksted, Crawford leverer
-        porte til begge. Det er samme begrundelse som <code>faelles</code> på kunder
-        — beslutning 19.
+        <b>Division findes ikke på en leverandør</b> — og gjorde det heller ikke,
+        efter beslutning 70. Her stod et afsnit om hvorfor feltet var tilladt
+        netop her, modsat på personale og enheder. Aksen er væk, reglen har
+        <code>.validate: false</code> på feltet, og en forklaring på en
+        undtagelse fra en regel der ikke findes, lærer den næste at aksen
+        stadig lever et sted. Se beslutning 84.
       </p>
       <p className="fc-hint" style={{ marginTop: 8 }}>
         Leverandørens e-mail bliver <b>startlisten af parter</b> på en sag

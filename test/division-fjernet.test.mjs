@@ -36,6 +36,85 @@ const filer = (rod, ud = []) => {
 };
 
 const SRC = filer("src");
+const MODULER = filer("src/moduler");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ LINTEN KIGGEDE ALDRIG I `src/moduler/` — OG DET VAR DER AKSEN LEVEDE
+   ══════════════════════════════════════════════════════════════════════════
+
+   Beslutning 70 fjernede aksen; 79 tog de sidste rester i shellen,
+   konteksten, `useListe`, Cloud Functions og auditlisten. Prøverne herover
+   dækker præcis de steder — og **ingen af dem læser en modulskærm**.
+
+   Målt da Procures overblik blev bygget: **77 levende forekomster i 17
+   modulfiler**. Ikke kommentarer — kode. Og den værste var ikke kosmetisk:
+   `indkoeb/Oversigt.jsx` havde et **påkrævet Division-felt** i
+   registreringsformularen, mens `indkoeb`-reglen har
+   `"division": { ".validate": false }`. Vælger man en værdi, afviser
+   serveren skrivningen; vælger man ingen, klager formularen. **Vejen ind
+   var lukket i begge retninger, og ikke én prøve sagde noget.**
+
+   ⚠ EN LINT DER SPRINGER NOGET OVER, SIGER IKKE NEJ — DEN SIGER INGENTING.
+   Det er samme sætning som `demo-i-skaerm.test.mjs` bærer om `bookinger`
+   (beslutning 56), og det er anden gang mønstret koster noget.
+
+   ⚠ LOFTET ER MÅLT, IKKE VALGT — og det er et LOFT, ikke et forbud endnu.
+   At rette alle 17 filer i én ombæring er en anden opgave end at bygge
+   Procure færdig, og en prøve der kræver det, ville blive slået fra. Tallet
+   må kun gå NED. Går det op, har nogen skrevet aksen ind i en skærm igen.
+
+   51 = 77 minus de 26 i `src/moduler/indkoeb/`, som blev ryddet i
+   beslutning 84. Se README under *Divisionsefterslæbet*.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DIVISIONSLOFT = 51;
+
+describe("Aksen lever endnu i modulskærmene — og listen må kun blive kortere", () => {
+  test("⚠ HØJST DIVISIONSLOFT LEVENDE FOREKOMSTER I src/moduler/", () => {
+    const fund = [];
+    for (const f of MODULER) {
+      const kode = udenKommentarer(readFileSync(f, "utf8"));
+      const linjer = kode.split(/\r?\n/)
+        .map((l, i) => [i + 1, l])
+        .filter(([, l]) => /\bdivision(er)?\b|DIVISION/i.test(l));
+      for (const [n, l] of linjer) fund.push(`${f}:${n}  ${l.trim().slice(0, 70)}`);
+    }
+    assert.ok(
+      fund.length <= DIVISIONSLOFT,
+      `${fund.length} levende forekomster af division i src/moduler/, loftet er `
+      + `${DIVISIONSLOFT}. Aksen er fjernet (beslutning 70) — en skærm der `
+      + `filtrerer, viser eller KRÆVER den, arbejder mod reglerne.\n  `
+      + fund.join("\n  "));
+  });
+
+  /**
+   * ⚠ OG PROCURE ER RYDDET — DET MÅ IKKE KOMME TILBAGE.
+   *
+   * Modulet er bygget færdigt i beslutning 78–84, og aksen er ude af alle
+   * dets skærme. Et loft på hele `src/moduler/` ville ikke opdage at der kom
+   * ét ind i Procure igen, hvis nogen samtidig fjernede ét andet sted. For
+   * den mappe er tallet derfor NUL — et forbud, ikke et loft.
+   *
+   * ⚠ ÉN UNDTAGELSE: en tekst der forklarer at feltet IKKE findes. Den
+   * advarer om aksen frem for at bruge den, og en prøve der råber ad det
+   * korrekte, bliver slået fra.
+   */
+  test("⚠ INGEN DIVISION I src/moduler/indkoeb/ — ET FORBUD", () => {
+    const fund = [];
+    for (const f of MODULER.filter((x) => x.includes("indkoeb"))) {
+      const kode = udenKommentarer(readFileSync(f, "utf8"));
+      for (const [i, l] of kode.split(/\r?\n/).entries()) {
+        if (!/\bdivision(er)?\b|DIVISION/i.test(l)) continue;
+        /* En sætning om at feltet ikke findes, er ikke en brug af det. */
+        if (/findes ikke|ikke længere|er fjernet|gjorde det heller ikke/i.test(l)) continue;
+        fund.push(`${f}:${i + 1}  ${l.trim().slice(0, 70)}`);
+      }
+    }
+    assert.deepEqual(fund, [],
+      "Procure er ryddet for aksen i beslutning 84. En skærm der filtrerer, "
+      + "viser eller kræver `division`, arbejder mod reglerne — feltet er "
+      + "`.validate: false` på hver eneste node.\n  " + fund.join("\n  "));
+  });
+});
 
 describe("Filteret er væk og kommer ikke tilbage stykkevis", () => {
   /**

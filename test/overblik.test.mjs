@@ -1,0 +1,260 @@
+/* test/overblik.test.mjs
+ * Procures overblik — beslutning 84, planche 5. Modulets forside.
+ *
+ * ⚠ HVAD DEN HER PRØVE HOLDER FAST I:
+ *
+ *   1. **Fire af de fem tal regnes af listerne, ikke af `kpi/`.** De er afledt
+ *      af data skærmen alligevel henter — undtagelsen i CLAUDE.md. Et gemt tal
+ *      ville drive fra sit grundlag.
+ *   2. **Det femte kan ikke regnes, og det siger det.** `forbrugsvarer` findes
+ *      ikke, og Warehouses lager er KUNDENS gods.
+ *   3. **Planchens gentagne tal er ikke gentaget.** Den viser "Bestillinger 12"
+ *      og "Fakturaer 4" både øverst og nederst; to visninger af ét tal er to
+ *      steder der kan nå at blive uenige.
+ *   4. **Aksen er ude af Procure.** Registreringsformularen havde et påkrævet
+ *      Division-felt på en node hvis regel forbyder feltet.
+ *
+ * Koer: npm test
+ */
+import test, { describe } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+import { beregnKpi } from "../src/fleet/kpi-aggregering.js";
+import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
+import { kladdelinjer, ventendeOrdrer, matchtilstand } from "../src/fleet/procure.js";
+import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER }
+  from "../src/fleet/demo-procure.js";
+import { DEMO_INDKOEBSLINJER } from "../src/fleet/demo-indkoeb.js";
+
+const udenKommentarer = (s) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Oversigt.jsx", "utf8"));
+const RAA = readFileSync("src/moduler/indkoeb/Oversigt.jsx", "utf8");
+const NAV = readFileSync("src/fleet/nav.js", "utf8");
+const REGELFIL = readFileSync("firebase.rules.json", "utf8");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DE FEM TAL
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("Fire tal regnes, det femte kan ikke", () => {
+  /**
+   * ⚠ "KRÆVER HANDLING" ER IKKE "FINDES". Et afvist behov er der taget
+   * stilling til, og et bestilt ligger på en ordre — begge ville puste tallet
+   * op med arbejde der ER gjort, og et tal der aldrig falder, holder man op
+   * med at kigge på.
+   */
+  test("⚠ ÅBNE BEHOV TÆLLER HVERKEN BESTILTE ELLER AFVISTE", () => {
+    const aabne = DEMO_INDKOEBSBEHOV.filter(
+      (b) => b.status !== "bestilt" && b.status !== "afvist");
+    assert.ok(aabne.length < DEMO_INDKOEBSBEHOV.length,
+      "der er hverken et bestilt eller et afvist behov i demo — filteret kan ikke ses virke");
+    for (const b of aabne) {
+      assert.ok(b.status !== "bestilt" && b.status !== "afvist");
+    }
+    assert.match(SKAERM, /b\.status !== "bestilt" && b\.status !== "afvist"/);
+  });
+
+  /**
+   * ⚠ ÅBEN BESTILLING = SENDT, IKKE MODTAGET. En kladde er aldrig sendt, og en
+   * annulleret er ikke åben — begge ville tælle med i "det vi venter på fra
+   * leverandøren", som er hele kortets spørgsmål.
+   */
+  test("⚠ ÅBNE BESTILLINGER ER KUN DE SENDTE", () => {
+    assert.match(SKAERM, /ordrer\.filter\(\(o\) => o\.status === "sendt"\)/);
+    const aabne = DEMO_INDKOEBSORDRER.filter((o) => o.status === "sendt");
+    assert.ok(aabne.length >= 1, "ingen sendt ordre i demo — kortet kan ikke ses virke");
+    assert.ok(DEMO_INDKOEBSORDRER.some((o) => o.status === "kladde"),
+      "ingen kladde i demo — så kan man ikke se at den IKKE tælles med");
+  });
+
+  /* Køen er den samme `ventendeOrdrer()` som Godkendelsesskærmen bruger — to
+     opslag ville kunne svare hver sit på "hvor mange venter". */
+  test("⚠ KØEN REGNES MED SAMME ventendeOrdrer() SOM GODKENDELSESSKÆRMEN", () => {
+    assert.match(SKAERM, /ventendeOrdrer\(ordrer, regler\)/);
+    const koe = ventendeOrdrer(DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER);
+    assert.ok(koe.length >= 1, "tom kø i demo — kortet kan ikke ses virke");
+  });
+
+  /**
+   * ⚠ EN HÆNGENDE REFERENCE TÆLLER SOM UDEN MATCH. Et ordreId der peger på
+   * noget som ikke findes, ser matchet ud og er det ikke — og den er allerede
+   * talt som afstemt. Det er den farligste af de to.
+   */
+  test("⚠ EN HÆNGENDE ordreId TÆLLER SOM UDEN MATCH", () => {
+    assert.match(SKAERM, /f\.ordreId && !findesOrdre\.has\(f\.ordreId\)/);
+    const findes = new Set(DEMO_INDKOEBSORDRER.map((o) => o.id));
+    const haenger = { id: "x", ordreId: "findes-ikke", status: "modtaget" };
+    assert.equal(matchtilstand(haenger), "matchet",
+      "matchtilstand() ser kun på om feltet er sat — derfor skal skærmen tjekke at det RAMMER");
+    assert.ok(!findes.has(haenger.ordreId));
+  });
+
+  /**
+   * ⚠ DET FEMTE TAL ER null MED EN GRUND — INGEN KILDE.
+   *
+   * "Lav lagerbeholdning" kræver `forbrugsvarer`, Procures EGET varelager, og
+   * noden findes ikke. Warehouses `varer`/`beholdning` er KUNDENS gods (3PL,
+   * `kundeId` er påkrævet dér); regnede vi kortet af dem, ville Procure bede
+   * os bestille noget en KUNDE mangler.
+   */
+  test("⚠ lavBeholdning ER null I BÅDE AGGREGERINGEN OG DEMOFILEN", () => {
+    const k = beregnKpi({});
+    assert.equal(k.indkoeb.lavBeholdning, null,
+      "feltet er regnet — der findes ingen kilde at regne det af");
+    assert.ok("lavBeholdning" in k.indkoeb,
+      "feltet er udeladt. Står det med null, kan man se af noden at spørgsmålet ER stillet");
+    /* ⚠ DEMOFILEN SKAL PASSE I BEGGE RETNINGER (beslutning 60). */
+    assert.ok("lavBeholdning" in DEMO_KPI.indkoeb,
+      "aggregeringen skriver et felt demofilen ikke kender");
+  });
+
+  /* ⚠ OG NODEN `forbrugsvarer` FINDES IKKE ENDNU. Kom den, skal feltet regnes
+     — og så skal den her prøve falde, så nogen husker at rette kortet. */
+  test("⚠ forbrugsvarer FINDES IKKE ENDNU — når den gør, skal tallet regnes", () => {
+    assert.ok(!/"forbrugsvarer": \{/.test(REGELFIL),
+      "noden findes nu. Regn lavBeholdning af den, og fjern null'en med sin grund");
+  });
+
+  test("⚠ SKÆRMEN SKRIVER — OG IKKE 0 FOR DET UBEREGNEDE", () => {
+    assert.match(SKAERM, /vaerdi=\{num\(lavBeholdning\)\}/,
+      "tallet går ikke gennem num(), som skriver INTET for null");
+    assert.ok(!/lavBeholdning \|\| 0/.test(SKAERM),
+      "et manglende tal bliver til nul — og nul er en påstand om at intet mangler");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DEN TAVSE TOMME LISTE
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("Alle skærme spørger fakturaerne om det samme felt", () => {
+  /**
+   * ⚠ EN FAKTURA HAR INTET `dato`-FELT — DEN HAR `fakturadatoMs`.
+   *
+   * `indkoeb/Oversigt.jsx` sorterede og vinduesfiltrerede på `dato`. RTDB
+   * fejler ikke på et ukendt felt: tidsvinduet filtrerede på noget ingen post
+   * bærer, og listen kom hjem **tom**. Nøgletallene ovenfor kom fra `kpi/` og
+   * stod rigtigt imens, så der var intet at se.
+   *
+   * Det blev fundet fordi Overblikkets nye kort sagde **"Fakturaer uden
+   * match: 0"** mens fakturaskærmen sagde 9. To skærme, samme spørgsmål, to
+   * svar — og **det tavse nul var det farligste**: nul uden match ser ud som
+   * en afstemning der går op.
+   *
+   * ⚠ Samme fælde som `opgaver."dato"` og som indekset der pegede på
+   * `godkendelsesstatus`. Se beslutning 84.
+   */
+  test("⚠ HVER FAKTURALISTE ORDNER PÅ fakturadatoMs", () => {
+    const fejl = [];
+    for (const f of ["Oversigt", "Fakturaer", "Leverandoerer"]) {
+      const sti = `src/moduler/indkoeb/${f}.jsx`;
+      const kode = udenKommentarer(readFileSync(sti, "utf8"));
+      for (const m of kode.matchAll(/useListe\("fakturaer",\s*\{([^}]*)\}/g)) {
+        if (!/ordnPaa: "fakturadatoMs"/.test(m[1])) {
+          fejl.push(`${sti}: ${m[1].trim().split(/\r?\n/)[0]}`);
+        }
+      }
+    }
+    assert.deepEqual(fejl, [],
+      "en skærm ordner fakturaerne på et felt de ikke bærer. RTDB fejler ikke — "
+      + "listen kommer hjem tom, og et tomt resultat ligner et rigtigt svar. "
+      + fejl.join(" | "));
+  });
+
+  /* Og feltet skal være indekseret — ellers henter RTDB hele noden ned og
+     filtrerer i klienten med en advarsel i konsollen. */
+  test("⚠ fakturadatoMs ER INDEKSERET", () => {
+    const i = REGELFIL.indexOf('"fakturaer": {');
+    assert.match(REGELFIL.slice(i, i + 2500), /"\.indexOn": \[[^\]]*"fakturadatoMs"/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PROCESBÅNDET OG GENVEJENE
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("Båndet er en vejviser, ikke en tilstand", () => {
+  /* ⚠ HVERT TRIN FØRER ET STED HEN. Et bånd man ikke kan klikke på, er et
+     billede af en proces; det her er indgangen til den. */
+  test("⚠ ALLE FEM TRIN HAR ET LINK DER FINDES I nav.js", () => {
+    const stier = [...SKAERM.matchAll(/til: "(\/indkoeb[^"]*)"/g)].map((m) => m[1]);
+    assert.ok(stier.length >= 5, `kun ${stier.length} trin har et link`);
+    for (const sti of new Set(stier)) {
+      assert.ok(NAV.includes(`"${sti}"`), `${sti} findes ikke i nav.js`);
+    }
+  });
+
+  /**
+   * ⚠ PLANCHENS FIRE BUNDKORT GENTOG TO AF TALLENE. "Bestillinger 12" og
+   * "Fakturaer 4" stod BÅDE øverst og nederst — det samme tal to steder på én
+   * skærm er to steder der kan nå at blive uenige. Det er beslutning 11 og 14,
+   * og det var mockuppens "8 mod 16" på fakturaskærmen.
+   */
+  test("⚠ GENVEJENE BÆRER INGEN TAL", () => {
+    const i = RAA.indexOf('className="fc-genveje"');
+    assert.ok(i > 0, "genvejene findes ikke");
+    const blok = RAA.slice(i, RAA.indexOf("</div>", i));
+    assert.ok(!/\{num\(|\{kr\(|vaerdi=/.test(blok),
+      "en genvej bærer et tal — det samme tal to steder kan nå at blive uenige");
+  });
+
+  /* Indbakken bruger samme leverandøropslag som Bestillinger — to opslag der
+     svarede hver sit på "hvem leverer den vare", ville sende folk to steder. */
+  test("⚠ INDBAKKEN BRUGER SAMME kladdelinjer() SOM BESTILLINGER", () => {
+    assert.match(SKAERM, /kladdelinjer\(/);
+    const aabne = DEMO_INDKOEBSBEHOV.filter(
+      (b) => b.status !== "bestilt" && b.status !== "afvist");
+    const linjer = kladdelinjer(aabne, DEMO_INDKOEBSLINJER);
+    assert.equal(linjer.length, aabne.length);
+    assert.ok(linjer.some((l) => l.forslag), "intet forslag i indbakken");
+    assert.ok(linjer.some((l) => !l.forslag),
+      "hvert behov har et forslag — så kan 'Ingen tidligere leverance' ikke ses");
+  });
+
+  /* ⚠ ET UBESVARET ANTAL SKRIVER —, IKKE 0. Feltet er valgfrit (beslutning 80). */
+  test("⚠ ET BEHOV UDEN ANTAL VISES SOM INTET", () => {
+    assert.match(SKAERM, /Number\.isFinite\(r\.behov\.antal\)/);
+    assert.match(SKAERM, /: num\(null\)/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AKSEN ER UDE AF PROCURE
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("Divisionsaksen er ude af modulet", () => {
+  /**
+   * ⚠ DET PÅKRÆVEDE FELT VAR EN BLINDGYDE.
+   *
+   * Registreringsformularen havde `<Felt id="ik-div" label="Division" kraevet>`
+   * mens `indkoeb`-reglen har `"division": { ".validate": false }`. Vælger man
+   * en værdi, AFVISER serveren skrivningen; vælger man ingen, klager
+   * formularen. Vejen ind var lukket i begge retninger, og ikke én prøve sagde
+   * noget — linten kiggede aldrig i `src/moduler/`.
+   */
+  test("⚠ INGEN DIVISION I REGISTRERINGSFORMULAREN", () => {
+    assert.ok(!/id="ik-div"/.test(SKAERM), "det påkrævede Division-felt er tilbage");
+    assert.ok(!/saet\("division"\)/.test(SKAERM), "formularen sætter division");
+  });
+
+  /* ⚠ OG REGLEN FORBYDER FELTET — det er dét der gjorde feltet til en fælde. */
+  test("⚠ indkoeb-REGLEN FORBYDER STADIG division", () => {
+    const i = REGELFIL.indexOf('"indkoeb": {', REGELFIL.indexOf('"indkoebsordrer"'));
+    const blok = REGELFIL.slice(i, i + 9000);
+    assert.match(blok, /"division": \{ "\.validate": false \}/);
+  });
+
+  /* ⚠ OG INGEN FILTRE DER SAMMENLIGNER TO undefined. `l.division === division`
+     slap kun igennem fordi begge sider var undefined — et filter der virker
+     ved et tilfælde, holder op med at virke uden varsel. */
+  test("⚠ INGEN FILTRE PÅ division", () => {
+    assert.ok(!/\.division === division/.test(SKAERM));
+    assert.ok(!/DIVISIONER\[/.test(SKAERM), "en Division-kolonne tegner undefined");
+  });
+
+  /* Navnet `iDivision` var en påstand om en opdeling der ikke findes. */
+  test("⚠ VARIABLEN HEDDER IKKE LÆNGERE iDivision", () => {
+    assert.ok(!/\biDivision\b/.test(SKAERM),
+      "et navn der siger 'divisionens linjer', får den næste til at tro at der er en opdeling");
+  });
+});
