@@ -7433,3 +7433,83 @@ præcis det seedet gjorde forkert.
 statusrapporter at seedet ignorerede moduler. Det gjorde det ikke; fejlen sad
 et andet sted og var mindre og skarpere. **En diagnose er også en påstand der
 skal måles.**
+
+---
+
+## 101. Tjekket der kunne sættes, og de atten der ikke kunne
+
+Beslutning 92 målte det: **51 af 72 referencefelter** i `firebase.rules.json`
+har et eksistenstjek. De øvrige stod ikke noget sted — de var bare ikke
+skrevet, og **forskellen på "besluttet" og "glemt" kunne ikke ses.**
+
+Etapen kunne først tages nu. Et opslag mod data der peger på ingenting, ville
+have spærret skrivninger i en base der stadig bar fejlene; beslutning 100
+ryddede dem, og målingen bagefter sagde **0 overtrædelser i begge tenants**.
+
+### To tjek sat
+
+| Felt | Peger på | Hvorfor det skal tjekkes |
+|---|---|---|
+| `sensitive/indberetninger/…/underskrift.personId` | `personale` | Posten er **frosset** (beslutning 52). Et id der peger på ingenting, står der for altid — på det ene dokument der skal kunne bevise noget |
+| `indberetninger.bookingId` | `bookinger` | Koblingen mellem en skade og den tur der forvoldte den. Et blindt spor ender netop dér hvor nogen leder |
+
+⚠ **Begge felter er stadig VALGFRIE.** En `.validate` køres ikke på et felt der
+ikke er der: en modpart uden login har ingen `personId`, og en kunde uden
+Planning har indberetninger uden `bookingId` — seedet nuller det (beslutning
+100). En prøve holder `bookingId` ude af `hasChildren`.
+
+### Atten der ikke kan, og hvorfor
+
+`test/referencetjek.test.mjs` kræver at **hvert** felt uden tjek har en
+begrundelse. At skrive dem tvang en klassificering:
+
+| Grund | Antal | Eksempel |
+|---|---|---|
+| Målnoden findes ikke | 5 | `sagId` — `sager/` er fase 0. `bilagId` ligger i Storage, som reglerne slet ikke kan slå op i |
+| Feltet peger på et **login** | 2 | `anmoderId`, `bestillerId` er `uid`, ikke `personId` |
+| Vejen ind er lukket | 10 | `.write: false`, og funktionen slår referencen op — `ordreskriv` afviser med not-found |
+| **Åbent spørgsmål** | 1 | `materialelinjer.lagerId` — se nedenfor |
+
+⚠ **Kravet er ikke "alle skal tjekkes".** Det er at hvert felt skal have taget
+stilling. Et nyt referencefelt uden tjek og uden begrundelse gør prøven rød.
+
+⚠ **Og listen skal blive kortere.** To prøver holder den ærlig: en begrundelse
+for et felt der HAR fået sit tjek, skal væk, og en begrundelse der peger på et
+felt regelfilen ikke har, er et spøgelse. Dertil et krav om at flertallet
+faktisk er tjekket — ellers ville prøven være grøn den dag nogen fjernede hvert
+opslag og skrev en begrundelse i stedet.
+
+### ⚠ Og ét felt afslørede at min egen rettelse var halv
+
+`materialelinjer.lagerId` havde **ingen** tjek, og kommentaren i regelfilen
+sagde hvorfor:
+
+> *"`lagre` beskrives i moduler.js som reservedelslageret under Indkøb, men
+> bærer i PRISER.md døgnsatser for KUNDERS opbevaring."*
+
+Det holder. Målt: tre steder kalder `lagre` **reservedelslageret**
+(`moduler.js`, `unitbooking.js`, README), mens `pricing.js` slår op i
+`satsark.lagre[lagerId]` for **lagerophold** med `prLagerdoegn`-satser. **To
+betydninger, én node.**
+
+I beslutning 92 rettede jeg demolinjerne fra `lager-hoved` til `lag-kolding`,
+fordi de pegede på ingenting. Det var rigtigt — og det var kun det halve:
+`lag-kolding` er en **opbevaringslokation med døgnsats**, og en reservedel er
+hentet fra et reservedelslager. **Referencen resolver; semantikken gør ikke.**
+
+Feltet får derfor intet tjek — et opslag ville låse den ene læsning fast uden
+at nogen havde valgt — og spørgsmålet står nu i README's liste over det der
+skal have et menneskeligt svar.
+
+### Det arbejdet fandt
+
+**Syvende gang et anker spændte for bredt.** `rules.lagre.test.mjs` skar
+regelfilen som TEKST fra `"lagre": {` til `"bookinger": {` og læste alt
+derimellem. Den faldt på min nye **kommentar** i `materialelinjer.lagerId`,
+fordi den nævner `prLagerdoegn` for at forklare dobbeltbetydningen — et felt
+der ligger i en helt anden node.
+
+Prøvens krav var rigtigt (ordlisten bor i `pricing.js`, ikke i regelfilen);
+det var udsnittet der var forkert. Den læser nu noden som JSON. Det er samme
+rettelse som beslutning 100 lavede i provisioneren, én dag senere, i en prøve
+der skulle vogte netop den slags.

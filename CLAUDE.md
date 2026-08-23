@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **100 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **101 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -750,6 +750,17 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   ⚠ **Og delt ejerskab er ikke et krav:** `reolpladser` ejes af både
   unitbooking og warehouse, så en unitbooking-kunde har den allerede.
   Se beslutning 93.
+- **Tilføje et referencefelt uden at tage stilling til eksistenstjekket.**
+  `test/referencetjek.test.mjs` kræver at hvert felt der ender på `Id` i
+  `firebase.rules.json` enten har `root.child(…).exists()` eller står i
+  `UDEN_TJEK` **med en grund**. Kravet er ikke at alle tjekkes — det er at
+  ingen glemmes.
+  ⚠ **Fire slags grund, og kun de tre er varige:** målnoden findes ikke
+  (`sager/`, Storage), feltet peger på et **login** og ikke på en post, eller
+  nodens `.write` er `false` og funktionen slår referencen op selv. Den
+  fjerde — et åbent spørgsmål — skal væk igen.
+  ⚠ **Og begrundelsen skal forsvinde når tjekket kommer.** En prøve fejler på
+  en begrundelse for et felt der HAR sit opslag. Se beslutning 101.
 - **Opfinde en id-konvention i den fil der PEGER.** `materialelinjer.lagerId`
   sagde `lager-hoved` mens lagrene hedder `lag-kolding`; `ind-006.indkoebId`
   sagde `ink-2026-0844` mens linjerne hedder `il-003`. Tre konventioner for

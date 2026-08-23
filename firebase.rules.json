@@ -591,7 +591,14 @@
                 // personId, ikke uid: det er hvem underskriften HANDLER OM.
                 // Modparten har som regel slet intet login, og feltet er
                 // derfor ofte null — navnet og stedet baerer beviset.
-                "personId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                //
+                // ⚠ MEN STAAR DER ET personId, SKAL PERSONEN FINDES.
+                // Feltet er valgfrit; en underskrift uden er en modpart uden
+                // login. En underskrift MED et personId der peger paa
+                // ingenting, er derimod et bevis der udpeger en medarbejder
+                // ingen kan slaa op — og posten er FROSSET (beslutning 52),
+                // saa den kan ikke rettes bagefter. Se beslutning 101.
+                "personId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
                 "stedTekst": { ".validate": "newData.isString() && newData.val().length <= 200" },
                 "ms": { ".validate": "newData.isNumber()" },
                 "$andet": { ".validate": false }
@@ -1672,7 +1679,18 @@
             "oprettetMs": { ".validate": "newData.isNumber()" },
 
             "koeretoejId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('koeretoejer').child(newData.val()).exists()" },
-            "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // ⚠ EN INDBERETNING KAN HOERE TIL EN TUR — OG SAA SKAL TUREN FINDES.
+            // Feltet er valgfrit: en kunde uden Planning har udmaerket
+            // indberetninger, de er bare ikke bundet til en booking (seedet
+            // nuller det, se beslutning 100). Men staar der et bookingId, er
+            // det koblingen mellem en skade og den tur der forvoldte den —
+            // og et id der peger paa ingenting, er et spor der ender blindt
+            // netop naar nogen leder. Se beslutning 101.
+            "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('bookinger').child(newData.val()).exists()" },
+            // ⚠ INGEN EKSISTENSTJEK: `sager/` staar ikke i regelfilen.
+            // Beslutning 20 er fase 0, og et opslag mod en node der ikke
+            // findes, ville afvise HVER indberetning der baerer feltet.
+            // Tilfoej tjekket samme dag `sager/` faar sine regler.
             "sagId": { ".validate": "newData.isString() && newData.val().length <= 60" },
             "indkoebId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoeb').child(newData.val()).exists()" },
             "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 500" },
@@ -1705,14 +1723,22 @@
                 "maengde": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
                 "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
                 // ⚠ INGEN EKSISTENSTJEK — OG DET ER ET AABENT SPOERGSMAAL,
-                // ikke en forglemmelse. `lagre` beskrives i moduler.js som
-                // "reservedelslageret under Indkoeb", men baerer i PRISER.md
-                // doegnsatser for KUNDERS opbevaring. Materialelinjens lagerId
-                // hedder i demo "lager-vaerksted" og "lager-hoved" — altsaa
-                // hverken det ene eller det andet.
+                // ikke en forglemmelse. `lagre` beskrives tre steder som
+                // "reservedelslageret under Indkoeb" (moduler.js,
+                // unitbooking.js, README), men `pricing.js` slaar op i
+                // `satsark.lagre[lagerId]` for LAGEROPHOLD paa en booking, med
+                // `prLagerdoegn`-satser. To betydninger, én node.
+                //
+                // ⚠ OG BESLUTNING 92 GJORDE IKKE SPOERGSMAALET MINDRE.
+                // Demo-linjerne hed "lager-hoved" og "lager-vaerksted" og pegede
+                // paa ingenting; de peger nu paa `lag-kolding`, som er en
+                // OPBEVARINGSLOKATION med doegnsats. Referencen resolver —
+                // semantikken goer ikke. En reservedel er hentet fra et
+                // reservedelslager, ikke fra en kundes opbevaringsplads.
                 //
                 // Et opslag her ville laase noden fast paa den ene laesning
-                // uden at nogen havde besluttet hvilken. Se README.
+                // uden at nogen havde besluttet hvilken. Se README's liste over
+                // uafklarede spoergsmaal og beslutning 101.
                 "lagerId": { ".validate": "newData.isString() && newData.val().length <= 60" },
                 "faktureret": { ".validate": "newData.isBoolean()" },
                 "$andet": { ".validate": false }

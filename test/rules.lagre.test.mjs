@@ -117,12 +117,21 @@ describe("satserne på lageret", () => {
 
        Prøven her fastholder at reglen IKKE indeholder et enum, så den ikke
        kan blive skrevet ind igen i en fart. */
-    const regler = readFileSync("firebase.rules.json", "utf8");
-    const lagreBlok = regler.slice(
-      regler.indexOf('"lagre": {'),
-      regler.indexOf('"bookinger": {', regler.indexOf('"lagre": {')));
-    assert.ok(lagreBlok.length > 0, "lagre-blokken blev ikke fundet");
-    assert.doesNotMatch(lagreBlok, /prLagerdoegn/,
+    /* ⚠ NODEN, IKKE ET TEKSTUDSNIT. Prøven skar før fra `"lagre": {` til
+       `"bookinger": {` og læste alt derimellem — altså også `indberetninger`
+       og hvad der ellers stod i mellemrummet. Den faldt på en KOMMENTAR i
+       `materialelinjer.lagerId` der nævnte `prLagerdoegn` for at forklare at
+       `lagre` bruges til to ting.
+
+       Et anker der spænder over "resten indtil den næste node", er ikke et
+       anker — syvende gang i dette repo (jf. beslutning 100). Reglen læses
+       nu som JSON, så kravet gælder præcis den node det handler om. */
+    const lagre = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .replace(/^﻿/, "").replace(/^\s*\/\/.*$/gm, "")
+    ).rules.tenants.$tenantId.lagre;
+    assert.ok(lagre, "lagre-noden blev ikke fundet");
+    assert.doesNotMatch(JSON.stringify(lagre), /prLagerdoegn/,
       "metodenavne er skrevet af ind i regelfilen — ordlisten bor i pricing.js");
     assert.ok(ALLE_METODER.includes("prLagerdoegn"), "METODER kender ikke prLagerdoegn");
   });
