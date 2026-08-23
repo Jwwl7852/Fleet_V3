@@ -811,8 +811,18 @@
             // kravet af REGLERNE for hver kilde og fejler hvis de to er
             // uenige. Faar `flaade` en dag `koeretoejer` som kilde, bliver
             // proeven roed indtil koeretoejer.laes staar begge steder.
+            // ⚠ SEKS LED, OG DE FEM ER UDLEDT — BESLUTNING 104.
+            // KPI_KILDER siger hvad hvert domaene er REGNET af; naar en
+            // kilde faar en laese-permission, arver domaenet den. De fem nye
+            // blev ikke skrevet i haanden: rules.kpi.test.mjs udledte dem af
+            // kildernes egne regler og sagde praecis hvilke der manglede.
+            //
+            // ⚠ EN CHAUFFOER MISTER FEM AF TI DOMAENER, og det er meningen:
+            // de fem er regnet af priser, fakturagrundlag og indkoeb.
+            // useKpi() spoerger kun om dem laesbareDomaener() siger ja til,
+            // saa han faar ingen permission-denied — kortene er der bare ikke.
             "$domaene": {
-              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|')))"
+              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')))"
             }
           }
         },
@@ -1218,8 +1228,14 @@
         // ⚠ HARDSLETTES ALDRIG. Regnskabsdata tages ud af drift med en
         // tilstand og en erstatning — erstat() i grundlag.js — ikke ved at
         // forsvinde. Der er derfor heller ingen vej til en sletning her.
+        // ⚠ .read KRÆVER grundlag.laes — BESLUTNING 104.
+        // Grundlaget er hvad HVER ENKELT kunde bliver faktureret, linje for
+        // linje. Det stod aabent for enhver i tenanten: en chauffoer kunne
+        // laese hvad hver kunde betaler, og hvad marginen er.
+        // Den er den SMALLESTE af de tre — hverken chauffoer, disponent
+        // eller lagermedarbejder har den.
         "grundlag": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|')",
           ".write": false,
           ".indexOn": ["kundeId", "bookingId", "tilstand", "udarbejdetMs"],
           "$grundlagId": {
@@ -1306,8 +1322,13 @@
         //
         // ⚠ SATSARKET STOD SOM EN const I Bookingopsaetning.jsx indtil
         // PRISER.md etape 5. Skaermen viste et satsark ingen kunne rette.
+        // ⚠ .read KRÆVER satser.laes — BESLUTNING 104.
+        // Samme permission som priserne, af samme grund som de deler
+        // skrive-permission: det er den samme person der saetter begge.
+        // Noderne er delt fordi TALLENE ikke maa blandes (beslutning 11),
+        // ikke fordi adgangen skulle deles.
         "omkostninger": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|satser.laes|')",
           "$id": {
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
             // newData.exists(). Begge dele er noedvendige, og de stopper hver
@@ -1375,8 +1396,13 @@
 
         // Satser overskrives ALDRIG — nye poster med gyldigFra. Ellers ændrer
         // en rettelse i dag prisen på en booking fra sidste kvartal.
+        // ⚠ .read KRÆVER satser.laes — BESLUTNING 104.
+        // Kun admin maatte AENDRE en pris, og enhver i huset maatte LAESE
+        // den. Det var ikke en beslutning; det var hvad der skete da
+        // laesegating kun blev sat paa de fire noder der har en
+        // sensitive/-satellit. Se noten ved bookingLaes i permissions.js.
         "satser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|satser.laes|')",
           "$gruppe": {
             "$postId": {
               // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
@@ -2042,8 +2068,14 @@
         // Samme modulklausul som "indkoeb". Modsat "fakturaer", som staar i
         // basen fordi to skaerme roerer den — en leverandoer roeres kun af
         // Indkoeb.
+        // ⚠ .read KRÆVER indkoeb.laes — BESLUTNING 104.
+        // ⚠ OG DEN LAESES AF ELLEVE SKAERME, ogsaa uden for Procure:
+        // Disponering, Servicekalender, Arbejdskoeen og
+        // Vaerkstedskalender slaar alle op i kartoteket. Derfor har
+        // disponenten og lagermedarbejderen den ogsaa — det blev maalt,
+        // ikke antaget.
         "leverandoerer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".indexOn": ["aktiv", "kategori", "navn"],
 
           "$leverandoerId": {
@@ -2144,7 +2176,7 @@
         // grupperer indbakken paa den, og en femte stavemaade ville lave en
         // gruppe mere som ingen har besluttet.
         "indkoebsbehov": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".write": false,
           // Indbakken sorteres paa tidspunkt og filtreres paa kilde og status.
           ".indexOn": ["oprettetMs", "kilde", "status"],
@@ -2193,7 +2225,7 @@
         // En ordre UDEN linjer er ikke en ordre; laa de hver for sig, kunne
         // den ene halvdel lande.
         "indkoebsordrer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".write": false,
           ".indexOn": ["status", "leverandoerId", "oprettetMs"],
           "$ordreId": {
@@ -2275,7 +2307,7 @@
         // lande, og saa er uenigheden vores egen. Samme ordning som
         // enheder/beholdning (beslutning 39) og kasseudlaan (37).
         "forbrugsvarer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".write": false,
           ".indexOn": ["navn", "varenummer"],
           "$vareId": {
@@ -2308,7 +2340,7 @@
         // Bevaegelserne. Append-only i praksis: en post rettes ikke, den
         // modsvares af en ny. En OPTAELLING er rettelsen.
         "forbrugsvarebevaegelser": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".write": false,
           ".indexOn": ["forbrugsvareId", "ms"],
           "$bevaegelseId": {
@@ -2358,7 +2390,7 @@
         // ikke foelsomt — og en skaerm der ikke kan laese reglen, kan ikke
         // sige HVORFOR en ordre venter.
         "godkendelsesregler": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".write": false,
           ".validate": "newData.hasChildren(['overBeloeb', 'fakturagodkendelse'])",
           "overBeloeb": {
@@ -2389,8 +2421,11 @@
         // dem ikke — ellers lægges inkl.-tal sammen med ekskl.-tal i en rapport.
         // faelles er en lovlig division her: én dieselleverance dækker begge
         // afdelinger. Fordelingsnøglen for fælles omkostninger er udskudt.
+        // ⚠ .read KRÆVER indkoeb.laes — BESLUTNING 104.
+        // Otte Procure-noder deler den: hvad vi betaler, og hvilke vilkaar
+        // vi har hos hvem. Alle roller undtagen chaufføren har den.
         "indkoeb": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
           ".indexOn": ["dato", "leverandoerId", "fakturastatus"],
           "$indkoebId": {
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
@@ -2498,6 +2533,15 @@
         },
 
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
+        // ⚠ INGEN LAESE-PERMISSION HELLER — BESLUTNING 104, samme grund.
+        // De ti oevrige kommercielle noder fik en (grundlag.laes,
+        // satser.laes, indkoeb.laes). Fakturaer fik ikke: den roeres af
+        // Procures Fakturaer OG Oekonomis Fakturacenter, og en permission
+        // der hedder indkoeb.laes ville laase den ene skaerm bag det andet
+        // moduls navn. Det er samme fejl som en modulklausul her, eet lag
+        // hoejere oppe. Skal den gates, skal permissionen hedde noget der
+        // daekker BEGGE forbrugere. Den staar paa listen i
+        // test/laeseadgang.test.mjs med netop den grund.
         "fakturaer": {
           // ⚠ INGEN MODULKLAUSUL — OG DET ER BESLUTTET, IKKE GLEMT.
           // Naboen "indkoeb" har en; her saa fravaeret ud som en forglemmelse,

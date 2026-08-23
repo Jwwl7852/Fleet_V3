@@ -411,7 +411,7 @@ export default function Oekonomi() {
             <div className="fc-fakt">
               <span className="fc-fakt-ico fc-tone-ikon-4"><Ikon navn="dokument" /></span>
               <div className="fc-fakt-tal">
-                <b>{num(k.opgaver.klarTilFakturering)}</b>
+                <b>{num(k.oekonomi.ikkeFaktureretForloeb)}</b>
                 <span>opgaver</span>
               </div>
               <div className="fc-fakt-tal">

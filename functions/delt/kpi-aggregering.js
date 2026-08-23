@@ -145,7 +145,12 @@ export const KPI_UDEN_MODUL = ALLE_KPI_DOMAENER.filter((d) => !KPI_DOMAENE[d]);
  * det en.
  */
 export const KPI_KILDER = {
-  opgaver: ["opgaver", "etaper", "grundlag"],
+  /* ⚠ IKKE LÆNGERE `grundlag` — beslutning 104. Domænets eneste
+     grundlagsfelt var `klarTilFakturering`, og det lå dobbelt: samme tal som
+     `oekonomi.ikkeFaktureretForloeb`. Feltet er samlet i økonomidomænet, og
+     kilden fulgte med. Ellers ville en disponent miste seksten driftstal for
+     at blive nægtet ét faktureringstal. */
+  opgaver: ["opgaver", "etaper"],
   /* ⚠ IKKE `koeretoejer`. Kun ét flaadefelt kan regnes, og det kommer fra
      INDKØBET — brændstoffet er en indkøbslinje, og den bærer en division
      hvor bilen ikke gør. Resten er null. */
@@ -163,21 +168,38 @@ export const KPI_KILDER = {
 /**
  * Den læse-permission et domæne kræver — eller `null`.
  *
- * ⚠ KUN ÉN I DAG, og det er selve pointen med at skrive listen ned. Af de
- * noder aggregeringen læser, er `kunder` den eneste der kræver en
- * læse-permission; `etaper`, `grundlag`, `opgaver`, `indkoeb`, `fakturaer`,
- * `leverandoerer`, `facility` og `indberetninger` kræver kun tenant-medlemskab.
+ * ⚠ HER STOD "KUN ÉN I DAG", og sætningen fortsatte: *"værdien ligger i at
+ * leddet ER der: den dag en læse-permission strammes, følger nøgletallet med
+ * af sig selv, i stedet for at blive husket."*
  *
- * Det ændrer altså **ingenting i dag** — alle syv roller har `kunder.laes`.
- * Værdien ligger i at leddet ER der: den dag en læse-permission strammes,
- * følger nøgletallet med af sig selv, i stedet for at blive husket.
+ * **Den dag er beslutning 104.** `grundlag`, `satser` og de otte Procure-noder
+ * fik hver en læse-permission, og fem domæner fulgte med — uden at nogen
+ * skrev dem her i hånden. `test/rules.kpi.test.mjs` udledte listen af
+ * kildernes egne regler og fortalte præcis hvilke fem der manglede.
  *
- * `test/rules.kpi.test.mjs` udleder tabellen her af REGLERNE for hver kilde og
- * fejler hvis de to er uenige. Får `flaade` en dag `koeretoejer` som kilde,
- * bliver prøven rød indtil `koeretoejer.laes` står her og i regelfilen.
+ * Det er hele grunden til at tabellen findes frem for at stå i en `if`:
+ *
+ *   opgaver   ← grundlag       hvad turen blev faktureret til
+ *   oekonomi  ← grundlag       samme
+ *   flaade    ← indkoeb        hvad reservedelene kostede
+ *   facility  ← leverandoerer  hvem der servicerer anlægget
+ *   indkoeb   ← indkoeb        hele modulets nøgletal
+ *
+ * ⚠ EN CHAUFFØR MISTER DERMED FEM AF TI DOMÆNER PÅ FORSIDEN — og det er ikke
+ * en fejl der skal rettes: de fem er regnet af tal han ikke må se. `useKpi()`
+ * spørger kun om dem `laesbareDomaener()` siger ja til, så han får ingen
+ * `permission-denied`; kortene er der bare ikke.
+ *
+ * ⚠ ÉT DOMÆNE BÆRER ÉN PERMISSION. Prøven kræver det udtrykkeligt: får et
+ * domæne kilder med to forskellige, skal FORMEN laves om — ikke den ene
+ * vælges. Reglen kan kun bære ét led pr. domæne.
  */
 export const KPI_PERM = {
   kunder: "kunder.laes",
+  oekonomi: "grundlag.laes",
+  flaade: "indkoeb.laes",
+  facility: "indkoeb.laes",
+  indkoeb: "indkoeb.laes",
 };
 
 /**
@@ -1314,14 +1336,21 @@ export function beregnKpi({
     opgaver: {
       ...opg,
       aabneDeltaPct: deltaPct(opg.aabne, forrige?.opgaver?.aabne),
-      /* ⚠ SAMME TAL SOM oekonomi.ikkeFaktureretForloeb, MED VILJE.
-         Booking-oversigten kalder det "forløb klar til fakturering" og
-         Økonomi kalder det "ikke faktureret" — det er samme spørgsmål:
-         afsluttede bookinger uden et låst grundlag. Regnede de to felter
-         hver sin gæng, ville to skærme kunne vise hver sit tal for den
-         samme liste, og ingen kunne se hvilken der løj. ÉN beregning,
-         to navne — og navnene bliver, fordi skærmene læser dem. */
-      klarTilFakturering: ikkeFakt.forloeb,
+      /* ⚠ HER STOD `klarTilFakturering`, SOM VAR SAMME TAL SOM
+         `oekonomi.ikkeFaktureretForloeb`. Begrundelsen var at ÉN beregning
+         med to navne er bedre end to beregninger — og det er den stadig.
+         Det der ikke holdt, var at de to navne lå i hver sit DOMÆNE.
+
+         Beslutning 104 gav `grundlag` en læse-permission, og et KPI-domæne
+         arver sin kildes. Feltet var det ENESTE i `opgaver` der kom fra
+         `grundlag` — så en disponent ville have mistet **seksten**
+         driftstal for at blive nægtet **ét** faktureringstal.
+
+         Domænet er ikke bare en mappe: det er den enhed adgangen afgøres
+         på. Et tal der hører til fakturering, hører i `oekonomi` — og
+         duplikatet var det der gjorde det billigt at overse.
+
+         Begge skærme læser nu `oekonomi.ikkeFaktureretForloeb`. */
     },
     indkoeb: {
       ...ind,

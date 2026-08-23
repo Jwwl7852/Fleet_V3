@@ -767,18 +767,44 @@ test("⚠ DEMO-SÆTTET HAR FAKTISK ADBLUE UNDER braendstof", () => {
     "ingen AdBlue under braendstof — er kategorien blevet rettet? så kan undtagelsen ryge");
 });
 
-test("⚠ klarTilFakturering OG ikkeFaktureretForloeb ER SAMME TAL", () => {
-  /* To skærme, to navne, ét spørgsmål: afsluttede bookinger uden et låst
-     grundlag. Regnede de hver sin gæng, kunne de vise hver sit tal for den
-     samme liste — og ingen kunne se hvilken der løj. */
+/**
+ * ⚠ HER STOD "klarTilFakturering OG ikkeFaktureretForloeb ER SAMME TAL".
+ *
+ * De var det, og det var med vilje: ét spørgsmål — afsluttede bookinger uden
+ * et låst grundlag — regnet ÉN gang og udstillet under to navne, så to skærme
+ * ikke kunne vise hver sit tal for den samme liste.
+ *
+ * **Beslutning 104 gjorde duplikatet dyrt.** `grundlag` fik en
+ * læse-permission, og et KPI-domæne arver sin kildes. `klarTilFakturering`
+ * var det eneste felt i `opgaver` der kom fra `grundlag` — så en disponent
+ * ville have mistet **seksten driftstal** for at blive nægtet **ét**
+ * faktureringstal.
+ *
+ * ⚠ DOMÆNET ER IKKE EN MAPPE; det er den enhed adgangen afgøres på. Et
+ * faktureringstal hører i `oekonomi`. Prøven vogter nu at det kun findes ÉT
+ * sted — det modsatte krav af før, af den samme grund: to navne for ét tal.
+ */
+test("⚠ FAKTURERINGSTALLET FINDES KUN I oekonomi", () => {
   const etaper = [
     { id: "e1", tilstand: "udfoert", bookingId: "BKG-1" },
     { id: "e2", tilstand: "udfoert", bookingId: "BKG-2" },
   ];
   const grundlag = [{ id: "g1", bookingId: "BKG-1", tilstand: "laast", beloebOere: 1000 }];
   const k = beregnKpi({ etaper, grundlag, nu: NU });
-  assert.equal(k.opgaver.klarTilFakturering, k.oekonomi.ikkeFaktureretForloeb);
-  assert.equal(k.opgaver.klarTilFakturering, 1);
+  assert.equal(k.oekonomi.ikkeFaktureretForloeb, 1);
+  assert.ok(!("klarTilFakturering" in k.opgaver),
+    "feltet er tilbage i opgaver-domænet — så er grundlag en kilde igen, "
+    + "og femten driftstal er låst bag grundlag.laes");
+});
+
+test("⚠ OG opgaver-DOMÆNET LÆSER IKKE grundlag LÆNGERE", () => {
+  /* Regnestykket skal give det samme uden noden. Gjorde det ikke det, var
+     der stadig et grundlagsfelt i domænet — bare et vi ikke havde fundet. */
+  const etaper = [{ id: "e1", tilstand: "udfoert", bookingId: "BKG-1" }];
+  const grundlag = [{ id: "g1", bookingId: "BKG-1", tilstand: "laast", beloebOere: 1000 }];
+  const med = beregnKpi({ etaper, grundlag, nu: NU });
+  const uden = beregnKpi({ etaper, nu: NU });
+  assert.deepEqual(uden.opgaver, med.opgaver);
 });
 
 /* ---- Facility ---------------------------------------------------------- */

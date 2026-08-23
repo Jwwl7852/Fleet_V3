@@ -7779,3 +7779,154 @@ funktionen slår op, faktisk findes i `ROLLE_PERMS`.
 | `brugere/<uid>` → medarbejder | findes ikke | `personId`, valgfrit, tjekket mod `personale` |
 | Demo-læsninger uden node (beslutning 64) | 2 | 1 (`DEMO_LEVERANDOERSAGER`) |
 | Demosæt med anden form end noden | 1 (arrays) | 0 |
+
+## 104. En tilladelse for at ændre en pris, og ingen for at læse den
+
+Chaufførappen (103) rejste spørgsmålet uden at stille det: jeg byggede en
+skærm der viser chaufføren *hans egne ture*, på den præmis at rollen er
+afgrænset. Så målte jeg hvad den rolle faktisk kan læse.
+
+**39 af 51 læsbare noder krævede ingen permission overhovedet.** En chauffør
+kunne læse `satser` (hvad vi tager, og hvad turen koster os), `grundlag` (hvad
+hver enkelt kunde bliver faktureret, linje for linje), `indkoeb` og
+`leverandoerer` (hvad vi betaler, og på hvilke vilkår). Tenantgrænsen holdt —
+det er en helt anden mekanisme, og punkt 1 i den låste rækkefølge — men
+**inden for virksomheden var der ingen grænse.**
+
+Skarpere formuleret: **femten domæner har en `.skriv` og ingen `.laes`.**
+Systemet krævede en tilladelse for at **ændre** en pris og ingen for at
+**læse** den.
+
+### Det var ikke besluttet — og det stod skrevet at det ikke var
+
+Læsegating blev sat i beslutning 17 på de fire noder der har en
+`sensitive/`-satellit. Resten fulgte ikke med, og noten ved `bookingLaes` i
+`permissions.js` sagde det rent ud: *"Det ER asymmetrisk, og det er med
+vilje"* — og advarede mod at "rette" det:
+
+> ⚠ "RET" DET IKKE ved at tilføje tretten laes-permissions mere. De ville ikke
+> beskytte noget: uden en klassificeret satellit er der intet at skelne
+> imellem, og alle presets skulle alligevel have dem alle. Man ville få et
+> katalog der er dobbelt så stort og præcis lige så sikkert.
+>
+> Skal læseadgang generelt strammes — så en chauffør ikke kan læse hele
+> kundekartoteket — er det en **selvstændig beslutning med sin egen
+> begrundelse**, ikke en oprydning i navngivningen.
+
+Det er den beslutning. Og advarslen er grunden til at der kommer **tre** og
+ikke femten.
+
+### Prøven er fordelingen, ikke antallet
+
+Advarslens rigtige krav er *"alle presets skulle alligevel have dem alle"*.
+En læse-permission alle syv roller har, er en linje i et katalog — den kan
+ikke afvise nogen, og den får kataloget til at se strammere ud end systemet
+er. De tre består den prøve:
+
+| | `satser.laes` | `grundlag.laes` | `indkoeb.laes` |
+|---|---|---|---|
+| chauffør | — | — | — |
+| casehandler | ja | ja | ja |
+| disponent | ja | **—** | ja |
+| koordinator | ja | ja | ja |
+| lagermedarbejder | ja | **—** | ja |
+| revisor | ja | ja | ja |
+| admin | ja | ja | ja |
+
+`grundlag.laes` er den smalleste: **en disponent skal kunne planlægge en tur
+uden at kunne se hvad kunden betalte for den forrige.** Samme snit som at han
+ser følgebilskravet på godset og ikke vurderingen.
+
+`test/laeseadgang.test.mjs` håndhæver kravet: en af de tre der haves af alle
+syv roller, gør prøven rød.
+
+### To ting målingen rettede, som jeg ellers havde gættet forkert
+
+⚠ **Lagermedarbejderen SKAL have `satser.laes`.** `permissions.js` påstod om
+rollen at den *"ikke kan oprette en booking, røre en kunde eller **se en
+pris**"*. Han kunne se hver eneste — og hans **egne** skærme kræver det:
+Warehouses Afregning og Volumen læser `satser/standard` for at prissætte
+håndtering ind, opbevaring og ud. Sætningen var en hensigt skrevet som en
+kendsgerning.
+
+⚠ **`leverandoerer` læses af elleve skærme**, også uden for Procure —
+Disponering, Servicekalender, Arbejdskøen og Værkstedskalender slår alle op i
+kartoteket. Derfor har alle roller undtagen chaufføren `indkoeb.laes`. En
+smallere fordeling ville have slukket fire skærme uden for det modul
+permissionen er opkaldt efter.
+
+### Nøgletallene fulgte med af sig selv — det var hele pointen med tabellen
+
+`KPI_PERM` bar én linje, og noten over den sagde: *"værdien ligger i at leddet
+ER der: den dag en læse-permission strammes, følger nøgletallet med af sig
+selv, i stedet for at blive husket."*
+
+**Den dag var i dag.** Jeg skrev ikke ét af de nye led i hånden:
+`test/rules.kpi.test.mjs` udleder tabellen af kildernes egne regler, blev rød,
+og opremsede præcis hvilke domæner der manglede. En chauffør mister derfor
+fire af ti domæner på forsiden — regnet af priser, fakturagrundlag og indkøb —
+og får ingen `permission-denied`, fordi `useKpi()` kun spørger om dem
+`laesbareDomaener()` siger ja til.
+
+### Og spærringen fandt et felt der lå i det forkerte domæne
+
+Det femte domæne var `opgaver`, og det var **for dyrt**: domænet har seksten
+felter, og ét af dem — `klarTilFakturering` — kom fra `grundlag`. En disponent
+ville have mistet seksten driftstal for at blive nægtet ét faktureringstal.
+
+Feltet lå **dobbelt**: samme tal som `oekonomi.ikkeFaktureretForloeb`, med en
+kommentar der forsvarede det — *"ÉN beregning, to navne, og navnene bliver,
+fordi skærmene læser dem."* Den begrundelse holdt så længe et domæne bare var
+en mappe.
+
+⚠ **Et domæne er den enhed adgangen afgøres på.** Da det blev sandt, blev
+duplikatet dyrt: et faktureringstal i driftsdomænet trak hele domænet med bag
+`grundlag.laes`. Feltet er samlet i `oekonomi`, kilden fulgte med, og begge
+skærme læser det ene sted. **Spærringen fandt en domænegrænse der var tegnet
+forkert** — og en prøve vogter nu at `opgaver` bliver frit i begge akser.
+
+### Målt mod den udrullede base, ikke mod filen
+
+Fem roller loggede ind mod DEV og læste otte kommercielle noder, ti
+KPI-domæner og de seks noder chaufførappen bruger:
+
+| Rolle | Kommercielle noder | KPI-domæner | Appens noder |
+|---|---|---|---|
+| chauffør | **0 / 8** | 6 / 10 | 6 / 6 |
+| disponent | 7 / 8 | 9 / 10 | 6 / 6 |
+| lagermedarbejder | 7 / 8 | 9 / 10 | 6 / 6 |
+| revisor | 8 / 8 | 10 / 10 | 6 / 6 |
+| admin | 8 / 8 | 10 / 10 | 6 / 6 |
+
+Den sidste kolonne er værd at holde fast i: **en spærring der rækker for
+langt, ville have lukket chaufførappen fra i går.**
+
+### De tolv der stadig står åbne
+
+`test/laeseadgang.test.mjs` bærer dem med en grund hver. To slags: dem hvor
+læsningen ikke er følsom (`opgaver`, `facility`, `kompetencer`, `carriers` —
+en opgave siger *at* bilen er på værksted, og estimatet er i minutter), og dem
+hvor spørgsmålet er **åbent** (`varer` og `bevaegelser` bærer `kundeId`, så en
+3PL-kunde kan udledes; `lagre` er stadig det uafklarede fra beslutning 101).
+
+⚠ **`brugere` kan ikke lukkes som den er**, og det er værd at skrive ned: den
+er det ene sted et navn kan slås op på et uid — og siden i går også dér
+`personId` står. En spærring der ville lukke chaufførens egen app.
+
+**Kravet er ikke at alle tolv lukkes. Det er at ingen bliver glemt.** Et hul
+man kan tælle, er et andet hul end et ingen har set — samme figur som
+`UDEN_TJEK` i beslutning 101.
+
+### Hvad der IKKE blev lukket, og hvorfor
+
+⚠ **`fakturaer` fik ingen permission.** Den røres af Procures Fakturaer **og**
+Økonomis Fakturacenter, og en permission der hedder `indkoeb.laes` ville låse
+den ene skærm bag det andet moduls navn. Det er samme fejl som en modulklausul
+på noden — beslutning 33 kaldte den en af de tre tvetydige — bare ét lag
+højere oppe. Skal den gates, skal permissionen hedde noget der dækker begge.
+
+⚠ **Og et afvist domæne tegner "—" ligesom et uberegnet.** `medFuldForm()`
+lægger skelettet tilbage, så ingen skærm bliver hvid — men "—" betyder
+*ikke regnet*, og her betyder det *må ikke ses*. Det er den samme skelnen som
+`TILSTAND.modulMangler` mod `naegtet` (beslutning 95), og den mangler for
+nøgletal. Skrevet ned frem for opdaget.

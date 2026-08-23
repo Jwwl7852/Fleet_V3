@@ -105,12 +105,33 @@ describe("grundlaget skrives kun af serveren", () => {
     return assertFails(set(ref(som("uid-admin"), sti("grundlag/grl-001")), null));
   });
 
-  it("lader enhver i tenanten LÆSE dem", async () => {
-    /* Der er ingen grundlag.laes: der findes ingen klassificeret satellit at
-       kontrastere mod, og alle presets skulle alligevel have den. Se noten
-       ved bookingLaes i permissions.js. */
-    await assertSucceeds(get(ref(som("uid-chauffoer", "chauffoer"), sti("grundlag"))));
+  /**
+   * ⚠ HER STOD "lader ENHVER i tenanten LÆSE dem", og den var sand:
+   * begrundelsen var at der ikke fandtes nogen klassificeret satellit at
+   * kontrastere mod, og at alle presets alligevel skulle have permissionen.
+   *
+   * **Beslutning 104 omgjorde det.** Et grundlag er hvad HVER ENKELT kunde
+   * bliver faktureret, linje for linje — og en chauffør kunne læse dem alle.
+   * Den anden halvdel af begrundelsen holdt heller ikke: `grundlag.laes` er
+   * den smalleste af de tre nye, og tre af syv roller har den ikke.
+   *
+   * Det her er punkt 3's definition of done: **serveren afviser.**
+   */
+  it("⚠ EN CHAUFFØR AFVISES — han har ikke grundlag.laes", () =>
+    assertFails(get(ref(som("uid-chauffoer", "chauffoer"), sti("grundlag")))));
+
+  it("⚠ OG EN DISPONENT AFVISES OGSÅ", () =>
+    /* Han skal kunne planlægge en tur uden at kunne se hvad kunden betalte
+       for den forrige. Samme snit som at han ser følgebilskravet på godset
+       og ikke vurderingen. */
+    assertFails(get(ref(som("uid-disponent", "disponent"), sti("grundlag")))));
+
+  it("revisoren og koordinatoren læser dem", async () => {
+    /* Revisoren MISTEDE ikke adgang: han kunne læse noden i forvejen gennem
+       tenant-medlemskab, og en revisor der ikke kan se fakturagrundlaget,
+       kan ikke revidere. */
     await assertSucceeds(get(ref(som("uid-revisor", "revisor"), sti("grundlag"))));
+    await assertSucceeds(get(ref(som("uid-koord", "koordinator"), sti("grundlag"))));
   });
 
   it("holder en anden tenant ude", async () => {

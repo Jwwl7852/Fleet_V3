@@ -50,7 +50,24 @@ export const PERM = {
   fravaerSkriv: "fravaer.skriv",
   facilitySkriv: "facility.skriv",
   indkoebSkriv: "indkoeb.skriv",
+  /* ⚠ OG EN AT LÆSE MED — beslutning 104. Den dækker HELE Procure: `indkoeb`,
+     `fakturaer`, `leverandoerer`, `indkoebsbehov`, `indkoebsordrer`,
+     `forbrugsvarer`, `forbrugsvarebevaegelser` og `godkendelsesregler`. Det
+     er hvad vi BETALER, og hvilke vilkår vi har hos hvem — og en chauffør
+     kunne læse det hele.
+     ⚠ Bemærk at `leverandoerer` læses af ELLEVE skærme, også uden for Procure
+     (Disponering, Værkstedskalender, Arbejdskøen). Derfor har alle roller
+     undtagen chaufføren den. */
+  indkoebLaes: "indkoeb.laes",
   satserSkriv: "satser.skriv",
+  /* ⚠ OG EN AT LÆSE MED — beslutning 104. Kun admin må ÆNDRE en pris, og
+     enhver i huset kunne LÆSE den: hvad vi tager for en tur, og hvad den
+     koster os. `omkostninger` følger med, af samme grund som de to deler
+     skrive-permission (se noten lige nedenfor).
+     ⚠ Lagermedarbejderen HAR den, og det blev målt frem for antaget:
+     Warehouses Afregning og Volumen læser `satser/standard` for at prissætte
+     håndtering. Uden den ville to skærme stå med en afvist læsning. */
+  satserLaes: "satser.laes",
   /* ⚠ OMKOSTNINGSSATSER DELER PERMISSION MED PRISERNE, og det er en
      beslutning frem for en genvej: det er den samme person — vognmanden — der
      sætter begge, og en permission mere ville skulle gives til nøjagtig de
@@ -109,6 +126,12 @@ export const PERM = {
    * ⚠ INGEN AF DEM ÅBNER NODEN. `grundlag` er .write: false for alle;
    * permissionerne er dét den Cloud Function prøver kalderen mod. Præcis som
    * bevaegelser.skriv og kasseudlaan.skriv. */
+  /* ⚠ OG EN AT LÆSE MED — beslutning 104. Grundlaget er hvad HVER ENKELT
+     kunde bliver faktureret, linje for linje. Det er den smalleste af de tre:
+     hverken chaufføren, disponenten eller lagermedarbejderen har den. En
+     disponent skal kunne planlægge en tur uden at kunne se hvad kunden
+     betalte for den forrige. */
+  grundlagLaes: "grundlag.laes",
   grundlagSkriv: "grundlag.skriv",
   grundlagGodkend: "grundlag.godkend",
 
@@ -169,7 +192,35 @@ export const PERM = {
    *
    * Skal læseadgang generelt strammes — så en chauffør ikke kan læse hele
    * kundekartoteket — er det en selvstændig beslutning med sin egen
-   * begrundelse, ikke en oprydning i navngivningen. */
+   * begrundelse, ikke en oprydning i navngivningen.
+   *
+   * ══════════════════════════════════════════════════════════════════════
+   * ⚠ DEN BESLUTNING ER NU TRUFFET — MEN KUN FOR TRE DOMÆNER (nr. 104).
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Advarslen ovenfor står ved magt, og den er grunden til at der KOMMER
+   * TRE og ikke femten. Målt i regelfilen: **39 af 51 læsbare noder kræver
+   * ingen permission overhovedet**, og **femten domæner har en `.skriv` og
+   * ingen `.laes`** — systemet kræver altså en tilladelse for at ÆNDRE en
+   * pris og ingen for at LÆSE den.
+   *
+   * De tre nedenfor er dem hvor svaret på *"hvem må se det her"* er et
+   * ANDET end *"hvem arbejder her"*:
+   *
+   *   satser.laes    hvad vi tager for en tur, og hvad den koster os
+   *   grundlag.laes  hvad hver enkelt kunde bliver faktureret
+   *   indkoeb.laes   hvad vi betaler vores leverandører
+   *
+   * ⚠ OG PRØVEN ER FORDELINGEN, IKKE ANTALLET. Advarslen ovenfor siger at
+   * tretten nye permissions ikke ville beskytte noget, fordi *"alle presets
+   * skulle alligevel have dem alle"* — og det er det rigtige krav at stille.
+   * De tre her består den: chaufføren får **ingen** af dem, disponenten to
+   * af tre, lagermedarbejderen to af tre. En permission alle syv roller har,
+   * er en linje i et katalog; det er `booking.laes` allerede.
+   *
+   * ⚠ DE ØVRIGE TOLV STÅR STADIG ÅBNE, og de står nu på en LISTE med en
+   * grund — `test/laeseadgang.test.mjs`. Et hul man kan tælle, er et andet
+   * hul end et ingen har set. Se beslutning 104. */
   bookingLaes: "booking.laes",
   /* securityInformation, privatePickupAddress, sensitiveNotes.
      Disponenten SKAL have den: den der planlægger turen, skal vide at godset
@@ -255,6 +306,20 @@ export const ALLE_PERMS = Object.values(PERM);
 
 /* Dataskrivning som enhver ikke-chauffør har i dag. Reglen hed
    `rolle !== 'chauffoer'`, og den dækkede netop disse. */
+/**
+ * De tre kommercielle laesninger — beslutning 104.
+ *
+ * ⚠ DE STAAR SAMLET, MEN GIVES IKKE SAMLET. Samlingen findes fordi de tre
+ * hoerer til det samme spoergsmaal — hvad tjener og betaler virksomheden —
+ * ikke fordi de foelges ad. Chauffoeren faar INGEN af dem; disponenten og
+ * lagermedarbejderen faar to af tre. Var de altid tre, var de een.
+ *
+ * ⚠ OG DE ER IKKE EN STIGE. At maatte se en pris goer dig ikke naermere paa
+ * at maatte se en faktura — det er to spoergsmaal, som sensitiveLaes og
+ * vaerdiLaes er det (se noten ved bookingVaerdiLaes).
+ */
+const KOMMERCIEL_LAES = [PERM.satserLaes, PERM.grundlagLaes, PERM.indkoebLaes];
+
 const BASIS_DATA = [
   PERM.kunderSkriv,
   PERM.opgaverSkriv,
@@ -292,7 +357,10 @@ const BASIS_LAES = [
 export const ROLLE_PERMS = {
   chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv],
 
-  casehandler: [...BASIS_LAES, ...BASIS_DATA, PERM.bookingOpret,
+  /* ⚠ ALLE TRE. Han laver tilbuddet, udarbejder grundlaget og bestiller
+     ind — de tre tal ER hans arbejde. */
+  casehandler: [...BASIS_LAES, ...BASIS_DATA, ...KOMMERCIEL_LAES,
+    PERM.bookingOpret,
     /* Udarbejder grundlaget — men godkender det ikke. */
     PERM.grundlagSkriv],
 
@@ -308,6 +376,15 @@ export const ROLLE_PERMS = {
        de i blinde. Men IKKE bookingVaerdiLaes: vurderingen på godset er ikke
        nødvendig for at lægge en rute. */
     PERM.bookingSensitiveLaes,
+    /* ⚠ TO AF TRE — beslutning 104. Prisen skal han kende: et forslag
+       baerer en pris, og satsopslaget sker mens han bygger det.
+       Leverandoererne ogsaa: Disponering og Vaerkstedskalender slaar op i
+       kartoteket.
+       ⚠ MEN IKKE grundlagLaes. En disponent skal kunne planlaegge en tur
+       uden at kunne se hvad kunden betalte for den forrige — det er samme
+       snit som at han ser foelgebilskravet og ikke vurderingen. */
+    PERM.satserLaes,
+    PERM.indkoebLaes,
     /* Kan ikke disponere uden at vide hvor bilerne er. */
     PERM.koeretoejerSensitiveLaes,
   ],
@@ -324,6 +401,10 @@ export const ROLLE_PERMS = {
     /* Den eneste driftsrolle der ser vurderingen. Den der godkender, skal
        kunne se hvad der står på spil. */
     PERM.bookingVaerdiLaes,
+    /* ⚠ ALLE TRE. Han godkender baade grundlaget vi fakturerer paa og de
+       indkoeb vi selv betaler — han kan ikke godkende et tal han ikke maa
+       se. */
+    ...KOMMERCIEL_LAES,
     PERM.koeretoejerSensitiveLaes,
     PERM.kunderSensitiveLaes,
     /* Samme snit som på bookingen: den der godkender turen, godkender også
@@ -384,10 +465,23 @@ export const ROLLE_PERMS = {
    *
    * Den er SMAL med vilje: den kan alt med kasser og udlån, den kan se
    * hvem folk er, og den kan skrive sine egne indberetninger. Den kan ikke
-   * oprette en booking, røre en kunde eller se en pris.
+   * oprette en booking eller røre en kunde.
+   *
+   * ⚠ HER STOD "eller se en pris", OG DET VAR IKKE SANDT. Han kunne se hver
+   * eneste —  havde ingen læse-permission — og hans EGNE skærme
+   * kræver det: Warehouses Afregning prissætter håndtering. Sætningen var en
+   * hensigt skrevet som en kendsgerning. Se beslutning 104.
    */
   lagermedarbejder: [
     ...BASIS_LAES,
+    /* ⚠ TO AF TRE — beslutning 104, og det RETTER en påstand ovenfor: noten
+       sagde at rollen ikke kan "se en pris". Det kunne den, som alle andre,
+       og den SKAL kunne: Warehouses Afregning og Volumen slår op i
+       `satser/standard` for at prissætte håndtering ind, opbevaring og ud.
+       Leverandørkartoteket også — han modtager varer fra dem.
+       Ikke `grundlagLaes`: han håndterer godset, ikke regningen. */
+    PERM.satserLaes,
+    PERM.indkoebLaes,
     PERM.kasserSkriv,
     PERM.kasseudlaanSkriv,
     /* ⚠ SAMME MAND, TO MODULER — IKKE EN OTTENDE ROLLE. Han står på lageret;
@@ -404,7 +498,12 @@ export const ROLLE_PERMS = {
     PERM.indberetningerSkriv,
   ],
 
-  revisor: [...BASIS_LAES, PERM.auditLaes],
+  /* ⚠ ALLE TRE, OG DET ER IKKE EN UDVIDELSE AF ROLLEN. Revisor kunne laese
+     de tre noder i forvejen — gennem tenant-medlemskab, som alle andre.
+     Uden dem her ville han MISTE adgang naar spaerringen kommer, og en
+     revisor der ikke kan se fakturagrundlaget, kan ikke revidere.
+     Presettet indeholder stadig ikke een eneste .skriv. */
+  revisor: [...BASIS_LAES, ...KOMMERCIEL_LAES, PERM.auditLaes],
 
   admin: [...ALLE_PERMS],
 };

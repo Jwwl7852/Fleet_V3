@@ -38,7 +38,7 @@ export const DEMO_KPI = {
    der har begge, så tallene beskrev en forretning ingen abonnent havde. */
   opgaver: {
     aabne: 47, indberettet: 12, planlagt: 10, igang: 9, afventer: 7, udfoert: 9,
-    forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, udenTidsregistrering: 7, klarTilFakturering: 12,
+    forsinkede: 4, nyeBookinger: 6, igangIDag: 18, uplanlagte: 8, udenTidsregistrering: 7, 
     udfoerteOpgaver: 214,
     /* ⚠ TRE FELTER AGGREGERINGEN SKREV, SOM DEMOFILEN IKKE KENDTE — og
        demo-mode viste derfor `undefined` for dem. Fundet af den omvendte

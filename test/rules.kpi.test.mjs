@@ -115,11 +115,43 @@ describe("⚠ FORÆLDEREN ER LUKKET — ellers er klausulen dekoration", () => {
 });
 
 describe("modulet afgør domænet", () => {
-  it("en kunde med alle moduler kan læse hvert domæne", async () => {
-    const db = som(ALT);
+  /**
+   * ⚠ MODULET ER IKKE LÆNGERE NOK — BESLUTNING 104.
+   *
+   * Prøven kørte som DISPONENT og krævede at alle ti domæner gik igennem hos
+   * en kunde med alle moduler. Fem af dem er nu også gated på en PERMISSION,
+   * fordi deres kilder er det, og disponenten har ikke `grundlag.laes`.
+   *
+   * Det er to spærringer der ligner hinanden og ikke er det samme: modulet
+   * siger hvad KUNDEN har købt, permissionen hvad BRUGEREN må se. Prøven
+   * skiller dem nu ad frem for at måle dem sammen.
+   */
+  it("en ADMIN med alle moduler kan læse hvert domæne", async () => {
+    const db = som(ALT, "admin");
     for (const d of ALLE_KPI_DOMAENER) {
       await assertSucceeds(get(ref(db, dom(ALT, d)))).catch(() => {
-        throw new Error(`${d} blev afvist for en kunde der har modulet`);
+        throw new Error(`${d} blev afvist for en admin hos en kunde der har modulet`);
+      });
+    }
+  });
+
+  it("⚠ MEN EN CHAUFFØR FÅR KUN DE FEM DER IKKE ER KOMMERCIELLE", async () => {
+    /* Han har modulerne — kunden har købt dem — og ikke permissionerne. De
+       fem lukkede er regnet af priser, fakturagrundlag og indkøb. */
+    const db = som(ALT, "chauffoer");
+    for (const d of ["oekonomi", "flaade", "facility", "indkoeb"]) {
+      await assertFails(get(ref(db, dom(ALT, d)))).catch(() => {
+        throw new Error(`${d} var åbent for en chauffør`);
+      });
+    }
+    /* ⚠ `opgaver` STÅR PÅ DEN ÅBNE SIDE, og det er ikke en lempelse: det er
+       hans driftstal — hvor mange opgaver der er åbne, hvad der kører i dag.
+       Havde det ene faktureringsfelt fået lov at blive liggende i domænet,
+       ville han have mistet dem alle seksten. Se prøven ovenfor. */
+    for (const d of ["opgaver", "kunder", "bemanding", "afvigelser",
+      "disponering", "warehouse"]) {
+      await assertSucceeds(get(ref(db, dom(ALT, d)))).catch(() => {
+        throw new Error(`${d} blev lukket for en chauffør — det var ikke meningen`);
       });
     }
   });
@@ -143,10 +175,40 @@ describe("modulet afgør domænet", () => {
        tallet for en kunde der har det andet. Samme carve-out som noderne
        opgaver/satser/fakturaer i beslutning 33. */
     assert.deepEqual([...KPI_UDEN_MODUL].sort(), ["afvigelser", "opgaver"]);
-    const db = som(BASIS);
+    /* ⚠ MÅLT SOM ADMIN, og det er beslutning 104 der gør forskellen: prøven
+       kørte som disponent, og det målte to spærringer på én gang. Carve-outen
+       handler om MODULET — så den skal prøves af en bruger hvor permissionen
+       ikke kan være det der afgør det. */
+    const db = som(BASIS, "admin");
     for (const d of KPI_UDEN_MODUL) {
       await assertSucceeds(get(ref(db, dom(BASIS, d))));
     }
+  });
+
+  /**
+   * ⚠ DE TO AKSER ER UAFHÆNGIGE — BESLUTNING 104.
+   *
+   * Modulet siger hvad KUNDEN har købt; permissionen hvad BRUGEREN må se.
+   * `opgaver` og `afvigelser` slipper begge for modulet, og det siger
+   * ingenting om permissionen: `facility` slipper IKKE for modulet og bærer
+   * en permission oveni.
+   *
+   * ⚠ OG `opgaver` VAR ET ØJEBLIK GATED. Domænet havde `grundlag` som kilde
+   * for ét felt — `klarTilFakturering`, som lå dobbelt i `oekonomi` — så det
+   * arvede `grundlag.laes` og ville have kostet en disponent seksten
+   * driftstal for ét faktureringstal. Feltet er samlet i økonomidomænet, og
+   * kilden fulgte med. Det er derfor prøven her måler at domænet er FRIT: en
+   * dag nogen lægger et beløb i driftstallene, bliver den rød.
+   */
+  it("⚠ opgaver ER FRIT I BEGGE AKSER — og skal blive det", async () => {
+    assert.ok(!KPI_PERM.opgaver,
+      "opgaver har fået en permission — hvilket felt kom fra en gated node?");
+    assert.deepEqual(KPI_KILDER.opgaver, ["opgaver", "etaper"]);
+    /* Disponenten har ikke grundlag.laes, og det skal ikke betyde noget her. */
+    await assertSucceeds(get(ref(som(BASIS, "disponent"), dom(BASIS, "opgaver"))));
+    /* `afvigelser` har slet ingen kilder. */
+    assert.ok(!KPI_PERM.afvigelser);
+    await assertSucceeds(get(ref(som(BASIS, "disponent"), dom(BASIS, "afvigelser"))));
   });
 
   it("⚠ disponering HØRER TIL booking — domænet og modulet hedder ikke det samme", async () => {
@@ -286,8 +348,24 @@ describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
     const alleModuler = () => true;
     assert.ok(laesbareDomaener(alleModuler, () => true).includes("kunder"));
     assert.ok(!laesbareDomaener(alleModuler, () => false).includes("kunder"));
-    /* Og de øvrige er upåvirkede af permissionen. */
-    assert.ok(laesbareDomaener(alleModuler, () => false).includes("opgaver"));
+
+    /* ⚠ HER STOD "og de ØVRIGE er upåvirkede af permissionen", med `opgaver`
+       som eksempel. Det var sandt for ni af ti domæner; efter beslutning 104
+       er det sandt for fem. `opgaver` er nu selv gated — på `grundlag.laes`.
+
+       Sætningen er derfor vendt om: prøven måler at listen KRYMPER med
+       permissionerne, frem for at ét bestemt domæne slipper. */
+    const udenPerms = laesbareDomaener(alleModuler, () => false);
+    const medPerms = laesbareDomaener(alleModuler, () => true);
+    assert.equal(medPerms.length, ALLE_KPI_DOMAENER.length);
+    assert.equal(udenPerms.length, medPerms.length - Object.keys(KPI_PERM).length);
+    for (const d of Object.keys(KPI_PERM)) {
+      assert.ok(!udenPerms.includes(d), `${d} slap igennem uden sin permission`);
+    }
+    /* Og de permissionfri er der stadig — ellers ville en forside uden
+       permissions være helt tom, og det er en anden fejl. */
+    assert.ok(udenPerms.includes("afvigelser"));
+    assert.ok(udenPerms.includes("bemanding"));
   });
 
   it("⚠ OG SKÆRMEN SPØRGER OM DEN", () => {

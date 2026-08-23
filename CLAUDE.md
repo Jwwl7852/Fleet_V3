@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **103 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **104 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,25 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Tilføje en `.skriv`-permission uden at spørge om læsningen.**
+  `test/laeseadgang.test.mjs` kræver at hvert domæne med en skrive-permission
+  enten HAR en `.laes` eller står på listen **med en grund**. Målt før
+  beslutning 104: **39 af 51 læsbare noder krævede ingen permission**, og
+  **femten domæner krævede en tilladelse for at ÆNDRE og ingen for at LÆSE**
+  — en chauffør kunne læse hver pris, hvert fakturagrundlag og hvert
+  leverandørvilkår. Tre er lukket (`satser.laes`, `grundlag.laes`,
+  `indkoeb.laes`); tolv står åbne, og tallet skal ned.
+  ⚠ **Prøven på en ny læse-permission er FORDELINGEN, ikke antallet.** En
+  permission alle syv roller har, er en linje i et katalog — den afviser
+  ingen og får kataloget til at se strammere ud end systemet er. Det er
+  advarslen ved `bookingLaes` i `permissions.js`, og linten håndhæver den.
+  ⚠ **Og et KPI-domæne arver sin kildes læse-permission.** Skriv ikke leddet
+  i `KPI_PERM` i hånden: `test/rules.kpi.test.mjs` udleder det af kildernes
+  egne regler og siger hvilke der mangler. Det gælder BEGGE veje — får et
+  domæne et felt fra en gated node, låses HELE domænet. `klarTilFakturering`
+  var ét felt ud af seksten i `opgaver` og ville have kostet en disponent de
+  femten andre; **et domæne er den enhed adgangen afgøres på, ikke en mappe.**
+  Se beslutning 104.
 - **Basere adgangskontrol på rollen, hvis det egentlig er en permission.**
   Spørg hvad handlingen kræver, ikke hvem brugeren er. Og håndhæv det i
   `firebase.rules.json` — en kontrol der kun findes i frontend, er ikke

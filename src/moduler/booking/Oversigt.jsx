@@ -226,11 +226,22 @@ export default function BookingOversigt() {
     { id: "tid", ikon: "dokument", tone: "ikon-3", antal: k.opgaver.udenTidsregistrering,
       tekst: `${k.opgaver.udenTidsregistrering} uden tidsregistrering`,
       under: "Uden den er omkostningen stadig et estimat", til: "/booking" },
-    { id: "faktura", ikon: "seddel", tone: "ikon-4", antal: k.opgaver.klarTilFakturering,
-      /* ⚠ FORLØB, ikke opgaver. klarTilFakturering tæller afsluttede
-         BOOKINGER — se Økonomi, hvor rækkerne er BKG-numre. Opgaver
-         faktureres ikke; de er egen flådes omkostning. */
-      tekst: `${k.opgaver.klarTilFakturering} forløb klar til fakturering`,
+    { id: "faktura", ikon: "seddel", tone: "ikon-4",
+      /* ⚠ FORLØB, ikke opgaver. Tallet tæller afsluttede BOOKINGER — se
+         Økonomi, hvor rækkerne er BKG-numre. Opgaver faktureres ikke; de er
+         egen flådes omkostning.
+
+         ⚠ OG DET LÆSES FRA `oekonomi`, IKKE FRA `opgaver`. Det hed
+         `opgaver.klarTilFakturering` og var det SAMME tal — én beregning,
+         to navne i to domæner. Beslutning 104 gjorde domænet til den enhed
+         adgangen afgøres på, og så var duplikatet ikke længere gratis: et
+         faktureringstal i driftsdomænet ville have låst femten driftstal
+         bag `grundlag.laes`.
+
+         Kortet er derfor tomt for den der ikke må se fakturagrundlaget —
+         `medFuldForm()` lægger feltet tilbage som null, så skærmen tegner. */
+      antal: k.oekonomi.ikkeFaktureretForloeb,
+      tekst: `${num(k.oekonomi.ikkeFaktureretForloeb)} forløb klar til fakturering`,
       under: "Afsluttede bookinger uden grundlag", til: "/oekonomi/fakturering" },
   ];
 

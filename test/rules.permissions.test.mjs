@@ -219,14 +219,35 @@ describe("ukendte og manglende permissions fejler lukket", () => {
      ikke har en klassificeret satellit — de fire der har, kraever ogsaa en
      laes-permission. Se noten ved bookingLaes om hvorfor asymmetrien er
      bevidst. */
-  it("de uklassificerede noder kan læses med tenant-medlemskab alene", async () => {
+  /**
+   * ⚠ LISTEN VAR LÆNGERE, OG DET ER BESLUTNING 104 DER KORTEDE DEN.
+   *
+   * Her stod `indkoeb` og `satser` blandt de noder tenant-medlemskab alene
+   * åbner. Det gjorde de — og det var ikke besluttet: læsegating blev sat på
+   * de fire noder der har en `sensitive/`-satellit, og resten fulgte ikke
+   * med. Målt: **39 af 51 læsbare noder krævede ingen permission**, og
+   * **femten domæner havde en `.skriv` og ingen `.laes`**.
+   *
+   * De tre kommercielle er lukket nu. De øvrige tolv står stadig åbne — med
+   * en grund, i `test/laeseadgang.test.mjs`.
+   */
+  it("de ÅBNE noder kan stadig læses med tenant-medlemskab alene", async () => {
     const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
-    for (const node of ["opgaver", "indkoeb", "fakturaer", "satser", "facility"]) {
+    for (const node of ["opgaver", "fakturaer", "facility"]) {
       await assertSucceeds(get(ref(db, `tenants/${T}/${node}`)));
     }
     /* Men ikke de fire klassificerede — uden perms-claim er der ingen
        booking.laes. */
     await assertFails(get(ref(db, `tenants/${T}/kunder`)));
+  });
+
+  it("⚠ MEN PRISERNE OG INDKØBENE ER LUKKET — beslutning 104", async () => {
+    /* Uden et perms-claim overhovedet. At de her afvises, er den halvdel
+       punkt 3 kalder definition of done: serveren siger nej. */
+    const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
+    for (const node of ["satser", "omkostninger", "indkoeb", "leverandoerer", "grundlag"]) {
+      await assertFails(get(ref(db, `tenants/${T}/${node}`)));
+    }
   });
 });
 
