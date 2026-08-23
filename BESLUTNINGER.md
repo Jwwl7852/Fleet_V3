@@ -8292,3 +8292,94 @@ samme grund** — svaret stod i filen, jeg havde bare ikke læst det.
 En rigtig udstempling kl. 19.32: søndagen gik fra `—` til **13:17** (06.15–19.32),
 og *"Ugen i alt"* fra `—` til **40:17**. Det er hele pointen med `null`: ugen
 kunne ikke gøres op, og så kunne den.
+
+## 108. Man ansøger ikke om sygdom
+
+Fjerde og sidste kort på chaufførappens forside: **Anmod om frihed.** `fravaer`
+krævede `fravaer.skriv`, som ingen chauffør har, så der fandtes ingen vej.
+
+### Den sætning der gjorde vejen mulig
+
+Den oplagte løsning var at lade ham skrive et fravær med en `art`. Det kan han
+ikke, og målingen sagde hvorfor: **`art` er en helbredsoplysning** (GDPR art. 9)
+og bor i `sensitive/fravaer`, hvis `.write` kræver **både** `fravaer.skriv` og
+`fravaer.sensitiveLaes` — *"kan man ikke læse feltet, skal man heller ikke kunne
+overskrive det i blinde"* (beslutning 17). Han har ingen af delene.
+
+Så kom sætningen der løste det: **man ansøger ikke om sygdom.** Det han søger
+om — ferie, feriefridag, afspadsering — er ikke én af dem en helbredsoplysning.
+Ansøgningen bærer derfor et `oensket` på **basisnoden**, begrænset til de tre,
+og kontoret sætter `art` i den følsomme node når det godkender.
+
+⚠ **`oensket` og `art` er ikke samme felt to steder.** Det ene er hvad han
+**bad om**, det andet hvad der blev **registreret**. De kan være forskellige —
+han beder om ferie og får afspadsering — og det er samme skelnen som
+`estimeretMin` mod `faktiskMin`.
+
+⚠ **Og listen er UDLEDT af `helbred`, ikke skrevet i hånden.** Får en ny art
+`helbred: true`, falder den ud af `ANSOEGBARE_ARTER` af sig selv.
+
+### To nye arter, fordi de manglede
+
+`feriefridag` og `afspadsering` fandtes ikke. De ville være landet som `andet`,
+og **en afspadseringssaldo kan ikke gøres op af poster der hedder andet.**
+
+### Fire led i reglen, og hvert af dem er prøvet
+
+Chaufførens gren i `.write` har fire betingelser, og prøven demonstrerer hvad
+der sker uden hver enkelt:
+
+| Led | Uden det |
+|---|---|
+| `personId` === hans eget | han kunne søge fri for en kollega — og spærre den anden mand |
+| `status === 'ansoegt'` | han kunne godkende sin egen, og ansøgningen var en formalitet |
+| ingen `afgjortAf`/`afgjortMs`/`svar` | en ansøgning ville se afgjort ud uden at nogen havde set på den |
+| `!data.exists()` | han kunne rette en **afvist** ansøgning tilbage til ansøgt |
+
+⚠ **Målt mod den udrullede base med et rigtigt login**, ikke kun i emulatoren:
+ferie og afspadsering på sig selv gik igennem; sygdom, en kollegas navn, en
+selvgodkendelse, kontorets svar, et fravær uden ansøgning og årsagen i
+`sensitive/` blev alle seks afvist. Og han **kan** læse fraværslisten — ellers
+ville "du får svar" være en påstand.
+
+⚠ **En ansøgning spærrer ingenting.** Reservationen skrives når den er
+godkendt; tre ansøgninger om den samme uge ville ellers spærre manden tre gange
+for en frihed han ikke har fået. Beslutning 59's figur.
+
+⚠ **Og et fravær UDEN `ansoegning` er kontorets egen registrering.** Det er dét
+der gør ændringen sikker at udrulle: hvert eksisterende fravær opfører sig
+præcis som før, og `erAftalt()` er sand for dem. Samme fremgangsmåde som
+`roller/`.
+
+### Svaret kommer i appen, ikke på mail
+
+Kortet i specifikationen siger *"Du får svar på mail"*. Mail er beslutning 20 og
+er **fase 0**: `sager/` står ikke i regelfilen, og der er hverken modtagevej,
+afsendelse eller permissions. En tekst der lovede en mail, ville love noget der
+ikke kan sendes — og chaufføren ville vente på den frem for at kigge.
+
+Ansøgningen bærer allerede både svaret og hvem der afgjorde det, så mailen kan
+lægges ovenpå den dag beslutning 20 er ude af fase 0.
+
+### To datofejl, og kun den ene var min
+
+⚠ **`isoTilMs()` gav en dag for meget.** Den returnerer **kl. 12** med vilje —
+`new Date("2026-08-10")` er midnat UTC, og trækkes en time fra, bliver det den
+9. Til et tidspunkt er det rigtigt. Et fravær er ikke et tidspunkt: det er hele
+dage, og `sidsteDag()` regner `til - 1 ms`. Med kl. 12 landede "til og med den
+9." som `10.10 kl. 12`, og skærmen skrev **"05.10.2026 – 10.10.2026 · 5 dage"**
+— datoerne modsagde antallet ved siden af. Grænserne bygges nu med `Date` ved
+midnat.
+
+⚠ **Og `varighedDage()` var forkert to gange om året — den fejl var der i
+forvejen.** Den regnede `ceil((til - fra) / 86400000)`, og over et
+sommertidsskifte bliver fem døgn til 121 timer. **Målt: 23.–27. oktober 2026
+gav 6 dage.** Fejlen ramte hver eneste ferie hen over skiftet, i to skærme, og
+den var usynlig — 6 er et plausibelt tal ved siden af "23.10 – 27.10".
+
+Det er samme fælde som `slots()` i gitter.js og `traekTil()`: **et døgn er ikke
+24 timer.** Dagene tælles nu ved at gå fremad med `Date`, og en prøve kører
+begge skifter.
+
+Den blev fundet ved at taste en rigtig efterårsferie ind i appen — ikke ved at
+læse koden.

@@ -1932,17 +1932,53 @@
         // INGEN division: fraværet hænger på chaufføren, og en chauffør med
         // C+D er fælles — fraværet blokerer ham i begge afdelinger. Gav vi det
         // en division, ville han være syg i gods og rask i bus.
+        // ⚠ EN ANSOEGNING OM FRIHED — BESLUTNING 108.
+        //
+        // `.write` kraevede `fravaer.skriv`, som ingen chauffoer har. Han
+        // faar nu EN gren: en ansoegning paa SIG SELV, i status 'ansoegt',
+        // uden kontorets svarfelter, og kun som en NY post. Uden det sidste
+        // led kunne han rette en afvist ansoegning tilbage til ansoegt.
+        //
+        // ⚠ MAN ANSOEGER IKKE OM SYGDOM, og det er dét der goer det muligt.
+        // `art` er en helbredsoplysning og bor i `sensitive/fravaer`, hvis
+        // `.write` kraever BAADE fravaer.skriv OG fravaer.sensitiveLaes.
+        // Det han soeger om — ferie, feriefridag, afspadsering — er ingen af
+        // delene, og staar derfor som `oensket` paa BASISNODEN.
+        //
+        // ⚠ `oensket` OG `art` ER IKKE SAMME FELT TO STEDER: det ene er hvad
+        // han BAD OM, det andet hvad der blev REGISTRERET. De kan vaere
+        // forskellige — han beder om ferie og faar afspadsering.
+        //
+        // ⚠ OG ET FRAVAER UDEN `ansoegning` ER KONTORETS EGEN REGISTRERING.
+        // Hvert eksisterende fravaer opfoerer sig praecis som foer.
         "fravaer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.laes|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true)",
           ".indexOn": ["fra"],
           "$fravaerId": {
+            "ansoegning": {
+              ".validate": "newData.hasChildren(['status', 'oensket', 'ansoegtMs'])",
+              "status": { ".validate": "newData.isString() && newData.val().matches(/^(ansoegt|godkendt|afvist)$/)" },
+              // ⚠ KUN DE TRE. Slap `sygdom` igennem her, ville en chauffoer
+              // have skrevet en helbredsoplysning paa en node uden
+              // fravaer.sensitiveLaes. Listen staar to steder — koden kan
+              // ikke importeres i en regel — og en proeve holder dem sammen.
+              "oensket": { ".validate": "newData.isString() && newData.val().matches(/^(ferie|feriefridag|afspadsering)$/)" },
+              "ansoegtMs": { ".validate": "newData.isNumber()" },
+              // ⚠ SVARET KRAEVER fravaer.skriv. Feltet kan kun skrives af
+              // den gren ovenfor der har permissionen — chauffoerens gren
+              // afviser posten hvis et af de tre findes.
+              "afgjortAf": { ".validate": "newData.isString() && newData.val().length > 0" },
+              "afgjortMs": { ".validate": "newData.isNumber()" },
+              "svar": { ".validate": "newData.isString() && newData.val().length <= 300" },
+              "$andet": { ".validate": false }
+            },
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
             // newData.exists(). Begge dele er noedvendige, og de stopper hver
             // sin ting: laa reglen paa noden, kunne ET kald tomme hele
             // registret — og uden leddet kunne en enkelt post hardslettes.
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fravaer.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && ((auth.token.perms.contains('|fravaer.skriv|')) || (newData.child('personId').val() === root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() && newData.child('ansoegning').child('status').val() === 'ansoegt' && !newData.child('ansoegning').child('afgjortAf').exists() && !newData.child('ansoegning').child('afgjortMs').exists() && !newData.child('ansoegning').child('svar').exists() && !data.exists())) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['personId'])",
             "division": { ".validate": false },
             "art": { ".validate": false },

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **107 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **108 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,26 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Lade en chauffør ansøge om en helbredsoplysning.** `ANSOEGBARE_ARTER` er
+  **udledt af `helbred`** — ferie, feriefridag, afspadsering — og står som
+  `oensket` på BASISNODEN. `art` bor i `sensitive/fravaer`, hvis `.write`
+  kræver både `fravaer.skriv` og `fravaer.sensitiveLaes`; kontoret sætter den
+  ved godkendelse. **Man ansøger ikke om sygdom**, og det er dét der gør vejen
+  mulig overhovedet.
+  ⚠ **`oensket` og `art` er ikke samme felt to steder:** det ene er hvad han
+  BAD OM, det andet hvad der blev REGISTRERET.
+  ⚠ **Et fravær UDEN `ansoegning` er kontorets egen registrering**, og
+  `erAftalt()` er sand for det. Ellers ville hvert eksisterende fravær holde
+  op med at tælle den dag feltet blev indført.
+  ⚠ **Og en ansøgning spærrer ingenting** — reservationen skrives ved
+  godkendelsen. Se beslutning 108.
+- **Regne en varighed i dage som `(til - fra) / 86400000`.** Et døgn er 23
+  eller 25 timer ved sommertidsskiftet. `varighedDage()` gav **6 dage** for
+  23.–27. oktober, to gange om året, i to skærme — og 6 er et plausibelt tal
+  ved siden af datoerne. Tæl med `Date`, som `slots()` og `traekTil()`.
+  ⚠ **Og `isoTilMs()` giver kl. 12 med vilje.** Til et TIDSPUNKT er det
+  rigtigt; til hele dage er det en dag for meget, fordi `sidsteDag()` regner
+  `til - 1 ms`. Byg dagsgrænser med `Date` ved midnat.
 - **Skrive en stempling uden om `stemplinger/<personId>/<id>` — eller give
   noden en `.read`.** Læsningen ligger på `$personId`, fordi den skal kunne
   svare *"er det dine egne timer"*; en `.read` på beholderen kaskaderer, og så

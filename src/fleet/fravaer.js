@@ -25,7 +25,6 @@
 
 import { RESSOURCE, KILDE, prioritetFor } from "./reservations.js";
 
-const DAG = 86400000;
 
 /* ---- Årsager. HØRER I sensitive/, aldrig i general. ------------------ */
 
@@ -41,6 +40,13 @@ export const FRAVAER_ART = {
   barnSyg:  { label: "Barns 1. sygedag",  pill: "bad",  helbred: true },
   barsel:   { label: "Barsel",            pill: "info", helbred: true },
   ferie:    { label: "Ferie",             pill: "ok",   helbred: false },
+  /* ⚠ TO NYE ARTER — beslutning 108. De kom af at chaufføren skal kunne
+     ANSØGE: specifikationens kort siger "ferie, feriefridage eller
+     afspadsering", og de to sidste fandtes ikke. De ville ellers være landet
+     som `andet`, og en afspadseringssaldo kan ikke gøres op af poster der
+     hedder andet. */
+  feriefridag:   { label: "Feriefridag",   pill: "ok",   helbred: false },
+  afspadsering:  { label: "Afspadsering",  pill: "ok",   helbred: false },
   kursus:   { label: "Kursus",            pill: "info", helbred: false },
   andet:    { label: "Andet",             pill: "info", helbred: false },
 };
@@ -97,8 +103,37 @@ export const erAktivt = (f, nu = Date.now()) => nu >= f.fra && nu < f.til;
  */
 export const sidsteDag = (f) => f.til - 1;
 
-/** Antal påbegyndte kalenderdage. Til visning — ikke til lønberegning. */
-export const varighedDage = (f) => Math.max(1, Math.ceil((f.til - f.fra) / DAG));
+/**
+ * Antal påbegyndte kalenderdage. Til visning — ikke til lønberegning.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ TÆLLES MED `Date`, IKKE MED MILLISEKUNDER — beslutning 108
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Her stod `Math.ceil((f.til - f.fra) / DAG)`, og den var forkert over hvert
+ * sommertidsskifte. **Målt:** 23.–27. oktober 2026 gav **6 dage**. Skiftet
+ * den 25. lægger en time til, så 5 døgn bliver til 121 timer, og `ceil`
+ * runder op.
+ *
+ * Fejlen ramte to gange om året, på hver eneste ferie hen over skiftet, og
+ * den var usynlig: 6 er et plausibelt tal ved siden af "23.10 – 27.10". Den
+ * blev fundet ved at prøve netop den uge, ikke ved at læse koden.
+ *
+ * Det er samme fælde som `slots()` i gitter.js og `traekTil()`: **et døgn er
+ * ikke 24 timer.** Dagene tælles derfor ved at gå fremad med `Date`.
+ */
+export function varighedDage(f) {
+  if (!Number.isFinite(f?.fra) || !Number.isFinite(f?.til)) return 1;
+  const d = new Date(f.fra);
+  d.setHours(0, 0, 0, 0);
+  let n = 0;
+  /* Halvåbent: en dag tælles med hvis den BEGYNDER før `til`. */
+  while (d.getTime() < f.til) {
+    n += 1;
+    d.setDate(d.getDate() + 1);
+  }
+  return Math.max(1, n);
+}
 
 /** Overlapper to fravær? Samme halvåbne regel som overlapper() i
  *  reservations.js — to fravær på samme person i samme periode er en konflikt
@@ -145,3 +180,135 @@ export function reservationFraFravaer(f) {
 
 /** Prioriteten for et fravær. Én kilde: reservations.js. */
 export const fravaerPrioritet = () => prioritetFor(KILDE.fravaer);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AT ANSØGE OM FRIHED — beslutning 108
+   ══════════════════════════════════════════════════════════════════════════
+
+   Chaufførappens fjerde kort. Indtil nu kunne kun kontoret oprette et fravær:
+   `.write` krævede `fravaer.skriv`, som ingen chauffør har.
+
+   ⚠ MAN ANSØGER IKKE OM SYGDOM, og det er ikke en formulering — det er dét
+   der gør ansøgningen mulig overhovedet.
+
+   `art` er en HELBREDSOPLYSNING (GDPR art. 9) og bor i `sensitive/fravaer`,
+   hvis `.write` kræver BÅDE `fravaer.skriv` OG `fravaer.sensitiveLaes` —
+   *"kan man ikke læse feltet, skal man heller ikke kunne overskrive det i
+   blinde"* (beslutning 17). En chauffør har ingen af delene, og skulle han
+   skrive sin egen art, ville vejen ind i den node stå åben for alle.
+
+   Men det han ansøger om, er **ferie, feriefridag eller afspadsering** — ikke
+   én af dem er en helbredsoplysning. Ansøgningen bærer derfor et `oensket` på
+   BASISNODEN, begrænset til de tre, og kontoret sætter `art` i den følsomme
+   node når det godkender.
+
+   ⚠ `oensket` OG `art` ER IKKE DET SAMME FELT TO STEDER. `oensket` er hvad
+   han BAD OM; `art` er hvad der blev REGISTRERET. De kan være forskellige —
+   han beder om ferie og får afspadsering — og det er samme skelnen som
+   `estimeretMin` mod `faktiskMin`.
+
+   ⚠ ET FRAVÆR UDEN `ansoegning` ER KONTORETS EGEN REGISTRERING, og det er
+   dét der gør ændringen sikker at udrulle: hvert eksisterende fravær opfører
+   sig præcis som før. Samme fremgangsmåde som `roller/`, hvor en tenant uden
+   noden opfører sig som før den fandtes.
+
+   ⚠ OG EN ANSØGNING SPÆRRER INGENTING. Reservationen skrives først når den er
+   godkendt — tre ansøgninger om den samme uge ville ellers spærre manden tre
+   gange for en frihed han ikke har fået. Det er beslutning 59's figur:
+   et forslag reserverer heller ikke. */
+
+export const ANSOEGNING = {
+  ansoegt:  { label: "Ansøgt",   pill: "info" },
+  godkendt: { label: "Godkendt", pill: "ok"   },
+  afvist:   { label: "Afvist",   pill: "bad"  },
+};
+
+export const ALLE_ANSOEGNINGSSTATUS = Object.keys(ANSOEGNING);
+
+/**
+ * De arter man kan ANSØGE om.
+ *
+ * ⚠ UDLEDT AF `helbred`, IKKE SKREVET I HÅNDEN. Kommer der en ny art med
+ * `helbred: true`, kan den ikke ansøges om af sig selv — og en liste skrevet
+ * i hånden ville skulle huskes. `kursus` og `andet` er heller ikke med: et
+ * kursus sender arbejdsgiveren på, og `andet` er kontorets opsamling.
+ */
+export const ANSOEGBARE_ARTER = ["ferie", "feriefridag", "afspadsering"]
+  .filter((a) => FRAVAER_ART[a] && !FRAVAER_ART[a].helbred);
+
+/** Felter på `ansoegning`. Reglens `$andet: false` siger det samme. */
+export const ANSOEGNING_FELTER = [
+  "status", "oensket", "ansoegtMs", "afgjortAf", "afgjortMs", "svar",
+];
+
+/** Er fraværet ansøgt om — eller registreret af kontoret? */
+export const erAnsoegt = (f) => Boolean(f?.ansoegning);
+
+/**
+ * Er fraværet AFTALT?
+ *
+ * ⚠ ET FRAVÆR UDEN ANSØGNING ER AFTALT. Kontoret skrev det, og så har nogen
+ * taget stilling. Svarede vi nej, ville hvert eksisterende fravær holde op
+ * med at tælle den dag feltet blev indført.
+ */
+export const erAftalt = (f) =>
+  !f?.ansoegning || f.ansoegning.status === "godkendt";
+
+/**
+ * Fejl ved en ansøgning — tom liste betyder gyldig.
+ *
+ * ⚠ HÅNDHÆVES OGSÅ I REGLEN. Her svares hurtigt; reglen afgør.
+ */
+export function valideAnsoegning(f, { nu = Date.now() } = {}) {
+  const fejl = [];
+  const a = f?.ansoegning || {};
+
+  if (!f?.personId) fejl.push("Ansøgningen mangler en medarbejder.");
+  if (!Number.isFinite(f?.fra) || !Number.isFinite(f?.til)) {
+    fejl.push("Ansøgningen mangler en periode.");
+  } else if (f.til < f.fra) {
+    fejl.push("Slutdatoen ligger før startdatoen.");
+  } else if (f.fra < nu - 90 * 86400000) {
+    /* ⚠ ET LOFT BAGUD, IKKE EN AFVISNING AF FORTIDEN. Man kan søge fri for en
+       dag der lige er gået — et sygebarn meldes bagud — men ikke for et år
+       siden, hvor ingen kan huske hvad der skete. */
+    fejl.push("Perioden ligger for langt tilbage. Kontakt kontoret.");
+  }
+
+  if (!ANSOEGNING[a.status]) fejl.push(`Ukendt status "${a.status}".`);
+  if (!ANSOEGBARE_ARTER.includes(a.oensket)) {
+    /* ⚠ DEN VIGTIGSTE. Slap `sygdom` igennem her, ville en chauffør have
+       skrevet en helbredsoplysning på en node uden `fravaer.sensitiveLaes`. */
+    fejl.push(`Man kan ikke ansøge om "${a.oensket}".`);
+  }
+  if (!Number.isFinite(a.ansoegtMs)) fejl.push("Ansøgningen mangler et tidspunkt.");
+
+  for (const felt of Object.keys(a)) {
+    if (!ANSOEGNING_FELTER.includes(felt)) fejl.push(`Ukendt felt: ${felt}`);
+  }
+  if (a.svar != null && (typeof a.svar !== "string" || a.svar.length > 300)) {
+    fejl.push("Svaret skal være tekst på højst 300 tegn.");
+  }
+  return fejl;
+}
+
+/**
+ * Ansøgningen som den skal skrives.
+ *
+ * ⚠ INGEN `afgjortAf` OG INGEN `afgjortMs`. En klient der måtte sætte dem,
+ * kunne godkende sin egen ansøgning — og reglen afviser det, men formen her
+ * skal ikke engang kunne udtrykke det.
+ */
+export function byggAnsoegning({ personId, fra, til, oensket, note, nu = Date.now() }) {
+  const ud = {
+    personId,
+    fra,
+    til,
+    ansoegning: { status: "ansoegt", oensket, ansoegtMs: nu },
+  };
+  /* Chaufførens egen begrundelse hører på BASISNODEN som en note — ikke i
+     `ansoegning.svar`, som er kontorets svar tilbage. To tekster, to
+     afsendere; ét felt ville lade den ene overskrive den anden. */
+  if (note?.trim()) ud.note = note.trim();
+  return ud;
+}

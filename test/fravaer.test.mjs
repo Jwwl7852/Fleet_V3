@@ -15,7 +15,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  FRAVAER_ART, ALLE_FRAVAER_ARTER, TILSTAND,
+  FRAVAER_ART, ALLE_FRAVAER_ARTER, ANSOEGBARE_ARTER, TILSTAND,
   fravaerTilstand, erAktivt, sidsteDag, varighedDage, overlapper,
   reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning,
 } from "../src/fleet/fravaer.js";
@@ -63,6 +63,31 @@ describe("Det halvåbne interval [fra, til)", () => {
     /* Et fravær kortere end et døgn er stadig én dag — modellen bærer
        halvdage, skærmen viser dem ikke. Se noten i Fravaer.jsx. */
     assert.equal(varighedDage({ fra: T14, til: T14 + 3600000 }), 1);
+  });
+
+  /**
+   * ⚠ ET DØGN ER IKKE 24 TIMER — beslutning 108.
+   *
+   * `varighedDage` regnede `ceil((til - fra) / 86400000)`, og over hvert
+   * sommertidsskifte blev 5 dage til **6**: skiftet lægger en time til, så
+   * fem døgn er 121 timer, og ceil runder op.
+   *
+   * Fejlen ramte to gange om året, på hver eneste ferie hen over skiftet, og
+   * den var usynlig — 6 er et plausibelt tal ved siden af "23.10 – 27.10".
+   * Den blev fundet ved at prøve netop den uge, ikke ved at læse koden.
+   */
+  it("⚠ TÆLLER DAGE OVER BEGGE SOMMERTIDSSKIFTER", () => {
+    const midnat = (aar, md, d, plus = 0) => {
+      const x = new Date(aar, md - 1, d + plus);
+      x.setHours(0, 0, 0, 0);
+      return x.getTime();
+    };
+    /* 25. oktober: uret stilles TILBAGE — døgnet er 25 timer. */
+    assert.equal(varighedDage({ fra: midnat(2026, 10, 23), til: midnat(2026, 10, 27, 1) }), 5);
+    /* 29. marts: uret stilles FREM — døgnet er 23 timer. */
+    assert.equal(varighedDage({ fra: midnat(2026, 3, 27), til: midnat(2026, 3, 31, 1) }), 5);
+    /* Og en almindelig uge er uændret. */
+    assert.equal(varighedDage({ fra: midnat(2026, 7, 14), til: midnat(2026, 7, 18, 1) }), 5);
   });
 
   it("bruger samme overlapsregel som reservationsmodellen", () => {
@@ -161,7 +186,39 @@ describe("Årsagen er klassificeret — hele feltet, ikke halvdelen", () => {
     for (const [id, s] of Object.entries(DEMO_FRAVAER_SENSITIVE)) {
       assert.ok(FRAVAER_ART[s.art], `${id} har ukendt art "${s.art}"`);
     }
-    assert.equal(ALLE_FRAVAER_ARTER.length, 6);
+    /**
+     * ⚠ TALLET VAR 6 OG ER 8 — beslutning 108. `feriefridag` og
+     * `afspadsering` kom til, fordi chaufføren skal kunne ANSØGE om dem:
+     * specifikationens kort siger *"ferie, feriefridage eller afspadsering"*,
+     * og de to sidste fandtes ikke. De ville ellers være landet som `andet`,
+     * og en afspadseringssaldo kan ikke gøres op af poster der hedder andet.
+     *
+     * ⚠ ET RENT ANTAL SIGER IKKE HVAD DER ER GALT når det ændrer sig, så
+     * listen står her ved navn. En ny art skal have en linje i BESLUTNINGER —
+     * de er et vokabular kontoret og lønsystemet deler.
+     */
+    assert.deepEqual(ALLE_FRAVAER_ARTER, [
+      "sygdom", "barnSyg", "barsel",
+      "ferie", "feriefridag", "afspadsering",
+      "kursus", "andet",
+    ]);
+  });
+
+  /**
+   * ⚠ DE TRE NYE ER IKKE HELBREDSOPLYSNINGER, og det er dét der gør dem
+   * ansøgbare. Fik `feriefridag` ved et uheld `helbred: true`, ville
+   * `ANSOEGBARE_ARTER` skrumpe i tavshed, og chaufføren ville stå med en knap
+   * mindre uden at nogen kunne se hvorfor.
+   */
+  it("⚠ DE ANSØGBARE ER NØJAGTIG DE TRE FRIHEDSARTER", () => {
+    assert.deepEqual(ANSOEGBARE_ARTER, ["ferie", "feriefridag", "afspadsering"]);
+    for (const a of ANSOEGBARE_ARTER) {
+      assert.equal(FRAVAER_ART[a].helbred, false, `${a} er markeret som helbred`);
+    }
+    /* Og ingen helbredsoplysning kan søges om. Det er reglens vigtigste led. */
+    for (const a of ALLE_FRAVAER_ARTER) {
+      if (FRAVAER_ART[a].helbred) assert.ok(!ANSOEGBARE_ARTER.includes(a), a);
+    }
   });
 });
 

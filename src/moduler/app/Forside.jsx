@@ -50,6 +50,13 @@ const KORT = [
     titel: "Indberetning",
     under: "Indberet service, skade, tankning m.m. direkte til driften.",
   },
+  {
+    til: "/app/frihed",
+    node: "fravaer",
+    ikon: "🏖️",
+    titel: "Anmod om frihed",
+    under: "Søg ferie, feriefridage eller afspadsering. Du får svar i appen.",
+  },
 ];
 
 export default function Forside() {
