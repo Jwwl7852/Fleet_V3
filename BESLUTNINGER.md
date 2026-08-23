@@ -7342,3 +7342,94 @@ følsomme læsninger går gennem en callable.
 
 Sig fortsat *"vi logger læsninger fra applikationen"*, ikke *"vi logger alle
 læsninger"*.
+
+---
+
+## 100. Seedet respekterede modulerne — undtagen dér hvor et anker fandtes to steder
+
+Jeg havde sagt at provisioneringen ikke respekterer kundens moduler. **Det gør
+den.** `harModulet(node)` har været der hele tiden, med den rigtige begrundelse
+skrevet ved siden af: *"en node kunden ikke kan læse, skal heller ikke seedes …
+et tal regnet af data ingen kan se, er værre end intet tal."*
+
+Diagnosen var for grov, og målingen viste hvor.
+
+### ⚠ 1. Regel-læseren tog det første tekstfund
+
+`modulForNode()` fandt `"<node>": {` med `findIndex` og læste otte linjer frem
+efter en `.read`. `"beholdning"` findes **to steder** i regelfilen:
+
+```
+"beholdning": { ".validate": "newData.isNumber()" }   ← et FELT, står først
+"beholdning": { ".read": "… moduler').child('warehouse') …" }   ← noden
+```
+
+Feltet vandt. Svaret blev `null` — *"hører til alle"* — og DEV-kunden
+`nordvest`, som ikke har Warehouse, fik **seks beholdningsposter** seedet i sin
+egen tenant. Data han aldrig kan læse.
+
+**Et anker der findes to steder, for sjette gang i dette repo** (82, 83, 85,
+86, 87 — og nu her), denne gang i den funktion der skulle beskytte mod netop
+den slags.
+
+Reglerne læses nu som **JSON** og slås op ad stien, med nærmeste `.read` opad
+som svar. Princippet er uændret — *mappingen læses, den skrives ikke af* — det
+var metoden der var forkert.
+
+⚠ **Og prøven havde aldrig spurgt om `beholdning`.** Den prøvede syv noder, og
+alle syv gik godt. En prøve der læser et udvalg, siger ikke noget om resten:
+kravet er nu at provisionerens opslag er enigt med `NODE_MODUL` for **hver**
+node i tabellen.
+
+### ⚠ 2. En node kan høre til basen og alligevel bære fremmede poster
+
+Node-filteret er ikke nok. `grundlag` hører til **basen** og seedes for alle —
+men de fire demo-grundlag bærer et `bookingId` og et `kundeId`, og `nordvest`
+har hverken Planning eller Kunder. Fire fakturagrundlag der peger på bookinger
+der ikke findes i hans tenant, målt i den udrullede base.
+
+`seedbarePoster()` afgør det pr. post, og **reglen afgør hvordan**:
+
+| Referencen står i et … | Svar | Hvorfor |
+|---|---|---|
+| **påkrævet** felt | posten udelades | `grundlag` kræver `kundeId`; uden modulet ville posten være ugyldig i hans egen node |
+| **valgfrit** felt | feltet nulles | `indberetninger` kræver ikke `bookingId` — en kunde uden Planning har udmærket indberetninger, de er bare ikke bundet til en tur |
+
+Udelod vi posten i begge tilfælde, ville hans base se tommere ud end den er;
+nullede vi i begge, ville der stå ugyldige poster i den. **Reglen ved hvilket
+af de to der gælder — vi skal bare spørge den.**
+
+⚠ **En reference nede i en underliste nulles ikke.** Den hører til den linje,
+og en linje kan ikke nulles uden at ændre hvad posten siger. Bærer en
+underliste en umulig reference, er posten ikke hans.
+
+### Målt før og efter
+
+Gen-seedet begge tenants.
+
+| | Før | Efter |
+|---|---|---|
+| `nordvest`: noder sprunget over | 11 | **12** (`beholdning` kom til) |
+| `nordvest`: grundlag | 4, alle med fremmed reference | **0 udeladt → 0 tilbage** |
+| `nordvest`: indberetninger med `bookingId` | 1 hængende | **1 nullet** |
+| Hængende referencer, begge tenants | 4 målt i 92 | **0** |
+| Grundlagslinjer uden momssats | 1 | **0** |
+| `demo`: sprunget over / udeladt | — | **0 / 0** |
+
+Rettelserne fra beslutning 92 (`lager-hoved`, `ink-2026-0844`) og 98
+(momssatsen) er dermed landet i basen — det var det gen-seedningen skulle.
+
+⚠ **`demo` mistede ingenting.** Den har alle moduler, og et filter der ikke
+rører den fuldt udstyrede tenant, er et filter der kun gør det det skal.
+
+### Det arbejdet fandt
+
+**1. Referencekortet fandtes to steder.** `demo-referencer.test.mjs` havde sin
+egen `PEGER_PAA`, og seedet skulle bruge den samme. `FELT_NODE` står nu i
+provisioneren, og prøven importerer den — ellers kunne prøven være grøn om
+præcis det seedet gjorde forkert.
+
+**2. Min egen diagnose skulle rettes, ikke bekræftes.** Jeg havde skrevet i to
+statusrapporter at seedet ignorerede moduler. Det gjorde det ikke; fejlen sad
+et andet sted og var mindre og skarpere. **En diagnose er også en påstand der
+skal måles.**

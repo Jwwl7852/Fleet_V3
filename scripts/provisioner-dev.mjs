@@ -370,18 +370,164 @@ export const SEED = [
  * steder, og den ene ville drive — præcis den fejl beslutning 70 fjernede en
  * hel akse for.
  */
+/* ⚠ REGLERNE LÆSES SOM JSON, IKKE SOM TEKST — og det er en rettelse.
+ *
+ * Den gamle udgave fandt `"<node>": {` med `findIndex` og læste otte linjer
+ * frem. Den fandt det FØRSTE tekstfund, og `"beholdning"` findes to steder:
+ * som node under tenanten, og som et FELT i `forbrugsvarer`
+ * (`"beholdning": { ".validate": "newData.isNumber()" }`). Feltet står først
+ * i filen, det har ingen `.read`, og svaret blev derfor `null` — altså "hører
+ * til alle".
+ *
+ * Følgen kunne måles: DEV-kunden `nordvest` har ikke Warehouse, og fik
+ * alligevel **seks beholdningsposter** seedet. Data han aldrig kan læse,
+ * liggende i hans egen tenant.
+ *
+ * Det er samme fejl som har kostet noget fem gange i dette repo — et anker
+ * der findes to steder — og her sad den i den funktion der skulle beskytte
+ * mod netop den slags.
+ *
+ * Princippet er uændret: mappingen LÆSES ud af reglerne, den skrives ikke af.
+ * Det er metoden der var forkert.
+ *
+ * ⚠ NÆRMESTE `.read` VINDER, og der walkes bagfra: `facility/lokationer`
+ * arver `facility`s klausul, mens en node med sin egen klausulfri `.read`
+ * hører til alle. En `.read` kaskaderer NED i RTDB — et barn kan tilføje
+ * adgang, aldrig fjerne den.
+ */
 export function modulForNode(node, regeltekst) {
-  const rod = node.split("/")[0];
-  const linjer = regeltekst.replace(/^\s*\/\/.*$/gm, "").split("\n");
-  const i = linjer.findIndex((l) => l.trim().startsWith(`"${rod}": {`));
-  if (i < 0) return null;
-  /* Kun nodens EGEN .read — den første efter dens åbning. */
-  for (let j = i + 1; j < Math.min(i + 8, linjer.length); j += 1) {
-    if (!linjer[j].includes('".read"')) continue;
-    const m = linjer[j].match(/child\('moduler'\)\.child\('(\w+)'\)\.val\(\) === true/);
+  let tenant;
+  try {
+    tenant = JSON.parse(
+      String(regeltekst).replace(/^﻿/, "").replace(/^\s*\/\/.*$/gm, "")
+    ).rules?.tenants?.$tenantId;
+  } catch {
+    return null;
+  }
+  if (!tenant) return null;
+
+  const dele = String(node).split("/");
+  for (let i = dele.length; i > 0; i -= 1) {
+    const post = dele.slice(0, i).reduce((o, k) => (o == null ? o : o[k]), tenant);
+    const laes = post?.[".read"];
+    if (typeof laes !== "string") continue;
+    const m = laes.match(/child\('moduler'\)\.child\('(\w+)'\)\.val\(\) === true/);
     return m ? m[1] : null;
   }
   return null;
+}
+
+/**
+ * Feltnavn → den node det peger på.
+ *
+ * ⚠ ÉN DEFINITION. `test/demo-referencer.test.mjs` importerer den herfra, så
+ * seedet og prøven ikke kan blive uenige om hvad et `*Id` peger på. To kopier
+ * er hvordan den ene glemmer et felt — og et felt der glemmes, er en
+ * reference ingen prøver.
+ *
+ * `uid`, `afUid`, `oprettetAf`, `anmoderId` og `bestillerId` står IKKE her:
+ * de peger på et login, ikke på en post i en node. Se `uid` mod `personId` i
+ * CLAUDE.md.
+ */
+export const FELT_NODE = {
+  koeretoejId: "koeretoejer",
+  koeretoejIder: "koeretoejer",
+  personId: "personale",
+  ansvarligPersonId: "personale",
+  lagerId: "lagre",
+  leverandoerId: "leverandoerer",
+  kundeId: "kunder",
+  bookingId: "bookinger",
+  etapeId: "etaper",
+  kasseId: "kasser",
+  aktivId: "facility/aktiver",
+  lokationId: "facility/lokationer",
+  zoneId: "facility/zoner",
+  ordreId: "indkoebsordrer",
+  behovId: "indkoebsbehov",
+  forbrugsvareId: "forbrugsvarer",
+  indkoebId: "indkoeb",
+  vareId: "varer",
+  carrierId: "carriers",
+  fraCarrierId: "carriers",
+  tilCarrierId: "carriers",
+  afsendCarrierId: "carriers",
+  pladsId: "reolpladser",
+  hjemPladsId: "reolpladser",
+  fraPladsId: "reolpladser",
+  tilPladsId: "reolpladser",
+  erstatterId: "grundlag",
+  erstattetAfId: "grundlag",
+};
+
+/** Hvert felt der ender på Id, i en post og i dens underlister. */
+export function referencerI(post, sti = "") {
+  const ud = [];
+  if (!post || typeof post !== "object") return ud;
+  for (const [k, v] of Object.entries(post)) {
+    if (v === null || v === undefined) continue;
+    if (/Id$|Ider$/.test(k)) { ud.push({ felt: k, sti: `${sti}${k}` }); continue; }
+    if (Array.isArray(v)) {
+      for (const [i, e] of v.entries()) ud.push(...referencerI(e, `${sti}${k}[${i}].`));
+    } else if (typeof v === "object") {
+      ud.push(...referencerI(v, `${sti}${k}.`));
+    }
+  }
+  return ud;
+}
+
+/**
+ * Hvilke poster kan denne tenant overhovedet bruge?
+ *
+ * ⚠ EN POST DER PEGER PÅ ET MODUL KUNDEN IKKE HAR, ER IKKE HANS DATA.
+ * Node-filteret ovenfor springer hele noder over. Det er ikke nok: `grundlag`
+ * hører til BASEN og seedes for alle — men de fire demo-grundlag bærer et
+ * `bookingId` og et `kundeId`, og DEV-kunden `nordvest` har hverken Planning
+ * eller Kunder. Fire fakturagrundlag der peger på bookinger der ikke findes
+ * i hans tenant, målt i den udrullede base.
+ *
+ * ⚠ OG SVARET ER IKKE DET SAMME FOR ALLE FELTER. Reglen afgør:
+ *
+ *   PÅKRÆVET felt  → posten kan slet ikke være hans. Den udelades.
+ *                    `grundlag` kræver `kundeId`; uden Kunder-modulet ville
+ *                    posten være ugyldig i hans egen node.
+ *   VALGFRIT felt  → posten er hans, men koblingen er ikke. Feltet nulles.
+ *                    `indberetninger` kræver ikke `bookingId`: en kunde uden
+ *                    Planning har udmærket indberetninger, de er bare ikke
+ *                    bundet til en tur.
+ *
+ * Udelod vi posten i begge tilfælde, ville hans base se tommere ud end den
+ * er; nullede vi i begge, ville der stå ugyldige poster i den. Reglen ved
+ * hvilket af de to der gælder — vi skal bare spørge den.
+ */
+export function seedbarePoster(node, liste, { harModulet, paakraevede }) {
+  const kraevet = new Set(paakraevede(node));
+  const beholdt = [];
+  let udeladt = 0;
+  let nullet = 0;
+
+  for (const post of liste) {
+    const daarlige = referencerI(post).filter(({ felt }) => {
+      const maal = FELT_NODE[felt];
+      return maal && !harModulet(maal);
+    });
+    if (!daarlige.length) { beholdt.push(post); continue; }
+
+    if (daarlige.some(({ felt }) => kraevet.has(felt))) { udeladt += 1; continue; }
+
+    /* Kun felter på POSTENS eget niveau nulles — en reference nede i en
+       underliste hører til den linje, og en linje kan ikke nulles uden at
+       ændre hvad posten siger. Bærer en underliste en umulig reference, er
+       posten ikke hans. */
+    const paaTop = daarlige.filter((d) => d.sti === d.felt);
+    if (paaTop.length !== daarlige.length) { udeladt += 1; continue; }
+
+    const kopi = { ...post };
+    for (const { felt } of paaTop) kopi[felt] = null;
+    beholdt.push(kopi);
+    nullet += 1;
+  }
+  return { beholdt, udeladt, nullet };
 }
 
 export function somNode(raekker) {
@@ -550,6 +696,22 @@ async function main() {
    * dev-tenanten stod tilbage med fire. En filterkopi der er 90 % rigtig,
    * afviser præcis dét reglen tillader.
    */
+  /* Hvad reglen KRÆVER af en post i noden — læst, ikke skrevet af. Samme
+     princip som modulForNode(): listen står i reglerne, ikke i scriptet. */
+  const regler = JSON.parse(
+    regeltekst.replace(/^﻿/, "").replace(/^\s*\/\/.*$/gm, "")
+  ).rules?.tenants?.$tenantId || {};
+  const paakraevedeFelter = (node) => {
+    const post = node.split("/").reduce((o, k) => (o == null ? o : o[k]), regler);
+    const barn = Object.keys(post || {}).find((k) => k.startsWith("$"));
+    const udtryk = barn ? post[barn]?.[".validate"] : null;
+    const m = typeof udtryk === "string"
+      ? udtryk.match(/hasChildren\(\[([^\]]*)\]\)/)
+      : null;
+    return m ? m[1].split(",").map((x) => x.trim().replace(/['"]/g, "")) : [];
+  };
+  const renset = [];
+
   const harModulet = (node) => {
     if (!moduler) return true;
     const m = modulForNode(node, regeltekst);
@@ -627,11 +789,26 @@ async function main() {
       sprunget += 1;
       continue;
     }
+    /* ⚠ OG POSTERNE ENKELTVIS. En node kan høre til basen og alligevel
+       bære poster der peger på et modul kunden ikke har — `grundlag` er
+       basens, og de fire demo-grundlag bærer et bookingId. Se
+       seedbarePoster(). */
+    const raa = form === "objekt" ? null : data;
+    let brugt = data;
+    if (raa) {
+      const { beholdt, udeladt, nullet } = seedbarePoster(node, raa, {
+        harModulet, paakraevede: paakraevedeFelter,
+      });
+      brugt = beholdt;
+      if (udeladt || nullet) {
+        renset.push(`${node}: ${udeladt} udeladt, ${nullet} med nullet reference`);
+      }
+    }
     const nyttelast = form === "liste-med-boern"
-      ? sammeNode(data, boern)
-      : form === "liste" ? somNode(data) : data;
+      ? sammeNode(brugt, boern)
+      : form === "liste" ? somNode(brugt) : brugt;
     await db.ref(`tenants/${valgt}/${node}`).set(nyttelast);
-    const antal = form === "objekt" ? "objekt" : `${data.length} rækker`;
+    const antal = form === "objekt" ? "objekt" : `${brugt.length} rækker`;
     console.log(`  ${node.padEnd(24)} ${antal}`);
   }
 
@@ -640,6 +817,8 @@ async function main() {
   if (sprunget) {
     console.log(`  (${sprunget} noder sprunget over — kunden har ikke modulet)`);
   }
+  /* ⚠ SAMME REGEL FOR POSTERNE: en udeladelse man kan se, er et valg. */
+  for (const r of renset) console.log(`  ! ${r}`);
 
   /* ══════════════════════════════════════════════════════════════════════
      ⚠ EN RESERVERET ETAPE HAR RESERVATIONER — OG DE ER IKKE ET DATASÆT.

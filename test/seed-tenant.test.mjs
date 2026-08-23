@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { modulForNode, SEED } from "../scripts/provisioner-dev.mjs";
+import { NODE_MODUL } from "../src/fleet/moduler.js";
 
 const REGLER = readFileSync("firebase.rules.json", "utf8");
 const udenKommentarer = (s) =>
@@ -40,9 +41,59 @@ describe("Modulet læses ud af reglerne", () => {
       ["fravaer", "bemanding"],
       ["indkoeb", "indkoeb"],
       ["kunder", "kunder"],
+      /* ⚠ `beholdning` STOD IKKE HER, OG DET KOSTEDE SEKS POSTER.
+         Opslaget fandt før `"<node>": {` som TEKST og tog det FØRSTE træf —
+         og `"beholdning"` findes to steder i regelfilen: som node under
+         tenanten, og som et FELT i `forbrugsvarer`
+         (`"beholdning": { ".validate": "newData.isNumber()" }`). Feltet står
+         først, har ingen `.read`, og svaret blev `null` — altså "hører til
+         alle". DEV-kunden `nordvest` har ikke Warehouse og fik alligevel
+         seks beholdningsposter seedet.
+
+         Et anker der findes to steder, for sjette gang i dette repo — denne
+         gang i den funktion der skulle beskytte mod netop den slags.
+         Reglerne læses nu som JSON. Se beslutning 100. */
+      ["beholdning", "warehouse"],
+      ["enheder", "warehouse"],
+      ["plukordrer", "warehouse"],
+      ["optaellinger", "warehouse"],
     ]) {
       assert.equal(modulForNode(node, REGLER), modul, `${node} spærres ikke af ${modul}`);
     }
+  });
+
+  /**
+   * ⚠ OG EN UNDERSTI ARVER SIN FORÆLDERS KLAUSUL.
+   *
+   * `facility/lokationer` har ingen egen `.read`; den er dækket af
+   * `facility`s. En `.read` kaskaderer NED i RTDB — et barn kan tilføje
+   * adgang, aldrig fjerne den — så nærmeste `.read` opad er svaret.
+   */
+  test("⚠ facility/lokationer ARVER facility", () => {
+    assert.equal(modulForNode("facility/lokationer", REGLER), "facility");
+    assert.equal(modulForNode("facility/aktiver", REGLER), "facility");
+  });
+
+  /**
+   * ⚠ TABELLEN OG REGLERNE SKAL SIGE DET SAMME.
+   *
+   * `NODE_MODUL` i moduler.js er sandheden reglerne følger
+   * (rules.moduler.test.mjs), og provisioneren læser reglerne. Er de to
+   * uenige, seeder vi noget kunden ikke kan læse — eller springer noget over
+   * han har betalt for. Uenigheden var netop `beholdning`.
+   */
+  test("⚠ PROVISIONERENS OPSLAG ER ENIGT MED NODE_MODUL", () => {
+    const uenige = [];
+    for (const [node, modul] of Object.entries(NODE_MODUL)) {
+      const fraRegler = modulForNode(node, REGLER);
+      const forventet = Array.isArray(modul) ? modul : [modul];
+      if (!forventet.includes(fraRegler)) {
+        uenige.push(`${node}: tabellen siger ${forventet.join("/")}, reglerne ${fraRegler}`);
+      }
+    }
+    assert.deepEqual(uenige, [],
+      "provisioneren og NODE_MODUL er uenige om hvem der ejer en node:\n  "
+      + uenige.join("\n  "));
   });
 
   /**

@@ -30,7 +30,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { SEED } from "../scripts/provisioner-dev.mjs";
+import { SEED, FELT_NODE } from "../scripts/provisioner-dev.mjs";
 
 /** Node → det seedede sæt. Kun det der faktisk skrives til basen. */
 const SAET = Object.fromEntries(SEED.map((s) => [s.node, s.data]));
@@ -43,44 +43,13 @@ function iderI(node) {
   return new Set(liste.map((p) => p?.id).filter(Boolean));
 }
 
-/**
- * Feltnavn → den node det peger på.
- *
- * ⚠ NAVNET ER AFTALEN. `personId` er hvem det HANDLER om, `uid` er hvem der
- * GJORDE noget (CLAUDE.md) — derfor står `uid`, `oprettetAf` og `afUid` ikke
- * her: de peger på et login, ikke på en post i et sæt.
- */
-const PEGER_PAA = {
-  koeretoejId: "koeretoejer",
-  koeretoejIder: "koeretoejer",
-  personId: "personale",
-  ansvarligPersonId: "personale",
-  lagerId: "lagre",
-  leverandoerId: "leverandoerer",
-  kundeId: "kunder",
-  bookingId: "bookinger",
-  etapeId: "etaper",
-  kasseId: "kasser",
-  aktivId: "facility/aktiver",
-  lokationId: "facility/lokationer",
-  zoneId: "facility/zoner",
-  ordreId: "indkoebsordrer",
-  behovId: "indkoebsbehov",
-  forbrugsvareId: "forbrugsvarer",
-  indkoebId: "indkoeb",
-  vareId: "varer",
-  carrierId: "carriers",
-  fraCarrierId: "carriers",
-  tilCarrierId: "carriers",
-  afsendCarrierId: "carriers",
-  pladsId: "reolpladser",
-  hjemPladsId: "reolpladser",
-  fraPladsId: "reolpladser",
-  tilPladsId: "reolpladser",
-  erstatterId: "grundlag",
-  erstattetAfId: "grundlag",
-};
+/* ⚠ KORTET IMPORTERES, DET SKRIVES IKKE AF.
 
+   `FELT_NODE` står i provisioneren, fordi SEEDET bruger den til at afgøre
+   om en post overhovedet kan være kundens (beslutning 100). Havde prøven
+   sin egen kopi, kunne de to blive uenige om hvad et `*Id` peger på — og
+   så ville prøven være grøn om præcis det seedet gjorde forkert. */
+const PEGER_PAA = FELT_NODE;
 /**
  * Felter der IKKE kan prøves — hvert med sin grund.
  *
