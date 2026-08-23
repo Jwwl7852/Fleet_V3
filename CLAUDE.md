@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **96 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **97 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -760,6 +760,17 @@ fejl fra mockuppen der skal undgås. Læs den før du rører filen.
 
 Kun i `src/fleet/nav.js` og `src/App.jsx`. Sidebaren genereres fra nav.js, så de
 kan ikke komme ud af sync.
+
+⚠ **Skærmen importeres med `lazy()`, ikke som en almindelig import.** Alle 55
+ligger som `const X = lazy(() => import("./moduler/…"))` — ellers havner den i
+startbundtet, som hver eneste kunde henter. Det gik fra 935 kB til 77 kB i
+beslutning 97.
+
+⚠ **Og filen SKAL have et `export default`.** `lazy()` på en fil uden fejler
+hverken ved build eller lint — den kaster **når ruten åbnes**, hos brugeren.
+`test/rutedeling.test.mjs` læser alle filerne. Login er den ene undtagelse og
+er eager, fordi den tegnes uden for AppShell og dermed uden en
+Suspense-grænse.
 
 ## Kendte huller
 

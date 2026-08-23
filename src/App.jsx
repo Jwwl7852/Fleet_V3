@@ -2,7 +2,7 @@
  * Alle ruter på ét sted. Rækkefølgen følger nav.js, så sidebar og ruter
  * ikke kan komme ud af sync.
  */
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
@@ -11,63 +11,87 @@ import { erAktiv, laasetekst, opbevaresTil } from "./fleet/abonnement.js";
 import { dato } from "./fleet/format.js";
 import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
-import Dashboard from "./moduler/Dashboard.jsx";
-import BookingOversigt from "./moduler/booking/Oversigt.jsx";
-import NyForespoergsel from "./moduler/booking/NyForespoergsel.jsx";
-import Forslag from "./moduler/booking/Forslag.jsx";
-import Disponering from "./moduler/booking/Disponering.jsx";
-import LiveKort from "./moduler/booking/LiveKort.jsx";
-import Bookingopsaetning from "./moduler/booking/Bookingopsaetning.jsx";
-import Bemanding from "./moduler/Bemanding.jsx";
-import Medarbejdere from "./moduler/Medarbejdere.jsx";
-import Kompetencer from "./moduler/Kompetencer.jsx";
-import Fravaer from "./moduler/Fravaer.jsx";
-import FlaadeOversigt from "./moduler/flaade/Oversigt.jsx";
-import Vaerkstedskalender from "./moduler/flaade/Vaerkstedskalender.jsx";
-import Indberetninger from "./moduler/flaade/Indberetninger.jsx";
-import Arbejdskoe from "./moduler/flaade/Arbejdskoe.jsx";
-import FacilityOversigt from "./moduler/facility/Oversigt.jsx";
-import Servicekalender from "./moduler/facility/Servicekalender.jsx";
-import Klima from "./moduler/facility/Klima.jsx";
-import IndkoebOversigt from "./moduler/indkoeb/Oversigt.jsx";
-import Indkoebsbehov from "./moduler/indkoeb/Behov.jsx";
-import Bestillinger from "./moduler/indkoeb/Bestillinger.jsx";
-import Godkendelser from "./moduler/indkoeb/Godkendelser.jsx";
-import Varelager from "./moduler/indkoeb/Varelager.jsx";
-import Fakturaer from "./moduler/indkoeb/Fakturaer.jsx";
-import Leverandoerer from "./moduler/indkoeb/Leverandoerer.jsx";
-import UnitbookingKasser from "./moduler/unitbooking/Kasser.jsx";
-import Reolpladser from "./moduler/unitbooking/Reolpladser.jsx";
-import Kasseudlaan from "./moduler/unitbooking/Udlaan.jsx";
-import Unitbookingkalender from "./moduler/unitbooking/Kalender.jsx";
-import Unitbookinghistorik from "./moduler/unitbooking/Historik.jsx";
-import Wmsvarer from "./moduler/warehouse/Varer.jsx";
-import Wmslokationer from "./moduler/warehouse/Lokationer.jsx";
-import Wmsbevaegelser from "./moduler/warehouse/Bevaegelser.jsx";
-import Wmspluk from "./moduler/warehouse/Pluk.jsx";
-import Wmsoptaelling from "./moduler/warehouse/Optaelling.jsx";
-import Wmscarriers from "./moduler/warehouse/Carriers.jsx";
-import Wmslabels from "./moduler/warehouse/Transportlabels.jsx";
-import Wmsmodtagelse from "./moduler/warehouse/Modtagelse.jsx";
-import Wmsafregning from "./moduler/warehouse/Afregning.jsx";
-import Wmssporbarhed from "./moduler/warehouse/Sporbarhed.jsx";
-import Wmsvolumen from "./moduler/warehouse/Volumen.jsx";
-import Standardpriser from "./moduler/kunder/Standardpriser.jsx";
-import Kundepriser from "./moduler/kunder/Kundepriser.jsx";
-import Kunder from "./moduler/Kunder.jsx";
-import Oekonomi from "./moduler/Oekonomi.jsx";
-import Fakturacenter from "./moduler/oekonomi/Fakturacenter.jsx";
-import Fakturering from "./moduler/Fakturering.jsx";
-import Generelt from "./moduler/opsaetning/Generelt.jsx";
-import Brugere from "./moduler/opsaetning/Brugere.jsx";
-import Integrationer from "./moduler/opsaetning/Integrationer.jsx";
-import Hjaelp from "./moduler/support/Hjaelp.jsx";
-import Supportoverblik from "./moduler/support/Overblik.jsx";
-import Supportsag from "./moduler/support/Sag.jsx";
-import Login from "./moduler/Login.jsx";
-import Konsol from "./moduler/udbyder/Konsol.jsx";
-import Prisliste from "./moduler/udbyder/Prisliste.jsx";
 import { permStrengFraRolle } from "./fleet/permissions.js";
+import Login from "./moduler/Login.jsx";
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SKÆRMENE HENTES NÅR DE ÅBNES — beslutning 97
+   ══════════════════════════════════════════════════════════════════════════
+
+   Hver skærm stod som en almindelig import, og så lå de alle sammen i ét
+   bundt: **1,59 MB, heraf 935 kB vores egen kode.** En vognmand med Fleet
+   og Facility hentede Warehouses elleve skærme, Unitbookings fire,
+   Procures syv og ejerkonsollen — hver gang han åbnede appen.
+
+   Det er den samme sætning som beslutning 94 og 95 handler om, et lag
+   længere ude: **en kunde skal ikke betale for et modul han ikke har.**
+   Dér var det forespørgsler; her er det kilobytes over en mobilforbindelse
+   i en lastbil.
+
+   ⚠ `lazy()` KRÆVER ET DEFAULT-EKSPORT, og det har hver skærm. Får en fil
+   et navngivet eksport i stedet, fejler den ikke ved build — den fejler når
+   ruten åbnes. `test/rutedeling.test.mjs` holder de to ender sammen.
+
+   ⚠ LOGIN ER IKKE DOVEN. Den er den første skærm en uautentificeret bruger
+   ser, og et ekstra netværkskald før login ville vise en tom ramme dér hvor
+   folk i forvejen er usikre på om de tastede rigtigt.
+   ══════════════════════════════════════════════════════════════════════════ */
+const Dashboard = lazy(() => import("./moduler/Dashboard.jsx"));
+const BookingOversigt = lazy(() => import("./moduler/booking/Oversigt.jsx"));
+const NyForespoergsel = lazy(() => import("./moduler/booking/NyForespoergsel.jsx"));
+const Forslag = lazy(() => import("./moduler/booking/Forslag.jsx"));
+const Disponering = lazy(() => import("./moduler/booking/Disponering.jsx"));
+const LiveKort = lazy(() => import("./moduler/booking/LiveKort.jsx"));
+const Bookingopsaetning = lazy(() => import("./moduler/booking/Bookingopsaetning.jsx"));
+const Bemanding = lazy(() => import("./moduler/Bemanding.jsx"));
+const Medarbejdere = lazy(() => import("./moduler/Medarbejdere.jsx"));
+const Kompetencer = lazy(() => import("./moduler/Kompetencer.jsx"));
+const Fravaer = lazy(() => import("./moduler/Fravaer.jsx"));
+const FlaadeOversigt = lazy(() => import("./moduler/flaade/Oversigt.jsx"));
+const Vaerkstedskalender = lazy(() => import("./moduler/flaade/Vaerkstedskalender.jsx"));
+const Indberetninger = lazy(() => import("./moduler/flaade/Indberetninger.jsx"));
+const Arbejdskoe = lazy(() => import("./moduler/flaade/Arbejdskoe.jsx"));
+const FacilityOversigt = lazy(() => import("./moduler/facility/Oversigt.jsx"));
+const Servicekalender = lazy(() => import("./moduler/facility/Servicekalender.jsx"));
+const Klima = lazy(() => import("./moduler/facility/Klima.jsx"));
+const IndkoebOversigt = lazy(() => import("./moduler/indkoeb/Oversigt.jsx"));
+const Indkoebsbehov = lazy(() => import("./moduler/indkoeb/Behov.jsx"));
+const Bestillinger = lazy(() => import("./moduler/indkoeb/Bestillinger.jsx"));
+const Godkendelser = lazy(() => import("./moduler/indkoeb/Godkendelser.jsx"));
+const Varelager = lazy(() => import("./moduler/indkoeb/Varelager.jsx"));
+const Fakturaer = lazy(() => import("./moduler/indkoeb/Fakturaer.jsx"));
+const Leverandoerer = lazy(() => import("./moduler/indkoeb/Leverandoerer.jsx"));
+const UnitbookingKasser = lazy(() => import("./moduler/unitbooking/Kasser.jsx"));
+const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
+const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
+const Unitbookingkalender = lazy(() => import("./moduler/unitbooking/Kalender.jsx"));
+const Unitbookinghistorik = lazy(() => import("./moduler/unitbooking/Historik.jsx"));
+const Wmsvarer = lazy(() => import("./moduler/warehouse/Varer.jsx"));
+const Wmslokationer = lazy(() => import("./moduler/warehouse/Lokationer.jsx"));
+const Wmsbevaegelser = lazy(() => import("./moduler/warehouse/Bevaegelser.jsx"));
+const Wmspluk = lazy(() => import("./moduler/warehouse/Pluk.jsx"));
+const Wmsoptaelling = lazy(() => import("./moduler/warehouse/Optaelling.jsx"));
+const Wmscarriers = lazy(() => import("./moduler/warehouse/Carriers.jsx"));
+const Wmslabels = lazy(() => import("./moduler/warehouse/Transportlabels.jsx"));
+const Wmsmodtagelse = lazy(() => import("./moduler/warehouse/Modtagelse.jsx"));
+const Wmsafregning = lazy(() => import("./moduler/warehouse/Afregning.jsx"));
+const Wmssporbarhed = lazy(() => import("./moduler/warehouse/Sporbarhed.jsx"));
+const Wmsvolumen = lazy(() => import("./moduler/warehouse/Volumen.jsx"));
+const Standardpriser = lazy(() => import("./moduler/kunder/Standardpriser.jsx"));
+const Kundepriser = lazy(() => import("./moduler/kunder/Kundepriser.jsx"));
+const Kunder = lazy(() => import("./moduler/Kunder.jsx"));
+const Oekonomi = lazy(() => import("./moduler/Oekonomi.jsx"));
+const Fakturacenter = lazy(() => import("./moduler/oekonomi/Fakturacenter.jsx"));
+const Fakturering = lazy(() => import("./moduler/Fakturering.jsx"));
+const Generelt = lazy(() => import("./moduler/opsaetning/Generelt.jsx"));
+const Brugere = lazy(() => import("./moduler/opsaetning/Brugere.jsx"));
+const Integrationer = lazy(() => import("./moduler/opsaetning/Integrationer.jsx"));
+const Hjaelp = lazy(() => import("./moduler/support/Hjaelp.jsx"));
+const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
+const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
+const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
+const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
+
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
    sidebaren skal stadig kunne skrive et navn. I dev og produktion kommer
@@ -298,11 +322,13 @@ export default function App() {
     return (
       <BrowserRouter>
         <Udbyderramme bruger={bruger} logUd={() => auth?.signOut()}>
+          <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
           <Routes>
             <Route path="/main" element={<Konsol bruger={bruger} />} />
             <Route path="/main/priser" element={<Prisliste />} />
             <Route path="*" element={<Navigate to="/main" replace />} />
           </Routes>
+          </Suspense>
         </Udbyderramme>
       </BrowserRouter>
     );
@@ -341,6 +367,10 @@ export default function App() {
                    rolleskifte={miljoe === "demo"}
                    logUd={() => auth?.signOut()}>
       <BrowserRouter>
+        {/* ⚠ INGEN Suspense HER. Den ligger i AppShell om indholdsfeltet,
+            så sidebaren ikke blinker ved hvert skærmskift — se noten dér.
+            Login-ruten er derfor IKKE doven: uden en grænse omkring sig
+            ville en doven Login vise et tomt vindue. Beslutning 97. */}
         <Routes>
           {!harAdgang && (
             <>

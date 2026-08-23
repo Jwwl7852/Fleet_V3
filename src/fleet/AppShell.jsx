@@ -6,6 +6,7 @@
  * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
  * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
+import { Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
@@ -231,7 +232,18 @@ export default function AppShell() {
                 skal en periodevælger tilbage, hører den her i shellen igen,
                 aldrig i et modul. */}
           </header>
-          <main className="fc-slot"><Outlet /></main>
+          {/* ⚠ Suspense LIGGER HER, IKKE OM HELE RUTETRÆET.
+              Skærmene hentes når de åbnes (beslutning 97), og React
+              venter ved den NÆRMESTE grænse. Lå den om <Routes> i
+              App.jsx, ville sidebaren, topbaren og periodevælgeren
+              forsvinde og blive tegnet om ved hvert eneste skift — og
+              en shell der blinker, føles som en app der genstarter.
+              Her skiftes kun indholdsfeltet ud. */}
+          <main className="fc-slot">
+            <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
+              <Outlet />
+            </Suspense>
+          </main>
         </div>
       </div>
     </>

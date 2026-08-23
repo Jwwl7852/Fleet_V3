@@ -7082,3 +7082,91 @@ forbehold der kun gælder det store tal, er ikke et forbehold.
 på en liste med loft: **over halvtreds** steder, næsten alle uskyldige. Anden
 udgave talte kun `reduce` — ét sted. Kortene var det rigtige snit, og de var
 tretten.
+
+---
+
+## 97. Hver kunde hentede hele produktet
+
+Byggeriet havde advaret om det hver eneste gang:
+
+> *"Some chunks are larger than 500 kB after minification."*
+
+Målt: **1.586 kB i ét bundt**, 429 kB pakket. Sammensætningen:
+
+| | Rå | Pakket |
+|---|---|---|
+| Firebase SDK | 481 kB | 99 kB |
+| React | 152 kB | 49 kB |
+| Øvrige biblioteker | 17 kB | 7 kB |
+| **Vores egen kode** | **935 kB** | **274 kB** |
+
+En vognmand med Fleet og Facility hentede altså Warehouses elleve skærme,
+Unitbookings fire, Procures syv, ejerkonsollen og hver eneste demofil — **hver
+gang han åbnede appen**, over mobilnettet i en lastbil.
+
+⚠ **Det er den samme sætning som beslutning 94 og 95, et lag længere ude:**
+en kunde skal ikke betale for et modul han ikke har. Dér var det
+forespørgsler og auditposter; her er det kilobytes.
+
+### Efter
+
+55 skærme hentes med `lazy()`. Startbundtet er nu:
+
+| | Rå | Pakket |
+|---|---|---|
+| `index` (vores ramme) | **77 kB** | **26 kB** |
+| `react` | 152 kB | 49 kB |
+| `firebase` | 481 kB | 99 kB |
+
+**Vores egen kode i startbundtet: 935 kB → 77 kB.** Resten kommer når en
+skærm åbnes: 3–27 kB pr. skærm.
+
+⚠ **`firebase` og `react` står for sig med vilje.** De skifter kun når vi
+opgraderer, og vi udruller ofte — ligger de i deres egen fil, beholder
+browseren dem på tværs af udrulninger. Vores egen `fleet/`-mappe deles derimod
+af hver skærm, og **en chunk der altid hentes, kan lige så godt ligge i
+indgangen**: en ekstra fil koster en rundtur.
+
+### ⚠ Grænsen ligger i AppShell, ikke om rutetræet
+
+React venter ved den **nærmeste** Suspense-grænse. Første udgave lagde den om
+`<Routes>` i App.jsx — og så ville sidebaren, topbaren og periodevælgeren
+forsvinde og blive tegnet om ved hvert eneste skærmskift. **En shell der
+blinker, føles som en app der genstarter.**
+
+Den ligger nu om `<Outlet />` i AppShell, så kun indholdsfeltet skiftes ud.
+Ejerkonsollen har sin egen: den bruger ikke AppShell (beslutning 35), og uden
+en grænse ville `/main` kaste.
+
+### ⚠ Login er ikke doven
+
+Den er den første skærm en uautentificeret bruger ser, og den tegnes **uden
+for** AppShell — altså uden en grænse omkring sig. En doven Login ville vise
+et tomt vindue dér hvor folk i forvejen er usikre på om de tastede rigtigt.
+
+### ⚠ `lazy()` fejler på en farlig måde
+
+En fil uden default-eksport kompilerer fint, bygges fint og fejler **først når
+ruten åbnes** — hos brugeren, på den ene skærm ingen af os klikkede på.
+
+`test/rutedeling.test.mjs` læser rutetræet og hver af de 55 filer: har de et
+default-eksport, bruges hvert dovent navn i en rute, og ligger grænserne hvor
+de skal. Det er det eneste der fanger det uden at klikke sig gennem 55 skærme.
+
+### Det arbejdet fandt
+
+**1. En prøve der ikke stripper kommentarer, måler en beskrivelse.**
+Kravet "Outlet skal ligge inde i Suspense" faldt, fordi AppShells filhoved
+siger *"sidebar + topbar + `<Outlet/>`"* — og den sætning står før den rigtige
+JSX. Anden gang på to etaper (jf. 94).
+
+**2. Efterprøvet i browseren, ikke kun i byggeriet.** Procure → Varelager og
+Warehouse → Lokationer åbnet på en frisk indlæsning: begge tegner, sidebaren
+bliver stående, og navigationen mellem to moduler henter den nye chunk uden at
+rammen forsvinder.
+
+**3. 118 chunks er mange, og det er i orden.** De små er delte moduler i
+`fleet/` som Rollup selv skiller ud når to skærme deler dem. Presses de sammen
+i indgangen, betaler alle for dem; lades de være, betaler kun den der åbner
+begge skærme. Netlify leverer over HTTP/2, hvor en ekstra fil ikke er en
+ekstra forbindelse.
