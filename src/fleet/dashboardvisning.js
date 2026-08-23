@@ -67,8 +67,28 @@ import { SAMLET, DASHBOARDS } from "./dashboards.js";
  * han ikke har truffet. Blandes de to, ville en administrator der slog alt fra
  * for en bruger, se det samme som hvis han aldrig havde rørt skærmen.
  */
-export function synligeDashboards(indstilling, harModulFn) {
-  const kanKoebes = DASHBOARDS.filter((d) => d.altid || harModulFn(d.key));
+/**
+ * ⚠ OG EN TREDJE BETINGELSE — beslutning 105.
+ *
+ * `kanSeFn(key)` er falsk for et dashboard hvis nøgletal brugeren ikke må
+ * hente. Efter beslutning 104 er `flaade`, `facility`, `indkoeb` og
+ * `oekonomi` permissionsspærrede, og vælgeren tilbød dem stadig: en chauffør
+ * kunne vælge "Procure" og få en side hvor hvert eneste tal var en streg.
+ *
+ * ⚠ SAMLET RAMMES IKKE. Den er `altid: true` og kortslutter, og det er
+ * meningen: den viser de domæner man KAN se, og `<Kpiadgang>` siger hvorfor
+ * resten mangler. Et samlet overblik der forsvandt fordi ét domæne var
+ * lukket, ville være værre end et med fire færre kort.
+ *
+ * ⚠ OG DEN AFGØR STADIG INGEN ADGANG. Håndhævelsen ligger i reglerne; det her
+ * er hvad der TILBYDES. Standarden er `() => true`, så en kalder der ikke
+ * kender brugerens permissions — Brugere & roller viser hvad en ANDEN bruger
+ * har fået tildelt — opfører sig præcis som før.
+ */
+export function synligeDashboards(indstilling, harModulFn, kanSeFn = () => true) {
+  const kanKoebes = DASHBOARDS
+    .filter((d) => d.altid || harModulFn(d.key))
+    .filter((d) => d.altid || kanSeFn(d.key));
   if (!indstilling || typeof indstilling !== "object") return kanKoebes;
 
   return kanKoebes.filter((d) => {

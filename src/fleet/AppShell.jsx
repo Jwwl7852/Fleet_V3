@@ -11,6 +11,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV } from "./nav.js";
 import { harModul } from "./moduler.js";
+import { harPerm } from "./permissions.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
@@ -98,6 +99,17 @@ export default function AppShell() {
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
 
+  /**
+   * De underpunkter der faktisk tegnes — ÉT sted, fordi svaret bruges to
+   * gange: til at tegne undermenuen, og til at afgøre om overskriften
+   * overhovedet skal stå. Regnede de to hver sin gang, kunne et toppunkt
+   * blive stående over en tom liste. Se de tre grunde nedenfor.
+   */
+  const synligeBorn = (m) => (m.born || [])
+    .filter((b) => !b.skjulINav)
+    .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
+    .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
+
   return (
     <>
       <MiljoeBjaelke />
@@ -128,7 +140,14 @@ export default function AppShell() {
                 anden mekanisme: auth.token.tenant === $tenantId i hver regel,
                 prøvet på hver node i begge retninger. De to må ikke forveksles.
                 Se fleet/moduler.js. */}
-            {NAV.filter((m) => harModul(moduler, m.key)).map((m) => {
+            {NAV.filter((m) => harModul(moduler, m.key))
+              /* ⚠ OG ET TOPPUNKT HVIS BØRN ALLE ER SKJULT, TEGNES IKKE —
+                 beslutning 105. En chauffør mangler `indkoeb.laes`, og så er
+                 alle syv Procure-punkter væk; blev overskriften stående,
+                 førte den til en afvist læsning og lovede seks punkter der
+                 ikke fandtes. Et punkt UDEN børn (Dashboard) er upåvirket. */
+              .filter((m) => !m.born?.length || synligeBorn(m).length)
+              .map((m) => {
               const aktiv = hoved.key === m.key;
               /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
                  DEN SAMME. `skjulINav` er en detaljerute uden egen plads i
@@ -140,9 +159,13 @@ export default function AppShell() {
                  aabner en afvist laesning i sin egen opsaetning.
                  Ruten findes stadig — det er menuen der tier, ikke adgangen
                  der aendres. Se nav.js og moduler.js. */
-              const born = (m.born || [])
-                .filter((b) => !b.skjulINav)
-                .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul));
+              /* ⚠ OG EN TREDJE GRUND — beslutning 105. `kraeverPerm` er et
+                 punkt hvis EMNE er spærret for brugeren: efter beslutning 104
+                 kræver ti noder en læse-permission, og en chauffør havde
+                 **18 af 59 skærme** med mindst én afvist læsning. Menuen tier;
+                 ruten findes uændret, og skærmen svarer med en afvisning hvis
+                 man taster stien. Håndhævelsen ligger i reglerne. */
+              const born = synligeBorn(m);
               return (
                 <div key={m.key}>
                   <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}>

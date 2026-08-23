@@ -28,8 +28,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { kr, num, klokke } from "../../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Soejlegraf,
-} from "../../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Soejlegraf, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   ZONE_ART, OMKOSTNINGSPOST, alarmTilstand, aktiveAlarmer,
@@ -42,7 +41,7 @@ import { usePost } from "../../fleet/usePost.js";
 const grader = (t) => (Number.isFinite(t) ? `${t.toFixed(1)} °C` : "—");
 
 export default function Klima() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
 
   /* ⚠ SAMME TO NODER SOM OVERBLIK, OG SAMME zonePar(). Regnestykket lå i
      demo-facility.js og tog ingen argumenter — så skærmen viste demofilen
@@ -81,6 +80,7 @@ export default function Klima() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           <KpiKort label="Aktive sensorer" vaerdi={num(k.facility.sensorerAktive)} />

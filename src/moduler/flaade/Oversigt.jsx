@@ -114,8 +114,7 @@ import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_BESOEG } from "../../fleet/demo-vaerksted.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
-  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular
-} from "../../fleet/ui.jsx";
+  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular, Kpiadgang } from "../../fleet/ui.jsx";
 import { vaerste, blokerer } from "../../fleet/datatilstand.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
@@ -382,7 +381,7 @@ function Enhedsformular({ enhed, sti, paaGemt, paaLuk }) {
 
 export default function FlaadeOversigt() {
   const { bruger, periode, path } = useFleet();
-  const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
+  const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi, utilgaengelige } = useKpi();
   const [valgtId, setValgtId] = useState(null);
   const [soeg, setSoeg] = useState("");
   const [art, setArt] = useState("");
@@ -477,6 +476,7 @@ export default function FlaadeOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           {/* Runde ikoner med chevron, som Booking og Bemanding. Tonerne er

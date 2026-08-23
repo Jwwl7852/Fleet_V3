@@ -42,8 +42,7 @@ import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste, Knap, Formularsvar
-} from "../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste, Knap, Formularsvar, Kpiadgang } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
    ud af en hentet liste, for en liste er et udsnit i en periode og ikke en
@@ -86,7 +85,7 @@ const beloebEllerIntet = (oere, dec) =>
   (Number.isFinite(oere) ? kr(oere, dec) : INTET);
 
 export default function Dashboard() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { moduler, bruger, path: sti } = useFleet();
   const [params, saetParams] = useSearchParams();
   /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
@@ -103,7 +102,13 @@ export default function Dashboard() {
      useListe returnerer { data }. Skrev man .data her, ville den vaere
      undefined, synligeDashboards() ville falde tilbage paa "alt", og
      indstillingen ville ALDRIG virke — mens skaermen saa helt rigtig ud. */
-  const ALLE = synligeDashboards(visning.post, harKundenModul);
+  /* ⚠ OG DASHBOARDS HVIS TAL ER SPÆRRET, TILBYDES IKKE — beslutning 105.
+     Vælgeren bød en chauffør "Procure", og siden var en side af streger. Det
+     er samme figur som `kraeverPerm` i menuen: det tilbudte skal svare til
+     det læsbare, og reglen håndhæver uændret. `utilgaengelige` kommer fra
+     useKpi og er nøglet på KPI-domænet, som er dashboardets egen nøgle. */
+  const ALLE = synligeDashboards(visning.post, harKundenModul,
+    (key) => !utilgaengelige[key]);
   void tilgaengelige;
 
   /* ⚠ ET LAYOUT PR. DASHBOARD. Fleet-forsiden og det samlede overblik er to
@@ -231,6 +236,7 @@ export default function Dashboard() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {/* ⚠ VÆLGEREN ER EN <select> OG IKKE FANER. Syv dashboards i en

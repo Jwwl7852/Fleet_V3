@@ -7930,3 +7930,112 @@ lægger skelettet tilbage, så ingen skærm bliver hvid — men "—" betyder
 *ikke regnet*, og her betyder det *må ikke ses*. Det er den samme skelnen som
 `TILSTAND.modulMangler` mod `naegtet` (beslutning 95), og den mangler for
 nøgletal. Skrevet ned frem for opdaget.
+
+## 105. Atten døre der ikke kunne åbnes — og stregen der betød to ting
+
+Beslutning 104 gav ti noder en læse-permission. Så målte jeg hvad kontorskærmen
+gjorde med det: **18 af 59 skærme havde mindst én afvist læsning for en
+chauffør.** Han så alle 54 menupunkter, og en femtedel af dem åbnede en
+spærring.
+
+Det er nøjagtig den sætning jeg brugte to dage før, i beslutning 103, til at
+nægte chaufførappen en sidebar: *en menu der mest består af døre der ikke kan
+åbnes, er værre end ingen menu.* Argumentet var rigtigt. Jeg havde bare ikke
+holdt det op mod den skærm alle andre bruger.
+
+### Det er ikke længere "en pæn knap" — og det er præmissen der har ændret sig
+
+Beslutning 43 og 44 afviste et rollefilter i widgetvælgeren med en præcis
+begrundelse: *kortet væk, tallet åbent.* Et filter der skjuler noget serveren
+udleverer, er en attrap, og det gjaldt fordi **ingen regel spurgte om rollen**.
+
+Efter 104 gør ti noder det. For **de tre permissioner** er et filter derfor en
+afspejling frem for en attrap — og kun for dem. `kraeverPerm` må ikke sættes på
+noget reglen ikke spørger om, og en prøve håndhæver det: skjuler menuen et
+punkt på en permission ingen regel nævner, bliver den rød.
+
+⚠ **Menuen tier, adgangen ændres ikke.** Ruten findes uændret, og taster man
+stien, svarer skærmen med en afvisning. Et menupunkt der forsvandt, må aldrig
+være det eneste der spærrer — og en prøve kræver at `App.jsx` **ikke** filtrerer
+ruter på `kraeverPerm`. Et dybt link fra en mail skal ende i en forklaring, ikke
+i en 404.
+
+### Feltet sættes hvor skærmens EMNE er spærret
+
+Den mekaniske udledning — *skærmen læser en spærret node, altså skjul punktet* —
+over-skjuler. Disponering slår op i `leverandoerer` for at skrive et **navn** på
+en værkstedsopgave; uden `indkoeb.laes` mangler en kolonne, og skærmen er stadig
+disponentens vigtigste.
+
+Det blev målt frem for antaget: alle tre undtagelser kalder `blokerer()` på
+nøgletallene og på deres egen hovedliste — **ikke** på leverandørlisten. En tom
+liste giver `leverandoerNavn()` id'et råt (beslutning 95), ikke en anklage om at
+data mangler.
+
+De står med en skreven grund i `test/navadgang.test.mjs`. **En udeladelse man
+kan se, er et valg; en man ikke kan se, er en fejl.**
+
+⚠ **Og et toppunkt over en tom liste er værre end ingen menu.** En chauffør
+mangler `indkoeb.laes`, og så er alle syv Procure-punkter væk. Blev overskriften
+stående, førte den til en afvist læsning og lovede seks punkter der ikke fandtes.
+`synligeBorn()` regnes ét sted, fordi svaret bruges to gange.
+
+**Målt: 18 → 3 for chaufføren, 0 for alle andre.**
+
+### Og stregen der betød to ting
+
+`medFuldForm()` lægger skelettet tilbage, så ingen skærm bliver hvid når et
+domæne mangler — og hvert felt bliver `null`, som `num()` skriver som **—**.
+
+Den streg betyder *ikke beregnet*: aggregeringen kunne ikke svare. Efter 104
+betyder den også *ikke hentet*: vi spurgte ikke. **To kendsgerninger, ét tegn** —
+og en chauffør mistede fire af ti domæner på forsiden uden at der stod hvorfor
+ét eneste sted.
+
+Det er den samme skelnen som `TILSTAND.modulMangler` mod `naegtet` (95) og som
+`MAALING_AARSAG` (91). Den manglede for nøgletal.
+
+⚠ **`useKpi` kendte kun den halve historie.** `afviste` var dem vi SPURGTE om og
+fik nej til; de domæner `laesbareDomaener()` sprang over, forsvandt sporløst.
+`utilgaengeligeDomaener()` skiller de to grunde ad — **`modul` betyder at nogen
+skal ringe til os, `perm` at nogen skal se på rettighederne** — og serverens
+afvisning står sidst og vinder, for modullisten kan være forældet.
+
+⚠ **Én linje, ikke et kort pr. domæne.** Fire bannere på en forside er støj, og
+støj bliver slået fra. `<Kpiadgang>` grupperer på grunden og returnerer null når
+der intet er at sige. Femten skærme tegner den, og en prøve kræver den af enhver
+skærm der viser et domæne som kan blive utilgængeligt.
+
+### Den tredje gang samme præmis var overhalet
+
+Vælgeren "Vis dashboard" bød stadig en chauffør **Procure** — en side hvor hvert
+eneste tal var en streg. `dashboardvisning.js` sagde det selv, i en kommentar
+skrevet før 104:
+
+> Men det er stadig en VISNING: tallene i `kpi/` var læsbare for ham i forvejen.
+> Det her afgør om han får dem serveret, ikke om han kan nå dem.
+
+Det holdt ikke længere. `synligeDashboards()` tager nu et tredje led — og
+**Samlet rammes ikke**: den er `altid: true`, viser de domæner man kan se, og
+lader `<Kpiadgang>` sige hvorfor resten mangler. Et samlet overblik der forsvandt
+fordi ét domæne var lukket, ville være værre end et med fire færre kort.
+
+Tre steder bar den samme sætning om at rollen ikke afgjorde noget: noten ved
+`bookingLaes`, beslutning 43/44 om widgetvælgeren, og den her. **Alle tre var
+sande da de blev skrevet.** Det er værd at holde fast i: en begrundelse i koden
+har en holdbarhed, og den udløber uden at nogen får besked.
+
+### Set efter i browseren, ikke kun i prøver
+
+| | chauffør | admin |
+|---|---|---|
+| Menupunkter | 36 af 50 | 50 af 50 |
+| Procure i sidebaren | væk | der |
+| Dashboards i vælgeren | 4 | 7 |
+| Banner om manglende nøgletal | *"4 grupper nøgletal vises ikke: Fleet, Facility, Procure, Økonomi & Rapporter"* | intet |
+| Nøgletal på forsiden | Åbne opgaver 23, resten — | alle |
+
+⚠ **Og banneret arvede `.fc-empty`**, som centrerer og polstrer 34 px — så det
+stod midt i luften over kortene og lignede en fejlmeddelelse. En oplysning ved
+siden af de tal der ER der, skal læses som et banner. Det så jeg kun ved at åbne
+skærmen.

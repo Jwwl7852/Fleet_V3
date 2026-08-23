@@ -45,8 +45,7 @@ import { kr, num, dato, deviation } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap,
-  Gitter, MiniLinje, Felt, Feltraekke, Formularsvar, Dialog, Ikon,
-} from "../../fleet/ui.jsx";
+  Gitter, MiniLinje, Felt, Feltraekke, Formularsvar, Dialog, Ikon, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, PERM_GODKEND,
@@ -69,7 +68,7 @@ const TOM_KONTANT = {
 };
 
 export default function Fakturaer() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
 
   const [valgtId, setValgtId] = useState(null);
@@ -188,6 +187,7 @@ export default function Fakturaer() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           {/* Feltet fra kpi/, ikke et hardkodet 21. Dashboard viser samme tal. */}

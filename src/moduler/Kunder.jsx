@@ -58,8 +58,7 @@ import { DEMO_KUNDER, DEMO_TILBUD, TILBUD_STATUS } from "../fleet/demo-kunder.js
 import { kr, num, pct, dato, deviation, serviceTone, alvorTone, ALVOR } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
-  Afvigelse, Knap, Ikon 
-} from "../fleet/ui.jsx";
+  Afvigelse, Knap, Ikon, Kpiadgang } from "../fleet/ui.jsx";
 import { vaerste } from "../fleet/datatilstand.js";
 import { blokerer } from "../fleet/datatilstand.js";
 
@@ -119,7 +118,7 @@ export function afvigelseAlvor(oere) {
 }
 
 export default function Kunder() {
-  const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi } = useKpi();
+  const { kpi: k, henter: henterKpi, tilstand: kpiTilstand, genindlaes: genindlaesKpi, utilgaengelige } = useKpi();
   const { dage } = useFleet();
   const [prisgruppe, setPrisgruppe] = useState("");
   const [aftale, setAftale] = useState("");
@@ -210,6 +209,7 @@ export default function Kunder() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         {/* Runde ikoner med chevron, som resten af appen. Tonerne er
             IKONACCENTER — farven forstærker, tallet og teksten bærer. */}

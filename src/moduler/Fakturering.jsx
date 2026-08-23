@@ -74,8 +74,7 @@ import { godkendGrundlag, laasGrundlag } from "../fleet/fakturering.js";
 import { kr, num, dato, datoTid } from "../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje,
-  Felt, Feltraekke, Formularsvar,
-} from "../fleet/ui.jsx";
+  Felt, Feltraekke, Formularsvar, Kpiadgang } from "../fleet/ui.jsx";
 import { blokerer } from "../fleet/datatilstand.js";
 import {
   GRUNDLAG_TILSTAND, LINJE_ART,
@@ -102,7 +101,7 @@ const navnetPaa = (kunder, id) =>
 const momsTekst = (oere) => (oere === null ? "—" : kr(oere));
 
 export default function Fakturering() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("grl-002");
 
@@ -155,6 +154,7 @@ export default function Fakturering() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           {/* Fra kpi/ — en opgørelse på tværs af tenanten, som denne side af

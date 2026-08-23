@@ -1001,3 +1001,61 @@ export const DELIKON = {
   vindue: "M4 5h16v14H4zM4 9h16",
   nytVindue: "M14 4h6v6M20 4l-8 8M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6",
 };
+
+/**
+ * Hvorfor nogle nøgletal ikke står på skærmen — beslutning 105.
+ *
+ * ⚠ ET UHENTET DOMÆNE SÅ UD SOM ET UBEREGNET. `medFuldForm()` lægger
+ * skelettet tilbage, så ingen skærm bliver hvid — og hvert felt bliver
+ * `null`, som `num()` skriver som **—**. Den streg betyder *ikke beregnet*.
+ * Her betyder den *ikke hentet*, og de to er ikke det samme: det ene er et
+ * spørgsmål aggregeringen ikke kunne svare på, det andet et vi ikke stillede.
+ *
+ * Målt efter beslutning 104: en chauffør mistede **fire af ti domæner** på
+ * forsiden, og der stod ikke ét sted hvorfor.
+ *
+ * ⚠ ÉN LINJE, IKKE ET KORT PR. DOMÆNE. Fire bannere på en forside er støj, og
+ * støj bliver slået fra. Den siger hvor mange, og hvorfor — grupperet på
+ * grunden, fordi de to grunde peger på hver sin handling: `modul` betyder at
+ * nogen skal ringe til os, `perm` at nogen skal se på rettighederne.
+ *
+ * ⚠ OG DEN ERSTATTER IKKE SPÆRRINGEN. Reglerne afgør; det her fortæller
+ * hvorfor. Returnerer null når alt er hentet.
+ */
+export const Kpiadgang = ({ utilgaengelige }) => {
+  const poster = Object.entries(utilgaengelige || {});
+  if (!poster.length) return null;
+
+  const grupper = {};
+  for (const [d, grund] of poster) (grupper[grund] = grupper[grund] || []).push(d);
+
+  /* ⚠ DOMÆNENAVNENE ER MODULETS, hvor der er et. `oekonomi` hedder "Økonomi &
+     Rapporter" i menuen, og to navne for det samme ville få brugeren til at
+     lede efter noget der ikke findes. */
+  const navn = (d) => MODUL[d]?.label || d;
+  const liste = (ds) => ds.map(navn).join(", ");
+
+  return (
+    <div className="fc-empty-info fc-kpiadgang">
+      {grupper.perm && (
+        <p>
+          <b>{grupper.perm.length} {grupper.perm.length === 1 ? "gruppe" : "grupper"} nøgletal
+          vises ikke:</b> {liste(grupper.perm)}. Din bruger har ikke adgang til
+          det grundlag de er regnet af — tallene mangler ikke, de er ikke hentet.
+        </p>
+      )}
+      {grupper.modul && (
+        <p>
+          <b>Uden modulet:</b> {liste(grupper.modul)}. Virksomheden har ikke
+          modulet, så der er ikke spurgt efter tallene.
+        </p>
+      )}
+      {grupper.afvist && (
+        <p>
+          <b>Afvist af serveren:</b> {liste(grupper.afvist)}. Reglerne sagde nej
+          til en læsning vi troede var tilladt — sig det til FleetControl.
+        </p>
+      )}
+    </div>
+  );
+};

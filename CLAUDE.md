@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **104 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **105 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,28 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Lade menuen tilbyde en dør der ikke kan åbnes — eller tro at den er
+  spærringen.** Efter beslutning 104 havde en chauffør **18 af 59 skærme** med
+  mindst én afvist læsning, og alle 54 menupunkter stod der. `kraeverPerm` i
+  `nav.js` skjuler punktet; **ruten findes uændret**, og reglen afviser. En
+  prøve kræver at `App.jsx` IKKE filtrerer ruter på feltet — et dybt link skal
+  ende i en forklaring, ikke i en 404.
+  ⚠ **Feltet sættes hvor skærmens EMNE er spærret**, ikke hvor den tilfældigvis
+  læser en spærret node: Disponering slår op i `leverandoerer` for at skrive et
+  navn og blokerer på nøgletallene, ikke på kartoteket. Undtagelserne står med
+  en grund i `test/navadgang.test.mjs`.
+  ⚠ **Og `kraeverPerm` må kun nævne en permission REGLEN spørger om.** Ellers
+  er det beslutning 43's pæne knap: kortet væk, tallet åbent.
+- **Lade et uhentet nøgletal se ud som et uberegnet.** `medFuldForm()` fylder
+  `null` i, og `num()` skriver `—` — som betyder *ikke beregnet*. Et domæne
+  vi slet ikke spurgte om, er et andet svar. `useKpi()` returnerer
+  `utilgaengelige` med **tre grunde** (`modul`, `perm`, `afvist`), og
+  `<Kpiadgang>` siger dem ét sted. En skærm der viser et spærbart domæne uden
+  den, fejler i `test/kpiadgang.test.mjs`.
+  ⚠ **`modul` og `perm` peger på hver sin handling** — ring til os mod se på
+  rettighederne — som `modulMangler` mod `naegtet` (95). Og serverens
+  `afvist` vinder over vores egen udledning: modullisten kan være forældet.
+  Se beslutning 105.
 - **Tilføje en `.skriv`-permission uden at spørge om læsningen.**
   `test/laeseadgang.test.mjs` kræver at hvert domæne med en skrive-permission
   enten HAR en `.laes` eller står på listen **med en grund**. Målt før

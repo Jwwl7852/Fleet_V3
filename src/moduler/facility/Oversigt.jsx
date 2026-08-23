@@ -51,8 +51,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, deviation, serviceTone } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter,
-  MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular,
-} from "../../fleet/ui.jsx";
+  MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import { Modulfakturaer } from "../../fleet/Modulfakturaer.jsx";
 import {
@@ -307,7 +306,7 @@ function Fejlformular({ fejlpost, aktiver, sti, paaGemt, paaLuk }) {
 }
 
 export default function FacilityOversigt() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
 
   /* ⚠ FEM NODER, IKKE ÉN. `facility` har børn, og hvert barn er sin egen
      liste: lokationer, aktiver, fejl, zoner og sensorer. Skærmen læste dem
@@ -384,6 +383,7 @@ export default function FacilityOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           {/* Runde ikoner med chevron, som resten af appen. Tonerne er

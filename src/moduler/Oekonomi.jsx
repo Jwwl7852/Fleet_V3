@@ -64,8 +64,7 @@ import { useFleet } from "../fleet/FleetContext.jsx";
 import { kr, num, pct, dato, deviation, deviationPct, alvorTone, ALVOR } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
-  Afvigelse, Soejlegraf, Linjegraf, MiniKurve, Ikon, Knap, Tom
-} from "../fleet/ui.jsx";
+  Afvigelse, Soejlegraf, Linjegraf, MiniKurve, Ikon, Knap, Tom, Kpiadgang } from "../fleet/ui.jsx";
 
 /* Rapporttype. Filteret rammer tabellen og omkostningsgrafen — ikke
    dækningsgradsgrafen, som ikke findes pr. omkostningskategori. */
@@ -122,7 +121,7 @@ const afvig = (vaerdi, opts, note = "vs. forrige periode") =>
     : { note: "afvigelsen er ikke aggregeret endnu" };
 
 export default function Oekonomi() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { dage } = useFleet();
   const [rapport, setRapport] = useState("alle");
 
@@ -205,6 +204,7 @@ export default function Oekonomi() {
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         {/* ⚠ KORT 1 OG 4 SAMMENLIGNER MED FORRIGE PERIODE. Kort 3 ER
             budgetsammenligningen — viste kort 1 den også, stod samme

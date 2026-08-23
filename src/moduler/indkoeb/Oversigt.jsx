@@ -59,8 +59,7 @@ import {
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter,
-  Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular,
-} from "../../fleet/ui.jsx";
+  Ikon, Sider, Linjegraf, Felt, Feltraekke, Formular, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   LEVERANDOER_KATEGORI, AFTALETYPE, FAKTURASTATUS, MINDSTE_GRUNDLAG,
@@ -353,7 +352,7 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
 }
 
 export default function IndkoebOversigt() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
 
   /* ⚠ LINJERNE KOM FRA demo-indkoeb.js INDTIL NODEN BLEV SEEDET. Noden havde
      regler, indeks og validering af hver feltform — og ingen data, så skærmen
@@ -539,6 +538,7 @@ export default function IndkoebOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <Procureoverblik
         behov={behov} ordrer={ordrer} fakturaer={fakturaer}
         leverandoerer={leverandoerer} brugere={brugere} indkoebslinjer={alleLinjer}

@@ -33,7 +33,7 @@ export const NAV = [
            eksisterende links overlever. */
         key: "livekort", sti: "/booking/live-kort", label: "Rute & status",
         titel: "Rute & status", under: "Planlagt rute og chaufførens meldinger — ingen GPS" },
-      { key: "bookingopsaetning", sti: "/booking/opsaetning", label: "Bookingopsætning",
+      { key: "bookingopsaetning", kraeverPerm: "satser.laes", sti: "/booking/opsaetning", label: "Bookingopsætning",
         titel: "Bookingopsætning", under: "Vedligehold standardomkostninger og automatiske regelsæt til brug i bookinger." },
     ],
   },
@@ -118,33 +118,33 @@ export const NAV = [
     key: "indkoeb", sti: "/indkoeb", label: "Procure", titel: "Procure & vareforbrug",
     under: "Registrér indkøb og tilknyt fakturaer og rapportering.",
     born: [
-      { key: "indkoebOversigt", sti: "/indkoeb", label: "Procure & vareforbrug",
+      { key: "indkoebOversigt", kraeverPerm: "indkoeb.laes", sti: "/indkoeb", label: "Procure & vareforbrug",
         titel: "Procure & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
       /* ⚠ TRIN 1 AF FEM, og den staar foerst efter overblikket — som paa
          planche 5. Raekkefoelgen i menuen ER processen: behov, bestilling,
          godkendelse, faktura. En menu der er sorteret efter hvad der blev
          bygget foerst, laerer ingen hvordan det haenger sammen.
          Se beslutning 78. */
-      { key: "indkoebsbehov", sti: "/indkoeb/behov", label: "Indkøbsbehov",
+      { key: "indkoebsbehov", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/behov", label: "Indkøbsbehov",
         titel: "Indmeldte behov",
         under: "Behov indsendt fra snedkeri, lager, kontor eller som kontantkøb." },
       /* ⚠ TRIN 2. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
-      { key: "bestillinger", sti: "/indkoeb/bestillinger", label: "Bestillinger",
+      { key: "bestillinger", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/bestillinger", label: "Bestillinger",
         titel: "Bestillingskladder & leverandørforslag",
         under: "Åbne behov med automatisk leverandørforslag, samlet i én bestilling pr. leverandør." },
       /* ⚠ TRIN 3. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
-      { key: "godkendelser", sti: "/indkoeb/godkendelser", label: "Godkendelse af indkøb",
+      { key: "godkendelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/godkendelser", label: "Godkendelse af indkøb",
         titel: "Godkendelse af indkøb",
         under: "Godkend indkøb, der kræver din godkendelse — og sæt virksomhedens beløbsgrænse." },
-      { key: "fakturaer", sti: "/indkoeb/fakturaer", label: "Fakturaer, match & kontantkøb",
+      { key: "fakturaer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/fakturaer", label: "Fakturaer, match & kontantkøb",
         titel: "Fakturaer, match & kontantkøb",
         under: "Match fakturaer mod bestillinger, godkend dem — eller registrér et kontant køb." },
-      { key: "leverandoerer", sti: "/indkoeb/leverandoerer", label: "Leverandører",
+      { key: "leverandoerer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/leverandoerer", label: "Leverandører",
         titel: "Leverandører", under: "Performance, aftaler og priser" },
       /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS.
          Fjerde gang et lagernavn skal skilles fra et andet i den her base;
          se forbrugsvarer.js og beslutning 85. */
-      { key: "varelager", sti: "/indkoeb/varelager", label: "Varelager",
+      { key: "varelager", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/varelager", label: "Varelager",
         titel: "Varelager — vores egne forbrugsvarer",
         under: "Beholdning, minimum og bevægelser. Et lavt lager bliver til et indkøbsbehov." },
     ],
@@ -215,7 +215,7 @@ export const NAV = [
          faktureres for; godkendelsen hoerer eet sted, i Indkoeb → Fakturaer
          (beslutning 12). To godkendelsesflows er den fejl beslutningen
          lukkede. */
-      { key: "warehouseAfregning", sti: "/warehouse/afregning", label: "Afregning",
+      { key: "warehouseAfregning", kraeverPerm: "satser.laes", sti: "/warehouse/afregning", label: "Afregning",
         titel: "Warehouse – afregning",
         under: "Hvad lageret kan faktureres for i perioden, pr. kunde" },
       /* ⚠ SPORBARHED, IKKE "Sporbarhed & optaelling". Planchen hedder det
@@ -224,7 +224,7 @@ export const NAV = [
       /* ⚠ VOLUMEN, IKKE "Tilbud". Skaermen REGNER et tal; den opretter
          ikke et tilbud — nodeformen er ikke besluttet, og et navn der lovede
          et tilbud, ville love noget platformen ikke kan. Se DEMO_TILBUD. */
-      { key: "warehouseVolumen", sti: "/warehouse/volumen", label: "Volumen",
+      { key: "warehouseVolumen", kraeverPerm: "satser.laes", sti: "/warehouse/volumen", label: "Volumen",
         titel: "Warehouse – volumenkalkulator",
         under: "Paller, m3 eller m2 til en maanedspris. Et estimat, ikke et tilbud" },
       { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
@@ -258,10 +258,10 @@ export const NAV = [
          betyder noget forskelligt: FakturaCENTERET er de fakturaer vi
          MODTAGER; Fakturering er det vi SENDER. Raekkefoelgen siger hvad
          der kommer ind foerst. */
-      { key: "fakturacenter", sti: "/oekonomi/fakturacenter", label: "Fakturacenter",
+      { key: "fakturacenter", kraeverPerm: "indkoeb.laes", sti: "/oekonomi/fakturacenter", label: "Fakturacenter",
         titel: "Fakturacenter",
         under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure." },
-      { key: "fakturering", sti: "/oekonomi/fakturering", label: "Fakturering",
+      { key: "fakturering", kraeverPerm: "grundlag.laes", sti: "/oekonomi/fakturering", label: "Fakturering",
         titel: "Fakturering", under: "Opgaver klar til fakturering — det vi SENDER" },
     ],
   },
@@ -342,18 +342,18 @@ export const NAV = [
          "Rater"-skaerm; den bygges ikke. Et andet sted at saette den samme
          slags pris ville betyde at en vognmand skulle vedligeholde sine
          priser to steder. Se PRISER.md. */
-      { key: "standardpriser", sti: "/opsaetning/priser", label: "Standardpriser",
+      { key: "standardpriser", kraeverPerm: "satser.laes", sti: "/opsaetning/priser", label: "Standardpriser",
         kraeverModul: "kunder",
         titel: "Standardpriser",
         under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
       /* ⚠ TO LAG, IKKE TRE. Standardprisen gaelder alle; her saettes den
          enkelte kundes afvigelse — enten en egen pris eller en rabat.
          Prisgruppen baerer ikke laengere en pris. Se PRISER.md punkt 4.1. */
-      { key: "kundepriser", sti: "/opsaetning/aftalepriser", label: "Kundepriser",
+      { key: "kundepriser", kraeverPerm: "satser.laes", sti: "/opsaetning/aftalepriser", label: "Kundepriser",
         kraeverModul: "kunder",
         titel: "Kundepriser",
         under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
-      { key: "kundepriserEn", sti: "/opsaetning/aftalepriser/:kundeId", label: "Kundepriser",
+      { key: "kundepriserEn", kraeverPerm: "satser.laes", sti: "/opsaetning/aftalepriser/:kundeId", label: "Kundepriser",
         kraeverModul: "kunder", skjulINav: true, titel: "Kundepriser",
         under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
 
@@ -368,6 +368,39 @@ export const NAV = [
 
 /** Flad liste over alt der har en rute. */
 export const ALLE = NAV.flatMap((m) => (m.born ? m.born : [m]));
+
+/* ══════════════════════════════════════════════════════════════════════════
+   kraeverPerm — ET PUNKT HVIS EMNE ER SPÆRRET. Beslutning 105.
+   ══════════════════════════════════════════════════════════════════════════
+
+   Beslutning 104 gav `satser`, `grundlag` og de otte Procure-noder hver en
+   læse-permission. Målt bagefter: **18 af 59 skærme havde mindst én afvist
+   læsning for en chauffør** — han så alle 54 menupunkter, og en femtedel af
+   dem åbnede en spærring.
+
+   Det er nøjagtig den sætning jeg brugte i beslutning 103 til at nægte
+   chaufførappen en sidebar: *en menu der mest består af døre der ikke kan
+   åbnes, er værre end ingen menu.* Den gjaldt også kontorskærmen.
+
+   ⚠ MENUEN TIER, ADGANGEN ÆNDRES IKKE. Ruten findes uændret, og taster man
+   stien, svarer skærmen med `<Datatilstand art="naegtet">`. Præcis som
+   `kraeverModul`: håndhævelsen ligger i `firebase.rules.json`, og et
+   menupunkt der forsvandt, må aldrig være det eneste der spærrer. En prøve
+   kræver at reglen stadig afviser.
+
+   ⚠ OG DET ER IKKE LÆNGERE "EN PÆN KNAP". Beslutning 43 og 44 afviste et
+   rollefilter i widgetvælgeren med netop den begrundelse — *kortet væk,
+   tallet åbent*. Præmissen var at ingen regel spurgte om rollen. Efter 104
+   gør ti noder det, og for **de tre permissioner** er filteret derfor en
+   afspejling frem for en attrap. Det gælder ikke for de øvrige: et punkt må
+   kun bære `kraeverPerm` hvis reglen faktisk kræver den.
+
+   ⚠ FELTET SÆTTES HVOR SKÆRMENS EMNE ER SPÆRRET — ikke hvor den tilfældigvis
+   læser en spærret node. Disponering slår op i `leverandoerer` for at skrive
+   et navn; uden `indkoeb.laes` mangler en kolonne, og skærmen er stadig
+   disponentens vigtigste. Værkstedskalenderen og Servicekalenderen det samme.
+   `test/navadgang.test.mjs` kræver en skreven grund for hver af dem — en
+   udeladelse man kan se, er et valg; en man ikke kan se, er en fejl. */
 
 /** Gamle stier → nye. Lægges som <Navigate> så v1.4-links overlever. */
 export const REDIRECTS = [

@@ -24,7 +24,9 @@ import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
 import { DEMO_KPI } from "./demo-kpi.js";
 import { TILSTAND, dataTilstand, erAfvist } from "./datatilstand.js";
-import { medFuldForm, laesbareDomaener } from "./kpi-aggregering.js";
+import {
+  medFuldForm, laesbareDomaener, utilgaengeligeDomaener, DOMAENE_AARSAG,
+} from "./kpi-aggregering.js";
 import { harModul } from "./moduler.js";
 import { harPerm } from "./permissions.js";
 
@@ -188,7 +190,27 @@ export function useKpi() {
     return () => { aktiv = false; };
   }, [tenantId, dage, path, nonce, bruger, moduler]);
 
-  return { kpi: data, henter, fejl, tilstand, genindlaes, afviste };
+  /**
+   * ⚠ HVORFOR ET DOMÆNE MANGLER — beslutning 105.
+   *
+   * `afviste` var kun dem vi SPURGTE om og fik nej til. De domæner
+   * `laesbareDomaener()` sprang over, forsvandt sporløst: felterne kom
+   * tilbage som null fra `medFuldForm()`, og skærmen skrev **—**, som
+   * betyder *ikke beregnet*. En chauffør så fire af ti domæner som streger og
+   * kunne tro at systemet ingen tal havde.
+   *
+   * De to slags lægges sammen her, med hver sin grund. Bæltet — `afvist` —
+   * står sidst og vinder: sagde serveren nej til noget vi troede vi måtte
+   * få, er DET svaret, for modullisten kan være forældet.
+   */
+  const utilgaengelige = {
+    ...utilgaengeligeDomaener(
+      (m) => harModul(moduler, m),
+      (p) => harPerm(bruger?.perms, p)),
+    ...Object.fromEntries(afviste.map((d) => [d, DOMAENE_AARSAG.afvist])),
+  };
+
+  return { kpi: data, henter, fejl, tilstand, genindlaes, afviste, utilgaengelige };
 }
 
 /* Demo-sættet ligger i demo-kpi.js — rent data, uden React, så en test og

@@ -1540,3 +1540,14 @@
   background:var(--fc-warn-bg); color:var(--bc-warn);
   border:1px solid var(--bc-warn); border-radius:8px; padding:10px 12px; margin:0}
 .fc-app-fod{margin-top:4px; text-align:center}
+
+/* ⚠ NOTEN OM MANGLENDE NØGLETAL ER ET BANNER, IKKE EN TOM TILSTAND.
+   Den arvede `.fc-empty`, som centrerer og polstrer 34 px — og så stod den
+   midt i luften over kortene og lignede en fejlmeddelelse. Den skal læses som
+   en oplysning ved siden af de tal der ER der. Se beslutning 105. */
+.fc-kpiadgang{
+  text-align:left; padding:12px 14px; margin:0;
+  border:1px solid var(--bc-line); border-left:3px solid var(--fc-info);
+  border-radius:8px; background:var(--bc-card)}
+.fc-kpiadgang p{margin:0}
+.fc-kpiadgang p + p{margin-top:6px}

@@ -210,6 +210,39 @@ export const laesbareDomaener = (harModulFn = () => true, harPermFn = () => true
     (!KPI_DOMAENE[d] || harModulFn(KPI_DOMAENE[d]))
     && (!KPI_PERM[d] || harPermFn(KPI_PERM[d])));
 
+/**
+ * Hvorfor et domæne IKKE blev hentet — beslutning 105.
+ *
+ * ⚠ ET UHENTET DOMÆNE SÅ UD SOM ET UBEREGNET. `medFuldForm()` lægger
+ * skelettet tilbage, så ingen skærm bliver hvid — og hvert felt bliver
+ * `null`, som `num()` skriver som **—**. Den streg betyder *ikke beregnet*,
+ * og her betyder den *må ikke ses*. To forskellige kendsgerninger, ét tegn.
+ *
+ * Det er den samme skelnen som `TILSTAND.modulMangler` mod `naegtet`
+ * (beslutning 95) og som `MAALING_AARSAG` (91), og den manglede for nøgletal:
+ * en chauffør så fire af ti domæner som streger på forsiden og kunne tro at
+ * systemet ingen tal havde.
+ *
+ * ⚠ TO GRUNDE, TO HANDLINGER. `modul` betyder at nogen skal ringe til os;
+ * `perm` at nogen skal se på rettighederne. `laesbareDomaener()` blander dem
+ * med vilje — den skal kun svare JA eller NEJ — så de skilles her.
+ *
+ * @returns {{[domaene: string]: "modul"|"perm"}} kun de utilgængelige
+ */
+export const DOMAENE_AARSAG = { modul: "modul", perm: "perm", afvist: "afvist" };
+
+export function utilgaengeligeDomaener(harModulFn = () => true, harPermFn = () => true) {
+  const ud = {};
+  for (const d of ALLE_KPI_DOMAENER) {
+    /* ⚠ MODULET FØRST. Har kunden ikke købt modulet, er permissionen et
+       spørgsmål der aldrig blev stillet — og "du mangler en rettighed" ville
+       sende brugeren til sin administrator over noget der skal købes. */
+    if (KPI_DOMAENE[d] && !harModulFn(KPI_DOMAENE[d])) ud[d] = DOMAENE_AARSAG.modul;
+    else if (KPI_PERM[d] && !harPermFn(KPI_PERM[d])) ud[d] = DOMAENE_AARSAG.perm;
+  }
+  return ud;
+}
+
 export const UDEN_DIVISION = [
   "koeretoejer", "personale", "fravaer", "carriers", "varer", "kompetencer",
 ];

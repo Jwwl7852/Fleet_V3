@@ -35,8 +35,7 @@ import { useKpi } from "../../fleet/useKpi.js";
 import { num, datoTid, deviation } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Henter, Datatilstand, Tom, Ikon, Sider,
-  KpiKort, KpiRaekke,
-} from "../../fleet/ui.jsx";
+  KpiKort, KpiRaekke, Kpiadgang } from "../../fleet/ui.jsx";
 import { pladsnavn } from "../../fleet/unitbooking.js";
 import {
   CARRIER_TYPE, CARRIER_STATUS, ALLE_CARRIER_STATUS,
@@ -50,7 +49,7 @@ import {
 const PR_SIDE = 12;
 
 export default function Carriers() {
-  const { kpi: k } = useKpi();
+  const { kpi: k, utilgaengelige } = useKpi();
   const [soeg, saetSoeg] = useState("");
   const [status, saetStatus] = useState("");
   const [ejerforhold, saetEjerforhold] = useState("");
@@ -126,6 +125,7 @@ export default function Carriers() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         <KpiKort label="Aktive beholdere" vaerdi={num(tal.aktive)}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund

@@ -83,8 +83,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { num, pct, dato, klokke, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
-  Gitter, MiniLinje, Formularsvar, Knap,
-} from "../../fleet/ui.jsx";
+  Gitter, MiniLinje, Formularsvar, Knap, Kpiadgang } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
 import { tjekDisponering } from "../../fleet/disponering.js";
@@ -208,7 +207,7 @@ function byggReservationer(fraNoden, vaerkstedsopgaver = []) {
 /* ---- Skærmen ---------------------------------------------------------- */
 
 export default function Disponering() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger, moduler } = useFleet();
   const [fane, setFane] = useState("dag");
   const [valgtId, setValgtId] = useState(null);
@@ -471,6 +470,7 @@ export default function Disponering() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         <KpiKort label="Planlagte opgaver" vaerdi={num(k.disponering.planlagteOpgaver)} />
         <KpiKort label="Uplanlagte" vaerdi={num(k.opgaver.uplanlagte)} />

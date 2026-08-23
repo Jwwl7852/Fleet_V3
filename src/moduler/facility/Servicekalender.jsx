@@ -52,8 +52,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, datoTid, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
-  Gitter, MiniLinje, Knap, Formularsvar,
-} from "../../fleet/ui.jsx";
+  Gitter, MiniLinje, Knap, Formularsvar, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
@@ -81,7 +80,7 @@ const DAG = 86400000;
 const VINDUE_DAGE = 10;
 
 export default function Servicekalender() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState(null);
   const [flytSvar, setFlytSvar] = useState(null);
@@ -302,6 +301,7 @@ export default function Servicekalender() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
           <KpiKort label="Planlagte besøg" vaerdi={num(k.facility.planlagtVedligehold)} />

@@ -60,8 +60,7 @@ import { num, pct, dato, ugedag, ugenr, serviceTone } from "../fleet/format.js";
 import { ledig, kapacitetsgrad } from "../fleet/dashboards.js";
 import { blokerer } from "../fleet/datatilstand.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap
-} from "../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Ikon, Knap, Kpiadgang } from "../fleet/ui.jsx";
 
 /* Ugen regnes fra mandag. Hvilken kolonne der er "i dag" afhænger af hvornår
    koden kører, så demo-tallene kan ikke ligge på en fast plads i et array:
@@ -94,7 +93,7 @@ export default function Bemanding() {
   const personale = useListe("personale", {
     vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
   });
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
 
   if (henter) return <Henter hvad="nøgletal" />;
   /**
@@ -171,6 +170,7 @@ export default function Bemanding() {
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         {/* Runde ikoner og chevron som på Booking. Tonerne er IKONACCENTER —
             farven forstærker, tallet og teksten bærer betydningen alene. */}

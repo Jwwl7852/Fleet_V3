@@ -42,8 +42,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Knap,
-  Gitter, Handlingsliste, Ikon,
-} from "../../fleet/ui.jsx";
+  Gitter, Handlingsliste, Ikon, Kpiadgang } from "../../fleet/ui.jsx";
 import Stopoversigt from "../../fleet/Stopoversigt.jsx";
 import Etapeskifte from "../../fleet/Etapeskifte.jsx";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
@@ -61,7 +60,7 @@ import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 import { blokerer } from "../../fleet/datatilstand.js";
 
 export default function BookingOversigt() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
 /**
    * ⚠ HER STOD "DER ER INGEN KONTROL TIL AT SÆTTE DEN".
@@ -247,6 +246,7 @@ export default function BookingOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <Kpiadgang utilgaengelige={utilgaengelige} />
       <KpiRaekke>
         {/* Runde ikoner her, afrundede firkanter på Dashboard — det er
             mockuppernes egen forskel, og den er bevaret. Tonerne er
