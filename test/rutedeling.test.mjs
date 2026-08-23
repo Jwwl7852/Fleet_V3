@@ -23,14 +23,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import { udenKommentarer } from "./kode.mjs";
 
 const APP = readFileSync("src/App.jsx", "utf8");
 const SHELL = readFileSync("src/fleet/AppShell.jsx", "utf8");
 
-const udenKommentarer = (kode) => kode
-  .replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/^\s*\/\/.*$/gm, "");
-
+/* ⚠ DEN DELTE, IKKE EN LOKAL KOPI — se test/kode.mjs. Kopien her åd hele
+   rutetræet: den så `/*` inde i strengen "/app/*" og strimlede resten af
+   filen, så prøven meldte at hver eneste skærm manglede en rute. */
 const KODE = udenKommentarer(APP);
 
 /** `const X = lazy(() => import("./moduler/…"))` */

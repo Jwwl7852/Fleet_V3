@@ -28,14 +28,71 @@ import { ANTAL_SKALA, LINJE_ART } from "./grundlag.js";
 
 /* ---- Arter ------------------------------------------------------------ */
 
+/**
+ * ⚠ TO KLASSER, OG DE ER IKKE TO NIVEAUER — beslutning 106.
+ *
+ * README har beskrevet skellet siden Flåde → Indberetninger blev bygget:
+ *
+ *   driftshændelser  (reparation, skade, dæk, service, andet) STARTER ET FORLØB
+ *   udgiftsregistreringer (tankning, parkering, truckwash, kvittering) GØR IKKE
+ *
+ * Koden havde **fire arter i én klasse**. En tankning fik derfor et forløb med
+ * seks tilstande — "Ny", "Vurderet", "På værksted" — om et beløb der bare skal
+ * bogføres. Feltet var påkrævet i reglen, så der stod altid noget, og "Ny" på
+ * en kvittering betyder ingenting.
+ *
+ * ⚠ FORSKELLEN ER OM DER ER ET ARBEJDE AT FØLGE. En revnet rude bevæger sig:
+ * nogen vurderer den, planlægger den, bilen kommer på værksted, fakturaen
+ * kommer. En parkeringsbillet er et beløb og en dato. En tilstandsmaskine på
+ * den anden ville være seks knapper der alle betyder "gemt".
+ */
+export const KLASSE = { drift: "drift", udgift: "udgift" };
+
 export const HAENDELSE_ART = {
-  reparation:      { art: "reparation",      label: "Reparation",      paaKoeretoej: true,  sensitiv: false },
-  koeretoejsskade: { art: "koeretoejsskade", label: "Enhedsskade",     paaKoeretoej: true,  sensitiv: true  },
-  godsskade:       { art: "godsskade",       label: "Godsskade",       paaKoeretoej: false, sensitiv: true  },
-  braendstof:      { art: "braendstof",      label: "Brændstof",       paaKoeretoej: true,  sensitiv: false },
+  /* ---- Driftshændelser: der er et arbejde at følge ------------------- */
+  reparation:      { art: "reparation",      label: "Reparation",  klasse: KLASSE.drift,  paaKoeretoej: true,  sensitiv: false },
+  koeretoejsskade: { art: "koeretoejsskade", label: "Enhedsskade", klasse: KLASSE.drift,  paaKoeretoej: true,  sensitiv: true  },
+  godsskade:       { art: "godsskade",       label: "Godsskade",   klasse: KLASSE.drift,  paaKoeretoej: false, sensitiv: true  },
+  daek:            { art: "daek",            label: "Dæk",         klasse: KLASSE.drift,  paaKoeretoej: true,  sensitiv: false },
+  service:         { art: "service",         label: "Service",     klasse: KLASSE.drift,  paaKoeretoej: true,  sensitiv: false },
+  /* ⚠ `andet` ER EN DRIFTSHÆNDELSE, ikke en udgift. En chauffør der ikke kan
+     sætte navn på det han ser, har set noget der skal VURDERES — og det er
+     præcis et forløb. Var den en udgift, ville "jeg ved ikke hvad det er"
+     ende som en post ingen kigger på igen. */
+  andet:           { art: "andet",           label: "Andet",       klasse: KLASSE.drift,  paaKoeretoej: true,  sensitiv: false },
+
+  /* ---- Udgiftsregistreringer: et beløb og en dato -------------------- */
+  /* ⚠ NØGLEN BLIVER `braendstof`. Appen kalder den "Tankning", som er hvad
+     chaufføren gør; noden hedder det den altid har heddet. En omdøbning ville
+     være en datamigrering af hver eneste post for et ord på en knap — samme
+     grund som Flåde hedder Fleet uden at `flaade` skifter (README). */
+  braendstof:      { art: "braendstof",      label: "Tankning",    klasse: KLASSE.udgift, paaKoeretoej: true,  sensitiv: false },
+  parkering:       { art: "parkering",       label: "Parkering",   klasse: KLASSE.udgift, paaKoeretoej: true,  sensitiv: false },
+  truckwash:       { art: "truckwash",       label: "Truckwash",   klasse: KLASSE.udgift, paaKoeretoej: true,  sensitiv: false },
+  /* ⚠ INGEN FLISE I APPEN, og det er et valg. En chauffør der fotograferer en
+     kvittering, gør det ALTID for noget — en tankning, en vask, en parkering —
+     og en flise der hed "Kvittering" ville konkurrere med de tre og gøre
+     dataene dårligere: halvdelen af tankningerne ville lande som kvitteringer
+     uden liter. Arten findes til kontoret, som modtager bilag der ikke passer
+     i de tre. Se APP_FLISER. */
+  kvittering:      { art: "kvittering",      label: "Kvittering",  klasse: KLASSE.udgift, paaKoeretoej: false, sensitiv: false },
 };
 
 export const ALLE_ARTER = Object.keys(HAENDELSE_ART);
+
+/** Er arten en udgiftsregistrering? Så har den intet forløb. */
+export const erUdgift = (art) => HAENDELSE_ART[art]?.klasse === KLASSE.udgift;
+
+/**
+ * ⚠ ET FORLØB HØRER KUN TIL EN DRIFTSHÆNDELSE. Reglen kræver feltet af netop
+ * de arter der har et, og `test/indberetningsarter.test.mjs` holder de to
+ * ordlister sammen — regelfilen kan ikke importere kataloget, så listen står
+ * to steder, og en prøve er det eneste der forhindrer at de driver.
+ */
+export const kraeverForloeb = (art) => !erUdgift(art);
+
+export const arterAf = (klasse) =>
+  ALLE_ARTER.filter((a) => HAENDELSE_ART[a].klasse === klasse);
 
 export const FELT = {
   kmStand: "kmStand",
@@ -61,7 +118,24 @@ const ART_FELTER = {
   reparation:      [FELT.kmStand, ...APP_FELTER],
   koeretoejsskade: [FELT.kmStand, FELT.skadeBeskrivelse, FELT.modpart, ...APP_FELTER],
   godsskade:       [FELT.skadeBeskrivelse, FELT.modpart, ...APP_FELTER],
+  /* ⚠ DÆK OG SERVICE BÆRER kmStand, og det er ikke pynt: et dæk skiftes efter
+     kilometer, og et serviceinterval måles i dem. Uden feltet kan ingen se om
+     det næste ligger om en uge eller om et halvt år. */
+  daek:            [FELT.kmStand, ...APP_FELTER],
+  service:         [FELT.kmStand, ...APP_FELTER],
+  /* `andet` har intet eget skema — chaufføren ved ikke hvad det er, og et
+     tomt felt han skal udfylde, ville blive udfyldt med fiktion.
+     Beskrivelsen står i `beskrivelse`, som alle arter har. */
+  andet:           [...APP_FELTER],
+
+  /* ---- Udgiftsregistreringer ----------------------------------------- */
   braendstof:      [FELT.kmStand, FELT.liter, FELT.adBlueLiter, FELT.prisPrLiterOere],
+  /* ⚠ DE TRE HAR INTET EGET FELT — beløbet står i `omkostningOere`, som
+     noden allerede bar. Et `beloebOere` ved siden af ville være det samme tal
+     to steder, og så skulle hver rapport vælge hvilket. */
+  parkering:       [],
+  truckwash:       [],
+  kvittering:      [],
 };
 
 export const felterFor = (art) => ART_FELTER[art] || [];
@@ -508,4 +582,45 @@ export function aabneFejlFor(indberetninger = [], koeretoejId) {
     n++;
   }
   return n;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHAUFFØRAPPENS FLISER — beslutning 106
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ FLISERNE ER IKKE ARTERNE. Otte fliser, ti arter, og forskellen er med
+   vilje: noden skal være præcis, knappen skal være hurtig.
+
+   `Skade` er den ene der ikke er én til én. En chauffør der har ramt en
+   rampe, og en der har væltet en palle, melder begge "skade" — men det er to
+   arter (`koeretoejsskade` og `godsskade`), de har hvert sit feltskema, og de
+   er BEGGE sensitive. Flisen spørger derfor ét spørgsmål mere frem for at
+   gætte. Gættede vi, ville halvdelen af godsskaderne stå som enhedsskader, og
+   det er den slags fejl der først opdages når forsikringen spørger.
+
+   ⚠ OG DEN OMVENDTE VEJ: `kvittering` har ingen flise. Se noten ved arten. */
+
+export const APP_FLISER = [
+  { key: "reparation", ikon: "🔧", label: "Reparation", art: "reparation" },
+  /* Ingen `art` — flisen fører til et valg. */
+  { key: "skade",      ikon: "💥", label: "Skade",      vaelgMellem: ["koeretoejsskade", "godsskade"] },
+  { key: "daek",       ikon: "🛞", label: "Dæk",        art: "daek" },
+  { key: "service",    ikon: "🛠️", label: "Service",    art: "service" },
+  { key: "truckwash",  ikon: "🚿", label: "Truckwash",  art: "truckwash" },
+  { key: "tankning",   ikon: "⛽", label: "Tankning",   art: "braendstof" },
+  { key: "parkering",  ikon: "🅿️", label: "Parkering",  art: "parkering" },
+  { key: "andet",      ikon: "📋", label: "Andet",      art: "andet" },
+];
+
+/**
+ * Hvad en flise fører til: en art, eller et valg mellem to.
+ *
+ * ⚠ RÆKKEFØLGEN I `vaelgMellem` ER IKKE TILFÆLDIG. Enhedsskaden står først
+ * fordi den er den hyppigste for en chauffør — men BEGGE skal trykkes, og der
+ * er ingen standard. Et forvalg ville blive stående hos den der har travlt.
+ */
+export function arterForFlise(key) {
+  const flise = APP_FLISER.find((f) => f.key === key);
+  if (!flise) return [];
+  return flise.art ? [flise.art] : (flise.vaelgMellem || []);
 }

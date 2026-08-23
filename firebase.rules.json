@@ -1712,6 +1712,20 @@
 
         // Chauffører må oprette, men ikke redigere andres. km er TOTAL
         // målerstand, ikke km siden sidste tankning.
+        // ⚠ forloeb KRAEVES KUN AF DRIFTSHAENDELSER — BESLUTNING 106.
+        //
+        // README har beskrevet skellet siden noden blev bygget:
+        // driftshaendelser (reparation, skade, daek, service, andet) starter
+        // et FORLOEB; udgiftsregistreringer (tankning, parkering, truckwash,
+        // kvittering) goer ikke. Reglen kraevede feltet af dem alle, saa en
+        // parkeringsbillet stod med "Ny" i en tilstandsmaskine med seks trin
+        // om et beloeb der bare skal bogfoeres.
+        //
+        // ⚠ ORDLISTEN STAAR TO STEDER, og det kan den ikke undgaa: en regel
+        // kan ikke importere HAENDELSE_ART. Proeven i
+        // test/indberetningsarter.test.mjs udleder listen af kataloget og
+        // faelder hvis de to driver — samme ordning som meldingstyperne paa
+        // noden statushaendelser (beslutning 103).
         "indberetninger": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
           // ⚠ HER STOD "type". Posterne baerer "art" — godsskade, reparation,
@@ -1740,7 +1754,7 @@
             // vi ikke kender, et forloeb der ikke findes, en omkostning som
             // streng. Og chauffoerer SKRIVER til den: det er den ene node
             // hvor den mindst betroede rolle opretter poster.
-            ".validate": "newData.hasChildren(['art', 'forloeb', 'oprettetAf', 'oprettetMs'])",
+            ".validate": "newData.hasChildren(['art', 'oprettetAf', 'oprettetMs']) && (newData.child('art').val().matches(/^(braendstof|parkering|truckwash|kvittering)$/) || newData.hasChildren(['forloeb']))",
 
             "division": { ".validate": false },
 

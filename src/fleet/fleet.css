@@ -1551,3 +1551,29 @@
   border-radius:8px; background:var(--bc-card)}
 .fc-kpiadgang p{margin:0}
 .fc-kpiadgang p + p{margin-top:6px}
+
+/* ---- Chaufførappens forside og indberetning — beslutning 106 ---------- */
+.fc-app-forside{display:flex; flex-direction:column; gap:14px}
+.fc-app-genvej{
+  display:block; text-decoration:none; color:inherit; text-align:center}
+.fc-app-ikon{display:block; font-size:var(--fc-t-4xl); line-height:1.4}
+.fc-app-tilbage{margin-right:10px}
+.fc-app-sidetitel{font-size:var(--fc-t-xl)}
+
+/* ⚠ TO KOLONNER, IKKE FIRE. Otte fliser i fire kolonner giver 44 px brede
+   knapper på en telefon — under det minimum en tommelfinger kan ramme. */
+.fc-app-faner{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.fc-app-fliser{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.fc-app-flise{
+  min-height:96px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:4px; cursor:pointer;
+  background:var(--bc-card); border:1px solid var(--bc-line);
+  border-radius:10px; font-size:var(--fc-t-l); font-weight:650;
+  color:var(--bc-text)}
+.fc-app-flise:hover{border-color:var(--bc-accent)}
+
+.fc-app-felt{display:flex; flex-direction:column; gap:4px}
+.fc-app-felt > span{font-size:var(--fc-t-s); color:var(--bc-muted)}
+.fc-app-felt .fc-ctl{min-height:48px; font-size:var(--fc-t-l)}
+/* Firmanavnet under mærket i chaufførappens topbar — beslutning 106. */
+.fc-app-tenant{display:block; font-size:var(--fc-t-s); color:var(--bc-accent); font-weight:650}

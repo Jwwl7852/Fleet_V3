@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **105 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **106 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,29 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Tilføje en indberetningsart uden at sige hvilken KLASSE den er.**
+  `HAENDELSE_ART` har to: en **driftshændelse** starter et forløb (der er et
+  arbejde at følge), en **udgiftsregistrering** gør ikke (et beløb og en dato).
+  Reglen kræver `forloeb` af netop de første — og ordlisten står to steder,
+  fordi en RTDB-regel ikke kan importere kataloget.
+  `test/indberetningsarter.test.mjs` udleder den og fælder hvis de driver.
+  ⚠ **Fliserne i appen er IKKE arterne.** Otte fliser, ti arter: `Skade`
+  spørger ét spørgsmål mere (enhedsskade og godsskade har hvert sit feltskema
+  og er begge sensitive), og `kvittering` har ingen flise, fordi en kvittering
+  altid er FOR noget — en flise ville stjæle halvdelen af tankningerne.
+  ⚠ **Og en udgift får ikke sit eget beløbsfelt.** `omkostningOere` står på
+  noden; et `beloebOere` ved siden af er det samme tal to steder.
+  Se beslutning 106.
+- **Skrive en øreomregning i en formular.** `oereFraKroner()` står i
+  `format.js` og kan to ting en hjemmelavet ikke gør: fjerne
+  tusindtalsseparatoren (`"1.250,00"` bliver til **NaN** uden den) og runde af,
+  fordi `84,20 * 100` er 8419.999999999999. Jeg skrev alligevel min egen i
+  chaufførappen — i en formular jeg lige havde noteret at katalogisere.
+- **Kopiere `udenKommentarer` ind i en prøve.** Den står i `test/kode.mjs`.
+  Den naive `s.replace(/\/\*[\s\S]*?\*\//g, "")` ser `/*` inde i **strengen**
+  `"/app/*"` og æder resten af filen — to prøver meldte at hver eneste skærm
+  manglede en rute. Målt: **32 prøvefiler, syv varianter**; 30 kopier står
+  stadig tilbage.
 - **Lade menuen tilbyde en dør der ikke kan åbnes — eller tro at den er
   spærringen.** Efter beslutning 104 havde en chauffør **18 af 59 skærme** med
   mindst én afvist læsning, og alle 54 menupunkter stod der. `kraeverPerm` i

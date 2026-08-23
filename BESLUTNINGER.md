@@ -8039,3 +8039,138 @@ har en holdbarhed, og den udløber uden at nogen får besked.
 stod midt i luften over kortene og lignede en fejlmeddelelse. En oplysning ved
 siden af de tal der ER der, skal læses som et banner. Det så jeg kun ved at åbne
 skærmen.
+
+## 106. Otte fliser, fire arter — dokumentationen beskrev noget ingen havde bygget
+
+Ejeren viste skærmbilleder af hvordan chaufførappen skal se ud: fire kort på
+forsiden — Timeregistrering, Turplan, Indberetning, Anmod om frihed — og under
+Indberetning et gitter med **otte fliser**: Reparation, Skade, Dæk, Service,
+Truckwash, Tankning, Parkering, Andet.
+
+Målt mod koden: `HAENDELSE_ART` havde **fire arter**. Fire af fliserne havde
+ingen art at skrive.
+
+⚠ **Og README havde beskrevet de otte hele tiden**, med et skel koden ikke
+kendte:
+
+> **driftshændelser** (reparation, skade, dæk, service, andet) starter et
+> forløb; **udgiftsregistreringer** (tankning, parkering, truckwash,
+> kvittering) gør ikke.
+
+Det er den omvendte fejl af den sædvanlige: ikke kode uden dokumentation, men
+**dokumentation uden kode**. Og den var usynlig, fordi ingen skærm havde brug
+for de manglende arter — kontorets Indberetninger-skærm viser dem den får.
+
+### Skellet er om der er et arbejde at følge
+
+En revnet rude bevæger sig: nogen vurderer den, planlægger den, bilen kommer på
+værksted, fakturaen kommer. **En parkeringsbillet er et beløb og en dato.**
+
+Reglen krævede `forloeb` af dem alle, så en tankning stod med "Ny" i en
+tilstandsmaskine med seks trin, og kontorets arbejdsliste fyldtes med bilag.
+`.validate` kræver nu feltet af netop de arter der har et.
+
+⚠ **Ordlisten står to steder, og det kan den ikke undgå:** en RTDB-regel kan
+ikke importere `HAENDELSE_ART`. `test/indberetningsarter.test.mjs` udleder
+listen af kataloget og fælder hvis de driver — samme ordning som
+meldingstyperne på `statushaendelser` (beslutning 103).
+
+⚠ **`andet` hører i DRIFT, ikke i udgift.** En chauffør der ikke kan sætte navn
+på det han ser, har set noget der skal **vurderes**. Var den en udgift, ville
+"jeg ved ikke hvad det er" ende som en post ingen kigger på igen.
+
+⚠ **Og ingen udgiftsart fik sit eget beløbsfelt.** `omkostningOere` stod på
+noden i forvejen; et `beloebOere` ved siden af ville være det samme tal to
+steder, og så skulle hver rapport vælge hvilket.
+
+### Fliserne er ikke arterne
+
+Otte fliser, ti arter — og forskellen er med vilje: **noden skal være præcis,
+knappen skal være hurtig.**
+
+⚠ **`Skade` spørger ét spørgsmål mere.** En chauffør der har ramt en rampe, og
+en der har væltet en palle, melder begge "skade" — men det er `koeretoejsskade`
+og `godsskade`, de har hvert sit feltskema, og de er **begge** sensitive.
+Gættede vi, ville halvdelen af godsskaderne stå som enhedsskader, og det
+opdages først når forsikringen spørger.
+
+⚠ **Og `kvittering` har ingen flise.** En chauffør fotograferer altid en
+kvittering **for** noget — en tankning, en vask, en parkering. En flise ville
+konkurrere med de tre og gøre dataene dårligere: halvdelen af tankningerne
+ville lande som kvitteringer uden liter. Arten findes til kontoret, som
+modtager bilag der ikke passer i de tre.
+
+⚠ **Nøglen bliver `braendstof`.** Appen kalder den "Tankning", som er hvad
+chaufføren gør; noden hedder det den altid har heddet. En omdøbning ville være
+en datamigrering af hver eneste post for et ord på en knap — samme grund som
+Flåde hedder Fleet uden at `flaade` skifter.
+
+### Forsiden viser kun de kort der fører et sted hen
+
+Specifikationen har fire; to er bygget. De to andre står **ikke** som grå kort
+med "kommer snart". Det er beslutning 105's regel én skærm længere inde: et
+kort der fortæller chaufføren at han ikke kan gøre det han skulle, er ikke en
+oplysning til ham — det er en note til os, og den hører i README.
+
+"Mine ture" er Turplanens forløber. Den viser etaperne og meldingerne
+(beslutning 103); Turplanen skal vise **stop** med tidsvindue, kontakt,
+ordrelinjer og scan — en model der ikke findes. Kortet skifter navn den dag den
+gør; det lover ikke noget det ikke kan.
+
+### Sendt gennem appen, ikke kun gennem prøver
+
+En rigtig parkeringsbillet på 85,50 kr blev sendt fra skærmen og målt i den
+udrullede base:
+
+```
+ind-mt61hiws1doq9  {"art":"parkering","omkostningOere":8550,
+                    "oprettetAf":"mI9Vs…","oprettetMs":1787503592188}
+```
+
+Rigtigt beløb, rigtigt uid — **og intet `forloeb`**. Den betingede regel virker.
+
+⚠ **Og kørslen fandt to fejl prøverne ikke kunne se.**
+
+**Listen sagde nul mens kvitteringen sagde sendt.** `useListe` er et
+`once()`-opslag; den ser ikke en skrivning der lige er sket. "Indberettet" stod
+tom under teksten "Parkering sendt", og fodnoten sagde "0 sendt". En kvittering
+der modsiges af listen ved siden af, er værre end ingen kvittering.
+
+**Og jeg skrev øreomregningen selv.** `Math.round(Number(v.replace(",", ".")) *
+100)` — mens `oereFraKroner()` har stået i `format.js` siden beslutning 2 og
+kan to ting mere: den fjerner tusindtalsseparatoren (`"1.250,00"` blev til
+**NaN** i min), og den runder af, fordi `84,20 * 100` er 8419.999999999999 i
+flydende komma. **En kopi nummer to af et regnestykke er den fejl der har
+kostet mest i det her repo**, og jeg lavede den i en formular jeg lige havde
+skrevet en note om at katalogisere.
+
+### Og prøvernes egen kommentarfjerner åd rutetræet
+
+Ruten `path="/app/*"` indeholder `/*`. Den naive stripper —
+
+```js
+s.replace(/\/\*[\s\S]*?\*\//g, "")
+```
+
+— så det som en kommentar og åd fra dér til næste `*/`, altså hele resten af
+`App.jsx`. To prøver meldte at **hver eneste skærm manglede en rute**, og
+fejlen så ud som om rutetræet var i stykker.
+
+Målt: **32 prøvefiler har hver sin kopi, i syv varianter.** Det er
+`erGyldigMail()` igen (beslutning 42) — fire steder, tre svar. `test/kode.mjs`
+er nu den ene, og den kræver at `/*` står efter linjestart, blanktegn eller
+`{`. En kommentar gør altid det; en streng med en jokertegnsrute gør ikke.
+
+De øvrige 30 kopier står tilbage. De er latente — kun `App.jsx` har `/*` i en
+streng i dag — men det er ottende gang et anker spænder for bredt, og næste
+gang bliver ikke lettere at finde.
+
+### Tilbage af specifikationen
+
+| | Findes | Mangler |
+|---|---|---|
+| Forside | ✓ | de to kort der ikke er bygget |
+| Indberetning | ✓ | fotos af kvitteringer |
+| Timeregistrering | — | hele noden; **position afventer et svar** |
+| Turplan | delvist | **stop-modellen** — tidsvindue, kontakt, ordrelinjer, scan |
+| Anmod om frihed | — | ansøgningstilstand på `fravaer`, svar i systemet |

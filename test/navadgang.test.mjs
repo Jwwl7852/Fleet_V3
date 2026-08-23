@@ -26,6 +26,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { udenKommentarer } from "./kode.mjs";
 
 import { ALLE, NAV } from "../src/fleet/nav.js";
 import { ROLLE_PERMS, harPerm, permStrengFraRolle } from "../src/fleet/permissions.js";
@@ -36,8 +37,7 @@ const REGLER = JSON.parse(
     .replace(/^\s*\/\/.*$/gm, "")
 ).rules.tenants.$tenantId;
 
-const udenKommentarer = (t) =>
-  t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+/* ⚠ DEN DELTE, IKKE EN LOKAL KOPI — se test/kode.mjs og beslutning 106. */
 
 /** Den læse-permission en node kræver — eller null. */
 const permForNode = (node) => {

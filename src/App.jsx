@@ -93,7 +93,9 @@ const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
 const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
+const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
 const MinTur = lazy(() => import("./moduler/app/MinTur.jsx"));
+const AppIndberetning = lazy(() => import("./moduler/app/Indberetning.jsx"));
 
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -228,11 +230,17 @@ function EfterLogin() {
  * uændret kræver et tenant-claim. Der er ingen chaufførvariant af spærringen,
  * og reglerne kender ikke rammen — kun tokenet. Rammen afgør hvad der TEGNES.
  */
-function Chauffoerramme({ bruger, logUd, children }) {
+function Chauffoerramme({ bruger, tenant, logUd, children }) {
   return (
     <div className="fc-app fc-chauffoer">
       <header className="fc-top">
-        <span className="fc-brand">FleetControl</span>
+        {/* ⚠ FIRMANAVNET STÅR UNDER MÆRKET. En chauffør kan køre for to
+            vognmænd og have to konti; uden navnet kan han ikke se hvilken
+            han er logget ind i, og en melding lander det forkerte sted. */}
+        <div>
+          <span className="fc-brand">FleetControl</span>
+          {tenant?.kort && <span className="fc-app-tenant">{tenant.kort}</span>}
+        </div>
         <div className="fc-med-ikon" style={{ gap: 12 }}>
           <span className="fc-hint">{bruger?.navn || bruger?.email}</span>
           <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
@@ -416,10 +424,15 @@ export default function App() {
               udenfor — derfor sin egen grænse, ellers ville en doven MinTur
               vise et tomt vindue. Beslutning 97 og 103. */}
           {harAdgang && (
-            <Route path="/app" element={(
-              <Chauffoerramme bruger={bruger} logUd={() => auth?.signOut()}>
+            <Route path="/app/*" element={(
+              <Chauffoerramme bruger={bruger} tenant={tenantListe[0]} logUd={() => auth?.signOut()}>
                 <Suspense fallback={<div className="fc-empty">Henter dine ture …</div>}>
-                  <MinTur />
+                  <Routes>
+                    <Route index element={<AppForside />} />
+                    <Route path="tur" element={<MinTur />} />
+                    <Route path="indberetning" element={<AppIndberetning />} />
+                    <Route path="*" element={<Navigate to="/app" replace />} />
+                  </Routes>
                 </Suspense>
               </Chauffoerramme>
             )} />
