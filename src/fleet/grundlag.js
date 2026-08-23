@@ -169,24 +169,54 @@ export const totaler = (grundlag) => totalerAfLinjer(grundlag?.linjer || []);
 
 /* ---- Validering ------------------------------------------------------- */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MOMSSATSEN — SPØRGSMÅLET ER STILLET, OG DET ER BESVARET
+   ══════════════════════════════════════════════════════════════════════════
+
+   Her stod i månedsvis: *"MOMSSATSEN GÆTTES IKKE … satserne og hvornår hver
+   især gælder, skal bekræftes af en bogholder FØR første eksport."* Feltet var
+   påkrævet og tomt, og eksporten var spærret for alle.
+
+   **Svaret er 25 %, uden undtagelser.** Truffet af ejeren, 23. august 2026.
+
+   ⚠ FORBEHOLDET STÅR HER, FORDI DET BLEV REJST OG FRAVALGT — ikke overset.
+   International kørsel er som udgangspunkt momsfritaget (momsloven §34), og
+   demo-grundlaget havde netop en `Skagen → Oslo`-linje der stod tom med
+   begrundelsen *"eksport til Norge er ikke 25 %"*. Spørgsmålet blev stillet
+   med den sætning i hånden, og svaret var 25 for alle linjer.
+
+   Siger en bogholder en dag noget andet, er det HER og i demo-grundlaget man
+   skal kigge — og `MOMSSATS_SALG` er det ene sted tallet står.
+
+   ⚠ OG DET ER IKKE VORES EGEN MOMS. `MOMSSATS` i `priser.js` er satsen på
+   FleetControls faktura til vognmanden. Den her er satsen på vognmandens
+   faktura til HANS kunde. De to hedder næsten det samme, står i hver sin fil,
+   og jeg blandede dem sammen én gang (beslutning 91).
+   ══════════════════════════════════════════════════════════════════════════ */
+export const MOMSSATS_SALG = 25;
+
+/**
+ * Linjerne med satsen sat.
+ *
+ * ⚠ SAT VED OPBYGNINGEN, IKKE VED VISNINGEN. Et låst grundlag dokumenterer
+ * hvad der blev faktureret; regnede vi satsen ud hver gang skærmen blev
+ * åbnet, ville et grundlag fra marts få nye tal den dag satsen ændres. Det er
+ * samme grund som et frosset grundlag gemmer sine egne satser.
+ *
+ * ⚠ EN LINJE DER ALLEREDE BÆRER EN SATS, RØRES IKKE — heller ikke hvis den er
+ * **0**. `Number.isFinite(0)` er sandt, og en nul-sats er et svar, ikke et
+ * manglende felt. Uden det led ville en fremtidig momsfritagelse blive
+ * overskrevet af standarden hver gang grundlaget blev bygget om.
+ */
+const medMomssats = (linjer = []) =>
+  linjer.map((l) => (Number.isFinite(l?.momssats) ? l : { ...l, momssats: MOMSSATS_SALG }));
+
 /**
  * validerLinje(linje) → string[] med fejl. Tom liste betyder gyldig.
  *
- * ⚠ MOMSSATSEN GÆTTES IKKE. Den står pr. linje, og en linje uden sats
- * blokerer eksporten.
- *
- * Det ville være nemt at sætte 25 som standard — det er den danske sats, og
- * det ville være rigtigt de fleste gange. Men "de fleste gange" er ikke godt
- * nok her: kørsel til udlandet, EU-handel med omvendt betalingspligt og
- * momsfri persontransport har ikke 25. Rammer vi forkert, er det ikke en
- * visningsfejl — det er en momsangivelse der er forkert, og den opdages af
- * SKAT frem for af os. Et system der gætter rigtigt ni gange ud af ti, lærer
- * brugeren at stole på det tiende gæt.
- *
- * ÅBENT SPØRGSMÅL: satserne og hvornår hver især gælder, skal bekræftes af en
- * bogholder FØR første eksport. Se README's liste over hvad der blokerer
- * fase 2. Indtil da er feltet påkrævet og tomt — det tvinger et menneske til
- * at tage stilling, hvilket er det rigtige svar så længe vi ikke kender reglen.
+ * Momssatsen sættes af `byggGrundlag()` og kan ikke længere mangle. Den
+ * valideres stadig: en sats uden for 0–100 er en tastefejl, ikke en
+ * fritagelse.
  */
 export function validerLinje(linje) {
   const fejl = [];
@@ -272,7 +302,11 @@ export function byggGrundlag({ bookingId, periode, kundeId, linjer = [], udarbej
     periode: harPeriode ? { fra: periode.fra, til: periode.til } : null,
     kundeId: kundeId ?? null,
     tilstand: "kladde",
-    linjer,
+    /* ⚠ SATSEN SÆTTES HER, ÉT STED. Enhver vej ind i et grundlag går
+       gennem byggGrundlag(), så en linje kan ikke opstå uden sin sats —
+       og så er der ikke et felt nogen skal huske at udfylde. Se
+       MOMSSATS_SALG og beslutning 98. */
+    linjer: medMomssats(linjer),
     udarbejdetAf,
     udarbejdetMs: nu,
     godkendtAf: null,
@@ -382,7 +416,17 @@ export const EKSPORT_FORMAT_VERSION = 1;
 /**
  * kanEksportere(grundlag) → { ok, aarsager }
  *
- * Her er momssatsen ufravigelig. Se noten i validerLinje().
+ * ⚠ MOMSKONTROLLEN ER ET VÆRN, IKKE ET TRIN MERE.
+ *
+ * Indtil beslutning 98 var den en arbejdsgang: satsen stod tom, og et
+ * menneske skulle sætte den pr. linje før eksporten kunne køre. Nu sætter
+ * `byggGrundlag()` den, og en linje uden sats kan ikke længere opstå.
+ *
+ * Kontrollen bliver alligevel stående. Et grundlag fra FØR beslutningen kan
+ * have en tom linje — der lå én i basen, målt — og en fremtidig vej ind kan
+ * springe byggGrundlag() over. **En eksport er en kanal UD af systemet**, og
+ * en fil med et hul i kan ikke kaldes tilbage fra bogholderens indbakke.
+ * Værnet koster ingenting så længe det aldrig udløses.
  */
 export function kanEksportere(grundlag) {
   const aarsager = [];
@@ -397,7 +441,8 @@ export function kanEksportere(grundlag) {
   if (uden.length) {
     aarsager.push(
       `${uden.length} ${uden.length === 1 ? "linje mangler" : "linjer mangler"} momssats. ` +
-      `Satsen gættes ikke — den skal sættes pr. linje.`
+      `Satsen er ${MOMSSATS_SALG} % og sættes af byggGrundlag() — mangler den, ` +
+      `er grundlaget skrevet før beslutning 98 eller uden om den vej ind.`
     );
   }
   return { ok: !aarsager.length, aarsager };

@@ -7170,3 +7170,98 @@ rammen forsvinder.
 i indgangen, betaler alle for dem; lades de være, betaler kun den der åbner
 begge skærme. Netlify leverer over HTTP/2, hvor en ekstra fil ikke er en
 ekstra forbindelse.
+
+---
+
+## 98. Momssatsen er 25 % — spørgsmålet blev stillet og besvaret
+
+`grundlag.js` har siden beslutning 25 nægtet at sætte en momssats:
+
+> *"Det ville være nemt at sætte 25 som standard … Men 'de fleste gange' er
+> ikke godt nok her: kørsel til udlandet, EU-handel med omvendt betalingspligt
+> og momsfri persontransport har ikke 25. Rammer vi forkert, er det ikke en
+> visningsfejl — det er en momsangivelse der er forkert, og den opdages af
+> SKAT frem for af os."*
+
+Feltet stod tomt, eksporten var spærret for **alle**, og det stod i README som
+det første af fire spørgsmål der blokerer fase 2, med *"en bogholder, før
+første eksport"* som den der skulle svare.
+
+**Ejeren svarede den 23. august 2026: 25 %, uden undtagelser.**
+
+### ⚠ Forbeholdet blev rejst FØR svaret
+
+Det er forskellen på en beslutning og en antagelse. Spørgsmålet blev stillet
+med den konkrete indvending i hånden:
+
+- International kørsel er som udgangspunkt momsfritaget (momsloven §34).
+- Demo-grundlaget havde netop en `Skagen → Oslo`-linje der stod **tom** med
+  begrundelsen *"eksport til Norge er ikke 25 %"*.
+- Demodataene kører til Paris, Hamburg og over Rødby–Puttgarden.
+
+Svaret var 25 for alle linjer. Det er noteret her, i `grundlag.js` og i
+`demo-grundlag.js`, så den der en dag hører noget andet fra en bogholder, kan
+finde både tallet og den linje hvor det bider.
+
+### Hvad der ændrede sig
+
+`MOMSSATS_SALG = 25` er det ene sted tallet står. `byggGrundlag()` sætter det
+på hver linje der ikke selv bærer en sats — **ét sted, ved opbygningen.**
+
+⚠ **Sat ved opbygningen, ikke ved visningen.** Et låst grundlag dokumenterer
+hvad der blev faktureret; regnede vi satsen ud hver gang skærmen blev åbnet,
+ville et grundlag fra marts få nye tal den dag satsen ændres. Samme grund som
+et frosset grundlag gemmer sine egne satser.
+
+⚠ **En sats der allerede står, røres ikke — heller ikke 0.**
+`Number.isFinite(0)` er sandt, og en nul-sats er et **svar**, ikke et manglende
+felt. Uden det led ville en fremtidig fritagelse blive overskrevet af
+standarden hver gang grundlaget blev bygget om.
+
+⚠ **Værnet i `kanEksportere()` bliver stående** — men det er ikke længere et
+arbejdstrin, det er et værn. Et grundlag fra før beslutningen kan have en tom
+linje (der lå én i basen, målt: **1 af 8 linjer**), og en fremtidig vej ind kan
+springe `byggGrundlag()` over. En eksport er en kanal UD af systemet.
+
+### Og så blev eksporten koblet til en knap
+
+`eksporter()` har stået i `grundlag.js` siden beslutning 25 og **er blevet
+kaldt ingen steder** — fordi momssatsen spærrede hver eneste eksport. Det er
+den observation jeg selv gjorde i gennemgangen af hvad der manglede, uden at
+kunne gøre noget ved den.
+
+Fakturering har nu **Hent som JSON**.
+
+⚠ **Det er den NEUTRALE model, ikke en adapter.** Hvilket regnskabssystem der
+får sit eget format først — e-conomic, Dinero, Business Central — er stadig
+åbent (beslutning 22). En JSON af `eksporter()` er præcis det der ER besluttet:
+det godkendte grundlag som det står, med `formatVersion` så modtageren kan se
+hvad han læser.
+
+⚠ **Og den låser ikke.** At hente filen er ikke det samme som at bogføre den;
+låsningen kræver stadig en reference til hvor bilaget endte. En knap der gjorde
+begge dele, ville låse et grundlag på et download der måske aldrig blev åbnet.
+
+### Det arbejdet fandt
+
+**1. Tre prøver holdt mellemstadiet på plads, og alle tre skulle skrives om.**
+*"MOMSSATSEN GÆTTES IKKE — en manglende sats blokerer eksporten"* målte noget
+der var rigtigt indtil svaret kom. Havde jeg rettet dem til at acceptere begge
+dele, ville de ikke måle noget. De måler nu at satsen bliver SAT, at en
+eksisterende sats ikke overskrives, og at værnet stadig virker på en linje
+bygget uden om `byggGrundlag()`.
+
+Det er fjerde gang i denne base at en prøve om et åbent spørgsmål er faldet
+netop da svaret kom — og det er meningen. `⚠ INGEN RETENTION ER AFGJORT ENDNU`
+venter stadig på sin dag.
+
+**2. Selvkontrollen i demofilen var vendt forkert bagefter.** Den krævede at
+mindst ét grundlag MANGLEDE sin momssats — *"forsvinder det, forsvinder
+demonstrationen af at vi ikke gætter"*. Demonstrationen er nu overflødig, og
+kontrollen advarer om det modsatte: en demolinje uden sats viser en spærring
+der ikke længere findes.
+
+**3. Hentefunktionen lå som en lokal kopi.** `Prisliste.jsx` havde sin egen
+`hent()` med `URL.revokeObjectURL`; Fakturering skulle bruge den samme. Fire
+linjer er lige præcis kort nok til at blive skrevet af — og lige præcis langt
+nok til at den ene glemmer at frigive URL'en. Den står nu i `eksport.js`.

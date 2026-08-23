@@ -14,10 +14,13 @@
  *    at knappen bare er grå. En deaktiveret knap uden forklaring sender
  *    disponenten på jagt; her står hvad der mangler.
  *
- * 2. EN MANGLENDE MOMSSATS SPÆRRER EKSPORTEN. Vi gætter ikke 25 %. Feltet står
- *    tomt med en advarsel frem for udfyldt med et sandsynligt tal — se noten i
- *    grundlag.js. Det er det åbne spørgsmål, gjort synligt frem for gemt i en
- *    README.
+ * 2. MOMSSATSEN ER BESVARET — 25 %, uden undtagelser (beslutning 98).
+ *    Her stod at den ikke måtte gættes, og at det tomme felt var det åbne
+ *    spørgsmål gjort synligt. Spørgsmålet blev stillet og besvaret af ejeren,
+ *    og `byggGrundlag()` sætter nu satsen. Kortet "Mangler momssats" bliver
+ *    stående som et VÆRN: et grundlag fra før beslutningen kan have en tom
+ *    linje, og en fil med et hul i kan ikke kaldes tilbage fra bogholderens
+ *    indbakke.
  *
  * 3. ET ERSTATTET GRUNDLAG BLIVER STÅENDE, gennemstreget og med en henvisning
  *    til det der afløste det. Skjulte vi det, kunne man ikke se hvad der blev
@@ -78,7 +81,9 @@ import {
   GRUNDLAG_TILSTAND, LINJE_ART,
   totaler, linjeBeloebOere, linjeMomsOere, talFraAntal,
   kanGodkende, kanEksportere, kanLaase, linjerUdenMoms, erGaeldende, summer, fraDb,
+  eksporter, MOMSSATS_SALG,
 } from "../fleet/grundlag.js";
+import { hentFil, filnavn } from "../fleet/eksport.js";
 import { DEMO_GRUNDLAG } from "../fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../fleet/demo-kunder.js";
@@ -159,8 +164,13 @@ export default function Fakturering() {
           <KpiKort label="Kladder" vaerdi={num(kladder.length)} note="i de hentede" />
           <KpiKort label="Spærret af åbne etaper" vaerdi={num(spaerrede.length)}
                    tone={spaerrede.length ? "warn" : undefined} note="kan ikke godkendes" />
+          {/* ⚠ ET VÆRN, IKKE ET ARBEJDSTRIN. Satsen sættes af byggGrundlag()
+              siden beslutning 98, så tallet er nul i praksis. Står der
+              alligevel noget, er grundlaget skrevet før beslutningen eller
+              uden om den vej ind — og så skal det ses. */}
           <KpiKort label="Mangler momssats" vaerdi={num(udenMoms.length)}
-                   tone={udenMoms.length ? "warn" : undefined} note="eksport spærret" />
+                   tone={udenMoms.length ? "warn" : undefined}
+                   note={udenMoms.length ? "eksport spærret" : `alle på ${MOMSSATS_SALG} %`} />
         </KpiRaekke>
       )}
 
@@ -366,6 +376,34 @@ function Detaljer({ g, etaper = [], kunder = [], alle = [], bruger, paaSkrevet }
                     : "Låser grundlaget. Det kan ikke ændres bagefter."}
               onClick={paaLaas}>
           Lås mod reference
+        </Knap>
+        {/* ⚠ EKSPORTEN VAR BYGGET OG BLEV KALDT INGEN STEDER.
+            `eksporter()` har stået i grundlag.js siden beslutning 25 og
+            produceret den neutrale model — men der var ingen knap, fordi
+            momssatsen spærrede hver eneste eksport. Med beslutning 98 er
+            satsen 25 %, og så er der ikke længere noget at vente på.
+
+            ⚠ DET ER DEN NEUTRALE MODEL, IKKE EN ADAPTER. Hvilket
+            regnskabssystem der får sit eget format først — e-conomic, Dinero,
+            Business Central — er stadig åbent (beslutning 22). En JSON af
+            `eksporter()` er præcis det der er besluttet: det låste grundlag,
+            som det står, med formatVersion så modtageren kan se hvad han
+            læser.
+
+            ⚠ OG DEN LÅSER IKKE. At hente filen er ikke det samme som at
+            bogføre den; låsningen kræver stadig en reference til hvor
+            bilaget endte. En knap der gjorde begge dele, ville låse et
+            grundlag på et download der måske aldrig blev åbnet. */}
+        <Knap disabled={!eksport.ok}
+              title={eksport.ok
+                ? "Henter grundlaget som JSON i den neutrale model. Låser ikke."
+                : eksport.aarsager[0]}
+              onClick={() => hentFil(
+                JSON.stringify(eksporter(g), null, 2),
+                filnavn(`grundlag-${g.nummer || g.id}`),
+                "application/json;charset=utf-8",
+              )}>
+          Hent som JSON
         </Knap>
       </div>
     </Kort>

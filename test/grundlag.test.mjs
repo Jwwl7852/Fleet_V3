@@ -13,7 +13,7 @@ import {
   LINJE_ART, GRUNDLAG_TILSTAND, ANTAL_SKALA,
   antalFraTal, talFraAntal,
   linjeBeloebOere, linjeMomsOere, totaler,
-  validerLinje, linjerUdenMoms,
+  validerLinje, linjerUdenMoms, MOMSSATS_SALG,
   byggGrundlag, kanGodkende, godkend,
   kanEksportere, eksporter, EKSPORT_FORMAT_VERSION, laas, kanLaase,
   erstat, erGaeldende, summer, fraDb,
@@ -149,14 +149,46 @@ test("godkendelse sætter godkendtAf — det danske feltnavn, og et uid", () => 
 
 /* ---- Eksport ----------------------------------------------------------- */
 
-test("MOMSSATSEN GÆTTES IKKE — en manglende sats blokerer eksporten", () => {
-  const g = { ...grundlag({ linjer: [linje({ momssats: null })] }), tilstand: "godkendt" };
+/**
+ * ⚠ PRØVEN HED "MOMSSATSEN GÆTTES IKKE", OG SPØRGSMÅLET ER BESVARET.
+ *
+ * Den holdt et mellemstadie på plads: satsen stod tom, eksporten var spærret
+ * for alle, og det var det rigtige svar så længe ingen bogholder havde sagt
+ * noget. Svaret kom med beslutning 98 — **25 %, uden undtagelser** — og så er
+ * det ikke længere satsen der skal prøves, men at den bliver SAT.
+ *
+ * Havde jeg rettet prøven til at acceptere begge dele, ville den ikke måle
+ * noget. Den måler nu det der faktisk holder.
+ */
+test("⚠ byggGrundlag SÆTTER MOMSSATSEN — den kan ikke længere mangle", () => {
+  const g = grundlag({ linjer: [linje({ momssats: null })] });
+  assert.equal(g.linjer[0].momssats, MOMSSATS_SALG);
+  assert.equal(linjerUdenMoms(g).length, 0);
+  assert.equal(kanEksportere({ ...g, tilstand: "godkendt" }).ok, true);
+});
+
+test("⚠ EN SATS DER ALLEREDE STÅR, RØRES IKKE — heller ikke 0", () => {
+  /* `Number.isFinite(0)` er sandt, og en nul-sats er et SVAR, ikke et
+     manglende felt. Uden det led ville en fremtidig momsfritagelse blive
+     overskrevet af standarden hver gang grundlaget blev bygget om. */
+  const g = grundlag({ linjer: [linje({ momssats: 0 })] });
+  assert.equal(g.linjer[0].momssats, 0);
+});
+
+test("⚠ MEN VÆRNET STÅR: en linje uden sats eksporteres ikke", () => {
+  /* Et grundlag fra FØR beslutning 98 kan have en tom linje — der lå én i
+     basen — og en fremtidig vej ind kan springe byggGrundlag() over. En
+     eksport er en kanal UD af systemet, og en fil med et hul i kan ikke
+     kaldes tilbage fra bogholderens indbakke. Derfor bygges posten her
+     DIREKTE, uden om byggGrundlag(). */
+  const g = {
+    ...grundlag(), tilstand: "godkendt",
+    linjer: [{ ...linje(), momssats: null }],
+  };
   const tjek = kanEksportere(g);
   assert.equal(tjek.ok, false);
   assert.ok(tjek.aarsager.some((a) => /momssats/.test(a)));
   assert.equal(linjerUdenMoms(g).length, 1);
-  /* Kaster frem for at returnere en fil med et hul: en eksport er en kanal ud
-     af systemet, og filen kan ikke kaldes tilbage fra bogholderens indbakke. */
   assert.throws(() => eksporter(g), /momssats/);
 });
 
@@ -244,8 +276,12 @@ test("en erstatning kræver en begrundelse", () => {
 });
 
 test("summen er ukendt hvis bare ét gældende grundlag mangler moms", () => {
+  /* ⚠ LINJEN BYGGES DIREKTE, ikke gennem byggGrundlag() — den sætter satsen
+     nu (beslutning 98), og så ville prøven ikke kunne stille spørgsmålet.
+     Reglen den måler, er stadig rigtig: et halvt momsbeløb er værre end
+     intet, fordi det ser ud som om det er regnet ud. */
   const a = { ...grundlag(), id: "g1" };
-  const b = { ...grundlag({ linjer: [linje({ momssats: null })] }), id: "g2" };
+  const b = { ...grundlag(), id: "g2", linjer: [{ ...linje(), momssats: null }] };
   assert.equal(summer([a, b]).momsOere, null);
 });
 
@@ -319,7 +355,13 @@ test("et LÅST grundlag må eksporteres igen — men ikke låses igen", () => {
 test("kanLaase bærer eksportens egne årsager med", () => {
   /* Den er kanEksportere PLUS ét led — ikke et selvstændigt regelsæt. To
      regelsæt ville kunne blive uenige om den samme momssats. */
-  const udenMoms = { ...grundlag({ linjer: [linje({ momssats: null })] }), tilstand: "godkendt" };
+  /* ⚠ LINJEN BYGGES DIREKTE. `byggGrundlag()` sætter satsen siden beslutning
+     98, så en tom linje kan kun laves udenom — og det er netop den situation
+     værnet er til for. */
+  const udenMoms = {
+    ...grundlag(), tilstand: "godkendt",
+    linjer: [{ ...linje(), momssats: null }],
+  };
   assert.equal(kanLaase(udenMoms).ok, false);
   assert.ok(kanLaase(udenMoms).aarsager.some((a) => /momssats/.test(a)));
 });

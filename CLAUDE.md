@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **97 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **98 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -465,9 +465,28 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `grundlag.js`. Et erstattet grundlag findes stadig, og tæller begge med, har
   du dobbeltfaktureret. En rettelse må ikke være en fordobling — og referencen
   går **begge veje**, så `erstat()` kræver `nytId` op front.
-- **Sætte en momssats fordi den mangler.** Ikke 25, ikke 0. Eksporten nægtes
-  uden — det er det rigtige svar, indtil en bogholder har svaret. Et system
-  der gætter rigtigt ni gange ud af ti, lærer brugeren at stole på det tiende.
+- **Skrive et momstal andre steder end i `MOMSSATS_SALG`.** Satsen på
+  vognmandens faktura til HANS kunde er **25 %, uden undtagelser** — besvaret
+  af ejeren 23. august 2026, beslutning 98. `byggGrundlag()` sætter den, så en
+  linje ikke kan mangle sin sats.
+  ⚠ **En sats der allerede står, røres ikke — heller ikke 0.** En nul-sats er
+  et svar, ikke et manglende felt; uden det led ville en fremtidig fritagelse
+  blive overskrevet hver gang grundlaget blev bygget om.
+  ⚠ **Værnet i `kanEksportere()` bliver stående.** Et grundlag fra før
+  beslutningen kan have en tom linje, og en eksport er en kanal UD af
+  systemet — en fil med et hul i kan ikke kaldes tilbage fra bogholderens
+  indbakke.
+  ⚠ **Forveksl den ikke med `MOMSSATS` i `priser.js`**, som er satsen på
+  FleetControls faktura til vognmanden. De to hedder næsten det samme og står
+  i hver sin fil; jeg blandede dem sammen én gang (beslutning 91).
+  ⚠ **Og forbeholdet står i koden med vilje:** international kørsel er som
+  udgangspunkt momsfritaget (momsloven §34). Det blev rejst FØR svaret og
+  fravalgt. Siger en bogholder en dag noget andet, er `MOMSSATS_SALG` det ene
+  sted tallet står — og `demo-grundlag.js`' `Skagen → Oslo` er linjen hvor det
+  bider.
+- **Sætte et andet tal fordi det mangler.** Momssatsen er besvaret; det er
+  retention-tallet og fire-øjne-spørgsmålet ikke. Det rigtige svar er stadig
+  at spærre og spørge — **et system der spærrer, får spørgsmålet stillet.**
 - **Gøre en materialelinje til én postering.** Salget på fakturagrundlaget og
   lagertrækket i Indkøb er to. Slås de sammen, fakturerer du til kostpris
   eller bogfører din salgspris som en omkostning. Og `MAENGDE_SKALA`

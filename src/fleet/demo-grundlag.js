@@ -11,7 +11,9 @@
  *   grl-001  Låst og eksporteret. Det normale forløb.
  *   grl-002  Kladde på bk-2026-00317, som har en ÅBEN etape → kan ikke
  *            godkendes. Årsagen står på skærmen.
- *   grl-003  Godkendt, men en linje mangler momssats → eksporten er spærret.
+ *   grl-003  Godkendt. Bar en linje UDEN momssats indtil beslutning 98 —
+ *            eksporten var spærret, og det var pointen. Satsen er nu 25 for
+ *            alle linjer, også turen til Oslo.
  *            Vi gætter ikke 25 %.
  *   grl-004  Erstatter grl-001. Begge findes; kun grl-004 tæller med i summen.
  *            Det er fordoblingen, gjort synlig.
@@ -99,9 +101,15 @@ export const DEMO_GRUNDLAG = [
     linjer: [
       { id: "grl-003-l1", art: "koersel", tekst: "Skagen → Oslo",
         antal: t(1), enhed: "tur", satsOere: 18_900_00,
-        /* ⚠ MANGLER MED VILJE. Eksport til Norge er ikke 25 %, og gættet ville
-           blive en forkert momsangivelse frem for en visningsfejl. */
-        momssats: null,
+        /* ⚠ HER STOD `momssats: null` MED VILJE, og begrundelsen var:
+           *"eksport til Norge er ikke 25 %"*. Den linje var demonstrationen
+           af at vi ikke gætter — eksporten stod spærret på den.
+
+           Spørgsmålet blev stillet med netop den sætning i hånden, og svaret
+           var **25 %, uden undtagelser** (beslutning 98). Turen til Oslo står
+           derfor som de andre. Siger en bogholder en dag noget andet, er det
+           den her linje man skal kigge på først. */
+        momssats: 25,
         kilde: { type: "etape", id: "et-003" } },
       { id: "grl-003-l2", art: "ventetid", tekst: "Ventetid ved toldbehandling",
         antal: t(2.5), enhed: "time", satsOere: 675_00, momssats: 25,
@@ -191,13 +199,20 @@ selvkontrol("demo-grundlag", () => {
     }
   }
 
-  /* At mindst ét grundlag mangler momssats, er ikke en fejl — det er pointen.
-     Forsvinder det, forsvinder demonstrationen af at vi ikke gætter. */
-  const udenMoms = DEMO_GRUNDLAG.filter((g) => (g.linjer || []).some((l) => !Number.isFinite(l.momssats)));
-  if (!udenMoms.length) {
+  /* ⚠ KONTROLLEN ER VENDT OM MED BESLUTNING 98.
+
+     Før krævede den at mindst ét grundlag MANGLEDE sin momssats — det var
+     demonstrationen af at vi ikke gætter. Satsen er nu besvaret (25 %,
+     uden undtagelser), og `byggGrundlag()` sætter den. En linje uden sats
+     er derfor ikke længere en pointe; den er en post fra før beslutningen
+     eller en vej ind der går uden om byggGrundlag(). */
+  const udenMoms = DEMO_GRUNDLAG.flatMap((g) =>
+    (g.linjer || []).filter((l) => !Number.isFinite(l.momssats)).map((l) => `${g.id}/${l.id}`));
+  if (udenMoms.length) {
     console.warn(
-      "demo-grundlag: intet grundlag mangler momssats længere. Så kan skærmen ikke " +
-      "vise at eksporten spærres, og det åbne spørgsmål bliver usynligt."
+      `demo-grundlag: ${udenMoms.join(", ")} mangler momssats. Satsen er ` +
+      "MOMSSATS_SALG (25 %) og sættes af byggGrundlag() — en demolinje uden " +
+      "den viser en spærring der ikke længere findes."
     );
   }
 });

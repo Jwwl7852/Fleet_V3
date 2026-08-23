@@ -33,7 +33,7 @@ import {
   gaeldendePrisliste, periodeGraenser, MOMSSATS,
 } from "../../fleet/priser.js";
 import { bpsTilPct, linjeBeloebOere } from "../../fleet/beloeb.js";
-import { csv, csvOere, filnavn } from "../../fleet/eksport.js";
+import { csv, csvOere, filnavn, hentFil } from "../../fleet/eksport.js";
 import {
   opretPrisliste, opretGrundlag, maalNu, sletPrisliste,
 } from "../../fleet/udbyder.js";
@@ -51,18 +51,11 @@ const harSats = (p) =>
   Boolean(p?.basisOere || p?.prKoeretoejOere ||
           Object.values(p?.prBrugerOere || {}).some(Boolean));
 
-/** Hent en fil i browseren. ⚠ URL'en frigives igen — ellers holder fanen den. */
-function hent(indhold, navn) {
-  const blob = new Blob([indhold], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = navn;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+/* ⚠ HENTNINGEN LÅ HER SOM EN LOKAL FUNKTION, og den er flyttet til
+   `eksport.js` da Fakturering fik brug for den samme (beslutning 98). To
+   kopier af de samme fire linjer er hvordan den ene glemmer
+   `revokeObjectURL`. */
+const hent = hentFil;
 
 /* ---- Satserne, som de står ---------------------------------------------- */
 

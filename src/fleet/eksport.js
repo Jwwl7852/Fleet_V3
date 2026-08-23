@@ -84,6 +84,29 @@ export function csv(raekker = [], kolonner = []) {
  * ⚠ Kun tegn et filsystem tåler — æøå og kolon giver problemer nok steder til
  * at det ikke er værd at prøve.
  */
+/**
+ * Hent en fil i browseren.
+ *
+ * ⚠ URL'EN FRIGIVES IGEN — ellers holder fanen blobben i live indtil den
+ * lukkes, og et par hundrede eksporter i en arbejdsdag er et par hundrede
+ * filer i hukommelsen.
+ *
+ * Den lå som en lokal `hent()` i `Prisliste.jsx`, indtil Fakturering fik brug
+ * for den samme. To kopier af den samme fire linjer er hvordan den ene glemmer
+ * `revokeObjectURL` — se beslutning 98.
+ */
+export function hentFil(indhold, navn, type = "text/csv;charset=utf-8") {
+  const blob = new Blob([indhold], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = navn;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function filnavn(hvad, naar = null) {
   const d = naar ? new Date(naar) : new Date();
   const dato = d.toISOString().slice(0, 10);
