@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **93 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **94 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -674,6 +674,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   når man læser det — bookinger reserverer jo. Fejlen kan kun ses ved at
   spørge om en tenant har DATA i en node hans moduler ikke ejer.
   Se beslutning 92.
+- **Spørge om en node kunden ikke har modulet til.** `useListe` slår selv
+  nodens ejer op med `modulerForNode()` og springer forespørgslen over — sæt
+  ikke `hent:` for at gøre det igen, og skriv ikke dit eget tjek i skærmen.
+  ⚠ **`hent: false` er ikke til at dæmpe en afvisning.** På en node kunden HAR,
+  er det beslutning 26 om igen: en spærring oversat til ingenting. En prøve
+  fejler på `hent: false` på en node uden modulklausul.
+  ⚠ **Opslaget følger STIEN:** `facility/lokationer` arver `facility`, og
+  længste træffer vinder, så `sensitive/indberetninger` ikke afgøres af
+  `sensitive`. Basen svarer `null` — ikke `[]`, som ville betyde "aldrig
+  læsbar". Se beslutning 94.
 - **Sælge et modul der ikke kan virke alene.** `MODUL_KRAEVER` siger hvad et
   modul kræver, og listen er **udledt af `firebase.rules.json`**: et modul M
   kræver N, hvis en node M ejer har et *påkrævet* felt der peger på en node N

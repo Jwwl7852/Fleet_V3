@@ -6837,3 +6837,91 @@ dem frem for af skærmene.
 konstant der bruges før sin egen erklæring kaster *"Cannot access before
 initialization"* ved **import** — altså hele modulet, ikke bare funktionen.
 Samme fælde som selvkontrollen i `demo-indkoeb.js` (beslutning 74).
+
+---
+
+## 94. Mekanismen var bygget og blev brugt 6 steder ud af 36
+
+`useListe` har fra begyndelsen båret sætningen:
+
+> *"Skal noden overhovedet spørges? En node der er spærret af et fravalgt
+> modul, ville svare permission-denied, og den afvisning er ikke en fejl
+> brugeren skal se — den er svaret 'modulet er ikke købt'."*
+
+Flaget `hent: false` blev bygget til netop det. **Det blev sat 6 steder ud af
+36.**
+
+### Hvad de 30 andre gjorde
+
+Målt: 36 steder hvor en skærm læser en node et **andet** modul ejer. Seks
+havde vagten; tredive spurgte uden at vide om kunden havde modulet.
+
+| Skærm | Læser | Ejes af |
+|---|---|---|
+| Arbejdskøen | `leverandoerer` | Procure |
+| Disponering | `kompetencer`, `koeretoejer`, `leverandoerer` | Workforce, Fleet, Procure |
+| Fakturacenteret | `indkoebsordrer`, `forbrugsvarer`, `koeretoejer` | Procure, Fleet |
+| Servicekalenderen | `leverandoerer` | Procure |
+| Udlån | `kunder` | Kunder & Priser |
+
+En kunde med Fleet men uden Procure fik altså en `permission-denied` på
+`leverandoerer` **hver gang han åbnede Arbejdskøen**. Beslutning 44 siger
+hvorfor det ikke går: *"hver sideindlæsning ville udløse en håndfuld
+permission-denied, og en afvisning skal betyde noget."* `useKpi()` løste det
+allerede med `laesbareDomaener()`.
+
+⚠ **Og det var værre end støj.** Er `auditerSom` sat på kaldet, skriver
+`useListe` en **auditpost om nægtet adgang** ved hver afvisning. Loggen ville
+fyldes med hændelser der ikke er hændelser, og den der en dag leder efter en
+rigtig afvisning, skal grave i dem.
+
+### Rettelsen ligger ÉT sted
+
+Tjekket er flyttet ind i `useListe`. Hooket læser allerede `useFleet()`, og
+`moduler` står der; det slår nodens ejer op og springer forespørgslen over.
+
+**Et krav der skal huskes 30 gange, bliver glemt 30 gange** — det var jo
+netop det der skete. `hent:` bliver stående til det den også er god til: en
+betinget hentning skærmen selv styrer.
+
+⚠ **Den spørger slet ikke — den fanger ikke en afvisning bagefter.** Forskellen
+er ikke kosmetisk: en fanget afvisning har allerede kostet en forespørgsel og
+en auditpost. En prøve kræver at grenen ligger **før** hentningen.
+
+### ⚠ Opslaget følger stien, ikke kun nodenavnet
+
+Skærmene læser `facility/lokationer`, mens tabellen har `facility`. Slog vi
+kun det fulde navn op, ville stien se ud som en **base-node** — og så var
+halvdelen af Facility udenfor. `modulerForNode()` går stien bagfra, og
+**længste træffer vinder**, så `sensitive/indberetninger` ikke afgøres af
+`sensitive`.
+
+⚠ **Basen svarer `null`, ikke `[]`.** `null` betyder "ingen klausul"; en tom
+liste ville betyde "ejet af ingen moduler", altså aldrig læsbar. De to må ikke
+forveksles — det ville tømme hver eneste base-node på skærmen.
+
+⚠ **Og en manglende `moduler`-node betyder ALLE.** `harModul()` fejler åbent,
+som reglerne gør. Fejlede den lukket, ville en kunde oprettet før feltet
+fandtes se tomme lister overalt. Fjerde gang den fælde har kostet noget
+(56, 86, 87, 94).
+
+### Det arbejdet fandt
+
+**1. En skabelonstreng er i orden — hvis første led er skrevet.**
+`useListe(`satser/${STANDARDGRUPPE}`)` kan slås op: `satser` er leddet der
+afgør modulet. Det der ikke går, er hele stien i en variabel — så kan hverken
+hooken, prøven eller en læser se hvad skærmen spørger om. Prøven kræver derfor
+et læsbart **første led**, ikke en literal.
+
+**2. En prøve der ikke stripper kommentarer, tæller en note som et kaldsted.**
+Første udgave faldt over `Kunder.jsx`, hvor der står *"DATAKILDE: ÉT
+useListe()-kald"* i filhovedet.
+
+**3. `moduler` hører i effektens deps.** Konteksten henter dem asynkront: uden
+dem ville hooken huske sit svar fra før modulerne var kendt, og kunden ville
+se en tom liste indtil han genindlæste siden.
+
+**4. Ingen udrulning.** Reglerne er urørte, og selv om `moduler.js` er en delt
+fil, kalder ingen Cloud Function `modulerForNode()`. Efterprøvet i browseren:
+Fleet-driftskalenderen henter uændret — kort, gitter og leverandørnavne står
+som før.

@@ -28,6 +28,7 @@ import { useFleet } from "./FleetContext.jsx";
 import { db } from "../firebase.js";
 import { laes as auditLaes, adgangNaegtet as auditNaegtet } from "./audit.js";
 import { TILSTAND, dataTilstand } from "./datatilstand.js";
+import { modulerForNode, harModul } from "./moduler.js";
 /* ⚠ FORESPØRGSLEN LIGGER I liste.js — uden React, så den kan PRØVES. Hele
    byggeriet var uprøveligt her, fordi filen importerer FleetContext.jsx og
    Node ikke kan indlæse .jsx. Det kostede fem tomme skærme; se noten ved
@@ -83,7 +84,7 @@ export { MAX_PARTITIONER, FAELLES, maanedsSegmenter, hentListe };
  * hvorfor en booking mangler.
  */
 export function useListe(node, indstillinger = {}) {
-  const { periode, path, tenantId, bruger } = useFleet();
+  const { periode, path, tenantId, bruger, moduler } = useFleet();
   const {
     ordnPaa, vindue, lig, fremDage = 30, vindueDage = 0, graense,
     filtrer, sorter,
@@ -206,8 +207,33 @@ export function useListe(node, indstillinger = {}) {
        af et fravalgt modul, ville svare permission-denied, og den afvisning
        er ikke en fejl brugeren skal se — den er svaret "modulet er ikke
        købt". Ingen forespørgsel, ingen auditpost: en læsning der aldrig
-       fandt sted, må ikke registreres som en. */
-    if (!hent) {
+       fandt sted, må ikke registreres som en.
+
+       ⚠ OG DET AFGØRES HER, IKKE PÅ HVERT KALDSTED. Sætningen ovenfor stod
+       skrevet fra begyndelsen, og `hent:`-flaget var bygget til netop det —
+       men det blev sat **6 steder ud af 36**. De 30 andre spurgte om en node
+       et andet modul ejer, uden at vide om kunden havde det.
+
+       En kunde med Fleet men uden Procure fik en `permission-denied` på
+       `leverandoerer` hver gang han åbnede Arbejdskøen; en med Planning men
+       uden Workforce fik en på `kompetencer` i Disponering. Beslutning 44
+       siger hvorfor det ikke går: *"hver sideindlæsning ville udløse en
+       håndfuld permission-denied, og en afvisning skal betyde noget."*
+       `useKpi()` løser det allerede med `laesbareDomaener()`; det her er den
+       samme løsning for lister.
+
+       ⚠ VÆRRE END STØJ: er `auditerSom` sat, skrev hver af de afvisninger en
+       **auditpost** om nægtet adgang. Loggen ville fyldes med hændelser der
+       ikke er hændelser, og den der en dag leder efter en RIGTIG afvisning,
+       skal grave i dem.
+
+       ⚠ EN MANGLENDE `moduler`-NODE BETYDER ALLE. `harModul()` fejler åbent,
+       som reglerne gør — ellers ville en kunde oprettet før feltet fandtes
+       få tomme lister overalt. Se beslutning 94. */
+    const ejere = modulerForNode(node);
+    const maaLaese = !ejere || ejere.some((m) => harModul(moduler, m));
+
+    if (!hent || !maaLaese) {
       setTilstand({ art: TILSTAND.ok, visDemo: false });
       setRaa([]);
       setAfkortet(false);
@@ -244,7 +270,10 @@ export function useListe(node, indstillinger = {}) {
     })();
 
     return () => { aktiv = false; };
-  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger, hent]);
+  /* ⚠ `moduler` HØRER I DEPS. Konteksten henter den asynkront: uden den
+     ville hooken huske sit svar fra før modulerne var kendt, og en kunde
+     ville se en tom liste indtil han genindlæste siden. */
+  }, [node, ordnPaa, lig, graense, partition, live, fra, til, path, tenantId, nonce, auditerSom, bruger, hent, moduler]);
 
   /* ⚠ HER STOD DIVISIONSFILTERET, og noten forklarede at et skift mellem Gods
      og Bus var øjeblikkeligt fordi filtreringen lå her og ikke i effekten. Det

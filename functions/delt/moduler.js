@@ -448,6 +448,28 @@ export function harModul(moduler, modul) {
   return moduler[modul] === true;
 }
 
+/**
+ * Hvilke moduler ejer den node en sti peger på? → liste, eller `null` for basen.
+ *
+ * ⚠ STIEN, IKKE KUN NODENAVNET. Skærmene læser `facility/lokationer` og
+ * `sensitive/indberetninger`, mens tabellen har `facility` og
+ * `sensitive/indberetninger`. Slog vi kun det fulde navn op, ville
+ * `facility/lokationer` se ud som en base-node — og så ville en kunde uden
+ * Facility sende en forespørgsel der er sikker på at blive afvist.
+ *
+ * Længste træffer vinder: `sensitive/indberetninger` skal ikke afgøres af
+ * `sensitive`. Se beslutning 94.
+ */
+export function modulerForNode(sti) {
+  if (!sti) return null;
+  const dele = String(sti).split("/");
+  for (let i = dele.length; i > 0; i--) {
+    const m = NODE_MODUL[dele.slice(0, i).join("/")];
+    if (m) return Array.isArray(m) ? m : [m];
+  }
+  return null;
+}
+
 /** Modulsættet til en ny kunde: de obligatoriske plus de valgte. */
 export function modulsaet(valgte = []) {
   const ud = {};
