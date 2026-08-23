@@ -83,6 +83,15 @@ export function csv(raekker = [], kolonner = []) {
  * Filnavn med dato, så to udtræk ikke hedder det samme i mappen Overførsler.
  * ⚠ Kun tegn et filsystem tåler — æøå og kolon giver problemer nok steder til
  * at det ikke er værd at prøve.
+ *
+ * ⚠ ENDELSEN VAR HARDKODET `.csv`, OG DET BLEV FORKERT SAMME DAG DER KOM ET
+ * FORMAT MERE. JSON-knappen i Fakturering (beslutning 98) gav en fil der hed
+ * `.csv` og indeholdt JSON — dobbeltklikker en bogholder på den, åbner Excel
+ * den og laver noget helt tredje ud af den. Filendelsen er en PÅSTAND om
+ * indholdet, og den var forkert i et døgn.
+ *
+ * `csv` er stadig standarden, så de fire kaldere der laver regneark, ikke
+ * skal ændres. Se beslutning 102.
  */
 /**
  * Hent en fil i browseren.
@@ -107,12 +116,12 @@ export function hentFil(indhold, navn, type = "text/csv;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-export function filnavn(hvad, naar = null) {
+export function filnavn(hvad, naar = null, endelse = "csv") {
   const d = naar ? new Date(naar) : new Date();
   const dato = d.toISOString().slice(0, 10);
   const rent = String(hvad)
     .toLowerCase()
     .replace(/[æä]/g, "ae").replace(/[øö]/g, "oe").replace(/å/g, "aa")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return `fleetcontrol-${rent}-${dato}.csv`;
+  return `fleetcontrol-${rent}-${dato}.${endelse}`;
 }

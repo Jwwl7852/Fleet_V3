@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **101 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **102 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -476,6 +476,19 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `grundlag.js`. Et erstattet grundlag findes stadig, og tæller begge med, har
   du dobbeltfaktureret. En rettelse må ikke være en fordobling — og referencen
   går **begge veje**, så `erstat()` kræver `nytId` op front.
+- **Finde på et regnskabssystems importformat.** Der er adaptere i
+  `grundlagseksport.js`, og der er bevidst **ingen** til e-conomic, Dinero
+  eller Business Central: en opfundet kolonnerække er samme fejl som en gættet
+  momssats — filen ser rigtig ud, fejler i bogholderens system, eller
+  importerer **halvt**. Skal der bygges en, kommer skemaet fra systemets egen
+  importvejledning eller en eksempelfil. En prøve forbyder at der sniger sig
+  en ind.
+  ⚠ **En adapter OVERSÆTTER, den regner ikke.** Tallene er frosset af
+  `eksporter()`; en adapter der regnede et beløb om, ville kunne give et andet
+  tal end fakturaen.
+  ⚠ **Og ingen totalrække i en importfil.** Systemet i den anden ende læser
+  rækker og ved ikke at den sidste er en sum — det bliver til en fakturalinje.
+  Se beslutning 102.
 - **Skrive et momstal andre steder end i `MOMSSATS_SALG`.** Satsen på
   vognmandens faktura til HANS kunde er **25 %, uden undtagelser** — besvaret
   af ejeren 23. august 2026, beslutning 98. `byggGrundlag()` sætter den, så en

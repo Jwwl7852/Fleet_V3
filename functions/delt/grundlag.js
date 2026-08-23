@@ -416,7 +416,23 @@ export function godkend(grundlag, { bruger, etaper = [] }, nu = Date.now()) {
  * skrive en importrutine der håndterer begge dele. Nummeret koster ingenting
  * nu og er umuligt at tilføje bagudvirkende.
  */
-export const EKSPORT_FORMAT_VERSION = 1;
+/**
+ * ⚠ VERSION 2: DATOERNE KOM MED, OG DE MANGLEDE.
+ *
+ * Version 1 bar nummer, kunde, beløb og linjer — og **ikke ét tidspunkt**. En
+ * bogholder kan ikke bogføre et bilag uden en dato: den afgør hvilken
+ * momsperiode det hører til, og et bilag uden er et bilag der skal spørges om.
+ *
+ * Det blev først synligt da eksporten skulle bruges til noget (beslutning
+ * 102). Så længe `eksporter()` ikke blev kaldt af nogen, kunne en manglende
+ * dato ikke mærkes.
+ *
+ * ⚠ VERSIONEN BUMPES, SELV OM DER KUN ER LAGT FELTER TIL. En modtager der
+ * validerer strengt, afviser et ukendt felt — og en fil der afvises i
+ * bogholderens system, er dyrere at fejlfinde end et versionsnummer der
+ * skifter. Ingen har læst en v1-fil endnu; knappen kom i går.
+ */
+export const EKSPORT_FORMAT_VERSION = 2;
 
 /**
  * kanEksportere(grundlag) → { ok, aarsager }
@@ -468,6 +484,17 @@ export function eksporter(grundlag, { nummer } = {}) {
     formatVersion: EKSPORT_FORMAT_VERSION,
     nummer: nummer ?? grundlag.nummer ?? null,
     bookingId: grundlag.bookingId,
+    /* ⚠ ET BILAG UDEN DATO KAN IKKE BOGFØRES. Datoen afgør momsperioden, og
+       en bogholder der mangler den, må ringe. Begge står med:
+       `udarbejdetMs` er hvornår opgørelsen blev lavet, `godkendtMs` hvornår
+       nogen skrev under på den — og det er den sidste der er bilagsdatoen.
+       To tidspunkter, to betydninger; se estimeretMin mod faktiskMin. */
+    udarbejdetMs: grundlag.udarbejdetMs ?? null,
+    godkendtMs: grundlag.godkendtMs ?? null,
+    /* ⚠ ET PERIODEGRUNDLAG HAR INGEN TUR. Warehouses afregning gør en PERIODE
+       op (beslutning 25), og uden de to datoer kan modtageren ikke se hvad
+       linjerne dækker — `bookingId` er null netop dér. */
+    periode: grundlag.periode ?? null,
     kundeId: grundlag.kundeId,
     /* Beløb i ØRE, ekskl. moms, som overalt. Modtageren skal ikke gætte på
        enheden — feltnavnet bærer den. */

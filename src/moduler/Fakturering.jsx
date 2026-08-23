@@ -83,7 +83,10 @@ import {
   kanGodkende, kanEksportere, kanLaase, linjerUdenMoms, erGaeldende, summer, fraDb,
   eksporter, MOMSSATS_SALG,
 } from "../fleet/grundlag.js";
-import { hentFil, filnavn } from "../fleet/eksport.js";
+import { hentFil } from "../fleet/eksport.js";
+import {
+  ADAPTER, ALLE_ADAPTERE, byggEksport,
+} from "../fleet/grundlagseksport.js";
 import { DEMO_GRUNDLAG } from "../fleet/demo-grundlag.js";
 import { DEMO_ETAPER } from "../fleet/demo-etaper.js";
 import { DEMO_KUNDER } from "../fleet/demo-kunder.js";
@@ -377,34 +380,29 @@ function Detaljer({ g, etaper = [], kunder = [], alle = [], bruger, paaSkrevet }
               onClick={paaLaas}>
           Lås mod reference
         </Knap>
-        {/* ⚠ EKSPORTEN VAR BYGGET OG BLEV KALDT INGEN STEDER.
-            `eksporter()` har stået i grundlag.js siden beslutning 25 og
-            produceret den neutrale model — men der var ingen knap, fordi
-            momssatsen spærrede hver eneste eksport. Med beslutning 98 er
-            satsen 25 %, og så er der ikke længere noget at vente på.
+        {/* ⚠ ÉN KNAP PR. FORMAT, IKKE EN VÆLGER VED SIDEN AF.
+            Eksporten sker én gang og skal kunne gøres om; en dropdown der
+            husker sit valg, ville sende bogholderen JSON den dag han skulle
+            bruge CSV, uden at han kunne se hvad der skete. To knapper siger
+            hvad de gør.
 
-            ⚠ DET ER DEN NEUTRALE MODEL, IKKE EN ADAPTER. Hvilket
-            regnskabssystem der får sit eget format først — e-conomic, Dinero,
-            Business Central — er stadig åbent (beslutning 22). En JSON af
-            `eksporter()` er præcis det der er besluttet: det låste grundlag,
-            som det står, med formatVersion så modtageren kan se hvad han
-            læser.
+            ⚠ OG DE LÅSER IKKE. At hente filen er ikke det samme som at
+            bogføre den; låsningen kræver stadig en reference til hvor bilaget
+            endte. En knap der gjorde begge dele, ville låse et grundlag på et
+            download der måske aldrig blev åbnet.
 
-            ⚠ OG DEN LÅSER IKKE. At hente filen er ikke det samme som at
-            bogføre den; låsningen kræver stadig en reference til hvor
-            bilaget endte. En knap der gjorde begge dele, ville låse et
-            grundlag på et download der måske aldrig blev åbnet. */}
-        <Knap disabled={!eksport.ok}
-              title={eksport.ok
-                ? "Henter grundlaget som JSON i den neutrale model. Låser ikke."
-                : eksport.aarsager[0]}
-              onClick={() => hentFil(
-                JSON.stringify(eksporter(g), null, 2),
-                filnavn(`grundlag-${g.nummer || g.id}`),
-                "application/json;charset=utf-8",
-              )}>
-          Hent som JSON
-        </Knap>
+            Adapterne står i grundlagseksport.js — der er ingen e-conomic-
+            eller Dinero-adapter, og grunden står dér. Se beslutning 102. */}
+        {ALLE_ADAPTERE.map((id) => (
+          <Knap key={id} disabled={!eksport.ok}
+                title={eksport.ok ? ADAPTER[id].hvad : eksport.aarsager[0]}
+                onClick={() => {
+                  const { indhold, navn, mime } = byggEksport(eksporter(g), id);
+                  hentFil(indhold, navn, mime);
+                }}>
+            {`Hent ${ADAPTER[id].label}`}
+          </Knap>
+        ))}
       </div>
     </Kort>
   );

@@ -7513,3 +7513,89 @@ Prøvens krav var rigtigt (ordlisten bor i `pricing.js`, ikke i regelfilen);
 det var udsnittet der var forkert. Den læser nu noden som JSON. Det er samme
 rettelse som beslutning 100 lavede i provisioneren, én dag senere, i en prøve
 der skulle vogte netop den slags.
+
+---
+
+## 102. Adapterlaget — og de tre formater jeg ikke fandt på
+
+Beslutning 98 gjorde eksporten mulig og gav den en knap. Den producerede
+JSON, og **en bogholder vil ikke have JSON.**
+
+Beslutning 22 sagde hvordan det skulle se ud: *"Neutral intern model med
+adaptere: e-conomic, Dinero, Business Central, CSV."* `eksporter()` er den ene
+model; alt andet er oversættelser af den. Skrev hver adapter sit eget udtræk
+direkte fra grundlaget, ville felterne drive — den ene ville runde pr. linje og
+den anden pr. total, og ingen kunne se hvilken der var rigtig.
+
+### ⚠ Den neutrale model bar ingen dato
+
+Version 1 gav nummer, kunde, beløb og linjer — og **ikke ét tidspunkt.**
+
+Et bilag uden dato kan ikke bogføres: datoen afgør momsperioden. Det blev
+først synligt da eksporten skulle bruges til noget. **Så længe `eksporter()`
+blev kaldt ingen steder, kunne en manglende dato ikke mærkes** — den var lige
+så usynlig som momssatsen var, indtil nogen bad om filen.
+
+`udarbejdetMs`, `godkendtMs` og `periode` er kommet med, og de to første
+betyder ikke det samme: den ene er hvornår opgørelsen blev lavet, den anden
+hvornår nogen skrev under — og **det er den sidste der er bilagsdatoen.**
+`periode` skal med, fordi et lagerafregningsgrundlag gør en PERIODE op og har
+intet `bookingId`.
+
+⚠ **Versionen er bumpet til 2, selv om der kun er lagt felter til.** En
+modtager der validerer strengt, afviser et ukendt felt — og en fil der afvises
+i bogholderens system, er dyrere at fejlfinde end et versionsnummer der
+skifter. Ingen har læst en v1-fil endnu; knappen kom i går.
+
+### ⚠ Der er ingen e-conomic-adapter, og det er et valg
+
+Jeg kender ikke deres importskema. En opfundet kolonnerække er **samme fejl som
+en gættet momssats**: filen ser rigtig ud, og den fejler i bogholderens
+system — eller, værre, importerer halvt.
+
+Hvad der skal til for at bygge en: kolonnenavnene og deres rækkefølge fra
+systemets egen importvejledning, eller en eksempelfil fra en konto. Det står i
+README's uafklarede spørgsmål, og en prøve forbyder at der sniger sig en
+`economic`-adapter ind uden at nogen har skrevet hvor skemaet kom fra.
+
+**CSV'en er derimod vores egen at definere**, og den kan importeres i alle tre
+ved at mappe kolonner. Den er ikke en nødløsning; den er den fællesnævner en
+bogholder faktisk arbejder i.
+
+### Hvad CSV'en gør, og hvad den ikke gør
+
+⚠ **Én række pr. linje, og ingen totalrække.** En totalrække i en importfil
+bliver til en fakturalinje: systemet i den anden ende læser rækker, det ved
+ikke at den sidste er en sum. Én faktura på det dobbelte, og fejlen ser ud som
+en pris. De frosne totaler står i JSON-udgaven til afstemning.
+
+⚠ **Beløb i kroner med komma, ikke i øre.** En importør der læser `1240000`
+som kroner, fakturerer 1,24 millioner. Og `antal` er tusinddele i modellen —
+en kolonne der viste `1500` hvor der menes `1,5`, bliver ganget med tusind.
+
+⚠ **Kilden står i en kolonne.** Ringer kunden om en linje, er spørgsmålet
+altid *"hvilken tur var det?"* — og uden kolonnen skal nogen finde det i vores
+system mens de har bogholderens fil åben.
+
+⚠ **Bilagsdatoen er tom hvis godkendelsen mangler.** En dato der er lånt fra
+udarbejdelsen, kan ikke skelnes fra en der er rigtig.
+
+Dansk Excel, formel-injektion og BOM arves fra `eksport.js` — en prøve holder
+adapteren fra at gå uden om `csvFelt()`.
+
+### Det arbejdet fandt
+
+**⚠ Jeg gav i går en JSON-fil navnet `.csv`.** `filnavn()` hardkodede
+endelsen, fordi der kun var ét format da den blev skrevet. Dobbeltklikker en
+bogholder på den fil, åbner Excel den og laver noget helt tredje ud af den.
+**Filendelsen er en påstand om indholdet**, og den var forkert i et døgn.
+Endelsen er nu et argument med `csv` som standard, så de fire kaldere der laver
+regneark, ikke skulle ændres.
+
+**Og datoen i filnavnet er grundlagets, ikke dagens.** Henter bogholderen den
+samme fil om to uger, skal den hedde det samme — ellers ligger der to i mappen
+Overførsler, og kun den ene er den han allerede har bogført.
+
+**To knapper, ikke en vælger.** En dropdown der husker sit valg, ville sende
+bogholderen JSON den dag han skulle bruge CSV, uden at han kunne se hvad der
+skete. To knapper siger hvad de gør.
