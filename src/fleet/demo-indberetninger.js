@@ -72,6 +72,25 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
   "ind-006": {},
 };
 
+/* ⚠ TO AF DEM ER CHAUFFØRENS EGNE — beslutning 109.
+
+   `ind-000` (ridse opdaget ved afgangstjek) og `ind-001` (gods forskubbet
+   under transport) er observationer fra vejen. De stod med pladsholderen
+   `uid-lars`, som `PLADSHOLDER_ROLLE` oversætter til **casehandleren** —
+   så chaufførappens "Indberettet" var tom, mens fire indberetninger lå i
+   noden. Skærmen var ikke i stykker; den viste rigtigt at han ingen havde.
+
+   ⚠ OG DER ER TO LARS'ER. Pladsholderen `uid-lars` er Lars casehandleren;
+   `larsAage` er Lars Aage chaufføren, som chaufførkontoen er koblet til
+   (PERSON_FOR_ROLLE i dev-brugere.js). De to har intet med hinanden at
+   gøre og ligner hinanden fuldstændig.
+
+   ⚠ ÅBENT: `uid-anders` er chaufførens pladsholder, men `demo-procure.js`
+   bruger den sammen med `anmoderId: "andersNielsen"` — en medarbejder der
+   IKKE står i DEMO_PERSONALE. Referencen slipper igennem, fordi
+   `anmoderId` står i demo-referencernes undtagelsesliste som "et uid, ikke
+   et personId" — og dér står altså et personId. Det hører i sin egen
+   etape. */
 export const DEMO_INDBERETNINGER = [
   /* ⚠ DEN ENESTE MED forloeb: "ny" — OG DEN ER TILFØJET FORDI DEN MANGLEDE.
      Sættet gik fra "afventerFaktura" og opefter, så `flaade.nyeIndberetninger`
@@ -91,7 +110,7 @@ export const DEMO_INDBERETNINGER = [
        prioritet, ville det tal altid vaere 0.
        Se prioritet.js: prioritetFor() svarer null, ALDRIG PRIORITET.normal. */
     id: "ind-000", art: "koeretoejsskade", forloeb: "ny",
-    oprettetAf: "uid-lars", oprettetMs: NU - 2 * T,
+    oprettetAf: "uid-anders", oprettetMs: NU - 2 * T,
     /* ⚠ kt-106, IKKE kt-104. Foerste udgave laa paa kt-104, som allerede
        har en aaben koeretoejsskade — og saa gik test/steder.test.mjs fra 1
        til 2 aabne fejl paa den bil. En NY post maa ikke aendre et tal en
@@ -106,7 +125,7 @@ export const DEMO_INDBERETNINGER = [
     art: "godsskade",
     forloeb: "afventerFaktura",
     prioritet: "hoej",
-    oprettetAf: "uid-lars",              /* ⚠ UID: hvem der GJORDE det. */
+    oprettetAf: "uid-anders",              /* ⚠ UID: hvem der GJORDE det. */
     oprettetMs: NU - 2 * D + 9 * T,
     koeretoejId: "kt-012",
     bookingId: "bk-2026-00311",          /* → der ER en kunde at fakturere. */
@@ -229,7 +248,7 @@ export const DEMO_INDBERETNINGER = [
     art: "braendstof",
     forloeb: "afsluttet",
     prioritet: "normal",
-    oprettetAf: "uid-lars",
+    oprettetAf: "uid-anders",
     oprettetMs: NU - 1 * D,
     koeretoejId: "kt-012",
     bookingId: null,
@@ -257,7 +276,7 @@ export const DEMO_INDBERETNINGER = [
     art: "braendstof",
     forloeb: "afsluttet",
     prioritet: "lav",
-    oprettetAf: "uid-lars",
+    oprettetAf: "uid-anders",
     oprettetMs: NU - 8 * D,
     koeretoejId: "kt-012",
     bookingId: null,

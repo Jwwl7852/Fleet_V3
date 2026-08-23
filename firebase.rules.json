@@ -1659,6 +1659,21 @@
 
             "aktivId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('aktiver').child(newData.val()).exists()" },
             "lokationId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('facility').child('lokationer').child(newData.val()).exists()" },
+            // ⚠ HVILKEN INDBERETNING UDLOESTE BESOEGET — beslutning 109.
+            //
+            // Der fandtes INGEN kobling: chauffoeren melder en revnet
+            // forskaerm, kontoret planlaegger et vaerkstedsbesoeg, og intet
+            // pegede fra det ene til det andet. Indberetningens forloeb gik
+            // til "planlagt" og "paaVaerksted" — tilstande der forudsaetter
+            // et besoeg — uden at nogen kunne sige HVILKET. Chauffoerappen
+            // kunne derfor ikke svare paa hvornaar driften havde planlagt
+            // hans melding, og det er dét kortet lover.
+            //
+            // ⚠ RETNINGEN ER VALGT. Opgaven peger paa indberetningen og
+            // ikke omvendt: `indberetninger` er skrivbar fra klienten, saa
+            // et `opgaveId` dér kunne saettes af chauffoeren selv. `opgaver`
+            // er `.write: false`, og `opgaveplanlaeg` er vejen ind.
+            "indberetningId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indberetninger').child(newData.val()).exists()" },
             "besoegId": { ".validate": "newData.isString() && newData.val().length <= 60" },
 
             // ⚠ EN OMKOSTNING, IKKE EN INDTAEGT. Vaerkstedet servicerer egen

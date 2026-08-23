@@ -56,10 +56,26 @@ const dag = (n, time = 0) => {
 const minutter = (fra, til) => Math.round((til - fra) / 60000);
 
 export const DEMO_OPGAVER = [
-  { id: "op-001", art: "vaerksted", startMs: iDag(8, 0),
+  /* ⚠ DEN HER BÆRER KOBLINGEN TILBAGE — beslutning 109.
+
+     Ingen demo-opgave pegede på den indberetning der udløste den, og det
+     kunne ikke ses: `indberetningId` fandtes ikke som felt. Uden mindst ét
+     par kan chaufførappens "hvornår har driften planlagt det" hverken
+     tegnes eller prøves — og en skærm ingen har set med data, er ikke
+     bygget færdig.
+
+     `ind-001` er Lars' godsskade på kt-012, og den står i `afventerFaktura`:
+     arbejdet ER gjort. Besøget hører derfor bagud, ikke i morgen.
+
+     ⚠ OG DEN FÅR ET VÆRKSTED. `leverandoerId` stod tomt på hver eneste
+     demo-opgave, så kortets "🔧 Mercedes Greve" ville have stået tomt
+     uden at nogen kunne se om det var koblingen eller navneopslaget der
+     manglede. */
+  { id: "op-001", art: "vaerksted", startMs: iDag(-4, 8),
     sted: "Kolding", beskrivelse: "Reparation – venstre baglygte",
-    personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "reparation", status: "planlagt", prioritet: "normal",
-    estimeretMin: 90, faktiskMin: null, beloebOere: 125000 },
+    personId: "larsAage", koeretoejId: "kt-012", arbejdstype: "reparation", status: "udfoert", prioritet: "normal",
+    leverandoerId: "lv-mercedes", indberetningId: "ind-001",
+    estimeretMin: 90, faktiskMin: 105, beloebOere: 125000 },
 
   /* ⚠ HED "Serviceeftersyn – 30.000 km", og det var Bil 104s service.
      30.000 km-eftersynet hoerer til Bil 104 (vb-005, aftalt paa sag

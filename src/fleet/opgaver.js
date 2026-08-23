@@ -148,6 +148,14 @@ export const FELT = {
   estimeretMin: "estimeretMin",         // dagsvisningen er timer, ikke døgn
   faktiskMin: "faktiskMin",             // hvad der FAKTISK gik — se udenTidsregistrering
   besoegId: "besoegId",                 // værkstedsbesøget i kalenderen
+  /* ⚠ HVILKEN INDBERETNING UDLØSTE BESØGET — beslutning 109.
+     Der fandtes ingen kobling: chaufføren melder en revnet forskærm,
+     kontoret planlægger et besøg, og intet pegede fra det ene til det
+     andet. Indberetningens forløb gik til `planlagt` og `paaVaerksted` —
+     tilstande der forudsætter et besøg — uden at nogen kunne sige hvilket.
+     ⚠ FORVEKSL DEN IKKE MED `besoegId`, som er hvor opgaven blev PLANLAGT
+     i kalenderen. Den her er hvad den handler om. */
+  indberetningId: "indberetningId",
   /* facility */
   aktivId: "aktivId",
   lokationId: "lokationId",
@@ -173,7 +181,7 @@ const ALLE_FELTER = [
   FELT.koeretoejId, FELT.aktivId, FELT.lokationId,
   FELT.arbejdstype, FELT.leverandoerId,
   FELT.estimeretMin, FELT.faktiskMin, FELT.personId, FELT.besoegId,
-  FELT.sagId, FELT.beloebOere,
+  FELT.sagId, FELT.indberetningId, FELT.beloebOere,
 ];
 
 /**
@@ -204,7 +212,10 @@ const ALLE_FELTER = [
  */
 export const ART_FELTER = {
   vaerksted: [...FAELLES, FELT.koeretoejId, FELT.arbejdstype, FELT.leverandoerId,
-              FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId],
+              FELT.estimeretMin, FELT.faktiskMin, FELT.besoegId,
+              /* ⚠ KUN PÅ vaerksted. En facility-opgave kommer fra et anlæg,
+                 ikke fra en chaufførs melding om en bil. */
+              FELT.indberetningId],
   facility: [...FAELLES, FELT.aktivId, FELT.lokationId, FELT.leverandoerId,
              FELT.estimeretMin, FELT.faktiskMin],
 };

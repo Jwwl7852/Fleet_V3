@@ -177,14 +177,34 @@ export const PERM_SENSITIVE_LAES_PLANLAGT = "indberetninger.sensitiveLaes";
  * værksted" med en bil der kører, eller som "afsluttet" med en faktura der
  * aldrig kom. Begge dele gør listen ubrugelig som huskeliste.
  */
+/**
+ * ⚠ `chauffoer` ER SAMME TILSTAND SET FRA VEJEN — beslutning 109.
+ *
+ * Kontorets ord er kontorets arbejdsliste: "Ny" betyder at ingen har vurderet
+ * den endnu. For chaufføren, der SELV sendte den, betyder det noget andet: vi
+ * har modtaget den. Og "Afventer faktura" er en oplysning om vores bogholderi,
+ * ikke om hans bil — for ham er arbejdet udført.
+ *
+ * ⚠ MEN DET ER ÉT KATALOG, IKKE TO. Feltet står HER, ved siden af den tilstand
+ * det oversætter. Skrev chaufførappen sin egen tabel, ville vi have to
+ * vokabularer for én tilstandsmaskine — og den dag et forløb fik et trin mere,
+ * ville appen vise nøglen råt uden at nogen opdagede det.
+ *
+ * Mangler `chauffoer`, bruges `label`. En ny tilstand skal ikke tvinges til at
+ * have to navne bare fordi feltet findes.
+ */
 export const FORLOEB = {
-  ny:              { label: "Ny",               pill: "info", naeste: ["vurderet", "afsluttet"] },
-  vurderet:        { label: "Vurderet",         pill: "info", naeste: ["planlagt", "afsluttet"] },
+  ny:              { label: "Ny",               chauffoer: "Indberettet",   pill: "info", naeste: ["vurderet", "afsluttet"] },
+  vurderet:        { label: "Vurderet",         chauffoer: "Set af driften", pill: "info", naeste: ["planlagt", "afsluttet"] },
   planlagt:        { label: "Planlagt",         pill: "warn", naeste: ["paaVaerksted", "afsluttet"] },
   paaVaerksted:    { label: "På værksted",      pill: "warn", naeste: ["afventerFaktura", "afsluttet"] },
-  afventerFaktura: { label: "Afventer faktura", pill: "warn", naeste: ["afsluttet"] },
-  afsluttet:       { label: "Afsluttet",        pill: "ok",   naeste: [] },
+  afventerFaktura: { label: "Afventer faktura", chauffoer: "Udført",        pill: "warn", naeste: ["afsluttet"] },
+  afsluttet:       { label: "Afsluttet",        chauffoer: "Udført",        pill: "ok",   naeste: [] },
 };
+
+/** Forløbets navn set fra vejen. Falder tilbage på kontorets. */
+export const forloebLabelFor = (f, tilChauffoer = false) =>
+  (tilChauffoer && FORLOEB[f]?.chauffoer) || FORLOEB[f]?.label || f;
 
 export const ALLE_FORLOEB = Object.keys(FORLOEB);
 

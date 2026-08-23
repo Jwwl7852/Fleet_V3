@@ -8383,3 +8383,96 @@ begge skifter.
 
 Den blev fundet ved at taste en rigtig efterårsferie ind i appen — ikke ved at
 læse koden.
+
+## 109. Indberettet — og de syv poster ingen kunne eje
+
+Ejeren viste hvordan "Indberettet" skal se ud: kort med **art · enhed**,
+beskrivelsen, en statuspille — og en linje der siger *hvornår driften har
+planlagt dem*. Min version fra beslutning 106 var en tidslinje med dato, art
+og en pille der viste den rå nøgle.
+
+Tre ting manglede, og de blev fundet i den rækkefølge.
+
+### Der var ingen kobling mellem en melding og det besøg den udløste
+
+`opgaver` bar `besoegId` (hvor opgaven blev planlagt i kalenderen) og `sagId`
+(kommunikationen) — og **intet felt der pegede på indberetningen.** Chaufføren
+melder en revnet forskærm, kontoret planlægger et værkstedsbesøg, og de to
+poster ved intet om hinanden.
+
+Det var ikke bare en manglende visning. Indberetningens forløb har tilstandene
+`planlagt` og `paaVaerksted` — **tilstande der forudsætter et besøg** — uden at
+nogen kunne sige hvilket.
+
+⚠ **Retningen er valgt.** Opgaven peger på indberetningen og ikke omvendt:
+`indberetninger` er skrivbar fra klienten, så et `opgaveId` dér kunne sættes af
+chaufføren selv. `opgaver` er `.write: false`, og `opgaveplanlaeg` er vejen ind.
+
+⚠ **Og feltet er kun på `vaerksted`-arten.** En facility-opgave kommer fra et
+anlæg, ikke fra en chaufførs melding om en bil.
+
+### Syv seedede indberetninger med et uid der ikke fandtes
+
+Skærmen sagde **"0 sendt"** mens der lå fire indberetninger han havde skrevet.
+
+Målt i den udrullede base: **alle syv poster havde et pladsholder-uid.**
+Omskrivningen i provisioneren dækkede `indkoebsordrer` og `indkoebsbehov` — og
+ikke `indberetninger`.
+
+⚠ **Det er ikke kosmetisk.** Reglens ejerskabstjek er
+`data.child('oprettetAf').val() === auth.uid`, så **ingen kunne rette sin egen
+seedede indberetning.** Skærmen var ikke i stykker; den svarede rigtigt på et
+forkert grundlag — samme klasse som `bevaegelseId` i beslutning 100.
+
+⚠ **Og to pladsholdere stod slet ikke i tabellen.** `uid-jesper` og `uid-rene`
+var på tre poster og i intet kort. `rigtigt()` svarer `null` for en ukendt
+pladsholder og **springer over — tavst.** En omskrivning der ikke omskriver,
+melder ingenting.
+
+⚠ **Tabellen oversætter til en ROLLE, ikke til et menneske.** DEV har én konto
+pr. rolle og ikke én pr. person; kortet siger hvilken slags bruger posten skal
+tilhøre.
+
+**Målt efter: 0 poster med pladsholder tilbage.**
+
+### Og der er to Lars'er
+
+`uid-lars` er pladsholderen for **casehandleren**. `larsAage` er **Lars Aage
+chaufføren**, som chaufførkontoen er koblet til (beslutning 103). De har intet
+med hinanden at gøre og ligner hinanden fuldstændig — og det var derfor
+chaufførens egne observationer lå på kontorets konto.
+
+⚠ **ÅBENT:** `uid-anders` er chaufførens pladsholder, men `demo-procure.js`
+bruger den sammen med `anmoderId: "andersNielsen"` — **en medarbejder der ikke
+står i `DEMO_PERSONALE`.** Referencen slipper igennem, fordi `anmoderId` står i
+demo-referencernes undtagelsesliste som *"et uid, ikke et personId"* — og dér
+står altså et personId. Det hører i sin egen etape.
+
+### To vokabularer for én tilstandsmaskine — i ét katalog
+
+Kontorets ord er kontorets arbejdsliste: **"Ny"** betyder at ingen har vurderet
+den. For chaufføren, der selv sendte den, betyder det noget andet: **vi har
+modtaget den.** Og *"Afventer faktura"* er en oplysning om vores bogholderi,
+ikke om hans bil — for ham er arbejdet **udført**.
+
+⚠ **Men feltet står i FORLOEB, ved siden af den tilstand det oversætter.**
+Skrev appen sin egen tabel, ville vi have to vokabularer for én
+tilstandsmaskine — og den dag et forløb fik et trin mere, ville appen vise
+nøglen råt uden at nogen opdagede det. Mangler `chauffoer`, bruges `label`.
+
+### Han ser HVORNÅR, ikke altid HVEM
+
+Værkstedets navn står i `leverandoerer`, som kræver `indkoeb.laes` — og den har
+en chauffør ikke efter beslutning 104: hvem vi handler med og på hvilke vilkår
+er en kommerciel oplysning.
+
+⚠ **Men stedet må han se, og det skal han:** han er den der kører bilen
+derhen. `sted` står på opgaven selv, og kortet falder tilbage på det. Uden
+faldbakken stod der en dato og intet andet — **og en dato uden et sted er ikke
+en besked man kan handle på.**
+
+### Set efter
+
+*"Godsskade · Bil 12 · Udført"* med *"📅 22.08.2026 · 📍 Kolding"*, og
+tankningerne med deres beløb og ingen pille — en udgift har intet forløb nogen
+skal gøre noget ved (beslutning 106).

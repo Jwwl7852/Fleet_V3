@@ -1610,3 +1610,16 @@
   display:flex; justify-content:space-between; margin:0;
   padding-top:10px; border-top:1px solid var(--bc-line);
   font-size:var(--fc-t-l)}
+
+/* ---- Indberettet-listen — beslutning 109 ------------------------------ */
+.fc-app-indb{
+  display:flex; flex-direction:column; gap:6px; align-items:stretch;
+  padding:12px 14px; border:1px solid var(--bc-line); border-radius:8px;
+  background:var(--bc-card)}
+.fc-app-indb-top{display:flex; align-items:center; justify-content:space-between; gap:10px}
+/* ⚠ BESØGET STÅR I SIN EGEN FLADE. Datoen er et SVAR på indberetningen — ikke
+   endnu en linje beskrivelse — og en chauffør skal kunne finde den uden at
+   læse. Farven er accentens, fordi den er en oplysning og ikke en advarsel. */
+.fc-app-besoeg{
+  margin:0; padding:8px 10px; border-radius:6px;
+  background:var(--fc-accent-soft); color:var(--bc-accent); font-weight:650}

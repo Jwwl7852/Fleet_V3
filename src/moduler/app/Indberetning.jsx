@@ -34,10 +34,13 @@ import { AUDIT } from "../../fleet/audit-regler.js";
 import { dato, kr, num, oereFraKroner } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
-  APP_FLISER, HAENDELSE_ART, FELT, harFelt, erUdgift, arterForFlise,
+  APP_FLISER, HAENDELSE_ART, FELT, FORLOEB, harFelt, erUdgift, arterForFlise,
+  forloebLabelFor,
 } from "../../fleet/indberetninger.js";
 import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 
 /**
  * ⚠ FELTERNE SPØRGES AF KATALOGET, IKKE AF EN if-KÆDE I SKÆRMEN.
@@ -72,6 +75,17 @@ export default function AppIndberetning() {
   const bilListe = useListe("koeretoejer", {
     vindue: "alle", graense: 500, demo: DEMO_KOERETOEJER,
   });
+  /* ⚠ BESØGENE, SÅ KORTET KAN SIGE HVORNÅR. `opgaver` er en base-node —
+     fire moduler skriver til den (beslutning 92) — så en chauffør må læse
+     den. Vinduet er fremad OG bagud: et besøg der lige er overstået, er
+     stadig svaret på hans melding. */
+  const opgaveListe = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "alle", graense: 500, demo: DEMO_OPGAVER,
+  });
+  const levListe = useListe("leverandoerer", {
+    vindue: "alle", graense: 200, demo: DEMO_LEVERANDOERER,
+  });
+
   const mine = useListe("indberetninger", {
     ordnPaa: "oprettetMs", vindue: "alle", graense: 200,
     demo: DEMO_INDBERETNINGER,
@@ -83,6 +97,16 @@ export default function AppIndberetning() {
   const egne = mine.data
     .filter((i) => i.oprettetAf === bruger?.uid)
     .sort((a, b) => (b.oprettetMs || 0) - (a.oprettetMs || 0));
+
+  const enhedNavn = (id) => {
+    const b = bilListe.data.find((x) => x.id === id);
+    return b ? (b.kaldenavn || b.navn || id) : null;
+  };
+  /* ⚠ TOM LISTE → INTET NAVN, IKKE EN ANKLAGE. Har kunden ikke Procure,
+     spørger useListe slet ikke (beslutning 94/95), og et "ukendt værksted"
+     ville beskylde dataene for noget der er en modulmangel. */
+  const vaerkstedNavn = (id) =>
+    levListe.data.find((x) => x.id === id)?.navn || null;
 
   function vaelgFlise(f) {
     setFejl(null); setKvittering(null); setSvar({});
@@ -192,24 +216,72 @@ export default function AppIndberetning() {
 
       {fane === "liste" ? (
         <section className="fc-app-kort">
+          <h2 className="fc-app-titel">Indberettet</h2>
+          <p className="fc-hint">
+            Dine indberetninger og hvornår driften har planlagt dem.
+          </p>
           {egne.length === 0 ? (
             <Tom>Du har ikke indberettet noget endnu.</Tom>
           ) : (
-            <ol className="fc-app-tidslinje">
-              {egne.map((i) => (
-                <li key={i.id}>
-                  <span className="fc-app-tid">{dato(i.oprettetMs)}</span>
-                  <span>{HAENDELSE_ART[i.art]?.label || i.art}</span>
-                  {/* ⚠ KUN DRIFTSHÆNDELSER HAR EN TILSTAND AT VISE. En pille
-                      på en tankning ville påstå at nogen skal gøre noget. */}
-                  {!erUdgift(i.art) && i.forloeb && (
-                    <Pille tone="info">{i.forloeb}</Pille>
-                  )}
-                  {Number.isFinite(i.omkostningOere) && (
-                    <span className="fc-hint">{kr(i.omkostningOere, 2)}</span>
-                  )}
-                </li>
-              ))}
+            <ol className="fc-app-dage">
+              {egne.map((i) => {
+                /* ⚠ BESØGET SLÅS OP PÅ INDBERETNINGEN, IKKE OMVENDT. Feltet
+                   kom til i beslutning 109: opgaven peger tilbage på den
+                   melding der udløste den. Uden det kunne skærmen ikke svare
+                   på hvornår driften havde planlagt hans melding — og det er
+                   dét linjen lover. */
+                const besoeg = opgaveListe.data.find((o) => o.indberetningId === i.id);
+                return (
+                  <li key={i.id} className="fc-app-indb">
+                    <div className="fc-app-indb-top">
+                      <b>
+                        {HAENDELSE_ART[i.art]?.label || i.art}
+                        {enhedNavn(i.koeretoejId) && ` · ${enhedNavn(i.koeretoejId)}`}
+                      </b>
+                      {/* ⚠ KUN DRIFTSHÆNDELSER HAR EN TILSTAND AT VISE. En
+                          pille på en tankning ville påstå at nogen skal gøre
+                          noget ved den. */}
+                      {!erUdgift(i.art) && i.forloeb && (
+                        <Pille tone={FORLOEB[i.forloeb]?.pill}>
+                          {forloebLabelFor(i.forloeb, true)}
+                        </Pille>
+                      )}
+                      {erUdgift(i.art) && Number.isFinite(i.omkostningOere) && (
+                        <span className="fc-hint">{kr(i.omkostningOere, 2)}</span>
+                      )}
+                    </div>
+
+                    {i.beskrivelse && (
+                      <p className="fc-hint">{i.beskrivelse}</p>
+                    )}
+
+                    {/* ⚠ DATOEN ER BESØGETS, IKKE INDBERETNINGENS. Kortet
+                        svarer på hvornår bilen skal ind — ikke på hvornår han
+                        skrev. Er der intet besøg, står der ingenting: en
+                        tekst som "ikke planlagt endnu" ville sige det samme
+                        som pillen lige ovenfor. */}
+                    {besoeg && Number.isFinite(besoeg.startMs) && (
+                      <p className="fc-app-besoeg">
+                        📅 {dato(besoeg.startMs)}
+                        {/* ⚠ NAVNET PÅ VÆRKSTEDET SER HAN OFTE IKKE, og det er
+                            beslutning 104: `leverandoerer` kræver
+                            `indkoeb.laes`, som en chauffør ikke har — hvem vi
+                            handler med og på hvilke vilkår er en kommerciel
+                            oplysning.
+
+                            ⚠ MEN STEDET MÅ HAN SE, og det skal han: han er
+                            den der kører bilen derhen. `sted` står på opgaven
+                            selv. Uden faldbakken stod der en dato og intet
+                            andet — og en dato uden et sted er ikke en besked
+                            man kan handle på. */}
+                        {vaerkstedNavn(besoeg.leverandoerId)
+                          ? ` · 🔧 ${vaerkstedNavn(besoeg.leverandoerId)}`
+                          : besoeg.sted ? ` · 📍 ${besoeg.sted}` : ""}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
           )}
         </section>

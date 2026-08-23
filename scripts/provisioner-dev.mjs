@@ -477,6 +477,7 @@ export const FELT_NODE = {
   kundeId: "kunder",
   bookingId: "bookinger",
   etapeId: "etaper",
+  indberetningId: "indberetninger",
   kasseId: "kasser",
   aktivId: "facility/aktiver",
   lokationId: "facility/lokationer",
@@ -1061,6 +1062,20 @@ async function main() {
     "uid-michael": "lagermedarbejder",
     "uid-anders": "chauffoer",
     "uid-mette": "casehandler",
+    /* ⚠ TO DER MANGLEDE, OG DET KUNNE IKKE SES — beslutning 109.
+
+       `uid-jesper` og `uid-rene` stod på tre demo-indberetninger og i
+       ingen tabel. `rigtigt()` svarer null for en ukendt pladsholder og
+       SPRINGER OVER — tavst — så posterne blev liggende med et uid der
+       ikke svarer til nogen konto. Reglens ejerskabstjek kunne dermed
+       aldrig blive sandt for dem.
+
+       ⚠ TABELLEN OVERSÆTTER TIL EN ROLLE, IKKE TIL ET MENNESKE. Jesper
+       Riis og Rene Thomsen er medarbejdere i `personale`; DEV har én konto
+       pr. ROLLE og ikke én pr. person. Kortet her siger derfor hvilken
+       slags bruger posten skal tilhøre — ikke hvem. */
+    "uid-jesper": "casehandler",
+    "uid-rene": "lagermedarbejder",
   };
   const rigtigt = (pladsholder) => uidFor[PLADSHOLDER_ROLLE[pladsholder]] || null;
 
@@ -1089,6 +1104,22 @@ async function main() {
       }
     }
   }
+  /* ⚠ INDBERETNINGERNE STOD MED PLADSHOLDERE I BASEN — beslutning 109.
+
+     Omskrivningen dækkede indkøbsordrer og -behov, og ikke `indberetninger`.
+     Målt i den udrullede base: **syv indberetninger, alle syv med et
+     pladsholder-uid** der ikke svarer til nogen konto.
+
+     Det er ikke kosmetisk. Reglens ejerskabstjek er
+     `data.child('oprettetAf').val() === auth.uid` — så INGEN kunne rette sin
+     egen seedede indberetning, og chaufførappens "Indberettet" var tom
+     mens der lå fire poster han havde skrevet. Skærmen var ikke i stykker;
+     den svarede rigtigt på et forkert grundlag.
+
+     ⚠ OG DET ER SAMME KLASSE SOM `bevaegelseId`-fejlen i beslutning 100: et
+     felt der peger på noget der ikke findes, og som ingen prøve spurgte om,
+     fordi den kiggede på de noder nogen huskede at skrive ned. */
+  await omskrivOprettetAf("indberetninger", DEMO_INDBERETNINGER);
   await omskrivOprettetAf("indkoebsordrer", DEMO_INDKOEBSORDRER);
   await omskrivOprettetAf("indkoebsbehov", DEMO_INDKOEBSBEHOV);
 
