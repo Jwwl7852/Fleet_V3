@@ -192,10 +192,29 @@ export const DEMO_ETAPER = [
        netop `delvist`. */
     id: "et-008", bookingId: "bk-2026-00317", nr: 1,
     tilstand: "udfoert", fraSted: "København", tilSted: "Hamburg",
-    /* ⚠ ADRESSEN UDEN BYEN — den står i fraSted/tilSted. Transportlabelen
-       sætter dem sammen; to steder til samme by driver fra hinanden. */
-    fraAdresse: { navn: "Lager A – København", gade: "Havnegade 14", postnr: "1058" },
-    tilAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
+    /* ⚠ ADRESSEN LIGGER PÅ STOPPENE — beslutning 110. Den stod i
+       `fraAdresse`/`tilAdresse`, som var struktureret, valideret og skrevet af
+       ingenting; felterne er nu `.validate: false` i reglerne. Byen står
+       stadig i `fraSted`/`tilSted`, som er NAVNET til prissætning — og
+       stoppet bærer `by` selv, fordi et multi-drop ikke har ét til-sted. */
+    /* ⚠ ORDRENUMMERET GEMMES UDEN `#`. Skærmen sætter det foran; et gemt
+       nummertegn ville følge med i en eksport og i en søgning, hvor kunden
+       skriver 100010 uden. Og "#100010" ligner en HEX-FARVE — designlinten
+       fældede demo-filen på det, hvilket er en pæn måde at opdage at tegnet
+       hørte i visningen. */
+    stop: {
+      1: { art: "afhentning", navn: "Lager A – København",
+           gade: "Havnegade 14", postnr: "1058", by: "København",
+           telefon: "+45 70 20 30 40",
+           fraMs: dag(-3, 5), tilMs: dag(-3, 7),
+           ordrer: { "o-1": { kundeId: "nordiskFragt", nummer: "100010",
+                              kolli: 12, kg: 4200, gods: "12× EUR-palle, stål" } } },
+      2: { art: "levering", navn: "Transit Hub – Hamburg",
+           gade: "Hafenstraße 22", postnr: "20359", by: "Hamburg",
+           fraMs: dag(-3, 15), tilMs: dag(-3, 17),
+           ordrer: { "o-2": { kundeId: "nordiskFragt", nummer: "100010",
+                              kolli: 12, kg: 4200, gods: "12× EUR-palle, stål" } } },
+    },
     fra: dag(-3, 5), til: dag(-3, 17),
     etaMs: dag(-3, 16),
     graenseovergange: ["roedby"],
@@ -211,12 +230,19 @@ export const DEMO_ETAPER = [
        senestMs fyldes lageret med gods ingen henter (beslutning 16). */
     id: "et-007", bookingId: "bk-2026-00317", nr: 2,
     tilstand: "aaben", fraSted: "Hamburg", tilSted: "København",
-    fraAdresse: { navn: "Transit Hub – Hamburg", gade: "Hafenstraße 22", postnr: "20359" },
-    /* ⚠ POSTNUMMERET SKAL PASSE TIL BYEN. Etapen ender i København (tilSted),
-       og et postnummer fra Odense her ville stå på mærkatet som
-       "5220 København" — en adresse ingen kan køre efter. Turen er retur til
-       vores eget lager; kunden får godset kørt ud derfra. */
-    tilAdresse: { navn: "Lager A – København", gade: "Havnegade 14", postnr: "1058" },
+    /* ⚠ POSTNUMMERET SKAL PASSE TIL BYEN. Etapen ender i København, og et
+       postnummer fra Odense ville stå på mærkatet som "5220 København" — en
+       adresse ingen kan køre efter. Turen er retur til vores eget lager;
+       kunden får godset kørt ud derfra. */
+    stop: {
+      1: { art: "afhentning", navn: "Transit Hub – Hamburg",
+           gade: "Hafenstraße 22", postnr: "20359", by: "Hamburg",
+           fraMs: dag(5, 6), tilMs: dag(5, 8) },
+      2: { art: "levering", navn: "Lager A – København",
+           gade: "Havnegade 14", postnr: "1058", by: "København",
+           telefon: "+45 70 20 30 40",
+           fraMs: dag(5, 16), tilMs: dag(5, 18) },
+    },
     fra: dag(5, 6), til: dag(5, 18),
     etaMs: null,
     graenseovergange: ["roedby"],

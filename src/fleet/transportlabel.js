@@ -88,6 +88,12 @@ export const sorteretKaede = (etaper = []) =>
  * Svarer `{ type: null, mangler }` når kæden ikke kendes. Der gættes ikke:
  * uden etapen ved vi ikke om godset skal videre.
  */
+/* ⚠ ADRESSEN KOMMER FRA STOPPET — beslutning 110. Den laa i `fraAdresse`,
+   som var struktureret, valideret og skrevet af ingenting: 2 af 8 etaper
+   havde den, og kun denne fil laeste den. Maerkatet trykte altsaa en adresse
+   der i praksis aldrig var udfyldt. */
+import { stopListe } from "./stop.js";
+
 export function labeltypeFor({ carrier, etaper = [], placeret } = {}) {
   if (!carrier) return { type: null, mangler: "carrier" };
 
@@ -186,6 +192,17 @@ export const haandteringerFor = (carrier) =>
  * ⚠ BYEN KOMMER UDEFRA. Etapen bærer byen som `fraSted`/`tilSted` og adressen
  * uden by — samme kendsgerning må ikke stå to steder. Her sættes de sammen.
  */
+/**
+ * Adressen på etapens FØRSTE stop af en art — eller null.
+ *
+ * ⚠ FØRSTE, IKKE SIDSTE. Et multi-drop har flere leveringer, og mærkatet har
+ * én celle. Den første er den etapen er navngivet efter; de øvrige står på
+ * turplanen, hvor der er plads til dem alle.
+ */
+function stopAdresse(etape, art) {
+  return stopListe(etape).find((s) => s.art === art) || null;
+}
+
 export function adresseblok(adresse, by) {
   if (!adresse && !by) return null;
   const postnrBy = [adresse?.postnr, by].filter(Boolean).join(" ");
@@ -401,10 +418,15 @@ export function byggLabel({
         : null,
       kolli: kolliTekst(carrier),
 
-      /* Ruten — tre celler på de to transit-typer, to på den direkte. */
-      fra: adresseblok(foerste?.fraAdresse, foerste?.fraSted),
-      transit: harTransit ? adresseblok(foerste?.tilAdresse, transitBy) : null,
-      til: adresseblok(sidste?.tilAdresse, sidste?.tilSted),
+      /* Ruten — tre celler på de to transit-typer, to på den direkte.
+
+         ⚠ ADRESSEN ER STOPPETS. `adresseblok()` falder tilbage på
+         stedsnavnet, så et mærkat på en etape uden stop ser ud som før —
+         det er dét der gør ændringen sikker at udrulle. */
+      fra: adresseblok(stopAdresse(foerste, "afhentning"), foerste?.fraSted),
+      transit: harTransit
+        ? adresseblok(stopAdresse(foerste, "levering"), transitBy) : null,
+      til: adresseblok(stopAdresse(sidste, "levering"), sidste?.tilSted),
       fraSted: foerste?.fraSted || null,
       transitSted: transitBy,
       slutmaal: sidste?.tilSted || null,

@@ -8476,3 +8476,118 @@ en besked man kan handle på.**
 *"Godsskade · Bil 12 · Udført"* med *"📅 22.08.2026 · 📍 Kolding"*, og
 tankningerne med deres beløb og ingen pille — en udgift har intet forløb nogen
 skal gøre noget ved (beslutning 106).
+
+## 110. To felter for ét spørgsmål — og det designede var det ubrugte
+
+Sidste af de fire skærme: **Turplanen.** Den viser stop — nummereret, med
+tidsvindue, adresse, telefon og det gods der skal af og på. Den model fandtes
+ikke.
+
+### Men noget lignende gjorde, i to former
+
+Målt i den udrullede base — otte etaper:
+
+| | Findes på | Læst af | Skrives af |
+|---|---|---|---|
+| `fraSted` / `tilSted` | **8 af 8** | **ti filer** — prissætning, disponering, mærkater, rutestatus | `bookingopret` |
+| `fraAdresse` / `tilAdresse` | 2 af 8 | **én fil** | **ingenting** |
+
+`fraAdresse` var **struktureret** — `{navn, gade, postnr}` — med en `.validate`
+på hvert led. Den var designet, valideret og aldrig taget i brug, mens et
+fritekstfelt reglerne **slet ikke nævner** bar hele driften.
+
+⚠ **Det kunne ligge sådan, fordi `etaper` er `.write: false`.** Kun Cloud
+Functions skriver, og Admin-SDK'et går uden om `.validate` — så en feltliste
+der ikke passer til dataene, giver aldrig en fejl. Reglen beskrev en form
+ingen skrev, og validerede den omhyggeligt.
+
+⚠ **Og transportmærkatet trykte den.** `adresseblok(foerste?.fraAdresse, …)` —
+altså en adresse der i praksis aldrig var udfyldt. Den faldt tilbage på
+stedsnavnet, så mærkatet så rigtigt ud; feltet var bare dekoration.
+
+### Stedet bliver, adressen flytter
+
+⚠ **`fraSted` er et NAVN** til prissætning og ruteopslag ("København"). **Et
+stop er en adresse man kan køre til**, med et tidsvindue, en kontakt og det
+gods der skal af og på. De svarer på hvert sit spørgsmål, og derfor bliver
+begge.
+
+Det der forsvinder, er `fraAdresse` som halvt udfyldt tredje form.
+`.validate: false` — **forbudt, ikke fjernet**, som `division` i beslutning 70:
+en manglende regel ville TILLADE feltet, og så kunne formen vende tilbage som
+data uden at nogen havde besluttet det.
+
+### `planlagteStop()` har ét svar
+
+`statushaendelser.stopId` prøves mod **netop den funktion** (beslutning 103).
+Lå de eksplicitte stop ved siden af den udledte rute, kunne en melding pege på
+et stop den ene kendte og den anden ikke.
+
+Funktionen svarer derfor med de eksplicitte når etapen har dem, og udleder
+ellers som før — de gamle etaper virker uændret. Grænseovergangene flettes ind
+begge veje, fordi en grænse ikke er et stop man laver noget ved, men **er** et
+punkt chaufføren melder passeret.
+
+⚠ **Med mere end to stop lægges grænsen ikke ind.** Hvor den hører på et
+multi-drop, er et gæt — og et gæt der stod som en plan, ville få `naesteStop()`
+til at pege på et sted chaufføren ikke skal hen.
+
+### Der er en skrivevej, og det er hele pointen
+
+`bookingopret` skriver de to stop en A→B-tur altid har. Uden det havde vi lavet
+`fraAdresse` om igen: en form uden en skrivevej.
+
+⚠ **Navnet er stedet, indtil nogen taster en adresse.** Vi finder ikke på en
+gade: en gættet adresse sender chaufføren det forkerte sted hen, og det er
+værre end en adresse der mangler. Samme regel som den gættede momssats.
+
+### "Mangler scan" er fraværet af en melding
+
+Skærmbilledet siger *"Afhentning mangler scan"*. Det spørgsmål er allerede
+besvaret af `statushaendelser`: en melding med et `stopId`. Et `scannetMs` på
+stoppet ville være den samme kendsgerning gemt to steder, og de to ville drive
+fra hinanden første gang en melding blev sendt igen.
+
+**En stregkodescanning er en anden MÅDE at sende den melding på — ikke et
+andet felt.** En prøve afviser `scan` som feltnavn i både modellen og reglen.
+
+### "54 paller" er ikke paller
+
+De samme tolv paller op og af er **tolv paller og fireogtyve løft**. Lægges
+begge stop sammen, står der 24 — og det er ikke forkert, men det er ikke
+*paller*. Det er **håndteringer**, og det er dét en chauffør planlægger efter:
+hvor mange gange han skal på og af med en palleløfter.
+
+Stod der "24 paller" om en tur med 12, ville tallet være forkert på en måde
+ingen kan se — og en chauffør der læssede efter det, ville stå med for lidt
+plads. Alternativet, at summere kun afhentninger, giver **0** på en
+distributionsdag hvor alt er leveringer.
+
+### To fejl i min egen skærm, og kun skærmen viste dem
+
+⚠ **Opgørelsen og listen læste hver sin kilde.** Summen kom fra `stopListe()` —
+de eksplicitte — mens kortene tegnes af `planlagteStop()`, som udleder. På
+dagens tur stod der **"0 tilbage · 0 færdige" over tre kort hvoraf det ene var
+meldt.** Det er præcis den fejl `planlagteStop()` blev lavet om for at undgå,
+og jeg lavede den i skærmen alligevel. Begge tal var plausible hver for sig.
+
+⚠ **Og nummereringen talte grænsen med:** en tur med én grænse blev til
+**"1, (grænse), 3"** — chaufføren har to stop. Grænsen tegnes som en streg
+netop fordi den ikke er et stop; så skal den heller ikke have et nummer.
+
+### Og en prøve der ikke kunne fejle
+
+Jeg skrev `{3, 1, 2}` for at bevise at rækkefølgen kommer af nøglen. **Målt ved
+at fjerne `.sort()`: prøven blev grøn.** JavaScript ordner selv
+heltalslignende nøgler stigende, så listen kom rigtigt ud uanset.
+
+`"02"` er derimod ikke en heltalsindeks for JS — den ordnes efter indsættelse —
+mens `Number("02")` er 2. Det er dét tilfælde sorteringen findes for.
+**En prøve der ikke kan fejle, siger ingenting.**
+
+### Målt gennem appen
+
+Turplanen for tre dage siden: to stop med adresse, telefon og ordrelinje,
+*"2 tilbage · 0 færdige · 24 håndteringer"*. En melding sendt fra stop 1 landede
+i basen med **`stopId: "stop-1"`** og flyttede tallet til *"1 tilbage · 1
+færdige"* — stoppene og meldingerne er koblet hele vejen.

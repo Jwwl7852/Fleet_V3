@@ -389,7 +389,8 @@ describe("Skærmen læser noden, ikke demofilen", () => {
       "formen oversættes ét sted — se meldingerFor()");
   });
 
-  const APP = udenKommentarer(readFileSync("src/moduler/app/MinTur.jsx", "utf8"));
+  /* ⚠ Turplan AFLØSTE MinTur i beslutning 110 — samme skærm, nu med stop. */
+  const APP = udenKommentarer(readFileSync("src/moduler/app/Turplan.jsx", "utf8"));
 
   /**
    * ⚠ FILTERET ER personId, IKKE uid. Sammenlignede appen de to direkte,

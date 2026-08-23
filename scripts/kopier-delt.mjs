@@ -110,7 +110,12 @@ export const DELTE_FILER = [
      valideMelding() som chauffoerappen proevede med, og HAENDELSE er den ene
      ordliste. Skrev serveren sin egen, kunne appen tilbyde en meldingstype
      serveren ikke kendte, og chaufføren ville trykke forgaeves i en lastbil.
-     Filen er importfri. */
+
+     ⚠ HER STOD "Filen er importfri". Det er den ikke laengere: siden
+     beslutning 110 importerer den `stop.js`, fordi ruten har ÉN kilde — de
+     eksplicitte stop naar etapen har dem, og de udledte ellers. `stop.js` er
+     selv importfri og staar derfor lige nedenfor. Lukningen holder. */
+  "stop.js",
   "rutestatus.js",
   /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele
      regnestykket kan proeves uden en emulator. Jobbet henter noderne og

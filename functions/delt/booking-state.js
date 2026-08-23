@@ -21,6 +21,10 @@
  */
 
 import { PERM, harPerm } from "./permissions.js";
+/* ⚠ STOPPENE BYGGES VED OPRETTELSEN — beslutning 110. En form uden en
+   skrivevej er præcis det `fraAdresse` var: designet, valideret og skrevet
+   af ingenting. */
+import { stopFraStraekning } from "./stop.js";
 
 /* Rollenavnene bruges til visning og som navn på et permission-preset — se
    permissions.js. De afgør IKKE længere hvad man må: overgangene nedenfor
@@ -508,6 +512,20 @@ export function bookingOpdatering(bookingId, etapeIder, post, { uid, nu, nummer 
     if (i === straekninger.length - 1 && Number.isFinite(post.onsketLeveringMs)) {
       e.senestMs = post.onsketLeveringMs;
     }
+
+    /* ⚠ DE TO STOP EN A→B-ETAPE ALTID HAR — beslutning 110.
+
+       Navnet er STEDET, indtil nogen taster en adresse. Vi finder ikke på en
+       gade: en gættet adresse sender chaufføren det forkerte sted hen, og
+       det er værre end en adresse der mangler.
+
+       ⚠ OG DE SKRIVES HER, ikke når skærmen tegner dem. Et stop der først
+       opstod ved visningen, kunne ikke bære en ordrelinje eller en kontakt —
+       og så var vi tilbage ved en udledt rute. Det var netop dét der gik galt
+       med `fraAdresse`: en form uden en skrivevej. */
+    e.stop = stopFraStraekning({
+      fraSted: s.fraSted, tilSted: s.tilSted, fra: e.fra, senestMs: e.senestMs,
+    });
     return e;
   });
 

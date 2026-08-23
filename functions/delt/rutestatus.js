@@ -6,7 +6,13 @@
 /* src/fleet/rutestatus.js
  * Rute & status. BESLUTNING 22 — INGEN GPS.
  *
- * INGEN IMPORTS.
+ * ⚠ HER STOD "INGEN IMPORTS". Filen importerer nu  — beslutning 110 —
+ * fordi ruten har ÉN kilde: de eksplicitte stop når etapen har dem, og de
+ * udledte ellers. To svar på hvor turen går, ville lade en statusmelding pege
+ * på et stop den ene kendte og den anden ikke.
+ *
+ *  er selv importfri, og den står på DELTE_FILER — listen er lukket
+ * under import, og en manglende kopi fejler ved DEPLOY, ikke ved test.
  *
  * ⚠ SKÆRMEN HED "LIVE-KORT", OG DET NAVN LOVEDE NOGET VI IKKE HAR.
  *
@@ -32,6 +38,10 @@
  * ikke hørt noget siden kl. 11.40" — ikke gætte en position ud af en plan.
  */
 
+/* ⚠ ÉN KILDE TIL RUTEN. Se planlagteStop() — de eksplicitte stop vinder,
+   og de udledte er faldbakken for etaper fra før beslutning 110. */
+import { stopListe } from "./stop.js";
+
 /** Hvad chaufføren melder. Fast vokabular: fritekst gør en tidslinje
  *  usøgbar, og så bliver den aldrig brugt til det den er lavet til. */
 export const HAENDELSE = {
@@ -56,6 +66,47 @@ const AFSLUTTER = new Set(["afsluttet"]);
  */
 export function planlagteStop(etape) {
   if (!etape) return [];
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ⚠ ÉT SVAR, IKKE TO — BESLUTNING 110
+     ══════════════════════════════════════════════════════════════════════
+
+     Etapen kan nu bære EKSPLICITTE stop med adresse, tidsvindue, kontakt og
+     ordrelinjer (`stop.js`). Lå de ved siden af den udledte rute, ville der
+     være to svar på hvor turen går — og `statushaendelser.stopId` prøves mod
+     NETOP denne funktion (beslutning 103). En melding kunne så pege på et
+     stop den ene kendte og den anden ikke.
+
+     Funktionen svarer derfor med de eksplicitte når etapen har dem, og
+     udleder ellers som før. De gamle etaper virker uændret.
+
+     ⚠ GRÆNSEOVERGANGENE KOMMER MED BEGGE VEJE. En grænse er ikke et stop man
+     laver noget ved — den har hverken ordrer eller kontakt — men den ER et
+     punkt chaufføren melder passeret, og `naesteStop()` skal kunne finde den.
+     Den udledes derfor stadig af `graenseovergange` og flettes ind. */
+  const eksplicitte = stopListe(etape);
+  if (eksplicitte.length) {
+    const ud = [];
+    for (const s of eksplicitte) {
+      ud.push({
+        id: s.id,
+        sted: s.navn,
+        rolle: s.art,
+        planlagtMs: Number.isFinite(s.fraMs) ? s.fraMs : null,
+        stop: s,
+      });
+      /* Grænserne ligger mellem afhentning og levering — altså efter det
+         første stop. Med mere end to stop er det et gæt hvor de hører, og
+         derfor lægges de kun ind når ruten ER A→B. */
+      if (s.nr === 1 && eksplicitte.length === 2) {
+        for (const g of etape.graenseovergange || []) {
+          ud.push({ id: `graense-${g}`, sted: g, rolle: "graense", planlagtMs: null });
+        }
+      }
+    }
+    return ud;
+  }
+
   const ud = [{ id: "start", sted: etape.fraSted, rolle: "afhentning", planlagtMs: etape.fra }];
   for (const g of etape.graenseovergange || []) {
     ud.push({ id: `graense-${g}`, sted: g, rolle: "graense", planlagtMs: null });

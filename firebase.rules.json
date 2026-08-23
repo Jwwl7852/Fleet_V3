@@ -1103,17 +1103,81 @@
             // er kun BYEN. Byen staar derfor IKKE her igen: samme kendsgerning
             // to steder driver, og planlaegningen laeser fraSted. Maerkatet
             // saetter dem sammen: navn, gade, "postnr fraSted".
-            "fraAdresse": {
-              "navn": { ".validate": "newData.isString() && newData.val().length <= 120" },
-              "gade": { ".validate": "newData.isString() && newData.val().length <= 120" },
-              "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
-              "$andet": { ".validate": false }
-            },
-            "tilAdresse": {
-              "navn": { ".validate": "newData.isString() && newData.val().length <= 120" },
-              "gade": { ".validate": "newData.isString() && newData.val().length <= 120" },
-              "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
-              "$andet": { ".validate": false }
+            // ══════════════════════════════════════════════════════════
+            // ⚠ fraAdresse OG tilAdresse ER FORBUDT — BESLUTNING 110
+            // ══════════════════════════════════════════════════════════
+            //
+            // De var STRUKTUREREDE — {navn, gade, postnr} — med en
+            // .validate paa hvert led, og de blev SKREVET AF INGENTING.
+            // Maalt i den udrullede base: 2 af 8 etaper havde dem (fra
+            // seedet), een fil laeste dem, ingen skrev dem.
+            //
+            // Samtidig bar `fraSted`/`tilSted` hele driften — 8 af 8,
+            // laest af TI filer — og de staar slet ikke i den her
+            // feltliste. To felter for eet spoergsmaal, og det designede
+            // af dem var det ubrugte.
+            //
+            // Adressen hoerer nu paa STOPPET nedenfor, hvor den ogsaa kan
+            // baere et tidsvindue, en kontakt og det gods der skal af og
+            // paa. `fraSted` bliver: det er et NAVN til prissaetning og
+            // ruteopslag, ikke en adresse man koerer til.
+            //
+            // ⚠ FORBUDT, IKKE FJERNET — som `division` i beslutning 70. En
+            // manglende regel ville TILLADE feltet, og saa kunne den tredje
+            // form vende tilbage som data uden at nogen havde besluttet det.
+            "fraAdresse": { ".validate": false },
+            "tilAdresse": { ".validate": false },
+
+            // ══════════════════════════════════════════════════════════
+            // STOPPENE — beslutning 110
+            // ══════════════════════════════════════════════════════════
+            //
+            // ⚠ NOEGLET PAA ET NUMMER, ikke en array. RTDB har ingen
+            // arrays, og `forslag` kostede tre lukkede overgange i
+            // produktion netop fordi demo brugte arrays mens noden var
+            // noeglet (beslutning 76). Raekkefoelgen kommer af noeglen.
+            //
+            // ⚠ VEJEN IND ER LUKKET, som resten af etapen: `etaper` er
+            // `.write: false`, og `bookingopret` skriver de to stop en
+            // A→B-tur altid har. Reglen her beskriver formen serveren skal
+            // overholde — den kan ikke naas af en klient.
+            //
+            // ⚠ OG ORDRELINJERNE HOERER PAA STOPPET, ikke paa etapen. Et
+            // multi-drop har gods til flere kunder paa samme tur, og en
+            // liste paa etapen kunne ikke sige hvad der skal af HVOR.
+            "stop": {
+              "$nr": {
+                ".validate": "newData.hasChildren(['art', 'navn'])",
+                "art": { ".validate": "newData.isString() && newData.val().matches(/^(afhentning|levering)$/)" },
+                "navn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "gade": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "postnr": { ".validate": "newData.isString() && newData.val().length <= 12" },
+                "by": { ".validate": "newData.isString() && newData.val().length <= 80" },
+                // ⚠ KONTAKTEN HOERER PAA STOPPET, ikke paa kunden. Det er
+                // rampens telefon — den man ringer til naar porten er
+                // laast — og den er sjaeldent kundens hovednummer.
+                "telefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                // ⚠ ET TIDSVINDUE ER TO TAL ELLER INGEN. Reglen kan kun se
+                // eet felt ad gangen, saa `valideStop()` haandhaever parret;
+                // her sikres kun at hvert af dem er et tidspunkt, og at til
+                // ikke ligger foer fra.
+                "fraMs": { ".validate": "newData.isNumber()" },
+                "tilMs": { ".validate": "newData.isNumber() && (!newData.parent().child('fraMs').exists() || newData.val() >= newData.parent().child('fraMs').val())" },
+                "ordrer": {
+                  "$ordreId": {
+                    "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+                    "nummer": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                    // ⚠ HELE TAL. Et halvt kolli findes ikke, og et kg med
+                    // decimaler ville laegge sig sammen til en vaegt der ser
+                    // praecis ud.
+                    "kolli": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                    "kg": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+                    "gods": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                    "$andet": { ".validate": false }
+                  }
+                },
+                "$andet": { ".validate": false }
+              }
             },
             // ⚠ FORSLAGET LIGGER PAA ETAPEN — BESLUTNING 40. Det laa BAADE her
             // og paa bookingen: dér tid, pris og transittid, her enheder og

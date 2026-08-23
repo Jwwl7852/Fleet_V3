@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **109 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **110 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,28 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Lægge en adresse på etapen i stedet for på stoppet.** `fraAdresse` var
+  struktureret, valideret på hvert led og **skrevet af ingenting** — 2 af 8
+  etaper havde den. Felterne er nu `.validate: false`: **forbudt, ikke
+  fjernet**, som `division` i beslutning 70. Adressen hører på
+  `etaper/<id>/stop/<nr>`, hvor den også kan bære et tidsvindue, en kontakt og
+  ordrelinjer.
+  ⚠ **`fraSted` bliver.** Det er et NAVN til prissætning og ruteopslag, læst af
+  ti filer; stoppet er en adresse man kan køre til. To spørgsmål, to felter.
+  ⚠ **`planlagteStop()` har ÉT svar** — de eksplicitte stop når etapen har
+  dem, ellers den udledte rute. `statushaendelser.stopId` prøves mod netop den
+  funktion (beslutning 103), og to svar ville lade en melding pege på et stop
+  den ene kendte og den anden ikke.
+  ⚠ **Og "mangler scan" er fraværet af en melding**, ikke et felt. Et
+  `scannetMs` på stoppet ville være samme kendsgerning gemt to steder.
+  Se beslutning 110.
+- **Kalde en sum af stoppenes kolli for "paller".** De samme tolv paller op og
+  af er tolv paller og **fireogtyve løft**. Tallet er `håndteringer`; stod der
+  paller, ville en chauffør der læssede efter det, stå med for lidt plads.
+- **Lade en form stå uden en skrivevej.** Det var hele fejlen ved
+  `fraAdresse`: designet, valideret og aldrig skrevet — og på en
+  `.write: false`-node giver det aldrig en fejl, fordi Admin-SDK'et går uden
+  om `.validate`. Skriver ingen funktion feltet, findes feltet ikke.
 - **Lade en chauffør ansøge om en helbredsoplysning.** `ANSOEGBARE_ARTER` er
   **udledt af `helbred`** — ferie, feriefridag, afspadsering — og står som
   `oensket` på BASISNODEN. `art` bor i `sensitive/fravaer`, hvis `.write`

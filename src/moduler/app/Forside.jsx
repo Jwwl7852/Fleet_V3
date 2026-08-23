@@ -14,12 +14,13 @@
  * fortæller chaufføren at han ikke kan gøre det han skulle, er ikke en
  * oplysning til ham — det er en note til os, og den hører i README.
  *
- * ⚠ "MINE TURE" ER TURPLANENS FORLØBER. Den viser etaperne og chaufførens
- * meldinger (beslutning 103). Turplanen skal vise STOP med tidsvindue,
- * kontakt, ordrelinjer og scan — en model der ikke findes endnu. Kortet
- * skifter navn den dag den gør; det lover ikke noget det ikke kan.
+ * ⚠ KORTET HED "MINE TURE" INDTIL BESLUTNING 110. Skærmen viste etaperne og
+ * chaufførens meldinger (beslutning 103), og den kunne ikke vise en turplan,
+ * fordi stoppene ikke fandtes som model — navnet lovede derfor ikke mere end
+ * skærmen kunne. Nu findes de, med adresse, tidsvindue, kontakt og
+ * ordrelinjer, og kortet hedder hvad skærmen gør.
  *
- * Se beslutning 106.
+ * Se beslutning 106 og 110.
  */
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
@@ -40,8 +41,9 @@ const KORT = [
   },
   {
     til: "/app/tur",
+    node: "etaper",
     ikon: "🗺️",
-    titel: "Mine ture",
+    titel: "Turplan",
     under: "Se dine ture for dagen, som de er planlagt i disponeringen.",
   },
   {

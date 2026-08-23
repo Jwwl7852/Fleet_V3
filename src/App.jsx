@@ -94,7 +94,10 @@ const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
 const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
-const MinTur = lazy(() => import("./moduler/app/MinTur.jsx"));
+/* ⚠ Turplan AFLØSER MinTur — beslutning 110. MinTur viste etaperne og
+   meldingerne, fordi stoppene ikke fandtes som model. Nu gør de, og
+   meldingerne ligger dér hvor de hører til: på stoppet. */
+const Turplan = lazy(() => import("./moduler/app/Turplan.jsx"));
 const AppIndberetning = lazy(() => import("./moduler/app/Indberetning.jsx"));
 const AppTid = lazy(() => import("./moduler/app/Timeregistrering.jsx"));
 const AppFrihed = lazy(() => import("./moduler/app/Frihed.jsx"));
@@ -423,7 +426,7 @@ export default function App() {
           {harAdgang && <Route path="/login" element={<EfterLogin />} />}
           {/* ⚠ SIDEORDNET MED SHELLEN, ikke under den. Se Chauffoerramme.
               Suspense ligger i AppShell om <Outlet/>, og den her rute er
-              udenfor — derfor sin egen grænse, ellers ville en doven MinTur
+              udenfor — derfor sin egen grænse, ellers ville en doven Turplan
               vise et tomt vindue. Beslutning 97 og 103. */}
           {harAdgang && (
             <Route path="/app/*" element={(
@@ -431,7 +434,7 @@ export default function App() {
                 <Suspense fallback={<div className="fc-empty">Henter dine ture …</div>}>
                   <Routes>
                     <Route index element={<AppForside />} />
-                    <Route path="tur" element={<MinTur />} />
+                    <Route path="tur" element={<Turplan />} />
                     <Route path="tid" element={<AppTid />} />
                     <Route path="frihed" element={<AppFrihed />} />
                     <Route path="indberetning" element={<AppIndberetning />} />

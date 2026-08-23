@@ -1623,3 +1623,25 @@
 .fc-app-besoeg{
   margin:0; padding:8px 10px; border-radius:6px;
   background:var(--fc-accent-soft); color:var(--bc-accent); font-weight:650}
+
+/* ---- Turplanen — beslutning 110 --------------------------------------- */
+.fc-app-dagsum{display:flex; flex-wrap:wrap; gap:8px; margin:0}
+.fc-app-mrk{
+  padding:6px 12px; border-radius:999px; background:var(--fc-accent-soft);
+  font-weight:650; font-size:var(--fc-t-s)}
+/* ⚠ DAGENS TAL SKAL SKILLE SIG UD FRA BIL OG STARTTID. Det er dét han
+   planlægger efter, og tre ens piller ved siden af hinanden læses som én. */
+.fc-app-mrk-mork{background:var(--fc-navy); color:#fff}
+
+.fc-app-stop-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.fc-app-nr{
+  width:32px; height:32px; flex:0 0 32px; border-radius:999px;
+  background:var(--fc-navy); color:#fff; font-weight:700;
+  display:flex; align-items:center; justify-content:center}
+/* ⚠ ET NÅET STOP TONES NED, det skjules ikke. Han skal kunne se hvad han har
+   gjort — og en liste der krymper under fingeren, mister sin rækkefølge. */
+.fc-app-stop-naaet{opacity:.62}
+.fc-app-graense{text-align:center; margin:0}
+
+.fc-app-ordre{margin:0; padding:8px 10px; border-radius:6px; background:var(--bc-bg)}
+.fc-app-gods{display:block; font-size:var(--fc-t-s); color:var(--bc-muted)}
