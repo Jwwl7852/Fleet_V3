@@ -387,9 +387,19 @@ describe("værkstedsbesøgets to felter", () => {
     const post = opgave({ art: "vaerksted", koeretoejId: "kt-1", type: "service" });
     assert.ok(valideOpgaveplan(post).fejl.arbejdstype,
       "en post med 'type' i stedet for 'arbejdstype' blev godtaget");
-    /* Og `type` kommer aldrig i noden: funktionen bygger posten felt for felt. */
+    /* Og `type` kommer aldrig i noden: funktionen bygger posten felt for felt.
+       ⚠ MÅLT PÅ OPGAVEFUNKTIONERNE, IKKE PÅ HELE FILEN. Den læste hele
+       functions/index.js, og forbuddet gjaldt dermed enhver funktion der
+       nogensinde blev skrevet — `statusmelding` tager med rette et `type` fra
+       klienten, for en statusmelding HAR ingen `art` at forveksle det med.
+       En prøve der rammer bredere end sin begrundelse, siger nej til noget
+       den ikke har taget stilling til. Se beslutning 103. */
     const kode = readFileSync("functions/index.js", "utf8");
-    assert.doesNotMatch(kode, /type: kortStreng\(d\.type/);
+    for (const navn of ["opgaveplanlaeg", "facilityplanlaeg", "opgaveflyt", "opgavestatus"]) {
+      const krop = kode.split(`export const ${navn} =`)[1]?.split("\nexport const")[0];
+      assert.ok(krop, `funktionen ${navn} findes ikke længere`);
+      assert.doesNotMatch(krop, /type: kortStreng\(d\.type/);
+    }
   });
 
   it("⚠ OG fra/til AFVISES — en opgave bærer startMs og estimeretMin", async () => {

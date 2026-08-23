@@ -7599,3 +7599,183 @@ Overførsler, og kun den ene er den han allerede har bogført.
 **To knapper, ikke en vælger.** En dropdown der husker sit valg, ville sende
 bogholderen JSON den dag han skulle bruge CSV, uden at han kunne se hvad der
 skete. To knapper siger hvad de gør.
+
+## 103. Chaufføren fik en app — og et login fik endelig et navn
+
+**Rute & status havde stået tom for alle, og skærmen var ikke i stykker.**
+Beslutning 64 lukkede den sidste direkte demo-læsning på ét felt nær: den lod
+`demoHaendelser` stå, med begrundelsen *"deres node findes ikke, og et tomt
+array ville give 'ingen meldinger', som ser ud som en måling"*. Det var
+rigtigt. `rutestatus.js` har kunnet **læse** meldinger siden beslutning 22 —
+otte hændelsestyper, `planlagteStop()`, `naesteStop()`, `afvigelseFraPlan()`,
+`stilhedMin()` — og der var ingen der kunne **skrive** dem: `statushaendelser`
+stod hverken i `firebase.rules.json` eller i seedet, og chaufføren havde ingen
+app at melde fra.
+
+Hele læsesiden var altså bygget færdig og ventede på en skrivevej der ikke
+fandtes. Det er en billigere fejl end det omvendte, men det er den samme fejl
+som `naesteBookingnummer()`, der stavedes forkert og blev kaldt ingen steder
+(beslutning 55): **kode der aldrig køres, kan ikke være rigtig eller forkert.**
+
+### Blokeringen: et login og en medarbejder mødtes ingen steder
+
+⚠ **`brugere/<uid>` bar `email`, `navn`, `rolle` og `spaerret` — og intet der
+sagde hvilken medarbejder kontoen tilhører.** En chauffør kunne logge ind, og
+systemet kunne ikke svare på hvilke ture der var hans: **etapen bærer et
+`personId`, tokenet bærer et `uid`**, og der fandtes ingen oversættelse.
+
+Det er præcis den skelnen CLAUDE.md navngiver — `uid` er hvem der *gjorde*
+noget, `personId` hvem det *handler om* — og lige dér skal de to kunne bindes
+sammen ét sted. Feltet ligger på **brugerposten**, ikke på personale-posten:
+brugerposten er nøglet på uid, så en regel kan slå op i O(1). Lagde vi `uid` på
+`personale/<id>` i stedet, skulle en regel **scanne** for at svare *"hvem er
+jeg"*, og det kan RTDB ikke.
+
+⚠ **Feltet er valgfrit.** En admin på kontoret er ikke nødvendigvis en post i
+`personale`, og en chauffør har måske slet intet login. Var det påkrævet, kunne
+ingen bruger oprettes før nogen havde peget på en medarbejder.
+
+### Vejen ind er lukket — og af en grund reglen ikke kan dække
+
+`statushaendelser` er `.write: false`, og `statusmelding` er den ene vej ind.
+**En regel kan sammenligne to felter i den skrivning den ser; den kan ikke
+afgøre om en etape er chaufførens**, for det kræver et opslag i brugerposten.
+Sendte klienten sit eget `personId` med, kunne han sende hvad som helst — og
+melde en kollega ankommet til en rampe han aldrig har set. Samme figur som
+`opgaver` (45), `kasseudlaan` (37) og `enheder` (39).
+
+⚠ **Permissionen er `booking.laes`, ikke en skrivepermission.** En chauffør har
+seks permissions og med vilje ikke `booking.skriv` — han må ikke flytte en tur.
+At melde hvor han er, er ikke at ændre turen; kravet er at han overhovedet må
+se den, og **ejerskabet er det der afgrænser ham**. En disponent må også melde:
+han sidder med chaufføren i telefonen, og et system hvor kun føreren kan melde,
+får meldingen skrevet i en notesblok i stedet.
+
+⚠ **To grunde til en afvisning, to svar.** *"Din bruger er ikke koblet til et
+medarbejderkort"* rettes i Opsætning; *"etapen er ikke din"* er en fejl i
+disponeringen. Ét svar til begge ville sende chaufføren det forkerte sted hen.
+
+### Tidspunktet kommer fra telefonen
+
+⚠ **Det er det MODSATTE af `udleveretMs` på et kasseudlån**, hvor serveren
+sætter tiden fordi en browser må oplyse hvad som helst. Forskellen er
+forbindelsen: et kasseudlån skiftes af et menneske foran en skærm, mens en
+melding sendes fra en lastbil hvor signalet kan være væk. Sattes tiden på
+serveren, ville en melding sendt kl. 14 stå kl. 16 fordi det var da dækningen
+kom igen — og `stilhedMin()` ville sige at vi *lige* havde hørt fra ham. Det
+tal er hele skærmens pointe.
+
+Prisen er at telefonens ur kan være forkert. Den betaler vi, og vi tager den
+kendte skade: serveren afviser et tidspunkt der ligger mere end syv dage
+tilbage eller et døgn frem. **Vinduet er bredt med vilje** — en melding sendt i
+en tunnel må gerne lande timer senere, det er hele grunden til at tiden kommer
+fra telefonen.
+
+⚠ **`klientId` gør en gensendelse ufarlig, og den er NØGLEN.** Skrivningen er
+`statushaendelser/<etapeId>/<klientId>`, ikke et `push()`: sender telefonen den
+samme melding to gange, fordi svaret forsvandt undervejs, bliver den anden den
+**samme post** og ikke en post mere. Køen er ikke bygget — appen er ikke
+offline — men **modellen skal kunne bære den**, ellers skulle en kø opfinde
+feltet senere, og den gamle og den nye model kunne ikke lægges sammen.
+
+### Demosættet havde en anden FORM end noden
+
+⚠ `DEMO_STATUSHAENDELSER` var **arrays**. RTDB har ingen arrays, og det er
+beslutning 76 om igen: dér talte `kanSkifteEtape()` med `post.forslag?.length`
+— `undefined` på nodeform — så **tre overgange var lukkede i produktion mens de
+virkede i demo**. Sættet er nu nøglet på meldingens `klientId`, som noden.
+
+⚠ **Og det bar et `sted`-felt reglen ikke har.** En position er præcis det
+beslutning 22 siger vi ikke har. Stedet står allerede i den planlagte rute:
+`stopId` peger på et stop fra `planlagteStop()`, og stoppet bærer navnet. En
+melding **uden** et stopId — en pause, en forsinkelse — har intet kendt sted,
+og en streg er det rigtige svar. `valideMelding()` afviser desuden et `stopId`
+der ikke står på etapens egen rute: et frit id ville lade en melding "nå" et
+sted der ikke er på turen, og `naesteStop()` ville springe et rigtigt stop over
+uden at nogen kunne se hvorfor.
+
+### Appen er en anden RAMME, ikke et modul uden sidebar
+
+⚠ CLAUDE.md forbyder et **modul** at lave sin egen sidebar. Chaufførappen er
+ikke et modul i sidebaren; den er en ramme om den samme database, af samme
+slags som `Udbyderramme` (beslutning 35). En sidebar med tolv moduler på en
+telefon i en lastbil er ikke et overblik, det er en forhindring — og med seks
+permissions ville **elleve af tolv punkter føre til en afvist læsning**. En
+menu der mest består af døre der ikke kan åbnes, er værre end ingen menu. Ingen
+periodevælger: chaufføren har ét tidsrum.
+
+⚠ **Men adgangsvejen er den samme.** Ruten ligger inde i `harAdgang`, som
+uændret kræver et tenant-claim. Der er ingen chaufførvariant af spærringen, og
+reglerne kender ikke rammen — kun tokenet. Rammen afgør hvad der **tegnes**.
+
+⚠ **Knapperne sorteres, de spærres ikke.** Virkeligheden kommer ikke i
+rækkefølge: han kan holde pause før afgang eller melde forsinkelse tre gange.
+`foreslaaedeMeldinger()` sætter det sandsynlige først og lader resten stå. **En
+knap der er væk, tvinger chaufføren til at melde noget der ikke passer.**
+Knapperne er 52 px høje — betjent med en tommelfinger, ofte med handsker på.
+
+⚠ **En melding er ikke et tilstandsskift.** Etapens tilstand skiftes af
+`etapeskift` og kun dér (beslutning 40). En chauffør der melder "aflæsset",
+fortæller hvad han har gjort; han afslutter ikke turen i systemets forstand.
+Blandede vi de to, kunne en melding fra en telefon uden dækning lande fire
+timer for sent og flytte en booking der allerede var faktureret.
+
+### Der skrives ingen auditpost, og det er et valg
+
+**Meldingen ER sit eget spor:** den bærer `uid` og `ms`, noden er
+`.write: false`, og der findes ingen vej der kan rette eller slette den. En
+auditpost ville være den samme kendsgerning gemt to steder — det er
+`bemanding.ledig` igen (beslutning 71). Og mængden er en anden: en chauffør
+sender seks meldinger pr. tur, hvor et rolleskifte sker en gang om måneden.
+Valget står skrevet i funktionen, og en prøve kræver at det bliver stående;
+ellers ligner det en forglemmelse.
+
+### To prøver ramte bredere end deres begrundelse
+
+⚠ **Ottende og niende gang et anker spændte for bredt.**
+`rules.opgaver.test.mjs` forbød mønstret `type: kortStreng(d.type` i **hele**
+`functions/index.js`, altså i enhver funktion der nogensinde blev skrevet —
+begrundelsen handlede om at `opgaver` allerede har en `art` at forveksle det
+med. En statusmelding har ingen `art`. Og `rutedeling.test.mjs` forbød enhver
+`<Suspense>` efter `{!harAdgang &&`; kravet var *"ingen Suspense OM shellen"*,
+og chaufførappen skal have sin egen, ligesom ejerkonsollen har det. **En prøve
+der rammer bredere end sin begrundelse, siger nej til noget den ikke har taget
+stilling til.**
+
+### Ni kald mod DEV fandt to fejl prøverne ikke kunne se
+
+Alt var grønt, funktionen var udrullet, og noden havde elleve meldinger. Så
+blev `statusmelding` kaldt **ni gange som fire roller**, og to svar var
+forkerte.
+
+⚠ **Et forbudt felt blev accepteret.** `sted: "Padborg"` gav **OK** —
+`byggMelding()` kopierer felt for felt, så feltet var væk **før**
+`valideMelding()` kørte, og prøven for ukendte felter var reelt død kode. Det
+blev ikke skrevet til noden, så det var ikke et hul; det var værre på en anden
+måde: **klienten sendte noget systemet ikke forstår og fik ja tilbage.**
+Reglens `: false` fanger det ikke, for noden er `.write: false`, og en
+klient når aldrig `.validate`. Prøven står nu på **det klienten sendte**, ikke
+på det vi byggede af det.
+
+⚠ **Og undtagelsen for disponenten virkede ikke.** Jeg tjekkede
+`booking.skriv`. **Den permission findes ikke** — de ti hedder `laes`,
+`opret`, `foreslaa`, `godkend`, `returner`, `afvis`, `annuller`, `udfoer`,
+`sensitiveLaes`, `vaerdiLaes`. Grenen kunne aldrig fyre, så en disponent i
+telefonen med chaufføren fik at vide at **hans** bruger ikke var koblet til en
+medarbejder. Det er "en pæn knap" spejlvendt: ikke en spærring der ikke
+spærrer, men en undtagelse der er skrevet ned og ikke undtager. Den rigtige er
+`booking.udfoer` — at måtte gribe ind i en tur der **kører**; `booking.opret`
+ville have været forkert, for en casehandler opretter forespørgsler og har
+ikke med turen at gøre når den ruller.
+
+**Ingen af de to kunne ses ved at læse koden**, og en prøve mod filen ville
+have været grøn i begge tilfælde. En prøve kræver nu at hver permission
+funktionen slår op, faktisk findes i `ROLLE_PERMS`.
+### Målt
+
+| | Før | Efter |
+|---|---|---|
+| Meldinger der kan skrives | 0 | 8 typer, én vej ind |
+| `brugere/<uid>` → medarbejder | findes ikke | `personId`, valgfrit, tjekket mod `personale` |
+| Demo-læsninger uden node (beslutning 64) | 2 | 1 (`DEMO_LEVERANDOERSAGER`) |
+| Demosæt med anden form end noden | 1 (arrays) | 0 |

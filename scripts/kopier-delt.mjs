@@ -106,6 +106,12 @@ export const DELTE_FILER = [
   "dashboards.js", "dashboardvisning.js",
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
+  /* ⚠ rutestatus.js — beslutning 103. `statusmelding` afviser med den SAMME
+     valideMelding() som chauffoerappen proevede med, og HAENDELSE er den ene
+     ordliste. Skrev serveren sin egen, kunne appen tilbyde en meldingstype
+     serveren ikke kendte, og chaufføren ville trykke forgaeves i en lastbil.
+     Filen er importfri. */
+  "rutestatus.js",
   /* ⚠ KPI-aggregeringen er REN — den kender ingen database, saa hele
      regnestykket kan proeves uden en emulator. Jobbet henter noderne og
      kalder den.

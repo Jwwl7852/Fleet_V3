@@ -419,10 +419,31 @@
         // .read er tenant-medlemskab som paa roller: hvem der arbejder her, er
         // ikke hemmeligt for kollegerne. .write er false — indekset skrives
         // kun af funktionen, sammen med den rigtige konto.
+        // ⚠ `personId` KOBLER ET LOGIN TIL EN MEDARBEJDER — beslutning 103.
+        //
+        // Brugerposten bar `email`, `navn`, `rolle` og `spaerret`, og INTET
+        // der sagde hvilken medarbejder kontoen tilhoerer. En chauffoer kunne
+        // logge ind, og systemet kunne ikke svare paa hvilke etaper der var
+        // hans: etapen baerer et `personId`, tokenet baerer et `uid`, og de to
+        // moedtes ingen steder.
+        //
+        // Det er praecis den skelnen CLAUDE.md navngiver — `uid` er hvem der
+        // GJORDE noget, `personId` hvem det HANDLER om — og lige her skal de
+        // to kunne bindes sammen ÉT sted. Brugerposten er stedet: den er
+        // noeglet paa uid, saa en regel kan slaa op i O(1). Lagde vi `uid` paa
+        // personale-posten i stedet, skulle en regel SCANNE for at svare
+        // "hvem er jeg", og det kan RTDB ikke.
+        //
+        // ⚠ FELTET ER VALGFRIT. En admin paa kontoret er ikke noedvendigvis en
+        // medarbejder i `personale`, og en chauffoer har maaske slet intet
+        // login. Kun den der skal bruge appen, behoever koblingen.
         "brugere": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,
-          ".indexOn": ["rolle", "spaerret"]
+          ".indexOn": ["rolle", "spaerret"],
+          "$uid": {
+            "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" }
+          }
         },
 
         // KLASSIFICEREDE SATELLITTER (beslutning 17).
@@ -820,6 +841,60 @@
         // NODE_MODUL i moduler.js er sandheden, og rules.moduler.test.mjs
         // udleder sig af den: kommer linjen tilbage i tabellen, kommer
         // klausulen tilbage her — og laasen med den.
+        // ══════════════════════════════════════════════════════════════
+        // CHAUFFOERENS MELDINGER — beslutning 103
+        // ══════════════════════════════════════════════════════════════
+        //
+        // `rutestatus.js` har laest dem siden beslutning 22, og noden fandtes
+        // hverken her eller i seedet: Rute & status stod med "Ingen meldinger"
+        // paa hver eneste tur, for alle. Skaermen var ikke i stykker — der var
+        // bare ingen der kunne skrive.
+        //
+        // ⚠ NOEGLET PAA ETAPEN. En melding hoerer til én tur, og en tur hentes
+        // som én node. Laa de fladt med et `etapeId`, skulle hver visning
+        // filtrere hele historikken for at finde tre meldinger.
+        //
+        // ⚠ .write: false — VEJEN ER LUKKET, IKKE RETTEN. `statusmelding` er
+        // den ene vej ind, og den skal slaa op i BRUGERPOSTEN for at finde
+        // chauffoerens `personId` og afvise en melding paa en andens tur. En
+        // regel kan ikke goere det arbejde: den kan sammenligne to felter, men
+        // ikke afgoere om `uid` er `personId` uden opslaget — og et opslag
+        // klienten selv sendte med, kunne vaere hvad som helst.
+        //
+        // ⚠ MODULET ER `booking`, som paa `etaper`. En melding uden sin etape
+        // er en raekke uden betydning.
+        //
+        // ⚠ TIDSPUNKTET KOMMER FRA TELEFONEN. Se noten i rutestatus.js: en
+        // melding sendt kl. 14 uden daekning maa ikke staa kl. 16 fordi det var
+        // da signalet kom igen. `klientId` goer en gensendelse ufarlig.
+        "statushaendelser": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          ".write": false,
+          "$etapeId": {
+            ".indexOn": ["ms"],
+            "$meldingId": {
+              ".validate": "newData.hasChildren(['type', 'ms', 'uid', 'klientId'])",
+              // Ordlisten bor i HAENDELSE i rutestatus.js. Reglen validerer
+              // FORMEN; hvad hver type betyder, afgoeres ét sted i koden.
+              "type": { ".validate": "newData.isString() && newData.val().matches(/^(afgang|ankomstLaesning|afgangLaesning|graense|pause|ankomstLosning|afsluttet|forsinkelse)$/)" },
+              "ms": { ".validate": "newData.isNumber()" },
+              // ⚠ uid, IKKE personId. En melding er hvem der GJORDE noget.
+              // Serveren saetter den fra tokenet; en klient der maatte skrive
+              // sit eget, kunne melde i en kollegas navn.
+              "uid": { ".validate": "newData.isString() && newData.val().length > 0" },
+              "klientId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+              "stopId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+              "forsinketMin": { ".validate": "newData.isNumber() && newData.val() % 1 === 0" },
+              // ⚠ FRITEKST, OG DEN BLIVER I NODEN. Noten er chauffoerens egne
+              // ord om hvad der skete; den hoerer PAA meldingen og aldrig i
+              // auditloggen, hvor allowlisten findes for at holde tastet tekst
+              // ude (se LOGBARE_FELTER).
+              "note": { ".validate": "newData.isString() && newData.val().length <= 200" },
+              "$andet": { ".validate": false }
+            }
+          }
+        },
+
         "reservationer": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
           ".write": false,

@@ -36,12 +36,13 @@ import {
 } from "../../fleet/ui.jsx";
 import {
   HAENDELSE, planlagteStop, seneste, naesteStop, erAfsluttet,
-  afvigelseFraPlan, stilhedMin, stilhedTone,
+  afvigelseFraPlan, stilhedMin, stilhedTone, meldingerFor,
 } from "../../fleet/rutestatus.js";
 import { graenseLabel, krydserGraense, enhedsIder } from "../../fleet/etaper.js";
-/* ⚠ KUN SOM FALDBAKKE I useListe — undtagen `demoHaendelser`, som ikke HAR en
-   node. Se noten ved opslagene nedenfor. */
-import { DEMO_ETAPER, demoHaendelser } from "../../fleet/demo-etaper.js";
+/* ⚠ KUN SOM FALDBAKKE I useListe. `demoHaendelser` var undtagelsen indtil
+   beslutning 103: meldingerne havde ingen node, så skærmen læste demofilen
+   direkte — også i drift. Nu har de en, og faldbakken er en faldbakke. */
+import { DEMO_ETAPER, DEMO_STATUS_POSTER } from "../../fleet/demo-etaper.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 
@@ -58,6 +59,12 @@ export default function RuteOgStatus() {
   });
   const persListe = useListe("personale", {
     vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
+  });
+  /* ⚠ ÉN LÆSNING FOR ALLE TURE. Noden er `statushaendelser/<etapeId>/<id>`, så
+     hver "post" er en etape hvis felter er dens meldinger. Et opslag pr. tur
+     ville være femogtyve kald på en skærm der viser femogtyve ture. */
+  const meldListe = useListe("statushaendelser", {
+    vindue: "alle", graense: 500, demo: DEMO_STATUS_POSTER,
   });
 
   const bil = (id) => bilListe.data.find((b) => b.id === id);
@@ -84,14 +91,16 @@ export default function RuteOgStatus() {
     .sort((a, b) => a.fra - b.fra);
 
   const raekker = relevante.map((e) => {
-    /* ⚠ MELDINGERNE HAR INGEN NODE, OG DET ER IKKE EN FORGLEMMELSE.
-       `statushaendelser` findes hverken i `firebase.rules.json` eller i SEED:
-       de kommer fra chaufførens meldinger, og APPEN ER IKKE BYGGET. Et tomt
-       array ville få hver tur til at stå som "ingen meldinger" — og det er
-       netop den oplysning skærmen giver om en tur der ER i gang. Faldbakken
-       bruges KUN når der ingen database er; her er der ingen node.
-       Se beslutning 22 og hovedet i denne fil. */
-    const h = demoHaendelser(e.id);
+    /* ⚠ HER STOD AT MELDINGERNE IKKE HAVDE EN NODE. Det passede: skærmen læste
+       `demoHaendelser()` direkte, også i drift, fordi `statushaendelser` stod
+       hverken i regelfilen eller i seedet — og chaufføren havde ingen app at
+       melde fra. Begge dele er bygget i beslutning 103.
+
+       ⚠ MELDINGERNE KOMMER GENNEM `meldingerFor()`. Noden er nøglet på
+       meldingens `klientId`, ikke en array; en skærm der skrev
+       `Object.values()` selv, ville før eller siden skrive `.length` på
+       objektet. Det er beslutning 76. */
+    const h = meldingerFor(meldListe.data.find((m) => m.id === e.id));
     const naeste = naesteStop(e, h);
     const afsluttet = erAfsluttet(h);
     return {
@@ -254,7 +263,16 @@ function Tidslinje({ tur, bil, person }) {
               { key: "ms", label: "Tid", render: (h) => klokke(h.ms) },
               { key: "type", label: "Melding", render: (h) => (
                   <Pille tone={HAENDELSE[h.type]?.pill}>{HAENDELSE[h.type]?.label || h.type}</Pille>) },
-              { key: "sted", label: "Sted", render: (h) => h.sted || "—" },
+              /* ⚠ STEDET KOMMER FRA RUTEN, IKKE FRA MELDINGEN. Meldingen bar
+                 et `sted`-felt, og reglen har det ikke: en position er præcis
+                 det beslutning 22 siger vi ikke har. Peger meldingen på et
+                 planlagt stop, ved vi hvor han er — ellers ved vi det ikke,
+                 og en streg er det rigtige svar. */
+              { key: "stopId", label: "Sted", render: (h) => {
+                  const stop = planlagteStop(tur).find((s) => s.id === h.stopId);
+                  if (!stop) return <span className="fc-neutral">—</span>;
+                  return stop.rolle === "graense" ? graenseLabel(stop.sted) : stop.sted;
+                } },
               { key: "note", label: "Note", render: (h) => h.note || <span className="fc-neutral">—</span> },
             ]}
             raekker={[...tur.haendelser].sort((a, b) => a.ms - b.ms)}

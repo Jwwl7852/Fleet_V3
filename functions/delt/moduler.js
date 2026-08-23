@@ -342,6 +342,10 @@ export const NODE_MODUL = {
   "sensitive/bookinger": "booking",
   "vaerdi/bookinger": "booking",
   etaper: "booking",
+  /* ⚠ MELDINGERNE FØLGER ETAPEN. En melding uden sin tur er en række uden
+     betydning, og en kunde uden Planning har ingen ture at melde på.
+     Se beslutning 103. */
+  statushaendelser: "booking",
   /* ⚠ `reservationer` STOD HER, OG DEN ER FLYTTET I BASEN — beslutning 92.
      Fire kilder mødes i noden, og tre af dem hører til andre moduler. Se
      forklaringen i hovedet. Sæt den ikke tilbage: prøven udleder reglerne af

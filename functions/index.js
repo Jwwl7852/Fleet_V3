@@ -75,6 +75,8 @@ import {
   reservationerFraEtape, enhedsIder, straekningFraEtape
 } from "./delt/etaper.js";
 import { tjekDisponering } from "./delt/disponering.js";
+/* ⚠ SAMME ORDLISTE OG SAMME VALIDERING SOM CHAUFFØRAPPEN. Beslutning 103. */
+import { valideMelding, byggMelding, MELDING_FELTER } from "./delt/rutestatus.js";
 /* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
@@ -3997,6 +3999,188 @@ export const opgavestatus = onCall({ region: REGION }, async (req) => {
     `opgave ${opgaveId} ${foer.status} -> ${tilStatus}`);
 
   return { opgaveId, status: tilStatus };
+});
+
+/**
+ * Chaufførens statusmelding fra turen — beslutning 103.
+ *
+ * ⚠ NODEN FANDTES IKKE. `rutestatus.js` har kunnet læse meldinger siden
+ * beslutning 22, og der var ingen der kunne skrive dem: `statushaendelser`
+ * stod hverken i `firebase.rules.json` eller i seedet. Rute & status viste
+ * "Ingen meldinger" på hver eneste tur, for alle, og skærmen var ikke i
+ * stykker — der var bare ingen kilde.
+ *
+ * ⚠ HVORFOR VEJEN ER LUKKET (`.write: false`).
+ * En regel kan sammenligne to felter i den skrivning den ser. Den kan IKKE
+ * svare på "er den her etape chaufførens": etapen bærer et `personId`, tokenet
+ * bærer et `uid`, og oversættelsen står i `brugere/<uid>/personId`. Sendte
+ * klienten sit eget personId med, kunne han sende hvad som helst — og melde
+ * en kollega ankommet til en rampe han aldrig har set.
+ *
+ * ⚠ OG DEN SKELNEN ER PRÆCIS uid MOD personId.
+ * Vi slår OP med `personId` (hvem meldingen HANDLER om — hvis tur det er) og
+ * SKRIVER `uid` (hvem der GJORDE det). Byttede vi om, ville en melding stå i
+ * navnet på en medarbejder frem for på det login der sendte den, og
+ * ejerskabstjek andre steder ville sammenligne et personId med et uid og
+ * aldrig matche.
+ *
+ * ⚠ EN MELDING ER IKKE ET TILSTANDSSKIFT. Etapens tilstand skiftes af
+ * `etapeskift` og kun dér (beslutning 40). En chauffør der melder "aflæsset",
+ * fortæller hvad han har gjort; han afslutter ikke turen i systemets forstand.
+ * Blandede vi de to, kunne en melding fra en telefon uden dækning lande fire
+ * timer for sent og flytte en booking der allerede var faktureret.
+ *
+ * ⚠ TIDSPUNKTET KOMMER FRA TELEFONEN, IKKE FRA SERVEREN — se noten i
+ * rutestatus.js. Det er det modsatte af `udleveretMs` på et kasseudlån, og
+ * forskellen er forbindelsen.
+ *
+ * ⚠ DER SKRIVES INGEN AUDITPOST, og det er et valg.
+ * Meldingen ER sit eget spor: den bærer `uid` og `ms`, noden er `.write:
+ * false`, og der findes ingen vej der kan rette eller slette den. En
+ * auditpost ville være den samme kendsgerning gemt to steder — det er
+ * `bemanding.ledig` igen. Og mængden er en anden: en chauffør sender seks
+ * meldinger pr. tur, hvor et rolleskifte sker en gang om måneden. Skal
+ * meldinger kunne udtrækkes til en sag, er det `statushaendelser` man læser.
+ */
+export const statusmelding = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ LÆSEPERMISSIONEN, IKKE EN SKRIVEPERMISSION. En chauffør har `BASIS_LAES`
+     og `indberetninger.skriv` — han har med vilje ikke `booking.skriv`, for
+     han må ikke flytte en tur. At melde hvor han er, er ikke at ændre turen;
+     kravet er at han overhovedet må se den. Ejerskabet nedenfor er det der
+     afgrænser ham. */
+  if (!perms.includes("|booking.laes|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke se ture, og kan derfor ikke melde på en.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GÅR UDEN OM REGLERNE — også om abonnements- og
+     modulklausulen på noden. Uden de her blokke var funktionen en åben dør. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("booking").val() !== true) {
+    throw new HttpsError("permission-denied", "Modulet booking er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const etapeId = kortStreng(d.etapeId, 60);
+  if (!etapeId) throw new HttpsError("invalid-argument", "Der mangler et etapeId.");
+
+  const etape = (await rod.child(`etaper/${etapeId}`).once("value")).val();
+  if (!etape) throw new HttpsError("not-found", `Etapen ${etapeId} findes ikke.`);
+
+  /* ---- Er det HANS tur? ------------------------------------------------ */
+  /* ⚠ KOBLINGEN SLÅS OP PÅ SERVEREN, HVER GANG. Den ligger i brugerposten,
+     som er `.write: false` — en klient kan hverken sætte eller flytte den. */
+  const personId = (await rod.child(`brugere/${uid}/personId`).once("value")).val();
+
+  /* ⚠ EN DISPONENT MÅ OGSÅ MELDE. Han sidder med chaufføren i telefonen, og
+     et system hvor kun føreren kan melde, får meldingen skrevet i en
+     notesblok i stedet. Han skal kunne SKRIVE turen for at gøre det. */
+  /* ⚠ HER STOD `booking.skriv`, OG DEN PERMISSION FINDES IKKE. Grenen kunne
+     aldrig fyre, så undtagelsen var skrevet ned og virkede ikke — en
+     disponent i telefonen med chaufføren fik at vide at HANS bruger ikke var
+     koblet til en medarbejder. Målt i en ende-til-ende-kørsel mod DEV, ikke
+     læst frem: alle ti booking-permissions hedder noget andet.
+
+     `booking.udfoer` er den rigtige — den betyder at måtte gribe ind i en tur
+     der KØRER, og disponent, koordinator og admin har den. `booking.opret`
+     ville have været forkert: en casehandler opretter forespørgsler og har
+     ikke noget med turen at gøre når den ruller. */
+  const maaDisponere = perms.includes("|booking.udfoer|");
+  const erHans = personId != null && etape.personId === personId;
+
+  if (!erHans && !maaDisponere) {
+    /* ⚠ TO GRUNDE, TO SVAR. "Du har intet medarbejderkort" rettes i
+       Opsætning; "det er ikke din tur" er en fejl i disponeringen. Ét svar
+       til begge ville sende chaufføren det forkerte sted hen. */
+    if (personId == null) {
+      throw new HttpsError("failed-precondition",
+        "Din bruger er ikke koblet til en medarbejder, så systemet kan ikke se "
+        + "hvilke ture der er dine. Kontakt din administrator.");
+    }
+    throw new HttpsError("permission-denied",
+      "Etapen er ikke din, og du må ikke disponere.");
+  }
+
+  /* ---- Må meldingen skrives? ------------------------------------------- */
+  /* ⚠ ET UKENDT FELT AFVISES, DET DROPPES IKKE TAVST.
+     Her stod kun `valideMelding(forslag)`, og den kunne aldrig se et ukendt
+     felt: `byggMelding()` kopierer felt for felt, så `sted: "Padborg"` var
+     allerede væk når prøven kørte. Klienten sendte noget systemet ikke
+     forstår og fik **OK** tilbage — målt i en ende-til-ende-kørsel.
+
+     Det er den tavse fejlklasse: reglens `$andet: false` ville have afvist
+     feltet, men noden er `.write: false`, så den regel nås aldrig af en
+     klient. Prøven skal derfor stå på det klienten SENDTE, ikke på det vi
+     byggede af det. */
+  const KENDTE = [...MELDING_FELTER, "etapeId"];
+  const ukendte = Object.keys(d).filter((k) => !KENDTE.includes(k));
+  if (ukendte.length) {
+    throw new HttpsError("invalid-argument",
+      `Ukendt felt: ${ukendte.join(", ")}`);
+  }
+  /* ⚠ OG uid HØRER IKKE MED, selv om det står i MELDING_FELTER: serveren
+     sætter det. En klient der sendte sit eget, ville melde i en kollegas
+     navn — så det afvises frem for at blive overskrevet i stilhed. */
+  if ("uid" in d) {
+    throw new HttpsError("invalid-argument",
+      "uid sættes af serveren og kan ikke sendes med.");
+  }
+
+  /* ⚠ SAMME valideMelding() SOM APPEN PRØVEDE MED. Serveren afviser med den
+     SAMME sætning skærmen ville have vist. */
+  const forslag = byggMelding({
+    type: kortStreng(d.type, 40),
+    ms: Number(d.ms),
+    klientId: kortStreng(d.klientId, 60),
+    stopId: kortStreng(d.stopId, 60),
+    forsinketMin: Number.isFinite(Number(d.forsinketMin))
+      ? Math.round(Number(d.forsinketMin)) : null,
+    note: typeof d.note === "string" ? d.note : null,
+  });
+  const fejl = valideMelding(forslag, { etape });
+  if (fejl.length) throw new HttpsError("invalid-argument", fejl.join(" "));
+
+  /* ⚠ TIDSPUNKTET PRØVES MOD ET VINDUE, det tages ikke for pålydende.
+     Telefonens ur kan være forkert, og en melding dateret i 1970 eller i 2031
+     ville stå først eller sidst på hver eneste tidslinje for altid. Vinduet er
+     bredt med vilje: en melding sendt i en tunnel må gerne lande timer senere,
+     og det er hele grunden til at tiden kommer fra telefonen. */
+  const nu = Date.now();
+  const DOEGN = 24 * 60 * 60 * 1000;
+  if (forslag.ms < nu - 7 * DOEGN || forslag.ms > nu + DOEGN) {
+    throw new HttpsError("invalid-argument",
+      "Tidspunktet ligger for langt fra nu. Tjek telefonens ur.");
+  }
+
+  /* ---- Skrivningen ------------------------------------------------------ */
+  /* ⚠ NØGLEN ER klientId, IKKE push(). Sender telefonen den samme melding to
+     gange — fordi svaret forsvandt i en tunnel — bliver den anden den SAMME
+     post og ikke en post mere. Med push() ville en dårlig forbindelse give
+     dobbelte meldinger på tidslinjen, og `stilhedMin()` ville se en aktivitet
+     der ikke fandt sted. Appen sender ikke i kø endnu, men modellen skal kunne
+     bære det. */
+  const sti = `statushaendelser/${etapeId}/${forslag.klientId}`;
+  await rod.child(sti).set({ ...forslag, uid });
+
+  return { etapeId, meldingId: forslag.klientId, type: forslag.type, ms: forslag.ms };
 });
 
 export const auditoprydning = onSchedule(

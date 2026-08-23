@@ -114,12 +114,23 @@ describe("Der er et sted at vente", () => {
       "Outlet skal ligge INDE i Suspense — ellers venter React et andet sted");
   });
 
-  it("⚠ OG App.jsx HAR IKKE EN OM HELE RUTETRÆET", () => {
-    /* To grænser er ikke en fejl i sig selv, men den ydre ville vinde ved
-       første skærmskift og tage shellen med sig. */
+  it("⚠ OG INGEN Suspense I App.jsx OMSLUTTER AppShell", () => {
+    /* To grænser er ikke en fejl i sig selv, men en ydre om shellen ville
+       vinde ved første skærmskift og tage sidebaren med sig.
+
+       ⚠ PRØVEN FORBØD FØR ENHVER Suspense EFTER `{!harAdgang &&`. Det er
+       bredere end begrundelsen: chaufførappen ligger SIDEORDNET med shellen,
+       i sin egen ramme, og skal have sin egen grænse — ellers ville en doven
+       MinTur vise et tomt vindue. Det er samme figur som ejerkonsollen, som
+       prøven lige nedenfor kræver har en. Kravet er derfor ikke "ingen
+       Suspense", men "ingen Suspense OM shellen". Se beslutning 103. */
     const rutetrae = KODE.slice(KODE.indexOf("{!harAdgang &&"));
-    assert.ok(!/<Suspense/.test(rutetrae),
-      "en Suspense om kundens rutetræ blanker shellen ved hvert skift");
+    for (const blok of rutetrae.match(/<Suspense[\s\S]*?<\/Suspense>/g) || []) {
+      assert.ok(!blok.includes("<AppShell"),
+        "en Suspense omslutter AppShell og blanker shellen ved hvert skift");
+    }
+    /* Og shellen har stadig sin egen indeni — se prøven ovenfor. */
+    assert.match(KODE, /<Route element=\{<AppShell \/>\}>/);
   });
 
   it("ejerkonsollen har sin egen — den bruger ikke AppShell", () => {

@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **102 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **103 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -170,6 +170,40 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   for felt: `tenants/x/abonnement/status`. Det er samme fælde som `set()` mod
   `update()`, én etage højere oppe, og den rammer stille: rabatten forsvinder,
   og næste faktura er til fuld pris.
+- **Skrive en statusmelding uden om `statusmelding`, eller lade klienten
+  bestemme hvem der meldte.** `statushaendelser` er `.write: false`, og det er
+  ikke en manglende rettighed — chaufføren HAR `booking.laes`, og det er alt
+  hvad der kræves. Det er vejen der er lukket, og af en grund **reglen ikke kan
+  dække**: den kan sammenligne to felter i den skrivning den ser, men ikke
+  afgøre om etapen er chaufførens. Det kræver et opslag i `brugere/<uid>/personId`
+  — og et personId klienten selv sendte med, kunne være hvad som helst.
+  ⚠ **Meldingen bærer `uid`, ikke `personId`.** Vi slår OP med personId (hvis
+  tur det er) og SKRIVER uid (hvem der gjorde det). Serveren sætter det fra
+  tokenet; `byggMelding()` rører det aldrig.
+  ⚠ **Tidspunktet kommer fra TELEFONEN — det modsatte af `udleveretMs`.**
+  Forskellen er forbindelsen: sattes tiden på serveren, ville en melding sendt
+  kl. 14 stå kl. 16 fordi det var da dækningen kom igen, og `stilhedMin()`
+  ville sige at vi lige havde hørt fra ham. Serveren prøver den mod et bredt
+  vindue frem for at overskrive den.
+  ⚠ **`klientId` er NØGLEN, ikke et `push()`.** En gensendelse skal ramme den
+  SAMME post; med push() ville en dårlig forbindelse give dobbelte meldinger.
+  ⚠ **Der er intet `sted`-felt, og det er beslutning 22.** Stedet står i den
+  planlagte rute — `stopId` peger på et stop fra `planlagteStop()` — og et
+  ukendt stopId afvises. En melding uden stopId har intet kendt sted.
+  ⚠ **Og meldingerne læses gennem `meldingerFor()`.** Noden er nøglet, ikke en
+  array; en skærm der skrev `Object.values()` selv, ville før eller siden
+  skrive `.length` på objektet. Se beslutning 76 og 103.
+- **Give chaufførappen en sidebar — eller lade den blive et modul.**
+  `/app` er en RAMME som ejerkonsollen, ikke et punkt i nav.js. Med seks
+  permissions ville elleve af tolv menupunkter føre til en afvist læsning, og
+  en menu der mest består af døre der ikke kan åbnes, er værre end ingen menu.
+  ⚠ **Men adgangsvejen er den samme:** ruten ligger inde i `harAdgang`, som
+  uændret kræver et tenant-claim. Der må ikke være en chaufførvariant af
+  spærringen — rammen afgør kun hvad der TEGNES.
+  ⚠ **Og knapperne sorteres, de spærres ikke.** Virkeligheden kommer ikke i
+  rækkefølge: han kan holde pause før afgang eller melde forsinkelse tre gange.
+  En knap der er væk, tvinger ham til at melde noget der ikke passer.
+  Se beslutning 103.
 - **Bruge `uid` og `personId` i flæng.** `uid` er hvem der *gjorde* noget:
   `indberetninger.oprettetAf` og auditloggen. `personId` er hvem det *handler
   om*: reservationer, fravær, opgaver, etaper, kompetencer. Bytter du om,

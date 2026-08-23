@@ -241,35 +241,82 @@ export const DEMO_ETAPER = [
  * `stopId` binder meldingen til et planlagt stop fra planlagteStop() i
  * rutestatus.js, så "næste stop" kan udledes frem for at blive gemt.
  */
+/**
+ * ⚠ NODEFORM, IKKE ARRAYS — beslutning 103.
+ *
+ * Sættet var arrays, og noden findes nu: `statushaendelser/<etapeId>/<id>`.
+ * RTDB har ingen arrays, og et demosæt der har en anden FORM end noden, er
+ * præcis fælden fra beslutning 76 — dér talte `kanSkifteEtape()` med
+ * `.forslag.length`, som er `undefined` på nodeform, så tre overgange var
+ * lukkede i produktion mens de virkede i demo.
+ *
+ * ⚠ NØGLEN ER MELDINGENS `klientId`. Telefonen laver den, og en gensendelse
+ * rammer den SAMME post frem for at lave en mere. Det er derfor `byggMelding()`
+ * kræver feltet, og derfor `statusmelding` skriver på nøglen frem for at
+ * push()e.
+ *
+ * ⚠ OG DER ER INTET `sted`-FELT. Reglen forbyder det (`$andet: false`), og
+ * stedet står allerede i den planlagte rute: `stopId` peger på et stop fra
+ * `planlagteStop()`, og stoppet bærer navnet. En melding UDEN et stopId — en
+ * pause, en forsinkelse — har intet kendt sted, og det er hele beslutning 22:
+ * vi gætter ikke en position, vi viser hvad chaufføren har sagt.
+ *
+ * `uid` er hvem der MELDTE, ikke hvem turen er tildelt. De to er den samme
+ * mand her, men de er ikke det samme felt.
+ */
+/* ⚠ EN PLADSHOLDER, IKKE ET UID. Demo-data kan ikke kende et Firebase-uid —
+   det laves af Auth ved oprettelsen. Provisioneren oversætter den til det
+   rigtige uid for chaufførrollen; uden det ville meldingerne stå i navnet på
+   nogen der ikke kan logge ind. Se PLADSHOLDER_ROLLE. */
+const CHAUFFOER_UID = "uid-anders";
+
 export const DEMO_STATUSHAENDELSER = {
   /* Kbh → Hamburg i dag. Undervejs, meldt til og med grænsen. */
-  "et-001": [
-    { ms: dag(0, 5), type: "afgang", stopId: "start", sted: "København", note: "Læsset i går aften" },
-    { ms: dag(0, 8) + 20 * 60000, type: "pause", sted: "Rastplatz Fehmarn" },
-    { ms: dag(0, 9) + 40 * 60000, type: "graense", stopId: "graense-roedby", sted: "Rødby–Puttgarden" },
-  ],
-  /* Kbh → Berlin i morgen. Endnu ingen meldinger — turen er ikke begyndt. */
-  "et-002": [],
+  "et-001": {
+    "m-001-a": { klientId: "m-001-a", uid: CHAUFFOER_UID, ms: dag(0, 5), type: "afgang", stopId: "start", note: "Læsset i går aften" },
+    "m-001-b": { klientId: "m-001-b", uid: CHAUFFOER_UID, ms: dag(0, 8) + 20 * 60000, type: "pause" },
+    "m-001-c": { klientId: "m-001-c", uid: CHAUFFOER_UID, ms: dag(0, 9) + 40 * 60000, type: "graense", stopId: "graense-roedby" },
+  },
+  /* Kbh → Berlin i morgen. Endnu ingen meldinger — turen er ikke begyndt.
+     ⚠ Nøglen står med `null`: i RTDB findes en tom node slet ikke, og
+     demofilen skal kunne det samme som noden. Se medFuldForm(). */
+  "et-002": null,
   /* Kbh → Amsterdam. Meldt forsinket ved grænsen. */
-  "et-003": [
-    { ms: dag(2, 3), type: "afgang", stopId: "start", sted: "København" },
-    { ms: dag(2, 7), type: "graense", stopId: "graense-padborg", sted: "Padborg" },
-    { ms: dag(2, 7) + 15 * 60000, type: "forsinkelse", sted: "Padborg",
+  "et-003": {
+    "m-003-a": { klientId: "m-003-a", uid: CHAUFFOER_UID, ms: dag(2, 3), type: "afgang", stopId: "start" },
+    "m-003-b": { klientId: "m-003-b", uid: CHAUFFOER_UID, ms: dag(2, 7), type: "graense", stopId: "graense-padborg" },
+    "m-003-c": { klientId: "m-003-c", uid: CHAUFFOER_UID, ms: dag(2, 7) + 15 * 60000, type: "forsinkelse",
       forsinketMin: 75, note: "Kø ved grænsen, tolddokumenter kontrolleret" },
-  ],
+  },
   /* Afsluttet tur. Meldt hele vejen igennem — det er den der viser hvordan en
      fuld tidslinje ser ud. */
-  "et-008": [
-    { ms: dag(-3, 5), type: "afgang", stopId: "start", sted: "København" },
-    { ms: dag(-3, 9), type: "graense", stopId: "graense-roedby", sted: "Rødby–Puttgarden" },
-    { ms: dag(-3, 12), type: "pause", sted: "Rastplatz Neustadt" },
-    { ms: dag(-3, 15), type: "ankomstLosning", sted: "Hamburg" },
-    { ms: dag(-3, 16) + 40 * 60000, type: "afsluttet", stopId: "slut", sted: "Hamburg",
+  "et-008": {
+    "m-008-a": { klientId: "m-008-a", uid: CHAUFFOER_UID, ms: dag(-3, 5), type: "afgang", stopId: "start" },
+    "m-008-b": { klientId: "m-008-b", uid: CHAUFFOER_UID, ms: dag(-3, 9), type: "graense", stopId: "graense-roedby" },
+    "m-008-c": { klientId: "m-008-c", uid: CHAUFFOER_UID, ms: dag(-3, 12), type: "pause" },
+    "m-008-d": { klientId: "m-008-d", uid: CHAUFFOER_UID, ms: dag(-3, 15), type: "ankomstLosning" },
+    "m-008-e": { klientId: "m-008-e", uid: CHAUFFOER_UID, ms: dag(-3, 16) + 40 * 60000, type: "afsluttet", stopId: "slut",
       note: "Aflæsset, kvittering modtaget" },
-  ],
+  },
 };
 
-export const demoHaendelser = (etapeId) => DEMO_STATUSHAENDELSER[etapeId] || [];
+/**
+ * Demosættet som `useListe` leverer det: én post pr. etape, nøglet på etapeId.
+ *
+ * ⚠ FORMEN ER NODENS. `statushaendelser` læses som ÉN node — meldingerne for
+ * alle ture i ét kald — og hver "post" er derfor en etape hvis felter er dens
+ * meldinger. Se `meldingerFor()` i rutestatus.js, som er det ene sted den form
+ * oversættes til en liste.
+ */
+export const DEMO_STATUS_POSTER = Object.entries(DEMO_STATUSHAENDELSER)
+  .map(([etapeId, meldinger]) => ({ id: etapeId, ...(meldinger || {}) }));
+
+/**
+ * ⚠ FUNKTIONEN GIVER NODEFORM VIDERE, IKKE EN LISTE. Kalderen skal gennem
+ * meldingerFor() ligesom en rigtig læsning — ellers ville demo og drift
+ * kunne opføre sig forskelligt, og det er beslutning 76 om igen.
+ */
+export const demoHaendelser = (etapeId) => DEMO_STATUSHAENDELSER[etapeId] || null;
 
 /* ---- Opslag ----------------------------------------------------------- */
 

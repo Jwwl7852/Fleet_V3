@@ -43,7 +43,7 @@ import {
 } from "../src/fleet/demo-lager.js";
 import { DEMO_OMKOSTNINGER, DEMO_LAGRE } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
-import { DEMO_ETAPER } from "../src/fleet/demo-etaper.js";
+import { DEMO_ETAPER, DEMO_STATUSHAENDELSER } from "../src/fleet/demo-etaper.js";
 import { DEMO_BOOKINGER } from "../src/fleet/demo-bookinger.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
@@ -233,6 +233,16 @@ export const SEED = [
      matche, og nøglerne ville dertil FLYTTE SIG når et forslag blev trukket
      tilbage. Se beslutning 58. */
   { node: "etaper", data: DEMO_ETAPER, form: "liste-med-boern", boern: ["forslag"] },
+  /* ⚠ CHAUFFØRENS MELDINGER — beslutning 103. Noden fandtes hverken her
+     eller i regelfilen, og Rute & status stod med "Ingen meldinger" på hver
+     eneste tur, for alle. Skærmen var ikke i stykker; der var ingen kilde.
+
+     ⚠ FORMEN ER "objekt", IKKE "liste". Meldingerne er nøglet PR. ETAPE og
+     derunder på meldingens eget klientId — det er ikke en liste af poster
+     med et id, og somNode() ville lave et lag for meget.
+
+     ⚠ uid ER EN PLADSHOLDER I SÆTTET og skrives om nedenfor. */
+  { node: "statushaendelser", data: DEMO_STATUSHAENDELSER, form: "objekt" },
   /* ⚠ OPGAVERNE HAR HAFT REGLER OG INGEN DATA. Noden er skrivbar med
      opgaver.skriv og har et indeks — men intet seedede den, og ingen skaerm
      forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt
@@ -767,14 +777,20 @@ async function main() {
        saa noden var TOM i DEV: skaermene viste raa uid'er, og
        godkender-vaelgeren havde ingen at vaelge. Formen er den samme som
        `indeksPost()` i functions/index.js. */
+    /* ⚠ personId ER KOBLINGEN TIL EN MEDARBEJDER — beslutning 103. Uden den
+       kan intet svare på hvilke ture der er chaufførens, og chaufførappen
+       har ikke noget at vise. Feltet er valgfrit: en admin på kontoret er
+       ikke nødvendigvis en post i `personale`. */
+    const personId = b.personId || null;
     await db.ref(`tenants/${valgt}/brugere/${bruger.uid}`).set({
       email: b.email,
       navn: b.navn || b.email,
       rolle: b.rolle,
       spaerret: false,
       opdateretMs: Date.now(),
+      ...(personId ? { personId } : {}),
     });
-    console.log(`  ${b.rolle.padEnd(18)} ${b.email}`);
+    console.log(`  ${b.rolle.padEnd(18)} ${b.email}${personId ? `  → ${personId}` : ""}`);
   }
 
   /* 3. Demo-data under de noder skærmene faktisk læser. */
@@ -1030,6 +1046,21 @@ async function main() {
       omskrevet += 1;
     }
   };
+  /* ⚠ MELDINGENS uid ER HVEM DER MELDTE. Sættet bærer pladsholderen
+     "uid-anders"; uden omskrivningen ville hver melding stå i navnet på
+     nogen der ikke kan logge ind, og et ejerskabstjek mod auth.uid ville
+     aldrig matche. Formen er nøglet, ikke en liste — derfor sin egen løkke. */
+  if (harModulet("statushaendelser")) {
+    for (const [etapeId, meldinger] of Object.entries(DEMO_STATUSHAENDELSER)) {
+      for (const [meldingId, m] of Object.entries(meldinger || {})) {
+        const nyt = rigtigt(m.uid);
+        if (!nyt) continue;
+        const sti = `tenants/${valgt}/statushaendelser/${etapeId}/${meldingId}/uid`;
+        await db.ref(sti).set(nyt);
+        omskrevet += 1;
+      }
+    }
+  }
   await omskrivOprettetAf("indkoebsordrer", DEMO_INDKOEBSORDRER);
   await omskrivOprettetAf("indkoebsbehov", DEMO_INDKOEBSBEHOV);
 

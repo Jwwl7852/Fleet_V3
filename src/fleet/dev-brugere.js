@@ -40,10 +40,32 @@ const NAVN = {
   admin: "Dev Administrator",
 };
 
+/**
+ * ⚠ HVILKEN MEDARBEJDER ER DEV-KONTOEN? Beslutning 103.
+ *
+ * `brugere/<uid>` bar `email`, `navn` og `rolle`, og INTET der sagde hvilken
+ * medarbejder kontoen tilhører. En chauffør kunne logge ind, og systemet kunne
+ * ikke svare på hvilke ture der var hans: etapen bærer et `personId`, tokenet
+ * et `uid`, og de to mødtes ingen steder.
+ *
+ * Koblingen skrives i brugerposten, som er `.write: false` — i produktion af
+ * `opretbruger`, her af provisioneren. Uden den kunne chaufførappen ikke
+ * bygges: der var ikke noget at spørge om.
+ *
+ * ⚠ KUN DE ROLLER DER ER EN MEDARBEJDER. En admin på kontoret er ikke
+ * nødvendigvis en post i `personale`, og feltet er valgfrit netop derfor.
+ * `larsAage` er valgt fordi han er chauffør PÅ ETAPER i demo-sættet — et
+ * medarbejderkort uden ture ville give en tom app og ligne en fejl.
+ */
+export const PERSON_FOR_ROLLE = {
+  chauffoer: "larsAage",
+};
+
 export const DEV_BRUGERE = Object.keys(ROLLE_PERMS).map((rolle) => ({
   rolle,
   email: `${rolle}@${DEV_DOMAENE}`,
   navn: NAVN[rolle] || `Dev ${rolle}`,
+  personId: PERSON_FOR_ROLLE[rolle] || null,
 }));
 
 /**

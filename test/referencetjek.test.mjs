@@ -90,6 +90,15 @@ const UDEN_TJEK = {
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
 
+  /* ---- Feltet peger slet ikke på en post ------------------------------- */
+  "statushaendelser/$etapeId/$meldingId/klientId":
+    "telefonens eget id for meldingen, så en gensendelse bliver den SAMME post "
+    + "og ikke en post mere. Det peger på ingenting — det er en nøgle appen fandt på.",
+  "statushaendelser/$etapeId/$meldingId/stopId":
+    "peger på et stop i den UDLEDTE rute (`planlagteStop()`), ikke på en node. "
+    + "Ruten gemmes ikke — den regnes af etapens fra/til og grænseovergange, så "
+    + "der er intet at slå op i. `valideMelding()` prøver den mod netop den rute.",
+
   /* ---- Et åbent spørgsmål, ikke en forglemmelse ------------------------- */
   "indberetninger/$id/materialelinjer/$linjeId/lagerId":
     "⚠ ÅBENT: `lagre` beskrives tre steder som reservedelslageret under Procure, "

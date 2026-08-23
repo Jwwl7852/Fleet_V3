@@ -91,6 +91,9 @@ const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
 const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
 const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
 const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
+/* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
+   landevej skal ikke hente 55 kontorskærme for at melde afgang. */
+const MinTur = lazy(() => import("./moduler/app/MinTur.jsx"));
 
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -211,6 +214,33 @@ function TilLogin() {
 function EfterLogin() {
   const l = useLocation();
   return <Navigate to={l.state?.fra || "/"} replace />;
+}
+
+/**
+ * Rammen om chaufførappen — beslutning 103.
+ *
+ * ⚠ IKKE AppShell, af samme grund som Udbyderramme ikke er det. Shellen ejer
+ * sidebar, tenant-vælger og periodevælger, og alle tre er forkerte her: en
+ * chauffør har seks permissions, så elleve af tolv menupunkter ville føre til
+ * en afvist læsning, og han har ét tidsrum — i dag og i morgen.
+ *
+ * ⚠ MEN ADGANGSVEJEN ER DEN SAMME. Ruten ligger inde i `harAdgang`, som
+ * uændret kræver et tenant-claim. Der er ingen chaufførvariant af spærringen,
+ * og reglerne kender ikke rammen — kun tokenet. Rammen afgør hvad der TEGNES.
+ */
+function Chauffoerramme({ bruger, logUd, children }) {
+  return (
+    <div className="fc-app fc-chauffoer">
+      <header className="fc-top">
+        <span className="fc-brand">FleetControl</span>
+        <div className="fc-med-ikon" style={{ gap: 12 }}>
+          <span className="fc-hint">{bruger?.navn || bruger?.email}</span>
+          <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
+        </div>
+      </header>
+      <main className="fc-main fc-app-main">{children}</main>
+    </div>
+  );
 }
 
 export default function App() {
@@ -381,6 +411,19 @@ export default function App() {
             </>
           )}
           {harAdgang && <Route path="/login" element={<EfterLogin />} />}
+          {/* ⚠ SIDEORDNET MED SHELLEN, ikke under den. Se Chauffoerramme.
+              Suspense ligger i AppShell om <Outlet/>, og den her rute er
+              udenfor — derfor sin egen grænse, ellers ville en doven MinTur
+              vise et tomt vindue. Beslutning 97 og 103. */}
+          {harAdgang && (
+            <Route path="/app" element={(
+              <Chauffoerramme bruger={bruger} logUd={() => auth?.signOut()}>
+                <Suspense fallback={<div className="fc-empty">Henter dine ture …</div>}>
+                  <MinTur />
+                </Suspense>
+              </Chauffoerramme>
+            )} />
+          )}
           {harAdgang && (
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />

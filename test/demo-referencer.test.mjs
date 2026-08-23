@@ -69,6 +69,11 @@ const UDEN_MAAL = {
   destinationId: "målnoden afgøres af `destinationArt`; fakturacenter.test.mjs dækker den",
   anmoderId: "et login (`uid`), ikke en post nogen node bærer",
   bestillerId: "et login (`uid`), ikke en post nogen node bærer",
+  klientId: "telefonens eget id for en statusmelding, så en gensendelse rammer "
+    + "den SAMME post. Det peger på ingenting — det er nøglen selv (beslutning 103)",
+  stopId: "peger på et stop i den UDLEDTE rute (`planlagteStop()`), ikke på en "
+    + "node. Ruten gemmes ikke, så der er intet at slå op i; `valideMelding()` "
+    + "prøver stoppet mod netop den rute",
   tenantId: "tenanten selv, ikke en post under den",
   prislisteId: "`udbyder/prisliste` er vores egen node, ikke kundens",
 };

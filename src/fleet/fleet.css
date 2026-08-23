@@ -1486,3 +1486,57 @@
 /* Genveje UDEN tal. Se noten i Procureoverblik om hvorfor. */
 .fc-genveje{display:flex; flex-wrap:wrap; gap:14px; margin-top:16px;
   padding-top:12px; border-top:1px solid var(--bc-line)}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHAUFFØRAPPEN — beslutning 103
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ EN TELEFON I EN LASTBIL, IKKE EN SKÆRM PÅ ET KONTOR. Den betjenes med
+   en tommelfinger, ofte med handsker på, af en mand der lige har standset.
+   Knapperne er derfor 52 px høje: Apples og Googles egne retningslinjer
+   siger 44, og det er et minimum for en siddende bruger i ro.
+
+   ⚠ INGEN EGNE FARVER. Hver værdi herunder er et token — `npm run
+   test:design` fejler på en farveværdi hvor som helst i `src/` uden for
+   tokenfilen, og et token er en beslutning (nr. 10).
+
+   ⚠ OG INGEN RÅ font-size. Skalaen er de ni tokens; beslutning 48. */
+.fc-chauffoer{flex-direction:column}
+.fc-chauffoer .fc-top{align-items:center; justify-content:space-between}
+.fc-chauffoer .fc-brand{padding-left:0; color:var(--bc-text)}
+.fc-app-main{padding:14px; max-width:640px; margin:0 auto; width:100%}
+
+.fc-app-tur{display:flex; flex-direction:column; gap:14px}
+.fc-app-kort{
+  background:var(--bc-card); border:1px solid var(--bc-line);
+  border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px}
+.fc-app-hoved{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.fc-app-titel{margin:0; font-size:var(--fc-t-xl); font-weight:700}
+
+/* ⚠ HØJDEN ER IKKE PYNT. En knap på 32 px rammes ved siden af med en
+   handske, og en fejlramt melding er værre end ingen: den står på
+   tidslinjen som noget der skete. */
+.fc-app-knap{min-height:52px; font-size:var(--fc-t-l)}
+.fc-app-meld{min-height:52px; font-size:var(--fc-t-l); width:100%}
+.fc-app-knapper{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+
+.fc-app-tidslinje{
+  list-style:none; margin:0; padding:10px 0 0; border-top:1px solid var(--bc-line);
+  display:flex; flex-direction:column; gap:6px; font-size:var(--fc-t-s)}
+.fc-app-tidslinje li{display:flex; gap:8px; align-items:baseline}
+.fc-app-tid{color:var(--bc-muted); min-width:44px}
+
+/* ⚠ KVITTERING OG FEJL ER IKKE DET SAMME, OG DE SKAL KUNNE SKELNES PÅ
+   AFSTAND. Et grønt flueben ved siden af en melding der ikke kom frem, er
+   samme fejl som et grønt flueben ved siden af en bøde. */
+   ⚠ PARRET ER PILLERNES EGET — `--fc-ok-bg` mod `--bc-ok`. Et color-mix af
+   farven SELV ville være en ny farve (test:design fejler på den), og fladen
+   ville desuden flytte MED farven hvis nogen rettede tokenet — så rammer
+   kontrastmålingen ved siden af. Beslutning 77. */
+.fc-app-kvittering{
+  background:var(--fc-ok-bg); color:var(--bc-ok);
+  border:1px solid var(--bc-ok); border-radius:8px; padding:10px 12px; margin:0}
+.fc-app-fejl{
+  background:var(--fc-warn-bg); color:var(--bc-warn);
+  border:1px solid var(--bc-warn); border-radius:8px; padding:10px 12px; margin:0}
+.fc-app-fod{margin-top:4px; text-align:center}
