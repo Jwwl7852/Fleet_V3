@@ -39,7 +39,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { DEMO_LOKATIONER } from "../../fleet/demo-facility.js";
 import { LOKATION_TYPE } from "../../fleet/facility.js";
 import { ALLE_MODULER, harModul } from "../../fleet/moduler.js";
-import { num } from "../../fleet/format.js";
+import { num, mindst } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Gitter, MiniLinje, Knap, KpiKort, KpiRaekke, Ikon,
 } from "../../fleet/ui.jsx";
@@ -132,7 +132,7 @@ export default function Generelt() {
                  note={moduler
                    ? "opdelingen er moduler, ikke divisioner"
                    : "ingen moduler-node — kunden har dem alle"} />
-        <KpiKort label="Lokationer" vaerdi={num(lok.data.length)}
+        <KpiKort label="Lokationer" vaerdi={mindst(lok.data.length, lok.afkortet)}
                  ikon={<Ikon navn="stednaal" />} tone="ikon-6" rund
                  note={`på ${num(ALLE_STEDER.length)} steder`} til="/facility" />
         <KpiKort label="Miljø" vaerdi={m.label}

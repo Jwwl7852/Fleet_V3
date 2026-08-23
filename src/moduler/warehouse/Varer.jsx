@@ -20,7 +20,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num } from "../../fleet/format.js";
+import { num, mindst } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
@@ -187,7 +187,7 @@ export default function Varer() {
 
   const maaSkrive = harPerm(bruger?.perms, PERM.varerSkriv);
 
-  const { data: varer, tilstand, genindlaes, henter } = useListe("varer", {
+  const { data: varer, afkortet: varerAfkortet, tilstand, genindlaes, henter } = useListe("varer", {
     graense: 2000, demo: DEMO_VARER,
     sorter: (a, b) => (a.varenummer || "").localeCompare(b.varenummer || "", "da"),
   });
@@ -223,7 +223,7 @@ export default function Varer() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Varer i alt" vaerdi={num(varer.length)}
+        <KpiKort label="Varer i alt" vaerdi={mindst(varer.length, varerAfkortet)}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund
                  note={`for ${num(new Set(varer.map((v) => v.kundeId)).size)} kunder`} />
         <KpiKort label="Under minimum" vaerdi={num(lave.length)}

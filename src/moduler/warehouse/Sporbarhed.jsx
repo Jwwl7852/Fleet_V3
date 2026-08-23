@@ -46,7 +46,7 @@
  */
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
-import { datoTid, num } from "../../fleet/format.js";
+import { datoTid, num, mindst } from "../../fleet/format.js";
 import {
   Kort, Tom, Tabel, Pille, Knap, Felt, Feltraekke,
   Henter, Datatilstand, KpiKort, KpiRaekke, MiniLinje, Gitter,
@@ -84,7 +84,7 @@ export default function Sporbarhed() {
   } = useListe("bevaegelser", {
     vindue: "alle", graense: 5000, demo: [],
   });
-  const { data: varer } = useListe("varer", {
+  const { data: varer, afkortet: varerAfkortet } = useListe("varer", {
     vindue: "alle", graense: 2000, demo: DEMO_VARER,
   });
   const { data: beholdning } = useListe("beholdning", {
@@ -96,7 +96,7 @@ export default function Sporbarhed() {
   const { data: pladser } = useListe("reolpladser", {
     vindue: "alle", graense: 2000, demo: DEMO_REOLPLADSER,
   });
-  const { data: enheder } = useListe("enheder", {
+  const { data: enheder, afkortet: enhederAfkortet } = useListe("enheder", {
     vindue: "alle", graense: 5000, demo: DEMO_ENHEDER,
   });
   const { data: kunder } = useListe("kunder", {
@@ -156,10 +156,10 @@ export default function Sporbarhed() {
         {/* AFLEDT af de lister skærmen allerede har — hører derfor IKKE i
             kpi/. Et gemt afledt tal driver fra sit grundlag; det er fejlen i
             bemanding.ledig. */}
-        <KpiKort label="Sporede enheder" vaerdi={num(enheder.length)}
+        <KpiKort label="Sporede enheder" vaerdi={mindst(enheder.length, enhederAfkortet)}
                  note={`${num(iHuset)} i huset`} />
         <KpiKort label="Serie-sporede varer" vaerdi={num(serieVarer.length)}
-                 note={`af ${num(varer.length)}`} />
+                 note={`af ${mindst(varer.length, varerAfkortet)}`} />
         <KpiKort label="Bevægelser i sporet" vaerdi={harOpslag ? num(linjer.length) : "—"}
                  note={harOpslag ? "for opslaget" : "slå noget op"} />
         {/* ⚠ RØDT NÅR DE TO KILDER ER UENIGE. Se hovedet: det er prisen ved

@@ -7010,3 +7010,75 @@ mangler. Den linje bærer `manglerSats: true`, og kommentaren dér forklarer
 hvorfor opholdet **ikke** springes over: et ophold man kan se, er det eneste
 der får nogen til at oprette lageret. Det er en manglende SATS, ikke en
 manglende liste — og den skal blive ved med at råbe.
+
+---
+
+## 96. Tretten nøgletalskort påstod en total de ikke havde
+
+Beslutning 6 navngav fejlen: **en total ud af et udsnit**. Beslutning 91 fandt
+den i `andelAfIndkoebPct`, hvor nævneren var et hentet vindue.
+
+Her er den målt bredt. `useListe(node, { graense })` henter de sidste N rækker
+og svarer `afkortet` når loftet blev ramt. **Tretten nøgletalskort tællede den
+liste op og satte tallet frem som en kendsgerning om virksomheden:**
+
+| Skærm | Kort | Loft |
+|---|---|---|
+| Procure → Varelager | "Varer i alt", "Bevægelser" | 500 / 1000 |
+| Unitbooking → Kasser | "Kasser i alt" | 500 |
+| Unitbooking → Historik | "Udlån i alt" | 500 |
+| Warehouse → Varer | "Varer i alt" | 500 |
+| Warehouse → Lokationer | "Lokationer", "Optaget", "Frie" | 500 |
+| Warehouse → Sporbarhed | "Sporede enheder", "Serie-sporede varer" | 500 |
+| Warehouse → Modtagelse | "Ledige pladser" | 500 |
+| Unitbooking → Kalender | "Kasser i spil" | 500 |
+| Opsætning → Generelt | "Lokationer" | 500 |
+
+⚠ **Værst stod der `note="hele historikken"`** under et tal talt op af en
+liste med loft på 1000. Sætningen var ikke bare forkert — den var en
+forsikring om præcis det der ikke gjaldt.
+
+⚠ **Oplysningen fandtes allerede.** `useListe` har hele tiden returneret
+`afkortet`, og dens eget hoved siger hvorfor: *"Skriv det til brugeren — tavs
+afkortning opdages først når nogen spørger hvorfor en booking mangler."*
+Kortene læste den ikke. Det er tredje gang i træk at en rettelse består i at
+BRUGE et svar der lå ét felt væk (91, 94, 96).
+
+### "Mindst 500" er et svar. "500" er et løfte.
+
+`mindst(n, afkortet)` i `format.js`. En **nedre grænse er en kendsgerning** —
+vi har set så mange — mens en total vi ikke kan stå inde for, er forkert på en
+måde ingen kan se.
+
+⚠ **Den skjuler ikke tallet bag en streg.** At listen er afkortet, er en
+oplysning om VORES hentning, ikke om kundens data. En streg ville sige "vi ved
+det ikke", og det passer ikke.
+
+⚠ **Og et delmængdetal ER en nedre grænse.** "Optaget" og "Frie" er talt af de
+hentede pladser; de uhentede er enten det ene eller det andet, så begge tal kan
+kun stige. Derfor er `mindst()` rigtigt for begge.
+
+⚠ **ANDELEN er det ikke.** `optagne / pladser.length` er en procent af et
+udsnit, og den kan ikke rettes med et ord — den udgår, og noten siger hvorfor.
+Samme svar som `andelAfIndkoebPct` fik i beslutning 91.
+
+### ⚠ Kravet gælder nøgletalskortene, ikke hvert `.length`
+
+En lint på hver optælling ville råbe ad hvert *"er listen tom"* og hvert
+tabelrækkeantal — og **en lint der råber ad alt, bliver slået fra.**
+
+Et tal i en tabelrække beskriver rækkerne. **Et tal i et `KpiKort` beskriver
+kunden.** Derfor er det netop dér kravet gælder, og `test/afkortede-totaler.test.mjs`
+læser præcis den grænse: et kort bygget af en liste med loft skal enten bruge
+`mindst()` eller selv nævne afkortningen.
+
+### Det arbejdet fandt
+
+**1. Nævneren i en note er også et tal.** Fem af de tretten havde et ærligt
+tal i kortet og et afkortet i noten — *"af 500"*, *"73 % af pladserne"*. Et
+forbehold der kun gælder det store tal, er ikke et forbehold.
+
+**2. Målingen måtte snævres ind to gange.** Første udgave talte hver `.length`
+på en liste med loft: **over halvtreds** steder, næsten alle uskyldige. Anden
+udgave talte kun `reduce` — ét sted. Kortene var det rigtige snit, og de var
+tretten.

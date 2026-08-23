@@ -17,7 +17,7 @@
  */
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
-import { num, dato, datoTid } from "../../fleet/format.js";
+import { num, dato, datoTid, mindst } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap,
 } from "../../fleet/ui.jsx";
@@ -79,7 +79,7 @@ export default function Historik() {
   const [valgtKasse, saetValgtKasse] = useState("");
   const [soeg, saetSoeg] = useState("");
 
-  const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
+  const { data: udlaan, afkortet: udlaanAfkortet, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
   const { data: kasser } = useListe("kasser", {
@@ -123,7 +123,7 @@ export default function Historik() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Udlån i alt" vaerdi={num(udlaan.length)}
+        <KpiKort label="Udlån i alt" vaerdi={mindst(udlaan.length, udlaanAfkortet)}
                  note={`fordelt på ${num(sager.length)} sager`} />
         <KpiKort label="Afsluttede" vaerdi={num(afsluttede.length)}
                  note="kassen er kommet hjem" />

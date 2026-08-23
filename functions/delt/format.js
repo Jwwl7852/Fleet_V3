@@ -74,6 +74,29 @@ export const num = (n, dec = 0) => talEllerIntet(n, (x) => nf(dec).format(x));
 export const pct = (p, dec = 0) => talEllerIntet(p, (x) => nf(dec).format(x) + " %");
 export const km = (n) => talEllerIntet(n, (x) => nf(0).format(x) + " km");
 
+/**
+ * Et antal der måske ikke er hele antallet.
+ *
+ * ⚠ EN SUM AF EN AFKORTET LISTE ER IKKE EN TOTAL — beslutning 6 med et andet
+ * ansigt. `useListe(node, { graense: 1000 })` henter de sidste tusinde rækker
+ * og svarer `afkortet` når loftet blev ramt; tælles de op og sættes i et
+ * nøgletalskort, står der en **påstand om virksomheden** der er regnet af et
+ * udsnit.
+ *
+ * Målt: **13 nøgletalskort** gjorde netop det — "Varer i alt", "Udlån i alt",
+ * "Kasser i alt". Værst stod der `note="hele historikken"` under et tal talt
+ * op af en liste med loft på 1000.
+ *
+ * ⚠ "MINDST" ER ET SVAR, ET TAL ER ET LØFTE. En nedre grænse er en
+ * kendsgerning: vi HAR set så mange. En total vi ikke kan stå inde for, er
+ * ikke en tilnærmelse — den er forkert på en måde ingen kan se.
+ *
+ * Skjul den ikke bag en streg: at listen er afkortet, er en oplysning om
+ * VORES hentning, ikke om kundens data. Se beslutning 96.
+ */
+export const mindst = (n, afkortet) =>
+  (afkortet ? `mindst ${num(n)}` : num(n));
+
 /** Millimeter → meter til VISNING. Længder gemmes som integer i millimeter —
  *  se samletLaengdeMm() i flaade.js. Vis meter, gem millimeter; en float ved
  *  en færgetakstgrænse er en fejl der venter. */

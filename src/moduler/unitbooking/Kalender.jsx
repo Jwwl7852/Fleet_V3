@@ -35,7 +35,9 @@ import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { skiftUdlaan, retUdlaan } from "../../fleet/udlaan.js";
-import { num, dato, datoTid, pct, ugenr, msTilIso, isoTilMs } from "../../fleet/format.js";
+import {
+  num, dato, datoTid, pct, ugenr, msTilIso, isoTilMs, mindst,
+} from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
   Formularsvar, Donut, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
@@ -148,7 +150,7 @@ export default function Kalender() {
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
-  const { data: kasser } = useListe("kasser", {
+  const { data: kasser, afkortet: kasserAfkortet } = useListe("kasser", {
     graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
@@ -528,7 +530,9 @@ export default function Kalender() {
                      retur.bagud.map((u) => u.kasseId).slice(0, 3).join(", ")
                    : `næste ${KLARGOER_VINDUE_TIMER / 24} dage · intet er skredet`} />
         <KpiKort label="Kasser i spil" vaerdi={num(raekker.length)}
-                 note={`af ${num(kasser.length)} i de viste ${num(vindueDage)} dage`} />
+                 /* ⚠ NÆVNEREN ER OGSÅ ET TAL. Er kasselisten afkortet, er
+                    "af 500" en total ud af et udsnit — beslutning 96. */
+                 note={`af ${mindst(kasser.length, kasserAfkortet)} i de viste ${num(vindueDage)} dage`} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />

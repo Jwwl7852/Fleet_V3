@@ -34,7 +34,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, datoTid } from "../../fleet/format.js";
+import { num, datoTid, mindst } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formularsvar,
@@ -77,7 +77,7 @@ export default function Modtagelse() {
     graense: 2000, demo: DEMO_CARRIERS,
     sorter: (a, b) => (a.id || "").localeCompare(b.id || "", "da"),
   });
-  const { data: pladser } = useListe("reolpladser", {
+  const { data: pladser, afkortet: pladserAfkortet } = useListe("reolpladser", {
     graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
@@ -168,7 +168,7 @@ export default function Modtagelse() {
                  vaerdi={num(carriers.filter(udenLokation).length)}
                  note="står i huset, men ingen steder" />
         <KpiKort label="Ledige pladser" vaerdi={num(ledige.length)}
-                 note={`af ${num(pladser.length)} — hverken varer, kasser eller carriers`} />
+                 note={`af ${mindst(pladser.length, pladserAfkortet)} — hverken varer, kasser eller carriers`} />
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />

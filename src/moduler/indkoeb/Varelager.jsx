@@ -22,7 +22,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { dato, num } from "../../fleet/format.js";
+import { dato, num, mindst } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Knap, Felt, Feltraekke,
@@ -153,11 +153,14 @@ export default function Varelager() {
         <KpiKort label="Uden minimum" vaerdi={num(uden.length)}
                  note="kan aldrig blive lave"
                  ikon={<Ikon navn="udraab" />} tone="ikon-3" rund />
-        <KpiKort label="Varer i alt" vaerdi={num(varer.data.length)}
+        <KpiKort label="Varer i alt" vaerdi={mindst(varer.data.length, varer.afkortet)}
                  note="vores egne — ikke kundernes"
                  ikon={<Ikon navn="kasse" />} tone="ikon-4" rund />
-        <KpiKort label="Bevægelser" vaerdi={num(bevaegelser.data.length)}
-                 note="hele historikken"
+        {/* ⚠ HER STOD note="hele historikken" UNDER ET TAL TALT OP AF EN
+            LISTE MED LOFT PÅ 1000. Rammes loftet, er det ikke historikken —
+            det er de sidste tusind. Se beslutning 96. */}
+        <KpiKort label="Bevægelser" vaerdi={mindst(bevaegelser.data.length, bevaegelser.afkortet)}
+                 note={bevaegelser.afkortet ? "de nyeste — listen er afkortet" : "hele historikken"}
                  ikon={<Ikon navn="ur" />} tone="ikon-6" rund />
       </KpiRaekke>
 

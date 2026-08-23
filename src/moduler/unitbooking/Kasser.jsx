@@ -18,7 +18,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
+import { num, dato, pct, iDagIso, isoTilMs, msTilIso, mindst } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
@@ -274,7 +274,7 @@ export default function Kasser() {
 
   /* Ingen division på en kasse — den hører til en hal. Eksplicit, så det ikke
      ser ud som om skærmen bare var heldig. */
-  const { data: kasser, tilstand, genindlaes, henter } = useListe("kasser", {
+  const { data: kasser, afkortet: kasserAfkortet, tilstand, genindlaes, henter } = useListe("kasser", {
     graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
@@ -338,7 +338,7 @@ export default function Kasser() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Kasser i alt" vaerdi={num(kasser.length)}
+        <KpiKort label="Kasser i alt" vaerdi={mindst(kasser.length, kasserAfkortet)}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund />
         <KpiKort label="Ledige" vaerdi={num(antal("ledig"))}
                  note={reserveret

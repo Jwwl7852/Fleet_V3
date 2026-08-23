@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **95 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **96 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -674,6 +674,18 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   når man læser det — bookinger reserverer jo. Fejlen kan kun ses ved at
   spørge om en tenant har DATA i en node hans moduler ikke ejer.
   Se beslutning 92.
+- **Sætte et tal fra en AFKORTET liste i et nøgletalskort.** `useListe` svarer
+  `afkortet` når `graense` blev ramt; brug `mindst(n, afkortet)` fra
+  `format.js`. **En nedre grænse er en kendsgerning; en total vi ikke kan stå
+  inde for, er forkert på en måde ingen kan se.** Tretten kort sagde *"Varer i
+  alt"* og *"hele historikken"* om lister med loft på 500 og 1000.
+  ⚠ **Nævneren i en NOTE er også et tal** — *"af 500"* og *"73 % af
+  pladserne"* er den samme fejl et andet sted på kortet.
+  ⚠ **Et delmængdetal ER en nedre grænse; en ANDEL er det ikke.** En procent
+  af et udsnit kan ikke rettes med et ord — den udgår.
+  ⚠ Kravet gælder `KpiKort`, ikke hvert `.length`: et tal i en tabelrække
+  beskriver rækkerne, et tal i et nøgletalskort beskriver kunden. Se
+  beslutning 96.
 - **Lade et opslag i en TOM liste påstå at data er i stykker.**
   `leverandoerNavn()` skrev *"ukendt leverandør (lv-hydra)"* hos en kunde uden
   Procure — hvor listen er tom fordi `useListe` **ikke har spurgt**

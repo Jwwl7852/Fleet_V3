@@ -35,7 +35,7 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num } from "../../fleet/format.js";
+import { num, mindst } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
@@ -187,7 +187,7 @@ export default function Lokationer() {
 
   const maaSkrive = harPerm(bruger?.perms, PERM.reolpladserSkriv);
 
-  const { data: pladser, tilstand, genindlaes, henter } = useListe("reolpladser", {
+  const { data: pladser, afkortet: pladserAfkortet, tilstand, genindlaes, henter } = useListe("reolpladser", {
     graense: 2000, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
@@ -244,17 +244,23 @@ export default function Lokationer() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <KpiRaekke>
-        <KpiKort label="Lokationer" vaerdi={num(pladser.length)}
+        <KpiKort label="Lokationer" vaerdi={mindst(pladser.length, pladserAfkortet)}
                  ikon={<Ikon navn="bygning" />} tone="ikon-5" rund
                  note={`i ${num(kendteHaller.length)} lagre`} />
         {/* ⚠ "OPTAGET" OG IKKE "MED VARER PÅ". Kortet talte før kun
             beholdningen, og en hylde med en transportkasse på stod som fri.
             Nu tæller det alt tre kilder — se noten i hovedet. */}
-        <KpiKort label="Optaget" vaerdi={num(optagne)}
-                 note={pladser.length
-                   ? `${Math.round((optagne / pladser.length) * 100)} % af pladserne`
-                   : "ingen pladser endnu"} />
-        <KpiKort label="Frie" vaerdi={num(pladser.length - optagne)}
+        {/* ⚠ BEGGE TAL ER NEDRE GRÆNSER NÅR LISTEN ER AFKORTET, og det er
+            ikke det samme som en total. De uhentede pladser er enten optagne
+            eller frie, så begge tal kan kun stige — men ANDELEN kan ikke
+            regnes af et udsnit, og den udgår derfor. Beslutning 96. */}
+        <KpiKort label="Optaget" vaerdi={mindst(optagne, pladserAfkortet)}
+                 note={pladserAfkortet
+                   ? "andelen kan ikke regnes — listen er afkortet"
+                   : (pladser.length
+                     ? `${Math.round((optagne / pladser.length) * 100)} % af pladserne`
+                     : "ingen pladser endnu")} />
+        <KpiKort label="Frie" vaerdi={mindst(pladser.length - optagne, pladserAfkortet)}
                  note="hverken varer, kasser eller carriers" />
         {/* ⚠ SPÆRREDE SKAL STÅ FOR SIG. En hylde i karantæne ser fri ud i en
             belægningsopgørelse, men der må ikke plukkes fra den. */}
