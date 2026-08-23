@@ -60,10 +60,29 @@ export const ALLE_AFTALETYPER = Object.keys(AFTALETYPE);
 
 /* ---- Opslag ------------------------------------------------------------ */
 
-/** Navnet på en leverandør. Fejler synligt frem for at vise et tomt felt:
- *  et id der ikke kan slås op, er en fejl i data og ikke en manglende værdi. */
-export const leverandoerNavn = (liste, id) =>
-  liste.find((l) => l.id === id)?.navn ?? `ukendt leverandør (${id})`;
+/**
+ * Navnet på en leverandør. Fejler synligt frem for at vise et tomt felt: et id
+ * der ikke kan slås op, er en fejl i data og ikke en manglende værdi.
+ *
+ * ⚠ MEN ET OPSLAG I EN TOM LISTE ER IKKE ET MISLYKKET OPSLAG.
+ *
+ * Efter beslutning 94 spørger `useListe` slet ikke om `leverandoerer` hos en
+ * kunde uden Procure — noden er modulspærret, og en forespørgsel ville være
+ * sikker på at blive afvist. Listen er altså tom **fordi vi ikke har spurgt**.
+ *
+ * Med den gamle udgave skrev funktionen da **"ukendt leverandør (lv-hydra)"**
+ * på hver eneste værkstedsopgave i hans arbejdskø: en påstand om at hans data
+ * er i stykker, fremsat af et opslag der aldrig havde noget at slå op i.
+ *
+ * Tom liste → id'et, råt. Ikke-tom liste uden træffer → stadig en fejl, for
+ * så HAVDE vi kartoteket og fandt ham ikke. Se beslutning 95.
+ */
+export const leverandoerNavn = (liste, id) => {
+  if (!id) return "—";
+  const navn = liste?.find((l) => l.id === id)?.navn;
+  if (navn) return navn;
+  return liste?.length ? `ukendt leverandør (${id})` : id;
+};
 
 export const leverandoer = (liste, id) => liste.find((l) => l.id === id) || null;
 

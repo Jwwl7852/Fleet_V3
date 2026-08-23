@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **94 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **95 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -674,6 +674,15 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   når man læser det — bookinger reserverer jo. Fejlen kan kun ses ved at
   spørge om en tenant har DATA i en node hans moduler ikke ejer.
   Se beslutning 92.
+- **Lade et opslag i en TOM liste påstå at data er i stykker.**
+  `leverandoerNavn()` skrev *"ukendt leverandør (lv-hydra)"* hos en kunde uden
+  Procure — hvor listen er tom fordi `useListe` **ikke har spurgt**
+  (beslutning 94). Tom liste → id'et råt. Liste med rækker og intet træf →
+  stadig en anklage, for så HAVDE vi kartoteket.
+  ⚠ **Og `TILSTAND.modulMangler` siger hvorfor listen er tom.** Den er ikke
+  `naegtet` (en afvisning betyder at nogen skal se på rettighederne; et
+  manglende modul at nogen skal ringe til os), den **blokerer aldrig** en
+  skærm, og den viser aldrig demo-data. Se beslutning 95.
 - **Spørge om en node kunden ikke har modulet til.** `useListe` slår selv
   nodens ejer op med `modulerForNode()` og springer forespørgslen over — sæt
   ikke `hent:` for at gøre det igen, og skriv ikke dit eget tjek i skærmen.

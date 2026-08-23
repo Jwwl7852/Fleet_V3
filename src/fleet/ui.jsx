@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { deviation } from "./format.js";
+import { MODUL } from "./moduler.js";
 
 /* ⚠ MASSIVE IKONER, IKKE STREGTEGNEDE. Mockuppens glyffer er fyldte —
    sidebarens ICO i AppShell er konturer, og de to skal ikke forveksles: her
@@ -242,6 +243,29 @@ export const Datatilstand = ({ tilstand, genprov, tom }) => {
         Sikkerhedsreglerne afviste læsningen. Din bruger har ikke adgang til de
         her data — det er ikke en netværksfejl. De vises derfor ikke.
       </Fejl>
+    );
+  }
+
+  /* ⚠ IKKE EN AFVISNING, OG IKKE EN FEJL. Kunden har ikke købt modulet, så
+     der blev slet ikke spurgt (beslutning 94). Forskellen fra `naegtet` er
+     ikke akademisk: en afvisning betyder at nogen skal se på rettighederne,
+     mens det her betyder at nogen skal ringe til os.
+
+     Ingen genprøv-knap: der er intet at prøve igen, og en knap ville love at
+     det kunne løses ved at klikke. Se beslutning 95. */
+  if (art === "modulMangler") {
+    const navne = (tilstand?.moduler || [])
+      .map((m) => MODUL[m]?.label || m)
+      .join(" eller ");
+    return (
+      <div className="fc-empty fc-empty-info">
+        <p><b>De her oplysninger hører til {navne || "et andet modul"}.</b></p>
+        <p className="fc-hint" style={{ marginTop: 6 }}>
+          Virksomheden har ikke modulet, så der er ikke spurgt efter dem — det
+          er hverken en fejl eller en afvisning. Resten af skærmen virker som
+          den plejer. Kontakt FleetControl, hvis I skal have modulet.
+        </p>
+      </div>
     );
   }
 

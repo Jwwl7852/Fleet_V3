@@ -234,7 +234,18 @@ export function useListe(node, indstillinger = {}) {
     const maaLaese = !ejere || ejere.some((m) => harModul(moduler, m));
 
     if (!hent || !maaLaese) {
-      setTilstand({ art: TILSTAND.ok, visDemo: false });
+      /* ⚠ TOM AF ÉN GRUND ELLER AF EN ANDEN — og skærmen skal kunne se
+         hvilken. `modulMangler` er ikke en fejl og blokerer ikke; den er
+         svaret "kunden har ikke købt det her".
+
+         Uden den blev et fravalgt modul til en tom liste, og en tom liste
+         ligner data der mangler. Værst i `leverandoerNavn()`, som skrev
+         **"ukendt leverandør (lv-hydra)"** på hver eneste værkstedsopgave hos
+         en kunde uden Procure — en påstand om at hans data er i stykker.
+         Se beslutning 95. */
+      setTilstand(maaLaese
+        ? { art: TILSTAND.ok, visDemo: false }
+        : { art: TILSTAND.modulMangler, visDemo: false, moduler: ejere });
       setRaa([]);
       setAfkortet(false);
       setHenter(false);

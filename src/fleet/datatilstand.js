@@ -57,6 +57,16 @@ export const TILSTAND = {
      Den kom med den toemme platform: useKpi faldt tilbage til DEMO_KPI paa en
      tom node, og en rigtig kunde ville have set DEMO Transports 287 aktiver. */
   ikkeAggregeret: "ikkeAggregeret",
+  /* ⚠ KUNDEN HAR IKKE MODULET — OG DET ER IKKE EN AFVISNING.
+     Noden er spærret af en modulklausul, og `useListe` spørger derfor slet
+     ikke (beslutning 94). Listen er tom, men grunden er en helt anden end
+     "der er ingen": den er "vi har ikke spurgt, og vi kommer ikke til det".
+
+     Uden en egen tilstand kan skærmen ikke se forskel, og så bliver et
+     manglende modul til en tom tabel der ligner data der mangler. Den
+     blokerer ALDRIG — modulet er sjældent skærmens eget, og et fravalgt
+     Procure skal ikke lukke Fleets arbejdskø. Se beslutning 95. */
+  modulMangler: "modulMangler",
 };
 
 /* RTDB melder afvisning som PERMISSION_DENIED, men formen varierer: nogle
@@ -101,13 +111,17 @@ export function dataTilstand({ harDb, harBruger, fejl = null }) {
    de to. Rangen er derfor efter alvor, ikke efter hvem der svarede først. */
 const RANG = {
   [TILSTAND.ok]: 0,
+  /* Lige over ok: at kunden ikke har modulet, er en OPLYSNING om hvad han
+     har købt — ikke en fejl. Er den anden node afvist eller nede, er DET
+     brugeren skal se. */
+  [TILSTAND.modulMangler]: 1,
   /* Under demo: at noget ikke er aggregeret, er en oplysning — ikke en fejl.
      Er den anden node afvist, er det afvisningen brugeren skal se. */
-  [TILSTAND.ikkeAggregeret]: 1,
-  [TILSTAND.demo]: 2,
-  [TILSTAND.uautentificeret]: 3,
-  [TILSTAND.forbindelse]: 4,
-  [TILSTAND.naegtet]: 5,
+  [TILSTAND.ikkeAggregeret]: 2,
+  [TILSTAND.demo]: 3,
+  [TILSTAND.uautentificeret]: 4,
+  [TILSTAND.forbindelse]: 5,
+  [TILSTAND.naegtet]: 6,
 };
 
 /**
@@ -166,6 +180,11 @@ export const blokerer = (tilstand) =>
   Boolean(tilstand) &&
   tilstand.art !== TILSTAND.ok &&
   tilstand.art !== TILSTAND.ikkeAggregeret &&
+  /* ⚠ ET FRAVALGT MODUL BLANKER IKKE EN SKÆRM. Noden hører sjældent til
+     skærmens eget modul — Arbejdskøen læser `leverandoerer`, som er
+     Procures. Blokerede den, ville en kunde uden Procure miste sin Fleet-
+     arbejdskø, fordi et leverandørnavn ikke kunne slås op. Se beslutning 95. */
+  tilstand.art !== TILSTAND.modulMangler &&
   tilstand.art !== TILSTAND.demo;
 
 export function vaerste(...tilstande) {

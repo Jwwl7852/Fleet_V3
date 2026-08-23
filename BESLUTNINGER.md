@@ -6925,3 +6925,88 @@ se en tom liste indtil han genindlæste siden.
 fil, kalder ingen Cloud Function `modulerForNode()`. Efterprøvet i browseren:
 Fleet-driftskalenderen henter uændret — kort, gitter og leverandørnavne står
 som før.
+
+---
+
+## 95. En tom liste fordi modulet mangler, er ikke en tom liste
+
+Beslutning 94 fik `useListe` til at holde op med at spørge om noder kunden
+ikke har modulet til. Det var rigtigt — forespørgslen ville være sikker på at
+blive afvist, og afvisningen skrev en auditpost om nægtet adgang.
+
+**Men listen blev tom, og tom er tvetydigt.**
+
+`leverandoerNavn()` slog op i den og skrev
+
+> **"ukendt leverandør (lv-hydra)"**
+
+på hver eneste værkstedsopgave i arbejdskøen hos en kunde uden Procure. Det er
+en **påstand om at hans data er i stykker**, fremsat af et opslag der aldrig
+havde noget at slå op i.
+
+⚠ **Funktionens egen begrundelse var rigtig — og gjaldt ikke her.** Der stod:
+*"et id der ikke kan slås op, er en fejl i data og ikke en manglende værdi."*
+Sandt, **når vi har kartoteket**. Meningsløst når vi ikke har spurgt.
+
+Det er samme fejlklasse som `datatilstand.js` selv er skrevet imod: en tilstand
+oversat til en anden, hvor den forkerte af de to ser ud som en fejl hos
+brugeren. Rettelsen i 94 flyttede bare hvor oversættelsen skete.
+
+### Reglen
+
+**Et opslag i en TOM liste er ikke et mislykket opslag.**
+
+| Liste | Id findes | Svar |
+|---|---|---|
+| har rækker | ja | navnet |
+| har rækker | nej | *ukendt leverandør (id)* — vi HAVDE kartoteket |
+| tom | — | **id'et, råt** — der var intet at slå op i |
+| — | intet id | `—` |
+
+Rettelsen dæmper altså ikke den rigtige fejl: har vi kartoteket og finder ham
+ikke, står anklagen ved magt.
+
+### Og tilstanden siger hvorfor
+
+`TILSTAND.modulMangler` er ny. Uden den kan skærmen ikke se forskel på "der er
+ingen leverandører" og "vi har ikke spurgt".
+
+⚠ **Den er ikke `naegtet`, og forskellen er ikke akademisk:** en afvisning
+betyder at nogen skal se på rettighederne; et manglende modul betyder at nogen
+skal ringe til os.
+
+⚠ **Den blokerer aldrig en skærm.** Noden hører sjældent til skærmens eget
+modul — Arbejdskøen læser `leverandoerer`, som er Procures. Blokerede den,
+ville en kunde uden Procure miste hele sin Fleet-arbejdskø, fordi et
+leverandørnavn ikke kunne slås op. Det er `ikkeAggregeret`-fælden om igen: en
+oplysning der blanker en skærm.
+
+⚠ **Men den vejer tungere end `ok`** i `vaerste()`, ellers ville den forsvinde
+når skærmen læser to noder — og lettere end `naegtet` og `forbindelse`, for
+dem skal brugeren se først.
+
+⚠ **Og den viser aldrig demo-data.** Opdigtede tal findes kun hvor der ikke er
+en database at spørge (beslutning 26). Her ER der en; vi har bare ikke spurgt.
+
+### Teksten
+
+`<Datatilstand>` siger hvilket modul oplysningerne hører til, **ved navn** —
+"De her oplysninger hører til Procure" er brugbart, "hører til et andet modul"
+er det ikke: kunden skal kunne sige hvilket når han ringer.
+
+**Ingen genprøv-knap.** Der er intet at prøve igen, og en knap ville love at
+det kunne løses ved at klikke. Samme grund som `ikkeAggregeret` ikke har en.
+
+### Det arbejdet fandt
+
+**1. Rettelser flytter fejl, de fjerner dem ikke altid.** 94 fjernede en
+afvisning og en auditpost, og skabte en tom liste. Den tomme liste blev til en
+anklage ét lag længere ude. Det er værd at kigge efter hver gang noget holder
+op med at fejle: **hvad står der nu i stedet?**
+
+**2. Det andet "ukendt"-opslag blev stående, og det er en anden sag.**
+`pricing.js` skriver *"Lagerophold – ukendt lager (…)"* når en lagersats
+mangler. Den linje bærer `manglerSats: true`, og kommentaren dér forklarer
+hvorfor opholdet **ikke** springes over: et ophold man kan se, er det eneste
+der får nogen til at oprette lageret. Det er en manglende SATS, ikke en
+manglende liste — og den skal blive ved med at råbe.
