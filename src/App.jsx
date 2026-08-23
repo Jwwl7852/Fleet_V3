@@ -96,6 +96,7 @@ const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
 const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
 const MinTur = lazy(() => import("./moduler/app/MinTur.jsx"));
 const AppIndberetning = lazy(() => import("./moduler/app/Indberetning.jsx"));
+const AppTid = lazy(() => import("./moduler/app/Timeregistrering.jsx"));
 
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -430,6 +431,7 @@ export default function App() {
                   <Routes>
                     <Route index element={<AppForside />} />
                     <Route path="tur" element={<MinTur />} />
+                    <Route path="tid" element={<AppTid />} />
                     <Route path="indberetning" element={<AppIndberetning />} />
                     <Route path="*" element={<Navigate to="/app" replace />} />
                   </Routes>

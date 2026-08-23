@@ -355,6 +355,12 @@ export const NODE_MODUL = {
   fravaer: "bemanding",
   "sensitive/fravaer": "bemanding",
   kompetencer: "bemanding",
+  /* ⚠ TIMEREGISTRERING ER EN WORKFORCE-FUNKTION — beslutning 107. Den står
+     hos `fravaer` og `kompetencer` og ikke i basen: kun ÉT modul ejer den, og
+     basen er for de noder FLERE moduler skriver til (beslutning 92).
+     En kunde uden Workforce får ikke kortet i chaufførappen — `useListe`
+     springer forespørgslen over og svarer `modulMangler`. */
+  stemplinger: "bemanding",
 
   kunder: "kunder",
   "sensitive/kunder": "kunder",

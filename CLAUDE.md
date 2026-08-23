@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **106 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **107 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -816,6 +816,27 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   `test/demo-referencer.test.mjs` kræver at hvert felt der ender på `Id` i et
   seedet sæt enten rammer en post der findes, eller står i undtagelseslisten
   **med en grund**.
+- **Skrive en stempling uden om `stemplinger/<personId>/<id>` — eller give
+  noden en `.read`.** Læsningen ligger på `$personId`, fordi den skal kunne
+  svare *"er det dine egne timer"*; en `.read` på beholderen kaskaderer, og så
+  kan enhver chauffør se hvornår hver kollega mødte.
+  ⚠ **Vejen er ÅBEN her, modsat `statushaendelser`** — og forskellen er stien:
+  dér lå ejerskabet inde i posten, så en regel ikke kunne afgøre det (103).
+  Her står `personId` i stien, og reglen slår `brugere/<uid>/personId` op.
+  ⚠ **En lukket vagt er frosset.** `.write` afvises når posten har et `udMs`,
+  og leddet står på POSTEN — `.write` kaskaderer, og en `.validate` køres ikke
+  ved en sletning (beslutning 52).
+  ⚠ **En åben stempling har ikke NUL minutter**, og én åben vagt gør hele ugen
+  uopgjort. En vagt over et døgn **afvises**, den afkortes ikke: at gætte
+  midnat ville være en måling vi fandt på.
+  ⚠ **Og der er INGEN position.** Specifikationen lover den, beslutning 22
+  forbyder GPS, og spørgsmålet er stillet og ikke besvaret. En prøve afviser
+  `lat`/`lon`/`position`/`gps` i modellen, reglen og demosættet.
+  Se beslutning 107.
+- **Tilføje en farvet knap på `.fc-btn` uden dens `:hover`-par.**
+  `.fc-btn:hover` er to klasser og vinder over én — knappen bliver hvid på
+  hvid i det øjeblik musen rører den, og det ses ikke i en prøve.
+  `.fc-btn-primaer:hover` findes af nøjagtig den grund.
 - **Tilføje en indberetningsart uden at sige hvilken KLASSE den er.**
   `HAENDELSE_ART` har to: en **driftshændelse** starter et forløb (der er et
   arbejde at følge), en **udgiftsregistrering** gør ikke (et beløb og en dato).

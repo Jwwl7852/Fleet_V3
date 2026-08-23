@@ -44,6 +44,7 @@ import {
 import { DEMO_OMKOSTNINGER, DEMO_LAGRE } from "../src/fleet/demo-omkostninger.js";
 import { DEMO_GRUNDLAG } from "../src/fleet/demo-grundlag.js";
 import { DEMO_ETAPER, DEMO_STATUSHAENDELSER } from "../src/fleet/demo-etaper.js";
+import { DEMO_STEMPLINGER } from "../src/fleet/demo-stemplinger.js";
 import { DEMO_BOOKINGER } from "../src/fleet/demo-bookinger.js";
 import { DEMO_OPGAVER } from "../src/fleet/demo-opgaver.js";
 import {
@@ -243,6 +244,11 @@ export const SEED = [
 
      ⚠ uid ER EN PLADSHOLDER I SÆTTET og skrives om nedenfor. */
   { node: "statushaendelser", data: DEMO_STATUSHAENDELSER, form: "objekt" },
+  /* ⚠ FORMEN ER "objekt", som statushaendelser. Noden er noeglet paa
+     personId og derunder paa postens eget id — det er ikke en liste af
+     poster med et id, og somNode() ville lave et lag for meget.
+     Se beslutning 107. */
+  { node: "stemplinger", data: DEMO_STEMPLINGER, form: "objekt" },
   /* ⚠ OPGAVERNE HAR HAFT REGLER OG INGEN DATA. Noden er skrivbar med
      opgaver.skriv og har et indeks — men intet seedede den, og ingen skaerm
      forespurgte paa den, saa den stod tom uden at nogen saa det. Det holdt
@@ -416,13 +422,35 @@ export function modulForNode(node, regeltekst) {
   }
   if (!tenant) return null;
 
+  const klausul = (laes) => {
+    if (typeof laes !== "string") return undefined;
+    const m = laes.match(/child\('moduler'\)\.child\('(\w+)'\)\.val\(\) === true/);
+    return m ? m[1] : null;
+  };
+
   const dele = String(node).split("/");
   for (let i = dele.length; i > 0; i -= 1) {
     const post = dele.slice(0, i).reduce((o, k) => (o == null ? o : o[k]), tenant);
-    const laes = post?.[".read"];
-    if (typeof laes !== "string") continue;
-    const m = laes.match(/child\('moduler'\)\.child\('(\w+)'\)\.val\(\) === true/);
-    return m ? m[1] : null;
+    const svar = klausul(post?.[".read"]);
+    if (svar !== undefined) return svar;
+
+    /**
+     * ⚠ EN BEHOLDER BÆRER SIN `.read` ÉT NIVEAU NEDE — beslutning 107.
+     *
+     * `stemplinger` har ingen egen `.read`, fordi den ville kaskadere og lade
+     * enhver chauffør se hver kollegas timer; klausulen står på `$personId`.
+     * Opslaget her gik derfor OP i træet, fandt ingenting, og svarede at
+     * noden hørte til alle — så et seed af en Workforce-node ville lande hos
+     * en kunde der ikke har modulet. Samme form som `sensitive/` og `vaerdi/`.
+     *
+     * Kun ÉT wildcard-barn kigges der på. Er der flere, er noden ikke en
+     * beholder, og så er svaret rigtigt at gå videre opad.
+     */
+    const wildcards = Object.keys(post || {}).filter((k) => k.startsWith("$"));
+    if (wildcards.length === 1) {
+      const ned = klausul(post[wildcards[0]]?.[".read"]);
+      if (ned !== undefined) return ned;
+    }
   }
   return null;
 }

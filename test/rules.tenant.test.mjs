@@ -52,7 +52,11 @@ const LAESNING_NAEGTET = new Set(["_findes"]);
 /* BEHOLDERE. De har selv ingen .read — den ville kaskadere ned over alle
    objekterne derunder og ophæve hele opdelingen — men hvert objekt inde i
    dem har sin egen. Se beslutning 17. */
-const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi"]);
+/* ⚠ `stemplinger` ER EN BEHOLDER AF SAMME GRUND — beslutning 107. Læsningen
+   ligger på `$personId`, fordi den skal kunne svare "er det dine egne timer".
+   En `.read` på beholderen ville kaskadere, og så kunne enhver chauffør se
+   hvornår hver kollega mødte. */
+const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger"]);
 
 /* ⚠ kpi ER EN DYB BEHOLDER. sensitive/ og vaerdi/ har deres .read ÉT niveau
    nede (sensitive/bookinger). kpi/ har den TRE niveauer nede — på

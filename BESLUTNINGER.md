@@ -8174,3 +8174,121 @@ gang bliver ikke lettere at finde.
 | Timeregistrering | — | hele noden; **position afventer et svar** |
 | Turplan | delvist | **stop-modellen** — tidsvindue, kontakt, ordrelinjer, scan |
 | Anmod om frihed | — | ansøgningstilstand på `fravaer`, svar i systemet |
+
+## 107. Stemplinger — og navnet der var taget to gange
+
+Anden af de fire skærme i ejerens specifikation: **Timeregistrering.** Stempl
+ind, stempl ud, se ugen.
+
+### Navnet blev målt før en linje blev skrevet
+
+De to oplagte var taget:
+
+| | Betyder allerede | |
+|---|---|---|
+| `vagter/` | **reserveret til en VAGTPLAN** — hvem der er sat på arbejde | *hvad vi aftalte* |
+| `tidsregistrering` | et **FELT** på en indberetning: ankomst og afgang på et værkstedsbesøg | *et andet ur* |
+
+Det stod i `demo-bemanding.js` og `kpi-aggregering.js`: *"vagtplanen har ingen
+entitet overhovedet; `vagter/` står hverken i reglerne eller i seedet."* En
+plan og en stempling er ikke det samme, og det ville være **tredje gang** to
+ting hed det samme i dette repo — `lagre` mod `lager`, `bookinger` mod
+`bookings`, `warehouse` mod `warehouse`. Det er den fejl der har kostet mest.
+
+Noden hedder `stemplinger`, fordi navnet siger hvordan posten **opstår**.
+Arbejdstiden regnes af den; den gemmes ikke — et gemt `minutter` ville drive
+fra sit grundlag, som `bemanding.ledig` gjorde (beslutning 71).
+
+### Stien er det der gør reglen mulig
+
+⚠ **`statushaendelser` blev en Cloud Function fordi ejerskabet lå INDE i
+posten** — en regel kunne ikke afgøre om etapen var chaufførens (beslutning
+103). Her står `personId` i **stien**: `stemplinger/<personId>/<id>`. Reglen
+slår `brugere/<uid>/personId` op og sammenligner, så vejen behøver ikke være
+lukket, og der skal ikke stå en funktion imellem der ikke gør andet.
+
+⚠ **Han læser kun sine egne.** `.read` ligger på `$personId`, ikke på noden —
+en `.read` på beholderen ville kaskadere, og enhver chauffør kunne se hvornår
+hver kollega mødte. Kontoret læser med `personale.laes`.
+
+⚠ **En lukket vagt er frosset**: `.write` afvises når posten har et `udMs`.
+Ellers kunne gårsdagens timer rettes efter at kontoret havde set dem. Leddet
+står på **posten**, ikke på feltet — `.write` kaskaderer, og en `.validate`
+køres slet ikke ved en sletning. Samme figur som underskriften i beslutning 52.
+
+### Tre tal der ikke må gøres op
+
+⚠ **En åben stempling har ikke nul minutter.** Den har et ubesvaret spørgsmål:
+vi ved hvornår han begyndte og ikke hvornår han holdt op. `0:00` ville påstå at
+han ikke arbejdede, og `null` bobler op — én åben vagt gør hele ugen uopgjort,
+og skærmen siger hvorfor.
+
+⚠ **Åben er ikke "i dag".** En nattur begynder mandag kl. 22 og slutter tirsdag
+kl. 06. Ledte vi efter en åben post på dagens dato, ville chaufføren stå som
+ikke-stemplet-ind hele natten — og "Stempl IND" ville lave en post nummer to
+oven i den han allerede havde.
+
+⚠ **Og en vagt over et døgn AFVISES, den afkortes ikke.** En glemt udstempling
+ville ellers give hundrede timer der står i en opgørelse som om nogen
+arbejdede. At gætte midnat ville være en måling vi fandt på — samme regel som
+den gættede momssats.
+
+⚠ **Timer skrives med kolon.** `7,5` er ikke syv timer og fem minutter, og et
+decimaltal på en lønseddel bliver læst som det ene af de to af den der ikke
+skrev det.
+
+### Ingen position — spørgsmålet er stillet, ikke besvaret
+
+Specifikationens kort siger *"Din position registreres, så tiden er
+dokumenteret"*. Beslutning 22 siger **INGEN GPS**, og begrundelsen dér er at en
+melding er et menneskes udsagn og ikke en måling — den handler om at **følge**
+en bil gennem dagen. Et enkelt punkt ved ind og ét ved ud er noget andet, og
+derfor er spørgsmålet stillet frem for afgjort.
+
+Indtil svaret: **ingen koordinater**, hverken i modellen, i reglen eller i
+demosættet — et felt reglen tillader og ingen skriver, kan fyldes med hvad som
+helst. En prøve afviser `lat`, `lon`, `position` og `gps` alle tre steder.
+
+⚠ **Formen spærrer ikke for svaret.** Felterne er FLADE — `indMs`, `udMs` — så
+`indLat`/`indLon` kan lægges til som to valgfrie felter uden at røre en eneste
+post. Havde vi gemt `ind: { ms }` som et objekt for at "gøre plads", havde vi
+valgt formen på et svar vi ikke har fået.
+
+⚠ **Og skærmen siger det.** *"Der registreres ingen position."* Ikke ingenting,
+som ville lade chaufføren gætte.
+
+### Tre ting kun målingen fandt
+
+**Beholderen brød tre prøver på hver sin måde**, og alle tre var rigtige:
+
+1. **Nodelisten** krævede en `.read` på hver node. `stemplinger` har ingen —
+   den ligger et niveau nede. Den hører i `BEHOLDERE`, som `sensitive/`.
+2. **Provisionerens modulopslag gik OP i træet**, fandt ingen `.read` og svarede
+   at noden hørte til alle. Et seed af en Workforce-node ville lande hos en
+   kunde uden modulet. Opslaget kigger nu også ned i ét wildcard-barn.
+3. **Modulprøven læste beholderen** som admin og fik afvist. Den spørger nu på
+   det niveau der KAN læses — en beholder der blev sprunget over, ville være en
+   node ingen prøvede.
+
+⚠ **Og `useListe` skal kaldes med et nodenavn man kan læse.** Jeg skrev en
+ternær — `minPersonId ? \`stemplinger/${minPersonId}\` : "stemplinger"` — og
+linten fangede den: hverken hooken eller prøven kan slå modulet op på en
+variabel.
+
+### Og to fejl der kun kunne ses ved at åbne skærmen
+
+⚠ **Den åbne demovagt kunne ikke stemples ud.** Den lå på en fast ugedag, så
+sent i ugen var den **61 timer** gammel — og `valideStempling()` afviser en vagt
+over et døgn. Demoen kunne altså vise knappen og ikke bruge den. Den regnes nu
+af *nu*.
+
+⚠ **Og knappen blev hvid på hvid når musen rørte den.** `.fc-btn:hover` er to
+klasser og vinder over én, så baggrunden faldt tilbage til kortets. Det var
+usynligt indtil jeg klikkede. **`.fc-btn-primaer:hover` findes af nøjagtig
+samme grund** — svaret stod i filen, jeg havde bare ikke læst det.
+
+### Målt gennem appen
+
+En rigtig udstempling kl. 19.32: søndagen gik fra `—` til **13:17** (06.15–19.32),
+og *"Ugen i alt"* fra `—` til **40:17**. Det er hele pointen med `null`: ugen
+kunne ikke gøres op, og så kunne den.

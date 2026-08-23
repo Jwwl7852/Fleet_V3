@@ -877,6 +877,59 @@
         // ⚠ TIDSPUNKTET KOMMER FRA TELEFONEN. Se noten i rutestatus.js: en
         // melding sendt kl. 14 uden daekning maa ikke staa kl. 16 fordi det var
         // da signalet kom igen. `klientId` goer en gensendelse ufarlig.
+        // ══════════════════════════════════════════════════════════════
+        // STEMPLINGER — beslutning 107
+        // ══════════════════════════════════════════════════════════════
+        //
+        // ⚠ NAVNET ER TREDJE FORSOEG, og de to foerste var taget:
+        // `vagter/` er RESERVERET til en VAGTPLAN (hvad vi aftalte), og
+        // `tidsregistrering` er et FELT paa en indberetning (ankomst og
+        // afgang paa et vaerkstedsbesoeg). Tredje gang to ting er ved at
+        // hedde det samme i dette repo — se `lagre` mod `lager`.
+        //
+        // ⚠ NOEGLET PAA personId, OG DET ER DET DER GOER REGLEN MULIG.
+        // Paa `statushaendelser` (beslutning 103) laa ejerskabet INDE i
+        // posten, og en regel kunne ikke afgoere om etapen var chauffoerens
+        // — derfor en Cloud Function. Her staar personId i STIEN, saa
+        // reglen kan slaa `brugere/<uid>/personId` op og sammenligne. Vejen
+        // behoever derfor ikke vaere lukket.
+        //
+        // ⚠ HAN LAESER KUN SINE EGNE. Laa `.read` paa `stemplinger` selv,
+        // ville den kaskadere, og enhver chauffoer kunne se hvornaar hver
+        // kollega moedte. Kontoret laeser med `personale.laes` — det er
+        // arbejdstid, ikke en helbredsoplysning, saa den bredere
+        // personale-permission raekker.
+        //
+        // ⚠ EN LUKKET VAGT ER FROSSET. `.write` afvises naar posten allerede
+        // har et `udMs` — ellers kunne en chauffoer rette gaarsdagens timer
+        // efter at kontoret havde set dem. Leddet staar paa POSTEN og ikke
+        // paa feltet: `.write` kaskaderer, og en `.validate` koeres slet
+        // ikke ved en sletning. Samme figur som underskriften i
+        // beslutning 52.
+        //
+        // ⚠ OG DER ER INGEN POSITION. Specifikationen siger at positionen
+        // registreres; beslutning 22 siger INGEN GPS. Spoergsmaalet er
+        // stillet og ikke besvaret, saa der skrives ingen koordinater — og
+        // felterne staar heller ikke her, for et felt reglen tillader og
+        // ingen skriver, kan fyldes med hvad som helst.
+        "stemplinger": {
+          "$personId": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && (root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId || (auth.token.perms != null && auth.token.perms.contains('|personale.laes|')))",
+            ".indexOn": ["indMs"],
+            "$id": {
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId && !data.child('udMs').exists() && newData.exists()",
+              ".validate": "newData.hasChildren(['indMs'])",
+              "indMs": { ".validate": "newData.isNumber()" },
+              // ⚠ SLUT EFTER START, og hoejst et doegn. En glemt udstempling
+              // ville ellers give en vagt paa hundrede timer, som staar i en
+              // opgoerelse som om nogen arbejdede. Det er en AFVISNING og
+              // ikke en afkortning: vi ved ikke hvornaar han gik.
+              "udMs": { ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('indMs').val() && newData.val() - newData.parent().child('indMs').val() <= 86400000" },
+              "note": { ".validate": "newData.isString() && newData.val().length <= 200" },
+              "$andet": { ".validate": false }
+            }
+          }
+        },
         "statushaendelser": {
           ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
           ".write": false,

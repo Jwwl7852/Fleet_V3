@@ -67,6 +67,13 @@ const TESTDATA = {
   kunder: { k1: { navn: "Kunde", aktiv: true } },
 };
 
+/* Tenant-grenen af regelfilen, til at se om en node er en BEHOLDER. */
+const REGLER = JSON.parse(
+  readFileSync("firebase.rules.json", "utf8")
+    .replace(/^﻿/, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+).rules.tenants.$tenantId;
+
 function alleRegler() {
   const raa = readFileSync("firebase.rules.json", "utf8")
     .replace(/^﻿/, "")
@@ -208,7 +215,24 @@ describe("En tenant UDEN moduler-node har alt", () => {
     const db = somAdmin(INGEN);
     for (const node of Object.keys(MODUL_NODER).flatMap((m) => MODUL_NODER[m])) {
       if (node.includes("/")) continue;   /* sensitive/* kræver egne perms */
-      await assertSucceeds(get(ref(db, `tenants/${INGEN}/${node}`)));
+
+      /**
+       * ⚠ EN BEHOLDER LÆSES ÉT NIVEAU NEDE — beslutning 107.
+       *
+       * `stemplinger` har ingen egen `.read`: den ville kaskadere og lade
+       * enhver chauffør se hver kollegas timer, så klausulen står på
+       * `$personId`. Et opslag på beholderen afvises derfor for ALLE, også
+       * admin — præcis som `kpi/` (beslutning 44).
+       *
+       * Prøven springer den ikke over; den spørger på det niveau der KAN
+       * læses. En beholder der blev sprunget over, ville være en node ingen
+       * prøvede.
+       */
+      const regel = REGLER[node];
+      const wildcard = Object.keys(regel || {}).find((k) => k.startsWith("$"));
+      const sti = (!regel?.[".read"] && wildcard)
+        ? `${node}/enPerson` : node;
+      await assertSucceeds(get(ref(db, `tenants/${INGEN}/${sti}`)));
     }
   });
 });

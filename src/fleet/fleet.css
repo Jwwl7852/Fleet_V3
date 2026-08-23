@@ -1577,3 +1577,36 @@
 .fc-app-felt .fc-ctl{min-height:48px; font-size:var(--fc-t-l)}
 /* Firmanavnet under mærket i chaufførappens topbar — beslutning 106. */
 .fc-app-tenant{display:block; font-size:var(--fc-t-s); color:var(--bc-accent); font-weight:650}
+
+/* ---- Timeregistrering — beslutning 107 -------------------------------- */
+.fc-app-stempel{align-items:center; text-align:center}
+.fc-app-status{margin:0; font-size:var(--fc-t-xl); font-weight:700}
+
+/* ⚠ ÉN STOR KNAP. Den trykkes med en tommelfinger i en lastbil, og den er
+   dagens vigtigste handling — 64 px mod de 52 de øvrige har. */
+.fc-app-stempl{
+  width:100%; min-height:64px; font-size:var(--fc-t-2xl); font-weight:700;
+  color:#fff}
+/* ⚠ TO FARVER, FORDI HANDLINGEN ER TO FORSKELLIGE TING. En knap der ser ens
+   ud uanset om den lukker eller åbner en vagt, bliver trykket forkert — og en
+   lukket vagt er frosset. */
+.fc-app-stempl-ind{background:var(--bc-ok); border-color:var(--bc-ok)}
+.fc-app-stempl-ud{background:var(--bc-warn); border-color:var(--bc-warn)}
+/* ⚠ HOVER-PARRET ER IKKE PYNT. `.fc-btn:hover` er to klasser og vinder over
+   én — knappen blev HVID med hvid tekst i det øjeblik musen rørte den, og
+   det var usynligt indtil jeg klikkede på den. `.fc-btn-primaer:hover`
+   findes af nøjagtig samme grund; den var svaret, jeg bare ikke havde læst. */
+.fc-app-stempl-ind:hover{background:var(--bc-ok)}
+.fc-app-stempl-ud:hover{background:var(--bc-warn)}
+
+.fc-app-uge-top{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.fc-app-dage{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.fc-app-dag{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border:1px solid var(--bc-line); border-radius:8px;
+  background:var(--bc-card)}
+.fc-app-dagtal{display:flex; flex-direction:column; align-items:flex-end}
+.fc-app-ugesum{
+  display:flex; justify-content:space-between; margin:0;
+  padding-top:10px; border-top:1px solid var(--bc-line);
+  font-size:var(--fc-t-l)}
