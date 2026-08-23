@@ -7,7 +7,7 @@ danske variabelnavne i domænelogikken.
 ## Arbejdsregel
 
 **Analyse før kode.** Læs `README.md` og `ARKITEKTUR.md` først. Foreslå en plan
-og få den godkendt, før du skriver. Der er **98 trufne beslutninger** — kort
+og få den godkendt, før du skriver. Der er **99 trufne beslutninger** — kort
 form i README, begrundelserne i `BESLUTNINGER.md`. Brud på dem skal være
 bevidste, ikke tilfældige, og begrundelsen er det eneste sted der står hvad
 der gik galt uden beslutningen. Læs den relevante række, før du bryder noget.
@@ -455,6 +455,17 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
 - **Vise en karantæneret besked i tråden.** Ikke gråtonet, ikke sammenklappet.
   Renderes den inline, læser mennesket den og handler på den — samme regel som
   at en udløbet kompetence blokerer frem for at advare.
+- **Læse en `sensitive/`-node uden `auditerSom`.** Det er den ene
+  node-familie hvor en LÆSNING i sig selv er en hændelse: hvem der har set en
+  skadebeskrivelse eller en sygemeldings årsag, er ikke det samme spørgsmål
+  som hvem der måtte. `usePost` og `useListe` tager begge flaget, og
+  `test/sensitivlaesning.test.mjs` kræver det på hvert opslag.
+  ⚠ **Og samme node skal hedde det samme overalt.** `objekt` er fri tekst i
+  auditposten; to skærme med to navne giver to rækker der ikke kan lægges
+  sammen — og et udtræk der ser komplet ud og ikke er det.
+  ⚠ **Forbeholdet står ved magt:** udløseren er klientside, så sig *"vi logger
+  læsninger fra applikationen"*, ikke *"vi logger alle læsninger"*.
+  Se beslutning 99.
 - Tilføje `emne` til `LOGBARE_FELTER`. Det er fritekst fra internettet, og
   allowlisten findes for at holde fritekst ude af auditloggen.
 - Give en mail-aftale sin egen `kilde.type` i reservationsnoden. Det man

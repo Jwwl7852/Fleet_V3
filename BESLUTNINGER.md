@@ -7265,3 +7265,80 @@ der ikke længere findes.
 `hent()` med `URL.revokeObjectURL`; Fakturering skulle bruge den samme. Fire
 linjer er lige præcis kort nok til at blive skrevet af — og lige præcis langt
 nok til at den ene glemmer at frigive URL'en. Den står nu i `eksport.js`.
+
+---
+
+## 99. Den ene læsning der virkelig skulle logges, blev ikke logget
+
+Punkt 4 i den låste rækkefølge er den centrale auditservice, og `audit.js`
+siger om `laes()`:
+
+> *"Det er den del der plejer at mangle, og den RA-kunder spørger om."*
+
+Den plejede at mangle. Målt:
+
+| Node | Læses af | `auditerSom` |
+|---|---|---|
+| `sensitive/fravaer` | `Fravaer.jsx` | ✅ `fravaerSensitive` |
+| `sensitive/indberetninger` | `flaade/Indberetninger.jsx` | ❌ **ingen** |
+
+Samme hook (`usePost`), samme slags node, ét ord til forskel.
+
+⚠ **Og det var den værste af de to.** `sensitive/indberetninger` bærer
+skadebeskrivelse, modpart, forsikringsselskab, policenummer og en
+**underskrift** — den mest personlige og mest juridisk ladede post i
+produktet, frosset af beslutning 52 og bag sin egen
+`indberetninger.sensitiveLaes`.
+
+⚠ **Det er ikke et adgangsproblem.** Reglerne afviste allerede den der ikke
+måtte; permissionen er koordinatorens. Det der manglede, var **sporet af de
+læsninger der gik igennem**. Adgangskontrollen holdt — dokumentationen af den
+gjorde ikke.
+
+### Hvordan det blev fundet
+
+Ikke ved at læse skærmen. Jeg målte først noget helt andet: **skriver nogen
+Cloud Function uden at logge?** Første kørsel sagde **15 af 40**, og det så
+alvorligt ud — indtil jeg så at `grundlagskriv` kalder `logGrundlag()`.
+
+Der er **syv** log-hjælpere: `log`, `logUdlaan`, `logBevaegelse`,
+`logGrundlag`, `logEtape`, `logOpgave`, `logProcure`. Med dem alle er svaret
+**0 af 40**. Skrivesiden holder.
+
+⚠ **En måling der ikke kender kodens egne navne, måler sig selv.** Den regel
+er nu tredje gang værd at skrive ned (jf. 91 og 96): jeg havde næsten skrevet
+en beslutning om femten ulogede skrivninger der ikke fandtes.
+
+Da skrivesiden var ren, blev spørgsmålet: **og læsningerne?** 2 af 178
+`useListe`-kald sætter `auditerSom` — men det er rigtigt, for de fleste noder
+er ikke følsomme. Den skarpe grænse er `sensitive/`, og der var to opslag. Ét
+af dem loggede.
+
+### Hvad der nu holder det
+
+`test/sensitivlaesning.test.mjs` kræver at **hvert** opslag mod en
+`sensitive/`-node bærer `auditerSom` — uanset hvilket hook der bruges.
+
+⚠ **Og at samme node hedder det samme overalt.** `objekt` er en fri streng i
+auditposten; to skærme der kalder den samme node to ting, giver to rækker der
+ikke kan lægges sammen — og et udtræk der ser komplet ud og ikke er det.
+
+Dertil tre prøver på at hookene overhovedet kan: at de logger læsningen, at de
+logger en **afvisning** (et afvist forsøg er ofte det mest interessante i en
+auditlog, og reglerne kan ikke skrive til den selv), og at det er **antallet**
+der logges og ikke rækkerne — ellers ville loggen selv være en kopi af de
+følsomme data.
+
+⚠ **Prøven er efterprøvet i begge retninger.** Rettelsen blev taget ud igen,
+og linten faldt. En lint man ikke har set fejle, ved man ikke om virker.
+
+### Forbeholdet står stadig
+
+`BESLUTNINGER.md` har en note om at **læsningslogningen er klientside**:
+udløseren ligger i `useListe()`/`usePost()`, så en klient der ikke kalder,
+logger ikke. Den note er urørt, og den er netop grunden til at en lint er det
+eneste der kan holde kravet: der er ingen server der kan håndhæve det, før
+følsomme læsninger går gennem en callable.
+
+Sig fortsat *"vi logger læsninger fra applikationen"*, ikke *"vi logger alle
+læsninger"*.

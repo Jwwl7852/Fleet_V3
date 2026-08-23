@@ -86,7 +86,17 @@ export default function Indberetninger() {
   const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
   /* ⚠ id = null BETYDER "SPØRG IKKE". Hooket står ubetinget — hooks må ikke
      kaldes betinget — mens selve læsningen først sker når brugeren må. */
-  const sensitiv = usePost("sensitive/indberetninger", maaSensitivt ? valgtId : null);
+  /* ⚠ auditerSom SKAL MED PÅ EN sensitive-NODE — og den manglede her.
+     `sensitive/indberetninger` bærer skadebeskrivelse, modpart,
+     forsikringsselskab, policenummer og underskrift: den mest personlige og
+     mest juridisk ladede post i produktet. `audit.js` siger om `laes()` at
+     *"det er den del der plejer at mangle, og den RA-kunder spørger om"* —
+     og netop den læsning blev ikke logget.
+     Naboen `sensitive/fravaer` i Fravaer.jsx havde den. Samme hook, samme
+     slags node, ét ord til forskel. Se beslutning 99. */
+  const sensitiv = usePost("sensitive/indberetninger", maaSensitivt ? valgtId : null, {
+    auditerSom: "indberetningSensitive",
+  });
 
   if (henter || liste.henter) return <Henter hvad="indberetninger" />;
   /* En AFVIST læsning af listen er ikke en tom liste. */
