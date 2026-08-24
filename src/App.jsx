@@ -357,6 +357,23 @@ export default function App() {
    */
   const erUdbyder = bruger?.udbyder === true;
 
+  /**
+   * ⚠ CHAUFFØREN MÅ KUN NÅ /app — beslutning 117.
+   *
+   * `harAdgang` løses stadig ikke op: en chauffør har fortsat et
+   * tenant-claim og kan læse det hans seks permissions tillader. Det her
+   * afgør kun hvad der TEGNES, som `erUdbyder` gør for konsollen — reglerne
+   * kender ikke rollen, kun claims og permissions.
+   *
+   * ⚠ RETTET PÅ ROLLEN, IKKE PÅ EN SKÆRM. `Chauffoerramme` var allerede
+   * sideordnet AppShell — men intet forhindrede en chauffør i at NAVIGERE
+   * til en AppShell-rute selv. De fleste læsninger ville blive afvist
+   * (BASIS_LAES + indberetningerSkriv er hele hans sæt), men en afvist
+   * læsning er ikke det samme som en spærret dør — skærmen ville stå der,
+   * delvist tom, i stedet for slet ikke at findes for ham.
+   */
+  const erChauffoer = bruger?.rolle === "chauffoer";
+
   /* ⚠ EJEREN KOMMER FØRST. En konto der er begge dele — det sker i dev — skal
      lande i konsollen, ikke i sin egen tenant. Ellers ville man skulle logge
      ud for at komme til den, og så ville nogen give ejerkontoen en tenant
@@ -444,7 +461,9 @@ export default function App() {
               </Chauffoerramme>
             )} />
           )}
-          {harAdgang && (
+          {/* ⚠ !erChauffoer — beslutning 117. En chauffør skal kun nå /app;
+              se noten ved erChauffoer ovenfor. */}
+          {harAdgang && !erChauffoer && (
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
 
@@ -532,6 +551,12 @@ export default function App() {
             ))}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
+          )}
+          {/* ⚠ EN CHAUFFØR DER RAMMER EN AppShell-STI, SENDES TIL /app —
+              ikke til "/", som ville lande i den blok han netop blev
+              udelukket fra og loope. Se erChauffoer ovenfor. */}
+          {harAdgang && erChauffoer && (
+            <Route path="*" element={<Navigate to="/app" replace />} />
           )}
         </Routes>
       </BrowserRouter>

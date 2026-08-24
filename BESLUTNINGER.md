@@ -8959,3 +8959,68 @@ samme fejl og fik samme rettelse. Den nu ubrugte `paa()` er fjernet.
 Fundet ved et checkpoint-commit, ikke ved retention-arbejdet selv — men
 opdaget fordi pre-commit-hooken nægtede at lade en kendt, urelateret fejl
 glide med. Det er hookens formål.
+
+## 117. Chaufføren må kun nå /app
+
+`Chauffoerramme` har været sideordnet `AppShell` siden beslutning 103 —
+men "sideordnet" var kun sandt for kortene på forsiden. Intet forhindrede
+en chauffør i selv at navigere til en AppShell-rute; de fleste læsninger
+ville bare blive afvist (hans sæt er `BASIS_LAES` + `indberetningerSkriv`).
+En afvist læsning er ikke det samme som en spærret dør — skærmen fandtes
+stadig, delvist tom, i stedet for slet ikke at være der for ham.
+
+**Bestillingen:** en chauffør skal kun kunne logge på mobilappen.
+
+### Rettet på rollen, ikke på en skærm
+
+`erChauffoer = bruger?.rolle === "chauffoer"` i `App.jsx`, samme
+"sideordnet, ikke en udvidelse"-mønster som `erUdbyder`. AppShell-blokken
+kræver nu `harAdgang && !erChauffoer`, og en ny catch-all sender en
+chauffør der rammer en ukendt sti til `/app` — ikke til `/`, som ville
+lande direkte i den blok han netop blev udelukket fra.
+
+⚠ **`harAdgang` selv røres ikke, og må ikke det.** Reglerne kender kun
+tokenet, ikke rollen — samme forbehold som ved konsollen: linjen afgør kun
+hvad der TEGNES. `test/chaufforadgang.test.mjs` har en dedikeret prøve for
+netop dette, fordi det er den vigtigste linje i hele ændringen.
+
+⚠ **`/app/*` er ikke begrænset til chauffører.** Kravet var at chauffører
+kun må nå /app — ikke at kun chauffører må nå /app. En anden rolle der
+navigerer derhen, ser den stadig.
+
+### Verificeret live, ikke kun i tests
+
+Logget ind som `chauffoer@dev.fleetcontrol.invalid` i en kørende
+DEV-session: lander på `/app`, og et direkte forsøg på `/booking` og `/`
+sender begge tilbage til `/app` med det samme. Logget ind som en
+admin-rolle: `/booking` nås som før.
+
+⚠ **Og en urelateret fejl blev fundet undervejs.** `moduler/booking/
+Oversigt.jsx` crasher for ENHVER rolle — en opgave peger på et
+`koeretoejId` der ikke findes i køretøjslisten, `opgaveEnhed()` svarer
+`null`, og `.sort((a,b) => a.navn.localeCompare(...))` kaster på den
+tomme post. Ikke rettet her — det hører ikke til beslutning 117, og er
+noteret, ikke gemt.
+
+5 nye tests i `test/chaufforadgang.test.mjs`.
+
+## 118. Oversigtens enhedsvalg — den hængende reference fra 117 rettet
+
+Fejlen noteret i 117: `moduler/booking/Oversigt.jsx` bygger enhedsvalget
+til filteret med `{ id, navn: opgaveEnhed(id) }` og sorterer bagefter med
+`.localeCompare` direkte på `navn`. `opgaveEnhed(id)` svarer `null` når
+`koeretoejId` peger på et køretøj der ikke længere findes — en hængende
+reference, ikke i sig selv en fejl — og et `null` der rammer
+`.localeCompare` er en blank hvid skærm for ENHVER rolle, uden fejlbesked.
+
+⚠ **`kundeNavn` og `opgavePerson` faldt begge allerede tilbage til id;
+enhedsvalget gjorde det ikke.** Samme tre-linjers mønster, kun én af de tre
+manglede sit fald. Rettet ved at gøre enhedsvalget ens med de to andre:
+`navn: opgaveEnhed(id) || id`.
+
+Ikke rettet: hvorfor referencen hænger i første omgang (hvordan et
+køretøj kan slettes mens en opgave stadig peger på det) — det er en anden
+undersøgelse, og skærmen skal under alle omstændigheder ikke crashe på en
+tilstand der kan opstå.
+
+2 nye tests i `test/oversigt-haengende-enhed.test.mjs`.

@@ -194,8 +194,12 @@ export default function BookingOversigt() {
      flåden. Et filter med tomme valg lærer brugeren at filtre ikke virker.
      Filteret er på ENHED og ikke på kunde: en opgave hænger på et køretøj,
      fordi værkstedet servicerer egen flåde. */
+  /* ⚠ `navn` FALDER TILBAGE TIL id, ligesom kundeNavn og opgavePerson.
+     opgaveEnhed() returnerer null for et koeretoejId der ikke findes i
+     bilListe — en hængende reference, ikke en fejl i sig selv — og uden
+     faldet crashede localeCompare på null. Se beslutning 117. */
   const enhedsvalg = [...new Set(alleOpgaver.map((o) => o.koeretoejId).filter(Boolean))]
-    .map((id) => ({ id, navn: opgaveEnhed(id) }))
+    .map((id) => ({ id, navn: opgaveEnhed(id) || id }))
     .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
 
   /* Dagens plan udledes af opgaverne — det er ikke et nyt datasæt. */
