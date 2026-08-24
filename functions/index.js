@@ -59,6 +59,9 @@ import {
   valideRolleperms, laaserUde, PERM,
 } from "./delt/permissions.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
+/* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
+   for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
+import { valideNavvisning } from "./delt/navvisning.js";
 /* ⚠ SAMME FIL SOM SKAERMEN. grundlag.js og booking-state.js er kopieret til
    delt/, saa kanGodkende(), kanEksportere() og nummerformatet er de SAMME
    funktioner begge steder — ikke en afskrift. Se noten ved grundlagskriv. */
@@ -652,6 +655,56 @@ export const dashboardvisningskriv = onCall({ region: REGION }, async (req) => {
 
   return { ok: true };
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   navvisningskriv — SKIVE 2B. Hvilke ARBEJDSOMRÅDER (topniveaupunkter i
+   sidebaren) en bruger får vist. Samme snit som dashboardvisningskriv
+   ovenfor, kopieret felt for felt — begrundelsen står i delt/navvisning.js
+   og i regelfilen.
+
+   ⚠ INGEN "skjulerAlt"-TJEK HER, OG DET ER IKKE EN FORGLEMMELSE. Dashboard
+   og Support (Hjælp) er slet ikke medlemmer af OMRAADER — se
+   navvisning.js's OMRAADER-liste — så der findes ingen kombination af
+   `visning` der kan skjule dem. Et system uden forside kan derfor ikke
+   opstå via denne funktion, uden at der behøves et separat tjek for det.
+
+   ⚠ OG INGEN CLAIMS MINTES HER, af samme grund som dashboardvisningskriv:
+   det her ændrer intet om hvad brugeren MÅ, kun hvad menuen tegner.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const navvisningskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const maalUid = kortStreng(d.uid, 128);
+  if (!maalUid) throw new HttpsError("invalid-argument", "uid mangler.");
+
+  const visning = d.visning;
+  const form = valideNavvisning(visning);
+  if (!form.ok) throw new HttpsError("invalid-argument", form.fejl);
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  /* ⚠ BRUGEREN SKAL VAERE I TENANTEN — samme tjek som dashboardvisningskriv,
+     af samme grund: en admin hos kunde A maa ikke kunne skrive en
+     indstilling paa en bruger hos kunde B. */
+  await hentIEgenTenant(getAuth(), maalUid, tenantId);
+
+  await rod.child(`navvisning/${maalUid}`).set(visning);
+  await log(tenantId, uid, "tilstandsskift", maalUid,
+    `navvisning: ${Object.entries(visning).filter(([, v]) => v === false).length} skjult`);
+
+  return { ok: true };
+});
+
 export const spaerlogin = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId } = kraevBrugeradmin(req);
   const d = req.data || {};

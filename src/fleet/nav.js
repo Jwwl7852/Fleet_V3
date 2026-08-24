@@ -1,6 +1,11 @@
 /* src/fleet/nav.js
  * ÉN informationsarkitektur. Én kilde til sidebar OG ruter.
  *
+ * ⚠ ÉT IMPORT — `MODUL` fra moduler.js, brugt kun af `modulNavnFor()`
+ * nedenfor. nav.js kopieres IKKE til functions/delt/ (se
+ * scripts/kopier-delt.mjs) og har derfor ingen deploy-konsekvens af dette;
+ * det er stadig et rent klientmodul, aldrig en Cloud Function-afhængighed.
+ *
  * BESLUTNING (v3.0): flad sidebar med undermenuer. Ingen topfaner.
  * Designsættet havde tre konkurrerende navigationsmodeller — v1.4's
  * grupperede sidebar, v2.0's flade, og en variant med otte topfaner
@@ -51,6 +56,7 @@
  * `oekonomiOversigt`, `bemandingPlan`, `klima`, `integrationer`,
  * `supportOverblik` står uændret.
  */
+import { MODUL } from "./moduler.js";
 
 /** Fast rækkefølge for gruppeoverskrifterne i sidebaren. */
 export const GRUPPE_ORDEN = ["faelles", "drift", "admin", "hjaelp"];
@@ -420,6 +426,27 @@ export const NAV = [
 
 /** Flad liste over alt der har en rute. */
 export const ALLE = NAV.flatMap((m) => (m.born ? m.born : [m]));
+
+/**
+ * Hvilket modul (hvis noget) gater et TOPNIVEAUpunkt? `null` = intet modul.
+ *
+ * ⚠ `m.key` ER IKKE ALTID ET MODULNAVN. Før Skive 2A var det altid sandt —
+ * hvert topniveaupunkts key VAR modulets — men `fakturacenter` er med vilje
+ * UDEN modulklausul (samme grund som noden selv i firebase.rules.json).
+ * `m.kraeverModul || m.key` ville have brugt "fakturacenter" som et påstået
+ * modulnavn, og `harModul()` fejler LUKKET på et ukendt navn — punktet ville
+ * forsvinde for ALLE, uanset moduler. Denne funktion spørger derfor kun
+ * MODUL-kataloget, aldrig NAV selv, før den falder tilbage på nøglen.
+ *
+ * ⚠ KUN TIL TOPNIVEAUET. Et BARN filtreres fortsat udelukkende på sit eget
+ * eksplicitte `kraeverModul` (ingen nøgle-fallback) — se AppShell.jsx's
+ * `synligeBorn`. Ingen af de ca. 45 børns nøgler matcher i dag et rigtigt
+ * modulnavn, men fallback'et er bevidst IKKE udvidet til børn: de har aldrig
+ * haft brug for det, og en uprøvet udvidelse er en risiko uden en gevinst.
+ */
+export function modulNavnFor(punkt) {
+  return punkt.kraeverModul || (MODUL[punkt.key] ? punkt.key : null);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    kraeverPerm — ET PUNKT HVIS EMNE ER SPÆRRET. Beslutning 105.

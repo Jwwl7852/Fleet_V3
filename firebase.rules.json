@@ -365,6 +365,38 @@
           }
         },
 
+        // ══════════════════════════════════════════════════════════════
+        // SKIVE 2B — HVILKE ARBEJDSOMRAADER (topniveaupunkter i sidebaren)
+        // en bruger faar VIST. Samme snit som dashboardvisning ovenfor,
+        // felt for felt — se src/fleet/navvisning.js for begrundelsen.
+        //
+        // ⚠ EN VISNING, ALDRIG EN ADGANG. Ingen regel nogetsteds i denne
+        // fil laeser navvisning — det ville vaere den fejl der laver
+        // "skjul" om til "spaer", som dashboardvisning.js's hoved advarer
+        // imod. Mekanismen kan kun faa AppShell til at TEGNE mindre; den
+        // roerer aldrig hvad en laesning eller skrivning et andet sted i
+        // denne fil TILLADER.
+        //
+        // .write: false — indstillingen er en ADMINISTRATORS beslutning om
+        // en ANDEN bruger, samme grund som dashboardvisning: en bruger der
+        // kunne skrive sin egen, kunne aabne noget administratoren havde
+        // lukket for ham.
+        "navvisning": {
+          // .read er tenant-medlemskab: skaermen viser hver brugers
+          // indstilling, og en bruger skal kunne se sin egen.
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".write": false,
+          "$uid": {
+            // Kun arbejdsomraader vi kender, og kun sandt/falsk. Et ukendt
+            // navn ville vaere en indstilling for noget der ikke findes —
+            // og "dashboard"/"support" staar med VILJE uden for listen,
+            // fordi de to er faste og ikke kan skjules. Ordlisten staar i
+            // navvisning.js's OMRAADER; her et moenster, fordi den er kort
+            // og lukket.
+            "$omraade": { ".validate": "newData.isBoolean() && $omraade.matches(/^(kunderOversigt|fakturacenter|oekonomi|booking|flaade|facility|indkoeb|warehouse|unitbooking|bemanding|opsaetning)$/)" }
+          }
+        },
+
         "roller": {
           // .read er tenant-medlemskab: skaermen skal kunne vise hvad en
           // rolle indeholder. Det er ikke foelsomt — det er kundens eget

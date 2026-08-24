@@ -298,10 +298,18 @@ describe("Hvor mange noder står åbne", () => {
    * Prøven står her så tallet ikke kan stige i tavshed.
    */
   it("⚠ ANTALLET AF NODER UDEN LÆSE-PERMISSION ER MÅLT", () => {
+    /* ⚠ 29 → 30, Skive 2B: `navvisning` tilføjet, MED VILJE UDEN
+       læse-permission — samme begrundelse som `dashboardvisning` ved
+       siden af, som allerede talte med i de 29. En VISNING (hvilke
+       topniveaupunkter en bruger får vist) er ikke en sikkerhedsgrænse:
+       enhver i tenanten skal kunne se sin egen indstilling, og noden
+       læses aldrig af nogen anden regel. Se src/fleet/navvisning.js's
+       hoved. Dette er en dokumenteret stigning, ikke en tavs én. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 29,
+    assert.ok(uden.length <= 30,
       `${uden.length} noder kræver ingen læse-permission — det var 39 før `
-      + `beslutning 104 og 29 efter. Er en node blevet åbnet igen?\n  `
+      + `beslutning 104, 29 efter, og 30 fra Skive 2B (navvisning). Er en `
+      + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });
 

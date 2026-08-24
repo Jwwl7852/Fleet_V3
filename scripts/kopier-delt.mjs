@@ -104,6 +104,12 @@ export const DELTE_FILER = [
      import. dashboardvisningskriv proever mod noejagtig de samme regler som
      skaermen viste: samme valideVisning(), samme skjulerAlt(). */
   "dashboards.js", "dashboardvisning.js",
+  /* ⚠ navvisning.js — Skive 2B, samme snit som dashboardvisning.js lige
+     ovenfor. navvisningskriv proever mod noejagtig samme valideNavvisning()
+     som skaermen. INGEN imports (se filens eget hoved — en lille, eksplicit
+     OMRAADER-liste i stedet for en afhaengighed af nav.js), saa den staar
+     her uden foelgeskab. */
+  "navvisning.js",
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
   /* ⚠ rutestatus.js — beslutning 103. `statusmelding` afviser med den SAMME

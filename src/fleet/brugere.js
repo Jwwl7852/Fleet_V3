@@ -31,6 +31,10 @@ export {
   synligeDashboards, valideVisning, skjulerAlt, ekstraSamlet,
 } from "./dashboardvisning.js";
 
+export {
+  OMRAADER, synligeOmraader, erSkjultVedNavvisning, valideNavvisning,
+} from "./navvisning.js";
+
 /* Funktionsnavnene er små bogstaver. Det er ikke smag: en 2. generations
    funktion bliver til en Cloud Run-tjeneste, og et tjenestenavn må kun være
    småt. Navnene her SKAL matche functions/index.js. */
@@ -47,6 +51,9 @@ export const FUNKTION = {
      så indstillingen SKJULER et dashboard — den spærrer det ikke. Se
      dashboardvisning.js. */
   dashboardvisning: "dashboardvisningskriv",
+  /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning OVENFOR: en visning, ikke
+     en adgang. Se navvisning.js. */
+  navvisning: "navvisningskriv",
 };
 
 async function kald(navn, data) {
@@ -107,3 +114,13 @@ export const skrivRolle = ({ rolle, perms }) =>
  */
 export const skrivDashboardvisning = ({ uid, visning }) =>
   kald(FUNKTION.dashboardvisning, { uid, visning });
+
+/**
+ * Sæt hvilke arbejdsområder en bruger får vist i sidebaren. Skive 2B.
+ *
+ * ⚠ INGEN CLAIMS MINTES — samme grund som skrivDashboardvisning: det her
+ * ændrer ingenting om hvad brugeren MÅ, kun hvad menuen tegner. Se
+ * navvisning.js.
+ */
+export const skrivNavvisning = ({ uid, visning }) =>
+  kald(FUNKTION.navvisning, { uid, visning });

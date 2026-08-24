@@ -78,11 +78,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { harModul } from "../../fleet/moduler.js";
+import { NAV, modulNavnFor } from "../../fleet/nav.js";
 import { DASHBOARDS, SAMLET as SAMLET_NOEGLE } from "../../fleet/dashboards.js";
+import { OMRAADER } from "../../fleet/navvisning.js";
 import {
   opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger, BRUGERSVAR,
   skrivRolle, permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM,
-  skrivDashboardvisning, synligeDashboards, skjulerAlt
+  skrivDashboardvisning, synligeDashboards, skjulerAlt,
+  skrivNavvisning
 } from "../../fleet/brugere.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
@@ -255,8 +258,23 @@ export default function Brugere() {
       return [id, rest];
     }));
 
+  /* ⚠ SKIVE 2B — SAMME MØNSTER LIGE OVENFOR, ANDEN NODE. Se navvisning.js:
+     en visning, aldrig en adgang, og en afkrydsning her kan kun SKJULE et
+     arbejdsområde brugeren allerede kunne se — aldrig give ham et nyt. */
+  const {
+    data: navvisningsraekker, genindlaes: genindlaesNavvisning
+  } = useListe("navvisning", { vindue: "alle", demo: [] });
+  const navvisningPr = Object.fromEntries(
+    (navvisningsraekker || []).map((r) => {
+      const { id, ...rest } = r;
+      return [id, rest];
+    }));
+
   /* Hvilken bruger der redigeres visning for, eller null. */
   const [visningFor, setVisningFor] = useState(null);
+  /* Samme, for navvisning — et selvstændigt panel, aldrig blandet med
+     dashboard-visningen ovenfor. */
+  const [navvisningFor, setNavvisningFor] = useState(null);
 
   const efterHandling = (r) => {
     setArbejder(null);
@@ -291,6 +309,25 @@ export default function Brugere() {
     standard: permsFraRolle(r),
     egen: Array.isArray(rolleNode[r]?.perms),
   }));
+
+  /* ⚠ SKIVE 2B — DE ARBEJDSOMRÅDER EN GIVEN ROLLE OVERHOVEDET KAN NÅ, FØR
+     navvisning. Samme filterrækkefølge som AppShell.jsx's
+     `synligeToppunkter` (modul, så perm) — MINUS navvisning-leddet selv,
+     som er netop det denne liste skal vise mulighederne FOR. Beregnet pr.
+     rolle her, fordi panelet skal kunne skjule/gråne et område en bruger
+     alligevel ikke kunne se — "et område kunden ikke har købt, eller som
+     brugeren allerede ikke kan tilgå efter eksisterende gating, må ikke
+     kunne bruges via navvisning til at åbne det". */
+  const konfigurerbareOmraader = NAV.filter((m) => OMRAADER.includes(m.key));
+  const tilgaengeligeOmraaderFor = (rolle) => {
+    const rollePerms = permsForTenant(rolle, rolleNode);
+    return konfigurerbareOmraader.filter((m) => {
+      const modulNavn = modulNavnFor(m);
+      if (modulNavn && !harModul(moduler, modulNavn)) return false;
+      if (m.kraeverPerm && !harPerm(rollePerms, m.kraeverPerm)) return false;
+      return true;
+    });
+  };
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -392,6 +429,23 @@ export default function Brugere() {
                 </Knap>
               );
             } },
+            { key: "navomraader", label: "Synlige arbejdsområder", render: (r) => {
+              /* ⚠ SAMME TAL-IKKE-LISTE-PRINCIP SOM DASHBOARDS-KOLONNEN
+                 OVENFOR. "Alle" er her de områder ROLLEN overhovedet kan nå
+                 — ikke de 11 konfigurerbare i alt — så tallet aldrig lyver
+                 om at noget er skjult, når det i virkeligheden bare aldrig
+                 var tilgængeligt for rollen. */
+              const tilgaengelige = tilgaengeligeOmraaderFor(r.rolle);
+              const synlige = tilgaengelige
+                .filter((m) => navvisningPr[r.id]?.[m.key] !== false).length;
+              return (
+                <Knap disabled={!maaAdministrere}
+                      onClick={() => setNavvisningFor(navvisningFor === r.id ? null : r.id)}
+                      title="Hvilke arbejdsområder brugeren får vist i sidebaren. Ikke en adgang — se noten.">
+                  {num(synlige)} af {num(tilgaengelige.length)}
+                </Knap>
+              );
+            } },
             { key: "handling", label: "", render: (r) => (
                 /* ⚠ MAN KAN IKKE SPÆRRE SIG SELV. Funktionen afviser det, og
                    knappen skjules — den sidste administrator der gjorde det,
@@ -446,6 +500,17 @@ export default function Brugere() {
             harModulFn={(m) => harModul(moduler, m)}
             paaLuk={() => setVisningFor(null)}
             paaGemt={() => { genindlaesVisning(); setVisningFor(null); }}
+          />
+        )}
+        {navvisningFor && (
+          <NavvisningPanel
+            key={navvisningFor}
+            uid={navvisningFor}
+            navn={brugere.find((b) => b.id === navvisningFor)?.navn || navvisningFor}
+            omraader={tilgaengeligeOmraaderFor(brugere.find((b) => b.id === navvisningFor)?.rolle)}
+            navvisning={navvisningPr[navvisningFor]}
+            paaLuk={() => setNavvisningFor(null)}
+            paaGemt={() => { genindlaesNavvisning(); setNavvisningFor(null); }}
           />
         )}
       </Kort>
@@ -866,6 +931,102 @@ function Visningspanel({ uid, navn, visning, harModulFn, paaLuk, paaGemt }) {
         </span>
         <Knap variant="primaer" onClick={gem}
               disabled={gemmer || Boolean(spaerring)}>
+          {gemmer ? "Gemmer …" : "Gem"}
+        </Knap>
+      </Raekke>
+
+      <Formularsvar svar={svar} />
+    </div>
+  );
+}
+
+/* ---- Hvilke arbejdsområder en bruger får vist i sidebaren -------------- */
+
+/**
+ * Skive 2B. ⚠ DET ER EN VISNING, IKKE EN ADGANG — SKÆRMEN SIGER DET.
+ *
+ * Samme skel som Visningspanel ovenfor, én mekanisme til: en afkrydsning
+ * her SKJULER et arbejdsområde brugeren ellers ville se i sidebaren — den
+ * kan aldrig give ham et der ikke allerede var tilladt af hans rolle og
+ * kundens moduler. Se navvisning.js's hoved for hvorfor det er en
+ * strukturel garanti og ikke bare en aftale.
+ *
+ * ⚠ `omraader` ER ALLEREDE FILTRERET AF KALDEREN
+ * (`tilgaengeligeOmraaderFor()`) til de områder brugerens ROLLE og kundens
+ * MODULER overhovedet gør nåbare. Et område kunden ikke har købt, eller som
+ * brugerens rolle allerede er spærret fra via `kraeverPerm`, står derfor
+ * slet ikke i listen — samme mønster som Visningspanels `kanVaelges` for
+ * dashboards, ikke en ny opfindelse.
+ */
+function NavvisningPanel({ uid, navn, omraader, navvisning, paaLuk, paaGemt }) {
+  /* ⚠ ET FELT DER IKKE ER SAT, ER VIST — samme regel som Visningspanel. */
+  const [valgt, saetValgt] = useState(() => {
+    const ud = {};
+    for (const m of omraader) ud[m.key] = navvisning?.[m.key] !== false;
+    return ud;
+  });
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const somNode = Object.fromEntries(omraader.map((m) => [m.key, valgt[m.key]]));
+
+  const gem = async () => {
+    saetGemmer(true);
+    saetSvar(null);
+    const r = await skrivNavvisning({ uid, visning: somNode });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div className="fc-rolleeditor" style={{ marginTop: 16 }}>
+      <Raekke>
+        <b>Synlige arbejdsområder for {navn}</b>
+        <Knap onClick={paaLuk}>Luk</Knap>
+      </Raekke>
+
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        ⚠ <b>Dette styrer kun hvad brugeren ser i navigationen. Rettigheder
+        styres separat af brugerens rolle og permissions.</b> En afkrydsning
+        her kan aldrig give adgang til et arbejdsområde — den kan kun skjule
+        et brugeren allerede kunne tilgå. Dashboard og Hjælp kan ikke skjules
+        og står derfor ikke på listen.
+      </p>
+      <p className="fc-hint" style={{ marginTop: 6 }}>
+        Listen viser kun de områder <b>{navn}</b>s rolle og jeres moduler
+        overhovedet gør tilgængelige. Et område kunden ikke har købt, eller
+        som rollen allerede er spærret fra, kan ikke bruges her til at åbne
+        det — det står derfor slet ikke i listen.
+      </p>
+
+      {!omraader.length ? (
+        <Tom>Denne bruger har ingen konfigurerbare arbejdsområder — rollen
+          og kundens moduler afgør allerede at intet ud over Dashboard og
+          Hjælp er tilgængeligt.</Tom>
+      ) : (
+        <div className="fc-permgitter" style={{ maxHeight: "none" }}>
+          {omraader.map((m) => (
+            <label key={m.key} className="fc-perm">
+              <input type="checkbox" checked={valgt[m.key]}
+                     onChange={() => {
+                       saetValgt((v) => ({ ...v, [m.key]: !v[m.key] }));
+                       saetSvar(null);
+                     }} />
+              <span>
+                <b>{m.label}</b>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+
+      <Raekke style={{ marginTop: 14 }}>
+        <span className="fc-hint">
+          {num(omraader.filter((m) => valgt[m.key]).length)} af
+          {" "}{num(omraader.length)} vises
+        </span>
+        <Knap variant="primaer" onClick={gem} disabled={gemmer || !omraader.length}>
           {gemmer ? "Gemmer …" : "Gem"}
         </Knap>
       </Raekke>

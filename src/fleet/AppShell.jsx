@@ -9,9 +9,11 @@
 import { Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
-import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL } from "./nav.js";
-import { harModul, MODUL } from "./moduler.js";
+import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
+import { harModul } from "./moduler.js";
 import { harPerm } from "./permissions.js";
+import { usePost } from "./usePost.js";
+import { erSkjultVedNavvisning } from "./navvisning.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
@@ -104,6 +106,15 @@ export default function AppShell() {
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
 
+  /* ⚠ SKIVE 2B — NAVVISNING ER BRUGERENS EGEN, ÉT EKSTRA OPSLAG.
+     `usePost` med `id = null` (ingen bruger endnu) henter slet ikke —
+     samme "spørg ikke"-greb som resten af appen. Manglende post (`null`)
+     er IKKE det samme som "alt skjult": se navvisning.js's egen note om at
+     en manglende indstilling betyder "opfør dig som Skive 2A", som er
+     præcis hvad `erSkjultVedNavvisning()` gør for et tomt/manglende
+     opslag. */
+  const { post: navvisning } = usePost("navvisning", bruger?.uid || null);
+
   /**
    * De underpunkter der faktisk tegnes — ÉT sted, fordi svaret bruges to
    * gange: til at tegne undermenuen, og til at afgøre om overskriften
@@ -123,18 +134,20 @@ export default function AppShell() {
      uden udvidelsen her ville Fakturaer & bilag stå åben for en chauffør,
      som ikke har `indkoeb.laes` — se nav.js's hoved.
 
-     ⚠ OG `m.key` ER IKKE ALTID ET MODULNAVN. Før i dag var det altid sandt
-     — hvert topniveaupunkts key VAR modulets — men `fakturacenter` er med
-     vilje UDEN modulklausul (samme grund som noden selv i
-     firebase.rules.json, se nav.js). `m.kraeverModul || m.key` ville have
-     brugt "fakturacenter" som et påstået modulnavn, og `harModul()` fejler
-     LUKKET på et ukendt navn — punktet ville forsvinde for ALLE, uanset
-     moduler. `modulNavn()` spørger derfor kun MODUL-kataloget, ikke NAV. */
-  const modulNavn = (m) => m.kraeverModul || (MODUL[m.key] ? m.key : null);
+     ⚠ OG `m.key` ER IKKE ALTID ET MODULNAVN — se `modulNavnFor()` i nav.js
+     for hvorfor et rå `m.kraeverModul || m.key`-fallback var forkert.
+
+     ⚠ OG SKIVE 2B: `erSkjultVedNavvisning()` STÅR SIDST, ALDRIG FØRST.
+     Rækkefølgen ER garantien "OG, ikke ELLER" — et punkt der allerede er
+     filtreret væk af modul/perm/børn ovenfor, kommer aldrig frem til
+     navvisning-tjekket, og navvisning kan derfor kun fjerne FLERE af de
+     punkter der overlevede de eksisterende kontroller, aldrig genindsætte
+     et der ikke gjorde. Se navvisning.js's hoved. */
   const synligeToppunkter = NAV
-    .filter((m) => { const n = modulNavn(m); return !n || harModul(moduler, n); })
+    .filter((m) => { const n = modulNavnFor(m); return !n || harModul(moduler, n); })
     .filter((m) => !m.kraeverPerm || harPerm(bruger?.perms, m.kraeverPerm))
-    .filter((m) => !m.born?.length || synligeBorn(m).length);
+    .filter((m) => !m.born?.length || synligeBorn(m).length)
+    .filter((m) => !erSkjultVedNavvisning(m.key, navvisning));
 
   return (
     <>
