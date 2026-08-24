@@ -15,6 +15,16 @@ const NU = Date.now();
 const T = 3600000;
 
 /**
+ * ⚠ anmoderId/bestillerId ER PERSONID, IKKE NAVNE FUNDET PÅ. Fire af de fem
+ * værdier her (`andersNielsen`, `larsPetersen`, `michaelHansen`,
+ * `mikkelLarsen`) var camelCase-navne der lignede et personId og pegede på
+ * ingenting i DEMO_PERSONALE — reglens eksistenstjek fandtes ikke, og
+ * demo-referencer-prøven havde de to felter i sin UDEN_MAAL-undtagelse med
+ * begrundelsen "et login, ikke en post". Den begrundelse modsagde
+ * `functions/index.js` og `firebase.rules.json`s egne kommentarer, som
+ * begge kalder feltet et personId. Værdierne peger nu på rigtige
+ * DEMO_PERSONALE-id'er. Se beslutning 111.
+ *
  * ⚠ ALLE FIRE KILDER ER REPRÆSENTERET, og det er ikke pynt: indbakken
  * GRUPPERER på kilden, og en kilde uden poster tegner ingen overskrift. Var
  * `kontor` tom, kunne man ikke se at grupperingen virker — og en gruppe der
@@ -29,30 +39,30 @@ export const DEMO_INDKOEBSBEHOV = [
   /* ---- Snedkeri ---------------------------------------------------- */
   { id: "beh-001", vare: "Træplader 22 mm", kilde: "snedkeri", status: "nyt",
     antal: 20, enhed: "stk", prioritet: "hoej",
-    anmoderId: "andersNielsen", oprettetAf: "uid-anders", oprettetMs: NU - 2 * T,
+    anmoderId: "larsAage", oprettetAf: "uid-anders", oprettetMs: NU - 2 * T,
     note: "Bruges til hyldekonstruktioner i værkstedet." },
   { id: "beh-002", vare: "Træskruer 5,0 × 90 mm", kilde: "snedkeri", status: "klarTilBestilling",
     antal: 4, enhed: "pk", prioritet: "mellem", varenummer: "TS-5090",
-    anmoderId: "andersNielsen", oprettetAf: "uid-anders", oprettetMs: NU - 3 * T,
+    anmoderId: "larsAage", oprettetAf: "uid-anders", oprettetMs: NU - 3 * T,
     note: "Til samling af plader." },
   /* ⚠ UDEN ANTAL — se noten ovenfor. */
   { id: "beh-003", vare: "Limtræ 45×195 mm", kilde: "snedkeri", status: "nyt",
     prioritet: "lav",
-    anmoderId: "andersNielsen", oprettetAf: "uid-anders", oprettetMs: NU - 26 * T,
+    anmoderId: "larsAage", oprettetAf: "uid-anders", oprettetMs: NU - 26 * T,
     note: "Til reol i teknikrum." },
 
   /* ---- Lager -------------------------------------------------------- */
   { id: "beh-004", vare: "Strækfilm 50 cm × 300 m", kilde: "lager", status: "klarTilBestilling",
     antal: 10, enhed: "ruller", prioritet: "hoej", varenummer: "SF500-300",
-    anmoderId: "larsPetersen", oprettetAf: "uid-lars", oprettetMs: NU - 4 * T,
+    anmoderId: "benjaminHolm", oprettetAf: "uid-lars", oprettetMs: NU - 4 * T,
     note: "Er ved at løbe tør." },
   { id: "beh-005", vare: "Paller — Europalle 120×80", kilde: "lager", status: "iKladde",
     antal: 40, enhed: "stk", prioritet: "mellem",
-    anmoderId: "larsPetersen", oprettetAf: "uid-lars", oprettetMs: NU - 30 * T,
+    anmoderId: "benjaminHolm", oprettetAf: "uid-lars", oprettetMs: NU - 30 * T,
     note: "Bruges til forsendelser." },
   { id: "beh-006", vare: "Emballagetape 50 mm", kilde: "lager", status: "nyt",
     antal: 24, enhed: "stk", prioritet: "lav",
-    anmoderId: "larsPetersen", oprettetAf: "uid-lars", oprettetMs: NU - 28 * T },
+    anmoderId: "benjaminHolm", oprettetAf: "uid-lars", oprettetMs: NU - 28 * T },
 
   /* ⚠ TO BEHOV DER KAN MATCHES MOD INDKOEBSHISTORIKKEN, og de staar her
      fordi forslaget ellers ikke kan SES virke: uden dem gav hvert eneste
@@ -66,14 +76,14 @@ export const DEMO_INDKOEBSBEHOV = [
      kan den forskel ikke ses. */
   { id: "beh-014", vare: "Luftfilter", kilde: "lager", status: "klarTilBestilling",
     antal: 6, enhed: "stk", prioritet: "mellem", varenummer: "LUF-01",
-    anmoderId: "larsPetersen", oprettetAf: "uid-lars", oprettetMs: NU - 6 * T,
+    anmoderId: "benjaminHolm", oprettetAf: "uid-lars", oprettetMs: NU - 6 * T,
     note: "Til servicerunden i næste uge." },
   /* ⚠ OG DEN HER ER UDEN ANTAL. Den har et forslag og kan alligevel ikke
      bestilles — det er tilstanden "Sæt et antal", og uden et eksempel ser
      skærmen ud som om et forslag altid er nok. */
   { id: "beh-015", vare: "Bremsevæske DOT 4", kilde: "lager", status: "nyt",
     enhed: "liter", prioritet: "lav",
-    anmoderId: "larsPetersen", oprettetAf: "uid-lars", oprettetMs: NU - 31 * T,
+    anmoderId: "benjaminHolm", oprettetAf: "uid-lars", oprettetMs: NU - 31 * T,
     note: "Ved ikke hvor meget der skal til." },
 
   /* ---- Kontor ------------------------------------------------------- */
@@ -91,7 +101,7 @@ export const DEMO_INDKOEBSBEHOV = [
      og så ville pengene være brugt to gange. Se `procure.js`. */
   { id: "beh-009", vare: "Kabelbinder 300 mm — sort", kilde: "kontantkoeb", status: "nyt",
     antal: 5, enhed: "pk", prioritet: "lav",
-    anmoderId: "michaelHansen", oprettetAf: "uid-michael", oprettetMs: NU - 24 * T,
+    anmoderId: "emilBrandt", oprettetAf: "uid-michael", oprettetMs: NU - 24 * T,
     note: "Køb lokalt — vi betaler." },
 
   /* ⚠ ET AFVIST BEHOV BLIVER STÅENDE, med sin grund. Ellers kan man ikke se
@@ -109,13 +119,13 @@ export const DEMO_INDKOEBSBEHOV = [
      behovet bærer sit `ordreId`, linjen sit `behovId`. */
   { id: "beh-011", vare: "Hydraulikslange 3/8\"", kilde: "lager", status: "bestilt",
     antal: 12, enhed: "stk", prioritet: "hoej", varenummer: "HYD-38", ordreId: "ord-001",
-    anmoderId: "michaelHansen", oprettetAf: "uid-michael", oprettetMs: NU - 96 * T },
+    anmoderId: "emilBrandt", oprettetAf: "uid-michael", oprettetMs: NU - 96 * T },
   { id: "beh-012", vare: "Bremseklods, aksel 2", kilde: "lager", status: "bestilt",
     antal: 2, enhed: "sæt", prioritet: "hoej", varenummer: "BRK-A2", ordreId: "ord-001",
-    anmoderId: "michaelHansen", oprettetAf: "uid-michael", oprettetMs: NU - 95 * T },
+    anmoderId: "emilBrandt", oprettetAf: "uid-michael", oprettetMs: NU - 95 * T },
   { id: "beh-013", vare: "Dæk 315/70 R22.5", kilde: "lager", status: "bestilt",
     antal: 4, enhed: "stk", prioritet: "mellem", varenummer: "DAEK-31570", ordreId: "ord-002",
-    anmoderId: "michaelHansen", oprettetAf: "uid-michael", oprettetMs: NU - 90 * T },
+    anmoderId: "emilBrandt", oprettetAf: "uid-michael", oprettetMs: NU - 90 * T },
 ];
 
 /**
@@ -172,14 +182,14 @@ export const DEMO_INDKOEBSORDRER = [
      på præcis den måde ingen opdager. Selvkontrollen måler det. */
   { id: "ord-004", nummer: "BST-2026-00043", leverandoerId: "lv-daekteam",
     status: "afventerGodkendelse", oprettetAf: "uid-thomas", oprettetMs: NU - 60 * T,
-    bestillerId: "michaelHansen",
+    bestillerId: "emilBrandt",
     linjer: {
       "l-1": { vare: "Dæk 385/65 R22.5", varenummer: "DAEK-38565", antal: 4,
                enhed: "stk", prisPrEnhedOere: 498000 },
     } },
   { id: "ord-005", nummer: "BST-2026-00044", leverandoerId: "lv-hydra",
     status: "afventerGodkendelse", oprettetAf: "uid-lars", oprettetMs: NU - 44 * T,
-    bestillerId: "larsPetersen", note: "Haster — bilen står stille.",
+    bestillerId: "benjaminHolm", note: "Haster — bilen står stille.",
     linjer: {
       "l-1": { vare: "Bremseklods, akselsæt", varenummer: "BRK-22", antal: 6,
                enhed: "sæt", prisPrEnhedOere: 89500 },
@@ -207,7 +217,7 @@ export const DEMO_INDKOEBSORDRER = [
     } },
   { id: "ord-006", nummer: "BST-2026-00045", leverandoerId: "lv-schmitz",
     status: "afventerGodkendelse", oprettetAf: "uid-mikkel", oprettetMs: NU - 30 * T,
-    bestillerId: "mikkelLarsen",
+    bestillerId: "kasperLykke",
     linjer: {
       "l-1": { vare: "Sideruder, sæt", varenummer: "RUD-12", antal: 5,
                enhed: "sæt", prisPrEnhedOere: 142000 },

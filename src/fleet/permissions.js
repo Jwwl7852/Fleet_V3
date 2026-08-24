@@ -295,6 +295,31 @@ export const PERM = {
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
      chaufføren er utilgængelig — ikke hvorfor. Derfor kun admin. */
   fravaerSensitiveLaes: "fravaer.sensitiveLaes",
+
+  /* --- Sager (beslutning 20/112) — femte objekt med en klassificeret
+     satellit. `sag.laes` er general-delen (nummer, tilstand, parter);
+     `sag.sensitiveLaes` er tråden selv, mailens brødtekst. Samme adskillelse
+     som booking.laes mod booking.sensitiveLaes. */
+  sagLaes: "sag.laes",
+  sagSensitiveLaes: "sag.sensitiveLaes",
+  /* At skrive på tråden kræver at kunne læse den — samme bundt som
+     indberetninger.skriv + indberetninger.sensitiveLaes. */
+  sagSkriv: "sag.skriv",
+  /* At frigive en karantæne er at gøre en ubekræftet adresse kendt for
+     DENNE sag alene — se frigivKarantaene() i sager.js. En vurdering, ikke
+     en driftshandling; samme snit som booking.godkend (beslutning 5). */
+  sagKarantaeneFrigiv: "sag.karantaeneFrigiv",
+  /* At bekræfte et aftaleforslag er at skrive en reservation — samme
+     handling som at godkende en booking eller et grundlag. */
+  sagAftaleBekraeft: "sag.aftaleBekraeft",
+
+  /* --- Retention (beslutning 115) — ikke-destruktiv grundmekanisme ---
+     Kun legal hold rører databasen; selve sletningen/anonymiseringen
+     findes ikke. Se retention-regler.js. */
+  retentionLaes: "retention.laes",
+  /* At sætte eller ophæve et legal hold er en juridisk/kommerciel
+     afgørelse — samme klasse som bookingGodkend, ikke en driftshandling. */
+  retentionSkriv: "retention.skriv",
 };
 
 export const ALLE_PERMS = Object.values(PERM);
@@ -357,7 +382,11 @@ export const ROLLE_PERMS = {
   casehandler: [...BASIS_LAES, ...BASIS_DATA, ...KOMMERCIEL_LAES,
     PERM.bookingOpret,
     /* Udarbejder grundlaget — men godkender det ikke. */
-    PERM.grundlagSkriv],
+    PERM.grundlagSkriv,
+    /* Han er den der arbejder sagen: læser tråden og skriver på den. Ikke
+       sagKarantaeneFrigiv eller sagAftaleBekraeft — de er en vurdering,
+       ikke driften af sagen. Se koordinator. */
+    PERM.sagLaes, PERM.sagSensitiveLaes, PERM.sagSkriv],
 
   disponent: [
     ...BASIS_LAES,
@@ -382,6 +411,10 @@ export const ROLLE_PERMS = {
     PERM.indkoebLaes,
     /* Kan ikke disponere uden at vide hvor bilerne er. */
     PERM.koeretoejerSensitiveLaes,
+    /* ⚠ KUN sagLaes. Samme snit som indberetningerSensitiveLaes: han skal
+       vide AT bilen har en åben værkstedssag for at kunne planlægge —
+       ikke læse korrespondancen med værkstedet. */
+    PERM.sagLaes,
   ],
 
   koordinator: [
@@ -425,6 +458,15 @@ export const ROLLE_PERMS = {
        (ejerskabet tjekkes på `oprettetAf` i reglerne) og har intet ærinde i
        andres skadesager. */
     PERM.indberetningerSensitiveLaes,
+
+    /* ⚠ ALLE FEM sag.*. Samme snit som på bookingen: den der godkender og
+       lukker sagen, skal kunne se og skrive på tråden — og han er den der
+       AFGØR om en ukendt afsender skal ind (karantaeneFrigiv) og om et
+       aftaleforslag skal blive til en reservation (aftaleBekraeft). To
+       vurderinger, ikke driftshandlinger — samme klasse som bookingGodkend,
+       grundlagGodkend og indkoebGodkend, som han også har alle tre af. */
+    PERM.sagLaes, PERM.sagSensitiveLaes, PERM.sagSkriv,
+    PERM.sagKarantaeneFrigiv, PERM.sagAftaleBekraeft,
   ],
 
   /**
@@ -498,7 +540,15 @@ export const ROLLE_PERMS = {
      Uden dem her ville han MISTE adgang naar spaerringen kommer, og en
      revisor der ikke kan se fakturagrundlaget, kan ikke revidere.
      Presettet indeholder stadig ikke een eneste .skriv. */
-  revisor: [...BASIS_LAES, ...KOMMERCIEL_LAES, PERM.auditLaes],
+  /* ⚠ sagLaes, IKKE sagSensitiveLaes. Samme snit som på de fire andre
+     klassificerede objekter (se noten øverst i denne rolle): revisor skal
+     kunne se AT en sag findes og dens tilstand, uden at kunne læse
+     korrespondancens indhold. Uden den ville han miste den adgang
+     tenant-medlemskab gav ham inden sag.laes fandtes. */
+  /* ⚠ retentionLaes, IKKE retentionSkriv. Samme snit som auditLaes: revisor
+     skal kunne se HVILKE legal holds der findes og hvorfor — ikke sætte
+     eller ophæve dem. Presettet indeholder stadig ikke én eneste .skriv. */
+  revisor: [...BASIS_LAES, ...KOMMERCIEL_LAES, PERM.auditLaes, PERM.sagLaes, PERM.retentionLaes],
 
   admin: [...ALLE_PERMS],
 };

@@ -85,12 +85,14 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
    (PERSON_FOR_ROLLE i dev-brugere.js). De to har intet med hinanden at
    gøre og ligner hinanden fuldstændig.
 
-   ⚠ ÅBENT: `uid-anders` er chaufførens pladsholder, men `demo-procure.js`
-   bruger den sammen med `anmoderId: "andersNielsen"` — en medarbejder der
-   IKKE står i DEMO_PERSONALE. Referencen slipper igennem, fordi
-   `anmoderId` står i demo-referencernes undtagelsesliste som "et uid, ikke
-   et personId" — og dér står altså et personId. Det hører i sin egen
-   etape. */
+   ⚠ LUKKET: `uid-anders` er chaufførens pladsholder, og `demo-procure.js`
+   brugte den sammen med `anmoderId: "andersNielsen"` — en medarbejder der
+   IKKE stod i DEMO_PERSONALE. Referencen slap igennem, fordi `anmoderId`
+   stod i demo-referencernes undtagelsesliste som "et uid, ikke et
+   personId" — mens `functions/index.js` og `firebase.rules.json` begge
+   kalder feltet et personId. `anmoderId` peger nu på `larsAage`, reglen
+   har fået et eksistenstjek mod `personale`, og undtagelsen er væk.
+   Se beslutning 111. */
 export const DEMO_INDBERETNINGER = [
   /* ⚠ DEN ENESTE MED forloeb: "ny" — OG DEN ER TILFØJET FORDI DEN MANGLEDE.
      Sættet gik fra "afventerFaktura" og opefter, så `flaade.nyeIndberetninger`

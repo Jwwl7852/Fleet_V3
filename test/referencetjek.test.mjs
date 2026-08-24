@@ -45,10 +45,6 @@ const TENANT = REGLER.tenants.$tenantId;
  */
 const UDEN_TJEK = {
   /* ---- Målnoden findes ikke ------------------------------------------- */
-  "indberetninger/$id/sagId":
-    "`sager/` står ikke i regelfilen — beslutning 20 er fase 0. Et opslag mod "
-    + "en node der ikke findes, ville afvise HVER indberetning der bærer feltet.",
-  "opgaver/$opgaveId/sagId": "samme: `sager/` findes ikke endnu.",
   "opgaver/$opgaveId/besoegId":
     "et besøg BLEV en opgave i beslutning 21. Feltet er et spor bagud til en "
     + "id-serie der ikke har en node længere.",
@@ -56,12 +52,6 @@ const UDEN_TJEK = {
   "indkoeb/$indkoebId/bilagId":
     "et bilag ligger i Storage, og DEV har ingen bucket (Spark). Reglerne kan "
     + "ikke slå op i Storage overhovedet.",
-
-  /* ---- Feltet peger på et login, ikke på en post ------------------------ */
-  "indkoebsbehov/$behovId/anmoderId":
-    "et `uid`, ikke et `personId`. En chauffør har måske slet intet login, og "
-    + "`brugere/` er ikke et personregister — se uid mod personId i CLAUDE.md.",
-  "indkoebsordrer/$ordreId/bestillerId": "samme: et login, ikke en post.",
 
   /* ---- Vejen ind er lukket: funktionen slår referencen op -------------- */
   "etaper/$etapeId/bookingId":
@@ -98,6 +88,20 @@ const UDEN_TJEK = {
     "peger på et stop i den UDLEDTE rute (`planlagteStop()`), ikke på en node. "
     + "Ruten gemmes ikke — den regnes af etapens fra/til og grænseovergange, så "
     + "der er intet at slå op i. `valideMelding()` prøver den mod netop den rute.",
+
+  /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
+  "sager/$sagId/objektId":
+    "objektType afgør hvilken node feltet peger i — en værkstedssag mod en "
+    + "opgave, en facility-sag mod et aktiv. Et fast eksistenstjek her kan "
+    + "ikke skifte mål med typen. Se beslutning 20/112.",
+  "sensitive/sager/$sagId/aftaleforslag/$id/ressourceId":
+    "ressourceType afgør målet — koeretoej, medarbejder, facilityAktiv, "
+    + "lokation eller lager, præcis som `reservationer/<type>`. Samme grund "
+    + "som objektId ovenfor.",
+  "retention/legalHold/$id/objektId":
+    "polymorf reference — objekt afgør hvilken node feltet peger i. Et "
+    + "legal hold kan sættes på hvilken som helst post; et fast "
+    + "eksistenstjek kan ikke skifte mål. Se beslutning 115.",
 
   /* ---- Et åbent spørgsmål, ikke en forglemmelse ------------------------- */
   "indberetninger/$id/materialelinjer/$linjeId/lagerId":

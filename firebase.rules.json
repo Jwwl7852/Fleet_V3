@@ -390,6 +390,39 @@
           }
         },
 
+        // RETENTION — beslutning 115. Kun legal hold rører databasen; selve
+        // sletningen/anonymiseringen er IKKE bygget (se retention-regler.js).
+        //
+        // ⚠ INGEN MODULKLAUSUL — som roller/brugere/countere. Legal hold er
+        // en governance-funktion, ikke knyttet til noget kommercielt modul.
+        "retention": {
+          "legalHold": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|retention.laes|')",
+            // ⚠ .write: false. `satAf`/`satMs` skal komme fra SERVEREN, ikke
+            // fra klienten — samme grund som statusmeldingens uid, og
+            // handlingen skal logges atomisk med skrivningen. Kun
+            // `retentionLegalHold` er vejen ind. Formen står alligevel her,
+            // som på `sager` — Admin-SDK'et går uden om `.validate`, men en
+            // feltliste der ikke passer til dataene, giver aldrig en fejl.
+            ".indexOn": ["objekt", "objektId"],
+            "$id": {
+              ".write": false,
+              ".validate": "newData.hasChildren(['objekt', 'objektId', 'aarsag', 'satAf', 'satMs'])",
+              // ⚠ objekt+objektId ER POLYMORFT, som sagers objektId. Et hold
+              // kan pege på en booking, en indberetning, en hvilken som
+              // helst post — et fast eksistenstjek kan ikke skifte mål.
+              "objekt": { ".validate": "newData.isString() && newData.val().length <= 60" },
+              "objektId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+              "aarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+              "satAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+              "satMs": { ".validate": "newData.isNumber()" },
+              "ophaevetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+              "ophaevetMs": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            }
+          }
+        },
+
 
         // ══════════════════════════════════════════════════════════════
         // BRUGERINDEKSET — fordi en klient ikke kan liste konti
@@ -442,7 +475,12 @@
           ".write": false,
           ".indexOn": ["rolle", "spaerret"],
           "$uid": {
-            "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" }
+            "personId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
+            // ⚠ spaerretMs — beslutning 115. Sættes kun af spaerlogin, bevares
+            // af skiftrolle. Retention-arbejdet har brug for et tidspunkt at
+            // regne fra, ikke bare en boolean.
+            "spaerret": { ".validate": "newData.isBoolean()" },
+            "spaerretMs": { ".validate": "newData.isNumber()" }
           }
         },
 
@@ -625,6 +663,99 @@
                 "$andet": { ".validate": false }
               },
 
+              "$andet": { ".validate": false }
+            }
+          },
+
+          // SENSITIVE/SAGER — beslutning 20/112. Braedteksten er fritekst fra
+          // internettet: navne, telefonnumre, foer eller siden en
+          // helbredsoplysning. Samme deling som beslutning 17: .read kaskaderer,
+          // saa den kan ikke ligge som barn af sagen uden at ogsaa laase
+          // sagslisten.
+          //
+          // ⚠ .write LIGGER PAA $sagId, IKKE PAA NODEN — samme fejl som beslutning
+          // 53 rettede paa de fire andre klassificerede satellitter: laa den paa
+          // noden, kunne ET kald tomme hele traaden for enhver sag.
+          "sager": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|sag.sensitiveLaes|')",
+            "$sagId": {
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|sag.skriv|') && auth.token.perms != null && auth.token.perms.contains('|sag.sensitiveLaes|') && newData.exists()",
+              "beskeder": {
+                "$id": {
+                  ".validate": "newData.hasChildren(['ms', 'retning', 'tekst'])",
+                  "ms": { ".validate": "newData.isNumber()" },
+                  "retning": { ".validate": "newData.isString() && newData.val().matches(/^(indgaaende|udgaaende)$/)" },
+                  // ⚠ ENVELOPE-AFSENDEREN, ALDRIG From:. Se vurderAfsender() i
+                  // sager.js — From: er fritekst afsenderen selv skriver.
+                  "afsender": { ".validate": "newData.isString() && newData.val().length <= 254" },
+                  "afsenderNavn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                  "modtagere": { "$mid": { ".validate": "newData.isString() && newData.val().length <= 254" } },
+                  "emne": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                  "tekst": { ".validate": "newData.isString() && newData.val().length <= 10000" },
+                  "afsenderStatus": { ".validate": "newData.isString() && newData.val().matches(/^(kendt|karantaene|afvist)$/)" },
+                  "dmarc": { ".validate": "newData.isString() && newData.val().matches(/^(pass|fail|none)$/)" },
+                  // ⚠ FEJLER LUKKET — se maaHentes() i sager.js. Status starter
+                  // og bliver paa afventerScan indtil en scanner har sagt andet;
+                  // den bliver ALDRIG antaget ren.
+                  "vedhaeftninger": {
+                    "$vid": {
+                      ".validate": "newData.hasChildren(['navn', 'status'])",
+                      "navn": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                      "status": { ".validate": "newData.isString() && newData.val().matches(/^(afventerScan|ren|blokeret)$/)" },
+                      "$andet": { ".validate": false }
+                    }
+                  },
+                  "$andet": { ".validate": false }
+                }
+              },
+              "karantaene": {
+                "$id": {
+                  ".validate": "newData.hasChildren(['ms', 'retning', 'tekst', 'aarsag'])",
+                  "ms": { ".validate": "newData.isNumber()" },
+                  "retning": { ".validate": "newData.isString() && newData.val().matches(/^(indgaaende|udgaaende)$/)" },
+                  "afsender": { ".validate": "newData.isString() && newData.val().length <= 254" },
+                  "afsenderNavn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                  "modtagere": { "$mid": { ".validate": "newData.isString() && newData.val().length <= 254" } },
+                  "emne": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                  "tekst": { ".validate": "newData.isString() && newData.val().length <= 10000" },
+                  "afsenderStatus": { ".validate": "newData.isString() && newData.val().matches(/^(kendt|karantaene|afvist)$/)" },
+                  "dmarc": { ".validate": "newData.isString() && newData.val().matches(/^(pass|fail|none)$/)" },
+                  "vedhaeftninger": {
+                    "$vid": {
+                      ".validate": "newData.hasChildren(['navn', 'status'])",
+                      "navn": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                      "status": { ".validate": "newData.isString() && newData.val().matches(/^(afventerScan|ren|blokeret)$/)" },
+                      "$andet": { ".validate": false }
+                    }
+                  },
+                  "aarsag": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                  "$andet": { ".validate": false }
+                }
+              },
+              // ⚠ MAILEN ER IKKE EN FEMTE kilde.type. Det bekraeftede forslag
+              // bliver et vaerkstedsbesoeg (kilde.type: vaerksted, prioritet
+              // 40) eller en facilitySag (prioritet 20) — se
+              // reservationFraAftale() i sager.js. ressourceType matcher
+              // praecis reservationer/<type>.
+              "aftaleforslag": {
+                "$id": {
+                  ".validate": "newData.hasChildren(['tilstand', 'ressourceType', 'ressourceId'])",
+                  "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(forslag|aftalt|afvist)$/)" },
+                  "fra": { ".validate": "newData.isNumber()" },
+                  "til": { ".validate": "newData.isNumber()" },
+                  "sted": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                  "ressourceType": { ".validate": "newData.isString() && newData.val().matches(/^(koeretoej|medarbejder|facilityAktiv|lokation|lager)$/)" },
+                  "ressourceId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                  // ⚠ DATOEN ER ET GAET — udtrukketSaetning er citatet det blev
+                  // laest af, saa mennesket kan se hvad maskinen laeste. Aldrig
+                  // forudfyldt og bekraeftet i ét klik.
+                  "udtrukketFra": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                  "udtrukketSaetning": { ".validate": "newData.isString() && newData.val().length <= 500" },
+                  "bekraeftetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                  "bekraeftetMs": { ".validate": "newData.isNumber()" },
+                  "$andet": { ".validate": false }
+                }
+              },
               "$andet": { ".validate": false }
             }
           }
@@ -1762,8 +1893,65 @@
             // sagen; id'et er referencen. `sager/` staar ikke i filen her endnu
             // (beslutning 20 er fase 0), saa der er ingen eksistenskontrol at
             // haenge den op paa — den kommer naar noden goer.
-            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // ⚠ sagId, IKKE sagsnummer — OG NU MED ET MAAL. `sager/` findes,
+            // saa en opgave kan ikke laengere pege paa en sag der ikke findes.
+            // Beslutning 111 laerte lektionen: en feltliste der ikke passer
+            // til dataene, giver aldrig en fejl paa en .write:false-node.
+            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('sager').child(newData.val()).exists()" },
 
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // SAGER — beslutning 20/112. Sagsbaseret mail, fase 1: modtagevej og
+        // afsendelse (skive 2) mangler stadig, men datamodellen er nu haandhaevet.
+        //
+        // ⚠ INGEN MODULKLAUSUL, som opgaver, satser, fakturaer og
+        // reservationer. `art` er fleet|facility — en node der hoerer til to
+        // moduler, kan ikke gates af det ene uden at det andet gaar i
+        // stykker. Se moduler.js.
+        //
+        // ⚠ .write: false FOR ALLE. Sagen faar sit nummer fra en counter i en
+        // transaction (samme mekanisme som booking, beslutning 8), og
+        // modtagevejen er UAUTENTIFICERET input fra internettet — ingen
+        // klient maa nogensinde skrive denne node direkte. `sagOpret`,
+        // `sagBeskedSkriv`, `sagKarantaeneFrigiv` og `sagAftaleBekraeft` er de
+        // eneste veje ind.
+        "sager": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|sag.laes|')",
+          ".write": false,
+          ".indexOn": ["art", "tilstand", "nummer", "objektId"],
+          "$sagId": {
+            ".validate": "newData.hasChildren(['nummer', 'art', 'tilstand', 'emne', 'modul', 'oprettetAf', 'oprettetMs'])",
+            "nummer": { ".validate": "newData.isString() && newData.val().matches(/^(FLT|FAC)-[0-9]{4}-[0-9]{5}$/)" },
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(fleet|facility)$/)" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(aaben|afventerSvar|afsluttet)$/)" },
+            "emne": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+            "modul": { ".validate": "newData.isString() && newData.val().matches(/^(flaade|facility)$/)" },
+            // ⚠ POLYMORF REFERENCE, IKKE ÉT MAAL. objektType afgoer hvilken
+            // node objektId peger i — en vaerkstedssag mod en opgave, en
+            // facility-sag mod et aktiv. Et fast eksistenstjek her kan ikke
+            // skifte maal med typen. Se test/referencetjek.test.mjs.
+            "objektType": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "objektId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "modpartNavn": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            // ⚠ ADGANGSLISTEN, IKKE KONTAKTINFO — se sager.js. En raa
+            // e-mailadresse kan ikke vaere en RTDB-noegle (@ og . er
+            // forbudte tegn), saa parter er push-noeglet, ikke adresse-noeglet.
+            "parter": {
+              "$id": { ".validate": "newData.isString() && newData.val().length <= 254" }
+            },
+            "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
+            "sidsteBeskedMs": { ".validate": "newData.isNumber()" },
+            "antalBeskeder": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "antalKarantaene": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "harAftale": { ".validate": "newData.isBoolean()" },
+            "aftaleTilstand": { ".validate": "newData.isString() && newData.val().matches(/^(forslag|aftalt|afvist)$/)" },
+            "aftaleFraMs": { ".validate": "newData.isNumber()" },
+            // ⚠ oprettetAf ER ET uid — hvem der GJORDE det. Sagen handler
+            // ikke om en person, saa der er intet personId-modstykke her.
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
             "$andet": { ".validate": false }
           }
         },
@@ -1934,11 +2122,10 @@
             // og et id der peger paa ingenting, er et spor der ender blindt
             // netop naar nogen leder. Se beslutning 101.
             "bookingId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('bookinger').child(newData.val()).exists()" },
-            // ⚠ INGEN EKSISTENSTJEK: `sager/` staar ikke i regelfilen.
-            // Beslutning 20 er fase 0, og et opslag mod en node der ikke
-            // findes, ville afvise HVER indberetning der baerer feltet.
-            // Tilfoej tjekket samme dag `sager/` faar sine regler.
-            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // ⚠ `sager/` findes nu — beslutning 112. Feltet er stadig
+            // valgfrit (samme grund som bookingId), men staar der en vaerdi,
+            // skal den pege paa en sag der findes.
+            "sagId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('sager').child(newData.val()).exists()" },
             "indkoebId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoeb').child(newData.val()).exists()" },
             "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 500" },
 
@@ -2376,8 +2563,8 @@
             "enhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
             // ⚠ HVEM DET HANDLER OM, IKKE HVEM DER GJORDE DET. `anmoderId` er
             // et personId; `oprettetAf` er et uid. Byttes de om, holder
-            // ejerskabstjek op med at virke — se CLAUDE.md.
-            "anmoderId": { ".validate": "newData.isString()" },
+            // ejerskabstjek op med at virke — se CLAUDE.md. Beslutning 111.
+            "anmoderId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
             "oprettetAf": { ".validate": "newData.isString()" },
             "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
@@ -2422,7 +2609,9 @@
             "status": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerGodkendelse|godkendt|afvist|sendt|modtaget|annulleret)$/)" },
             "oprettetAf": { ".validate": "newData.isString()" },
             "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
-            "bestillerId": { ".validate": "newData.isString()" },
+            // ⚠ SAMME PAR SOM anmoderId. `bestillerId` er hvem ordren er
+            // lagt PÅ VEGNE AF — et personId, ikke et login. Beslutning 111.
+            "bestillerId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('personale').child(newData.val()).exists()" },
             "godkendtAf": { ".validate": "newData.isString()" },
             "godkendtMs": { ".validate": "newData.isNumber()" },
             // ⚠ ET FLAG DER SIGER OM ET MENNESKE KIGGEDE.

@@ -44,9 +44,24 @@ const idagKl = (t, m = 0) => {
   return Math.min(d.getTime(), Date.now() - 60000);
 };
 
-/** Dag n i ugen (0 = mandag), kl. t — bygget med Date pga. sommertid. */
-const paa = (n, t, m = 0) => {
-  const d = new Date(UGESTART);
+/**
+ * ⚠ SAMME FÆLDE SOM stp-aaben LØSTE — NU FOR DE LUKKEDE VAGTER.
+ *
+ * Her stod en `paa(n, t)`, der regnede dag n i INDEVÆRENDE uge fra
+ * `UGESTART`. Dag 1 er tirsdag — og er i dag mandag, er den tirsdag i
+ * MORGEN. En lukket vagt med et tidspunkt i fremtiden bliver afvist af
+ * `valideStempling()`, præcis som den skal. Målt: suiten fejlede på netop
+ * det, mandag den 24. august 2026 — samme fælde `stp-aaben`s egen note
+ * beskriver, bare i den anden ende af ugen.
+ *
+ * De LUKKEDE vagter (man/tir/ons) skal ligge et sted der er garanteret
+ * fortid UANSET hvilken ugedag suiten kører. Forrige uge er det: den er
+ * altid forbi, uanset i dag er mandag eller søndag. `stp-aaben` bruger
+ * fortsat `idagKl()`, ikke denne — den ÅBNE vagt skal jo være i dag.
+ */
+const FORRIGE_UGE = UGESTART - 7 * 86400000;
+const iForrigeUge = (n, t, m = 0) => {
+  const d = new Date(FORRIGE_UGE);
   d.setDate(d.getDate() + n);
   d.setHours(t, m, 0, 0);
   return d.getTime();
@@ -55,12 +70,14 @@ const paa = (n, t, m = 0) => {
 export const DEMO_STEMPLINGER = {
   /* Lars Aage — chaufføren DEV-kontoen er koblet til (beslutning 103). */
   larsAage: {
-    "stp-man": { indMs: paa(0, 6, 30), udMs: paa(0, 15, 0) },
-    "stp-tir": { indMs: paa(1, 6, 15), udMs: paa(1, 16, 45) },
+    "stp-man": { indMs: iForrigeUge(0, 6, 30), udMs: iForrigeUge(0, 15, 0) },
+    "stp-tir": { indMs: iForrigeUge(1, 6, 15), udMs: iForrigeUge(1, 16, 45) },
     /* ⚠ EN NATTUR. Ind onsdag 22, ud torsdag 06 — den tæller på
        AFGANGSDAGEN, og det står på skærmen. At dele den over midnat er et
        spørgsmål om overenskomst, ikke om kode. */
-    "stp-ons": { indMs: paa(2, 22, 0), udMs: paa(3, 6, 0), note: "Nattur til Hamburg" },
+    "stp-ons": {
+      indMs: iForrigeUge(2, 22, 0), udMs: iForrigeUge(3, 6, 0), note: "Nattur til Hamburg",
+    },
     /**
      * ⚠ ÅBEN, OG PÅ DAGEN I DAG. Ingen `udMs` — det er tilstanden
      * "Stemplet IND".
@@ -76,8 +93,8 @@ export const DEMO_STEMPLINGER = {
     "stp-aaben": { indMs: idagKl(6, 15) },
   },
   reneThomsen: {
-    "stp-r-man": { indMs: paa(0, 7, 0), udMs: paa(0, 15, 30) },
-    "stp-r-tir": { indMs: paa(1, 7, 0), udMs: paa(1, 15, 15) },
+    "stp-r-man": { indMs: iForrigeUge(0, 7, 0), udMs: iForrigeUge(0, 15, 30) },
+    "stp-r-tir": { indMs: iForrigeUge(1, 7, 0), udMs: iForrigeUge(1, 15, 15) },
   },
 };
 

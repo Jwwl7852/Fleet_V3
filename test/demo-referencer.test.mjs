@@ -67,8 +67,6 @@ const UDEN_MAAL = {
   grundlagslinjeId: "peger på en linje INDE i et grundlag, ikke på en post i en node",
   valgtForslagId: "peger på en nøgle INDE i etapen — beslutning 58",
   destinationId: "målnoden afgøres af `destinationArt`; fakturacenter.test.mjs dækker den",
-  anmoderId: "et login (`uid`), ikke en post nogen node bærer",
-  bestillerId: "et login (`uid`), ikke en post nogen node bærer",
   klientId: "telefonens eget id for en statusmelding, så en gensendelse rammer "
     + "den SAMME post. Det peger på ingenting — det er nøglen selv (beslutning 103)",
   stopId: "peger på et stop i den UDLEDTE rute (`planlagteStop()`), ikke på en "
@@ -77,6 +75,12 @@ const UDEN_MAAL = {
   tenantId: "tenanten selv, ikke en post under den",
   prislisteId: "`udbyder/prisliste` er vores egen node, ikke kundens",
 };
+/* ⚠ anmoderId/bestillerId stod her som "et uid, ikke et personId" — det
+   modsagde funktionens egen kommentar ("personId, IKKE uid", functions/index.js)
+   og reglens egen ("et personId; oprettetAf er et uid", firebase.rules.json).
+   Undtagelsen skjulte netop den uoverensstemmelse den advarede om at lede
+   efter. De to felter står nu i PEGER_PAA (FELT_NODE → "personale").
+   Se beslutning 111. */
 
 /** Hvert felt der ender på Id, i en post og i dens underlister. */
 function referencerI(post, sti = "") {

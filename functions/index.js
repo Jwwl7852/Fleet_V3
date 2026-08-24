@@ -112,6 +112,16 @@ import {
   taelBrugere, taelKoeretoejer, maalingsdato, validerPrisliste, sammenfatMaalinger,
   maalingerIPeriode, periodeGraenser, MOMSSATS, gaeldendePrisliste, linjerForPeriode
 } from "./delt/priser.js";
+/* ⚠ SAMME POLITIK SOM SKÆRMEN — beslutning 20/112. Se noten i sager.js.
+   sagsnummerFraEmne() og vurderAfsender() hører til modtagevejen (skive 2,
+   ikke bygget endnu) og importeres derfor ikke her. */
+import {
+  SAG_ART, SAG_TILSTAND, naesteSagsnummer, frigivKarantaene, reservationFraAftale,
+} from "./delt/sager.js";
+/* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
+   rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
+   i retention-regler.js. */
+import { simulerRetention, RETENTION_KATEGORI } from "./delt/retention-regler.js";
 
 initializeApp();
 
@@ -251,19 +261,26 @@ function kraevBrugeradmin(req) {
    tegn: en .dk-adresse kunne oprettes, en .com kunne ikke, og formularen
    havde sagt ja. Se noten i delt/brugere-regler.js. */
 
-/** Indekset klienten kan læse. ⚠ INGEN CLAIMS OG INGEN LØSEN. */
-const indeksPost = (b, rolle, spaerret = false) => ({
+/** Indekset klienten kan læse. ⚠ INGEN CLAIMS OG INGEN LØSEN.
+ *
+ * ⚠ spaerretMs — beslutning 115. HVORNÅR kontoen sidst skiftede
+ * spærretilstand, ikke bare AT den er spærret. Retention-arbejdet har brug
+ * for et tidspunkt at regne fra; en boolean alene kan ikke sige om
+ * spærringen er en time eller to år gammel. Sættes KUN af spaerlogin —
+ * skiftrolle skal bevare den, ikke nulstille den ved et rollevalg. */
+const indeksPost = (b, rolle, spaerret = false, spaerretMs = null) => ({
   email: b.email,
   navn: b.displayName || b.email,
   rolle,
   spaerret,
+  spaerretMs,
   opdateretMs: Date.now()
 });
 
-async function skrivIndeks(tenantId, bruger, rolle, spaerret) {
+async function skrivIndeks(tenantId, bruger, rolle, spaerret, spaerretMs = null) {
   await getDatabase()
     .ref(`tenants/${tenantId}/brugere/${bruger.uid}`)
-    .set(indeksPost(bruger, rolle, spaerret));
+    .set(indeksPost(bruger, rolle, spaerret, spaerretMs));
 }
 
 /**
@@ -428,7 +445,13 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
      fejltilstand, fordi den ser ud som om den lykkedes. */
   await auth.revokeRefreshTokens(maalUid);
 
-  await skrivIndeks(tenantId, bruger, rolle, Boolean(bruger.disabled));
+  /* ⚠ spaerretMs BEVARES, IKKE REGNES OM. Et rollevalg er ikke en
+     spærring — nulstillede vi tidspunktet her, ville en konto der har
+     stået spærret i to år, se ud som om den lige blev det. */
+  const eksisterendeSpaerretMs = (
+    await getDatabase().ref(`tenants/${tenantId}/brugere/${maalUid}/spaerretMs`).once("value")
+  ).val();
+  await skrivIndeks(tenantId, bruger, rolle, Boolean(bruger.disabled), eksisterendeSpaerretMs);
   await log(tenantId, uid, "tilstandsskift", maalUid, `rolle ${rolle}`);
 
   return { ok: true };
@@ -652,7 +675,10 @@ export const spaerlogin = onCall({ region: REGION }, async (req) => {
   /* ⚠ KONTOEN SLETTES IKKE. Personen bliver stående i personale/ — der
      hænger indberetninger på uid'et — og kontoen skal kunne genåbnes. Kun
      loginnet spærres. */
-  await skrivIndeks(tenantId, bruger, bruger.customClaims?.rolle || "chauffoer", spaerret);
+  await skrivIndeks(
+    tenantId, bruger, bruger.customClaims?.rolle || "chauffoer", spaerret,
+    spaerret ? Date.now() : null
+  );
   await log(tenantId, uid, "tilstandsskift", maalUid, spaerret ? "spaerret" : "genaabnet");
 
   return { ok: true, spaerret };
@@ -5239,6 +5265,497 @@ export const fakturadestination = onCall({ region: REGION }, async (req) => {
     art === "ingen" ? `uden destination: ${begrundelse}` : `placeret paa ${art}/${id}`);
 
   return { ok: true, art, id: art === "ingen" ? null : id };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAGER — beslutning 20/112, skive 1
+
+   Datamodellen og politikken (`sager.js`) har været fuldt specificeret siden
+   beslutning 20; det der manglede, var alt der rører databasen. `sager/` og
+   `sensitive/sager/` er `.write: false` for alle — de fire funktioner
+   herunder er de eneste veje ind.
+
+   ⚠ MODTAGEVEJEN ER IKKE HER. Indgående mail (adapteren, DMARC-opslag,
+   virusscanning, afsendelse) kræver et leverandørvalg — dedikeret mailadresse
+   med webhook, eller Microsoft Graph mod kundens eget 365 — og det er ikke
+   afgjort. `sagBeskedSkriv` skriver derfor kun UDGÅENDE beskeder, skrevet af
+   en medarbejder inde i appen. Se ARKITEKTUR.md.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function logSager(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "sager");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "sager", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
+
+export const sagOpret = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|sag.skriv|")) {
+    throw new HttpsError("permission-denied", "Du må ikke oprette en sag. Det kræver sag.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  /* ⚠ ARTEN SÆTTES HER, IKKE AF KLIENTEN — modstykket til opgaveplanlaeg og
+     facilityplanlaeg. */
+  const sagArt = SAG_ART[kortStreng(d.art, 20)];
+  if (!sagArt) throw new HttpsError("invalid-argument", `Ukendt sagsart "${d.art}".`);
+
+  const paakraevetModul = sagArt.art === "fleet" ? "flaade" : "facility";
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child(paakraevetModul).val() !== true) {
+    throw new HttpsError("permission-denied", `${paakraevetModul}-modulet er ikke aktivt.`);
+  }
+
+  const emne = kortStreng(d.emne, 200);
+  if (!emne) throw new HttpsError("invalid-argument", "Sagen skal have et emne.");
+
+  /* ⚠ POLYMORF REFERENCE — kun "opgave" har et kendt mål i dag. Se
+     test/referencetjek.test.mjs. */
+  const objektType = kortStreng(d.objektType, 40);
+  const objektId = kortStreng(d.objektId, 60);
+  if (objektType === "opgave" && objektId) {
+    const o = (await rod.child(`opgaver/${objektId}`).once("value")).val();
+    if (!o) throw new HttpsError("not-found", `Opgaven ${objektId} findes ikke.`);
+  }
+
+  const modpartNavn = kortStreng(d.modpartNavn, 120);
+
+  const post = {
+    art: sagArt.art,
+    tilstand: "aaben",
+    emne,
+    modul: paakraevetModul,
+    oprettetAf: uid,
+    oprettetMs: Date.now(),
+    antalBeskeder: 0,
+    antalKarantaene: 0,
+    harAftale: false,
+  };
+  if (objektType) post.objektType = objektType;
+  if (objektId) post.objektId = objektId;
+  if (modpartNavn) post.modpartNavn = modpartNavn;
+
+  post.nummer = await naesteSagsnummer(db, (sti) => `tenants/${tenantId}/${sti}`, sagArt.art);
+
+  const sagId = rod.child("sager").push().key;
+  const opdatering = { [`sager/${sagId}`]: post };
+
+  /* ⚠ EN RÅ E-MAILADRESSE KAN IKKE VÆRE EN RTDB-NØGLE — se rules.json. */
+  const modpartEmail = kortStreng(d.modpartEmail, 254);
+  if (modpartEmail) {
+    const partId = rod.child(`sager/${sagId}/parter`).push().key;
+    opdatering[`sager/${sagId}/parter/${partId}`] = modpartEmail.toLowerCase();
+  }
+
+  await rod.update(opdatering);
+  await logSager(tenantId, uid, AUDIT.opret, sagId, null, post, `sag oprettet: ${post.nummer}`);
+
+  return { sagId, nummer: post.nummer };
+});
+
+export const sagBeskedSkriv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ SAMME BUNDT SOM REGLENS .write — sag.skriv OG sag.sensitiveLaes. At
+     skrive på tråden kræver at kunne læse den, som indberetninger.skriv +
+     indberetninger.sensitiveLaes. */
+  if (!perms.includes("|sag.skriv|") || !perms.includes("|sag.sensitiveLaes|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke skrive på sagen. Det kræver sag.skriv og sag.sensitiveLaes.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const sagId = kortStreng(d.sagId, 60);
+  if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
+  const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
+  if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+
+  const tekst = kortStreng(d.tekst, 10000);
+  if (!tekst) throw new HttpsError("invalid-argument", "Beskeden må ikke være tom.");
+
+  const nyTilstand = kortStreng(d.tilstand, 20);
+  if (nyTilstand && !SAG_TILSTAND[nyTilstand]) {
+    throw new HttpsError("invalid-argument", `Ukendt tilstand "${nyTilstand}".`);
+  }
+
+  /* ⚠ AFSENDEREN ER MEDARBEJDEREN, IKKE EN MAILADRESSE — retning er altid
+     udgaaende her. Der er ingen modtagevej endnu. */
+  const bruger = (await rod.child(`brugere/${uid}`).once("value")).val() || {};
+  let afsenderNavn = null;
+  if (bruger.personId) {
+    const person = (await rod.child(`personale/${bruger.personId}`).once("value")).val();
+    afsenderNavn = person?.navn || null;
+  }
+
+  const nu = Date.now();
+  const besked = { ms: nu, retning: "udgaaende", tekst };
+  if (bruger.email) besked.afsender = bruger.email;
+  if (afsenderNavn) besked.afsenderNavn = afsenderNavn;
+
+  const beskedId = rod.child(`sensitive/sager/${sagId}/beskeder`).push().key;
+  const nyTilstandVaerdi = nyTilstand || "afventerSvar";
+  const opdatering = {
+    [`sensitive/sager/${sagId}/beskeder/${beskedId}`]: besked,
+    [`sager/${sagId}/sidsteBeskedMs`]: nu,
+    [`sager/${sagId}/antalBeskeder`]: ServerValue.increment(1),
+    [`sager/${sagId}/tilstand`]: nyTilstandVaerdi,
+  };
+
+  await rod.update(opdatering);
+  await logSager(tenantId, uid, AUDIT.aendre, sagId,
+    { tilstand: sag.tilstand }, { tilstand: nyTilstandVaerdi }, "besked skrevet på sagen");
+
+  return { beskedId };
+});
+
+export const sagKarantaeneFrigiv = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|sag.karantaeneFrigiv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke frigive en karantæne. Det kræver sag.karantaeneFrigiv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const sagId = kortStreng(d.sagId, 60);
+  if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
+  const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
+  if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+
+  const adresse = kortStreng(d.adresse, 254);
+  if (!adresse) throw new HttpsError("invalid-argument", "adresse mangler.");
+
+  /* ⚠ SAMME FUNKTION SOM POLITIKKEN — frigivKarantaene() i sager.js.
+     Frigivelsen tilføjer adressen til DENNE sags parter alene. */
+  const { parter: nyeParter } = frigivKarantaene(
+    { parter: Object.values(sag.parter || {}) }, adresse
+  );
+  const nyAdresse = nyeParter[nyeParter.length - 1];
+  const partId = rod.child(`sager/${sagId}/parter`).push().key;
+
+  await rod.child(`sager/${sagId}/parter/${partId}`).set(nyAdresse);
+  await logSager(tenantId, uid, AUDIT.aendre, sagId, null, { frigivet: nyAdresse },
+    "adresse frigivet fra karantæne");
+
+  return { ok: true };
+});
+
+export const sagAftaleBekraeft = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|sag.aftaleBekraeft|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke bekræfte et aftaleforslag. Det kræver sag.aftaleBekraeft.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const sagId = kortStreng(d.sagId, 60);
+  const aftaleId = kortStreng(d.aftaleId, 60);
+  if (!sagId || !aftaleId) {
+    throw new HttpsError("invalid-argument", "sagId og aftaleId er påkrævede.");
+  }
+
+  const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
+  if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+  const aftale = (await rod.child(`sensitive/sager/${sagId}/aftaleforslag/${aftaleId}`)
+    .once("value")).val();
+  if (!aftale) throw new HttpsError("not-found", `Aftaleforslaget ${aftaleId} findes ikke.`);
+  if (aftale.tilstand !== "forslag") {
+    throw new HttpsError("failed-precondition",
+      `Forslaget er allerede ${aftale.tilstand === "aftalt" ? "bekræftet" : "afvist"}.`);
+  }
+  if (!Number.isFinite(aftale.fra) || !Number.isFinite(aftale.til)) {
+    throw new HttpsError("invalid-argument",
+      "Forslaget mangler fra/til — det udtrukne tidspunkt skal sættes først.");
+  }
+
+  const nu = Date.now();
+  /* ---- Reservationen, bygget ÉT sted ----------------------------------- */
+  let ny;
+  try {
+    ny = reservationFraAftale(
+      { id: sagId, art: sag.art, nummer: sag.nummer }, { ...aftale, tilstand: "aftalt" }
+    );
+  } catch (e) {
+    throw new HttpsError("invalid-argument", e.message);
+  }
+
+  /* ---- Er ressourcen ledig? Samme mønster som facilityplanlaeg --------- */
+  const aktiver = (await rod.child("facility/aktiver").once("value")).val() || {};
+  const stier = [
+    { ressourceType: ny.ressourceType, ressourceId: ny.ressourceId },
+    ...indeslutninger(ny, { aktiver }),
+  ];
+  const grupper = await Promise.all(stier.map(async (s) => {
+    const snap = await rod
+      .child(`reservationer/${s.ressourceType}/${s.ressourceId}`)
+      .once("value");
+    return {
+      ...s,
+      reservationer: Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v })),
+    };
+  }));
+
+  const svar = tjekLedigIndesluttet(ny, grupper);
+  if (!svar.ok) {
+    const foerste = svar.konflikter[0];
+    const flere = svar.konflikter.length > 1
+      ? ` (+${svar.konflikter.length - 1} mere)` : "";
+    throw new HttpsError("failed-precondition",
+      (foerste.tekst || konfliktTekst(ny, foerste)) + flere);
+  }
+
+  /* ---- ÉN SKRIVNING ------------------------------------------------------ */
+  /* ⚠ res-${aftaleId}, IKKE en tilfældig nøgle — samme mønster som
+     res-${opgaveId} i facilityplanlaeg, så en fremtidig funktion kan finde
+     og fjerne reservationen igen, hvis aftalen trækkes tilbage. */
+  const opdatering = {
+    [`sensitive/sager/${sagId}/aftaleforslag/${aftaleId}/tilstand`]: "aftalt",
+    [`sensitive/sager/${sagId}/aftaleforslag/${aftaleId}/bekraeftetAf`]: uid,
+    [`sensitive/sager/${sagId}/aftaleforslag/${aftaleId}/bekraeftetMs`]: nu,
+    [`sager/${sagId}/harAftale`]: true,
+    [`sager/${sagId}/aftaleTilstand`]: "aftalt",
+    [`sager/${sagId}/aftaleFraMs`]: aftale.fra,
+    [`reservationer/${ny.ressourceType}/${ny.ressourceId}/res-${aftaleId}`]: {
+      fra: ny.fra, til: ny.til, kilde: ny.kilde, oprettetAf: uid, oprettetMs: nu,
+    },
+  };
+
+  await rod.update(opdatering);
+  await logSager(tenantId, uid, AUDIT.tilstandsskift, sagId,
+    { aftaleTilstand: sag.aftaleTilstand ?? null }, { aftaleTilstand: "aftalt" },
+    `aftale bekræftet — reservation på ${ny.ressourceType} ${ny.ressourceId}`);
+
+  return { ressourceType: ny.ressourceType, ressourceId: ny.ressourceId, fra: ny.fra, til: ny.til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RETENTION — beslutning 115, ikke-destruktiv grundmekanisme
+
+   ⚠ INGEN AF DE TO FUNKTIONER SLETTER ELLER ANONYMISERER NOGET.
+   `retentionLegalHold` sætter/ophæver en UNDTAGELSE fra en fremtidig
+   sletning — den skriver ét felt-sæt på én post i `retention/legalHold`.
+   `retentionDryRun` LÆSER og RAPPORTERER, og rører intet. Selve
+   mekanismen der rent faktisk sletter eller anonymiserer, findes ikke —
+   se anonymiser()/eksporterFoerSletning()/slet() i retention-regler.js,
+   som kaster hvis de kaldes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function logRetention(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "retention");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "retention", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
+
+export const retentionLegalHold = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|retention.skriv|") || !perms.includes("|retention.laes|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke sætte eller ophæve et legal hold. Det kræver retention.skriv og retention.laes.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const holdId = kortStreng(d.holdId, 60);
+
+  /* ---- OPHÆVELSE af et eksisterende hold ------------------------------ */
+  if (holdId) {
+    const eksisterende = (await rod.child(`retention/legalHold/${holdId}`).once("value")).val();
+    if (!eksisterende) throw new HttpsError("not-found", `Holdet ${holdId} findes ikke.`);
+    if (eksisterende.ophaevetMs) {
+      throw new HttpsError("failed-precondition", "Holdet er allerede ophævet.");
+    }
+    const nu = Date.now();
+    await rod.child(`retention/legalHold/${holdId}`).update({ ophaevetAf: uid, ophaevetMs: nu });
+    await logRetention(tenantId, uid, AUDIT.aendre, holdId,
+      { ophaevetMs: null }, { ophaevetMs: nu },
+      `legal hold ophævet: ${eksisterende.objekt}/${eksisterende.objektId}`);
+    return { holdId, ophaevet: true };
+  }
+
+  /* ---- NYT HOLD --------------------------------------------------------- */
+  const objekt = kortStreng(d.objekt, 60);
+  const objektId = kortStreng(d.objektId, 60);
+  const aarsag = kortStreng(d.aarsag, 500);
+  if (!objekt || !objektId) {
+    throw new HttpsError("invalid-argument", "objekt og objektId er påkrævede.");
+  }
+  if (!aarsag) throw new HttpsError("invalid-argument", "Et legal hold skal have en begrundelse.");
+
+  const nu = Date.now();
+  const post = { objekt, objektId, aarsag, satAf: uid, satMs: nu };
+  const nytHoldId = rod.child("retention/legalHold").push().key;
+  await rod.child(`retention/legalHold/${nytHoldId}`).set(post);
+  await logRetention(tenantId, uid, AUDIT.opret, nytHoldId, null, post,
+    `legal hold sat: ${objekt}/${objektId}`);
+
+  return { holdId: nytHoldId };
+});
+
+export const retentionDryRun = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|retention.laes|")) {
+    throw new HttpsError("permission-denied", "Du må ikke køre en retention-rapport. Det kræver retention.laes.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const kategori = kortStreng(d.kategori, 60);
+  const info = kategori ? RETENTION_KATEGORI[kategori] : null;
+  if (!info) throw new HttpsError("invalid-argument", `Ukendt kategori "${d.kategori}".`);
+  if (!info.bygget) {
+    throw new HttpsError("failed-precondition",
+      `"${info.label}" findes ikke i produktet endnu — der er intet at rapportere på.`);
+  }
+
+  /* ⚠ periodeMaaneder ER EN HYPOTESE FRA KALDEREN, IKKE DEN AFGJORTE
+     GRÆNSE — se simulerRetention()s egen note. Rapporten svarer på "hvad
+     ville DETTE tal betyde i dag", uafhængigt af at RETENTION_KATEGORI's
+     eget periodeMaaneder stadig er null. */
+  const periodeMaaneder = Number(d.periodeMaaneder);
+  if (!Number.isFinite(periodeMaaneder) || periodeMaaneder <= 0) {
+    throw new HttpsError("invalid-argument", "periodeMaaneder skal være et positivt tal.");
+  }
+  const tidsfelt = kortStreng(d.tidsfelt, 40) || "oprettetMs";
+
+  const holds = Object.values(
+    (await rod.child("retention/legalHold").once("value")).val() || {}
+  );
+
+  const nu = Date.now();
+  const noder = [];
+  for (const node of info.noder) {
+    const raa = (await rod.child(node).once("value")).val() || {};
+    const poster = Object.entries(raa).map(([id, v]) => ({ id, ...v }));
+    const svar = simulerRetention(node, poster, { periodeMaaneder, tidsfelt }, holds, nu);
+    noder.push({
+      node,
+      antal: {
+        paavirkede: svar.paavirkede.length,
+        undtagetAfHold: svar.undtagetAfHold.length,
+        forUngeEndnu: svar.forUngeEndnu.length,
+      },
+      /* ⚠ KUN ID'ER, IKKE HELE POSTER. Rapporten skal kunne vise HVOR
+         mange og HVILKE — ikke gengive brødtekst, skadebeskrivelser eller
+         andet følsomt indhold i en rapport der ligger i audit-loggen. */
+      paavirkedeIder: svar.paavirkede.map((p) => p.id),
+    });
+  }
+
+  await logRetention(tenantId, uid, AUDIT.laes, kategori, null,
+    { periodeMaaneder, tidsfelt },
+    `dry-run kørt for "${info.label}"`);
+
+  return { kategori, periodeMaaneder, tidsfelt, noder };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

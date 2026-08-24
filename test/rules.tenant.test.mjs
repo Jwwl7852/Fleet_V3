@@ -56,7 +56,10 @@ const LAESNING_NAEGTET = new Set(["_findes"]);
    ligger på `$personId`, fordi den skal kunne svare "er det dine egne timer".
    En `.read` på beholderen ville kaskadere, og så kunne enhver chauffør se
    hvornår hver kollega mødte. */
-const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger"]);
+/* ⚠ `retention` ER EN BEHOLDER — beslutning 115. Den har i dag kun ét barn
+   (`legalHold`), men rummet er lagt op til flere retention-relaterede
+   noder — en fælles `.read` her ville kaskadere ned over dem alle. */
+const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger", "retention"]);
 
 /* ⚠ kpi ER EN DYB BEHOLDER. sensitive/ og vaerdi/ har deres .read ÉT niveau
    nede (sensitive/bookinger). kpi/ har den TRE niveauer nede — på

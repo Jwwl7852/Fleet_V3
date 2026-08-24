@@ -1624,6 +1624,16 @@
   margin:0; padding:8px 10px; border-radius:6px;
   background:var(--fc-accent-soft); color:var(--bc-accent); font-weight:650}
 
+/* ⚠ EN VENTENDE MELDING ER IKKE EN FEJL — IKKE FARVEN --bc-warn. Den er en
+   oplysning: intet er tabt, intet skal rettes. Samme info-tone som
+   .fc-kpiadgang, ikke .fc-app-fejl. Se meldingskoe.js, beslutning 114. */
+.fc-app-koe{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  flex-wrap:wrap; margin:0; padding:10px 12px;
+  border:1px solid var(--bc-line); border-left:3px solid var(--fc-info);
+  border-radius:8px; background:var(--bc-card)}
+.fc-app-koe-knap{min-height:36px; padding:4px 12px}
+
 /* ---- Turplanen — beslutning 110 --------------------------------------- */
 .fc-app-dagsum{display:flex; flex-wrap:wrap; gap:8px; margin:0}
 .fc-app-mrk{

@@ -867,19 +867,33 @@ gemme det, og det er ikke regnskabsdata.
 
 ### Status
 
-Fase 0 er **visning**: `Sagsvisning.jsx` med fanerne Oversigt, Kommunikation,
-Dokumenter, Aktiviteter, og en demo-tråd på Værkstedskalender. Komponenten
-ligger i `fleet/` fordi Facility skal bruge den samme — forskellen på FLT og
-FAC er præfiks, counter og hvad knappen hedder, og alt det står i `SAG_ART`.
+**Skive 1 er bygget — beslutning 112.** `sager/` og `sensitive/sager/` står i
+`firebase.rules.json` (ugated, som `opgaver`), de fem `sag.*`-permissions er
+fordelt på rollerne, og fire funktioner — `sagOpret`, `sagBeskedSkriv`,
+`sagKarantaeneFrigiv`, `sagAftaleBekraeft` — er de eneste veje ind.
+`Sagsvisning.jsx` med fanerne Oversigt, Kommunikation, Dokumenter,
+Aktiviteter, ligger stadig i `fleet/` fordi Facility skal bruge den samme —
+forskellen på FLT og FAC er præfiks, counter og hvad knappen hedder, og alt
+det står i `SAG_ART`.
 
-Ikke bygget: modtagevej, parsing, afsendelse, scanning, Cloud Functions.
-`sager/` findes ikke i `firebase.rules.json`, og derfor står `sag.laes`,
-`sag.sensitiveLaes`, `sag.skriv`, `sag.karantaeneFrigiv` og
-`sag.aftaleBekraeft` heller ikke i `permissions.js` endnu. Kataloget siger
-selv, at man ikke tilføjer en permission uden et sted der spørger efter den.
+⚠ **`Sagsvisning.jsx` er IKKE monteret noget sted.** Fase 0 byggede skærmen
+færdig og importerede den aldrig — `Vaerkstedskalender.jsx`s hændelsespanel
+har sin egen, separate visning af `sag.beskeder`. Hvor sagsvisningen skal bo,
+og om den erstatter panelet eller lever ved siden af det, er en
+skærm-placering der ikke er besluttet.
+
+⚠ **`sagBeskedSkriv` skriver kun UDGÅENDE beskeder.** `sagAftaleBekraeft` er
+bygget, men ikke nåelig — intet i skive 1 skriver et `aftaleforslag`.
+
+Ikke bygget: modtagevejen (skive 2) — adapteren, DMARC-opslag, virusscanning,
+afsendelse. Det kræver et leverandørvalg (dedikeret mailadresse med webhook,
+eller Microsoft Graph mod kundens eget 365) som ikke er afgjort. **Byg ikke
+begge på én gang.**
 
 `test/sager.test.mjs` kører politikken frem for at læse den — 39 tests, uden
 emulator, men med i `npm test` og dermed i pre-commit-hooken.
+`test/sager-funktioner.test.mjs` prøver at de fire funktioner rent faktisk
+kalder den samme politik.
 ## Disponeringen håndhæves — `etapeskift`
 
 Tabellen ovenfor sagde i månedsvis at de tre tjek var *"bygget og testet — men

@@ -524,7 +524,13 @@ test("reglerne kender de samme bookingtilstande som domænet", () => {
      mere uden at reglen får den, afviser en fremtidig skrivning noget skærmen
      viser som gyldigt. */
   const regler = readFileSync("firebase.rules.json", "utf8");
-  const blokR = regler.slice(regler.indexOf('"bookinger": {'), regler.indexOf('"etaper": {'));
+  const slutning = regler.indexOf('"etaper": {');
+  /* ⚠ SIDSTE "bookinger": {" FØR "etaper": {", IKKE FØRSTE. `"bookinger": {`
+     forekommer også under sensitive/ og vaerdi/, og en fremtidig node med et
+     eget `tilstand`-felt et sted i det store spand mellem dem (fx sager/112)
+     ville ellers blive læst som bookingens. Det GENERELLE bookinger-node er
+     altid det sidste af de tre før etaper. */
+  const blokR = regler.slice(regler.lastIndexOf('"bookinger": {', slutning), slutning);
   const linje = blokR.split(/\r?\n/).find((l) => l.includes('"tilstand": {'));
   const iReglen = linje?.match(/\(([a-zA-Z|]+)\)/)?.[1].split("|") || [];
   assert.deepEqual(iReglen.slice().sort(), Object.keys(TILSTAND).slice().sort());

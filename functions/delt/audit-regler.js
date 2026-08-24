@@ -97,6 +97,10 @@ export const LOGBARE_FELTER = new Set([
      anlæg til HELE lokationen, hvilket spærrer alle porte i hallen. Uden de
      to felter ville loggen ikke kunne sige hvad der blev spærret. */
   "aktivId", "lokationId",
+  /* ⚠ sagId ER MED, sagsnummeret ER IKKE — samme skel som kasseId ovenfor.
+     Id'et er en kontrolleret reference (`sager/` findes, beslutning 112);
+     emnet og tråden er fritekst og hører ikke i loggen. */
+  "sagId",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */

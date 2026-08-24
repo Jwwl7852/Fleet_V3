@@ -251,10 +251,13 @@ bygget imod.*
 
 Punkt 1 og 2 er værdifulde alene. Punkt 4 er værdiløst uden dem.
 
-⚠ **De fire Cloud Run-tjenester mangler invoker-bindingen.** Indtil de åbnes i
-konsollen, får ALLE 401 — også en gyldig ejer. `npm run funktioner:aabn` kan
-ikke sætte den: tjenestekontoen må ikke `run.services.list`. Samme skridt som
-de tre første funktioner krævede.
+✅ **Invoker-bindingen er sat.** Tjenestekontoen fik den anbefalede
+`Invoker-aabner`-rolle (præcis `run.services.list`, `run.services.getIamPolicy`,
+`run.services.setIamPolicy` — ikke Cloud Run Admin), og `npm run
+funktioner:aabn` åbner nu alle 39 callable-funktioner selv, herunder de fire
+ejerkonsol-funktioner. De tre planlagte (`kpiaggregering`, `auditoprydning`,
+`maaldagligt`) springes fortsat over med vilje. Kør scriptet igen efter hver
+ny funktion — det er nu ét kommando, ikke et manuelt klik pr. tjeneste.
 
 ---
 
@@ -286,28 +289,30 @@ de tre første funktioner krævede.
 
 ---
 
-## 7. Nodetabellen, punkt 2 mangler et svar på
+## 7. Nodetabellen — punkt 2's spørgsmål er besvaret (beslutning 92)
 
 Modulhåndhævelsen kræver at hver node hører til et modul. De fleste giver sig
-selv. **Tre gør ikke**, og et forkert gæt låser en kunde ude af noget han har
-betalt for:
+selv. **Fem gør ikke** — hver hører til FLERE moduler — og de står derfor
+bevidst UDEN FOR `NODE_MODUL` i `moduler.js`, i basen, uden en modulklausul:
 
 | Node | Modul | Sikker? |
 |---|---|---|
 | `koeretoejer`, `sensitive/koeretoejer`, `indberetninger` | `flaade` | ✔ |
 | `facility` | `facility` | ✔ |
-| `indkoeb`, `fakturaer`, `lagre` | `indkoeb` | ✔ |
-| `bookinger`, `sensitive/bookinger`, `vaerdi/bookinger`, `etaper`, `reservationer` | `booking` | ✔ |
+| `indkoeb`, `leverandoerer`, `lagre` | `indkoeb` | ✔ |
+| `bookinger`, `sensitive/bookinger`, `vaerdi/bookinger`, `etaper` | `booking` | ✔ |
 | `fravaer`, `sensitive/fravaer`, `kompetencer` | `bemanding` | ✔ |
 | `kunder`, `sensitive/kunder` | `kunder` | ✔ |
 | `personale`, `sensitive/personale` | **ingen — basen** | ✔ `permissions.js` siger hvorfor: enhver abonnementskombination har medarbejdere |
 | `kpi` | **ingen** | ✔ ét aggregat; et modul man ikke har, har ingen tal |
 | `roller`, `brugere`, `countere`, `virksomhed`, `moduler`, `abonnement` | **ingen — basen** | ✔ |
-| **`opgaver`** | ? | ⚠ `art` er `vaerksted` \| `facility` (beslutning 21). Den hører til **to** moduler |
-| **`satser`** | ? | ⚠ prisgrupper hører til `kunder`, men kalkulationsprisen bruges af `booking` |
-| **`fakturaer`** | ? | ⚠ ligger i Indkøb, men Økonomi læser dem |
+| ~~`opgaver`~~ | **ingen — basen** | ✔ **Afgjort (92).** `art` er `vaerksted` \| `facility` (beslutning 21) — hører til to moduler |
+| ~~`satser`~~ | **ingen — basen** | ✔ **Afgjort (92).** Prisgrupper hører til `kunder`, kalkulationsprisen til `booking` |
+| ~~`fakturaer`~~ | **ingen — basen** | ✔ **Afgjort (92).** Ligger i Indkøb, men Økonomi læser dem |
+| ~~`reservationer`~~ | **ingen — basen** | ✔ **Afgjort (92).** FIRE kilder mødes i den (beslutning 4) — stod som bookingens, og en kunde uden Planning kunne ikke læse sine egne |
+| ~~`sager`, `sensitive/sager`~~ | **ingen — basen** | ✔ **Afgjort (112).** Samme snit som `opgaver`: `art` er `fleet` \| `facility` |
 
-For de tre: **min anbefaling er at lade dem være ugatede** (basen). En node
-der hører til to moduler, kan ikke gates af ét af dem uden at det andet går i
-stykker — og alternativet, at gate på "har mindst ét af dem", er en regel
-ingen kan læse sig til bagefter.
+Anbefalingen herunder blev fulgt: alle fem er ugatede. En node der hører til
+to moduler, kan ikke gates af ét af dem uden at det andet går i stykker — og
+alternativet, at gate på "har mindst ét af dem", er en regel ingen kan læse
+sig til bagefter.

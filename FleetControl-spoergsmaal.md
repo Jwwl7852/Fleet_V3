@@ -14,93 +14,106 @@ at svare forkert på.
 For hver: **hvad er den ene ting en bruger kommer her for at gøre?** Kan I ikke
 svare, hører skærmen måske ikke i fase 0.
 
-### Økonomi → Fakturering
+⚠ **Ført ajour 24. august 2026 (beslutning 113).** De fleste af disse blev
+faktisk besvaret allerede i **beslutning 22** — dette dokument var bare ikke
+opdateret til at sige det. Se `BESLUTNINGER.md` og README's tabel "Fem
+skærme der venter" for den fulde begrundelse bag hvert svar. Kun det der
+reelt stadig mangler, står tilbage som spørgsmål herunder.
 
-Den vigtigste af de ni, fordi det er der pengene kommer fra.
+### Økonomi → Fakturering — retningen afgjort, to spørgsmål tilbage
 
-- **Laver FleetControl fakturaen, eller producerer den et grundlag?** Det ændrer
-  skærmen fuldstændigt. En fakturamotor kræver fakturanummerserie, kreditnotaer,
-  betalingsbetingelser, rykkere, momsindberetning. Et grundlag kræver en
-  eksportfil.
-- Hvis grundlag: til hvad? e-conomic, Dinero, Billy, Navision? De har hver sit
-  format, og "CSV" er ikke ét format.
-- Skal en faktura kunne rettes efter den er sendt? Svaret er nej — der skal
-  laves en kreditnota. Men det betyder at fakturaen er immutabel, og det skal
-  besluttes før den bygges.
-- Hvem godkender en faktura før den går ud? Er det samme person der laver den?
+~~Laver FleetControl fakturaen, eller producerer den et grundlag?~~
+**Besvaret i beslutning 22: grundlag.** Ingen nummerserie, kreditnotaer eller
+rykkere — FleetControl regner og låser linjerne, regnskabssystemet udsteder
+selve fakturaen. Kæden er bygget (`grundlagskriv`), momssatsen er besvaret
+(25 %, beslutning 98), og adapterlaget til en neutral model er bygget
+(beslutning 102).
 
-### Flåde → Indberetninger
+- **Til hvilket SYSTEMSPECIFIKT format?** e-conomic, Dinero, Billy, Navision
+  har hver sit importskema, og der er bevidst ingen adapter til dem endnu —
+  kun Neutral (JSON) og Regneark (CSV). Løses med kolonnenavne fra systemets
+  egen importvejledning, eller en eksempelfil fra en konto.
+- Hvem godkender grundlaget, og er det samme person der laver det?
+  `grundlagSkriv`/`grundlagGodkend` findes som to adskilte permissions —
+  men om fordelingen er rigtig for en faktisk kunde, er ikke bekræftet.
 
-- Er skærmen **listen** over indkomne indberetninger, **opfølgningen** med
-  kommunikationstråd, eller stedet hvor kontoret selv **opretter** en? Mockuppen
-  "Indberetninger & opfølgning" viser opfølgningen — er den denne skærm, eller
-  en fjerde?
-- De syv typer (reparation, skade, dæk, service, tankning, parkering, andet):
-  skal de alle med i version 1, eller er tankning og parkering noget
-  brændstofkortet leverer automatisk senere?
-- **En skade involverer en modpart.** Forsikringssag, policenummer,
-  registreringsnummer på modparten. Er det en indberetning eller en sag med sit
-  eget forløb?
-- Hvad sker der når en indberetning bliver et værkstedsbesøg? Bliver den lukket,
-  eller følger den med?
+### Flåde → Indberetninger — retningen afgjort, ét spørgsmål tilbage
 
-### Booking → Live-kort
+**Besvaret i beslutning 22/106:** To slags — **driftshændelser** (reparation,
+skade, dæk, service, andet) starter et forløb; **udgiftsregistreringer**
+(tankning, parkering, kvittering) gør ikke. En driftshændelse **lukkes ikke**
+når den bliver et værkstedsbesøg — den er samme sag hele vejen til fakturaen.
+En skade får modpart, reg.nr., forsikringsselskab, policenr. og ansvar som
+felter på indberetningen selv, ikke som en sag med sit eget forløb.
 
-- **Hvor kommer positionerne fra?** Der er ingen sporing. Chaufførappens telefon,
-  et GPS-boks-abonnement, eller manuelle statusopdateringer fra chaufføren?
-- Er live-kort noget alle kunder får, eller et tilvalg? Det er tidligere besluttet
-  at platformen ikke skal *kræve* GPS — gælder det stadig?
-- Hvor længe gemmes historikken? En rute gennem tre uger er medarbejderovervågning
-  og skal kunne slettes.
-- Må kunden se hvor hans gods er, eller kun jer? Det er kundeportalen, og den er
-  en anden diskussion.
+- Er **skadeforløbet** sin egen tilstandsmaskine, eller følger det
+  driftshændelsens almindelige forløb?
 
-### Bemanding → Kompetencer
+### Booking → Live-kort ("Rute & status") — retningen afgjort, to spørgsmål tilbage
 
-- Hvem vedligeholder dem? Chaufføren uploader sit eget kort, eller kontoret
-  indtaster?
-- Skal beviset gemmes som fil? Et foto af et ADR-kort er en personoplysning med
-  billede — hører i `sensitive/`.
-- **Hvem får besked når en kompetence udløber, og hvornår?** 90 dage, 30, 14?
-  Chaufføren, disponenten, eller begge?
-- Blokerer en udløbet kompetence disponering hårdt, eller kan disponenten
-  overrule med en begrundelse? Vi har besluttet hårdt — men en vognmand med tre
-  chauffører kan have en anden mening.
+**Besvaret i beslutning 22, bygget:** Skærmen hedder **Rute & status**, og
+kræver **ingen GPS** — positionerne kommer fra chaufførens statusmeldinger
+(planlagt rute, meldte stop, næste stop, forventede tidspunkter), ikke fra
+sporing. Platformen kræver stadig ikke GPS.
 
-### Indkøb → Leverandører
+- Hvor længe gemmes historikken? En rute gennem tre uger er
+  medarbejderovervågning og skal kunne slettes.
+- Må kunden se hvor hans gods er, eller kun jer? Det er kundeportalen, og den
+  er en anden diskussion.
 
-- Er den et **kartotek** eller en **performancerapport**? Mockuppen har
-  leverandørperformance som kort på to andre skærme.
-- Skal aftaler og prislister ligge her, eller i Bookingopsætning hvor satserne er?
-- Hvad er en leverandørs "kvalitet 4,7 stjerner"? Hvem giver den, og efter hvad?
+### Bemanding → Kompetencer — retningen afgjort, ét spørgsmål tilbage
 
-### Opsætning → Generelt
+**Besvaret i beslutning 22, bygget:** **Lovkritiske** (C, CE, D1, D, ADR,
+tachograf) blokerer disponering **hårdt**. **Virksomheds- og kundekrav**
+advarer med en override der kræver en begrundelse og logges. Chaufføren
+uploader sin egen dokumentation, kontoret godkender. Varsler er
+konfigurerbare, standard 90/30/14 dage.
+
+- Et foto af et kompetencebevis hører i `sensitive/` (besluttet) — men det
+  kræver en **Storage-bucket, som DEV ikke har endnu**. Teknisk hul, ikke et
+  åbent spørgsmål.
+
+### Indkøb → Leverandører — retningen afgjort, ingen spørgsmål tilbage til jer
+
+**Besvaret i beslutning 22, delvist bygget:** **Ingen stjerner.** Objektive
+tal: leverance til tiden, fakturaafvigelse, gennemsnitlig leveringstid,
+prisændring 12 mdr., reklamationer, samlet køb — en score findes kun hvis
+beregningen kan vises. Aftaler og prislister ligger på leverandøren, ét sted.
+
+Det resterende er ingeniørarbejde, ikke et produktvalg: fire af de seks tal
+kan beregnes nu, **svartid** kræver data fra `sager/` (regler bygget i
+beslutning 112, selve mailmodtagelsen mangler stadig — skive 2), og **andel
+af indkøb** kræver en rigtig aggregering af tenantens samlede indkøb.
+
+### Opsætning → Generelt — fortsat åbent
 
 - Hvad skal en vognmand kunne ændre selv, og hvad skal han ringe til jer om?
 - Afdelinger, lokationer, standardlager: er de opsætning eller stamdata?
 - CVR, adresse, logo på fakturaer, betalingsbetingelser — hører de her?
 
-### Opsætning → Brugere & roller
+### Opsætning → Brugere & roller — ét af tre spørgsmål afgjort
 
-- Skal en kunde kunne **ændre en rolles indhold**, eller kun vælge blandt
-  presets? Vi har bygget `roller/` til at kunne det. Men en vognmand der fjerner
-  `booking.godkend` fra sin egen rolle har lukket sig ud.
+~~Skal en kunde kunne ændre en rolles indhold, eller kun vælge blandt
+presets?~~ **Besvaret i beslutning 31b: ja**, med to mekaniske spærringer —
+`brugere.skriv` kan ikke fjernes fra den sidste rolle der har den, eller fra
+ens egen. `rolleskriv` er vejen ind.
+
 - Hvordan inviteres en ny bruger? Mail med link, eller opretter I den?
 - Hvad sker der når en medarbejder holder op? Loginnet skal spærres, personen
   skal blive stående. Hvem gør det?
 
-### Opsætning → Integrationer
+### Opsætning → Integrationer — besvaret og bygget
 
-- Er skærmen en **liste over hvad der kommer**, et sted at **indtaste nøgler**,
-  eller en **statusside**? Der er ingen integrationer bygget.
-- Ærligste version: en liste med "kommer senere" og et sted at skrive sig op.
-  Det er bedre end en opdigtet konfigurationsside.
+**Besvaret i beslutning 22, bygget:** Skærmen viser **kun det der findes** —
+og der findes ingen integrationer endnu. Ingen opdigtet "kommer snart"-liste.
+Intet spørgsmål tilbage.
 
-### Opsætning → Idébank
+### Opsætning → Idébank — bortfaldet
 
-- Er den intern for jer, eller kan kunder se og stemme? En kunde der kan se sine
-  egne ønsker på et vejkort er stærk binding — og en forpligtelse.
-- Skal kilden på en idé (hvilken kunde) være synlig for andre kunder? Nej.
+**Besvaret i beslutning 22, udført i beslutning 31:** Idébanken er **fjernet
+fra kundens installation** — rute, skærm, permission og node. Den lever
+videre som jeres egen `idebank.html`, uden for produktet. Spørgsmålet om
+kundesynlighed er dermed bortfaldet, ikke besvaret.
 
 ---
 
@@ -119,7 +132,11 @@ En vognmand der går fra 8 til 14 biler skal kunne regne det ud selv.
 opbevarer bagefter.
 
 **"Kan mine chauffører bruge det uden at være computerfolk?"** Chaufførappen er
-det der afgør om platformen bliver brugt eller ligger død. Den er ikke bygget.
+det der afgør om platformen bliver brugt eller ligger død. ⚠ **Den ER
+bygget, delvist** (beslutning 103, 106, 107, 108) — turplan, indberetning,
+tidsregistrering og fraværsansøgning findes på `/app`. Det ubesvarede er
+ikke LÆNGERE om den findes, men hvor meget mere den skal kunne, og hvornår
+det skal prioriteres — se "De fem der bør besvares først".
 
 **"Virker det på min telefon?"** Skærmene er responsive, men de er designet til
 en skærm. En disponent på farten er en anden brug.
@@ -178,10 +195,16 @@ rimeligt. En escrow-aftale eller en dokumenteret overdragelsesplan er svaret.
 
 Fordi de blokerer andet arbejde:
 
-1. **Fakturering: motor eller grundlag?** Blokerer fase 2 og en af de ni skærme.
-2. **Live-kort: hvor kommer positionerne fra?** Blokerer skærmen og
-  chaufførappen.
-3. **Chaufførappen: hvornår?** Den afgør om platformen bruges eller kun ses.
+1. ~~Fakturering: motor eller grundlag?~~ **Besvaret i beslutning 22:
+  grundlag.** Tilbage: eksportformatet (e-conomic/Dinero/Billy/Navision) og
+  hvem der godkender.
+2. ~~Live-kort: hvor kommer positionerne fra?~~ **Besvaret i beslutning 22,
+  bygget som "Rute & status":** ingen GPS, chaufførens statusmeldinger.
+  Tilbage: retention på historikken, og om kunden må se det (kundeportal).
+3. **Chaufførappen: hvad mangler, og hvornår prioriteres det?** Turplan,
+  indberetning, tidsregistrering og fraværsansøgning findes allerede
+  (beslutning 103, 106–108) — appen er ikke tom. Spørgsmålet er ikke længere
+  OM den findes, men hvad næste skridt er, og hvornår.
 4. **Retention pr. datatype.** Blokerer en juridisk gennemgang I skal have
   alligevel.
 5. **Supportadgang: hvordan?** Det er svaret på det spørgsmål der koster mest at

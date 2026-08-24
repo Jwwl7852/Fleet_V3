@@ -8591,3 +8591,371 @@ Turplanen for tre dage siden: to stop med adresse, telefon og ordrelinje,
 *"2 tilbage · 0 færdige · 24 håndteringer"*. En melding sendt fra stop 1 landede
 i basen med **`stopId: "stop-1"`** og flyttede tallet til *"1 tilbage · 1
 færdige"* — stoppene og meldingerne er koblet hele vejen.
+
+## 111. Undtagelsen der modsagde de to filer den var lavet af
+
+Det åbne punkt fra 110: `uid-anders` er chaufførens pladsholder, og
+`demo-procure.js` skrev `anmoderId: "andersNielsen"` ved siden af den — en
+medarbejder der ikke findes i `DEMO_PERSONALE`. Skærmen ville have vist
+strengen "andersNielsen" rå, i stedet for et navn.
+
+### Referencen slap igennem fordi to prøver var uenige med koden selv
+
+`anmoderId` stod i `demo-referencer.test.mjs`s undtagelsesliste og i
+`referencetjek.test.mjs`s, begge med samme begrundelse: *"et login (uid),
+ikke en post nogen node bærer."* Det er forkert, og det stod skrevet ved
+siden af beviset på at det er forkert:
+
+- `functions/index.js`, tre linjer over feltet: *"⚠ personId, IKKE uid.
+  `anmoderId` er hvem behovet HANDLER OM — den medarbejder der mangler
+  noget. `oprettetAf` er hvem der gjorde det."*
+- `firebase.rules.json`, samme felt: *"⚠ HVEM DET HANDLER OM, IKKE HVEM DER
+  GJORDE DET. `anmoderId` er et personId; `oprettetAf` er et uid."*
+
+⚠ **En undtagelse skrevet mod feltets egen dokumentation blev aldrig læst
+igen.** Begge prøver eksisterer for at fange præcis den slags — et
+referencefelt uden eksistenstjek og uden en grund der holder. Her HAVDE
+feltet en grund; den var bare den forkerte, og ingen af prøverne kunne se
+det, fordi en tekststreng ikke kan modsige en kommentar i en anden fil.
+
+### Fem opdigtede navne, ikke ét
+
+Målt i `demo-procure.js`: **fem** distinkte `anmoderId`/`bestillerId`-værdier
+i camelCase-form, der ligner et `DEMO_PERSONALE`-id. Kun én — `metteSoerensen`
+— var det rent faktisk. De fire andre (`andersNielsen`, `larsPetersen`,
+`michaelHansen`, `mikkelLarsen`) pegede på ingen konto, ingen kompetence,
+ingen post nogen steder. Samme klasse fejl som `lager-hoved` mod `lag-kolding`
+i beslutning 92 — en id-konvention opfundet i den fil der PEGER, aldrig holdt
+op mod den node den peger på.
+
+### Rettelsen har tre lag, ikke ét
+
+⚠ **Reglen fik det eksistenstjek andre personId-felter allerede har.**
+`anmoderId` (indkøbsbehov) og `bestillerId` (indkøbsordrer) validerer nu
+`root.child(...).child('personale').child(newData.val()).exists()` — samme
+mønster som `personId` på `fravaer`, `stemplinger` og `reservationer`. Uden
+den ville feltet stadig kunne sættes til hvad som helst af enhver klient med
+`indkoeb.skriv`.
+
+⚠ **`FELT_NODE` i provisioner-dev.mjs fik de to felter**, mappet til
+`personale`. Det er samme katalog `demo-referencer.test.mjs` importerer under
+navnet `PEGER_PAA` — og som seedets egen modulfiltrering bruger til at nulle
+et felt der peger uden for en tenants moduler (beslutning 92/93). Før dette
+stod de to felter uden for begge mekanismer: ingen prøvede dem, og ingen
+tenant uden Bemanding ville få dem filtreret væk.
+
+⚠ **Og selve dataene blev rettet**, ikke bare undskyldt. De fire opdigtede
+navne er erstattet med rigtige `DEMO_PERSONALE`-id'er: `andersNielsen` →
+`larsAage` (samme binding som `uid-anders` allerede har andre steder i
+sættet — beslutning 103's `PERSON_FOR_ROLLE.chauffoer`), `larsPetersen` →
+`benjaminHolm` (lager), `michaelHansen` → `emilBrandt` (lager),
+`mikkelLarsen` → `kasperLykke` (mekaniker, på en ordre med bilruder).
+
+### Det var ikke en forglemmelse, det var en selvmodsigelse
+
+⚠ **Forskellen betyder noget for hvor man leder næste gang.** Et felt uden
+nogen begrundelse er synligt i en `git blame`; et felt med en begrundelse der
+er forkert, ser afgjort ud. `test/demo-referencer.test.mjs`s egen advarsel —
+*"en lint der springer noget over, siger ikke nej; den siger ingenting"* —
+gælder også en undtagelsesliste: den sagde noget, og det den sagde, var
+forkert. To filer havde allerede det rigtige svar, skrevet ned. Ingen prøve
+sammenlignede en tekst i `UDEN_MAAL` mod en kommentar i `functions/index.js`,
+og det er ikke noget en prøve kan gøre — kun noget en læsning kan.
+
+## 112. Sagsbaseret mail, skive 1 — fuldt specificeret, aldrig bygget
+
+Beslutning 20 var aldrig et åbent spørgsmål. Datamodellen, politikken
+(`fleet/sager.js`) og en fase-0-skærm (`Sagsvisning.jsx`) har stået i
+`ARKITEKTUR.md` siden — med 39 grønne tests af politikken alene. Det der
+manglede, var alt der rører databasen: `sager/` og `sensitive/sager/` stod
+ikke i `firebase.rules.json`, og derfor fandtes hverken permissions eller
+funktioner.
+
+Skive 1 lukker den halvdel der IKKE afhænger af et leverandørvalg.
+
+### Reglerne — ugated, som opgaver
+
+`sager` fik samme snit som `opgaver`: `art` er `fleet` | `facility`, og en
+node der hører til to moduler kan ikke gates af det ene uden at det andet går
+i stykker. `moduler.js`s liste over bevidst ugatede noder gik fra fire til
+fem. `sensitive/sager/$sagId` fik `.write` liggende på `$sagId`, ikke på
+noden — samme fejlklasse beslutning 53 rettede på de fire andre klassificerede
+satellitter.
+
+⚠ **`parter[]` blev en push-nøglet map, ikke et array.** En rå e-mailadresse
+kan ikke være en RTDB-nøgle — `@` og `.` er forbudte tegn — og en anden
+løsning ville have brudt mønstret hver eneste anden liste i regelfilen
+følger (`koeretoejIder`, `satser[]`): RTDB har ingen arrays.
+
+⚠ **To polymorfe referencer fik ingen eksistenstjek, med en grund.**
+`sager.objektId` og `aftaleforslag.ressourceId` afgøres af en TYPE
+(`objektType` hhv. `ressourceType`), og et fast opslag kan ikke skifte mål.
+Se `test/referencetjek.test.mjs`.
+
+⚠ **Og `opgaver.sagId`/`indberetninger.sagId` fik deres tjek — endelig.**
+Begge stod i regelfilen med kommentaren *"kommer når noden gør"*. Den dag
+kom.
+
+### Fem permissions, fordelt efter hvem der ARBEJDER sagen
+
+`sag.laes` og `sag.sensitiveLaes` er det femte par klassificerede
+læse-permissions (efter booking, kunder, køretøjer, fravær) — samme model,
+samme begrundelse: der er nu noget klassificeret at kontrastere mod.
+
+Fordelingen er ny og derfor et designvalg, ikke en måling:
+**casehandler og koordinator** får alle tre skrive-permissions (`sag.skriv`
+kræver `sag.sensitiveLaes` — man kan ikke skrive på en tråd man ikke må
+læse, samme bundt som `indberetninger.skriv`). **Disponenten** får kun
+`sag.laes` — samme snit som han allerede har på `indberetningerSensitiveLaes`:
+han skal vide AT bilen har en åben sag, ikke læse korrespondancen.
+**Koordinatoren alene** får `sag.karantaeneFrigiv` og `sag.aftaleBekraeft` —
+to vurderinger, ikke driftshandlinger, samme klasse som `bookingGodkend` og
+`grundlagGodkend`. **Revisor** fik `sag.laes` for ikke at miste den adgang
+tenant-medlemskab gav ham, inden feltet blev gated.
+
+### Fire funktioner, ingen af dem rører mail
+
+`sagOpret` sætter arten og udleder modulet af den, som `facilityplanlaeg`
+gør. `sagBeskedSkriv` skriver kun **udgående** beskeder — der er ingen
+modtagevej, så retningen er hardkodet, ikke et felt klienten sender.
+`sagKarantaeneFrigiv` og `sagAftaleBekraeft` kalder den SAMME politik som
+skærmen ville — `frigivKarantaene()` og `reservationFraAftale()` — importeret
+fra `sager.js`, kopieret til `functions/delt/` som resten af den delte
+politik.
+
+⚠ **`sagAftaleBekraeft` er bygget, men ikke nåelig endnu.** Den forudsætter
+et `aftaleforslag` i `sensitive/sager/`, og intet i skive 1 skriver ét — kun
+den (endnu ikke byggede) mail-udtrækning gør. Det er samme tilstand
+`opgaver`s fire veje ind stod i før den femte lukkede: en dør bygget før
+korridoren, klar til at blive brugt.
+
+### Og skærmen — det der IKKE blev gjort
+
+Planen var at koble `Sagsvisning.jsx` fra demo-tråden til den rigtige node.
+**Målt før det skete:** komponenten importeres ingen steder. Fase 0 byggede
+en fuldt færdig skærm og monterede den aldrig — `Vaerkstedskalender.jsx`s
+hændelsespanel har sin egen, separate visning af `sag.beskeder`, og de to har
+aldrig delt kode.
+
+At koble en skærm ingen kan nå, til rigtige data, ville løse et problem der
+ikke er det virkelige: HVOR sagsvisningen skal bo, og om den skal erstatte
+Værkstedskalenderens indbyggede panel eller leve ved siden af det, er en
+skærm-placering — samme slags spørgsmål som "seneste" i FLEET.md. Det
+besluttes ikke i forbifarten. Data-laget er klar; skærmen venter på et sted
+at bo.
+
+## 113. Et spørgsmål der allerede var besvaret — dokumentationen sagde noget andet
+
+Jeg stillede *"laver FleetControl fakturaen, eller producerer den et
+grundlag?"* fra `FleetControl-spoergsmaal.md`s liste over de fem mest
+blokerende spørgsmål, fordi dokumentet selv sagde det stod åbent. Ejeren
+svarede **grundlag** — og svaret var allerede givet.
+
+### Målt bagefter, burde være tjekket først
+
+**Beslutning 22 afgjorde præcis dette**, længe før i dag: *"Fakturering
+hedder Fakturagrundlag — FleetControl laver ikke den juridiske faktura."*
+Koden har fulgt den retning lige siden — `grundlag.js` (beslutning 25),
+momssatsen (98), adapterlaget (102) — og README's egen tabel over de fem
+resterende skærme siger det allerede, sort på hvidt: **"Afgjort i
+beslutning 22."** Det eneste der faktisk mangler på Fakturagrundlag, er et
+**systemspecifikt eksportformat** (e-conomic/Dinero/Business Central — ingen
+adapter findes med vilje, samme regel som en gættet momssats) og hvem der
+godkender.
+
+⚠ **Fejlen er min, ikke ejerens.** Jeg holdt spørgsmålet op mod
+`FleetControl-spoergsmaal.md` — som selv sagde spørgsmålet var åbent — og
+ikke mod `BESLUTNINGER.md` eller README, hvor svaret allerede stod. Samme
+klasse fejl som beslutning 54: en fil der ikke er opdateret, bliver læst som
+sandheden, og den næste (her: mig, i samme session) handler på den.
+
+### Rettelsen er dokumentet, ikke en ny beslutning
+
+`FleetControl-spoergsmaal.md`s "Del 1 — De ni skærme uden mockup" blev
+skrevet FØR beslutning 22 besvarede syv af de ni retningsspørgsmål og er
+ikke fulgt med. Rettet til at pege på beslutning 22 og README's tabel, og
+kun beholde de sub-spørgsmål der reelt er åbne endnu — se dokumentet selv.
+
+Ejerens svar i dag er derfor ikke en ny beslutning; det er en **bekræftelse**
+af en otte-en-halv-beslutning gammel retning, og den er noteret her netop
+fordi bekræftelsen er værd at have, selv når spørgsmålet var stillet forkert.
+
+## 114. Meldingen der ikke længere tabes uden forbindelse
+
+Chaufførappen har fire skærme (beslutning 103, 106, 107, 108) — endnu en
+påstand der stod forkert i dette repo: `Forside.jsx`s egen kommentar sagde
+"to er bygget, to er ikke" fra dengang det var sandt, og var aldrig rettet.
+Rettet i samme ombæring.
+
+### Ét sted var reelt skrøbeligt uden forbindelse
+
+Tre af appens skærme skriver direkte til databasen, hvor Firebase RTDB's
+klient selv holder styr på et kort afbrud. **`statusmelding` gør ikke** —
+det er et Cloud Function-kald, og fejler `fetch`, er meldingen væk, hvis
+ingen fanger den. Det er netop den tur beslutning 103 selv pegede på:
+
+> *"Køen er ikke bygget — appen er ikke offline — men modellen skal kunne
+> bære den, ellers skulle en kø opfinde feltet senere, og den gamle og den
+> nye model kunne ikke lægges sammen."*
+
+`klientId` var allerede nøglen på hver melding, netop af den grund.
+
+### `meldingskoe.js` — ren bogføring, ingen firebase
+
+Lægger en melding i en lokal kø når `kaldFunktion("statusmelding", …)`
+fejler af en forbindelsesgrund, og prøver den igen med SAMME `klientId`, når
+forbindelsen kommer tilbage — landing som samme post, ikke en ny.
+
+⚠ **En afvisning fra SERVEREN lægges ikke i køen.** `invalid-argument`,
+`permission-denied` og de øvrige HttpsError-koder betyder at meldingen NÅEDE
+frem og blev vurderet — en gensendelse ville få samme svar igen, og en kø
+der bliver ved med at prøve noget der aldrig kan lykkes, er ikke en kø, det
+er en løkke. Kun det der ligner et afbrud — ingen kode, `internal`,
+`unavailable`, eller `navigator.onLine === false` — lægges i køen.
+
+⚠ **Og en ventende melding tæller IKKE med i "færdige".** Serveren har ikke
+set den endnu, og det tal skal være målt, ikke gættet — samme regel som hele
+skærmen bygger på. Chaufføren ser i stedet en tredje tilstand, adskilt fra
+både "✓ Meldt" og knappen der beder om en melding: "⏳ Afsendt — venter på
+forbindelse". Banneret er informationens farve (`--fc-info`), ikke
+advarslens — der er intet at rette, kun at vente på.
+
+⚠ **Fejler skrivningen af selve køen** (localStorage fuldt, eller blokeret i
+et privat vindue), tabes meldingen på **samme** måde den gjorde FØR køen
+fandtes — ikke værre. En kastet undtagelse midt i et tryk på en knap ville
+være en regression; en stille fejl er den kendte, accepterede tilstand.
+
+10 tests i `test/meldingskoe.test.mjs`, uden emulator — samme snit som
+`sager.js`: ren politik, prøvet for sig.
+
+## 115. Retention pr. datatype — arkitekturen nu, sletningen aldrig endnu
+
+Retention var indtil i dag ét spørgsmål: "hvor længe gemmer vi audit-loggen."
+Jørn afviste den ramme, med en begrundelse der holder: FleetControl har
+langt flere datatyper end audit-posten alene, og en enkelt global grænse
+ville betyde at regnskabsdata (bogføringsloven: 5 år) og en helbredsoplysning
+i et fravær (GDPR: så kort som formålet tillader) fik samme tal — forkert
+for begge.
+
+Bestillingen var præcis: **fastlæg arkitekturen og datakategorierne nu; lad
+juraen validere de konkrete frister bagefter.** Og en skarp grænse for hvor
+langt det må gå i dag:
+
+> *"Byg ikke automatisk sletning eller egentlig anonymisering endnu. Det
+> aktiveres først, når konkrete frister og behandling pr. datatype er
+> valideret med revisor/GDPR-rådgiver."*
+
+### Fjorten kategorier, kortlagt til de noder der faktisk findes
+
+`src/fleet/retention-regler.js` — ét katalog, `RETENTION_KATEGORI`, samme
+form som `permissions.js`s `PERM` og `sager.js`s `SAG_ART`: label, princip,
+metode (anonymiser | slet | eksport-foerst), de RTDB-noder kategorien
+dækker, og om den overhovedet er bygget endnu.
+
+⚠ **Fire af de fjorten findes ikke i produktet.** GPS/positionsdata (beslutning
+22 forbyder det), AI-diagnosedata, supportdata og supportadgangslog (support
+er stadig fase 0/afventer, beslutning 23/24) står med tom nodeliste og
+`bygget: false`. Retention på noget der ikke findes, er ikke et hul — det er
+for tidligt at spørge om, og en prøve (`⚠ EN UBYGGET KATEGORI HAR EN TOM
+NODELISTE`) håndhæver at de to felter følges ad.
+
+⚠ **Auditloggens EGEN retention dupliceres ikke.** `audit-regler.js`s
+`RETENTION_MAANEDER`/`RETENTION_AFGJORT` er en ældre, allerede kørende
+mekanisme (`auditoprydning`). Kategorien `auditlog` i det nye katalog PEGER
+på den i stedet for at bygge den om — to steder med samme ansvar var
+præcis den slags drift beslutning 111 og 113 fandt i denne uge.
+
+⚠ **INGEN TAL. Hver kategori har `periodeMaaneder: null` og `afgjort:
+false`.** Samme disciplin som momssatsen (98): et gættet tal ser ud som et
+svar ingen gav. `test/retention-regler.test.mjs` afviser en kategori med et
+sat tal.
+
+### Legal hold — en aktiv undtagelse, ikke et fravær af data
+
+`tenants/<t>/retention/legalHold/<id>` er `.write: false`; `retentionLegalHold`
+er den eneste vej ind, og den kræver BÅDE `retention.laes` og
+`retention.skriv` — samme bundt som `sag.skriv` kræver `sag.sensitiveLaes`:
+man sætter ikke en undtagelse man ikke kan se.
+
+⚠ **`objekt`/`objektId` er polymorft, som `sager.objektId`.** Et hold kan
+sættes på hvilken som helst post i systemet — en booking under en tvist, en
+indberetning i en verserende sag — og et fast eksistenstjek kan ikke skifte
+mål. `test/referencetjek.test.mjs` har fået sin begrundelse.
+
+⚠ **Et ophævet hold beviser sig selv.** `ophaevetAf`/`ophaevetMs` sættes af
+serveren, aldrig ved at fjerne posten — en slettet undtagelse ville ikke
+kunne skelnes fra én der aldrig blev vurderet. Et allerede ophævet hold kan
+ikke ophæves igen (`failed-precondition`).
+
+### Dry-run — svarer på et spørgsmål uden at gøre noget ved svaret
+
+`simulerRetention(objekt, poster, { periodeMaaneder, tidsfelt }, holds, nu)`
+er en REN funktion: den regner, den rører intet. `periodeMaaneder` er en
+**hypotese kalderen selv angiver** — funktionen læser ikke katalogets
+`periodeMaaneder`, som er `null`. Det er sådan et tal kan afprøves ("hvad
+ville 36 måneder betyde for bookinger i dag?") længe før nogen har besluttet
+36.
+
+`retentionDryRun` er Cloud Function-hylsteret: henter de rigtige poster og
+alle legal holds for en kategori, kører simuleringen, og svarer med
+**tællinger og id'er — ikke de fulde poster.** En rapport der ligger i
+audit-loggen, skal ikke bære brødtekst eller skadebeskrivelser videre.
+
+### Hooks, ikke mekanisme
+
+`anonymiser()`, `eksporterFoerSletning()` og `slet()` findes som navngivne
+funktioner — stedet den fremtidige mekanisme kobles på — og **kaster hvis de
+kaldes**. Ingen stille no-op, ingen fristelse til at "bare lade den stå
+tom." `test/retention-funktioner.test.mjs` beviser desuden at ingen af de to
+byggede funktioner rører `.remove()`, `set(null)`, eller de tre hooks.
+
+### Brugerkontoen — deaktivering findes allerede, tidsstemplet gjorde ikke
+
+`spaerlogin` (beslutning 31) spærrede allerede et login og skrev `spaerret:
+true/false` — men intet tidspunkt. Retentionsarbejde kan ikke regne på "hvor
+længe har kontoen stået spærret" uden et **hvornår**. `spaerretMs` er
+tilføjet, sat kun af `spaerlogin`, og **bevaret** (ikke nulstillet) af
+`skiftrolle`, som ellers skriver hele indekset om ved hvert rollevalg.
+
+⚠ **Selve anonymiseringen af `personale`/`brugere` er IKKE bygget.** Jørns
+egen indvending holder: uden at vide om personen har godkendt en faktura,
+en booking eller en sikkerhedsrelevant handling, kan ingen sige hvad der må
+blive tilbage. Det spørgsmål besvares sammen med de øvrige frister.
+
+### Hvad der IKKE blev gjort, med vilje
+
+Ingen sletning. Ingen anonymisering. Ingen kunde-vendt "Opsætning → Data &
+retention"-skærm — den kræver tal at vise, og der er ingen endnu. Ingen
+policy-ID skrevet ind på de enkelte poster; kategorien afgøres i dag af
+HVILKEN NODE posten ligger i, hvilket rækker for alle fjorten, fordi ingen
+node i dag deler sig mellem to kategorier.
+
+29 nye tests (`retention-regler.test.mjs`, `retention-funktioner.test.mjs`),
+ingen af dem mod en emulator — samme disciplin som `sager.js`: politikken
+prøves for sig, uafhængigt af databasen den en dag skal virke imod.
+
+## 116. Stempling i fremtiden — samme fælde som stp-aaben løste, i den anden ende
+
+Et checkpoint-commit før beslutning 115's udrulning blokerede på
+pre-commit-hooken: `stp-tir` (tirsdagsvagten i `demo-stemplinger.js`) fejlede
+med *"Tidspunktet ligger i fremtiden."* Ikke en regression — en fælde der
+altid har ligget der, og som kun udløses på en bestemt ugedag.
+
+`paa(1, …)` regnede tirsdag i INDEVÆRENDE uge fra `UGESTART` (mandag kl. 00).
+Er i dag mandag — som den 24. august 2026 er — er "tirsdag i denne uge"
+i **morgen**. `valideStempling()` afviste den, korrekt: en lukket vagt må
+ikke ligge i fremtiden.
+
+Det er nøjagtig den fejlklasse `stp-aaben`s egen kommentar allerede
+beskriver, bare i den modsatte ende af ugen: dér var en ÅBEN vagt for gammel
+sent på ugen; her var en LUKKET vagt for ung tidligt på ugen.
+
+**Rettelsen:** de tre lukkede vagter (man/tir/ons→tor) regnes nu fra
+`FORRIGE_UGE`, ikke fra `UGESTART`. Forrige uge er unconditionally forbi,
+uanset hvilken dag suiten kører — samme greb som `stp-aaben` bruger
+`idagKl()` for at være unconditionally i dag. `reneThomsen`s to vagter havde
+samme fejl og fik samme rettelse. Den nu ubrugte `paa()` er fjernet.
+
+Fundet ved et checkpoint-commit, ikke ved retention-arbejdet selv — men
+opdaget fordi pre-commit-hooken nægtede at lade en kendt, urelateret fejl
+glide med. Det er hookens formål.

@@ -1619,11 +1619,13 @@ describe("klik-kortet på kalenderen", () => {
   });
 
   it("⚠ OG MAILS OG FOTOS ER IKKE TEGNET", () => {
-    /* Planchens "Relateret indhold" er beslutning 20, og den er fase 0:
-       sager/ staar ikke i firebase.rules.json. Et afsnit der sagde "3 mails"
-       uden at kunne aabne dem, ville vaere en attrap. Skaermen SIGER det. */
-    const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
-    assert.ok(!/"sager"/.test(regler), "sager/ findes nu — 6.21's forbehold skal opdateres");
+    /* Planchens "Relateret indhold" er beslutning 20. `sager/` fik sine
+       regler i beslutning 112 (skive 1) — men KUN for fleet/facility-arten,
+       ét felt (`objektId`) der peger på en OPGAVE. Et kasseudlån opretter
+       ingen sag og har intet objektId at pege med, så "Relateret indhold" er
+       stadig en attrap for DENNE skærm. Skive 2 (modtagevej, afsendelse) er
+       heller ikke bygget — der er derfor stadig intet at åbne. Skærmen
+       SIGER det. */
     assert.match(kal(), /Ingen mails og fotos endnu/);
   });
 

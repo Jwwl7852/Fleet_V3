@@ -143,6 +143,18 @@ export const DELTE_FILER = [
      Filen importerer permissions.js, som staar her i forvejen. Lukningen
      holder. */
   "brugere-regler.js",
+  /* ⚠ sager.js — beslutning 20/112. Den Cloud Function der modtager mail
+     (og de der frigiver en karantæne eller bekræfter et aftaleforslag), skal
+     bruge NØJAGTIG samme sagsnummerFraEmne() og vurderAfsender() som
+     skærmen — ellers kan en besked se accepteret ud ét sted og karantæneret
+     et andet. Filen importerer naesteNummer() fra booking-state.js, som
+     allerede står på listen. Lukningen holder. */
+  "sager.js",
+  /* ⚠ retention-regler.js — beslutning 115. `retentionLegalHold` og
+     `retentionDryRun` skal bruge NØJAGTIG samme simulerRetention() og
+     erUndtaget() som en fremtidig skærm ville vise — ingen firebase-imports,
+     lukningen er triviel (filen importerer ingenting). */
+  "retention-regler.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

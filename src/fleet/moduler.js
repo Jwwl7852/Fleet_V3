@@ -260,13 +260,16 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
    må ikke have den. Tilføjer nogen en node uden at tage stilling, fejler
    prøven — det er samme greb som nodelisten i rules.tenant.test.mjs.
 
-   ⚠ FIRE NODER STÅR MED VILJE UDEN FOR: opgaver, satser, fakturaer og
-   reservationer. De hører hver til FLERE moduler:
+   ⚠ FEM NODER STÅR MED VILJE UDEN FOR: opgaver, satser, fakturaer,
+   reservationer og sager. De hører hver til FLERE moduler:
 
      opgaver        art er `vaerksted` | `facility` (beslutning 21)
      satser         prisgrupper hører til Kunder, kalkulationsprisen til Booking
      fakturaer      ligger i Indkøb, men Økonomi læser dem
      reservationer  FIRE kilder mødes i den (beslutning 4)
+     sager          art er `fleet` | `facility` — samme snit som opgaver,
+                    og en værkstedssag hænger typisk på netop en opgave
+                    (beslutning 20/112)
 
    En node der hører til to moduler, kan ikke gates af det ene uden at det
    andet går i stykker. Alternativet — "har mindst ét af modulerne" — er en

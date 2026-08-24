@@ -20,8 +20,16 @@
  * ⚠ INGEN POSITION, INGEN SPORING. Beslutning 22 står. Rækkefølgen er planens,
  * ikke bilens, og "8 tilbage" er hvad han har meldt — ikke hvad en boks har
  * målt.
+ *
+ * ⚠ MELDINGEN TABES IKKE UDEN FORBINDELSE. `statusmelding` er et
+ * Cloud Function-kald, og et kald har ingenting af databasens egen
+ * genopkobling — fejler `fetch`, er meldingen væk, medmindre nogen fanger
+ * den. `meldingskoe.js` gør det: en melding der fejler af forbindelsen,
+ * lægges i en lokal kø og sendes igen med SAMME klientId, når forbindelsen
+ * kommer tilbage. Se noten i den fil — modellen har kunnet bære det siden
+ * beslutning 103.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
@@ -32,6 +40,9 @@ import {
   HAENDELSE, planlagteStop, meldingerFor, foreslaaedeMeldinger,
   byggMelding, valideMelding,
 } from "../../fleet/rutestatus.js";
+import {
+  laegIKoe, fjernFraKoe, koeIndhold, erForbindelsesfejl,
+} from "../../fleet/meldingskoe.js";
 import {
   STOP_ART, ordreListe, adresselinje, summerOrdrer, erNaaet,
   stopstatus,
@@ -50,6 +61,10 @@ export default function Turplan() {
   const [kvittering, setKvittering] = useState(null);
   const [fejl, setFejl] = useState(null);
   const [aabenStop, setAabenStop] = useState(null);
+  /* ⚠ KØEN LÆSES FRA localStorage VED MOUNT, ikke ved hver rendering — den
+     ændrer sig kun når VI ændrer den (laegIKoe/fjernFraKoe), aldrig af en
+     anden fane, så state er den rigtige kilde efter det første opslag. */
+  const [koe, setKoe] = useState(() => koeIndhold());
 
   const brugerListe = useListe("brugere", { vindue: "alle", graense: 500 });
   const minPersonId = brugerListe.data.find((b) => b.id === bruger?.uid)?.personId || null;
@@ -90,6 +105,40 @@ export default function Turplan() {
   /* ⚠ TOM LISTE → ID'ET RÅT, ikke en anklage. Beslutning 95. */
   const kundeNavn = (id) => kundeListe.data.find((x) => x.id === id)?.navn || id;
 
+  /* ⚠ ÉT KALD, TO STEDER DET BRUGES FRA — meld() for en ny melding,
+     floedKoe() for en gemt. Begge skal fejle på PRÆCIS samme måde, ellers
+     kunne en melding der virker herfra, fejle når den gensendes. */
+  async function send(etapeId, melding) {
+    await kaldFunktion("statusmelding", { etapeId, ...melding });
+  }
+
+  /** Prøver hver ventende melding igen, i den rækkefølge de blev meldt. */
+  async function floedKoe() {
+    for (const post of koeIndhold()) {
+      try {
+        await send(post.etapeId, post.melding);
+        fjernFraKoe(post.melding.klientId);
+        setKoe(koeIndhold());
+      } catch (e) {
+        if (erForbindelsesfejl(e)) return; // stadig ingen forbindelse — prøv resten senere
+        /* ⚠ SERVEREN AFVISTE DEN VED GENSENDELSEN. Den kan ikke sendes —
+           bliver den liggende, blokerer den resten af køen for evigt. */
+        fjernFraKoe(post.melding.klientId);
+        setKoe(koeIndhold());
+        setFejl(`En ventende melding kunne ikke sendes: ${e?.message || "ukendt fejl"}.`);
+      }
+    }
+    meldListe.genindlaes();
+  }
+
+  /* Prøv køen igen når forbindelsen kommer tilbage — og én gang ved åbning,
+     for en kø der blev liggende fra sidste besøg. */
+  useEffect(() => {
+    floedKoe();
+    window.addEventListener("online", floedKoe);
+    return () => window.removeEventListener("online", floedKoe);
+  }, []);
+
   async function meld(etape, stopId, type) {
     setFejl(null);
     setKvittering(null);
@@ -101,12 +150,23 @@ export default function Turplan() {
 
     setSender(true);
     try {
-      await kaldFunktion("statusmelding", { etapeId: etape.id, ...melding });
+      await send(etape.id, melding);
       setKvittering(`${HAENDELSE[type].label} sendt kl. ${klokke(melding.ms)}`);
       setAabenStop(null);
       meldListe.genindlaes();
     } catch (e) {
-      setFejl(e?.message || "Meldingen kunne ikke sendes.");
+      if (erForbindelsesfejl(e)) {
+        /* ⚠ IKKE TABT — GEMT. Samme klientId, så en senere gensendelse
+           lander som samme post og ikke som en ny. */
+        laegIKoe({ etapeId: etape.id, melding });
+        setKoe(koeIndhold());
+        setKvittering(
+          `${HAENDELSE[type].label} gemt — sendes automatisk når du har forbindelse igen.`
+        );
+        setAabenStop(null);
+      } else {
+        setFejl(e?.message || "Meldingen kunne ikke sendes.");
+      }
     } finally {
       setSender(false);
     }
@@ -161,6 +221,18 @@ export default function Turplan() {
 
       {kvittering && <p className="fc-app-kvittering">{kvittering}</p>}
       {fejl && <p className="fc-app-fejl">{fejl}</p>}
+
+      {/* ⚠ IKKE EN FEJL — EN VENTENDE TILSTAND. Meldingen er gemt, ikke
+          tabt; farven må ikke ligne "fejl", for der er intet at rette. */}
+      {koe.length > 0 && (
+        <p className="fc-app-koe">
+          ⏳ {koe.length} {koe.length === 1 ? "melding" : "meldinger"} venter på
+          forbindelse.
+          <button type="button" className="fc-btn fc-app-koe-knap" onClick={floedKoe}>
+            Prøv igen nu
+          </button>
+        </p>
+      )}
 
       <section className="fc-app-kort">
         <h2 className="fc-app-titel">Din turplan</h2>
@@ -219,6 +291,13 @@ export default function Turplan() {
 
             nr += 1;
             const naaet = erNaaet(s, meldinger);
+            /* ⚠ IKKE DET SAMME SOM naaet. Serveren har ikke set meldingen
+               endnu, så den tæller ikke med i status.naaet ovenfor — det tal
+               er MÅLT, ikke gættet. Men chaufføren skal se at hans tryk blev
+               fanget, ikke tro han skal trykke igen. */
+            const ventende = koe.some(
+              (p) => p.etapeId === etape.id && p.melding.stopId === s.id
+            );
             const art = STOP_ART[s.rolle];
             const ordrer = ordreListe(s.stop);
             const kort = s.stop || {};
@@ -274,6 +353,8 @@ export default function Turplan() {
                     melding på — se erNaaet() i stop.js. */}
                 {naaet ? (
                   <p className="fc-app-besoeg">✓ Meldt</p>
+                ) : ventende ? (
+                  <p className="fc-app-besoeg">⏳ Afsendt — venter på forbindelse</p>
                 ) : aabenStop === `${etape.id}-${s.id}` ? (
                   <div className="fc-app-knapper">
                     {foreslaaedeMeldinger(meldinger).slice(0, 4).map((type, n) => (

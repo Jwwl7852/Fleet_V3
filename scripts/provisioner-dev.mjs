@@ -472,6 +472,8 @@ export const FELT_NODE = {
   koeretoejIder: "koeretoejer",
   personId: "personale",
   ansvarligPersonId: "personale",
+  anmoderId: "personale",
+  bestillerId: "personale",
   lagerId: "lagre",
   leverandoerId: "leverandoerer",
   kundeId: "kunder",

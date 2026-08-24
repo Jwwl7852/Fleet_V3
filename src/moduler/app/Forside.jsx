@@ -6,8 +6,10 @@
  * ══════════════════════════════════════════════════════════════════════════
  *
  * Specifikationen har fire: Timeregistrering, Turplan, Indberetning og Anmod
- * om frihed. To af dem er bygget, to er ikke — og de to sidste står ikke som
- * grå kort med "kommer snart".
+ * om frihed. ⚠ ALLE FIRE ER NU BYGGET (beslutning 103, 106, 107, 108) — denne
+ * note sagde længe "to er ikke", fra dengang det var sandt. Reglen der gav
+ * den sætning mening, står stadig: et kort der IKKE fører et sted hen, tegnes
+ * ikke som et gråt "kommer snart"-kort.
  *
  * Det er beslutning 105's regel, én skærm længere inde: **en menu der mest
  * består af døre der ikke kan åbnes, er værre end ingen menu.** Et kort der
