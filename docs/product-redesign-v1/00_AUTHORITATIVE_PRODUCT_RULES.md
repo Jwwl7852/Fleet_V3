@@ -403,3 +403,25 @@ reservationsmekanisme. `PRIORITET.fravaer = 30` kræver ingen ændring.
 
 Hver delskive har sin EGEN Definition of Done, testcases og rollback —
 ikke den overordnede skives.
+
+## Skive 1 — godkendt, med én accepteret afvigelse
+
+**Status:** Skive 1 er gennemført og godkendt af ejeren. Commit `76251f1`
+("Skive 1: fjern vildledende demo/fase-0-overflader fra V1-navigationen")
+er den autoritative implementering.
+
+**Accepteret afvigelse fra den oprindelige Skive 1-spec:** LATER-skærmenes
+tidligere demo-/ufærdige implementation blev fjernet fra det aktive
+arbejdstræ og erstattet af ærlige placeholder-routes. Den tidligere
+implementation er bevaret i Git-historikken før commit `76251f1`, ikke som
+aktiv produktkode. Dette er accepteret og skal ikke gendannes.
+
+Dette afviger fra Skive 1-planens oprindelige "kode bevares"-formulering
+(05_IMPLEMENTATION_SLICES.md's Skive 1-afsnit, §Rollback-plan), som
+forudsatte at den gamle skærmkode blev stående bag et guard i selve
+filtræet. I praksis blev den erstattet helt, ikke maskeret — rollback sker
+derfor via `git revert`/historikken, ikke via at fjerne et guard i en
+stående fil. Fremtidige delskiver der "genindfører" en LATER-skærm (fx når
+Klima & energi eller Bemandingsplan får deres backend/opsætning færdig)
+starter derfor fra Git-historikken før `76251f1`, ikke fra en skjult,
+stående implementation i den nuværende kodebase.
