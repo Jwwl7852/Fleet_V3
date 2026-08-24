@@ -180,12 +180,18 @@ describe("kraeverPerm peger på noget der findes", () => {
 });
 
 describe("Hvad rollerne faktisk ser", () => {
+  /* ⚠ SKIVE 2A: ET TOPNIVEAUPUNKT KAN NU OGSÅ BÆRE kraeverPerm — se
+     AppShell.jsx's `synligeToppunkter`. Før i dag blev kun BØRN spurgt om
+     feltet her, fordi intet topniveaupunkt bar det; `fakturacenter` er det
+     første, og uden linjen herunder ville denne prøve tro Fakturaer & bilag
+     var synlig for en chauffør, som den reelt ikke er. */
   const synligeFor = (rolle) => {
     const perms = permStrengFraRolle(rolle);
     const born = (m) => (m.born || [])
       .filter((b) => !b.skjulINav)
       .filter((b) => !b.kraeverPerm || harPerm(perms, b.kraeverPerm));
     return NAV
+      .filter((m) => !m.kraeverPerm || harPerm(perms, m.kraeverPerm))
       .filter((m) => !m.born?.length || born(m).length)
       .flatMap((m) => (m.born?.length ? born(m) : [m]));
   };

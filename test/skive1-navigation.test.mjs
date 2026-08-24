@@ -43,14 +43,18 @@ const SKJULT_I_SKIVE_1 = [
   "/support/overblik", "/support/sag/:id",
 ];
 
-/* ⚠ DEN SAMME `synligeBorn()`-LOGIK SOM AppShell.jsx — ikke en tilnærmelse.
-   En gruppe forsvinder kun hvis INGEN af dens børn er synlige. */
+/* ⚠ DEN SAMME `synligeBorn()`/`synligeToppunkter`-LOGIK SOM AppShell.jsx —
+   ikke en tilnærmelse. En gruppe forsvinder kun hvis INGEN af dens børn er
+   synlige, og siden Skive 2A kan et topniveaupunkt UDEN børn også selv bære
+   `kraeverPerm` (fakturacenter) — se AppShell.jsx's kommentar om
+   `synligeToppunkter`. */
 const synligeFor = (rolle) => {
   const perms = permStrengFraRolle(rolle);
   const born = (m) => (m.born || [])
     .filter((b) => !b.skjulINav)
     .filter((b) => !b.kraeverPerm || harPerm(perms, b.kraeverPerm));
   return NAV
+    .filter((m) => !m.kraeverPerm || harPerm(perms, m.kraeverPerm))
     .filter((m) => !m.born?.length || born(m).length)
     .flatMap((m) => (m.born?.length ? born(m) : [m]));
 };

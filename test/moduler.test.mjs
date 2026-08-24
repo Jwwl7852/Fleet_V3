@@ -64,15 +64,38 @@ describe("modulkataloget svarer til menuen", () => {
     }
   });
 
+  /* ⚠ FAKTURAER & BILAG ER MED VILJE UDEN MODUL — Skive 2A. Se punktets
+     egen kommentar i nav.js: `fakturaer/` har bevidst ingen modulklausul, så
+     en kunde UDEN Økonomi-modulet stadig kan se sine fakturaer gennem
+     Procures linse (beslutning 86). Adgangen afgøres udelukkende af
+     `kraeverPerm: "indkoeb.laes"` — en prøve for netop det står i
+     navadgang.test.mjs. Dette er IKKE en glemt modulklausul; det er samme
+     bevidste undtagelse som noden selv har i firebase.rules.json. */
+  const UDEN_MODUL_MED_GRUND = new Set(["fakturacenter"]);
+
   it("hvert HOVEDpunkt har et modul", () => {
     /* Et menupunkt uden modul kan ikke sælges — og kan heller ikke skjules
        for den kunde der ikke har købt det. Det gælder topniveauet, som
-       AppShell filtrerer på `m.key`; et BARN filtreres på `kraeverModul`,
-       og det har sin egen prøve længere nede. */
+       AppShell filtrerer på `m.kraeverModul || m.key` (Skive 2A — se
+       AppShell.jsx); et BARN filtreres på `kraeverModul`, og det har sin
+       egen prøve længere nede. */
     const modulNav = new Set(ALLE_MODULER.map((m) => MODUL[m].navKey));
     for (const m of NAV) {
+      if (UDEN_MODUL_MED_GRUND.has(m.key)) continue;
       assert.ok(modulNav.has(m.key) || ALLE_MODULER.includes(m.key),
         `menupunktet "${m.key}" har intet modul`);
+    }
+  });
+
+  it("⚠ UDEN_MODUL_MED_GRUND STÅR IKKE FOR EVIGT", () => {
+    /* Hver undtagelse skal pege på et punkt der faktisk findes, og faktisk
+       mangler et modul — ellers samler listen sig med aftaler ingen læser. */
+    for (const k of UDEN_MODUL_MED_GRUND) {
+      const punkt = NAV.find((m) => m.key === k);
+      assert.ok(punkt, `UDEN_MODUL_MED_GRUND peger på "${k}", som ikke findes i NAV`);
+      const modulNav = new Set(ALLE_MODULER.map((m) => MODUL[m].navKey));
+      assert.ok(!modulNav.has(k) && !ALLE_MODULER.includes(k),
+        `"${k}" har fået et modul — fjern undtagelsen`);
     }
   });
 

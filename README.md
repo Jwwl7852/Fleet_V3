@@ -300,7 +300,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **130 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **131 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -539,19 +539,28 @@ Procures fire nye skærme ikke fandtes — og så voksede produktet fra dem.
 der fører til ingenting). `test/dokumentation.test.mjs` fejler hvis rækkerne
 herunder ikke passer med katalogets.
 
+Skive 2A (V1-redesign) grupperer disse i sidebaren under fire overskrifter —
+Fælles, Driftsmoduler, Administration, Hjælp — men grupperingen er et
+render-lag i `AppShell.jsx` (`gruppe`-feltet pr. punkt), ikke en ny
+node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
+(tidligere børn under hhv. Opsætning og Økonomi & Rapporter) med samme
+`kraeverModul`/`kraeverPerm` og samme rute som før — kun menupladsen flyttede.
+
 | Modul | Skærme | |
 |---|---|---|
 | Dashboard | 1 | referencemodulet — start her når du skriver et nyt |
+| Kunder | 1 | Skive 2A: flyttet ud af Opsætning til en fælles arbejdsindgang. Samme `kraeverModul: "kunder"` |
+| Fakturaer & bilag | 1 | Skive 2A: flyttet ud af Økonomi & Rapporter. Samme rute og samme `kraeverPerm: "indkoeb.laes"` — overgangstilstand, se nav.js |
+| Økonomi / Fakturagrundlag | 2 | heraf Overblik som skjult detaljerute (V1: LATER). Fakturacenter er flyttet til Fælles > Fakturaer & bilag |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
-| Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Fleet | 3 | heraf Arbejdskø som skjult detaljerute |
 | Facility | 3 | heraf Klima & energi som skjult detaljerute (V1: LATER) |
 | Procure | 7 | Overblik, Behov, Bestillinger, Godkendelser, Fakturaer, Leverandører, Varelager |
-| Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
 | Warehouse | 11 | modulet med flest skærme |
-| Økonomi & Rapporter | 3 | heraf Overblik som skjult detaljerute (V1: LATER); **Fakturacenter** er indgangen |
-| Support | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER) |
+| Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
+| Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
+| Opsætning | 9 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles |
+| Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
 | **I alt** | **54** | **45 i menuen, 9 skjulte detaljeruter** |
 
 | | |

@@ -164,7 +164,14 @@
   padding:7px 0; border-radius:6px; font:inherit; font-weight:600; font-size:var(--fc-t-m)}
 .fc-div button[aria-pressed="true"]{background:var(--bc-accent); color:#fff}
 
-.fc-nav{display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto}
+.fc-nav{display:flex; flex-direction:column; gap:0; flex:1; overflow-y:auto}
+/* ⚠ SKIVE 2A — GRUPPEOVERSKRIFTER. Genbruger #9aa7b8 og --fc-t-tight, som
+   allerede står i FORVENTEDE_RAA_FARVER/tokenlisten (test/design-tokens) —
+   ingen ny farve, ingen nyt token. */
+.fc-nav-gruppe-blok{display:flex; flex-direction:column; gap:2px}
+.fc-nav-gruppe{padding:14px 10px 4px; font-size:var(--fc-t-tight); font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:#9aa7b8}
+.fc-nav-gruppe-blok:first-child .fc-nav-gruppe{padding-top:2px}
 .fc-link{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
   color:#c3ccda; text-decoration:none; font-size:var(--fc-t-m); font-weight:500}
 .fc-link:hover{background:var(--fc-navy-2); color:#fff}
@@ -282,6 +289,8 @@
   .fc-app{flex-direction:column}
   .fc-side{position:static; height:auto; width:100%; flex:none}
   .fc-nav{flex-direction:row; overflow-x:auto; flex:none}
+  .fc-nav-gruppe-blok{flex-direction:row}
+  .fc-nav-gruppe{display:none}
   .fc-link{white-space:nowrap}
   .fc-sub,.fc-foot{display:none}
   .fc-top,.fc-slot{padding-left:16px; padding-right:16px}

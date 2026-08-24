@@ -9,8 +9,8 @@
 import { Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
-import { findModul, findHovedmodul, NAV } from "./nav.js";
-import { harModul } from "./moduler.js";
+import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL } from "./nav.js";
+import { harModul, MODUL } from "./moduler.js";
 import { harPerm } from "./permissions.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
@@ -87,6 +87,11 @@ const ICO = {
      fjernet, er en rest ingen opdager — idébanken efterlod netop sådan en
      (beslutning 22), og prøven `har ingen ikoner tilovers` fandt den her. */
   oekonomi: "M4 20V10m5 10V4m5 16v-7m5 7V8",
+  /* Skive 2A: kunderOversigt og fakturacenter er topniveaupunkter nu, ikke
+     børn — se nav.js's hoved. Begge har derfor brug for deres eget ikon her,
+     ellers tegnes de uden (se prøven "hvert menupunkt har et ikon"). */
+  kunderOversigt: "M2 10l10-7 10 7M4 10V21h16V10M9 21v-6h6v6",
+  fakturacenter: "M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h3",
   support: "M12 18h.01M12 14a2.5 2.5 0 1 0-2.5-2.5M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20",
   opsaetning: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9a2 2 0 1 1 0 4",
 };
@@ -109,6 +114,27 @@ export default function AppShell() {
     .filter((b) => !b.skjulINav)
     .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
     .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
+
+  /* ⚠ SKIVE 2A: ET TOPNIVEAUPUNKT KAN NU OGSÅ VÆRE SPÆRRET, IKKE KUN ET
+     BARN. Før i dag blev kun `synligeBorn()` spurgt om `kraeverModul`/
+     `kraeverPerm` — ethvert topniveaupunkt blev tegnet, fordi intet af dem
+     bar felterne. `kunderOversigt` (kraeverModul) og `fakturacenter`
+     (kraeverPerm) er de to FØRSTE topniveaupunkter uden `born` der gør, og
+     uden udvidelsen her ville Fakturaer & bilag stå åben for en chauffør,
+     som ikke har `indkoeb.laes` — se nav.js's hoved.
+
+     ⚠ OG `m.key` ER IKKE ALTID ET MODULNAVN. Før i dag var det altid sandt
+     — hvert topniveaupunkts key VAR modulets — men `fakturacenter` er med
+     vilje UDEN modulklausul (samme grund som noden selv i
+     firebase.rules.json, se nav.js). `m.kraeverModul || m.key` ville have
+     brugt "fakturacenter" som et påstået modulnavn, og `harModul()` fejler
+     LUKKET på et ukendt navn — punktet ville forsvinde for ALLE, uanset
+     moduler. `modulNavn()` spørger derfor kun MODUL-kataloget, ikke NAV. */
+  const modulNavn = (m) => m.kraeverModul || (MODUL[m.key] ? m.key : null);
+  const synligeToppunkter = NAV
+    .filter((m) => { const n = modulNavn(m); return !n || harModul(moduler, n); })
+    .filter((m) => !m.kraeverPerm || harPerm(bruger?.perms, m.kraeverPerm))
+    .filter((m) => !m.born?.length || synligeBorn(m).length);
 
   return (
     <>
@@ -139,51 +165,67 @@ export default function AppShell() {
                 en andens. At kunder ikke kan nå hinandens data er en helt
                 anden mekanisme: auth.token.tenant === $tenantId i hver regel,
                 prøvet på hver node i begge retninger. De to må ikke forveksles.
-                Se fleet/moduler.js. */}
-            {NAV.filter((m) => harModul(moduler, m.key))
-              /* ⚠ OG ET TOPPUNKT HVIS BØRN ALLE ER SKJULT, TEGNES IKKE —
-                 beslutning 105. En chauffør mangler `indkoeb.laes`, og så er
-                 alle syv Procure-punkter væk; blev overskriften stående,
-                 førte den til en afvist læsning og lovede seks punkter der
-                 ikke fandtes. Et punkt UDEN børn (Dashboard) er upåvirket. */
-              .filter((m) => !m.born?.length || synligeBorn(m).length)
-              .map((m) => {
-              const aktiv = hoved.key === m.key;
-              /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
-                 DEN SAMME. `skjulINav` er en detaljerute uden egen plads i
-                 menuen (/booking/forslag/:id). `kraeverModul` er et punkt der
-                 ligger under ET modul, men laeser EN ANDENS node — Enheder
-                 under Opsaetning laeser `koeretoejer`, som er modulspaerret
-                 paa `flaade` i reglerne. Opsaetning kan ikke fravaelges, saa
-                 uden det led ville en kunde uden Fleet faa et menupunkt der
-                 aabner en afvist laesning i sin egen opsaetning.
-                 Ruten findes stadig — det er menuen der tier, ikke adgangen
-                 der aendres. Se nav.js og moduler.js. */
-              /* ⚠ OG EN TREDJE GRUND — beslutning 105. `kraeverPerm` er et
-                 punkt hvis EMNE er spærret for brugeren: efter beslutning 104
-                 kræver ti noder en læse-permission, og en chauffør havde
-                 **18 af 59 skærme** med mindst én afvist læsning. Menuen tier;
-                 ruten findes uændret, og skærmen svarer med en afvisning hvis
-                 man taster stien. Håndhævelsen ligger i reglerne. */
-              const born = synligeBorn(m);
+                Se fleet/moduler.js.
+
+                ⚠ OG ET PUNKT HVIS BØRN ALLE ER SKJULT, TEGNES IKKE —
+                beslutning 105. En chauffør mangler `indkoeb.laes`, og så er
+                alle syv Procure-punkter væk; blev overskriften stående,
+                førte den til en afvist læsning og lovede seks punkter der
+                ikke fandtes. Et punkt UDEN børn (Dashboard) er upåvirket.
+                Se `synligeToppunkter` ovenfor.
+
+                ⚠ GRUPPEOVERSKRIFTERNE (Skive 2A) ER ET RENDER-LAG, IKKE EN
+                NY FILTRERINGSREGEL. `synligeToppunkter` er allerede den
+                fulde, filtrerede liste; grupperingen herunder bestemmer kun
+                HVOR i sidebaren hvert punkt tegnes. En gruppe uden et eneste
+                synligt punkt får ingen overskrift — se GRUPPE_ORDEN i
+                nav.js. */}
+            {GRUPPE_ORDEN.map((gruppe) => {
+              const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
+              if (!punkter.length) return null;
               return (
-                <div key={m.key}>
-                  <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}>
-                    <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d={ICO[m.key]} />
-                    </svg>
-                    <span>{m.label}</span>
-                  </NavLink>
-                  {aktiv && born.length > 1 && (
-                    <div className="fc-sub">
-                      {born.map((b) => (
-                        <NavLink key={b.key} to={b.sti} end
-                                 className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
-                          {b.label}
+                <div key={gruppe} className="fc-nav-gruppe-blok">
+                  <div className="fc-nav-gruppe">{GRUPPE_LABEL[gruppe]}</div>
+                  {punkter.map((m) => {
+                    const aktiv = hoved.key === m.key;
+                    /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
+                       DEN SAMME. `skjulINav` er en detaljerute uden egen plads i
+                       menuen (/booking/forslag/:id). `kraeverModul` er et punkt der
+                       ligger under ET modul, men laeser EN ANDENS node — Enheder
+                       under Opsaetning laeser `koeretoejer`, som er modulspaerret
+                       paa `flaade` i reglerne. Opsaetning kan ikke fravaelges, saa
+                       uden det led ville en kunde uden Fleet faa et menupunkt der
+                       aabner en afvist laesning i sin egen opsaetning.
+                       Ruten findes stadig — det er menuen der tier, ikke adgangen
+                       der aendres. Se nav.js og moduler.js. */
+                    /* ⚠ OG EN TREDJE GRUND — beslutning 105. `kraeverPerm` er et
+                       punkt hvis EMNE er spærret for brugeren: efter beslutning 104
+                       kræver ti noder en læse-permission, og en chauffør havde
+                       **18 af 59 skærme** med mindst én afvist læsning. Menuen tier;
+                       ruten findes uændret, og skærmen svarer med en afvisning hvis
+                       man taster stien. Håndhævelsen ligger i reglerne. */
+                    const born = synligeBorn(m);
+                    return (
+                      <div key={m.key}>
+                        <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}>
+                          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d={ICO[m.key]} />
+                          </svg>
+                          <span>{m.label}</span>
                         </NavLink>
-                      ))}
-                    </div>
-                  )}
+                        {aktiv && born.length > 1 && (
+                          <div className="fc-sub">
+                            {born.map((b) => (
+                              <NavLink key={b.key} to={b.sti} end
+                                       className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
+                                {b.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

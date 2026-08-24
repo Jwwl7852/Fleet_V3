@@ -8,16 +8,106 @@
  * Lastbiler/Fleet Management, Booking/Booking), så de er væk.
  *
  * `legacy` bevarer de stier der findes deployet i dag, som redirects.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * SKIVE 2A (V1-redesign) — GRUPPEOVERSKRIFTER, IKKE EN NY MEKANISME.
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Hvert topniveaupunkt bærer nu et `gruppe`-felt (`faelles` | `drift` |
+ * `admin` | `hjaelp`). AppShell render'er én overskrift pr. gruppe i
+ * `GRUPPE_ORDEN`s rækkefølge, og punkterne INDEN i en gruppe i den
+ * rækkefølge de allerede står i `NAV` — grupperingen er et RENDER-lag oven
+ * på den eksisterende flade liste, ikke en ny node/permission/regel.
+ * `kraeverModul` og `kraeverPerm` er UÆNDREDE mekanismer: de får blot flere
+ * punkter at stå på (se `kunderOversigt` og `fakturacenter` nedenfor, som nu
+ * er TOPNIVEAUPUNKTER uden `born`, ligesom Dashboard).
+ *
+ * ⚠ ET TOPNIVEAUPUNKT UDEN BØRN KAN OGSÅ VÆRE SPÆRRET. Før i dag filtrerede
+ * AppShell kun BØRN på `kraeverPerm`/`kraeverModul` — et topniveaupunkt uden
+ * `born` blev altid tegnet. Det holdt, så længe intet topniveaupunkt bar et
+ * af felterne. `kunderOversigt` (kraeverModul) og `fakturacenter`
+ * (kraeverPerm) er de to FØRSTE der gør, og AppShell.jsx er derfor udvidet
+ * til at spørge om begge felter på ALLE topniveaupunkter — se filens egen
+ * kommentar. Uden den udvidelse ville Fakturaer & bilag stå åben for en
+ * chauffør, som ikke har `indkoeb.laes` — præcis den eksponering
+ * beslutning 105 findes for at forhindre.
+ *
+ * ⚠ FAKTURAER & BILAG ER EN BEVIDST OVERGANGSTILSTAND. Målplanen
+ * (02_TARGET_NAVIGATION.md) erstatter `kraeverPerm: "indkoeb.laes"` med en
+ * ny, delt permission-familie (`fakturaer.laes`/`.skriv`/`.godkend`) — det
+ * er PERMISSION_MODEL-arbejde og hører til en senere delskive. Skive 2A
+ * FLYTTER kun menupunktet; adgangen er UÆNDRET (samme `kraeverPerm`, samme
+ * rute `/oekonomi/fakturacenter`), så punktet er hverken bredere eller
+ * smallere tilgængeligt end før flytningen.
+ *
+ * ⚠ RUTERNE ER MED VILJE UÆNDREDE I DENNE SKIVE. Målplanen foreslår nye
+ * kanoniske stier (`/kunder`, `/fakturaer`) — de er IKKE indført her.
+ * "Kun den strukturelle navigation" betyder at kun HVOR et punkt står i
+ * træet flytter, ikke dets URL. Eksisterende links til `/opsaetning/kunder`
+ * og `/oekonomi/fakturacenter` virker derfor uændret, uden en ny REDIRECTS-
+ * indgang.
+ *
+ * ⚠ SKIVE 1's HIDE/LATER-BESLUTNINGER RØRES IKKE. `skjulINav: true` på
+ * `oekonomiOversigt`, `bemandingPlan`, `klima`, `integrationer`,
+ * `supportOverblik` står uændret.
  */
+
+/** Fast rækkefølge for gruppeoverskrifterne i sidebaren. */
+export const GRUPPE_ORDEN = ["faelles", "drift", "admin", "hjaelp"];
+
+/** Overskriftstekst pr. gruppe. */
+export const GRUPPE_LABEL = {
+  faelles: "Fælles",
+  drift: "Driftsmoduler",
+  admin: "Administration",
+  hjaelp: "Hjælp",
+};
 
 export const NAV = [
   {
     key: "dashboard", sti: "/", label: "Dashboard", titel: "Dashboard",
-    under: "Operativt overblik og økonomi",
+    under: "Operativt overblik og økonomi", gruppe: "faelles",
+  },
+  /* ⚠ KUNDER STOD SOM ET BARN UNDER OPSÆTNING (se historikken i git og i
+     04_DATA_AND_PERMISSION_IMPACT.md) — kundekartoteket er stamdata, men
+     bruges dagligt på tværs af Planning, Procure og Warehouse, og hørte
+     derfor til blandt de fælles arbejdsindgange, ikke gemt i opsætningen.
+     `kraeverModul: "kunder"` er UÆNDRET: samme kommercielle gate som før,
+     kun menupladsen flyttede. Standardpriser og Kundepriser BLIVER stående
+     under Opsætning i denne skive — at flytte dem kræver en fane på
+     kundens profil (matrix-# 48), som er en senere MERGE/FINISH-opgave. */
+  {
+    key: "kunderOversigt", sti: "/opsaetning/kunder", label: "Kunder",
+    kraeverModul: "kunder", gruppe: "faelles",
+    titel: "Kunder", under: "Kundekartotek og aftaler.",
+  },
+  /* ⚠ FAKTURAER & BILAG — se filens hoved om overgangstilstanden.
+     `kraeverPerm: "indkoeb.laes"` er UÆNDRET fra dengang punktet hed
+     "Fakturacenter" og lå under Økonomi & Rapporter. */
+  {
+    key: "fakturacenter", kraeverPerm: "indkoeb.laes", sti: "/oekonomi/fakturacenter",
+    label: "Fakturaer & bilag", gruppe: "faelles",
+    titel: "Fakturaer & bilag",
+    under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
+  },
+  {
+    key: "oekonomi", sti: "/oekonomi/fakturering", label: "Økonomi / Fakturagrundlag",
+    titel: "Økonomi / Fakturagrundlag", gruppe: "faelles",
+    under: "Faktureringsgrundlag på tværs af drift og opgaver — det vi SENDER.",
+    born: [
+      { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik", skjulINav: true,
+        titel: "Økonomi & Rapporter",
+        under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
+      /* ⚠ FAKTURACENTERET ER FLYTTET UD — se Fælles > Fakturaer & bilag
+         ovenfor. Fakturering er nu ENESTE synlige barn i denne gruppe, og
+         bærer derfor det navn gruppen selv går under. */
+      { key: "fakturering", kraeverPerm: "grundlag.laes", sti: "/oekonomi/fakturering", label: "Fakturagrundlag",
+        titel: "Fakturagrundlag", under: "Opgaver klar til fakturering — det vi SENDER" },
+    ],
   },
   {
     key: "booking", sti: "/booking", label: "Planning",
-    titel: "Planning",
+    titel: "Planning", gruppe: "drift",
     under: "Fra forespørgsel til udført arbejde, dokumentation og fakturering.",
     born: [
       { key: "bookingOversigt", sti: "/booking", label: "Alle opgaver",
@@ -38,18 +128,6 @@ export const NAV = [
     ],
   },
   {
-    key: "bemanding", sti: "/bemanding/kompetencer", label: "Workforce", titel: "Workforce",
-    under: "Overblik over bemanding og kapacitet",
-    born: [
-      { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan", skjulINav: true,
-        titel: "Workforce", under: "Overblik over bemanding og kapacitet" },
-      { key: "kompetencer", sti: "/bemanding/kompetencer", label: "Kompetencer",
-        titel: "Kompetencer & certifikater", under: "Gyldighed, udløb og påmindelser" },
-      { key: "fravaer", sti: "/bemanding/fravaer", label: "Ferie & fravær",
-        titel: "Ferie & fravær", under: "Fravær blokerer chaufføren i disponeringen" },
-    ],
-  },
-  {
     /* ⚠ FLEET ER DE TO DRIFTSSKÆRME — ENHEDER LIGGER UNDER OPSÆTNING.
        Menuen skal kun vise det personalet ARBEJDER i. Enhedskartoteket er
        stamdata: en bil oprettes én gang og røres sjældent igen, mens
@@ -64,7 +142,7 @@ export const NAV = [
        fjernet fra HVER side, og et flag der altid er sandt, er en mekanisme
        uden variation. Se AppShell. */
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
-    under: "Driftskalender og indberetninger",
+    under: "Driftskalender og indberetninger", gruppe: "drift",
     /* ⚠ HER STOD `udenDivision: true` — flaget der slog Gods/Bus-vaelgeren fra
        for netop dette modul, fordi beslutning 19 forbyder division paa
        `personale/` og `koeretoejer/`, og knappen derfor ville skifte en
@@ -102,6 +180,7 @@ export const NAV = [
   {
     key: "facility", sti: "/facility", label: "Facility", titel: "Facility – overblik, fejl & klima",
     under: "Registrér fejl, planlæg reparationer, overvåg klima og dokumentér drift.",
+    gruppe: "drift",
     born: [
       { key: "facilityOversigt", sti: "/facility", label: "Overblik & fejl",
         titel: "Facility – overblik, fejl & klima",
@@ -116,7 +195,7 @@ export const NAV = [
   },
   {
     key: "indkoeb", sti: "/indkoeb", label: "Procure", titel: "Procure & vareforbrug",
-    under: "Registrér indkøb og tilknyt fakturaer og rapportering.",
+    under: "Registrér indkøb og tilknyt fakturaer og rapportering.", gruppe: "drift",
     born: [
       { key: "indkoebOversigt", kraeverPerm: "indkoeb.laes", sti: "/indkoeb", label: "Procure & vareforbrug",
         titel: "Procure & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
@@ -150,35 +229,8 @@ export const NAV = [
     ],
   },
   {
-    key: "unitbooking", sti: "/unitbooking", label: "Unitbooking", titel: "Unitbooking",
-    under: "Transportkasser, reolpladser og udlån",
-    born: [
-      /* ⚠ KASSELISTEN ER FLYTTET TIL OPSAETNING (planche 1, UNITBOOKING.md
-         6.1). Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
-         hvor Kasser laa — samme snit som da Driftskalenderen overtog /flaade,
-         da Enheder gik til Opsaetning. /unitbooking/kalender lever videre som
-         redirect, saa et bogmaerke ikke doer af en menuomlaegning.
-         ⚠ Reolpladser BLIVER staaende her, og det er ikke en forglemmelse:
-         noden deles med Warehouse, og `kraeverModul` tager EEN streng. Under
-         Opsaetning med "unitbooking" ville hylderne forsvinde for en kunde
-         der kun har WMS — praecis den faelde `reolpladser.skriv` lukkede. */
-      { key: "unitbookingKalender", sti: "/unitbooking", label: "Kalender",
-        titel: "Unitbooking – kalender",
-        under: "Kasser × dage, og listen over hvad der skal ud og hjem" },
-      { key: "kasseudlaan", sti: "/unitbooking/udlaan", label: "Udlån",
-        titel: "Unitbooking – udlån",
-        under: "Søg ledige i periode, reservér, klargør, udlevér og modtag retur" },
-      { key: "unitbookingHistorik", sti: "/unitbooking/historik", label: "Historik",
-        titel: "Unitbooking – historik",
-        under: "Hvor har kassen været, og hvilke kasser var med på sagen" },
-      { key: "reolpladser", sti: "/unitbooking/reolpladser", label: "Reolpladser",
-        titel: "Unitbooking – reolpladser & kassetyper",
-        under: "Hal, reol, fag, hylde og plads. Navnet udledes af felterne." },
-    ],
-  },
-  {
     key: "warehouse", sti: "/warehouse", label: "Warehouse", titel: "Warehouse",
-    under: "Lagerhotel: kundens varer, lokationer og bevægelser",
+    under: "Lagerhotel: kundens varer, lokationer og bevægelser", gruppe: "drift",
     born: [
       { key: "warehouseVarer", sti: "/warehouse", label: "Varer",
         titel: "Warehouse – varer", under: "Kundens varekartotek, enheder og sporing" },
@@ -236,53 +288,47 @@ export const NAV = [
     ],
   },
   {
-    key: "oekonomi", sti: "/oekonomi/fakturacenter", label: "Økonomi & Rapporter",
-    titel: "Økonomi & Rapporter",
-    under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver.",
+    key: "unitbooking", sti: "/unitbooking", label: "Unitbooking", titel: "Unitbooking",
+    under: "Transportkasser, reolpladser og udlån", gruppe: "drift",
     born: [
-      { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik", skjulINav: true,
-        titel: "Økonomi & Rapporter",
-        under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
-      /* ⚠ NODEN ER FAELLES — SKAERMEN HOERER TIL ØKONOMI-MODULET.
-         De to er ikke det samme, og forskellen blev maalt frem for antaget:
-         `oekonomi` ER et modul, og et VALGFRIT et (nordvest har det ikke).
-
-         `fakturaer/` har med vilje ingen modulklausul — en faktura kan
-         hoere til et hvilket som helst modul, saa den maa ikke ligge bag
-         ét af dem. Derfor kan en kunde UDEN Økonomi stadig se sine
-         fakturaer: gennem Procures egen linse. Det han mangler, er den
-         TVAERGAAENDE visning — og den er dét Økonomi-modulet saelger.
-         Se beslutning 86.
-
-         ⚠ OG DEN STAAR FOER Fakturering. De to ord ligner hinanden og
-         betyder noget forskelligt: FakturaCENTERET er de fakturaer vi
-         MODTAGER; Fakturering er det vi SENDER. Raekkefoelgen siger hvad
-         der kommer ind foerst. */
-      { key: "fakturacenter", kraeverPerm: "indkoeb.laes", sti: "/oekonomi/fakturacenter", label: "Fakturacenter",
-        titel: "Fakturacenter",
-        under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure." },
-      { key: "fakturering", kraeverPerm: "grundlag.laes", sti: "/oekonomi/fakturering", label: "Fakturering",
-        titel: "Fakturering", under: "Opgaver klar til fakturering — det vi SENDER" },
+      /* ⚠ KASSELISTEN ER FLYTTET TIL OPSAETNING (planche 1, UNITBOOKING.md
+         6.1). Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
+         hvor Kasser laa — samme snit som da Driftskalenderen overtog /flaade,
+         da Enheder gik til Opsaetning. /unitbooking/kalender lever videre som
+         redirect, saa et bogmaerke ikke doer af en menuomlaegning.
+         ⚠ Reolpladser BLIVER staaende her, og det er ikke en forglemmelse:
+         noden deles med Warehouse, og `kraeverModul` tager EEN streng. Under
+         Opsaetning med "unitbooking" ville hylderne forsvinde for en kunde
+         der kun har WMS — praecis den faelde `reolpladser.skriv` lukkede. */
+      { key: "unitbookingKalender", sti: "/unitbooking", label: "Kalender",
+        titel: "Unitbooking – kalender",
+        under: "Kasser × dage, og listen over hvad der skal ud og hjem" },
+      { key: "kasseudlaan", sti: "/unitbooking/udlaan", label: "Udlån",
+        titel: "Unitbooking – udlån",
+        under: "Søg ledige i periode, reservér, klargør, udlevér og modtag retur" },
+      { key: "unitbookingHistorik", sti: "/unitbooking/historik", label: "Historik",
+        titel: "Unitbooking – historik",
+        under: "Hvor har kassen været, og hvilke kasser var med på sagen" },
+      { key: "reolpladser", sti: "/unitbooking/reolpladser", label: "Reolpladser",
+        titel: "Unitbooking – reolpladser & kassetyper",
+        under: "Hal, reol, fag, hylde og plads. Navnet udledes af felterne." },
     ],
   },
   {
-    key: "support", sti: "/support", label: "Support", titel: "Hjælp & Support",
-    under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl.",
+    key: "bemanding", sti: "/bemanding/kompetencer", label: "Workforce", titel: "Workforce",
+    under: "Overblik over bemanding og kapacitet", gruppe: "drift",
     born: [
-      { key: "hjaelp", sti: "/support", label: "Hjælp & Support",
-        titel: "Hjælp & Support", under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl." },
-      /* Vores egne to. De SKJULES ikke for en kunde — de viser en "din rolle
-         har ikke adgang"-tilstand, som Medarbejdere gør. Nav-filtrering på
-         permission er en selvstændig ændring. */
-      { key: "supportOverblik", sti: "/support/overblik", label: "Supportoverblik", skjulINav: true,
-        titel: "Supportoverblik", under: "Sager på tværs af kunder. Kræver support.laes." },
-      { key: "supportSag", sti: "/support/sag/:id", label: "Supportsag", skjulINav: true,
-        titel: "Supportsag", under: "Tråd, kontekst, aktivitetsudtræk og supportadgang." },
+      { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan", skjulINav: true,
+        titel: "Workforce", under: "Overblik over bemanding og kapacitet" },
+      { key: "kompetencer", sti: "/bemanding/kompetencer", label: "Kompetencer",
+        titel: "Kompetencer & certifikater", under: "Gyldighed, udløb og påmindelser" },
+      { key: "fravaer", sti: "/bemanding/fravaer", label: "Ferie & fravær",
+        titel: "Ferie & fravær", under: "Fravær blokerer chaufføren i disponeringen" },
     ],
   },
   {
     key: "opsaetning", sti: "/opsaetning", label: "Opsætning", titel: "Opsætning",
-    under: "Stamdata, brugere, roller og integrationer",
+    under: "Stamdata, brugere, roller og integrationer", gruppe: "admin",
     born: [
       { key: "generelt", sti: "/opsaetning", label: "Generelt",
         titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
@@ -323,25 +369,15 @@ export const NAV = [
         titel: "Medarbejdere",
         under: "Personalets stamdata. Et LOGIN oprettes ved siden af under Brugere & roller — en chauffør har måske aldrig et." },
 
-      /* ⚠ KUNDER OG PRISER LÅ SOM ET EGET TOPPUNKT, "Kunder & Priser".
-         De er stamdata, og de ligger nu her — men modulet `kunder` findes
-         uændret, og de tre punkter bærer `kraeverModul: "kunder"` af samme
-         grund som Enheder bærer `flaade`: Opsætning er `altid: true` og kan
-         ikke fravælges, så uden leddet ville en kunde der aldrig har købt
-         modulet, få et menupunkt i sin egen opsætning der åbner en afvist
-         læsning. Menuen er den KOMMERCIELLE kontrol, reglerne er
-         sikkerhedskontrollen.
-
-         ⚠ `kunder` er dermed det første modul UDEN et topniveaupunkt. Det
-         er ikke et hul i modellen: et modul skal have mindst ÉT menupunkt,
-         ikke nødvendigvis et øverst. Se navKey i moduler.js. */
-      { key: "kunderOversigt", sti: "/opsaetning/kunder", label: "Kunder",
-        kraeverModul: "kunder",
-        titel: "Kunder & Priser", under: "Overblik over kunder, aftaler og priser" },
-      /* ⚠ ALLE PRISER SAMLES HER. Plancherne til Warehouse har en egen
-         "Rater"-skaerm; den bygges ikke. Et andet sted at saette den samme
-         slags pris ville betyde at en vognmand skulle vedligeholde sine
-         priser to steder. Se PRISER.md. */
+      /* ⚠ KUNDEKARTOTEKET SELV ER FLYTTET UD (Skive 2A) — se Fælles > Kunder
+         øverst i denne fil. Standardpriser og Kundepriser er STAMDATA og
+         bliver stående her: de to skærme har ikke fået en ny placering i
+         denne skive (kræver en fane på kundens profil, matrix-# 48 — en
+         senere MERGE/FINISH-opgave), og bærer fortsat `kraeverModul:
+         "kunder"` af samme grund som før — Opsætning er `altid: true` og
+         kan ikke fravælges, så uden leddet ville en kunde der aldrig har
+         købt modulet, få et menupunkt i sin egen opsætning der åbner en
+         afvist læsning. */
       { key: "standardpriser", kraeverPerm: "satser.laes", sti: "/opsaetning/priser", label: "Standardpriser",
         kraeverModul: "kunder",
         titel: "Standardpriser",
@@ -362,6 +398,22 @@ export const NAV = [
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
+    ],
+  },
+  {
+    key: "support", sti: "/support", label: "Hjælp", titel: "Hjælp & Support",
+    under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl.",
+    gruppe: "hjaelp",
+    born: [
+      { key: "hjaelp", sti: "/support", label: "Hjælp & Support",
+        titel: "Hjælp & Support", under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl." },
+      /* Vores egne to. De SKJULES ikke for en kunde — de viser en "din rolle
+         har ikke adgang"-tilstand, som Medarbejdere gør. Nav-filtrering på
+         permission er en selvstændig ændring. */
+      { key: "supportOverblik", sti: "/support/overblik", label: "Supportoverblik", skjulINav: true,
+        titel: "Supportoverblik", under: "Sager på tværs af kunder. Kræver support.laes." },
+      { key: "supportSag", sti: "/support/sag/:id", label: "Supportsag", skjulINav: true,
+        titel: "Supportsag", under: "Tråd, kontekst, aktivitetsudtræk og supportadgang." },
     ],
   },
 ];
