@@ -38,7 +38,6 @@ import { gem } from "../fleet/skriv.js";
 import { synligeDashboards } from "../fleet/dashboardvisning.js";
 import { usePost } from "../fleet/usePost.js";
 import { PRIORITET } from "../fleet/prioritet.js";
-import { DEMO_DASHBOARD_OPGAVER } from "../fleet/demo-dashboard.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
 import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
@@ -162,7 +161,11 @@ export default function Dashboard() {
   /* ⚠ FILTERET ER VÆK, IKKE FLYTTET. Det sammenlignede `o.division` med
      shellens `division`, og efter beslutning 70 var begge `undefined` — så
      det passerede alt ved et tilfælde. Se beslutning 87. */
-  const opgaver = DEMO_DASHBOARD_OPGAVER;
+  /* Der er endnu ingen aggregeret kilde for "åbne opgaver der kræver
+     opfølgning" — spørgsmålet er ikke stillet færdigt (hvilke opgaver,
+     hvilken periode). Tabellen viser derfor sin egen ærlige tomme tilstand
+     i stedet for demo-data. Se Skive 1 i docs/product-redesign-v1/. */
+  const opgaver = [];
 
   /* ⚠ VALGET STÅR I URL'EN, ikke i en useState. Et dashboard man har
      indstillet, skal overleve en genindlæsning og kunne sendes til en

@@ -116,50 +116,10 @@ describe("Prislisten viser hvornår kataloget sidst blev rørt", () => {
   });
 });
 
-describe("Økonomi viser afvigelsen mod måldækningsgraden", () => {
-  const s = laes(OEKONOMI);
-
-  test("⚠ daekningsgradAfv NÅR SKÆRMEN", () => {
-    assert.ok(/deviation\(daekningsgradAfv/.test(s),
-      "tallet beregnes stadig og tabes stadig");
-  });
-
-  /**
-   * ⚠ OG SUBTRAKTIONEN VAR SELV EN FÆLDE. Her stod
-   * `k.oekonomi.daekningsgradPct - k.oekonomi.maalDaekningsgradPct` råt.
-   * `x - null` er `x` og `null - y` er `-y` — begge ser ud som MÅLINGER, og
-   * gaten i deviation() nås aldrig, fordi tallet er blevet rigtigt på vejen.
-   * Fejlen var usynlig så længe tallet ikke blev vist; det er den slags der
-   * venter på at nogen finder brug for den. Tjek FØR regnestykket.
-   */
-  test("⚠ TJEKKER FØR SUBTRAKTIONEN, IKKE EFTER", () => {
-    assert.ok(/Number\.isFinite\(k\.oekonomi\.daekningsgradPct\)/.test(s));
-    assert.ok(/Number\.isFinite\(k\.oekonomi\.maalDaekningsgradPct\)/.test(s));
-    /* Og den rå subtraktion må ikke stå igen ved siden af. */
-    const raa = /(?<!\?\s*)k\.oekonomi\.daekningsgradPct - k\.oekonomi\.maalDaekningsgradPct/;
-    const linjer = s.split("\n").filter((l) => raa.test(l));
-    for (const l of linjer) {
-      assert.ok(/\?/.test(l) || /^\s+\? /.test(l),
-        "subtraktionen står ubevogtet: " + l.trim());
-    }
-  });
-
-  /**
-   * ⚠ GRAFEN OG TALLET SVARER PÅ HVER SIT. Grafen viser HVORNÅR man krydsede
-   * målet — derfor er målet tegnet som en serie og ikke som en etiket. Tallet
-   * viser HVOR LANGT der er lige nu. Fjernes serien igen til fordel for
-   * tallet, kan man ikke længere se krydsningen.
-   */
-  test("målet står stadig som en serie i grafen", () => {
-    assert.match(s, /navn: `Mål \$\{pct\(k\.oekonomi\.maalDaekningsgradPct\)\}`, stiplet: true/);
-  });
-
-  /* ⚠ PROCENTPOINT, IKKE PROCENT. 68 % der bliver 72 % er +4 point. Og
-     deviation() kender ikke en unit der hedder "point" — den falder igennem
-     til num og taber ordet — så enheden skrives i teksten. */
-  test("⚠ ENHEDEN ER PROCENTPOINT OG STÅR PÅ SKÆRMEN", () => {
-    assert.ok(/i procentpoint/.test(s), "enheden står ikke ved tallet");
-    assert.ok(!/unit: "point"/.test(s),
-      'deviation() kender ikke "point" — ordet ville blive tabt');
-  });
-});
+/* ⚠ "Økonomi viser afvigelsen mod måldækningsgraden" STOD HER OG ER TAGET
+   UD — Skive 1 (V1-redesign) gjorde /oekonomi til HIDE/LATER og erstattede
+   hele Oekonomi.jsx med en ærlig stub. `daekningsgradAfv`, subtraktionstjekket
+   og målserien i grafen findes ikke længere i filen — de er ikke rettet
+   forkert, de er væk sammen med resten af skærmens indhold, og ligger i
+   git-historikken. Får skærmen sit dækningsgradkort tilbage, hører de fire
+   prøver her igen med samme ordlyd. Se docs/product-redesign-v1/. */

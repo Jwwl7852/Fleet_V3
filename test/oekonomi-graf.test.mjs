@@ -11,7 +11,6 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 
 import {
   omkostningsserie, DEMO_DAEKNINGSGRAD_HISTORIK, maanedsEtiketter,
@@ -74,15 +73,10 @@ test("Budgetafvigelsen er IKKE et gemt felt", () => {
   assert.equal("budgetAfvigelsePct" in o, false);
 });
 
-test("Trendkurven står aldrig alene i tabellen", () => {
-  /* LINT. En MiniKurve i en tabelcelle skal have et tal ved siden af sig —
-     ellers er den en aflæsning man ikke kan lave. Testen læser skærmen som
-     tekst, som demo-kilder-linten gør. */
-  const kilde = readFileSync(new URL("../src/moduler/Oekonomi.jsx", import.meta.url), "utf8");
-  const i = kilde.indexOf("<MiniKurve");
-  assert.ok(i > 0, "Oekonomi bruger ikke MiniKurve");
-  const celle = kilde.slice(i, i + 400);
-  assert.match(celle, /\{d\.pil\}|\{d\.text\}/,
-    "MiniKurve står uden et tal ved siden af — en kurve uden akse er et " +
-    "form-indtryk, ikke en aflæsning.");
-});
+/* ⚠ "Trendkurven står aldrig alene i tabellen" STOD HER OG ER TAGET UD —
+   Skive 1 (V1-redesign) gjorde /oekonomi til HIDE/LATER og erstattede
+   Oekonomi.jsx med en ærlig stub uden en MiniKurve eller nogen tabel. De
+   øvrige prøve ovenfor rammer stadig `demo-oekonomi.js` selv og holder,
+   fordi den fil er urørt — kun skærmens brug af tallene er væk. Får
+   skærmen sin trendkurve tilbage, hører prøven her igen. Se
+   docs/product-redesign-v1/. */

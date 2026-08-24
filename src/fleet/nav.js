@@ -38,10 +38,10 @@ export const NAV = [
     ],
   },
   {
-    key: "bemanding", sti: "/bemanding", label: "Workforce", titel: "Workforce",
+    key: "bemanding", sti: "/bemanding/kompetencer", label: "Workforce", titel: "Workforce",
     under: "Overblik over bemanding og kapacitet",
     born: [
-      { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan",
+      { key: "bemandingPlan", sti: "/bemanding", label: "Bemandingsplan", skjulINav: true,
         titel: "Workforce", under: "Overblik over bemanding og kapacitet" },
       { key: "kompetencer", sti: "/bemanding/kompetencer", label: "Kompetencer",
         titel: "Kompetencer & certifikater", under: "Gyldighed, udløb og påmindelser" },
@@ -109,7 +109,7 @@ export const NAV = [
       { key: "servicekalender", sti: "/facility/servicekalender", label: "Servicekalender",
         titel: "Facility – servicekalender & reparationer",
         under: "Planlæg reparationer, koordinér eksterne firmaer og reservér tid." },
-      { key: "klima", sti: "/facility/klima", label: "Klima & energi",
+      { key: "klima", sti: "/facility/klima", label: "Klima & energi", skjulINav: true,
         titel: "Facility – klimaovervågning & energistatistik",
         under: "Overvåg temperatur, fugt og energiforbrug — dokumentér stabile forhold." },
     ],
@@ -236,11 +236,11 @@ export const NAV = [
     ],
   },
   {
-    key: "oekonomi", sti: "/oekonomi", label: "Økonomi & Rapporter",
+    key: "oekonomi", sti: "/oekonomi/fakturacenter", label: "Økonomi & Rapporter",
     titel: "Økonomi & Rapporter",
     under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver.",
     born: [
-      { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik",
+      { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik", skjulINav: true,
         titel: "Økonomi & Rapporter",
         under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
       /* ⚠ NODEN ER FAELLES — SKAERMEN HOERER TIL ØKONOMI-MODULET.
@@ -267,14 +267,14 @@ export const NAV = [
   },
   {
     key: "support", sti: "/support", label: "Support", titel: "Hjælp & Support",
-    under: "Opret en supportsag og følg den.",
+    under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl.",
     born: [
       { key: "hjaelp", sti: "/support", label: "Hjælp & Support",
-        titel: "Hjælp & Support", under: "Opret en supportsag og følg den." },
+        titel: "Hjælp & Support", under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl." },
       /* Vores egne to. De SKJULES ikke for en kunde — de viser en "din rolle
          har ikke adgang"-tilstand, som Medarbejdere gør. Nav-filtrering på
          permission er en selvstændig ændring. */
-      { key: "supportOverblik", sti: "/support/overblik", label: "Supportoverblik",
+      { key: "supportOverblik", sti: "/support/overblik", label: "Supportoverblik", skjulINav: true,
         titel: "Supportoverblik", under: "Sager på tværs af kunder. Kræver support.laes." },
       { key: "supportSag", sti: "/support/sag/:id", label: "Supportsag", skjulINav: true,
         titel: "Supportsag", under: "Tråd, kontekst, aktivitetsudtræk og supportadgang." },
@@ -360,7 +360,7 @@ export const NAV = [
       { key: "brugere", sti: "/opsaetning/brugere", label: "Brugere & roller",
         titel: "Brugere & roller",
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
-      { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer",
+      { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
     ],
   },

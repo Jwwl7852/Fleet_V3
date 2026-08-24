@@ -300,7 +300,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **129 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **130 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -543,16 +543,16 @@ herunder ikke passer med katalogets.
 |---|---|---|
 | Dashboard | 1 | referencemodulet — start her når du skriver et nyt |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
-| Workforce | 3 | Bemandingsplan, Kompetencer, Ferie & fravær |
+| Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Fleet | 3 | heraf Arbejdskø som skjult detaljerute |
-| Facility | 3 | Overblik & fejl, Servicekalender, Klima & energi |
+| Facility | 3 | heraf Klima & energi som skjult detaljerute (V1: LATER) |
 | Procure | 7 | Overblik, Behov, Bestillinger, Godkendelser, Fakturaer, Leverandører, Varelager |
 | Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
 | Warehouse | 11 | modulet med flest skærme |
-| Økonomi & Rapporter | 3 | Overblik, **Fakturacenter**, Fakturering |
-| Support | 3 | heraf Supportsag som skjult detaljerute |
-| Opsætning | 10 | heraf Kundepriser pr. kunde som skjult detaljerute |
-| **I alt** | **54** | **50 i menuen, 4 skjulte detaljeruter** |
+| Økonomi & Rapporter | 3 | heraf Overblik som skjult detaljerute (V1: LATER); **Fakturacenter** er indgangen |
+| Support | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
+| Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER) |
+| **I alt** | **54** | **45 i menuen, 9 skjulte detaljeruter** |
 
 | | |
 |---|---|

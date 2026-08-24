@@ -54,8 +54,13 @@ const KPI_SKAERME = skaerme("src/moduler")
   .filter(Boolean);
 
 describe("Kriteriet anvendes, ikke bare beskrives", () => {
+  /* ⚠ TALLET GIK FRA 15 TIL 14 I SKIVE 1 (V1-redesign), IKKE VED ET UHELD.
+     Oekonomi.jsx blev HIDE/LATER og erstattet af en ærlig stub uden
+     useKpi() — se docs/product-redesign-v1/. Skærmen tælles derfor ikke
+     længere med her; falder tallet yderligere, er det en ny grund at
+     undersøge, ikke bare denne. */
   test("der ER skærme at prøve", () => {
-    assert.ok(KPI_SKAERME.length >= 15, `kun ${KPI_SKAERME.length} skærme læser nøgletal`);
+    assert.ok(KPI_SKAERME.length >= 14, `kun ${KPI_SKAERME.length} skærme læser nøgletal`);
   });
 
   /**
@@ -90,10 +95,15 @@ describe("Kriteriet anvendes, ikke bare beskrives", () => {
       "skærmen er bygget af nøgletal alene og tegner alligevel uden dem");
   });
 
-  /* Og de to er navngivet, så en tredje ikke glider ind uden at nogen ser det. */
-  test("præcis Dashboard og Økonomi er bygget af nøgletal alene", () => {
+  /* ⚠ Oekonomi.jsx STOD HER OG ER TAGET UD — Skive 1 gjorde ruten til
+     HIDE/LATER og erstattede skærmen med en ærlig stub, der ikke kalder
+     useKpi() længere og derfor slet ikke optræder i KPI_SKAERME. Får
+     skærmen sit indhold tilbage som en ren nøgletalsskærm, hører den her
+     igen. Kun Dashboard er navngivet, så en anden ikke glider ind uden at
+     nogen ser det. */
+  test("præcis Dashboard er bygget af nøgletal alene", () => {
     const rene = KPI_SKAERME.filter((s) => s.lister === 0).map((s) => s.fil).sort();
-    assert.deepEqual(rene, ["Dashboard.jsx", "Oekonomi.jsx"]);
+    assert.deepEqual(rene, ["Dashboard.jsx"]);
   });
 });
 

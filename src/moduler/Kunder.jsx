@@ -54,7 +54,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useListe } from "../fleet/useListe.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
-import { DEMO_KUNDER, DEMO_TILBUD, TILBUD_STATUS } from "../fleet/demo-kunder.js";
+import { DEMO_KUNDER, TILBUD_STATUS } from "../fleet/demo-kunder.js";
 import { kr, num, pct, dato, deviation, serviceTone, alvorTone, ALVOR } from "../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter,
@@ -190,12 +190,11 @@ export default function Kunder() {
     .sort((a, b) => Math.abs(b.salgsafvigelseOere) - Math.abs(a.salgsafvigelseOere));
   const salgsafvigelseSum = salgsafvigelser.reduce((s, r) => s + r.salgsafvigelseOere, 0);
 
-  /* Tilbud følger samme visningsregel. Et tilbud er en transaktion, så der
-     er ingen "faelles" at tage højde for. */
-  /* ⚠ HER STOD `.filter((t) => t.division === division)`, hvor BEGGE sider
-     var `undefined` efter beslutning 70 — filteret slap kun igennem fordi
-     `undefined === undefined` er sandt. Se beslutning 87. */
-  const tilbud = [...DEMO_TILBUD].sort((a, b) => a.gyldigTilMs - b.gyldigTilMs);
+  /* Der findes ingen `tilbud`-node i datamodellen endnu (nodeformen er ikke
+     besluttet), så listen herunder kan ikke hentes fra basen. Den viser
+     derfor altid en ærlig tom tilstand — ikke demo-data som om det var
+     kundens egne tilbud. Se Skive 1 i docs/product-redesign-v1/. */
+  const tilbud = [];
 
   /* Afledte tal beregnes her — de skrives ikke ind i basen et andet sted.
      Dækningsgraden er Økonomis felt; den læses, ikke genudregnet. */
@@ -481,11 +480,11 @@ export default function Kunder() {
           />
           <p className="fc-hint" style={{ marginTop: 10 }}>
             {num(k.kunder.tilbudKraeverOpfoelgning)} af {num(k.kunder.tilbud)} aktuelle
-            tilbud mangler svar ifølge <b>kpi/</b>; listen her er de{" "}
-            {num(tilbud.length)} hentede. <b>Et tilbud er ikke en booking</b> — det kan
-            gå til et emne der ikke er kunde endnu, og derfor findes der ingen
-            tilbudsnode i datamodellen. Nodeformen skal besluttes, før knappen kan
-            gøre noget.
+            tilbud mangler svar ifølge <b>kpi/</b> — men listen herover kan endnu ikke
+            vise dem enkeltvis. <b>Et tilbud er ikke en booking</b> — det kan gå til et
+            emne der ikke er kunde endnu, og derfor findes der ingen tilbudsnode i
+            datamodellen. Nodeformen skal besluttes, før listen og knappen kan gøre
+            noget.
           </p>
         </Kort>
       </Gitter>

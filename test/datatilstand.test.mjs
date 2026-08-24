@@ -240,7 +240,11 @@ const SKAERME_DER_IKKE_MAA_BLOKERE = [
      Fjern den ikke bare fordi listen bliver kortere: skulle skærmen få et
      KpiKort igen, skal den tilbage på listen samme dag. */
   "src/moduler/facility/Oversigt.jsx",
-  "src/moduler/facility/Klima.jsx",
+  /* ⚠ Klima.jsx STOD HER OG ER TAGET UD — Skive 1 (V1-redesign) gjorde ruten
+     til HIDE/LATER og erstattede hele skærmen med en ærlig "ikke en del af
+     V1 endnu"-besked. Den læser ikke længere kpi/ eller nogen anden node, og
+     kan derfor ikke falde i den gamle ring. Får skærmen sit indhold tilbage,
+     skal den tilbage på listen samme dag. Se docs/product-redesign-v1/. */
   "src/moduler/facility/Servicekalender.jsx",
   "src/moduler/indkoeb/Oversigt.jsx",
   "src/moduler/indkoeb/Fakturaer.jsx",
