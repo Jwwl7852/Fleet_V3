@@ -57,6 +57,11 @@ export const DASHBOARDS = [
     under: "Ét samlet overblik på tværs af alle moduler",
     altid: true,
   },
+  /* ⚠ SKIVE 2C — KORREKTION 6. Planning manglede her, selvom et ægte,
+     ikke-null KPI-domæne (`disponering`, kilde `etaper`, beregnet af
+     disponeringstal()) fandtes hele tiden. Se dashboards.js's KPI-note
+     nedenfor om hvorfor NØGLEN er "booking" og ikke "disponering". */
+  { key: "booking", label: "Planning", under: "Bookinger, forslag og disponering der kræver handling" },
   { key: "flaade", label: "Fleet", under: "Enheder, service og vedligehold" },
   { key: "facility", label: "Facility", under: "Ejendomme, service og opgaver" },
   { key: "indkoeb", label: "Procure", under: "Indkøb, leverandører og fakturaer" },
@@ -98,6 +103,25 @@ export const tilgaengelige = (harModulFn) =>
  * `tone` er en IKONACCENT og ikke en statusfarve. Se beslutning 30.
  */
 export const MODULKORT = {
+  /* ⚠ SKIVE 2C — TRE FELTER, ALLE FRA disponeringstal() I kpi-aggregering.js,
+     VERIFICERET FØR IMPLEMENTERING. `ledigKapacitetPct` er MED VILJE ikke
+     med — den er `null` for enhver tenant, fordi spørgsmålet "ledig i hvilken
+     periode, målt i hvad" ikke er stillet færdigt (se funktionens egen note).
+     Et kort med et felt der ALTID er streget ud, ville ikke være et
+     nøgletal — det ville være en påstået måling af noget der aldrig
+     regnes. De tre der ER med, kommer alle fra ægte, allerede eksisterende
+     kilder: åbne (uplanlagte) etaper, disponeringskonflikter (samme
+     tjekDisponering() som Disponering-skærmen selv bruger) og
+     forsinkelsesrisiko (ETA efter fristen). Ingen ny aggregator, ingen
+     demodata. */
+  booking: {
+    tone: "ikon-5", ikon: "kalender", sti: "/booking",
+    tal: [
+      { felt: "disponering.aabneEtaper", label: "Mangler plan", form: "antal" },
+      { felt: "disponering.konflikter", label: "Disponeringskonflikter", form: "antal" },
+      { felt: "disponering.forsinkelsesrisiko", label: "Forsinkelsesrisiko", form: "antal" },
+    ],
+  },
   flaade: {
     tone: "ikon-5", ikon: "lastbil", sti: "/flaade",
     tal: [
@@ -123,7 +147,13 @@ export const MODULKORT = {
     ],
   },
   bemanding: {
-    tone: "ikon-6", ikon: "personer", sti: "/bemanding",
+    /* ⚠ STIEN VAR "/bemanding" OG ER RETTET TIL "/bemanding/kompetencer".
+       Skive 1 gjorde Bemandingsplan til LATER (skjulINav) og repointede
+       Workforce-gruppens EGEN sti i nav.js af samme grund — men kortet her
+       blev ikke rettet i samme ombæring, og pegede derfor ind på den skjulte
+       "ikke en del af V1 endnu"-stub. Rettet nu, fordi denne skive alligevel
+       rører kataloget. */
+    tone: "ikon-6", ikon: "personer", sti: "/bemanding/kompetencer",
     tal: [
       /* ⚠ KAPACITETSGRADEN ER AFLEDT, OG DEN REGNES HOS FORBRUGEREN.
          disponeret/planlagt — begge felter står i kpi/. Et gemt
@@ -267,6 +297,18 @@ export const HANDLINGER = [
     tekst: "opgaver er forsinkede", hvorfor: "Slutningen ligger bag os",
     ikon: "ur",
     prioritet: "hoej", sti: "/flaade/koe?vis=forsinkede", graense: 1 },
+  /* ⚠ SKIVE 2C — Korrektion 6's Planning-dashboard, samme tre felter som
+     MODULKORT.booking. `konflikter` og `forsinkelsesrisiko` bruger
+     tjekDisponering()/ETA-mod-frist — den SAMME funktion som Disponering
+     og etapeskift håndhæver med, ikke en ny tælling. */
+  { key: "disponeringskonflikter", felt: "disponering.konflikter", modul: "booking",
+    tekst: "etaper har en disponeringskonflikt", hvorfor: "Kan ikke udføres som planlagt",
+    ikon: "advarsel",
+    prioritet: "hoej", sti: "/booking/disponering", graense: 1 },
+  { key: "planningForsinkelsesrisiko", felt: "disponering.forsinkelsesrisiko", modul: "booking",
+    tekst: "ture har forsinkelsesrisiko", hvorfor: "ETA'en ligger efter fristen",
+    ikon: "ur",
+    prioritet: "hoej", sti: "/booking/live-kort", graense: 1 },
   { key: "fakturaer", felt: "indkoeb.fakturaerTilGodkendelse", modul: "indkoeb",
     tekst: "fakturaer venter på godkendelse", hvorfor: "Forfalder inden for 2 dage",
     ikon: "seddel",
@@ -275,6 +317,10 @@ export const HANDLINGER = [
     tekst: "servicepunkter forfalder", hvorfor: "Planlæg inden fristen",
     ikon: "skruenoegle",
     prioritet: "normal", sti: "/facility/servicekalender", graense: 1 },
+  { key: "aabneEtaper", felt: "disponering.aabneEtaper", modul: "booking",
+    tekst: "etaper mangler en plan", hvorfor: "Afventer en tur",
+    ikon: "kalender",
+    prioritet: "normal", sti: "/booking/disponering", graense: 1 },
   { key: "nyeIndberetninger", felt: "flaade.nyeIndberetninger", modul: "flaade",
     tekst: "nye indberetninger er ikke vurderet", hvorfor: "Prioriteten sættes i triagen",
     ikon: "dokument",

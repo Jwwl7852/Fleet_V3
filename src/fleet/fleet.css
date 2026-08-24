@@ -221,6 +221,21 @@
 .fc-card-h svg{width:25px; height:25px; flex:0 0 25px; fill:currentColor;
   stroke:none; color:var(--bc-muted)}
 .fc-card-b{padding:15px 17px}
+
+/* ⚠ SKIVE 2C — DASHBOARD. Sekundær, sammenklappelig sektion ("Ekstra
+   nøgletal"), samme visuelle sprog som .fc-card/.fc-card-h/.fc-card-b —
+   native <details>/<summary>, ingen ny JS-tilstand krævet for selve
+   folde-mekanikken. Ingen nye farver: kun eksisterende tokens. */
+.fc-sammenklap{background:var(--bc-card); border:1px solid var(--bc-line);
+  border-radius:var(--fc-r); box-shadow:var(--fc-shadow); min-width:0}
+.fc-sammenklap>summary{padding:15px 17px; font-size:var(--fc-t-l); font-weight:650;
+  cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px}
+.fc-sammenklap>summary::-webkit-details-marker{display:none}
+.fc-sammenklap-pil{color:var(--bc-muted); transition:transform .15s; flex:0 0 auto;
+  display:inline-block}
+.fc-sammenklap[open]>summary .fc-sammenklap-pil{transform:rotate(90deg)}
+.fc-sammenklap-b{padding:0 17px 15px; display:flex; flex-direction:column; gap:14px}
+
 .fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
 .fc-kpi-l{color:var(--bc-muted); font-size:var(--fc-t-s); font-weight:500}
 .fc-kpi-v{font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em; margin:1px 0 2px}

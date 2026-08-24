@@ -36,12 +36,17 @@ import { gem } from "../fleet/skriv.js";
    skjuler et dashboard i vælgeren; den spærrer ikke tallene, som ligger i en
    kpi-node enhver i tenanten kan læse. */
 import { synligeDashboards } from "../fleet/dashboardvisning.js";
+/* ⚠ SKIVE 2C — SAMME "VISNING, IKKE ADGANG"-SKEL, TREDJE LAG. navvisning
+   skjuler et arbejdsområde en administrator har slået fra for DENNE
+   bruger — samme regel som dashboardvisning, blot admin-styret i stedet
+   for selvvalgt. Se navvisning.js's hoved for "OG, ikke ELLER"-garantien. */
+import { erSkjultVedNavvisning } from "../fleet/navvisning.js";
 import { usePost } from "../fleet/usePost.js";
 import { PRIORITET } from "../fleet/prioritet.js";
 import { omkostningsserie, maanedsEtiketter } from "../fleet/demo-oekonomi.js";
-import { kr, num, pct, dato, deviation, deviationPct, INTET } from "../fleet/format.js";
+import { kr, num, pct, deviation, deviationPct, INTET } from "../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste, Knap, Formularsvar, Kpiadgang } from "../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Pille, Henter, Datatilstand, MiniLinje, Gitter, Donut, Soejlegraf, Tom, Fordelingsbjaelke, Ikon, Handlingsliste, Knap, Formularsvar, Kpiadgang } from "../fleet/ui.jsx";
 
 /* Fordelingen af opgaver på tilstand. Felterne findes i kpi/ — de tælles ikke
    ud af en hentet liste, for en liste er et udsnit i en periode og ikke en
@@ -97,6 +102,23 @@ export default function Dashboard() {
      der gør ændringen sikker at udrulle: ingen mister en visning af at
      funktionen kommer. */
   const visning = usePost("dashboardvisning", bruger?.uid || null);
+  /* ⚠ SKIVE 2C — TREDJE LAG, ADMINENS navvisning. Samme "spørg ikke før
+     brugeren er kendt"-greb som dashboardvisning/brugerlayout ovenfor:
+     `bruger?.uid || null` betyder ingen forespørgsel før login. */
+  const navvisning = usePost("navvisning", bruger?.uid || null);
+
+  /* ⚠ DASHBOARD-NØGLEN OG KPI-DOMÆNET HEDDER IKKE DET SAMME FOR PLANNING.
+     `utilgaengelige` (fra useKpi) er nøglet på KPI-DOMÆNET — "disponering"
+     — mens DASHBOARDS/dashboardvisning/navvisning alle bruger MODULETS
+     navn — "booking" — som resten af skærmen. Det er den samme forskel
+     kpi-aggregering.js selv navngiver: "disponering hører til booking;
+     domænet er opkaldt efter skærmen, modulet efter forretningen." Uden
+     oversættelsen ville `utilgaengelige["booking"]` altid være undefined,
+     og en spærret Planning-forespørgsel ville se tilgængelig ud. */
+  const KPI_DOMAENE_FOR_DASHBOARD = { booking: "disponering" };
+  const kanSeDashboard = (noegle) =>
+    !utilgaengelige[KPI_DOMAENE_FOR_DASHBOARD[noegle] || noegle];
+
   /* ⚠ .post, IKKE .data. usePost returnerer { post, henter, fejl, tilstand };
      useListe returnerer { data }. Skrev man .data her, ville den vaere
      undefined, synligeDashboards() ville falde tilbage paa "alt", og
@@ -104,11 +126,29 @@ export default function Dashboard() {
   /* ⚠ OG DASHBOARDS HVIS TAL ER SPÆRRET, TILBYDES IKKE — beslutning 105.
      Vælgeren bød en chauffør "Procure", og siden var en side af streger. Det
      er samme figur som `kraeverPerm` i menuen: det tilbudte skal svare til
-     det læsbare, og reglen håndhæver uændret. `utilgaengelige` kommer fra
-     useKpi og er nøglet på KPI-domænet, som er dashboardets egen nøgle. */
+     det læsbare, og reglen håndhæver uændret.
+     ⚠ OG NAVVISNING ER FOLDET IND I DEN SAMME kanSeFn — beslutning-agtig
+     valg, ikke en tilfældighed: `synligeDashboards()` kalder ALDRIG
+     `kanSeFn` for et `altid: true`-punkt (Samlet), så Samlet kan af samme
+     grund heller ikke skjules af navvisning — den er den sikre fallback,
+     præcis som Dashboard-punktet i sidebaren ikke kan skjules af den. Et
+     senere lag kan derfor kun REDUCERE hvad et tidligere lag tillod: hver
+     eneste betingelse her er et "OG", aldrig et "ELLER". */
   const ALLE = synligeDashboards(visning.post, harKundenModul,
-    (key) => !utilgaengelige[key]);
+    (noegle) => kanSeDashboard(noegle) && !erSkjultVedNavvisning(noegle, navvisning.post));
   void tilgaengelige;
+
+  /* ⚠ SKIVE 2C — 1 MODUL LANDER DIREKTE, 2+ FÅR EN VÆLGER, 0 FALDER TILBAGE
+     TIL SAMLET. "Driftsmodul" er ALLE minus Samlet — Kunder, Fakturaer &
+     bilag, Økonomi, Opsætning og Hjælp er slet ikke i DASHBOARDS og tæller
+     derfor aldrig med her, uden at det kræver et eget filter. */
+  const driftsmoduler = ALLE.filter((d) => d.key !== SAMLET);
+  const visVaelger = driftsmoduler.length >= 2;
+  /* Præcis ét synligt driftsmodul: det ER forsiden, og Samlet tilbydes
+     ikke som et kunstigt ekstra valg (se visVaelger ovenfor, som skjuler
+     selve vælgeren — standardMaal styrer kun hvor man LANDER). Nul eller
+     to-plus: Samlet, som altid findes (`altid: true`). */
+  const standardMaal = driftsmoduler.length === 1 ? driftsmoduler[0].key : SAMLET;
 
   /* ⚠ ET LAYOUT PR. DASHBOARD. Fleet-forsiden og det samlede overblik er to
      forskellige sider med hvert sit formål; ét fælles layout ville betyde at
@@ -122,6 +162,11 @@ export default function Dashboard() {
   const [udkast, saetUdkast] = useState(null);
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
+  /* ⚠ SKIVE 2C — "EKSTRA NØGLETAL" ER LUKKET SOM STANDARD, men
+     `redigerer` tvinger den åben (se JSX'et) — man skal kunne se det man
+     retter. `onToggle` synker tilstanden begge veje, så et klik på selve
+     <summary> ikke driver fra det React tror den ved. */
+  const [ekstraAaben, saetEkstraAaben] = useState(false);
 
   if (henter) return <Henter hvad="nøgletal" />;
   if (!k) return <Datatilstand tilstand={tilstand} genprov={genindlaes} tom="Nøgletallene kunne ikke hentes." />;
@@ -157,27 +202,32 @@ export default function Dashboard() {
     label: m, vaerdier: [serie[i]]
   }));
 
-  /* Samme visningsregel som useListe: valgt division plus fælles. */
-  /* ⚠ FILTERET ER VÆK, IKKE FLYTTET. Det sammenlignede `o.division` med
-     shellens `division`, og efter beslutning 70 var begge `undefined` — så
-     det passerede alt ved et tilfælde. Se beslutning 87. */
-  /* Der er endnu ingen aggregeret kilde for "åbne opgaver der kræver
-     opfølgning" — spørgsmålet er ikke stillet færdigt (hvilke opgaver,
-     hvilken periode). Tabellen viser derfor sin egen ærlige tomme tilstand
-     i stedet for demo-data. Se Skive 1 i docs/product-redesign-v1/. */
-  const opgaver = [];
-
   /* ⚠ VALGET STÅR I URL'EN, ikke i en useState. Et dashboard man har
      indstillet, skal overleve en genindlæsning og kunne sendes til en
      kollega — og "kig på Fleet-dashboardet" er ubrugeligt uden et link.
-     Samme greb som Arbejdskøens ?vis=. */
-  const valgt = ALLE.some((d) => d.key === params.get("db")) ? params.get("db") : SAMLET;
+     Samme greb som Arbejdskøens ?vis=.
+     ⚠ OG DET ER DEN SAMME LISTE, ALLE, DER AFGØR BÅDE VALGMULIGHEDERNE OG
+     GYLDIGHEDEN — SKIVE 2C's forespørgsels-sikkerhed. `?db=flaade` prøves
+     mod `ALLE`, som allerede har været igennem alle fire lag; et
+     manipuleret `?db=` på et modul der ikke er købt, ikke kan læses, er
+     skjult via navvisning eller skjult via dashboardvisning, kan derfor
+     aldrig matche — og falder tilbage til `standardMaal`, aldrig til en
+     hvid skærm. */
+  const valgt = ALLE.some((d) => d.key === params.get("db")) ? params.get("db") : standardMaal;
 
   /* ⚠ HANDLINGERNE ER DE SAMME TAL SOM KORTENE — samme katalog, samme
      opslag i kpi/. Kom de fra hver sin kilde, kunne listen sige 7 og
-     Fleet-kortet 6 på den SAMME skærm. Se dashboards.js. */
-  const handler = handlinger(k, { harModulFn: harKundenModul })
+     Fleet-kortet 6 på den SAMME skærm. Se dashboards.js.
+     ⚠ OG HØJST SEKS I DEN PRIMÆRE SEKTION — SKIVE 2C. Samlet skal være
+     handlingsorienteret, ikke en væg af kort; en liste der voksede med
+     antal moduler, ville før eller siden gøre det modsatte. Loftet er
+     IKKE stille: er der flere, siger en linje under listen hvor mange der
+     er skåret væk, i stedet for at lade dem forsvinde usagt. */
+  const alleHandlinger = handlinger(k, { harModulFn: harKundenModul })
     .filter((h) => valgt === SAMLET || h.modul === valgt);
+  const HANDLING_LOFT = 6;
+  const handler = alleHandlinger.slice(0, HANDLING_LOFT);
+  const skaaretHandlinger = alleHandlinger.length - handler.length;
 
   /* Samlet viser alle modulkort; et modul-dashboard viser sit eget. */
   const kortNoegler = (valgt === SAMLET
@@ -244,19 +294,33 @@ export default function Dashboard() {
 
       {/* ⚠ VÆLGEREN ER EN <select> OG IKKE FANER. Syv dashboards i en
           fanerække ville brække på en bærbar, og listen vokser med hvert
-          modul vi sælger. */}
+          modul vi sælger.
+          ⚠ OG DEN TEGNES KUN VED 2+ SYNLIGE DRIFTSMODULER — SKIVE 2C. Med
+          præcis ét er der intet at vælge imellem, og en vælger med én
+          mulighed er ikke et valg — det er en attrap. Med nul findes der
+          heller intet at vælge; Samlet er selve svaret. `visVaelger` er
+          udledt af `ALLE`, som allerede har været igennem alle fire
+          synlighedslag, så vælgeren aldrig kan tilbyde noget den ikke må. */}
       <div className="fc-kal-top">
-        <label className="fc-hint" htmlFor="db-vaelg">Vis dashboard:</label>
-        <select id="db-vaelg" className="fc-ctl" value={valgt}
-                onChange={(e) => saetParams(e.target.value === SAMLET
-                  ? {} : { db: e.target.value })}>
-          {ALLE.map((d) => (
-            <option key={d.key} value={d.key}>{d.label}</option>
-          ))}
-        </select>
-        <span className="fc-hint">
-          {ALLE.find((d) => d.key === valgt)?.under}
-        </span>
+        {visVaelger ? (
+          <>
+            <label className="fc-hint" htmlFor="db-vaelg">Vis dashboard:</label>
+            <select id="db-vaelg" className="fc-ctl" value={valgt}
+                    onChange={(e) => saetParams(e.target.value === SAMLET
+                      ? {} : { db: e.target.value })}>
+              {ALLE.map((d) => (
+                <option key={d.key} value={d.key}>{d.label}</option>
+              ))}
+            </select>
+            <span className="fc-hint">
+              {ALLE.find((d) => d.key === valgt)?.under}
+            </span>
+          </>
+        ) : (
+          <span className="fc-hint">
+            {ALLE.find((d) => d.key === valgt)?.under}
+          </span>
+        )}
         <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           {redigerer ? (
             <>
@@ -280,35 +344,14 @@ export default function Dashboard() {
 
       <Formularsvar svar={svar} />
 
-      {/* ⚠ BRUGERENS EGEN RÆKKE STÅR FØRST. Det er den man selv har sat
-          sammen; handlingerne nedenfor er dem systemet mener man skal se. */}
-      {viste.length > 0 && (
-        <KpiRaekke>
-          {viste.map((key, i) => (
-            <Widgetkort
-              key={key} nr={i} antal={viste.length} noegle={key} kpi={k}
-              redigerer={redigerer}
-              paaFlyt={flytWidget} paaFjern={fjernWidget}
-            />
-          ))}
-        </KpiRaekke>
-      )}
-
-      {redigerer && viste.length === 0 && (
-        <Tom>Ingen widgets valgt. Et tomt layout ER et valg — gemmer du det,
-          bliver forsiden stående uden rækken.</Tom>
-      )}
-
-      {redigerer && (
-        <Widgetvaelger
-          valgte={viste}
-          harModulFn={harKundenModul}
-          paaSlaaTil={tilfoejWidget}
-          paaFjern={fjernWidget}
-        />
-      )}
-
-      <Kort titel="Prioriterede handlinger">
+      {/* ═══════════════════════════════════════════════════════════════
+          A + B — KRÆVER HANDLING. SKIVE 2C's primære, ledende sektion.
+          Handlingsliste FANDTES I FORVEJEN og er den ENESTE liste — den
+          gamle "Åbne opgaver der kræver opfølgning"-tabel (permanent tom,
+          en parallel struktur ved siden af netop denne) er fjernet, ikke
+          flyttet. Se dashboards.js for hvorfor rækkerne kun er dem der
+          faktisk kræver noget. */}
+      <Kort titel="Kræver handling">
         {/* ⚠ Handlingsliste ER EN PRIMITIV, OG DEN FANDTES I FORVEJEN.
             Jeg skrev min egen markup med min egen .fc-handling-txt — og
             klassenavnet var TAGET af netop den primitiv. css-navne-prøven
@@ -334,122 +377,17 @@ export default function Dashboard() {
             antal: num(h.antal),
           }))}
         />
+        {/* ⚠ INGEN STILLE AFSKÆRING. Er der flere end loftet, siger en
+            linje det — samme disciplin som mindst()/afkortet andre steder
+            i appen: en nedre grænse er en kendsgerning, ikke et tal der
+            forsvinder usagt. */}
+        {skaaretHandlinger > 0 && (
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            {num(skaaretHandlinger)} {skaaretHandlinger === 1 ? "handling til" : "handlinger til"} —
+            se det enkelte modul for resten.
+          </p>
+        )}
       </Kort>
-
-      {/* ⚠ TVÆRGÅENDE TAL HØRER PÅ DET SAMLEDE DASHBOARD. På et
-          modul-dashboard ville "Driftsomkostninger" og "Ikke-faktureret"
-          være tal fra et andet modul end det man har valgt — og så betyder
-          valget ingenting. */}
-      {valgt === SAMLET && (
-      <KpiRaekke>
-        <KpiKort label="Åbne opgaver" vaerdi={num(k.opgaver.aabne)} />
-        {/* ⚠ HER STOD deviation(-0.6, …) — ET HARDKODET DELTA. Kortet viste
-            "↘ −0,6 %-point" under en nedetid der var UBESVARET: en pil der
-            pegede et sted ingen kunne genfinde, og som pegede samme vej i hver
-            eneste tenant. Værre end det hardkodede antal ovenfor, fordi en
-            afvigelse LIGNER en måling af noget der har ændret sig. */}
-        <KpiKort label="Nedetid" vaerdi={pct(k.flaade.nedetidPct, 1)}
-                 afvigelse={deviation(k.flaade.nedetidDeltaPoint, { betterWhen: "lower", unit: "pct" })}
-                 note="%-point" />
-        {/* ⚠ kr() SKELNER IKKE — og det er med vilje: kun KALDEREN ved om nul
-            er et svar. Her er det ikke. Uden gaten stod der "0 kr." for et
-            tal ingen har regnet, og nul kroner i driftsomkostninger er en
-            påstand om en vognmand der ikke bruger penge. Se format.js. */}
-        <KpiKort label="Driftsomkostninger" vaerdi={beloebEllerIntet(k.oekonomi.driftsomkostningerOere)}
-                 afvigelse={deviation(budgetAfvPct, { betterWhen: "lower", unit: "pct" })} note="vs. budget" />
-        {/* ⚠ null / 100 ER 0, IKKE null. Divisionen gik uden om deviation()s
-            gate, og kortet skrev "0,00 vs. sidste periode" for et delta der
-            aldrig var regnet. Regnestykker paa null giver STILLE et tal —
-            se noten ved deviationPct() i format.js. */}
-        <KpiKort label="Omkostning pr. km" vaerdi={beloebEllerIntet(k.flaade.omkostningPrKmOere, 2)}
-                 afvigelse={deviation(
-                   Number.isFinite(k.flaade.omkostningPrKmDeltaOere)
-                     ? k.flaade.omkostningPrKmDeltaOere / 100 : null,
-                   { betterWhen: "lower", dec: 2 })}
-                 note="vs. sidste periode" />
-        {/* Planlagt vs. akut vedligehold — feltet fandtes i kpi/ hele tiden.
-            Budgetafvigelsen er ikke tabt: den beregnes ÉN gang og vises på
-            Økonomi, hvor fortegnskonventionen fra beslutning 3 hører hjemme.
-            Her stod den som det femte kort uden at være i mockuppen. */}
-        {/* ⚠ 100 − null ER 100, IKKE NaN. null bliver til 0 i et minusstykke,
-            og kortet skrev derfor "— / 100 %": den ene halvdel ubesvaret, den
-            anden skråsikker. To tal der summerer til 100 skal mangle SAMMEN.
-            En JSX-kommentar kan i øvrigt ikke stå MELLEM to attributter — den
-            læses som et spread, og byggeriet siger 'Expected "..."'. */}
-        <KpiKort label="Planlagt vs. akut vedligehold"
-                 vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${
-                   Number.isFinite(k.oekonomi.planlagtVedligeholdPct)
-                     ? pct(100 - k.oekonomi.planlagtVedligeholdPct) : INTET}`}
-                 ekstra={<Fordelingsbjaelke pct={k.oekonomi.planlagtVedligeholdPct} />}
-                 note={`Mål ${pct(70)} / ${pct(30)}`} />
-        <KpiKort label="Ikke-faktureret" vaerdi={beloebEllerIntet(k.oekonomi.ikkeFaktureretOere)}
-                 note="ekskl. moms" />
-      </KpiRaekke>
-      )}
-
-      {valgt === SAMLET && (
-      /* Midterrækken. auto-fit, så kortet fylder pænt alene nu og de to
-          øvrige (Omkostninger pr. måned, Største afvigelser) glider ind ved
-          siden af uden endnu en layoutændring. */
-      <Gitter kolonner="repeat(auto-fit, minmax(320px, 1fr))">
-        <Kort titel="Omkostninger pr. måned">
-          <Soejlegraf
-            punkter={maanedsPunkter}
-            serier={[{ navn: "Driftsomkostninger", tone: "brand" }]}
-            maal={{ vaerdi: k.oekonomi.budgetOere, navn: "Budget" }}
-            format={(v) => kr(v)}
-            hoejde={148}
-          />
-        </Kort>
-
-        <Kort titel="Status på opgaver"
-              handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
-          <Donut dele={STATUSFORDELING(k)} format={num} midteTekst="i alt" />
-        </Kort>
-
-        {/* ⚠ FELTET KAN MANGLE, OG SKÆRMEN SKAL TÅLE DET.
-            `afvigelser` står på KPI-efterslæbet: aggregeringen er ikke bygget,
-            så en ægte kpi/-node har det ikke endnu. useKpi returnerer nodens
-            værdi når den findes — og så er demo-sættets felt ikke med.
-            Det gælder ethvert efterslæbsfelt: definér det i demo-kpi.js, OG
-            lad skærmen kunne stå uden det. Et .map() på undefined giver en
-            hvid skærm, ikke et manglende kort. */}
-        <Kort titel="Største afvigelser"
-              handling={<Link className="fc-a" to="/oekonomi">Se alle afvigelser</Link>}>
-          {!k.afvigelser?.length ? (
-            <Tom>Afvigelser aggregeres endnu ikke. Se KPI-efterslæbet i README.</Tom>
-          ) : (
-          <ol className="fc-afvig">
-            {k.afvigelser.map((a) => (
-              <li key={a.id}>
-                <div className="fc-afvig-txt">
-                  <b>{a.emne}</b>
-                  <span>{a.kilde}</span>
-                </div>
-                {/* Afvigelsen skrives ALDRIG som en håndlavet streng — så ville
-                    + være rødt her og grønt et andet sted. betterWhen 'lower':
-                    en overskridelse er dårlig, uanset om det er kroner eller
-                    procent. */}
-                {a.beloebOere != null && (
-                  <span className="fc-afvig-tal fc-bad">
-                    {deviation(a.beloebOere, { betterWhen: "lower", unit: "kr" }).text}
-                  </span>
-                )}
-                {a.pct != null && (
-                  <span className="fc-afvig-tal fc-bad">
-                    {deviation(a.pct, { betterWhen: "lower", unit: "pct" }).text}
-                  </span>
-                )}
-                <Pille tone={a.alvor === "hoej" ? "bad" : a.alvor === "mellem" ? "warn" : "ok"}>
-                  {a.alvor === "hoej" ? "Høj" : a.alvor === "mellem" ? "Mellem" : "Lav"}
-                </Pille>
-              </li>
-            ))}
-          </ol>
-          )}
-        </Kort>
-      </Gitter>
-      )}
 
       {/* ⚠ ET KORT PR. MODUL, BYGGET AF KATALOGET — ikke tre håndskrevne.
           Her stod Workforce, Facility og Procure som hver sit stykke JSX med
@@ -461,31 +399,169 @@ export default function Dashboard() {
         ))}
       </Gitter>
 
-      {valgt === SAMLET && (
-      <Gitter kolonner="minmax(0,1fr)">
-        <Kort titel="Åbne opgaver der kræver opfølgning"
-              handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
-          <Tabel
-            kolonner={[
-              { key: "ms", label: "Dato", render: (r) => dato(r.ms) },
-              { key: "enhed", label: "Enhed", render: (r) => <b>{r.enhed}</b> },
-              { key: "type", label: "Type" },
-              { key: "besk", label: "Beskrivelse" },
-              { key: "ansv", label: "Ansvarlig" },
-              { key: "status", label: "Status", render: (r) => <Pille tone={r.tone}>{r.status}</Pille> },
-              { key: "est", label: "Estimat", num: true, render: (r) => kr(r.est) },
-              { key: "alvor", label: "Prioritet", render: (r) => (
-                  <Pille tone={r.alvor === "hoej" ? "bad" : r.alvor === "mellem" ? "warn" : "ok"}>
-                    {r.alvor === "hoej" ? "Høj" : r.alvor === "mellem" ? "Mellem" : "Lav"}
-                  </Pille>) },
-            ]}
-            raekker={opgaver}
-            tom="Ingen åbne opgaver i perioden."
-          />
-        </Kort>
+      {/* ═══════════════════════════════════════════════════════════════
+          C — EKSTRA NØGLETAL. Sekundær, sammenklappelig — SKIVE 2C.
+          Brugerens EGEN widget-række (uændret motor, se Widgetkort/
+          Widgetvaelger nedenfor) OG de tværgående/regnskabsprægede kort,
+          som ofte kun viser — (endnu ikke aggregeret), flyttet ud af den
+          primære sektion. "Tilpas forside" bor stadig i topbaren ovenfor
+          og virker uændret — knappen sætter blot `redigerer`, som her
+          tvinger sektionen åben, så man kan se det man er ved at rette. */}
+      <details className="fc-sammenklap" open={ekstraAaben || redigerer}
+                onToggle={(e) => saetEkstraAaben(e.target.open)}>
+        <summary>
+          <span aria-hidden="true" className="fc-sammenklap-pil">{"›"}</span>
+          Ekstra nøgletal
+        </summary>
+        <div className="fc-sammenklap-b">
+          {/* ⚠ BRUGERENS EGEN RÆKKE STÅR FØRST HERINDE. Det er den man selv
+              har sat sammen. */}
+          {viste.length > 0 && (
+            <KpiRaekke>
+              {viste.map((key, i) => (
+                <Widgetkort
+                  key={key} nr={i} antal={viste.length} noegle={key} kpi={k}
+                  redigerer={redigerer}
+                  paaFlyt={flytWidget} paaFjern={fjernWidget}
+                />
+              ))}
+            </KpiRaekke>
+          )}
 
-      </Gitter>
-      )}
+          {redigerer && viste.length === 0 && (
+            <Tom>Ingen widgets valgt. Et tomt layout ER et valg — gemmer du det,
+              bliver forsiden stående uden rækken.</Tom>
+          )}
+
+          {!redigerer && viste.length === 0 && (
+            <Tom>Ingen ekstra widgets valgt endnu. Tilpas forsiden for at tilføje nogle.</Tom>
+          )}
+
+          {redigerer && (
+            <Widgetvaelger
+              valgte={viste}
+              harModulFn={harKundenModul}
+              paaSlaaTil={tilfoejWidget}
+              paaFjern={fjernWidget}
+            />
+          )}
+
+          {/* ⚠ TVÆRGÅENDE TAL HØRER PÅ DET SAMLEDE DASHBOARD. På et
+              modul-dashboard ville "Driftsomkostninger" og "Ikke-faktureret"
+              være tal fra et andet modul end det man har valgt — og så betyder
+              valget ingenting. */}
+          {valgt === SAMLET && (
+          <KpiRaekke>
+            <KpiKort label="Åbne opgaver" vaerdi={num(k.opgaver.aabne)} />
+            {/* ⚠ HER STOD deviation(-0.6, …) — ET HARDKODET DELTA. Kortet viste
+                "↘ −0,6 %-point" under en nedetid der var UBESVARET: en pil der
+                pegede et sted ingen kunne genfinde, og som pegede samme vej i hver
+                eneste tenant. Værre end det hardkodede antal ovenfor, fordi en
+                afvigelse LIGNER en måling af noget der har ændret sig. */}
+            <KpiKort label="Nedetid" vaerdi={pct(k.flaade.nedetidPct, 1)}
+                     afvigelse={deviation(k.flaade.nedetidDeltaPoint, { betterWhen: "lower", unit: "pct" })}
+                     note="%-point" />
+            {/* ⚠ kr() SKELNER IKKE — og det er med vilje: kun KALDEREN ved om nul
+                er et svar. Her er det ikke. Uden gaten stod der "0 kr." for et
+                tal ingen har regnet, og nul kroner i driftsomkostninger er en
+                påstand om en vognmand der ikke bruger penge. Se format.js. */}
+            <KpiKort label="Driftsomkostninger" vaerdi={beloebEllerIntet(k.oekonomi.driftsomkostningerOere)}
+                     afvigelse={deviation(budgetAfvPct, { betterWhen: "lower", unit: "pct" })} note="vs. budget" />
+            {/* ⚠ null / 100 ER 0, IKKE null. Divisionen gik uden om deviation()s
+                gate, og kortet skrev "0,00 vs. sidste periode" for et delta der
+                aldrig var regnet. Regnestykker paa null giver STILLE et tal —
+                se noten ved deviationPct() i format.js. */}
+            <KpiKort label="Omkostning pr. km" vaerdi={beloebEllerIntet(k.flaade.omkostningPrKmOere, 2)}
+                     afvigelse={deviation(
+                       Number.isFinite(k.flaade.omkostningPrKmDeltaOere)
+                         ? k.flaade.omkostningPrKmDeltaOere / 100 : null,
+                       { betterWhen: "lower", dec: 2 })}
+                     note="vs. sidste periode" />
+            {/* Planlagt vs. akut vedligehold — feltet fandtes i kpi/ hele tiden.
+                Budgetafvigelsen er ikke tabt: den beregnes ÉN gang og vises på
+                Økonomi, hvor fortegnskonventionen fra beslutning 3 hører hjemme.
+                Her stod den som det femte kort uden at være i mockuppen. */}
+            {/* ⚠ 100 − null ER 100, IKKE NaN. null bliver til 0 i et minusstykke,
+                og kortet skrev derfor "— / 100 %": den ene halvdel ubesvaret, den
+                anden skråsikker. To tal der summerer til 100 skal mangle SAMMEN.
+                En JSX-kommentar kan i øvrigt ikke stå MELLEM to attributter — den
+                læses som et spread, og byggeriet siger 'Expected "..."'. */}
+            <KpiKort label="Planlagt vs. akut vedligehold"
+                     vaerdi={`${pct(k.oekonomi.planlagtVedligeholdPct)} / ${
+                       Number.isFinite(k.oekonomi.planlagtVedligeholdPct)
+                         ? pct(100 - k.oekonomi.planlagtVedligeholdPct) : INTET}`}
+                     ekstra={<Fordelingsbjaelke pct={k.oekonomi.planlagtVedligeholdPct} />}
+                     note={`Mål ${pct(70)} / ${pct(30)}`} />
+            <KpiKort label="Ikke-faktureret" vaerdi={beloebEllerIntet(k.oekonomi.ikkeFaktureretOere)}
+                     note="ekskl. moms" />
+          </KpiRaekke>
+          )}
+
+          {valgt === SAMLET && (
+          /* Midterrækken. auto-fit, så kortet fylder pænt alene nu og de to
+              øvrige (Omkostninger pr. måned, Største afvigelser) glider ind ved
+              siden af uden endnu en layoutændring. */
+          <Gitter kolonner="repeat(auto-fit, minmax(320px, 1fr))">
+            <Kort titel="Omkostninger pr. måned">
+              <Soejlegraf
+                punkter={maanedsPunkter}
+                serier={[{ navn: "Driftsomkostninger", tone: "brand" }]}
+                maal={{ vaerdi: k.oekonomi.budgetOere, navn: "Budget" }}
+                format={(v) => kr(v)}
+                hoejde={148}
+              />
+            </Kort>
+
+            <Kort titel="Status på opgaver"
+                  handling={<Link className="fc-a" to="/booking">Se alle opgaver</Link>}>
+              <Donut dele={STATUSFORDELING(k)} format={num} midteTekst="i alt" />
+            </Kort>
+
+            {/* ⚠ FELTET KAN MANGLE, OG SKÆRMEN SKAL TÅLE DET.
+                `afvigelser` står på KPI-efterslæbet: aggregeringen er ikke bygget,
+                så en ægte kpi/-node har det ikke endnu. useKpi returnerer nodens
+                værdi når den findes — og så er demo-sættets felt ikke med.
+                Det gælder ethvert efterslæbsfelt: definér det i demo-kpi.js, OG
+                lad skærmen kunne stå uden det. Et .map() på undefined giver en
+                hvid skærm, ikke et manglende kort. */}
+            <Kort titel="Største afvigelser"
+                  handling={<Link className="fc-a" to="/oekonomi">Se alle afvigelser</Link>}>
+              {!k.afvigelser?.length ? (
+                <Tom>Afvigelser aggregeres endnu ikke. Se KPI-efterslæbet i README.</Tom>
+              ) : (
+              <ol className="fc-afvig">
+                {k.afvigelser.map((a) => (
+                  <li key={a.id}>
+                    <div className="fc-afvig-txt">
+                      <b>{a.emne}</b>
+                      <span>{a.kilde}</span>
+                    </div>
+                    {/* Afvigelsen skrives ALDRIG som en håndlavet streng — så ville
+                        + være rødt her og grønt et andet sted. betterWhen 'lower':
+                        en overskridelse er dårlig, uanset om det er kroner eller
+                        procent. */}
+                    {a.beloebOere != null && (
+                      <span className="fc-afvig-tal fc-bad">
+                        {deviation(a.beloebOere, { betterWhen: "lower", unit: "kr" }).text}
+                      </span>
+                    )}
+                    {a.pct != null && (
+                      <span className="fc-afvig-tal fc-bad">
+                        {deviation(a.pct, { betterWhen: "lower", unit: "pct" }).text}
+                      </span>
+                    )}
+                    <Pille tone={a.alvor === "hoej" ? "bad" : a.alvor === "mellem" ? "warn" : "ok"}>
+                      {a.alvor === "hoej" ? "Høj" : a.alvor === "mellem" ? "Mellem" : "Lav"}
+                    </Pille>
+                  </li>
+                ))}
+              </ol>
+              )}
+            </Kort>
+          </Gitter>
+          )}
+        </div>
+      </details>
 
       <p className="fc-hint">Alle beløb er ekskl. moms, medmindre andet er angivet.</p>
     </div>
