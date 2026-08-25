@@ -463,6 +463,14 @@ export const ROLLE_PERMS = {
        (ejerskabet tjekkes på `oprettetAf` i reglerne) og har intet ærinde i
        andres skadesager. */
     PERM.indberetningerSensitiveLaes,
+    /* ⚠ SKIVE 3B — indberetningerSkrivAlle, IKKE indberetningerSkriv.
+       Permissionen har ligget klar siden `indberetninger.skriv` blev delt i
+       to (chaufførens egen mod andres), men stod ikke på nogen driftsrolle —
+       kun admin havde den via ALLE_PERMS, og triagen kunne derfor kun bruges
+       i praksis af admin. Samme snit som indberetningerSensitiveLaes lige
+       ovenfor: den der lukker sagen og håndterer fakturaen, er også den der
+       triagerer chaufførens indberetning — det er ÉN rolle, ikke to. */
+    PERM.indberetningerSkrivAlle,
 
     /* ⚠ ALLE FEM sag.*. Samme snit som på bookingen: den der godkender og
        lukker sagen, skal kunne se og skrive på tråden — og han er den der

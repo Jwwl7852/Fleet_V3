@@ -161,6 +161,12 @@ export const DELTE_FILER = [
      erUndtaget() som en fremtidig skærm ville vise — ingen firebase-imports,
      lukningen er triviel (filen importerer ingenting). */
   "retention-regler.js",
+  /* ⚠ indberetninger.js — Skive 3B. `indberetningTriage` skal prøve mod
+     NØJAGTIG samme FORLOEB/kanSkifteTil()/kanAfslutte() som skærmen viser:
+     ellers kunne skærmen tilbyde et skift serveren afviser, eller omvendt
+     lade en indberetning lukkes uden om pengesidens tjek. Filen importerer
+     kun grundlag.js, som allerede står her — lukningen holder. */
+  "indberetninger.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

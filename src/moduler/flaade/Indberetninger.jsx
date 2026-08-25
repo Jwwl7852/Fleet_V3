@@ -40,8 +40,9 @@ import { useListe } from "../../fleet/useListe.js";
 import { usePost } from "../../fleet/usePost.js";
 import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
+import { harModul } from "../../fleet/moduler.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap, Gitter, MiniLinje, Kpiadgang } from "../../fleet/ui.jsx";
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
@@ -52,7 +53,15 @@ import {
   demoTankninger,
 } from "../../fleet/demo-indberetninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { talFraAntal } from "../../fleet/grundlag.js";
+import { PRIORITET } from "../../fleet/prioritet.js";
+import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
+/* ⚠ SKIVE 3B — samme to komponenter som Vaerkstedskalender.jsx og
+   Disponering.jsx bruger. Ingen parallel triage- eller planlægningslogik. */
+import Indberetningtriage from "../../fleet/Indberetningtriage.jsx";
+import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
 
 /* ⚠ HER STOD `bilNavn` SOM EN MODUL-KONST BYGGET AF DEMOFILEN. Hos en rigtig
    kunde matcher den ingenting, og kolonnen "Enhed" ville stå med et råt id på
@@ -62,8 +71,10 @@ import { talFraAntal } from "../../fleet/grundlag.js";
 
 export default function Indberetninger() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
-  const { bruger } = useFleet();
+  const { bruger, moduler } = useFleet();
   const [valgtId, setValgtId] = useState("ind-001");
+  /* Skive 3B: null = lukket, ellers et forslag til Planlaegdialog. */
+  const [planlaegger, setPlanlaegger] = useState(null);
 
   /* ⚠ NODEN, IKKE DEMOFILEN. `indberetninger` var den sjette node med regler
      og ingen data — den blokerede kun ét KPI-felt, og Dashboardet hardkodede
@@ -81,6 +92,27 @@ export default function Indberetninger() {
   });
   const bilNavn = (id) =>
     enheder.data.find((k) => k.id === id)?.kaldenavn || id || "—";
+
+  /* ⚠ SKIVE 3B — SAMME MØNSTER SOM Vaerkstedskalender.jsx. `leverandoerer` er
+     modulspærret på indkoeb; `hent: false` giver en TOM liste i stedet for en
+     afvist læsning hos en kunde uden Procure. Planlaegdialog viser selv
+     hvorfor listen er tom. */
+  const harProcure = harModul(moduler, "indkoeb");
+  const leverandoerer = useListe("leverandoerer", {
+    vindue: "alle", hent: harProcure, demo: DEMO_LEVERANDOERER,
+  });
+
+  /* ⚠ SKIVE 3B — "eventuel tilknyttet driftsopgave" i detaljepanelet.
+     BESØGET SLÅS OP PÅ INDBERETNINGEN, IKKE OMVENDT — samme opslag som
+     chaufførappens Indberetning.jsx, se beslutning 109. */
+  const opgaver = useListe("opgaver", {
+    vindue: "alle", graense: 500, demo: DEMO_OPGAVER,
+  });
+  const brugere = useListe("brugere", { vindue: "alle", graense: 200 });
+  const brugerNavn = (uid) => {
+    const b = brugere.data.find((x) => x.id === uid);
+    return b?.navn || b?.email || uid || "—";
+  };
 
   const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
   /* ⚠ id = null BETYDER "SPØRG IKKE". Hooket står ubetinget — hooks må ikke
@@ -162,33 +194,77 @@ export default function Indberetninger() {
 
         {valgt
           ? <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}}
-                      bilNavn={bilNavn} />
+                      bilNavn={bilNavn} genindlaes={liste.genindlaes}
+                      besoeg={opgaver.data.find((o) => o.indberetningId === valgt.id) || null}
+                      brugerNavn={brugerNavn}
+                      onPlanlaeg={() => setPlanlaegger({
+                        koeretoejId: valgt.koeretoejId || "",
+                        beskrivelse: valgt.beskrivelse || "",
+                        prioritet: valgt.prioritet || "",
+                        indberetningId: valgt.id,
+                      })} />
           : <Kort titel="Detaljer"><Tom>Vælg en indberetning.</Tom></Kort>}
       </Gitter>
+
+      {/* ⚠ SKIVE 3B — SAMME DIALOG SOM Vaerkstedskalender.jsx OG
+          Disponering.jsx, forudfyldt fra indberetningen. Ingen parallel
+          "indberetningskalender". */}
+      {planlaegger && (
+        <Planlaegdialog
+          enheder={enheder.data}
+          leverandoerer={leverandoerer.data}
+          harProcure={harProcure}
+          foraf={planlaegger}
+          onLuk={() => setPlanlaegger(null)}
+          onGemt={() => { setPlanlaegger(null); liste.genindlaes(); }}
+        />
+      )}
     </div>
   );
 }
 
 /* ---- Detaljepanelet ---------------------------------------------------- */
 
-function Detaljer({ i, bruger, sensitivt, bilNavn }) {
-  const afslut = kanAfslutte(i);
+function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNavn, onPlanlaeg }) {
   /* ⚠ SAMME PERMISSION SOM HENTNINGEN OVENFOR. Gaten her afgør hvad der
      TEGNES; reglen på `sensitive/indberetninger` afgør hvad der kan LÆSES.
      Ligger kontrollen kun i skærmen, går et direkte kald uden om den. */
   const maaSensitivt = harPerm(bruger?.perms, PERM.indberetningerSensitiveLaes);
+  /* ⚠ SKIVE 3B — indberetninger.skrivAlle, IKKE indberetninger.skriv.
+     Chaufføren har kun den sidste (sine egne), og reglen på
+     `indberetninger/$id` skelner på nøjagtig den samme permission. Se
+     Indberetningtriage.jsx og indberetningTriage i functions/index.js. */
+  const maaTriagere = harPerm(bruger?.perms, PERM.indberetningerSkrivAlle);
 
   return (
     <Kort titel={HAENDELSE_ART[i.art]?.label || i.art}>
       <Gitter kolonner="1fr 1fr">
         <MiniLinje label="Enhed" vaerdi={bilNavn(i.koeretoejId)} />
-        <MiniLinje label="Oprettet" vaerdi={datoTid(i.oprettetMs)} />
+        <MiniLinje label="Oprettet af" vaerdi={<>{brugerNavn(i.oprettetAf)} · {datoTid(i.oprettetMs)}</>} />
         {harFelt(i.art, FELT.kmStand) && Number.isFinite(i.kmStand) && (
           <MiniLinje label="Kilometerstand" vaerdi={kmFmt(i.kmStand)} />
         )}
+        {/* ⚠ SKIVE 3B — FORLØBET STÅR OGSÅ I DETALJEPANELET, ikke kun i
+            listen: valgt indberetning kan være scrollet ud af syne. */}
+        {i.forloeb && (
+          <MiniLinje label="Forløb" vaerdi={
+            <Pille tone={FORLOEB[i.forloeb]?.pill || "info"}>
+              {FORLOEB[i.forloeb]?.label || i.forloeb}
+            </Pille>
+          } />
+        )}
+        <MiniLinje label="Prioritet" vaerdi={i.prioritet
+          ? PRIORITET[i.prioritet]?.label || i.prioritet
+          : "Ikke vurderet"} />
         {/* ⚠ HAR en sag — ER ikke en sag. To tilstandsmaskiner, ét felt
             imellem. En mail kan være besvaret uden at bilen er repareret. */}
         <MiniLinje label="Sag" vaerdi={i.sagId || "Ingen"} />
+        {/* ⚠ BESØGET SLÅS OP PÅ INDBERETNINGEN, IKKE OMVENDT — beslutning
+            109. Feltet kan mangle selv når der ER en aktivitet: koblingen
+            findes kun fra opgaver oprettet via "Planlæg aktivitet" herfra. */}
+        <MiniLinje label="Driftsopgave" vaerdi={besoeg
+          ? <>{OPGAVE_STATUS[besoeg.status]?.label || besoeg.status} · {dato(besoeg.startMs)}</>
+          : "Ingen"} />
       </Gitter>
 
       <p style={{ marginTop: 12 }}>{i.beskrivelse}</p>
@@ -201,21 +277,17 @@ function Detaljer({ i, bruger, sensitivt, bilNavn }) {
 
       <Materialer i={i} />
 
-      {!afslut.ok && (
-        <div style={{ marginTop: 16 }}>
-          <Pille tone="bad">Kan ikke afsluttes</Pille>
-          <ul style={{ margin: "8px 0 0 18px" }}>
-            {afslut.aarsager.map((a, n) => <li key={n} className="fc-hint">{a}</li>)}
-          </ul>
-        </div>
-      )}
-
-      <div className="fc-row" style={{ gap: 8, marginTop: 12 }}>
-        <Knap variant="primaer" disabled title={afslut.ok
-          ? "Fase 0: indberetninger/ skrives ikke fra klienten endnu."
-          : afslut.aarsager[0]}>
-          Afslut
-        </Knap>
+      {/* ⚠ SKIVE 3B — MASKINEN TEGNER KNAPPERNE, IKKE EN LISTE HER. Se
+          Indberetningtriage.jsx: "Sæt på afvent", "Planlæg aktivitet" og
+          "Afslut" tegnes af FORLOEB[i.forloeb].naeste, og serveren afviser
+          med den SAMME kanSkifteTil()/kanAfslutte(). */}
+      <div style={{ marginTop: 16 }}>
+        <Indberetningtriage
+          indberetning={i}
+          maaSkrive={maaTriagere}
+          onPlanlaeg={onPlanlaeg}
+          onSkiftet={genindlaes}
+        />
       </div>
     </Kort>
   );

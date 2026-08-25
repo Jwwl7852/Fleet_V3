@@ -83,6 +83,10 @@ import { valideMelding, byggMelding, MELDING_FELTER } from "./delt/rutestatus.js
 /* ⚠ SAMME FILER SOM SKAERMEN. Serveren proever mod noejagtig de regler
    formularen viste — se noten i opgaveplan-regler.js. */
 import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
+/* ⚠ SKIVE 3B — indberetningTriage og opgaveplanlaegs kobling til
+   indberetningId skal prøve mod NØJAGTIG samme FORLOEB/kanSkifteTil() og
+   kanAfslutte() som skærmen viser. Se noten i scripts/kopier-delt.mjs. */
+import { FORLOEB, kanSkifteTil, kanAfslutte } from "./delt/indberetninger.js";
 import {
   valideForbrugsvare, valideBevaegelse as valideForbrugsvarebevaegelse,
   nyBeholdning,
@@ -3166,6 +3170,22 @@ async function logOpgave(tenantId, uid, handling, id, foer, efter, note) {
     });
 }
 
+/* Skive 3B — samme mønster som logOpgave() lige ovenfor. */
+async function logIndberetning(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "indberetninger");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "indberetninger", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SKRIV ET FORSLAG PAA EN ETAPE — beslutning 58
 
@@ -3503,6 +3523,39 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
   if (sted) post.sted = sted;
   if (personId) post.personId = personId;
 
+  /* ⚠ SKIVE 3B — INDBERETNINGID, VALGFRI. Beslutning 109 valgte retningen:
+     opgaven peger på indberetningen, ikke omvendt. Feltet stod klar i
+     opgaver.js' vaerksted-feltskema og i firebase.rules.json siden dengang,
+     men blev aldrig sendt herfra — koblingen var besluttet og ikke bygget. */
+  const indberetningId = kortStreng(d.indberetningId, 60);
+  let indberetningFoer = null;
+  if (indberetningId) {
+    /* ⚠ SAMME PERMISSION SOM DEN NARROWE indberetningTriage. "Planlæg
+       aktivitet" fra en indberetning ÆNDRER en anden brugers post (dens
+       forloeb), og det er præcis den handling indberetninger.skrivAlle
+       findes for at skelne fra chaufførens egen indberetninger.skriv. Uden
+       den her linje ville opgaver.skriv alene have været nok — og den
+       permission siger intet om hvem der ejer indberetningen. */
+    if (!perms.includes("|indberetninger.skrivAlle|")) {
+      throw new HttpsError("permission-denied",
+        "Du må ikke koble en indberetning til en opgave. Det kræver indberetninger.skrivAlle.");
+    }
+    indberetningFoer = (await rod.child(`indberetninger/${indberetningId}`).once("value")).val();
+    if (!indberetningFoer) {
+      throw new HttpsError("not-found", `Indberetningen ${indberetningId} findes ikke.`);
+    }
+    /* ⚠ SAMME TILSTANDSMASKINE SOM SKÆRMEN VISER. En indberetning der allerede
+       er afsluttet — eller aldrig havde et forløb, fordi den er en
+       udgiftsregistrering — kan ikke sendes til "planlagt". Gæt ikke: fejl
+       lukket, som kanSkifteTil() selv gør på en ukendt tilstand. */
+    if (!kanSkifteTil(indberetningFoer.forloeb, "planlagt")) {
+      throw new HttpsError("failed-precondition",
+        `Indberetningen kan ikke sendes til "${FORLOEB.planlagt.label}" fra sit ` +
+        `nuværende forløb ("${FORLOEB[indberetningFoer.forloeb]?.label || indberetningFoer.forloeb || "intet"}").`);
+    }
+    post.indberetningId = indberetningId;
+  }
+
   /* ---- Formen: SKAERMENS EGEN VALIDERING ------------------------------ */
   /* ⚠ SAMME FUNKTION, SAMME SAETNING. valideOpgaveplan() ligger i delt/, og
      formularen kalder den ogsaa. To formuleringer af een spaerring er to
@@ -3598,13 +3651,137 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
     oprettetAf: uid,
     oprettetMs: nu,
   };
+  /* ⚠ SKIVE 3B — SAMME update(), IKKE ET KALD MERE. Opgaven og indberetningen
+     skal lande sammen eller slet ikke: to uafhængige skrivninger kunne
+     efterlade en indberetning der siger "planlagt" uden nogen opgave, eller
+     en opgave med en indberetningId der aldrig blev meldt videre. */
+  if (indberetningId) {
+    opdatering[`indberetninger/${indberetningId}/forloeb`] = "planlagt";
+  }
 
   await rod.update(opdatering);
 
   await logOpgave(tenantId, uid, AUDIT.opret, opgaveId, null, post,
     `opgave planlagt paa ${ny.ressourceType} ${ny.ressourceId}`);
+  if (indberetningId) {
+    await logIndberetning(tenantId, uid, AUDIT.tilstandsskift, indberetningId,
+      { forloeb: indberetningFoer.forloeb }, { forloeb: "planlagt" },
+      `koblet til opgave ${opgaveId}`);
+  }
 
   return { opgaveId, fra: ny.fra, til: ny.til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INDBERETNINGTRIAGE — Skive 3B
+
+   ⚠ HVORFOR DEN FINDES, SELVOM `indberetninger/$id` ALLEREDE ER SKRIVBAR.
+   `indberetninger.skrivAlle` lader kontoret redigere ETHVERT felt på en
+   ANDENS indberetning — ejeren, teksten, arten, kilometerstanden, alt. Det
+   er retten en klargøring eller en rettelse af et tastefejlsramt felt har
+   brug for. Triage er noget andet: ÉT lovligt forløbsskift, efter
+   NØJAGTIG samme FORLOEB/kanSkifteTil() som skærmen viser, og — når
+   forløbet lukkes uden en omkostning — en begrundelse der ryger i
+   `ingenOmkostning`, intet andet. En fri skrivning til hele posten kunne
+   ramme ved siden af (en "afslut"-handling der ved en fejl også ændrede
+   `koeretoejId`) uden at nogen så det; den her funktion kan kun det ene.
+
+   ⚠ GATEN ER indberetninger.skrivAlle, IKKE indberetninger.skriv.
+   Chaufføren har kun den sidste — `chauffoer: [...BASIS_LAES,
+   PERM.indberetningerSkriv]` i permissions.js — og reglen på
+   `indberetninger/$id` bruger den PRÆCIS samme skelnen: skrivAlle er
+   "andres indberetninger", skriv er "mine egne". Havde funktionen kun
+   krævet skriv, kunne chaufføren have triageret sin egen indberetning selv.
+
+   ⚠ SAMME MOTOR SOM "Afslut"-KNAPPEN VISTE. kanAfslutte() er den ENE
+   funktion der afgør om pengesiden er afklaret — se dens eget hoved i
+   indberetninger.js. Server og skærm er enige, fordi det er den samme
+   funktion, ikke to formuleringer af én spærring.
+   ══════════════════════════════════════════════════════════════════════════ */
+const TRIAGE_MAAL = ["vurderet", "afsluttet"];
+
+export const indberetningTriage = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|indberetninger.skrivAlle|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke triagere andres indberetninger. Det kræver indberetninger.skrivAlle.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("flaade").val() !== true) {
+    throw new HttpsError("permission-denied", "Fleet-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const id = kortStreng(d.id, 60);
+  if (!id) throw new HttpsError("invalid-argument", "id mangler.");
+
+  /* ⚠ KUN DE TO. "planlagt" går gennem opgaveplanlaeg — se dens egen note —
+     fordi den handling OGSÅ opretter en driftsopgave, og de to skal lande i
+     ÉN update(). Denne funktion rører aldrig `opgaver/`. */
+  const handling = kortStreng(d.handling, 20);
+  if (!TRIAGE_MAAL.includes(handling)) {
+    throw new HttpsError("invalid-argument",
+      `Ukendt triagehandling "${handling}". Kun ${TRIAGE_MAAL.join(" og ")} kan sættes herfra.`);
+  }
+
+  const foer = (await rod.child(`indberetninger/${id}`).once("value")).val();
+  if (!foer) throw new HttpsError("not-found", `Indberetningen ${id} findes ikke.`);
+
+  /* ⚠ SAMME TILSTANDSMASKINE SOM SKÆRMEN VISER — kanSkifteTil() fejler lukket
+     på en ukendt eller manglende tilstand, så en udgiftsregistrering (der
+     aldrig har et `forloeb`) afvises her, præcis som i opgaveplanlaeg. */
+  if (!kanSkifteTil(foer.forloeb, handling)) {
+    throw new HttpsError("failed-precondition",
+      `Kan ikke skifte fra "${FORLOEB[foer.forloeb]?.label || foer.forloeb || "intet forløb"}" ` +
+      `til "${FORLOEB[handling].label}".`);
+  }
+
+  const opdatering = {};
+  const efter = { forloeb: handling };
+
+  if (handling === "afsluttet") {
+    /* ⚠ BEGRUNDELSEN BYGGES AF SERVEREN — af og ms er IKKE klientens at
+       sætte, samme regel som `oprettetAf`/`oprettetMs` andre steder: en
+       browser kan oplyse hvad som helst om hvem og hvornår. */
+    const begrundelse = kortStreng(d.begrundelse, 500);
+    const udkast = begrundelse
+      ? { ...foer, forloeb: "afsluttet", ingenOmkostning: { begrundelse, af: uid, ms: Date.now() } }
+      : { ...foer, forloeb: "afsluttet" };
+    const afslut = kanAfslutte(udkast);
+    if (!afslut.ok) {
+      throw new HttpsError("failed-precondition", afslut.aarsager[0]);
+    }
+    if (udkast.ingenOmkostning) {
+      opdatering[`indberetninger/${id}/ingenOmkostning`] = udkast.ingenOmkostning;
+      efter.ingenOmkostning = udkast.ingenOmkostning;
+    }
+  }
+
+  opdatering[`indberetninger/${id}/forloeb`] = handling;
+  await rod.update(opdatering);
+
+  await logIndberetning(tenantId, uid, AUDIT.tilstandsskift, id,
+    { forloeb: foer.forloeb }, efter, `indberetning triageret: ${handling}`);
+
+  return { id, forloeb: handling };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

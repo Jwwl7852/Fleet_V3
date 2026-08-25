@@ -80,8 +80,10 @@ const FELTNAVN = {
  */
 export default function Planlaegdialog({
   enheder, leverandoerer, harProcure, onLuk, onGemt,
-  /* Gitterets forslag: { koeretoejId, startMs, varighedMin }. Se hovedet —
-     det er et forslag, ikke en lås. */
+  /* Gitterets forslag: { koeretoejId, startMs, varighedMin }. Skive 3B
+     udvidede den med tre felter fra en indberetning: { beskrivelse,
+     prioritet, indberetningId }. Se hovedet — det er et forslag, ikke en
+     lås; alle felter kan rettes i formularen. */
   foraf = null,
 }) {
   /* Startforslag: i morgen kl. 08.00. ⚠ IKKE "nu" — en aktivitet man
@@ -113,8 +115,9 @@ export default function Planlaegdialog({
       arbejdstype: "",
       status: "planlagt",
       leverandoerId: "",
-      prioritet: "",
-      beskrivelse: "",
+      /* Skive 3B: en indberetning kan have sat en prioritet ved triage. */
+      prioritet: foraf?.prioritet || "",
+      beskrivelse: foraf?.beskrivelse || "",
       startIso: msTilIso(start),
       startTid: `${tt}:${mm}`,
       /* ⚠ VARIGHEDEN FORESLÅS IKKE AF HULLETS LÆNGDE. Et ledigt vindue på syv
@@ -165,6 +168,11 @@ export default function Planlaegdialog({
     estimeretMin: Number(post.varighedMin) || null,
     leverandoerId: post.leverandoerId || null,
     prioritet: post.prioritet || null,
+    /* ⚠ SKIVE 3B — IKKE ET FELT I FORMULAREN. Koblingen er forslagets, ikke
+       brugerens: rammer man ved siden af på enhed eller beskrivelse, retter
+       man i formularen, men hvilken indberetning der udløste besøget, er
+       ikke noget der skal kunne tastes forkert. */
+    indberetningId: foraf?.indberetningId || undefined,
   };
 
   const kontrol = valideOpgaveplan(udkast, {

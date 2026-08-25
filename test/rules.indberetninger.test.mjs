@@ -312,6 +312,48 @@ describe("sensitive/indberetninger", () => {
   });
 });
 
+describe("⚠ SKIVE 3B — ingenOmkostning ER ET OBJEKT, IKKE ET FLUESKIN", () => {
+  /* Her stod ".validate": "newData.isBoolean()" — mens kanAfslutte() i
+     indberetninger.js hele tiden har læst `ingenOmkostning.begrundelse`, og
+     demo-indberetninger.js allerede skrev formen { begrundelse, af, ms }.
+     Reglen var den ene brik der ikke fulgte med: en bruger der prøvede at
+     afslutte uden omkostning, kunne ALDRIG skrive den begrundelse
+     kanAfslutte() krævede. */
+  const SKRIVER = [PERM.indberetningerSkriv, PERM.indberetningerSkrivAlle];
+
+  it("afviser nu den gamle boolean-form", async () => {
+    await assertFails(set(ref(medPerms("b1", SKRIVER), sti("indberetninger/i-bool")),
+      POST({ oprettetAf: "b1", ingenOmkostning: true })));
+  });
+
+  it("tager et objekt med en begrundelse", async () => {
+    await assertSucceeds(set(ref(medPerms("b2", SKRIVER), sti("indberetninger/i-obj")),
+      POST({ oprettetAf: "b2", ingenOmkostning: { begrundelse: "Dækket af garantien" } })));
+  });
+
+  it("kræver begrundelsen — et objekt uden den afvises", async () => {
+    /* ⚠ ET TOMT OBJEKT ER IKKE DEN RIGTIGE PRØVE — RTDB skriver aldrig et
+       tomt objekt; en skrivning uden børn er en no-op, og assertFails ville
+       fejle af den forkerte grund. Objektet skal have ET barn der ikke er
+       begrundelse, for at ramme hasChildren(['begrundelse']) selv. */
+    await assertFails(set(ref(medPerms("b3", SKRIVER), sti("indberetninger/i-tom")),
+      POST({ oprettetAf: "b3", ingenOmkostning: { af: "uid-x" } })));
+  });
+
+  it("tager af/ms — kontorets afgørelse og hvornår", async () => {
+    await assertSucceeds(set(ref(medPerms("b4", SKRIVER), sti("indberetninger/i-afms")),
+      POST({
+        oprettetAf: "b4",
+        ingenOmkostning: { begrundelse: "Kørt på eget værksted", af: "uid-jorn", ms: 1786912716050 },
+      })));
+  });
+
+  it("afviser et ukendt felt i ingenOmkostning", async () => {
+    await assertFails(set(ref(medPerms("b5", SKRIVER), sti("indberetninger/i-ekstra")),
+      POST({ oprettetAf: "b5", ingenOmkostning: { begrundelse: "X", forsikringssag: "12345" } })));
+  });
+});
+
 describe("prioriteten på en indberetning", () => {
   /* ⚠ SAMME TRE TRIN SOM PÅ opgaver/. Driftskalenderen viser de to noder
      side om side i den samme kø — havde de hver sit ordforråd, kunne

@@ -2163,7 +2163,25 @@
 
             // Oere som integer. En float bliver 1849,999 i en sum.
             "omkostningOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
-            "ingenOmkostning": { ".validate": "newData.isBoolean()" },
+            // ⚠ SKIVE 3B — HER STOD "newData.isBoolean()". indberetninger.js'
+            // kanAfslutte() har hele tiden læst `ingenOmkostning.begrundelse`
+            // — et OBJEKT, ikke et flueben — og demo-indberetninger.js skrev
+            // allerede formen `{ begrundelse, af, ms }`. Reglen var den ene
+            // brik der ikke fulgte med: en bruger der rent faktisk prøvede at
+            // afslutte uden omkostning, kunne ALDRIG skrive den begrundelse
+            // kanAfslutte() krævede, fordi reglen kun tog imod en boolean.
+            // Uden begrundelsen kan "dækket af garantien" ikke skelnes fra
+            // "vi glemte fakturaen" — se kanAfslutte()'s eget hoved.
+            "ingenOmkostning": {
+              ".validate": "newData.hasChildren(['begrundelse'])",
+              "begrundelse": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+              // af/ms: KONTORETS afgørelse og hvornår — samme snit som
+              // underskriftens ms, sat af den Cloud Function der lukker
+              // indberetningen, ikke af klienten.
+              "af": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              "ms": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            },
 
             // Braendstof: km er TOTAL maalerstand, ikke km siden sidst.
             "kmStand": { ".validate": "newData.isNumber() && newData.val() >= 0" },

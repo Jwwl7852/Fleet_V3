@@ -60,6 +60,11 @@ export const LOGBARE_FELTER = new Set([
   // tilstand og status
   "tilstand", "status", "aftalestatus", "aktiv", "annulleret", "slettet",
   "harAabneEtaper",
+  /* ⚠ forloeb — SKIVE 3B. Indberetningens eget statsmaskineri (FORLOEB i
+     indberetninger.js). Uden feltet kunne loggen fortælle AT en indberetning
+     blev triageret, men ikke fra "ny" til "vurderet" — samme begrundelse som
+     "status" og "tilstand" ovenfor. */
+  "forloeb",
   // klassifikation
   /* ⚠ "division" STOD HER og er fjernet i beslutning 79. Feltet findes ikke
      siden 70, og en allowliste der tillader noget der ikke kan skrives, er en

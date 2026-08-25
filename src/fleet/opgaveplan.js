@@ -95,6 +95,11 @@ export async function planlaegOpgave(post) {
       prioritet: post.prioritet || undefined,
       sted: post.sted || undefined,
       personId: post.personId || undefined,
+      /* ⚠ SKIVE 3B — VALGFRI. Beslutning 109's retning: opgaven peger på
+         indberetningen. Serveren prøver at koblingen er et lovligt
+         forløbsskift (kanSkifteTil(..., "planlagt")) og kræver
+         indberetninger.skrivAlle — se opgaveplanlaeg i functions/index.js. */
+      indberetningId: post.indberetningId || undefined,
     });
     return { ok: true, art: PLANSVAR.ok, besked: null, data: svar?.data ?? null };
   } catch (fejl) {
