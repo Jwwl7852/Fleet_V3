@@ -12,11 +12,18 @@
  * maskinen at "planlagt" er en lovlig næste tilstand, tegnes der en knap der
  * kalder `onPlanlaeg()` i stedet for at skrive selv.
  *
- * ⚠ INGEN BEGRUNDELSE VED "Sæt på afvent" — samme begrundelse som
+ * ⚠ INGEN BEGRUNDELSE VED "Markér som vurderet" — samme begrundelse som
  * Statusskifte.jsx: dagens model har intet felt til den, og en begrundelse
  * uden et sted at stå ville enten blive fritekst på vej mod auditloggen
  * (forbudt, se audit-regler.js) eller gå tabt. "Afslut" har derimod
  * `ingenOmkostning.begrundelse` — et felt modellen allerede bærer.
+ *
+ * ⚠ SKIVE 3B.1 — KNAPPEN HED "Sæt på afvent". Det er IKKE et sandt
+ * brugerbegreb: "afvent" antyder at noget er sat i BERO, mens den gemte
+ * tilstand er `FORLOEB.vurderet` — "nogen har SET og VURDERET meldingen".
+ * De to er ikke det samme, og en tekst der lover det ene og gemmer det
+ * andet, er den slags forskel en bruger opdager for sent. Statusmaskinen
+ * er uændret; kun ordet på knappen er rettet.
  */
 import { useState } from "react";
 import { Knap, Raekke, Dialog, Felt, Formular, Formularsvar } from "./ui.jsx";
@@ -24,7 +31,7 @@ import { FORLOEB, kanAfslutte } from "./indberetninger.js";
 import { trigeIndberetning } from "./indberetningplan.js";
 
 const ETIKET = {
-  vurderet: "Sæt på afvent",
+  vurderet: "Markér som vurderet",
   afsluttet: "Afslut",
 };
 

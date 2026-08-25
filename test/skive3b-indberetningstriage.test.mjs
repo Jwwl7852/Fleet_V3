@@ -295,3 +295,29 @@ describe("kanAfslutte() — pengesiden, prøvet mod den delte funktion", () => {
       true);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. SKIVE 3B.1 — UI-SEMANTIK: KNAPTEKSTEN LOVER DET DEN GEMMER
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("⚠ knapteksten for \"vurderet\" siger det den gemmer", () => {
+  const ui = readFileSync("src/fleet/Indberetningtriage.jsx", "utf8");
+
+  it("⚠ FUNDET VED DEV-VERIFIKATION: \"Sæt på afvent\" er ikke sandt", () => {
+    /* Knappen skrev "Sæt på afvent" — et ord der antyder at noget sættes i
+       BERO — mens den gemte tilstand er FORLOEB.vurderet: nogen har SET og
+       VURDERET meldingen. De to er ikke det samme udsagn. Statusskifte.jsx
+       har sin EGEN "Sæt på afvent" for opgavestatussen "afventer" — den er
+       korrekt navngivet dér og må ikke ændres; det er kun indberetningens
+       "vurderet"-knap denne prøve gælder. */
+    /* ⚠ TJEKKET STÅR MOD KODEN UDEN KOMMENTARER. Filens EGEN dokumentation af
+       fundet citerer nødvendigvis den gamle tekst — se hovedet — og en naiv
+       substring-søgning ville derfor altid fejle på sin egen forklaring. */
+    assert.ok(!udenKommentarer(ui).includes('"Sæt på afvent"'),
+      "knapteksten lover stadig et \"afvent\" som ikke er den gemte tilstand");
+  });
+
+  it("⚠ ETIKETTEN BRUGER ORDET FRA FORLOEB — \"vurderet\"", () => {
+    assert.match(ui, /vurderet:\s*"[^"]*[Vv]urderet[^"]*"/,
+      "knapteksten for forloeb \"vurderet\" nævner ikke ordet \"vurderet\"");
+  });
+});

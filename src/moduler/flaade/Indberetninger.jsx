@@ -286,8 +286,8 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
       <Materialer i={i} />
 
       {/* ⚠ SKIVE 3B — MASKINEN TEGNER KNAPPERNE, IKKE EN LISTE HER. Se
-          Indberetningtriage.jsx: "Sæt på afvent", "Planlæg aktivitet" og
-          "Afslut" tegnes af FORLOEB[i.forloeb].naeste, og serveren afviser
+          Indberetningtriage.jsx: "Markér som vurderet", "Planlæg aktivitet"
+          og "Afslut" tegnes af FORLOEB[i.forloeb].naeste, og serveren afviser
           med den SAMME kanSkifteTil()/kanAfslutte(). */}
       <div style={{ marginTop: 16 }}>
         <Indberetningtriage
