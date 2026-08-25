@@ -310,3 +310,140 @@ describe("Skive 2C — 14) Tilpas forside / eksisterende brugerlayout: fortsat f
       "firebase.rules.json nævner nu 'booking' i brugerlayout — fjern SKIVE_2C_UNDTAGET i test/widgets.test.mjs og i denne test");
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * SKIVE 2C.1 — KORREKTION: "Kræver handling" og <Kpiadgang> respekterer nu
+ * den SAMME endelige firelags-synlighed som vælgeren og modulkortene, og
+ * Warehouse/Unitbookings "ikke aggregeret"-kort viser ikke længere interne
+ * feltstier/nodenavne. Se Dashboard.jsx's kommentarer "SKIVE 2C.1 —
+ * KORREKTION 1/2/3".
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Dashboard.jsx's `endeligSynligeModuler`-filter på "Kræver handling"
+ * (KORREKTION 1), ordret — samme opbygning som `landing()` ovenfor, blot
+ * videreført ét skridt til handlinger().
+ */
+function endeligeHandlinger(alle, kpi, { harModulFn, valgt }) {
+  const driftsmoduler = alle.filter((d) => d.key !== SAMLET);
+  const endeligSynligeModuler = new Set(driftsmoduler.map((d) => d.key));
+  return handlinger(kpi, { harModulFn })
+    .filter((h) => !h.modul || endeligSynligeModuler.has(h.modul))
+    .filter((h) => valgt === SAMLET || h.modul === valgt);
+}
+
+/** Dashboard.jsx's `kpiadgangRelevant` (KORREKTION 2), ordret. */
+function kpiadgangRelevant(alle, utilgaengelige, navvisningPost) {
+  const driftsmoduler = alle.filter((d) => d.key !== SAMLET);
+  const endeligSynligeModuler = new Set(driftsmoduler.map((d) => d.key));
+  const relevanteKpiDomaener = new Set(
+    [...endeligSynligeModuler].map((m) => KPI_DOMAENE_FOR_DASHBOARD[m] || m));
+  if (!erSkjultVedNavvisning("oekonomi", navvisningPost)) relevanteKpiDomaener.add("oekonomi");
+  return Object.fromEntries(
+    Object.entries(utilgaengelige).filter(([d]) => relevanteKpiDomaener.has(d)));
+}
+
+/* Fixture der udløser ALLE ni HANDLINGER-poster (flaade, facility, indkoeb,
+   booking) — samme fixture som Skive 2C's egen "Samlet: maks. 3–6"-test. */
+const KPI_ALLE_HANDLINGER = {
+  flaade: { udeAfDrift: 1, nyeIndberetninger: 1 },
+  facility: { klimaalarmerIDag: 1, servicepunkterForfalder: 1 },
+  opgaver: { forsinkede: 1 },
+  disponering: { konflikter: 1, forsinkelsesrisiko: 1, aabneEtaper: 1 },
+  indkoeb: { fakturaerTilGodkendelse: 1 },
+};
+
+describe("Skive 2C.1 — 1) Navvisning = Warehouse + Unitbooking: 'Kræver handling' er tom for de andre moduler", () => {
+  const alle = synligALLE({
+    moduler: FULD_TENANT,
+    navvisning: { flaade: false, facility: false, indkoeb: false, booking: false, bemanding: false },
+  });
+  const { standardMaal } = landing(alle);
+
+  it("standardMaal er Samlet (2 driftsmoduler tilbage)", () => {
+    assert.equal(standardMaal, SAMLET);
+  });
+  it("'Kræver handling' indeholder INGEN Fleet-, Planning-, Facility-, Procure- eller Workforce-handling", () => {
+    const resultat = endeligeHandlinger(alle, KPI_ALLE_HANDLINGER,
+      { harModulFn: () => true, valgt: standardMaal });
+    for (const h of resultat) {
+      assert.ok(!["flaade", "facility", "indkoeb", "booking", "bemanding"].includes(h.modul),
+        `"${h.key}" (modul ${h.modul}) burde være filtreret væk af navvisning`);
+    }
+  });
+});
+
+describe("Skive 2C.1 — 2) Navvisning = kun Warehouse: ingen handling fra andre moduler, ingen skjult-domæne-støj", () => {
+  const navvisning = {
+    flaade: false, facility: false, indkoeb: false, booking: false,
+    bemanding: false, unitbooking: false, oekonomi: false,
+  };
+  const alle = synligALLE({ moduler: FULD_TENANT, navvisning });
+  const { standardMaal, visVaelger } = landing(alle);
+
+  it("lander direkte på warehouse, ingen vælger", () => {
+    assert.equal(visVaelger, false);
+    assert.equal(standardMaal, "warehouse");
+  });
+  it("'Kræver handling' er tom — warehouse har ingen HANDLINGER-poster, og intet andet modul er synligt", () => {
+    const resultat = endeligeHandlinger(alle, KPI_ALLE_HANDLINGER,
+      { harModulFn: () => true, valgt: standardMaal });
+    assert.deepEqual(resultat, []);
+  });
+  it("ingen Kpiadgang-besked om Økonomi/Fleet/Facility/Procure, selvom de reelt er utilgængelige", () => {
+    const utilgaengelige = {
+      oekonomi: "perm", flaade: "perm", facility: "modul", indkoeb: "perm",
+    };
+    const relevant = kpiadgangRelevant(alle, utilgaengelige, navvisning);
+    assert.deepEqual(relevant, {},
+      `støj om skjulte domæner: ${Object.keys(relevant).join(", ")}`);
+  });
+});
+
+describe("Skive 2C.1 — 3) Fuld admin: relevante handlinger fra alle synlige moduler vises fortsat", () => {
+  it("alle ni HANDLINGER-poster overlever filteret når intet er skjult", () => {
+    const alle = synligALLE({ moduler: FULD_TENANT });
+    const { standardMaal } = landing(alle);
+    assert.equal(standardMaal, SAMLET);
+    const resultat = endeligeHandlinger(alle, KPI_ALLE_HANDLINGER,
+      { harModulFn: () => true, valgt: standardMaal });
+    assert.equal(resultat.length, HANDLINGER.length);
+  });
+});
+
+describe("Skive 2C.1 — 4) Dashboardvisning skjuler et ellers nav-synligt modul: dets handlinger forsvinder også", () => {
+  it("indkoeb (Procure) sine handlinger er væk, resten er upåvirket", () => {
+    const alle = synligALLE({ moduler: FULD_TENANT, dashboardvisning: { indkoeb: false } });
+    const { standardMaal } = landing(alle);
+    assert.equal(standardMaal, SAMLET);
+    const resultat = endeligeHandlinger(alle, KPI_ALLE_HANDLINGER,
+      { harModulFn: () => true, valgt: standardMaal });
+    assert.ok(!resultat.some((h) => h.modul === "indkoeb"),
+      "en dashboardvisning-skjult moduls handling overlevede filteret");
+    assert.ok(resultat.some((h) => h.modul === "flaade"), "flaade forsvandt uden grund");
+    assert.ok(resultat.some((h) => h.modul === "booking"), "booking forsvandt uden grund");
+    assert.ok(resultat.some((h) => h.modul === "facility"), "facility forsvandt uden grund");
+  });
+});
+
+describe("Skive 2C.1 — 5) Warehouse/Unitbooking ikkeAggregeret: ingen interne felt-/node-/kpi-navne i bruger-UI", () => {
+  const KILDE = readFileSync("src/moduler/Dashboard.jsx", "utf8");
+  const start = KILDE.indexOf("kort.mangler ? (");
+  const slut = KILDE.indexOf(") : (", start);
+  const gren = KILDE.slice(start, slut);
+
+  it("mangler-grenen findes og er ikke tom (testens egen forudsætning)", () => {
+    assert.ok(start > 0 && slut > start);
+  });
+  it("kort.hvorfor renderes IKKE til brugeren", () => {
+    assert.doesNotMatch(gren, /kort\.hvorfor/);
+  });
+  it("kort.mangler's rå feltstier renderes IKKE til brugeren", () => {
+    assert.doesNotMatch(gren, /kort\.mangler\.map/);
+    assert.doesNotMatch(gren, /<code>/);
+  });
+  it("kataloget selv (dev-data til README/test) er UÆNDRET — kun visningen er rettet", () => {
+    assert.ok(MODULKORT.warehouse.hvorfor && MODULKORT.warehouse.mangler.length > 0);
+    assert.ok(MODULKORT.unitbooking.hvorfor && MODULKORT.unitbooking.mangler.length > 0);
+  });
+});

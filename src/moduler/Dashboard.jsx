@@ -223,11 +223,40 @@ export default function Dashboard() {
      antal moduler, ville før eller siden gøre det modsatte. Loftet er
      IKKE stille: er der flere, siger en linje under listen hvor mange der
      er skåret væk, i stedet for at lade dem forsvinde usagt. */
+  /* ⚠ SKIVE 2C.1 — KORREKTION 1. handlinger() filtrerer kun på TENANTENS
+     moduler (harKundenModul), som er lag ét af fire. En lagermedarbejder
+     med navvisning = kun Warehouse+Unitbooking så stadig Fleet-, Planning-,
+     Procure- og Facility-handlinger her — præcis den lækage fire-lags-
+     modellen ellers forhindrer i vælgeren og modulkortene.
+     `driftsmoduler` ER den kanoniske, allerede fuldt filtrerede mængde
+     (samme ALLE som vælgeren og modulkortene bruger) — der indføres ingen
+     ny beregning, kun ét filter mere, i samme rækkefølge som resten af
+     skærmen.
+     ⚠ En handling UDEN modulejer ville ikke matche noget i mængden og
+     forsvinde ved en fejl — derfor `!h.modul` først. I dag har alle ni
+     HANDLINGER-poster et påkrævet `modul`, så grenen er ikke i brug, men
+     kravet var eksplicit: fælles, modulløse handlinger må fortsat vises. */
+  const endeligSynligeModuler = new Set(driftsmoduler.map((d) => d.key));
   const alleHandlinger = handlinger(k, { harModulFn: harKundenModul })
+    .filter((h) => !h.modul || endeligSynligeModuler.has(h.modul))
     .filter((h) => valgt === SAMLET || h.modul === valgt);
   const HANDLING_LOFT = 6;
   const handler = alleHandlinger.slice(0, HANDLING_LOFT);
   const skaaretHandlinger = alleHandlinger.length - handler.length;
+
+  /* ⚠ SKIVE 2C.1 — KORREKTION 2. <Kpiadgang> fik hele `utilgaengelige`
+     ufiltreret og advarede derfor om domæner der intet har med DETTE
+     dashboard at gøre — "Økonomi & Rapporter" for en lagermedarbejder hvis
+     navvisning aldrig viser arbejdsområdet "oekonomi". Filtreret til de
+     domæner Dashboard faktisk læser herfra: de synlige driftsmodulers egne
+     (samme oversættelse som kanSeDashboard bruger) plus økonomidomænet,
+     som Samlets tværgående kort læser uafhængigt af driftsmodulerne — men
+     kun når arbejdsområdet "oekonomi" ikke selv er navvisning-skjult. */
+  const relevanteKpiDomaener = new Set(
+    [...endeligSynligeModuler].map((m) => KPI_DOMAENE_FOR_DASHBOARD[m] || m));
+  if (!erSkjultVedNavvisning("oekonomi", navvisning.post)) relevanteKpiDomaener.add("oekonomi");
+  const kpiadgangRelevant = Object.fromEntries(
+    Object.entries(utilgaengelige).filter(([d]) => relevanteKpiDomaener.has(d)));
 
   /* Samlet viser alle modulkort; et modul-dashboard viser sit eget. */
   const kortNoegler = (valgt === SAMLET
@@ -289,7 +318,7 @@ export default function Dashboard() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <Kpiadgang utilgaengelige={utilgaengelige} />
+      <Kpiadgang utilgaengelige={kpiadgangRelevant} />
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {/* ⚠ VÆLGEREN ER EN <select> OG IKKE FANER. Syv dashboards i en
@@ -571,13 +600,15 @@ export default function Dashboard() {
 /* ---- Modulkortet ------------------------------------------------------ */
 
 /**
- * Tre tal fra kpi/, eller en ærlig besked om hvad der mangler.
+ * Tre tal fra kpi/, eller en kort, ærlig besked om at de mangler.
  *
  * ⚠ ET MODUL UDEN TAL FÅR ET KORT ALLIGEVEL. Warehouse har ét felt i kpi/
  * og UnitBooking ingen. Udelod vi kortene, ville de to moduler se ud som
  * noget der ikke findes; fyldte vi dem med tal, ville de se ud som
- * målinger. Kortet skriver i stedet hvilke felter der skal beregnes — så
- * står efterslæbet på skærmen frem for kun i README.
+ * målinger. Efterslæbet (hvilke felter der mangler, og hvorfor) står
+ * stadig i kataloget (`kort.mangler`/`kort.hvorfor` i dashboards.js) og i
+ * README — ikke på skærmen. Se beslutning om at brugerens skærm ikke skal
+ * kende nodenavne eller feltstier, Skive 2C.1.
  */
 function Modulkort({ modul, kort, kpi }) {
   const navn = MODUL[modul]?.label || modul;
@@ -586,19 +617,19 @@ function Modulkort({ modul, kort, kpi }) {
       titel={<><Ikon navn={kort.ikon} farve={`var(--fc-${kort.tone})`} /> {navn}</>}
       handling={<Link className="fc-a" to={kort.sti}>Gå til {navn}</Link>}
     >
+      {/* ⚠ SKIVE 2C.1 — KORREKTION 3. Her stod kort.hvorfor og kort.mangler
+          renderet råt — "Noden og dataene findes — aggregeringen regner
+          ikke tallene endnu. De hører i kpi/ ..." plus feltstier som
+          `warehouse.belaegningsgradPct`. Det er udviklerdokumentation, ikke
+          brugertekst, og hørte aldrig i produktions-UI. `hvorfor`/`mangler`
+          BLIVER i kataloget (test/dashboards.test.mjs prøver dem, og
+          README's KPI-efterslæb er læst af dem) — kun visningen her er
+          ændret. Den ærlige "ikke aggregeret endnu"-tilstand er uændret;
+          teksten er det eneste der er kortet ned. */}
       {kort.mangler ? (
-        <>
-          <Tom>Tallene aggregeres ikke endnu.</Tom>
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            {kort.hvorfor}
-          </p>
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            Felter der mangler:{" "}
-            {kort.mangler.map((f, i) => (
-              <span key={f}>{i > 0 ? ", " : ""}<code>{f}</code></span>
-            ))}
-          </p>
-        </>
+        <Tom>
+          Nøgletal er endnu ikke tilgængelige. Åbn {navn} for at se status og aktivitet.
+        </Tom>
       ) : (
         kort.tal.map((post) => {
           const t = kortTal(kpi, post);

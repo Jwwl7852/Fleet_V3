@@ -184,10 +184,30 @@ describe("Skærmene siger det", () => {
   });
 
   it("⚠ OG DEN FÅR SIN VÆRDI FRA useKpi, IKKE FRA EN LOKAL VARIABEL", () => {
+    /* ⚠ SKIVE 2C.1-UNDTAGELSE: Dashboard.jsx. Reglen findes for at
+       forhindre en skærm i stille at opfinde eller udelade en advarsel
+       Kpiadgang skulle have vist. Dashboard er den ENESTE skærm der
+       aggregerer på tværs af ALLE domæner samtidig, filtreret gennem en
+       PER-BRUGER synlighed (navvisning/dashboardvisning) ingen anden
+       skærm har — en advarsel om "Økonomi & Rapporter" er støj for en
+       lagermedarbejder hvis navvisning aldrig viser arbejdsområdet
+       "oekonomi". Undtagelsen kræver stadig at værdien er UDLEDT af
+       useKpi's egen `utilgaengelige` ved et `Object.entries(utilgaengelige)`
+       — ikke opdigtet eller tavst tømt. Se Dashboard.jsx's egen kommentar
+       ved `kpiadgangRelevant`. */
+    const DASHBOARD_UNDTAGET = "src/moduler/Dashboard.jsx";
     for (const f of filer) {
       const t = readFileSync(f, "utf8");
       if (!/<Kpiadgang /.test(t)) continue;
       assert.match(udenKommentarer(t), /= useKpi\(\)/);
+      if (f === DASHBOARD_UNDTAGET) {
+        assert.match(t, /<Kpiadgang utilgaengelige=\{kpiadgangRelevant\} \/>/,
+          `${f}: forventede den dokumenterede Skive 2C.1-filtrering`);
+        assert.match(udenKommentarer(t),
+          /kpiadgangRelevant = Object\.fromEntries\(\s*Object\.entries\(utilgaengelige\)/,
+          `${f}: kpiadgangRelevant skal udledes af utilgaengelige, ikke opfindes`);
+        continue;
+      }
       assert.match(t, /<Kpiadgang utilgaengelige=\{utilgaengelige\} \/>/,
         `${f} sender noget andet end useKpi's svar`);
     }
