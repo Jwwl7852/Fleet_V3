@@ -408,19 +408,19 @@ describe("Disponering læser de noder hovedet påstår", () => {
   const skaerm = udenKommentarer(
     readFileSync("src/moduler/booking/Disponering.jsx", "utf8"));
 
-  it("⚠ DAGSVISNINGEN LÆSER `opgaver`, IKKE `DEMO_BESOEG`", () => {
-    /* Hovedet har hele tiden sagt "opgaver med art vaerksted". Den læste
-       DEMO_BESOEG — som selv er blevet en AFLEDT visning af DEMO_OPGAVER,
-       altså et demo-datasæt for en node der ER seedet. */
+  it("⚠ VÆRKSTEDSRESERVATIONERNE LÆSER `opgaver`, IKKE `DEMO_BESOEG`", () => {
+    /* Skive 3A fjernede dagsgitteret (nu Fleet Driftskalender) — men
+       konflikttjekket for ugens etaper skal stadig vide at en bil står på
+       værksted, og det læses stadig af NODEN, ikke af et demosæt. */
     assert.match(skaerm, /useListe\("opgaver"/,
-      "dagsvisningen læser ikke noden");
+      "værkstedsreservationerne læses ikke af noden");
     assert.doesNotMatch(skaerm, /DEMO_BESOEG/,
       "skærmen bruger stadig værkstedsbesøgene");
     assert.doesNotMatch(skaerm, /OMKOSTNINGSTYPE/,
       "OMKOSTNINGSTYPE hører til et besøg — noden bærer `arbejdstype`");
   });
 
-  it("⚠ BEGGE GITRES RÆKKER KOMMER FRA `koeretoejer`", () => {
+  it("⚠ UGEGITTERETS RÆKKER KOMMER FRA `koeretoejer`", () => {
     /* Den værste af de fem: rækkerne blev bygget af DEMO_KOERETOEJER og
        filtreret på de id'er kundens etaper peger på. Hos en rigtig kunde
        matcher de ingenting, så ugegitteret ville stå TOMT — uden at nogen
@@ -429,26 +429,30 @@ describe("Disponering læser de noder hovedet påstår", () => {
     assert.match(skaerm, /useListe\("koeretoejer"/);
     assert.match(skaerm, /useListe\("personale"/);
     assert.match(skaerm, /useListe\("kompetencer"/);
-    /* Demosættene må KUN stå som faldbakke — `demo:` i useListe. */
+    /* Demosættene må KUN stå som faldbakke — `demo:` i useListe.
+       ⚠ SKIVE 3A — DEMO_LEVERANDOERER ER VÆK FRA LISTEN. Skærmen viser ikke
+       længere et værkstedskort med et leverandørnavn på sig (det hører nu i
+       Fleet), så `leverandoerer`-noden er slet ikke hentet her mere — der
+       er intet, hverken en node eller et demosæt, at holde op mod en
+       import-forekomst. */
     for (const navn of ["DEMO_KOERETOEJER", "DEMO_PERSONALE", "DEMO_KOMPETENCER",
-                        "DEMO_OPGAVER", "DEMO_LEVERANDOERER"]) {
+                        "DEMO_OPGAVER"]) {
       const brug = [...skaerm.matchAll(new RegExp(navn, "g"))].length;
       const somFaldbakke = [...skaerm.matchAll(new RegExp(`demo: ${navn}`, "g"))].length;
       const iImport = 1;
       assert.equal(brug, somFaldbakke + iImport,
         `${navn} bruges uden for demo:-faldbakken i Disponering`);
     }
+    assert.doesNotMatch(skaerm, /DEMO_LEVERANDOERER/,
+      "leverandørkortet flyttede til Fleet — demosættet skal ikke stå her mere");
   });
 
-  it("⚠ VINDUET REGNES AF NODENS FELTER, med den DELTE funktion", () => {
-    /* `fra`/`til` var besøgets felter. Noden bærer `startMs` og
-       `estimeretMin`, og oversættelsen står i `slutter()` — ét sted, delt
-       med Driftskalenderen. To gitre der læste det samme interval
-       forskelligt, opdages ikke ved at kigge på dem. */
-    assert.match(skaerm, /slutter\(/, "skærmen regner slutningen selv");
-    assert.match(skaerm, /ressourceId\(/, "skærmen udleder rækken selv");
-    assert.match(skaerm, /raekkerIVindue\(/);
-  });
+  /* ⚠ SKIVE 3A — "VINDUET REGNES AF NODENS FELTER, med den DELTE funktion"
+     STOD HER OG ER VÆK. `slutter()`/`ressourceId()`/`raekkerIVindue()` var
+     kun i brug for at TEGNE dagsgitteret, som er flyttet til Fleet
+     Driftskalender — se test/skive3a-planning-fleet.test.mjs's "Planning
+     Disponering indeholder ikke værksteds-dagsgitter". De samme funktioner
+     er stadig testet dér, mod `Vaerkstedskalender.jsx`, som nu ejer dem. */
 });
 
 describe("Dagsvisningen har noget at vise", () => {

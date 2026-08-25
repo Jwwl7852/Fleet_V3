@@ -45,6 +45,22 @@
  * ⚠ SKÆRMEN AFGØR INGENTING. `etaper` og `reservationer` er `.write: false`
  * for alle; knappen kalder `etapeskift`, som kører tjekkene igen og skriver
  * etapen, reservationerne og bookingens afledte tilstand i ÉN opdatering.
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * ⚠ SKIVE 3A — `ForslagOgReservation` ER DEN KANONISKE OPLEVELSE, IKKE KUN
+ * DENNE RUTE.
+ *
+ * Godkendelsen hørte før KUN her, nået via et link fra Disponering, der
+ * forlod skærmen. Nu åbner Disponering den SAMME komponent i et panel — se
+ * `Disponering.jsx`s `<Dialog>` omkring `<ForslagOgReservation>`. Der er
+ * bevidst ingen anden udgave: `Forslag` (default-eksporten, ruten
+ * `/booking/forslag/:id`) er et tyndt hylster om `bookingId` fra URL'en, og
+ * er ALT hvad ruten gør. Al logik — de fem tjek, tilstandsmaskinen,
+ * skiftEtape() — bor i `ForslagOgReservation`, importeret af begge steder,
+ * så et deep link og et klik fra Disponering aldrig kan vise to forskellige
+ * svar på "kan det her forslag godkendes". Se beslutning 40 og 58 — samme
+ * disciplin, ét niveau højere.
+ * ═══════════════════════════════════════════════════════════════════════
  */
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -77,8 +93,7 @@ const find = (liste, id) => liste.find((x) => x.id === id) || null;
 const enhedsnavne = (biler, f) =>
   enhedsIder(f).map((id) => find(biler, id)?.kaldenavn || id).join(" + ") || "—";
 
-export default function Forslag() {
-  const { id } = useParams();
+export function ForslagOgReservation({ bookingId }) {
   const { bruger } = useFleet();
 
   /* ⚠ FEM NODER, OG DE ER IKKE PYNT. Skærmen er dér koordinatoren GODKENDER
@@ -133,7 +148,7 @@ export default function Forslag() {
 
   /* Uden et id i ruten falder vi tilbage på det forløb der faktisk afventer
      koordinator — ellers ville skærmen være tom for den der klikker rundt. */
-  const booking = bookingListe.data.find((b) => b.id === id)
+  const booking = bookingListe.data.find((b) => b.id === bookingId)
     || bookingListe.data.find((b) =>
       etaperPaa(b.id).some((e) => e.tilstand === "afventerKoord" && aktiveForslag(e).length))
     || null;
@@ -315,6 +330,16 @@ export default function Forslag() {
       )}
     </div>
   );
+}
+
+/**
+ * Ruten. `/booking/forslag/:id` — deep link'et fra en booking-liste, en
+ * kollega eller et gammelt bogmærke. Intet af det nedenfor må vokse: al
+ * logik hører i `ForslagOgReservation` ovenfor.
+ */
+export default function Forslag() {
+  const { id } = useParams();
+  return <ForslagOgReservation bookingId={id} />;
 }
 
 /* ---- Forslagene på etapen ---------------------------------------------- */

@@ -566,9 +566,13 @@ describe("opgaveflyt håndhæver det skærmen viser", () => {
    SKÆRMENE — tre gitre, én funktion
    ══════════════════════════════════════════════════════════════════════════ */
 
-describe("de tre skærme kalder den samme funktion", () => {
+describe("de to skærme kalder den samme funktion", () => {
+  /* ⚠ SKIVE 3A — TO SKÆRME, IKKE TRE. Disponering.jsx flyttede
+     værkstedsopgavens dagsgitter (og dermed flytOpgave()/kanFlyttes()/
+     Planlaegdialog) til Fleet Driftskalenderen, som ALLEREDE stod her —
+     to kalendre på den samme node er væk, ikke blevet tre. Se
+     test/skive3a-planning-fleet.test.mjs. */
   const SKAERME = [
-    "src/moduler/booking/Disponering.jsx",
     "src/moduler/flaade/Vaerkstedskalender.jsx",
     "src/moduler/facility/Servicekalender.jsx",
   ];

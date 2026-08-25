@@ -47,9 +47,21 @@
  * hverken modtagevej eller afsendelse. En deaktiveret radiogruppe der sagde
  * "ikke bygget", ville være en attrap der opfører sig som en kontrol —
  * formularen skriver i stedet hvad der mangler.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ SKIVE 3A — DE FEM KASSER ÅBNER ET PANEL, IKKE EN NY SIDE.
+ *
+ * "Åbn" navigerede væk fra kalenderen til `/flaade/koe`. Kalenderen ER
+ * Fleets primære arbejdsflade (se hovedet), så et klik der forlod den for at
+ * vise et tal man allerede kunne se på kortet, konkurrerede med den. Kortets
+ * "Åbn" åbner nu den SAMME `ArbejdskoeIndhold` (fra Arbejdskoe.jsx) i et
+ * `<Dialog>` — ét filter, ét driftstal()-kald, ingen kopi. "Åbn i nyt
+ * vindue" er urørt: det er et rigtigt browservindue på den kanoniske rute,
+ * og et nyt vindue arver ingen React-tilstand.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
@@ -72,6 +84,7 @@ import { PRIORITET, prioritetFor } from "../../fleet/prioritet.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
 import Statusskifte from "../../fleet/Statusskifte.jsx";
+import { ArbejdskoeIndhold } from "./Arbejdskoe.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
@@ -115,7 +128,6 @@ const KASSER = [
 
 export default function Driftskalender() {
   const { bruger, moduler } = useFleet();
-  const navigate = useNavigate();
   /* ⚠ PERMISSIONEN, IKKE ROLLEN. Og den er KUN til at tegne knappen —
      serveren spørger om den samme, og det er dér den afgøres. En kontrol der
      kun findes i frontend, er en pæn knap. */
@@ -158,6 +170,9 @@ export default function Driftskalender() {
   const [valgtId, setValgtId] = useState(null);
   const [svaev, setSvaev] = useState(null);
   const [planlaegger, setPlanlaegger] = useState(false);
+  /* `null` = lukket. En streng = åben, og den ER udsnittets nøgle — samme
+     nøgle som ArbejdskoeIndhold's `vis`. Se Skive 3A-noten øverst. */
+  const [koeVis, setKoeVis] = useState(null);
   /* Serverens svar paa en flytning. ⚠ EN AFVISNING ER ET SVAR, ikke en fejl:
      "bilen er optaget" og "du maa ikke" er to forskellige ting, og de skal
      kunne laeses. Se PLANSVAR i opgaveplan-regler.js. */
@@ -273,7 +288,11 @@ export default function Driftskalender() {
      modtageren gør noget. Se beslutning 87. */
   const koeSti = (noegle) =>
     `/flaade/koe?vis=${noegle}&frem=${fremDage}`;
-  const aabnHer = (noegle) => navigate(koeSti(noegle));
+  /* ⚠ SKIVE 3A — "Åbn" ÅBNER ET PANEL, IKKE LÆNGERE ET NYT SIDESKIFTE. Se
+     hovedets note. `koeVis` er selve udsnittets nøgle, og `fremDage` er
+     kalenderens EGEN — samme variabel som kortet "Kommende" allerede
+     bruger, så panelet og kortene aldrig kan vise hvert sit vindue. */
+  const aabnHer = (noegle) => setKoeVis(noegle);
   /* ⚠ FULD SHELL I DET NYE VINDUE — ikke en bar visning. Vinduet er en rigtig
      rute, så en disponent kan navigere videre derfra i stedet for at sidde
      fast i én liste. Tenant og periode ligger i localStorage via
@@ -442,6 +461,21 @@ export default function Driftskalender() {
         />
       )}
 
+      {/* ⚠ SKIVE 3A — SAMME ArbejdskoeIndhold SOM /flaade/koe, I ET PANEL.
+          Ingen kopi af filteret, driftstal() eller pagineringen: kortenes
+          "Åbn" sætter kun `koeVis`, og komponenten herunder er den ENESTE
+          der ved hvordan et udsnit bliver til en tabel. */}
+      {koeVis && (
+        <Dialog bred titel="Arbejdskø" onLuk={() => setKoeVis(null)}>
+          <ArbejdskoeIndhold
+            vis={koeVis}
+            saetVis={setKoeVis}
+            fremDage={fremDage}
+            saetFremDage={setFremDage}
+          />
+        </Dialog>
+      )}
+
       {/* ⚠ MODULETS FORSIDE ER `/flaade` — DEN HER SKAERM. Kortet laa
           foerst i `flaade/Oversigt.jsx`, som TRODS NAVNET er routet til
           Opsaetning → Enheder: koeretoejsregistret, stamdata. En liste over
@@ -468,8 +502,12 @@ function Kasse({ kasse, data, fremDage, saetFremDage, paaAabn, paaNytVindue }) {
   return (
     /* Samme skal som KpiKort — fc-card. Klassenavnene er delte, så kassen
        ikke ser anderledes ud end de nøgletalskort den står ved siden af på
-       hver anden skærm. */
-    <div className="fc-card" style={{ padding: "16px 17px" }}>
+       hver anden skærm.
+       ⚠ SKIVE 3A — KOMPAKTERE PADDING. Kortet er en HANDLINGSINDGANG til
+       kalenderen, ikke længere en side for sig, og skal derfor fylde
+       mindre: samme klasse, samme token, kun det inline-tal er strammet —
+       ingen nye tokens, ingen ny klasse. */
+    <div className="fc-card" style={{ padding: "12px 14px" }}>
       {/* Ikonet øverst, handlingen modsat. Tallet står så alene i midten og
           kan læses på et sekund — det var pointen med at forenkle kassen. */}
       <div className="fc-kasse-top">

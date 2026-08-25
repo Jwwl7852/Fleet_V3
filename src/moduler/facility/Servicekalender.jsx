@@ -49,6 +49,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
+import { harModul } from "../../fleet/moduler.js";
 import { kr, num, dato, datoTid, klokke } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
@@ -81,7 +82,10 @@ const VINDUE_DAGE = 10;
 
 export default function Servicekalender() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
-  const { bruger } = useFleet();
+  const { bruger, moduler } = useFleet();
+  /* ⚠ SKIVE 3A — SAMME harProcure-GREB SOM Vaerkstedskalender.jsx. Kun til
+     Servicedialogs leverandørhint; se dens egen note. */
+  const harProcure = harModul(moduler, "indkoeb");
   const [valgtId, setValgtId] = useState(null);
   const [flytSvar, setFlytSvar] = useState(null);
   /* `false` = lukket, `{}` = åben uden forslag, `{aktivId|lokationId, startMs}`
@@ -420,6 +424,7 @@ export default function Servicekalender() {
           aktiver={aktiver.data}
           lokationer={lokationer.data}
           leverandoerer={leverandoerer.data}
+          harProcure={harProcure}
           foraf={planlaegger}
           onLuk={() => setPlanlaegger(false)}
           onGemt={() => { setPlanlaegger(false); opgaver.genindlaes(); genindlaes(); }}

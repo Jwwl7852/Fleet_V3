@@ -21,6 +21,12 @@
  * de ni facility-opgaver i demo-sættet bar begge felter.
  *
  * ⚠ INGEN MAIL. Samme som Planlaegdialog: beslutning 20 er fase 0.
+ *
+ * ⚠ SKIVE 3A — "UDFØRES AF" HARMONISERET MED Planlaegdialog, KUN VISNINGEN.
+ * Feltskemaet er stadig sit eget (se ovenfor) — men leverandørfeltets hint
+ * fulgte ikke `harProcure`, så en kunde uden Procure fik at vide "Tom
+ * betyder eget personale" i stedet for hvorfor kartoteket var tomt. Samme
+ * to-tilstands-tekst som Fleets dialog nu bruger.
  */
 import { useState } from "react";
 import { datoTid, isoTilMs, msTilIso } from "../../fleet/format.js";
@@ -61,7 +67,7 @@ const delOp = (v) => {
 };
 
 export default function Servicedialog({
-  aktiver, lokationer, leverandoerer, onLuk, onGemt,
+  aktiver, lokationer, leverandoerer, harProcure, onLuk, onGemt,
   /* Gitterets forslag: { aktivId | lokationId, startMs }. Et FORSLAG, ikke en
      lås — rammer man ved siden af, retter man i formularen. Se Planlaegdialog. */
   foraf = null,
@@ -253,7 +259,9 @@ export default function Servicedialog({
                     .filter((l) => l.kategori === "facility")
                     .map((l) => ({ vaerdi: l.id, label: l.navn })),
                 ]}
-                hint="Tom betyder eget personale." />
+                hint={harProcure
+                  ? "Tom betyder eget personale."
+                  : "Kun eget personale: leverandørkartoteket hører til Procure, som ikke er aktivt."} />
           <Felt id="sv-pri" label="Prioritet"
                 vaerdi={post.prioritet} saet={saet("prioritet")}
                 fejl={vis("prioritet")}

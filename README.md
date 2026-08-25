@@ -300,7 +300,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **135 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **136 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -718,7 +718,19 @@ Et `null` alene kan ikke skelne dem, og de tre fører hvert sit sted hen.
 
 ### Disponering: dagsgitteret skriver, ugesgitteret gør ikke
 
-To faner, to noder: dagsvisningen læser `opgaver` med art `vaerksted` (timer,
+⚠ **SKIVE 3A FLYTTEDE DAGSGITTERET TIL FLEET.** Afsnittet herunder beskriver
+hvordan de to gitre opførte sig da de begge boede i `Disponering.jsx` — den
+historie og de bugs den fanger, er ægte og står derfor uændret. Men
+dagsvisningen (opgaver med art `vaerksted`, `Planlaegdialog`, `flytOpgave()`,
+`kanFlyttes()`) findes ikke længere i den fil: den flyttede til
+`flaade/Vaerkstedskalender.jsx`, som allerede havde nøjagtig den samme
+kalender. To skærme der planlagde samme node, var to steder at være uenige om
+den — se **Canonical-home-reglen** nedenfor. `Disponering.jsx` er nu kun
+ugevisningen (etaper), plus at den stadig BYGGER værkstedets reservationer ind
+i sit konflikttjek, af den samme `reservationFraOpgave()` — en bil på løftet
+skal stadig spærre en tur, selvom skærmen ikke længere tegner den.
+
+To faner, to noder: dagsvisningen læste `opgaver` med art `vaerksted` (timer,
 06–18), ugesvisningen læser `etaper` (døgn, syv dage, ETA over døgngrænser og
 grænseovergange).
 
@@ -830,6 +842,32 @@ mærker hver konflikt med **hvor** den kom fra. Tre ting er værd at kende:
 etape binder `koeretoej` og `medarbejder` (`reservationerFraEtape()`) —
 ingen af dem har en indeslutning, og `indeslutninger()` svarer `[]` for dem.
 Et kald dér ville være en no-op der lignede dækning. Målt frem for antaget.
+
+### Canonical-home-reglen — Skive 3A
+
+VIEW_COMPOSITION, ikke ny datamodel, serverlogik eller forretningsregel: tre
+arbejdsopgaver havde fået en parallel flade, og Skive 3A gav hver af dem
+præcis ét kanonisk hjem.
+
+| Arbejde | Kanonisk hjem |
+|---|---|
+| Værkstedsopgave (planlæg, flyt, statusskift) | Fleet → **Driftskalenderen** |
+| Transportforslag / godkendelse | Planning → **Disponering** |
+| Facility-service | Facility → **Servicekalenderen** |
+
+**Alt andet er et deep link eller en kontekstuel indgang, ikke en alternativ
+arbejdsflade.** To konsekvenser af det:
+
+- `/booking/forslag/:id` og `/flaade/koe` findes stadig som RUTER — et
+  bogmærke, et link fra en kollega eller "Åbn i nyt vindue" skal virke uden
+  at man først har klikket sig ind fra den rigtige skærm. Men koden bag dem
+  (`ForslagOgReservation` i `Forslag.jsx`, `ArbejdskoeIndhold` i
+  `Arbejdskoe.jsx`) er den SAMME komponent som det panel Disponering
+  henholdsvis Driftskalenderen åbner — der er ingen kopi at drive fra.
+- En skærm der opdager at den reelt har brug for at EJE et andet moduls
+  arbejde (skrive dets node, gentage dets filter), er ikke længere en
+  kontekstuel indgang — den er begyndt at blive en parallel flade, og hører
+  hjemme i en ny beslutning, ikke en stiltiende udvidelse.
 
 ### Gitterkalenderen er en genbrugskontrakt
 

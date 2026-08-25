@@ -294,8 +294,13 @@ export default function Planlaegdialog({
                     .filter((l) => l.kategori === "vaerksted" || l.kategori === "daek")
                     .map((l) => ({ vaerdi: l.id, label: l.navn })),
                 ]}
+                /* ⚠ SKIVE 3A — SAMME TO-TILSTANDS-HINT SOM Servicedialog.
+                   Stod før som `undefined` når Procure var aktivt — ingen
+                   hint overhovedet, hvor Servicedialogs altid sagde "Tom
+                   betyder eget personale." To formularer for "udføres af"
+                   der opførte sig forskelligt uden grund. */
                 hint={harProcure
-                  ? undefined
+                  ? "Tom betyder eget værksted."
                   : "Kun eget værksted: leverandørkartoteket hører til Procure, som ikke er aktivt."} />
           <Felt id="pl-pri" label="Prioritet"
                 vaerdi={post.prioritet} saet={saet("prioritet")}

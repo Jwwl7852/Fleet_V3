@@ -24,6 +24,18 @@
  * ville skrive en opgave og en reservation atomisk, og to disponenter kan
  * ramme samme sekund — det hører i en Cloud Function. Knapperne står
  * deaktiverede med begrundelsen på sig.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠ SKIVE 3A — `ArbejdskoeIndhold` ER DEN KANONISKE KØ, IKKE KUN DENNE RUTE.
+ *
+ * De fem kasser på Driftskalenderen navigerede før væk fra kalenderen for at
+ * åbne køen. Nu åbner "Åbn" den SAMME komponent i et panel — se
+ * `Vaerkstedskalender.jsx`s `<Dialog>` omkring `<ArbejdskoeIndhold>`. Filteret,
+ * driftstal() og prioriteringen bor kun ÉT sted, herinde; ruten
+ * (default-eksporten, `/flaade/koe`) er et tyndt hylster der binder `vis`/
+ * `frem` til URL'en, så "Åbn i nyt vindue" (et rigtigt browservindue, ingen
+ * React-tilstand at arve) stadig virker uændret.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -89,11 +101,13 @@ const UDSNIT = {
 const ALLE_UDSNIT = Object.keys(UDSNIT);
 const PR_SIDE = 12;
 
-export default function Arbejdskoe() {
-  const [params, saetParams] = useSearchParams();
-  const vis = ALLE_UDSNIT.includes(params.get("vis")) ? params.get("vis") : "nye";
-  const fremDage = Number(params.get("frem")) || STANDARD_FREMAD;
-
+/**
+ * Den delte kø-oplevelse. `vis`/`fremDage` er STYRET udefra — ruten binder
+ * dem til URL'en (se `Arbejdskoe` nedenfor); Driftskalenderens panel binder
+ * dem til sin egen lokale tilstand. Ingen af kalderne må selv genopfinde
+ * filteret eller driftstal() — de giver kun værdien og en setter videre.
+ */
+export function ArbejdskoeIndhold({ vis, saetVis, fremDage, saetFremDage, handling = null }) {
   const [prioritetsfilter, setPrioritetsfilter] = useState(null);
   const [side, setSide] = useState(1);
 
@@ -152,7 +166,7 @@ export default function Arbejdskoe() {
   const denneSide = sorteret.slice((side - 1) * PR_SIDE, side * PR_SIDE);
 
   const skift = (noegle) => {
-    saetParams({ vis: noegle, frem: String(fremDage) });
+    saetVis(noegle);
     setSide(1);
     setPrioritetsfilter(null);
   };
@@ -179,7 +193,7 @@ export default function Arbejdskoe() {
 
       <Kort
         titel={udsnit.label}
-        handling={<Link className="fc-a" to="/flaade">Tilbage til driftskalenderen</Link>}
+        handling={handling}
       >
         <p className="fc-hint" style={{ marginTop: 0, marginBottom: 12 }}>{udsnit.hvad}</p>
 
@@ -193,7 +207,7 @@ export default function Arbejdskoe() {
             <div className="fc-seg" role="group" aria-label="Vis frem">
               {FREMAD.map((f) => (
                 <button key={f.dage} type="button" aria-pressed={fremDage === f.dage}
-                        onClick={() => { saetParams({ vis, frem: String(f.dage) }); setSide(1); }}>
+                        onClick={() => { saetFremDage(f.dage); setSide(1); }}>
                   {f.label}
                 </button>
               ))}
@@ -244,6 +258,27 @@ export default function Arbejdskoe() {
         )}
       </Kort>
     </div>
+  );
+}
+
+/**
+ * Ruten. `/flaade/koe` — målet for "Åbn i nyt vindue", og et deep link der
+ * skal virke uden nogen forudgående React-tilstand. `vis`/`frem` bor derfor
+ * her i URL'en, ikke i en useState.
+ */
+export default function Arbejdskoe() {
+  const [params, saetParams] = useSearchParams();
+  const vis = ALLE_UDSNIT.includes(params.get("vis")) ? params.get("vis") : "nye";
+  const fremDage = Number(params.get("frem")) || STANDARD_FREMAD;
+
+  return (
+    <ArbejdskoeIndhold
+      vis={vis}
+      saetVis={(noegle) => saetParams({ vis: noegle, frem: String(fremDage) })}
+      fremDage={fremDage}
+      saetFremDage={(f) => saetParams({ vis, frem: String(f) })}
+      handling={<Link className="fc-a" to="/flaade">Tilbage til driftskalenderen</Link>}
+    />
   );
 }
 

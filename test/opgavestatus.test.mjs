@@ -416,8 +416,12 @@ const udenKommentarer = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("Statusskifte er ét sted", () => {
+  /* ⚠ SKIVE 3A — TO SKÆRME, IKKE TRE. Disponering.jsx viste `opgaver`-status
+     kun for sit dagsgitter (værkstedet), som er flyttet til Fleet
+     Driftskalenderen. Disponering handler nu udelukkende om ETAPER, hvis
+     tilstand skifter gennem `etapeskift`/`skiftEtape` — ikke gennem
+     `<Statusskifte>`, som er `opgaver`-nodens egen maskine. */
   const SKAERME = [
-    "src/moduler/booking/Disponering.jsx",
     "src/moduler/flaade/Vaerkstedskalender.jsx",
     "src/moduler/facility/Servicekalender.jsx",
   ];
