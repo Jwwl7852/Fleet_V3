@@ -328,7 +328,7 @@
             // moenstret er en afskrift, og en prove holder de to op mod
             // hinanden.
             "$dashboard": {
-              ".validate": "$dashboard.matches(/^(samlet|flaade|facility|indkoeb|warehouse|unitbooking|bemanding)$/)",
+              ".validate": "$dashboard.matches(/^(samlet|booking|flaade|facility|indkoeb|warehouse|unitbooking|bemanding)$/)",
               // ⚠ HER STOD ET LOFT PAA TOLV — pladserne var talt til elleve.
               // Det er vaek. Loftet var en SMAGSDOM ("tyve widgets er ikke et
               // overblik"), og det er en anbefaling, ikke en kendsgerning om

@@ -312,28 +312,18 @@ describe("⚠ DEN ENESTE NODE BRUGEREN SELV SKRIVER", () => {
     assert.ok(w.includes("abonnement"));
   });
 
-  /* ⚠ "booking" ER MED VILJE UDELADT — SKIVE 2C, samme undtagelse som
-     test/dashboardvisning.test.mjs. Planning-dashboardet kræver en
-     opdatering af DENNE regex for at en bruger skal kunne gemme sit EGET
-     widget-layout for netop Planning — men Skive 2C forbyder eksplicit at
-     røre firebase.rules.json. Til forskel fra dashboardvisning er
-     `brugerlayout` IKKE Admin-SDK-skrevet (den er `auth.uid === $uid`,
-     en ægte klient-skrivning), så det her ER en reel, midlertidig
-     begrænsning: "Tilpas forside" for Planning specifikt vil blive afvist
-     af reglen, indtil en senere skive tilføjer "booking" til mønstret.
-     Afvisningen er ærlig (skriv.js/Formularsvar viser den som en
-     forklaring, ikke et nedbrud) — men den er der. Se
-     docs/product-redesign-v1/ for hvornår dette lukkes. */
-  const SKIVE_2C_UNDTAGET = new Set(["booking"]);
-
   it("⚠ REGLEN KENDER DE SAMME DASHBOARDS SOM KATALOGET", () => {
     /* Mønstret i regelfilen er en afskrift. Kommer der et dashboard mere uden
-       at reglen får det, afviser serveren et layout skærmen tilbyder. */
+       at reglen får det, afviser serveren et layout skærmen tilbyder.
+       ⚠ SKIVE 2C.2 LUKKEDE HULLET. "booking" manglede her fra Skive 2C, hvor
+       Planning fik sit dashboard men firebase.rules.json ikke måtte røres —
+       en bruger kunne se "Tilpas forside" på Planning, men reglen afviste
+       gemningen. Undtagelsen (`SKIVE_2C_UNDTAGET`) er væk; denne prøve
+       holder nu regelfilen op mod HELE kataloget, uden forbehold. */
     const m = node().$uid.$dashboard[".validate"];
     const inder = m.slice(m.indexOf("^(") + 2, m.indexOf(")$"));
-    const kataloget = ALLE_DASHBOARDS.filter((d) => !SKIVE_2C_UNDTAGET.has(d));
-    assert.deepEqual(inder.split("|").sort(), [...kataloget].sort(),
-      `regelfilen kender ${inder} — dashboards.js kender ${kataloget} (uden Skive 2C-undtagelsen)`);
+    assert.deepEqual(inder.split("|").sort(), [...ALLE_DASHBOARDS].sort(),
+      `regelfilen kender ${inder} — dashboards.js kender ${ALLE_DASHBOARDS}`);
   });
 
   it("⚠ REGLEN HAR HELLER INTET LOFT PÅ PLADSEN", () => {

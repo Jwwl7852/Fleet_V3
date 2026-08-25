@@ -293,21 +293,20 @@ describe("Skive 2C — 14) Tilpas forside / eksisterende brugerlayout: fortsat f
     assert.equal(valideLayout(["ikkeEnWidget"]).ok, false);
   });
 
-  it("⚠ DOKUMENTERET AFVIGELSE: RTDB-reglen for brugerlayout/$uid/$dashboard kender endnu ikke 'booking' som gyldig nøgle på SERVEREN", () => {
-    /* Selve KLIENTLOGIKKEN ovenfor virker uændret. Men firebase.rules.json
-       må ikke røres i denne skive (Skive 2C's eksplicitte scope), og
-       reglens .validate på brugerlayout/$uid/$dashboard er et hardkodet
-       regex-allowlist over dashboardnavne. Et forsøg på at GEMME et layout
-       specifikt for Planning-dashboardet vil derfor blive afvist af
-       reglerne, indtil den regex opdateres i en senere skive — se den
-       matchende, dokumenterede undtagelse i test/widgets.test.mjs
-       ("SKIVE_2C_UNDTAGET"). Denne test findes for at det ikke kan glemmes:
-       falder den, er reglen rettet, og undtagelsen der skal fjernes. */
+  it("⚠ SKIVE 2C.2 LUKKEDE HULLET: brugerlayout/$uid/$dashboard kender nu 'booking' på SERVEREN", () => {
+    /* Stod tidligere som en dokumenteret afvigelse: firebase.rules.json
+       måtte ikke røres i Skive 2C, så reglens hardkodede regex-allowlist
+       over dashboardnavne manglede "booking" — "Tilpas forside" kunne VISES
+       på Planning, men GEM blev afvist af reglerne. Skive 2C.2 er netop den
+       isolerede rettelse af dét. Den matchende undtagelse
+       ("SKIVE_2C_UNDTAGET") er fjernet fra test/widgets.test.mjs. Denne
+       test er nu den omvendte vagtprøve: falder den, er "booking" forsvundet
+       fra reglen igen. */
     const raa = readFileSync("firebase.rules.json", "utf8");
     const i = raa.indexOf('"brugerlayout"');
     const blok = raa.slice(i, i + 1200);
-    assert.doesNotMatch(blok, /\bbooking\b/,
-      "firebase.rules.json nævner nu 'booking' i brugerlayout — fjern SKIVE_2C_UNDTAGET i test/widgets.test.mjs og i denne test");
+    assert.match(blok, /\bbooking\b/,
+      "firebase.rules.json's brugerlayout-regel har mistet 'booking' igen");
   });
 });
 
