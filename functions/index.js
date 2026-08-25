@@ -3595,9 +3595,19 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
      det rigtige svar: en standardlaengde ville spaerre enheden i et tidsrum
      ingen har besluttet. valideOpgaveplan() har allerede krævet
      estimeretMin, saa den her er baeltet ved siden af selerne. */
+  /* ⚠ SKIVE 3B — FANDT VED DEV-VERIFIKATION, IKKE ANTAGET. opgaveId skal
+     genereres FØR reservationFraOpgave() kaldes, ikke efter: kilde.id sættes
+     til opgave.id, og uden det bar hver eneste reservation opgaveplanlaeg
+     nogensinde skrev, kilde.id: undefined — en skrivning RTDB afviser med
+     "values argument contains undefined". Målt i DEV: funktionen kunne ALDRIG
+     fuldføre "Planlæg aktivitet", hverken før eller efter denne skive — de 27
+     eksisterende opgaver i DEV var alle seedet, ingen var skrevet gennem denne
+     funktion. Samme greb som opgaveflyt og opgavestatus allerede bruger:
+     reservationFraOpgave({ ...foer, id: opgaveId }). */
+  const opgaveId = rod.child("opgaver").push().key;
   let ny;
   try {
-    ny = reservationFraOpgave(post);
+    ny = reservationFraOpgave({ ...post, id: opgaveId });
   } catch (e) {
     throw new HttpsError("invalid-argument", e.message);
   }
@@ -3631,8 +3641,7 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
   /* ---- EEN SKRIVNING --------------------------------------------------- */
   /* ⚠ Opgaven og reservationen lander sammen eller slet ikke. To kald ville
      vaere to halve sandheder, og den ene af dem — en opgave uden reservation
-     — ser FRI ud i disponeringen. */
-  const opgaveId = rod.child("opgaver").push().key;
+     — ser FRI ud i disponeringen. opgaveId er allerede genereret ovenfor. */
   const nu = Date.now();
 
   const opdatering = {};
@@ -3762,9 +3771,16 @@ export const indberetningTriage = onCall({ region: REGION }, async (req) => {
        sætte, samme regel som `oprettetAf`/`oprettetMs` andre steder: en
        browser kan oplyse hvad som helst om hvem og hvornår. */
     const begrundelse = kortStreng(d.begrundelse, 500);
+    /* ⚠ FUNDET VED DEV-VERIFIKATION. udkast.forloeb må IKKE sættes til
+       "afsluttet" her — kanAfslutte()'s FØRSTE tjek er netop
+       `indberetning.forloeb === "afsluttet"` (en vagt mod at lukke en post
+       der allerede er lukket), og forudsatte man svaret, meldte funktionen
+       "allerede afsluttet" om en post der aldrig havde været det. Samme
+       fejlklasse som at spørge en dør om den er åben ved at lukke den først.
+       kanAfslutte() skal se posten som den ER NU — kun ingenOmkostning er nyt. */
     const udkast = begrundelse
-      ? { ...foer, forloeb: "afsluttet", ingenOmkostning: { begrundelse, af: uid, ms: Date.now() } }
-      : { ...foer, forloeb: "afsluttet" };
+      ? { ...foer, ingenOmkostning: { begrundelse, af: uid, ms: Date.now() } }
+      : foer;
     const afslut = kanAfslutte(udkast);
     if (!afslut.ok) {
       throw new HttpsError("failed-precondition", afslut.aarsager[0]);

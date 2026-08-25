@@ -216,7 +216,15 @@ export default function Indberetninger() {
           harProcure={harProcure}
           foraf={planlaegger}
           onLuk={() => setPlanlaegger(null)}
-          onGemt={() => { setPlanlaegger(null); liste.genindlaes(); }}
+          onGemt={() => {
+            setPlanlaegger(null);
+            liste.genindlaes();
+            /* ⚠ SKIVE 3B — INDBERETNINGEN OG DENS NYE OPGAVE HØRER SAMMEN.
+               Uden den her genindlæsning viste "Driftsopgave" stadig "Ingen"
+               lige efter planlægningen — koblingen var skrevet på serveren,
+               men skærmens egen `opgaver`-liste vidste det ikke endnu. */
+            opgaver.genindlaes();
+          }}
         />
       )}
     </div>

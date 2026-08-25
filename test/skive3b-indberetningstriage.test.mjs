@@ -136,6 +136,18 @@ describe("indberetningTriage håndhæver det skærmen viser", () => {
       "afslutning prøves ikke mod den delte pengeside-kontrol");
   });
 
+  it("⚠ REGRESSION: kanAfslutte() SER POSTEN SOM DEN ER NU, IKKE MÅLET", () => {
+    /* FUNDET VED DEV-VERIFIKATION, IKKE ANTAGET. Første udgave byggede
+       `{ ...foer, forloeb: "afsluttet", ... }` FØR den kaldte kanAfslutte() —
+       og kanAfslutte()'s eget første tjek er `forloeb === "afsluttet"`. Enhver
+       lovlig afslutning blev derfor afvist med "allerede afsluttet", MÅLT i
+       DEV: en indberetning i "planlagt" kunne aldrig lukkes med en gyldig
+       begrundelse. Prøven læser koden: objektet der sendes til kanAfslutte()
+       må ikke selv sætte forloeb til "afsluttet". */
+    assert.ok(!/forloeb:\s*["']afsluttet["']/.test(triageBlok),
+      "forloeb sættes til \"afsluttet\" i et udkast FØR kanAfslutte() kaldes");
+  });
+
   it("⚠ KUN TO MÅL — \"planlagt\" GÅR GENNEM opgaveplanlaeg", () => {
     /* Se opgaveplanlaeg-testene nedenfor: at oprette en driftsopgave OG
        koble indberetningen er én handling, og de to skal lande i ÉN
