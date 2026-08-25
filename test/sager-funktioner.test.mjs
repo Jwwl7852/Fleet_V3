@@ -133,6 +133,16 @@ describe("sagBeskedSkriv", () => {
   it("⚠ EN UKENDT TILSTAND AFVISES", () => {
     assert.ok(sagBeskedSkriv.includes("SAG_TILSTAND[nyTilstand]"));
   });
+
+  /* ⚠ FUNDET VED DEV-VERIFIKATION AF SKIVE 3C. En besked på en afsluttet sag
+     satte tilstanden tilbage til "afventerSvar" — en genåbning ad bagvejen.
+     Målt live: sag afsluttet → sagBeskedSkriv kaldt → sag stod som
+     "afventerSvar" igen, uden fejl. */
+  it("⚠ AFVISER EN BESKED PÅ EN AFSLUTTET SAG — ingen genåbning ad bagvejen", () => {
+    const b = udenKommentarer(sagBeskedSkriv);
+    assert.match(b, /sag\.tilstand === "afsluttet"/);
+    assert.match(b, /failed-precondition/);
+  });
 });
 
 describe("sagKarantaeneFrigiv", () => {
@@ -142,6 +152,12 @@ describe("sagKarantaeneFrigiv", () => {
 
   it("⚠ KALDER frigivKarantaene() — SAMME FUNKTION SOM POLITIKKEN", () => {
     assert.ok(sagKarantaeneFrigiv.includes("frigivKarantaene("));
+  });
+
+  it("⚠ AFVISER EN FRIGIVELSE PÅ EN AFSLUTTET SAG", () => {
+    const b = udenKommentarer(sagKarantaeneFrigiv);
+    assert.match(b, /sag\.tilstand === "afsluttet"/);
+    assert.match(b, /failed-precondition/);
   });
 });
 
@@ -174,6 +190,12 @@ describe("sagAftaleBekraeft", () => {
     const b = udenKommentarer(sagAftaleBekraeft);
     assert.equal((b.match(/rod\.update\(/g) || []).length, 1,
       "der skrives mere end ét sted");
+  });
+
+  it("⚠ AFVISER EN BEKRÆFTELSE PÅ EN AFSLUTTET SAG — ingen ny reservation på en lukket sag", () => {
+    const b = udenKommentarer(sagAftaleBekraeft);
+    assert.match(b, /sag\.tilstand === "afsluttet"/);
+    assert.match(b, /failed-precondition/);
   });
 });
 

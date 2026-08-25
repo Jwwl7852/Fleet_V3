@@ -5628,14 +5628,23 @@ export const sagOpret = onCall({ region: REGION }, async (req) => {
   post.nummer = await naesteSagsnummer(db, (sti) => `tenants/${tenantId}/${sti}`, sagArt.art);
 
   const sagId = rod.child("sager").push().key;
-  const opdatering = { [`sager/${sagId}`]: post };
 
-  /* ⚠ EN RÅ E-MAILADRESSE KAN IKKE VÆRE EN RTDB-NØGLE — se rules.json. */
+  /* ⚠ FUNDET VED DEV-VERIFIKATION. `parter` blev sat som sin EGEN nøgle i
+     opdatering — `sager/${sagId}/parter/${partId}` — ved siden af
+     `sager/${sagId}` (hele posten). RTDB's update() tillader ikke at én sti
+     er forælder til en anden i SAMME kald ("values argument contains a path
+     ... that is ancestor of another path ..."): sagOpret kastede derfor på
+     ALT der havde en modpartEmail, hver eneste gang. push()-nøglen har ikke
+     brug for at blive genereret under sin endelige sti — den er unik uanset
+     hvilken ref den bliver bedt om. `parter` bygges nu ind i `post`, som er
+     dét der skrives til `sager/${sagId}` — én sti, ikke to. */
   const modpartEmail = kortStreng(d.modpartEmail, 254);
   if (modpartEmail) {
-    const partId = rod.child(`sager/${sagId}/parter`).push().key;
-    opdatering[`sager/${sagId}/parter/${partId}`] = modpartEmail.toLowerCase();
+    const partId = rod.child("sager").push().key;
+    post.parter = { [partId]: modpartEmail.toLowerCase() };
   }
+
+  const opdatering = { [`sager/${sagId}`]: post };
 
   /* ⚠ SKIVE 3C — SAMME update(), IKKE ET KALD MERE. `opgave.sagId` er
      beslutningen fra beslutning 45's feltskema, aldrig skrevet: sagen og
@@ -5682,6 +5691,13 @@ export const sagBeskedSkriv = onCall({ region: REGION }, async (req) => {
   if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
   const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
   if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+  /* ⚠ FUNDET VED DEV-VERIFIKATION. Uden dette tjek skrev en besked på en
+     afsluttet sag den stille tilbage til "afventerSvar" — en genåbning ad
+     bagvejen, i strid med "Afslut sag"-dialogens eget løfte: "Sagen genåbnes
+     ikke — en fortsættelse er en ny sag." */
+  if (sag.tilstand === "afsluttet") {
+    throw new HttpsError("failed-precondition", "Sagen er afsluttet og kan ikke ændres.");
+  }
 
   const tekst = kortStreng(d.tekst, 10000);
   if (!tekst) throw new HttpsError("invalid-argument", "Beskeden må ikke være tom.");
@@ -5749,6 +5765,9 @@ export const sagKarantaeneFrigiv = onCall({ region: REGION }, async (req) => {
   if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
   const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
   if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+  if (sag.tilstand === "afsluttet") {
+    throw new HttpsError("failed-precondition", "Sagen er afsluttet og kan ikke ændres.");
+  }
 
   const adresse = kortStreng(d.adresse, 254);
   if (!adresse) throw new HttpsError("invalid-argument", "adresse mangler.");
@@ -5800,6 +5819,9 @@ export const sagAftaleBekraeft = onCall({ region: REGION }, async (req) => {
 
   const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
   if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+  if (sag.tilstand === "afsluttet") {
+    throw new HttpsError("failed-precondition", "Sagen er afsluttet og kan ikke ændres.");
+  }
   const aftale = (await rod.child(`sensitive/sager/${sagId}/aftaleforslag/${aftaleId}`)
     .once("value")).val();
   if (!aftale) throw new HttpsError("not-found", `Aftaleforslaget ${aftaleId} findes ikke.`);
