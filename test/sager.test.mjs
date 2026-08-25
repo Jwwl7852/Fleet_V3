@@ -16,9 +16,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  SAG_ART, AFSENDER_STATUS, VEDHAEFTNING_STATUS, FANER,
+  SAG_ART, SAG_TILSTAND, AFSENDER_STATUS, VEDHAEFTNING_STATUS, FANER,
   sagsnummerFraEmne, emneMedNummer, vurderAfsender, frigivKarantaene,
-  maaHentes, reservationFraAftale,
+  maaHentes, reservationFraAftale, kanSkifteSagTilstand,
 } from "../src/fleet/sager.js";
 import { DEMO_SAGER, DEMO_EGNE_DOMAENER, demoSag, demoSagerFor } from "../src/fleet/demo-sag.js";
 
@@ -205,6 +205,34 @@ describe("Aftale bliver til en reservation", () => {
         `tilstand="${tilstand}" burde afvises`
       );
     }
+  });
+});
+
+/* ⚠ SKIVE 3C — kanSkifteSagTilstand() FANDT VED AT LÆSE KODEN, IKKE VED AT
+   GÆTTE. SAG_TILSTAND havde tre tilstande og INGEN funktion der sagde hvilke
+   skift der er lovlige — modstykket til kanSkifteTil() i indberetninger.js
+   manglede. sagAfslut i functions/index.js er den første handling der
+   bruger den. */
+describe("kanSkifteSagTilstand — den manglende maskine", () => {
+  it("aaben og afventerSvar kan begge afsluttes", () => {
+    assert.equal(kanSkifteSagTilstand("aaben", "afsluttet"), true);
+    assert.equal(kanSkifteSagTilstand("afventerSvar", "afsluttet"), true);
+  });
+
+  it("⚠ INGEN GENÅBNING — afsluttet er en endestation", () => {
+    assert.equal(kanSkifteSagTilstand("afsluttet", "aaben"), false);
+    assert.equal(kanSkifteSagTilstand("afsluttet", "afventerSvar"), false);
+    assert.equal(kanSkifteSagTilstand("afsluttet", "afsluttet"), false);
+  });
+
+  it("fejler lukket på en ukendt tilstand — samme mønster som kanSkifteTil()", () => {
+    assert.equal(kanSkifteSagTilstand("vrøvl", "afsluttet"), false);
+    assert.equal(kanSkifteSagTilstand(undefined, "afsluttet"), false);
+  });
+
+  it("de tre tilstande i SAG_TILSTAND er de eneste kanSkifteSagTilstand kender", () => {
+    const kendte = Object.keys(SAG_TILSTAND);
+    assert.deepEqual(kendte, ["aaben", "afventerSvar", "afsluttet"]);
   });
 });
 

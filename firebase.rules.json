@@ -1984,6 +1984,14 @@
             // ikke om en person, saa der er intet personId-modstykke her.
             "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
             "oprettetMs": { ".validate": "newData.isNumber()" },
+            // ⚠ SKIVE 3C — additivt felt, ikke et redesign. `sagAfslut` er den
+            // foerste funktion der reelt LUKKER en sag, og en kort begrundelse
+            // er hvad der adskiller "kunden svarede aldrig" fra "loest og
+            // lukket" naeste gang nogen aabner sagen igen. Samme princip som
+            // indberetningers ingenOmkostning.begrundelse — fritekst, men KORT
+            // og administrativ, ikke braedtekst fra internettet, og derfor paa
+            // BASEN og ikke i sensitive/.
+            "afslutningsAarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 300" },
             "$andet": { ".validate": false }
           }
         },

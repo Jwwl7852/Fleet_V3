@@ -45,7 +45,6 @@
  * samme uanset hvem der kører gennem porten.
  */
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
@@ -69,6 +68,8 @@ import {
   KILDE, prioritetFor, konfliktTekst, indeslutninger,
 } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
+/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. */
+import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Sættene bruges når der ingen database er.
    Skærmen slår IKKE op i dem — det var netop dét der gjorde
    DEMO_SERVICEBESOEG til et andet svar end noden. */
@@ -412,12 +413,30 @@ export default function Servicekalender() {
             Et servicebesøg er en <b>opgave med art facility</b> (beslutning 21) —
             samme form som et værkstedsbesøg, bare på et anlæg i stedet for en bil.
             Tabellen viser <b>noden</b>, ikke et demosæt: den og gitteret læser
-            den samme liste.{" "}
-            <Link className="fc-a" to="/flaade">Se sagsvisningen</Link> — sagen
-            hører til beslutning 20, og den er fase 0.
+            den samme liste.
           </p>
         </Kort>
       </Gitter>
+
+      {/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. Her
+          stod et link til "/flaade" med "sagen er fase 0" — sagen findes nu,
+          og genbruger nøjagtig den samme komponent som Driftskalenderen. */}
+      {valgt && (
+        <Kort titel="Sag">
+          <Sagsvisning
+            sagId={valgt.sagId || null}
+            objektType="opgave"
+            objektId={valgt.id}
+            art="facility"
+            objektLabel={valgt.aktivId
+              ? aktiver.data.find((a) => a.id === valgt.aktivId)?.navn || valgt.aktivId
+              : lokNavn(valgt.lokationId) || valgt.lokationId}
+            emneForslag={valgt.beskrivelse}
+            modpartNavnForslag={valgt.leverandoerId ? lvNavn(valgt.leverandoerId) : ""}
+            onGenindlaes={() => opgaver.genindlaes()}
+          />
+        </Kort>
+      )}
 
       {planlaegger && (
         <Servicedialog

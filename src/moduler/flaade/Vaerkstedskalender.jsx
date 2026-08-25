@@ -65,9 +65,9 @@ import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
-import { num, dato, datoTid, klokke, kr, filstoerrelse } from "../../fleet/format.js";
+import { num, dato, datoTid, kr } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiRaekke, Tabel, Pille, Knap, Henter, Datatilstand,
+  Kort, KpiRaekke, Pille, Knap, Henter, Datatilstand,
   Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon, Formularsvar,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
@@ -89,8 +89,8 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
-import { VEDHAEFTNING_TONE, VEDHAEFTNING_LABEL } from "../../fleet/sager.js";
-import { demoSagerFor } from "../../fleet/demo-sag.js";
+/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN PARALLELKOPI. Se dens hoved. */
+import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -630,10 +630,14 @@ function Svaevekort({ svaev, lvNavn }) {
 
 /* ---- Hændelsespanelet ------------------------------------------------- */
 
-const PANEL_FANER = (sag) => [
+/* ⚠ SKIVE 3C — "Kommunikation" OG "Filer" ER VÆK HERFRA. De var en PARALLEL
+   sagsvisning bygget direkte ind i denne skærm — samme demo-sag.js, samme
+   VEDHAEFTNING_*, men sin egen kopi af faner og komponenter. "Sag" åbner nu
+   den DELTE Sagsvisning (fleet/Sagsvisning.jsx), som Facility bruger
+   uændret. Se hovedet i Sagsvisning.jsx. */
+const PANEL_FANER = [
   { key: "overblik", label: "Overblik" },
-  { key: "kommunikation", label: "Kommunikation", badge: sag ? sag.beskeder.length : 0 },
-  { key: "filer", label: "Filer" },
+  { key: "sag", label: "Sag" },
 ];
 
 /**
@@ -645,11 +649,6 @@ const PANEL_FANER = (sag) => [
  */
 function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet }) {
   const [fane, setFane] = useState("overblik");
-  /* ⚠ SAGEN SLÅS OP PÅ OPGAVENS sagId. `sager/` findes ikke i
-     firebase.rules.json endnu (beslutning 20 er fase 0), så opslaget går i
-     demo-sættet — og skærmen siger det, frem for at vise en tom fane der
-     ligner en sag uden beskeder. */
-  const sag = demoSagerFor("flaade").find((s) => s.id === opgave.sagId) || null;
   const enhed = enheder.find((k) => k.id === opgave.koeretoejId) || null;
   const pri = prioritetFor(opgave);
 
@@ -664,7 +663,7 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
         {OPGAVE_STATUS[opgave.status]?.label}</Pille>}
       onLuk={onLuk}
     >
-      <Faner faner={PANEL_FANER(sag)} valgt={fane} saet={setFane} label="Hændelse" />
+      <Faner faner={PANEL_FANER} valgt={fane} saet={setFane} label="Hændelse" />
 
       {fane === "overblik" && (
         <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
@@ -687,18 +686,28 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
             {Number.isFinite(opgave.beloebOere) && (
               <MiniLinje label="Estimeret omkostning" vaerdi={kr(opgave.beloebOere)} />
             )}
-            {opgave.sagId && (
-              <MiniLinje label="Sag" vaerdi={sag
-                ? <code>{sag.nummer}</code>
-                : <span className="fc-neutral">{opgave.sagId}</span>} />
-            )}
+            <MiniLinje label="Sag" vaerdi={opgave.sagId
+              ? <Pille tone="info">Findes — se fanen "Sag"</Pille>
+              : <span className="fc-neutral">Ingen</span>} />
           </div>
           <Reservationen opgave={opgave} />
         </Gitter>
       )}
 
-      {fane === "kommunikation" && <Kommunikation sag={sag} />}
-      {fane === "filer" && <Filer sag={sag} />}
+      {/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN PARALLELKOPI. Samme
+          komponent som Facilitys Servicekalender bruger; se dens hoved. */}
+      {fane === "sag" && (
+        <Sagsvisning
+          sagId={opgave.sagId || null}
+          objektType="opgave"
+          objektId={opgave.id}
+          art="fleet"
+          objektLabel={enhed?.kaldenavn || opgave.koeretoejId}
+          emneForslag={opgave.beskrivelse}
+          modpartNavnForslag={opgave.leverandoerId ? lvNavn(opgave.leverandoerId) : ""}
+          onGenindlaes={onSkiftet}
+        />
+      )}
 
       {/* ⚠ HER STOD TO DEAKTIVEREDE KNAPPER — "Marker udført" og "Flyt" — med
           begrundelsen at skrivningen hørte i en Cloud Function. Den findes nu:
@@ -775,99 +784,6 @@ function Reservationen({ opgave }) {
         sekund, så konfliktfriheden hører i en Cloud Function. Det her er
         <b> formen</b>, ikke en handling.
       </p>
-    </div>
-  );
-}
-
-function Kommunikation({ sag }) {
-  if (!sag) {
-    return (
-      <Tom>
-        Ingen sag på den her opgave. Mailtråden hænger på en <b>sag</b>, og
-        sagsnummeret sættes i emnefeltet når der skrives til værkstedet — se
-        beslutning 20.
-      </Tom>
-    );
-  }
-  return (
-    <div>
-      <Tabel
-        kolonner={[
-          { key: "ms", label: "Tid", render: (b) => `${dato(b.ms)} ${klokke(b.ms)}` },
-          { key: "retning", label: "", render: (b) => (
-            <Pille tone={b.retning === "indgaaende" ? "info" : "ok"}>
-              {b.retning === "indgaaende" ? "Ind" : "Ud"}</Pille>) },
-          { key: "afsenderNavn", label: "Afsender" },
-          { key: "emne", label: "Emne" },
-        ]}
-        raekker={sag.beskeder}
-        tom="Ingen beskeder på sagen."
-      />
-      {sag.antalKarantaene > 0 && (
-        /* ⚠ KARANTÆNE RENDERES IKKE INLINE. Ikke gråtonet, ikke sammenklappet
-           — slet ikke. Renderes den i tråden, læser mennesket den og handler
-           på den, og så er karantænen en dekoration. Samme regel som at en
-           udløbet kompetence BLOKERER frem for at advare. */
-        <p className="fc-hint fc-bad" style={{ marginTop: 12 }}>
-          ⚠ <b>{num(sag.antalKarantaene)}</b> besked(er) er i karantæne og vises
-          ikke her. De frigives på sagen af en der har <code>sag.karantaeneFrigiv</code>.
-        </p>
-      )}
-      <p className="fc-hint" style={{ marginTop: 12 }}>
-        Visning, ingen afsendelse. Modtagevej, parsing og scanning mangler —{" "}
-        <b>sager/</b> står ikke i <b>firebase.rules.json</b> endnu. Beslutning
-        20 er fase 0.
-      </p>
-    </div>
-  );
-}
-
-function Filer({ sag }) {
-  const vedhaeftninger = (sag?.beskeder || []).flatMap((b) => b.vedhaeftninger || []);
-  return (
-    <div>
-      <h3 style={{ fontSize: 13, margin: "0 0 8px" }}>Fotos</h3>
-      {/* ⚠ ATTRAPPER, OG DET STÅR PÅ SKÆRMEN. DEV har ingen Storage-bucket —
-          den kræver Blaze, og DEV står på Spark. Et upload-felt der så ud til
-          at virke, ville fejle først når nogen havde valgt en fil. Bucket'en
-          skal oprettes i europe-west1 sammen med en budgetalarm, og regionen
-          kan ikke ændres bagefter. Se README. */}
-      <div className="fc-fotos">
-        {[1, 2, 3].map((n) => (
-          <div key={n} className="fc-foto">Foto {n}</div>
-        ))}
-      </div>
-      <p className="fc-hint" style={{ marginTop: 10 }}>
-        ⚠ <b>Billederne er attrapper.</b> Der er ingen Storage-bucket i dette
-        miljø — den kræver Blaze, og regionen (<b>europe-west1</b>) kan ikke
-        ændres når den først er valgt. Upload bygges sammen med bucket'en og en
-        budgetalarm, ikke før.
-      </p>
-
-      <h3 style={{ fontSize: 13, margin: "18px 0 8px" }}>Dokumenter fra sagen</h3>
-      {/* ⚠ FELTET HEDDER filnavn, IKKE navn. Her stod `key: "navn"`, og
-          kolonnen stod TOM på skærmen mens statuspillen ved siden af så
-          rigtig ud — præcis den fejlklasse CLAUDE.md advarer om: et feltnavn
-          skrevet i et modul uden at blive holdt op mod dataene. Den fejler
-          ikke, den bliver bare tom, og en tom celle ligner en fil uden navn.
-
-          Statussen er heller ikke rå: VEDHAEFTNING_LABEL og _TONE står i
-          sager.js, og Sagsvisning bruger de samme to. Skrev vi `v.status`
-          direkte, ville skærmen sige "afventerScan" hvor sagsvisningen siger
-          "Afventer scanning". */}
-      <Tabel
-        kolonner={[
-          { key: "filnavn", label: "Fil", render: (v) => <b>{v.filnavn}</b> },
-          { key: "stoerrelse", label: "Størrelse", num: true,
-            render: (v) => filstoerrelse(v.stoerrelse) },
-          { key: "status", label: "Scanning",
-            render: (v) => <Pille tone={VEDHAEFTNING_TONE[v.status]}>
-              {VEDHAEFTNING_LABEL[v.status]}</Pille> },
-        ]}
-        raekker={vedhaeftninger}
-        tom={sag ? "Ingen vedhæftninger på sagen." : "Ingen sag på opgaven."}
-      />
-
     </div>
   );
 }

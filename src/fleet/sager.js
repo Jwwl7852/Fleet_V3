@@ -225,6 +225,27 @@ export const SAG_TILSTAND = {
   afsluttet:    { label: "Afsluttet",       pill: "ok"   },
 };
 
+/**
+ * ⚠ SKIVE 3C — DEN MANGLEDE. Der var tre tilstande og ingen funktion der sagde
+ * hvilke skift der er lovlige, så `sagBeskedSkriv` kunne sætte `tilstand` til
+ * ethvert medlem af SAG_TILSTAND uden at nogen havde spurgt om vejen var åben.
+ * Det ændrer denne funktion ikke ved — beskeder sætter stadig tilstanden frit,
+ * det er den eksisterende, uændrede opførsel. Den bruges KUN af den nye
+ * `sagAfslut`, som er den første handling der reelt LUKKER en sag.
+ *
+ * ⚠ INGEN GENÅBNING. `afsluttet` har ingen `naeste` — en lukket sag åbnes ikke
+ * ved at skifte et felt tilbage. Skal arbejdet fortsætte, er det en ny sag,
+ * præcis som en afsluttet indberetning ikke genåbnes (indberetninger.js).
+ */
+const SAG_OVERGANGE = {
+  aaben: ["afsluttet"],
+  afventerSvar: ["afsluttet"],
+  afsluttet: [],
+};
+
+export const kanSkifteSagTilstand = (fra, til) =>
+  (SAG_OVERGANGE[fra] || []).includes(til);
+
 export const RETNING = { indgaaende: "indgaaende", udgaaende: "udgaaende" };
 export const RETNING_LABEL = { indgaaende: "Indgående", udgaaende: "Udgående" };
 

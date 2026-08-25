@@ -42,7 +42,8 @@ import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { harModul } from "../../fleet/moduler.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang } from "../../fleet/ui.jsx";
+  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang,
+  Knap, Dialog } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
@@ -62,6 +63,9 @@ import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
    Disponering.jsx bruger. Ingen parallel triage- eller planlægningslogik. */
 import Indberetningtriage from "../../fleet/Indberetningtriage.jsx";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+/* ⚠ SKIVE 3C — samme delte sagsvisning som Fleet Driftskalender og Facility
+   Servicekalender bruger. Kun til at ÅBNE en sag der allerede findes. */
+import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 
 /* ⚠ HER STOD `bilNavn` SOM EN MODUL-KONST BYGGET AF DEMOFILEN. Hos en rigtig
    kunde matcher den ingenting, og kolonnen "Enhed" ville stå med et råt id på
@@ -243,6 +247,13 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
      `indberetninger/$id` skelner på nøjagtig den samme permission. Se
      Indberetningtriage.jsx og indberetningTriage i functions/index.js. */
   const maaTriagere = harPerm(bruger?.perms, PERM.indberetningerSkrivAlle);
+  /* ⚠ SKIVE 3C — VISNING, IKKE OPRETTELSE. En indberetning er kun et
+     "Fleet: ... når den er koblet til en sag"-indgangspunkt (se hovedet i
+     Sagsvisning.jsx) — der er bevidst INGEN "Opret sag"-knap her. En sag
+     hænger på en OPGAVE (objektType "opgave"), ikke direkte på en
+     indberetning; koblingen her er kun til at ÅBNE en sag der allerede
+     findes, hvis nogen har skrevet i.sagId. */
+  const [sagAaben, saetSagAaben] = useState(false);
 
   return (
     <Kort titel={HAENDELSE_ART[i.art]?.label || i.art}>
@@ -266,7 +277,9 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
           : "Ikke vurderet"} />
         {/* ⚠ HAR en sag — ER ikke en sag. To tilstandsmaskiner, ét felt
             imellem. En mail kan være besvaret uden at bilen er repareret. */}
-        <MiniLinje label="Sag" vaerdi={i.sagId || "Ingen"} />
+        <MiniLinje label="Sag" vaerdi={i.sagId
+          ? <Knap onClick={() => saetSagAaben(true)}>Åbn sag</Knap>
+          : "Ingen"} />
         {/* ⚠ BESØGET SLÅS OP PÅ INDBERETNINGEN, IKKE OMVENDT — beslutning
             109. Feltet kan mangle selv når der ER en aktivitet: koblingen
             findes kun fra opgaver oprettet via "Planlæg aktivitet" herfra. */}
@@ -297,6 +310,12 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
           onSkiftet={genindlaes}
         />
       </div>
+
+      {sagAaben && (
+        <Dialog bred titel="Sag" onLuk={() => saetSagAaben(false)}>
+          <Sagsvisning sagId={i.sagId} art="fleet" />
+        </Dialog>
+      )}
     </Kort>
   );
 }

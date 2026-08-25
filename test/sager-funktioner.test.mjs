@@ -29,18 +29,21 @@ const sagOpret = blokAf("sagOpret");
 const sagBeskedSkriv = blokAf("sagBeskedSkriv");
 const sagKarantaeneFrigiv = blokAf("sagKarantaeneFrigiv");
 const sagAftaleBekraeft = blokAf("sagAftaleBekraeft");
+/* ⚠ SKIVE 3C — DEN FEMTE FUNKTION. */
+const sagAfslut = blokAf("sagAfslut");
 
-describe("De fire funktioner findes og bruger den delte politik", () => {
+describe("De fem funktioner findes og bruger den delte politik", () => {
   it("⚠ IMPORTERER FRA delt/sager.js, IKKE EN AFSKRIFT", () => {
     assert.match(kilde, /from "\.\/delt\/sager\.js"/);
     assert.ok(kilde.includes("SAG_ART"), "SAG_ART importeres ikke");
     assert.ok(kilde.includes("naesteSagsnummer"), "naesteSagsnummer importeres ikke");
     assert.ok(kilde.includes("frigivKarantaene"), "frigivKarantaene importeres ikke");
     assert.ok(kilde.includes("reservationFraAftale"), "reservationFraAftale importeres ikke");
+    assert.ok(kilde.includes("kanSkifteSagTilstand"), "kanSkifteSagTilstand importeres ikke");
   });
 
   it("hver funktion tjekker tenant og aktivt abonnement — admin-SDK går uden om reglerne", () => {
-    for (const b of [sagOpret, sagBeskedSkriv, sagKarantaeneFrigiv, sagAftaleBekraeft]) {
+    for (const b of [sagOpret, sagBeskedSkriv, sagKarantaeneFrigiv, sagAftaleBekraeft, sagAfslut]) {
       assert.ok(b.includes('rod.child("_findes")'), "tenant-tjek mangler");
       assert.ok(b.includes("abonnement/status"), "abonnement-tjek mangler");
     }
@@ -74,6 +77,34 @@ describe("sagOpret", () => {
   it("⚠ objektId TJEKKES KUN NÅR objektType ER \"opgave\" — polymorf reference", () => {
     assert.ok(sagOpret.includes('objektType === "opgave"'),
       "den polymorfe reference tjekkes ikke");
+  });
+
+  /* ⚠ SKIVE 3C — FULDFØRER opgave.sagId. Feltet stod i opgaver.js' FAELLES
+     og var reference-tjekket i firebase.rules.json siden beslutning 45, men
+     ingen funktion skrev det nogensinde — samme gab som indberetningId var
+     før Skive 3B. */
+  describe("⚠ SKIVE 3C — opgave.sagId FULDFØRES, IKKE OPFINDES", () => {
+    it("skriver opgaver/<objektId>/sagId i SAMME opdatering som sagen", () => {
+      const b = udenKommentarer(sagOpret);
+      assert.match(b, /opdatering\[`opgaver\/\$\{objektId\}\/sagId`\]\s*=\s*sagId/);
+    });
+
+    it("⚠ KRÆVER OGSÅ opgaver.skriv — ikke kun sag.skriv", () => {
+      assert.ok(sagOpret.includes('perms.includes("|opgaver.skriv|")'),
+        "koblingen til opgaven kræver ikke opgaver.skriv");
+    });
+
+    it("⚠ AFVISER EN OPGAVE DER ALLEREDE HAR EN SAG — feltet er ét, ikke en liste", () => {
+      assert.ok(sagOpret.includes("opgave.sagId"),
+        "der tjekkes ikke om opgaven allerede har en sag");
+      assert.match(udenKommentarer(sagOpret), /failed-precondition/);
+    });
+
+    it("⚠ STADIG ÉN update() — koblingen lander i den SAMME opdatering", () => {
+      const b = udenKommentarer(sagOpret);
+      assert.equal((b.match(/rod\.update\(/g) || []).length, 1,
+        "der skrives i mere end ét kald");
+    });
   });
 });
 
@@ -146,6 +177,47 @@ describe("sagAftaleBekraeft", () => {
   });
 });
 
+/* ⚠ SKIVE 3C — DEN FEMTE OG SIDSTE VEJ IND. Audit viste tilstand: "afsluttet"
+   i SAG_TILSTAND, men ingen funktion kunne sætte den. sagAfslut er den
+   MINIMALE funktion Skive 3C.6 bad om: samme permission-mønster som de fire
+   andre, samme delte maskine som skærmen viser, ingen ny tilstand. */
+describe("sagAfslut", () => {
+  it("⚠ KRÆVER sag.skriv — samme permission som sagOpret", () => {
+    assert.ok(sagAfslut.includes('perms.includes("|sag.skriv|")'));
+  });
+
+  it("⚠ KALDER kanSkifteSagTilstand() — SAMME MASKINE SOM SKÆRMEN VISER", () => {
+    assert.ok(sagAfslut.includes("kanSkifteSagTilstand("));
+  });
+
+  it("⚠ MÅLET ER ALTID \"afsluttet\" — ingen anden tilstand kan sættes herfra", () => {
+    assert.match(udenKommentarer(sagAfslut), /kanSkifteSagTilstand\(sag\.tilstand,\s*"afsluttet"\)/);
+    assert.match(udenKommentarer(sagAfslut), /tilstand`\]:\s*"afsluttet"/);
+  });
+
+  it("⚠ KRÆVER EN BEGRUNDELSE — additivt felt, ikke en ny tilstandsmaskine", () => {
+    const b = udenKommentarer(sagAfslut);
+    assert.ok(b.includes("afslutningsAarsag"), "begrundelsen læses ikke");
+    assert.ok(!b.includes('kortStreng(d.tilstand'),
+      "funktionen tager en anden tilstand end afsluttet fra klienten");
+  });
+
+  it("⚠ INGEN GENÅBNING TILBYDES — funktionen skriver aldrig \"aaben\" eller \"afventerSvar\"", () => {
+    const b = udenKommentarer(sagAfslut);
+    assert.ok(!/tilstand`\]:\s*"(aaben|afventerSvar)"/.test(b),
+      "funktionen kan sætte en anden tilstand end afsluttet");
+  });
+
+  it("⚠ ÉN update()", () => {
+    const b = udenKommentarer(sagAfslut);
+    assert.equal((b.match(/rod\.update\(/g) || []).length, 1);
+  });
+
+  it("⚠ INGEN SLETNING — historikken bevares", () => {
+    assert.ok(!/\.remove\(/.test(sagAfslut));
+  });
+});
+
 describe("logSager skriver samme form som de øvrige logXxx-funktioner", () => {
   it("bruger klasseFor(), diff() og AUDIT — ikke sin egen afskrift", () => {
     const start = kilde.indexOf("async function logSager(");
@@ -155,5 +227,27 @@ describe("logSager skriver samme form som de øvrige logXxx-funktioner", () => {
     assert.ok(b.includes("klasseFor("));
     assert.ok(b.includes("diff("));
     assert.ok(b.includes('objekt: "sager"'));
+  });
+
+  /* ⚠ SKIVE 3C, PUNKT 8 — SIKKERHEDSBASELINE. Alle fem mutationer skal
+     auditlogges. Et 3C-security-gap er en mutation der IKKE gør det. */
+  it("⚠ ALLE FEM FUNKTIONER KALDER logSager()", () => {
+    for (const [navn, b] of [
+      ["sagOpret", sagOpret], ["sagBeskedSkriv", sagBeskedSkriv],
+      ["sagKarantaeneFrigiv", sagKarantaeneFrigiv],
+      ["sagAftaleBekraeft", sagAftaleBekraeft], ["sagAfslut", sagAfslut],
+    ]) {
+      assert.ok(b.includes("logSager("), `${navn} kalder ikke logSager()`);
+    }
+  });
+
+  /* ⚠ BEGRUNDELSEN ER FRITEKST og må ikke stå i auditposten — samme regel
+     som indberetningers ingenOmkostning.begrundelse. Kun tilstandsskiftet
+     logges. */
+  it("⚠ afslutningsAarsag STÅR IKKE I logSager-KALDET I sagAfslut", () => {
+    const kald = udenKommentarer(sagAfslut).match(/logSager\([^;]*\);/s)?.[0] || "";
+    assert.ok(kald.length > 0, "logSager-kaldet blev ikke fundet");
+    assert.ok(!kald.includes("afslutningsAarsag"),
+      "den frie afslutningsårsag sendes med i auditkaldet");
   });
 });

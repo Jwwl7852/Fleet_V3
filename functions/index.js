@@ -124,6 +124,7 @@ import {
    ikke bygget endnu) og importeres derfor ikke her. */
 import {
   SAG_ART, SAG_TILSTAND, naesteSagsnummer, frigivKarantaene, reservationFraAftale,
+  kanSkifteSagTilstand,
 } from "./delt/sager.js";
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
@@ -5584,9 +5585,27 @@ export const sagOpret = onCall({ region: REGION }, async (req) => {
      test/referencetjek.test.mjs. */
   const objektType = kortStreng(d.objektType, 40);
   const objektId = kortStreng(d.objektId, 60);
+  let opgave = null;
   if (objektType === "opgave" && objektId) {
-    const o = (await rod.child(`opgaver/${objektId}`).once("value")).val();
-    if (!o) throw new HttpsError("not-found", `Opgaven ${objektId} findes ikke.`);
+    opgave = (await rod.child(`opgaver/${objektId}`).once("value")).val();
+    if (!opgave) throw new HttpsError("not-found", `Opgaven ${objektId} findes ikke.`);
+    /* ⚠ SKIVE 3C — opgave.sagId ER ÉT FELT, IKKE EN LISTE. En anden sag
+       oprettet på samme opgave ville overskrive den første opgaves eneste
+       spor tilbage til sig selv — den ville stadig findes i `sager/`, men
+       ingen skærm kunne finde den fra opgaven igen. En sag ad gangen pr.
+       opgave, som modellen rent faktisk bærer. */
+    if (opgave.sagId) {
+      throw new HttpsError("failed-precondition",
+        `Opgaven har allerede en sag (${opgave.sagId}).`);
+    }
+    /* ⚠ SAMME PERMISSION SOM DEN DER SKRIVER OPGAVEN. sag.skriv siger at
+       brugeren må oprette sager; det siger intet om at han må ÆNDRE en
+       opgave — og det er præcis hvad koblingen gør. Spørg hvad handlingen
+       kræver, ikke hvem brugeren er. */
+    if (!perms.includes("|opgaver.skriv|")) {
+      throw new HttpsError("permission-denied",
+        "Du må ikke koble sagen til opgaven. Det kræver opgaver.skriv.");
+    }
   }
 
   const modpartNavn = kortStreng(d.modpartNavn, 120);
@@ -5616,6 +5635,14 @@ export const sagOpret = onCall({ region: REGION }, async (req) => {
   if (modpartEmail) {
     const partId = rod.child(`sager/${sagId}/parter`).push().key;
     opdatering[`sager/${sagId}/parter/${partId}`] = modpartEmail.toLowerCase();
+  }
+
+  /* ⚠ SKIVE 3C — SAMME update(), IKKE ET KALD MERE. `opgave.sagId` er
+     beslutningen fra beslutning 45's feltskema, aldrig skrevet: sagen og
+     koblingen lander sammen eller slet ikke, samme regel som opgave og
+     reservation i opgaveplanlaeg. */
+  if (opgave) {
+    opdatering[`opgaver/${objektId}/sagId`] = sagId;
   }
 
   await rod.update(opdatering);
@@ -5843,6 +5870,83 @@ export const sagAftaleBekraeft = onCall({ region: REGION }, async (req) => {
     `aftale bekræftet — reservation på ${ny.ressourceType} ${ny.ressourceId}`);
 
   return { ressourceType: ny.ressourceType, ressourceId: ny.ressourceId, fra: ny.fra, til: ny.til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAGAFSLUT — Skive 3C. Den femte og sidste vej ind i `sager/`.
+
+   ⚠ HVORFOR DEN FINDES. Audit viste tilstand: "afsluttet" i SAG_TILSTAND, men
+   ingen funktion kunne nogensinde sætte den — `sagBeskedSkriv` kan i teorien
+   sende en vilkårlig SAG_TILSTAND med, men det er en BIPRODUKT af at skrive en
+   besked, ikke en bevidst lukning, og den kræver ingen begrundelse. En sag der
+   lukkes, skal kunne det UDEN at nogen først opfinder en tom besked at hænge
+   skiftet på.
+
+   ⚠ DEN ER SÅ SMAL SOM MULIGT. Ingen ny tilstandsmaskine — kanSkifteSagTilstand()
+   i sager.js har kun ÉT mål: afsluttet, fra aaben eller afventerSvar. Ingen
+   genåbning: afsluttet har intet naeste. Skal sagen fortsætte, er det en ny
+   sag — samme svar som en afsluttet indberetning.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const sagAfslut = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* ⚠ SAMME PERMISSION SOM DEN DER OPRETTER SAGEN. At lukke en sag er ikke en
+     mindre handling end at åbne den. */
+  if (!perms.includes("|sag.skriv|")) {
+    throw new HttpsError("permission-denied", "Du må ikke afslutte en sag. Det kræver sag.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const sagId = kortStreng(d.sagId, 60);
+  if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
+  const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
+  if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+
+  /* ⚠ SAMME MASKINE SOM SKÆRMEN VISER — kanSkifteSagTilstand(). En allerede
+     afsluttet sag afvises med samme sætning som en afsluttet indberetning:
+     en endestation, ikke en fejl der skal gættes forbi. */
+  if (!kanSkifteSagTilstand(sag.tilstand, "afsluttet")) {
+    throw new HttpsError("failed-precondition",
+      `Sagen er "${SAG_TILSTAND[sag.tilstand]?.label || sag.tilstand}" og kan ikke afsluttes herfra.`);
+  }
+
+  /* ⚠ EN KORT BEGRUNDELSE, PÅKRÆVET — additivt felt, se firebase.rules.json.
+     Uden den kan "kunden svarede aldrig" ikke skelnes fra "løst og lukket"
+     næste gang nogen åbner sagen. Samme holdning som indberetningers
+     ingenOmkostning.begrundelse. */
+  const afslutningsAarsag = kortStreng(d.afslutningsAarsag, 300);
+  if (!afslutningsAarsag) {
+    throw new HttpsError("invalid-argument", "Sagen skal have en kort afslutningsårsag.");
+  }
+
+  const opdatering = {
+    [`sager/${sagId}/tilstand`]: "afsluttet",
+    [`sager/${sagId}/afslutningsAarsag`]: afslutningsAarsag,
+  };
+
+  await rod.update(opdatering);
+  /* ⚠ ÅRSAGEN ER FRITEKST OG STÅR IKKE I AUDITPOSTEN — kun tilstandsskiftet
+     gør, ligesom "status" og "tilstand" andre steder. Begrundelsen bor på
+     sagen selv, som er sin egen historik. */
+  await logSager(tenantId, uid, AUDIT.tilstandsskift, sagId,
+    { tilstand: sag.tilstand }, { tilstand: "afsluttet" }, "sag afsluttet");
+
+  return { sagId, tilstand: "afsluttet" };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
