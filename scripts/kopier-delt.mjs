@@ -167,6 +167,14 @@ export const DELTE_FILER = [
      lade en indberetning lukkes uden om pengesidens tjek. Filen importerer
      kun grundlag.js, som allerede står her — lukningen holder. */
   "indberetninger.js",
+  /* ⚠ mailtransport.js — Skive 3D, Gate A. `sagMailSend` skal sanitere
+     emnefeltet (header-injektion) og validere længder med NØJAGTIG samme
+     saniterHeaderFelt()/valideEmne()/valideTekst() og
+     erGyldigtSendRequestId() som skærmen viser brugeren — ellers kan en
+     mail se gyldig ud i formularen og blive afvist server-side uden at
+     nogen kan se hvorfor. Filen importerer ingenting; lukningen er
+     triviel. */
+  "mailtransport.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

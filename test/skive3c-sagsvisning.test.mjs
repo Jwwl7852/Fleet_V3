@@ -51,20 +51,21 @@ describe("Sagsvisning læser rigtige data — ikke en hardkodet demo-tråd", () 
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
-   2. SAND UI-SEMANTIK — INGEN LOVET MAILAFSENDELSE
+   2. SAND UI-SEMANTIK — SKIVE 3C: INGEN LOVET MAILAFSENDELSE FOR DEN INTERNE
+   NOTE. SKIVE 3D: "Send mail" ER NU LOVLIGT, FORDI DEN RENT FAKTISK SENDER.
    ══════════════════════════════════════════════════════════════════════════ */
-describe("⚠ INGEN KNAP LOVER EN MAILAFSENDELSE DER IKKE SKER", () => {
-  const forbudt = [
-    /"Send besked"/, /"Send mail"/, />Send besked</, />Send mail</,
-    /gemLabel="Send/,
-  ];
+describe("⚠ DEN INTERNE NOTE LOVER STADIG INGEN AFSENDELSE — 'Send mail' ER NU DEN RIGTIGE, FORDI DEN RENT FAKTISK SENDER", () => {
+  /* ⚠ "Send besked" ER STADIG FORBUDT — det var ALDRIG et rigtigt knapnavn,
+     hverken i 3C eller 3D. Det er "Tilføj besked til sagen" (intern note)
+     eller "Send mail" (den rigtige, Skive 3D), aldrig noget midt imellem. */
+  const forbudt = [/"Send besked"/, />Send besked</, /gemLabel="Send besked/];
 
-  it("Sagsvisning.jsx bruger aldrig \"Send besked\"/\"Send mail\" som knaptekst", () => {
+  it("Sagsvisning.jsx bruger aldrig \"Send besked\" som knaptekst", () => {
     /* ⚠ TJEKKET STÅR MOD KODEN UDEN KOMMENTARER. Filens EGEN dokumentation af
        hvad den IKKE gør, citerer nødvendigvis de forbudte ord — se hovedet. */
     const kode = udenKommentarer(sagsvisning);
     for (const m of forbudt) {
-      assert.ok(!m.test(kode), `${m} matcher — en knap lover afsendelse`);
+      assert.ok(!m.test(kode), `${m} matcher — "Send besked" er ikke et knapnavn her`);
     }
   });
 
@@ -72,12 +73,28 @@ describe("⚠ INGEN KNAP LOVER EN MAILAFSENDELSE DER IKKE SKER", () => {
     assert.ok(sagsvisning.includes("Tilføj besked til sagen"));
   });
 
-  it("⚠ DIALOGEN SIGER DET UDTRYKKELIGT: ingen mail sendes herfra", () => {
+  it("⚠ DEN INTERNE NOTE-DIALOG SIGER DET UDTRYKKELIGT: ingen mail sendes herfra", () => {
     assert.match(sagsvisning, /sendes ingen mail herfra/);
   });
 
-  it("⚠ INGEN POST GEMMES SOM \"sendt\" — sagplan.js's tekst matcher ikke", () => {
+  it("⚠ SKIVE 3D — \"Send mail\" ER EN RIGTIG, SEPARAT KNAP, IKKE EN VARIANT AF DEN INTERNE NOTE", () => {
+    assert.ok(sagsvisning.includes("Send mail"), "knappen der rent faktisk sender, findes ikke");
+    /* Den skal stå i SIN EGEN dialog (SendMailDialog), ikke i
+       TilfoejBeskedDialog — de to må aldrig blive én formular med et
+       skiftende resultat. */
+    assert.ok(sagsvisning.includes("function SendMailDialog"),
+      "der er ingen selvstændig komponent for den rigtige afsendelse");
+  });
+
+  it("⚠ INGEN POST GEMMES SOM \"sendt\" — kun \"accepteret\"/\"fejlet\"/\"anmodet\" (mailtransport.js)", () => {
+    /* "accepteret" er ikke "leveret" — se MAIL_STATUS-noten i
+       mailtransport.js. Hverken sagplan.js eller Sagsvisning.jsx må
+       opfinde et fjerde ord der lover mere end det. */
     assert.ok(!/status:\s*["']sendt["']/.test(udenKommentarer(sagplan)));
+    assert.ok(!/["']sendt["']/.test(udenKommentarer(sagsvisning)),
+      "Sagsvisning.jsx bruger \"sendt\" som en tilstand — den findes ikke i MAIL_STATUS");
+    assert.ok(!/["']leveret["']/i.test(udenKommentarer(sagsvisning)),
+      "Sagsvisning.jsx lover levering, som ingen udbyder har bekræftet");
   });
 });
 

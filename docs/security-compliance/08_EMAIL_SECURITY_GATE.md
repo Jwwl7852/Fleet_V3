@@ -1,12 +1,15 @@
 # 08 — Outbound Email Security Gate (before Skive 3D)
 
-**Status:** No outbound mail transport exists. `Sagsvisning.jsx`'s
-"Tilføj besked til sagen" writes an internal, in-app note only
-(`sagBeskedSkriv` → `sensitive/sager/$sagId/beskeder`) — confirmed this
-session by reading the deployed function and by the dialog's own on-screen
-text: *"Der sendes ingen mail herfra. FleetControl har endnu ingen udgående
-mailtransport."* This document is a requirements gate for the feature that
-will change that, written before it is built.
+**Status (opdateret under Skive 3D):** Gate A's 7 krav er nu implementeret —
+`sagMailSend` (functions/index.js) og den delte, provider-uafhængige
+transport i `functions/mail/`. Provider-beslutningen (se "Provider decision"
+nedenfor) er truffet: **Mailgun, EU-region**. `Sagsvisning.jsx`'s "Tilføj
+besked til sagen" er uændret en intern note; "Send mail" er nu en rigtig,
+separat handling. Se `12_FINDINGS_AND_REMEDIATION_PLAN.md`s Gate A for
+status pr. krav.
+
+Resten af dette dokument står som skrevet FØR implementeringen — kravene er
+stadig den bindende specifikation, ikke en historisk kuriositet.
 
 **This document does not describe anything implemented.** Every requirement
 below is a decision to enforce when Skive 3D starts.
@@ -210,6 +213,50 @@ framing of this checkpoint, unless the existing product plan states
 otherwise (not found in `CLAUDE.md`/`README.md`/`BESLUTNINGER.md` as a
 requirement for 3D specifically — the file-storage gate, doc 09, is the
 right place for attachment handling once it becomes relevant).
+
+## Provider decision (recorded — Skive 3D)
+
+**Valgt: Mailgun, EU-region (`api.eu.mailgun.net`).**
+
+Tre reelle muligheder blev stillet op og vurderet mod de kriterier denne
+sektion selv efterspørger:
+
+| | Mailgun (EU) | Amazon SES (eu-west-1) | Postmark |
+|---|---|---|---|
+| Server-side support | Ja, simpelt REST-API | Ja, AWS SDK | Ja, simpelt REST-API |
+| EU-residens | Ja, eksplicit EU-region | Ja, hvis eu-west-1 vælges eksplicit | Nej — USA |
+| Secret-håndtering | Én API-nøgle | AWS access key + secret, egen sky | Én server-token |
+| Transactional-egnethed | God | God, kræver mere opsætning | Bedst i klassen |
+| Webhooks (bounce/klik) | Ja | Ja | Ja |
+| Pris | Moderat | Lavest i skala | Rimelig |
+| Vendor lock-in | Lav — simpelt REST-API, let at udskifte | Højere — introducerer en hel ny sky (AWS) ved siden af Firebase/GCP | Lav |
+
+**Begrundelse**: Postmark blev fravalgt alene på EU-kravet — ingen
+dedikeret EU-region. SES blev fravalgt fordi det kræver en ny sky (AWS IAM,
+en ny kontotype, nye secrets-mekanismer) ved siden af det eksisterende
+Firebase/GCP-fundament, for et første cut der ikke har brug for AWS'
+skala. Mailgun giver EU-residens, et simpelt REST-API der ikke kræver en
+SDK-afhængighed (Node 20's indbyggede `fetch` er nok — se
+`functions/mail/adapters/mailgun.js`), og lav vendor lock-in: skiftes
+udbyder senere, er det ét adapter-fil-skift, ikke en arkitekturændring —
+se `MAIL_ADAPTER` i `functions/index.js`.
+
+**Implementeret som**: `functions/mail/adapters/mailgun.js`, bundet via
+Firebase Secret Manager (`MAILGUN_API_KEY`, `MAILGUN_DOMAIN`,
+`MAILGUN_AFSENDER`) til `sagMailSend` med `secrets: [...]` — aldrig i en
+`VITE_*`-klientvariabel eller en committet `.env`-fil.
+
+## BLOCKER BEFORE 3D
+
+These are not optional hardening for later — they are preconditions for
+introducing outbound mail at all, because their absence turns "FleetControl
+sends email" into "FleetControl can be made to send email as whoever
+attacks it":
+
+1. **Recipient resolved server-side from the sag's stored `parter[]`, never
+   from a client-supplied address at send time** (Section 5). This is the
+   single highest-severity requirement in this document.
+2. **Provider secret lives only in Cloud Functions config/secret manager,
 
 ## BLOCKER BEFORE 3D
 

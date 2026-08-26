@@ -37,6 +37,7 @@
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
@@ -124,8 +125,21 @@ import {
    ikke bygget endnu) og importeres derfor ikke her. */
 import {
   SAG_ART, SAG_TILSTAND, naesteSagsnummer, frigivKarantaene, reservationFraAftale,
-  kanSkifteSagTilstand,
+  kanSkifteSagTilstand, KANAL,
 } from "./delt/sager.js";
+import {
+  saniterHeaderFelt, valideEmne, valideTekst, erGyldigtSendRequestId,
+} from "./delt/mailtransport.js";
+import { sendMail } from "./mail/transport.js";
+import { mailgunAdapter } from "./mail/adapters/mailgun.js";
+
+/* ⚠ FIREBASE SECRET MANAGER — GATE A PUNKT 2. Bindes eksplicit til
+   sagMailSend nedenfor via `secrets: [...]`. Sættes med
+   `firebase functions:secrets:set MAILGUN_API_KEY` osv., ALDRIG i en
+   .env-fil der committes, og ALDRIG som en VITE_*-klientvariabel. */
+const MAILGUN_API_KEY = defineSecret("MAILGUN_API_KEY");
+const MAILGUN_DOMAIN = defineSecret("MAILGUN_DOMAIN");
+const MAILGUN_AFSENDER = defineSecret("MAILGUN_AFSENDER");
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
    i retention-regler.js. */
@@ -5717,7 +5731,11 @@ export const sagBeskedSkriv = onCall({ region: REGION }, async (req) => {
   }
 
   const nu = Date.now();
-  const besked = { ms: nu, retning: "udgaaende", tekst };
+  /* ⚠ SKIVE 3D — kanal: "internNote", EKSPLICIT. Feltet er nu påkrævet af
+     firebase.rules.json, fordi en rigtig udgående mail (sagMailSend)
+     genbruger denne samme beskeder-node. Uden det ville en note og en
+     sendt mail ikke kunne skelnes i tråden. */
+  const besked = { ms: nu, retning: "udgaaende", kanal: KANAL.internNote, tekst };
   if (bruger.email) besked.afsender = bruger.email;
   if (afsenderNavn) besked.afsenderNavn = afsenderNavn;
 
@@ -5969,6 +5987,185 @@ export const sagAfslut = onCall({ region: REGION }, async (req) => {
     { tilstand: sag.tilstand }, { tilstand: "afsluttet" }, "sag afsluttet");
 
   return { sagId, tilstand: "afsluttet" };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAGMAILSEND — SKIVE 3D. Den første rigtige udgående mail FleetControl
+   nogensinde sender. Alle syv Gate A-krav (docs/security-compliance/
+   08_EMAIL_SECURITY_GATE.md, 12_FINDINGS_AND_REMEDIATION_PLAN.md) er
+   markeret ved deres punkt herunder.
+
+   1. MODTAGEREN OPLØSES SERVER-SIDE. Klienten sender kun partId — aldrig
+      en adresse. sag.parter er nøglet på et push-id, netop fordi en rå
+      e-mailadresse ikke kan være en RTDB-nøgle (samme grund som i
+      sagOpret). Et partId der ikke findes på DENNE sag, afvises — det
+      dækker både et manipuleret id og et fra en anden tenant, fordi sagen
+      selv allerede er tenant-scopet af `rod`.
+   2. PROVIDER-HEMMELIGHEDEN ligger i den valgte adapter under
+      functions/mail/adapters/, aldrig i en VITE_*-klientvariabel. Denne
+      funktion kender kun MAIL_ADAPTER-referencen, aldrig et API-nøgle.
+   3. PERMISSION: perms.includes('|sag.mailSend|') — egen permission,
+      ikke sag.skriv. Se permissions.js.
+   4. TENANT + SAGSTILSTAND genverificeres her, uafhængigt af klientens
+      påstand — samme mønster som sagBeskedSkriv/sagKarantaeneFrigiv/
+      sagAftaleBekraeft efter denne sessions rettelse: en afsluttet sag
+      afvises.
+   5. AUDIT skrives ubetinget nedenfor, uanset udfald — anmodet, accepteret
+      og fejlet er alle et logSager()-kald. Ingen brødtekst i posten.
+   6. HEADER-INJEKTION: emnet går gennem saniterHeaderFelt() før det
+      forlader denne funktion.
+   7. IDEMPOTENS: sendRequestId ER selve beskedens RTDB-nøgle, sat via en
+      transaction() der afviser at overskrive en eksisterende post. Et
+      dobbeltklik, en browser-retry eller en funktions-retry rammer den
+      SAMME post og sender højst én mail.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ SKIFT ADAPTER HER, ÉT STED, NÅR EN UDBYDER SKIFTES (Gate A punkt 8).
+   Valget faldt på Mailgun (EU-region) — se beslutningsnotatet i
+   docs/security-compliance/08_EMAIL_SECURITY_GATE.md §8. */
+const MAIL_ADAPTER = mailgunAdapter;
+
+/* ⚠ SERVER-SIDE, IKKE KLIENTSIDE — Gate A punkt 6. Ét minutvindue pr.
+   bruger, ét fast loft. Højt nok til en travl sagsbehandler, lavt nok til
+   at stoppe en løkke. */
+const MAIL_RATE_LIMIT_PR_MINUT = 20;
+
+async function tjekOgOptaelMailRate(rod, uid) {
+  const vindue = new Date().toISOString().slice(0, 16); // "2026-08-25T12:34"
+  const ref = rod.child(`mailRatelimit/${uid}/${vindue}`);
+  const res = await ref.transaction((cur) => (cur || 0) + 1);
+  return (res.snapshot.val() || 0) <= MAIL_RATE_LIMIT_PR_MINUT;
+}
+
+export const sagMailSend = onCall({
+  region: REGION,
+  /* ⚠ GATE A PUNKT 2 — SECRETS BUNDET HER, IKKE LÆST FRA ET VILKÅRLIGT
+     MILJØ. Kun denne funktion (og adapteren den kalder) kan se dem. */
+  secrets: [MAILGUN_API_KEY, MAILGUN_DOMAIN, MAILGUN_AFSENDER],
+}, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|sag.mailSend|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke sende mail fra sagen. Det kræver sag.mailSend.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const sagId = kortStreng(d.sagId, 60);
+  if (!sagId) throw new HttpsError("invalid-argument", "sagId mangler.");
+  const sag = (await rod.child(`sager/${sagId}`).once("value")).val();
+  if (!sag) throw new HttpsError("not-found", `Sagen ${sagId} findes ikke.`);
+  if (sag.tilstand === "afsluttet") {
+    throw new HttpsError("failed-precondition", "Sagen er afsluttet og kan ikke ændres.");
+  }
+
+  const partId = kortStreng(d.partId, 60);
+  if (!partId) throw new HttpsError("invalid-argument", "partId mangler.");
+  /* ⚠ GATE A, PUNKT 1 — MODTAGEREN OPLØSES HER. Se funktionshovedet. */
+  const til = sag.parter?.[partId];
+  if (!til) {
+    throw new HttpsError("invalid-argument", "Den valgte part findes ikke på sagen.");
+  }
+
+  const emneRaa = valideEmne(d.emne);
+  if (!emneRaa) throw new HttpsError("invalid-argument", "Emnet må ikke være tomt.");
+  const emne = saniterHeaderFelt(emneRaa, 250);
+  const tekst = valideTekst(d.tekst);
+  if (!tekst) throw new HttpsError("invalid-argument", "Beskeden må ikke være tom.");
+
+  const sendRequestId = kortStreng(d.sendRequestId, 60);
+  if (!sendRequestId || !erGyldigtSendRequestId(sendRequestId)) {
+    throw new HttpsError("invalid-argument", "sendRequestId mangler eller er ugyldigt.");
+  }
+
+  const bruger = (await rod.child(`brugere/${uid}`).once("value")).val() || {};
+  let afsenderNavn = null;
+  if (bruger.personId) {
+    const person = (await rod.child(`personale/${bruger.personId}`).once("value")).val();
+    afsenderNavn = person?.navn || null;
+  }
+
+  /* ---- Idempotens: sendRequestId ER nøglen — Gate A, punkt 7 ------------
+     Samme mønster som statushaendelsers klientId (rutestatus.js,
+     beslutning 103): en gensendelse skal ramme den SAMME post. transaction()
+     med et abort-udfald (undefined) hvis posten allerede findes, er den
+     eneste sikre "opret hvis ny" i RTDB. */
+  const beskedRef = rod.child(`sensitive/sager/${sagId}/beskeder/${sendRequestId}`);
+  const modtagerId = rod.child("sager").push().key;
+  const foreloebig = {
+    ms: Date.now(), retning: "udgaaende", kanal: KANAL.mail,
+    tekst, emne, modtagere: { [modtagerId]: til }, partId,
+    mailStatus: "anmodet",
+  };
+  if (bruger.email) foreloebig.afsender = bruger.email;
+  if (afsenderNavn) foreloebig.afsenderNavn = afsenderNavn;
+
+  const trans = await beskedRef.transaction((cur) => (cur === null ? foreloebig : undefined));
+  if (!trans.committed) {
+    /* Allerede anmodet/sendt/fejlet under dette sendRequestId — den
+       eksisterende tilstand returneres i stedet for at sende igen. */
+    const eksisterende = trans.snapshot.val();
+    return { beskedId: sendRequestId, mailStatus: eksisterende?.mailStatus || "anmodet", allerede: true };
+  }
+
+  /* ---- Rate limit — Gate A, punkt 6, EFTER reservationen ----------------
+     En replay (ovenfor) tæller ikke med her; kun et GENUINT nyt forsøg gør. */
+  const indenforGraense = await tjekOgOptaelMailRate(rod, uid);
+  if (!indenforGraense) {
+    await beskedRef.update({ mailStatus: "fejlet", fejlAarsag: "For mange forsøg. Prøv igen om et øjeblik." });
+    await logSager(tenantId, uid, AUDIT.aendre, sagId, null, { mailStatus: "fejlet" }, "mail afvist — rate limit");
+    throw new HttpsError("resource-exhausted", "For mange mails sendt på kort tid. Prøv igen om et øjeblik.");
+  }
+
+  /* ---- Selve afsendelsen — Gate A, punkt 2 ------------------------------ */
+  const resultat = await sendMail(MAIL_ADAPTER, { til, emne, tekst });
+
+  const opdatering = {
+    [`sensitive/sager/${sagId}/beskeder/${sendRequestId}/mailStatus`]: resultat.status,
+  };
+  if (resultat.providerId) {
+    opdatering[`sensitive/sager/${sagId}/beskeder/${sendRequestId}/providerId`] = resultat.providerId;
+  }
+  if (resultat.fejlAarsag) {
+    opdatering[`sensitive/sager/${sagId}/beskeder/${sendRequestId}/fejlAarsag`] = resultat.fejlAarsag;
+  }
+  if (resultat.status === "accepteret") {
+    /* ⚠ SAMME SEMANTIK SOM sagBeskedSkriv: en udgående henvendelse sætter
+       sagen på "afventerSvar" — men kun ved reel accept fra udbyderen. En
+       fejlet mail har ikke bedt modparten om noget. */
+    opdatering[`sager/${sagId}/sidsteBeskedMs`] = Date.now();
+    opdatering[`sager/${sagId}/antalMails`] = ServerValue.increment(1);
+    opdatering[`sager/${sagId}/tilstand`] = "afventerSvar";
+  }
+  await rod.update(opdatering);
+
+  /* ---- Audit — Gate A, punkt 5, UBETINGET -------------------------------
+     mailStatus og partId er begge kontrollerede/lukkede felter på
+     LOGBARE_FELTER — emnet og teksten er det ikke, og står derfor ikke i
+     posten. */
+  await logSager(tenantId, uid, AUDIT.aendre, sagId, null,
+    { mailStatus: resultat.status, partId }, "mail forsøgt sendt fra sagen");
+
+  if (resultat.status === "fejlet") {
+    throw new HttpsError("internal", `Mailen kunne ikke sendes: ${resultat.fejlAarsag || "ukendt fejl"}.`);
+  }
+
+  return { beskedId: sendRequestId, mailStatus: resultat.status };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

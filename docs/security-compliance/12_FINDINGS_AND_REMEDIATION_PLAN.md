@@ -15,18 +15,22 @@ Et fund kan godt høre til flere gates.
 
 ## GATE A — BLOCKER BEFORE 3D (udgående mail)
 
-Kun forhold der reelt gør en mailintroduktion uforsvarlig. Detaljeret i
-`08_EMAIL_SECURITY_GATE.md` — gengivet her som gate-liste.
+**Status: IMPLEMENTERET (Skive 3D).** Alle 7 krav er bygget i `sagMailSend`
+(functions/index.js) + den delte transport i `functions/mail/`, mekanisk
+bevist i `test/skive3d-sagmail.test.mjs` og `test/rules.sager.test.mjs`.
+Provider: Mailgun (EU-region) — se doc 08's "Provider decision". Tabellen
+nedenfor er den oprindelige gate-liste, bevaret som reference.
 
-| # | Fund | Severity | Kilde |
-|---|---|---|---|
-| A1 | Modtageradresse SKAL opløses server-side fra sagens gemte `parter[]`, aldrig fra et klient-leveret felt ved afsendelse | **CRITICAL** | doc 08 §5 |
-| A2 | Udbyder-hemmeligheden må kun ligge i Cloud Functions-secrets, aldrig i en `VITE_*`-klientvariabel | **CRITICAL** | doc 08 §2 |
-| A3 | Permission-gate skal håndhæves server-side på send-callablen, samme mønster som alle andre funktioner | HIGH | doc 08 §4 |
-| A4 | Tenant skal genverificeres server-side mod sagen der sendes fra | HIGH | doc 08 §3 |
-| A5 | Auditpost skal skrives server-side for ethvert forsøg, succes såvel som fejl | HIGH | doc 08 §12 |
-| A6 | Header-injektions-sanering på emne/reply-to | HIGH | doc 08 §7 |
-| A7 | Idempotensnøgle på send-callablen, så en retry ikke bliver en dobbelt ekstern besked | MEDIUM-HIGH | doc 08 §11 |
+| # | Fund | Severity | Kilde | Status |
+|---|---|---|---|---|
+| A1 | Modtageradresse SKAL opløses server-side fra sagens gemte `parter[]`, aldrig fra et klient-leveret felt ved afsendelse | **CRITICAL** | doc 08 §5 | ✅ Implementeret |
+| A2 | Udbyder-hemmeligheden må kun ligge i Cloud Functions-secrets, aldrig i en `VITE_*`-klientvariabel | **CRITICAL** | doc 08 §2 | ✅ Implementeret |
+| A3 | Permission-gate skal håndhæves server-side på send-callablen, samme mønster som alle andre funktioner | HIGH | doc 08 §4 | ✅ Implementeret |
+| A4 | Tenant skal genverificeres server-side mod sagen der sendes fra | HIGH | doc 08 §3 | ✅ Implementeret |
+| A5 | Auditpost skal skrives server-side for ethvert forsøg, succes såvel som fejl | HIGH | doc 08 §12 | ✅ Implementeret |
+| A6 | Header-injektions-sanering på emne/reply-to | HIGH | doc 08 §7 | ✅ Implementeret |
+| A7 | Idempotensnøgle på send-callablen, så en retry ikke bliver en dobbelt ekstern besked | MEDIUM-HIGH | doc 08 §11 | ✅ Implementeret |
+| A8 | (Fundet under implementeringen) `sensitive/sager`s eksisterende betingede klient-write kunne forfalske en "mail sendt"-post uden om sagMailSend | HIGH | ny, se doc 02/04 | ✅ Rettet — kun `kanal: "internNote"` er direkte klientskrivbart |
 
 **Disse syv er forudsætninger, ikke efterfølgende hærdning** — deres fravær
 gør "FleetControl sender e-mail" til "FleetControl kan få nogen til at

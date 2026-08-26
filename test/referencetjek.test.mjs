@@ -74,6 +74,10 @@ const UDEN_TJEK = {
     + "`.write: false`, så `.validate` kan ikke nås af en klient.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/behovId":
     "samme lukkede vej; linjen skrives sammen med sit behov.",
+  "sensitive/sager/$sagId/beskeder/$id/partId":
+    "`sensitive/sager` er `.write: false` for alle; `sagMailSend` slår "
+    + "partId op mod DENNE sags egne `sager/$sagId/parter` og afviser med "
+    + "invalid-argument hvis det ikke findes, før noget skrives. Skive 3D.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/forbrugsvareId":
     "samme lukkede vej — `ordreskriv` kender varen.",
   "optaellinger/$optaellingId/bevaegelseId":
@@ -88,6 +92,10 @@ const UDEN_TJEK = {
     "peger på et stop i den UDLEDTE rute (`planlagteStop()`), ikke på en node. "
     + "Ruten gemmes ikke — den regnes af etapens fra/til og grænseovergange, så "
     + "der er intet at slå op i. `valideMelding()` prøver den mod netop den rute.",
+  "sensitive/sager/$sagId/beskeder/$id/providerId":
+    "et opakt id UDBYDEREN tildeler en accepteret mail (functions/mail/) — det "
+    + "peger ikke på en post i denne database, kun i udbyderens eget system. "
+    + "Skive 3D.",
 
   /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
   "sager/$sagId/objektId":

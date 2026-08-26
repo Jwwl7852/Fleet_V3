@@ -166,7 +166,7 @@ describe("mindste privilegium", () => {
 
     const begge = somA("p7", [PERM.sagSkriv, PERM.sagSensitiveLaes]);
     await assertSucceeds(set(ref(begge, stiA("sensitive/sager/sag-a/beskeder/ny2")),
-      { ms: 1, retning: "udgaaende", tekst: "Med begge" }));
+      { ms: 1, retning: "udgaaende", kanal: "internNote", tekst: "Med begge" }));
   });
 
   it("⚠ MEN IKKE PÅ TVÆRS AF TENANT — samme regel som base-noden", async () => {
@@ -195,7 +195,7 @@ describe("mindste privilegium", () => {
   it("⚠ EN RIGTIG koordinator KAN SKRIVE PÅ TRÅDEN — begge permissions følger rollen", async () => {
     const koord = somRolle(A, "k1", "koordinator");
     await assertSucceeds(set(ref(koord, stiA("sensitive/sager/sag-a/beskeder/ny3")),
-      { ms: 1, retning: "udgaaende", tekst: "Fra koordinatoren" }));
+      { ms: 1, retning: "udgaaende", kanal: "internNote", tekst: "Fra koordinatoren" }));
   });
 
   it("⚠ OG HELLER IKKE koordinatoren KAN LÆSE PÅ TVÆRS AF TENANT", async () => {
@@ -203,13 +203,58 @@ describe("mindste privilegium", () => {
     await assertFails(get(ref(koordB, stiA("sensitive/sager/sag-a"))));
   });
 
-  it("kun koordinator (og admin) har karantaeneFrigiv og aftaleBekraeft blandt driftsrollerne", () => {
+  it("kun koordinator (og admin) har karantaeneFrigiv, aftaleBekraeft og mailSend blandt driftsrollerne", () => {
     for (const rolle of ["chauffoer", "casehandler", "disponent", "lagermedarbejder", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagKarantaeneFrigiv), rolle);
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagAftaleBekraeft), rolle);
+      /* ⚠ SKIVE 3D — samme snit som de to andre vurderinger. En sagsbehandler
+         (casehandler) kan skrive interne noter, men ikke sende en rigtig
+         mail ud af huset. */
+      assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagMailSend), rolle);
     }
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.sagKarantaeneFrigiv));
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.sagAftaleBekraeft));
+    assert.ok(ROLLE_PERMS.koordinator.includes(PERM.sagMailSend));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SKIVE 3D — EN KLIENT KAN IKKE FORFALSKE EN "SENDT MAIL" DIREKTE I RTDB
+
+   ⚠ HVORFOR DEN HER PRØVE FINDES. `sensitive/sager` har haft en reel
+   betinget klient-.write siden Skive 3C (sag.skriv + sag.sensitiveLaes),
+   fordi appen kun bruger Cloud Function-vejen, men reglen selv er den samme
+   spærring en direkte skrivning ville møde. Da 3D genbrugte den SAMME node
+   til rigtige mails (kanal: "mail"), ville en klient med de to permissions
+   kunne skrive en FORFALSKET "mail sendt"-post direkte — uden at
+   sagMailSend's modtageropløsning, rate limit eller audit nogensinde blev
+   rørt, og uden at nogen ekstern mail rent faktisk blev sendt. Prøven
+   beviser at vejen er lukket, uanset hvor mange permissions klienten har.
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("⚠ kanal: \"mail\" KAN IKKE SKRIVES DIREKTE AF EN KLIENT — kun sagMailSend (Admin SDK)", () => {
+  it("selv med ALLE sag-permissions (inkl. sag.mailSend) afvises en direkte kanal: \"mail\"-skrivning", async () => {
+    const alt = somA("p-mail-1", [
+      PERM.sagSkriv, PERM.sagSensitiveLaes, PERM.sagKarantaeneFrigiv,
+      PERM.sagAftaleBekraeft, PERM.sagMailSend,
+    ]);
+    await assertFails(set(ref(alt, stiA("sensitive/sager/sag-a/beskeder/forfalsket")), {
+      ms: 1, retning: "udgaaende", kanal: "mail", tekst: "Jeg har sendt en mail",
+      mailStatus: "accepteret", partId: "part-1",
+    }));
+  });
+
+  it("den samme bruger KAN stadig skrive kanal: \"internNote\" — vejen der er åben, er uændret", async () => {
+    const alt = somA("p-mail-2", [PERM.sagSkriv, PERM.sagSensitiveLaes]);
+    await assertSucceeds(set(ref(alt, stiA("sensitive/sager/sag-a/beskeder/aegte-note")), {
+      ms: 1, retning: "udgaaende", kanal: "internNote", tekst: "En rigtig note",
+    }));
+  });
+
+  it("en direkte skrivning UDEN kanal-feltet afvises stadig — feltet er påkrævet", async () => {
+    const alt = somA("p-mail-3", [PERM.sagSkriv, PERM.sagSensitiveLaes]);
+    await assertFails(set(ref(alt, stiA("sensitive/sager/sag-a/beskeder/uden-kanal")), {
+      ms: 1, retning: "udgaaende", tekst: "Mangler kanal",
+    }));
   });
 });
 

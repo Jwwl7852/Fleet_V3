@@ -714,9 +714,31 @@
               ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|sag.skriv|') && auth.token.perms != null && auth.token.perms.contains('|sag.sensitiveLaes|') && newData.exists()",
               "beskeder": {
                 "$id": {
-                  ".validate": "newData.hasChildren(['ms', 'retning', 'tekst'])",
+                  // ⚠ SKIVE 3D — kanal ER NU PÅKRÆVET. sagMailSend skriver
+                  // "mail", sagBeskedSkriv skriver "internNote" eksplicit —
+                  // se sammes ændring i functions/index.js. Uden feltet kunne
+                  // en intern note og en rigtig udgående mail ikke skelnes i
+                  // SAMME tråd, og de deler bevidst node: modtagere stod her
+                  // klar siden beslutning 20, længe før 3D skrev noget i det.
+                  //
+                  // ⚠ OG EN DIREKTE KLIENTSKRIVNING KAN KUN VÆRE "internNote".
+                  // Denne node har haft en reel betinget klient-.write siden
+                  // Skive 3C (sag.skriv + sag.sensitiveLaes, se $sagId
+                  // ovenfor) — af den grund kan en klient med de to
+                  // permissions TEKNISK skrive direkte uden om
+                  // sagBeskedSkriv, ligesom kommentaren ved rules.sager.test
+                  // altid har sagt. Uden dette ekstra tjek kunne den samme
+                  // klient forfalske en "mail" ved at sætte kanal: "mail" og
+                  // mailStatus: "accepteret" direkte — en tråd der PÅSTÅR en
+                  // ekstern mail blev sendt, uden at sagMailSend's
+                  // modtageropløsning, rate limit eller audit nogensinde blev
+                  // rørt. Kun Admin SDK (sagMailSend) kan skrive kanal:
+                  // "mail" — Admin SDK går uden om .validate, så dette
+                  // rammer kun en direkte klientskrivning.
+                  ".validate": "newData.hasChildren(['ms', 'retning', 'tekst', 'kanal']) && newData.child('kanal').val() === 'internNote'",
                   "ms": { ".validate": "newData.isNumber()" },
                   "retning": { ".validate": "newData.isString() && newData.val().matches(/^(indgaaende|udgaaende)$/)" },
+                  "kanal": { ".validate": "newData.isString() && newData.val().matches(/^(internNote|mail)$/)" },
                   // ⚠ ENVELOPE-AFSENDEREN, ALDRIG From:. Se vurderAfsender() i
                   // sager.js — From: er fritekst afsenderen selv skriver.
                   "afsender": { ".validate": "newData.isString() && newData.val().length <= 254" },
@@ -726,6 +748,15 @@
                   "tekst": { ".validate": "newData.isString() && newData.val().length <= 10000" },
                   "afsenderStatus": { ".validate": "newData.isString() && newData.val().matches(/^(kendt|karantaene|afvist)$/)" },
                   "dmarc": { ".validate": "newData.isString() && newData.val().matches(/^(pass|fail|none)$/)" },
+                  // ⚠ SKIVE 3D — kun til stede når kanal === "mail". partId er
+                  // en kontrolleret reference til DENNE sags egen parter —
+                  // ikke en fri adresse. mailStatus er lukket vokabular, aldrig
+                  // fritekst. providerId/fejlAarsag er korte, upersonlige felter
+                  // fra transportlaget, aldrig en fuld exception-stak.
+                  "partId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                  "mailStatus": { ".validate": "newData.isString() && newData.val().matches(/^(anmodet|accepteret|fejlet)$/)" },
+                  "providerId": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                  "fejlAarsag": { ".validate": "newData.isString() && newData.val().length <= 250" },
                   // ⚠ FEJLER LUKKET — se maaHentes() i sager.js. Status starter
                   // og bliver paa afventerScan indtil en scanner har sagt andet;
                   // den bliver ALDRIG antaget ren.
@@ -1491,6 +1522,17 @@
           ".write": false
         },
 
+        // MAILRATELIMIT — SKIVE 3D, GATE A PUNKT 6. Rene tællere, ét
+        // minutvindue pr. bruger, skrevet af sagMailSend via transaction().
+        // Ligesom countere er den kun her for at høre til under
+        // tenant-isolationens selv-opdaterende sweep (test/rules.tenant.test.mjs
+        // udleder sin liste af NETOP denne fil) — ingen klient skriver den
+        // nogensinde, Admin SDK'et går uden om reglerne som overalt ellers.
+        "mailRatelimit": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|audit.laes|')",
+          ".write": false
+        },
+
         // FAKTURAGRUNDLAGET — beslutning 25.
         //
         // ⚠ .write: false FOR ALLE, OGSAA ADMIN. Et grundlag faar sit nummer
@@ -1976,6 +2018,12 @@
             "securityLevel": { ".validate": "newData.isString() && newData.val().matches(/^(normal|internal|confidential|restricted)$/)" },
             "sidsteBeskedMs": { ".validate": "newData.isNumber()" },
             "antalBeskeder": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            // ⚠ SKIVE 3D — antalMails ER IKKE ET NYT TAL VED SIDEN AF
+            // antalBeskeder. En sendt mail ER en besked (kanal: "mail") og
+            // tælles allerede der; antalMails tæller kun HVOR MANGE af dem
+            // der reelt blev sendt eksternt — svaret på "har vi rørt
+            // omverdenen på denne sag", ikke en dublet af beskedtallet.
+            "antalMails": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "antalKarantaene": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "harAftale": { ".validate": "newData.isBoolean()" },
             "aftaleTilstand": { ".validate": "newData.isString() && newData.val().matches(/^(forslag|aftalt|afvist)$/)" },

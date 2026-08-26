@@ -1,15 +1,17 @@
 /* src/fleet/sagplan.js
- * Klientsiden af Fleet/Facility-sager — Skive 3C.
+ * Klientsiden af Fleet/Facility-sager — Skive 3C/3D.
  *
  * ⚠ SAMME SNIT SOM opgaveplan.js OG indberetningplan.js. `sager` er
  * `.write: false` for ENHVER klient — der er ingen direkte skrivevej at gå
- * uden om, kun de fem Cloud Functions herunder. Denne fil ER den vej.
+ * uden om, kun de seks Cloud Functions herunder. Denne fil ER den vej.
  *
- * ⚠ INGEN AF DE FEM SENDER EN MAIL. sagBeskedSkriv REGISTRERER en besked —
- * retning er altid "udgaaende", fordi der ikke findes en modtagevej endnu.
- * 3D indfører den rigtige udgående transport; indtil da er dette en intern
- * log over hvad der blev sagt til modparten UDENFOR FleetControl, ikke en
- * afsendelse FRA FleetControl. Se Sagsvisning.jsx for hvordan det siges i UI'et.
+ * ⚠ sagBeskedSkriv REGISTRERER en intern note — retning er altid
+ * "udgaaende", men der sendes intet. sagMailSend (Skive 3D) er den ENESTE
+ * af de seks der rent faktisk sender noget ud af FleetControl, og den gør
+ * det gennem den delte transport i functions/mail/. Modtageren sendes
+ * ALDRIG som en fri adresse herfra — kun et partId, som serveren selv
+ * opløser mod sagens gemte parter. Se Sagsvisning.jsx for hvordan det
+ * siges i UI'et.
  */
 import { kaldFunktion } from "../firebase.js";
 import { PLANSVAR, tolkPlanfejl } from "./opgaveplan-regler.js";
@@ -20,6 +22,7 @@ export const SAGBESKEDSKRIV = "sagBeskedSkriv";
 export const SAGKARANTAENEFRIGIV = "sagKarantaeneFrigiv";
 export const SAGAFTALEBEKRAEFT = "sagAftaleBekraeft";
 export const SAGAFSLUT = "sagAfslut";
+export const SAGMAILSEND = "sagMailSend";
 
 const kald = async (funktion, data, demoBesked) => {
   try {
@@ -77,3 +80,23 @@ export const afslutSag = (post) => kald(SAGAFSLUT, {
   sagId: post.sagId,
   afslutningsAarsag: post.afslutningsAarsag,
 }, "Demo-tilstand: der er ingen server, så sagen blev ikke afsluttet.");
+
+/**
+ * sendMail({ sagId, partId, emne, tekst, sendRequestId })
+ *   → { ok, art, besked, data: { beskedId, mailStatus } | null }
+ *
+ * ⚠ partId, IKKE en adresse. Serveren opløser den faktiske modtager fra
+ * sagens gemte parter — klienten kan hverken sende en vilkårlig to, cc
+ * eller bcc, fordi der ikke er noget felt at sende dem i.
+ *
+ * ⚠ sendRequestId ER PÅKRÆVET. Genereres af kalderen (se
+ * OpretSendMailDialog i Sagsvisning.jsx) og skal være DEN SAMME på tværs af
+ * et dobbeltklik eller en netværks-retry — det er hele idempotensen.
+ */
+export const sendMail = (post) => kald(SAGMAILSEND, {
+  sagId: post.sagId,
+  partId: post.partId,
+  emne: post.emne,
+  tekst: post.tekst,
+  sendRequestId: post.sendRequestId,
+}, "Demo-tilstand: der er ingen server, så mailen blev ikke sendt.");

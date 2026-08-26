@@ -1,6 +1,6 @@
 /* src/fleet/Sagsvisning.jsx
  * Sagsvisning med faner. BESLUTNING 20/112 — SKIVE 3C: RIGTIGE DATA, RIGTIGE
- * HANDLINGER, INGEN MAILTRANSPORT.
+ * HANDLINGER. SKIVE 3D: DEN FØRSTE RIGTIGE UDGÅENDE MAIL.
  *
  * Ligger i fleet/ og ikke i et modul, fordi Fleet og Facility skal bruge
  * NØJAGTIG samme skærm. Forskellen på FLT og FAC er præfiks, counter og hvad
@@ -32,16 +32,30 @@
  *     fjernbilleder. HTML fra en fremmed er aktivt indhold, og et fjernbillede
  *     er en sporingspixel der fortæller afsenderen at sagen blev åbnet.
  *
- * ⚠ SKIVE 3C — FEMTE KONTROL: INGEN MAILAFSENDELSE LOVES. `sagBeskedSkriv`
- * REGISTRERER en besked internt — retning er altid "udgaaende", fordi der
- * ikke findes en modtagevej. Knappen hedder derfor "Tilføj besked til sagen",
- * aldrig "Send besked" eller "Send mail". 3D bygger den rigtige transport.
+ * ⚠ SKIVE 3C — FEMTE KONTROL, STADIG I KRAFT FOR DEN INTERNE NOTE:
+ * `sagBeskedSkriv` REGISTRERER en besked internt — retning er altid
+ * "udgaaende", men der sendes intet. Knappen hedder derfor "Tilføj besked
+ * til sagen", aldrig "Send besked". Det gælder KUN den interne note.
+ *
+ * ⚠ SKIVE 3D — TO HANDLINGER, TO ORD, ALDRIG FORVEKSLET. "Send mail" sender
+ * nu en RIGTIG mail via `sagMailSend` — modtageren opløses server-side fra
+ * sagens gemte parter, klienten sender kun et partId. "Tilføj besked til
+ * sagen" sender fortsat intet. De to knapper står ved siden af hinanden med
+ * vilje, aldrig som varianter af samme handling — se Kommunikation().
+ * `sagBeskedSkriv` og `sagMailSend` deler tråd-noden (beslutning 20's
+ * `modtagere`-felt stod klar til dette længe før 3D skrev noget i det),
+ * men hver besked bærer `kanal` og kan ALTID skelnes i UI'et.
+ *
+ * ⚠ "accepteret" (mailStatus) ER IKKE "leveret". Vi ved kun at udbyderen tog
+ * imod mailen. Skærmen skriver "Sendt til udbyder", aldrig "Leveret" eller
+ * "Læst" — se MAIL_STATUS_LABEL i mailtransport.js.
  *
  * ⚠ SJETTE KONTROL: KARANTÆNE- OG AFTALEHANDLINGER ER USYNLIGE, IKKE
  * DEAKTIVEREDE, når der ikke er nogen data der gør dem relevante. Der findes
- * i dag ingen indgående mailvej, så sensitive/sager/<id>/karantaene og
- * .../aftaleforslag er reelt altid tomme på en rigtig sag — men skulle en
- * fremtidig kanal (3D) skrive til dem, virker knapperne allerede.
+ * i dag ingen indgående mailvej (kun udgående, fra 3D), så
+ * sensitive/sager/<id>/karantaene og .../aftaleforslag er reelt altid tomme
+ * på en rigtig sag — men skulle en fremtidig indgående kanal skrive til dem,
+ * virker knapperne allerede.
  */
 import { useEffect, useState } from "react";
 import { useFleet } from "./FleetContext.jsx";
@@ -49,11 +63,14 @@ import { usePost } from "./usePost.js";
 import { db } from "../firebase.js";
 import { harPerm, PERM } from "./permissions.js";
 import {
-  SAG_ART, SAG_TILSTAND, RETNING, RETNING_LABEL, FANER,
+  SAG_ART, SAG_TILSTAND, RETNING, RETNING_LABEL, FANER, KANAL, KANAL_LABEL,
   AFSENDER_TONE, AFSENDER_LABEL, AFTALE_TILSTAND,
   VEDHAEFTNING_TONE, VEDHAEFTNING_LABEL, maaHentes,
 } from "./sager.js";
-import { opretSag, tilfoejBesked, frigivFraKarantaene, bekraeftAftale, afslutSag } from "./sagplan.js";
+import { MAIL_STATUS_LABEL, MAIL_STATUS_TONE } from "./mailtransport.js";
+import {
+  opretSag, tilfoejBesked, frigivFraKarantaene, bekraeftAftale, afslutSag, sendMail,
+} from "./sagplan.js";
 import { DEMO_SAGER } from "./demo-sag.js";
 import { datoTid, filstoerrelse } from "./format.js";
 import {
@@ -234,6 +251,7 @@ function Aftale({ sag, maaBekraefte, onBekraeftet }) {
 
 function Besked({ b }) {
   const ud = b.retning === RETNING.udgaaende;
+  const erMail = b.kanal === KANAL.mail;
   return (
     <article className={`fc-besked ${ud ? "fc-besked-ud" : "fc-besked-ind"}`}>
       <header className="fc-besked-h">
@@ -241,14 +259,30 @@ function Besked({ b }) {
             skelner de to flader, skal stadig kunne se hvad der er sendt og
             hvad der er modtaget. */}
         <Pille tone={ud ? "info" : "ok"}>{RETNING_LABEL[b.retning]}</Pille>
+        {/* ⚠ SKIVE 3D — KANALEN STÅR LIGE SÅ TYDELIGT SOM RETNINGEN. En
+            intern note og en rigtig mail må aldrig kunne forveksles ved et
+            hurtigt blik på tråden. */}
+        <Pille tone={erMail ? "info" : undefined}>{KANAL_LABEL[b.kanal] || KANAL_LABEL.internNote}</Pille>
+        {erMail && b.mailStatus && (
+          <Pille tone={MAIL_STATUS_TONE[b.mailStatus]}>{MAIL_STATUS_LABEL[b.mailStatus]}</Pille>
+        )}
         <span className="fc-besked-hvem">{b.afsenderNavn}</span>
         {b.afsender && <span className="fc-besked-adr">&lt;{b.afsender}&gt;</span>}
         <span className="fc-besked-tid">{datoTid(b.ms)}</span>
       </header>
+      {/* ⚠ MODTAGEREN STÅR PÅ SELVE BESKEDEN — den adresse serveren rent
+          faktisk sendte til, ikke en gentagelse af hvad brugeren valgte i
+          dialogen. To forskellige spørgsmål, samme svar når alt går godt. */}
+      {erMail && b.modtagerAdresse && (
+        <div className="fc-hint" style={{ marginTop: 2 }}>Til: {b.modtagerAdresse}</div>
+      )}
       {/* Brødteksten som ren tekst. white-space: pre-wrap bevarer linjeskift —
           uden at der bliver renderet en eneste tag fra afsenderen. */}
       <div className="fc-besked-b">{b.tekst}</div>
       {b.emne && <div className="fc-besked-emne">{b.emne}</div>}
+      {erMail && b.mailStatus === "fejlet" && b.fejlAarsag && (
+        <div className="fc-bad" style={{ marginTop: 6 }}>Fejl: {b.fejlAarsag}</div>
+      )}
       {b.vedhaeftninger?.length > 0 && (
         <div className="fc-besked-emne">
           {b.vedhaeftninger.map((v) => (
@@ -265,9 +299,9 @@ function Besked({ b }) {
 /**
  * ⚠ SKIVE 3C — "Tilføj besked til sagen", ALDRIG "Send besked". sagBeskedSkriv
  * REGISTRERER — den sender intet. Teksten forklarer hvad der rent faktisk sker:
- * en note på sagen, ikke en mail fra FleetControl. Kommunikationen med
- * modparten sker stadig i telefonen eller i Outlook, som Planlaegdialog selv
- * siger det.
+ * en note på sagen, ikke en mail fra FleetControl. Bruges når kommunikationen
+ * skete UDENFOR FleetControl — i telefonen, på stedet, eller i Outlook — og
+ * blot skal huskes på tråden.
  */
 function TilfoejBeskedDialog({ sagId, onLuk, onSkrevet }) {
   const [tekst, saetTekst] = useState("");
@@ -293,27 +327,115 @@ function TilfoejBeskedDialog({ sagId, onLuk, onSkrevet }) {
               placeholder="Hvad blev sagt eller aftalt — pr. telefon, Outlook eller på stedet?"
               maxLength={10000} />
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Der sendes ingen mail herfra.</b> FleetControl har endnu ingen
-          udgående mailtransport — dette er en intern note på sagens tråd, ikke
-          en afsendelse. Aftalen laves stadig i telefonen eller i Outlook.
+          ⚠ <b>Der sendes ingen mail herfra.</b> Dette er en intern note på
+          sagens tråd, ikke en afsendelse. Skal der rent faktisk sendes noget
+          til modparten, brug <b>Send mail</b> i stedet.
         </p>
       </Formular>
     </Dialog>
   );
 }
 
-function Kommunikation({ sag, arten, maaSkriveBesked, maaFrigiveKarantaene, onSkrevet }) {
+/**
+ * ⚠ SKIVE 3D — "Send mail", den ENESTE knap i hele appen der rent faktisk
+ * sender noget ud af FleetControl. Modtageren er ALDRIG et fritekstfelt —
+ * kun et valg blandt sagens egne, allerede gemte parter. Serveren opløser
+ * selv adressen fra det valgte partId; det klienten viser her, er dens EGEN
+ * (server-hentede) kopi af samme adresse, så brugeren ser hvem han sender
+ * til FØR han trykker — men den endelige afgørelse ligger hos serveren.
+ */
+function SendMailDialog({ sag, onLuk, onSendt }) {
+  const parter = sag.parterMedId || [];
+  const [partId, saetPartId] = useState(parter[0]?.id || "");
+  const [emne, saetEmne] = useState(`[${sag.nummer}] ${sag.emne}`);
+  const [tekst, saetTekst] = useState("");
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+  /* ⚠ SAMME sendRequestId PÅ TVÆRS AF FORSØG — genereres ÉN gang når
+     dialogen åbnes, ikke ved hvert klik. Det er selve idempotensen: trykker
+     brugeren "Send mail" to gange (dobbeltklik, eller igen efter en
+     netværksfejl), rammer begge forsøg den SAMME post server-side, og der
+     sendes højst én mail. */
+  const [sendRequestId] = useState(() => (
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `srq-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  ));
+
+  const valgtAdresse = parter.find((p) => p.id === partId)?.adresse || null;
+
+  const gem = async () => {
+    saetGemmer(true);
+    saetSvar(null);
+    const r = await sendMail({ sagId: sag.id, partId, emne, tekst, sendRequestId });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) onSendt();
+  };
+
+  if (!parter.length) {
+    return (
+      <Dialog titel="Send mail" onLuk={onLuk}>
+        <Tom>
+          Sagen har ingen registrerede parter endnu. Tilføj en modpart —
+          fx via "Opret sag" eller en frigivet karantæne — før der kan
+          sendes mail.
+        </Tom>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog titel="Send mail" under="Sender en rigtig mail til den valgte part." onLuk={onLuk}>
+      <Formular onGem={gem} gemmer={gemmer} gemLabel="Send mail" onAnnuller={onLuk} svar={svar}>
+        <Felt id="mail-part" label="Til" kraevet
+              vaerdi={partId} saet={saetPartId}
+              valgmuligheder={parter.map((p) => ({ vaerdi: p.id, label: p.adresse }))} />
+        {/* ⚠ MODTAGEREN VIST TYDELIGT, FØR AFSENDELSE. */}
+        {valgtAdresse && (
+          <p className="fc-hint" style={{ marginTop: -6, marginBottom: 10 }}>
+            Sendes til <b>{valgtAdresse}</b>.
+          </p>
+        )}
+        <Felt id="mail-emne" label="Emne" kraevet
+              vaerdi={emne} saet={saetEmne} maxLength={250} />
+        <Felt id="mail-tekst" label="Besked" kraevet
+              vaerdi={tekst} saet={saetTekst}
+              placeholder="Hvad skal modparten have besked om?"
+              maxLength={10000} />
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          ⚠ Dette sender en RIGTIG mail. Status herefter viser kun om
+          udbyderen tog imod den — ikke om modtageren har læst den.
+        </p>
+      </Formular>
+    </Dialog>
+  );
+}
+
+function Kommunikation({ sag, arten, maaSkriveBesked, maaSendeMail, maaFrigiveKarantaene, onSkrevet }) {
   const [skriver, saetSkriver] = useState(false);
+  const [sender, saetSender] = useState(false);
   return (
     <div className="fc-grid" style={{ gap: 14 }}>
       <Kort
         titel="Tråd"
         handling={
-          <Knap variant="primaer" disabled={!maaSkriveBesked}
-                title={maaSkriveBesked ? undefined : "Kræver sag.skriv og sag.sensitiveLaes."}
-                onClick={() => saetSkriver(true)}>
-            Tilføj besked til sagen
-          </Knap>
+          <Raekke style={{ gap: 8 }}>
+            <Knap disabled={!maaSkriveBesked}
+                  title={maaSkriveBesked ? undefined : "Kræver sag.skriv og sag.sensitiveLaes."}
+                  onClick={() => saetSkriver(true)}>
+              Tilføj besked til sagen
+            </Knap>
+            {/* ⚠ TO KNAPPER, ALDRIG ÉN DER SKIFTER MENING. "Send mail" er
+                den primære, blå handling — det er den der rent faktisk gør
+                noget uden for FleetControl, og Skive 3C's egen regel
+                ("ét primært blåt, resten neutrale") peger nu på den. */}
+            <Knap variant="primaer" disabled={!maaSendeMail}
+                  title={maaSendeMail ? undefined : "Kræver sag.mailSend."}
+                  onClick={() => saetSender(true)}>
+              Send mail
+            </Knap>
+          </Raekke>
         }
       >
         <div className="fc-traad">
@@ -322,10 +444,10 @@ function Kommunikation({ sag, arten, maaSkriveBesked, maaFrigiveKarantaene, onSk
             : <Tom>Ingen beskeder på sagen endnu.</Tom>}
         </div>
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          Sagsnummeret står i emnefeltet på en udgående mail. Modtageren svarer
-          normalt i Outlook — <b>Re:</b> bevarer nummeret. Der er endnu ingen
-          modtagevej i FleetControl (det er 3D); indtil da registreres
-          kommunikation manuelt med knappen ovenfor.
+          Sagsnummeret står i emnefeltet på en udgående mail. Modtageren
+          svarer normalt i Outlook — <b>Re:</b> bevarer nummeret. Der er
+          endnu ingen INDGÅENDE modtagevej i FleetControl; et svar skal
+          stadig registreres manuelt med "Tilføj besked til sagen".
         </p>
       </Kort>
 
@@ -334,6 +456,10 @@ function Kommunikation({ sag, arten, maaSkriveBesked, maaFrigiveKarantaene, onSk
       {skriver && (
         <TilfoejBeskedDialog sagId={sag.id} onLuk={() => saetSkriver(false)}
           onSkrevet={() => { saetSkriver(false); onSkrevet?.(); }} />
+      )}
+      {sender && (
+        <SendMailDialog sag={sag} onLuk={() => saetSender(false)}
+          onSendt={() => { saetSender(false); onSkrevet?.(); }} />
       )}
     </div>
   );
@@ -543,6 +669,10 @@ export function SagsvisningIndhold({ sag, bruger, startFane = "oversigt", onGeni
      "maaTriagere" ville have tegnet begge knapper aktive for ham, og
      serveren ville have afvist dem. */
   const maaSkriveBesked = harPerm(bruger?.perms, PERM.sagSkriv) && harPerm(bruger?.perms, PERM.sagSensitiveLaes);
+  /* ⚠ SKIVE 3D — sagMailSend, EGEN PERMISSION. Samme snit som de to andre
+     "vurderinger" ovenfor: at kunne skrive en intern note er ikke det samme
+     som at måtte sende en rigtig mail ud af huset. */
+  const maaSendeMail = harPerm(bruger?.perms, PERM.sagMailSend);
   const maaFrigiveKarantaene = harPerm(bruger?.perms, PERM.sagKarantaeneFrigiv);
   const maaBekraefteAftale = harPerm(bruger?.perms, PERM.sagAftaleBekraeft);
   const maaAfslutte = harPerm(bruger?.perms, PERM.sagSkriv);
@@ -580,7 +710,8 @@ export function SagsvisningIndhold({ sag, bruger, startFane = "oversigt", onGeni
       </div>
 
       <Indhold sag={sag} arten={arten}
-                maaSkriveBesked={maaSkriveBesked} maaFrigiveKarantaene={maaFrigiveKarantaene}
+                maaSkriveBesked={maaSkriveBesked} maaSendeMail={maaSendeMail}
+                maaFrigiveKarantaene={maaFrigiveKarantaene}
                 maaBekraefteAftale={maaBekraefteAftale} maaAfslutte={maaAfslutte}
                 maaLaeseAudit={maaLaeseAudit}
                 onSkrevet={onGenindlaes} onAfsluttet={onGenindlaes} />
@@ -704,7 +835,14 @@ export default function Sagsvisning({
 
   const sensitivPost = sensitiv.post || {};
   const beskeder = Object.entries(sensitivPost.beskeder || {})
-    .map(([id, v]) => ({ id, ...v }))
+    .map(([id, v]) => ({
+      id, ...v,
+      /* ⚠ SKIVE 3D — MODTAGEREN VIST PÅ SELVE BESKEDEN. `modtagere` er en
+         nøglet map (se firebase.rules.json), ikke en liste — samme grund
+         som `parter`: en rå adresse kan ikke være en RTDB-nøgle. V1 sender
+         til præcis én part, så første værdi er hele svaret. */
+      modtagerAdresse: v.modtagere ? Object.values(v.modtagere)[0] : null,
+    }))
     .sort((a, b) => a.ms - b.ms);
   const karantaene = Object.entries(sensitivPost.karantaene || {})
     .map(([id, v]) => ({ id, ...v }))
@@ -718,6 +856,10 @@ export default function Sagsvisning({
     ...generel.post,
     objektLabel: objektLabel || generel.post.objektLabel,
     parter: Object.values(generel.post.parter || {}),
+    /* ⚠ SKIVE 3D — sagMailSend TAGER ET partId, IKKE EN ADRESSE. UI'et skal
+       derfor kunne vise BEGGE — id'et til at sende med, adressen til at
+       vise brugeren hvad han vælger imellem. */
+    parterMedId: Object.entries(generel.post.parter || {}).map(([id, adresse]) => ({ id, adresse })),
     beskeder,
     karantaene,
     aftale,

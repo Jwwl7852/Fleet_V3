@@ -317,6 +317,12 @@ export const PERM = {
   /* At bekræfte et aftaleforslag er at skrive en reservation — samme
      handling som at godkende en booking eller et grundlag. */
   sagAftaleBekraeft: "sag.aftaleBekraeft",
+  /* ⚠ SKIVE 3D — EGEN PERMISSION, IKKE sagSkriv. At sende en RIGTIG mail ud
+     af FleetControl er mindst lige så meget en vurdering som at frigive en
+     karantæne eller bekræfte en aftale — konsekvensen rækker uden for
+     tenanten, og kan ikke fortrydes. En rolle skal kunne skrive interne
+     noter (sagSkriv) uden at kunne sende ekstern post; se doc 08 §4. */
+  sagMailSend: "sag.mailSend",
 
   /* --- Retention (beslutning 115) — ikke-destruktiv grundmekanisme ---
      Kun legal hold rører databasen; selve sletningen/anonymiseringen
@@ -389,8 +395,8 @@ export const ROLLE_PERMS = {
     /* Udarbejder grundlaget — men godkender det ikke. */
     PERM.grundlagSkriv,
     /* Han er den der arbejder sagen: læser tråden og skriver på den. Ikke
-       sagKarantaeneFrigiv eller sagAftaleBekraeft — de er en vurdering,
-       ikke driften af sagen. Se koordinator. */
+       sagKarantaeneFrigiv, sagAftaleBekraeft eller sagMailSend — de er en
+       vurdering, ikke driften af sagen. Se koordinator. */
     PERM.sagLaes, PERM.sagSensitiveLaes, PERM.sagSkriv],
 
   disponent: [
@@ -472,14 +478,15 @@ export const ROLLE_PERMS = {
        triagerer chaufførens indberetning — det er ÉN rolle, ikke to. */
     PERM.indberetningerSkrivAlle,
 
-    /* ⚠ ALLE FEM sag.*. Samme snit som på bookingen: den der godkender og
+    /* ⚠ ALLE SEKS sag.*. Samme snit som på bookingen: den der godkender og
        lukker sagen, skal kunne se og skrive på tråden — og han er den der
-       AFGØR om en ukendt afsender skal ind (karantaeneFrigiv) og om et
-       aftaleforslag skal blive til en reservation (aftaleBekraeft). To
+       AFGØR om en ukendt afsender skal ind (karantaeneFrigiv), om et
+       aftaleforslag skal blive til en reservation (aftaleBekraeft), og om
+       der skal sendes en rigtig mail ud af huset (mailSend, Skive 3D). Tre
        vurderinger, ikke driftshandlinger — samme klasse som bookingGodkend,
        grundlagGodkend og indkoebGodkend, som han også har alle tre af. */
     PERM.sagLaes, PERM.sagSensitiveLaes, PERM.sagSkriv,
-    PERM.sagKarantaeneFrigiv, PERM.sagAftaleBekraeft,
+    PERM.sagKarantaeneFrigiv, PERM.sagAftaleBekraeft, PERM.sagMailSend,
   ],
 
   /**

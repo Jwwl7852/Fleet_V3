@@ -106,6 +106,11 @@ export const LOGBARE_FELTER = new Set([
      Id'et er en kontrolleret reference (`sager/` findes, beslutning 112);
      emnet og tråden er fritekst og hører ikke i loggen. */
   "sagId",
+  /* ⚠ SKIVE 3D — mailStatus OG partId, EMNE/TEKST ER IKKE. mailStatus er
+     lukket vokabular (anmodet|accepteret|fejlet), samme klasse som
+     "tilstand"/"status" ovenfor. partId er en kontrolleret reference til
+     DENNE sags egne parter — ikke en fri adresse, og ikke fritekst. */
+  "mailStatus", "partId",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */

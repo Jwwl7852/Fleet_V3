@@ -254,6 +254,24 @@ export const kanSkifteSagTilstand = (fra, til) =>
 export const RETNING = { indgaaende: "indgaaende", udgaaende: "udgaaende" };
 export const RETNING_LABEL = { indgaaende: "Indgående", udgaaende: "Udgående" };
 
+/* ---- Kanal — SKIVE 3D ------------------------------------------------- */
+
+/**
+ * En besked på tråden er enten en INTERN NOTE (sagBeskedSkriv — registrerer
+ * hvad der blev sagt UDEN FOR FleetControl, sender selv intet) eller en
+ * rigtig udgående MAIL (sagMailSend — sender via den delte transport i
+ * functions/mail/). De deler node, fordi `modtagere` stod klar i
+ * beskeder/$id siden beslutning 20, længe før 3D skrev noget i det — en
+ * parallel "mails"-node ville have kopieret en form der allerede fandtes.
+ *
+ * ⚠ FELTET ER PÅKRÆVET, IKKE VALGFRIT. Uden det kan en intern note og en
+ * rigtig ekstern mail ikke skelnes i samme tråd — og en note der ligner en
+ * sendt mail, er præcis den forveksling Skive 3C's egen femte kontrol
+ * (INGEN MAILAFSENDELSE LOVES) findes for at forhindre.
+ */
+export const KANAL = { internNote: "internNote", mail: "mail" };
+export const KANAL_LABEL = { internNote: "Intern note", mail: "E-mail" };
+
 /* ---- Aftaleforslag (beslutning 4, femte kilde) ----------------------- */
 
 /**
