@@ -18,6 +18,7 @@ import {
   FRAVAER_ART, ALLE_FRAVAER_ARTER, ANSOEGBARE_ARTER, TILSTAND,
   fravaerTilstand, erAktivt, sidsteDag, varighedDage, overlapper,
   reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning,
+  ANSOEGNING, ANSOEGNING_OVERGANGE, kanAfgoereAnsoegning,
 } from "../src/fleet/fravaer.js";
 import { PRIORITET, prioritetFor, RESSOURCE, KILDE, konfliktTekst } from "../src/fleet/reservations.js";
 import { DEMO_FRAVAER, DEMO_FRAVAER_SENSITIVE, demoFravaerFor } from "../src/fleet/demo-fravaer.js";
@@ -303,5 +304,77 @@ describe("Demo-fraværet modsiger ikke kpi/", () => {
     }, 0);
     const iDag = DEMO_FRAVAER.filter((f) => erAktivt(f)).length;
     assert.ok(iDag <= gab, `${iDag} fraværende i dag mod ${gab} ubesatte vagter`);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AT AFGØRE EN ANSØGNING — B2, V1-stabiliseringsauditens anden BLOCKER
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ANSOEGNING_BASIS = { personId: "p-lars", fra: T14, til: T19 };
+const med = (status, ekstra = {}) => ({
+  ...ANSOEGNING_BASIS,
+  ansoegning: { status, oensket: "ferie", ansoegtMs: T14 - 1000, ...ekstra },
+});
+
+describe("ANSOEGNING_OVERGANGE", () => {
+  it("hver status i ANSOEGNING har en række i maskinen", () => {
+    for (const s of Object.keys(ANSOEGNING)) {
+      assert.ok(ANSOEGNING_OVERGANGE[s], `"${s}" har ingen række i maskinen`);
+    }
+  });
+
+  it("og hvert MÅL er en status ANSOEGNING kender", () => {
+    for (const [fra, maal] of Object.entries(ANSOEGNING_OVERGANGE)) {
+      for (const til of maal) {
+        assert.ok(ANSOEGNING[til], `${fra} → "${til}" er ikke en kendt status`);
+      }
+    }
+  });
+
+  it("⚠ godkendt OG afvist ER ENDESTATIONER", () => {
+    /* Samme regel som udfoert/annulleret på en opgave: en godkendelse der
+       kunne fortrydes til "ansoegt", ville lade en allerede skrevet
+       reservation stå løs uden at nogen tog stilling til den. */
+    assert.deepEqual(ANSOEGNING_OVERGANGE.godkendt, []);
+    assert.deepEqual(ANSOEGNING_OVERGANGE.afvist, []);
+  });
+
+  it("kun ansoegt kan blive til noget andet, og kun til de to", () => {
+    assert.deepEqual(ANSOEGNING_OVERGANGE.ansoegt, ["godkendt", "afvist"]);
+  });
+});
+
+describe("kanAfgoereAnsoegning", () => {
+  it("de to lovlige skift fra ansoegt er lovlige", () => {
+    assert.equal(kanAfgoereAnsoegning(med("ansoegt"), "godkendt").ok, true);
+    assert.equal(kanAfgoereAnsoegning(med("ansoegt"), "afvist").ok, true);
+  });
+
+  it("⚠ EN ALLEREDE GODKENDT ANSØGNING KAN IKKE GODKENDES IGEN", () => {
+    /* Dette er den pure kerne af "dobbeltgodkendelse skaber ikke
+       dobbeltreservation": anden omgang bliver aldrig til et lovligt skift. */
+    const svar = kanAfgoereAnsoegning(med("godkendt"), "godkendt");
+    assert.equal(svar.ok, false);
+    assert.match(svar.aarsag, /allerede afgjort/);
+  });
+
+  it("og kan heller ikke laves om til afvist", () => {
+    assert.equal(kanAfgoereAnsoegning(med("godkendt"), "afvist").ok, false);
+    assert.equal(kanAfgoereAnsoegning(med("afvist"), "godkendt").ok, false);
+    assert.equal(kanAfgoereAnsoegning(med("afvist"), "afvist").ok, false);
+  });
+
+  it("⚠ ET FRAVÆR UDEN ansoegning ER KONTORETS EGEN REGISTRERING", () => {
+    /* Intet at afgøre — der blev aldrig ansøgt om noget. */
+    const svar = kanAfgoereAnsoegning(ANSOEGNING_BASIS, "godkendt");
+    assert.equal(svar.ok, false);
+    assert.match(svar.aarsag, /kontorets egen registrering/);
+  });
+
+  it("afviser et ukendt mål og en ukendt status", () => {
+    assert.equal(kanAfgoereAnsoegning(med("ansoegt"), "godkjent").ok, false);
+    assert.equal(kanAfgoereAnsoegning(med("ukendt"), "godkendt").ok, false);
+    assert.equal(kanAfgoereAnsoegning(null, "godkendt").ok, false);
   });
 });

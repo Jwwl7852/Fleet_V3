@@ -154,6 +154,12 @@ import {
   TILLADT_MIME, MAX_FILSTOERRELSE_BYTES, MAX_TENANT_BYTES,
   tjekSignatur, stiForDokument, sprængerKvote,
 } from "./delt/dokumenter.js";
+/* ⚠ B2 — ansoegningAfgoer skal prøve mod NØJAGTIG samme
+   kanAfgoereAnsoegning()/valideAnsoegning()/reservationFraFravaer() som
+   chaufførappen og Workforce-skærmen bruger. Se fravaer.js's eget hoved. */
+import {
+  kanAfgoereAnsoegning, valideAnsoegning, reservationFraFravaer,
+} from "./delt/fravaer.js";
 
 initializeApp();
 
@@ -3211,6 +3217,27 @@ async function logIndberetning(tenantId, uid, handling, id, foer, efter, note) {
     });
 }
 
+/* B2 — samme mønster som logOpgave()/logIndberetning() ovenfor. foer/efter
+   er FLADE objekter ({ status, personId, fra, til }), ikke det nestede
+   `ansoegning`-felt: diff() sammenligner på topniveau, og kun feltnavne på
+   LOGBARE_FELTER (audit-regler.js) får deres værdi med — "status" står der,
+   "ansoegning" ville ikke. Samme greb som indberetningTriage bruger med sit
+   flade { forloeb: handling }. */
+async function logFravaer(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "fravaer");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "fravaer", objektId: id,
+      klasse,
+      aendrede: d.aendrede, foer: d.foer, efter: d.efter,
+      note: note ?? null
+    });
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SKRIV ET FORSLAG PAA EN ETAPE — beslutning 58
 
@@ -3823,6 +3850,167 @@ export const indberetningTriage = onCall({ region: REGION }, async (req) => {
     { forloeb: foer.forloeb }, efter, `indberetning triageret: ${handling}`);
 
   return { id, forloeb: handling };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AFGØR EN FRIHEDSANSØGNING — B2, V1-stabiliseringsauditens anden BLOCKER
+
+   ⚠ HVORFOR DEN FINDES, SELVOM `fravaer/$id` ALLEREDE ER SKRIVBAR MED
+   fravaer.skriv. Reglen tillader kontoret at skrive posten direkte — det er
+   vejen `Fravaer.jsx`'s (endnu ikke byggede) "Registrér fravær" skal bruge.
+   Men reglen håndhæver INGEN statsmaskine: den forhindrer kun at CHAUFFØREN
+   skriver uden om sin egen gren (se rules.ansoegning.test.mjs). Intet i
+   reglen stopper en klient med fravaer.skriv i at skrive `godkendt` oven på
+   en allerede `afvist` ansøgning, eller i at godkende uden nogensinde at
+   røre reservationen — Admin-SDK'et her går uden om reglerne alligevel, så
+   selv det halve tjek reglen giver, findes ikke i denne funktion, medmindre
+   den bygges ind. Samme begrundelse som `opgavestatus`, tredje gang: et
+   statusskifte der også skal røre en reservation, kan ikke være et rent
+   feltskriv.
+
+   ⚠ GATEN ER fravaer.skriv, IKKE EN ROLLE. Chaufføren har den ikke —
+   `chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv]` i permissions.js —
+   og det er PRÆCIS den permission der allerede skiller "kontorets gren" fra
+   "chaufførens gren" i firebase.rules.json's egen `.write`-regel. At kræve
+   den samme her, ikke en bredere, er hvad der gør det umuligt for en
+   chauffør at godkende sin egen ansøgning via et manipuleret klientkald —
+   selv hvis han kaldte funktionen direkte uden om UI'et.
+
+   ⚠ IKKE EN NY STATUSMASKINE. `kanAfgoereAnsoegning()` er blot den
+   færdiggjorte udgave af den tre-status ordliste `ANSOEGNING` har haft siden
+   beslutning 108: `ansoegt` → `godkendt`/`afvist`, og de to er endestationer.
+   Se fravaer.js.
+
+   ⚠ RESERVATIONENS ID ER UDLEDT AF fravaerId, IKKE EN NY push()-NØGLE —
+   samme greb som `res-${opgaveId}` i opgaveplanlaeg. To godkendelser af
+   samme ansøgning (en dobbeltklikket knap, eller to kontorfolk der rammer
+   samme sekund) skriver derfor til DEN SAMME reservationsnøgle i stedet for
+   at oprette to. Og selve dobbeltgodkendelsen er alligevel lukket: anden
+   omgang læser `foer.ansoegning.status` som allerede `"godkendt"`, og
+   `kanAfgoereAnsoegning()` afviser den — `godkendt` er en endestation.
+
+   ⚠ MEDARBEJDER OG PERIODE KOMMER FRA `foer`, ALDRIG FRA KLIENTEN. Kaldet
+   sender kun `fravaerId`, `status` og et valgfrit `svar` — `personId`, `fra`
+   og `til` læses fra posten som den STÅR i basen. En klient der sendte sit
+   eget personId eller sin egen periode med, kunne ellers godkende en anden
+   ansøgning end den han pegede på.
+
+   ⚠ AFVIST SKRIVER INGEN RESERVATION. Reservationsgrenen køres kun når
+   `tilStatus === "godkendt"` — samme asymmetri som `opgaveplanlaeg` ikke har
+   brug for, fordi en opgave altid får sin reservation; her er det halve af
+   svarene der IKKE skal spærre noget.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const ansoegningAfgoer = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|fravaer.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke afgøre frihedsansøgninger. Det kræver fravaer.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  /* ⚠ ADMIN-SDK'ET GAAR UDEN OM REGLERNE. Uden de her blokke var funktionen
+     en aaben doer rundt om abonnements- og modulspaerringen. */
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("bemanding").val() !== true) {
+    throw new HttpsError("permission-denied", "Bemanding-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const fravaerId = kortStreng(d.fravaerId, 60);
+  if (!fravaerId) throw new HttpsError("invalid-argument", "fravaerId mangler.");
+
+  const tilStatus = kortStreng(d.status, 20);
+  const svar = d.svar != null ? kortStreng(d.svar, 300) : undefined;
+
+  /* ⚠ KUN DISSE TRE FELTER LÆSES FRA KLIENTEN. Ingen personId, ingen fra/til
+     — se hovedet. */
+  const foer = (await rod.child(`fravaer/${fravaerId}`).once("value")).val();
+  if (!foer) throw new HttpsError("not-found", `Fraværet ${fravaerId} findes ikke.`);
+
+  /* ⚠ SAMME MASKINE SOM SKÆRMEN VISER. */
+  const tjek = kanAfgoereAnsoegning(foer, tilStatus);
+  if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsag);
+
+  const nu = Date.now();
+  const nyAnsoegning = {
+    ...foer.ansoegning,
+    status: tilStatus,
+    afgjortAf: uid,
+    afgjortMs: nu,
+  };
+  if (svar) nyAnsoegning.svar = svar;
+
+  /* ⚠ SAMME VALIDERING SOM SKÆRMEN VISER, EN GANG TIL — reglens `.validate`
+     på `ansoegning` kræver kun `hasChildren`; formens egne grænser (kun de
+     tre ansøgbare arter, svar på højst 300 tegn, kun kendte felter) er ikke
+     håndhævet af Admin-SDK'et, og skal derfor prøves her, som i
+     opgaveplanlaeg. */
+  const problemer = valideAnsoegning({ ...foer, ansoegning: nyAnsoegning }, { nu });
+  if (problemer.length) {
+    throw new HttpsError("invalid-argument", problemer.join(" "));
+  }
+
+  const opdatering = {};
+  opdatering[`fravaer/${fravaerId}/ansoegning`] = nyAnsoegning;
+
+  /* ---- Godkendt: reservationen skrives i SAMME update() ---------------- */
+  let reservationId = null;
+  if (tilStatus === "godkendt") {
+    let ny;
+    try {
+      ny = reservationFraFravaer({ ...foer, id: fravaerId });
+    } catch (e) {
+      throw new HttpsError("invalid-argument", e.message);
+    }
+
+    const snap = await rod
+      .child(`reservationer/${ny.ressourceType}/${ny.ressourceId}`)
+      .once("value");
+    const eksisterende = Object.entries(snap.val() || {}).map(([id, v]) => ({ id, ...v }));
+
+    const svarKonflikt = tjekLedigMod(eksisterende, ny);
+    if (!svarKonflikt.ok) {
+      const foerste = svarKonflikt.konflikter[0];
+      const flere = svarKonflikt.konflikter.length > 1
+        ? ` (+${svarKonflikt.konflikter.length - 1} mere)` : "";
+      throw new HttpsError("failed-precondition",
+        (foerste.tekst || konfliktTekst(ny, foerste)) + flere);
+    }
+
+    /* Reservationens id er UDLEDT af fravaerId — se hovedet. */
+    reservationId = `res-${fravaerId}`;
+    opdatering[`reservationer/${ny.ressourceType}/${ny.ressourceId}/${reservationId}`] = {
+      fra: ny.fra, til: ny.til,
+      kilde: ny.kilde,
+      oprettetAf: uid,
+      oprettetMs: nu,
+    };
+  }
+
+  await rod.update(opdatering);
+
+  await logFravaer(tenantId, uid, AUDIT.tilstandsskift, fravaerId,
+    { status: foer.ansoegning?.status, personId: foer.personId, fra: foer.fra, til: foer.til },
+    { status: tilStatus, personId: foer.personId, fra: foer.fra, til: foer.til },
+    `ansøgning ${tilStatus}${reservationId ? ` — ${reservationId}` : ""}`);
+
+  return { fravaerId, status: tilStatus, reservationId };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

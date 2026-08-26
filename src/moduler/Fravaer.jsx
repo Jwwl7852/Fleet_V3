@@ -8,9 +8,12 @@
  * disponeres. Fravær skriver en reservation på MEDARBEJDEREN med kilde
  * 'fravaer' og prioritet 30 — højere end booking, lavere end værksted.
  *
- * FASE 0 ER VISNING. Reservationen skrives ikke. Panelet viser hvad den VILLE
- * blive, bygget med reservationFraFravaer(), så formen kan efterprøves før den
- * Cloud Function der skal skrive den, findes.
+ * ⚠ TO SKRIVEVEJE, IKKE ÉN. B2 byggede `ansoegningAfgoer`: godkendes en
+ * ansøgning (arbejdskøen nedenfor), skriver serveren reservationen i samme
+ * kald. Kontorets EGEN direkte registrering — "Registrér fravær"-knappen —
+ * er stadig fase 0, ren visning: panelet viser hvad reservationen VILLE
+ * blive, bygget med reservationFraFravaer(), fordi den skrivevej ikke findes
+ * endnu. De to må ikke forveksles; se noten ved reservationspanelet.
  *
  * FIRE TING DER ER KONTROLLER OG IKKE PYNT:
  *
@@ -63,13 +66,15 @@ import {
 } from "../fleet/personale.js";
 import {
   FRAVAER_ART, TILSTAND, fravaerTilstand, sidsteDag, varighedDage,
-  reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning
+  reservationFraFravaer, fravaerPrioritet, erHelbredsoplysning,
+  ANSOEGNING, kanAfgoereAnsoegning,
 } from "../fleet/fravaer.js";
+import { afgoerAnsoegning } from "../fleet/fravaerplan.js";
 import { KILDE, RESSOURCE, konfliktTekst } from "../fleet/reservations.js";
 import { DEMO_PERSONALE } from "../fleet/demo-personale.js";
 import { DEMO_FRAVAER, DEMO_FRAVAER_SENSITIVE } from "../fleet/demo-fravaer.js";
 import {
-  Kort, Tabel, Pille, Henter, Fejl, Datatilstand, Tom, Gitter, MiniLinje, Knap
+  Kort, Tabel, Pille, Henter, Fejl, Datatilstand, Tom, Gitter, MiniLinje, Knap, Formularsvar
 } from "../fleet/ui.jsx";
 
 /* Perioden vises inklusivt: "14.08.2026 – 18.08.2026" for et fravær der er
@@ -85,6 +90,13 @@ export default function Fravaer() {
   /* Hvilken post brugeren har bedt om at se årsagen på. Nulstilles ikke ved
      valg af en anden post — sammenligningen med valgtId gør det for os. */
   const [visAarsagFor, setVisAarsagFor] = useState(null);
+  /* B2 — svaret til medarbejderen, og tilstanden mens afgørelsen sendes.
+     afgoerSvar er { ok, art, besked } — samme form som Formularsvar tager
+     andre steder i appen, så kvitteringen ikke skal skrives af igen her. */
+  const [svarTekst, setSvarTekst] = useState("");
+  const [afgoerGemmer, setAfgoerGemmer] = useState(false);
+  const [afgoerSvar, setAfgoerSvar] = useState(null);
+  const [afgoerHandling, setAfgoerHandling] = useState(null);
 
   const maaSeAarsag = harPerm(bruger?.perms, PERM.fravaerSensitiveLaes);
   const maaSkrive = harPerm(bruger?.perms, PERM.fravaerSkriv);
@@ -158,12 +170,16 @@ export default function Fravaer() {
     return (p?.navn || f.personId).toLowerCase().includes(q);
   });
 
-  const valgt = viste.find((f) => f.id === valgtId) || null;
+  /* ⚠ SLÅR OP I fravaer, IKKE I viste. Arbejdskøen nedenfor lever uden for
+     søgningen og funktionsfilteret — en ansøgning der ikke matcher søgningen,
+     skal stadig kunne åbnes og afgøres derfra. */
+  const valgt = fravaer.find((f) => f.id === valgtId) || null;
   const valgtPerson = valgt ? personEfterId.get(valgt.personId) : null;
   /* valgtFoelsom kommer nu fra usePost ovenfor — ét ægte opslag mod
      sensitive/fravaer/<id>, ikke en lokal opslagstabel. */
 
-  /* Hvad reservationen VILLE blive. Bygges, skrives ikke. */
+  /* Hvad reservationen VILLE blive. Bygges, skrives ikke — se noten i
+     "Reservationen der ville blive skrevet" nedenfor. */
   let reservation = null;
   let reservationFejl = null;
   if (valgt) {
@@ -176,9 +192,82 @@ export default function Fravaer() {
     return <Pille tone={t.pill}>{t.label}</Pille>;
   };
 
+  /* ══════════════════════════════════════════════════════════════════════
+     B2 — ARBEJDSKØEN: kun de ansøgninger der afventer et svar.
+     ══════════════════════════════════════════════════════════════════════ */
+  const ansoegninger = fravaer
+    .filter((f) => f.ansoegning?.status === "ansoegt")
+    .sort((a, b) => (a.ansoegning.ansoegtMs || 0) - (b.ansoegning.ansoegtMs || 0));
+
+  async function afgoer(status) {
+    if (!valgt) return;
+    setAfgoerSvar(null);
+    setAfgoerHandling(status);
+
+    /* ⚠ DEN SVARER FØRST SELV — med serverens egen maskine, samme greb som
+       skiftOpgaveStatus() i opgaveplan.js. Ikke for at afgøre noget: serveren
+       spørger igen med kanAfgoereAnsoegning(), og har basen. Det er for at
+       svare med det samme, frem for et sekunds tavshed efterfulgt af et nej —
+       fx hvis en anden i kontoret nåede at afgøre den samme ansøgning først. */
+    const tjek = kanAfgoereAnsoegning(valgt, status);
+    if (!tjek.ok) { setAfgoerSvar({ ok: false, besked: tjek.aarsag }); return; }
+
+    setAfgoerGemmer(true);
+    const r = await afgoerAnsoegning({ fravaerId: valgt.id, status, svar: svarTekst });
+    setAfgoerGemmer(false);
+    setAfgoerSvar(r);
+    if (r.ok) {
+      setSvarTekst("");
+      genindlaes();
+    }
+  }
+
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
+
+      {/* ══════════════════════════════════════════════════════════════════
+          B2 — ARBEJDSKØEN. Kontorets kanoniske hjem for frihedsansøgninger:
+          Workforce → Ferie & fravær, ikke en ny HR-app og ikke et nyt
+          topniveaupunkt. Kun de der må afgøre noget, ser køen — en chauffør
+          der besøger ruten, skal ikke se en liste af knapper han ikke kan
+          bruge. */}
+      {maaSkrive && (
+        <Kort
+          titel="Anmodninger om frihed"
+          handling={<Pille tone={ansoegninger.length ? "warn" : "ok"}>
+            {ansoegninger.length} afventer
+          </Pille>}
+        >
+          <Tabel
+            kolonner={[
+              { key: "personId", label: "Medarbejder", render: (r) => (
+                  <button type="button" className="fc-a"
+                          style={{ background: "none", border: 0, padding: 0, cursor: "pointer",
+                                   font: "inherit", fontWeight: 650, textAlign: "left" }}
+                          onClick={() => { setValgtId(r.id); setAfgoerSvar(null); }}>
+                    {navnPaa(r.personId)}
+                  </button>
+                ) },
+              { key: "fra", label: "Periode", render: periodeTekst },
+              { key: "oensket", label: "Ønsket", render: (r) =>
+                  <Pille tone={FRAVAER_ART[r.ansoegning.oensket]?.pill}>
+                    {FRAVAER_ART[r.ansoegning.oensket]?.label}
+                  </Pille> },
+              { key: "note", label: "Note", render: (r) =>
+                  r.note ? r.note : <span className="fc-neutral">—</span> },
+              { key: "ansoegtMs", label: "Modtaget", render: (r) => dato(r.ansoegning.ansoegtMs) },
+              { key: "behandl", label: "", render: (r) => (
+                  <Knap onClick={() => { setValgtId(r.id); setAfgoerSvar(null); }}>
+                    Behandl
+                  </Knap>
+                ) },
+            ]}
+            raekker={ansoegninger}
+            tom="Ingen anmodninger afventer svar."
+          />
+        </Kort>
+      )}
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
         <Kort
@@ -313,6 +402,50 @@ export default function Fravaer() {
                 </p>
               </Kort>
 
+              {/* ═══════════════════════════════════════════════════════════
+                  B2 — AFGØR ANSØGNINGEN. Vises kun for en ansøgning der rent
+                  faktisk afventer et svar, og kun for den der må skrive det.
+                  En allerede afgjort ansøgning viser i stedet sit svar
+                  nedenfor, som chaufførappen allerede gør — samme post, to
+                  skærme, én sandhed. */}
+              {valgt.ansoegning?.status === "ansoegt" && maaSkrive && (
+                <Kort titel="Afgør ansøgningen">
+                  <p className="fc-hint" style={{ marginBottom: 10 }}>
+                    Ønsket: <Pille tone={FRAVAER_ART[valgt.ansoegning.oensket]?.pill}>
+                      {FRAVAER_ART[valgt.ansoegning.oensket]?.label}
+                    </Pille>{" "}
+                    · modtaget {dato(valgt.ansoegning.ansoegtMs)}
+                    {valgt.note && <> · besked fra medarbejderen: „{valgt.note}“</>}
+                  </p>
+
+                  <div className="fc-felt">
+                    <label htmlFor="fv-svar">Svar til medarbejderen (valgfrit)</label>
+                    <textarea id="fv-svar" className="fc-ctl" rows={2} maxLength={300}
+                      value={svarTekst} onChange={(e) => setSvarTekst(e.target.value)}
+                      disabled={afgoerGemmer} />
+                  </div>
+
+                  <Formularsvar svar={afgoerSvar}
+                    okTekst={afgoerHandling ? `Ansøgningen er ${ANSOEGNING[afgoerHandling].label.toLowerCase()}.` : "Gemt."} />
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <Knap variant="primaer" disabled={afgoerGemmer}
+                          onClick={() => afgoer("godkendt")}>
+                      {afgoerGemmer ? "Sender …" : "Godkend"}
+                    </Knap>
+                    <Knap disabled={afgoerGemmer} onClick={() => afgoer("afvist")}>
+                      Afvis
+                    </Knap>
+                  </div>
+
+                  <p className="fc-hint" style={{ marginTop: 10 }}>
+                    Godkendes ansøgningen, skriver serveren i samme kald en reservation
+                    på medarbejderen med prioritet <b>{fravaerPrioritet()}</b> — se
+                    reservationspanelet nedenfor. Afvises den, skrives ingen reservation.
+                  </p>
+                </Kort>
+              )}
+
               <Kort titel="Årsag">
                 {valgtFoelsom ? (
                   <>
@@ -397,12 +530,23 @@ export default function Fravaer() {
                     <p className="fc-hint" style={{ marginTop: 6, fontStyle: "italic" }}>
                       „{konfliktTekst(null, { kilde: { type: KILDE.fravaer } })}“
                     </p>
-                    <p className="fc-hint" style={{ marginTop: 12 }}>
-                      <b>Reservationen skrives ikke endnu.</b> Konfliktfrihed kan ikke
-                      afgøres i klienten — to skrivninger kan ramme samme sekund — så den
-                      hører i en Cloud Function sammen med de øvrige. Indtil da er det her
-                      en visning af formen, ikke en handling.
-                    </p>
+                    {valgt.ansoegning?.status === "godkendt" ? (
+                      <p className="fc-hint" style={{ marginTop: 12 }}>
+                        <b>Denne reservation er allerede skrevet.</b> Ansøgningen blev
+                        godkendt af <code>{valgt.ansoegning.afgjortAf}</code>, og{" "}
+                        <code>ansoegningAfgoer</code> skrev den i samme kald som svaret —
+                        ovenstående er ikke en gætning, det er posten som den står.
+                      </p>
+                    ) : (
+                      <p className="fc-hint" style={{ marginTop: 12 }}>
+                        <b>Reservationen skrives ikke endnu.</b> Konfliktfrihed kan ikke
+                        afgøres i klienten — to skrivninger kan ramme samme sekund. Er
+                        fraværet en ansøgning, skriver <code>ansoegningAfgoer</code> den
+                        når den godkendes (se panelet ovenfor). Kontorets egen direkte
+                        registrering er der stadig ingen skrivevej for — indtil da er det
+                        her en visning af formen for den, ikke en handling.
+                      </p>
+                    )}
                   </>
                 )}
               </Kort>

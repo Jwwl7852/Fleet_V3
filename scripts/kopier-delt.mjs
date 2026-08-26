@@ -187,6 +187,13 @@ export const DELTE_FILER = [
      ville vise — ellers kunne en sti se gyldig ud ét sted og blive afvist et
      andet. Filen importerer ingenting; lukningen er triviel. */
   "dokumenter.js",
+  /* ⚠ fravaer.js — B2. `ansoegningAfgoer` skal prøve mod NØJAGTIG samme
+     kanAfgoereAnsoegning()/valideAnsoegning()/reservationFraFravaer() som
+     skærmen viser og som chaufførappens ansøgning blev bygget med i
+     beslutning 108 — ellers kan et skift se lovligt ud ét sted og blive
+     afvist et andet. Filen importerer kun reservations.js, som allerede
+     står her; lukningen holder. */
+  "fravaer.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);
