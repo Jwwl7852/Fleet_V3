@@ -46,6 +46,41 @@ adgang går gennem Cloud Functions'  signerede URL'er, se
 `functions/index.js`s fire dokument-funktioner og
 docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md.
 
+### Storage soft-delete — DEV-bucket'en, Skive 4C
+
+**Aktiveret: GCS soft-delete, 7 dages opbevaring** (`retentionDurationSeconds:
+604800`), bekræftet via `bucket.getMetadata().softDeletePolicy` efter
+oprettelsen. Nyere GCS-buckets har soft-delete slået til som standard —
+bekræftelsen viste den allerede aktiv med præcis 7 dage, og kaldet her satte
+den eksplicit til samme værdi i stedet for at antage standarden holder.
+
+**Hvad det beskytter imod:** en slettet eller overskrevet blob i bucket'en
+kan gendannes i 7 dage efter sletningen/overskrivningen (GCS beholder den
+tidligere version internt, adgang via `generation`-parameteren). Det er en
+Storage-native mekanisme — ingen separat backup-platform er bygget.
+
+**Hvad det IKKE erstatter, og hvorfor det stadig er et åbent CRITICAL/HIGH
+fund (C1/C2/D1, se docs/security-compliance/12_FINDINGS_AND_REMEDIATION_
+PLAN.md):**
+- Det dækker kun BLOBBEN i Storage. RTDB-metadatarecorden
+  (`fakturaer/$fakturaId/dokumenter/$dokumentId`) har sin egen, adskilte
+  (u-)garanti — RTDB har markant svagere indbygget backup-værktøj end
+  Storage, og intet i dette repo konfigurerer det. Et metadata+blob-par der
+  skal gendannes KONSISTENT (samme dokument, samme status, samme
+  storagePath) er ikke løst af soft-delete alene.
+- Ingen gendannelse er nogensinde testet. Ingen RPO/RTO er defineret — hverken
+  for RTDB eller for denne bucket.
+- 7 dage er GCS' tekniske standardvindue, IKKE en juridisk eller
+  forretningsmæssigt afgjort opbevaringsperiode — samme skel som
+  `RETENTION_KATEGORI`s `periodeMaaneder: null` alle andre steder i
+  produktet. Se retention-regler.js's `fakturaBilag`-kategori.
+
+**Konklusion, ikke pyntet:** Soft-delete er en reel, billig, aktiveret
+beskyttelse mod en utilsigtet sletning/overskrivning af selve filen. Det er
+IKKE en backup/recovery-procedure, og det ændrer ikke klassifikationen af
+C1/C2/D1 — de forbliver åbne, og skal behandles særskilt før rigtige
+kundedokumenter (ikke DEV-testfiler) lægges i dette lager.
+
 ### Ældre projekter i kontoen
 
 `fleetcontrol-6de59` (det gamle produktionsprojekt, kan indeholde rigtige
