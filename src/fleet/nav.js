@@ -98,6 +98,20 @@ export const NAV = [
     titel: "Fakturaer & bilag",
     under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
   },
+  /* ⚠ LEVERANDØRER — SKIVE 4B, Model B (Korrektion 3). Flyttet ud af
+     Procure-undermenuen (var `indkoeb`-gruppens barn, `kraeverPerm:
+     "indkoeb.laes"`) til et Fælles-topniveaupunkt, ved siden af Kunder —
+     samme flytning som Fakturaer & bilag fik i Skive 2A/4A. Ruten er MED
+     VILJE uændret (`/indkoeb/leverandoerer`); kun menupladsen og
+     permissionen flyttede. `kraeverPerm` er nu `leverandoerer.laes`, ikke
+     `indkoeb.laes` — kartoteket er fælles masterdata for Fleet, Facility
+     og Procure, ikke Procures eget. */
+  {
+    key: "leverandoerer", kraeverPerm: "leverandoerer.laes", sti: "/indkoeb/leverandoerer",
+    label: "Leverandører", gruppe: "faelles",
+    titel: "Leverandører",
+    under: "Fælles leverandørkartotek for Fleet, Facility og Procure.",
+  },
   {
     key: "oekonomi", sti: "/oekonomi/fakturering", label: "Økonomi / Fakturagrundlag",
     titel: "Økonomi / Fakturagrundlag", gruppe: "faelles",
@@ -231,8 +245,8 @@ export const NAV = [
       { key: "fakturaer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/fakturaer", label: "Match & kontantkøb",
         titel: "Match & kontantkøb",
         under: "Match fakturaer mod bestillinger, eller registrér et kontant køb. Selve fakturaen — status og godkendelse — ligger nu i Fakturaer & bilag." },
-      { key: "leverandoerer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/leverandoerer", label: "Leverandører",
-        titel: "Leverandører", under: "Performance, aftaler og priser" },
+      /* ⚠ SKIVE 4B — LEVERANDØRER FLYTTET UD HERFRA til Fælles → Leverandører
+         (se filens hoved). Kartoteket er ikke længere Procures eget. */
       /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS.
          Fjerde gang et lagernavn skal skilles fra et andet i den her base;
          se forbrugsvarer.js og beslutning 85. */

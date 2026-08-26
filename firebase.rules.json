@@ -393,7 +393,7 @@
             // fordi de to er faste og ikke kan skjules. Ordlisten staar i
             // navvisning.js's OMRAADER; her et moenster, fordi den er kort
             // og lukket.
-            "$omraade": { ".validate": "newData.isBoolean() && $omraade.matches(/^(kunderOversigt|fakturacenter|oekonomi|booking|flaade|facility|indkoeb|warehouse|unitbooking|bemanding|opsaetning)$/)" }
+            "$omraade": { ".validate": "newData.isBoolean() && $omraade.matches(/^(kunderOversigt|fakturacenter|leverandoerer|oekonomi|booking|flaade|facility|indkoeb|warehouse|unitbooking|bemanding|opsaetning)$/)" }
           }
         },
 
@@ -1024,8 +1024,14 @@
             // (se rules.kpi.test.mjs's hoved), saa begge skal kraeves. I
             // praksis aendrer det ingenting: de to permissions gives til
             // NOEJAGTIG de samme roller (se ROLLE_PERMS i permissions.js).
+            //
+            // ⚠ SKIVE 4B — facility KRAEVER NU leverandoerer.laes, IKKE
+            // indkoeb.laes, OG indkoeb KRAEVER NU OGSAA leverandoerer.laes.
+            // `leverandoerer` mistede sin indkoeb-klausul og fik sin egen
+            // permission (Model B) — begge domaener der regner paa noden
+            // (facility.leverandoerNavn, indkoeb.leverandoerNavn) foelger med.
             "$domaene": {
-              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|')))"
+              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|leverandoerer.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|') && auth.token.perms.contains('|leverandoerer.laes|')))"
             }
           }
         },
@@ -2549,17 +2555,17 @@
         // Paa en leverandoer kan den begrundes: Mercedes Greve er et
         // lastbilvaerksted, Crawford leverer porte til begge.
         //
-        // Samme modulklausul som "indkoeb". Modsat "fakturaer", som staar i
-        // basen fordi to skaerme roerer den — en leverandoer roeres kun af
-        // Indkoeb.
-        // ⚠ .read KRÆVER indkoeb.laes — BESLUTNING 104.
+        // ⚠ SKIVE 4B — .read KRÆVER leverandoerer.laes, IKKE indkoeb.laes.
+        // Model B (Korrektion 3): fuldt ugatet base-node, ingen modulklausul
+        // — samme mønster som fakturaer/satser/grundlag, IKKE reolpladser'
+        // inline modul-OR. Se moduler.js.
         // ⚠ OG DEN LAESES AF ELLEVE SKAERME, ogsaa uden for Procure:
         // Disponering, Servicekalender, Arbejdskoeen og
         // Vaerkstedskalender slaar alle op i kartoteket. Derfor har
         // disponenten og lagermedarbejderen den ogsaa — det blev maalt,
         // ikke antaget.
         "leverandoerer": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|leverandoerer.laes|')",
           ".indexOn": ["aktiv", "kategori", "navn"],
 
           "$leverandoerId": {
@@ -2569,7 +2575,10 @@
             // registret — og uden leddet kunne en enkelt post hardslettes.
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
+            // ⚠ SKIVE 4B — kræver leverandoerer.skriv, ingen modulklausul.
+            // Skrives direkte af klienten (gem() i skriv.js) — samme
+            // disciplin som kunder og reolpladser. Ingen Cloud Function.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|leverandoerer.skriv|') && newData.exists()",
             ".validate": "newData.hasChildren(['navn', 'kategori'])",
 
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },

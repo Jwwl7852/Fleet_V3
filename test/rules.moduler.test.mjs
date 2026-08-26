@@ -264,10 +264,13 @@ describe("Et fravalgt modul lukker sine noder", () => {
   it("lader BASEN være i fred", async () => {
     /* ⚠ personale, opgaver, satser og fakturaer er ikke et moduls ejendom.
        Lukkede de med, ville en kunde der kun har Dashboard ikke kunne se sine
-       egne medarbejdere. */
+       egne medarbejdere.
+       ⚠ SKIVE 4B — leverandoerer er nu også base: elleve skærme uden for
+       Procure læste den allerede, og en kunde uden Indkøb skal stadig kunne
+       se sit fælles leverandørkartotek. */
     const db = somAdmin(UDEN);
     for (const node of ["personale", "opgaver", "satser", "fakturaer", "brugere",
-                        "reservationer"]) {
+                        "reservationer", "leverandoerer"]) {
       await assertSucceeds(get(ref(db, `tenants/${UDEN}/${node}`)));
     }
   });

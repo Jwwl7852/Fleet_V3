@@ -263,7 +263,11 @@ function Indkoebsformular({ linje, leverandoerer, koeretoejer, lokationer, sti, 
                 saet={saet("leverandoerId")} fejl={vis("leverandoerId")}
                 hint="En entitet, ikke en fritekst — så navnet ikke får tre stavemåder."
                 valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
-                  ...leverandoerer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
+                  /* ⚠ SKIVE 4B — INAKTIVE KAN IKKE VÆLGES TIL NYT, men den
+                     allerede valgte bliver stående ved redigering. */
+                  ...leverandoerer
+                    .filter((l) => l.aktiv !== false || l.id === f.leverandoerId)
+                    .map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
           {/* ⚠ HER STOD ET PÅKRÆVET DIVISION-FELT, og det gjorde vejen ind
               lukket: `indkoeb`-reglen forbyder feltet (beslutning 70), så en
               valgt værdi blev AFVIST af serveren — og uden en værdi klagede
@@ -1067,7 +1071,11 @@ function Leverandoerkartotek({ leverandoerer }) {
           { key: "cvr", label: "CVR" },
           { key: "kategori", label: "Kategori", render: (r) => LEVERANDOER_KATEGORI[r.kategori] },
           { key: "aftale", label: "Aftale",
-            render: (r) => <Pille tone={AFTALETYPE[r.aftale.type]?.forventerFastPris ? "ok" : "info"}>
+            /* ⚠ SKIVE 4B — r.aftale KAN VÆRE UNDEFINED. Feltet var altid
+               valgfrit i reglerne, men før 4B kom hver leverandør fra seedet
+               demodata, som altid satte en aftale — CRUD-formularen sætter
+               den ikke, så en nyoprettet leverandør crashede hele skærmen. */
+            render: (r) => !r.aftale ? "—" : <Pille tone={AFTALETYPE[r.aftale.type]?.forventerFastPris ? "ok" : "info"}>
               {AFTALETYPE[r.aftale.type]?.label}
               {r.aftale.rabatPct ? ` · ${r.aftale.rabatPct} %` : ""}
             </Pille> },

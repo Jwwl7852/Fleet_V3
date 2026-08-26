@@ -624,6 +624,75 @@ export function snitprisPrMaaned(linjer = [], { varenummer, maaneder = 6, nu = D
 /* ---- Validering før skrivning ----------------------------------------- */
 
 /**
+ * ⚠ SKIVE 4B — LEVERANDØRENS EGEN FORM, IKKE INDKØBSLINJENS.
+ * Spejler firebase.rules.json's felter på `leverandoerer/$leverandoerId`.
+ * Afgør ingenting — reglerne er autoriteten, og en klient der er uenig med
+ * dem, får `permission-denied`, ikke en overtalt server.
+ */
+export const GRAENSE_LEVERANDOER = {
+  navn: 120,
+  cvr: 8,
+  kontaktEmail: 120,
+  kontaktTelefon: 40,
+};
+
+/**
+ * valideLeverandoer(post) → { [felt]: fejltekst }
+ *
+ * ⚠ CVR ER EN STRENG, IKKE ET TAL. Et CVR med foranstillet nul ville miste
+ * nullet som number og aldrig matche registret — samme grund som at et
+ * telefonnummer er en streng. Reglen tjekker det samme (firebase.rules.json).
+ */
+export function valideLeverandoer(post = {}) {
+  const f = {};
+
+  if (!post.navn?.trim()) f.navn = "Navn skal udfyldes.";
+  else if (post.navn.length > GRAENSE_LEVERANDOER.navn) {
+    f.navn = `Navnet må højst være ${GRAENSE_LEVERANDOER.navn} tegn.`;
+  }
+
+  if (!LEVERANDOER_KATEGORI[post.kategori]) f.kategori = "Vælg en kategori.";
+
+  if (post.cvr) {
+    if (!/^[0-9]{8}$/.test(post.cvr)) f.cvr = "CVR skal være otte cifre.";
+  }
+
+  if (post.kontaktEmail) {
+    if (!post.kontaktEmail.includes("@") || post.kontaktEmail.length > GRAENSE_LEVERANDOER.kontaktEmail) {
+      f.kontaktEmail = "Skal være en gyldig e-mailadresse.";
+    }
+  }
+
+  if (post.kontaktTelefon && post.kontaktTelefon.length > GRAENSE_LEVERANDOER.kontaktTelefon) {
+    f.kontaktTelefon = `Højst ${GRAENSE_LEVERANDOER.kontaktTelefon} tegn.`;
+  }
+
+  for (const k of Object.keys(f)) if (!f[k]) delete f[k];
+  return f;
+}
+
+/**
+ * byggLeverandoer(post) → data klar til gem()
+ *
+ * ⚠ KUN IDENTITETSFELTERNE. `aftale` og `prisliste` rører denne formular
+ * ikke — ingen skærm skriver dem i dag, og at give dem en skriveflade er
+ * en selvstændig udvidelse, ikke en del af 4B's CRUD. `flet: true` i
+ * kaldet til gem() betyder at et gemt aftale/prisliste-felt på en
+ * eksisterende post ikke slettes ved en almindelig redigering.
+ */
+export function byggLeverandoer(post) {
+  const ud = {
+    navn: post.navn.trim(),
+    kategori: post.kategori,
+    aktiv: post.aktiv !== false,
+  };
+  if (post.cvr?.trim()) ud.cvr = post.cvr.trim();
+  if (post.kontaktEmail?.trim()) ud.kontaktEmail = post.kontaktEmail.trim();
+  if (post.kontaktTelefon?.trim()) ud.kontaktTelefon = post.kontaktTelefon.trim();
+  return ud;
+}
+
+/**
  * ⚠ SPEJLER firebase.rules.json. Afgør ingenting — serveren validerer igen.
  */
 export const GRAENSE_INDKOEB = {

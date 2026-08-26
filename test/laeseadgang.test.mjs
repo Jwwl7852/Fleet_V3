@@ -78,7 +78,10 @@ const LUKKET = {
   satser: "satser.laes",
   omkostninger: "satser.laes",
   indkoeb: "indkoeb.laes",
-  leverandoerer: "indkoeb.laes",
+  /* ⚠ SKIVE 4B — VAR "indkoeb.laes". Leverandøren er ikke længere Procures
+     egen (Model B, `04_DATA_AND_PERMISSION_IMPACT.md` §28) — dækker nu
+     Fleet/Facility/Procure med samme permission. */
+  leverandoerer: "leverandoerer.laes",
   indkoebsbehov: "indkoeb.laes",
   indkoebsordrer: "indkoeb.laes",
   forbrugsvarer: "indkoeb.laes",

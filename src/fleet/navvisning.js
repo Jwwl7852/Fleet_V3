@@ -64,7 +64,7 @@
  * forskellige ting med samme navn.
  */
 export const OMRAADER = [
-  "kunderOversigt", "fakturacenter", "oekonomi",
+  "kunderOversigt", "fakturacenter", "leverandoerer", "oekonomi",
   "booking", "flaade", "facility", "indkoeb", "warehouse", "unitbooking", "bemanding",
   "opsaetning",
 ];

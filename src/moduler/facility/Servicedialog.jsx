@@ -23,10 +23,13 @@
  * ⚠ INGEN MAIL. Samme som Planlaegdialog: beslutning 20 er fase 0.
  *
  * ⚠ SKIVE 3A — "UDFØRES AF" HARMONISERET MED Planlaegdialog, KUN VISNINGEN.
- * Feltskemaet er stadig sit eget (se ovenfor) — men leverandørfeltets hint
- * fulgte ikke `harProcure`, så en kunde uden Procure fik at vide "Tom
- * betyder eget personale" i stedet for hvorfor kartoteket var tomt. Samme
- * to-tilstands-tekst som Fleets dialog nu bruger.
+ * Feltskemaet er stadig sit eget (se ovenfor).
+ *
+ * ⚠ SKIVE 4B — `harProcure`-HINTEN ER VÆK. Leverandørkartoteket er ikke
+ * længere Procures eget (Model B, `04_DATA_AND_PERMISSION_IMPACT.md` §28) —
+ * `leverandoerer` læses uafhængigt af om Procure-modulet er aktivt, så et
+ * hint der forklarede en tom liste med "hører til Procure" ville nu være
+ * usandt. Prop'en `harProcure` er derfor fjernet fra denne skærm.
  */
 import { useState } from "react";
 import { datoTid, isoTilMs, msTilIso } from "../../fleet/format.js";
@@ -67,7 +70,7 @@ const delOp = (v) => {
 };
 
 export default function Servicedialog({
-  aktiver, lokationer, leverandoerer, harProcure, onLuk, onGemt,
+  aktiver, lokationer, leverandoerer, onLuk, onGemt,
   /* Gitterets forslag: { aktivId | lokationId, startMs }. Et FORSLAG, ikke en
      lås — rammer man ved siden af, retter man i formularen. Se Planlaegdialog. */
   foraf = null,
@@ -254,14 +257,20 @@ export default function Servicedialog({
                      kategorier, og en portleverandør og en dækmand er ikke
                      hinandens alternativer. Samme greb som Planlaegdialog, der
                      filtrerer på `vaerksted` og `daek`. Alle fem
-                     facility-leverandører i sættet bærer kategorien. */
+                     facility-leverandører i sættet bærer kategorien.
+                     ⚠ SKIVE 4B — INAKTIVE KAN IKKE VÆLGES TIL NYT, men den
+                     allerede valgte bliver stående (se samme greb i
+                     Planlaegdialog). */
                   ...leverandoerer
                     .filter((l) => l.kategori === "facility")
+                    .filter((l) => l.aktiv !== false || l.id === post.leverandoerId)
                     .map((l) => ({ vaerdi: l.id, label: l.navn })),
                 ]}
-                hint={harProcure
-                  ? "Tom betyder eget personale."
-                  : "Kun eget personale: leverandørkartoteket hører til Procure, som ikke er aktivt."} />
+                /* ⚠ SKIVE 4B — INGEN TO-TILSTANDS-HINT LÆNGERE. Kartoteket
+                   var Procures eget indtil nu; hinten der sagde det, er ikke
+                   længere sand — `leverandoerer` er fælles masterdata, læst
+                   uafhængigt af om Procure-modulet er aktivt. */
+                hint="Tom betyder eget personale." />
           <Felt id="sv-pri" label="Prioritet"
                 vaerdi={post.prioritet} saet={saet("prioritet")}
                 fejl={vis("prioritet")}

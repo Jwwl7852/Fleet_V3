@@ -40,7 +40,6 @@ import { useListe } from "../../fleet/useListe.js";
 import { usePost } from "../../fleet/usePost.js";
 import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { harModul } from "../../fleet/moduler.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang,
   Knap, Dialog } from "../../fleet/ui.jsx";
@@ -75,7 +74,7 @@ import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 
 export default function Indberetninger() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
-  const { bruger, moduler } = useFleet();
+  const { bruger } = useFleet();
   const [valgtId, setValgtId] = useState("ind-001");
   /* Skive 3B: null = lukket, ellers et forslag til Planlaegdialog. */
   const [planlaegger, setPlanlaegger] = useState(null);
@@ -97,13 +96,11 @@ export default function Indberetninger() {
   const bilNavn = (id) =>
     enheder.data.find((k) => k.id === id)?.kaldenavn || id || "—";
 
-  /* ⚠ SKIVE 3B — SAMME MØNSTER SOM Vaerkstedskalender.jsx. `leverandoerer` er
-     modulspærret på indkoeb; `hent: false` giver en TOM liste i stedet for en
-     afvist læsning hos en kunde uden Procure. Planlaegdialog viser selv
-     hvorfor listen er tom. */
-  const harProcure = harModul(moduler, "indkoeb");
+  /* ⚠ SKIVE 4B — IKKE LÆNGERE MODULSPÆRRET. `leverandoerer` er nu fælles
+     masterdata uden modulklausul (Model B), gated på `leverandoerer.laes`
+     alene — samme rettelse som Vaerkstedskalender.jsx. */
   const leverandoerer = useListe("leverandoerer", {
-    vindue: "alle", hent: harProcure, demo: DEMO_LEVERANDOERER,
+    vindue: "alle", demo: DEMO_LEVERANDOERER,
   });
 
   /* ⚠ SKIVE 3B — "eventuel tilknyttet driftsopgave" i detaljepanelet.
@@ -217,7 +214,6 @@ export default function Indberetninger() {
         <Planlaegdialog
           enheder={enheder.data}
           leverandoerer={leverandoerer.data}
-          harProcure={harProcure}
           foraf={planlaegger}
           onLuk={() => setPlanlaegger(null)}
           onGemt={() => {

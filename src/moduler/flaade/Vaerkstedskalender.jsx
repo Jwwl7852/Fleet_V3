@@ -64,7 +64,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { harModul } from "../../fleet/moduler.js";
 import { num, dato, datoTid, kr } from "../../fleet/format.js";
 import {
   Kort, KpiRaekke, Pille, Knap, Henter, Datatilstand,
@@ -127,7 +126,7 @@ const KASSER = [
 ];
 
 export default function Driftskalender() {
-  const { bruger, moduler } = useFleet();
+  const { bruger } = useFleet();
   /* ⚠ PERMISSIONEN, IKKE ROLLEN. Og den er KUN til at tegne knappen —
      serveren spørger om den samme, og det er dér den afgøres. En kontrol der
      kun findes i frontend, er en pæn knap. */
@@ -150,18 +149,16 @@ export default function Driftskalender() {
   const enheder = useListe("koeretoejer", {
     vindue: "alle", demo: DEMO_KOERETOEJER,
   });
-  /* ⚠ NODEN, IKKE DEMO-SÆTTET — og den er spærret af ET ANDET MODUL.
-     `leverandoerer` er modulspærret på `indkoeb` i firebase.rules.json, og
-     en kunde der har Fleet men ikke Procure, ville få en permission-denied
-     hver gang han åbnede driftskalenderen. `hent: false` er præcis til det:
-     en node der er spærret af et fravalgt modul, giver en TOM liste — ikke
-     en fejl. Det er samme tilfælde som Warehouses lokationsskærm der tæller
-     kasser hos en kunde uden Unitbooking. Se useListe.
-
-     Formularen siger det så på skærmen frem for at tilbyde en tom vælger. */
-  const harProcure = harModul(moduler, "indkoeb");
+  /* ⚠ SKIVE 4B — NODEN ER IKKE LÆNGERE MODULSPÆRRET. Her stod `hent:
+     harProcure`, fordi `leverandoerer` var spærret på `indkoeb` — en kunde
+     med Fleet men uden Procure fik en permission-denied. Det er rettet ved
+     kilden: `leverandoerer` er nu fælles masterdata uden modulklausul
+     (Model B, `04_DATA_AND_PERMISSION_IMPACT.md` §28), gated på
+     `leverandoerer.laes` alene. Et `hent: false` her ville nu være præcis
+     det CLAUDE.md advarer mod: en dæmpet afvisning på en node der ikke har
+     nogen modulklausul at dæmpe. */
   const leverandoerer = useListe("leverandoerer", {
-    vindue: "alle", hent: harProcure, demo: DEMO_LEVERANDOERER,
+    vindue: "alle", demo: DEMO_LEVERANDOERER,
   });
 
   const [visning, setVisning] = useState("uge");
@@ -439,7 +436,6 @@ export default function Driftskalender() {
         <Planlaegdialog
           enheder={enheder.data}
           leverandoerer={leverandoerer.data}
-          harProcure={harProcure}
           onLuk={() => setPlanlaegger(false)}
           onGemt={() => { setPlanlaegger(false); opgaver.genindlaes(); }}
         />

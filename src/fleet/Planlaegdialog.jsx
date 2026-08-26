@@ -79,7 +79,7 @@ const FELTNAVN = {
  * stedet hvad der mangler.
  */
 export default function Planlaegdialog({
-  enheder, leverandoerer, harProcure, onLuk, onGemt,
+  enheder, leverandoerer, onLuk, onGemt,
   /* Gitterets forslag: { koeretoejId, startMs, varighedMin }. Skive 3B
      udvidede den med tre felter fra en indberetning: { beskrivelse,
      prioritet, indberetningId }. Se hovedet — det er et forslag, ikke en
@@ -298,18 +298,20 @@ export default function Planlaegdialog({
                 fejl={vis("leverandoerId")}
                 valgmuligheder={[
                   { vaerdi: "", label: "Eget værksted" },
+                  /* ⚠ SKIVE 4B — INAKTIVE KAN IKKE VÆLGES TIL NYT, men den
+                     allerede valgte skal blive stående — ellers ser en
+                     eksisterende opgave ud til at have mistet sin
+                     leverandør, fordi han i mellemtiden blev deaktiveret. */
                   ...leverandoerer
                     .filter((l) => l.kategori === "vaerksted" || l.kategori === "daek")
+                    .filter((l) => l.aktiv !== false || l.id === post.leverandoerId)
                     .map((l) => ({ vaerdi: l.id, label: l.navn })),
                 ]}
-                /* ⚠ SKIVE 3A — SAMME TO-TILSTANDS-HINT SOM Servicedialog.
-                   Stod før som `undefined` når Procure var aktivt — ingen
-                   hint overhovedet, hvor Servicedialogs altid sagde "Tom
-                   betyder eget personale." To formularer for "udføres af"
-                   der opførte sig forskelligt uden grund. */
-                hint={harProcure
-                  ? "Tom betyder eget værksted."
-                  : "Kun eget værksted: leverandørkartoteket hører til Procure, som ikke er aktivt."} />
+                /* ⚠ SKIVE 4B — INGEN TO-TILSTANDS-HINT LÆNGERE. Kartoteket
+                   var Procures eget indtil nu; hinten der sagde det, er ikke
+                   længere sand — `leverandoerer` er fælles masterdata, læst
+                   uafhængigt af om Procure-modulet er aktivt. */
+                hint="Tom betyder eget værksted." />
           <Felt id="pl-pri" label="Prioritet"
                 vaerdi={post.prioritet} saet={saet("prioritet")}
                 fejl={vis("prioritet")}

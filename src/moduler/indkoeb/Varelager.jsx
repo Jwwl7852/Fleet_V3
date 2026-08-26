@@ -127,9 +127,13 @@ export default function Varelager() {
     });
   };
 
+  /* ⚠ SKIVE 4B — INAKTIVE KAN IKKE VÆLGES TIL NYT, men den allerede valgte
+     bliver stående ved redigering. */
   const levvalg = [
     { vaerdi: "", label: "Ingen fast leverandør" },
-    ...lev.data.map((l) => ({ vaerdi: l.id, label: l.navn })),
+    ...lev.data
+      .filter((l) => l.aktiv !== false || l.id === udkast.leverandoerId)
+      .map((l) => ({ vaerdi: l.id, label: l.navn })),
   ];
   const artvalg = ALLE_BEVAEGELSESARTER.map((a) => ({
     vaerdi: a, label: BEVAEGELSESART[a].label,

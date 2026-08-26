@@ -180,6 +180,11 @@ export const KPI_KILDER = {
  *   facility  ← leverandoerer  hvem der servicerer anlægget
  *   indkoeb   ← indkoeb        hele modulets nøgletal
  *
+ * ⚠ SKIVE 4B — leverandoerer.laes ERSTATTER indkoeb.laes PÅ facility, OG
+ * FØJES TIL indkoeb'S LISTE. `leverandoerer` mistede sin indkoeb-klausul og
+ * fik sin egen permission (Model B) — begge domæner der har noden som kilde
+ * følger med, samme mekanisme som fakturaer i Skive 4A.
+ *
  * ⚠ EN CHAUFFØR MISTER DERMED FEM AF TI DOMÆNER PÅ FORSIDEN — og det er ikke
  * en fejl der skal rettes: de fem er regnet af tal han ikke må se. `useKpi()`
  * spørger kun om dem `laesbareDomaener()` siger ja til, så han får ingen
@@ -198,8 +203,8 @@ export const KPI_PERM = {
   kunder: "kunder.laes",
   oekonomi: "grundlag.laes",
   flaade: ["indkoeb.laes", "fakturaer.laes"],
-  facility: "indkoeb.laes",
-  indkoeb: ["indkoeb.laes", "fakturaer.laes"],
+  facility: "leverandoerer.laes",
+  indkoeb: ["indkoeb.laes", "fakturaer.laes", "leverandoerer.laes"],
 };
 
 /**

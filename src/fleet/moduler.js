@@ -299,7 +299,18 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
 
    ⚠ oekonomi og kunder ejer ingen node hver for sig ud over kunder/. Økonomi
    læser kpi, fakturaer og satser, som alle er base. Modulet styrer altså kun
-   om SKÆRMEN findes. Det er ikke en fejl i tabellen — det er hvad der er. */
+   om SKÆRMEN findes. Det er ikke en fejl i tabellen — det er hvad der er.
+
+   ⚠ SKIVE 4B — leverandoerer ER OGSÅ FLYTTET UD, Model B (Korrektion 3,
+   `04_DATA_AND_PERMISSION_IMPACT.md` §28). Stod tidligere som "indkoeb"
+   her, med begrundelsen at kun Procure rørte den — men elleve skærme uden
+   for Procure (Disponering, Servicekalender, Arbejdskøen,
+   Værkstedskalender m.fl.) læste den allerede, og fik en afvist læsning
+   hos enhver tenant uden Procure. Samme figur som `fakturaer` i beslutning
+   86: gates den på ÉT modul, spærres de andre forbrugere. Adgangen styres
+   nu udelukkende af `leverandoerer.laes`/`.skriv` i permissions.js —
+   IKKE af en inline modul-OR (reolpladser-mønstret, Model A), som
+   `04_DATA_AND_PERMISSION_IMPACT.md` eksplicit fravalgte. */
 
 /** Node → modul. Kun de noder et modul EJER alene. */
 export const NODE_MODUL = {
@@ -314,11 +325,6 @@ export const NODE_MODUL = {
   facility: "facility",
 
   indkoeb: "indkoeb",
-  /* ⚠ LEVERANDOEREN EJES AF INDKOEB ALENE — modsat `fakturaer`, som staar i
-     basen fordi to skaermene roerer den. En leverandoer roeres kun af
-     Indkoeb, og noden baerer hans PRISLISTE: hvad vi har aftalt at betale.
-     Det er ikke noget en tenant uden indkoebsmodulet skal kunne laese. */
-  leverandoerer: "indkoeb",
   lagre: "indkoeb",
   /* ⚠ TRIN 1 OG 2 I PROCURES PROCES — beslutning 78. Et BEHOV er ikke en
      ordre, og en ordre er ikke en indkoebslinje: `indkoeb` er linjer der

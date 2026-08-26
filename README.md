@@ -300,7 +300,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **141 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **142 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -551,11 +551,12 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Dashboard | 1 | referencemodulet — start her når du skriver et nyt |
 | Kunder | 1 | Skive 2A: flyttet ud af Opsætning til en fælles arbejdsindgang. Samme `kraeverModul: "kunder"` |
 | Fakturaer & bilag | 1 | Skive 2A: flyttet ud af Økonomi & Rapporter. Samme rute og samme `kraeverPerm: "indkoeb.laes"` — overgangstilstand, se nav.js |
+| Leverandører | 1 | Skive 4B: flyttet ud af Procure — fælles platform-masterdata for Fleet, Facility og Procure. Samme rute (`/indkoeb/leverandoerer`), ny `kraeverPerm: "leverandoerer.laes"` |
 | Økonomi / Fakturagrundlag | 2 | heraf Overblik som skjult detaljerute (V1: LATER). Fakturacenter er flyttet til Fælles > Fakturaer & bilag |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
 | Fleet | 3 | heraf Arbejdskø som skjult detaljerute |
 | Facility | 3 | heraf Klima & energi som skjult detaljerute (V1: LATER) |
-| Procure | 7 | Overblik, Behov, Bestillinger, Godkendelser, Fakturaer, Leverandører, Varelager |
+| Procure | 6 | Overblik, Behov, Bestillinger, Godkendelser, Fakturaer, Varelager — Leverandører er flyttet til Fælles |
 | Warehouse | 11 | modulet med flest skærme |
 | Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
 | Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |

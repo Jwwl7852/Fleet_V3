@@ -175,6 +175,25 @@ export const PERM = {
      havde: at sige god for at der skal betales er én handling. */
   fakturaerGodkend: "fakturaer.godkend",
 
+  /* --- Leverandører (Skive 4B, Korrektion 3) ---
+   *
+   * ⚠ TIDLIGERE indkoeb.laes/.skriv. `leverandoerer/` bruges i dag af ELLEVE
+   * skærme uden for Procure (Disponering, Servicekalender, Arbejdskøen,
+   * Værkstedskalender m.fl.) — en permission navngivet efter Procures eget
+   * modul ville låse et fælles kartotek fast under det ene modul der
+   * historisk ejede det. Rollefordelingen er bevidst identisk med dagens
+   * indkoeb.*: ingen mister eller får adgang ved dette skifte.
+   *
+   * ⚠ OG NODEN MISTEDE SIN MODULKLAUSUL SAMTIDIG. `leverandoerer` stod i
+   * NODE_MODUL som "indkoeb" — Model B (se moduler.js) gør den til en
+   * fuldt ugatet base-node, samme mønster som fakturaer/satser/grundlag,
+   * IKKE reolpladser' inline modul-OR. */
+  leverandoererLaes: "leverandoerer.laes",
+  /* Opret/redigér/deaktiver et leverandørobjekt — via gem(), ikke en
+     Cloud Function (se skriv.js). Samme snit som kunderSkriv/kasserSkriv:
+     master-data der skrives direkte, med reglerne som eneste autoritet. */
+  leverandoererSkriv: "leverandoerer.skriv",
+
   /* --- Audit --- */
   /* Læsning af auditloggen. Loggen er selv følsom: den afslører hvilke kunder
      der bliver kigget på, og af hvem. Derfor er den ikke synlig for enhver i
@@ -372,6 +391,9 @@ const KOMMERCIEL_LAES = [
      alene via tenant-medlemskab (fakturaer havde ingen .read-klausul).
      De tre er netop dem KOMMERCIEL_LAES allerede samler. */
   PERM.fakturaerLaes,
+  /* ⚠ SKIVE 4B — samme tre roller igen. Leverandøren mistede sin
+     indkoeb.laes-baserede adgang samtidig med sin modulklausul. */
+  PERM.leverandoererLaes,
 ];
 
 const BASIS_DATA = [
@@ -383,6 +405,8 @@ const BASIS_DATA = [
   /* ⚠ SKIVE 4A — samme tre roller som indkoebSkriv (casehandler, disponent,
      koordinator via ...BASIS_DATA, admin via ALLE_PERMS). */
   PERM.fakturaerSkriv,
+  /* ⚠ SKIVE 4B — samme snit igen. */
+  PERM.leverandoererSkriv,
   PERM.indberetningerSkriv,
   /* ⚠ UNITBOOKING-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
      spørgsmålet blev besvaret. Svaret var at LAGERMEDARBEJDEREN skal
@@ -450,6 +474,9 @@ export const ROLLE_PERMS = {
        KOMMERCIEL_LAES (den ville også give grundlagLaes), så fakturaerLaes
        skal stå her eksplicit, som indkoebLaes gør. */
     PERM.fakturaerLaes,
+    /* ⚠ SKIVE 4B — samme snit igen. Disponering slår selv op i
+       leverandoerer for at vise et navn (se noten ovenfor). */
+    PERM.leverandoererLaes,
     /* Kan ikke disponere uden at vide hvor bilerne er. */
     PERM.koeretoejerSensitiveLaes,
     /* ⚠ KUN sagLaes. Samme snit som indberetningerSensitiveLaes: han skal
@@ -574,6 +601,9 @@ export const ROLLE_PERMS = {
     PERM.indkoebLaes,
     /* ⚠ SKIVE 4A — samme snit som disponenten: ikke via KOMMERCIEL_LAES. */
     PERM.fakturaerLaes,
+    /* ⚠ SKIVE 4B — samme snit igen. Leverandørkartoteket er nu fælles, men
+       hans behov for det (§ noten ovenfor) er uændret. */
+    PERM.leverandoererLaes,
     PERM.kasserSkriv,
     PERM.kasseudlaanSkriv,
     /* ⚠ SAMME MAND, TO MODULER — IKKE EN OTTENDE ROLLE. Han står på lageret;

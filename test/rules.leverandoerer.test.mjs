@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "@firebase/rules-unit-testing";
-import { ref, set } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
 import { ALLE_KATEGORIER, ALLE_AFTALETYPER } from "../src/fleet/leverandoerer.js";
 
@@ -35,8 +35,12 @@ const medPerms = (uid, perms, tenant = T) =>
     tenant, rolle: "admin", perms: permStreng(perms),
   }).database();
 
+/* ⚠ SKIVE 4B — BÆRER NU OGSÅ leverandoererSkriv. Denne hjælper bruges både
+   til at skrive selve leverandøren (kræver leverandoererSkriv) og til at
+   skrive indkøbslinjer der refererer til den (kræver stadig indkoebSkriv,
+   uændret) — se "indkøb og fakturaer slår leverandøren op" nedenfor. */
 const somIndkoeber = (uid = "u-ind", tenant = T) =>
-  medPerms(uid, [PERM.indkoebSkriv], tenant);
+  medPerms(uid, [PERM.indkoebSkriv, PERM.leverandoererSkriv], tenant);
 
 const sti = (rest, tenant = T) => `tenants/${tenant}/${rest}`;
 const levSti = (id, tenant = T) => sti(`leverandoerer/${id}`, tenant);
@@ -142,21 +146,81 @@ describe("leverandøren som entitet", () => {
       set(ref(db, levSti("ekstra")), { ...LEVERANDOER, rabatPct: 12 }));
   });
 
-  it("kræver indkoeb.skriv — og deler den med indkøbslinjerne", async () => {
-    /* ⚠ INGEN EGEN PERMISSION, OG DET ER BESLUTTET. En permission mere ville
-       betyde en rolle der kan registrere et indkøb, men ikke oprette den
-       leverandør indkøbet kræver — og så ville den rolle sidde fast på sin
-       første post. */
-    const uden = medPerms("u-uden", ALLE_PERMS.filter((p) => p !== PERM.indkoebSkriv));
-    await assertFails(set(ref(uden, levSti("naegtet")), LEVERANDOER));
+  it("⚠ SKIVE 4B — kræver leverandoerer.skriv, IKKE indkoeb.skriv alene", async () => {
+    /* Leverandøren er fælles platform-masterdata for Fleet, Facility og
+       Procure (Model B, Korrektion 3) — ejerskabet er ikke længere Indkøbs.
+       En rolle der kan registrere et indkøb, kan derfor IKKE længere pr.
+       automatik oprette den leverandør indkøbet kræver: de to permissions
+       er nu adskilte, og det er en bevidst indskrænkning i forhold til
+       modellen før 4B (som havde 4 skrivende roller på begge — samme
+       fordeling som i dag, men nu via sit eget navn). */
+    const kunIndkoeb = medPerms("u-kun-indkoeb", [PERM.indkoebSkriv]);
+    await assertFails(set(ref(kunIndkoeb, levSti("naegtet-indkoeb")), LEVERANDOER));
+
+    const uden = medPerms(
+      "u-uden-lev",
+      ALLE_PERMS.filter((p) => p !== PERM.leverandoererSkriv),
+    );
+    await assertFails(set(ref(uden, levSti("naegtet-alle")), LEVERANDOER));
+
+    const kunLev = medPerms("u-kun-lev", [PERM.leverandoererSkriv]);
+    await assertSucceeds(set(ref(kunLev, levSti("tilladt-lev")), LEVERANDOER));
   });
 
-  it("er lukket for en tenant uden indkøbsmodulet", async () => {
-    /* Noden bærer PRISLISTEN — hvad vi har aftalt at betale. Modsat
-       `fakturaer`, som står i basen fordi to skærme rører den, rører kun
-       Indkøb en leverandør. */
-    const db = somIndkoeber("u-udenmodul", UDEN_MODUL);
-    await assertFails(set(ref(db, levSti("ny", UDEN_MODUL)), LEVERANDOER));
+  it("⚠ SKIVE 4B — er IKKE længere lukket for en tenant uden indkøbsmodulet", async () => {
+    /* Model B: noden er nu en fuldt ugatet base-node, ligesom `fakturaer` og
+       `satser` — elleve skærme uden for Procure læste den allerede før 4B og
+       fik permission-denied. En tenant uden `moduler.indkoeb` skal nu kunne
+       læse OG skrive noden, hvis brugeren har leverandoerer.laes/.skriv;
+       modulklausulen er fjernet fra begge sider af reglen. */
+    const skriver = somIndkoeber("u-udenmodul", UDEN_MODUL);
+    await assertSucceeds(set(ref(skriver, levSti("ny", UDEN_MODUL)), LEVERANDOER));
+
+    const laeser = medPerms("u-udenmodul-laes", [PERM.leverandoererLaes], UDEN_MODUL);
+    await assertSucceeds(get(ref(laeser, levSti(LEV, UDEN_MODUL))));
+  });
+
+  it("⚠ SKIVE 4B — leverandoerer.laes kræves for læsning", async () => {
+    const uden = medPerms(
+      "u-uden-laes",
+      ALLE_PERMS.filter((p) => p !== PERM.leverandoererLaes),
+    );
+    await assertFails(get(ref(uden, levSti(LEV))));
+
+    const med = medPerms("u-med-laes", [PERM.leverandoererLaes]);
+    await assertSucceeds(get(ref(med, levSti(LEV))));
+  });
+
+  it("⚠ SKIVE 4B — opret, redigér og deaktiver via samme skriveflade", async () => {
+    /* Ingen ny Cloud Function: opret, redigér og deaktiver går alle gennem
+       samme .write-regel, som gem() i skriv.js allerede rammer med
+       flet:true (update, ikke set). */
+    const db = somIndkoeber("u-crud");
+    const id = "lv-crud";
+    await assertSucceeds(set(ref(db, levSti(id)), { ...LEVERANDOER, navn: "CRUD Testleverandør" }));
+    await assertSucceeds(set(ref(db, levSti(`${id}/kontaktTelefon`)), "70 70 70 70"));
+    await assertSucceeds(set(ref(db, levSti(`${id}/aktiv`)), false));
+  });
+
+  it("⚠ SKIVE 4B — en deaktiveret leverandør kan ikke hardslettes", async () => {
+    /* newData.exists()-leddet (beslutning 53) gælder uændret for den
+       deaktiverede post — deaktivering er IKKE en ny slettevej. */
+    const db = somIndkoeber("u-hardslet");
+    const id = "lv-hardslet";
+    await set(ref(db, levSti(id)), { ...LEVERANDOER, aktiv: false });
+    await assertFails(set(ref(db, levSti(id)), null));
+  });
+
+  it("⚠ SKIVE 4B — tenant-isolation: Tenant A kan ikke læse eller skrive Tenant B's leverandører", async () => {
+    /* Fuld adgang i EGEN tenant (T), for at vise at afvisningen kommer af
+       tenant-grænsen og ikke af manglende permission. */
+    const somA = medPerms(
+      "u-tenant-a", [PERM.leverandoererLaes, PERM.leverandoererSkriv], T,
+    );
+    await assertFails(get(ref(somA, levSti(LEV, UDEN_MODUL))));
+    await assertFails(
+      set(ref(somA, levSti("fra-a", UDEN_MODUL)), { ...LEVERANDOER, navn: "Ulovligt fra A" }),
+    );
   });
 });
 

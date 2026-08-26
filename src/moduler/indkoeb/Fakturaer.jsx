@@ -162,9 +162,13 @@ export default function Fakturaer() {
     { vaerdi: "", label: "Vælg hvem der lagde ud…" },
     ...brugere.data.map((b) => ({ vaerdi: b.id, label: b.navn || b.email || b.id })),
   ];
+  /* ⚠ SKIVE 4B — INAKTIVE KAN IKKE VÆLGES TIL NYT, men den allerede valgte
+     bliver stående. */
   const levvalg = [
     { vaerdi: "", label: "Vælg leverandør…" },
-    ...leverandoerer.data.map((l) => ({ vaerdi: l.id, label: l.navn })),
+    ...leverandoerer.data
+      .filter((l) => l.aktiv !== false || l.id === kontant.leverandoerId)
+      .map((l) => ({ vaerdi: l.id, label: l.navn })),
   ];
 
   return (

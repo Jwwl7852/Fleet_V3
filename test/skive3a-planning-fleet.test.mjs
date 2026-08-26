@@ -260,9 +260,21 @@ describe("G) Servicedialog og Planlaegdialog: harmoniseret VISNING, eget feltske
     assert.match(fleet, /<Formular onGem=\{gem\} gemmer=\{gemmer\}/);
   });
 
-  it("⚠ SKIVE 3A — leverandørhintet er nu et symmetrisk to-tilstands-svar i begge", () => {
-    assert.match(service, /harProcure\s*\n?\s*\?\s*"Tom betyder eget personale\."/);
-    assert.match(fleet, /harProcure\s*\n?\s*\?\s*"Tom betyder eget værksted\."/);
+  it("⚠ SKIVE 4B — leverandørhintet er en ENKELT, ÆRLIG STRENG — harProcure-tilstanden er væk", () => {
+    /* 3A's to-tilstands-hint ("Procure endnu ikke tilkøbt" vs. "eget
+       personale") sagde et sted at leverandørkartoteket hørte til Procure —
+       usandt siden 4B gjorde leverandoerer til fælles platform-masterdata.
+       Prop'en harProcure er fjernet fra begge skærme, og hintet er nu det
+       samme uanset om Procure-modulet er købt. */
+    assert.match(service, /hint="Tom betyder eget personale\."/);
+    assert.match(fleet, /hint="Tom betyder eget værksted\."/);
+    /* ⚠ KODEN, IKKE KOMMENTARERNE. Begge filers hoved forklarer MED VILJE at
+       harProcure blev fjernet — det ord i en forklarende kommentar er ikke
+       det samme som en levende reference i koden. */
+    assert.ok(!/harProcure/.test(udenKommentarer(service)),
+      "Servicedialog.jsx nævner stadig harProcure i selve koden");
+    assert.ok(!/harProcure/.test(udenKommentarer(fleet)),
+      "Planlaegdialog.jsx nævner stadig harProcure i selve koden");
   });
 
   it("⚠ MEN FELTSKEMAET ER STADIG DERES EGET — ingen fælles feltliste er tvunget igennem", () => {

@@ -70,8 +70,13 @@ describe("modulkataloget svarer til menuen", () => {
      Procures linse (beslutning 86). Adgangen afgøres udelukkende af
      `kraeverPerm: "indkoeb.laes"` — en prøve for netop det står i
      navadgang.test.mjs. Dette er IKKE en glemt modulklausul; det er samme
-     bevidste undtagelse som noden selv har i firebase.rules.json. */
-  const UDEN_MODUL_MED_GRUND = new Set(["fakturacenter"]);
+     bevidste undtagelse som noden selv har i firebase.rules.json.
+
+     ⚠ SKIVE 4B — leverandoerer ER SAMME MØNSTER. Noden mistede sin
+     modulklausul og fik `kraeverPerm: "leverandoerer.laes"` i stedet — den
+     læses af elleve skærme uden for Procure, og adgangen afgøres udelukkende
+     af permissionen, ikke af et modul. */
+  const UDEN_MODUL_MED_GRUND = new Set(["fakturacenter", "leverandoerer"]);
 
   it("hvert HOVEDpunkt har et modul", () => {
     /* Et menupunkt uden modul kan ikke sælges — og kan heller ikke skjules

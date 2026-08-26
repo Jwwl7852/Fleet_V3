@@ -170,9 +170,10 @@ describe("Skive 2A — strukturelle invarianter", () => {
     }
   });
 
-  it("Fælles-gruppen indeholder præcis Dashboard, Kunder, Fakturaer & bilag, Økonomi/Fakturagrundlag", () => {
+  it("⚠ SKIVE 4B — Fælles-gruppen indeholder nu også Leverandører", () => {
     const faelles = NAV.filter((m) => m.gruppe === "faelles").map((m) => m.key);
-    assert.deepEqual(faelles, ["dashboard", "kunderOversigt", "fakturacenter", "oekonomi"]);
+    assert.deepEqual(faelles,
+      ["dashboard", "kunderOversigt", "fakturacenter", "leverandoerer", "oekonomi"]);
   });
 
   it("Driftsmoduler-gruppen står i rækkefølgen Planning, Fleet, Facility, Procure, Warehouse, Unitbooking, Workforce", () => {
@@ -221,14 +222,22 @@ describe("Skive 2A — strukturelle invarianter", () => {
       "kunderOversigt står stadig som barn under Opsætning — den skulle blive et topniveaupunkt");
   });
 
-  it("Leverandører er IKKE flyttet i denne skive", () => {
-    /* Eksplicit undtaget af opgavebeskrivelsen: "flyt ikke Leverandører
-       endnu". Den skal stadig stå som barn under Procure. */
+  it("⚠ SKIVE 4B — Leverandører er nu et topniveaupunkt, flyttet ud af Procure", () => {
+    /* Leverandører er ikke længere semantisk ejet af Procure — Skive 4B
+       gjorde leverandoerer til fælles platform-masterdata for Fleet,
+       Facility og Procure (Model B, samme mønster som Fakturaer & bilag i
+       4A). Ruten er UÆNDRET (/indkoeb/leverandoerer) — kun menupladsen
+       flyttede, som med fakturacenter i 4A. */
     const procure = NAV.find((m) => m.key === "indkoeb");
-    assert.ok(procure.born.some((b) => b.key === "leverandoerer"),
-      "Leverandører er flyttet ud af Procure — det hører til en senere delskive");
-    assert.ok(!NAV.some((m) => m.key === "leverandoerer"),
-      "Leverandører er blevet et topniveaupunkt — det hører til en senere delskive");
+    assert.ok(!procure.born.some((b) => b.key === "leverandoerer"),
+      "Leverandører står stadig som barn under Procure — 4B's flytning er ikke ført ud");
+    const punkt = NAV.find((m) => m.key === "leverandoerer");
+    assert.ok(punkt, "Leverandører er ikke længere et topniveaupunkt");
+    assert.equal(punkt.sti, "/indkoeb/leverandoerer",
+      "ruten er ændret — 4B må kun flytte MENUPLADSEN, se nav.js's hoved");
+    assert.equal(punkt.kraeverPerm, "leverandoerer.laes",
+      "kraeverPerm er ikke leverandoerer.laes — Skive 4B's permission-split er ikke ført ud");
+    assert.equal(punkt.gruppe, "faelles");
   });
 
   it("ingen rolle ser flere topniveaupunkter end ALLE roller tilsammen skulle kunne", () => {

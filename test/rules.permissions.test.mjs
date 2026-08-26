@@ -132,13 +132,12 @@ describe("serveren håndhæver permissions", () => {
       ["indkoeb", PERM.indkoebSkriv, { dato: 1786000000000,
         leverandoerId: "lv-hydra", vare: "Slange", antal: 1, prisPrEnhedOere: 1850,
         fakturastatus: "modtaget" }],
-      /* ⚠ leverandoerer DELER indkoeb.skriv — den har ikke sin egen.
-         En leverandoer er en del af Indkoeb, og en permission mere ville
-         betyde en rolle der kan registrere et indkoeb men ikke oprette den
-         leverandoer indkoebet kraever. Prøven staar her for at sharingen er
-         BESLUTTET frem for overset: en bruger uden indkoeb.skriv afvises
-         stadig, og det er halvdelen der betyder noget. */
-      ["leverandoerer", PERM.indkoebSkriv, { navn: "Ny Leverandoer", kategori: "daek" }],
+      /* ⚠ SKIVE 4B — leverandoerer HAR NU SIN EGEN PERMISSION, IKKE LÆNGERE
+         indkoeb.skriv. Leverandøren er fælles platform-masterdata for Fleet,
+         Facility og Procure (Model B, Korrektion 3) — en bruger med kun
+         indkoeb.skriv kan derfor ikke længere oprette en leverandør, og en
+         bruger med kun leverandoerer.skriv kan ikke registrere et indkøb. */
+      ["leverandoerer", PERM.leverandoererSkriv, { navn: "Ny Leverandoer", kategori: "daek" }],
       /* ⚠ STIEN ER GRUPPE/POST, IKKE BARE GRUPPE. `.write` flyttede ned på
          postniveau i beslutning 53, så et helt prisgrundlag ikke kan tømmes i
          ét kald. En skrivning på gruppen selv afvises nu — og det er præcis

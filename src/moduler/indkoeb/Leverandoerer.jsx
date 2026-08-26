@@ -26,18 +26,30 @@
  * reguleringer vises for sig, så en stigning kan ses FØR den rammer.
  * ---------------------------------------------------------------------------
  *
- * FASE 0: VISNING. Der skrives ingenting.
+ * ⚠ SKIVE 4B — CRUD TILFØJET. Kartoteket var ren visning ("FASE 0") indtil
+ * leverandøren blev fælles platform-masterdata for Fleet, Facility og
+ * Procure — en skærm tre moduler skal kunne oprette og vedligeholde fra,
+ * ikke kun Procure. Skrivningen går gennem `gem()` (samme vej som `kunder`
+ * og `reolpladser`), IKKE en ny Cloud Function — `leverandoerer/` har
+ * allerede en åben, regelhåndhævet `.write`, og en funktion mere ville
+ * være en anden vej til det samme felt.
  */
 import { useState } from "react";
 import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje,
+  Knap, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { gem, nyId } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 import {
-  LEVERANDOER_KATEGORI, AFTALETYPE,
+  LEVERANDOER_KATEGORI, ALLE_KATEGORIER, AFTALETYPE,
   beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG, maalTekst,
   gaeldendePrisliste, kommendePriser, indkoebBeloebOere, leverandoerFraDb,
+  valideLeverandoer, byggLeverandoer,
 } from "../../fleet/leverandoerer.js";
 import { DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
 import { useKpi } from "../../fleet/useKpi.js";
@@ -45,6 +57,10 @@ import { useListe } from "../../fleet/useListe.js";
 
 export default function Leverandoerer() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { bruger, path } = useFleet();
+  const maaSkrive = harPerm(bruger?.perms, PERM.leverandoererSkriv);
+  const [nyt, saetNyt] = useState(false);
+  const [redigerer, saetRedigerer] = useState(null);
 
   /* ⚠ LEVERANDØREN KOM FRA demo-indkoeb.js INDTIL NODEN FANDTES. Den fandtes
      ikke: `leverandoerer` stod slet ikke i firebase.rules.json, selv om BÅDE
@@ -108,7 +124,12 @@ export default function Leverandoerer() {
      findes ikke"** frem for at låne et tal fra en demofil. Se beslutning 91. */
   const KILDER = { indkoeb, fakturaer, sager: [], sagerFindes: false, indkoebAfkortet };
 
-  const aktive = leverandoerer.filter((l) => l.aktiv);
+  /* ⚠ SKIVE 4B — `l.aktiv !== false`, IKKE `l.aktiv`. Feltet er VALGFRIT i
+     reglerne; en post uden det er ikke "vi ved den er inaktiv", det er "der
+     er aldrig taget stilling" — og skal derfor tælle som aktiv, samme
+     polaritet som filtrene i Fleet/Facility/Procures leverandørvælgere. */
+  const aktive = leverandoerer.filter((l) => l.aktiv !== false);
+  const inaktive = leverandoerer.filter((l) => l.aktiv === false);
   const valgt = leverandoerer.find((l) => l.id === valgtId) || null;
 
   /* Nøgletallene BEREGNES her — beslutning 6. Et gemt performancetal driver
@@ -120,6 +141,23 @@ export default function Leverandoerer() {
   const udenFaktura = raekker.reduce((s, r) => s + r.n.manglendeFakturaer.vaerdi, 0);
   /* AFLEDT af listen — hører derfor ikke i kpi/. */
   const forTyndt = raekker.filter((r) => !r.n.leveringspraecisionPct.nokData).length;
+
+  /* ⚠ SAMME LILLE SKRIVNING SOM DEN STORE FORMULAR — kun feltet aktiv.
+     Ingen ny mekanisme: samme gem(), samme flet:true, samme audit. */
+  const deaktiver = async (l) => {
+    await gem({
+      sti: path(`leverandoerer/${l.id}`), data: { aktiv: false }, foer: l,
+      flet: true, objekt: "leverandoerer", objektId: l.id, handling: AUDIT.aendre,
+    });
+    genindlaesLev();
+  };
+  const genaktiver = async (l) => {
+    await gem({
+      sti: path(`leverandoerer/${l.id}`), data: { aktiv: true }, foer: l,
+      flet: true, objekt: "leverandoerer", objektId: l.id, handling: AUDIT.aendre,
+    });
+    genindlaesLev();
+  };
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
@@ -139,7 +177,24 @@ export default function Leverandoerer() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Kort titel="Leverandører">
+      {nyt && (
+        <Leverandoerformular sti={path} paaLuk={() => saetNyt(false)}
+                              paaGemt={() => { saetNyt(false); genindlaesLev(); }} />
+      )}
+      {redigerer && (
+        <Leverandoerformular leverandoer={redigerer} sti={path}
+                              paaLuk={() => saetRedigerer(null)}
+                              paaGemt={() => { saetRedigerer(null); genindlaesLev(); }} />
+      )}
+
+      <Kort titel="Leverandører"
+            handling={
+              <Knap variant="primaer" disabled={!maaSkrive} onClick={() => saetNyt(true)}
+                    title={maaSkrive ? "Opret en leverandør."
+                                     : `Kræver ${PERM.leverandoererSkriv} — reglerne afviser.`}>
+                Ny leverandør
+              </Knap>
+            }>
         <Tabel
           kolonner={[
             { key: "navn", label: "Leverandør", render: (r) => r.l.navn },
@@ -174,7 +229,36 @@ export default function Leverandoerer() {
         </p>
       </Kort>
 
-      {valgt && <Detaljer l={valgt} kilder={KILDER} />}
+      {/* ⚠ INAKTIVE VISES FOR SIG — IKKE I PERFORMANCE-TABELLEN. Ranger man en
+          leverandør man ikke længere handler med, blander man "hvem klarer
+          sig godt" sammen med "hvem er her slet ikke mere". De har ingen
+          nøgletal her, kun en vej tilbage. */}
+      {inaktive.length > 0 && (
+        <Kort titel={`Inaktive leverandører (${num(inaktive.length)})`}>
+          <Tabel
+            kolonner={[
+              { key: "navn", label: "Leverandør", render: (l) => l.navn },
+              { key: "kategori", label: "Kategori",
+                render: (l) => LEVERANDOER_KATEGORI[l.kategori] || l.kategori },
+              { key: "handling", label: "", render: (l) => (
+                  <Knap disabled={!maaSkrive} onClick={() => genaktiver(l)}
+                        title={maaSkrive ? undefined : `Kræver ${PERM.leverandoererSkriv}.`}>
+                    Aktivér igen
+                  </Knap>
+                ) },
+            ]}
+            raekker={inaktive}
+            noegle={(l) => l.id}
+            tom="Ingen inaktive leverandører."
+          />
+        </Kort>
+      )}
+
+      {valgt && (
+        <Detaljer l={valgt} kilder={KILDER} maaSkrive={maaSkrive}
+                  paaRediger={() => saetRedigerer(valgt)}
+                  paaDeaktiver={() => deaktiver(valgt)} />
+      )}
     </div>
   );
 }
@@ -210,7 +294,7 @@ function Tal({ m, vis, enhed, tone }) {
 
 /* ---- Detaljer: aftalen og prislisten ----------------------------------- */
 
-function Detaljer({ l, kilder }) {
+function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
   /* ⚠ KILDERNE KOMMER IND. De var en MODULKONSTANT indtil indkoebslinjerne
      blev hentet fra noden — og en modulkonstant kan ikke kende komponentens
      data. Fejlen var ikke en byggefejl: `npm run build` gik igennem, og
@@ -221,7 +305,19 @@ function Detaljer({ l, kilder }) {
 
   return (
     <Gitter kolonner="minmax(0,1fr) minmax(0,2fr)">
-      <Kort titel={l.navn}>
+      <Kort titel={l.navn}
+            handling={
+              <span className="fc-med-ikon" style={{ gap: 8 }}>
+                <Knap disabled={!maaSkrive} onClick={paaRediger}
+                      title={maaSkrive ? undefined : `Kræver ${PERM.leverandoererSkriv}.`}>
+                  Redigér
+                </Knap>
+                <Knap disabled={!maaSkrive} onClick={paaDeaktiver}
+                      title={maaSkrive ? undefined : `Kræver ${PERM.leverandoererSkriv}.`}>
+                  Deaktivér
+                </Knap>
+              </span>
+            }>
         <MiniLinje label="CVR" vaerdi={l.cvr} />
         <MiniLinje label="Kategori" vaerdi={LEVERANDOER_KATEGORI[l.kategori]} />
         {/* Division BESKRIVER LEVERANDØRENS FORRETNING — derfor tilladt her,
@@ -234,6 +330,10 @@ function Detaljer({ l, kilder }) {
           <MiniLinje label="Aftalt rabat" vaerdi={pct(l.aftale.rabatPct)} />
         )}
         <MiniLinje label="E-mail" vaerdi={l.kontaktEmail} />
+        {/* ⚠ SKIVE 4B — TELEFON VISTES ALDRIG, selvom feltet altid har været i
+            reglerne og i demodata. Et felt der findes i basen, men ikke på
+            skærmen, er en tavs kilde ingen kan se. */}
+        <MiniLinje label="Telefon" vaerdi={l.kontaktTelefon} />
 
         <div style={{ marginTop: 12 }}>
           <MiniLinje label="Svartid på sager"
@@ -290,5 +390,89 @@ function Detaljer({ l, kilder }) {
         </p>
       </Kort>
     </Gitter>
+  );
+}
+
+/* ---- Opret/redigér — Skive 4B ------------------------------------------ */
+
+const tomLeverandoer = () => ({
+  navn: "", kategori: "", cvr: "", kontaktEmail: "", kontaktTelefon: "", aktiv: true,
+});
+
+/**
+ * ⚠ SAMME SKABELON SOM Pladsformular I Reolpladser.jsx. `flet:true`, fordi
+ * `aftale` og `prisliste` kan stå på posten i forvejen — denne formular
+ * rører dem ikke, og en fuld overskrivning ville tømme dem i tavshed.
+ */
+function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
+  const nyt = !leverandoer;
+  const [f, saetF] = useState(() => (leverandoer ? { ...tomLeverandoer(), ...leverandoer } : tomLeverandoer()));
+  const [roert, saetRoert] = useState({});
+  const [visAlle, saetVisAlle] = useState(false);
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const saet = (felt) => (v) => {
+    saetF((x) => ({ ...x, [felt]: v }));
+    saetRoert((x) => ({ ...x, [felt]: true }));
+    saetSvar(null);
+  };
+
+  const fejl = valideLeverandoer(f);
+  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
+  const kanGemme = Object.keys(fejl).length === 0;
+
+  const gemNu = async () => {
+    saetVisAlle(true);
+    if (!kanGemme) return;
+    saetGemmer(true);
+    const id = leverandoer?.id || nyId("lv");
+    const r = await gem({
+      sti: sti(`leverandoerer/${id}`), data: byggLeverandoer(f), foer: leverandoer || null,
+      flet: true,
+      objekt: "leverandoerer", objektId: id,
+      handling: nyt ? AUDIT.opret : AUDIT.aendre,
+    });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  const kategorivalg = [
+    { vaerdi: "", label: "Vælg kategori…" },
+    ...ALLE_KATEGORIER.map((k) => ({ vaerdi: k, label: LEVERANDOER_KATEGORI[k] })),
+  ];
+
+  return (
+    <Kort titel={nyt ? "Ny leverandør" : `Redigér ${leverandoer.navn}`}>
+      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
+                gemLabel={nyt ? "Opret leverandør" : "Gem ændringer"}
+                onAnnuller={paaLuk} svar={svar}>
+        <Feltraekke>
+          <Felt id="lv-navn" label="Navn" kraevet vaerdi={f.navn} saet={saet("navn")}
+                fejl={vis("navn")} />
+          <Felt id="lv-kategori" label="Kategori" kraevet valgmuligheder={kategorivalg}
+                vaerdi={f.kategori} saet={saet("kategori")} fejl={vis("kategori")} />
+        </Feltraekke>
+        <Feltraekke>
+          <Felt id="lv-cvr" label="CVR" vaerdi={f.cvr} saet={saet("cvr")}
+                fejl={vis("cvr")} hint="Otte cifre." />
+          <Felt id="lv-email" label="E-mail" vaerdi={f.kontaktEmail} saet={saet("kontaktEmail")}
+                fejl={vis("kontaktEmail")} />
+          <Felt id="lv-tlf" label="Telefon" vaerdi={f.kontaktTelefon} saet={saet("kontaktTelefon")}
+                fejl={vis("kontaktTelefon")} />
+        </Feltraekke>
+        {/* ⚠ AKTIV ER IKKE EN SLET-KNAP. Feltet findes for at kunne tage en
+            leverandør ud af drift uden at fjerne ham — se
+            "Deaktivér"-knappen i detaljepanelet, som er den normale vej.
+            Feltet står også her, så en genaktivering kan ske fra samme
+            formular hvis nogen redigerer en allerede inaktiv post. */}
+        <label className="fc-afkryds-punkt">
+          <input type="checkbox" checked={f.aktiv !== false}
+                 onChange={(e) => saet("aktiv")(e.target.checked)} />
+          Aktiv
+        </label>
+      </Formular>
+    </Kort>
   );
 }
