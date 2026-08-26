@@ -276,6 +276,30 @@ describe("facilityplanlaeg håndhæver det skærmen viser", () => {
     assert.ok(b.includes("res-${opgaveId}"), "reservationens id udledes ikke af opgaven");
   });
 
+  /**
+   * ⚠ B1 — V1-STABILISERINGSAUDITENS BLOCKER. `reservationFraOpgave()` sætter
+   * `kilde.id: opgave.id`, og indtil denne rettelse blev funktionen kaldt med
+   * det rå `post` — FØR `opgaveId` overhovedet var genereret. Resultatet var
+   * `kilde.id: undefined` i hver eneste reservation, og RTDB's `update()`
+   * kaster synkront på et `undefined`-felt: "Planlæg service" kunne ALDRIG
+   * fuldføre. Prøven her fejler eksplicit hvis nogen igen flytter kaldet til
+   * før opgaveId findes, eller lader det ske uden `id: opgaveId` med.
+   */
+  test("⚠ opgaveId GENERERES FØR reservationFraOpgave() KALDES", () => {
+    const b = udenKommentarer(blok);
+    const idxOpgaveId = b.indexOf('rod.child("opgaver").push().key');
+    const idxReservation = b.indexOf("reservationFraOpgave(");
+    assert.ok(idxOpgaveId >= 0, "opgaveId genereres ikke i funktionen");
+    assert.ok(idxReservation >= 0, "reservationFraOpgave kaldes ikke i funktionen");
+    assert.ok(idxOpgaveId < idxReservation,
+      "opgaveId genereres EFTER reservationFraOpgave() — kilde.id bliver undefined, " +
+      "og RTDB's update() kaster synkront på et undefined-felt (B1).");
+    assert.ok(b.includes("reservationFraOpgave({ ...post, id: opgaveId })"),
+      "reservationFraOpgave kaldes uden opgaveId — kilde.id bliver undefined (B1)");
+    assert.equal((b.match(/rod\.child\("opgaver"\)\.push\(\)\.key/g) || []).length, 1,
+      "opgaveId genereres to gange — kun det første id ender i reservationen");
+  });
+
   test("⚠ PRØVER LEDIGHEDEN, OG OVERSKRIVER IKKE", () => {
     const b = udenKommentarer(blok);
     /* ⚠ HELE RUMMET, IKKE ÉN STI. Her stod `tjekLedigMod(` indtil beslutning

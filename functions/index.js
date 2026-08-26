@@ -3945,9 +3945,17 @@ export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
   }
 
   /* ---- Reservationen, bygget EET sted --------------------------------- */
+  /* ⚠ B1 — FUNDET VED V1-STABILISERINGSAUDIT. opgaveId skal genereres FØR
+     reservationFraOpgave() kaldes, ikke efter: kilde.id sættes til
+     opgave.id, og uden det bar hver eneste reservation denne funktion
+     nogensinde skrev, kilde.id: undefined — en skrivning RTDB afviser med
+     "values argument contains undefined". Servicebesøg kunne derfor ALDRIG
+     planlægges gennem UI'et. Samme rettelse som opgaveplanlaeg fik i Skive 3B:
+     reservationFraOpgave({ ...post, id: opgaveId }). */
+  const opgaveId = rod.child("opgaver").push().key;
   let ny;
   try {
-    ny = reservationFraOpgave(post);
+    ny = reservationFraOpgave({ ...post, id: opgaveId });
   } catch (e) {
     throw new HttpsError("invalid-argument", e.message);
   }
@@ -3992,7 +4000,7 @@ export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
   }
 
   /* ---- EEN SKRIVNING --------------------------------------------------- */
-  const opgaveId = rod.child("opgaver").push().key;
+  /* opgaveId er allerede genereret ovenfor, før reservationFraOpgave(). */
   const nu = Date.now();
 
   const opdatering = {};
