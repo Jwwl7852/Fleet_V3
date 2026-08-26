@@ -9,10 +9,18 @@
  *  en liste: `disponent`-presettet i permissions.js har ikke
  *  PERM.bookingGodkend.
  *
- *  Skift bruger i sidebaren og se knappen ændre sig. Det er hele
- *  adgangsmodellen på ét skærmbillede: knapperne er ikke hardkodede, de er
- *  genereret af tilstandsmaskinen filtreret på dine permissions.
+ *  Adgangsmodellen ses ved at prøve knappen i `Skrivningen` som to
+ *  forskellige roller: knapperne er ikke hardkodede, de er genereret af
+ *  tilstandsmaskinen filtreret på dine permissions.
  * ═══════════════════════════════════════════════════════════════════════
+ *
+ * ⚠ V1-STABILISERING HF1 — DEN GAMLE `Godkendelse`-DEBUGRUDE ER FJERNET.
+ * Der stod her et separat kort ("Godkendelse — rolle: X") der dumpede
+ * `kanSkifteEtape()`s raa svar, permissionstrengen `booking.godkend` og en
+ * saetning der bad brugeren skifte rolle i sidebaren — synligt for enhver
+ * rolle, ikke bag et dev-flag. De to slags nej det forklarede, forklares nu
+ * i stedet af den RIGTIGE knap i `Skrivningen`, via dens egen `title` —
+ * samme moenster som resten af appen bruger til en deaktiveret knap.
  *
  * ⚠ FORSLAGET HØRER PÅ ETAPEN — BESLUTNING 40.
  *
@@ -34,7 +42,7 @@
  * Vises kun den første, læses enhver manglende handling som et
  * rettighedsproblem — og så beder en koordinator om adgang hun allerede har,
  * i stedet for at vælge et forslag. `kanSkifteEtape()` svarer på begge, og
- * skærmen viser det svar den får.
+ * den rigtige knaps `title` viser det svar den får.
  *
  * ⚠ OG DE FEM DISPONERINGSTJEK VISES FOR DET VALGTE FORSLAG — før man
  * trykker. Serveren kører dem igen og afviser med SAMME sætning; det er den
@@ -72,12 +80,11 @@ import {
   Kort, Tom, Tabel, Pille, Knap, Gitter, MiniLinje, Formularsvar,
 } from "../../fleet/ui.jsx";
 import {
-  TILSTAND, kanSkifteEtape, byggEtapeSkifte, tilgaengeligeEtapeHandlinger,
+  TILSTAND, kanSkifteEtape, tilgaengeligeEtapeHandlinger,
   TRANSPORTTYPE, forslagListe, aktiveForslag, erTrukket,
 } from "../../fleet/booking-state.js";
 import { tjekDisponering, TONE } from "../../fleet/disponering.js";
 import { skiftEtape } from "../../fleet/disponer.js";
-import { PERM } from "../../fleet/permissions.js";
 import {
   DEMO_BOOKINGER,
 } from "../../fleet/demo-bookinger.js";
@@ -187,14 +194,7 @@ export function ForslagOgReservation({ bookingId }) {
      foerste koordinatoren laeser, og et demo-navn dér er en anden kunde. */
   const k = find(kundeListe.data, booking.kundeId);
 
-  /* Etapen som `kanSkifteEtape()` ser den — med det forslag brugeren har valgt
-     lige NU, ikke det der ligger gemt. Ellers ville svaret ikke svare til det
-     man ser på skærmen. */
-  const somValgt = etape ? { ...etape, valgtForslagId } : null;
   const muligheder = etape ? tilgaengeligeEtapeHandlinger(etape.tilstand, perms) : [];
-  const godkendSvar = somValgt
-    ? kanSkifteEtape(somValgt, "reserveret", perms, { begrundelse })
-    : { ok: false, aarsag: "Forløbet har ingen etape." };
 
   /* ⚠ ET TRUKKET FORSLAG KAN IKKE VÆLGES — beslutning 59. Det bliver
      liggende, fordi koordinatoren måske HAR set det, men det er ikke længere
@@ -298,21 +298,15 @@ export function ForslagOgReservation({ bookingId }) {
           </Tom>
         </Kort>
       ) : (
-        <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-          <Forslagstabel
-            etape={etape}
-            forslag={forslag}
-            trukne={trukne}
-            valgtForslagId={valgtForslagId}
-            setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
-            biler={bilListe.data}
-            personale={persListe.data}
-          />
-          <Godkendelse
-            svar={godkendSvar} muligheder={muligheder}
-            rolle={bruger?.rolle} valgtForslagId={valgtForslagId}
-          />
-        </Gitter>
+        <Forslagstabel
+          etape={etape}
+          forslag={forslag}
+          trukne={trukne}
+          valgtForslagId={valgtForslagId}
+          setValgtForslagId={(v) => { setValgtForslagId(v); setSvar(null); }}
+          biler={bilListe.data}
+          personale={persListe.data}
+        />
       )}
 
       {etape && valgtForslag && (
@@ -321,7 +315,7 @@ export function ForslagOgReservation({ bookingId }) {
 
       {etape && (
         <Skrivningen
-          etape={etape} svar={godkendSvar} bruger={bruger}
+          etape={etape} bruger={bruger}
           begrundelse={begrundelse} setBegrundelse={setBegrundelse}
           muligheder={muligheder} valgtForslagId={valgtForslagId}
           send={send} arbejder={arbejder} serversvar={svar}
@@ -411,73 +405,6 @@ function Forslagstabel({ etape, forslag, trukne = [], valgtForslagId, setValgtFo
           "forslag 2" bliver ved med at pege på det samme.
         </p>
       )}
-    </Kort>
-  );
-}
-
-/* ---- Beslutning 5, synlig ---------------------------------------------- */
-
-function Godkendelse({ svar, muligheder, rolle, valgtForslagId }) {
-  /* De to slags nej skilles ad. Den ene handler om HVEM du er, den anden om
-     hvad der mangler på skærmen. */
-  const manglerPerm = !muligheder.some((m) => m.kraeverPerm === PERM.bookingGodkend);
-  const manglerValg = !valgtForslagId;
-
-  return (
-    <Kort titel={`Godkendelse — rolle: ${rolle || "ukendt"}`}>
-      <MiniLinje
-        label="kanSkifteEtape(→ reserveret)"
-        vaerdi={svar.ok
-          ? <Pille tone="ok">ok</Pille>
-          : <Pille tone="bad">afvist</Pille>}
-      />
-
-      {!svar.ok && (
-        <p className={`fc-hint ${manglerPerm ? "fc-bad" : ""}`} style={{ marginTop: 10 }}>
-          {svar.aarsag}
-        </p>
-      )}
-
-      {/* Her er de to slags nej skrevet ud, så et manglende valg ikke læses
-          som en manglende rettighed. */}
-      <div style={{ borderTop: "1px solid var(--bc-line)", margin: "14px 0 10px" }} />
-      <MiniLinje
-        label="Har booking.godkend"
-        vaerdi={manglerPerm
-          ? <Pille tone="bad">nej</Pille>
-          : <Pille tone="ok">ja</Pille>}
-      />
-      <MiniLinje
-        label="Forslag valgt"
-        vaerdi={manglerValg
-          ? <Pille tone="warn">nej</Pille>
-          : <Pille tone="ok">ja</Pille>}
-      />
-
-      <p className="fc-hint" style={{ marginTop: 12 }}>
-        {manglerPerm ? (
-          <>
-            <b>Det her er beslutning 5.</b> Rollen <b>{rolle}</b> har ikke{" "}
-            <code>booking.godkend</code> — og det står ikke som en regel om hvem der
-            ikke må, men som et <b>felt der mangler</b> i presettet i{" "}
-            <code>permissions.js</code>. Disponenten laver forslagene og må ikke
-            godkende sit eget. Skift til <b>koordinator</b> i sidebaren og se knappen
-            blive aktiv.
-          </>
-        ) : manglerValg ? (
-          <>
-            Du <b>har</b> adgangen — det der mangler, er et <b>valg</b>. Det er den
-            anden slags nej, og den er værd at kunne skelne: uden den ville en
-            koordinator bede om rettigheder hun allerede har.
-          </>
-        ) : (
-          <>
-            Både adgang og forudsætninger er på plads. Knappen kalder{" "}
-            <code>etapeskift</code>, som kører de fem tjek igen og skriver etapen,
-            reservationerne og forløbets afledte tilstand i <b>én</b> opdatering.
-          </>
-        )}
-      </p>
     </Kort>
   );
 }
@@ -583,14 +510,9 @@ function Tjekkene({ raekker, forslag }) {
 /* ---- Hvad der bliver skrevet ------------------------------------------- */
 
 function Skrivningen({
-  etape, svar, bruger, begrundelse, setBegrundelse,
+  etape, bruger, begrundelse, setBegrundelse,
   muligheder, valgtForslagId, send, arbejder, serversvar, spaerret, tjekraekker,
 }) {
-  const opdatering = byggEtapeSkifte(etape, "reserveret", {
-    rolle: bruger?.rolle, bruger: bruger?.uid, begrundelse, valgtForslagId,
-  });
-  const historikNoegle = Object.keys(opdatering).find((n) => n.startsWith("historik/"));
-
   return (
     <Kort titel="Handlinger">
       <div className="fc-felt">
@@ -634,26 +556,6 @@ function Skrivningen({
       </div>
 
       <Formularsvar svar={serversvar} />
-
-      <div style={{ marginTop: 14 }}>
-        <MiniLinje label="tilstand" vaerdi={<code>{opdatering.tilstand}</code>} />
-        <MiniLinje label="valgtForslagId" vaerdi={<code>{String(opdatering.valgtForslagId)}</code>} />
-        <MiniLinje label="sidstAendretAf" vaerdi={<code>{String(opdatering.sidstAendretAf)}</code>} />
-        <MiniLinje label="historik" vaerdi={<code>{historikNoegle}</code>} />
-      </div>
-
-      <p className="fc-hint" style={{ marginTop: 12 }}>
-        <b>Der skrives altid til historik.</b> En afvist eller returneret etape skal
-        kunne forklares et halvt år senere, og begrundelsen står i objektets egen
-        historik — ikke i auditloggen, hvor fritekst ikke kommer med som værdi.
-      </p>
-      <p className="fc-hint" style={{ marginTop: 8 }}>
-        ⚠ <b>Skærmen skriver ikke selv.</b> <code>etaper</code> og{" "}
-        <code>reservationer</code> er <code>.write: false</code> for alle — også
-        admin. <code>etapeskift</code> skriver etapen, én reservation pr. enhed og
-        pr. chauffør, og forløbets afledte tilstand i <b>én</b> opdatering. To kald
-        kunne lykkes halvt, og så stod der en godkendt etape uden en reservation.
-      </p>
     </Kort>
   );
 }

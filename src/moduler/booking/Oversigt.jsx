@@ -181,7 +181,17 @@ export default function BookingOversigt() {
   /* ⚠ NODEN, IKKE DEMOSÆTTET — og divisionsfilteret ligger i useListe.
      Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
      Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder. */
-  const alleOpgaver = opgaveListe.data;
+  /* ⚠ V1-STABILISERING HF1 — HER STOD `opgaveListe.data` UFILTRERET.
+     `opgaver` er en Fleet/Facility-node (art er "vaerksted" eller "facility",
+     beslutning 21) — Planning ejer den ikke, og læste den alligevel hel ind i
+     sin egen arbejdsliste. Live-bekræftet: standardfanen viste "Serviceeftersyn
+     250.000 km — Bil 78" under en overskrift der lover transportarbejde. Fleets
+     egen Driftskalender filtrerer allerede `o.art === "vaerksted"` for at VISE
+     dem (Vaerkstedskalender.jsx); her filtreres den samme kilde for at
+     UDELUKKE dem — samme felt, samme model, modsat retning. Værkstedsopgaven
+     forsvinder ikke: den findes stadig i `opgaver`-noden og på Fleets egen
+     skærm, kun ikke her. */
+  const alleOpgaver = opgaveListe.data.filter((o) => o.art !== "vaerksted");
 
   /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
      og den står allerede i topbaren. */
@@ -476,7 +486,7 @@ export default function BookingOversigt() {
           Hentede vi kun etaperne, ville tabellen ovenfor stå med den gamle
           bookingtilstand, og det er netop den slags uenighed skærmen findes
           for at gøre synlig. */}
-      <Handlinger raekker={viste} perms={bruger?.perms} rolle={bruger?.rolle}
+      <Handlinger raekker={viste} perms={bruger?.perms}
                   onSkiftet={() => {
                     etapeListe.genindlaes();
                     bookingListe.genindlaes();
@@ -496,7 +506,7 @@ const timer = (min) => (min == null ? "—" : `${(min / 60).toFixed(1).replace("
  * Knapperne GENERERES af tilstandsmaskinen plus permissions. Ingen håndskreven
  * knaprække — skifter man rolle i demo-vælgeren, ændrer listen sig af sig selv.
  */
-function Handlinger({ raekker, perms, rolle, onSkiftet }) {
+function Handlinger({ raekker, perms, onSkiftet }) {
   /* ⚠ HANDLINGERNE HØRER TIL ETAPEN, IKKE TIL FORLØBET — beslutning 40.
      Panelet spurgte før `tilgaengeligeHandlinger(booking.vist)`, men
      bookingens tilstand er AFLEDT: den er ikke noget nogen kan skifte. Det
@@ -513,7 +523,7 @@ function Handlinger({ raekker, perms, rolle, onSkiftet }) {
     .filter((g) => g.muligheder.length > 0);
 
   return (
-    <Kort titel={`Hvad du må lige nu — rolle: ${rolle || "ukendt"}`}>
+    <Kort titel="Hvad du må lige nu">
       {grupper.length === 0 ? (
         <Tom>
           Din rolle har ingen tilgængelige tilstandsskift på de viste forløbs etaper.
@@ -542,18 +552,6 @@ function Handlinger({ raekker, perms, rolle, onSkiftet }) {
           noegle={(g) => g.e.id}
         />
       )}
-      <p className="fc-hint" style={{ marginTop: 12 }}>
-        Listen er <b>genereret</b> af <code>tilgaengeligeEtapeHandlinger()</code> —
-        etapens lovlige overgange, filtreret på dine permissions. Der findes ingen
-        håndskreven knaprække, så en rolle kan ikke komme til at se en knap den ikke
-        må bruge. Skift rolle i sidebaren og se listen ændre sig.
-        {" "}⚠ Handlingerne står på <b>etapen</b>, ikke på forløbet: bookingens
-        tilstand er afledt af sine etaper og er ikke noget nogen skifter.
-        {" "}⚠ De skift der kræver et <b>forslag</b>, står ikke som knapper her —
-        et forslag laves hvor turen kan ses, i <b>Disponering</b> og{" "}
-        <b>Forslag</b>. En knap der åbnede en dialog man ikke kunne udfylde,
-        ville være en attrap.
-      </p>
     </Kort>
   );
 }
