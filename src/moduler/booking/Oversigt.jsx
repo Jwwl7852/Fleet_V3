@@ -51,7 +51,7 @@ import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
 import {
   TILSTAND, forloebstilstand, tilgaengeligeEtapeHandlinger, TRANSPORTTYPE,
-  forslagListe,
+  forslagListe, PLANNING_OPGAVE_ARTER,
 } from "../../fleet/booking-state.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i dem. */
 import { DEMO_BOOKINGER } from "../../fleet/demo-bookinger.js";
@@ -181,17 +181,13 @@ export default function BookingOversigt() {
   /* ⚠ NODEN, IKKE DEMOSÆTTET — og divisionsfilteret ligger i useListe.
      Mockuppen havde et "Afdeling"-dropdown i skærmen; divisionen er shellens
      Gods/Bus (beslutning 9), og to steder at vælge den er to sandheder. */
-  /* ⚠ V1-STABILISERING HF1 — HER STOD `opgaveListe.data` UFILTRERET.
-     `opgaver` er en Fleet/Facility-node (art er "vaerksted" eller "facility",
-     beslutning 21) — Planning ejer den ikke, og læste den alligevel hel ind i
-     sin egen arbejdsliste. Live-bekræftet: standardfanen viste "Serviceeftersyn
-     250.000 km — Bil 78" under en overskrift der lover transportarbejde. Fleets
-     egen Driftskalender filtrerer allerede `o.art === "vaerksted"` for at VISE
-     dem (Vaerkstedskalender.jsx); her filtreres den samme kilde for at
-     UDELUKKE dem — samme felt, samme model, modsat retning. Værkstedsopgaven
-     forsvinder ikke: den findes stadig i `opgaver`-noden og på Fleets egen
-     skærm, kun ikke her. */
-  const alleOpgaver = opgaveListe.data.filter((o) => o.art !== "vaerksted");
+  /* ⚠ V1-STABILISERING HF1b — POSITIV FILTRERING MOD PLANNING_OPGAVE_ARTER,
+     IKKE "ALT UNDTAGEN VAERKSTED". Se dens eget hoved i booking-state.js:
+     ingen opgave-art er Planning-ejet, verificeret mod opgaver.js — ikke
+     gættet. Listen er derfor tom med vilje, og "Alle opgaver" viser korrekt
+     nul rækker fra `opgaver`; Planning's egne poster står uændret i
+     "Bookinger"-fanen ved siden af. */
+  const alleOpgaver = opgaveListe.data.filter((o) => PLANNING_OPGAVE_ARTER.includes(o.art));
 
   /* Skærmens EGNE filtre. Periode står ikke her — shellen ejer periodevælgeren,
      og den står allerede i topbaren. */

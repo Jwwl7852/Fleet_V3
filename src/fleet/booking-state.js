@@ -627,6 +627,32 @@ export const FORSLAGBARE_TILSTANDE = ["afventerPlan", "aaben", "returneret"];
 /** Højst tre. Se valideForslag(). */
 export const MAKS_FORSLAG = 3;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   V1-STABILISERING HF1b — HVILKE opgaver.art EJER PLANNING?
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ SVARET ER INGEN, OG DET ER VERIFICERET, IKKE OVERSET.
+
+   `opgaver.js`s ALLE_OPGAVE_ARTER er nøjagtig ["vaerksted", "facility"]
+   (beslutning 21) — og transportarbejde, som Planning ejer, står ALDRIG i
+   `opgaver`. Det er selve pointen med "DE TO NODER FORBLIVER TO" i
+   opgaver.js's eget hoved (beslutning 16): en langtur i `opgaver` ville være
+   en anden post for samme tildeling, ikke en tredje art. Planning-ejede
+   poster er `bookinger`/`etaper` — en anden node, uden et art-felt overhovedet
+   (se demo-bookinger.js) — og de går aldrig gennem dette filter.
+
+   ⚠ DERFOR EN ÆGTE TOM ALLOWLISTE, IKKE "ALT UNDTAGEN VAERKSTED".
+   Oversigt.jsx's "Alle opgaver"-fane filtrerede før med `o.art !== "vaerksted"`
+   — det lukkede værkstedsopgaver ude, men lod facility-serviceopgaver blive
+   stående, som Planning ejer lige så lidt. Positiv filtrering mod DENNE liste
+   giver derfor korrekt nul rækker fra `opgaver`, og Planning's egne poster
+   vises uændret i "Bookinger"-fanen ved siden af, som læser en helt anden
+   kilde. test/hf1-planning-oprydning.test.mjs prøver listen mod
+   ALLE_OPGAVE_ARTER, så en fremtidig, reelt Planning-ejet art ikke bare
+   forsvinder i tavshed hvis den tilføjes til opgaver.js uden at nogen tog
+   stilling til den her. */
+export const PLANNING_OPGAVE_ARTER = [];
+
 /**
  * valideForslag(forslag, etape, { biler, personale }) → { ok, fejl }
  *
