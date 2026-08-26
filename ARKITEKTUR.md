@@ -4,7 +4,7 @@ Firebase Realtime Database. **To projekter:**
 
 | Alias | Projekt | RTDB | Storage | Plan |
 |---|---|---|---|---|
-| `dev` | `fleetcontrol-dev-1ac1c` | europe-west1, locked mode | **ikke oprettet** | Spark |
+| `dev` | `fleetcontrol-dev-1ac1c` | europe-west1, locked mode | europe-west1, Regional (Skive 4C) | Blaze |
 | `prod` | `fleetcontrol-98e11` | europe-west1 | europe-west1, Regional | — |
 
 Aliaserne står i `.firebaserc`, så `firebase deploy --project dev` og
@@ -26,9 +26,25 @@ RTDB-instansen. Oprettes et nyt projekt, skal begge dele derfor sættes til
 migrering til en ny bucket. Det er noteret her, fordi det ellers er den slags
 der skal slås op forfra hver gang nogen spørger.
 
-**DEV har ingen Storage-bucket.** Den kræver Blaze, og DEV står på Spark. Det
-er udskudt til en skærm faktisk skal uploade filer — og når den dag kommer,
-skal bucket'en oprettes i `europe-west1` sammen med en budgetalarm.
+**Rettet, Skive 4C — DEV STOD IKKE PÅ SPARK.** Her stod "DEV har ingen
+Storage-bucket. Den kræver Blaze, og DEV står på Spark." Det andet var
+allerede forkert, og det var muligt at måle: DEV kører Cloud Functions v2
+(kræver Blaze i sig selv) og `firebase functions:list --project dev` viste
+dem allerede kørende — og et opslag mod Cloud Billing API'et
+(`billingInfo`) bekræftede `billingEnabled: true` for
+`fleetcontrol-dev-1ac1c`, samme svar som Firebase Console selv viste
+("Blaze — Pay as you go"). README.md sagde det modsatte af denne fil, og de
+to var ikke slået op mod virkeligheden før nu.
+
+**DEV har nu en Storage-bucket**, oprettet i Firebase Console (Skive 4C,
+`gs://fleetcontrol-dev-1ac1c.firebasestorage.app`), eksplicit sat til
+`europe-west1`/Regional — IKKE standardvalget dialogen foreslog først
+("No cost location" → `US-EAST1`). Se advarslen ovenfor: regionen kan ikke
+ændres bagefter, og et forkert valg her ville have krævet en migrering.
+`storage.rules` lukker al direkte klient-SDK-adgang til bucket'en — al reel
+adgang går gennem Cloud Functions'  signerede URL'er, se
+`functions/index.js`s fire dokument-funktioner og
+docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md.
 
 ### Ældre projekter i kontoen
 

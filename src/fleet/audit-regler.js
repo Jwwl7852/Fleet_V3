@@ -106,6 +106,15 @@ export const LOGBARE_FELTER = new Set([
      "tilstand"/"status" ovenfor. partId er en kontrolleret reference til
      DENNE sags egne parter — ikke en fri adresse, og ikke fritekst. */
   "mailStatus", "partId",
+  /* ⚠ SKIVE 4C — fakturaId, valideretMime, stoerrelse. fakturaId er en
+     kontrolleret reference (som kasseId/koeretoejId ovenfor) — reglen
+     kræver at den peger på en faktura der findes. valideretMime er lukket
+     vokabular (tre tilladte typer), samme klasse som "art"/"type"/
+     "kategori". stoerrelse er et tal i bytes, samme klasse som "km"/
+     "antal" — allowlisten findes for at holde TASTET TEKST ude, ikke tal.
+     `originaltFilnavn` er DERIMOD fritekst fra en bruger og står bevidst
+     IKKE her, samme skel som sagsnummer/beskrivelse andre steder. */
+  "fakturaId", "valideretMime", "stoerrelse",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */
@@ -196,6 +205,10 @@ const REGNSKABSOBJEKTER = new Set([
      bevægelser der udløste det. Lå sporet i drift-partitionen, ville
      halvdelen af en fakturas historik have en anden levetid end den anden. */
   "grundlag", "omkostninger",
+  /* ⚠ SKIVE 4C — fakturaDokument HØRER SAMME STED SOM SIN FAKTURA. Et bilag
+     er regnskabsbevis, ikke drift — samme begrundelse som grundlaget
+     ovenfor, og samme retention-klasse som den faktura det er hæftet på. */
+  "fakturaDokument",
 ]);
 
 const SIKKERHEDSHANDLINGER = new Set([

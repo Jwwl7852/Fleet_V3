@@ -96,9 +96,11 @@ og går videre, så en skærm ikke går ned når loggen er nede. Det er rigtigt 
 en læseskærm og forkert for en pilot: kunden skal kunne få svar på hvem der
 ændrede hvad.
 
-⚠ **DEV har ingen Storage-bucket** (kræver Blaze; DEV står på Spark). Skal en
-skærm uploade filer, skal bucket'en oprettes i `europe-west1` sammen med en
-budgetalarm. Regionen kan ikke ændres bagefter — se ARKITEKTUR.
+⚠ **DEV har en Storage-bucket siden Skive 4C** (`europe-west1`, Regional —
+DEV er bekræftet Blaze, ikke Spark som her stod før; se ARKITEKTUR).
+`storage.rules` lukker al direkte klient-SDK-adgang; fakturabilag går
+gennem fire Cloud Functions med kortlivede signerede URL'er. Se
+docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md.
 
 ## Beslutninger
 
@@ -300,7 +302,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **142 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **146 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

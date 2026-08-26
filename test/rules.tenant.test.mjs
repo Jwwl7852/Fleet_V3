@@ -59,7 +59,10 @@ const LAESNING_NAEGTET = new Set(["_findes"]);
 /* ⚠ `retention` ER EN BEHOLDER — beslutning 115. Den har i dag kun ét barn
    (`legalHold`), men rummet er lagt op til flere retention-relaterede
    noder — en fælles `.read` her ville kaskadere ned over dem alle. */
-const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger", "retention"]);
+/* ⚠ SKIVE 4C — dokumentkvote TILFØJET. Samme form som retention: et
+   topniveau uden egen .read, med ét fast barn ("fakturaBilag") der bærer
+   .read — se firebase.rules.json. */
+const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger", "retention", "dokumentkvote"]);
 
 /* ⚠ kpi ER EN DYB BEHOLDER. sensitive/ og vaerdi/ har deres .read ÉT niveau
    nede (sensitive/bookinger). kpi/ har den TRE niveauer nede — på

@@ -55,6 +55,33 @@ export const RETENTION_KATEGORI = {
     periodeMaaneder: null,
     afgjort: false,
   },
+  /* ⚠ SKIVE 4C — EGEN KATEGORI, IKKE SLÅET SAMMEN MED regnskabsdata OVENFOR.
+     Et fakturabilag følger samme princip og bør formentlig ende med samme
+     periode som fakturaen det er hæftet på — men det er en type data
+     REGNSKABSDATA-KATEGORIEN OVENFOR IKKE KENDER (en blob i Cloud Storage,
+     ikke en RTDB-post), og en fælles kategori ville skjule den forskel i
+     stedet for at vise den.
+     ⚠ `noder` ER TOM MED VILJE, IKKE ET HUL. `retentionDryRun` (functions/
+     index.js) henter `info.noder` som FLADE tenant-rod-stier og lister
+     deres direkte børn (`rod.child(node).once("value")`) — det virker for
+     `fakturaer`, hvor hvert barn ER en faktura. Fakturabilag ligger derimod
+     spredt under HVER faktura (`fakturaer/$fakturaId/dokumenter/$id`), og
+     findes derfor ikke som én flad samling dry-run-mekanismen kan spørge om
+     uden en ny slags opslag. Legal hold håndhæves alligevel — direkte, pr.
+     dokument, af `dokumentDeaktiver` via `erUndtaget("fakturaDokument",
+     dokumentId, holds)` — men den generiske rapport dækker den ikke endnu.
+     Se Gate B §10 og docs/security-compliance/09_FILE_STORAGE_SECURITY_
+     GATE.md. */
+  fakturaBilag: {
+    label: "Fakturabilag",
+    eksempel: "en uploadet PDF/JPEG/PNG hæftet på en faktura",
+    princip: "Formentlig samme som regnskabsdata — ikke selvstændigt afgjort endnu.",
+    metode: "eksport-foerst",
+    noder: [],
+    bygget: true,
+    periodeMaaneder: null,
+    afgjort: false,
+  },
   procureData: {
     label: "Procure-data",
     eksempel: "indkøbsbehov, bestilling, godkendelse",

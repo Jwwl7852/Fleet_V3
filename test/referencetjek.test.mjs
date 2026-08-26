@@ -49,9 +49,17 @@ const UDEN_TJEK = {
     "et besøg BLEV en opgave i beslutning 21. Feltet er et spor bagud til en "
     + "id-serie der ikke har en node længere.",
   "indkoeb/$indkoebId/besoegId": "samme spor bagud som på `opgaver`.",
+  /* ⚠ RETTET — SKIVE 4C. Her stod "DEV har ingen bucket (Spark)". Det er
+     ikke længere sandt: DEV fik en Storage-bucket i Skive 4C (bekræftet
+     Blaze, ikke Spark — se ARKITEKTUR.md). Men feltet er stadig ubygget: et
+     indkøbslinje-bilag er en ANDEN dokumenttype end fakturabilag (som 4C
+     byggede) — Procure-vedhæftninger er eksplicit uden for 4C's scope, se
+     docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md, Gate B §2.
+     Reglerne kan i øvrigt aldrig slå op i Storage — kun i RTDB. */
   "indkoeb/$indkoebId/bilagId":
-    "et bilag ligger i Storage, og DEV har ingen bucket (Spark). Reglerne kan "
-    + "ikke slå op i Storage overhovedet.",
+    "et bilag ligger i Storage, som reglerne ikke kan slå op i. Feltet er "
+    + "en Procure-indkøbslinjes vedhæftning — en anden dokumenttype end "
+    + "fakturabilag (Skive 4C) og ikke bygget endnu.",
 
   /* ---- Vejen ind er lukket: funktionen slår referencen op -------------- */
   "etaper/$etapeId/bookingId":
@@ -83,6 +91,20 @@ const UDEN_TJEK = {
   "optaellinger/$optaellingId/bevaegelseId":
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
+  /* ⚠ SKIVE 4C — DE TO HER PEGER IKKE PÅ EN ANDEN SAMLING, DE ER LÅST TIL
+     DERES EGET PATH-WILDCARD. `dokumentId` skal være lig $dokumentId, og
+     `fakturaId` skal være lig $fakturaId — en existence-tjek mod en
+     fremmed node giver ikke mening for et felt der DEFINERES af sin egen
+     sti. Vejen ind er desuden lukket: `dokumenter/$dokumentId` ligger under
+     `fakturaer/$fakturaId`, som er `.write: false` — kun
+     dokumentUploadInitier (Admin SDK) skriver posten, og den har ALLEREDE
+     hentet og verificeret at fakturaen findes, før den skrives. */
+  "fakturaer/$fakturaId/dokumenter/$dokumentId/dokumentId":
+    "lig $dokumentId, ikke en fremmed reference. `dokumenter` er `.write: "
+    + "false`; dokumentUploadInitier bygger id'et af sit eget push()-kald.",
+  "fakturaer/$fakturaId/dokumenter/$dokumentId/fakturaId":
+    "lig $fakturaId, ikke en fremmed reference. dokumentUploadInitier har "
+    + "allerede hentet og verificeret fakturaen før dokumentet skrives.",
 
   /* ---- Feltet peger slet ikke på en post ------------------------------- */
   "statushaendelser/$etapeId/$meldingId/klientId":

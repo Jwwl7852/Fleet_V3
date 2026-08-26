@@ -3165,7 +3165,67 @@
 
             // Totalen gemmes ikke — den er beloeb + moms. Se fakturaTotalOere().
             "totalOere": { ".validate": false },
+
+            // ══════════════════════════════════════════════════════════
+            // ⚠ SKIVE 4C — FAKTURABILAG. Metadata om en uploadet fil, ikke
+            // filen selv — den ligger i Cloud Storage på storagePath. Kun
+            // dokumentUploadInitier/-Bekraeft/Deaktiver (Admin SDK) skriver
+            // her; ".write: false" på fakturaer/$fakturaId kaskaderer, men
+            // for tydelighedens skyld: der findes ingen klient-skrivevej.
+            // Se docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md.
+            //
+            // ⚠ storagePath ER LÅST TIL DEN ENE KANONISKE STI — samme
+            // funktion (stiForDokument() i dokumenter.js) bygger den i
+            // Cloud Function'en. Et forsøg på at skrive et andet storagePath
+            // end tenants/$tenantId/fakturaer/$fakturaId/dokumenter/
+            // $dokumentId afvises her, uafhængigt af at ".write" allerede
+            // er false — reglen dokumenterer INTENTIONEN, ikke kun spærringen.
+            //
+            // ⚠ INGEN HARDSLET. Der er ingen $andet-undtagelse for status;
+            // "fjern dokument" er dokumentDeaktiver, som sætter status:
+            // "deaktiveret" og aldrig rører selve blobben.
+            "dokumenter": {
+              "$dokumentId": {
+                ".validate": "newData.hasChildren(['dokumentId', 'parentType', 'fakturaId', 'originaltFilnavn', 'valideretMime', 'stoerrelse', 'storagePath', 'uploader', 'oprettetTid', 'status'])",
+                "dokumentId": { ".validate": "newData.isString() && newData.val() === $dokumentId" },
+                // ⚠ KUN "faktura" I 4C. Sag-/Procure-/mail-vedhæftninger er
+                // en senere skive på samme fundament — se dokumenter.js's hoved.
+                "parentType": { ".validate": "newData.isString() && newData.val() === 'faktura'" },
+                "fakturaId": { ".validate": "newData.isString() && newData.val() === $fakturaId" },
+                // ⚠ FILNAVNET ER FRI TEKST FRA EN BRUGER — og indgår ALDRIG
+                // i storagePath (se nedenfor). Det er metadata til visning,
+                // ikke en sti-komponent. Se Gate B §9.
+                "originaltFilnavn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+                "valideretMime": { ".validate": "newData.isString() && newData.val().matches(/^(application\\/pdf|image\\/jpeg|image\\/png)$/)" },
+                // 25 MB — samme grænse som MAX_FILSTOERRELSE_BYTES i
+                // dokumenter.js, håndhævet her igen som forsvar i dybden.
+                "stoerrelse": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 26214400" },
+                "storagePath": { ".validate": "newData.isString() && newData.val() === ('tenants/' + $tenantId + '/fakturaer/' + $fakturaId + '/dokumenter/' + $dokumentId)" },
+                "uploader": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "oprettetTid": { ".validate": "newData.isNumber()" },
+                "status": { ".validate": "newData.isString() && newData.val().matches(/^(karantaene|aktiv|afvist|deaktiveret)$/)" },
+                "afvistGrund": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                "deaktiveretAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "deaktiveretMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
             "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ SKIVE 4C — TENANTENS FORBRUGTE FAKTURABILAG-KVOTE (2 GB, se
+        // MAX_TENANT_BYTES i dokumenter.js). Kun dokumentUploadBekraeft
+        // (Admin SDK, transaktionelt) skriver — ".write: false" er derfor
+        // ikke en manglende rettighed, det er vejen der er lukket, samme
+        // disciplin som kasseudlaan (beslutning 37) og opgaver (45). Læses
+        // direkte af klienten (fakturaer.laes) til en "X af 2 GB brugt"-
+        // visning uden en Cloud Function-tur.
+        "dokumentkvote": {
+          "fakturaBilag": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fakturaer.laes|')",
+            ".write": false,
+            "brugtBytes": { ".validate": "newData.isNumber() && newData.val() >= 0" }
           }
         },
 

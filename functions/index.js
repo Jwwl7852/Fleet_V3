@@ -41,6 +41,7 @@ import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -143,7 +144,14 @@ const MAILGUN_AFSENDER = defineSecret("MAILGUN_AFSENDER");
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
    i retention-regler.js. */
-import { simulerRetention, RETENTION_KATEGORI } from "./delt/retention-regler.js";
+import { simulerRetention, RETENTION_KATEGORI, erUndtaget } from "./delt/retention-regler.js";
+/* ⚠ SKIVE 4C — dokumentUploadInitier/-Bekraeft skal bygge og prøve mod
+   NØJAGTIG samme stiForDokument()/tjekSignatur()/grænser som en fremtidig
+   klientkode ville vise. Se dokumenter.js's hoved. */
+import {
+  TILLADT_MIME, MAX_FILSTOERRELSE_BYTES, MAX_TENANT_BYTES,
+  tjekSignatur, stiForDokument, sprængerKvote,
+} from "./delt/dokumenter.js";
 
 initializeApp();
 
@@ -5237,6 +5245,278 @@ export const fakturastatus = onCall({ region: REGION }, async (req) => {
     { status: faktura.status }, { status: til }, `${faktura.status} → ${til}`);
 
   return { ok: true, status: til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURABILAG — SKIVE 4C. Første, begrænsede dokumentlager.
+
+   docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md (Gate B i
+   12_FINDINGS_AND_REMEDIATION_PLAN.md) er skrevet FØR denne kode, og hvert
+   krav herunder er mærket med det punkt det opfylder.
+
+   ⚠ INGEN DIREKTE KLIENT-UPLOAD/-DOWNLOAD MOD ÅBEN STI (Gate B §2/§3).
+   Fire funktioner, én for hvert trin:
+
+     dokumentUploadInitier  → validerer, opretter en karantæne-post,
+                               udsteder en 10-minutters signeret UPLOAD-URL
+     dokumentUploadBekraeft → klienten har PUT'et bytes til den URL; her
+                               verificeres signatur/størrelse/kvote FØR
+                               posten forlader karantænen
+     dokumentDownloadLink   → udsteder en 5-minutters signeret DOWNLOAD-URL,
+                               kun for et dokument med status "aktiv"
+     dokumentDeaktiver      → status → "deaktiveret". Blobben slettes ALDRIG.
+
+   ⚠ INGEN NY PERMISSION (Gate B §2, bevidst fravalgt — se Fakturacenter.jsx
+   4B/4A-præcedens). fakturaer.skriv/.laes genbruges uændret: et bilag er
+   ikke bredere adgang end fakturaen det hænger på, og de to permissions har
+   allerede den rollefordeling en dokumentadgang skal have.
+
+   ⚠ STIEN ER LÅST (Gate B §1, §9). stiForDokument() bygger den ENE
+   kanoniske sti, og firebase.rules.json's storagePath-felt kræver at
+   RTDB-posten er enig med den. Originalt filnavn indgår ALDRIG i stien —
+   kun de tre id'er.
+
+   ⚠ SIGNATUR, IKKE CONTENT-TYPE-HEADEREN (Gate B §5). tjekSignatur() læser
+   filens egne første bytes; en klient der lyver i sin Content-Type-header,
+   fanges her.
+
+   ⚠ KARANTÆNE FØRST (Gate B §7). Et dokument er ALDRIG "aktiv" før
+   dokumentUploadBekraeft har verificeret det. Ingen malware-scanner er
+   bygget i denne skive — det er en dokumenteret DEV-begrænsning, ikke en
+   påstand om at scanning findes. Se skærmens egen tekst.
+
+   ⚠ INGEN HARDSLET (Gate B §10). dokumentDeaktiver sætter kun status —
+   blobben består. Legal hold (erUndtaget()) tjekkes FØR deaktivering,
+   samme funktion som en fremtidig skærm ville bruge.
+
+   ⚠ AUDIT (Gate B §12) — hvert af de fire trin logges ubetinget via
+   logProcure(), objekt "fakturaDokument". Signerede URL'er står ALDRIG i en
+   auditpost — kun at et link blev udstedt, ikke linket selv.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const dokumentSti = (fakturaId, dokumentId) => `fakturaer/${fakturaId}/dokumenter/${dokumentId}`;
+
+export const dokumentUploadInitier = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  if (!fakturaId) throw new HttpsError("invalid-argument", "fakturaId mangler.");
+  const originaltFilnavn = kortStreng(d.originaltFilnavn, 200);
+  if (!originaltFilnavn) throw new HttpsError("invalid-argument", "Filnavn mangler.");
+  const mimeType = kortStreng(d.mimeType, 100);
+  if (!TILLADT_MIME.includes(mimeType)) {
+    throw new HttpsError("invalid-argument",
+      `Filtypen "${d.mimeType}" er ikke tilladt. Tilladt: PDF, JPEG, PNG.`);
+  }
+  const angivetStoerrelse = Number(d.stoerrelse);
+  if (!Number.isFinite(angivetStoerrelse) || angivetStoerrelse <= 0) {
+    throw new HttpsError("invalid-argument", "Filstørrelse mangler eller er ugyldig.");
+  }
+  if (angivetStoerrelse > MAX_FILSTOERRELSE_BYTES) {
+    throw new HttpsError("invalid-argument",
+      `Filen er større end ${Math.round(MAX_FILSTOERRELSE_BYTES / (1024 * 1024))} MB.`);
+  }
+
+  /* ⚠ FAKTURAEN HENTES OG VERIFICERES SERVER-SIDE — samme "fetch and
+     verify"-mønster som sagAfslut bruger for sagId. Et bilag på en faktura
+     der ikke findes (eller ikke er DENNE tenants), er ikke et bilag. */
+  const fSnap = await rod.child(`fakturaer/${fakturaId}`).once("value");
+  if (!fSnap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
+
+  /* ⚠ BLØDT KVOTETJEK HER, PÅ DET KLIENT-ANGIVNE TAL. Det HÅRDE tjek — på
+     den faktisk verificerede størrelse — sker i dokumentUploadBekraeft, med
+     en transaktion. Signerede URL'er kan ikke selv binde en maks-størrelse
+     (GCS har intet signed-URL-ækvivalent til S3's POST policy), så
+     størrelsen håndhæves altid EFTER upload, aldrig kun før. */
+  const kvoteSnap = await rod.child("dokumentkvote/fakturaBilag/brugtBytes").once("value");
+  if (sprængerKvote(kvoteSnap.val(), angivetStoerrelse)) {
+    throw new HttpsError("resource-exhausted",
+      `Tenantens lagerkvote for fakturabilag (${MAX_TENANT_BYTES / (1024 * 1024 * 1024)} GB) er brugt op.`);
+  }
+
+  const dokumentId = rod.child(`fakturaer/${fakturaId}/dokumenter`).push().key;
+  const storagePath = stiForDokument(tenantId, fakturaId, dokumentId);
+
+  const nu = Date.now();
+  const post = {
+    dokumentId, parentType: "faktura", fakturaId,
+    originaltFilnavn, valideretMime: mimeType, stoerrelse: angivetStoerrelse,
+    storagePath, uploader: uid, oprettetTid: nu, status: "karantaene",
+  };
+  await rod.child(dokumentSti(fakturaId, dokumentId)).set(post);
+  await logProcure(tenantId, uid, AUDIT.opret, "fakturaDokument", dokumentId,
+    null, post, "upload initieret");
+
+  const bucket = getStorage().bucket();
+  const [uploadUrl] = await bucket.file(storagePath).getSignedUrl({
+    version: "v4",
+    action: "write",
+    expires: nu + 10 * 60 * 1000,
+    contentType: mimeType,
+  });
+
+  return { dokumentId, storagePath, uploadUrl };
+});
+
+export const dokumentUploadBekraeft = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!fakturaId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "fakturaId/dokumentId mangler.");
+  }
+
+  const docRef = rod.child(dokumentSti(fakturaId, dokumentId));
+  const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = snap.val();
+  if (dok.status !== "karantaene") {
+    throw new HttpsError("failed-precondition", `Dokumentet er allerede "${dok.status}".`);
+  }
+
+  const bucket = getStorage().bucket();
+  const file = bucket.file(dok.storagePath);
+  const [findes] = await file.exists();
+  if (!findes) {
+    throw new HttpsError("failed-precondition",
+      "Filen er endnu ikke overført til den udstedte upload-URL.");
+  }
+
+  /* ⚠ AFVISNINGEN SLETTER BLOBBEN — DET ER IKKE EN HARDSLET AF ET DOKUMENT.
+     Et dokument der aldrig bestod valideringen, var aldrig et gyldigt bilag
+     — at rydde den slags op er noget andet end at destruere et bilag en
+     bruger faktisk har uploadet og fået accepteret. Se Gate B §10. */
+  const afvis = async (grund) => {
+    await file.delete({ ignoreNotFound: true });
+    await docRef.update({ status: "afvist", afvistGrund: grund });
+    await logProcure(tenantId, uid, AUDIT.tilstandsskift, "fakturaDokument", dokumentId,
+      { status: "karantaene" }, { status: "afvist" }, grund);
+    throw new HttpsError("failed-precondition", grund);
+  };
+
+  const [meta] = await file.getMetadata();
+  const faktiskStoerrelse = Number(meta.size);
+  if (!Number.isFinite(faktiskStoerrelse) || faktiskStoerrelse > MAX_FILSTOERRELSE_BYTES) {
+    await afvis(`Filen er ${Math.round(faktiskStoerrelse / 1024 / 1024)} MB — over grænsen på `
+      + `${Math.round(MAX_FILSTOERRELSE_BYTES / 1024 / 1024)} MB.`);
+  }
+
+  /* ⚠ MAGIC BYTES, IKKE HEADEREN — Gate B §5. De første 16 bytes er nok til
+     alle tre signaturer i dokumenter.js. */
+  const [foersteBytes] = await file.download({ start: 0, end: 15 });
+  if (!tjekSignatur(foersteBytes, dok.valideretMime)) {
+    await afvis("Filens indhold matcher ikke den angivne filtype.");
+  }
+
+  /* ⚠ DEN HÅRDE KVOTE — TRANSAKTIONELT, PÅ DEN VERIFICEREDE STØRRELSE.
+     To samtidige uploads der begge så "ledig plads" ved initiering, kan
+     ikke begge vinde her: transaction() serialiserer læs-og-skriv på
+     tælleren, samme mekanisme som countere/booking bruger til
+     nummerserien. */
+  const kvoteRef = rod.child("dokumentkvote/fakturaBilag/brugtBytes");
+  const txn = await kvoteRef.transaction((cur) => {
+    const brugt = Number(cur) || 0;
+    if (sprængerKvote(brugt, faktiskStoerrelse)) return; // abort — over kvoten
+    return brugt + faktiskStoerrelse;
+  });
+  if (!txn.committed) {
+    await afvis("Tenantens lagerkvote for fakturabilag er brugt op.");
+  }
+
+  await docRef.update({ status: "aktiv", stoerrelse: faktiskStoerrelse });
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "fakturaDokument", dokumentId,
+    { status: "karantaene" }, { status: "aktiv" }, "upload verificeret og frigivet");
+
+  return { ok: true, status: "aktiv" };
+});
+
+export const dokumentDownloadLink = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.laes" });
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!fakturaId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "fakturaId/dokumentId mangler.");
+  }
+
+  const fSnap = await rod.child(`fakturaer/${fakturaId}`).once("value");
+  if (!fSnap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
+
+  const dSnap = await rod.child(dokumentSti(fakturaId, dokumentId)).once("value");
+  if (!dSnap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = dSnap.val();
+
+  /* ⚠ KUN "aktiv" KAN HENTES — Gate B §7. Storage Rules kan ikke se denne
+     status (kan ikke slå op i RTDB), så karantænen håndhæves HER, i den
+     ENE funktion der udsteder download-adgang. */
+  if (dok.status !== "aktiv") {
+    throw new HttpsError("failed-precondition",
+      dok.status === "karantaene"
+        ? "Dokumentet afventer stadig verificering og kan ikke hentes endnu."
+        : `Dokumentet er "${dok.status}" og kan ikke hentes.`);
+  }
+
+  const TTL_MS = 5 * 60 * 1000;
+  const nu = Date.now();
+  const bucket = getStorage().bucket();
+  const [url] = await bucket.file(dok.storagePath).getSignedUrl({
+    version: "v4", action: "read", expires: nu + TTL_MS,
+  });
+
+  /* ⚠ LINKET STÅR IKKE I AUDITPOSTEN — kun AT det blev udstedt, til hvem og
+     hvornår. Et signeret link er et bearer-credential; at logge det ville
+     lægge en fungerende adgangsnøgle i en log flere mennesker kan læse. Se
+     Gate B §3 og §9 i checkpointet før 4C. */
+  await logProcure(tenantId, uid, AUDIT.laes, "fakturaDokument", dokumentId,
+    null, null, "download-link udstedt");
+
+  return { url, udloeberMs: nu + TTL_MS };
+});
+
+export const dokumentDeaktiver = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
+
+  const d = req.data || {};
+  const fakturaId = kortStreng(d.fakturaId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!fakturaId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "fakturaId/dokumentId mangler.");
+  }
+
+  const docRef = rod.child(dokumentSti(fakturaId, dokumentId));
+  const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = snap.val();
+
+  if (dok.status !== "aktiv") {
+    throw new HttpsError("failed-precondition",
+      `Kun et aktivt dokument kan deaktiveres (er "${dok.status}").`);
+  }
+
+  /* ⚠ LEGAL HOLD TJEKKES FØR EN DEAKTIVERING, DER FUNKTIONELT SVARER TIL
+     FJERNELSE — Gate B §10. Samme erUndtaget() en fremtidig skærm ville
+     bruge; ingen anden legal-hold-logik opfindes her. */
+  const holds = Object.values(
+    (await rod.child("retention/legalHold").once("value")).val() || {}
+  );
+  if (erUndtaget("fakturaDokument", dokumentId, holds)) {
+    throw new HttpsError("failed-precondition",
+      "Dokumentet er omfattet af et aktivt legal hold og kan ikke deaktiveres.");
+  }
+
+  const nu = Date.now();
+  /* ⚠ BLOBBEN SLETTES IKKE. "Fjern dokument" er et statusskift, ikke en
+     destruktion — se Gate B §10 og CLAUDE.md's forbud mod en slet()-vej for
+     regnskabsdata. */
+  await docRef.update({ status: "deaktiveret", deaktiveretAf: uid, deaktiveretMs: nu });
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "fakturaDokument", dokumentId,
+    { status: "aktiv" }, { status: "deaktiveret" }, "dokument deaktiveret");
+
+  return { ok: true, status: "deaktiveret" };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

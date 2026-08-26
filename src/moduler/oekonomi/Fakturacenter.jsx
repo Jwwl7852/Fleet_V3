@@ -23,17 +23,23 @@
  * slutning, og en slutning må ikke se ud som en kendsgerning ved siden af en
  * knap der hedder "Godkend match".
  *
- * ⚠ OG INDGANGENE ER IKKE BYGGET. Planchen tegner drag & drop, invoice-mail og
- * mobilkvittering. Der er ingen fillagring (kundens valg), så feltet står låst
- * med sin begrundelse — som filupload på Indkøbsbehov og på Procures
- * fakturaskærm. Planchen siger det selv: *"Invoice-mail er kun én kanal, ikke
+ * ⚠ OG DE AUTOMATISKE INDGANGE ER STADIG IKKE BYGGET — SKIVE 4C LØSTE KUN
+ * BILAGET. Planchen tegner drag & drop, invoice-mail og mobilkvittering til
+ * at OPRETTE en faktura automatisk af en fil; det kræver en parsing-/
+ * OCR-pipeline der ikke findes. Det "der er ingen fillagring"-argument der
+ * stod her, er ikke længere sandt: Skive 4C byggede et begrænset, DEV-only
+ * dokumentlager (docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md)
+ * — men det lader en bruger hæfte ÉT bilag på EN allerede oprettet faktura,
+ * ikke oprette fakturaen af filen. Se "Bilag" i detaljeruden. Fakturaer
+ * oprettes indtil videre manuelt og placeres her; bilaget kan lægges på
+ * bagefter. Planchen siger det selv: *"Invoice-mail er kun én kanal, ikke
  * fundamentet."*
  */
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato } from "../../fleet/format.js";
+import { kr, num, dato, filstoerrelse } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, Tabel, Pille, Henter, Datatilstand, Knap, Felt,
@@ -48,6 +54,12 @@ import {
 import { FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, PERM_GODKEND }
   from "../../fleet/leverandoerer.js";
 import { saetDestination, skiftFaktura } from "../../fleet/faktura.js";
+/* ⚠ SKIVE 4C — FAKTURABILAG. Se dokumenter.js's hoved og
+   docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md. */
+import { DOKUMENT_STATUS } from "../../fleet/dokumenter.js";
+import {
+  uploadFakturaDokument, hentFakturaDokumentLink, deaktiverFakturaDokument,
+} from "../../fleet/fakturadokumenter.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i sættene. */
 import { DEMO_FAKTURAER, DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 import { DEMO_INDKOEBSORDRER } from "../../fleet/demo-procure.js";
@@ -218,6 +230,12 @@ export default function Fakturacenter() {
           <b>Invoice-mail er kun én kanal, ikke fundamentet.</b> Det er derfor
           centeret virker uden den: en faktura der er kommet ind ad en hvilken
           som helst vej, kan placeres her.
+        </p>
+        <p className="fc-hint">
+          <b>Skive 4C:</b> vil du blot vedhæfte et bilag til en faktura der
+          allerede er oprettet, står den knap i detaljeruden nedenfor — "Modtag"
+          her handler om at oprette selve fakturaposten automatisk, hvilket
+          stadig ikke er bygget.
         </p>
       </Kort>
 
@@ -417,6 +435,8 @@ function Detaljer({
           {FAKTURASTATUS[faktura.status]?.label}
         </Pille>} />
 
+      <Bilag faktura={faktura} maaSkrive={maaSkrive} />
+
       <h3 className="fc-underoverskrift">Foreslået match</h3>
 
       {faktura.destinationArt === "ingen" ? (
@@ -524,5 +544,135 @@ function Detaljer({
         ville få nogen til at holde op med at bogføre manuelt.
       </p>
     </Kort>
+  );
+}
+
+/* ---- Bilag — Skive 4C -------------------------------------------------- */
+
+/**
+ * ⚠ DOKUMENTERNE KOMMER MED FAKTURAEN — de hentes ikke separat. `faktura`
+ * kommer fra samme `useListe("fakturaer", …)` som resten af skærmen, og RTDB
+ * henter hele fakturaens undertræ (dokumenter inklusive) i ét, allerede
+ * LIVE opslag. En ekstra hentning her ville være det samme opslag to gange
+ * — og to steder der kunne blive uenige om hvor mange bilag fakturaen har.
+ */
+function Bilag({ faktura, maaSkrive }) {
+  const [arbejder, setArbejder] = useState(false);
+  const [svar, setSvar] = useState(null);
+
+  const dokumenter = Object.entries(faktura.dokumenter || {})
+    .map(([id, d]) => ({ id, ...d }))
+    .sort((a, b) => (b.oprettetTid || 0) - (a.oprettetTid || 0));
+
+  const paaVaelgFil = async (e) => {
+    const fil = e.target.files?.[0];
+    /* ⚠ NULSTIL FELTET STRAKS. Ellers kan den samme fil ikke vælges igen
+       efter en afvisning — <input type="file"> melder ingen change-event
+       for en uændret værdi. */
+    e.target.value = "";
+    if (!fil) return;
+    setArbejder(true);
+    setSvar(null);
+    const r = await uploadFakturaDokument({ fakturaId: faktura.id, fil });
+    setSvar(r);
+    setArbejder(false);
+  };
+
+  const paaAaben = async (d) => {
+    setSvar(null);
+    const r = await hentFakturaDokumentLink({ fakturaId: faktura.id, dokumentId: d.id });
+    if (r.ok && r.data?.url) {
+      /* ⚠ ET NYT VINDUE, IKKE navigate(). Linket er en Storage-URL, ikke en
+         rute i denne app — window.open holder brugeren på fakturacenteret. */
+      window.open(r.data.url, "_blank", "noopener,noreferrer");
+    } else {
+      setSvar(r);
+    }
+  };
+
+  const paaDeaktiver = async (d) => {
+    setArbejder(true);
+    setSvar(null);
+    const r = await deaktiverFakturaDokument({ fakturaId: faktura.id, dokumentId: d.id });
+    setSvar(r);
+    setArbejder(false);
+  };
+
+  return (
+    <>
+      <h3 className="fc-underoverskrift">Bilag</h3>
+      <Formularsvar svar={svar} okTekst="Gemt." />
+
+      {maaSkrive && (
+        <div className="fc-row" style={{ marginBottom: 8 }}>
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                 aria-label="Upload bilag" disabled={arbejder}
+                 onChange={paaVaelgFil} />
+          {arbejder && <span className="fc-hint">Overfører…</span>}
+        </div>
+      )}
+
+      {dokumenter.length === 0 ? (
+        <p className="fc-hint">Ingen bilag endnu.</p>
+      ) : (
+        <Tabel
+          raekker={dokumenter}
+          noegle={(d) => d.id}
+          tom="Ingen bilag endnu."
+          kolonner={[
+            {
+              key: "fil", label: "Fil",
+              render: (d) => (
+                <>
+                  <b>{d.originaltFilnavn}</b>
+                  <div className="fc-hint">
+                    {filstoerrelse(d.stoerrelse)} · {d.valideretMime}
+                  </div>
+                </>
+              ),
+            },
+            {
+              key: "status", label: "Status",
+              render: (d) => (
+                <>
+                  <Pille tone={DOKUMENT_STATUS[d.status]?.pill}>
+                    {DOKUMENT_STATUS[d.status]?.label || d.status}
+                  </Pille>
+                  {d.status === "afvist" && d.afvistGrund && (
+                    <div className="fc-hint">{d.afvistGrund}</div>
+                  )}
+                </>
+              ),
+            },
+            {
+              key: "handling", label: "",
+              render: (d) => (
+                <span className="fc-med-ikon" style={{ gap: 8 }}>
+                  {d.status === "aktiv" && (
+                    <Knap onClick={() => paaAaben(d)}>Åbn</Knap>
+                  )}
+                  {d.status === "aktiv" && maaSkrive && (
+                    <Knap disabled={arbejder} onClick={() => paaDeaktiver(d)}>
+                      Deaktivér
+                    </Knap>
+                  )}
+                </span>
+              ),
+            },
+          ]}
+        />
+      )}
+
+      {/* ⚠ IKKE FALSK ROLIGHED. Skive 4C bygger ingen malware-scanner (Gate
+          B §7/§6 i checkpointet før 4C) — det står her, i DEV, hvor det kan
+          ses af den der uploader, ikke gemt væk i en fil kun udviklere
+          læser. */}
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        <b>DEV-begrænsning:</b> automatisk malware-scanning er endnu ikke
+        aktiveret. Filer valideres på filtype, størrelse og indhold
+        (signatur) før de vises som bilag — men scannes ikke for malware.
+        Upload kun kontrollerede testfiler.
+      </p>
+    </>
   );
 }

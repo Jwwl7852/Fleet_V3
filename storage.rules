@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// storage.rules — Skive 4C. Fakturabilag.
+//
+// ⚠ SKIVE 4C SCOPE: KUN tenants/<t>/fakturaer/<f>/dokumenter/<d>. Ingen
+// anden dokumenttype er bygget endnu — sag-vedhæftninger, Procure-bilag,
+// mail-vedhæftninger og sensitive/klassificerede dokumenter kommer senere
+// på SAMME fundament, se docs/security-compliance/09_FILE_STORAGE_
+// SECURITY_GATE.md og Gate B i 12_FINDINGS_AND_REMEDIATION_PLAN.md.
+//
+// ⚠ INGEN DIREKTE KLIENT-SDK-ADGANG — HELLER IKKE MED fakturaer.laes/.skriv.
+// Al reel adgang går gennem fire Cloud Functions (dokumentUploadInitier,
+// dokumentUploadBekraeft, dokumentDownloadLink, dokumentDeaktiver), som
+// udsteder kortlivede SIGNEREDE URL'er (10 min. til upload, 5 min. til
+// download). En signeret URL evalueres IKKE mod disse regler — den er en
+// selvstændig GCS-mekanisme, bundet til sti + content-type + udløb af den
+// signerende service-konto, uafhængig af Storage Security Rules.
+//
+// ⚠ HVORFOR ET TENANT+PERM-GATE HER IKKE ER NOK, OG DERFOR IKKE FORSØGT:
+//   1. Storage Rules kan ikke slå op i RTDB (Gate B §3/B3) — en regel her
+//      kan ALDRIG se om et dokument stadig er i karantæne. En regel-tilladt
+//      direkte læsning ville derfor altid kunne omgå karantænen, uanset
+//      hvor stramt tenant+perm er skrevet.
+//   2. En regel-tilladt direkte SKRIVNING ville omgå den content-type og
+//      størrelse den signerede upload-URL binder klienten til — præcis det
+//      "serveren ejer path/content-type/max-size, ikke klienten"-krav Gate
+//      B §5 og §12 stiller. Et tenant+perm-gate løser IKKE det problem; det
+//      løser kun hvem der må skrive, ikke hvad.
+// Den korrekte grænse er derfor: INGEN klient-SDK-adgang overhovedet.
+// Cloud Functions har fuld RTDB-adgang og er derfor det ene sted der KAN
+// håndhæve karantæne-status, content-type og størrelse sammenhængende.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /tenants/{tenantId}/fakturaer/{fakturaId}/dokumenter/{dokumentId} {
+      allow read, write: if false;
+    }
+
+    // Alt andet er lukket. Ingen andre stier er bygget i 4C.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -175,6 +175,12 @@ export const DELTE_FILER = [
      nogen kan se hvorfor. Filen importerer ingenting; lukningen er
      triviel. */
   "mailtransport.js",
+  /* ⚠ dokumenter.js — Skive 4C. `dokumentUploadInitier`/-`Bekraeft`/
+     `dokumentDownloadLink` skal bygge og prøve mod NØJAGTIG samme
+     `stiForDokument()`/`tjekSignatur()`/grænser som en fremtidig klientkode
+     ville vise — ellers kunne en sti se gyldig ud ét sted og blive afvist et
+     andet. Filen importerer ingenting; lukningen er triviel. */
+  "dokumenter.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);
