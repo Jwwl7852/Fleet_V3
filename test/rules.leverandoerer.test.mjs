@@ -23,6 +23,7 @@ import {
 import { ref, set, get } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
 import { ALLE_KATEGORIER, ALLE_AFTALETYPER } from "../src/fleet/leverandoerer.js";
+import { ALLE_SPROG } from "../src/fleet/sprog.js";
 
 const T = "tenantLev";
 const UDEN_MODUL = "tenantUdenIndkoeb";
@@ -119,6 +120,20 @@ describe("leverandøren som entitet", () => {
       await assertSucceeds(set(ref(db, levSti(`kat-${k}`)), { ...LEVERANDOER, kategori: k }));
     }
     await assertFails(set(ref(db, levSti("kat-fri")), { ...LEVERANDOER, kategori: "diverse" }));
+  });
+
+  it("⚠ SKIVE 4D — SPROG ER VALGFRIT, MEN KENDER KUN de/sv/en NÅR DET ER SAT", async () => {
+    const db = somIndkoeber();
+    for (const s of ALLE_SPROG) {
+      await assertSucceeds(set(ref(db, levSti(`sprog-${s}`)), { ...LEVERANDOER, sprog: s }));
+    }
+    await assertFails(set(ref(db, levSti("sprog-fri")), { ...LEVERANDOER, sprog: "de" }));
+    /* ⚠ OG UDEN FELTET GÅR DET STADIG IGENNEM — leverandører oprettet før
+       4D har ingen sprog gemt, og det må ikke blive et påkrævet felt for
+       en post der ellers er komplet. STANDARD_SPROG er byggLeverandoer()'s
+       ansvar (client-side), ikke reglens. */
+    const { sprog: _udeladt, ...udenSprog } = LEVERANDOER;
+    await assertSucceeds(set(ref(db, levSti("sprog-mangler")), udenSprog));
   });
 
   it("kender kun de tre aftaletyper", async () => {

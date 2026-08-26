@@ -4,11 +4,12 @@
  * Planche 3: de åbne behov med et automatisk leverandørforslag, markering pr.
  * linje, og et e-mailudkast pr. leverandør med bestillingsnummeret i emnet.
  *
- * ⚠ UDKASTET SENDES IKKE. Kundens valg: mail UD af systemet er beslutning 20's
- * fase 1, og der er hverken afsendelsesvej, afsenderadresse pr. virksomhed
- * eller et spor af hvad der blev sendt til hvem. Udkastet kan kopieres, og
- * ordren markeres sendt af et menneske. En knap der så ud som "send", men
- * lagde mailen i en kø der ikke findes, ville være værre end ingen knap.
+ * ⚠ UDKASTET HERUNDER SENDES IKKE — DET ER TIL KLADDER, FØR GODKENDELSE.
+ * Skive 4D gav Procure en rigtig afsendelse (`ordreMailSend`/"Send ordre"),
+ * men den kræver at ordren står i `godkendt` — en kladde kan ikke sendes
+ * endnu, og udkastet her er derfor til orientering om hvad ordren kommer til
+ * at bede om, ikke en kopiér-selv-vej. Se Godkendelser.jsx for den rigtige
+ * afsendelse.
  *
  * ⚠ ÉN ORDRE PR. LEVERANDØR. Man sender ikke én bestilling til tre firmaer, og
  * et nummer der dækkede flere, kunne ikke bruges som reference på nogen af
@@ -20,6 +21,7 @@
  * HÅNDHÆVER.
  */
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { dato, kr, num } from "../../fleet/format.js";
@@ -296,13 +298,17 @@ export default function Bestillinger() {
 
       <Formularsvar svar={svar} okTekst="Bestillingen er oprettet som kladde." />
 
-      {/* ---- E-mailudkast ----------------------------------------------- */}
+      {/* ---- E-mailudkast ------------------------------------------------
+          ⚠ SKIVE 4D — KUN TIL KLADDER, FØR GODKENDELSE. Bestillingen kan
+          endnu ikke sendes rigtigt herfra: det kræver godkendt status, og
+          udkastet her er til orientering INDEN da — fx for at se hvad ordren
+          kommer til at bede om. Den rigtige afsendelse (`Send ordre`) findes
+          på den godkendte ordre i Godkendelser. */}
       <Kort titel={`E-mailudkast (${num(kladder.length)})`}>
         <p className="fc-hint" style={{ marginTop: 0 }}>
-          <b>Systemet sender ikke udkastene.</b> Kopiér teksten ind i din mail
-          og send den selv — og markér ordren som sendt bagefter. Afsendelse
-          kræver en afsenderadresse pr. virksomhed og et spor af hvad der blev
-          sendt til hvem, og det er sin egen opgave.
+          Sådan kommer ordren til at se ud, når den er godkendt. <b>Systemet
+          sender den ikke herfra</b> — når ordren er godkendt, sendes den
+          rigtigt fra <Link className="fc-a" to="/indkoeb/godkendelser">Godkendelser</Link>.
         </p>
         {!kladder.length ? (
           <Tom>

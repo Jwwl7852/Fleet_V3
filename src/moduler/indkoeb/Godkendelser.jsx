@@ -32,9 +32,10 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   ORDRESTATUS, GODKENDELSESGRUND, ventendeOrdrer, kraeverGodkendelse,
   ordreSumOere, linjeListe, tilgaengeligeOrdreHandlinger,
-  STANDARD_GODKENDELSESREGLER,
+  STANDARD_GODKENDELSESREGLER, ordreMailIndhold,
 } from "../../fleet/procure.js";
-import { skiftOrdre, gemGodkendelsesregler } from "../../fleet/godkendelse.js";
+import { SPROG, ALLE_SPROG, STANDARD_SPROG, erGyldigtSprog } from "../../fleet/sprog.js";
+import { skiftOrdre, gemGodkendelsesregler, sendOrdreMail } from "../../fleet/godkendelse.js";
 import { DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER } from "../../fleet/demo-procure.js";
 import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 
@@ -49,6 +50,9 @@ const TRIN = [
 export default function Godkendelser() {
   const { bruger } = useFleet();
   const maaGodkende = harPerm(bruger?.perms, PERM.indkoebGodkend);
+  /* ⚠ SAMME PERMISSION SOM DEN NU FJERNEDE "MARKÉR SOM SENDT" — se noten ved
+     ORDRE_OVERGANGE.godkendt i procure.js. Ikke en ny opfundet til 4D. */
+  const maaSende = harPerm(bruger?.perms, PERM.indkoebSkriv);
   /* ⚠ REGLEN SÆTTES AF EN ADMINISTRATOR. Se noten i toppen. */
   const maaSaetteRegler = harPerm(bruger?.perms, PERM.brugereSkriv);
 
@@ -57,6 +61,7 @@ export default function Godkendelser() {
   const [afviser, setAfviser] = useState(null);
   const [grund, setGrund] = useState("");
   const [udkast, setUdkast] = useState(null);
+  const [sender, setSender] = useState(null);
 
   const ordrer = useListe("indkoebsordrer", {
     ordnPaa: "oprettetMs", vindue: "alle", graense: 300, demo: DEMO_INDKOEBSORDRER,
@@ -79,7 +84,8 @@ export default function Godkendelser() {
     return <Datatilstand tilstand={ordrer.tilstand} genprov={ordrer.genindlaes} />;
   }
 
-  const levNavn = (id) => lev.data.find((l) => l.id === id)?.navn || id || "—";
+  const levFor = (id) => lev.data.find((l) => l.id === id) || null;
+  const levNavn = (id) => levFor(id)?.navn || id || "—";
   const brugerNavn = (uid) => {
     const b = brugere.data.find((x) => x.id === uid);
     return b?.navn || b?.email || uid || "—";
@@ -391,9 +397,22 @@ export default function Godkendelser() {
               key: "naeste", label: "Herfra kan den",
               render: (o) => {
                 const h = tilgaengeligeOrdreHandlinger(o, kontekst);
+                /* ⚠ "SEND ORDRE" STÅR IKKE I h — se noten ved
+                   ORDRE_OVERGANGE.godkendt i procure.js. Den tegnes her,
+                   ved siden af de tabeldrevne overgange (fx Annullér), som
+                   sin egen handling med sin egen dialog frem for et klik.
+                   `godkendt` har altid mindst "Annullér" i h, så denne gren
+                   rammes kun af de reelt afsluttede tilstande. */
                 if (!h.length) return <span className="fc-hint">er afsluttet</span>;
                 return (
                   <span className="fc-knapper">
+                    {o.status === "godkendt" && (
+                      <Knap variant="primaer" disabled={!maaSende || arbejder}
+                            title={maaSende ? undefined : `Det kræver ${PERM.indkoebSkriv}.`}
+                            onClick={() => setSender(o)}>
+                        Send ordre
+                      </Knap>
+                    )}
                     {h.map((x) => (
                       <Knap key={x.til} disabled={!x.ok || arbejder} title={x.ok ? undefined : x.aarsag}
                             onClick={() => (x.kraeverBegrundelse
@@ -429,7 +448,89 @@ export default function Godkendelser() {
                 hint="Står på bestillingen — ikke i auditloggen. Fritekst hører ikke der." />
         </Dialog>
       )}
+
+      {sender && (
+        <SendOrdreDialog
+          ordre={sender}
+          leverandoer={levFor(sender.leverandoerId)}
+          onLuk={() => setSender(null)}
+          onSendt={() => { setSender(null); ordrer.genindlaes(); }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Send ordre — SKIVE 4D.
+ *
+ * ⚠ FORHÅNDSVISNINGEN VISER, DEN ÆNDRER IKKE. Modtager, emne og brødtekst er
+ * PRÆCIS det `ordreMailSend` selv bygger af det server-hentede ordre —
+ * `ordreMailIndhold()` er den samme rene funktion begge steder kalder, så
+ * det brugeren ser her, er det der rent faktisk bliver sendt. Kun sproget kan
+ * vælges om; ordrelinjerne redigeres ikke fra en mail-dialog — skal ordren
+ * ændres, sker det i selve Procure-flowet, ikke her.
+ *
+ * ⚠ ÉN sendRequestId, GENERERET ÉN GANG. Samme mønster som Sagsvisning.jsx's
+ * mail-dialog: et dobbeltklik eller en retry rammer den samme post
+ * server-side, og der sendes højst én mail.
+ */
+function SendOrdreDialog({ ordre, leverandoer, onLuk, onSendt }) {
+  const [sprog, setSprog] = useState(
+    erGyldigtSprog(leverandoer?.sprog) ? leverandoer.sprog : STANDARD_SPROG
+  );
+  const [arbejder, setArbejder] = useState(false);
+  const [svar, setSvar] = useState(null);
+  const [sendRequestId] = useState(() => (
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `srq-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  ));
+
+  const indhold = ordreMailIndhold(ordre, { leverandoer, sprog });
+
+  const send = async () => {
+    setArbejder(true);
+    setSvar(null);
+    const r = await sendOrdreMail({ ordreId: ordre.id, sendRequestId, sprog });
+    setArbejder(false);
+    setSvar(r);
+    /* ⚠ "ACCEPTERET TIL AFSENDELSE", ALDRIG "LEVERET". r.ok er kun sandt
+       når serveren selv fik et "accepteret" fra udbyderen — en fejlet mail
+       giver r.ok === false, og ordren beholder sin status. */
+    if (r.ok) onSendt();
+  };
+
+  return (
+    <Dialog titel={`Send ordre — ${ordre.nummer}`}
+            under="Sendes via den delte mailtransport til den mailadresse leverandøren har i kartoteket."
+            onLuk={onLuk}
+            handling={
+              <Knap variant="primaer" disabled={!indhold.tilEmail || arbejder} onClick={send}>
+                Send ordre
+              </Knap>
+            }>
+      {!indhold.tilEmail ? (
+        <p className="fc-hint fc-bad" style={{ marginTop: 0 }}>
+          Leverandøren har ingen mailadresse i kartoteket. Tilføj en under
+          Leverandører, før ordren kan sendes.
+        </p>
+      ) : (
+        <>
+          <MiniLinje label="Til" vaerdi={indhold.tilEmail} />
+          <MiniLinje label="Leverandør" vaerdi={leverandoer?.navn || "—"} />
+          <Feltraekke>
+            <Felt id="ordremail-sprog" label="Sprog" valgmuligheder={
+              ALLE_SPROG.map((s) => ({ vaerdi: s, label: SPROG[s] }))
+            } vaerdi={sprog} saet={setSprog} />
+          </Feltraekke>
+          <MiniLinje label="Emne" vaerdi={indhold.emne} />
+          <p className="fc-hint" style={{ marginBottom: 4 }}>Brødtekst</p>
+          <pre className="fc-udkast-tekst">{indhold.brodtekst}</pre>
+        </>
+      )}
+      <Formularsvar svar={svar} okTekst="Ordren er accepteret til afsendelse." />
+    </Dialog>
   );
 }
 

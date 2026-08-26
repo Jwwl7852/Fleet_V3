@@ -141,3 +141,85 @@ describe("Læsningen følger modulet", () => {
     await assertFails(get(ref(db, `tenants/${UDEN}/indkoebsordrer`)));
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ordreMailSend'S EGEN POST — Skive 4D. Samme lukningsmønster som
+   rules.dokumenter.test.mjs: `indkoebsordrer` er `.write: false`, og
+   `mail/$sendRequestId` arver det — der er derfor INGEN klient-skrivevej at
+   demonstrere en "gyldig post" igennem. Testene spørger om det der FAKTISK
+   kan efterprøves: at ingen kan skrive den, uanset permission, og at den er
+   tenant-isoleret og læsbar som resten af ordren.
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("mail-recorden under en ordre er lukket for alle — Skive 4D", () => {
+  const ORDRE_GODKENDT = "o-godkendt";
+  const SRID = "srq-abc123";
+  const ANDEN_TENANT = "procureAnden4d";
+  const mailSti = (tenant, ordreId, srid) =>
+    `tenants/${tenant}/indkoebsordrer/${ordreId}/mail/${srid}`;
+
+  before(async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      for (const t of [TENANT, ANDEN_TENANT]) {
+        await set(ref(db, `tenants/${t}/_findes`), true);
+        await set(ref(db, `tenants/${t}/moduler`), { dashboard: true, indkoeb: true });
+      }
+      await set(ref(db, sti("indkoebsordrer", ORDRE_GODKENDT)),
+        { ...ORDRE, status: "godkendt" });
+      /* ⚠ SEEDET SOM ordreMailSend (ADMIN SDK) VILLE HAVE SKREVET DEN. */
+      await set(ref(db, mailSti(TENANT, ORDRE_GODKENDT, SRID)), {
+        ms: 1786000000000, mailStatus: "accepteret", sprog: "da", afsendtAf: "uid-jens",
+      });
+    });
+  });
+
+  it("⚠ EN ADMIN KAN IKKE SKRIVE MAIL-RECORDEN DIREKTE — heller ikke med indkoeb.skriv", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, mailSti(TENANT, ORDRE_GODKENDT, "srq-forsoeg")), {
+      ms: Date.now(), mailStatus: "accepteret",
+    }));
+  });
+
+  it("⚠ HELLER IKKE EN OPDATERING AF EN EKSISTERENDE POST", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(update(ref(db, mailSti(TENANT, ORDRE_GODKENDT, SRID)), { mailStatus: "fejlet" }));
+  });
+
+  it("⚠ INGEN HARDSLET — set(null) afvises", async () => {
+    const db = som("admin1", "admin");
+    await assertFails(set(ref(db, mailSti(TENANT, ORDRE_GODKENDT, SRID)), null));
+  });
+
+  it("mail-recorden læses som resten af ordren, med indkoeb.laes", async () => {
+    const db = som("laeser1", "admin");
+    const snap = await get(ref(db, mailSti(TENANT, ORDRE_GODKENDT, SRID)));
+    assert.equal(snap.val()?.mailStatus, "accepteret");
+  });
+
+  it("⚠ TENANT A KAN IKKE LÆSE ELLER SKRIVE TENANT B's MAIL-RECORD", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      await set(ref(db, `tenants/${ANDEN_TENANT}/indkoebsordrer/${ORDRE_GODKENDT}`),
+        { ...ORDRE, status: "godkendt" });
+      await set(ref(db, mailSti(ANDEN_TENANT, ORDRE_GODKENDT, SRID)), {
+        ms: 1786000000000, mailStatus: "accepteret",
+      });
+    });
+    const somA = som("uid-a", "admin"); // TENANT, ikke ANDEN_TENANT
+    await assertFails(get(ref(somA, mailSti(ANDEN_TENANT, ORDRE_GODKENDT, SRID))));
+    await assertFails(set(ref(somA, mailSti(ANDEN_TENANT, ORDRE_GODKENDT, "srq-fra-a")),
+      { ms: Date.now(), mailStatus: "accepteret" }));
+  });
+
+  it("⚠ REGELFILEN SIGER DET SAMME — mail har ikke fået sin egen .write", () => {
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10))
+    );
+    const ordre = regler.rules.tenants.$tenantId.indkoebsordrer;
+    assert.equal(ordre[".write"], false,
+      "indkoebsordrer er skrivbar igen — så kan en mail-record forfalskes uden om ordreMailSend");
+    assert.ok(!ordre.$ordreId.mail[".write"],
+      "mail har fået sin egen .write — den skal arve indkoebsordrer/.write:false");
+  });
+});

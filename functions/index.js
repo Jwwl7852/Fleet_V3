@@ -100,8 +100,10 @@ import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
   valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
   kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
-  kanMatche, kontantkoebLinje,
+  kanMatche, kontantkoebLinje, ordreMailIndhold, ORDRESTATUS,
 } from "./delt/procure.js";
+/* ⚠ SKIVE 4D — SAMME KATALOG SOM leverandoerer.js's standardfelt. */
+import { erGyldigtSprog, STANDARD_SPROG } from "./delt/sprog.js";
 import {
   valideOpgaveplan, valideFacilityopgave, valideOpgaveflyt, flytOpdatering,
   kanSkifteOpgave, statusOpdatering,
@@ -5008,6 +5010,174 @@ export const ordrestatus = onCall({ region: REGION }, async (req) => {
       : `${ordre.status} → ${opdatering.status}`);
 
   return { ok: true, status: opdatering.status, automatisk: Boolean(opdatering.godkendtAutomatisk) };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ORDREMAILSEND — SKIVE 4D. Trin 3 → 4: den godkendte ordre sendes til
+   leverandøren. Samme SYV Gate A-krav som sagMailSend (se dens hoved,
+   længere nede i denne fil) — genbrugt punkt for punkt, ikke en
+   Procure-specifik afskrift af transportlaget:
+
+   1. MODTAGEREN OPLØSES SERVER-SIDE. Klienten sender kun ordreId — aldrig
+      en adresse. Leverandøren hentes fra ordrens EGEN leverandoerId i
+      SAMME tenants træ (`rod` er allerede tenant-scopet), og
+      `kontaktEmail` læses derfra — aldrig fra klientens input.
+   2. PROVIDER-HEMMELIGHEDEN ligger i MAIL_ADAPTER, defineret ét sted
+      (linje ~6324). Denne funktion kender ingen API-nøgle direkte.
+   3. PERMISSION: indkoeb.skriv — SAMME permission som stod på den nu
+      fjernede "Markér som sendt" i ORDRE_OVERGANGE (se procure.js's egen
+      note der). Ikke en ny permission opfundet til lejligheden.
+   4. TENANT + ORDRESTATUS genverificeres her: ordren skal stå i
+      "godkendt". En ordre der kræver godkendelse, kan slet ikke NÅ
+      "godkendt" uden at have passeret `ordrestatus`' egen
+      `kraeverGodkendelse()`-tjek (se funktionen ovenfor) — status ER
+      beviset, og der er derfor ingen selvstændig "er den godkendt
+      nok"-beregning her.
+   5. AUDIT skrives ubetinget nedenfor — anmodet/accepteret/fejlet er alle
+      ét `logProcure()`-kald. Ingen ordretekst, ingen brødtekst i posten.
+   6. HEADER-INJEKTION: emnet går gennem `saniterHeaderFelt()`.
+   7. IDEMPOTENS: `sendRequestId` er nøglen UNDER ordren
+      (`indkoebsordrer/$ordreId/mail/$sendRequestId`) — samme
+      `transaction()`-reservation som `sagMailSend`.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const ordreMailSend = onCall({
+  region: REGION,
+  secrets: [MAILGUN_API_KEY, MAILGUN_DOMAIN, MAILGUN_AFSENDER],
+}, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  if (!perms.includes("|indkoeb.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke sende ordren. Det kræver indkoeb.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("indkoeb").val() !== true) {
+    throw new HttpsError("permission-denied", "Procure-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const ordreId = kortStreng(d.ordreId, 60);
+  if (!ordreId) throw new HttpsError("invalid-argument", "ordreId mangler.");
+
+  const snap = await rod.child(`indkoebsordrer/${ordreId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Bestillingen findes ikke.");
+  const ordre = { ...snap.val(), id: ordreId };
+
+  if (ordre.status !== "godkendt") {
+    throw new HttpsError("failed-precondition",
+      `En ordre der er ${(ORDRESTATUS[ordre.status]?.label || ordre.status).toLowerCase()}, kan ikke sendes.`);
+  }
+
+  /* ⚠ GATE A PUNKT 1 — MODTAGEREN OPLØSES HER, IKKE AF KLIENTEN. Et
+     manipuleret leverandoerId på ordren ville stadig kun ramme DENNE
+     tenants eget kartotek, fordi `rod` allerede er tenant-scopet — men
+     eksistenstjekket nedenfor dækker også det tilfælde hvor ordren (fejl-
+     agtigt) peger på et id der slet ikke findes. */
+  const lev = (await rod.child(`leverandoerer/${ordre.leverandoerId}`).once("value")).val();
+  if (!lev) throw new HttpsError("failed-precondition", "Leverandøren på ordren findes ikke.");
+  const tilEmail = typeof lev.kontaktEmail === "string" ? lev.kontaktEmail.trim() : "";
+  if (!tilEmail) {
+    throw new HttpsError("failed-precondition",
+      "Leverandøren har ingen mailadresse i kartoteket. Tilføj en under Leverandører.");
+  }
+
+  /* ⚠ SPROGET: KLIENTENS ØNSKE, ELLERS LEVERANDØRENS STANDARD, ELLERS
+     STANDARD_SPROG — ALDRIG BROWSERENS LOCALE (se sprog.js). Overstyringen
+     ændrer ikke leverandørens gemte standard; det er en engangsbeslutning
+     for DENNE mail. */
+  const sprogOenske = kortStreng(d.sprog, 5);
+  if (sprogOenske && !erGyldigtSprog(sprogOenske)) {
+    throw new HttpsError("invalid-argument", "Ukendt sprog.");
+  }
+  const sprog = sprogOenske || (erGyldigtSprog(lev.sprog) ? lev.sprog : STANDARD_SPROG);
+
+  const indhold = ordreMailIndhold(ordre, { leverandoer: lev, sprog });
+  const emne = saniterHeaderFelt(indhold.emne, 250);
+  const tekst = valideTekst(indhold.brodtekst);
+  if (!tekst) throw new HttpsError("internal", "Mailindholdet kunne ikke bygges.");
+
+  const sendRequestId = kortStreng(d.sendRequestId, 60);
+  if (!sendRequestId || !erGyldigtSendRequestId(sendRequestId)) {
+    throw new HttpsError("invalid-argument", "sendRequestId mangler eller er ugyldigt.");
+  }
+
+  /* ---- Idempotens: sendRequestId ER nøglen — Gate A, punkt 7 ------------ */
+  const mailRef = rod.child(`indkoebsordrer/${ordreId}/mail/${sendRequestId}`);
+  const foreloebig = { ms: Date.now(), mailStatus: "anmodet", sprog, afsendtAf: uid };
+  const trans = await mailRef.transaction((cur) => (cur === null ? foreloebig : undefined));
+  if (!trans.committed) {
+    /* Allerede anmodet/sendt/fejlet under dette sendRequestId. */
+    const eksisterende = trans.snapshot.val();
+    return { ordreId, mailStatus: eksisterende?.mailStatus || "anmodet", allerede: true };
+  }
+
+  /* ---- Rate limit — Gate A, punkt 6, EFTER reservationen — genbruger
+     PRÆCIS samme tenant/uid-vindue som sagMailSend, ikke en Procure-egen
+     tæller. --------------------------------------------------------------- */
+  const indenforGraense = await tjekOgOptaelMailRate(rod, uid);
+  if (!indenforGraense) {
+    await mailRef.update({ mailStatus: "fejlet", fejlAarsag: "For mange forsøg. Prøv igen om et øjeblik." });
+    await logProcure(tenantId, uid, AUDIT.aendre, "indkoebsordrer", ordreId,
+      null, { mailStatus: "fejlet" }, "ordremail afvist — rate limit");
+    throw new HttpsError("resource-exhausted", "For mange mails sendt på kort tid. Prøv igen om et øjeblik.");
+  }
+
+  /* ---- Selve afsendelsen — Gate A, punkt 2 ------------------------------ */
+  const resultat = await sendMail(MAIL_ADAPTER, { til: tilEmail, emne, tekst });
+
+  const opdateringer = {
+    [`indkoebsordrer/${ordreId}/mail/${sendRequestId}/mailStatus`]: resultat.status,
+  };
+  if (resultat.providerId) {
+    opdateringer[`indkoebsordrer/${ordreId}/mail/${sendRequestId}/providerId`] = resultat.providerId;
+  }
+  if (resultat.fejlAarsag) {
+    opdateringer[`indkoebsordrer/${ordreId}/mail/${sendRequestId}/fejlAarsag`] = resultat.fejlAarsag;
+  }
+
+  let nyStatus = ordre.status;
+  if (resultat.status === "accepteret") {
+    /* ⚠ SAMME FELTER SOM DEN GAMLE "MARKÉR SOM SENDT" SKREV — kun kilden er
+       en anden. `ordreOpdatering()` er stadig den ENE funktion der bygger
+       dem; kun en REEL accept fra udbyderen sætter status. En fejlet mail
+       har ikke bedt leverandøren om noget, og status rører sig ikke. */
+    const felter = ordreOpdatering(ordre, "sendt", { uid, nu: Date.now() });
+    for (const [felt, vaerdi] of Object.entries(felter)) {
+      opdateringer[`indkoebsordrer/${ordreId}/${felt}`] = vaerdi;
+    }
+    nyStatus = felter.status;
+  }
+  await rod.update(opdateringer);
+
+  /* ---- Audit — Gate A, punkt 5, UBETINGET -------------------------------
+     mailStatus og leverandoerId er begge på LOGBARE_FELTER (sidste fra
+     Skive 4B) — emnet og teksten er det ikke, og står derfor ikke i
+     posten. */
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "indkoebsordrer", ordreId,
+    { status: ordre.status },
+    { status: nyStatus, mailStatus: resultat.status, leverandoerId: ordre.leverandoerId },
+    resultat.status === "accepteret" ? "ordre sendt til leverandør" : "ordremail forsøgt sendt");
+
+  if (resultat.status === "fejlet") {
+    throw new HttpsError("internal", `Mailen kunne ikke sendes: ${resultat.fejlAarsag || "ukendt fejl"}.`);
+  }
+
+  return { ordreId, mailStatus: resultat.status, status: nyStatus };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

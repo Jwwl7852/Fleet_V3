@@ -61,6 +61,30 @@ export async function skiftOrdre({ ordreId, til, begrundelse } = {}) {
 }
 
 /**
+ * sendOrdreMail({ ordreId, sendRequestId, sprog }) → { ok, art, besked, data }
+ *
+ * ⚠ SKIVE 4D. INGEN ADRESSE, INGEN ORDRELINJER SENDES HERFRA. Serveren
+ * opløser modtageren fra ordrens EGEN leverandør og bygger mailteksten af
+ * ordrens EGNE, server-hentede linjer — klienten sender kun hvilken ordre og
+ * (valgfrit) hvilket af de tre sprog denne ene mail skal have. Samme
+ * begrundelse som `skiftOrdre()`: kom ordrelinjerne med i kaldet, kunne den
+ * der sender, love noget ordren ikke indeholder.
+ *
+ * ⚠ sendRequestId ER PÅKRÆVET — samme idempotensmønster som `sendMail()` i
+ * sagplan.js. Genereres af kalderen og skal være DEN SAMME på tværs af et
+ * dobbeltklik eller en netværks-retry.
+ */
+export async function sendOrdreMail({ ordreId, sendRequestId, sprog } = {}) {
+  if (!ordreId) return { ok: false, art: "afvist", besked: "Vælg en bestilling.", data: null };
+  if (!sendRequestId) return { ok: false, art: "afvist", besked: "Mangler et afsendelses-id.", data: null };
+  return kald("ordreMailSend", {
+    ordreId,
+    sendRequestId,
+    sprog: sprog || undefined,
+  }, "Ordren blev ikke sendt.");
+}
+
+/**
  * gemGodkendelsesregler({ overBeloeb, fakturagodkendelse }) → { ok, … }
  *
  * ⚠ BELØBET SENDES I HELE ØRE. 5.000 kr er 500000 — en float fakturerer

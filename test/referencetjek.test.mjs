@@ -118,6 +118,10 @@ const UDEN_TJEK = {
     "et opakt id UDBYDEREN tildeler en accepteret mail (functions/mail/) — det "
     + "peger ikke på en post i denne database, kun i udbyderens eget system. "
     + "Skive 3D.",
+  "indkoebsordrer/$ordreId/mail/$sendRequestId/providerId":
+    "SAMME FELT SOM ovenfor, samme grund — et opakt id UDBYDEREN tildeler en "
+    + "accepteret ordremail (functions/mail/), ikke en reference til en post "
+    + "i denne database. Skive 4D.",
 
   /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
   "sager/$sagId/objektId":

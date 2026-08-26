@@ -2599,6 +2599,13 @@
             "kontaktEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
             "kontaktTelefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
 
+            // ⚠ SKIVE 4D — STANDARDSPROG FOR UDGÅENDE ORDREMAIL. Lukket
+            // vokabular, samme klasse som "kategori" ovenfor — ikke fritekst.
+            // ordreMailSend læser feltet som fallback når afsendelsen ikke
+            // selv fik et sprog med; mangler det (en leverandør oprettet før
+            // 4D), gælder STANDARD_SPROG i sprog.js, ikke browserens locale.
+            "sprog": { ".validate": "newData.isString() && newData.val().matches(/^(da|sv|en)$/)" },
+
             "aftale": {
               ".validate": "newData.hasChildren(['type'])",
               // ⚠ AFTALEFORMEN AFGOER HVAD EN PRISAFVIGELSE BETYDER. En
@@ -2776,6 +2783,28 @@
                 "$andet": { ".validate": false }
               }
             },
+            // ⚠ SKIVE 4D — DEN RIGTIGE AFSENDELSE. Sendrequestnøglen ER
+            // idempotensen, som sensitive/sager/$sagId/beskeder — et
+            // dobbeltklik eller en retry rammer den SAMME post i stedet for
+            // at oprette en ny. Noden arver indkoebsordrer's .write: false,
+            // så kun ordreMailSend (Admin SDK) kan skrive den; en klient med
+            // enhver kombination af permissions kan intet direkte her — se
+            // storage.rules' tilsvarende begrundelse i Skive 4C for hvorfor
+            // "lukket for alle" er den korrekte grænse, ikke kun "gated".
+            "mail": {
+              "$sendRequestId": {
+                ".validate": "newData.hasChildren(['ms', 'mailStatus'])",
+                "ms": { ".validate": "newData.isNumber()" },
+                // ⚠ SAMME LUKKEDE VOKABULAR SOM sensitive/sager/.../beskeder.
+                "mailStatus": { ".validate": "newData.isString() && newData.val().matches(/^(anmodet|accepteret|fejlet)$/)" },
+                "sprog": { ".validate": "newData.isString() && newData.val().matches(/^(da|sv|en)$/)" },
+                "afsendtAf": { ".validate": "newData.isString()" },
+                "providerId": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                "fejlAarsag": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                "$andet": { ".validate": false }
+              }
+            },
+
             "division": { ".validate": false },
             "$andet": { ".validate": false }
           }

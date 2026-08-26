@@ -39,6 +39,7 @@
  */
 
 import { oereFraKroner } from "./format.js";
+import { ALLE_SPROG, STANDARD_SPROG } from "./sprog.js";
 /** Hvad leverandøren leverer. Vokabular ét sted, så to skærme ikke kalder
  *  samme kategori noget forskelligt og gør den utællelig. */
 export const LEVERANDOER_KATEGORI = {
@@ -667,6 +668,14 @@ export function valideLeverandoer(post = {}) {
     f.kontaktTelefon = `Højst ${GRAENSE_LEVERANDOER.kontaktTelefon} tegn.`;
   }
 
+  /* ⚠ SKIVE 4D — STANDARDSPROGET FOR UDGÅENDE ORDREMAIL. Valgfrit i
+     formularen (mangler det, skriver byggLeverandoer() den eksplicitte
+     STANDARD_SPROG) — men ER det udfyldt, skal det være ét af de tre
+     kataloget kender. Se sprog.js. */
+  if (post.sprog && !ALLE_SPROG.includes(post.sprog)) {
+    f.sprog = "Vælg et af de understøttede sprog.";
+  }
+
   for (const k of Object.keys(f)) if (!f[k]) delete f[k];
   return f;
 }
@@ -685,6 +694,11 @@ export function byggLeverandoer(post) {
     navn: post.navn.trim(),
     kategori: post.kategori,
     aktiv: post.aktiv !== false,
+    /* ⚠ SKIVE 4D — ALTID SKREVET, ALDRIG UDLEDT AF BROWSEREN. Et manglende
+       felt ville tvinge ordreMailSend til at gætte en standard hver gang det
+       læses; her skrives den ÉN gang, eksplicit, som en beslutning — ikke
+       som en formodning genberegnet ved hver mail. */
+    sprog: ALLE_SPROG.includes(post.sprog) ? post.sprog : STANDARD_SPROG,
   };
   if (post.cvr?.trim()) ud.cvr = post.cvr.trim();
   if (post.kontaktEmail?.trim()) ud.kontaktEmail = post.kontaktEmail.trim();

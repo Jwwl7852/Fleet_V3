@@ -15,7 +15,13 @@
  * klient. Den beskriver stadig hvad serveren skal overholde — men en
  * regelprøve dér ville være grøn fordi vejen er lukket, ikke fordi posten var
  * rigtig. Det er samme forhold som `opgaveMangler()` har til `opgaver`.
+ *
+ * ⚠ ÉN IMPORT, sprog.js — SKIVE 4D. Reglen er "lukning under import, ikke
+ * importfrihed" (se warehouse.js/prioritet.js i scripts/kopier-delt.mjs):
+ * `sprog.js` er selv importfri, og `ordreMailIndhold()` skal kende PRÆCIS de
+ * samme tre sprog som leverandørens egen standardfelt.
  */
+import { erGyldigtSprog, STANDARD_SPROG } from "./sprog.js";
 
 /**
  * Hvor et behov kan komme fra.
@@ -393,6 +399,90 @@ export function mailudkast(ordre, { leverandoer } = {}) {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ORDREMAILINDHOLD — SKIVE 4D. Den rigtige afsendelse.
+
+   ⚠ IKKE mailudkast() MED ET SPROGPARAMETER. `mailudkast()` er stadig
+   udkastet i Bestillinger.jsx — dansk, til kopiering, uden om systemet — og
+   dets tekst rører denne funktion ikke; at grene den ene ud i tre sprog ville
+   lade en fremtidig ændring af udkastets ordlyd utilsigtet ændre den mail
+   der rent faktisk sendes, eller omvendt. To forskellige forbrugere, hver sin
+   funktion — samme skel som byggLeverandoer() og valideLeverandoer() ikke
+   deler kode med Indkøbslinjens valideIndkoeb().
+
+   ⚠ SAMME TO REGLER SOM mailudkast(): bestillingsnummeret ligger i emnet
+   (matchet i trin 5 kan kun gættes uden det), og en linje uden pris skriver
+   teksten for "ikke oplyst" — aldrig 0, som ville være et løfte om en gratis
+   vare.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ORDREMAIL_TEKST = {
+  da: {
+    til: "Til", bestiller: "Vi bestiller hermed følgende under ordrenummer",
+    ialt: "I alt (ekskl. moms)", prisIkkeOplyst: "pris ikke oplyst",
+    angiv: "Angiv venligst bestillingsnummer", paaFakturaen: "på fakturaen.",
+    hilsen: "Med venlig hilsen", leverandoeren: "leverandøren",
+  },
+  sv: {
+    til: "Till", bestiller: "Vi beställer härmed följande under beställningsnummer",
+    ialt: "Totalt (exkl. moms)", prisIkkeOplyst: "pris ej angivet",
+    angiv: "Ange gärna beställningsnumret", paaFakturaen: "på fakturan.",
+    hilsen: "Med vänlig hälsning", leverandoeren: "leverantören",
+  },
+  en: {
+    til: "To", bestiller: "We hereby place the following order under order number",
+    ialt: "Total (excl. VAT)", prisIkkeOplyst: "price not stated",
+    angiv: "Please state order number", paaFakturaen: "on the invoice.",
+    hilsen: "Kind regards", leverandoeren: "the supplier",
+  },
+};
+
+/**
+ * ordreMailIndhold(ordre, { leverandoer, sprog }) → { tilEmail, emne, brodtekst }
+ *
+ * ⚠ REN FUNKTION — BYGGER, SENDER IKKE. `ordreMailSend` kalder den med et
+ * SERVER-VERIFICERET ordre og leverandør, aldrig med noget klienten selv
+ * påstod. Samme mønster som `mailudkast()`, kun med sprog som ekstra akse.
+ *
+ * ⚠ ET UGYLDIGT SPROG FALDER TILBAGE TIL STANDARD_SPROG, DET KASTER IKKE.
+ * Kalderen (ordreMailSend) har allerede afvist en ugyldig klient-override før
+ * dette kaldes — faldet her er et sidste værn, ikke den primære kontrol, og
+ * en render-funktion der kaster på et skævt input, er en dårlig sidste linje.
+ */
+export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
+  const t = ORDREMAIL_TEKST[erGyldigtSprog(sprog) ? sprog : STANDARD_SPROG];
+  const linjer = linjeListe(ordre);
+  const sum = ordreSumOere(ordre);
+  const nummer = ordre?.nummer || "(uden nummer)";
+  const navn = leverandoer?.navn || t.leverandoeren;
+
+  const punkter = linjer.map((l) => {
+    const antal = Number.isFinite(l.antal) ? l.antal : "?";
+    const enhed = l.enhed ? ` ${l.enhed}` : "";
+    const pris = Number.isInteger(l.prisPrEnhedOere)
+      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : ` — ${t.prisIkkeOplyst}`;
+    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+  });
+
+  return {
+    tilEmail: leverandoer?.kontaktEmail || null,
+    emne: `Ordre ${nummer}${linjer.length === 1 ? ` – ${linjer[0].vare}` : ""}`,
+    brodtekst: [
+      `${t.til} ${navn}`,
+      "",
+      `${t.bestiller} ${nummer}:`,
+      "",
+      ...punkter,
+      "",
+      `${t.ialt}: ${sum > 0 ? kr(sum) : "—"}`,
+      "",
+      `${t.angiv} ${nummer} ${t.paaFakturaen}`,
+      "",
+      t.hilsen,
+    ].join("\n"),
+  };
+}
+
 /**
  * behovTilLinje(behov) → linjen en bestilling skal bære.
  *
@@ -548,9 +638,19 @@ export function kraeverGodkendelse(ordre, regler) {
  * overgang uden en knap er en vej ingen kan finde. Samme mønster som
  * `OPGAVE_OVERGANGE` og `tilgaengeligeEtapeHandlinger()`.
  *
- * ⚠ `sendt` SÆTTES AF ET MENNESKE. Systemet sender ingen mail (beslutning 81),
- * så en automatisk overgang dertil ville være en påstand. Derfor er
- * *"Markér som sendt"* en handling og ikke en følge.
+ * ⚠ `sendt` ER IKKE LÆNGERE EN OVERGANG ET MENNESKE VÆLGER I DENNE TABEL —
+ * SKIVE 4D. Indtil da var den: systemet sendte ingen mail (beslutning 81),
+ * og "Markér som sendt" var derfor en PÅSTAND et menneske indestod for. Nu
+ * findes en rigtig afsendelse (`ordreMailSend`), og "sendt" er blevet en
+ * FØLGE af at den lykkedes — nøjagtig den samme flytning som bookingens
+ * tilstand tog i beslutning 40: der er ingen `kanSkifte()` på et afledt felt.
+ * Stod overgangen stadig her, kunne enhver med `indkoeb.skriv` klikke ordren
+ * i "sendt" med `sendtMs` sat og INGEN mail bag — umuligt at skelne fra en
+ * ordre `ordreMailSend` faktisk fik afsendt. `ordreMailSend` bygger derfor
+ * sine egne felter direkte med `ordreOpdatering(ordre, "sendt", …)`, uden om
+ * denne tabel og uden om `kanSkifteIndkoebsordre()` — den kalder selv sit
+ * eget forudsætningstjek (`status === "godkendt"`) og sin egen permission
+ * (`indkoeb.skriv`, samme som stod her). Se functions/index.js.
  *
  * ⚠ OG DER ER INGEN VEJ TILBAGE FRA `modtaget`. Varen står på hylden; skal
  * noget sendes retur, er det en kreditnota — en anden post, ikke en tilbagerulning.
@@ -568,7 +668,7 @@ export const ORDRE_OVERGANGE = {
     { til: "afvist", label: "Afvis", perm: "indkoeb.godkend", kraeverBegrundelse: true },
   ],
   godkendt: [
-    { til: "sendt", label: "Markér som sendt", perm: "indkoeb.skriv" },
+    /* ⚠ "SEND ORDRE" STÅR IKKE HER, MED VILJE — se noten ovenfor. */
     { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
   ],
   sendt: [

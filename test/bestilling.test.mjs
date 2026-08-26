@@ -401,14 +401,18 @@ describe("Skærmen viser, serveren håndhæver", () => {
 
 describe("Skærmen siger hvad den ikke gør", () => {
   /**
-   * ⚠ INGEN "SEND"-KNAP. Mailen sendes ikke af systemet (kundens valg), og en
-   * knap der så ud som send, men lagde mailen i en kø der ikke findes, ville
-   * være værre end ingen knap.
+   * ⚠ INGEN "SEND"-KNAP HER — SKIVE 4D. Denne skærm viser kladder, FØR
+   * godkendelse, og kan derfor ikke sende (ordreMailSend kræver status
+   * "godkendt"). Den rigtige afsendelse findes på Godkendelser, ikke her —
+   * en knap der så ud som send, men ikke kunne bruges på en kladde, ville
+   * være en fælde.
    */
   test("⚠ DER ER INGEN SEND-KNAP, OG DET STÅR PÅ SKÆRMEN", () => {
-    assert.match(SKAERM, /Systemet sender ikke udkastene/,
+    assert.match(SKAERM, /sender den ikke herfra/,
       "skærmen lover ikke noget, men siger heller ikke hvad den ikke gør");
-    assert.ok(!/>\s*Send\b/.test(SKAERM), "der er en Send-knap — der er ingen afsendelsesvej");
+    assert.match(SKAERM, /Godkendelser/,
+      "skærmen peger på hvor den rigtige afsendelse rent faktisk sker");
+    assert.ok(!/>\s*Send\b/.test(SKAERM), "der er en Send-knap — der er ingen afsendelsesvej herfra");
   });
 
   /* ⚠ ET BESTILT BEHOV KAN IKKE BESTILLES IGEN FRA SKÆRMEN. Serveren afviser

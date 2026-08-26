@@ -39,6 +39,12 @@ export const DELTE_FILER = [
      SAMME valideBehov(). Serveren afviser med den sætning brugeren allerede
      har set — to formuleringer af én spærring er to forklaringer på én ting. */
   "procure.js",
+  /* ⚠ procure.js IMPORTERER sprog.js (Skive 4D), OG SAA SKAL DEN MED —
+     samme regel som warehouse.js/prioritet.js nedenfor: lukning under
+     import, ikke importfrihed. leverandoerer.js importerer den samme fil,
+     saa ordreMailSend og leverandoerskrivningen kender NOEJAGTIG de samme
+     tre sprog. */
+  "sprog.js",
   "forbrugsvarer.js",
   "fakturacenter.js",
   "audit-regler.js", "permissions.js", "moduler.js", "abonnement.js",

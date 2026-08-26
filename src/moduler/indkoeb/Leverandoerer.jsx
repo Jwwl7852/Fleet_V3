@@ -51,6 +51,7 @@ import {
   gaeldendePrisliste, kommendePriser, indkoebBeloebOere, leverandoerFraDb,
   valideLeverandoer, byggLeverandoer,
 } from "../../fleet/leverandoerer.js";
+import { SPROG, ALLE_SPROG, STANDARD_SPROG } from "../../fleet/sprog.js";
 import { DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
@@ -334,6 +335,10 @@ function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
             reglerne og i demodata. Et felt der findes i basen, men ikke på
             skærmen, er en tavs kilde ingen kan se. */}
         <MiniLinje label="Telefon" vaerdi={l.kontaktTelefon} />
+        {/* ⚠ SKIVE 4D — STANDARDSPROG FOR ORDREMAIL. Et manglende felt (en
+            leverandør oprettet før 4D) viser eksplicit STANDARD_SPROG, ikke
+            en tom linje — det ER standarden, indtil posten gemmes igen. */}
+        <MiniLinje label="Sprog for ordremail" vaerdi={SPROG[l.sprog] || SPROG[STANDARD_SPROG]} />
 
         <div style={{ marginTop: 12 }}>
           <MiniLinje label="Svartid på sager"
@@ -397,6 +402,8 @@ function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
 
 const tomLeverandoer = () => ({
   navn: "", kategori: "", cvr: "", kontaktEmail: "", kontaktTelefon: "", aktiv: true,
+  /* ⚠ SKIVE 4D — EKSPLICIT VALGT, IKKE BROWSERENS SPROG. Se sprog.js. */
+  sprog: STANDARD_SPROG,
 });
 
 /**
@@ -461,6 +468,12 @@ function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
                 fejl={vis("kontaktEmail")} />
           <Felt id="lv-tlf" label="Telefon" vaerdi={f.kontaktTelefon} saet={saet("kontaktTelefon")}
                 fejl={vis("kontaktTelefon")} />
+        </Feltraekke>
+        <Feltraekke>
+          <Felt id="lv-sprog" label="Sprog for ordremail"
+                valgmuligheder={ALLE_SPROG.map((s) => ({ vaerdi: s, label: SPROG[s] }))}
+                vaerdi={f.sprog || STANDARD_SPROG} saet={saet("sprog")} fejl={vis("sprog")}
+                hint="Standarden for udgående ordremail til denne leverandør — kan overstyres pr. mail, når ordren sendes." />
         </Feltraekke>
         {/* ⚠ AKTIV ER IKKE EN SLET-KNAP. Feltet findes for at kunne tage en
             leverandør ud af drift uden at fjerne ham — se
