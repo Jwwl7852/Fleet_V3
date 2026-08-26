@@ -1015,8 +1015,17 @@
             // de fem er regnet af priser, fakturagrundlag og indkoeb.
             // useKpi() spoerger kun om dem laesbareDomaener() siger ja til,
             // saa han faar ingen permission-denied — kortene er der bare ikke.
+            //
+            // ⚠ SKIVE 4A — flaade OG indkoeb KRAEVER NU TO PERMISSIONS, IKKE
+            // ÉN. Begge domaener regnes delvist af `fakturaer` (flaade.
+            // ikkeLinkedeFakturaer, indkoeb.fakturaerTilGodkendelse), som fik
+            // sin egen laese-permission i 4A — fakturaer.laes, forskellig fra
+            // indkoeb.laes. Et noegletal er ikke mildere end sit grundlag
+            // (se rules.kpi.test.mjs's hoved), saa begge skal kraeves. I
+            // praksis aendrer det ingenting: de to permissions gives til
+            // NOEJAGTIG de samme roller (se ROLLE_PERMS i permissions.js).
             "$domaene": {
-              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')))"
+              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|')))"
             }
           }
         },
@@ -3010,14 +3019,14 @@
         },
 
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
-        // ⚠ INGEN LAESE-PERMISSION HELLER — BESLUTNING 104, samme grund.
-        // De ti oevrige kommercielle noder fik en (grundlag.laes,
-        // satser.laes, indkoeb.laes). Fakturaer fik ikke: den roeres af
+        // ⚠ SKIVE 4A — LÆSE-PERMISSIONEN DER MANGLEDE, ER NU fakturaer.laes.
+        // De ti oevrige kommercielle noder havde laenge en (grundlag.laes,
+        // satser.laes, indkoeb.laes). Fakturaer havde ikke: den roertes af
         // Procures Fakturaer OG Oekonomis Fakturacenter, og en permission
         // der hedder indkoeb.laes ville laase den ene skaerm bag det andet
-        // moduls navn. Det er samme fejl som en modulklausul her, eet lag
-        // hoejere oppe. Skal den gates, skal permissionen hedde noget der
-        // daekker BEGGE forbrugere. Den staar paa listen i
+        // moduls navn — samme fejl som en modulklausul her, eet lag hoejere
+        // oppe. Loesningen var en permission der daekker BEGGE forbrugere,
+        // ikke ingen permission. Den staar paa listen i
         // test/laeseadgang.test.mjs med netop den grund.
         "fakturaer": {
           // ⚠ INGEN MODULKLAUSUL — OG DET ER BESLUTTET, IKKE GLEMT.
@@ -3027,7 +3036,7 @@
           // basen, fordi den roeres af to skaerme — en klausul paa det ene
           // modul ville spaerre det andet. Samme grund som opgaver og satser.
           // Vil du gate den, skal den anden forbruger findes foerst.
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fakturaer.laes|')",
           ".write": false,
 
           // ⚠ INDEKSET PEGEDE PAA ET FELT DER IKKE FINDES.

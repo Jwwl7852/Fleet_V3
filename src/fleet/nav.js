@@ -37,13 +37,16 @@
  * chauffør, som ikke har `indkoeb.laes` — præcis den eksponering
  * beslutning 105 findes for at forhindre.
  *
- * ⚠ FAKTURAER & BILAG ER EN BEVIDST OVERGANGSTILSTAND. Målplanen
- * (02_TARGET_NAVIGATION.md) erstatter `kraeverPerm: "indkoeb.laes"` med en
- * ny, delt permission-familie (`fakturaer.laes`/`.skriv`/`.godkend`) — det
- * er PERMISSION_MODEL-arbejde og hører til en senere delskive. Skive 2A
- * FLYTTER kun menupunktet; adgangen er UÆNDRET (samme `kraeverPerm`, samme
- * rute `/oekonomi/fakturacenter`), så punktet er hverken bredere eller
- * smallere tilgængeligt end før flytningen.
+ * ⚠ FAKTURAER & BILAG'S OVERGANGSTILSTAND ER AFSLUTTET — SKIVE 4A.
+ * Målplanen (02_TARGET_NAVIGATION.md, Korrektion 2) er nu ført ud:
+ * `kraeverPerm` er `fakturaer.laes`, en ny, delt permission-familie
+ * (`fakturaer.laes`/`.skriv`/`.godkend`) der dækker begge forbrugere
+ * (Procures Fakturaer og Fakturacenteret), ikke længere `indkoeb.laes`.
+ * Ruten er UÆNDRET (`/oekonomi/fakturacenter`). Målplanens forslåede
+ * `/fakturaer` er selv markeret "IKKE PÅVIST" dér — en URL-omdøbning er en
+ * selvstændig, kontrolleret routing-migration, ikke en del af 4A.
+ * Rollefordelingen er bevidst identisk med hvem der havde `indkoeb.laes` i
+ * forvejen — ingen mistede eller fik adgang ved skiftet.
  *
  * ⚠ RUTERNE ER MED VILJE UÆNDREDE I DENNE SKIVE. Målplanen foreslår nye
  * kanoniske stier (`/kunder`, `/fakturaer`) — de er IKKE indført her.
@@ -87,11 +90,10 @@ export const NAV = [
     kraeverModul: "kunder", gruppe: "faelles",
     titel: "Kunder", under: "Kundekartotek og aftaler.",
   },
-  /* ⚠ FAKTURAER & BILAG — se filens hoved om overgangstilstanden.
-     `kraeverPerm: "indkoeb.laes"` er UÆNDRET fra dengang punktet hed
-     "Fakturacenter" og lå under Økonomi & Rapporter. */
+  /* ⚠ FAKTURAER & BILAG — se filens hoved. Skive 4A: `kraeverPerm` er nu
+     `fakturaer.laes`, ikke `indkoeb.laes`. */
   {
-    key: "fakturacenter", kraeverPerm: "indkoeb.laes", sti: "/oekonomi/fakturacenter",
+    key: "fakturacenter", kraeverPerm: "fakturaer.laes", sti: "/oekonomi/fakturacenter",
     label: "Fakturaer & bilag", gruppe: "faelles",
     titel: "Fakturaer & bilag",
     under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
@@ -221,9 +223,14 @@ export const NAV = [
       { key: "godkendelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/godkendelser", label: "Godkendelse af indkøb",
         titel: "Godkendelse af indkøb",
         under: "Godkend indkøb, der kræver din godkendelse — og sæt virksomhedens beløbsgrænse." },
-      { key: "fakturaer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/fakturaer", label: "Fakturaer, match & kontantkøb",
-        titel: "Fakturaer, match & kontantkøb",
-        under: "Match fakturaer mod bestillinger, godkend dem — eller registrér et kontant køb." },
+      /* ⚠ SKIVE 4A — INDSKRÆNKET. Faktura-listen/status/godkendelse er
+         flyttet til det fælles Fakturacenter (Fælles → Fakturaer & bilag);
+         denne skærm har kun match-til-indkøbslinje og kontantkøb tilbage —
+         de to findes ikke andre steder. `kraeverPerm` er stadig
+         `indkoeb.laes`: det er en Procure-driftsindgang, ikke fakturaejerskab. */
+      { key: "fakturaer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/fakturaer", label: "Match & kontantkøb",
+        titel: "Match & kontantkøb",
+        under: "Match fakturaer mod bestillinger, eller registrér et kontant køb. Selve fakturaen — status og godkendelse — ligger nu i Fakturaer & bilag." },
       { key: "leverandoerer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/leverandoerer", label: "Leverandører",
         titel: "Leverandører", under: "Performance, aftaler og priser" },
       /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS.

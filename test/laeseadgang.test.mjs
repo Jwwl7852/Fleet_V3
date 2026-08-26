@@ -84,6 +84,14 @@ const LUKKET = {
   forbrugsvarer: "indkoeb.laes",
   forbrugsvarebevaegelser: "indkoeb.laes",
   godkendelsesregler: "indkoeb.laes",
+  /* ⚠ SKIVE 4A — DEN FJERDE, EFTER DE TRE FRA BESLUTNING 104. `fakturaer`
+     havde ingen `.read`-permission overhovedet (se filens egen note i
+     firebase.rules.json); det var ikke en åben `UDEN_LAES`-begrundelse
+     nedenfor, men et rent hul. `fakturaer.laes` dækker begge forbrugere
+     (Procures Fakturaer og det fælles Fakturacenter) med vilje, i stedet
+     for at genbruge `indkoeb.laes` og låse den ene skærm bag den andens
+     modulnavn. */
+  fakturaer: "fakturaer.laes",
 };
 
 describe("De ti kommercielle noder er lukket", () => {

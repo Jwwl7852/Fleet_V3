@@ -247,7 +247,16 @@ const SKAERME_DER_IKKE_MAA_BLOKERE = [
      skal den tilbage på listen samme dag. Se docs/product-redesign-v1/. */
   "src/moduler/facility/Servicekalender.jsx",
   "src/moduler/indkoeb/Oversigt.jsx",
-  "src/moduler/indkoeb/Fakturaer.jsx",
+  /* ⚠ Fakturaer.jsx STOD HER OG ER TAGET UD — Skive 4A. Skærmen mistede sine
+     to k.indkoeb.*-nøgletal (fakturaerTilGodkendelse, godkendtDenneMaaned) —
+     de hørte til den fulde fakturaliste/godkendelse, som flyttede til
+     Fakturacenter.jsx (der stadig står på listen). De to KpiKort der er
+     tilbage her ("Manglende match", "Kontantkøb uden bilag") er tællinger af
+     de lister skærmen alligevel henter, ikke af `k` — samme mønster som
+     Vaerkstedskalender.jsx ovenfor. Skærmen blokerer stadig på en AFVIST
+     læsning af `fakturaer`/`indkoeb`; den kan bare ikke længere blokere på
+     manglende AGGREGERING, fordi den ikke spørger om nogen. Får skærmen et
+     k.indkoeb.*-felt tilbage, skal den tilbage på listen samme dag. */
   "src/moduler/indkoeb/Leverandoerer.jsx",
   "src/moduler/Kompetencer.jsx",
   "src/moduler/Fakturering.jsx",

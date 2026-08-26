@@ -102,23 +102,19 @@ export function parterFraLeverandoer(l) {
 /**
  * Må denne bruger godkende en faktura?
  *
- * ⚠ DEN VAR MIDLERTIDIG, OG ER DET IKKE LÆNGERE. Her stod `indkoeb.skriv`
- * med noten om at permissionen skal skilles ud "når reglerne åbnes". Det
- * skete i beslutning 82: `indkoeb.godkend` findes, og `ordrestatus` kræver
- * den.
- *
  * AT GODKENDE ER EN ANDEN HANDLING END AT BESTILLE. Den der bestiller varen,
  * og den der siger god for regningen, er i en virksomhed med adskilte
  * funktioner BEVIDST to personer — det er hele pointen med en attestationsgang.
  * Delte de én permission, kunne den samme medarbejder bestille hos sin svoger
  * og godkende sit eget køb, og beløbsgrænsen på planche 2 ville være pynt.
  *
- * ⚠ MEN SELVE FAKTURAGODKENDELSEN ER STADIG IKKE HÅNDHÆVET. `fakturaer/` er
- * `.write: false`, og der er ingen funktion der skriver den — det er trin 4 i
- * Procures proces og hører i sin egen etape. Permissionen er den rigtige;
- * vejen mangler. Skærmen siger det.
+ * ⚠ SKIVE 4A — VAR indkoeb.godkend. Fakturagodkendelse er håndhævet
+ * server-side i `fakturastatus` (functions/index.js), som nu kræver
+ * `fakturaer.godkend` — en permission der dækker begge fakturaskærme
+ * (Procure og det fælles Fakturacenter), ikke kun Procures egen. Se
+ * `fakturaerGodkend` i permissions.js.
  */
-export const PERM_GODKEND = "indkoeb.godkend";
+export const PERM_GODKEND = "fakturaer.godkend";
 
 
 /* ---- Afstemning -------------------------------------------------------- */

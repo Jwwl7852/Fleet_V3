@@ -19,6 +19,10 @@
  * knapper her: man placerer og godkender i Fakturacenteret. En "godkend"-knap
  * i to skærme ville være to veje til ét felt, og den ene ville glemme
  * permissionstjekket.
+ *
+ * ⚠ SKIVE 4A — LINKET UD BÆRER NU ?destination=. Samme filter som
+ * Fakturacenter.jsx selv læser; et ufiltreret link tabte netop den kontekst
+ * brugeren kom med.
  */
 import { Link } from "react-router-dom";
 import { useListe } from "./useListe.js";
@@ -61,17 +65,19 @@ export function Modulfakturaer({ art }) {
      faktura lå uden for tidsvinduet. */
   const sum = mine.reduce((s, f) => s + (f.beloebOere || 0), 0);
 
+  const centerLink = `/oekonomi/fakturacenter?destination=${art}`;
+
   return (
     <Kort
       titel={`Fakturaer på ${DESTINATIONSART[art].label.toLowerCase()} (${num(mine.length)})`}
       handling={
-        <Link className="fc-a" to="/oekonomi/fakturacenter">Åbn Fakturacenteret</Link>
+        <Link className="fc-a" to={centerLink}>Åbn Fakturacenteret</Link>
       }
     >
       {!mine.length ? (
         <Tom>
           Ingen fakturaer er placeret her endnu. De placeres i{" "}
-          <Link className="fc-a" to="/oekonomi/fakturacenter">Fakturacenteret</Link>,
+          <Link className="fc-a" to={centerLink}>Fakturacenteret</Link>,
           som ejer fakturaen — modulet ejer sagen.
         </Tom>
       ) : (

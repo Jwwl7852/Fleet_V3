@@ -30,7 +30,7 @@
  * fundamentet."*
  */
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato } from "../../fleet/format.js";
@@ -58,8 +58,17 @@ import { DEMO_AKTIVER } from "../../fleet/demo-facility.js";
 
 export default function Fakturacenter() {
   const { bruger, moduler } = useFleet();
-  const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
+  /* ⚠ SKIVE 4A — VAR indkoeb.skriv. Se fakturaerSkriv i permissions.js. */
+  const maaSkrive = harPerm(bruger?.perms, PERM.fakturaerSkriv);
   const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND);
+
+  /* ⚠ FILTERET ER KONTEKST, IKKE SIKKERHED — punkt 4. `useListe("fakturaer",
+     …)` nedenfor er allerede gated på fakturaer.laes af selve RTDB-reglen;
+     dette filtrerer kun den liste den læsning i forvejen tillod. Samme
+     mønster som ?vis=/?frem= i Arbejdskoe.jsx og Kalender.jsx. */
+  const [params] = useSearchParams();
+  const destinationFilter = DESTINATIONSART[params.get("destination")]
+    ? params.get("destination") : null;
 
   const [valgtId, setValgtId] = useState(null);
   const [valgtForslag, setValgtForslag] = useState(null);
@@ -96,7 +105,11 @@ export default function Fakturacenter() {
   }
 
   const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
-  const fakturaer = liste.data;
+  const alleFakturaer = liste.data;
+  /* ⚠ FILTRERET VISNING — se noten ved destinationFilter ovenfor. */
+  const fakturaer = destinationFilter
+    ? alleFakturaer.filter((f) => f.destinationArt === destinationFilter)
+    : alleFakturaer;
   const valgt = fakturaer.find((f) => f.id === valgtId) || null;
 
   /* ⚠ TALLENE REGNES AF LISTEN, IKKE AF `kpi/`. De er afledt af data skærmen
@@ -120,8 +133,9 @@ export default function Fakturacenter() {
     forbrugsvarer: forbrugsvarer.data,
     koeretoejer: koeretoejer.data,
     aktiver: aktiver.data,
-    /* En ordre der allerede bærer en anden faktura, foreslås ikke igen. */
-    matchedeOrdrer: fakturaer
+    /* En ordre der allerede bærer en anden faktura, foreslås ikke igen —
+       regnet af HELE listen, uafhængigt af et visningsfilter. */
+    matchedeOrdrer: alleFakturaer
       .filter((f) => f.destinationArt === "procure" && f.id !== valgtId)
       .map((f) => f.destinationId).filter(Boolean),
   };
@@ -159,6 +173,13 @@ export default function Fakturacenter() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <Datatilstand tilstand={liste.tilstand} genprov={liste.genindlaes} />
+
+      {destinationFilter && (
+        <p className="fc-hint">
+          Filtreret til <b>{DESTINATIONSART[destinationFilter].label}</b> —{" "}
+          <Link className="fc-a" to="/oekonomi/fakturacenter">vis alle</Link>
+        </p>
+      )}
 
       <KpiRaekke>
         <KpiKort label="Nye fakturaer" vaerdi={num(nye.length)}
@@ -201,7 +222,9 @@ export default function Fakturacenter() {
       </Kort>
 
       <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort titel={`Fakturaer (${num(fakturaer.length)})`}>
+        <Kort titel={destinationFilter
+          ? `${DESTINATIONSART[destinationFilter].label} (${num(fakturaer.length)})`
+          : `Fakturaer (${num(fakturaer.length)})`}>
           <Tabel
             raekker={fakturaer}
             tom="Ingen fakturaer."
@@ -463,20 +486,25 @@ function Detaljer({
       <p className="fc-hint" style={{ marginTop: 0 }}>
         {/* ⚠ TO HANDLINGER, IKKE ÉN. At placere en faktura er at registrere
             hvad den hører til; at sige god for at der skal betales, er
-            `indkoeb.godkend` (beslutning 82). En knap der gjorde begge dele,
-            ville lade den der konterer, betale. */}
+            `fakturaer.godkend` (Skive 4A, tidligere indkoeb.godkend — se
+            beslutning 82). En knap der gjorde begge dele, ville lade den der
+            konterer, betale. */}
         At placere fakturaen og at sige god for den er <b>to handlinger</b>.
-        Godkendelsen kræver <code>{PERM.indkoebGodkend}</code>.
+        Godkendelsen kræver <code>{PERM_GODKEND}</code>.
       </p>
       <div className="fc-knapper" style={{ justifyContent: "flex-start" }}>
         <Knap variant="primaer"
               disabled={!maaGodkende || laast || arbejder || faktura.status === "godkendt"}
-              title={maaGodkende ? undefined : `Det kræver ${PERM.indkoebGodkend}.`}
+              title={maaGodkende ? undefined : `Det kræver ${PERM_GODKEND}.`}
               onClick={() => paaStatus("godkendt")}>
           Godkend faktura
         </Knap>
-        <Knap disabled={laast || arbejder || faktura.status !== "godkendt"}
-              title={faktura.status === "godkendt" ? undefined
+        {/* ⚠ SKIVE 4A — GATET PÅ fakturaerSkriv. Bogføring krævede før ingen
+            permission overhovedet, hverken her eller server-side; se
+            `fakturastatus` i functions/index.js. */}
+        <Knap disabled={!maaSkrive || laast || arbejder || faktura.status !== "godkendt"}
+              title={!maaSkrive ? `Det kræver ${PERM.fakturaerSkriv}.`
+                : faktura.status === "godkendt" ? undefined
                 : "Fakturaen skal godkendes før den kan bogføres."}
               onClick={() => paaStatus("bogfoert")}>
           Bogfør / eksportér

@@ -190,16 +190,21 @@ export const KPI_KILDER = {
  * spørger kun om dem `laesbareDomaener()` siger ja til, så han får ingen
  * `permission-denied`; kortene er der bare ikke.
  *
- * ⚠ ÉT DOMÆNE BÆRER ÉN PERMISSION. Prøven kræver det udtrykkeligt: får et
- * domæne kilder med to forskellige, skal FORMEN laves om — ikke den ene
- * vælges. Reglen kan kun bære ét led pr. domæne.
+ * ⚠ ÉT DOMÆNE BÆRER SINE KILDERS PERMISSIONS — ALLE SAMMEN, IKKE ÉN VALGT.
+ * Prøven kræver det udtrykkeligt: får et domæne kilder med to forskellige,
+ * bliver værdien en LISTE af dem begge, ikke den ene. Det var beslutning
+ * bag denne kommentar engang at reglen "kun kan bære ét led" — men Skive 4A
+ * viste at et domæne kan have to ægte kilder med to ægte permissions
+ * (flaade og indkoeb regnes begge delvist af `fakturaer`, som fik sin egen
+ * permission adskilt fra `indkoeb.laes`). Formen blev derfor ændret til at
+ * kræve HELE listen, i stedet for at vælge én og håbe de altid følges ad.
  */
 export const KPI_PERM = {
   kunder: "kunder.laes",
   oekonomi: "grundlag.laes",
-  flaade: "indkoeb.laes",
+  flaade: ["indkoeb.laes", "fakturaer.laes"],
   facility: "indkoeb.laes",
-  indkoeb: "indkoeb.laes",
+  indkoeb: ["indkoeb.laes", "fakturaer.laes"],
 };
 
 /**
@@ -210,10 +215,14 @@ export const KPI_PERM = {
  * afviser, og en `permission-denied` ville stå i konsollen på hver tur.
  * En afvisning skal betyde noget.
  */
+/** KPI_PERM[d] er enten én permission, en liste af dem, eller fraværende. */
+const harKravene = (harPermFn, krav) =>
+  !krav || (Array.isArray(krav) ? krav.every(harPermFn) : harPermFn(krav));
+
 export const laesbareDomaener = (harModulFn = () => true, harPermFn = () => true) =>
   ALLE_KPI_DOMAENER.filter((d) =>
     (!KPI_DOMAENE[d] || harModulFn(KPI_DOMAENE[d]))
-    && (!KPI_PERM[d] || harPermFn(KPI_PERM[d])));
+    && harKravene(harPermFn, KPI_PERM[d]));
 
 /**
  * Hvorfor et domæne IKKE blev hentet — beslutning 105.
@@ -243,7 +252,7 @@ export function utilgaengeligeDomaener(harModulFn = () => true, harPermFn = () =
        spørgsmål der aldrig blev stillet — og "du mangler en rettighed" ville
        sende brugeren til sin administrator over noget der skal købes. */
     if (KPI_DOMAENE[d] && !harModulFn(KPI_DOMAENE[d])) ud[d] = DOMAENE_AARSAG.modul;
-    else if (KPI_PERM[d] && !harPermFn(KPI_PERM[d])) ud[d] = DOMAENE_AARSAG.perm;
+    else if (!harKravene(harPermFn, KPI_PERM[d])) ud[d] = DOMAENE_AARSAG.perm;
   }
   return ud;
 }

@@ -152,11 +152,33 @@ export const PERM = {
    * godkender. Ikke fordi disponenten er mindre betroet, men fordi to sæt
    * øjne fanger det ét sæt ikke gør.
    *
-   * ⚠ OG DEN DÆKKER OGSÅ FAKTURAEN. Det er den samme handling — at sige god
-   * for at der skal betales — og en `fakturaer.godkend` ved siden af ville
-   * skulle gives til nøjagtig de samme. Noderne er delt fordi TINGENE er to;
-   * adgangen er én. Samme snit som `lagre.skriv` og `satser.skriv`. */
+   * ⚠ DÆKKEDE OGSÅ FAKTURAEN, INDTIL SKIVE 4A. Argumentet nedenfor holdt så
+   * længe kun Procure rørte `fakturaer/` — men Fakturacenteret er en fælles
+   * platformflade, og en permission navngivet efter Procures egen node ville
+   * låse fakturaadgang ind under det ene af de to skærmnavne der bruger den.
+   * Se `fakturaerGodkend` nedenfor, som nu er den permission der dækker
+   * fakturaen. Rollefordelingen er uændret — kun navnet flyttede. */
   indkoebGodkend: "indkoeb.godkend",
+
+  /* --- Fakturaer & bilag (Skive 4A, Korrektion 2) ---
+   *
+   * ⚠ TIDLIGERE indkoeb.laes/.skriv/.godkend — SE nav.js's "bevidst
+   * overgangstilstand" for baggrunden. `fakturaer/` bruges af BÅDE Procures
+   * egen skærm og det fælles Fakturacenter, og en permission navngivet efter
+   * det ene ville låse det andet skærmnavn ind under sig. Rollefordelingen
+   * er bevidst identisk med dagens indkoeb.*: ingen mister eller får adgang
+   * ved dette skifte, kun navnet på det de allerede havde.
+   *
+   * ⚠ OG NODEN FIK EN LÆSE-REGEL DEN IKKE HAVDE FØR. `fakturaer` havde
+   * ingen `.read`-klausul overhovedet — enhver tenant-medlem kunne læse den.
+   * fakturaerLaes ER derfor en reel stramning, ikke kun en omdøbning. */
+  fakturaerLaes: "fakturaer.laes",
+  /* Matcher/dokumenterer/kontantkøbsopretter en faktura — fakturamatch og
+     fakturadestination. Ikke selve godkendelsen af betaling. */
+  fakturaerSkriv: "fakturaer.skriv",
+  /* Godkend/afvis/bogfør — fakturastatus. Samme snit som indkoebGodkend
+     havde: at sige god for at der skal betales er én handling. */
+  fakturaerGodkend: "fakturaer.godkend",
 
   /* --- Audit --- */
   /* Læsning af auditloggen. Loggen er selv følsom: den afslører hvilke kunder
@@ -349,7 +371,13 @@ export const ALLE_PERMS = Object.values(PERM);
  * at maatte se en faktura — det er to spoergsmaal, som sensitiveLaes og
  * vaerdiLaes er det (se noten ved bookingVaerdiLaes).
  */
-const KOMMERCIEL_LAES = [PERM.satserLaes, PERM.grundlagLaes, PERM.indkoebLaes];
+const KOMMERCIEL_LAES = [
+  PERM.satserLaes, PERM.grundlagLaes, PERM.indkoebLaes,
+  /* ⚠ SKIVE 4A. Casehandler, koordinator og revisor fik hidtil fakturaadgang
+     alene via tenant-medlemskab (fakturaer havde ingen .read-klausul).
+     De tre er netop dem KOMMERCIEL_LAES allerede samler. */
+  PERM.fakturaerLaes,
+];
 
 const BASIS_DATA = [
   PERM.kunderSkriv,
@@ -357,6 +385,9 @@ const BASIS_DATA = [
   PERM.fravaerSkriv,
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
+  /* ⚠ SKIVE 4A — samme tre roller som indkoebSkriv (casehandler, disponent,
+     koordinator via ...BASIS_DATA, admin via ALLE_PERMS). */
+  PERM.fakturaerSkriv,
   PERM.indberetningerSkriv,
   /* ⚠ UNITBOOKING-PERMISSIONERNE STÅR IKKE HER, og de stod her indtil
      spørgsmålet blev besvaret. Svaret var at LAGERMEDARBEJDEREN skal
@@ -420,6 +451,10 @@ export const ROLLE_PERMS = {
        snit som at han ser foelgebilskravet og ikke vurderingen. */
     PERM.satserLaes,
     PERM.indkoebLaes,
+    /* ⚠ SKIVE 4A — samme to af tre som ovenfor. Disponenten bruger ikke
+       KOMMERCIEL_LAES (den ville også give grundlagLaes), så fakturaerLaes
+       skal stå her eksplicit, som indkoebLaes gør. */
+    PERM.fakturaerLaes,
     /* Kan ikke disponere uden at vide hvor bilerne er. */
     PERM.koeretoejerSensitiveLaes,
     /* ⚠ KUN sagLaes. Samme snit som indberetningerSensitiveLaes: han skal
@@ -453,6 +488,9 @@ export const ROLLE_PERMS = {
     /* Samme snit igen: den der godkender grundlaget vi fakturerer PÅ,
        godkender også de indkøb vi selv betaler. */
     PERM.indkoebGodkend,
+    /* ⚠ SKIVE 4A. Samme handling, ny permission — se noten ved
+       fakturaerGodkend i PERM. */
+    PERM.fakturaerGodkend,
     /* Ingen fravaerSensitiveLaes: disponeringen har brug for at vide at
        medarbejderen er utilgængelig, ikke hvorfor.
        Ingen personaleSensitiveLaes: CPR og baggrundskontrol er ikke
@@ -539,6 +577,8 @@ export const ROLLE_PERMS = {
        Ikke `grundlagLaes`: han håndterer godset, ikke regningen. */
     PERM.satserLaes,
     PERM.indkoebLaes,
+    /* ⚠ SKIVE 4A — samme snit som disponenten: ikke via KOMMERCIEL_LAES. */
+    PERM.fakturaerLaes,
     PERM.kasserSkriv,
     PERM.kasseudlaanSkriv,
     /* ⚠ SAMME MAND, TO MODULER — IKKE EN OTTENDE ROLLE. Han står på lageret;

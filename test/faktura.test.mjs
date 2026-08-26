@@ -437,12 +437,13 @@ describe("Skærmen viser, serveren håndhæver", () => {
   });
 
   /**
-   * ⚠ AT GODKENDE EN REGNING KRÆVER indkoeb.godkend — beslutning 82. Og er
-   * `fakturagodkendelse` slået til, er det den UDPEGEDE der afgør.
+   * ⚠ AT GODKENDE EN REGNING KRÆVER fakturaer.godkend — beslutning 82, navn
+   * ændret i Skive 4A (var indkoeb.godkend; dækker nu begge fakturaskærme).
+   * Og er `fakturagodkendelse` slået til, er det den UDPEGEDE der afgør.
    */
   test("⚠ fakturastatus HÅNDHÆVER BESLUTNING 82's ANDEN KONTAKT", () => {
     const blok = funktion("fakturastatus");
-    assert.match(blok, /PERM\.indkoebGodkend/);
+    assert.match(blok, /PERM\.fakturaerGodkend/);
     assert.match(blok, /rod\.child\("godkendelsesregler"\)\.once\("value"\)/);
     assert.match(blok, /fg\.aktiv && fg\.godkenderUid && fg\.godkenderUid !== uid/);
   });
@@ -481,17 +482,20 @@ describe("Skærmen viser, serveren håndhæver", () => {
 
 describe("Skærmen siger hvad den ikke gør", () => {
   /* ⚠ FILUPLOAD ER IKKE BYGGET, og en deaktiveret knap uden en grund er en
-     attrap. */
-  test("⚠ UPLOAD SIGER AT DEN IKKE ER BYGGET", () => {
-    assert.match(SKAERM, /Upload er ikke bygget endnu/);
+     attrap.
+     ⚠ SKIVE 4A — "Modtag faktura"-kortet ("Upload er ikke bygget endnu") er
+     fjernet herfra. Det duplikerede Fakturacenterets eget "Modtag bilag"
+     (test/fakturacenter.test.mjs) — faktura-INDTAG er ikke Procures eget
+     ærinde. Kontantkøbets kvitteringsfelt er stadig denne skærms. */
+  test("⚠ KONTANTKØBET SIGER AT KVITTERING IKKE KAN VEDHÆFTES", () => {
     assert.match(SKAERM, /Kvittering kan ikke vedhæftes endnu/);
   });
 
-  /* ⚠ OG BOGFØRING SENDER IKKE NOGET. En knap der påstod det, ville få nogen
-     til at holde op med at bogføre manuelt. */
-  test("⚠ DER LOVES INGEN REGNSKABSINTEGRATION", () => {
-    assert.match(SKAERM, /Der sendes ikke noget til et\s+regnskabssystem/);
-  });
+  /* ⚠ SKIVE 4A — LØFTET OM INGEN REGNSKABSINTEGRATION STÅR NU KUN I
+     Fakturacenter.jsx (test/fakturacenter.test.mjs), som er det ENESTE
+     sted bogføring sker. Denne skærm gør det ikke længere, og skal derfor
+     heller ikke gøre løftet — to steder der lover det samme, er to steder
+     der kan komme til at love det forskelligt. */
 
   /* ⚠ TOM STRENG ER IKKE NUL — `Number("")` er 0. */
   test("⚠ ET TØMT BELØBSFELT SENDES IKKE SOM NUL", () => {
@@ -503,8 +507,10 @@ describe("Skærmen siger hvad den ikke gør", () => {
   });
 
   test("⚠ DEMO-SÆTTENE BRUGES KUN SOM demo:-FALDBAKKE", () => {
+    /* ⚠ SKIVE 4A — DEMO_GODKENDELSESREGLER ER VÆK HERFRA. Godkendelsesreglen
+       læses ikke længere på denne skærm; se test/fakturacenter.test.mjs. */
     for (const navn of ["DEMO_FAKTURAER", "DEMO_INDKOEBSLINJER", "DEMO_LEVERANDOERER",
-      "DEMO_INDKOEBSORDRER", "DEMO_GODKENDELSESREGLER"]) {
+      "DEMO_INDKOEBSORDRER"]) {
       const alle = [...SKAERM.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
       const fald = [...SKAERM.matchAll(new RegExp(`demo: ${navn}\\b`, "g"))].length;
       assert.equal(alle - 1, fald, `${navn} bruges uden for demo:-faldbakken`);

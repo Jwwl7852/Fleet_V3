@@ -230,10 +230,14 @@ describe("ukendte og manglende permissions fejler lukket", () => {
    *
    * De tre kommercielle er lukket nu. De øvrige tolv står stadig åbne — med
    * en grund, i `test/laeseadgang.test.mjs`.
+   *
+   * ⚠ SKIVE 4A TILFØJEDE EN FJERDE: `fakturaer` — se `LUKKET.fakturaer` i
+   * `test/laeseadgang.test.mjs`. Den flyttede derfor fra denne prøve til den
+   * næste.
    */
   it("de ÅBNE noder kan stadig læses med tenant-medlemskab alene", async () => {
     const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
-    for (const node of ["opgaver", "fakturaer", "facility"]) {
+    for (const node of ["opgaver", "facility"]) {
       await assertSucceeds(get(ref(db, `tenants/${T}/${node}`)));
     }
     /* Men ikke de fire klassificerede — uden perms-claim er der ingen
@@ -241,11 +245,11 @@ describe("ukendte og manglende permissions fejler lukket", () => {
     await assertFails(get(ref(db, `tenants/${T}/kunder`)));
   });
 
-  it("⚠ MEN PRISERNE OG INDKØBENE ER LUKKET — beslutning 104", async () => {
+  it("⚠ MEN PRISERNE, INDKØBENE OG FAKTURAERNE ER LUKKET — beslutning 104 og Skive 4A", async () => {
     /* Uden et perms-claim overhovedet. At de her afvises, er den halvdel
        punkt 3 kalder definition of done: serveren siger nej. */
     const db = miljoe.authenticatedContext("uid-laeser", { tenant: T, rolle: "chauffoer" }).database();
-    for (const node of ["satser", "omkostninger", "indkoeb", "leverandoerer", "grundlag"]) {
+    for (const node of ["satser", "omkostninger", "indkoeb", "leverandoerer", "grundlag", "fakturaer"]) {
       await assertFails(get(ref(db, `tenants/${T}/${node}`)));
     }
   });

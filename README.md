@@ -300,7 +300,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **140 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **141 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.

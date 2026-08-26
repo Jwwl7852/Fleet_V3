@@ -134,8 +134,9 @@ describe("Skive 2B — 4) Navvisning af et område kunden IKKE har købt", () =>
 
 describe("Skive 2B — 5) Navvisning af et område eksisterende permission-gating allerede skjuler", () => {
   it("forbliver skjult for en chauffør, selvom navvisning eksplicit slår det TIL", () => {
-    /* Chaufføren har ikke indkoeb.laes — fakturacenter (Fakturaer & bilag)
-       er derfor allerede permission-skjult, uanset moduler. */
+    /* Chaufføren har ikke fakturaer.laes (Skive 4A; var indkoeb.laes) —
+       fakturacenter (Fakturaer & bilag) er derfor allerede permission-skjult,
+       uanset moduler. */
     const perms = permStrengFraRolle("chauffoer");
     const menu = renderetMenu({ moduler: FULD_TENANT, perms, navvisning: { fakturacenter: true } });
     assert.ok(!noegler(menu).includes("fakturacenter"),

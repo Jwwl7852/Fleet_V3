@@ -5055,7 +5055,9 @@ async function procureDoer(req, { perm, modul }) {
    praecist ud uden at vaere det, er vaerre end intet tal.
    ══════════════════════════════════════════════════════════════════════════ */
 export const fakturamatch = onCall({ region: REGION }, async (req) => {
-  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv" });
+  /* ⚠ SKIVE 4A — VAR indkoeb.skriv. Fakturaen er ikke Procures egen længere;
+     se fakturaerSkriv i permissions.js. */
+  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
 
   const d = req.data || {};
   const fakturaId = kortStreng(d.fakturaId, 60);
@@ -5149,8 +5151,16 @@ export const fakturamatch = onCall({ region: REGION }, async (req) => {
    `godkendelsesregler.fakturagodkendelse` slaaet til, kraever betalingen en
    godkendelse — og reglen laeses af NODEN, ikke af kaldet.
 
-   ⚠ OG DEN KRAEVER indkoeb.godkend. At sige god for at der skal betales, er
-   en anden handling end at registrere et koeb; det var hele beslutning 82.
+   ⚠ SKIVE 4A — GODKEND/AFVIS KRAEVER NU fakturaerGodkend, IKKE
+   indkoebGodkend. At sige god for at der skal betales, er stadig en anden
+   handling end at registrere et koeb (beslutning 82); permissionen dækker
+   nu begge fakturaskaerme (Procure og det faelles Fakturacenter), ikke kun
+   Procures egen.
+
+   ⚠ OG BOGFOER-GRENEN FIK OGSAA ET TJEK. Den kraevede foer INGEN
+   permission overhovedet — kun at status allerede var `godkendt`. Bogfoering
+   er en skriftlig statusovergang, ikke selve vurderingen, saa den hoerer
+   under `fakturaerSkriv`, ikke `.godkend`.
    ══════════════════════════════════════════════════════════════════════════ */
 export const fakturastatus = onCall({ region: REGION }, async (req) => {
   const { db, rod, tenantId, uid, perms } = await procureDoer(req, {});
@@ -5181,10 +5191,13 @@ export const fakturastatus = onCall({ region: REGION }, async (req) => {
       throw new HttpsError("failed-precondition",
         "Fakturaen skal godkendes foer den kan bogfoeres.");
     }
+    if (!perms.includes(`|${PERM.fakturaerSkriv}|`)) {
+      throw new HttpsError("permission-denied", `Det kraever ${PERM.fakturaerSkriv}.`);
+    }
   } else {
-    if (!perms.includes(`|${PERM.indkoebGodkend}|`)) {
+    if (!perms.includes(`|${PERM.fakturaerGodkend}|`)) {
       throw new HttpsError("permission-denied",
-        `Det kraever ${PERM.indkoebGodkend}. At sige god for en regning er en `
+        `Det kraever ${PERM.fakturaerGodkend}. At sige god for en regning er en `
         + "anden handling end at registrere et koeb.");
     }
     const rSnap = await rod.child("godkendelsesregler").once("value");
@@ -5449,13 +5462,16 @@ export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => 
    afviser, og "kan ikke laeses" ligner "findes ikke". Modulet laeses af
    NODEN — kom det fra klienten, kunne den sende hvad som helst.
 
-   ⚠ OG DEN KRAEVER INGEN NY PERMISSION. At placere en faktura er at
-   registrere hvad den hoerer til; at sige god for at der skal betales, er
-   `indkoeb.godkend` (beslutning 82). De to er forskellige handlinger, og de
-   ligger i hver sin funktion — `fakturastatus` er den anden.
+   ⚠ SKIVE 4A — FIK EN PERMISSION DEN IKKE HAVDE. Kravede tidligere INGEN
+   permission overhovedet — et reelt hul, ikke en bevidst permission-fri
+   handling: enhver med en gyldig session kunne flytte en faktura mellem
+   moduler. At placere en faktura er stadig en anden handling end at sige
+   god for at der skal betales (`fakturaerGodkend`, `fakturastatus`) — men
+   den er ikke gratis. `fakturaerSkriv` er samme skrive-niveau som
+   `fakturamatch` bruger til den anden halvdel af samme skærms arbejde.
    ══════════════════════════════════════════════════════════════════════════ */
 export const fakturadestination = onCall({ region: REGION }, async (req) => {
-  const { db, rod, tenantId, uid } = await procureDoer(req, {});
+  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
 
   const d = req.data || {};
   const fakturaId = kortStreng(d.fakturaId, 60);

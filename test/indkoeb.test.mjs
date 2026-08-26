@@ -290,7 +290,10 @@ describe("kanGodkende skelner mellem adgang og forudsætning", () => {
    * permission med bestillingen.
    */
   it("⚠ GODKENDELSE DELER IKKE PERMISSION MED BESTILLING", () => {
-    assert.equal(PERM_GODKEND, "indkoeb.godkend");
+    /* ⚠ SKIVE 4A — VAR "indkoeb.godkend". Samme argument som dengang: en
+       prøve der beskriver et mellemstadie, skal selv kunne se at det er
+       ovre. Se fakturaerGodkend i permissions.js. */
+    assert.equal(PERM_GODKEND, "fakturaer.godkend");
     assert.notEqual(PERM_GODKEND, "indkoeb.skriv",
       "den der bestiller, kan godkende sit eget køb");
   });

@@ -186,12 +186,15 @@ describe("Skive 2A — strukturelle invarianter", () => {
     assert.deepEqual(NAV.filter((m) => m.gruppe === "hjaelp").map((m) => m.key), ["support"]);
   });
 
-  it("Fakturaer & bilag er UÆNDRET tilgængelig — samme rute, samme kraeverPerm som før flytningen", () => {
+  it("Fakturaer & bilag: samme rute som Skive 2A — kraeverPerm opdateret i Skive 4A", () => {
     const punkt = NAV.find((m) => m.key === "fakturacenter");
     assert.equal(punkt.sti, "/oekonomi/fakturacenter",
-      "ruten er ændret — Skive 2A må kun flytte MENUPLADSEN");
-    assert.equal(punkt.kraeverPerm, "indkoeb.laes",
-      "kraeverPerm er ændret — fakturaer.*-permissionmodellen hører til en senere delskive");
+      "ruten er ændret — den blev bevidst IKKE omdøbt i Skive 4A, se nav.js's hoved");
+    /* ⚠ SKIVE 4A LANDEDE PRÆCIS DEN PERMISSION-MODEL Skive 2A's kommentar
+       udskød ("hører til en senere delskive"). Var punkt.kraeverPerm stadig
+       "indkoeb.laes" her, var 4A ikke ført ud. */
+    assert.equal(punkt.kraeverPerm, "fakturaer.laes",
+      "kraeverPerm er ikke fakturaer.laes — Skive 4A's permission-split er ikke ført ud");
     assert.equal(punkt.kraeverModul, undefined,
       "Fakturaer & bilag har fået en modulklausul den ikke havde før — det ville gøre den SMALLERE end i dag, ikke bredere, men stadig en utilsigtet ændring");
   });

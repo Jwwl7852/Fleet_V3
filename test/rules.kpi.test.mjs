@@ -277,16 +277,23 @@ describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
        divisionsspørgsmålet er besvaret — bliver den her rød, indtil
        `koeretoejer.laes` står både i KPI_PERM og i regelfilen. Uden den ville
        nøgletallet blive regnet af noget brugeren ikke må se, og ingen ville
-       opdage det. */
+       opdage det.
+
+       ⚠ SKIVE 4A — ET DOMÆNE KAN NU KRÆVE FLERE. `flaade` og `indkoeb`
+       regnes begge delvist af `fakturaer`, som har sin egen permission
+       adskilt fra `indkoeb.laes` — to ægte kilder, to ægte krav. Værdien
+       bliver derfor en SORTERET LISTE når der er mere end én, i stedet for
+       at én bliver valgt og den anden tabt. */
     const forventet = {};
     for (const [domaene, kilder] of Object.entries(KPI_KILDER)) {
-      const kraevet = [...new Set(kilder.flatMap(permsForNode))];
-      assert.ok(kraevet.length <= 1,
-        `${domaene} har kilder med FLERE forskellige læse-permissions ` +
-        `(${kraevet.join(", ")}) — reglen kan kun bære én, og så skal formen laves om`);
-      if (kraevet.length) forventet[domaene] = kraevet[0];
+      const kraevet = [...new Set(kilder.flatMap(permsForNode))].sort();
+      if (kraevet.length === 1) forventet[domaene] = kraevet[0];
+      else if (kraevet.length > 1) forventet[domaene] = kraevet;
     }
-    assert.deepEqual(KPI_PERM, forventet,
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(KPI_PERM)
+        .map(([d, p]) => [d, Array.isArray(p) ? [...p].sort() : p])),
+      forventet,
       "KPI_PERM svarer ikke til hvad kildernes egne regler kræver");
   });
 
@@ -314,8 +321,12 @@ describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
     for (const [domaene, perm] of Object.entries(KPI_PERM)) {
       assert.ok(v.includes(`$domaene !== '${domaene}'`),
         `reglen har intet led for ${domaene}`);
-      assert.ok(v.includes(`contains('|${perm}|')`),
-        `reglen kræver ikke ${perm}`);
+      /* ⚠ SKIVE 4A — perm KAN VÆRE EN LISTE. Reglen skal kræve hvert led i
+         den, ikke en sammenklistret streng. */
+      for (const p of Array.isArray(perm) ? perm : [perm]) {
+        assert.ok(v.includes(`contains('|${p}|')`),
+          `reglen kræver ikke ${p} for ${domaene}`);
+      }
     }
     /* Og ingen andre led — et led for et domæne uden en kilde ville gate på
        noget der ikke er grundlaget. */

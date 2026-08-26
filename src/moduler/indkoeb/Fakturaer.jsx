@@ -1,35 +1,23 @@
 /* src/moduler/indkoeb/Fakturaer.jsx
- * Procure — fakturaer, match & kontantkøb. Trin 4 af fem (beslutning 78/83).
- * Planche 1.
+ * Procure — match & kontantkøb. Trin 4 af fem (beslutning 78/83), Planche 1.
  *
- * TRE FEJL FRA MOCKUPPEN, ALLE LUKKET STRUKTURELT FREM FOR RETTET.
- *
- * ⚠ 1. AFSTEMNINGEN ER IKKE EN SUBTRAKTION.
- * Mockuppen skrev "9.842.250 − 9.781.625 = 9.765.125". Det er tre UAFHÆNGIGE
- * opgørelser stillet op som om den ene fulgte af de to andre:
- *
- *   registrerede   vores egne indkøbsregistreringer
- *   modtagne       leverandørernes fakturaer
- *   bogførte       regnskabssystemets opgørelse
- *
- * At bogført er en selvstændig kilde er hele grunden til at de tre kan være
- * uenige. Beregnede vi den af de andre, ville afstemningen altid gå op.
- *
- * ⚠ 2. ANTALLET BEREGNES AF LISTEN. KPI-kortet sagde 8, tabellen 16.
- * ⚠ 3. BELØB EKSKL. MOMS PLUS momsOere. Ét beløb inkl. moms blander de to.
- *
- * ══════════════════════════════════════════════════════════════════════════
- * ⚠ OG EN FJERDE, FUNDET I PLANCHE 1 SELV: detaljeruden skriver fakturaen som
- * "23.031 kr. inkl. moms" og den matchede ordre som "23.031 kr. ekskl. moms".
- * Det er det SAMME tal med to mærkater — de kan ikke begge være rigtige, og
- * den ene er 25 % ved siden af. Alt der sammenlignes her, er ekskl. moms i
- * begge ender; momsen står som sit eget felt.
- * ══════════════════════════════════════════════════════════════════════════
+ * ⚠ SKIVE 4A — INDSKRÆNKET TIL DET DER ER ÆGTE PROCURE-SPECIFIKT.
+ * Faktura-listen, status og godkendelse duplikerede det fælles Fakturacenter
+ * (`/oekonomi/fakturacenter`, Fælles → Fakturaer & bilag) — samme node, to
+ * skærme der viste det samme. De er flyttet derhen; denne skærm har kun
+ * match-til-bestillingslinje og kontantkøb tilbage, som ikke findes andre
+ * steder. "Afstemning" er også fjernet: den viste `demoAfstemning()`, en
+ * PERMANENT hardkodet mockup-fixture uden nogen ægte kilde til det tredje
+ * tal ("bogført — regnskabssystemets egen opgørelse"), og en permanent demo
+ * på en rigtig skærm er præcis den fejl CLAUDE.md advarer mod.
  *
  * ⚠ MATCHSCOREN ER EN PÅSTAND OM SIKKERHED. "92 %" regnes af navngivne
  * signaler, og skærmen viser HVILKE der slog til — så den der bekræfter, kan
  * se om de 92 % kommer af et bestillingsnummer eller af at beløbet
  * tilfældigvis lignede. Kun et bestillingsnummer giver 100.
+ *
+ * ⚠ BELØB EKSKL. MOMS PLUS momsOere — aldrig ét beløb inkl. moms, som
+ * blandede de to i mockuppen.
  *
  * ⚠ FILUPLOAD ER IKKE BYGGET, og det står på skærmen. Der er ingen Storage
  * sat op; en fil ligger uden for databasereglerne og har sine egne. En
@@ -39,28 +27,22 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
-import { usePost } from "../../fleet/usePost.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato, deviation } from "../../fleet/format.js";
+import { kr, num, dato } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Knap,
-  Gitter, MiniLinje, Felt, Feltraekke, Formularsvar, Dialog, Ikon, Kpiadgang } from "../../fleet/ui.jsx";
+  Kort, Tom, KpiKort, KpiRaekke, Pille, Henter, Datatilstand, Knap,
+  Gitter, MiniLinje, Felt, Feltraekke, Formularsvar, Dialog, Kpiadgang } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
+import { FAKTURASTATUS, leverandoerNavn, fakturaTotalOere } from "../../fleet/leverandoerer.js";
 import {
-  FAKTURASTATUS, leverandoerNavn, fakturaTotalOere, PERM_GODKEND,
-} from "../../fleet/leverandoerer.js";
-import {
-  matchForslag, matchtilstand, MATCHTILSTAND, MATCHSIGNAL, kanMatche,
-  matchAfvigelseOere, ordreSumOere, linjeListe, ORDRESTATUS,
-  STANDARD_GODKENDELSESREGLER, kontantUdenBilag,
+  matchForslag, MATCHSIGNAL, kanMatche,
+  matchAfvigelseOere, ordreSumOere, linjeListe, ORDRESTATUS, kontantUdenBilag,
 } from "../../fleet/procure.js";
-import { matchFaktura, skiftFaktura, gemKontantkoeb } from "../../fleet/faktura.js";
+import { matchFaktura, gemKontantkoeb } from "../../fleet/faktura.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i sættene. */
-import {
-  DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER, demoAfstemning,
-} from "../../fleet/demo-indkoeb.js";
-import { DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER } from "../../fleet/demo-procure.js";
+import { DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
+import { DEMO_INDKOEBSORDRER } from "../../fleet/demo-procure.js";
 
 const TOM_KONTANT = {
   vare: "", leverandoerId: "", antal: "1", enhed: "stk",
@@ -68,7 +50,7 @@ const TOM_KONTANT = {
 };
 
 export default function Fakturaer() {
-  const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
+  const { henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
 
   const [valgtId, setValgtId] = useState(null);
@@ -91,7 +73,8 @@ export default function Fakturaer() {
   const ordrer = useListe("indkoebsordrer", {
     ordnPaa: "oprettetMs", vindue: "alle", graense: 300, demo: DEMO_INDKOEBSORDRER,
   });
-  const regelPost = usePost(null, "godkendelsesregler", { demo: DEMO_GODKENDELSESREGLER });
+  /* ⚠ SKIVE 4A — stadig hentet for "Lagt ud af"-dropdownen i kontantkøbet;
+     godkender-opslaget der brugte den, hører nu til Fakturacenteret. */
   const brugere = useListe("brugere", { vindue: "alle", graense: 200 });
 
   if (henter || liste.henter || indkoeb.henter) return <Henter hvad="fakturaer" />;
@@ -106,14 +89,12 @@ export default function Fakturaer() {
   /* ⚠ OPSLAGET BYGGES AF DEN HENTEDE LISTE, ikke af demofilen — det var en
      modul-konst engang, og hos en rigtig kunde stod leverandørkolonnen tom. */
   const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
-  const brugerNavn = (uid) => {
-    const b = brugere.data.find((x) => x.id === uid);
-    return b?.navn || b?.email || uid || "—";
-  };
 
-  const maaGodkende = harPerm(bruger?.perms, PERM_GODKEND);
-  const maaSkrive = harPerm(bruger?.perms, PERM.indkoebSkriv);
-  const regler = regelPost.post || STANDARD_GODKENDELSESREGLER;
+  /* ⚠ SKIVE 4A — TO PERMISSIONS, IKKE ÉN. Match skriver på `fakturaer/`
+     (fakturaerSkriv); kontantkøb skriver en `indkoeb`-linje (indkoebSkriv,
+     uændret) — to forskellige noder, to forskellige tjek. */
+  const maaMatche = harPerm(bruger?.perms, PERM.fakturaerSkriv);
+  const maaKontant = harPerm(bruger?.perms, PERM.indkoebSkriv);
 
   const fakturaer = liste.data;
   const valgt = fakturaer.find((f) => f.id === valgtId) || null;
@@ -130,10 +111,11 @@ export default function Fakturaer() {
   const udenMatch = fakturaer.filter(
     (f) => !f.ikkeMatchbar && !f.destinationArt
       || (erProcure(f) && f.destinationId && !findesOrdre.has(f.destinationId)));
-  const tilGodkendelse = fakturaer.filter((f) => f.status === "modtaget");
-  const godkendtDenneMaaned = fakturaer.filter(
-    (f) => f.status === "godkendt" || f.status === "bogfoert");
   const udenBilag = kontantUdenBilag(indkoeb.data);
+  /* ⚠ SKIVE 4A — DEM DER OVERHOVEDET ER PROCURES AT MATCHE: uplaceret, eller
+     allerede placeret på Procure. En faktura placeret på Fleet/Facility/
+     Lager er ikke denne skærms ærinde — det er Fakturacenterets. */
+  const matchbare = fakturaer.filter((f) => !f.destinationArt || erProcure(f));
 
   /* Forslagene til den valgte. Regnes her — de gemmes ikke. */
   const matchede = fakturaer.map((f) => f.destinationId).filter(Boolean);
@@ -188,50 +170,56 @@ export default function Fakturaer() {
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
       <Kpiadgang utilgaengelige={utilgaengelige} />
-      {k && (
-        <KpiRaekke>
-          {/* Feltet fra kpi/, ikke et hardkodet 21. Dashboard viser samme tal. */}
-          <KpiKort label="Fakturaer til godkendelse" vaerdi={num(k.indkoeb.fakturaerTilGodkendelse)} />
-          {/* AFLEDT af den viste liste. Labelen siger det. */}
-          <KpiKort label="Manglende match" vaerdi={num(udenMatch.length)} note="i de hentede" />
-          <KpiKort label="Godkendt denne måned" vaerdi={num(k.indkoeb.godkendtDenneMaaned)} />
-          {/* ⚠ MANGLEN TÆLLES FREM FOR AT SPÆRRE — der er ingen fillagring at
-              kræve en kvittering med. Fjern ikke tællingen når den kommer;
-              så bliver den først rigtig. Samme greb som
-              kpi.opgaver.udenTidsregistrering (beslutning 50). */}
-          <KpiKort label="Kontantkøb uden bilag" vaerdi={num(udenBilag.length)}
-                   note="fillagring er ikke bygget" />
-        </KpiRaekke>
-      )}
+      <KpiRaekke>
+        {/* AFLEDT af den hentede liste — ikke fra kpi/. */}
+        <KpiKort label="Manglende match" vaerdi={num(udenMatch.length)} note="i de hentede" />
+        {/* ⚠ MANGLEN TÆLLES FREM FOR AT SPÆRRE — der er ingen fillagring at
+            kræve en kvittering med. Fjern ikke tællingen når den kommer;
+            så bliver den først rigtig. Samme greb som
+            kpi.opgaver.udenTidsregistrering (beslutning 50). */}
+        <KpiKort label="Kontantkøb uden bilag" vaerdi={num(udenBilag.length)}
+                 note="fillagring er ikke bygget" />
+      </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
       <Formularsvar svar={svar} okTekst="Gemt." />
 
-      {/* ---- Modtag, match, kontantkøb — planchens tre spalter ---------- */}
-      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)">
-        <Kort titel="Modtag faktura">
-          {/* ⚠ IKKE EN DEAKTIVERET KNAP UDEN EN GRUND. Planchen har et
-              slip-felt; der er ingen Storage sat op, og en fil ligger uden for
-              databasereglerne og har sine egne. Samme mønster som
-              filfelterne på Indkøbsbehov. */}
-          <div className="fc-slipfelt">
-            <Ikon navn="dokument" />
-            <b>Upload er ikke bygget endnu</b>
-            <span className="fc-hint">
-              PDF- og billedupload kræver fillagring med sine egne adgangsregler
-              pr. virksomhed, og det er sin egen opgave. Fakturaer oprettes
-              indtil da af den vej der modtager dem.
-            </span>
-          </div>
-          <p className="fc-hint">
-            Faktura-mail kan tilsluttes senere. Sagsbaseret mail er{" "}
-            <b>fase 0</b> — kun visning; modtagevej og parsing mangler.
-          </p>
-        </Kort>
+      <p className="fc-hint">
+        Fakturaernes fulde liste, status og godkendelse foregår i{" "}
+        <Link className="fc-a" to="/oekonomi/fakturacenter?destination=procure">
+          Fakturaer &amp; bilag
+        </Link>. Her er kun det der er Procures eget: match mod en
+        bestilling, og kontantkøb.
+      </p>
 
+      {/* ---- Match og kontantkøb — planchens to resterende spalter ------ */}
+      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
         <Kort titel="Foreslåede matches">
+          {/* ⚠ SKIVE 4A — EN SMAL VÆLGER, IKKE DEN FULDE LISTE. Fakturaernes
+              fulde tabel med status/godkendelse ligger nu i Fakturacenteret;
+              her vises kun dem der overhovedet er Procures at matche —
+              uplacerede, eller allerede placeret på Procure (så et match kan
+              rettes eller fjernes). */}
+          <div className="fc-vaelger" style={{ marginBottom: 12 }}>
+            {matchbare.length === 0 ? (
+              <Tom>Ingen fakturaer at matche lige nu.</Tom>
+            ) : matchbare.map((f) => (
+              <label key={f.id} className={`fc-forslag${f.id === valgtId ? " fc-forslag-valgt" : ""}`}>
+                <input type="radio" name="valgt-faktura" checked={f.id === valgtId}
+                       aria-label={`Vælg ${f.fakturanummer}`}
+                       onChange={() => vaelg(f)} />
+                <span className="fc-forslag-krop">
+                  <span className="fc-row">
+                    <b>{f.fakturanummer}</b>
+                    <span className="fc-hint">{kr(f.beloebOere)}</span>
+                  </span>
+                  <span className="fc-hint">{lvNavn(f.leverandoerId)} · {dato(f.fakturadatoMs)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
           {!valgt ? (
-            <Tom>Vælg en faktura i listen for at se hvilke bestillinger den kan høre til.</Tom>
+            <Tom>Vælg en faktura ovenfor for at se hvilke bestillinger den kan høre til.</Tom>
           ) : (
             <>
               <p className="fc-hint" style={{ marginTop: 0 }}>
@@ -248,7 +236,7 @@ export default function Fakturaer() {
                 <label key={f.ordre.id}
                        className={`fc-forslag${valgtOrdreId === f.ordre.id ? " fc-forslag-valgt" : ""}`}>
                   <input type="radio" name="match" checked={valgtOrdreId === f.ordre.id}
-                         disabled={!maaSkrive}
+                         disabled={!maaMatche}
                          aria-label={`Match med ${f.ordre.nummer}`}
                          onChange={() => setValgtOrdreId(f.ordre.id)} />
                   <span className="fc-forslag-krop">
@@ -271,16 +259,16 @@ export default function Fakturaer() {
                 </label>
               ))}
               <div className="fc-knapper" style={{ justifyContent: "flex-start", marginTop: 12 }}>
-                <Knap variant="primaer" disabled={!valgtOrdreId || arbejder || !maaSkrive}
+                <Knap variant="primaer" disabled={!valgtOrdreId || arbejder || !maaMatche}
                       onClick={bekraeftMatch}>
                   Bekræft match
                 </Knap>
-                <Knap disabled={arbejder || !maaSkrive}
+                <Knap disabled={arbejder || !maaMatche}
                       onClick={() => setDialog({ art: "ikkeMatchbar" })}>
                   Markér som ikke-matchbar
                 </Knap>
                 {valgt.destinationId && (
-                  <Knap disabled={arbejder || !maaSkrive}
+                  <Knap disabled={arbejder || !maaMatche}
                         onClick={() => koer(() => matchFaktura({ fakturaId: valgt.id, handling: "fjern" }))}>
                     Fjern match
                   </Knap>
@@ -329,93 +317,27 @@ export default function Fakturaer() {
             Manglen <b>tælles</b> i nøgletallet ovenfor frem for at spærre: et
             krav man ikke kan opfylde, bliver til et felt man skriver "ja" i.
           </p>
-          <Knap variant="primaer" disabled={arbejder || !maaSkrive} onClick={gemKontant}>
+          <Knap variant="primaer" disabled={arbejder || !maaKontant} onClick={gemKontant}>
             Gem kontant køb
           </Knap>
         </Kort>
       </Gitter>
 
-      <Afstemning />
-
-      <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort titel={`Modtagne fakturaer (${num(fakturaer.length)})`}>
-          <Tabel
-            kolonner={[
-              { key: "fakturanummer", label: "Fakturanr.", render: (r) => <b>{r.fakturanummer}</b> },
-              { key: "leverandoerId", label: "Leverandør", render: (r) => lvNavn(r.leverandoerId) },
-              { key: "fakturadatoMs", label: "Dato", render: (r) => dato(r.fakturadatoMs) },
-              { key: "forfaldMs", label: "Forfald", render: (r) => dato(r.forfaldMs) },
-              /* TO KOLONNER, aldrig ét inkl.-beløb. */
-              { key: "beloebOere", label: "Ekskl. moms", num: true, render: (r) => kr(r.beloebOere) },
-              { key: "momsOere", label: "Moms", num: true, render: (r) => kr(r.momsOere) },
-              { key: "total", label: "Total", num: true, render: (r) => kr(fakturaTotalOere(r)) },
-              {
-                key: "match", label: "Match",
-                render: (r) => (
-                  <>
-                    <Pille tone={MATCHTILSTAND[matchtilstand(r)].tone}>
-                      {MATCHTILSTAND[matchtilstand(r)].label}
-                    </Pille>
-                    {r.destinationId && (
-                      <div className="fc-hint">
-                        <code>{ordrer.data.find((o) => o.id === r.destinationId)?.nummer || r.destinationId}</code>
-                      </div>
-                    )}
-                  </>
-                ),
-              },
-              /* Beslutning 20: sporet tilbage til den tråd der aftalte arbejdet. */
-              { key: "sagsnummer", label: "Sag", render: (r) => (r.sagsnummer
-                  ? <Link className="fc-a" to="/flaade"><code>{r.sagsnummer}</code></Link>
-                  : <span className="fc-neutral">—</span>) },
-              { key: "status", label: "Status",
-                render: (r) => <Pille tone={FAKTURASTATUS[r.status]?.pill}>
-                  {FAKTURASTATUS[r.status]?.label}</Pille> },
-              { key: "vaelg", label: "", render: (r) => (
-                  <Knap onClick={() => vaelg(r)} disabled={r.id === valgtId}>
-                    {r.id === valgtId ? "Vist" : "Vis"}
-                  </Knap>) },
-            ]}
-            raekker={fakturaer}
-            tom="Ingen fakturaer."
-          />
-
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            <b>{num(udenMatch.length)}</b> fakturaer mangler match mod en
-            bestilling, <b>{num(tilGodkendelse.length)}</b> afventer godkendelse,
-            og <b>{num(godkendtDenneMaaned.length)}</b> er godkendt eller bogført.
-            Tallene er <b>beregnet af listen ovenfor</b> — mockuppens KPI-kort sagde 8
-            mens tabellen sagde 16, fordi de var to kilder til samme tal.
-          </p>
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            Beløbet står som <b>beloebOere ekskl. moms</b> med <b>momsOere</b> ved
-            siden af. Totalen beregnes — ét felt med moms indeni ville betyde at en
-            rapport lægger inkl.-tal sammen med ekskl.-tal.
-          </p>
-        </Kort>
-
-        <Detaljer
-          faktura={valgt} ordre={valgtOrdre} lvNavn={lvNavn} brugerNavn={brugerNavn}
-          maaGodkende={maaGodkende} regler={regler} arbejder={arbejder}
-          paaSkift={(til) => (til === "afvist"
-            ? setDialog({ art: "afvis" })
-            : koer(() => skiftFaktura({ fakturaId: valgt.id, til })))}
-        />
-      </Gitter>
+      {valgt && (
+        <Detaljer faktura={valgt} ordre={valgtOrdre} lvNavn={lvNavn} />
+      )}
 
       {dialog && (
         <Dialog
-          titel={dialog.art === "afvis" ? "Afvis faktura" : "Ingen af bestillingerne passer"}
-          under={dialog.art === "afvis"
-            ? "Skriv hvorfor. En afvist regning skal kunne forklares til leverandøren."
-            : "Skriv hvorfor. Uden en grund begynder den næste forfra på det samme opslag."}
+          titel="Ingen af bestillingerne passer"
+          under="Skriv hvorfor. Uden en grund begynder den næste forfra på det samme opslag."
           onLuk={() => { setDialog(null); setGrund(""); }}
           handling={
             <Knap variant="primaer" disabled={!grund.trim() || arbejder}
-                  onClick={() => (dialog.art === "afvis"
-                    ? koer(() => skiftFaktura({ fakturaId: valgt.id, til: "afvist", begrundelse: grund.trim() }))
-                    : koer(() => matchFaktura({ fakturaId: valgt.id, handling: "ikkeMatchbar", grund: grund.trim() })))}>
-              {dialog.art === "afvis" ? "Afvis" : "Markér"}
+                  onClick={() => koer(() => matchFaktura({
+                    fakturaId: valgt.id, handling: "ikkeMatchbar", grund: grund.trim(),
+                  }))}>
+              Markér
             </Knap>
           }
         >
@@ -426,75 +348,16 @@ export default function Fakturaer() {
     </div>
   );
 }
+/* ---- Detaljeruden: fakturaen og matchet — IKKE godkendelsen ------------ */
 
-/* ---- Tre totaler, to navngivne afvigelser ------------------------------ */
-
-function Afstemning() {
-  const a = demoAfstemning();
-
-  return (
-    <Kort titel="Afstemning">
-      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <div>
-          {/* TRE UAFHÆNGIGE OPGØRELSER — ikke et regnestykke. */}
-          <MiniLinje label="Registrerede indkøb" vaerdi={<b>{kr(a.registreredeIndkoebOere)}</b>} />
-          <MiniLinje label="Modtagne fakturaer" vaerdi={<b>{kr(a.modtagneFakturaerOere)}</b>} />
-          <MiniLinje label="Bogført i regnskabet" vaerdi={<b>{kr(a.bogfoertOere)}</b>} />
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            Tre <b>uafhængige</b> opgørelser. Mockuppen skrev dem som
-            "9.842.250 − 9.781.625 = 9.765.125", men bogført er regnskabets egen
-            optælling og ikke afledt af de to andre — det er netop derfor de kan
-            være uenige.
-          </p>
-        </div>
-
-        <div>
-          {/* HVER AFVIGELSE MED SIT EGET NAVN OG SIN EGEN HANDLING. */}
-          <div className="fc-linje">
-            <span>
-              <b>Manglende fakturaer</b>
-              <br /><span className="fc-hint">registrerede − modtagne · ryk leverandøren</span>
-            </span>
-            <b className={deviation(a.manglendeFakturaerOere, { betterWhen: "lower" }).tone === "bad"
-              ? "fc-bad" : ""}>{kr(a.manglendeFakturaerOere)}</b>
-          </div>
-          <div className="fc-linje">
-            <span>
-              <b>Ikke bogført</b>
-              <br /><span className="fc-hint">modtagne − bogførte · bogfør fakturaen</span>
-            </span>
-            <b className="fc-bad">{kr(a.ikkeBogfoertOere)}</b>
-          </div>
-
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            To afvigelser, to navne, <b>to forskellige handlinger</b>. Ét felt der hed
-            "afvigelse" ville blive læst som ét tal, og så handler ingen på nogen af
-            dem — det er beslutning 11 og 14 om igen.
-          </p>
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            Begge beregnes af de tre totaler og gemmes ikke.
-          </p>
-        </div>
-      </Gitter>
-    </Kort>
-  );
-}
-
-/* ---- Detaljeruden: fakturaen, matchet og godkendelsen ------------------ */
-
-function Detaljer({ faktura, ordre, lvNavn, brugerNavn, maaGodkende, regler, arbejder, paaSkift }) {
-  if (!faktura) {
-    return (
-      <Kort titel="Faktura detaljer">
-        <Tom>Vælg en faktura for at se den, matche den og godkende den.</Tom>
-      </Kort>
-    );
-  }
-
+/* ⚠ SKIVE 4A — GODKENDELSE/AFVIS/BOGFØR ER FJERNET HERFRA. De duplikerede
+   Fakturacenterets knapper mod nøjagtig samme funktion (`fakturastatus`) —
+   to steder at trykke "Godkend" er to steder der kan glemme et
+   permissionstjek. Status vises stadig (læsning, ingen handling); selve
+   godkendelsen sker i Fakturaer & bilag. */
+function Detaljer({ faktura, ordre, lvNavn }) {
   const kanBekraefte = ordre ? kanMatche(faktura, ordre) : null;
   const afvigelse = matchAfvigelseOere(faktura, ordre);
-  const fg = regler.fakturagodkendelse || {};
-  const laast = faktura.status === "bogfoert";
 
   return (
     <Kort titel="Faktura detaljer">
@@ -542,55 +405,11 @@ function Detaljer({ faktura, ordre, lvNavn, brugerNavn, maaGodkende, regler, arb
         </>
       )}
 
-      <h3 className="fc-underoverskrift">Godkendelse</h3>
-      {/* ⚠ HVEM DER SKAL GODKENDE, KOMMER AF REGLEN — ikke af et felt i
-          formularen. Er reglen slået fra, rækker permissionen; det er hele
-          meningen med at kunne slå den fra (beslutning 82). */}
-      <MiniLinje label="Godkender" vaerdi={
-        fg.aktiv
-          ? brugerNavn(fg.godkenderUid)
-          : <span className="fc-hint">alle med {PERM.indkoebGodkend}</span>} />
-      {faktura.godkendtAf && (
-        <MiniLinje label="Godkendt af" vaerdi={brugerNavn(faktura.godkendtAf)} />
-      )}
-      {faktura.begrundelse && (
-        <MiniLinje label="Begrundelse" vaerdi={faktura.begrundelse} />
-      )}
-
-      <div className="fc-knapper" style={{ justifyContent: "flex-start", marginTop: 12 }}>
-        <Knap variant="primaer"
-              disabled={!maaGodkende || laast || arbejder || faktura.status === "godkendt"}
-              title={maaGodkende ? undefined : `Det kræver ${PERM.indkoebGodkend}.`}
-              onClick={() => paaSkift("godkendt")}>
-          Godkend
-        </Knap>
-        <Knap disabled={!maaGodkende || laast || arbejder || faktura.status === "afvist"}
-              title={maaGodkende ? undefined : `Det kræver ${PERM.indkoebGodkend}.`}
-              onClick={() => paaSkift("afvist")}>
-          Afvis
-        </Knap>
-        {/* ⚠ MAN BOGFØRER IKKE NOGET DER IKKE ER GODKENDT. Planchens egen
-            fodnote siger det: "Efter godkendelse bogføres og sendes til
-            regnskabssystemet." */}
-        <Knap disabled={laast || arbejder || faktura.status !== "godkendt"}
-              title={faktura.status === "godkendt" ? undefined
-                : "Fakturaen skal godkendes før den kan bogføres."}
-              onClick={() => paaSkift("bogfoert")}>
-          Bogfør
-        </Knap>
-      </div>
-
-      {laast && (
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          <b>Fakturaen er bogført.</b> Hverken match eller godkendelse kan ændres
-          bagefter — posten er sendt til regnskabet, og en ændring ville gøre en
-          afstemning der stemte, til en der ikke gør.
-        </p>
-      )}
-      <p className="fc-hint" style={{ marginTop: 10 }}>
-        Bogføring sætter tilstanden her. <b>Der sendes ikke noget til et
-        regnskabssystem</b> — der er ingen integration, og en knap der påstod
-        det, ville få nogen til at holde op med at bogføre manuelt.
+      <p className="fc-hint" style={{ marginTop: 12 }}>
+        Godkendelse, afvisning og bogføring foregår i{" "}
+        <Link className="fc-a" to="/oekonomi/fakturacenter?destination=procure">
+          Fakturaer &amp; bilag
+        </Link>.
       </p>
     </Kort>
   );
