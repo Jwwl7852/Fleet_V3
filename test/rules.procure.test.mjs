@@ -2,8 +2,8 @@
  * Procures to nye noder — beslutning 78.
  *
  * ⚠ HVORFOR DE ER LUKKEDE. `indkoebsbehov` og `indkoebsordrer` er begge
- * `.write: false`, og det er ikke en manglende rettighed: casehandler,
- * disponent og admin HAR alle `indkoeb.skriv`. Det er VEJEN der er lukket.
+ * `.write: false`, og det er ikke en manglende rettighed: disponent,
+ * koordinator og admin HAR alle `indkoeb.skriv`. Det er VEJEN der er lukket.
  *
  * Et behov der bliver til en ordre, ændrer TO poster — behovet får sin
  * ordrereference, og ordren får sin linje. De skal skrives atomisk eller slet

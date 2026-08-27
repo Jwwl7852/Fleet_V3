@@ -104,8 +104,8 @@ after(async () => {
 });
 
 describe("⚠ NODEN ER LUKKET — vejen ind er opgaveplanlaeg", () => {
-  /* Beslutning 45. Det er IKKE en manglende rettighed: casehandler,
-     disponent, koordinator og admin HAR alle `opgaver.skriv`, og funktionen
+  /* Beslutning 45. Det er IKKE en manglende rettighed: disponent,
+     koordinator og admin HAR alle `opgaver.skriv`, og funktionen
      kræver den. Det er VEJEN der er lukket — samme snit som kasseudlaan
      (37) og enheder (39). */
 

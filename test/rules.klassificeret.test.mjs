@@ -29,7 +29,7 @@ let miljoe;
 
 const medPerms = (uid, perms, tenant = T) =>
   miljoe
-    .authenticatedContext(uid, { tenant, rolle: "casehandler", perms: permStreng(perms) })
+    .authenticatedContext(uid, { tenant, rolle: "koordinator", perms: permStreng(perms) })
     .database();
 
 const somRolle = (uid, rolle) =>
@@ -176,7 +176,7 @@ describe("rolle-presets efter beslutning 17", () => {
   });
 
   it("kun admin ser fraværets årsag — helbredsoplysning, GDPR art. 9", () => {
-    for (const rolle of ["chauffoer", "casehandler", "disponent", "koordinator", "revisor"]) {
+    for (const rolle of ["chauffoer", "disponent", "koordinator", "revisor"]) {
       assert.ok(
         !ROLLE_PERMS[rolle].includes(PERM.fravaerSensitiveLaes),
         `"${rolle}" har fravaer.sensitiveLaes — disponeringen skal vide AT chaufføren ` +

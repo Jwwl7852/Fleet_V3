@@ -665,7 +665,7 @@ export function SagsvisningIndhold({ sag, bruger, startFane = "oversigt", onGeni
   /* ⚠ FIRE SEPARATE TJEK, IKKE ÉT SAMLET. sag.skriv+sag.sensitiveLaes åbner
      for at SKRIVE EN BESKED — det er ikke det samme som at måtte frigive en
      karantæne eller bekræfte en aftale, som hver har sin egen, smallere
-     permission. casehandler har de to første, ikke de sidste to; en fælles
+     permission. Disponent har kun sagLaes — ingen af de fire her; en fælles
      "maaTriagere" ville have tegnet begge knapper aktive for ham, og
      serveren ville have afvist dem. */
   const maaSkriveBesked = harPerm(bruger?.perms, PERM.sagSkriv) && harPerm(bruger?.perms, PERM.sagSensitiveLaes);

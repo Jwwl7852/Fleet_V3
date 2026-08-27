@@ -1056,14 +1056,20 @@ async function main() {
      `grundlag.godkend` — og uid'et skifter hver gang en DEV-base bygges op
      igen. Skrev vi uid'et, skulle tabellen rettes efter hver oprydning.
      ══════════════════════════════════════════════════════════════════════ */
+  /* ⚠ casehandler UDGIK OG ER KONSOLIDERET IND I koordinator — v1-testens
+     rollebeslutning. Placeholderne der pegede på "casehandler" ("uid-lars",
+     "uid-mette", "uid-jesper") peger nu på "koordinator" i stedet, som har
+     overtaget rollens ansvar. Uden det ville rigtigt() svare null for dem —
+     tavst, samme klasse fejl som beslutning 109 allerede rettede én gang:
+     posterne ville stå med et uid der ikke svarer til nogen konto. */
   const PLADSHOLDER_ROLLE = {
     "uid-mikkel": "koordinator",
     "uid-thomas": "disponent",
-    "uid-lars": "casehandler",
+    "uid-lars": "koordinator",
     "uid-jens": "admin",
     "uid-michael": "lagermedarbejder",
     "uid-anders": "chauffoer",
-    "uid-mette": "casehandler",
+    "uid-mette": "koordinator",
     /* ⚠ TO DER MANGLEDE, OG DET KUNNE IKKE SES — beslutning 109.
 
        `uid-jesper` og `uid-rene` stod på tre demo-indberetninger og i
@@ -1076,7 +1082,7 @@ async function main() {
        Riis og Rene Thomsen er medarbejdere i `personale`; DEV har én konto
        pr. ROLLE og ikke én pr. person. Kortet her siger derfor hvilken
        slags bruger posten skal tilhøre — ikke hvem. */
-    "uid-jesper": "casehandler",
+    "uid-jesper": "koordinator",
     "uid-rene": "lagermedarbejder",
   };
   const rigtigt = (pladsholder) => uidFor[PLADSHOLDER_ROLLE[pladsholder]] || null;

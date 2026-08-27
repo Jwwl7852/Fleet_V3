@@ -250,13 +250,13 @@ describe("Adgangen er permissions, ikke en femte rolleverden", () => {
   it("giver dem KUN til lagermedarbejderen og admin", () => {
     /* ⚠ EN DEDIKERET ROLLE ER MENINGSLOES, hvis alle andre har det samme i
        forvejen. De to permissions laa foerst i BASIS_DATA — altsaa hos
-       sagsbehandler, disponent og koordinator — og saa ville
+       disponent og koordinator — og saa ville
        lagermedarbejderen ikke vaere en afgraensning af noget. */
     for (const rolle of ["lagermedarbejder", "admin"]) {
       assert.ok(ROLLE_PERMS[rolle].includes(PERM.kasserSkriv), `${rolle} mangler kasser.skriv`);
       assert.ok(ROLLE_PERMS[rolle].includes(PERM.kasseudlaanSkriv), `${rolle} mangler kasseudlaan.skriv`);
     }
-    for (const rolle of ["chauffoer", "casehandler", "disponent", "koordinator", "revisor"]) {
+    for (const rolle of ["chauffoer", "disponent", "koordinator", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.kasseudlaanSkriv),
         `${rolle} kan udlevere en kasse — det er lagermedarbejderens arbejde`);
     }

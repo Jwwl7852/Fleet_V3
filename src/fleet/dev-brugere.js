@@ -29,11 +29,19 @@ export const DEV_TENANT = "demo";
 /** Ikke et rigtigt domæne. Kontiene skal ikke kunne modtage post. */
 export const DEV_DOMAENE = "dev.fleetcontrol.invalid";
 
+/** V1-testselskabets tenant-id og de syv rollekontis domæne — se
+ *  scripts/provisioner-v1-test-brugere.mjs, som opretter kontiene med
+ *  PRÆCIS de her to konstanter, og Brugervaelger.jsx, som bruger dem til
+ *  den hostede DEV-brugerskifter (devBrugerSkift). ⚠ functions/index.js kan
+ *  IKKE importere herfra — Firebase deployer kun sin egen mappe — og bærer
+ *  derfor sin egen kopi af de to strenge, med en note om at de skal følges ad. */
+export const V1T_TENANT = "v1-test";
+export const V1T_DOMAENE = "v1-test.dev.fleetcontrol.invalid";
+
 /* Kun til visning i sidebaren. Mangler en rolle et navn her, bruges rollen
    selv — listen må ikke kunne blokere for en ny rolle i presettet. */
 const NAVN = {
   chauffoer: "Dev Chauffør",
-  casehandler: "Dev Sagsbehandler",
   disponent: "Dev Disponent",
   koordinator: "Dev Koordinator",
   revisor: "Dev Revisor",

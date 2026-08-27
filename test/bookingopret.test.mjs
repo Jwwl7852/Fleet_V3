@@ -251,7 +251,7 @@ describe("bookingopret håndhæver det skærmen viser", () => {
 
   /**
    * ⚠ NUMMERET FRA COUNTEREN, ALDRIG FRA EN OPTÆLLING — beslutning 8.
-   * To casehandlere der opretter i samme sekund, ville ellers få samme
+   * To koordinatorer der opretter i samme sekund, ville ellers få samme
    * nummer, og en optælling ville dertil genbruge et nummer hvis en gammel
    * booking blev taget ud af drift.
    */

@@ -23,7 +23,7 @@
  *
  * ⚠ OG I MÅNEDSVIS STOD DET KUN HER. Filen skrev i sit eget hoved at der
  * ikke skrives herfra — mens `opgaver` havde `.write` med `opgaver.skriv`,
- * som casehandler, disponent, koordinator og admin alle har. Disciplinen var
+ * som disponent, koordinator og admin alle har. Disciplinen var
  * beskrevet, ikke håndhævet, og en kontrol der kun findes i frontend, er en
  * pæn knap. Beslutning 45 lukkede noden.
  * ═══════════════════════════════════════════════════════════════════════════

@@ -276,8 +276,13 @@ export default function AppShell() {
             )}
 
             {/* Dev skifter SESSION frem for visning. Det er den eneste måde at
-                ændre perms på, fordi de står i tokenet. */}
-            {miljoe === "dev" && <Brugervaelger email={bruger?.email} />}
+                ændre perms på, fordi de står i tokenet.
+                ⚠ devTester STYRER KUN OM SKIFTET SKER FJERNT (custom token
+                via en Cloud Function) I STEDET FOR LOKALT (email+kode). Se
+                Brugervaelger.jsx's eget hoved. */}
+            {miljoe === "dev" && (
+              <Brugervaelger email={bruger?.email} devTester={bruger?.devTester} />
+            )}
             <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
           </div>
         </aside>

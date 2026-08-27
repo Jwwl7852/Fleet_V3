@@ -98,7 +98,12 @@ export async function hentBrugerContext(user) {
     email: user.email,
     navn: user.displayName || user.email,
     tenant: token.claims.tenant || null,
-    rolle: token.claims.rolle || "casehandler",
+    /* ⚠ FALDBACKEN ER DEN SMALLESTE ROLLE, IKKE EN TILFÆLDIG. rolle er kun
+       til VISNING — perms nedenfor er det eneste adgangen afgøres af, og
+       fejler allerede lukket ved et manglende claim. Falder navnet
+       alligevel tilbage på noget, skal det se ud som den mindst betroede,
+       ikke som en rolle der lyder som den kan mest. */
+    rolle: token.claims.rolle || "chauffoer",
     /* Tom streng, ikke udledt af rollen. Udleder klienten selv permissions
        fra rolle-claim'et, kan UI'et vise knapper som serveren afviser — og
        så er vi tilbage ved at adgangskontrollen kun findes i frontend.
@@ -118,5 +123,9 @@ export async function hentBrugerContext(user) {
      * ikke en betingelse i en skærm; det er fraværet af en nøgle.
      */
     udbyder: token.claims.udbyder === true,
+    /* ⚠ ÉN TING: MÅ KONTOEN BRUGE devBrugerSkift. Sat med
+       scripts/dev-tester.mjs — ikke det samme som `udbyder` ovenfor, og
+       giver ikke selv nogen adgang. Se noten i functions/index.js. */
+    devTester: token.claims.devTester === true,
   };
 }

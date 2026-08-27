@@ -737,7 +737,7 @@ export function ydelserForModuler(moduler) {
    ⚠ DEN LIGGER PÅ KUNDEN, OG DET ER EN AFVEJNING DER BLEV TAGET BEVIDST.
 
    `.write` kaskaderer i RTDB, og `kunder` er skrivbar med `kunder.skriv` —
-   som casehandler, disponent og koordinator alle har gennem BASIS_DATA.
+   som disponent og koordinator begge har gennem BASIS_DATA.
    `satser.skriv` har kun admin. Uden videre ville prisen på kunden altså
    kunne sættes af flere end standardprisen kan, alene fordi den ligger i en
    anden sti. Det er ikke en rettighed nogen har besluttet at give.

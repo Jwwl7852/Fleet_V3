@@ -1,7 +1,7 @@
 /* src/moduler/booking/NyForespoergsel.jsx
  * Booking – ny transportforespørgsel
  *
- * Rolle: casehandler. Det er her forløbet begynder — en forespørgsel oprettes
+ * Rolle: koordinator. Det er her forløbet begynder — en forespørgsel oprettes
  * som `kladde` og sendes til planlægning med overgangen til `afventerPlan`.
  *
  * ⚠ SKÆRMEN SKRIVER NU. Her stod "der skrives ingenting (fase 0)".
@@ -18,7 +18,7 @@
  * ⚠ BOOKINGNUMMERET KOMMER FRA EN COUNTER, ALDRIG FRA EN OPTÆLLING.
  * naesteBookingnummer() kører en transaction mod countere/booking/<år>
  * (beslutning 8). At tælle eksisterende bookinger ville give to bookinger
- * samme nummer i det sekund to casehandlere opretter samtidig. Funktionen
+ * samme nummer i det sekund to koordinatorer opretter samtidig. Funktionen
  * kræver en database og kaldes derfor ikke her — feltet viser formatet.
  *
  * FLEKSIBILITET ER IKKE PYNT. Uden et spænd på afhentning og levering kan

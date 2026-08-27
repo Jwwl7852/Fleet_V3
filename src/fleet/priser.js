@@ -83,7 +83,7 @@ export const BRUGERART = {
     art: "desktop",
     label: "Desktopbruger",
     hvad: "Disponerer, godkender, bogfører eller reviderer.",
-    roller: ["casehandler", "disponent", "koordinator", "revisor", "admin"],
+    roller: ["disponent", "koordinator", "revisor", "admin"],
   },
 };
 

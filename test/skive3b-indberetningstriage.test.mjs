@@ -79,7 +79,7 @@ describe("permission-gaten skelner chaufføren fra kontortriagen", () => {
   });
 
   it("ingen anden driftsrolle end koordinator fik den ved siden af", () => {
-    for (const rolle of ["casehandler", "disponent", "lagermedarbejder", "revisor"]) {
+    for (const rolle of ["disponent", "lagermedarbejder", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.indberetningerSkrivAlle), rolle);
     }
   });

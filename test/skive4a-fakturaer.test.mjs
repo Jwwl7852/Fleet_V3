@@ -35,8 +35,8 @@ const udenKommentarer = (s) =>
    PERMISSION-MODELLEN — punkt 2
    ══════════════════════════════════════════════════════════════════════════ */
 describe("fakturaer.laes/.skriv/.godkend — rollefordelingen", () => {
-  const LAES = ["casehandler", "disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
-  const SKRIV = ["casehandler", "disponent", "koordinator", "admin"];
+  const LAES = ["disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
+  const SKRIV = ["disponent", "koordinator", "admin"];
   const GODKEND = ["koordinator", "admin"];
 
   it("⚠ FORDELINGEN ER IDENTISK MED DEN GAMLE indkoeb.*-FORDELING", () => {

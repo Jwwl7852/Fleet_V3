@@ -333,7 +333,7 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
       assert.ok(ROLLE_PERMS.lagermedarbejder.includes(p), `mangler ${p}`);
       assert.ok(ROLLE_PERMS.admin.includes(p));
     }
-    for (const rolle of ["chauffoer", "casehandler", "disponent", "koordinator", "revisor"]) {
+    for (const rolle of ["chauffoer", "disponent", "koordinator", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.bevaegelserSkriv),
         `${rolle} kan flytte kundens gods`);
     }

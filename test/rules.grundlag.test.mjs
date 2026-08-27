@@ -86,8 +86,8 @@ describe("grundlaget skrives kun af serveren", () => {
     return assertFails(set(ref(som("uid-admin"), sti("grundlag/grl-nyt")), GRUNDLAG));
   });
 
-  it("nægter også en koordinator og en casehandler", async () => {
-    for (const rolle of ["koordinator", "casehandler"]) {
+  it("nægter også en koordinator", async () => {
+    for (const rolle of ["koordinator"]) {
       await assertFails(
         set(ref(som(`uid-${rolle}`, rolle), sti(`grundlag/grl-${rolle}`)), GRUNDLAG));
     }
@@ -278,15 +278,20 @@ describe("grundlagskriv — den eneste vej ind", () => {
 
   it("de to permissioner er to handlinger", () => {
     /* At UDARBEJDE et grundlag er kontorarbejde; at GODKENDE det er at sige
-       god for at fakturaen kan sendes. Den der gør det første, skal ikke
-       nødvendigvis kunne gøre det andet. */
+       god for at fakturaen kan sendes. De er to forskellige permissions —
+       ⚠ MEN IKKE LÆNGERE TO ROLLER: casehandler (skriv uden godkend) er
+       konsolideret ind i koordinator (som allerede havde begge). Ingen
+       driftsrolle illustrerer i dag "kan udarbejde, ikke godkende" — kun
+       PERMISSIONENS egen adskillelse står tilbage som prøve. Se
+       permissions.js's note ved koordinator. */
     assert.ok(blok.includes("PERM.grundlagSkriv"));
     assert.ok(blok.includes("PERM.grundlagGodkend"));
-    assert.ok(ROLLE_PERMS.casehandler.includes(PERM.grundlagSkriv));
-    assert.ok(!ROLLE_PERMS.casehandler.includes(PERM.grundlagGodkend),
-      "casehandleren kan godkende sit eget grundlag");
+    assert.notEqual(PERM.grundlagSkriv, PERM.grundlagGodkend);
+    assert.ok(ROLLE_PERMS.koordinator.includes(PERM.grundlagSkriv));
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.grundlagGodkend));
     assert.ok(!ROLLE_PERMS.chauffoer.includes(PERM.grundlagSkriv));
+    assert.ok(!ROLLE_PERMS.disponent.includes(PERM.grundlagSkriv),
+      "disponenten kan skrive et grundlag");
   });
 
   it("⚠ SPORET LANDER I REGNSKABSPARTITIONEN", () => {

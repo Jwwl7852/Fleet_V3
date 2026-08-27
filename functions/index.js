@@ -38,7 +38,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineSecret } from "firebase-functions/params";
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, getApp } from "firebase-admin/app";
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
@@ -632,6 +632,146 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
      ændring der lykkedes. */
   return { ok: true, ramte: ramte.length, fornyet, fejlede };
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FJERNADGANG — DEV-BRUGERSKIFTEREN, SIKKERT PÅ HOSTED DEV
+
+   ⚠ HVORFOR DEN FINDES. Den lokale brugerskifter (Brugervaelger.jsx) logger
+   ind med VITE_DEV_BRUGER_KODE — en klienteksponeret variabel, fordi VITE_*
+   altid bages ind i bundtet ved build. Det er trygt på en udviklers egen
+   maskine og uacceptabelt på en offentligt tilgængelig Hosting-URL: enhver
+   besøgende kunne læse koden af bundtet og logge ind som enhver af kontiene.
+
+   Løsningen flytter selve login-trinnet server-side. Klienten sender aldrig
+   en adgangskode — den sender en ROLLE-NØGLE, og en Cloud Function der
+   allerede ved hvem den ringende bruger er (et Firebase-token, ikke
+   email+kode), minter et Firebase custom token for den kendte v1-test-konto.
+   Klienten bytter det til en session med auth.signInWithCustomToken().
+   Ingen secret rejser nogensinde til browseren.
+
+   ⚠ TO SPÆRRINGER, IKKE ÉN.
+
+     1. PROJEKTET. Funktionen deployes kun til DEV (samme `--project dev`
+        som alt andet provisioneringsværktøj), men den tjekker ALLIGEVEL sit
+        eget kørende projekt-id ved hvert kald — samme dobbelte sikring som
+        tjekProjekt() i provisioner-dev.mjs. Et uheld i udrulningskommandoen
+        må aldrig kunne aktivere den mod produktion.
+
+     2. KALDEREN. `devTester`-claimet er IKKE `udbyder` — det er sit eget,
+        snævre claim, sat med scripts/dev-tester.mjs på en ægte personlig
+        konto, ligesom ejerskab sættes med scripts/ejer.mjs. En lækket evne
+        til at kalde DEN HER funktion skal ikke også give adgang til
+        ejerkonsollen eller nogen anden kundes tenant.
+
+        ⚠ ELLER: kalderen er ALLEREDE en af v1-tests syv roller. Uden det
+        kunne en tester kun skifte ÉN gang — næste kald ville komme fra
+        MÅLKONTOENS eget token, uden devTester-claimet. At SKRIVE claimet
+        ind på målkontoen i stedet blev prøvet og forkastet: admins claims
+        fylder alene 1016 byte, og Firebase's grænse er 1000 — en næsten
+        fuld konto ville simpelthen fejle skiftet. At være tenant "v1-test"
+        i forvejen giver ingen ny rettighed; man kom kun dertil ad devTester-
+        vejen, eller via den lokale adgangskode, som allerede giver fuld
+        adgang til DEN tenant.
+
+   ⚠ MÅLKONTIENE SLÅS OP PÅ DERES KENDTE MAIL, IKKE PÅ ET uid ELLER EN MAIL
+   FRA KLIENTEN. `${rolle}@v1-test.dev.fleetcontrol.invalid` er PRÆCIS det
+   mønster scripts/provisioner-v1-test-brugere.mjs opretter kontiene med — de
+   to kan ikke drive fra hinanden uden at det scriptet selv blev ændret, og
+   en ændring dér er synlig. Klienten sender kun rollenavnet; opslaget og
+   tenant-tjekket sker her, server-side.
+
+   ⚠ INGEN NYE CLAIMS MINTES. Kontoen har allerede tenant/rolle/perms fra
+   provisioneringen (claimsFor() i dev-brugere.js) — funktionen udsteder
+   blot et token for den EKSISTERENDE konto, og de claims den allerede
+   bærer, er dem den nye session får. Chaufførkontoen er stadig koblet til
+   Anna Vognmand, fordi personId står på selve kontoens indeksrække, uændret.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DEV_PROJEKT = "fleetcontrol-dev-1ac1c";
+const V1T_TENANT = "v1-test";
+const V1T_DOMAENE = "v1-test.dev.fleetcontrol.invalid";
+
+export const devBrugerSkift = onCall({ region: REGION }, async (req) => {
+  /* ⚠ FØRST. Ingen af de øvrige tjek betyder noget, hvis funktionen kunne
+     køre mod produktion — se hovedet. */
+  if (getApp().options.projectId !== DEV_PROJEKT) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Denne funktion findes kun i DEV — og kører ikke i dette projekt."
+    );
+  }
+
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  /* ⚠ TO MÅDER AT VÆRE AUTORISERET PÅ, IKKE ÉN.
+     1) devTester-claimet — EN EGEN CLAIM, IKKE `udbyder`. Se hovedet,
+        punkt 2. Det er vejen IND: uden en tenant kan kontoen ingenting
+        andet end at bede om at blive en af v1-tests syv roller.
+     2) ALLEREDE en af v1-tests syv roller. Uden det kunne en tester kun
+        skifte ÉN gang: næste kald ville komme fra MÅLKONTOENS eget token
+        (uden devTester-claimet), og blive afvist. At SKRIVE devTester ind
+        på målkontoen i stedet blev prøvet og forkastet — admins claims
+        fylder allerede 1016 byte, og Firebase's grænse er 1000; en konto
+        der næsten er fuld, ville simpelthen fejle skiftet.
+        At være tenant "v1-test" i forvejen er ikke en ny rettighed: man
+        kom kun dertil ad vej 1) i første omgang, eller via den lokale
+        adgangskode — som allerede giver fuld adgang til DEN tenant. */
+  const erAlleredeV1Test = auth.token?.tenant === V1T_TENANT;
+  if (auth.token?.devTester !== true && !erAlleredeV1Test) {
+    throw new HttpsError(
+      "permission-denied",
+      "Kontoen er ikke en autoriseret DEV-tester. Se scripts/dev-tester.mjs."
+    );
+  }
+
+  /* ⚠ ÉN AF DE KENDTE ROLLER — INGEN FRI STRENG. ROLLE_PERMS ER SANDHEDEN om
+     hvilke rollenavne der findes, samme tjek som skiftrolle/rolleskriv
+     bruger. En ukendt rolle afvises her, før noget slås op. */
+  const raaRolle = (req.data || {}).rolle;
+  const rolle = kortStreng(raaRolle, 30);
+  if (!rolle || !ROLLE_PERMS[rolle]) {
+    throw new HttpsError("invalid-argument", `Ukendt rolle: ${raaRolle}`);
+  }
+
+  const admin = getAuth();
+  const email = `${rolle}@${V1T_DOMAENE}`;
+  let maal;
+  try {
+    maal = await admin.getUserByEmail(email);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+    throw new HttpsError(
+      "not-found",
+      `${email} findes ikke — kør node scripts/provisioner-v1-test-brugere.mjs.`
+    );
+  }
+  /* ⚠ DOBBELTTJEKKET, IKKE BARE ANTAGET. Mailmønsteret er en konvention;
+     tenant-claimet er kilden. Skulle der nogensinde findes en anden konto
+     med samme mønster, må den IKKE kunne bruges her. */
+  if (maal.customClaims?.tenant !== V1T_TENANT) {
+    throw new HttpsError(
+      "failed-precondition", `${email} hører ikke til tenanten "${V1T_TENANT}".`
+    );
+  }
+
+  const token = await admin.createCustomToken(maal.uid);
+
+  /* ⚠ ET IDENTITETSSKIFTE ER SIKKERHEDSRELEVANT OG LOGGES SOM DET —
+     samme klasse som skiftrolle. tenantId er altid "v1-test": funktionen
+     kender ingen anden, og kalderens EGEN konto har typisk ingen tenant
+     (en devTester er ofte en ejerkonto, se scripts/ejer.mjs). */
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${V1T_TENANT}/sikkerhed/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid: auth.uid, handling: "tilstandsskift",
+      objekt: "brugere", objektId: maal.uid, klasse: "sikkerhed",
+      note: `dev-brugerskift → ${rolle}`,
+    });
+
+  return { ok: true, token, rolle, email };
+});
+
 /* ══════════════════════════════════════════════════════════════════════════
    HVILKE DASHBOARDS EN BRUGER FAAR VIST
 
@@ -3389,7 +3529,7 @@ export const forslagskriv = onCall({ region: REGION }, async (req) => {
 
    ⚠ OG NUMMERET KAN KUN KOMME HERFRA. Beslutning 8: et nummer kommer fra en
    COUNTER i en transaction, aldrig fra en optaelling af eksisterende poster.
-   To casehandlere der opretter i samme sekund, ville ellers faa samme nummer
+   To koordinatorer der opretter i samme sekund, ville ellers faa samme nummer
    — og en optaelling ville dertil give et nyt nummer til den samme booking,
    hvis en gammel blev taget ud af drift. En klient kan ikke koere den
    transaction: `countere` er `.write: false`.
@@ -3413,8 +3553,9 @@ export const bookingopret = onCall({ region: REGION }, async (req) => {
   const uid = auth.uid;
   const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
 
-  /* ⚠ PERMISSIONEN, IKKE ROLLEN. `booking.opret` har casehandler — det er den
-     rolle der tager imod foresporgslen — og admin. */
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN. `booking.opret` har koordinator — det er den
+     rolle der tager imod foresporgslen — og admin. (casehandler havde den
+     tidligere; rollen er konsolideret ind i koordinator.) */
   if (!perms.includes("|booking.opret|")) {
     throw new HttpsError("permission-denied",
       "Du må ikke oprette bookinger. Det kræver booking.opret.");
@@ -4594,7 +4735,7 @@ export const statusmelding = onCall({ region: REGION }, async (req) => {
 
      `booking.udfoer` er den rigtige — den betyder at måtte gribe ind i en tur
      der KØRER, og disponent, koordinator og admin har den. `booking.opret`
-     ville have været forkert: en casehandler opretter forespørgsler og har
+     ville have været forkert: den der opretter en forespørgsel, har
      ikke noget med turen at gøre når den ruller. */
   const maaDisponere = perms.includes("|booking.udfoer|");
   const erHans = personId != null && etape.personId === personId;

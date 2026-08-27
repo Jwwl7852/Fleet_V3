@@ -55,8 +55,8 @@ describe("Dokumentadgang genbruger fakturaer.laes/.skriv — ingen ny global per
   it("⚠ SAMME ROLLEFORDELING SOM ALLEREDE ETABLERET FOR FAKTURAER — ingen ny fordeling at holde synkron", () => {
     /* Rent sanity-tjek: fakturaerLaes/Skriv findes stadig med den fordeling
        4A satte. Dokumentadgang ARVER den, uden at skrive en ny liste. */
-    const laes = ["casehandler", "disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
-    const skriv = ["casehandler", "disponent", "koordinator", "admin"];
+    const laes = ["disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
+    const skriv = ["disponent", "koordinator", "admin"];
     for (const rolle of Object.keys(ROLLE_PERMS)) {
       assert.equal(ROLLE_PERMS[rolle].includes(PERM.fakturaerLaes), laes.includes(rolle));
       assert.equal(ROLLE_PERMS[rolle].includes(PERM.fakturaerSkriv), skriv.includes(rolle));

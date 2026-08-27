@@ -52,6 +52,30 @@ export function FleetProvider({
   /* Kun meningsfuld i demo-mode — se saetDemoRolle nedenfor. */
   const [demoRolle, setDemoRolle] = useState(demo ? (start.demoRolle || null) : null);
 
+  /**
+   * ⚠ TENANTID SKAL FØLGE BRUGEREN, IKKE STÅ FAST FRA FØRSTE MONTERING.
+   *
+   * `<FleetProvider>` monterer ÉN GANG, allerede mens `/login` vises — der
+   * er ingen bruger endnu, `tenants` er tom, og `useState`s starttal blev
+   * derfor "demo" (den sidste faldback). Loggede man ind som en anden
+   * tenant, blev komponenten ikke genmonteret — kun re-renderet — så
+   * starttallet sad fast. Hver eneste NYE besøgende ramte det: claim'et sagde
+   * "v1-test", stien blev stadig `tenants/demo/…`, og reglens
+   * `auth.token.tenant === $tenantId` afviste alt. Det virkede kun for demo,
+   * fordi det tilfældigvis ER "demo"s eget id.
+   *
+   * ⚠ OG DEN GEMTE VÆRDI FORSTÆRKEDE FEJLEN. Første forkerte gæt blev skrevet
+   * til localStorage af effekten nedenfor, så selv et helt nyt login i samme
+   * browser læste den forkerte værdi tilbage som `start.tenantId`.
+   *
+   * Retter sig selv så snart den rigtige tenant er kendt — og er en no-op
+   * for demo, hvis id allerede er "demo".
+   */
+  const oensketTenantId = tenants[0]?.id;
+  useEffect(() => {
+    if (oensketTenantId && oensketTenantId !== tenantId) setTenantId(oensketTenantId);
+  }, [oensketTenantId, tenantId]);
+
   useEffect(() => {
     /* ⚠ division GEMMES IKKE LÆNGERE. En gemt værdi ville blive læst tilbage
        ved næste indlæsning og se ud som et valg nogen havde truffet. */

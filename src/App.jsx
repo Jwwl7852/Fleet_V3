@@ -13,6 +13,7 @@ import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import { permStrengFraRolle } from "./fleet/permissions.js";
 import Login from "./moduler/Login.jsx";
+import DevTesterVaelger from "./moduler/DevTesterVaelger.jsx";
 
 /* ══════════════════════════════════════════════════════════════════════════
    SKÆRMENE HENTES NÅR DE ÅBNES — beslutning 97
@@ -394,6 +395,16 @@ export default function App() {
     );
   }
 
+  /* ⚠ EN REN DEV-TESTER (devTester, INGEN TENANT) VÆLGER ROLLE HER — FØR
+     harAdgang. Kontoen har med vilje ingen tenant af sin egen, se
+     scripts/dev-tester.mjs og DevTesterVaelger.jsx's eget hoved. Uden den
+     her gren ville harAdgang være falsk, og /login's "uprovisioneret"-skærm
+     ville spærre kontoen permanent — den bliver aldrig provisioneret, det
+     er ikke meningen med den. */
+  if (bruger?.devTester && !bruger?.tenant) {
+    return <DevTesterVaelger bruger={bruger} logUd={() => auth?.signOut()} />;
+  }
+
   /* Stamdataene er ikke læst endnu. Uden den her ville en lukket kunde se
      shellen i et glimt, før låseskærmen nåede frem. */
   if (harAdgang && abonnement === undefined) return <div className="fc-boot">Henter…</div>;
@@ -444,7 +455,14 @@ export default function App() {
           {/* ⚠ SIDEORDNET MED SHELLEN, ikke under den. Se Chauffoerramme.
               Suspense ligger i AppShell om <Outlet/>, og den her rute er
               udenfor — derfor sin egen grænse, ellers ville en doven Turplan
-              vise et tomt vindue. Beslutning 97 og 103. */}
+              vise et tomt vindue. Beslutning 97 og 103.
+
+              ⚠ FORTSAT ÅBEN FOR ENHVER MED ADGANG — RØR IKKE DEN BETINGELSE.
+              En anden rolle der navigerer hertil i hånden, skal stadig kunne
+              se den; se test/chaufforadgang.test.mjs. Den fejl der gjorde at
+              ALLE roller endte her efter et rolleskifte, lå ikke i den her
+              rute — den lå i et gammelt "fra"-genstartspunkt, rettet i
+              DevTesterVaelger.jsx. */}
           {harAdgang && (
             <Route path="/app/*" element={(
               <Chauffoerramme bruger={bruger} tenant={tenantListe[0]} logUd={() => auth?.signOut()}>

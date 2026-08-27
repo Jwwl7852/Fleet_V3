@@ -22,7 +22,7 @@ const T = "tenantPerm";
 let miljoe;
 
 /** Bruger med et eksplicit permission-saet. rolle er kun til visning. */
-const medPerms = (uid, perms, rolle = "casehandler") =>
+const medPerms = (uid, perms, rolle = "koordinator") =>
   miljoe.authenticatedContext(uid, { tenant: T, rolle, perms: permStreng(perms) }).database();
 
 /** Bruger med et rolle-preset. */
@@ -292,7 +292,7 @@ describe("rolle-presets giver samme adgang som før", () => {
   });
 
   it("kun admin må skrive satser og lagre", async () => {
-    for (const rolle of ["casehandler", "disponent", "koordinator", "chauffoer"]) {
+    for (const rolle of ["disponent", "koordinator", "chauffoer"]) {
       const db = somRolle(`uid-s-${rolle}`, rolle);
       await assertFails(set(ref(db, sti("satser/gr", "p1")), { navn: "Standardsats", satser: { s1: { gyldigFra: 1786000000000, beloebOere: 185000 } } }));
       await assertFails(set(ref(db, sti("lagre", "l1")), { navn: "Kolding" }));
@@ -476,8 +476,12 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        ham ikke opfinde en ottende: en ny rolle er stadig en ændring i koden,
        med en begrundelse, prøver og fornyede claims — og med en BRUGERART i
        priser.js, ellers bliver den lydløst faktureret som desktop, den dyre
-       af de to. Det er stadig den vigtigste grund til at antallet er låst. */
-    assert.equal(ALLE_ROLLER.length, 7,
+       af de to. Det er stadig den vigtigste grund til at antallet er låst.
+
+       ⚠ VAR SYV. casehandler er konsolideret ind i koordinator — beslutning
+       120, en dokumenteret produktejerbeslutning. Tallet ændres kun ved en
+       ny, dokumenteret beslutning, ikke ved en tilfældig tilføjelse. */
+    assert.equal(ALLE_ROLLER.length, 6,
       "antallet af roller er aendret — er der taget stilling til brugerarten " +
       "i priser.js? En ny rolle uden en ville lydloest blive faktureret som desktop.");
     for (const rolle of ALLE_ROLLER) {

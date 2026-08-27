@@ -193,7 +193,7 @@ describe("byggSkifte bygger posten uden at skrive den", () => {
   const booking = { tilstand: "kladde", valgtForslagId: null };
 
   it("skriver altid til historik", () => {
-    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
+    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "koordinator", bruger: "uid-1" });
     const noegle = Object.keys(u).find((n) => n.startsWith("historik/"));
     assert.ok(noegle, "en afvist booking skal kunne forklares et halvt år senere");
     assert.equal(u[noegle].fra, "kladde");
@@ -202,7 +202,7 @@ describe("byggSkifte bygger posten uden at skrive den", () => {
   });
 
   it("bruger uid og ikke personId på sidstAendretAf", () => {
-    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "casehandler", bruger: "uid-1" });
+    const u = byggEtapeSkifte(booking, "afventerPlan", { rolle: "koordinator", bruger: "uid-1" });
     assert.equal(u.sidstAendretAf, "uid-1");
   });
 
@@ -304,7 +304,7 @@ describe("Demo-bookingerne hænger sammen", () => {
    ══════════════════════════════════════════════════════════════════════ */
 describe("Rollerne giver forskellige knapper", () => {
   it("giver hver rolle et preset", () => {
-    for (const rolle of ["chauffoer", "casehandler", "disponent", "koordinator", "revisor", "admin"]) {
+    for (const rolle of ["chauffoer", "disponent", "koordinator", "revisor", "admin"]) {
       assert.ok(ROLLE_PERMS[rolle], `${rolle} mangler et preset`);
     }
   });

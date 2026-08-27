@@ -1,9 +1,15 @@
 /* src/fleet/booking-state.js
- * Bookingflowet som tilstandsmaskine. Tre roller, ikke én bruger.
+ * Bookingflowet som tilstandsmaskine. To roller, ikke én bruger.
  *
- *   casehandler  opretter forespørgsel
+ *   koordinator  opretter forespørgsel, godkender, returnerer eller afviser
  *   disponent    laver 1-3 forslag
- *   koordinator  godkender, returnerer eller afviser
+ *
+ * ⚠ ÉN ROLLE, TO TRIN — OG DET ER IKKE FIRE-ØJNE-BRUDT. casehandler er
+ * konsolideret ind i koordinator (opretter forespørgsel), som allerede
+ * godkendte. Fire-øjne-reglen (linjen nedenfor) handler om FORSLAGET, ikke
+ * om forespørgslen: koordinator har stadig ikke booking.foreslaa, kun
+ * disponent har det — så koordinator kan oprette, men ikke selv foreslå det
+ * han bagefter godkender. Se permissions.js's note ved koordinator.
  *
  * Reglerne hører her — ikke i knapperne. Ellers kan en disponent godkende
  * sit eget forslag, og hele pointen med koordinatorleddet forsvinder.
@@ -25,7 +31,6 @@ import { stopFraStraekning } from "./stop.js";
    permissions.js. De afgør IKKE længere hvad man må: overgangene nedenfor
    spørger efter en permission. */
 export const ROLLE = {
-  casehandler: "casehandler",
   disponent: "disponent",
   koordinator: "koordinator",
   admin: "admin",
@@ -381,7 +386,7 @@ export const naesteBookingnummer = (db, path) =>
  * ⚠ EN NY BOOKING BEGYNDER SOM `kladde`, OG DET ER IKKE ET VALG.
  *
  * Alt andet ville springe et led over i maskinen: `afventerPlan` betyder at
- * en casehandler har SENDT den til planlægning, og det skift er en handling
+ * en koordinator har SENDT den til planlægning, og det skift er en handling
  * med sin egen permission (`booking.opret` på overgangen). Kunne
  * oprettelsen sætte den direkte, ville "gem kladde" og "send til
  * planlægning" være den samme knap — og en halvfærdig forespørgsel ville

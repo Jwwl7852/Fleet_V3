@@ -29,8 +29,8 @@ const udenKommentarer = (s) =>
    PERMISSION-MODELLEN — punkt 2
    ══════════════════════════════════════════════════════════════════════════ */
 describe("leverandoerer.laes/.skriv — rollefordelingen", () => {
-  const LAES = ["casehandler", "disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
-  const SKRIV = ["casehandler", "disponent", "koordinator", "admin"];
+  const LAES = ["disponent", "koordinator", "lagermedarbejder", "revisor", "admin"];
+  const SKRIV = ["disponent", "koordinator", "admin"];
 
   it("⚠ FORDELINGEN ER DEN SAMME SOM DEN GAMLE indkoeb.laes/.skriv-FORDELING", () => {
     for (const rolle of Object.keys(ROLLE_PERMS)) {

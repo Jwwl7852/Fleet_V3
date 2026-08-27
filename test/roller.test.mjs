@@ -166,11 +166,14 @@ describe("⚠ SPÆRRINGEN MOD AT LÅSE SIG SELV UDE", () => {
 });
 
 describe("⚠ ROLLE_PERMS FORSVINDER IKKE — den er standarden", () => {
-  it("de syv rollenavne står fast", () => {
-    /* Man redigerer hvad en rolle indeholder; man opfinder ikke en ottende.
+  it("de seks rollenavne står fast", () => {
+    /* Man redigerer hvad en rolle indeholder; man opfinder ikke en syvende.
        En ny rolle er stadig en ændring i koden — med en brugerart i
-       priser.js, ellers faktureres den lydløst som desktop. */
-    assert.equal(ALLE_ROLLER.length, 7);
+       priser.js, ellers faktureres den lydløst som desktop.
+       ⚠ VAR SYV. casehandler er konsolideret ind i koordinator —
+       beslutning 120, en produktejerbeslutning, ikke en tilfældig
+       reduktion. Tallet ændres kun ved en ny, dokumenteret beslutning. */
+    assert.equal(ALLE_ROLLER.length, 6);
     assert.deepEqual(Object.keys(ROLLE_PERMS).sort(), [...ALLE_ROLLER].sort());
   });
 

@@ -104,8 +104,8 @@ hvilket der vinder. Valideringen afviser en post med begge.
 være to afrundingsregler.
 
 ⚠ **Placeringen kostede en permission.** `.write` kaskaderer, og `kunder` er
-skrivbar med `kunder.skriv` — som casehandler, disponent og koordinator alle
-har. `satser.skriv` har kun admin. Uden videre kunne prisen altså sættes af
+skrivbar med `kunder.skriv` — som disponent og koordinator begge har.
+`satser.skriv` har kun admin. Uden videre kunne prisen altså sættes af
 flere end standardprisen kan, alene fordi den lå i en anden sti. Derfor har
 `priser`-undertræet en `.validate` der **også** kræver `satser.skriv`. Se
 beslutning 38.
@@ -405,9 +405,10 @@ kunne godkendes i DEV, men ikke låses.
 på 1.035,00 kr. blev til `GRL-2026-00002` som kladde, godkendt fra
 Fakturering, og spærret for låsning på den manglende momssats.
 `GRL-2026-00389` blev låst mod referencen "e-conomic bilag 4471", og derefter
-kunne den hverken godkendes eller låses igen. Funktionsprøven dækker de otte
-afvisninger: casehandleren kan oprette men ikke godkende, chaufføren
-ingenting, koordinatoren begge dele.
+kunne den hverken godkendes eller låses igen. Funktionsprøven dækker
+afvisningerne: chaufføren ingenting, koordinatoren begge dele — opret og
+godkend (beslutning 120; casehandleren, som kunne oprette men ikke godkende,
+er konsolideret ind i koordinator).
 
 ### Det der stadig mangler
 

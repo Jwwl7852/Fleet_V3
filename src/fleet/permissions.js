@@ -387,11 +387,12 @@ export const ALLE_PERMS = Object.values(PERM);
  */
 const KOMMERCIEL_LAES = [
   PERM.satserLaes, PERM.grundlagLaes, PERM.indkoebLaes,
-  /* ⚠ SKIVE 4A. Casehandler, koordinator og revisor fik hidtil fakturaadgang
-     alene via tenant-medlemskab (fakturaer havde ingen .read-klausul).
-     De tre er netop dem KOMMERCIEL_LAES allerede samler. */
+  /* ⚠ SKIVE 4A. Koordinator og revisor (og dengang casehandler, siden
+     konsolideret ind i koordinator) fik hidtil fakturaadgang alene via
+     tenant-medlemskab (fakturaer havde ingen .read-klausul). De var netop
+     dem KOMMERCIEL_LAES allerede samler. */
   PERM.fakturaerLaes,
-  /* ⚠ SKIVE 4B — samme tre roller igen. Leverandøren mistede sin
+  /* ⚠ SKIVE 4B — samme roller igen. Leverandøren mistede sin
      indkoeb.laes-baserede adgang samtidig med sin modulklausul. */
   PERM.leverandoererLaes,
 ];
@@ -402,8 +403,9 @@ const BASIS_DATA = [
   PERM.fravaerSkriv,
   PERM.facilitySkriv,
   PERM.indkoebSkriv,
-  /* ⚠ SKIVE 4A — samme tre roller som indkoebSkriv (casehandler, disponent,
-     koordinator via ...BASIS_DATA, admin via ALLE_PERMS). */
+  /* ⚠ SKIVE 4A — samme roller som indkoebSkriv (disponent og koordinator
+     via ...BASIS_DATA, admin via ALLE_PERMS; dengang også casehandler,
+     siden konsolideret ind i koordinator). */
   PERM.fakturaerSkriv,
   /* ⚠ SKIVE 4B — samme snit igen. */
   PERM.leverandoererSkriv,
@@ -437,17 +439,6 @@ const BASIS_LAES = [
  */
 export const ROLLE_PERMS = {
   chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv],
-
-  /* ⚠ ALLE TRE. Han laver tilbuddet, udarbejder grundlaget og bestiller
-     ind — de tre tal ER hans arbejde. */
-  casehandler: [...BASIS_LAES, ...BASIS_DATA, ...KOMMERCIEL_LAES,
-    PERM.bookingOpret,
-    /* Udarbejder grundlaget — men godkender det ikke. */
-    PERM.grundlagSkriv,
-    /* Han er den der arbejder sagen: læser tråden og skriver på den. Ikke
-       sagKarantaeneFrigiv, sagAftaleBekraeft eller sagMailSend — de er en
-       vurdering, ikke driften af sagen. Se koordinator. */
-    PERM.sagLaes, PERM.sagSensitiveLaes, PERM.sagSkriv],
 
   disponent: [
     ...BASIS_LAES,
@@ -488,6 +479,21 @@ export const ROLLE_PERMS = {
   koordinator: [
     ...BASIS_LAES,
     ...BASIS_DATA,
+    /* ⚠ TILFØJET DA casehandler UDGIK — konsolideret ind i koordinator, ikke
+       fjernet. casehandler var "den rolle der tager imod forespørgslen" og
+       havde derfor bookingOpret uden bookingGodkend; koordinator havde det
+       omvendte. Uden overførslen ville INGEN driftsrolle kunne oprette en
+       booking — kun admin.
+       ⚠ OG DET UDVIDER IKKE FIRE-ØJNE-REGLEN FRA BESLUTNING 5. Den regel
+       handler om FORSLAGET, ikke om forespørgslen: en disponent må ikke
+       godkende sit eget forslag, og det håndhæves ved at disponent har
+       bookingForeslaa uden bookingGodkend. Koordinator har STADIG ikke
+       bookingForeslaa — kun disponent (og admin) må foreslå — så en
+       koordinator kan oprette en forespørgsel, men kan ikke selv lave det
+       forslag han bagefter godkender. Den der forslår, og den der godkender,
+       er stadig to forskellige roller. Se test/rules.rollematrix.test.mjs
+       og test/godkendelse.test.mjs. */
+    PERM.bookingOpret,
     PERM.bookingGodkend,
     PERM.bookingReturner,
     PERM.bookingAfvis,
@@ -821,12 +827,6 @@ export const ROLLE_LABEL = {
     hvorfor: "Skriver kun indberetninger. Intet klassificeret — hverken godsets " +
              "værdi, privatadresser eller kollegers fraværsårsag.",
   },
-  casehandler: {
-    label: "Sagsbehandler",
-    hvad: "Opretter bookinger og holder styr på kundedialogen.",
-    hvorfor: "Kan oprette, men ikke foreslå eller godkende. En booking skal " +
-             "gennem disponering, før den bliver til en tur.",
-  },
   disponent: {
     label: "Disponent",
     hvad: "Planlægger ture, tildeler biler og folk.",
@@ -836,11 +836,14 @@ export const ROLLE_LABEL = {
   },
   koordinator: {
     label: "Koordinator",
-    hvad: "Godkender, returnerer og lukker bookinger.",
+    hvad: "Opretter forespørgsler, godkender, returnerer og lukker bookinger.",
     hvorfor: "Den eneste driftsrolle der ser godsets vurdering: den der " +
              "godkender, skal kunne se hvad der står på spil. Ser IKKE " +
              "fraværsårsager — disponeringen har brug for at vide at nogen er " +
-             "utilgængelig, ikke hvorfor.",
+             "utilgængelig, ikke hvorfor. Har IKKE booking.foreslaa: den der " +
+             "tager imod forespørgslen, foreslår ikke selv sin egen tur — det " +
+             "gør disponenten, og fire-øjne-reglen (beslutning 5) står derfor " +
+             "uændret, selv om koordinatoren nu må oprette.",
   },
   lagermedarbejder: {
     label: "Lagermedarbejder",

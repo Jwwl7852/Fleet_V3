@@ -177,13 +177,13 @@ describe("Skrivematrixen — målt", () => {
 
      Læses som: hvilke roller kan skrive noden. */
   const FORVENTET = {
-    "kunder": ["casehandler", "disponent", "koordinator", "admin"],
+    "kunder": ["disponent", "koordinator", "admin"],
     "koeretoejer": ["disponent", "admin"],
     "personale": ["admin"],
     "kompetencer": ["admin"],
-    "fravaer": ["casehandler", "disponent", "koordinator", "admin"],
-    "leverandoerer": ["casehandler", "disponent", "koordinator", "admin"],
-    "indkoeb": ["casehandler", "disponent", "koordinator", "admin"],
+    "fravaer": ["disponent", "koordinator", "admin"],
+    "leverandoerer": ["disponent", "koordinator", "admin"],
+    "indkoeb": ["disponent", "koordinator", "admin"],
     "lagre": ["admin"],
     "satser": ["admin"],
     "omkostninger": ["admin"],

@@ -22,7 +22,10 @@
     "kunde:moduler": "node scripts/kunde-moduler.mjs",
     "ejer:vis": "node scripts/ejer.mjs vis",
     "ejer:giv": "node scripts/ejer.mjs giv",
-    "ejer:fjern": "node scripts/ejer.mjs fjern"
+    "ejer:fjern": "node scripts/ejer.mjs fjern",
+    "devtester:vis": "node scripts/dev-tester.mjs vis",
+    "devtester:giv": "node scripts/dev-tester.mjs giv",
+    "devtester:fjern": "node scripts/dev-tester.mjs fjern"
   },
   "dependencies": {
     "firebase": "^10.12.2",

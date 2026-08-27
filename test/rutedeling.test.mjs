@@ -48,15 +48,21 @@ describe("Skærmene hentes når de åbnes", () => {
   });
 
   /**
-   * ⚠ ÉN EAGER SKÆRM, OG DEN HAR EN GRUND.
+   * ⚠ TO EAGER SKÆRME, OG DE HAR SAMME GRUND.
    *
    * Login er den første skærm en uautentificeret bruger ser, og der er ingen
    * Suspense-grænse omkring den: den tegnes uden for AppShell. En doven Login
    * ville vise et tomt vindue dér hvor folk i forvejen er usikre på om de
    * tastede rigtigt.
+   *
+   * DevTesterVaelger tegnes af PRÆCIS samme grund og på samme sted i træet —
+   * FØR harAdgang, altså også uden for AppShell og dermed uden en
+   * Suspense-grænse. Den viser en autoriseret DEV-tester uden sin egen
+   * tenant (se scripts/dev-tester.mjs) et rollevalg, ikke en tom skærm mens
+   * han venter på at forstå hvorfor han ikke kom videre.
    */
-  it("⚠ KUN Login ER EAGER", () => {
-    assert.deepEqual(EAGER.map((e) => e.navn), ["Login"],
+  it("⚠ KUN Login OG DevTesterVaelger ER EAGER", () => {
+    assert.deepEqual(EAGER.map((e) => e.navn).sort(), ["DevTesterVaelger", "Login"],
       "en skærm ligger i startbundtet uden en grund. Hver eneste kunde henter "
       + "den, også de der aldrig åbner den.");
   });

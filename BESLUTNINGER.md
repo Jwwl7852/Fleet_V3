@@ -9024,3 +9024,108 @@ undersøgelse, og skærmen skal under alle omstændigheder ikke crashe på en
 tilstand der kan opstå.
 
 2 nye tests i `test/oversigt-haengende-enhed.test.mjs`.
+
+## 119. Den hostede DEV-brugerskifter sendte alle roller til chaufførskærmen
+
+Første interne v1-test-runde: uanset hvilken testprofil ejerne valgte i
+den hostede DEV-brugerskifter, endte de på chaufførskærmen. Kun chauffør
+kunne reelt testes.
+
+**Fundet ved at spore identiteten, ikke gætte på UI'et.** `uid`, `tenant`,
+`rolle` og `perms` blev alle tjekket efter hvert skifte — og de var
+KORREKTE hver gang. Sessionen VAR den valgte rolle. Fejlen lå i hvilken
+rute browseren stod på, ikke i hvem man var logget ind som.
+
+### Roden: et "fra" der overlevede identiteten
+
+`App.jsx`s `TilLogin` husker hvilken side man kom fra (`state: { fra }`) og
+`EfterLogin` sender genindloggede brugere tilbage dertil — rigtigt for en
+session der blev logget af og logger ind som SIG SELV igen.
+
+`DevTesterVaelger.jsx` (den hostede rollevælger, se beslutning 118's
+forgænger — devBrugerSkift) ligger BEVIDST uden for `<BrowserRouter>`, fordi
+en devTester-konto uden tenant aldrig når routeren. Det betyder at et
+rolleskifte herfra aldrig selv navigerer — url'en bliver stående. Var den
+FORRIGE identitet chauffør (sad på `/app`, som er åben for enhver med
+adgang — se beslutning 117 — ikke kun chauffører), sad `fra: "/app"`
+stadig i BROWSERENS EGEN history-state for den url man var landet på
+("/login"), fordi den url aldrig blev forladt undervejs. Næste gang
+`<BrowserRouter>` monterede — for en helt ny identitet — arvede den den
+gamle state, og `EfterLogin` sendte enhver ny rolle til `/app`.
+
+⚠ **Løsningen er IKKE at lukke `/app` for andre end chauffører.** Det var
+en bevidst beslutning (117), håndhævet af `test/chaufforadgang.test.mjs`,
+og den prøve fangede netop det forsøg undervejs. Løsningen er at rydde det
+forældede "fra" FØR routeren nogensinde ser det: `DevTesterVaelger` kalder
+`window.history.replaceState({}, "", …)` både ved montering og lige før
+`signInWithCustomToken` — en ren browser-API der ikke er uenig med en
+Router, fordi ingen er monteret der.
+
+### Verificeret live, claim for claim
+
+admin → koordinator → disponent → lagermedarbejder → revisor → chauffør,
+alle seks, i en kørende hostet DEV-session: `uid`, `tenant=v1-test`,
+`rolle` og `perms` matchede den valgte rolle hver gang, og korrekt
+shell/arbejdsflade blev tegnet — chauffør landede i chaufførappen,
+de øvrige fem i AppShell.
+
+`functions/index.js`, `src/moduler/DevTesterVaelger.jsx`, `src/App.jsx`.
+
+## 120. casehandler konsolideret ind i koordinator
+
+Produktejernes beslutning efter første interne test: casehandler og
+koordinator repræsenterer samme praktiske brugerrolle. Koordinator
+beholdes; casehandler udgår som selvstændig rolle.
+
+### Kortlagt før noget blev fjernet
+
+Alle referencer til `casehandler` blev fundet først — `permissions.js`,
+`dev-brugere.js`, provisioneringsscripts, 16 testfiler, UI-kommentarer,
+`firebase.rules.json`s egne kommentarer og levende dokumentation
+(`ARKITEKTUR.md`, `PRISER.md`). Historiske beslutninger (denne fil,
+`README.md`s nummererede rækker) er IKKE omskrevet — de beskriver hvad der
+var sandt DENGANG, ikke hvad der er sandt nu.
+
+⚠ **Casehandler havde én permission koordinator ikke havde: `booking.opret`.**
+Uden at rette det, ville KUN admin kunne oprette en booking — det blev
+fundet og rapporteret FØR rollen blev fjernet, ikke opdaget bagefter.
+Ejerne besluttede at give koordinator `booking.opret` — den mest naturlige
+løsning, og en bevidst, smal permission-overførsel fra den udfasede rolle,
+ikke en bred udvidelse.
+
+⚠ **Og det bryder IKKE fire-øjne-reglen fra beslutning 5.** Den regel
+handler om FORSLAGET, ikke om forespørgslen: en disponent må ikke godkende
+sit eget forslag, håndhævet ved at disponent har `booking.foreslaa` uden
+`booking.godkend`. Koordinator har stadig ikke `booking.foreslaa` — kun
+disponent (og admin) må foreslå — så en koordinator kan oprette en
+forespørgsel, men kan ikke selv lave det forslag han bagefter godkender.
+Den der foreslår, og den der godkender, er stadig to forskellige roller.
+`booking.godkend`s egen kontrol er urørt.
+
+### Hvad der ellers fulgte med
+
+- `PLADSHOLDER_ROLLE` i `provisioner-dev.mjs` pegede tre demo-pladsholdere
+  (`uid-lars`, `uid-mette`, `uid-jesper`) på `"casehandler"`. Urettet ville
+  `rigtigt()` have svaret `null` for dem — tavst, samme fejlklasse som
+  beslutning 109 allerede rettede én gang. Peger nu på `"koordinator"`.
+- `scripts/v1-test-data/drift.mjs`s `oprettetAf: "@casehandler"`-pladsholdere
+  rettet til `"@koordinator"`.
+- `BRUGERART.desktop.roller` i `priser.js` (fakturering) og
+  `ROLLE_LABEL.casehandler` i `permissions.js` fjernet.
+- `test/rules.rollematrix.test.mjs`s målte snapshot og en håndfuld andre
+  testfiler opdateret til de nu seks roller: `admin`, `koordinator`,
+  `disponent`, `lagermedarbejder`, `revisor`, `chauffoer`.
+- `hentBrugerContext()`s faldback for et token uden rolle-claim pegede på
+  `"casehandler"` — skiftet til `"chauffoer"`, den mindst betroede, fordi
+  en faldback skal se ud som den SMALLESTE rolle, ikke en tilfældig.
+
+### Verificeret live
+
+Alle seks roller (nu uden casehandler) skiftet igennem på hosted DEV — se
+beslutning 119's verifikation, som blev kørt EFTER konsolideringen med
+netop de seks. `npm test` grønt.
+
+`src/fleet/permissions.js`, `src/fleet/dev-brugere.js`,
+`src/fleet/booking-state.js`, `functions/index.js`,
+`scripts/provisioner-dev.mjs`, `scripts/provisioner-v1-test-brugere.mjs`,
+`scripts/v1-test-data/drift.mjs`, 16 testfiler, `ARKITEKTUR.md`, `PRISER.md`.

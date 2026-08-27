@@ -76,14 +76,16 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
 
    `ind-000` (ridse opdaget ved afgangstjek) og `ind-001` (gods forskubbet
    under transport) er observationer fra vejen. De stod med pladsholderen
-   `uid-lars`, som `PLADSHOLDER_ROLLE` oversætter til **casehandleren** —
-   så chaufførappens "Indberettet" var tom, mens fire indberetninger lå i
-   noden. Skærmen var ikke i stykker; den viste rigtigt at han ingen havde.
+   `uid-lars`, som `PLADSHOLDER_ROLLE` dengang oversatte til
+   **casehandleren** (siden konsolideret ind i koordinator, som pladsholderen
+   nu peger på) — så chaufførappens "Indberettet" var tom, mens fire
+   indberetninger lå i noden. Skærmen var ikke i stykker; den viste rigtigt
+   at han ingen havde.
 
-   ⚠ OG DER ER TO LARS'ER. Pladsholderen `uid-lars` er Lars casehandleren;
-   `larsAage` er Lars Aage chaufføren, som chaufførkontoen er koblet til
-   (PERSON_FOR_ROLLE i dev-brugere.js). De to har intet med hinanden at
-   gøre og ligner hinanden fuldstændig.
+   ⚠ OG DER ER TO LARS'ER. Pladsholderen `uid-lars` er Lars (i dag
+   koordinatoren); `larsAage` er Lars Aage chaufføren, som chaufførkontoen
+   er koblet til (PERSON_FOR_ROLLE i dev-brugere.js). De to har intet med
+   hinanden at gøre og ligner hinanden fuldstændig.
 
    ⚠ LUKKET: `uid-anders` er chaufførens pladsholder, og `demo-procure.js`
    brugte den sammen med `anmoderId: "andersNielsen"` — en medarbejder der

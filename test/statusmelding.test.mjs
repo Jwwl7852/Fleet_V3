@@ -473,8 +473,8 @@ describe("Det kørslen fandt", () => {
   });
 
   it("og det er booking.udfoer der åbner for en disponent", () => {
-    /* `booking.opret` ville være forkert: en casehandler opretter
-       forespørgsler og har ikke med turen at gøre når den ruller. */
+    /* `booking.opret` ville være forkert: den der opretter en forespørgsel,
+       har ikke med turen at gøre når den ruller. */
     assert.match(KROP, /booking\.udfoer/);
     assert.ok(!/booking\.skriv/.test(KROP), "booking.skriv findes ikke");
   });

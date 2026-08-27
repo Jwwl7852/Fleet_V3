@@ -6,7 +6,7 @@
  * ⚠ DER SKRIVES INTET HERFRA DIREKTE, OG DET ER IKKE EN MANGLENDE RETTIGHED.
  *
  * `bookinger` og `etaper` er begge `.write: false`, og permissionen
- * `booking.opret` består — casehandler og admin har den, og `bookingopret`
+ * `booking.opret` består — koordinator og admin har den, og `bookingopret`
  * kræver den. Det er VEJEN der er lukket, ikke retten. Tre ting kan ikke
  * gøres rigtigt fra en klient:
  *
@@ -14,7 +14,7 @@
  *      booking uden etaper er en forespørgsel ingen kan planlægge; en etape
  *      uden sin booking hører ikke til noget.
  *   2. Nummeret kommer fra en COUNTER i en transaction (beslutning 8), og
- *      `countere` er `.write: false`. To casehandlere der opretter i samme
+ *      `countere` er `.write: false`. To koordinatorer der opretter i samme
  *      sekund, ville ellers få samme nummer.
  *   3. Bookingens tilstand er AFLEDT af etaperne (beslutning 40). Den regnes
  *      af serveren i samme opdatering — en tilstand fra klienten ville være

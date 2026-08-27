@@ -723,9 +723,9 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   og det der ville lave det om, er hvis en REGEL slog op i indstillingen.
   Se beslutning 44 og ROLLER.md.
 - **Skrive en opgave uden om `opgaveplanlaeg`.** `opgaver` er `.write: false`,
-  og det er ikke en manglende rettighed — casehandler, disponent, koordinator
-  og admin HAR alle `opgaver.skriv`, og funktionen kræver den. Det er vejen
-  der er lukket, som på `kasseudlaan` (37) og `enheder` (39).
+  og det er ikke en manglende rettighed — disponent, koordinator og admin HAR
+  alle `opgaver.skriv`, og funktionen kræver den. Det er vejen der er lukket,
+  som på `kasseudlaan` (37) og `enheder` (39).
   En opgave og dens RESERVATION bærer den samme kendsgerning: at enheden er
   optaget. `reservationer` er `.write: false`, så en klient kunne kun skrive
   den ene halvdel — og **en opgave uden reservation ser FRI ud i

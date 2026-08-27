@@ -218,9 +218,11 @@ kladde ──► afventerPlan ──► afventerKoord ──► reserveret ─�
              └──┴── afvist ◄────┘
 ```
 
-Roller: `casehandler` opretter, `disponent` foreslår, `koordinator` godkender.
+Roller: `koordinator` opretter og godkender, `disponent` foreslår.
 Disponenten står ikke på listen over roller der må godkende — se
-`booking-state.js`.
+`booking-state.js`. ⚠ Koordinator opretter og godkender uden at bryde
+fire-øjne-reglen: den der foreslår (disponent), er stadig ikke den der
+godkender (beslutning 120).
 
 **`aaben` er en tilstand, ikke fravær af planlægning.** Den skal kunne
 forespørges (`orderByChild("tilstand").equalTo("aaben")` — fravær kan ikke
@@ -334,9 +336,8 @@ der fastholder det.
 | Rolle | Kort sagt |
 |---|---|
 | `chauffoer` | Egne indberetninger |
-| `casehandler` | Dataskrivning + opretter bookinger |
-| `disponent` | Samme + køretøjer, foreslår, afviser, udfører |
-| `koordinator` | Samme + **godkender**, returnerer, annullerer |
+| `disponent` | Dataskrivning + køretøjer, foreslår, afviser, udfører |
+| `koordinator` | Dataskrivning + **opretter** forespørgsler, **godkender**, returnerer, annullerer (beslutning 120 — casehandler er konsolideret ind her) |
 | `admin` | Alt |
 
 Disponenten har **ikke** `booking.godkend`. Beslutning 5 er nu et felt der

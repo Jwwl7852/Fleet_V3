@@ -1820,7 +1820,7 @@
         // derfor kun een dags raekker klientside.
         // ⚠ .write ER FALSE. VEJEN IND ER `opgaveplanlaeg`.
         //
-        // Det er IKKE en manglende rettighed: casehandler, disponent,
+        // Det er IKKE en manglende rettighed: disponent,
         // koordinator og admin HAR alle `opgaver.skriv`, og funktionen
         // kraever den. Det er VEJEN der er lukket — samme snit som
         // kasseudlaan (beslutning 37) og enheder (39).
@@ -3920,7 +3920,7 @@
             //
             // ⚠ HVORFOR DEN HAR EN .validate PAA PERMISSIONEN:
             // .write kaskaderer, og `kunder` er skrivbar med kunder.skriv —
-            // som casehandler, disponent og koordinator alle har gennem
+            // som disponent og koordinator begge har gennem
             // BASIS_DATA. satser.skriv har KUN admin. Uden det her led ville
             // en pris kunne saettes af flere end standardprisen kan, alene
             // fordi den ligger i en anden sti. En .validate kan laese auth og

@@ -204,12 +204,14 @@ describe("mindste privilegium", () => {
   });
 
   it("kun koordinator (og admin) har karantaeneFrigiv, aftaleBekraeft og mailSend blandt driftsrollerne", () => {
-    for (const rolle of ["chauffoer", "casehandler", "disponent", "lagermedarbejder", "revisor"]) {
+    for (const rolle of ["chauffoer", "disponent", "lagermedarbejder", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagKarantaeneFrigiv), rolle);
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagAftaleBekraeft), rolle);
-      /* ⚠ SKIVE 3D — samme snit som de to andre vurderinger. En sagsbehandler
-         (casehandler) kan skrive interne noter, men ikke sende en rigtig
-         mail ud af huset. */
+      /* ⚠ SKIVE 3D — samme snit som de to andre vurderinger. casehandler
+         (siden konsolideret ind i koordinator) kunne skrive interne noter,
+         men ikke sende en rigtig mail ud af huset — den adskillelse findes
+         ikke længere blandt driftsrollerne, kun mellem sagSkriv og
+         sagMailSend som permissions. */
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.sagMailSend), rolle);
     }
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.sagKarantaeneFrigiv));

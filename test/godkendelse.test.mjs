@@ -400,7 +400,7 @@ describe("Den der rammer loftet, kan ikke hæve det", () => {
     assert.ok(med.length < ALLE_ROLLER.length,
       "alle roller kan godkende — så er permissionen en beskrivelse, ikke en spærring");
     /* Den der bestiller, må ikke også godkende som standard. */
-    for (const r of ["casehandler", "disponent"]) {
+    for (const r of ["disponent"]) {
       assert.ok(!ROLLE_PERMS[r].includes(PERM.indkoebGodkend),
         `${r} bestiller OG godkender — det er ikke to sæt øjne`);
     }

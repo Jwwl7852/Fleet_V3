@@ -6,7 +6,7 @@
  * ⚠ HELE FILEN FINDES PAA GRUND AF EN KASKADE.
  *
  * .write kaskaderer i RTDB, og `kunder` er skrivbar med kunder.skriv — som
- * casehandler, disponent og koordinator alle har gennem BASIS_DATA.
+ * disponent og koordinator begge har gennem BASIS_DATA.
  * satser.skriv har KUN admin. Uden et ekstra led ville en pris altsaa kunne
  * saettes af flere end standardprisen kan, alene fordi den ligger i en anden
  * sti. Det er ikke en rettighed nogen har besluttet at give; det er en der
@@ -37,7 +37,7 @@ const YDELSE = "lager-pluk";
 let miljoe;
 
 const medPerms = (uid, perms) =>
-  miljoe.authenticatedContext(uid, { tenant: T, rolle: "casehandler", perms: permStreng(perms) }).database();
+  miljoe.authenticatedContext(uid, { tenant: T, rolle: "koordinator", perms: permStreng(perms) }).database();
 
 const somRolle = (uid, rolle) =>
   miljoe.authenticatedContext(uid, { tenant: T, rolle, perms: permStrengFraRolle(rolle) }).database();
@@ -82,7 +82,7 @@ describe("kundeprisen kraever BEGGE permissions", () => {
   });
 
   /* ⚠ DEN VIGTIGSTE PROEVE I FILEN.
-     Falder den, er kundeprisen i praksis flyttet fra admin til casehandler
+     Falder den, er kundeprisen i praksis flyttet fra admin til koordinator
      uden at nogen har besluttet det. */
   it("⚠ MED kunder.skriv ALENE afviser serveren — ogsaa med alt andet end satser.skriv", async () => {
     const udenSatser = ALLE_PERMS.filter((p) => p !== PERM.satserSkriv);
@@ -91,11 +91,11 @@ describe("kundeprisen kraever BEGGE permissions", () => {
     await assertFails(set(ref(db, prisSti("s-forsoeg2")), RABAT));
   });
 
-  /* Og de tre driftsroller er praecis dem der har kunder.skriv uden
+  /* Og de to driftsroller er praecis dem der har kunder.skriv uden
      satser.skriv. Proeven binder rollelisten til reglen: gives satser.skriv
      til en af dem, skal det vaere en beslutning, ikke en bivirkning. */
-  it("hverken casehandler, disponent eller koordinator kan saette en kundepris", async () => {
-    for (const rolle of ["casehandler", "disponent", "koordinator"]) {
+  it("hverken disponent eller koordinator kan saette en kundepris", async () => {
+    for (const rolle of ["disponent", "koordinator"]) {
       const db = somRolle(`uid-${rolle}`, rolle);
       await assertFails(set(ref(db, prisSti(`s-${rolle}`)), EGEN_PRIS)).catch(() => {
         throw new Error(`${rolle} kunne saette en kundepris`);
