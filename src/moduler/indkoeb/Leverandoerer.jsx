@@ -96,6 +96,12 @@ export default function Leverandoerer() {
   });
 
   const [valgtId, setValgtId] = useState("lv-hydra");
+  /* ⚠ V1-BRUGERTEST: "man skal kunne søge, sortere og vælge kun af få vist
+     aktive eller inaktive." Aktiv/inaktiv fandtes allerede (to lister); søg
+     og sortér er rent klient-lokalt filter/sort oven på de samme rækker —
+     ingen ny node, ingen ny useListe-forespørgsel. */
+  const [soeg, saetSoeg] = useState("");
+  const [sortering, saetSortering] = useState("navn");
 
   if (henter || henterLev || henterIndkoeb) return <Henter hvad="leverandører" />;
   /* En AFVIST læsning af kartoteket er ikke en tom liste — se noten i
@@ -137,6 +143,25 @@ export default function Leverandoerer() {
      fra de fakturaer det blev regnet på, og så rangerer man sine leverandører
      efter et tal ingen kan genfinde. */
   const raekker = aktive.map((l) => ({ l, n: beregnNoegletal(l, KILDER) }));
+
+  /* Søgning/sortering er et rent visningsfilter OVEN PÅ `raekker` — de
+     aggregerede kort (indkøb i perioden, uden faktura, for lidt grundlag)
+     regnes fortsat af den fulde `raekker`, ikke af det filtrerede udsnit,
+     så de ikke ændrer sig mens man skriver i søgefeltet. */
+  const soegNormaliseret = soeg.trim().toLowerCase();
+  const raekkerViste = raekker
+    .filter((r) => !soegNormaliseret
+      || r.l.navn.toLowerCase().includes(soegNormaliseret)
+      || (r.l.cvr || "").includes(soegNormaliseret))
+    .sort((a, b) => {
+      if (sortering === "indkoeb") return b.n.omsaetningOere - a.n.omsaetningOere;
+      if (sortering === "praecision") {
+        const av = a.n.leveringspraecisionPct.vaerdi ?? -1;
+        const bv = b.n.leveringspraecisionPct.vaerdi ?? -1;
+        return bv - av;
+      }
+      return a.l.navn.localeCompare(b.l.navn, "da");
+    });
 
   const samletOere = indkoeb.reduce((s, i) => s + indkoebBeloebOere(i), 0);
   const udenFaktura = raekker.reduce((s, r) => s + r.n.manglendeFakturaer.vaerdi, 0);
@@ -196,6 +221,17 @@ export default function Leverandoerer() {
                 Ny leverandør
               </Knap>
             }>
+        <div className="fc-row" style={{ gap: 8, marginBottom: 10 }}>
+          <input className="fc-ctl" type="text" style={{ flex: 1, minWidth: 160 }}
+                 placeholder="Søg navn eller CVR…" value={soeg}
+                 onChange={(e) => saetSoeg(e.target.value)} aria-label="Søg leverandør" />
+          <select className="fc-ctl" value={sortering} onChange={(e) => saetSortering(e.target.value)}
+                  aria-label="Sortér leverandører">
+            <option value="navn">Sortér: Navn</option>
+            <option value="indkoeb">Sortér: Indkøb i perioden</option>
+            <option value="praecision">Sortér: Til tiden</option>
+          </select>
+        </div>
         <Tabel
           kolonner={[
             { key: "navn", label: "Leverandør", render: (r) => r.l.navn },
@@ -216,11 +252,11 @@ export default function Leverandoerer() {
             { key: "mangler", label: "Uden faktura", num: true,
               render: (r) => r.n.manglendeFakturaer.vaerdi || "—" },
           ]}
-          raekker={raekker}
+          raekker={raekkerViste}
           noegle={(r) => r.l.id}
           paaRaekke={(r) => setValgtId(r.l.id)}
           erValgt={(r) => r.l.id === valgtId}
-          tom="Ingen aktive leverandører."
+          tom={soegNormaliseret ? "Ingen leverandører matcher søgningen." : "Ingen aktive leverandører."}
         />
         <p className="fc-hint" style={{ marginTop: 8 }}>
           Et nøgletal står altid med det antal det er regnet på. Under {MINDSTE_GRUNDLAG}{" "}
@@ -330,11 +366,24 @@ function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
         {l.aftale?.rabatPct != null && (
           <MiniLinje label="Aftalt rabat" vaerdi={pct(l.aftale.rabatPct)} />
         )}
-        <MiniLinje label="E-mail" vaerdi={l.kontaktEmail} />
+        <MiniLinje label="Adresse" vaerdi={l.adresse || "—"} />
+        <MiniLinje label="Kontaktperson" vaerdi={l.kontaktperson || "—"} />
+        {/* ⚠ V1-BRUGERTEST — TLF/MAIL SOM KLIKBARE LINKS, OG DE TO
+            E-MAILFORMÅL VIST HVER FOR SIG. ordreEmail vises kun når den
+            faktisk er sat — er den ikke, bruges kontaktEmail til begge
+            formål (se leverandoerer.js/procure.js), og en tom ekstra linje
+            ville påstå en adskillelse der ikke findes for denne post. */}
+        <MiniLinje label="E-mail (kontakt/priser)"
+                   vaerdi={l.kontaktEmail ? <a className="fc-a" href={`mailto:${l.kontaktEmail}`}>{l.kontaktEmail}</a> : "—"} />
+        {l.ordreEmail && (
+          <MiniLinje label="E-mail (bestilling)"
+                     vaerdi={<a className="fc-a" href={`mailto:${l.ordreEmail}`}>{l.ordreEmail}</a>} />
+        )}
         {/* ⚠ SKIVE 4B — TELEFON VISTES ALDRIG, selvom feltet altid har været i
             reglerne og i demodata. Et felt der findes i basen, men ikke på
             skærmen, er en tavs kilde ingen kan se. */}
-        <MiniLinje label="Telefon" vaerdi={l.kontaktTelefon} />
+        <MiniLinje label="Telefon"
+                   vaerdi={l.kontaktTelefon ? <a className="fc-a" href={`tel:${l.kontaktTelefon.replace(/\s+/g, "")}`}>{l.kontaktTelefon}</a> : "—"} />
         {/* ⚠ SKIVE 4D — STANDARDSPROG FOR ORDREMAIL. Et manglende felt (en
             leverandør oprettet før 4D) viser eksplicit STANDARD_SPROG, ikke
             en tom linje — det ER standarden, indtil posten gemmes igen. */}
@@ -401,7 +450,8 @@ function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
 /* ---- Opret/redigér — Skive 4B ------------------------------------------ */
 
 const tomLeverandoer = () => ({
-  navn: "", kategori: "", cvr: "", kontaktEmail: "", kontaktTelefon: "", aktiv: true,
+  navn: "", kategori: "", cvr: "", adresse: "", kontaktperson: "",
+  kontaktEmail: "", ordreEmail: "", kontaktTelefon: "", aktiv: true,
   /* ⚠ SKIVE 4D — EKSPLICIT VALGT, IKKE BROWSERENS SPROG. Se sprog.js. */
   sprog: STANDARD_SPROG,
 });
@@ -464,10 +514,22 @@ function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
         <Feltraekke>
           <Felt id="lv-cvr" label="CVR" vaerdi={f.cvr} saet={saet("cvr")}
                 fejl={vis("cvr")} hint="Otte cifre." />
-          <Felt id="lv-email" label="E-mail" vaerdi={f.kontaktEmail} saet={saet("kontaktEmail")}
-                fejl={vis("kontaktEmail")} />
+          <Felt id="lv-kontaktperson" label="Kontaktperson" vaerdi={f.kontaktperson}
+                saet={saet("kontaktperson")} fejl={vis("kontaktperson")} />
           <Felt id="lv-tlf" label="Telefon" vaerdi={f.kontaktTelefon} saet={saet("kontaktTelefon")}
                 fejl={vis("kontaktTelefon")} />
+        </Feltraekke>
+        <Feltraekke>
+          <Felt id="lv-adresse" label="Adresse" vaerdi={f.adresse} saet={saet("adresse")}
+                fejl={vis("adresse")} />
+        </Feltraekke>
+        <Feltraekke>
+          <Felt id="lv-email" label="E-mail (kontakt/priser)" vaerdi={f.kontaktEmail}
+                saet={saet("kontaktEmail")} fejl={vis("kontaktEmail")}
+                hint="Bruges til prisforespørgsler og almindelig kontakt." />
+          <Felt id="lv-ordreemail" label="E-mail (bestilling)" vaerdi={f.ordreEmail}
+                saet={saet("ordreEmail")} fejl={vis("ordreEmail")}
+                hint="Bruges når en ordre sendes automatisk. Tom = samme som kontakt/priser." />
         </Feltraekke>
         <Feltraekke>
           <Felt id="lv-sprog" label="Sprog for ordremail"

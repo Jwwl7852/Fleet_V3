@@ -379,7 +379,7 @@ export function mailudkast(ordre, { leverandoer } = {}) {
   });
 
   return {
-    tilEmail: leverandoer?.kontaktEmail || null,
+    tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
     emne: `Ordre ${nummer}${linjer.length === 1 ? ` – ${linjer[0].vare}` : ""}`,
     brodtekst: [
       `Til ${navn}`,
@@ -465,7 +465,7 @@ export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
   });
 
   return {
-    tilEmail: leverandoer?.kontaktEmail || null,
+    tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
     emne: `Ordre ${nummer}${linjer.length === 1 ? ` – ${linjer[0].vare}` : ""}`,
     brodtekst: [
       `${t.til} ${navn}`,

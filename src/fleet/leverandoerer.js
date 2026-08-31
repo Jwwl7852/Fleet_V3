@@ -628,8 +628,17 @@ export function snitprisPrMaaned(linjer = [], { varenummer, maaneder = 6, nu = D
 export const GRAENSE_LEVERANDOER = {
   navn: 120,
   cvr: 8,
+  adresse: 200,
+  kontaktperson: 80,
   kontaktEmail: 120,
   kontaktTelefon: 40,
+  /* ⚠ V1-BRUGERTEST: DE TO E-MAILFORMÅL ER ADSKILT. `kontaktEmail` er
+     "kontakt/priser" (uændret, samme felt siden Skive 4B); `ordreEmail`
+     er den nye, separate adresse en bestilling sendes til. Mangler den,
+     falder ordreMailSend() tilbage på kontaktEmail — se procure.js og
+     functions/index.js — så ingen eksisterende leverandør mister sin
+     ordremail ved denne udvidelse. */
+  ordreEmail: 120,
 };
 
 /**
@@ -659,8 +668,22 @@ export function valideLeverandoer(post = {}) {
     }
   }
 
+  if (post.ordreEmail) {
+    if (!post.ordreEmail.includes("@") || post.ordreEmail.length > GRAENSE_LEVERANDOER.ordreEmail) {
+      f.ordreEmail = "Skal være en gyldig e-mailadresse.";
+    }
+  }
+
   if (post.kontaktTelefon && post.kontaktTelefon.length > GRAENSE_LEVERANDOER.kontaktTelefon) {
     f.kontaktTelefon = `Højst ${GRAENSE_LEVERANDOER.kontaktTelefon} tegn.`;
+  }
+
+  if (post.adresse && post.adresse.length > GRAENSE_LEVERANDOER.adresse) {
+    f.adresse = `Højst ${GRAENSE_LEVERANDOER.adresse} tegn.`;
+  }
+
+  if (post.kontaktperson && post.kontaktperson.length > GRAENSE_LEVERANDOER.kontaktperson) {
+    f.kontaktperson = `Højst ${GRAENSE_LEVERANDOER.kontaktperson} tegn.`;
   }
 
   /* ⚠ SKIVE 4D — STANDARDSPROGET FOR UDGÅENDE ORDREMAIL. Valgfrit i
@@ -696,7 +719,10 @@ export function byggLeverandoer(post) {
     sprog: ALLE_SPROG.includes(post.sprog) ? post.sprog : STANDARD_SPROG,
   };
   if (post.cvr?.trim()) ud.cvr = post.cvr.trim();
+  if (post.adresse?.trim()) ud.adresse = post.adresse.trim();
+  if (post.kontaktperson?.trim()) ud.kontaktperson = post.kontaktperson.trim();
   if (post.kontaktEmail?.trim()) ud.kontaktEmail = post.kontaktEmail.trim();
+  if (post.ordreEmail?.trim()) ud.ordreEmail = post.ordreEmail.trim();
   if (post.kontaktTelefon?.trim()) ud.kontaktTelefon = post.kontaktTelefon.trim();
   return ud;
 }

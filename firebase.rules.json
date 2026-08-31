@@ -2596,7 +2596,16 @@
             // Feltet er derfor ikke pynt: det er sletningens erstatning.
             "aktiv": { ".validate": "newData.isBoolean()" },
 
+            "adresse": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "kontaktperson": { ".validate": "newData.isString() && newData.val().length <= 80" },
             "kontaktEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
+            // ⚠ V1-BRUGERTEST — SEPARAT ORDRE-E-MAIL. kontaktEmail ovenfor er
+            // "kontakt/priser"; ordreEmail er den nye, adskilte adresse en
+            // bestilling sendes til. ordreMailSend()/functions/index.js
+            // falder tilbage på kontaktEmail når feltet mangler, så en
+            // leverandør oprettet før denne udvidelse ikke mister sin
+            // ordremail.
+            "ordreEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
             "kontaktTelefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
 
             // ⚠ SKIVE 4D — STANDARDSPROG FOR UDGÅENDE ORDREMAIL. Lukket

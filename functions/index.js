@@ -5427,7 +5427,13 @@ export const ordreMailSend = onCall({
      agtigt) peger på et id der slet ikke findes. */
   const lev = (await rod.child(`leverandoerer/${ordre.leverandoerId}`).once("value")).val();
   if (!lev) throw new HttpsError("failed-precondition", "Leverandøren på ordren findes ikke.");
-  const tilEmail = typeof lev.kontaktEmail === "string" ? lev.kontaktEmail.trim() : "";
+  /* ⚠ V1-BRUGERTEST — ORDREN GÅR TIL ordreEmail, IKKE kontaktEmail, NÅR DEN
+     FINDES. De to e-mailformål er adskilt i kartoteket (kontakt/priser vs.
+     bestilling); en leverandør oprettet før udvidelsen har ikke ordreEmail
+     og falder tilbage på kontaktEmail som hidtil. */
+  const ordreEmail = typeof lev.ordreEmail === "string" ? lev.ordreEmail.trim() : "";
+  const kontaktEmail = typeof lev.kontaktEmail === "string" ? lev.kontaktEmail.trim() : "";
+  const tilEmail = ordreEmail || kontaktEmail;
   if (!tilEmail) {
     throw new HttpsError("failed-precondition",
       "Leverandøren har ingen mailadresse i kartoteket. Tilføj en under Leverandører.");

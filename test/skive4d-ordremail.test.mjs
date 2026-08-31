@@ -38,7 +38,13 @@ const b = udenKommentarer(ordreMailSend);
    ══════════════════════════════════════════════════════════════════════════ */
 describe("§15.1 — klienten kan ikke sende til en vilkårlig adresse", () => {
   it("⚠ MODTAGEREN LÆSES FRA leverandøren, IKKE FRA KLIENTENS PAYLOAD", () => {
-    assert.match(b, /const tilEmail = typeof lev\.kontaktEmail === "string"/);
+    /* V1-brugertest: to adskilte e-mailformål på leverandøren. Ordren går
+       til ordreEmail når den findes, ellers til kontaktEmail — begge felter
+       læses fra `lev` (den server-hentede leverandørpost), aldrig fra
+       klientens payload. */
+    assert.match(b, /const ordreEmail = typeof lev\.ordreEmail === "string"/);
+    assert.match(b, /const kontaktEmail = typeof lev\.kontaktEmail === "string"/);
+    assert.match(b, /const tilEmail = ordreEmail \|\| kontaktEmail/);
   });
 
   it("⚠ INGEN to/cc/bcc/adresse/modtager LÆSES FRA req.data NOGEN STEDER", () => {
