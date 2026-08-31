@@ -109,6 +109,9 @@ import {
   kanSkifteOpgave, statusOpdatering,
 } from "./delt/opgaveplan-regler.js";
 import {
+  kanLeverandoerSkifte, fordelPortalOpgaver,
+} from "./delt/leverandoerportal-regler.js";
+import {
   tjekLedigMod, konfliktTekst, indeslutninger, tjekLedigIndesluttet,
 } from "./delt/reservations.js";
 import {
@@ -4633,6 +4636,345 @@ export const opgavestatus = onCall({ region: REGION }, async (req) => {
     `opgave ${opgaveId} ${foer.status} -> ${tilStatus}`);
 
   return { opgaveId, status: tilStatus };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LEVERANDØRPORTAL — tillægskrav "EXTERNAL SUPPLIER / VÆRKSTEDSPORTAL"
+   ══════════════════════════════════════════════════════════════════════════
+
+   ⚠ EN EKSTERN BRUGER BÆRER INGEN {tenant, rolle, perms}-CLAIM. Den form er
+   INTERNENS — én tenant, én af de seks faste rollenavne — og en ekstern
+   leverandørbruger passer ikke i den: samme værksted kan arbejde for flere
+   FleetControl-kunder. Der er derfor intet at læse fra `auth.token` her.
+   Hver eneste funktion nedenfor slår i stedet sin egen ret op i
+   `leverandoerPortalAdgang/<uid>/<tenantId>` — den tredje bevidste
+   tenant-grænsekrydsning, se firebase.rules.json's egen note ved noden.
+
+   ⚠ KLIENTEN SENDER tenantId SOM EN VÆLGER, IKKE EN AUTORITET. Findes der
+   intet aktivt grant for netop den kombination af det VERIFICEREDE
+   `auth.uid` og det PÅSTÅEDE tenantId, afvises kaldet — uanset hvad
+   klienten ellers hævder. Det er selve pointen: en manipuleret tenantId
+   eller leverandoerId kan aldrig blive til en autoritet, kun til en
+   afvisning.
+
+   ⚠ STATUSSKIFT FRA PORTALEN ER SNÆVRERE END DEN INTERNE MASKINE — med
+   vilje. `LEVERANDOER_TILLADTE_SKIFT` (leverandoerportal-regler.js) er en
+   delmængde af opgavens fulde tilstandskatalog: en leverandør kan ALDRIG
+   sætte `udfoert` eller `annulleret` — kun de to trin der er HANS del af
+   arbejdet (tillægskravets §10/§11). Han lukker aldrig den interne sag
+   selv.
+
+   ⚠ INGEN DOKUMENTER/FOTOS HER. Den eksisterende sikre dokument-arkitektur
+   (Skive 4C) er hardkodet til parentType "faktura" alene — en udvidelse
+   til opgave-vedhæftede, leverandør-synlige fotos er sin egen, senere
+   security-skive, ikke noget der lappes ind her. Se
+   docs/v1-user-feedback-implementation/00_MASTER_STATUS.md.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Samme figur som logOpgave/logIndberetning/logProcure — se logOpgave for
+   hvorfor mønstret ikke er én generisk funktion med et objektnavn som
+   parameter (det ER det, andre steder; her er den skrevet ud igen af
+   samme grund som ordreMailSend ikke deler sin logik med sagMailSend). */
+async function logLeverandoerPortal(tenantId, uid, handling, id, foer, efter, note) {
+  const d = diff(foer, efter);
+  const klasse = klasseFor(handling, "leverandoerPortalAdgang");
+  const nu = new Date();
+  await getDatabase()
+    .ref(`audit/${tenantId}/${klasse}/${nu.getUTCFullYear()}/${String(nu.getUTCMonth() + 1).padStart(2, "0")}`)
+    .push()
+    .set({
+      ms: Date.now(), uid, handling, objekt: "leverandoerPortalAdgang", objektId: id,
+      klasse, aendrede: d.aendrede, foer: d.foer, efter: d.efter, note: note ?? null,
+    });
+}
+
+/**
+ * kraevLeverandoerGrant(req) → { uid, tenantId, leverandoerId }
+ *
+ * Fælles indgang for hver portalfunktion nedenfor — samme rolle som
+ * kraevBrugeradmin() har for den interne brugeradministration. tenantId er
+ * en vælger; leverandoerId kommer ALDRIG fra klienten, kun fra det fundne
+ * grant. Se sektionens eget hoved.
+ */
+async function kraevLeverandoerGrant(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = kortStreng(req.data?.tenantId, 60);
+  if (!tenantId) throw new HttpsError("invalid-argument", "Der mangler et tenantId.");
+
+  const db = getDatabase();
+  const grant = (await db.ref(`leverandoerPortalAdgang/${auth.uid}/${tenantId}`).once("value")).val();
+  if (!grant || grant.aktiv !== true) {
+    throw new HttpsError("permission-denied", "Du har ikke portaladgang til denne virksomhed.");
+  }
+
+  const findes = await db.ref(`tenants/${tenantId}/_findes`).once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await db.ref(`tenants/${tenantId}/abonnement/status`).once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  return { uid: auth.uid, tenantId, leverandoerId: grant.leverandoerId };
+}
+
+/**
+ * leverandoerPortalOpgaver(req) → { aktive: [...], afsluttede: [...] }
+ *
+ * ⚠ SERVEREN FILTRERER, IKKE KLIENTEN. Hele opgave-noden hentes med
+ * Admin SDK og filtreres i fordelPortalOpgaver() (leverandoerportal-
+ * regler.js) på leverandoerId — der er intet klient-forespørgselsparameter
+ * der kunne bede om en anden leverandørs opgaver.
+ */
+export const leverandoerPortalOpgaver = onCall({ region: REGION }, async (req) => {
+  const { tenantId, leverandoerId } = await kraevLeverandoerGrant(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const [alleSnap, koeretoejerSnap] = await Promise.all([
+    rod.child("opgaver").once("value"),
+    rod.child("koeretoejer").once("value"),
+  ]);
+  const alle = alleSnap.val() || {};
+  const koeretoejer = koeretoejerSnap.val() || {};
+
+  return fordelPortalOpgaver(Object.entries(alle), leverandoerId, koeretoejer);
+});
+
+/**
+ * leverandoerTilbudIndsend(req) → { tilbudId }
+ *
+ * ⚠ ALTID ET NYT push()-BARN, ALDRIG EN OVERSKRIVNING. §8: et senere
+ * overslag er en NY historisk post, ikke en rettelse af den gamle.
+ */
+export const leverandoerTilbudIndsend = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, leverandoerId } = await kraevLeverandoerGrant(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  if (!opgaveId) throw new HttpsError("invalid-argument", "Der mangler et opgaveId.");
+
+  const opgave = (await rod.child(`opgaver/${opgaveId}`).once("value")).val();
+  if (!opgave) throw new HttpsError("not-found", "Opgaven findes ikke.");
+  /* ⚠ DEN AFGØRENDE KONTROL. leverandoerId kommer fra GRANTET (ovenfor),
+     ikke fra klientens nyttelast — en manipuleret opgaveId rammer derfor
+     enten en opgave der er tildelt EN ANDEN leverandør (afvist her) eller
+     slet ikke findes (afvist ovenfor). */
+  if (opgave.leverandoerId !== leverandoerId) {
+    throw new HttpsError("permission-denied", "Denne opgave er ikke tildelt din virksomhed.");
+  }
+
+  const beloebOere = Number(d.beloebOere);
+  if (!Number.isFinite(beloebOere) || beloebOere < 0 || beloebOere % 1 !== 0) {
+    throw new HttpsError("invalid-argument", "Beløbet skal være et helt antal øre, mindst 0.");
+  }
+  const valuta = kortStreng(d.valuta, 3);
+  if (!valuta || !/^(DKK|SEK|NOK|EUR)$/.test(valuta)) {
+    throw new HttpsError("invalid-argument", "Ukendt valuta.");
+  }
+  const kommentar = kortStreng(d.kommentar, 500);
+  const raaFaerdig = Number(d.forventetFaerdigMs);
+  const forventetFaerdigMs = Number.isFinite(raaFaerdig) ? raaFaerdig : undefined;
+
+  const tilbudRef = rod.child(`opgaver/${opgaveId}/leverandoertilbud`).push();
+  await tilbudRef.set({
+    beloebOere, valuta, leverandoerId,
+    indsendtAf: uid, indsendtMs: Date.now(), status: "afventer",
+    ...(kommentar ? { kommentar } : {}),
+    ...(forventetFaerdigMs !== undefined ? { forventetFaerdigMs } : {}),
+  });
+
+  await logOpgave(tenantId, uid, AUDIT.opret, opgaveId, null,
+    { leverandoerId, beloebOere, valuta, status: "afventer" },
+    `prisoverslag ${tilbudRef.key} indsendt via leverandørportal`);
+
+  return { tilbudId: tilbudRef.key };
+});
+
+/**
+ * leverandoerStatusOpdater(req) → { opgaveId, status }
+ *
+ * ⚠ TO LAG, IKKE ÉT. LEVERANDOER_TILLADTE_SKIFT afgør hvad en EKSTERN
+ * bruger overhovedet kan nå (kan aldrig blive udfoert/annulleret);
+ * kanSkifteOpgave() prøves DEREFTER som samme maskine skærmen og
+ * opgavestatus selv bruger. Et fremtidigt hul i det ene lag fanges af det
+ * andet.
+ */
+export const leverandoerStatusOpdater = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, leverandoerId } = await kraevLeverandoerGrant(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const tilStatus = kortStreng(d.status, 40);
+  if (!opgaveId) throw new HttpsError("invalid-argument", "Der mangler et opgaveId.");
+  if (!tilStatus) throw new HttpsError("invalid-argument", "Der mangler en status.");
+
+  const foer = (await rod.child(`opgaver/${opgaveId}`).once("value")).val();
+  if (!foer) throw new HttpsError("not-found", "Opgaven findes ikke.");
+  if (foer.leverandoerId !== leverandoerId) {
+    throw new HttpsError("permission-denied", "Denne opgave er ikke tildelt din virksomhed.");
+  }
+
+  if (!kanLeverandoerSkifte(foer.status, tilStatus)) {
+    throw new HttpsError("permission-denied",
+      "Leverandørportalen kan ikke sætte denne status fra opgavens nuværende status.");
+  }
+  const tjek = kanSkifteOpgave(foer, tilStatus);
+  if (!tjek.ok) throw new HttpsError("failed-precondition", tjek.aarsag);
+
+  const { opdatering, efter } = statusOpdatering(opgaveId, foer, tilStatus, { uid, nu: Date.now() });
+  await rod.update(opdatering);
+
+  await logOpgave(tenantId, uid, AUDIT.tilstandsskift, opgaveId, foer, efter,
+    `${foer.status} -> ${tilStatus} (leverandørportal)`);
+
+  return { opgaveId, status: tilStatus };
+});
+
+/**
+ * kraevLeverandoererAdmin(req) → { uid, tenantId }
+ *
+ * ⚠ leverandoerer.skriv, IKKE brugere.skriv. At invitere en portalbruger
+ * er en handling PÅ leverandørkortet, ikke intern brugeradministration —
+ * "spørg hvad handlingen kræver, ikke hvem brugeren er" (CLAUDE.md).
+ */
+function kraevLeverandoererAdmin(req) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  if (!perms.includes("|leverandoerer.skriv|")) {
+    throw new HttpsError("permission-denied", "Kræver leverandoerer.skriv.");
+  }
+  return { uid: auth.uid, tenantId };
+}
+
+/**
+ * leverandoerPortalInviter(req) → { uid, nyKonto, mailStatus }
+ *
+ * ⚠ INGEN LØSEN SÆTTES HER — modsat opretKonto() for interne brugere,
+ * hvor den der opretter, vælger kodeordet. Der findes intet eksisterende
+ * invitations-/nulstillingsflow i dette repo (bekræftet: ingen brug af
+ * generatePasswordResetLink/generateSignInWithEmailLink nogen steder før
+ * denne funktion) — men Firebase Auth understøtter det allerede som en
+ * indbygget, sikker mekanisme, og det er den der bruges her i stedet for
+ * at opfinde en hjemmelavet password-distribution. Se tillægskravets §18:
+ * "Ingen password i mail eller database... STOP og rapportér den
+ * konkrete auth-beslutning før der bygges hjemmelavet
+ * password-distribution" — dette ER den rapporterede beslutning.
+ *
+ * ⚠ ÉN KONTO KAN HAVE FLERE GRANTS. Findes en Firebase Auth-bruger med
+ * mailadressen allerede (fordi han er inviteret af en ANDEN FleetControl-
+ * kunde), oprettes der ikke en ny konto — kun et nyt grant for DENNE
+ * tenant. Samme person, to arbejdsgivere, ét login.
+ */
+export const leverandoerPortalInviter = onCall({
+  region: REGION,
+  secrets: [MAILGUN_API_KEY, MAILGUN_DOMAIN, MAILGUN_AFSENDER],
+}, async (req) => {
+  const { uid, tenantId } = kraevLeverandoererAdmin(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  if (!leverandoerId) throw new HttpsError("invalid-argument", "leverandoerId mangler.");
+  const lev = (await rod.child(`leverandoerer/${leverandoerId}`).once("value")).val();
+  if (!lev) throw new HttpsError("not-found", "Leverandøren findes ikke.");
+  if (!lev.portalAdgang?.enabled) {
+    throw new HttpsError("failed-precondition",
+      "Portaladgang er ikke slået til for denne leverandør. Slå den til under Opsætning → Leverandører først.");
+  }
+
+  const email = kortStreng(d.email, 120)?.toLowerCase();
+  if (!email || !erGyldigMail(email)) {
+    throw new HttpsError("invalid-argument", "Ugyldig mailadresse.");
+  }
+  const navn = kortStreng(d.navn, 80) || email;
+
+  const eksternAuth = getAuth();
+  let bruger;
+  let nyKonto = false;
+  try {
+    bruger = await eksternAuth.getUserByEmail(email);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+  }
+  if (!bruger) {
+    bruger = await eksternAuth.createUser({ email, displayName: navn, emailVerified: false });
+    nyKonto = true;
+  }
+
+  const grantRef = db.ref(`leverandoerPortalAdgang/${bruger.uid}/${tenantId}`);
+  const grantFoer = (await grantRef.once("value")).val();
+  const grantEfter = {
+    leverandoerId, aktiv: true,
+    oprettetMs: grantFoer?.oprettetMs ?? Date.now(), oprettetAf: grantFoer?.oprettetAf ?? uid,
+  };
+  await grantRef.set(grantEfter);
+
+  await logLeverandoerPortal(tenantId, uid, grantFoer ? AUDIT.aendre : AUDIT.opret,
+    bruger.uid, grantFoer, grantEfter,
+    `portaladgang ${grantFoer ? "genaktiveret" : "oprettet"} for leverandør ${leverandoerId}`);
+
+  /* ⚠ INGEN actionCodeSettings.url ENDNU. En brugerdefineret continue-URL
+     skal være på Firebase Auths egen liste over godkendte domæner — og
+     appen ligger på Netlify med forskellig URL pr. kontekst (produktion/
+     preview/branch, se netlify.toml), ikke ét fast domæne en Cloud
+     Function kan kende. Uden url falder linket tilbage på Firebases egen
+     hostede nulstillingsside, hvilket er et RIGTIGT, sikkert link — bare
+     ikke i FleetControls eget design endnu. Peges den om til
+     /leverandoerportal, når den rute findes i UI-skiven. */
+  const link = await eksternAuth.generatePasswordResetLink(email);
+  const emne = saniterHeaderFelt("Adgang til FleetControl leverandørportal", 250);
+  const tekst =
+    `Hej ${navn},\n\n` +
+    `${lev.navn} har fået adgang til FleetControl leverandørportal, hvor I kan se ` +
+    `tildelte opgaver, sende prisoverslag og melde arbejde klar til afhentning.\n\n` +
+    `Sæt din adgangskode her:\n${link}\n\n` +
+    `Linket er personligt og udløber efter kort tid.`;
+  const resultat = await sendMail(MAIL_ADAPTER, { til: email, emne, tekst });
+
+  return { uid: bruger.uid, nyKonto, mailStatus: resultat.status };
+});
+
+/**
+ * leverandoerPortalAdgangDeaktiver(req) → { uid, aktiv }
+ */
+export const leverandoerPortalAdgangDeaktiver = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevLeverandoererAdmin(req);
+  const db = getDatabase();
+
+  const d = req.data || {};
+  const eksternUid = kortStreng(d.uid, 128);
+  if (!eksternUid) throw new HttpsError("invalid-argument", "uid mangler.");
+
+  const grantRef = db.ref(`leverandoerPortalAdgang/${eksternUid}/${tenantId}`);
+  const foer = (await grantRef.once("value")).val();
+  if (!foer) {
+    throw new HttpsError("not-found", "Ingen portaladgang fundet for denne bruger på denne tenant.");
+  }
+
+  const efter = { ...foer, aktiv: false };
+  await grantRef.set(efter);
+
+  await logLeverandoerPortal(tenantId, uid, AUDIT.tilstandsskift, eksternUid, foer, efter,
+    "portaladgang deaktiveret");
+
+  return { uid: eksternUid, aktiv: false };
 });
 
 /**

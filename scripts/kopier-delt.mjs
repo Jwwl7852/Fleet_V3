@@ -106,6 +106,12 @@ export const DELTE_FILER = [
      opgaver.js importerer prioritet.js, som allerede staar paa listen:
      kravet er transitivt. */
   "opgaver.js", "opgaveplan-regler.js",
+  /* ⚠ SUPPLIER PORTAL — leverandoerportal-regler.js er importfri (som
+     prioritet.js), men skal alligevel med: leverandoerStatusOpdater og
+     leverandoerPortalOpgaver i functions/index.js prøver/bygger mod
+     NØJAGTIG samme LEVERANDOER_TILLADTE_SKIFT/fordelPortalOpgaver som en
+     fremtidig portal-UI vil bruge til at tegne knapper og lister. */
+  "leverandoerportal-regler.js",
   /* ⚠ dashboardvisning.js IMPORTERER dashboards.js — listen er lukket under
      import. dashboardvisningskriv proever mod noejagtig de samme regler som
      skaermen viste: samme valideVisning(), samme skjulerAlt(). */
