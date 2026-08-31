@@ -226,6 +226,35 @@ describe("leverandøren som entitet", () => {
     await assertFails(set(ref(db, levSti(id)), null));
   });
 
+  /* ⚠ SUPPLIER PORTAL — DENNE VISER KUN, DEN AFGØR INTET. Se
+     firebase.rules.json's egen note ved feltet: adgangen håndhæves
+     udelukkende af leverandoerPortalAdgang (test/rules.tenant.test.mjs),
+     og portalAdgang.enabled er derfor kun en administrativ visning oven på
+     resten af leverandørkortet — samme skriverettighed, ikke en ny. */
+  it("portalAdgang.enabled er blot endnu et felt, gated af leverandoerer.skriv", async () => {
+    const db = somIndkoeber();
+    await assertSucceeds(set(ref(db, levSti("portal-ok")),
+      { ...LEVERANDOER, portalAdgang: { enabled: true } }));
+    await assertSucceeds(set(ref(db, levSti("portal-slukket")),
+      { ...LEVERANDOER, portalAdgang: { enabled: false } }));
+  });
+
+  it("⚠ portalAdgang KRÆVER enabled, OG INTET ANDET FELT", async () => {
+    /* ⚠ ET TOMT OBJEKT ER IKKE DEN RIGTIGE PRØVE — RTDB skriver aldrig et
+       tomt objekt; en skrivning uden børn er en no-op, og assertFails ville
+       fejle af den forkerte grund (posten ville bare mangle portalAdgang
+       helt, hvad reglen slet ikke kræver). Objektet skal have ET barn der
+       ikke er "enabled", for at ramme hasChildren(['enabled']) selv. Se
+       samme fælde i test/rules.indberetninger.test.mjs' ingenOmkostning. */
+    const db = somIndkoeber();
+    await assertFails(set(ref(db, levSti("portal-mangler-enabled")),
+      { ...LEVERANDOER, portalAdgang: { status: "aktiv" } }));
+    await assertFails(set(ref(db, levSti("portal-ikke-bool")),
+      { ...LEVERANDOER, portalAdgang: { enabled: "ja" } }));
+    await assertFails(set(ref(db, levSti("portal-ekstra")),
+      { ...LEVERANDOER, portalAdgang: { enabled: true, status: "aktiv" } }));
+  });
+
   it("⚠ SKIVE 4B — tenant-isolation: Tenant A kan ikke læse eller skrive Tenant B's leverandører", async () => {
     /* Fuld adgang i EGEN tenant (T), for at vise at afvisningen kommer af
        tenant-grænsen og ikke af manglende permission. */

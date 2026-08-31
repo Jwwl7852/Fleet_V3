@@ -1988,6 +1988,49 @@
             // til dataene, giver aldrig en fejl paa en .write:false-node.
             "sagId": { ".validate": "newData.isString() && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('sager').child(newData.val()).exists()" },
 
+            // ⚠ SUPPLIER PORTAL §8/§9/§14 — PRISOVERSLAG ER SIT EGET
+            // UNDERRECORD, IKKE ET FELT PAA OPGAVEN. Samme figur som et
+            // etapeforslag: leverandøren kan sende flere overslag over tid
+            // (§8: "overskriv ikke det gamle uden audit/historik"), og hvert
+            // ét er en historisk post, ikke en løbende værdi der redigeres.
+            // Opgavens EGEN status (OPGAVE_OVERGANGE) ved derfor intet om
+            // "tilbud sendt" — det behøver den ikke, formen af selve
+            // prisoverslaget er svaret på det spørgsmål.
+            //
+            // ⚠ INGEN KLIENT SKRIVER HER — kaskaderer fra opgavers .write:
+            // false, ligesom resten af noden. leverandoerTilbudIndsend
+            // (Admin SDK, tilkommer i en senere skive) er den ene vej ind.
+            // Formen står alligevel skrevet ud herunder, af samme grund som
+            // resten af filen: en Admin SDK-skrivning der ikke passer på
+            // formen, opdages først når nogen læser posten og undrer sig.
+            //
+            // ⚠ status ER KONTORETS AFGØRELSE (§9), IKKE LEVERANDØRENS EGEN.
+            // Leverandøren sætter aldrig dette felt selv — funktionen der
+            // opretter et tilbud, sætter det til "afventer"; en SEPARAT,
+            // internt-permissioneret funktion (endnu ikke bygget) flytter
+            // det til accepteret/afvist/kraeverAfklaring. Se §9: "kontoret
+            // skal mindst kunne registrere at det er accepteret/afvist".
+            "leverandoertilbud": {
+              "$tilbudId": {
+                ".validate": "newData.hasChildren(['beloebOere', 'valuta', 'leverandoerId', 'indsendtAf', 'indsendtMs', 'status'])",
+                "beloebOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+                "valuta": { ".validate": "newData.isString() && newData.val().matches(/^(DKK|SEK|NOK|EUR)$/)" },
+                "kommentar": { ".validate": "newData.isString() && newData.val().length <= 500" },
+                "forventetFaerdigMs": { ".validate": "newData.isNumber()" },
+                "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
+                // ⚠ DEN EKSTERNE BRUGERS uid — IKKE personId, samme skel som
+                // opgavens egen oprettetAf/personId-note ovenfor. Ingen
+                // opslag mod personale/, for en ekstern leverandørbruger
+                // findes ikke dér.
+                "indsendtAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "indsendtMs": { ".validate": "newData.isNumber()" },
+                "status": { ".validate": "newData.isString() && newData.val().matches(/^(afventer|accepteret|afvist|kraeverAfklaring)$/)" },
+                "afgjortAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "afgjortMs": { ".validate": "newData.isNumber()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
             "$andet": { ".validate": false }
           }
         },
@@ -2629,6 +2672,24 @@
             // ordremail.
             "ordreEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
             "kontaktTelefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
+
+            // ⚠ SUPPLIER PORTAL — DETTE FELT TÆNDER/SLUKKER KUN VISNINGEN,
+            // IKKE ADGANGEN. Samme skel som dashboardvisning.js's eget hoved
+            // beskriver: "enabled" er en ADMINISTRATIV beslutning ("denne
+            // leverandør må have eksterne portalbrugere"), skrevet direkte
+            // af klienten som resten af leverandørkortet (leverandoerer.skriv).
+            // Den FAKTISKE håndhævelse — om en given ekstern bruger reelt kan
+            // logge ind og se noget — ligger udelukkende i
+            // `leverandoerPortalAdgang/$uid/$tenantId` nedenfor, som INGEN
+            // klient (heller ikke en admin) kan læse eller skrive direkte.
+            // To forskellige spørgsmål, to forskellige noder — blandes de,
+            // kan en administrator slå portalen "til" her og tro at en
+            // leverandør uden noget grant nu kan logge ind.
+            "portalAdgang": {
+              ".validate": "newData.hasChildren(['enabled'])",
+              "enabled": { ".validate": "newData.isBoolean()" },
+              "$andet": { ".validate": false }
+            },
 
             // ⚠ SKIVE 4D — STANDARDSPROG FOR UDGÅENDE ORDREMAIL. Lukket
             // vokabular, samme klasse som "kategori" ovenfor — ikke fritekst.
@@ -4034,6 +4095,46 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": false
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    // LEVERANDØRPORTAL-GRANTS — den TREDJE krydsning af tenant-graensen
+    // ══════════════════════════════════════════════════════════════════
+    //
+    // ⚠ FØRSTE VAR SUPPORT (beslutning 24), ANDEN VAR UDBYDEREN nedenfor,
+    // og begge blev tilladt ÉN gang med vilje, holdt saa smalle som muligt.
+    // Denne er den tredje, og den findes fordi en ekstern leverandør ikke
+    // passer i den almindelige claims-form: en INTERN bruger har ÉT
+    // `{tenant, rolle, perms}`-claim, fast paa syv... nej, SEKS faste
+    // rollenavne (ROLLE_PERMS) — men samme værksted kan arbejde for FLERE
+    // FleetControl-kunder, og en ekstern konto skal derfor kunne have et
+    // grant PR. TENANT, ikke ét claim der laases til den første.
+    //
+    // ⚠ DERFOR ER DETTE IKKE ET CLAIM. Et Firebase Auth-uid for en ekstern
+    // leverandørbruger bærer INTET tenant-/rolle-/perms-claim overhovedet —
+    // det ville tvinge formen fra de interne roller paa en konto der ikke
+    // er intern. I stedet slaar HVER leverandørportal-funktion (Admin SDK,
+    // aldrig klienten) grants op HERFRA ud fra det verificerede `auth.uid`,
+    // for netop DEN tenant funktionen i forvejen kræver et tenantId for.
+    // Klienten kan aldrig selv angive tenantId eller leverandoerId som
+    // autoritet — kun funktionen, efter dette opslag, gør.
+    //
+    // ⚠ HVERKEN .read ELLER .write — ikke engang til ejeren selv. Selv
+    // LÆSNING af hvem der har adgang til hvad, er sikkerhedsrelevant, og
+    // portal-UI'et viser derfor kun det en funktion har valgt at sende
+    // tilbage — aldrig et raat opslag i noden. Skrivning sker udelukkende
+    // via leverandoerInviter/leverandoerAdgangDeaktiver.
+    //
+    // leverandoerPortalAdgang/$uid/$tenantId = {
+    //   leverandoerId, aktiv, oprettetMs, oprettetAf
+    // }
+    "leverandoerPortalAdgang": {
+      "$uid": {
+        "$tenantId": {
+          ".read": false,
+          ".write": false
+        }
       }
     },
 

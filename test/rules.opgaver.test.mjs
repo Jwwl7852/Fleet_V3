@@ -422,3 +422,40 @@ describe("værkstedsbesøgets to felter", () => {
     assert.match(krop, /estimeretMin:/);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ SUPPLIER PORTAL §8/§9 — leverandoertilbud. Samme "vejen er lukket"-
+   disciplin som resten af filen: en klient kan aldrig skrive her (kaskaderer
+   fra opgavers ".write": false), men en INTERN bruger med opgaver.laes skal
+   kunne LÆSE et tilbud en (endnu ubygget) portal-funktion har skrevet med
+   Admin SDK — det er netop §9's krav ("kontoret skal mindst kunne se
+   prisoverslaget").
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("leverandoertilbud på en opgave", () => {
+  const TILBUD = {
+    beloebOere: 850000, valuta: "DKK", leverandoerId: "lv-daf",
+    indsendtAf: "ekstern-uid-1", indsendtMs: 1786912716050, status: "afventer",
+  };
+
+  it("⚠ INGEN KLIENT KAN SKRIVE DET — samme spærring som resten af opgaven", async () => {
+    const db = miljoe.authenticatedContext("uid-forsoeg-tilbud", {
+      tenant: TENANT, rolle: "koordinator", perms: permStrengFraRolle("koordinator"),
+    }).database();
+    await assertFails(
+      set(ref(db, `${sti("o-tilbud-1")}/leverandoertilbud/t-1`), TILBUD));
+  });
+
+  it("en INTERN bruger med opgaver.laes kan LÆSE et tilbud skrevet med Admin SDK", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      const admin = ctx.database();
+      await set(ref(admin, sti("o-tilbud-2")), opgave({ art: "vaerksted", leverandoerId: "lv-daf" }));
+      await set(ref(admin, `${sti("o-tilbud-2")}/leverandoertilbud/t-2`), TILBUD);
+    });
+    const db = miljoe.authenticatedContext("uid-koordinator-laes", {
+      tenant: TENANT, rolle: "koordinator", perms: permStrengFraRolle("koordinator"),
+    }).database();
+    const snap = await assertSucceeds(
+      get(ref(db, `${sti("o-tilbud-2")}/leverandoertilbud/t-2`)));
+    assert.equal(snap.val().beloebOere, 850000);
+  });
+});

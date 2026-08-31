@@ -329,4 +329,20 @@ describe("roden og brugerTenants", () => {
     await assertFails(get(ref(db, "brugerTenants/enAnden")));
     await assertFails(set(ref(db, "brugerTenants/mig"), { tenant: FREMMED }));
   });
+
+  /* ⚠ SUPPLIER PORTAL — DEN TREDJE KRYDSNING AF TENANT-GRÆNSEN, OG DEN
+     STRENGESTE. brugerTenants (ovenfor) lader i det mindste ejeren læse sin
+     egen post; leverandoerPortalAdgang lader INGEN klient røre den
+     overhovedet — heller ikke den uid grantet handler om. Al læsning sker
+     via en portal-Cloud Function, der selv afgør hvad brugeren får at se. */
+  it("⚠ leverandoerPortalAdgang: hverken ejeren, en admin eller nogen anden kan læse eller skrive", async () => {
+    const ejer = som("lev-uid-1", { tenant: MIN, rolle: "admin" });
+    await assertFails(get(ref(ejer, "leverandoerPortalAdgang/lev-uid-1/" + MIN)));
+    await assertFails(set(ref(ejer, "leverandoerPortalAdgang/lev-uid-1/" + MIN), {
+      leverandoerId: "lv-1", aktiv: true, oprettetMs: 1, oprettetAf: "admin-uid",
+    }));
+
+    const enAndenBruger = som("uid-min", { tenant: MIN, rolle: "admin" });
+    await assertFails(get(ref(enAndenBruger, "leverandoerPortalAdgang/lev-uid-1/" + MIN)));
+  });
 });
