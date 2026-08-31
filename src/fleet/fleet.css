@@ -172,11 +172,26 @@
 .fc-nav-gruppe{padding:14px 10px 4px; font-size:var(--fc-t-tight); font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:#9aa7b8}
 .fc-nav-gruppe-blok:first-child .fc-nav-gruppe{padding-top:2px}
+/* ⚠ V1-BRUGERTEST: gruppeoverskriften er nu en knap, der folder gruppens
+   punkter sammen/ud. Ingen ny farve — arver #9aa7b8 fra .fc-nav-gruppe via
+   currentColor på chevronen. */
+.fc-nav-gruppe-toggle{display:flex; align-items:center; justify-content:space-between; gap:6px;
+  width:100%; border:0; background:transparent; cursor:pointer; padding:0; font:inherit; text-align:left}
+.fc-nav-gruppe-toggle .fc-nav-gruppe{flex:1}
+.fc-chevron{width:13px; height:13px; flex:0 0 13px; stroke:currentColor; fill:none; stroke-width:2;
+  transition:transform .12s ease}
+.fc-chevron-lukket{transform:rotate(-90deg)}
+/* display:contents holder punkterne som direkte flex-børn af .fc-nav-gruppe-blok
+   (kolonne på desktop, række på mobil, se @media herunder) — wrapperen findes
+   kun for at kunne skjule dem samlet når gruppen er foldet sammen. */
+.fc-nav-gruppe-punkter{display:contents}
+.fc-nav-gruppe-punkter.fc-lukket{display:none}
 .fc-link{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
   color:#c3ccda; text-decoration:none; font-size:var(--fc-t-m); font-weight:500}
 .fc-link:hover{background:var(--fc-navy-2); color:#fff}
 .fc-link.fc-on{background:var(--bc-accent); color:#fff; font-weight:600}
 .fc-link svg{width:17px; height:17px; flex:0 0 17px; stroke:currentColor; fill:none; stroke-width:1.9}
+.fc-link .fc-chevron{margin-left:auto; width:13px; height:13px; flex:0 0 13px; stroke-width:2}
 .fc-sub{display:flex; flex-direction:column; margin:2px 0 4px 27px;
   border-left:1px solid var(--fc-navy-3); padding-left:9px}
 .fc-sublink{color:#9aa7b8; text-decoration:none; font-size:var(--fc-t-s); padding:6px 8px; border-radius:6px}
@@ -306,7 +321,13 @@
   .fc-nav{flex-direction:row; overflow-x:auto; flex:none}
   .fc-nav-gruppe-blok{flex-direction:row}
   .fc-nav-gruppe{display:none}
+  /* Fold-knappen giver ingen mening i den vandrette ikonrække — og en
+     gruppe der blev foldet sammen på desktop, skal stadig vise sine
+     punkter her, ellers forsvinder et modul fra mobilmenuen uden grund. */
+  .fc-nav-gruppe-toggle{display:none}
+  .fc-nav-gruppe-punkter.fc-lukket{display:contents}
   .fc-link{white-space:nowrap}
+  .fc-link .fc-chevron{display:none}
   .fc-sub,.fc-foot{display:none}
   .fc-top,.fc-slot{padding-left:16px; padding-right:16px}
 }

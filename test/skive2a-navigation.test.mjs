@@ -170,10 +170,13 @@ describe("Skive 2A — strukturelle invarianter", () => {
     }
   });
 
-  it("⚠ SKIVE 4B — Fælles-gruppen indeholder nu også Leverandører", () => {
+  it("⚠ V1-BRUGERTEST 31/8 — Kunder og Leverandører er flyttet ud af Fælles, ind under Administration", () => {
+    /* Skive 4B satte Leverandører (og tidligere Skive 2A satte Kunder) i
+       Fælles. V1-brugertesten omgjorde begge: hverken kartotek er en
+       daglig arbejdsflade for en kunde der kun har fx Fleet eller Facility
+       — se nav.js's kommentarer ved kunderOversigt og leverandoerer. */
     const faelles = NAV.filter((m) => m.gruppe === "faelles").map((m) => m.key);
-    assert.deepEqual(faelles,
-      ["dashboard", "kunderOversigt", "fakturacenter", "leverandoerer", "oekonomi"]);
+    assert.deepEqual(faelles, ["dashboard", "fakturacenter", "oekonomi"]);
   });
 
   it("Driftsmoduler-gruppen står i rækkefølgen Planning, Fleet, Facility, Procure, Warehouse, Unitbooking, Workforce", () => {
@@ -182,8 +185,9 @@ describe("Skive 2A — strukturelle invarianter", () => {
       ["booking", "flaade", "facility", "indkoeb", "warehouse", "unitbooking", "bemanding"]);
   });
 
-  it("Administration er Opsætning, Hjælp er Hjælp — hver sin egen gruppe", () => {
-    assert.deepEqual(NAV.filter((m) => m.gruppe === "admin").map((m) => m.key), ["opsaetning"]);
+  it("Administration er Kunder, Leverandører og Opsætning, Hjælp er Hjælp", () => {
+    assert.deepEqual(NAV.filter((m) => m.gruppe === "admin").map((m) => m.key),
+      ["kunderOversigt", "leverandoerer", "opsaetning"]);
     assert.deepEqual(NAV.filter((m) => m.gruppe === "hjaelp").map((m) => m.key), ["support"]);
   });
 
@@ -237,7 +241,9 @@ describe("Skive 2A — strukturelle invarianter", () => {
       "ruten er ændret — 4B må kun flytte MENUPLADSEN, se nav.js's hoved");
     assert.equal(punkt.kraeverPerm, "leverandoerer.laes",
       "kraeverPerm er ikke leverandoerer.laes — Skive 4B's permission-split er ikke ført ud");
-    assert.equal(punkt.gruppe, "faelles");
+    /* V1-brugertest 31/8 flyttede menugruppen videre fra Fælles til
+       Administration — se nav.js's kommentar ved leverandoerer. */
+    assert.equal(punkt.gruppe, "admin");
   });
 
   it("ingen rolle ser flere topniveaupunkter end ALLE roller tilsammen skulle kunne", () => {

@@ -77,17 +77,23 @@ export const NAV = [
     key: "dashboard", sti: "/", label: "Dashboard", titel: "Dashboard",
     under: "Operativt overblik og økonomi", gruppe: "faelles",
   },
-  /* ⚠ KUNDER STOD SOM ET BARN UNDER OPSÆTNING (se historikken i git og i
-     04_DATA_AND_PERMISSION_IMPACT.md) — kundekartoteket er stamdata, men
-     bruges dagligt på tværs af Planning, Procure og Warehouse, og hørte
-     derfor til blandt de fælles arbejdsindgange, ikke gemt i opsætningen.
-     `kraeverModul: "kunder"` er UÆNDRET: samme kommercielle gate som før,
-     kun menupladsen flyttede. Standardpriser og Kundepriser BLIVER stående
-     under Opsætning i denne skive — at flytte dem kræver en fane på
-     kundens profil (matrix-# 48), som er en senere MERGE/FINISH-opgave. */
+  /* ⚠ KUNDER ER FLYTTET TILBAGE UNDER ADMINISTRATION — V1-brugertest,
+     31/8: "Kunder skal efter min mening ligge under Administration. Dette
+     program er ikke et regnskabsprogram eller salgsprogram... det er
+     vigtigt at man kan vælge moduler fra alt efter hvilken kunde vi skal
+     sælge dette program til." En kunde der kun har købt Fleet eller
+     Facility har ingen daglig brug for et kundekartotek-menupunkt.
+     Dette OMGØR en tidligere skive (se git-historikken og
+     04_DATA_AND_PERMISSION_IMPACT.md), der flyttede Kunder FRA Opsætning
+     TIL Fælles med den modsatte begrundelse — produktejerne har siden
+     vurderet det anderledes, direkte på skærmbilledet. `kraeverModul:
+     "kunder"` og ruten (`/opsaetning/kunder`) er UÆNDRET: kun
+     menugruppen flyttede. Planning/Procure/Warehouse kan stadig søge og
+     vælge kunder fra samme fælles database — det kræver ikke et
+     nav-punkt, kun opslaget i `kunder`-noden. */
   {
     key: "kunderOversigt", sti: "/opsaetning/kunder", label: "Kunder",
-    kraeverModul: "kunder", gruppe: "faelles",
+    kraeverModul: "kunder", gruppe: "admin",
     titel: "Kunder", under: "Kundekartotek og aftaler.",
   },
   /* ⚠ FAKTURAER & BILAG — se filens hoved. Skive 4A: `kraeverPerm` er nu
@@ -98,17 +104,18 @@ export const NAV = [
     titel: "Fakturaer & bilag",
     under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
   },
-  /* ⚠ LEVERANDØRER — SKIVE 4B, Model B (Korrektion 3). Flyttet ud af
-     Procure-undermenuen (var `indkoeb`-gruppens barn, `kraeverPerm:
-     "indkoeb.laes"`) til et Fælles-topniveaupunkt, ved siden af Kunder —
-     samme flytning som Fakturaer & bilag fik i Skive 2A/4A. Ruten er MED
-     VILJE uændret (`/indkoeb/leverandoerer`); kun menupladsen og
-     permissionen flyttede. `kraeverPerm` er nu `leverandoerer.laes`, ikke
-     `indkoeb.laes` — kartoteket er fælles masterdata for Fleet, Facility
-     og Procure, ikke Procures eget. */
+  /* ⚠ LEVERANDØRER — SKIVE 4B, Model B (Korrektion 3), flyttet ud af
+     Procure-undermenuen til et Fælles-topniveaupunkt. V1-brugertest,
+     31/8, flytter den ét skridt videre: "Denne del skal også rykket til
+     Administrations/opsætning" — samme begrundelse og samme afgørelse som
+     for Kunder ovenfor. Ruten er FORSAT MED VILJE uændret
+     (`/indkoeb/leverandoerer`); kun menugruppen flyttede, ikke
+     permissionen (`leverandoerer.laes`, uændret siden Skive 4B) — kartoteket
+     er stadig fælles masterdata for Fleet, Facility og Procure, kun gemt et
+     andet sted i menuen. */
   {
     key: "leverandoerer", kraeverPerm: "leverandoerer.laes", sti: "/indkoeb/leverandoerer",
-    label: "Leverandører", gruppe: "faelles",
+    label: "Leverandører", gruppe: "admin",
     titel: "Leverandører",
     under: "Fælles leverandørkartotek for Fleet, Facility og Procure.",
   },

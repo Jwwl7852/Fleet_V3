@@ -6,7 +6,7 @@
  * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
  * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
@@ -117,6 +117,48 @@ export default function AppShell() {
   const { post: navvisning } = usePost("navvisning", bruger?.uid || null);
 
   /**
+   * Sidebar-gruppernes fold-tilstand (V1-brugertest: "FÆLLES/DRIFTMODULER/
+   * ADMINISTRATION skal kunne foldes sammen"). Rent visnings-lag, ingen
+   * permission ændres af at folde en gruppe sammen — samme skel som
+   * navvisning holder mellem hvad der TEGNES og hvad der er TILLADT.
+   *
+   * Huskes lokalt pr. bruger/browser i localStorage, navngivet med uid så
+   * to brugere på samme maskine ikke arver hinandens fold-tilstand. Læses
+   * kun ved mount — AppShell tegnes først når `bruger` findes (harAdgang
+   * kræver et tenant-claim), så uid'et er stabilt fra første render.
+   */
+  const gruppeNoegle = `fc-nav-gruppe-lukket:${bruger?.uid || "anon"}`;
+  const [gruppeLukket, saetGruppeLukket] = useState(() => {
+    try {
+      const raa = window.localStorage.getItem(gruppeNoegle);
+      return raa ? JSON.parse(raa) : {};
+    } catch {
+      return {};
+    }
+  });
+  const skifGruppe = (gruppe) => {
+    saetGruppeLukket((forrige) => {
+      const naeste = { ...forrige, [gruppe]: !forrige[gruppe] };
+      try {
+        window.localStorage.setItem(gruppeNoegle, JSON.stringify(naeste));
+      } catch {
+        /* localStorage utilgængelig (privat vindue e.l.) — fold-tilstanden
+           virker stadig i sessionen, den huskes bare ikke til næste besøg. */
+      }
+      return naeste;
+    });
+  };
+
+  /* Et enkelt topniveaupunkts egen undermenu (fx Facility) rulles ud når
+     ruten er aktiv der. V1-brugertest: "man kan ikke klikke på den igen for
+     at rulle den sammen igen" — modulLukket er brugerens eksplicitte
+     overstyring af den ellers automatiske "aktiv ⇒ åben"-visning, IKKE en
+     ny synlighedsregel; ruten og dens permissions er upåvirkede. */
+  const [modulLukket, saetModulLukket] = useState({});
+  const skifModul = (key) =>
+    saetModulLukket((forrige) => ({ ...forrige, [key]: !forrige[key] }));
+
+  /**
    * De underpunkter der faktisk tegnes — ÉT sted, fordi svaret bruges to
    * gange: til at tegne undermenuen, og til at afgøre om overskriften
    * overhovedet skal stå. Regnede de to hver sin gang, kunne et toppunkt
@@ -197,9 +239,18 @@ export default function AppShell() {
             {GRUPPE_ORDEN.map((gruppe) => {
               const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
               if (!punkter.length) return null;
+              const lukket = !!gruppeLukket[gruppe];
               return (
                 <div key={gruppe} className="fc-nav-gruppe-blok">
-                  <div className="fc-nav-gruppe">{GRUPPE_LABEL[gruppe]}</div>
+                  <button type="button" className="fc-nav-gruppe-toggle"
+                          onClick={() => skifGruppe(gruppe)} aria-expanded={!lukket}>
+                    <span className="fc-nav-gruppe">{GRUPPE_LABEL[gruppe]}</span>
+                    <svg className={lukket ? "fc-chevron fc-chevron-lukket" : "fc-chevron"}
+                         viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  <div className={lukket ? "fc-nav-gruppe-punkter fc-lukket" : "fc-nav-gruppe-punkter"}>
                   {punkter.map((m) => {
                     const aktiv = hoved.key === m.key;
                     /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
@@ -219,15 +270,30 @@ export default function AppShell() {
                        ruten findes uændret, og skærmen svarer med en afvisning hvis
                        man taster stien. Håndhævelsen ligger i reglerne. */
                     const born = synligeBorn(m);
+                    const visBorn = aktiv && born.length > 1 && !modulLukket[m.key];
                     return (
                       <div key={m.key}>
-                        <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}>
+                        <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}
+                                 onClick={(e) => {
+                                   /* Klik på et allerede-aktivt punkt med undermenu skal folde
+                                      den sammen/ud igen, ikke bare navigere til sig selv. */
+                                   if (aktiv && born.length > 1) {
+                                     e.preventDefault();
+                                     skifModul(m.key);
+                                   }
+                                 }}>
                           <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d={ICO[m.key]} />
                           </svg>
                           <span>{m.label}</span>
+                          {born.length > 1 && (
+                            <svg className={visBorn ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
+                                 viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                          )}
                         </NavLink>
-                        {aktiv && born.length > 1 && (
+                        {visBorn && (
                           <div className="fc-sub">
                             {born.map((b) => (
                               <NavLink key={b.key} to={b.sti} end
@@ -240,6 +306,7 @@ export default function AppShell() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               );
             })}

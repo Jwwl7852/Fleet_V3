@@ -156,11 +156,14 @@ describe("CRUD går gennem gem(), ingen ny leverandør-skrivefunktion", () => {
    KANONISK RUTE OG NAVIGATION — punkt 4
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Leverandører er den ene kanoniske overflade", () => {
-  it("⚠ NAV-PUNKTET KRÆVER leverandoerer.laes OG ER FLYTTET TIL faelles-gruppen", () => {
+  it("⚠ NAV-PUNKTET KRÆVER leverandoerer.laes OG ER FLYTTET TIL admin-gruppen", () => {
+    /* V1-brugertest 31/8 flyttede menugruppen videre, fra faelles (denne
+       skives egen flytning) til admin — se nav.js's kommentar. Ruten og
+       kraeverPerm er begge uændret siden Skive 4B. */
     const punkt = NAV.find((m) => m.key === "leverandoerer");
     assert.ok(punkt, "leverandoerer findes ikke som topniveaupunkt i NAV");
     assert.equal(punkt.kraeverPerm, "leverandoerer.laes");
-    assert.equal(punkt.gruppe, "faelles");
+    assert.equal(punkt.gruppe, "admin");
   });
 
   it("⚠ RUTEN ER IKKE OMDØBT — /indkoeb/leverandoerer uændret", () => {
