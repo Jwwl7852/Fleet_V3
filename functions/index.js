@@ -4720,6 +4720,34 @@ async function kraevLeverandoerGrant(req) {
 }
 
 /**
+ * leverandoerPortalTenanter(req) → { tenanter: [{ tenantId, leverandoerNavn }] }
+ *
+ * ⚠ HVORFOR DEN FINDES. `leverandoerPortalAdgang` har hverken .read eller
+ * .write for nogen klient (se firebase.rules.json's egen note) — en ekstern
+ * bruger kan derfor ikke selv slå op HVILKE tenants han har adgang til.
+ * Uden denne funktion ville portalens login-skærm skulle GÆTTE et tenantId
+ * for at kunne kalde kraevLeverandoerGrant() overhovedet. Dette er den ENE
+ * plads hvor en ekstern bruger må se noget om sine egne grants — kun
+ * LISTEN, kun for sig selv (auth.uid), og kun navn + id, intet om andre
+ * leverandørers data i samme tenant.
+ */
+export const leverandoerPortalTenanter = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const db = getDatabase();
+  const grants = (await db.ref(`leverandoerPortalAdgang/${auth.uid}`).once("value")).val() || {};
+
+  const tenanter = [];
+  for (const [tenantId, grant] of Object.entries(grants)) {
+    if (grant?.aktiv !== true) continue;
+    const lev = (await db.ref(`tenants/${tenantId}/leverandoerer/${grant.leverandoerId}`).once("value")).val();
+    tenanter.push({ tenantId, leverandoerNavn: lev?.navn || null });
+  }
+  return { tenanter };
+});
+
+/**
  * leverandoerPortalOpgaver(req) → { aktive: [...], afsluttede: [...] }
  *
  * ⚠ SERVEREN FILTRERER, IKKE KLIENTEN. Hele opgave-noden hentes med

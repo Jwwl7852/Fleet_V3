@@ -102,6 +102,11 @@ const Turplan = lazy(() => import("./moduler/app/Turplan.jsx"));
 const AppIndberetning = lazy(() => import("./moduler/app/Indberetning.jsx"));
 const AppTid = lazy(() => import("./moduler/app/Timeregistrering.jsx"));
 const AppFrihed = lazy(() => import("./moduler/app/Frihed.jsx"));
+/* Leverandørportalen — tillægskrav "EXTERNAL SUPPLIER / VÆRKSTEDSPORTAL".
+   Samme dovenhedsdisciplin: en ekstern leverandørbruger skal ikke hente
+   kontorprogrammets øvrige bundt for at se sine egne opgaver. */
+const LeverandoerLogin = lazy(() => import("./moduler/leverandoerportal/LeverandoerLogin.jsx"));
+const LeverandoerPortal = lazy(() => import("./moduler/leverandoerportal/LeverandoerPortal.jsx"));
 
 
 /* ⚠ KUN TIL DEMO-MODE. Uden database findes der ingen tenant at hente, og
@@ -257,6 +262,40 @@ function Chauffoerramme({ bruger, tenant, logUd, children }) {
   );
 }
 
+/**
+ * Rammen om leverandørportalen — tillægskrav "EXTERNAL SUPPLIER /
+ * VÆRKSTEDSPORTAL".
+ *
+ * ⚠ IKKE AppShell, IKKE Chauffoerramme — sin egen, af samme grund som
+ * Chauffoerramme ikke er AppShell: sidebar, tenant-vælger og periodevælger
+ * giver ingen mening for en bruger der ikke er en del af kundens
+ * organisation.
+ *
+ * ⚠ INGEN FIRMANAVN-VISNING HER, MODSAT Chauffoerramme. Hvilken kunde
+ * (tenant) og hvilken leverandør en session hører til, kommer fra
+ * `leverandoerPortalTenanter()` — et Cloud Function-kald `LeverandoerPortal`
+ * selv laver, ikke noget App.jsx kan slå op før ruten overhovedet tegnes.
+ * En ekstern bruger med ét grant ser det stadig i selve skærmen; rammen her
+ * er bevidst holdt uafhængig af den data.
+ */
+function Leverandoerramme({ bruger, logUd, children }) {
+  return (
+    <div className="fc-app fc-chauffoer">
+      <header className="fc-top">
+        <div>
+          <span className="fc-brand">FleetControl</span>
+          <span className="fc-app-tenant">Leverandørportal</span>
+        </div>
+        <div className="fc-med-ikon" style={{ gap: 12 }}>
+          <span className="fc-hint">{bruger?.navn || bruger?.email}</span>
+          <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
+        </div>
+      </header>
+      <main className="fc-main fc-app-main">{children}</main>
+    </div>
+  );
+}
+
 export default function App() {
   const [bruger, setBruger] = useState(demoMode ? DEMO_BRUGER : null);
   const [klar, setKlar] = useState(demoMode);
@@ -327,6 +366,51 @@ export default function App() {
   }, [bruger?.tenant]);
 
   if (!klar) return <div className="fc-boot">Henter…</div>;
+
+  /**
+   * ⚠ LEVERANDØRPORTALEN — SIDEORDNET MED ALT ANDET, AFGJORT FØR harAdgang.
+   *
+   * En ekstern leverandørbruger bærer INTET {tenant, rolle, perms}-claim
+   * overhovedet (se functions/index.js's leverandoerPortalInviter) —
+   * `harAdgang` ville derfor ALTID være falsk for ham, og uden denne gren
+   * ville han enten lande på /login's "uprovisioneret"-dødvande (forkert
+   * besked for hans situation, se LeverandoerLogin.jsx's egen note) eller,
+   * hvis han ikke er logget ind endnu, på den interne Login.jsx.
+   *
+   * ⚠ SIKKERHEDEN LIGGER 100% SERVER-SIDE, IKKE HER. Denne gren afgør kun
+   * hvad der TEGNES — samme figur som `erUdbyder`/`erChauffoer` nedenfor.
+   * Hver eneste portal-Cloud-Function slår selv sit grant op fra det
+   * verificerede `auth.uid` (kraevLeverandoerGrant); en klient der lander
+   * her uden noget grant, ser blot en tom "ingen adgang"-besked fra
+   * LeverandoerPortal.jsx, aldrig andres data.
+   *
+   * ⚠ FØR harAdgang, IKKE EN UDVIDELSE AF DEN. Bevidst placeret her — før
+   * FleetProvider/tenantListe overhovedet bygges — så en ekstern brugers
+   * manglende tenant aldrig får FleetProvider til stille at falde tilbage
+   * på en gættet tenant (se FleetContext.jsx). Portalen bruger ikke
+   * useFleet() og har derfor ikke brug for den kontekst.
+   */
+  if (window.location.pathname.startsWith("/leverandoerportal")) {
+    return (
+      <BrowserRouter>
+        {!bruger ? (
+          <Routes>
+            <Route path="/leverandoerportal/login" element={<LeverandoerLogin />} />
+            <Route path="*" element={<Navigate to="/leverandoerportal/login" replace />} />
+          </Routes>
+        ) : (
+          <Leverandoerramme bruger={bruger} logUd={() => auth?.signOut()}>
+            <Suspense fallback={<div className="fc-empty">Henter …</div>}>
+              <Routes>
+                <Route path="/leverandoerportal" element={<LeverandoerPortal logUd={() => auth?.signOut()} />} />
+                <Route path="*" element={<Navigate to="/leverandoerportal" replace />} />
+              </Routes>
+            </Suspense>
+          </Leverandoerramme>
+        )}
+      </BrowserRouter>
+    );
+  }
 
   /**
    * ⚠ MILJØUAFHÆNGIG. RØR IKKE DEN BETINGELSE.
