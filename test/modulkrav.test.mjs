@@ -64,6 +64,11 @@ const FELT_NODE = {
   forbrugsvareId: "forbrugsvarer",
   aktivId: "facility",
   hjemPladsId: "reolpladser",
+  /* ⚠ G.2 — braendstofmatch's eget indkoebId. Peger på indkoeb, samme
+     modul som braendstofmatch selv ejes af — "delt ejerskab er ikke et
+     krav" (se paakraevedeFelter ovenfor) gør derfor ingen forskel her,
+     men feltet skal stadig være KENDT, ellers skjuler det et krav. */
+  indkoebId: "indkoeb",
 };
 
 const modulerFor = (node) => {

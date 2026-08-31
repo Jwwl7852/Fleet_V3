@@ -140,7 +140,12 @@ describe("Fejl 3 — ekskl. moms plus momsOere, aldrig ét felt", () => {
 
   it("beregner linjens beløb af antal × pris", () => {
     for (const l of DEMO_INDKOEBSLINJER) {
-      assert.equal(indkoebBeloebOere(l), l.antal * l.prisPrEnhedOere);
+      /* ⚠ AFRUNDET TIL HELE ØRE — ikke en rå multiplikation. `antal` er
+         ikke altid et helt tal (G.2's brændstoflinjer bærer decimalliter,
+         62,6 l), og et beløb i øre kan derfor ikke undgå at runde nogle
+         gange. Det er præcis den afrunding indkoebBeloebOere() selv
+         foretager — se dens hoved i leverandoerer.js. */
+      assert.equal(indkoebBeloebOere(l), Math.round(l.antal * l.prisPrEnhedOere));
       assert.equal("beloebOere" in l, false, `${l.id} har et gemt beløb`);
     }
   });

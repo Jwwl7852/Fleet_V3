@@ -25,9 +25,20 @@ import {
   HAENDELSE_ART, FORLOEB, MAENGDE_SKALA, SENSITIVE_FELTER,
 } from "./indberetninger.js";
 import { selvkontrol } from "./selvkontrol.js";
+import { iDagIsoLokal, isoPlusDage } from "./format.js";
 
 const NU = Date.now();
 const D = 24 * 60 * 60 * 1000;
+
+/* ⚠ G.2 — isoPlusDage(iDagIsoLokal(), n), IKKE msTilIso(NU - n*D).
+   `msTilIso()` går via toISOString(), som er UTC — og NU - n*D er et rent
+   millisekundspring, der IKKE nødvendigvis lander på samme lokale
+   kalenderdag som "for n dage siden" i en tidszone foran UTC (Danmark).
+   iDagIsoLokal()/isoPlusDage() findes begge i format.js netop for den
+   faldgrube. demo-indkoeb.js's fuel-linjer (il-014 til il-016) bruger
+   SAMME to funktioner, så en tankning og dens fakturalinje aldrig kan
+   lande på hver sin kalenderdag ved et tidszoneuheld. */
+const isoDagLokal = (n) => isoPlusDage(iDagIsoLokal(), n);
 const T = 60 * 60 * 1000;
 
 const m = (n) => Math.round(n * MAENGDE_SKALA);
@@ -70,6 +81,10 @@ export const DEMO_INDBERETNINGER_SENSITIVE = {
   "ind-004": {},
   "ind-005": {},
   "ind-006": {},
+  "ind-007": {},
+  "ind-008": {},
+  "ind-009": {},
+  "ind-010": {},
 };
 
 /* ⚠ TO AF DEM ER CHAUFFØRENS EGNE — beslutning 109.
@@ -297,6 +312,103 @@ export const DEMO_INDBERETNINGER = [
        kt-012. Fundet af `demo-referencer.test.mjs`, ikke ved at kigge.
        Se beslutning 92. */
     indkoebId: "il-003",
+    ingenOmkostning: null,
+    tidsregistrering: null,
+    materialelinjer: [],
+  },
+
+  /* ══════════════════════════════════════════════════════════════════
+     G.2 — BRÆNDSTOFMATCH-DEMOEN. ind-005/006 OVENFOR ER FRA FØR §1/§8's
+     krav om `dato` — de mangler den bevidst, som gamle poster skal. De
+     FIRE herunder er NYE og bærer alle `dato`, netop for at
+     Brændstofmatch-skærmen (Procure → Match & kontantkøb) kan vise et
+     ægte scenarie, ikke en tom liste. Modparterne (fuel-indkøbslinjerne)
+     står i demo-indkoeb.js — il-014/015/016.
+
+     ind-007  ÉT KLART TRÆF. Samme dato, næsten samme literantal som
+              il-014 → automatisk matches ved "Kør automatisk match".
+     ind-008  ÉT SVAGT TRÆF. To dage fra il-015, literantal tæt nok til
+              at score over MATCH_MINDSTE_SCORE men under
+              AUTOMATCH_MINDSTE_SCORE → vises som forslag, kræver et
+              menneskes bekræftelse.
+     ind-009/ind-010 TO TRÆF PÅ ÉN LINJE. Begge tanket samme dato som
+              il-016, begge inden for litertolerancen → BEGGE kvalificerer
+              til automatch, og er derfor per definition tvetydige — se
+              afgørAutomatch()'s note om at "to forslag slår ét ihjel".
+     ══════════════════════════════════════════════════════════════════ */
+  {
+    id: "ind-007",
+    art: "braendstof",
+    /* ⚠ INGEN forloeb — braendstof er udgiftsklasse (kraeverForloeb() er
+       falsk for den), og disse tre er BEVIDST endnu ikke matchet: sætter
+       man "afsluttet" uden en omkostning, klager filens egen selvkontrol
+       (se bunden af filen) — med rette, for en afsluttet post skal have
+       enten et beløb eller en begrundet undtagelse. */
+    prioritet: "lav",
+    oprettetAf: "uid-anders",
+    oprettetMs: NU - 2 * D,
+    koeretoejId: "kt-078",
+    bookingId: null,
+    sagId: null,
+    beskrivelse: "Tankning, Circle K Vejle",
+    dato: isoDagLokal(-2),
+    kmStand: 214_880,
+    liter: 62.4,
+    adBlueLiter: 0,
+    ingenOmkostning: null,
+    tidsregistrering: null,
+    materialelinjer: [],
+  },
+  {
+    id: "ind-008",
+    art: "braendstof",
+    prioritet: "lav",
+    oprettetAf: "uid-anders",
+    oprettetMs: NU - 4 * D,
+    koeretoejId: "kt-034",
+    bookingId: null,
+    sagId: null,
+    beskrivelse: "Tankning, OK Kolding",
+    dato: isoDagLokal(-4),
+    kmStand: 188_040,
+    liter: 87.8,
+    adBlueLiter: 0,
+    ingenOmkostning: null,
+    tidsregistrering: null,
+    materialelinjer: [],
+  },
+  {
+    id: "ind-009",
+    art: "braendstof",
+    prioritet: "lav",
+    oprettetAf: "uid-mette",
+    oprettetMs: NU - 3 * D,
+    koeretoejId: "kt-104",
+    bookingId: null,
+    sagId: null,
+    beskrivelse: "Tankning, Shell Fredericia",
+    dato: isoDagLokal(-3),
+    kmStand: 302_115,
+    liter: 50.8,
+    adBlueLiter: 0,
+    ingenOmkostning: null,
+    tidsregistrering: null,
+    materialelinjer: [],
+  },
+  {
+    id: "ind-010",
+    art: "braendstof",
+    prioritet: "lav",
+    oprettetAf: "uid-mette",
+    oprettetMs: NU - 3 * D,
+    koeretoejId: "kt-104",
+    bookingId: null,
+    sagId: null,
+    beskrivelse: "Tankning, Shell Fredericia (senere samme dag)",
+    dato: isoDagLokal(-3),
+    kmStand: 302_540,
+    liter: 51.3,
+    adBlueLiter: 0,
     ingenOmkostning: null,
     tidsregistrering: null,
     materialelinjer: [],

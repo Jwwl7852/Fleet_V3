@@ -116,6 +116,14 @@ const UDEN_TJEK = {
   "opgaver/$opgaveId/dokumenter/$dokumentId/opgaveId":
     "lig $opgaveId, ikke en fremmed reference. opgaveDokumentUploadInitier "
     + "har allerede hentet og verificeret opgaven før dokumentet skrives.",
+  /* ⚠ G.2 — SAMME FIGUR. indkoebId på et braendstofmatch-match er låst til
+     sit eget path-wildcard ($indkoebId), ikke en fremmed reference — se
+     samme begrundelse ved fakturaId/opgaveId ovenfor. Selve linjens
+     EKSISTENS tjekkes stadig, i selve .validate-blokken (root.child(...)
+     .child($indkoebId).exists()), bare ikke i dette felts EGEN celle. */
+  "braendstofmatch/$indkoebId/indkoebId":
+    "lig $indkoebId, ikke en fremmed reference. Selve eksistensen af "
+    + "linjen tjekkes i blokkens egen hasChildren-betingelse.",
 
   /* ---- Feltet peger slet ikke på en post ------------------------------- */
   "statushaendelser/$etapeId/$meldingId/klientId":

@@ -93,7 +93,16 @@ test("⚠ FORFALDEN BETYDER IKKE MÅ SLETTES", () => {
 
 test("⚠ JOBBET SLETTER KUN NÅR maaSlettes ER SAND", () => {
   const kilde = readFileSync("functions/index.js", "utf8");
-  const blok = kilde.slice(kilde.indexOf("export const auditoprydning"));
+  /* ⚠ SLICEN SKAL VÆRE AFGRÆNSET TIL FUNKTIONENS EGEN KROP — den stod uden
+     et slut-punkt og fangede derfor OGSÅ hver eneste funktion skrevet
+     EFTER auditoprydning i filen. Det opdagedes først da en helt anden
+     funktion (braendstofMatchBekraefts "fjern"-gren) fik sit eget,
+     lovlige .remove()-kald og gjorde tælleren "mere end én" — uden at
+     auditoprydning selv var rørt. Se samme blokAf()-mønster i
+     skive4c-dokumenter.test.mjs. */
+  const start = kilde.indexOf("export const auditoprydning");
+  const naeste = kilde.indexOf("\nexport const ", start + 1);
+  const blok = naeste < 0 ? kilde.slice(start) : kilde.slice(start, naeste);
   assert.ok(blok.includes("if (!p.maaSlettes) {"), "jobbet spoerger ikke om det maa");
   assert.ok(blok.includes("rapport.forfaldne.push(linje);"), "det forfaldne rapporteres ikke");
   /* ⚠ ÉN OPERATION PR. PARTITION. Det er hele grunden til at klassen ligger i

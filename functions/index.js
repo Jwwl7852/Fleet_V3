@@ -163,6 +163,12 @@ import {
 import {
   kanAfgoereAnsoegning, valideAnsoegning, reservationFraFravaer,
 } from "./delt/fravaer.js";
+/* ⚠ G.2 — braendstofAutomatch/braendstofMatchBekraeft skal bygge og prøve
+   mod NØJAGTIG samme matchForslag()/afgørAutomatch()/kanMatcheBraendstof()
+   som en fremtidig skærm ville vise. Se braendstofmatch.js's hoved. */
+import {
+  matchForslag as braendstofMatchForslag, afgørAutomatch, kanMatcheBraendstof,
+} from "./delt/braendstofmatch.js";
 
 initializeApp();
 
@@ -6247,6 +6253,181 @@ export const fakturastatus = onCall({ region: REGION }, async (req) => {
     { status: faktura.status }, { status: til }, `${faktura.status} → ${til}`);
 
   return { ok: true, status: til };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BRÆNDSTOFMATCH — G.2. Forbinder en leverandørs fakturalinje (indkøb,
+   kategori "braendstof") med chaufførens egen tankningsregistrering.
+
+   ⚠ SCOREN SENDES IKKE MED, OG DEN GEMMES IKKE — samme princip som
+   fakturamatch. Klienten siger hvilken TANKNING; serveren afgør, med
+   NØJAGTIG samme matchForslag()/afgørAutomatch()/kanMatcheBraendstof()
+   som skærmen selv viste forslaget med.
+
+   ⚠ TO FUNKTIONER, TO SLAGS BESLUTNING:
+     braendstofAutomatch     → batch, kører hele tenantens uafklarede
+                                fakturalinjer igennem og bekræfter kun de
+                                UTVETYDIGE (ét kvalificerende forslag).
+     braendstofMatchBekraeft → ét menneskes valg for ÉN linje — en manuel
+                                match, en "ikke matchbar"-markering, eller
+                                en fjernelse af et eksisterende match.
+
+   ⚠ ÉN TANKNING KAN KUN MATCHES ÉN GANG. Nøglen ($indkoebId) håndhæver
+   linje-siden alene; tankning-siden kræver et levende opslag
+   (orderByChild('tankningId')) lige før hver skrivning — samme mønster
+   som fakturamatch's ordreId-tjek, og af samme grund: en .validate ser
+   kun én post ad gangen og kan ikke sammenligne på tværs af søskende.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * braendstofAutomatch({}) → { automatiskMatchet, forbliverAabne }
+ *
+ * ⚠ EKSPLICIT BRUGERHANDLING, IKKE EN BAGGRUNDSJOB. Kun en person med
+ * indkoeb.skriv der selv trykker "Kør automatisk match" udløser den her —
+ * der findes ingen skjult trigger. Se braendstofmatch.js's note om hvorfor
+ * "automatisk" betyder "systemet afgør UDEN at spørge om ÉT bestemt
+ * forslag", ikke "uden at nogen bad om det".
+ */
+export const braendstofAutomatch = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv" });
+
+  const [indkoebSnap, tankningerSnap, matchSnap] = await Promise.all([
+    rod.child("indkoeb").once("value"),
+    rod.child("indberetninger").once("value"),
+    rod.child("braendstofmatch").once("value"),
+  ]);
+
+  const alleLinjer = indkoebSnap.val() || {};
+  const alleIndberetninger = tankningerSnap.val() || {};
+  const eksisterendeMatch = matchSnap.val() || {};
+
+  const tankninger = Object.entries(alleIndberetninger)
+    .filter(([, t]) => t.art === "braendstof")
+    .map(([id, t]) => ({ id, ...t }));
+
+  /* ⚠ FLERE LINJER I SAMME KØRSEL MÅ IKKE KUNNE KLAIME SAMME TANKNING.
+     Sættet udvides UNDERVEJS, så linje nr. 2 aldrig foreslås den tankning
+     linje nr. 1 lige har fået. */
+  const matchedeTankningIder = new Set(
+    Object.values(eksisterendeMatch).filter((m) => m.tilstand === "matchet").map((m) => m.tankningId)
+  );
+
+  const opdatering = {};
+  const logs = [];
+  let automatiskMatchet = 0;
+  let forbliverAabne = 0;
+
+  for (const [indkoebId, linje] of Object.entries(alleLinjer)) {
+    if (linje.kategori !== "braendstof") continue;
+    if (eksisterendeMatch[indkoebId]) continue; // allerede afgjort — hverken matchet eller ikke-matchbar
+    if (linje.fakturastatus === "bogfoert" || linje.fakturastatus === "afvist") continue;
+
+    const forslag = braendstofMatchForslag(linje, tankninger, { matchedeTankningIder: [...matchedeTankningIder] });
+    const afgoerelse = afgørAutomatch(forslag);
+    if (!afgoerelse.automatisk) {
+      forbliverAabne += 1;
+      continue;
+    }
+
+    const nu = Date.now();
+    const post = {
+      indkoebId, tilstand: "matchet", tankningId: afgoerelse.tankning.id,
+      automatisk: true, afgjortAf: uid, afgjortMs: nu,
+    };
+    opdatering[`tenants/${tenantId}/braendstofmatch/${indkoebId}`] = post;
+    matchedeTankningIder.add(afgoerelse.tankning.id);
+    automatiskMatchet += 1;
+    logs.push({ indkoebId, efter: post });
+  }
+
+  if (automatiskMatchet > 0) {
+    await db.ref().update(opdatering);
+    for (const { indkoebId, efter } of logs) {
+      await logProcure(tenantId, uid, AUDIT.opret, "braendstofmatch", indkoebId,
+        null, efter, "automatisk matchet — ét utvetydigt forslag");
+    }
+  }
+
+  return { automatiskMatchet, forbliverAabne };
+});
+
+/**
+ * braendstofMatchBekraeft({ indkoebId, handling, tankningId?, grund? }) → { ok }
+ *
+ * `handling`: udelades (match til `tankningId`) | "ikkeMatchbar" (kræver
+ * `grund`) | "fjern" (fjerner et eksisterende match).
+ */
+export const braendstofMatchBekraeft = onCall({ region: REGION }, async (req) => {
+  const { db, rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv" });
+
+  const d = req.data || {};
+  const indkoebId = kortStreng(d.indkoebId, 60);
+  if (!indkoebId) throw new HttpsError("invalid-argument", "indkoebId mangler.");
+
+  const linjeSnap = await rod.child(`indkoeb/${indkoebId}`).once("value");
+  if (!linjeSnap.exists()) throw new HttpsError("not-found", "Fakturalinjen findes ikke.");
+  const linje = linjeSnap.val();
+
+  const sti = `tenants/${tenantId}/braendstofmatch/${indkoebId}`;
+  const foerSnap = await rod.child(`braendstofmatch/${indkoebId}`).once("value");
+  const foer = foerSnap.exists() ? foerSnap.val() : null;
+
+  if (d.handling === "fjern") {
+    if (!foer) throw new HttpsError("failed-precondition", "Linjen er ikke matchet.");
+    if (linje.fakturastatus === "bogfoert") {
+      throw new HttpsError("failed-precondition", "Linjen er bogført. Matchet kan ikke ændres bagefter.");
+    }
+    await db.ref(sti).remove();
+    await logProcure(tenantId, uid, AUDIT.slet, "braendstofmatch", indkoebId, foer, null, "match fjernet");
+    return { ok: true };
+  }
+
+  if (d.handling === "ikkeMatchbar") {
+    const grund = kortStreng(d.grund, 250);
+    if (!grund) {
+      throw new HttpsError("invalid-argument",
+        "Skriv hvorfor ingen af forslagene passer. Uden en grund begynder den næste forfra på det samme opslag.");
+    }
+    const kan = kanMatcheBraendstof(linje, {});
+    if (!kan.ok) throw new HttpsError("failed-precondition", kan.aarsag);
+    const efter = {
+      indkoebId, tilstand: "ikkeMatchbar", ikkeMatchbarGrund: grund,
+      automatisk: false, afgjortAf: uid, afgjortMs: Date.now(),
+    };
+    await db.ref(sti).set(efter);
+    await logProcure(tenantId, uid, AUDIT.opret, "braendstofmatch", indkoebId, foer, efter,
+      `markeret ikke-matchbar: ${grund}`);
+    return { ok: true };
+  }
+
+  const tankningId = kortStreng(d.tankningId, 60);
+  if (!tankningId) throw new HttpsError("invalid-argument", "Vælg en tankning.");
+  const tSnap = await rod.child(`indberetninger/${tankningId}`).once("value");
+  if (!tSnap.exists()) throw new HttpsError("not-found", "Tankningen findes ikke.");
+  const tankning = tSnap.val();
+  if (tankning.art !== "braendstof") {
+    throw new HttpsError("invalid-argument", "Den valgte indberetning er ikke en tankning.");
+  }
+
+  /* ⚠ ÉN TANKNING, HØJST ÉT MATCH — levende opslag, samme mønster som
+     fakturamatch's ordreId-tjek. */
+  const optagetSnap = await rod.child("braendstofmatch")
+    .orderByChild("tankningId").equalTo(tankningId).once("value");
+  let optaget = null;
+  optagetSnap.forEach((barn) => { if (barn.key !== indkoebId) optaget = barn.key; });
+
+  const kan = kanMatcheBraendstof(linje, { alleredeMatchetTilAnden: Boolean(optaget) });
+  if (!kan.ok) throw new HttpsError("failed-precondition", kan.aarsag);
+
+  const efter = {
+    indkoebId, tilstand: "matchet", tankningId,
+    automatisk: false, afgjortAf: uid, afgjortMs: Date.now(),
+  };
+  await db.ref(sti).set(efter);
+  await logProcure(tenantId, uid, AUDIT.opret, "braendstofmatch", indkoebId, foer, efter,
+    `matchet med tankning ${tankningId}`);
+
+  return { ok: true };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

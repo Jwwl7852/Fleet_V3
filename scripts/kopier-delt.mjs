@@ -200,6 +200,13 @@ export const DELTE_FILER = [
      afvist et andet. Filen importerer kun reservations.js, som allerede
      står her; lukningen holder. */
   "fravaer.js",
+  /* ⚠ braendstofmatch.js — G.2. `braendstofAutomatch`/`braendstofMatchBekraeft`
+     skal bygge og prøve mod NØJAGTIG samme `matchForslag()`/
+     `afgørAutomatch()`/`kanMatcheBraendstof()` som en fremtidig skærm ville
+     vise — ellers kunne et forslag se stærkt nok ud til automatch ét sted,
+     og blive afvist et andet. Filen importerer procure.js (naerNok) og
+     format.js (msTilIso), som begge allerede står her/er importfrie. */
+  "braendstofmatch.js",
 ];
 
 export const kildeSti = (navn) => join(ROD, "src", "fleet", navn);

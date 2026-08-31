@@ -3224,6 +3224,56 @@
           }
         },
 
+        // ══════════════════════════════════════════════════════════════
+        // ⚠ G.2 — BRÆNDSTOFMATCH. Forbinder én indkøbslinje (kategori
+        // "braendstof") med DEN tankning (indberetning, art "braendstof")
+        // den hører til. Se braendstofmatch.js's hoved for begrundelsen
+        // bag hele skiven.
+        //
+        // ⚠ .write: false — OG DET LIGGER MED VILJE IKKE SOM ET FELT PÅ
+        // SELVE indkoeb-LINJEN. `indkoeb` er klient-skrivbar
+        // (indkoeb.skriv), og RTDB's regler kaskaderer FRA FORÆLDREN: en
+        // dybere ".write: false" på et barn af en skrivbar node beskytter
+        // IKKE mod en fuld set() på FORÆLDRENS egen sti — den regel der
+        // evalueres for den skrivning, er forælderens, ikke barnets. Et
+        // matchfelt nestet under indkoeb/$id ville derfor kunne
+        // overskrives af enhver med indkoeb.skriv, uden om ét-til-ét-
+        // tjekket og uden audit. Braendstofmatch er derfor sin EGEN
+        // topnode, nøjagtigt som leverandoerPortalAdgang og opgaver selv
+        // er det, af samme grund.
+        //
+        // ⚠ NØGLEN ER $indkoebId, IKKE ET push()-ID. Én fakturalinje kan
+        // kun have ÉT match — nøglen håndhæver ét-til-én fra LINJENS side
+        // alene. Den anden retning (én tankning, højst ét match) kræver et
+        // levende opslag i Cloud Function'en (orderByChild('tankningId')),
+        // se braendstofMatchBekraeft — en .validate ser kun én post ad
+        // gangen og kan ikke sammenligne på tværs af søskende.
+        "braendstofmatch": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
+          ".write": false,
+          ".indexOn": ["tankningId"],
+          "$indkoebId": {
+            ".validate": "newData.hasChildren(['indkoebId', 'tilstand', 'afgjortAf', 'afgjortMs', 'automatisk']) && newData.child('indkoebId').val() === $indkoebId && root.child('tenants').child($tenantId).child('indkoeb').child($indkoebId).exists() && (newData.child('tilstand').val() !== 'matchet' || newData.hasChild('tankningId')) && (newData.child('tilstand').val() !== 'ikkeMatchbar' || newData.hasChild('ikkeMatchbarGrund'))",
+            "indkoebId": { ".validate": "newData.isString() && newData.val() === $indkoebId" },
+            "tilstand": { ".validate": "newData.isString() && newData.val().matches(/^(matchet|ikkeMatchbar)$/)" },
+            // ⚠ EKSISTENSTJEKKET GÅR HELT NED I TANKNINGENS EGEN art. En
+            // reference der peger på en indberetning der IKKE er en
+            // tankning (fx en parkeringsudgift), ville lade et match
+            // "bevise" en sammenhæng der ikke findes.
+            "tankningId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indberetninger').child(newData.val()).exists() && root.child('tenants').child($tenantId).child('indberetninger').child(newData.val()).child('art').val() === 'braendstof'" },
+            "ikkeMatchbarGrund": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 250" },
+            // ⚠ SANDT NÅR NØJAGTIG ÉT FORSLAG KVALIFICEREDE VED
+            // braendstofAutomatch — se afgørAutomatch() i
+            // braendstofmatch.js. Feltet er METADATA til visning og
+            // audit, IKKE en autoritet: serveren stoler ALDRIG på
+            // klientens automatisk-flag for selve beslutningen.
+            "automatisk": { ".validate": "newData.isBoolean()" },
+            "afgjortAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "afgjortMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
         // ⚠ SKIVE 4A — LÆSE-PERMISSIONEN DER MANGLEDE, ER NU fakturaer.laes.
         // De ti oevrige kommercielle noder havde laenge en (grundlag.laes,

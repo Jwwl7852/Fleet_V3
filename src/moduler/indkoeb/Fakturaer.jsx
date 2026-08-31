@@ -28,7 +28,7 @@ import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato } from "../../fleet/format.js";
+import { kr, num, dato, isoTilMs } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Pille, Henter, Datatilstand, Knap,
@@ -40,9 +40,17 @@ import {
   matchAfvigelseOere, ordreSumOere, linjeListe, ORDRESTATUS, kontantUdenBilag,
 } from "../../fleet/procure.js";
 import { matchFaktura, gemKontantkoeb } from "../../fleet/faktura.js";
+import {
+  matchForslag as braendstofMatchForslag, afgørAutomatch, BRAENDSTOF_MATCHSIGNAL,
+} from "../../fleet/braendstofmatch.js";
+import {
+  koerBraendstofAutomatch, braendstofMatchBekraeft,
+} from "../../fleet/braendstofmatch-klient.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Skærmen slår ikke op i sættene. */
 import { DEMO_LEVERANDOERER, DEMO_INDKOEBSLINJER, DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
 import { DEMO_INDKOEBSORDRER } from "../../fleet/demo-procure.js";
+import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
+import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 
 const TOM_KONTANT = {
   vare: "", leverandoerId: "", antal: "1", enhed: "stk",
@@ -61,6 +69,16 @@ export default function Fakturaer() {
   const [grund, setGrund] = useState("");
   const [kontant, setKontant] = useState(TOM_KONTANT);
 
+  /* ---- G.2 — brændstofmatch --------------------------------------- */
+  const [valgtBmId, setValgtBmId] = useState(null);
+  const [valgtTankningId, setValgtTankningId] = useState(null);
+  const [bmSvar, setBmSvar] = useState(null);
+  const [bmArbejder, setBmArbejder] = useState(false);
+  const [bmDialog, setBmDialog] = useState(false);
+  const [bmGrund, setBmGrund] = useState("");
+  const [automatchKoerer, setAutomatchKoerer] = useState(false);
+  const [automatchSvar, setAutomatchSvar] = useState(null);
+
   const liste = useListe("fakturaer", {
     ordnPaa: "fakturadatoMs", vindueDage: 400, graense: 500, demo: DEMO_FAKTURAER,
   });
@@ -77,7 +95,20 @@ export default function Fakturaer() {
      godkender-opslaget der brugte den, hører nu til Fakturacenteret. */
   const brugere = useListe("brugere", { vindue: "alle", graense: 200 });
 
-  if (henter || liste.henter || indkoeb.henter) return <Henter hvad="fakturaer" />;
+  /* ⚠ G.2 — server-side filtreret på art, samme mønster som andre
+     .indexOn-felter. Tankningerne er de eneste indberetninger denne skærm
+     har brug for. */
+  const tankninger = useListe("indberetninger", {
+    ordnPaa: "art", lig: "braendstof", graense: 1000, demo: DEMO_INDBERETNINGER,
+  });
+  const braendstofmatch = useListe("braendstofmatch", {
+    vindue: "alle", graense: 1000, demo: [],
+  });
+  const koeretoejer = useListe("koeretoejer", { vindue: "alle", demo: DEMO_KOERETOEJER });
+
+  if (henter || liste.henter || indkoeb.henter || tankninger.henter || braendstofmatch.henter) {
+    return <Henter hvad="fakturaer" />;
+  }
   /* En AFVIST læsning er ikke en tom fakturaliste. */
   if (blokerer(liste.tilstand)) {
     return <Datatilstand tilstand={liste.tilstand} genprov={liste.genindlaes} />;
@@ -95,6 +126,51 @@ export default function Fakturaer() {
      uændret) — to forskellige noder, to forskellige tjek. */
   const maaMatche = harPerm(bruger?.perms, PERM.fakturaerSkriv);
   const maaKontant = harPerm(bruger?.perms, PERM.indkoebSkriv);
+
+  /* ---- G.2 — brændstofmatch --------------------------------------- */
+  const koeretoejNavn = (id) => {
+    const k = koeretoejer.data.find((kt) => kt.id === id);
+    return k?.kaldenavn || k?.navn || id;
+  };
+  const bmMatchMap = Object.fromEntries(braendstofmatch.data.map((m) => [m.indkoebId, m]));
+  /* ⚠ SAMME "HÆNGENDE REFERENCE TÆLLER MED"-PRINCIP SOM udenMatch OVENFOR. */
+  const braendstofLinjer = indkoeb.data.filter((l) => l.kategori === "braendstof");
+  const bmUbehandlede = braendstofLinjer.filter((l) =>
+    !bmMatchMap[l.id] && l.fakturastatus !== "bogfoert" && l.fakturastatus !== "afvist");
+  const bmAfgjorte = braendstofLinjer
+    .map((l) => ({ linje: l, match: bmMatchMap[l.id] }))
+    .filter((x) => x.match);
+  /* ⚠ SAMME "SCOREN REGNES HER, GEMMES ALDRIG"-PRINCIP SOM forslag NEDENFOR. */
+  const bmMatchedeTankningIder = braendstofmatch.data
+    .filter((m) => m.tilstand === "matchet")
+    .map((m) => m.tankningId);
+  const bmValgtLinje = bmUbehandlede.find((l) => l.id === valgtBmId) || null;
+  const bmForslag = bmValgtLinje
+    ? braendstofMatchForslag(bmValgtLinje, tankninger.data, { matchedeTankningIder: bmMatchedeTankningIder })
+    : [];
+  const bmAfgoerelse = afgørAutomatch(bmForslag);
+
+  const vaelgBm = (l) => { setValgtBmId(l.id); setValgtTankningId(null); setBmSvar(null); };
+
+  const koerBm = async (fn) => {
+    setBmArbejder(true);
+    const r = await fn();
+    setBmSvar(r);
+    setBmArbejder(false);
+    setBmDialog(false);
+    setBmGrund("");
+    if (r.ok) { indkoeb.genindlaes(); braendstofmatch.genindlaes(); }
+    return r;
+  };
+
+  const koerAutomatch = async () => {
+    setAutomatchKoerer(true);
+    setAutomatchSvar(null);
+    const r = await koerBraendstofAutomatch();
+    setAutomatchSvar(r);
+    setAutomatchKoerer(false);
+    if (r.ok) { indkoeb.genindlaes(); braendstofmatch.genindlaes(); }
+  };
 
   const fakturaer = liste.data;
   const valgt = fakturaer.find((f) => f.id === valgtId) || null;
@@ -327,6 +403,140 @@ export default function Fakturaer() {
         </Kort>
       </Gitter>
 
+      {/* ---- G.2 — Brændstofmatch ---------------------------------- */}
+      <Kort titel="Brændstofmatch"
+            handling={
+              <Knap disabled={automatchKoerer || !maaKontant || bmUbehandlede.length === 0}
+                    onClick={koerAutomatch}
+                    title={maaKontant ? undefined : `Kræver ${PERM.indkoebSkriv}.`}>
+                {automatchKoerer ? "Kører …" : "Kør automatisk match"}
+              </Knap>
+            }>
+        <p className="fc-hint" style={{ marginTop: 0 }}>
+          Matcher leverandørens fakturalinjer (brændstof) mod chaufførernes
+          egne tankningsregistreringer — <b>enhed, dato og literantal</b>.
+          Prisen kommer altid fra fakturaen, aldrig fra chaufføren.
+          Automatisk match sker kun når der er <b>ét</b> utvetydigt forslag —
+          to forslag er per definition tvetydigt, uanset hvor meget bedre det
+          ene er.
+        </p>
+        {automatchSvar && (
+          automatchSvar.ok ? (
+            <p className="fc-hint">
+              {automatchSvar.data.automatiskMatchet} matchet automatisk ·
+              {" "}{automatchSvar.data.forbliverAabne} venter stadig på et menneske.
+            </p>
+          ) : <Formularsvar svar={automatchSvar} />
+        )}
+
+        <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
+          <div>
+            <div className="fc-vaelger" style={{ marginBottom: 12 }}>
+              {bmUbehandlede.length === 0 ? (
+                <Tom>Ingen ubehandlede brændstoflinjer lige nu.</Tom>
+              ) : bmUbehandlede.map((l) => (
+                <label key={l.id} className={`fc-forslag${l.id === valgtBmId ? " fc-forslag-valgt" : ""}`}>
+                  <input type="radio" name="valgt-braendstoflinje" checked={l.id === valgtBmId}
+                         aria-label={`Vælg ${l.vare}, ${dato(l.dato)}`}
+                         onChange={() => vaelgBm(l)} />
+                  <span className="fc-forslag-krop">
+                    <span className="fc-row">
+                      <b>{num(l.antal, 1)} l</b>
+                      <span className="fc-hint">{dato(l.dato)}</span>
+                    </span>
+                    <span className="fc-hint">{lvNavn(l.leverandoerId)} · {l.reference}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {!bmValgtLinje ? (
+              <Tom>Vælg en fakturalinje for at se hvilke tankninger den kan høre til.</Tom>
+            ) : (
+              <>
+                {!bmForslag.length ? (
+                  <Tom>
+                    Ingen tankning passer inden for vinduet. En chauffør har
+                    måske endnu ikke registreret den.
+                  </Tom>
+                ) : bmForslag.map((f) => (
+                  <label key={f.tankning.id}
+                         className={`fc-forslag${valgtTankningId === f.tankning.id ? " fc-forslag-valgt" : ""}`}>
+                    <input type="radio" name="braendstofmatch" checked={valgtTankningId === f.tankning.id}
+                           disabled={!maaKontant}
+                           aria-label={`Match med tankning ${dato(isoTilMs(f.tankning.dato))}`}
+                           onChange={() => setValgtTankningId(f.tankning.id)} />
+                    <span className="fc-forslag-krop">
+                      <span className="fc-row">
+                        <b>{koeretoejNavn(f.tankning.koeretoejId)}</b>
+                        <Pille tone={f.score >= 85 ? "ok" : f.score >= 60 ? "warn" : "info"}>
+                          {f.score} % match
+                        </Pille>
+                      </span>
+                      <span className="fc-hint">{dato(isoTilMs(f.tankning.dato))} · {num(f.tankning.liter, 1)} l</span>
+                      <span className="fc-hint">
+                        {f.signaler.map((s) => BRAENDSTOF_MATCHSIGNAL[s].label).join(" · ")}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+                {bmAfgoerelse.automatisk && (
+                  <p className="fc-hint">
+                    Ét utvetydigt forslag — "Kør automatisk match" bekræfter den uden at du behøver vælge.
+                  </p>
+                )}
+                <div className="fc-knapper" style={{ justifyContent: "flex-start", marginTop: 12 }}>
+                  <Knap variant="primaer" disabled={!valgtTankningId || bmArbejder || !maaKontant}
+                        onClick={() => koerBm(() => braendstofMatchBekraeft({
+                          indkoebId: bmValgtLinje.id, tankningId: valgtTankningId,
+                        }))}>
+                    Bekræft match
+                  </Knap>
+                  <Knap disabled={bmArbejder || !maaKontant} onClick={() => setBmDialog(true)}>
+                    Markér som ikke-matchbar
+                  </Knap>
+                </div>
+                <Formularsvar svar={bmSvar} okTekst="Gemt." />
+              </>
+            )}
+          </div>
+
+          <div>
+            <h3 className="fc-underoverskrift" style={{ marginTop: 0 }}>Afgjorte</h3>
+            {bmAfgjorte.length === 0 ? (
+              <Tom>Ingen afgjorte brændstoflinjer endnu.</Tom>
+            ) : bmAfgjorte.map(({ linje: l, match: m }) => (
+              <div key={l.id} className="fc-forslag">
+                <span className="fc-forslag-krop">
+                  <span className="fc-row">
+                    <b>{num(l.antal, 1)} l — {dato(l.dato)}</b>
+                    <Pille tone={m.tilstand === "matchet" ? "ok" : "info"}>
+                      {m.tilstand === "matchet" ? "Matchet" : "Ikke matchbar"}
+                      {m.automatisk ? " (automatisk)" : ""}
+                    </Pille>
+                  </span>
+                  {m.tilstand === "matchet" ? (
+                    <span className="fc-hint">
+                      {koeretoejNavn(tankninger.data.find((t) => t.id === m.tankningId)?.koeretoejId)}
+                    </span>
+                  ) : (
+                    <span className="fc-hint">{m.ikkeMatchbarGrund}</span>
+                  )}
+                  {l.fakturastatus !== "bogfoert" && (
+                    <Knap disabled={bmArbejder || !maaKontant}
+                          onClick={() => koerBm(() => braendstofMatchBekraeft({
+                            indkoebId: l.id, handling: "fjern",
+                          }))}>
+                      Fjern match
+                    </Knap>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Gitter>
+      </Kort>
+
       {valgt && (
         <Detaljer faktura={valgt} ordre={valgtOrdre} lvNavn={lvNavn} />
       )}
@@ -347,6 +557,25 @@ export default function Fakturaer() {
         >
           <Felt id="grund" label="Begrundelse" kraevet vaerdi={grund} saet={setGrund}
                 hint="Står på fakturaen — ikke i auditloggen. Fritekst hører ikke der." />
+        </Dialog>
+      )}
+
+      {bmDialog && (
+        <Dialog
+          titel="Ingen af tankningerne passer"
+          under="Skriv hvorfor. Uden en grund begynder den næste forfra på det samme opslag."
+          onLuk={() => { setBmDialog(false); setBmGrund(""); }}
+          handling={
+            <Knap variant="primaer" disabled={!bmGrund.trim() || bmArbejder}
+                  onClick={() => koerBm(() => braendstofMatchBekraeft({
+                    indkoebId: bmValgtLinje.id, handling: "ikkeMatchbar", grund: bmGrund.trim(),
+                  }))}>
+              Markér
+            </Knap>
+          }
+        >
+          <Felt id="bm-grund" label="Begrundelse" kraevet vaerdi={bmGrund} saet={setBmGrund}
+                hint="Står på fakturalinjen — ikke i auditloggen. Fritekst hører ikke der." />
         </Dialog>
       )}
     </div>

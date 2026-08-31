@@ -336,6 +336,10 @@ export const NODE_MODUL = {
   godkendelsesregler: "indkoeb",
   forbrugsvarer: "indkoeb",
   forbrugsvarebevaegelser: "indkoeb",
+  /* ⚠ G.2 — braendstofmatch HØRER TIL indkoeb, SAMME MODUL SOM DEN
+     FAKTURALINJE DEN MATCHER. En kunde uden Procure har ingen
+     indkøbslinjer at matche mod en tankning. */
+  braendstofmatch: "indkoeb",
 
   bookinger: "booking",
   /* ⚠ OMKOSTNINGER ER IKKE PRISER. `satser` er hvad KUNDEN betaler;

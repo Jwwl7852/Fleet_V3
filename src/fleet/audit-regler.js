@@ -125,6 +125,14 @@ export const LOGBARE_FELTER = new Set([
      opgave. `originaltFilnavn` er stadig bevidst UDE, samme grund som på
      fakturabilagene. */
   "opgaveId",
+  /* ⚠ G.2 — indkoebId, tankningId, automatisk. De to id'er er kontrollerede
+     referencer (samme klasse som opgaveId/fakturaId ovenfor) — uden dem
+     kunne loggen sige AT en fakturalinje blev matchet, men ikke HVILKEN
+     tankning. `automatisk` er en boolean i samme klasse som
+     synligForLeverandoer: et skift der afgør om en beslutning blev taget
+     af et menneske eller af braendstofAutomatch, hører til de ting en
+     efterprøvning ville spørge om. */
+  "indkoebId", "tankningId", "automatisk",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */
@@ -219,6 +227,10 @@ const REGNSKABSOBJEKTER = new Set([
      er regnskabsbevis, ikke drift — samme begrundelse som grundlaget
      ovenfor, og samme retention-klasse som den faktura det er hæftet på. */
   "fakturaDokument",
+  /* ⚠ G.2 — braendstofmatch HØRER SAMME STED SOM indkoeb. Matchet afgør
+     hvilket køretøj en fakturalinje hører til — det er en afgørelse om
+     REGNSKABSDATAEN (indkøbslinjen), ikke en driftshændelse i sig selv. */
+  "braendstofmatch",
 ]);
 
 const SIKKERHEDSHANDLINGER = new Set([

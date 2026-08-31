@@ -26,12 +26,21 @@ import {
   afstem, parterFraLeverandoer,
 } from "./leverandoerer.js";
 import { selvkontrol } from "./selvkontrol.js";
+import { iDagIsoLokal, isoPlusDage, isoTilMs } from "./format.js";
 
 const DAG = 86400000;
 const iDag = new Date();
 iDag.setHours(0, 0, 0, 0);
 const D0 = iDag.getTime();
 const dag = (n) => D0 + n * DAG;
+
+/* ⚠ G.2 — SAMME to LOKALE FUNKTIONER SOM demo-indberetninger.js's
+   il-014-il-016-modparter (ind-007 til ind-010) BRUGER — se noten der.
+   `dag()` ovenfor er lokal-midnat-ankret, men msTilIso() (som
+   braendstofmatch.js læser dato-feltet igennem) er UTC — de to kan derfor
+   IKKE garanteres at lande på samme kalenderdag i alle tidszoner.
+   isoTilMs(isoPlusDage(...)) er middags-ankret og undgår det helt. */
+const dagBraendstof = (n) => isoTilMs(isoPlusDage(iDagIsoLokal(), n));
 
 /* ---- Leverandører ------------------------------------------------------ */
 
@@ -313,6 +322,43 @@ export const DEMO_INDKOEBSLINJER = [
     prisPrEnhedOere: 142000, lokationId: "lok-aalborg",
     koeretoejId: "kt-b16", formaal: "Rudeskade, bus 16",
     fakturastatus: "mangler", godkendtAf: null, godkendtMs: null },
+
+  /* ════════════════════════════════════════════════════════════════════
+     G.2 — BRÆNDSTOFMATCH-DEMOEN. Modparterne til ind-007–ind-010 i
+     demo-indberetninger.js (se noten der). INGEN af de fire bærer
+     koeretoejId — en leverandørs tankkort-udtræk kender sjældent
+     FleetControls eget id, og det er netop DÉT matchet skal afgøre.
+     Ingen af dem er "bogfoert"/"afvist" endnu, så alle fire vises som
+     uafklarede på Procure → Match & kontantkøb.
+
+     il-014  Modpart til ind-007 — samme dato, næsten samme literantal.
+             Ét utvetydigt forslag → braendstofAutomatch bekræfter den.
+     il-015  Modpart til ind-008 — to dage fra hinanden, literantal tæt
+             nok til et forslag, men for langt fra en automatisk match.
+     il-016  Modpart til BÅDE ind-009 og ind-010 — samme dato som begge,
+             literantal tæt nok på begge til at kvalificere til
+             automatch hver for sig. To kvalificerende forslag er per
+             definition tvetydigt (se afgørAutomatch()) — kræver et
+             menneskes valg.
+     ════════════════════════════════════════════════════════════════════ */
+  { id: "il-014", dato: dagBraendstof(-2), aftaltLeveringMs: null, leveretMs: dagBraendstof(-2),
+    leverandoerId: "lv-circlek", reference: "CK-2026-56011",
+    vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", antal: 62.6, enhed: "liter",
+    prisPrEnhedOere: 1188, lokationId: "lok-kolding",
+    formaal: "Tankning — afventer match mod chaufførens registrering",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
+  { id: "il-015", dato: dagBraendstof(-2), aftaltLeveringMs: null, leveretMs: dagBraendstof(-2),
+    leverandoerId: "lv-circlek", reference: "CK-2026-56012",
+    vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", antal: 88.6, enhed: "liter",
+    prisPrEnhedOere: 1188, lokationId: "lok-kolding",
+    formaal: "Tankning — afventer match mod chaufførens registrering",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
+  { id: "il-016", dato: dagBraendstof(-3), aftaltLeveringMs: null, leveretMs: dagBraendstof(-3),
+    leverandoerId: "lv-circlek", reference: "CK-2026-56013",
+    vare: "Diesel B7", varenummer: "DIESEL-B7", kategori: "braendstof", antal: 51.0, enhed: "liter",
+    prisPrEnhedOere: 1188, lokationId: "lok-kolding",
+    formaal: "Tankning — afventer match mod chaufførens registrering",
+    fakturastatus: "modtaget", godkendtAf: null, godkendtMs: null },
 
   /* --- Historik: tolv måneder tilbage ---------------------------------
      ⚠ DE HER LINJER ER PRISUDVIKLINGENS GRUNDLAG, og de ligger derfor HER

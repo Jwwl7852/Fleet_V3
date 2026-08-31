@@ -898,8 +898,15 @@ export const MATCH_VINDUE_DAGE = 90;
  */
 export const MATCH_MINDSTE_SCORE = 40;
 
-/** Hele kroner ud af hele øre, til en sammenligning der tåler afrunding. */
-const naerNok = (a, b, bps) => {
+/**
+ * Hele kroner ud af hele øre, til en sammenligning der tåler afrunding.
+ *
+ * ⚠ EKSPORTERET — genbrugt af braendstofmatch.js's tilsvarende tolerance på
+ * literantal (skaleret til centiliter-heltal først, se dens hoved). Samme
+ * begrundelse som stiForDokument(): ÉT sted regner "tæt nok", ikke to
+ * kopier der kan drive fra hinanden.
+ */
+export const naerNok = (a, b, bps) => {
   if (!Number.isInteger(a) || !Number.isInteger(b)) return false;
   if (a === b) return true;
   const stoerst = Math.max(Math.abs(a), Math.abs(b));
