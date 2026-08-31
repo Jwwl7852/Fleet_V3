@@ -129,7 +129,14 @@ const ART_FELTER = {
   andet:           [...APP_FELTER],
 
   /* ---- Udgiftsregistreringer ----------------------------------------- */
-  braendstof:      [FELT.kmStand, FELT.liter, FELT.adBlueLiter, FELT.prisPrLiterOere],
+  /* ⚠ V1-BRUGERTEST "BRÆNDSTOFMATCH" — `prisPrLiterOere` STOD HER OG ER
+     FJERNET FRA FORMULARET. Den faktiske pris er leverandørfakturaens, ikke
+     chaufførens gæt fra standeren, og matchmotoren bruger den aldrig — kun
+     `koeretoejId` + `dato` + `liter`. Feltet selv (og dets validering i
+     firebase.rules.json) er BEVARET for historiske poster; kun formularen
+     og dermed NYE poster har mistet det. Se rules.json's egen note ved
+     `prisPrLiterOere` og Indberetning.jsx. */
+  braendstof:      [FELT.kmStand, FELT.liter, FELT.adBlueLiter],
   /* ⚠ DE TRE HAR INTET EGET FELT — beløbet står i `omkostningOere`, som
      noden allerede bar. Et `beloebOere` ved siden af ville være det samme tal
      to steder, og så skulle hver rapport vælge hvilket. */

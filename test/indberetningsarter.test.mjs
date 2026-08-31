@@ -66,6 +66,19 @@ describe("Kataloget har to klasser", () => {
   });
 
   /**
+   * ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §1 — INGEN PRIS I FORMULARET.
+   * `prisPrLiterOere` findes stadig som FELT (bagudkompatibilitet med gamle
+   * poster, se rules.indberetninger.test.mjs), men braendstof må ikke bære
+   * det i sit eget feltskema længere — det er netop det felt kravet bad om
+   * at fjerne fra chaufførens formular, og formularen viser kun felter
+   * `felterFor("braendstof")` nævner.
+   */
+  it("⚠ BRAENDSTOF HAR IKKE prisPrLiterOere I SIT FELTSKEMA", () => {
+    assert.deepEqual(felterFor("braendstof"), [FELT.kmStand, FELT.liter, FELT.adBlueLiter]);
+    assert.ok(!harFelt("braendstof", FELT.prisPrLiterOere));
+  });
+
+  /**
    * ⚠ `andet` ER EN DRIFTSHÆNDELSE. En chauffør der ikke kan sætte navn på det
    * han ser, har set noget der skal VURDERES. Var den en udgift, ville "jeg
    * ved ikke hvad det er" ende som en post ingen kigger på igen.

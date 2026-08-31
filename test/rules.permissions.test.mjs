@@ -258,10 +258,16 @@ describe("ukendte og manglende permissions fejler lukket", () => {
 
 describe("rolle-presets giver samme adgang som før", () => {
   it("chaufføren må indberette, men ikke skrive kunder", async () => {
+    /* ⚠ ART ER "parkering", IKKE "braendstof". Denne prøve handler om
+       ROLLE-permissionen, ikke om tankningens felter — og tillægskravet
+       "Brændstofmatch" gjorde koeretoejId/dato/liter obligatoriske netop
+       for braendstof (se rules.indberetninger.test.mjs). "parkering" er
+       samme udgiftsklasse (intet forloeb-krav) uden det ekstra feltkrav,
+       så prøven her stadig kun tester det den hedder. */
     const db = somRolle("uid-ch", "chauffoer");
     await assertSucceeds(
       set(ref(db, sti("indberetninger", "egen")), {
-        art: "braendstof", forloeb: "ny", kmStand: 184320,
+        art: "parkering", forloeb: "ny", kmStand: 184320,
         oprettetAf: "uid-ch", oprettetMs: 1786000000000,
       })
     );
@@ -270,15 +276,16 @@ describe("rolle-presets giver samme adgang som før", () => {
   });
 
   it("chaufføren må ikke rette en andens indberetning — admin må", async () => {
+    /* Se noten i prøven ovenfor — samme grund til "parkering" her. */
     const ch = somRolle("uid-ch2", "chauffoer");
     await assertFails(set(ref(ch, sti("indberetninger", "andres")), {
-      art: "braendstof", forloeb: "ny", kmStand: 999,
+      art: "parkering", forloeb: "ny", kmStand: 999,
       oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
 
     const adm = somRolle("uid-adm", "admin");
     await assertSucceeds(set(ref(adm, sti("indberetninger", "andres")), {
-      art: "braendstof", forloeb: "ny", kmStand: 999,
+      art: "parkering", forloeb: "ny", kmStand: 999,
       oprettetAf: "enAnden", oprettetMs: 1786000000000,
     }));
   });

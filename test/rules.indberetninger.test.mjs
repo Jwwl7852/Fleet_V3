@@ -151,6 +151,69 @@ describe("indberetningen", () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════
+   ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §1/§2/§8 — koeretoejId, dato og liter er
+   OBLIGATORISKE for braendstof, og kun for braendstof. Det er præcis de tre
+   felter matchmotoren (endnu ubygget) skal bruge — aldrig pris, aldrig
+   foto. Se firebase.rules.json's egen note ved indberetninger.$id.validate.
+   ══════════════════════════════════════════════════════════════════════ */
+describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () => {
+  const SKRIVER = [PERM.indberetningerSkriv];
+  const TANKNING = (o = {}) => ({
+    art: "braendstof", oprettetAf: "u-tank", oprettetMs: 1786912716050,
+    koeretoejId: KT, dato: "2026-08-31", liter: 58.4,
+    ...o,
+  });
+
+  it("en fuldt udfyldt tankning tages", async () => {
+    await assertSucceeds(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-ok")),
+      TANKNING()));
+  });
+
+  it("⚠ UDEN koeretoejId AFVISES", async () => {
+    const uden = TANKNING();
+    delete uden.koeretoejId;
+    await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-enhed")),
+      uden));
+  });
+
+  it("⚠ UDEN dato AFVISES", async () => {
+    const uden = TANKNING();
+    delete uden.dato;
+    await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-dato")),
+      uden));
+  });
+
+  it("⚠ UDEN liter AFVISES", async () => {
+    const uden = TANKNING();
+    delete uden.liter;
+    await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-liter")),
+      uden));
+  });
+
+  it("⚠ EN DATO DER IKKE ER ISO (åååå-mm-dd) AFVISES", async () => {
+    await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-forkert-dato")),
+      TANKNING({ dato: "31-08-2026" })));
+  });
+
+  it("prisPrLiterOere er stadig et gyldigt (men VALGFRIT) felt — bagudkompatibilitet", async () => {
+    /* Formularen tilbyder det ikke længere (Indberetning.jsx), men gamle
+       poster har det, og feltets egen validering er ikke fjernet fra
+       reglerne — kun kravet om at det skal udfyldes er der aldrig kommet. */
+    await assertSucceeds(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-med-pris")),
+      TANKNING({ prisPrLiterOere: 1395 })));
+  });
+
+  it("kravet gælder KUN braendstof — en anden art har hverken dato eller liter", async () => {
+    /* Regressionsvagt: den nye betingelse må ikke ved en fejl ramme alle
+       arter. POST() (koeretoejsskade) har hverken dato eller liter, og den
+       allerede eksisterende "tager en fuldt udfyldt post"-prøve ovenfor
+       beviser det samme — denne gør det eksplicit for netop dette krav. */
+    await assertSucceeds(set(ref(medPerms("u6", SKRIVER), sti("indberetninger/ikke-tank")),
+      POST({ oprettetAf: "u6" })));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
    Satellitten — og underskriften der kun skrives én gang
    ══════════════════════════════════════════════════════════════════════ */
 describe("sensitive/indberetninger", () => {

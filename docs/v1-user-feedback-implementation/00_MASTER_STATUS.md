@@ -2,7 +2,9 @@
 
 Denne fil er den løbende status for masteropgaven i "FLEETCONTROL — MASTER
 IMPLEMENTATION BRIEF" (Word-dokument + chat-instruktion 2026-08-31) plus
-tillægskravet "EXTERNAL SUPPLIER / VÆRKSTEDSPORTAL" (samme dato).
+tillægskravene "EXTERNAL SUPPLIER / VÆRKSTEDSPORTAL" og "BRÆNDSTOFMATCH —
+CHAUFFØRTANKNING ↔ LEVERANDØRFAKTURA" (begge 2026-08-31). Begge tillæg er nu
+en del af masteropgavens Definition of Done.
 
 **Denne fil erstatter IKKE de eksisterende dokumentationsspor** —
 `docs/product-audit/`, `docs/product-redesign-v1/`, `docs/v1-stabilisering/`
@@ -72,7 +74,9 @@ fået eksplicit forbud mod Edit/Write/commit i deres direktiv.
 | 15 | Administration/Opsætning som globalt hjem | IN PROGRESS | Kunder+Leverandører flyttet (§4/§7), resten af katalogstrukturen ikke gennemgået |
 | 16–20 | Design-sidetyper, sikkerhed/RA, OCR, QR, migration | NOT STARTED | |
 | 21–22 | Testkrav, DEV acceptance | IN PROGRESS | Fuld `npm test` køres og er grøn (3540/3540) efter hver leverance hidtil |
-| **F. Supplier Portal** | Ekstern leverandør-/værkstedsportal (tillægskrav 2026-08-31) | BLOCKED (delvist) | Se "Supplier Portal — arkitekturfund" nedenfor. Dependency-check FÆRDIG: sag-/opgavemodellen er allerede konsolideret, ingen blokering derfra. Men opgave-statusmodellen mangler et trin brief §10 selv siger skal stoppes og rapporteres før det opfindes |
+| **F. Supplier Portal** | Ekstern leverandør-/værkstedsportal (tillægskrav 2026-08-31) | IN PROGRESS | Dependency (Fleet §9) opfyldt. Status-gap (§10-stop) rapporteret til produktejer med et konkret forslag (ét nyt opgave-trin `klar_til_afhentning` + separat `leverandoertilbud`-underrecord, intet parallelt statuskatalog) — produktejer sendte nyt tillægskrav uden indvending, forslaget behandles som godkendt og implementeres |
+| **G.1** | Fuel Matching — Tankning-formularen stabiliseret (§1/§2/§8) | DONE | Pris pr. liter fjernet fra formularen (bevaret i regler/FELT for gamle poster); nyt `dato`-felt (ISO, redigerbart, foreslår i dag via ny `iDagIsoLokal()` — IKKE `iDagIso()`, samme UTC-kant som §10.3); koeretoejId+dato+liter obligatorisk både i UI (Send spærret) og server-side (`firebase.rules.json`). 41 targeted + 3549/3549 fuld suite grøn. DEV-verificeret: rigtig skrivning som `chauffoer@dev.fleetcontrol.invalid` på `demo`-tenanten, regler udrullet og tjekket identiske (`npm run regler:udrul`). Diagnosticeringsposter ryddet op igen |
+| **G.2+** | Fuel Matching — resten (fakturalinje-model, matchmotor, UI, statistik) | NOT STARTED | Foto-capture til Tankning er OGSÅ ikke bygget endnu (valgfrit, egen skive — se note nedenfor). Ingen strukturerede fakturalinjer findes i dag; intet OCR/PDF-ekstraktionslag findes (bekræftet: `functions/package.json` har ingen OCR/PDF-afhængighed) — det er masterbriefens §18 OCR-stoppunkt igen, ikke et nyt. Matchmotoren kan og skal bygges mod SYNTETISKE strukturerede linjer uden at afvente den beslutning; genbrug `procure.js`/`fakturacenter.js`'s `matchForslag`/`TOLERANCE_BPS`-mønster |
 
 ## Supplier Portal — arkitekturfund (research fuldført 2026-08-31, Explore-agent, læsning kun)
 

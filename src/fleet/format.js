@@ -153,6 +153,33 @@ export function isoPlusDage(iso, dage) {
   return `${y}-${m}-${dd}`;
 }
 
+/**
+ * ⚠ V1-BRUGERTEST "BRÆNDSTOFMATCH" — EN "I DAG" DER IKKE ARVER `iDagIso()`s
+ * UTC-KANT.
+ *
+ * `iDagIso()` er `.toISOString().slice(0,10)` — samme kilde som §10.3's
+ * fejl (se `isoPlusDage()` ovenfor), her bare på "nu" i stedet for en flyttet
+ * dato: i Danmark, mellem lokal midnat og UTC-døgnskiftet (00–02 om
+ * sommeren), skriver den GÅRSDAGENS dato. Den brede rettelse af `iDagIso()`
+ * selv er UDE AF SCOPE HER — den bruges mange steder, og hvert kaldested
+ * fortjener sin egen efterprøvning, ikke en fælles ændring der ikke er
+ * gennemtjekket alle vegne. Se noten ved §10.3-commit'et.
+ *
+ * Men Tankningens nye dato-felt er NY kode, og et brændstofmatch der
+ * afhænger PRÆCIST af enhed+dato+liter kan ikke bygges oven på en dato der
+ * er forkert de første par timer af dagen. Denne funktion bruger derfor
+ * samme LOKALE greb som `isoPlusDage()` — ingen `toISOString()` — og er det
+ * eneste sted "i dag" skal slås op fra nu af. Rør ikke `iDagIso()`; brug
+ * denne i stedet, hvor "i dag" skal være dagens dato i BRUGERENS tidszone.
+ */
+export const iDagIsoLokal = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+};
+
 /** Filstørrelse. Hører her og ikke i et modul, af samme grund som alt andet
  *  i filen: ellers bliver det 180 kB ét sted og 0,18 MB et andet. */
 export const filstoerrelse = (bytes) => {

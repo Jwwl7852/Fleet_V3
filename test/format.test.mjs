@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { num, pct, km, kr, INTET , deviation, isoPlusDage } from "../src/fleet/format.js";
+import { num, pct, km, kr, INTET , deviation, isoPlusDage, iDagIsoLokal } from "../src/fleet/format.js";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ ET TAL DER IKKE ER BEREGNET, ER IKKE NUL
@@ -144,4 +144,18 @@ test("\u26a0 DEN FUNDNE FEJL, GENSKABT: msTilIso(d.getTime()) p\u00e5 en LOKAL m
 
   // isoPlusDage rammer den rigtige dato med samme udgangspunkt:
   assert.equal(isoPlusDage("2026-08-31", 1), "2026-09-01");
+});
+
+/* ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" — iDagIsoLokal() SKAL SVARE SOM `new Date()`s
+   EGNE LOKALE FELTER, ALDRIG SOM toISOString(). Prøven bygger den forventede
+   dato med PRÆCIS den samme (lokale) metode iDagIsoLokal() selv bruger — ikke
+   fordi det beviser noget om koden, men fordi en uafhængig anden udregning
+   (fx `new Date().toISOString().slice(0,10)`) ville være `iDagIso()`s formel,
+   og en prøve der sammenligner med DEN, ville fejle netop de timer hvor
+   forskellen betyder noget. */
+test("iDagIsoLokal svarer med dagens dato i lokal tid, ikke UTC", () => {
+  const nu = new Date();
+  const forventet = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-${String(nu.getDate()).padStart(2, "0")}`;
+  assert.equal(iDagIsoLokal(), forventet);
+  assert.match(iDagIsoLokal(), /^\d{4}-\d{2}-\d{2}$/);
 });

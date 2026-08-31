@@ -31,7 +31,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit-regler.js";
-import { dato, kr, num, oereFraKroner } from "../../fleet/format.js";
+import { dato, kr, num, oereFraKroner, iDagIsoLokal } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
   APP_FLISER, HAENDELSE_ART, FELT, FORLOEB, harFelt, erUdgift, arterForFlise,
@@ -48,11 +48,15 @@ import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
  * felter hver art har, ville være det andet sted svaret stod — og den ville
  * love felter noden ikke tager imod. Se `harFelt()`.
  */
+/* ⚠ V1-BRUGERTEST "BRÆNDSTOFMATCH" — INTET "PRIS PR. LITER" HER MERE.
+   Feltet er væk fra `felterFor("braendstof")` (indberetninger.js), så
+   `PAA_TELEFON.filter(f => harFelt(art, f))` nedenfor viser det aldrig
+   længere — chaufføren skal kun kunne taste noget der GØR matchet muligt
+   (enhed, dato, liter), ikke noget der GÆTTER på fakturaens pris. */
 const SPOERGSMAAL = {
   [FELT.kmStand]:         { label: "Kilometerstand", type: "number", enhed: "km" },
   [FELT.liter]:           { label: "Liter", type: "number", enhed: "l" },
   [FELT.adBlueLiter]:     { label: "AdBlue", type: "number", enhed: "l" },
-  [FELT.prisPrLiterOere]: { label: "Pris pr. liter", type: "number", enhed: "kr", oere: true },
   [FELT.skadeBeskrivelse]: { label: "Hvad skete der?", type: "tekst" },
   [FELT.modpart]:         { label: "Modpart", type: "tekst" },
 };
@@ -121,6 +125,7 @@ export default function AppIndberetning() {
   }
 
   async function send() {
+    if (braendstofManglerFelt) return; // knappen er spærret, men send() kaldes kun herfra
     setFejl(null);
     const id = nyId("ind");
     const nu = Date.now();
@@ -137,6 +142,10 @@ export default function AppIndberetning() {
       ...(svar.koeretoejId ? { koeretoejId: svar.koeretoejId } : {}),
       ...(svar.beskrivelse?.trim() ? { beskrivelse: svar.beskrivelse.trim() } : {}),
       ...(Number.isFinite(svar.omkostningOere) ? { omkostningOere: svar.omkostningOere } : {}),
+      /* ⚠ TANKNINGENS DATO, IKKE `oprettetMs`. Falder tilbage til samme
+         standard som inputtet viste, hvis han aldrig rørte feltet — de to
+         skal aldrig kunne komme ud af sync. */
+      ...(art === "braendstof" ? { dato: svar.dato || iDagIsoLokal() } : {}),
     };
     for (const f of PAA_TELEFON) {
       if (!harFelt(art, f)) continue;
@@ -194,6 +203,12 @@ export default function AppIndberetning() {
     const n = Number(String(v).replace(/[\s.]/g, "").replace(",", "."));
     return Number.isFinite(n) ? n : null;
   };
+
+  /* ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §8/§23 — SAMME TRE FELTER SOM MATCHET.
+     Datoen falder altid tilbage til `iDagIsoLokal()` (se dato-inputtets
+     `value` ovenfor), så den tæller aldrig som manglende her. */
+  const braendstofManglerFelt = art === "braendstof"
+    && (!svar.koeretoejId || !(Number(svar.liter) > 0));
 
   return (
     <div className="fc-app-tur">
@@ -332,6 +347,24 @@ export default function AppIndberetning() {
             </label>
           )}
 
+          {/* ⚠ V1-BRUGERTEST "BRÆNDSTOFMATCH" — DATOEN ER TANKNINGENS, IKKE
+              OPRETTELSENS. `oprettetMs` sættes stadig automatisk til nu (det
+              er "hvornår han skrev", ikke "hvornår han tankede") — men en
+              tankning registreres ofte senere, og matchmotoren skal kunne
+              stole på DENNE dato, ikke på hvornår telefonen havde dækning.
+              Foreslås som i dag (`iDagIsoLokal()` — ikke `iDagIso()`, se
+              dens egen note i format.js), men kan ændres. Kun braendstof:
+              §2 i tillægskravet scoper det dertil, ingen anden art har
+              endnu et krav om det. */}
+          {art === "braendstof" && (
+            <label className="fc-app-felt">
+              <span>Dato</span>
+              <input className="fc-ctl" type="date"
+                value={svar.dato || iDagIsoLokal()}
+                onChange={(e) => saet("dato", e.target.value || undefined)} />
+            </label>
+          )}
+
           {PAA_TELEFON.filter((f) => harFelt(art, f)).map((f) => {
             const s = SPOERGSMAAL[f];
             return (
@@ -383,9 +416,21 @@ export default function AppIndberetning() {
               onChange={(e) => saet("beskrivelse", e.target.value)} />
           </label>
 
+          {/* ⚠ ENHED + DATO + LITER ER OBLIGATORISKE FOR BRÆNDSTOF — det er
+              præcis de tre felter matchet bygger på (tillægskrav §8), og
+              reglen håndhæver det samme krav server-side (se rules.json's
+              `.validate` for indberetninger). Datoen mangler aldrig reelt
+              (inputtet viser altid mindst dagens dato), men koeretoejId og
+              liter kan sagtens stå tomme, og en afvist skrivning uden en
+              forklaring HER ville bare vise fejlteksten fra serveren efter
+              et klik i stedet for før. */}
+          {braendstofManglerFelt && (
+            <p className="fc-hint">Vælg enhed og indtast liter for at kunne registrere tankningen.</p>
+          )}
+
           <div className="fc-app-knapper">
             <button type="button" className="fc-btn fc-btn-primaer fc-app-knap"
-              disabled={gemmer} onClick={send}>
+              disabled={gemmer || braendstofManglerFelt} onClick={send}>
               {gemmer ? "Sender …" : "Send"}
             </button>
             <button type="button" className="fc-btn fc-app-knap" onClick={fortryd}>

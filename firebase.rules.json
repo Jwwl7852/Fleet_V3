@@ -2177,7 +2177,17 @@
             // vi ikke kender, et forloeb der ikke findes, en omkostning som
             // streng. Og chauffoerer SKRIVER til den: det er den ene node
             // hvor den mindst betroede rolle opretter poster.
-            ".validate": "newData.hasChildren(['art', 'oprettetAf', 'oprettetMs']) && (newData.child('art').val().matches(/^(braendstof|parkering|truckwash|kvittering)$/) || newData.hasChildren(['forloeb']))",
+            //
+            // ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §1/§8 — braendstof kræver NU
+            // ogsaa koeretoejId, dato og liter. Det er praecis de tre felter
+            // matchmotoren bygger paa (enhed + dato + liter, ALDRIG pris
+            // eller foto), og kravet haandhaeves her, ikke kun i skaermen —
+            // Indberetning.jsx spaerrer allerede Send-knappen paa samme tre
+            // felter, men en klientkontrol alene ville foer eller siden lade
+            // en ufuldstaendig tankning igennem. Aeldre poster (fra foer
+            // dette krav) er UROERTE: reglen gaelder kun NYE skrivninger,
+            // ikke data der allerede staar.
+            ".validate": "newData.hasChildren(['art', 'oprettetAf', 'oprettetMs']) && (newData.child('art').val().matches(/^(braendstof|parkering|truckwash|kvittering)$/) || newData.hasChildren(['forloeb'])) && (newData.child('art').val() !== 'braendstof' || newData.hasChildren(['koeretoejId', 'dato', 'liter']))",
 
             "division": { ".validate": false },
 
@@ -2258,7 +2268,19 @@
             "kmStand": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "liter": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "adBlueLiter": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            // ⚠ BEVARET FOR HISTORISKE POSTER — tillægskrav "Brændstofmatch"
+            // fjernede feltet fra Indberetning.jsx (ny data faar det ikke
+            // laengere), men gamle poster skal stadig kunne LÆSES og (hvis
+            // en anden af deres felter rettes) stadig kunne SKRIVES uden at
+            // et felt de allerede bar, pludselig blev ulovligt.
             "prisPrLiterOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+            // ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §1/§2/§8 — TANKNINGENS DATO,
+            // IKKE `oprettetMs`. Den er det PRIMAERE matchsignal sammen med
+            // koeretoejId og liter, saa den skal kunne raettes til den dag
+            // tankningen reelt skete, uafhaengigt af hvornaar chaufføren fik
+            // registreret den. ISO-dato som streng, samme format som resten
+            // af appen (`format.js`'s `iDagIsoLokal()`/`isoPlusDage()`).
+            "dato": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
 
             "tidsregistrering": {
               "ankomstMs": { ".validate": "newData.isNumber()" },
