@@ -131,6 +131,33 @@ export function isoTilMs(iso) {
 export const msTilIso = (ms) =>
   Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : iDagIso();
 
+/**
+ * V1-BRUGERTEST §10.3 — "pilene fungerer ikke som de skal."
+ *
+ * ⚠ DEN FUNDNE FEJL: at bygge en LOKAL midnat med `new Date(år, md, dag)`,
+ * lægge en dag til med `setDate()`, og læse resultatet af med `msTilIso()`
+ * (som er `.toISOString()`, altså UTC) er en tavs fejl i enhver tidszone
+ * FORAN UTC — herunder Danmark. Lokal midnat er stadig GÅRSDAGENS dato i
+ * UTC (kl. 22 eller 23), så `.toISOString().slice(0,10)` giver datoen FØR
+ * den man lige har trykket sig hen til. Turplanens højrepil gav derfor
+ * samme dato igen — ikke en krasch, bare intet der skete.
+ *
+ * Rettelsen ankrer i MIDDAG via `isoTilMs()` (samme greb som den funktion
+ * allerede bruger, og af samme grund — middag er aldrig i nærheden af et
+ * UTC-døgnskifte, uanset tidszone), og læser resultatet af i LOKALE felter
+ * (`getFullYear/getMonth/getDate`), aldrig med `toISOString()`. Brug denne
+ * — ikke `msTilIso(d.getTime())` — når en dato-pil skal flytte en ISO-
+ * datostreng et helt antal dage.
+ */
+export function isoPlusDage(iso, dage) {
+  const d = new Date(isoTilMs(iso));
+  d.setDate(d.getDate() + dage);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
 /** Filstørrelse. Hører her og ikke i et modul, af samme grund som alt andet
  *  i filen: ellers bliver det 180 kB ét sted og 0,18 MB et andet. */
 export const filstoerrelse = (bytes) => {

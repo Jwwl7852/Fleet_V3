@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { num, pct, km, kr, INTET , deviation } from "../src/fleet/format.js";
+import { num, pct, km, kr, INTET , deviation, isoPlusDage } from "../src/fleet/format.js";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ ET TAL DER IKKE ER BEREGNET, ER IKKE NUL
@@ -106,4 +106,42 @@ test("INTET er ét tegn, ikke to bindestreger", () => {
      minus. */
   assert.equal(INTET.length, 1);
   assert.equal(INTET, "\u2014");
+});
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   \u26a0 V1-BRUGERTEST \u00a710.3 \u2014 TURPLANENS DATO-PILE. Se noten ved isoPlusDage()
+   i format.js. Pr\u00f8ven k\u00f8rer i lokal tidszone (samme foruds\u00e6tning som
+   fravaer.test.mjs's sommertidspr\u00f8ver) \u2014 i Danmark, hvor lokal tid altid
+   ligger FORAN UTC, er det netop d\u00e9t der udl\u00f8ser fejlen.
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+test("isoPlusDage flytter pr\u00e6cis \u00e9n kalenderdag frem og tilbage", () => {
+  assert.equal(isoPlusDage("2026-08-31", 1), "2026-09-01");
+  assert.equal(isoPlusDage("2026-09-01", -1), "2026-08-31");
+  assert.equal(isoPlusDage("2026-08-31", 7), "2026-09-07");
+});
+
+test("\u26a0 M\u00c5NEDSSKIFTE OG SKUD\u00c5R \u2014 samme greb som varighedDage, bygget med Date", () => {
+  assert.equal(isoPlusDage("2026-12-31", 1), "2027-01-01");
+  assert.equal(isoPlusDage("2024-02-28", 1), "2024-02-29", "2024 er skud\u00e5r");
+  assert.equal(isoPlusDage("2025-02-28", 1), "2025-03-01", "2025 er ikke skud\u00e5r");
+});
+
+test("\u26a0 DEN FUNDNE FEJL, GENSKABT: msTilIso(d.getTime()) p\u00e5 en LOKAL midnat giver G\u00c5RSDAGENS dato", () => {
+  /* Dette er den PR\u00c6CISE fejl Turplan.jsx havde, genskabt her for at bevise
+     at den var reel \u2014 ikke en formodning. Fejler denne pr\u00f8ve en dag fordi
+     nogen k\u00f8rer den i UTC, er det selve pointen: i UTC opst\u00e5r fejlen ikke,
+     og det er derfor den er s\u00e5 sv\u00e6r at f\u00e5 \u00f8je p\u00e5 uden at kende brugerens
+     tidszone. */
+  const lokalOffsetMinutter = new Date("2026-08-31T00:00:00").getTimezoneOffset();
+  if (lokalOffsetMinutter >= 0) return; // ikke reproducerbar i UTC eller bagved UTC
+
+  const fraDag = new Date(2026, 7, 31).setHours(0, 0, 0, 0); // lokal midnat, 31. august
+  const d = new Date(fraDag);
+  d.setDate(d.getDate() + 1); // "flyt \u00e9n dag frem" \u2014 lokal midnat, 1. september
+  const gammelBeregning = new Date(d.getTime()).toISOString().slice(0, 10);
+  assert.equal(gammelBeregning, "2026-08-31",
+    "den gamle msTilIso(d.getTime())-vej skulle netop IKKE flytte datoen \u2014 det var fejlen");
+
+  // isoPlusDage rammer den rigtige dato med samme udgangspunkt:
+  assert.equal(isoPlusDage("2026-08-31", 1), "2026-09-01");
 });

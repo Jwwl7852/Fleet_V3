@@ -34,7 +34,7 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { kaldFunktion } from "../../firebase.js";
-import { klokke, num, msTilIso } from "../../fleet/format.js";
+import { klokke, num, msTilIso, isoPlusDage } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
   HAENDELSE, planlagteStop, meldingerFor, foreslaaedeMeldinger,
@@ -176,10 +176,12 @@ export default function Turplan() {
     }
   }
 
+  /* ⚠ V1-BRUGERTEST §10.3 — dette var `d.setDate()` fra `fraDag` (lokal
+     midnat) læst tilbage med `msTilIso()` (UTC), som i Danmark systematisk
+     gav GÅRSDAGENS dato — pilen så ud til ikke at virke. Se isoPlusDage()
+     i format.js. */
   function flytDag(retning) {
-    const d = new Date(fraDag);
-    d.setDate(d.getDate() + retning);
-    setDagIso(msTilIso(d.getTime()));
+    setDagIso(isoPlusDage(dagIso, retning));
   }
 
   if (brugerListe.henter || etapeListe.henter) {
