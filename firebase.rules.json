@@ -2031,6 +2031,46 @@
               }
             },
 
+            // ══════════════════════════════════════════════════════════
+            // ⚠ F.2 — OPGAVEDOKUMENTER. SAMME FUNDAMENT SOM FAKTURABILAG
+            // (Skive 4C, "dokumenter" under fakturaer/$fakturaId ovenfor) —
+            // en søster-node, ikke en genbrugt sti, fordi de to forældre
+            // (faktura/opgave) hver har deres egen wildcard-nøgle ($fakturaId
+            // vs. $opgaveId) og RTDB ikke kan dele en .validate-blok på
+            // tværs af to forskellige forældrenoder. Kun opgaveDokument*
+            // (Admin SDK) skriver her; ".write: false" på opgaver/$opgaveId
+            // kaskaderer, som resten af noden.
+            //
+            // ⚠ storagePath ER LÅST TIL DEN ENE KANONISKE STI — samme
+            // stiForDokument() som fakturabilagene, se dens hoved i
+            // dokumenter.js.
+            //
+            // ⚠ synligForLeverandoer ER DEN EKSPLICITTE DELINGSBESLUTNING —
+            // se OPGAVEDOKUMENTER-sektionen i functions/index.js. Standard
+            // er false (sat af opgaveDokumentUploadInitier); kun
+            // opgaveDokumentSynlighedSaet kan ændre den, og kun mens
+            // dokumentet er "aktiv".
+            "dokumenter": {
+              "$dokumentId": {
+                ".validate": "newData.hasChildren(['dokumentId', 'parentType', 'opgaveId', 'originaltFilnavn', 'valideretMime', 'stoerrelse', 'storagePath', 'uploader', 'oprettetTid', 'status'])",
+                "dokumentId": { ".validate": "newData.isString() && newData.val() === $dokumentId" },
+                "parentType": { ".validate": "newData.isString() && newData.val() === 'opgave'" },
+                "opgaveId": { ".validate": "newData.isString() && newData.val() === $opgaveId" },
+                "originaltFilnavn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+                "valideretMime": { ".validate": "newData.isString() && newData.val().matches(/^(application\\/pdf|image\\/jpeg|image\\/png)$/)" },
+                "stoerrelse": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 26214400" },
+                "storagePath": { ".validate": "newData.isString() && newData.val() === ('tenants/' + $tenantId + '/opgaver/' + $opgaveId + '/dokumenter/' + $dokumentId)" },
+                "uploader": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "oprettetTid": { ".validate": "newData.isNumber()" },
+                "status": { ".validate": "newData.isString() && newData.val().matches(/^(karantaene|aktiv|afvist|deaktiveret)$/)" },
+                "afvistGrund": { ".validate": "newData.isString() && newData.val().length <= 250" },
+                "deaktiveretAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+                "deaktiveretMs": { ".validate": "newData.isNumber()" },
+                "synligForLeverandoer": { ".validate": "newData.isBoolean()" },
+                "$andet": { ".validate": false }
+              }
+            },
+
             "$andet": { ".validate": false }
           }
         },
@@ -3381,6 +3421,17 @@
         "dokumentkvote": {
           "fakturaBilag": {
             ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|fakturaer.laes|')",
+            ".write": false,
+            "brugtBytes": { ".validate": "newData.isNumber() && newData.val() >= 0" }
+          },
+          // ⚠ F.2 — EGEN, UAFHÆNGIG 2 GB-KVOTE FOR OPGAVEDOKUMENTER. Se
+          // OPGAVEDOKUMENTER-sektionen i functions/index.js for hvorfor den
+          // ikke deler tælleren med fakturaBilag. INGEN EKSTRA PERM her,
+          // modsat naboen: `opgaver` selv kræver ingen `.laes`-permission
+          // (kun tenant+aktivt abonnement), og kvoten arver præcis den
+          // samme, brede adgang.
+          "opgaveBilag": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv')",
             ".write": false,
             "brugtBytes": { ".validate": "newData.isNumber() && newData.val() >= 0" }
           }

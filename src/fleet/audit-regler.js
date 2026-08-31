@@ -60,6 +60,10 @@ export const LOGBARE_FELTER = new Set([
   // tilstand og status
   "tilstand", "status", "aftalestatus", "aktiv", "annulleret", "slettet",
   "harAabneEtaper",
+  /* ⚠ F.2 — synligForLeverandoer. Samme klasse som aktiv/annulleret
+     ovenfor: en boolean der afgør om en EKSTERN part kan se noget, er
+     præcis den slags skift en efterprøvning ville spørge om. */
+  "synligForLeverandoer",
   /* ⚠ forloeb — SKIVE 3B. Indberetningens eget statsmaskineri (FORLOEB i
      indberetninger.js). Uden feltet kunne loggen fortælle AT en indberetning
      blev triageret, men ikke fra "ny" til "vurderet" — samme begrundelse som
@@ -115,6 +119,12 @@ export const LOGBARE_FELTER = new Set([
      `originaltFilnavn` er DERIMOD fritekst fra en bruger og står bevidst
      IKKE her, samme skel som sagsnummer/beskrivelse andre steder. */
   "fakturaId", "valideretMime", "stoerrelse",
+  /* ⚠ F.2 — opgaveId. Samme kontrollerede-reference-klasse som fakturaId
+     ovenfor: opgaveDokument-posterne bærer den, og uden feltet her kunne
+     loggen sige AT et dokument blev uploadet/delt, men ikke PÅ HVILKEN
+     opgave. `originaltFilnavn` er stadig bevidst UDE, samme grund som på
+     fakturabilagene. */
+  "opgaveId",
 ]);
 
 /* ---- Retention ------------------------------------------------------ */

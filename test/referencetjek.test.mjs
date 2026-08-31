@@ -105,6 +105,17 @@ const UDEN_TJEK = {
   "fakturaer/$fakturaId/dokumenter/$dokumentId/fakturaId":
     "lig $fakturaId, ikke en fremmed reference. dokumentUploadInitier har "
     + "allerede hentet og verificeret fakturaen før dokumentet skrives.",
+  /* ⚠ F.2 — SAMME FIGUR, EN SØSTER-NODE. opgaver/$opgaveId/dokumenter/
+     $dokumentId er det samme mønster igen, under en anden forælder:
+     dokumentId og opgaveId er begge låst til deres eget path-wildcard, og
+     opgaveDokumentUploadInitier har allerede hentet og verificeret opgaven
+     før dokumentet skrives — samme "fetch and verify"-vej som fakturaen. */
+  "opgaver/$opgaveId/dokumenter/$dokumentId/dokumentId":
+    "lig $dokumentId, ikke en fremmed reference. `dokumenter` er `.write: "
+    + "false`; opgaveDokumentUploadInitier bygger id'et af sit eget push()-kald.",
+  "opgaver/$opgaveId/dokumenter/$dokumentId/opgaveId":
+    "lig $opgaveId, ikke en fremmed reference. opgaveDokumentUploadInitier "
+    + "har allerede hentet og verificeret opgaven før dokumentet skrives.",
 
   /* ---- Feltet peger slet ikke på en post ------------------------------- */
   "statushaendelser/$etapeId/$meldingId/klientId":

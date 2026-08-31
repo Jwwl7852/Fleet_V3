@@ -1,5 +1,5 @@
 /* test/storage.rules.test.mjs
- * storage.rules — Skive 4C. Fakturabilag.
+ * storage.rules — Skive 4C (fakturabilag) og F.2 (opgavedokumenter).
  *
  * ⚠ HVORFOR RESULTATET ER "AFVIST" I HVER ENESTE PRØVE, OG DET ER MENINGEN.
  * Al reel adgang går gennem fire Cloud Functions, som udsteder kortlivede
@@ -43,6 +43,9 @@ const somMed = (uid, perms, tenant = T) =>
 
 const dokPath = (tenant, fakturaId, dokumentId) =>
   `tenants/${tenant}/fakturaer/${fakturaId}/dokumenter/${dokumentId}`;
+const opgaveDokPath = (tenant, opgaveId, dokumentId) =>
+  `tenants/${tenant}/opgaver/${opgaveId}/dokumenter/${dokumentId}`;
+const OPGAVE = "op-1";
 
 const NOGLE_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
 
@@ -109,10 +112,63 @@ describe("⚠ TENANT A KAN IKKE FÅ ADGANG TIL TENANT B's STI — heller ikke ud
   });
 });
 
-describe("⚠ INGEN ANDEN STI ER ÅBEN — kun fakturabilag er defineret, og den er lukket", () => {
+describe("⚠ INGEN ANDEN STI ER ÅBEN — kun fakturabilag og opgavedokumenter er defineret, og begge er lukkede", () => {
   it("en helt anden sti i bucket'en er også lukket", async () => {
     const storage = somMed("uid-andensti", ALLE_PERMS);
     const fil = storageRef(storage, "et/andet/sted.pdf");
     await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "application/pdf" }));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   F.2 — SAMME PÅSTAND, SAMME BEGRUNDELSE, FOR opgaver/$opgaveId/dokumenter/
+   $dokumentId. Se filens eget hoved.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe("⚠ F.2 — INGEN DIREKTE KLIENT-SKRIVNING TIL ET OPGAVEDOKUMENT — heller ikke med opgaver.skriv", () => {
+  it("en bruger med opgaver.skriv kan ikke uploade direkte", async () => {
+    const storage = somMed("uid-op-skriv", [PERM.opgaverSkriv]);
+    const fil = storageRef(storage, opgaveDokPath(T, OPGAVE, "do-op-1"));
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "image/jpeg" }));
+  });
+
+  it("heller ikke med alle permissions", async () => {
+    const storage = somMed("uid-op-alt", ALLE_PERMS);
+    const fil = storageRef(storage, opgaveDokPath(T, OPGAVE, "do-op-admin"));
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "image/jpeg" }));
+  });
+
+  it("⚠ MANIPULERET opgaveId/dokumentId ÆNDRER IKKE UDFALDET", async () => {
+    const storage = somMed("uid-op-manipuleret", ALLE_PERMS);
+    const fil = storageRef(storage, opgaveDokPath(T, "op-findes-ikke", "do-opdigtet"));
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "image/jpeg" }));
+  });
+});
+
+describe("⚠ F.2 — INGEN DIREKTE KLIENT-LÆSNING AF ET OPGAVEDOKUMENT — heller ikke uden nogen permission", () => {
+  it("selv uden nogen permission kan opgaver ellers læses — Storage-blobben kan det ikke", async () => {
+    const storage = somMed("uid-op-laes", []);
+    const fil = storageRef(storage, opgaveDokPath(T, OPGAVE, "do-op-1"));
+    await assertFails(getBytes(fil));
+  });
+
+  it("heller ikke med alle permissions", async () => {
+    const storage = somMed("uid-op-laes-alt", ALLE_PERMS);
+    const fil = storageRef(storage, opgaveDokPath(T, OPGAVE, "do-op-1"));
+    await assertFails(getBytes(fil));
+  });
+});
+
+describe("⚠ F.2 — TENANT A KAN IKKE FÅ ADGANG TIL TENANT B's OPGAVEDOKUMENT-STI", () => {
+  it("Tenant A kan ikke skrive i Tenant B's opgavedokument-sti", async () => {
+    const storage = somMed("uid-op-tenant-a", ALLE_PERMS, T);
+    const fil = storageRef(storage, opgaveDokPath(ANDEN_TENANT, OPGAVE, "do-op-1"));
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "image/jpeg" }));
+  });
+
+  it("Tenant A kan ikke læse Tenant B's opgavedokument-sti", async () => {
+    const storage = somMed("uid-op-tenant-a-laes", ALLE_PERMS, T);
+    const fil = storageRef(storage, opgaveDokPath(ANDEN_TENANT, OPGAVE, "do-op-1"));
+    await assertFails(getBytes(fil));
   });
 });

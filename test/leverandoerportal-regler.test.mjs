@@ -101,11 +101,49 @@ describe("leverandoerSynligOpgave", () => {
     };
     const ud = leverandoerSynligOpgave("op-1", raa, KOERETOEJER);
     assert.deepEqual(Object.keys(ud).sort(), [
-      "arbejdstype", "beskrivelse", "id", "koeretoejNavn", "koeretoejRegistrering",
+      "arbejdstype", "beskrivelse", "dokumenter", "id", "koeretoejNavn", "koeretoejRegistrering",
       "prioritet", "startMs", "status", "tilbud",
     ].sort());
     assert.equal(ud.koeretoejNavn, "Bil 104");
     assert.equal(ud.koeretoejRegistrering, "AB 12 345");
+  });
+
+  test("⚠ F.2 — dokumenter FILTRERES PÅ status OG synligForLeverandoer, INGEN storagePath LÆKKER MED", () => {
+    const raa = {
+      koeretoejId: "kt-104", status: "igang",
+      dokumenter: {
+        "do-delt": {
+          status: "aktiv", synligForLeverandoer: true,
+          originaltFilnavn: "skade.jpg", valideretMime: "image/jpeg", stoerrelse: 12345,
+          oprettetTid: 2000, storagePath: "tenants/t1/opgaver/op-1/dokumenter/do-delt", uploader: "uid-1",
+        },
+        "do-ikke-delt": {
+          status: "aktiv", synligForLeverandoer: false,
+          originaltFilnavn: "internt.jpg", valideretMime: "image/jpeg", stoerrelse: 1,
+          oprettetTid: 1000,
+        },
+        "do-karantaene": {
+          status: "karantaene", synligForLeverandoer: true,
+          originaltFilnavn: "endnuIkkeVerificeret.jpg", valideretMime: "image/jpeg", stoerrelse: 1,
+          oprettetTid: 3000,
+        },
+        "do-deaktiveret": {
+          status: "deaktiveret", synligForLeverandoer: true,
+          originaltFilnavn: "fjernet.jpg", valideretMime: "image/jpeg", stoerrelse: 1,
+          oprettetTid: 4000,
+        },
+      },
+    };
+    const ud = leverandoerSynligOpgave("op-1", raa, KOERETOEJER);
+    assert.deepEqual(ud.dokumenter.map((d) => d.id), ["do-delt"]);
+    assert.equal(ud.dokumenter[0].originaltFilnavn, "skade.jpg");
+    assert.deepEqual(Object.keys(ud.dokumenter[0]).sort(),
+      ["id", "originaltFilnavn", "oprettetTid", "stoerrelse", "valideretMime"].sort());
+  });
+
+  test("ingen dokumenter giver en tom liste, ikke undefined", () => {
+    const ud = leverandoerSynligOpgave("op-3", { status: "planlagt" }, {});
+    assert.deepEqual(ud.dokumenter, []);
   });
 
   test("et ukendt eller manglende køretøj giver null-navne, ikke en fejl", () => {

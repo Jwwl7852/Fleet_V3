@@ -154,7 +154,7 @@ import { simulerRetention, RETENTION_KATEGORI, erUndtaget } from "./delt/retenti
    NØJAGTIG samme stiForDokument()/tjekSignatur()/grænser som en fremtidig
    klientkode ville vise. Se dokumenter.js's hoved. */
 import {
-  TILLADT_MIME, MAX_FILSTOERRELSE_BYTES, MAX_TENANT_BYTES,
+  TILLADT_MIME, MAX_FILSTOERRELSE_BYTES, MAX_TENANT_BYTES, PARENT_KOLLEKTION,
   tjekSignatur, stiForDokument, sprængerKvote,
 } from "./delt/dokumenter.js";
 /* ⚠ B2 — ansoegningAfgoer skal prøve mod NØJAGTIG samme
@@ -4664,10 +4664,13 @@ export const opgavestatus = onCall({ region: REGION }, async (req) => {
    arbejdet (tillægskravets §10/§11). Han lukker aldrig den interne sag
    selv.
 
-   ⚠ INGEN DOKUMENTER/FOTOS HER. Den eksisterende sikre dokument-arkitektur
-   (Skive 4C) er hardkodet til parentType "faktura" alene — en udvidelse
-   til opgave-vedhæftede, leverandør-synlige fotos er sin egen, senere
-   security-skive, ikke noget der lappes ind her. Se
+   ⚠ F.2 — DOKUMENTER/FOTOS. `leverandoerDokumentDownloadLink` (nederst i
+   denne sektion) er den ENESTE vej en ekstern bruger kan få et link til en
+   fil — den bruger `kraevLeverandoerGrant()` som alt andet herunder, og
+   verificerer DEREFTER at netop DET dokument er markeret
+   `synligForLeverandoer` OG hænger på en opgave tildelt netop hans
+   leverandoerId. Selve upload/deling sker udelukkende internt — se
+   OPGAVEDOKUMENTER-sektionen ovenfor. Se
    docs/v1-user-feedback-implementation/00_MASTER_STATUS.md.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -5062,6 +5065,63 @@ export const leverandoerPortalBrugere = onCall({ region: REGION }, async (req) =
   }));
 
   return { brugere };
+});
+
+/**
+ * leverandoerDokumentDownloadLink({ tenantId, opgaveId, dokumentId }) → { url, udloeberMs }
+ *
+ * F.2 — den ENESTE vej en ekstern leverandørbruger kan få et link til et
+ * opgave-vedhæftet dokument. Tre uafhængige spærringer, alle server-side:
+ *
+ *   1. kraevLeverandoerGrant() — aktivt grant for netop dette uid+tenantId.
+ *   2. opgave.leverandoerId === leverandoerId — samme "afgørende kontrol"
+ *      som leverandoerTilbudIndsend/leverandoerStatusOpdater bruger; en
+ *      manipuleret opgaveId rammer enten en fremmed leverandørs opgave
+ *      (afvist her) eller findes slet ikke (afvist ovenfor).
+ *   3. dok.status === "aktiv" && dok.synligForLeverandoer === true — et
+ *      dokument nogen internt har uploadet, men IKKE eksplicit delt (se
+ *      OPGAVEDOKUMENTER-sektionen), er usynligt for portalen, uanset at
+ *      opgaven i øvrigt er hans.
+ *
+ * ⚠ SAMME 5-MINUTTERS TTL OG SAMME "LINKET STÅR ALDRIG I AUDITPOSTEN" SOM
+ * dokumentDownloadLink/opgaveDokumentDownloadLink — se de to funktioners
+ * egne noter.
+ */
+export const leverandoerDokumentDownloadLink = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, leverandoerId } = await kraevLeverandoerGrant(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!opgaveId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "opgaveId/dokumentId mangler.");
+  }
+
+  const opgave = (await rod.child(`opgaver/${opgaveId}`).once("value")).val();
+  if (!opgave) throw new HttpsError("not-found", "Opgaven findes ikke.");
+  if (opgave.leverandoerId !== leverandoerId) {
+    throw new HttpsError("permission-denied", "Denne opgave er ikke tildelt din virksomhed.");
+  }
+
+  const dok = (await rod.child(`opgaver/${opgaveId}/dokumenter/${dokumentId}`).once("value")).val();
+  if (!dok) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  if (dok.status !== "aktiv" || dok.synligForLeverandoer !== true) {
+    throw new HttpsError("permission-denied", "Dette dokument er ikke delt med dig.");
+  }
+
+  const TTL_MS = 5 * 60 * 1000;
+  const nu = Date.now();
+  const bucket = getStorage().bucket();
+  const [url] = await bucket.file(dok.storagePath).getSignedUrl({
+    version: "v4", action: "read", expires: nu + TTL_MS,
+  });
+
+  await logProcure(tenantId, uid, AUDIT.laes, "opgaveDokument", dokumentId,
+    null, null, "download-link udstedt til ekstern leverandørbruger");
+
+  return { url, udloeberMs: nu + TTL_MS };
 });
 
 /**
@@ -6216,7 +6276,7 @@ export const fakturastatus = onCall({ region: REGION }, async (req) => {
    ⚠ STIEN ER LÅST (Gate B §1, §9). stiForDokument() bygger den ENE
    kanoniske sti, og firebase.rules.json's storagePath-felt kræver at
    RTDB-posten er enig med den. Originalt filnavn indgår ALDRIG i stien —
-   kun de tre id'er.
+   kun id'erne.
 
    ⚠ SIGNATUR, IKKE CONTENT-TYPE-HEADEREN (Gate B §5). tjekSignatur() læser
    filens egne første bytes; en klient der lyver i sin Content-Type-header,
@@ -6234,9 +6294,13 @@ export const fakturastatus = onCall({ region: REGION }, async (req) => {
    ⚠ AUDIT (Gate B §12) — hvert af de fire trin logges ubetinget via
    logProcure(), objekt "fakturaDokument". Signerede URL'er står ALDRIG i en
    auditpost — kun at et link blev udstedt, ikke linket selv.
-   ══════════════════════════════════════════════════════════════════════════ */
 
-const dokumentSti = (fakturaId, dokumentId) => `fakturaer/${fakturaId}/dokumenter/${dokumentId}`;
+   ⚠ F.2 UDVIDER DETTE FUNDAMENT TIL OPGAVE-DOKUMENTER — se sektionen
+   "OPGAVEDOKUMENTER" nedenfor, lige efter dokumentDeaktiver. De fire
+   funktioner herunder rører KUN fakturaer, uændret. */
+
+const dokumentSti = (parentType, parentId, dokumentId) =>
+  `${PARENT_KOLLEKTION[parentType]}/${parentId}/dokumenter/${dokumentId}`;
 
 export const dokumentUploadInitier = onCall({ region: REGION }, async (req) => {
   const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.skriv" });
@@ -6278,7 +6342,7 @@ export const dokumentUploadInitier = onCall({ region: REGION }, async (req) => {
   }
 
   const dokumentId = rod.child(`fakturaer/${fakturaId}/dokumenter`).push().key;
-  const storagePath = stiForDokument(tenantId, fakturaId, dokumentId);
+  const storagePath = stiForDokument(tenantId, "faktura", fakturaId, dokumentId);
 
   const nu = Date.now();
   const post = {
@@ -6286,7 +6350,7 @@ export const dokumentUploadInitier = onCall({ region: REGION }, async (req) => {
     originaltFilnavn, valideretMime: mimeType, stoerrelse: angivetStoerrelse,
     storagePath, uploader: uid, oprettetTid: nu, status: "karantaene",
   };
-  await rod.child(dokumentSti(fakturaId, dokumentId)).set(post);
+  await rod.child(dokumentSti("faktura", fakturaId, dokumentId)).set(post);
   await logProcure(tenantId, uid, AUDIT.opret, "fakturaDokument", dokumentId,
     null, post, "upload initieret");
 
@@ -6311,7 +6375,7 @@ export const dokumentUploadBekraeft = onCall({ region: REGION }, async (req) => 
     throw new HttpsError("invalid-argument", "fakturaId/dokumentId mangler.");
   }
 
-  const docRef = rod.child(dokumentSti(fakturaId, dokumentId));
+  const docRef = rod.child(dokumentSti("faktura", fakturaId, dokumentId));
   const snap = await docRef.once("value");
   if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
   const dok = snap.val();
@@ -6388,7 +6452,7 @@ export const dokumentDownloadLink = onCall({ region: REGION }, async (req) => {
   const fSnap = await rod.child(`fakturaer/${fakturaId}`).once("value");
   if (!fSnap.exists()) throw new HttpsError("not-found", "Fakturaen findes ikke.");
 
-  const dSnap = await rod.child(dokumentSti(fakturaId, dokumentId)).once("value");
+  const dSnap = await rod.child(dokumentSti("faktura", fakturaId, dokumentId)).once("value");
   if (!dSnap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
   const dok = dSnap.val();
 
@@ -6429,7 +6493,7 @@ export const dokumentDeaktiver = onCall({ region: REGION }, async (req) => {
     throw new HttpsError("invalid-argument", "fakturaId/dokumentId mangler.");
   }
 
-  const docRef = rod.child(dokumentSti(fakturaId, dokumentId));
+  const docRef = rod.child(dokumentSti("faktura", fakturaId, dokumentId));
   const snap = await docRef.once("value");
   if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
   const dok = snap.val();
@@ -6459,6 +6523,289 @@ export const dokumentDeaktiver = onCall({ region: REGION }, async (req) => {
     { status: "aktiv" }, { status: "deaktiveret" }, "dokument deaktiveret");
 
   return { ok: true, status: "deaktiveret" };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OPGAVEDOKUMENTER — F.2. Samme fundament som fakturabilag ovenfor, udvidet
+   til opgave-vedhæftede filer (fotos/kvitteringer fra et værkstedsbesøg).
+
+   ⚠ HVORFOR DEN FINDES. Supplier Portal (§18) kan vise en leverandør sin
+   egen opgave, men havde INGEN vej til at vise ham et foto af skaden — den
+   eksisterende dokumentarkitektur var hardkodet til parentType "faktura"
+   alene. Se den nu forældede note i LEVERANDØRPORTAL-sektionen nedenfor
+   (rettet i samme commit som denne).
+
+   ⚠ SAMME FEM GARANTIER SOM FAKTURABILAG — ingen af dem er lempet for at
+   gøre denne udvidelse nemmere: ingen direkte klient-Storage-adgang,
+   signatur frem for Content-Type-header, karantæne før "aktiv", ingen
+   hardslet, og alt logges. `stiForDokument()`/`tjekSignatur()`/
+   `sprængerKvote()` er de SAMME funktioner som ovenfor — se dokumenter.js's
+   hoved.
+
+   ⚠ INGEN NY LÆSE-PERMISSION TIL DOWNLOAD (Gate B §2's princip genbrugt).
+   `opgaver` har selv INGEN `.laes`-krav ud over tenant+aktivt abonnement
+   (se firebase.rules.json) — enhver intern bruger kan læse enhver opgave.
+   Et dokument hæftet på en opgave er ikke bredere adgang end opgaven selv,
+   så `opgaveDokumentDownloadLink` kræver ingen perm, præcis som noden den
+   låner sin adgang fra. UPLOAD/DEAKTIVER/SYNLIGHED kræver derimod
+   `opgaver.skriv` — samme skel som noden selv har mellem læsning og
+   skrivning.
+
+   ⚠ EGEN KVOTE, IKKE DEN SAMME SOM FAKTURABILAG. `dokumentkvote/opgaveBilag`
+   er en søsterknude til `dokumentkvote/fakturaBilag` — to uafhængige 2 GB-
+   lofter, af samme grund som to uafhængige noder: en tenant med mange
+   værkstedsfotos skal ikke kunne fortrænge fakturabilagenes plads, og omvendt.
+
+   ⚠ synligForLeverandoer ER EN EGEN, EKSPLICIT BESLUTNING — IKKE ET
+   UPLOAD-TIDSPUNKT-VALG. Et nyt dokument starter ALTID `false`
+   (opgaveDokumentUploadInitier sætter det aldrig til true). Deling er en
+   separat funktion (opgaveDokumentSynlighedSaet), så "jeg har lige
+   uploadet et foto" og "jeg har besluttet at leverandøren må se det" er to
+   forskellige, hver for sig auditerede hændelser — samme adskillelse som
+   leverandørportalens eget "kontoret afgør, leverandøren foreslår ikke selv"
+   -princip (se leverandoertilbud-noten i firebase.rules.json).
+
+   ⚠ HVEM DER FAKTISK KAN SE ET DELT DOKUMENT, AFGØRES AF DEN EKSTERNE VEJ —
+   `leverandoerDokumentDownloadLink`, i LEVERANDØRPORTAL-sektionen nedenfor,
+   IKKE her. Den funktion tjekker BÅDE status "aktiv" OG synligForLeverandoer
+   === true OG at opgaven rent faktisk er tildelt netop den leverandør —
+   tre uafhængige spærringer, ikke én.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const opgaveDokumentUploadInitier = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "opgaver.skriv" });
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  if (!opgaveId) throw new HttpsError("invalid-argument", "opgaveId mangler.");
+  const originaltFilnavn = kortStreng(d.originaltFilnavn, 200);
+  if (!originaltFilnavn) throw new HttpsError("invalid-argument", "Filnavn mangler.");
+  const mimeType = kortStreng(d.mimeType, 100);
+  if (!TILLADT_MIME.includes(mimeType)) {
+    throw new HttpsError("invalid-argument",
+      `Filtypen "${d.mimeType}" er ikke tilladt. Tilladt: PDF, JPEG, PNG.`);
+  }
+  const angivetStoerrelse = Number(d.stoerrelse);
+  if (!Number.isFinite(angivetStoerrelse) || angivetStoerrelse <= 0) {
+    throw new HttpsError("invalid-argument", "Filstørrelse mangler eller er ugyldig.");
+  }
+  if (angivetStoerrelse > MAX_FILSTOERRELSE_BYTES) {
+    throw new HttpsError("invalid-argument",
+      `Filen er større end ${Math.round(MAX_FILSTOERRELSE_BYTES / (1024 * 1024))} MB.`);
+  }
+
+  const oSnap = await rod.child(`opgaver/${opgaveId}`).once("value");
+  if (!oSnap.exists()) throw new HttpsError("not-found", "Opgaven findes ikke.");
+
+  const kvoteSnap = await rod.child("dokumentkvote/opgaveBilag/brugtBytes").once("value");
+  if (sprængerKvote(kvoteSnap.val(), angivetStoerrelse)) {
+    throw new HttpsError("resource-exhausted",
+      `Tenantens lagerkvote for opgavedokumenter (${MAX_TENANT_BYTES / (1024 * 1024 * 1024)} GB) er brugt op.`);
+  }
+
+  const dokumentId = rod.child(`opgaver/${opgaveId}/dokumenter`).push().key;
+  const storagePath = stiForDokument(tenantId, "opgave", opgaveId, dokumentId);
+
+  const nu = Date.now();
+  const post = {
+    dokumentId, parentType: "opgave", opgaveId,
+    originaltFilnavn, valideretMime: mimeType, stoerrelse: angivetStoerrelse,
+    storagePath, uploader: uid, oprettetTid: nu, status: "karantaene",
+    synligForLeverandoer: false,
+  };
+  await rod.child(dokumentSti("opgave", opgaveId, dokumentId)).set(post);
+  await logProcure(tenantId, uid, AUDIT.opret, "opgaveDokument", dokumentId,
+    null, post, "upload initieret");
+
+  const bucket = getStorage().bucket();
+  const [uploadUrl] = await bucket.file(storagePath).getSignedUrl({
+    version: "v4",
+    action: "write",
+    expires: nu + 10 * 60 * 1000,
+    contentType: mimeType,
+  });
+
+  return { dokumentId, storagePath, uploadUrl };
+});
+
+export const opgaveDokumentUploadBekraeft = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "opgaver.skriv" });
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!opgaveId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "opgaveId/dokumentId mangler.");
+  }
+
+  const docRef = rod.child(dokumentSti("opgave", opgaveId, dokumentId));
+  const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = snap.val();
+  if (dok.status !== "karantaene") {
+    throw new HttpsError("failed-precondition", `Dokumentet er allerede "${dok.status}".`);
+  }
+
+  const bucket = getStorage().bucket();
+  const file = bucket.file(dok.storagePath);
+  const [findes] = await file.exists();
+  if (!findes) {
+    throw new HttpsError("failed-precondition",
+      "Filen er endnu ikke overført til den udstedte upload-URL.");
+  }
+
+  const afvis = async (grund) => {
+    await file.delete({ ignoreNotFound: true });
+    await docRef.update({ status: "afvist", afvistGrund: grund });
+    await logProcure(tenantId, uid, AUDIT.tilstandsskift, "opgaveDokument", dokumentId,
+      { status: "karantaene" }, { status: "afvist" }, grund);
+    throw new HttpsError("failed-precondition", grund);
+  };
+
+  const [meta] = await file.getMetadata();
+  const faktiskStoerrelse = Number(meta.size);
+  if (!Number.isFinite(faktiskStoerrelse) || faktiskStoerrelse > MAX_FILSTOERRELSE_BYTES) {
+    await afvis(`Filen er ${Math.round(faktiskStoerrelse / 1024 / 1024)} MB — over grænsen på `
+      + `${Math.round(MAX_FILSTOERRELSE_BYTES / 1024 / 1024)} MB.`);
+  }
+
+  const [foersteBytes] = await file.download({ start: 0, end: 15 });
+  if (!tjekSignatur(foersteBytes, dok.valideretMime)) {
+    await afvis("Filens indhold matcher ikke den angivne filtype.");
+  }
+
+  const kvoteRef = rod.child("dokumentkvote/opgaveBilag/brugtBytes");
+  const txn = await kvoteRef.transaction((cur) => {
+    const brugt = Number(cur) || 0;
+    if (sprængerKvote(brugt, faktiskStoerrelse)) return; // abort — over kvoten
+    return brugt + faktiskStoerrelse;
+  });
+  if (!txn.committed) {
+    await afvis("Tenantens lagerkvote for opgavedokumenter er brugt op.");
+  }
+
+  await docRef.update({ status: "aktiv", stoerrelse: faktiskStoerrelse });
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "opgaveDokument", dokumentId,
+    { status: "karantaene" }, { status: "aktiv" }, "upload verificeret og frigivet");
+
+  return { ok: true, status: "aktiv" };
+});
+
+/* ⚠ INGEN perm HER — se sektionens hoved. Adgangen er den samme som at
+   læse opgaven selv. */
+export const opgaveDokumentDownloadLink = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, {});
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!opgaveId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "opgaveId/dokumentId mangler.");
+  }
+
+  const oSnap = await rod.child(`opgaver/${opgaveId}`).once("value");
+  if (!oSnap.exists()) throw new HttpsError("not-found", "Opgaven findes ikke.");
+
+  const dSnap = await rod.child(dokumentSti("opgave", opgaveId, dokumentId)).once("value");
+  if (!dSnap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = dSnap.val();
+
+  if (dok.status !== "aktiv") {
+    throw new HttpsError("failed-precondition",
+      dok.status === "karantaene"
+        ? "Dokumentet afventer stadig verificering og kan ikke hentes endnu."
+        : `Dokumentet er "${dok.status}" og kan ikke hentes.`);
+  }
+
+  const TTL_MS = 5 * 60 * 1000;
+  const nu = Date.now();
+  const bucket = getStorage().bucket();
+  const [url] = await bucket.file(dok.storagePath).getSignedUrl({
+    version: "v4", action: "read", expires: nu + TTL_MS,
+  });
+
+  await logProcure(tenantId, uid, AUDIT.laes, "opgaveDokument", dokumentId,
+    null, null, "download-link udstedt");
+
+  return { url, udloeberMs: nu + TTL_MS };
+});
+
+export const opgaveDokumentDeaktiver = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "opgaver.skriv" });
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!opgaveId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "opgaveId/dokumentId mangler.");
+  }
+
+  const docRef = rod.child(dokumentSti("opgave", opgaveId, dokumentId));
+  const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = snap.val();
+
+  if (dok.status !== "aktiv") {
+    throw new HttpsError("failed-precondition",
+      `Kun et aktivt dokument kan deaktiveres (er "${dok.status}").`);
+  }
+
+  const holds = Object.values(
+    (await rod.child("retention/legalHold").once("value")).val() || {}
+  );
+  if (erUndtaget("opgaveDokument", dokumentId, holds)) {
+    throw new HttpsError("failed-precondition",
+      "Dokumentet er omfattet af et aktivt legal hold og kan ikke deaktiveres.");
+  }
+
+  const nu = Date.now();
+  /* ⚠ EN DEAKTIVERING SKJULER OGSÅ ØJEBLIKKELIGT FOR LEVERANDØREN.
+     leverandoerDokumentDownloadLink kræver status "aktiv" — et dokument der
+     er delt OG deaktiveret, kan altså ikke længere hentes af nogen, uden at
+     synligForLeverandoer selv skal ryddes op i samme kald. */
+  await docRef.update({ status: "deaktiveret", deaktiveretAf: uid, deaktiveretMs: nu });
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "opgaveDokument", dokumentId,
+    { status: "aktiv" }, { status: "deaktiveret" }, "dokument deaktiveret");
+
+  return { ok: true, status: "deaktiveret" };
+});
+
+/**
+ * opgaveDokumentSynlighedSaet({ opgaveId, dokumentId, synlig }) → { ok, synligForLeverandoer }
+ *
+ * ⚠ DEN EKSPLICITTE DELINGSBESLUTNING — se sektionens hoved. Kun et
+ * dokument med status "aktiv" kan deles: et karantæneret dokument er ikke
+ * verificeret endnu, og et deaktiveret er allerede utilgængeligt for alle.
+ */
+export const opgaveDokumentSynlighedSaet = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "opgaver.skriv" });
+
+  const d = req.data || {};
+  const opgaveId = kortStreng(d.opgaveId, 60);
+  const dokumentId = kortStreng(d.dokumentId, 60);
+  if (!opgaveId || !dokumentId) {
+    throw new HttpsError("invalid-argument", "opgaveId/dokumentId mangler.");
+  }
+  if (typeof d.synlig !== "boolean") {
+    throw new HttpsError("invalid-argument", "synlig skal være true eller false.");
+  }
+
+  const docRef = rod.child(dokumentSti("opgave", opgaveId, dokumentId));
+  const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Dokumentet findes ikke.");
+  const dok = snap.val();
+  if (dok.status !== "aktiv") {
+    throw new HttpsError("failed-precondition",
+      `Kun et aktivt dokument kan deles eller skjules (er "${dok.status}").`);
+  }
+
+  await docRef.update({ synligForLeverandoer: d.synlig });
+  await logProcure(tenantId, uid, AUDIT.aendre, "opgaveDokument", dokumentId,
+    { synligForLeverandoer: dok.synligForLeverandoer === true },
+    { synligForLeverandoer: d.synlig },
+    d.synlig ? "delt med leverandøren" : "deling ophævet");
+
+  return { ok: true, synligForLeverandoer: d.synlig };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

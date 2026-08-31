@@ -64,10 +64,10 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, datoTid, kr } from "../../fleet/format.js";
+import { num, dato, datoTid, kr, filstoerrelse } from "../../fleet/format.js";
 import {
   Kort, KpiRaekke, Pille, Knap, Henter, Datatilstand,
-  Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon, Formularsvar,
+  Gitter, MiniLinje, Faner, Dialog, Delknap, DELIKON, Ikon, Formularsvar, Tabel,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import { Modulfakturaer } from "../../fleet/Modulfakturaer.jsx";
@@ -88,6 +88,10 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import { KILDE, prioritetFor as reservationsPrioritet } from "../../fleet/reservations.js";
 import { KOERETOEJ_STATUS } from "../../fleet/flaade.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+import { DOKUMENT_STATUS } from "../../fleet/dokumenter.js";
+import {
+  uploadOpgaveDokument, hentOpgaveDokumentLink, deaktiverOpgaveDokument, saetOpgaveDokumentSynlighed,
+} from "../../fleet/opgavedokumenter.js";
 /* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN PARALLELKOPI. Se dens hoved. */
 import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
@@ -705,6 +709,14 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
         />
       )}
 
+      {/* ⚠ F.2 — SAMME PLADS SOM Statusskifte, IKKE INDE I EN FANE. Bilag
+          hører hverken under "Overblik" (som er DATA om opgaven) eller
+          "Sag" (som er kommunikationssporet) — det er en tredje, altid
+          synlig handling, samme figur som statusknapperne nedenfor. */}
+      <div style={{ marginTop: 18 }}>
+        <OpgaveBilag opgave={opgave} lvNavn={lvNavn} maaSkrive={maaSkrive} onAendret={onSkiftet} />
+      </div>
+
       {/* ⚠ HER STOD TO DEAKTIVEREDE KNAPPER — "Marker udført" og "Flyt" — med
           begrundelsen at skrivningen hørte i en Cloud Function. Den findes nu:
           `opgavestatus` skifter status OG reservationens følge i én atomisk
@@ -723,6 +735,158 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
         </p>
       </div>
     </Dialog>
+  );
+}
+
+/* ---- Bilag — F.2, samme fundament som Fakturacenter.jsx's Bilag -------- */
+
+/**
+ * ⚠ SAMME SKABELON SOM Bilag I Fakturacenter.jsx — se dens hoved for
+ * begrundelsen om hvorfor dokumenterne kommer MED opgaven i stedet for at
+ * blive hentet separat. Forskellen her: `onAendret` kalder eksplicit
+ * `opgaver.genindlaes()` (se Haendelsespanels `onSkiftet`), fordi
+ * `useListe("opgaver", …)` ikke er `live: true` — uden det ville et
+ * uploadet dokument først dukke op efter et helsides genindlæs.
+ *
+ * ⚠ DELINGSTOGGLEN VISES KUN NÅR OPGAVEN HAR EN leverandoerId. Uden en
+ * tildelt leverandør er der intet at dele MED — en synlig, men virkningsløs
+ * knap ville se ud som en funktion der ikke virkede.
+ */
+function OpgaveBilag({ opgave, lvNavn, maaSkrive, onAendret }) {
+  const [arbejder, setArbejder] = useState(false);
+  const [svar, setSvar] = useState(null);
+
+  const dokumenter = Object.entries(opgave.dokumenter || {})
+    .map(([id, d]) => ({ id, ...d }))
+    .sort((a, b) => (b.oprettetTid || 0) - (a.oprettetTid || 0));
+
+  const paaVaelgFil = async (e) => {
+    const fil = e.target.files?.[0];
+    /* ⚠ NULSTIL FELTET STRAKS — samme grund som Fakturacenters Bilag. */
+    e.target.value = "";
+    if (!fil) return;
+    setArbejder(true);
+    setSvar(null);
+    const r = await uploadOpgaveDokument({ opgaveId: opgave.id, fil });
+    setSvar(r);
+    setArbejder(false);
+    if (r.ok) onAendret?.();
+  };
+
+  const paaAaben = async (d) => {
+    setSvar(null);
+    const r = await hentOpgaveDokumentLink({ opgaveId: opgave.id, dokumentId: d.id });
+    if (r.ok && r.data?.url) {
+      window.open(r.data.url, "_blank", "noopener,noreferrer");
+    } else {
+      setSvar(r);
+    }
+  };
+
+  const paaDeaktiver = async (d) => {
+    setArbejder(true);
+    setSvar(null);
+    const r = await deaktiverOpgaveDokument({ opgaveId: opgave.id, dokumentId: d.id });
+    setSvar(r);
+    setArbejder(false);
+    if (r.ok) onAendret?.();
+  };
+
+  const paaSkifteSynlighed = async (d, synlig) => {
+    setArbejder(true);
+    setSvar(null);
+    const r = await saetOpgaveDokumentSynlighed({ opgaveId: opgave.id, dokumentId: d.id, synlig });
+    setSvar(r);
+    setArbejder(false);
+    if (r.ok) onAendret?.();
+  };
+
+  return (
+    <>
+      <h3 className="fc-underoverskrift">Bilag</h3>
+      <Formularsvar svar={svar} okTekst="Gemt." />
+
+      {maaSkrive && (
+        <div className="fc-row" style={{ marginBottom: 8 }}>
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                 aria-label="Upload bilag" disabled={arbejder}
+                 onChange={paaVaelgFil} />
+          {arbejder && <span className="fc-hint">Overfører…</span>}
+        </div>
+      )}
+
+      {dokumenter.length === 0 ? (
+        <p className="fc-hint">Ingen bilag endnu.</p>
+      ) : (
+        <Tabel
+          raekker={dokumenter}
+          noegle={(d) => d.id}
+          tom="Ingen bilag endnu."
+          kolonner={[
+            {
+              key: "fil", label: "Fil",
+              render: (d) => (
+                <>
+                  <b>{d.originaltFilnavn}</b>
+                  <div className="fc-hint">
+                    {filstoerrelse(d.stoerrelse)} · {d.valideretMime}
+                  </div>
+                </>
+              ),
+            },
+            {
+              key: "status", label: "Status",
+              render: (d) => (
+                <>
+                  <Pille tone={DOKUMENT_STATUS[d.status]?.pill}>
+                    {DOKUMENT_STATUS[d.status]?.label || d.status}
+                  </Pille>
+                  {d.status === "afvist" && d.afvistGrund && (
+                    <div className="fc-hint">{d.afvistGrund}</div>
+                  )}
+                </>
+              ),
+            },
+            /* ⚠ HELE KOLONNEN ER VÆK, IKKE BARE TOM, UDEN EN LEVERANDØR —
+               se komponentens hoved. */
+            ...(opgave.leverandoerId ? [{
+              key: "deling", label: "Leverandørportal",
+              render: (d) => (
+                d.status === "aktiv" ? (
+                  <label className="fc-afkryds-punkt">
+                    <input type="checkbox" checked={d.synligForLeverandoer === true}
+                           disabled={!maaSkrive || arbejder}
+                           onChange={(e) => paaSkifteSynlighed(d, e.target.checked)} />
+                    Delt
+                  </label>
+                ) : <span className="fc-hint">—</span>
+              ),
+            }] : []),
+            {
+              key: "handling", label: "",
+              render: (d) => (
+                <span className="fc-med-ikon" style={{ gap: 8 }}>
+                  {d.status === "aktiv" && (
+                    <Knap onClick={() => paaAaben(d)}>Åbn</Knap>
+                  )}
+                  {d.status === "aktiv" && maaSkrive && (
+                    <Knap disabled={arbejder} onClick={() => paaDeaktiver(d)}>
+                      Deaktivér
+                    </Knap>
+                  )}
+                </span>
+              ),
+            },
+          ]}
+        />
+      )}
+      {opgave.leverandoerId && dokumenter.some((d) => d.status === "aktiv") && (
+        <p className="fc-hint" style={{ marginTop: 8 }}>
+          "Delt" gør bilaget synligt for {lvNavn(opgave.leverandoerId)} i leverandørportalen —
+          ikke resten af FleetControl. Fjern fluebenet for at skjule det igen.
+        </p>
+      )}
+    </>
   );
 }
 

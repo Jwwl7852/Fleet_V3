@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import {
   TILLADT_MIME, MAX_FILSTOERRELSE_BYTES, MAX_TENANT_BYTES, DOKUMENT_STATUS,
-  tjekSignatur, stiForDokument, sprængerKvote,
+  PARENT_KOLLEKTION, tjekSignatur, stiForDokument, sprængerKvote,
 } from "../src/fleet/dokumenter.js";
 
 describe("TILLADT_MIME — V1-allowlisten", () => {
@@ -79,22 +79,39 @@ describe("tjekSignatur — magic bytes, ikke Content-Type-headeren", () => {
   });
 });
 
+describe("PARENT_KOLLEKTION — de eneste to forældretyper", () => {
+  it("kender præcis faktura og opgave — ingen sag/procure/mail endnu", () => {
+    assert.deepEqual(PARENT_KOLLEKTION, { faktura: "fakturaer", opgave: "opgaver" });
+  });
+});
+
 describe("stiForDokument — DEN ENE kanoniske Storage-sti", () => {
   it("bygger tenants/<t>/fakturaer/<f>/dokumenter/<d>", () => {
     assert.equal(
-      stiForDokument("t1", "fa-123", "do-456"),
+      stiForDokument("t1", "faktura", "fa-123", "do-456"),
       "tenants/t1/fakturaer/fa-123/dokumenter/do-456"
     );
   });
 
+  it("⚠ OG tenants/<t>/opgaver/<o>/dokumenter/<d> FOR EN opgave — SAMME FUNDAMENT (F.2)", () => {
+    assert.equal(
+      stiForDokument("t1", "opgave", "op-123", "do-456"),
+      "tenants/t1/opgaver/op-123/dokumenter/do-456"
+    );
+  });
+
+  it("⚠ EN UKENDT parentType KASTER — den gætter ikke en kollektion", () => {
+    assert.throws(() => stiForDokument("t1", "sag", "s-1", "do-1"), /ukendt parentType/);
+  });
+
   it("⚠ SAMME ID'ER GIVER SAMME STI, HVER GANG — ellers kan RTDB-reglens storagePath-tjek og Cloud Function'ens signerede URL komme ud af trit", () => {
-    const a = stiForDokument("demo", "fa-1", "do-1");
-    const b = stiForDokument("demo", "fa-1", "do-1");
+    const a = stiForDokument("demo", "faktura", "fa-1", "do-1");
+    const b = stiForDokument("demo", "faktura", "fa-1", "do-1");
     assert.equal(a, b);
   });
 
-  it("originalt filnavn indgår ALDRIG i stien — kun de tre id'er", () => {
-    const sti = stiForDokument("t1", "fa-1", "do-1");
+  it("originalt filnavn indgår ALDRIG i stien — kun id'erne", () => {
+    const sti = stiForDokument("t1", "faktura", "fa-1", "do-1");
     assert.ok(!/\.(pdf|jpg|jpeg|png)$/i.test(sti),
       "stien bærer en filendelse — originaltFilnavn er lækket ind i den");
   });

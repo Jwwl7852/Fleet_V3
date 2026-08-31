@@ -51,6 +51,15 @@ describe("LeverandoerPortal.jsx", () => {
     assert.doesNotMatch(PORTAL, /tenantId:\s*["'`]/,
       "et hardkodet tenantId ville sende brugeren til en tilfældig virksomhed");
   });
+
+  test("⚠ F.2 — FILER VISES FRA o.dokumenter (SERVER-FILTRERET METADATA)", () => {
+    assert.match(PORTAL, /o\.dokumenter\.map\(/);
+  });
+
+  test("⚠ ÉT LINK AD GANGEN, VIA hentPortalDokumentLink — IKKE hentet for hele listen på forhånd", () => {
+    assert.match(PORTAL, /import \{[\s\S]{0,200}hentPortalDokumentLink[\s\S]{0,10}\} from "\.\.\/\.\.\/fleet\/leverandoerportal\.js"/);
+    assert.match(PORTAL, /hentPortalDokumentLink\(tenantId, o\.id, dokumentId\)/);
+  });
 });
 
 describe("LeverandoerLogin.jsx", () => {
@@ -69,6 +78,7 @@ describe("src/fleet/leverandoerportal.js", () => {
     for (const fn of [
       "leverandoerPortalTenanter", "leverandoerPortalOpgaver",
       "leverandoerTilbudIndsend", "leverandoerStatusOpdater",
+      "leverandoerDokumentDownloadLink",
     ]) {
       assert.match(KLIENT, new RegExp(`kaldFunktion\\("${fn}"`), `${fn} kaldes ikke via kaldFunktion()`);
     }

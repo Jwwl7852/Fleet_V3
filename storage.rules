@@ -1,16 +1,19 @@
 rules_version = '2';
 
-// storage.rules — Skive 4C. Fakturabilag.
+// storage.rules — Skive 4C (fakturabilag), udvidet i F.2 (opgavedokumenter).
 //
-// ⚠ SKIVE 4C SCOPE: KUN tenants/<t>/fakturaer/<f>/dokumenter/<d>. Ingen
-// anden dokumenttype er bygget endnu — sag-vedhæftninger, Procure-bilag,
-// mail-vedhæftninger og sensitive/klassificerede dokumenter kommer senere
-// på SAMME fundament, se docs/security-compliance/09_FILE_STORAGE_
-// SECURITY_GATE.md og Gate B i 12_FINDINGS_AND_REMEDIATION_PLAN.md.
+// ⚠ SCOPE: KUN tenants/<t>/fakturaer/<f>/dokumenter/<d> OG
+// tenants/<t>/opgaver/<o>/dokumenter/<d>. Ingen anden dokumenttype er bygget
+// endnu — sag-vedhæftninger, Procure-bilag, mail-vedhæftninger og
+// sensitive/klassificerede dokumenter kommer senere på SAMME fundament, se
+// docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md og Gate B i
+// 12_FINDINGS_AND_REMEDIATION_PLAN.md.
 //
-// ⚠ INGEN DIREKTE KLIENT-SDK-ADGANG — HELLER IKKE MED fakturaer.laes/.skriv.
-// Al reel adgang går gennem fire Cloud Functions (dokumentUploadInitier,
-// dokumentUploadBekraeft, dokumentDownloadLink, dokumentDeaktiver), som
+// ⚠ INGEN DIREKTE KLIENT-SDK-ADGANG — HELLER IKKE MED fakturaer.laes/.skriv
+// eller opgaver.laes/.skriv. Al reel adgang går gennem Cloud Functions
+// (dokumentUploadInitier/-Bekraeft/-DownloadLink/-Deaktiver for fakturaer;
+// opgaveDokumentUploadInitier/-Bekraeft/-DownloadLink/-Deaktiver/
+// -SynlighedSaet og leverandoerDokumentDownloadLink for opgaver), som
 // udsteder kortlivede SIGNEREDE URL'er (10 min. til upload, 5 min. til
 // download). En signeret URL evalueres IKKE mod disse regler — den er en
 // selvstændig GCS-mekanisme, bundet til sti + content-type + udløb af den
@@ -35,7 +38,14 @@ service firebase.storage {
       allow read, write: if false;
     }
 
-    // Alt andet er lukket. Ingen andre stier er bygget i 4C.
+    // ⚠ F.2 — SAMME LUKNING, SAMME BEGRUNDELSE. Karantænestatus og
+    // synligForLeverandoer bor i RTDB, som denne fil ikke kan slå op i —
+    // se hovedet ovenfor, punkt 1.
+    match /tenants/{tenantId}/opgaver/{opgaveId}/dokumenter/{dokumentId} {
+      allow read, write: if false;
+    }
+
+    // Alt andet er lukket. Ingen andre stier er bygget endnu.
     match /{allPaths=**} {
       allow read, write: if false;
     }

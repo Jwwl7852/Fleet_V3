@@ -36,6 +36,16 @@ export async function opdaterPortalStatus(tenantId, opgaveId, status) {
   return svar.data;
 }
 
+/* ⚠ F.2 — DOKUMENTER/FOTOS. `hentPortalOpgaver()`s svar bærer allerede hver
+ * opgaves delte dokumenter som METADATA (id/filnavn/mime/størrelse) — se
+ * leverandoerSynligOpgave() i leverandoerportal-regler.js. Denne funktion
+ * er det ENESTE sted et faktisk downloadlink hentes, ét dokument ad gangen,
+ * aldrig for hele listen på forhånd. */
+export async function hentPortalDokumentLink(tenantId, opgaveId, dokumentId) {
+  const svar = await kaldFunktion("leverandoerDokumentDownloadLink", { tenantId, opgaveId, dokumentId });
+  return svar.data;
+}
+
 /* ---- Adminsiden — Opsætning → Leverandører → Portaladgang -------------- */
 
 export async function inviterPortalBruger(leverandoerId, email, navn) {

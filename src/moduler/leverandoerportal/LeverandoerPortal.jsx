@@ -20,18 +20,21 @@
  * ⚠ KNAPPERNE FØLGER kanLeverandoerSkifte(), IKKE EN LOKAL if-KÆDE — samme
  * "skærmen tegner, funktionen håndhæver"-disciplin som Statusskifte.jsx.
  *
- * ⚠ INGEN FOTOS ENDNU. Den sikre dokument-arkitektur understøtter i dag kun
- * fakturabilag (parentType "faktura") — en udvidelse til leverandør-synlige
- * opgavefotos er sin egen, senere security-skive. Se
- * docs/v1-user-feedback-implementation/00_MASTER_STATUS.md.
+ * ⚠ F.2 — FILER. `o.dokumenter` kommer FÆRDIGFILTRERET fra serveren
+ * (leverandoerSynligOpgave() i leverandoerportal-regler.js) — kun aktive,
+ * eksplicit delte dokumenters METADATA. Denne skærm henter aldrig en fil-
+ * liste selv og kender intet storagePath; ét link ad gangen, udstedt af
+ * leverandoerDokumentDownloadLink når brugeren rent faktisk beder om det.
+ * Se docs/v1-user-feedback-implementation/00_MASTER_STATUS.md.
  */
 import { useEffect, useState } from "react";
 import {
   hentPortalTenanter, hentPortalOpgaver, indsendTilbud, opdaterPortalStatus,
+  hentPortalDokumentLink,
 } from "../../fleet/leverandoerportal.js";
 import { kanLeverandoerSkifte } from "../../fleet/leverandoerportal-regler.js";
 import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
-import { kr, dato, oereFraKroner, isoTilMs } from "../../fleet/format.js";
+import { kr, dato, oereFraKroner, isoTilMs, filstoerrelse } from "../../fleet/format.js";
 import {
   Knap, Kort, Pille, Tom, Fejl, Henter, Faner, Dialog, Formular, Felt, Formularsvar,
 } from "../../fleet/ui.jsx";
@@ -202,6 +205,26 @@ function OpgaveDetalje({ opgave: o, tenantId, onLuk, onAendret }) {
   const [kommentar, setKommentar] = useState("");
   const [faerdigDato, setFaerdigDato] = useState("");
 
+  const [aabnerFilId, setAabnerFilId] = useState(null);
+  const [filFejl, setFilFejl] = useState(null);
+
+  async function aabenFil(dokumentId) {
+    setFilFejl(null);
+    setAabnerFilId(dokumentId);
+    try {
+      const svarLink = await hentPortalDokumentLink(tenantId, o.id, dokumentId);
+      if (svarLink?.url) {
+        window.open(svarLink.url, "_blank", "noopener,noreferrer");
+      } else {
+        setFilFejl("Linket kunne ikke udstedes.");
+      }
+    } catch (e) {
+      setFilFejl(e?.message || "Filen kunne ikke åbnes.");
+    } finally {
+      setAabnerFilId(null);
+    }
+  }
+
   async function sendTilbud() {
     const beloebOere = oereFraKroner(beloeb);
     if (!Number.isFinite(beloebOere) || beloebOere < 0) {
@@ -302,6 +325,26 @@ function OpgaveDetalje({ opgave: o, tenantId, onLuk, onAendret }) {
               </ul>
             )}
           </div>
+
+          {o.dokumenter.length > 0 && (
+            <div>
+              <b className="fc-hint" style={{ display: "block", marginBottom: 4 }}>Filer</b>
+              {filFejl && <p className="fc-empty-bad" role="alert">{filFejl}</p>}
+              <ul className="fc-grid" style={{ gap: 6, margin: 0, padding: 0, listStyle: "none" }}>
+                {o.dokumenter.map((d) => (
+                  <li key={d.id} className="fc-row" style={{ justifyContent: "space-between" }}>
+                    <span>
+                      {d.originaltFilnavn}
+                      <span className="fc-hint"> · {filstoerrelse(d.stoerrelse)}</span>
+                    </span>
+                    <Knap disabled={aabnerFilId === d.id} onClick={() => aabenFil(d.id)}>
+                      {aabnerFilId === d.id ? "Åbner …" : "Åbn"}
+                    </Knap>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {!erAfsluttet && <Formularsvar svar={svar} />}
 

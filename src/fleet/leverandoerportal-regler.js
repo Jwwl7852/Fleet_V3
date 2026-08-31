@@ -56,6 +56,14 @@ export const LEV_PORTAL_AFSLUTTEDE = new Set(["udfoert", "annulleret"]);
  * være meget enklere end kontorprogrammet (§6/§14/§17) — `koeretoejId`
  * slås op og erstattes af et NAVN her, aldrig sendt råt til en klient der
  * ikke har (og ikke skal have) læseadgang til `koeretoejer/`.
+ *
+ * ⚠ F.2 — dokumenter FILTRERES HER, IKKE KUN I DOWNLOAD-FUNKTIONEN. Et
+ * dokument der hverken er "aktiv" eller `synligForLeverandoer`, optræder
+ * ikke engang i LISTEN — leverandoerDokumentDownloadLink's egen kontrol
+ * (functions/index.js) er dermed forsvar i dybden, ikke den eneste
+ * spærring. Kun METADATA sendes med (intet storagePath, intet link) —
+ * selve linket udstedes først når leverandøren beder om ÉT bestemt
+ * dokument, samme adskillelse som fakturabilagenes Bilag/hentLink.
  */
 export function leverandoerSynligOpgave(id, o, koeretoejer) {
   const koe = (koeretoejer && koeretoejer[o.koeretoejId]) || {};
@@ -80,6 +88,14 @@ export function leverandoerSynligOpgave(id, o, koeretoejer) {
         indsendtMs: t.indsendtMs, status: t.status,
       }))
       .sort((a, b) => (a.indsendtMs || 0) - (b.indsendtMs || 0)),
+    dokumenter: Object.entries(o.dokumenter || {})
+      .filter(([, d]) => d.status === "aktiv" && d.synligForLeverandoer === true)
+      .map(([dokumentId, d]) => ({
+        id: dokumentId, originaltFilnavn: d.originaltFilnavn,
+        valideretMime: d.valideretMime, stoerrelse: d.stoerrelse,
+        oprettetTid: d.oprettetTid,
+      }))
+      .sort((a, b) => (a.oprettetTid || 0) - (b.oprettetTid || 0)),
   };
 }
 

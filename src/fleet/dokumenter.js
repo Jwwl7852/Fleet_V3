@@ -1,7 +1,8 @@
 /* src/fleet/dokumenter.js
- * Fakturabilag — Skive 4C. Første, begrænsede dokumentlager.
+ * Dokumentlager — Skive 4C (fakturabilag), udvidet i F.2 til opgave-
+ * vedhæftede filer (Supplier Portal, §18).
  *
- * ⚠ KUN FAKTURAER & BILAG I DENNE SKIVE. Sag-vedhæftninger, Procure-bilag,
+ * ⚠ KUN FAKTURAER & OPGAVER. Sag-vedhæftninger, Procure-bilag,
  * mail-vedhæftninger og sensitive/klassificerede dokumenter kommer senere på
  * SAMME fundament (docs/security-compliance/09_FILE_STORAGE_SECURITY_GATE.md,
  * Gate B i 12_FINDINGS_AND_REMEDIATION_PLAN.md) — ikke i denne fil endnu.
@@ -16,7 +17,14 @@
  * `storagePath`-feltet er lig med. To steder der byggede stien hver for sig,
  * ville før eller siden drive fra hinanden — se demo-kilder-mønstret i
  * CLAUDE.md, gentaget seks gange andre steder i dette repo.
+ *
+ * ⚠ PARENT_KOLLEKTION ER LUKKET, IKKE ET GÆT. `stiForDokument()` afviser en
+ * parentType der ikke står her — det er samme disciplin som MIME-allowlisten:
+ * en ukendt værdi er en fejl, ikke en åben dør.
  */
+
+/** De ENESTE to forældretyper et dokument i dag kan hæftes på. */
+export const PARENT_KOLLEKTION = { faktura: "fakturaer", opgave: "opgaver" };
 
 /** V1-allowlisten. Ingen executable/script/office/archive-formater. */
 export const TILLADT_MIME = ["application/pdf", "image/jpeg", "image/png"];
@@ -71,15 +79,22 @@ export function tjekSignatur(bytes, mime) {
 }
 
 /**
- * Den ENE kanoniske Storage-object-path for et fakturabilag.
+ * Den ENE kanoniske Storage-object-path for et dokument.
  *
  * ⚠ INGEN WILDCARD-GÆTNING. `firebase.rules.json`s `storagePath`-felt
  * kræver PRÆCIS denne streng — ikke "noget der ligner den". Kalder du
- * funktionen med de samme tre id'er begge steder (Cloud Function og
+ * funktionen med de samme id'er begge steder (Cloud Function og
  * RTDB-regel), kan de aldrig komme ud af trit.
+ *
+ * ⚠ parentType AFGØR KOLLEKTIONEN — samme id-par (parentType, parentId)
+ * som posten selv bæres af (se `dokumenter`-blokken i firebase.rules.json).
+ * En ukendt parentType kaster med det samme: en sti der "gættede" en
+ * kollektion, ville kunne pege et dokument ind under en forkert forælder.
  */
-export function stiForDokument(tenantId, fakturaId, dokumentId) {
-  return `tenants/${tenantId}/fakturaer/${fakturaId}/dokumenter/${dokumentId}`;
+export function stiForDokument(tenantId, parentType, parentId, dokumentId) {
+  const kollektion = PARENT_KOLLEKTION[parentType];
+  if (!kollektion) throw new Error(`stiForDokument: ukendt parentType "${parentType}".`);
+  return `tenants/${tenantId}/${kollektion}/${parentId}/dokumenter/${dokumentId}`;
 }
 
 /**

@@ -77,6 +77,23 @@ export const RETENTION_KATEGORI = {
     periodeMaaneder: null,
     afgjort: false,
   },
+  /* ⚠ F.2 — EGEN KATEGORI, IKKE SLÅET SAMMEN MED fakturaBilag ELLER
+     facilitySager. Et opgavedokument er DRIFTSDOKUMENTATION (et foto fra et
+     værkstedsbesøg), ikke regnskabsbevis — samme skel som facilitySager
+     (opgaver-NODEN) allerede trækker mellem drift og regnskab. Men det er
+     heller ikke facilitySager selv: den kategori dækker RTDB-posten
+     (opgaver), denne dækker BLOBBEN i Cloud Storage — samme adskillelse
+     som fakturaBilag har til regnskabsdata ovenfor, af samme grund. */
+  opgaveBilag: {
+    label: "Opgavedokumenter",
+    eksempel: "et foto eller en kvittering hæftet på et værksteds-/servicebesøg",
+    princip: "Driftsdokumentation — ikke selvstændigt afgjort endnu.",
+    metode: "eksport-foerst",
+    noder: [],
+    bygget: true,
+    periodeMaaneder: null,
+    afgjort: false,
+  },
   procureData: {
     label: "Procure-data",
     eksempel: "indkøbsbehov, bestilling, godkendelse",
