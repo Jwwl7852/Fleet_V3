@@ -617,11 +617,25 @@ export function flytOpdatering(opgaveId, foer, aendring, { uid, nu }) {
  * `afventer` går BEGGE veje mod `igang`: arbejdet kan stoppe fordi en
  * reservedel mangler, og fortsætte når den kommer.
  */
+/**
+ * ⚠ SUPPLIER PORTAL — klar_til_afhentning ER ET MELLEMTRIN, IKKE EN
+ * ENDESTATION. Den findes fordi en leverandørs "arbejdet er udført, hent
+ * bilen" og kontorets "vi har tjekket den og lukker opgaven" er to
+ * forskellige afgørelser (tillægskravets §11: leverandøren melder kun SIN
+ * del, han lukker aldrig sagen selv). Den nås KUN fra `igang` — samme
+ * grund som `udfoert` kun nås fra `igang` nedenfor — og herfra kan
+ * kontoret enten lukke den (`udfoert`) eller sende den tilbage i arbejde
+ * (`igang`, hvis eftersynet finder mere der skal gøres). Se
+ * test/opgavestatus.test.mjs' "UDFØRT KAN KUN NÅS FRA igang ELLER
+ * klar_til_afhentning" for hvorfor den tidligere ordret sætning måtte
+ * udvides, ikke slækkes.
+ */
 export const OPGAVE_OVERGANGE = {
   indberettet: ["planlagt", "annulleret"],
   planlagt: ["igang", "afventer", "annulleret"],
   afventer: ["planlagt", "igang", "annulleret"],
-  igang: ["afventer", "udfoert", "annulleret"],
+  igang: ["afventer", "klar_til_afhentning", "udfoert", "annulleret"],
+  klar_til_afhentning: ["udfoert", "igang", "annulleret"],
   udfoert: [],
   annulleret: [],
 };
@@ -631,6 +645,9 @@ export const RESERVATION_VED = {
   planlagt: "uaendret",
   igang: "uaendret",
   afventer: "uaendret",
+  /* Bilen står stadig hos leverandøren, blot ikke længere under arbejde —
+     reservationen skal ikke røres før den er FYSISK afhentet (udfoert). */
+  klar_til_afhentning: "uaendret",
   /* Bilen er kørt fra værkstedet. Se afkortTil(). */
   udfoert: "afkort",
   /* Arbejdet skete aldrig. Samme regel som etapeskift: EN ANNULLERET TUR SKAL

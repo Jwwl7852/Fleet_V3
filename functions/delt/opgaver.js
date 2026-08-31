@@ -73,6 +73,14 @@ export const OPGAVE_STATUS = {
      ravgul, Fuldført grøn. */
   igang:       { label: "I gang",      pill: "warn" },
   afventer:    { label: "Afventer",    pill: "warn" },
+  /* ⚠ SUPPLIER PORTAL — SAMME warn SOM "I gang", AF SAMME GRUND. Bilen
+     står STADIG hos leverandøren; den er bare ikke afhentet endnu. En grøn
+     pille her ville sige det samme som "Udført" og skjule netop det
+     leverandørportalen tilføjer: at nogen skal hente den. Kun eksterne
+     leverandørportal-brugere kan sætte denne status (leverandoerStatusOpdater),
+     og kun for en opgave hvor deres leverandoerId er tildelt — se
+     firebase.rules.json's note ved opgaver/$opgaveId. */
+  klar_til_afhentning: { label: "Klar til afhentning", pill: "warn" },
   udfoert:     { label: "Udført",      pill: "ok"   },
   annulleret:  { label: "Annulleret",  pill: "bad"  },
 };

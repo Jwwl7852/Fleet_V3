@@ -78,20 +78,42 @@ describe("OPGAVE_OVERGANGE", () => {
     assert.equal(OPGAVE_OVERGANGE.igang.includes("annulleret"), true);
   });
 
-  test("⚠ UDFØRT KAN KUN NÅS FRA igang", () => {
+  test("⚠ UDFØRT KAN KUN NÅS FRA igang ELLER klar_til_afhentning", () => {
     /* Et vaerkstedsbesoeg kan ikke meldes faerdigt uden at nogen har haft
        bilen paa liften — samme spaerring som klargoeringstrinnet paa et
-       kasseudlaan, hvor genvejen fra `booket` til `udlaant` er lukket. */
+       kasseudlaan, hvor genvejen fra `booket` til `udlaant` er lukket.
+       ⚠ SUPPLIER PORTAL UDVIDEDE, IKKE SLÆKKEDE, DEN REGEL. Listen var
+       tidligere PRÆCIS ["igang"]; klar_til_afhentning er nu med, men den
+       kan SELV kun nås fra `igang` (se testen nedenfor) — invarianten
+       "udført forudsætter at bilen har været i arbejde" holder stadig,
+       den er blot transitiv gennem ét ekstra, valgfrit mellemtrin. */
     const kan = Object.entries(OPGAVE_OVERGANGE)
       .filter(([, maal]) => maal.includes("udfoert")).map(([fra]) => fra);
+    assert.deepEqual(kan, ["igang", "klar_til_afhentning"]);
+  });
+
+  test("⚠ OG klar_til_afhentning KAN SELV KUN NÅS FRA igang", () => {
+    const kan = Object.entries(OPGAVE_OVERGANGE)
+      .filter(([, maal]) => maal.includes("klar_til_afhentning")).map(([fra]) => fra);
     assert.deepEqual(kan, ["igang"]);
   });
 
-  test("afventer går begge veje mod igang", () => {
+  test("afventer går begge veje mod igang — og det gør klar_til_afhentning nu også", () => {
     /* Arbejdet kan stoppe fordi en reservedel mangler, og fortsaette naar den
-       kommer. */
+       kommer. Og et eftersyn efter leverandørens "klar til afhentning" kan
+       finde mere der skal gøres — samme figur, en anden grund. */
     assert.ok(OPGAVE_OVERGANGE.igang.includes("afventer"));
     assert.ok(OPGAVE_OVERGANGE.afventer.includes("igang"));
+    assert.ok(OPGAVE_OVERGANGE.igang.includes("klar_til_afhentning"));
+    assert.ok(OPGAVE_OVERGANGE.klar_til_afhentning.includes("igang"));
+  });
+
+  test("⚠ MEN klar_til_afhentning ER IKKE EN ENDESTATION — leverandøren lukker aldrig selv", () => {
+    /* Tillægskravets §11: leverandøren melder kun sin del af arbejdet
+       færdig, aldrig den interne sag. Reservationen rører sig heller ikke
+       her — bilen er stadig fysisk hos leverandøren. */
+    assert.ok(OPGAVE_OVERGANGE.klar_til_afhentning.length > 0);
+    assert.equal(RESERVATION_VED.klar_til_afhentning, "uaendret");
   });
 
   test("alt kan annulleres — undtagen det der allerede er afsluttet", () => {
