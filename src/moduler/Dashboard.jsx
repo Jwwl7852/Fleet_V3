@@ -10,7 +10,7 @@
  * siger 18 — det var tilfældet i mockupsene.
  */
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useKpi } from "../fleet/useKpi.js";
 import { useFleet } from "../fleet/FleetContext.jsx";
 /* ⚠ MODUL bruges til NAVNET på et modul. Et eget map her ville være det
@@ -91,7 +91,6 @@ const beloebEllerIntet = (oere, dec) =>
 export default function Dashboard() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { moduler, bruger, path: sti } = useFleet();
-  const [params, saetParams] = useSearchParams();
   /* ⚠ KUN DE MODULER KUNDEN HAR. Samme svar som sidebarens — to
      forskellige svar på "hvad må jeg se" ville være to steder at være
      uenige. Billede 3's afkrydsning pr. bruger kommer i sin egen etape
@@ -138,16 +137,17 @@ export default function Dashboard() {
     (noegle) => kanSeDashboard(noegle) && !erSkjultVedNavvisning(noegle, navvisning.post));
   void tilgaengelige;
 
-  /* ⚠ SKIVE 2C — 1 MODUL LANDER DIREKTE, 2+ FÅR EN VÆLGER, 0 FALDER TILBAGE
-     TIL SAMLET. "Driftsmodul" er ALLE minus Samlet — Kunder, Fakturaer &
-     bilag, Økonomi, Opsætning og Hjælp er slet ikke i DASHBOARDS og tæller
-     derfor aldrig med her, uden at det kræver et eget filter. */
+  /* ⚠ V1-BRUGERTEST §3 — INGEN VÆLGER MERE, KUN LANDING. Der stod tidligere
+     en <select> her der lod brugeren SKIFTE til et andet moduls dashboard
+     inde fra Dashboard — netop den "vælge mellem Samlet/Fleet-dashboard/
+     Facility-dashboard" brugertesten bad om at fjerne ("de skal ikke...
+     vælges inde fra Dashboard"). Præcis ét synligt driftsmodul lander man
+     fortsat direkte på — det er ikke et VALG, der er intet at vælge
+     imellem — men to eller flere giver nu altid Samlet, uden en vej til at
+     skifte væk fra den herfra. "Driftsmodul" er ALLE minus Samlet — Kunder,
+     Fakturaer & bilag, Økonomi, Opsætning og Hjælp er slet ikke i DASHBOARDS
+     og tæller derfor aldrig med her, uden at det kræver et eget filter. */
   const driftsmoduler = ALLE.filter((d) => d.key !== SAMLET);
-  const visVaelger = driftsmoduler.length >= 2;
-  /* Præcis ét synligt driftsmodul: det ER forsiden, og Samlet tilbydes
-     ikke som et kunstigt ekstra valg (se visVaelger ovenfor, som skjuler
-     selve vælgeren — standardMaal styrer kun hvor man LANDER). Nul eller
-     to-plus: Samlet, som altid findes (`altid: true`). */
   const standardMaal = driftsmoduler.length === 1 ? driftsmoduler[0].key : SAMLET;
 
   /* ⚠ ET LAYOUT PR. DASHBOARD. Fleet-forsiden og det samlede overblik er to
@@ -202,18 +202,16 @@ export default function Dashboard() {
     label: m, vaerdier: [serie[i]]
   }));
 
-  /* ⚠ VALGET STÅR I URL'EN, ikke i en useState. Et dashboard man har
-     indstillet, skal overleve en genindlæsning og kunne sendes til en
-     kollega — og "kig på Fleet-dashboardet" er ubrugeligt uden et link.
-     Samme greb som Arbejdskøens ?vis=.
-     ⚠ OG DET ER DEN SAMME LISTE, ALLE, DER AFGØR BÅDE VALGMULIGHEDERNE OG
-     GYLDIGHEDEN — SKIVE 2C's forespørgsels-sikkerhed. `?db=flaade` prøves
-     mod `ALLE`, som allerede har været igennem alle fire lag; et
-     manipuleret `?db=` på et modul der ikke er købt, ikke kan læses, er
-     skjult via navvisning eller skjult via dashboardvisning, kan derfor
-     aldrig matche — og falder tilbage til `standardMaal`, aldrig til en
-     hvid skærm. */
-  const valgt = ALLE.some((d) => d.key === params.get("db")) ? params.get("db") : standardMaal;
+  /* ⚠ V1-BRUGERTEST §3 — VALGET STÅR IKKE LÆNGERE I URL'EN. Der var et
+     `?db=`-parameter der lod et link åbne et andet moduls dashboard — endnu
+     en udgave af den samme "vælg mellem dashboards"-mekanik brugertesten
+     bad om at fjerne. `valgt` er derfor nu bare `standardMaal`: præcis ét
+     synligt driftsmodul, eller Samlet. Et gammelt `?db=flaade`-link virker
+     stadig som en almindelig sideåbning — parameteren læses blot ikke
+     længere, og kan derfor heller ikke længere manipuleres til at åbne et
+     modul brugeren ikke må se; den sikkerhedsegenskab er dermed uændret,
+     blot opnået ved at mekanismen er væk i stedet for valideret. */
+  const valgt = standardMaal;
 
   /* ⚠ HANDLINGERNE ER DE SAMME TAL SOM KORTENE — samme katalog, samme
      opslag i kpi/. Kom de fra hver sin kilde, kunne listen sige 7 og
@@ -321,35 +319,19 @@ export default function Dashboard() {
       <Kpiadgang utilgaengelige={kpiadgangRelevant} />
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      {/* ⚠ VÆLGEREN ER EN <select> OG IKKE FANER. Syv dashboards i en
-          fanerække ville brække på en bærbar, og listen vokser med hvert
-          modul vi sælger.
-          ⚠ OG DEN TEGNES KUN VED 2+ SYNLIGE DRIFTSMODULER — SKIVE 2C. Med
-          præcis ét er der intet at vælge imellem, og en vælger med én
-          mulighed er ikke et valg — det er en attrap. Med nul findes der
-          heller intet at vælge; Samlet er selve svaret. `visVaelger` er
-          udledt af `ALLE`, som allerede har været igennem alle fire
-          synlighedslag, så vælgeren aldrig kan tilbyde noget den ikke må. */}
+      {/* ⚠ V1-BRUGERTEST §3 — INGEN VÆLGER. Der stod her en <select> med
+          ALLE synlige dashboards, som lod brugeren skifte Dashboard om til
+          et enkelt moduls visning. Den er fjernet: Dashboard viser altid
+          enten det ene synlige driftsmodul (intet at vælge imellem) eller
+          Samlet — aldrig et valg mellem "Samlet"/"Fleet-dashboard"/
+          "Facility-dashboard" og så videre. Modulernes egne, rigtige
+          forsider (Driftskalenderen på /flaade, o.l.) er upåvirkede — det
+          er DEM der er de "flotte operationelle overbliksider", ikke denne
+          skærm. */}
       <div className="fc-kal-top">
-        {visVaelger ? (
-          <>
-            <label className="fc-hint" htmlFor="db-vaelg">Vis dashboard:</label>
-            <select id="db-vaelg" className="fc-ctl" value={valgt}
-                    onChange={(e) => saetParams(e.target.value === SAMLET
-                      ? {} : { db: e.target.value })}>
-              {ALLE.map((d) => (
-                <option key={d.key} value={d.key}>{d.label}</option>
-              ))}
-            </select>
-            <span className="fc-hint">
-              {ALLE.find((d) => d.key === valgt)?.under}
-            </span>
-          </>
-        ) : (
-          <span className="fc-hint">
-            {ALLE.find((d) => d.key === valgt)?.under}
-          </span>
-        )}
+        <span className="fc-hint">
+          {ALLE.find((d) => d.key === valgt)?.under}
+        </span>
         <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           {redigerer ? (
             <>
