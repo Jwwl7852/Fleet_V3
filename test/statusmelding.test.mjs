@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import {
   HAENDELSE, ALLE_HAENDELSER, MELDING_FELTER, valideMelding, byggMelding,
   meldingerFor, foreslaaedeMeldinger, planlagteStop, seneste, stilhedMin,
+  meldingerVedStop, erStopFaerdigt, naesteForStop,
 } from "../src/fleet/rutestatus.js";
 import { DEMO_STATUSHAENDELSER, DEMO_STATUS_POSTER, DEMO_ETAPER, demoHaendelser }
   from "../src/fleet/demo-etaper.js";
@@ -496,5 +497,61 @@ describe("Det kørslen fandt", () => {
 
   it("⚠ OG uid AFVISES FREM FOR AT BLIVE OVERSKREVET I STILHED", () => {
     assert.match(KROP, /"uid" in d/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   V1-BRUGERTEST §10.2 — "MELDT" ER IKKE DET SAMME SOM FÆRDIG
+   ══════════════════════════════════════════════════════════════════════════
+   En ankomst-melding på et leverings-stop må ikke gøre kortet til et
+   dødvande: chaufføren skal stadig kunne melde afgang/afslutning bagefter,
+   og kunne se hvad han allerede har sendt. Se rutestatus.js's egen note. */
+describe("erStopFaerdigt/naesteForStop — stoppets EGEN rolle, ikke etapens hele liste", () => {
+  it("meldingerVedStop filtrerer på stopId, sorteret i tid", () => {
+    const alle = [
+      { stopId: "stop-2", type: "afsluttet", ms: 200 },
+      { stopId: "stop-1", type: "ankomstLaesning", ms: 100 },
+      { stopId: "stop-1", type: "afgangLaesning", ms: 150 },
+    ];
+    const her = meldingerVedStop(alle, "stop-1");
+    assert.deepEqual(her.map((m) => m.type), ["ankomstLaesning", "afgangLaesning"]);
+  });
+
+  it("⚠ EN ANKOMST ALENE GØR IKKE ET LEVERINGS-STOP FÆRDIGT", () => {
+    const her = [{ stopId: "s1", type: "ankomstLosning", ms: 1 }];
+    assert.equal(erStopFaerdigt("levering", her), false,
+      "kun 'ankomstLosning' er meldt — 'afsluttet' mangler stadig");
+    assert.equal(naesteForStop("levering", her), "afsluttet",
+      "næste handling skal være den konkrete afslutning, ikke et dødvande");
+  });
+
+  it("⚠ ET AFHENTNINGS-STOP ER FÆRDIGT VED afgangLaesning, IKKE FØR", () => {
+    const kunAnkomst = [{ stopId: "s1", type: "ankomstLaesning", ms: 1 }];
+    assert.equal(erStopFaerdigt("afhentning", kunAnkomst), false);
+    assert.equal(naesteForStop("afhentning", kunAnkomst), "afgangLaesning");
+
+    const faerdigt = [...kunAnkomst, { stopId: "s1", type: "afgangLaesning", ms: 2 }];
+    assert.equal(erStopFaerdigt("afhentning", faerdigt), true);
+    assert.equal(naesteForStop("afhentning", faerdigt), null,
+      "et færdigt stop har ingen næste handling");
+  });
+
+  it("en ukendt rolle falder tilbage på 'der er meldt noget' — samme polaritet som erNaaet()", () => {
+    assert.equal(erStopFaerdigt("ukendt", []), false);
+    assert.equal(erStopFaerdigt("ukendt", [{ stopId: "s1", type: "pause", ms: 1 }]), true);
+    assert.equal(naesteForStop("ukendt", [{ stopId: "s1", type: "pause", ms: 1 }]), null,
+      "en ukendt rolle har ingen kendt rækkefølge at foreslå næste af");
+  });
+
+  it("⚠ TURPLAN.JSX BRUGER DISSE — IKKE erNaaet() — TIL AT AFGØRE OM KORTET ER FÆRDIGT", () => {
+    const kilde = readFileSync("src/moduler/app/Turplan.jsx", "utf8");
+    assert.match(kilde, /erStopFaerdigt\(s\.rolle, meldingerHer\)/,
+      "kortets faerdig-status skal komme fra erStopFaerdigt, ikke fra erNaaet alene");
+    assert.match(kilde, /naesteForStop\(s\.rolle, meldingerHer\)/);
+    /* Regressionslås mod den oprindelige fejl: et "✓ Meldt"-dødvande uden
+       videre handling må ikke stå tilbage i den gren der viser NOGET meldt
+       men IKKE færdigt. */
+    assert.ok(!kilde.includes('<p className="fc-app-besoeg">✓ Meldt</p>'),
+      "det gamle, handlingsløse '✓ Meldt' er stadig i skærmen");
   });
 });

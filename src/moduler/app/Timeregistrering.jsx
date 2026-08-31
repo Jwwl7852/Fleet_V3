@@ -29,7 +29,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit-regler.js";
 import { klokke, dato } from "../../fleet/format.js";
-import { Tom } from "../../fleet/ui.jsx";
+import { Tom, Dialog, Knap } from "../../fleet/ui.jsx";
 import {
   aabenStempling, timerOgMin, ugestart, ugedage, ugesum,
   valideStempling,
@@ -42,6 +42,11 @@ export default function Timeregistrering() {
   const [uge, setUge] = useState(() => ugestart(Date.now()));
   const [gemmer, setGemmer] = useState(false);
   const [fejl, setFejl] = useState(null);
+  /* ⚠ V1-BRUGERTEST §10.1 — BEKRÆFT KUN VED UDSTEMPLING. En lukket vagt er
+     frosset (kan ikke rettes fra telefonen, se filens hoved), så et
+     fejltryk her koster mere end ved indstempling. Ind kræver ingen
+     bekræftelse — kun ud. */
+  const [bekraeftUd, setBekraeftUd] = useState(false);
 
   /* ⚠ KOBLINGEN LÆSES, DEN GÆTTES IKKE — som i chaufførappens turplan.
      `brugere/<uid>/personId` er det ene sted et login bliver til en
@@ -148,10 +153,23 @@ export default function Timeregistrering() {
         <button type="button" disabled={gemmer}
           className={aaben ? "fc-btn fc-app-stempl fc-app-stempl-ud"
             : "fc-btn fc-app-stempl fc-app-stempl-ind"}
-          onClick={stempl}>
+          onClick={() => (aaben ? setBekraeftUd(true) : stempl())}>
           {gemmer ? "Sender …" : aaben ? "Stempl UD" : "Stempl IND"}
         </button>
       </section>
+
+      {bekraeftUd && (
+        <Dialog titel="Stempl ud" onLuk={() => setBekraeftUd(false)}>
+          <p>Er du sikker på, at du vil stemple ud?</p>
+          <div className="fc-row" style={{ gap: 8, marginTop: 12 }}>
+            <Knap variant="primaer" disabled={gemmer}
+                  onClick={() => { setBekraeftUd(false); stempl(); }}>
+              Ja, stempel ud
+            </Knap>
+            <Knap onClick={() => setBekraeftUd(false)}>Annuller</Knap>
+          </div>
+        </Dialog>
+      )}
 
       <section className="fc-app-kort">
         <div className="fc-app-uge-top">

@@ -310,6 +310,67 @@ export function foreslaaedeMeldinger(haendelser = []) {
   return naeste ? [naeste, ...resten] : ALLE_HAENDELSER;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ V1-BRUGERTEST §10.2 — "MELDT" ER IKKE DET SAMME SOM FÆRDIG
+   ══════════════════════════════════════════════════════════════════════════
+
+   foreslaaedeMeldinger() ovenfor kender ikke stoppets rolle — den regner på
+   HELE etapens meldinger og foreslår "det sandsynlige næste" for turen som
+   helhed. Det er rigtigt til VALGLISTEN (chaufføren melder hvad der SKETE,
+   ikke en tvungen rækkefølge).
+
+   Men Turplan.jsx brugte den samme, etape-brede liste til at afgøre om ET
+   STOP var færdigt — og fordi kortet skiftede til "✓ Meldt" i det øjeblik
+   BARE ÉN melding ramte stoppet (se erNaaet() i stop.js), forsvandt næste
+   handling: en chauffør der havde meldt "Ankommet, losser" på et
+   leverings-stop, kunne aldrig melde "Aflæsset, afsluttet" derfra — kortet
+   viste bare "✓ Meldt", uden knap og uden vej tilbage ind. Det er PRÆCIS
+   V1-testens klage: "Jeg kan ikke se hvordan man kan melde afgang fra
+   kunden... man kan heller ikke åbne denne del op igen."
+
+   De to funktioner herunder kender stoppets ROLLE (afhentning/levering,
+   STOP_ART i stop.js) og regner kun på MELDINGER DER HØRER TIL DETTE STOP
+   (filtreret på stopId) — ikke hele etapens. En rolle uden en kendt
+   sekvens (fx en fremtidig tredje art) falder tilbage på "der er meldt
+   noget", samme polaritet som den gamle erNaaet(), så ingen ukendt rolle
+   bliver ved med at spørge for evigt. */
+export const STOP_ROLLE_HAENDELSER = {
+  afhentning: ["ankomstLaesning", "afgangLaesning"],
+  levering: ["ankomstLosning", "afsluttet"],
+};
+
+/** Den hændelse der markerer STOPPET færdigt — ikke etapen. */
+export const STOP_ROLLE_TERMINAL = {
+  afhentning: "afgangLaesning",
+  levering: "afsluttet",
+};
+
+/** Meldingerne der hører til ét bestemt stop, ældste først. */
+export function meldingerVedStop(meldinger = [], stopId) {
+  return meldinger.filter((m) => m.stopId === stopId).sort((a, b) => a.ms - b.ms);
+}
+
+/**
+ * Er DETTE STOP færdigmeldt? Kræver terminal-hændelsen for stoppets rolle —
+ * ikke bare "der er meldt noget på det", som erNaaet() i stop.js svarer.
+ */
+export function erStopFaerdigt(rolle, meldingerPaaStoppet = []) {
+  const terminal = STOP_ROLLE_TERMINAL[rolle];
+  if (!terminal) return meldingerPaaStoppet.length > 0;
+  return meldingerPaaStoppet.some((m) => m.type === terminal);
+}
+
+/**
+ * Den næste hændelse DETTE STOP mangler, i rollens egen rækkefølge — eller
+ * null hvis rollen er ukendt eller stoppet allerede er færdigt.
+ */
+export function naesteForStop(rolle, meldingerPaaStoppet = []) {
+  const raekkefoelge = STOP_ROLLE_HAENDELSER[rolle];
+  if (!raekkefoelge) return null;
+  const meldt = new Set(meldingerPaaStoppet.map((m) => m.type));
+  return raekkefoelge.find((t) => !meldt.has(t)) || null;
+}
+
 /**
  * Meldingerne for én etape, sorteret i tid — fra nodens egen form.
  *

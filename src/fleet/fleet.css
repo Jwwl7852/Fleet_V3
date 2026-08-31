@@ -1669,6 +1669,14 @@
   margin:0; padding:8px 10px; border-radius:6px;
   background:var(--fc-accent-soft); color:var(--bc-accent); font-weight:650}
 
+/* ⚠ V1-BRUGERTEST §10.2 — "man kan heller ikke åbne denne del op igen".
+   Historikken for ét stop, vist når "Se detaljer" er trykket. Ren
+   read-only liste, ingen ny farve — genbruger --bc-muted/--bc-line. */
+.fc-app-meldeliste{list-style:none; margin:6px 0 0; padding:0; display:flex;
+  flex-direction:column; gap:4px}
+.fc-app-meldeliste li{font-size:var(--fc-t-s); color:var(--bc-muted);
+  padding:4px 8px; border-left:2px solid var(--bc-line)}
+
 /* ⚠ EN VENTENDE MELDING ER IKKE EN FEJL — IKKE FARVEN --bc-warn. Den er en
    oplysning: intet er tabt, intet skal rettes. Samme info-tone som
    .fc-kpiadgang, ikke .fc-app-fejl. Se meldingskoe.js, beslutning 114. */

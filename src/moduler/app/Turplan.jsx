@@ -38,7 +38,7 @@ import { klokke, num, msTilIso } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
   HAENDELSE, planlagteStop, meldingerFor, foreslaaedeMeldinger,
-  byggMelding, valideMelding,
+  byggMelding, valideMelding, meldingerVedStop, erStopFaerdigt, naesteForStop,
 } from "../../fleet/rutestatus.js";
 import {
   laegIKoe, fjernFraKoe, koeIndhold, erForbindelsesfejl,
@@ -61,6 +61,10 @@ export default function Turplan() {
   const [kvittering, setKvittering] = useState(null);
   const [fejl, setFejl] = useState(null);
   const [aabenStop, setAabenStop] = useState(null);
+  /* ⚠ V1-BRUGERTEST §10.2 — "man kan heller ikke åbne denne del op igen".
+     Rent visningsflag: hvilket stops historik der er slået op, uafhængigt
+     af om stoppet er færdigt. Ingen ny skrivning, ingen ny node. */
+  const [aabenDetalje, setAabenDetalje] = useState(null);
   /* ⚠ KØEN LÆSES FRA localStorage VED MOUNT, ikke ved hver rendering — den
      ændrer sig kun når VI ændrer den (laegIKoe/fjernFraKoe), aldrig af en
      anden fane, så state er den rigtige kilde efter det første opslag. */
@@ -258,7 +262,14 @@ export default function Turplan() {
                 Stod der "paller", ville en chauffør der læssede efter tallet,
                 stå med for lidt plads. */}
             <span className="fc-app-mrk fc-app-mrk-mork">
-              {status.tilbage} tilbage · {status.naaet} færdige
+              {/* ⚠ "MELDT", IKKE "FÆRDIGE" — status.naaet tæller stop med
+                  MINDST ÉN melding (erNaaet i stop.js), ikke stop hvor
+                  rollens fulde sekvens er afsluttet (se erStopFaerdigt
+                  nedenfor, som de enkelte kort bruger). De to tal kan
+                  derfor være uenige med vilje: et stop kan stå som "meldt"
+                  her og stadig vente på sin afgangs-/afslutningsmelding på
+                  sit eget kort. */}
+              {status.tilbage} tilbage · {status.naaet} meldt
               {sum.kolli != null && ` · ${num(sum.kolli)} håndteringer`}
             </span>
           </p>
@@ -290,7 +301,17 @@ export default function Turplan() {
             }
 
             nr += 1;
+            const noegle = `${etape.id}-${s.id}`;
+            /* ⚠ V1-BRUGERTEST §10.2 — SE FILENS TOP AF rutestatus.js. `naaet`
+               (erNaaet, "der er meldt NOGET") bruges kun til den ydre
+               kort-farve/klasse; kortets EGEN handlingslogik bruger
+               `faerdig` (erStopFaerdigt, "rollens fulde sekvens er meldt"),
+               så en ankomst ikke længere er et dødvande. */
             const naaet = erNaaet(s, meldinger);
+            const meldingerHer = meldingerVedStop(meldinger, s.id);
+            const faerdig = erStopFaerdigt(s.rolle, meldingerHer);
+            const naesteType = naesteForStop(s.rolle, meldingerHer);
+            const detaljerAabne = aabenDetalje === noegle;
             /* ⚠ IKKE DET SAMME SOM naaet. Serveren har ikke set meldingen
                endnu, så den tæller ikke med i status.naaet ovenfor — det tal
                er MÅLT, ikke gættet. Men chaufføren skal se at hans tryk blev
@@ -302,8 +323,28 @@ export default function Turplan() {
             const ordrer = ordreListe(s.stop);
             const kort = s.stop || {};
 
+            /* Historikken for DETTE stop — genbrugt i to grene nedenfor
+               (færdigt, og "noget meldt men ikke færdigt endnu"), så
+               chaufføren kan se hvad han allerede har sendt uden at gætte. */
+            const historik = detaljerAabne && meldingerHer.length > 0 && (
+              <ul className="fc-app-meldeliste">
+                {meldingerHer.map((m) => (
+                  <li key={m.id}>
+                    {HAENDELSE[m.type]?.label || m.type} — {klokke(m.ms)}
+                    {m.note ? `: ${m.note}` : ""}
+                  </li>
+                ))}
+              </ul>
+            );
+            const detaljeKnap = meldingerHer.length > 0 && (
+              <button type="button" className="fc-btn fc-app-knap"
+                onClick={() => setAabenDetalje(detaljerAabne ? null : noegle)}>
+                {detaljerAabne ? "Skjul detaljer" : "Se detaljer"}
+              </button>
+            );
+
             return (
-              <section key={`${etape.id}-${s.id}`}
+              <section key={noegle}
                 className={naaet ? "fc-app-kort fc-app-stop-naaet" : "fc-app-kort"}>
                 <div className="fc-app-stop-top">
                   <span className="fc-app-nr">{nr}</span>
@@ -351,11 +392,15 @@ export default function Turplan() {
                 {/* ⚠ "MANGLER SCAN" ER FRAVÆRET AF EN MELDING, ikke et felt.
                     En stregkodescanning bliver en anden MÅDE at sende den
                     melding på — se erNaaet() i stop.js. */}
-                {naaet ? (
-                  <p className="fc-app-besoeg">✓ Meldt</p>
+                {faerdig ? (
+                  <div>
+                    <p className="fc-app-besoeg">✓ Afsluttet</p>
+                    {detaljeKnap}
+                    {historik}
+                  </div>
                 ) : ventende ? (
                   <p className="fc-app-besoeg">⏳ Afsendt — venter på forbindelse</p>
-                ) : aabenStop === `${etape.id}-${s.id}` ? (
+                ) : aabenStop === noegle ? (
                   <div className="fc-app-knapper">
                     {foreslaaedeMeldinger(meldinger).slice(0, 4).map((type, n) => (
                       <button key={type} type="button" disabled={sender}
@@ -368,9 +413,29 @@ export default function Turplan() {
                     <button type="button" className="fc-btn fc-app-knap"
                       onClick={() => setAabenStop(null)}>Fortryd</button>
                   </div>
+                ) : meldingerHer.length > 0 ? (
+                  /* ⚠ DETTE ER RETTELSEN. Der ER meldt noget på stoppet (fx
+                     "Ankommet, losser"), men stoppets rolle er ikke færdig
+                     endnu — vis den KONKRETE næste handling i stedet for et
+                     dødvande. */
+                  <div className="fc-app-knapper">
+                    {naesteType && (
+                      <button type="button" disabled={sender}
+                        className="fc-btn fc-btn-primaer fc-app-knap"
+                        onClick={() => meld(etape, s.id, naesteType)}>
+                        {HAENDELSE[naesteType].label}
+                      </button>
+                    )}
+                    <button type="button" className="fc-btn fc-app-knap"
+                      onClick={() => { setAabenStop(noegle); setFejl(null); }}>
+                      {naesteType ? "Andre muligheder" : "Meld noget andet"}
+                    </button>
+                    {detaljeKnap}
+                    {historik}
+                  </div>
                 ) : (
                   <button type="button" className="fc-btn fc-app-meld"
-                    onClick={() => { setAabenStop(`${etape.id}-${s.id}`); setFejl(null); }}>
+                    onClick={() => { setAabenStop(noegle); setFejl(null); }}>
                     {art?.label} mangler melding
                   </button>
                 )}
