@@ -1865,7 +1865,7 @@
           // og den dag nogen sorterer paa startMs, henter RTDB hele noden
           // ned og sorterer i klienten: en advarsel i konsollen og en regning
           // i stilhed.
-          ".indexOn": ["startMs", "status", "art", "koeretoejId", "personId"],
+          ".indexOn": ["startMs", "status", "art", "koeretoejId", "personId", "leverandoerId"],
           "$opgaveId": {
             // ⚠ NODEN VALIDEREDE KUN art OG division. Alt andet var frit — en
             // status vi ikke kender, et starttidspunkt som streng, en
@@ -2743,6 +2743,42 @@
             },
 
             "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ SUPPLIER PORTAL — DEN LÆSBARE, PR.-TENANT SPEJLING AF
+        // leverandoerPortalAdgang. De to noder svarer på to FORSKELLIGE
+        // spørgsmål, og forvekslingen mellem dem ville være en reel
+        // sikkerhedslækage:
+        //
+        //   leverandoerPortalAdgang/$uid/$tenantId  — AUTORITETEN. Hverken
+        //     læs- eller skrivbar for nogen klient (se dens egen note).
+        //     Krydser tenant-grænsen: én ekstern uid kan have grants til
+        //     FLERE tenants.
+        //
+        //   tenants/$tenantId/leverandoerPortalBrugere/$leverandoerId/$uid
+        //     — SPEJLINGEN, kun til visning. Læsbar for en admin i DENNE
+        //     tenant (leverandoerer.laes) — at se hvilke eksterne konti MAN
+        //     SELV har givet adgang til SIN EGEN leverandør er ikke
+        //     tenant-krydsende, det er almindelig masterdata-visning,
+        //     samme klasse som roller/ er det for interne brugere.
+        //
+        // ⚠ .write: false. Skrives KUN af leverandoerPortalInviter/
+        // -AdgangDeaktiver, i SAMME multi-path update() som selve grantet
+        // — to skrivninger af én kendsgerning, der ikke må kunne komme ud
+        // af sync (samme disciplin som opgaver+reservation, beslutning 45).
+        "leverandoerPortalBrugere": {
+          "$leverandoerId": {
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|leverandoerer.laes|')",
+            "$uid": {
+              ".write": false,
+              ".validate": "newData.hasChildren(['email', 'aktiv', 'oprettetMs'])",
+              "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+              "navn": { ".validate": "newData.isString() && newData.val().length <= 80" },
+              "aktiv": { ".validate": "newData.isBoolean()" },
+              "oprettetMs": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            }
           }
         },
 

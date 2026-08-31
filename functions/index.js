@@ -4952,20 +4952,32 @@ export const leverandoerPortalInviter = onCall({
     leverandoerId, aktiv: true,
     oprettetMs: grantFoer?.oprettetMs ?? Date.now(), oprettetAf: grantFoer?.oprettetAf ?? uid,
   };
-  await grantRef.set(grantEfter);
+  /* ⚠ ÉN update() PÅ ROD-REFERENCEN, TO ABSOLUTTE STIER. Grantet
+     (autoriteten, leverandoerPortalAdgang) og dets pr.-tenant spejling
+     (leverandoerPortalBrugere, kun til visning) er ÉN kendsgerning skrevet
+     to steder — samme disciplin som opgaver+reservation (beslutning 45).
+     Et enkelt update() på flere absolutte stier er atomisk i RTDB. */
+  await db.ref().update({
+    [`leverandoerPortalAdgang/${bruger.uid}/${tenantId}`]: grantEfter,
+    [`tenants/${tenantId}/leverandoerPortalBrugere/${leverandoerId}/${bruger.uid}`]: {
+      email, navn, aktiv: true, oprettetMs: grantEfter.oprettetMs,
+    },
+  });
 
   await logLeverandoerPortal(tenantId, uid, grantFoer ? AUDIT.aendre : AUDIT.opret,
     bruger.uid, grantFoer, grantEfter,
     `portaladgang ${grantFoer ? "genaktiveret" : "oprettet"} for leverandør ${leverandoerId}`);
 
-  /* ⚠ INGEN actionCodeSettings.url ENDNU. En brugerdefineret continue-URL
-     skal være på Firebase Auths egen liste over godkendte domæner — og
-     appen ligger på Netlify med forskellig URL pr. kontekst (produktion/
-     preview/branch, se netlify.toml), ikke ét fast domæne en Cloud
-     Function kan kende. Uden url falder linket tilbage på Firebases egen
+  /* ⚠ INGEN actionCodeSettings.url ENDNU. Ruten /leverandoerportal/login
+     findes nu (UI-skiven er bygget) — det der stadig mangler, er et FAST
+     domæne. En brugerdefineret continue-URL skal stå på Firebase Auths
+     egen liste over godkendte domæner, og appen ligger på Netlify med
+     forskellig URL pr. kontekst (produktion/preview/branch, se
+     netlify.toml) — ikke ét domæne en Cloud Function kan kende uden en ny
+     konfigurationsbeslutning (et miljøvariabel/secret for "det aktuelle
+     produktionsdomæne"). Uden url falder linket tilbage på Firebases egen
      hostede nulstillingsside, hvilket er et RIGTIGT, sikkert link — bare
-     ikke i FleetControls eget design endnu. Peges den om til
-     /leverandoerportal, når den rute findes i UI-skiven. */
+     ikke i FleetControls eget design endnu. */
   const link = await eksternAuth.generatePasswordResetLink(email);
   const emne = saniterHeaderFelt("Adgang til FleetControl leverandørportal", 250);
   const tekst =
@@ -4997,12 +5009,59 @@ export const leverandoerPortalAdgangDeaktiver = onCall({ region: REGION }, async
   }
 
   const efter = { ...foer, aktiv: false };
-  await grantRef.set(efter);
+  /* ⚠ SAMME MULTI-PATH update() SOM leverandoerPortalInviter — grantet og
+     dets spejling må ikke kunne komme ud af sync. Spejlingens email/navn
+     røres ikke; kun aktiv-feltet ændrer sig. */
+  await db.ref().update({
+    [`leverandoerPortalAdgang/${eksternUid}/${tenantId}`]: efter,
+    [`tenants/${tenantId}/leverandoerPortalBrugere/${foer.leverandoerId}/${eksternUid}/aktiv`]: false,
+  });
 
   await logLeverandoerPortal(tenantId, uid, AUDIT.tilstandsskift, eksternUid, foer, efter,
     "portaladgang deaktiveret");
 
   return { uid: eksternUid, aktiv: false };
+});
+
+/**
+ * leverandoerPortalBrugere(req) → { brugere: [{ uid, email, navn, aktiv, sidsteLoginMs }] }
+ *
+ * §18: "Vis: ... Eksterne brugere, Seneste login hvis data findes
+ * sikkert, Deaktiver adgang". Listen selv kommer fra spejlingen
+ * (tenants/$tenantId/leverandoerPortalBrugere/$leverandoerId) — men
+ * "seneste login" GEMMES ingen steder i RTDB (det ville være endnu et
+ * felt der kan komme ud af sync med virkeligheden). Firebase Auth kender
+ * det allerede, autoritativt, pr. konto — så det hentes LIVE her, ikke
+ * lagret. En slettet eller utilgængelig ekstern konto fejler ikke hele
+ * listen; den viser bare uden et login-tidspunkt.
+ */
+export const leverandoerPortalBrugere = onCall({ region: REGION }, async (req) => {
+  const { tenantId } = kraevLeverandoererAdmin(req);
+  const db = getDatabase();
+
+  const d = req.data || {};
+  const leverandoerId = kortStreng(d.leverandoerId, 60);
+  if (!leverandoerId) throw new HttpsError("invalid-argument", "leverandoerId mangler.");
+
+  const spejling = (await db.ref(`tenants/${tenantId}/leverandoerPortalBrugere/${leverandoerId}`).once("value")).val() || {};
+  const eksternAuth = getAuth();
+
+  const brugere = await Promise.all(Object.entries(spejling).map(async ([uidPost, post]) => {
+    let sidsteLoginMs = null;
+    try {
+      const konto = await eksternAuth.getUser(uidPost);
+      const t = konto.metadata?.lastSignInTime;
+      sidsteLoginMs = t ? new Date(t).getTime() : null;
+    } catch {
+      /* Kontoen findes ikke længere i Firebase Auth (slettet uden om
+         leverandoerPortalAdgangDeaktiver) — vis spejlingen alligevel, uden
+         et login-tidspunkt, frem for at lade hele listen fejle på én
+         forældreløs post. */
+    }
+    return { uid: uidPost, email: post.email, navn: post.navn || null, aktiv: post.aktiv === true, sidsteLoginMs };
+  }));
+
+  return { brugere };
 });
 
 /**

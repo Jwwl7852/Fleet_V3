@@ -18,6 +18,7 @@ const PORTAL = readFileSync("src/moduler/leverandoerportal/LeverandoerPortal.jsx
 const LOGIN = readFileSync("src/moduler/leverandoerportal/LeverandoerLogin.jsx", "utf8");
 const KLIENT = readFileSync("src/fleet/leverandoerportal.js", "utf8");
 const APP = readFileSync("src/App.jsx", "utf8");
+const LEVERANDOERER = readFileSync("src/moduler/indkoeb/Leverandoerer.jsx", "utf8");
 
 describe("LeverandoerPortal.jsx", () => {
   test("⚠ KNAPPERNE FØLGER kanLeverandoerSkifte(), IKKE EN LOKAL if-KÆDE", () => {
@@ -90,5 +91,33 @@ describe("App.jsx — leverandørportalen er sideordnet, ikke en udvidelse af ha
     const krop = APP.slice(start, slut);
     assert.doesNotMatch(krop, /<AppShell/);
     assert.doesNotMatch(krop, /tenant-vælger|periodevælger/i);
+  });
+});
+
+describe("§18 — Leverandoerer.jsx: admin-siden for Portaladgang", () => {
+  test("henter/inviterer/deaktiverer går gennem leverandoerportal.js, ikke kaldFunktion direkte", () => {
+    assert.match(LEVERANDOERER,
+      /import \{\s*\n?\s*inviterPortalBruger, deaktiverPortalAdgang, hentPortalBrugere,?\s*\n?\s*\} from "\.\.\/\.\.\/fleet\/leverandoerportal\.js"/);
+    assert.doesNotMatch(LEVERANDOERER, /kaldFunktion\(/,
+      "admin-skærmen kalder Cloud Functions direkte i stedet for gennem leverandoerportal.js");
+  });
+
+  test("⚠ \"Portal aktiv\" SKRIVES VIA gem() MED flet:true, IKKE EN NY FUNKTION", () => {
+    /* portalAdgang.enabled er en almindelig markdata-flag på leverandoerer/
+       — samme åbne, regelhåndhævede .write som resten af kartoteket
+       (Skive 4B). En Cloud Function til netop det felt ville være en anden
+       vej til det samme, som CLAUDE.md forbyder for satser/reolpladser. */
+    assert.match(LEVERANDOERER, /data: \{ portalAdgang: \{ enabled: checked \} \}/);
+    assert.match(LEVERANDOERER, /flet: true/);
+  });
+
+  test("⚠ \"TILDELTE AKTIVE OPGAVER\" BRUGER LEV_PORTAL_AKTIVE, IKKE EN LOKAL STATUSLISTE", () => {
+    assert.match(LEVERANDOERER,
+      /import \{ LEV_PORTAL_AKTIVE \} from "\.\.\/\.\.\/fleet\/leverandoerportal-regler\.js"/);
+    assert.match(LEVERANDOERER, /LEV_PORTAL_AKTIVE\.has\(o\.status\)/);
+  });
+
+  test("⚠ OPGAVETÆLLINGEN FILTRERER SERVER-SIDE PÅ leverandoerId, HENTER IKKE HELE opgaver", () => {
+    assert.match(LEVERANDOERER, /useListe\("opgaver", \{ ordnPaa: "leverandoerId", lig: l\.id \}\)/);
   });
 });

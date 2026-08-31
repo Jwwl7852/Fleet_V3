@@ -62,7 +62,11 @@ const LAESNING_NAEGTET = new Set(["_findes"]);
 /* ⚠ SKIVE 4C — dokumentkvote TILFØJET. Samme form som retention: et
    topniveau uden egen .read, med ét fast barn ("fakturaBilag") der bærer
    .read — se firebase.rules.json. */
-const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger", "retention", "dokumentkvote"]);
+/* ⚠ §18 — leverandoerPortalBrugere TILFØJET. Samme figur som stemplinger:
+   ingen .read på topnoden, ét fast barn ($leverandoerId) der bærer den. Det
+   er den LÆSBARE MIRROR af den fuldt låste leverandoerPortalAdgang — ikke
+   samme node, se noten ved leverandoerPortalAdgang nedenfor. */
+const BEHOLDERE = new Set(["sensitive", "vaerdi", "kpi", "stemplinger", "retention", "dokumentkvote", "leverandoerPortalBrugere"]);
 
 /* ⚠ kpi ER EN DYB BEHOLDER. sensitive/ og vaerdi/ har deres .read ÉT niveau
    nede (sensitive/bookinger). kpi/ har den TRE niveauer nede — på

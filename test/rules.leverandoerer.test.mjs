@@ -379,3 +379,41 @@ describe("indkøb og fakturaer slår leverandøren op", () => {
     }
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+   SUPPLIER PORTAL — leverandoerPortalBrugere, den læsbare pr.-tenant
+   spejling af leverandoerPortalAdgang. Se rules.tenant.test.mjs for
+   AUTORITETENS egen (fulde) lukkethed.
+   ══════════════════════════════════════════════════════════════════════ */
+describe("leverandoerPortalBrugere — spejlingen, kun til visning", () => {
+  const SPEJLING = { email: "ekstern@test.invalid", navn: "Ekstern Bruger", aktiv: true, oprettetMs: 1786912716050 };
+
+  it("⚠ INGEN KLIENT KAN SKRIVE DEN — kun leverandoerPortalInviter/-Deaktiver", async () => {
+    const db = medPerms("u-forsoeg-skriv", [PERM.leverandoererSkriv, PERM.leverandoererLaes]);
+    await assertFails(
+      set(ref(db, sti(`leverandoerPortalBrugere/${LEV}/uid-ekstern-1`)), SPEJLING));
+  });
+
+  it("en admin med leverandoerer.laes kan LÆSE spejlingen efter en Admin SDK-skrivning", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), sti(`leverandoerPortalBrugere/${LEV}/uid-ekstern-2`)), SPEJLING);
+    });
+    const db = medPerms("u-laes-brugere", [PERM.leverandoererLaes]);
+    const snap = await assertSucceeds(get(ref(db, sti(`leverandoerPortalBrugere/${LEV}/uid-ekstern-2`))));
+    assert.equal(snap.val().email, "ekstern@test.invalid");
+  });
+
+  it("⚠ UDEN leverandoerer.laes AFVISES LÆSNINGEN", async () => {
+    const uden = medPerms("u-uden-laes-brugere",
+      ALLE_PERMS.filter((p) => p !== PERM.leverandoererLaes));
+    await assertFails(get(ref(uden, sti(`leverandoerPortalBrugere/${LEV}/uid-ekstern-2`))));
+  });
+
+  it("⚠ TENANT-ISOLATION: en admin i en ANDEN tenant kan ikke læse denne tenants spejling", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `tenants/${UDEN_MODUL}/leverandoerPortalBrugere/${LEV}/uid-ekstern-3`), SPEJLING);
+    });
+    const somA = medPerms("u-tenant-a-brugere", [PERM.leverandoererLaes], T);
+    await assertFails(get(ref(somA, `tenants/${UDEN_MODUL}/leverandoerPortalBrugere/${LEV}/uid-ekstern-3`)));
+  });
+});

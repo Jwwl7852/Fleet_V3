@@ -35,3 +35,20 @@ export async function opdaterPortalStatus(tenantId, opgaveId, status) {
   const svar = await kaldFunktion("leverandoerStatusOpdater", { tenantId, opgaveId, status });
   return svar.data;
 }
+
+/* ---- Adminsiden — Opsætning → Leverandører → Portaladgang -------------- */
+
+export async function inviterPortalBruger(leverandoerId, email, navn) {
+  const svar = await kaldFunktion("leverandoerPortalInviter", { leverandoerId, email, navn });
+  return svar.data;
+}
+
+export async function deaktiverPortalAdgang(uid) {
+  const svar = await kaldFunktion("leverandoerPortalAdgangDeaktiver", { uid });
+  return svar.data;
+}
+
+export async function hentPortalBrugere(leverandoerId) {
+  const svar = await kaldFunktion("leverandoerPortalBrugere", { leverandoerId });
+  return svar.data.brugere || [];
+}

@@ -47,6 +47,7 @@ const tilbud = funktionstekst("export const leverandoerTilbudIndsend");
 const status = funktionstekst("export const leverandoerStatusOpdater");
 const inviter = funktionstekst("export const leverandoerPortalInviter");
 const deaktiver = funktionstekst("export const leverandoerPortalAdgangDeaktiver");
+const brugere = funktionstekst("export const leverandoerPortalBrugere");
 
 describe("kraevLeverandoerGrant — den fælles indgang", () => {
   test("⚠ AFVISER UDEN ET AKTIVT GRANT", () => {
@@ -194,5 +195,39 @@ describe("leverandoerPortalInviter / -Deaktiver — leverandoerer.skriv, ikke br
     assert.match(deaktiver, /aktiv: false/);
     assert.doesNotMatch(deaktiver, /\.remove\(\)|set\(null\)/,
       "grantet slettes i stedet for at blive deaktiveret — historikken går tabt");
+  });
+
+  test("⚠ GRANTET OG DETS SPEJLING SKRIVES I ÉN db.ref().update() — ikke to skrivninger der kan komme ud af sync", () => {
+    for (const [navn, tekst] of [["inviter", inviter], ["deaktiver", deaktiver]]) {
+      assert.match(tekst, /await db\.ref\(\)\.update\(\{/,
+        `${navn} skriver ikke grant og spejling atomisk i samme update()`);
+      assert.match(tekst, /leverandoerPortalAdgang\/\$\{/, `${navn} rører ikke selve grantet i update()'en`);
+      assert.match(tekst, /leverandoerPortalBrugere\/\$\{/, `${navn} rører ikke spejlingen i update()'en`);
+    }
+  });
+});
+
+describe("leverandoerPortalBrugere", () => {
+  test("kalder den fælles admin-kontrol — samme som inviter/deaktiver", () => {
+    assert.match(brugere, /kraevLeverandoererAdmin\(req\)/);
+  });
+
+  test("⚠ SENESTE LOGIN HENTES LIVE FRA Firebase Auth, GEMMES IKKE I RTDB", () => {
+    /* §18: "Seneste login hvis data findes sikkert". Et gemt tidspunkt
+       ville kunne drive fra den faktiske konto — samme fejl klassen som
+       et afledt tal i kpi/ (se CLAUDE.md's "Beregne et nøgletal ud af
+       rådata i et modul"-forbud, samme figur her). */
+    assert.match(brugere, /eksternAuth\.getUser\(/);
+    assert.match(brugere, /lastSignInTime/);
+  });
+
+  test("⚠ ÉN FORÆLDRELØS KONTO VÆLTER IKKE HELE LISTEN", () => {
+    assert.match(brugere, /catch \{/);
+  });
+
+  test("læser spejlingen, ikke selve grantet (som ingen klient — heller ikke Admin SDK behøver at læse her — kan)", () => {
+    assert.match(brugere, /tenants\/\$\{tenantId\}\/leverandoerPortalBrugere\/\$\{leverandoerId\}/);
+    assert.doesNotMatch(brugere, /leverandoerPortalAdgang\/\$\{/,
+      "funktionen læser den krydsende autoritetsnode i stedet for den pr.-tenant spejling");
   });
 });

@@ -34,11 +34,11 @@
  * allerede en åben, regelhåndhævet `.write`, og en funktion mere ville
  * være en anden vej til det samme felt.
  */
-import { useState } from "react";
-import { kr, num, pct, dato, deviation } from "../../fleet/format.js";
+import { useEffect, useState } from "react";
+import { kr, num, pct, dato, datoTid, deviation } from "../../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje,
-  Knap, Felt, Feltraekke, Formular,
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje,
+  Knap, Felt, Feltraekke, Formular, Formularsvar,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -55,6 +55,10 @@ import { SPROG, ALLE_SPROG, STANDARD_SPROG } from "../../fleet/sprog.js";
 import { DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
+import { LEV_PORTAL_AKTIVE } from "../../fleet/leverandoerportal-regler.js";
+import {
+  inviterPortalBruger, deaktiverPortalAdgang, hentPortalBrugere,
+} from "../../fleet/leverandoerportal.js";
 
 export default function Leverandoerer() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
@@ -292,9 +296,10 @@ export default function Leverandoerer() {
       )}
 
       {valgt && (
-        <Detaljer l={valgt} kilder={KILDER} maaSkrive={maaSkrive}
+        <Detaljer l={valgt} kilder={KILDER} maaSkrive={maaSkrive} path={path}
                   paaRediger={() => saetRedigerer(valgt)}
-                  paaDeaktiver={() => deaktiver(valgt)} />
+                  paaDeaktiver={() => deaktiver(valgt)}
+                  paaPortalAendret={genindlaesLev} />
       )}
     </div>
   );
@@ -331,7 +336,7 @@ function Tal({ m, vis, enhed, tone }) {
 
 /* ---- Detaljer: aftalen og prislisten ----------------------------------- */
 
-function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
+function Detaljer({ l, kilder, maaSkrive, path, paaRediger, paaDeaktiver, paaPortalAendret }) {
   /* ⚠ KILDERNE KOMMER IND. De var en MODULKONSTANT indtil indkoebslinjerne
      blev hentet fra noden — og en modulkonstant kan ikke kende komponentens
      data. Fejlen var ikke en byggefejl: `npm run build` gik igennem, og
@@ -443,7 +448,196 @@ function Detaljer({ l, kilder, maaSkrive, paaRediger, paaDeaktiver }) {
           dyrere ud bagudrettet.
         </p>
       </Kort>
+
+      {/* ⚠ §18 — PORTALADGANG. Egen Kort, egen skrivevej: kun feltet
+          `portalAdgang.enabled` skrives herfra, via samme flet:true-mønster
+          som deaktiver/genaktiver ovenfor. Selve grant/mirror-noderne
+          (leverandoerPortalAdgang, leverandoerPortalBrugere) rører denne
+          skærm ALDRIG direkte — de har hver sin Cloud Function, fordi et
+          klientskrevet grant ville være samme fejl som en klientskrevet
+          rolle (beslutning 31). Se leverandoerportal.js. */}
+      <Portaladgang l={l} path={path} maaSkrive={maaSkrive} paaAendret={paaPortalAendret} />
     </Gitter>
+  );
+}
+
+/**
+ * §18 — Opsætning → Leverandører → Portaladgang.
+ *
+ * ⚠ "TILDELTE AKTIVE OPGAVER" ER ET SERVER-SIDE FELT, IKKE HELE opgaver.js.
+ * useListe kan filtrere på ÉT felt server-side (liste.js) — leverandoerId er
+ * nu i .indexOn på opgaver, netop for at det her opslag ikke skulle hente
+ * hele tenantens opgaveliste ned for at tælle én leverandørs andel.
+ *
+ * ⚠ EKSTERNE BRUGERE KOMMER FRA `leverandoerPortalBrugere`-SPEJLINGEN, IKKE
+ * FRA `leverandoerPortalAdgang`. Den sidste er den låste autoritet
+ * (tenants/$id/leverandoerer → leverandoerPortalAdgang/$uid/$tenantId) og
+ * har ingen .read overhovedet — heller ikke for admin. hentPortalBrugere()
+ * kalder Cloud Function'en der læser spejlingen og beriger med seneste
+ * login fra Firebase Auth. Se leverandoerPortalBrugere i functions/index.js.
+ */
+function Portaladgang({ l, path, maaSkrive, paaAendret }) {
+  const aktiv = l.portalAdgang?.enabled === true;
+
+  const [brugere, saetBrugere] = useState(null);
+  const [henterBrugere, saetHenterBrugere] = useState(false);
+  const [brugerFejl, saetBrugerFejl] = useState(null);
+  const [forsoeg, saetForsoeg] = useState(0);
+
+  const [toggler, saetToggler] = useState(false);
+  const [toggleSvar, saetToggleSvar] = useState(null);
+
+  const [visInviter, saetVisInviter] = useState(false);
+  const [inviterEmail, saetInviterEmail] = useState("");
+  const [inviterNavn, saetInviterNavn] = useState("");
+  const [inviterer, saetInviterer] = useState(false);
+  const [inviterSvar, saetInviterSvar] = useState(null);
+
+  const [deaktivererUid, saetDeaktivererUid] = useState(null);
+
+  useEffect(() => {
+    let stadigAktiv = true;
+    if (!aktiv) { saetBrugere(null); return undefined; }
+    saetHenterBrugere(true);
+    saetBrugerFejl(null);
+    hentPortalBrugere(l.id)
+      .then((b) => {
+        if (!stadigAktiv) return;
+        saetBrugere(b);
+        saetHenterBrugere(false);
+      })
+      .catch((e) => {
+        if (!stadigAktiv) return;
+        saetBrugerFejl(e?.message || "Kunne ikke hente eksterne brugere.");
+        saetHenterBrugere(false);
+      });
+    return () => { stadigAktiv = false; };
+  }, [l.id, aktiv, forsoeg]);
+
+  /* ⚠ HOOKET KALDES UBETINGET — React tillader ikke en hook bag et if.
+     Selve forespørgslen er billig når portalen er slukket: `lig` giver
+     serveren præcis denne leverandørs opgaver, ikke hele noden. */
+  const { data: tildelte } = useListe("opgaver", { ordnPaa: "leverandoerId", lig: l.id });
+  const aktiveOpgaver = tildelte.filter((o) => LEV_PORTAL_AKTIVE.has(o.status)).length;
+
+  const skifter = async (checked) => {
+    saetToggler(true);
+    const r = await gem({
+      sti: path(`leverandoerer/${l.id}`), data: { portalAdgang: { enabled: checked } }, foer: l,
+      flet: true, objekt: "leverandoerer", objektId: l.id, handling: AUDIT.aendre,
+    });
+    saetToggler(false);
+    saetToggleSvar(r);
+    /* ⚠ SAMME GLEMTE TRIN SOM deaktiver()/genaktiver() PASSER PÅ. gem()
+       skriver til databasen, men `l` her er stadig den GAMLE post fra
+       forælderens `raa` — uden genindlæsning viser checkboxen "Gemt." og
+       forbliver visuelt umuteret, fordi `checked={aktiv}` læser af et props
+       der aldrig blev opdateret. Fundet i DEV-verifikation: skrivningen gik
+       igennem, kassen stod urørt. */
+    if (r.ok) paaAendret?.();
+  };
+
+  const inviterNu = async () => {
+    const email = inviterEmail.trim();
+    if (!email) return;
+    saetInviterer(true);
+    saetInviterSvar(null);
+    try {
+      await inviterPortalBruger(l.id, email, inviterNavn.trim() || undefined);
+      saetInviterSvar({ ok: true });
+      saetInviterEmail("");
+      saetInviterNavn("");
+      saetVisInviter(false);
+      saetForsoeg((n) => n + 1);
+    } catch (e) {
+      saetInviterSvar({ ok: false, art: "fejl", besked: e?.message || "Kunne ikke sende invitationen." });
+    }
+    saetInviterer(false);
+  };
+
+  const deaktiverBruger = async (uid) => {
+    saetDeaktivererUid(uid);
+    try {
+      await deaktiverPortalAdgang(uid);
+      saetForsoeg((n) => n + 1);
+    } catch (e) {
+      saetBrugerFejl(e?.message || "Kunne ikke deaktivere adgangen.");
+    }
+    saetDeaktivererUid(null);
+  };
+
+  return (
+    <Kort titel="Portaladgang">
+      <label className="fc-afkryds-punkt">
+        <input type="checkbox" checked={aktiv} disabled={!maaSkrive || toggler}
+               onChange={(e) => skifter(e.target.checked)} />
+        Portal aktiv
+      </label>
+      <p className="fc-hint" style={{ marginTop: 4 }}>
+        Giver leverandøren adgang til en separat, begrænset portal med kun
+        sine egne tildelte opgaver — ingen adgang til resten af FleetControl.
+      </p>
+      <Formularsvar svar={toggleSvar} okTekst="Gemt." />
+
+      {aktiv && (
+        <>
+          <div style={{ marginTop: 12 }}>
+            <MiniLinje label="Tildelte aktive opgaver" vaerdi={num(aktiveOpgaver)} />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div className="fc-row" style={{ marginBottom: 6 }}>
+              <span className="fc-hint">Eksterne brugere</span>
+              <Knap disabled={!maaSkrive} onClick={() => saetVisInviter((v) => !v)}
+                    title={maaSkrive ? undefined : `Kræver ${PERM.leverandoererSkriv}.`}>
+                Inviter bruger
+              </Knap>
+            </div>
+
+            {visInviter && (
+              <div style={{ marginBottom: 12 }}>
+                <Feltraekke>
+                  <Felt id="lv-portal-email" label="E-mail" kraevet vaerdi={inviterEmail}
+                        saet={saetInviterEmail} />
+                  <Felt id="lv-portal-navn" label="Navn" vaerdi={inviterNavn}
+                        saet={saetInviterNavn} />
+                </Feltraekke>
+                <Knap variant="primaer" disabled={inviterer || !inviterEmail.trim()}
+                      onClick={inviterNu}>
+                  {inviterer ? "Sender…" : "Send invitation"}
+                </Knap>
+                <Formularsvar svar={inviterSvar} okTekst="Invitation sendt." />
+              </div>
+            )}
+
+            {henterBrugere && <Henter hvad="eksterne brugere" />}
+            {brugerFejl && <Fejl genprov={() => saetForsoeg((n) => n + 1)}>{brugerFejl}</Fejl>}
+            {!henterBrugere && !brugerFejl && (
+              <Tabel
+                kolonner={[
+                  { key: "email", label: "E-mail", render: (b) => b.email },
+                  { key: "navn", label: "Navn", render: (b) => b.navn || "—" },
+                  { key: "status", label: "Status",
+                    render: (b) => <Pille tone={b.aktiv ? "ok" : undefined}>{b.aktiv ? "Aktiv" : "Deaktiveret"}</Pille> },
+                  { key: "login", label: "Seneste login",
+                    render: (b) => (b.sidsteLoginMs ? datoTid(b.sidsteLoginMs) : "Aldrig") },
+                  { key: "handling", label: "", render: (b) => (b.aktiv ? (
+                      <Knap disabled={!maaSkrive || deaktivererUid === b.uid}
+                            onClick={() => deaktiverBruger(b.uid)}
+                            title={maaSkrive ? undefined : `Kræver ${PERM.leverandoererSkriv}.`}>
+                        Deaktivér
+                      </Knap>
+                    ) : null) },
+                ]}
+                raekker={brugere || []}
+                noegle={(b) => b.uid}
+                tom="Ingen eksterne brugere endnu."
+              />
+            )}
+          </div>
+        </>
+      )}
+    </Kort>
   );
 }
 
