@@ -11,7 +11,7 @@ import { Tom } from "../../fleet/ui.jsx";
 
 export default function Klima() {
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid" style={{ gap: 11 }}>
       <Tom>
         Klima & energi er ikke en del af FleetControl V1 endnu.
       </Tom>

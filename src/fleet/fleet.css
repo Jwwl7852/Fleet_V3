@@ -1219,6 +1219,14 @@
   color:var(--bc-muted); cursor:pointer; padding:0 4px}
 .fc-dialog-krop{padding:15px 18px 18px; overflow-y:auto}
 
+/* Dialog, variant "drawer" (§1): samme panel, højreankret og fuld højde i
+   stedet for centreret. Kun position/animation — header/krop/luk-mekanik er
+   fælles med .fc-dialog ovenfor, se Dialog()'s jsdoc i ui.jsx. */
+.fc-dialog-baggrund-drawer{align-items:stretch; justify-content:flex-end; padding:0}
+.fc-dialog-drawer{width:100%; max-width:420px; max-height:100vh; height:100vh;
+  border-radius:0; animation:fc-drawer-ind .18s ease-out}
+@keyframes fc-drawer-ind{from{transform:translateX(100%)} to{transform:translateX(0)}}
+
 /* Fanetallet står PÅ fanen — ligger der noget der kræver handling, skal man
    ikke først klikke ind for at opdage det. */
 .fc-fane-tal{display:inline-block; margin-left:6px; padding:1px 6px;

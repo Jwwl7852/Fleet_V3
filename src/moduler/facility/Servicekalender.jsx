@@ -301,7 +301,7 @@ export default function Servicekalender() {
   const valgt = facilityopgaver.find((o) => o.id === valgtId) || null;
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid" style={{ gap: 11 }}>
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>

@@ -382,7 +382,7 @@ export default function FacilityOversigt() {
   const paaSiden = aktiver.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid" style={{ gap: 11 }}>
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>

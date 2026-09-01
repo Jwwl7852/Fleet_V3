@@ -848,7 +848,7 @@ export function Faner({ faner = [], valgt, saet, label = "Faner" }) {
 /* ---- Dialog ----------------------------------------------------------- */
 
 /**
- * Dialog({ titel, under, handling, onLuk, bred, children })
+ * Dialog({ titel, under, handling, onLuk, bred, variant, children })
  *
  * Et modalt panel. ⚠ IKKE window.alert/confirm — de blokerer hele tråden, og
  * en skærm der venter på en browserdialog kan ikke vise hvorfor.
@@ -869,8 +869,17 @@ export function Faner({ faner = [], valgt, saet, label = "Faner" }) {
  * end ingen, fordi den ser ud som om den virker. Panelet får fokus ved
  * åbning, så tastaturet lander det rigtige sted — resten er et selvstændigt
  * stykke arbejde.
+ *
+ * `variant: "drawer"` (§1) er samme komponent, samme tre ting ovenfor, kun
+ * anden POSITION og ANIMATION — et højreankret, fuld-højde panel i stedet
+ * for et centreret. Ikke en ny komponent, fordi header/krop/luk-mekanik ikke
+ * må drive fra hinanden mellem to visningsformer af samme dialog. `bred`
+ * gælder kun `variant:"center"` (standard); en drawer har sin egen faste
+ * bredde, fordi "bred" ikke betyder noget for et panel der allerede går fra
+ * top til bund.
  */
-export function Dialog({ titel, under, handling, onLuk, bred = false, children }) {
+export function Dialog({ titel, under, handling, onLuk, bred = false, variant = "center", children }) {
+  const erDrawer = variant === "drawer";
   const panel = useRef(null);
   const nedPaaBaggrund = useRef(false);
 
@@ -891,7 +900,7 @@ export function Dialog({ titel, under, handling, onLuk, bred = false, children }
 
   return (
     <div
-      className="fc-dialog-baggrund"
+      className={`fc-dialog-baggrund ${erDrawer ? "fc-dialog-baggrund-drawer" : ""}`}
       onMouseDown={(e) => { nedPaaBaggrund.current = e.target === e.currentTarget; }}
       onMouseUp={(e) => {
         if (nedPaaBaggrund.current && e.target === e.currentTarget) onLuk?.();
@@ -899,7 +908,7 @@ export function Dialog({ titel, under, handling, onLuk, bred = false, children }
       }}
     >
       <div
-        className={`fc-dialog ${bred ? "fc-dialog-bred" : ""}`}
+        className={`fc-dialog ${erDrawer ? "fc-dialog-drawer" : (bred ? "fc-dialog-bred" : "")}`}
         role="dialog" aria-modal="true" aria-labelledby="fc-dialog-titel"
         tabIndex={-1} ref={panel}
       >
