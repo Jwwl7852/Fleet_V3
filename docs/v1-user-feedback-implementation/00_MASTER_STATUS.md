@@ -53,7 +53,7 @@ fået eksplicit forbud mod Edit/Write/commit i deres direktiv.
 |---|---|---|---|
 | 1 | Visuel grundretning | NOT STARTED | Ingen systematisk gennemgang endnu |
 | 2.1 | Casehandler fjernes → koordinator | DONE | `8a4f82d` — dev-rollevælger har kun de 6 roller, ingen casehandler |
-| 2.2 | Chauffør kun i mobilapp | DEV VERIFIED | Bekræftet i browser: chauffør-rolle lander på isoleret `/app`, ikke kontorshell. Formel test-dækning ikke verificeret endnu |
+| 2.2 | Chauffør kun i mobilapp | DONE | Bekræftet i browser: chauffør-rolle lander på isoleret `/app`, ikke kontorshell. Formel test-dækning FANDTES allerede og blev genverificeret 2026-09-01: `test/chaufforadgang.test.mjs` (5/5 grøn — `erChauffoer` er en ren funktion af rollen, AppShell-blokken kræver `!erChauffoer`, ukendt sti sender chaufføren til `/app` i stedet for en tom side, `/app/*` er stadig åben for enhver med adgang og ikke chauffør-eksklusiv) plus `test/rules.rollematrix.test.mjs`, som måler chaufførens smalle perm-sæt (`BASIS_LAES` + `indberetningerSkriv`) mod den RIGTIGE regelmatrix i emulatoren, ikke kun mod den erklærede liste i permissions.js. Ingen kodeændring nødvendig — noten i statusdokumentet var forældet |
 | 2.3 | Sidebar-grupper kan foldes | DONE | `dca807c` |
 | 3 | Ét samlet Dashboard (fjern dashboard-vælger) | DONE | Dashboard.jsx: `<select>`-vælgeren og `?db=`-URL-overstyringen fjernet. Præcis ét synligt driftsmodul lander stadig direkte (intet at vælge imellem); 2+ giver nu altid Samlet, uden vej til at skifte væk. `dashboardvisning`/`navvisning`-filtrering, modulkort og "Ekstra nøgletal" er upåvirkede. 104 targeted + 3540/3540 fuld suite grøn, DEV-verificeret i browser |
 | 4 | Kunder → Administration | DONE | `dca807c` |
