@@ -94,16 +94,29 @@ vælger) og Gods/Bus. Der er ingen "seneste".
 Gods/Bus er afklaret (2.4). "Seneste" er **ikke** — og der gættes ikke på et
 menupunkt.
 
-### 3.2 ⚠ Mails i popup'en kræver beslutning 20's fase 1
+### 3.2 ✅ Mails i popup'en — BYGGET SIDEN, VIA SKIVE 3C, IKKE SOM OPRINDELIGT PLANLAGT
 
-Sagsbaseret mail er **fase 0 — kun visning**. `sager/` står ikke i
-`firebase.rules.json`, og derfor findes hverken `sag.laes` eller `sag.skriv` i
-`permissions.js`. Modtagevej, parsing, afsendelse og scanning mangler.
+⚠ **Denne sektion er forældet — bevaret for historikkens skyld.** Beslutning
+112/Skive 3C (V1-brugertesten) byggede sagsbaseret mail: `sager`/
+`sensitive/sager` har regler, alle fem `sag.*`-permissions findes i
+`permissions.js`, og `sagMailSend` sender en RIGTIG mail via Mailgun
+(beslutning 20's fase 1, Gate A). Løsningen blev ikke en mail-fane direkte i
+denne popup — den blev en delt `Sagsvisning`-komponent (`fleet/Sagsvisning.jsx`)
+med sine egne faner (Oversigt, **Kommunikation**, Dokumenter, Aktiviteter),
+åbnet fra en ny "Sag"-fane i Hændelsespanelet. Se
+`Vaerkstedskalender.jsx`s kommentar ved `PANEL_FANER`: de gamle
+"Kommunikation" og "Filer" var en parallel, skærm-lokal kopi og er fjernet
+til fordel for den delte komponent, som Facilitys Servicekalender også
+bruger uændret.
 
-En mail-fane på popup'en uden noget bag ville være en attrap der opfører sig
-som en kontrol — samme fejl som en deaktiveret radiogruppe der siger "ikke
-bygget". Enten bygges fase 1 først, eller også skriver popup'en frem at
-mailsporet ikke findes endnu.
+⚠ **Men modtagevejen er stadig ikke bygget.** `sagMailSend`/`sagBeskedSkriv`
+sender og registrerer UDGÅENDE beskeder; der er intet webhook-endpoint der
+modtager og parser et svar automatisk (`sagsnummerFraEmne()`/
+`vurderAfsender()` findes som rene funktioner, men er bevidst ikke
+importeret i `functions/index.js` endnu — se dens egen kommentar). En
+kommunikationstråd er derfor reel og virker, men kun i én retning ad gangen:
+et svar skal registreres manuelt som en intern note, ikke matches automatisk
+fra en indbakke.
 
 ---
 
@@ -116,7 +129,7 @@ mailsporet ikke findes endnu.
 | 3 | **Linjehøjden komprimeres** (K2b), målt på et fyldt gitter | Flere enheder på skærmen ad gangen | ✅ 68 → 44 px |
 | 4 | **Hover-view** (K2d) | Man kan se hvad en blok er uden at åbne den | ✅ Var bygget i forvejen |
 | 5 | **Klik-popup** (K2e) med fotos — og mailsporet skrevet frem som manglende | Opgaven kan åbnes fra kalenderen | ✅ Var bygget i forvejen |
-| 6 | **Mails i popup'en** — kræver beslutning 20 fase 1 | Sagens korrespondance samlet | *afventer 3.2* |
+| 6 | **Mails i popup'en** — kræver beslutning 20 fase 1 | Sagens korrespondance samlet | ✅ Bygget siden, via Skive 3C — se 3.2. Kun udgående; modtagevejen mangler stadig |
 
 Etape 1 er små. Etape 2 er den der låser resten op: uden data i vinduet kan
 hverken højde, hover eller popup prøves i browseren — og en kalenderændring
@@ -195,6 +208,9 @@ tabel ligner et tomt lager) og som mærkatet, der ikke kunne ses tegnet, før
 DEV havde data. Et grep siger noget om FILEN; kun skærmen siger noget om
 programmet.
 
-**Følgen for planen:** af hele den skrevne kravliste står nu kun ét punkt
-tilbage — **mails med indhold**, som kræver beslutning 20's fase 1. Og
-"seneste", som stadig ikke er fundet.
+**Følgen for planen (opdateret siden — se 3.2):** af hele den skrevne
+kravliste stod dengang kun ét punkt tilbage — **mails med indhold**. Det er
+siden bygget via beslutning 112/Skive 3C, i en anden form end oprindeligt
+skitseret (en delt `Sagsvisning` frem for en fane direkte i popup'en), og
+kun for udgående post — modtagevejen mangler stadig. Tilbage i planen er nu
+kun "seneste", som stadig ikke er fundet.
