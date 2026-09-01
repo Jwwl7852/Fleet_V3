@@ -928,17 +928,27 @@ Aktiviteter, ligger stadig i `fleet/` fordi Facility skal bruge den samme —
 forskellen på FLT og FAC er præfiks, counter og hvad knappen hedder, og alt
 det står i `SAG_ART`.
 
-⚠ **`Sagsvisning.jsx` er IKKE monteret noget sted.** Fase 0 byggede skærmen
-færdig og importerede den aldrig — `Vaerkstedskalender.jsx`s hændelsespanel
-har sin egen, separate visning af `sag.beskeder`. Hvor sagsvisningen skal bo,
-og om den erstatter panelet eller lever ved siden af det, er en
-skærm-placering der ikke er besluttet.
+✅ **`Sagsvisning.jsx` ER MONTERET SIDEN — Skive 3C, opdateret her.** Den
+oprindelige note ("importeret ingen steder") beskrev tilstanden lige efter
+skive 1 og er forældet. Komponenten åbnes nu fra en "Sag"-fane i
+`Vaerkstedskalender.jsx`s hændelsespanel (som mistede sin egen, separate
+`sag.beskeder`-visning til fordel for den delte komponent) og fra
+`Servicekalender.jsx` (Facility) og `Indberetninger.jsx` (Fleet). Skærm-
+placeringen er dermed afgjort: den delte komponent, ikke en parallel kopi.
 
-⚠ **`sagBeskedSkriv` skriver kun UDGÅENDE beskeder.** `sagAftaleBekraeft` er
-bygget, men ikke nåelig — intet i skive 1 skriver et `aftaleforslag`.
+✅ **UDGÅENDE MAIL ER OGSÅ BYGGET SIDEN — `sagMailSend`, Skive 3D.**
+`sagBeskedSkriv` skriver stadig kun en INTERN note ("Tilføj besked til
+sagen" — aldrig en rigtig mail); `sagMailSend` sender en RIGTIG mail via
+Mailgun (EU-region, egen permission `sag.mailSend`, egen rate-limit på
+20/minut, secrets bundet til netop denne funktion — se Gate A i
+`docs/security-compliance/08_EMAIL_SECURITY_GATE.md`). De to funktioner
+deler tråd-noden. `sagAftaleBekraeft` er fortsat ikke nåelig — intet skriver
+endnu et `aftaleforslag`.
 
-Ikke bygget: modtagevejen (skive 2) — adapteren, DMARC-opslag, virusscanning,
-afsendelse. Det kræver et leverandørvalg (dedikeret mailadresse med webhook,
+⚠ **Modtagevejen (skive 2) er stadig ikke bygget.** Adapteren, DMARC-opslag,
+virusscanning og en AUTOMATISK afsendelse af svar som del af den indgående
+tråd — ikke at forveksle med `sagMailSend`s manuelle, allerede byggede
+udgående. Det kræver et leverandørvalg (dedikeret mailadresse med webhook,
 eller Microsoft Graph mod kundens eget 365) som ikke er afgjort. **Byg ikke
 begge på én gang.**
 

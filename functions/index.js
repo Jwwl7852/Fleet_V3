@@ -7303,10 +7303,17 @@ export const fakturadestination = onCall({ region: REGION }, async (req) => {
    herunder er de eneste veje ind.
 
    ⚠ MODTAGEVEJEN ER IKKE HER. Indgående mail (adapteren, DMARC-opslag,
-   virusscanning, afsendelse) kræver et leverandørvalg — dedikeret mailadresse
-   med webhook, eller Microsoft Graph mod kundens eget 365 — og det er ikke
-   afgjort. `sagBeskedSkriv` skriver derfor kun UDGÅENDE beskeder, skrevet af
-   en medarbejder inde i appen. Se ARKITEKTUR.md.
+   virusscanning, og en AUTOMATISK afsendelse af svar som del af den
+   indgående tråd) kræver et leverandørvalg — dedikeret mailadresse med
+   webhook, eller Microsoft Graph mod kundens eget 365 — og det er ikke
+   afgjort. `sagBeskedSkriv` skriver derfor kun en INTERN note, aldrig en
+   rigtig mail.
+
+   ⚠ OG DET ER IKKE LÆNGERE HELE BILLEDET — Skive 3D tilføjede `sagMailSend`
+   (længere nede i denne fil), som SENDER en rigtig udgående mail via
+   Mailgun. De to funktioner deler tråd-noden; "kun udgående, aldrig
+   modtagende" gælder stadig for hele sagsfeatureet, men "kun intern note,
+   aldrig en rigtig mail" gælder ikke længere. Se ARKITEKTUR.md.
    ══════════════════════════════════════════════════════════════════════════ */
 
 async function logSager(tenantId, uid, handling, id, foer, efter, note) {
