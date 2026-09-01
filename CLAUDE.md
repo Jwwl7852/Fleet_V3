@@ -999,12 +999,19 @@ Suspense-grænse.
   etapeskift og dermed et andet kald; de to kan ikke lægges sammen atomisk.
   ⚠ **Og den skriver ingen reservation** — den kommer når et forslag
   godkendes.
-- **`opgaver` har nu FIRE veje ind, og ingen der er lukket.**
-  `opgaveplanlaeg` opretter en værkstedsopgave, `facilityplanlaeg` et
-  servicebesøg, `opgaveflyt` flytter en opgave af begge arter, og
+- **`opgaver` har nu FIRE veje ind der skriver HELE posten, og ingen der er
+  lukket.** `opgaveplanlaeg` opretter en værkstedsopgave, `facilityplanlaeg`
+  et servicebesøg, `opgaveflyt` flytter en opgave af begge arter, og
   `opgavestatus` skifter dens status — alle fire skriver opgaven OG dens
   reservation i én `update()`. Løsn ikke `.write` igen: det er stadig
   vejen der er lukket, ikke retten. Se beslutning 45, 49, 50 og 51.
+  ⚠ **Og siden er der kommet en FEMTE, FELT-ENESTE vej: `sagOpret`
+  (beslutning 112).** Den skriver kun `opgaver/<id>/sagId` — koblingen til
+  sagen — i SAMME `update()` som sagen selv oprettes, aldrig resten af
+  opgaven. Den har sit eget, snævre begrundelse for hvorfor det kræver
+  `opgaver.skriv` OGSÅ (ikke kun `sag.skriv`): "sag.skriv siger at brugeren
+  må oprette sager; det siger intet om at han må ÆNDRE en opgave." Se
+  kommentaren i `sagOpret` selv.
   ⚠ **Hallen og porten er ÉT rum, og det håndhæves nu.** En reservation på
   `lokation/<id>` og en på `facilityAktiv/<id>` er to stier. Brug
   `indeslutninger()` + `tjekLedigIndesluttet()` fra `reservations.js` — aldrig
