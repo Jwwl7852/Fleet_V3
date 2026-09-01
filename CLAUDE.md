@@ -241,7 +241,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   Det er ikke et forbud der gælder i produktion; det er en **umulighed** der
   gælder overalt hvor der er en server. Overstyringen i `effektivBruger` er
   derfor kun meningsfuld i **demo**, hvor der ingen server er at være uenig
-  med. Skal en rigtig bruger have anden adgang, tildeles en anden af de syv
+  med. Skal en rigtig bruger have anden adgang, tildeles en anden af de seks
   roller med `skiftrolle`, som minter claim'et og kalder
   `revokeRefreshTokens`.
   ⚠ **Og claim'et mintes fra TENANTENS EGEN rolle, ikke fra konstanten.**
@@ -700,7 +700,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   af kundens **moduler** — som siden beslutning 44 SPÆRRER `kpi/` pr. domæne —
   og af `dashboardvisning`, som stadig kun SKJULER.
   ⚠ **Men rollen afgør stadig ingenting.** Modulklausulen gælder TENANTEN,
-  ikke brugeren, og alle syv roller har hver eneste læse-permission. Et
+  ikke brugeren, og alle seks roller har hver eneste læse-permission. Et
   rollefilter i widgetvælgeren ville derfor stadig være en **pæn knap**:
   kortet væk, tallet åbent. Skal rollen afgøre adgang, kræver det nye
   læse-permissions fordelt på rollerne — se beslutning 43 og 44.
@@ -718,7 +718,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   hvert domæne er REGNET af, og `KPI_PERM` er udledt af det — i dag kun
   `kunder` → `kunder.laes`. Får et domæne en ny kilde, skal begge med;
   prøven udleder kravet af kildernes egne regler og fejler ellers.
-  ⚠ **Rollen afgør stadig reelt ingenting**, fordi alle syv roller har hver
+  ⚠ **Rollen afgør stadig reelt ingenting**, fordi alle seks roller har hver
   eneste læse-permission. `dashboardvisning` er derfor stadig en VISNING —
   og det der ville lave det om, er hvis en REGEL slog op i indstillingen.
   Se beslutning 44 og ROLLER.md.
@@ -933,7 +933,7 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   leverandørvilkår. Tre er lukket (`satser.laes`, `grundlag.laes`,
   `indkoeb.laes`); tolv står åbne, og tallet skal ned.
   ⚠ **Prøven på en ny læse-permission er FORDELINGEN, ikke antallet.** En
-  permission alle syv roller har, er en linje i et katalog — den afviser
+  permission alle seks roller har, er en linje i et katalog — den afviser
   ingen og får kataloget til at se strammere ud end systemet er. Det er
   advarslen ved `bookingLaes` i `permissions.js`, og linten håndhæver den.
   ⚠ **Og et KPI-domæne arver sin kildes læse-permission.** Skriv ikke leddet
@@ -1050,8 +1050,18 @@ Suspense-grænse.
   `idebank.skriv` og `idebank`-noden er fjernet (beslutning 22, udført i 31).
   Genindfør den ikke — den lever som selvstændig `idebank.html`.
 - **Tro at rollerne er faste.** Det var beslutning 31, og **31b omgjorde
-  det**: kunden må redigere hvad en rolle indeholder. De syv NAVNE er stadig
-  faste — man opfinder ikke en ottende.
+  det**: kunden må redigere hvad en rolle indeholder. NAVNENE er stadig
+  faste — man opfinder ikke en ny.
+  ⚠ **Og antallet af navne er ikke det samme som ved 31b.** casehandler blev
+  siden konsolideret ind i koordinator (§2.1 i V1-brugertesten) — det ændrede
+  ikke PRINCIPPET (navnene er stadig faste, kunden opfinder stadig ingen), men
+  gjorde de daværende SYV til de nuværende **seks**: chauffoer, disponent,
+  koordinator, lagermedarbejder, revisor, admin. `ROLLE_PERMS` i
+  `permissions.js` er den ene autoritative ordliste — ikke `firebase.
+  rules.json` (som med vilje kun tjekker FORM på `roller/$rolle`, ikke navnet,
+  for ikke at skulle holde en kopi af listen i sync) og ikke ROLLER.md's
+  målte tabeller, som stadig har en `caseha`-kolonne fra FØR konsolideringen
+  og bør genmåles, ikke tages for gode varer.
   ⚠ `roller` er stadig `.write: false`, men af en ANDEN grund end før: det er
   **vejen** der er lukket, ikke retten. `rolleskriv` er den ene vej ind, og den
   minter claims og kalder `revokeRefreshTokens` i samme ombæring — kunne en

@@ -406,7 +406,7 @@
           "$rolle": {
             // ⚠ ORDLISTEN STAAR I permissions.js. Her et laengdetjek, som paa
             // opgaver.status: en afskrift i regelfilen ville vaere et andet
-            // sted de syv rollenavne stod, med sin egen udrulningscyklus.
+            // sted de seks rollenavne stod, med sin egen udrulningscyklus.
             ".validate": "newData.hasChildren(['perms'])",
             "perms": {
               // ⚠ ET ARRAY AF STRENGE, IKKE ET OBJEKT. Raekkefoelgen betyder

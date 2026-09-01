@@ -1,7 +1,22 @@
 # Rollegennemgang — hvad hver rolle faktisk kan se
 
-Der er syv roller. Det her dokument siger hvad de **faktisk** kan læse og
-skrive i dag — ikke hvad presettet lover.
+⚠ **FORÆLDET SIDEN casehandler-KONSOLIDERINGEN (§2.1, V1-brugertesten).**
+Dette dokument blev målt mod SYV roller, dengang inklusive `casehandler`.
+Den rolle er siden konsolideret ind i `koordinator` — `ROLLE_PERMS` i
+`permissions.js` har i dag kun **seks** nøgler (chauffoer, disponent,
+koordinator, lagermedarbejder, revisor, admin), og koordinator har undervejs
+fået permissions den ikke havde da tabellerne herunder blev målt (bl.a.
+`booking.opret` — se permissions.js's kommentar ved koordinator). Tabellerne
+nedenfor, inklusive `caseha`-kolonnen, er derfor **historiske**, ikke
+aktuelle — dokumentets egen regel ("målt, ikke påstået") er ikke længere
+opfyldt, og det bør genmåles mod de seks nuværende roller før det bruges til
+noget skarpt. Se CLAUDE.md's note under "Tro at rollerne er faste".
+
+---
+
+Der var syv roller da dette blev skrevet (nu seks, se ovenfor). Det her
+dokument siger hvad de **faktisk** kunne læse og skrive — ikke hvad
+presettet lover.
 
 ## ⚠ Metoden: målt, ikke påstået
 
