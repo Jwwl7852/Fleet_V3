@@ -85,7 +85,7 @@ export default function Frihed() {
   });
 
   /* ⚠ KUN HANS EGNE. Reglen lader ham LÆSE hele listen — `fravaer.laes` har
-     alle syv roller — men det er hans egne ansøgninger han skal se svaret på.
+     alle seks roller — men det er hans egne ansøgninger han skal se svaret på.
      Kollegaens ferie hører ikke her. */
   const mine = fravaer.data
     .filter((f) => f.personId === minPersonId)

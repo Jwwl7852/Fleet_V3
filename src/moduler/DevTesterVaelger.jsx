@@ -4,7 +4,7 @@
  *
  * ⚠ HVORFOR KONTOEN INGEN TENANT HAR. `devTester` (scripts/dev-tester.mjs)
  * kan ÉN ting: bede devBrugerSkift (functions/index.js) om et Firebase
- * custom token for en af v1-tests syv kendte rollekonti. Gav vi den også en
+ * custom token for en af v1-tests seks kendte rollekonti. Gav vi den også en
  * tenant, ville den have direkte adgang til v1-tests data under SIT EGET
  * claim — og så ville identiteten "må skifte til en test-rolle" og
  * identiteten "ER en test-rolle" være den samme, hvor kun den første er

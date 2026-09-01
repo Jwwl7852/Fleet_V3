@@ -526,7 +526,7 @@ export default function Brugere() {
         <p className="fc-hint" style={{ marginBottom: 12 }}>
           ⚠ <b>Rollernes NAVNE er faste — indholdet kan I redigere.</b>{" "}
           Beslutning 31 gjorde begge dele faste; <b>31b</b> omgjorde det halve.
-          Man tildeler stadig blandt de syv, og en ottende er en ændring i
+          Man tildeler stadig blandt de seks, og en syvende er en ændring i
           koden — men hvad en rolle <i>betyder</i>, kan sættes her.
         </p>
         <p className="fc-hint" style={{ marginBottom: 12 }}>

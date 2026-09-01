@@ -17,7 +17,7 @@
  *   node scripts/provisioner-dev.mjs --tenant=nordvest → en RIGTIG kunde
  *
  * ⚠ MED --tenant OPRETTES DER INGEN BRUGERE. DEV-brugerne hører til
- * dev-tenanten; en kundes tenant skal ikke pludselig have syv konti med
+ * dev-tenanten; en kundes tenant skal ikke pludselig have seks konti med
  * kendte adgangskoder, fordi nogen ville se data på en skærm.
  *
  * ⚠ OG SEEDET FØLGER KUNDENS MODULER. En kunde uden Booking skal ikke have

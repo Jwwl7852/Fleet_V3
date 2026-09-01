@@ -134,7 +134,7 @@ describe("En kundes tenant behandles anderledes end dev's", () => {
   /**
    * ⚠ INGEN BRUGERE. DEV-brugerne har kendte adgangskoder fra `.env.local` og
    * findes for at prøve claims-kæden i en browser. Oprettedes de i en kundes
-   * tenant, ville kunden have syv konti han ikke kender — med fulde perms.
+   * tenant, ville kunden have seks konti han ikke kender — med fulde perms.
    */
   test("⚠ DER OPRETTES INGEN BRUGERE PÅ EN KUNDES TENANT", () => {
     assert.match(KILDE, /for \(const b of erDev \?/,

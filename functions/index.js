@@ -672,7 +672,7 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
         til at kalde DEN HER funktion skal ikke også give adgang til
         ejerkonsollen eller nogen anden kundes tenant.
 
-        ⚠ ELLER: kalderen er ALLEREDE en af v1-tests syv roller. Uden det
+        ⚠ ELLER: kalderen er ALLEREDE en af v1-tests seks roller. Uden det
         kunne en tester kun skifte ÉN gang — næste kald ville komme fra
         MÅLKONTOENS eget token, uden devTester-claimet. At SKRIVE claimet
         ind på målkontoen i stedet blev prøvet og forkastet: admins claims
@@ -714,8 +714,8 @@ export const devBrugerSkift = onCall({ region: REGION }, async (req) => {
   /* ⚠ TO MÅDER AT VÆRE AUTORISERET PÅ, IKKE ÉN.
      1) devTester-claimet — EN EGEN CLAIM, IKKE `udbyder`. Se hovedet,
         punkt 2. Det er vejen IND: uden en tenant kan kontoen ingenting
-        andet end at bede om at blive en af v1-tests syv roller.
-     2) ALLEREDE en af v1-tests syv roller. Uden det kunne en tester kun
+        andet end at bede om at blive en af v1-tests seks roller.
+     2) ALLEREDE en af v1-tests seks roller. Uden det kunne en tester kun
         skifte ÉN gang: næste kald ville komme fra MÅLKONTOENS eget token
         (uden devTester-claimet), og blive afvist. At SKRIVE devTester ind
         på målkontoen i stedet blev prøvet og forkastet — admins claims

@@ -205,7 +205,7 @@ describe("Kontoret kan det hele", () => {
 
   /**
    * ⚠ OG HAN KAN LÆSE SIN EGEN ANSØGNING. Svaret skal kunne ses i appen —
-   * ellers er "du får svar" en påstand. `fravaer.laes` har alle syv roller.
+   * ellers er "du får svar" en påstand. `fravaer.laes` har alle seks roller.
    */
   it("⚠ CHAUFFØREN KAN LÆSE FRAVÆRSLISTEN, SÅ SVARET KAN VISES", () =>
     assertSucceeds(get(ref(som(UID_CHAUFFOER, "chauffoer"), sti("fravaer")))));

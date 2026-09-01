@@ -113,7 +113,7 @@ describe("grundlaget skrives kun af serveren", () => {
    * **Beslutning 104 omgjorde det.** Et grundlag er hvad HVER ENKELT kunde
    * bliver faktureret, linje for linje — og en chauffør kunne læse dem alle.
    * Den anden halvdel af begrundelsen holdt heller ikke: `grundlag.laes` er
-   * den smalleste af de tre nye, og tre af syv roller har den ikke.
+   * den smalleste af de tre nye, og tre af seks roller har den ikke.
    *
    * Det her er punkt 3's definition of done: **serveren afviser.**
    */

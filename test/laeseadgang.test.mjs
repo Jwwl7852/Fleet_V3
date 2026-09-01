@@ -29,7 +29,7 @@
  * ved `bookingLaes` advarer mod at tilføje tretten permissions *"som alle
  * presets alligevel skulle have"* — det ville give et katalog der er dobbelt
  * så stort og præcis lige så sikkert. Prøven nedenfor håndhæver det: en
- * læse-permission som alle syv roller har, er ikke en spærring.
+ * læse-permission som alle seks roller har, er ikke en spærring.
  *
  * Koer: npm test
  */

@@ -1,12 +1,12 @@
 /* scripts/provisioner-v1-test-brugere.mjs
- * Opretter de resterende seks rollebrugere for tenanten "v1-test".
+ * Opretter de resterende fem rollebrugere for tenanten "v1-test".
  *
  * ⚠ HVORFOR DEN IKKE BARE ER `provisioner-dev.mjs --tenant=v1-test`.
  * Den funktion opretter KUN brugere når tenanten er DEV_TENANT ("demo") —
  * med vilje, se dens eget hoved: "en kundes tenant skal ikke pludselig have
- * syv konti med kendte adgangskoder, fordi nogen ville se data på en
+ * seks konti med kendte adgangskoder, fordi nogen ville se data på en
  * skærm." v1-test ER ikke en kunde — det er vores eget interne testselskab,
- * og her SKAL der være syv kendte konti, ligesom i demo. Men den guard
+ * og her SKAL der være seks kendte konti, ligesom i demo. Men den guard
  * beskytter en ægte kunde mod præcis den fejl, og den ændres ikke for at
  * gøre plads til dette script. I stedet genbruges de underliggende,
  * allerede eksporterede byggeklodser DIREKTE — samme dem opret-kunde.mjs
@@ -15,7 +15,7 @@
  * rørt ikke; den bruges bare ikke her.
  *
  * ⚠ ADMIN FINDES ALLEREDE. `kunde:opret` laver tenanten, modulerne og ÉN
- * administrator. De seks her er de resterende roller i ROLLE_PERMS.
+ * administrator. De fem her er de resterende roller i ROLLE_PERMS.
  *
  * Kør: node scripts/provisioner-v1-test-brugere.mjs
  */
@@ -36,7 +36,7 @@ export const TENANT = V1T_TENANT;
 export { V1T_DOMAENE };
 
 /* Admin er allerede oprettet af `kunde:opret` (admin@v1-test.dev...). De
-   resterende seks er ROLLE_PERMS minus admin — udledt, ikke skrevet i
+   resterende fem er ROLLE_PERMS minus admin — udledt, ikke skrevet i
    hånden, af samme grund som DEV_BRUGERE i dev-brugere.js: en ny rolle i
    presettet skal ikke kunne mangle her. */
 const NAVN = {
@@ -95,12 +95,12 @@ async function main() {
 
   /* ⚠ ADMIN-INDEKSET MANGLEDE. `kunde:opret` opretter admin-kontoen og dens
      claims, men skriver den ikke ind i tenants/<id>/brugere/<uid> — samme
-     indeks de øvrige seks poster her skriver til. Uden posten kan Brugere &
+     indeks de øvrige fem poster her skriver til. Uden posten kan Brugere &
      roller og godkendelsens "Anmoder"-kolonne ikke slå admin-kontoens navn
      op. Det er ikke en fejl i selve claim-udstedelsen — login og adgang
      virker uændret — men et hul i det index alle andre konti fylder ud.
      Rettes her, ikke i opret-kunde.mjs: samme admin-SDK-skrivning som
-     scriptet allerede foretager for de seks andre, ingen ny mekanik. */
+     scriptet allerede foretager for de fem andre, ingen ny mekanik. */
   const adminMail = `admin@${V1T_DOMAENE}`;
   try {
     const adminBruger = await auth.getUserByEmail(adminMail);

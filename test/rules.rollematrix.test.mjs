@@ -1,5 +1,5 @@
 /* test/rules.rollematrix.test.mjs
- * Hvad hver af de syv roller må SKRIVE — målt, ikke udledt.
+ * Hvad hver af de seks roller må SKRIVE — målt, ikke udledt.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚠ HVORFOR DEN FINDES.

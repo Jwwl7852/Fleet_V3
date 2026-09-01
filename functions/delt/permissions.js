@@ -256,7 +256,7 @@ export const PERM = {
    * tretten nye permissions ikke ville beskytte noget, fordi *"alle presets
    * skulle alligevel have dem alle"* — og det er det rigtige krav at stille.
    * De tre her består den: chaufføren får **ingen** af dem, disponenten to
-   * af tre, lagermedarbejderen to af tre. En permission alle syv roller har,
+   * af tre, lagermedarbejderen to af tre. En permission alle seks roller har,
    * er en linje i et katalog; det er `booking.laes` allerede.
    *
    * ⚠ DE ØVRIGE TOLV STÅR STADIG ÅBNE, og de står nu på en LISTE med en

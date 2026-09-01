@@ -29,7 +29,7 @@ export const DEV_TENANT = "demo";
 /** Ikke et rigtigt domæne. Kontiene skal ikke kunne modtage post. */
 export const DEV_DOMAENE = "dev.fleetcontrol.invalid";
 
-/** V1-testselskabets tenant-id og de syv rollekontis domæne — se
+/** V1-testselskabets tenant-id og de seks rollekontis domæne — se
  *  scripts/provisioner-v1-test-brugere.mjs, som opretter kontiene med
  *  PRÆCIS de her to konstanter, og Brugervaelger.jsx, som bruger dem til
  *  den hostede DEV-brugerskifter (devBrugerSkift). ⚠ functions/index.js kan

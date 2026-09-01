@@ -391,7 +391,7 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
     assert.ok(i > 0, "rolleskriv findes ikke");
     const krop = kode.slice(i, kode.indexOf(String.fromCharCode(10) + "export const ", i + 1));
     assert.match(krop, /ROLLE_PERMS\[rolle\]/,
-      "rolleskriv prøver ikke rollenavnet mod de syv faste");
+      "rolleskriv prøver ikke rollenavnet mod de seks faste");
   });
   it("⚠ CLAIM'ET MINTES SERVER-SIDE — og noden er kilden, ikke dommeren", () => {
     /* Prøven hed før "CLAIM'ET KOMMER FRA ROLLE_PERMS, ikke fra en node", og

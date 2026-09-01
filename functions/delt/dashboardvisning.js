@@ -43,7 +43,7 @@
  *   BRUGER får VIST. To brugere med samme rolle ser nøjagtig det samme,
  *   uanset afkrydsningen.
  *
- * Dertil har alle syv roller hver eneste læse-permission — kun `audit.laes`
+ * Dertil har alle seks roller hver eneste læse-permission — kun `audit.laes`
  * skiller nogen ud — så en chauffør i et firma der HAR Økonomi, kan stadig
  * læse `kpi/<division>/current/oekonomi` direkte.
  *

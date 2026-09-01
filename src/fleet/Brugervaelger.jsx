@@ -113,7 +113,7 @@ export default function Brugervaelger({ email, devTester = false }) {
   }
 
   /* ⚠ SAMME TO VEJE SOM SERVEREN GODTAGER — se devBrugerSkift's eget hoved.
-     devTester er vejen IND; er man ALLEREDE en af v1-tests syv roller (fordi
+     devTester er vejen IND; er man ALLEREDE en af v1-tests seks roller (fordi
      man kom ind via devTester, eller lokalt via den delte adgangskode), må
      man fortsætte med at skifte. Uden det andet led ville widgetten vise
      "VITE_DEV_BRUGER_KODE mangler" i det øjeblik man var blevet admin —

@@ -10,7 +10,7 @@
  * ⚠ HVORFOR EN EGEN CLAIM OG IKKE `udbyder`.
  *
  * En devTester kan ÉN ting: bede devBrugerSkift om at blive en af v1-tests
- * syv kendte roller. En ejer kan alt det EJERKONSOLLEN kan — oprette og
+ * seks kendte roller. En ejer kan alt det EJERKONSOLLEN kan — oprette og
  * ændre enhver kundes tenant, priser og abonnement. Genbrugte vi `udbyder`
  * til den her, ville en lækket evne til at skifte testbruger også være en
  * lækket evne til at administrere rigtige kunder. To claims, to blast radii.

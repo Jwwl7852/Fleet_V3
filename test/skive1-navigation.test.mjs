@@ -14,7 +14,7 @@
  *
  * Denne fil måler derfor det samme AppShell.jsx rent faktisk gør —
  * `synligeBorn()`-filteret, gentaget her som i test/navadgang.test.mjs — for
- * hver af de syv roller, og ikke `ALLE`-medlemskabet alene.
+ * hver af de seks roller, og ikke `ALLE`-medlemskabet alene.
  *
  * Se Skive 1 i docs/product-redesign-v1/05_IMPLEMENTATION_SLICES.md.
  *
