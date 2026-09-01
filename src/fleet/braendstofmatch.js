@@ -37,7 +37,7 @@ import { naerNok } from "./procure.js";
 import { msTilIso } from "./format.js";
 
 export const BRAENDSTOF_MATCHSIGNAL = {
-  koeretoej: { label: "Samme angivne køretøj", vaegt: 100 },
+  koeretoej: { label: "Samme angivne enhed", vaegt: 100 },
   datoExact: { label: "Samme dato", vaegt: 55 },
   datoNaer:  { label: "Tæt på i tid", vaegt: 20 },
   literNaer: { label: "Literantal inden for tolerance", vaegt: 40 },
