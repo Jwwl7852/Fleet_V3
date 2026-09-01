@@ -4,7 +4,7 @@
 konflikt mellem de 20 mockups, eller lukkede et hul der først blev synligt da
 modellen blev skrevet ned.
 
-Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 20
+Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 120
 trufne beslutninger, og et brud på en af dem skal være bevidst frem for
 tilfældigt. Kolonnen **Hvorfor** er ikke pynt — den er det eneste sted der
 står hvad der gik galt uden beslutningen, og uden den ligner de fleste af dem
