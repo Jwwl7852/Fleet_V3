@@ -57,7 +57,7 @@ fået eksplicit forbud mod Edit/Write/commit i deres direktiv.
 | 2.3 | Sidebar-grupper kan foldes | DONE | `dca807c` |
 | 3 | Ét samlet Dashboard (fjern dashboard-vælger) | DONE | Dashboard.jsx: `<select>`-vælgeren og `?db=`-URL-overstyringen fjernet. Præcis ét synligt driftsmodul lander stadig direkte (intet at vælge imellem); 2+ giver nu altid Samlet, uden vej til at skifte væk. `dashboardvisning`/`navvisning`-filtrering, modulkort og "Ekstra nøgletal" er upåvirkede. 104 targeted + 3540/3540 fuld suite grøn, DEV-verificeret i browser |
 | 4 | Kunder → Administration | DONE | `dca807c` |
-| 5 | Økonomi/Fakturagrundlag sættes på pause | NOT STARTED | Stadig synligt i FÆLLES i browser |
+| 5 | Økonomi/Fakturagrundlag sættes på pause | DONE | `cc3dfec` (+ `14f7273`, uafhængig oprydning). `fakturering`-barnet fik `skjulINav: true` i nav.js — begge børn af "Økonomi / Fakturagrundlag" er nu skjulte, og gruppen forsvinder derfor selv fra FÆLLES (beslutning 105: "et punkt hvis børn alle er skjult, tegnes ikke"). Ruten `/oekonomi/fakturering` er uændret og virker stadig som direkte link. Tre nav-tests med en hardkodet antagelse om at "oekonomi" altid er synlig er rettet til samme princip; README's skærmtabel/total opdateret. 3767/3767 fuld suite grøn, lint og build grøn, DEV-verificeret i browser (sidebar viser ikke punktet, direkte link virker) |
 | 6 | Fakturaer & bilag (upload/manuel/søgning/importeret af) | NOT STARTED | |
 | 7.1 | Leverandørkort (adresse, kontaktperson, adskilt ordre-mail, søgning) | DONE | `5db0742` |
 | 7.2–7.5 | Leverandørstatistik, global varemaster + leverandørvarer-relation, kategorier | NOT STARTED | `5db0742`'s commit-tekst noterer eksplicit at global varemaster er UDENFOR scope af den rettelse — egen skive |
@@ -136,9 +136,18 @@ Portal (F.1a-F.1e, F.2) og Fuel Matching (G.1, G.2) — kun G.2+ resten
 (statistik, foto-capture, struktureret fakturaimport) står tilbage af de to,
 og ingen af dem blokerer noget andet.
 
+§5 er nu også DONE (Økonomi/Fakturagrundlag sat på pause i FÆLLES).
+
 Næste skridt: fortsætte med de næststørste uafhængige, allerede scopede
 punkter fra det oprindelige 26-sektionsbrief — §9 (Fleet-konsolidering,
 12 delpunkter) og §10.4-10.14 (resten af chaufførapp-redesignet,
 11 delpunkter) er de to største, urørte blokke; §11-14 (Procure/Facility/
 Unitbooking/Warehouse-redesign) er fire hele moduler der heller ikke er
 begyndt. Se tabellen "Brief-sektioner — status" ovenfor for den fulde liste.
+
+⚠ **§9 AFVENTER STADIG BRUGEREN.** De 12 delpunkters detaljetekst fra den
+oprindelige masteropgave er efterspurgt to gange i chatten (bekræftet via
+`AskUserQuestion` — brugeren valgte selv "Del §9's detaljer igen") uden at
+teksten er blevet delt. §9 bør ikke gættes på ud fra overskrifterne alene;
+spørg igen når arbejdet naturligt vender tilbage til Fleet-konsolidering,
+i stedet for at antage indholdet.
