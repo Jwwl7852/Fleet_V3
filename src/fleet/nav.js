@@ -152,7 +152,7 @@ export const NAV = [
       { key: "bookingOversigt", sti: "/booking", label: "Alle opgaver",
         titel: "Planning", under: "Fra forespørgsel til udført arbejde, dokumentation og fakturering." },
       { key: "nyForespoergsel", sti: "/booking/ny", label: "Ny forespørgsel",
-        titel: "Planning – ny transportforespørgsel", under: "Case-håndterer indsender forespørgsel til planlægning." },
+        titel: "Planning – ny transportforespørgsel", under: "Koordinator indsender forespørgsel til planlægning." },
       { key: "forslag", sti: "/booking/forslag/:id", label: "Forslag & reservation", skjulINav: true,
         titel: "Planning – forslag & reservation", under: "Disponent har udarbejdet forslag. Koordinator godkender." },
       { key: "disponering", sti: "/booking/disponering", label: "Disponering",

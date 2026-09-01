@@ -96,6 +96,14 @@ const FORAELDEDE = [
   "Værkstedskalender",
   "Køretøj",
   "køretøj",
+  /* ⚠ SYVENDE FUND, SAMME KLASSE: ikke et modulnavn, men en fjernet ROLLE.
+     casehandler blev konsolideret ind i koordinator (beslutning, se
+     permissions.js linje ~482) — men nav.js's "Ny forespørgsel"-skærm
+     viste stadig "Case-håndterer indsender forespørgsel til planlægning."
+     til enhver koordinator der åbnede den. Fundet ved gennemgang af §8,
+     ikke af denne prøve — den er skrevet EFTER fundet, for at fange det
+     hvis det sker igen. */
+  "Case-håndterer",
 ];
 
 /**
