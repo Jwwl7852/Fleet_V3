@@ -50,8 +50,8 @@ import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { kr, num, dato, datoTid, klokke } from "../../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
-  Gitter, MiniLinje, Knap, Formularsvar, Kpiadgang } from "../../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
+  MiniLinje, Knap, Formularsvar, Kpiadgang, Dialog, Faner } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
@@ -368,70 +368,57 @@ export default function Servicekalender() {
         </p>
       </Kort>
 
-      <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
-        <Reservationen
-          besoeg={valgt} lvNavn={lvNavn}
+      <Kort titel="Servicebesøg">
+        <Tabel
+          kolonner={[
+            { key: "startMs", label: "Dato", render: (r) => (
+                Number.isFinite(r.startMs)
+                  ? `${dato(r.startMs)} ${klokke(r.startMs)}`
+                  : <span className="fc-bad">mangler</span>) },
+            { key: "hvad", label: "Hvad", render: (r) => (
+                <b>{r.aktivId
+                  ? aktiver.data.find((a) => a.id === r.aktivId)?.navn || r.aktivId
+                  : lokNavn(r.lokationId) || r.lokationId}</b>) },
+            { key: "leverandoerId", label: "Udføres af", render: (r) => (
+                r.leverandoerId ? lvNavn(r.leverandoerId) : "eget personale") },
+            { key: "status", label: "Status", render: (r) => (
+                <Pille tone={OPGAVE_STATUS[r.status]?.pill}>
+                  {OPGAVE_STATUS[r.status]?.label || r.status}
+                </Pille>) },
+            /* ⚠ beloebOere, IKKE estimatOere. Feltet på noden er en
+               OMKOSTNING — værkstedet og facility servicerer vores egen
+               bygning, og et beløb her kan ikke faktureres videre.
+               `estimatOere` var demofilens navn, og det var netop dét der
+               gjorde den til et andet datasæt. */
+            { key: "beloebOere", label: "Estimat", num: true, render: (r) => kr(r.beloebOere) },
+            { key: "vaelg", label: "", render: (r) => (
+                <Knap onClick={() => setValgtId(r.id)} disabled={r.id === valgtId}>
+                  {r.id === valgtId ? "Vist" : "Vis"}
+                </Knap>) },
+          ]}
+          raekker={facilityopgaver}
+          tom="Ingen servicebesøg."
+        />
+        <p className="fc-hint" style={{ marginTop: 12 }}>
+          Et servicebesøg er en <b>opgave med art facility</b> (beslutning 21) —
+          samme form som et værkstedsbesøg, bare på et anlæg i stedet for en bil.
+          Tabellen viser <b>noden</b>, ikke et demosæt: den og gitteret læser
+          den samme liste.
+        </p>
+      </Kort>
+
+      {/* ⚠ V1 VISUEL KONSOLIDERING — §1: drawer i stedet for de to altid
+          synlige kort ("Reservationen der ville blive skrevet" + "Sag").
+          Samme princip og samme Faner-opdeling (Overblik/Sag) som Fleet
+          Driftskalenders Haendelsespanel — brugeren beholder kalenderen og
+          listen bag panelet i stedet for at skulle scrolle forbi gitteret. */}
+      {valgt && (
+        <Besoegspanel
+          besoeg={valgt} lvNavn={lvNavn} lokNavn={lokNavn} aktiver={aktiver.data}
           maaSkrive={maaSkrive}
           onSkiftet={() => opgaver.genindlaes()}
+          onLuk={() => setValgtId(null)}
         />
-        <Kort titel="Servicebesøg">
-          <Tabel
-            kolonner={[
-              { key: "startMs", label: "Dato", render: (r) => (
-                  Number.isFinite(r.startMs)
-                    ? `${dato(r.startMs)} ${klokke(r.startMs)}`
-                    : <span className="fc-bad">mangler</span>) },
-              { key: "hvad", label: "Hvad", render: (r) => (
-                  <b>{r.aktivId
-                    ? aktiver.data.find((a) => a.id === r.aktivId)?.navn || r.aktivId
-                    : lokNavn(r.lokationId) || r.lokationId}</b>) },
-              { key: "leverandoerId", label: "Udføres af", render: (r) => (
-                  r.leverandoerId ? lvNavn(r.leverandoerId) : "eget personale") },
-              { key: "status", label: "Status", render: (r) => (
-                  <Pille tone={OPGAVE_STATUS[r.status]?.pill}>
-                    {OPGAVE_STATUS[r.status]?.label || r.status}
-                  </Pille>) },
-              /* ⚠ beloebOere, IKKE estimatOere. Feltet på noden er en
-                 OMKOSTNING — værkstedet og facility servicerer vores egen
-                 bygning, og et beløb her kan ikke faktureres videre.
-                 `estimatOere` var demofilens navn, og det var netop dét der
-                 gjorde den til et andet datasæt. */
-              { key: "beloebOere", label: "Estimat", num: true, render: (r) => kr(r.beloebOere) },
-              { key: "vaelg", label: "", render: (r) => (
-                  <Knap onClick={() => setValgtId(r.id)} disabled={r.id === valgtId}>
-                    {r.id === valgtId ? "Vist" : "Vis"}
-                  </Knap>) },
-            ]}
-            raekker={facilityopgaver}
-            tom="Ingen servicebesøg."
-          />
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            Et servicebesøg er en <b>opgave med art facility</b> (beslutning 21) —
-            samme form som et værkstedsbesøg, bare på et anlæg i stedet for en bil.
-            Tabellen viser <b>noden</b>, ikke et demosæt: den og gitteret læser
-            den samme liste.
-          </p>
-        </Kort>
-      </Gitter>
-
-      {/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. Her
-          stod et link til "/flaade" med "sagen er fase 0" — sagen findes nu,
-          og genbruger nøjagtig den samme komponent som Driftskalenderen. */}
-      {valgt && (
-        <Kort titel="Sag">
-          <Sagsvisning
-            sagId={valgt.sagId || null}
-            objektType="opgave"
-            objektId={valgt.id}
-            art="facility"
-            objektLabel={valgt.aktivId
-              ? aktiver.data.find((a) => a.id === valgt.aktivId)?.navn || valgt.aktivId
-              : lokNavn(valgt.lokationId) || valgt.lokationId}
-            emneForslag={valgt.beskrivelse}
-            modpartNavnForslag={valgt.leverandoerId ? lvNavn(valgt.leverandoerId) : ""}
-            onGenindlaes={() => opgaver.genindlaes()}
-          />
-        </Kort>
       )}
 
       {planlaegger && (
@@ -448,9 +435,20 @@ export default function Servicekalender() {
   );
 }
 
-/* ---- Den fjerde reservationskilde ------------------------------------- */
+/* ---- Den fjerde reservationskilde, i et drawer-panel ------------------ */
+
+const BESOEG_FANER = [
+  { key: "overblik", label: "Overblik" },
+  { key: "sag", label: "Sag" },
+];
 
 /**
+ * Klik på "Vis" åbner den her — samme figur som Fleet Driftskalenders
+ * Haendelsespanel: `Dialog variant="drawer"`, samme header/luk-mekanik,
+ * samme Overblik/Sag-fanedeling, samme delte Sagsvisning. Kalenderen og
+ * servicebesøgstabellen bag panelet forbliver synlige og scroller ikke væk
+ * (§1 V1 visuel konsolidering).
+ *
  * ⚠ DEN LÆSTE BESØGETS `fra`, `til` OG `sagsnummer` — FELTER NODEN IKKE HAR.
  *
  * Præcis samme fejl som Disponerings detaljepanel havde, og det er tredje gang
@@ -463,14 +461,11 @@ export default function Servicekalender() {
  * ikke se den ydre komponents variabler, og en modul-konst der slog op i et
  * demosæt, ville vise vores demoværksteds navne hos en rigtig kunde.
  */
-function Reservationen({ besoeg, lvNavn, maaSkrive, onSkiftet }) {
-  if (!besoeg) {
-    return (
-      <Kort titel="Reservation">
-        <Tom>Vælg et besøg for at se hvilken reservation det ville skrive.</Tom>
-      </Kort>
-    );
-  }
+function Besoegspanel({ besoeg, lvNavn, lokNavn, aktiver, maaSkrive, onLuk, onSkiftet }) {
+  const [fane, setFane] = useState("overblik");
+  const label = besoeg.aktivId
+    ? aktiver.find((a) => a.id === besoeg.aktivId)?.navn || besoeg.aktivId
+    : lokNavn(besoeg.lokationId) || besoeg.lokationId;
 
   let r = null, byggefejl = null;
   try { r = reservationFraOpgave(besoeg); } catch (e) { byggefejl = e.message; }
@@ -479,8 +474,18 @@ function Reservationen({ besoeg, lvNavn, maaSkrive, onSkiftet }) {
   const slut = slutter(besoeg);
 
   return (
-    <Kort titel="Reservationen der ville blive skrevet">
-      {byggefejl ? <Fejl>{byggefejl}</Fejl> : (
+    <Dialog
+      variant="drawer"
+      titel={besoeg.beskrivelse}
+      under={[label, besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : "eget personale"]
+        .filter(Boolean).join(" · ")}
+      handling={<Pille tone={OPGAVE_STATUS[besoeg.status]?.pill}>
+        {OPGAVE_STATUS[besoeg.status]?.label}</Pille>}
+      onLuk={onLuk}
+    >
+      <Faner faner={BESOEG_FANER} valgt={fane} saet={setFane} label="Servicebesøg" />
+
+      {fane === "overblik" && (byggefejl ? <Fejl>{byggefejl}</Fejl> : (
         <>
           <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
           <MiniLinje
@@ -544,7 +549,22 @@ function Reservationen({ besoeg, lvNavn, maaSkrive, onSkiftet }) {
             port og at lukke en hal.
           </p>
         </>
+      ))}
+
+      {/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. Samme
+          komponent som Fleet Driftskalenders Haendelsespanel bruger. */}
+      {fane === "sag" && (
+        <Sagsvisning
+          sagId={besoeg.sagId || null}
+          objektType="opgave"
+          objektId={besoeg.id}
+          art="facility"
+          objektLabel={label}
+          emneForslag={besoeg.beskrivelse}
+          modpartNavnForslag={besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : ""}
+          onGenindlaes={onSkiftet}
+        />
       )}
-    </Kort>
+    </Dialog>
   );
 }

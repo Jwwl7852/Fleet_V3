@@ -1226,6 +1226,16 @@
 .fc-dialog-drawer{width:100%; max-width:420px; max-height:100vh; height:100vh;
   border-radius:0; animation:fc-drawer-ind .18s ease-out}
 @keyframes fc-drawer-ind{from{transform:translateX(100%)} to{transform:translateX(0)}}
+/* ⚠ 420px ER SMALLERE END DE SIDER DER GENBRUGER .fc-row OG .fc-mini BLEV
+   BYGGET TIL. Begge antager en bred nok beholder til at holde en knaprække
+   eller en sætning på ÉN linje uden at ombrække — sandt i en centreret
+   dialog eller på en almindelig side, ikke sandt i en drawer. Uden disse to
+   fik Facilitys statusknapper og prioritetsteksten en VANDRET scrollbar
+   inde i et lodret panel (målt: fire knapper og en lang MiniLinje-værdi,
+   se Servicekalenders Besoegspanel). Scoped til draweren — en centreret
+   dialogs korte, tabelagtige værdier skal fortsat stå på én linje. */
+.fc-dialog-drawer .fc-row{flex-wrap:wrap}
+.fc-dialog-drawer .fc-mini>b{white-space:normal}
 
 /* Fanetallet står PÅ fanen — ligger der noget der kræver handling, skal man
    ikke først klikke ind for at opdage det. */

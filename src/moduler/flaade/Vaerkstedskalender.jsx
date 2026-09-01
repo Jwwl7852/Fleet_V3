@@ -641,11 +641,17 @@ const PANEL_FANER = [
 ];
 
 /**
- * Klik på en blok åbner den her. Mockuppens højre panel, som en dialog.
+ * Klik på en blok åbner den her. Mockuppens højre panel, som en drawer.
  *
- * ⚠ MODAL FREM FOR ET SIDEPANEL. Panelet skal kunne rumme en mailtråd og en
- * filliste, og et sidepanel i den bredde ville have klemt gitteret sammen til
- * en tredjedel — netop det gitteret blev komprimeret for at undgå.
+ * ⚠ IKKE LÆNGERE `bred` (centreret, 1020px). Den tidligere begrundelse —
+ * "et sidepanel ville klemme gitteret sammen til en tredjedel" — gjaldt et
+ * panel der er en del af LAYOUT-FLOWET og derfor skubber gitteret til side.
+ * `variant="drawer"` (§1 V1 visuel konsolidering) er et OVERLAY, samme
+ * `position:fixed` som den centrerede dialog — gitteret klemmes slet ikke,
+ * det forbliver forklarligt og synligt bag panelet. Mailtråden og fillisten
+ * i fanen "Sag" får dermed en smallere, fast bredde end før i stedet for
+ * 1020px — samme afvejning som resten af drawer-princippet: mindre plads,
+ * til gengæld beholdt kontekst.
  */
 function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet }) {
   const [fane, setFane] = useState("overblik");
@@ -654,7 +660,7 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
 
   return (
     <Dialog
-      bred
+      variant="drawer"
       titel={opgave.beskrivelse}
       under={[enhed?.kaldenavn, ARBEJDSTYPE[opgave.arbejdstype],
               opgave.leverandoerId ? lvNavn(opgave.leverandoerId) : "Eget værksted"]
@@ -666,7 +672,10 @@ function Haendelsespanel({ opgave, lvNavn, enheder, onLuk, maaSkrive, onSkiftet 
       <Faner faner={PANEL_FANER} valgt={fane} saet={setFane} label="Hændelse" />
 
       {fane === "overblik" && (
-        <Gitter kolonner="minmax(0,1fr) minmax(0,1fr)">
+        /* ⚠ ÉN KOLONNE, IKKE TO. Drawerens 420px er for smal til at give
+           enhedsinfo og Reservationens påvirkning hver sin halvdel uden at
+           MiniLinje-labels og -værdier ombrækker på hvert eneste ord. */
+        <Gitter>
           <div>
             <MiniLinje label="Enhed" vaerdi={<b>{enhed?.kaldenavn || opgave.koeretoejId}</b>} />
             {enhed?.registrering && <MiniLinje label="Reg.nr." vaerdi={enhed.registrering} />}
