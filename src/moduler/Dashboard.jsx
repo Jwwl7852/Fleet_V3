@@ -315,7 +315,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid" style={{ gap: 11 }}>
       <Kpiadgang utilgaengelige={kpiadgangRelevant} />
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 

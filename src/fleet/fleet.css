@@ -206,7 +206,11 @@
 .fc-who-r{color:#94a3b8; font-size:var(--fc-t-xs)}
 
 .fc-main{flex:1; min-width:0; display:flex; flex-direction:column}
-.fc-top{display:flex; align-items:flex-start; gap:14px; padding:22px 26px 14px; flex-wrap:wrap}
+/* ⚠ V1 VISUEL KONSOLIDERING — §1/§16. Toppadding var 22/14, målt som den
+   største enkeltstående luftflade over "fold": et skærmbillede uden en
+   tabel eller et kort viste kun mørk sidebar og hvid top. Ingen ny token —
+   samme skala, mindre af den. */
+.fc-top{display:flex; align-items:flex-start; gap:14px; padding:15px 26px 9px; flex-wrap:wrap}
 .fc-top-h{flex:1; min-width:220px}
 .fc-top-h h1{margin:0; font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em}
 .fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:var(--fc-t-m)}
@@ -223,19 +227,23 @@
    4202 — den klippede aldrig noget, og teksten "Scroll til hoejre for at se
    laengere frem" beskrev noget der ikke skete. Samme fejl ramte hver eneste
    brede tabel i .fc-scroll. */
-.fc-slot{padding:0 26px 34px; flex:1; min-width:0}
+.fc-slot{padding:0 26px 20px; flex:1; min-width:0}
 
 /* Delte primitiver — modulerne skal ikke definere egne kort og tabeller */
-.fc-grid{display:grid; gap:14px}
+/* ⚠ V1 VISUEL KONSOLIDERING — §1/§16. gap/padding strammet ét sted, som
+   rammer hvert kort og hvert gitter i appen ens: "korte, kompakte cards" er
+   den kvalitet vi BEHOLDER (§1), og "reducer whitespace" er hvad ændringen
+   gør. Ingen ny token, ingen ny klasse — kun tallene på de eksisterende. */
+.fc-grid{display:grid; gap:11px}
 .fc-card{background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:var(--fc-r); box-shadow:var(--fc-shadow); min-width:0}
-.fc-card-h{padding:15px 17px 0; font-size:var(--fc-t-l); font-weight:650}
+.fc-card-h{padding:12px 14px 0; font-size:var(--fc-t-l); font-weight:650}
 /* Korttitler med ikon (Bemanding, Facility, Indkøb). Ikonet er dæmpet —
    titlen skal læses, ikke ikonet. */
 .fc-card-h>span{display:inline-flex; align-items:center; gap:8px; min-width:0}
 .fc-card-h svg{width:25px; height:25px; flex:0 0 25px; fill:currentColor;
   stroke:none; color:var(--bc-muted)}
-.fc-card-b{padding:15px 17px}
+.fc-card-b{padding:12px 14px}
 
 /* ⚠ SKIVE 2C — DASHBOARD. Sekundær, sammenklappelig sektion ("Ekstra
    nøgletal"), samme visuelle sprog som .fc-card/.fc-card-h/.fc-card-b —
@@ -243,15 +251,15 @@
    folde-mekanikken. Ingen nye farver: kun eksisterende tokens. */
 .fc-sammenklap{background:var(--bc-card); border:1px solid var(--bc-line);
   border-radius:var(--fc-r); box-shadow:var(--fc-shadow); min-width:0}
-.fc-sammenklap>summary{padding:15px 17px; font-size:var(--fc-t-l); font-weight:650;
+.fc-sammenklap>summary{padding:12px 14px; font-size:var(--fc-t-l); font-weight:650;
   cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px}
 .fc-sammenklap>summary::-webkit-details-marker{display:none}
 .fc-sammenklap-pil{color:var(--bc-muted); transition:transform .15s; flex:0 0 auto;
   display:inline-block}
 .fc-sammenklap[open]>summary .fc-sammenklap-pil{transform:rotate(90deg)}
-.fc-sammenklap-b{padding:0 17px 15px; display:flex; flex-direction:column; gap:14px}
+.fc-sammenklap-b{padding:0 14px 12px; display:flex; flex-direction:column; gap:11px}
 
-.fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
+.fc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:11px}
 .fc-kpi-l{color:var(--bc-muted); font-size:var(--fc-t-s); font-weight:500}
 .fc-kpi-v{font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em; margin:1px 0 2px}
 .fc-kpi-d{font-size:var(--fc-t-xs); font-weight:600}
@@ -265,7 +273,10 @@
    i en venstrestillet kolonne med tal — "12 m³", datoer, "3 af 14" — har
    cifrene forskellig bredde i Inter, og saa danser kolonnen. Her faar hvert
    ciffer samme bredde, saa de staar under hinanden uanset justering. */
-.fc-table td{padding:12px; border-top:1px solid var(--bc-line); font-size:var(--fc-t-m);
+/* ⚠ V1 VISUEL KONSOLIDERING — "kompakte lister" er en kvalitet vi HENTER
+   tilbage fra den gamle version (§1). 12 → 9px lodret; vandret uændret, så
+   tal og tekst ikke klemmes mod hinanden. */
+.fc-table td{padding:9px 12px; border-top:1px solid var(--bc-line); font-size:var(--fc-t-m);
   font-variant-numeric:tabular-nums}
 .fc-table tbody tr:hover{background:#fafbfd}
 /* Valgt raekke i en klikbar tabel. Bruger accent-tokenet frem for en ny farve,
@@ -347,7 +358,7 @@
 .fc-login-miljoe{text-align:center; margin-top:14px; font-variant-numeric:tabular-nums}
 .fc-row{display:flex; align-items:center; justify-content:space-between; gap:12px}
 .fc-scroll{overflow-x:auto}
-.fc-kpi{display:flex; gap:12px; padding:16px 17px; align-items:flex-start}
+.fc-kpi{display:flex; gap:12px; padding:13px 14px; align-items:flex-start}
 .fc-kpi-txt{min-width:0}
 .fc-kpi-ico{width:52px; height:52px; border-radius:14px; display:grid; place-items:center;
   flex:0 0 52px; font-size:var(--fc-t-l); font-weight:700}
@@ -1142,7 +1153,7 @@
 .fc-gk-lodret{overflow-y:auto; max-height:var(--gk-maks, 430px)}
 
 .fc-kal-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-  margin-bottom:12px}
+  margin-bottom:9px}
 .fc-kal-spring{margin-left:auto; display:flex; align-items:center; gap:8px}
 .fc-kal-periode{font-weight:650; font-size:var(--fc-t-m); white-space:nowrap}
 
@@ -1196,7 +1207,9 @@
   box-shadow:var(--fc-shadow); width:100%; max-width:640px; outline:0;
   display:flex; flex-direction:column; max-height:calc(100vh - 64px)}
 .fc-dialog-bred{max-width:1020px}
-.fc-dialog-top{display:flex; align-items:flex-start; gap:14px; padding:18px 20px 14px;
+/* ⚠ V1 VISUEL KONSOLIDERING — §1/§16. Samme stramning som .fc-card:
+   mindre luft, samme skala. */
+.fc-dialog-top{display:flex; align-items:flex-start; gap:14px; padding:15px 18px 12px;
   border-bottom:1px solid var(--bc-line)}
 .fc-dialog-top h2{margin:0; font-size:var(--fc-t-xl); font-weight:700}
 .fc-dialog-top-h{margin-left:auto; display:flex; align-items:center; gap:8px;
@@ -1204,7 +1217,7 @@
 .fc-dialog-under{margin:3px 0 0; font-size:var(--fc-t-s); color:var(--bc-muted)}
 .fc-dialog-luk{background:none; border:0; font-size:var(--fc-t-3xl); line-height:1;
   color:var(--bc-muted); cursor:pointer; padding:0 4px}
-.fc-dialog-krop{padding:18px 20px 20px; overflow-y:auto}
+.fc-dialog-krop{padding:15px 18px 18px; overflow-y:auto}
 
 /* Fanetallet står PÅ fanen — ligger der noget der kræver handling, skal man
    ikke først klikke ind for at opdage det. */
@@ -1252,12 +1265,17 @@
   stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
 
 /* ── Kassen på driftskalenderen ──────────────────────────────────────────
-   Ikon øverst, handlingen modsat, så tallet står alene i midten. */
+   Ikon øverst, handlingen modsat, så tallet står alene i midten.
+   ⚠ V1 VISUEL KONSOLIDERING — §1 "Fleet — visuelt mål": "topkort mindre og
+   mere kompakte". Tallet gik fra --fc-t-4xl til --fc-t-3xl — samme skala,
+   ét trin ned, og nu samme størrelse som et almindeligt KpiKort-tal
+   (.fc-kpi-v), som det AKKURAT er: fem instanser af samme mønster, ikke en
+   særlig type kort. Ingen ny token. */
 .fc-kasse-top{display:flex; align-items:flex-start; justify-content:space-between;
-  gap:12px; margin-bottom:14px}
+  gap:12px; margin-bottom:8px}
 .fc-kasse-l{color:var(--bc-muted); font-size:var(--fc-t-m); font-weight:600}
-.fc-kasse-v{font-size:var(--fc-t-4xl); font-weight:700; letter-spacing:-.025em;
-  line-height:1.05; margin:2px 0 10px}
+.fc-kasse-v{font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.025em;
+  line-height:1.05; margin:2px 0 6px}
 /* Skillestreger MELLEM prikkerne, ikke omkring dem — tre tal i en række skal
    læses som én skala og ikke som tre løsrevne felter. */
 .fc-pri-et + .fc-pri-et{border-left:1px solid var(--bc-line); padding-left:12px}

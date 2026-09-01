@@ -316,7 +316,7 @@ export default function Driftskalender() {
     (vindue.fra < opgaver.interval.fra || vindue.til > opgaver.interval.til);
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid" style={{ gap: 11 }}>
       <Datatilstand tilstand={opgaver.tilstand} genprov={opgaver.genindlaes} />
 
       {/* ---- De fem kasser ---- */}
