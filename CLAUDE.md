@@ -1035,12 +1035,23 @@ Suspense-grænse.
   opgaven og dens reservation i én `update()`, og der ikke findes en femte.
   **Byg ikke en bagudrettet udfyldning; der er intet at fylde ud.**
   Se beslutning 68.
-- **Sagsbaseret mail (beslutning 20) er fase 0 — kun visning.** Modtagevej,
-  parsing, afsendelse og scanning mangler. `sager/` findes ikke i
-  `firebase.rules.json`, og derfor står `sag.laes`, `sag.sensitiveLaes`,
-  `sag.skriv`, `sag.karantaeneFrigiv` og `sag.aftaleBekraeft` heller ikke i
-  `permissions.js`. Tilføj dem i samme ombæring som reglerne og deres tests —
-  ikke før.
+- **Sagsbaseret mail (beslutning 20) — DELVIST BYGGET SIDEN, IKKE LÆNGERE
+  KUN VISNING.** Beslutning 112 (V1-brugertesten, skive 3C) byggede
+  databasen og udgående: `sager`/`sensitive/sager` HAR regler i
+  `firebase.rules.json`, alle fem `sag.*`-permissions findes i
+  `permissions.js`, og fire functions (`sagOpret`, `sagBeskedSkriv` — kun
+  udgående, `sagKarantaeneFrigiv`, `sagAftaleBekraeft`, `sagMailSend` med en
+  Mailgun-adapter) er bygget og prøvet. `Sagsvisning.jsx` er monteret i tre
+  skærme (Fleet Indberetninger, Værkstedskalender, Facility
+  Servicekalender), ikke længere en uimporteret komponent.
+  ⚠ **MODTAGEVEJEN ER STADIG IKKE BYGGET — det ER stadig et hul.**
+  `sagsnummerFraEmne()` og `vurderAfsender()` findes som rene, prøvede
+  funktioner i `sager.js`, men importeres BEVIDST ikke i
+  `functions/index.js` (se kommentaren der: "hører til modtagevejen, skive
+  2, ikke bygget endnu") — der er intet webhook-endpoint der modtager
+  indgående mail, ingen parsing, ingen afsenderkontrol, ingen scanning af
+  vedhæftninger. En sag kan i dag oprettes og sende ud, men ikke modtage et
+  svar automatisk. Se README's beslutning 112 for den fulde liste.
 - 7 skærme har ingen mockup. Byg dem ikke på gæt — spørg. **Opsætning → Generelt
   og Brugere & roller er bygget som LÆSESKÆRME**: de viser kun hvad der findes,
   al skrivning er deaktiveret med en begrundelse, og de åbne spørgsmål står på
