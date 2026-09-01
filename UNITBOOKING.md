@@ -584,8 +584,11 @@ enkelte udlån. Det skal afgøres før der bygges.
 ⚠ **Og svævekortet må ikke bygges her.** Se 6.3: Fleet skal have det samme, og
 de to skærme må ikke få hver sit. Det betyder at Driftskalenderens `Svaevekort`
 skal løftes op i `fleet/` — ikke at der skal skrives et til.
-Mails og fotos i det store kort hører til **beslutning 20**, som er fase 0:
-`sager/` står ikke i `firebase.rules.json`.
+⚠ **Ikke fordi beslutning 20 stadig er fase 0** — `sager/` fik sine regler
+og udgående mail (`sagMailSend`) i beslutning 112 — men fordi sagsmodellen
+kun dækker `objektType: "opgave"`. Et kasseudlån er en anden art og har
+intet objektId at koble en sag på. Se test/unitbooking.test.mjs's note ved
+"OG MAILS OG FOTOS ER IKKE TEGNET".
 
 #### Udlån & reservationer
 
@@ -871,8 +874,10 @@ sagen. Ved gruppering pr. sag er kortet slået fra.
 som en måling, og er kassen kommet hjem i forvejen, er det forkert på en måde
 ingen kan se. Beslutning 37.
 
-**Det store klik-kort med mails og fotos er stadig ikke bygget.** Det hører til
-beslutning 20, som er fase 0: `sager/` står ikke i `firebase.rules.json`.
+**Det store klik-kort med mails og fotos er stadig ikke bygget her.** Ikke
+fordi infrastrukturen mangler — beslutning 112 byggede `sager/`s regler og
+udgående mail — men fordi et kasseudlån ikke er en `opgave`, som er den
+eneste art sagsmodellen i dag kan pege på. Se 6.10's note ovenfor.
 
 ### 6.16 Kommende klargøringer — den knap 6.8 selv pegede på
 
@@ -1124,12 +1129,14 @@ kasse forsvinde uden spor. Serveren håndhæver det; feltet findes ikke i
 formularen.
 
 ⚠ **MAILS OG FOTOS ER IKKE TEGNET.** Planchens "Relateret indhold" viser *3
-mails* og *12 billeder*. Det er **beslutning 20**, og den er fase 0: `sager/`
-står ikke i `firebase.rules.json`, så der er hverken en node at læse fra eller
-en regel der giver adgang. Et afsnit der sagde "3 mails" uden at kunne åbne
+mails* og *12 billeder*. ⚠ **Forbeholdet blev delvist indfriet, og det er
+værd at bemærke:** `sager/` FIK sine regler og en node at læse fra i
+beslutning 112 — men kun for `objektType: "opgave"`. Et kasseudlån har ingen
+opgave at pege på, så der er stadig ingen sag at åbne HERFRA, af en anden
+grund end den oprindelige. Et afsnit der sagde "3 mails" uden at kunne åbne
 dem, ville være en attrap der opfører sig som en kontrol. Kortet skriver i
-stedet hvad der mangler — og en prøve fejler den dag `sager/` kommer i
-regelfilen, så forbeholdet ikke bliver stående efter det er blevet forkert.
+stedet hvad der mangler. Se test/unitbooking.test.mjs's note ved "OG MAILS
+OG FOTOS ER IKKE TEGNET" for den opdaterede begrundelse.
 
 ⚠ **KORTET ÅBNES IKKE FRA EN SAGSBLOK.** Den er flere udlån flettet sammen
 (6.14), og der er ikke ét at vise.

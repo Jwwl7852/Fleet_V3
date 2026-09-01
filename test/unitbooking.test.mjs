@@ -1623,9 +1623,11 @@ describe("klik-kortet på kalenderen", () => {
        regler i beslutning 112 (skive 1) — men KUN for fleet/facility-arten,
        ét felt (`objektId`) der peger på en OPGAVE. Et kasseudlån opretter
        ingen sag og har intet objektId at pege med, så "Relateret indhold" er
-       stadig en attrap for DENNE skærm. Skive 2 (modtagevej, afsendelse) er
-       heller ikke bygget — der er derfor stadig intet at åbne. Skærmen
-       SIGER det. */
+       stadig en attrap for DENNE skærm — ikke fordi sagsbaseret mail ikke
+       findes (udgående ER bygget, sagMailSend/beslutning 112), men fordi
+       kasseudlaan er en anden art end opgave, som modellen ikke dækker
+       endnu. Modtagevejen (skive 2) mangler stadig uafhængigt af det. Der er
+       derfor stadig intet at åbne herfra. Skærmen SIGER det. */
     assert.match(kal(), /Ingen mails og fotos endnu/);
   });
 
