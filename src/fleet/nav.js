@@ -58,6 +58,11 @@
  * ⚠ SKIVE 1's HIDE/LATER-BESLUTNINGER RØRES IKKE. `skjulINav: true` på
  * `oekonomiOversigt`, `bemandingPlan`, `klima`, `integrationer`,
  * `supportOverblik` står uændret.
+ *
+ * ⚠ MASTEROPGAVE §5 LÆGGER `oekonomi`-GRUPPEN SELV PÅ PAUSE. `fakturering`
+ * fik nu også `skjulINav: true` — begge børn er skjulte, og topniveaupunktet
+ * forsvinder derfor af sig selv (beslutning 105). Ruten `/oekonomi/fakturering`
+ * virker stadig som direkte link.
  */
 import { MODUL } from "./moduler.js";
 
@@ -128,10 +133,15 @@ export const NAV = [
         titel: "Økonomi & Rapporter",
         under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
       /* ⚠ FAKTURACENTERET ER FLYTTET UD — se Fælles > Fakturaer & bilag
-         ovenfor. Fakturering er nu ENESTE synlige barn i denne gruppe, og
-         bærer derfor det navn gruppen selv går under. */
+         ovenfor. Fakturering var ENESTE synlige barn i denne gruppe.
+         ⚠ MASTEROPGAVE §5 SÆTTER GRUPPEN PÅ PAUSE — brugertesten pegede på
+         at "Økonomi / Fakturagrundlag" stod synlig i FÆLLES uden at være
+         klar. Begge børn er nu skjulINav, og per beslutning 105's
+         "ET PUNKT HVIS BØRN ALLE ER SKJULT, TEGNES IKKE" forsvinder derfor
+         hele topniveaupunktet fra sidebaren af sig selv — ruten findes
+         stadig, det er kun menuen der tier. */
       { key: "fakturering", kraeverPerm: "grundlag.laes", sti: "/oekonomi/fakturering", label: "Fakturagrundlag",
-        titel: "Fakturagrundlag", under: "Opgaver klar til fakturering — det vi SENDER" },
+        titel: "Fakturagrundlag", under: "Opgaver klar til fakturering — det vi SENDER", skjulINav: true },
     ],
   },
   {

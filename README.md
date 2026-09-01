@@ -556,7 +556,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Kunder | 1 | Skive 2A: flyttet ud af Opsætning til en fælles arbejdsindgang. Samme `kraeverModul: "kunder"` |
 | Fakturaer & bilag | 1 | Skive 2A: flyttet ud af Økonomi & Rapporter. Samme rute og samme `kraeverPerm: "indkoeb.laes"` — overgangstilstand, se nav.js |
 | Leverandører | 1 | Skive 4B: flyttet ud af Procure — fælles platform-masterdata for Fleet, Facility og Procure. Samme rute (`/indkoeb/leverandoerer`), ny `kraeverPerm: "leverandoerer.laes"` |
-| Økonomi / Fakturagrundlag | 2 | heraf Overblik som skjult detaljerute (V1: LATER). Fakturacenter er flyttet til Fælles > Fakturaer & bilag |
+| Økonomi / Fakturagrundlag | 2 | begge børn skjulte (Overblik siden V1: LATER, Fakturagrundlag siden masteropgave §5: sat på pause). Fakturacenter er flyttet til Fælles > Fakturaer & bilag. Ruten findes stadig, kun menuen tier |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
 | Fleet | 3 | heraf Arbejdskø som skjult detaljerute |
 | Facility | 3 | heraf Klima & energi som skjult detaljerute (V1: LATER) |
@@ -566,7 +566,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Opsætning | 9 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **54** | **45 i menuen, 9 skjulte detaljeruter** |
+| **I alt** | **54** | **44 i menuen, 10 skjulte detaljeruter** |
 
 | | |
 |---|---|

@@ -63,11 +63,12 @@ function renderetMenu({ moduler, perms }) {
 const ADMIN_PERMS = permStrengFraRolle("admin");
 const noegler = (menu) => menu.map((m) => m.key).sort();
 
-/* De seks HIDE/LATER-stier fra Skive 1 — skal forblive skjult under ENHVER
-   modul-/rollekombination denne fil prøver, inklusive fuld tenant + admin. */
+/* HIDE/LATER-stierne fra Skive 1, plus masteropgave §5's "oekonomi" på
+   pause — skal forblive skjult under ENHVER modul-/rollekombination denne
+   fil prøver, inklusive fuld tenant + admin. */
 const SKJULT_I_SKIVE_1 = [
   "/oekonomi", "/bemanding", "/facility/klima", "/opsaetning/integrationer",
-  "/support/overblik", "/support/sag/:id",
+  "/support/overblik", "/support/sag/:id", "/oekonomi/fakturering",
 ];
 
 describe("Skive 2A — det rendererede træ for konkrete tenant-modulkombinationer", () => {
@@ -111,8 +112,13 @@ describe("Skive 2A — det rendererede træ for konkrete tenant-modulkombination
   it("⚠ FULD TENANT: admin mister ingen købte, V1-synlige områder", () => {
     const moduler = modulsaet(VALGFRIE_MODULER);
     const menu = renderetMenu({ moduler, perms: ADMIN_PERMS });
-    assert.deepEqual(noegler(menu), NAV.map((m) => m.key).sort(),
-      "admin med alle moduler ser ikke alle topniveaupunkter");
+    /* ⚠ MASTEROPGAVE §5 SATTE "oekonomi" PÅ PAUSE — begge børn er skjulINav,
+       så gruppen ikke tegnes for NOGEN rolle, heller ikke admin med alle
+       moduler (beslutning 105). Den er derfor bevidst udeladt her, ikke et
+       tegn på at admin mangler adgang til noget han har købt. */
+    const forventet = NAV.map((m) => m.key).filter((k) => k !== "oekonomi").sort();
+    assert.deepEqual(noegler(menu), forventet,
+      "admin med alle moduler ser ikke alle topniveaupunkter (uden for oekonomi, som er sat på pause)");
   });
 
   it("⚠ HIDE/LATER FRA SKIVE 1 FORBLIVER SKJULT — også for fuld tenant + admin", () => {

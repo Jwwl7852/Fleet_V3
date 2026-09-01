@@ -37,10 +37,10 @@ for (const m of APP.matchAll(/<Route path="([^"]*)" element=\{<(\w+) \/>\}/g)) {
   if (LAZY[m[2]]) FIL_FOR["/" + m[1].replace(/^\//, "")] = `src/moduler/${LAZY[m[2]]}`;
 }
 
-/** De syv punkter Skive 1 gør til HIDE/LATER. */
+/** De punkter Skive 1 gør til HIDE/LATER, plus masteropgave §5's "oekonomi" på pause. */
 const SKJULT_I_SKIVE_1 = [
   "/oekonomi", "/bemanding", "/facility/klima", "/opsaetning/integrationer",
-  "/support/overblik", "/support/sag/:id",
+  "/support/overblik", "/support/sag/:id", "/oekonomi/fakturering",
 ];
 
 /* ⚠ DEN SAMME `synligeBorn()`/`synligeToppunkter`-LOGIK SOM AppShell.jsx —
@@ -105,9 +105,17 @@ describe("Skive 1 — hvad menuen faktisk RENDERER (ikke kun ALLE-medlemskab)", 
    * ⚠ DEN FEJL DER ER LET AT OVERSE. Skjules et barn, men gruppens EGEN
    * `sti` stadig peger på det, åbner gruppens NavLink alligevel den skjulte
    * side — HIDE/LATER er så ikke reelt håndhævet. Se risici i Skive 1.
+   *
+   * ⚠ UNDTAGET: har gruppen SLET INGEN synlige børn tilbage, tegnes gruppens
+   * eget NavLink slet ikke (beslutning 105, "et punkt hvis børn alle er
+   * skjult, tegnes ikke") — og så er der intet klik der kan åbne den skjulte
+   * side. Masteropgave §5 satte hele "Økonomi / Fakturagrundlag" på pause på
+   * netop den måde: begge børn er skjulINav, gruppen forsvinder med dem.
    */
-  it("gruppernes egen `sti` peger IKKE på et skjult barn", () => {
+  it("gruppernes egen `sti` peger IKKE på et skjult barn — medmindre gruppen selv er usynlig", () => {
     for (const gruppe of NAV.filter((m) => m.born?.length)) {
+      const harSynligtBarn = gruppe.born.some((b) => !b.skjulINav);
+      if (!harSynligtBarn) continue;
       const eget = gruppe.born.find((b) => b.sti === gruppe.sti);
       if (eget) {
         assert.ok(!eget.skjulINav,

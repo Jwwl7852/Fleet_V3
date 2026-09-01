@@ -148,7 +148,11 @@ describe("Skive 2B — 6) Admin uden navvisning mister intet i forhold til Skive
   it("admin, fuld tenant, ingen navvisning-post: ser alle topniveaupunkter", () => {
     const perms = permStrengFraRolle("admin");
     const menu = renderetMenu({ moduler: FULD_TENANT, perms });
-    assert.deepEqual(noegler(menu), NAV.map((m) => m.key).sort());
+    /* ⚠ MASTEROPGAVE §5 SATTE "oekonomi" PÅ PAUSE — begge børn er skjulINav,
+       så gruppen ikke tegnes for nogen, heller ikke admin (beslutning 105).
+       Se samme undtagelse i skive2a-navigation.test.mjs. */
+    const forventet = NAV.map((m) => m.key).filter((k) => k !== "oekonomi").sort();
+    assert.deepEqual(noegler(menu), forventet);
   });
 });
 
