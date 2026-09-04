@@ -14,10 +14,30 @@ import { migrerClaimKonti } from "../src/fleet/claims-migration.js";
 import { claimsFor } from "../src/fleet/dev-brugere.js";
 import { GYLDIGE_CLAIM_CASES, UGYLDIGE_CLAIM_CASES } from "./custom-claims-v2-cases.mjs";
 import { klassificerKonto, laesInventeringsArgumenter } from "../scripts/auth-claims-inventering.mjs";
+import { testClaimsV2 } from "./rules-test-claims.mjs";
 
 const TENANT_40 = `t${"x".repeat(39)}`;
 
 describe("custom claims v2", () => {
+  it("migrerer almindelige emulator-fixtures gennem den officielle v2-encoder", () => {
+    const permissions = [ALLE_PERMS[0], ALLE_PERMS[1]];
+    assert.deepEqual(testClaimsV2({
+      tenant: "syntetiskTenant",
+      rolle: "koordinator",
+      perms: `|${permissions.join("|")}|`,
+    }), {
+      tenant: "syntetiskTenant",
+      rolle: "koordinator",
+      pv: 2,
+      perms: kompaktPermStreng(permissions),
+    });
+    assert.equal(testClaimsV2({ udbyder: true }).udbyder, true);
+    assert.throws(() => testClaimsV2({ udbyder: "true" }), /Ikke-tilladt/);
+    assert.throws(() => testClaimsV2({ ukendt: true }), /Ikke-tilladt/);
+    assert.throws(() => testClaimsV2({ pv: null }), /må ikke sætte pv/);
+    assert.throws(() => testClaimsV2({ rolle: "superadmin" }), /Ukendt testrolle/);
+  });
+
   it("round-tripper alle 58 permissions, alle roller og tenanttilpassede roller", () => {
     assert.equal(ALLE_PERMS.length, 58);
     const lister = [...Object.entries(ROLLE_PERMS), ["tenant-alle", ALLE_PERMS]];

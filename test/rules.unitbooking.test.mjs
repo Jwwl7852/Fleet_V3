@@ -23,7 +23,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { get, ref, set, update } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import { SELVVALGT_KASSE_STATUS } from "../src/fleet/unitbooking.js";

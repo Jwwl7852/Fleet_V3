@@ -24,7 +24,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, set, get, update, remove } from "firebase/database";
 import { PERM, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 import { SENSITIVE_FELTER, ALLE_ARTER, ALLE_FORLOEB } from "../src/fleet/indberetninger.js";

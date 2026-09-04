@@ -1,6 +1,6 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", () => {
   const rules = readFileSync("firebase.rules.json", "utf8");
@@ -52,4 +52,18 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.match(workflow, /distribution: temurin[\s\S]*java-version: "21"/);
   assert.match(workflow, /firebase-tools@15\.29\.0/);
   assert.doesNotMatch(workflow, /secrets\.|environment:|firebase login|deploy/i);
+  const almindeligeRulesTests = readdirSync("test")
+    .filter((navn) => (navn.startsWith("rules.") || navn === "storage.rules.test.mjs") &&
+      navn.endsWith(".test.mjs") &&
+      navn !== "rules.custom-claims-v2.test.mjs");
+  assert.ok(almindeligeRulesTests.length > 0);
+  for (const navn of almindeligeRulesTests) {
+    const kilde = readFileSync(`test/${navn}`, "utf8");
+    assert.match(kilde, /from "\.\/rules-test-claims\.mjs"/, navn);
+    assert.doesNotMatch(kilde, /from "@firebase\/rules-unit-testing"/, navn);
+  }
+  assert.match(
+    readFileSync("test/rules.custom-claims-v2.test.mjs", "utf8"),
+    /from "@firebase\/rules-unit-testing"/
+  );
 });

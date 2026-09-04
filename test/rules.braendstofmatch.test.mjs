@@ -18,7 +18,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { initializeTestEnvironment, assertFails } from "@firebase/rules-unit-testing";
+import { initializeTestEnvironment, assertFails } from "./rules-test-claims.mjs";
 import { ref, set, update, get } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
 

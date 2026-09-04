@@ -43,9 +43,10 @@ jobs:
         run: |
           tests=()
           while IFS= read -r -d '' file; do
-            if ! grep -Eq '@firebase/rules-unit-testing|FIREBASE_DATABASE_EMULATOR_HOST|FIREBASE_STORAGE_EMULATOR_HOST' "$file"; then
-              tests+=("$file")
-            fi
+            case "$file" in
+              test/rules.*.test.mjs|test/storage.rules.test.mjs) continue ;;
+            esac
+            tests+=("$file")
           done < <(find test -maxdepth 1 -name '*.test.mjs' -print0)
           node --test "${tests[@]}"
 
