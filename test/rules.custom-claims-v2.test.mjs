@@ -88,9 +88,10 @@ describe("custom claims v2-paritet i Database Rules", () => {
   it("håndhæver gammel/ny token, manglende metadata og forkert UID", async () => {
     const claims = { ...v2Claims };
     await miljoe.withSecurityRulesDisabled(async (ctx) => {
-      await set(ref(ctx.database(), "authRevocations/gammel/revokeTime"), 100);
-      await set(ref(ctx.database(), "authRevocations/ny/revokeTime"), 100);
-      await set(ref(ctx.database(), "authRevocations/anden/revokeTime"), 999);
+      const db = ctx.database();
+      await set(ref(db, "authRevocations/gammel/revokeTime"), 100);
+      await set(ref(db, "authRevocations/ny/revokeTime"), 100);
+      await set(ref(db, "authRevocations/anden/revokeTime"), 999);
     });
     await assertFails(kunde(kontekst("gammel", { ...claims, auth_time: 100 })));
     await assertSucceeds(kunde(kontekst("ny", { ...claims, auth_time: 101 })));
