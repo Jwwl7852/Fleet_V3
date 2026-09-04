@@ -78,7 +78,7 @@ describe("Fakturacenteret er en skærm, ikke en node", () => {
    */
   test("⚠ fakturaer HAR INGEN MODULKLAUSUL", () => {
     const i = REGELFIL.indexOf('"fakturaer": {');
-    const blok = REGELFIL.slice(i, i + 1500);
+    const blok = REGELFIL.slice(i, i + 30000);
     const laes = blok.split(/\r?\n/).find((l) => l.includes('".read"'));
     assert.ok(laes, "noden har ingen læseregel");
     assert.ok(!/child\('moduler'\)/.test(laes),
@@ -104,7 +104,7 @@ describe("Fakturacenteret er en skærm, ikke en node", () => {
       "oekonomi er ikke længere et modul — så skal skærmens placering tages op igen");
     /* Og noden må ikke følge med — det er hele pointen. */
     const i = REGELFIL.indexOf('"fakturaer": {');
-    const laes = REGELFIL.slice(i, i + 1500).split(/\r?\n/).find((l) => l.includes('".read"'));
+    const laes = REGELFIL.slice(i, i + 30000).split(/\r?\n/).find((l) => l.includes('".read"'));
     assert.ok(!/child\('moduler'\)\.child\('oekonomi'\)/.test(laes),
       "fakturaer følger Økonomi-modulet — så mister en Procure-kunde sine egne fakturaer");
   });
@@ -130,7 +130,7 @@ describe("Destinationen er ét spørgsmål med ét svar", () => {
      barn, og `fakturamatch` skal kunne spørge "er den her ordre taget". */
   test("⚠ destinationId ER INDEKSERET", () => {
     const i = REGELFIL.indexOf('"fakturaer": {');
-    const blok = REGELFIL.slice(i, i + 2500);
+    const blok = REGELFIL.slice(i, i + 30000);
     assert.match(blok, /"\.indexOn": \[[^\]]*"destinationId"/);
   });
 

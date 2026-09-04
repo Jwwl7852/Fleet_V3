@@ -10,6 +10,7 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/database";
 import "firebase/compat/functions";
+import { permStrengFraClaims } from "./fleet/permissions.js";
 
 const cfg = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -104,11 +105,10 @@ export async function hentBrugerContext(user) {
        alligevel tilbage på noget, skal det se ud som den mindst betroede,
        ikke som en rolle der lyder som den kan mest. */
     rolle: token.claims.rolle || "chauffoer",
-    /* Tom streng, ikke udledt af rollen. Udleder klienten selv permissions
-       fra rolle-claim'et, kan UI'et vise knapper som serveren afviser — og
-       så er vi tilbage ved at adgangskontrollen kun findes i frontend.
-       Mangler claim'et, må brugeren ingenting. Fejler lukket. */
-    perms: token.claims.perms || "",
+    /* Dekodes fra det SIGNEREDE claim, aldrig fra rollen. V2 bærer kompakte
+       koder; legacy-navne understøttes midlertidigt under migrationen. Ukendt
+       version eller ugyldig form bliver tom streng og fejler lukket. */
+    perms: permStrengFraClaims(token.claims),
     /**
      * Ejerskab — beslutning 35.
      *

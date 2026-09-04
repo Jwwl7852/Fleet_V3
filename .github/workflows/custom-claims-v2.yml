@@ -1,0 +1,71 @@
+name: Custom claims v2 verification
+
+on:
+  push:
+    branches:
+      - codex/firebase-custom-claims-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Verify pinned Firebase CLI
+        run: npx --yes firebase-tools@15.29.0 --version
+
+      - name: Run complete Database and Storage emulator suite
+        run: npm run test:rules
+
+      - name: Run complete non-emulator test suite
+        shell: bash
+        run: |
+          tests=()
+          while IFS= read -r -d '' file; do
+            if ! grep -Eq '@firebase/rules-unit-testing|FIREBASE_DATABASE_EMULATOR_HOST|FIREBASE_STORAGE_EMULATOR_HOST' "$file"; then
+              tests+=("$file")
+            fi
+          done < <(find test -maxdepth 1 -name '*.test.mjs' -print0)
+          node --test "${tests[@]}"
+
+      - name: Run targeted custom-claims and preflight tests
+        run: node --test test/custom-claims-v2.test.mjs test/custom-claims-v2-preflight.test.mjs
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check Functions syntax
+        run: node --check functions/index.js
+
+      - name: Regenerate and verify Functions shared copies
+        run: |
+          npm run delt:kopier
+          node --test test/functions-delt.test.mjs
+          git diff --exit-code -- functions/delt
+
+      - name: Check patch whitespace
+        run: git diff --check HEAD^ HEAD

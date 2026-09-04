@@ -208,9 +208,13 @@ describe("håndhævelsen", () => {
   it("⚠ REGLEN KENDER DE SAMME OMRÅDER SOM KATALOGET", () => {
     /* Mønstret i regelfilen er en afskrift. Kommer der et område mere uden
        at reglen får det, afviser serveren noget skærmen viser som gyldigt. */
-    const raa = readFileSync("firebase.rules.json", "utf8");
-    const i = raa.indexOf('"navvisning"');
-    const blok = raa.slice(i, i + 1600);
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10))
+        .filter((l) => !l.trim().startsWith("//"))
+        .join(String.fromCharCode(10))
+    );
+    const blok = regler.rules.tenants.$tenantId.navvisning.$uid.$omraade[".validate"];
     const AABN = "matches(" + String.fromCharCode(47) + String.fromCharCode(94) + "(";
     const a = blok.indexOf(AABN);
     assert.ok(a >= 0, "reglen validerer ikke områdenavnet mod en ordliste");

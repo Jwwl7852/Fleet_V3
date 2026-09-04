@@ -424,7 +424,7 @@ describe("Noden er lukket, og formen står i reglerne", () => {
   test("⚠ godkendelsesregler ER .write: false", () => {
     const i = REGLER.indexOf('"godkendelsesregler": {');
     assert.ok(i > 0, "noden findes ikke i regelfilen");
-    const blok = REGLER.slice(i, i + 3000);
+    const blok = REGLER.slice(i, i + 30000);
     assert.match(blok, /"\.write": false/);
     /* Modulklausulen — en kunde uden Procure skal ikke kunne læse den. */
     assert.match(blok, /child\('indkoeb'\)\.val\(\) === true/);

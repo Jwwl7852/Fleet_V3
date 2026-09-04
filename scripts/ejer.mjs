@@ -37,6 +37,7 @@ import {
   NOEGLEFIL, tjekProjekt, vurderIgnorering, laesNoegle, laesKode,
 } from "./provisioner-dev.mjs";
 import { laesArgumenter } from "./opret-kunde.mjs";
+import { opdaterTilladtEkstraClaim } from "../src/fleet/permissions.js";
 
 const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -109,15 +110,14 @@ async function main() {
     /* ⚠ CLAIMS LÆGGES OVEN PÅ. Overskrev vi dem, ville en konto der også er
        kundeadmin miste sin tenant og sine perms — og en ejer der lige har
        fået adgang ville være låst ude af sin egen tenant. */
-    await auth.setCustomUserClaims(bruger.uid, { ...nu, udbyder: true });
+    await auth.setCustomUserClaims(bruger.uid, opdaterTilladtEkstraClaim(nu, "udbyder", true));
     console.log(`\n  ${mail} er nu EJER.`);
     if (nu.tenant) {
       console.log(`  ⚠ Kontoen har også tenant "${nu.tenant}" og beholder sin kundeadgang.`);
       console.log(`     En ren ejerkonto har ingen tenant — se beslutning 35.`);
     }
   } else {
-    const uden = { ...nu };
-    delete uden.udbyder;
+    const uden = opdaterTilladtEkstraClaim(nu, "udbyder", undefined);
     await auth.setCustomUserClaims(bruger.uid, uden);
     console.log(`\n  ${mail} er ikke længere ejer.`);
     if (!uden.tenant) {

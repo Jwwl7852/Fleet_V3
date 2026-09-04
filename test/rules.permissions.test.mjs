@@ -422,7 +422,7 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        disponentrolle, få standarden tilbage næste gang han oprettede en
        disponent — og forskellen ville vise sig som en adgang der manglede
        uden grund. */
-    assert.match(krop("skiftrolle"), /claimForRolle\(tenantId, rolle\)/,
+    assert.match(krop("skiftrolle"), /claimForRolle\(tenantId, rolle, bruger\.customClaims\)/,
       "skiftrolle minter ikke gennem tenantens egne rolledefinitioner");
     assert.match(kilde, /function claimForRolle[\s\S]*?permsForTenant\(/,
       "claimForRolle udleder ikke perms af rollen");
@@ -432,9 +432,11 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        selv: man ville tro man havde fjernet en adgang, som stadig virkede.
        Det gælder nu BEGGE veje — et rolleskift og en rolleændring. */
     for (const navn of ["skiftrolle", "rolleskriv"]) {
-      assert.match(krop(navn), /revokeRefreshTokens/,
-        `${navn} træder ikke i kraft før tokenet udløber`);
+      assert.match(krop(navn), /tilbagekaldOgGemRevocation/,
+        `${navn} bruger ikke den fælles revocation-hjælper`);
     }
+    assert.match(kilde, /async function tilbagekaldOgGemRevocation[\s\S]*?revokeRefreshTokens[\s\S]*?tokensValidAfterTime[\s\S]*?authRevocations/,
+      "revocation-hjælperen mangler tilbagekaldelse eller metadata");
 
     /* ⚠ OG KLIENTEN MINTER IKKE. Der findes ingen vej fra browseren til et
        claim; setCustomUserClaims står kun i functions/.

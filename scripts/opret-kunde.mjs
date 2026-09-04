@@ -36,6 +36,7 @@ import {
   laesKode, laesNoegle,
 } from "./provisioner-dev.mjs";
 import { claimsFor } from "../src/fleet/dev-brugere.js";
+import { opdaterTilladtEkstraClaim } from "../src/fleet/permissions.js";
 import { MODUL, VALGFRIE_MODULER, modulsaet, ukendteModuler } from "../src/fleet/moduler.js";
 
 /* ---- Argumenter -------------------------------------------------------- */
@@ -206,7 +207,7 @@ async function main() {
        kontoen miste sin tenant og sine perms — og en ejer der lige har fået
        udbyderadgang ville være låst ude af sin egen tenant. */
     const nu = (await auth.getUser(u.uid)).customClaims || {};
-    await auth.setCustomUserClaims(u.uid, { ...nu, udbyder: true });
+    await auth.setCustomUserClaims(u.uid, opdaterTilladtEkstraClaim(nu, "udbyder", true));
     await auth.revokeRefreshTokens(u.uid);
     console.log(`\n  ⚠ udbyderadgang    ${udbyderMail}`);
     console.log("    Claim'et giver kundeindekset, virksomhedsnavne og modullister");

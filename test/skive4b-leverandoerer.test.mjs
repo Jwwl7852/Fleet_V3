@@ -84,8 +84,7 @@ describe("leverandoerer.laes/.skriv — rollefordelingen", () => {
    RTDB-REGLEN — leverandoerer/.read og $leverandoerId/.write, punkt 2+3+7
    ══════════════════════════════════════════════════════════════════════════ */
 describe("leverandoerer-nodens regler — fuldt ugatet base-node (Model B)", () => {
-  const i = REGELFIL.indexOf('"leverandoerer": {');
-  const blok = REGELFIL.slice(i, i + 2000);
+  const blok = JSON.stringify(JSON.parse(REGELFIL).rules.tenants["$tenantId"].leverandoerer);
 
   it("⚠ .read KRÆVER leverandoerer.laes, IKKE indkoeb.laes", () => {
     assert.match(blok, /perms\.contains\('\|leverandoerer\.laes\|'\)/);

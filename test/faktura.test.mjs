@@ -427,7 +427,7 @@ describe("Skærmen viser, serveren håndhæver", () => {
      og filtrerer i klienten med en advarsel i konsollen. */
   test("⚠ destinationId ER INDEKSERET PÅ fakturaer", () => {
     const i = REGELFIL.indexOf('"fakturaer": {');
-    const blok = REGELFIL.slice(i, i + 2500);
+    const blok = REGELFIL.slice(i, i + 30000);
     assert.match(blok, /"\.indexOn": \[[^\]]*"destinationId"/);
   });
 

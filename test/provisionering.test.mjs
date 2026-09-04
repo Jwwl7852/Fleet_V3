@@ -19,7 +19,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { ROLLE_PERMS, harPerm, PERM } from "../src/fleet/permissions.js";
+import {
+  ROLLE_PERMS, harPerm, PERM, permStrengFraClaims, CLAIM_PERMISSION_VERSION,
+} from "../src/fleet/permissions.js";
 import { DEV_BRUGERE, DEV_TENANT, claimsFor, ejerkonto } from "../src/fleet/dev-brugere.js";
 import {
   tjekProjekt, somNode, SEED, DEV_PROJEKT, PROD_PROJEKT, vurderIgnorering, NOEGLEFIL, foreslaaNoeglefil,
@@ -164,9 +166,10 @@ describe("Claims udledes af presettet, aldrig i hånden", () => {
   it("giver hver rolle nøjagtig presettets permissions", () => {
     for (const rolle of Object.keys(ROLLE_PERMS)) {
       const c = claimsFor(rolle);
+      const semantiske = permStrengFraClaims(c);
       for (const perm of ROLLE_PERMS[rolle]) {
         assert.ok(
-          harPerm(c.perms, perm),
+          harPerm(semantiske, perm),
           `${rolle} mangler ${perm} i sit claim — den seedede bruger ville have ` +
           "anden adgang end en rigtig bruger med samme rolle"
         );
@@ -178,14 +181,15 @@ describe("Claims udledes af presettet, aldrig i hånden", () => {
      beslutning 5 siger at disponenten ikke godkender sit eget forslag. Sætter
      nogen booking.godkend på disponent-presettet, falder den her. */
   it("giver ikke disponenten booking.godkend", () => {
-    assert.equal(harPerm(claimsFor("disponent").perms, PERM.bookingGodkend), false);
-    assert.equal(harPerm(claimsFor("koordinator").perms, PERM.bookingGodkend), true);
+    assert.equal(harPerm(permStrengFraClaims(claimsFor("disponent")), PERM.bookingGodkend), false);
+    assert.equal(harPerm(permStrengFraClaims(claimsFor("koordinator")), PERM.bookingGodkend), true);
   });
 
   it("bærer tenant og rolle med", () => {
     const c = claimsFor("admin");
     assert.equal(c.tenant, DEV_TENANT);
     assert.equal(c.rolle, "admin");
+    assert.equal(c.pv, CLAIM_PERMISSION_VERSION);
   });
 
   it("afviser en ukendt rolle frem for at udstede et tomt claim", () => {

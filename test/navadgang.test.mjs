@@ -29,7 +29,9 @@ import { readFileSync } from "node:fs";
 import { udenKommentarer } from "./kode.mjs";
 
 import { ALLE, NAV } from "../src/fleet/nav.js";
-import { ROLLE_PERMS, harPerm, permStrengFraRolle } from "../src/fleet/permissions.js";
+import { PERM, ROLLE_PERMS, harPerm, permStrengFraRolle } from "../src/fleet/permissions.js";
+
+const KENDTE_PERMS = new Set(Object.values(PERM));
 
 const REGLER = JSON.parse(
   readFileSync("firebase.rules.json", "utf8")
@@ -43,7 +45,9 @@ const REGLER = JSON.parse(
 const permForNode = (node) => {
   const v = REGLER[node]?.[".read"];
   if (typeof v !== "string") return null;
-  const m = [...v.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)].map((x) => x[1]);
+  const m = [...v.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)]
+    .map((x) => x[1])
+    .filter((perm) => KENDTE_PERMS.has(perm));
   return m.length ? m[0] : null;
 };
 

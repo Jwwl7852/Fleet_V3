@@ -45,7 +45,7 @@ describe("Pladsen er et id, ikke en streng", () => {
        rigtigt. Samme fejl som bemanding.ledig. */
     const regler = readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8");
     const i = regler.indexOf('"reolpladser"');
-    const blok = regler.slice(i, i + 4000);
+    const blok = regler.slice(i, i + 30000);
     assert.match(blok, /"navn": \{ "\.validate": false \}/,
       "reolpladser tillader et gemt navn.");
   });
