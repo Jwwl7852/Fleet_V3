@@ -431,11 +431,13 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        beholder brugeren sine gamle claims indtil tokenet udløber af sig
        selv: man ville tro man havde fjernet en adgang, som stadig virkede.
        Det gælder nu BEGGE veje — et rolleskift og en rolleændring. */
-    for (const navn of ["skiftrolle", "rolleskriv"]) {
-      assert.match(krop(navn), /tilbagekaldOgGemRevocation/,
-        `${navn} bruger ikke den fælles revocation-hjælper`);
-    }
-    assert.match(kilde, /async function tilbagekaldOgGemRevocation[\s\S]*?revokeRefreshTokens[\s\S]*?tokensValidAfterTime[\s\S]*?authRevocations/,
+    assert.match(krop("skiftrolle"), /saetClaimsEfterRevocation/,
+      "skiftrolle bruger ikke revocation- og claim-wrapperen");
+    assert.match(krop("rolleskriv"), /tilbagekaldOgGemRevocation/,
+      "rolleskriv bruger ikke den fælles revocation-hjælper");
+    assert.match(kilde, /async function saetClaimsEfterRevocation[\s\S]*?tilbagekaldOgGemRevocation[\s\S]*?setCustomUserClaims/,
+      "claim-wrapperen tilbagekalder ikke før nye claims gemmes");
+    assert.match(kilde, /async function tilbagekaldOgGemRevocation[\s\S]*?revokeRefreshTokens[\s\S]*?getUser[\s\S]*?tokensValidAfterSekunder[\s\S]*?REVOCATION_NODE/,
       "revocation-hjælperen mangler tilbagekaldelse eller metadata");
 
     /* ⚠ OG KLIENTEN MINTER IKKE. Der findes ingen vej fra browseren til et

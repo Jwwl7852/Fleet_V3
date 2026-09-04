@@ -25,10 +25,11 @@ before(async () => {
     database: { host: "127.0.0.1", port: 9000, rules: readFileSync("firebase.rules.json", "utf8") },
   });
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.database();
     for (const tenant of [T, ANDEN]) {
-      await set(ref(ctx.database(), `tenants/${tenant}/_findes`), true);
-      await set(ref(ctx.database(), `tenants/${tenant}/virksomhed`), { navn: "Syntetisk tenant" });
-      await set(ref(ctx.database(), `tenants/${tenant}/kunder/k1`), { navn: "Kunde", aktiv: true });
+      await set(ref(db, `tenants/${tenant}/_findes`), true);
+      await set(ref(db, `tenants/${tenant}/virksomhed`), { navn: "Syntetisk tenant" });
+      await set(ref(db, `tenants/${tenant}/kunder/k1`), { navn: "Kunde", aktiv: true });
     }
   });
 });
