@@ -35,7 +35,17 @@ const udenKommentarer = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
-const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Godkendelser.jsx", "utf8"));
+/* ⚠ GODKENDELSER.JSX ER SPLITTET I TO (Procure TARGET, produktejer-review
+   2026-09-02). Den DAGLIGE kø og dens handlinger — `tilgaengeligeOrdreHandlinger`,
+   godkendtAutomatisk/selvgodkendt-visning, "Send ordre" — flyttede ind i den
+   samlede Bestillinger.jsx. Reglernes ADMINISTRATIONS-UI — de to regelkort,
+   Kontakten, DEMO_GODKENDELSESREGLER-faldbakken — flyttede til Opsætning →
+   Procure → Godkendelsesregler. Håndhævelsen (denne fils første fire
+   describe-blokke: fleet/procure.js, functions/index.js, firebase.rules.json)
+   er UÆNDRET og læses stadig fra de samme, urørte filer. */
+const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Bestillinger.jsx", "utf8"));
+const REGELSKAERM = udenKommentarer(
+  readFileSync("src/moduler/opsaetning/ProcureGodkendelsesregler.jsx", "utf8"));
 const KLIENT = udenKommentarer(readFileSync("src/fleet/godkendelse.js", "utf8"));
 const SERVER = udenKommentarer(readFileSync("functions/index.js", "utf8"));
 const REGLER = readFileSync("firebase.rules.json", "utf8");
@@ -443,7 +453,7 @@ describe("Noden er lukket, og formen står i reglerne", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    SKÆRMEN OG KLIENTEN
    ══════════════════════════════════════════════════════════════════════════ */
-describe("Skærmen siger hvad den gør og ikke gør", () => {
+describe("Opsætningsskærmen siger hvad den gør og ikke gør", () => {
   /**
    * ⚠ KONTAKTEN VAR LÅST — OG ER DET IKKE LÆNGERE.
    *
@@ -461,24 +471,18 @@ describe("Skærmen siger hvad den gør og ikke gør", () => {
    * og som `PERM_GODKEND_MIDLERTIDIG` var i beslutning 82.
    */
   test("⚠ FAKTURAREGLEN ER LEVENDE, OG GRÆNSEN FOR DEN STÅR", () => {
-    assert.ok(!/Reglen er ikke bygget endnu/.test(SKAERM),
+    assert.ok(!/Reglen er ikke bygget endnu/.test(REGELSKAERM),
       "kontakten står stadig som ubygget, men fakturastatus håndhæver den");
-    assert.match(SKAERM, /saet\("fakturagodkendelse", "aktiv", v\)/,
+    assert.match(REGELSKAERM, /saet\("fakturagodkendelse", "aktiv", v\)/,
       "kontakten er ikke bundet til reglen");
-    assert.match(SKAERM, /Der betales ikke fra systemet/,
+    assert.match(REGELSKAERM, /Der betales ikke fra systemet/,
       "skærmen lover en betaling der ikke findes");
   });
 
   /* ⚠ TOM STRENG ER IKKE NUL. `Number("")` er 0, og en grænse på 0 kr. betyder
      at ALT skal godkendes — det stik modsatte af "feltet er ikke udfyldt". */
   test("⚠ EN TØM BELØBSGRÆNSE BLIVER null, IKKE 0", () => {
-    assert.match(SKAERM, /v === "" \? null : Math\.round\(Number\(v\) \* 100\)/);
-  });
-
-  /* ⚠ "GODKENDT AUTOMATISK" ER IKKE "GODKENDT". */
-  test("⚠ SKÆRMEN SKILLER AUTOMATISK FRA MENNESKELIG GODKENDELSE", () => {
-    assert.match(SKAERM, /godkendtAutomatisk/);
-    assert.match(SKAERM, /selvgodkendt/);
+    assert.match(REGELSKAERM, /v === "" \? null : Math\.round\(Number\(v\) \* 100\)/);
   });
 
   /* ⚠ EN AFVISNING ER ET SVAR, ikke en nedbrudt forbindelse. */
@@ -489,22 +493,36 @@ describe("Skærmen siger hvad den gør og ikke gør", () => {
     assert.ok(!/throw/.test(KLIENT), "klienten kaster — en afvisning er et svar");
   });
 
-  /* Skærmen læser noden; demo-sættene er en FALDBAKKE. */
-  test("⚠ DEMO-SÆTTENE BRUGES KUN SOM demo:-FALDBAKKE", () => {
-    for (const navn of ["DEMO_INDKOEBSORDRER", "DEMO_LEVERANDOERER", "DEMO_GODKENDELSESREGLER"]) {
-      const alle = [...SKAERM.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
-      const fald = [...SKAERM.matchAll(new RegExp(`demo: ${navn}\\b`, "g"))].length;
-      assert.equal(alle - 1, fald, `${navn} bruges uden for demo:-faldbakken`);
-    }
-    /* Regelsættet står i et objekt fordi noden SELV er en post. */
+  /* Skærmen læser noden; demo-sættet er en FALDBAKKE. */
+  test("⚠ DEMO_GODKENDELSESREGLER BRUGES KUN SOM demo:-FALDBAKKE", () => {
+    const alle = [...REGELSKAERM.matchAll(/\bDEMO_GODKENDELSESREGLER\b/g)].length;
+    const fald = [...REGELSKAERM.matchAll(/demo: DEMO_GODKENDELSESREGLER\b/g)].length;
+    assert.equal(alle - 1, fald, "DEMO_GODKENDELSESREGLER bruges uden for demo:-faldbakken");
     /* ⚠ NODEN ER SELV EN POST — sættet ER svaret, ikke et opslag i det. */
-    assert.match(SKAERM, /demo: DEMO_GODKENDELSESREGLER/);
+    assert.match(REGELSKAERM, /demo: DEMO_GODKENDELSESREGLER/);
   });
 
   /* ⚠ KONTAKTEN ER EN RIGTIG CHECKBOX. Et div med onClick kan ikke nås med
      Tab, har ingen tilstand at læse op og reagerer ikke på mellemrum. */
   test("⚠ KONTAKTEN KAN BRUGES MED TASTATUR", () => {
-    assert.match(SKAERM, /<input type="checkbox"[\s\S]{0,200}aria-label=\{label\}/);
+    assert.match(REGELSKAERM, /<input type="checkbox"[\s\S]{0,200}aria-label=\{label\}/);
+  });
+});
+
+describe("Bestillinger-skærmens kø siger hvad den gør", () => {
+  /* ⚠ "GODKENDT AUTOMATISK" ER IKKE "GODKENDT". */
+  test("⚠ SKÆRMEN SKILLER AUTOMATISK FRA MENNESKELIG GODKENDELSE", () => {
+    assert.match(SKAERM, /godkendtAutomatisk/);
+    assert.match(SKAERM, /selvgodkendt/);
+  });
+
+  /* Skærmen læser noden; demo-sættene er en FALDBAKKE. */
+  test("⚠ DEMO-SÆTTENE BRUGES KUN SOM demo:-FALDBAKKE", () => {
+    for (const navn of ["DEMO_INDKOEBSORDRER", "DEMO_LEVERANDOERER"]) {
+      const alle = [...SKAERM.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
+      const fald = [...SKAERM.matchAll(new RegExp(`demo: ${navn}\\b`, "g"))].length;
+      assert.equal(alle - 1, fald, `${navn} bruges uden for demo:-faldbakken`);
+    }
   });
 
   test("⚠ BLOKERER IKKE PÅ EN TOM NODE", () => {

@@ -49,19 +49,28 @@ const Medarbejdere = lazy(() => import("./moduler/Medarbejdere.jsx"));
 const Kompetencer = lazy(() => import("./moduler/Kompetencer.jsx"));
 const Fravaer = lazy(() => import("./moduler/Fravaer.jsx"));
 const FlaadeOversigt = lazy(() => import("./moduler/flaade/Oversigt.jsx"));
+const FlaadeOverblik = lazy(() => import("./moduler/flaade/Overblik.jsx"));
 const Vaerkstedskalender = lazy(() => import("./moduler/flaade/Vaerkstedskalender.jsx"));
 const Indberetninger = lazy(() => import("./moduler/flaade/Indberetninger.jsx"));
 const Arbejdskoe = lazy(() => import("./moduler/flaade/Arbejdskoe.jsx"));
+const Servicebog = lazy(() => import("./moduler/flaade/Servicebog.jsx"));
+const FlaadeStatistik = lazy(() => import("./moduler/flaade/Statistik.jsx"));
+const FlaadeKontakter = lazy(() => import("./moduler/flaade/Kontakter.jsx"));
 const FacilityOversigt = lazy(() => import("./moduler/facility/Oversigt.jsx"));
 const Servicekalender = lazy(() => import("./moduler/facility/Servicekalender.jsx"));
+const FacilityInventar = lazy(() => import("./moduler/facility/Inventar.jsx"));
+const FacilityPlanlagt = lazy(() => import("./moduler/facility/Planlagt.jsx"));
+const FacilityStatistik = lazy(() => import("./moduler/facility/Statistik.jsx"));
 const Klima = lazy(() => import("./moduler/facility/Klima.jsx"));
 const IndkoebOversigt = lazy(() => import("./moduler/indkoeb/Oversigt.jsx"));
-const Indkoebsbehov = lazy(() => import("./moduler/indkoeb/Behov.jsx"));
 const Bestillinger = lazy(() => import("./moduler/indkoeb/Bestillinger.jsx"));
-const Godkendelser = lazy(() => import("./moduler/indkoeb/Godkendelser.jsx"));
+const IndkoebVarer = lazy(() => import("./moduler/indkoeb/Varer.jsx"));
+const IndkoebArkiv = lazy(() => import("./moduler/indkoeb/Arkiv.jsx"));
+const IndkoebStatistik = lazy(() => import("./moduler/indkoeb/Statistik.jsx"));
 const Varelager = lazy(() => import("./moduler/indkoeb/Varelager.jsx"));
 const Fakturaer = lazy(() => import("./moduler/indkoeb/Fakturaer.jsx"));
 const Leverandoerer = lazy(() => import("./moduler/indkoeb/Leverandoerer.jsx"));
+const ProcureGodkendelsesregler = lazy(() => import("./moduler/opsaetning/ProcureGodkendelsesregler.jsx"));
 const UnitbookingKasser = lazy(() => import("./moduler/unitbooking/Kasser.jsx"));
 const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
 const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
@@ -580,22 +589,33 @@ export default function App() {
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />
             <Route path="bemanding/fravaer" element={<Fravaer />} />
 
-            {/* ⚠ DRIFTSKALENDEREN ER FLEETS FORSIDE. Enheder laa her og ligger nu
-                under Opsaetning — se nav.js. /flaade/vaerksted er en redirect i
-                REDIRECTS, ikke en rute, saa der er eet sted skaermen naas fra. */}
-            <Route path="flaade" element={<Vaerkstedskalender />} />
+            {/* ⚠ OVERBLIK ER FLEETS FORSIDE (Fleet TARGET, produktejer-review
+                2026-09-01) — IKKE LÆNGERE DRIFTSKALENDEREN. Se
+                fleet/modulfaner.js. Driftskalenderen flyttede til sin egen
+                rute; /flaade/vaerksted er stadig en redirect i REDIRECTS,
+                nu til /flaade/driftskalender. Enheder ligger fortsat under
+                Opsaetning — se nav.js — men vises også som en fane i Fleets
+                egen modulnavigation. */}
+            <Route path="flaade" element={<FlaadeOverblik />} />
+            <Route path="flaade/driftskalender" element={<Vaerkstedskalender />} />
             <Route path="flaade/indberetninger" element={<Indberetninger />} />
             <Route path="flaade/koe" element={<Arbejdskoe />} />
+            <Route path="flaade/servicebog" element={<Servicebog />} />
+            <Route path="flaade/statistik" element={<FlaadeStatistik />} />
+            <Route path="flaade/kontakter" element={<FlaadeKontakter />} />
 
             <Route path="facility" element={<FacilityOversigt />} />
             <Route path="facility/servicekalender" element={<Servicekalender />} />
+            <Route path="facility/inventar" element={<FacilityInventar />} />
+            <Route path="facility/planlagt" element={<FacilityPlanlagt />} />
+            <Route path="facility/statistik" element={<FacilityStatistik />} />
             <Route path="facility/klima" element={<Klima />} />
 
             <Route path="indkoeb" element={<IndkoebOversigt />} />
-            <Route path="indkoeb/behov" element={<Indkoebsbehov />} />
-
             <Route path="indkoeb/bestillinger" element={<Bestillinger />} />
-            <Route path="indkoeb/godkendelser" element={<Godkendelser />} />
+            <Route path="indkoeb/varer" element={<IndkoebVarer />} />
+            <Route path="indkoeb/arkiv" element={<IndkoebArkiv />} />
+            <Route path="indkoeb/statistik" element={<IndkoebStatistik />} />
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
             <Route path="indkoeb/varelager" element={<Varelager />} />
@@ -645,6 +665,7 @@ export default function App() {
             <Route path="opsaetning/aftalepriser/:kundeId" element={<Kundepriser />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
+            <Route path="opsaetning/procure/godkendelsesregler" element={<ProcureGodkendelsesregler />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}
             {REDIRECTS.map((r) => (

@@ -401,18 +401,25 @@ describe("Skærmen viser, serveren håndhæver", () => {
 
 describe("Skærmen siger hvad den ikke gør", () => {
   /**
-   * ⚠ INGEN "SEND"-KNAP HER — SKIVE 4D. Denne skærm viser kladder, FØR
+   * ⚠ INGEN "SEND"-KNAP PÅ EN KLADDE — SKIVE 4D. Kladden vises FØR
    * godkendelse, og kan derfor ikke sende (ordreMailSend kræver status
-   * "godkendt"). Den rigtige afsendelse findes på Godkendelser, ikke her —
-   * en knap der så ud som send, men ikke kunne bruges på en kladde, ville
-   * være en fælde.
+   * "godkendt") — en knap der så ud som send, men ikke kunne bruges på en
+   * kladde, ville være en fælde. Den rigtige afsendelse (Send ordre) findes
+   * LÆNGERE NEDE på DENNE SAMME skærm nu (Procure TARGET slog Bestillinger,
+   * Behov og Godkendelser sammen til én arbejdsflade), på en godkendt
+   * ordre — så prøven er afgrænset til selve e-mailudkast-sektionen, ikke
+   * hele filen.
    */
-  test("⚠ DER ER INGEN SEND-KNAP, OG DET STÅR PÅ SKÆRMEN", () => {
+  test("⚠ DER ER INGEN SEND-KNAP PÅ EN KLADDE, OG DET STÅR PÅ SKÆRMEN", () => {
     assert.match(SKAERM, /sender den ikke herfra/,
       "skærmen lover ikke noget, men siger heller ikke hvad den ikke gør");
-    assert.match(SKAERM, /Godkendelser/,
+    assert.match(SKAERM, /godkendelseskøen nedenfor/,
       "skærmen peger på hvor den rigtige afsendelse rent faktisk sker");
-    assert.ok(!/>\s*Send\b/.test(SKAERM), "der er en Send-knap — der er ingen afsendelsesvej herfra");
+    const start = SKAERM.indexOf("E-mailudkast");
+    const slut = SKAERM.indexOf("Afventer godkendelse (", start);
+    const udkastSektion = SKAERM.slice(start, slut < 0 ? start + 2000 : slut);
+    assert.ok(!/>\s*Send\b/.test(udkastSektion),
+      "der er en Send-knap i e-mailudkastet — en kladde kan ikke sendes");
   });
 
   /* ⚠ ET BESTILT BEHOV KAN IKKE BESTILLES IGEN FRA SKÆRMEN. Serveren afviser

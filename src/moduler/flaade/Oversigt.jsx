@@ -112,9 +112,19 @@ import { HAENDELSE_ART, FORLOEB, aabneFejlFor } from "../../fleet/indberetninger
 import { stederI } from "../../fleet/steder.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
 import { DEMO_BESOEG } from "../../fleet/demo-vaerksted.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
+import { DEMO_INDKOEBSLINJER, DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+import { OPGAVE_STATUS, ARBEJDSTYPE } from "../../fleet/opgaver.js";
+import {
+  alleServicepunkter, sorterServicepunkter, SERVICEPUNKT_TYPE, SERVICEPUNKT_STATUS,
+} from "../../fleet/servicepunkter.js";
+import Haendelsespanel from "../../fleet/Haendelsespanel.jsx";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
-  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular, Kpiadgang } from "../../fleet/ui.jsx";
+  KpiKort, KpiRaekke, Ikon, Sider, Felt, Feltraekke, Formular, Kpiadgang,
+  ModulNav } from "../../fleet/ui.jsx";
+import { FLEET_FANER } from "../../fleet/modulfaner.js";
 import { vaerste, blokerer } from "../../fleet/datatilstand.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
@@ -390,6 +400,12 @@ export default function FlaadeOversigt() {
   const [side, setSide] = useState(1);
   /* null = lukket, "ny" = opret, ellers nøglen på den enhed der redigeres. */
   const [redigerer, setRedigerer] = useState(null);
+  /* ⚠ FLEET TARGET COMPLETION (produktejer-review 2026-09-01) — "klik på en
+     enhed skal åbne et reelt enhedsdetail med [...] historik, service,
+     tankninger/omkostninger og dokumenter". Historik og dokumenter GENBRUGER
+     den eksisterende Haendelsespanel-drawer i stedet for en ny visning —
+     samme drawer som Driftskalenderen og Arbejdskøen åbner. */
+  const [opgaveDetaljerId, setOpgaveDetaljerId] = useState(null);
 
   /* Server-side filtreres på ét felt: status. Det er indekseret
      (".indexOn": ["status", "art", "naesteServiceMs"]), og `aktiv` er langt
@@ -408,6 +424,24 @@ export default function FlaadeOversigt() {
      19), og aksen er fjernet helt (70). */
   const indb = useListe("indberetninger", {
     ordnPaa: "oprettetMs", vindueDage: 400, graense: 500
+  });
+
+  /* ⚠ ENHEDSDETAILJENS "historik og dokumenter" — samme opgaver-node som
+     Driftskalenderen og Arbejdskøen, filtreret til den valgte enhed. Ingen ny
+     forespørgsel pr. enhed: hele listen hentes én gang, som alle de andre
+     Fleet-skærme gør det. */
+  const opgaver = useListe("opgaver", {
+    vindue: "alle", graense: 500, demo: DEMO_OPGAVER,
+  });
+  /* ⚠ "Tankninger/omkostninger" — noden `indkoeb` ejes af Procure
+     (NODE_MODUL i moduler.js). useListe springer forespørgslen over med
+     TILSTAND.modulMangler hos en Fleet-kunde uden Procure, i stedet for en
+     afvist læsning — se beslutning 95. Ingen særbehandling nødvendig her. */
+  const indkoeb = useListe("indkoeb", {
+    vindue: "alle", graense: 500, demo: DEMO_INDKOEBSLINJER,
+  });
+  const leverandoerer = useListe("leverandoerer", {
+    vindue: "alle", demo: DEMO_LEVERANDOERER,
   });
 
   const { data: flaade, henter, tilstand, genindlaes, afkortet } = useListe("koeretoejer", {
@@ -460,6 +494,22 @@ export default function FlaadeOversigt() {
   const disponerbar = valgt ? kanDisponeres([valgt]) : null;
   const kompetencekrav = valgt ? kraevedeKompetencer([valgt]) : [];
 
+  /* ⚠ ENHEDSDETAILJEN — SERVICE, HISTORIK, OMKOSTNINGER. Alt regnet af lister
+     skærmen allerede har, filtreret til den valgte enhed. Ingen af tallene
+     hører i kpi/: de beskriver ÉN enhed, ikke flåden. */
+  const valgtServicepunkter = valgt
+    ? sorterServicepunkter(alleServicepunkter([valgt]))
+    : [];
+  const valgtOpgaver = valgt
+    ? [...opgaver.data].filter((o) => o.koeretoejId === valgt.id)
+      .sort((a, b) => (b.startMs || 0) - (a.startMs || 0))
+    : [];
+  const valgtIndkoeb = valgt
+    ? [...indkoeb.data].filter((l) => l.koeretoejId === valgt.id)
+      .sort((a, b) => (b.dato || 0) - (a.dato || 0))
+    : [];
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
+
   /* De tre dyreste pr. km. Afvigelsen måles mod FLÅDENS gennemsnit fra kpi/ —
      ikke mod gennemsnittet af de hentede, som ville flytte sig hver gang nogen
      satte et filter. */
@@ -476,6 +526,11 @@ export default function FlaadeOversigt() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      {/* ⚠ FLEET TARGET (produktejer-review 2026-09-01) — Enheder er stadig
+         stamdata under Opsætning (uændret rute/permission, se filens eget
+         hoved), men vises nu OGSÅ i Fleets egen modulnavigation, fordi
+         produktejeren eksplicit bad om den dér. Se fleet/modulfaner.js. */}
+      <ModulNav punkter={FLEET_FANER} />
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
@@ -810,8 +865,118 @@ export default function FlaadeOversigt() {
               <Link className="fc-a" to="/booking/live-kort">Se live-kortet</Link>.
             </p>
           </Kort>
+
+          {/* ⚠ FLEET TARGET COMPLETION — §9.10 SERVICEBOG, LÆST HER SOM ET
+              READ-ONLY UDSNIT. Konfiguration og "meld udført" sker i
+              Servicebog; her vises kun hvor enheden STÅR, med et link videre —
+              to steder der begge kunne SKRIVE ville før eller siden vise hver
+              sin version af samme punkt. */}
+          <Kort titel="Service"
+                handling={<Link className="fc-a" to="/flaade/servicebog">Servicebog</Link>}>
+            {valgtServicepunkter.length === 0
+              ? <p className="fc-hint">Ingen konfigurerede servicepunkter på denne enhed endnu.</p>
+              : valgtServicepunkter.map((p) => (
+                  <MiniLinje key={p.id} label={SERVICEPUNKT_TYPE[p.type]?.label || p.type}
+                    vaerdi={<>
+                      {p.label}{" "}
+                      <Pille tone={SERVICEPUNKT_STATUS[p.status]?.pill}>
+                        {SERVICEPUNKT_STATUS[p.status]?.label}
+                      </Pille>
+                      {p.naesteForfaldMs != null && <> · næste {dato(p.naesteForfaldMs)}</>}
+                    </>}
+                  />
+                ))}
+          </Kort>
+
         </Gitter>
       )}
+
+      {/* ⚠ FLYTTET UD AF DEN SMALLE 5-KOLONNERS GITTER OVENFOR. Med op til
+          seks kolonner inkl. en handlingsknap havde disse to tabeller ikke
+          plads i en 320-400px gridcelle — teksten skar af midt i ordet. */}
+      {valgt && (
+        <>
+          {/* ⚠ "TANKNINGER/OMKOSTNINGER" — ÉT UDSNIT AF indkoeb, den samme
+              node Procure ejer. Modulmangel gør listen tom, ikke afvist — se
+              beslutning 95 og noten ved hentningen ovenfor. */}
+          <Kort titel={`Omkostningshistorik — ${valgt.kaldenavn || valgt.navn}`}>
+            {indkoeb.tilstand?.art === "modulMangler"
+              ? <p className="fc-hint">Kræver Procure-modulet — ingen indkøbslinjer at vise.</p>
+              : (
+                <Tabel
+                  kolonner={[
+                    { key: "dato", label: "Dato", render: (l) => dato(l.dato) },
+                    { key: "kategori", label: "Kategori", render: (l) => l.kategori || "—" },
+                    { key: "vare", label: "Vare", render: (l) => l.vare || l.formaal || "—" },
+                    { key: "leverandoerId", label: "Leverandør", render: (l) => lvNavn(l.leverandoerId) },
+                    { key: "beloeb", label: "Beløb", num: true, render: (l) =>
+                        Number.isFinite(l.prisPrEnhedOere) && Number.isFinite(l.antal)
+                          ? kr(l.prisPrEnhedOere * l.antal, 2)
+                          : "—" },
+                  ]}
+                  raekker={valgtIndkoeb.slice(0, 8)}
+                  tom="Ingen registrerede indkøb på denne enhed."
+                />
+              )}
+            {valgtIndkoeb.length > 8 && (
+              <p className="fc-hint" style={{ marginTop: 8 }}>
+                Viser de 8 seneste af {num(valgtIndkoeb.length)}. Fuld historik ligger i{" "}
+                <Link className="fc-a" to="/indkoeb">Indkøb</Link>.
+              </p>
+            )}
+          </Kort>
+
+          {/* ⚠ "HISTORIK OG DOKUMENTER" — GENBRUGER Haendelsespanel, IKKE EN
+              NY VISNING. Dokumenterne ligger på OPGAVEN (opgavedokumenter.js),
+              ikke på enheden, så "Detaljer" åbner den samme drawer
+              Driftskalenderen og Arbejdskøen bruger — samme Sag- og
+              bilagsfaner, ingen parallel dokumentliste. */}
+          <Kort titel={`Historik — ${valgt.kaldenavn || valgt.navn}`}
+                handling={<Link className="fc-a" to="/flaade/driftskalender">Driftskalender</Link>}>
+            <Tabel
+              kolonner={[
+                { key: "startMs", label: "Dato", render: (o) => dato(o.startMs) },
+                { key: "arbejdstype", label: "Type", render: (o) => ARBEJDSTYPE[o.arbejdstype] || "—" },
+                { key: "beskrivelse", label: "Beskrivelse" },
+                { key: "leverandoerId", label: "Udføres af",
+                  render: (o) => (o.leverandoerId ? lvNavn(o.leverandoerId) : "Eget værksted") },
+                { key: "status", label: "Status", render: (o) => (
+                    <Pille tone={OPGAVE_STATUS[o.status]?.pill}>
+                      {OPGAVE_STATUS[o.status]?.label || o.status}
+                    </Pille>
+                  ) },
+                { key: "h", label: "", render: (o) => (
+                    <Knap onClick={() => setOpgaveDetaljerId(o.id)}
+                          title="Åbner opgavens detaljer, sag og dokumenter.">
+                      Detaljer
+                    </Knap>
+                  ) },
+              ]}
+              raekker={valgtOpgaver.slice(0, 8)}
+              tom="Ingen driftsopgaver registreret på denne enhed."
+            />
+            {valgtOpgaver.length > 8 && (
+              <p className="fc-hint" style={{ marginTop: 8 }}>
+                Viser de 8 seneste af {num(valgtOpgaver.length)}.
+              </p>
+            )}
+          </Kort>
+        </>
+      )}
+
+      {opgaveDetaljerId && (() => {
+        const o = opgaver.data.find((x) => x.id === opgaveDetaljerId) || null;
+        return o && (
+          <Haendelsespanel
+            opgave={o}
+            lvNavn={lvNavn}
+            enheder={flaade}
+            maaSkrive={harPerm(bruger?.perms, PERM.opgaverSkriv)}
+            onSkiftet={() => opgaver.genindlaes()}
+            onLuk={() => setOpgaveDetaljerId(null)}
+          />
+        );
+      })()}
 
       <Gitter kolonner="repeat(auto-fit, minmax(340px, 1fr))">
         <Kort titel="Seneste indberetninger"

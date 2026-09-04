@@ -344,10 +344,12 @@ describe("§13 — ingen vedhæftninger", () => {
   });
 
   it("⚠ Send ordre-DIALOGEN HAR INGEN FIL-INPUT", () => {
-    const godkendelser = readFileSync("src/moduler/indkoeb/Godkendelser.jsx", "utf8");
-    const start = godkendelser.indexOf("function SendOrdreDialog");
+    /* ⚠ SendOrdreDialog bor nu i Bestillinger.jsx — flyttet uændret fra
+       Godkendelser.jsx (Procure TARGET, produktejer-review 2026-09-02). */
+    const bestillinger = readFileSync("src/moduler/indkoeb/Bestillinger.jsx", "utf8");
+    const start = bestillinger.indexOf("function SendOrdreDialog");
     assert.ok(start >= 0, "SendOrdreDialog findes ikke");
-    const dialog = godkendelser.slice(start);
+    const dialog = bestillinger.slice(start);
     assert.ok(!/type="file"/.test(dialog), "Send ordre-dialogen har et filfelt");
   });
 });
@@ -357,9 +359,16 @@ describe("§13 — ingen vedhæftninger", () => {
    ══════════════════════════════════════════════════════════════════════════ */
 describe("⚠ UI'ET PÅSTÅR ALDRIG \"LEVERET\"", () => {
   it("⚠ SendOrdreDialog SKRIVER \"ACCEPTERET TIL AFSENDELSE\", IKKE \"LEVERET\"", () => {
-    const godkendelser = readFileSync("src/moduler/indkoeb/Godkendelser.jsx", "utf8");
-    assert.match(godkendelser, /Ordren er accepteret til afsendelse/);
-    assert.ok(!/[Ll]everet/.test(godkendelser), "skærmen påstår at ordren er leveret");
+    const bestillinger = readFileSync("src/moduler/indkoeb/Bestillinger.jsx", "utf8");
+    assert.match(bestillinger, /Ordren er accepteret til afsendelse/);
+    /* ⚠ AFGRÆNSET TIL SendOrdreDialog. Bestillinger.jsx er nu tre gamle
+       skærme samlet (Procure TARGET, produktejer-review 2026-09-02), og
+       kladde-sektionen bruger ordet "leveret" helt uskyldigt ("Ingen har
+       leveret de her varer før") — et helskærms-regex ville fejle på en
+       sætning der intet har med ordrens forsendelsesstatus at gøre. */
+    const start = bestillinger.indexOf("function SendOrdreDialog");
+    const dialog = bestillinger.slice(start);
+    assert.ok(!/[Ll]everet/.test(dialog), "Send ordre-dialogen påstår at ordren er leveret");
   });
 });
 

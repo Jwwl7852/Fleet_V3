@@ -459,8 +459,14 @@
 .fc-faner{display:flex; gap:2px; border-bottom:1px solid var(--bc-line); margin-bottom:16px;
   overflow-x:auto}
 .fc-fane{background:none; border:0; border-bottom:2px solid transparent; padding:10px 14px;
-  font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-muted); cursor:pointer; white-space:nowrap}
+  font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-muted); cursor:pointer;
+  white-space:nowrap; text-decoration:none; display:inline-flex; align-items:center}
 .fc-fane[aria-selected="true"]{color:var(--bc-accent); border-bottom-color:var(--bc-accent)}
+/* ⚠ ModulNav (fleet/ui.jsx) BRUGER SAMME KLASSE, MEN ER RUTER, IKKE FANER —
+   den sætter aldrig aria-selected. NavLink sætter selv aria-current="page"
+   på den aktive rute, og reglen her er derfor et ANDET selector end ovenfor,
+   ikke en duplikering af den. */
+.fc-fane[aria-current="page"]{color:var(--bc-accent); border-bottom-color:var(--bc-accent)}
 
 .fc-felt{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
 .fc-felt label{font-size:var(--fc-t-s); font-weight:600; color:var(--bc-muted)}

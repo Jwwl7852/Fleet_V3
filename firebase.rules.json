@@ -2212,7 +2212,44 @@
             // .write kraever i forvejen newData.exists(). Felterne her er
             // sporet efter hvorfor den gik ud af drift.
             "afgangMs": { ".validate": "newData.isNumber()" },
-            "afgangAarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" }
+            "afgangAarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+
+            // ⚠ FLEET §9.10 SERVICEBOG (produktejer-review 2026-09-01) — INGEN
+            // NY NODE. Konfigurerbare servicepunkter (syn, service, dæk,
+            // lovpligtige eftersyn, egne kontrolpunkter) bor på enheden selv,
+            // samme post som hjemsted/naesteServiceMs ovenfor — skrivningen
+            // dækkes derfor af koeretoejer.skriv ovenfor, uden en ny
+            // modulklausul eller Cloud Function. Se fleet/servicepunkter.js.
+            "servicepunkter": {
+              "$punktId": {
+                ".validate": "newData.hasChildren(['type', 'label'])",
+                "type": { ".validate": "newData.isString() && newData.val().matches(/^(syn|service|daek|lovpligtigt|egen)$/)" },
+                "label": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+                // Mindst ét interval kræves klientside (valideServicepunkt());
+                // reglen kræver kun at DE ANGIVNE er positive tal, for et
+                // punkt kan udmærket have kun det ene.
+                "intervalMaaneder": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "intervalKm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "senestUdfoertMs": { ".validate": "newData.isNumber()" },
+                "senestUdfoertKm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                // ⚠ INAKTIV, IKKE SLETTET — samme princip som resten af
+                // filen: en bil skifter afdeling, et servicepunkt oprettes
+                // ved et uheld eller bliver overflødigt. Historikken under
+                // den bevares uanset.
+                "aktiv": { ".validate": "newData.isBoolean()" },
+                "oprettetMs": { ".validate": "newData.isNumber()" },
+                "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+                "historik": {
+                  "$udfoerelseId": {
+                    ".validate": "newData.hasChildren(['udfoertMs'])",
+                    "udfoertMs": { ".validate": "newData.isNumber()" },
+                    "udfoertKm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                    "kommentar": { ".validate": "newData.isString() && newData.val().length <= 300" },
+                    "udfoertAf": { ".validate": "newData.isString() && newData.val().length <= 80" }
+                  }
+                }
+              }
+            }
           }
         },
 
@@ -3270,6 +3307,79 @@
             "automatisk": { ".validate": "newData.isBoolean()" },
             "afgjortAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
             "afgjortMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ══════════════════════════════════════════════════════════════
+        // VAREMASTEREN — Procure TARGET, trin 2 (produktejer-review
+        // 2026-09-02). Se fleet/varer.js's hoved for hvorfor det er TO
+        // noder, og hvorfor der IKKE er migreret data ind i dem: en
+        // fritekst-varenummer kan ikke sammenlægges til ét kanonisk vareId
+        // uden at gætte.
+        //
+        // ⚠ SAMME SKRIVEDISCIPLIN SOM leverandoerer: klient-skrivbar via
+        // gem() (indkoeb.skriv), ingen Cloud Function. Ingen cross-node
+        // atomicitet at beskytte — modsat opgaver/kasseudlaan, som skriver
+        // to noder i én transaktion, er en vare eller en prisrelation én
+        // selvstændig post.
+        //
+        // ⚠ HEDDER "indkoebsvarer", IKKE "varer". Warehouse ejer allerede
+        // "varer" — det er KUNDENS gods (3PL). Samme adskillelse som
+        // forbrugsvarer.js's hoved beskriver for Procures eget lager: to
+        // vidt forskellige ting må ikke hedde det samme i basen.
+        "indkoebsvarer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
+          ".indexOn": ["navn", "kategori", "aktiv"],
+          "$vareId": {
+            // ⚠ .write LIGGER HER, IKKE PÅ NODEN — samme grund som
+            // leverandoerer/$leverandoerId: ét kald mod noden kunne ellers
+            // tømme hele kataloget. En vare tages ud af drift med
+            // aktiv: false, ikke ved at forsvinde (beslutning 53).
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
+            ".validate": "newData.hasChildren(['navn', 'kategori', 'standardenhed', 'aktiv'])",
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "kategori": { ".validate": "newData.isString() && newData.val().matches(/^(vaerksted|reservedele|daek|braendstof|facility|kontor|transport)$/)" },
+            "standardenhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ⚠ RELATIONEN ER SIN EGEN NODE, IKKE INDLEJRET I HVERKEN varer/
+        // ELLER leverandoerer/ — en vare kan have flere leverandører, og en
+        // leverandør sælger typisk flere varer. Se fleet/varer.js.
+        "leverandoervarer": {
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')",
+          ".indexOn": ["indkoebsVareId", "leverandoerId", "gyldigFra"],
+          "$relationId": {
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && auth.token.perms.contains('|indkoeb.skriv|') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && newData.exists()",
+            // ⚠ FELTET HEDDER "indkoebsVareId", IKKE "vareId" — MED VILJE.
+            // Warehouse ejer allerede feltnavnet "vareId" (peger på dens
+            // EGEN "varer"-node, kundens 3PL-gods). test/modulkrav.test.mjs
+            // udleder modulafhaengigheder af feltNAVNE alene; havde relationen
+            // ogsaa heddet "vareId", ville den blive fejlfortolket som endnu
+            // en reference til Warehouses vare — og Procure ville se ud til
+            // at KRAEVE Warehouse. Samme "Bil 104 med to nummerplader"-faelde
+            // som CLAUDE.md advarer mod, denne gang i et feltnavn.
+            ".validate": "newData.hasChildren(['indkoebsVareId', 'leverandoerId', 'prisOere', 'gyldigFra', 'aktiv'])",
+            "indkoebsVareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('indkoebsvarer').child(newData.val()).exists()" },
+            "leverandoerId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('leverandoerer').child(newData.val()).exists()" },
+            "leverandoerVarenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            // Hele øre som integer, ekskl. moms — som prisliste.prisOere.
+            "prisOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && newData.val() <= 10000000000" },
+            "valuta": { ".validate": "newData.isString() && newData.val().matches(/^(DKK|EUR|USD)$/)" },
+            "mindsteantal": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            // ⚠ VERSIONERET PÅ DATO, som leverandoerer/$id/prisliste. En
+            // pris rettes ikke — en ny gyldigFra er en NY post, håndhævet
+            // af skærmen og dens prøve, ikke af reglen (samme forbehold som
+            // der).
+            "gyldigFra": { ".validate": "newData.isNumber()" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "$andet": { ".validate": false }
           }
         },

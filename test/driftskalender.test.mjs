@@ -280,28 +280,29 @@ describe("gitterets rækker", () => {
   });
 });
 
-describe("⚠ ÉT ORDFORRÅD PÅ TVÆRS AF DE TO SKÆRME", () => {
-  /* Kortets "Åbn" lægger sin nøgle i URL'en, og køen slår op på den. Skrev den
-     ene "nye" og den anden "ny", ville knappen åbne en tom liste ved siden af
-     et tal der sagde 6 — og det ville ligne et datahul frem for en tastefejl.
-     Prøven læser begge filer som tekst, som demo-kilder-linten gør. */
-  it("kassernes nøgler er køens udsnit er driftstal()'s felter", () => {
-    const kilde = readFileSync(
-      new URL("../src/moduler/flaade/Vaerkstedskalender.jsx", import.meta.url), "utf8");
-    const fraKasser = [...kilde.matchAll(/noegle: "([a-z]+)"/g)].map((m) => m[1]);
-
+describe("⚠ ÉT ORDFORRÅD PÅ TVÆRS AF KATALOG OG KØ", () => {
+  /* ⚠ FLEET TARGET (produktejer-review 2026-09-01) FJERNEDE DET TREDJE
+     ORDFORRÅD. Driftskalenderens fem "kasser" (et separat KASSER-katalog i
+     Vaerkstedskalender.jsx) flyttede til Overblik.jsx, som IKKE har sit eget
+     katalog — det ER Arbejdskoe.jsx's UDSNIT, importeret direkte
+     (ArbejdskoeIndhold). Der er derfor kun ÉT ordforråd tilbage at holde i
+     synk: UDSNIT's nøgler mod driftstal()'s egne feltnavne — ikke to
+     tekstlæste kataloger mod hinanden. Skrev UDSNIT en nøgle driftstal()
+     ikke kender, ville `tal[vis].antal` i ArbejdskoeIndhold være
+     `undefined`, og et tal der læses som "0" i stedet for at fejle synligt,
+     er netop den slags drift denne fil findes for at fange. */
+  it("UDSNIT's nøgler er driftstal()'s kategorier", () => {
     const koe = readFileSync(
       new URL("../src/moduler/flaade/Arbejdskoe.jsx", import.meta.url), "utf8");
     const udsnitBlok = koe.slice(koe.indexOf("const UDSNIT = {"), koe.indexOf("\n};"));
     const fraKoe = [...udsnitBlok.matchAll(/^ {2}([a-z]+): \{/gm)].map((m) => m[1]);
 
-    assert.deepEqual(fraKasser.sort(), fraKoe.sort(),
-      "kasserne på Driftskalenderen og udsnittene i Arbejdskøen bruger ikke samme nøgler");
+    /* `udenVarighed` er et meta-felt (opgaver uden estimat), ikke en af de
+       fem kategorier en bruger vælger imellem — se driftstal()'s eget hoved. */
+    const fraDriftstal = Object.keys(driftstal({})).filter((k) => k !== "udenVarighed");
 
-    const t = driftstal({});
-    for (const n of fraKasser) {
-      assert.ok(t[n], `driftstal() har intet felt "${n}" — kortet ville vise undefined`);
-    }
+    assert.deepEqual(fraKoe.sort(), fraDriftstal.sort(),
+      "UDSNIT i Arbejdskoe.jsx og driftstal()'s kategorier er ikke længere de samme nøgler");
   });
 
   it("køens vinduer er FREMAD-kataloget, ikke en afskrift", () => {

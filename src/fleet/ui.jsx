@@ -4,7 +4,7 @@
  * forskellige ud fra skærm til skærm.
  */
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { deviation } from "./format.js";
 import { MODUL } from "./moduler.js";
 
@@ -842,6 +842,35 @@ export function Faner({ faner = [], valgt, saet, label = "Faner" }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/* ---- ModulNav ----------------------------------------------------------
+ * Fleet TARGET-restruktureringen (masterbrief §1, produktejer-review
+ * 2026-09-01): "venstre sidebar bruges primært til hovedområder/moduler.
+ * Når brugeren går ind i et modul, skifter vedkommende mellem modulets
+ * arbejdsflader via en kompakt horisontal modulnavigation øverst."
+ *
+ * ⚠ RUTER, IKKE FANER. `Faner` ovenfor skifter INDHOLD på samme side (lokal
+ * `useState`, `role="tablist"`) — den passer til Dialog-panelernes
+ * Overblik/Sag-opdeling, hvor der ikke er noget at bogmærke. Her er hvert
+ * punkt en SELVSTÆNDIG, kanonisk rute (se fleet/modulfaner.js): man skal
+ * kunne dele et link til Fleets Statistik, og browserens tilbage-knap skal
+ * virke. Derfor `NavLink`, ikke knapper — samme mønster som AppShell.jsx's
+ * sidebar bruger til akkurat den samme skelnen.
+ *
+ * `end` er altid sat: modulets rod (fx `/flaade`) må ikke lyse op når man
+ * står på en underside (`/flaade/servicebog`) — samme fælde `findModul()` i
+ * nav.js løser for sidebaren, her løst med react-router-dom's egen prop. */
+export function ModulNav({ punkter, label = "Modulnavigation" }) {
+  return (
+    <nav className="fc-faner" aria-label={label}>
+      {punkter.map((p) => (
+        <NavLink key={p.sti} to={p.sti} end className="fc-fane">
+          {p.label}
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 

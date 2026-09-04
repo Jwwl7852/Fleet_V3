@@ -1,77 +1,89 @@
 /* src/moduler/facility/Oversigt.jsx
- * Facility – overblik, fejl & klima
+ * Facility – Overblik. Facility TARGET-restrukturering (produktejer-review
+ * 2026-09-02), samme mønster som Fleet: `Overblik | Inventar | Service &
+ * reparation | Planlagt | Statistik` som en vandret ModulNav, se
+ * fleet/modulfaner.js's FACILITY_FANER og
+ * docs/product-redesign-v1/07_OLD_CURRENT_TARGET_FLEET_FACILITY_PROCURE_UNITBOOKING.md's
+ * Facility-afsnit.
  *
- * ⚠ SENSORVÆRDIERNE KOMMER FRA SAMME NODE SOM KLIMA-SKÆRMEN.
+ * ⚠ COCKPIT, IKKE ALT PÅ ÉN SIDE. Den fulde "Aktiver"-tabel med opret/redigér
+ * flyttede til den nye Inventar-fane (samme data, egen fane, filtrérbar) —
+ * TARGET's egen begrundelse: "ny visning ... som en dedikeret, filtrérbar
+ * fane frem for kun en tabel nederst på Overblik." Donuttet (fordelingen på
+ * art) flyttede med af samme grund; det er en INVENTAR-egenskab.
  *
- * I mockupsene viste de to skærme FORSKELLIGE temperaturer for de samme
- * zoner — kun Depot 2 stemte. Begge læser nu facility/sensorer/<zoneId>, i
- * demo gennem zonePar() i demo-facility.js. Der er ét sted at hente tallet,
- * så de kan ikke være uenige.
+ * Tilbage her: KPI-rækken (nu fire tal der matcher TARGET's wireframe —
+ * "Åbne facility-sager" er skiftet ud med "Åbne fejl", fordi `sager/` er
+ * fase 0 og feltet ALTID er null, mens "åbne fejl" allerede var en reel,
+ * afledt tælling på skærmen), to NYE lister ("Kommende & overskredne
+ * services" med en "+ Opret opgave"-genvej direkte på rækken, og "Seneste
+ * serviceaktivitet"), og det der allerede virkede: Lokationer, Driftsforhold,
+ * Åbne fejl (+ Meld fejl) og Fakturaer. Intet af det er "spredt forkert" —
+ * TARGET-analysen selv siger Facility manglede de to nye faner og de to
+ * knap-på-række-genveje, ikke at data lå det forkerte sted.
  *
- * ALARMEN ER AFLEDT, ikke gemt. alarmTilstand() sammenholder målingen med
- * ZONENS grænse. Et lagret alarmflag ville drive fra målingen i det sekund
- * nogen justerede grænsen — og så stod der grønt på noget der ikke var det.
+ * ⚠ estimatForAktiv() ER RETTET SAMTIDIG. Den læste `DEMO_SERVICEBESOEG`
+ * uanset miljø — se fleet/facility.js's egen note. Den bor der nu, så
+ * Overblik og Inventar ikke kan vise hvert sit tal for samme anlæg.
  *
- * "Aktive klimaalarmer" beregnes derfor HER og står ikke i kpi/. Det er samme
- * slags tal som bemanding.ledig: afledt, og dermed noget der ikke skal gemmes.
- * `klimaalarmerIDag` er derimod et rigtigt nøgletal — det kræver historik.
+ * ⚠ "KLIMA NU" ER FJERNET (produktejer-review 2026-09-02). Kortet læste
+ * ægte RTDB-noder (facility/zoner+sensorer), men der er INGEN reel
+ * datakilde bag dem hos en rigtig kunde: ingen admin-skærm kan oprette en
+ * zone eller registrere en sensor, og ingen Cloud Function/integration kan
+ * skrive en målt værdi. De eneste tal nogen har set i noden, kommer fra
+ * `scripts/provisioner-dev.mjs`'s statiske engangsseed — samme tal som
+ * `DEMO_ZONER`/`DEMO_SENSORER`. `docs/product-redesign-v1/
+ * 01_ROUTE_DISPOSITION.md` (linje 165) siger det udtrykkeligt: "Skjul indtil
+ * zone-/sensoropsætning [...] er reel. Må ikke fremstå som færdig
+ * monitorering uden datakilde."
  *
- * FACILITY ER FÆLLES. Skærmen reagerer ikke på Gods/Bus-toggle'en.
+ * ⚠ OG SAMME OPRYDNING ER NU FØRT HELE VEJEN (produktejer-review 2026-09-02,
+ * anden runde). Første runde fjernede kun det klima-EGNE kort og lod
+ * Driftsforhold og Lokationer blive stående på samme sensornode — den rest
+ * er lukket her: skærmen læser slet ikke `facility/zoner`/`facility/sensorer`
+ * længere, og `driftsforhold()`/`lokationTilstand()` i fleet/facility.js
+ * tager ikke længere sensordata som argument. Tilbage er kun det de to kort
+ * ALTID kunne udlede af rigtig Facility-data: porte/ventilation-status og
+ * åbne fejl. Se noterne ved de to funktioner selv.
  *
- * ---------------------------------------------------------------------------
- * MOCKUPPEN, OG HVAD DER IKKE BLEV SOM DEN
- *
- * 1. LOKATIONERNE ER VORES. Mockuppen skrev Hovedlager–Greve, Terminal–
- *    Taastrup, Værksted–Greve, Kontor–København og Kølehus–Greve. Ingen af
- *    dem findes. Stederne kommer fra STED i fleet/steder.js — samme fire som
- *    personalet er stationeret på og køretøjerne har hjemme, og nu har alle
- *    fire en facilitet. Havde de ikke det, ville halvdelen af flåden stå på
- *    et sted der ikke fandtes i bygningsdata.
- * 2. LOKATIONENS STATUS ER AFLEDT. Mockuppens Normal/Advarsel/Kritisk ligner
- *    et felt; det er lokationTilstand() over anlæg, åbne fejl og klimaalarmer.
- *    Et gemt statusfelt ville drive fra anlæggene under det.
- * 3. DONUTTEN HAR FEM SLICES, IKKE SEKS. Seriepaletten har fem farver, valgt
- *    fordi de kan skelnes — også uden farvesyn (beslutning 30). En sjette
- *    ville genbruge farve ét. aktivFordeling() folder resten til Øvrige og
- *    fortæller i legenden hvad den indeholder.
- * 4. "78 % KAPACITET" PÅ VENTILATIONEN ER IKKE MED. Der findes ingen
- *    kapacitetsmåling. Et procenttal opfundet til lejligheden ville se ud som
- *    en måling — rækken siger i stedet hvor mange anlæg der kører.
- * 5. ESTIMERET OMKOSTNING ER AFLEDT af det planlagte servicebesøg på anlægget,
- *    ikke et felt på anlægget selv. Et anlæg uden planlagt besøg har ikke et
- *    estimat på nul — det har intet estimat, og der står en streg.
- * 6. INGEN ⋮-MENU. Skrivning er ikke bygget; en menu med grå punkter er værre
- *    end ingen menu. Rækken er til gengæld klikbar og styrer driftskortet.
+ * (Resten af filens oprindelige hoved — sensorværdier, afledt lokationsstatus,
+ * donut-paletten, mockup-afvigelser — gælder stadig og er ikke gentaget her;
+ * se git-historikken for den fulde tekst.)
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato, deviation, serviceTone } from "../../fleet/format.js";
+import { kr, num, dato, datoTid, deviation, serviceTone } from "../../fleet/format.js";
 import {
   Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter,
-  MiniLinje, Donut, Ikon, Sider, Knap, Felt, Feltraekke, Formular, Kpiadgang } from "../../fleet/ui.jsx";
+  MiniLinje, Ikon, Knap, Felt, Feltraekke, Formular, Kpiadgang, ModulNav,
+} from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import { Modulfakturaer } from "../../fleet/Modulfakturaer.jsx";
 import {
-  AKTIV_ART, AKTIV_STATUS, FEJL_STATUS, LOKATION_TYPE,
-  ALLE_AKTIV_ARTER, ALLE_AKTIV_STATUS,
-  alarmTilstand, aktiveAlarmer, lokationTilstand, driftsforhold, aktivFordeling,
-  zonePar,
-  valideAktiv, byggAktiv, valideFejl, byggFejl,
+  FEJL_STATUS, LOKATION_TYPE,
+  lokationTilstand, driftsforhold,
+  estimatForAktiv,
+  valideFejl, byggFejl,
 } from "../../fleet/facility.js";
+import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import { alvorTone, ALVOR } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
+import { FACILITY_FANER } from "../../fleet/modulfaner.js";
+import Servicedialog from "./Servicedialog.jsx";
+import Besoegspanel from "../../fleet/Besoegspanel.jsx";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
 import {
-  DEMO_SERVICEBESOEG,
   demoAktiv, demoLokation,
 } from "../../fleet/demo-facility.js";
-import { DEMO_PERSONALE } from "../../fleet/demo-personale.js";
+import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
+import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 
-const PR_SIDE = 5;
+const DAG = 86400000;
 
 /**
  * En afvigelse man ikke har, er ikke en afvigelse på nul.
@@ -80,144 +92,15 @@ const PR_SIDE = 5;
  * ændring". Det er en oplysning vi ikke har, skrevet som om vi havde den, og
  * det er samme fejl som at oversætte en afvist læsning til "ingen
  * forbindelse". Mangler feltet, siger noten det i stedet.
- *
- * Det ER en tilstand man møder: appen læser kpi/ fra basen, og en base der er
- * seedet før feltet fandtes, har det ikke. Nøjagtig sådan stod donutten tom.
  */
 const afvig = (vaerdi, opts) =>
   Number.isFinite(vaerdi)
     ? { afvigelse: deviation(vaerdi, opts), note: "vs. forrige periode" }
     : { note: "afvigelsen er ikke aggregeret endnu" };
 
-/* ⚠ HER STOD `personNavn` SOM EN MODUL-KONST BYGGET AF DEMOFILEN — og
-   vælgeren i aktivformularen fik det samme sæt. Hos en rigtig kunde ville
-   kolonnen "Ansvarlig" stå med en streg på hver række, og formularen ville
-   tilbyde folk der ikke findes i basen. Opslaget bygges nu af den hentede
-   liste inde i komponenten.
-   ⚠ personId, ALDRIG uid — det er hvem det HANDLER om, ikke hvem der gjorde
-   noget. En facilityansvarlig har måske intet login. */
-
-/**
- * Estimatet på et anlægs NÆSTE planlagte servicebesøg.
- *
- * AFLEDT, og det skal det blive: prisen står på besøget, hvor den blev aftalt
- * med leverandøren. Kopieret op på anlægget ville den ligge to steder, og den
- * ene ville blive stående når besøget blev ombooket.
- */
-function estimatForAktiv(besoeg, aktivId, nu = Date.now()) {
-  const mine = besoeg
-    .filter((b) => b.aktivId === aktivId && b.status !== "aflyst" && b.til >= nu)
-    .sort((a, b) => a.fra - b.fra);
-  return mine.length ? mine[0].estimatOere : null;
-}
-
-/* ---- Formularerne ------------------------------------------------------ */
-
-const tomtAktiv = () => ({
-  navn: "", art: "port", status: "idrift", lokationId: "",
-  zoneId: "", ansvarligPersonId: "", serviceIntervalDage: "",
-});
-
 const tomFejl = (aktivId = "") => ({
   aktivId, status: "ny", alvor: "mellem", beskrivelse: "", meldtAf: "",
 });
-
-/**
- * ⚠ VALIDERINGEN SPEJLER firebase.rules.json og afgør ingenting. Serveren
- * validerer igen, og er de to uenige, er reglerne rigtige.
- *
- * ⚠ ARTEN AFGØR OM ANLÆGGET SKAL HAVE EN ZONE. Et køleanlæg uden zone kan
- * Klima ikke vise temperaturen for — feltet er derfor påkrævet netop dér, og
- * skjult hvor det ikke giver mening.
- */
-function Aktivformular({ aktiv, lokationer, zoner, personale, sti, paaGemt, paaLuk }) {
-  const nyt = !aktiv;
-  const [f, saetF] = useState(() => (aktiv ? { ...tomtAktiv(), ...aktiv } : tomtAktiv()));
-  const [roert, saetRoert] = useState({});
-  const [visAlle, saetVisAlle] = useState(false);
-  const [gemmer, saetGemmer] = useState(false);
-  const [svar, saetSvar] = useState(null);
-
-  const saet = (felt) => (v) => {
-    saetF((x) => ({ ...x, [felt]: v }));
-    saetRoert((x) => ({ ...x, [felt]: true }));
-    saetSvar(null);
-  };
-
-  const fejl = valideAktiv(f, { lokationer, zoner, personale });
-  const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
-  const kanGemme = Object.keys(fejl).length === 0;
-
-  const gemNu = async () => {
-    saetVisAlle(true);
-    if (!kanGemme) return;
-    saetGemmer(true);
-    const id = aktiv?.id || nyId("fa");
-    const r = await gem({
-      sti: sti(`aktiver/${id}`), data: byggAktiv(f), foer: aktiv || null,
-      objekt: "facility", objektId: id,
-      handling: nyt ? AUDIT.opret : AUDIT.aendre,
-    });
-    saetGemmer(false);
-    saetSvar(r);
-    if (r.ok) paaGemt(id);
-  };
-
-  return (
-    <Kort titel={nyt ? "Nyt anlæg" : `Redigér ${aktiv.navn}`}>
-      <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
-                gemLabel={nyt ? "Opret anlæg" : "Gem ændringer"}
-                onAnnuller={paaLuk} svar={svar}>
-        <Feltraekke>
-          <Felt id="fa-navn" label="Navn" kraevet vaerdi={f.navn} saet={saet("navn")}
-                fejl={vis("navn")} hint="Port 3, Køleanlæg 1 — det navn folk bruger." />
-          {/* ⚠ art ER UDSTYRSTYPEN, ikke opgavens art. Samme feltnavn, to
-              vokabularer — se ARKITEKTUR. */}
-          <Felt id="fa-art" label="Udstyrstype" kraevet vaerdi={f.art} saet={saet("art")}
-                fejl={vis("art")}
-                valgmuligheder={ALLE_AKTIV_ARTER.map((a) => ({ vaerdi: a, label: AKTIV_ART[a].label }))} />
-          <Felt id="fa-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
-                fejl={vis("status")}
-                valgmuligheder={ALLE_AKTIV_STATUS.map((s) => ({ vaerdi: s, label: AKTIV_STATUS[s].label }))} />
-        </Feltraekke>
-
-        <Feltraekke>
-          <Felt id="fa-lok" label="Lokation" kraevet vaerdi={f.lokationId} saet={saet("lokationId")}
-                fejl={vis("lokationId")}
-                hint="Et anlæg uden lokation kan ikke vises i driftsstatus."
-                valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
-                  ...lokationer.map((l) => ({ vaerdi: l.id, label: l.navn }))]} />
-          {AKTIV_ART[f.art]?.maalesZone && (
-            <Felt id="fa-zone" label="Zone" kraevet vaerdi={f.zoneId} saet={saet("zoneId")}
-                  fejl={vis("zoneId")}
-                  hint="Arten måles i en zone — uden den kan Klima ikke vise dens temperatur."
-                  valgmuligheder={[{ vaerdi: "", label: "Vælg …" },
-                    ...zoner.map((z) => ({ vaerdi: z.id, label: z.navn }))]} />
-          )}
-        </Feltraekke>
-
-        <Feltraekke>
-          {/* ⚠ personId, ALDRIG uid. Den ansvarlige er hvem det HANDLER om;
-              en facilityansvarlig har måske intet login. Beslutning 18. */}
-          <Felt id="fa-ansv" label="Ansvarlig" vaerdi={f.ansvarligPersonId}
-                saet={saet("ansvarligPersonId")} fejl={vis("ansvarligPersonId")}
-                hint="En medarbejder — ikke et login. Personen findes uden konto."
-                valgmuligheder={[{ vaerdi: "", label: "Ingen" },
-                  ...personale.map((p) => ({ vaerdi: p.id, label: p.navn }))]} />
-          <Felt id="fa-interval" label="Serviceinterval" type="number" suffiks="dage"
-                vaerdi={f.serviceIntervalDage} saet={saet("serviceIntervalDage")}
-                fejl={vis("serviceIntervalDage")} />
-        </Feltraekke>
-      </Formular>
-
-      <p className="fc-hint" style={{ marginTop: 14 }}>
-        Der er <b>ingen division</b> på et facility-anlæg. Facility er{" "}
-        <b>fælles</b> — porten er den samme uanset hvem der kører igennem den —
-        og reglerne afviser feltet.
-      </p>
-    </Kort>
-  );
-}
 
 /**
  * ⚠ ALVOREN ER ET VALG, IKKE EN UDLEDNING. Den der melder fejlen, ved om
@@ -307,115 +190,172 @@ function Fejlformular({ fejlpost, aktiver, sti, paaGemt, paaLuk }) {
 
 export default function FacilityOversigt() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
+  const { bruger, path } = useFleet();
 
-  /* ⚠ FEM NODER, IKKE ÉN. `facility` har børn, og hvert barn er sin egen
-     liste: lokationer, aktiver, fejl, zoner og sensorer. Skærmen læste dem
-     alle fra demo-facility.js indtil noden blev seedet.
-
-     ⚠ REGLERNE FORBYDER `division` PÅ LOKATIONER, AKTIVER OG FEJL — facility
-     er fælles, og det var det allerede før aksen blev fjernet (beslutning 70).
-     Samme begrundelse som på køretøjerne.
-
-     ⚠ vindue: "alle" fordi ingen af dem er en tidsserie. Et aktiv har en
-     næste service, ikke en dato det "hører til"; filtrerede vi på shellens
-     periode, ville halvdelen af portene forsvinde når nogen valgte en uge. */
   const felles = { vindue: "alle", graense: 500 };
   const lok = useListe("facility/lokationer", { ordnPaa: "type", ...felles });
   const akt = useListe("facility/aktiver", { ordnPaa: "naesteServiceMs", ...felles });
   const fej = useListe("facility/fejl", { ordnPaa: "meldtMs", ...felles });
-  const zon = useListe("facility/zoner", { ordnPaa: "lokationId", ...felles });
-  /* ⚠ KUN SOM FALDBAKKE. `personale` er en seedet node. */
-  const pers = useListe("personale", {
-    vindue: "alle", graense: 500, demo: DEMO_PERSONALE,
+  /* ⚠ NY HER — "Kommende & overskredne services"' "+ Opret opgave" og
+     "Seneste serviceaktivitet" kræver den RIGTIGE opgaveliste, samme
+     hentning som Servicekalender.jsx bruger (art "facility" filtreres
+     klientside, samme begrundelse som dér). Den er også kilden til den
+     rettede estimatForAktiv(). */
+  const opgaver = useListe("opgaver", {
+    ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
+    graense: 500, demo: DEMO_OPGAVER,
   });
-  const personNavn = (personId) =>
-    pers.data.find((p) => p.id === personId)?.navn || "—";
-  /* Sensorerne er nøglet på ZONEN — en zone har én måling ad gangen. */
-  const sen = useListe("facility/sensorer", { vindue: "alle", graense: 500 });
+  const leverandoerer = useListe("leverandoerer", {
+    vindue: "alle", graense: 200, demo: DEMO_LEVERANDOERER,
+  });
 
-  const { bruger, path } = useFleet();
+  const lvNavn = (id) => leverandoerNavn(leverandoerer.data, id);
+  const lokNavn = (id) => lok.data.find((l) => l.id === id)?.navn || "";
+
   const [valgtLokId, setValgtLokId] = useState(null);
-  const [side, setSide] = useState(1);
-  /* null = lukket, "ny" = opret, ellers nøglen på den post der redigeres. */
-  const [aktivform, setAktivform] = useState(null);
   const [fejlform, setFejlform] = useState(null);
+  /* Facility §"+ Opret opgave" — samme foraf-form som gitterets ledige felt
+     bruger i Servicekalender.jsx: `{aktivId, startMs}`. */
+  const [planlaegger, setPlanlaegger] = useState(null);
+  const [detaljerId, setDetaljerId] = useState(null);
 
-  const henterNoget = henter || lok.henter || akt.henter || fej.henter
-    || zon.henter || sen.henter;
+  const facilityopgaver = opgaver.data.filter((o) => o.art === "facility");
+
+  const henterNoget = henter || lok.henter || akt.henter || fej.henter || opgaver.henter;
   if (henterNoget) return <Henter hvad="facility" />;
-  /* ⚠ EN AFVIST LÆSNING ER IKKE EN TOM LISTE. Aktiverne blokerer, hvor
-     nøgletallene ikke gør — en tom aktivtabel ligner et anlæg uden aktiver. */
   if (blokerer(akt.tilstand)) {
     return <Datatilstand tilstand={akt.tilstand} genprov={akt.genindlaes} />;
   }
-  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
-     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
-     opretter hans første post sidder på en af dem. Se blokerer(). */
   if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
 
-  /* ÉN kilde. Klima-skærmen kalder den samme funktion med sine egne rækker. */
-  const par = zonePar(zon.data, sen.data);
-  const alarmer = aktiveAlarmer(par);
-  /* ⚠ ALT DER IKKE ER UDBEDRET. En fejl der er planlagt eller i gang, er
-     stadig en fejl der ikke er væk — samme regel som facilitytal(). */
   const aabne = fej.data.filter((f) => f.status !== "udbedret");
-  const ctx = { aktiver: akt.data, aabneFejl: aabne, par };
-  /* Zonerne til formularens vælger — samme kilde som klimalisten. */
-  const zoner = par.map((p) => p.zone);
+  const ctx = { aktiver: akt.data, aabneFejl: aabne };
   const maaSkrive = harPerm(bruger?.perms, PERM.facilitySkriv);
 
   const valgtLok = lok.data.find((l) => l.id === valgtLokId) || lok.data[0];
   const drift = valgtLok ? driftsforhold(valgtLok.id, ctx) : [];
 
-  const fordeling = aktivFordeling(k?.facility?.aktiverPrArt || {});
+  /* ⚠ "SERVICE <30 DAGE" OG "OVERSKREDET" ER TO ADSKILTE MÆNGDER — regnet
+     direkte af naesteServiceMs, IKKE af serviceTone()'s tre trin. serviceTone()
+     slår "overskredet" og "≤14 dage" sammen i samme "bad"-tone (den er lavet
+     til ÉN celle i en tabel, ikke to KPI'er) — brugte vi den her, ville et
+     anlæg der er 5 dage overskredet, tælle med i BEGGE kort. Begge tal er
+     afledt af den allerede hentede `akt`-liste, ikke i kpi/. */
+  const nu = Date.now();
+  const overskredet = akt.data.filter((a) => Number.isFinite(a.naesteServiceMs) && a.naesteServiceMs < nu);
+  const snart = akt.data.filter((a) => Number.isFinite(a.naesteServiceMs)
+    && a.naesteServiceMs >= nu && a.naesteServiceMs - nu <= 30 * DAG);
+  /* "Kommende & overskredne services" — TARGET's wireframe-tabel. */
+  const kommendeOgOverskredne = [...overskredet, ...snart]
+    .sort((a, b) => a.naesteServiceMs - b.naesteServiceMs);
 
-  /* ⚠ IKKE num(undefined) OG IKKE NUL. En ny kunde har ingen aggregerede tal,
-     og "0 aktiver" ville være en påstand om at han ingen har. Se blokerer()
-     i datatilstand.js — skærmen skal kunne bruges uden nøgletallene. */
-  const kpiTal = (v) => (Number.isFinite(v) ? num(v) : "ikke aggregeret");
-
-  /* Aktivtabellen sorteres efter hvornår service forfalder — det er den
-     rækkefølge man arbejder listen i. */
-  const aktiver = [...akt.data].sort((a, b) => a.naesteServiceMs - b.naesteServiceMs);
-  const sider = Math.max(1, Math.ceil(aktiver.length / PR_SIDE));
-  const nuSide = Math.min(side, sider);
-  const paaSiden = aktiver.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
+  /* "Seneste serviceaktivitet" — de nyeste facility-opgaver, uanset status,
+     nyeste først. Samme liste som Servicekalender.jsx viser, kun beskåret. */
+  const seneste = [...facilityopgaver]
+    .filter((o) => Number.isFinite(o.startMs))
+    .sort((a, b) => b.startMs - a.startMs)
+    .slice(0, 6);
 
   return (
     <div className="fc-grid" style={{ gap: 11 }}>
+      <ModulNav punkter={FACILITY_FANER} />
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
-          {/* Runde ikoner med chevron, som resten af appen. Tonerne er
-              IKONACCENTER: farven forstærker, tallet og teksten bærer.
-              Afvigelserne KRÆVER historik og kommer derfor fra kpi/ — de kan
-              ikke regnes af de femten demo-aktiver skærmen har. */}
           <KpiKort label="Aktiver i drift" vaerdi={num(k.facility.aktiver)}
-                   ikon={<Ikon navn="bygning" />} tone="ikon-5" rund til="/facility"
+                   ikon={<Ikon navn="bygning" />} tone="ikon-5" rund til="/facility/inventar"
                    {...afvig(k.facility.aktiverDeltaPct, { betterWhen: "higher", unit: "pct" })} />
-          <KpiKort label="Servicepunkter forfalder" vaerdi={num(k.facility.servicepunkterForfalder)}
-                   ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
-                   til="/facility/servicekalender"
-                   {...afvig(k.facility.servicepunkterDelta, { betterWhen: "lower" })} />
-          <KpiKort label="Åbne facility-sager" vaerdi={num(k.facility.aabneSager)}
+          <KpiKort label="Service inden 30 dage" vaerdi={num(snart.length)}
+                   ikon={<Ikon navn="ur" />} tone="ikon-3" rund til="/facility/planlagt"
+                   note="afledt af aktivernes næste service" />
+          <KpiKort label="Overskredet" vaerdi={num(overskredet.length)}
+                   ikon={<Ikon navn="advarsel" />} tone="ikon-2" rund til="/facility/inventar"
+                   note="afledt af aktivernes næste service" />
+          <KpiKort label="Åbne fejl" vaerdi={num(aabne.length)}
                    ikon={<Ikon navn="udraab" />} tone="ikon-1" rund
-                   til="/facility/servicekalender"
-                   {...afvig(k.facility.aabneSagerDelta, { betterWhen: "lower" })} />
-          <KpiKort label="Planlagt vedligehold" vaerdi={num(k.facility.planlagtVedligehold)}
-                   ikon={<Ikon navn="kalender" />} tone="ikon-6" rund
-                   til="/facility/servicekalender"
-                   {...afvig(k.facility.planlagtVedligeholdDelta, { betterWhen: "higher" })} />
+                   note="alt der ikke er udbedret" />
         </KpiRaekke>
       )}
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
+      <Kort titel={`Kommende & overskredne services (${num(kommendeOgOverskredne.length)})`}>
+        <Tabel
+          kolonner={[
+            { key: "navn", label: "Anlæg", render: (r) => <b>{r.navn}</b> },
+            { key: "lokationId", label: "Lokation", render: (r) => (
+                <span className="fc-med-ikon fc-med-ikon-svag">
+                  <Ikon navn="bygning" />{demoLokation(r.lokationId)?.navn || "—"}
+                </span>
+              ) },
+            { key: "naesteServiceMs", label: "Næste service", render: (r) => {
+                const s = serviceTone(r.naesteServiceMs);
+                return (
+                  <div className="fc-tolinje">
+                    <b className={s.tone === "bad" ? "fc-bad" : undefined}>{dato(r.naesteServiceMs)}</b>
+                    <span className={s.tone === "bad" ? "fc-bad" : undefined}>{s.tekst}</span>
+                  </div>
+                );
+              } },
+            { key: "serviceIntervalDage", label: "Interval", num: true,
+              render: (r) => (Number.isFinite(r.serviceIntervalDage) ? `${num(r.serviceIntervalDage)} dage` : "—") },
+            { key: "estimat", label: "Estimeret omkostning", num: true, render: (r) => {
+                const oere = estimatForAktiv(opgaver.data, r.id, nu);
+                return oere == null ? <span className="fc-neutral">—</span> : kr(oere);
+              } },
+            { key: "h", label: "", render: (r) => (
+                <Knap disabled={!maaSkrive}
+                      onClick={() => setPlanlaegger({ aktivId: r.id, startMs: r.naesteServiceMs })}
+                      title={maaSkrive ? "Åbner Planlæg service med anlægget udfyldt."
+                                       : "Kræver opgaver.skriv."}>
+                  + Opret opgave
+                </Knap>
+              ) },
+          ]}
+          raekker={kommendeOgOverskredne}
+          noegle={(r) => r.id}
+          tom="Ingen aktiver har service inden for 30 dage."
+        />
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          Sorteret efter hvornår service forfalder — overskredne øverst.
+          <b> Estimeret omkostning</b> er prisen på anlæggets næste PLANLAGTE
+          servicebesøg (en opgave), ikke et felt på anlægget selv — et anlæg
+          uden planlagt besøg har intet estimat, ikke et estimat på nul.
+        </p>
+      </Kort>
+
+      <Kort titel="Seneste serviceaktivitet">
+        <Tabel
+          kolonner={[
+            { key: "startMs", label: "Dato", render: (r) => datoTid(r.startMs) },
+            { key: "hvad", label: "Anlæg/lokation", render: (r) => (
+                <b>{r.aktivId ? (akt.data.find((a) => a.id === r.aktivId)?.navn || r.aktivId)
+                                : (lokNavn(r.lokationId) || r.lokationId)}</b>
+              ) },
+            { key: "beskrivelse", label: "Beskrivelse" },
+            { key: "leverandoerId", label: "Udføres af",
+              render: (r) => (r.leverandoerId ? lvNavn(r.leverandoerId) : "eget personale") },
+            { key: "status", label: "Status", render: (r) => (
+                <Pille tone={OPGAVE_STATUS[r.status]?.pill}>{OPGAVE_STATUS[r.status]?.label || r.status}</Pille>
+              ) },
+            { key: "beloebOere", label: "Beløb", num: true, render: (r) => kr(r.beloebOere) },
+            { key: "h", label: "", render: (r) => (
+                <Knap onClick={() => setDetaljerId(r.id)}>Detaljer</Knap>
+              ) },
+          ]}
+          raekker={seneste}
+          noegle={(r) => r.id}
+          tom="Ingen facility-opgaver endnu."
+        />
+        <p className="fc-hint" style={{ marginTop: 10 }}>
+          De seks seneste facility-opgaver, uanset status. Fuld liste og
+          kalender ligger i <Link className="fc-a" to="/facility/servicekalender">Service &amp; reparation</Link>.
+        </p>
+      </Kort>
+
       <Gitter kolonner="repeat(auto-fit, minmax(300px, 1fr))">
         <Kort titel="Lokationer"
               handling={<Link className="fc-a" to="/facility/servicekalender">Se servicekalenderen</Link>}>
-          {/* Rækken er klikbar og styrer driftskortet til højre. Mockuppen
-              har et fast "Hovedlager Greve"; her følger kortet det sted man
-              spørger om, så de to ikke kan komme til at handle om hver sit. */}
           {lok.data.map((l) => {
             const t = lokationTilstand(l.id, ctx);
             const valgt = l.id === valgtLokId;
@@ -435,54 +375,15 @@ export default function FacilityOversigt() {
             );
           })}
           <p className="fc-hint" style={{ marginTop: 12 }}>
-            Statussen er <b>afledt</b> af anlæg, åbne fejl og klimaalarmer på stedet
-            — den er ikke et felt. Et gemt statusfelt ville stå Kritisk på en hal
-            hvor alt virkede, så snart den sidste fejl blev lukket. Stederne kommer
-            fra <b>STED</b>, samme katalog som personale og flåde bruger.
+            Statussen er <b>afledt</b> af anlæg og åbne fejl på stedet — den
+            er ikke et felt. Stederne kommer fra <b>STED</b>, samme katalog
+            som personale og flåde bruger.
           </p>
         </Kort>
 
-        <Kort titel="Aktivoversigt"
-              handling={<Link className="fc-a" to="/facility/servicekalender">Se alle aktiver</Link>}>
-          {/* ⚠ ET MANGLENDE FELT ER IKKE "INGEN DATA I PERIODEN".
-              Donut-primitivet siger det sidste, når listen er tom, og det er
-              rigtigt for en periode uden aktivitet — men forkert her: feltet
-              er ikke aggregeret endnu, og det er en helt anden ting at gøre
-              noget ved. Samme skelnen som dataTilstand() laver mellem en
-              afvist læsning og en manglende forbindelse.
-              Det ER sket: appen læser kpi/ fra basen, og en base seedet før
-              aktiverPrArt fandtes, har feltet ikke. Kør npm run
-              provisioner:dev. */}
-          {!fordeling.length ? (
-            <Tom>
-              <b>aktiverPrArt</b> findes ikke i <code>kpi/</code> for denne tenant.
-              Fordelingen er ikke aggregeret endnu — det er ikke det samme som
-              at der ingen aktiver er; nøgletallet ovenfor siger{" "}
-              {kpiTal(k?.facility?.aktiver)}.
-            </Tom>
-          ) : (
-            <Donut
-              dele={fordeling}
-              total={k?.facility?.aktiver}
-              midteTekst="aktive"
-              format={(v) => num(v)}
-            />
-          )}
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            Fordelingen af alle <b>{kpiTal(k?.facility?.aktiver)}</b> aktiver kommer fra{" "}
-            <b>kpi/</b> — den kan ikke regnes af de {num(akt.data.length)} hentede.
-            Højst fem slices: seriepaletten har fem farver der kan skelnes fra
-            hinanden, også uden farvesyn, og en sjette ville genbruge den første.
-            {fordeling.find((d) => d.dele)
-              ? ` Øvrige er ${fordeling.find((d) => d.dele).dele.join(" og ")}.`
-              : ""}
-          </p>
-        </Kort>
-
-        <Kort titel={`Driftsforhold — ${valgtLok?.navn || "—"}`}
-              handling={<Link className="fc-a" to="/facility/klima">Se klima &amp; energi</Link>}>
+        <Kort titel={`Driftsforhold — ${valgtLok?.navn || "—"}`}>
           {!drift.length ? (
-            <Tom>Ingen anlæg registreret på lokationen.</Tom>
+            <Tom>Ingen porte eller ventilationsanlæg på denne lokation.</Tom>
           ) : drift.map((r) => (
             <MiniLinje
               key={r.label}
@@ -493,175 +394,103 @@ export default function FacilityOversigt() {
             />
           ))}
           <p className="fc-hint" style={{ marginTop: 12 }}>
-            Temperaturen er lokationens <b>koldeste</b> zone — et kontor på 21 grader
-            siger intet om et kølerum ved siden af. Tallene kommer fra{" "}
-            <b>facility/sensorer</b>, samme node som Klima læser. Mockuppens{" "}
-            <b>78 % kapacitet</b> på ventilationen findes ikke som måling, og et
-            opfundet procenttal ville ligne en.
+            Talt op fra <b>facility/aktiver</b>s egen status. Kun porte og
+            ventilation vises her — øvrige anlægstyper står i <b>Inventar</b>.
           </p>
         </Kort>
+
+        {/* ⚠ "KLIMA NU" ER FJERNET HERFRA (produktejer-review 2026-09-02).
+            Kortet viste rigtige RTDB-læsninger (facility/zoner+sensorer), men
+            der er INGEN reel datakilde bag dem: ingen admin-skærm kan
+            oprette en zone eller en sensor, og INGEN Cloud Function eller
+            integration kan skrive en målt temperatur — de eneste tal der
+            nogensinde har stået i noden, kommer fra scripts/provisioner-dev.mjs's
+            statiske engangsseed (samme tal som DEMO_ZONER/DEMO_SENSORER).
+            Det er præcis den situation `01_ROUTE_DISPOSITION.md` (linje 165)
+            forbyder: "Skjul indtil zone-/sensoropsætning [...] er reel. Må
+            ikke fremstå som færdig monitorering uden datakilde." Klima.jsx's
+            eget hoved siger det samme om selve klimaskærmen. At vise kortet
+            her ville være at give Overblik en anden regel end skærmen
+            kortet linkede til.
+            ⚠ ANDEN RUNDE (produktejer-review 2026-09-02): Driftsforhold-
+            kortets temperaturrække og Lokationers klimaalarm-baserede
+            Kritisk-trin er nu OGSÅ fjernet — se noterne ved driftsforhold()
+            og lokationTilstand() i fleet/facility.js. Skærmen læser slet
+            ikke facility/zoner eller facility/sensorer længere; "Se klima &
+            energi"-linket på Driftsforhold-kortet er fjernet af samme grund,
+            for et kort uden klimaindhold skal ikke pege videre på en
+            klimaskærm. */}
       </Gitter>
 
-      {/* Formularerne står OVER den tabel de skriver til, så man kan se
-          resultatet uden at rulle. `key` nulstiller felterne når man skifter
-          fra én post til en anden — ellers bærer formularen den forriges
-          værdier med sig. */}
-      {aktivform && (
-        <Aktivformular
-          key={aktivform}
-          aktiv={aktivform === "ny" ? null : akt.data.find((a) => a.id === aktivform)}
-          lokationer={lok.data}
-          zoner={zoner}
-          personale={pers.data.filter((p) => p.status === "aktiv")}
-          sti={(under) => path(`facility/${under}`)}
-          paaGemt={() => { setAktivform(null); genindlaes(); }}
-          paaLuk={() => setAktivform(null)}
-        />
-      )}
       {fejlform && (
         <Fejlformular
           key={fejlform}
           fejlpost={fejlform === "ny" ? null : fej.data.find((x) => x.id === fejlform)}
           aktiver={akt.data}
           sti={(under) => path(`facility/${under}`)}
-          paaGemt={() => { setFejlform(null); genindlaes(); }}
+          paaGemt={() => { setFejlform(null); genindlaes(); fej.genindlaes(); }}
           paaLuk={() => setFejlform(null)}
         />
       )}
 
-      <Kort titel={`Aktiver (${num(akt.data.length)} hentede af ${kpiTal(k?.facility?.aktiver)})`}
-            handling={
-              <Knap variant="primaer" disabled={!maaSkrive}
-                    onClick={() => { setAktivform("ny"); setFejlform(null); }}
-                    title={maaSkrive ? "Opret et nyt anlæg."
-                                     : "Kræver facility.skriv — serveren afviser."}>
-                Nyt anlæg
-              </Knap>
-            }>
+      <Kort
+        titel={`Åbne fejl (${aabne.length})`}
+        handling={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Link className="fc-a" to="/facility/servicekalender">Se servicekalenderen</Link>
+            <Knap variant="primaer" disabled={!maaSkrive}
+                  onClick={() => setFejlform("ny")}
+                  title={maaSkrive ? "Meld en fejl på et anlæg." : "Kræver facility.skriv — serveren afviser."}>
+              Meld fejl
+            </Knap>
+          </div>
+        }
+      >
         <Tabel
           kolonner={[
-            { key: "navn", label: "Aktiv", render: (r) => <b>{r.navn}</b> },
-            { key: "art", label: "Kategori", render: (r) => AKTIV_ART[r.art]?.label || r.art },
-            { key: "lokationId", label: "Lokation", render: (r) => (
-                <span className="fc-med-ikon fc-med-ikon-svag">
-                  <Ikon navn="bygning" />{demoLokation(r.lokationId)?.navn || "—"}
-                </span>
-              ) },
-            /* Dato OG frist. serviceTone() ét sted — samme tre trin som Flåde,
-               Kompetencer og Facility-kalenderen bruger. */
-            { key: "naesteServiceMs", label: "Næste service", render: (r) => {
-                const s = serviceTone(r.naesteServiceMs);
-                return (
-                  <div className="fc-tolinje">
-                    <b className={s.tone === "bad" ? "fc-bad" : undefined}>
-                      {dato(r.naesteServiceMs)}
-                    </b>
-                    <span className={s.tone === "bad" ? "fc-bad" : undefined}>{s.tekst}</span>
-                  </div>
-                );
+            { key: "meldtMs", label: "Meldt", render: (r) => dato(r.meldtMs) },
+            { key: "aktivId", label: "Anlæg", render: (r) => {
+                const a = demoAktiv(r.aktivId);
+                return <><b>{a?.navn}</b> <span className="fc-neutral">
+                  · {demoLokation(a?.lokationId)?.navn}</span></>;
               } },
-            /* ⚠ personId, ikke uid. Se noten ved personNavn(). */
-            { key: "ansvarligPersonId", label: "Ansvarlig",
-              render: (r) => personNavn(r.ansvarligPersonId) },
-            { key: "status", label: "Status", render: (r) => (
-                <Pille tone={AKTIV_STATUS[r.status]?.pill}>
-                  {AKTIV_STATUS[r.status]?.label || r.status}
-                </Pille>
-              ) },
-            { key: "estimat", label: "Estimeret omkostning", num: true, render: (r) => {
-                const oere = estimatForAktiv(DEMO_SERVICEBESOEG, r.id);
-                /* Intet planlagt besøg er ikke et estimat på nul. */
-                return oere == null
-                  ? <span className="fc-neutral">—</span>
-                  : kr(oere);
-              } },
+            { key: "beskrivelse", label: "Beskrivelse" },
+            { key: "meldtAf", label: "Meldt af" },
+            { key: "alvor", label: "Prioritet",
+              render: (r) => <Pille tone={alvorTone(r.alvor)}>{ALVOR[r.alvor]}</Pille> },
+            { key: "status", label: "Status",
+              render: (r) => <Pille tone={FEJL_STATUS[r.status]?.pill}>{FEJL_STATUS[r.status]?.label}</Pille> },
           ]}
-          raekker={paaSiden}
-          tom="Ingen aktiver oprettet endnu."
+          raekker={aabne}
+          tom="Ingen åbne fejl."
         />
-        <div className="fc-row" style={{ marginTop: 12, gap: 12, flexWrap: "wrap" }}>
-          <p className="fc-hint" style={{ margin: 0 }}>
-            Viser {num((nuSide - 1) * PR_SIDE + 1)}–{num((nuSide - 1) * PR_SIDE + paaSiden.length)}{" "}
-            af {num(aktiver.length)} hentede. Platformens tal er{" "}
-            <b>{kpiTal(k?.facility?.aktiver)}</b>, og de to skal ikke gå op mod hinanden:
-            listen er et udsnit. Sorteret efter hvornår service forfalder.
-          </p>
-          <Sider side={nuSide} antal={aktiver.length} prSide={PR_SIDE} saet={setSide} />
-        </div>
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          <b>Estimeret omkostning</b> er prisen på anlæggets næste planlagte
-          servicebesøg — den står på besøget, hvor den blev aftalt med
-          leverandøren. Kopieret op på anlægget ville den blive stående, når
-          besøget blev ombooket. Beløb er ekskl. moms.
+        <p className="fc-hint" style={{ marginTop: 12 }}>
+          Viser {num(aabne.length)} af {num(fej.data.length)} hentede fejl.
         </p>
       </Kort>
 
-      <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
-        <Kort
-          titel={`Åbne fejl (${aabne.length})`}
-          handling={
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Link className="fc-a" to="/facility/servicekalender">Se servicekalenderen</Link>
-              <Knap variant="primaer" disabled={!maaSkrive}
-                    onClick={() => { setFejlform("ny"); setAktivform(null); }}
-                    title={maaSkrive ? "Meld en fejl på et anlæg."
-                                     : "Kræver facility.skriv — serveren afviser."}>
-                Meld fejl
-              </Knap>
-            </div>
-          }
-        >
-          <Tabel
-            kolonner={[
-              { key: "meldtMs", label: "Meldt", render: (r) => dato(r.meldtMs) },
-              { key: "aktivId", label: "Anlæg", render: (r) => {
-                  const a = demoAktiv(r.aktivId);
-                  return <><b>{a?.navn}</b> <span className="fc-neutral">
-                    · {demoLokation(a?.lokationId)?.navn}</span></>;
-                } },
-              { key: "beskrivelse", label: "Beskrivelse" },
-              { key: "meldtAf", label: "Meldt af" },
-              { key: "alvor", label: "Prioritet",
-                render: (r) => <Pille tone={alvorTone(r.alvor)}>{ALVOR[r.alvor]}</Pille> },
-              { key: "status", label: "Status",
-                render: (r) => <Pille tone={FEJL_STATUS[r.status]?.pill}>{FEJL_STATUS[r.status]?.label}</Pille> },
-            ]}
-            raekker={aabne}
-            tom="Ingen åbne fejl."
-          />
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            Viser {num(aabne.length)} af {num(fej.data.length)} hentede fejl.{" "}
-            <b>{kpiTal(k?.facility?.aabneFejl)}</b> er platformens tal fra <code>kpi/</code> —
-            listen her er et udsnit og skal ikke gå op mod det.
-          </p>
-        </Kort>
+      {planlaegger && (
+        <Servicedialog
+          aktiver={akt.data}
+          lokationer={lok.data}
+          leverandoerer={leverandoerer.data}
+          foraf={planlaegger}
+          onLuk={() => setPlanlaegger(null)}
+          onGemt={() => { setPlanlaegger(null); opgaver.genindlaes(); akt.genindlaes(); genindlaes(); }}
+        />
+      )}
 
-        <Kort
-          titel="Klima nu"
-          handling={<Link className="fc-a" to="/facility/klima">Se klima &amp; energi</Link>}
-        >
-          {/* SAMME liste som Klima-skærmen viser. Ét opslag, to visninger. */}
-          {par.map(({ zone, maaling }) => {
-            const a = alarmTilstand(zone, maaling);
-            return (
-              <MiniLinje
-                key={zone.id}
-                label={zone.navn}
-                vaerdi={maaling
-                  ? <>{maaling.tempC.toFixed(1)} °C <Pille tone={a.tone}>{a.tekst}</Pille></>
-                  : <span className="fc-neutral">ingen måling</span>}
-              />
-            );
-          })}
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            <b>{num(alarmer.length)}</b> aktive alarmer, beregnet nu — tallet står{" "}
-            <b>ikke</b> i <code>kpi/</code>, fordi det er afledt af målingen og zonens
-            grænse. Tallene kommer fra <b>facility/sensorer</b>, samme node som Klima
-            læser. I mockupsene viste de to skærme forskellige temperaturer for samme
-            zoner; nu er der kun ét sted at hente dem.
-          </p>
-        </Kort>
-      </Gitter>
+      {detaljerId && (() => {
+        const valgt = facilityopgaver.find((o) => o.id === detaljerId) || null;
+        return valgt && (
+          <Besoegspanel
+            besoeg={valgt} lvNavn={lvNavn} lokNavn={lokNavn} aktiver={akt.data}
+            maaSkrive={maaSkrive}
+            onSkiftet={() => opgaver.genindlaes()}
+            onLuk={() => setDetaljerId(null)}
+          />
+        );
+      })()}
 
       {/* ⚠ SAMME FAKTURAER SOM FAKTURACENTERET — ikke et andet sæt.
           Modulet ejer sagen; centeret ejer fakturaen (beslutning 86). */}

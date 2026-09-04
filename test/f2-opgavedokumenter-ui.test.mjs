@@ -1,5 +1,11 @@
 /* test/f2-opgavedokumenter-ui.test.mjs
- * F.2 — admin-siden af opgavedokumenter: OpgaveBilag i Vaerkstedskalender.jsx.
+ * F.2 — admin-siden af opgavedokumenter: OpgaveBilag i fleet/Haendelsespanel.jsx.
+ *
+ * ⚠ FLEET TARGET (produktejer-review 2026-09-01) FLYTTEDE OpgaveBilag (og
+ * resten af hændelsespanelet) ud af Vaerkstedskalender.jsx til den delte
+ * fleet/Haendelsespanel.jsx, fordi Overblik.jsx's arbejdskø og
+ * Indberetninger.jsx også skal kunne åbne det (§9.3/§9.6) — ikke kun
+ * Driftskalenderen. Samme kildetekst, ny fil.
  *
  * Samme "skærmen tegner, maskinen håndhæver"-disciplin som resten af appen —
  * se test/leverandoerportal-ui.test.mjs for samme metode på leverandør-
@@ -13,7 +19,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const KALENDER = readFileSync("src/moduler/flaade/Vaerkstedskalender.jsx", "utf8");
+const KALENDER = readFileSync("src/fleet/Haendelsespanel.jsx", "utf8");
 const KLIENT = readFileSync("src/fleet/opgavedokumenter.js", "utf8");
 
 describe("src/fleet/opgavedokumenter.js", () => {
@@ -37,9 +43,12 @@ describe("src/fleet/opgavedokumenter.js", () => {
   });
 });
 
-describe("OpgaveBilag i Vaerkstedskalender.jsx", () => {
+describe("OpgaveBilag i fleet/Haendelsespanel.jsx", () => {
   test("kalder den delte klient (opgavedokumenter.js), ikke kaldFunktion direkte", () => {
-    assert.match(KALENDER, /from "\.\.\/\.\.\/fleet\/opgavedokumenter\.js"/);
+    /* ⚠ Haendelsespanel.jsx ligger SELV i fleet/, ved siden af
+       opgavedokumenter.js — importstien er derfor "./", ikke "../../fleet/"
+       som fra moduler/flaade/. */
+    assert.match(KALENDER, /from "\.\/opgavedokumenter\.js"/);
   });
 
   test("⚠ DOKUMENTERNE KOMMER MED opgave-PROP'EN — ingen separat useListe-hentning i OpgaveBilag", () => {

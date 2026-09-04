@@ -243,54 +243,84 @@ export const FEJL_STATUS = {
 export const ressourceTypeForFacility = (opgave) =>
   opgave?.aktivId ? RESSOURCE.facilityAktiv : RESSOURCE.lokation;
 
+/* ---- Estimatet på et anlægs næste servicebesøg ------------------------- */
+
+/**
+ * estimatForAktiv(opgaver, aktivId, nu) → øre | null
+ *
+ * AFLEDT, og det skal det blive: prisen står på BESØGET (opgaven), hvor den
+ * blev aftalt med leverandøren. Kopieret op på anlægget ville den ligge to
+ * steder, og den ene ville blive stående når besøget blev ombooket.
+ *
+ * ⚠ FLYTTET HERTIL FRA Oversigt.jsx OG RETTET SAMTIDIG (Facility TARGET,
+ * produktejer-review 2026-09-02). Den læste `DEMO_SERVICEBESOEG` og dens
+ * felter `fra`/`til`/`estimatOere` — uanset om der var en rigtig database.
+ * Noden bærer `startMs`/`estimeretMin`/`beloebOere`; se Servicekalender.jsx's
+ * eget hoved om hvorfor de tre navne har kostet noget FIRE gange nu. Kaldes
+ * nu med den RIGTIGE, hentede `opgaver`-liste (art "facility") fra både
+ * Overblik.jsx og Inventar.jsx, så de to ikke kan vise hvert sit tal for
+ * samme anlæg.
+ */
+export function estimatForAktiv(opgaver = [], aktivId, nu = Date.now()) {
+  const mine = opgaver
+    .filter((o) => o.art === "facility" && o.aktivId === aktivId
+      && o.status !== "annulleret" && Number.isFinite(o.startMs) && o.startMs >= nu)
+    .sort((a, b) => a.startMs - b.startMs);
+  return mine.length ? (mine[0].beloebOere ?? null) : null;
+}
+
 /* ---- Lokationens tilstand --------------------------------------------- */
 
 /**
- * lokationTilstand(lokationId, { aktiver, aabneFejl, par }) → { tone, tekst }
+ * lokationTilstand(lokationId, { aktiver, aabneFejl }) → { tone, tekst }
  *
  * ⚠ AFLEDT, ALDRIG GEMT. Et statusfelt på lokationen ville drive fra
  * anlæggene under den i det sekund et af dem blev meldt i orden — og så stod
  * der Kritisk på en hal hvor alt virkede, eller Normal på en hvor intet gjorde.
  * Samme grund som alarmTilstand() ikke er et flag: se noten der.
  *
- * TRE TRIN, og rækkefølgen er meningsbærende:
+ * TO TRIN, og rækkefølgen er meningsbærende:
  *
- *   Kritisk    en aktiv klimaalarm, en fejl af høj alvor, eller et anlæg
- *              der er ude af drift. Alle tre betyder at noget IKKE virker nu.
+ *   Kritisk    en fejl af høj alvor, eller et anlæg der er ude af drift.
+ *              Begge betyder at noget IKKE virker nu.
  *   Advarsel   en åben fejl af lavere alvor, eller et anlæg til service.
  *              Noget kræver handling, men stedet fungerer.
  *   Normal     ingen af delene.
  *
- * En klimaalarm er kritisk uanset alvorsgrad på fejlen: står et kølerum for
- * varmt, er varen i fare, og det er ikke et spørgsmål om hvem der meldte det.
+ * ⚠ TAGER IKKE LÆNGERE SENSORDATA (produktejer-review 2026-09-02, anden
+ * runde). Funktionen tog et tredje trin — en aktiv klimaalarm fra
+ * facility/zoner+sensorer — der gjorde en lokation kritisk uanset fejlenes
+ * alvor. `facility/sensorer` har ingen reel V1-datakilde (se
+ * `docs/product-redesign-v1/01_ROUTE_DISPOSITION.md` linje 165, og noten ved
+ * "Klima nu"s fjernelse i Oversigt.jsx): ingen admin-skærm kan oprette en
+ * zone eller registrere en sensor, og de eneste tal der nogensinde har
+ * stået i noden, er `scripts/provisioner-dev.mjs`'s statiske engangsseed.
+ * Et sted må ikke stå Kritisk i overblikket på baggrund af et tal der ikke
+ * kan opdateres af nogen. Kaldes derfor ikke længere med `par`, og et
+ * eventuelt `par` i kaldet ignoreres — se test/facility-drift.test.mjs.
  */
-export function lokationTilstand(lokationId, { aktiver = [], aabneFejl = [], par = [] } = {}) {
+export function lokationTilstand(lokationId, { aktiver = [], aabneFejl = [] } = {}) {
   const mine = aktiver.filter((a) => a.lokationId === lokationId);
   const mineIder = new Set(mine.map((a) => a.id));
   const fejl = aabneFejl.filter((f) => mineIder.has(f.aktivId));
 
-  const alarm = par.some(
-    (p) => p.zone?.lokationId === lokationId && alarmTilstand(p.zone, p.maaling).alarm
-  );
   const udeAfDrift = mine.some((a) => a.status === "udeAfDrift");
   const hoejFejl = fejl.some((f) => f.alvor === "hoej");
 
-  if (alarm || udeAfDrift || hoejFejl) {
+  if (udeAfDrift || hoejFejl) {
     return { tone: "bad", tekst: "Kritisk",
-             grund: alarm ? "aktiv klimaalarm"
-                  : udeAfDrift ? "anlæg ude af drift"
-                  : "fejl af høj alvor" };
+             grund: udeAfDrift ? "anlæg ude af drift" : "fejl af høj alvor" };
   }
   if (fejl.length || mine.some((a) => a.status === "fejl" || a.status === "service")) {
     return { tone: "warn", tekst: "Advarsel",
              grund: fejl.length ? `${fejl.length} åben${fejl.length === 1 ? "" : "e"} fejl`
                                 : "anlæg til service" };
   }
-  return { tone: "ok", tekst: "Normal", grund: "ingen åbne fejl eller alarmer" };
+  return { tone: "ok", tekst: "Normal", grund: "ingen åbne fejl" };
 }
 
 /**
- * driftsforhold(lokationId, { aktiver, aabneFejl, par }) → rækker til kortet
+ * driftsforhold(lokationId, { aktiver }) → rækker til kortet
  *
  * Hver række er { ikon, label, vaerdi, tone, tekst } — ikonnavnet slås op i
  * IKON i ui.jsx, som ART_IKON gør det i flaade.js. Logikken hører her, så
@@ -301,27 +331,19 @@ export function lokationTilstand(lokationId, { aktiver = [], aabneFejl = [], par
  * ingen kapacitetsmåling — hverken i sensorer/ eller på aktivet — og et
  * procenttal opfundet til lejligheden ville se ud som en måling. Rækken siger
  * i stedet hvor mange ventilationsanlæg der kører, hvilket VI kan se.
+ *
+ * ⚠ TAGER IKKE LÆNGERE SENSORDATA (produktejer-review 2026-09-02, anden
+ * runde). Kortet havde to rækker mere: lokationens koldeste zones temperatur,
+ * og en optælling af aktive klimaalarmer — begge fra facility/zoner+sensorer,
+ * som ikke har en reel V1-datakilde (se lokationTilstand()'s note, og
+ * `docs/product-redesign-v1/01_ROUTE_DISPOSITION.md` linje 165). Tilbage er
+ * de to rækker der ER afledt af rigtig Facility-data: porte og ventilation,
+ * begge talt op fra `facility/aktiver`s egen status. Kaldes derfor ikke
+ * længere med `par`, og et eventuelt `par` i kaldet ignoreres.
  */
-export function driftsforhold(lokationId, { aktiver = [], aabneFejl = [], par = [] } = {}) {
+export function driftsforhold(lokationId, { aktiver = [] } = {}) {
   const mine = aktiver.filter((a) => a.lokationId === lokationId);
-  const mineZoner = par.filter((p) => p.zone?.lokationId === lokationId);
-
-  /* Temperaturen: den koldeste zone på stedet er den der har noget på spil.
-     Et kontor på 21 grader siger intet om et kølerum ved siden af. */
-  const medMaaling = mineZoner.filter((p) => p.maaling);
-  const koldest = medMaaling.length
-    ? medMaaling.reduce((a, b) => (b.maaling.tempC < a.maaling.tempC ? b : a))
-    : null;
-  const tempAlarm = koldest ? alarmTilstand(koldest.zone, koldest.maaling) : null;
-
   const raekker = [];
-
-  raekker.push(koldest
-    ? { ikon: "termometer", label: koldest.zone.navn,
-        vaerdi: `${koldest.maaling.tempC.toFixed(1)} °C`,
-        tone: tempAlarm.tone, tekst: tempAlarm.tekst }
-    : { ikon: "termometer", label: "Temperatur", vaerdi: "Ingen sensor",
-        tone: "info", tekst: "Ikke målt" });
 
   const gruppe = (art, ikon, label, ordEt, ordFlere) => {
     const dem = mine.filter((a) => a.art === art);
@@ -341,16 +363,6 @@ export function driftsforhold(lokationId, { aktiver = [], aabneFejl = [], par = 
   if (porte) raekker.push(porte);
   const vent = gruppe("ventilation", "ventilator", "Ventilation", "anlæg", "anlæg");
   if (vent) raekker.push(vent);
-
-  const alarmer = mineZoner.filter((p) => alarmTilstand(p.zone, p.maaling).alarm);
-  raekker.push({
-    ikon: "klokke", label: "Klimaalarmer",
-    vaerdi: alarmer.length
-      ? `${alarmer.length} aktiv${alarmer.length === 1 ? "" : "e"} alarm${alarmer.length === 1 ? "" : "er"}`
-      : "Ingen aktive",
-    tone: alarmer.length ? "bad" : "ok",
-    tekst: alarmer.length ? "Kritisk" : "Normal",
-  });
 
   return raekker;
 }

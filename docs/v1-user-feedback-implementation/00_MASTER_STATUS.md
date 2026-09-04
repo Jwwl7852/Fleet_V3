@@ -32,6 +32,27 @@ Status-værdier: `NOT STARTED` · `IN PROGRESS` · `DEV VERIFIED` · `DONE` · `
   Portal-tillægget. Teknisk source of truth = nuværende kode, rules,
   functions og security-arkitektur.
 - Stop kun ved blocker-typerne A–E defineret i masterbrief §0.
+- **§1's Word-dokument ("FLEETCONTROL — MASTER IMPLEMENTATION BRIEF") findes
+  IKKE i git-repoet.** Det blev fundet lokalt af Claude 2026-09-01 som
+  `FleetControl_V1_TEST 1a.docx` i brugerens Downloads-mappe (ikke
+  synkroniseret til repoet) — se kildeafsnittet i
+  `product-redesign-v1/07_OLD_CURRENT_TARGET_FLEET_FACILITY_PROCURE_UNITBOOKING.md`
+  for hvordan dokumentets 44 skærmbilleder er udtrukket og hvordan de er
+  mappet til Fleet/Procure/Facility/Unitbooking. En kurateret delmængde er
+  kopieret til `product-redesign-v1/old-reference-screenshots/`.
+- **2026-09-01: §1's visuelle konsolideringsspor sat på PAUSE af
+  produktejer efter commits `eeea990`/`f84fe9b`/`ed7da7d`.** Begrundelse:
+  arbejdet strammede kun mellemrum/kort/paneler og lignede derfor stadig
+  "den eksisterende version med mindre gaps" — ikke masterbriefens mål om
+  at kombinere de GAMLE modulers arbejdsstruktur/informationshierarki med
+  CURRENTs arkitektur. De tre commits er GODKENDT og skal IKKE rulles
+  tilbage (fundamentet er modul-uafhængigt og genbruges). Før §1 fortsætter
+  til Procure/Warehouse/Unitbooking/Workforce, skal en OLD→CURRENT→TARGET
+  strukturanalyse for Fleet/Facility/Procure/Unitbooking leveres og
+  godkendes — se `07_OLD_CURRENT_TARGET_FLEET_FACILITY_PROCURE_UNITBOOKING.md`.
+  Ingen kode ændret i den analyse; § 12 (Facility) og § 11 (Procure) i
+  tabellen nedenfor er stadig reelt NOT STARTED indtil TARGET er godkendt
+  og implementeret.
 
 ## Hændelse: fork der overtrådte read-only-instruks (2026-08-31)
 
@@ -51,7 +72,7 @@ fået eksplicit forbud mod Edit/Write/commit i deres direktiv.
 
 | § | Emne | Status | Commit / note |
 |---|---|---|---|
-| 1 | Visuel grundretning | NOT STARTED | Ingen systematisk gennemgang endnu |
+| 1 | Visuel grundretning | BLOCKED (afventer produktejer) | Fundament + drawer-variant DONE (`eeea990`/`f84fe9b`/`ed7da7d`, godkendt, ikke rullet tilbage), men strukturel retning underkendt — se governance-note ovenfor og `07_OLD_CURRENT_TARGET_FLEET_FACILITY_PROCURE_UNITBOOKING.md` |
 | 2.1 | Casehandler fjernes → koordinator | DONE | `8a4f82d` — dev-rollevælger har kun de 6 roller, ingen casehandler |
 | 2.2 | Chauffør kun i mobilapp | DONE | Bekræftet i browser: chauffør-rolle lander på isoleret `/app`, ikke kontorshell. Formel test-dækning FANDTES allerede og blev genverificeret 2026-09-01: `test/chaufforadgang.test.mjs` (5/5 grøn — `erChauffoer` er en ren funktion af rollen, AppShell-blokken kræver `!erChauffoer`, ukendt sti sender chaufføren til `/app` i stedet for en tom side, `/app/*` er stadig åben for enhver med adgang og ikke chauffør-eksklusiv) plus `test/rules.rollematrix.test.mjs`, som måler chaufførens smalle perm-sæt (`BASIS_LAES` + `indberetningerSkriv`) mod den RIGTIGE regelmatrix i emulatoren, ikke kun mod den erklærede liste i permissions.js. Ingen kodeændring nødvendig — noten i statusdokumentet var forældet |
 | 2.3 | Sidebar-grupper kan foldes | DONE | `dca807c` |

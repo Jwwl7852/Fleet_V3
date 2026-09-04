@@ -1,5 +1,6 @@
 /* src/moduler/flaade/Arbejdskoe.jsx
- * Fleet → Arbejdskø. Målet for de fem kassers "Åbn".
+ * Fleet → Arbejdskø. Modulets kanoniske kø — se hovedet i Overblik.jsx, som
+ * er modulets forside efter Fleet TARGET-restruktureringen.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚠ KØEN GENTAGER IKKE KASSERNES FILTER — DEN KALDER SAMME FUNKTION.
@@ -20,17 +21,27 @@
  * nyt vindue har ingen React-tilstand at arve. `?vis=` er derfor ikke en
  * bekvemmelighed — det er det eneste der overlever springet.
  *
- * ⚠ INGEN SKRIVNING. Mockuppen har "Planlæg" og "Tildel" på hver række. Begge
- * ville skrive en opgave og en reservation atomisk, og to disponenter kan
- * ramme samme sekund — det hører i en Cloud Function. Knapperne står
- * deaktiverede med begrundelsen på sig.
+ * ⚠ FLEET TARGET §9.6 (produktejer-review 2026-09-01) — "opgaver skal være
+ * klikbare og have næste handling direkte: åbne, prioritet hvor tilladt,
+ * planlæg, detaljer." Køen var oprindeligt ren visning her — "Planlæg" og
+ * "Flyt" stod deaktiverede med begrundelsen at skrivningen hørte i en Cloud
+ * Function. Den findes: en "Nye indberetninger"-rækkes handling er nu den
+ * SAMME `Indberetningtriage`-komponent Indberetninger.jsx bruger — den
+ * tegner kun de skift `FORLOEB[i.forloeb].naeste` faktisk tillader ("nye" er
+ * altid forloeb "ny", så det er "Markér som vurderet"/"Afslut", ikke
+ * "Planlæg" — den knap kommer først når posten er vurderet). Kommer man dertil
+ * via `onPlanlaeg`, åbnes den SAMME `Planlaegdialog` som Driftskalenderen og
+ * Indberetninger.jsx bruger (`opgaveplanlaeg`), forudfyldt og — §9.2 — med
+ * aktivitetstypen allerede oversat fra indberetningens art. En opgaverækkes
+ * "Flyt" er erstattet af "Detaljer", som åbner den delte
+ * `Haendelsespanel`-drawer; selve flytningen sker fortsat kun ved at trække
+ * blokken i kalenderen, for køen har intet gitter at slippe en blok på.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚠ SKIVE 3A — `ArbejdskoeIndhold` ER DEN KANONISKE KØ, IKKE KUN DENNE RUTE.
  *
- * De fem kasser på Driftskalenderen navigerede før væk fra kalenderen for at
- * åbne køen. Nu åbner "Åbn" den SAMME komponent i et panel — se
- * `Vaerkstedskalender.jsx`s `<Dialog>` omkring `<ArbejdskoeIndhold>`. Filteret,
+ * Overblik.jsx (modulets forside) bruger den SAMME komponent til den
+ * primære arbejdsflade. Filteret,
  * driftstal() og prioriteringen bor kun ÉT sted, herinde; ruten
  * (default-eksporten, `/flaade/koe`) er et tyndt hylster der binder `vis`/
  * `frem` til URL'en, så "Åbn i nyt vindue" (et rigtigt browservindue, ingen
@@ -40,20 +51,33 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
+import { useFleet } from "../../fleet/FleetContext.jsx";
 import { num, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Henter, Datatilstand, Sider,
 } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
+import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   FREMAD, STANDARD_FREMAD, driftstal, sorterKoe, slutter,
 } from "../../fleet/driftskalender.js";
-import { OPGAVE_STATUS, ARBEJDSTYPE } from "../../fleet/opgaver.js";
+import {
+  OPGAVE_STATUS, ARBEJDSTYPE, arbejdstypeForIndberetningsart,
+} from "../../fleet/opgaver.js";
 import {
   PRIORITET, ALLE_PRIORITETER, prioritetFor,
 } from "../../fleet/prioritet.js";
 import { HAENDELSE_ART, FORLOEB } from "../../fleet/indberetninger.js";
 import { leverandoerNavn } from "../../fleet/leverandoerer.js";
+import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+import Haendelsespanel from "../../fleet/Haendelsespanel.jsx";
+/* ⚠ SKIVE 3B — SAMME KOMPONENT SOM Indberetninger.jsx BRUGER, IKKE EN
+   KOPI. Den tegner præcis de knapper `FORLOEB[i.forloeb].naeste` tillader
+   (her: "Markér som vurderet"/"Afslut" — "nye" er altid forloeb "ny", og
+   "planlagt" er ikke et lovligt næste skridt derfra). En liste der selv
+   gættede knapperne, kunne før eller siden tilbyde et skift serveren
+   afviser. */
+import Indberetningtriage from "../../fleet/Indberetningtriage.jsx";
 import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { DEMO_INDBERETNINGER } from "../../fleet/demo-indberetninger.js";
 import { DEMO_KOERETOEJER } from "../../fleet/demo-flaade.js";
@@ -108,8 +132,20 @@ const PR_SIDE = 12;
  * filteret eller driftstal() — de giver kun værdien og en setter videre.
  */
 export function ArbejdskoeIndhold({ vis, saetVis, fremDage, saetFremDage, handling = null }) {
+  const { bruger } = useFleet();
+  /* ⚠ PERMISSIONEN, IKKE ROLLEN — samme mønster som Driftskalenderen og
+     Indberetninger.jsx. Serveren spørger om den samme; det er dér den
+     afgøres. */
+  const maaSkrive = harPerm(bruger?.perms, PERM.opgaverSkriv);
   const [prioritetsfilter, setPrioritetsfilter] = useState(null);
   const [side, setSide] = useState(1);
+  /* Fleet TARGET §9.6 — "planlæg" og "detaljer" direkte fra køen.
+     `planlaegger` er et Planlaegdialog-forslag (eller null); `detaljerId`
+     er den valgte opgaves id (eller null). */
+  const [planlaegger, setPlanlaegger] = useState(null);
+  const [detaljerId, setDetaljerId] = useState(null);
+  /* Fleet TARGET §9.3 — se Planlaegdialog.jsx's egen note. */
+  const [aabnPaaSag, setAabnPaaSag] = useState(false);
 
   const opgaver = useListe("opgaver", {
     ordnPaa: "startMs", vindue: "fremad", vindueDage: 120, fremDage: 365,
@@ -233,8 +269,18 @@ export function ArbejdskoeIndhold({ vis, saetVis, fremDage, saetFremDage, handli
         </div>
 
         {udsnit.kilde === "indberetninger"
-          ? <IndberetningsTabel raekker={denneSide} enhedNavn={enhedNavn} />
-          : <OpgaveTabel raekker={denneSide} enhedNavn={enhedNavn} lvNavn={lvNavn} nu={nu} />}
+          ? <IndberetningsTabel raekker={denneSide} enhedNavn={enhedNavn}
+                                 maaSkrive={maaSkrive}
+                                 onSkiftet={() => indberetninger.genindlaes()}
+                                 onPlanlaeg={(i) => setPlanlaegger({
+                                   koeretoejId: i.koeretoejId || "",
+                                   beskrivelse: i.beskrivelse || "",
+                                   prioritet: i.prioritet || "",
+                                   indberetningId: i.id,
+                                   arbejdstype: arbejdstypeForIndberetningsart(i.art),
+                                 })} />
+          : <OpgaveTabel raekker={denneSide} enhedNavn={enhedNavn} lvNavn={lvNavn} nu={nu}
+                         onDetaljer={(o) => setDetaljerId(o.id)} />}
 
         <Sider side={side} antal={sorteret.length} prSide={PR_SIDE} saet={setSide} />
         {sider > 1 && (
@@ -257,6 +303,45 @@ export function ArbejdskoeIndhold({ vis, saetVis, fremDage, saetFremDage, handli
           </p>
         )}
       </Kort>
+
+      {planlaegger && (
+        <Planlaegdialog
+          enheder={enheder.data}
+          leverandoerer={leverandoerer.data}
+          foraf={planlaegger}
+          onLuk={() => setPlanlaegger(null)}
+          onGemt={(res) => {
+            setPlanlaegger(null);
+            opgaver.genindlaes();
+            /* ⚠ INDBERETNINGENS FORLØB SKIFTER SERVER-SIDE TIL "planlagt"
+               NÅR opgaveplanlaeg FÅR indberetningId MED — samme kobling som
+               Indberetninger.jsx's tilsvarende onGemt. Uden genindlæsning
+               ville den forsvundne indberetning stå i "Nye"-udsnittet
+               indtil næste helsides genindlæsning. */
+            indberetninger.genindlaes();
+            /* ⚠ FLEET TARGET §9.3 — se Planlaegdialog.jsx's egen note. */
+            if (res?.harEksternLeverandoer && res.opgaveId) {
+              setDetaljerId(res.opgaveId);
+              setAabnPaaSag(true);
+            }
+          }}
+        />
+      )}
+
+      {detaljerId && (() => {
+        const valgt = flaadeopgaver.find((o) => o.id === detaljerId) || null;
+        return valgt && (
+          <Haendelsespanel
+            opgave={valgt}
+            lvNavn={lvNavn}
+            enheder={enheder.data}
+            maaSkrive={maaSkrive}
+            initialFane={aabnPaaSag ? "sag" : "overblik"}
+            onSkiftet={() => opgaver.genindlaes()}
+            onLuk={() => { setDetaljerId(null); setAabnPaaSag(false); }}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -291,7 +376,7 @@ function Prioritetspille({ post }) {
     : <span className="fc-neutral">— ikke vurderet</span>;
 }
 
-function IndberetningsTabel({ raekker, enhedNavn }) {
+function IndberetningsTabel({ raekker, enhedNavn, maaSkrive, onPlanlaeg, onSkiftet }) {
   return (
     <Tabel
       kolonner={[
@@ -302,11 +387,12 @@ function IndberetningsTabel({ raekker, enhedNavn }) {
         { key: "prioritet", label: "Prioritet", render: (r) => <Prioritetspille post={r} /> },
         { key: "forloeb", label: "Forløb",
           render: (r) => <Pille tone={FORLOEB[r.forloeb]?.pill}>{FORLOEB[r.forloeb]?.label}</Pille> },
-        { key: "h", label: "", render: () => (
-          <Knap disabled
-                title="Skrivning er ikke bygget: at planlægge en indberetning opretter en opgave OG en reservation, atomisk. To disponenter kan ramme samme sekund — det hører i en Cloud Function.">
-            Planlæg
-          </Knap>) },
+        { key: "h", label: "", render: (r) => (
+          <Indberetningtriage
+            indberetning={r} maaSkrive={maaSkrive}
+            onPlanlaeg={() => onPlanlaeg(r)}
+            onSkiftet={onSkiftet}
+          />) },
       ]}
       raekker={raekker}
       tom="Ingen indberetninger i udsnittet."
@@ -314,7 +400,7 @@ function IndberetningsTabel({ raekker, enhedNavn }) {
   );
 }
 
-function OpgaveTabel({ raekker, enhedNavn, lvNavn, nu }) {
+function OpgaveTabel({ raekker, enhedNavn, lvNavn, nu, onDetaljer }) {
   return (
     <Tabel
       kolonner={[
@@ -341,10 +427,10 @@ function OpgaveTabel({ raekker, enhedNavn, lvNavn, nu }) {
             </>
           );
         } },
-        { key: "h", label: "", render: () => (
-          <Knap disabled
-                title="Skrivning er ikke bygget: en reservation skal skrives atomisk sammen med opgaven, og to disponenter kan ramme samme sekund. Se Kendte huller i README.">
-            Flyt
+        { key: "h", label: "", render: (r) => (
+          <Knap onClick={() => onDetaljer(r)}
+                title="Åbner opgavens detaljer, statusskift og sag. Flytning sker ved at trække blokken i kalenderen.">
+            Detaljer
           </Knap>) },
       ]}
       raekker={raekker}

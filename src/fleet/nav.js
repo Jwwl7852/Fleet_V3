@@ -167,21 +167,34 @@ export const NAV = [
     ],
   },
   {
-    /* ⚠ FLEET ER DE TO DRIFTSSKÆRME — ENHEDER LIGGER UNDER OPSÆTNING.
-       Menuen skal kun vise det personalet ARBEJDER i. Enhedskartoteket er
-       stamdata: en bil oprettes én gang og røres sjældent igen, mens
-       disponenten er i Driftskalenderen hver dag. Stod de side om side, lå
-       den daglige skærm nummer to i en menu hvor nummer ét knap bruges.
+    /* ⚠ FLEET TARGET (masterbrief §1/§9, produktejer-review 2026-09-01) —
+       MODULNAVIGATION, IKKE SIDEBAR-UNDERPUNKTER. "Venstre sidebar bruges
+       primært til hovedområder/moduler. Når brugeren går ind i et modul,
+       skifter vedkommende mellem modulets arbejdsflader via en kompakt
+       horisontal modulnavigation øverst" — se `fleet/modulfaner.js` og
+       `ModulNav` i ui.jsx. Kun ÉT barn (Overblik, sti /flaade — samme sti
+       som toppunktet selv) er derfor ikke `skjulINav` — de andre seks er.
+       AppShells `visBorn` kræver
+       `born.length > 1` for overhovedet at tegne en undermenu/chevron
+       (se dens egen note), så ét synligt barn er i praksis usynligt: der
+       renderes ingen undermenu, kun "Fleet" selv som ét link. Nul synlige
+       børn ville derimod have fjernet HELE toppunktet — `synligeToppunkter`
+       i AppShell.jsx kræver mindst ét, se dens filter — og det er derfor
+       ikke alle syv der er skjulte.
+       Rækkerne findes stadig ALLE HER, fordi `findModul()`/`ALLE` (nav.js'
+       flade rute→titel-opslag til AppShell's sidehoved) læser dem uanset
+       `skjulINav` — kun selve SIDEBAR-VISNINGEN filtrerer på flaget.
+
        Se `enheder` under opsaetning — modulnøglen `flaade`, noden
-       `koeretoejer` og permissionen `koeretoejer.laes` er UÆNDREDE. Det er
-       kun MENUPLADSEN der flyttede.
+       `koeretoejer` og permissionen `koeretoejer.laes` er UÆNDREDE; kun
+       menupladsen (nu OGSÅ Fleets egen fanebjælke) er ny.
 
        ⚠ skjulFirma/skjulPeriode STOD HER OG ER VÆK IGEN. Flagene skjulte
        firma- og periodevælgeren på Fleets skærme; nu er de tre kontroller
        fjernet fra HVER side, og et flag der altid er sandt, er en mekanisme
        uden variation. Se AppShell. */
     key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
-    under: "Driftskalender og indberetninger", gruppe: "drift",
+    under: "Nye indberetninger, driftskalender og enheder", gruppe: "drift",
     /* ⚠ HER STOD `udenDivision: true` — flaget der slog Gods/Bus-vaelgeren fra
        for netop dette modul, fordi beslutning 19 forbyder division paa
        `personale/` og `koeretoejer/`, og knappen derfor ville skifte en
@@ -194,81 +207,126 @@ export const NAV = [
        efter — den slags er vaerd at laegge maerke til, foer man bygger flere
        undtagelser. */
     born: [
-      { /* Beslutning 22's moenster igen: skaermen skifter navn, RUTEN goer ikke.
-           Driftskalenderen er nu Fleets FORSIDE og ligger paa /flaade, hvor
-           Enheder laa. /flaade/vaerksted lever videre som redirect (se
-           REDIRECTS), saa bogmaerker og links ikke doer af en flytning —
-           praecis som da Live-kort blev til Rute & status. */
-        key: "vaerksted", sti: "/flaade", label: "Driftskalender",
-        titel: "Fleet – driftskalender",
+      /* ⚠ OVERBLIK ER NU FORSIDEN (samme sti Driftskalenderen havde før) —
+         den absorberede de fem "kasser"/arbejdskøen, som ikke længere er en
+         underside man skal klikke sig hen til. Se Overblik.jsx.
+         ⚠ DET ENE IKKE-SKJULTE BARN — se topniveaupunktets egen note.
+         Sitien er DEN SAMME som forælderens (/flaade): et topniveaupunkts
+         egen NavLink skal pege på et barn der rent faktisk er synligt
+         (test/skive1-navigation.test.mjs), og Overblik ER modulets forside. */
+      { key: "flaadeOverblik", sti: "/flaade", label: "Overblik",
+        titel: "Fleet – overblik",
+        under: "Nye indberetninger, hvad kræver handling, og hvad er planlagt." },
+      { key: "vaerksted", sti: "/flaade/driftskalender", label: "Driftskalender",
+        skjulINav: true, titel: "Fleet – driftskalender",
         under: "Planlæg, følg op og håndtér driftsopgaver på tværs af enheder og værksteder." },
       { key: "indberetninger", sti: "/flaade/indberetninger", label: "Indberetninger",
-        titel: "Indberetninger", under: "Reparation, skade, brændstof og fejl" },
-      /* ⚠ skjulINav: KØEN ER ET MÅL, IKKE ET MENUPUNKT. Man kommer hertil fra
-         en af Driftskalenderens fem kasser — enten i samme vindue eller i et
-         nyt — og udsnittet staar i ?vis=. Et menupunkt uden det ville aabne
-         "nye" for alle, uanset hvad man kiggede paa, og saa ville de fem tal
-         og listen kunne vaere uenige uden at nogen kunne se hvorfor.
-         Ruten SKAL findes: "Aabn i nyt vindue" er et rigtigt browservindue,
-         og et nyt vindue arver ingen React-tilstand. */
+        skjulINav: true, titel: "Indberetninger",
+        under: "Reparation, skade, brændstof og fejl" },
+      { key: "servicebog", sti: "/flaade/servicebog", label: "Servicebog",
+        skjulINav: true, titel: "Fleet – servicebog",
+        under: "Tilbagevendende service- og synskrav pr. enhed." },
+      { key: "flaadeStatistik", sti: "/flaade/statistik", label: "Statistik",
+        skjulINav: true, titel: "Fleet – statistik",
+        under: "Udgifter og hændelser over tid." },
+      { key: "flaadeKontakter", sti: "/flaade/kontakter", label: "Kontakter",
+        skjulINav: true, titel: "Fleet – kontakter",
+        under: "Værksteder, dækcentre og chauffører." },
+      /* ⚠ skjulINav: KØEN ER ET MÅL, IKKE ET MENUPUNKT — uændret begrundelse.
+         Man kommer hertil via "Åbn i nyt vindue" (et rigtigt browservindue,
+         ingen React-tilstand at arve) eller et gammelt dybt link; modulets
+         forside (Overblik.jsx) bruger den samme ArbejdskoeIndhold direkte,
+         uden om denne rute. */
       { key: "arbejdskoe", sti: "/flaade/koe", label: "Arbejdskø", skjulINav: true,
         titel: "Fleet – arbejdskø",
         under: "Én samlet kø for alle hændelser. Filtrér og prioritér." },
     ],
   },
   {
-    key: "facility", sti: "/facility", label: "Facility", titel: "Facility – overblik, fejl & klima",
-    under: "Registrér fejl, planlæg reparationer, overvåg klima og dokumentér drift.",
+    key: "facility", sti: "/facility", label: "Facility", titel: "Facility",
+    under: "Inventar, service & reparation og planlagt vedligehold.",
     gruppe: "drift",
     born: [
-      { key: "facilityOversigt", sti: "/facility", label: "Overblik & fejl",
-        titel: "Facility – overblik, fejl & klima",
-        under: "Registrér fejl, planlæg reparationer, overvåg klima og dokumentér drift." },
-      { key: "servicekalender", sti: "/facility/servicekalender", label: "Servicekalender",
-        titel: "Facility – servicekalender & reparationer",
+      /* ⚠ FACILITY TARGET (produktejer-review 2026-09-02) — SAMME MØNSTER SOM
+         FLEET: flad modulstruktur, vandret ModulNav øverst på hver skærm (se
+         fleet/modulfaner.js's FACILITY_FANER), sidebar viser kun modulet selv.
+         Kun ÉT barn må stå uden `skjulINav` — visBorn() i AppShell.jsx kræver
+         `born.length > 1` for at tegne en undermenu, så et eneste synligt
+         barn giver præcis den flade sidebar-visning uden at ændre AppShell.
+         Det synlige barn er `facilityOversigt`, fordi dens sti (`/facility`)
+         er DEN SAMME som forælderens — samme trick som Fleets `flaadeOverblik`. */
+      { key: "facilityOversigt", sti: "/facility", label: "Overblik",
+        titel: "Facility – overblik",
+        under: "Kommende og overskredne services, åbne fejl og drift." },
+      { key: "servicekalender", sti: "/facility/servicekalender", label: "Service & reparation",
+        skjulINav: true,
+        titel: "Facility – service & reparation",
         under: "Planlæg reparationer, koordinér eksterne firmaer og reservér tid." },
+      { key: "facilityInventar", sti: "/facility/inventar", label: "Inventar",
+        skjulINav: true,
+        titel: "Facility – inventar",
+        under: "Anlæg og deres stamdata — filtrérbar oversigt." },
+      { key: "facilityPlanlagt", sti: "/facility/planlagt", label: "Planlagt",
+        skjulINav: true,
+        titel: "Facility – planlagt",
+        under: "Planlagte og igangværende servicebesøg." },
+      { key: "facilityStatistik", sti: "/facility/statistik", label: "Statistik",
+        skjulINav: true,
+        titel: "Facility – statistik",
+        under: "Servicebesøg, omkostninger og bygningsdrift over tid." },
       { key: "klima", sti: "/facility/klima", label: "Klima & energi", skjulINav: true,
         titel: "Facility – klimaovervågning & energistatistik",
         under: "Overvåg temperatur, fugt og energiforbrug — dokumentér stabile forhold." },
     ],
   },
+  /* ⚠ PROCURE TARGET (produktejer-review 2026-09-02) — samme flade mønster
+     som Fleet/Facility: ét synligt barn (samme `sti` som forælderen), resten
+     `skjulINav: true`, navigation sker via den vandrette `ModulNav`
+     (fleet/modulfaner.js's `PROCURE_FANER`). Se den fils note for hvorfor
+     fanelisten IKKE er TARGET-dokumentets ordrette forslag.
+
+     ⚠ TRIN-KOMMENTARERNE FRA FØR ER VÆK, MED VILJE. De beskrev en menu hvor
+     Behov/Bestillinger/Godkendelser var TRE SEPARATE PUNKTER i selve
+     rækkefølgen "behov, bestilling, godkendelse, faktura". De tre er nu ÉN
+     arbejdsflade (`bestillinger`) — processen står i DENS egne sektioner,
+     ikke i menurækkefølgen. */
   {
     key: "indkoeb", sti: "/indkoeb", label: "Procure", titel: "Procure & vareforbrug",
-    under: "Registrér indkøb og tilknyt fakturaer og rapportering.", gruppe: "drift",
+    under: "Hele indkøbspipelinen: behov, bestilling, godkendelse, varer og forbrug.",
+    gruppe: "drift",
     born: [
-      { key: "indkoebOversigt", kraeverPerm: "indkoeb.laes", sti: "/indkoeb", label: "Procure & vareforbrug",
-        titel: "Procure & vareforbrug", under: "Registrér indkøb og tilknyt fakturaer og rapportering." },
-      /* ⚠ TRIN 1 AF FEM, og den staar foerst efter overblikket — som paa
-         planche 5. Raekkefoelgen i menuen ER processen: behov, bestilling,
-         godkendelse, faktura. En menu der er sorteret efter hvad der blev
-         bygget foerst, laerer ingen hvordan det haenger sammen.
-         Se beslutning 78. */
-      { key: "indkoebsbehov", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/behov", label: "Indkøbsbehov",
-        titel: "Indmeldte behov",
-        under: "Behov indsendt fra snedkeri, lager, kontor eller som kontantkøb." },
-      /* ⚠ TRIN 2. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
+      { key: "indkoebOversigt", kraeverPerm: "indkoeb.laes", sti: "/indkoeb", label: "Overblik",
+        titel: "Procure – overblik",
+        under: "Hele indkøbspipelinen på fem sekunder — og den enkelte posts næste handling." },
       { key: "bestillinger", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/bestillinger", label: "Bestillinger",
-        titel: "Bestillingskladder & leverandørforslag",
-        under: "Åbne behov med automatisk leverandørforslag, samlet i én bestilling pr. leverandør." },
-      /* ⚠ TRIN 3. Raekkefoelgen i menuen ER processen — se noten ovenfor. */
-      { key: "godkendelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/godkendelser", label: "Godkendelse af indkøb",
-        titel: "Godkendelse af indkøb",
-        under: "Godkend indkøb, der kræver din godkendelse — og sæt virksomhedens beløbsgrænse." },
-      /* ⚠ SKIVE 4A — INDSKRÆNKET. Faktura-listen/status/godkendelse er
-         flyttet til det fælles Fakturacenter (Fælles → Fakturaer & bilag);
-         denne skærm har kun match-til-indkøbslinje og kontantkøb tilbage —
-         de to findes ikke andre steder. `kraeverPerm` er stadig
-         `indkoeb.laes`: det er en Procure-driftsindgang, ikke fakturaejerskab. */
+        skjulINav: true, titel: "Procure – bestillinger",
+        under: "Behov, bestillingskladder, godkendelse og afsendelse — Procures primære arbejdsflade." },
+      { key: "indkoebVarer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/varer", label: "Varer",
+        skjulINav: true, titel: "Procure – varer",
+        under: "Varekatalog, leverandørpriser og indkøbsregistrering." },
+      { key: "indkoebArkiv", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/arkiv", label: "Arkiv",
+        skjulINav: true, titel: "Procure – arkiv",
+        under: "Afsluttede behov, bestillinger og kontantkøb — read-only historik." },
+      { key: "indkoebStatistik", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/statistik", label: "Statistik",
+        skjulINav: true, titel: "Procure – statistik",
+        under: "Forbrug, leverandørperformance og prisudvikling over tid." },
+      /* ⚠ SKIVE 4A — INDSKRÆNKET, OG STADIG UDEN FOR FANEBJÆLKEN.
+         Faktura-listen/status/godkendelse er i det fælles Fakturacenter;
+         denne skærm har kun match-til-bestilling, kontantkøb og
+         brændstofmatch tilbage — reelt Procure-specifikt, ikke duplikeret.
+         Nås via et kontekstuelt link fra Bestillinger, ikke en egen fane —
+         se PROCURE_FANER's note om hvorfor. */
       { key: "fakturaer", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/fakturaer", label: "Match & kontantkøb",
-        titel: "Match & kontantkøb",
-        under: "Match fakturaer mod bestillinger, eller registrér et kontant køb. Selve fakturaen — status og godkendelse — ligger nu i Fakturaer & bilag." },
-      /* ⚠ SKIVE 4B — LEVERANDØRER FLYTTET UD HERFRA til Fælles → Leverandører
-         (se filens hoved). Kartoteket er ikke længere Procures eget. */
-      /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS.
-         Fjerde gang et lagernavn skal skilles fra et andet i den her base;
-         se forbrugsvarer.js og beslutning 85. */
+        skjulINav: true, titel: "Match & kontantkøb",
+        under: "Match fakturaer mod bestillinger, registrér et kontant køb, eller match brændstoflinjer." },
+      /* ⚠ VORES EGNE FORBRUGSVARER — ikke Warehouses gods, som er KUNDENS,
+         og ikke den nye globale varemaster (`indkoebVarer` ovenfor), som er
+         KATALOG + LEVERANDØRPRISER. Dette er EGEN BEHOLDNING med minimum og
+         bevægelser — en tredje, adskilt ting. Se forbrugsvarer.js og
+         beslutning 85. Stadig uden for fanebjælken, nås via et kontekstuelt
+         link fra Varer. */
       { key: "varelager", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/varelager", label: "Varelager",
-        titel: "Varelager — vores egne forbrugsvarer",
+        skjulINav: true, titel: "Varelager — vores egne forbrugsvarer",
         under: "Beholdning, minimum og bevægelser. Et lavt lager bliver til et indkøbsbehov." },
     ],
   },
@@ -442,6 +500,21 @@ export const NAV = [
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
+      /* ⚠ PROCURE TARGET, TRIN 4 (produktejer-review 2026-09-02) — FLYTTET
+         HERTIL FRA Godkendelser.jsx. Dette er kun ADMINISTRATIONS-UI'et: hvem
+         der må godkende, og hvornår. Selve KØEN af ordrer der venter, og
+         handlingerne på dem, hører til det daglige arbejde og blev derfor
+         IKKE flyttet — de bor i Procures egen Bestillinger-fane. Reglens
+         håndhævelse (`godkendelsesregelskriv`, `kraeverGodkendelse()`,
+         `kanSkifteIndkoebsordre()`) er UÆNDRET; dette er informationsarkitektur,
+         ikke en ny godkendelsesmotor. `kraeverPerm` matcher stadig kun LÆSNINGEN
+         (`indkoeb.laes`, samme regel som `godkendelsesregler`-noden selv
+         kræver) — hvem der må ÆNDRE reglerne (`brugere.skriv`) håndhæves i
+         skærmen, som Godkendelser.jsx altid har gjort det. */
+      { key: "procureGodkendelsesregler", kraeverPerm: "indkoeb.laes",
+        sti: "/opsaetning/procure/godkendelsesregler", kraeverModul: "indkoeb",
+        label: "Godkendelsesregler", titel: "Procure – godkendelsesregler",
+        under: "Beløbsgrænse og fakturagodkendelse for indkøb. Sættes af en administrator." },
     ],
   },
   {
@@ -523,10 +596,13 @@ export function modulNavnFor(punkt) {
 export const REDIRECTS = [
   { fra: "/dispatch", til: "/booking/disponering" },
   { fra: "/tracking", til: "/booking/live-kort" },
-  /* Driftskalenderen flyttede op paa /flaade, da Enheder gik til Opsaetning.
-     Stien har staaet i sidebaren siden v3.0 og ligger i mindst een supportsags
-     kontekst (demo-sag.js) — den doer ikke af en menuomlaegning. */
-  { fra: "/flaade/vaerksted", til: "/flaade" },
+  /* Driftskalenderen flyttede op paa /flaade, da Enheder gik til Opsaetning,
+     og flyttede saa VIDERE til /flaade/driftskalender da Overblik.jsx blev
+     Fleets forside (Fleet TARGET, produktejer-review 2026-09-01) — se
+     modulfaner.js. Stien har staaet i sidebaren siden v3.0 og ligger i
+     mindst een supportsags kontekst (demo-sag.js) — den doer ikke af en
+     menuomlaegning, uanset hvor mange gange forsiden selv flytter. */
+  { fra: "/flaade/vaerksted", til: "/flaade/driftskalender" },
 
   /* ⚠ STAMDATA SAMLEDES UNDER OPSÆTNING. De fem stier her har stået i
      sidebaren siden v3.0 og ligger i bogmærker, i mails og i mindst én

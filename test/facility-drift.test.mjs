@@ -7,34 +7,41 @@
  * status en påstand og ikke en oplysning. Samme grund som alarmTilstand() ikke
  * er et gemt flag.
  *
+ * ⚠ SENSORDATA ER FJERNET SOM KILDE (produktejer-review 2026-09-02, anden
+ * runde). lokationTilstand() og driftsforhold() tog begge et `par`
+ * (zone+måling fra facility/zoner+sensorer) og lod det gøre en lokation
+ * kritisk eller vise en temperatur. `facility/sensorer` har ingen reel
+ * V1-datakilde — se noterne i fleet/facility.js selv og
+ * docs/product-redesign-v1/01_ROUTE_DISPOSITION.md linje 165 — så et `par`
+ * i kaldet ignoreres nu af begge funktioner. De tests der herunder beviser
+ * det, er ikke overflødige bare fordi parameteren er væk: en fremtidig
+ * tilføjelse af sensordata igen skal først bevidst fjerne netop den.
+ *
  * Koer: npm test
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import { lokationTilstand, driftsforhold, aktivFordeling } from "../src/fleet/facility.js";
-import {
-  DEMO_LOKATIONER, DEMO_AKTIVER, demoAabneFejl, demoZonePar,
-} from "../src/fleet/demo-facility.js";
+import { DEMO_LOKATIONER, DEMO_AKTIVER, demoAabneFejl } from "../src/fleet/demo-facility.js";
 import { DEMO_PERSONALE } from "../src/fleet/demo-personale.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
 import { erSted } from "../src/fleet/steder.js";
 
-const ctx = () => ({ aktiver: DEMO_AKTIVER, aabneFejl: demoAabneFejl(), par: demoZonePar() });
+const ctx = () => ({ aktiver: DEMO_AKTIVER, aabneFejl: demoAabneFejl() });
 
 test("Lokationens tilstand er afledt", async (t) => {
-  const zone = { id: "z", lokationId: "L", graenser: { minC: 2, maksC: 6 } };
-
-  await t.test("en klimaalarm er kritisk uanset fejlenes alvor", () => {
-    /* Står et kølerum for varmt, er varen i fare. Det er ikke et spørgsmål
-       om hvem der meldte det, eller hvor højt de satte prioriteten. */
+  await t.test("⚠ en sensormåling over grænsen gør IKKE lokationen kritisk", () => {
+    /* facility/sensorer har ingen reel V1-datakilde — se filens hoved. Denne
+       test var før "en klimaalarm er kritisk uanset fejlenes alvor" og
+       beviste det modsatte; den beviser nu at et `par` i kaldet ignoreres. */
+    const zone = { id: "z", lokationId: "L", graenser: { minC: 2, maksC: 6 } };
     const t1 = lokationTilstand("L", {
       aktiver: [{ id: "a", lokationId: "L", art: "koeleanlaeg", status: "idrift" }],
       aabneFejl: [],
       par: [{ zone, maaling: { tempC: 9.9 } }],
     });
-    assert.equal(t1.tekst, "Kritisk");
-    assert.equal(t1.grund, "aktiv klimaalarm");
+    assert.equal(t1.tekst, "Normal");
   });
 
   await t.test("et anlæg ude af drift er kritisk", () => {
@@ -81,21 +88,42 @@ test("Lokationens tilstand er afledt", async (t) => {
   });
 });
 
-test("Driftsforhold viser lokationens KOLDESTE zone", () => {
-  /* Et kontor på 21 grader siger intet om et kølerum ved siden af. Vælges
-     den første zone i stedet for den koldeste, kan et kølerum over grænsen
-     stå bag et grønt flueben. */
-  const raekker = driftsforhold("L", {
-    aktiver: [],
-    par: [
-      { zone: { id: "kontor", navn: "Kontor", lokationId: "L", graenser: { minC: 5, maksC: 25 } },
-        maaling: { tempC: 21.0 } },
-      { zone: { id: "koel", navn: "Kølerum", lokationId: "L", graenser: { minC: 2, maksC: 6 } },
-        maaling: { tempC: 4.2 } },
-    ],
+test("Driftsforhold viser porte og ventilation fra rigtige aktiver", async (t) => {
+  await t.test("en port der er ude af drift, tælles med", () => {
+    const raekker = driftsforhold("L", {
+      aktiver: [
+        { id: "p1", lokationId: "L", art: "port", status: "idrift" },
+        { id: "p2", lokationId: "L", art: "port", status: "udeAfDrift" },
+      ],
+    });
+    const porte = raekker.find((r) => r.label === "Porte");
+    assert.equal(porte.vaerdi, "1 af 2 porte nede");
+    assert.equal(porte.tone, "bad");
   });
-  assert.equal(raekker[0].label, "Kølerum");
-  assert.equal(raekker[0].vaerdi, "4.2 °C");
+
+  await t.test("⚠ et `par` i kaldet ignoreres — ingen temperatur- eller alarmrække", () => {
+    /* Kortet havde før en temperaturrække (lokationens koldeste zone) og en
+       "Klimaalarmer"-række, begge fra facility/zoner+sensorer. Ingen af dem
+       må komme tilbage, heller ikke selvom en kalder stadig sender et `par`. */
+    const raekker = driftsforhold("L", {
+      aktiver: [],
+      par: [
+        { zone: { id: "koel", navn: "Kølerum", lokationId: "L", graenser: { minC: 2, maksC: 6 } },
+          maaling: { tempC: 99 } },
+      ],
+    });
+    assert.equal(raekker.length, 0);
+    assert.ok(!raekker.some((r) => r.ikon === "termometer" || r.label === "Klimaalarmer"));
+  });
+
+  await t.test("en lokation uden porte eller ventilation giver en tom liste", () => {
+    /* Kølehus Odense har kun køleanlæg — det er ikke et hul, det er den
+       eneste anlægstype driftsforhold() i dag kan udlede noget om. */
+    const raekker = driftsforhold("L", {
+      aktiver: [{ id: "k1", lokationId: "L", art: "koeleanlaeg", status: "idrift" }],
+    });
+    assert.equal(raekker.length, 0);
+  });
 });
 
 test("Aktivfordelingen folder til fem og bevarer summen", async (t) => {

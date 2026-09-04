@@ -443,17 +443,29 @@ describe("Statusskifte er ét sted", () => {
      Driftskalenderen. Disponering handler nu udelukkende om ETAPER, hvis
      tilstand skifter gennem `etapeskift`/`skiftEtape` — ikke gennem
      `<Statusskifte>`, som er `opgaver`-nodens egen maskine. */
+  /* ⚠ FLEET TARGET (produktejer-review 2026-09-01) FLYTTEDE Fleets panel
+     til fleet/Haendelsespanel.jsx, fordi Overblik.jsx's arbejdskø og
+     Indberetninger.jsx også skal kunne åbne det (§9.6/§9.3) — ikke kun
+     Driftskalenderen.
+     ⚠ FACILITY TARGET (produktejer-review 2026-09-02) gjorde det samme med
+     Facilitys panel: Besoegspanel flyttede fra Servicekalender.jsx til
+     fleet/Besoegspanel.jsx, fordi Overblik.jsx og Planlagt.jsx også skal
+     kunne åbne "detaljer" på et servicebesøg — samme begrundelse, samme
+     mønster. Begge paneler ligger derfor nu i fleet/, ved siden af
+     Statusskifte.jsx (`./`) — ingen af SKÆRMENE herunder er en modulskærm
+     længere. */
   const SKAERME = [
-    "src/moduler/flaade/Vaerkstedskalender.jsx",
-    "src/moduler/facility/Servicekalender.jsx",
+    "src/fleet/Haendelsespanel.jsx",
+    "src/fleet/Besoegspanel.jsx",
   ];
 
   test("alle tre bruger den delte komponent", () => {
     for (const sti of SKAERME) {
       const s = readFileSync(sti, "utf8");
       assert.ok(s.includes("<Statusskifte"), `${sti} tegner ikke statusskiftet`);
-      assert.ok(s.includes('from "../../fleet/Statusskifte.jsx"'),
-        `${sti} henter komponenten et andet sted fra`);
+      /* Begge paneler ligger nu i fleet/, ved siden af Statusskifte.jsx. */
+      const forventet = 'from "./Statusskifte.jsx"';
+      assert.ok(s.includes(forventet), `${sti} henter komponenten et andet sted fra`);
     }
   });
 

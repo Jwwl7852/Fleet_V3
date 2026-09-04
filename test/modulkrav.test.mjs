@@ -58,6 +58,12 @@ const FELT_NODE = {
   etapeId: "etaper",
   kasseId: "kasser",
   vareId: "varer",
+  /* ⚠ IKKE DET SAMME SOM vareId. `leverandoervarer` (Procure TARGET, trin 2,
+     produktejer-review 2026-09-02) peger på den globale varemaster
+     (indkoebsvarer), ikke på Warehouses gods — feltet fik derfor sit eget
+     navn frem for at genbruge "vareId" og blive fejlfortolket som et krav
+     om Warehouse. Se firebase.rules.json's note ved leverandoervarer. */
+  indkoebsVareId: "indkoebsvarer",
   carrierId: "carriers",
   /* Beholderen der SENDES med — samme node som `carrierId`, andet formål. */
   afsendCarrierId: "carriers",

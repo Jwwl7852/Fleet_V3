@@ -53,6 +53,25 @@ export const DEMO_KOERETOEJER = [
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 412800, naesteServiceMs: NU + 22 * D, synMs: NU + 140 * D,
     tachografNr: "TG-40122", securityLevel: "normal",
+    /* Fleet §9.10 Servicebog — se fleet/servicepunkter.js. Additiv til
+       naesteServiceMs/synMs ovenfor, ikke en erstatning: den her liste er
+       enhedens KONFIGUREREDE punkter, de to felter ovenfor er stadig de
+       enkeltfelter Enheder-tabellen og k.flaade.serviceInden30 læser. */
+    servicepunkter: {
+      "sp-012-daek": {
+        type: "daek", label: "Dækskift for- og bagaksel",
+        intervalKm: 40000, senestUdfoertKm: 372000, aktiv: true,
+        oprettetMs: NU - 200 * D, oprettetAf: "Værkfører Kolding",
+        historik: {
+          "u-012-daek-1": { udfoertMs: NU - 200 * D, udfoertKm: 372000, kommentar: "Nye dæk, alle fire", udfoertAf: "Værkfører Kolding" },
+        },
+      },
+      "sp-012-lovpligtigt": {
+        type: "lovpligtigt", label: "Lovpligtigt bremseeftersyn",
+        intervalMaaneder: 12, senestUdfoertMs: NU - 340 * D, aktiv: true,
+        oprettetMs: NU - 700 * D, oprettetAf: "Værkfører Kolding",
+      },
+    },
   },
   {
     id: "kt-078", kaldenavn: "Bil 78", navn: "Scania R 450",
@@ -62,6 +81,16 @@ export const DEMO_KOERETOEJER = [
     kapacitet: { m3: 0, kg: 0 },
     kmStand: 268400, naesteServiceMs: NU + 51 * D, synMs: NU + 96 * D,
     tachografNr: "TG-40789", securityLevel: "normal",
+    servicepunkter: {
+      "sp-078-syn": {
+        type: "syn", label: "Periodisk syn",
+        intervalMaaneder: 12, senestUdfoertMs: NU - 60 * D, aktiv: true,
+        oprettetMs: NU - 400 * D, oprettetAf: "Værkfører Aalborg",
+        historik: {
+          "u-078-syn-1": { udfoertMs: NU - 60 * D, kommentar: "Godkendt uden anmærkning", udfoertAf: "Værkfører Aalborg" },
+        },
+      },
+    },
   },
   {
     id: "kt-034", kaldenavn: "Bil 34", navn: "MAN TGX 18.480",

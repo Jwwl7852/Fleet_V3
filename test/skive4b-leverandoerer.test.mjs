@@ -187,7 +187,11 @@ describe("Fleet, Facility og Procure læser samme fælles masterdata", () => {
   const PICKERE = [
     "src/fleet/Planlaegdialog.jsx",
     "src/moduler/facility/Servicedialog.jsx",
-    "src/moduler/indkoeb/Oversigt.jsx",
+    /* ⚠ PROCURE TARGET (produktejer-review 2026-09-02) — Indkøbsformularens
+       leverandørpicker FLYTTEDE fra Oversigt.jsx (nu Overblik, en
+       statusskærm uden formularer) til Varer.jsx, som en del af den
+       samlede indkøbslinje-/prisregistrering. Samme picker, ny fil. */
+    "src/moduler/indkoeb/Varer.jsx",
     "src/moduler/indkoeb/Varelager.jsx",
     "src/moduler/indkoeb/Fakturaer.jsx",
   ];

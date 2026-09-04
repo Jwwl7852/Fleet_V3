@@ -341,6 +341,12 @@ export const NODE_MODUL = {
   godkendelsesregler: "indkoeb",
   forbrugsvarer: "indkoeb",
   forbrugsvarebevaegelser: "indkoeb",
+  /* ⚠ DEN GLOBALE VAREMASTER — Procure TARGET, trin 2 (produktejer-review
+     2026-09-02). Se fleet/varer.js's hoved for hvorfor det er to noder. En
+     kunde uden Procure har hverken et varekatalog eller leverandørpriser
+     at vedligeholde. */
+  indkoebsvarer: "indkoeb",
+  leverandoervarer: "indkoeb",
   /* ⚠ G.2 — braendstofmatch HØRER TIL indkoeb, SAMME MODUL SOM DEN
      FAKTURALINJE DEN MATCHER. En kunde uden Procure har ingen
      indkøbslinjer at matche mod en tankning. */

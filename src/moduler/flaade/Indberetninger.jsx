@@ -41,8 +41,8 @@ import { usePost } from "../../fleet/usePost.js";
 import { kr, num, dato, datoTid, km as kmFmt } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang,
-  Knap, Dialog } from "../../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Kpiadgang,
+  Knap, Dialog, ModulNav } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import {
   HAENDELSE_ART, FORLOEB, harFelt, FELT,
@@ -57,11 +57,14 @@ import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
 import { DEMO_OPGAVER } from "../../fleet/demo-opgaver.js";
 import { talFraAntal } from "../../fleet/grundlag.js";
 import { PRIORITET } from "../../fleet/prioritet.js";
-import { OPGAVE_STATUS } from "../../fleet/opgaver.js";
+import { OPGAVE_STATUS, arbejdstypeForIndberetningsart } from "../../fleet/opgaver.js";
+import { FLEET_FANER } from "../../fleet/modulfaner.js";
 /* ⚠ SKIVE 3B — samme to komponenter som Vaerkstedskalender.jsx og
    Disponering.jsx bruger. Ingen parallel triage- eller planlægningslogik. */
 import Indberetningtriage from "../../fleet/Indberetningtriage.jsx";
 import Planlaegdialog from "../../fleet/Planlaegdialog.jsx";
+import Haendelsespanel from "../../fleet/Haendelsespanel.jsx";
+import { leverandoerNavn } from "../../fleet/leverandoerer.js";
 /* ⚠ SKIVE 3C — samme delte sagsvisning som Fleet Driftskalender og Facility
    Servicekalender bruger. Kun til at ÅBNE en sag der allerede findes. */
 import Sagsvisning from "../../fleet/Sagsvisning.jsx";
@@ -75,9 +78,24 @@ import Sagsvisning from "../../fleet/Sagsvisning.jsx";
 export default function Indberetninger() {
   const { kpi: k, henter, tilstand, genindlaes, utilgaengelige } = useKpi();
   const { bruger } = useFleet();
-  const [valgtId, setValgtId] = useState("ind-001");
+  /* ⚠ FLEET TARGET §9.3 — kun til det nyoprettede Haendelsespanels
+     Statusskifte (en OPGAVE-permission), adskilt fra `maaTriagere`
+     (`indberetninger.skrivAlle`) i Detaljer nedenfor, som styrer
+     indberetningens EGEN triage. To forskellige noder, to permissions. */
+  const maaPlanlaegge = harPerm(bruger?.perms, PERM.opgaverSkriv);
+  /* ⚠ FLEET TARGET COMPLETION (produktejer-review 2026-09-01) — detaljerne
+     flyttede fra en fast sidekolonne til den godkendte drawer (§1's
+     variant="drawer"), så tabellen kan bruge fuld bredde når intet er valgt.
+     Startværdien er derfor null, ikke en hardkodet demo-post: en drawer der
+     er åben ved siden af intet klik, ville se ud som en fejl. */
+  const [valgtId, setValgtId] = useState(null);
   /* Skive 3B: null = lukket, ellers et forslag til Planlaegdialog. */
   const [planlaegger, setPlanlaegger] = useState(null);
+  /* ⚠ FLEET TARGET §9.3 — se Planlaegdialog.jsx's egen note. Efter en
+     planlægning med en ekstern leverandør åbnes den nyoprettede opgaves
+     Haendelsespanel direkte på Sag-fanen, samme drawer som Driftskalenderen
+     bruger — ikke en parallel sag-visning her. */
+  const [opgaveDetaljerId, setOpgaveDetaljerId] = useState(null);
 
   /* ⚠ NODEN, IKKE DEMOFILEN. `indberetninger` var den sjette node med regler
      og ingen data — den blokerede kun ét KPI-felt, og Dashboardet hardkodede
@@ -153,6 +171,7 @@ export default function Indberetninger() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <ModulNav punkter={FLEET_FANER} />
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
@@ -169,43 +188,52 @@ export default function Indberetninger() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
-        <Kort titel="Indberetninger">
-          <Tabel
-            kolonner={[
-              { key: "art", label: "Art",
-                render: (i) => HAENDELSE_ART[i.art]?.label || i.art },
-              { key: "beskrivelse", label: "Hændelse" },
-              { key: "bil", label: "Enhed", render: (i) => bilNavn(i.koeretoejId) },
-              { key: "forloeb", label: "Forløb",
-                render: (i) => (
-                  <Pille tone={FORLOEB[i.forloeb]?.pill || "info"}>
-                    {FORLOEB[i.forloeb]?.label || i.forloeb}
-                  </Pille>
-                ) },
-              { key: "oprettet", label: "Oprettet", render: (i) => dato(i.oprettetMs) },
-            ]}
-            raekker={raekker}
-            noegle={(i) => i.id}
-            paaRaekke={(i) => setValgtId(i.id)}
-            erValgt={(i) => i.id === valgtId}
-            tom="Ingen indberetninger i perioden."
-          />
-        </Kort>
+      {/* ⚠ FLEET TARGET COMPLETION — FULD BREDDE NÅR INTET ER VALGT. Den
+          tidligere faste 3fr/2fr-kolonne reserverede plads til detaljerne
+          selv når ingen post var valgt. Detaljerne bor nu i drawer'en
+          nedenfor. */}
+      <Kort titel="Indberetninger">
+        <Tabel
+          kolonner={[
+            { key: "art", label: "Art",
+              render: (i) => HAENDELSE_ART[i.art]?.label || i.art },
+            { key: "beskrivelse", label: "Hændelse" },
+            { key: "bil", label: "Enhed", render: (i) => bilNavn(i.koeretoejId) },
+            { key: "forloeb", label: "Forløb",
+              render: (i) => (
+                <Pille tone={FORLOEB[i.forloeb]?.pill || "info"}>
+                  {FORLOEB[i.forloeb]?.label || i.forloeb}
+                </Pille>
+              ) },
+            { key: "oprettet", label: "Oprettet", render: (i) => dato(i.oprettetMs) },
+          ]}
+          raekker={raekker}
+          noegle={(i) => i.id}
+          paaRaekke={(i) => setValgtId(i.id)}
+          erValgt={(i) => i.id === valgtId}
+          tom="Ingen indberetninger i perioden."
+        />
+      </Kort>
 
-        {valgt
-          ? <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}}
-                      bilNavn={bilNavn} genindlaes={liste.genindlaes}
-                      besoeg={opgaver.data.find((o) => o.indberetningId === valgt.id) || null}
-                      brugerNavn={brugerNavn}
-                      onPlanlaeg={() => setPlanlaegger({
-                        koeretoejId: valgt.koeretoejId || "",
-                        beskrivelse: valgt.beskrivelse || "",
-                        prioritet: valgt.prioritet || "",
-                        indberetningId: valgt.id,
-                      })} />
-          : <Kort titel="Detaljer"><Tom>Vælg en indberetning.</Tom></Kort>}
-      </Gitter>
+      {valgt && (
+        <Dialog variant="drawer" titel={HAENDELSE_ART[valgt.art]?.label || valgt.art}
+                onLuk={() => setValgtId(null)}>
+          <Detaljer i={valgt} bruger={bruger} sensitivt={sensitiv.post || {}}
+                    bilNavn={bilNavn} genindlaes={liste.genindlaes}
+                    besoeg={opgaver.data.find((o) => o.indberetningId === valgt.id) || null}
+                    brugerNavn={brugerNavn}
+                    onPlanlaeg={() => setPlanlaegger({
+                      koeretoejId: valgt.koeretoejId || "",
+                      beskrivelse: valgt.beskrivelse || "",
+                      prioritet: valgt.prioritet || "",
+                      indberetningId: valgt.id,
+                      /* ⚠ FLEET TARGET §9.2 — se opgaver.js's egen note.
+                         Stadig kun et forslag: feltet forbliver et
+                         almindeligt, redigerbart felt i Planlaegdialog. */
+                      arbejdstype: arbejdstypeForIndberetningsart(valgt.art),
+                    })} />
+        </Dialog>
+      )}
 
       {/* ⚠ SKIVE 3B — SAMME DIALOG SOM Vaerkstedskalender.jsx OG
           Disponering.jsx, forudfyldt fra indberetningen. Ingen parallel
@@ -216,7 +244,7 @@ export default function Indberetninger() {
           leverandoerer={leverandoerer.data}
           foraf={planlaegger}
           onLuk={() => setPlanlaegger(null)}
-          onGemt={() => {
+          onGemt={(res) => {
             setPlanlaegger(null);
             liste.genindlaes();
             /* ⚠ SKIVE 3B — INDBERETNINGEN OG DENS NYE OPGAVE HØRER SAMMEN.
@@ -224,9 +252,26 @@ export default function Indberetninger() {
                lige efter planlægningen — koblingen var skrevet på serveren,
                men skærmens egen `opgaver`-liste vidste det ikke endnu. */
             opgaver.genindlaes();
+            /* ⚠ FLEET TARGET §9.3 — se Planlaegdialog.jsx's egen note. */
+            if (res?.harEksternLeverandoer && res.opgaveId) setOpgaveDetaljerId(res.opgaveId);
           }}
         />
       )}
+
+      {opgaveDetaljerId && (() => {
+        const nyOpgave = opgaver.data.find((o) => o.id === opgaveDetaljerId) || null;
+        return nyOpgave && (
+          <Haendelsespanel
+            opgave={nyOpgave}
+            lvNavn={(id) => leverandoerNavn(leverandoerer.data, id)}
+            enheder={enheder.data}
+            maaSkrive={maaPlanlaegge}
+            initialFane="sag"
+            onSkiftet={() => opgaver.genindlaes()}
+            onLuk={() => setOpgaveDetaljerId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -251,8 +296,12 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
      findes, hvis nogen har skrevet i.sagId. */
   const [sagAaben, saetSagAaben] = useState(false);
 
+  /* ⚠ FLEET TARGET COMPLETION — INGEN EGEN <Kort> LÆNGERE. Titlen tegnes nu
+     af den omsluttende drawer (Dialog variant="drawer" i Indberetninger()),
+     samme mønster som Haendelsespanel.jsx: panelet GIVER chrome'et, indholdet
+     tegner kun sit eget. En <Kort> herinde ville have givet en dobbelt titel. */
   return (
-    <Kort titel={HAENDELSE_ART[i.art]?.label || i.art}>
+    <>
       <Gitter kolonner="1fr 1fr">
         <MiniLinje label="Enhed" vaerdi={bilNavn(i.koeretoejId)} />
         <MiniLinje label="Oprettet af" vaerdi={<>{brugerNavn(i.oprettetAf)} · {datoTid(i.oprettetMs)}</>} />
@@ -312,7 +361,7 @@ function Detaljer({ i, bruger, sensitivt, bilNavn, genindlaes, besoeg, brugerNav
           <Sagsvisning sagId={i.sagId} art="fleet" />
         </Dialog>
       )}
-    </Kort>
+    </>
   );
 }
 

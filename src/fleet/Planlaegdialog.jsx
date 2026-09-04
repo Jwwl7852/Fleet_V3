@@ -39,6 +39,20 @@ import {
   planlaegOpgave, valideOpgaveplan, PLANLAEGBAR_STATUS,
 } from "./opgaveplan.js";
 
+/**
+ * ⚠ FLEET TARGET §9.7 — "½ dag | 1 dag | antal timer | brugerdefineret.
+ * Sluttid udledes automatisk. Genbrug reservationsmotor."
+ *
+ * Ingen ny node, intet nyt felt: knapperne sætter blot `varighedMin`, det
+ * samme felt formularen altid har haft, og sluttidspunktet var allerede
+ * udledt (se `slutMs` nedenfor) — aldrig gemt. En arbejdsdag regnes fra
+ * `iMorgen()`s eget kl. 08.00 til kl. 16.00, altså 8 timer; et halvt er 4.
+ */
+const HURTIG_VARIGHED = [
+  { label: "½ dag", min: 4 * 60 },
+  { label: "1 dag", min: 8 * 60 },
+];
+
 
 
 /* Fejlnøgle → etiket. ⚠ SAMME ORD SOM PÅ FELTET. Skrev opsummeringen
@@ -82,8 +96,10 @@ export default function Planlaegdialog({
   enheder, leverandoerer, onLuk, onGemt,
   /* Gitterets forslag: { koeretoejId, startMs, varighedMin }. Skive 3B
      udvidede den med tre felter fra en indberetning: { beskrivelse,
-     prioritet, indberetningId }. Se hovedet — det er et forslag, ikke en
-     lås; alle felter kan rettes i formularen. */
+     prioritet, indberetningId }. Fleet TARGET §9.2 tilføjede et fjerde:
+     { arbejdstype }, oversat af arbejdstypeForIndberetningsart() (opgaver.js).
+     Se hovedet — det er et forslag, ikke en lås; alle felter kan rettes i
+     formularen. */
   foraf = null,
 }) {
   /* Startforslag: i morgen kl. 08.00. ⚠ IKKE "nu" — en aktivitet man
@@ -112,7 +128,12 @@ export default function Planlaegdialog({
          forbød feltet på bilen, og en formular der udledte det af enheden,
          ville have genindført koblingen. Argumentet holdt, og aksen holdt op
          med at findes i beslutning 70. Se 79. */
-      arbejdstype: "",
+      /* ⚠ FLEET TARGET §9.2 — CHAUFFØRENS/TRIAGENS TYPE GENBRUGES. Kommer
+         `foraf` fra en indberetning, har Indberetninger.jsx/Arbejdskoe.jsx
+         allerede oversat dens `art` til en arbejdstype med
+         `arbejdstypeForIndberetningsart()` (opgaver.js). Stadig kun et
+         FORSLAG — feltet er urørt et almindeligt, redigerbart felt. */
+      arbejdstype: foraf?.arbejdstype || "",
       status: "planlagt",
       leverandoerId: "",
       /* Skive 3B: en indberetning kan have sat en prioritet ved triage. */
@@ -211,7 +232,21 @@ export default function Planlaegdialog({
     const r = await planlaegOpgave(udkast);
     saetGemmer(false);
     saetSvar(r);
-    if (r.ok) onGemt();
+    if (r.ok) {
+      /* ⚠ FLEET TARGET §9.3 — "sagen skal oprettes/kobles tidligt, ikke
+         først ved planlægning [som et separat, senere klik i Sag-fanen]."
+         Denne dialog kalder BEVIDST IKKE opretSag() selv — Sagsvisning.jsx's
+         egen `OpretSagDialog` er det ENE sted i kodebasen der må, netop
+         fordi "Opret sag kræver et menneske der udfylder og trykker"
+         (test/skive3c-sagsvisning.test.mjs). At omgå den ville oprette en
+         sag ingen har set emnet eller modparten på. Løsningen er i stedet
+         at give kalderen opgaveId'et og leverandørflaget tilbage, så den
+         (Vaerkstedskalender/Indberetninger/Arbejdskoe) kan åbne det
+         eksisterende Haendelsespanel med Sag-fanen forudvalgt — samme
+         dialog, samme menneskelige klik, bare uden at skulle finde vej dit
+         selv bagefter. */
+      onGemt({ opgaveId: r.data?.opgaveId, harEksternLeverandoer: Boolean(post.leverandoerId) });
+    }
   };
 
   const enhed = enheder.find((k) => k.id === post.koeretoejId) || null;
@@ -291,6 +326,39 @@ export default function Planlaegdialog({
                 fejl={vis("estimeretMin", "varighedMin")}
                 hint="Så længe er enheden spærret." />
         </Feltraekke>
+
+        {/* ⚠ FLEET TARGET §9.7 — HURTIG VARIGHED. Genvejene skriver kun ind
+            i det SAMME `varighedMin`-felt som ovenfor — ingen ny node, intet
+            nyt felt, samme reservationsmotor. "Brugerdefineret" er feltet
+            selv: en genvej retter det, den erstatter det ikke. */}
+        <div className="fc-row" style={{ marginTop: -4, marginBottom: 4, flexWrap: "wrap" }}>
+          <span className="fc-hint">Hurtig varighed:</span>
+          <div className="fc-seg" role="group" aria-label="Hurtig varighed">
+            {HURTIG_VARIGHED.map((v) => (
+              <button key={v.label} type="button"
+                      aria-pressed={Number(post.varighedMin) === v.min}
+                      onClick={() => saet("varighedMin")(String(v.min))}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <label className="fc-hint" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            eller antal timer
+            <input type="number" min="0" step="0.5"
+                   style={{
+                     width: 56, padding: "4px 6px", borderRadius: "var(--fc-r)",
+                     border: "1px solid var(--bc-line)", background: "var(--bc-card)",
+                     color: "inherit", font: "inherit",
+                   }}
+                   aria-label="Varighed i timer"
+                   onChange={(e) => {
+                     const timer = Number(e.target.value);
+                     if (Number.isFinite(timer) && timer > 0) {
+                       saet("varighedMin")(String(Math.round(timer * 60)));
+                     }
+                   }} />
+          </label>
+        </div>
 
         <Feltraekke>
           <Felt id="pl-lev" label="Udføres af"

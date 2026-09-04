@@ -114,6 +114,33 @@ export const ARBEJDSTYPE = {
 
 export const ALLE_ARBEJDSTYPER = Object.keys(ARBEJDSTYPE);
 
+/**
+ * ⚠ FLEET TARGET §9.2 — "Chaufførens valgte aktivitetstype genbruges;
+ * kontoret skal ikke vælge samme type igen."
+ *
+ * En indberetnings `art` (indberetninger.js's `HAENDELSE_ART`) og en opgaves
+ * `arbejdstype` er to forskellige, ikke-identiske kataloger — en indberetning
+ * har fx `koeretoejsskade`/`godsskade`, en opgave kun `skade`. Denne funktion
+ * er den ENE oversættelse mellem dem, så "Planlæg aktivitet" fra en
+ * indberetning kan foreslå typen i stedet for at stille spørgsmålet forfra.
+ * `arbejdstype` forbliver et FORSLAG, ikke en lås — Planlaegdialog.jsx's egen
+ * note gælder uændret: rammer den ved siden af, retter man i formularen.
+ *
+ * ⚠ "andet" GIVER BEVIDST INTET FORSLAG. Arten findes netop fordi chaufføren
+ * "ikke kan sætte navn på det han ser" (indberetninger.js) — et gættet forslag
+ * ville foregive en beslutning ingen har taget.
+ */
+const ARBEJDSTYPE_FOR_INDBERETNINGSART = {
+  reparation: "reparation",
+  koeretoejsskade: "skade",
+  godsskade: "skade",
+  daek: "daek",
+  service: "service",
+};
+
+export const arbejdstypeForIndberetningsart = (art) =>
+  ARBEJDSTYPE_FOR_INDBERETNINGSART[art] || "";
+
 /* ---- Art styrer feltskemaet ------------------------------------------ */
 
 /**

@@ -58,12 +58,23 @@ for (const m of APP.matchAll(/<Route path="([^"]*)" element=\{<(\w+) \/>\}/g)) {
   if (LAZY[m[2]]) FIL_FOR["/" + m[1].replace(/^\//, "")] = `src/moduler/${LAZY[m[2]]}`;
 }
 
-/** De noder en skærm faktisk læser. */
+/** De noder en skærm faktisk læser.
+ *
+ * ⚠ TO FORMER, IKKE ÉN. `useListe("node", …)`/`usePost("node", …)` har
+ * nodenavnet som FØRSTE argument — men `usePost(null, "node", …)` er den
+ * etablerede form for "en node der ER en post" (se usePost.js), og der
+ * står nodenavnet som ANDET argument, efter et bogstaveligt `null`. Et
+ * regex der kun kendte den første form, ville se en skærm der UDELUKKENDE
+ * læser en spærret post via `usePost(null, …)` som om den intet læste —
+ * nøjagtig den slags lint der springer noget over og siger ingenting
+ * (CLAUDE.md). Fundet da Opsætning → Procure → Godkendelsesreglers
+ * `usePost(null, "godkendelsesregler", …)` faldt igennem. */
 const noderI = (fil) => {
   let t;
   try { t = udenKommentarer(readFileSync(fil, "utf8")); } catch { return []; }
-  return [...new Set([...t.matchAll(/use(?:Liste|Post)\(\s*[`"]([a-zA-Z/]+)/g)]
-    .map((m) => m[1].split("/")[0]))];
+  const almindelig = [...t.matchAll(/use(?:Liste|Post)\(\s*[`"]([a-zA-Z/]+)/g)].map((m) => m[1]);
+  const nodeSomPost = [...t.matchAll(/usePost\(\s*null\s*,\s*[`"]([a-zA-Z/]+)/g)].map((m) => m[1]);
+  return [...new Set([...almindelig, ...nodeSomPost].map((n) => n.split("/")[0]))];
 };
 
 /** De permissions en skærms egne opslag kræver. */
@@ -111,12 +122,26 @@ const UDEN_KRAEVERPERM = {
   fravaer: "`fravaer.laes` og `personale.laes` — begge hos alle seks roller.",
   indberetninger: "`koeretoejer.laes`, som alle seks roller har.",
   facilityOversigt: "`personale.laes`, som alle seks roller har.",
+  facilityInventar: "samme kartoteksopslag som facilityOversigt — "
+    + "`personale.laes` og `leverandoerer.laes`, som alle seks roller har.",
+  facilityPlanlagt: "`leverandoerer.laes`, som alle seks roller har — samme "
+    + "opslag som Servicekalenderen bruger til at navngive en udførende.",
   kasseudlaan: "`kunder.laes`, som alle seks roller har.",
   warehouseVarer: "`kunder.laes`, som alle seks roller har.",
   warehousePluk: "samme: `kunder.laes`.",
   warehouseLabels: "`booking.laes` og `kunder.laes` — begge hos alle seks.",
   warehouseSporbarhed: "samme: `kunder.laes`.",
   enheder: "`koeretoejer.laes`, som alle seks roller har.",
+  servicebog: "samme: `koeretoejer.laes`, som alle seks roller har — §9.10's "
+    + "servicepunkter bor på koeretoejer-posten selv.",
+  flaadeStatistik: "`koeretoejer.laes`, som alle seks roller har. `indkoeb.laes` "
+    + "er Procures egen — men useListe springer forespørgslen over med "
+    + "TILSTAND.modulMangler hos en Fleet-kunde uden Procure (beslutning 95), "
+    + "og siden viser det som en grund ('Kræver Procure-modulet'), ikke som et "
+    + "nul. Siden blokerer ikke på feltet; den regner bare mindre uden det.",
+  flaadeOverblik: "samme kartoteksopslag som Værkstedskalenderen/Arbejdskøen — "
+    + "`koeretoejer.laes` og `leverandoerer.laes`, som alle seks roller har.",
+  flaadeKontakter: "`personale.laes` og `leverandoerer.laes` — alle seks roller har dem.",
   medarbejdere: "`personale.laes`, som alle seks roller har.",
   kunderOversigt: "`kunder.laes`, som alle seks roller har.",
 };

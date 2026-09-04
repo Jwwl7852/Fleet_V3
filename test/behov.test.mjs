@@ -18,7 +18,12 @@ const udenKommentarer = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
-const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Behov.jsx", "utf8"));
+/* ⚠ BEHOV.JSX BLEV SLÅET SAMMEN MED Bestillinger.jsx OG Godkendelser.jsx TIL
+   ÉN ARBEJDSFLADE (Procure TARGET, produktejer-review 2026-09-02) — se
+   Bestillinger.jsx's eget hoved. Behovs-sektionen står der uændret, blot med
+   `behov`/`postBehov` i stedet for `behovListe`/`post` (navnene delte plads
+   med bestillings- og godkendelsessektionerne). */
+const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Bestillinger.jsx", "utf8"));
 const KLIENT = udenKommentarer(readFileSync("src/fleet/behov.js", "utf8"));
 const SERVER = udenKommentarer(readFileSync("functions/index.js", "utf8"));
 
@@ -142,7 +147,7 @@ describe("Skærmen viser det den skal", () => {
   /* ⚠ TOM STRENG ER IKKE ET TAL. `Number("")` er 0, og et behov på "0 stk."
      ville blive taget imod som et svar. */
   test("⚠ EN TOM ANTALSFELT SENDES SOM undefined", () => {
-    assert.match(SKAERM, /post\.antal === "" \? undefined : Number\(post\.antal\)/,
+    assert.match(SKAERM, /postBehov\.antal === "" \? undefined : Number\(postBehov\.antal\)/,
       'en tom streng bliver til 0 — "0 stk." er ikke et ubesvaret felt');
   });
 
@@ -159,7 +164,7 @@ describe("Skærmen viser det den skal", () => {
    * DIREKTE fra basen, så en manglende node må ikke blanke den — beslutning 73.
    */
   test("⚠ BLOKERER IKKE PÅ EN TOM NODE", () => {
-    assert.match(SKAERM, /blokerer\(behovListe\.tilstand\)/);
+    assert.match(SKAERM, /blokerer\(behov\.tilstand\)/);
     assert.ok(!/if \(!\w+\) return <Datatilstand/.test(SKAERM),
       "skærmen blanker på en tom liste, men den har data at tegne");
   });

@@ -150,14 +150,32 @@ describe("Afsluttet sag viser ingen handlinger der ville muteres videre", () => 
    6. KANONISK PLACERING — INGEN PARALLEL FLEET/FACILITY-KOPI
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Fleet og Facility genbruger SAMME Sagsvisning — ingen parallelkopi", () => {
-  it("Vaerkstedskalender.jsx importerer Sagsvisning fra fleet/, bygger den ikke selv", () => {
-    assert.ok(vaerkstedskalender.includes('import Sagsvisning from "../../fleet/Sagsvisning.jsx"'));
-    assert.match(vaerkstedskalender, /<Sagsvisning[\s\S]{0,120}art="fleet"/);
+  it("Fleets Haendelsespanel importerer Sagsvisning fra fleet/, bygger den ikke selv", () => {
+    /* ⚠ FLEET TARGET (produktejer-review 2026-09-01) FLYTTEDE Haendelsespanel
+       ud af Vaerkstedskalender.jsx til fleet/Haendelsespanel.jsx, så
+       Overblik.jsx's arbejdskø også kan åbne den ("Detaljer" — §9.6). Samme
+       genbrugsdisciplin denne describe-blok selv prøver, ét lag dybere:
+       Vaerkstedskalender.jsx importerer nu Haendelsespanel i stedet for
+       Sagsvisning direkte. */
+    const haendelsespanel = readFileSync("src/fleet/Haendelsespanel.jsx", "utf8");
+    assert.ok(!vaerkstedskalender.includes("Sagsvisning"),
+      "Vaerkstedskalender.jsx nævner Sagsvisning direkte — skal gå via Haendelsespanel");
+    assert.match(vaerkstedskalender, /import Haendelsespanel from "\.\.\/\.\.\/fleet\/Haendelsespanel\.jsx";/);
+    assert.ok(haendelsespanel.includes('import Sagsvisning from "./Sagsvisning.jsx"'));
+    assert.match(haendelsespanel, /<Sagsvisning[\s\S]{0,120}art="fleet"/);
   });
 
-  it("Servicekalender.jsx importerer SAMME Sagsvisning, ikke en egen", () => {
-    assert.ok(servicekalender.includes('import Sagsvisning from "../../fleet/Sagsvisning.jsx"'));
-    assert.match(servicekalender, /<Sagsvisning[\s\S]{0,160}art="facility"/);
+  it("Facilitys Besoegspanel importerer Sagsvisning fra fleet/, ikke Servicekalender.jsx", () => {
+    /* ⚠ FACILITY TARGET (produktejer-review 2026-09-02) FLYTTEDE
+       Besoegspanel ud af Servicekalender.jsx til fleet/Besoegspanel.jsx, så
+       Overblik.jsx og Planlagt.jsx også kan åbne "detaljer" på et
+       servicebesøg — samme genbrugsdisciplin, ét lag dybere. */
+    const besoegspanel = readFileSync("src/fleet/Besoegspanel.jsx", "utf8");
+    assert.ok(!servicekalender.includes("Sagsvisning"),
+      "Servicekalender.jsx nævner Sagsvisning direkte — skal gå via Besoegspanel");
+    assert.match(servicekalender, /import Besoegspanel from "\.\.\/\.\.\/fleet\/Besoegspanel\.jsx";/);
+    assert.ok(besoegspanel.includes('import Sagsvisning from "./Sagsvisning.jsx"'));
+    assert.match(besoegspanel, /<Sagsvisning[\s\S]{0,160}art="facility"/);
   });
 
   it("⚠ INGEN PARALLEL Kommunikation/Filer-KOMPONENT TILBAGE I Vaerkstedskalender.jsx", () => {

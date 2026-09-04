@@ -22,17 +22,24 @@ import { readFileSync } from "node:fs";
 
 import { beregnKpi } from "../src/fleet/kpi-aggregering.js";
 import { DEMO_KPI } from "../src/fleet/demo-kpi.js";
-import { kladdelinjer, ventendeOrdrer, matchtilstand } from "../src/fleet/procure.js";
+import { ventendeOrdrer, matchtilstand } from "../src/fleet/procure.js";
 import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER }
   from "../src/fleet/demo-procure.js";
-import { DEMO_INDKOEBSLINJER } from "../src/fleet/demo-indkoeb.js";
 
 const udenKommentarer = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
+/* ⚠ OVERSIGT.JSX ER OMBYGGET TIL ET KOMPAKT STATUS-OVERBLIK (Procure TARGET,
+   produktejer-review 2026-09-02) — se filens eget hoved. Det gamle
+   procesbånd, den leverandørforslags-drevne indbakke og
+   registreringsformularen er FLYTTET, ikke slettet: se Bestillinger.jsx og
+   Varer.jsx. Prøverne nedenfor er opdateret til at pege på hvor hver
+   kendsgerning faktisk lever nu; håndhævelsen i fleet/procure.js og
+   firebase.rules.json er UÆNDRET. */
 const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Oversigt.jsx", "utf8"));
 const RAA = readFileSync("src/moduler/indkoeb/Oversigt.jsx", "utf8");
+const VARER_SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Varer.jsx", "utf8"));
 const NAV = readFileSync("src/fleet/nav.js", "utf8");
 const REGELFIL = readFileSync("firebase.rules.json", "utf8");
 
@@ -62,18 +69,24 @@ describe("Fire tal regnes, det femte kan ikke", () => {
    * annulleret er ikke åben — begge ville tælle med i "det vi venter på fra
    * leverandøren", som er hele kortets spørgsmål.
    */
+  /**
+   * ⚠ IKKE LÆNGERE ET EGET KpiKort — "Sendt, afventer levering" ER NU EN
+   * FILTER-TILE over den samlede pipeline-liste (se Oversigt.jsx's hoved).
+   * Den bygges af `ordreTilRaekke()`, som sætter `filter: "sendt"` PRÆCIS
+   * for `o.status === "sendt"` — samme afgrænsning, ny kode.
+   */
   test("⚠ ÅBNE BESTILLINGER ER KUN DE SENDTE", () => {
-    assert.match(SKAERM, /ordrer\.filter\(\(o\) => o\.status === "sendt"\)/);
+    assert.match(SKAERM, /o\.status === "sendt" \? "sendt"/);
     const aabne = DEMO_INDKOEBSORDRER.filter((o) => o.status === "sendt");
     assert.ok(aabne.length >= 1, "ingen sendt ordre i demo — kortet kan ikke ses virke");
     assert.ok(DEMO_INDKOEBSORDRER.some((o) => o.status === "kladde"),
       "ingen kladde i demo — så kan man ikke se at den IKKE tælles med");
   });
 
-  /* Køen er den samme `ventendeOrdrer()` som Godkendelsesskærmen bruger — to
+  /* Køen er den samme `ventendeOrdrer()` som Bestillinger-skærmen bruger — to
      opslag ville kunne svare hver sit på "hvor mange venter". */
-  test("⚠ KØEN REGNES MED SAMME ventendeOrdrer() SOM GODKENDELSESSKÆRMEN", () => {
-    assert.match(SKAERM, /ventendeOrdrer\(ordrer, regler\)/);
+  test("⚠ KØEN REGNES MED SAMME ventendeOrdrer() SOM BESTILLINGER-SKÆRMEN", () => {
+    assert.match(SKAERM, /ventendeOrdrer\(ordrer\.data, regler\)/);
     const koe = ventendeOrdrer(DEMO_INDKOEBSORDRER, DEMO_GODKENDELSESREGLER);
     assert.ok(koe.length >= 1, "tom kø i demo — kortet kan ikke ses virke");
   });
@@ -161,7 +174,7 @@ describe("Fire tal regnes, det femte kan ikke", () => {
   });
 
   test("⚠ SKÆRMEN SKRIVER — OG IKKE 0 FOR DET UBEREGNEDE", () => {
-    assert.match(SKAERM, /vaerdi=\{num\(lavBeholdning\)\}/,
+    assert.match(SKAERM, /vaerdi=\{num\(k\?\.indkoeb\?\.lavBeholdning\)\}/,
       "tallet går ikke gennem num(), som skriver INTET for null");
     assert.ok(!/lavBeholdning \|\| 0/.test(SKAERM),
       "et manglende tal bliver til nul — og nul er en påstand om at intet mangler");
@@ -190,7 +203,7 @@ describe("Alle skærme spørger fakturaerne om det samme felt", () => {
    */
   test("⚠ HVER FAKTURALISTE ORDNER PÅ fakturadatoMs", () => {
     const fejl = [];
-    for (const f of ["Oversigt", "Fakturaer", "Leverandoerer"]) {
+    for (const f of ["Oversigt", "Fakturaer", "Leverandoerer", "Statistik"]) {
       const sti = `src/moduler/indkoeb/${f}.jsx`;
       const kode = udenKommentarer(readFileSync(sti, "utf8"));
       for (const m of kode.matchAll(/useListe\("fakturaer",\s*\{([^}]*)\}/g)) {
@@ -216,22 +229,32 @@ describe("Alle skærme spørger fakturaerne om det samme felt", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    PROCESBÅNDET OG GENVEJENE
    ══════════════════════════════════════════════════════════════════════════ */
-describe("Båndet er en vejviser, ikke en tilstand", () => {
-  /* ⚠ HVERT TRIN FØRER ET STED HEN. Et bånd man ikke kan klikke på, er et
-     billede af en proces; det her er indgangen til den. */
-  test("⚠ ALLE FEM TRIN HAR ET LINK DER FINDES I nav.js", () => {
-    const stier = [...SKAERM.matchAll(/til: "(\/indkoeb[^"]*)"/g)].map((m) => m[1]);
-    assert.ok(stier.length >= 5, `kun ${stier.length} trin har et link`);
+/**
+ * ⚠ DET NUMMEREREDE PROCESBÅND ER VÆK, MED VILJE (Procure TARGET,
+ * produktejer-review 2026-09-02). Overblik viste før en illustration af
+ * fem trin; nu ER pipeline-listen selv den klikbare status — se filens
+ * hoved. De to invarianter der stadig gælder — hvert link fører et sted
+ * der findes, og en genvej bærer ikke sit eget tal — er flyttet med til
+ * den nye struktur; den leverandørforslags-drevne indbakke er det ikke,
+ * fordi den bor i Bestillinger.jsx nu, ikke her.
+ */
+describe("Overblikkets links fører et sted der findes", () => {
+  /* ⚠ HVERT LINK FØRER ET STED HEN. Genvejene og "Åbn Bestillinger" er
+     stadig klikbare veje ind i modulet — de skal pege på ruter der findes. */
+  test("⚠ ALLE /indkoeb- OG /oekonomi-LINKS FINDES I nav.js", () => {
+    const stier = [...RAA.matchAll(/to="(\/(?:indkoeb|oekonomi)[^"?]*)/g)].map((m) => m[1]);
+    assert.ok(stier.length >= 5, `kun ${stier.length} links i skærmen`);
     for (const sti of new Set(stier)) {
       assert.ok(NAV.includes(`"${sti}"`), `${sti} findes ikke i nav.js`);
     }
   });
 
   /**
-   * ⚠ PLANCHENS FIRE BUNDKORT GENTOG TO AF TALLENE. "Bestillinger 12" og
-   * "Fakturaer 4" stod BÅDE øverst og nederst — det samme tal to steder på én
-   * skærm er to steder der kan nå at blive uenige. Det er beslutning 11 og 14,
-   * og det var mockuppens "8 mod 16" på fakturaskærmen.
+   * ⚠ GENVEJENE MÅ IKKE BÆRE ET TAL. "Bestillinger 12" og "Fakturaer 4" stod
+   * BÅDE i en tile øverst og i en genvej nederst i den gamle udgave — det
+   * samme tal to steder på én skærm er to steder der kan nå at blive uenige
+   * (beslutning 11 og 14). Filter-tilesene øverst bærer tallet; "Sådan virker
+   * det"-genvejene nederst bærer det ikke.
    */
   test("⚠ GENVEJENE BÆRER INGEN TAL", () => {
     const i = RAA.indexOf('className="fc-genveje"');
@@ -241,23 +264,12 @@ describe("Båndet er en vejviser, ikke en tilstand", () => {
       "en genvej bærer et tal — det samme tal to steder kan nå at blive uenige");
   });
 
-  /* Indbakken bruger samme leverandøropslag som Bestillinger — to opslag der
-     svarede hver sit på "hvem leverer den vare", ville sende folk to steder. */
-  test("⚠ INDBAKKEN BRUGER SAMME kladdelinjer() SOM BESTILLINGER", () => {
-    assert.match(SKAERM, /kladdelinjer\(/);
-    const aabne = DEMO_INDKOEBSBEHOV.filter(
-      (b) => b.status !== "bestilt" && b.status !== "afvist");
-    const linjer = kladdelinjer(aabne, DEMO_INDKOEBSLINJER);
-    assert.equal(linjer.length, aabne.length);
-    assert.ok(linjer.some((l) => l.forslag), "intet forslag i indbakken");
-    assert.ok(linjer.some((l) => !l.forslag),
-      "hvert behov har et forslag — så kan 'Ingen tidligere leverance' ikke ses");
-  });
-
-  /* ⚠ ET UBESVARET ANTAL SKRIVER —, IKKE 0. Feltet er valgfrit (beslutning 80). */
-  test("⚠ ET BEHOV UDEN ANTAL VISES SOM INTET", () => {
-    assert.match(SKAERM, /Number\.isFinite\(r\.behov\.antal\)/);
-    assert.match(SKAERM, /: num\(null\)/);
+  /* ⚠ OG "KRÆVER HANDLING" ER STADIG DEN ENESTE AFLEDTE TÆLLING HERPÅ
+     SKÆRMEN — se filens hoved om hvorfor den IKKE gætter på en forsinket
+     levering. */
+  test("⚠ KRÆVER HANDLING-TÆLLINGEN NÆVNER IKKE EN FORVENTET LEVERINGSDATO", () => {
+    assert.ok(!/forventetLeverings|leveringsdato: /.test(SKAERM),
+      "skærmen har fundet på et felt der ikke findes på en ordre");
   });
 });
 
@@ -275,8 +287,10 @@ describe("Divisionsaksen er ude af modulet", () => {
    * noget — linten kiggede aldrig i `src/moduler/`.
    */
   test("⚠ INGEN DIVISION I REGISTRERINGSFORMULAREN", () => {
-    assert.ok(!/id="ik-div"/.test(SKAERM), "det påkrævede Division-felt er tilbage");
-    assert.ok(!/saet\("division"\)/.test(SKAERM), "formularen sætter division");
+    /* ⚠ FORMULAREN BOR I Varer.jsx NU (Procure TARGET, flyttet uændret fra
+       Oversigt.jsx) — se filens hoved. */
+    assert.ok(!/id="ik-div"/.test(VARER_SKAERM), "det påkrævede Division-felt er tilbage");
+    assert.ok(!/saet\("division"\)/.test(VARER_SKAERM), "formularen sætter division");
   });
 
   /* ⚠ OG REGLEN FORBYDER FELTET — det er dét der gjorde feltet til en fælde. */

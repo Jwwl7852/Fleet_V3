@@ -86,42 +86,62 @@ describe("A) Planning Disponering indeholder ikke værksteds-dagsgitter", () => 
 describe("B) Fleet Driftskalender indeholder fortsat værkstedsplanlægning", () => {
   const f = kode(FLEET);
 
-  it("Planlaegdialog, flytOpgave, kanFlyttes og Statusskifte er her", () => {
+  it("Planlaegdialog, flytOpgave og kanFlyttes er her", () => {
     assert.match(f, /Planlaegdialog/);
     assert.match(f, /flytOpgave\(/);
     assert.match(f, /kanFlyttes\(/);
-    assert.match(f, /<Statusskifte/);
   });
 
-  it("de fem kasser findes stadig, uændret som katalog", () => {
-    const noegler = [...laes(FLEET).matchAll(/noegle: "([a-z]+)"/g)].map((m) => m[1]);
+  /* ⚠ FLEET TARGET (masterbrief §1/§9, produktejer-review 2026-09-01)
+     SUPERSEDERER RESTEN AF DENNE DESCRIBE-BLOK. De fem "kasser" og
+     arbejdskøen flyttede ud af Driftskalenderen til Overblik.jsx, som er
+     modulets nye forside — se ArbejdskoeIndhold.jsx/Overblik.jsx's egne
+     hoveder. `<Statusskifte` og reservationsvisningen findes stadig, men
+     ét lag dybere: Vaerkstedskalender.jsx importerer den delte
+     `Haendelsespanel`-komponent (fleet/Haendelsespanel.jsx) i stedet for at
+     definere den selv — samme "genbrug, ikke kopi"-disciplin som resten af
+     filen allerede prøver for Forslag/ArbejdskoeIndhold. */
+  it("statusskifte findes via den delte, importerede Haendelsespanel — ikke en lokal kopi", () => {
+    assert.match(f, /import Haendelsespanel from "\.\.\/\.\.\/fleet\/Haendelsespanel\.jsx";/);
+    assert.doesNotMatch(f, /function Haendelsespanel/,
+      "Fleet har sin egen kopi af Haendelsespanel");
+    const panel = kode("src/fleet/Haendelsespanel.jsx");
+    assert.match(panel, /<Statusskifte/);
+  });
+
+  it("de fem kategorier findes stadig, uændret som katalog — nu kun i Arbejdskoe.jsx's UDSNIT", () => {
+    const noegler = [...laes(ARBEJDSKOE).matchAll(/^\s{2}([a-z]+): \{/gm)].map((m) => m[1]);
     assert.deepEqual(noegler.sort(),
       ["afventer", "forsinkede", "kommende", "nye", "planlagt"].sort());
+    /* ⚠ OG IKKE OGSÅ I Vaerkstedskalender.jsx — Driftskalenderen er ikke
+       længere kasernes hjem, og en overlevende kopi ville kunne drive fra
+       Arbejdskoe.jsx's egen, hvis nogen rettede den ene og glemte den
+       anden. */
+    assert.doesNotMatch(f, /KASSER\s*=/, "Fleet har stadig sit eget KASSER-katalog");
   });
 });
 
-describe("C) De fem Fleet-handlingskort åbner arbejdskøen i et panel, ikke en ny side", () => {
+describe("C) Fleet TARGET: Overblik.jsx er arbejdskøens hjem — Driftskalenderen har intet panel", () => {
+  const overblik = laes("src/moduler/flaade/Overblik.jsx");
   const f = laes(FLEET);
 
-  it("⚠ 'ÅBN' SÆTTER LOKAL TILSTAND — NAVIGERER IKKE VÆK", () => {
-    assert.match(f, /const aabnHer = \(noegle\) => setKoeVis\(noegle\);/,
-      "kortenes 'Åbn' navigerer stadig væk fra kalenderen");
-    assert.doesNotMatch(udenKommentarer(f), /const aabnHer = \(noegle\) => navigate\(/,
-      "den gamle navigate()-version er her stadig");
+  it("Overblik importerer den DELTE ArbejdskoeIndhold — ikke kopieret", () => {
+    assert.match(overblik, /import \{ ArbejdskoeIndhold \} from "\.\/Arbejdskoe\.jsx";/);
+    assert.doesNotMatch(udenKommentarer(overblik), /function ArbejdskoeIndhold/,
+      "Overblik har sin egen kopi af komponenten");
+    assert.match(overblik, /<ArbejdskoeIndhold[\s\S]{0,200}vis=\{vis\}/);
   });
 
-  it("panelet er den DELTE ArbejdskoeIndhold, importeret — ikke kopieret", () => {
-    assert.match(f, /import \{ ArbejdskoeIndhold \} from "\.\/Arbejdskoe\.jsx";/);
-    assert.doesNotMatch(udenKommentarer(f), /function ArbejdskoeIndhold/,
-      "Fleet har sin egen kopi af komponenten");
-    assert.match(f, /<ArbejdskoeIndhold[\s\S]{0,200}vis=\{koeVis\}/);
+  it("⚠ Driftskalenderen embedder IKKE LÆNGERE ArbejdskoeIndhold — arkitekturen flyttede med vilje", () => {
+    assert.doesNotMatch(f, /ArbejdskoeIndhold/,
+      "Vaerkstedskalender.jsx importerer stadig arbejdskøen — Fleet TARGET flyttede den til Overblik.jsx");
   });
 
-  it("⚠ 'ÅBN I NYT VINDUE' ER URØRT — et rigtigt browservindue, ikke panelet", () => {
-    /* Den anden halvdel af Delknap: et REELT vindue på den kanoniske rute,
-       fordi et nyt vindue ikke arver nogen React-tilstand. */
-    assert.match(f, /aabnNytVindue/);
-    assert.match(f, /window\.open\(koeSti\(noegle\)/);
+  it("⚠ 'ÅBN I NYT VINDUE' LEVER VIDERE — nu fra Overblik, samme kanoniske rute", () => {
+    /* Den anden halvdel af den gamle Delknap-genvej: et REELT vindue på den
+       kanoniske, URL-bårne rute, fordi et nyt vindue ikke arver nogen
+       React-tilstand. Se Arbejdskoe.jsx's egen note om vis/frem i URL'en. */
+    assert.match(overblik, /window\.open\(\s*`\/flaade\/koe\?vis=/);
   });
 });
 

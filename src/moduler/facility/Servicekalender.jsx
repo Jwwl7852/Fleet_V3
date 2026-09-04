@@ -48,27 +48,22 @@ import { useMemo, useState } from "react";
 import { useKpi } from "../../fleet/useKpi.js";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { kr, num, dato, datoTid, klokke } from "../../fleet/format.js";
+import { kr, num, dato, klokke } from "../../fleet/format.js";
 import {
-  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand,
-  MiniLinje, Knap, Formularsvar, Kpiadgang, Dialog, Faner } from "../../fleet/ui.jsx";
+  Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand,
+  Knap, Formularsvar, Kpiadgang, ModulNav } from "../../fleet/ui.jsx";
 import { blokerer } from "../../fleet/datatilstand.js";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, ledigeVinduer } from "../../fleet/gitter.js";
-import {
-  reservationFraOpgave, ressourceId, OPGAVE_STATUS,
-} from "../../fleet/opgaver.js";
+import { ressourceId, OPGAVE_STATUS } from "../../fleet/opgaver.js";
 import { slutter } from "../../fleet/driftskalender.js";
 import { flytOpgave, kanFlyttes } from "../../fleet/opgaveplan.js";
-import Statusskifte from "../../fleet/Statusskifte.jsx";
 import Servicedialog from "./Servicedialog.jsx";
+import Besoegspanel from "../../fleet/Besoegspanel.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import {
-  KILDE, prioritetFor, konfliktTekst, indeslutninger,
-} from "../../fleet/reservations.js";
+import { indeslutninger } from "../../fleet/reservations.js";
 import { AKTIV_ART, AKTIV_STATUS } from "../../fleet/facility.js";
-/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. */
-import Sagsvisning from "../../fleet/Sagsvisning.jsx";
+import { FACILITY_FANER } from "../../fleet/modulfaner.js";
 /* ⚠ KUN SOM FALDBAKKE I useListe. Sættene bruges når der ingen database er.
    Skærmen slår IKKE op i dem — det var netop dét der gjorde
    DEMO_SERVICEBESOEG til et andet svar end noden. */
@@ -302,6 +297,7 @@ export default function Servicekalender() {
 
   return (
     <div className="fc-grid" style={{ gap: 11 }}>
+      <ModulNav punkter={FACILITY_FANER} />
       <Kpiadgang utilgaengelige={utilgaengelige} />
       {k && (
         <KpiRaekke>
@@ -432,139 +428,5 @@ export default function Servicekalender() {
         />
       )}
     </div>
-  );
-}
-
-/* ---- Den fjerde reservationskilde, i et drawer-panel ------------------ */
-
-const BESOEG_FANER = [
-  { key: "overblik", label: "Overblik" },
-  { key: "sag", label: "Sag" },
-];
-
-/**
- * Klik på "Vis" åbner den her — samme figur som Fleet Driftskalenders
- * Haendelsespanel: `Dialog variant="drawer"`, samme header/luk-mekanik,
- * samme Overblik/Sag-fanedeling, samme delte Sagsvisning. Kalenderen og
- * servicebesøgstabellen bag panelet forbliver synlige og scroller ikke væk
- * (§1 V1 visuel konsolidering).
- *
- * ⚠ DEN LÆSTE BESØGETS `fra`, `til` OG `sagsnummer` — FELTER NODEN IKKE HAR.
- *
- * Præcis samme fejl som Disponerings detaljepanel havde, og det er tredje gang
- * de navne koster noget. Da skærmen tegnede DEMO_SERVICEBESOEG, virkede det;
- * på en rigtig post ville panelet have skrevet "Invalid Date" i begge ender og
- * ingen sag. Noden bærer `startMs` og `estimeretMin`, og slutningen REGNES.
- *
- * ⚠ OG `lvNavn` KOM UDEFRA SOM EN MODUL-KONST bygget af demofilen. Den er nu
- * en parameter, bygget af den hentede leverandørliste — en underkomponent kan
- * ikke se den ydre komponents variabler, og en modul-konst der slog op i et
- * demosæt, ville vise vores demoværksteds navne hos en rigtig kunde.
- */
-function Besoegspanel({ besoeg, lvNavn, lokNavn, aktiver, maaSkrive, onLuk, onSkiftet }) {
-  const [fane, setFane] = useState("overblik");
-  const label = besoeg.aktivId
-    ? aktiver.find((a) => a.id === besoeg.aktivId)?.navn || besoeg.aktivId
-    : lokNavn(besoeg.lokationId) || besoeg.lokationId;
-
-  let r = null, byggefejl = null;
-  try { r = reservationFraOpgave(besoeg); } catch (e) { byggefejl = e.message; }
-  const pri = prioritetFor(KILDE.facilitySag);
-  const heleStedet = !besoeg.aktivId;
-  const slut = slutter(besoeg);
-
-  return (
-    <Dialog
-      variant="drawer"
-      titel={besoeg.beskrivelse}
-      under={[label, besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : "eget personale"]
-        .filter(Boolean).join(" · ")}
-      handling={<Pille tone={OPGAVE_STATUS[besoeg.status]?.pill}>
-        {OPGAVE_STATUS[besoeg.status]?.label}</Pille>}
-      onLuk={onLuk}
-    >
-      <Faner faner={BESOEG_FANER} valgt={fane} saet={setFane} label="Servicebesøg" />
-
-      {fane === "overblik" && (byggefejl ? <Fejl>{byggefejl}</Fejl> : (
-        <>
-          <MiniLinje label="Arbejde" vaerdi={besoeg.beskrivelse} />
-          <MiniLinje
-            label="Udføres af"
-            vaerdi={besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : "eget personale"}
-          />
-          <MiniLinje label="Fra" vaerdi={datoTid(besoeg.startMs)} />
-          {/* ⚠ EN OPGAVE UDEN ESTIMAT HAR INGEN SLUTNING, og det er ikke det
-              samme som at den slutter med det samme. Gitteret giver den et
-              synligt minimum for at kunne tegne den; panelet siger sandheden. */}
-          <MiniLinje
-            label="Til"
-            vaerdi={slut
-              ? `${datoTid(slut)} (eksklusiv)`
-              : <span className="fc-bad">intet estimat</span>}
-          />
-
-          <div style={{ borderTop: "1px solid var(--bc-line)", margin: "12px 0" }} />
-
-          <MiniLinje label="Ressource" vaerdi={<code>{r.ressourceType}</code>} />
-          <MiniLinje label="Ressource-id" vaerdi={<code>{r.ressourceId}</code>} />
-          <MiniLinje label="Kilde" vaerdi={<code>{r.kilde.type}</code>} />
-          <MiniLinje
-            label="Prioritet"
-            vaerdi={<><b>{pri}</b> — taber til værksted (40) og fravær (30), vinder over booking (10)</>}
-          />
-
-          {heleStedet && (
-            <p className="fc-hint" style={{ marginTop: 12 }}>
-              ⚠ Besøget har <b>intet anlæg</b> og spærrer derfor <b>hele lokationen</b>.
-              Ressourcen er <code>lokation</code> og ikke <code>facilityAktiv</code> —
-              lukker man hallen, er alle porte i den også optaget.
-            </p>
-          )}
-
-          <p className="fc-hint" style={{ marginTop: 12, fontStyle: "italic" }}>
-            {/* ⚠ REFERENCEN ER OPGAVENS id, IKKE ET SAGSNUMMER. Nummeret stod
-                på demofilens poster; noden bærer det ikke, og `sager/` findes
-                ikke i firebase.rules.json endnu (beslutning 20 er fase 0). Et
-                nummer skrevet af på opgaven ville drive fra sagen. */}
-            „{konfliktTekst(r, { kilde: { type: KILDE.facilitySag, reference: besoeg.id } })}“
-          </p>
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            <b>Den fjerde kilde krævede ingen ny kode.</b> Et servicebesøg er en opgave
-            med art <b>facility</b>, og <code>reservationFraOpgave()</code> giver
-            allerede kilde <b>facilitySag</b>. Beslutning 4 er én node, fire kilder.
-          </p>
-          {/* ⚠ HER STOD "Reservationen skrives ikke endnu — konfliktfriheden
-              hører i en Cloud Function". Den findes: `opgaveflyt` flytter
-              besøget og dets reservation atomisk (beslutning 49), og
-              `opgavestatus` skifter status og reservationens følge
-              (beslutning 50). Begge prøver ledigheden server-side, hvor to
-              skrivninger i samme sekund kan afgøres. */}
-          <div style={{ marginTop: 14 }}>
-            <Statusskifte opgave={besoeg} maaSkrive={maaSkrive} onSkiftet={onSkiftet} />
-          </div>
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            <b>Flyt</b> besøget ved at <b>trække blokken</b> i kalenderen. Slippes
-            den på en <b>lokationsrække</b>, spærrer den hele stedet i stedet for
-            ét anlæg — og det er ikke en detalje, det er forskellen på at lukke en
-            port og at lukke en hal.
-          </p>
-        </>
-      ))}
-
-      {/* ⚠ SKIVE 3C — DEN DELTE Sagsvisning, IKKE EN EGEN FACILITY-KOPI. Samme
-          komponent som Fleet Driftskalenders Haendelsespanel bruger. */}
-      {fane === "sag" && (
-        <Sagsvisning
-          sagId={besoeg.sagId || null}
-          objektType="opgave"
-          objektId={besoeg.id}
-          art="facility"
-          objektLabel={label}
-          emneForslag={besoeg.beskrivelse}
-          modpartNavnForslag={besoeg.leverandoerId ? lvNavn(besoeg.leverandoerId) : ""}
-          onGenindlaes={onSkiftet}
-        />
-      )}
-    </Dialog>
   );
 }
