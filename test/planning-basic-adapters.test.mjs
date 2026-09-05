@@ -133,6 +133,9 @@ describe("Import- og sideeffektgrænser", () => {
     "src/fleet/demo-planning-basic.js", "src/fleet/planning-adapters/booking.js",
     "src/fleet/planning-adapters/fleet.js", "src/fleet/planning-adapters/workforce.js",
     "src/fleet/planning-adapters/reservationer.js", "src/fleet/planning-adapters/providers.js",
+    "src/fleet/planning-basic-v2.js", "src/fleet/planning-basic-v2-kontrakt.js",
+    "src/fleet/planning-basic-ruteskabeloner.js", "src/fleet/planning-basic-tidsberegning.js",
+    "src/fleet/planning-basic-fremdrift.js", "src/fleet/demo-planning-basic-v2.js",
   ];
 
   const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);

@@ -21,7 +21,7 @@ export const KILDE = Object.freeze({
 export const REFERENCEART = Object.freeze({
   MEDARBEJDER: "medarbejder", TEAM: "team", KOERETOEJ: "koeretoej",
   LOKATION: "lokation", UDSTYR: "udstyr", KUNDE: "kunde",
-  OPGAVE: "opgave", RUTE: "rute",
+  OPGAVE: "opgave", RUTE: "rute", RUTESKABELON: "ruteskabelon",
 });
 
 export const OPGAVESTATUS = Object.freeze({ KLADDE: "kladde", AKTIV: "aktiv", SUSPENDERET: "suspenderet", ARKIVERET: "arkiveret" });
