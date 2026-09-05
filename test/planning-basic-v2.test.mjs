@@ -460,7 +460,7 @@ describe("Tenant-, reference- og importgrænser", () => {
     "src/fleet/planning-basic-ruteskabeloner.js", "src/fleet/planning-basic-tidsberegning.js",
     "src/fleet/planning-basic-fremdrift.js", "src/fleet/demo-planning-basic-v2.js",
   ];
-  const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
+  const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/(?:from\s+|import\s+)["']([^"']+)["']/g)].map((m) => m[1]);
   function grafFra(start, sete = new Set()) {
     const fil = resolve(rod, start);
     if (sete.has(fil)) return sete;
@@ -502,6 +502,21 @@ describe("Tenant-, reference- og importgrænser", () => {
     };
     gaa(src);
     const nye = new Set(nyeKernefiler.map((f) => resolve(rod, f)));
-    for (const fil of alle.filter((f) => !nye.has(f) && !f.endsWith("planning-basic.js"))) assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic-v2/, fil);
+    const erPlanningUi = (fil) => fil.replaceAll("\\", "/").includes("/src/fleet/planning-ui/");
+    const uiFiler = alle.filter(erPlanningUi);
+    assert.ok(uiFiler.length > 0, "Planning-UI skal klassificeres som Planning, ikke som domænekerne");
+
+    for (const fil of alle.filter((f) => !nye.has(f) && !f.endsWith("planning-basic.js") && !erPlanningUi(f))) {
+      assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic-v2/, fil);
+    }
+
+    for (const fil of uiFiler) {
+      for (const imp of imports(fil)) {
+        if (/planning-basic-v2/.test(imp)) {
+          assert.ok(["../planning-basic-v2.js", "../demo-planning-basic-v2.js"].includes(imp), `${fil} skal bruge v2-facaden eller den syntetiske v2-fixture`);
+        }
+        assert.doesNotMatch(imp, /firebase|functions|permissions|booking-state/i, `${fil} har en forbudt UI-import`);
+      }
+    }
   });
 });

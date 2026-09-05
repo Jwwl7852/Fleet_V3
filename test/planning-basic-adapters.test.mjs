@@ -138,7 +138,7 @@ describe("Import- og sideeffektgrænser", () => {
     "src/fleet/planning-basic-fremdrift.js", "src/fleet/demo-planning-basic-v2.js",
   ];
 
-  const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
+  const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/(?:from\s+|import\s+)["']([^"']+)["']/g)].map((m) => m[1]);
 
   function grafFra(start, sete = new Set()) {
     const fil = resolve(rod, start);
@@ -177,7 +177,7 @@ describe("Import- og sideeffektgrænser", () => {
     }
   });
 
-  it("ingen eksisterende kildefil importerer Planning-kernen", () => {
+  it("adskiller Planning-UI fra kernen og øvrige kildefiler", () => {
     const src = resolve(rod, "src");
     const alle = [];
     const gaa = (mappe) => {
@@ -189,6 +189,47 @@ describe("Import- og sideeffektgrænser", () => {
     };
     gaa(src);
     const nye = new Set(nyeFiler.map((f) => resolve(rod, f)));
-    for (const fil of alle.filter((f) => !nye.has(f))) assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic/, fil);
+    const erPlanningUi = (fil) => fil.replaceAll("\\", "/").includes("/src/fleet/planning-ui/");
+    const uiFiler = alle.filter(erPlanningUi);
+    assert.ok(uiFiler.length > 0, "Planning-UI skal klassificeres som sit eget lag");
+
+    for (const fil of alle.filter((f) => !nye.has(f) && !erPlanningUi(f))) {
+      assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic/, fil);
+    }
+
+    const erForbudtUiImport = (sti) => /firebase|functions|permissions|booking-state/i.test(sti);
+    const erTilladtUiImport = (sti) => sti === "react" || sti === "react-dom/client" || sti.startsWith("./")
+      || ["../fleet.css", "../planning-basic-v2.js", "../demo-planning-basic-v2.js"].includes(sti);
+    assert.equal(erForbudtUiImport("../firebase.js"), true);
+    assert.equal(erForbudtUiImport("../permissions.js"), true);
+    assert.equal(erForbudtUiImport("../planning-basic-v2.js"), false);
+    assert.ok(uiFiler.some((fil) => imports(fil).includes("react")), "Planning-UI må importere React");
+    assert.ok(uiFiler.some((fil) => imports(fil).includes("../planning-basic-v2.js")), "Planning-UI skal bruge den offentlige Planning-facade");
+
+    for (const fil of uiFiler) {
+      const kilde = readFileSync(fil, "utf8");
+      for (const imp of imports(fil)) {
+        assert.equal(erForbudtUiImport(imp), false, `${fil} har en forbudt UI-import: ${imp}`);
+        assert.equal(erTilladtUiImport(imp), true, `${fil} importerer uden for Planning-UI's offentlige grænse: ${imp}`);
+      }
+      assert.doesNotMatch(kilde, /httpsCallable|initializeApp|getDatabase|fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB/i, fil);
+    }
+
+    const uiSaet = new Set(uiFiler);
+    const besoegt = new Set();
+    const aktive = new Set();
+    const gaaUi = (fil) => {
+      assert.equal(aktive.has(fil), false, `Importcyklus i Planning-UI ved ${fil}`);
+      if (besoegt.has(fil)) return;
+      aktive.add(fil);
+      for (const imp of imports(fil).filter((sti) => sti.startsWith("."))) {
+        let maal = resolve(dirname(fil), imp);
+        if (!extname(maal)) maal += ".js";
+        if (uiSaet.has(maal)) gaaUi(maal);
+      }
+      aktive.delete(fil);
+      besoegt.add(fil);
+    };
+    for (const fil of uiFiler) gaaUi(fil);
   });
 });
