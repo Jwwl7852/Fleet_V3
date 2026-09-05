@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 120 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 122 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Bygget** — tilbage er mails og fotos i klik-kortet, som venter på beslutning 20 |
@@ -230,6 +230,8 @@ tilfældigt.
 | 118 | **Oversigtens enhedsvalg — den hængende reference fra 117 rettet.** `opgaveEnhed(id)` svarer `null` for et `koeretoejId` der ikke længere findes, og enhedsvalget sorterede med `.localeCompare` direkte på det — en blank hvid skærm for enhver rolle. ⚠ **`kundeNavn` og `opgavePerson` faldt allerede tilbage til id; kun enhedsvalget manglede det.** Rettet til samme mønster: `opgaveEnhed(id) \|\| id`. Ikke undersøgt: hvorfor referencen hænger i første omgang | `moduler/booking/Oversigt.jsx`, `test/oversigt-haengende-enhed.test.mjs` |
 | 119 | **Den hostede DEV-brugerskifter sendte alle roller til chaufførskærmen.** Første interne v1-test fandt at ethvert rolleskifte endte på chaufførappen — men `uid`/`tenant`/`rolle`/`perms` var KORREKTE efter hvert skifte; fejlen var hvilken RUTE browseren stod på. `TilLogin`/`EfterLogin` husker "kom fra" i browserens egen history-state, og `DevTesterVaelger.jsx` ligger bevidst uden for `<BrowserRouter>` — så var forrige identitet chauffør (sad på `/app`, åben for enhver med adgang siden 117, ikke kun chauffører), overlevede `fra: "/app"` under den næste, helt anden identitet. ⚠ **Løsningen er IKKE at lukke `/app` for andre end chauffører** (117 står urørt, håndhævet af `test/chaufforadgang.test.mjs`) — den er at rydde det forældede "fra" med `window.history.replaceState()`, en ren browser-API uden en Router at være uenig med. Verificeret **live**: admin → koordinator → disponent → lagermedarbejder → revisor → chauffør, claim for claim, korrekt shell hver gang | `functions/index.js`, `moduler/DevTesterVaelger.jsx`, `App.jsx` |
 | 120 | **casehandler konsolideret ind i koordinator.** Ejernes beslutning efter første test: de to repræsenterer samme praktiske rolle. Alle referencer kortlagt FØR noget blev fjernet — permissions, provisionering, 16 testfiler, levende docs. ⚠ **Fundet og rapporteret FØR fjernelse:** casehandler havde `booking.opret`, koordinator havde det ikke — uden en rettelse kunne kun admin oprette en booking. Ejerne valgte at give koordinator permissionen: en bevidst, smal overførsel, ikke en bred udvidelse. ⚠ **Bryder ikke fire-øjne-reglen fra beslutning 5** — den handler om FORSLAGET (disponent har `booking.foreslaa` uden `booking.godkend`), ikke om forespørgslen; koordinator har stadig ikke `booking.foreslaa`, så den der foreslår og den der godkender er stadig to roller. Historiske beslutninger (denne tabel, `BESLUTNINGER.md`s egne numre) er IKKE omskrevet — de beskriver hvad der var sandt dengang | `permissions.js`, `dev-brugere.js`, `booking-state.js`, `functions/index.js`, `provisioner-dev.mjs`, `provisioner-v1-test-brugere.mjs`, 16 testfiler, `ARKITEKTUR.md`, `PRISER.md` |
+| 121 | **Chaufførappens tre ugatede handlinger fik en permission — og admin kan ikke længere indskrænkes.** Turplan (`etaper`), Timeregistrering (`stemplinger`) og Anmod om frihed (`fravaer`-ansøgningen) var alle ejerskabs- eller modulstyrede uden nogen permission — kunne ikke slås fra pr. rolle. Fire nye permissions lagt OVEN PÅ ejerskabstjekket, ikke i stedet for det. ⚠ **Revisor får IKKE de to nye `.skriv`-permissions** — presettet må stadig ikke indeholde én eneste skrivning. ⚠ **`etaper.laes` kaskaderede ind i KPI'et** — `opgaver`, `disponering` og `oekonomi` arver kravet fra deres kilde (beslutning 44/104's regel), men ingen reel bruger mister adgang, fordi alle fem driftsroller har permissionen som standard. ⚠ **Og et selvstændigt fund:** intet forhindrede at admin blev indskrænket via `roller/admin` — rettet i `permsForTenant()` og afvist direkte i `rolleskriv` | `permissions.js`, `kpi-aggregering.js`, `functions/index.js`, `firebase.rules.json`, `Brugere.jsx`, `Turplan.jsx`, `Timeregistrering.jsx`, `Frihed.jsx` |
+| 122 | **Automatisk sag+ticketnummer ved indberetning, selvstændig prioritering, og en synlig "afventer planlægning".** Ny Cloud Function `indberetningIndsend` opretter en indberetning og — kun for driftshændelser — en sag med ticketnummer atomisk i én `update()`, samme figur som `opgaveplanlaeg`. `.write` kræver nu `data.exists()` for at oprette; redigering er urørt. ⚠ **Skadebeskrivelse/modpart afvises eksplicit** — Admin-SDK'et ignorerer `.validate`, så en ukritisk videreførelse ville kunne skrive klassificeret indhold på en ugatet node. ⚠ **Disponenten fik `indberetningerSkrivAlle`** (tilføjelse, ikke overførsel — koordinator beholder den) for selv at kunne prioritere. ⚠ **"Afventer planlægning" er en EGEN kasse** (`vurderet`), ikke slået sammen med den eksisterende opgave-baserede `afventer` — samme kilde-skel som `nye` allerede håndhæver | `functions/index.js`, `firebase.rules.json`, `permissions.js`, `audit-regler.js`, `indberetningplan.js`, `Indberetningtriage.jsx`, `driftskalender.js`, `Indberetning.jsx`, `Overblik.jsx`, `Arbejdskoe.jsx` |
 
 ## Struktur
 
@@ -304,7 +306,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **162 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **163 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -531,7 +533,7 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 63 i alt, og alle har indhold
+### Skærmene: 64 i alt, og alle har indhold
 
 ⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
 (29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
@@ -558,7 +560,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Leverandører | 1 | Skive 4B: flyttet ud af Procure — fælles platform-masterdata for Fleet, Facility og Procure. Samme rute (`/indkoeb/leverandoerer`), ny `kraeverPerm: "leverandoerer.laes"` |
 | Økonomi / Fakturagrundlag | 2 | begge børn skjulte (Overblik siden V1: LATER, Fakturagrundlag siden masteropgave §5: sat på pause). Fakturacenter er flyttet til Fælles > Fakturaer & bilag. Ruten findes stadig, kun menuen tier |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
-| Fleet | 7 | Fleet TARGET (masterbrief §1/§9, produktejer-review 2026-09-01): kun Overblik (sti `/flaade`, samme som toppunktet selv) er ikke `skjulINav` — og tegner alligevel ingen undermenu, da AppShell kræver mindst to synlige børn for en chevron. De øvrige seks — Driftskalender, Indberetninger, Servicebog, Statistik, Kontakter, Arbejdskø (kun "åbn i nyt vindue") — er skjulte. Navigation mellem alle syv sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js), ikke i sidebaren. Enheder vises også i fanebjælken, men er stadig samme nav.js-punkt under Opsætning — ingen dobbelttælling |
+| Fleet | 8 | Fleet TARGET (masterbrief §1/§9, produktejer-review 2026-09-01): kun Overblik (sti `/flaade`, samme som toppunktet selv) er ikke `skjulINav` — og tegner alligevel ingen undermenu, da AppShell kræver mindst to synlige børn for en chevron. De øvrige syv — Driftskalender, Indberetninger, Udgifter (TARGET-punkt 3, bygget 2026-09-05 — ren sammenstilling af `opgaver` og `fakturaer`, ingen ny node), Servicebog, Statistik, Kontakter, Arbejdskø (kun "åbn i nyt vindue") — er skjulte. Navigation mellem alle otte sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js), ikke i sidebaren. Enheder vises også i fanebjælken, men er stadig samme nav.js-punkt under Opsætning — ingen dobbelttælling |
 | Facility | 6 | Facility TARGET (samme masterbrief §1, produktejer-review 2026-09-02): kun Overblik (sti `/facility`, samme som toppunktet selv) er ikke `skjulINav`. De øvrige fem — Service & reparation (Servicekalender.jsx, uændret indhold), Inventar, Planlagt, Statistik og Klima & energi (V1: LATER) — er skjulte. Navigation mellem de fire første sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js's FACILITY_FANER); Klima er ikke en fane i bjælken, fordi den er eksplicit uden for V1 |
 | Procure | 7 | Procure TARGET (samme masterbrief §1, produktejer-review 2026-09-02): kun Overblik (sti `/indkoeb`, samme som toppunktet selv) er ikke `skjulINav`. De øvrige seks — Bestillinger (behov, kladder og godkendelse samlet), Varer, Arkiv, Statistik, Match & kontantkøb og Varelager — er skjulte. Navigation mellem de fire første sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js's PROCURE_FANER); Match & kontantkøb og Varelager er ikke faner i bjælken, nået via kontekstuelle links i stedet — Leverandører er stadig flyttet til Fælles |
 | Warehouse | 11 | modulet med flest skærme |
@@ -566,7 +568,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles. Godkendelsesregler er ny (Procure TARGET trin 4) — administrations-UI'et for Procures godkendelsesregler, flyttet ud af Godkendelser.jsx |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **63** | **38 i menuen, 25 skjulte detaljeruter** |
+| **I alt** | **64** | **38 i menuen, 26 skjulte detaljeruter** |
 
 | | |
 |---|---|

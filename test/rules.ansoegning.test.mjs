@@ -26,7 +26,7 @@ import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { ref, set, update, get } from "firebase/database";
-import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { permStrengFraRolle, permsFraRolle, permStreng, PERM } from "../src/fleet/permissions.js";
 import { ANSOEGBARE_ARTER, ALLE_FRAVAER_ARTER, FRAVAER_ART } from "../src/fleet/fravaer.js";
 
 const T = "ansoegTenant";
@@ -178,6 +178,23 @@ describe("Og ingenting andet", () => {
        af nogen med fravaer.skriv, og det er dét der gør erAftalt() sand. */
     assertFails(set(ref(db(), sti("fravaer/f-uden")),
       { personId: MIN_PERSON, fra: FRA, til: TIL })));
+});
+
+describe("⚠ BESLUTNING 121 — fravaer.ansoegSkriv KAN SLÅS FRA PR. ROLLE", () => {
+  /* ⚠ PERMISSION OVEN PÅ EJERSKAB, IKKE I STEDET FOR. Standardrollen har
+     permissionen (se roller.test.mjs), så testene ovenfor beviser ikke at
+     leddet reelt håndhæves — kun at det ikke er gået i vejen. Denne prøve
+     bygger et token med et STRIPPET chauffør-preset, som en tenant der har
+     redigeret rollen i Brugere & roller ville minte. */
+  const udenAnsoegSkriv = permStreng(
+    permsFraRolle("chauffoer").filter((p) => p !== PERM.fravaerAnsoegSkriv));
+
+  it("⚠ EN CHAUFFØR UDEN PERMISSIONEN KAN IKKE LÆNGERE ANSØGE OM FRIHED", () =>
+    assertFails(set(
+      ref(miljoe.authenticatedContext(UID_CHAUFFOER,
+        { tenant: T, rolle: "chauffoer", perms: udenAnsoegSkriv }).database(),
+        sti("fravaer/f-spaerret")),
+      ansoegning())));
 });
 
 describe("En bruger uden koblingen kan ingenting", () => {

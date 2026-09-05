@@ -20,7 +20,7 @@ import { PLANSVAR, tolkPlanfejl } from "./opgaveplan-regler.js";
 export const TRIAGEFUNKTION = "indberetningTriage";
 
 /**
- * trigeIndberetning({ id, handling, begrundelse }) → { ok, art, besked, data }
+ * trigeIndberetning({ id, handling, begrundelse, prioritet }) → { ok, art, besked, data }
  *
  * ⚠ KASTER ALDRIG — samme grund som planlaegOpgave(): "du må ikke", "det
  * skift er ikke lovligt lige nu" og "der er ingen forbindelse" er tre
@@ -29,14 +29,18 @@ export const TRIAGEFUNKTION = "indberetningTriage";
  * `begrundelse` er kun relevant for handling: "afsluttet", og kun når der
  * ikke allerede er registreret en omkostning — se kanAfslutte() i
  * indberetninger.js. Sendes den uden grund, ignorerer serveren den.
+ *
+ * ⚠ `prioritet` ER PÅKRÆVET, MEN KUN NÅR handling ER "vurderet" — se noten i
+ * functions/index.js. Prioritering ER vurderet-skiftet, ikke et ekstra klik.
  */
-export async function trigeIndberetning({ id, handling, begrundelse }) {
+export async function trigeIndberetning({ id, handling, begrundelse, prioritet }) {
   try {
     const svar = await kaldFunktion(TRIAGEFUNKTION, {
       id, handling,
       /* undefined frem for null — se planlaegOpgave() for samme begrundelse:
          en callable dropper feltet, RTDB afviser undefined som værdi. */
       begrundelse: begrundelse?.trim() || undefined,
+      prioritet: prioritet || undefined,
     });
     return { ok: true, art: PLANSVAR.ok, besked: null, data: svar?.data ?? null };
   } catch (fejl) {

@@ -206,10 +206,16 @@ export const KPI_KILDER = {
  */
 export const KPI_PERM = {
   kunder: "kunder.laes",
-  oekonomi: "grundlag.laes",
+  /* ⚠ BESLUTNING 121 — TO KILDER, TO PERMISSIONS. `etaper` fik sin første
+     læse-permission, og `oekonomi` er regnet af BÅDE `etaper` og `grundlag`
+     (se KPI_KILDER) — samme mønster som `flaade`/`indkoeb` med to kilder. */
+  oekonomi: ["etaper.laes", "grundlag.laes"],
   flaade: ["indkoeb.laes", "fakturaer.laes"],
   facility: "leverandoerer.laes",
   indkoeb: ["indkoeb.laes", "fakturaer.laes", "leverandoerer.laes"],
+  /* ⚠ BESLUTNING 121 — NYE, FORDI etaper ER DERES ENESTE KILDE. */
+  opgaver: "etaper.laes",
+  disponering: "etaper.laes",
 };
 
 /**

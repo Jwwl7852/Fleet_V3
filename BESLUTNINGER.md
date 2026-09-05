@@ -4,7 +4,7 @@
 konflikt mellem de 20 mockups, eller lukkede et hul der først blev synligt da
 modellen blev skrevet ned.
 
-Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 120
+Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 122
 trufne beslutninger, og et brud på en af dem skal være bevidst frem for
 tilfældigt. Kolonnen **Hvorfor** er ikke pynt — den er det eneste sted der
 står hvad der gik galt uden beslutningen, og uden den ligner de fleste af dem
@@ -9129,3 +9129,184 @@ netop de seks. `npm test` grønt.
 `src/fleet/booking-state.js`, `functions/index.js`,
 `scripts/provisioner-dev.mjs`, `scripts/provisioner-v1-test-brugere.mjs`,
 `scripts/v1-test-data/drift.mjs`, 16 testfiler, `ARKITEKTUR.md`, `PRISER.md`.
+
+## 121. Chaufførappens tre ugatede handlinger fik en permission — og admin kan ikke længere indskrænkes
+
+Kunden bad om at kunne til- og fravælge læs/skriv på chaufførappens fire
+kort (Timeregistrering, Turplan, Indberetning, Anmod om frihed), pr. rolle,
+med ét fast krav: **admin har altid fuld adgang.**
+
+Platformen havde allerede mekanismen — `roller/<rolle>/perms` og
+"Brugere & roller"s editor, beslutning 31b — og den dækkede allerede
+Indberetning (`indberetninger.skriv`). Tre huller stod tilbage, og et fjerde,
+ubeslægtet sikkerhedshul blev fundet undervejs.
+
+### De tre huller
+
+- **Turplan** (`etaper`): `.read` krævede kun at kunden havde modulet
+  Booking — ingen permission overhovedet. Enhver rolle kunne læse ALLE
+  etaper, og ingen kunne spærres fra Turplan.
+- **Timeregistrering** (`stemplinger/<personId>`): rent ejerskabsbaseret —
+  enhver med et matchende `personId` kunne stemple sig selv ind, uanset
+  rolle. Ingen permission at slå fra.
+- **Anmod om frihed** (`fravaer/<id>.ansoegning`): samme figur som ovenfor —
+  selvbetjeningsgrenen fra beslutning 108 krævede kun ejerskab, ingen
+  permission.
+
+**Rettelsen, ét mønster tre steder:** en ny permission lægges OVEN PÅ
+ejerskabstjekket, ikke i stedet for det — `(ejerskab && perms.contains(...))
+|| <bredere vej>`. Man kan stadig kun læse/skrive sine EGNE data; en tenant
+kan nu spærre selve MULIGHEDEN pr. rolle. Tre nye permissions:
+`etaper.laes`, `stemplinger.laes`, `stemplinger.skriv`, `fravaer.ansoegSkriv`
+(fire — `etaper.laes` og `stemplinger.laes` lagt i `BASIS_LAES`, de to
+`.skriv` i en ny bundt `EGEN_SKRIV`).
+
+⚠ **`EGEN_SKRIV` gives IKKE til revisor.** `test/laeseadgang.test.mjs` og
+`test/rules.permissions.test.mjs` håndhæver allerede at revisorpresettet
+ikke indeholder én eneste `.skriv` — "en revisor der kan rette i det han
+reviderer, reviderer ikke". At give revisor de to nye ville bryde den
+invariant. Konsekvensen er accepteret, ikke overset: en bruger sat til
+revisor mister sin egen selvbetjente stempling/ansøgning, hvis han skulle
+have et personId — revisor er ikke tiltænkt at have vagter.
+
+⚠ **Og `etaper.laes` fik en ukendt kaskade — beslutning 44/104's regel om at
+et KPI-domæne arver sin kildes læse-permission.** `opgaver`, `disponering`
+og `oekonomi` er alle delvist regnet af `etaper` (`KPI_KILDER`), så alle tre
+KPI-domæner arvede kravet: `opgaver` og `disponering` kræver nu
+`etaper.laes`, og `oekonomi` kræver nu BÅDE `etaper.laes` og `grundlag.laes`.
+`test/rules.kpi.test.mjs`s egen prøve — skrevet til at blive rød "den dag
+nogen lægger et beløb i driftstallene" — blev rød af en anden, legitim
+grund, og er opdateret til at prøve det oprindelige princip (ingen
+KOMMERCIEL permission må snige sig ind i `opgaver`) i en form der overlever
+ændringen. **Ingen reel bruger mister adgang**: alle fem driftsroller har
+`etaper.laes` som standard (`BASIS_LAES`), så kaskaden er usynlig med mindre
+en tenant aktivt fjerner den fra en rolle.
+
+### Det fjerde: admin kunne indskrænkes
+
+`permsForTenant()` behandlede `admin` som enhver anden rolle — en tenant
+kunne skrive et `roller/admin` med et vilkårligt udsnit af `ALLE_PERMS`, og
+admin ville miste resten. Intet forhindrede det. Rettet to steder:
+
+- `permsForTenant()` returnerer `[...ALLE_PERMS]` for `admin` FØR noden
+  overhovedet læses — et eksisterende `roller/admin` ignoreres stiltiende.
+- `rolleskriv` (functions/index.js) afviser selve SKRIVNINGEN af
+  `rolle === "admin"` med `failed-precondition` — den reelle håndhævelse,
+  ikke kun et andet-lags sikkerhedsnet. En klient der kaldte funktionen
+  direkte, uden om UI'ets fjernede admin-valgmulighed, afvises stadig.
+
+Rolleeditoren i "Brugere & roller" kan ikke længere vælge admin til
+redigering; admin-rækken i rolletabellen viser i stedet en fast pille
+("Altid alle permissions").
+
+### Uden for scope, med vilje
+
+Ejerkonsollen/`kunde:opret` er ikke ændret — kundens egen admin sætter
+rolledefinitionerne i "Brugere & roller" efter oprettelse, hvilket allerede
+virkede. De øvrige tolv åbne læse-huller i `test/laeseadgang.test.mjs`s
+`UDEN_LAES` (fx `indberetninger`s generelle læsning) er urørte — de har hver
+sin egen, tidligere trufne begrundelse.
+
+### Verificeret
+
+`npm run test:rules`: 3809/3809 grønt. `npm run lint`: rent.
+`Turplan.jsx`, `Timeregistrering.jsx` og `Frihed.jsx` fik samtidig
+`<Datatilstand>` på deres primære læsning — ingen af de tre viste før en
+afvist læsning som andet end en tom liste, hvilket ville have gjort den nye
+spærring usynlig for den der ramte den.
+
+`src/fleet/permissions.js`, `src/fleet/kpi-aggregering.js`,
+`functions/index.js`, `firebase.rules.json`,
+`src/moduler/opsaetning/Brugere.jsx`, `src/moduler/app/Turplan.jsx`,
+`src/moduler/app/Timeregistrering.jsx`, `src/moduler/app/Frihed.jsx`,
+`test/roller.test.mjs`, `test/rules.permissions.test.mjs`,
+`test/stempling.test.mjs`, `test/rules.ansoegning.test.mjs`,
+`test/rules.kpi.test.mjs`, `test/kpiadgang.test.mjs`,
+`test/timeregistrering-bekraeft.test.mjs`.
+
+## 122. Automatisk sag+ticketnummer ved indberetning, selvstændig prioritering, og en synlig "afventer planlægning"
+
+Produktejerens triageflow: så snart en chauffør indberetter en driftshændelse,
+skal der oprettes en sag med et ticketnummer. Disponenten prioriterer den
+(rød/gul/grøn — Akut/Snarest/Kan vente), hvorefter den lægger sig i "afventer
+planlægning". Derfra vælges dato, værksted og et estimeret beløb, som senere
+holdes op mod den rigtige faktura (beslutning 121's Udgifter-fane).
+
+**Meget af flowet fandtes allerede** — tre trins prioritet med farvekodede
+pilder (`prioritet.js`), et forløb ny→vurderet→planlagt→…→afsluttet
+(`indberetninger.js`), en Planlæg-dialog med dato/værksted/beløb, og
+sagsnummer-mekanismen (`sager.js`: `naesteSagsnummer()`, præfiks `FLT`). Tre
+huller var reelle:
+
+1. **Ingen automatisk sag ved indberetning.** `sagOpret` kunne kun kobles til
+   en EKSISTERENDE `opgave`, og en indberetning blev skrevet DIREKTE af
+   klienten — intet sted på serveren en sag kunne oprettes atomisk sammen med
+   den.
+2. **Ingen selvstændig prioriteringshandling.** Prioritet blev kun sat inde i
+   selve Planlæg-dialogen.
+3. **En vurderet-men-ikke-planlagt indberetning var usynlig** i
+   Overblik/Arbejdskø — kun synlig ved at åbne selve Indberetninger-skærmen.
+
+### Rettelsen
+
+**Ny Cloud Function `indberetningIndsend`** erstatter det direkte klientskriv
+for NYE poster. Den opretter indberetningen OG — kun for driftshændelser
+(`kraeverForloeb(art)`, ALDRIG for tankning/parkering/truckwash/kvittering) —
+en sag med ticketnummer, atomisk i én `update()`, samme figur som
+`opgaveplanlaeg`s opgave+reservation. `firebase.rules.json`s `.write` på
+`indberetninger/$id` kræver nu `data.exists()` på begge tilladelsesgrene —
+vejen for at OPRETTE er lukket, retten til at REDIGERE en eksisterende post
+(ejer eller kontor) er urørt. Samme mønster som `opgaver` (beslutning 45).
+
+⚠ **Skadebeskrivelse og modpart afvises eksplicit, ikke stiltiende.** De to
+er klassificerede (`.validate: false` på hovedposten) — en chauffør har
+aldrig kunnet gemme dem der, kun rammes af en generel valideringsfejl. Admin-
+SDK'et i den nye funktion IGNORERER `.validate`, så en ukritisk
+videreførelse af klientens payload ville kunne skrive klassificeret indhold
+ind på en node der ikke kræver `indberetninger.sensitiveLaes` at læse — en
+reel sikkerhedsregression hvis den ikke var fanget. Funktionen afviser i
+stedet eksplicit, med samme udfald som reglen altid har givet (en synlig
+fejl, ikke tabt data). Chaufførens indberetning af en skade uden beskrivelse
+er et kendt, urørt hul — se `functions/index.js`s egen note ved funktionen.
+
+**Prioritering er vurderet-skiftet, ikke et ekstra klik.** `indberetningTriage`
+kræver nu en gyldig `prioritet` når `handling === "vurderet"`, skrevet i
+samme `update()`. Skærmens "Markér som vurderet"-knap er tre farvede knapper
+(genbruger `PRIORITET`-kataloget direkte).
+
+⚠ **Disponenten fik `indberetningerSkrivAlle`.** Permissionen krævedes
+allerede for enhver triage-handling (Skive 3B), og kun koordinator/admin
+havde den — disponenten kunne ikke markere en indberetning som vurderet.
+Dette er en TILFØJELSE, ikke en overførsel; koordinator beholder den uændret.
+
+**"Afventer planlægning" er nu en synlig kasse — men en EGEN, ikke slået
+sammen med den eksisterende `afventer` (opgaver med status
+indberettet/afventer).** En indberetning har et forløb og en art, en opgave
+har en status og et tidspunkt — samme kilde-skel som `driftstal()`s `nye`
+allerede håndhæver, og som Arbejdskoe.jsx's `UDSNIT`-katalog kræver holdt
+i sync med (`test/driftskalender.test.mjs`'s "UDSNIT's nøgler er
+driftstal()'s kategorier" — grøn, ikke svækket). Ny kasse `vurderet` i
+`driftstal()`, ny fane "Prioriteret" i Arbejdskoe, ny række "Prioriteret,
+afventer planlægning" i Overblikkets Handlingsliste. Falder automatisk ud
+igen den dag den planlægges — `opgaveplanlaeg` satte allerede
+`forloeb: "planlagt"` atomisk, ingen ekstra kobling nødvendig.
+
+### Verificeret
+
+`npm run test:rules` grønt (efter at et stort eksisterende testbatteri i
+`test/rules.indberetninger.test.mjs`, som forudsatte at en indberetning
+kunne oprettes direkte, blev rettet til at prøve REDIGERING af en forudsat
+post i stedet — samme validering, ny vej ind). Ny fil
+`test/indberetningindsend.test.mjs`. DEV-browser: send en
+reparations-indberetning fra chaufførappen → ticketnummer i kvitteringen →
+log ind som disponent → se den under "Prioriteret, afventer planlægning" →
+sæt Rød → planlæg med dato/værksted/estimeret beløb → forsvinder fra kassen,
+dukker op i Udgifter-fanen. En tankning opretter ingen sag.
+
+`functions/index.js`, `firebase.rules.json`, `src/fleet/permissions.js`,
+`src/fleet/audit-regler.js`, `src/fleet/indberetningplan.js`,
+`src/fleet/Indberetningtriage.jsx`, `src/fleet/driftskalender.js`,
+`src/moduler/app/Indberetning.jsx`, `src/moduler/flaade/Overblik.jsx`,
+`src/moduler/flaade/Arbejdskoe.jsx`, `test/indberetningindsend.test.mjs`,
+`test/rules.indberetninger.test.mjs`, `test/skive3b-indberetningstriage.test.mjs`,
+`test/driftskalender.test.mjs`.

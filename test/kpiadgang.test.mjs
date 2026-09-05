@@ -91,13 +91,19 @@ describe("De to grunde peger på hver sin handling", () => {
     assert.ok(!utilgaengeligeDomaener(intet, intet).afvigelser);
   });
 
-  it("⚠ EN CHAUFFØR MISTER FIRE DOMÆNER — og de er alle perm, ikke modul", () => {
+  it("⚠ EN BRUGER MED KUN kunder.laes MISTER SEKS DOMÆNER — og de er alle perm, ikke modul", () => {
     /* Kunden har modulerne; brugeren mangler permissionerne. Sagde skærmen
        "virksomheden har ikke modulet", ville han ringe til os om noget der
-       skal ordnes i hans egen opsætning. */
+       skal ordnes i hans egen opsætning.
+       ⚠ BESLUTNING 121 UDVIDEDE FRA FIRE TIL SEKS. `opgaver` og
+       `disponering` fik hver `etaper.laes` som krav, da `etaper` fik sin
+       første læse-permission (KPI_KILDER/KPI_PERM). Den rigtige chauffør
+       mister ingen af de to i praksis — han har etaper.laes som standard
+       (BASIS_LAES) — men denne prøve simulerer en bruger med KUN
+       kunder.laes, ikke chaufførens faktiske sæt. */
     const u = utilgaengeligeDomaener(alt, (p) => p === "kunder.laes");
     assert.deepEqual(Object.keys(u).sort(),
-      ["facility", "flaade", "indkoeb", "oekonomi"]);
+      ["disponering", "facility", "flaade", "indkoeb", "oekonomi", "opgaver"]);
     for (const grund of Object.values(u)) {
       assert.equal(grund, DOMAENE_AARSAG.perm);
     }

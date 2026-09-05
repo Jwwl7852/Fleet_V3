@@ -69,6 +69,11 @@ export const LOGBARE_FELTER = new Set([
      blev triageret, men ikke fra "ny" til "vurderet" — samme begrundelse som
      "status" og "tilstand" ovenfor. */
   "forloeb",
+  /* ⚠ prioritet — TILFØJET 2026-09-05, samme figur som forloeb lige ovenfor.
+     Et fast tal fra prioritet.js (lav|normal|hoej), ikke fritekst — uden
+     feltet kunne loggen se AT en indberetning blev vurderet, men ikke om den
+     blev sat til akut eller til "kan vente". */
+  "prioritet",
   // klassifikation
   /* ⚠ "division" STOD HER og er fjernet i beslutning 79. Feltet findes ikke
      siden 70, og en allowliste der tillader noget der ikke kan skrives, er en

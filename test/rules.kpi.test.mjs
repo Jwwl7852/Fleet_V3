@@ -193,18 +193,27 @@ describe("modulet afgør domænet", () => {
    * ingenting om permissionen: `facility` slipper IKKE for modulet og bærer
    * en permission oveni.
    *
-   * ⚠ OG `opgaver` VAR ET ØJEBLIK GATED. Domænet havde `grundlag` som kilde
-   * for ét felt — `klarTilFakturering`, som lå dobbelt i `oekonomi` — så det
-   * arvede `grundlag.laes` og ville have kostet en disponent seksten
-   * driftstal for ét faktureringstal. Feltet er samlet i økonomidomænet, og
-   * kilden fulgte med. Det er derfor prøven her måler at domænet er FRIT: en
-   * dag nogen lægger et beløb i driftstallene, bliver den rød.
+   * ⚠ OG `opgaver` VAR ET ØJEBLIK GATED PÅ EN KOMMERCIEL PERMISSION. Domænet
+   * havde `grundlag` som kilde for ét felt — `klarTilFakturering`, som lå
+   * dobbelt i `oekonomi` — så det arvede `grundlag.laes` og ville have kostet
+   * en disponent seksten driftstal for ét faktureringstal. Feltet er samlet i
+   * økonomidomænet, og kilden fulgte med.
+   *
+   * ⚠ BESLUTNING 121 GAV DEN EN PERMISSION IGEN — men en DRIFTSPERMISSION,
+   * ikke en kommerciel. `etaper` fik sin første læse-permission (chaufførens
+   * Turplan kan nu spærres pr. rolle), og `opgaver`s KPI har ALTID været
+   * regnet delvist af `etaper` (se KPI_KILDER). Prøven målte tidligere at
+   * domænet var FRIT for enhver permission; den måler nu det samme princip
+   * i en form der overlever den ændring: ingen KOMMERCIEL permission må
+   * snige sig ind. En disponent har ikke grundlag.laes, men han har (og
+   * skal have) etaper.laes — og det er præcis hvad testen nedenfor viser.
    */
-  it("⚠ opgaver ER FRIT I BEGGE AKSER — og skal blive det", async () => {
-    assert.ok(!KPI_PERM.opgaver,
-      "opgaver har fået en permission — hvilket felt kom fra en gated node?");
+  it("⚠ opgaver ER FRIT FOR KOMMERCIELLE PERMISSIONS — og skal blive det", async () => {
+    assert.equal(KPI_PERM.opgaver, "etaper.laes",
+      "opgaver kræver noget andet end etaper.laes — hvilket felt kom fra en gated node?");
     assert.deepEqual(KPI_KILDER.opgaver, ["opgaver", "etaper"]);
-    /* Disponenten har ikke grundlag.laes, og det skal ikke betyde noget her. */
+    /* Disponenten har ikke grundlag.laes, og det skal ikke betyde noget her —
+       kun etaper.laes tæller, og den har han via BASIS_LAES. */
     await assertSucceeds(get(ref(som(BASIS, "disponent"), dom(BASIS, "opgaver"))));
     /* `afvigelser` har slet ingen kilder. */
     assert.ok(!KPI_PERM.afvigelser);

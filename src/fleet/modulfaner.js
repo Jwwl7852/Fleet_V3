@@ -19,6 +19,10 @@ export const FLEET_FANER = [
   { sti: "/flaade", label: "Overblik" },
   { sti: "/flaade/driftskalender", label: "Driftskalender" },
   { sti: "/flaade/indberetninger", label: "Indberetninger" },
+  /* ⚠ TARGET-punkt 3 (samme afsnit som ovenfor), bygget 2026-09-05. Ren
+     sammenstilling af eksisterende opgave- og fakturadata — se
+     Udgifter.jsx's eget hoved. */
+  { sti: "/flaade/udgifter", label: "Udgifter" },
   { sti: "/flaade/servicebog", label: "Servicebog" },
   { sti: "/opsaetning/enheder", label: "Enheder" },
   { sti: "/flaade/statistik", label: "Statistik" },

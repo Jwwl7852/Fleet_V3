@@ -197,7 +197,11 @@ export default function AppShell() {
       <MiljoeBjaelke />
       <div className="fc-app">
         <aside className="fc-side">
-          <div className="fc-brand">Fleet<b>Control</b></div>
+          {/* ⚠ VEYRO SYSTEMS-LOGOET, IKKE FLEETCONTROL-ORDMÆRKET — skiftet
+              2026-09-05. FleetControl er nu en applikation UNDER firmaet
+              Veyro Systems, ikke firmanavnet selv. Versionsnummeret bliver
+              stående under logoet, som før under ordmærket. */}
+          <img src="/logo.jpg" alt="Veyro Systems" className="fc-logo" />
           <div className="fc-ver">version 3.0</div>
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
 

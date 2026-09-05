@@ -78,8 +78,15 @@ describe("permission-gaten skelner chaufføren fra kontortriagen", () => {
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.indberetningerSkrivAlle));
   });
 
-  it("ingen anden driftsrolle end koordinator fik den ved siden af", () => {
-    for (const rolle of ["disponent", "lagermedarbejder", "revisor"]) {
+  /* ⚠ TILFØJET 2026-09-05 — produktejerens eget triageflow: "Disponenten
+     prioriterer". Uden den kunne disponenten ikke markere en indberetning
+     som vurderet, endsige sætte en prioritet på den — se permissions.js. */
+  it("⚠ DISPONENTEN HAR DEN OGSÅ — han prioriterer indberetningerne", () => {
+    assert.ok(ROLLE_PERMS.disponent.includes(PERM.indberetningerSkrivAlle));
+  });
+
+  it("ingen anden driftsrolle end koordinator og disponent fik den", () => {
+    for (const rolle of ["lagermedarbejder", "revisor"]) {
       assert.ok(!ROLLE_PERMS[rolle].includes(PERM.indberetningerSkrivAlle), rolle);
     }
   });
@@ -157,16 +164,27 @@ describe("indberetningTriage håndhæver det skærmen viser", () => {
       "indberetningTriage rører opgaver/ — det er opgaveplanlaegs arbejde");
   });
 
-  it("⚠ KUN forloeb OG ingenOmkostning KAN SKRIVES — intet andet felt", () => {
-    /* Alle skrivestier i denne funktion, læst af som tekst. En sjette sti
-       ville betyde at funktionen kunne røre noget triage ikke må. */
+  it("⚠ KUN forloeb, ingenOmkostning OG prioritet KAN SKRIVES — intet andet felt", () => {
+    /* Alle skrivestier i denne funktion, læst af som tekst. En fjerde sti
+       ville betyde at funktionen kunne røre noget triage ikke må.
+       ⚠ prioritet TILFØJET 2026-09-05 — produktejerens triageflow:
+       prioritering ER vurderet-skiftet, ikke et ekstra klik. Se noten
+       lige ved siden af KUN TO MÅL ovenfor: stadig kun to MÅL (vurderet/
+       afsluttet), men "vurderet" skriver nu to felter i samme skridt. */
     const stier = [...triageBlok.matchAll(/opdatering\[`indberetninger\/\$\{id\}\/([a-zA-Z]+)`\]/g)]
       .map((m) => m[1]);
     assert.ok(stier.length >= 1);
     for (const felt of stier) {
-      assert.ok(["forloeb", "ingenOmkostning"].includes(felt),
-        `triage skriver til "${felt}", som ikke er forloeb eller ingenOmkostning`);
+      assert.ok(["forloeb", "ingenOmkostning", "prioritet"].includes(felt),
+        `triage skriver til "${felt}", som ikke er forloeb, ingenOmkostning eller prioritet`);
     }
+  });
+
+  /* ⚠ TILFØJET 2026-09-05. */
+  it("⚠ VURDERET KRÆVER EN GYLDIG PRIORITET — afvises uden", () => {
+    assert.match(triageBlok, /handling === "vurderet"/);
+    assert.match(triageBlok, /!prioritet \|\| !PRIORITET\[prioritet\]/);
+    assert.match(triageBlok, /ALLE_PRIORITETER\.join/);
   });
 
   it("⚠ OPRINDELIGE FELTER BEVARES — ingen skrivning til dem", () => {
@@ -317,7 +335,11 @@ describe("⚠ knapteksten for \"vurderet\" siger det den gemmer", () => {
   });
 
   it("⚠ ETIKETTEN BRUGER ORDET FRA FORLOEB — \"vurderet\"", () => {
-    assert.match(ui, /vurderet:\s*"[^"]*[Vv]urderet[^"]*"/,
-      "knapteksten for forloeb \"vurderet\" nævner ikke ordet \"vurderet\"");
+    /* ⚠ TILFØJET 2026-09-05 — "vurderet" er ikke længere ÉN knap med en fast
+       etiket (ETIKET.vurderet er fjernet): produktejerens triageflow gjorde
+       den til tre farvede prioritetsknapper, hver med sin egen title-tekst.
+       Ordet "vurderet" skal stadig stå i den, af samme grund som før. */
+    assert.match(udenKommentarer(ui), /markér som vurderet/i,
+      "prioritetsknappernes tekst nævner ikke ordet \"vurderet\"");
   });
 });

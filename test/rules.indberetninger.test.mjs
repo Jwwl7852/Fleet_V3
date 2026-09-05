@@ -60,6 +60,37 @@ const UNDERSKRIFT = {
   ms: 1786912777755,
 };
 
+/**
+ * ⚠ TILFØJET 2026-09-05 — indberetninger/$id.write kræver nu data.exists()
+ * på BEGGE grene (indberetninger.skriv og indberetninger.skrivAlle). En
+ * frisk post kan derfor ikke længere skrives direkte af en klient — den
+ * kommer kun fra `indberetningIndsend` (Cloud Function, Admin-SDK, som går
+ * uden om reglerne), fordi den samtidig skal oprette en sag med et
+ * ticketnummer i samme update(). Se firebase.rules.json's egen note ved
+ * indberetninger/$id.write.
+ *
+ * Testene her prøver stadig `.validate` — feltformer, obligatoriske felter,
+ * ordlister — som gælder UÆNDRET for en REDIGERING. `seedPost()` lægger
+ * derfor en gyldig post ned FØRST, uden om reglerne, så den efterfølgende
+ * `set()`/`update()` i selve prøven bliver en redigering (data.exists() ===
+ * true) i stedet for en oprettelse — og dermed rammer den `.validate`, som
+ * er dét prøven faktisk handler om, ikke det nye skriveslør.
+ */
+async function seedPost(id, oprettetAf, ekstra = {}) {
+  await miljoe.withSecurityRulesDisabled(async (ctx) => {
+    await set(ref(ctx.database(), sti(`indberetninger/${id}`)), POST({ oprettetAf, ...ekstra }));
+  });
+}
+
+/** Samme som seedPost(), men uden POST()'s koeretoejsskade-baseline — til
+ * TANKNING() og andre former der ikke deler POST()'s felter (fx braendstof,
+ * som ikke har `forloeb`). */
+async function seedRaw(id, data) {
+  await miljoe.withSecurityRulesDisabled(async (ctx) => {
+    await set(ref(ctx.database(), sti(`indberetninger/${id}`)), data);
+  });
+}
+
 before(async () => {
   miljoe = await initializeTestEnvironment({
     projectId: "fc-rules-ind",
@@ -86,9 +117,11 @@ after(async () => { await miljoe?.cleanup(); });
    ══════════════════════════════════════════════════════════════════════ */
 describe("indberetningen", () => {
   it("tager en fuldt udfyldt post", async () => {
-    /* ⚠ oprettetAf SKAL VAERE SKRIVERENS EGET uid. Foerste udgave af proeven
-       skrev "uid-lars" som en vilkaarlig streng — og det gik igennem, fordi
-       ejerskabet kun blev proevet ved REDIGERING. Se proeven nedenfor. */
+    /* ⚠ TILFØJET 2026-09-05 — en frisk post kræver nu indberetningIndsend()
+       (se seedPost()'s note). Prøven seeder derfor posten først, uden om
+       reglerne, og prøver så at (gen)skrive den FULDE gyldige form som en
+       REDIGERING — hvilket stadig er dét .validate skal acceptere. */
+    await seedPost("i-ok", "u1");
     await assertSucceeds(set(ref(medPerms("u1", [PERM.indberetningerSkriv]),
       sti("indberetninger/i-ok")), POST({ oprettetAf: "u1" })));
   });
@@ -96,10 +129,18 @@ describe("indberetningen", () => {
   it("⚠ oprettetAf ER ET uid — og reglen sammenligner med auth.uid", async () => {
     /* Bytter man uid og personId, holder ejerskabstjekket op med at virke:
        et personId matcher aldrig et uid, og så kan ingen chauffør rette sin
-       egen post. Prøven her viser at feltet ER det reglen læser. */
+       egen post. Prøven her viser at feltet ER det reglen læser.
+       ⚠ TILFØJET 2026-09-05 — begge poster seedes nu først (en frisk
+       oprettelse kræver indberetningIndsend()). "i-egen" prøver at GEMME
+       igen med samme ejer (skal lykkes); "i-andens" prøver at OMDØBE ejeren
+       til en anden, som auth.uid — det er stadig præcis den sammenligning
+       reglen laver, nu på redigeringen i stedet for oprettelsen. */
     const ch = somRolle("uid-ch", "chauffoer");
+    await seedPost("i-egen", "uid-ch");
     await assertSucceeds(
       set(ref(ch, sti("indberetninger/i-egen")), POST({ oprettetAf: "uid-ch" })));
+
+    await seedPost("i-andens", "uid-ch");
     await assertFails(
       set(ref(ch, sti("indberetninger/i-andens")), POST({ oprettetAf: "en-anden" })));
   });
@@ -115,20 +156,24 @@ describe("indberetningen", () => {
     const db = medPerms("u3", [PERM.indberetningerSkriv]);
     assert.deepEqual(SENSITIVE_FELTER, ["skadeBeskrivelse", "modpart", "underskrift"]);
     for (const felt of SENSITIVE_FELTER) {
+      await seedPost(`klas-${felt}`, "u3");
       await assertFails(set(ref(db, sti(`indberetninger/klas-${felt}`)),
         POST({ oprettetAf: "u3", [felt]: felt === "modpart" ? { navn: "X" } : "noget" })));
     }
   });
 
   it("afviser et ukendt felt", async () => {
+    await seedPost("i-ekstra", "u4");
     await assertFails(set(ref(medPerms("u4", [PERM.indberetningerSkriv]), sti("indberetninger/i-ekstra")),
       POST({ oprettetAf: "u4", forsikringssum: 1 })));
   });
 
   it("⚠ EN OMKOSTNING ER HELE ØRE", async () => {
     const db = medPerms("u5", [PERM.indberetningerSkriv]);
+    await seedPost("i-oere", "u5");
     await assertSucceeds(set(ref(db, sti("indberetninger/i-oere")),
       POST({ oprettetAf: "u5", omkostningOere: 184500 })));
+    await seedPost("i-float", "u5");
     await assertFails(set(ref(db, sti("indberetninger/i-float")),
       POST({ oprettetAf: "u5", omkostningOere: 1845.5 })));
   });
@@ -164,7 +209,11 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
     ...o,
   });
 
+  /* ⚠ TILFØJET 2026-09-05 — hver prøve seeder nu en fuldt gyldig tankning
+     FØRST (uden om reglerne), så den efterfølgende set() bliver en
+     redigering — se seedRaw()/seedPost()'s fælles note. */
   it("en fuldt udfyldt tankning tages", async () => {
+    await seedRaw("tank-ok", TANKNING());
     await assertSucceeds(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-ok")),
       TANKNING()));
   });
@@ -172,6 +221,7 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
   it("⚠ UDEN koeretoejId AFVISES", async () => {
     const uden = TANKNING();
     delete uden.koeretoejId;
+    await seedRaw("tank-uden-enhed", TANKNING());
     await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-enhed")),
       uden));
   });
@@ -179,6 +229,7 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
   it("⚠ UDEN dato AFVISES", async () => {
     const uden = TANKNING();
     delete uden.dato;
+    await seedRaw("tank-uden-dato", TANKNING());
     await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-dato")),
       uden));
   });
@@ -186,11 +237,13 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
   it("⚠ UDEN liter AFVISES", async () => {
     const uden = TANKNING();
     delete uden.liter;
+    await seedRaw("tank-uden-liter", TANKNING());
     await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-uden-liter")),
       uden));
   });
 
   it("⚠ EN DATO DER IKKE ER ISO (åååå-mm-dd) AFVISES", async () => {
+    await seedRaw("tank-forkert-dato", TANKNING());
     await assertFails(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-forkert-dato")),
       TANKNING({ dato: "31-08-2026" })));
   });
@@ -199,6 +252,7 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
     /* Formularen tilbyder det ikke længere (Indberetning.jsx), men gamle
        poster har det, og feltets egen validering er ikke fjernet fra
        reglerne — kun kravet om at det skal udfyldes er der aldrig kommet. */
+    await seedRaw("tank-med-pris", TANKNING());
     await assertSucceeds(set(ref(medPerms("u-tank", SKRIVER), sti("indberetninger/tank-med-pris")),
       TANKNING({ prisPrLiterOere: 1395 })));
   });
@@ -208,6 +262,7 @@ describe("braendstof kræver koeretoejId, dato og liter — kun braendstof", () 
        arter. POST() (koeretoejsskade) har hverken dato eller liter, og den
        allerede eksisterende "tager en fuldt udfyldt post"-prøve ovenfor
        beviser det samme — denne gør det eksplicit for netop dette krav. */
+    await seedPost("ikke-tank", "u6");
     await assertSucceeds(set(ref(medPerms("u6", SKRIVER), sti("indberetninger/ikke-tank")),
       POST({ oprettetAf: "u6" })));
   });
@@ -342,11 +397,17 @@ describe("sensitive/indberetninger", () => {
     const ejer = medPerms("s7", [PERM.indberetningerSkriv]);
     const begge = medPerms("s7", SKRIVER);
 
+    /* ⚠ TILFØJET 2026-09-05 — begge poster seedes først (en frisk oprettelse
+       kræver nu indberetningIndsend()); resten af prøven — at ejeren kan
+       redigere/slette sin egen ikke-underskrevne post, men ikke en
+       underskrevet — er uændret og gælder på REDIGERINGEN. */
     /* Uden underskrift: ejeren må trække sin egen post tilbage. */
+    await seedPost("i-fjern", "s7");
     await assertSucceeds(set(ref(ejer, sti("indberetninger/i-fjern")), POST({ oprettetAf: "s7" })));
     await assertSucceeds(remove(ref(ejer, sti("indberetninger/i-fjern"))));
 
     /* Med underskrift: nej. */
+    await seedPost("i-bevis", "s7");
     await assertSucceeds(set(ref(ejer, sti("indberetninger/i-bevis")), POST({ oprettetAf: "s7" })));
     await assertSucceeds(
       set(ref(begge, sti("sensitive/indberetninger/i-bevis/underskrift")), UNDERSKRIFT));
@@ -385,11 +446,13 @@ describe("⚠ SKIVE 3B — ingenOmkostning ER ET OBJEKT, IKKE ET FLUESKIN", () =
   const SKRIVER = [PERM.indberetningerSkriv, PERM.indberetningerSkrivAlle];
 
   it("afviser nu den gamle boolean-form", async () => {
+    await seedPost("i-bool", "b1");
     await assertFails(set(ref(medPerms("b1", SKRIVER), sti("indberetninger/i-bool")),
       POST({ oprettetAf: "b1", ingenOmkostning: true })));
   });
 
   it("tager et objekt med en begrundelse", async () => {
+    await seedPost("i-obj", "b2");
     await assertSucceeds(set(ref(medPerms("b2", SKRIVER), sti("indberetninger/i-obj")),
       POST({ oprettetAf: "b2", ingenOmkostning: { begrundelse: "Dækket af garantien" } })));
   });
@@ -399,11 +462,13 @@ describe("⚠ SKIVE 3B — ingenOmkostning ER ET OBJEKT, IKKE ET FLUESKIN", () =
        tomt objekt; en skrivning uden børn er en no-op, og assertFails ville
        fejle af den forkerte grund. Objektet skal have ET barn der ikke er
        begrundelse, for at ramme hasChildren(['begrundelse']) selv. */
+    await seedPost("i-tom", "b3");
     await assertFails(set(ref(medPerms("b3", SKRIVER), sti("indberetninger/i-tom")),
       POST({ oprettetAf: "b3", ingenOmkostning: { af: "uid-x" } })));
   });
 
   it("tager af/ms — kontorets afgørelse og hvornår", async () => {
+    await seedPost("i-afms", "b4");
     await assertSucceeds(set(ref(medPerms("b4", SKRIVER), sti("indberetninger/i-afms")),
       POST({
         oprettetAf: "b4",
@@ -412,6 +477,7 @@ describe("⚠ SKIVE 3B — ingenOmkostning ER ET OBJEKT, IKKE ET FLUESKIN", () =
   });
 
   it("afviser et ukendt felt i ingenOmkostning", async () => {
+    await seedPost("i-ekstra", "b5");
     await assertFails(set(ref(medPerms("b5", SKRIVER), sti("indberetninger/i-ekstra")),
       POST({ oprettetAf: "b5", ingenOmkostning: { begrundelse: "X", forsikringssag: "12345" } })));
   });
@@ -425,12 +491,15 @@ describe("prioriteten på en indberetning", () => {
   it("tager hvert af de tre trin", async () => {
     const db = medPerms("uid-lars", ["indberetninger.skriv"]);
     for (const p of ALLE_PRIORITETER) {
+      /* ⚠ TILFØJET 2026-09-05 — seedet først, se seedPost()'s note. */
+      await seedPost(`pri-${p}`, "uid-lars");
       await assertSucceeds(set(ref(db, sti(`indberetninger/pri-${p}`)),
         POST({ oprettetAf: "uid-lars", prioritet: p })));
     }
   });
 
   it("⚠ AFVISER \"mellem\" — det er labelet, ikke værdien", async () => {
+    await seedPost("pri-label", "uid-lars");
     await assertFails(set(ref(medPerms("uid-lars", ["indberetninger.skriv"]),
       sti("indberetninger/pri-label")),
       POST({ oprettetAf: "uid-lars", prioritet: "mellem" })));
@@ -440,7 +509,10 @@ describe("prioriteten på en indberetning", () => {
     /* Det er hele grunden til at feltet er valgfrit. Chaufføren melder at
        motorlampen lyser; om det haster, afgør værkføreren. Krævede reglen
        feltet, ville chaufføren blive tvunget til at vurdere noget han ikke
-       kan vurdere — og "Mellem" ville stå på alt. */
+       kan vurdere — og "Mellem" ville stå på alt.
+       ⚠ TILFØJET 2026-09-05 — seedet først (se seedPost()'s note); "pri-uden"
+       ender stadig UDEN prioritet, som de to næste prøver bygger videre på. */
+    await seedPost("pri-uden", "uid-lars");
     await assertSucceeds(set(ref(medPerms("uid-lars", ["indberetninger.skriv"]),
       sti("indberetninger/pri-uden")), POST({ oprettetAf: "uid-lars" })));
   });

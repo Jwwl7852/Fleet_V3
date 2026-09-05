@@ -142,6 +142,13 @@ const UDEN_KRAEVERPERM = {
   flaadeOverblik: "samme kartoteksopslag som Værkstedskalenderen/Arbejdskøen — "
     + "`koeretoejer.laes` og `leverandoerer.laes`, som alle seks roller har.",
   flaadeKontakter: "`personale.laes` og `leverandoerer.laes` — alle seks roller har dem.",
+  flaadeUdgifter: "`fakturaer.laes` — kun chauffør (som slet ikke ser Fleets "
+    + "fanebjælke, se beslutning 103/117) mangler den som standard blandt de "
+    + "seks. Skærmen blokerer ikke på feltet: den viser stadig de anslåede "
+    + "beløb fra `opgaver` (ugatet) og siger med en <Datatilstand> hvorfor "
+    + "Faktureret/Afvigelse mangler — samme snit som flaadeStatistik's "
+    + "indkoeb.laes ovenfor. En rolle en tenant selv har frataget "
+    + "fakturaer.laes (beslutning 31b) mister kolonnerne, ikke skærmen.",
   medarbejdere: "`personale.laes`, som alle seks roller har.",
   kunderOversigt: "`kunder.laes`, som alle seks roller har.",
 };

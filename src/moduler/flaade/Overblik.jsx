@@ -115,6 +115,17 @@ export default function Overblik() {
       tekst: "Nye indberetninger", under: "Endnu ikke vurderet af en værkfører",
       antal: num(tal.nye.antal),
     },
+    /* ⚠ TILFØJET 2026-09-05 — produktejerens triageflow: "når de er
+       prioriteret, lægges de i afventer planlægning". EGEN RÆKKE, EGEN
+       KILDE — se driftskalender.js's `vurderet` for hvorfor den ikke er
+       slået sammen med `afventer` lige nedenfor, som er opgaver, ikke
+       indberetninger, og betyder noget andet ("har et tidspunkt, men
+       ingen plan endnu"). */
+    tal.vurderet.antal > 0 && {
+      id: "vurderet", til: `/flaade/koe?vis=vurderet`, tone: "warn", ikon: "kalender",
+      tekst: "Prioriteret, afventer planlægning", under: "Klar til at blive planlagt",
+      antal: num(tal.vurderet.antal),
+    },
     tal.afventer.antal > 0 && {
       id: "afventer", til: `/flaade/koe?vis=afventer`, tone: "warn", ikon: "kalender",
       tekst: "Afventer planlægning", under: "Har et tidspunkt, men ingen plan endnu",

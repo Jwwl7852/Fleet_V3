@@ -26,14 +26,10 @@
  * er uændret; kun ordet på knappen er rettet.
  */
 import { useState } from "react";
-import { Knap, Raekke, Dialog, Felt, Formular, Formularsvar } from "./ui.jsx";
+import { Knap, Pille, Raekke, Dialog, Felt, Formular, Formularsvar } from "./ui.jsx";
 import { FORLOEB, kanAfslutte } from "./indberetninger.js";
+import { PRIORITET, ALLE_PRIORITETER } from "./prioritet.js";
 import { trigeIndberetning } from "./indberetningplan.js";
-
-const ETIKET = {
-  vurderet: "Markér som vurderet",
-  afsluttet: "Afslut",
-};
 
 export default function Indberetningtriage({ indberetning: i, maaSkrive = false, onPlanlaeg, onSkiftet }) {
   const [svar, saetSvar] = useState(null);
@@ -70,10 +66,10 @@ export default function Indberetningtriage({ indberetning: i, maaSkrive = false,
 
   const afslut = kanAfslutte(i);
 
-  const skift = async (handling, begrundelse) => {
+  const skift = async (handling, begrundelse, prioritet) => {
     saetGemmer(true);
     saetSvar(null);
-    const r = await trigeIndberetning({ id: i.id, handling, begrundelse });
+    const r = await trigeIndberetning({ id: i.id, handling, begrundelse, prioritet });
     saetGemmer(false);
     saetSvar(r);
     saetSpoerger(false);
@@ -111,15 +107,24 @@ export default function Indberetningtriage({ indberetning: i, maaSkrive = false,
               </Knap>
             );
           }
-          /* "vurderet" — den eneste tredje mulighed FORLOEB tilbyder i dag. */
+          /* ⚠ "vurderet" ER TRE KNAPPER, IKKE ÉN — TILFØJET 2026-09-05.
+             Produktejerens triageflow: prioritering ER vurderet-skiftet.
+             Rækkefølgen er ALLE_PRIORITETER's egen (lav→normal→hoej,
+             prioritet.js), ikke "mest akut først" — samme begrundelse som
+             kataloget selv giver for ikke at vende den om. */
           return (
-            <Knap key={status} variant="primaer"
-              disabled={!maaSkrive || gemmer}
-              title={maaSkrive ? "Marker som set og vurderet af driften."
-                                : "Kræver indberetninger.skrivAlle."}
-              onClick={() => skift(status)}>
-              {ETIKET[status] || FORLOEB[status]?.label || status}
-            </Knap>
+            <span key={status} className="fc-row" style={{ display: "inline-flex", gap: 6 }}>
+              {ALLE_PRIORITETER.map((p) => (
+                <Knap key={p} variant="sekundaer"
+                  disabled={!maaSkrive || gemmer}
+                  title={maaSkrive
+                    ? `Prioritér "${PRIORITET[p].label}" og markér som vurderet af driften.`
+                    : "Kræver indberetninger.skrivAlle."}
+                  onClick={() => skift(status, undefined, p)}>
+                  <Pille tone={PRIORITET[p].pill}>{PRIORITET[p].label}</Pille>
+                </Knap>
+              ))}
+            </span>
           );
         })}
       </Raekke>

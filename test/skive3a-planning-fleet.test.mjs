@@ -109,10 +109,14 @@ describe("B) Fleet Driftskalender indeholder fortsat værkstedsplanlægning", ()
     assert.match(panel, /<Statusskifte/);
   });
 
-  it("de fem kategorier findes stadig, uændret som katalog — nu kun i Arbejdskoe.jsx's UDSNIT", () => {
+  it("de fem kategorier findes stadig — plus \"vurderet\", tilføjet 2026-09-05 — uændret som katalog, nu kun i Arbejdskoe.jsx's UDSNIT", () => {
     const noegler = [...laes(ARBEJDSKOE).matchAll(/^\s{2}([a-z]+): \{/gm)].map((m) => m[1]);
+    /* ⚠ "vurderet" — produktejerens triageflow: en prioriteret indberetning
+       afventer planlægning, og skal kunne ses i Arbejdskoe/Overblik, ikke
+       kun inde på Indberetninger-skærmen. Se driftskalender.js's egen note
+       og beslutning 122. De oprindelige fem er stadig uændrede. */
     assert.deepEqual(noegler.sort(),
-      ["afventer", "forsinkede", "kommende", "nye", "planlagt"].sort());
+      ["afventer", "forsinkede", "kommende", "nye", "planlagt", "vurderet"].sort());
     /* ⚠ OG IKKE OGSÅ I Vaerkstedskalender.jsx — Driftskalenderen er ikke
        længere kasernes hjem, og en overlevende kopi ville kunne drive fra
        Arbejdskoe.jsx's egen, hvis nogen rettede den ene og glemte den

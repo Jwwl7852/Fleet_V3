@@ -84,13 +84,17 @@ describe("permission-kataloget", () => {
     assert.ok(ROLLE_PERMS.koordinator.includes(PERM.bookingGodkend));
   });
 
-  it("chaufføren kan KUN indberette", () => {
+  it("chaufføren kan KUN indberette og stemple", () => {
     /* ⚠ HED FOER "…og skrive i idébanken". Idébanken er ude af kundens
        installation (beslutning 22), og saa er indberetningen det eneste en
        chauffoer skriver. Testen er skaerpet, ikke svaekket: listen er
-       udtoemmende, saa en ny skrivepermission paa chauffoeren faelder den. */
+       udtoemmende, saa en ny skrivepermission paa chauffoeren faelder den.
+       ⚠ BESLUTNING 121 TILFØJEDE stemplinger.skriv — se roller.test.mjs
+       for hvorfor det ikke er en udvidelse af adgangen (kun af hvad der
+       KAN slås fra pr. rolle). */
     const skriv = ROLLE_PERMS.chauffoer.filter((p) => p.includes(".skriv"));
-    assert.deepEqual(skriv.sort(), [PERM.indberetningerSkriv].sort());
+    assert.deepEqual(skriv.sort(),
+      [PERM.indberetningerSkriv, PERM.stemplingerSkriv].sort());
     /* Læsning af de fire klassificerede objekters general-del har de, som
        alle andre — men intet klassificeret. Se beslutning 17. */
     for (const p of ROLLE_PERMS.chauffoer) {
@@ -264,6 +268,18 @@ describe("rolle-presets giver samme adgang som før", () => {
        for braendstof (se rules.indberetninger.test.mjs). "parkering" er
        samme udgiftsklasse (intet forloeb-krav) uden det ekstra feltkrav,
        så prøven her stadig kun tester det den hedder. */
+    /* ⚠ BESLUTNING 122 — EN NY INDBERETNING KAN IKKE LÆNGERE OPRETTES
+       DIREKTE, HELLER IKKE AF CHAUFFØREN. `.write` kræver nu data.exists()
+       (kun `indberetningIndsend`, Admin-SDK, opretter en NY post). Prøven
+       handler om ROLLE-permissionen, ikke om oprettelsesvejen, så vi
+       seeder posten først (samme mønster som "andres" i before() ovenfor)
+       og prøver derefter en redigering. */
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), sti("indberetninger", "egen")), {
+        art: "parkering", forloeb: "ny", kmStand: 1,
+        oprettetAf: "uid-ch", oprettetMs: 1786000000000,
+      });
+    });
     const db = somRolle("uid-ch", "chauffoer");
     await assertSucceeds(
       set(ref(db, sti("indberetninger", "egen")), {
@@ -393,6 +409,22 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
     assert.match(krop, /ROLLE_PERMS\[rolle\]/,
       "rolleskriv prøver ikke rollenavnet mod de seks faste");
   });
+
+  it("⚠ BESLUTNING 121 — rolleskriv AFVISER admin, ikke kun skærmen", () => {
+    /* permsForTenant() ignorerer allerede et roller/admin stiltiende (se
+       roller.test.mjs) — men det er et andet-lags sikkerhedsnet. Den REELLE
+       håndhævelse er her: en klient der kaldte funktionen direkte, uden om
+       UI'ets fjernede admin-valgmulighed, skal stadig blive afvist. */
+    const kode = readFileSync("functions/index.js", "utf8");
+    const i = kode.indexOf("export const rolleskriv = onCall");
+    assert.ok(i > 0, "rolleskriv findes ikke");
+    const krop = kode.slice(i, kode.indexOf(String.fromCharCode(10) + "export const ", i + 1));
+    assert.match(krop, /rolle === "admin"/,
+      "rolleskriv afviser ikke en skrivning af rolle === \"admin\"");
+    assert.match(krop, /HttpsError\("failed-precondition"/,
+      "rolleskriv afviser ikke admin-skrivningen med en forklaring");
+  });
+
   it("⚠ CLAIM'ET MINTES SERVER-SIDE — og noden er kilden, ikke dommeren", () => {
     /* Prøven hed før "CLAIM'ET KOMMER FRA ROLLE_PERMS, ikke fra en node", og
        begrundelsen var: en node der KUNNE bestemme hvad en bruger må, ville

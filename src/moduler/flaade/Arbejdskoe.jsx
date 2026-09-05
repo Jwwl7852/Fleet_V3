@@ -99,6 +99,15 @@ const UDSNIT = {
     hvad: "Meldt af en chauffør og endnu ikke vurderet af en værkfører. " +
           "Prioriteten sættes i triagen — derfor står nogle som ikke vurderet.",
   },
+  /* ⚠ TILFØJET 2026-09-05 — se driftskalender.js's `vurderet` for hvorfor
+     den er en EGEN kasse og ikke slået sammen med `afventer` nedenfor
+     (samme kilde-skel som `nye` allerede håndhæver). */
+  vurderet: {
+    label: "Prioriteret", kilde: "indberetninger",
+    hvad: "Vurderet og prioriteret af driften (rød/gul/grøn) — afventer at " +
+          "nogen trykker \"Planlæg aktivitet\". Falder automatisk ud herfra " +
+          "den dag den bliver planlagt.",
+  },
   afventer: {
     label: "Afventer planlægning", kilde: "opgaver",
     hvad: "Opgaver med status indberettet eller afventer. De HAR et tidspunkt " +

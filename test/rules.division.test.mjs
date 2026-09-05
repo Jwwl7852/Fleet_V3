@@ -125,16 +125,38 @@ describe("beslutning 70 — division er forbudt overalt", () => {
    * regel og data skal flytte sammen, og det er den halvdel der beviser at
    * reglen fulgte med.
    */
+  /* ⚠ BESLUTNING 122 — `indberetninger` KAN IKKE LÆNGERE OPRETTES DIREKTE,
+     HELLER IKKE AF ADMIN. `.write` kræver nu `data.exists()` på begge grene
+     (kun `indberetningIndsend`, Admin-SDK, kan oprette en NY post) — en sag
+     med et ticketnummer skal oprettes atomisk sammen med den. Prøven her
+     handler stadig om `.validate` (division forbudt), som gælder begge
+     veje, så vi seeder posten FØRST for netop dén node og prøver derefter
+     en REDIGERING i stedet for en frisk oprettelse. `kunder`/`lagre` er
+     urørt af den lukning og oprettes stadig direkte. */
+  const LUKKET_FOR_OPRETTELSE = new Set(["indberetninger"]);
+
   for (const [node, byg] of PAAKRAEVET_FOER) {
     it(`${node} er gyldig UDEN division`, async () => {
       const db = som("admin1", "admin");
-      await assertSucceeds(set(ref(db, sti(node, `u-${node}`)), byg()));
+      const id = `u-${node}`;
+      if (LUKKET_FOR_OPRETTELSE.has(node)) {
+        await miljoe.withSecurityRulesDisabled(async (ctx) => {
+          await set(ref(ctx.database(), sti(node, id)), byg());
+        });
+      }
+      await assertSucceeds(set(ref(db, sti(node, id)), byg()));
     });
 
     it(`${node} AFVISER division — også en gyldig værdi`, async () => {
       const db = som("admin1", "admin");
       for (const v of ["gods", "bus", "faelles"]) {
-        await assertFails(set(ref(db, sti(node, `m-${node}-${v}`)),
+        const id = `m-${node}-${v}`;
+        if (LUKKET_FOR_OPRETTELSE.has(node)) {
+          await miljoe.withSecurityRulesDisabled(async (ctx) => {
+            await set(ref(ctx.database(), sti(node, id)), byg());
+          });
+        }
+        await assertFails(set(ref(db, sti(node, id)),
           { ...byg(), division: v }));
       }
     });

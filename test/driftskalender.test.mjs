@@ -124,11 +124,26 @@ describe("de fem tal", () => {
     { id: "i1", forloeb: "ny", prioritet: "hoej" },
     { id: "i2", forloeb: "ny" },
     { id: "i3", forloeb: "afsluttet", prioritet: "lav" },
+    { id: "i4", forloeb: "vurderet", prioritet: "hoej" },
+    { id: "i5", forloeb: "planlagt", prioritet: "normal" },
   ];
   const t = driftstal({ opgaver, indberetninger, nu: NU, fremDage: 14 });
 
   it("nye er indberetninger med forløb ny — ikke opgaver", () => {
     assert.deepEqual(t.nye.poster.map((i) => i.id), ["i1", "i2"]);
+  });
+
+  /* ⚠ TILFØJET 2026-09-05 — "afventer planlægning", produktejerens
+     triageflow. EGEN KASSE: en indberetning har et forløb og en art, en
+     opgave har en status og et tidspunkt — samme kilde-skel som `nye`. */
+  it("⚠ VURDERET ER INDBERETNINGER, IKKE OPGAVER — og ikke slået sammen med afventer", () => {
+    assert.deepEqual(t.vurderet.poster.map((i) => i.id), ["i4"]);
+    /* i5 er allerede "planlagt" — den skal IKKE stå i vurderet. Det er
+       netop pointen: opgaveplanlaeg sætter forløbet atomisk, og en
+       indberetning falder automatisk ud af kassen den dag den planlægges. */
+    assert.ok(!t.vurderet.poster.some((i) => i.id === "i5"));
+    /* Og den blander sig ikke med opgave-bunken lige nedenfor. */
+    assert.ok(!t.afventer.poster.some((p) => p.id === "i4"));
   });
 
   it("⚠ AFVENTER ER EN TILSTAND, IKKE ET MANGLENDE TIDSPUNKT", () => {
@@ -177,14 +192,14 @@ describe("de fem tal", () => {
   it("hvert tal bærer den liste det talte", () => {
     /* ⚠ DET ER KONTRAKTEN MED ARBEJDSKØEN. Kortet siger 4 og køen viser
        listen — de kan ikke komme ud af trit, fordi det er samme array. */
-    for (const n of ["nye", "afventer", "planlagt", "kommende", "forsinkede", "udenVarighed"]) {
+    for (const n of ["nye", "vurderet", "afventer", "planlagt", "kommende", "forsinkede", "udenVarighed"]) {
       assert.equal(t[n].antal, t[n].poster.length, n);
     }
   });
 
   it("tåler tomme lister", () => {
     const tom = driftstal({});
-    for (const n of ["nye", "afventer", "planlagt", "kommende", "forsinkede"]) {
+    for (const n of ["nye", "vurderet", "afventer", "planlagt", "kommende"]) {
       assert.equal(tom[n].antal, 0, n);
     }
   });

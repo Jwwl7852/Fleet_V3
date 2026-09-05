@@ -54,6 +54,7 @@ const Vaerkstedskalender = lazy(() => import("./moduler/flaade/Vaerkstedskalende
 const Indberetninger = lazy(() => import("./moduler/flaade/Indberetninger.jsx"));
 const Arbejdskoe = lazy(() => import("./moduler/flaade/Arbejdskoe.jsx"));
 const Servicebog = lazy(() => import("./moduler/flaade/Servicebog.jsx"));
+const FlaadeUdgifter = lazy(() => import("./moduler/flaade/Udgifter.jsx"));
 const FlaadeStatistik = lazy(() => import("./moduler/flaade/Statistik.jsx"));
 const FlaadeKontakter = lazy(() => import("./moduler/flaade/Kontakter.jsx"));
 const FacilityOversigt = lazy(() => import("./moduler/facility/Oversigt.jsx"));
@@ -601,6 +602,7 @@ export default function App() {
             <Route path="flaade/indberetninger" element={<Indberetninger />} />
             <Route path="flaade/koe" element={<Arbejdskoe />} />
             <Route path="flaade/servicebog" element={<Servicebog />} />
+            <Route path="flaade/udgifter" element={<FlaadeUdgifter />} />
             <Route path="flaade/statistik" element={<FlaadeStatistik />} />
             <Route path="flaade/kontakter" element={<FlaadeKontakter />} />
 

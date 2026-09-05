@@ -116,6 +116,11 @@ const MATRIX = [
   { perm: PERM.fravaerSensitiveLaes, label: "Se fraværsårsag" },
   { perm: PERM.personaleSensitiveLaes, label: "Se CPR" },
   { perm: PERM.auditLaes, label: "Læs auditlog" },
+  /* ⚠ BESLUTNING 121 — CHAUFFØRAPPENS TRE NYE HÅNDTAG. Tilføjet så de er
+     synlige i sammenligningen uden at åbne hele permgitteret nedenfor. */
+  { perm: PERM.etaperLaes, label: "Se turplan" },
+  { perm: PERM.stemplingerSkriv, label: "Stemple ind/ud" },
+  { perm: PERM.fravaerAnsoegSkriv, label: "Anmod om frihed" },
 ];
 
 /**
@@ -307,7 +312,10 @@ export default function Brugere() {
     ...ROLLE_LABEL[r],
     perms: permsForTenant(r, rolleNode),
     standard: permsFraRolle(r),
-    egen: Array.isArray(rolleNode[r]?.perms),
+    /* ⚠ BESLUTNING 121 — ADMIN ER ALDRIG "JERES". `permsForTenant()` ignorerer
+       et eksisterende `roller/admin`, så et gammelt (nu virkningsløst) node-
+       indhold må ikke få admin til at se redigeret ud på skærmen. */
+    egen: r !== "admin" && Array.isArray(rolleNode[r]?.perms),
   }));
 
   /* ⚠ SKIVE 2B — DE ARBEJDSOMRÅDER EN GIVEN ROLLE OVERHOVEDET KAN NÅ, FØR
@@ -518,7 +526,7 @@ export default function Brugere() {
       <Kort
         titel="Rollerne"
         handling={maaAdministrere
-          ? <Knap onClick={() => setRedigerer(redigerer ? null : "admin")}>
+          ? <Knap onClick={() => setRedigerer(redigerer ? null : "chauffoer")}>
               {redigerer ? "Luk redigering" : "Redigér en rolle"}
             </Knap>
           : null}
@@ -572,10 +580,14 @@ export default function Brugere() {
                    standarden'. Har kunden gemt rollen, står den som jeres —
                    også hvis indholdet er det samme. Forskellen betyder noget
                    den dag vi ændrer en standard: en gemt rolle følger ikke
-                   med. */
-                r.egen
-                  ? <Pille tone="info">Jeres</Pille>
-                  : <span className="fc-neutral">Standard</span>
+                   med.
+                   ⚠ BESLUTNING 121: admin kan ikke redigeres — se egen
+                   pille i stedet for Standard/Jeres. */
+                r.id === "admin"
+                  ? <Pille tone="ok">Altid alle permissions</Pille>
+                  : r.egen
+                    ? <Pille tone="info">Jeres</Pille>
+                    : <span className="fc-neutral">Standard</span>
               ) },
             { key: "din", label: "", render: (r) => (
                 r.id === bruger?.rolle ? <Pille tone="ok">Din rolle</Pille> : null
@@ -710,7 +722,12 @@ export default function Brugere() {
  * man prøver på er forbudt med vilje.
  */
 function Rolleeditor({ rolle, saetRolle, roller, rolleNode, egenRolle, paaGemt }) {
-  const valgt = roller.find((r) => r.id === rolle) || roller[0];
+  /* ⚠ BESLUTNING 121 — ADMIN KAN IKKE VÆLGES HER. Rollen har altid alle
+     permissions (permsForTenant() ignorerer et evt. roller/admin, og
+     rolleskriv afviser skrivningen), så en editor for den ville enten lyve
+     eller aldrig kunne gemme. */
+  const redigerbareRoller = roller.filter((r) => r.id !== "admin");
+  const valgt = redigerbareRoller.find((r) => r.id === rolle) || redigerbareRoller[0];
   /* ⚠ NULSTILLES NÅR MAN SKIFTER ROLLE. Uden nøglen ville afkrydsningerne
      fra den forrige rolle blive stående, og man ville gemme disponentens
      permissions på koordinatoren. Se React-nøglen på komponenten. */
@@ -752,7 +769,7 @@ function Rolleeditor({ rolle, saetRolle, roller, rolleNode, egenRolle, paaGemt }
         <Felt id="re-rolle" label="Rolle" kraevet vaerdi={valgt.id}
               saet={(v) => saetRolle(v)}
               hint="Navnene er faste. En ottende rolle er en ændring i koden."
-              valgmuligheder={roller.map((r) => ({
+              valgmuligheder={redigerbareRoller.map((r) => ({
                 vaerdi: r.id,
                 label: `${r.label}${r.egen ? " (jeres)" : ""}`,
               }))} />

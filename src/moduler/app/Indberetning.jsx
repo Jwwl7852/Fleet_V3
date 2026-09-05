@@ -10,11 +10,16 @@
  * fandtes ingen vej til den fra en telefon. Han kunne skrive; der var bare
  * ingen knap.
  *
- * ⚠ HAN SKRIVER DIREKTE, IKKE GENNEM EN FUNKTION. Noden er skrivbar med
- * permissionen, og ejerskabet håndhæves i reglen på `oprettetAf` — han kan
- * rette sin egen tankning og ikke kollegaens. Der er ingen anden post der
- * skal skrives i samme åndedrag, og derfor ingen grund til at lukke vejen
- * (modsat `opgaver`, hvor reservationen skal med — beslutning 45).
+ * ⚠ HAN SKREV DIREKTE, INDTIL 2026-09-05. Noden VAR skrivbar med
+ * permissionen alene for en NY post; ejerskabet håndhæves stadig i reglen
+ * på `oprettetAf` for en REDIGERING. Men produktejerens triageflow kræver
+ * at en sag med et ticketnummer oprettes ATOMISK sammen med en
+ * driftshændelse — der ER nu en anden post der skal skrives i samme
+ * åndedrag, præcis den situation `opgaver` allerede løser (beslutning 45).
+ * `send()` kalder derfor `indberetningIndsend` (functions/index.js), som
+ * opretter indberetningen og — kun for driftshændelser, se
+ * `kraeverForloeb()` — sagen i én `update()`. Reglen afviser nu en ny post
+ * uden om funktionen (`.write` kræver `data.exists()`).
  *
  * ⚠ OTTE FLISER, TI ARTER. `Skade` spørger ét spørgsmål mere, fordi en
  * enhedsskade og en godsskade har hvert sit feltskema og begge er sensitive.
@@ -29,8 +34,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
-import { gem, nyId } from "../../fleet/skriv.js";
-import { AUDIT } from "../../fleet/audit-regler.js";
+import { kaldFunktion } from "../../firebase.js";
 import { dato, kr, num, oereFraKroner, iDagIsoLokal } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
@@ -67,7 +71,7 @@ const SPOERGSMAAL = {
 const PAA_TELEFON = Object.keys(SPOERGSMAAL);
 
 export default function AppIndberetning() {
-  const { path: sti, bruger } = useFleet();
+  const { bruger } = useFleet();
   const [fane, setFane] = useState("ny");
   const [flise, setFlise] = useState(null);
   const [art, setArt] = useState(null);
@@ -127,18 +131,12 @@ export default function AppIndberetning() {
   async function send() {
     if (braendstofManglerFelt) return; // knappen er spærret, men send() kaldes kun herfra
     setFejl(null);
-    const id = nyId("ind");
-    const nu = Date.now();
 
-    /* ⚠ FORLØBET SÆTTES KUN HVOR DET BETYDER NOGET. Reglen kræver feltet af
-       driftshændelser og afviser det ikke på udgifter — men et "Ny" på en
-       parkeringsbillet ville stå i en tilstandsmaskine den aldrig kommer
-       igennem, og kontorets arbejdsliste ville fyldes med bilag. */
-    const post = {
+    /* ⚠ SERVEREN SÆTTER oprettetAf/oprettetMs/forloeb/id/sagId — en browser
+       kan oplyse hvad som helst om hvem og hvornår. Se indberetningIndsend()
+       i functions/index.js. */
+    const payload = {
       art,
-      oprettetAf: bruger?.uid || null,
-      oprettetMs: nu,
-      ...(erUdgift(art) ? {} : { forloeb: "ny" }),
       ...(svar.koeretoejId ? { koeretoejId: svar.koeretoejId } : {}),
       ...(svar.beskrivelse?.trim() ? { beskrivelse: svar.beskrivelse.trim() } : {}),
       ...(Number.isFinite(svar.omkostningOere) ? { omkostningOere: svar.omkostningOere } : {}),
@@ -151,22 +149,20 @@ export default function AppIndberetning() {
       if (!harFelt(art, f)) continue;
       const v = svar[f];
       if (v === undefined || v === null || v === "") continue;
-      post[f] = v;
+      payload[f] = v;
     }
 
     setGemmer(true);
-    const r = await gem({
-      sti: sti(`indberetninger/${id}`),
-      data: post,
-      objekt: "indberetninger",
-      objektId: id,
-      handling: AUDIT.opret,
-      note: `${HAENDELSE_ART[art].label} fra chaufførappen`,
-    });
-    setGemmer(false);
-
-    if (r.ok) {
-      setKvittering(`${HAENDELSE_ART[art].label} sendt`);
+    try {
+      const r = await kaldFunktion("indberetningIndsend", payload);
+      setGemmer(false);
+      /* ⚠ TICKETNUMMERET I KVITTERINGEN. Kun driftshændelser får en sag —
+         se funktionens eget hoved — så r.data.sagsnummer er null for en
+         udgiftsregistrering, og teksten siger det uden et ticketnummer. */
+      const sagsnummer = r.data?.sagsnummer;
+      setKvittering(sagsnummer
+        ? `${HAENDELSE_ART[art].label} sendt — sag ${sagsnummer}`
+        : `${HAENDELSE_ART[art].label} sendt`);
       fortryd();
       /* ⚠ LISTEN HENTES IGEN. `useListe` er et `once()`-opslag — den ser
          ikke en skrivning der lige er sket, og "Indberettet" stod tom under
@@ -176,10 +172,12 @@ export default function AppIndberetning() {
          af, er værre end ingen kvittering. */
       mine.genindlaes();
       setFane("liste");
-    } else {
-      /* ⚠ EN AFVIST SKRIVNING ER IKKE EN NETVÆRKSFEJL. `skriv.js` svarer med
-         en forklaring; "prøv igen" ville lære ham at systemet er i stykker. */
-      setFejl(r.besked);
+    } catch (e) {
+      setGemmer(false);
+      /* ⚠ EN AFVIST SKRIVNING ER IKKE EN NETVÆRKSFEJL. Funktionen svarer med
+         en forklaring i e.message; "prøv igen" ville lære ham at systemet
+         er i stykker. */
+      setFejl(e?.message || "Indberetningen kunne ikke sendes.");
     }
   }
 

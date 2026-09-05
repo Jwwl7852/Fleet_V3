@@ -336,6 +336,34 @@ export const PERM = {
      kategori efter GDPR art. 9. Disponeringen har kun brug for at vide at
      chaufføren er utilgængelig — ikke hvorfor. Derfor kun admin. */
   fravaerSensitiveLaes: "fravaer.sensitiveLaes",
+  /* ⚠ BESLUTNING 121 — PERMISSION OVEN PÅ EJERSKAB, IKKE I STEDET FOR.
+     At ANSØGE om sin egen frihed (`fravaer/$id.ansoegning`, beslutning 108)
+     har hidtil krævet INTET andet end at `personId` matcher egen bruger — enhver
+     rolle kunne det, ubetinget. Denne permission lægges som en EKSTRA `&&` på
+     den selvbetjeningsgren i firebase.rules.json; ejerskabstjekket forsvinder
+     ikke, så man kan stadig kun ansøge for sig selv. `fravaer.skriv`
+     (kontorets brede skrivning på andres fravær) er upåvirket og en helt
+     anden gren. IKKE givet til revisor — se noten ved `EGEN_SKRIV` nedenfor. */
+  fravaerAnsoegSkriv: "fravaer.ansoegSkriv",
+
+  /* --- Egen turplan og eget ur (beslutning 121) ---
+   *
+   * ⚠ TO NODER DER HIDTIL INGEN PERMISSION HAR HAFT OVERHOVEDET.
+   *
+   * `etaper` var kun modul-gatet — enhver i tenanten kunne læse ALLE etaper,
+   * uanset rolle. `stemplinger/<personId>` var rent ejerskabsstyret — enhver
+   * med et personId kunne stemple sig selv ind, uanset rolle. Ingen af de to
+   * kunne derfor spærres pr. rolle, sådan som kunden har bedt om for
+   * chaufførappens Turplan og Timeregistrering.
+   *
+   * `etaperLaes` er den ENESTE håndtag på `etaper` — der er ingen
+   * per-række-ejerskab at lægge den oven på (Turplan filtrerer selv til
+   * egne stop client-side), så den virker som `bookingLaes`/`kunderLaes`.
+   * `stemplingerLaes`/`stemplingerSkriv` lægges OVEN PÅ personId-tjekket i
+   * reglen — man kan stadig kun læse/skrive sit EGET ur, aldrig en kollegas. */
+  etaperLaes: "etaper.laes",
+  stemplingerLaes: "stemplinger.laes",
+  stemplingerSkriv: "stemplinger.skriv",
 
   /* --- Sager (beslutning 20/112) — femte objekt med en klassificeret
      satellit. `sag.laes` er general-delen (nummer, tilstand, parter);
@@ -427,7 +455,31 @@ const BASIS_LAES = [
   /* Bemanding og Disponering viser navne — enhver rolle skal kunne læse
      personalelisten. Det er sensitive/personale der er lukket. */
   PERM.personaleLaes,
+  /* ⚠ BESLUTNING 121 — TILFØJET UDEN AT ÆNDRE ADGANG. Begge noder var før
+     ugatede for enhver i tenanten (se noten ved PERM.etaperLaes); at lægge
+     dem i BASIS_LAES giver alle fem ikke-admin-roller nøjagtig den adgang de
+     allerede havde. En kunde kan nu fjerne dem pr. rolle — fx spærre
+     chaufførens Turplan — uden at det kræver kode. */
+  PERM.etaperLaes,
+  PERM.stemplingerLaes,
 ];
+
+/**
+ * ⚠ BESLUTNING 121 — SELVBETJENING PÅ EGNE DATA, IKKE EN DRIFTSRETTIGHED.
+ *
+ * `stemplingerSkriv` og `fravaerAnsoegSkriv` var indtil nu ubetingede for
+ * ENHVER rolle med et personId (rent ejerskabstjek i reglerne — se noterne
+ * ved permissions). De to gives derfor som udgangspunkt til de fire roller
+ * der faktisk kan have vagter og eget fravær at melde — ikke revisor.
+ *
+ * ⚠ REVISOR FÅR DEM IKKE. `test`en for revisorpresettet kræver allerede at
+ * INGEN af hans permissions er andet end en læsning ("en revisor der kan
+ * rette i det han reviderer, reviderer ikke") — se laeseadgang.test.mjs. At
+ * give revisor disse to ville bryde den invariant. Konsekvensen er bevidst:
+ * en bruger sat til revisor mister sin egen selvbetjente stempling/ansøgning,
+ * hvis han skulle have et personId — revisor er ikke tiltænkt at have vagter.
+ */
+const EGEN_SKRIV = [PERM.stemplingerSkriv, PERM.fravaerAnsoegSkriv];
 
 /**
  * Rollerne som forudindstillede samlinger. Ingen skal konfigurere
@@ -438,10 +490,11 @@ const BASIS_LAES = [
  * problem kom fra det ene eller det andet. Stramninger er en egen opgave.
  */
 export const ROLLE_PERMS = {
-  chauffoer: [...BASIS_LAES, PERM.indberetningerSkriv],
+  chauffoer: [...BASIS_LAES, ...EGEN_SKRIV, PERM.indberetningerSkriv],
 
   disponent: [
     ...BASIS_LAES,
+    ...EGEN_SKRIV,
     ...BASIS_DATA,
     PERM.koeretoejerSkriv,
     PERM.bookingForeslaa,
@@ -474,10 +527,19 @@ export const ROLLE_PERMS = {
        vide AT bilen har en åben værkstedssag for at kunne planlægge —
        ikke læse korrespondancen med værkstedet. */
     PERM.sagLaes,
+    /* ⚠ TILFØJET 2026-09-05 — produktejerens beskrivelse af triageflowet:
+       "Disponenten prioriterer i rød/gul/grøn." `indberetningTriage` har
+       hidtil krævet `indberetningerSkrivAlle` ubetinget (Skive 3B), og kun
+       koordinator/admin havde den — disponenten kunne ikke markere en
+       indberetning som vurderet, endsige prioritere den. Koordinator
+       beholder den uændret (han lukker stadig sagen og afslutter); dette er
+       en TILFØJELSE, ikke en overførsel. */
+    PERM.indberetningerSkrivAlle,
   ],
 
   koordinator: [
     ...BASIS_LAES,
+    ...EGEN_SKRIV,
     ...BASIS_DATA,
     /* ⚠ TILFØJET DA casehandler UDGIK — konsolideret ind i koordinator, ikke
        fjernet. casehandler var "den rolle der tager imod forespørgslen" og
@@ -597,6 +659,7 @@ export const ROLLE_PERMS = {
    */
   lagermedarbejder: [
     ...BASIS_LAES,
+    ...EGEN_SKRIV,
     /* ⚠ TO AF TRE — beslutning 104, og det RETTER en påstand ovenfor: noten
        sagde at rollen ikke kan "se en pris". Det kunne den, som alle andre,
        og den SKAL kunne: Warehouses Afregning og Volumen slår op i
@@ -698,8 +761,19 @@ export const permsFraRolle = (rolle) => ROLLE_PERMS[rolle] || [];
  * sammenlignes med contains(); to brugere med de samme permissions i
  * forskellig rækkefølge ville få to forskellige strenge, og en fejlsøgning
  * der holder to tokens op mod hinanden, ville se en forskel der ikke er der.
+ *
+ * ⚠ BESLUTNING 121 — ADMIN KAN IKKE INDSKRÆNKES, HELLER IKKE VIA NODEN.
+ * Der var intet der forhindrede det: en tenant kunne skrive et `roller/admin`
+ * med et vilkårligt udsnit af ALLE_PERMS, og admin ville miste det resten.
+ * "Den eneste der altid har fuld adgang er admin" er et krav, ikke en standard
+ * man kan redigere væk — så admin returneres FØR noden overhovedet læses, og
+ * et eksisterende `roller/admin`, uanset indhold, ignoreres stiltiende.
+ * `rolleskriv` afviser desuden selve SKRIVNINGEN af en admin-rolledefinition
+ * (functions/index.js) — dette er et andet-lags sikkerhedsnet, ikke stedet
+ * hvor spærringen reelt håndhæves.
  */
 export function permsForTenant(rolle, roller) {
+  if (rolle === "admin") return [...ALLE_PERMS];
   if (!ROLLE_PERMS[rolle]) return [];
   const egne = roller?.[rolle]?.perms;
   if (!Array.isArray(egne)) return permsFraRolle(rolle);

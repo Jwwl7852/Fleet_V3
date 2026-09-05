@@ -218,18 +218,27 @@ describe("Appens fliser er ikke arterne", () => {
 describe("Chaufførappen skriver dem", () => {
   const SKAERM = udenKommentarer(readFileSync("src/moduler/app/Indberetning.jsx", "utf8"));
 
-  it("den går gennem skriv.js, ikke db.ref()", () => {
-    assert.match(SKAERM, /gem\(\{/);
-    assert.ok(!/db\.ref\(/.test(SKAERM), "skærmen skriver uden om skriv.js");
+  /* ⚠ RETTET 2026-09-05 — TILFØJET 2026-09-05: skærmen gik DIREKTE gennem
+     skriv.js indtil beslutning 122. En sag med et ticketnummer skal
+     oprettes ATOMISK sammen med driftshændelsen (produktejerens
+     triageflow), og det kræver Admin-SDK'et — se `indberetningIndsend` i
+     functions/index.js. Skærmen kalder den nu, den skriver ikke selv. */
+  it("den går gennem indberetningIndsend, ikke skriv.js/db.ref()", () => {
+    assert.match(SKAERM, /kaldFunktion\("indberetningIndsend"/);
+    assert.ok(!/db\.ref\(|gem\(\{/.test(SKAERM), "skærmen skriver uden om funktionen");
   });
 
   /**
-   * ⚠ FORLØBET SÆTTES KUN HVOR DET BETYDER NOGET. Reglen AFVISER det ikke på
-   * en udgift — den kræver det bare ikke — så uden leddet her ville hver
-   * parkeringsbillet lande med "Ny" i kontorets arbejdsliste.
+   * ⚠ FORLØBET SÆTTES KUN HVOR DET BETYDER NOGET — men SERVER-SIDE siden
+   * beslutning 122, ikke i skærmen. `erUdgift(art) ? {} : {forloeb:"ny"}`'s
+   * spejlbillede (`kraeverForloeb(art) ? {forloeb:"ny"} : {}`) står nu i
+   * `indberetningIndsend` og er prøvet i test/indberetningindsend.test.mjs.
+   * Denne prøve bekræfter i stedet at skærmen IKKE gætter på det selv —
+   * ét sted der afgør det, ikke to der kan drive fra hinanden.
    */
-  it("⚠ SKÆRMEN SÆTTER IKKE forloeb PÅ EN UDGIFT", () => {
-    assert.match(SKAERM, /erUdgift\(art\) \? \{\} : \{ forloeb: "ny" \}/);
+  it("⚠ SKÆRMEN SENDER IKKE forloeb — serveren afgør det", () => {
+    assert.ok(!/forloeb:/.test(SKAERM),
+      "skærmen sender stadig forloeb i payloadet — det er nu serverens afgørelse");
   });
 
   it("⚠ OG DEN SPØRGER KATALOGET OM FELTERNE", () => {

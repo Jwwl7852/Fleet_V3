@@ -35,7 +35,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
 import { kaldFunktion } from "../../firebase.js";
 import { klokke, num, msTilIso, isoPlusDage } from "../../fleet/format.js";
-import { Pille, Tom } from "../../fleet/ui.jsx";
+import { Pille, Tom, Datatilstand } from "../../fleet/ui.jsx";
 import {
   HAENDELSE, planlagteStop, meldingerFor, foreslaaedeMeldinger,
   byggMelding, valideMelding, meldingerVedStop, erStopFaerdigt, naesteForStop,
@@ -220,6 +220,10 @@ export default function Turplan() {
 
   return (
     <div className="fc-app-tur">
+      {/* ⚠ BESLUTNING 121 — en afvist etaperLaes skal SIGES, ikke tavst blive
+          til "ingen ture i dag". Se noten ved etapeListe ovenfor. */}
+      <Datatilstand tilstand={etapeListe.tilstand} genprov={etapeListe.genindlaes} />
+
       <p>
         <Link to="/app" className="fc-app-tilbage">← Forside</Link>
         <b className="fc-app-sidetitel">Turplan</b>

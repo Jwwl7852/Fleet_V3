@@ -32,7 +32,7 @@ describe("§10.1 — Stempl ud beder om bekræftelse, Stempl ind gør ikke", () 
   });
 
   it("⚠ DIALOGEN GENBRUGER DEN FÆLLES <Dialog>, INGEN EGEN MODAL", () => {
-    assert.match(kilde, /import \{ Tom, Dialog, Knap \} from "\.\.\/\.\.\/fleet\/ui\.jsx"/,
+    assert.match(kilde, /import \{ Tom, Dialog, Knap, Datatilstand \} from "\.\.\/\.\.\/fleet\/ui\.jsx"/,
       "Timeregistrering skal genbruge fleet/ui.jsx's Dialog/Knap, ikke opfinde sin egen");
     assert.match(kilde, /\{bekraeftUd && \(\s*<Dialog/, "bekræftelsen er ikke bygget på <Dialog>");
   });

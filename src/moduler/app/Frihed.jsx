@@ -31,7 +31,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit-regler.js";
 import { dato, msTilIso } from "../../fleet/format.js";
-import { Pille, Tom } from "../../fleet/ui.jsx";
+import { Pille, Tom, Datatilstand } from "../../fleet/ui.jsx";
 import {
   ANSOEGNING, ANSOEGBARE_ARTER, FRAVAER_ART, byggAnsoegning, valideAnsoegning,
   varighedDage, sidsteDag,
@@ -149,6 +149,10 @@ export default function Frihed() {
 
   return (
     <div className="fc-app-tur">
+      {/* ⚠ BESLUTNING 121 — en afvist fravaer.laes skal SIGES, ikke tavst
+          blive til "du har ikke søgt om frihed endnu". */}
+      <Datatilstand tilstand={fravaer.tilstand} genprov={fravaer.genindlaes} />
+
       <p>
         <Link to="/app" className="fc-app-tilbage">← Forside</Link>
         <b className="fc-app-sidetitel">Anmod om frihed</b>

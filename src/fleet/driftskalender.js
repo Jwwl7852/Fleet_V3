@@ -143,6 +143,21 @@ export function slutter(opgave) {
  *               på gitteret i sin egen tone, så pladsholderen ikke læses som
  *               en aftale.
  *
+ *   vurderet    indberetninger med forløb `vurderet` — TILFØJET 2026-09-05,
+ *               produktejerens eget triageflow: "når de er prioriteret,
+ *               lægges de i afventer planlægning". EN EGEN KASSE, IKKE SLÅET
+ *               SAMMEN MED `afventer`: en indberetning har et forløb og en
+ *               art, en opgave har en status og et tidspunkt — samme
+ *               kilde-skel som Arbejdskoe.jsx's `UDSNIT` allerede håndhæver
+ *               for `nye`. Uden den egen kasse viste en prioriteret
+ *               indberetning sig ingen steder før den blev planlagt — kun
+ *               inde på selve Indberetninger-skærmen.
+ *
+ *               ⚠ Falder automatisk UD igen den dag den planlægges.
+ *               `opgaveplanlaeg` sætter allerede `forloeb: "planlagt"`
+ *               atomisk (functions/index.js) — ingen ekstra kobling
+ *               nødvendig her.
+ *
  *   planlagt    opgaver med status `planlagt` eller `igang`.
  *
  *   kommende    DE PLANLAGTE der starter inden for brugerens valgte vindue.
@@ -166,6 +181,9 @@ export function driftstal({
   opgaver = [], indberetninger = [], nu = Date.now(), fremDage = STANDARD_FREMAD,
 } = {}) {
   const nye = indberetninger.filter((i) => i.forloeb === "ny");
+
+  /* ⚠ EGEN KASSE, SAMME KILDE-DISCIPLIN SOM `nye` — se noten ovenfor. */
+  const vurderet = indberetninger.filter((i) => i.forloeb === "vurderet");
 
   const afventer = opgaver.filter(
     (o) => o.status === "indberettet" || o.status === "afventer");
@@ -192,6 +210,7 @@ export function driftstal({
 
   return {
     nye: { antal: nye.length, poster: nye, ...prioritetsfordeling(nye) },
+    vurderet: { antal: vurderet.length, poster: vurderet, ...prioritetsfordeling(vurderet) },
     afventer: { antal: afventer.length, poster: afventer },
     planlagt: { antal: planlagte.length, poster: planlagte },
     kommende: { antal: kommende.length, poster: kommende, fremDage },

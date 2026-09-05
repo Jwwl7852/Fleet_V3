@@ -88,7 +88,11 @@ import { opgaveMangler, reservationFraOpgave } from "./delt/opgaver.js";
 /* ⚠ SKIVE 3B — indberetningTriage og opgaveplanlaegs kobling til
    indberetningId skal prøve mod NØJAGTIG samme FORLOEB/kanSkifteTil() og
    kanAfslutte() som skærmen viser. Se noten i scripts/kopier-delt.mjs. */
-import { FORLOEB, kanSkifteTil, kanAfslutte } from "./delt/indberetninger.js";
+import {
+  FORLOEB, kanSkifteTil, kanAfslutte, HAENDELSE_ART, ALLE_ARTER,
+  kraeverForloeb, harFelt,
+} from "./delt/indberetninger.js";
+import { PRIORITET, ALLE_PRIORITETER } from "./delt/prioritet.js";
 import {
   valideForbrugsvare, valideBevaegelse as valideForbrugsvarebevaegelse,
   nyBeholdning,
@@ -540,6 +544,18 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
        desktop, den dyre af de to. Se beslutning 31. */
     throw new HttpsError("invalid-argument",
       `Ukendt rolle: ${d.rolle}. Rollenavnene er faste — man redigerer hvad de indeholder.`);
+  }
+
+  /* ⚠ BESLUTNING 121 — ADMIN KAN IKKE INDSKRÆNKES. "Den eneste der altid har
+     fuld adgang er admin" er et krav, ikke en standard man kan redigere væk.
+     `permsForTenant()` ignorerer allerede et eksisterende `roller/admin`
+     stiltiende (se noten dér) — den afvisning her er den REELLE håndhævelse:
+     skrivningen stoppes ved kilden, ikke kun neutraliseres bagefter. En
+     klient der kun blev standset i UI'et, ville stadig kunne kalde funktionen
+     direkte. */
+  if (rolle === "admin") {
+    throw new HttpsError("failed-precondition",
+      "Administratorrollen kan ikke indskrænkes — den har altid alle permissions.");
   }
 
   /* ⚠ HER LÆSES EN PERMS-LISTE FRA NYTTELASTEN — DET ENESTE STED.
@@ -3884,6 +3900,169 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
+   INDBERETNINGINDSEND — TILFØJET 2026-09-05
+
+   ⚠ HVORFOR DEN FINDES. `indberetninger/$id` var skrivbar DIREKTE af
+   klienten for en NY post (kun redigering krævede ejerskab på `oprettetAf`)
+   — se den tidligere note i Indberetning.jsx: "der er ingen anden post der
+   skal skrives i samme åndedrag". Det er ikke længere sandt: produktejeren
+   har bedt om at en SAG med et ticketnummer oprettes ATOMISK, så snart en
+   driftshændelse indberettes. To uafhængige skrivninger (indberetning, så
+   sag) kunne lande halvt — en indberetning uden sag, eller (værre) en sag
+   der peger på en indberetning der aldrig blev skrevet. Samme figur som
+   opgaveplanlaeg lige ovenfor.
+
+   ⚠ KUN DRIFTSHÆNDELSER FÅR EN SAG. `kraeverForloeb(art)` er den samme
+   funktion der afgør om posten overhovedet får et `forloeb` — en
+   udgiftsregistrering (tankning, parkering, truckwash, kvittering) har
+   hverken forløb eller triage, og skal ikke have et ticketnummer for et
+   bilag. Se indberetninger.js's eget hoved.
+
+   ⚠ SKADEBESKRIVELSE OG MODPART SKRIVES ALDRIG HER. De to felter er
+   klassificerede (FELT-kommentaren i indberetninger.js) og har
+   `.validate: false` på selve `indberetninger/$id` (kun tilladt på
+   `sensitive/indberetninger/$id`, som kræver indberetninger.sensitiveLaes —
+   en permission chaufføren ikke har). Denne funktion bruger Admin-SDK'et,
+   som IGNORERER `.validate` — en ukritisk videreførsel af klientens payload
+   ville derfor kunne skrive klassificeret indhold ind på den UGATEDE node,
+   noget selve reglen forhindrer i dag. Det er en eksisterende begrænsning
+   (en chauffør kan i praksis ikke indberette en skadesbeskrivelse fra
+   vejen, uden om denne ombæring), ikke noget der rettes her.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* De eneste "på telefonen"-felter denne funktion viderefører uændret — se
+   noten ovenfor om hvorfor skadeBeskrivelse/modpart IKKE står her. */
+const INDSEND_FELTER = ["kmStand", "liter", "adBlueLiter"];
+
+export const indberetningIndsend = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const uid = auth.uid;
+  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+
+  /* Samme permission som reglen krævede for en NY post. */
+  if (!perms.includes("|indberetninger.skriv|")) {
+    throw new HttpsError("permission-denied",
+      "Du må ikke oprette en indberetning. Det kræver indberetninger.skriv.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  const moduler = await rod.child("moduler").once("value");
+  if (moduler.exists() && moduler.child("flaade").val() !== true) {
+    throw new HttpsError("permission-denied", "Fleet-modulet er ikke aktivt.");
+  }
+
+  const d = req.data || {};
+  const art = kortStreng(d.art, 40);
+  if (!ALLE_ARTER.includes(art)) {
+    throw new HttpsError("invalid-argument", `Ukendt indberetningsart "${d.art}".`);
+  }
+
+  const nu = Date.now();
+  const id = rod.child("indberetninger").push().key;
+
+  /* ⚠ SERVER-SIDE, IKKE FRA PAYLOAD — samme regel som overalt: en browser
+     kan oplyse hvem som helst og hvornår som helst. */
+  const post = {
+    art,
+    oprettetAf: uid,
+    oprettetMs: nu,
+    ...(kraeverForloeb(art) ? { forloeb: "ny" } : {}),
+  };
+
+  /* ⚠ FEJLER SYNLIGT, LIGESOM RETTEN GØR I DAG — se filens hoved. En
+     driftshændelse med `skadeBeskrivelse`/`modpart` udfyldt kan i dag IKKE
+     gemmes (feltet er `.validate: false` på denne node) — kun på
+     `sensitive/indberetninger`, som chaufføren ikke må skrive til. Denne
+     funktion skal ikke stiltiende TABE de to felter (chaufføren ville tro
+     skaden var fuldt indberettet); den afviser i stedet med samme udfald
+     som reglen selv giver. */
+  if (kortStreng(d.skadeBeskrivelse, 1) || kortStreng(d.modpart, 1)) {
+    throw new HttpsError("invalid-argument",
+      "Skadebeskrivelse og modpart kan ikke sendes fra chaufførappen endnu — " +
+      "de er klassificerede og skal registreres af kontoret.");
+  }
+
+  const koeretoejId = kortStreng(d.koeretoejId, 60);
+  if (koeretoejId) post.koeretoejId = koeretoejId;
+  const beskrivelse = kortStreng(d.beskrivelse, 500);
+  if (beskrivelse) post.beskrivelse = beskrivelse;
+  const omkostningOere = Number(d.omkostningOere);
+  if (Number.isFinite(omkostningOere)) post.omkostningOere = omkostningOere;
+  /* Tankningens EGEN dato, kun relevant for braendstof — se Indberetning.jsx. */
+  if (art === "braendstof") {
+    const dato = kortStreng(d.dato, 10);
+    if (dato) post.dato = dato;
+  }
+  for (const f of INDSEND_FELTER) {
+    if (!harFelt(art, f)) continue;
+    const v = d[f];
+    if (v === undefined || v === null || v === "") continue;
+    post[f] = typeof v === "number" ? v : kortStreng(v, 60);
+  }
+
+  /* ⚠ SAMME KRAV SOM REGLEN — braendstofmatch bruger PRÆCIS de tre felter,
+     aldrig pris eller foto (tillægskrav "brændstofmatch" §1/§8). Admin-SDK'et
+     går uden om `.validate`, så tjekket skal stå eksplicit her. */
+  if (art === "braendstof" && !(post.koeretoejId && post.dato && Number(post.liter) > 0)) {
+    throw new HttpsError("invalid-argument",
+      "En tankning kræver enhed, dato og et antal liter større end 0.");
+  }
+
+  const opdatering = {};
+  opdatering[`indberetninger/${id}`] = post;
+
+  /* ⚠ KUN DRIFTSHÆNDELSER — se filens hoved. */
+  let sagId = null;
+  let sagsnummer = null;
+  if (kraeverForloeb(art)) {
+    sagId = rod.child("sager").push().key;
+    sagsnummer = await naesteSagsnummer(db, (sti) => `tenants/${tenantId}/${sti}`, "fleet");
+    opdatering[`sager/${sagId}`] = {
+      art: SAG_ART.fleet.art,
+      tilstand: "aaben",
+      emne: HAENDELSE_ART[art]?.label || art,
+      modul: "flaade",
+      oprettetAf: uid,
+      oprettetMs: nu,
+      antalBeskeder: 0,
+      antalKarantaene: 0,
+      harAftale: false,
+      objektType: "indberetning",
+      objektId: id,
+      nummer: sagsnummer,
+    };
+    /* ⚠ IKKE OGSÅ opdatering[`indberetninger/${id}/sagId`] = sagId. `post`
+       er allerede den SAMME objektreference som opdatering[`indberetninger/
+       ${id}`] peger på (linje ovenfor) — at mutere `post` her er nok, og
+       er allerede sat i update()-kaldet. En separat understi ved SIDEN af
+       den fulde node-sti er RTDB's "values argument contains a path that
+       is ancestor of another path" — fundet ved DEV-verifikation: hele
+       kaldet fejlede med 500/INTERNAL for enhver driftshændelse. */
+    post.sagId = sagId;
+  }
+
+  await rod.update(opdatering);
+
+  await logIndberetning(tenantId, uid, AUDIT.opret, id, null, post,
+    sagId ? `indberettet fra chaufførappen, sag ${sagsnummer}` : "indberettet fra chaufførappen");
+
+  return { id, sagId, sagsnummer };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
    INDBERETNINGTRIAGE — Skive 3B
 
    ⚠ HVORFOR DEN FINDES, SELVOM `indberetninger/$id` ALLEREDE ER SKRIVBAR.
@@ -3967,6 +4146,23 @@ export const indberetningTriage = onCall({ region: REGION }, async (req) => {
 
   const opdatering = {};
   const efter = { forloeb: handling };
+
+  /* ⚠ TILFØJET 2026-09-05 — "prioritering ER vurderet-skiftet, ikke et
+     ekstra klik" (produktejerens eget triageflow). En prioritet uden et
+     vurderet-skift ville stå løst; et vurderet-skift uden en prioritet
+     ville lade posten falde ind i "afventer planlægning" uden at nogen
+     havde sagt hvor akut den er — samme figur som et null uden en grund
+     (CLAUDE.md). Kun krævet HER, ikke ved "afsluttet": en sag der lukkes,
+     skal ikke omprioriteres for at kunne det. */
+  if (handling === "vurderet") {
+    const prioritet = kortStreng(d.prioritet, 20);
+    if (!prioritet || !PRIORITET[prioritet]) {
+      throw new HttpsError("invalid-argument",
+        `En prioritet skal vælges for at markere som vurderet. Kendte: ${ALLE_PRIORITETER.join(", ")}.`);
+    }
+    opdatering[`indberetninger/${id}/prioritet`] = prioritet;
+    efter.prioritet = prioritet;
+  }
 
   if (handling === "afsluttet") {
     /* ⚠ BEGRUNDELSEN BYGGES AF SERVEREN — af og ms er IKKE klientens at

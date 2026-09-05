@@ -241,6 +241,24 @@ describe("Reglen", () => {
   });
 
   /**
+   * ⚠ BESLUTNING 121 — PERMISSION OVEN PÅ EJERSKAB, IKKE I STEDET FOR.
+   * Ejerskabstjekket forsvinder ikke: man kan stadig kun læse/skrive sit
+   * EGET ur. De to nye permissions er en ekstra spærring en tenant kan slå
+   * fra pr. rolle — de erstatter intet.
+   */
+  it("⚠ EGEN LÆSNING KRÆVER OGSÅ stemplinger.laes", () => {
+    assert.match(NODE.$personId[".read"], /stemplinger\.laes/);
+    /* Ejerskabsopslaget står stadig, og det er derfor "oven på" og ikke
+       "i stedet for" — begge tjek i samme udtryk. */
+    assert.match(NODE.$personId[".read"],
+      /personId'\)\.val\(\) === \$personId && auth\.token\.perms != null && auth\.token\.perms\.contains\('\|stemplinger\.laes\|'\)/);
+  });
+
+  it("⚠ EGEN SKRIVNING KRÆVER OGSÅ stemplinger.skriv", () => {
+    assert.match(POST[".write"], /stemplinger\.skriv/);
+  });
+
+  /**
    * ⚠ EN LUKKET VAGT ER FROSSET. Ellers kunne gårsdagens timer rettes efter
    * at kontoret havde set dem. Leddet står på POSTEN og ikke på feltet:
    * `.write` kaskaderer, og en `.validate` køres slet ikke ved en sletning.

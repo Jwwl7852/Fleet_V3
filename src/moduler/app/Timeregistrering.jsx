@@ -29,7 +29,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { gem, nyId } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit-regler.js";
 import { klokke, dato } from "../../fleet/format.js";
-import { Tom, Dialog, Knap } from "../../fleet/ui.jsx";
+import { Tom, Dialog, Knap, Datatilstand } from "../../fleet/ui.jsx";
 import {
   aabenStempling, timerOgMin, ugestart, ugedage, ugesum,
   valideStempling,
@@ -128,6 +128,10 @@ export default function Timeregistrering() {
 
   return (
     <div className="fc-app-tur">
+      {/* ⚠ BESLUTNING 121 — en afvist stemplingerLaes skal SIGES, ikke tavst
+          blive til en tom uge. Se noten ved `stemplinger` ovenfor. */}
+      <Datatilstand tilstand={stemplinger.tilstand} genprov={stemplinger.genindlaes} />
+
       <p>
         <Link to="/app" className="fc-app-tilbage">← Forside</Link>
         <b className="fc-app-sidetitel">Timeregistrering</b>

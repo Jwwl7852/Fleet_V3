@@ -181,13 +181,38 @@ describe("⚠ ROLLE_PERMS FORSVINDER IKKE — den er standarden", () => {
     assert.deepEqual(ALLE_PERMS.filter((p) => !permsFraRolle("admin").includes(p)), []);
   });
 
-  it("⚠ CHAUFFØREN KAN KUN INDBERETTE — som STANDARD", () => {
+  it("⚠ CHAUFFØREN KAN KUN INDBERETTE, STEMPLE OG ANSØGE OM FRIHED — som STANDARD", () => {
     /* Prøven prøver nu standardrollen, ikke hvad en given tenant måtte have
        gjort ved sin. Kunden KAN give chaufføren mere; det er hele pointen med
        31b. Listen er udtømmende, så en ny skrivepermission på standarden
-       fælder den. */
+       fælder den.
+       ⚠ BESLUTNING 121 UDVIDEDE DEN MED TO. `stemplingerSkriv` og
+       `fravaerAnsoegSkriv` var før ubetingede for enhver rolle (rent
+       ejerskabstjek i reglerne) — at lægge dem i EGEN_SKRIV ændrer ingen
+       faktisk adgang, kun at den nu KAN slås fra pr. rolle. */
     const skriver = permsFraRolle("chauffoer").filter((p) => /skriv|godkend|opret/i.test(p));
-    assert.deepEqual(skriver, [PERM.indberetningerSkriv]);
+    assert.deepEqual(skriver,
+      [PERM.stemplingerSkriv, PERM.fravaerAnsoegSkriv, PERM.indberetningerSkriv]);
+  });
+});
+
+describe("⚠ ADMIN KAN IKKE INDSKRÆNKES — BESLUTNING 121", () => {
+  /* "Den eneste der altid har fuld adgang er admin" er et krav, ikke en
+     standard man kan redigere væk. Der var intet der forhindrede en tenant i
+     at skrive et `roller/admin` der reducerede admin under fuld adgang. */
+
+  it("⚠ ET ROLLER/ADMIN-OVERRIDE IGNORERES STILTIENDE", () => {
+    const roller = { admin: { perms: [PERM.kunderLaes] } };
+    assert.deepEqual(permsForTenant("admin", roller), ALLE_PERMS);
+  });
+
+  it("selv et tomt admin-preset i noden giver stadig alt", () => {
+    assert.deepEqual(permsForTenant("admin", { admin: { perms: [] } }), ALLE_PERMS);
+  });
+
+  it("uden nogen node giver admin stadig alt, som før", () => {
+    assert.deepEqual(permsForTenant("admin", null), ALLE_PERMS);
+    assert.deepEqual(permsForTenant("admin", {}), ALLE_PERMS);
   });
 });
 

@@ -1030,8 +1030,14 @@
             // `leverandoerer` mistede sin indkoeb-klausul og fik sin egen
             // permission (Model B) — begge domaener der regner paa noden
             // (facility.leverandoerNavn, indkoeb.leverandoerNavn) foelger med.
+            //
+            // ⚠ BESLUTNING 121 — etaper FIK SIN FOERSTE LAESE-PERMISSION, OG
+            // TRE DOMAENER ARVEDE DEN. `opgaver` og `disponering` er begge
+            // regnet af `etaper` (KPI_KILDER), og `oekonomi` er regnet af
+            // BAADE `etaper` OG `grundlag` — den kraever nu begge dele, samme
+            // moenster som `flaade`/`indkoeb` med to kilder (Skive 4A).
             "$domaene": {
-              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|leverandoerer.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|') && auth.token.perms.contains('|leverandoerer.laes|')))"
+              ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || $domaene.matches(/^(opgaver|afvigelser)$/) || ($domaene === 'disponering' ? root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true : root.child('tenants').child($tenantId).child('moduler').child($domaene).val() === true)) && ($domaene !== 'kunder' || (auth.token.perms != null && auth.token.perms.contains('|kunder.laes|'))) && ($domaene !== 'oekonomi' || (auth.token.perms != null && auth.token.perms.contains('|grundlag.laes|') && auth.token.perms.contains('|etaper.laes|'))) && ($domaene !== 'flaade' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|'))) && ($domaene !== 'facility' || (auth.token.perms != null && auth.token.perms.contains('|leverandoerer.laes|'))) && ($domaene !== 'indkoeb' || (auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|') && auth.token.perms.contains('|fakturaer.laes|') && auth.token.perms.contains('|leverandoerer.laes|'))) && ($domaene !== 'opgaver' || (auth.token.perms != null && auth.token.perms.contains('|etaper.laes|'))) && ($domaene !== 'disponering' || (auth.token.perms != null && auth.token.perms.contains('|etaper.laes|')))"
             }
           }
         },
@@ -1123,10 +1129,10 @@
         // ingen skriver, kan fyldes med hvad som helst.
         "stemplinger": {
           "$personId": {
-            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && (root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId || (auth.token.perms != null && auth.token.perms.contains('|personale.laes|')))",
+            ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && ((root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId && auth.token.perms != null && auth.token.perms.contains('|stemplinger.laes|')) || (auth.token.perms != null && auth.token.perms.contains('|personale.laes|')))",
             ".indexOn": ["indMs"],
             "$id": {
-              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId && !data.child('udMs').exists() && newData.exists()",
+              ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId && auth.token.perms != null && auth.token.perms.contains('|stemplinger.skriv|') && !data.child('udMs').exists() && newData.exists()",
               ".validate": "newData.hasChildren(['indMs'])",
               "indMs": { ".validate": "newData.isNumber()" },
               // ⚠ SLUT EFTER START, og hoejst et doegn. En glemt udstempling
@@ -1279,7 +1285,7 @@
         // ske atomisk sammen med reservationen, ellers kan etapens
         // koeretoejId og dens reservation naa at vaere uenige.
         "etaper": {
-          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true)",
+          ".read": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('booking').val() === true) && auth.token.perms != null && auth.token.perms.contains('|etaper.laes|')",
           ".write": false,
           ".indexOn": ["tilstand", "bookingId", "senestMs"],
           "$etapeId": {
@@ -2292,11 +2298,25 @@
             // ⚠ DET ER SPAERRINGEN PAA DEN KLASSIFICEREDE POST DER GOER DET
             // NOEDVENDIGT. Foer den kunne begge dele slettes, og de to var i
             // det mindste enige. Halvdelen af en spaerring er en ny fejl.
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && (!data.exists() || data.child('oprettetAf').val() === auth.uid) || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|')) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true) && (newData.exists() || !root.child('tenants').child($tenantId).child('sensitive').child('indberetninger').child($id).child('underskrift').exists())",
+            //
+            // ⚠ TILFØJET 2026-09-05 — data.exists() KRÆVES NU OGSÅ FOR AT
+            // OPRETTE. Her stod "chaufføren skriver DIREKTE til den — der er
+            // ingen anden post der skal skrives i samme åndedrag". Det er
+            // ikke længere sandt: en sag med et ticketnummer skal oprettes
+            // atomisk sammen med en driftshændelse (produktejerens
+            // triageflow), og Admin-SDK'et er det eneste der kan skrive to
+            // noder i én update(). Vejen er lukket, ikke retten — samme
+            // figur som `opgaver` (beslutning 45): en NY post kan kun komme
+            // fra `indberetningIndsend` (functions/index.js); en EKSISTERENDE
+            // post kan stadig redigeres direkte, af ejeren (indberetninger.skriv)
+            // eller af kontoret (indberetninger.skrivAlle) — det er retten
+            // `indberetningTriage`/`Brugere.jsx` osv. allerede byggede på.
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && ((auth.token.perms != null && auth.token.perms.contains('|indberetninger.skriv|')) && data.exists() && data.child('oprettetAf').val() === auth.uid || auth.token.perms != null && auth.token.perms.contains('|indberetninger.skrivAlle|') && data.exists()) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true) && (newData.exists() || !root.child('tenants').child($tenantId).child('sensitive').child('indberetninger').child($id).child('underskrift').exists())",
             // ⚠ NODEN VALIDEREDE KUN division. Alt andet var frit — en art
             // vi ikke kender, et forloeb der ikke findes, en omkostning som
-            // streng. Og chauffoerer SKRIVER til den: det er den ene node
-            // hvor den mindst betroede rolle opretter poster.
+            // streng. Reglen gælder stadig kun REDIGERING (se .write ovenfor)
+            // — den nye post selv formes af `indberetningIndsend`, som går
+            // uden om .validate ligesom enhver anden Admin-SDK-funktion.
             //
             // ⚠ TILLÆGSKRAV "BRÆNDSTOFMATCH" §1/§8 — braendstof kræver NU
             // ogsaa koeretoejId, dato og liter. Det er praecis de tre felter
@@ -2507,7 +2527,7 @@
             // registret — og uden leddet kunne en enkelt post hardslettes.
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
-            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && ((auth.token.perms.contains('|fravaer.skriv|')) || (newData.child('personId').val() === root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() && newData.child('ansoegning').child('status').val() === 'ansoegt' && !newData.child('ansoegning').child('afgjortAf').exists() && !newData.child('ansoegning').child('afgjortMs').exists() && !newData.child('ansoegning').child('svar').exists() && !data.exists())) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()",
+            ".write": "auth != null && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && ((auth.token.perms.contains('|fravaer.skriv|')) || (newData.child('personId').val() === root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() && auth.token.perms.contains('|fravaer.ansoegSkriv|') && newData.child('ansoegning').child('status').val() === 'ansoegt' && !newData.child('ansoegning').child('afgjortAf').exists() && !newData.child('ansoegning').child('afgjortMs').exists() && !newData.child('ansoegning').child('svar').exists() && !data.exists())) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && newData.exists()",
             ".validate": "newData.hasChildren(['personId'])",
             "division": { ".validate": false },
             "art": { ".validate": false },
