@@ -787,6 +787,35 @@ export function permsForTenant(rolle, roller) {
 }
 
 /**
+ * En BRUGERS effektive permissions — rollen, med en individuel
+ * overstyring oven på. TILFØJET 2026-09-05: produktejerens krav om at
+ * kunne "helt ned på medarbejder niveau" til/fravælge adgang, ikke kun
+ * pr. rolle.
+ *
+ * `override` er DELTAET, aldrig den fulde liste: `{ tilfoejet, fjernet }`.
+ * En medarbejder uden override er derfor identisk med rollens standard —
+ * fraværet af feltet betyder "ingen undtagelse", ikke "ingen adgang".
+ *
+ * ⚠ ADMIN IGNORERER OVERRIDE UBETINGET — samme invariant som
+ * `permsForTenant()` allerede håndhæver for `roller/admin` (beslutning 121):
+ * "Den eneste der altid har fuld adgang er admin" gælder ét lag dybere. En
+ * admin-konto kan hverken indskrænkes ELLER udvides via en individuel
+ * overstyring.
+ */
+export function permsForBruger(rolle, roller, override) {
+  const basis = permsForTenant(rolle, roller);
+  if (rolle === "admin" || !override) return basis;
+  const saet = new Set(basis);
+  for (const p of override.tilfoejet || []) if (ALLE_PERMS.includes(p)) saet.add(p);
+  for (const p of override.fjernet || []) saet.delete(p);
+  /* ⚠ KATALOGETS RÆKKEFØLGE, IKKE OVERRIDE'ETS — samme grund som
+     permsForTenant(): claim-strengen sammenlignes med contains(), og to
+     brugere med samme effektive perms i forskellig rækkefølge ville se
+     forskellige ud i en fejlsøgning. */
+  return ALLE_PERMS.filter((p) => saet.has(p));
+}
+
+/**
  * Er listen gyldig som en rolledefinition?
  *
  * ⚠ SAMME FUNKTION I SKÆRMEN OG PÅ SERVEREN. En klientvalidering der ikke
@@ -801,6 +830,25 @@ export function valideRolleperms(perms) {
   }
   if (new Set(perms).size !== perms.length) {
     return { ok: false, fejl: "Den samme permission står to gange." };
+  }
+  return { ok: true, fejl: null };
+}
+
+/**
+ * Er en medarbejder-overstyring gyldig? Genbruger `valideRolleperms()`s
+ * tjek på hver af de to lister, plus ét der ikke findes for en rolle: en
+ * permission må ikke stå i BEGGE lister — det er en modstridende hensigt
+ * (tilføj og fjern samme ting), ikke to gyldige valg der tilfældigvis
+ * overlapper.
+ */
+export function valideMedarbejderOverride(tilfoejet = [], fjernet = []) {
+  const t = valideRolleperms(tilfoejet);
+  if (!t.ok) return t;
+  const f = valideRolleperms(fjernet);
+  if (!f.ok) return f;
+  const overlap = tilfoejet.filter((p) => fjernet.includes(p));
+  if (overlap.length) {
+    return { ok: false, fejl: `Kan ikke både tilføje og fjerne: ${overlap.join(", ")}.` };
   }
   return { ok: true, fejl: null };
 }
@@ -842,6 +890,44 @@ export function laaserUde(rolle, nyePerms = [], roller = {}, { egenRolle = null 
   if (!andre) {
     return `${NOEGLEPERM} ville forsvinde fra den sidste rolle der har den. ` +
       "Så kan ingen redigere roller igen — heller ikke for at fortryde.";
+  }
+  return null;
+}
+
+/**
+ * laaserUdeMedarbejder(maalUid, rolle, fjernet, { egenUid, alleBrugere, roller })
+ * → grund, eller null.
+ *
+ * Samme beskyttelse som `laaserUde()`, ét lag dybere: `roller` var hidtil
+ * den eneste enhed en NOEGLEPERM kunne forsvinde fra. Med individuel
+ * overstyring kan den i teorien forsvinde fra den sidste PERSON, selv om
+ * rollen nominelt stadig har den — og det er den samme fare beslutning 31
+ * blev truffet for, ikke en ny.
+ *
+ * ⚠ `alleBrugere` ER DEN SAMME `brugere`-INDEKS-NODE KALDEREN ALLEREDE HAR
+ * HENTET (rolleskriv og medarbejderrettighederskriv slår den op i forvejen
+ * for at finde hvem der er ramt) — ingen ekstra opslagsrejse her.
+ */
+export function laaserUdeMedarbejder(maalUid, rolle, fjernet = [], { egenUid = null, alleBrugere = {}, roller = {} } = {}) {
+  if (!fjernet.includes(NOEGLEPERM)) return null;
+
+  /* ⚠ SIN EGEN FØRST — samme grund som laaserUde(): den mest almindelige
+     måde at ødelægge en brugeradministration på er at stramme op på sig
+     selv og opdage det bagefter. */
+  if (egenUid && egenUid === maalUid) {
+    return `Du kan ikke fjerne ${NOEGLEPERM} fra din egen adgang. ` +
+      "En anden med adgang til brugere skal gøre det.";
+  }
+
+  /* Har nogen ANDEN bruger den stadig, effektivt — rolle plus deres egen
+     eventuelle overstyring? Målbrugerens NYE tilstand (fjernet) er allerede
+     afgjort af kalderen; her spørges kun om resten af tenanten. */
+  const andre = Object.entries(alleBrugere)
+    .filter(([uid]) => uid !== maalUid)
+    .some(([, b]) => permsForBruger(b?.rolle, roller, b?.permsOverride).includes(NOEGLEPERM));
+  if (!andre) {
+    return `${NOEGLEPERM} ville forsvinde fra den sidste bruger der har den. ` +
+      "Så kan ingen redigere brugere igen — heller ikke for at fortryde.";
   }
   return null;
 }

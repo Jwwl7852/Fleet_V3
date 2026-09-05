@@ -4,7 +4,7 @@
 konflikt mellem de 20 mockups, eller lukkede et hul der først blev synligt da
 modellen blev skrevet ned.
 
-Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 122
+Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 123
 trufne beslutninger, og et brud på en af dem skal være bevidst frem for
 tilfældigt. Kolonnen **Hvorfor** er ikke pynt — den er det eneste sted der
 står hvad der gik galt uden beslutningen, og uden den ligner de fleste af dem
@@ -9310,3 +9310,117 @@ dukker op i Udgifter-fanen. En tankning opretter ingen sag.
 `src/moduler/flaade/Arbejdskoe.jsx`, `test/indberetningindsend.test.mjs`,
 `test/rules.indberetninger.test.mjs`, `test/skive3b-indberetningstriage.test.mjs`,
 `test/driftskalender.test.mjs`.
+
+## 123. Individuel medarbejder-rettighedsoverstyring — oven på rollen, ikke i stedet for den
+
+Produktejerens krav, ordret: "medarbejdere er tilknyttet en gruppe som fx
+chauffører... [men] man skal helt ned på medarbejder niveau bestemme hvad de
+kan se og har rettigheder til." Eksemplet var konkret: en kunde der ikke
+bruger Timeregistrering, har heller ikke brug for Frihed for netop DEN
+chauffør — en beslutning der kan variere fra medarbejder til medarbejder,
+ikke kun fra rolle til rolle. Beslutning 121 gjorde permissions
+rolle-baserede og tenant-redigerbare, men en ændring rammer stadig HVER
+bruger med rollen på én gang.
+
+To spørgsmål blev afklaret med produktejeren før noget blev bygget:
+
+1. **"Gruppe" er ikke et nyt begreb.** Det er den eksisterende ROLLE. Der er
+   ikke bygget en ny gruppe-entitet — det ville have været et tredje lag
+   (rolle → gruppe → medarbejder) uden en kendsgerning der krævede det.
+2. **Mekanismen er generisk for enhver rolle**, ikke kun chauffør. For en
+   chauffør bliver det i praksis 4-6 skærme (rollen giver ikke mere i dag);
+   for en disponent bliver det flere.
+
+### Rettelsen
+
+**`permsForBruger(rolle, roller, override)`** (`permissions.js`) er DELTAET
+oven på `permsForTenant()`: `{ tilfoejet, fjernet }`, aldrig den fulde liste
+— en medarbejder uden override er identisk med rollens standard. ⚠ **Admin
+ignorerer override UBETINGET** — samme "Den eneste der altid har fuld adgang
+er admin"-invariant som beslutning 121, ét niveau dybere: en admin-konto kan
+hverken indskrænkes eller udvides via en individuel overstyring.
+
+**Ny Cloud Function `medarbejderrettighederskriv`**, skabelon fra
+`rolleskriv` men rettet mod ÉN bruger: kræver `brugere.skriv`, afviser et
+admin-mål, validerer med ny `valideMedarbejderOverride()`, skriver
+`brugere/<uid>/permsOverride` (fjernet helt ved to tomme lister — fravær,
+ikke et tomt svar), minter claims for KUN målbrugeren og kalder
+`revokeRefreshTokens` på ham alene — ingen løkke over en hel rolle, fordi
+ændringen kun vedrører én person.
+
+⚠ **`laaserUdeMedarbejder()` udvider NOEGLEPERM-beskyttelsen fra roller til
+personer.** Beslutning 31/31b's fare — at fjerne `brugere.skriv` fra den
+sidste der har den — gjaldt hidtil kun ROLLER. Med individuel overstyring
+kan permissionen i teorien forsvinde fra den sidste PERSON, selv om rollen
+nominelt stadig har den. Den nye funktion tjekker begge: selv-lockout (ikke
+fra sin egen adgang) og last-standing, regnet på tværs af ALLE brugeres
+EFFEKTIVE perms (rolle + deres egen eksisterende override) — ikke kun på
+rollerne selv.
+
+⚠ **Fandt og rettede en cascade-fejl i `rolleskriv` undervejs, ikke
+selvstændigt.** Funktionen beregnede ét fælles claim-udtryk FØR løkken over
+`ramte` og genbrugte det for alle brugere med rollen. Med individuel
+overstyring ville det have været forkert: en helt urelateret rolleredigering
+ville stille og roligt overskrive enhver medarbejders individuelle
+`permsOverride`, hver gang nogen redigerede selve rollen. Rettet til at
+beregne claim'et PR. BRUGER inde i løkken, læst fra den `brugere`-indeks-node
+funktionen allerede havde hentet — ingen ekstra opslagsrejse.
+
+⚠ **Et rolleskift rydder en eksisterende overstyring — implicit, ikke via en
+selvstændig sletning.** `skiftrolle`s `skrivIndeks()` laver et fuldt
+node-`.set()` på `brugere/<uid>` med KUN indeksfelterne (email, navn, rolle,
+spærret) — `permsOverride` er bevidst ikke blandt dem, så et fuldt node-set
+fjerner feltet af sig selv. En overstyring bygget til den GAMLE rolles
+permission-sæt giver ikke mening for en ny rolle. Mekanismen er dokumenteret
+direkte ved `skrivIndeks()`, fordi den er skrøbelig: skiftes funktionen
+nogensinde til `.update()`, forsvinder oprydningen stille og roligt.
+
+⚠ **`permsOverride` er samme figur som `roller/` — en KILDE, aldrig et
+håndhævelsespunkt (beslutning 31b).** `firebase.rules.json` slår ALDRIG op i
+feltet for at afgøre adgang; adgang afgøres udelukkende af
+`auth.token.perms`. En prøve, symmetrisk med den der allerede fandtes for
+`roller/`, fælder enhver regel der refererer `permsOverride`.
+
+**UI genbruger to eksisterende mønstre, opfinder intet nyt.** `RettighedsPanel`
+i `Brugere.jsx` er `Rolleeditor`s figur (samme "tilføjet/fjernet"-pille mod en
+basislinje, samme "Sæt til standard") rettet mod én bruger. Slider-udseendet
+er den allerede eksisterende `.fc-kontakt`/`.fc-kontakt-spor`-komponent fra
+`ProcureGodkendelsesregler.jsx` — ingen ny CSS, ingen ny farve. Rækkerne
+grupperes af `permRaekker()`, en ren funktion af `ALLE_PERMS`s eksisterende
+navnekonvention (`<domæne>.laes` + `<domæne>.skriv` parres til to kontakter;
+alt andet — `booking.godkend`, `sag.mailSend` osv. — bliver sin egen
+fuldbredde-række). Ingen ny skærm-til-permission-oversættelse at holde i
+sync.
+
+### Verificeret
+
+`npm run test:rules` grønt (3854 tests). Nye/udvidede prøver i
+`test/roller.test.mjs` (`permsForBruger`, `valideMedarbejderOverride`,
+`laaserUdeMedarbejder`) og `test/rules.permissions.test.mjs`
+(`medarbejderrettighederskriv`s tekstassertions, `permsOverride`s
+regel-figur, `rolleskriv`s cascade-regression).
+
+`src/fleet/permissions.js`, `functions/index.js`, `firebase.rules.json`,
+`src/fleet/brugere.js`, `src/moduler/opsaetning/Brugere.jsx`,
+`test/roller.test.mjs`, `test/rules.permissions.test.mjs`.
+
+### ⚠ IKKE KLAR TIL DIREKTE MERGE — OVERLAPPER MED `codex/firebase-custom-claims-v2`
+
+Denne beslutnings ændringer ligger i PRÆCIS de samme filer/funktioner som
+sikkerhedsbranchen `codex/firebase-custom-claims-v2` omskriver i sin helhed:
+`rolleskriv`s claim-mintningsløkke (samme linjer, to forskellige omskrivninger
+— cascade-fixet her mod branchens fulde forbered/tilbagekald/commit-omlægning
+via `byggRolleClaims()`), samt størstedelen af `firebase.rules.json`s
+`.read`/`.write`-klausuler (branchen præfikser praktisk talt hver eneste med
+et nyt version-/revocation-tjek). `permsForTenant`, `laaserUde` og `permStreng`
+findes uændrede på sikkerhedsbranchen, så selve permission-BEREGNINGEN
+(`permsForBruger`, `laaserUdeMedarbejder`, `valideMedarbejderOverride`) kan
+genbruges ordret — men `medarbejderrettighederskriv`s rå
+`setCustomUserClaims`/`revokeRefreshTokens`-mønster skal omskrives til
+`byggRolleClaims()`/`tilbagekaldOgGemRevocation()`, når/hvis claims-v2 lander.
+
+**Rækkefølgen er derfor låst:** claims-v2 bør integreres først; denne
+beslutnings kode tilpasses BAGEFTER til den nye claim-mekanik. Den må ikke
+merges direkte i sin nuværende form — hverken til master eller ind i
+claims-v2-branchen — før den tilpasning er lavet og verificeret med en fuld
+`npm run test:rules`-kørsel mod den nye baseline.

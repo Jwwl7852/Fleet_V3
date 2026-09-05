@@ -397,6 +397,28 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
       "auth.token.perms og intet andet. Se beslutning 31b.");
   });
 
+  it("⚠ permsOverride ER SAMME FIGUR SOM roller/ — kun en kilde, aldrig en håndhævelse", () => {
+    /* Individuel medarbejder-overstyring (2026-09-05) er ét lag dybere end
+       roller/, med nøjagtig den samme deling: brugere/<uid>/permsOverride
+       siger hvad der bliver mintet NÆSTE gang; adgang afgøres udelukkende
+       af auth.token.perms. Slog en regel op i feltet, ville den og tokenet
+       kunne stå og være uenige indtil næste mint — samme fejl som roller/
+       ville have været, hvis beslutning 31b's princip ikke gjaldt begge. */
+    const udenKommentarer = readFileSync("firebase.rules.json", "utf8")
+      .split(String.fromCharCode(10))
+      .filter((l) => !l.trim().startsWith("//"))
+      .join(String.fromCharCode(10));
+    const regler = JSON.parse(udenKommentarer);
+    const node = regler.rules.tenants.$tenantId.brugere.$uid.permsOverride;
+    assert.ok(node, "permsOverride mangler på brugere/$uid");
+
+    const opslag = "child(" + String.fromCharCode(39) + "permsOverride" + String.fromCharCode(39) + ")";
+    assert.ok(!udenKommentarer.includes(opslag),
+      "en regel slår op i permsOverride. Så er der TO håndhævelsespunkter: " +
+      "feltet og tokenet — og de er uenige indtil næste mint. Adgang " +
+      "afgøres af auth.token.perms og intet andet.");
+  });
+
   it("⚠ ROLLENAVNENE ER STADIG FASTE — man redigerer indholdet", () => {
     /* Beslutning 31b lod kunden redigere hvad en rolle INDEHOLDER. Den lod
        ham ikke opfinde en ottende: en ny rolle er stadig en ændring i koden,
@@ -530,6 +552,85 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
     assert.deepEqual(
       ALLE_PERMS.filter((p) => !permsFraRolle("admin").includes(p)), [],
       "admin mangler en permission og kan derfor ikke rydde op");
+  });
+});
+
+describe("⚠ medarbejderrettighederskriv — individuel overstyring, TILFØJET 2026-09-05", () => {
+  const kilde = readFileSync("functions/index.js", "utf8");
+  const krop = (navn) => {
+    const i = kilde.indexOf(`export const ${navn} = onCall`);
+    assert.ok(i > 0, `${navn} findes ikke`);
+    const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", i + 1);
+    return naeste < 0 ? kilde.slice(i) : kilde.slice(i, naeste);
+  };
+  const funktion = krop("medarbejderrettighederskriv");
+
+  it("kræver brugere.skriv — samme vagt som de øvrige brugerfunktioner", () => {
+    assert.match(funktion, /kraevBrugeradmin\(req\)/);
+  });
+
+  it("⚠ AFVISER ET ADMIN-MÅL — samme figur som rolleskrivs admin-afvisning", () => {
+    assert.match(funktion, /maalRolle === "admin"/,
+      "medarbejderrettighederskriv afviser ikke et mål med rolle === \"admin\"");
+    assert.match(funktion, /HttpsError\("failed-precondition"/,
+      "medarbejderrettighederskriv afviser ikke admin-målet med en forklaring");
+  });
+
+  it("validerer tilfoejet/fjernet med valideMedarbejderOverride", () => {
+    assert.match(funktion, /valideMedarbejderOverride\(tilfoejet, fjernet\)/);
+  });
+
+  it("kalder laaserUdeMedarbejder FØR skrivning", () => {
+    assert.match(funktion, /laaserUdeMedarbejder\(/);
+  });
+
+  it("⚠ ÉT BRUGER-MÅL, INGEN LØKKE — til forskel fra rolleskriv", () => {
+    /* rolleskriv rammer med vilje HVER bruger med rollen (Object.entries +
+       et for-loop over `ramte`). Denne funktion ændrer kun ÉN — en løkke
+       her ville være en fejlkopi af rolleskriv, og ville minte om claims
+       for hele rollen ved en fejl der kun skulle røre én person. */
+    assert.equal((funktion.match(/setCustomUserClaims/g) || []).length, 1,
+      "funktionen minter claims mere end ét sted — er der sneget sig en løkke ind?");
+    assert.equal((funktion.match(/revokeRefreshTokens/g) || []).length, 1);
+    assert.doesNotMatch(funktion, /for \(const maalUid of/,
+      "funktionen løkker over flere brugere — det er rolleskrivs figur, ikke denne");
+  });
+
+  it("⚠ INGEN OVERSTYRING ER FRAVÆR — feltet fjernes ved to tomme lister", () => {
+    assert.match(funktion, /overrideSti\.remove\(\)/,
+      "en tom overstyring efterlader ikke feltet — det ville se ud som et taget " +
+      "stilling, ikke som en fraværende undtagelse");
+  });
+
+  it("⚠ SKRIVER PÅ EN SCOPET UNDERSTI, IKKE HELE brugere/<uid>-NODEN", () => {
+    /* Et .set() på HELE noden ville tørre email/navn/rolle/spaerret væk —
+       samme fælde som CLAUDE.md advarer mod ved en rod-opdatering. Skriv
+       feltet for felt, som skrivIndeks() allerede demonstrerer at man IKKE
+       skal gøre, når kun ét felt skal ændres. */
+    assert.match(funktion, /brugere\/\$\{maalUid\}\/permsOverride/);
+  });
+});
+
+describe("⚠ rolleskriv BEVARER EN MEDARBEJDERS EGEN OVERSTYRING — regression", () => {
+  it("claim-udtrykket beregnes PR. BRUGER inde i løkken, ikke ét fælles udtryk før den", () => {
+    /* Fundet under implementeringen af medarbejderrettighederskriv: ét
+       fælles claim-udtryk beregnet FØR løkken over `ramte` ville stille og
+       roligt overskrive enhver medarbejders individuelle permsOverride,
+       hver gang nogen redigerede selve rollen. */
+    const kilde = readFileSync("functions/index.js", "utf8");
+    const i = kilde.indexOf("export const rolleskriv = onCall");
+    assert.ok(i > 0, "rolleskriv findes ikke");
+    const krop = kilde.slice(i, kilde.indexOf(String.fromCharCode(10) + "export const ", i + 1));
+
+    const loekkeStart = krop.indexOf("for (const maalUid of ramte)");
+    assert.ok(loekkeStart > 0, "løkken over ramte findes ikke");
+    const foerLoekken = krop.slice(0, loekkeStart);
+    const iLoekken = krop.slice(loekkeStart);
+
+    assert.doesNotMatch(foerLoekken, /permStreng\(permsFor(Tenant|Bruger)\(/,
+      "claim-udtrykket beregnes FØR løkken — det er præcis den rettede fejl");
+    assert.match(iLoekken, /permsForBruger\(rolle, nyeRoller, indeks\[maalUid\]\?\.permsOverride\)/,
+      "claim-udtrykket inde i løkken læser ikke hver brugers egen permsOverride");
   });
 });
 

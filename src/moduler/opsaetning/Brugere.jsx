@@ -85,7 +85,9 @@ import {
   opretBruger, skiftRolle, spaerLogin, nytLoesen, valideNyBruger, BRUGERSVAR,
   skrivRolle, permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM,
   skrivDashboardvisning, synligeDashboards, skjulerAlt,
-  skrivNavvisning
+  skrivNavvisning,
+  permsForBruger, valideMedarbejderOverride, laaserUdeMedarbejder,
+  skrivMedarbejderRettigheder,
 } from "../../fleet/brugere.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import {
@@ -280,6 +282,10 @@ export default function Brugere() {
   /* Samme, for navvisning — et selvstændigt panel, aldrig blandet med
      dashboard-visningen ovenfor. */
   const [navvisningFor, setNavvisningFor] = useState(null);
+  /* Samme, for den individuelle rettighedsoverstyring — TILFØJET
+     2026-09-05. Et selvstændigt panel: til forskel fra de to ovenfor er
+     dette en ADGANG, ikke en visning. */
+  const [rettighederFor, setRettighederFor] = useState(null);
 
   const efterHandling = (r) => {
     setArbejder(null);
@@ -454,6 +460,27 @@ export default function Brugere() {
                 </Knap>
               );
             } },
+            { key: "rettigheder", label: "Rettigheder", render: (r) => {
+              /* ⚠ TILFØJET 2026-09-05 — TIL FORSKEL FRA DE TO KOLONNER
+                 OVENFOR ER DETTE EN REEL ADGANG, IKKE EN VISNING. En
+                 overstyring ændrer hvad serveren vil acceptere fra
+                 brugeren — den skjuler ikke bare en knap. Admin kan ikke
+                 overstyres (permsForBruger() ignorerer det, og
+                 medarbejderrettighederskriv afviser skrivningen), så
+                 knappen giver ingen mening for admin. */
+              if (r.rolle === "admin") {
+                return <span className="fc-neutral">altid alt</span>;
+              }
+              const override = r.permsOverride;
+              const antal = (override?.tilfoejet?.length || 0) + (override?.fjernet?.length || 0);
+              return (
+                <Knap disabled={!maaAdministrere}
+                      onClick={() => setRettighederFor(rettighederFor === r.id ? null : r.id)}
+                      title="Til/fravælg enkelte rettigheder for denne medarbejder, oven på rollen.">
+                  {antal > 0 ? `${num(antal)} tilpasset` : "Følger rollen"}
+                </Knap>
+              );
+            } },
             { key: "handling", label: "", render: (r) => (
                 /* ⚠ MAN KAN IKKE SPÆRRE SIG SELV. Funktionen afviser det, og
                    knappen skjules — den sidste administrator der gjorde det,
@@ -519,6 +546,20 @@ export default function Brugere() {
             navvisning={navvisningPr[navvisningFor]}
             paaLuk={() => setNavvisningFor(null)}
             paaGemt={() => { genindlaesNavvisning(); setNavvisningFor(null); }}
+          />
+        )}
+        {rettighederFor && (
+          <RettighedsPanel
+            key={rettighederFor}
+            uid={rettighederFor}
+            navn={brugere.find((b) => b.id === rettighederFor)?.navn || rettighederFor}
+            rolle={brugere.find((b) => b.id === rettighederFor)?.rolle}
+            rolleNode={rolleNode}
+            override={brugere.find((b) => b.id === rettighederFor)?.permsOverride}
+            alleBrugere={Object.fromEntries(brugere.map((b) => [b.id, b]))}
+            egenUid={bruger?.uid}
+            paaLuk={() => setRettighederFor(null)}
+            paaGemt={() => { genindlaesBrugere(); setRettighederFor(null); }}
           />
         )}
       </Kort>
@@ -1049,6 +1090,196 @@ function NavvisningPanel({ uid, navn, omraader, navvisning, paaLuk, paaGemt }) {
       </Raekke>
 
       <Formularsvar svar={svar} />
+    </div>
+  );
+}
+
+/* ---- Individuel rettighedsoverstyring — TILFØJET 2026-09-05 ------------ */
+
+/**
+ * ⚠ EN RIGTIG CHECKBOX INDENI. Samme lille komponent som
+ * ProcureGodkendelsesregler.jsx's Kontakt — et `<div>` med en onClick er
+ * ikke en kontakt for den der bruger tastatur eller skærmlæser. Genbruger
+ * de samme CSS-klasser (`fc-kontakt`/`fc-kontakt-spor`), ingen ny farve.
+ */
+function Kontakt({ aktiv, saet, label, disabled }) {
+  return (
+    <label className={`fc-kontakt${aktiv ? " fc-kontakt-til" : ""}`}>
+      <input type="checkbox" checked={aktiv} disabled={disabled}
+             aria-label={label} onChange={(e) => saet(e.target.checked)} />
+      <span className="fc-kontakt-spor" aria-hidden="true" />
+    </label>
+  );
+}
+
+/**
+ * Grupper ALLE_PERMS til rækker: et domæne med BÅDE `<domæne>.laes` og
+ * `<domæne>.skriv` bliver til ÉN række med to kontakter (Læs/Skriv); alt
+ * andet — `booking.godkend`, `sag.mailSend`, `personale.sensitiveLaes` osv.
+ * — bliver til sin egen fuldbredde-række. Ren funktion af kataloget, ingen
+ * ny skærm-til-permission-oversættelse at holde i sync.
+ */
+function permRaekker() {
+  const forbrugt = new Set();
+  const raekker = [];
+  for (const perm of ALLE_PERMS) {
+    if (forbrugt.has(perm)) continue;
+    const i = perm.lastIndexOf(".");
+    const domaene = perm.slice(0, i);
+    const handling = perm.slice(i + 1);
+    if (handling === "laes") {
+      const skrivNavn = `${domaene}.skriv`;
+      if (ALLE_PERMS.includes(skrivNavn)) {
+        forbrugt.add(skrivNavn);
+        raekker.push({ domaene, laes: perm, skriv: skrivNavn });
+        continue;
+      }
+    }
+    raekker.push({ domaene, solo: perm });
+  }
+  return raekker;
+}
+
+/**
+ * Til/fravælg enkelte rettigheder for ÉN medarbejder, oven på rollen.
+ *
+ * ⚠ DET ER EN ADGANG, IKKE EN VISNING — til forskel fra Visningspanel og
+ * NavvisningPanel ovenfor. En overstyring her ændrer hvad SERVEREN vil
+ * acceptere fra brugeren (permsForBruger()/medarbejderrettighederskriv),
+ * ikke kun hvad brugerfladen tegner.
+ *
+ * ⚠ SAMME MØNSTER SOM Rolleeditor, RETTET MOD ÉN BRUGER I STEDET FOR ÉN
+ * ROLLE: samme "tilføjet/fjernet"-pille mod en basislinje (her: rollens
+ * EFFEKTIVE perms, ikke ALLE_PERMS), samme "Sæt til standard"-nulstilling,
+ * samme laaserUdeMedarbejder()-spærring vist FØR man trykker.
+ */
+function RettighedsPanel({ uid, navn, rolle, rolleNode, override, alleBrugere, egenUid, paaLuk, paaGemt }) {
+  const basis = permsForTenant(rolle, rolleNode);
+  /* ⚠ NULSTILLES NÅR MAN ÅBNER EN ANDEN MEDARBEJDER — se React-nøglen
+     (key={rettighederFor}) på komponenten i Brugere(). */
+  const [valgteP, saetValgteP] = useState(() => new Set(permsForBruger(rolle, rolleNode, override)));
+  const [gemmer, saetGemmer] = useState(false);
+  const [svar, saetSvar] = useState(null);
+
+  const effektiv = ALLE_PERMS.filter((p) => valgteP.has(p));
+  const tilfoejet = effektiv.filter((p) => !basis.includes(p));
+  const fjernet = basis.filter((p) => !valgteP.has(p));
+  const form = valideMedarbejderOverride(tilfoejet, fjernet);
+  /* Den samme funktion serveren ville afvise med. */
+  const spaerring = laaserUdeMedarbejder(uid, rolle, fjernet, { egenUid, alleBrugere, roller: rolleNode });
+
+  const aendret = tilfoejet.length > 0 || fjernet.length > 0;
+
+  const skift = (perm) => {
+    saetValgteP((s) => {
+      const ny = new Set(s);
+      if (ny.has(perm)) ny.delete(perm); else ny.add(perm);
+      return ny;
+    });
+    saetSvar(null);
+  };
+
+  const gem = async () => {
+    saetGemmer(true);
+    saetSvar(null);
+    const r = await skrivMedarbejderRettigheder({ uid, tilfoejet, fjernet });
+    saetGemmer(false);
+    saetSvar(r);
+    if (r.ok) paaGemt();
+  };
+
+  return (
+    <div className="fc-rolleeditor" style={{ marginTop: 16 }}>
+      <Raekke>
+        <b>Rettigheder for {navn}</b>
+        <Knap onClick={paaLuk}>Luk</Knap>
+      </Raekke>
+
+      <p className="fc-hint" style={{ marginTop: 8 }}>
+        ⚠ <b>Det er en adgang, ikke en visning.</b> En kontakt her ændrer hvad
+        serveren vil acceptere fra <b>{navn}</b> — ikke kun hvad menuen
+        tegner. Rollen (<b>{ROLLE_LABEL[rolle]?.label || rolle}</b>) sætter
+        standarden; her tildeles eller fravælges enkelte rettigheder oven på
+        den, for netop denne medarbejder.
+      </p>
+
+      {spaerring && (
+        <p className="fc-svar fc-svar-naegtet" role="alert">{spaerring}</p>
+      )}
+      {!form.ok && (
+        <p className="fc-svar fc-svar-fejl" role="alert">{form.fejl}</p>
+      )}
+
+      <div className="fc-permgitter" style={{ maxHeight: "none" }}>
+        {permRaekker().map((r) => {
+          if (r.solo) {
+            const perm = r.solo;
+            const paa = valgteP.has(perm);
+            const iStandard = basis.includes(perm);
+            return (
+              <label key={perm} className="fc-perm" style={{ gridColumn: "1 / -1" }}>
+                <Kontakt aktiv={paa} saet={() => skift(perm)} label={perm} />
+                <code>{perm}</code>
+                {iStandard !== paa && (
+                  <Pille tone={paa ? "ok" : "warn"}>{paa ? "tilføjet" : "fjernet"}</Pille>
+                )}
+                {perm === NOEGLEPERM && <Pille tone="bad">nøgle</Pille>}
+              </label>
+            );
+          }
+          const laesPaa = valgteP.has(r.laes);
+          const skrivPaa = valgteP.has(r.skriv);
+          const laesIStandard = basis.includes(r.laes);
+          const skrivIStandard = basis.includes(r.skriv);
+          return (
+            <div key={r.domaene} className="fc-perm" style={{ gridColumn: "1 / -1", gap: 20 }}>
+              <code style={{ minWidth: 160 }}>{r.domaene}</code>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Kontakt aktiv={laesPaa} saet={() => skift(r.laes)} label={r.laes} />
+                <span className="fc-hint">Læs</span>
+                {laesIStandard !== laesPaa && (
+                  <Pille tone={laesPaa ? "ok" : "warn"}>{laesPaa ? "tilføjet" : "fjernet"}</Pille>
+                )}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Kontakt aktiv={skrivPaa} saet={() => skift(r.skriv)} label={r.skriv} />
+                <span className="fc-hint">Skriv</span>
+                {skrivIStandard !== skrivPaa && (
+                  <Pille tone={skrivPaa ? "ok" : "warn"}>{skrivPaa ? "tilføjet" : "fjernet"}</Pille>
+                )}
+                {r.skriv === NOEGLEPERM && <Pille tone="bad">nøgle</Pille>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <Raekke style={{ marginTop: 14 }}>
+        <span className="fc-hint">
+          {aendret
+            ? `${num(tilfoejet.length)} tilføjet, ${num(fjernet.length)} fjernet · ikke gemt`
+            : "Følger rollen — ingen undtagelser"}
+        </span>
+        <span style={{ display: "flex", gap: 8 }}>
+          <Knap onClick={() => saetValgteP(new Set(basis))}>
+            Sæt til rollens standard
+          </Knap>
+          <Knap variant="primaer" onClick={gem}
+                disabled={gemmer || !aendret || !form.ok || Boolean(spaerring)}>
+            {gemmer ? "Gemmer …" : "Gem"}
+          </Knap>
+        </span>
+      </Raekke>
+
+      <Formularsvar svar={svar} />
+
+      <p className="fc-hint" style={{ marginTop: 10 }}>
+        Ændringen skrives af <b>medarbejderrettighederskriv</b> på serveren,
+        som minter denne ene medarbejders claims om og tilbagekalder hendes
+        token. Overstyringen ligger på <code>brugere/{"{uid}"}/permsOverride</code>
+        — en <b>kilde</b>, ikke et håndhævelsespunkt: reglerne læser den
+        aldrig, og adgang afgøres udelukkende af tokenet.
+      </p>
     </div>
   );
 }

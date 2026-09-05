@@ -23,6 +23,7 @@ import assert from "node:assert/strict";
 import {
   PERM, ALLE_PERMS, ROLLE_PERMS, ALLE_ROLLER, permsFraRolle,
   permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM, permStreng,
+  permsForBruger, valideMedarbejderOverride, laaserUdeMedarbejder,
 } from "../src/fleet/permissions.js";
 import { DELTE_FILER } from "../scripts/kopier-delt.mjs";
 
@@ -216,6 +217,111 @@ describe("⚠ ADMIN KAN IKKE INDSKRÆNKES — BESLUTNING 121", () => {
   });
 });
 
+describe("⚠ MEDARBEJDER-OVERSTYRING — TILFØJET 2026-09-05", () => {
+  /* Produktejerens krav: "man skal helt ned på medarbejder niveau bestemme
+     hvad de kan se og har rettigheder til." permsForBruger() er DELTAET
+     oven på permsForTenant() — en medarbejder uden override er identisk med
+     rollens standard. */
+
+  it("uden override er en bruger identisk med sin rolle", () => {
+    for (const rolle of ALLE_ROLLER) {
+      assert.deepEqual(permsForBruger(rolle, null, null), permsForTenant(rolle, null), rolle);
+      assert.deepEqual(permsForBruger(rolle, {}, undefined), permsForTenant(rolle, {}), rolle);
+    }
+  });
+
+  it("tilføjet lægger noget OVEN PÅ rollen", () => {
+    const perms = permsForBruger("chauffoer", {}, { tilfoejet: [PERM.sagLaes], fjernet: [] });
+    assert.ok(perms.includes(PERM.sagLaes));
+    assert.ok(permsFraRolle("chauffoer").every((p) => perms.includes(p)));
+  });
+
+  it("fjernet tager noget VÆK fra rollen", () => {
+    const perms = permsForBruger("chauffoer", {}, { tilfoejet: [], fjernet: [PERM.stemplingerSkriv] });
+    assert.ok(!perms.includes(PERM.stemplingerSkriv));
+  });
+
+  it("⚠ EN UKENDT PERMISSION I OVERRIDE HAR INGEN EFFEKT", () => {
+    /* Samme "fejler lukket" som permsForTenant() — en streng ingen regel
+       kender, må aldrig ende i et token. */
+    const perms = permsForBruger("chauffoer", {}, { tilfoejet: ["findes.ikke"], fjernet: [] });
+    assert.ok(!perms.includes("findes.ikke"));
+  });
+
+  it("⚠ ADMIN IGNORERER OVERRIDE UBETINGET — hverken ind- eller udskrænket", () => {
+    const uden = permsForBruger("admin", {}, { tilfoejet: [], fjernet: [PERM.brugereSkriv] });
+    assert.deepEqual(uden, ALLE_PERMS);
+    const med = permsForBruger("admin", {}, { tilfoejet: ["findes.ikke"], fjernet: [] });
+    assert.deepEqual(med, ALLE_PERMS);
+  });
+
+  it("⚠ RÆKKEFØLGEN ER KATALOGETS — samme grund som permsForTenant()", () => {
+    const a = permsForBruger("chauffoer", {}, { tilfoejet: [PERM.sagLaes, PERM.auditLaes], fjernet: [] });
+    const b = permsForBruger("chauffoer", {}, { tilfoejet: [PERM.auditLaes, PERM.sagLaes], fjernet: [] });
+    assert.deepEqual(a, b);
+  });
+});
+
+describe("valideMedarbejderOverride", () => {
+  it("godtager to lister af kendte, ikke-overlappende permissions", () => {
+    assert.equal(valideMedarbejderOverride([PERM.sagLaes], [PERM.opgaverSkriv]).ok, true);
+    assert.equal(valideMedarbejderOverride([], []).ok, true);
+  });
+
+  it("afviser en ukendt permission i hver liste", () => {
+    assert.equal(valideMedarbejderOverride(["findes.ikke"], []).ok, false);
+    assert.equal(valideMedarbejderOverride([], ["findes.ikke"]).ok, false);
+  });
+
+  it("⚠ AFVISER AT DEN SAMME PERMISSION STÅR I BEGGE LISTER", () => {
+    /* Modstridende hensigt — tilføj og fjern samme ting — ikke to gyldige
+       valg der tilfældigvis overlapper. */
+    const r = valideMedarbejderOverride([PERM.sagLaes], [PERM.sagLaes]);
+    assert.equal(r.ok, false);
+    assert.match(r.fejl, /sag\.laes/);
+  });
+});
+
+describe("⚠ SPÆRRINGEN MOD AT LÅSE SIG SELV UDE — ÉT LAG DYBERE", () => {
+  /* Samme fare som laaserUde(), nu på PERSONER i stedet for ROLLER: en
+     tenant kan i teorien fjerne brugere.skriv fra alle individuelle
+     brugere via overrides, selv om rollen nominelt stadig har den. */
+
+  it("⚠ MAN KAN IKKE FJERNE DEN FRA SIN EGEN ADGANG", () => {
+    const grund = laaserUdeMedarbejder("uid-a", "admin", [PERM.brugereSkriv], {
+      egenUid: "uid-a", alleBrugere: {}, roller: {},
+    });
+    assert.ok(grund);
+    assert.match(grund, /din egen adgang/i);
+  });
+
+  it("⚠ MAN KAN IKKE FJERNE DEN FRA DEN SIDSTE BRUGER DER HAR DEN", () => {
+    const alleBrugere = { "uid-a": { rolle: "admin" }, "uid-b": { rolle: "chauffoer" } };
+    const grund = laaserUdeMedarbejder("uid-a", "admin", [PERM.brugereSkriv], {
+      egenUid: "uid-b", alleBrugere, roller: {},
+    });
+    assert.ok(grund, "nøglepermissionen kunne forsvinde fra den sidste bruger");
+    assert.match(grund, /sidste bruger/i);
+  });
+
+  it("men den KAN fjernes, hvis en anden bruger reelt har den", () => {
+    const alleBrugere = {
+      "uid-a": { rolle: "admin" },
+      "uid-b": { rolle: "chauffoer", permsOverride: { tilfoejet: [PERM.brugereSkriv], fjernet: [] } },
+    };
+    const grund = laaserUdeMedarbejder("uid-a", "admin", [PERM.brugereSkriv], {
+      egenUid: "uid-c", alleBrugere, roller: {},
+    });
+    assert.equal(grund, null);
+  });
+
+  it("uden brugere.skriv i fjernet-listen spærres intet", () => {
+    assert.equal(
+      laaserUdeMedarbejder("uid-a", "chauffoer", [PERM.sagLaes], { egenUid: "uid-a", alleBrugere: {}, roller: {} }),
+      null);
+  });
+});
+
 describe("delingen med serveren", () => {
   it("permissions.js er i DELTE_FILER", () => {
     /* rolleskriv kalder valideRolleperms() og laaserUde(). Firebase deployer
@@ -228,7 +334,10 @@ describe("delingen med serveren", () => {
     /* En klientvalidering der ikke også står på serveren, er en pæn knap — og
        her ville den pæne knap kunne koste kunden adgangen til sit eget
        system. */
-    for (const f of [valideRolleperms, laaserUde, permsForTenant]) {
+    for (const f of [
+      valideRolleperms, laaserUde, permsForTenant,
+      permsForBruger, valideMedarbejderOverride, laaserUdeMedarbejder,
+    ]) {
       assert.equal(typeof f, "function");
     }
   });

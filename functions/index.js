@@ -57,8 +57,8 @@ import {
   CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
 } from "./delt/warehouse.js";
 import {
-  ROLLE_PERMS, permStreng, permsForTenant,
-  valideRolleperms, laaserUde, PERM,
+  ROLLE_PERMS, permStreng, permsForTenant, permsForBruger,
+  valideRolleperms, valideMedarbejderOverride, laaserUde, laaserUdeMedarbejder, PERM,
 } from "./delt/permissions.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
@@ -328,6 +328,16 @@ const indeksPost = (b, rolle, spaerret = false, spaerretMs = null) => ({
   opdateretMs: Date.now()
 });
 
+/**
+ * ⚠ .set() PÅ HELE NODEN, IKKE .update(). Det er med vilje, og det gør
+ * mere end at skrive indekset: `permsOverride` (medarbejderrettighederskriv)
+ * ligger som en søskendenøgle på SAMME node, og et fuldt node-.set() uden
+ * feltet FJERNER det. Det er sådan `skiftrolle` rydder en tidligere
+ * individuel overstyring, uden en selvstændig sletning — en overstyring
+ * bygget til den GAMLE rolles permission-sæt giver ikke mening for en ny
+ * rolle. Skiftes denne funktion nogensinde til .update(), forsvinder den
+ * oprydning stille og roligt.
+ */
 async function skrivIndeks(tenantId, bruger, rolle, spaerret, spaerretMs = null) {
   await getDatabase()
     .ref(`tenants/${tenantId}/brugere/${bruger.uid}`)
@@ -612,7 +622,7 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
      noden rettet og nogle tokens ikke — og så kan rollen skrives igen og
      rette resten. Var rækkefølgen omvendt, ville et token kunne bære
      permissions der ikke stod nogen steder. */
-  const claim = permStreng(permsForTenant(rolle, { ...(roller || {}), [rolle]: { perms } }));
+  const nyeRoller = { ...(roller || {}), [rolle]: { perms } };
   const indeks = (await rod.child("brugere").once("value")).val() || {};
   const ramte = Object.entries(indeks)
     .filter(([, v]) => v?.rolle === rolle)
@@ -630,6 +640,15 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
          desuden en forældet indeksrække op, hvis kontoen er slettet uden om
          systemet. */
       const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
+      /* ⚠ PR. BRUGER, IKKE ÉT FÆLLES UDTRYK FØR LØKKEN. Her stod ét
+         claim-udtryk beregnet uden for løkken og genbrugt for alle — det
+         ville stille og roligt overskrive enhver medarbejders individuelle
+         `permsOverride` (medarbejderrettighederskriv) hver gang nogen
+         redigerede selve rollen. `indeks[maalUid]` er den SAMME indeksrække
+         der lige er hentet ovenfor — ingen ekstra opslagsrejse. */
+      const claim = permStreng(
+        permsForBruger(rolle, nyeRoller, indeks[maalUid]?.permsOverride)
+      );
       await auth.setCustomUserClaims(maalUid, {
         ...bruger.customClaims, rolle, perms: claim,
       });
@@ -656,6 +675,107 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
      vise det: en ændring der lykkedes for otte ud af ni, er ikke en
      ændring der lykkedes. */
   return { ok: true, ramte: ramte.length, fornyet, fejlede };
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INDIVIDUEL MEDARBEJDER-OVERSTYRING — TILFØJET 2026-09-05
+
+   ⚠ HVORFOR DEN FINDES. `rolleskriv` retter hvad en ROLLE betyder — det
+   rammer hver bruger med den, med vilje. Produktejerens krav går et lag
+   dybere: "man skal helt ned på medarbejder niveau bestemme hvad de kan se
+   og har rettigheder til." Eksemplet var konkret — en kunde der ikke bruger
+   Timeregistrering, har heller ikke brug for Frihed for netop DEN chauffør,
+   ikke nødvendigvis for alle chauffører.
+
+   `permsForBruger()` (permissions.js) er DELTAET oven på rollen:
+   `{ tilfoejet, fjernet }`, aldrig den fulde liste — en medarbejder uden
+   overstyring er identisk med rollens standard.
+
+   ⚠ SAMME TO FARER SOM rolleskriv, ÉT LAG DYBERE. `laaserUdeMedarbejder()`
+   dækker begge: kan ikke fjerne brugere.skriv fra SIN EGEN adgang, og kan
+   ikke fjerne den fra den SIDSTE person der reelt har den — regnet på tværs
+   af alle brugeres EFFEKTIVE perms (rolle + deres egen overstyring), ikke
+   kun på rollerne selv.
+
+   ⚠ ADMIN KAN HVERKEN INDSKRÆNKES ELLER UDVIDES HERFRA. permsForBruger()
+   ignorerer en overstyring på en admin-konto ubetinget — samme invariant
+   som beslutning 121, ét niveau dybere. Skrivningen her afvises desuden
+   direkte, som en ekstra håndhævelse ved selve KILDEN, ikke kun ved at
+   gøre overstyringen virkningsløs bagefter.
+
+   ⚠ ÉN BRUGER, ÉT setCustomUserClaims-KALD. Til forskel fra rolleskriv, som
+   rammer alle med rollen, ændrer dette KUN målbrugeren — ingen løkke over
+   et helt rolleindeks, fordi ændringen kun vedrører ham.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const medarbejderrettighederskriv = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const d = req.data || {};
+
+  const maalUid = kortStreng(d.uid, 128);
+  if (!maalUid) throw new HttpsError("invalid-argument", "uid mangler.");
+
+  const tilfoejet = Array.isArray(d.tilfoejet)
+    ? d.tilfoejet.map((x) => kortStreng(x, 60)).filter(Boolean) : [];
+  const fjernet = Array.isArray(d.fjernet)
+    ? d.fjernet.map((x) => kortStreng(x, 60)).filter(Boolean) : [];
+  /* ⚠ SAMME VALIDERING SOM SKÆRMEN. En klientvalidering der ikke også står
+     her, er en pæn knap — og den ville kunne skrive en permission ingen
+     regel kender. */
+  const form = valideMedarbejderOverride(tilfoejet, fjernet);
+  if (!form.ok) throw new HttpsError("invalid-argument", form.fejl);
+
+  const auth = getAuth();
+  const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
+  const maalRolle = kortStreng(bruger.customClaims?.rolle, 30);
+
+  /* ⚠ BESLUTNING 121 GENBRUGT — ADMIN KAN IKKE ÆNDRES HERFRA.
+     permsForBruger() ville alligevel ignorere overstyringen stiltiende;
+     denne afvisning stopper skrivningen ved kilden, som rolleskrivs
+     tilsvarende afvisning gør for selve rollen. */
+  if (maalRolle === "admin") {
+    throw new HttpsError("failed-precondition",
+      "Administratorens adgang kan ikke ændres — den har altid alle permissions.");
+  }
+
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const roller = await hentRoller(tenantId);
+  const alleBrugere = (await rod.child("brugere").once("value")).val() || {};
+  /* ⚠ SPÆRRINGEN LIGGER HER, IKKE I SKÆRMEN — samme figur som laaserUde. */
+  const grund = laaserUdeMedarbejder(maalUid, maalRolle, fjernet, {
+    egenUid: uid, alleBrugere, roller: roller || {},
+  });
+  if (grund) throw new HttpsError("failed-precondition", grund);
+
+  const overrideSti = rod.child(`brugere/${maalUid}/permsOverride`);
+  if (!tilfoejet.length && !fjernet.length) {
+    /* ⚠ INGEN OVERSTYRING ER FRAVÆR, IKKE ET TOMT SVAR. To tomme lister
+       ville se ud som "vi har taget stilling og valgt intet" — men det er
+       netop det samme som aldrig at have rørt medarbejderen. */
+    await overrideSti.remove();
+  } else {
+    await overrideSti.set({ tilfoejet, fjernet, aendretAf: uid, aendretMs: Date.now() });
+  }
+
+  const claim = permStreng(
+    permsForBruger(maalRolle, roller || {}, tilfoejet.length || fjernet.length ? { tilfoejet, fjernet } : null)
+  );
+  await auth.setCustomUserClaims(maalUid, { ...bruger.customClaims, perms: claim });
+  /* ⚠ UDEN DEN HER ER ÆNDRINGEN EN PÆN KNAP — samme grund som rolleskriv. */
+  await auth.revokeRefreshTokens(maalUid);
+
+  await log(tenantId, uid, "tilstandsskift", maalUid,
+    `rettigheder: +${tilfoejet.length}/-${fjernet.length}`);
+
+  return { ok: true };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

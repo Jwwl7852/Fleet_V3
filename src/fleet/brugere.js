@@ -25,6 +25,12 @@ export {
    den pæne knap kunne koste kunden adgangen til sit eget system. */
 export {
   permsForTenant, valideRolleperms, laaserUde, NOEGLEPERM,
+  /* ⚠ SAMME DISCIPLIN, ÉT LAG DYBERE — TILFØJET 2026-09-05. Individuel
+     medarbejder-overstyring oven på rollen: permsForBruger() lægger et
+     tilfoejet/fjernet-delta oven på permsForTenant(), og
+     laaserUdeMedarbejder() er den samme spærring som laaserUde(), regnet på
+     PERSONER i stedet for ROLLER. */
+  permsForBruger, valideMedarbejderOverride, laaserUdeMedarbejder,
 } from "./permissions.js";
 
 export {
@@ -47,6 +53,11 @@ export const FUNKTION = {
      mellem roller, rolleskriv ændrer hvad en rolle BETYDER — og rammer
      dermed hver bruger der har den. Se beslutning 31b. */
   rolleSkriv: "rolleskriv",
+  /* ⚠ ÉN BRUGER, IKKE EN ROLLE — TILFØJET 2026-09-05. Til forskel fra
+     rolleSkriv, som redigerer hvad en rolle betyder for ALLE med den,
+     redigerer den her en INDIVIDUEL medarbejders undtagelse oven på sin
+     rolle. Se permsForBruger()/laaserUdeMedarbejder(). */
+  medarbejderRettigheder: "medarbejderrettighederskriv",
   /* ⚠ EN VISNING, IKKE EN ADGANG. kpi/ er læsbar for enhver i tenanten,
      så indstillingen SKJULER et dashboard — den spærrer det ikke. Se
      dashboardvisning.js. */
@@ -103,6 +114,22 @@ export const spaerLogin = ({ uid, spaerret }) => kald(FUNKTION.spaerLogin, { uid
  */
 export const skrivRolle = ({ rolle, perms }) =>
   kald(FUNKTION.rolleSkriv, { rolle, perms });
+
+/**
+ * Skriv én medarbejders individuelle rettighedsoverstyring. TILFØJET
+ * 2026-09-05 — produktejerens krav om at kunne "helt ned på medarbejder
+ * niveau" til/fravælge adgang, ikke kun pr. rolle.
+ *
+ * ⚠ RAMMER KUN DENNE ENE BRUGER. Til forskel fra `skrivRolle()` fornyer den
+ * ikke andres tokens — kun `uid`s. Ingen `{ ramte, fornyet, fejlede }` i
+ * svaret; der er kun ét at fornye.
+ *
+ * ⚠ `tilfoejet`/`fjernet` ER ET DELTA, ALDRIG DEN FULDE LISTE. To tomme
+ * lister fjerner overstyringen helt — medarbejderen er igen præcis sin
+ * rolle, ikke "en rolle plus et tomt svar".
+ */
+export const skrivMedarbejderRettigheder = ({ uid, tilfoejet, fjernet }) =>
+  kald(FUNKTION.medarbejderRettigheder, { uid, tilfoejet, fjernet });
 
 /**
  * Sæt hvilke dashboards en bruger får vist.

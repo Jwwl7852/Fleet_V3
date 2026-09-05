@@ -512,7 +512,28 @@
             // af skiftrolle. Retention-arbejdet har brug for et tidspunkt at
             // regne fra, ikke bare en boolean.
             "spaerret": { ".validate": "newData.isBoolean()" },
-            "spaerretMs": { ".validate": "newData.isNumber()" }
+            "spaerretMs": { ".validate": "newData.isNumber()" },
+            // ⚠ TILFØJET 2026-09-05 — INDIVIDUEL RETTIGHEDSOVERSTYRING OVEN
+            // PÅ ROLLEN. Samme KILDE-IKKE-HÅNDHÆVELSESPUNKT-princip som
+            // roller/ ovenfor (beslutning 31b): INGEN regel i denne fil må
+            // nogensinde slå op i feltet for at afgøre adgang — adgang
+            // afgøres udelukkende af auth.token.perms. Kun
+            // medarbejderrettighederskriv skriver den; .write: false på
+            // brugere-noden ovenfor lukker allerede vejen for klienten, så
+            // dette er ren formbeskrivelse, samme rolle som roller/$rolle's
+            // .validate.
+            "permsOverride": {
+              ".validate": "newData.hasChildren(['tilfoejet', 'fjernet'])",
+              "tilfoejet": {
+                "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" }
+              },
+              "fjernet": {
+                "$i": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" }
+              },
+              "aendretAf": { ".validate": "newData.isString() && newData.val().length <= 80" },
+              "aendretMs": { ".validate": "newData.isNumber()" },
+              "$andet": { ".validate": false }
+            }
           }
         },
 
