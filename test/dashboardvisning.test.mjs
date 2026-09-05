@@ -255,9 +255,13 @@ describe("håndhævelsen", () => {
   it("⚠ REGLEN KENDER DE SAMME DASHBOARDS SOM KATALOGET", () => {
     /* Mønstret i regelfilen er en afskrift. Kommer der et dashboard mere uden
        at reglen får det, afviser serveren noget skærmen viser som gyldigt. */
-    const raa = readFileSync("firebase.rules.json", "utf8");
-    const i = raa.indexOf('"dashboardvisning"');
-    const blok = raa.slice(i, i + 1400);
+    const regler = JSON.parse(
+      readFileSync("firebase.rules.json", "utf8")
+        .split(String.fromCharCode(10))
+        .filter((l) => !l.trim().startsWith("//"))
+        .join(String.fromCharCode(10))
+    );
+    const blok = regler.rules.tenants.$tenantId.dashboardvisning.$uid.$dashboard[".validate"];
     const AABN = "matches(" + String.fromCharCode(47) + String.fromCharCode(94) + "(";
     const a = blok.indexOf(AABN);
     assert.ok(a >= 0, "reglen validerer ikke dashboardnavnet mod en ordliste");

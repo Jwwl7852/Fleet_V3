@@ -25,7 +25,7 @@ import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 import { kundeprisSti, STANDARDGRUPPE } from "../src/fleet/pricing.js";

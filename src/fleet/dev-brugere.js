@@ -20,7 +20,7 @@
  * scriptet nægter at pege andre steder hen. Vælgeren tegnes kun når
  * miljoe === "dev".
  */
-import { permStrengFraRolle, ROLLE_PERMS } from "./permissions.js";
+import { byggRolleClaims, ROLLE_PERMS } from "./permissions.js";
 import { erGyldigMail } from "./brugere-regler.js";
 
 /** Tenanten de seedede brugere hører til. Samme id som TENANTS i App.jsx. */
@@ -110,7 +110,8 @@ export function ejerkonto(mail) {
 /**
  * Claims for en seedet DEV-bruger.
  *
- * `perms` udledes ALTID af presettet — den skrives ikke i hånden. Ellers
+ * `perms` udledes ALTID af presettet og komprimeres af den faelles v2-builder
+ * — den skrives ikke i hånden. Ellers
  * kunne en seedet disponent have anden adgang end en rigtig disponent, og så
  * tester man noget andet end det man leverer. Det er beslutning 5's fejl,
  * flyttet ned i provisioneringen.
@@ -122,5 +123,5 @@ export function claimsFor(rolle, tenant = DEV_TENANT) {
   if (!ROLLE_PERMS[rolle]) {
     throw new Error(`claimsFor: ukendt rolle "${rolle}". Se ROLLE_PERMS i permissions.js.`);
   }
-  return { tenant, rolle, perms: permStrengFraRolle(rolle) };
+  return byggRolleClaims({ tenant, rolle, perms: ROLLE_PERMS[rolle] });
 }

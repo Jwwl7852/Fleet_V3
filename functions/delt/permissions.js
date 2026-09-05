@@ -19,11 +19,14 @@
  * custom claims, så rollernes indhold defineres ÉT sted. To definitioner af
  * hvem der må godkende en booking er præcis den fejl beslutning 5 handler om.
  *
- * Claim-formatet er en rør-afgrænset streng:
+ * Domænelogikken bruger en rør-afgrænset semantisk streng:
  *
- *   auth.token.perms = "|kunder.skriv|opgaver.skriv|booking.godkend|"
+ *   "|kunder.skriv|opgaver.skriv|booking.godkend|"
  *
- * fordi RTDB-regler kan .contains() på strenge, men ikke slå op i arrays.
+ * Nye Firebase-claims bærer de samme permissions som stabile to-tegnskoder
+ * med `pv: 2`; `permStrengFraClaims()` dekoder dem til formen ovenfor.
+ * Legacy-claims bar navnene direkte og understøttes midlertidigt. Begge er
+ * strenge, fordi RTDB-regler kan .contains() på strenge, men ikke slå op i arrays.
  * Rørene i begge ender er ikke pynt: uden dem ville contains('|booking.afvis')
  * også matche '|booking.afvisAlle|'. Og en tastefejl i en Cloud Function —
  * "kunder.skrivx" eller en streng helt uden rør — giver ingen adgang til
@@ -375,6 +378,124 @@ export const PERM = {
 };
 
 export const ALLE_PERMS = Object.values(PERM);
+
+/* ========================================================================
+   CUSTOM CLAIMS V2 - KOMPAKTE, STABILE PERMISSIONKODER
+
+   Firebase afviser custom claims over 1.000 bytes. De semantiske navne er
+   gode i kode og UI, men for dyre i tokenet: adminstrengens 58 navne fylder
+   alene ca. 952 bytes. V2 gemmer de SAMME permissions som faste to-tegnskoder.
+
+   Koderne er eksplicitte og permanente. De maa aldrig udledes af placeringen
+   i PERM/ALLE_PERMS: en ny permission indsat midt i kataloget maa ikke aendre
+   betydningen af allerede udstedte tokens. Nye permissions faar en ny, ubrugt
+   kode. En kode maa aldrig genbruges, heller ikke efter en permission fjernes.
+
+   `pv: 2` skelner kompaktformatet fra legacy-tokenet, hvor `perms` bar de
+   lange navne. Regler og backend understotter legacy midlertidigt og
+   failer lukket for alle andre versionsnumre. */
+export const CLAIM_PERMISSION_VERSION = 2;
+export const FIREBASE_CUSTOM_CLAIMS_MAX_BYTES = 1000;
+/* Haardt budget, ikke blot en test. Det efterlader mindst 250 bytes margin
+   til Firebase-graensen, ogsaa naar tenant-id'et er de maksimale 40 tegn. */
+export const CUSTOM_CLAIMS_BUDGET_BYTES = 750;
+
+export const PERM_KODE = Object.freeze({
+  "brugere.skriv": "00",
+  "kunder.skriv": "01",
+  "opgaver.skriv": "02",
+  "koeretoejer.skriv": "03",
+  "fravaer.skriv": "04",
+  "facility.skriv": "05",
+  "indkoeb.skriv": "06",
+  "indkoeb.laes": "07",
+  "satser.skriv": "08",
+  "satser.laes": "09",
+  "lagre.skriv": "0a",
+  "indberetninger.skriv": "0b",
+  "indberetninger.skrivAlle": "0c",
+  "indberetninger.sensitiveLaes": "0d",
+  "booking.opret": "0e",
+  "booking.foreslaa": "0f",
+  "booking.godkend": "0g",
+  "booking.returner": "0h",
+  "booking.afvis": "0i",
+  "booking.annuller": "0j",
+  "booking.udfoer": "0k",
+  "grundlag.laes": "0l",
+  "grundlag.skriv": "0m",
+  "grundlag.godkend": "0n",
+  "indkoeb.godkend": "0o",
+  "fakturaer.laes": "0p",
+  "fakturaer.skriv": "0q",
+  "fakturaer.godkend": "0r",
+  "leverandoerer.laes": "0s",
+  "leverandoerer.skriv": "0t",
+  "audit.laes": "0u",
+  "booking.laes": "0v",
+  "booking.sensitiveLaes": "0w",
+  "booking.vaerdiLaes": "0x",
+  "kunder.laes": "0y",
+  "kunder.sensitiveLaes": "0z",
+  "koeretoejer.laes": "10",
+  "koeretoejer.sensitiveLaes": "11",
+  "personale.laes": "12",
+  "personale.skriv": "13",
+  "personale.sensitiveLaes": "14",
+  "kompetencer.skriv": "15",
+  "kasser.skriv": "16",
+  "kasseudlaan.skriv": "17",
+  "reolpladser.skriv": "18",
+  "varer.skriv": "19",
+  "bevaegelser.skriv": "1a",
+  "carriers.skriv": "1b",
+  "fravaer.laes": "1c",
+  "fravaer.sensitiveLaes": "1d",
+  "sag.laes": "1e",
+  "sag.sensitiveLaes": "1f",
+  "sag.skriv": "1g",
+  "sag.karantaeneFrigiv": "1h",
+  "sag.aftaleBekraeft": "1i",
+  "sag.mailSend": "1j",
+  "retention.laes": "1k",
+  "retention.skriv": "1l",
+});
+
+const KODE_PERM = Object.freeze(
+  Object.fromEntries(Object.entries(PERM_KODE).map(([perm, kode]) => [kode, perm]))
+);
+
+/** Testbar invariant for den permanente permissionmapping. */
+export function tjekPermissionMapping(perms, mapping) {
+  if (!Array.isArray(perms) || !mapping || typeof mapping !== "object" || Array.isArray(mapping)) {
+    return { ok: false, kode: "mapping/invalid-input" };
+  }
+  if (new Set(perms).size !== perms.length) {
+    return { ok: false, kode: "mapping/duplicate-permission" };
+  }
+  const navne = Object.keys(mapping);
+  const mangler = perms.filter((perm) => !Object.prototype.hasOwnProperty.call(mapping, perm));
+  if (mangler.length) return { ok: false, kode: "mapping/missing-permission" };
+  if (navne.some((perm) => !perms.includes(perm))) {
+    return { ok: false, kode: "mapping/unknown-permission" };
+  }
+  const koder = navne.map((perm) => mapping[perm]);
+  if (koder.some((kode) => typeof kode !== "string" || !/^[0-9a-z]{2}$/.test(kode))) {
+    return { ok: false, kode: "mapping/invalid-code-length" };
+  }
+  if (new Set(koder).size !== koder.length) {
+    return { ok: false, kode: "mapping/code-collision" };
+  }
+  return { ok: true, kode: null };
+}
+
+/* Fejl ved opstart er sikrere end at udstede et token med en manglende,
+   kolliderende eller ikke-to-tegns kode. Invarianten koerer i browser,
+   tests og Functions. */
+const PERMISSION_MAPPING_FORM = tjekPermissionMapping(ALLE_PERMS, PERM_KODE);
+if (!PERMISSION_MAPPING_FORM.ok || Object.keys(KODE_PERM).length !== ALLE_PERMS.length) {
+  throw new Error(`PERM_KODE er ugyldig: ${PERMISSION_MAPPING_FORM.kode || "mapping/code-collision"}.`);
+}
 
 /* Dataskrivning som enhver ikke-chauffør har i dag. Reglen hed
    `rolle !== 'chauffoer'`, og den dækkede netop disse. */
@@ -773,12 +894,221 @@ export function laaserUde(rolle, nyePerms = [], roller = {}, { egenRolle = null 
 }
 
 /**
- * Claim-strengen. Rør i begge ender og mellem hvert navn.
- * Det er denne der lægges i auth.token.perms.
+ * Den semantiske permissionstreng. Rør i begge ender og mellem hvert navn.
+ * Bruges internt i klient og domænelogik. Nye Firebase-tokens bruger den
+ * kompakte streng fra kompaktPermStreng(); legacy-tokens brugte denne direkte.
  */
 export const permStreng = (perms = []) => (perms.length ? `|${perms.join("|")}|` : "");
 
 export const permStrengFraRolle = (rolle) => permStreng(permsFraRolle(rolle));
+
+/** De samme permissions som stabile koder til custom claims v2. */
+export function kompaktPermStreng(perms = []) {
+  const form = valideRolleperms(perms);
+  if (!form.ok) throw new Error(`kompaktPermStreng: ${form.fejl}`);
+  const valgte = new Set(perms);
+  const koder = ALLE_PERMS.filter((perm) => valgte.has(perm)).map((perm) => PERM_KODE[perm]);
+  return koder.length ? `|${koder.join("|")}|` : "";
+}
+
+const HAR_EGEN = (objekt, felt) => Object.prototype.hasOwnProperty.call(objekt, felt);
+const LEGACY_ROLLE_STRENGE = Object.freeze(
+  [...new Set(Object.values(ROLLE_PERMS).map((perms) => permStreng(perms)))]
+);
+
+function parseAfgrænset(perms, opslag) {
+  if (typeof perms !== "string") return { ok: false, perms: [] };
+  if (perms === "") return { ok: true, perms: [] };
+  if (perms.length < 3 || !perms.startsWith("|") || !perms.endsWith("|")) {
+    return { ok: false, perms: [] };
+  }
+  const dele = perms.slice(1, -1).split("|");
+  if (dele.some((del) => !del) || new Set(dele).size !== dele.length) {
+    return { ok: false, perms: [] };
+  }
+  const dekodet = dele.map((del) => opslag[del]);
+  if (dekodet.some((perm) => !perm)) return { ok: false, perms: [] };
+  return { ok: true, perms: dekodet };
+}
+
+function parseKompakt(perms) {
+  const parsed = parseAfgrænset(perms, KODE_PERM);
+  if (!parsed.ok) return parsed;
+  const valgte = new Set(parsed.perms);
+  const kanonisk = ALLE_PERMS.filter((perm) => valgte.has(perm));
+  const forventet = kanonisk.length
+    ? `|${kanonisk.map((perm) => PERM_KODE[perm]).join("|")}|`
+    : "";
+  return forventet === perms ? { ok: true, perms: kanonisk } : { ok: false, perms: [] };
+}
+
+const PERM_IDENTITET = Object.freeze(Object.fromEntries(ALLE_PERMS.map((perm) => [perm, perm])));
+
+function parseLegacy(perms) {
+  const parsed = parseAfgrænset(perms, PERM_IDENTITET);
+  if (!parsed.ok) return parsed;
+  if (perms === "") return parsed;
+  const valgte = new Set(parsed.perms);
+  const katalogordnet = permStreng(ALLE_PERMS.filter((perm) => valgte.has(perm)));
+  /* Den gamle Functions-builder katalogordnede tenantroller. Den gamle
+     DEV-/provisioneringsbuilder udstedte de seks faste ROLLE_PERMS-strenge i
+     deres deklarerede orden. Kun de dokumenterede historiske former accepteres. */
+  return perms === katalogordnet || LEGACY_ROLLE_STRENGE.includes(perms)
+    ? parsed
+    : { ok: false, perms: [] };
+}
+
+export function permsFraKompaktStreng(perms) {
+  return parseKompakt(perms).perms;
+}
+
+/**
+ * Et Firebase-claim tilbage til den semantiske streng resten af produktet
+ * allerede bruger. Kun to former accepteres:
+ *   - pv === 2: den kompakte, eksplicit kortlagte streng
+ *   - pv mangler: det midlertidigt understottede legacy-format
+ * Ukendt version, forkert type og ukendte koder giver ingen permissions.
+ */
+export function vurderClaimPermissions(claims) {
+  if (!claims || typeof claims !== "object" || Array.isArray(claims)) {
+    return { ok: false, format: "ugyldigt", kode: "claim/invalid-object", perms: [] };
+  }
+  if (HAR_EGEN(claims, "pv")) {
+    if (claims.pv !== CLAIM_PERMISSION_VERSION) {
+      return { ok: false, format: "ugyldigt", kode: "claim/unsupported-version", perms: [] };
+    }
+    const parsed = parseKompakt(claims.perms);
+    return parsed.ok
+      ? { ok: true, format: "v2", kode: null, perms: parsed.perms }
+      : { ok: false, format: "ugyldigt", kode: "claim/invalid-v2-perms", perms: [] };
+  }
+  const parsed = parseLegacy(claims.perms);
+  return parsed.ok
+    ? { ok: true, format: "legacy", kode: null, perms: parsed.perms }
+    : { ok: false, format: "ugyldigt", kode: "claim/invalid-legacy-perms", perms: [] };
+}
+
+export function permStrengFraClaims(claims) {
+  const vurdering = vurderClaimPermissions(claims);
+  return vurdering.ok ? permStreng(vurdering.perms) : "";
+}
+
+export const harClaimPerm = (claims, perm) => harPerm(permStrengFraClaims(claims), perm);
+
+/** Firebase maaler UTF-8-bytes i JSON-repraesentationen af custom claims. */
+export const customClaimsBytes = (claims) =>
+  new TextEncoder().encode(JSON.stringify(claims || {})).length;
+
+export const CUSTOM_CLAIM_EXTRA_ALLOWLIST = Object.freeze({
+  udbyder: "boolean",
+  devTester: "boolean",
+});
+
+/* Firebase Admin SDK's reserverede felter plus de standardiserede JWT/OIDC-
+   profilfelter der allerede har en platformdefineret betydning. Ukendte
+   felter afvises under alle omstændigheder; listen giver den præcise fejltype. */
+export const RESERVED_CUSTOM_CLAIM_KEYS = Object.freeze([
+  "acr", "amr", "at_hash", "aud", "auth_time", "azp", "cnf", "c_hash",
+  "exp", "iat", "iss", "jti", "nbf", "nonce", "sub", "firebase",
+  "uid", "user_id", "name", "given_name", "family_name", "middle_name",
+  "nickname", "preferred_username", "profile", "picture", "website",
+  "email", "email_verified", "gender", "birthdate", "zoneinfo", "locale",
+  "phone_number", "phone_number_verified", "address", "updated_at",
+]);
+
+const AUTORITET_CLAIMS = new Set(["tenant", "rolle", "pv", "perms"]);
+const RESERVED_CLAIMS = new Set(RESERVED_CUSTOM_CLAIM_KEYS);
+
+function claimFejl(kode, besked) {
+  const fejl = new Error(besked);
+  fejl.code = kode;
+  return fejl;
+}
+
+function bevarTilladteEkstraClaims(eksisterende) {
+  if (!eksisterende || typeof eksisterende !== "object" || Array.isArray(eksisterende)) {
+    throw claimFejl("claims/invalid-existing-claims", "Eksisterende custom claims er ikke et objekt.");
+  }
+  const bevaret = {};
+  for (const [navn, vaerdi] of Object.entries(eksisterende)) {
+    if (AUTORITET_CLAIMS.has(navn)) continue;
+    if (RESERVED_CLAIMS.has(navn)) {
+      throw claimFejl("claims/reserved-extra-claim", `Reserveret custom claim: ${navn}.`);
+    }
+    const type = CUSTOM_CLAIM_EXTRA_ALLOWLIST[navn];
+    if (!type) {
+      throw claimFejl("claims/unknown-extra-claim", `Ukendt ekstra custom claim: ${navn}.`);
+    }
+    if (typeof vaerdi !== type) {
+      throw claimFejl("claims/invalid-extra-claim", `Custom claim ${navn} skal vaere ${type}.`);
+    }
+    bevaret[navn] = vaerdi;
+  }
+  return bevaret;
+}
+
+/**
+ * Opdater ét allowlistet serverflag uden at kopiere ukendte eller reserverede
+ * custom claims videre. Autoritetsfelterne bevares uændret; scripts der bruger
+ * denne funktion må ikke opfinde tenant, rolle eller permissions.
+ */
+export function opdaterTilladtEkstraClaim(eksisterende = {}, navn, vaerdi) {
+  const ekstra = bevarTilladteEkstraClaims(eksisterende);
+  if (!CUSTOM_CLAIM_EXTRA_ALLOWLIST[navn]) {
+    throw claimFejl("claims/unknown-extra-claim", `Ukendt ekstra custom claim: ${navn}.`);
+  }
+  if (vaerdi !== undefined && typeof vaerdi !== CUSTOM_CLAIM_EXTRA_ALLOWLIST[navn]) {
+    throw claimFejl("claims/invalid-extra-claim",
+      `Custom claim ${navn} skal vaere ${CUSTOM_CLAIM_EXTRA_ALLOWLIST[navn]}.`);
+  }
+  const autoritet = Object.fromEntries(
+    Object.entries(eksisterende).filter(([felt]) => AUTORITET_CLAIMS.has(felt))
+  );
+  if (vaerdi === undefined) delete ekstra[navn];
+  else ekstra[navn] = vaerdi;
+  return { ...autoritet, ...ekstra };
+}
+
+/**
+ * Den eneste builder nye interne rolleclaims maa udstedes gennem.
+ *
+ * Tenant, rolle og permissions kommer fra serverens verificerede kontekst og
+ * rolledefinition. `eksisterende` er den nuvaerende Admin-SDK-post og bruges
+ * kun til at bevare andre serverudstedte flag (fx udbyder/devTester). De fire
+ * autoritetsfelter overskrives altid, saa legacy-permissions ikke bliver
+ * liggende ved siden af v2-formatet.
+ */
+export function byggRolleClaims({ tenant, rolle, perms, eksisterende = {} } = {}) {
+  if (typeof tenant !== "string" || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(tenant)) {
+    throw claimFejl("claims/invalid-tenant",
+      "byggRolleClaims: tenant skal vaere 2-40 tegn og matche kunde-id-formatet.");
+  }
+  if (!ROLLE_PERMS[rolle]) {
+    throw claimFejl("claims/invalid-role", `byggRolleClaims: ukendt rolle "${rolle}".`);
+  }
+  const form = valideRolleperms(perms);
+  if (!form.ok) throw claimFejl("claims/invalid-permissions", `byggRolleClaims: ${form.fejl}`);
+
+  const bevaret = bevarTilladteEkstraClaims(eksisterende);
+
+  const claims = {
+    ...bevaret,
+    tenant,
+    rolle,
+    pv: CLAIM_PERMISSION_VERSION,
+    perms: kompaktPermStreng(perms),
+  };
+  const bytes = customClaimsBytes(claims);
+  if (bytes > CUSTOM_CLAIMS_BUDGET_BYTES) {
+    throw claimFejl(
+      "claims/too-large",
+      `byggRolleClaims: claimet fylder ${bytes} bytes; budgettet er ` +
+      `${CUSTOM_CLAIMS_BUDGET_BYTES} af Firebase-graensen paa ` +
+      `${FIREBASE_CUSTOM_CLAIMS_MAX_BYTES}.`
+    );
+  }
+  return claims;
+}
 
 /**
  * Claim-strengen tilbage til en liste. Tager også en liste, uændret.

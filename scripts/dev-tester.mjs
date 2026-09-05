@@ -27,6 +27,7 @@ import {
   NOEGLEFIL, tjekProjekt, vurderIgnorering, laesNoegle, laesKode,
 } from "./provisioner-dev.mjs";
 import { laesArgumenter } from "./opret-kunde.mjs";
+import { opdaterTilladtEkstraClaim } from "../src/fleet/permissions.js";
 
 const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -101,11 +102,10 @@ async function main() {
   if (handling === "giv") {
     /* ⚠ CLAIMS LÆGGES OVEN PÅ — samme regel som ejer.mjs. Overskrev vi dem,
        ville en konto der også er ejer eller kundeadmin miste den adgang. */
-    await auth.setCustomUserClaims(bruger.uid, { ...nu, devTester: true });
+    await auth.setCustomUserClaims(bruger.uid, opdaterTilladtEkstraClaim(nu, "devTester", true));
     console.log(`\n  ${mail} kan nu bruge den hostede DEV-brugerskifter.`);
   } else {
-    const uden = { ...nu };
-    delete uden.devTester;
+    const uden = opdaterTilladtEkstraClaim(nu, "devTester", undefined);
     await auth.setCustomUserClaims(bruger.uid, uden);
     console.log(`\n  ${mail} kan ikke længere bruge den hostede DEV-brugerskifter.`);
   }

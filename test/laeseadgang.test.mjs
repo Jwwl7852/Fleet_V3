@@ -47,12 +47,14 @@ const REGLER = JSON.parse(
 
 const ROLLER = Object.keys(ROLLE_PERMS);
 const ALLE_PERMS = [...new Set(Object.values(ROLLE_PERMS).flat())];
+const KENDTE_PERMS = new Set(Object.values(PERM));
 
 /** De permissions et `.read`-udtryk kræver. */
 const permsI = (udtryk) =>
   typeof udtryk !== "string" ? []
     : [...new Set([...udtryk.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)]
-      .map((m) => m[1]))];
+      .map((m) => m[1])
+      .filter((perm) => KENDTE_PERMS.has(perm)))];
 
 /** Hver node med en egen `.read`, og hvad den kræver. */
 function laesbareNoder(node = REGLER, sti = "") {

@@ -24,7 +24,7 @@
  */
 import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
+import { initializeTestEnvironment, assertSucceeds, assertFails } from "./rules-test-claims.mjs";
 import { ref, set, update, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import { ANSOEGBARE_ARTER, ALLE_FRAVAER_ARTER, FRAVAER_ART } from "../src/fleet/fravaer.js";

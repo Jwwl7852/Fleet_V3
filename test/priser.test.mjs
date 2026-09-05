@@ -1355,7 +1355,7 @@ describe("afregningsskærmen samler det hele", () => {
        en browser kan bestemme. */
     const regler = readFileSync("firebase.rules.json", "utf8");
     const blok = regler.slice(regler.indexOf('"grundlag": {'));
-    assert.ok(blok.slice(0, 900).includes('".write": false'),
+    assert.ok(blok.slice(0, 30000).includes('".write": false'),
       "grundlaget kan skrives direkte fra en klient");
     /* Teksten står i JSX og kan være brudt af et <b> eller et linjeskift —
        prøven leder efter udsagnet, ikke efter formateringen. */

@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
 import { ALLE_KATEGORIER, ALLE_AFTALETYPER } from "../src/fleet/leverandoerer.js";

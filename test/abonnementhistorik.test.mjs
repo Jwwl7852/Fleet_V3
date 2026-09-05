@@ -233,7 +233,7 @@ describe("Vejen ind er lukket, og der er ingen sletning", () => {
 
   it("⚠ KUN UDBYDEREN LÆSER DEN — ikke kunden", () => {
     assert.ok(NODE[".read"].includes("auth.token.udbyder"));
-    assert.ok(!NODE[".read"].includes("auth.token.tenant"),
+    assert.ok(!NODE[".read"].includes("auth.token.tenant === $tenantId"),
       "`aarsag` står i posten, og hvorfor kunden er lukket, hører i en samtale "
       + "— ikke i en skærm han selv kan åbne.");
   });

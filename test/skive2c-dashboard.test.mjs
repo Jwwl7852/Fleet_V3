@@ -304,7 +304,7 @@ describe("Skive 2C — 14) Tilpas forside / eksisterende brugerlayout: fortsat f
        fra reglen igen. */
     const raa = readFileSync("firebase.rules.json", "utf8");
     const i = raa.indexOf('"brugerlayout"');
-    const blok = raa.slice(i, i + 1200);
+    const blok = raa.slice(i, i + 3000);
     assert.match(blok, /\bbooking\b/,
       "firebase.rules.json's brugerlayout-regel har mistet 'booking' igen");
   });

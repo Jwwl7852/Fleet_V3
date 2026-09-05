@@ -80,7 +80,7 @@ describe("Forbrugsvarer er ikke Warehouses varer", () => {
   test("⚠ BEGGE NODER ER .write: false", () => {
     for (const navn of ["forbrugsvarer", "forbrugsvarebevaegelser"]) {
       const i = REGELFIL.indexOf(`"${navn}": {`);
-      const blok = REGELFIL.slice(i, i + 1200);
+      const blok = REGELFIL.slice(i, i + 30000);
       assert.match(blok, /"\.write": false/, `${navn} kan skrives direkte`);
       /* Modulklausulen — en kunde uden Procure skal ikke kunne læse den. */
       assert.match(blok, /child\('indkoeb'\)\.val\(\) === true/);

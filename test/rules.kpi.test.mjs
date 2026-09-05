@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, get } from "firebase/database";
 import {
   permStrengFraRolle, permStreng, ALLE_PERMS, PERM,
@@ -265,7 +265,10 @@ describe("⚠ DOMÆNET ARVER SIN KILDES LÆSE-PERMISSION", () => {
     const t = regler.rules.tenants.$tenantId;
     const v = t[node]?.[".read"];
     if (typeof v !== "string") return [];
-    return [...v.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)].map((m) => m[1]);
+    const kendte = new Set(Object.values(PERM));
+    return [...v.matchAll(/perms\.contains\('\|([^|]+)\|'\)/g)]
+      .map((m) => m[1])
+      .filter((perm) => kendte.has(perm));
   };
 
   it("⚠ KPI_PERM ER UDLEDT AF KILDERNE — ikke skrevet i hånden", () => {

@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import { PERM, ROLLE_PERMS, permStreng, permStrengFraRolle } from "../src/fleet/permissions.js";
 

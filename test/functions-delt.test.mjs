@@ -194,8 +194,20 @@ test("Et rolleskift fornyer tokenet", () => {
   const kode = funktionskode();
   const i = kode.indexOf("export const skiftrolle");
   assert.ok(i > 0, "skiftrolle findes ikke — er funktionen døbt om?");
-  assert.match(kode.slice(i, i + 1400), /revokeRefreshTokens/,
-    "skiftrolle fornyer ikke tokenet.");
+  assert.match(kode.slice(i, i + 1600), /saetClaimsEfterRevocation/,
+    "skiftrolle bruger ikke den fælles revocation-hjælper.");
+  assert.match(kode, /function tokensValidAfterSekunder[\s\S]*?tokensValidAfterTime/,
+    "revocation-tidspunktet kommer ikke fra Firebase Auth.");
+  assert.match(kode, /async function tilbagekaldOgGemRevocation[\s\S]*?revokeRefreshTokens[\s\S]*?getUser[\s\S]*?tokensValidAfterSekunder[\s\S]*?REVOCATION_NODE/,
+    "revocation-hjælperen tilbagekalder eller gemmer ikke serverens tidspunkt.");
+  assert.match(kode, /async function saetClaimsEfterRevocation[\s\S]*?tilbagekaldOgGemRevocation[\s\S]*?setCustomUserClaims/,
+    "claims skal skrives efter den dokumenterede revocation-metadata.");
+  const skift = funktionskrop(kode, "skiftrolle");
+  assert.ok(skift.indexOf("saetClaimsEfterRevocation") < skift.indexOf("skrivIndeks"),
+    "rolleskift skal lukke det gamle token foer indeksaendringen.");
+  const spaer = funktionskrop(kode, "spaerlogin");
+  assert.ok(spaer.indexOf("tilbagekaldOgGemRevocation") < spaer.indexOf("updateUser"),
+    "spaerring skal lukke RTDB-adgang foer Auth-kontoen aendres.");
 });
 
 test("Funktionerne rører kun brugere i egen tenant", () => {

@@ -11,7 +11,7 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  initializeTestEnvironment, assertSucceeds, assertFails, } from "@firebase/rules-unit-testing";
+  initializeTestEnvironment, assertSucceeds, assertFails, } from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import {
   PERM, ALLE_PERMS, ROLLE_PERMS, permStreng, permStrengFraRolle, harPerm, ALLE_ROLLER, permsFraRolle,
@@ -422,7 +422,7 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        disponentrolle, få standarden tilbage næste gang han oprettede en
        disponent — og forskellen ville vise sig som en adgang der manglede
        uden grund. */
-    assert.match(krop("skiftrolle"), /claimForRolle\(tenantId, rolle\)/,
+    assert.match(krop("skiftrolle"), /claimForRolle\(tenantId, rolle, bruger\.customClaims\)/,
       "skiftrolle minter ikke gennem tenantens egne rolledefinitioner");
     assert.match(kilde, /function claimForRolle[\s\S]*?permsForTenant\(/,
       "claimForRolle udleder ikke perms af rollen");
@@ -431,10 +431,14 @@ describe("rollerne er faste — og claim'et er det ene håndhævelsespunkt", () 
        beholder brugeren sine gamle claims indtil tokenet udløber af sig
        selv: man ville tro man havde fjernet en adgang, som stadig virkede.
        Det gælder nu BEGGE veje — et rolleskift og en rolleændring. */
-    for (const navn of ["skiftrolle", "rolleskriv"]) {
-      assert.match(krop(navn), /revokeRefreshTokens/,
-        `${navn} træder ikke i kraft før tokenet udløber`);
-    }
+    assert.match(krop("skiftrolle"), /saetClaimsEfterRevocation/,
+      "skiftrolle bruger ikke revocation- og claim-wrapperen");
+    assert.match(krop("rolleskriv"), /tilbagekaldOgGemRevocation/,
+      "rolleskriv bruger ikke den fælles revocation-hjælper");
+    assert.match(kilde, /async function saetClaimsEfterRevocation[\s\S]*?tilbagekaldOgGemRevocation[\s\S]*?setCustomUserClaims/,
+      "claim-wrapperen tilbagekalder ikke før nye claims gemmes");
+    assert.match(kilde, /async function tilbagekaldOgGemRevocation[\s\S]*?revokeRefreshTokens[\s\S]*?getUser[\s\S]*?tokensValidAfterSekunder[\s\S]*?REVOCATION_NODE/,
+      "revocation-hjælperen mangler tilbagekaldelse eller metadata");
 
     /* ⚠ OG KLIENTEN MINTER IKKE. Der findes ingen vej fra browseren til et
        claim; setCustomUserClaims står kun i functions/.

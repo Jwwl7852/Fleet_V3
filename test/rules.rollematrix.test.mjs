@@ -45,7 +45,7 @@ import { readFileSync } from "node:fs";
    hver skrivning prøves, og svaret skrives i en tabel. Et assert pr.
    skrivning ville stoppe ved den første afvisning — og en afvisning er
    netop et resultat her, ikke en fejl. */
-import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
+import { initializeTestEnvironment } from "./rules-test-claims.mjs";
 import { ref, set } from "firebase/database";
 import { ROLLE_PERMS, permStrengFraRolle } from "../src/fleet/permissions.js";
 

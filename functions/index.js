@@ -57,9 +57,10 @@ import {
   CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
 } from "./delt/warehouse.js";
 import {
-  ROLLE_PERMS, permStreng, permsForTenant,
-  valideRolleperms, laaserUde, PERM,
+  ROLLE_PERMS, permsForTenant,
+  valideRolleperms, laaserUde, PERM, byggRolleClaims, permStrengFraClaims,
 } from "./delt/permissions.js";
+import { migrerClaimKonti } from "./delt/claims-migration.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
    for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
@@ -296,8 +297,8 @@ function kraevBrugeradmin(req) {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
-  const perms = auth.token?.perms;
-  if (typeof perms !== "string" || !perms.includes(`|${PERM.brugereSkriv}|`)) {
+  const perms = permStrengFraClaims(auth.token);
+  if (!perms.includes(`|${PERM.brugereSkriv}|`)) {
     throw new HttpsError("permission-denied", `Kræver ${PERM.brugereSkriv}.`);
   }
   return { uid: auth.uid, tenantId };
@@ -380,7 +381,7 @@ async function hentRoller(tenantId) {
 }
 
 /**
- * Claim-strengen for en rolle HOS DEN HER TENANT.
+ * Det komplette v2-claim for en rolle HOS DEN HER TENANT.
  *
  * ⚠ ALLE STEDER DER MINTER, SKAL BRUGE DEN HER. `opretbruger` og
  * `skiftrolle` mintede fra konstanten; gør de det stadig, ville en kunde der
@@ -388,8 +389,106 @@ async function hentRoller(tenantId) {
  * oprettede en disponent — og forskellen ville først vise sig som en adgang
  * der manglede uden grund.
  */
-async function claimForRolle(tenantId, rolle) {
-  return permStreng(permsForTenant(rolle, await hentRoller(tenantId)));
+async function claimForRolle(tenantId, rolle, eksisterende = {}) {
+  return byggRolleClaims({
+    tenant: tenantId,
+    rolle,
+    perms: permsForTenant(rolle, await hentRoller(tenantId)),
+    eksisterende,
+  });
+}
+
+const REVOCATION_NODE = "authRevocations";
+
+function tokensValidAfterSekunder(bruger) {
+  const ms = Date.parse(bruger?.tokensValidAfterTime || "");
+  if (!Number.isFinite(ms)) {
+    const fejl = new Error("Firebase Auth returnerede intet gyldigt tokensValidAfterTime.");
+    fejl.code = "claims/invalid-revocation-time";
+    throw fejl;
+  }
+  return ms / 1000;
+}
+
+/** Firebases dokumenterede RTDB-model: revoke, hent det serverautoritative
+ * tidspunkt og gem det i en node som klienter aldrig kan skrive. */
+async function tilbagekaldOgGemRevocation(auth, maalUid) {
+  try {
+    await auth.revokeRefreshTokens(maalUid);
+  } catch (aarsag) {
+    const fejl = new Error("Refresh tokens kunne ikke tilbagekaldes.");
+    fejl.code = "claims/revocation-failed";
+    fejl.cause = aarsag;
+    throw fejl;
+  }
+  let bruger;
+  try {
+    bruger = await auth.getUser(maalUid);
+  } catch (aarsag) {
+    const fejl = new Error("Det serverautoritative revocation-tidspunkt kunne ikke hentes.");
+    fejl.code = aarsag?.code === "auth/user-not-found"
+      ? "claims/auth-user-not-found"
+      : "claims/revocation-time-read-failed";
+    fejl.cause = aarsag;
+    throw fejl;
+  }
+  const revokeTime = tokensValidAfterSekunder(bruger);
+  try {
+    await getDatabase().ref(`${REVOCATION_NODE}/${maalUid}/revokeTime`).set(revokeTime);
+  } catch (aarsag) {
+    const fejl = new Error("Revocation blev udført, men RTDB-metadata kunne ikke gemmes.");
+    fejl.code = "claims/revocation-metadata-write-failed";
+    fejl.cause = aarsag;
+    throw fejl;
+  }
+  return revokeTime;
+}
+
+/* Rules closes access before claims are mutated. If claim-write fails, the
+   old token remains denied until the account is handled manually. */
+async function saetClaimsEfterRevocation(auth, maalUid, claims) {
+  await tilbagekaldOgGemRevocation(auth, maalUid);
+  try {
+    await auth.setCustomUserClaims(maalUid, claims);
+  } catch (aarsag) {
+    const fejl = new Error("Claims kunne ikke gemmes efter revocation.");
+    fejl.code = "claims/claim-write-failed";
+    fejl.cause = aarsag;
+    throw fejl;
+  }
+}
+
+const SIKRE_CLAIM_FEJLKODER = new Set([
+  "claims/invalid-existing-claims", "claims/reserved-extra-claim",
+  "claims/unknown-extra-claim", "claims/invalid-extra-claim",
+  "claims/invalid-tenant", "claims/invalid-role", "claims/invalid-permissions",
+  "claims/too-large", "claims/invalid-revocation-time",
+  "claims/revocation-failed", "claims/revocation-time-read-failed",
+  "claims/revocation-metadata-write-failed", "claims/claim-write-failed",
+  "claims/auth-user-not-found",
+]);
+
+function sikkerClaimFejlkode(fejl) {
+  const kode = typeof fejl?.code === "string" ? fejl.code : "";
+  if (SIKRE_CLAIM_FEJLKODER.has(kode)) return kode;
+  if (kode === "auth/user-not-found") return "claims/auth-user-not-found";
+  if (kode === "permission-denied") return "claims/tenant-mismatch";
+  return "claims/internal";
+}
+
+/* Ingen uid, mail, claimsværdier eller rå Firebase-beskeder i loggen. Den
+   tekniske stack bevares uden første linje (som kan indeholde inputdata), og
+   både den stabile og den underliggende maskinkode logges. */
+function logClaimFejl(fejl) {
+  console.error("claimsfornyv2: konto fejlede", {
+    sikkerKode: sikkerClaimFejlkode(fejl),
+    kildeKode: typeof fejl?.code === "string" ? fejl.code : null,
+    navn: typeof fejl?.name === "string" ? fejl.name : "Error",
+    stackFrames: typeof fejl?.stack === "string"
+      ? fejl.stack.split("\n").slice(1).join("\n")
+      : null,
+    aarsagKode: typeof fejl?.cause?.code === "string" ? fejl.cause.code : null,
+  });
 }
 
 async function log(tenantId, uid, handling, objektId, note) {
@@ -443,16 +542,10 @@ async function opretKonto({ tenantId, kalderUid, d }) {
     throw e;
   }
 
-  await auth.setCustomUserClaims(bruger.uid, {
-    tenant: tenantId,
-    rolle,
-    /* ⚠ FRA TENANTENS EGEN DEFINITION. Opretter en kunde en ny disponent,
-       skal han have DEN disponentrolle kunden har redigeret — ikke
-       standarden. Mintede vi konstanten her, ville den nye bruger have en
-       anden adgang end sine kolleger, og forskellen ville først vise sig
-       som noget der manglede uden grund. Se beslutning 31b. */
-    perms: await claimForRolle(tenantId, rolle)
-  });
+  /* Fra tenantens egen rolledefinition, kompaktet og stoerrelsestjekket af
+     den faelles builder. Hverken tenant, rolle eller brugerpermissions kommer
+     fra klienten. */
+  await auth.setCustomUserClaims(bruger.uid, await claimForRolle(tenantId, rolle));
 
   await skrivIndeks(tenantId, bruger, rolle, false);
   await log(tenantId, kalderUid, "opret", bruger.uid, `rolle ${rolle}`);
@@ -481,17 +574,16 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
   /* ⚠ FRA TENANTENS EGEN DEFINITION, IKKE FRA KONSTANTEN. Beslutning 31b:
      har kunden redigeret rollen, er det DEN der skal mintes. Konstanten er
      standarden man falder tilbage på, ikke svaret. */
-  await auth.setCustomUserClaims(maalUid, {
-    ...bruger.customClaims,
-    rolle,
-    perms: await claimForRolle(tenantId, rolle)
-  });
+  const nyeClaims = await claimForRolle(tenantId, rolle, bruger.customClaims);
+  await saetClaimsEfterRevocation(
+    auth,
+    maalUid,
+    nyeClaims
+  );
   /* ⚠ UDEN DEN HER ER NEDGRADERINGEN EN PÆN KNAP. Brugeren beholder sine
      gamle claims indtil tokenet udløber af sig selv — man ville tro man
      havde fjernet en adgang, som stadig virkede. Det er den værste
      fejltilstand, fordi den ser ud som om den lykkedes. */
-  await auth.revokeRefreshTokens(maalUid);
-
   /* ⚠ spaerretMs BEVARES, IKKE REGNES OM. Et rollevalg er ikke en
      spærring — nulstillede vi tidspunktet her, ville en konto der har
      stået spærret i to år, se ud som om den lige blev det. */
@@ -518,7 +610,8 @@ export const skiftrolle = onCall({ region: REGION }, async (req) => {
        klienten, fordi adgangen til at rette det var selv en permission.
 
     2. TO HÅNDHÆVELSESPUNKTER. roller/ er en KILDE. Reglerne læser den
-       aldrig; adgang afgøres udelukkende af auth.token.perms. Se
+       aldrig; adgang afgøres udelukkende af tokenets versionsmærkede
+       permissionstreng. Se
        firebase.rules.json og test/rules.roller.test.mjs.
 
    ⚠ OG EN ÆNDRING RAMMER HVER BRUGER MED ROLLEN. Mintes claims ikke om, og
@@ -584,26 +677,17 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
     throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
   }
 
-  /* ---- 1. Noden ------------------------------------------------------ */
-  await rod.child(`roller/${rolle}`).set({
-    perms,
-    aendretAf: uid,
-    aendretMs: Date.now(),
-  });
-
-  /* ---- 2. Claims for HVER bruger med rollen -------------------------- */
-  /* ⚠ REKKEFØLGEN ER NODEN FØRST, SÅ CLAIMS. Fejler mintningen halvvejs, er
-     noden rettet og nogle tokens ikke — og så kan rollen skrives igen og
-     rette resten. Var rækkefølgen omvendt, ville et token kunne bære
-     permissions der ikke stod nogen steder. */
-  const claim = permStreng(permsForTenant(rolle, { ...(roller || {}), [rolle]: { perms } }));
+  /* Build and validate all claims before mutating the role or an account. */
+  const rolleperms = permsForTenant(rolle, { ...(roller || {}), [rolle]: { perms } });
   const indeks = (await rod.child("brugere").once("value")).val() || {};
   const ramte = Object.entries(indeks)
     .filter(([, v]) => v?.rolle === rolle)
     .map(([maalUid]) => maalUid);
 
+  const forberedte = [];
   let fornyet = 0;
   const fejlede = [];
+  const fejldetaljer = [];
   for (const maalUid of ramte) {
     try {
       /* ⚠ hentIEgenTenant(), IKKE auth.getUser(). Uid'erne kommer fra
@@ -614,21 +698,57 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
          desuden en forældet indeksrække op, hvis kontoen er slettet uden om
          systemet. */
       const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
-      await auth.setCustomUserClaims(maalUid, {
-        ...bruger.customClaims, rolle, perms: claim,
+      const claims = byggRolleClaims({
+        tenant: tenantId, rolle, perms: rolleperms, eksisterende: bruger.customClaims,
       });
-      /* ⚠ UDEN DEN HER ER ÆNDRINGEN EN PÆN KNAP. Brugeren beholder sine
-         gamle claims indtil tokenet udløber af sig selv — man ville tro man
-         havde fjernet en adgang, som stadig virkede. Det er den værste
-         fejltilstand, fordi den ser ud som om den lykkedes. */
-      await auth.revokeRefreshTokens(maalUid);
-      fornyet += 1;
+      forberedte.push({ maalUid, claims });
     } catch (e) {
       /* ⚠ EN KONTO KAN VÆRE SLETTET UDEN OM SYSTEMET, og indekset overlever
          den. Det må ikke vælte de øvrige — men det skal RAPPORTERES, ikke
          sluges: en bruger hvis claims ikke blev fornyet, går rundt med den
          gamle adgang. */
       fejlede.push(maalUid);
+      fejldetaljer.push({ uid: maalUid, kode: sikkerClaimFejlkode(e) });
+    }
+  }
+
+  if (fejlede.length) {
+    await log(tenantId, uid, "tilstandsskift", rolle,
+      `roller ${rolle}: ikke anvendt, ${fejlede.length} valideringsfejl`);
+    return { ok: false, anvendt: false, ramte: ramte.length, fornyet, fejlede, fejldetaljer };
+  }
+
+  /* Revoke every affected token before changing the authoritative role. */
+  for (const post of forberedte) {
+    try {
+      await tilbagekaldOgGemRevocation(auth, post.maalUid);
+    } catch (e) {
+      fejlede.push(post.maalUid);
+      fejldetaljer.push({ uid: post.maalUid, kode: sikkerClaimFejlkode(e) });
+    }
+  }
+  if (fejlede.length) {
+    await log(tenantId, uid, "tilstandsskift", rolle,
+      `roller ${rolle}: ikke anvendt, ${fejlede.length} revocation-fejl`);
+    return { ok: false, anvendt: false, ramte: ramte.length, fornyet, fejlede, fejldetaljer };
+  }
+
+  await rod.child(`roller/${rolle}`).set({
+    perms,
+    aendretAf: uid,
+    aendretMs: Date.now(),
+  });
+
+  for (const post of forberedte) {
+    try {
+      await auth.setCustomUserClaims(post.maalUid, post.claims);
+      fornyet += 1;
+    } catch (aarsag) {
+      const e = new Error("Claims kunne ikke gemmes efter revocation.");
+      e.code = "claims/claim-write-failed";
+      e.cause = aarsag;
+      fejlede.push(post.maalUid);
+      fejldetaljer.push({ uid: post.maalUid, kode: sikkerClaimFejlkode(e) });
     }
   }
 
@@ -639,7 +759,56 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
   /* ⚠ SVARET SIGER HVOR MANGE DER IKKE BLEV FORNYET. Skærmen skal kunne
      vise det: en ændring der lykkedes for otte ud af ni, er ikke en
      ændring der lykkedes. */
-  return { ok: true, ramte: ramte.length, fornyet, fejlede };
+  return { ok: fejlede.length === 0, anvendt: true, ramte: ramte.length, fornyet, fejlede, fejldetaljer };
+});
+
+/* Kontrolleret overgang fra legacy-claims til v2 for EN tenant.
+
+   Kaldet tager ingen tenant, rolle eller permissions fra klienten. Tenanten
+   kommer fra kalderens signerede token, rollerne fra tenantens brugerindeks,
+   og permissionlisterne fra tenantens serverlaeste rolledefinitioner. Kun en
+   bruger med brugere.skriv kan starte migrationen.
+
+   Hver konto remintes og faar refresh tokens tilbagekaldt. Delvise fejl
+   rapporteres eksplicit, saa legacy-understoettelsen ikke kan fjernes foer
+   `fejlede` er tom for hver tenant. */
+export const claimsfornyv2 = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId } = kraevBrugeradmin(req);
+  const db = getDatabase();
+  const rod = db.ref(`tenants/${tenantId}`);
+
+  const findes = await rod.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const ab = await rod.child("abonnement/status").once("value");
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const roller = await hentRoller(tenantId);
+  const indeks = (await rod.child("brugere").once("value")).val() || {};
+  const auth = getAuth();
+  const resultat = await migrerClaimKonti({
+    poster: indeks,
+    gyldigRolle: (rolle) => Boolean(ROLLE_PERMS[kortStreng(rolle, 30)]),
+    forny: async (maalUid, post) => {
+      const rolle = kortStreng(post?.rolle, 30);
+      const bruger = await hentIEgenTenant(auth, maalUid, tenantId);
+      const claims = byggRolleClaims({
+        tenant: tenantId,
+        rolle,
+        perms: permsForTenant(rolle, roller),
+        eksisterende: bruger.customClaims,
+      });
+      await saetClaimsEfterRevocation(auth, maalUid, claims);
+    },
+    fejlkode: sikkerClaimFejlkode,
+    vedFejl: logClaimFejl,
+  });
+
+  await log(tenantId, uid, "tilstandsskift", tenantId,
+    `claims v2: ${resultat.fornyet} fornyet` +
+      (resultat.fejlede.length ? `, ${resultat.fejlede.length} fejlede` : ""));
+  return resultat;
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -675,9 +844,8 @@ export const rolleskriv = onCall({ region: REGION }, async (req) => {
         ⚠ ELLER: kalderen er ALLEREDE en af v1-tests seks roller. Uden det
         kunne en tester kun skifte ÉN gang — næste kald ville komme fra
         MÅLKONTOENS eget token, uden devTester-claimet. At SKRIVE claimet
-        ind på målkontoen i stedet blev prøvet og forkastet: admins claims
-        fylder alene 1016 byte, og Firebase's grænse er 1000 — en næsten
-        fuld konto ville simpelthen fejle skiftet. At være tenant "v1-test"
+        ind på målkontoen er stadig forkert efter v2-komprimeringen: det ville
+        blande testautoritet ind i en almindelig tenantrolle. At være tenant "v1-test"
         i forvejen giver ingen ny rettighed; man kom kun dertil ad devTester-
         vejen, eller via den lokale adgangskode, som allerede giver fuld
         adgang til DEN tenant.
@@ -717,10 +885,9 @@ export const devBrugerSkift = onCall({ region: REGION }, async (req) => {
         andet end at bede om at blive en af v1-tests seks roller.
      2) ALLEREDE en af v1-tests seks roller. Uden det kunne en tester kun
         skifte ÉN gang: næste kald ville komme fra MÅLKONTOENS eget token
-        (uden devTester-claimet), og blive afvist. At SKRIVE devTester ind
-        på målkontoen i stedet blev prøvet og forkastet — admins claims
-        fylder allerede 1016 byte, og Firebase's grænse er 1000; en konto
-        der næsten er fuld, ville simpelthen fejle skiftet.
+     (uden devTester-claimet), og blive afvist. `devTester` skrives ikke ind
+     på målkontoen: v2 har plads, men plads er ikke autorisation, og flaget
+     skal ikke blandes ind i en almindelig tenantrolle.
         At være tenant "v1-test" i forvejen er ikke en ny rettighed: man
         kom kun dertil ad vej 1) i første omgang, eller via den lokale
         adgangskode — som allerede giver fuld adgang til DEN tenant. */
@@ -906,8 +1073,8 @@ export const spaerlogin = onCall({ region: REGION }, async (req) => {
     throw new HttpsError("failed-precondition", "Du kan ikke spærre dit eget login.");
   }
 
+  if (spaerret) await tilbagekaldOgGemRevocation(auth, maalUid);
   await auth.updateUser(maalUid, { disabled: spaerret });
-  if (spaerret) await auth.revokeRefreshTokens(maalUid);
 
   /* ⚠ KONTOEN SLETTES IKKE. Personen bliver stående i personale/ — der
      hænger indberetninger på uid'et — og kontoen skal kunne genåbnes. Kun
@@ -1753,7 +1920,7 @@ async function kraevUdlaansskriv(req) {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
-  const perms = auth.token?.perms;
+  const perms = permStrengFraClaims(auth.token);
   if (typeof perms !== "string" || !perms.includes(`|${PERM.kasseudlaanSkriv}|`)) {
     throw new HttpsError("permission-denied", `Kræver ${PERM.kasseudlaanSkriv}.`);
   }
@@ -2045,7 +2212,7 @@ async function kraevBevaegelsesskriv(req) {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
-  const perms = auth.token?.perms;
+  const perms = permStrengFraClaims(auth.token);
   if (typeof perms !== "string" || !perms.includes(`|${PERM.bevaegelserSkriv}|`)) {
     throw new HttpsError("permission-denied", `Kræver ${PERM.bevaegelserSkriv}.`);
   }
@@ -2715,7 +2882,7 @@ async function kraevGrundlag(req, perm) {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
-  const perms = auth.token?.perms;
+  const perms = permStrengFraClaims(auth.token);
   if (typeof perms !== "string" || !perms.includes(`|${perm}|`)) {
     throw new HttpsError("permission-denied", `Kræver ${perm}.`);
   }
@@ -3085,7 +3252,7 @@ export const etapeskift = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   const rolle = kortStreng(auth.token?.rolle, 40) || null;
 
   const db = getDatabase();
@@ -3420,7 +3587,7 @@ export const forslagskriv = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ booking.foreslaa — IKKE booking.godkend. Beslutning 5: disponenten
      laver forslagene og maa ikke godkende sit eget. To permissions er hele
@@ -3560,7 +3727,7 @@ export const bookingopret = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ PERMISSIONEN, IKKE ROLLEN. `booking.opret` har koordinator — det er den
      rolle der tager imod foresporgslen — og admin. (casehandler havde den
@@ -3676,7 +3843,7 @@ export const opgaveplanlaeg = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ PERMISSIONEN, IKKE ROLLEN. Spoerg hvad handlingen kraever, ikke hvem
      brugeren er — CLAUDE.md. Reglerne paa opgaver/ kraever den samme. */
@@ -3919,7 +4086,7 @@ export const indberetningTriage = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|indberetninger.skrivAlle|")) {
     throw new HttpsError("permission-denied",
@@ -4058,7 +4225,7 @@ export const ansoegningAfgoer = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|fravaer.skriv|")) {
     throw new HttpsError("permission-denied",
@@ -4200,7 +4367,7 @@ export const facilityplanlaeg = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ opgaver.skriv, IKKE facility.skriv. Spoerg hvad handlingen kraever, ikke
      hvem brugeren er — og det den skriver, er en post i `opgaver`. Modulet er
@@ -4398,7 +4565,7 @@ export const opgaveflyt = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — samme som opgaveplanlaeg. At flytte en
      opgave er at skrive den; der er ingen selvstaendig `opgaver.flyt`. */
@@ -4569,7 +4736,7 @@ export const opgavestatus = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — som paa de to andre. At skifte en opgaves
      status er at skrive den; der er ingen selvstaendig `opgaver.status`. */
@@ -4885,7 +5052,7 @@ function kraevLeverandoererAdmin(req) {
   if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   if (!perms.includes("|leverandoerer.skriv|")) {
     throw new HttpsError("permission-denied", "Kræver leverandoerer.skriv.");
   }
@@ -5179,7 +5346,7 @@ export const statusmelding = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ LÆSEPERMISSIONEN, IKKE EN SKRIVEPERMISSION. En chauffør har `BASIS_LAES`
      og `indberetninger.skriv` — han har med vilje ikke `booking.skriv`, for
@@ -5382,7 +5549,7 @@ export const behovskriv = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   if (!perms.includes("|indkoeb.skriv|")) {
     throw new HttpsError("permission-denied",
       "Du må ikke melde et indkøbsbehov ind. Det kræver indkoeb.skriv.");
@@ -5540,7 +5707,7 @@ export const ordreskriv = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   if (!perms.includes("|indkoeb.skriv|")) {
     throw new HttpsError("permission-denied",
       "Du må ikke oprette en bestilling. Det kræver indkoeb.skriv.");
@@ -5683,7 +5850,7 @@ export const godkendelsesregelskriv = onCall({ region: REGION }, async (req) => 
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   if (!perms.includes(`|${PERM.brugereSkriv}|`)) {
     throw new HttpsError("permission-denied",
       "Godkendelsesreglerne saettes af en administrator. Den der bestiller, "
@@ -5776,7 +5943,7 @@ export const ordrestatus = onCall({ region: REGION }, async (req) => {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   const db = getDatabase();
   const rod = db.ref(`tenants/${tenantId}`);
@@ -5881,7 +6048,7 @@ export const ordreMailSend = onCall({
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|indkoeb.skriv|")) {
     throw new HttpsError("permission-denied",
@@ -6038,7 +6205,7 @@ async function procureDoer(req, { perm, modul }) {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
   if (perm && !perms.includes(`|${perm}|`)) {
     throw new HttpsError("permission-denied", `Det kræver ${perm}.`);
   }
@@ -7337,7 +7504,7 @@ export const sagOpret = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|sag.skriv|")) {
     throw new HttpsError("permission-denied", "Du må ikke oprette en sag. Det kræver sag.skriv.");
@@ -7453,7 +7620,7 @@ export const sagBeskedSkriv = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ SAMME BUNDT SOM REGLENS .write — sag.skriv OG sag.sensitiveLaes. At
      skrive på tråden kræver at kunne læse den, som indberetninger.skriv +
@@ -7534,7 +7701,7 @@ export const sagKarantaeneFrigiv = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|sag.karantaeneFrigiv|")) {
     throw new HttpsError("permission-denied",
@@ -7584,7 +7751,7 @@ export const sagAftaleBekraeft = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|sag.aftaleBekraeft|")) {
     throw new HttpsError("permission-denied",
@@ -7706,7 +7873,7 @@ export const sagAfslut = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   /* ⚠ SAMME PERMISSION SOM DEN DER OPRETTER SAGEN. At lukke en sag er ikke en
      mindre handling end at åbne den. */
@@ -7821,7 +7988,7 @@ export const sagMailSend = onCall({
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|sag.mailSend|")) {
     throw new HttpsError("permission-denied",
@@ -7974,7 +8141,7 @@ export const retentionLegalHold = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|retention.skriv|") || !perms.includes("|retention.laes|")) {
     throw new HttpsError("permission-denied",
@@ -8034,7 +8201,7 @@ export const retentionDryRun = onCall({ region: REGION }, async (req) => {
   const tenantId = auth.token?.tenant;
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
   const uid = auth.uid;
-  const perms = typeof auth.token?.perms === "string" ? auth.token.perms : "";
+  const perms = permStrengFraClaims(auth.token);
 
   if (!perms.includes("|retention.laes|")) {
     throw new HttpsError("permission-denied", "Du må ikke køre en retention-rapport. Det kræver retention.laes.");

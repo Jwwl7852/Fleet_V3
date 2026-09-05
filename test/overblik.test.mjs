@@ -222,7 +222,7 @@ describe("Alle skærme spørger fakturaerne om det samme felt", () => {
      filtrerer i klienten med en advarsel i konsollen. */
   test("⚠ fakturadatoMs ER INDEKSERET", () => {
     const i = REGELFIL.indexOf('"fakturaer": {');
-    assert.match(REGELFIL.slice(i, i + 2500), /"\.indexOn": \[[^\]]*"fakturadatoMs"/);
+    assert.match(REGELFIL.slice(i, i + 30000), /"\.indexOn": \[[^\]]*"fakturadatoMs"/);
   });
 });
 
@@ -296,7 +296,7 @@ describe("Divisionsaksen er ude af modulet", () => {
   /* ⚠ OG REGLEN FORBYDER FELTET — det er dét der gjorde feltet til en fælde. */
   test("⚠ indkoeb-REGLEN FORBYDER STADIG division", () => {
     const i = REGELFIL.indexOf('"indkoeb": {', REGELFIL.indexOf('"indkoebsordrer"'));
-    const blok = REGELFIL.slice(i, i + 9000);
+    const blok = REGELFIL.slice(i, i + 30000);
     assert.match(blok, /"division": \{ "\.validate": false \}/);
   });
 

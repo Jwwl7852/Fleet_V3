@@ -25,7 +25,7 @@ import {
   initializeTestEnvironment,
   assertSucceeds,
   assertFails,
-} from "@firebase/rules-unit-testing";
+} from "./rules-test-claims.mjs";
 import { ref, set, update, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 

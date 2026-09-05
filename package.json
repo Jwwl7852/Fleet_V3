@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "npm run lint && npm run test:rules",
     "lint": "eslint .",
-    "test:rules": "firebase emulators:exec --only database,storage --project fleetcontrol-rules-test \"node --test\"",
+    "test:rules": "npx --yes firebase-tools@15.29.0 emulators:exec --only database,storage --project demo-fleetcontrol-rules-test \"node --test\"",
     "test:design": "node --test test/design-tokens.test.mjs",
     "provisioner:dev": "node scripts/provisioner-dev.mjs",
     "regler:tjek": "node scripts/tjek-regler.mjs",

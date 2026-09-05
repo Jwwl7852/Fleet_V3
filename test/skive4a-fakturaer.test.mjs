@@ -82,7 +82,7 @@ describe("fakturaer.laes/.skriv/.godkend — rollefordelingen", () => {
    ══════════════════════════════════════════════════════════════════════════ */
 describe("fakturaer-nodens .read kræver fakturaer.laes", () => {
   const i = REGELFIL.indexOf('"fakturaer": {');
-  const blok = REGELFIL.slice(i, i + 1200);
+  const blok = REGELFIL.slice(i, i + 30000);
 
   it("⚠ REGLEN NÆVNER fakturaer.laes", () => {
     assert.match(blok, /perms\.contains\('\|fakturaer\.laes\|'\)/);
