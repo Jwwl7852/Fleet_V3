@@ -197,9 +197,10 @@ describe("Import- og sideeffektgrænser", () => {
       assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic/, fil);
     }
 
-    const erForbudtUiImport = (sti) => /firebase|functions|permissions|booking-state/i.test(sti);
+    const erForbudtUiImport = (sti) => /fleet\.css|firebase|functions|permissions|booking-state/i.test(sti);
     const erTilladtUiImport = (sti) => sti === "react" || sti === "react-dom/client" || sti.startsWith("./")
-      || ["../fleet.css", "../planning-basic-v2.js", "../demo-planning-basic-v2.js"].includes(sti);
+      || ["../planning-basic-v2.js", "../demo-planning-basic-v2.js"].includes(sti);
+    assert.equal(erForbudtUiImport("../fleet.css"), true);
     assert.equal(erForbudtUiImport("../firebase.js"), true);
     assert.equal(erForbudtUiImport("../permissions.js"), true);
     assert.equal(erForbudtUiImport("../planning-basic-v2.js"), false);

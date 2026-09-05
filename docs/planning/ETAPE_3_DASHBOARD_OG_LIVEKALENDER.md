@@ -25,7 +25,7 @@ npm run dev -- --host 127.0.0.1
 http://127.0.0.1:5173/planning-demo.html
 ```
 
-Hvis Vite vælger en anden ledig port, anvendes den port, som terminalen viser. `planning-demo.html` er en separat Vite-entry til lokal udvikling og kræver ingen ændring af `src/App.jsx`, navigation eller Vite-konfiguration.
+Hvis Vite vælger en anden ledig port, anvendes den port, som terminalen viser. `planning-demo.html` er en separat Vite-entry til lokal udvikling og kræver ingen ændring af `src/App.jsx`, navigation eller Vite-konfiguration. Prototypen indlæser kun `planning-demo.css`; den importerer ikke det fælles `fleet.css`.
 
 ## Syntetiske data
 
@@ -83,6 +83,50 @@ Tidsresumeet viser samlet kørsel, service, pause, ventetid, rutetid og forvente
 - Solver, heuristik, optimering eller automatisk omplanlægning.
 - Serverautoriseret godkendelse, idempotens og atomisk frigivelse.
 
+## Reproducerbar lokal regressionstest
+
+Det konservative etape 3-udsnit er den samlede Planning v1–v3-suite, begge importgrænsekontroller og unionen af de to historiske regressionsudsnit fra implementerings- og checkpointkontrollen. Derudover medtages de eksisterende Planning-oprydnings-, Planning/Fleet-grænse- og opgavestatusprøver. Kommandoen bruger ingen Firebase-emulator og kontakter ingen ekstern tjeneste:
+
+```text
+node --test --test-isolation=none test/planning-basic.test.mjs test/planning-basic-adapters.test.mjs test/planning-basic-v2.test.mjs test/planning-ui/planning-ui.test.mjs test/booking.test.mjs test/bookingopret.test.mjs test/disponering.test.mjs test/driftskalender.test.mjs test/etapeskift.test.mjs test/etapeskifte.test.mjs test/flaade.test.mjs test/flaade-bemanding.test.mjs test/forslag.test.mjs test/forslagform.test.mjs test/fravaer.test.mjs test/gitter.test.mjs test/gitter-uge.test.mjs test/godkendelse.test.mjs test/opgaveplan.test.mjs test/opgaver.test.mjs test/rutedeling.test.mjs test/statusmelding.test.mjs test/steder.test.mjs test/stop.test.mjs test/behov.test.mjs test/indeslutning.test.mjs test/referencetjek.test.mjs test/unitbooking.test.mjs test/hf1-planning-oprydning.test.mjs test/skive3a-planning-fleet.test.mjs test/opgavestatus.test.mjs
+```
+
+Den fulde filliste er:
+
+- `test/planning-basic.test.mjs`
+- `test/planning-basic-adapters.test.mjs`
+- `test/planning-basic-v2.test.mjs`
+- `test/planning-ui/planning-ui.test.mjs`
+- `test/booking.test.mjs`
+- `test/bookingopret.test.mjs`
+- `test/disponering.test.mjs`
+- `test/driftskalender.test.mjs`
+- `test/etapeskift.test.mjs`
+- `test/etapeskifte.test.mjs`
+- `test/flaade.test.mjs`
+- `test/flaade-bemanding.test.mjs`
+- `test/forslag.test.mjs`
+- `test/forslagform.test.mjs`
+- `test/fravaer.test.mjs`
+- `test/gitter.test.mjs`
+- `test/gitter-uge.test.mjs`
+- `test/godkendelse.test.mjs`
+- `test/opgaveplan.test.mjs`
+- `test/opgaver.test.mjs`
+- `test/rutedeling.test.mjs`
+- `test/statusmelding.test.mjs`
+- `test/steder.test.mjs`
+- `test/stop.test.mjs`
+- `test/behov.test.mjs`
+- `test/indeslutning.test.mjs`
+- `test/referencetjek.test.mjs`
+- `test/unitbooking.test.mjs`
+- `test/hf1-planning-oprydning.test.mjs`
+- `test/skive3a-planning-fleet.test.mjs`
+- `test/opgavestatus.test.mjs`
+
+De tidligere tal `677/677` og `578/578` kom fra forskellige filudvalg, ikke fra et testfilter eller ændrede testcases. Den første kørsel havde 19 filer. Checkpointkørslen udelod utilsigtet `driftskalender.test.mjs` (26 tests) og `unitbooking.test.mjs` (174 tests), men tilføjede `forslagform.test.mjs` (8), `statusmelding.test.mjs` (51), `behov.test.mjs` (15), `indeslutning.test.mjs` (19) og `referencetjek.test.mjs` (8). Regnestykket er derfor `677 - 200 + 101 = 578`. Det reproducerbare udvalg ovenfor bevarer begge historiske udvalgs union, så ingen af de relevante filer igen falder ud ved en ændret håndskrevet kommando.
+
 ## Kendte begrænsninger
 
 - Tilstanden lever kun i den aktuelle browserhukommelse og nulstilles ved genindlæsning.
@@ -91,4 +135,4 @@ Tidsresumeet viser samlet kørsel, service, pause, ventetid, rutetid og forvente
 - Mobil- og OBD-friskhedsgrænser er faste demoværdier.
 - Godkendelse er en lokal kontraktdemonstration og ikke en autoriseret serverskrivning.
 - Den separate HTML-side indgår ikke automatisk som produktions-entry i repositoryets nuværende Vite-build; den er bevidst kun en lokal udviklingsside i denne etape.
-- Importgrænsetestene klassificerer `planning-ui/` som et selvstændigt Planning-lag: UI'et må bruge React og den offentlige Planning-facade, mens Firebase, permissions, `booking-state`, skjulte skriveveje og importcyklusser fortsat afvises.
+- Importgrænsetestene klassificerer `planning-ui/` som et selvstændigt Planning-lag: UI'et må bruge React og den offentlige Planning-facade, mens `fleet.css`, Firebase, permissions, `booking-state`, skjulte skriveveje og importcyklusser fortsat afvises.

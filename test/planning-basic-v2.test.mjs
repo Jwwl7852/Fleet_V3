@@ -515,7 +515,7 @@ describe("Tenant-, reference- og importgrænser", () => {
         if (/planning-basic-v2/.test(imp)) {
           assert.ok(["../planning-basic-v2.js", "../demo-planning-basic-v2.js"].includes(imp), `${fil} skal bruge v2-facaden eller den syntetiske v2-fixture`);
         }
-        assert.doesNotMatch(imp, /firebase|functions|permissions|booking-state/i, `${fil} har en forbudt UI-import`);
+        assert.doesNotMatch(imp, /fleet\.css|firebase|functions|permissions|booking-state/i, `${fil} har en forbudt UI-import`);
       }
     }
   });

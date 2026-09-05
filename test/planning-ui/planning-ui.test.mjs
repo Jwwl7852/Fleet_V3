@@ -278,7 +278,7 @@ describe("Isolation, syntetiske data og fungerende UI-kontrakt", () => {
     const filer = readdirSync(mappe).map((navn) => join(mappe, navn)).filter((fil) => statSync(fil).isFile() && /\.(js|jsx)$/.test(fil));
     for (const fil of filer) {
       const kilde = readFileSync(fil, "utf8");
-      assert.doesNotMatch(kilde, /firebase|httpsCallable|initializeApp|getDatabase|fetch\s*\(|XMLHttpRequest|navigator\.geolocation/i, fil);
+      assert.doesNotMatch(kilde, /fleet\.css|firebase|httpsCallable|initializeApp|getDatabase|fetch\s*\(|XMLHttpRequest|navigator\.geolocation/i, fil);
       assert.doesNotMatch(kilde, /localStorage|sessionStorage|indexedDB/, fil);
     }
   });
