@@ -62,6 +62,19 @@ claim-write-fejl efterlader kontoen lukket og rapporteres med en stabil kode.
    befolker ikke allowlisten. Deploy er blokeret, indtil dette er udført.
 3. Deploy dual-read Rules med revocation- og legacy-gaten. Manglende metadata er
    midlertidigt tilladt, så eksisterende brugere fortsætter.
+   ⚠ **Det gælder KUN revocation-metadata (`authRevocations`), ALDRIG
+   allowlisten.** De to gates tolererer ikke fravær på samme måde: en
+   manglende `authRevocations`-post betyder "ikke tilbagekaldt endnu" og er
+   derfor ufarlig at mangle midlertidigt, mens `legacyClaimsAllowlist` er et
+   krav uden undtagelse — "altid en aktiv post", jf. afsnittet ovenfor. En
+   legacy-bruger der IKKE står på allowlisten i det øjeblik disse regler
+   deployes, mister al adgang ØJEBLIKKELIGT, ikke gradvist — der er ingen
+   overgangsperiode for selve allowlist-kravet. Trin 2's "Deploy er
+   blokeret, indtil dette er udført" er derfor ikke en formalitet: en
+   komplet, menneskeligt godkendt Auth-inventering og allowlist er en HÅRD
+   forudsætning for dette trin, ikke en anbefaling. Håndhævet og bekræftet i
+   `test/rules.custom-claims-v2.test.mjs`: "afviser legacy ved tom
+   allowlist, både uden pv og med pv:null".
 4. Deploy Functions med v2-builder, refresh-token-revocation og metadata-write.
 5. Deploy klienten med den samme stramme decoder og håndtering af
    `permission-denied` som krav om frisk token/login.

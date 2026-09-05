@@ -222,11 +222,22 @@ const advarsel = (navn) =>
   " * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.\n" +
   " */\n";
 
-/** Selve kopien, uden advarselshovedet — det er dét der sammenlignes. */
+/** Selve kopien, uden advarselshovedet — det er dét der sammenlignes.
+ *
+ * ⚠ LINJESKIFTET I HOVEDET KAN VÆRE CRLF. Den oprindelige søgning ledte kun
+ * efter stjerne-skråstreg efterfulgt af et rent LF-linjeskift, og fandt den
+ * aldrig på en frisk Windows-checkout (core.autocrlf konverterer de
+ * committede LF-filer til CRLF ved checkout) — søgningen fejlede stille, og
+ * kopien blev sammenlignet med sit eget hoved stadig siddende på, mod
+ * kildens rene indhold. Alle delte filer fejlede identisk, ikke kun én.
+ * Mønstret herunder matcher hovedets afslutning uanset LF eller CRLF, uden
+ * at ændre hvad der rent faktisk sammenlignes bagefter — en reel
+ * indholdsforskel fælder testen stadig, kun selve afgrænsningen er nu
+ * platformsuafhængig. */
 export function kropAf(tekst) {
-  return tekst.startsWith("/* ⚠ KOPI")
-    ? tekst.slice(tekst.indexOf("*/\n") + 3)
-    : tekst;
+  if (!tekst.startsWith("/* ⚠ KOPI")) return tekst;
+  const m = tekst.match(/\*\/\r?\n/);
+  return m ? tekst.slice(m.index + m[0].length) : tekst;
 }
 
 export function kopier() {

@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - codex/firebase-custom-claims-v2
+      - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:

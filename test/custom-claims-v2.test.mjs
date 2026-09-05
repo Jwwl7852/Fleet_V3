@@ -68,6 +68,93 @@ describe("custom claims v2", () => {
     }
   });
 
+  it("⚠ KODEKATALOGET ER FROSSET — en ombytning af to gyldige koder fælder testen", () => {
+    /* tjekPermissionMapping() ovenfor beviser kun at KATALOGET er internt
+       konsistent (komplet, kollisionsfrit, rette længde) — den siger intet
+       om hvorvidt DE ENKELTE koder er de samme som i går. To koder kan
+       bytte plads uden at nogen af de strukturelle tjek reagerer, fordi
+       resultatet stadig er komplet og kollisionsfrit — men et allerede
+       udstedt token ville fra det øjeblik blive fejlfortolket, indtil det
+       revokeres og genudstedes. Denne prøve snapshotter selve VÆRDIERNE,
+       ikke kun formen, og er den eneste linje der fælder en ombytning.
+
+       ⚠ EN NY PERMISSION SKAL RAMME DENNE PRØVE. Det er med vilje: en
+       fremtidig permission får kun lov at få en kode ved at nogen bevidst
+       udvider snapshottet herunder MED en ny, ubrugt kode — præcis den
+       samme disciplin som design-tokens og beslutningstallet allerede
+       håndhæver andre steder i kodebasen. */
+    const FROSSET_KODEKATALOG = Object.freeze({
+      "brugere.skriv": "00",
+      "kunder.skriv": "01",
+      "opgaver.skriv": "02",
+      "koeretoejer.skriv": "03",
+      "fravaer.skriv": "04",
+      "facility.skriv": "05",
+      "indkoeb.skriv": "06",
+      "indkoeb.laes": "07",
+      "satser.skriv": "08",
+      "satser.laes": "09",
+      "lagre.skriv": "0a",
+      "indberetninger.skriv": "0b",
+      "indberetninger.skrivAlle": "0c",
+      "indberetninger.sensitiveLaes": "0d",
+      "booking.opret": "0e",
+      "booking.foreslaa": "0f",
+      "booking.godkend": "0g",
+      "booking.returner": "0h",
+      "booking.afvis": "0i",
+      "booking.annuller": "0j",
+      "booking.udfoer": "0k",
+      "grundlag.laes": "0l",
+      "grundlag.skriv": "0m",
+      "grundlag.godkend": "0n",
+      "indkoeb.godkend": "0o",
+      "fakturaer.laes": "0p",
+      "fakturaer.skriv": "0q",
+      "fakturaer.godkend": "0r",
+      "leverandoerer.laes": "0s",
+      "leverandoerer.skriv": "0t",
+      "audit.laes": "0u",
+      "booking.laes": "0v",
+      "booking.sensitiveLaes": "0w",
+      "booking.vaerdiLaes": "0x",
+      "kunder.laes": "0y",
+      "kunder.sensitiveLaes": "0z",
+      "koeretoejer.laes": "10",
+      "koeretoejer.sensitiveLaes": "11",
+      "personale.laes": "12",
+      "personale.skriv": "13",
+      "personale.sensitiveLaes": "14",
+      "kompetencer.skriv": "15",
+      "kasser.skriv": "16",
+      "kasseudlaan.skriv": "17",
+      "reolpladser.skriv": "18",
+      "varer.skriv": "19",
+      "bevaegelser.skriv": "1a",
+      "carriers.skriv": "1b",
+      "fravaer.laes": "1c",
+      "fravaer.sensitiveLaes": "1d",
+      "sag.laes": "1e",
+      "sag.sensitiveLaes": "1f",
+      "sag.skriv": "1g",
+      "sag.karantaeneFrigiv": "1h",
+      "sag.aftaleBekraeft": "1i",
+      "sag.mailSend": "1j",
+      "retention.laes": "1k",
+      "retention.skriv": "1l",
+    });
+    assert.equal(Object.keys(FROSSET_KODEKATALOG).length, 58,
+      "58 permissions forventet — ramte du dette, er en ny permission tilføjet uden at snapshottet blev udvidet");
+    assert.deepEqual(PERM_KODE, FROSSET_KODEKATALOG,
+      "PERM_KODE er ikke længere identisk med det frosne snapshot — en kode er byttet, genbrugt, tilføjet eller fjernet. " +
+      "Er ændringen bevidst (en NY permission med en NY, ubrugt kode), opdater FROSSET_KODEKATALOG i denne prøve. " +
+      "Er den ikke, er en eksisterende kodes betydning lige blevet ændret under et allerede udstedt token.");
+    /* Selve entydigheden internt i snapshottet — ingen kode optræder to
+       gange, uafhængigt af tjekPermissionMapping()'s egen logik. */
+    const koder = Object.values(FROSSET_KODEKATALOG);
+    assert.equal(new Set(koder).size, koder.length, "en kode i det frosne snapshot optræder mere end én gang");
+  });
+
   it("mappingen er komplet, kollisionsfri og har præcis to tegn", () => {
     assert.deepEqual(tjekPermissionMapping(ALLE_PERMS, PERM_KODE), { ok: true, kode: null });
     const mangler = { ...PERM_KODE }; delete mangler[ALLE_PERMS[0]];
