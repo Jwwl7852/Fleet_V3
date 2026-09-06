@@ -21,6 +21,9 @@ import {
   ruteTidsresume, skiftStandardTildeling, synkroniserOfflineEvent,
   tidslinjeSegmenter,
 } from "../../src/fleet/planning-ui/planning-ui-model.js";
+import { INTAKESTATUS, godkendOpgave, sendTilDagsplan } from "../../src/fleet/planning-input/index.js";
+import { opretDemoIntakeData } from "../../src/fleet/planning-input/demo-planning-input.js";
+import { mobilFlowForStop } from "../../src/fleet/planning-execution/index.js";
 
 const klon = (v) => structuredClone(v);
 const her = dirname(fileURLToPath(import.meta.url));
@@ -273,12 +276,40 @@ describe("Isolation, syntetiske data og fungerende UI-kontrakt", () => {
     for (const tekst of ["Dagens overblik", "Livekalender", "Faste ruter", "Mobilvisning", "Åbn i fuld skærm", "Ankommet", "Afgået", "Godkend ændring", "Afvis forslag"]) assert.match(jsx, new RegExp(tekst));
   });
 
+  it("tilføjer opgaveindbakken uden at duplikere den eksisterende rute-UI", () => {
+    const jsx = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningIntake.jsx"), "utf8");
+    for (const tekst of ["Opgaver", "Opret opgave", "Importér opgaver", "Match kolonner", "Send til dagsplan", "Udførelsesskabeloner"]) assert.match(jsx, new RegExp(tekst));
+    assert.match(jsx, /Ny fiktiv skabelon[\s\S]*stopprofiler:\s*\[\{/);
+    assert.match(readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningDemo.jsx"), "utf8"), /VISNING\.OPGAVER/);
+  });
+
+  it("holder planlægningspuljen lokal og kræver godkendelse", () => {
+    const demo = opretDemoIntakeData();
+    const modtaget = demo.opgaver.find((post) => post.status === INTAKESTATUS.MODTAGET);
+    assert.equal(sendTilDagsplan(modtaget, []).ok, false);
+    const klar = godkendOpgave(modtaget, { tidspunktMs: Date.UTC(2032, 4, 17, 15) });
+    const svar = sendTilDagsplan(klar, []);
+    assert.equal(svar.ok, true);
+    assert.equal(svar.planlaegningspulje.length, 1);
+    assert.equal(svar.opgave.ruteId, null);
+  });
+
+  it("viser et betinget materialeflow uden kamera, signatur eller mailafsendelse", () => {
+    const demo = opretDemoIntakeData();
+    const profil = demo.skabeloner[0].stopprofiler[0];
+    const skjult = mobilFlowForStop(profil, { "sp-materialer": false });
+    const vist = mobilFlowForStop(profil, { "sp-materialer": true });
+    assert.equal(skjult.includes("Registrér materialer"), false);
+    assert.equal(vist.includes("Registrér materialer"), true);
+    assert.ok(vist.filter((trin) => trin.includes("Ikke tilsluttet endnu")).length >= 3);
+  });
+
   it("holder UI-importgrafen fri for Firebase, netværk og persistence", () => {
     const mappe = resolve(rod, "src/fleet/planning-ui");
     const filer = readdirSync(mappe).map((navn) => join(mappe, navn)).filter((fil) => statSync(fil).isFile() && /\.(js|jsx)$/.test(fil));
     for (const fil of filer) {
       const kilde = readFileSync(fil, "utf8");
-      assert.doesNotMatch(kilde, /fleet\.css|firebase|httpsCallable|initializeApp|getDatabase|fetch\s*\(|XMLHttpRequest|navigator\.geolocation/i, fil);
+      assert.doesNotMatch(kilde, /fleet\.css|firebase|httpsCallable|initializeApp|getDatabase|fetch\s*\(|XMLHttpRequest|navigator\.geolocation|dangerouslySetInnerHTML|\beval\s*\(/i, fil);
       assert.doesNotMatch(kilde, /localStorage|sessionStorage|indexedDB/, fil);
     }
   });

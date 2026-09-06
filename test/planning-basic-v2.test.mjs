@@ -503,10 +503,11 @@ describe("Tenant-, reference- og importgrænser", () => {
     gaa(src);
     const nye = new Set(nyeKernefiler.map((f) => resolve(rod, f)));
     const erPlanningUi = (fil) => fil.replaceAll("\\", "/").includes("/src/fleet/planning-ui/");
+    const erRentPlanningLag = (fil) => /\/src\/fleet\/planning-(?:input|execution)\//.test(fil.replaceAll("\\", "/"));
     const uiFiler = alle.filter(erPlanningUi);
     assert.ok(uiFiler.length > 0, "Planning-UI skal klassificeres som Planning, ikke som domænekerne");
 
-    for (const fil of alle.filter((f) => !nye.has(f) && !f.endsWith("planning-basic.js") && !erPlanningUi(f))) {
+    for (const fil of alle.filter((f) => !nye.has(f) && !f.endsWith("planning-basic.js") && !erPlanningUi(f) && !erRentPlanningLag(f))) {
       assert.doesNotMatch(readFileSync(fil, "utf8"), /planning-basic-v2/, fil);
     }
 
@@ -517,6 +518,12 @@ describe("Tenant-, reference- og importgrænser", () => {
         }
         assert.doesNotMatch(imp, /fleet\.css|firebase|functions|permissions|booking-state/i, `${fil} har en forbudt UI-import`);
       }
+    }
+
+    for (const fil of alle.filter(erRentPlanningLag)) {
+      const kilde = readFileSync(fil, "utf8");
+      assert.doesNotMatch(kilde, /from\s+["'][^"']*(react|firebase|permissions|booking-state|planning-ui)[^"']*["']/i, fil);
+      assert.doesNotMatch(kilde, /fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB|document\.|window\.|navigator\./i, fil);
     }
   });
 });
