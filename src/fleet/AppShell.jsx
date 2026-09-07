@@ -15,6 +15,7 @@ import { harPerm } from "./permissions.js";
 import { usePost } from "./usePost.js";
 import { erSkjultVedNavvisning } from "./navvisning.js";
 import Brugervaelger from "./Brugervaelger.jsx";
+import VeyroLogo from "./VeyroLogo.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 
 /**
@@ -197,7 +198,7 @@ export default function AppShell() {
       <MiljoeBjaelke />
       <div className="fc-app">
         <aside className="fc-side">
-          <div className="fc-brand">Fleet<b>Control</b></div>
+          <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /></div>
           <div className="fc-ver">version 3.0</div>
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
 

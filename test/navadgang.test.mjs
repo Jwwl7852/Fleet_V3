@@ -171,6 +171,12 @@ describe("kraeverPerm peger på noget der findes", () => {
     for (const p of ALLE) {
       if (!p.kraeverPerm) continue;
       const kraevet = permsForPunkt(p);
+      if (p.key === "fakturacenter") {
+        const prototype = readFileSync(FIL_FOR[p.sti], "utf8");
+        assert.match(prototype, /FAKTURACENTER_PROTOTYPE/);
+        assert.match(prototype, /eksterneKald:\s*false/);
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);

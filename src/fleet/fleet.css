@@ -2,12 +2,53 @@
  * Bygger oven på de --bc-* tokens der allerede ligger i appen, så de
  * inline styles der findes i dag ikke går i stykker.
  *
- * Én rettelse: --bc-accent er #1f5eff i appen, men logoet og v2.0-mockupsene
- * bruger #125bec. To blå der er tæt nok på at ligne en fejl ved siden af
- * hinanden. Her sættes begge til logoets blå — ret tilbage hvis det var
- * bevidst.
+ * Veyros semantiske tema er autoritativt her. De ældre --bc-* og --fc-*
+ * navne bevares som kompatibilitetslag, så modulerne får samme farver uden
+ * at deres funktion eller layout skal bygges om. Se beslutning 121.
  */
 :root{
+  /* Veyro Systems — fælles semantisk palette, beslutning 121. */
+  --veyro-deep-navy:#061a2a;
+  --veyro-navy-dark:#03131f;
+  --veyro-teal:#087f8f;
+  --veyro-cyan:#22c2cf;
+  --veyro-teal-light:#e8f7f8;
+  --veyro-white:#ffffff;
+  --veyro-app-background:#f5f7f9;
+  --veyro-border:#dce3e8;
+  --veyro-primary-text:#102235;
+  --veyro-secondary-text:#667687;
+  --veyro-secondary-text-strong:#5f6f7f;
+  --veyro-success:#2ead72;
+  --veyro-warning:#d99a28;
+  --veyro-danger:#d95c5c;
+
+  /* Afledte UI-tokens. Grundpaletten ovenfor er uændret; disse små
+     tilpasninger giver robuste kontrastmarginer i den faktiske grænseflade. */
+  --veyro-link-accessible:#087484;
+  --veyro-muted-accessible:#5b6b7b;
+  --veyro-card-surface:#f7f8f9;
+  --veyro-workspace-surface:color-mix(in srgb,var(--veyro-app-background) 95%,var(--veyro-deep-navy));
+  --veyro-border-strong:#dbe2e7;
+
+  --veyro-surface:var(--veyro-card-surface);
+  --veyro-workspace:var(--veyro-workspace-surface);
+  --veyro-text:var(--veyro-primary-text);
+  --veyro-text-secondary:var(--veyro-muted-accessible);
+  --veyro-nav-bg:var(--veyro-deep-navy);
+  --veyro-nav-bg-deep:var(--veyro-navy-dark);
+  --veyro-nav-active:var(--veyro-teal);
+  --veyro-action:var(--veyro-link-accessible);
+  --veyro-action-hover:color-mix(in srgb, var(--veyro-action) 84%, var(--veyro-navy-dark));
+  --veyro-link:var(--veyro-link-accessible);
+  --veyro-focus:var(--veyro-cyan);
+  --veyro-success-text:#176b47;
+  --veyro-warning-text:#76500b;
+  --veyro-danger-text:#8e3030;
+  --veyro-success-bg:color-mix(in srgb, var(--veyro-success) 13%, var(--veyro-white));
+  --veyro-warning-bg:color-mix(in srgb, var(--veyro-warning) 16%, var(--veyro-white));
+  --veyro-danger-bg:color-mix(in srgb, var(--veyro-danger) 14%, var(--veyro-white));
+
   /* ⚠ FIRE FEMTEDELE AF SKAERMEN ER ET LYST FELT, og en femtedel af den ligger
      paa maksimum. Maalt: 58,9 % af dashboardets pixels over 250 i lysstyrke,
      85,5 % over 235. Det er MAENGDEN AF LYS der traetter et oeje over otte
@@ -25,24 +66,24 @@
      ⚠ OG KORTET BLEV LETTERE AT SE, IKKE SVAERERE: 1,07:1 mod siden blev
      1,14:1, fordi siden falder mere end kortet. Det er FORHOLDET der baerer
      layoutet, ikke den absolutte vaerdi. */
-  --bc-accent:#1552d8;
-  --bc-card:#f4f6fa;
+  --bc-accent:var(--veyro-action);
+  --bc-card:var(--veyro-surface);
   /* ⚠ STREGEN SKULLE MED NED. #e3e6ea mod den nye side var 1,02:1 — kanten
      forsvandt simpelthen dér hvor kortet moeder baggrunden. #d3d9e3 giver
      1,16:1 mod siden, hvilket er PRAECIS det stregen havde mod kortet foer. */
-  --bc-line:#d3d9e3;
+  --bc-line:var(--veyro-border-strong);
   /* 11,4:1 mod kortet. AAA kraever 7:1 — vi laa paa 15,0, altsaa det dobbelte
      af kravet, og naesten-sort paa rent hvidt er ikke det mest laeselige men
      det mest blaendende. */
-  --bc-text:#2e3947;
+  --bc-text:var(--veyro-text);
   /* ⚠ DEN HER VAR EN FEJL, IKKE EN JUSTERING. #6b7684 paa --fc-bg gav 4,3:1 —
      UNDER AA paa 4,5. Den svage tekst under hvert KPI-tal og i hver
      tabelundertekst stod for svagt paa hver eneste skaerm, og ingen havde
      regnet efter. Nu 5,0:1. */
-  --bc-muted:#5c6675;
-  --bc-ok:#197f45;
-  --bc-warn:#a16000;
-  --bc-block:#ba3c3c;
+  --bc-muted:var(--veyro-text-secondary);
+  --bc-ok:var(--veyro-success-text);
+  --bc-warn:var(--veyro-warning-text);
+  --bc-block:var(--veyro-danger-text);
 
   /* ⚠ EN STREGKODES SORT ER ET MASKINKRAV, IKKE ET DESIGNVALG. --bc-text er
      #1f2733 og rigtig til tekst; paa en stregkode er kontrasten scannerens
@@ -59,16 +100,16 @@
   --fc-stregkode:#000;
   --fc-stregkode-bund:#fff;
 
-  --fc-navy:#101a30;
-  --fc-navy-2:#18243f;
-  --fc-navy-3:#22314f;
-  --fc-accent-soft:#e8f0ff;
-  --fc-bg:#e4e8f0;
-  --fc-ok-bg:#dcfce7;
-  --fc-warn-bg:#fef3c7;
-  --fc-bad-bg:#fee2e2;
-  --fc-info:#2563eb;
-  --fc-info-bg:#dbeafe;
+  --fc-navy:var(--veyro-nav-bg);
+  --fc-navy-2:var(--veyro-nav-bg-deep);
+  --fc-navy-3:color-mix(in srgb, var(--veyro-deep-navy) 76%, var(--veyro-teal));
+  --fc-accent-soft:var(--veyro-teal-light);
+  --fc-bg:var(--veyro-workspace);
+  --fc-ok-bg:var(--veyro-success-bg);
+  --fc-warn-bg:var(--veyro-warning-bg);
+  --fc-bad-bg:var(--veyro-danger-bg);
+  --fc-info:var(--veyro-link);
+  --fc-info-bg:var(--veyro-teal-light);
   /* Kategoripalet — IKKE statusfarver. Se beslutning 30: statusfarver siger
      hvor slemt det er, kategorifarver siger hvilken ting det er. Slot 1 peger
      på accenten frem for at gentage #1552d8; beslutning 10 er kilden.
@@ -101,7 +142,7 @@
   /* Modal baggrund. Sidebarens navy ved 44 %, ikke en neutral sort: en sort
      overlay goer alle farver under sig graa-brune, en navy lader accenten
      blive blaa. Se BESLUTNINGER.md — et token er en beslutning. */
-  --fc-overlay:rgba(16,26,48,.44);
+  --fc-overlay:color-mix(in srgb, var(--veyro-deep-navy) 48%, transparent);
 
   /* ── Skriftskalaen ────────────────────────────────────────────────────
      ⚠ FILEN HAVDE 24 FORSKELLIGE STOERRELSER PAA 119 STEDER, otte af dem med
@@ -125,7 +166,8 @@
 
   --fc-r:12px;
   --fc-sidebar:216px;
-  --fc-shadow:0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04);
+  --fc-shadow:0 1px 2px color-mix(in srgb, var(--veyro-deep-navy) 6%, transparent),
+    0 1px 3px color-mix(in srgb, var(--veyro-deep-navy) 4%, transparent);
 }
 
 /* Rodelementet er kolonnen, så miljøbjælken kan ligge over shellen uden at
@@ -154,7 +196,12 @@
 
 .fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
   display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}
-.fc-brand{padding:0 8px; font-size:var(--fc-t-2xl); font-weight:800; letter-spacing:-.02em; color:#fff}
+.veyro-logo{display:block; width:100%; height:auto; object-fit:contain; object-position:center}
+.veyro-logo--sidebar{width:184px; max-width:100%; margin:0 auto}
+.veyro-logo--header{width:112px; max-width:32vw}
+.veyro-logo--login{width:220px; max-width:72vw; margin:0 auto}
+.fc-brand-logo{display:flex; align-items:center; min-height:52px; padding:0 4px}
+.fc-brand{padding:0 8px; font-size:var(--fc-t-2xl); font-weight:800; letter-spacing:-.02em; color:var(--veyro-white)}
 .fc-brand b{color:var(--bc-accent)}
 .fc-ver{padding:0 8px; color:var(--bc-accent); font-size:var(--fc-t-xs); font-weight:700}
 .fc-tenant{padding:10px 8px 12px; color:#cbd5e1; font-size:var(--fc-t-s); font-weight:600}

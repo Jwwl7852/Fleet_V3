@@ -4,7 +4,7 @@ Multi-tenant TMS for danske vognmænd. Én shell, én informationsarkitektur, é
 talkilde.
 
 Udgangspunktet var 20 mockups fordelt på tre uforenelige designretninger og en
-deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 40
+deployet v1.4. v3.0 samler dem. Alt der stod i konflikt er afgjort — de 121
 beslutninger står i **[BESLUTNINGER.md](BESLUTNINGER.md)**, så du kan omgøre
 dem enkeltvis i stedet for at skulle finde ud af hvorfor noget ser ud som det
 gør.
@@ -13,7 +13,7 @@ gør.
 |---|---|
 | **README.md** | Hvor projektet står, og hvordan du kommer i gang. Den her. |
 | **[FLEET.md](FLEET.md)** | Fleets driftskalender: hvad der er bygget af kravlisten, og hvad der mangler |
-| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 120 beslutninger med begrundelser. Læs den før du bryder med noget |
+| **[BESLUTNINGER.md](BESLUTNINGER.md)** | De 121 beslutninger med begrundelser. Læs den før du bryder med noget |
 | **[EJERKONSOL.md](EJERKONSOL.md)** | Ejerkonsollen: datamodel, funktioner og de fire beslutninger bag |
 | **[ABONNEMENT.md](ABONNEMENT.md)** | Abonnementsfakturering — priser, rabat og frosne fakturagrundlag. Prismodellen er **bygget**; noden og skærmen mangler |
 | **[UNITBOOKING.md](UNITBOOKING.md)** | Unitbooking-modulet: hvad prototypen indeholder, syv ting der skal afgøres først, og etaperne. **Bygget** — tilbage er mails og fotos i klik-kortet, som venter på beslutning 20 |
@@ -304,7 +304,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **165 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **166 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
