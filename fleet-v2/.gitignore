@@ -1,0 +1,38 @@
+# Dependencies and generated builds
+node_modules/
+dist/
+build/
+coverage/
+
+# Test, screenshot and report artifacts
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+
+# Tool caches
+.cache/
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# Local IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*credentials*.json
+*serviceaccount*.json
+*firebase-adminsdk*.json
