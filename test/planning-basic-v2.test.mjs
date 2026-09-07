@@ -503,7 +503,7 @@ describe("Tenant-, reference- og importgrænser", () => {
     gaa(src);
     const nye = new Set(nyeKernefiler.map((f) => resolve(rod, f)));
     const erPlanningUi = (fil) => fil.replaceAll("\\", "/").includes("/src/fleet/planning-ui/");
-    const erRentPlanningLag = (fil) => /\/src\/fleet\/planning-(?:input|execution)\//.test(fil.replaceAll("\\", "/"));
+    const erRentPlanningLag = (fil) => /\/src\/fleet\/planning-(?:input|execution|optimization)\//.test(fil.replaceAll("\\", "/"));
     const uiFiler = alle.filter(erPlanningUi);
     assert.ok(uiFiler.length > 0, "Planning-UI skal klassificeres som Planning, ikke som domænekerne");
 

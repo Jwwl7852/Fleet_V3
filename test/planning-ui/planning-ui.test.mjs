@@ -271,9 +271,9 @@ describe("Isolation, syntetiske data og fungerende UI-kontrakt", () => {
     assert.ok(UI_RUTER.flatMap((rute) => [...rute.mobilevents, ...rute.obdObservationer]).every((observation) => observation.syntetisk === true));
   });
 
-  it("indeholder alle fire lokale visninger og aktive kontroltekster", () => {
+  it("indeholder alle lokale visninger og aktive kontroltekster", () => {
     const jsx = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningDemo.jsx"), "utf8");
-    for (const tekst of ["Dagens overblik", "Livekalender", "Faste ruter", "Mobilvisning", "Åbn i fuld skærm", "Ankommet", "Afgået", "Godkend ændring", "Afvis forslag"]) assert.match(jsx, new RegExp(tekst));
+    for (const tekst of ["Dagens overblik", "Optimering", "Livekalender", "Faste ruter", "Mobilvisning", "Åbn i fuld skærm", "Ankommet", "Afgået", "Godkend ændring", "Afvis forslag"]) assert.match(jsx, new RegExp(tekst));
   });
 
   it("tilføjer opgaveindbakken uden at duplikere den eksisterende rute-UI", () => {
@@ -292,6 +292,21 @@ describe("Isolation, syntetiske data og fungerende UI-kontrakt", () => {
     assert.equal(svar.ok, true);
     assert.equal(svar.planlaegningspulje.length, 1);
     assert.equal(svar.opgave.ruteId, null);
+  });
+
+  it("løfter én lokal planlægningspulje til Opgaver og Optimering", () => {
+    const demo = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningDemo.jsx"), "utf8");
+    const intake = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningIntake.jsx"), "utf8");
+    assert.match(demo, /\[planlaegningspulje, setPlanlaegningspulje\]/);
+    assert.match(demo, /<PlanningIntake planlaegningspulje=\{planlaegningspulje\} setPlanlaegningspulje=\{setPlanlaegningspulje\}/);
+    assert.match(demo, /<PlanningOptimization planlaegningspulje=\{planlaegningspulje\}/);
+    assert.match(intake, /planlaegningspulje \?\? lokalPulje/);
+  });
+
+  it("viser en ærlig lokal optimeringskontrakt uden lagring eller frigivelse", () => {
+    const jsx = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningOptimization.jsx"), "utf8");
+    for (const tekst of ["Optimér dagsplan", "Syntetisk rejsetidsmatrix", "globalt optimum er ikke bevist", "Hjemmepleje-demo", "Transport-demo", "Lokal planlægningspulje", "Ikke-planlagte opgaver"]) assert.match(jsx, new RegExp(tekst));
+    assert.doesNotMatch(jsx, /Gem plan|Frigiv plan|Publicér/);
   });
 
   it("viser et betinget materialeflow uden kamera, signatur eller mailafsendelse", () => {

@@ -147,12 +147,14 @@ export function ExecutionMobilePreview({ compact = false }) {
   return <section className={`pi-mobile-preview ${compact ? "pi-mobile-compact" : ""}`} aria-label="Lokal mobilforhåndsvisning"><div className="pu-phone-top"><span>Udførelse · {stop.navn}</span><span className="pu-badge" data-tone="estimated">Forhåndsvisning</span></div><div className="pi-mobile-flow"><ol>{flow.map((trin, indeks) => { const [navn] = trin.split(" · "); return <li key={`${navn}-${indeks}`}><span>{indeks + 1}</span><div><strong>{navn}</strong>{trin.includes("Ikke tilsluttet endnu") && <small>Ikke tilsluttet endnu</small>}</div></li>; })}</ol><label className="pu-check"><input type="checkbox" checked={materialer} onChange={(e) => setMaterialer(e.target.checked)} />Har du brugt materialer på opgaven?</label>{materialer && <div className="pi-material-entry"><label>Materiale<select defaultValue={demo.materialer[0].id}>{demo.materialer.filter((m) => m.aktiv).map((m) => <option key={m.id} value={m.id}>{m.navn} · {m.enhed}</option>)}</select></label><label>Antal<input type="number" min="0.1" step="0.1" defaultValue="2" /></label><label>Kommentar<input defaultValue="Syntetisk registrering" /></label></div>}<p className="pu-help">Kamera, filupload, signaturfelt, dokumentgenerering, mailafsendelse og persistence er ikke tilsluttet endnu.</p></div></section>;
 }
 
-export default function PlanningIntake() {
+export default function PlanningIntake({ planlaegningspulje = null, setPlanlaegningspulje = null }) {
   const demo = useMemo(() => opretDemoIntakeData(), []);
   const [opgaver, setOpgaver] = useState(() => [...demo.eksisterende, ...demo.opgaver]);
   const [skabeloner, setSkabeloner] = useState(demo.skabeloner);
   const [materialer, setMaterialer] = useState(demo.materialer);
-  const [pulje, setPulje] = useState([]);
+  const [lokalPulje, setLokalPulje] = useState([]);
+  const pulje = planlaegningspulje ?? lokalPulje;
+  const setPulje = setPlanlaegningspulje ?? setLokalPulje;
   const [status, setStatus] = useState("ALLE");
   const [soegning, setSoegning] = useState("");
   const [sortering, setSortering] = useState("dato");
