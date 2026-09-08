@@ -61,6 +61,101 @@ export const MODUL = Object.freeze({
   procure: "PROCURE",
 });
 
+export const REFERENCE_MODUL_V1 = Object.freeze({
+  fleet: "fleet",
+  facility: "facility",
+  procure: "procure",
+});
+
+export const REFERENCE_PROVENIENS = Object.freeze({
+  autoritative: "autoritative",
+  demoLegacy: "demo-legacy",
+});
+
+export const FORDELING_OPERATION_V1 = Object.freeze({
+  opret: "fordeling-oprettet",
+  kontroller: "fordeling-kontrolleret",
+  tilbagefoer: "fordeling-tilbagefoert",
+});
+
+export const FORDELING_REVISION_AARSAG_V1 = Object.freeze({
+  fakturaGenaabnet: "FAKTURA_GENÅBNET",
+  matchRettet: "MATCH_RETTET",
+  fordelingRettet: "FORDELING_RETTET",
+  dokumentoplysningerRettet: "DOKUMENTOPLYSNINGER_RETTET",
+});
+
+export const REFERENCE_KONTRAKT_VERSION = 1;
+export const FORDELING_KONTRAKT_VERSION = 1;
+
+export const FORDELING_STATUS = Object.freeze({
+  kladde: "kladde",
+  kontrolleret: "kontrolleret",
+  tilbagefoert: "tilbagefoert",
+});
+
+export const REFERENCE_KONTRAKT_GRAENSER = Object.freeze({
+  id: 128,
+  reference: 128,
+  navn: 200,
+  referenceArray: 20,
+  revisionsaarsag: 500,
+});
+
+export const KONTRAKT_FEJLKODE = Object.freeze({
+  referenceVersionMangler: "REFERENCE_CONTRACT_VERSION_REQUIRED",
+  referenceVersionUkendt: "REFERENCE_CONTRACT_VERSION_UNSUPPORTED",
+  fordelingVersionMangler: "ALLOCATION_CONTRACT_VERSION_REQUIRED",
+  fordelingVersionUkendt: "ALLOCATION_CONTRACT_VERSION_UNSUPPORTED",
+  tenantIdUgyldigt: "CONTRACT_TENANT_ID_INVALID",
+  crossTenant: "CONTRACT_TENANT_MISMATCH",
+  modulUgyldigt: "CONTRACT_MODULE_INVALID",
+  destinationIdUgyldigt: "REFERENCE_DESTINATION_ID_INVALID",
+  destinationstypeUgyldig: "REFERENCE_DESTINATION_TYPE_INVALID",
+  destinationsnavnUgyldigt: "REFERENCE_DESTINATION_NAME_INVALID",
+  veyroReferenceUgyldig: "REFERENCE_VEYRO_REFERENCE_INVALID",
+  bestillingsnummerUgyldigt: "REFERENCE_ORDER_NUMBER_INVALID",
+  leverandoerIdUgyldigt: "REFERENCE_SUPPLIER_ID_INVALID",
+  enhedIdUgyldigt: "REFERENCE_UNIT_ID_INVALID",
+  fakturavindueUgyldigt: "REFERENCE_INVOICE_WINDOW_INVALID",
+  tidspunktUgyldigt: "CONTRACT_TIMESTAMP_INVALID",
+  estimatUgyldigt: "REFERENCE_ESTIMATE_INVALID",
+  referenceUgyldig: "REFERENCE_LOOKUP_TOKEN_INVALID",
+  feltUkendt: "CONTRACT_FIELD_UNKNOWN",
+  vaerdiForLang: "CONTRACT_VALUE_TOO_LONG",
+  proveniensUgyldig: "REFERENCE_PROVENANCE_INVALID",
+  fordelingIdUgyldigt: "ALLOCATION_ID_INVALID",
+  fakturaEllerIntakeIdMangler: "ALLOCATION_INVOICE_ID_REQUIRED",
+  fakturaIdUgyldigt: "ALLOCATION_INVOICE_ID_INVALID",
+  intakeIdUgyldigt: "ALLOCATION_INTAKE_ID_INVALID",
+  blandetFakturaIdentitet: "ALLOCATION_INVOICE_IDENTITY_MIXED",
+  beloebUgyldigt: "ALLOCATION_AMOUNT_INVALID",
+  fortegnUgyldigt: "ALLOCATION_AMOUNT_SIGN_INVALID",
+  dokumenttypeUgyldig: "ALLOCATION_DOCUMENT_TYPE_INVALID",
+  fordelingStatusUgyldig: "ALLOCATION_STATUS_INVALID",
+  idempotensnoegleUgyldig: "ALLOCATION_IDEMPOTENCY_KEY_INVALID",
+  aktoerIdUgyldigt: "ALLOCATION_ACTOR_ID_INVALID",
+  aktoerMismatch: "ALLOCATION_ACTOR_MISMATCH",
+  korrelationsIdUgyldigt: "ALLOCATION_CORRELATION_ID_INVALID",
+  revisionsaarsagMangler: "ALLOCATION_REVISION_REASON_REQUIRED",
+  revisionsaarsagUgyldig: "ALLOCATION_REVISION_REASON_INVALID",
+  adgangAfvist: "ALLOCATION_ACCESS_DENIED",
+  destinationMangler: "ALLOCATION_DESTINATION_REQUIRED",
+  destinationMismatch: "ALLOCATION_DESTINATION_MISMATCH",
+  destinationLukket: "ALLOCATION_DESTINATION_CLOSED",
+  historikUgyldig: "ALLOCATION_HISTORY_INVALID",
+  idempotensKonflikt: "ALLOCATION_IDEMPOTENCY_CONFLICT",
+  fordelingIdKonflikt: "ALLOCATION_ID_CONFLICT",
+  fordelingAlleredeKontrolleret: "ALLOCATION_ALREADY_CONTROLLED",
+  tilbagefoerselUgyldig: "ALLOCATION_REVERSAL_INVALID",
+  fordelingUfuldstaendig: "ALLOCATION_TOTAL_INCOMPLETE",
+  fordelingOverskrider: "ALLOCATION_TOTAL_EXCEEDED",
+  omkostningOverflow: "ALLOCATION_COST_OVERFLOW",
+  tilstandsovergangUgyldig: "ALLOCATION_STATE_TRANSITION_INVALID",
+  haendelsesraekkefoelgeUgyldig: "ALLOCATION_EVENT_ORDER_INVALID",
+  idempotensscopeUgyldigt: "ALLOCATION_IDEMPOTENCY_SCOPE_INVALID",
+});
+
 export const FAKTURAVINDUE = Object.freeze({
   aaben: "aaben-for-faktura",
   delvis: "delvist-faktureret",
@@ -145,11 +240,18 @@ const ALLE_INTAKE_STATUS = new Set(Object.values(INTAKE_STATUS));
 const ALLE_DUBLET_STATUS = new Set(Object.values(DUBLET_STATUS));
 const ALLE_AFLAESNING_STATUS = new Set(Object.values(AFLAESNING_STATUS));
 const ALLE_MODULER = new Set(Object.values(MODUL));
+const ALLE_REFERENCE_MODULER_V1 = new Set(Object.values(REFERENCE_MODUL_V1));
+const ALLE_REFERENCE_PROVENIENS = new Set(Object.values(REFERENCE_PROVENIENS));
+const ALLE_FORDELING_OPERATIONER_V1 = new Set(Object.values(FORDELING_OPERATION_V1));
+const ALLE_FORDELING_REVISION_AARSAGER_V1 = new Set(Object.values(FORDELING_REVISION_AARSAG_V1));
 const ALLE_VINDUER = new Set(Object.values(FAKTURAVINDUE));
 const ALLE_MATCHNIVEAUER = new Set(Object.values(MATCHNIVEAU));
 const ALLE_MAILFIL_ROLLER = new Set(Object.values(MAILFIL_ROLLE));
 const ALLE_FAKTURAARTER = new Set(Object.values(FAKTURAART));
+const ALLE_FORDELING_STATUS = new Set(Object.values(FORDELING_STATUS));
 const SHA256 = /^[a-f0-9]{64}$/;
+const STABILT_ID = /^[\p{L}\p{N}][\p{L}\p{N}._:-]{0,127}$/u;
+const UGYLDIGE_KONTROLTEGN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u;
 const MIME = new Set([
   "application/pdf",
   "image/jpeg",
@@ -164,7 +266,25 @@ const heltal = (v) => Number.isSafeInteger(v) ? v : null;
 const liste = (v) => Array.isArray(v) ? v : [];
 const frys = (v) => Object.freeze(v);
 
+function deepFrys(værdi) {
+  if (!værdi || typeof værdi !== "object" || Object.isFrozen(værdi)) return værdi;
+  for (const barn of Object.values(værdi)) deepFrys(barn);
+  return Object.freeze(værdi);
+}
+
+function resultatV1(data) {
+  return deepFrys(data);
+}
+
 const gyldigTid = (v) => Number.isSafeInteger(v) && v > 0;
+const stabiltId = (v) => typeof v === "string" && v === v.trim() && STABILT_ID.test(v);
+const kanoniskKontraktReference = (v) => typeof v === "string"
+  ? v.trim().normalize("NFC") : null;
+const gyldigReference = (v) => {
+  const kanonisk = kanoniskKontraktReference(v);
+  return Boolean(kanonisk && kanonisk.length <= REFERENCE_KONTRAKT_GRAENSER.reference
+    && normaliserReference(kanonisk));
+};
 const gyldigDato = (v) => {
   if (v === null) return true;
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
@@ -422,12 +542,14 @@ export function retAflæsning(aflæsning, ændringer, kontekst = {}) {
 export function normaliserReference(værdi) {
   // Unicode-bogstaver og tal bevares. Kun visningsseparatorer fjernes.
   // Det holder fx Ø-123 forskellig fra både 123 og OE-123.
-  return String(værdi || "").normalize("NFKC").toLocaleUpperCase("da-DK")
+  return String(værdi || "").trim().normalize("NFC").toLocaleUpperCase("da-DK")
+    .normalize("NFC")
     .replace(/[^\p{L}\p{N}]/gu, "");
 }
 
 export function referenceTokens(værdi) {
-  const fund = String(værdi || "").normalize("NFKC").toLocaleUpperCase("da-DK")
+  const fund = String(værdi || "").trim().normalize("NFC").toLocaleUpperCase("da-DK")
+    .normalize("NFC")
     .match(/[\p{L}\p{N}]+(?:[-_/][\p{L}\p{N}]+)*/gu) || [];
   return [...new Set(fund.map(normaliserReference).filter(Boolean))];
 }
@@ -452,41 +574,321 @@ export function normaliserNavn(værdi) {
 }
 
 export function normaliserKundereference(værdi) {
-  return normaliserNavn(værdi);
+  return normaliserReference(værdi);
 }
 
-export function bygDestination(data = {}) {
-  if (!tekst(data.tenantId) || !ALLE_MODULER.has(data.modul)
-      || !tekst(data.destinationId) || !tekst(data.navn)
-      || !ALLE_VINDUER.has(data.fakturastatus)) {
-    throw new TypeError("Ugyldig read-only destination.");
+export function tilReferenceModulV1(interntModul) {
+  const opslag = {
+    [MODUL.fleet]: REFERENCE_MODUL_V1.fleet,
+    [MODUL.facility]: REFERENCE_MODUL_V1.facility,
+    [MODUL.procure]: REFERENCE_MODUL_V1.procure,
+  };
+  return opslag[interntModul] || null;
+}
+
+export function fraReferenceModulV1(referenceModul) {
+  const opslag = {
+    [REFERENCE_MODUL_V1.fleet]: MODUL.fleet,
+    [REFERENCE_MODUL_V1.facility]: MODUL.facility,
+    [REFERENCE_MODUL_V1.procure]: MODUL.procure,
+  };
+  return opslag[referenceModul] || null;
+}
+
+const REFERENCE_DESTINATION_FELTER = new Set([
+  "kontraktVersion", "tenantId", "modul", "destinationId", "veyroReference",
+  "bestillingsnummer", "destinationstype", "navn", "operationelStatus",
+  "fakturastatus", "oprettetMs", "aendretMs", "leverandoer", "referencer",
+  "enhedsreferencer", "lokation", "koststeder", "forventetNettoOere",
+  "proveniens",
+]);
+const LEVERANDOER_FELTER = new Set(["id", "cvr", "navn", "navnevarianter"]);
+const ENHED_FELTER = new Set([
+  "id", "interntNummer", "registreringsnummer", "stelSerieNummer", "navn",
+  "kundereferencer",
+]);
+const FORDELING_FELTER = new Set([
+  "kontraktVersion", "tenantId", "fordelingId", "fakturaId", "intakeId", "modul",
+  "destinationId", "nettoOere", "dokumenttype", "status", "idempotensnoegle",
+  "tidspunktMs", "aktoerId", "korrelationsId", "revisionsaarsagskode",
+  "revisionsaarsag", "erstatterFordelingId", "operationstype",
+]);
+
+function harUkendteFelter(objekt, tilladte) {
+  return !objekt || typeof objekt !== "object" || Array.isArray(objekt)
+    || Object.keys(objekt).some((felt) => !tilladte.has(felt));
+}
+
+function erForLang(værdi, maksimum) {
+  const kanonisk = kanoniskKontraktReference(værdi);
+  return kanonisk !== null && kanonisk.length > maksimum;
+}
+
+function valideretValgfriTekst(værdi, maksimum) {
+  if (værdi === null || værdi === undefined) return { ok: true, værdi: null };
+  if (typeof værdi !== "string" || !værdi.trim()) return { ok: false, forLang: false };
+  if (erForLang(værdi.trim(), maksimum)) return { ok: false, forLang: true };
+  return { ok: true, værdi: værdi.trim().normalize("NFC") };
+}
+
+function valideretReferenceArray(værdi) {
+  if (værdi === undefined) return { ok: true, værdier: [] };
+  if (!Array.isArray(værdi)) return { ok: false, forLang: false };
+  if (værdi.length > REFERENCE_KONTRAKT_GRAENSER.referenceArray) {
+    return { ok: false, forLang: true };
   }
-  return frys({
-    tenantId: data.tenantId.trim(),
+  if (værdi.some((ref) => erForLang(ref, REFERENCE_KONTRAKT_GRAENSER.reference))) {
+    return { ok: false, forLang: true };
+  }
+  if (!værdi.every(gyldigReference)) return { ok: false, forLang: false };
+  return { ok: true, værdier: værdi.map(kanoniskKontraktReference) };
+}
+
+/**
+ * Provideruafhængig read-only projektion fra et destinationsmodul.
+ * En senere serveradapter skal levere tenant og autorisation; klientobjektet er
+ * ikke en autoritativ adgangskilde.
+ */
+export function bygReferencedestinationV1(data = {}, kontekst = {}) {
+  const afvis = (fejl) => resultatV1({ ok: false, fejl, destination: null });
+  if (harUkendteFelter(data, REFERENCE_DESTINATION_FELTER)) {
+    return afvis(KONTRAKT_FEJLKODE.feltUkendt);
+  }
+  if (data.kontraktVersion === undefined) {
+    return afvis(KONTRAKT_FEJLKODE.referenceVersionMangler);
+  }
+  if (data.kontraktVersion !== REFERENCE_KONTRAKT_VERSION) {
+    return afvis(KONTRAKT_FEJLKODE.referenceVersionUkendt);
+  }
+  if (!ALLE_REFERENCE_PROVENIENS.has(data.proveniens)
+      || data.proveniens !== REFERENCE_PROVENIENS.autoritative) {
+    return afvis(KONTRAKT_FEJLKODE.proveniensUgyldig);
+  }
+  if (!stabiltId(data.tenantId)) {
+    return afvis(erForLang(data.tenantId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.tenantIdUgyldigt);
+  }
+  if (kontekst.aktuelTenantId !== undefined) {
+    if (!stabiltId(kontekst.aktuelTenantId)) {
+      return afvis(KONTRAKT_FEJLKODE.tenantIdUgyldigt);
+    }
+    if (data.tenantId !== kontekst.aktuelTenantId) {
+      return afvis(KONTRAKT_FEJLKODE.crossTenant);
+    }
+  }
+  if (!ALLE_REFERENCE_MODULER_V1.has(data.modul)) {
+    return afvis(KONTRAKT_FEJLKODE.modulUgyldigt);
+  }
+  if (!stabiltId(data.destinationId)) {
+    return afvis(erForLang(data.destinationId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.destinationIdUgyldigt);
+  }
+  if (!stabiltId(data.destinationstype)) {
+    return afvis(erForLang(data.destinationstype, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.destinationstypeUgyldig);
+  }
+  if (!gyldigReference(data.veyroReference)) {
+    return afvis(erForLang(data.veyroReference, REFERENCE_KONTRAKT_GRAENSER.reference)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.veyroReferenceUgyldig);
+  }
+  if (data.bestillingsnummer !== null && data.bestillingsnummer !== undefined
+      && !gyldigReference(data.bestillingsnummer)) {
+    return afvis(erForLang(data.bestillingsnummer, REFERENCE_KONTRAKT_GRAENSER.reference)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.bestillingsnummerUgyldigt);
+  }
+  if (!tekst(data.navn) || erForLang(data.navn.trim(), REFERENCE_KONTRAKT_GRAENSER.navn)) {
+    return afvis(erForLang(data.navn, REFERENCE_KONTRAKT_GRAENSER.navn)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.destinationsnavnUgyldigt);
+  }
+  if (data.leverandoer && typeof data.leverandoer === "object"
+      && !Array.isArray(data.leverandoer)
+      && Object.keys(data.leverandoer).some((felt) => !LEVERANDOER_FELTER.has(felt))) {
+    return afvis(KONTRAKT_FEJLKODE.feltUkendt);
+  }
+  if (!data.leverandoer || typeof data.leverandoer !== "object"
+      || Array.isArray(data.leverandoer) || !stabiltId(data.leverandoer.id)) {
+    return afvis(erForLang(data.leverandoer?.id, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.leverandoerIdUgyldigt);
+  }
+  const leverandoernavn = valideretValgfriTekst(data.leverandoer.navn,
+    REFERENCE_KONTRAKT_GRAENSER.navn);
+  const leverandoerCvr = valideretValgfriTekst(data.leverandoer.cvr,
+    REFERENCE_KONTRAKT_GRAENSER.reference);
+  const navnevarianter = valideretReferenceArray(data.leverandoer.navnevarianter);
+  if (!leverandoernavn.ok || !leverandoerCvr.ok || !navnevarianter.ok) {
+    return afvis(leverandoernavn.forLang || leverandoerCvr.forLang || navnevarianter.forLang
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.referenceUgyldig);
+  }
+  const råEnhed = data.enhedsreferencer;
+  if (råEnhed !== null && råEnhed !== undefined && typeof råEnhed === "object"
+      && !Array.isArray(råEnhed)
+      && Object.keys(råEnhed).some((felt) => !ENHED_FELTER.has(felt))) {
+    return afvis(KONTRAKT_FEJLKODE.feltUkendt);
+  }
+  if (råEnhed !== null && råEnhed !== undefined
+      && (typeof råEnhed !== "object" || Array.isArray(råEnhed) || !stabiltId(råEnhed.id))) {
+    return afvis(erForLang(råEnhed?.id, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.enhedIdUgyldigt);
+  }
+  if (!ALLE_VINDUER.has(data.fakturastatus)) {
+    return afvis(KONTRAKT_FEJLKODE.fakturavindueUgyldigt);
+  }
+  if (!gyldigTid(data.oprettetMs) || !gyldigTid(data.aendretMs)
+      || data.aendretMs < data.oprettetMs) {
+    return afvis(KONTRAKT_FEJLKODE.tidspunktUgyldigt);
+  }
+  if (data.forventetNettoOere !== null && data.forventetNettoOere !== undefined
+      && (!Number.isSafeInteger(data.forventetNettoOere) || data.forventetNettoOere < 0)) {
+    return afvis(KONTRAKT_FEJLKODE.estimatUgyldigt);
+  }
+  const ekstraReferencerResultat = valideretReferenceArray(data.referencer);
+  if (!ekstraReferencerResultat.ok) {
+    return afvis(ekstraReferencerResultat.forLang
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.referenceUgyldig);
+  }
+  const enhedsKundereferencer = valideretReferenceArray(råEnhed?.kundereferencer);
+  const enhedsTekster = råEnhed ? ["interntNummer", "registreringsnummer", "stelSerieNummer"]
+    .map((felt) => valideretValgfriTekst(råEnhed[felt], REFERENCE_KONTRAKT_GRAENSER.reference)) : [];
+  const enhedsnavn = råEnhed
+    ? valideretValgfriTekst(råEnhed.navn, REFERENCE_KONTRAKT_GRAENSER.navn)
+    : { ok: true, værdi: null };
+  if (!enhedsKundereferencer.ok || !enhedsnavn.ok || enhedsTekster.some((r) => !r.ok)) {
+    return afvis(enhedsKundereferencer.forLang || enhedsnavn.forLang
+      || enhedsTekster.some((r) => r.forLang)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.referenceUgyldig);
+  }
+  const koststederResultat = valideretReferenceArray(data.koststeder);
+  const lokationResultat = valideretValgfriTekst(data.lokation,
+    REFERENCE_KONTRAKT_GRAENSER.navn);
+  const operationelStatusResultat = valideretValgfriTekst(data.operationelStatus,
+    REFERENCE_KONTRAKT_GRAENSER.reference);
+  if (!koststederResultat.ok || !lokationResultat.ok || !operationelStatusResultat.ok) {
+    return afvis(koststederResultat.forLang || lokationResultat.forLang
+      || operationelStatusResultat.forLang
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.referenceUgyldig);
+  }
+  const ekstraReferencer = ekstraReferencerResultat.værdier;
+  const veyroReference = kanoniskKontraktReference(data.veyroReference);
+  const bestillingsnummer = data.bestillingsnummer === null
+    || data.bestillingsnummer === undefined
+    ? null : kanoniskKontraktReference(data.bestillingsnummer);
+  const referencer = [...new Set([
+    veyroReference,
+    ...(bestillingsnummer ? [bestillingsnummer] : []),
+    ...ekstraReferencer,
+  ])];
+  const enhedsreferencer = råEnhed ? frys({
+    id: råEnhed.id,
+    interntNummer: enhedsTekster[0].værdi,
+    registreringsnummer: enhedsTekster[1].værdi,
+    stelSerieNummer: enhedsTekster[2].værdi,
+    navn: enhedsnavn.værdi,
+    kundereferencer: frys(enhedsKundereferencer.værdier),
+  }) : null;
+  const destination = frys({
+    kontraktVersion: REFERENCE_KONTRAKT_VERSION,
+    proveniens: data.proveniens,
+    tenantId: data.tenantId,
     modul: data.modul,
-    destinationId: data.destinationId.trim(),
+    destinationId: data.destinationId,
+    veyroReference,
+    bestillingsnummer,
+    destinationstype: data.destinationstype,
     navn: data.navn.trim(),
     operationelStatus: tekst(data.operationelStatus),
     fakturastatus: data.fakturastatus,
-    datoMs: Number.isFinite(data.datoMs) ? data.datoMs : null,
+    oprettetMs: data.oprettetMs,
+    aendretMs: data.aendretMs,
     leverandoer: frys({
-      id: tekst(data.leverandoer?.id),
-      cvr: tekst(data.leverandoer?.cvr),
-      navn: tekst(data.leverandoer?.navn),
-      navnevarianter: frys([...liste(data.leverandoer?.navnevarianter).filter(tekst)]),
+      id: data.leverandoer.id,
+      cvr: leverandoerCvr.værdi,
+      navn: leverandoernavn.værdi,
+      navnevarianter: frys(navnevarianter.værdier),
     }),
-    referencer: frys([...liste(data.referencer).filter(tekst)]),
-    enhed: data.enhed ? frys({
-      id: tekst(data.enhed.id),
-      interntNummer: tekst(data.enhed.interntNummer),
-      registreringsnummer: tekst(data.enhed.registreringsnummer),
-      stelSerieNummer: tekst(data.enhed.stelSerieNummer),
-      navn: tekst(data.enhed.navn),
-      kundereferencer: frys([...liste(data.enhed.kundereferencer).filter(tekst)]),
-    }) : null,
-    lokation: tekst(data.lokation),
-    koststeder: frys([...liste(data.koststeder).filter(tekst)]),
-    forventetNettoOere: heltal(data.forventetNettoOere),
+    referencer: frys(referencer),
+    enhedsreferencer,
+    lokation: lokationResultat.værdi,
+    koststeder: frys(koststederResultat.værdier),
+    forventetNettoOere: data.forventetNettoOere ?? null,
+  });
+  return resultatV1({ ok: true, fejl: null, destination });
+}
+
+export function bygReferencedestinationDemoLegacyV1(data = {}) {
+  const referencer = Array.isArray(data.referencer) ? data.referencer : [];
+  const modul = ALLE_REFERENCE_MODULER_V1.has(data.modul)
+    ? data.modul : tilReferenceModulV1(data.modul);
+  const grundlag = {
+    ...data,
+    kontraktVersion: REFERENCE_KONTRAKT_VERSION,
+    proveniens: REFERENCE_PROVENIENS.autoritative,
+    modul,
+    veyroReference: data.veyroReference ?? referencer[0],
+    destinationstype: data.destinationstype
+      ?? (modul === REFERENCE_MODUL_V1.procure ? "bestilling" : "opgave"),
+    oprettetMs: data.oprettetMs ?? data.datoMs,
+    aendretMs: data.aendretMs ?? data.datoMs,
+    enhedsreferencer: data.enhedsreferencer ?? data.enhed,
+  };
+  delete grundlag.datoMs;
+  delete grundlag.leverandoerId;
+  delete grundlag.enhed;
+  const resultat = bygReferencedestinationV1(grundlag);
+  if (!resultat.ok) return resultat;
+  const destination = deepFrys({ ...resultat.destination,
+    proveniens: REFERENCE_PROVENIENS.demoLegacy });
+  return resultatV1({ ok: true, fejl: null, destination });
+}
+
+/** Bagudkompatibel demo-facade. Den må ikke bruges som produktionsgrænse. */
+export function bygDestination(data = {}) {
+  const resultat = bygReferencedestinationDemoLegacyV1(data);
+  if (!resultat.ok) {
+    const fejl = new TypeError(`Ugyldig read-only destination (${resultat.fejl}).`);
+    fejl.code = resultat.fejl;
+    throw fejl;
+  }
+  return deepFrys({
+    ...resultat.destination,
+    modul: fraReferenceModulV1(resultat.destination.modul),
+    enhed: resultat.destination.enhedsreferencer,
+  });
+}
+
+export function matchReferencedestinationV1({
+  aktuelTenantId,
+  reference,
+  destinationer = [],
+} = {}) {
+  if (!stabiltId(aktuelTenantId)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.tenantIdUgyldigt,
+      destinationer: frys([]) });
+  }
+  if (typeof reference !== "string") {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.referenceUgyldig,
+      destinationer: frys([]) });
+  }
+  if (erForLang(reference, REFERENCE_KONTRAKT_GRAENSER.reference)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.vaerdiForLang,
+      destinationer: frys([]) });
+  }
+  const tokens = new Set(referenceTokens(reference));
+  if (!tokens.size) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.referenceUgyldig,
+      destinationer: frys([]) });
+  }
+  const gyldige = [];
+  for (const destination of liste(destinationer)) {
+    const valideret = bygReferencedestinationV1(destination, { aktuelTenantId });
+    if (!valideret.ok) return resultatV1({ ok: false, fejl: valideret.fejl,
+      destinationer: frys([]) });
+    gyldige.push(valideret.destination);
+  }
+  return resultatV1({
+    ok: true,
+    fejl: null,
+    destinationer: frys(gyldige.filter((destination) => destination.referencer
+      .some((værdi) => tokens.has(normaliserReference(værdi))))),
   });
 }
 
@@ -748,6 +1150,499 @@ export function validérFordeling(nettoOere, fordelinger = [], fakturaart =
   return fordeltOere === nettoOere
     ? { ok: true, fejl: null, fordeltOere }
     : { ok: false, fejl: TEKNISK_FEJLKODE.ufuldstændigFordeling, fordeltOere };
+}
+
+export function bygFakturafordelingV1(data = {}, kontekst = {}) {
+  const afvis = (fejl) => resultatV1({ ok: false, fejl, fordeling: null });
+  if (harUkendteFelter(data, FORDELING_FELTER)) return afvis(KONTRAKT_FEJLKODE.feltUkendt);
+  if (data.kontraktVersion === undefined) {
+    return afvis(KONTRAKT_FEJLKODE.fordelingVersionMangler);
+  }
+  if (data.kontraktVersion !== FORDELING_KONTRAKT_VERSION) {
+    return afvis(KONTRAKT_FEJLKODE.fordelingVersionUkendt);
+  }
+  if (!stabiltId(data.tenantId)) {
+    return afvis(erForLang(data.tenantId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.tenantIdUgyldigt);
+  }
+  if (kontekst.aktuelTenantId !== undefined) {
+    if (!stabiltId(kontekst.aktuelTenantId)) {
+      return afvis(KONTRAKT_FEJLKODE.tenantIdUgyldigt);
+    }
+    if (data.tenantId !== kontekst.aktuelTenantId) {
+      return afvis(KONTRAKT_FEJLKODE.crossTenant);
+    }
+  }
+  if (!stabiltId(data.fordelingId)) {
+    return afvis(erForLang(data.fordelingId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.fordelingIdUgyldigt);
+  }
+  const fakturaId = data.fakturaId;
+  const intakeId = data.intakeId === null || data.intakeId === undefined
+    ? null : data.intakeId;
+  if (fakturaId === null || fakturaId === undefined || fakturaId === "") {
+    return afvis(KONTRAKT_FEJLKODE.fakturaEllerIntakeIdMangler);
+  }
+  if (!stabiltId(fakturaId)) {
+    return afvis(erForLang(fakturaId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.fakturaIdUgyldigt);
+  }
+  if (intakeId !== null && !stabiltId(intakeId)) {
+    return afvis(erForLang(intakeId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.intakeIdUgyldigt);
+  }
+  if (!ALLE_REFERENCE_MODULER_V1.has(data.modul)) {
+    return afvis(KONTRAKT_FEJLKODE.modulUgyldigt);
+  }
+  if (!stabiltId(data.destinationId)) {
+    return afvis(erForLang(data.destinationId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.destinationIdUgyldigt);
+  }
+  if (!Number.isSafeInteger(data.nettoOere) || data.nettoOere === 0) {
+    return afvis(KONTRAKT_FEJLKODE.beloebUgyldigt);
+  }
+  if (data.dokumenttype !== FAKTURAART.faktura
+      && data.dokumenttype !== FAKTURAART.kreditnota) {
+    return afvis(KONTRAKT_FEJLKODE.dokumenttypeUgyldig);
+  }
+  if ((data.dokumenttype === FAKTURAART.faktura && data.nettoOere < 0)
+      || (data.dokumenttype === FAKTURAART.kreditnota && data.nettoOere > 0)) {
+    return afvis(KONTRAKT_FEJLKODE.fortegnUgyldigt);
+  }
+  if (!ALLE_FORDELING_STATUS.has(data.status)) {
+    return afvis(KONTRAKT_FEJLKODE.fordelingStatusUgyldig);
+  }
+  if (!stabiltId(data.idempotensnoegle)) {
+    return afvis(erForLang(data.idempotensnoegle, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.idempotensnoegleUgyldig);
+  }
+  if (!gyldigTid(data.tidspunktMs)) {
+    return afvis(KONTRAKT_FEJLKODE.tidspunktUgyldigt);
+  }
+  if (!stabiltId(data.aktoerId)) {
+    return afvis(erForLang(data.aktoerId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.aktoerIdUgyldigt);
+  }
+  if (!stabiltId(data.korrelationsId)) {
+    return afvis(erForLang(data.korrelationsId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.korrelationsIdUgyldigt);
+  }
+  const erstatterFordelingId = data.erstatterFordelingId === null
+    || data.erstatterFordelingId === undefined ? null : data.erstatterFordelingId;
+  if (erstatterFordelingId !== null && (!stabiltId(erstatterFordelingId)
+      || erstatterFordelingId === data.fordelingId)) {
+    return afvis(erForLang(erstatterFordelingId, REFERENCE_KONTRAKT_GRAENSER.id)
+      ? KONTRAKT_FEJLKODE.vaerdiForLang : KONTRAKT_FEJLKODE.fordelingIdUgyldigt);
+  }
+  const forventetOperation = operationstypeForStatus(data.status);
+  const operationstype = data.operationstype ?? forventetOperation;
+  if (operationstype !== forventetOperation || !ALLE_FORDELING_OPERATIONER_V1.has(operationstype)) {
+    return afvis(KONTRAKT_FEJLKODE.idempotensscopeUgyldigt);
+  }
+  const revisionsaarsag = data.revisionsaarsag === null || data.revisionsaarsag === undefined
+    ? null : data.revisionsaarsag;
+  const revisionsaarsagskode = data.revisionsaarsagskode === null
+    || data.revisionsaarsagskode === undefined ? null : data.revisionsaarsagskode;
+  if (data.status === FORDELING_STATUS.tilbagefoert && !tekst(revisionsaarsag)) {
+    return afvis(KONTRAKT_FEJLKODE.revisionsaarsagMangler);
+  }
+  if (data.status === FORDELING_STATUS.tilbagefoert
+      && !ALLE_FORDELING_REVISION_AARSAGER_V1.has(revisionsaarsagskode)) {
+    return afvis(KONTRAKT_FEJLKODE.revisionsaarsagUgyldig);
+  }
+  if (data.status !== FORDELING_STATUS.tilbagefoert
+      && (revisionsaarsag !== null || revisionsaarsagskode !== null)) {
+    return afvis(KONTRAKT_FEJLKODE.revisionsaarsagUgyldig);
+  }
+  if (revisionsaarsag !== null && (erForLang(revisionsaarsag.trim(),
+    REFERENCE_KONTRAKT_GRAENSER.revisionsaarsag))) {
+    return afvis(KONTRAKT_FEJLKODE.vaerdiForLang);
+  }
+  if (revisionsaarsag !== null && (UGYLDIGE_KONTROLTEGN.test(revisionsaarsag)
+      || !tekst(revisionsaarsag))) {
+    return afvis(KONTRAKT_FEJLKODE.revisionsaarsagUgyldig);
+  }
+  const fordeling = frys({
+    kontraktVersion: FORDELING_KONTRAKT_VERSION,
+    tenantId: data.tenantId,
+    fordelingId: data.fordelingId,
+    fakturaId,
+    intakeId,
+    modul: data.modul,
+    destinationId: data.destinationId,
+    nettoOere: data.nettoOere,
+    dokumenttype: data.dokumenttype,
+    status: data.status,
+    operationstype,
+    idempotensnoegle: data.idempotensnoegle,
+    tidspunktMs: data.tidspunktMs,
+    aktoerId: data.aktoerId,
+    korrelationsId: data.korrelationsId,
+    revisionsaarsagskode,
+    revisionsaarsag: revisionsaarsag === null ? null : revisionsaarsag.trim().normalize("NFC"),
+    erstatterFordelingId,
+  });
+  return resultatV1({
+    ok: true,
+    fejl: null,
+    fordeling,
+  });
+}
+
+export function validérFakturafordelingssætV1({
+  aktuelTenantId,
+  forventetFakturaId,
+  forventetIntakeId,
+  fakturaNettoOere,
+  dokumenttype,
+  fordelinger = [],
+} = {}) {
+  const svar = (data) => resultatV1(data);
+  if (!stabiltId(aktuelTenantId)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.tenantIdUgyldigt, fordeltOere: 0 });
+  }
+  if (!stabiltId(forventetFakturaId)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fakturaIdUgyldigt, fordeltOere: 0 });
+  }
+  if (forventetIntakeId !== undefined && forventetIntakeId !== null
+      && !stabiltId(forventetIntakeId)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.intakeIdUgyldigt, fordeltOere: 0 });
+  }
+  if (!Number.isSafeInteger(fakturaNettoOere) || fakturaNettoOere === 0) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.beloebUgyldigt, fordeltOere: 0 });
+  }
+  if ((dokumenttype === FAKTURAART.faktura && fakturaNettoOere < 0)
+      || (dokumenttype === FAKTURAART.kreditnota && fakturaNettoOere > 0)
+      || ![FAKTURAART.faktura, FAKTURAART.kreditnota].includes(dokumenttype)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fortegnUgyldigt, fordeltOere: 0 });
+  }
+  const ider = new Set();
+  let fordeltOere = 0;
+  let fællesIntakeId = forventetIntakeId === undefined ? undefined : forventetIntakeId;
+  for (const rå of liste(fordelinger)) {
+    const resultat = bygFakturafordelingV1(rå, { aktuelTenantId });
+    if (!resultat.ok) return svar({ ok: false, fejl: resultat.fejl, fordeltOere: 0 });
+    if (resultat.fordeling.dokumenttype !== dokumenttype) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.dokumenttypeUgyldig, fordeltOere: 0 });
+    }
+    if (resultat.fordeling.fakturaId !== forventetFakturaId) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.blandetFakturaIdentitet,
+        fordeltOere: 0 });
+    }
+    if (fællesIntakeId === undefined) fællesIntakeId = resultat.fordeling.intakeId;
+    if (resultat.fordeling.intakeId !== fællesIntakeId) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.blandetFakturaIdentitet,
+        fordeltOere: 0 });
+    }
+    if (ider.has(resultat.fordeling.fordelingId)) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fordelingIdKonflikt, fordeltOere: 0 });
+    }
+    ider.add(resultat.fordeling.fordelingId);
+    fordeltOere += resultat.fordeling.nettoOere;
+    if (!Number.isSafeInteger(fordeltOere)) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.omkostningOverflow, fordeltOere: 0 });
+    }
+  }
+  if ((fakturaNettoOere > 0 && fordeltOere > fakturaNettoOere)
+      || (fakturaNettoOere < 0 && fordeltOere < fakturaNettoOere)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fordelingOverskrider, fordeltOere });
+  }
+  return fordeltOere === fakturaNettoOere
+    ? svar({ ok: true, fejl: null, fordeltOere })
+    : svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fordelingUfuldstaendig, fordeltOere });
+}
+
+function operationstypeForStatus(status) {
+  if (status === FORDELING_STATUS.kladde) return FORDELING_OPERATION_V1.opret;
+  if (status === FORDELING_STATUS.kontrolleret) return FORDELING_OPERATION_V1.kontroller;
+  if (status === FORDELING_STATUS.tilbagefoert) return FORDELING_OPERATION_V1.tilbagefoer;
+  return null;
+}
+
+function kanonisk(værdi) {
+  if (Array.isArray(værdi)) return værdi.map(kanonisk);
+  if (værdi && typeof værdi === "object") {
+    return Object.fromEntries(Object.keys(værdi).sort()
+      .map((nøgle) => [nøgle, kanonisk(værdi[nøgle])]));
+  }
+  return værdi;
+}
+
+function fordelingFingeraftryk(fordeling) {
+  return JSON.stringify(kanonisk(fordeling));
+}
+
+export function idempotensIdentitetV1({ tenantId, operationstype, idempotensnoegle } = {}) {
+  if (!stabiltId(tenantId) || !stabiltId(idempotensnoegle)
+      || !ALLE_FORDELING_OPERATIONER_V1.has(operationstype)) {
+    const fejl = new TypeError("Ugyldigt idempotensscope.");
+    fejl.code = KONTRAKT_FEJLKODE.idempotensscopeUgyldigt;
+    throw fejl;
+  }
+  return JSON.stringify([tenantId, operationstype, idempotensnoegle]);
+}
+
+function sammeFordelingsidentitet(a, b) {
+  return a.tenantId === b.tenantId
+    && a.fordelingId === b.fordelingId
+    && a.fakturaId === b.fakturaId
+    && a.intakeId === b.intakeId
+    && a.modul === b.modul
+    && a.destinationId === b.destinationId
+    && a.nettoOere === b.nettoOere
+    && a.dokumenttype === b.dokumenttype
+    && a.erstatterFordelingId === b.erstatterFordelingId;
+}
+
+function overgangsfejl(tidligere, næste, historik) {
+  if (!tidligere) {
+    if (næste.status !== FORDELING_STATUS.kladde) {
+      return KONTRAKT_FEJLKODE.tilstandsovergangUgyldig;
+    }
+    if (næste.erstatterFordelingId) {
+      const erstattet = historik.filter((h) =>
+        h.fordeling.fordelingId === næste.erstatterFordelingId).at(-1)?.fordeling;
+      if (!erstattet || erstattet.status !== FORDELING_STATUS.tilbagefoert
+          || erstattet.tenantId !== næste.tenantId || erstattet.fakturaId !== næste.fakturaId
+          || næste.tidspunktMs <= erstattet.tidspunktMs) {
+        return KONTRAKT_FEJLKODE.tilstandsovergangUgyldig;
+      }
+    }
+    return null;
+  }
+  if (næste.tidspunktMs <= tidligere.tidspunktMs) {
+    return KONTRAKT_FEJLKODE.haendelsesraekkefoelgeUgyldig;
+  }
+  if (tidligere.status === FORDELING_STATUS.kladde
+      && næste.status === FORDELING_STATUS.kontrolleret) return null;
+  if (tidligere.status === FORDELING_STATUS.kontrolleret
+      && næste.status === FORDELING_STATUS.tilbagefoert) return null;
+  if (tidligere.status === FORDELING_STATUS.kontrolleret
+      && næste.status === FORDELING_STATUS.kontrolleret) {
+    return KONTRAKT_FEJLKODE.fordelingAlleredeKontrolleret;
+  }
+  if (tidligere.status === FORDELING_STATUS.tilbagefoert
+      && næste.status === FORDELING_STATUS.tilbagefoert) {
+    return KONTRAKT_FEJLKODE.tilbagefoerselUgyldig;
+  }
+  return KONTRAKT_FEJLKODE.tilstandsovergangUgyldig;
+}
+
+function normaliserFordelingshistorik(historik, aktuelTenantId) {
+  if (!Array.isArray(historik)) {
+    return { ok: false, fejl: KONTRAKT_FEJLKODE.historikUgyldig, historik: frys([]) };
+  }
+  const kopier = [];
+  const senestePerId = new Map();
+  const idempotens = new Map();
+  for (let indeks = 0; indeks < historik.length; indeks += 1) {
+    const hændelse = historik[indeks];
+    if (!hændelse || typeof hændelse !== "object" || Array.isArray(hændelse)
+        || Object.keys(hændelse).some((felt) => ![
+          "kontraktVersion", "sekvens", "payloadFingeraftryk", "idempotensIdentitet", "fordeling",
+        ].includes(felt))
+        || hændelse.kontraktVersion !== FORDELING_KONTRAKT_VERSION
+        || hændelse.sekvens !== indeks + 1) {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.historikUgyldig, historik: frys([]) };
+    }
+    const resultat = bygFakturafordelingV1(hændelse.fordeling, { aktuelTenantId });
+    if (!resultat.ok || hændelse.payloadFingeraftryk !== fordelingFingeraftryk(resultat.fordeling)) {
+      return { ok: false,
+        fejl: resultat.fejl === KONTRAKT_FEJLKODE.crossTenant
+          ? KONTRAKT_FEJLKODE.crossTenant : KONTRAKT_FEJLKODE.historikUgyldig,
+        historik: frys([]) };
+    }
+    let identitet;
+    try {
+      identitet = idempotensIdentitetV1(resultat.fordeling);
+    } catch {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.idempotensscopeUgyldigt, historik: frys([]) };
+    }
+    if (hændelse.idempotensIdentitet !== identitet) {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.idempotensscopeUgyldigt, historik: frys([]) };
+    }
+    const eksisterendeIdem = idempotens.get(identitet);
+    if (eksisterendeIdem && eksisterendeIdem !== hændelse.payloadFingeraftryk) {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.idempotensKonflikt, historik: frys([]) };
+    }
+    if (eksisterendeIdem) {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.historikUgyldig, historik: frys([]) };
+    }
+    const tidligere = senestePerId.get(resultat.fordeling.fordelingId) || null;
+    if (tidligere && !sammeFordelingsidentitet(tidligere, resultat.fordeling)) {
+      return { ok: false, fejl: KONTRAKT_FEJLKODE.fordelingIdKonflikt, historik: frys([]) };
+    }
+    const tilstandsfejl = overgangsfejl(tidligere, resultat.fordeling, kopier);
+    if (tilstandsfejl) return { ok: false, fejl: tilstandsfejl, historik: frys([]) };
+    const kopi = frys({
+      kontraktVersion: FORDELING_KONTRAKT_VERSION,
+      sekvens: hændelse.sekvens,
+      payloadFingeraftryk: hændelse.payloadFingeraftryk,
+      idempotensIdentitet: identitet,
+      fordeling: resultat.fordeling,
+    });
+    kopier.push(kopi);
+    senestePerId.set(resultat.fordeling.fordelingId, resultat.fordeling);
+    idempotens.set(identitet, hændelse.payloadFingeraftryk);
+  }
+  return resultatV1({ ok: true, fejl: null, historik: frys(kopier) });
+}
+
+export function anvendFakturafordelingV1(historik = [], data = {}, kontekst = {}) {
+  const svar = (værdier) => resultatV1(værdier);
+  if (!stabiltId(kontekst.aktuelTenantId)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.tenantIdUgyldigt,
+      historik: frys([]), fordeling: null, genbrugt: false });
+  }
+  const historikResultat = normaliserFordelingshistorik(historik, kontekst.aktuelTenantId);
+  if (!historikResultat.ok) return svar({ ...historikResultat, fordeling: null, genbrugt: false });
+  const uændretHistorik = historikResultat.historik;
+  if (kontekst.harAdgang !== true) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.adgangAfvist,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  if (!stabiltId(kontekst.aktoerId)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.aktoerIdUgyldigt,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const resultat = bygFakturafordelingV1(data, { aktuelTenantId: kontekst.aktuelTenantId });
+  if (!resultat.ok) return svar({ ...resultat, historik: uændretHistorik, genbrugt: false });
+  const fordeling = resultat.fordeling;
+  if (fordeling.aktoerId !== kontekst.aktoerId) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.aktoerMismatch,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const fingeraftryk = fordelingFingeraftryk(fordeling);
+  let idempotensIdentitet;
+  try {
+    idempotensIdentitet = idempotensIdentitetV1(fordeling);
+  } catch {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.idempotensscopeUgyldigt,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const sammeRåNøgle = uændretHistorik.find((hændelse) =>
+    hændelse.fordeling.tenantId === fordeling.tenantId
+    && hændelse.fordeling.idempotensnoegle === fordeling.idempotensnoegle);
+  if (sammeRåNøgle && sammeRåNøgle.idempotensIdentitet !== idempotensIdentitet) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.idempotensscopeUgyldigt,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const sammeNøgle = uændretHistorik.find((hændelse) =>
+    hændelse.idempotensIdentitet === idempotensIdentitet);
+  if (sammeNøgle) {
+    if (sammeNøgle.payloadFingeraftryk !== fingeraftryk) {
+      return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.idempotensKonflikt,
+        historik: uændretHistorik, fordeling: null, genbrugt: false });
+    }
+    return svar({ ok: true, fejl: null, historik: uændretHistorik,
+      fordeling: sammeNøgle.fordeling, genbrugt: true });
+  }
+  const destinationResultat = bygReferencedestinationV1(kontekst.destination || {}, {
+    aktuelTenantId: kontekst.aktuelTenantId,
+  });
+  if (!destinationResultat.ok) {
+    return svar({ ok: false,
+      fejl: kontekst.destination ? destinationResultat.fejl : KONTRAKT_FEJLKODE.destinationMangler,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const destination = destinationResultat.destination;
+  if (destination.modul !== fordeling.modul
+      || destination.destinationId !== fordeling.destinationId) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.destinationMismatch,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  if (fordeling.status !== FORDELING_STATUS.tilbagefoert && !erAabenForFaktura(destination)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.destinationLukket,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const sammeId = uændretHistorik.filter((hændelse) =>
+    hændelse.fordeling.fordelingId === fordeling.fordelingId);
+  const seneste = sammeId.at(-1)?.fordeling || null;
+  if (seneste && !sammeFordelingsidentitet(seneste, fordeling)) {
+    return svar({ ok: false, fejl: KONTRAKT_FEJLKODE.fordelingIdKonflikt,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const tilstandsfejl = overgangsfejl(seneste, fordeling, uændretHistorik);
+  if (tilstandsfejl) {
+    return svar({ ok: false, fejl: tilstandsfejl,
+      historik: uændretHistorik, fordeling: null, genbrugt: false });
+  }
+  const hændelse = frys({
+    kontraktVersion: FORDELING_KONTRAKT_VERSION,
+    sekvens: uændretHistorik.length + 1,
+    payloadFingeraftryk: fingeraftryk,
+    idempotensIdentitet,
+    fordeling,
+  });
+  return svar({
+    ok: true,
+    fejl: null,
+    historik: frys([...uændretHistorik, hændelse]),
+    fordeling,
+    genbrugt: false,
+  });
+}
+
+export function emitFakturafordelingV1(internFordeling = {}, metadata = {}) {
+  return bygFakturafordelingV1({
+    kontraktVersion: FORDELING_KONTRAKT_VERSION,
+    tenantId: metadata.tenantId,
+    fordelingId: internFordeling.fordelingId,
+    fakturaId: metadata.fakturaId,
+    intakeId: metadata.intakeId ?? null,
+    modul: tilReferenceModulV1(internFordeling.modul),
+    destinationId: internFordeling.destinationId,
+    nettoOere: internFordeling.nettoOere,
+    dokumenttype: metadata.dokumenttype,
+    status: metadata.status,
+    idempotensnoegle: metadata.idempotensnoegle,
+    tidspunktMs: metadata.tidspunktMs,
+    aktoerId: metadata.aktoerId,
+    korrelationsId: metadata.korrelationsId,
+    revisionsaarsagskode: metadata.revisionsaarsagskode ?? null,
+    revisionsaarsag: metadata.revisionsaarsag ?? null,
+    erstatterFordelingId: metadata.erstatterFordelingId ?? null,
+  }, { aktuelTenantId: metadata.aktuelTenantId });
+}
+
+export function beregnFaktiskOmkostningV1(historik = [], {
+  aktuelTenantId,
+  modul,
+  destinationId,
+} = {}) {
+  if (!stabiltId(aktuelTenantId)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.tenantIdUgyldigt, nettoOere: 0 });
+  }
+  if (!ALLE_REFERENCE_MODULER_V1.has(modul)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.modulUgyldigt, nettoOere: 0 });
+  }
+  if (!stabiltId(destinationId)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.destinationIdUgyldigt, nettoOere: 0 });
+  }
+  if (!Array.isArray(historik)) {
+    return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.historikUgyldig, nettoOere: 0 });
+  }
+  const historikResultat = normaliserFordelingshistorik(historik, aktuelTenantId);
+  if (!historikResultat.ok) {
+    return resultatV1({ ok: false, fejl: historikResultat.fejl, nettoOere: 0 });
+  }
+  const seneste = new Map();
+  for (const hændelse of historikResultat.historik) {
+    const fordeling = hændelse?.fordeling;
+    if (!fordeling || fordeling.tenantId !== aktuelTenantId
+        || fordeling.modul !== modul || fordeling.destinationId !== destinationId) continue;
+    seneste.set(fordeling.fordelingId, fordeling);
+  }
+  let nettoOere = 0;
+  for (const fordeling of seneste.values()) {
+    if (fordeling.status !== FORDELING_STATUS.kontrolleret) continue;
+    nettoOere += fordeling.nettoOere;
+    if (!Number.isSafeInteger(nettoOere)) {
+      return resultatV1({ ok: false, fejl: KONTRAKT_FEJLKODE.omkostningOverflow,
+        nettoOere: 0 });
+    }
+  }
+  return resultatV1({ ok: true, fejl: null, nettoOere });
 }
 
 function validérFordelingsdestinationer(faktura, kontekst) {

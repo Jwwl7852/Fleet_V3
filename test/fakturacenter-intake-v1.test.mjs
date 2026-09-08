@@ -577,7 +577,8 @@ describe("deterministisk normalisering", () => {
 
   test("navn og kundereference normaliseres stabilt", () => {
     assert.equal(normaliserNavn("  Démø   Øst! "), "demo ost");
-    assert.equal(normaliserKundereference("Hal Demo-A"), "hal demo a");
+    assert.equal(normaliserKundereference("Hal Demo-A"), "HALDEMOA");
+    assert.notEqual(normaliserKundereference("Ø-123"), normaliserKundereference("OE-123"));
   });
 });
 
