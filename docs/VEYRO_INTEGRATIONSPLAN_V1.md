@@ -637,3 +637,108 @@ og 9199. Admin-testadgangen ligger kun i den ignorerede `.env.local`. Milepæl A
 er dermed udvidet med FLEET og FAKTURACENTER i samme program, men milepæl B er
 ikke påbegyndt: der er ingen fælles serverlagring, live fakturafordeling, OBD
 eller anden ekstern integration.
+
+## 13. FACILITY v2 integreret alene — 2026-09-09
+
+Udgangspunktet var den forventede og rene integrations-HEAD
+`6e8fbab1c20f1f6d4943219ec928942ee3d1e335`. Det præcise FACILITY-checkpoint
+`1b755defb49e17aec0282427737c40bcb4a29004` blev merget med fuld historik i
+det eksplicitte merge-commit
+`2aa8c551b3397b1ac4a7bc6284120f7967ecd151`. Mergecommittets to forældre er
+netop den forventede integrations-HEAD og FACILITY-checkpointet. Mergen
+tilføjede kun `facility-v2/` og overskrev ingen fælles platform-, FLEET- eller
+FAKTURACENTER-filer. De nødvendige integrationstilpasninger er samlet i det
+særskilte commit `819d2b852ee2435dc0c676c1aabab66b37941168`.
+
+### Fælles ramme, ruter og adgang
+
+- FACILITY v2 er lazy-loadet under det ledige prefix `/facility-v2`. De
+  eksisterende ældre `/facility/*`-ruter er bevaret. Synlige undermenuer
+  dækker overblik, ejendomme, installationer, indberetninger, Arbejdskø,
+  opgaver, kalender, service, kort, dokumenter, mobil indberetning og økonomi;
+  dybe profil- og sagsruter er registreret som skjulte navigationsruter.
+- Den integrerede variant bruger platformens React Router, AppShell, sidebar,
+  topbjælke, foldetilstand og Veyro-logo. FACILITYs egen `BrowserRouter`,
+  platformskal og wildcard-redirect bruges fortsat kun af standalone-appen.
+  Interne links går gennem en routingadapter, så samme kildekode bruger
+  `/facility/*` standalone og `/facility-v2/*` integreret. Der anvendes ingen
+  iframe eller viderestilling til port 5189.
+- Platformen har ikke en særskilt eksisterende læsepermission til FACILITY,
+  og de monterede arbejdsflader kan ændre lokalt prototypeindhold. Derfor er
+  den eksisterende, snævre `facility.skriv`-permission anvendt konsekvent til
+  både navigation og direkte URL sammen med tenantens `facility`-modulflag.
+  Den lokale produktpakkevælger giver ingen adgang. Uloggede brugere sendes
+  til login, og en claims-v2-bruger uden permission ser hverken menupunktet
+  eller datasættet.
+- Den autentificerede bruger anvendes som lokal aktør. Repositoryet oprettes
+  på ny ved tenant- eller brugerskift, og indlæst FACILITY-state og catch-up-
+  status ryddes, før et nyt tenantdatasæt kan indlæses.
+
+### Lokal data-, style- og dependencygrænse
+
+- Den integrerede variant bruger IndexedDB-navnet
+  `veyro-facility-v2-integration-v1`; automatiske integrationstests bruger
+  `veyro-facility-v2-test-e2e`. Dataset-store og Blob-store er fortsat bag
+  FACILITYs repositoryinterface, og alle læsninger, migreringer og skrivninger
+  er tenantafgrænsede. Det oprindelige standalone-navn
+  `veyro-facility-v2` på port 5189 er ikke læst, migreret eller ændret.
+- Kalenderens lokale panelbredde er tenantafgrænset. Repositoryskift ved
+  logout eller tenantskift afkobler også den tidligere BroadcastChannel og
+  subscription, så indlæst tilstand ikke genbruges på tværs af tenants.
+- FACILITYs selectors er scoped med CSS `@scope` under
+  `.veyro-module--facility`. Standalone-appen beholder sit eget dokumentroot,
+  mens den integrerede variant forbruger de fælles Veyro-tokens. FLEET,
+  FAKTURACENTER og platformens globale selectors er ikke ændret af
+  FACILITY-styles.
+- Rootens Vite-resolver deduplikerer React, React DOM og React Router, så den
+  lazy-loadede kode bruger platformens eksisterende Router v6-instans.
+  FACILITY kan fortsat bygges og testes selvstændigt med sin Router v7 og Vite
+  8. Der er ikke ændret dependencyversioner eller lockfiler og ikke foretaget
+  en bred opgradering. FACILITYs rene `npm ci` rapporterede 0 sårbarheder; de
+  tidligere 21 rapporterede rootsårbarheder (18 moderate, 3 high) forbliver et
+  åbent punkt uden `npm audit fix`.
+
+### Verifikation
+
+- FACILITY lint bestod. Vitest bestod 38/38 i 6 testfiler, og standalone-
+  produktionsbuilden bestod med 98 transformerede moduler. Den nye integrerede
+  Playwright-specifikation blev eksplicit ekskluderet fra Vitest og køres kun
+  med sin egen browserkonfiguration.
+- FACILITYs første parallelle standalone-browserkørsel gav 26/27 på grund af
+  én 30-sekunders belastningstimeout ved ejendomsoprettelse; det berørte
+  forløb bestod isoleret på 1,9 sekunder. Den afsluttende sekventielle fulde
+  kørsel bestod 27/27 uden deaktiverede tests. De 14 genererede visuelle
+  kontrolbilleder blev gendannet og er ikke ændret i integrationen.
+- FLEET-regressionen bestod lint, 143/143 Vitest-tests, standalone-build og
+  en fuld sekventiel Playwrightkørsel på 36/36. Dermed er de tidligere kendte
+  belastningsafhængige FLEET-timeouts ikke reproduceret i denne kørsel.
+- Den integrerede Playwright-smoke bestod 2/2 uden side- eller konsolfejl. Den
+  kontrollerer anonym direkte URL, bruger uden FACILITY-adgang, tilladt
+  claims-v2-bruger, direkte åbning/genindlæsning, frem/tilbage, én AppShell og
+  navigation FACILITY↔FLEET↔FAKTURACENTER. Det tilladte forløb dækker
+  indberetning → sag → triage → opgave → afslutning → sagslukning/genåbning,
+  ejendomsbillede og genindlæsning samt kalender, service og dokumenter.
+- Hele den isolerede Rules-gate bestod 3.971/3.971 tests i 821 suites mod det
+  syntetiske `demo-fleetcontrol-rules-test`-projekt. Det omfatter login,
+  claims-v2, revocation, tenantadskillelse, permissions samt Database- og
+  Storage Rules og blev kørt proceslokalt med Temurin `21.0.11+10`. Ingen
+  sikkerhedsregel, assertion eller produktionsdata blev ændret eller omgået.
+- Root lint, whitespace-kontrol og produktionsbuild bestod. Builden
+  transformerede 525 moduler og indeholder separate lazy chunks for FACILITY,
+  FLEET og FAKTURACENTER. Den kendte backtick-advarsel i en FAKTURACENTER-CSS-
+  kommentar er uændret. Rootens fulde Rules-/regressionskørsel omfatter også
+  FAKTURACENTER og Reference Contract V1; kontraktfilens blob er fortsat
+  `c09c0535eb2e09b0e74efd4aa8d933b2f6b182ad`.
+
+Den fælles app kører fortsat med `strictPort` på
+`http://127.0.0.1:5197/`; FACILITY åbnes på `/facility-v2`. Auth, Database og
+Storage bruger fortsat de isolerede lokale emulatorer på 9099, 9000 og 9199,
+og legitim admin-testadgang ligger kun i den ignorerede `.env.local`.
+FACILITYs aktuelle lokale arbejdsflader er bevaret, men data, fakturaafklaring
+og produktpakke er stadig prototypefunktionalitet. Trinnet etablerer ikke
+serverlagring, live fakturafordeling eller andre eksterne forbindelser og er
+derfor fortsat milepæl A, ikke milepæl B.
+
+PLANNING er ikke integreret. Som noteret efter FLEET-mergen blev de ældre
+PLANNING-filer fra FLEET-historikken fjernet; det komplette sikrede PLANNING-
+checkpoint skal derfor kontrolleres og integreres særskilt i et senere trin.
