@@ -739,6 +739,102 @@ og produktpakke er stadig prototypefunktionalitet. Trinnet etablerer ikke
 serverlagring, live fakturafordeling eller andre eksterne forbindelser og er
 derfor fortsat milepæl A, ikke milepæl B.
 
-PLANNING er ikke integreret. Som noteret efter FLEET-mergen blev de ældre
-PLANNING-filer fra FLEET-historikken fjernet; det komplette sikrede PLANNING-
-checkpoint skal derfor kontrolleres og integreres særskilt i et senere trin.
+## 14. PLANNING integreret alene — 2026-09-09
+
+Udgangspunktet var den forventede og rene integrations-HEAD
+`e534fe93c920e578a5633a38fd126c41ee737546`. Det præcise PLANNING-checkpoint
+`550a19c70684b123715e656d7d171a0d4992fed7` blev merget med fuld historik i
+det eksplicitte merge-commit
+`778c58231d1a768ddb7c4340d5296dcce326decd`. Mergecommittets to forældre er
+netop den forventede integrations-HEAD og det sikrede checkpoint. De
+nødvendige integrationstilpasninger ligger særskilt i
+`b2aa19dd837b1e42153ec4754d0569e36b64888d`.
+
+### Checkpoint, ruter og fælles ramme
+
+- Historikken indeholdt PLANNING før FLEET-integrationen, mens filerne senere
+  var slettet. Mergen gav derfor ni forventede modify/delete-konflikter. Hele
+  PLANNING-manifestet blev registreret fra checkpointtræet og alle 74 filer
+  blev genskabt eksplicit fra checkpointet, før mergecommittet blev lavet.
+  Slutkontrollen viser 74/74 filer til stede: 64 er byte-identiske med
+  checkpointet, mens ti har bevidste integrationsafvigelser. Afvigelserne er
+  begrænset til den indlejrede UI-/routingvariant, scoped CSS og tokens,
+  platformens demo-selvkontrol samt de tilsvarende kontrakttests.
+- PLANNING er lazy-loadet under det ledige prefix `/planning-v2`. De ni
+  registrerede arbejdsflader er Dagens drift, Livekalender, Opgaver,
+  Optimering, Planlægning, Faste ruter, Ressourcer, Rapporter og Mobilvisning.
+  De seks ældre `/booking/*`-ruter er bevaret som skjulte ruteopslag og er
+  ikke overskrevet.
+- Den integrerede variant bruger platformens React Router, AppShell, sidebar,
+  topbjælke, Veyro-logo og temakilde. Prototypens egen sidebar og topbjælke
+  tegnes fortsat i standalone-appen, men ikke indlejret. Nye vinduer og lokale
+  bekræftelsesvisninger bruger platformruter integreret og
+  `planning-demo.html` standalone. Der anvendes ingen iframe eller
+  viderestilling til port 5190.
+- PLANNINGs CSS er scoped under `.veyro-module--planning`; standalone-roden
+  beholder sin egen tokenblok. De fem kendte linjer med afsluttende whitespace
+  er fjernet. FLEET, FACILITY, FAKTURACENTER og de fælles tokens blev
+  kontrolleret uden nye stylekollisioner.
+
+### Adgang, lokal tilstand og forbindelsesgrænse
+
+- Navigation og direkte URL kræver både tenantens eksisterende `booking`-
+  modulflag og permissionen `booking.laes`. Gaten ligger i wrapperen før
+  PLANNING-fixtures tegnes. Uloggede brugere sendes til login, og en
+  claims-v2-bruger uden permission ser hverken menupunkt eller lokale data.
+- PLANNING-checkpointet bruger React-hukommelsestilstand og ingen IndexedDB,
+  localStorage, sessionStorage eller serverlagring. Modulet remountes med en
+  nøgle af integrationsmiljø, tenant og bruger, så indlæst tilstand ryddes
+  ved logout, bruger- eller tenantskift.
+- BroadcastChannel-navnet indeholder integrationsmiljø, tenant og bruger.
+  Listeneren og kanalen lukkes ved unmount/skift, og kun en strengt nyere
+  revision accepteres. Standalone-prototypens oprindelige kanalnavn bevares.
+- Intake-puljen løftes lokalt til Opgaver og Optimering. Checkpointet har ikke
+  en offentlig adapter, der overfører denne pulje til ugeplanens separate
+  fixtures; ugeplacering og versioneret bekræftelse er derfor afprøvet på
+  checkpointets ugeplan-fixtures. Der er ingen live forbindelse til FLEET,
+  FACILITY, FAKTURACENTER eller WORKFORCE, ingen fælles serverlagring og ingen
+  rigtig kommunikation, korttjeneste, GPS eller OBD.
+
+### Build, dependencies og verifikation
+
+- Der er ikke ændret dependencies, routerversioner eller lockfiler.
+  Produktionsbuilden transformerede 565 moduler og indeholder PLANNING som
+  egne lazy CSS-/JS-chunks. Den almindelige build forbliver fail-closed over
+  for emulatorflag. En særskilt opt-in til lokal build-preview kræver samtidig
+  localhost, `demo-*`-projekt og emulatorflag; den kan ikke aktivere en
+  emulator på en deployet vært. Fire browserforløb bestod også mod denne
+  byggede preview og ikke kun Vite-devserveren.
+- PLANNINGs domæne-, UI-, import-, arkitektur-, scheduling- og benchmarksuite
+  bestod 312/312. Den udvidede historiske Booking/Planning-regression bestod
+  621/621. Designkontrollen bestod 11/11, root lint og whitespace-kontrol
+  bestod, og checkpoint-manifestet bestod 74/74.
+- Den fulde isolerede Rules-/platformgate bestod 4.289/4.289 i 877 suites mod
+  `demo-fleetcontrol-rules-test`, proceslokalt med Temurin 21.0.11. Den
+  omfatter login, claims-v2, revocation, tenantadskillelse, permissions samt
+  Database- og Storage Rules. Firebase-regler, claims og backend er urørte.
+- Den integrerede browserpakke bestod 6/6. PLANNINGs fire forløb dækker anonym
+  og afvist direkte URL, de fem centrale arbejdsflader, direkte åbning,
+  reload, frem/tilbage, én AppShell, skift mellem alle fire moduler,
+  flerstop-import, manuel intake, lokal planlægningspulje, tastaturplacering,
+  drag/drop, kladde, versioneret bekræftelse og logout-rydning. To eksisterende
+  FACILITY-forløb bestod samtidig uden nye konsolfejl.
+- FLEET-regressionen bestod 143/143 enheds-/komponenttests og 36/36
+  browsertests. FACILITY bestod 38/38 og 27/27. Fakturacenter og de relevante
+  Reference Contract-regressioner bestod 230/230; kontraktdokumentets blob er
+  uændret `c09c0535eb2e09b0e74efd4aa8d933b2f6b182ad`.
+- Den kendte backtick-advarsel i FAKTURACENTERs CSS-kommentar er uændret. De
+  tidligere rapporterede dependency-sårbarheder forbliver et åbent punkt;
+  der er ikke kørt `npm audit fix` eller foretaget brede opgraderinger.
+  Den manuelle intakeformular har fortsat checkpointets kendte modstridende
+  ugefelter, hvis periodearten skiftes fra ISO-uge uden at rydde dem; ISO-uge-
+  flowet er funktionelt og anvendt i browserkontrollen.
+
+Den fælles app kører fortsat med `strictPort` på
+`http://127.0.0.1:5197/`; PLANNING åbnes på `/planning-v2`. Auth, Database og
+Storage bruger de eksisterende lokale emulatorer på 9099, 9000 og 9199.
+FLEETs og FACILITYs IndexedDB-/Blobdata er ikke læst, migreret eller ændret,
+og Fakturacenterets lokale kontrolflow er bevaret. Resultatet afslutter
+samlingen af de fire moduler i milepæl A. Milepæl B med fælles varig
+serverlagring, serverhåndhævede modulforbindelser og liveintegrationer er ikke
+påbegyndt.
