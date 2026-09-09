@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { auth, miljoe, projektId } from "../firebase.js";
 import { Knap } from "../fleet/ui.jsx";
+import VeyroLogo from "../fleet/VeyroLogo.jsx";
 
 const FEJLTEKST = {
   "auth/invalid-email": "Det ser ikke ud som en e-mailadresse.",
@@ -81,9 +82,7 @@ export default function Login({ uprovisioneret = false }) {
   return (
     <div className="fc-boot">
       <div className="fc-login">
-        <div className="fc-brand fc-login-brand">
-          Fleet<b>Control</b>
-        </div>
+        <VeyroLogo variant="login" />
 
         {uprovisioneret ? (
           /* Logget ind, men uden tenant-claim. Fejler lukket: der er ikke en

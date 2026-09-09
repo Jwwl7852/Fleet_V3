@@ -4,6 +4,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
+import { useFleet } from "../../fleet/FleetContext.jsx";
+import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   accepterForretningsadvarsler,
   behandlLokalePrototypeFiler,
@@ -107,6 +109,24 @@ function browserLager() {
 }
 
 export default function Fakturacenter() {
+  const { bruger } = useFleet();
+  const harLæseadgang = harPerm(bruger?.perms, PERM.fakturaerLaes);
+
+  if (!harLæseadgang) {
+    return (
+      <section className="fc-empty fc-empty-bad" role="alert"
+               aria-labelledby="fakturacenter-adgang-afvist">
+        <h1 id="fakturacenter-adgang-afvist">Ingen adgang til Fakturacenter</h1>
+        <p>Din bruger mangler rettigheden <code>{PERM.fakturaerLaes}</code>.</p>
+        <p>Et direkte link giver ikke adgang til prototypens syntetiske fakturadata.</p>
+      </section>
+    );
+  }
+
+  return <FakturacenterPrototype />;
+}
+
+function FakturacenterPrototype() {
   const [searchParams, setSearchParams] = useSearchParams();
   const outletContext = useOutletContext();
   const setFakturacenterAntal = outletContext?.setFakturacenterAntal;

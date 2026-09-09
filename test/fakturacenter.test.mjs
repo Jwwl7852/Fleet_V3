@@ -45,6 +45,8 @@ const KLIENT = udenKommentarer(readFileSync("src/fleet/faktura.js", "utf8"));
 const SERVER = udenKommentarer(readFileSync("functions/index.js", "utf8"));
 const REGELFIL = readFileSync("firebase.rules.json", "utf8");
 const NAV = readFileSync("src/fleet/nav.js", "utf8");
+const LOGIN = udenKommentarer(readFileSync("src/moduler/Login.jsx", "utf8"));
+const APPSHELL = udenKommentarer(readFileSync("src/fleet/AppShell.jsx", "utf8"));
 
 function funktion(navn) {
   const start = SERVER.indexOf(`export const ${navn} =`);
@@ -63,6 +65,21 @@ const KONTEKST = {
    ÉN NODE
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Fakturacenteret er en skærm, ikke en node", () => {
+  test("login og AppShell bruger det samme Veyro-logo", () => {
+    assert.match(LOGIN, /import VeyroLogo from "\.\.\/fleet\/VeyroLogo\.jsx"/);
+    assert.match(LOGIN, /<VeyroLogo variant="login" \/>/);
+    assert.match(APPSHELL, /<VeyroLogo variant="sidebar" \/>/);
+    assert.doesNotMatch(LOGIN, /Fleet<b>Control<\/b>/);
+  });
+
+  test("⚠ DIREKTE URL KRÆVER fakturaer.laes FØR PROTOTYPEN TEGNES", () => {
+    assert.match(SKAERM, /useFleet\(\)/);
+    assert.match(SKAERM, /harPerm\(bruger\?\.perms, PERM\.fakturaerLaes\)/);
+    assert.match(SKAERM, /if \(!harLæseadgang\)/);
+    assert.match(SKAERM, /role="alert"/);
+    assert.match(SKAERM, /return <FakturacenterPrototype \/>/);
+  });
+
   /**
    * ⚠ `fakturaer/` ER ALLEREDE DEN FÆLLES NODE, og regelfilen siger hvorfor:
    * den er en af de tre tvetydige noder der står i basen, fordi den røres af

@@ -22,6 +22,27 @@ const cfg = {
 
 export const demoMode = !cfg.apiKey || !cfg.databaseURL;
 
+/* Lokal browser-smoke må bruge Firebase Emulator Suite uden at kende eller
+ * kontakte et rigtigt projekt. Flaget er med vilje tredobbelt låst: Vite DEV,
+ * localhost og et syntetisk demo-projekt. En kopieret produktionskonfiguration
+ * kan derfor ikke omdirigeres eller testes ved et uheld via denne vej. */
+const lokalVaert =
+  typeof window !== "undefined"
+  && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+const emulatorerAnmodet = import.meta.env.VITE_FIREBASE_EMULATORS === "true";
+export const brugerLokaleEmulatorer =
+  !demoMode
+  && import.meta.env.DEV
+  && lokalVaert
+  && /^demo-/.test(cfg.projectId || "")
+  && emulatorerAnmodet;
+
+if (emulatorerAnmodet && !brugerLokaleEmulatorer) {
+  throw new Error(
+    "Firebase-emulatorer må kun aktiveres i lokal DEV med et demo-*-projekt.",
+  );
+}
+
 /* PRODUKTIONSPROJEKTET, skrevet ind i koden med vilje.
  *
  * Miljøet udledes af det projekt-id nøglerne faktisk peger på — ikke af en
@@ -67,6 +88,10 @@ if (!demoMode) {
     /* Samme region som RTDB. En callable i us-central1 mod en database i
        europe-west1 er både langsommere og en dataoverførsel ud af EU. */
     _funktioner = firebase.app().functions("europe-west1");
+    if (brugerLokaleEmulatorer) {
+      _db.useEmulator("127.0.0.1", 9000);
+      _auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
+    }
   } catch (e) {
     console.warn("Firebase kunne ikke starte. Kører demo-mode.", e);
   }
