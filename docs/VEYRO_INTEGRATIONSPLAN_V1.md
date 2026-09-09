@@ -463,18 +463,22 @@ eller PLANNING.
 
 - Maskinen er Windows x64. Den eksisterende globale Temurin Java 8 blev
   bevaret uændret.
-- Officiel Eclipse Temurin `21.0.12.1+1-LTS` blev hentet som Windows x64 ZIP
-  fra Adoptiums officielle API og pakket ud i
+- En allerede udpakket officiel Temurin `21.0.12.1+1-LTS` blev fundet under
   `C:\Users\DennisChristensen\Tools\Adoptium\jdk-21.0.12.1+1\jdk-21.0.12.1+1`.
-  Udgiverens og den lokale fils SHA-256 var begge
-  `f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e`.
-- `JAVA_HOME`, `PATH`, `TEMP` og `TMP` blev kun sat i test-/emulatorprocessen.
-  `java -version` og den levende Database-/Storage-emulator blev kontrolleret
-  til at bruge netop JDK 21-stien. Et første forsøg ramte en Windows
-  loopback/WEPoll-fejl i sandboxens TEMP-sti; en kort, proceslokal TEMP-sti
-  (`C:\jtmp-veyro-gate0`) løste miljøfejlen uden ændringer i regler eller tests.
+  Til den reproducerede Windows-selectorfejl blev desuden officiel Eclipse
+  Temurin `21.0.11+10-LTS` hentet som Windows x64 ZIP fra Adoptiums officielle
+  API og pakket ud i
+  `C:\Users\DennisChristensen\Tools\Adoptium\jdk-21.0.11+10\jdk-21.0.11+10`.
+  Udgiverens og den lokale 21.0.11-fils SHA-256 var begge
+  `d3625e7cadf23787ea540229544b6e2ab494b3b54da1801879e583e1dfee0a64`.
+- `JAVA_HOME`, `PATH` og
+  `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\Temp\veyro-jdk21-sockets`
+  blev kun sat i test-/emulatorprocessen. `java -version` og Firebase-
+  emulatorprocessen blev kontrolleret til at bruge Temurin `21.0.11+10`.
+  Den korte Unix-domain-socketsti løste Windows-selectorens miljøfejl uden
+  ændringer i regler eller tests.
 - Den endelige `npm run test:rules` kørte Database og Storage isoleret mod
-  demo-projektet `demo-fleetcontrol-rules-test`: 3.966/3.966 tests i 819 suites
+  demo-projektet `demo-fleetcontrol-rules-test`: 3.966/3.966 tests i 820 suites
   bestod. Det omfatter login, claims-v2/dual-read, revocation,
   tenantadskillelse, permissions og Rules-regression. Den tidligere målrettede
   Gate 0-kørsel på 98/98 sikkerhedstests gælder fortsat for den samme kode.
@@ -534,3 +538,102 @@ produktionsdata eller eksisterende browserdata.
 FAKTURACENTER er fortsat prototypefunktionalitet med lokal, syntetisk tilstand.
 Dette trin etablerer hverken rigtig fakturamodtagelse, fælles serverlagring
 eller live modulforbindelser; det hører til milepæl B.
+
+## 12. FLEET v2 integreret alene — 2026-09-09
+
+Udgangspunktet var den gennemgåede FAKTURACENTER-HEAD
+`cda88e60fd3ac508f05ae141292bb37e09b5f9b9`. Det præcise FLEET-checkpoint
+`3725ac0553ad711a1d52a8d24fad3f14977d8e8e` blev merget med fuld historik og
+et eksplicit merge-commit:
+`06dffd379e897427858bd26d5a0cd0a00a53fb2b`. Mergecommittets første og andet
+forældre er henholdsvis den forventede FAKTURACENTER-HEAD og det præcise
+FLEET-checkpoint.
+
+FLEET-branchens historie indeholder fem tidligere PLANNING-commits. Historikken
+er bevaret af den eksplicit krævede merge, men de derfra importerede
+PLANNING-kildefiler, tests, demo-entry og dokumenter er fjernet igen i
+integrationstilpasningen. PLANNING er derfor ikke monteret eller inkluderet i
+produktionsbuilden i dette trin. Integrationstilpasningerne er samlet i det
+særskilte commit `9cbb663`.
+
+### Fælles ramme, ruter og adgang
+
+- FLEET v2 er lazy-loadet under det nye prefix `/fleet-v2`. Det bevarer alle
+  eksisterende `/flaade/*`-ruter og undgår at overskrive den ældre
+  platformfunktionalitet.
+- De offentlige modulruter omfatter overblik, enheder/profil, indberetninger,
+  arbejdskø, værksted, service, dokumenter, leasing, livekort, mobil
+  indberetning og økonomi. Skjulte dybe ruter dækker ny indberetning og
+  sagsmappe. React Router ejer navigation, dybe links og browserhistorik;
+  FLEETs tidligere manuelle History API-håndtering bruges kun i den fortsat
+  selvstændige prototype.
+- AppShell ejer den eneste sidebar, topbjælke, foldetilstand og Veyro-logo.
+  FLEETs undermenuer ligger i platformens navigationsmodel og filtreres med de
+  eksisterende permissions: `koeretoejer.laes`, `indberetninger.skriv`,
+  `indberetninger.skrivAlle` og `sag.laes` efter rutens arbejdsflade.
+- Direkte URL håndhæver samme permission før FLEET-datasættet monteres. En
+  ulogget bruger sendes til login med retur-URL. En syntetisk claims-v2-bruger
+  uden FLEET-permissions så hverken navigationen eller prototypens data og fik
+  en eksplicit afvisning på `/fleet-v2/enheder`.
+- Den autentificerede Veyro-bruger bruges som lokal prototypeaktør. Repository
+  og fixtures bindes til den aktuelle tenant; indlæst React-state nulstilles,
+  når repositoryet skifter ved logout eller tenantskift.
+
+### Lokal data-, style- og dependencygrænse
+
+- Den integrerede app bruger IndexedDB-navnet
+  `veyro-fleet-v2-integration-v1`. Automatiske FLEET-browsertests bruger
+  `veyro-fleet-v2-integration-tests-v1`. Den oprindelige standalone-prototype
+  bruger fortsat `veyro-fleet-v2-prototype`; ingen database, Blob eller
+  browserdata fra port 5187 er læst, migreret eller overskrevet.
+- FLEETs repositoryinterface er bevaret, så en senere serveradapter kan
+  erstatte IndexedDB uden at flytte domænelogikken. Datalagringen er stadig
+  lokal, syntetisk prototypefunktionalitet, ikke serverhåndhævet datadeling.
+- FLEET-styles er afgrænset med CSS `@scope` under
+  `.veyro-module--fleet`. Modulet arver platformens tokens i den integrerede
+  variant, mens den selvstændige prototype beholder egne token-fallbacks og
+  dokumentreset. FAKTURACENTERs styles og godkendte paneludtryk er ikke ændret.
+- Den eneste nye root-runtimeafhængighed er FLEETs eksisterende `qrcode` i den
+  præcise version `1.5.4`. React, React Router, Vite og øvrige dependencies er
+  ikke bredt opgraderet. De tidligere rapporterede dependency-sårbarheder er
+  fortsat et åbent punkt; der er ikke kørt `npm audit fix`.
+- Reference Contract V1 er uændret. Filens blob er fortsat
+  `c09c0535eb2e09b0e74efd4aa8d933b2f6b182ad`, identisk med den godkendte
+  FAKTURACENTER-HEAD.
+
+### Verifikation
+
+- FLEET lint bestod. Vitest bestod 143/143 tests i 22 testfiler. Den
+  selvstændige FLEET-produktionsbuild bestod med kun Vites størrelsesadvarsel.
+- Første fulde FLEET-Playwrightkørsel gav 34/36: en integreret CSS-reset havde
+  ændret standalone-bodymargin, og værkstedsforløbet havde en reel asynkron
+  gemmerace. Begge årsager blev rettet uden deaktivering eller forlængelse af
+  tests. De berørte forløb bestod derefter isoleret 5/5, og en ny fuld kørsel
+  bestod 36/36. Det omfatter oprettelse/redigering af enhed,
+  billedhåndtering, indberetning til sag, statuskorrektion og tilbageflytning
+  til Ny med bekræftelse, dokumenter og leasing.
+- Rootens målrettede FLEET-, navigation-, Fakturacenter- og Reference Contract-
+  regression bestod først 260/260. Efter den sidste dynamiske rutekorrektion
+  bestod den afsluttende målrettede kørsel 189/189, inklusive den nye
+  katalog/profil-regression.
+- Root lint, FLEET lint, whitespace-kontrol og root-produktionsbuild bestod.
+  Builden transformerede 399 moduler og indeholder særskilte lazy chunks for
+  både FLEET og FAKTURACENTER. Den kendte backtick-advarsel i en
+  FAKTURACENTER-CSS-kommentar er uændret.
+- Hele den isolerede Rules-gate bestod fortsat 3.966/3.966 på den uændrede
+  sikkerhedsmodel. De ændrede testharnessfiler fastlåser egne emulatorporte
+  og eksplicit testinventar på Windows; ingen regel eller assertion er
+  svækket.
+- Manuel browser-smoke på 5197 bestod login, tilladt/afvist/ulogget adgang,
+  overblik, enheder, oprettelse/redigering af den syntetiske enhed `INT-001`,
+  indberetninger, dokumenter, leasing, dybt link, genindlæsning,
+  FLEET↔FAKTURACENTER og browserens tilbage/frem. Der var én AppShell og ét
+  logo. FAKTURACENTER viste fortsat Indbakke, paneler, match, fordeling og
+  kontrolflow uden en ny platformramme.
+
+Den integrerede server kører fortsat med `strictPort` på
+`http://127.0.0.1:5197/` mod de eksisterende lokale emulatorer på 9099, 9000
+og 9199. Admin-testadgangen ligger kun i den ignorerede `.env.local`. Milepæl A
+er dermed udvidet med FLEET og FAKTURACENTER i samme program, men milepæl B er
+ikke påbegyndt: der er ingen fælles serverlagring, live fakturafordeling, OBD
+eller anden ekstern integration.
