@@ -1,6 +1,7 @@
 import { fleetDemo } from "../demoData";
 import { Icon } from "./Icon";
-import { DemoMap, MiniBarChart, MiniLineChart, OperationChart } from "./OverviewCharts";
+import { MiniBarChart, MiniLineChart, OperationChart } from "./OverviewCharts";
+import { GeoMap } from "./GeoMap";
 import { useFleetData } from "../data/FleetDataContext";
 import { deriveOverview } from "../data/unitSelectors";
 
@@ -30,13 +31,13 @@ function KpiCard({ icon, tone, value, label, percent, change, changeTone, captio
   );
 }
 
-function ActionList({ items, onUnavailable }) {
+function ActionList({ items, onUnavailable, onNavigate }) {
   return (
     <section className="card action-card">
       <CardHeader title="Kræver handling nu"><LinkButton onClick={() => onUnavailable("Alle handlinger")}>Se alle ({items.length})</LinkButton></CardHeader>
       <div className="action-list">
         {items.map((item) => (
-          <button type="button" key={item.unit} className={`action-row ${item.level}`} onClick={() => onUnavailable(`Enhed ${item.unit}`)}>
+          <button type="button" key={`${item.unit}-${item.reportId}`} className={`action-row ${item.level}`} onClick={() => item.reportId ? onNavigate(`/indberetninger/${item.reportId}`) : onUnavailable(`Enhed ${item.unit}`)}>
             <span className="action-icon"><Icon name="warning" size={16} strokeWidth={2.3} /></span>
             <span className="action-copy"><strong>{item.unit}</strong><small>{item.title}</small></span>
             <time>{item.time}</time>
@@ -47,13 +48,13 @@ function ActionList({ items, onUnavailable }) {
   );
 }
 
-function ServiceCard({ data, onUnavailable, total }) {
+function ServiceCard({ data, onNavigate, total }) {
   return (
     <section className="card table-card service-card">
-      <CardHeader title="Kommende service og syn"><LinkButton onClick={() => onUnavailable("Service og syn")}>Se alle ({total})</LinkButton></CardHeader>
+      <CardHeader title="Kommende service og syn"><LinkButton onClick={() => onNavigate("/service")}>Se alle ({total})</LinkButton></CardHeader>
       <div className="table-head service-grid"><span>Enhed</span><span>Type</span><span>Dato</span><span>Km</span><span>Status</span></div>
       {data.map((item) => (
-        <button className="table-row service-grid" type="button" key={`${item.unit}-${item.type}`} onClick={() => onUnavailable(`Service for ${item.unit}`)}>
+        <button className="table-row service-grid" type="button" key={`${item.unit}-${item.type}`} onClick={() => onNavigate("/service")}>
           <strong>{item.unit}</strong><span>{item.type}</span><span>{item.date}</span><span>{item.meter}</span><span className="due"><i />{item.status}</span>
         </button>
       ))}
@@ -61,13 +62,13 @@ function ServiceCard({ data, onUnavailable, total }) {
   );
 }
 
-function ReportsCard({ data, onUnavailable, total }) {
+function ReportsCard({ data, onNavigate, total }) {
   return (
     <section className="card table-card reports-card">
-      <CardHeader title="Åbne indberetninger"><LinkButton onClick={() => onUnavailable("Indberetninger")}>Se alle ({total})</LinkButton></CardHeader>
+      <CardHeader title="Åbne indberetninger"><LinkButton onClick={() => onNavigate("/indberetninger")}>Se alle ({total})</LinkButton></CardHeader>
       <div className="table-head report-grid"><span>Type</span><span>Antal</span><span>Seneste</span></div>
       {data.map((item) => (
-        <button className="table-row report-grid" type="button" key={item.label} onClick={() => onUnavailable(item.label)}>
+        <button className="table-row report-grid" type="button" key={item.label} onClick={() => onNavigate("/indberetninger")}>
           <span className="report-type"><i className={item.color}><Icon name={item.icon} size={15} /></i>{item.label}</span>
           <strong>{item.count}</strong><span>{item.latest}</span>
         </button>
@@ -101,7 +102,7 @@ function CostsCard({ data, onUnavailable }) {
   );
 }
 
-export function Overview({ onUnavailable }) {
+export function Overview({ onUnavailable, onNavigate }) {
   const { units, relations, loading } = useFleetData();
   const derived = deriveOverview(units, relations);
   const data = { ...fleetDemo, ...derived, totals: derived.totals };
@@ -130,15 +131,15 @@ export function Overview({ onUnavailable }) {
           <div className="legend"><span><i className="green" />I drift</span><span><i className="red" />På værksted</span><span><i className="blue" />Kræver handling</span></div>
         </section>
         <section className="card map-card">
-          <CardHeader title="Livekort"><span className="map-count"><i />{data.totals.units} enheder</span><button className="map-link" type="button" onClick={() => onUnavailable("Livekort")}>Åbn livekort <Icon name="external" size={14} /></button></CardHeader>
-          <DemoMap points={data.mapPoints} onUnavailable={onUnavailable} />
+          <CardHeader title="Livekort"><span className="map-count"><i />{(relations.positions || []).length} positioner</span><button className="map-link" type="button" onClick={() => onNavigate("/livekort")}>Åbn livekort <Icon name="external" size={14} /></button></CardHeader>
+          <GeoMap positions={relations.positions || []} units={units} compact controls={false} onSelect={(unitId) => onNavigate(`/enheder/${unitId}`)} />
         </section>
-        <ActionList items={data.actionItems} onUnavailable={onUnavailable} />
+        <ActionList items={data.actionItems} onUnavailable={onUnavailable} onNavigate={onNavigate} />
       </section>
 
       <section className="bottom-grid">
-        <ServiceCard data={data.serviceItems} total={data.totals.upcomingService} onUnavailable={onUnavailable} />
-        <ReportsCard data={data.reportItems} total={data.totals.reports} onUnavailable={onUnavailable} />
+        <ServiceCard data={data.serviceItems} total={data.totals.upcomingService} onNavigate={onNavigate} />
+        <ReportsCard data={data.reportItems} total={data.totals.reports} onNavigate={onNavigate} />
         <CostsCard data={data} onUnavailable={onUnavailable} />
       </section>
     </main>

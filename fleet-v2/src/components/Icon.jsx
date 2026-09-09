@@ -26,6 +26,10 @@ const paths = {
   close: ["M6 6l12 12", "M18 6L6 18"],
   plus: ["M12 5v14", "M5 12h14"],
   download: ["M12 3v12", "M7 10l5 5 5-5", "M5 21h14"],
+  upload: ["M12 21V9", "M7 14l5-5 5 5", "M5 3h14"],
+  archive: ["M4 7h16v14H4z", "M3 3h18v4H3z", "M9 11h6"],
+  image: ["M4 4h16v16H4z", "M8 9h.01", "M4 17l5-5 4 4 2-2 5 5"],
+  play: ["M5 3l14 9-14 9z"],
   table: ["M4 5h16v14H4z", "M4 10h16", "M4 15h16", "M9 5v14"],
   grid: ["M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z", "M14 14h6v6h-6z"],
   edit: ["M4 20h4l11-11-4-4L4 16z", "M13.5 6.5l4 4"],
@@ -38,6 +42,10 @@ const paths = {
   clock: ["M12 22a10 10 0 100-20 10 10 0 000 20z", "M12 6v6l4 2"],
   shield: ["M12 3l8 4v5c0 5-3 8-8 10-5-2-8-5-8-10V7z"],
   fuel: ["M5 3h9v18H5z", "M8 7h3", "M14 8h2l3 3v8a2 2 0 01-4 0v-4"],
+  undo: ["M9 7l-5 5 5 5", "M4 12h9a6 6 0 016 6"],
+  camera: ["M4 7h4l2-3h4l2 3h4v12H4z", "M12 10a3 3 0 100 6 3 3 0 000-6z"],
+  scan: ["M4 8V4h4", "M16 4h4v4", "M20 16v4h-4", "M8 20H4v-4", "M7 12h10"],
+  print: ["M6 9V3h12v6", "M6 17H4V9h16v8h-2", "M6 14h12v7H6z"],
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className = "", title }) {

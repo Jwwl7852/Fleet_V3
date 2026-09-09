@@ -87,7 +87,8 @@ test("SC-104-profilen åbnes direkte, viser ID-bundne faner og afgrænsede GPS-d
   await page.getByRole("tab", { name: "Økonomi" }).click();
   await expect(page.getByText(/ingen fakturabehandling/i)).toBeVisible();
   await page.getByRole("tab", { name: "GPS" }).click();
-  await expect(page.getByText("Ingen ruter, opgaver eller chaufførplanlægning")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Senest kendte position" })).toBeVisible();
+  await expect(page.getByText("Demoposition – ikke live")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -101,5 +102,55 @@ test("ukendt profil-ID og mobilprofil har robuste tilstande", async ({ page }) =
   await page.screenshot({ path: screenshotPath("fleet-v2-unit-sc-104-mobile-390x844"), fullPage: false });
   await page.goto("/enheder/ukendt-enhed");
   await expect(page.getByRole("heading", { name: "Enheden findes ikke" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("billede og udvendige mål gemmes lokalt, genindlæses og kan fjernes", async ({ page }) => {
+  const errors = collectBrowserErrors(page);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZ7l3fQAAAAASUVORK5CYII=", "base64");
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto("/enheder");
+  await page.getByRole("button", { name: "Opret enhed" }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/Enhedsnummer/).fill("QA-IMAGE");
+  await dialog.getByLabel(/^Mærke/).fill("Veyro Test");
+  await dialog.getByLabel(/^Model/).fill("Fotoenhed");
+  await dialog.getByLabel(/^Afdeling/).fill("Kvalitet");
+  await dialog.getByLabel("Registreringsnummer").fill("ab 12-345");
+  await dialog.getByRole("button", { name: "Hent køretøjsdata" }).click();
+  await expect(dialog.getByText(/Nummerpladeopslag er ikke tilsluttet/)).toBeVisible();
+  await dialog.getByLabel(/Tilføj udvendige mål/).check();
+  await dialog.getByLabel("Længde i cm").fill("599,5");
+  await dialog.getByLabel("Bredde i cm").fill("210");
+  await dialog.locator('input[type="file"]').setInputFiles({ name: "unit.png", mimeType: "image/png", buffer: png });
+  await expect(dialog.getByAltText("Forhåndsvisning af enhedsbillede")).toBeVisible();
+  await page.screenshot({ path: screenshotPath("fleet-v2-unit-form-1366x768"), fullPage: false });
+  await page.setViewportSize({ width: 1672, height: 941 });
+  await page.screenshot({ path: screenshotPath("fleet-v2-unit-form-1672x941"), fullPage: false });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: screenshotPath("fleet-v2-unit-form-mobile-390x844"), fullPage: false });
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await dialog.getByRole("button", { name: "Opret enhed" }).click();
+
+  await expect(page.getByText("QA-IMAGE", { exact: true })).toBeVisible();
+  await page.getByText("QA-IMAGE", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "QA-IMAGE" })).toBeVisible();
+  await expect(page.getByAltText("Billede af QA-IMAGE")).toBeVisible();
+  await expect(page.getByText("599,5 cm")).toBeVisible();
+
+  await page.getByRole("button", { name: "Redigér" }).click();
+  dialog = page.getByRole("dialog");
+  const stableId = await dialog.getByLabel("Internt ID").inputValue();
+  await dialog.locator('input[type="file"]').setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: png });
+  await dialog.getByRole("button", { name: "Gem ændringer" }).click();
+  await page.reload();
+  await expect(page.getByAltText("Billede af QA-IMAGE")).toBeVisible();
+
+  await page.getByRole("button", { name: "Redigér" }).click();
+  dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Internt ID")).toHaveValue(stableId);
+  await dialog.getByRole("button", { name: "Fjern billede" }).click();
+  await dialog.getByRole("button", { name: "Gem ændringer" }).click();
+  await expect(page.getByAltText("Billede af QA-IMAGE")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

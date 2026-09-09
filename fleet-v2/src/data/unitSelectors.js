@@ -1,4 +1,7 @@
 import { UNIT_STATUSES, UNIT_TYPES } from "./fleetFixtures";
+import { isOpenCase } from "./caseWorkflow";
+import { SERVICE_CATEGORIES, SERVICE_REQUIREMENT_STATUSES, evaluateServiceRequirement } from "./serviceWorkflow";
+import { documentsForUnit } from "./documentWorkflow";
 
 export const formatNumber = new Intl.NumberFormat("da-DK");
 export const formatCurrency = new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK", maximumFractionDigits: 0 });
@@ -8,13 +11,20 @@ export const formatMeter = (unit, value = unit.meter) => Number.isFinite(value) 
 export const typeLabel = (unit) => UNIT_TYPES[unit.type]?.label || "Ikke oplyst";
 export const statusMeta = (unit) => UNIT_STATUSES[unit.status] || { label: "Ikke oplyst", tone: "neutral" };
 export const modelLabel = (unit) => [unit.make, unit.model].filter(Boolean).join(" ") || "Ikke oplyst";
+export const formatDimension = (value) => Number.isFinite(value) ? `${formatNumber.format(value)} cm` : "Ikke oplyst";
+
+export function parsePositiveDanishNumber(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const parsed = Number(String(value).trim().replace(",", "."));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : NaN;
+}
 
 export function unitCost(unitId, costs = []) {
   return costs.filter((item) => item.unitId === unitId).reduce((sum, item) => sum + item.amount, 0);
 }
 
 export const relationsForUnit = (relations, unitId) => Object.fromEntries(
-  Object.entries(relations || {}).map(([key, items]) => [key, (items || []).filter((item) => item.unitId === unitId)]),
+  Object.entries(relations || {}).map(([key, items]) => [key, key === "documents" ? documentsForUnit(items, unitId) : (items || []).filter((item) => item.unitId === unitId)]),
 );
 
 export function filterAndSortUnits(units, filters) {
@@ -51,6 +61,11 @@ export function validateUnit(values, units, currentId = null) {
   if (values.meter === "" || !Number.isFinite(meter) || meter < 0 || !Number.isInteger(meter)) errors.meter = "Målerstand skal være et positivt helt tal eller nul.";
   if (!values.status) errors.status = "Vælg driftsstatus.";
   if (values.year && (!Number.isInteger(Number(values.year)) || Number(values.year) < 1900 || Number(values.year) > 2100)) errors.year = "Produktionsår er ugyldigt.";
+  if (values.dimensionsEnabled) {
+    ["lengthCm", "widthCm", "heightCm"].forEach((key) => {
+      if (values[key] !== "" && !Number.isFinite(parsePositiveDanishNumber(values[key]))) errors[key] = "Angiv et positivt tal eller lad feltet være tomt.";
+    });
+  }
   return errors;
 }
 
@@ -59,8 +74,17 @@ export function deriveOverview(units, relations) {
   const costs = relations.costs || [];
   const monthKeys = ["2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03"];
   const knownMonthly = monthKeys.map((month, index) => index < 3 ? [145600, 151900, 164300][index] : costs.filter((item) => item.month === month).reduce((sum, item) => sum + item.amount, 0));
-  const serviceItems = [...units].filter((unit) => unit.nextServiceDate).sort((a, b) => a.nextServiceDate.localeCompare(b.nextServiceDate)).slice(0, 5).map((unit) => ({ unit: unit.number, type: unit.meterType === "hours" ? "Driftstimeeftersyn" : "Service", date: new Date(`${unit.nextServiceDate}T12:00:00`).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }), meter: unit.nextServiceMeter == null ? "—" : formatNumber.format(unit.nextServiceMeter), status: unit.nextServiceDate <= "2025-03-19" ? "Inden 7 dage" : "Kommende" }));
-  const actionUnits = units.filter((unit) => ["action", "offline"].includes(unit.status)).slice(0, 5).map((unit) => ({ unit: unit.number, title: unit.notes || statusMeta(unit).label, time: "Demodata", level: unit.status === "offline" ? "critical" : "warning" }));
+  const serviceEvaluations = (relations.serviceRequirements || []).map((requirement) => ({ requirement, unit: units.find((item) => item.id === requirement.unitId), evaluation: evaluateServiceRequirement(requirement, units.find((item) => item.id === requirement.unitId), relations) }));
+  const serviceRank = { overdue: 0, upcoming: 1, planned: 2, missing_basis: 3, okay: 4, inactive: 5 };
+  const serviceItems = serviceEvaluations.filter((item) => item.unit).sort((a, b) => serviceRank[a.evaluation.status] - serviceRank[b.evaluation.status]).slice(0, 5).map(({ requirement, unit, evaluation }) => ({ unit: unit.number, type: SERVICE_CATEGORIES[requirement.category], date: evaluation.dueDate ? new Date(`${evaluation.dueDate}T12:00:00`).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "—", meter: Number.isFinite(evaluation.dueMeter) ? formatNumber.format(evaluation.dueMeter) : "—", status: SERVICE_REQUIREMENT_STATUSES[evaluation.status] }));
+  const reports = relations.reports || [];
+  const openCases = (relations.cases || []).filter(isOpenCase);
+  const actionCases = openCases.filter((item) => ["new", "assessing"].includes(item.status));
+  const actionUnits = actionCases.slice(0, 5).map((item) => {
+    const unit = units.find((entry) => entry.id === item.unitId);
+    const report = reports.find((entry) => entry.id === item.reportId);
+    return { unit: unit?.number || "Ukendt", title: report?.title || "Sag kræver handling", time: "Lokal demo", level: ["high", "critical"].includes(item.priority) ? "critical" : "warning", reportId: report?.id };
+  });
   const total = units.length;
   const operationDays = Array.from({ length: 14 }, (_, index) => {
     const workshop = Math.max(0, (counts.workshop || 0) + (index % 5 === 0 ? 1 : 0));
@@ -69,15 +93,14 @@ export function deriveOverview(units, relations) {
   });
   operationDays[13] = { ...operationDays[13], operation: counts.operation || 0, workshop: counts.workshop || 0, action: total - (counts.operation || 0) - (counts.workshop || 0) };
   return {
-    totals: { units: total, inOperation: counts.operation || 0, workshop: counts.workshop || 0, needsAction: total - (counts.operation || 0) - (counts.workshop || 0), reports: (relations.damages || []).length, upcomingService: units.filter((item) => item.nextServiceDate && item.nextServiceDate <= "2025-04-11").length, monthlyCost: knownMonthly.at(-1), downtimePct: total ? Number((((counts.workshop || 0) / total) * 100).toFixed(1)) : 0 },
+    totals: { units: total, inOperation: counts.operation || 0, workshop: counts.workshop || 0, needsAction: actionCases.length, reports: openCases.length, upcomingService: serviceEvaluations.filter((item) => ["overdue", "upcoming", "planned", "missing_basis"].includes(item.evaluation.status)).length, monthlyCost: knownMonthly.at(-1), downtimePct: total ? Number((((counts.workshop || 0) / total) * 100).toFixed(1)) : 0 },
     operationDays,
     actionItems: actionUnits,
     serviceItems,
     reportItems: [
-      { icon: "warning", color: "red", label: "Skader", count: (relations.damages || []).length, latest: "Demodata" },
-      { icon: "warning", color: "amber", label: "Tekniske fejl", count: 0, latest: "Ingen åbne" },
-      { icon: "document", color: "blue", label: "Servicebehov", count: 0, latest: "Ingen åbne" },
-      { icon: "info", color: "slate", label: "GPS/forbindelse", count: 0, latest: "Ingen åbne" },
+      { icon: "warning", color: "red", label: "Skader", count: openCases.filter((item) => reports.find((entry) => entry.id === item.reportId)?.type === "damage").length, latest: "Lokale data" },
+      { icon: "warning", color: "amber", label: "Tekniske fejl", count: openCases.filter((item) => reports.find((entry) => entry.id === item.reportId)?.type === "fault").length, latest: "Lokale data" },
+      { icon: "document", color: "blue", label: "Servicebehov", count: openCases.filter((item) => reports.find((entry) => entry.id === item.reportId)?.type === "service").length, latest: "Lokale data" },
     ],
     costByMonth: knownMonthly,
     downtimeByMonth: [2.3, 2.8, 2.5, 3.1, 2.6, total ? Number((((counts.workshop || 0) / total) * 100).toFixed(1)) : 0],

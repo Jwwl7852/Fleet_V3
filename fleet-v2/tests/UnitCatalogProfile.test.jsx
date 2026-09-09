@@ -33,7 +33,8 @@ describe("Enhedskartotek og Enhedsprofil", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Økonomi" }));
     expect(screen.getByText(/ingen fakturabehandling/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "GPS" }));
-    expect(screen.getByText(/Ingen ruter, opgaver eller chaufførplanlægning/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Senest kendte position" })).toBeTruthy();
+    expect(screen.getByText(/Demoposition – ikke live/i)).toBeTruthy();
   });
 
   it("opretter og redigerer en enhed med stabilt internt ID", async () => {
@@ -85,7 +86,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
     const machine = dataset.units.find((unit) => unit.id === "unit-nb-007");
     expect(machine.meterType).toBe("hours");
     for (const items of Object.values(dataset.relations)) {
-      for (const item of items) expect(dataset.units.some((unit) => unit.id === item.unitId)).toBe(true);
+      for (const item of items.filter((entry) => entry.unitId)) expect(dataset.units.some((unit) => unit.id === item.unitId)).toBe(true);
     }
     const filtered = filterAndSortUnits(dataset.units, { query: "", tab: "machine", department: "", type: "", status: "", sort: "meter-desc" });
     expect(filtered.every((unit) => unit.type === "machine")).toBe(true);

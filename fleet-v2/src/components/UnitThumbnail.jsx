@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 const accents = {
   vehicle: "#dce8ee",
   scooter: "#e8f7f8",
@@ -7,6 +9,26 @@ const accents = {
 
 export function UnitThumbnail({ unit, large = false }) {
   const type = unit?.type || "equipment";
+  const [imageUrl, setImageUrl] = useState("");
+
+  useEffect(() => {
+    if (!unit?.image?.blob) {
+      setImageUrl("");
+      return undefined;
+    }
+    const nextUrl = URL.createObjectURL(unit.image.blob);
+    setImageUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [unit?.image?.blob]);
+
+  if (imageUrl) {
+    return (
+      <span className={`unit-thumbnail has-image ${large ? "is-large" : ""}`}>
+        <img src={imageUrl} alt={`Billede af ${unit.number}`} />
+      </span>
+    );
+  }
+
   return (
     <span className={`unit-thumbnail ${large ? "is-large" : ""}`} aria-hidden="true">
       <svg viewBox="0 0 160 92">

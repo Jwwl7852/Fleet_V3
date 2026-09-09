@@ -5,7 +5,7 @@ import { createMemoryUnitRepository } from "../src/data/unitRepository";
 
 const renderApp = () => render(<FleetV2App repository={createMemoryUnitRepository()} />);
 
-describe("FLEET v2 etape 1–2", () => {
+describe("FLEET v2 navigation", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({}, "", "/");
@@ -18,15 +18,16 @@ describe("FLEET v2 etape 1–2", () => {
     expect(screen.getByText("Fiktive demodata · ikke live")).toBeTruthy();
     expect(screen.getByText("19")).toBeTruthy();
     expect(screen.getByLabelText("Søg i FLEET v2-demodata").getAttribute("placeholder")).not.toMatch(/chauffør/i);
-    expect(screen.getByText("Demokort · ikke live")).toBeTruthy();
+    expect(screen.getByText("Demopositioner – ikke live")).toBeTruthy();
   });
 
-  it("åbner Enhedskartotek og markerer senere moduler som ikke implementeret", async () => {
+  it("åbner Enhedskartotek og aktiverer Indberetninger uden at åbne gamle sider", async () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Enheder" }));
     expect(await screen.findByRole("heading", { name: "Enhedskartotek" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Indberetninger" }));
-    expect(screen.getByRole("status").textContent).toContain("Indberetninger: Ikke implementeret i denne etape");
+    expect(await screen.findByRole("heading", { name: "Indberetninger og triage" })).toBeTruthy();
+    expect(window.location.pathname).toBe("/indberetninger");
   });
 
   it("viser platformshierarkiet og folder kun FLEET uden at skifte side", async () => {

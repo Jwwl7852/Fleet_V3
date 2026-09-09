@@ -1,3 +1,5 @@
+import { DEMO_WORKSHOPS, DEMO_WORKSHOP_RESOURCES } from "./workshopWorkflow";
+
 export const DEMO_TENANT_ID = "tenant-demo-nordic";
 
 export const UNIT_TYPES = {
@@ -12,6 +14,7 @@ export const UNIT_STATUSES = {
   workshop: { label: "På værksted", tone: "danger" },
   action: { label: "Kræver handling", tone: "warning" },
   offline: { label: "Offline", tone: "neutral" },
+  inactive: { label: "Afleveret / inaktiv", tone: "neutral" },
 };
 
 const unit = (id, number, type, make, model, department, meter, status, extra = {}) => ({
@@ -72,6 +75,37 @@ const costs = [
 ];
 
 export const fixtureRelations = {
+  reports: [
+    { id: "report-demo-001", tenantId: DEMO_TENANT_ID, number: "IND-00001", unitId: "unit-sc-104", type: "fault", category: "Bremser", severity: "high", title: "Knirkende bremser", description: "Bremserne knirker kraftigt, og scooteren føles ustabil ved opbremsning.", images: [], meterObservation: { value: 12458, unit: "km", observedAt: "2025-03-10T08:17:00Z" }, usability: "blocked", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-10T08:17:00Z" },
+    { id: "report-demo-002", tenantId: DEMO_TENANT_ID, number: "IND-00002", unitId: "unit-nb-003", type: "fault", category: "Motor / drift", severity: "moderate", title: "AdBlue-advarsel", description: "AdBlue-lampen lyser konstant efter opstart.", images: [], meterObservation: { value: 412980, unit: "km", observedAt: "2025-03-11T07:40:00Z" }, usability: "uncertain", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-11T07:40:00Z" },
+    { id: "report-demo-003", tenantId: DEMO_TENANT_ID, number: "IND-00003", unitId: "unit-nb-014", type: "damage", category: "El og kabel", severity: "high", title: "Beskadiget strømkabel", description: "Kablets isolering er brudt tæt ved håndtaget.", images: [], meterObservation: { value: 618, unit: "hours", observedAt: "2025-03-09T11:05:00Z" }, usability: "blocked", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-09T11:05:00Z" },
+    { id: "report-demo-004", tenantId: DEMO_TENANT_ID, number: "IND-00004", unitId: "unit-nb-008", type: "service", category: "Hydraulik", severity: "low", title: "Hydraulikservice nærmer sig", description: "Driftstimeintervallet er næsten nået.", images: [], meterObservation: { value: 8421, unit: "hours", observedAt: "2025-03-08T14:20:00Z" }, usability: "usable", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-08T14:20:00Z" },
+  ],
+  cases: [
+    { id: "case-demo-001", tenantId: DEMO_TENANT_ID, number: "SAG-00001", reportId: "report-demo-001", unitId: "unit-sc-104", status: "assessing", priority: "high", assigneeId: "demo-lars", nextAction: "Kontrollér bremsesystem", dueDate: "2025-03-14", createdAt: "2025-03-10T08:17:00Z", updatedAt: "2025-03-10T09:02:00Z" },
+    { id: "case-demo-002", tenantId: DEMO_TENANT_ID, number: "SAG-00002", reportId: "report-demo-002", unitId: "unit-nb-003", status: "new", priority: "normal", assigneeId: null, nextAction: "Vurder indberetningen", dueDate: null, createdAt: "2025-03-11T07:40:00Z", updatedAt: "2025-03-11T07:40:00Z" },
+    { id: "case-demo-003", tenantId: DEMO_TENANT_ID, number: "SAG-00003", reportId: "report-demo-003", unitId: "unit-nb-014", status: "ready", priority: "critical", assigneeId: "demo-sara", nextAction: "Klar til næste værkstedsetape", dueDate: "2025-03-13", createdAt: "2025-03-09T11:05:00Z", updatedAt: "2025-03-09T13:30:00Z" },
+    { id: "case-demo-004", tenantId: DEMO_TENANT_ID, number: "SAG-00004", reportId: "report-demo-004", unitId: "unit-nb-008", status: "waiting", priority: "low", assigneeId: "demo-lars", nextAction: "Afvent serviceoplysninger", dueDate: "2025-03-20", createdAt: "2025-03-08T14:20:00Z", updatedAt: "2025-03-08T15:15:00Z" },
+  ],
+  caseEvents: [
+    { id: "event-demo-001", tenantId: DEMO_TENANT_ID, reportId: "report-demo-001", caseId: "case-demo-001", unitId: "unit-sc-104", at: "2025-03-10T08:17:00Z", actorId: "demo-mette", actorName: "Mette Larsen", type: "created", title: "Indberetning oprettet", text: "IND-00001 og SAG-00001 blev oprettet som ét lokalt forløb." },
+    { id: "event-demo-002", tenantId: DEMO_TENANT_ID, reportId: "report-demo-001", caseId: "case-demo-001", unitId: "unit-sc-104", at: "2025-03-10T09:02:00Z", actorId: "demo-lars", actorName: "Lars Hansen", type: "status", title: "Status ændret til Under vurdering", text: "Sikkerhedskritisk bremsefejl prioriteret til kontrol." },
+    { id: "event-demo-003", tenantId: DEMO_TENANT_ID, reportId: "report-demo-002", caseId: "case-demo-002", unitId: "unit-nb-003", at: "2025-03-11T07:40:00Z", actorId: "demo-mette", actorName: "Mette Larsen", type: "created", title: "Indberetning oprettet", text: "IND-00002 og SAG-00002 blev oprettet som ét lokalt forløb." },
+    { id: "event-demo-004", tenantId: DEMO_TENANT_ID, reportId: "report-demo-003", caseId: "case-demo-003", unitId: "unit-nb-014", at: "2025-03-09T13:30:00Z", actorId: "demo-sara", actorName: "Sara Nielsen", type: "status", title: "Status ændret til Klar til værksted", text: "Enheden er afskærmet og klar til næste etape." },
+    { id: "event-demo-005", tenantId: DEMO_TENANT_ID, reportId: "report-demo-004", caseId: "case-demo-004", unitId: "unit-nb-008", at: "2025-03-08T15:15:00Z", actorId: "demo-lars", actorName: "Lars Hansen", type: "status", title: "Status ændret til Afventer oplysninger", text: "Afventer seneste serviceark." },
+  ],
+  workshops: DEMO_WORKSHOPS,
+  workshopResources: DEMO_WORKSHOP_RESOURCES,
+  workshopTasks: [
+    { id: "workshop-task-demo-001", tenantId: DEMO_TENANT_ID, number: "VO-00001", caseId: "case-demo-003", reportId: "report-demo-003", unitId: "unit-nb-014", title: "Udskift beskadiget strømkabel", workshopId: "workshop-internal-east", workshopKind: "internal", assigneeId: "demo-sara", priority: "critical", status: "booked", workDescription: "Kontrollér kabel, aflastning og elektrisk sikkerhed. Udskift ved behov.", checklist: [{ id: "check-demo-1", text: "Afbryd enheden sikkert", done: false }, { id: "check-demo-2", text: "Kontrollér isolationsmodstand", done: false }], expectedCost: 2850, actualCost: null, expectedCompletionAt: "2026-09-08T13:00:00.000Z", actualStartAt: null, actualEndAt: null, notes: [], materials: [], workLogs: [], beforeImages: [], afterImages: [], bookingId: "booking-demo-001", createdAt: "2026-09-07T08:30:00.000Z", updatedAt: "2026-09-07T09:00:00.000Z" },
+  ],
+  bookings: [
+    { id: "booking-demo-001", tenantId: DEMO_TENANT_ID, taskId: "workshop-task-demo-001", caseId: "case-demo-003", unitId: "unit-nb-014", workshopId: "workshop-internal-east", resourceId: "resource-bay-1", startAt: "2026-09-08T08:00:00.000Z", endAt: "2026-09-08T12:00:00.000Z", status: "confirmed", note: "Bekræftet intern tid", createdAt: "2026-09-07T09:00:00.000Z", updatedAt: "2026-09-07T09:00:00.000Z" },
+  ],
+  workshopEvents: [
+    { id: "workshop-event-demo-001", tenantId: DEMO_TENANT_ID, taskId: "workshop-task-demo-001", caseId: "case-demo-003", unitId: "unit-nb-014", at: "2026-09-07T08:30:00.000Z", actorId: "demo-sara", actorName: "Sara Nielsen", type: "created", title: "Værkstedsopgave oprettet", text: "VO-00001 blev oprettet lokalt." },
+    { id: "workshop-event-demo-002", tenantId: DEMO_TENANT_ID, taskId: "workshop-task-demo-001", caseId: "case-demo-003", unitId: "unit-nb-014", at: "2026-09-07T09:00:00.000Z", actorId: "demo-sara", actorName: "Sara Nielsen", type: "booked", title: "Booking bekræftet", text: "Bås 1 · 8. sep. 2026 kl. 10.00–14.00 dansk tid." },
+  ],
   activities: [
     { id: "activity-sc-1", unitId: "unit-sc-104", at: "2025-03-12T10:24:00Z", title: "På værksted", text: "Fejl på bremser – diagnosticering igangsat.", tone: "danger", category: "Værksted" },
     { id: "activity-sc-2", unitId: "unit-sc-104", at: "2025-03-10T08:17:00Z", title: "Indberetning", text: "Bruger har indberettet knirkende bremser.", tone: "info", category: "Indberetning" },
@@ -86,6 +120,16 @@ export const fixtureRelations = {
     { id: "service-sc-2", unitId: "unit-sc-104", date: "2024-08-16", title: "Batterikontrol", meter: 8250, result: "OK", cost: 695 },
     ...fixtureUnits.slice(1, 9).map((item, index) => ({ id: `service-${item.id}`, unitId: item.id, date: `2024-${String(12 - (index % 5)).padStart(2, "0")}-12`, title: item.meterType === "hours" ? "Driftstimeeftersyn" : "Serviceeftersyn", meter: Math.max(0, item.meter - 4200), result: "Udført", cost: 1200 + index * 185 })),
   ],
+  serviceRequirements: [
+    { id: "service-requirement-sc-104", tenantId: DEMO_TENANT_ID, unitId: "unit-sc-104", title: "Scooterservice", category: "maintenance", fixedDueDate: null, intervalMonths: 6, intervalMeter: 3000, meterUnit: "km", baselineDate: "2025-02-28", baselineMeter: 12000, warningDays: 30, warningMeter: 300, responsibleId: "demo-lars", notes: "Kombineret dato- og kilometerinterval.", active: true, createdAt: "2025-02-28T14:32:00Z", updatedAt: "2025-02-28T14:32:00Z" },
+    { id: "service-requirement-nb-001", tenantId: DEMO_TENANT_ID, unitId: "unit-nb-001", title: "Årligt serviceeftersyn", category: "maintenance", fixedDueDate: "2026-09-20", intervalMonths: null, intervalMeter: null, meterUnit: "km", baselineDate: null, baselineMeter: null, warningDays: 30, warningMeter: null, responsibleId: "demo-lars", notes: "Fast frist i lokal prototype.", active: true, createdAt: "2026-01-05T09:00:00Z", updatedAt: "2026-01-05T09:00:00Z" },
+    { id: "service-requirement-nb-008", tenantId: DEMO_TENANT_ID, unitId: "unit-nb-008", title: "Hydraulikservice", category: "maintenance", fixedDueDate: null, intervalMonths: 12, intervalMeter: 500, meterUnit: "hours", baselineDate: "2024-10-12", baselineMeter: 8200, warningDays: 45, warningMeter: 500, responsibleId: "demo-sara", notes: "Den først nåede grænse udløser behovet.", active: true, createdAt: "2024-10-12T09:00:00Z", updatedAt: "2024-10-12T09:00:00Z" },
+    { id: "service-requirement-nb-018", tenantId: DEMO_TENANT_ID, unitId: "unit-nb-018", title: "Årligt maskineftersyn", category: "inspection", fixedDueDate: null, intervalMonths: 12, intervalMeter: null, meterUnit: "hours", baselineDate: null, baselineMeter: null, warningDays: 30, warningMeter: null, responsibleId: "demo-lars", notes: "Mangler historisk servicedato.", active: true, createdAt: "2026-09-01T09:00:00Z", updatedAt: "2026-09-01T09:00:00Z" },
+  ],
+  serviceTemplates: [],
+  serviceOccurrences: [],
+  serviceSettings: [],
+  serviceEvents: [],
   damages: [
     { id: "damage-sc-1", unitId: "unit-sc-104", date: "2025-03-10", title: "Knirkende bremser", severity: "Høj", status: "Under behandling" },
     { id: "damage-nb-003", unitId: "unit-nb-003", date: "2025-03-11", title: "AdBlue-advarsel", severity: "Moderat", status: "Ny" },
@@ -104,15 +148,32 @@ export const fixtureRelations = {
     category: ["Service", "Energi", "Forsikring"][(unitIndex + monthOffset) % 3],
     amount: Math.round(total * [0.31, 0.29, 0.4][monthOffset]),
   }))),
-  gps: fixtureUnits.map((item, index) => ({
-    id: `gps-${item.id}`,
-    unitId: item.id,
-    label: item.location || "Ikke oplyst",
-    updatedAt: item.status === "offline" ? "2025-03-12T08:12:00Z" : "2025-03-12T10:24:00Z",
-    latitude: 55.61 + (index % 6) * 0.035,
-    longitude: 12.31 + (index % 5) * 0.055,
-    live: false,
+  positions: [
+    ["unit-sc-104", 55.6377, 12.5661, "København S", "2026-09-08T08:56:00Z", "2026-09-08T08:56:08Z", "stationary", "online", 9, 0],
+    ["unit-nb-001", 55.6761, 12.5683, "København K", "2026-09-08T08:58:00Z", "2026-09-08T08:58:05Z", "moving", "online", 6, 38],
+    ["unit-nb-002", 55.6758, 12.4547, "Rødovre", "2026-09-08T08:54:00Z", "2026-09-08T08:54:07Z", "moving", "online", 12, 51],
+    ["unit-nb-003", 55.6295, 12.6492, "KLT Terminal", "2026-09-08T08:52:00Z", "2026-09-08T08:52:06Z", "stationary", "online", 8, 0],
+    ["unit-nb-004", 55.6471, 12.4756, "Hvidovre", "2026-09-08T08:49:00Z", "2026-09-08T08:49:09Z", "moving", "online", 7, 32],
+    ["unit-nb-005", 55.6816, 12.5323, "Frederiksberg", "2026-09-08T08:47:00Z", "2026-09-08T08:47:05Z", "stationary", "online", 5, 0],
+    ["unit-nb-006", 55.6611, 12.5160, "Valby · senest kendt", "2026-09-07T22:12:00Z", "2026-09-07T22:12:14Z", "unknown", "offline", 35, null],
+    ["unit-nb-007", 55.7314, 12.3633, "Ballerup", "2026-09-08T08:45:00Z", "2026-09-08T08:45:12Z", "stationary", "degraded", 24, 0],
+    ["unit-nb-008", 55.6510, 12.4120, "Brøndby", "2026-09-08T08:43:00Z", "2026-09-08T08:43:10Z", "stationary", "online", 4, 0],
+    ["unit-nb-009", 55.7233, 12.4397, "Herlev", "2026-09-08T08:41:00Z", "2026-09-08T08:41:05Z", "moving", "online", 11, 46],
+    ["unit-nb-010", 55.5830, 12.3006, "Greve", "2026-09-08T07:20:00Z", "2026-09-08T07:20:20Z", "unknown", "degraded", 42, null],
+    ["unit-nb-011", 55.6715, 12.3401, "Albertslund", "2026-09-08T08:35:00Z", "2026-09-08T08:35:07Z", "stationary", "online", 10, 0],
+    ["unit-nb-012", 55.7088, 12.5727, "Østerbro", "2026-09-08T08:55:00Z", "2026-09-08T08:55:08Z", "moving", "online", 7, 24],
+    ["unit-nb-013", 55.6668, 12.3976, "Glostrup", "2026-09-08T08:39:00Z", "2026-09-08T08:39:11Z", "stationary", "online", 14, 0],
+    ["unit-nb-014", 55.7319, 12.3642, "Ballerup materieldepot", "2026-09-08T08:44:00Z", "2026-09-08T08:44:09Z", "stationary", "online", 8, 0],
+    ["unit-nb-015", 55.6509, 12.3012, "Taastrup", "2026-09-08T08:50:00Z", "2026-09-08T08:50:09Z", "moving", "online", 9, 63],
+    ["unit-nb-016", 55.6402, 12.5931, "Amager", "2026-09-08T08:57:00Z", "2026-09-08T08:57:05Z", "moving", "online", 6, 29],
+    ["unit-nb-017", 55.6722, 12.3410, "Albertslund værksted", "2026-09-08T08:31:00Z", "2026-09-08T08:31:15Z", "stationary", "online", 13, 0],
+  ].map(([unitId, latitude, longitude, label, measuredAt, receivedAt, movementState, connectionStatus, accuracyMeters, speedKph]) => ({
+    id: `position-${unitId}`, tenantId: DEMO_TENANT_ID, unitId, latitude, longitude, label,
+    measuredAt, receivedAt, lastContactAt: connectionStatus === "offline" ? "2026-09-07T22:12:14Z" : receivedAt,
+    movementState, connectionStatus, accuracyMeters, speedKph, source: "fleet-v2-demo-fixture", demo: true,
+    alarms: connectionStatus === "offline" ? [{ code: "connection_lost", label: "Forbindelse mistet" }] : connectionStatus === "degraded" ? [{ code: "connection_degraded", label: "Ustabil forbindelse" }] : [],
   })),
+  positionEvents: [],
 };
 
 export const createFixtureDataset = () => ({

@@ -1,15 +1,15 @@
 export const fleetNavigation = [
   { id: "overview", label: "Overblik", icon: "dashboard", implemented: true, path: "/" },
   { id: "units", label: "Enheder", icon: "unit", implemented: true, path: "/enheder" },
-  { id: "reports", label: "Indberetninger", icon: "report" },
-  { id: "queue", label: "Arbejdskø", icon: "queue", badge: 5 },
-  { id: "workshop", label: "Værksted", icon: "workshop" },
-  { id: "service", label: "Service", icon: "service" },
-  { id: "map", label: "Livekort", icon: "map" },
-  { id: "documents", label: "Dokumenter", icon: "document" },
-  { id: "leasing", label: "Leasing", icon: "leasing" },
-  { id: "mobile", label: "Mobil indberetning", icon: "mobile" },
-  { id: "economy", label: "Økonomi og flådestatistik", icon: "economy" },
+  { id: "reports", label: "Indberetninger", icon: "report", implemented: true, path: "/indberetninger" },
+  { id: "queue", label: "Arbejdskø", icon: "queue", implemented: true, path: "/arbejdsko" },
+  { id: "workshop", label: "Værksted", icon: "workshop", implemented: true, path: "/vaerksted" },
+  { id: "service", label: "Service", icon: "service", implemented: true, path: "/service" },
+  { id: "map", label: "Livekort", icon: "map", implemented: true, path: "/livekort" },
+  { id: "documents", label: "Dokumenter", icon: "document", implemented: true, path: "/dokumenter" },
+  { id: "leasing", label: "Leasing", icon: "leasing", implemented: true, path: "/leasing" },
+  { id: "mobile", label: "Mobil indberetning", icon: "mobile", implemented: true, path: "/mobil" },
+  { id: "economy", label: "Økonomi og flådestatistik", icon: "economy", implemented: true, path: "/oekonomi" },
 ];
 
 export const platformNavigation = [

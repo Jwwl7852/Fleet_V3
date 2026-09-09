@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { platformNavigation } from "../demoData";
 import { VeyroLogo } from "./VeyroLogo";
+import { useFleetData } from "../data/FleetDataContext";
+import { isOpenCase } from "../data/caseWorkflow";
 
 const FLEET_OPEN_KEY = "veyro:fleet-v2:fleet-menu-open";
 
@@ -16,6 +18,8 @@ function readFleetOpen() {
 
 export function Sidebar({ open, onClose, onUnavailable, onNavigate, activePage }) {
   const [fleetOpen, setFleetOpen] = useState(readFleetOpen);
+  const { relations } = useFleetData();
+  const openCases = (relations.cases || []).filter(isOpenCase).length;
 
   useEffect(() => {
     try {
@@ -77,7 +81,7 @@ export function Sidebar({ open, onClose, onUnavailable, onNavigate, activePage }
                         >
                           <Icon name={child.icon} size={17} />
                           <span>{child.label}</span>
-                          {child.badge ? <span className="nav-badge">{child.badge}</span> : null}
+                          {child.id === "queue" && openCases ? <span className="nav-badge">{openCases}</span> : null}
                         </button>
                       ))}
                     </div>
@@ -90,7 +94,7 @@ export function Sidebar({ open, onClose, onUnavailable, onNavigate, activePage }
       </div>
 
       <div className="sidebar-footer">
-        <div className="version"><span className="status-dot" /> FLEET v2 · Etape 2 · Demo</div>
+        <div className="version"><span className="status-dot" /> FLEET v2 · Lokal demo</div>
       </div>
     </aside>
   );
