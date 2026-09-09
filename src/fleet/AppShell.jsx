@@ -7,7 +7,7 @@
  * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
 import { Suspense, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
 import { harModul } from "./moduler.js";
@@ -102,7 +102,8 @@ const ICO = {
 
 export default function AppShell() {
   const { tenant, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
   const initialer = (bruger?.navn || bruger?.email || "?")
@@ -156,6 +157,7 @@ export default function AppShell() {
      overstyring af den ellers automatiske "aktiv ⇒ åben"-visning, IKKE en
      ny synlighedsregel; ruten og dens permissions er upåvirkede. */
   const [modulLukket, saetModulLukket] = useState({});
+  const [fakturacenterAntal, setFakturacenterAntal] = useState({});
   const skifModul = (key) =>
     saetModulLukket((forrige) => ({ ...forrige, [key]: !forrige[key] }));
 
@@ -272,6 +274,53 @@ export default function AppShell() {
                        man taster stien. Håndhævelsen ligger i reglerne. */
                     const born = synligeBorn(m);
                     const visBorn = aktiv && born.length > 1 && !modulLukket[m.key];
+                    const fakturacenterSektioner = m.fakturacenterSektioner || [];
+                    const aktivFakturacenterSektion =
+                      fakturacenterSektioner.some((sektion) =>
+                        sektion.id === new URLSearchParams(location.search).get("sektion"))
+                        ? new URLSearchParams(location.search).get("sektion")
+                        : fakturacenterSektioner[0]?.id;
+                    if (fakturacenterSektioner.length) {
+                      const undermenuAaben = aktiv && !modulLukket[m.key];
+                      return (
+                        <div key={m.key} className="fc-fakturacenter-nav">
+                          <div className="fc-fakturacenter-main">
+                            <NavLink to={m.sti} end className={aktiv ? "fc-link fc-on" : "fc-link"}>
+                              <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d={ICO[m.key]} />
+                              </svg>
+                              <span>{m.label}</span>
+                            </NavLink>
+                            <button type="button" className="fc-fakturacenter-toggle"
+                              onClick={() => skifModul(m.key)} aria-expanded={undermenuAaben}
+                              aria-label={`Fold Fakturacentersektioner ${undermenuAaben ? "sammen" : "ud"}`}>
+                              <svg className={undermenuAaben ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
+                                viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </button>
+                          </div>
+                          {undermenuAaben && (
+                            <div className="fc-sub fc-sub-fakturacenter" aria-label="Fakturacentersektioner">
+                              {fakturacenterSektioner.map((sektion) => {
+                                const antal = fakturacenterAntal[sektion.id];
+                                return (
+                                  <Link key={sektion.id} to={`${m.sti}?sektion=${sektion.id}`}
+                                    className={aktivFakturacenterSektion === sektion.id
+                                      ? "fc-sublink fc-on" : "fc-sublink"}
+                                    aria-current={aktivFakturacenterSektion === sektion.id ? "page" : undefined}>
+                                    <span>{sektion.label}</span>
+                                    {Number.isInteger(antal) && (
+                                      <span className="fc-sub-count" aria-label={`${antal} poster`}>{antal}</span>
+                                    )}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
                     return (
                       <div key={m.key}>
                         <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}
@@ -393,7 +442,7 @@ export default function AppShell() {
               Her skiftes kun indholdsfeltet ud. */}
           <main className="fc-slot">
             <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
-              <Outlet />
+              <Outlet context={{ setFakturacenterAntal }} />
             </Suspense>
           </main>
         </div>

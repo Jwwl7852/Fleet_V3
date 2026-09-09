@@ -208,7 +208,7 @@ export const INDBAKKE_SEKTION = Object.freeze({
 
 /** Stabil visningsrækkefølge. Labels er UI-metadata, ikke et datasæt. */
 export const FAKTURACENTER_SEKTIONER = Object.freeze([
-  { id: INDBAKKE_SEKTION.indbakke, label: "Ny i indbakken" },
+  { id: INDBAKKE_SEKTION.indbakke, label: "Indbakke" },
   { id: INDBAKKE_SEKTION.behandling, label: "Kræver behandling" },
   { id: INDBAKKE_SEKTION.kontrol, label: "Til kontrol" },
   { id: INDBAKKE_SEKTION.kontrolleret, label: "Kontrollerede" },
@@ -1150,6 +1150,50 @@ export function validérFordeling(nettoOere, fordelinger = [], fakturaart =
   return fordeltOere === nettoOere
     ? { ok: true, fejl: null, fordeltOere }
     : { ok: false, fejl: TEKNISK_FEJLKODE.ufuldstændigFordeling, fordeltOere };
+}
+
+/**
+ * Lokal prototypehandling for redigering af den eksisterende interne fordeling.
+ * Funktionen emitterer ikke Fakturafordeling V1 og er ikke en servergrænse.
+ * Den tillader en gyldig, men endnu ufuldstændig kladde, så brugeren kan arbejde
+ * sig frem til den fulde nettosum; alle øvrige fejl afvises fail-closed.
+ */
+export function opdatérFordeling(faktura, fordelinger, kontekst = {}) {
+  const handling = validérHandlingskontekst(kontekst);
+  if (!handling.ok) return { ok: false, fejl: handling.fejl, faktura };
+  if (faktura?.tenantId !== kontekst.aktuelTenantId) {
+    return { ok: false, fejl: TEKNISK_FEJLKODE.crossTenant, faktura };
+  }
+  if (faktura?.låst || faktura?.kontrolstatus === KONTROL_STATUS.kontrolleret) {
+    return { ok: false, fejl: "INVOICE_LOCKED", faktura };
+  }
+  if (!Array.isArray(fordelinger)) {
+    return { ok: false, fejl: "ALLOCATION_INVALID", faktura };
+  }
+  const kladde = fordelinger.map((post) => ({ ...post }));
+  const kontrol = validérFordeling(faktura.nettoOere, kladde, faktura.fakturaart);
+  if (!kontrol.ok && kontrol.fejl !== TEKNISK_FEJLKODE.ufuldstændigFordeling) {
+    return { ok: false, fejl: kontrol.fejl, fordeling: kontrol, faktura };
+  }
+  const destinationsfejl = validérFordelingsdestinationer(
+    { ...faktura, fordelinger: kladde }, kontekst,
+  );
+  if (destinationsfejl.length) {
+    return { ok: false, fejl: destinationsfejl[0], fordeling: kontrol, faktura };
+  }
+  const næste = {
+    ...faktura,
+    fordeling: kladde,
+    fordelinger: kladde,
+    kontrolstatus: kontrol.ok ? KONTROL_STATUS.tilKontrol : faktura.kontrolstatus,
+    historik: [...liste(faktura.historik), {
+      handling: "fordeling-rettet",
+      brugerId: kontekst.brugerId.trim(),
+      tidspunktMs: kontekst.tidspunktMs,
+      fordelingIder: kladde.map((post) => post.fordelingId),
+    }],
+  };
+  return { ok: true, fejl: null, fordeling: kontrol, faktura: næste };
 }
 
 export function bygFakturafordelingV1(data = {}, kontekst = {}) {

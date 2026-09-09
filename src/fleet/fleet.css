@@ -244,6 +244,17 @@
 .fc-sublink{color:#9aa7b8; text-decoration:none; font-size:var(--fc-t-s); padding:6px 8px; border-radius:6px}
 .fc-sublink:hover{color:#fff; background:var(--fc-navy-2)}
 .fc-sublink.fc-on{color:#fff; font-weight:600}
+.fc-fakturacenter-main{display:grid; grid-template-columns:minmax(0,1fr) 34px; align-items:stretch}
+.fc-fakturacenter-main .fc-link{min-width:0}
+.fc-fakturacenter-toggle{display:grid; place-items:center; width:34px; min-height:36px; padding:0;
+  color:#c3ccda; background:transparent; border:0; border-radius:8px; cursor:pointer}
+.fc-fakturacenter-toggle:hover{color:#fff; background:var(--fc-navy-2)}
+.fc-fakturacenter-toggle:focus-visible{outline:2px solid var(--fc-serie-3); outline-offset:2px}
+.fc-fakturacenter-toggle .fc-chevron{width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2}
+.fc-sub-fakturacenter .fc-sublink{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.fc-sub-count{min-width:20px; padding:1px 5px; color:#fff; background:var(--fc-navy-2);
+  border-radius:999px; text-align:center; font-size:var(--fc-t-tight); font-variant-numeric:tabular-nums}
+.fc-sub-fakturacenter .fc-sublink.fc-on .fc-sub-count{color:var(--fc-navy); background:#fff}
 
 .fc-foot{border-top:1px solid var(--fc-navy-3); padding-top:12px; margin-top:8px}
 .fc-who{display:flex; gap:9px; align-items:center; padding:4px 6px}
@@ -387,6 +398,11 @@
   .fc-link{white-space:nowrap}
   .fc-link .fc-chevron{display:none}
   .fc-sub,.fc-foot{display:none}
+  .fc-fakturacenter-nav{display:flex; flex-direction:column; flex:0 0 auto; min-width:min(100%,360px)}
+  .fc-fakturacenter-main{grid-template-columns:minmax(0,1fr) 34px}
+  .fc-fakturacenter-nav .fc-sub-fakturacenter{display:flex; flex-direction:row; max-width:calc(100vw - 32px);
+    margin:3px 0 0; padding:0 0 3px; overflow-x:auto; border-left:0}
+  .fc-fakturacenter-nav .fc-sub-fakturacenter .fc-sublink{flex:0 0 auto; white-space:nowrap}
   .fc-top,.fc-slot{padding-left:16px; padding-right:16px}
 }
 

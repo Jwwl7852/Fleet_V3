@@ -42,6 +42,38 @@ export function FakturacenterPanelnavigation({ aktivtPanel, onSkift }) {
   );
 }
 
+export function PanelSeparator({
+  label,
+  værdi,
+  min = 0,
+  maks = 100,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onKeyDown,
+}) {
+  return (
+    <div
+      className="fic-panel-separator"
+      role="separator"
+      aria-label={label}
+      aria-orientation="vertical"
+      aria-valuemin={min}
+      aria-valuemax={maks}
+      aria-valuenow={Math.round(værdi)}
+      tabIndex="0"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onKeyDown={onKeyDown}
+    >
+      <span aria-hidden="true" />
+    </div>
+  );
+}
+
 export function SektionIntroduktion({ eyebrow, titel, tekst, note }) {
   return (
     <section className="fic-section-intro" aria-labelledby="fic-section-title">
@@ -61,6 +93,7 @@ export function Filmodtagelse({
   onFiler,
   filer,
   inputRef,
+  onIndlæsSyntetisk,
 }) {
   const håndtérInput = (event) => {
     onFiler(event.target.files);
@@ -68,6 +101,15 @@ export function Filmodtagelse({
   };
   return (
     <div className="fic-intake-primary">
+      <div className="fic-synthetic-intake">
+        <div>
+          <b>Gennemspil hele demo-flowet</b>
+          <span>Indlæser kendte fixturedata; ingen lokal fil aflæses.</span>
+        </div>
+        <button type="button" className="fic-secondary" onClick={onIndlæsSyntetisk}>
+          Indlæs syntetisk testfaktura
+        </button>
+      </div>
       <div
         className={dropAktiv ? "fic-drop fic-drop-active" : "fic-drop"}
         onDragEnter={(event) => { event.preventDefault(); onDropAktiv(true); }}
@@ -100,7 +142,9 @@ export function Filmodtagelse({
         <p className="fic-local-note">
           Lokal prototypekontrol af filtype, browser-MIME, størrelse og SHA-256.
           Filen gemmes ikke permanent. Magic bytes, malware, karantæne og
-          servervalidering er ikke implementeret. Brug aldrig rigtige fakturaer her.
+          servervalidering er ikke implementeret. En vilkårlig lokal fil giver ingen
+          fakturaoplysninger eller match. Brug aldrig rigtige fakturaer her.
+          Alle lokale handlinger nulstilles ved genindlæsning.
         </p>
       </details>
       {filer.length > 0 && (

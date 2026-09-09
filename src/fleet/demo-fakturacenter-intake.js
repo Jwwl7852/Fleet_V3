@@ -508,6 +508,56 @@ const s20 = {
   ],
 };
 
+/**
+ * Opretter en ny browserlokal testsag fra en kendt fixture. Dette er bevidst
+ * adskilt fra filvælgeren: ingen fil parses, og alle fakturaoplysninger er
+ * markeret som syntetiske fixturedata.
+ */
+export function opretSyntetiskTestfaktura({ sekvens, modtagetMs } = {}) {
+  if (!Number.isSafeInteger(sekvens) || sekvens < 1 || sekvens > 999999) {
+    return { ok: false, fejl: "DEMO_SEQUENCE_INVALID", scenarie: null };
+  }
+  if (!Number.isSafeInteger(modtagetMs) || modtagetMs < 1) {
+    return { ok: false, fejl: "DEMO_TIMESTAMP_INVALID", scenarie: null };
+  }
+  const suffix = String(sekvens).padStart(3, "0");
+  const testsag = structuredClone(s1);
+  const fakturaId = `faktura-lokal-test-${suffix}`;
+  const fordeling = testsag.faktura.fordelinger.map((post, index) => ({
+    ...post,
+    fordelingId: `fordeling-lokal-test-${suffix}-${index + 1}`,
+  }));
+  testsag.id = `lokal-testscenarie-${suffix}`;
+  testsag.nummer = 20 + sekvens;
+  testsag.titel = `Indlæst syntetisk testfaktura ${suffix}`;
+  testsag.beskrivelse = "Kendt lokal fixture med syntetisk aflæsning og automatisk placering.";
+  testsag.sektion = INDBAKKE_SEKTION.indbakke;
+  testsag.prototypeOprindelse = "syntetisk-testfixture";
+  testsag.visningsnote = "Fixturedata · nulstilles ved genindlæsning";
+  testsag.intake = {
+    ...testsag.intake,
+    intakeId: `intake-lokal-test-${suffix}`,
+    kildeId: `syntetisk-fixture-${suffix}`,
+    modtagetMs,
+    fakturaId,
+    original: {
+      ...testsag.intake.original,
+      filnavn: `syntetisk-testfaktura-${suffix}.pdf`,
+      sha256: hash(String(sekvens % 10)),
+    },
+  };
+  testsag.faktura = {
+    ...testsag.faktura,
+    fakturaId,
+    fordeling,
+    fordelinger: fordeling,
+    historik: [],
+    låst: false,
+    kontrolstatus: KONTROL_STATUS.tilKontrol,
+  };
+  return { ok: true, fejl: null, scenarie: testsag };
+}
+
 export const DEMO_FAKTURACENTER_SCENARIER = Object.freeze([
   s1, s2, s3, s4, s5, s6, s7, s8, s9, s10,
   s11, s12, s13, s14, s15, s16, s17, s18, s19, s20,

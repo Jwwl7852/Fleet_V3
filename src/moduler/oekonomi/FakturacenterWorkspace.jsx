@@ -9,7 +9,7 @@ import {
   MATCH_OPRINDELSE,
   validérFordeling,
 } from "../../fleet/fakturacenter-intake.js";
-import { MailbundlePanel } from "./FakturacenterPrototypeDele.jsx";
+import { MailbundlePanel, PanelSeparator } from "./FakturacenterPrototypeDele.jsx";
 
 const STATUS_LABEL = {
   [INDBAKKE_SEKTION.indbakke]: "Ny i indbakken",
@@ -60,12 +60,24 @@ function kortHash(hash) {
   return hash ? hash.slice(0, 8) + "…" : "—";
 }
 
+function fakturavindueLabel(status) {
+  if (status === FAKTURAVINDUE.aaben) return "åben for faktura";
+  if (status === FAKTURAVINDUE.delvist) return "delvist faktureret";
+  if (status === FAKTURAVINDUE.lukket) return "lukket for faktura";
+  return "ukendt fakturavindue";
+}
+
 export default function FakturacenterWorkspace({
   scenarie,
   begrundelse,
   aktivtPanel,
+  panelLayout,
+  panelSeparatorHandlers,
   setBegrundelse,
   onVælgKandidat,
+  onRetOplysninger,
+  onFordelSamlet,
+  onFordelLigeligt,
   onAccepterAdvarsler,
   onKontrollér,
   onGenåbn,
@@ -89,7 +101,7 @@ export default function FakturacenterWorkspace({
     <div className="fic-detail" data-active-panel={aktivtPanel}>
       <div className="fic-detail-head">
         <div>
-          <span className="fic-kicker">Scenarie {scenarie.nummer} af 20</span>
+          <span className="fic-kicker">Scenarie {scenarie.nummer}</span>
           <h2>{scenarie.titel}</h2>
           <p>{scenarie.beskrivelse}</p>
         </div>
@@ -163,6 +175,10 @@ export default function FakturacenterWorkspace({
           </dl>
         </section>
 
+        <PanelSeparator label="Juster bredde mellem dokument og behandling"
+          værdi={panelLayout.dokumentProcent} min={35} maks={65}
+          {...panelSeparatorHandlers} />
+
         <section className="fic-review-panel" role="region" tabIndex="0"
                  aria-label="Behandling · internt scrollområde">
           <InfoSektion nummer="1" titel="Aflæste oplysninger"
@@ -184,6 +200,7 @@ export default function FakturacenterWorkspace({
                 ...(data.stelSerieNumre || []),
               ].join(", ") || "—"} />
             </div>
+            <Rettelsesformular data={data} låst={erLåst} onGem={onRetOplysninger} />
             <p className="fic-origin-note">
               Den oprindelige aflæsning bevares. Rettelser tilføjes med bruger,
               tidspunkt og ændringshistorik.
@@ -218,7 +235,7 @@ export default function FakturacenterWorkspace({
                       <div>
                         <b>{kandidat.navn}</b>
                         <span>{kandidat.enhed?.navn || kandidat.lokation || "Ingen enhed"}
-                          {" · "}{kandidat.fakturastatus.replaceAll("-", " ")}</span>
+                          {" · "}{fakturavindueLabel(kandidat.fakturastatus)}</span>
                         <small>{kandidat.leverandoer.navn || "Leverandør ikke angivet"}
                           {" · "}{kandidat.referencer.join(", ")}</small>
                         <small>Estimat (neutral statistik): {kroner(kandidat.forventetNettoOere)}</small>
@@ -267,10 +284,26 @@ export default function FakturacenterWorkspace({
               <span>Fordelt netto</span>
               <b>{kroner(fordeling.fordeltOere)} / {kroner(scenarie.faktura.nettoOere)}</b>
             </div>
+            {!erLåst && scenarie.match.placering && (
+              <button type="button" className="fic-secondary fic-allocation-action"
+                      onClick={onFordelSamlet}>
+                Fordel hele netto på valgt match
+              </button>
+            )}
+            {!erLåst && scenarie.match.kandidater.length > 1 && (
+              <button type="button" className="fic-secondary fic-allocation-action"
+                      onClick={onFordelLigeligt}>
+                Fordel ligeligt på matchkandidater
+              </button>
+            )}
           </InfoSektion>
 
           <InfoSektion nummer="4" titel="Kontrol"
                        status={erLåst ? "Kontrolleret og låst" : "Afventer handling"}>
+            <div className="fic-local-cost" aria-label="Lokalt nettobidrag til statistik">
+              <span>Nettobidrag i lokal teststatistik</span>
+              <b>{kroner(erLåst ? scenarie.faktura.nettoOere : 0)}</b>
+            </div>
             {scenarie.faktura.dubletstatus === DUBLET_STATUS.mistænkt && (
               <Advarsel tekst="Mistænkt dublet er sat på hold. Ingen filer slettes eller sammenlægges." />
             )}
@@ -316,7 +349,8 @@ export default function FakturacenterWorkspace({
           </InfoSektion>
 
           <details className="fic-history" open={scenarie.nummer === 19}>
-            <summary>Historik <span>{scenarie.faktura.historik?.length || 0}</span></summary>
+            <summary>Historik <span>{(scenarie.faktura.historik?.length || 0)
+              + (scenarie.aflæsning.rettelseshistorik?.length || 0)}</span></summary>
             {scenarie.faktura.historik?.length ? (
               <ol>{scenarie.faktura.historik.map((post, index) => (
                 <li key={post.handling + index}>
@@ -325,10 +359,105 @@ export default function FakturacenterWorkspace({
                   {post.begrundelse && <small>{post.begrundelse}</small>}
                 </li>
               ))}</ol>
-            ) : <p>Ingen lokale demohændelser endnu.</p>}
+            ) : null}
+            {scenarie.aflæsning.rettelseshistorik?.length ? (
+              <ol>{scenarie.aflæsning.rettelseshistorik.map((post, index) => (
+                <li key={`rettelse-${post.tidspunktMs}-${index}`}>
+                  <b>syntetisk aflæsning rettet</b>
+                  <span>{post.brugerId} · {datoTid(post.tidspunktMs)}</span>
+                  <small>Felter: {post.felter.join(", ")}</small>
+                </li>
+              ))}</ol>
+            ) : null}
+            {!scenarie.faktura.historik?.length
+              && !scenarie.aflæsning.rettelseshistorik?.length
+              && <p>Ingen lokale demohændelser endnu.</p>}
           </details>
         </section>
       </div>
+    </div>
+  );
+}
+
+function formatérOereTilInput(oere) {
+  if (!Number.isSafeInteger(oere)) return "";
+  return (oere / 100).toFixed(2).replace(".", ",");
+}
+
+function parseOereInput(værdi) {
+  const rå = String(værdi || "").trim().replaceAll(" ", "");
+  if (!rå) return null;
+  const normaliseret = rå.includes(",")
+    ? rå.replaceAll(".", "").replace(",", ".") : rå;
+  if (!/^-?\d+(?:\.\d{1,2})?$/.test(normaliseret)) return null;
+  const beløb = Number(normaliseret);
+  const oere = Math.round(beløb * 100);
+  return Number.isSafeInteger(oere) ? oere : null;
+}
+
+function Rettelsesformular({ data, låst, onGem }) {
+  const [åben, setÅben] = useState(false);
+  const [fejl, setFejl] = useState(null);
+  const [felter, setFelter] = useState(() => ({
+    fakturanummer: data.fakturanummer || "",
+    leverandoernavn: data.leverandoernavn || "",
+    reference: data.ordreOpgaveNumre?.[0] || "",
+    netto: formatérOereTilInput(data.nettoOere),
+    moms: formatérOereTilInput(data.momsOere),
+    total: formatérOereTilInput(data.totalOere),
+  }));
+  if (låst) return <p className="fic-origin-note">Genåbn fakturaen før oplysninger kan rettes.</p>;
+  const opdatér = (felt) => (event) => setFelter((nuværende) => ({
+    ...nuværende, [felt]: event.target.value,
+  }));
+  const gem = (event) => {
+    event.preventDefault();
+    const nettoOere = parseOereInput(felter.netto);
+    const momsOere = parseOereInput(felter.moms);
+    const totalOere = parseOereInput(felter.total);
+    if ([nettoOere, momsOere, totalOere].includes(null)) {
+      setFejl("Beløb skal angives som kroner med højst to decimaler.");
+      return;
+    }
+    const ændringer = {
+      fakturanummer: felter.fakturanummer,
+      leverandoernavn: felter.leverandoernavn,
+      ordreOpgaveNumre: felter.reference.trim() ? [felter.reference.trim()] : [],
+      nettoOere,
+      momsOere,
+      totalOere,
+    };
+    setFejl(null);
+    onGem(ændringer);
+    setÅben(false);
+  };
+  return (
+    <div className="fic-correction">
+      <button type="button" className="fic-link-button" aria-expanded={åben}
+              onClick={() => setÅben((nuværende) => !nuværende)}>
+        Ret syntetiske oplysninger
+      </button>
+      {åben && (
+        <form onSubmit={gem}>
+          <label><span>Fakturanummer</span>
+            <input value={felter.fakturanummer} onChange={opdatér("fakturanummer")} /></label>
+          <label><span>Leverandør</span>
+            <input value={felter.leverandoernavn} onChange={opdatér("leverandoernavn")} /></label>
+          <label><span>Reference</span>
+            <input value={felter.reference} onChange={opdatér("reference")} /></label>
+          <label><span>Netto · DKK</span>
+            <input inputMode="decimal" value={felter.netto} onChange={opdatér("netto")} /></label>
+          <label><span>Moms · DKK</span>
+            <input inputMode="decimal" value={felter.moms} onChange={opdatér("moms")} /></label>
+          <label><span>I alt · DKK</span>
+            <input inputMode="decimal" value={felter.total} onChange={opdatér("total")} /></label>
+          {fejl && <p className="fic-form-error" role="alert">{fejl}</p>}
+          <div className="fic-inline-actions">
+            <button type="submit" className="fic-primary">Gem lokal rettelse</button>
+            <button type="button" className="fic-secondary" onClick={() => setÅben(false)}>Annullér</button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

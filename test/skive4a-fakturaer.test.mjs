@@ -173,10 +173,12 @@ describe("Fakturaer & bilag er den ene kanoniske overflade", () => {
    FILTRERET KONTEKST — punkt 4
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Fakturacenter v1 bruger kun lokal prototypekontekst", () => {
-  it("⚠ PROTOTYPEN LÆSER IKKE QUERY ELLER EKSTERNE DATA", () => {
+  it("⚠ PROTOTYPEN LÆSER KUN LOKAL SEKTION FRA QUERY — IKKE EKSTERNE DATA", () => {
     const skaerm = udenKommentarer(
       readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
-    assert.doesNotMatch(skaerm, /useSearchParams|params\.get\("destination"\)/);
+    assert.match(skaerm, /useSearchParams/);
+    assert.match(skaerm, /searchParams\.get\("sektion"\)/);
+    assert.doesNotMatch(skaerm, /\.get\(["']destination["']\)/);
     assert.match(skaerm, /FAKTURACENTER_PROTOTYPE/);
     assert.match(skaerm, /eksterneKald:\s*false/);
   });

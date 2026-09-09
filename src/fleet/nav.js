@@ -65,6 +65,7 @@
  * virker stadig som direkte link.
  */
 import { MODUL } from "./moduler.js";
+import { FAKTURACENTER_SEKTIONER } from "./fakturacenter-intake.js";
 
 /** Fast rækkefølge for gruppeoverskrifterne i sidebaren. */
 export const GRUPPE_ORDEN = ["faelles", "drift", "admin", "hjaelp"];
@@ -106,6 +107,7 @@ export const NAV = [
   {
     key: "fakturacenter", kraeverPerm: "fakturaer.laes", sti: "/oekonomi/fakturacenter",
     label: "Fakturaer & bilag", gruppe: "faelles",
+    fakturacenterSektioner: FAKTURACENTER_SEKTIONER,
     titel: "Fakturaer & bilag",
     under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
   },

@@ -2,6 +2,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
 import * as intakeDomæne from "../src/fleet/fakturacenter-intake.js";
+import {
+  afgrænsMassevalg,
+  filtrerOgSorterFakturaer,
+  gemPanelLayout,
+  læsPanelLayout,
+  nulstilPanelLayout,
+  opdaterMassevalg,
+  PANEL_LAYOUT_STORAGE_KEY,
+  STANDARD_PANEL_LAYOUT,
+  tilpasPanelLayout,
+  udledMatchvisning,
+} from "../src/moduler/oekonomi/fakturacenter-ui.js";
 
 import {
   accepterForretningsadvarsler,
@@ -61,6 +73,7 @@ import {
   DEMO_PROCURE_KILDE,
   DEMO_TENANT_ID,
   DEMO_VEYRO_MAIL,
+  opretSyntetiskTestfaktura,
 } from "../src/fleet/demo-fakturacenter-intake.js";
 
 const SHA = "a".repeat(64);
@@ -74,6 +87,243 @@ const handlingskontekst = (overrides = {}) => ({
   harModulSkriveadgang: true,
   destinationer: DEMO_DESTINATIONER,
   ...overrides,
+});
+
+const bygUiFaktura = ({
+  id,
+  nummer = `DEMO-${id}`,
+  modtagetMs,
+  placering = null,
+  kandidater = [],
+  fordelinger = [],
+  nettoOere = 10_000,
+  oprindelse = "ikke-placeret",
+  advarsler = [],
+  dubletstatus = "ingen",
+  fakturanummer = nummer,
+} = {}) => ({
+  id,
+  titel: `Scenarie ${id}`,
+  intake: { modtagetMs },
+  aflæsning: { original: { fakturanummer, leverandoernavn: `Leverandør ${id}` } },
+  match: { placering, kandidater, oprindelse, trin: placering ? "reference" : "ingen" },
+  faktura: { fakturaId: id, fakturanummer, nettoOere, fordelinger, uløsteAdvarsler: advarsler, dubletstatus },
+});
+
+describe("Fakturacenterets matchvisning, filtrering og massevalg", () => {
+  const rækker = [
+    bygUiFaktura({ id: "a", nummer: "SAMME-001", modtagetMs: 100, placering: { destinationId: "d1" } }),
+    bygUiFaktura({ id: "b", nummer: "SAMME-001", modtagetMs: 300, kandidater: [{ destinationId: "d2" }] }),
+    bygUiFaktura({ id: "c", modtagetMs: 200 }),
+  ];
+
+  test("skelner matchet, kandidat, manglende match og delvis fordeling", () => {
+    assert.equal(udledMatchvisning(rækker[0]).id, "matchet");
+    assert.equal(udledMatchvisning(rækker[1]).id, "vaelg-match");
+    assert.equal(udledMatchvisning(rækker[2]).id, "mangler-match");
+    assert.equal(udledMatchvisning(bygUiFaktura({
+      id: "split", kandidater: [{ destinationId: "d1" }],
+      fordelinger: [{ fordelingId: "f1", nettoOere: 4_000 }],
+    })).id, "delvist-fordelt");
+  });
+
+  test("match med advarsel beholder både match og særskilt blokering", () => {
+    const visning = udledMatchvisning(bygUiFaktura({
+      id: "advarsel", placering: { destinationId: "d1" },
+      oprindelse: "automatisk-placeret", advarsler: ["leverandoer-afviger"],
+    }));
+    assert.equal(visning.id, "matchet");
+    assert.equal(visning.forklaring, "Eksakt reference");
+    assert.equal(visning.problem.label, "Advarsel");
+  });
+
+  test("to ens fakturanumre markeres uafhængigt med stabile interne id'er", () => {
+    let valgte = opdaterMassevalg([], "a", true);
+    valgte = opdaterMassevalg(valgte, "b", true);
+    assert.deepEqual(valgte, ["a", "b"]);
+    assert.deepEqual(opdaterMassevalg(valgte, "a", false), ["b"]);
+  });
+
+  test("matchfiltre og stabile sorteringer giver forventet listesæt", () => {
+    assert.deepEqual(filtrerOgSorterFakturaer(rækker, {
+      søgning: "", matchfilter: "matchet", sortering: "nyeste",
+    }).map(({ id }) => id), ["a"]);
+    assert.deepEqual(filtrerOgSorterFakturaer(rækker, {
+      søgning: "", matchfilter: "alle", sortering: "nyeste",
+    }).map(({ id }) => id), ["b", "c", "a"]);
+    assert.deepEqual(filtrerOgSorterFakturaer(rækker, {
+      søgning: "", matchfilter: "alle", sortering: "matchede-foerst",
+    }).map(({ id }) => id), ["a", "b", "c"]);
+    assert.deepEqual(filtrerOgSorterFakturaer(rækker, {
+      søgning: "", matchfilter: "alle", sortering: "uafklarede-foerst",
+    }).map(({ id }) => id), ["b", "c", "a"]);
+  });
+
+  test("massemål afgrænses til hele det filtrerede listesæt, ikke scrollviewporten", () => {
+    assert.deepEqual(afgrænsMassevalg(["a", "b", "skjult"], rækker.map(({ id }) => id)), ["a", "b"]);
+  });
+});
+
+describe("Fakturacenterets versionsmærkede panellayout", () => {
+  test("gyldigt layout gendannes og ugyldigt lagerindhold falder sikkert tilbage", () => {
+    assert.deepEqual(læsPanelLayout({ getItem: () => JSON.stringify({
+      version: 1, listeProcent: 27, dokumentProcent: 55,
+    }) }), { version: 1, listeProcent: 27, dokumentProcent: 55 });
+    assert.deepEqual(læsPanelLayout({ getItem: () => "{ugyldig" }), STANDARD_PANEL_LAYOUT);
+    assert.deepEqual(læsPanelLayout({ getItem: () => JSON.stringify({
+      version: 2, listeProcent: 99, dokumentProcent: "bred",
+    }) }), STANDARD_PANEL_LAYOUT);
+    assert.deepEqual(læsPanelLayout({ getItem: () => { throw new Error("lukket"); } }), STANDARD_PANEL_LAYOUT);
+  });
+
+  test("gemmer kun versionsmærkede layouttal og tåler utilgængeligt browserlager", () => {
+    const kald = [];
+    assert.equal(gemPanelLayout({ setItem: (...args) => kald.push(args) }, {
+      version: 1, listeProcent: 25, dokumentProcent: 51,
+    }), true);
+    assert.equal(kald[0][0], PANEL_LAYOUT_STORAGE_KEY);
+    assert.deepEqual(JSON.parse(kald[0][1]), { version: 1, listeProcent: 25, dokumentProcent: 51 });
+    assert.equal(gemPanelLayout({ setItem: () => { throw new Error("lukket"); } }, STANDARD_PANEL_LAYOUT), false);
+  });
+
+  test("panelbredder klemmes til anvendelige desktopgrænser og kan nulstilles", () => {
+    assert.deepEqual(tilpasPanelLayout({
+      version: 1, listeProcent: 5, dokumentProcent: 95,
+    }, 1120), { version: 1, listeProcent: 21, dokumentProcent: 63 });
+    assert.deepEqual(nulstilPanelLayout(), STANDARD_PANEL_LAYOUT);
+  });
+});
+
+describe("Fakturacenterets panel- og valgwiring", () => {
+  test("rækkevalg rydder ikke massevalg, mens filter og sektion har særskilte rydningsveje", () => {
+    const kilde = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
+    const rækkeKlik = kilde.match(/aria-label=\{`Åbn[\s\S]*?\}\}>/)?.[0] || "";
+    assert.doesNotMatch(rækkeKlik, /rydMassevalg/);
+    assert.match(kilde, /Matchfilter/);
+    assert.match(kilde, /Sortering/);
+  });
+
+  test("begge separatorer har pointer capture, tastatursemantik og nulstilling", () => {
+    const kilde = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8")
+      + readFileSync("src/moduler/oekonomi/FakturacenterWorkspace.jsx", "utf8");
+    const separatorkilde = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
+    assert.equal((kilde.match(/<PanelSeparator/g) || []).length, 2);
+    assert.match(separatorkilde, /role="separator"/);
+    assert.match(separatorkilde, /aria-orientation="vertical"/);
+    assert.match(kilde, /setPointerCapture/);
+    assert.match(kilde, /onPointerCancel/);
+    assert.match(kilde, /Nulstil panelbredder/);
+  });
+});
+
+describe("sammenhængende lokalt Fakturacenter-flow", () => {
+  test("en særskilt handling opretter en ærligt mærket syntetisk testsag", () => {
+    const resultat = opretSyntetiskTestfaktura({ sekvens: 7, modtagetMs: NU });
+    assert.equal(resultat.ok, true);
+    assert.equal(resultat.scenarie.prototypeOprindelse, "syntetisk-testfixture");
+    assert.equal(resultat.scenarie.intake.modtagetMs, NU);
+    assert.equal(resultat.scenarie.aflæsning.parser.metode, "syntetisk-deterministisk");
+    assert.equal(resultat.scenarie.sektion, intakeDomæne.INDBAKKE_SEKTION.indbakke);
+    assert.equal(resultat.scenarie.match.oprindelse, intakeDomæne.MATCH_OPRINDELSE.automatisk);
+    assert.notEqual(resultat.scenarie.faktura.fakturaId, scenarie(1).faktura.fakturaId);
+  });
+
+  test("en ufuldstændig split kan gemmes lokalt og færdiggøres før kontrol", () => {
+    const grundlag = structuredClone(scenarie(12).faktura);
+    const første = intakeDomæne.opdatérFordeling(grundlag, grundlag.fordelinger,
+      handlingskontekst({ tidspunktMs: NU }));
+    assert.equal(første.ok, true);
+    assert.equal(første.fordeling.ok, false);
+    assert.equal(første.fordeling.fejl, TEKNISK_FEJLKODE.ufuldstændigFordeling);
+
+    const fuld = grundlag.fordelinger.map((post, index) => index === 1
+      ? { ...post, nettoOere: post.nettoOere + 1 } : post);
+    const anden = intakeDomæne.opdatérFordeling(første.faktura, fuld,
+      handlingskontekst({ tidspunktMs: NU + 1 }));
+    assert.equal(anden.ok, true);
+    assert.equal(anden.fordeling.ok, true);
+    assert.equal(anden.faktura.historik.at(-1).handling, "fordeling-rettet");
+  });
+
+  test("rettelse, kontrol, genåbning og ny kontrol giver ét nettobidrag", () => {
+    const start = structuredClone(scenarie(11));
+    const rettet = retAflæsning(start.aflæsning, {
+      fakturanummer: "DEMO-FLOW-RETTET",
+    }, handlingskontekst({ tidspunktMs: NU }));
+    assert.equal(rettet.ok, true);
+    assert.equal(rettet.aflæsning.original.fakturanummer,
+      start.aflæsning.original.fakturanummer);
+    assert.equal(effektivAflæsning(rettet.aflæsning).fakturanummer,
+      "DEMO-FLOW-RETTET");
+
+    const første = markérKontrolleret(start.faktura,
+      handlingskontekst({ tidspunktMs: NU + 1 }));
+    assert.equal(første.ok, true);
+    assert.equal(kontrolleretOmkostning([første.faktura]), start.faktura.nettoOere);
+
+    const genåbnet = genåbnFaktura(første.faktura,
+      handlingskontekst({ tidspunktMs: NU + 2, begrundelse: "Syntetisk rettelse" }));
+    assert.equal(genåbnet.ok, true);
+    assert.equal(kontrolleretOmkostning([genåbnet.faktura]), 0);
+
+    const anden = markérKontrolleret(genåbnet.faktura,
+      handlingskontekst({ tidspunktMs: NU + 3 }));
+    assert.equal(anden.ok, true);
+    assert.equal(kontrolleretOmkostning([anden.faktura]), start.faktura.nettoOere);
+    assert.deepEqual(anden.faktura.historik.map((post) => post.handling), [
+      "markeret-kontrolleret", "genaabnet", "markeret-kontrolleret",
+    ]);
+  });
+
+  test("tre leverandøropgaver kræver valg, mens dublet og lukket mål forbliver blokeret", () => {
+    const flere = structuredClone(scenarie(6));
+    assert.equal(flere.match.kandidater.length, 3);
+    assert.equal(flere.match.placering, null);
+    const valgt = intakeDomæne.vælgManuelDestination(flere.faktura,
+      flere.match.kandidater[1], handlingskontekst({ tidspunktMs: NU }));
+    assert.equal(valgt.ok, true);
+    assert.equal(valgt.faktura.matchOprindelse, intakeDomæne.MATCH_OPRINDELSE.manuel);
+
+    const dublet = markérKontrolleret(structuredClone(scenarie(14).faktura),
+      handlingskontekst({ tidspunktMs: NU + 1 }));
+    assert.equal(dublet.ok, false);
+    assert.ok(dublet.blokeringer.includes("DUPLICATE_UNRESOLVED"));
+
+    const lukket = structuredClone(scenarie(13));
+    const lukketValg = intakeDomæne.vælgManuelDestination(lukket.faktura,
+      lukket.match.kandidater[0], handlingskontekst({ tidspunktMs: NU + 2 }));
+    assert.equal(lukketValg.ok, false);
+    assert.equal(lukketValg.fejl, TEKNISK_FEJLKODE.lukketDestination);
+  });
+
+  test("kreditnota modregnes først efter kontrol, og blandet massehandling bevarer afvisning", () => {
+    const kredit = structuredClone(scenarie(15).faktura);
+    assert.equal(kontrolleretOmkostning([kredit]), 0);
+    const kontrolleret = markérKontrolleret(kredit,
+      handlingskontekst({ tidspunktMs: NU }));
+    assert.equal(kontrolleret.ok, true);
+    assert.equal(kontrolleretOmkostning([kontrolleret.faktura]), kredit.nettoOere);
+
+    const masse = structuredClone(scenarie(20).masseEksempel);
+    const ider = masse.map((post) => post.fakturaId);
+    const resultat = masseKontrollér(masse, ider,
+      () => handlingskontekst({ tidspunktMs: NU + 1 }), { synligeIder: ider });
+    assert.deepEqual(resultat.resultater.map((post) => post.ok), [true, false]);
+  });
+
+  test("UI adskiller filmetadata fra syntetisk fixture og forbinder flowhandlingerne", () => {
+    const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
+    const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
+    const workspace = readFileSync("src/moduler/oekonomi/FakturacenterWorkspace.jsx", "utf8");
+    const samlet = ui + dele + workspace;
+    assert.match(samlet, /Indlæs syntetisk testfaktura/);
+    assert.match(samlet, /Ret syntetiske oplysninger/);
+    assert.match(samlet, /Fordel hele netto/);
+    assert.match(samlet, /Fordel ligeligt på matchkandidater/);
+    assert.match(samlet, /nulstilles ved genindlæsning/i);
+    assert.match(samlet, /vilkårlig lokal fil[\s\S]*ingen\s+fakturaoplysninger/i);
+    assert.doesNotMatch(workspace, /af 20/i);
+  });
 });
 
 describe("negative regressionsprober fra kvalitetsreviewet", () => {
@@ -940,13 +1190,14 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
     const workspace = readFileSync("src/moduler/oekonomi/FakturacenterWorkspace.jsx", "utf8");
+    const uiHjælpere = readFileSync("src/moduler/oekonomi/fakturacenter-ui.js", "utf8");
     const kontrakt = readFileSync("src/fleet/fakturacenter-intake.js", "utf8");
     const samletUi = ui + dele + workspace;
     assert.match(samletUi, /Lokal prototype · kun syntetiske data/);
     assert.match(samletUi, /onDrop=/);
     assert.match(samletUi, /PDF · JPG\/JPEG · PNG · XML · OIOUBL/);
     assert.match(samletUi, /Markér som kontrolleret/);
-    for (const sektion of ["Ny i indbakken", "Kræver behandling", "Til kontrol",
+    for (const sektion of ["Indbakke", "Kræver behandling", "Til kontrol",
       "Kontrollerede", "Mail og forbindelser", "Arkiv"]) {
       assert.match(samletUi + kontrakt, new RegExp(sektion));
     }
@@ -957,12 +1208,15 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.match(samletUi, /aria-pressed=/);
     assert.match(samletUi, /aria-selected=/);
     assert.match(samletUi, /aria-live="polite"/);
-    assert.doesNotMatch(samletUi, /URL\.createObjectURL|localStorage|sessionStorage/);
+    assert.doesNotMatch(samletUi, /URL\.createObjectURL|sessionStorage/);
+    assert.match(uiHjælpere, /veyro:fakturacenter:panel-layout:v1/);
+    const lagerblok = uiHjælpere.match(/export function gemPanelLayout[\s\S]*?\n}/)?.[0] || "";
+    assert.doesNotMatch(lagerblok, /fakturaId|filmetadata|historik|massemarkering/);
   });
 
   test("navigationen har præcis de seks aftalte sektioner", () => {
     assert.deepEqual(FAKTURACENTER_SEKTIONER.map(({ label }) => label), [
-      "Ny i indbakken",
+      "Indbakke",
       "Kræver behandling",
       "Til kontrol",
       "Kontrollerede",
@@ -971,10 +1225,43 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     ]);
   });
 
+  test("de seks sektioner har én fælles sidebar-navigation", () => {
+    const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
+    const shell = readFileSync("src/fleet/AppShell.jsx", "utf8");
+    const nav = readFileSync("src/fleet/nav.js", "utf8");
+    assert.match(nav, /fakturacenterSektioner:\s*FAKTURACENTER_SEKTIONER/);
+    assert.ok(shell.includes("aria-label={`Fold Fakturacentersektioner"));
+    assert.match(shell, /aria-expanded=\{undermenuAaben\}/);
+    assert.match(shell, /aria-current=\{aktivFakturacenterSektion === sektion\.id \? "page" : undefined\}/);
+    assert.doesNotMatch(ui, /<Sektionsnavigation\b/);
+    assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
+  });
+
+  test("modtagelse ligger i en dialog og ikke i venstre arbejdsliste", () => {
+    const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
+    const venstreKolonne = ui.match(/<aside className="fic-inbox"[\s\S]*?<\/aside>/)?.[0] || "";
+    assert.match(ui, />Modtag faktura<\/button>/);
+    assert.match(ui, /<Dialog[\s\S]*?<Filmodtagelse/);
+    assert.doesNotMatch(venstreKolonne, /<Filmodtagelse/);
+    assert.match(ui, /setModtagAaben\(false\)/);
+    assert.match(ui, /event\.key !== "Tab"/);
+    assert.match(ui, /closest\("\[role='dialog'\]"\)/);
+    assert.match(ui, /modtagKnapRef\.current\?\.focus\(\)/);
+  });
+
+  test("sektionsskift bruger URL som fælles autoritet og rydder kun massevalg", () => {
+    const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
+    assert.match(ui, /useSearchParams\(\)/);
+    assert.match(ui, /const skiftSektion = \(id\) =>/);
+    assert.match(ui, /setSearchParams/);
+    assert.match(ui, /rydMassevalg\(\)/);
+    assert.doesNotMatch(ui, /const \[sektion, setSektion\] = useState/);
+  });
+
   test("arbejdslisten har fast markeringskolonne, ens kortbredde og betinget handlingslinje", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const css = readFileSync("src/moduler/oekonomi/FakturacenterIntake.css", "utf8");
-    assert.match(ui, /valgteTilMasse\.length > 0 &&/);
+    assert.match(ui, /aktiveValgte\.length > 0 &&/);
     assert.match(ui, /Markér valgte som kontrolleret/);
     assert.match(ui, /Ryd valg/);
     assert.match(ui, /title=\{scenarie\.titel\}/);
@@ -986,16 +1273,14 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.fic-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\);/);
   });
 
-  test("alle sektioner forklarer formål og prototypegrænse", () => {
+  test("sektionsformål bevares uden den permanente informationsbjælke", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
-    for (const tekst of [
-      "Fluebenet alene ændrer ingen status",
-      "Dubletter, ulæselige dokumenter og uafklarede match",
-      "Kontrol er ikke betalingsgodkendelse eller bogføring",
-      "Låste fakturaer tæller som faktiske omkostninger",
-      "Opsætning · ikke et behandlingstrin",
-      "Permanent opbevaring er ikke implementeret",
-    ]) assert.ok(ui.includes(tekst), `Mangler sektionsforklaring: ${tekst}`);
+    const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
+    assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
+    assert.match(ui, /Fluebenet vælger kun til denne massehandling/);
+    assert.match(ui, /Kontrol er ikke betalingsgodkendelse eller bogføring/);
+    assert.match(dele, /Valgfri integration · deaktiveret/);
+    assert.match(dele, /Permanent opbevaring er ikke implementeret/);
   });
 
   test("arbejdsbordet har en isoleret viewportkontrakt og tre interne scrollområder", () => {
@@ -1005,7 +1290,8 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.match(ui, /className="fic-workbench"/);
     assert.match(css, /#root:has\(\.fic-shell\)[^{]*\{[^}]*height:\s*100dvh;[^}]*overflow:\s*hidden;/s);
     assert.match(css, /\.fic-shell\s*\{[^}]*height:\s*100%;[^}]*grid-template-rows:[^;]*minmax\(0,\s*1fr\);[^}]*overflow:\s*hidden;/s);
-    assert.match(css, /\.fic-workspace\s*\{[^}]*grid-template-columns:\s*minmax\([^)]*\)\s+minmax\(0,\s*1fr\);[^}]*height:\s*100%;/s);
+    assert.match(css, /\.fic-workspace\s*\{[^}]*grid-template-columns:[^;]*var\(--fic-list-width[^;]*8px[^;]*minmax\(0,\s*1fr\);/s);
+    assert.match(css, /\.fic-workspace\s*\{[^}]*height:\s*100%;/s);
     assert.match(css, /\.fic-inbox-list\s*\{[^}]*overflow-y:\s*auto;/s);
     assert.match(css, /\.fic-document-panel[^}]*overflow-y:\s*auto;/s);
     assert.match(css, /\.fic-review-panel[^}]*overflow-y:\s*auto;/s);
