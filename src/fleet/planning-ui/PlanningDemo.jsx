@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LOESNINGSFORSLAGSTATUS, MOBILEVENTTYPE, REFERENCEART, REGELNIVEAU,
   TILDELINGSMETODE, aendrSkabelonStopvarighed, deaktiverSkabelonStop,
@@ -7,26 +7,39 @@ import {
 import { opretPlanningUiFixtures } from "./demo-planning-ui.js";
 import PlanningIntake, { ExecutionMobilePreview } from "./PlanningIntake.jsx";
 import PlanningOptimization from "./PlanningOptimization.jsx";
+import PlanningScheduling from "./PlanningScheduling.jsx";
+import PlanningCustomerConfirmation from "./PlanningCustomerConfirmation.jsx";
 import VeyroLogo from "./VeyroLogo.jsx";
+import { DagensDrift, LivekalenderReference, filtrerReferenceRuter, referenceRutenavn } from "./PlanningOperations.jsx";
+import { mobilHandlingerFor } from "./planning-ui-copy.js";
+import { markerNotifikationLaest, opretDemoPlanlaegning } from "../planning-scheduling/index.js";
 import {
-  DAG_SLUT_MIN, DAG_START_MIN, RAEKKEVISNING,
-  VISNING, afvigelsesniveau, afvisForslag, anvendGodkendtForslag,
-  beregnSkabelonResume, dashboardNoegletal, danskDato, filtrerRuter,
-  forslagForRute, godkendForslag, grupperKalender, minutTilTid, msTilTid,
+  RAEKKEVISNING, VISNING, afvigelsesniveau, afvisForslag,
+  anvendGodkendtForslag, beregnSkabelonResume,
+  forslagForRute, godkendForslag, minutTilTid, msTilTid,
   nytSkabelonStop, opretSyntetiskMobilevent, redigerForslag,
   ruteDatagrundlag, ruteTidsresume, skiftStandardTildeling,
-  synkroniserOfflineEvent, tidslinjeSegmenter,
+  synkroniserOfflineEvent,
 } from "./planning-ui-model.js";
 
 const NAVIGATION = [
-  [VISNING.OVERBLIK, "Dagens overblik", "⌂"],
-  [VISNING.OPGAVER, "Opgaver", "☷"],
-  [VISNING.OPTIMERING, "Optimering", "↝"],
-  [VISNING.KALENDER, "Livekalender", "▦"],
-  [VISNING.FASTE_RUTER, "Faste ruter", "↻"],
-  [VISNING.MOBIL, "Mobilvisning", "▯"],
+  [VISNING.OVERBLIK, "Dagens drift", "overview"],
+  [VISNING.KALENDER, "Livekalender", "calendar"],
+  [VISNING.OPGAVER, "Opgaver", "tasks"],
+  [VISNING.PLANLAEGNING, "Planlægning", "calendar"],
+  [VISNING.OPTIMERING, "Optimering", "route"],
+  [VISNING.FASTE_RUTER, "Faste ruter", "repeat"],
+  ["ressourcer", "Ressourcer", "people"],
+  ["rapporter", "Rapporter", "report"],
+  [VISNING.MOBIL, "Mobilvisning", "mobile"],
 ];
 const TYPENAVNE = { service: "Service", hjemmepleje: "Hjemmepleje", transport: "Transport", renovation: "Renovation" };
+
+function opretReferenceFixtures() {
+  const fixtures = opretPlanningUiFixtures();
+  const afvigelser = { "ui-rute-transport": 8, "ui-rute-service": 27 };
+  return { ...fixtures, ruter: fixtures.ruter.map((rute) => ({ ...rute, afvigelseMin: afvigelser[rute.id] || 0 })) };
+}
 
 function Statusmaerke({ niveau, children, title }) {
   return <span className="pu-badge" data-tone={niveau} title={title}>{children}</span>;
@@ -36,214 +49,40 @@ function Ikon({ children }) {
   return <span className="pu-icon" aria-hidden="true">{children}</span>;
 }
 
-function GlobalFiltre({ filtre, setFiltre, ruter, medarbejdere, koeretoejer }) {
-  return (
-    <div className="pu-filters" aria-label="Filtre">
-      <label>Status
-        <select value={filtre.status} onChange={(event) => setFiltre((nu) => ({ ...nu, status: event.target.value }))}>
-          <option value="alle">Alle statusser</option>
-          <option value="normal">Normal</option>
-          <option value="advarsel">Advarsel</option>
-          <option value="kritisk">Kritisk</option>
-          <option value="konflikt">Datakonflikt</option>
-        </select>
-      </label>
-      <label>Rute
-        <select value={filtre.ruteId} onChange={(event) => setFiltre((nu) => ({ ...nu, ruteId: event.target.value }))}>
-          <option value="">Alle ruter</option>
-          {ruter.map((rute) => <option key={rute.id} value={rute.id}>{rute.navn}</option>)}
-        </select>
-      </label>
-      <label>Medarbejder
-        <select value={filtre.medarbejderId} onChange={(event) => setFiltre((nu) => ({ ...nu, medarbejderId: event.target.value }))}>
-          <option value="">Alle medarbejdere</option>
-          {medarbejdere.map((person) => <option key={person.id} value={person.id}>{person.navn}</option>)}
-        </select>
-      </label>
-      <label>Køretøj
-        <select value={filtre.koeretoejId} onChange={(event) => setFiltre((nu) => ({ ...nu, koeretoejId: event.target.value }))}>
-          <option value="">Alle køretøjer</option>
-          <option value="uden">Uden køretøj</option>
-          {koeretoejer.map((bil) => <option key={bil.id} value={bil.id}>{bil.navn}</option>)}
-        </select>
-      </label>
-      <button className="pu-btn pu-btn-quiet" type="button" onClick={() => setFiltre({ status: "alle", ruteId: "", medarbejderId: "", koeretoejId: "" })}>Nulstil</button>
-    </div>
-  );
+function DagensOverblik(props) {
+  return <DagensDrift {...props} />;
 }
 
-function KpiKort({ label, vaerdi, note, tone = "neutral", ikon }) {
-  return (
-    <article className="pu-kpi" data-tone={tone}>
-      <div className="pu-kpi-icon"><Ikon>{ikon}</Ikon></div>
-      <div><span>{label}</span><strong>{vaerdi}</strong><small>{note}</small></div>
-    </article>
-  );
+function Livekalender(props) {
+  return <LivekalenderReference {...props} />;
 }
 
-function SkematiskKort({ ruter, valgtRuteId, onVaelg }) {
-  return (
-    <section className="pu-card pu-map-card" aria-labelledby="kort-titel">
-      <div className="pu-card-head">
-        <div><span className="pu-eyebrow">Syntetisk ruteområde</span><h2 id="kort-titel">Driftens geografiske spredning</h2></div>
-        <Statusmaerke niveau="neutral" title="Skematisk visning uden kortleverandør">Ikke vejberegnet</Statusmaerke>
-      </div>
-      <div className="pu-map-wrap">
-        <svg className="pu-map" viewBox="0 0 100 100" role="img" aria-label="Skematisk kort med syntetiske rutepunkter">
-          <path className="pu-map-river" d="M8 79 C 24 54, 37 69, 48 42 S 77 19, 94 30" />
-          <path className="pu-map-road" d="M5 32 L93 83 M18 8 L68 95 M2 61 L96 53" />
-          {ruter.map((rute, indeks) => (
-            <g key={rute.id} className="pu-map-route" data-selected={rute.id === valgtRuteId} onClick={() => onVaelg(rute.id)} role="button" tabIndex="0" aria-label={`Åbn ${rute.navn}`} onKeyDown={(event) => { if (event.key === "Enter") onVaelg(rute.id); }}>
-              <polyline points={rute.kortRute.map((punkt) => `${punkt.x},${punkt.y}`).join(" ")} />
-              {rute.kortRute.map((punkt, stopIndeks) => <circle key={`${rute.id}-${stopIndeks}`} cx={punkt.x} cy={punkt.y} r={stopIndeks === rute.gennemfoert ? 2.4 : 1.5} />)}
-              <text x={rute.kortRute[0].x + 2} y={rute.kortRute[0].y - 2}>{indeks + 1}</text>
-            </g>
-          ))}
-        </svg>
-        <div className="pu-map-note"><strong>Visuel demo</strong><span>Punkter og linjer er syntetiske og viser ikke præcise veje eller positioner.</span></div>
-      </div>
-    </section>
-  );
-}
-
-function DagensOverblik({ ruter, filtreredeRuter, ikkeTildelte, medarbejdere, koeretoejer, indstillinger, aabnRute, aabnForslag }) {
-  const noegletal = dashboardNoegletal(ruter, ikkeTildelte, indstillinger);
-  const handlinger = [
-    ...ruter.filter((rute) => afvigelsesniveau(rute, indstillinger) !== "normal").map((rute) => ({ id: rute.id, rute, tone: afvigelsesniveau(rute, indstillinger), titel: rute.datakonflikt ? "Mobilstatus og OBD afviger" : `${Math.abs(rute.afvigelseMin)} min. afvigelse`, tekst: rute.navn })),
-    ...ikkeTildelte.map((opgave) => ({ id: opgave.id, tone: "advarsel", titel: "Ikke tildelt", tekst: `${opgave.navn} · ${opgave.tidsvindue}` })),
-  ];
-  return (
-    <div className="pu-view" data-view="overblik">
-      <div className="pu-view-title"><div><span className="pu-eyebrow">Driftsbillede · {danskDato()}</span><h1>Dagens overblik</h1><p>Et roligt øjebliksbillede af ruter, afvigelser og datakvalitet.</p></div></div>
-      <div className="pu-kpi-grid">
-        <KpiKort label="Opgaver i dag" vaerdi={noegletal.opgaver} note="40 planlagte · 1 åben" ikon="✓" />
-        <KpiKort label="Ruter i dag" vaerdi={noegletal.ruter} note="2 faste ruter" ikon="↝" />
-        <KpiKort label="Gennemførte stop" vaerdi={noegletal.gennemfoerte} note="Bekræftet via mobil" tone="ok" ikon="✓" />
-        <KpiKort label="Aktive ruter" vaerdi={noegletal.aktive} note="Lige nu i demoen" tone="info" ikon="▶" />
-        <KpiKort label="Ikke tildelt" vaerdi={noegletal.ikkeTildelte} note="Kræver disponering" tone="warn" ikon="!" />
-        <KpiKort label="Væsentlig afvigelse" vaerdi={noegletal.vaesentligAfvigelse} note="Efter aktive grænser" tone="warn" ikon="↗" />
-        <KpiKort label="Ruter uden OBD" vaerdi={noegletal.udenObd} note="Planlægning fortsætter" ikon="○" />
-        <KpiKort label="Kræver handling" vaerdi={noegletal.kraeverHandling} note="Forsinkelse eller konflikt" tone="bad" ikon="!" />
-      </div>
-      <div className="pu-dashboard-grid">
-        <section className="pu-card pu-actions" aria-labelledby="handling-titel">
-          <div className="pu-card-head"><div><span className="pu-eyebrow">Prioriteret kø</span><h2 id="handling-titel">Kræver handling</h2></div><span className="pu-count">{handlinger.length}</span></div>
-          <div className="pu-action-list">
-            {handlinger.map((post) => (
-              <article key={post.id} className="pu-action" data-tone={post.tone}>
-                <span className="pu-action-dot" aria-hidden="true" />
-                <div><strong>{post.titel}</strong><span>{post.tekst}</span></div>
-                {post.rute && <button type="button" className="pu-link" onClick={() => post.tone === "kritisk" || post.tone === "konflikt" ? aabnForslag(post.rute.id) : aabnRute(post.rute.id)}>Åbn <span aria-hidden="true">→</span></button>}
-              </article>
-            ))}
-          </div>
-        </section>
-        <SkematiskKort ruter={filtreredeRuter} valgtRuteId={filtreredeRuter[0]?.id} onVaelg={aabnRute} />
-      </div>
-      <section className="pu-card pu-route-overview" aria-labelledby="ruteoversigt-titel">
-        <div className="pu-card-head"><div><span className="pu-eyebrow">{filtreredeRuter.length} af {ruter.length} ruter</span><h2 id="ruteoversigt-titel">Ruteoversigt</h2></div></div>
-        <div className="pu-table-wrap">
-          <table><thead><tr><th>Rute</th><th>Medarbejder</th><th>Køretøj</th><th>Fremdrift</th><th>Afvigelse</th><th>Datagrundlag</th><th><span className="pu-sr-only">Handling</span></th></tr></thead>
-            <tbody>{filtreredeRuter.map((rute) => {
-              const person = medarbejdere.find((post) => post.id === rute.medarbejderId);
-              const bil = koeretoejer.find((post) => post.id === rute.koeretoejId);
-              const data = ruteDatagrundlag(rute);
-              const niveau = afvigelsesniveau(rute, indstillinger);
-              return <tr key={rute.id} data-tone={niveau}><td><strong>{rute.navn}</strong><small>{TYPENAVNE[rute.rutetype]} · {rute.stop.length} stop</small></td><td>{person?.navn || "Ikke tildelt"}</td><td>{bil?.navn || "Intet køretøj"}</td><td>{rute.gennemfoert}/{rute.stop.length} stop</td><td><Statusmaerke niveau={niveau}>{rute.afvigelseMin > 0 ? "+" : ""}{rute.afvigelseMin} min.</Statusmaerke></td><td><Statusmaerke niveau={data.label === "Live OBD" ? "live" : data.label.includes("ikke") ? "stale" : "estimated"}>{data.label}</Statusmaerke></td><td><button className="pu-icon-btn" type="button" aria-label={`Åbn ${rute.navn} i livekalender`} onClick={() => aabnRute(rute.id)}>→</button></td></tr>;
-            })}</tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function KalenderForklaring({ indstillinger }) {
-  const graenser = indstillinger.model === "FAELLES"
-    ? `Aktive grænser: advarsel ${indstillinger.faelles.advarselMin} min. · kritisk ${indstillinger.faelles.kritiskMin} min.`
-    : `Aktive grænser: ${Object.entries(indstillinger.prRutetype).map(([type, regel]) => `${TYPENAVNE[type] || type} ${regel.advarselMin}/${regel.kritiskMin} min.`).join(" · ")}`;
-  return (
-    <div className="pu-legend" aria-label="Kalenderforklaring">
-      {[["koersel", "Kørsel"], ["service", "Stop/service"], ["pause", "Pause"], ["ventetid", "Ventetid"], ["gennemfoert", "Gennemført"], ["estimated", "Estimeret"], ["live", "Live OBD"]].map(([tone, label]) => <span key={tone}><i data-tone={tone} />{label}</span>)}
-      <strong>{graenser}</strong>
-    </div>
-  );
-}
-
-function KalenderLanes({ rute, indstillinger, onAabnRute }) {
-  const segmenter = tidslinjeSegmenter(rute);
-  const resume = ruteTidsresume(rute);
-  const datagrundlag = ruteDatagrundlag(rute);
-  const niveau = afvigelsesniveau(rute, indstillinger);
-  const total = DAG_SLUT_MIN - DAG_START_MIN;
-  const position = (minut) => `${Math.max(0, Math.min(100, ((minut - DAG_START_MIN) / total) * 100))}%`;
-  return (
-    <button type="button" className="pu-calendar-lane" data-tone={niveau} onClick={() => onAabnRute(rute.id)} aria-label={`Åbn detaljer for ${rute.navn}`}>
-      <span className="pu-original-plan" title="Oprindeligt planlagt forløb" />
-      {segmenter.map((segment) => <span key={segment.id} className="pu-segment" data-kind={segment.art} data-status={segment.status || "planlagt"} data-critical={niveau === "kritisk" && segment.stopId === rute.stop[rute.gennemfoert]?.id} style={{ "--pu-left": position(segment.fraMinut), "--pu-width": segment.tilMinut == null ? "1.2%" : `${Math.max(0.7, ((segment.tilMinut - segment.fraMinut) / total) * 100)}%` }} title={`${segment.label} · ${minutTilTid(segment.fraMinut)}–${minutTilTid(segment.tilMinut)}`}><span>{segment.label}</span></span>)}
-      {rute.afvigelseMin !== 0 && <span className="pu-expected-line" style={{ "--pu-left": position((resume.slutMinut || rute.startMinut) + rute.afvigelseMin) }} title={`Senest beregnede forventning: ${minutTilTid((resume.slutMinut || rute.startMinut) + rute.afvigelseMin)}`} />}
-      {datagrundlag.senesteMobil && <span className="pu-progress-marker" data-source="mobil" style={{ "--pu-left": position(rute.stop.find((stop) => stop.id === datagrundlag.senesteMobil.stopforekomstId)?.forventetMinut || rute.startMinut) }} title={`Bekræftet mobilstatus ${msTilTid(datagrundlag.senesteMobil.mobilTidMs)}`}>M</span>}
-      {datagrundlag.fysiskPosition.kvalitet === "LIVE_OBD" && <span className="pu-progress-marker" data-source="obd" style={{ "--pu-left": position(rute.stop[Math.min(rute.gennemfoert, rute.stop.length - 1)].forventetMinut) }} title={`Frisk OBD ${msTilTid(datagrundlag.senesteObd.tidspunktMs)}`}>O</span>}
-      {!datagrundlag.harLiveObd && datagrundlag.forventet.stopforekomstId && <span className="pu-progress-marker" data-source="estimat" style={{ "--pu-left": position(rute.stop.find((stop) => stop.id === datagrundlag.forventet.stopforekomstId)?.forventetMinut || rute.startMinut) }} title="Estimeret fremdrift — ikke en liveposition">E</span>}
-      {!resume.komplet && <span className="pu-incomplete">Ufuldstændig: {resume.mangler.join(" · ")}</span>}
-    </button>
-  );
-}
-
-function KalenderIndhold({ ruter, medarbejdere, koeretoejer, indstillinger, raekkevisning, setRaekkevisning, onAabnRute, fullscreen, setFullscreen }) {
-  const grupperet = grupperKalender(ruter, raekkevisning, medarbejdere, koeretoejer);
-  const timer = Array.from({ length: 13 }, (_, indeks) => 6 + indeks);
-  const nuMinut = 9 * 60 + 42;
-  const nuPosition = `${((nuMinut - DAG_START_MIN) / (DAG_SLUT_MIN - DAG_START_MIN)) * 100}%`;
-  return (
-    <section className={`pu-card pu-calendar-card${fullscreen ? " pu-calendar-fullscreen" : ""}`} aria-label="Livekalender">
-      <div className="pu-calendar-toolbar">
-        <div className="pu-segmented" aria-label="Skift rækkevisning">
-          {Object.values(RAEKKEVISNING).map((mode) => <button type="button" key={mode} aria-pressed={raekkevisning === mode} onClick={() => setRaekkevisning(mode)}>{mode === "rute" ? "Rute" : mode === "medarbejder" ? "Medarbejder" : "Køretøj"}</button>)}
-        </div>
-        <button className="pu-btn" type="button" onClick={() => setFullscreen(!fullscreen)}>{fullscreen ? "Luk fuld skærm" : "Åbn i fuld skærm"}</button>
-      </div>
-      <KalenderForklaring indstillinger={indstillinger} />
-      <div className="pu-calendar-scroll" tabIndex="0" aria-label="Vandret kalender, kan rulles">
-        <div className="pu-calendar-grid">
-          <div className="pu-calendar-corner">{raekkevisning === "rute" ? "Rute" : raekkevisning === "medarbejder" ? "Medarbejder" : "Køretøj"}</div>
-          <div className="pu-calendar-hours">{timer.map((time) => <span key={time} style={{ "--pu-left": `${((time * 60 - DAG_START_MIN) / (DAG_SLUT_MIN - DAG_START_MIN)) * 100}%` }}>{String(time).padStart(2, "0")}.00</span>)}<i className="pu-now-line" style={{ "--pu-left": nuPosition }}><b>Nu 09.42</b></i></div>
-          {grupperet.raekker.map((raekke) => <div className="pu-calendar-row" key={raekke.id}><div className="pu-calendar-label"><strong>{raekke.label}</strong><span>{raekke.ruter.length} {raekke.ruter.length === 1 ? "rute" : "ruter"}</span></div><div className="pu-calendar-track">{raekke.ruter.map((rute) => <KalenderLanes key={rute.id} rute={rute} indstillinger={indstillinger} onAabnRute={onAabnRute} />)}<i className="pu-now-line" style={{ "--pu-left": nuPosition }} /></div></div>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Livekalender({ ruter, medarbejdere, koeretoejer, indstillinger, raekkevisning, setRaekkevisning, onAabnRute, fullscreen, setFullscreen }) {
-  return <div className="pu-view" data-view="kalender"><div className="pu-view-title"><div><span className="pu-eyebrow">Planlagt, bekræftet og forventet</span><h1>Livekalender</h1><p>Samme dagsdata grupperet efter rute, medarbejder eller køretøj.</p></div></div><KalenderIndhold {...{ ruter, medarbejdere, koeretoejer, indstillinger, raekkevisning, setRaekkevisning, onAabnRute, fullscreen, setFullscreen }} /></div>;
-}
-
-function RuteDetalje({ rute, medarbejdere, koeretoejer, indstillinger, harForslag, onClose, onForslag }) {
+function RuteDetalje({ rute, selectedStopId, medarbejdere, koeretoejer, indstillinger, harForslag, onClose, onForslag }) {
   if (!rute) return null;
   const data = ruteDatagrundlag(rute);
   const resume = ruteTidsresume(rute);
   const mobil = data.senesteMobil;
   const obd = data.senesteObd;
   return (
-    <div className="pu-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <aside className="pu-drawer" role="dialog" aria-modal="true" aria-labelledby="rutedetalje-titel">
+    <div className="pr-sidepanel-host">
+      <aside className="pu-drawer" role="complementary" aria-labelledby="rutedetalje-titel">
         <div className="pu-drawer-head"><div><span className="pu-eyebrow">Rutedetalje</span><h2 id="rutedetalje-titel">{rute.navn}</h2></div><button className="pu-icon-btn" type="button" aria-label="Luk rutedetalje" onClick={onClose}>×</button></div>
         <div className="pu-badge-row"><Statusmaerke niveau={afvigelsesniveau(rute, indstillinger)}>{rute.afvigelseMin > 0 ? "+" : ""}{rute.afvigelseMin} min.</Statusmaerke><Statusmaerke niveau={data.label === "Live OBD" ? "live" : data.label.includes("ikke") ? "stale" : "estimated"}>{data.label}</Statusmaerke>{rute.datakonflikt && <Statusmaerke niveau="konflikt">Mobilstatus og OBD afviger</Statusmaerke>}</div>
         <dl className="pu-detail-grid"><div><dt>Medarbejder</dt><dd>{medarbejdere.find((p) => p.id === rute.medarbejderId)?.navn}</dd></div><div><dt>Køretøj</dt><dd>{koeretoejer.find((b) => b.id === rute.koeretoejId)?.navn || "Intet køretøj"}</dd></div><div><dt>Start / slut</dt><dd>{rute.startsted} → {rute.slutsted}</dd></div><div><dt>Forventet slut</dt><dd>{resume.komplet ? minutTilTid(resume.slutMinut + rute.afvigelseMin) : "Ufuldstændig"}</dd></div></dl>
         <section className="pu-observation-tracks"><h3>Separate dataspor</h3><article><Ikon>▣</Ikon><div><strong>Mobil · arbejdsstatus</strong>{mobil ? <><span>{mobil.type === "ANKOMMET" ? "Ankommet" : "Afgået"} {msTilTid(mobil.mobilTidMs)}</span><small>Syntetisk GPS gemt · {mobil.synkroniseret ? "synkroniseret" : "offline"}</small></> : <span>Ingen mobilhændelse endnu</span>}</div></article><article><Ikon>◎</Ikon><div><strong>OBD · fysisk placering</strong>{obd ? <><span>{data.label} · {msTilTid(obd.tidspunktMs)}</span><small>Historisk observation bevares separat</small></> : <span>Ingen OBD — planlægning fortsætter via mobil og estimat</span>}</div></article></section>
         {rute.datakonflikt && <div className="pu-conflict-callout"><strong>Mobilstatus og OBD afviger</strong><p>Chaufføren har registreret ankomst kl. {msTilTid(mobil?.mobilTidMs)} og mobilens syntetiske GPS-position er gemt. OBD-observationen bekræfter ikke stopzonen. Det er en datakonflikt, ikke et bevis på fejl.</p></div>}
-        <div className="pu-stop-list"><h3>Stop og forventning</h3>{rute.stop.map((stop) => <div key={stop.id} data-status={stop.status}><span>{stop.status === "gennemfoert" ? "✓" : stop.status === "igang" ? "▶" : "○"}</span><div><strong>{stop.navn}</strong><small>{stop.adresse}</small></div><time>{minutTilTid(stop.planlagtMinut)} <b>→ {minutTilTid(stop.forventetMinut)}</b></time></div>)}</div>
+        <div className="pu-stop-list"><h3>Stop og forventning</h3>{rute.stop.map((stop) => <div key={stop.id} data-status={stop.status} data-selected={selectedStopId === stop.id}><span>{stop.status === "gennemfoert" ? "✓" : stop.status === "igang" ? "▶" : "○"}</span><div><strong>{stop.navn}</strong><small>{stop.adresse}</small></div><time>{minutTilTid(stop.planlagtMinut)} <b>→ {minutTilTid(stop.forventetMinut)}</b></time></div>)}</div>
         {harForslag && (afvigelsesniveau(rute, indstillinger) === "kritisk" || rute.datakonflikt) && <button className="pu-btn pu-btn-block" type="button" onClick={() => onForslag(rute.id)}>Åbn løsningsforslag</button>}
       </aside>
     </div>
   );
 }
 
-function ForslagPanel({ forslag, ruter, setForslag, setRuter, onClose }) {
+function ForslagPanel({ forslag, selectedStopId, ruter, medarbejdere, koeretoejer, setForslag, setRuter, onClose }) {
   const [valgtId, setValgtId] = useState(forslag[0]?.id || "");
   const [begrundelse, setBegrundelse] = useState("");
   const [besked, setBesked] = useState("");
+  const [redigering, setRedigering] = useState(false);
   const valgt = forslag.find((post) => post.id === valgtId) || forslag[0];
   if (!valgt) return null;
   const hard = valgt.regelbrud.some((brud) => brud.niveau === REGELNIVEAU.HARD);
@@ -254,24 +93,31 @@ function ForslagPanel({ forslag, ruter, setForslag, setRuter, onClose }) {
     setForslag((alle) => alle.map((post) => post.id === valgt.id ? resultat.forslag : post));
     const anvendt = anvendGodkendtForslag(ruter, resultat.forslag);
     if (anvendt.anvendt) setRuter(anvendt.ruter);
-    setBesked("Forslaget er godkendt og anvendt i den lokale demo. Ingen data er gemt eksternt.");
+    setBesked("Demoplanen er opdateret lokalt – intet er sendt eller gemt.");
   };
-  const afvis = () => { setForslag((alle) => alle.map((post) => post.id === valgt.id ? afvisForslag(post, begrundelse) : post)); setBesked("Forslaget er afvist i den lokale demo."); };
+  const afvis = () => { setForslag((alle) => alle.map((post) => post.id === valgt.id ? afvisForslag(post, begrundelse) : post)); onClose(); };
+  const beroertRute = ruter.find((rute) => rute.id === valgt.ruteId);
+  const medarbejder = medarbejdere.find((person) => person.id === beroertRute?.medarbejderId);
+  const koeretoej = koeretoejer.find((bil) => bil.id === beroertRute?.koeretoejId);
+  const valgtStop = beroertRute?.stop.find((stop) => stop.id === selectedStopId) || beroertRute?.stop[0];
   return (
-    <div className="pu-overlay" role="presentation">
-      <aside className="pu-drawer pu-proposal" role="dialog" aria-modal="true" aria-labelledby="forslag-titel">
-        <div className="pu-drawer-head"><div><span className="pu-eyebrow">Deterministiske demo-fixtures</span><h2 id="forslag-titel">Redigerbart løsningsforslag</h2></div><button className="pu-icon-btn" type="button" aria-label="Luk løsningsforslag" onClick={onClose}>×</button></div>
+    <div className="pr-sidepanel-host">
+      <aside className="pu-drawer pu-proposal" role="complementary" aria-labelledby="forslag-titel">
+        <div className="pu-drawer-head"><div><span className="pu-eyebrow">Deterministiske demo-fixtures</span><h2 id="forslag-titel">Forslag til løsning</h2></div><button className="pu-icon-btn" type="button" aria-label="Luk løsningsforslag" onClick={onClose}>×</button></div>
+        <div className="pr-proposal-route"><div><Statusmaerke niveau={hard ? "kritisk" : "normal"}>{beroertRute?.afvigelseMin ? `+${beroertRute.afvigelseMin} min` : "Lokal demo"}</Statusmaerke><strong>{beroertRute ? referenceRutenavn(beroertRute) : "Berørt rute"}</strong><small>{medarbejder?.navn?.replace("Demo ", "").replace(" Fiktiv", "") || "Ikke tildelt"} · {koeretoej?.navn.split(" · ")[0] || "Intet køretøj"}</small>{valgtStop && <em>Valgt stop: {valgtStop.navn} · {minutTilTid(valgtStop.forventetMinut)}</em>}</div></div>
         <div className="pu-proposal-tabs">{forslag.map((post, indeks) => <button key={post.id} type="button" aria-pressed={post.id === valgt.id} onClick={() => { setValgtId(post.id); setBesked(""); }}>{indeks + 1}. {post.titel}</button>)}</div>
         <div className="pu-proposal-intro"><Statusmaerke niveau={hard ? "kritisk" : "normal"}>{hard ? "Hårdt regelbrud" : "Gyldigt alternativ"}</Statusmaerke><h3>{valgt.titel}</h3><p>{valgt.forklaring}</p><small>{valgt.datagrundlag} · Ikke solver-output</small></div>
         {hard && <div className="pu-hard-rule"><strong>Kan ikke godkendes</strong><p>{valgt.regelbrud.map((brud) => brud.tekst).join(" · ")}</p></div>}
-        <div className="pu-form-grid">
+        {redigering && <div className="pu-form-grid">
           <label>Målrute<select value={valgt.foreslaaedeAendringer[0]?.maalRuteId || ""} onChange={(event) => opdater({ foreslaaedeAendringer: [{ ...valgt.foreslaaedeAendringer[0], maalRuteId: event.target.value }] })}>{ruter.filter((rute) => rute.id !== valgt.ruteId).map((rute) => <option key={rute.id} value={rute.id}>{rute.navn}</option>)}</select></label>
           <label>Forventet forskydning (min.)<input type="number" min="0" max="120" value={valgt.forventetAendringMin} onChange={(event) => opdater({ forventetAendringMin: Number(event.target.value) })} /></label>
           <label className="pu-span-2">Begrundelse<textarea value={begrundelse} onChange={(event) => setBegrundelse(event.target.value)} placeholder="Skriv en lokal demo-begrundelse" /></label>
-        </div>
+        </div>}
         <section className="pu-consequence"><h3>Konsekvens</h3><div><span>Berørte stop<strong>{valgt.berørteStopIder.length}</strong></span><span>Ændret kørsel<strong>+{valgt.ekstraKoeretidMin} min.</strong></span><span>Forventet tidsændring<strong>{valgt.forventetAendringMin} min.</strong></span><span>Tidsvinduer<strong>{hard ? "1 brud" : "Ingen hårde brud"}</strong></span></div></section>
+        {beroertRute && <section className="pr-proposal-sequence"><h3>Opdateret stoprækkefølge</h3><ol>{beroertRute.stop.slice(0, 4).map((stop, indeks) => <li key={stop.id} data-changed={indeks === 2}><b>{indeks + 1}</b><span><strong>{stop.navn}</strong><small>{minutTilTid(stop.forventetMinut)} · {indeks === 2 ? "Påvirkes af forslaget" : "Uændret"}</small></span></li>)}</ol></section>}
         {besked && <div className="pu-inline-message" role="status">{besked}</div>}
-        <div className="pu-drawer-actions"><button className="pu-btn pu-btn-quiet" type="button" onClick={afvis}>Afvis forslag</button><button className="pu-btn" type="button" disabled={hard || valgt.status === LOESNINGSFORSLAGSTATUS.GODKENDT} title={hard ? "Forslaget bryder et HARD-krav" : "Kræver begrundelse og disponentgodkendelse"} onClick={godkend}>{valgt.status === LOESNINGSFORSLAGSTATUS.GODKENDT ? "Godkendt" : "Godkend ændring"}</button></div>
+        <div className="pu-drawer-actions"><button className="pu-btn pu-btn-quiet" type="button" aria-pressed={redigering} onClick={() => setRedigering((nu) => !nu)}>Redigér forslag</button><button className="pu-btn pu-btn-quiet" type="button" onClick={afvis}>Afvis</button><button className="pu-btn" type="button" disabled={hard || valgt.status === LOESNINGSFORSLAGSTATUS.GODKENDT} title={hard ? "Forslaget bryder et HARD-krav" : "Kræver disponentgodkendelse"} onClick={godkend}>{valgt.status === LOESNINGSFORSLAGSTATUS.GODKENDT ? "Godkendt" : "Godkend ændring"}</button></div>
+        <p className="pr-proposal-footnote">Intet sendes uden disponentens godkendelse. Denne handling er kun lokal demo.</p>
       </aside>
     </div>
   );
@@ -327,12 +173,15 @@ function Mobilvisning({ ruter, setRuter, medarbejdere, onAabnKalender }) {
   const [offline, setOffline] = useState(false);
   const [besked, setBesked] = useState("");
   const valgteStop = rute.stop.find((stop) => stop.id === stopId) || naesteStop;
-  const senesteLokale = [...rute.mobilevents].sort((a, b) => a.mobilTidMs - b.mobilTidMs).at(-1);
-  const kanAfgang = senesteLokale?.stopforekomstId === valgteStop.id && senesteLokale.type === MOBILEVENTTYPE.ANKOMMET;
+  const stophaendelser = [...rute.mobilevents].filter((event) => event.stopforekomstId === valgteStop.id).sort((a, b) => a.mobilTidMs - b.mobilTidMs);
+  const senesteLokale = stophaendelser.at(-1);
+  const kanStart = !senesteLokale;
+  const kanAfgang = senesteLokale?.type === MOBILEVENTTYPE.ANKOMMET;
+  const handlinger = mobilHandlingerFor(rute, valgteStop);
   const registrer = (type, konflikt = false) => {
     const event = opretSyntetiskMobilevent({ rute, stopId: valgteStop.id, medarbejderId: rute.medarbejderId, type, offline, indeks: rute.mobilevents.length });
     setRuter((alle) => alle.map((post) => post.id === rute.id ? { ...post, mobilevents: [...post.mobilevents, event], datakonflikt: konflikt || post.datakonflikt, gennemfoert: type === MOBILEVENTTYPE.AFGAAET ? Math.min(post.stop.length, post.gennemfoert + 1) : post.gennemfoert } : post));
-    setBesked(`${type === MOBILEVENTTYPE.ANKOMMET ? "Ankomst" : "Afgang"} registreret kl. ${msTilTid(event.mobilTidMs)} med syntetisk GPS · ${offline ? "ligger offline" : "synkroniseret"}.`);
+    setBesked(`${type === MOBILEVENTTYPE.ANKOMMET ? handlinger.startet : handlinger.afsluttet} – ${msTilTid(event.mobilTidMs)} · syntetisk GPS · ${offline ? "ligger offline" : "synkroniseret"}.`);
   };
   const fremkaldKonflikt = () => {
     const konfliktRute = ruter.find((post) => post.id === "ui-rute-service");
@@ -346,7 +195,7 @@ function Mobilvisning({ ruter, setRuter, medarbejdere, onAabnKalender }) {
     <div className="pu-view" data-view="mobil"><div className="pu-view-title"><div><span className="pu-eyebrow">Smal lokal arbejdsgang</span><h1>Mobilvisning</h1><p>Ingen rigtig GPS, baggrundssporing eller ekstern synkronisering.</p></div></div>
       <div className="pu-mobile-workspace">
         <section className="pu-card pu-mobile-controls"><h2>Demosimulator</h2><label>Medarbejder<select value={medarbejderId} onChange={(event) => { setMedarbejderId(event.target.value); setValgtRuteId(""); }}>{medarbejdere.map((person) => <option key={person.id} value={person.id}>{person.navn}</option>)}</select></label><label>Rute<select value={rute.id} onChange={(event) => { setValgtRuteId(event.target.value); const ny = ruter.find((post) => post.id === event.target.value); setStopId(ny.stop[Math.min(ny.gennemfoert, ny.stop.length - 1)].id); }}>{medarbejderRuter.map((post) => <option key={post.id} value={post.id}>{post.navn}</option>)}</select></label><label>Næste stop<select value={valgteStop.id} onChange={(event) => setStopId(event.target.value)}>{rute.stop.map((stop) => <option key={stop.id} value={stop.id}>{stop.navn}</option>)}</select></label><label className="pu-check"><input type="checkbox" checked={offline} onChange={(event) => setOffline(event.target.checked)} /> Simulér forsinket/offline synkronisering</label><button className="pu-btn pu-btn-quiet" type="button" onClick={fremkaldKonflikt}>Fremkald mobil/OBD-uoverensstemmelse</button>{besked && <div className="pu-inline-message" role="status">{besked}</div>}</section>
-        <div><section className="pu-phone" aria-label="Mobilprototype"><div className="pu-phone-top"><span>Veyro Planning</span><Statusmaerke niveau={rute.planAendret ? "advarsel" : "normal"}>{rute.planAendret ? "Plan ændret" : "Plan ajour"}</Statusmaerke></div><div className="pu-phone-body"><span className="pu-eyebrow">Næste stop · {rute.navn}</span><h2>{valgteStop.navn}</h2><p>{valgteStop.adresse}</p><div className="pu-mobile-time"><span><small>Planlagt</small><strong>{minutTilTid(valgteStop.planlagtMinut)}</strong></span><span><small>Forventet</small><strong>{minutTilTid(valgteStop.forventetMinut)}</strong></span><span><small>Varighed</small><strong>{valgteStop.varighedMin} min.</strong></span></div><div className="pu-sync-state"><span className="pu-action-dot" /><div><strong>{offline ? "Offline demo" : "Synkroniseret"}</strong><small>Syntetiske positionsdata</small></div></div><div className="pu-mobile-buttons"><button type="button" onClick={() => registrer(MOBILEVENTTYPE.ANKOMMET)}>Ankommet</button><button type="button" disabled={!kanAfgang} title={!kanAfgang ? "Registrér ankomst til dette stop først" : "Registrér afgang"} onClick={() => registrer(MOBILEVENTTYPE.AFGAAET)}>Afgået</button></div><button className="pu-link pu-phone-link" type="button" onClick={() => onAabnKalender(rute.id)}>Se i livekalender →</button><div className="pu-mobile-events"><h3>Seneste hændelser</h3>{[...rute.mobilevents].reverse().slice(0, 4).map((event) => <article key={event.id}><span>{event.type === "ANKOMMET" ? "↓" : "↑"}</span><div><strong>{event.type === "ANKOMMET" ? "Ankommet" : "Afgået"} · {msTilTid(event.mobilTidMs)}</strong><small>{event.synkroniseret ? "Synkroniseret" : "Offline · afventer"}</small></div>{!event.synkroniseret && <button type="button" onClick={() => synkroniser(event.id)}>Synkronisér</button>}</article>)}</div></div></section><ExecutionMobilePreview /></div>
+        <div><section className="pu-phone" aria-label="Mobilprototype"><div className="pu-phone-top"><span>Veyro Planning</span><Statusmaerke niveau={rute.planAendret ? "advarsel" : "normal"}>{rute.planAendret ? "Plan ændret" : "Plan ajour"}</Statusmaerke></div><div className="pu-phone-body"><span className="pu-eyebrow">Næste stop · {rute.navn}</span><h2>{valgteStop.navn}</h2><p>{valgteStop.adresse}</p><div className="pu-mobile-time"><span><small>Planlagt</small><strong>{minutTilTid(valgteStop.planlagtMinut)}</strong></span><span><small>Forventet</small><strong>{minutTilTid(valgteStop.forventetMinut)}</strong></span><span><small>Varighed</small><strong>{valgteStop.varighedMin} min.</strong></span></div><div className="pu-sync-state"><span className="pu-action-dot" /><div><strong>{offline ? "Offline demo" : "Synkroniseret"}</strong><small>Syntetiske positionsdata</small></div></div><small className="pu-mobile-action-context">Handlingerne registrerer {handlinger.betydning} lokalt</small><div className="pu-mobile-buttons"><button type="button" disabled={!kanStart} title={!kanStart ? "Opgaven er allerede startet eller afsluttet" : handlinger.start} onClick={() => registrer(MOBILEVENTTYPE.ANKOMMET)}>{handlinger.start}</button><button type="button" disabled={!kanAfgang} title={!kanAfgang ? "Registrér Start først" : handlinger.afslut} onClick={() => registrer(MOBILEVENTTYPE.AFGAAET)}>{handlinger.afslut}</button></div><button className="pu-link pu-phone-link" type="button" onClick={() => onAabnKalender(rute.id)}>Se i livekalender →</button><div className="pu-mobile-events"><h3>Seneste hændelser</h3>{[...rute.mobilevents].reverse().slice(0, 4).map((event) => { const stop = rute.stop.find((post) => post.id === event.stopforekomstId); const tekster = mobilHandlingerFor(rute, stop); return <article key={event.id}><span aria-hidden="true">{event.type === "ANKOMMET" ? "↓" : "↑"}</span><div><strong>{event.type === "ANKOMMET" ? tekster.startet : tekster.afsluttet} · {msTilTid(event.mobilTidMs)}</strong><small>{tekster.betydning} · {event.synkroniseret ? "Synkroniseret" : "Offline · afventer"}</small></div>{!event.synkroniseret && <button type="button" onClick={() => synkroniser(event.id)}>Synkronisér</button>}</article>; })}</div></div></section><ExecutionMobilePreview /></div>
       </div>
     </div>
   );
@@ -359,9 +208,37 @@ function Indstillingsdialog({ indstillinger, setIndstillinger, onClose }) {
   );
 }
 
+function PlatformIcon({ name }) {
+  const icons = {
+    overview: <path d="M4 13h6V4H4zM14 20h6V11h-6zM4 20h6v-3H4zM14 7h6V4h-6z" />,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></>,
+    tasks: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2" /></>,
+    route: <><circle cx="5" cy="5" r="2" /><circle cx="19" cy="7" r="2" /><circle cx="8" cy="19" r="2" /><path d="M7 5h4c4 0 4 2 4 4v3c0 3-2 5-5 5H8" /></>,
+    repeat: <><path d="M20 7h-9a7 7 0 0 0-7 7" /><path d="m17 4 3 3-3 3M4 17h9a7 7 0 0 0 7-7" /><path d="m7 20-3-3 3-3" /></>,
+    people: <><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2" /><path d="M3 21c0-5 2-8 6-8s6 3 6 8M15 14c4 0 6 2 6 7" /></>,
+    report: <path d="M5 20V10M12 20V4M19 20v-7" />,
+    mobile: <><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></>,
+    chevron: <path d="m9 6 6 6-6 6" />,
+    menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+    search: <><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></>,
+    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    help: <><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.2.9-1.2 1.8M12 17h.01"/></>,
+  };
+  return <svg className="pr-icon" viewBox="0 0 24 24" aria-hidden="true">{icons[name] || icons.overview}</svg>;
+}
+
+function IkkeTilsluttetVisning({ title, text }) {
+  return <div className="pu-view pr-placeholder"><section className="pu-card"><span>Planning Basic</span><h1>{title}</h1><p>{text}</p><strong>Lokal prototype · ingen ekstern integration</strong></section></div>;
+}
+
 export default function PlanningDemo() {
-  const fixtures = useMemo(() => opretPlanningUiFixtures(), []);
-  const [visning, setVisning] = useState(VISNING.OVERBLIK);
+  const fixtures = useMemo(() => opretReferenceFixtures(), []);
+  const urlState = useMemo(() => {
+    if (typeof window === "undefined") return { view: null, calendarOnly: false, customerOnly: false };
+    const params = new URLSearchParams(window.location.search);
+    return { view: params.get("view"), calendarOnly: params.get("calendarOnly") === "1", customerOnly: params.get("customerOnly") === "1", taskId: params.get("taskId"), proposalId: params.get("proposalId"), version: params.get("version") };
+  }, []);
+  const [visning, setVisning] = useState([VISNING.PLANLAEGNING, VISNING.OPGAVER].includes(urlState.view) ? urlState.view : VISNING.OVERBLIK);
   const [ruter, setRuter] = useState(fixtures.ruter);
   const [forslag, setForslag] = useState(fixtures.forslag);
   const [skabeloner, setSkabeloner] = useState(fixtures.ruteskabeloner);
@@ -371,31 +248,111 @@ export default function PlanningDemo() {
   const [raekkevisning, setRaekkevisning] = useState(RAEKKEVISNING.RUTE);
   const [fullscreen, setFullscreen] = useState(false);
   const [valgtRuteId, setValgtRuteId] = useState(null);
+  const [valgtStopId, setValgtStopId] = useState(null);
+  const [detaljeAaben, setDetaljeAaben] = useState(false);
   const [forslagAaben, setForslagAaben] = useState(false);
   const [indstillingerAabne, setIndstillingerAabne] = useState(false);
   const [planlaegningspulje, setPlanlaegningspulje] = useState([]);
-  const filtreredeRuter = filtrerRuter(ruter, filtre, indstillinger);
+  const [ugeplan, setUgeplan] = useState(() => opretDemoPlanlaegning());
+  const ugeplanRef = useRef(ugeplan);
+  const channelRef = useRef(null);
+  const [liveFlerdagsruteId, setLiveFlerdagsruteId] = useState(null);
+  const [planningMenuAaben, setPlanningMenuAaben] = useState(true);
+  const [sidebarLukket, setSidebarLukket] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches);
+  const [topSoegning, setTopSoegning] = useState("");
+  const [notifikationerAabne, setNotifikationerAabne] = useState(false);
+  const [hjaelpAaben, setHjaelpAaben] = useState(false);
+  const opdaterUgeplan = (updater) => setUgeplan((current) => {
+    const next = typeof updater === "function" ? updater(current) : updater;
+    ugeplanRef.current = next;
+    channelRef.current?.postMessage({ type: "PLANNING_WEEK_STATE", payload: next });
+    return next;
+  });
+  const filtreredeRuter = filtrerReferenceRuter(ruter, filtre, indstillinger);
   const valgtRute = ruter.find((rute) => rute.id === valgtRuteId);
-  const datagrundlag = filtreredeRuter.some((rute) => ruteDatagrundlag(rute).harLiveObd) ? "OBD + mobil + estimat" : "Mobil + estimat";
-  const filtertekst = Object.values(filtre).some(Boolean) && filtre.status !== "alle" ? `${filtreredeRuter.length} filtrerede ruter` : filtre.ruteId || filtre.medarbejderId || filtre.koeretoejId ? `${filtreredeRuter.length} filtrerede ruter` : "Alle ruter";
-  const aabnRute = (ruteId) => { setValgtRuteId(ruteId); setVisning(VISNING.KALENDER); };
+  const gaaTil = (nyVisning) => { setVisning(nyVisning); setDetaljeAaben(false); setForslagAaben(false); };
+  const vaelgRute = (ruteId) => { setValgtRuteId(ruteId); setValgtStopId(null); setDetaljeAaben(false); setForslagAaben(false); };
+  const aabnRute = (ruteId) => { setValgtRuteId(ruteId); setValgtStopId(null); setVisning(VISNING.KALENDER); setDetaljeAaben(false); setForslagAaben(false); };
+  const aabnKalenderElement = (ruteId, stopId = null) => {
+    setValgtRuteId(ruteId);
+    setValgtStopId(stopId);
+    if (forslagForRute(forslag, ruteId).length) { setForslagAaben(true); setDetaljeAaben(false); }
+    else { setDetaljeAaben(true); setForslagAaben(false); }
+  };
   const aabnForslag = (ruteId) => {
     setValgtRuteId(ruteId);
+    setValgtStopId(null);
+    setVisning(VISNING.KALENDER);
+    setDetaljeAaben(false);
     if (forslagForRute(forslag, ruteId).length) setForslagAaben(true);
-    else setVisning(VISNING.KALENDER);
+    else setDetaljeAaben(true);
+  };
+  const nulstilDemo = () => {
+    const frisk = opretReferenceFixtures();
+    setRuter(frisk.ruter); setForslag(frisk.forslag); setSkabeloner(frisk.ruteskabeloner);
+    setSkabelonKoeretider(frisk.skabelonKoeretider); setIndstillinger(frisk.afvigelsesindstillinger);
+    setFiltre({ status: "alle", ruteId: "", medarbejderId: "", koeretoejId: "" });
+    setRaekkevisning(RAEKKEVISNING.RUTE); setValgtRuteId(null); setValgtStopId(null); setDetaljeAaben(false); setForslagAaben(false);
+    opdaterUgeplan({ ...opretDemoPlanlaegning(), revision: ugeplanRef.current.revision + 1 }); setLiveFlerdagsruteId(null);
+  };
+  const ulæsteNotifikationer = (ugeplan.notifications || []).filter((item) => !item.read);
+  const aabnNotifikation = (notification) => {
+    const placement = ugeplan.placements.find((item) => item.taskId === notification.taskId);
+    const readState = markerNotifikationLaest(ugeplan, notification.id);
+    opdaterUgeplan({ ...readState, selectedTaskId: notification.taskId, focusRequest: { token: `notification-focus-${notification.id}-${readState.revision}`, taskId: notification.taskId, placementId: placement?.id || null, date: placement?.date || notification.date || null, resourceId: placement?.resourceId || notification.resourceId || null }, revision: readState.revision + 1 });
+    setVisning(VISNING.PLANLAEGNING); setNotifikationerAabne(false);
   };
   useEffect(() => {
-    const luk = (event) => { if (event.key === "Escape") { setFullscreen(false); setValgtRuteId(null); setForslagAaben(false); setIndstillingerAabne(false); } };
+    const luk = (event) => { if (event.key === "Escape") { setFullscreen(false); setDetaljeAaben(false); setForslagAaben(false); setIndstillingerAabne(false); } };
     window.addEventListener("keydown", luk);
     return () => window.removeEventListener("keydown", luk);
   }, []);
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return undefined;
+    const channel = new BroadcastChannel("veyro-planning-week-demo");
+    channelRef.current = channel;
+    channel.onmessage = (event) => {
+      if (event.data?.type === "PLANNING_WEEK_REQUEST") channel.postMessage({ type: "PLANNING_WEEK_STATE", payload: ugeplanRef.current });
+      if (event.data?.type === "PLANNING_WEEK_STATE" && event.data.payload?.revision >= ugeplanRef.current.revision) { ugeplanRef.current = event.data.payload; setUgeplan(event.data.payload); }
+    };
+    channel.postMessage({ type: "PLANNING_WEEK_REQUEST" });
+    return () => { channelRef.current = null; channel.close(); };
+  }, []);
+  if (urlState.customerOnly) return <PlanningCustomerConfirmation state={ugeplan} setState={opdaterUgeplan} taskId={urlState.taskId} requestedProposalId={urlState.proposalId} requestedVersion={urlState.version} />;
+  if (urlState.calendarOnly) return <main className="ps-standalone-calendar" id="planning-indhold"><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); }} /></main>;
   return (
-    <div className="pu-app">
+    <div className={`pu-app pr-platform${sidebarLukket ? " pr-sidebar-collapsed" : ""}`}>
       <a className="pu-skip" href="#planning-indhold">Gå til indhold</a>
-      <aside className="pu-sidebar"><div className="pu-brand"><VeyroLogo variant="sidebar" /><small>Planning Basic</small></div><nav aria-label="Planning-demo navigation">{NAVIGATION.map(([id, label, ikon]) => <button type="button" key={id} aria-current={visning === id ? "page" : undefined} onClick={() => setVisning(id)}><Ikon>{ikon}</Ikon><span>{label}</span></button>)}</nav><div className="pu-sidebar-note"><Statusmaerke niveau="estimated">Demodata</Statusmaerke><p>Lokal prototype uden persistence og eksterne tjenester.</p></div></aside>
-      <div className="pu-shell"><header className="pu-topbar"><div className="pu-context"><Statusmaerke niveau="demo">Syntetiske demodata</Statusmaerke><span><b>Dato</b> 18. maj 2032</span><span><b>Opdateret</b> 09.42</span><span><b>Filter</b> {visning === VISNING.OPGAVER ? "Opgaveindbakke" : visning === VISNING.OPTIMERING ? "Dagsoptimering" : filtertekst}</span><span><b>Datagrundlag</b> {visning === VISNING.OPGAVER ? "Lokal intake" : visning === VISNING.OPTIMERING ? "Syntetisk matrix" : datagrundlag}</span></div>{![VISNING.OPGAVER, VISNING.OPTIMERING].includes(visning) && <button className="pu-btn pu-btn-quiet" type="button" onClick={() => setIndstillingerAabne(true)}>⚙ Afvigelsesgrænser</button>}</header>{![VISNING.OPGAVER, VISNING.OPTIMERING].includes(visning) && <div className="pu-filterbar"><GlobalFiltre {...{ filtre, setFiltre, ruter, medarbejdere: fixtures.medarbejdere, koeretoejer: fixtures.koeretoejer }} /></div>}<main id="planning-indhold">{visning === VISNING.OVERBLIK && <DagensOverblik ruter={ruter} filtreredeRuter={filtreredeRuter} ikkeTildelte={fixtures.ikkeTildelte} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} aabnRute={aabnRute} aabnForslag={aabnForslag} />}{visning === VISNING.OPGAVER && <PlanningIntake planlaegningspulje={planlaegningspulje} setPlanlaegningspulje={setPlanlaegningspulje} />}{visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}{visning === VISNING.KALENDER && <Livekalender ruter={filtreredeRuter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} onAabnRute={(id) => setValgtRuteId(id)} fullscreen={fullscreen} setFullscreen={setFullscreen} />}{visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}{visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}</main></div>
-      {valgtRute && !forslagAaben && <RuteDetalje rute={valgtRute} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} harForslag={forslagForRute(forslag, valgtRute.id).length > 0} onClose={() => setValgtRuteId(null)} onForslag={aabnForslag} />}
-      {forslagAaben && <ForslagPanel forslag={forslagForRute(forslag, valgtRuteId)} ruter={ruter} setForslag={setForslag} setRuter={setRuter} onClose={() => setForslagAaben(false)} />}
+      <aside className="pu-sidebar pr-sidebar">
+        <div className="pu-brand"><VeyroLogo variant="sidebar" /><small>Planning</small></div>
+        <button type="button" className="pr-sidebar-toggle" onClick={() => setSidebarLukket((nu) => !nu)} aria-label={sidebarLukket ? "Udvid sidemenu" : "Fold sidemenu sammen"}><PlatformIcon name="menu" /></button>
+        <button type="button" className="pr-module-toggle" aria-expanded={planningMenuAaben} onClick={() => setPlanningMenuAaben((nu) => !nu)}><PlatformIcon name="calendar" /><span>Planning</span><PlatformIcon name="chevron" /></button>
+        {planningMenuAaben && <nav aria-label="Planning navigation">{NAVIGATION.map(([id, label, icon]) => <button type="button" key={id} aria-label={label} aria-current={visning === id ? "page" : undefined} onClick={() => gaaTil(id)}><PlatformIcon name={icon} /><span>{label}</span></button>)}</nav>}
+        <div className="pr-platform-links" aria-label="Andre Veyro-moduler"><span>Platform</span>{["FLEET", "Workforce", "Fakturacenter"].map((label) => <button type="button" key={label} disabled title="Ikke tilgængelig i den isolerede Planning-demo">{label}</button>)}</div>
+        <div className="pu-sidebar-note"><Statusmaerke niveau="estimated">Syntetisk demo</Statusmaerke><p>Ingen eksterne tjenester eller persistence.</p><button type="button" onClick={nulstilDemo}>Nulstil demodata</button></div>
+      </aside>
+      <div className="pu-shell">
+        <header className="pu-topbar pr-topbar">
+          <button type="button" className="pr-mobile-menu" onClick={() => setSidebarLukket((nu) => !nu)} aria-label="Vis eller skjul menu"><PlatformIcon name="menu" /></button>
+          <label className="pr-global-search"><PlatformIcon name="search" /><span className="pu-sr-only">Søg i Planning</span><input value={topSoegning} onChange={(event) => setTopSoegning(event.target.value)} placeholder="Søg i ruter, medarbejdere, køretøjer ..." /></label>
+          <div className="pr-user-area"><button type="button" className="pr-notification" aria-expanded={notifikationerAabne} onClick={() => setNotifikationerAabne((nu) => !nu)} aria-label={`Vis demo-notifikationer, ${ulæsteNotifikationer.length} ulæste`}><PlatformIcon name="bell" />{ulæsteNotifikationer.length > 0 && <b>{ulæsteNotifikationer.length}</b>}</button><button type="button" className="pr-help-button" aria-expanded={hjaelpAaben} onClick={() => setHjaelpAaben((nu) => !nu)} aria-label="Vis hjælp til Planning-demoen"><PlatformIcon name="help" /></button><span className="pr-user-avatar">ML</span><span><strong>Mette Larsen</strong><small>Disponent · demo</small></span></div>
+          {notifikationerAabne && <div className="pr-notifications" role="region" aria-label="Planning-notifikationer"><strong>{ulæsteNotifikationer.length} ulæste demo-notifikationer</strong>{(ugeplan.notifications || []).length === 0 ? <span>Ingen bekræftelser eller ændringsønsker endnu.</span> : (ugeplan.notifications || []).map((notification) => <button type="button" key={notification.id} data-read={notification.read} onClick={() => aabnNotifikation(notification)}><b>{notification.title}</b><span>{notification.text}</span><small>{notification.read ? "Læst" : "Ulæst"} · {notification.createdAt}</small></button>)}<span>Kun lokal syntetisk demo.</span></div>}
+          {hjaelpAaben && <div className="pr-help-popover" role="status"><strong>Planning-demo</strong><span>Alle handlinger er lokale og nulstilles ved genindlæsning.</span></div>}
+        </header>
+        <main id="planning-indhold">
+          {visning === VISNING.OVERBLIK && <DagensOverblik ruter={ruter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} onSelectRoute={vaelgRute} onOpenCalendar={aabnRute} onProposal={aabnForslag} />}
+          {visning === VISNING.KALENDER && <Livekalender ruter={filtreredeRuter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} selectedStopId={valgtStopId} onRoute={aabnKalenderElement} onProposal={aabnKalenderElement} fullscreen={fullscreen} setFullscreen={setFullscreen} flerdagsrute={ugeplan.multiDayRoutes.find((route) => route.id === liveFlerdagsruteId) || null} />}
+          <section hidden={visning !== VISNING.OPGAVER}><PlanningIntake planlaegningspulje={planlaegningspulje} setPlanlaegningspulje={setPlanlaegningspulje} /></section>
+          <section hidden={visning !== VISNING.PLANLAEGNING}><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly={urlState.calendarOnly} onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); setVisning(VISNING.KALENDER); }} /></section>
+          {visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}
+          {visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}
+          {visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}
+          {visning === "ressourcer" && <IkkeTilsluttetVisning title="Ressourcer" text="Ressourcevisningen forberedes til Fleet- og Workforce-adaptere; denne lokale demo ændrer ingen stamdata." />}
+          {visning === "rapporter" && <IkkeTilsluttetVisning title="Rapporter" text="Rapporter er ikke en del af denne visuelle etape. Ingen data eksporteres eller gemmes." />}
+        </main>
+      </div>
+      {valgtRute && detaljeAaben && !forslagAaben && <RuteDetalje rute={valgtRute} selectedStopId={valgtStopId} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} harForslag={forslagForRute(forslag, valgtRute.id).length > 0} onClose={() => setDetaljeAaben(false)} onForslag={aabnForslag} />}
+      {forslagAaben && <ForslagPanel forslag={forslagForRute(forslag, valgtRuteId)} selectedStopId={valgtStopId} ruter={ruter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} setForslag={setForslag} setRuter={setRuter} onClose={() => setForslagAaben(false)} />}
       {indstillingerAabne && <Indstillingsdialog indstillinger={indstillinger} setIndstillinger={setIndstillinger} onClose={() => setIndstillingerAabne(false)} />}
     </div>
   );

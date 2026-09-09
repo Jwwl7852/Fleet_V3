@@ -57,6 +57,7 @@ function bygStop(rute, indeks, markoer) {
     stop: {
       id: `${rute.id}-stop-${indeks + 1}`,
       navn: `Fiktivt stop ${STOPNAVNE[indeks]}`,
+      ...(rute.rutetype === "transport" ? { stoptype: indeks % 2 === 0 ? "AFHENTNING" : "LEVERING" } : {}),
       adresse: `Testvej ${100 + nummer}, 0000 Demoby`,
       planlagtMinut, forventetMinut: planlagtMinut + rute.afvigelseMin,
       koerselFoerMin, ventetidMin, varighedMin,

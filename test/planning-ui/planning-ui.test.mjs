@@ -272,8 +272,10 @@ describe("Isolation, syntetiske data og fungerende UI-kontrakt", () => {
   });
 
   it("indeholder alle lokale visninger og aktive kontroltekster", () => {
-    const jsx = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningDemo.jsx"), "utf8");
-    for (const tekst of ["Dagens overblik", "Optimering", "Livekalender", "Faste ruter", "Mobilvisning", "Åbn i fuld skærm", "Ankommet", "Afgået", "Godkend ændring", "Afvis forslag"]) assert.match(jsx, new RegExp(tekst));
+    const demo = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningDemo.jsx"), "utf8");
+    const drift = readFileSync(resolve(rod, "src/fleet/planning-ui/PlanningOperations.jsx"), "utf8");
+    const jsx = `${demo}\n${drift}`;
+    for (const tekst of ["Dagens drift", "Optimering", "Livekalender", "Faste ruter", "Mobilvisning", "Fuld skærm", "Ankommet", "Afgået", "Godkend ændring", "Afvis"]) assert.match(jsx, new RegExp(tekst));
   });
 
   it("tilføjer opgaveindbakken uden at duplikere den eksisterende rute-UI", () => {

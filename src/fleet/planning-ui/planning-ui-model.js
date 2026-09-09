@@ -6,7 +6,7 @@ import {
   validerSkabelonTildeling,
 } from "../planning-basic-v2.js";
 
-export const VISNING = Object.freeze({ OVERBLIK: "overblik", OPGAVER: "opgaver", OPTIMERING: "optimering", KALENDER: "kalender", FASTE_RUTER: "faste-ruter", MOBIL: "mobil" });
+export const VISNING = Object.freeze({ OVERBLIK: "overblik", OPGAVER: "opgaver", PLANLAEGNING: "planlaegning", OPTIMERING: "optimering", KALENDER: "kalender", FASTE_RUTER: "faste-ruter", MOBIL: "mobil" });
 export const RAEKKEVISNING = Object.freeze({ RUTE: "rute", MEDARBEJDER: "medarbejder", KOERETOEJ: "koeretoej" });
 export const STATUSFILTER = Object.freeze({ ALLE: "alle", NORMAL: "normal", ADVARSEL: "advarsel", KRITISK: "kritisk", KONFLIKT: "konflikt" });
 export const DEMO_DATO = "2032-05-18";

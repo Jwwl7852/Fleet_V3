@@ -141,6 +141,7 @@ describe("Import- og sideeffektgrænser", () => {
     "src/fleet/planning-optimization/index.js", "src/fleet/planning-optimization/kontrakt.js",
     "src/fleet/planning-optimization/projektion.js", "src/fleet/planning-optimization/motor.js",
     "src/fleet/planning-optimization/demo-planning-optimization.js",
+    "src/fleet/planning-scheduling/index.js", "src/fleet/planning-scheduling/demo-planning-scheduling.js",
   ];
 
   const imports = (fil) => [...readFileSync(fil, "utf8").matchAll(/(?:from\s+|import\s+)["']([^"']+)["']/g)].map((m) => m[1]);
@@ -195,7 +196,7 @@ describe("Import- og sideeffektgrænser", () => {
     gaa(src);
     const nye = new Set(nyeFiler.map((f) => resolve(rod, f)));
     const erPlanningUi = (fil) => fil.replaceAll("\\", "/").includes("/src/fleet/planning-ui/");
-    const erRentPlanningLag = (fil) => /\/src\/fleet\/planning-(?:input|execution|optimization)\//.test(fil.replaceAll("\\", "/"));
+    const erRentPlanningLag = (fil) => /\/src\/fleet\/planning-(?:input|execution|optimization|scheduling)\//.test(fil.replaceAll("\\", "/"));
     const uiFiler = alle.filter(erPlanningUi);
     assert.ok(uiFiler.length > 0, "Planning-UI skal klassificeres som sit eget lag");
 
@@ -205,7 +206,7 @@ describe("Import- og sideeffektgrænser", () => {
 
     const erForbudtUiImport = (sti) => /fleet\.css|firebase|functions|permissions|booking-state/i.test(sti);
     const erTilladtUiImport = (sti) => sti === "react" || sti === "react-dom/client" || sti.startsWith("./")
-      || ["../planning-basic-v2.js", "../demo-planning-basic-v2.js", "../planning-input/index.js", "../planning-input/demo-planning-input.js", "../planning-execution/index.js", "../planning-execution/demo-planning-execution.js", "../planning-optimization/index.js"].includes(sti);
+      || ["../planning-basic-v2.js", "../demo-planning-basic-v2.js", "../planning-input/index.js", "../planning-input/demo-planning-input.js", "../planning-execution/index.js", "../planning-execution/demo-planning-execution.js", "../planning-optimization/index.js", "../planning-scheduling/index.js"].includes(sti);
     assert.equal(erForbudtUiImport("../fleet.css"), true);
     assert.equal(erForbudtUiImport("../firebase.js"), true);
     assert.equal(erForbudtUiImport("../permissions.js"), true);
@@ -214,6 +215,7 @@ describe("Import- og sideeffektgrænser", () => {
     assert.ok(uiFiler.some((fil) => imports(fil).includes("../planning-basic-v2.js")), "Planning-UI skal bruge den offentlige Planning-facade");
     assert.ok(uiFiler.some((fil) => imports(fil).includes("../planning-input/index.js")), "Planning-UI må bruge inputlagets offentlige facade");
     assert.ok(uiFiler.some((fil) => imports(fil).includes("../planning-optimization/index.js")), "Planning-UI må bruge optimeringslagets offentlige facade");
+    assert.ok(uiFiler.some((fil) => imports(fil).includes("../planning-scheduling/index.js")), "Planning-UI må bruge scheduling-lagets offentlige facade");
 
     for (const fil of uiFiler) {
       const kilde = readFileSync(fil, "utf8");
@@ -227,7 +229,7 @@ describe("Import- og sideeffektgrænser", () => {
     for (const fil of alle.filter(erRentPlanningLag)) {
       const kilde = readFileSync(fil, "utf8");
       assert.doesNotMatch(kilde, /from\s+["'][^"']*(react|firebase|permissions|booking-state|planning-ui)[^"']*["']/i, fil);
-      assert.doesNotMatch(kilde, /fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB|document\.|window\.|navigator\./i, fil);
+      assert.doesNotMatch(kilde, /\bfetch\s*\(|\b(?:XMLHttpRequest|WebSocket|EventSource|BroadcastChannel|localStorage|sessionStorage|indexedDB)\b|\b(?:document|window|navigator)\s*\./i, fil);
     }
 
     const uiSaet = new Set(uiFiler);
@@ -246,5 +248,45 @@ describe("Import- og sideeffektgrænser", () => {
       besoegt.add(fil);
     };
     for (const fil of uiFiler) gaaUi(fil);
+  });
+
+  it("håndhæver scheduling-lagets facade og negative arkitekturgrænser", () => {
+    const schedulingFiler = nyeFiler
+      .filter((fil) => fil.includes("planning-scheduling/"))
+      .map((fil) => resolve(rod, fil));
+    const erTilladtSchedulingUiImport = (sti) => sti === "../planning-scheduling/index.js";
+    const forbudtSchedulingKilde = /from\s+["'][^"']*(?:react|firebase|permissions|booking-state|planning-ui)[^"']*["']|\b(?:window|document|localStorage|sessionStorage|BroadcastChannel|indexedDB|navigator)\b|\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b|\b(?:Date\.now|Math\.random)\s*\(|\b(?:getDatabase|setDoc|addDoc|writeBatch|httpsCallable)\b/i;
+
+    assert.equal(erTilladtSchedulingUiImport("../planning-scheduling/index.js"), true);
+    assert.equal(erTilladtSchedulingUiImport("../planning-scheduling/demo-planning-scheduling.js"), false, "UI må ikke importere scheduling-undermoduler direkte");
+
+    const negativeEksempler = [
+      ["React-import", 'import React from "react";'],
+      ["browser-API", "const kanal = new BroadcastChannel('planning'); window.postMessage(kanal);"],
+      ["Firebase/persistence", 'import { setDoc } from "firebase/firestore";'],
+      ["netværk", "fetch('/planning'); new WebSocket('ws://planning.invalid');"],
+      ["tilbageimport til UI", 'import Panel from "../planning-ui/PlanningWorkPanel.jsx";'],
+    ];
+    for (const [navn, kilde] of negativeEksempler) {
+      assert.match(kilde, forbudtSchedulingKilde, `${navn} skal afvises af scheduling-grænsen`);
+    }
+
+    for (const fil of schedulingFiler) {
+      const kilde = readFileSync(fil, "utf8");
+      assert.doesNotMatch(kilde, forbudtSchedulingKilde, fil);
+      assert.doesNotMatch(kilde, /<\/?[A-Za-z][^>]*>/, `${fil} må ikke indeholde JSX`);
+      for (const imp of imports(fil)) {
+        assert.equal(imp.includes("planning-ui"), false, `${fil} må ikke importere Planning-UI`);
+      }
+    }
+
+    const uiSchedulingImports = readdirSync(resolve(rod, "src/fleet/planning-ui"))
+      .filter((navn) => /\.(?:js|jsx)$/.test(navn))
+      .flatMap((navn) => imports(resolve(rod, "src/fleet/planning-ui", navn)))
+      .filter((sti) => sti.includes("planning-scheduling"));
+    assert.ok(uiSchedulingImports.length > 0, "Planning-UI skal anvende scheduling-facaden");
+    for (const imp of uiSchedulingImports) {
+      assert.equal(erTilladtSchedulingUiImport(imp), true, `Direkte scheduling-undermodul er ikke tilladt: ${imp}`);
+    }
   });
 });

@@ -13,6 +13,8 @@ export const DUBLETTYPE = Object.freeze({ INGEN: "INGEN", SIKKER: "SIKKER", MULI
 export const DUBLETBESLUTNING = Object.freeze({ SPRING_OVER: "SPRING_OVER", ERSTAT_LOKAL: "ERSTAT_LOKAL", OPRET_ALLIGEVEL: "OPRET_ALLIGEVEL", BEHOLD_TIL_KONTROL: "BEHOLD_TIL_KONTROL" });
 export const IMPORTTRIN = Object.freeze({ KILDE: 1, RAA_DATA: 2, MAPPING: 3, VALIDERING: 4, FEJL_OG_DUBLETTER: 5, GODKENDELSE: 6 });
 export const IMPORTGRAENSER = Object.freeze({ MAKS_BYTES: 5 * 1024 * 1024, MAKS_RAEKKER: 10000, MAKS_FELTLAENGDE: 10000 });
+export const BESTILLINGSPERIODEART = Object.freeze({ DATO: "DATO", DATO_TID: "DATO_TID", TIDSVINDUE: "TIDSVINDUE", ISO_UGE: "ISO_UGE", DATO_INTERVAL: "DATO_INTERVAL", UDEN_DATO_OENSKE: "UDEN_DATO_OENSKE" });
+export const BESTILLINGSPERIODENIVEAU = Object.freeze({ OENSKET: "OENSKET", SKAL_OVERHOLDES: "SKAL_OVERHOLDES" });
 
 export const INPUTKODE = Object.freeze({
   FILTYPE_XLSX: "INPUT_FILTYPE_XLSX", FIL_FOR_STOR: "INPUT_FIL_FOR_STOR", FOR_MANGE_RAEKKER: "INPUT_FOR_MANGE_RAEKKER",
@@ -23,9 +25,16 @@ export const INPUTKODE = Object.freeze({
   ADRESSE_MANGLER: "INPUT_ADRESSE_MANGLER", LAND_MANGLER: "INPUT_LAND_MANGLER", RESSOURCE_UKENDT: "INPUT_RESSOURCE_UKENDT",
   DUBLET_BESLUTNING_MANGLER: "INPUT_DUBLET_BESLUTNING_MANGLER", IKKE_GODKENDT: "INPUT_IKKE_GODKENDT",
   UDFOERELSESKRAV_UGYLDIGT: "INPUT_UDFOERELSESKRAV_UGYLDIGT", UDFOERELSESSKABELON_UKENDT: "INPUT_UDFOERELSESSKABELON_UKENDT", KILDE_UGYLDIG: "INPUT_KILDE_UGYLDIG",
+  FLERSTOP_ID_MANGLER: "INPUT_FLERSTOP_ID_MANGLER", STOP_ID_MANGLER: "INPUT_STOP_ID_MANGLER",
+  STOP_ID_DUBLERET: "INPUT_STOP_ID_DUBLERET", STOPRAEKKEFOELGE_MANGLER: "INPUT_STOPRAEKKEFOELGE_MANGLER",
+  STOPRAEKKEFOELGE_UGYLDIG: "INPUT_STOPRAEKKEFOELGE_UGYLDIG", STOPRAEKKEFOELGE_DUBLERET: "INPUT_STOPRAEKKEFOELGE_DUBLERET",
+  AFHENTNING_EFTER_LEVERING: "INPUT_AFHENTNING_EFTER_LEVERING", BESTILLINGSPERIODE_UGYLDIG: "INPUT_BESTILLINGSPERIODE_UGYLDIG",
+  BESTILLINGSPERIODE_MODSTRIDENDE: "INPUT_BESTILLINGSPERIODE_MODSTRIDENDE",
 });
 
 export const KOLONNEFELTER = Object.freeze({
+  samletOpgaveId: ["samlet opgave-id", "samlet opgave id", "multi-stop task id", "multistop task id"],
+  stopId: ["stop-id", "stop id", "stop reference"], stopRaekkefoelge: ["stoprækkefølge", "stopraekkefoelge", "stop order", "sequence"],
   eksternReference: ["ekstern reference", "ekstern id", "external reference", "external id", "reference"],
   navn: ["opgavenavn", "opgave", "task name", "name"], type: ["opgavetype", "task type", "type"],
   kunde: ["kunde", "modtager", "customer", "recipient"], adresse: ["adresse", "address"],
@@ -33,8 +42,13 @@ export const KOLONNEFELTER = Object.freeze({
   dato: ["dato", "date"], tidsform: ["tidsform", "time type"], fastTid: ["fast tid", "fixed time"],
   vindueFra: ["tidsvindue fra", "window start", "fra"], vindueTil: ["tidsvindue til", "window end", "til"],
   deadline: ["deadline", "senest"], varighed: ["varighed", "stopvarighed", "duration", "duration minutes"],
+  periodeart: ["bestillingsperiode", "periodeart", "request period type"], periodeniveau: ["periode-niveau", "periodeniveau", "ønske eller krav", "request level"],
+  oensketDato: ["ønsket dato", "oensket dato", "requested date"], oensketTid: ["ønsket tid", "oensket tid", "requested time"],
+  oensketVindueFra: ["ønsket vindue fra", "oensket vindue fra", "requested window from"], oensketVindueTil: ["ønsket vindue til", "oensket vindue til", "requested window to"],
+  oensketUge: ["ønsket uge", "oensket uge", "requested week"], oensketUgeAar: ["ønsket ugeår", "ønsket ugeaar", "requested week year"],
+  periodeFra: ["periode fra", "interval from"], periodeTil: ["periode til", "interval to"],
   prioritet: ["prioritet", "priority"], rutetype: ["rutetype", "route type"], medarbejderRef: ["medarbejder", "employee"],
-  koeretoejRef: ["koeretøj", "koeretoej", "vehicle"], kompetencer: ["kompetencer", "skills"], certifikater: ["certifikater", "certificates"],
+  koeretoejRef: ["køretøj", "koeretøj", "koeretoej", "vehicle"], kompetencer: ["kompetencer", "skills"], certifikater: ["certifikater", "certificates"],
   udstyr: ["udstyr", "equipment"], kapacitet: ["kapacitet", "capacity"], notat: ["notat", "note"],
   stoptype: ["stoptype", "stop type"], udfoerelsesskabelon: ["udførelsesskabelon", "udfoerelsesskabelon", "execution template"],
   underskrift: ["underskrift", "signature required"], billeder: ["billeder", "photos required"],
@@ -179,7 +193,7 @@ function normaliserStop(stop, indeks) {
   if (tidsdata.tidskrav) fundVaerdi.push(...validerTidskrav(tidsdata.tidskrav, { varighedMin: varighed.minutter }).fund.map((post) => ({ ...post, sti: `stop[${indeks}].${post.sti || "tidskrav"}` })));
   return {
     stop: {
-      id: stop.id, type, navn: rens(stop.navn), dato: tidsdata.dato,
+      id: stop.id, raekkefoelge: stop.raekkefoelge == null ? indeks + 1 : stop.raekkefoelge, type, navn: rens(stop.navn), dato: tidsdata.dato,
       lokation: { adresse: rens(stop.adresse), postnummer: rens(stop.postnummer), by: rens(stop.by), land: rens(stop.land), status: stop.adressestatus === ADRESSESTATUS.GEOKODET ? ADRESSESTATUS.UKONTROLLERET : stop.adressestatus || ADRESSESTATUS.UKONTROLLERET },
       tidskrav: tidsdata.tidskrav, estimeretVarighedMin: varighed.minutter,
       originalVarighed: varighed.original, krav: klon(stop.krav || {}), udfoerelsesprofilId: stop.udfoerelsesprofilId || null,
@@ -192,7 +206,8 @@ export function opretIntakeOpgave(input, { tenantRef, kilde, batchId = null, fil
   if (!Number.isFinite(importeretMs) || typeof idGenerator !== "function") throw new TypeError("importeretMs og idGenerator skal injiceres.");
   const opgaveId = input.id || idGenerator("intake-opgave");
   const stopResultater = liste(input.stop).map((stop, indeks) => normaliserStop({ ...stop, id: stop.id || idGenerator(`stop-${indeks + 1}`) }, indeks));
-  const valideringsfund = stopResultater.flatMap((post) => post.fund);
+  const periodeResultat = normaliserBestillingsperiode(input.bestillingsperiode || input);
+  const valideringsfund = [...stopResultater.flatMap((post) => post.fund), ...periodeResultat.fund];
   if (!rens(input.navn)) valideringsfund.push(fund(INPUTKODE.OPGAVENAVN_MANGLER, "Opgavenavnet mangler.", "navn"));
   if (!stopResultater.length) valideringsfund.push(fund(INPUTKODE.STOP_MANGLER, "Opgaven skal have mindst ét stop.", "stop"));
   if (!["LAV", "NORMAL", "HOEJ", "AKUT"].includes(rens(input.prioritet || "NORMAL").toUpperCase())) valideringsfund.push(fund(INPUTKODE.PRIORITET_UGYLDIG, "Prioriteten er ukendt.", "prioritet"));
@@ -209,7 +224,7 @@ export function opretIntakeOpgave(input, { tenantRef, kilde, batchId = null, fil
     eksternReference: rens(input.eksternReference), navn: rens(input.navn), type: rens(input.type), kunde: rens(input.kunde),
     prioritet: rens(input.prioritet || "NORMAL").toUpperCase(), rutetype: rens(input.rutetype), notat: rens(input.notat),
     medarbejderRef: input.medarbejderRef || null, koeretoejRef: input.koeretoejRef || null,
-    stop: stopResultater.map((post) => post.stop), valideringsfund,
+    stop: stopResultater.map((post) => post.stop), valideringsfund, bestillingsperiode: periodeResultat.periode,
     kilde, kildeMetadata: { batchId, filnavn: filnavn.split(/[\\/]/).at(-1), raekkenummer, importeretMs, kolonnemapping: klon(input.kolonnemapping || {}), parseradvarsler: klon(input.parseradvarsler || []) },
     raavaerdier: klon(input.raavaerdier || input), normaliseredeVaerdier: { stop: stopResultater.map((post) => post.stop) },
     dublet: { type: DUBLETTYPE.INGEN, beslutning: null, eksisterendeId: null }, udfoerelsessnapshot,
@@ -219,29 +234,140 @@ export function opretIntakeOpgave(input, { tenantRef, kilde, batchId = null, fil
 
 export function opretOpgaveFraImportRaekke(raekke, mapping, kontekst) {
   const data = mapRaekke(raekke, mapping);
-  const udfoerelsesvalg = Object.fromEntries(["underskrift", "billeder", "kundespoergsmaal", "materialer"].map((felt) => [felt, ["ja", "yes", "true", "1"].includes(fold(data[felt]))]));
-  const skabelonNoegle = fold(data.udfoerelsesskabelon);
-  const skabelon = liste(kontekst.udfoerelsesskabeloner).find((post) => [post.id, post.navn].map(fold).includes(skabelonNoegle)) || kontekst.udfoerelsesskabelon || null;
+  const { udfoerelsesvalg, skabelonNoegle, skabelon } = importeredeUdfoerelseskrav(data, kontekst);
   const stop = [{
+    id: rens(data.stopId) || undefined, raekkefoelge: rens(data.stopRaekkefoelge) ? Number(rens(data.stopRaekkefoelge)) : 1,
     navn: data.navn, stoptype: data.stoptype || STOPTYPE.BESOEG, adresse: data.adresse, postnummer: data.postnummer,
     by: data.by, land: data.land || "DK", dato: data.dato, tidsform: data.tidsform || "Frit tidspunkt", fastTid: data.fastTid,
     vindueFra: data.vindueFra, vindueTil: data.vindueTil, deadline: data.deadline, varighed: data.varighed,
     krav: { kompetencer: rens(data.kompetencer).split(/[,;]/).filter(Boolean), certifikater: rens(data.certifikater).split(/[,;]/).filter(Boolean), udstyr: rens(data.udstyr).split(/[,;]/).filter(Boolean), kapacitet: rens(data.kapacitet) },
   }];
   const opgave = opretIntakeOpgave({ ...data, stop, importeredeUdfoerelsesvalg: udfoerelsesvalg, raavaerdier: Object.fromEntries(raekke.celler.map((celle) => [celle.overskrift, celle.vaerdi])), kolonnemapping: mapping }, { ...kontekst, udfoerelsesskabelon: skabelon, raekkenummer: raekke.raekkenummer });
+  opgave.importFlerstopId = rens(data.samletOpgaveId) || null;
   if (skabelonNoegle && !skabelon) opgave.valideringsfund.push(fund(INPUTKODE.UDFOERELSESSKABELON_UKENDT, "Udførelsesskabelonen findes ikke.", "udfoerelsesskabelon"));
   if (Object.values(udfoerelsesvalg).some(Boolean) && !skabelon) opgave.valideringsfund.push(fund(INPUTKODE.UDFOERELSESKRAV_UGYLDIGT, "Importerede udførelseskrav kræver en kendt versioneret skabelon.", "udfoerelseskrav"));
   if (opgave.valideringsfund.some((post) => post.niveau === KRAVNIVEAU.HARD)) opgave.status = INTAKESTATUS.KRAEVER_KONTROL;
   return opgave;
 }
 
+function gyldigIsoUge(aar, uge) {
+  if (!Number.isInteger(aar) || !Number.isInteger(uge) || uge < 1 || uge > 53) return false;
+  const fourth = new Date(Date.UTC(aar, 0, 4));
+  const monday = new Date(fourth); monday.setUTCDate(fourth.getUTCDate() - ((fourth.getUTCDay() + 6) % 7) + (uge - 1) * 7);
+  const thursday = new Date(monday); thursday.setUTCDate(monday.getUTCDate() + 3);
+  return thursday.getUTCFullYear() === aar;
+}
+
+export function normaliserBestillingsperiode(data = {}) {
+  const hasExplicitPeriod = ["art", "niveau", "periodeart", "periodeniveau", "oensketDato", "oensketTid", "oensketVindueFra", "oensketVindueTil", "oensketUge", "oensketUgeAar", "periodeFra", "periodeTil"].some((key) => rens(data[key]));
+  const hasNestedPeriodValues = rens(data.art) && ["dato", "tid", "fra", "til", "uge", "aar", "fraDato", "tilDato"].some((key) => rens(data[key]));
+  const hasValues = hasExplicitPeriod || hasNestedPeriodValues;
+  if (!hasValues) return { periode: { art: BESTILLINGSPERIODEART.UDEN_DATO_OENSKE, niveau: BESTILLINGSPERIODENIVEAU.OENSKET }, fund: [] };
+  const foldEnum = (value) => rens(value).toUpperCase().replaceAll("Æ", "AE").replaceAll("Ø", "OE").replaceAll("Å", "AA").replaceAll(" ", "_");
+  const art = foldEnum(data.art || data.periodeart || "DATO");
+  const niveau = foldEnum(data.niveau || data.periodeniveau || "OENSKET");
+  const periode = { art, niveau };
+  const findings = [];
+  if (!Object.values(BESTILLINGSPERIODEART).includes(art) || !Object.values(BESTILLINGSPERIODENIVEAU).includes(niveau)) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "Bestillingsperiodens type eller niveau er ugyldigt.", "bestillingsperiode"));
+  if (art === BESTILLINGSPERIODEART.ISO_UGE) { periode.uge = Number(data.uge || data.oensketUge); periode.aar = Number(data.aar || data.oensketUgeAar); if (!gyldigIsoUge(periode.aar, periode.uge)) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "ISO-uge og årstal er ugyldigt.", "bestillingsperiode.uge")); }
+  if ([BESTILLINGSPERIODEART.DATO, BESTILLINGSPERIODEART.DATO_TID, BESTILLINGSPERIODEART.TIDSVINDUE].includes(art)) { periode.dato = normaliserDato(data.dato || data.oensketDato); if (!periode.dato) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "Den ønskede dato er ugyldig.", "bestillingsperiode.dato")); }
+  if (art === BESTILLINGSPERIODEART.DATO_TID) { periode.tid = rens(data.tid || data.oensketTid); if (tidspunktMs(periode.dato, periode.tid) == null) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "Det ønskede klokkeslæt er ugyldigt.", "bestillingsperiode.tid")); }
+  if (art === BESTILLINGSPERIODEART.TIDSVINDUE) { periode.fra = rens(data.fra || data.oensketVindueFra); periode.til = rens(data.til || data.oensketVindueTil); const fra = tidspunktMs(periode.dato, periode.fra); const til = tidspunktMs(periode.dato, periode.til); if (fra == null || til == null || fra >= til) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "Det ønskede tidsvindue er ugyldigt.", "bestillingsperiode.tidsvindue")); }
+  if (art === BESTILLINGSPERIODEART.DATO_INTERVAL) { periode.fraDato = normaliserDato(data.fraDato || data.periodeFra); periode.tilDato = normaliserDato(data.tilDato || data.periodeTil); if (!periode.fraDato || !periode.tilDato || periode.fraDato > periode.tilDato) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_UGYLDIG, "Bestillerens datointerval er ugyldigt.", "bestillingsperiode.interval")); }
+  const populated = [data.oensketTid, data.oensketVindueFra, data.oensketVindueTil, data.oensketUge, data.oensketUgeAar, data.periodeFra, data.periodeTil].filter((value) => rens(value)).length;
+  const expected = art === BESTILLINGSPERIODEART.DATO_TID ? 1 : [BESTILLINGSPERIODEART.TIDSVINDUE, BESTILLINGSPERIODEART.ISO_UGE, BESTILLINGSPERIODEART.DATO_INTERVAL].includes(art) ? 2 : 0;
+  if (populated > expected) findings.push(fund(INPUTKODE.BESTILLINGSPERIODE_MODSTRIDENDE, "Bestillingsperioden indeholder modstridende dato- eller tidsangivelser.", "bestillingsperiode"));
+  return { periode: klon(periode), fund: findings };
+}
+
+function importeredeUdfoerelseskrav(data, kontekst) {
+  const udfoerelsesvalg = Object.fromEntries(["underskrift", "billeder", "kundespoergsmaal", "materialer"].map((felt) => [felt, ["ja", "yes", "true", "1"].includes(fold(data[felt]))]));
+  const skabelonNoegle = fold(data.udfoerelsesskabelon);
+  const skabelon = liste(kontekst.udfoerelsesskabeloner).find((post) => [post.id, post.navn].map(fold).includes(skabelonNoegle)) || kontekst.udfoerelsesskabelon || null;
+  return { udfoerelsesvalg, skabelonNoegle, skabelon };
+}
+
+function tilfoejImporteredeUdfoerelsesfund(opgave, { udfoerelsesvalg, skabelonNoegle, skabelon }) {
+  if (skabelonNoegle && !skabelon) opgave.valideringsfund.push(fund(INPUTKODE.UDFOERELSESSKABELON_UKENDT, "Udførelsesskabelonen findes ikke.", "udfoerelsesskabelon"));
+  if (Object.values(udfoerelsesvalg).some(Boolean) && !skabelon) opgave.valideringsfund.push(fund(INPUTKODE.UDFOERELSESKRAV_UGYLDIGT, "Importerede udførelseskrav kræver en kendt versioneret skabelon.", "udfoerelseskrav"));
+  if (opgave.valideringsfund.some((post) => post.niveau === KRAVNIVEAU.HARD)) opgave.status = INTAKESTATUS.KRAEVER_KONTROL;
+}
+
+function raekkeSomStop(data) {
+  return {
+    id: rens(data.stopId) || undefined, raekkefoelge: Number(rens(data.stopRaekkefoelge)),
+    navn: data.navn, stoptype: data.stoptype || STOPTYPE.BESOEG, adresse: data.adresse, postnummer: data.postnummer,
+    by: data.by, land: data.land || "DK", dato: data.dato, tidsform: data.tidsform || "Frit tidspunkt", fastTid: data.fastTid,
+    vindueFra: data.vindueFra, vindueTil: data.vindueTil, deadline: data.deadline, varighed: data.varighed,
+    krav: { kompetencer: rens(data.kompetencer).split(/[,;]/).filter(Boolean), certifikater: rens(data.certifikater).split(/[,;]/).filter(Boolean), udstyr: rens(data.udstyr).split(/[,;]/).filter(Boolean), kapacitet: rens(data.kapacitet) },
+  };
+}
+
+function flerstopFund(mappedRows) {
+  const fundVaerdi = [];
+  const stopIder = new Set();
+  const raekkefoelger = new Set();
+  for (const { data, raekke } of mappedRows) {
+    const stopId = rens(data.stopId);
+    const raekkefoelgeTekst = rens(data.stopRaekkefoelge);
+    const sti = `raekke[${raekke.raekkenummer}]`;
+    if (!stopId) fundVaerdi.push(fund(INPUTKODE.STOP_ID_MANGLER, "Stop-ID mangler i flerstop-opgaven.", `${sti}.stopId`));
+    else if (stopIder.has(stopId)) fundVaerdi.push(fund(INPUTKODE.STOP_ID_DUBLERET, `Stop-ID ${stopId} er dubleret i flerstop-opgaven.`, `${sti}.stopId`));
+    else stopIder.add(stopId);
+    if (!raekkefoelgeTekst) fundVaerdi.push(fund(INPUTKODE.STOPRAEKKEFOELGE_MANGLER, "Stoprækkefølgen mangler i flerstop-opgaven.", `${sti}.stopRaekkefoelge`));
+    else if (!/^\d+$/.test(raekkefoelgeTekst) || Number(raekkefoelgeTekst) < 1) fundVaerdi.push(fund(INPUTKODE.STOPRAEKKEFOELGE_UGYLDIG, "Stoprækkefølgen skal være et positivt heltal.", `${sti}.stopRaekkefoelge`));
+    else if (raekkefoelger.has(Number(raekkefoelgeTekst))) fundVaerdi.push(fund(INPUTKODE.STOPRAEKKEFOELGE_DUBLERET, `Stoprækkefølge ${raekkefoelgeTekst} er dubleret i flerstop-opgaven.`, `${sti}.stopRaekkefoelge`));
+    else raekkefoelger.add(Number(raekkefoelgeTekst));
+  }
+  const sorterede = mappedRows.filter(({ data }) => /^\d+$/.test(rens(data.stopRaekkefoelge))).sort((a, b) => Number(a.data.stopRaekkefoelge) - Number(b.data.stopRaekkefoelge));
+  const afhentning = sorterede.findIndex(({ data }) => rens(data.stoptype).toUpperCase() === STOPTYPE.AFHENTNING);
+  const levering = sorterede.findIndex(({ data }) => rens(data.stoptype).toUpperCase() === STOPTYPE.LEVERING);
+  if (afhentning >= 0 && levering >= 0 && afhentning > levering) fundVaerdi.push(fund(INPUTKODE.AFHENTNING_EFTER_LEVERING, "Afhentning skal ligge før levering i flerstop-opgaven.", "stop"));
+  return fundVaerdi;
+}
+
+export function opretOpgaverFraImportRaekker(raekker, mapping, kontekst) {
+  const mapped = liste(raekker).map((raekke) => ({ raekke, data: mapRaekke(raekke, mapping) }));
+  const grupper = new Map();
+  const resultater = [];
+  for (const post of mapped) {
+    const gruppeId = rens(post.data.samletOpgaveId);
+    const harStopmetadata = Boolean(rens(post.data.stopId) || rens(post.data.stopRaekkefoelge));
+    if (!gruppeId) {
+      const opgave = opretOpgaveFraImportRaekke(post.raekke, mapping, kontekst);
+      if (harStopmetadata) {
+        opgave.valideringsfund.push(fund(INPUTKODE.FLERSTOP_ID_MANGLER, "Samlet opgave-ID mangler for rækken med eksplicit stopidentitet eller stoprækkefølge.", `raekke[${post.raekke.raekkenummer}].samletOpgaveId`));
+        opgave.status = INTAKESTATUS.KRAEVER_KONTROL;
+      }
+      resultater.push(opgave);
+    } else {
+      if (!grupper.has(gruppeId)) grupper.set(gruppeId, []);
+      grupper.get(gruppeId).push(post);
+    }
+  }
+  for (const [gruppeId, poster] of [...grupper.entries()].sort(([a], [b]) => a.localeCompare(b, "da"))) {
+    const sorterede = [...poster].sort((a, b) => Number(a.data.stopRaekkefoelge || Number.MAX_SAFE_INTEGER) - Number(b.data.stopRaekkefoelge || Number.MAX_SAFE_INTEGER) || rens(a.data.stopId).localeCompare(rens(b.data.stopId), "da"));
+    const base = sorterede[0].data;
+    const udfoerelse = importeredeUdfoerelseskrav(base, kontekst);
+    const stop = sorterede.map(({ data }) => raekkeSomStop(data));
+    const raavaerdier = sorterede.map(({ raekke }) => Object.fromEntries(raekke.celler.map((celle) => [celle.overskrift, celle.vaerdi])));
+    const opgave = opretIntakeOpgave({ ...base, stop, importeredeUdfoerelsesvalg: udfoerelse.udfoerelsesvalg, raavaerdier, kolonnemapping: mapping }, { ...kontekst, udfoerelsesskabelon: udfoerelse.skabelon, raekkenummer: sorterede[0].raekke.raekkenummer });
+    opgave.importFlerstopId = gruppeId;
+    opgave.kildeMetadata.raekkenumre = sorterede.map(({ raekke }) => raekke.raekkenummer);
+    opgave.valideringsfund.push(...flerstopFund(poster));
+    tilfoejImporteredeUdfoerelsesfund(opgave, udfoerelse);
+    resultater.push(opgave);
+  }
+  return klon(resultater);
+}
+
 export function findDubletter(nyeOpgaver, eksisterendeOpgaver) {
-  const alle = [...liste(eksisterendeOpgaver)];
+  const alle = liste(eksisterendeOpgaver).map((opgave) => ({ opgave, eksisterende: true }));
   return nyeOpgaver.map((opgave) => {
-    const sikker = alle.find((post) => post.tenantRef === opgave.tenantRef && opgave.eksternReference && post.eksternReference === opgave.eksternReference);
-    const muligt = sikker ? null : alle.find((post) => post.tenantRef === opgave.tenantRef && fold(post.kunde) === fold(opgave.kunde) && fold(post.stop?.[0]?.lokation?.adresse) === fold(opgave.stop?.[0]?.lokation?.adresse) && post.stop?.[0]?.dato === opgave.stop?.[0]?.dato && post.stop?.[0]?.type === opgave.stop?.[0]?.type);
-    const dublet = sikker ? { type: DUBLETTYPE.SIKKER, beslutning: null, eksisterendeId: sikker.id } : muligt ? { type: DUBLETTYPE.MULIG, beslutning: null, eksisterendeId: muligt.id } : { type: DUBLETTYPE.INGEN, beslutning: null, eksisterendeId: null };
-    alle.push(opgave);
+    const sikker = alle.find(({ opgave: post, eksisterende }) => post.tenantRef === opgave.tenantRef && opgave.eksternReference && post.eksternReference === opgave.eksternReference && (eksisterende || !opgave.importFlerstopId || post.importFlerstopId !== opgave.importFlerstopId));
+    const muligt = sikker ? null : alle.find(({ opgave: post }) => post.tenantRef === opgave.tenantRef && fold(post.kunde) === fold(opgave.kunde) && fold(post.stop?.[0]?.lokation?.adresse) === fold(opgave.stop?.[0]?.lokation?.adresse) && post.stop?.[0]?.dato === opgave.stop?.[0]?.dato && post.stop?.[0]?.type === opgave.stop?.[0]?.type);
+    const dublet = sikker ? { type: DUBLETTYPE.SIKKER, beslutning: null, eksisterendeId: sikker.opgave.id } : muligt ? { type: DUBLETTYPE.MULIG, beslutning: null, eksisterendeId: muligt.opgave.id } : { type: DUBLETTYPE.INGEN, beslutning: null, eksisterendeId: null };
+    alle.push({ opgave, eksisterende: false });
     return { ...klon(opgave), dublet, status: dublet.type === DUBLETTYPE.INGEN ? opgave.status : INTAKESTATUS.KRAEVER_KONTROL };
   });
 }

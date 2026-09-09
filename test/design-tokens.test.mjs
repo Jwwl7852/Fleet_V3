@@ -45,6 +45,9 @@ import { join } from "node:path";
 
 const SRC = "src";
 const TOKENFIL = join("src", "fleet", "fleet.css");
+const PLANNING_TOKENFIL = join("src", "fleet", "planning-ui", "planning-demo.css");
+const PLANNING_TOKEN_START = "/* VEYRO_PLANNING_TOKENS_START */";
+const PLANNING_TOKEN_SLUT = "/* VEYRO_PLANNING_TOKENS_SLUT */";
 
 /* ------------------------------------------------------------------ *
  * Hvad der tæller som en farve
@@ -118,6 +121,102 @@ const udenCssKommentarer = (tekst) => tekst.replace(/\/\*[\s\S]*?\*\//g, "");
 /* Streng- og skabelonliteraler. Grupperne er "..." , '...' og `...`. */
 const STRENGE =
   /"([^"\\\n]*(?:\\.[^"\\\n]*)*)"|'([^'\\\n]*(?:\\.[^'\\\n]*)*)'|`([^`\\]*(?:\\.[^`\\]*)*)`/g;
+
+const FORVENTEDE_PLANNING_TOKENS = {
+  "--veyro-deep-navy": "#061A2A",
+  "--veyro-navy-dark": "#03131F",
+  "--veyro-teal": "#087F8F",
+  "--veyro-cyan": "#22C2CF",
+  "--veyro-teal-light": "#E8F7F8",
+  "--veyro-white": "#FFFFFF",
+  "--veyro-app-background": "#F5F7F9",
+  "--veyro-border": "#DCE3E8",
+  "--veyro-primary-text": "#102235",
+  "--veyro-secondary-text": "#667687",
+  "--veyro-secondary-text-strong": "#5F6F7F",
+  "--veyro-success": "#2EAD72",
+  "--veyro-warning": "#D99A28",
+  "--veyro-danger": "#D95C5C",
+  "--veyro-link-accessible": "#087484",
+  "--veyro-card-surface": "#F7F8F9",
+  "--veyro-success-text": "#176B47",
+  "--veyro-warning-text": "#76500B",
+  "--veyro-danger-text": "#8E3030",
+  "--veyro-success-surface": "color-mix(in srgb, var(--veyro-success) 13%, var(--veyro-white))",
+  "--veyro-warning-surface": "color-mix(in srgb, var(--veyro-warning) 16%, var(--veyro-white))",
+  "--veyro-danger-surface": "color-mix(in srgb, var(--veyro-danger) 14%, var(--veyro-white))",
+  "--bc-accent": "var(--veyro-teal)",
+  "--bc-card": "var(--veyro-card-surface)",
+  "--bc-line": "var(--veyro-border)",
+  "--bc-text": "var(--veyro-primary-text)",
+  "--bc-muted": "var(--veyro-secondary-text-strong)",
+  "--bc-ok": "var(--veyro-success-text)",
+  "--bc-warn": "var(--veyro-warning-text)",
+  "--bc-block": "var(--veyro-danger-text)",
+  "--fc-stregkode-bund": "var(--veyro-white)",
+  "--fc-navy": "var(--veyro-deep-navy)",
+  "--fc-navy-2": "var(--veyro-navy-dark)",
+  "--fc-navy-3": "var(--veyro-teal)",
+  "--fc-accent-soft": "var(--veyro-teal-light)",
+  "--fc-bg": "var(--veyro-app-background)",
+  "--fc-ok-bg": "var(--veyro-success-surface)",
+  "--fc-warn-bg": "var(--veyro-warning-surface)",
+  "--fc-bad-bg": "var(--veyro-danger-surface)",
+  "--fc-info": "var(--veyro-teal)",
+  "--fc-info-bg": "var(--veyro-teal-light)",
+  "--fc-shadow": "0 1px 2px var(--veyro-border)",
+};
+
+const normaliserTokenVaerdi = (vaerdi) => vaerdi
+  .trim()
+  .replace(/\s+/g, " ")
+  .replace(/#[0-9a-fA-F]{3,8}\b/g, (farve) => farve.toUpperCase());
+
+function analyserPlanningCss(tekst) {
+  const fund = [];
+  const start = tekst.indexOf(PLANNING_TOKEN_START);
+  const slut = tekst.indexOf(PLANNING_TOKEN_SLUT);
+  if (start < 0 || slut < 0 || slut <= start) return ["Planning-tokenblokkens entydige markører mangler"];
+  if (tekst.indexOf(PLANNING_TOKEN_START, start + 1) >= 0 || tekst.indexOf(PLANNING_TOKEN_SLUT, slut + 1) >= 0) {
+    fund.push("Planning-tokenblokken findes mere end én gang");
+  }
+
+  const blokSlut = slut + PLANNING_TOKEN_SLUT.length;
+  const blok = tekst.slice(start + PLANNING_TOKEN_START.length, slut);
+  const root = blok.match(/^\s*:root\s*\{([\s\S]*?)\}\s*$/);
+  if (!root) return [...fund, "Planning-tokenblokken skal indeholde præcis én :root-regel"];
+
+  const faktiske = {};
+  for (const d of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    faktiske[d[1]] = normaliserTokenVaerdi(d[2]);
+  }
+  const forventede = Object.fromEntries(Object.entries(FORVENTEDE_PLANNING_TOKENS)
+    .map(([navn, vaerdi]) => [navn, normaliserTokenVaerdi(vaerdi)]));
+  const tilfoejet = Object.keys(faktiske).filter((navn) => !(navn in forventede));
+  const mangler = Object.keys(forventede).filter((navn) => !(navn in faktiske));
+  const aendret = Object.keys(forventede).filter((navn) => navn in faktiske && faktiske[navn] !== forventede[navn]);
+  if (tilfoejet.length) fund.push(`ekstra Planning-token: ${tilfoejet.join(", ")}`);
+  if (mangler.length) fund.push(`manglende Planning-token: ${mangler.join(", ")}`);
+  if (aendret.length) fund.push(`ændret Planning-token: ${aendret.join(", ")}`);
+
+  const udenBlok = udenCssKommentarer(tekst.slice(0, start) + tekst.slice(blokSlut));
+  const raaFarver = udenBlok.match(FARVE);
+  if (raaFarver) fund.push(`rå farve uden for Planning-tokenblokken: ${[...new Set(raaFarver)].join(", ")}`);
+  const egneTokens = [...udenBlok.matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1]);
+  if (egneTokens.length) fund.push(`token uden for Planning-tokenblokken: ${[...new Set(egneTokens)].join(", ")}`);
+  if (/(@import\s+[^;]*fleet\.css|url\([^)]*fleet\.css)/i.test(tekst)) fund.push("Planning må ikke importere fleet.css");
+  return fund;
+}
+
+function analyserAndenCss(sti, tekst) {
+  const fund = [];
+  const udenKommentarer = udenCssKommentarer(tekst);
+  const farver = udenKommentarer.match(FARVE);
+  if (farver) fund.push(`${sti}: farveværdier — ${[...new Set(farver)].join(", ")}`);
+  const egne = [...udenKommentarer.matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1]);
+  if (egne.length) fund.push(`${sti}: egne tokens — ${[...new Set(egne)].join(", ")}`);
+  return fund;
+}
 
 /* ------------------------------------------------------------------ *
  * Snapshots
@@ -274,11 +373,9 @@ describe("Designtokens er den eneste farvekilde", () => {
     const fund = [];
     for (const sti of alleFiler(SRC, /\.css$/)) {
       if (sti === TOKENFIL) continue;
-      const tekst = udenCssKommentarer(readFileSync(sti, "utf8"));
-      const farver = tekst.match(FARVE);
-      if (farver) fund.push(`${sti}: farveværdier — ${[...new Set(farver)].join(", ")}`);
-      const egne = [...tekst.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]);
-      if (egne.length) fund.push(`${sti}: egne tokens — ${[...new Set(egne)].join(", ")}`);
+      const tekst = readFileSync(sti, "utf8");
+      if (sti === PLANNING_TOKENFIL) fund.push(...analyserPlanningCss(tekst).map((fejl) => `${sti}: ${fejl}`));
+      else fund.push(...analyserAndenCss(sti, tekst));
     }
     assert.deepEqual(
       fund, [],
@@ -286,6 +383,37 @@ describe("Designtokens er den eneste farvekilde", () => {
       "hinanden, og den ene bliver ikke læst. Farver og tokens hører i " + TOKENFIL + ".\n" +
       fund.join("\n")
     );
+  });
+
+  it("låser den præcise lokale Planning-tokenblok", () => {
+    assert.deepEqual(analyserPlanningCss(readFileSync(PLANNING_TOKENFIL, "utf8")), []);
+  });
+
+  it("afviser en ændret Planning-farveværdi", () => {
+    const tekst = readFileSync(PLANNING_TOKENFIL, "utf8").replace("#087F8F", "#087F90");
+    assert.match(analyserPlanningCss(tekst).join("\n"), /ændret Planning-token/);
+  });
+
+  it("afviser et ekstra lokalt Planning-token", () => {
+    const tekst = readFileSync(PLANNING_TOKENFIL, "utf8").replace(
+      `}\n${PLANNING_TOKEN_SLUT}`,
+      `  --veyro-ekstra: #123456;\n}\n${PLANNING_TOKEN_SLUT}`,
+    );
+    assert.match(analyserPlanningCss(tekst).join("\n"), /ekstra Planning-token/);
+  });
+
+  it("afviser en rå farve uden for Planning-tokenblokken", () => {
+    const tekst = readFileSync(PLANNING_TOKENFIL, "utf8") + "\n.proeve{color:#123456}";
+    assert.match(analyserPlanningCss(tekst).join("\n"), /rå farve uden for/);
+  });
+
+  it("afviser fortsat farver i enhver anden CSS-fil", () => {
+    assert.match(analyserAndenCss("src/proeve.css", ".proeve{color:#123456}").join("\n"), /farveværdier/);
+  });
+
+  it("afviser import af fleet.css fra Planning", () => {
+    const tekst = readFileSync(PLANNING_TOKENFIL, "utf8") + "\n@import '../fleet.css';";
+    assert.match(analyserPlanningCss(tekst).join("\n"), /må ikke importere fleet\.css/);
   });
 
   it("har præcis ét :root i fleet.css", () => {
