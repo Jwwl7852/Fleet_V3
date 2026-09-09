@@ -172,20 +172,22 @@ describe("Fakturaer & bilag er den ene kanoniske overflade", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    FILTRERET KONTEKST — punkt 4
    ══════════════════════════════════════════════════════════════════════════ */
-describe("?destination= er UI-kontekst, ikke sikkerhed", () => {
-  it("⚠ Fakturacenter.jsx LÆSER ?destination= OG FILTRERER LOKALT", () => {
+describe("Fakturacenter v1 bruger kun lokal prototypekontekst", () => {
+  it("⚠ PROTOTYPEN LÆSER KUN LOKAL SEKTION FRA QUERY — IKKE EKSTERNE DATA", () => {
     const skaerm = udenKommentarer(
       readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
     assert.match(skaerm, /useSearchParams/);
-    assert.match(skaerm, /params\.get\("destination"\)/);
+    assert.match(skaerm, /searchParams\.get\("sektion"\)/);
+    assert.doesNotMatch(skaerm, /\.get\(["']destination["']\)/);
+    assert.match(skaerm, /FAKTURACENTER_PROTOTYPE/);
+    assert.match(skaerm, /eksterneKald:\s*false/);
   });
 
-  it("⚠ FILTERET KOMMER EFTER DEN GATEDE LÆSNING, IKKE I STEDET FOR DEN", () => {
-    /* Selve useListe("fakturaer", …)-kaldet skal stadig stå — filteret må
-       aldrig erstatte den gatede hentning med sin egen, ufiltrerede. */
+  it("⚠ PROTOTYPEN KAN IKKE OMGÅ EN GATE MED SIN EGEN LÆSNING", () => {
     const skaerm = udenKommentarer(
       readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
-    assert.match(skaerm, /useListe\("fakturaer",/);
+    assert.doesNotMatch(skaerm, /useListe\(|usePost\(|from ["']firebase|httpsCallable/i);
+    assert.match(skaerm, /DEMO_FAKTURACENTER_SCENARIER/);
   });
 
   it("⚠ Modulfakturaer.jsx LINKER MED ?destination=<art>, IKKE UFILTRERET", () => {

@@ -130,32 +130,69 @@ const STRENGE =
  * beslutning i en testfil. Rækkefølgen er ligegyldig — navn og værdi er ikke.
  */
 const FORVENTEDE_TOKENS = {
-  "--bc-accent": "#1552d8", // beslutning 10 — logoets blå. Var #1f5eff i v1.4.
-  "--bc-card": "#f4f6fa",
-  "--bc-line": "#d3d9e3",
-  "--bc-text": "#2e3947",
-  "--bc-muted": "#5c6675",
+  // Veyro Systems-paletten og de semantiske roller, beslutning 121.
+  "--veyro-deep-navy": "#061a2a",
+  "--veyro-navy-dark": "#03131f",
+  "--veyro-teal": "#087f8f",
+  "--veyro-cyan": "#22c2cf",
+  "--veyro-teal-light": "#e8f7f8",
+  "--veyro-white": "#ffffff",
+  "--veyro-app-background": "#f5f7f9",
+  "--veyro-border": "#dce3e8",
+  "--veyro-primary-text": "#102235",
+  "--veyro-secondary-text": "#667687",
+  "--veyro-secondary-text-strong": "#5f6f7f",
+  "--veyro-success": "#2ead72",
+  "--veyro-warning": "#d99a28",
+  "--veyro-danger": "#d95c5c",
+  "--veyro-link-accessible": "#087484",
+  "--veyro-muted-accessible": "#5b6b7b",
+  "--veyro-card-surface": "#f7f8f9",
+  "--veyro-workspace-surface": "color-mix(in srgb,var(--veyro-app-background) 95%,var(--veyro-deep-navy))",
+  "--veyro-border-strong": "#dbe2e7",
+  "--veyro-surface": "var(--veyro-card-surface)",
+  "--veyro-workspace": "var(--veyro-workspace-surface)",
+  "--veyro-text": "var(--veyro-primary-text)",
+  "--veyro-text-secondary": "var(--veyro-muted-accessible)",
+  "--veyro-nav-bg": "var(--veyro-deep-navy)",
+  "--veyro-nav-bg-deep": "var(--veyro-navy-dark)",
+  "--veyro-nav-active": "var(--veyro-teal)",
+  "--veyro-action": "var(--veyro-link-accessible)",
+  "--veyro-action-hover": "color-mix(in srgb, var(--veyro-action) 84%, var(--veyro-navy-dark))",
+  "--veyro-link": "var(--veyro-link-accessible)",
+  "--veyro-focus": "var(--veyro-cyan)",
+  "--veyro-success-text": "#176b47",
+  "--veyro-warning-text": "#76500b",
+  "--veyro-danger-text": "#8e3030",
+  "--veyro-success-bg": "color-mix(in srgb, var(--veyro-success) 13%, var(--veyro-white))",
+  "--veyro-warning-bg": "color-mix(in srgb, var(--veyro-warning) 16%, var(--veyro-white))",
+  "--veyro-danger-bg": "color-mix(in srgb, var(--veyro-danger) 14%, var(--veyro-white))",
+  "--bc-accent": "var(--veyro-action)",
+  "--bc-card": "var(--veyro-surface)",
+  "--bc-line": "var(--veyro-border-strong)",
+  "--bc-text": "var(--veyro-text)",
+  "--bc-muted": "var(--veyro-text-secondary)",
   /* ⚠ MØRKNET I BESLUTNING 77. Statusfarven er TEKSTEN i en pille — "Udført",
      "Forsinket", "Afventer" — og lå på 3,1–4,1:1 mod AA's 4,5. Kuløren er
      bevaret; kun lyset er skruet ned, og til den MINDSTE værdi der når kravet
      mod både kortet og pillen. */
-  "--bc-ok": "#197f45",
-  "--bc-warn": "#a16000",
-  "--bc-block": "#ba3c3c",
+  "--bc-ok": "var(--veyro-success-text)",
+  "--bc-warn": "var(--veyro-warning-text)",
+  "--bc-block": "var(--veyro-danger-text)",
   // Stregkodens sort — et maskinkrav, ikke en designfarve. Beslutning 46:
   // kontrasten er scannerens tærskel, så den må ikke følge et tema.
   "--fc-stregkode": "#000",
   "--fc-stregkode-bund": "#fff",
-  "--fc-navy": "#101a30",
-  "--fc-navy-2": "#18243f",
-  "--fc-navy-3": "#22314f",
-  "--fc-accent-soft": "#e8f0ff",
-  "--fc-bg": "#e4e8f0",
-  "--fc-ok-bg": "#dcfce7",
-  "--fc-warn-bg": "#fef3c7",
-  "--fc-bad-bg": "#fee2e2",
-  "--fc-info": "#2563eb",
-  "--fc-info-bg": "#dbeafe",
+  "--fc-navy": "var(--veyro-nav-bg)",
+  "--fc-navy-2": "var(--veyro-nav-bg-deep)",
+  "--fc-navy-3": "color-mix(in srgb, var(--veyro-deep-navy) 76%, var(--veyro-teal))",
+  "--fc-accent-soft": "var(--veyro-teal-light)",
+  "--fc-bg": "var(--veyro-workspace)",
+  "--fc-ok-bg": "var(--veyro-success-bg)",
+  "--fc-warn-bg": "var(--veyro-warning-bg)",
+  "--fc-bad-bg": "var(--veyro-danger-bg)",
+  "--fc-info": "var(--veyro-link)",
+  "--fc-info-bg": "var(--veyro-teal-light)",
   /* Kategoripalet, beslutning 30. Adskilt fra statusfarverne med vilje:
      genbruges de, betyder rød både "kritisk" og "den femte kategori". */
   "--fc-serie-1": "var(--bc-accent)",
@@ -194,7 +231,7 @@ const FORVENTEDE_TOKENS = {
   /* Modal baggrund — en FLADE, ikke en status- eller kategorifarve. Den
      encoder ingenting, saa validatorens gulve gaelder den ikke. Se
      BESLUTNINGER.md, afsnittet "Et fjerde token". */
-  "--fc-overlay": "rgba(16,26,48,.44)",
+  "--fc-overlay": "color-mix(in srgb, var(--veyro-deep-navy) 48%, transparent)",
   /* Skriftskalaen — beslutning 48. Ni trin i stedet for 24 tal spredt i
      filen. Vaerdierne staar her af samme grund som farverne: et token er en
      truffet beslutning, og en skala der kan skride er ingen skala. */
@@ -209,7 +246,7 @@ const FORVENTEDE_TOKENS = {
   "--fc-t-4xl": "34px",
   "--fc-r": "12px",
   "--fc-sidebar": "216px",
-  "--fc-shadow": "0 1px 2px rgba(16,26,48,.06), 0 1px 3px rgba(16,26,48,.04)",
+  "--fc-shadow": "0 1px 2px color-mix(in srgb, var(--veyro-deep-navy) 6%, transparent), 0 1px 3px color-mix(in srgb, var(--veyro-deep-navy) 4%, transparent)",
 };
 
 /**

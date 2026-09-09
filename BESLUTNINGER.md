@@ -4,11 +4,12 @@
 konflikt mellem de 20 mockups, eller lukkede et hul der først blev synligt da
 modellen blev skrevet ned.
 
-Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 120
+Vil du omgøre en, står det i den nævnte fil. Læs rækken først: der er 121
 trufne beslutninger, og et brud på en af dem skal være bevidst frem for
 tilfældigt. Kolonnen **Hvorfor** er ikke pynt — den er det eneste sted der
 står hvad der gik galt uden beslutningen, og uden den ligner de fleste af dem
-vilkårlige valg man lige så godt kunne lave om.
+vilkårlige valg man lige så godt kunne lave om. Farvetemaet er senest fastlagt
+i beslutning 121.
 
 ## Oversigt
 
@@ -39,6 +40,7 @@ vilkårlige valg man lige så godt kunne lave om.
 | 23 | **Supportadgang er tidsbegrænset og kundestyret.** FleetControl-personale har som standard **ingen** adgang. Kundens administrator giver adgang med varighed, type, formål og sagsnummer; den udløber **automatisk**. En supportsag bærer kontekst — aldrig passwords, tokens eller feltværdier. | Standardadgang for supportere er den slags der aldrig bliver lukket igen. En adgang der udløber fordi nogen skal huske det, er ikke tidsbegrænset. Og en supportsag er en **ny kanal ud af systemet**: et kundenavn i konteksten har forladt kundens tenant. Derfor allowliste, ikke blokliste. **Rettet af 24.** | *ikke bygget — efter fase 1* |
 | 24 | **Support krydser tenant-grænsen — én gang, og kun her.** Sagen ligger i `support/sager/<id>` i toppen med et `tenantId`; hver tenant har en **indeksnode** til at liste sine egne. Auditloggen vises som et bundet **udtræk** på sagen: ±5 minutter, højst 50 poster, ikke konfigurerbart. | RTDB kan sammenligne et felt på den post der læses mod claim'et, men kan ikke **filtrere** en forespørgsel på det — derfor indeksnoden. **Retter 23:** 23 gav support `audit.laes` på kundens tenant, og det er for meget. Et loft der kan hæves af den der rammer det, er ikke et loft. Indeksnoden er samtidig svaret på kundeportalen. | `fleet/support.js` |
 | 25 | **De fire sidste skærme — og det er ANTAGELSER, ikke afgjorte krav.** Et fakturagrundlag er en **opgørelse**, ikke en faktura; det erstattes frem for at rettes, med referencen **begge veje**. Momssatsen står pr. linje og **gættes ikke**. En indberetning **har** en sag. Materialeforbrug er **én hændelse med to posteringer**. Kompetencekravet **kommer fra enheden**. Leverandørtal står **med deres grundlag**. | De 24 foregående afgjorde noget vi **vidste**; denne afgør noget vi **tror**, og den skal derfor efterprøves hos første kunde frem for brydes bevidst. De tre steder hvor et forkert gæt koster mest: forløbet i `indberetninger.js`, linjearterne i `grundlag.js`, de seks nøgletal i `leverandoerer.js`. Hvor et gæt ville koste penge, gætter vi ikke — momssatsen blokerer eksporten frem for at antage 25 %. | `fleet/grundlag.js`, `fleet/indberetninger.js`, `fleet/leverandoerer.js` |
+| 121 | **Veyro-paletten er fælles for platformen.** De semantiske `--veyro-*`-tokens i `fleet.css` er autoritative; eksisterende `--bc-*` og `--fc-*` peger på dem, så modulerne får samme tema uden lokale farvekopier. Grundpaletten bevares ordret, mens dokumenterede, afledte UI-tokens giver kontrastmargin til link, kort, arbejdsflade og border. Original-logoets PNG bruges gennem `VeyroLogo`. | Planning, Fakturacenter, eksisterende FLEET og den isolerede FLEET v2 lå i separate worktrees med forskellige visuelle udgangspunkter. Et fælles semantisk lag bevarer funktion og layout, mens identiske midlertidige kopier kan kontrolleres med checksum. De afledte UI-værdier ændrer ikke brandpaletten; de gør dens faktiske anvendelse målbar og tilgængelig. | `fleet/fleet.css`, `fleet/VeyroLogo.jsx`, `docs/design/VEYRO_THEME.md` |
 
 ## Beslutning 16 i detaljer
 

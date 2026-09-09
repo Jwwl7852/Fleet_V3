@@ -6,6 +6,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
+import VeyroLogo from "./fleet/VeyroLogo.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
 import { erAktiv, laasetekst, opbevaresTil } from "./fleet/abonnement.js";
 import { dato } from "./fleet/format.js";
@@ -146,7 +147,7 @@ function Udbyderramme({ bruger, logUd, children }) {
     <div className="fc-app fc-udbyder">
       <header className="fc-top">
         <div className="fc-med-ikon" style={{ gap: 12 }}>
-          <span className="fc-brand">FleetControl</span>
+          <VeyroLogo variant="header" />
           <span className="fc-hint">Ejerkonsol</span>
         </div>
         <div className="fc-med-ikon" style={{ gap: 12 }}>
@@ -181,7 +182,7 @@ function Abonnementslaas({ abonnement, virksomhed, paaLogUd }) {
   return (
     <div className="fc-boot">
       <div className="fc-login">
-        <h1 className="fc-brand fc-login-brand">FleetControl</h1>
+        <VeyroLogo variant="login" />
         <div className="fc-empty fc-empty-info">
           <p><b>{virksomhed?.navn || "Din virksomhed"}</b></p>
           <p style={{ marginTop: 8 }}><b>{t.besked}</b></p>
@@ -258,7 +259,7 @@ function Chauffoerramme({ bruger, tenant, logUd, children }) {
             vognmænd og have to konti; uden navnet kan han ikke se hvilken
             han er logget ind i, og en melding lander det forkerte sted. */}
         <div>
-          <span className="fc-brand">FleetControl</span>
+          <VeyroLogo variant="header" />
           {tenant?.kort && <span className="fc-app-tenant">{tenant.kort}</span>}
         </div>
         <div className="fc-med-ikon" style={{ gap: 12 }}>
@@ -292,7 +293,7 @@ function Leverandoerramme({ bruger, logUd, children }) {
     <div className="fc-app fc-chauffoer">
       <header className="fc-top">
         <div>
-          <span className="fc-brand">FleetControl</span>
+          <VeyroLogo variant="header" />
           <span className="fc-app-tenant">Leverandørportal</span>
         </div>
         <div className="fc-med-ikon" style={{ gap: 12 }}>

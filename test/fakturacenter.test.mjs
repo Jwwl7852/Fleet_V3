@@ -36,7 +36,11 @@ const udenKommentarer = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
-const SKAERM = udenKommentarer(readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
+const SKAERM = udenKommentarer([
+  "src/moduler/oekonomi/Fakturacenter.jsx",
+  "src/moduler/oekonomi/FakturacenterPrototypeDele.jsx",
+  "src/moduler/oekonomi/FakturacenterWorkspace.jsx",
+].map((fil) => readFileSync(fil, "utf8")).join("\n"));
 const KLIENT = udenKommentarer(readFileSync("src/fleet/faktura.js", "utf8"));
 const SERVER = udenKommentarer(readFileSync("functions/index.js", "utf8"));
 const REGELFIL = readFileSync("firebase.rules.json", "utf8");
@@ -429,9 +433,10 @@ describe("Demo kan vise hver destination", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    SKÆRMEN OG SERVEREN
    ══════════════════════════════════════════════════════════════════════════ */
-describe("Skærmen viser, serveren håndhæver", () => {
-  test("⚠ SAMME kanSaetteDestination BEGGE STEDER", () => {
-    assert.match(SKAERM, /kanSaetteDestination\(/);
+describe("Eksisterende serverkontrol og den lokale intake-prototype", () => {
+  test("⚠ PROTOTYPEN UDFØRER INGEN SERVERMUTATIONER", () => {
+    assert.doesNotMatch(SKAERM, /\bsaetDestination\b|\bskiftFaktura\b|useListe\(/);
+    assert.match(SKAERM, /eksterneKald:\s*false/);
     assert.match(funktion("fakturadestination"), /kanSaetteDestination\(/);
   });
 
@@ -457,32 +462,32 @@ describe("Skærmen viser, serveren håndhæver", () => {
     assert.match(funktion("fakturadestination"), /ikkeMatchbar`\]: null/);
   });
 
-  /* ⚠ AT PLACERE OG AT GODKENDE ER TO HANDLINGER. En knap der gjorde begge
-     dele, ville lade den der konterer, betale. */
+  /* ⚠ MATCH OG KONTROL ER SEPARATE. Fakturacenteret er ikke et betalings-
+     eller bogføringssystem. */
   test("⚠ PLACERING KRÆVER IKKE indkoeb.godkend", () => {
     const blok = funktion("fakturadestination");
     assert.ok(!/indkoebGodkend/.test(blok),
       "placeringen kræver godkendelsespermissionen — det er to handlinger");
-    assert.match(SKAERM, /er <b>to handlinger<\/b>/);
+    assert.match(SKAERM, /Markér som kontrolleret/);
+    assert.match(SKAERM, /ikke betalingsgodkendelse eller bogføring/i);
+    assert.doesNotMatch(SKAERM, /Markér som (betalt|bogført)|Godkend betaling/i);
   });
 
-  /* ⚠ INDGANGENE ER IKKE BYGGET, OG DET STÅR PÅ SKÆRMEN. */
-  test("⚠ SKÆRMEN SIGER AT INDGANGENE MANGLER", () => {
-    assert.match(SKAERM, /Ingen af indgangene er bygget endnu/);
-    assert.match(SKAERM, /Der sendes ikke noget til et\s+regnskabssystem/);
+  test("⚠ DRAG-AND-DROP ER LOKAL, OG EKSTERNE INDGANGE ER DEAKTIVEREDE", () => {
+    assert.match(SKAERM, /onDrop=/);
+    assert.match(SKAERM, /Lokal prototype · kun syntetiske data/);
+    assert.match(SKAERM, /Valgfri integration · deaktiveret/);
+    assert.doesNotMatch(SKAERM, /from ["']firebase|uploadBytes|httpsCallable/i);
   });
 
-  /* Signalerne står under scoren — det er dét der gør den efterprøvelig. */
-  test("⚠ SIGNALERNE VISES UNDER SCOREN", () => {
-    assert.match(SKAERM, /DESTINATIONSSIGNAL\[s\]\.label/);
+  test("⚠ MATCHBEGRUNDELSE OG KANDIDATER ER SYNLIGE", () => {
+    assert.match(SKAERM, /scenarie\.match\.årsag/);
+    assert.match(SKAERM, /kandidat\.referencer/);
+    assert.match(SKAERM, /kandidat\.leverandoer\.navn/);
   });
 
-  test("⚠ DEMO-SÆTTENE BRUGES KUN SOM demo:-FALDBAKKE", () => {
-    for (const navn of ["DEMO_FAKTURAER", "DEMO_LEVERANDOERER", "DEMO_INDKOEBSORDRER",
-      "DEMO_FORBRUGSVARER", "DEMO_OPGAVER", "DEMO_KOERETOEJER", "DEMO_AKTIVER"]) {
-      const alle = [...SKAERM.matchAll(new RegExp(`\\b${navn}\\b`, "g"))].length;
-      const fald = [...SKAERM.matchAll(new RegExp(`demo: ${navn}\\b`, "g"))].length;
-      assert.equal(alle - 1, fald, `${navn} bruges uden for demo:-faldbakken`);
-    }
+  test("⚠ PROTOTYPEN BRUGER KUN DET NYE SYNTHETISKE SCENARIESÆT", () => {
+    assert.match(SKAERM, /FAKTURACENTER_SCENARIER/);
+    assert.doesNotMatch(SKAERM, /DEMO_FAKTURAER|DEMO_INDKOEBSORDRER|DEMO_OPGAVER/);
   });
 });
