@@ -169,34 +169,20 @@ export const NAV = [
     ],
   },
   {
-    /* ⚠ FLEET TARGET (masterbrief §1/§9, produktejer-review 2026-09-01) —
-       MODULNAVIGATION, IKKE SIDEBAR-UNDERPUNKTER. "Venstre sidebar bruges
-       primært til hovedområder/moduler. Når brugeren går ind i et modul,
-       skifter vedkommende mellem modulets arbejdsflader via en kompakt
-       horisontal modulnavigation øverst" — se `fleet/modulfaner.js` og
-       `ModulNav` i ui.jsx. Kun ÉT barn (Overblik, sti /flaade — samme sti
-       som toppunktet selv) er derfor ikke `skjulINav` — de andre seks er.
-       AppShells `visBorn` kræver
-       `born.length > 1` for overhovedet at tegne en undermenu/chevron
-       (se dens egen note), så ét synligt barn er i praksis usynligt: der
-       renderes ingen undermenu, kun "Fleet" selv som ét link. Nul synlige
-       børn ville derimod have fjernet HELE toppunktet — `synligeToppunkter`
-       i AppShell.jsx kræver mindst ét, se dens filter — og det er derfor
-       ikke alle syv der er skjulte.
-       Rækkerne findes stadig ALLE HER, fordi `findModul()`/`ALLE` (nav.js'
-       flade rute→titel-opslag til AppShell's sidehoved) læser dem uanset
-       `skjulINav` — kun selve SIDEBAR-VISNINGEN filtrerer på flaget.
-
-       Se `enheder` under opsaetning — modulnøglen `flaade`, noden
-       `koeretoejer` og permissionen `koeretoejer.laes` er UÆNDREDE; kun
-       menupladsen (nu OGSÅ Fleets egen fanebjælke) er ny.
+    /* FLEET v2-INTEGRATION: AppShell ejer fortsat den eneste sidebar og
+       foldetilstand. Checkpointets egne arbejdsflader står som børn her,
+       filtreret med platformens eksisterende modul- og permissionsmodel.
+       Det nye /fleet-v2-prefix kolliderer ikke med de hidtidige /flaade-
+       ruter. De gamle ruteopslag bevares skjult nederst i born-listen, så
+       dybe links og den eksisterende implementering fortsat virker.
 
        ⚠ skjulFirma/skjulPeriode STOD HER OG ER VÆK IGEN. Flagene skjulte
        firma- og periodevælgeren på Fleets skærme; nu er de tre kontroller
        fjernet fra HVER side, og et flag der altid er sandt, er en mekanisme
        uden variation. Se AppShell. */
-    key: "flaade", sti: "/flaade", label: "Fleet", titel: "Fleet",
-    under: "Nye indberetninger, driftskalender og enheder", gruppe: "drift",
+    key: "flaade", sti: "/fleet-v2", label: "Fleet", titel: "Fleet",
+    kraeverPerm: "koeretoejer.laes",
+    under: "Enheder, indberetninger, værksted, service og lokal prototypedrift", gruppe: "drift",
     /* ⚠ HER STOD `udenDivision: true` — flaget der slog Gods/Bus-vaelgeren fra
        for netop dette modul, fordi beslutning 19 forbyder division paa
        `personale/` og `koeretoejer/`, og knappen derfor ville skifte en
@@ -209,6 +195,51 @@ export const NAV = [
        efter — den slags er vaerd at laegge maerke til, foer man bygger flere
        undtagelser. */
     born: [
+      /* FLEET v2 er monteret på et nyt prefix. De tidligere /flaade-ruter
+         står fortsat nederst som skjulte ruteopslag, så eksisterende links
+         og funktioner ikke overskrives af integrationen. */
+      { key: "fleetV2Overblik", sti: "/fleet-v2", label: "Overblik",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – overblik",
+        under: "Samlet lokalt prototypeoverblik over flådens drift." },
+      { key: "fleetV2Enheder", sti: "/fleet-v2/enheder", label: "Enheder",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – enheder",
+        under: "Enheder, profiler, billeder og stamdata i lokal prototypelagring." },
+      { key: "fleetV2Indberetninger", sti: "/fleet-v2/indberetninger", label: "Indberetninger",
+        kraeverPerm: "indberetninger.skrivAlle", titel: "FLEET – indberetninger",
+        under: "Triage og sammenhængende lokale sagsforløb." },
+      { key: "fleetV2Arbejdskoe", sti: "/fleet-v2/arbejdsko", label: "Arbejdskø",
+        kraeverPerm: "sag.laes", titel: "FLEET – arbejdskø",
+        under: "Prioritering, sagsmappe og statuskorrektion." },
+      { key: "fleetV2Vaerksted", sti: "/fleet-v2/vaerksted", label: "Værksted",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – værksted",
+        under: "Værkstedsopgaver, booking og kalender i lokal prototype." },
+      { key: "fleetV2Service", sti: "/fleet-v2/service", label: "Service",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – service",
+        under: "Servicekrav, planlægning og historik." },
+      { key: "fleetV2Dokumenter", sti: "/fleet-v2/dokumenter", label: "Dokumenter",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – dokumenter",
+        under: "Lokale dokumenter, bilag og relationer." },
+      { key: "fleetV2Leasing", sti: "/fleet-v2/leasing", label: "Leasing",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – leasing",
+        under: "Leasingaftaler, vilkår, kilometer og aflevering." },
+      { key: "fleetV2Livekort", sti: "/fleet-v2/livekort", label: "Livekort",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – livekort",
+        under: "Syntetiske lokale positioner; ingen OBD- eller liveforbindelse." },
+      { key: "fleetV2Mobil", sti: "/fleet-v2/mobil", label: "Mobil indberetning",
+        kraeverPerm: "indberetninger.skriv", titel: "FLEET – mobil indberetning",
+        under: "Mobil lokal prototype til indberetninger og kladder." },
+      { key: "fleetV2Oekonomi", sti: "/fleet-v2/oekonomi", label: "Økonomi",
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – økonomi",
+        under: "Lokale prototypeomkostninger; ikke fælles fakturadata." },
+      { key: "fleetV2Enhed", sti: "/fleet-v2/enheder/:id", label: "Enhed",
+        kraeverPerm: "koeretoejer.laes", skjulINav: true, titel: "FLEET – enhedsprofil",
+        under: "Profil, billeder, service, dokumenter og historik." },
+      { key: "fleetV2NyIndberetning", sti: "/fleet-v2/indberetninger/ny", label: "Ny indberetning",
+        kraeverPerm: "indberetninger.skriv", skjulINav: true, titel: "FLEET – ny indberetning",
+        under: "Syntetisk lokal indberetning; ingen serverdeling." },
+      { key: "fleetV2Sag", sti: "/fleet-v2/sager/:id", label: "Sag",
+        kraeverPerm: "sag.laes", skjulINav: true, titel: "FLEET – sagsmappe",
+        under: "Sammenhængende lokal sagsmappe og kontrolflow." },
       /* ⚠ OVERBLIK ER NU FORSIDEN (samme sti Driftskalenderen havde før) —
          den absorberede de fem "kasser"/arbejdskøen, som ikke længere er en
          underside man skal klikke sig hen til. Se Overblik.jsx.
@@ -216,7 +247,7 @@ export const NAV = [
          Sitien er DEN SAMME som forælderens (/flaade): et topniveaupunkts
          egen NavLink skal pege på et barn der rent faktisk er synligt
          (test/skive1-navigation.test.mjs), og Overblik ER modulets forside. */
-      { key: "flaadeOverblik", sti: "/flaade", label: "Overblik",
+      { key: "flaadeOverblik", sti: "/flaade", label: "Tidligere overblik", skjulINav: true,
         titel: "Fleet – overblik",
         under: "Nye indberetninger, hvad kræver handling, og hvad er planlagt." },
       { key: "vaerksted", sti: "/flaade/driftskalender", label: "Driftskalender",
@@ -633,7 +664,8 @@ export const REDIRECTS = [
 /** Slår modulet op ud fra pathname. Længste match vinder. */
 export function findModul(pathname) {
   const kandidater = ALLE.filter((m) => {
-    const sti = m.sti.split("/:")[0];
+    const [sti, parameter] = m.sti.split("/:");
+    if (parameter) return pathname.startsWith(sti + "/") && pathname.length > sti.length + 1;
     return pathname === sti || pathname.startsWith(sti + "/");
   }).sort((a, b) => b.sti.length - a.sti.length);
   return kandidater[0] || NAV[0];

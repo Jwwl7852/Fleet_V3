@@ -57,6 +57,7 @@ const Arbejdskoe = lazy(() => import("./moduler/flaade/Arbejdskoe.jsx"));
 const Servicebog = lazy(() => import("./moduler/flaade/Servicebog.jsx"));
 const FlaadeStatistik = lazy(() => import("./moduler/flaade/Statistik.jsx"));
 const FlaadeKontakter = lazy(() => import("./moduler/flaade/Kontakter.jsx"));
+const FleetV2Module = lazy(() => import("./moduler/flaade/FleetV2Module.jsx"));
 const FacilityOversigt = lazy(() => import("./moduler/facility/Oversigt.jsx"));
 const Servicekalender = lazy(() => import("./moduler/facility/Servicekalender.jsx"));
 const FacilityInventar = lazy(() => import("./moduler/facility/Inventar.jsx"));
@@ -604,6 +605,24 @@ export default function App() {
             <Route path="flaade/servicebog" element={<Servicebog />} />
             <Route path="flaade/statistik" element={<FlaadeStatistik />} />
             <Route path="flaade/kontakter" element={<FlaadeKontakter />} />
+
+            {/* Det sikrede FLEET v2-checkpoint monteres på et nyt prefix, så
+                de eksisterende /flaade-ruter og gamle dybe links bevares. */}
+            <Route path="fleet-v2" element={<FleetV2Module />} />
+            <Route path="fleet-v2/enheder" element={<FleetV2Module />} />
+            <Route path="fleet-v2/enheder/:id" element={<FleetV2Module />} />
+            <Route path="fleet-v2/indberetninger" element={<FleetV2Module />} />
+            <Route path="fleet-v2/indberetninger/ny" element={<FleetV2Module />} />
+            <Route path="fleet-v2/arbejdsko" element={<FleetV2Module />} />
+            <Route path="fleet-v2/vaerksted" element={<FleetV2Module />} />
+            <Route path="fleet-v2/service" element={<FleetV2Module />} />
+            <Route path="fleet-v2/dokumenter" element={<FleetV2Module />} />
+            <Route path="fleet-v2/leasing" element={<FleetV2Module />} />
+            <Route path="fleet-v2/livekort" element={<FleetV2Module />} />
+            <Route path="fleet-v2/mobil" element={<FleetV2Module />} />
+            <Route path="fleet-v2/oekonomi" element={<FleetV2Module />} />
+            <Route path="fleet-v2/sager/:id" element={<FleetV2Module />} />
+            <Route path="fleet-v2/*" element={<FleetV2Module />} />
 
             <Route path="facility" element={<FacilityOversigt />} />
             <Route path="facility/servicekalender" element={<Servicekalender />} />

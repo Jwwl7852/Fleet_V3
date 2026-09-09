@@ -177,6 +177,19 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(prototype, /eksterneKald:\s*false/);
         continue;
       }
+      if (p.key.startsWith("fleetV2")) {
+        /* FLEET v2 læser med vilje ikke en Firebase-node i milepæl A. Dets
+           lokale IndexedDB-ruter skal derfor bevise permission-gaten i den
+           fælles adapter i stedet for at foregive serverhåndhævelse. */
+        const wrapper = readFileSync("src/moduler/flaade/FleetV2Module.jsx", "utf8");
+        const gate = readFileSync("src/fleet/fleet-v2-integration.js", "utf8");
+        assert.match(wrapper, /fleetV2PermissionForPath\(location\.pathname\)/);
+        assert.match(wrapper, /harPerm\(bruger\?\.perms, requiredPermission\)/);
+        const permKey = Object.entries(PERM).find(([, value]) => value === p.kraeverPerm)?.[0];
+        assert.ok(permKey);
+        assert.match(gate, new RegExp(`PERM\\.${permKey}`));
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);

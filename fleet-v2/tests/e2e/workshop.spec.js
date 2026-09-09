@@ -25,8 +25,10 @@ test("sammenhængende forløb fra indberetning til afsluttet værkstedsarbejde",
   await page.getByLabel("Ansvarlig").selectOption("demo-lars");
   await page.getByLabel("Flyt status").selectOption("assessing");
   await page.getByRole("button", { name: "Gem vurdering" }).click();
+  await expect(page.getByRole("button", { name: "Gem vurdering" })).toBeEnabled();
   await page.getByLabel("Flyt status").selectOption("ready");
   await page.getByRole("button", { name: "Gem vurdering" }).click();
+  await expect(page.getByRole("button", { name: "Gem vurdering" })).toBeEnabled();
 
   await page.getByRole("button", { name: /Arbejdskø/ }).click();
   const card = page.locator(".queue-card").filter({ hasText: "E2E værkstedsforløb" });

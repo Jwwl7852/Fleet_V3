@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fleetDemo } from "./demoData";
 import { Icon } from "./components/Icon";
 import { Overview } from "./components/Overview";
@@ -25,8 +25,12 @@ import { MobileReporting } from "./components/MobileReporting";
 import { FleetEconomy } from "./components/FleetEconomy";
 import { FleetDataProvider } from "./data/FleetDataContext";
 
-const routeFromPath = (pathname) => {
-  const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+export const routeFromPath = (pathname, basePath = "") => {
+  const absolute = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+  const normalizedBase = basePath.replace(/\/+$/, "");
+  const clean = normalizedBase && (absolute === normalizedBase || absolute.startsWith(`${normalizedBase}/`))
+    ? absolute.slice(normalizedBase.length) || "/"
+    : absolute;
   if (clean === "/enheder") return { page: "units", kind: "catalog" };
   if (clean.startsWith("/enheder/")) return { page: "units", kind: "profile", unitId: decodeURIComponent(clean.slice("/enheder/".length)) };
   if (clean === "/indberetninger/ny") return { page: "reports", kind: "new-report" };
@@ -60,10 +64,28 @@ const routeFromPath = (pathname) => {
   return { page: "overview", kind: "overview" };
 };
 
-export function FleetV2App({ repository, vehicleLookup, imageProcessor }) {
+const absoluteFleetPath = (basePath, path) => {
+  const normalizedBase = basePath.replace(/\/+$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return normalizedBase ? `${normalizedBase}${normalizedPath === "/" ? "" : normalizedPath}` : normalizedPath;
+};
+
+export function FleetV2App({
+  actor,
+  basePath = "",
+  embedded = false,
+  imageProcessor,
+  onNavigate,
+  pathname,
+  repository,
+  vehicleLookup,
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [route, setRoute] = useState(() => routeFromPath(window.location.pathname));
+  const controlled = typeof pathname === "string" && typeof onNavigate === "function";
+  const [localPathname, setLocalPathname] = useState(() => window.location.pathname);
+  const activePathname = controlled ? pathname : localPathname;
+  const route = useMemo(() => routeFromPath(activePathname, basePath), [activePathname, basePath]);
 
   const showUnavailable = (label) => {
     setNotice(`${label}: Ikke implementeret i denne etape`);
@@ -77,14 +99,20 @@ export function FleetV2App({ repository, vehicleLookup, imageProcessor }) {
   }, [notice]);
 
   useEffect(() => {
-    const handlePopState = () => setRoute(routeFromPath(window.location.pathname));
+    if (controlled) return undefined;
+    const handlePopState = () => setLocalPathname(window.location.pathname);
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [controlled]);
 
   const navigate = (path) => {
-    if (window.location.pathname !== path) window.history.pushState({}, "", path);
-    setRoute(routeFromPath(path));
+    const target = absoluteFleetPath(basePath, path);
+    if (controlled) {
+      onNavigate(target);
+      return;
+    }
+    if (window.location.pathname !== target) window.history.pushState({}, "", target);
+    setLocalPathname(target);
   };
 
   let content;
@@ -110,12 +138,13 @@ export function FleetV2App({ repository, vehicleLookup, imageProcessor }) {
   else content = <Overview onUnavailable={showUnavailable} onNavigate={navigate} />;
 
   return (
-    <FleetDataProvider repository={repository}>
-      <div className="fleet-v2-shell">
+    <FleetDataProvider actor={actor} repository={repository}>
+      <div className="veyro-module--fleet">
+        <div className={embedded ? "fleet-v2-embedded" : "fleet-v2-shell"}>
         <a className="skip-link" href="#main-content">Gå til indhold</a>
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} onUnavailable={showUnavailable} onNavigate={navigate} activePage={route.page} />
-        {sidebarOpen ? <button className="sidebar-scrim" aria-label="Luk menu" onClick={() => setSidebarOpen(false)} type="button" /> : null}
-        <Topbar meta={fleetDemo.meta} onMenu={() => setSidebarOpen((value) => !value)} onUnavailable={showUnavailable} />
+        {!embedded ? <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} onUnavailable={showUnavailable} onNavigate={navigate} activePage={route.page} /> : null}
+        {!embedded && sidebarOpen ? <button className="sidebar-scrim" aria-label="Luk menu" onClick={() => setSidebarOpen(false)} type="button" /> : null}
+        {!embedded ? <Topbar meta={fleetDemo.meta} onMenu={() => setSidebarOpen((value) => !value)} onUnavailable={showUnavailable} /> : null}
         {content}
         {notice ? (
           <div className="stage-notice" role="status">
@@ -124,6 +153,7 @@ export function FleetV2App({ repository, vehicleLookup, imageProcessor }) {
             <button type="button" onClick={() => setNotice("")} aria-label="Luk besked"><Icon name="close" size={15} /></button>
           </div>
         ) : null}
+        </div>
       </div>
     </FleetDataProvider>
   );

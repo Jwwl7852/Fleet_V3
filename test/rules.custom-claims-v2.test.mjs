@@ -1,6 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import { isoleredeEmulatorporte } from "./rules-test-claims.mjs";
 import { get, ref, set } from "firebase/database";
 import { GYLDIGE_CLAIM_CASES } from "./custom-claims-v2-cases.mjs";
 
@@ -20,10 +21,10 @@ async function tilladLegacy(uid, tenant = T, expiresAtMs = Date.now() + 60_000) 
 }
 
 before(async () => {
-  miljoe = await initializeTestEnvironment({
+  miljoe = await initializeTestEnvironment(isoleredeEmulatorporte({
     projectId: "demo-fleet-custom-claims-v2",
     database: { host: "127.0.0.1", port: 9000, rules: readFileSync("firebase.rules.json", "utf8") },
-  });
+  }));
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
     for (const tenant of [T, ANDEN]) {

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "npm run lint && npm run test:rules",
     "lint": "eslint .",
-    "test:rules": "npx --yes firebase-tools@15.29.0 emulators:exec --only database,storage --project demo-fleetcontrol-rules-test \"node --test\"",
+    "test:rules": "npx --yes firebase-tools@15.29.0 emulators:exec --only database,storage --config firebase.rules-test.json --project demo-fleetcontrol-rules-test \"node scripts/test-platform.mjs\"",
     "test:design": "node --test test/design-tokens.test.mjs",
     "provisioner:dev": "node scripts/provisioner-dev.mjs",
     "regler:tjek": "node scripts/tjek-regler.mjs",
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "firebase": "^10.12.2",
+    "qrcode": "1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"

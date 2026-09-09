@@ -304,7 +304,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **168 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **169 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -531,7 +531,7 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 63 i alt, og alle har indhold
+### Skærmene: 77 i alt, og alle har indhold
 
 ⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
 (29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
@@ -558,7 +558,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Leverandører | 1 | Skive 4B: flyttet ud af Procure — fælles platform-masterdata for Fleet, Facility og Procure. Samme rute (`/indkoeb/leverandoerer`), ny `kraeverPerm: "leverandoerer.laes"` |
 | Økonomi / Fakturagrundlag | 2 | begge børn skjulte (Overblik siden V1: LATER, Fakturagrundlag siden masteropgave §5: sat på pause). Fakturacenter er flyttet til Fælles > Fakturaer & bilag. Ruten findes stadig, kun menuen tier |
 | Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
-| Fleet | 7 | Fleet TARGET (masterbrief §1/§9, produktejer-review 2026-09-01): kun Overblik (sti `/flaade`, samme som toppunktet selv) er ikke `skjulINav` — og tegner alligevel ingen undermenu, da AppShell kræver mindst to synlige børn for en chevron. De øvrige seks — Driftskalender, Indberetninger, Servicebog, Statistik, Kontakter, Arbejdskø (kun "åbn i nyt vindue") — er skjulte. Navigation mellem alle syv sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js), ikke i sidebaren. Enheder vises også i fanebjælken, men er stadig samme nav.js-punkt under Opsætning — ingen dobbelttælling |
+| Fleet | 21 | FLEET v2-checkpointets arbejdsflader er monteret under `/fleet-v2/*` i den fælles AppShell med synlige underpunkter for Overblik, Enheder, Indberetninger, Arbejdskø, Værksted, Service, Dokumenter, Leasing, Livekort, Mobil indberetning og Økonomi. Tre detaljeruter er skjulte. De syv tidligere `/flaade/*`-skærme bevares som skjulte ruteopslag og er ikke overskrevet. FLEET v2 bruger lokal tenant-afgrænset prototypelagring; dette er ikke fælles serverlagring |
 | Facility | 6 | Facility TARGET (samme masterbrief §1, produktejer-review 2026-09-02): kun Overblik (sti `/facility`, samme som toppunktet selv) er ikke `skjulINav`. De øvrige fem — Service & reparation (Servicekalender.jsx, uændret indhold), Inventar, Planlagt, Statistik og Klima & energi (V1: LATER) — er skjulte. Navigation mellem de fire første sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js's FACILITY_FANER); Klima er ikke en fane i bjælken, fordi den er eksplicit uden for V1 |
 | Procure | 7 | Procure TARGET (samme masterbrief §1, produktejer-review 2026-09-02): kun Overblik (sti `/indkoeb`, samme som toppunktet selv) er ikke `skjulINav`. De øvrige seks — Bestillinger (behov, kladder og godkendelse samlet), Varer, Arkiv, Statistik, Match & kontantkøb og Varelager — er skjulte. Navigation mellem de fire første sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js's PROCURE_FANER); Match & kontantkøb og Varelager er ikke faner i bjælken, nået via kontekstuelle links i stedet — Leverandører er stadig flyttet til Fælles |
 | Warehouse | 11 | modulet med flest skærme |
@@ -566,7 +566,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles. Godkendelsesregler er ny (Procure TARGET trin 4) — administrations-UI'et for Procures godkendelsesregler, flyttet ud af Godkendelser.jsx |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **63** | **38 i menuen, 25 skjulte detaljeruter** |
+| **I alt** | **77** | **48 i menuen, 29 skjulte detaljeruter** |
 
 | | |
 |---|---|

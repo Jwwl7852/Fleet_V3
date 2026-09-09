@@ -10,7 +10,7 @@ import { applyDocumentArchive, applyDocumentRelationRemoval, applyDocumentUpdate
 import { applyContractReviewSave, applyLeaseAutomation, applyLeaseDeliveryUpdate, applyLeaseSaveWithContract, ensureLeasingRegistry, migrateLeaseDemoMeterObservations, saveMeterObservation } from "./leasingWorkflow";
 import { applyManualCostSave } from "./economyWorkflow";
 
-const DATABASE_NAME = "veyro-fleet-v2-prototype";
+export const PROTOTYPE_DATABASE_NAME = "veyro-fleet-v2-prototype";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "tenant-datasets";
 export const CURRENT_DATASET_VERSION = 14;
@@ -19,7 +19,7 @@ const clone = (value) => structuredClone(value);
 
 export function migrateDataset(dataset) {
   if (!dataset) return dataset;
-  const fixtureRelations = createFixtureDataset().relations;
+  const fixtureRelations = createFixtureDataset(dataset.tenantId).relations;
   const relations = dataset.relations || {};
   const normalizedRequirements = (relations.serviceRequirements || clone(fixtureRelations.serviceRequirements)).map((item) => ({
     description: "", templateId: null, equipmentLabel: "", firstDueDate: item.fixedDueDate || null,
@@ -81,9 +81,9 @@ export function migrateDataset(dataset) {
   return ensureDocumentRegistry(withLeaseMeterMigration);
 }
 
-function openDatabase() {
+function openDatabase(databaseName) {
   return new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+    const request = window.indexedDB.open(databaseName, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE_NAME)) {
         request.result.createObjectStore(STORE_NAME, { keyPath: "tenantId" });
@@ -94,8 +94,8 @@ function openDatabase() {
   });
 }
 
-const transaction = async (mode, operation) => {
-  const database = await openDatabase();
+const transaction = async (databaseName, mode, operation) => {
+  const database = await openDatabase(databaseName);
   try {
     return await new Promise((resolve, reject) => {
       const tx = database.transaction(STORE_NAME, mode);
@@ -117,12 +117,12 @@ const transaction = async (mode, operation) => {
   }
 };
 
-const mutateStoredDataset = async (tenantId, mutate) => transaction("readwrite", (store) => new Promise((resolve, reject) => {
+const mutateStoredDataset = async (databaseName, tenantId, mutate) => transaction(databaseName, "readwrite", (store) => new Promise((resolve, reject) => {
   const request = store.get(tenantId);
   request.onerror = () => reject(request.error);
   request.onsuccess = () => {
     try {
-      const current = migrateDataset(request.result || createFixtureDataset());
+      const current = migrateDataset(request.result || createFixtureDataset(tenantId));
       const rawResult = mutate(current);
       const result = { ...rawResult, dataset: ensureDocumentRegistry(ensureLeasingRegistry(rawResult.dataset)) };
       const put = store.put(clone(result.dataset));
@@ -134,12 +134,18 @@ const mutateStoredDataset = async (tenantId, mutate) => transaction("readwrite",
   };
 }));
 
-export function createIndexedDbUnitRepository({ tenantId = DEMO_TENANT_ID } = {}) {
+export function createIndexedDbUnitRepository({
+  databaseName = PROTOTYPE_DATABASE_NAME,
+  tenantId = DEMO_TENANT_ID,
+} = {}) {
+  const runTransaction = (mode, operation) => transaction(databaseName, mode, operation);
+  const mutate = (operation) => mutateStoredDataset(databaseName, tenantId, operation);
   return {
     kind: "indexeddb-prototype",
+    databaseName,
     tenantId,
     async load() {
-      const stored = await transaction("readonly", (store) => new Promise((resolve, reject) => {
+      const stored = await runTransaction("readonly", (store) => new Promise((resolve, reject) => {
         const request = store.get(tenantId);
         request.onsuccess = () => resolve(request.result || null);
         request.onerror = () => reject(request.error);
@@ -147,12 +153,12 @@ export function createIndexedDbUnitRepository({ tenantId = DEMO_TENANT_ID } = {}
       if (stored) {
         const migrated = migrateDataset(stored);
         if (stored.version !== CURRENT_DATASET_VERSION) {
-          await transaction("readwrite", (store) => store.put(clone(migrated)));
+          await runTransaction("readwrite", (store) => store.put(clone(migrated)));
         }
         return clone(migrated);
       }
-      const initial = migrateDataset(createFixtureDataset());
-      await transaction("readwrite", (store) => store.put(clone(initial)));
+      const initial = migrateDataset(createFixtureDataset(tenantId));
+      await runTransaction("readwrite", (store) => store.put(clone(initial)));
       return clone(initial);
     },
     async saveUnit(unit) {
@@ -160,101 +166,101 @@ export function createIndexedDbUnitRepository({ tenantId = DEMO_TENANT_ID } = {}
       const index = dataset.units.findIndex((item) => item.id === unit.id);
       if (index >= 0) dataset.units[index] = clone(unit);
       else dataset.units.push(clone(unit));
-      await transaction("readwrite", (store) => store.put(dataset));
+      await runTransaction("readwrite", (store) => store.put(dataset));
       return clone(unit);
     },
     async submitReport(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyReportSubmission(dataset, input, options));
+      return mutate((dataset) => applyReportSubmission(dataset, input, options));
     },
     async saveReportDraft(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyReportDraftSave(dataset, input, options));
+      return mutate((dataset) => applyReportDraftSave(dataset, input, options));
     },
     async createManualCase(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyManualCaseCreation(dataset, input, actor, options));
+      return mutate((dataset) => applyManualCaseCreation(dataset, input, actor, options));
     },
     async saveWorkshopOrder(caseId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyWorkshopOrderSave(dataset, caseId, input, actor, options));
+      return mutate((dataset) => applyWorkshopOrderSave(dataset, caseId, input, actor, options));
     },
     async closeCase(caseId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyCaseClosure(dataset, caseId, input, actor, options));
+      return mutate((dataset) => applyCaseClosure(dataset, caseId, input, actor, options));
     },
     async reopenCase(caseId, reason, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyCaseReopen(dataset, caseId, reason, actor, options));
+      return mutate((dataset) => applyCaseReopen(dataset, caseId, reason, actor, options));
     },
     async saveEvidence(caseId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => saveEvidenceSnapshot(dataset, caseId, input, actor, options));
+      return mutate((dataset) => saveEvidenceSnapshot(dataset, caseId, input, actor, options));
     },
     async applyInvoiceFixture(event, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyInvoiceCenterEvent(dataset, event, options));
+      return mutate((dataset) => applyInvoiceCenterEvent(dataset, event, options));
     },
     async updateCase(caseId, change, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyCaseChange(dataset, caseId, change, actor, options));
+      return mutate((dataset) => applyCaseChange(dataset, caseId, change, actor, options));
     },
     async createWorkshopTask(caseId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyWorkshopTaskCreation(dataset, caseId, input, actor, options));
+      return mutate((dataset) => applyWorkshopTaskCreation(dataset, caseId, input, actor, options));
     },
     async updateWorkshopTask(taskId, change, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyWorkshopTaskUpdate(dataset, taskId, change, actor, options));
+      return mutate((dataset) => applyWorkshopTaskUpdate(dataset, taskId, change, actor, options));
     },
     async saveBooking(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyBookingSave(dataset, input, actor, options));
+      return mutate((dataset) => applyBookingSave(dataset, input, actor, options));
     },
     async cancelBooking(bookingId, reason, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyBookingCancellation(dataset, bookingId, reason, actor, options));
+      return mutate((dataset) => applyBookingCancellation(dataset, bookingId, reason, actor, options));
     },
     async saveServiceRequirement(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyServiceRequirementSave(dataset, input, actor, options));
+      return mutate((dataset) => applyServiceRequirementSave(dataset, input, actor, options));
     },
     async planService(requirementId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyServicePlanning(dataset, requirementId, input, actor, options));
+      return mutate((dataset) => applyServicePlanning(dataset, requirementId, input, actor, options));
     },
     async saveHistoricalService(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyHistoricalServiceSave(dataset, input, actor, options));
+      return mutate((dataset) => applyHistoricalServiceSave(dataset, input, actor, options));
     },
     async runServiceAutomation(options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyServiceAutomation(dataset, options));
+      return mutate((dataset) => applyServiceAutomation(dataset, options));
     },
     async saveServiceSettings(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyServiceSettingsSave(dataset, input, options));
+      return mutate((dataset) => applyServiceSettingsSave(dataset, input, options));
     },
     async savePositionMeasurement(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyPositionMeasurement(dataset, input, options));
+      return mutate((dataset) => applyPositionMeasurement(dataset, input, options));
     },
     async runPositionDemo(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyPositionDemo(dataset, input, options));
+      return mutate((dataset) => applyPositionDemo(dataset, input, options));
     },
     async uploadDocuments(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyDocumentUpload(dataset, input, actor, options));
+      return mutate((dataset) => applyDocumentUpload(dataset, input, actor, options));
     },
     async updateDocument(documentId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyDocumentUpdate(dataset, documentId, input, actor, options));
+      return mutate((dataset) => applyDocumentUpdate(dataset, documentId, input, actor, options));
     },
     async replaceDocumentFile(documentId, file, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyDocumentVersion(dataset, documentId, file, actor, options));
+      return mutate((dataset) => applyDocumentVersion(dataset, documentId, file, actor, options));
     },
     async removeDocumentRelation(documentId, relationId, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyDocumentRelationRemoval(dataset, documentId, relationId, options));
+      return mutate((dataset) => applyDocumentRelationRemoval(dataset, documentId, relationId, options));
     },
     async archiveDocument(documentId, archived, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyDocumentArchive(dataset, documentId, archived, actor, options));
+      return mutate((dataset) => applyDocumentArchive(dataset, documentId, archived, actor, options));
     },
     async saveLease(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyLeaseSaveWithContract(dataset, input, actor, options));
+      return mutate((dataset) => applyLeaseSaveWithContract(dataset, input, actor, options));
     },
     async runLeaseAutomation(options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyLeaseAutomation(dataset, options));
+      return mutate((dataset) => applyLeaseAutomation(dataset, options));
     },
     async updateLeaseDelivery(deliveryId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyLeaseDeliveryUpdate(dataset, deliveryId, input, actor, options));
+      return mutate((dataset) => applyLeaseDeliveryUpdate(dataset, deliveryId, input, actor, options));
     },
     async saveLeaseMeterObservation(input, options) {
-      return mutateStoredDataset(tenantId, (dataset) => saveMeterObservation(dataset, input, options));
+      return mutate((dataset) => saveMeterObservation(dataset, input, options));
     },
     async saveContractReview(leaseId, input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyContractReviewSave(dataset, leaseId, input, actor, options));
+      return mutate((dataset) => applyContractReviewSave(dataset, leaseId, input, actor, options));
     },
     async saveManualCost(input, actor, options) {
-      return mutateStoredDataset(tenantId, (dataset) => applyManualCostSave(dataset, input, actor, options));
+      return mutate((dataset) => applyManualCostSave(dataset, input, actor, options));
     },
   };
 }

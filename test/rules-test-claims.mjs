@@ -17,6 +17,32 @@ const TILLADTE_EKSTRA_CLAIMS = new Set(["udbyder", "devTester"]);
 const AUTORITETSFELTER = new Set(["tenant", "rolle", "pv", "perms"]);
 const HAR_EGEN = (objekt, felt) => Object.prototype.hasOwnProperty.call(objekt, felt);
 
+function emulatorFraMiljoe(variable, fallback) {
+  const vaerdi = process.env[variable];
+  if (!vaerdi) return fallback;
+  const separator = vaerdi.lastIndexOf(":");
+  const port = Number(vaerdi.slice(separator + 1));
+  if (separator < 1 || !Number.isInteger(port)) return fallback;
+  return { host: vaerdi.slice(0, separator), port };
+}
+
+export function isoleredeEmulatorporte(options) {
+  const resultat = { ...options };
+  if (options.database) {
+    resultat.database = {
+      ...options.database,
+      ...emulatorFraMiljoe("FIREBASE_DATABASE_EMULATOR_HOST", {}),
+    };
+  }
+  if (options.storage) {
+    resultat.storage = {
+      ...options.storage,
+      ...emulatorFraMiljoe("FIREBASE_STORAGE_EMULATOR_HOST", {}),
+    };
+  }
+  return resultat;
+}
+
 function semantiskePermissions(perms) {
   if (typeof perms !== "string") return null;
   if (perms === "") return [];
@@ -75,8 +101,12 @@ export function testClaimsV2(claims = {}) {
  * cleanup, unauthenticatedContext og withSecurityRulesDisabled bindes fortsat
  * direkte til det oprindelige miljø.
  */
+export async function initializeUnwrappedTestEnvironment(options) {
+  return initializeRawTestEnvironment(isoleredeEmulatorporte(options));
+}
+
 export async function initializeTestEnvironment(options) {
-  const miljø = await initializeRawTestEnvironment(options);
+  const miljø = await initializeUnwrappedTestEnvironment(options);
   return new Proxy(miljø, {
     get(target, property, receiver) {
       if (property === "authenticatedContext") {

@@ -1,8 +1,4 @@
-:root {
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
-  color: var(--veyro-primary-text);
-  background: var(--veyro-app-background);
-  font-synthesis: none;
+:root.fleet-v2-standalone {
   --veyro-deep-navy:#061a2a;
   --veyro-navy-dark:#03131f;
   --veyro-teal:#087f8f;
@@ -17,23 +13,40 @@
   --veyro-success:#2ead72;
   --veyro-warning:#d99a28;
   --veyro-danger:#d95c5c;
-  --veyro-surface: var(--veyro-white);
-  --veyro-workspace: var(--veyro-app-background);
-  --veyro-text: var(--veyro-primary-text);
-  --veyro-text-secondary: var(--veyro-secondary-text-strong);
-  --veyro-nav-bg: var(--veyro-deep-navy);
-  --veyro-nav-bg-deep: var(--veyro-navy-dark);
-  --veyro-nav-active: var(--veyro-teal);
-  --veyro-action: var(--veyro-teal);
-  --veyro-action-hover: color-mix(in srgb, var(--veyro-teal) 84%, var(--veyro-navy-dark));
-  --veyro-link: var(--veyro-teal);
-  --veyro-focus: var(--veyro-cyan);
-  --veyro-success-text: #176b47;
-  --veyro-warning-text: #76500b;
-  --veyro-danger-text: #8e3030;
-  --veyro-success-bg: color-mix(in srgb, var(--veyro-success) 13%, var(--veyro-white));
-  --veyro-warning-bg: color-mix(in srgb, var(--veyro-warning) 16%, var(--veyro-white));
-  --veyro-danger-bg: color-mix(in srgb, var(--veyro-danger) 14%, var(--veyro-white));
+  --veyro-surface:var(--veyro-white);
+  --veyro-workspace:var(--veyro-app-background);
+  --veyro-text:var(--veyro-primary-text);
+  --veyro-text-secondary:var(--veyro-secondary-text-strong);
+  --veyro-nav-bg:var(--veyro-deep-navy);
+  --veyro-nav-bg-deep:var(--veyro-navy-dark);
+  --veyro-nav-active:var(--veyro-teal);
+  --veyro-action:var(--veyro-teal);
+  --veyro-action-hover:color-mix(in srgb,var(--veyro-teal) 84%,var(--veyro-navy-dark));
+  --veyro-link:var(--veyro-teal);
+  --veyro-focus:var(--veyro-cyan);
+  --veyro-success-text:#176b47;
+  --veyro-warning-text:#76500b;
+  --veyro-danger-text:#8e3030;
+  --veyro-success-bg:color-mix(in srgb,var(--veyro-success) 13%,var(--veyro-white));
+  --veyro-warning-bg:color-mix(in srgb,var(--veyro-warning) 16%,var(--veyro-white));
+  --veyro-danger-bg:color-mix(in srgb,var(--veyro-danger) 14%,var(--veyro-white));
+}
+
+/* Standalone-entryens dokumentramme ligger uden for CSS-scope-roden. */
+:root.fleet-v2-standalone,
+:root.fleet-v2-standalone body,
+:root.fleet-v2-standalone #root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+:root.fleet-v2-standalone body { min-width: 320px; overflow: hidden; }
+
+.veyro-module--fleet {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: var(--veyro-primary-text);
+  background: var(--veyro-app-background);
+  font-synthesis: none;
   --navy-950: var(--veyro-navy-dark);
   --navy-900: var(--veyro-deep-navy);
   --navy-800: color-mix(in srgb, var(--veyro-deep-navy) 76%, var(--veyro-teal));
@@ -42,8 +55,8 @@
   --muted-2: var(--veyro-text-secondary);
   --line: var(--veyro-border);
   --line-soft: color-mix(in srgb, var(--veyro-border) 64%, var(--veyro-white));
-  --surface: var(--veyro-white);
-  --canvas: var(--veyro-app-background);
+  --surface: var(--veyro-surface);
+  --canvas: var(--veyro-workspace);
   --blue: var(--veyro-teal);
   --blue-soft: var(--veyro-teal-light);
   --green: var(--veyro-success);
@@ -56,9 +69,8 @@
   --shadow: 0 1px 2px color-mix(in srgb, var(--veyro-deep-navy) 6%, transparent);
 }
 
+@scope (.veyro-module--fleet) {
 * { box-sizing: border-box; }
-html, body, #root { width: 100%; min-height: 100%; margin: 0; }
-body { min-width: 320px; overflow: hidden; }
 button, input { font: inherit; }
 button { color: inherit; }
 .fleet-v2-shell :focus-visible { outline: 2px solid var(--veyro-focus); outline-offset: 2px; }
@@ -75,6 +87,17 @@ button { color: inherit; }
     radial-gradient(circle at 72% 13%, color-mix(in srgb, var(--veyro-cyan) 7%, transparent), transparent 29%),
     var(--veyro-workspace);
   overflow: hidden;
+}
+
+.fleet-v2-embedded { min-width: 0; min-height: 0; }
+.fleet-v2-embedded > .workspace-page {
+  grid-column: auto;
+  grid-row: auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
 }
 
 .fleet-sidebar {
@@ -1016,4 +1039,5 @@ button { color: inherit; }
 }
 @media (max-width: 560px) {
   .wizard-section { padding: 18px 14px; }.report-type-grid, .form-two-cols, .review-section dl { grid-template-columns: 1fr; }.form-two-cols .span-all { grid-column: auto; }.report-image-grid { grid-template-columns: repeat(2, 1fr); }.triage-filters, .queue-toolbar, .queue-kpis { grid-template-columns: 1fr; }.triage-filters .input-with-icon, .queue-toolbar .input-with-icon { grid-column: auto; }.original-report dl { grid-template-columns: 1fr; }.triage-detail-panel > header { flex-direction: column; }.queue-kpis article { min-height: 68px; }.unit-choice-list > button { grid-template-columns: 65px minmax(0,1fr); }.unit-choice-list .unit-thumbnail { width: 65px; height: 50px; }.unit-choice-list button > i { grid-column: 2; }
+}
 }

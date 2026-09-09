@@ -176,10 +176,19 @@ export const fixtureRelations = {
   positionEvents: [],
 };
 
-export const createFixtureDataset = () => ({
+const retagTenant = (value, tenantId) => {
+  if (Array.isArray(value)) return value.map((item) => retagTenant(item, tenantId));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key,
+    key === "tenantId" ? tenantId : retagTenant(item, tenantId),
+  ]));
+};
+
+export const createFixtureDataset = (tenantId = DEMO_TENANT_ID) => retagTenant({
   tenantId: DEMO_TENANT_ID,
   units: structuredClone(fixtureUnits),
   relations: structuredClone(fixtureRelations),
   prototype: true,
   version: 2,
-});
+}, tenantId);
