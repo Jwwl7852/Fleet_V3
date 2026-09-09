@@ -1,0 +1,99 @@
+/* src/fleet/planning-basic.js
+ * Planning Basic — offentlig, generisk domænefacade.
+ * Ingen Firebase, React, permissions, transporttilstande eller audittransport.
+ */
+
+import { opretPlanningValidering } from "./planning-basic-validering.js";
+
+export const REGELNIVEAU = Object.freeze({
+  HARD: "HARD",
+  CONTROLLED_EXCEPTION: "CONTROLLED_EXCEPTION",
+  PREFERENCE: "PREFERENCE",
+});
+
+export const TIDSFORM = Object.freeze({ FAST: "fast", VINDUE: "vindue", DEADLINE: "deadline", FRI: "fri" });
+
+export const KILDE = Object.freeze({
+  PLANNING: "planning", FLEET: "fleet", WORKFORCE: "workforce",
+  BOOKING: "booking", FACILITY: "facility",
+});
+
+export const REFERENCEART = Object.freeze({
+  MEDARBEJDER: "medarbejder", TEAM: "team", KOERETOEJ: "koeretoej",
+  LOKATION: "lokation", UDSTYR: "udstyr", KUNDE: "kunde",
+  OPGAVE: "opgave", RUTE: "rute", RUTESKABELON: "ruteskabelon",
+});
+
+export const OPGAVESTATUS = Object.freeze({ KLADDE: "kladde", AKTIV: "aktiv", SUSPENDERET: "suspenderet", ARKIVERET: "arkiveret" });
+export const FOREKOMSTSTATUS = Object.freeze({ IKKE_PLANLAGT: "ikkePlanlagt", PLANLAGT: "planlagt", UDFOERT: "udfoert", ANNULLERET: "annulleret" });
+export const RUTESTATUS = Object.freeze({ KLADDE: "kladde", FRIGIVET: "frigivet", I_GANG: "iGang", AFSLUTTET: "afsluttet", ANNULLERET: "annulleret" });
+export const DAGSPLANSTATUS = Object.freeze({ KLADDE: "kladde", KLAR: "klar", FRIGIVET: "frigivet", ARKIVERET: "arkiveret" });
+
+export const FELTKLASSIFIKATION = Object.freeze({ ALMINDELIG: "ALMINDELIG", FORTROLIG: "FORTROLIG", FOELSOM: "FOELSOM" });
+export const ADRESSESTATUS = Object.freeze({ VALIDERET: "valideret", KRAEVER_KONTROL: "kraeverKontrol", IKKE_KONTROLLERET: "ikkeKontrolleret" });
+export const GENTAGELSESART = Object.freeze({ DAGLIG: "daglig", UGEDAGE: "ugedage", HVER_N_UGE: "hverNUge", HVER_N_MAANED: "hverNMaaned", KOPI: "kopi" });
+export const AFHAENGIGHEDSART = Object.freeze({ EFTER: "efter", AFHENTNING_FOER_LEVERING: "afhentningFoerLevering", SAMME_MEDARBEJDER: "sammeMedarbejder", UAFHAENGIG: "uafhaengig" });
+
+export const AARSAGSKODE = Object.freeze({
+  ID_MANGLER: "ID_MANGLER", ID_DUBLET: "ID_DUBLET", FELT_MANGLER: "FELT_MANGLER",
+  FELT_UGYLDIGT: "FELT_UGYLDIGT", STATUS_UGYLDIG: "STATUS_UGYLDIG",
+  REFERENCE_MANGLER: "REFERENCE_MANGLER", REFERENCE_KILDE_UKENDT: "REFERENCE_KILDE_UKENDT",
+  REFERENCE_ART_UKENDT: "REFERENCE_ART_UKENDT", REFERENCE_ART_FORKERT: "REFERENCE_ART_FORKERT",
+  REFERENCE_UKENDT: "REFERENCE_UKENDT", REFERENCE_EJERSKAB_UKLART: "REFERENCE_EJERSKAB_UKLART",
+  REFERENCE_DUBLET: "REFERENCE_DUBLET", TID_ART_UKENDT: "TID_ART_UKENDT",
+  TID_FELT_MANGLER: "TID_FELT_MANGLER", TID_MODSTRIDENDE_FELTER: "TID_MODSTRIDENDE_FELTER",
+  TID_INTERVAL_UGYLDIGT: "TID_INTERVAL_UGYLDIGT", TID_VARIGHED_PASSER_IKKE: "TID_VARIGHED_PASSER_IKKE",
+  FAST_TID_BRUD: "FAST_TID_BRUD", TIDSVINDUE_BRUD: "TIDSVINDUE_BRUD",
+  DEADLINE_OVERSKREDET: "DEADLINE_OVERSKREDET", REGELNIVEAU_UKENDT: "REGELNIVEAU_UKENDT",
+  GENTAGELSE_UGYLDIG: "GENTAGELSE_UGYLDIG", AFHAENGIGHED_SELREFERENCE: "AFHAENGIGHED_SELREFERENCE",
+  AFHAENGIGHED_CYKLUS: "AFHAENGIGHED_CYKLUS", AFHAENGIGHED_UKENDT: "AFHAENGIGHED_UKENDT",
+  KONTINUITET_UGYLDIG: "KONTINUITET_UGYLDIG", KONTINUITET_BRUD: "KONTINUITET_BRUD",
+  KOMPETENCE_MANGLER: "KOMPETENCE_MANGLER", CERTIFIKAT_MANGLER: "CERTIFIKAT_MANGLER",
+  CERTIFIKAT_UDLOEBET: "CERTIFIKAT_UDLOEBET", VAGT_MANGLER: "VAGT_MANGLER",
+  UDEN_FOR_VAGT: "UDEN_FOR_VAGT", FRAVAER_OVERLAP: "FRAVAER_OVERLAP",
+  FRAVAER_FOELSOMT_FELT: "FRAVAER_FOELSOMT_FELT", KOERETOEJ_MANGLER: "KOERETOEJ_MANGLER",
+  KOERETOEJSTYPE_FORKERT: "KOERETOEJSTYPE_FORKERT", KOERETOEJSKAPACITET_UTILSTRAEKKELIG: "KOERETOEJSKAPACITET_UTILSTRAEKKELIG",
+  UDSTYR_MANGLER: "UDSTYR_MANGLER", TEAM_IKKE_KANDIDATGRUPPE: "TEAM_IKKE_KANDIDATGRUPPE",
+  TEAM_RESERVERET_DIREKTE: "TEAM_RESERVERET_DIREKTE", FRIGIVET_RUTE_UDEN_MEDARBEJDER: "FRIGIVET_RUTE_UDEN_MEDARBEJDER",
+  STOP_RAEKKEFOELGE_UGYLDIG: "STOP_RAEKKEFOELGE_UGYLDIG", STOP_UDEN_FOR_RUTE: "STOP_UDEN_FOR_RUTE",
+  STOP_FOREKOMST_UOVERENSSTEMMELSE: "STOP_FOREKOMST_UOVERENSSTEMMELSE",
+  RESSOURCEINTERVAL_UGYLDIGT: "RESSOURCEINTERVAL_UGYLDIGT", DAGSPLAN_DATO_UGYLDIG: "DAGSPLAN_DATO_UGYLDIG",
+  TIDSZONE_UGYLDIG: "TIDSZONE_UGYLDIG", VERSION_UGYLDIG: "VERSION_UGYLDIG",
+  BEREGNINGSTID_MANGLER: "BEREGNINGSTID_MANGLER", FOREKOMST_DUBLET_TILDELING: "FOREKOMST_DUBLET_TILDELING",
+  IKKE_TILDELT_UOVERENSSTEMMELSE: "IKKE_TILDELT_UOVERENSSTEMMELSE",
+  KLASSIFIKATION_MANGLER: "KLASSIFIKATION_MANGLER", SYNLIGHEDSMETADATA_MANGLER: "SYNLIGHEDSMETADATA_MANGLER",
+  KLASSIFICERET_VAERDI_MANGLER: "KLASSIFICERET_VAERDI_MANGLER", UNDTAGELSE_UGYLDIG: "UNDTAGELSE_UGYLDIG",
+  HARD_KAN_IKKE_UNDTAGES: "HARD_KAN_IKKE_UNDTAGES", RESERVATIONSKANDIDAT_UGYLDIG: "RESERVATIONSKANDIDAT_UGYLDIG",
+  INTERN_TIDSKONFLIKT: "INTERN_TIDSKONFLIKT", FOREKOMST_UKENDT: "FOREKOMST_UKENDT",
+});
+
+export const KENDTE_KILDER = Object.freeze(Object.values(KILDE));
+export const KENDTE_REFERENCEARTER = Object.freeze(Object.values(REFERENCEART));
+
+export function referenceNoegle(reference) {
+  if (!reference || typeof reference !== "object") return null;
+  const { kilde, art, id } = reference;
+  return kilde && art && id ? `${kilde}:${art}:${id}` : null;
+}
+
+export function planningReference(art, id) {
+  return Object.freeze({ kilde: KILDE.PLANNING, art, id });
+}
+
+export const erTypedReference = (value) => Boolean(referenceNoegle(value));
+
+const V = opretPlanningValidering({
+  REGELNIVEAU, TIDSFORM, KILDE, REFERENCEART, OPGAVESTATUS, FOREKOMSTSTATUS,
+  RUTESTATUS, DAGSPLANSTATUS, FELTKLASSIFIKATION, ADRESSESTATUS,
+  GENTAGELSESART, AFHAENGIGHEDSART, AARSAGSKODE, referenceNoegle,
+});
+
+export const {
+  resultat, validerTypedReference, validerKlassificeretFelt, validerTidskrav,
+  kontrollerPlanlagtTid, validerGentagelse, validerOpgave, validerOpgaveforekomst,
+  validerRessource, validerKunde, validerLokation, validerRute, validerDagsplan,
+  validerAfhaengigheder, validerKontinuitet, validerKontrolleretUndtagelse,
+  anvendKontrolleredeUndtagelser, kontrollerKompetencerOgCertifikater,
+  kontrollerTilgaengelighed, kontrollerKoeretoejstypeOgKapacitet,
+  kontrollerInterneTidskonflikter, validerSnapshot,
+} = V;
