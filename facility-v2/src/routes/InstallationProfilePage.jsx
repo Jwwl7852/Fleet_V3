@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { FormFeedback } from '../components/facility/EntityDialog';
 import { HistoryPanel } from '../components/facility/HistoryPanel';
 import { ImageGallery, ProfileImage } from '../components/facility/ImageGallery';

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { FacilityV2App } from '../src/FacilityV2App';
 import { createDemoDataset } from '../src/data/fixtures';
@@ -8,6 +8,22 @@ import { createMemoryFacilityRepository } from '../src/data/facilityRepositoryV2
 
 function renderApp(path = '/facility', dataset = createDemoDataset()) {
   return render(<MemoryRouter initialEntries={[path]}><FacilityV2App repository={createMemoryFacilityRepository(dataset)} /></MemoryRouter>);
+}
+
+function renderEmbedded(path = '/facility-v2', dataset = createDemoDataset()) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/facility-v2/*" element={(
+          <FacilityV2App
+            basePath="/facility-v2"
+            embedded
+            repository={createMemoryFacilityRepository(dataset)}
+          />
+        )} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe('FACILITY v2 appskal', () => {
@@ -51,5 +67,15 @@ describe('FACILITY v2 appskal', () => {
     renderApp('/facility', dataset);
     await waitFor(() => expect(screen.getByText('Ingen ejendomme endnu')).toBeInTheDocument());
     await waitFor(() => expect(document.querySelector('.cost-card')).toHaveTextContent('Ingen registrerede demoomkostninger'));
+  });
+
+  it('bruger platformens route-prefix uden at tegne en ekstra shell', async () => {
+    renderEmbedded('/facility-v2/ejendomme');
+    expect(await screen.findByRole('heading', { name: 'Ejendomme' })).toBeInTheDocument();
+    expect(document.querySelector('.app-shell')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Åbn/ })[0]).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/facility-v2\/ejendomme\//),
+    );
   });
 });

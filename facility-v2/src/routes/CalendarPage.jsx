@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { useFacilityData } from '../data/FacilityDataContext';
 import { EntityDialog, Field, FormFeedback } from '../components/facility/EntityDialog';
 import { PageTitle } from '../components/workflow/WorkflowShared';
 
-const storageKey = 'veyro-facility-v2:calendar-panel-width';
 const startOfWeek = (value) => { const date = new Date(`${value}T12:00:00`); const day = date.getDay() || 7; date.setDate(date.getDate() - day + 1); return date; };
 const dateKey = (date) => date.toISOString().slice(0, 10);
 export function CalendarPage() {
-  const { dataset } = useFacilityData(); const [view, setView] = useState('week'); const [anchor, setAnchor] = useState(dateKey(startOfWeek(new Date().toISOString().slice(0, 10)))); const [selectedId, setSelectedId] = useState(''); const [editing, setEditing] = useState(false); const [panelWidth, setPanelWidth] = useState(() => Number(localStorage.getItem(storageKey)) || 340); const [resourceId, setResourceId] = useState(''); const [propertyId, setPropertyId] = useState('');
+  const { dataset } = useFacilityData(); const storageKey = `veyro-facility-v2:${dataset.tenantId}:calendar-panel-width`; const [view, setView] = useState('week'); const [anchor, setAnchor] = useState(dateKey(startOfWeek(new Date().toISOString().slice(0, 10)))); const [selectedId, setSelectedId] = useState(''); const [editing, setEditing] = useState(false); const [panelWidth, setPanelWidth] = useState(() => Number(localStorage.getItem(storageKey)) || 340); const [resourceId, setResourceId] = useState(''); const [propertyId, setPropertyId] = useState('');
   const monday = startOfWeek(anchor); const days = Array.from({ length: 5 }, (_, index) => { const date = new Date(monday); date.setDate(date.getDate() + index); return date; });
   const rows = useMemo(() => dataset.bookings.filter((item) => (!resourceId || item.resourceId === resourceId) && (!propertyId || item.propertyId === propertyId)), [dataset.bookings, propertyId, resourceId]); const selected = rows.find((item) => item.id === selectedId);
   const moveWeek = (amount) => { const date = new Date(monday); date.setDate(date.getDate() + amount * 7); setAnchor(dateKey(date)); };

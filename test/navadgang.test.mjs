@@ -59,7 +59,16 @@ const LAZY = Object.fromEntries(
     .map((m) => [m[1], m[2]]));
 const FIL_FOR = {};
 for (const m of APP.matchAll(/<Route path="([^"]*)" element=\{<(\w+) \/>\}/g)) {
-  if (LAZY[m[2]]) FIL_FOR["/" + m[1].replace(/^\//, "")] = `src/moduler/${LAZY[m[2]]}`;
+  if (!LAZY[m[2]]) continue;
+  const path = "/" + m[1].replace(/^\//, "");
+  const file = `src/moduler/${LAZY[m[2]]}`;
+  FIL_FOR[path] = file;
+  if (path.endsWith("/*")) {
+    const prefix = path.slice(0, -2);
+    for (const point of ALLE) {
+      if (point.sti === prefix || point.sti.startsWith(`${prefix}/`)) FIL_FOR[point.sti] = file;
+    }
+  }
 }
 
 /** De noder en skærm faktisk læser.
@@ -188,6 +197,18 @@ describe("kraeverPerm peger på noget der findes", () => {
         const permKey = Object.entries(PERM).find(([, value]) => value === p.kraeverPerm)?.[0];
         assert.ok(permKey);
         assert.match(gate, new RegExp(`PERM\\.${permKey}`));
+        continue;
+      }
+      if (p.key === "facility" || p.key.startsWith("facilityV2")) {
+        /* FACILITY v2 har samme milepæl-A-grænse som FLEET v2: data ligger
+           lokalt, mens den fælles adapter håndhæver platformens eksisterende
+           module subscription og facility.skriv ved både menu og direkte URL. */
+        const wrapper = readFileSync("src/moduler/facility/FacilityV2Module.jsx", "utf8");
+        const gate = readFileSync("src/fleet/facility-v2-integration.js", "utf8");
+        assert.match(wrapper, /facilityV2PermissionForPath\(location\.pathname\)/);
+        assert.match(wrapper, /harModul\(moduler, 'facility'\)/);
+        assert.match(wrapper, /harPerm\(bruger\?\.perms, requiredPermission\)/);
+        assert.match(gate, /PERM\.facilitySkriv/);
         continue;
       }
       assert.ok(kraevet.includes(p.kraeverPerm),

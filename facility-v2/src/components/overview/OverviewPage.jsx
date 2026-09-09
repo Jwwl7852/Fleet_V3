@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../../routing/FacilityRouting';
 import { DEMO_USER_ID } from '../../data/fixtures';
 import { useFacilityData } from '../../data/FacilityDataContext';
 import { formatMoney, selectOverview } from '../../data/overviewSelectors';

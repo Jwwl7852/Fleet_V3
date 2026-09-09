@@ -1,4 +1,4 @@
-:root {
+:root.facility-v2-standalone {
   --veyro-navy-deep: #061a2a;
   --veyro-navy-dark: #03131f;
   --veyro-teal: #087f8f;
@@ -15,4 +15,15 @@
   --veyro-danger: #d95c5c;
   --veyro-radius: 12px;
   --veyro-shadow: 0 8px 24px rgba(6, 26, 42, 0.055);
+}
+
+/* Embedded FACILITY consumes the shared platform palette. Only legacy token
+   names used inside the module are bridged here; the platform stays the
+   authoritative token source. */
+.veyro-module--facility {
+  --veyro-navy-deep: var(--veyro-deep-navy);
+  --veyro-app-bg: var(--veyro-workspace);
+  --veyro-text-secondary-strong: var(--veyro-secondary-text-strong);
+  --veyro-radius: var(--fc-r);
+  --veyro-shadow: var(--fc-shadow);
 }

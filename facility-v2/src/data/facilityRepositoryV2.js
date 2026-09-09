@@ -3,6 +3,8 @@ import { archiveInstallation, archiveLocationNode, archiveProperty, createInstal
 import { addDocumentVersionRecord, addRestriction, appendWork, closeCase, completeServiceOccurrence, createBooking, createDocumentRecord, createManualCase, createManualCost, createServicePlan, createTask, recordSupplierAcceptance, reopenCase, resolveRestriction, runServiceCatchUp, saveMailDraft, submitReport, updateBooking, updateCase, updateDocument, updateServicePlan, updateTask } from '../domain/workflowDomain';
 
 export const FACILITY_DATABASE_NAME = 'veyro-facility-v2';
+export const FACILITY_INTEGRATION_DATABASE_NAME = 'veyro-facility-v2-integration-v1';
+export const FACILITY_TEST_DATABASE_NAME = 'veyro-facility-v2-test-e2e';
 export const FACILITY_DATABASE_VERSION = 8;
 export const FACILITY_DATASET_STORE = 'tenant-datasets';
 export const FACILITY_MEDIA_STORE = 'media-blobs';
@@ -14,12 +16,12 @@ function mergeDefaults(defaultItems, storedItems) {
   return storedItems.map((item) => ({ ...(defaults.get(item.id) ?? {}), ...item }));
 }
 
-export function migrateDataset(input) {
-  const seed = createDemoDataset();
+export function migrateDataset(input, tenantId = input?.tenantId ?? DEMO_TENANT_ID) {
+  const seed = { ...createDemoDataset(), tenantId };
   if (!input) return seed;
   const version = Number(input.version ?? 0);
   if (version > DATASET_VERSION) throw new Error(`Datasættets version ${version} er nyere end appens version ${DATASET_VERSION}.`);
-  const migrated = { ...seed, ...input, version: DATASET_VERSION, properties: mergeDefaults(seed.properties, input.properties), locationNodes: mergeDefaults(seed.locationNodes, input.locationNodes), installations: mergeDefaults(seed.installations, input.installations), cases: mergeDefaults(seed.cases, input.cases), tasks: mergeDefaults(seed.tasks, input.tasks), serviceOccurrences: mergeDefaults(seed.serviceOccurrences, input.serviceOccurrences), costs: mergeDefaults(seed.costs, input.costs), media: input.media ?? [], history: input.history ?? [], reports: input.reports ?? [], reportSubmissions: input.reportSubmissions ?? [], restrictions: input.restrictions ?? [], resources: input.resources ?? seed.resources, suppliers: input.suppliers ?? seed.suppliers, bookings: input.bookings ?? [], serviceTemplates: input.serviceTemplates ?? [], servicePlans: input.servicePlans ?? [], documents: input.documents ?? [], migrationNotes: input.migrationNotes ?? seed.migrationNotes };
+  const migrated = { ...seed, ...input, tenantId, version: DATASET_VERSION, properties: mergeDefaults(seed.properties, input.properties), locationNodes: mergeDefaults(seed.locationNodes, input.locationNodes), installations: mergeDefaults(seed.installations, input.installations), cases: mergeDefaults(seed.cases, input.cases), tasks: mergeDefaults(seed.tasks, input.tasks), serviceOccurrences: mergeDefaults(seed.serviceOccurrences, input.serviceOccurrences), costs: mergeDefaults(seed.costs, input.costs), media: input.media ?? [], history: input.history ?? [], reports: input.reports ?? [], reportSubmissions: input.reportSubmissions ?? [], restrictions: input.restrictions ?? [], resources: input.resources ?? seed.resources, suppliers: input.suppliers ?? seed.suppliers, bookings: input.bookings ?? [], serviceTemplates: input.serviceTemplates ?? [], servicePlans: input.servicePlans ?? [], documents: input.documents ?? [], migrationNotes: input.migrationNotes ?? seed.migrationNotes };
   const caseStatus = { open: 'ready', pending: 'triage', active: 'inProgress', done: 'closed' };
   migrated.cases = migrated.cases.map((item) => ({ reportId: null, source: 'Migreret FACILITY-sag', description: '', locationId: null, historicalLocationSnapshot: '', priority: 'normal', category: 'Andet', responsibleId: '', dueDate: '', notes: '', attachmentVersionIds: [], invoiceResolution: { status: 'unavailable', source: '', timestamp: '' }, closedAt: null, closureReason: '', revision: 1, createdAt: input.referenceDate ? `${input.referenceDate}T12:00:00Z` : new Date().toISOString(), ...item, status: caseStatus[item.status] ?? item.status }));
   migrated.tasks = migrated.tasks.map((item) => ({ taskNumber: item.id, orderNumber: '', description: '', caseId: null, installationId: null, assignmentType: 'internal', resourceId: item.assigneeId ?? '', supplierId: null, contactId: null, amountType: 'estimate', amount: null, currency: 'DKK', attachmentVersionIds: [], workLogs: [], timeEntries: [], materials: [], checklist: [], solution: '', remainingRestrictions: '', startedAt: '', completedAt: '', acceptance: null, mailDraft: null, revision: 1, ...item }));
@@ -71,9 +73,22 @@ function createFileVersion(file, number = 1) {
   return { version: { id: `document-version-${crypto.randomUUID()}`, number, fileName: file.name, mimeType: file.type, size: file.size, blobId, createdAt: new Date().toISOString() }, blobId };
 }
 
-export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME, tenantId = DEMO_TENANT_ID } = {}) {
+function applyActorToNewHistory(before, result, actor) {
+  if (!actor || !result?.dataset?.history) return result;
+  const existingIds = new Set(before.history?.map((item) => item.id) ?? []);
+  result.dataset.history = result.dataset.history.map((item) => (
+    existingIds.has(item.id) ? item : { ...item, actor: { ...actor } }
+  ));
+  return result;
+}
+
+export function createFacilityRepository({
+  actor = null,
+  databaseName = FACILITY_DATABASE_NAME,
+  tenantId = DEMO_TENANT_ID,
+} = {}) {
   const listeners = new Set();
-  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(`${FACILITY_CHANNEL_NAME}:${databaseName}`) : null;
+  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(`${FACILITY_CHANNEL_NAME}:${databaseName}:${tenantId}`) : null;
   const announce = () => { listeners.forEach((listener) => listener()); channel?.postMessage({ tenantId, changedAt: Date.now() }); };
   if (channel) channel.onmessage = (event) => { if (event.data?.tenantId === tenantId) listeners.forEach((listener) => listener()); };
 
@@ -83,7 +98,7 @@ export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME
       const transaction = database.transaction(FACILITY_DATASET_STORE, 'readwrite');
       const store = transaction.objectStore(FACILITY_DATASET_STORE);
       const existing = await requestAsPromise(store.get(tenantId));
-      const migrated = migrateDataset(existing);
+      const migrated = migrateDataset(existing, tenantId);
       if (!existing || existing.version !== migrated.version) store.put(migrated);
       await transactionDone(transaction);
       return migrated;
@@ -95,8 +110,8 @@ export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME
     try {
       const transaction = database.transaction(FACILITY_DATASET_STORE, 'readwrite');
       const store = transaction.objectStore(FACILITY_DATASET_STORE);
-      const latest = migrateDataset(await requestAsPromise(store.get(tenantId)));
-      const result = operation(latest);
+      const latest = migrateDataset(await requestAsPromise(store.get(tenantId)), tenantId);
+      const result = applyActorToNewHistory(latest, operation(latest), actor);
       store.put(result.dataset);
       await transactionDone(transaction);
       announce();
@@ -111,8 +126,12 @@ export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME
       const transaction = database.transaction([FACILITY_DATASET_STORE, FACILITY_MEDIA_STORE], 'readwrite');
       const datasetStore = transaction.objectStore(FACILITY_DATASET_STORE);
       const blobStore = transaction.objectStore(FACILITY_MEDIA_STORE);
-      const latest = migrateDataset(await requestAsPromise(datasetStore.get(tenantId)));
-      const result = updateMediaReferences(latest, type, id, revision, imageId, mode);
+      const latest = migrateDataset(await requestAsPromise(datasetStore.get(tenantId)), tenantId);
+      const result = applyActorToNewHistory(
+        latest,
+        updateMediaReferences(latest, type, id, revision, imageId, mode),
+        actor,
+      );
       if (file) {
         result.dataset.media.push({ id: imageId, fileName: file.name, mimeType: file.type, size: file.size, createdAt: new Date().toISOString(), blobStore: FACILITY_MEDIA_STORE });
         blobStore.put({ id: imageId, blob: file });
@@ -129,8 +148,12 @@ export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME
     try {
       const transaction = database.transaction([FACILITY_DATASET_STORE, FACILITY_MEDIA_STORE], 'readwrite');
       const datasetStore = transaction.objectStore(FACILITY_DATASET_STORE); const blobStore = transaction.objectStore(FACILITY_MEDIA_STORE);
-      const latest = migrateDataset(await requestAsPromise(datasetStore.get(tenantId)));
-      const result = operation(latest, (id, blob) => blobStore.put({ id, blob }));
+      const latest = migrateDataset(await requestAsPromise(datasetStore.get(tenantId)), tenantId);
+      const result = applyActorToNewHistory(
+        latest,
+        operation(latest, (id, blob) => blobStore.put({ id, blob })),
+        actor,
+      );
       datasetStore.put(result.dataset); await transactionDone(transaction); announce(); return result;
     } finally { database.close(); }
   }
@@ -138,7 +161,7 @@ export function createFacilityRepository({ databaseName = FACILITY_DATABASE_NAME
   return {
     databaseName,
     load: read,
-    async save(dataset) { const database = await openDatabase(databaseName); try { const transaction = database.transaction(FACILITY_DATASET_STORE, 'readwrite'); const migrated = migrateDataset(dataset); transaction.objectStore(FACILITY_DATASET_STORE).put(migrated); await transactionDone(transaction); announce(); return migrated; } finally { database.close(); } },
+    async save(dataset) { const database = await openDatabase(databaseName); try { const transaction = database.transaction(FACILITY_DATASET_STORE, 'readwrite'); const migrated = migrateDataset(dataset, tenantId); transaction.objectStore(FACILITY_DATASET_STORE).put(migrated); await transactionDone(transaction); announce(); return migrated; } finally { database.close(); } },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     close() { channel?.close(); listeners.clear(); },
     createProperty: (input) => mutate((dataset) => createProperty(dataset, input)), updateProperty: (id, revision, input) => mutate((dataset) => updateProperty(dataset, id, revision, input)), archiveProperty: (id, revision, reason) => mutate((dataset) => archiveProperty(dataset, id, revision, reason)), restoreProperty: (id, revision) => mutate((dataset) => restoreProperty(dataset, id, revision)),

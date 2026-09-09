@@ -3,6 +3,13 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  /* FACILITY kan fortsat bygge selvstændigt med checkpointets toolchain.
+     I den fælles build skal kode under facility-v2/ derimod bruge præcis den
+     samme React- og Router-instans (v6) som AppShell. Dedupe undgår både en
+     ekstra runtime og inkompatible Router-contexts uden en bred opgradering. */
+  resolve: {
+    dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
+  },
   build: {
     outDir: "dist",
     sourcemap: true,

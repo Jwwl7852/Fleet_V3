@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { Icon } from '../components/shared/Icon';
 
 const content = {

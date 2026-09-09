@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { FacilityLink as Link, useFacilityNavigate as useNavigate } from '../routing/FacilityRouting';
 import { InstallationForm } from '../components/facility/InstallationForm';
 import { ProfileImage } from '../components/facility/ImageGallery';
 import { Icon } from '../components/shared/Icon';

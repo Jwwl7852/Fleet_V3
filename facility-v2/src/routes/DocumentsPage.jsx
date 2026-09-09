@@ -24,7 +24,24 @@ export function DocumentsPage() {
   </main>;
 }
 
-function useBlob(version) { const { repository } = useFacilityData(); const [url, setUrl] = useState(''); useEffect(() => { let active = true; let objectUrl = ''; if (version) repository.getBlob(version.blobId).then((blob) => { if (blob && active) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); } }); return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); }; }, [repository, version]); return url; }
+function useBlob(version) {
+  const { repository } = useFacilityData(); const [url, setUrl] = useState('');
+  useEffect(() => {
+    let active = true; let objectUrl = '';
+    if (version) repository.getBlob(version.blobId).then((blob) => {
+      if (blob && active) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); }
+    });
+    return () => {
+      active = false;
+      /* StrictMode genstarter effects med bevaret state. Hold den første URL
+         gyldig, til den nye effect har nået at erstatte den, og frigiv den
+         derefter. Ellers forsøger previewets <img> kort at hente en allerede
+         tilbagekaldt blob:-URL og støjer i konsollen. */
+      if (objectUrl) window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    };
+  }, [repository, version]);
+  return url;
+}
 function DocumentDetail({ document }) { const { runMutation } = useFacilityData(); const [versionId, setVersionId] = useState(document?.currentVersionId); const [newVersion, setNewVersion] = useState(false); useEffect(() => setVersionId(document?.currentVersionId), [document]); const version = document?.versions.find((item) => item.id === versionId); const url = useBlob(version); if (!document) return <aside className="card document-detail"><Empty title="Vælg et dokument" /></aside>; const previewable = version && (version.mimeType === 'application/pdf' || version.mimeType.startsWith('image/') || version.mimeType.startsWith('video/'));
   return <aside className="card document-detail"><header><div><small>DOKUMENT</small><h2>{document.title}</h2></div></header><div className="document-preview">{url && previewable ? version.mimeType === 'application/pdf' ? <iframe title={document.title} src={url} /> : version.mimeType.startsWith('video/') ? <video controls src={url} /> : <img src={url} alt="Dokumentforhåndsvisning" /> : <Empty title="Forhåndsvisning ikke tilgængelig" text="Filen kan stadig downloades." />}</div><dl><div><dt>Kategori</dt><dd>{document.category}</dd></div><div><dt>Version</dt><dd><select value={versionId ?? ''} onChange={(e) => setVersionId(e.target.value)}>{document.versions.map((item) => <option key={item.id} value={item.id}>v{item.number} · {item.fileName}</option>)}</select></dd></div><div><dt>Størrelse</dt><dd>{version ? `${(version.size / 1024 / 1024).toFixed(2)} MB` : '—'}</dd></div><div><dt>Gyldig til</dt><dd>{document.validUntil || 'Ikke angivet'}</dd></div><div><dt>Relationer</dt><dd>{document.relations.map((item) => `${item.type}: ${item.id}`).join(', ')}</dd></div><div><dt>Bemærkninger</dt><dd>{document.notes || '—'}</dd></div></dl><div className="heading-actions">{url && <a className="primary-button" href={url} download={version.fileName}>Download</a>}<button className="secondary-button" onClick={() => setNewVersion(true)}>Ny version</button><button className="secondary-button" onClick={() => runMutation('updateDocument', document.id, document.revision, { archivedAt: document.archivedAt ? null : new Date().toISOString(), reason: document.archivedAt ? 'Gendannet' : 'Arkiveret af bruger' })}>{document.archivedAt ? 'Gendan' : 'Arkivér'}</button></div>{newVersion && <VersionDialog document={document} onClose={() => setNewVersion(false)} />}</aside>; }
 

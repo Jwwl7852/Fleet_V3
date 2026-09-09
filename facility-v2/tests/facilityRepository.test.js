@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { createDemoDataset } from '../src/data/fixtures';
 import { IDBFactory } from 'fake-indexeddb';
-import { createFacilityRepository, createMemoryFacilityRepository, FACILITY_DATABASE_NAME, migrateDataset } from '../src/data/facilityRepositoryV2';
+import { createFacilityRepository, createMemoryFacilityRepository, FACILITY_DATABASE_NAME, FACILITY_INTEGRATION_DATABASE_NAME, FACILITY_TEST_DATABASE_NAME, migrateDataset } from '../src/data/facilityRepositoryV2';
 
 describe('FACILITY repository isolation', () => {
   it('bruger sit eget databasenavn', () => {
     expect(FACILITY_DATABASE_NAME).toBe('veyro-facility-v2');
     expect(FACILITY_DATABASE_NAME).not.toContain('fleet');
+    expect(FACILITY_INTEGRATION_DATABASE_NAME).not.toBe(FACILITY_DATABASE_NAME);
+    expect(FACILITY_TEST_DATABASE_NAME).not.toBe(FACILITY_INTEGRATION_DATABASE_NAME);
+  });
+
+  it('afgrænser det indlæste datasæt til den valgte platformtenant', () => {
+    const existing = createDemoDataset();
+    existing.tenantId = 'tenant-fra-anden-session';
+    const migrated = migrateDataset(existing, 'tenant-integration');
+    expect(migrated.tenantId).toBe('tenant-integration');
   });
 
   it('migrerer uden at nulstille eksisterende brugerdata', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { useFacilityData } from '../data/FacilityDataContext';
 import { EntityDialog, Field, FormFeedback } from '../components/facility/EntityDialog';
 import { PageTitle } from '../components/workflow/WorkflowShared';

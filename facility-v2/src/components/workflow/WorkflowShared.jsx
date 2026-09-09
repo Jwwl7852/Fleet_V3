@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../../routing/FacilityRouting';
 import { CASE_STATUSES, PRIORITIES, TASK_STATUSES } from '../../domain/workflowDomain';
 import { getLocationPath } from '../../domain/facilityDomain';
 

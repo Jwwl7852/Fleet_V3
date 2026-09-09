@@ -259,7 +259,15 @@ describe("hvert menupunkt fører et sted hen", () => {
      blive grøn — hvilket ville være forkert. */
   const harIndeks = /<Route\s+index/.test(app);
   const somRute = (sti) => sti.replace(/^\//, "");
-  const harRute = (sti) => (sti === "/" ? harIndeks : ruter.has(somRute(sti)));
+  const harRute = (sti) => {
+    if (sti === "/") return harIndeks;
+    const route = somRute(sti);
+    return ruter.has(route) || [...ruter].some((candidate) => {
+      if (!candidate.endsWith("/*")) return false;
+      const prefix = candidate.slice(0, -2);
+      return route === prefix || route.startsWith(`${prefix}/`);
+    });
+  };
 
   const alleNavpunkter = NAV.flatMap((m) => [m, ...(m.born || [])]);
 

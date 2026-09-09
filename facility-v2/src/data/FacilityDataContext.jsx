@@ -14,15 +14,21 @@ export function FacilityDataProvider({ children, repository: repositoryOverride 
 
   useEffect(() => {
     let active = true;
+    setDataset(null);
+    setError(null);
+    catchUpStarted.current = false;
     repository.load()
       .then((value) => { if (active) setDataset(value); })
       .catch((reason) => { if (active) setError(reason); });
     return () => { active = false; };
   }, [repository]);
 
-  useEffect(() => repository.subscribe?.(() => {
-    repository.load().then(setDataset).catch(setError);
-  }), [repository]);
+  useEffect(() => {
+    const unsubscribe = repository.subscribe?.(() => {
+      repository.load().then(setDataset).catch(setError);
+    });
+    return () => unsubscribe?.();
+  }, [repository]);
 
   useEffect(() => {
     if (!dataset || catchUpStarted.current) return undefined;

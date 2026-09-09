@@ -64,6 +64,7 @@ const FacilityInventar = lazy(() => import("./moduler/facility/Inventar.jsx"));
 const FacilityPlanlagt = lazy(() => import("./moduler/facility/Planlagt.jsx"));
 const FacilityStatistik = lazy(() => import("./moduler/facility/Statistik.jsx"));
 const Klima = lazy(() => import("./moduler/facility/Klima.jsx"));
+const FacilityV2Module = lazy(() => import("./moduler/facility/FacilityV2Module.jsx"));
 const IndkoebOversigt = lazy(() => import("./moduler/indkoeb/Oversigt.jsx"));
 const Bestillinger = lazy(() => import("./moduler/indkoeb/Bestillinger.jsx"));
 const IndkoebVarer = lazy(() => import("./moduler/indkoeb/Varer.jsx"));
@@ -623,6 +624,11 @@ export default function App() {
             <Route path="fleet-v2/oekonomi" element={<FleetV2Module />} />
             <Route path="fleet-v2/sager/:id" element={<FleetV2Module />} />
             <Route path="fleet-v2/*" element={<FleetV2Module />} />
+
+            {/* FACILITY v2 bruger samme AppShell og React Router som resten
+                af platformen. Det nye prefix bevarer de ældre /facility-
+                ruter, mens modulets egen kode fortsat kan bygges alene. */}
+            <Route path="facility-v2/*" element={<FacilityV2Module />} />
 
             <Route path="facility" element={<FacilityOversigt />} />
             <Route path="facility/servicekalender" element={<Servicekalender />} />

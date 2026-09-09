@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { useFacilityData } from '../data/FacilityDataContext';
 import { getLocationPath } from '../domain/facilityDomain';
 import { PRIORITIES } from '../domain/workflowDomain';

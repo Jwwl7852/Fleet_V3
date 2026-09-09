@@ -173,7 +173,15 @@ describe("Skive 2B — 8) Direkte route: navvisning ændrer ikke route-/serverpe
   const APP = readFileSync("src/App.jsx", "utf8");
   const ruter = new Set([...APP.matchAll(/<Route\s+path="([^"]*)"/g)].map((m) => m[1]));
   const harIndeks = /<Route\s+index/.test(APP);
-  const harRute = (sti) => (sti === "/" ? harIndeks : ruter.has(sti.replace(/^\//, "")));
+  const harRute = (sti) => {
+    if (sti === "/") return harIndeks;
+    const route = sti.replace(/^\//, "");
+    return ruter.has(route) || [...ruter].some((candidate) => {
+      if (!candidate.endsWith("/*")) return false;
+      const prefix = candidate.slice(0, -2);
+      return route === prefix || route.startsWith(`${prefix}/`);
+    });
+  };
 
   it("⚠ HVERT SKJULT OMRÅDES RUTER FINDES STADIG UÆNDRET I App.jsx OG ALLE", () => {
     /* Skjul ALT via navvisning og bekræft at ruterne alligevel er der —

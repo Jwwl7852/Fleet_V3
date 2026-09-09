@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { FacilityLink as Link, useFacilityNavigate as useNavigate } from '../routing/FacilityRouting';
 import { useFacilityData } from '../data/FacilityDataContext';
 import { CaseBadge, EntityPath, PageTitle, PriorityBadge, RelatedDocuments, TaskBadge } from '../components/workflow/WorkflowShared';
 import { TaskForm } from '../components/workflow/TaskForm';

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { FacilityLink as Link } from '../routing/FacilityRouting';
 import { useFacilityData } from '../data/FacilityDataContext';
 import { EntityPath, PageTitle, TaskBadge } from '../components/workflow/WorkflowShared';
 
