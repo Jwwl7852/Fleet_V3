@@ -23,16 +23,19 @@ const cfg = {
 export const demoMode = !cfg.apiKey || !cfg.databaseURL;
 
 /* Lokal browser-smoke må bruge Firebase Emulator Suite uden at kende eller
- * kontakte et rigtigt projekt. Flaget er med vilje tredobbelt låst: Vite DEV,
- * localhost og et syntetisk demo-projekt. En kopieret produktionskonfiguration
- * kan derfor ikke omdirigeres eller testes ved et uheld via denne vej. */
+ * kontakte et rigtigt projekt. Flaget er låst til localhost, et syntetisk
+ * demo-projekt og enten Vite DEV eller en eksplicit lokal build-preview.
+ * Preview-flaget er falsk som standard og kan ikke bruges på en deployet vært. */
 const lokalVaert =
   typeof window !== "undefined"
   && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 const emulatorerAnmodet = import.meta.env.VITE_FIREBASE_EMULATORS === "true";
+const emulatorPreviewAnmodet =
+  emulatorerAnmodet
+  && import.meta.env.VITE_FIREBASE_EMULATOR_PREVIEW === "true";
 export const brugerLokaleEmulatorer =
   !demoMode
-  && import.meta.env.DEV
+  && (import.meta.env.DEV || emulatorPreviewAnmodet)
   && lokalVaert
   && /^demo-/.test(cfg.projectId || "")
   && emulatorerAnmodet;

@@ -231,14 +231,20 @@ function IkkeTilsluttetVisning({ title, text }) {
   return <div className="pu-view pr-placeholder"><section className="pu-card"><span>Planning Basic</span><h1>{title}</h1><p>{text}</p><strong>Lokal prototype · ingen ekstern integration</strong></section></div>;
 }
 
-export default function PlanningDemo() {
+export default function PlanningDemo({
+  activeView = null,
+  createLocalUrl = null,
+  embedded = false,
+  onNavigate = null,
+  syncChannelName = "veyro-planning-week-demo",
+}) {
   const fixtures = useMemo(() => opretReferenceFixtures(), []);
   const urlState = useMemo(() => {
     if (typeof window === "undefined") return { view: null, calendarOnly: false, customerOnly: false };
     const params = new URLSearchParams(window.location.search);
     return { view: params.get("view"), calendarOnly: params.get("calendarOnly") === "1", customerOnly: params.get("customerOnly") === "1", taskId: params.get("taskId"), proposalId: params.get("proposalId"), version: params.get("version") };
   }, []);
-  const [visning, setVisning] = useState([VISNING.PLANLAEGNING, VISNING.OPGAVER].includes(urlState.view) ? urlState.view : VISNING.OVERBLIK);
+  const [visning, setVisning] = useState(activeView || ([VISNING.PLANLAEGNING, VISNING.OPGAVER].includes(urlState.view) ? urlState.view : VISNING.OVERBLIK));
   const [ruter, setRuter] = useState(fixtures.ruter);
   const [forslag, setForslag] = useState(fixtures.forslag);
   const [skabeloner, setSkabeloner] = useState(fixtures.ruteskabeloner);
@@ -270,9 +276,9 @@ export default function PlanningDemo() {
   });
   const filtreredeRuter = filtrerReferenceRuter(ruter, filtre, indstillinger);
   const valgtRute = ruter.find((rute) => rute.id === valgtRuteId);
-  const gaaTil = (nyVisning) => { setVisning(nyVisning); setDetaljeAaben(false); setForslagAaben(false); };
+  const gaaTil = (nyVisning) => { setVisning(nyVisning); onNavigate?.(nyVisning); setDetaljeAaben(false); setForslagAaben(false); };
   const vaelgRute = (ruteId) => { setValgtRuteId(ruteId); setValgtStopId(null); setDetaljeAaben(false); setForslagAaben(false); };
-  const aabnRute = (ruteId) => { setValgtRuteId(ruteId); setValgtStopId(null); setVisning(VISNING.KALENDER); setDetaljeAaben(false); setForslagAaben(false); };
+  const aabnRute = (ruteId) => { setValgtRuteId(ruteId); setValgtStopId(null); gaaTil(VISNING.KALENDER); };
   const aabnKalenderElement = (ruteId, stopId = null) => {
     setValgtRuteId(ruteId);
     setValgtStopId(stopId);
@@ -282,7 +288,7 @@ export default function PlanningDemo() {
   const aabnForslag = (ruteId) => {
     setValgtRuteId(ruteId);
     setValgtStopId(null);
-    setVisning(VISNING.KALENDER);
+    gaaTil(VISNING.KALENDER);
     setDetaljeAaben(false);
     if (forslagForRute(forslag, ruteId).length) setForslagAaben(true);
     else setDetaljeAaben(true);
@@ -300,8 +306,11 @@ export default function PlanningDemo() {
     const placement = ugeplan.placements.find((item) => item.taskId === notification.taskId);
     const readState = markerNotifikationLaest(ugeplan, notification.id);
     opdaterUgeplan({ ...readState, selectedTaskId: notification.taskId, focusRequest: { token: `notification-focus-${notification.id}-${readState.revision}`, taskId: notification.taskId, placementId: placement?.id || null, date: placement?.date || notification.date || null, resourceId: placement?.resourceId || notification.resourceId || null }, revision: readState.revision + 1 });
-    setVisning(VISNING.PLANLAEGNING); setNotifikationerAabne(false);
+    gaaTil(VISNING.PLANLAEGNING); setNotifikationerAabne(false);
   };
+  useEffect(() => {
+    if (activeView) setVisning(activeView);
+  }, [activeView]);
   useEffect(() => {
     const luk = (event) => { if (event.key === "Escape") { setFullscreen(false); setDetaljeAaben(false); setForslagAaben(false); setIndstillingerAabne(false); } };
     window.addEventListener("keydown", luk);
@@ -309,41 +318,41 @@ export default function PlanningDemo() {
   }, []);
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return undefined;
-    const channel = new BroadcastChannel("veyro-planning-week-demo");
+    const channel = new BroadcastChannel(syncChannelName);
     channelRef.current = channel;
     channel.onmessage = (event) => {
       if (event.data?.type === "PLANNING_WEEK_REQUEST") channel.postMessage({ type: "PLANNING_WEEK_STATE", payload: ugeplanRef.current });
-      if (event.data?.type === "PLANNING_WEEK_STATE" && event.data.payload?.revision >= ugeplanRef.current.revision) { ugeplanRef.current = event.data.payload; setUgeplan(event.data.payload); }
+      if (event.data?.type === "PLANNING_WEEK_STATE" && event.data.payload?.revision > ugeplanRef.current.revision) { ugeplanRef.current = event.data.payload; setUgeplan(event.data.payload); }
     };
     channel.postMessage({ type: "PLANNING_WEEK_REQUEST" });
     return () => { channelRef.current = null; channel.close(); };
-  }, []);
+  }, [syncChannelName]);
   if (urlState.customerOnly) return <PlanningCustomerConfirmation state={ugeplan} setState={opdaterUgeplan} taskId={urlState.taskId} requestedProposalId={urlState.proposalId} requestedVersion={urlState.version} />;
   if (urlState.calendarOnly) return <main className="ps-standalone-calendar" id="planning-indhold"><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); }} /></main>;
   return (
-    <div className={`pu-app pr-platform${sidebarLukket ? " pr-sidebar-collapsed" : ""}`}>
-      <a className="pu-skip" href="#planning-indhold">Gå til indhold</a>
-      <aside className="pu-sidebar pr-sidebar">
+    <div className={`pu-app pr-platform${embedded ? " pr-platform-embedded" : ""}${sidebarLukket ? " pr-sidebar-collapsed" : ""}`}>
+      {!embedded && <a className="pu-skip" href="#planning-indhold">Gå til indhold</a>}
+      {!embedded && <aside className="pu-sidebar pr-sidebar">
         <div className="pu-brand"><VeyroLogo variant="sidebar" /><small>Planning</small></div>
         <button type="button" className="pr-sidebar-toggle" onClick={() => setSidebarLukket((nu) => !nu)} aria-label={sidebarLukket ? "Udvid sidemenu" : "Fold sidemenu sammen"}><PlatformIcon name="menu" /></button>
         <button type="button" className="pr-module-toggle" aria-expanded={planningMenuAaben} onClick={() => setPlanningMenuAaben((nu) => !nu)}><PlatformIcon name="calendar" /><span>Planning</span><PlatformIcon name="chevron" /></button>
         {planningMenuAaben && <nav aria-label="Planning navigation">{NAVIGATION.map(([id, label, icon]) => <button type="button" key={id} aria-label={label} aria-current={visning === id ? "page" : undefined} onClick={() => gaaTil(id)}><PlatformIcon name={icon} /><span>{label}</span></button>)}</nav>}
         <div className="pr-platform-links" aria-label="Andre Veyro-moduler"><span>Platform</span>{["FLEET", "Workforce", "Fakturacenter"].map((label) => <button type="button" key={label} disabled title="Ikke tilgængelig i den isolerede Planning-demo">{label}</button>)}</div>
         <div className="pu-sidebar-note"><Statusmaerke niveau="estimated">Syntetisk demo</Statusmaerke><p>Ingen eksterne tjenester eller persistence.</p><button type="button" onClick={nulstilDemo}>Nulstil demodata</button></div>
-      </aside>
+      </aside>}
       <div className="pu-shell">
-        <header className="pu-topbar pr-topbar">
+        {!embedded && <header className="pu-topbar pr-topbar">
           <button type="button" className="pr-mobile-menu" onClick={() => setSidebarLukket((nu) => !nu)} aria-label="Vis eller skjul menu"><PlatformIcon name="menu" /></button>
           <label className="pr-global-search"><PlatformIcon name="search" /><span className="pu-sr-only">Søg i Planning</span><input value={topSoegning} onChange={(event) => setTopSoegning(event.target.value)} placeholder="Søg i ruter, medarbejdere, køretøjer ..." /></label>
           <div className="pr-user-area"><button type="button" className="pr-notification" aria-expanded={notifikationerAabne} onClick={() => setNotifikationerAabne((nu) => !nu)} aria-label={`Vis demo-notifikationer, ${ulæsteNotifikationer.length} ulæste`}><PlatformIcon name="bell" />{ulæsteNotifikationer.length > 0 && <b>{ulæsteNotifikationer.length}</b>}</button><button type="button" className="pr-help-button" aria-expanded={hjaelpAaben} onClick={() => setHjaelpAaben((nu) => !nu)} aria-label="Vis hjælp til Planning-demoen"><PlatformIcon name="help" /></button><span className="pr-user-avatar">ML</span><span><strong>Mette Larsen</strong><small>Disponent · demo</small></span></div>
           {notifikationerAabne && <div className="pr-notifications" role="region" aria-label="Planning-notifikationer"><strong>{ulæsteNotifikationer.length} ulæste demo-notifikationer</strong>{(ugeplan.notifications || []).length === 0 ? <span>Ingen bekræftelser eller ændringsønsker endnu.</span> : (ugeplan.notifications || []).map((notification) => <button type="button" key={notification.id} data-read={notification.read} onClick={() => aabnNotifikation(notification)}><b>{notification.title}</b><span>{notification.text}</span><small>{notification.read ? "Læst" : "Ulæst"} · {notification.createdAt}</small></button>)}<span>Kun lokal syntetisk demo.</span></div>}
           {hjaelpAaben && <div className="pr-help-popover" role="status"><strong>Planning-demo</strong><span>Alle handlinger er lokale og nulstilles ved genindlæsning.</span></div>}
-        </header>
+        </header>}
         <main id="planning-indhold">
           {visning === VISNING.OVERBLIK && <DagensOverblik ruter={ruter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} onSelectRoute={vaelgRute} onOpenCalendar={aabnRute} onProposal={aabnForslag} />}
           {visning === VISNING.KALENDER && <Livekalender ruter={filtreredeRuter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} selectedStopId={valgtStopId} onRoute={aabnKalenderElement} onProposal={aabnKalenderElement} fullscreen={fullscreen} setFullscreen={setFullscreen} flerdagsrute={ugeplan.multiDayRoutes.find((route) => route.id === liveFlerdagsruteId) || null} />}
-          <section hidden={visning !== VISNING.OPGAVER}><PlanningIntake planlaegningspulje={planlaegningspulje} setPlanlaegningspulje={setPlanlaegningspulje} /></section>
-          <section hidden={visning !== VISNING.PLANLAEGNING}><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly={urlState.calendarOnly} onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); setVisning(VISNING.KALENDER); }} /></section>
+          <section hidden={visning !== VISNING.OPGAVER}><PlanningIntake planlaegningspulje={planlaegningspulje} setPlanlaegningspulje={setPlanlaegningspulje} createLocalUrl={createLocalUrl} /></section>
+          <section hidden={visning !== VISNING.PLANLAEGNING}><PlanningScheduling createLocalUrl={createLocalUrl} state={ugeplan} setState={opdaterUgeplan} calendarOnly={urlState.calendarOnly} onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); gaaTil(VISNING.KALENDER); }} /></section>
           {visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}
           {visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}
           {visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}

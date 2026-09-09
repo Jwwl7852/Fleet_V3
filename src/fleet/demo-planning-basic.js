@@ -11,6 +11,7 @@ import {
 import { fraFleetKoeretoejer } from "./planning-adapters/fleet.js";
 import { fraWorkforceMedarbejdere } from "./planning-adapters/workforce.js";
 import { opretStatiskPlanningProvider, samlProviderSnapshots } from "./planning-adapters/providers.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 export const DEMO_PLANLAGT_DATO = "2032-05-18";
 export const DEMO_TIDSZONE = "Europe/Copenhagen";
@@ -292,3 +293,15 @@ export const DEMO_PLANNING_BASIC = dybfrys({
 export function opretDemoPlanningBasic() {
   return JSON.parse(JSON.stringify(DEMO_PLANNING_BASIC));
 }
+
+selvkontrol("demo-planning-basic", () => {
+  const opgaveIder = new Set(DEMO_PLANNING_OPGAVER.map((opgave) => opgave.reference.id));
+  const foraeldreloese = DEMO_PLANNING_FOREKOMSTER
+    .filter((forekomst) => !opgaveIder.has(forekomst.opgaveRef?.id));
+  if (foraeldreloese.length) {
+    console.warn(
+      `demo-planning-basic: ${foraeldreloese.length} forekomster peger på ukendte opgaver `
+      + `(${foraeldreloese.map((forekomst) => forekomst.id).join(", ")}).`,
+    );
+  }
+});

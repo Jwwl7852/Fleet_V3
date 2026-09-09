@@ -45,6 +45,7 @@ const Forslag = lazy(() => import("./moduler/booking/Forslag.jsx"));
 const Disponering = lazy(() => import("./moduler/booking/Disponering.jsx"));
 const LiveKort = lazy(() => import("./moduler/booking/LiveKort.jsx"));
 const Bookingopsaetning = lazy(() => import("./moduler/booking/Bookingopsaetning.jsx"));
+const PlanningV2Module = lazy(() => import("./moduler/booking/PlanningV2Module.jsx"));
 const Bemanding = lazy(() => import("./moduler/Bemanding.jsx"));
 const Medarbejdere = lazy(() => import("./moduler/Medarbejdere.jsx"));
 const Kompetencer = lazy(() => import("./moduler/Kompetencer.jsx"));
@@ -587,6 +588,11 @@ export default function App() {
             <Route path="booking/disponering" element={<Disponering />} />
             <Route path="booking/live-kort" element={<LiveKort />} />
             <Route path="booking/opsaetning" element={<Bookingopsaetning />} />
+
+            {/* Det sikrede PLANNING-checkpoint er monteret på et nyt prefix.
+                De eksisterende /booking-ruter bevares ovenfor, mens den
+                fælles AppShell ejer navigation, logo, auth og temakilde. */}
+            <Route path="planning-v2/*" element={<PlanningV2Module />} />
 
             <Route path="bemanding" element={<Bemanding />} />
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />

@@ -27,7 +27,7 @@ describe("Ikke-blokerende arbejdsflade", () => {
     assert.match(intake, /openDialog = \(type\) => \{ setValgtId\(null\); setDialog\(type\); \}/);
   });
   it("åbner kun en lokal opgavefane efter brugerklik", () => {
-    assert.match(intake, /new URL\("planning-demo\.html", window\.location\.href\)/); assert.match(intake, /destination\.search = `view=opgaver&opgaveId=/); assert.match(intake, /window\.open\(destination\.href, "_blank"\)/); assert.match(intake, /Browseren blokerede/);
+    assert.match(intake, /createLocalUrl\(\{ view: "opgaver", search \}\)/); assert.match(intake, /new URL\(`planning-demo\.html\?\$\{search\}`, window\.location\.href\)\.href/); assert.match(intake, /window\.open\(destination, "_blank"\)/); assert.match(intake, /Browseren blokerede/);
   });
 });
 
@@ -80,8 +80,11 @@ describe("Ugeplanlægningsfladen", () => {
     assert.doesNotMatch(flexible, /event\.target\.closest\?\.\("input, textarea, select"\)/);
   });
   it("bruger BroadcastChannel til lokal to-vindue-synkronisering og har klikfallback", () => {
-    assert.match(demo, /BroadcastChannel\("veyro-planning-week-demo"\)/); assert.match(flexible, /Åbn kalender i eget vindue/); assert.match(flexible, /new URL\("planning-demo\.html", window\.location\.href\)/); assert.match(flexible, /calendarOnly=1/); assert.match(flexible, /Opgave valgt/); assert.doesNotMatch(`${demo}\n${flexible}`, /localStorage|sessionStorage|indexedDB/);
-    assert.match(demo, /payload\?\.revision >= ugeplanRef\.current\.revision/);
+    assert.match(demo, /syncChannelName = "veyro-planning-week-demo"/);
+    assert.match(demo, /new BroadcastChannel\(syncChannelName\)/);
+    assert.match(demo, /channel\.close\(\)/);
+    assert.match(flexible, /Åbn kalender i eget vindue/); assert.match(flexible, /createLocalUrl \? createLocalUrl/); assert.match(flexible, /new URL\(`planning-demo\.html\?\$\{search\}`, window\.location\.href\)\.href/); assert.match(flexible, /calendarOnly=1/); assert.match(flexible, /Opgave valgt/); assert.doesNotMatch(`${demo}\n${flexible}`, /localStorage|sessionStorage|indexedDB/);
+    assert.match(demo, /payload\?\.revision > ugeplanRef\.current\.revision/);
   });
 });
 

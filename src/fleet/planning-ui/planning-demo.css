@@ -1,7 +1,7 @@
 /* Isoleret etape 3-stylesheet. Systemfarver er fallback, hvis Veyro-tokens ikke findes. */
 
 /* VEYRO_PLANNING_TOKENS_START */
-:root {
+.planning-v2-standalone {
   --veyro-deep-navy: #061A2A;
   --veyro-navy-dark: #03131F;
   --veyro-teal: #087F8F;
@@ -47,9 +47,12 @@
 }
 /* VEYRO_PLANNING_TOKENS_SLUT */
 
+.planning-v2-standalone{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--fc-bg,Canvas);color:var(--bc-text,CanvasText)}
+.planning-v2-standalone body{height:100%;margin:0;min-width:320px;background:var(--fc-bg,Canvas);color:var(--bc-text,CanvasText);overflow:hidden;font-size:14px}
+.planning-v2-standalone #planning-demo-root{height:100%}
+
+@scope (.veyro-module--planning) {
 *{box-sizing:border-box}
-html{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--fc-bg, Canvas);color:var(--bc-text, CanvasText)}
-body{margin:0;min-width:320px;background:var(--fc-bg, Canvas);overflow-x:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 button,select,input,textarea{border:1px solid var(--bc-line, ButtonBorder);border-radius:8px;background:var(--bc-card, Canvas)}
 button{cursor:pointer}
@@ -403,3 +406,12 @@ tr[data-tone="advarsel"] .pr-route-link>i{background:var(--veyro-warning);filter
 .pr-notifications{width:min(390px,calc(100vw - 84px));gap:5px}.pr-notifications>button{display:grid;gap:2px;padding:8px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);text-align:left}.pr-notifications>button[data-read="false"]{border-left:4px solid var(--veyro-teal);background:var(--veyro-teal-light)}.pr-notifications>button b{font-size:10px;color:var(--veyro-deep-navy)}.pr-notifications>button span,.pr-notifications>button small{font-size:8px;color:var(--veyro-secondary-text)}
 .pc-customer-view{min-height:100dvh;padding:24px;background:var(--veyro-app-background)}.pc-customer-banner,.pc-customer-card{width:min(820px,100%);margin:0 auto}.pc-customer-banner{display:flex;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid var(--veyro-teal);border-radius:9px;background:var(--veyro-teal-light);color:var(--veyro-deep-navy);font-size:10px}.pc-customer-card{margin-top:12px;padding:20px;border:1px solid var(--veyro-border);border-radius:12px;background:var(--veyro-white);box-shadow:var(--fc-shadow)}.pc-customer-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.pc-customer-heading span,.pc-customer-heading p{color:var(--veyro-secondary-text);font-size:9px}.pc-customer-heading h1{margin:4px 0;color:var(--veyro-deep-navy);font-size:25px}.pc-status-pill{padding:6px 9px;border:1px solid var(--veyro-border);border-radius:999px;font-size:9px}.pc-status-pill[data-status="AFVENTER_BEKRAEFTELSE"]{border-color:var(--veyro-warning);background:var(--veyro-warning-surface);color:var(--veyro-warning-text)}.pc-status-pill[data-status="BEKRAEFTET"]{border-color:var(--veyro-success);background:var(--veyro-success-surface);color:var(--veyro-success-text)}.pc-status-pill[data-status="AENDRING_OENSKET"]{border-color:var(--veyro-danger);background:var(--veyro-danger-surface);color:var(--veyro-danger-text)}.pc-proposal{margin-top:18px;padding:14px;border-left:4px solid var(--veyro-teal);background:var(--veyro-card-surface)}.pc-proposal header{display:flex;justify-content:space-between;font-size:10px}.pc-proposal dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}.pc-proposal dl div{padding:8px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white)}.pc-proposal dt{font-size:8px;color:var(--veyro-secondary-text)}.pc-proposal dd{margin:3px 0 0;font-size:11px;font-weight:700}.pc-stops,.pc-response{margin-top:18px}.pc-stops h2,.pc-response h2,.pc-customer-card .ps-thread h2{font-size:14px;color:var(--veyro-deep-navy)}.pc-stops article{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:8px;border-bottom:1px solid var(--veyro-border)}.pc-stops article>b{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:var(--veyro-teal-light)}.pc-stops small{display:block;color:var(--veyro-secondary-text);font-size:8px}.pc-response{display:grid;gap:9px;padding:14px;border:1px solid var(--veyro-border);border-radius:9px}.pc-response label{display:grid;gap:4px;font-size:9px;color:var(--veyro-secondary-text)}.pc-response textarea{min-height:72px;padding:8px;resize:vertical}.pc-response>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pc-response input{height:34px;padding:0 8px}.pc-response .pc-response-actions{display:flex;justify-content:flex-end;flex-wrap:wrap}.pc-footnote,.pc-empty p{color:var(--veyro-secondary-text);font-size:9px}
 @media(max-width:700px){.pc-customer-view{padding:10px}.pc-customer-banner,.pc-customer-heading{flex-direction:column}.pc-customer-card{padding:14px}.pc-proposal dl,.pc-response>div{grid-template-columns:1fr}.ps-filter-override{align-items:stretch;flex-direction:column}}
+
+/* Den integrerede variant ligger allerede i platformens AppShell. */
+.pr-platform.pr-platform-embedded{display:block;height:auto;min-height:0;overflow:visible;background:var(--veyro-app-background)}
+.pr-platform.pr-platform-embedded .pu-shell{display:block;height:auto;min-height:0;overflow:visible}
+.pr-platform.pr-platform-embedded main{height:auto;min-height:0;overflow:visible;background:var(--veyro-app-background)}
+.pr-platform.pr-platform-embedded .pr-page{height:auto;min-height:calc(100dvh - 132px);overflow:visible}
+.pr-platform.pr-platform-embedded .ps-flex-view{height:calc(100dvh - 132px)}
+
+}

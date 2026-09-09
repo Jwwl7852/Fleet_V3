@@ -7,6 +7,8 @@ const FIREBASE_CONFIG = JSON.parse(readFileSync("firebase.json", "utf8"));
 
 test("lokale Firebase-emulatorer er fail-closed og kan ikke pege på produktion", () => {
   assert.match(FIREBASE, /import\.meta\.env\.DEV/);
+  assert.match(FIREBASE, /VITE_FIREBASE_EMULATOR_PREVIEW/);
+  assert.match(FIREBASE, /import\.meta\.env\.DEV \|\| emulatorPreviewAnmodet/);
   assert.match(FIREBASE, /\^demo-/);
   assert.match(FIREBASE, /localhost\|127\\\.0\\\.0\\\.1\|\\\[::1\\\]/);
   assert.match(FIREBASE, /emulatorerAnmodet && !brugerLokaleEmulatorer/);

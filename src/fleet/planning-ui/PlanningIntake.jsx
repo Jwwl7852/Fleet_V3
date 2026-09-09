@@ -151,7 +151,7 @@ export function ExecutionMobilePreview({ compact = false }) {
   return <section className={`pi-mobile-preview ${compact ? "pi-mobile-compact" : ""}`} aria-label="Lokal mobilforhåndsvisning"><div className="pu-phone-top"><span>Udførelse · {stop.navn}</span><span className="pu-badge" data-tone="estimated">Forhåndsvisning</span></div><div className="pi-mobile-flow"><ol>{flow.map((trin, indeks) => { const [navn] = trin.split(" · "); return <li key={`${navn}-${indeks}`}><span>{indeks + 1}</span><div><strong>{navn}</strong>{trin.includes("Ikke tilsluttet endnu") && <small>Ikke tilsluttet endnu</small>}</div></li>; })}</ol><label className="pu-check"><input type="checkbox" checked={materialer} onChange={(e) => setMaterialer(e.target.checked)} />Har du brugt materialer på opgaven?</label>{materialer && <div className="pi-material-entry"><label>Materiale<select defaultValue={demo.materialer[0].id}>{demo.materialer.filter((m) => m.aktiv).map((m) => <option key={m.id} value={m.id}>{m.navn} · {m.enhed}</option>)}</select></label><label>Antal<input type="number" min="0.1" step="0.1" defaultValue="2" /></label><label>Kommentar<input defaultValue="Syntetisk registrering" /></label></div>}<p className="pu-help">Kamera, filupload, signaturfelt, dokumentgenerering, mailafsendelse og persistence er ikke tilsluttet endnu.</p></div></section>;
 }
 
-export default function PlanningIntake({ planlaegningspulje = null, setPlanlaegningspulje = null }) {
+export default function PlanningIntake({ createLocalUrl = null, planlaegningspulje = null, setPlanlaegningspulje = null }) {
   const demo = useMemo(() => opretDemoIntakeData(), []);
   const [opgaver, setOpgaver] = useState(() => [...demo.eksisterende, ...demo.opgaver]);
   const [skabeloner, setSkabeloner] = useState(demo.skabeloner);
@@ -173,9 +173,11 @@ export default function PlanningIntake({ planlaegningspulje = null, setPlanlaegn
   const masseGodkend = () => setOpgaver((alle) => alle.map((o) => valgte.includes(o.id) ? godkendOpgave(o, { tidspunktMs: DEMO_IMPORTTID_MS + 300000 }) : o));
   const send = (opgave) => { const svar = sendTilDagsplan(opgave, pulje); if (svar.ok) setPulje(svar.planlaegningspulje); };
   const aabnNyFane = (opgave) => {
-    const destination = new URL("planning-demo.html", window.location.href);
-    destination.search = `view=opgaver&opgaveId=${encodeURIComponent(opgave.id)}`;
-    const opened = window.open(destination.href, "_blank");
+    const search = `view=opgaver&opgaveId=${encodeURIComponent(opgave.id)}`;
+    const destination = createLocalUrl
+      ? createLocalUrl({ view: "opgaver", search })
+      : new URL(`planning-demo.html?${search}`, window.location.href).href;
+    const opened = window.open(destination, "_blank");
     if (opened) opened.opener = null;
     setLokalBesked(opened ? "Opgaven blev åbnet i en ny lokal Planning-fane." : "Browseren blokerede den nye fane. Tillad lokale popups og prøv igen.");
   };

@@ -183,8 +183,8 @@ function analyserPlanningCss(tekst) {
 
   const blokSlut = slut + PLANNING_TOKEN_SLUT.length;
   const blok = tekst.slice(start + PLANNING_TOKEN_START.length, slut);
-  const root = blok.match(/^\s*:root\s*\{([\s\S]*?)\}\s*$/);
-  if (!root) return [...fund, "Planning-tokenblokken skal indeholde præcis én :root-regel"];
+  const root = blok.match(/^\s*\.planning-v2-standalone\s*\{([\s\S]*?)\}\s*$/);
+  if (!root) return [...fund, "Planning-tokenblokken skal indeholde præcis én standalone-regel"];
 
   const faktiske = {};
   for (const d of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {

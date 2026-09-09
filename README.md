@@ -304,7 +304,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **170 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **174 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -531,7 +531,7 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 93 i alt, og alle har indhold
+### Skærmene: 102 i alt, og alle har indhold
 
 ⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
 (29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
@@ -557,7 +557,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Fakturaer & bilag | 1 | Skive 2A: flyttet ud af Økonomi & Rapporter. Samme rute og samme `kraeverPerm: "indkoeb.laes"` — overgangstilstand, se nav.js |
 | Leverandører | 1 | Skive 4B: flyttet ud af Procure — fælles platform-masterdata for Fleet, Facility og Procure. Samme rute (`/indkoeb/leverandoerer`), ny `kraeverPerm: "leverandoerer.laes"` |
 | Økonomi / Fakturagrundlag | 2 | begge børn skjulte (Overblik siden V1: LATER, Fakturagrundlag siden masteropgave §5: sat på pause). Fakturacenter er flyttet til Fælles > Fakturaer & bilag. Ruten findes stadig, kun menuen tier |
-| Planning | 6 | heraf Forslag & reservation som skjult detaljerute |
+| Planning | 15 | PLANNING-checkpointets ni arbejdsflader er monteret under `/planning-v2/*`; de seks tidligere `/booking/*`-skærme bevares som skjulte ruter. Modulet bruger syntetisk lokal hukommelsestilstand og tenantafgrænset vinduessynkronisering, ikke fælles serverlagring |
 | Fleet | 21 | FLEET v2-checkpointets arbejdsflader er monteret under `/fleet-v2/*` i den fælles AppShell med synlige underpunkter for Overblik, Enheder, Indberetninger, Arbejdskø, Værksted, Service, Dokumenter, Leasing, Livekort, Mobil indberetning og Økonomi. Tre detaljeruter er skjulte. De syv tidligere `/flaade/*`-skærme bevares som skjulte ruteopslag og er ikke overskrevet. FLEET v2 bruger lokal tenant-afgrænset prototypelagring; dette er ikke fælles serverlagring |
 | Facility | 22 | FACILITY v2-checkpointets arbejdsflader er monteret under `/facility-v2/*` i den fælles AppShell med synlige underpunkter for Overblik, Ejendomme, Installationer, Indberetninger, Arbejdskø, Opgaver, Kalender, Service, Ejendomskort, Dokumenter, Mobil indberetning og Økonomi. Fire profil-/detaljeruter er skjulte. De seks tidligere `/facility/*`-skærme bevares som skjulte ruteopslag og er ikke overskrevet. FACILITY v2 bruger lokal tenant-afgrænset prototype- og Blob-lagring; dette er ikke fælles serverlagring eller fakturaintegration |
 | Procure | 7 | Procure TARGET (samme masterbrief §1, produktejer-review 2026-09-02): kun Overblik (sti `/indkoeb`, samme som toppunktet selv) er ikke `skjulINav`. De øvrige seks — Bestillinger (behov, kladder og godkendelse samlet), Varer, Arkiv, Statistik, Match & kontantkøb og Varelager — er skjulte. Navigation mellem de fire første sker i modulets egen `ModulNav`-fanebjælke øverst på hver skærm (fleet/modulfaner.js's PROCURE_FANER); Match & kontantkøb og Varelager er ikke faner i bjælken, nået via kontekstuelle links i stedet — Leverandører er stadig flyttet til Fælles |
@@ -566,7 +566,7 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
 | Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles. Godkendelsesregler er ny (Procure TARGET trin 4) — administrations-UI'et for Procures godkendelsesregler, flyttet ud af Godkendelser.jsx |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **93** | **59 i menuen, 34 skjulte detaljeruter** |
+| **I alt** | **102** | **63 i menuen, 39 skjulte detaljeruter** |
 
 | | |
 |---|---|

@@ -211,6 +211,18 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(gate, /PERM\.facilitySkriv/);
         continue;
       }
+      if (p.key.startsWith("planningV2")) {
+        /* PLANNING-checkpointet er en lokal milepæl-A-prototype. Den må ikke
+           foregive at læse en Firebase-node, men wrapperen skal afvise både
+           manglende booking-modul og booking.laes før lokale fixtures tegnes. */
+        const wrapper = readFileSync("src/moduler/booking/PlanningV2Module.jsx", "utf8");
+        const gate = readFileSync("src/fleet/planning-v2-integration.js", "utf8");
+        assert.match(wrapper, /planningV2PermissionForPath\(location\.pathname\)/);
+        assert.match(wrapper, /harModul\(moduler, "booking"\)/);
+        assert.match(wrapper, /harPerm\(bruger\?\.perms, requiredPermission\)/);
+        assert.match(gate, /PERM\.bookingLaes/);
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);

@@ -13,6 +13,7 @@ import {
 } from "./planning-basic-ruteskabeloner.js";
 import { beregnRutetid, koeretidssegmenterForRute } from "./planning-basic-tidsberegning.js";
 import { beregnAfvigelse, sammenholdMobilOgObd } from "./planning-basic-fremdrift.js";
+import { selvkontrol } from "./selvkontrol.js";
 
 export const DEMO_V2_TENANT = "tenant-fiktiv-planning-v2";
 export const DEMO_V2_DATO = "2032-05-18";
@@ -170,4 +171,21 @@ export const DEMO_PLANNING_BASIC_V2 = Object.freeze({
   mobilevents: DEMO_MOBILEVENTS_LIVE, obdObservationer: DEMO_OBD_OBSERVATIONER_LIVE,
   loesningsforslag: [DEMO_LOESNINGSFORSLAG],
   ressourceSnapshot: DEMO_PLANNING_BASIC.ressourcer,
+});
+
+selvkontrol("demo-planning-basic-v2", () => {
+  const ruteIder = new Set(DEMO_PLANNING_BASIC_V2.dagsruter.map((rute) => rute.id));
+  const ruteReferencer = [
+    ...DEMO_PLANNING_BASIC_V2.mobilevents,
+    ...DEMO_PLANNING_BASIC_V2.obdObservationer,
+    ...DEMO_PLANNING_BASIC_V2.loesningsforslag,
+  ];
+  const foraeldreloese = ruteReferencer.filter((post) => !ruteIder.has(post.dagsruteId || post.ruteId));
+  const forkertTenant = ruteReferencer.filter((post) => post.tenantRef !== DEMO_V2_TENANT);
+  if (foraeldreloese.length || forkertTenant.length) {
+    console.warn(
+      `demo-planning-basic-v2: ${foraeldreloese.length} hændelser eller forslag mangler dagsrute, `
+      + `og ${forkertTenant.length} har forkert tenant.`,
+    );
+  }
 });

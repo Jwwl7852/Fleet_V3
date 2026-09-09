@@ -113,12 +113,38 @@ const FORAELDEDE = [
  * læste et demosæt. Hver undtagelse står med fil, ord og grund — og en ny
  * kræver at man skriver grunden ned.
  */
+const PLANNING_KOERETOEJ_UNDTAGELSER = [
+  ["src/fleet/planning-adapters/fleet.js", ["køretøj"]],
+  ["src/fleet/planning-basic-fremdrift.js", ["køretøj"]],
+  ["src/fleet/planning-basic-validering.js", ["Køretøj", "køretøj"]],
+  ["src/fleet/planning-input/index.js", ["køretøj"]],
+  ["src/fleet/planning-optimization/demo-planning-optimization.js", ["køretøj"]],
+  ["src/fleet/planning-optimization/kontrakt.js", ["køretøj"]],
+  ["src/fleet/planning-scheduling/index.js", ["køretøj"]],
+  ["src/fleet/planning-ui/PlanningDemo.jsx", ["Køretøj", "køretøj"]],
+  ["src/fleet/planning-ui/PlanningFlexibleScheduling.jsx", ["Køretøj"]],
+  ["src/fleet/planning-ui/PlanningIntake.jsx", ["Køretøj", "køretøj"]],
+  ["src/fleet/planning-ui/PlanningOperations.jsx", ["Køretøj", "køretøj"]],
+  ["src/fleet/planning-ui/PlanningOptimization.jsx", ["Køretøj", "køretøj"]],
+  ["src/fleet/planning-ui/PlanningScheduling.jsx", ["Køretøj"]],
+  ["src/fleet/planning-ui/demo-planning-ui.js", ["køretøj"]],
+  ["src/fleet/planning-ui/planning-import-template.js", ["Køretøj"]],
+  ["src/fleet/planning-ui/planning-ui-model.js", ["køretøj"]],
+];
+
 const UNDTAGET = [
   {
     fil: "src/fleet/demo-etaper.js", ord: "køretøj",
     hvorfor: "console.warn til en udvikler, ved siden af `koeretoejId`. "
       + "Dev-beskeder følger kodens navne, ikke skærmens.",
   },
+  ...PLANNING_KOERETOEJ_UNDTAGELSER.flatMap(([fil, ord]) => ord.map((ord) => ({
+    fil,
+    ord,
+    hvorfor: "Det sikrede PLANNING-checkpoint bruger køretøj som en præcis ressourceart i "
+      + "domænekontrakter, valideringsfund og det godkendte prototype-UI. En senere fælles "
+      + "terminologibeslutning må ikke omskrive checkpointets domæne i integrationstrinnet.",
+  }))),
 ];
 
 /**

@@ -7,7 +7,7 @@ export default defineConfig({
   reporter: 'list',
   workers: 1,
   use: {
-    baseURL: 'http://127.0.0.1:5197',
+    baseURL: process.env.VEYRO_INTEGRATION_BASE_URL || 'http://127.0.0.1:5197',
     trace: 'retain-on-failure',
   },
   projects: [
