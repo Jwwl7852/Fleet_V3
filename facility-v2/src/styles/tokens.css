@@ -1,0 +1,18 @@
+:root {
+  --veyro-navy-deep: #061a2a;
+  --veyro-navy-dark: #03131f;
+  --veyro-teal: #087f8f;
+  --veyro-cyan: #22c2cf;
+  --veyro-teal-light: #e8f7f8;
+  --veyro-white: #ffffff;
+  --veyro-app-bg: #f5f7f9;
+  --veyro-border: #dce3e8;
+  --veyro-text: #102235;
+  --veyro-text-secondary: #667687;
+  --veyro-text-secondary-strong: #5f6f7f;
+  --veyro-success: #2ead72;
+  --veyro-warning: #d99a28;
+  --veyro-danger: #d95c5c;
+  --veyro-radius: 12px;
+  --veyro-shadow: 0 8px 24px rgba(6, 26, 42, 0.055);
+}
