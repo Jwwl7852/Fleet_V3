@@ -452,3 +452,85 @@ FAKTURACENTER-checkpointet ikke merget, og der er ikke startet en integreret
 server eller udført browser-smoke. Næste forsøg skal bruge en lokalt tilgængelig
 JDK 21+ og genkøre hele rules-suiten i det syntetiske
 `demo-fleetcontrol-rules-test`-projekt, før merge må foretages.
+
+## 11. Gate 0 afsluttet og FAKTURACENTER integreret — 2026-09-09
+
+Dette afsnit fortsætter den historiske, blokerede kørsel i afsnit 10. Der er
+fortsat ikke pushet, deployet, ændret backend eller integreret FLEET, FACILITY
+eller PLANNING.
+
+### Java- og sikkerhedsgate
+
+- Maskinen er Windows x64. Den eksisterende globale Temurin Java 8 blev
+  bevaret uændret.
+- Officiel Eclipse Temurin `21.0.12.1+1-LTS` blev hentet som Windows x64 ZIP
+  fra Adoptiums officielle API og pakket ud i
+  `C:\Users\DennisChristensen\Tools\Adoptium\jdk-21.0.12.1+1\jdk-21.0.12.1+1`.
+  Udgiverens og den lokale fils SHA-256 var begge
+  `f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e`.
+- `JAVA_HOME`, `PATH`, `TEMP` og `TMP` blev kun sat i test-/emulatorprocessen.
+  `java -version` og den levende Database-/Storage-emulator blev kontrolleret
+  til at bruge netop JDK 21-stien. Et første forsøg ramte en Windows
+  loopback/WEPoll-fejl i sandboxens TEMP-sti; en kort, proceslokal TEMP-sti
+  (`C:\jtmp-veyro-gate0`) løste miljøfejlen uden ændringer i regler eller tests.
+- Den endelige `npm run test:rules` kørte Database og Storage isoleret mod
+  demo-projektet `demo-fleetcontrol-rules-test`: 3.966/3.966 tests i 819 suites
+  bestod. Det omfatter login, claims-v2/dual-read, revocation,
+  tenantadskillelse, permissions og Rules-regression. Den tidligere målrettede
+  Gate 0-kørsel på 98/98 sikkerhedstests gælder fortsat for den samme kode.
+- `npm run lint`, `npm run build` og `git diff --check` bestod. Builden har den
+  kendte CSS-kommentaradvarsel i `fleet.css`; browseren har de to eksisterende
+  React Router v7-fremtidsadvarsler, men ingen nye konsolfejl.
+- De 21 rapporterede dependency-sårbarheder (18 moderate, 3 high) er et åbent
+  punkt. Der er ikke kørt `npm audit fix` eller foretaget brede opgraderinger.
+
+Gate 0 er efter denne kørsel **bestået**. Claims-v2 er ikke deployet;
+auth-inventering og legacy-allowlist forbliver senere deploymentforberedelse.
+
+### Sporbar merge og nødvendige tilpasninger
+
+FAKTURACENTER-checkpointet
+`deb1615f58926bb0857714c40b62037fb6c1414e` blev merget med bevaret historik i
+det eksplicitte merge-commit
+`aef2b32979934daf3a1d82701f41b1a4b9b641ca`. Mergen ændrede ikke
+`src/firebase.js`, permissions, Functions, Database Rules eller Storage Rules;
+grundplatformens claims-v2, revocation og serverhåndhævelse blev derfor
+bevaret.
+
+Efter faglig gennemgang blev kun disse integrationstilpasninger nødvendige:
+
+- Fakturacenter-ruten kontrollerer `fakturaer.laes` før prototypen tegnes. En
+  direkte URL giver ikke en adgang, som navigationen skjuler.
+- Login bruger samme `VeyroLogo`-komponent som AppShell. Fakturacenterets
+  eksisterende submenuer, tællere, tre paneler, match, fordelinger og
+  kontrolflow er ellers bevaret.
+- Browser-smoke kan køre mod isolerede Auth- og Database-emulatorer. Vejen er
+  fail-closed og kræver samtidig Vite DEV, localhost, eksplicit flag og et
+  `demo-*`-projekt; produktionskonfiguration kan ikke bruge den ved et uheld.
+  Den lokale `.env.local` er ignoreret og indeholder kun demo-konfiguration.
+- En regressionstest fastholder route-gaten, fælles logo og emulatorværnet.
+  README's automatisk kontrollerede testfilstal blev rettet fra 167 til 168.
+
+Reference Contract V1 er uændret: Git-blobben for
+`docs/FAKTURACENTER_REFERENCE_CONTRACT_V1.md` er fortsat
+`c09c0535eb2e09b0e74efd4aa8d933b2f6b182ad`, identisk med checkpointet.
+
+### Browser-smoke og lokal afprøvning
+
+Browser-smoken brugte kun syntetiske emulatorbrugere og demo-tenantdata.
+Adminforløbet bestod login, Indbakke, Til kontrol og Kontrollerede; submenuens
+tællere var henholdsvis 19, 9 og 1, paneldelingerne var 24/48, og match,
+fordeling og kontrol blev vist. Direkte åbning og genindlæsning af
+Fakturacenter-ruten bevarede visningen. En bruger uden `fakturaer.laes` så
+hverken menupunktet eller prototypen og blev afvist efter både direkte URL og
+genindlæsning. Veyro-logo, navigation og paneler gav ingen konsolfejl.
+
+Den integrerede Vite-server bruger strict port på
+`http://127.0.0.1:5197/`. Auth/Database/Storage kører lokalt på henholdsvis
+9099/9000/9199 under demo-projektet `demo-veyro-integration`. Emulatorindholdet
+er disponibelt og nulstilles ved stop; der er ikke læst eller skrevet
+produktionsdata eller eksisterende browserdata.
+
+FAKTURACENTER er fortsat prototypefunktionalitet med lokal, syntetisk tilstand.
+Dette trin etablerer hverken rigtig fakturamodtagelse, fælles serverlagring
+eller live modulforbindelser; det hører til milepæl B.
