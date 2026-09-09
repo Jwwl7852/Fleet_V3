@@ -427,3 +427,28 @@ ikke FLEET/FACILITY/PLANNING i samme ændring.
 Det giver en grøn, sikker platformreference før de tre isolerede shells og
 styles adapteres, og det holder “fælles navigation” klart adskilt fra den
 senere milepæl B med varig data og live modulforbindelser.
+
+## 10. Gate 0-kørselslog — 2026-09-09
+
+Kørslen blev udført på `codex/veyro-integration-v1` efter det særskilte
+plancommit `29b67e6` og med sikkerhedsbasen
+`e62093b3722aa114dd46d0380847e638334660ab` som dens forælder.
+
+- `npm ci`: gennemført; 388 pakker installeret. NPM rapporterede 21 kendte
+  dependency-sårbarheder (18 moderate og 3 high). Der blev ikke kørt
+  `npm audit fix`, så lockfilen blev ikke ændret.
+- `npm run lint`: bestået.
+- `npm run build`: bestået med den allerede kendte CSS-syntaksadvarsel fra en
+  kommentar med backticks i `fleet.css`.
+- Målrettet `node --test` for claims-v2, preflight, provisionering,
+  chaufføradgang, leverandørportal, rutedeling og Functions-kopiparitet:
+  98/98 bestået.
+- `npm run test:rules`: ikke gennemført. Firebase CLI 15.29.0 kræver Java 21
+  eller nyere, mens maskinens eneste fundne runtime er Temurin Java 8
+  (`1.8.0_502`). Emulatorerne lukkede derfor ned, før rules-testene blev kørt.
+
+Gate 0 er dermed **ikke bestået**. I overensstemmelse med stopkriteriet er
+FAKTURACENTER-checkpointet ikke merget, og der er ikke startet en integreret
+server eller udført browser-smoke. Næste forsøg skal bruge en lokalt tilgængelig
+JDK 21+ og genkøre hele rules-suiten i det syntetiske
+`demo-fleetcontrol-rules-test`-projekt, før merge må foretages.
