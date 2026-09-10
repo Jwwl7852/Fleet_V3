@@ -653,8 +653,7 @@ export default function Prisliste() {
         <div className="fc-empty fc-empty-bad">
           <p><b>Læsningen blev afvist.</b></p>
           <p className="fc-hint" style={{ marginTop: 6 }}>
-            Det er ikke et tomt katalog — det er reglerne der virker. Har
-            kontoen udbyderadgang? Den gives med <code>npm run ejer:giv</code>.
+            Kontrollér, at du er logget ind som Veyro-ejer, og prøv derefter igen.
           </p>
           <p className="fc-hint" style={{ marginTop: 6 }}>{String(fejl?.message || fejl)}</p>
           <Knap onClick={genindlaes}>Prøv igen</Knap>

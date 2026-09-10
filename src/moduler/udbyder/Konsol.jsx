@@ -22,7 +22,7 @@
  * gennem appen bagefter, og en eksport hører FØR fravalget.
  */
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { db } from "../../firebase.js";
 import { dato, num, pct } from "../../fleet/format.js";
 import {
@@ -59,10 +59,11 @@ async function hentKunder() {
   const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
   const ider = Object.keys(indeks).sort((a, b) => a.localeCompare(b, "da"));
   return Promise.all(ider.map(async (id) => {
-    const [v, m, a] = await Promise.all([
+    const [v, m, a, konto] = await Promise.all([
       db.ref(`tenants/${id}/virksomhed`).once("value"),
       db.ref(`tenants/${id}/moduler`).once("value"),
       db.ref(`tenants/${id}/abonnement`).once("value"),
+      db.ref(`udbyder/kundekonti/${id}`).once("value"),
     ]);
     return {
       id,
@@ -70,6 +71,7 @@ async function hentKunder() {
       virksomhed: v.val(),
       moduler: m.val(),
       abonnement: a.val(),
+      kundekonto: konto.val(),
     };
   }));
 }
@@ -644,18 +646,14 @@ function Foersteadmin({ kunde }) {
 /** Ny kunde. */
 function Nykunde({ paaOprettet, paaLuk }) {
   const [f, saetF] = useState({ navn: "", id: "", cvr: "" });
-  const [idRoert, saetIdRoert] = useState(false);
   const [moduler, saetModulerVal] = useState([]);
   const [visAlle, saetVisAlle] = useState(false);
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
 
-  /* ⚠ FORSLAGET FORSVINDER I DET ØJEBLIK NOGEN RØRER FELTET. Id'et er
-     permanent — det står i hver eneste sti under tenants/ — og et navn kan
-     ændre sig. En afledning ville binde de to sammen for altid. */
   const saetNavn = (v) => {
     saetSvar(null);
-    saetF((x) => ({ ...x, navn: v, id: idRoert ? x.id : foreslaaId(v) }));
+    saetF((x) => ({ ...x, navn: v, id: foreslaaId(v) }));
   };
 
   const fejl = valideNyKunde({ ...f, moduler });
@@ -680,9 +678,9 @@ function Nykunde({ paaOprettet, paaLuk }) {
           <Felt id="nk-navn" label="Virksomhedsnavn" kraevet vaerdi={f.navn}
                 saet={saetNavn} fejl={vis("navn")} />
           <Felt id="nk-id" label="Kunde-id" kraevet vaerdi={f.id}
-                saet={(v) => { saetIdRoert(true); saetF((x) => ({ ...x, id: v })); saetSvar(null); }}
+                saet={() => {}} disabled
                 fejl={vis("id")}
-                hint="Permanent. Står i hver sti under tenants/ og kan ikke laves om." />
+                hint="Genereres automatisk og bliver kundens permanente tenant-id." />
           <Felt id="nk-cvr" label="CVR" vaerdi={f.cvr}
                 saet={(v) => saetF((x) => ({ ...x, cvr: v }))} fejl={vis("cvr")}
                 hint="Otte cifre. Valgfrit." />
@@ -701,9 +699,8 @@ function Nykunde({ paaOprettet, paaLuk }) {
         </div>
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Der seedes ingen data.</b> Kunden får et tomt system — det er
-          meningen. Han skal taste den første bil ind og se hvad tomme
-          tilstande faktisk siger.
+          Kunden oprettes uden driftsdata og markeres <b>Opsætning mangler</b>,
+          indtil profil, adgang og abonnement er kontrolleret på kundekontoen.
         </p>
       </Formular>
     </Kort>
@@ -713,6 +710,7 @@ function Nykunde({ paaOprettet, paaLuk }) {
 /* ---- Skærmen ----------------------------------------------------------- */
 
 export default function Konsol({ bruger }) {
+  const navigate = useNavigate();
   const [kunder, saetKunder] = useState(null);
   const [fejl, saetFejl] = useState(null);
   const [ny, saetNy] = useState(false);
@@ -744,8 +742,7 @@ export default function Konsol({ bruger }) {
         <div className="fc-empty fc-empty-bad">
           <p><b>Kundelisten kunne ikke hentes.</b></p>
           <p className="fc-hint" style={{ marginTop: 6 }}>
-            Har kontoen udbyderadgang? Den gives med <code>npm run ejer:giv</code>{" "}
-            og kan ikke sættes herfra — se beslutning 35.
+            Kontrollér, at du er logget ind som Veyro-ejer, og prøv derefter igen.
           </p>
           <Knap onClick={genindlaes}>Prøv igen</Knap>
         </div>
@@ -753,7 +750,7 @@ export default function Konsol({ bruger }) {
 
       {ny
         ? <Nykunde paaLuk={() => saetNy(false)}
-                   paaOprettet={(id) => { saetNy(false); saetAabenId(id); genindlaes(); }} />
+                   paaOprettet={(id) => { saetNy(false); genindlaes(); navigate(`/main/kunder/${id}`, { state: { fra: "/main/abonnementer" } }); }} />
         : null}
 
       <Kort
@@ -776,6 +773,11 @@ export default function Konsol({ bruger }) {
             { key: "cvr", label: "CVR", render: (k) => k.virksomhed?.cvr || "—" },
             { key: "status", label: "Abonnement",
               render: (k) => <Statuspille abonnement={k.abonnement} /> },
+            { key: "opsaetning", label: "Kundekonto", render: (k) => (
+                <Pille tone={k.kundekonto?.status === "aktiv" ? "ok" : k.kundekonto?.status === "planlagt" ? "info" : "warn"}>
+                  {k.kundekonto?.status === "aktiv" ? "Aktiv" : k.kundekonto?.status === "planlagt" ? "Planlagt" : "Opsætning mangler"}
+                </Pille>
+              ) },
             { key: "moduler", label: "Moduler", render: (k) => (
                 <span className="fc-hint">
                   {VALGFRIE_MODULER.filter((m) => harModul(k.moduler, m) && k.moduler)
@@ -784,9 +786,10 @@ export default function Konsol({ bruger }) {
               ) },
             { key: "oprettet", label: "Oprettet", render: (k) => dato(k.oprettetMs) },
             { key: "handling", label: "", render: (k) => (
-                <Knap onClick={() => saetAabenId(aabenId === k.id ? null : k.id)}>
-                  {aabenId === k.id ? "Luk" : "Åbn"}
-                </Knap>
+                <span className="fc-med-ikon">
+                  <Link className="fc-btn fc-btn-primaer" to={`/main/kunder/${k.id}`} state={{ fra: "/main/abonnementer" }}>Administrér kundekonto</Link>
+                  <Knap onClick={() => saetAabenId(aabenId === k.id ? null : k.id)}>{aabenId === k.id ? "Luk hurtigvisning" : "Hurtigvisning"}</Knap>
+                </span>
               ) },
           ]}
           raekker={kunder}
@@ -825,12 +828,7 @@ export default function Konsol({ bruger }) {
         </Kort>
       )}
 
-      <p className="fc-hint">
-        Konsollen skriver ikke selv — alt går gennem fire Cloud Functions med
-        et ejertjek som første handling, og kundeposten er <b>.write: false</b>{" "}
-        også for en ejer. Hver handling står i <b>kundens</b> auditlog, ikke i
-        en ejerlog: det er hans abonnement. Se beslutning 34.
-      </p>
+      <p className="fc-hint">Alle ændringer valideres og logges servermæssigt. Kundens egne brugere administrerer fortsat roller og driftsdata i kundens tenantdel.</p>
     </div>
   );
 }

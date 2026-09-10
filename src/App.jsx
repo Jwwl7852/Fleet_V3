@@ -108,7 +108,8 @@ const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
 const EjerRamme = lazy(() => import("./moduler/udbyder/EjerRamme.jsx"));
 const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblikDesign.jsx"));
 const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
-const EjerKunderDesign = lazy(() => import("./moduler/udbyder/EjerKunderDesign.jsx"));
+const EjerKunderDesign = lazy(() => import("./moduler/udbyder/EjerKunderDesignV2.jsx"));
+const EjerKundekonto = lazy(() => import("./moduler/udbyder/EjerKundekonto.jsx"));
 const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
 const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
 const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.jsx"));
@@ -117,7 +118,7 @@ const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.j
 const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiDesign.jsx"));
 const EjerSalgsindbakke = lazy(() => import("./moduler/udbyder/EjerSalgsindbakke.jsx"));
 const EjerOpfoelgninger = lazy(() => import("./moduler/udbyder/EjerOpfoelgninger.jsx"));
-const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesign.jsx"));
+const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesignV2.jsx"));
 const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationerDesign.jsx"));
 const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
@@ -473,6 +474,7 @@ export default function App() {
               <Route path="/main" element={<EjerOverblik bruger={bruger} />} />
               <Route path="/main/salg/pipeline" element={<EjerSalg visning="pipeline" bruger={bruger} />} />
               <Route path="/main/salg/kunder" element={<EjerKunderDesign />} />
+              <Route path="/main/kunder/:tenantId" element={<EjerKundekonto />} />
               <Route path="/main/salg/aktiviteter" element={<EjerOpfoelgninger />} />
               <Route path="/main/salg/aktiviteter/alle" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
               <Route path="/main/salg/tilbud" element={<EjerTilbud />} />

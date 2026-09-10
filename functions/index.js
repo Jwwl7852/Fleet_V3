@@ -88,7 +88,10 @@ import { erEjerClaims, erTokenEfterRevocation } from "./delt/ejeradgang.js";
 import {
   harValideringsfejl, validerCrmVirksomhed, validerCrmMulighed, validerCrmAktivitet,
 } from "./delt/ejer-crm-regler.js";
-import { validerTilbud, tilbudsnummer } from "./delt/ejer-tilbud-regler.js";
+import { ratebladFraPrisliste, validerTilbud, tilbudsnummer } from "./delt/ejer-tilbud-regler.js";
+import {
+  kundekontoAendringer, kundekontoFraTilbudssnapshot, normaliserKundekonto,
+} from "./delt/ejer-kundekonto-regler.js";
 import { byggKreditsnapshot, validerKreditModResterende } from "./delt/ejer-kreditnota-regler.js";
 import {
   BILAG_MAX_BYTES, BILAG_MIME, BILAG_STATUS, bilagDedupeSignaler,
@@ -1803,6 +1806,20 @@ export const aftaleprovisioner = onCall({ region: REGION }, async (req) => {
     opdatering[`udbyder/kunder/${endeligtTenantId}`] = {
       ...kundeindeks, oprettetMs: kundeindeks.oprettetMs || nu, aftaleId,
     };
+    const eksisterendeKundekonto = (await db.ref(`udbyder/kundekonti/${endeligtTenantId}`).once("value")).val();
+    if (!eksisterendeKundekonto) {
+      opdatering[`udbyder/kundekonti/${endeligtTenantId}`] = {
+        tenantId: endeligtTenantId,
+        status: "opsaetning_mangler",
+        revision: 0,
+        senesteVersion: 0,
+        kilde: { art: "accepteret_tilbud", aftaleId, aftaleVersion },
+        oprettetMs: nu,
+        oprettetAf: ejerUid,
+        opdateretMs: nu,
+        opdateretAf: ejerUid,
+      };
+    }
     opdatering[`udbyder/crm/virksomheder/${tilbud.virksomhedId}/stamdata/tenantId`] = endeligtTenantId;
   }
   await db.ref().update(opdatering);
@@ -2171,6 +2188,16 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
      sted. En kopi ville drive, og udbyderen ville se et andet navn end
      kunden selv. */
   await db.ref(`udbyder/kunder/${id}`).set({ oprettetMs: nu });
+  await db.ref(`udbyder/kundekonti/${id}`).set({
+    tenantId: id,
+    status: "opsaetning_mangler",
+    revision: 0,
+    senesteVersion: 0,
+    oprettetMs: nu,
+    oprettetAf: ejerUid,
+    opdateretMs: nu,
+    opdateretAf: ejerUid,
+  });
 
   /* ⚠ UDGANGSPUNKTET ER OGSÅ EN HÆNDELSE. Skrev vi kun ÆNDRINGER, ville
      loggens første post være det første fravalg — og så kunne man ikke se
@@ -2257,6 +2284,140 @@ export const kundemoduler = onCall({ region: REGION }, async (req) => {
   });
 
   return { ok: true, moduler: Object.keys(efter), fjernet, historik: poster.length };
+});
+
+/**
+ * Gemmer en samlet, versioneret kundekonto. Den accepterede tilbudsversion er
+ * autoritativ, når kilden er et tilbud; en ændret klient kan derfor ikke
+ * bytte mængder eller priser ud efter accept. Manuelle konti valideres mod
+ * den valgte uforanderlige prisliste. Direkte klientwrites er fortsat lukket.
+ */
+export const kundekontogem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevKundeId(d);
+  if (!(await kundeFindes(id))) throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
+  const operationId = kraevTilbudId(d.operationId, "operationId");
+  const forventetRevision = Number(d.forventetRevision ?? 0);
+  if (!Number.isSafeInteger(forventetRevision) || forventetRevision < 0) {
+    throw new HttpsError("invalid-argument", "Den forventede revision er ugyldig.");
+  }
+  const kildeArt = d.kilde?.art === "accepteret_tilbud" ? "accepteret_tilbud" : "manuel";
+  const db = getDatabase();
+  let input = { ...(d.opsaetning || {}), profil: d.profil || d.opsaetning?.profil || {} };
+  let kilde;
+
+  if (kildeArt === "accepteret_tilbud") {
+    const aftaleId = kraevTilbudId(d.kilde?.aftaleId, "Aftale-id");
+    const aftaleVersion = Number(d.kilde?.aftaleVersion);
+    const aftale = (await db.ref(`udbyder/aftaler/${aftaleId}`).once("value")).val();
+    const version = aftale?.versioner?.[aftaleVersion];
+    if (!aftale || aftale.tenantId !== id || !version?.prisSnapshot) {
+      throw new HttpsError("failed-precondition", "Den valgte accepterede aftaleversion tilhører ikke kundekontoen.");
+    }
+    const fraTilbud = kundekontoFraTilbudssnapshot(version.prisSnapshot);
+    input = {
+      ...fraTilbud,
+      profil: input.profil,
+      faerdig: input.faerdig === true,
+      obd: {
+        ...fraTilbud.obd,
+        leveretAntal: input.obd?.leveretAntal ?? fraTilbud.obd.leveretAntal,
+        tilknyttetAntal: input.obd?.tilknyttetAntal ?? fraTilbud.obd.tilknyttetAntal,
+      },
+      abonnement: {
+        ...fraTilbud.abonnement,
+        virkningsdato: version.virkningsdato || input.abonnement?.virkningsdato,
+      },
+    };
+    kilde = {
+      art: kildeArt, aftaleId, aftaleVersion,
+      tilbudId: version.tilbudId, tilbudsversion: version.tilbudsversion,
+      prislisteId: version.prisSnapshot.prislisteId || null,
+    };
+  } else {
+    const prislisteId = kortStreng(input.abonnement?.prislisteId, 160);
+    const prisliste = prislisteId ? (await db.ref(`udbyder/prisliste/${prislisteId}`).once("value")).val() : null;
+    if (input.faerdig === true && !prisliste) throw new HttpsError("failed-precondition", "Det valgte rateblad findes ikke.");
+    if (prisliste) {
+      const katalog = new Map(ratebladFraPrisliste({ id: prislisteId, ...prisliste }).map((linje) => [linje.id, linje]));
+      for (const linje of input.abonnement?.linjer || []) {
+        const original = katalog.get(linje.id);
+        if (!original || original.normalprisOere !== Number(linje.normalprisOere) || original.priskilde !== linje.priskilde) {
+          throw new HttpsError("failed-precondition", "En manuel prislinje svarer ikke til det valgte, versionerede rateblad.");
+        }
+      }
+    }
+    kilde = { art: "manuel", prislisteId: prislisteId || null };
+  }
+
+  const normaliseret = normaliserKundekonto(input);
+  if (Object.keys(normaliseret.fejl).length) {
+    throw new HttpsError("invalid-argument", Object.values(normaliseret.fejl).join(" "));
+  }
+  const kontoRef = db.ref(`udbyder/kundekonti/${id}`);
+  const kontoFoer = (await kontoRef.once("value")).val() || {};
+  const allerede = kontoFoer.operationer?.[operationId];
+  let gemtVersion = allerede?.version || null;
+  let konflikt = false;
+  const nu = Date.now();
+  const virkningMs = Date.parse(`${normaliseret.post.abonnement.virkningsdato || "9999-12-31"}T00:00:00Z`);
+  const kanAktiveresNu = d.aktiver === true && normaliseret.post.faerdig && virkningMs <= nu;
+  const versionsstatus = !normaliseret.post.faerdig ? "opsaetning_mangler" : kanAktiveresNu ? "aktiv" : "planlagt";
+  const start = verificeretTransaktionsstart(kontoFoer);
+  const resultat = await kontoRef.transaction((lokal) => {
+    const aktuel = start(lokal) || {};
+    if (aktuel.operationer?.[operationId]) {
+      gemtVersion = aktuel.operationer[operationId].version;
+      return aktuel;
+    }
+    if (Number(aktuel.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    const version = Number(aktuel.senesteVersion || 0) + 1;
+    gemtVersion = version;
+    const versionspost = {
+      version, status: versionsstatus, virkningsdato: normaliseret.post.abonnement.virkningsdato,
+      kilde, ...normaliseret.post, beregning: normaliseret.beregning,
+      aendringer: kundekontoAendringer(aktuel.versioner?.[aktuel.aktivVersion || aktuel.planlagtVersion] || {}, normaliseret.post),
+      oprettetMs: nu, oprettetAf: ejerUid,
+    };
+    return {
+      ...aktuel, tenantId: id, status: versionsstatus,
+      revision: Number(aktuel.revision || 0) + 1, senesteVersion: version,
+      ...(kanAktiveresNu ? { aktivVersion: version, planlagtVersion: null } : { planlagtVersion: version }),
+      versioner: { ...(aktuel.versioner || {}), [version]: versionspost },
+      operationer: { ...(aktuel.operationer || {}), [operationId]: { version, ms: nu, uid: ejerUid } },
+      opdateretMs: nu, opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt || !gemtVersion) {
+    throw new HttpsError("aborted", "Kundekontoen blev ændret samtidigt. Genindlæs før du gemmer igen.");
+  }
+  const konto = resultat.snapshot.val();
+  const version = konto.versioner[gemtVersion];
+  const gammelVirksomhed = (await db.ref(`tenants/${id}/virksomhed`).once("value")).val() || {};
+  const profil = Object.fromEntries(Object.entries(version.profil || {}).filter(([, vaerdi]) => vaerdi != null));
+  const opdatering = { [`tenants/${id}/virksomhed`]: { ...gammelVirksomhed, ...profil, opdateretMs: nu, opdateretAf: ejerUid } };
+  if (version.status === "aktiv") {
+    const aktiveModuler = version.moduler.filter((m) => m.status === "aktiv").map((m) => m.id);
+    opdatering[`tenants/${id}/moduler`] = modulsaet(aktiveModuler);
+    opdatering[`tenants/${id}/abonnement/kundekontoVersion`] = gemtVersion;
+    opdatering[`tenants/${id}/abonnement/prislisteId`] = version.abonnement.prislisteId;
+    opdatering[`tenants/${id}/abonnement/rabatBps`] = version.abonnement.generelRabatBps;
+    opdatering[`tenants/${id}/abonnement/interval`] = version.abonnement.interval;
+    opdatering[`tenants/${id}/abonnement/startetMs`] = Date.parse(`${version.abonnement.virkningsdato}T00:00:00Z`);
+    opdatering[`tenants/${id}/abonnement/aendretMs`] = nu;
+    opdatering[`tenants/${id}/abonnement/aendretAf`] = ejerUid;
+  }
+  await db.ref().update(opdatering);
+  await skrivEjerAudit({
+    uid: ejerUid, handling: version.status === "aktiv" ? "kundekonto.aktiver" : "kundekonto.gem",
+    objekt: "tenant", objektId: id, korrelationsId: operationId,
+    aendrede: ["kundekonto", "profil", ...(version.status === "aktiv" ? ["moduler", "abonnement"] : [])],
+  });
+  return {
+    ok: true, tenantId: id, version: gemtVersion, revision: konto.revision,
+    status: version.status, genbrugt: Boolean(allerede), beregning: version.beregning,
+  };
 });
 
 export const kundestatus = onCall({ region: REGION }, async (req) => {

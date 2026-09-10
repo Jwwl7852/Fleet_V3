@@ -52,6 +52,7 @@ export const DELTE_FILER = [
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med
      en afskrift, ville der være to afrundingsregler i ét repo. */
   "beloeb.js", "priser.js", "ejer-kreditnota-regler.js", "ejer-bilag-regler.js",
+  "ejer-kundekonto-regler.js",
   /* ⚠ unitbooking.js SKAL MED, fordi kasseudlaanskriv er DEN ENESTE vej ind i
      kasseudlaan — noden er .write: false. Serveren skal proeve mod nøjagtig
      de samme regler som formularen viser brugeren: samme valideUdlaan(),

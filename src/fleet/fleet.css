@@ -115,7 +115,7 @@
      på accenten frem for at gentage #1552d8; beslutning 10 er kilden.
      Valideret med dataviz-validatoren mod hvid flade. */
   --fc-serie-1:var(--bc-accent);
-  --fc-serie-2:#eb6834;
+  --fc-serie-2:#e86834;
   --fc-serie-3:#1baf7a;
   --fc-serie-4:#eda100;
   --fc-serie-5:#e87ba4;
@@ -1325,7 +1325,7 @@
 .fc-dialog-baggrund{position:fixed; inset:0; z-index:80; background:var(--fc-overlay);
   display:flex; align-items:flex-start; justify-content:center;
   padding:32px 20px; overflow-y:auto}
-.fc-dialog{background:var(--bc-card); border-radius:var(--fc-r);
+.fc-dialog{position:relative; background:var(--bc-card); border-radius:var(--fc-r);
   box-shadow:var(--fc-shadow); width:100%; max-width:640px; outline:0;
   display:flex; flex-direction:column; max-height:calc(100vh - 64px)}
 .fc-dialog-bred{max-width:1020px}
@@ -1340,6 +1340,10 @@
 .fc-dialog-luk{background:none; border:0; font-size:var(--fc-t-3xl); line-height:1;
   color:var(--bc-muted); cursor:pointer; padding:0 4px}
 .fc-dialog-krop{padding:15px 18px 18px; overflow-y:auto}
+.fc-dialog-bekraeftlag{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:20px;background:var(--fc-overlay);border-radius:inherit}
+.fc-dialog-bekraeft{width:min(430px,100%);padding:18px;border:1px solid var(--bc-line);border-radius:var(--fc-r);background:var(--bc-card);box-shadow:var(--fc-shadow);outline:0}
+.fc-dialog-bekraeft h3{margin:0;font-size:var(--fc-t-xl)}
+.fc-dialog-bekraeft p{color:var(--bc-muted)}
 
 /* Dialog, variant "drawer" (§1): samme panel, højreankret og fuld højde i
    stedet for centreret. Kun position/animation — header/krop/luk-mekanik er

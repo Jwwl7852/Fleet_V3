@@ -145,8 +145,8 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
     const undtaget = alleRegler().filter(
       (r) => typeof r.udtryk === "string" && r.udtryk.includes("auth.token.udbyder")
     );
-    /* virksomhed, moduler og abonnement under tenanten — plus udbyder/kunder,
-       udbyder/prisliste og udbyder/maalinger. Seks, og tallet står her for at
+    /* virksomhed, moduler og abonnement under tenanten — plus ejerens
+       særskilt besluttede platformnoder. Listen står her for at
        en syvende skal SES: hver ny regel med udbyder-claim'et er en udvidelse
        af den anden krydsning af tenant-grænsen, og den skal besluttes, ikke
        opdages.
@@ -202,6 +202,7 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/invitationer/.read",
       "/udbyder/kreditjobs/.read",
       "/udbyder/kreditnotaer/.read",
+      "/udbyder/kundekonti/.read",
       "/udbyder/kunder/.read",
       "/udbyder/maalinger/.read",
       "/udbyder/mailjobs/.read",

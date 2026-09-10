@@ -86,6 +86,7 @@ before(async () => {
     }
     await set(ref(db, `udbyder/kunder/${T_A}`), { oprettetMs: 1e12, status: "aktiv" });
     await set(ref(db, `udbyder/kunder/${T_B}`), { oprettetMs: 1e12, status: "aktiv" });
+    await set(ref(db, `udbyder/kundekonti/${T_A}`), { tenantId: T_A, status: "aktiv", revision: 1 });
     await set(ref(db, "udbyder/crm/virksomheder/v1/stamdata"), { navn: "CRM Kunde" });
     await set(ref(db, "udbyder/tilbud/t1"), { nummer: "T-2026-0001", status: "kladde", virksomhedId: "v1" });
     await set(ref(db, "udbyder/audit/2026/09/a1"), {
@@ -133,7 +134,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
   it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
     for (const node of [
-      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs", "kreditnotaer", "kreditjobs", "dinero", "bilagjobs", "mailjobs", "vidensbase", "ai",
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "kundekonti", "integrationer", "fakturajobs", "kreditnotaer", "kreditjobs", "dinero", "bilagjobs", "mailjobs", "vidensbase", "ai",
     ]) {
       await assertSucceeds(get(ref(db, `udbyder/${node}`)));
     }
@@ -189,6 +190,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
        oprette en kunde — og kan derfor heller ikke oprette sig selv adgang. */
     const db = somUdbyder();
     await assertFails(set(ref(db, `udbyder/kunder/${T_A}/status`), "spaerret"));
+    await assertFails(set(ref(db, `udbyder/kundekonti/${T_A}/status`), "spaerret"));
     await assertFails(set(ref(db, `udbyder/kunder/nyKunde`), { oprettetMs: 1 }));
     await assertFails(set(ref(db, `tenants/${T_A}/virksomhed/navn`), "Overtaget"));
     await assertFails(set(ref(db, `tenants/${T_A}/moduler/facility`), true));
@@ -208,6 +210,8 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/aftaler")));
     await assertFails(get(ref(somKunde(), "udbyder/provisioneringer")));
     await assertFails(get(ref(somKunde(), "udbyder/invitationer")));
+    await assertFails(get(ref(somKunde(), "udbyder/kundekonti")));
+    await assertFails(get(ref(somKunde(), `udbyder/kundekonti/${T_A}`)));
     await assertFails(get(ref(somKunde(), "udbyder/integrationer")));
     await assertFails(get(ref(somKunde(), "udbyder/fakturajobs")));
     await assertFails(get(ref(somKunde(), "udbyder/kreditnotaer")));

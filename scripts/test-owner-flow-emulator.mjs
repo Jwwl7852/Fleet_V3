@@ -76,9 +76,9 @@ async function forventFejl(promise, status) {
   return fejl;
 }
 
-const tilbudslinje = ({ id, navn, prisOere, antal = 1, prislisteId, modulId = null }) => ({
-  id, art: modulId ? "modul" : "grundplatform", navn, beskrivelse: "Syntetisk emulatorfixture",
-  modulId, enhed: "måned", fakturering: "maanedlig", antal: antalTilSkala(antal),
+const tilbudslinje = ({ id, navn, prisOere, antal = 1, prislisteId, modulId = null, art = null, fakturering = "maanedlig" }) => ({
+  id, art: art || (modulId ? "modul" : "grundplatform"), navn, beskrivelse: "Syntetisk emulatorfixture",
+  modulId, enhed: fakturering === "engang" ? "stk." : "måned", fakturering, antal: antalTilSkala(antal),
   normalprisOere: prisOere, aftaltPrisOere: null, linjerabatBps: 0,
   momssats: 25, rabatberettiget: true, priskilde: `prisliste:${prislisteId}`,
 });
@@ -180,9 +180,16 @@ try {
     id: "fleet-v2", navn: "Fleet", prisOere: 175000,
     prislisteId: rateblad2.id, modulId: "flaade",
   });
+  const maengdelinjerV2 = [
+    tilbudslinje({ id: "medarbejdere-v2", navn: "Medarbejderbrugere", art: "medarbejder", prisOere: 5000, antal: 10, prislisteId: rateblad2.id, modulId: "flaade" }),
+    tilbudslinje({ id: "chauffoerer-v2", navn: "Chaufførbrugere", art: "chauffoer", prisOere: 3000, antal: 60, prislisteId: rateblad2.id, modulId: "flaade" }),
+    tilbudslinje({ id: "enheder-v2", navn: "Køretøjsenheder", art: "enhed", prisOere: 2500, antal: 60, prislisteId: rateblad2.id, modulId: "flaade" }),
+    tilbudslinje({ id: "obd-hardware-v2", navn: "OBD-hardware", art: "enhed", prisOere: 75000, antal: 12, prislisteId: rateblad2.id, modulId: "flaade", fakturering: "engang" }),
+    tilbudslinje({ id: "obd-data-v2", navn: "OBD-dataabonnement", art: "enhed", prisOere: 9000, antal: 10, prislisteId: rateblad2.id, modulId: "flaade" }),
+  ];
   const gemtV2 = await kald("tilbudgem", {
     ...faeldes, id: oprettet.id, prislisteId: rateblad2.id,
-    forventetRevision: nyKladde.revision, linjer: [v2Linje, fleetlinjeV2],
+    forventetRevision: nyKladde.revision, linjer: [v2Linje, fleetlinjeV2, ...maengdelinjerV2],
   }, ejerToken);
   const v2 = await kald("tilbududsted", {
     id: oprettet.id, forventetRevision: gemtV2.revision, operationId: "issue_v2_20260910",
@@ -220,6 +227,45 @@ try {
   const aftale = (await db.ref(`udbyder/aftaler/${provisioneret.aftaleId}`).once("value")).val();
   assert.equal(Object.keys(aftale.versioner).length, 1);
   assert.equal((await db.ref("tenants/flow-tenant/moduler/flaade").once("value")).val(), true);
+
+  // Den samlede kundekonto henter bindende mængder og priser fra præcis den
+  // accepterede aftaleversion. En gentagelse genbruges, mens to nye samtidige
+  // operationer med samme revision ikke begge kan vinde.
+  const kontoPayload = {
+    id: "flow-tenant", operationId: "account_flow_20260910", forventetRevision: 0, aktiver: true,
+    kilde: { art: "accepteret_tilbud", aftaleId: provisioneret.aftaleId, aftaleVersion: provisioneret.aftaleVersion },
+    profil: {
+      navn: "Flowtest ApS — kun emulator", cvr: "00000001", adresse: "Testvej 1",
+      postnr: "0000", by: "Testby", kontaktNavn: "Test Kontakt",
+      kontaktEmail: "kontakt@demo.veyro.invalid", fakturaEmail: "faktura@demo.veyro.invalid",
+      reference: "FLOW-REFERENCE",
+    },
+    opsaetning: { faerdig: true, obd: { leveretAntal: 4, tilknyttetAntal: 2 } },
+  };
+  const kontoGemt = await kald("kundekontogem", kontoPayload, ejerToken);
+  const kontoGenkoert = await kald("kundekontogem", kontoPayload, ejerToken);
+  assert.equal(kontoGenkoert.genbrugt, true);
+  assert.equal(kontoGenkoert.version, kontoGemt.version);
+  const konto = (await db.ref("udbyder/kundekonti/flow-tenant").once("value")).val();
+  const kontoVersion = konto.versioner[konto.aktivVersion];
+  assert.equal(konto.status, "aktiv");
+  assert.equal(kontoVersion.maengder.medarbejderbrugere, 10);
+  assert.equal(kontoVersion.maengder.chauffoerbrugere, 60);
+  assert.equal(kontoVersion.maengder.enheder, 60);
+  assert.equal(kontoVersion.obd.hardwareAntal, 12);
+  assert.equal(kontoVersion.obd.dataabonnementAntal, 10);
+  assert.equal(kontoVersion.obd.leveretAntal, 4);
+  assert.equal(kontoVersion.obd.tilknyttetAntal, 2);
+  assert.equal(kontoVersion.kilde.tilbudsversion, 2);
+  assert.equal(efterV2.versioner[1].snapshot.linjer[0].normalprisOere, 100000);
+  assert.equal(efterV2.versioner[2].snapshot.linjer[0].normalprisOere, 125000);
+
+  const kontoSamtidige = await Promise.allSettled([
+    kald("kundekontogem", { ...kontoPayload, operationId: "account_concurrent_a", forventetRevision: konto.revision }, ejerToken),
+    kald("kundekontogem", { ...kontoPayload, operationId: "account_concurrent_b", forventetRevision: konto.revision }, ejerToken),
+  ]);
+  assert.equal(kontoSamtidige.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(kontoSamtidige.filter((r) => r.status === "rejected").length, 1);
 
   // Ny konto: invitation først, derefter normal Auth-oprettelse og accept.
   const nyAdminMail = "flow-ny-admin@demo.veyro.invalid";
@@ -262,7 +308,7 @@ try {
     prislister: [rateblad1.id, rateblad2.id], tilbudId: oprettet.id,
     tilbudsversioner: [1, 2], pdf: pdf.dokument.storagePath,
     aftaleId: provisioneret.aftaleId, tenantId: provisioneret.tenantId,
-    invitationer: 2,
+    kundekontoVersion: kontoGemt.version, invitationer: 2,
   }, null, 2));
 } finally {
   await deleteApp(app);

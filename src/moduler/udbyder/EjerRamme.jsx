@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import VeyroLogo from "../../fleet/VeyroLogo.jsx";
 import { EjerDataProvider } from "./EjerDataContext.jsx";
@@ -38,6 +38,7 @@ const TITLER = {
   "/main/salg/pipeline": ["Salgspipeline", "Muligheder, næste handling og forventet værdi"],
   "/main/salg/indbakke": ["Salgsindbakke", "info@veyrosystems.com · Microsoft 365 · Eksempelvisning"],
   "/main/salg/kunder": ["Kunder", "CRM-virksomheder, kontakter og samlet historik"],
+  "/main/kunder": ["Kundekonto", "Profil, adgang, abonnement og administratorer samlet"],
   "/main/salg/aktiviteter": ["Opfølgninger til godkendelse", "Gennemgå og godkend AI-udkast til opfølgningsmails, før de sendes."],
   "/main/salg/tilbud": ["Tilbud", "Versionerede tilbud og opfølgning"],
   "/main/salg/vidensbase": ["Veyro-vidensbase", "Godkendte tekster, kilder og leveringsstatus"],
@@ -56,7 +57,10 @@ export default function EjerRamme({ bruger, logUd, children }) {
   const navigate = useNavigate();
   const [soegning, setSoegning] = useState("");
   const [ejerfilter, setEjerfilter] = useState("Alle");
-  const [titel, undertekst] = TITLER[location.pathname] || TITLER["/main"];
+  const [mobilmenuAaben, setMobilmenuAaben] = useState(false);
+  const mobilmenuknap = useRef(null);
+  const [titel, undertekst] = TITLER[location.pathname]
+    || (location.pathname.startsWith("/main/kunder/") ? TITLER["/main/kunder"] : TITLER["/main"]);
   const soeg = (event) => {
     event.preventDefault();
     const q = soegning.trim().toLowerCase();
@@ -66,38 +70,67 @@ export default function EjerRamme({ bruger, logUd, children }) {
     else navigate(`/main/salg/kunder?q=${encodeURIComponent(soegning.trim())}`);
   };
 
+  useEffect(() => setMobilmenuAaben(false), [location.pathname]);
+  useEffect(() => {
+    document.body.classList.add("ejer-body");
+    return () => document.body.classList.remove("ejer-body");
+  }, []);
+  useEffect(() => {
+    if (!mobilmenuAaben) return undefined;
+    const lukMedEscape = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMobilmenuAaben(false);
+      requestAnimationFrame(() => mobilmenuknap.current?.focus());
+    };
+    document.addEventListener("keydown", lukMedEscape);
+    return () => document.removeEventListener("keydown", lukMedEscape);
+  }, [mobilmenuAaben]);
+
   return (
     <EjerDataProvider ansvarligFilter={ejerfilter}>
       <div className="fc-app ejer-app">
-        <aside className="ejer-side">
+        <aside className={`ejer-side${mobilmenuAaben ? " ejer-side-aaben" : ""}`}>
           <NavLink className="ejer-logo" to="/main" aria-label="Veyro ejerkonsol, overblik">
             <VeyroLogo variant="sidebar" />
           </NavLink>
           <div className="ejer-produkt">Ejerkonsol</div>
-          <nav className="ejer-nav" aria-label="Ejerkonsollens hovednavigation">
-            {NAV.map((gruppe) => (
-              <section key={gruppe.label || gruppe.punkter[0].to} className={gruppe.separat ? "ejer-nav-separat" : ""}>
-                {gruppe.label && <h2>{gruppe.label}</h2>}
-                {gruppe.punkter.map((punkt) => (
-                  <NavLink
-                    key={punkt.to}
-                    to={punkt.to}
-                    end={punkt.slut}
-                    className={({ isActive }) => `ejer-link${isActive ? " ejer-link-aktiv" : ""}`}
-                  >
-                    <EjerIkon navn={punkt.ikon} size={24} />
-                    <span>{punkt.label}</span>
-                  </NavLink>
-                ))}
-              </section>
-            ))}
-          </nav>
-          <div className="ejer-identitet">
-            <span className="ejer-avatar">DC</span>
-            <span className="ejer-identitetstekst"><strong>{bruger?.navn || "Dennis Christensen"}</strong><small>Ejer</small></span>
-            <button type="button" className="ejer-profilmenu" onClick={logUd} aria-label="Åbn profilmenu eller log ud">⌄</button>
+          <button
+            ref={mobilmenuknap}
+            type="button"
+            className="ejer-mobilmenuknap"
+            aria-expanded={mobilmenuAaben}
+            aria-controls="ejer-mobilmenu"
+            aria-label={mobilmenuAaben ? "Luk navigation" : "Åbn navigation"}
+            onClick={() => setMobilmenuAaben((aaben) => !aaben)}
+          >{mobilmenuAaben ? "×" : "☰"}</button>
+          <div className="ejer-menuindhold" id="ejer-mobilmenu">
+            <nav className="ejer-nav" aria-label="Ejerkonsollens hovednavigation">
+              {NAV.map((gruppe) => (
+                <section key={gruppe.label || gruppe.punkter[0].to} className={gruppe.separat ? "ejer-nav-separat" : ""}>
+                  {gruppe.label && <h2>{gruppe.label}</h2>}
+                  {gruppe.punkter.map((punkt) => (
+                    <NavLink
+                      key={punkt.to}
+                      to={punkt.to}
+                      end={punkt.slut}
+                      className={({ isActive }) => `ejer-link${isActive ? " ejer-link-aktiv" : ""}`}
+                    >
+                      <EjerIkon navn={punkt.ikon} size={24} />
+                      <span>{punkt.label}</span>
+                    </NavLink>
+                  ))}
+                </section>
+              ))}
+            </nav>
+            <div className="ejer-identitet">
+              <span className="ejer-avatar">DC</span>
+              <span className="ejer-identitetstekst"><strong>{bruger?.navn || "Dennis Christensen"}</strong><small>Ejer</small></span>
+              <button type="button" className="ejer-profilmenu" onClick={logUd} aria-label="Åbn profilmenu eller log ud">⌄</button>
+            </div>
           </div>
         </aside>
+        {mobilmenuAaben && <button type="button" className="ejer-mobiloverlay" aria-label="Luk navigation" onClick={() => setMobilmenuAaben(false)} />}
         <div className="ejer-hoved">
           <header className="ejer-top">
             <form className="ejer-globalsoeg" role="search" onSubmit={soeg}><EjerIkon navn="search" size={23} /><input aria-label="Søg i ejerkonsollen" value={soegning} onChange={(event) => setSoegning(event.target.value)} placeholder="Søg kunde, tilbud eller bilag..." /></form>
