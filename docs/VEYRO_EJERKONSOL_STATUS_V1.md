@@ -79,7 +79,7 @@ Opdateret: 2026-09-11
 | G — Kredit og returdata | Implementeret; live Dinero mangler | Beregning, reservation/race, PDF og testkø emulatorverificeret; live API og retursynk ikke eksternt testet |
 | H — Udgifter | Implementeret; mail/OCR/Dinero-køb mangler eksternt | Upload, signatur/hash, dedupe, metadata, godkendelse, genkørbar klargøring og match emulatorverificeret |
 | I — Overblik | Implementeret og isoleret verificeret | Afstemte KPI-definitioner, datadækning, filtre og detaljelinks består på kendt datasæt |
-| J — Samlet aflevering | Implementeret og isoleret verificeret | Additiv fixture-migration, recoveryplan, driftsvejledning, 4360/4360 regression, build og normal browserlogin-gennemgang består |
+| J — Samlet aflevering | Implementeret og isoleret verificeret | Additiv fixture-migration, recoveryplan, driftsvejledning, målrettede ejer-/design-/regeltests, build og normal browserlogin-gennemgang består; brede legacy-kontroller har kendte afgrænsede fejl |
 
 ## Kortlægning af eksisterende løsning
 
@@ -249,8 +249,8 @@ Opdateret: 2026-09-11
 - Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
   reproducerbar Windows AF_UNIX-fejl. Isoleret Temurin JDK 11 + Firebase CLI
   13.35.1 virker; systemets Java-installationer er ikke ændret.
-- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4360/4360 grønne
-  platformtests. Det dækker tenantløs ejer,
+- AK-01–AK-04, bilagsadgang og Storage-regler bestod i dette checkpoints
+  daværende platformkørsel. Det dækker tenantløs ejer,
   kundeadministrator, tenantadskillelse, tilbagekaldt gammelt token og lukket
   direkte adgang til ejerens PDF-sti.
 - Browser: normalt login med syntetisk tenantløs ejer i Auth/Database/Storage/
@@ -266,9 +266,11 @@ Opdateret: 2026-09-11
   dubleres ikke ved genkørsel. Accept opretter ingen faktura.
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
-- Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4360/4360 består. Functions-
-  emulatoren er separat verificeret på den deklarerede Node 20-runtime.
+- Checkpointets platformregression blev kørt med repositoryets normale Node
+  24-testmiljø samt isoleret JDK 11/CLI 13.35.1 til emulatorerne. Functions-
+  emulatoren blev separat verificeret på den deklarerede Node 20-runtime. Den
+  aktuelle brede suite har siden fået yderligere tests og kendte afgrænsede
+  legacy-fejl; det aktuelle resultat står i rettelsescheckpointet nedenfor.
 - M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
   provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
   AI-budget/API-fejl samt ukendt Graph-udfald efter oprettet kladde.
@@ -373,7 +375,7 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`, branch
   `codex/ejer-integrated-development`, HEAD
   `a5ee1120a800b85bf210af836ee13acfc3f1834c`. Arbejdet er fortsat som lokale,
-  ikke-pushede ændringer; de øvrige modulworktrees er ikke ændret.
+  ikke-pushede commits; de øvrige modulworktrees er ikke ændret.
 - Den samlede kundekonto findes på `/main/kunder/:tenantId` og kan åbnes via
   **Administrér kundekonto** fra både Salg → Kunder og Administration →
   Abonnementer. De syv områder er Kundeprofil, Moduler, Brugere og enheder,
