@@ -9,7 +9,8 @@ Opdateret: 2026-09-10
 - Base/HEAD ved oprettelse: `989dbb87db639efed0ba1b5a1e271560f7659a0c`
 - HEAD ved arbejdsrundens start:
   `56e9ca0449cd61929d70e4ef58edcb4e90233af3`
-- Nyt lokalt checkpoint indsættes efter afsluttende regression; intet pushes.
+- Lokalt etape D/E- og sikkerhedscheckpoint:
+  `7d622c47a4045dec21a6b784f29bf470244cca3e`; intet er pushet.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
