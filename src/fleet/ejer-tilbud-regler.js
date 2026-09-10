@@ -192,6 +192,8 @@ export function validerTilbud(input = {}) {
     udstedelsesdato, gyldigTil, valuta: "DKK", linjer,
     generelRabatBps, introRabatBps, introMaaneder, bindingMaaneder,
     betalingsbetingelser: tekst(input.betalingsbetingelser, 300) || "Efter aftale",
+    indledning: tekst(input.indledning, 4000), behovstekst: tekst(input.behovstekst, 4000),
+    loesningsbeskrivelse: tekst(input.loesningsbeskrivelse, 6000),
     forudsaetninger: tekst(input.forudsaetninger, 4000), fritekst: tekst(input.fritekst, 4000),
     prislisteId: tekst(input.prislisteId, 160),
   };

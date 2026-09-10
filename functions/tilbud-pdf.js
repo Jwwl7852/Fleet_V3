@@ -109,6 +109,9 @@ export async function genererTilbudsPdf({ tilbud, versionPost, virksomhed }) {
     for (const linje of linjer) { skriv(linje, 42, 9); y -= 12; }
     y -= 8;
   };
+  afsnit("Indledning", snapshot.indledning);
+  afsnit("Kundens behov", snapshot.behovstekst);
+  afsnit("Foreslået løsning", snapshot.loesningsbeskrivelse);
   afsnit("Vilkår", `Binding: ${snapshot.bindingMaaneder} måneder. Betaling: ${snapshot.betalingsbetingelser}.`);
   if (snapshot.introMaaneder > 0) afsnit("Introduktionsperiode", `${snapshot.introRabatBps / 100} % introduktionsrabat i ${snapshot.introMaaneder} måneder. Derefter gælder den aftalte pris.`);
   afsnit("Forudsætninger", snapshot.forudsaetninger);

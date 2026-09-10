@@ -9,7 +9,7 @@ Den bruger den eksisterende tenantløse `/main`-gren, mens kundernes egen
 administration fortsat ligger bag tenantclaims. FLEET, FACILITY, PLANNING og
 FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 
-## Fælles kontrakter berørt af etape B–F
+## Fælles kontrakter berørt af etape B–G2
 
 | Fil/område | Kontrakt |
 |---|---|
@@ -25,6 +25,9 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 | `functions/tilbud-pdf.js` | Server-PDF bygges fra det frosne versionssnapshot og repositoryets Veyro-logo. |
 | `functions/fakturagrundlag-pdf.js` | Fakturagrundlags-PDF/CSV bygges kun fra det frosne frigivelsessnapshot. |
 | `functions/dinero-test-adapter.js` | Intern, fail-closed fakturaport til emulatoren; ingen påstået live-Dinero-kontrakt. |
+| `functions/microsoft-graph.js` | Graph-token, delta, vedhæftninger og draft/send-port med eksplicit ukendt udfald. |
+| `functions/openai-salgsassistent.js` | Serverbaseret Responses API-kontrakt med struktureret output og `store: false`. |
+| `functions/salgsplatform.js` | Rene normaliserings-, dublet-, godkendelses- og AI-budgetregler. |
 
 ## Vedvarende datarødder
 
@@ -39,6 +42,13 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 - `udbyder/invitationer/<invitationId>` med tokenhash, generation og livscyklus
 - `udbyder/integrationer/tilbudsmail` som adapterstatus, ikke credentials
 - `udbyder/fakturajobs/<jobId>` med stabil forretningsnøgle, eksternt reference-id og tre statusdomæner
+- `udbyder/salgsindbakke/traade/<traadId>` med mails, CRM-links, noter, analyse og opfølgninger
+- `udbyder/salgsindbakke/dedupe/<hash>` som serverejet leveringslås
+- `udbyder/mailjobs/<jobId>` med indholdshash, tilbudsversion og providerstatus
+- `udbyder/vidensbase/poster/<id>/versioner/<n>` med kilde, godkendelse og leveringsstatus
+- `udbyder/ai/forbrug/<YYYY-MM>` med faktisk og reserveret token-/requestforbrug
+- `udbyder/integrationshemmeligheder/microsoft365/delta/<mappe>` med ulæselige Graph-checkpoints
+- `ejer/salgsmail/<traadHash>/<beskedHash>/<dokumentId>` i beskyttet Storage
 - `ejer/fakturagrundlag/<periode>/<tenantId>/v1.pdf|csv` i beskyttet Storage
 - `udbyder/sekvenser/tilbud/<YYYY>` (kun serveradgang)
 - `udbyder/audit/<YYYY>/<MM>/<postId>`
@@ -107,7 +117,9 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
   faktiske postkassetype og underliggende postkasse.
 - Graph-synk bruger mappebaseret delta for indbakke og Sendt post og gemmer den
   fulde `@odata.deltaLink`. Attachments/body kræver mere end Basic-mailadgang.
-- Afsendelse modelleres som outbox: Graph HTTP 202 betyder accepteret
+- Afsendelse modelleres som outbox: en kladde oprettes med
+  `POST /users/{id}/messages` og sendes med
+  `POST /users/{id}/messages/{message-id}/send`. Graph HTTP 202 betyder accepteret
   anmodning, ikke dokumenteret levering. Sent Items-synk eller en tilsvarende
   dokumenteret providerhændelse markerer `dokumenteret_sendt`.
 - Tilbudsmail refererer altid til tilbud-id, versionsnummer, PDF-sti og hash.
@@ -126,3 +138,7 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
 - `npm audit --omit=dev` finder eksisterende transitive browser-/Firebase
   runtimefund. De berører også Auth/callable- og Admin Storage-overfladen og
   skal løses i et særskilt dependency-opgraderingsspor med fuld regression.
+- M365/OpenAI-kontrakten er testet med syntetiske, rene adaptertests og indgår
+  i 4330/4330 grønne platform-/rules-tests. Live Graph/OpenAI samt den nye
+  salgsindbakke-callable-kæde er ikke end-to-end-testet og må ikke beskrives
+  som tilsluttet.

@@ -13,6 +13,8 @@ Opdateret: 2026-09-10
   `7d622c47a4045dec21a6b784f29bf470244cca3e`; intet er pushet.
 - Lokalt dokumentationscheckpoint efter D/E:
   `f948eaf6c55d7f940775ca7f53522ad238fcc441`; intet er pushet.
+- Lokalt faktura-outbox-checkpoint før Microsoft 365/OpenAI-runden:
+  `1d7b5d0b2b400a28adfcfc8bcabf12d228694349`; intet er pushet.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
@@ -27,8 +29,8 @@ Opdateret: 2026-09-10
 | D — Priser og tilbud | Implementeret; mail eksternt blokeret | Beregning, samtidighed, version 1/2, snapshots, PDF, accept og fejlstatus emulatorverificeret |
 | E — Aftale og kunde | Implementeret og verificeret | Aftale/tenant genkørt uden dublet; nye/eksisterende konti, revoke/resend/accept testet |
 | F — Fakturering | Implementeret; Dinero eksternt blokeret | Race, snapshot, PDF/CSV, genkørsel, ukendt udfald og delvis fejl emulatorverificeret |
-| G1 — Microsoft 365-salgsmail | Igangsat; ekstern forbindelse mangler | Kontrakt og isolerede tests bygges nu |
-| G2 — OpenAI-salgsassistent | Igangsat; ekstern forbindelse mangler | Servergrænse, vidensbase og budgettests bygges nu |
+| G1 — Microsoft 365-salgsmail | Implementeret; ekstern forbindelse mangler | Rene kontrakt-/fejltests, rules og samlet build/regression består; live Graph og ny callable-E2E er ikke kørt |
+| G2 — OpenAI-salgsassistent | Implementeret; ekstern forbindelse mangler | Struktureret request, API-fejl, budgetstop, rules og samlet build/regression består; live API er ikke kaldt |
 | G — Kredit og returdata | Ikke implementeret | — |
 | H — Udgifter | Ikke implementeret | — |
 | I — Overblik | Ikke implementeret | — |
@@ -83,17 +85,41 @@ Opdateret: 2026-09-10
 
 | Nr. | Område | Faktisk status |
 |---|---|---|
-| 1 | Overblik | Implementeret med CRM-opfølgning og ærlig integrationsstatus |
+| 1 | Overblik | Implementeret med CRM-opfølgning, nye henvendelser, godkendelsesopgaver og ærlig integrationsstatus |
 | 2 | Salgspipeline | Implementeret med persistent pipeline, aktiviteter og kundehistorik |
 | 3 | Kunde og abonnement | CRM, aftale/tenantprovisionering og sikker administratorinvitation implementeret |
 | 4 | Rateblad | Versioneret redigering og tilbudsautoudfyldning implementeret; officielle priser mangler |
-| 5 | Tilbud | Versioner, PDF, afsendelsesstatus, manuel registrering og accept implementeret |
+| 5 | Tilbud | Versioner, PDF, M365-mailkladde/outbox, AI-tekstforslag, manuel registrering og accept implementeret |
 | 6 | Fakturaer | Frigivelse, PDF/CSV, kø, adapterstatus og fejlforløb implementeret; Dinero ikke tilsluttet |
 | 7 | Kreditnotaer | Ikke implementeret |
 | 8 | Bilagsindbakke | Ikke implementeret |
 | 9 | Omkostninger | Ikke implementeret |
 | 10 | Økonomioverblik | Ikke implementeret |
-| 11 | Integrationer | Statusside og Dinero-fakturajob implementeret; Microsoft 365, OpenAI og live Dinero ikke tilsluttet |
+| 11 | Integrationer | Drifts-/forbrugsstatus og Dinero-fakturajob implementeret; Microsoft 365, OpenAI og live Dinero ikke tilsluttet |
+
+## Implementeret i etape G1–G2
+
+- Salgsindbakke med trådliste, samtale og sag/AI-panel; søgning, filtre,
+  vedhæftninger, ansvarlig, status, CRM-links og særskilte interne noter.
+- Delta-synk af Inbox og Sendt post med immutable Graph-id'er, vedvarende
+  checkpoints, dubletnøgler og lagring af tilladte vedhæftninger i beskyttet Storage.
+- Websitehenvendelser med HMAC, replay-/dubletbeskyttelse, honeypot og
+  korrelation til afledt mail. Ukendte afsendere provisionerer aldrig tenant.
+- Tilbuds-outbox fryser modtager, tekst, præcis tilbudsversion, PDF-sti og hash.
+  Graph 202/204 er kun accepteret anmodning; Sendt post dokumenterer afsendelse.
+- Planlagte opfølgninger aktiveres ved forfald, kræver konkret menneskelig
+  godkendelse og invalideres ved tekstændring, nyt svar, lukket sag eller
+  accepteret/afvist tilbud. Ukendt Graph-udfald kan ikke genudsendes blindt.
+- Versioneret vidensbase med kilde, godkendelse og leveringsstatus samt
+  serverbaseret Responses API-adapter med `store: false` og struktureret output.
+- Automatisk sagsanalyse og vedvarende intern assistentsamtale bruger kun den
+  aktuelle sag og godkendt viden. AI kan foreslå tilbudstekst, men indsættelse
+  kræver brugerhandling, og prismotorens bindende felter er ikke AI-skrivbare.
+- Hver ny indgående besked markerer et analysejob; et separat schedulerjob
+  reserverer og udfører analysen, når OpenAI er aktiv. Fejl vises på sagen og
+  stopper ikke mail eller CRM.
+- Månedligt request-/input-/outputbudget reserveres atomisk før kald og
+  afstemmes efter svar. Mail og CRM er uafhængige af AI-status.
 
 ## Implementeret i etape F
 
@@ -129,10 +155,16 @@ Opdateret: 2026-09-10
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
 - Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4315/4315 består. Functions-
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4330/4330 består. Functions-
   emulatoren er separat verificeret på den deklarerede Node 20-runtime.
-- Målrettet ESLint består. `npm run build` består med 502 moduler; kun den
-  eksisterende CSS-kommentaradvarsel vises.
+- M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
+  provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
+  AI-budget/API-fejl samt ukendt Graph-udfald efter oprettet kladde.
+- Målrettet ESLint består. `npm run build` består med 508 moduler.
+- En ny fuld callable-E2E for salgsindbakken blev ikke oprettet, fordi miljøets
+  sikkerhedsreview afviste den foreslåede emulatortestfil. Den eksisterende
+  ejer-flow-E2E, rules, rene adaptertests og build er grønne; M365-/AI-callables
+  er derfor implementeret, men ikke påstået end-to-end-verificeret.
 - Repositoryets brede `npm run lint` stopper i den eksisterende isolerede
   `facility-v2/eslint.config.js`, fordi dens lokale `@eslint/js` ikke er
   installeret. Den integrerede produktkode er lintet særskilt og består.
@@ -145,15 +177,20 @@ Opdateret: 2026-09-10
 - Functions: 11 moderate runtimefund i eksisterende Firebase Admin-transitive
   pakker. Den nye PDF-lagring bruger Admin Storage og er derfor inden for den
   berørte dependency-overflade.
+- G1/G2 har ikke tilføjet nye npm-pakker: Graph og Responses API bruger den
+  deklarerede Node-runtimes `fetch`. De nye mailvedhæftninger og callables
+  bruger dog de allerede berørte Firebase Admin/Storage-afhængigheder.
 - Rettelser kræver en separat kontrolleret Firebase/Router/Admin-opgradering,
   herunder en major Admin-opgradering ifølge audit. Den brede opgradering er
   bevidst ikke udført i denne arbejdsrunde.
 
 ## Næste konkrete opgave
 
-Færdiggør den supplerende Microsoft 365-salgsindbakke, tilbudsmail/outbox,
-godkendt opfølgning, vidensbase og serverbaserede AI-assistent. Verificér dem
-med isolerede adaptere. Ekstern opsætning skal derefter afklare den faktiske
-type og underliggende postkasse for `info@veyrosystems.com`, mindst mulige
-Graph-rettigheder, OpenAI-model/budget og secrets. Dependency-opgraderingen
-forbliver et separat spor; ingen produktionstilslutning sker herfra.
+Før ekstern aktivering skal postkassetype og underliggende mailbox-id for
+`info@veyrosystems.com` verificeres, Entra-app/mailbox-scope og Send As-retten
+godkendes, og en syntetisk ikke-produktions-E2E gennemføres. OpenAI kræver
+godkendt model, månedlige grænser og Functions-secret samt en autoriseret
+syntetisk prøve. Dependency-opgraderingen forbliver et separat spor; ingen
+produktionstilslutning, virkelig mail eller kundedataoverførsel sker herfra.
+Indgående vedhæftninger gemmes som tvungen download, privat/no-store og med
+20 MB loft; valg af malware-scanning og retention skal træffes før produktion.

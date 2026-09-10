@@ -8,10 +8,12 @@ const NAV = [
     label: "Salg",
     punkter: [
       { to: "/main/salg/pipeline", label: "Pipeline" },
+      { to: "/main/salg/indbakke", label: "Salgsindbakke" },
       { to: "/main/salg/kunder", label: "Kunder" },
       { to: "/main/salg/aktiviteter", label: "Aktiviteter" },
       { to: "/main/salg/tilbud", label: "Tilbud" },
       { to: "/main/priser", label: "Rateblad" },
+      { to: "/main/salg/vidensbase", label: "Vidensbase" },
     ],
   },
   { label: "Administration", punkter: [{ to: "/main/abonnementer", label: "Abonnementer" }] },
@@ -31,9 +33,11 @@ const NAV = [
 const TITLER = {
   "/main": ["Overblik", "Det, der kræver handling i dag"],
   "/main/salg/pipeline": ["Salgspipeline", "Muligheder, næste handling og forventet værdi"],
+  "/main/salg/indbakke": ["Salgsindbakke", "Fælles Microsoft 365-mail og sagsassistent"],
   "/main/salg/kunder": ["Kunder", "CRM-virksomheder, kontakter og samlet historik"],
   "/main/salg/aktiviteter": ["Aktiviteter", "Opfølgninger, møder og opgaver"],
   "/main/salg/tilbud": ["Tilbud", "Versionerede tilbud og opfølgning"],
+  "/main/salg/vidensbase": ["Veyro-vidensbase", "Godkendte tekster, kilder og leveringsstatus"],
   "/main/priser": ["Rateblad", "Prislister og fakturagrundlag"],
   "/main/abonnementer": ["Kunder og abonnementer", "Provisionerede tenants og moduladgang"],
   "/main/oekonomi": ["Økonomioverblik", "Afstemte tal fra Veyro og Dinero"],
@@ -94,4 +98,3 @@ export default function EjerRamme({ bruger, logUd, children }) {
     </EjerDataProvider>
   );
 }
-

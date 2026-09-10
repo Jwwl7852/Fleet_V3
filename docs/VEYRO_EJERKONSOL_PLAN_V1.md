@@ -42,8 +42,8 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 | Genereret administratoradgangskode | Lukket og erstattet af tidsbegrænset invitation |
 | CRM og tilbud | Implementeret additivt med servervalidering og versionssnapshots |
 | Dinero | Fakturajob og isoleret testport er implementeret; liveforbindelse mangler |
-| Microsoft 365-salgsindbakke | Tilføjes i et særskilt, additivt G1-spor under Salg |
-| OpenAI-salgsassistent og vidensbase | Tilføjes servermæssigt i G2 med eksplicit aktivering og budget |
+| Microsoft 365-salgsindbakke | Implementeret additivt i G1 under Salg; ekstern forbindelse er ikke aktiveret |
+| OpenAI-salgsassistent og vidensbase | Implementeret servermæssigt i G2; secret, model og budgetaktivering mangler |
 | Bilagsindbakke | Mangler og tilføjes senere med migration/status |
 | Veyro-logo og tema | Genbruges fra `src/assets/veyro`, `VeyroLogo.jsx` og `fleet.css` |
 
@@ -130,7 +130,7 @@ Status: implementeret og isoleret verificeret 2026-09-10; Dinero er ikke tilslut
 
 ### G1 — Microsoft 365-salgsindbakke og godkendt opfølgning
 
-Status: igangsat 2026-09-10.
+Status: implementeret og isoleret verificeret 2026-09-10; Microsoft 365 er ikke tilsluttet.
 
 - Trepanels salgsindbakke med tråde, søgning, filtre, vedhæftningsmetadata,
   separate interne noter og links til virksomhed, kontakt, mulighed og tilbud.
@@ -141,13 +141,18 @@ Status: igangsat 2026-09-10.
 - Tilbudsmail knyttes til præcis tilbudsversion/PDF og samme sagsforløb.
 - Opfølgningskladder kræver konkret ejeraccept; ændringer, nye svar og afsluttet
   sag ugyldiggør accept. CAS og idempotens beskytter mod dobbeltafsendelse.
+- Fremtidige opfølgninger er `planlagt`. Et 15-minutters serverjob gør dem
+  først til godkendelsesopgaver ved forfald og pauser dem ved ny aktivitet
+  eller lukket sag. Accepteret/afvist tilbud kontrolleres igen før Graph-kald.
+- Webformularendpoint har HMAC, tidsvindue, leverings-id, honeypot og samme
+  korrelations-id som en eventuel afledt mail, så én formular ikke bliver to sager.
 - Produktion forbliver `ikke_tilsluttet`, indtil postkassetype, underliggende
   postkasse, Entra-applikation, mindst mulige Graph-rettigheder, webhook/delta-
   drift og secrets er verificeret.
 
 ### G2 — Veyro-salgsassistent og vidensbase
 
-Status: igangsat 2026-09-10.
+Status: implementeret og isoleret verificeret 2026-09-10; OpenAI er ikke tilsluttet.
 
 - Versioneret, godkendt viden med kilde og leveringsstatus: Tilgængelig, Under
   udvikling eller Kræver særskilt aftale.
@@ -155,9 +160,13 @@ Status: igangsat 2026-09-10.
   sagsspecifik kontekst og ubetroet-mail-grænse.
 - Analyse og vedvarende intern samtale lagres separat fra kundemail og kan ikke
   ændre CRM-fakta, pipeline, aftaler eller økonomiske værdier automatisk.
+- Nye indgående henvendelser markerer et analysejob. Et særskilt 5-minutters
+  serverjob behandler seneste besked, når integrationen er aktiv; samtidige
+  leverancer og jobkørsler reserveres atomisk.
 - Håndhævet månedlig request-/tokenramme med reservation før kald, afstemning
   efter svar og fail-closed adfærd ved manglende budget.
-- Isoleret testadapter dækker succes, API-fejl og budgetstop. Livekald kræver
+- Isolerede kontrakttests dækker struktureret request, API-fejl, budgetstop og
+  sagsspecifik grænse. Livekald kræver
   særskilt serversecret, modelvalg og aktivering og udføres ikke i denne runde.
 
 ### G–I — Kredit, returdata, udgifter og overblik

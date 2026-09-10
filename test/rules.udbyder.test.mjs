@@ -96,6 +96,12 @@ before(async () => {
     await set(ref(db, "udbyder/invitationer/i1"), { tenantId: T_A, status: "afventer" });
     await set(ref(db, "udbyder/integrationer/mail"), { status: "ikke_tilsluttet" });
     await set(ref(db, "udbyder/fakturajobs/f1"), { id: "f1", status: "afventer" });
+    await set(ref(db, "udbyder/salgsindbakke/traade/tr1"), { id: "tr1", status: "ny", senesteAktivitetMs: 1e12 });
+    await set(ref(db, "udbyder/salgsindbakke/dedupe/d1"), { status: "gemt" });
+    await set(ref(db, "udbyder/mailjobs/m1"), { id: "m1", status: "kladde" });
+    await set(ref(db, "udbyder/vidensbase/poster/v1"), { id: "v1", titel: "Godkendt viden" });
+    await set(ref(db, "udbyder/ai/forbrug/2026-09"), { requests: 1 });
+    await set(ref(db, "udbyder/integrationshemmeligheder/microsoft365/delta/inbox"), { link: "hemmelig" });
   });
 });
 
@@ -121,10 +127,13 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
   it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
     for (const node of [
-      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs",
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs", "mailjobs", "vidensbase", "ai",
     ]) {
       await assertSucceeds(get(ref(db, `udbyder/${node}`)));
     }
+    await assertSucceeds(get(ref(db, "udbyder/salgsindbakke/traade")));
+    await assertFails(get(ref(db, "udbyder/salgsindbakke/dedupe")));
+    await assertFails(get(ref(db, "udbyder/integrationshemmeligheder")));
   });
 
   it("AK-04: afviser et ejer-token udstedt før den aktuelle revocation", async () => {
@@ -193,6 +202,10 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/invitationer")));
     await assertFails(get(ref(somKunde(), "udbyder/integrationer")));
     await assertFails(get(ref(somKunde(), "udbyder/fakturajobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/salgsindbakke/traade")));
+    await assertFails(get(ref(somKunde(), "udbyder/mailjobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/vidensbase")));
+    await assertFails(get(ref(somKunde(), "udbyder/ai")));
   });
 
   it("kan læse SIN EGEN virksomhed og moduler", async () => {

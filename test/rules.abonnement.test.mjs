@@ -183,6 +183,7 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/tenants/$tenantId/moduler/.read",
       "/tenants/$tenantId/virksomhed/.read",
       "/udbyder/aftaler/.read",
+      "/udbyder/ai/.read",
       "/udbyder/audit/.read",
       "/udbyder/crm/.read",
       "/udbyder/fakturagrundlag/.read",
@@ -194,6 +195,7 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/invitationer/.read",
       "/udbyder/kunder/.read",
       "/udbyder/maalinger/.read",
+      "/udbyder/mailjobs/.read",
       "/udbyder/prisliste/.read",
       "/udbyder/provisioneringer/.read",
       /* ⚠ DEN SYVENDE: retentionsrapporten. Den er ikke kundedata — kun
@@ -201,7 +203,9 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
          en rapport under udbyder/ havde forladt kundens tenant, og reglens
          $andet: false haandhaever at den ikke kan. Se auditoprydning. */
       "/udbyder/retention/.read",
+      "/udbyder/salgsindbakke/traade/.read",
       "/udbyder/tilbud/.read",
+      "/udbyder/vidensbase/.read",
     ], "en regel med udbyder-claim'et staar et andet sted end besluttet.");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);

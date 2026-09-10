@@ -32,6 +32,9 @@ Dokumenterede Graph-kontrakter:
 - Afsendelse: `POST /users/{id}/sendMail` med `Mail.Send`.
   HTTP 202 er kun accepteret anmodning; den må ikke vises som dokumenteret
   sendt før afstemning mod Sendt post/providerhændelse.
+- Afsend eksisterende kladde: `POST /users/{id}/messages/{message-id}/send`
+  med `Mail.Send`. Det er den kontrakt ejerkonsollens outbox bruger; svaret er
+  også 202 og dokumenterer derfor ikke i sig selv afsendelsen.
 
 Kilder:
 
@@ -40,6 +43,7 @@ Kilder:
 - https://learn.microsoft.com/en-us/graph/api/user-post-messages?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/graph/api/message-createreply?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0
+- https://learn.microsoft.com/en-us/graph/api/message-send?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/graph/api/resources/mail-api-overview?view=graph-rest-1.0
 
 ## OpenAI
@@ -71,11 +75,21 @@ Kilde:
 
 1. Verificér postkassetype, underliggende mailbox-id og ejer-/send-as-rettigheder.
 2. Opret/afgræns Entra-applikation og Graph-rettigheder; registrér tenant- og
-   client-id som konfiguration og credentials som secrets.
-3. Etablér webhook/delta-job med valideret callback, checkpointovervågning og
-   alarmering. Kør først en syntetisk end-to-end-afprøvning.
+   client-id som konfiguration og credentials som secrets. Den byggede port
+   kræver læsning af body/attachments, oprettelse af kladde og afsendelse;
+   anvend mindst mulige `Mail.Read`, `Mail.ReadWrite` og `Mail.Send` inden for
+   det valgte mailbox-scope.
+3. Deploy og overvåg de byggede Inbox-/Sent Items-deltajobs og deres fulde
+   checkpoints. Kør først en syntetisk end-to-end-afprøvning; webhook kan
+   senere supplere polling, men er ikke en forudsætning for den byggede kontrakt.
 4. Vælg OpenAI-model og månedlige request-/input-/outputgrænser. Tilføj secret
    uden for repositoryet og aktiver først på en ikke-produktionssag.
 5. Godkend vidensbasens kilder og leveringsstatus før AI-forslag anvendes.
 6. Aktivér ingen virkelig afsendelse eller AI-overførsel som del af merge,
    migration eller deployment; aktivering er en separat driftsbeslutning.
+7. Konfigurér hjemmesideformularens HMAC-secret og unikke `deliveryId`. Hvis
+   formularen også sender mail, skal den sætte samme id i
+   `X-Veyro-Submission-Id`, ellers kan de to transportveje ikke deduplikeres.
+8. Beslut retention og malware-scanning for vedhæftninger. Indgående filer er
+   begrænset til 20 MB og leveres som download; den enkle Graph-port vedhæfter
+   kun tilbuds-PDF'er op til 3 MB, indtil en upload-session implementeres.

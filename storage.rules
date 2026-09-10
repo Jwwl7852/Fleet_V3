@@ -58,6 +58,12 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Originale mailvedhæftninger er ejerdata og udleveres kun efter et nyt
+    // servercheck gennem salgsvedhaeftninghent med et fem minutters link.
+    match /ejer/salgsmail/{traadHash}/{beskedHash}/{dokumentId} {
+      allow read, write: if false;
+    }
+
     // Alt andet er lukket. Ingen andre stier er bygget endnu.
     match /{allPaths=**} {
       allow read, write: if false;

@@ -4675,6 +4675,37 @@
         ".write": false
       },
 
+      "integrationshemmeligheder": {
+        ".read": false,
+        ".write": false
+      },
+
+      "salgsindbakke": {
+        ".write": false,
+        "traade": {
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+          ".indexOn": ["status", "ansvarligUid", "senesteAktivitetMs"]
+        },
+        "dedupe": { ".read": false, ".write": false },
+        "$andet": { ".read": false, ".write": false }
+      },
+
+      "mailjobs": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["status", "art", "tilbudId", "traadId", "opdateretMs"]
+      },
+
+      "vidensbase": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false
+      },
+
+      "ai": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false
+      },
+
       "audit": {
         ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,

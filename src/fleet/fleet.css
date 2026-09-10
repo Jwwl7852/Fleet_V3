@@ -1131,13 +1131,14 @@
 .ejer-tabelhandlinger{display:flex;gap:6px;flex-wrap:wrap}.ejer-tabelhandlinger .fc-btn{min-height:30px;padding:5px 8px;font-size:var(--fc-t-s)}
 .ejer-tilbudsredigering{max-width:1500px}.ejer-tilbudslinjer{display:grid;gap:10px}.ejer-tilbudslinje{margin:0;padding:12px;border:1px solid var(--bc-line);border-radius:var(--fc-r)}
 .ejer-tilbudslinje legend{padding:0 6px;font-weight:750}.ejer-tilbudstotal{display:flex;justify-content:flex-end;gap:24px;flex-wrap:wrap;margin-top:15px;padding-top:12px;border-top:1px solid var(--bc-line)}
+.ejer-indbakke{display:grid;grid-template-columns:minmax(250px,.72fr) minmax(440px,1.35fr) minmax(300px,.9fr);gap:12px;align-items:start;min-height:650px}.ejer-traadliste,.ejer-samtale{min-width:0;border:1px solid var(--veyro-border);border-radius:var(--fc-r);background:var(--veyro-surface);padding:12px}.ejer-traadliste>div{display:grid;gap:5px}.ejer-traadliste>div>button{display:grid;gap:4px;width:100%;padding:10px;text-align:left;border:1px solid var(--bc-line);border-radius:8px;background:var(--bc-card);color:var(--bc-text);cursor:pointer}.ejer-traadliste>div>button.aktiv{border-color:var(--veyro-action);box-shadow:0 0 0 1px var(--veyro-action)}.ejer-traadliste small{color:var(--bc-muted)}.ejer-samtale>header{display:flex;justify-content:space-between;gap:10px;align-items:start}.ejer-samtale h2{margin:0 0 12px}.ejer-mails{display:grid;gap:10px;max-height:660px;overflow:auto;padding:3px}.ejer-mail{max-width:90%;padding:11px;border:1px solid var(--bc-line);border-radius:10px;background:var(--veyro-workspace-surface)}.ejer-mail-ud{justify-self:end;background:var(--fc-ok-bg);border-color:var(--veyro-border)}.ejer-mail header{display:flex;justify-content:space-between;gap:12px;font-size:var(--fc-t-s)}.ejer-mail time,.ejer-mail-emne{color:var(--bc-muted)}.ejer-mail pre{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}.ejer-vedhaeftninger{margin:9px 0 0;padding:8px 8px 0 20px;border-top:1px solid var(--bc-line);font-size:var(--fc-t-s)}.ejer-noter{display:grid;gap:6px}.ejer-noter p{margin:0;padding:8px;border-left:3px solid var(--veyro-action);background:var(--veyro-workspace-surface)}.ejer-sagspanel{display:grid;gap:10px;min-width:0;max-height:900px;overflow:auto;border:1px solid var(--veyro-border);border-radius:var(--fc-r);background:var(--veyro-surface);padding:12px}.ejer-ai-resultat{margin-top:10px;padding:10px;border:1px solid var(--bc-line);border-radius:8px;background:var(--veyro-workspace-surface)}.ejer-ai-resultat p,.ejer-ai-resultat ul{margin:5px 0 9px}.fc-check{display:flex;gap:8px;align-items:flex-start;margin:9px 0 14px}
 
 @media print{
   .ejer-side,.ejer-top,.ejer-handlingslinje,.fc-actions{display:none!important}.ejer-app{display:block}.ejer-indhold{padding:0}.ejer-indhold>.fc-grid{max-width:none}.ejer-tilbudsdokument{border:0;box-shadow:none}
 }
 
 @media(max-width:1050px){
-  .ejer-app{grid-template-columns:184px minmax(0,1fr)}.ejer-overblik-grid,.ejer-kundelayout{grid-template-columns:1fr}
+  .ejer-app{grid-template-columns:184px minmax(0,1fr)}.ejer-overblik-grid,.ejer-kundelayout,.ejer-indbakke{grid-template-columns:1fr}
   .ejer-logo .veyro-logo{width:142px}.ejer-top,.ejer-indhold{padding-left:18px;padding-right:18px}
 }
 @media(max-width:720px){
@@ -1730,8 +1731,8 @@
 
 /* ⚠ KVITTERING OG FEJL ER IKKE DET SAMME, OG DE SKAL KUNNE SKELNES PÅ
    AFSTAND. Et grønt flueben ved siden af en melding der ikke kom frem, er
-   samme fejl som et grønt flueben ved siden af en bøde. */
-   ⚠ PARRET ER PILLERNES EGET — `--fc-ok-bg` mod `--bc-ok`. Et color-mix af
+   samme fejl som et grønt flueben ved siden af en bøde.
+   ⚠ PARRET ER PILLERNES EGET — --fc-ok-bg mod --bc-ok. Et color-mix af
    farven SELV ville være en ny farve (test:design fejler på den), og fladen
    ville desuden flytte MED farven hvis nogen rettede tokenet — så rammer
    kontrastmålingen ved siden af. Beslutning 77. */

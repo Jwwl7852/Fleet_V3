@@ -110,6 +110,9 @@ const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblik.jsx"));
 const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
 const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
 const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
+const EjerSalgsindbakke = lazy(() => import("./moduler/udbyder/EjerSalgsindbakke.jsx"));
+const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbase.jsx"));
+const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationer.jsx"));
 const EjerIkkeImplementeret = lazy(() => import("./moduler/udbyder/EjerIkkeImplementeret.jsx"));
 const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
@@ -467,6 +470,8 @@ export default function App() {
               <Route path="/main/salg/kunder" element={<EjerSalg visning="kunder" bruger={bruger} />} />
               <Route path="/main/salg/aktiviteter" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
               <Route path="/main/salg/tilbud" element={<EjerTilbud />} />
+              <Route path="/main/salg/indbakke" element={<EjerSalgsindbakke />} />
+              <Route path="/main/salg/vidensbase" element={<EjerVidensbase />} />
               <Route path="/main/priser" element={<Prisliste />} />
               <Route path="/main/abonnementer" element={<Konsol bruger={bruger} />} />
               <Route path="/main/oekonomi" element={<EjerIkkeImplementeret titel="Økonomioverblik" etape="etape I" blokering="Dinero er ikke tilsluttet." />} />
@@ -474,7 +479,7 @@ export default function App() {
               <Route path="/main/oekonomi/kreditnotaer" element={<EjerIkkeImplementeret titel="Kreditnotaer" etape="etape G" blokering="Dinero-credentials og testorganisation mangler." />} />
               <Route path="/main/oekonomi/bilag" element={<EjerIkkeImplementeret titel="Bilagsindbakke" etape="etape H" blokering="Mail- og OCR-leverandører er ikke valgt." />} />
               <Route path="/main/oekonomi/omkostninger" element={<EjerIkkeImplementeret titel="Omkostninger" etape="etape H" blokering="Dinero-læseforbindelsen er ikke tilsluttet." />} />
-              <Route path="/main/integrationer" element={<EjerIkkeImplementeret titel="Integrationer" etape="etape F–H" blokering="Dinero, mail og OCR kræver sikker ekstern opsætning." />} />
+              <Route path="/main/integrationer" element={<EjerIntegrationer />} />
               <Route path="*" element={<Navigate to="/main" replace />} />
             </Routes>
           </EjerRamme>
