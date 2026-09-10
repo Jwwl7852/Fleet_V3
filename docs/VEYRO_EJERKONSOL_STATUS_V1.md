@@ -182,12 +182,31 @@ Opdateret: 2026-09-10
   inbound-mail og OCR er adaptere med konkret manglende opsætning og vises
   ikke som aktive.
 
+## Implementeret i etape I
+
+- `/main/oekonomi` er erstattet af et beregnet økonomioverblik med periode,
+  kunde, modul og omkostningskategori som synlige filtre.
+- Det fælles domænelag definerer label, beløbsgrundlag og kilde for centrale
+  KPI'er og leverer både kortenes tal og deres afstemningsrækker.
+- Faktureret salg netto er dokumenteret afsendte fakturaer ekskl. moms minus
+  bogførte kreditnotaer. Veyro-grundlag og Dinero-dokument tælles ikke begge.
+- Betalinger og rest er inkl. moms, grupperet efter betalings-/forfaldsdato,
+  med gældsalder og ukendt datadækning. Et krediteret nul kaldes ikke betaling.
+- Omkostningstal bruger kun periodens eksplicit kategoriserede resultatkonti.
+  Foreløbig difference kræver komplette Dinero-dokumenter og posteringer og
+  beskrives udtrykkeligt som hverken likviditet eller endeligt årsresultat.
+- Abonnement viser aktive aftaler samt normal og aktuel intro-månedsværdi uden
+  engangsbeløb. Pipeline viser månedsværdi og engang separat; vinderate viser
+  vundne af afsluttede og ingen procent ved tomt grundlag.
+- Arbejdskort linker til faktura-, bilags-, omkostnings-, abonnements- og
+  salgsskærme. Modulfordeling uden eksterne fakturalinjer foregiver ikke data.
+
 ## Verifikation 2026-09-10 — aktuel arbejdsrunde
 
 - Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
   reproducerbar Windows AF_UNIX-fejl. Isoleret Temurin JDK 11 + Firebase CLI
   13.35.1 virker; systemets Java-installationer er ikke ændret.
-- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4345/4345 grønne
+- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4352/4352 grønne
   platformtests. Det dækker tenantløs ejer,
   kundeadministrator, tenantadskillelse, tilbagekaldt gammelt token og lukket
   direkte adgang til ejerens PDF-sti.
@@ -205,7 +224,7 @@ Opdateret: 2026-09-10
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
 - Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4345/4345 består. Functions-
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4352/4352 består. Functions-
   emulatoren er separat verificeret på den deklarerede Node 20-runtime.
 - M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
   provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
@@ -217,7 +236,10 @@ Opdateret: 2026-09-10
 - Etape H-måltests: 7/7 består. Fire-emulator-E2E dækker ejer-/kundeafvisning,
   uploadbekræftelse, eksakt dublet, metadataversion, godkendelse, to samtidige
   Dinero-klargøringer til ét job og match til en bogført fixturepost.
-- `npm run build` efter etape H består med 515 moduler.
+- Etape I-måltests: 7/7 består på et kendt afstemningsdatasæt med faktura,
+  kredit, betaling, rest, gældsalder, omkostningskredit, umappet konto,
+  introaftale, pipeline, vinderate og alle fire filterarter.
+- `npm run build` efter etape I består med 517 moduler.
 - En ny fuld callable-E2E for salgsindbakken blev ikke oprettet, fordi miljøets
   sikkerhedsreview afviste den foreslåede emulatortestfil. Den eksisterende
   ejer-flow-E2E, rules, rene adaptertests og build er grønne; M365-/AI-callables
@@ -243,8 +265,8 @@ Opdateret: 2026-09-10
 
 ## Næste konkrete opgave
 
-Etape I er næste interne etape: fælles, periodebundne KPI-definitioner med
-kilde/datadækning og klikbar afstemning. Før ekstern aktivering skal
+Etape J er næste interne etape: samlet migrations-dry-run, browsergennemgang,
+regression og drifts-/aktiveringsvejledning. Før ekstern aktivering skal
 postkassetype og underliggende mailbox-id for
 `info@veyrosystems.com` verificeres, Entra-app/mailbox-scope og Send As-retten
 godkendes, og en syntetisk ikke-produktions-E2E gennemføres. OpenAI kræver

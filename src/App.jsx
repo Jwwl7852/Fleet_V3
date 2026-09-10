@@ -113,10 +113,10 @@ const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
 const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.jsx"));
 const EjerBilagsindbakke = lazy(() => import("./moduler/udbyder/EjerBilagsindbakke.jsx"));
 const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.jsx"));
+const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiOverblik.jsx"));
 const EjerSalgsindbakke = lazy(() => import("./moduler/udbyder/EjerSalgsindbakke.jsx"));
 const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbase.jsx"));
 const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationer.jsx"));
-const EjerIkkeImplementeret = lazy(() => import("./moduler/udbyder/EjerIkkeImplementeret.jsx"));
 const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
@@ -477,7 +477,7 @@ export default function App() {
               <Route path="/main/salg/vidensbase" element={<EjerVidensbase />} />
               <Route path="/main/priser" element={<Prisliste />} />
               <Route path="/main/abonnementer" element={<Konsol bruger={bruger} />} />
-              <Route path="/main/oekonomi" element={<EjerIkkeImplementeret titel="Økonomioverblik" etape="etape I" blokering="Dinero er ikke tilsluttet." />} />
+              <Route path="/main/oekonomi" element={<EjerOekonomiOverblik />} />
               <Route path="/main/oekonomi/fakturaer" element={<EjerFakturaer />} />
               <Route path="/main/oekonomi/kreditnotaer" element={<EjerKreditnotaer />} />
               <Route path="/main/oekonomi/bilag" element={<EjerBilagsindbakke />} />

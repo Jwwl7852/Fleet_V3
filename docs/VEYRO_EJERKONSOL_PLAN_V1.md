@@ -205,14 +205,27 @@ Status: implementeret og isoleret verificeret 2026-09-10; mail, OCR og Dinero-k�
 
 ### I — Overblik
 
-Status: næste etape.
+Status: implementeret og isoleret verificeret 2026-09-10.
 
-- Fælles beregnede KPI-definitioner med periode, kilde, datadækning og
-  klikbar afstemning.
+- Fælles beregnede KPI-definitioner med periode, beløbsgrundlag, kilde,
+  datadækning og klikbar afstemning til faktura-, bilags-, abonnement- og
+  salgslisterne.
+- Faktureret salg netto bruger dokumenteret afsendte fakturaer ekskl. moms
+  og fratrækker bogførte kreditnotaer efter dokumentdato. Kladder/frigivne
+  grundlag tæller ikke som sendt salg.
+- Betalinger og rest vises inkl. moms og holdes adskilt fra salget. Gældsalder
+  har faste intervaller og en særskilt ukendt-forfaldsgruppe.
+- Bogførte omkostninger bygger på periodens eksplicit mappede resultatkonti.
+  Foreløbig difference vises kun ved komplet salg- og posteringsdækning og
+  kaldes aldrig bankbeholdning eller årsresultat.
+- Aftaleværdi holder intro-/normal månedsværdi og engangsbeløb adskilt.
+  Vinderate bruger kun vundne+tabte afsluttede muligheder og viser tællerne.
+- Periode-, kunde-, modul- og kategorifiltre er implementeret. Manglende
+  eksterne fakturalinjer ved modulfilter giver `Ikke tilstrækkelige data`.
 
 ### J — Samlet aflevering
 
-Status: ikke startet.
+Status: næste etape.
 
 - Additiv migrationsprøve med dry-run/recovery.
 - Samlet regression, emulator, browsergennemgang og dokumentpreview.

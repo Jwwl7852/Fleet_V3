@@ -131,6 +131,14 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
   Konto-/kategori-/fortegns-mapping er lokal og synlig; umappede poster
   udelades med synlig datamangelsstatus. Et godkendt bilag bliver kun et
   frosset Veyro-klargøringsjob, indtil købskontrakten er dokumenteret.
+- Økonomioverblikket læser de samme normaliserede Dinero-dokumenter,
+  betalinger og posteringer som detaljevisningerne. Synkstatus afgør, om et
+  nul må vises som kendt; ellers vises utilstrækkelige data. Modulfiltrering
+  kræver fakturalinjer og nedgraderer dækningsstatus, når Dinero-returposten
+  ikke indeholder dem.
+- Konto-/kategori-/fortegnsdefinitionen genbruges af omkostningslisten og
+  KPI-laget. Kundeudvalg oversættes gennem CRM's tenant- og Dinero-kontakt-id,
+  så browseren ikke opfinder en ny identitet til eksterne dokumenter.
 
 ## Dinero-kontrakt for etape G
 
@@ -178,6 +186,6 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
   runtimefund. De berører også Auth/callable- og Admin Storage-overfladen og
   skal løses i et særskilt dependency-opgraderingsspor med fuld regression.
 - M365/OpenAI-kontrakten er testet med syntetiske, rene adaptertests og indgår
-  i 4330/4330 grønne platform-/rules-tests. Live Graph/OpenAI samt den nye
+  i den samlede 4352/4352 grønne platform-/rules-suite. Live Graph/OpenAI samt den nye
   salgsindbakke-callable-kæde er ikke end-to-end-testet og må ikke beskrives
   som tilsluttet.

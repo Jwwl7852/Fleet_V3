@@ -3436,6 +3436,7 @@ function dineroReturpost(art, oversigt, detalje, betalinger, mailouts, synkronis
     kontaktGuid: detalje?.ContactGuid || oversigt?.ContactGuid || null,
     valuta: detalje?.Currency || oversigt?.Currency || null,
     dato: detalje?.Date || oversigt?.Date || null,
+    forfaldsdato: detalje?.PaymentDate || oversigt?.PaymentDate || null,
     totalEksklMomsOere: dineroOere(detalje?.TotalExclVat ?? oversigt?.TotalExclVat),
     totalInklMomsOere: dineroOere(detalje?.TotalInclVat ?? oversigt?.TotalInclVat),
     betaling, mailouts: udsendelser.slice(0, 100), synkroniseretMs,
