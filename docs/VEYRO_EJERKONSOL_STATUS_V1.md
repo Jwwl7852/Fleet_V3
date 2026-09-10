@@ -1,6 +1,6 @@
 # Veyro ejerkonsol — status v1
 
-Opdateret: 2026-09-10
+Opdateret: 2026-09-11
 
 ## Designreview — aktuel arbejdsrunde
 
@@ -366,3 +366,40 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   mail eller økonomidata til en ekstern tjeneste.
 - Reproducerbar login-, start- og gennemgangsvejledning samt screenshots er
   samlet i `docs/VEYRO_EJERKONSOL_GENNEMGANG_V1.md`.
+
+## Rettelsescheckpoint 2026-09-11 — kundekonto og designstandard
+
+- Faktisk udgangspunkt var worktree
+  `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`, branch
+  `codex/ejer-integrated-development`, HEAD
+  `a5ee1120a800b85bf210af836ee13acfc3f1834c`. Arbejdet er fortsat som lokale,
+  ikke-pushede ændringer; de øvrige modulworktrees er ikke ændret.
+- Den samlede kundekonto findes på `/main/kunder/:tenantId` og kan åbnes via
+  **Administrér kundekonto** fra både Salg → Kunder og Administration →
+  Abonnementer. De syv områder er Kundeprofil, Moduler, Brugere og enheder,
+  OBD, Abonnement og priser, Administratorer og Historik.
+- `kundekontogem` håndhæver tenantløs ejerclaim, validerer den accepterede
+  aftaleversion eller det manuelle rateblad, bruger optimistisk revision og
+  operation-id, gemmer uforanderlige versioner og skriver audit. Direkte
+  browserwrite til `udbyder/kundekonti` er afvist i databasereglerne.
+- Den friske emulatorflowtest består med tilbud v1/v2, accepteret v2,
+  konto/mængder/OBD, idempotent gentagelse, én vinder ved samtidig ændring og
+  uændrede låste tilbudssnapshots. Faktura-/kredit-/bilagsflowet består fortsat.
+- AK-01–AK-04 og abonnementsreglerne består på den kompatible, isolerede vej:
+  Firebase CLI 13.35.1, Temurin JDK 11.0.32.1+1 og Node 20.20.2. Den normale
+  udviklings-/capture-shell bruger Node 24.19.0; ingen systeminstallation er
+  overskrevet.
+- Afgrænset ESLint for alle ændrede ejerfiler består. Designkontrakten består
+  11/11, kundekontoreglerne 5/5, navnekontrollen 5/5 og Vite-build består med
+  525 moduler. Repositoryets brede `npm run lint` er fortsat blokeret af det
+  eksisterende manglende `@eslint/js` i `facility-v2`; dette spor er ikke ændret.
+- Browseren har med normalt tenantløst ejerlogin verificeret ugemte ændringer,
+  synlig Luk, Annullér/Fortsæt, ESC som kun lukker øverste dialog og fokusretur
+  til **Tilbage til kunder og abonnementer**. Browserens Tilbage åbner samme
+  beskyttelse uden at miste inputtet.
+- Faktiske screenshots er genskabt ved 1440×900, 1920×1080 og 899×900. Målt i
+  browseren: sidebar 216 px, kort 12 px, input 38 px, indholdsmargin 26 px,
+  Inter Variable 14 px/20,3 px på skal, felter og faner, og intet vandret
+  dokumentoverflow ved mobilkontrollen.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail står stadig som `Ikke
+  tilsluttet`. Kun syntetiske `.invalid`-data og lokale testadaptere er brugt.

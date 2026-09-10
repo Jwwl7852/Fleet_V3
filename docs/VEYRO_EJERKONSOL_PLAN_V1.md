@@ -1,6 +1,6 @@
 # Veyro ejerkonsol — byggeplan v1
 
-Opdateret: 2026-09-10
+Opdateret: 2026-09-11
 
 ## Aktuel designrunde
 
@@ -267,8 +267,10 @@ aktivering.
 
 ## Registrerede antagelser og blokeringer
 
-- Der var ingen yderligere designbilleder tilgængelige; repositoryets faktiske
-  brandfiler har derfor forrang.
+- Den nyeste vedhæftede programserie er fælles designstandard; den tidligere
+  ejerbilledserie er informationsarkitektur og flowreference. Ved konflikt om
+  farver, typografi eller geometri har `src/fleet/fleet.css` og den låste
+  tokenkontrakt forrang. Repositoryets faktiske brandfil bruges i skallen.
 - Dinero-organisation, personlig integrations client-id/-secret, API-nøgle,
   salgskonto og testorganisation er ikke tilsluttet. Adapteren er derfor ikke live-testet.
 - `info@veyrosystems.com` er valgt, men delt postkasse, selvstændig postkasse
@@ -291,3 +293,27 @@ aktivering.
 - `npm audit --omit=dev` rapporterer kendte transitive fund i den eksisterende
   Firebase/browser- og Admin-SDK-stak. De skal håndteres som en separat,
   kontrolleret dependency-opgradering; denne arbejdsrunde laver ingen bred opgradering.
+
+### L — Samlet kundekonto og fælles betjeningsstandard
+
+Status: implementeret og isoleret verificeret 2026-09-11; ingen push eller
+ekstern aktivering.
+
+- Én permanent tenant-identitet samler kundeprofil, moduler, aftalte/målte/
+  håndhævede mængder, OBD, abonnement/priser, administratorinvitationer og
+  versionshistorik på `/main/kunder/:tenantId`.
+- Accepterede tilbudsversioner er autoritative for moduler, mængder, rater,
+  rabatter og engangsbeløb. Manuel oprettelse åbner samme konto i status
+  `Opsætning mangler`; kunde-id genereres før den servervaliderede oprettelse.
+- Kontoændringer gemmes som uforanderlige versioner med CAS-revision,
+  operation-id, virkningsdato og ejeraudit. Kun en aktiv version ændrer tenantens
+  modul-/abonnementsadgang; gamle tilbud, aftaler og fakturagrundlag omskrives ikke.
+- OBD-hardware og månedligt dataabonnement holdes adskilt. Leveret og tilknyttet
+  antal er manuelle registreringer; aktive forbindelser vises som utilgængelige,
+  indtil en telemetrikilde faktisk er tilsluttet.
+- Fælles dialog håndterer synlig lukning, Annullér, øverste lag ved ESC,
+  fokusfælde, fokusretur og særskilt bekræftelse af ugemte ændringer. Detaljesiden
+  har en tydelig tilbagehandling og browserhistorikbeskyttelse.
+- Ejerskallen følger det fælles 216 px/12 px/38 px/26 px/11 px/900 px-system,
+  bruger de låste semantiske farvetokens og lokal Inter Variable. Under 900 px
+  bliver navigationen en lukket mobilskuffe i stedet for at optage hele siden.

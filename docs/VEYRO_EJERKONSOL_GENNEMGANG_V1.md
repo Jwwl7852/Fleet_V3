@@ -1,6 +1,6 @@
 # Veyro ejerkonsol — lokal gennemgang
 
-Opdateret: 2026-09-10
+Opdateret: 2026-09-11
 
 ## Formål og afgrænsning
 
@@ -152,3 +152,45 @@ emulatorerne nulstiller data; kør fixture-rækkefølgen igen.
 - `docs/screenshots/ejer-review/04-tilbud-v2-accept.png`
 - `docs/screenshots/ejer-review/05-frosset-grundlag.png`
 - `docs/screenshots/ejer-review/06-aftale-invitation.png`
+
+## Rettelsesrunde 2026-09-11 — samlet kundekonto
+
+Efter normalt login kan den nye, samlede konto åbnes på tre måder:
+
+1. **Salg → Kunder → Kundekonto / Administrér kundekonto**.
+2. **Administration → Abonnementer → Administrér kundekonto**.
+3. Direkte `/main/kunder/<tenant-id>`; siden falder tilbage til kunde- og
+   abonnementsoversigterne, hvis den ikke har intern navigationshistorik.
+
+Den lokale syntetiske flowfixture kan gennemgås direkte på
+`/main/kunder/flow-tenant`. Fanerne **Brugere og enheder**, **OBD** og
+**Abonnement og priser** viser henholdsvis aftalt/målt/håndhævet omfang,
+hardware kontra dataabonnement og den accepterede, låste tilbudsversion.
+Invitationer afprøves kun som lokal status; der sendes ingen mail.
+
+Den reproducerbare browsercapture køres med Node 24.19.0, mens preview og de
+fire Firebase-emulatorer allerede kører:
+
+```powershell
+node scripts/capture-owner-review.mjs
+```
+
+Scriptet starter en isoleret headless Edge-profil, bruger den normale lokale
+loginformular, udskriver ingen loginværdier og fjerner profilen bagefter.
+Resultatet ligger i `docs/screenshots/ejer-review-v2/`:
+
+- `1440x900-01-overblik.png`
+- `1440x900-02-salgsindbakke.png`
+- `1440x900-03-kundekonto-brugere-enheder.png`
+- `1440x900-04-kundekonto-obd.png`
+- `1920x1080-05-kundekonto-priser.png`
+- `1920x1080-06-integrationer.png`
+- `899x900-07-mobil-kundekonto.png`
+- `899x900-08-mobil-navigation-aaben.png`
+- `browser-style-verification.json`
+
+Den målte app-font er `Inter Variable` på ejerskal, indhold, formularfelter og
+faner; `document.fonts.check('14px "Inter Variable"')` er sand. JSON-filen
+gemmer de konkrete computed styles. `body` arver ikke app-typografien, men hele
+den interaktive ejerflade gør; det er en bevidst scope-afgrænsning, så andre
+Veyro-moduler ikke ændres af ejersporet.

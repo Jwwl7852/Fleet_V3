@@ -1,6 +1,6 @@
 # Ejerkonsol — designreview V1
 
-Opdateret: 2026-09-10
+Opdateret: 2026-09-11
 
 ## Grundlag
 
@@ -46,16 +46,45 @@ aktivitetsliste kan fortsat åbnes på `/main/salg/aktiviteter/alle`.
 
 ## Screenshot- og viewportbevis
 
-Aktuelle screenshots blev optaget og vist direkte i denne Codex-opgave via den
-aktive browserkontrol. Det er billeder af appen, ikke genererede designbilleder.
-Browserkontrollen kunne ikke eksportere de nye optagelser som repositoryfiler;
-de eksisterende filer i `docs/screenshots/ejer-review` dokumenterer den tidligere
-funktionelle gennemgang og er derfor ikke overskrevet.
+Rettelsesrunden 2026-09-11 har erstattet dette åbne punkt med faktiske,
+repositorygemte browseroptagelser. En isoleret headless Edge-profil loggede ind
+gennem den normale Auth-emulatorformular og optog den byggede app ved præcis
+1440×900, 1920×1080 og 899×900. Billederne er ikke genererede designbilleder og
+ligger i `docs/screenshots/ejer-review-v2/` sammen med de målte computed styles.
 
-Den tilgængelige in-app-browser havde en fast viewport på 931×794 CSS-pixel.
-Den aktuelle runde har derfor ikke kunnet gentage en ægte pixelmåling ved
-1440×900 og 1920×1080. Responsive regler og fravær af dokumentoverflow er
-verificeret ved 931 px; de to fysiske størrelser er et åbent visuelt QA-punkt,
-som skal køres i en browser med justerbar viewport. En tidligere runde havde
-kontrolleret de to størrelser før denne designændring, men det tælles ikke som
-bevis for den nye serie.
+Ved 1920×1080 blev sidebar målt til 216 px, kort til 12 px radius, inputs til
+38 px og indholdspadding til 26 px. `Inter Variable` var indlæst og blev faktisk
+brugt med 14 px/20,3 px på skal, indhold, formularfelter og faner. Ved 899×900
+var der intet vandret dokumentoverflow; navigationen var lukket i en synlig
+hamburgerstyret mobilskuffe, så kontoindholdet forblev tilgængeligt.
+
+Den nyeste Procure-billedserie bruges som fælles programstandard for farver,
+Inter, geometri, kort, tabeller, felter og statusudtryk. Den tidligere
+ejerbilledserie bruges fortsat for ejerens informationsarkitektur og flows.
+Det giver bevidst mindre sidetitler og roligere arbejdsflader end de tidlige
+ejer-mockups, men fastholder deres funktionelle opbygning.
+
+## Samlet kundekonto
+
+Referenceflowet for kunde/aftale er udvidet med en fuld side på
+`/main/kunder/:tenantId`. Fanerne dækker Kundeprofil, Moduler, Brugere og
+enheder, OBD, Abonnement og priser, Administratorer og Historik. Skærmbillederne
+`1440x900-03-*`, `1440x900-04-*` og `1920x1080-05-*` dokumenterer de redigerbare
+mængder, den separate OBD-model og den låste prisoprindelse. Handlingen
+**Administrér kundekonto** findes både på CRM-kunden og abonnementsoversigten.
+
+## Kendte, afgrænsede forskelle
+
+- Alle priser og personer i reviewbillederne er syntetiske fixtures; officielle
+  Veyro-priser er ikke fundet og må derfor ikke udledes af referencebillederne.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail er visuelt og funktionelt
+  frakoblede. Layoutet viser adapterstatus, men foregiver ingen ekstern succes.
+- Den brede repository-lint kan ikke starte FACILITY-underprojektets konfiguration,
+  fordi dets lokale `@eslint/js` mangler. Alle ændrede ejerfiler består den
+  afgrænsede ESLint-kørsel; FACILITY-worktree/dependencies er ikke ændret.
+- Den ældre ejer-CSS i `fleet.css` indeholder fortsat før-runden dublerede
+  grundregler og rå typografital, som de brede historiske CSS-kvalitetstests
+  rapporterer. Den aktive ejerskal overskrides af `ejer-standard.css` med de
+  låste semantiske tokens og består design-tokenkontrollen; en oprydning af det
+  gamle blok bør ske særskilt for ikke at udvide denne rettelse til en risikabel
+  total omskrivning af alle tidligere ejerskærme.

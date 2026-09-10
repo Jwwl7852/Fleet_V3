@@ -1,6 +1,6 @@
 # Veyro ejerkonsol — integrationsnotat v1
 
-Opdateret: 2026-09-10
+Opdateret: 2026-09-11
 
 ## Afgrænsning
 
@@ -197,7 +197,29 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
 - `npm audit --omit=dev` finder eksisterende transitive browser-/Firebase
   runtimefund. De berører også Auth/callable- og Admin Storage-overfladen og
   skal løses i et særskilt dependency-opgraderingsspor med fuld regression.
-- M365/OpenAI-kontrakten er testet med syntetiske, rene adaptertests og indgår
-  i den samlede 4360/4360 grønne platform-/rules-suite. Live Graph/OpenAI samt den nye
-  salgsindbakke-callable-kæde er ikke end-to-end-testet og må ikke beskrives
-  som tilsluttet.
+- M365/OpenAI-kontrakten er testet med syntetiske, rene adaptertests. Den
+  tidligere grønne platform-/rules-suite er siden udvidet med kundekontoen;
+  aktuelle målte delresultater står i statusdokumentet. Live Graph/OpenAI samt
+  den nye salgsindbakke-callable-kæde er ikke end-to-end-testet og må ikke
+  beskrives som tilsluttet.
+
+## Samlet kundekontokontrakt 2026-09-11
+
+- Den permanente nøgle er det eksisterende tenant-id. CRM, aftale,
+  `udbyder/kundekonti`, tenantens moduladgang og fakturagrundlag får ikke hver
+  sin konkurrerende kundeidentitet.
+- Browseren læser kundekontoen som ejer, men kan ikke skrive direkte.
+  `kundekontogem` er eneste skriveport og kræver en tenantløs aktiv ejerclaim.
+- Payloaden normaliseres og valideres servermæssigt. `forventetRevision`
+  beskytter mod mistede samtidige ændringer; `operationId` gør genindsendelse
+  idempotent. Hver gemning opretter en ny version og en ejeraudithændelse.
+- Ved kilden `accepteret_tilbud` genlæser serveren den præcise aftaleversion og
+  dens prissnapshot; browserens økonomiske værdier kan ikke erstatte den. Ved
+  manuel kilde skal et eksisterende versioneret rateblad vælges.
+- Kun aktivering med nået virkningsdato skriver modul- og abonnementsadgang til
+  tenantdelen. Kundens medarbejderroller og driftsdata forbliver i kundens egen
+  administration. Administratorinvitationer er en separat kontrakt og kan ikke
+  udstede ejerrollen.
+- Andre modulspor kan senere genbruge Dialogens ESC/fokus-kontrakt og de
+  semantiske designtokens. Der kræves ingen ændring i FLEET, FACILITY, PLANNING
+  eller FAKTURACENTER for at anvende ejerleverancen nu.
