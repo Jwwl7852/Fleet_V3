@@ -44,6 +44,8 @@ import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { genererTilbudsPdf } from "./tilbud-pdf.js";
+import { fakturagrundlagCsv, genererFakturagrundlagPdf } from "./fakturagrundlag-pdf.js";
+import { byggFakturaPortPayload, simulerFakturaPort, TEST_SCENARIER } from "./dinero-test-adapter.js";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -2630,6 +2632,8 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
   const t = totalerAfLinjer(linjer);
 
   return {
+    type: "ordinaer",
+    forretningsnoegle: `faktura:${periode}:${id}:ordinaer`,
     kundeId: id,
     periode,
     periodeFra: graenser.fra,
@@ -2648,6 +2652,13 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
     rabatBps,
     rabatModulBps: Object.keys(rabatModulBps).length ? rabatModulBps : null,
     prislisteId: prisliste.id || null,
+    aftaleId: abonnement?.aftaleId || null,
+    aftaleVersion: Number.isSafeInteger(abonnement?.aftaleVersion) ? abonnement.aftaleVersion : null,
+    maengdekilder: {
+      moduldage: "udbyder/maalinger",
+      brugere: "udbyder/maalinger (periodens højeste målte antal)",
+      koeretoejer: "udbyder/maalinger (periodens højeste målte antal)",
+    },
     momssats: Number.isFinite(prisliste.momssats) ? prisliste.momssats : null,
     linjer,
     beloebOere: t.beloebOere,
@@ -2740,7 +2751,14 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
 
     g.genereretMs = Date.now();
     g.genereretAf = ejerUid;
-    await db.ref(sti).set(g);
+    const generationId = `gen_${randomBytes(12).toString("hex")}`;
+    g.generationId = generationId;
+    g.revision = 0;
+    const opret = await db.ref(sti).transaction((aktuel) => aktuel || g);
+    if (!opret.committed || opret.snapshot.val()?.generationId !== generationId) {
+      sprunget.push({ id, hvorfor: "allerede opgjort" });
+      continue;
+    }
     await log(id, ejerUid, AUDIT.opret, periode, `fakturagrundlag ${periode}`);
     oprettet.push({ id, beloebOere: g.beloebOere });
   }
@@ -2754,6 +2772,290 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
     sprunget,
     ialtOere: oprettet.reduce((s, x) => s + (x.beloebOere || 0), 0)
   };
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   EJERFAKTURERING — frigivelse, dokumenter og vedvarende outbox
+
+   Grundlaget ovenfor er den frosne beregning. Frigivelsen nedenfor er en
+   særskilt forretningshændelse: den låser præcis version 1 til én stabil
+   nøgle og må aldrig forveksles med, at en ekstern faktura er oprettet.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const fakturaForretningsnoegle = (periode, tenantId) => `faktura:${periode}:${tenantId}:ordinaer`;
+const fakturaJobId = (periode, tenantId) => `faktura_${periode.replace("-", "")}_${tenantId}`;
+
+function stabilJson(vaerdi) {
+  if (Array.isArray(vaerdi)) return `[${vaerdi.map(stabilJson).join(",")}]`;
+  if (vaerdi && typeof vaerdi === "object") {
+    return `{${Object.keys(vaerdi).sort().map((k) => `${JSON.stringify(k)}:${stabilJson(vaerdi[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(vaerdi);
+}
+
+function kraevFakturagrundlagsnoegle(data) {
+  const periode = kortStreng(data?.periode, 7);
+  if (!/^\d{4}-\d{2}$/.test(periode || "") || !periodeGraenser(periode)) {
+    throw new HttpsError("invalid-argument", "Perioden skal have formatet ÅÅÅÅ-MM.");
+  }
+  const tenantId = kraevKundeId({ id: data?.tenantId });
+  return { periode, tenantId, sti: `udbyder/fakturagrundlag/${periode}/${tenantId}` };
+}
+
+function kraevKonsistentGrundlag(grundlag) {
+  if (!grundlag?.laast || !Array.isArray(grundlag.linjer) || !grundlag.linjer.length) {
+    throw new HttpsError("failed-precondition", "Fakturagrundlaget mangler låste linjer.");
+  }
+  const totaler = totalerAfLinjer(grundlag.linjer);
+  if (totaler.beloebOere !== grundlag.beloebOere
+      || totaler.momsOere !== grundlag.momsOere
+      || totaler.ialtOere !== grundlag.ialtOere
+      || grundlag.momsOere == null || grundlag.ialtOere == null) {
+    throw new HttpsError("failed-precondition", "Fakturagrundlagets linjer, moms og totaler stemmer ikke.");
+  }
+}
+
+async function fakturamodtager(db, tenantId) {
+  const virksomhed = (await db.ref(`tenants/${tenantId}/virksomhed`).once("value")).val() || {};
+  const crm = (await db.ref("udbyder/crm/virksomheder").once("value")).val() || {};
+  const crmPost = Object.values(crm).find((post) => post?.stamdata?.tenantId === tenantId)?.stamdata || {};
+  const modtager = {
+    navn: kortStreng(virksomhed.navn || crmPost.navn, 160),
+    cvr: kortStreng(virksomhed.cvr || crmPost.cvr, 20),
+    email: kortStreng(crmPost.fakturaEmail, 160)?.toLowerCase() || null,
+    kanal: kortStreng(crmPost.afsendelseskanal, 30) || "manuel",
+  };
+  if (!modtager.navn || !modtager.cvr) {
+    throw new HttpsError("failed-precondition", "Kunden mangler navn eller CVR i de permanente stamdata.");
+  }
+  if (modtager.kanal === "email" && (!modtager.email || !erGyldigMail(modtager.email))) {
+    throw new HttpsError("failed-precondition", "Kunden bruger mailkanalen, men mangler en gyldig fakturamail.");
+  }
+  return modtager;
+}
+
+async function sikrFakturaJob({ db, grundlag, periode, tenantId, ejerUid, nu }) {
+  const id = fakturaJobId(periode, tenantId);
+  const ref = db.ref(`udbyder/fakturajobs/${id}`);
+  const post = {
+    id, forretningsnoegle: fakturaForretningsnoegle(periode, tenantId),
+    periode, tenantId, grundlagsversion: grundlag.frigivelse.version,
+    grundlagSha256: grundlag.frigivelse.sha256,
+    status: "afventer", dokumentStatus: "frigivet", sendStatus: "afventer",
+    betalingStatus: "ikke_faktureret", forsoeg: 0,
+    oprettetMs: nu, oprettetAf: ejerUid, opdateretMs: nu,
+  };
+  const resultat = await ref.transaction((aktuel) => aktuel || post);
+  if (!resultat.committed || !resultat.snapshot.exists()) {
+    throw new HttpsError("aborted", "Fakturakøen kunne ikke reserveres.");
+  }
+  const gemt = resultat.snapshot.val();
+  if (gemt.forretningsnoegle !== post.forretningsnoegle
+      || gemt.grundlagSha256 !== post.grundlagSha256) {
+    throw new HttpsError("already-exists", "Forretningsnøglen er allerede knyttet til et andet fakturagrundlag.");
+  }
+  return { id, job: gemt, genbrugt: gemt.oprettetMs !== nu || gemt.oprettetAf !== ejerUid };
+}
+
+export const fakturagrundlagfrigiv = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const { periode, tenantId, sti } = kraevFakturagrundlagsnoegle(req.data);
+  const forventetRevision = kraevForventetRevision(req.data?.forventetRevision);
+  const sendEfterFrigivelse = req.data?.sendEfterFrigivelse === true;
+  const db = getDatabase();
+  const ref = db.ref(sti);
+  const foer = (await ref.once("value")).val();
+  if (!foer) throw new HttpsError("not-found", "Fakturagrundlaget findes ikke.");
+  kraevKonsistentGrundlag(foer);
+  const modtager = foer.frigivelse?.modtager || await fakturamodtager(db, tenantId);
+  const nu = Date.now();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (aktuel?.frigivelse) return aktuel;
+    if (!aktuel || (aktuel.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    const snapshot = {
+      version: 1, type: "ordinaer",
+      forretningsnoegle: fakturaForretningsnoegle(periode, tenantId),
+      periode, kundeId: tenantId, periodeFra: aktuel.periodeFra, periodeTil: aktuel.periodeTil,
+      prislisteId: aktuel.prislisteId || null, aftaleId: aktuel.aftaleId || null,
+      aftaleVersion: aktuel.aftaleVersion || null, maengdekilder: aktuel.maengdekilder || null,
+      modtager, linjer: aktuel.linjer,
+      beloebOere: aktuel.beloebOere, momsOere: aktuel.momsOere, ialtOere: aktuel.ialtOere,
+      frigivetMs: nu, frigivetAf: ejerUid,
+    };
+    const sha256 = createHash("sha256").update(stabilJson(snapshot)).digest("hex");
+    return {
+      ...aktuel, type: aktuel.type || "ordinaer",
+      forretningsnoegle: snapshot.forretningsnoegle,
+      procesStatus: "frigivet", dokumentStatus: "frigivet",
+      afsendelsesStatus: sendEfterFrigivelse ? "afventer" : "ikke_koesat",
+      betalingsStatus: "ikke_faktureret", frigivelse: { ...snapshot, sha256 },
+      revision: (aktuel.revision || 0) + 1, opdateretMs: nu, opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
+    throw new HttpsError("aborted", "Fakturagrundlaget blev ændret samtidigt. Genindlæs før frigivelse.");
+  }
+  let koe = null;
+  if (sendEfterFrigivelse) {
+    koe = await sikrFakturaJob({ db, grundlag: resultat.snapshot.val(), periode, tenantId, ejerUid, nu });
+    await ref.update({ procesStatus: "i_koe", afsendelsesStatus: koe.job.sendStatus, opdateretMs: Date.now() });
+  }
+  await skrivEjerAudit({
+    uid: ejerUid, handling: sendEfterFrigivelse ? "fakturagrundlag.frigiv.koe" : "fakturagrundlag.frigiv",
+    objekt: "fakturagrundlag", objektId: `${periode}/${tenantId}`,
+    korrelationsId: kortStreng(req.data?.operationId, 60),
+  });
+  return {
+    ok: true, periode, tenantId, version: 1,
+    sha256: resultat.snapshot.val().frigivelse.sha256,
+    jobId: koe?.id || null, genbrugt: Boolean(foer.frigivelse),
+  };
+});
+
+export const fakturagrundlagdokumenter = onCall({ region: REGION, memory: "512MiB" }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const { periode, tenantId, sti } = kraevFakturagrundlagsnoegle(req.data);
+  const db = getDatabase();
+  const ref = db.ref(sti);
+  const grundlag = (await ref.once("value")).val();
+  const snapshot = grundlag?.frigivelse;
+  if (!snapshot?.sha256 || snapshot.version !== 1) {
+    throw new HttpsError("failed-precondition", "Frigiv fakturagrundlaget før dokumenterne dannes.");
+  }
+  if (grundlag.dokumenter?.pdf?.storagePath && grundlag.dokumenter?.csv?.storagePath) {
+    return { ok: true, dokumenter: grundlag.dokumenter, genbrugt: true };
+  }
+  const bucket = getStorage().bucket();
+  const base = `ejer/fakturagrundlag/${periode}/${tenantId}/v1`;
+  const pdfBytes = Buffer.from(await genererFakturagrundlagPdf(snapshot));
+  const csvBytes = Buffer.from(fakturagrundlagCsv(snapshot), "utf8");
+  const gem = async (art, bytes, contentType) => {
+    const storagePath = `${base}.${art}`;
+    const file = bucket.file(storagePath);
+    const [findes] = await file.exists();
+    if (!findes) await file.save(bytes, {
+      resumable: false, contentType,
+      metadata: { metadata: { periode, tenantId, version: "1", grundlagSha256: snapshot.sha256 } },
+    });
+    return {
+      storagePath, contentType, stoerrelse: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      grundlagSha256: snapshot.sha256, oprettetMs: Date.now(), oprettetAf: ejerUid,
+    };
+  };
+  const dokumenter = {
+    pdf: await gem("pdf", pdfBytes, "application/pdf"),
+    csv: await gem("csv", csvBytes, "text/csv; charset=utf-8"),
+  };
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(grundlag);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (aktuel?.frigivelse?.sha256 !== snapshot.sha256) { konflikt = true; return; }
+    if (aktuel.dokumenter?.pdf?.storagePath && aktuel.dokumenter?.csv?.storagePath) return aktuel;
+    return { ...aktuel, dokumenter, revision: (aktuel.revision || 0) + 1, opdateretMs: Date.now(), opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
+    throw new HttpsError("aborted", "Grundlagsversionen ændrede sig under dokumentgenereringen.");
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: "fakturagrundlag.dokumenter", objekt: "fakturagrundlag", objektId: `${periode}/${tenantId}` });
+  return { ok: true, dokumenter: resultat.snapshot.val().dokumenter, genbrugt: false };
+});
+
+export const fakturagrundlagdokumenthent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const { periode, tenantId, sti } = kraevFakturagrundlagsnoegle(req.data);
+  const art = req.data?.art;
+  if (!new Set(["pdf", "csv"]).has(art)) throw new HttpsError("invalid-argument", "Dokumentarten skal være pdf eller csv.");
+  const dokument = (await getDatabase().ref(`${sti}/dokumenter/${art}`).once("value")).val();
+  if (!dokument?.storagePath) throw new HttpsError("not-found", "Dokumentet er ikke dannet.");
+  const [url] = await getStorage().bucket().file(dokument.storagePath).getSignedUrl({ action: "read", expires: Date.now() + 5 * 60 * 1000 });
+  return { ok: true, periode, tenantId, art, url, expiresInSeconds: 300, dokument };
+});
+
+function erIsoleretFakturatest() {
+  return /^demo-/.test(process.env.GCLOUD_PROJECT || "")
+    && ["FIREBASE_AUTH_EMULATOR_HOST", "FIREBASE_DATABASE_EMULATOR_HOST", "FIREBASE_FUNCTIONS_EMULATOR_HOST", "FIREBASE_STORAGE_EMULATOR_HOST"]
+      .every((navn) => /^(127\.0\.0\.1|localhost):\d+$/.test(process.env[navn] || ""));
+}
+
+export const fakturajobkoer = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const { periode, tenantId, sti } = kraevFakturagrundlagsnoegle(req.data);
+  const id = fakturaJobId(periode, tenantId);
+  const db = getDatabase();
+  const jobRef = db.ref(`udbyder/fakturajobs/${id}`);
+  const [jobSnap, grundlagSnap, integrationSnap] = await Promise.all([
+    jobRef.once("value"), db.ref(sti).once("value"), db.ref("udbyder/integrationer/dinero").once("value"),
+  ]);
+  const job = jobSnap.val();
+  const grundlag = grundlagSnap.val();
+  const integration = integrationSnap.val();
+  if (!job || !grundlag?.frigivelse || job.grundlagSha256 !== grundlag.frigivelse.sha256) {
+    throw new HttpsError("failed-precondition", "Køposten og det frigivne fakturagrundlag passer ikke sammen.");
+  }
+  if (job.status === "sendt") return { ok: true, id, status: "sendt", eksternReference: job.eksternReference, genbrugt: true };
+  if (job.status === "ukendt_udfald") {
+    throw new HttpsError("failed-precondition", "Det eksterne udfald er ukendt. Afstem i Dinero før et nyt forsøg.");
+  }
+  if (integration?.status !== "aktiv" || !integration?.adapter) {
+    await jobRef.update({ status: "ikke_tilsluttet", sendStatus: "ikke_tilsluttet", senesteFejlKode: "DINERO_IKKE_TILSLUTTET", opdateretMs: Date.now() });
+    await db.ref(sti).update({ afsendelsesStatus: "ikke_tilsluttet", procesStatus: "handling_pakraevet", opdateretMs: Date.now() });
+    throw new HttpsError("failed-precondition", "Dinero er ikke tilsluttet. Det frigivne grundlag er bevaret uden at oprette en faktura.");
+  }
+  if (integration.adapter !== "test" || !erIsoleretFakturatest()) {
+    throw new HttpsError("unimplemented", `Dinero-adapteren '${integration.adapter}' er ikke aktiveret. Testadapteren må kun køre i den isolerede Emulator Suite.`);
+  }
+  if (!TEST_SCENARIER.includes(integration.testScenario)) {
+    throw new HttpsError("failed-precondition", "Testadapteren kræver et eksplicit, tilladt emulator-scenario.");
+  }
+
+  const eksternReference = job.eksternReference
+    || `test-draft-${createHash("sha256").update(job.forretningsnoegle).digest("hex").slice(0, 16)}`;
+  const nu = Date.now();
+  await jobRef.update({
+    status: "arbejder", sendStatus: "arbejder", eksternReference,
+    forsoeg: (job.forsoeg || 0) + 1, senesteForsoegMs: nu, opdateretMs: nu,
+  });
+  const scenario = integration.testScenario;
+  const payload = byggFakturaPortPayload(grundlag.frigivelse, eksternReference);
+  const adapterSvar = simulerFakturaPort(payload, scenario);
+  if (adapterSvar.kind === "contract_error") {
+    await jobRef.update({ status: "handling_pakraevet", sendStatus: "fejl", senesteFejlKode: "ADAPTER_KONTRAKT_FEJL", opdateretMs: Date.now() });
+    throw new HttpsError("failed-precondition", adapterSvar.errors.join(" "));
+  }
+  if (adapterSvar.kind === "unknown") {
+    await jobRef.update({ status: "ukendt_udfald", sendStatus: "ukendt_udfald", eksternStatus: "ukendt", senesteFejlKode: "TEST_TIMEOUT_EFTER_OPRET", opdateretMs: Date.now() });
+    await db.ref(sti).update({ afsendelsesStatus: "ukendt_udfald", procesStatus: "handling_pakraevet", opdateretMs: Date.now() });
+    throw new HttpsError("deadline-exceeded", "Testadapteren mistede svaret efter oprettelse. Automatisk genforsøg er blokeret.");
+  }
+  if (adapterSvar.kind === "send_error") {
+    await jobRef.update({ status: "handling_pakraevet", sendStatus: "fejl", eksternStatus: "bogfoert", senesteFejlKode: "TEST_SEND_FEJL", opdateretMs: Date.now() });
+    await db.ref(sti).update({ afsendelsesStatus: "fejl", procesStatus: "handling_pakraevet", opdateretMs: Date.now() });
+    throw new HttpsError("unavailable", "Testfakturaen blev bogført, men afsendelsen fejlede. Den eksterne reference er bevaret.");
+  }
+  if (adapterSvar.kind !== "sent"
+      || adapterSvar.invoice.externalReference !== eksternReference
+      || adapterSvar.invoice.contactExternalKey !== grundlag.frigivelse.kundeId
+      || adapterSvar.invoice.currency !== "DKK"
+      || adapterSvar.invoice.subtotalCents !== grundlag.frigivelse.beloebOere
+      || adapterSvar.invoice.vatCents !== grundlag.frigivelse.momsOere
+      || adapterSvar.invoice.totalCents !== grundlag.frigivelse.ialtOere) {
+    await jobRef.update({ status: "handling_pakraevet", sendStatus: "fejl", senesteFejlKode: "ADAPTER_SVAR_DIFFERENCE", opdateretMs: Date.now() });
+    throw new HttpsError("data-loss", "Testadapterens svar afviger fra det frigivne grundlag. Behandlingen er stoppet.");
+  }
+  const afsluttetMs = Date.now();
+  await jobRef.update({
+    status: "sendt", dokumentStatus: "frigivet", sendStatus: "sendt",
+    betalingStatus: "ikke_betalt", eksternStatus: "sendt",
+    sendtMs: afsluttetMs, sendtAf: ejerUid, senesteFejlKode: null, opdateretMs: afsluttetMs,
+  });
+  await db.ref(sti).update({ afsendelsesStatus: "sendt", betalingsStatus: "ikke_betalt", procesStatus: "sendt", opdateretMs: afsluttetMs });
+  await skrivEjerAudit({ uid: ejerUid, handling: "fakturajob.test.sendt", objekt: "fakturajob", objektId: id, korrelationsId: kortStreng(req.data?.operationId, 60) });
+  return { ok: true, id, status: "sendt", eksternReference, genbrugt: Boolean(job.eksternReference) };
 });
 
 /**

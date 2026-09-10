@@ -4492,6 +4492,14 @@
         }
       },
 
+      "fakturajobs": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        "$jobId": {
+          ".validate": "newData.hasChildren(['id', 'forretningsnoegle', 'periode', 'tenantId', 'grundlagsversion', 'grundlagSha256', 'status'])"
+        }
+      },
+
       "prisliste": {
         ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,

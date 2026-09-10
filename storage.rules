@@ -52,6 +52,12 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Frigivne ejerfakturagrundlag hentes også kun via et kortlivet link,
+    // efter at Cloud Functions har kontrolleret den tenantløse ejer igen.
+    match /ejer/fakturagrundlag/{periode}/{tenantId}/{dokumentId} {
+      allow read, write: if false;
+    }
+
     // Alt andet er lukket. Ingen andre stier er bygget endnu.
     match /{allPaths=**} {
       allow read, write: if false;

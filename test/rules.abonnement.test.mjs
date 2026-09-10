@@ -186,6 +186,10 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/audit/.read",
       "/udbyder/crm/.read",
       "/udbyder/fakturagrundlag/.read",
+      /* Køposterne er platformens integrationsstatus, ikke kundedrift. De
+         indeholder kun stabil nøgle, status og eksterne referencer og må
+         ligesom grundlaget kun læses af den tenantløse ejer. */
+      "/udbyder/fakturajobs/.read",
       "/udbyder/integrationer/.read",
       "/udbyder/invitationer/.read",
       "/udbyder/kunder/.read",

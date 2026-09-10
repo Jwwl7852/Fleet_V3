@@ -22,6 +22,10 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 - FAKTURACENTER er ikke et særskilt kommercielt modul.
 - Bindende priser og dokumenter regnes i heltalsøre og snapshots fryses.
 - Dinero er Veyros eget regnskabssystem. En testadapter er ikke en liveforbindelse.
+- Microsoft 365 og `info@veyrosystems.com` er salgsmailens valgte kanal. Den
+  faktiske postkassetype og Graph-rettigheder skal verificeres før aktivering.
+- OpenAI bruges kun servermæssigt, sagsspecifikt og under en håndhævet grænse.
+  CRM og mail skal fortsat virke uden AI.
 - Ingen mail, bogføring, produktionstilpasning eller deployment sker uden særskilt aktivering.
 - Originale bilag ligger i beskyttet Storage; direkte klientadgang forbliver lukket.
 
@@ -37,7 +41,10 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 | Kundens `opsaetning/brugere` | Bevares adskilt fra ejeradministrationen |
 | Genereret administratoradgangskode | Lukket og erstattet af tidsbegrænset invitation |
 | CRM og tilbud | Implementeret additivt med servervalidering og versionssnapshots |
-| Dinero og bilagsindbakke | Mangler og tilføjes senere med migration/status |
+| Dinero | Fakturajob og isoleret testport er implementeret; liveforbindelse mangler |
+| Microsoft 365-salgsindbakke | Tilføjes i et særskilt, additivt G1-spor under Salg |
+| OpenAI-salgsassistent og vidensbase | Tilføjes servermæssigt i G2 med eksplicit aktivering og budget |
+| Bilagsindbakke | Mangler og tilføjes senere med migration/status |
 | Veyro-logo og tema | Genbruges fra `src/assets/veyro`, `VeyroLogo.jsx` og `fleet.css` |
 
 ## Etaper
@@ -109,11 +116,54 @@ Status: implementeret og emulatorverificeret.
   og roteres ved genudsendelse. Nye og eksisterende verificerede Auth-konti
   understøttes; invitationen kan kun give kundens `admin`, aldrig ejeradgang.
 
-### F–I — Fakturering, kredit, udgifter og overblik
+### F — Fakturering
 
-Status: ikke startet.
+Status: implementeret og isoleret verificeret 2026-09-10; Dinero er ikke tilsluttet.
 
-- Vedvarende outbox/jobmodel og realistisk Dinero-testadapter før liveforbindelse.
+- Vedvarende, idempotent faktura-outbox med stabile forretningsnøgler.
+- Frosset frigivelsessnapshot og servergenereret PDF/CSV med SHA-256.
+- Separate dokument-, afsendelses- og betalingsstatusser.
+- Eksplicit, fail-closed Dinero-testport med scenarier for succes, ukendt udfald
+  og delvis fejl; intet simuleret successvar i normal drift.
+- Frigivelse, dokumenter, race, genkørsel og blind-genudsendelsesblokering er
+  testet i emulatorer.
+
+### G1 — Microsoft 365-salgsindbakke og godkendt opfølgning
+
+Status: igangsat 2026-09-10.
+
+- Trepanels salgsindbakke med tråde, søgning, filtre, vedhæftningsmetadata,
+  separate interne noter og links til virksomhed, kontakt, mulighed og tilbud.
+- Normaliseret, dubletsikker indlæsning af Graph- og formularhændelser. Ukendte
+  afsendere forbliver henvendelser og opretter aldrig automatisk tenant.
+- Vedvarende outbox med skelnen mellem kladde, accepteret Graph-anmodning,
+  dokumenteret afsendelse og ukendt udfald. Sent Items-synk er beviskilden.
+- Tilbudsmail knyttes til præcis tilbudsversion/PDF og samme sagsforløb.
+- Opfølgningskladder kræver konkret ejeraccept; ændringer, nye svar og afsluttet
+  sag ugyldiggør accept. CAS og idempotens beskytter mod dobbeltafsendelse.
+- Produktion forbliver `ikke_tilsluttet`, indtil postkassetype, underliggende
+  postkasse, Entra-applikation, mindst mulige Graph-rettigheder, webhook/delta-
+  drift og secrets er verificeret.
+
+### G2 — Veyro-salgsassistent og vidensbase
+
+Status: igangsat 2026-09-10.
+
+- Versioneret, godkendt viden med kilde og leveringsstatus: Tilgængelig, Under
+  udvikling eller Kræver særskilt aftale.
+- Serverbaseret Responses API-adapter med `store: false`, struktureret output,
+  sagsspecifik kontekst og ubetroet-mail-grænse.
+- Analyse og vedvarende intern samtale lagres separat fra kundemail og kan ikke
+  ændre CRM-fakta, pipeline, aftaler eller økonomiske værdier automatisk.
+- Håndhævet månedlig request-/tokenramme med reservation før kald, afstemning
+  efter svar og fail-closed adfærd ved manglende budget.
+- Isoleret testadapter dækker succes, API-fejl og budgetstop. Livekald kræver
+  særskilt serversecret, modelvalg og aktivering og udføres ikke i denne runde.
+
+### G–I — Kredit, returdata, udgifter og overblik
+
+Status: ikke startet ud over fakturering og de supplerende G1/G2-spor.
+
 - Kreditnotaer, returdata, betalinger og synkroniseringscheckpoints.
 - Beskyttet bilagsupload, mail-/OCR-adaptergrænser og dubletkontrol.
 - Fælles beregnede KPI-definitioner med klikbar afstemning.
@@ -131,6 +181,12 @@ Status: ikke startet.
 - Der var ingen yderligere designbilleder tilgængelige; repositoryets faktiske
   brandfiler har derfor forrang.
 - Dinero-organisation, API-credentials og testorganisation er ikke tilsluttet.
+- `info@veyrosystems.com` er valgt, men delt postkasse, selvstændig postkasse
+  eller alias samt den korrekte underliggende postkasse er ikke verificeret.
+- Microsoft Entra/Graph-app, webhook-endpoint, Graph-secrets og nødvendige
+  mailbox-rettigheder er ikke opsat. Ingen virkelig mail sendes.
+- OpenAI API-secret, godkendt model og produktionsbudget er ikke opsat. Ingen
+  virkelig kundemail sendes til AI under udviklingen.
 - Invoice-mail, inbound-maildomæne og OCR-leverandør er ikke identificeret.
 - Officielle Veyro-priser blev ikke fundet i repositoryet. Prisadministrationen
   er færdig, men kun emulatorfixtures indeholder eksempelpriser.

@@ -11,6 +11,8 @@ Opdateret: 2026-09-10
   `56e9ca0449cd61929d70e4ef58edcb4e90233af3`
 - Lokalt etape D/E- og sikkerhedscheckpoint:
   `7d622c47a4045dec21a6b784f29bf470244cca3e`; intet er pushet.
+- Lokalt dokumentationscheckpoint efter D/E:
+  `f948eaf6c55d7f940775ca7f53522ad238fcc441`; intet er pushet.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
@@ -24,7 +26,9 @@ Opdateret: 2026-09-10
 | C — Salg | Implementeret og verificeret | Persistent servermodel, domænetests og callable-kædetest |
 | D — Priser og tilbud | Implementeret; mail eksternt blokeret | Beregning, samtidighed, version 1/2, snapshots, PDF, accept og fejlstatus emulatorverificeret |
 | E — Aftale og kunde | Implementeret og verificeret | Aftale/tenant genkørt uden dublet; nye/eksisterende konti, revoke/resend/accept testet |
-| F — Fakturering | Ikke implementeret | — |
+| F — Fakturering | Implementeret; Dinero eksternt blokeret | Race, snapshot, PDF/CSV, genkørsel, ukendt udfald og delvis fejl emulatorverificeret |
+| G1 — Microsoft 365-salgsmail | Igangsat; ekstern forbindelse mangler | Kontrakt og isolerede tests bygges nu |
+| G2 — OpenAI-salgsassistent | Igangsat; ekstern forbindelse mangler | Servergrænse, vidensbase og budgettests bygges nu |
 | G — Kredit og returdata | Ikke implementeret | — |
 | H — Udgifter | Ikke implementeret | — |
 | I — Overblik | Ikke implementeret | — |
@@ -84,12 +88,24 @@ Opdateret: 2026-09-10
 | 3 | Kunde og abonnement | CRM, aftale/tenantprovisionering og sikker administratorinvitation implementeret |
 | 4 | Rateblad | Versioneret redigering og tilbudsautoudfyldning implementeret; officielle priser mangler |
 | 5 | Tilbud | Versioner, PDF, afsendelsesstatus, manuel registrering og accept implementeret |
-| 6 | Fakturaer | Ikke implementeret i den nye ejerflade |
+| 6 | Fakturaer | Frigivelse, PDF/CSV, kø, adapterstatus og fejlforløb implementeret; Dinero ikke tilsluttet |
 | 7 | Kreditnotaer | Ikke implementeret |
 | 8 | Bilagsindbakke | Ikke implementeret |
 | 9 | Omkostninger | Ikke implementeret |
 | 10 | Økonomioverblik | Ikke implementeret |
-| 11 | Integrationer | Statusside implementeret; forbindelser og jobs ikke implementeret |
+| 11 | Integrationer | Statusside og Dinero-fakturajob implementeret; Microsoft 365, OpenAI og live Dinero ikke tilsluttet |
+
+## Implementeret i etape F
+
+- Fakturagrundlag frigives ved CAS til et uforanderligt v1-snapshot med
+  forretningsnøgle, aftale-/prislistereferencer, mængdekilder og SHA-256.
+- PDF og CSV dannes servermæssigt fra det præcise frigivelsessnapshot og
+  lagres under en ejerbeskyttet Storage-sti.
+- Ét stabilt fakturajob pr. periode/tenant forhindrer dobbeltoprettelse.
+- Dinero-porten er en eksplicit testkontrakt, ikke en gættet live-HTTP-kontrakt.
+  Den kan kun give simuleret succes i det præcise demo-/emulatormiljø og med et
+  navngivet scenario. Ukendt resultat spærrer blind genudsendelse.
+- Bogført-men-ikke-sendt kan genkøres med samme eksterne reference.
 
 ## Verifikation 2026-09-10 — aktuel arbejdsrunde
 
@@ -135,7 +151,9 @@ Opdateret: 2026-09-10
 
 ## Næste konkrete opgave
 
-Beslut officiel priskilde, mailleverandør og aktiveringsmekanisme for fremtidige
-virkningsdatoer. Fortsæt derefter etape F med en persistent outbox/jobmodel og
-en isoleret Dinero-testadapter. Dependency-opgraderingen bør planlægges som et
-separat spor med fuld regression; ingen produktionstilslutning sker herfra.
+Færdiggør den supplerende Microsoft 365-salgsindbakke, tilbudsmail/outbox,
+godkendt opfølgning, vidensbase og serverbaserede AI-assistent. Verificér dem
+med isolerede adaptere. Ekstern opsætning skal derefter afklare den faktiske
+type og underliggende postkasse for `info@veyrosystems.com`, mindst mulige
+Graph-rettigheder, OpenAI-model/budget og secrets. Dependency-opgraderingen
+forbliver et separat spor; ingen produktionstilslutning sker herfra.

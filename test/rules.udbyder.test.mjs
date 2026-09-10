@@ -95,6 +95,7 @@ before(async () => {
     await set(ref(db, "udbyder/provisioneringer/aftale_t1_1"), { status: "faerdig" });
     await set(ref(db, "udbyder/invitationer/i1"), { tenantId: T_A, status: "afventer" });
     await set(ref(db, "udbyder/integrationer/mail"), { status: "ikke_tilsluttet" });
+    await set(ref(db, "udbyder/fakturajobs/f1"), { id: "f1", status: "afventer" });
   });
 });
 
@@ -120,7 +121,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
   it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
     for (const node of [
-      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer",
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs",
     ]) {
       await assertSucceeds(get(ref(db, `udbyder/${node}`)));
     }
@@ -191,6 +192,7 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/provisioneringer")));
     await assertFails(get(ref(somKunde(), "udbyder/invitationer")));
     await assertFails(get(ref(somKunde(), "udbyder/integrationer")));
+    await assertFails(get(ref(somKunde(), "udbyder/fakturajobs")));
   });
 
   it("kan læse SIN EGEN virksomhed og moduler", async () => {

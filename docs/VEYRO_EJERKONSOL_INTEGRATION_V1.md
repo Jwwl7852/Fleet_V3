@@ -9,7 +9,7 @@ Den bruger den eksisterende tenantløse `/main`-gren, mens kundernes egen
 administration fortsat ligger bag tenantclaims. FLEET, FACILITY, PLANNING og
 FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 
-## Fælles kontrakter berørt af etape B–E
+## Fælles kontrakter berørt af etape B–F
 
 | Fil/område | Kontrakt |
 |---|---|
@@ -23,6 +23,8 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 | `src/App.jsx` | Ejerens routes er fortsat adskilt fra tenantens modulrouting. `/main` og `/main/priser` bevares. |
 | `src/moduler/InvitationAccept.jsx` | Offentlig invitationsrute bruger normal Firebase Auth og giver kun tenantrollen `admin`. |
 | `functions/tilbud-pdf.js` | Server-PDF bygges fra det frosne versionssnapshot og repositoryets Veyro-logo. |
+| `functions/fakturagrundlag-pdf.js` | Fakturagrundlags-PDF/CSV bygges kun fra det frosne frigivelsessnapshot. |
+| `functions/dinero-test-adapter.js` | Intern, fail-closed fakturaport til emulatoren; ingen påstået live-Dinero-kontrakt. |
 
 ## Vedvarende datarødder
 
@@ -36,6 +38,8 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 - `udbyder/provisioneringer/provision_<tilbudId>_<version>` som genkørselslås
 - `udbyder/invitationer/<invitationId>` med tokenhash, generation og livscyklus
 - `udbyder/integrationer/tilbudsmail` som adapterstatus, ikke credentials
+- `udbyder/fakturajobs/<jobId>` med stabil forretningsnøgle, eksternt reference-id og tre statusdomæner
+- `ejer/fakturagrundlag/<periode>/<tenantId>/v1.pdf|csv` i beskyttet Storage
 - `udbyder/sekvenser/tilbud/<YYYY>` (kun serveradgang)
 - `udbyder/audit/<YYYY>/<MM>/<postId>`
 - eksisterende `authRevocations/<uid>/revokeTime`
@@ -90,8 +94,30 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
 - D/E-callables: hele kæden med samtidig write, to pris-/tilbudsversioner,
   persistent PDF, mailfejl, manuel afsendelse, accept, genkørbar provisioning
   og nye/eksisterende inviterede konti består i isoleret demo-projekt.
+- F-callables: samtidige frigivelser, frosset modtager/snapshot, PDF/CSV,
+  idempotent job, dokumenteret testsucces, ukendt udfalds-spærre og delvis fejl
+  består i isoleret demo-projekt.
 - Server-PDF's layoutprøve er renderet og visuelt kontrolleret.
 - Mail, Dinero, OCR, MFA og produktion er ikke tilsluttet eller testet.
+
+## Supplerende Microsoft 365- og OpenAI-kontrakt
+
+- Microsoft 365 bliver salgsmailkanal; Dinero forbliver kanal for faktura og
+  kreditnota. `info@veyrosystems.com` må først aktiveres efter opslag af den
+  faktiske postkassetype og underliggende postkasse.
+- Graph-synk bruger mappebaseret delta for indbakke og Sendt post og gemmer den
+  fulde `@odata.deltaLink`. Attachments/body kræver mere end Basic-mailadgang.
+- Afsendelse modelleres som outbox: Graph HTTP 202 betyder accepteret
+  anmodning, ikke dokumenteret levering. Sent Items-synk eller en tilsvarende
+  dokumenteret providerhændelse markerer `dokumenteret_sendt`.
+- Tilbudsmail refererer altid til tilbud-id, versionsnummer, PDF-sti og hash.
+- OpenAI Responses API kaldes kun servermæssigt med `store: false`, struktureret
+  output, en enkelt sags kontekst og godkendt fælles viden. Hemmeligheder og
+  forbindelsestokens gemmes aldrig i RTDB eller browseren.
+- Indgående mail, vedhæftninger og webformulartekst behandles som ubetroet
+  datagrundlag, aldrig som systeminstruktioner eller autorisation til handling.
+- AI-budget reserveres atomisk før kald. CRM/mail kan læses og arbejdes med,
+  selv når AI er frakoblet, fejler eller budgettet er brugt.
 - Officielle Veyro-priser er ikke fundet; alle tal i emulatorflowet er tydeligt
   markerede fixtures og publiceres ikke som officielle priser.
 - Firebase CLI 15.29.0/JDK 21 kan ikke bruges på denne Windows-version på
