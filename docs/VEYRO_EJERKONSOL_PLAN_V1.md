@@ -2,6 +2,20 @@
 
 Opdateret: 2026-09-10
 
+## Aktuel designrunde
+
+Den nyeste godkendte billedserie er nu kortlagt skærm for skærm i
+`docs/review/ejerkonsol-design-v1/README.md`. Implementeringen genbruger den
+eksisterende ejerarkitektur og serverfunktioner; der er ikke oprettet en
+parallel UI-model. Nye synlige handlinger skal fortsat gå gennem de allerede
+implementerede callables, snapshots, revisionskontroller og fail-closed
+integrationsadaptere.
+
+Tilbageværende design-QA er en fysisk, justerbar browserkontrol ved 1440×900 og
+1920×1080. Den aktive in-app-browser har en fast 931×794 CSS-viewport, så den
+aktuelle runde dokumenterer responsiv 931-pixel-visning uden dokumentoverflow,
+men ikke en ny pixelmåling ved de to ønskede bredder.
+
 ## Fast grundlag
 
 - Repository: `https://github.com/Jwwl7852/Fleet_V3.git`

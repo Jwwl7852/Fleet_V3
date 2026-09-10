@@ -2,6 +2,31 @@
 
 Opdateret: 2026-09-10
 
+## Designreview — aktuel arbejdsrunde
+
+- Starttilstand genverificeret på branch `codex/ejer-integrated-development`,
+  HEAD `58ecd392067c658e947354354403c08487fd212f`, rent udgangspunkt.
+- Den nyeste serie på 11 vedhæftede filer er kortlagt; fil 11 behandles som den
+  rettede udgave af fil 7.
+- Ejerens skal, navigation og fælles topbar er tilpasset den godkendte serie med
+  repositoryets eksisterende logo og den fælles `fleet.css`-tokenkontrakt.
+- Overblik, salgsindbakke, tilbud/tilbudsmail, opfølgningsgodkendelse,
+  kunde/sagsassistent, økonomioverblik, integrationer og vidensbase er bygget om
+  til de viste layouts uden at erstatte de eksisterende serverflows.
+- Alle virkelige integrationer viser fortsat `Ikke tilsluttet`. Testdata er
+  mærket `TESTADAPTER`/eksempel, og ingen ekstern mail, AI-analyse, Dinero-post
+  eller produktionsændring er udført.
+- Målrettet ESLint og produktionsbuild består. Den samlede målpakke består med
+  76/76 tests, heraf 11 design-token-tests, efter flytning af ejerreglerne til
+  den fælles stylesheet-kontrakt.
+- Ni unikke referenceflows er browseråbnet med normalt tenantløst login og uden
+  dokumentoverflow ved den faste IAB-viewport på 931×794 CSS-pixel.
+- Ny fysisk pixelkontrol ved 1440×900 og 1920×1080 er ikke udført, fordi den
+  tilgængelige browser ikke kan ændre viewport. Det står åbent og er ikke skjult
+  bag den tidligere rundes bredskærmskontrol.
+- Det detaljerede referencekort og de resterende afvigelser står i
+  `docs/review/ejerkonsol-design-v1/README.md`.
+
 ## Git og arbejdsområde
 
 - Worktree: `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`
