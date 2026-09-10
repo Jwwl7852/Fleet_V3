@@ -7,6 +7,8 @@ Opdateret: 2026-09-10
 - Worktree: `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`
 - Branch: `codex/ejer-integrated-development`
 - Base/HEAD ved oprettelse: `989dbb87db639efed0ba1b5a1e271560f7659a0c`
+- Seneste implementeringscheckpoint før denne statusopdatering:
+  `2c7f78a463527b5590c2b787dfc6c7c356b4e908`
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
@@ -60,6 +62,22 @@ Opdateret: 2026-09-10
   Mine/Alle-filtre, pipeline, kundekort, historik og revisionskontrol.
 - Ærlige statussider for endnu ikke byggede eller eksternt blokerede områder;
   ingen demo-success eller localStorage-fallback.
+
+## De 11 skærmområder
+
+| Nr. | Område | Faktisk status |
+|---|---|---|
+| 1 | Overblik | Implementeret med CRM-opfølgning og ærlig integrationsstatus |
+| 2 | Salgspipeline | Implementeret med persistent pipeline, aktiviteter og kundehistorik |
+| 3 | Kunde og abonnement | Delvist: CRM-kundekort og eksisterende abonnement/modulkonsol; invitation mangler |
+| 4 | Rateblad | Eksisterende versioneret prisliste genbrugt; tilbudsautoudfyldning mangler |
+| 5 | Tilbud | Delvist: kladde, nummer, beregning, version 1, print/PDF-dialog og manuel afsendelse |
+| 6 | Fakturaer | Ikke implementeret i den nye ejerflade |
+| 7 | Kreditnotaer | Ikke implementeret |
+| 8 | Bilagsindbakke | Ikke implementeret |
+| 9 | Omkostninger | Ikke implementeret |
+| 10 | Økonomioverblik | Ikke implementeret |
+| 11 | Integrationer | Statusside implementeret; forbindelser og jobs ikke implementeret |
 
 ## Verifikation 2026-09-10
 
