@@ -67,7 +67,7 @@ export default function EjerRamme({ bruger, logUd, children }) {
   };
 
   return (
-    <EjerDataProvider>
+    <EjerDataProvider ansvarligFilter={ejerfilter}>
       <div className="fc-app ejer-app">
         <aside className="ejer-side">
           <NavLink className="ejer-logo" to="/main" aria-label="Veyro ejerkonsol, overblik">

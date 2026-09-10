@@ -15,7 +15,7 @@ function Kpi({ ikon, label, vaerdi, til }) {
 }
 
 export default function EjerOverblikDesign({ bruger }) {
-  const { crm, profiler, fejl, henter, genindlaes } = useEjerData();
+  const { crm, profiler, fejl, henter, genindlaes, ansvarligFilter } = useEjerData();
   const [salgsplatform, setSalgsplatform] = useState(null);
   const [visMine, setVisMine] = useState(false);
   useEffect(() => { hentSalgsplatform().then(setSalgsplatform).catch(() => setSalgsplatform(null)); }, []);
@@ -34,7 +34,8 @@ export default function EjerOverblikDesign({ bruger }) {
     ...traade.filter((t) => ["ny", "afventer_os", "afventer_kunden"].includes(t.status)).slice(0, 3).map((t) => ({ id: `t-${t.id}`, firma: t.virksomhedsnavn || t.kontaktNavn || t.senesteFra || "Ukendt henvendelse", emne: t.emne, uid: t.ansvarligUid, knap: t.status === "afventer_kunden" ? "Åbn samtale" : "Læs forespørgsel", til: "/main/salg/indbakke" })),
     ...aabne.filter((a) => erForfaldenAktivitet(a, iDag) || a.fristDato === iDag).slice(0, 2).map((a) => ({ id: `a-${a.id}`, firma: a.virksomhedsnavn, emne: a.titel, uid: a.ansvarligUid, knap: "Planlæg", til: "/main/salg/aktiviteter" })),
   ].slice(0, 4);
-  const synligeHandlinger = visMine ? handlinger.filter((h) => !h.uid || h.uid === bruger?.uid) : handlinger;
+  const ansvarligAfgrænsede = ansvarligFilter === "Alle" ? handlinger : handlinger.filter((h) => profilnavn(profiler, h.uid).startsWith(ansvarligFilter));
+  const synligeHandlinger = visMine ? ansvarligAfgrænsede.filter((h) => !h.uid || h.uid === bruger?.uid) : ansvarligAfgrænsede;
 
   return <div className="ejer-overblik-design">
     <section className="ejer-kpi-ribbon">

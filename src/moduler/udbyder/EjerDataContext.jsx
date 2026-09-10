@@ -4,7 +4,7 @@ import { hentTilbud, hentTilbudsPrislister } from "../../fleet/ejer-tilbud.js";
 
 const EjerDataContext = createContext(null);
 
-export function EjerDataProvider({ children }) {
+export function EjerDataProvider({ children, ansvarligFilter = "Alle" }) {
   const [crm, setCrm] = useState(null);
   const [profiler, setProfiler] = useState(null);
   const [tilbud, setTilbud] = useState(null);
@@ -33,8 +33,8 @@ export function EjerDataProvider({ children }) {
   useEffect(() => { genindlaes(); }, [genindlaes]);
 
   const vaerdi = useMemo(() => ({
-    crm, profiler, tilbud, prislister, fejl, henter, genindlaes,
-  }), [crm, profiler, tilbud, prislister, fejl, henter, genindlaes]);
+    crm, profiler, tilbud, prislister, fejl, henter, genindlaes, ansvarligFilter,
+  }), [crm, profiler, tilbud, prislister, fejl, henter, genindlaes, ansvarligFilter]);
 
   return <EjerDataContext.Provider value={vaerdi}>{children}</EjerDataContext.Provider>;
 }

@@ -35,14 +35,14 @@ function AnalyseResultat({ analyse, traadId, arbejder, koer }) {
 }
 
 export default function EjerSalgsindbakke() {
-  const { profiler, crm, tilbud } = useEjerData();
+  const { profiler, crm, tilbud, ansvarligFilter } = useEjerData();
   const [data, setData] = useState(null); const [fejl, setFejl] = useState(""); const [arbejder, setArbejder] = useState(false);
   const [valgtId, setValgtId] = useState(""); const [soeg, setSoeg] = useState(""); const [status, setStatus] = useState("alle");
   const [note, setNote] = useState(""); const [assistent, setAssistent] = useState(""); const [svar, setSvar] = useState(null);
   const indlaes = async () => { try { setData(await hentSalgsplatform()); setFejl(""); } catch (e) { setFejl(e.message); } };
   useEffect(() => { indlaes(); }, []);
-  const traade = useMemo(() => tilListe(data?.traade).filter((t) => status === "alle" || (status === "mine" ? t.ansvarligUid === profiler?.[0]?.uid : t.status === status)).filter((t) => `${t.emne} ${t.senesteFra}`.toLowerCase().includes(soeg.toLowerCase())).sort((a, b) => (b.senesteAktivitetMs || 0) - (a.senesteAktivitetMs || 0)), [data, status, soeg, profiler]);
-  useEffect(() => { if (!valgtId && traade[0]) setValgtId(traade[0].id); }, [traade, valgtId]);
+  const traade = useMemo(() => tilListe(data?.traade).filter((t) => status === "alle" || (status === "mine" ? t.ansvarligUid === profiler?.[0]?.uid : t.status === status)).filter((t) => ansvarligFilter === "Alle" || profiler?.find((p) => p.uid === t.ansvarligUid)?.navn?.startsWith(ansvarligFilter)).filter((t) => `${t.emne} ${t.senesteFra}`.toLowerCase().includes(soeg.toLowerCase())).sort((a, b) => (b.senesteAktivitetMs || 0) - (a.senesteAktivitetMs || 0)), [data, status, soeg, profiler, ansvarligFilter]);
+  useEffect(() => { if (!traade.some((t) => t.id === valgtId)) setValgtId(traade[0]?.id || ""); }, [traade, valgtId]);
   const valgt = data?.traade?.[valgtId];
   const [redigering, setRedigering] = useState(null);
   useEffect(() => { if (valgt) setRedigering({ status: valgt.status || "ny", ansvarligUid: valgt.ansvarligUid || "", virksomhedId: valgt.links?.virksomhedId || "", mulighedId: valgt.links?.mulighedId || "", tilbudId: valgt.links?.tilbudId || "" }); }, [valgtId, valgt?.revision]);
