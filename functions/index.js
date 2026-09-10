@@ -65,6 +65,7 @@ import { erEjerClaims, erTokenEfterRevocation } from "./delt/ejeradgang.js";
 import {
   harValideringsfejl, validerCrmVirksomhed, validerCrmMulighed, validerCrmAktivitet,
 } from "./delt/ejer-crm-regler.js";
+import { validerTilbud, tilbudsnummer } from "./delt/ejer-tilbud-regler.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
    for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
@@ -1415,6 +1416,148 @@ export const crmaktivitetgem = onCall({ region: REGION }, async (req) => {
     objekt: "crmAktivitet", objektId: id,
   });
   return { ok: true, id, virksomhedId, revision };
+});
+
+function kraevTilbudId(vaerdi, navn = "Tilbuds-id") {
+  const id = kortStreng(vaerdi, 160);
+  if (!id || !/^[A-Za-z0-9_-]{8,160}$/.test(id)) {
+    throw new HttpsError("invalid-argument", `${navn} har ugyldigt format.`);
+  }
+  return id;
+}
+
+async function naesteTilbudsnummer(udstedelsesdato) {
+  const aar = Number(String(udstedelsesdato).slice(0, 4));
+  const sekvensRef = getDatabase().ref(`udbyder/sekvenser/tilbud/${aar}`);
+  const resultat = await sekvensRef.transaction((aktuel) => (Number(aktuel) || 0) + 1);
+  if (!resultat.committed) throw new HttpsError("aborted", "Tilbudsnummer kunne ikke reserveres.");
+  return tilbudsnummer(aar, resultat.snapshot.val());
+}
+
+async function skrivTilbudstidslinje(virksomhedId, art, objektId, uid, ekstra = {}) {
+  const ref = getDatabase().ref(`udbyder/crm/virksomheder/${virksomhedId}/tidslinje`).push();
+  await ref.set({ ms: Date.now(), uid, art, objektId, ...ekstra });
+}
+
+/* Kladder har også serverberegnede beløb. Et tilbudsnummer tildeles kun af
+   serveren, og operationId bliver dokumentets stabile id ved retries. */
+export const tilbudgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const valideret = validerTilbud(d);
+  const post = kastValideringsfejl(valideret);
+  const virksomhedId = kraevCrmId(post.virksomhedId, "Virksomheds-id");
+  const db = getDatabase();
+  const virksomhed = (await db.ref(`udbyder/crm/virksomheder/${virksomhedId}/stamdata`).once("value")).val();
+  if (!virksomhed) throw new HttpsError("not-found", "CRM-virksomheden findes ikke.");
+  if (post.mulighedId) {
+    const mulighed = await db.ref(`udbyder/crm/virksomheder/${virksomhedId}/muligheder/${post.mulighedId}`).once("value");
+    if (!mulighed.exists()) throw new HttpsError("failed-precondition", "Salgsmuligheden tilhører ikke virksomheden.");
+  }
+
+  const erNy = !d.id;
+  const id = erNy ? kraevTilbudId(d.operationId, "operationId") : kraevTilbudId(d.id);
+  const ref = db.ref(`udbyder/tilbud/${id}`);
+  const eksisterendeFoer = (await ref.once("value")).val();
+  const nummer = eksisterendeFoer?.nummer || await naesteTilbudsnummer(post.udstedelsesdato);
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const nu = Date.now();
+  let konflikt = false;
+  const resultat = await ref.transaction((aktuel) => {
+    const revision = aktuel?.revision || 0;
+    if ((!erNy && !aktuel) || revision !== forventetRevision) { konflikt = true; return; }
+    if (aktuel && aktuel.status !== "kladde") { konflikt = true; return; }
+    return {
+      ...(aktuel || {}), id, nummer, status: "kladde",
+      virksomhedId, mulighedId: post.mulighedId,
+      kladde: { ...post, beregning: valideret.beregning },
+      oprettetMs: aktuel?.oprettetMs || nu,
+      oprettetAf: aktuel?.oprettetAf || ejerUid,
+      opdateretMs: nu, opdateretAf: ejerUid, revision: revision + 1,
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Tilbuddet er ændret eller låst. Genindlæs og prøv igen.");
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: erNy ? "tilbud.opret" : "tilbud.opdater", objekt: "tilbud", objektId: id });
+  return { ok: true, id, nummer, revision: resultat.snapshot.val()?.revision };
+});
+
+/* Udstedelse fryser præcis den servervaliderede kladde som næste uforanderlige
+   version. Senere redigering kræver i næste etape en eksplicit ny kladde. */
+export const tilbududsted = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const nu = Date.now();
+  let konflikt = false;
+  const resultat = await ref.transaction((aktuel) => {
+    if (!aktuel?.kladde || aktuel.revision !== forventetRevision || aktuel.status !== "kladde") {
+      konflikt = true; return;
+    }
+    const valideret = validerTilbud(aktuel.kladde);
+    if (harValideringsfejl(valideret)) { konflikt = true; return; }
+    const version = (aktuel.aktuelVersion || 0) + 1;
+    return {
+      ...aktuel, status: "klar", aktuelVersion: version,
+      versioner: {
+        ...(aktuel.versioner || {}),
+        [version]: {
+          version, nummer: aktuel.nummer, snapshot: { ...valideret.post, beregning: valideret.beregning },
+          udstedtMs: nu, udstedtAf: ejerUid,
+        },
+      },
+      kladde: null, opdateretMs: nu, opdateretAf: ejerUid,
+      revision: aktuel.revision + 1,
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Kun den aktuelle, gyldige kladde kan udstedes. Genindlæs tilbuddet.");
+  }
+  const tilbud = resultat.snapshot.val();
+  await Promise.all([
+    skrivTilbudstidslinje(tilbud.virksomhedId, "tilbud.udstedt", id, ejerUid, { nummer: tilbud.nummer, version: tilbud.aktuelVersion }),
+    skrivEjerAudit({ uid: ejerUid, handling: "tilbud.udsted", objekt: "tilbud", objektId: id, korrelationsId: d.operationId }),
+  ]);
+  return { ok: true, id, nummer: tilbud.nummer, version: tilbud.aktuelVersion, revision: tilbud.revision };
+});
+
+/* Manuel afsendelse er en bevidst registrering, ikke en påstand om teknisk
+   maillevering. Den virkelige mailadapter tilføjes først med korrekt setup. */
+export const tilbudsendtregistrer = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const begrundelse = kortStreng(d.begrundelse, 500);
+  if (!begrundelse) throw new HttpsError("invalid-argument", "Angiv hvor og hvordan tilbuddet blev sendt.");
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const nu = Date.now();
+  let konflikt = false;
+  const resultat = await ref.transaction((aktuel) => {
+    if (!aktuel?.aktuelVersion || aktuel.revision !== forventetRevision || !["klar", "sendt"].includes(aktuel.status)) {
+      konflikt = true; return;
+    }
+    return {
+      ...aktuel, status: "sendt", revision: aktuel.revision + 1,
+      opdateretMs: nu, opdateretAf: ejerUid,
+      afsendelser: {
+        ...(aktuel.afsendelser || {}),
+        [String(nu)]: { metode: "manuel", ms: nu, uid: ejerUid, begrundelse, version: aktuel.aktuelVersion },
+      },
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Tilbuddet kan ikke registreres sendt i den aktuelle version.");
+  }
+  const tilbud = resultat.snapshot.val();
+  await Promise.all([
+    skrivTilbudstidslinje(tilbud.virksomhedId, "tilbud.sendt.manuelt", id, ejerUid, { nummer: tilbud.nummer, version: tilbud.aktuelVersion }),
+    skrivEjerAudit({ uid: ejerUid, handling: "tilbud.sendt.manuelt", objekt: "tilbud", objektId: id }),
+  ]);
+  return { ok: true, id, revision: tilbud.revision };
 });
 
 /** Kunde-id'et fra nyttelasten — se noten ovenfor om hvorfor det er lovligt her. */

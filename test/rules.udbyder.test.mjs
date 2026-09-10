@@ -87,6 +87,7 @@ before(async () => {
     await set(ref(db, `udbyder/kunder/${T_A}`), { oprettetMs: 1e12, status: "aktiv" });
     await set(ref(db, `udbyder/kunder/${T_B}`), { oprettetMs: 1e12, status: "aktiv" });
     await set(ref(db, "udbyder/crm/virksomheder/v1/stamdata"), { navn: "CRM Kunde" });
+    await set(ref(db, "udbyder/tilbud/t1"), { nummer: "T-2026-0001", status: "kladde", virksomhedId: "v1" });
     await set(ref(db, "udbyder/audit/2026/09/a1"), {
       ms: 1e12, uid: "udb1", handling: "crm.virksomhed.opret", objekt: "crmVirksomhed",
     });
@@ -112,9 +113,10 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
   });
 
-  it("kan læse CRM og platformaudit med scriptets faktiske tenantløse claim", async () => {
+  it("kan læse CRM, tilbud og platformaudit med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
     await assertSucceeds(get(ref(db, "udbyder/crm")));
+    await assertSucceeds(get(ref(db, "udbyder/tilbud")));
     await assertSucceeds(get(ref(db, "udbyder/audit")));
   });
 
@@ -177,6 +179,7 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/kunder")));
     await assertFails(get(ref(somKunde(), `udbyder/kunder/${T_B}`)));
     await assertFails(get(ref(somKunde(), "udbyder/crm")));
+    await assertFails(get(ref(somKunde(), "udbyder/tilbud")));
     await assertFails(get(ref(somKunde(), "udbyder/audit")));
   });
 

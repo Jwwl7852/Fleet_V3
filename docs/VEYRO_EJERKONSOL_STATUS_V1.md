@@ -18,7 +18,7 @@ Opdateret: 2026-09-10
 | A — Verificeret grundlag | Implementeret og verificeret | Git, worktrees, live ref og filkortlægning |
 | B — Adgang og skal | Implementeret — sikkerhedstest mangler miljø | Claim/revocation-enhedstest, lint, build og Functions-import består; Rules-emulator kræver Java 21 |
 | C — Salg | Implementeret — sikkerhedstest mangler miljø | Persistent servermodel, 6 domænetests, lint, build og Functions-import består |
-| D — Priser og tilbud | Ikke implementeret | — |
+| D — Priser og tilbud | Delvist implementeret | 5 deterministiske beregningstests, lint, build og Functions-import består |
 | E — Aftale og kunde | Ikke implementeret | — |
 | F — Fakturering | Ikke implementeret | — |
 | G — Kredit og returdata | Ikke implementeret | — |
@@ -71,8 +71,13 @@ Opdateret: 2026-09-10
 - `npm run test:design`: 11/11 består.
 - `npm run build`: består, 498 moduler transformeret. En eksisterende CSS-
   kommentartekst giver en ikke-blokerende minifier-advarsel.
-- Import af `functions/index.js`: 78 exports indlæst; alle fire nye CRM-exports
-  findes.
+- Import af `functions/index.js`: 81 exports indlæst; alle fire nye CRM-exports
+  og tre nye tilbuds-exports findes.
+- Tilbudstest: 5/5 består, inklusive instruksens 5.855,00/40.855,00-fixture,
+  sekventielle rabatter og introperiodens første år.
+- Tilbudsserver: `tilbudgem`, `tilbududsted` og `tilbudsendtregistrer` kan
+  importeres som callables. Runtime mod emulator er ikke kørt pga. Java 21-
+  blokeringen.
 - `npm run test:rules`: ikke kørt færdigt. Firebase CLI 15.29.0 afviser den
   installerede Temurin Java 8 og kræver Java 21+. AK-01–AK-04 er derfor ikke
   erklæret bestået.
@@ -82,7 +87,8 @@ Opdateret: 2026-09-10
 
 ## Næste konkrete opgave
 
-Opret et reviewbart checkpoint for etape A–C. Fortsæt derefter etape D med
-fælles tilbudsberegning, serverallokeret nummer, snapshots og dokumentvisning.
-Installér eller peg `JAVA_HOME` på en JDK 21+ og genkør Rules-suiten, før B–C
-kan betegnes fuldt sikkerhedsverificeret.
+Færdiggør etape D med officiel ratebladsimport, ny version efter udstedelse,
+vedvarende dokumentfil og mailadaptergrænse. Fortsæt derefter etape E med
+accept, genkørbar provisioning og invitationer. Installér eller peg
+`JAVA_HOME` på en JDK 21+ og genkør Rules-suiten, før B–D kan betegnes fuldt
+sikkerhedsverificeret.

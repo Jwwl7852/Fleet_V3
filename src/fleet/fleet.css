@@ -1129,6 +1129,12 @@
 .ejer-kundekort{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ejer-kundekort>div{display:grid;gap:3px;padding:11px;border:1px solid var(--bc-line);border-radius:9px}.ejer-kundekort span,.ejer-kundekort small{color:var(--bc-muted);font-size:var(--fc-t-xs)}
 .ejer-tidslinje{display:grid;gap:0;margin:0;padding:0;list-style:none}.ejer-tidslinje li{display:grid;grid-template-columns:145px 1fr minmax(100px,auto);gap:10px;padding:9px 0;border-top:1px solid var(--bc-line)}.ejer-tidslinje time,.ejer-tidslinje span{color:var(--bc-muted);font-size:var(--fc-t-xs)}
 .ejer-tabelhandlinger{display:flex;gap:6px;flex-wrap:wrap}.ejer-tabelhandlinger .fc-btn{min-height:30px;padding:5px 8px;font-size:var(--fc-t-s)}
+.ejer-tilbudsredigering{max-width:1500px}.ejer-tilbudslinjer{display:grid;gap:10px}.ejer-tilbudslinje{margin:0;padding:12px;border:1px solid var(--bc-line);border-radius:var(--fc-r)}
+.ejer-tilbudslinje legend{padding:0 6px;font-weight:750}.ejer-tilbudstotal{display:flex;justify-content:flex-end;gap:24px;flex-wrap:wrap;margin-top:15px;padding-top:12px;border-top:1px solid var(--bc-line)}
+
+@media print{
+  .ejer-side,.ejer-top,.ejer-handlingslinje,.fc-actions{display:none!important}.ejer-app{display:block}.ejer-indhold{padding:0}.ejer-indhold>.fc-grid{max-width:none}.ejer-tilbudsdokument{border:0;box-shadow:none}
+}
 
 @media(max-width:1050px){
   .ejer-app{grid-template-columns:184px minmax(0,1fr)}.ejer-overblik-grid,.ejer-kundelayout{grid-template-columns:1fr}

@@ -26,6 +26,8 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 - `udbyder/crm/virksomheder/<virksomhedId>/muligheder/<mulighedId>`
 - `udbyder/crm/virksomheder/<virksomhedId>/aktiviteter/<aktivitetId>`
 - `udbyder/crm/virksomheder/<virksomhedId>/tidslinje/<haendelseId>`
+- `udbyder/tilbud/<operationId>` med servernummer, kladde og frosne versioner
+- `udbyder/sekvenser/tilbud/<YYYY>` (kun serveradgang)
 - `udbyder/audit/<YYYY>/<MM>/<postId>`
 - eksisterende `authRevocations/<uid>/revokeTime`
 
@@ -54,8 +56,9 @@ Database Rules og Functions i samme kontrollerede udviklingsudrulning. Ingen
 udrulning er udført fra dette spor.
 
 `npm run delt:kopier` skal køres før commit/deploy, så
-`functions/delt/ejeradgang.js` og `functions/delt/ejer-crm-regler.js` svarer
-byte-for-byte til kilderne under `src/fleet/`.
+`functions/delt/ejeradgang.js`, `functions/delt/ejer-crm-regler.js` og
+`functions/delt/ejer-tilbud-regler.js` svarer byte-for-byte til kilderne under
+`src/fleet/`.
 
 ## Verifikationsgrænse
 

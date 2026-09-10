@@ -73,11 +73,17 @@ domænetests er verificeret, regelbevis afventer Java 21.
 
 ### D — Priser og tilbud
 
-Status: ikke startet.
+Status: delvist implementeret.
 
 - Udvid eksisterende versioneret rateblad med engangs- og abonnementslinjer.
 - Fælles deterministisk beregning i browser/server.
 - Serverallokerede tilbudsnumre, versionssnapshots og PDF.
+
+Første del leverer tilbudskladde, fælles serverberegning, unikt nummer,
+uforanderlig version 1, browserens udskriv/gem-PDF og en eksplicit manuel
+afsendelsesregistrering. Automatisk indlæsning fra officiel prisliste,
+reviderede versioner, vedvarende PDF-fil, mailadapter og accept hører fortsat
+til de resterende D/E-arbejdsgange.
 
 ### E — Aftale og kunde
 
