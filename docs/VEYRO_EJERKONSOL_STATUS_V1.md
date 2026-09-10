@@ -158,12 +158,37 @@ Opdateret: 2026-09-10
 - Betalt originalfaktura viser tilbagebetalings-/udligningsbehov. Veyro
   markerer aldrig automatisk banktilbagebetaling som udført.
 
+## Implementeret i etape H
+
+- Bilagsindbakken har filvælger, drag & drop, liste/søgning, kilde, dato,
+  leverandør, dokumentnummer, beløb, status og synlig dubletbegrundelse.
+- Upload initieres servermæssigt og begrænses til PDF/JPEG/PNG og 20 MB.
+  Bekræftelsen kontrollerer Storage-metadata, magic bytes og SHA-256 før
+  originalen markeres som modtaget. Direkte klientadgang til originalen er
+  lukket; hentning kræver et nyt ejercheck og et fem minutters link.
+- Fast metadata-model, manuelle versioner og særskilt OCR-forslag forhindrer,
+  at udtrukket tekst bliver godkendte regnskabsdata. Metadata og OCR låses
+  efter godkendelse/klargøring.
+- Eksakt hash-/kildededupe og tværkanals signaler markerer mulige dubletter.
+  Der er ingen automatisk sletning, sammenlægning eller bogføring.
+- Godkendelse fryses i et vedvarende købskladde-job. Samtidige/genkørte kald
+  genbruger samme job og snapshot; Dinero-overførslen står eksplicit som
+  `ikke_tilsluttet`.
+- Omkostningsvisningen bruger kun daterede Dinero-poster på eksplicit
+  resultatmappede konti og respekterer fortegn/krediteringer. Umappede poster
+  og godkendte, ikke bogførte bilag vises separat. Ét bilag kan have flere
+  postmatches uden at bilagsbeløbet tælles igen.
+- Filupload er den eneste aktive indgang. Microsoft 365-invoice-mappe,
+  inbound-mail og OCR er adaptere med konkret manglende opsætning og vises
+  ikke som aktive.
+
 ## Verifikation 2026-09-10 — aktuel arbejdsrunde
 
 - Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
   reproducerbar Windows AF_UNIX-fejl. Isoleret Temurin JDK 11 + Firebase CLI
   13.35.1 virker; systemets Java-installationer er ikke ændret.
-- AK-01–AK-04 og Storage-regler: 33/33 består. Det dækker tenantløs ejer,
+- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4345/4345 grønne
+  platformtests. Det dækker tenantløs ejer,
   kundeadministrator, tenantadskillelse, tilbagekaldt gammelt token og lukket
   direkte adgang til ejerens PDF-sti.
 - Browser: normalt login med syntetisk tenantløs ejer i Auth/Database/Storage/
@@ -180,7 +205,7 @@ Opdateret: 2026-09-10
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
 - Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4338/4338 består. Functions-
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4345/4345 består. Functions-
   emulatoren er separat verificeret på den deklarerede Node 20-runtime.
 - M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
   provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
@@ -189,7 +214,10 @@ Opdateret: 2026-09-10
 - Etape G-måltests: 7/7 består. Den eksisterende fire-emulator-E2E dækker
   nu også kundeafvisning, delkredit, samtidig restkredit med én vinder,
   overkreditafvisning, frossen PDF og idempotent testafsendelse.
-- `npm run build` efter etape G består med 511 moduler.
+- Etape H-måltests: 7/7 består. Fire-emulator-E2E dækker ejer-/kundeafvisning,
+  uploadbekræftelse, eksakt dublet, metadataversion, godkendelse, to samtidige
+  Dinero-klargøringer til ét job og match til en bogført fixturepost.
+- `npm run build` efter etape H består med 515 moduler.
 - En ny fuld callable-E2E for salgsindbakken blev ikke oprettet, fordi miljøets
   sikkerhedsreview afviste den foreslåede emulatortestfil. Den eksisterende
   ejer-flow-E2E, rules, rene adaptertests og build er grønne; M365-/AI-callables
@@ -215,7 +243,9 @@ Opdateret: 2026-09-10
 
 ## Næste konkrete opgave
 
-Før ekstern aktivering skal postkassetype og underliggende mailbox-id for
+Etape I er næste interne etape: fælles, periodebundne KPI-definitioner med
+kilde/datadækning og klikbar afstemning. Før ekstern aktivering skal
+postkassetype og underliggende mailbox-id for
 `info@veyrosystems.com` verificeres, Entra-app/mailbox-scope og Send As-retten
 godkendes, og en syntetisk ikke-produktions-E2E gennemføres. OpenAI kræver
 godkendt model, månedlige grænser og Functions-secret samt en autoriseret
@@ -226,3 +256,5 @@ Indgående vedhæftninger gemmes som tvungen download, privat/no-store og med
 Dinero-aktivering kræver personlig client-id/-secret, organisations-id,
 organisationsspecifik API-nøgle, salgskonto og en separat testorganisation.
 Først derefter kan oprettelse/bogføring/mailout og retursynk dokumenteres live.
+Bilagsoverførsel kræver desuden et kontraktverificeret Dinero-købs-/bilagsflow;
+ingen klargjort Veyro-post er rapporteret som bogført.

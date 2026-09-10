@@ -99,6 +99,9 @@ before(async () => {
     await set(ref(db, "udbyder/kreditnotaer/f1"), { fakturaId: "f1", tenantId: T_A, originalEksternReference: "dinero-f1", originalIaltOere: 12500, poster: { k1: { id: "k1", status: "kladde" } } });
     await set(ref(db, "udbyder/kreditjobs/k1"), { id: "k1", kreditId: "k1", fakturaId: "f1", status: "afventer" });
     await set(ref(db, "udbyder/dinero/synk/status/samlet"), { status: "ikke_tilsluttet" });
+    await set(ref(db, "udbyder/bilagsindbakke/poster/b1"), { id: "b1", status: "til_gennemgang", modtagetMs: 1e12 });
+    await set(ref(db, "udbyder/bilagsindbakke/dedupe/hash/h1"), "b1");
+    await set(ref(db, "udbyder/bilagjobs/bilagjob_b1"), { id: "bilagjob_b1", bilagId: "b1", status: "forberedt" });
     await set(ref(db, "udbyder/salgsindbakke/traade/tr1"), { id: "tr1", status: "ny", senesteAktivitetMs: 1e12 });
     await set(ref(db, "udbyder/salgsindbakke/dedupe/d1"), { status: "gemt" });
     await set(ref(db, "udbyder/mailjobs/m1"), { id: "m1", status: "kladde" });
@@ -130,12 +133,14 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
   it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
     for (const node of [
-      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs", "kreditnotaer", "kreditjobs", "dinero", "mailjobs", "vidensbase", "ai",
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer", "fakturajobs", "kreditnotaer", "kreditjobs", "dinero", "bilagjobs", "mailjobs", "vidensbase", "ai",
     ]) {
       await assertSucceeds(get(ref(db, `udbyder/${node}`)));
     }
     await assertSucceeds(get(ref(db, "udbyder/salgsindbakke/traade")));
+    await assertSucceeds(get(ref(db, "udbyder/bilagsindbakke/poster")));
     await assertFails(get(ref(db, "udbyder/salgsindbakke/dedupe")));
+    await assertFails(get(ref(db, "udbyder/bilagsindbakke/dedupe")));
     await assertFails(get(ref(db, "udbyder/integrationshemmeligheder")));
   });
 
@@ -208,6 +213,8 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/kreditnotaer")));
     await assertFails(get(ref(somKunde(), "udbyder/kreditjobs")));
     await assertFails(get(ref(somKunde(), "udbyder/dinero")));
+    await assertFails(get(ref(somKunde(), "udbyder/bilagsindbakke/poster")));
+    await assertFails(get(ref(somKunde(), "udbyder/bilagjobs")));
     await assertFails(get(ref(somKunde(), "udbyder/salgsindbakke/traade")));
     await assertFails(get(ref(somKunde(), "udbyder/mailjobs")));
     await assertFails(get(ref(somKunde(), "udbyder/vidensbase")));

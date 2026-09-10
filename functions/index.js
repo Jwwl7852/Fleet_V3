@@ -90,6 +90,11 @@ import {
 } from "./delt/ejer-crm-regler.js";
 import { validerTilbud, tilbudsnummer } from "./delt/ejer-tilbud-regler.js";
 import { byggKreditsnapshot, validerKreditModResterende } from "./delt/ejer-kreditnota-regler.js";
+import {
+  BILAG_MAX_BYTES, BILAG_MIME, BILAG_STATUS, bilagDedupeSignaler,
+  filsignaturMatcher, normaliserBilagsmetadata,
+} from "./delt/ejer-bilag-regler.js";
+import { bilagMailForbindelsesstatus, koerIsoleretOcrTest } from "./bilag-adaptere.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
    for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
@@ -3574,6 +3579,295 @@ export const dinerosynkroniserPlanlagt = onSchedule({
 }, async () => {
   try { await koerDineroRetursynk(); }
   catch (error) { console.error("Planlagt Dinero-synk fejlede", { name: error?.name, code: error?.code, status: error?.status }); }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   VEYROS BILAGSINDBAKKE — adskilt fra kundernes FAKTURACENTER
+   ═════════════════════════════════════════════════════════════ */
+
+function kraevBilagId(vaerdi) {
+  const id = kortStreng(vaerdi, 80);
+  if (!id || !/^bilag_[a-f0-9]{24}$/.test(id)) throw new HttpsError("invalid-argument", "Bilag-id mangler eller er ugyldigt.");
+  return id;
+}
+
+const bilagSti = (id) => `udbyder/bilagsindbakke/poster/${id}`;
+
+export const ejerbilaguploadinitier = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const operationId = kortStreng(req.data?.operationId, 100);
+  const filnavn = kortStreng(req.data?.filnavn, 240);
+  const contentType = kortStreng(req.data?.contentType, 100)?.toLowerCase();
+  const stoerrelse = Number(req.data?.stoerrelse);
+  if (!operationId) throw new HttpsError("invalid-argument", "Operations-id mangler.");
+  const fejl = BILAG_MIME.includes(contentType) ? [] : ["Kun PDF, JPEG og PNG kan modtages."];
+  if (!filnavn || !Number.isSafeInteger(stoerrelse) || stoerrelse <= 0 || stoerrelse > BILAG_MAX_BYTES) fejl.push("Filnavn eller størrelse er ugyldig; maksimum er 20 MB.");
+  if (fejl.length) throw new HttpsError("invalid-argument", fejl.join(" "));
+  const id = `bilag_${createHash("sha256").update(`${ejerUid}:${operationId}`).digest("hex").slice(0, 24)}`;
+  const requestSha256 = createHash("sha256").update(stabilJson({ filnavn, contentType, stoerrelse })).digest("hex");
+  const storagePath = `ejer/bilag/${id}/original`;
+  const nu = Date.now();
+  const ref = getDatabase().ref(bilagSti(id));
+  let konflikt = false;
+  const resultat = await ref.transaction((aktuel) => {
+    if (aktuel) {
+      if (aktuel.requestSha256 !== requestSha256) { konflikt = true; return; }
+      return aktuel;
+    }
+    return {
+      id, requestSha256, status: "upload_afventer", revision: 0,
+      kilde: { art: "filupload", id: operationId, gruppeId: operationId },
+      fil: { filnavn, angivetContentType: contentType, angivetStoerrelse: stoerrelse, storagePath },
+      modtagetMs: nu, oprettetMs: nu, oprettetAf: ejerUid, opdateretMs: nu,
+    };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("already-exists", "Operations-id'et er allerede brugt til en anden fil.");
+  // V4-signering kræver en rigtig servicekonto. I den strengt afgrænsede
+  // fire-emulator-test lægger testharnessen derfor fixturebytes på denne
+  // forventede sti med Admin SDK; bekræftelsesflowet er ellers identisk.
+  let uploadUrl = null;
+  if (!erIsoleretFakturatest()) {
+    [uploadUrl] = await getStorage().bucket().file(storagePath).getSignedUrl({
+      version: "v4", action: "write", expires: nu + 10 * 60 * 1000, contentType,
+    });
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.upload.initier", objekt: "bilag", objektId: id, korrelationsId: operationId });
+  return {
+    ok: true, id, uploadUrl, expiresInSeconds: 600, contentType,
+    testOnlyStoragePath: erIsoleretFakturatest() ? storagePath : null,
+    genbrugt: resultat.snapshot.val().oprettetMs !== nu,
+  };
+});
+
+export const ejerbilaguploadbekraeft = onCall({ region: REGION, memory: "512MiB" }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const ref = getDatabase().ref(bilagSti(id));
+  const post = (await ref.once("value")).val();
+  if (!post) throw new HttpsError("not-found", "Bilaget findes ikke.");
+  if (post.status !== "upload_afventer") return { ok: true, id, status: post.status, genbrugt: true };
+  const file = getStorage().bucket().file(post.fil.storagePath);
+  const [findes] = await file.exists();
+  if (!findes) throw new HttpsError("failed-precondition", "Filen er endnu ikke overført til uploadlinket.");
+  const afvis = async (grund) => {
+    await file.delete({ ignoreNotFound: true });
+    await ref.update({ status: "afvist", afvistGrund: grund, opdateretMs: Date.now(), opdateretAf: ejerUid });
+    await skrivEjerAudit({ uid: ejerUid, handling: "bilag.upload.afvist", objekt: "bilag", objektId: id });
+    throw new HttpsError("failed-precondition", grund);
+  };
+  const [meta] = await file.getMetadata();
+  const faktiskStoerrelse = Number(meta.size);
+  const faktiskContentType = String(meta.contentType || "").toLowerCase();
+  if (!Number.isSafeInteger(faktiskStoerrelse) || faktiskStoerrelse <= 0 || faktiskStoerrelse > BILAG_MAX_BYTES) await afvis("Filens faktiske størrelse er ugyldig eller over 20 MB.");
+  if (faktiskContentType !== post.fil.angivetContentType) await afvis("Filens faktiske content-type afviger fra den godkendte upload.");
+  const [signatur] = await file.download({ start: 0, end: 15 });
+  if (!filsignaturMatcher(signatur, faktiskContentType)) await afvis("Filens magic bytes matcher ikke den angivne filtype.");
+  const [bytes] = await file.download();
+  const sha256Vaerdi = createHash("sha256").update(bytes).digest("hex");
+  const dedupeRef = getDatabase().ref(`udbyder/bilagsindbakke/dedupe/hash/${sha256Vaerdi}`);
+  const dedupe = await dedupeRef.transaction((aktuel) => aktuel || id);
+  const andetId = dedupe.snapshot.val() !== id ? dedupe.snapshot.val() : null;
+  const status = andetId ? "mulig_dublet" : "ny";
+  await file.setMetadata({ contentType: faktiskContentType, cacheControl: "private, no-store", contentDisposition: `attachment; filename="${post.fil.filnavn.replace(/["\\]/g, "_")}"` });
+  await ref.update({
+    status, revision: (post.revision || 0) + 1, fil: {
+      ...post.fil, contentType: faktiskContentType, stoerrelse: faktiskStoerrelse,
+      sha256: sha256Vaerdi, verificeretMs: Date.now(),
+    },
+    dublet: andetId ? { art: "eksakt_fil", andetBilagId: andetId, grunde: ["Samme filhash"] } : null,
+    opdateretMs: Date.now(), opdateretAf: ejerUid,
+  });
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.upload.bekraeft", objekt: "bilag", objektId: id });
+  return { ok: true, id, status, dubletAf: andetId };
+});
+
+export const ejerbilaghent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const post = (await getDatabase().ref(bilagSti(id)).once("value")).val();
+  if (!post?.fil?.storagePath || post.status === "afvist") throw new HttpsError("not-found", "Et aktivt originalbilag findes ikke.");
+  const [url] = await getStorage().bucket().file(post.fil.storagePath).getSignedUrl({ action: "read", expires: Date.now() + 5 * 60 * 1000, responseDisposition: "attachment" });
+  return { ok: true, id, url, expiresInSeconds: 300, fil: post.fil };
+});
+
+export const ejerbilagmetadatagem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const forventetRevision = kraevForventetRevision(req.data?.forventetRevision);
+  const normaliseret = normaliserBilagsmetadata(req.data?.metadata);
+  if (!normaliseret.ok) throw new HttpsError("invalid-argument", normaliseret.fejl.join(" "));
+  const ref = getDatabase().ref(bilagSti(id));
+  const foer = (await ref.once("value")).val();
+  if (!foer?.fil?.sha256 || !["ny", "under_behandling", "til_gennemgang", "mulig_dublet"].includes(foer.status)) {
+    throw new HttpsError("failed-precondition", "Bilagets metadata kan ikke ændres efter godkendelse eller arkivering.");
+  }
+  const nu = Date.now(); let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const post = transaktionsstart(lokal);
+    if (!post || (post.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    const version = Number(post.metadata?.version || 0) + 1;
+    const versionspost = { version, ...normaliseret.post, gemtMs: nu, gemtAf: ejerUid, kilde: "manuel" };
+    return {
+      ...post, status: post.status === "mulig_dublet" ? "mulig_dublet" : "til_gennemgang",
+      metadata: { version, aktuel: normaliseret.post, versioner: { ...(post.metadata?.versioner || {}), [`v${version}`]: versionspost } },
+      revision: (post.revision || 0) + 1, opdateretMs: nu, opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Bilaget blev ændret samtidigt. Genindlæs før du gemmer.");
+  // Tværkanalsignaler markeres, men sletter eller sammenfletter aldrig.
+  const alle = (await getDatabase().ref("udbyder/bilagsindbakke/poster").once("value")).val() || {};
+  const kandidat = resultat.snapshot.val();
+  let bedste = null;
+  for (const [andetId, andet] of Object.entries(alle)) {
+    if (andetId === id || ["afvist", "arkiveret"].includes(andet?.status)) continue;
+    const signal = bilagDedupeSignaler(kandidat, andet);
+    if (signal && (!bedste || signal.score > bedste.score)) bedste = { ...signal, andetBilagId: andetId };
+  }
+  if (bedste) await ref.update({ status: "mulig_dublet", dublet: bedste, opdateretMs: Date.now() });
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.metadata.gem", objekt: "bilag", objektId: id });
+  return { ok: true, id, revision: resultat.snapshot.val().revision, status: bedste ? "mulig_dublet" : resultat.snapshot.val().status, dublet: bedste };
+});
+
+export const ejerbilagstatus = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const status = kortStreng(req.data?.status, 40);
+  const forventetRevision = kraevForventetRevision(req.data?.forventetRevision);
+  if (!BILAG_STATUS.includes(status) || !["godkendt", "afvist", "arkiveret", "til_gennemgang"].includes(status)) throw new HttpsError("invalid-argument", "Statusskiftet er ikke tilladt.");
+  const ref = getDatabase().ref(bilagSti(id));
+  const foer = (await ref.once("value")).val();
+  if (!foer) throw new HttpsError("not-found", "Bilaget findes ikke.");
+  if (status === "godkendt") {
+    const m = foer.metadata?.aktuel;
+    if (!m?.leverandoer || !m.dokumentnummer || !m.dato || !m.valuta || !Number.isSafeInteger(m.totalOere) || !m.kategori) {
+      throw new HttpsError("failed-precondition", "Leverandør, dokumentnummer, dato, valuta, total og kategori skal gennemgås før godkendelse.");
+    }
+  }
+  let konflikt = false; const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const post = transaktionsstart(lokal);
+    if (!post || (post.revision || 0) !== forventetRevision || ["matchet_dinero", "arkiveret"].includes(post.status)) { konflikt = true; return; }
+    return { ...post, status, revision: (post.revision || 0) + 1, statusMs: Date.now(), statusAf: ejerUid, opdateretMs: Date.now() };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Bilaget blev ændret samtidigt eller er låst af et match.");
+  await skrivEjerAudit({ uid: ejerUid, handling: `bilag.status.${status}`, objekt: "bilag", objektId: id });
+  return { ok: true, id, status, revision: resultat.snapshot.val().revision };
+});
+
+export const ejerbilagocrkoer = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const db = getDatabase();
+  const [postSnap, integrationSnap] = await Promise.all([db.ref(bilagSti(id)).once("value"), db.ref("udbyder/integrationer/bilag").once("value")]);
+  const post = postSnap.val(); const integration = integrationSnap.val() || {};
+  if (!post?.fil?.sha256) throw new HttpsError("failed-precondition", "Upload skal verificeres før OCR.");
+  if (!["ny", "under_behandling", "til_gennemgang", "mulig_dublet"].includes(post.status)) {
+    throw new HttpsError("failed-precondition", "OCR kan ikke ændre et godkendt, klargjort eller arkiveret bilag.");
+  }
+  if (integration.ocr?.status !== "aktiv") {
+    await db.ref(bilagSti(id)).update({ ocr: { status: "ikke_tilsluttet", senesteForsoegMs: Date.now() }, opdateretMs: Date.now() });
+    throw new HttpsError("failed-precondition", "OCR er ikke tilsluttet. Bilaget kan fortsat gennemgås manuelt.");
+  }
+  if (integration.ocr.adapter !== "test" || !erIsoleretFakturatest()) throw new HttpsError("unimplemented", "Den valgte OCR-adapter er ikke aktiveret.");
+  const svar = koerIsoleretOcrTest(integration.ocr.testFixture);
+  if (svar.kind !== "forslag") throw new HttpsError("failed-precondition", svar.error);
+  await db.ref(bilagSti(id)).update({ ocr: { status: "forslag", ...svar.resultat, oprettetMs: Date.now(), oprettetAf: ejerUid }, status: "til_gennemgang", opdateretMs: Date.now() });
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.ocr.forslag", objekt: "bilag", objektId: id });
+  return { ok: true, id, ocr: svar.resultat };
+});
+
+export const ejerbilagklargoerdinero = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const db = getDatabase();
+  const bilagRef = db.ref(bilagSti(id));
+  const foer = (await bilagRef.once("value")).val();
+  if (!foer || !["godkendt", "klargoering_dinero", "klar_til_dinero"].includes(foer.status)) {
+    throw new HttpsError("failed-precondition", "Kun et gennemgået og godkendt bilag kan klargøres til Dinero.");
+  }
+  const post = foer;
+  if (post.dineroMatch && Object.keys(post.dineroMatch).length) throw new HttpsError("already-exists", "Bilaget er allerede koblet til bogførte Dinero-poster.");
+  const snapshot = { bilagId: id, filSha256: post.fil.sha256, metadataVersion: post.metadata.version, metadata: post.metadata.aktuel, type: "koebskladde" };
+  const snapshotSha256 = createHash("sha256").update(stabilJson(snapshot)).digest("hex");
+  const jobId = `bilagjob_${id}`;
+  const jobRef = db.ref(`udbyder/bilagjobs/${jobId}`);
+  const nu = Date.now();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const laas = await bilagRef.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (!aktuel) { konflikt = true; return; }
+    if (["klargoering_dinero", "klar_til_dinero"].includes(aktuel.status)) {
+      if (aktuel.dineroKlargoering?.snapshotSha256 !== snapshotSha256) { konflikt = true; return; }
+      return aktuel;
+    }
+    if (aktuel.status !== "godkendt" || aktuel.dineroMatch && Object.keys(aktuel.dineroMatch).length) { konflikt = true; return; }
+    return {
+      ...aktuel, status: "klargoering_dinero", dineroJobId: jobId,
+      dineroKlargoering: { snapshot, snapshotSha256, startetMs: nu, startetAf: ejerUid },
+      revision: (aktuel.revision || 0) + 1, opdateretMs: nu, opdateretAf: ejerUid,
+    };
+  });
+  if (!laas.committed || konflikt) throw new HttpsError("aborted", "Bilaget blev ændret samtidigt eller er allerede bundet til en anden version.");
+  const resultat = await jobRef.transaction((aktuel) => aktuel || {
+    id: jobId, bilagId: id, type: "koebskladde", snapshot, snapshotSha256,
+    status: "forberedt", overfoerselsStatus: "ikke_tilsluttet", oprettetMs: nu, oprettetAf: ejerUid,
+  });
+  if (resultat.snapshot.val().snapshotSha256 !== snapshotSha256) throw new HttpsError("already-exists", "Bilagsjobbet er allerede bundet til en anden metadataversion.");
+  await bilagRef.transaction((aktuel) => {
+    if (!aktuel || aktuel.dineroKlargoering?.snapshotSha256 !== snapshotSha256) return;
+    if (aktuel.status === "klar_til_dinero") return aktuel;
+    return { ...aktuel, status: "klar_til_dinero", opdateretMs: Date.now(), opdateretAf: ejerUid };
+  });
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.dinero.klargoer", objekt: "bilag", objektId: id });
+  return { ok: true, id, jobId, status: "forberedt", overfoerselsStatus: "ikke_tilsluttet" };
+});
+
+export const ejerbilagmatchdinero = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevBilagId(req.data?.id);
+  const posteringId = kortStreng(req.data?.posteringId, 80);
+  if (!posteringId || !/^[A-Za-z0-9_-]+$/.test(posteringId)) throw new HttpsError("invalid-argument", "Dinero-postering mangler.");
+  const db = getDatabase();
+  const [bilagSnap, posteringSnap] = await Promise.all([db.ref(bilagSti(id)).once("value"), db.ref(`udbyder/dinero/posteringer/${posteringId}`).once("value")]);
+  if (!bilagSnap.exists() || !posteringSnap.exists()) throw new HttpsError("not-found", "Bilag eller Dinero-postering findes ikke.");
+  const nu = Date.now();
+  const bilagRef = db.ref(bilagSti(id));
+  const start = verificeretTransaktionsstart(bilagSnap.val());
+  const resultat = await bilagRef.transaction((lokal) => {
+    const aktuel = start(lokal);
+    if (!aktuel) return;
+    if (aktuel.dineroMatch?.[posteringId]) return aktuel;
+    return {
+      ...aktuel, status: "matchet_dinero",
+      dineroMatch: { ...(aktuel.dineroMatch || {}), [posteringId]: { posteringId, matchetMs: nu, matchetAf: ejerUid } },
+      revision: (aktuel.revision || 0) + 1, opdateretMs: nu,
+    };
+  });
+  if (!resultat.committed) throw new HttpsError("aborted", "Bilaget blev ændret samtidigt. Prøv igen.");
+  await db.ref(`udbyder/dinero/posteringer/${posteringId}/bilagMatch/${id}`).set({ bilagId: id, matchetMs: nu });
+  await skrivEjerAudit({ uid: ejerUid, handling: "bilag.dinero.match", objekt: "bilag", objektId: id });
+  return { ok: true, id, posteringId, status: "matchet_dinero" };
+});
+
+export const dinerokontomappinggem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const kontonummer = kortStreng(String(req.data?.kontonummer ?? ""), 30);
+  const kategori = kortStreng(req.data?.kategori, 100);
+  const resultatkonto = req.data?.resultatkonto === true;
+  const koefficient = Number(req.data?.koefficient);
+  if (!kontonummer || !kategori || ![1, -1].includes(koefficient)) throw new HttpsError("invalid-argument", "Kontonummer, kategori og fortegnskoefficient er påkrævet.");
+  const post = { kontonummer, kategori, resultatkonto, koefficient, opdateretMs: Date.now(), opdateretAf: ejerUid };
+  await getDatabase().ref(`udbyder/dinero/kontomapping/${kontonummer}`).set(post);
+  await skrivEjerAudit({ uid: ejerUid, handling: "dinero.kontomapping.gem", objekt: "dineroKonto", objektId: kontonummer });
+  return { ok: true, post };
+});
+
+export const ejerbilagintegrationstatus = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const integration = (await getDatabase().ref("udbyder/integrationer/bilag").once("value")).val() || {};
+  return { ok: true, mail: bilagMailForbindelsesstatus(integration), ocr: integration.ocr?.status === "aktiv" ? "aktiv" : "ikke_tilsluttet" };
 });
 
 /**

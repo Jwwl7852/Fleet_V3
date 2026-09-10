@@ -185,6 +185,10 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/aftaler/.read",
       "/udbyder/ai/.read",
       "/udbyder/audit/.read",
+      /* Ejerens bilagskø og klargøringsjobs er Veyros egne
+         regnskabsarbejdsdata. Dedupe-indekset er fortsat helt lukket. */
+      "/udbyder/bilagjobs/.read",
+      "/udbyder/bilagsindbakke/poster/.read",
       "/udbyder/crm/.read",
       /* Dinero-returdata og kreditreservationer er Veyros egne regnskabsdata.
          De ligger aldrig under en kundetenant og er kun læsbare for en ren ejer. */

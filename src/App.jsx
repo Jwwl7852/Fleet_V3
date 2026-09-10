@@ -111,6 +111,8 @@ const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
 const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
 const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
 const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.jsx"));
+const EjerBilagsindbakke = lazy(() => import("./moduler/udbyder/EjerBilagsindbakke.jsx"));
+const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.jsx"));
 const EjerSalgsindbakke = lazy(() => import("./moduler/udbyder/EjerSalgsindbakke.jsx"));
 const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbase.jsx"));
 const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationer.jsx"));
@@ -478,8 +480,8 @@ export default function App() {
               <Route path="/main/oekonomi" element={<EjerIkkeImplementeret titel="Økonomioverblik" etape="etape I" blokering="Dinero er ikke tilsluttet." />} />
               <Route path="/main/oekonomi/fakturaer" element={<EjerFakturaer />} />
               <Route path="/main/oekonomi/kreditnotaer" element={<EjerKreditnotaer />} />
-              <Route path="/main/oekonomi/bilag" element={<EjerIkkeImplementeret titel="Bilagsindbakke" etape="etape H" blokering="Mail- og OCR-leverandører er ikke valgt." />} />
-              <Route path="/main/oekonomi/omkostninger" element={<EjerIkkeImplementeret titel="Omkostninger" etape="etape H" blokering="Dinero-læseforbindelsen er ikke tilsluttet." />} />
+              <Route path="/main/oekonomi/bilag" element={<EjerBilagsindbakke />} />
+              <Route path="/main/oekonomi/omkostninger" element={<EjerOmkostninger />} />
               <Route path="/main/integrationer" element={<EjerIntegrationer />} />
               <Route path="*" element={<Navigate to="/main" replace />} />
             </Routes>

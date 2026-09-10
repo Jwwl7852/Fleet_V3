@@ -119,6 +119,18 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
 - Mail, Dinero, OCR, MFA og produktion er ikke tilsluttet eller testet.
 - Kreditregler og kredit-callables er emulatorverificeret. Den personlige
   Dinero-adapter og retursynk er kontrakttestet, men ikke kaldt mod Dinero.
+- Bilagsupload, signatur/hash/dedupe, metadataversioner, godkendelse,
+  genkørbar Dinero-klargøring og postmatch er verificeret i den lokale
+  Auth/Database/Functions/Storage-suite. V4-uploadlinket dannes kun uden for
+  emulatoren; testfixturebytes indsættes med Admin SDK på den serverberegnede
+  sti og gennemgår derefter samme bekræftelseskontrol.
+- Invoice-mail, inbound-webhook og OCR har leverandøruafhængige porte, men er
+  `ikke_tilsluttet`. Aktivering kræver valgt mailbox/mappe eller routing,
+  mindst mulige rettigheder, signatur/replay-kontrakt og en OCR-leverandør.
+- Dinero er fortsat eneste autoritative kilde til bogførte omkostninger.
+  Konto-/kategori-/fortegns-mapping er lokal og synlig; umappede poster
+  udelades med synlig datamangelsstatus. Et godkendt bilag bliver kun et
+  frosset Veyro-klargøringsjob, indtil købskontrakten er dokumenteret.
 
 ## Dinero-kontrakt for etape G
 

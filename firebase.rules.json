@@ -4519,6 +4519,22 @@
         ".write": false
       },
 
+      "bilagsindbakke": {
+        ".write": false,
+        "poster": {
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+          ".indexOn": ["status", "modtagetMs", "opdateretMs"]
+        },
+        "dedupe": { ".read": false, ".write": false },
+        "$andet": { ".read": false, ".write": false }
+      },
+
+      "bilagjobs": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["status", "bilagId", "opdateretMs"]
+      },
+
       "prisliste": {
         ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,

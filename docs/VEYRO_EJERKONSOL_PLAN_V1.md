@@ -186,12 +186,29 @@ Status: implementeret og isoleret verificeret 2026-09-10; live Dinero er ikke ti
 - Fakturaer fundet direkte i Dinero importeres med oprindelse. Uden et
   verificerbart Veyro-linjesnapshot kan de ses, men ikke krediteres fra Veyro.
 
-### H–I — Udgifter og overblik
+### H — Udgifter
 
-Status: ikke startet.
+Status: implementeret og isoleret verificeret 2026-09-10; mail, OCR og Dinero-købsflow er ikke tilsluttet.
 
-- Beskyttet bilagsupload, mail-/OCR-adaptergrænser og dubletkontrol.
-- Fælles beregnede KPI-definitioner med klikbar afstemning.
+- Beskyttet PDF/JPEG/PNG-upload med 20 MB-loft, faktisk signaturkontrol,
+  SHA-256, privat download og versionshistorik for metadata.
+- Eksakt dedupe på kilde-/fil-id og synlige sandsynlighedssignaler på tværs
+  af kanaler. Et sandsynligt match sletter eller sammenlægger aldrig selv.
+- OCR-resultat er et separat forslag med feltsikkerhed. Manuel gennemgang og
+  eksplicit godkendelse kræves før et frosset, genkørbart Dinero-klargøringsjob.
+- Bogførte Dinero-poster og godkendte, ikke bogførte bilag holdes adskilt.
+  Konto-/kategori-/fortegnsregler er eksplicitte og synlige; umappede poster
+  tælles ikke som nul eller som omkostning.
+- Filvælger og drag & drop fungerer. Invoice-mail, inbound-mail og OCR har
+  adskilte adaptergrænser og vises som `ikke_tilsluttet`, indtil leverandør,
+  mailbox/routing, webhooksignatur og credentials er valgt og testet.
+
+### I — Overblik
+
+Status: næste etape.
+
+- Fælles beregnede KPI-definitioner med periode, kilde, datadækning og
+  klikbar afstemning.
 
 ### J — Samlet aflevering
 
@@ -214,6 +231,9 @@ Status: ikke startet.
 - OpenAI API-secret, godkendt model og produktionsbudget er ikke opsat. Ingen
   virkelig kundemail sendes til AI under udviklingen.
 - Invoice-mail, inbound-maildomæne og OCR-leverandør er ikke identificeret.
+- Dinero-endpoint og payload for købskladde/bilagsvedhæftning er ikke
+  kontraktverificeret; H opretter derfor kun et vedvarende Veyro-job med
+  `overfoerselsStatus: ikke_tilsluttet` og foregiver aldrig bogføring.
 - Officielle Veyro-priser blev ikke fundet i repositoryet. Prisadministrationen
   er færdig, men kun emulatorfixtures indeholder eksempelpriser.
 - MFA kræver fortsat produktionsnær Firebase Authentication-opsætning. Normal

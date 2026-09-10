@@ -13,7 +13,7 @@ const VAERTER = {
 };
 if (!/^demo-/.test(PROJEKT) || VAERTER.auth !== "127.0.0.1:9099" || VAERTER.database !== "127.0.0.1:9000"
     || VAERTER.functions !== "127.0.0.1:5001" || VAERTER.storage !== "127.0.0.1:9199") {
-  throw new Error("Afvist: fakturaflow-testen kræver demo-projekt og alle fire lokale emulatorer.");
+  throw new Error(`Afvist: fakturaflow-testen kræver demo-projekt og alle fire lokale emulatorer. Modtog ${JSON.stringify({ PROJEKT, VAERTER })}`);
 }
 
 const app = initializeApp({ projectId: PROJEKT, databaseURL: `http://${VAERTER.database}?ns=${PROJEKT}`, storageBucket: `${PROJEKT}.appspot.com` }, "ejer-faktura-test");
@@ -138,7 +138,51 @@ try {
   assert.equal(kreditSendt.status, "sendt");
   assert.equal((await db.ref(`udbyder/kreditnotaer/faktura_202608_faktura-a/poster/${delkredit.kreditId}/status`).once("value")).val(), "sendt");
 
-  console.log("Ejerfakturering E2E: faktura- og kreditrace, dokumenter, succes, timeout-spærre og delvis fejl er verificeret.");
+  // Etape H: uploadinitieringen kræver en tenantløs ejer. Selve fixturefilen
+  // lægges med Admin SDK i den lokale Storage-emulator, så testen aldrig
+  // rammer et eksternt, signeret uploadlink.
+  const bilagBytes = Buffer.from("%PDF-1.7\nKun syntetisk Veyro-bilagsfixture\n%%EOF");
+  const uploadData = { operationId: "bilag-upload-a", filnavn: "fixture.pdf", contentType: "application/pdf", stoerrelse: bilagBytes.length };
+  await fejl(kald("ejerbilaguploadinitier", uploadData, kundeToken), "PERMISSION_DENIED");
+  const bilagInit = await kald("ejerbilaguploadinitier", uploadData, ejerToken);
+  assert.equal(bilagInit.uploadUrl, null);
+  assert.equal(bilagInit.testOnlyStoragePath, `ejer/bilag/${bilagInit.id}/original`);
+  await bucket.file(bilagInit.testOnlyStoragePath).save(bilagBytes, { metadata: { contentType: "application/pdf" } });
+  const bekraeftet = await kald("ejerbilaguploadbekraeft", { id: bilagInit.id }, ejerToken);
+  assert.equal(bekraeftet.status, "ny");
+
+  const dubletInit = await kald("ejerbilaguploadinitier", { ...uploadData, operationId: "bilag-upload-b" }, ejerToken);
+  await bucket.file(dubletInit.testOnlyStoragePath).save(bilagBytes, { metadata: { contentType: "application/pdf" } });
+  const dublet = await kald("ejerbilaguploadbekraeft", { id: dubletInit.id }, ejerToken);
+  assert.equal(dublet.status, "mulig_dublet");
+  assert.equal(dublet.dubletAf, bilagInit.id);
+
+  const metadata = await kald("ejerbilagmetadatagem", {
+    id: bilagInit.id, forventetRevision: 1,
+    metadata: {
+      leverandoer: "Fixtureleverandør ApS", dokumentnummer: "B-2026-1", dato: "2026-09-10", forfaldsdato: "2026-09-24",
+      valuta: "DKK", beloebEksklMomsOere: 10000, momsOere: 2500, totalOere: 12500, kategori: "Software",
+    },
+  }, ejerToken);
+  const godkendt = await kald("ejerbilagstatus", { id: bilagInit.id, forventetRevision: metadata.revision, status: "godkendt" }, ejerToken);
+  assert.equal(godkendt.status, "godkendt");
+
+  const klargoeringer = await Promise.all([
+    kald("ejerbilagklargoerdinero", { id: bilagInit.id }, ejerToken),
+    kald("ejerbilagklargoerdinero", { id: bilagInit.id }, ejerToken),
+  ]);
+  assert.equal(new Set(klargoeringer.map((r) => r.jobId)).size, 1);
+  assert.equal((await db.ref("udbyder/bilagjobs").once("value")).numChildren(), 1);
+  const bilagJob = (await db.ref(`udbyder/bilagjobs/${klargoeringer[0].jobId}`).once("value")).val();
+  assert.equal(bilagJob.snapshot.metadataVersion, 1);
+  assert.equal(bilagJob.overfoerselsStatus, "ikke_tilsluttet");
+
+  await db.ref("udbyder/dinero/posteringer/postering-h1").set({ id: "postering-h1", kontonummer: "4000", beloebOere: 12500, bogfoertMs: Date.now() });
+  const matchet = await kald("ejerbilagmatchdinero", { id: bilagInit.id, posteringId: "postering-h1" }, ejerToken);
+  assert.equal(matchet.status, "matchet_dinero");
+  assert.equal((await db.ref(`udbyder/dinero/posteringer/postering-h1/bilagMatch/${bilagInit.id}`).once("value")).exists(), true);
+
+  console.log("Ejerøkonomi E2E: faktura, kredit, bilagsupload/dublet, frossen Dinero-klargøring og match er verificeret.");
 } finally {
   await deleteApp(app);
 }
