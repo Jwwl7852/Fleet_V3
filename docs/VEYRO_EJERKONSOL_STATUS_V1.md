@@ -33,7 +33,7 @@ Opdateret: 2026-09-10
 | F — Fakturering | Implementeret; Dinero eksternt blokeret | Race, snapshot, PDF/CSV, genkørsel, ukendt udfald og delvis fejl emulatorverificeret |
 | G1 — Microsoft 365-salgsmail | Implementeret; ekstern forbindelse mangler | Rene kontrakt-/fejltests, rules og samlet build/regression består; live Graph og ny callable-E2E er ikke kørt |
 | G2 — OpenAI-salgsassistent | Implementeret; ekstern forbindelse mangler | Struktureret request, API-fejl, budgetstop, rules og samlet build/regression består; live API er ikke kaldt |
-| G — Kredit og returdata | Ikke implementeret | — |
+| G — Kredit og returdata | Implementeret; live Dinero mangler | Beregning, reservation/race, PDF og testkø emulatorverificeret; live API og retursynk ikke eksternt testet |
 | H — Udgifter | Ikke implementeret | — |
 | I — Overblik | Ikke implementeret | — |
 | J — Samlet aflevering | Ikke implementeret | — |
@@ -93,11 +93,11 @@ Opdateret: 2026-09-10
 | 4 | Rateblad | Versioneret redigering og tilbudsautoudfyldning implementeret; officielle priser mangler |
 | 5 | Tilbud | Versioner, PDF, M365-mailkladde/outbox, AI-tekstforslag, manuel registrering og accept implementeret |
 | 6 | Fakturaer | Frigivelse, PDF/CSV, kø, adapterstatus og fejlforløb implementeret; Dinero ikke tilsluttet |
-| 7 | Kreditnotaer | Ikke implementeret |
+| 7 | Kreditnotaer | Hel/delvis kredit, reservation, PDF, kø og afstemningsstatus implementeret; live Dinero ikke tilsluttet |
 | 8 | Bilagsindbakke | Ikke implementeret |
 | 9 | Omkostninger | Ikke implementeret |
 | 10 | Økonomioverblik | Ikke implementeret |
-| 11 | Integrationer | Drifts-/forbrugsstatus og Dinero-fakturajob implementeret; Microsoft 365, OpenAI og live Dinero ikke tilsluttet |
+| 11 | Integrationer | M365/OpenAI-status samt Dinero faktura-, kredit- og retursynkkontrakt implementeret; eksterne forbindelser ikke tilsluttet |
 
 ## Implementeret i etape G1–G2
 
@@ -135,6 +135,29 @@ Opdateret: 2026-09-10
   navngivet scenario. Ukendt resultat spærrer blind genudsendelse.
 - Bogført-men-ikke-sendt kan genkøres med samme eksterne reference.
 
+## Implementeret i etape G
+
+- Kreditnotaskærmen viser originalt, krediteret/reserveret og resterende beløb,
+  fakturalinjer og mængder samt adskilte dokument-, send- og afregningsstatusser.
+- Serveren bygger kreditten af det frosne fakturasnapshot. Historiske priser,
+  moms, kunde, valuta og originalreference kopieres ind; senere prisændringer
+  kan derfor ikke omskrive en kreditversion.
+- Alle aktive kreditstadier, inklusive kladde og ukendt eksternt udfald,
+  reserverer i samme RTDB-transaktion. Samtidig overkreditering afvises.
+- Frigivelsen fryser v1 med SHA-256 og en persistent PDF i lukket Storage.
+  Kun en uændret kladde kan annulleres; frigivne dokumenter hårdslettes ikke.
+- Kredit-outbox genbruger F's fejlmodel. Testadapteren dækker succes, timeout
+  efter oprettelse og bogført-men-ikke-sendt. Liveadapteren bruger en stabil
+  GUID, men er ikke kaldt uden en autoriseret Dinero-testorganisation.
+- Personlig integrations auth, credit-note create/book/email, invoice/credit
+  read, payments, mailouts, entries, pagination og `changesSince` er mappet til
+  den aktuelle officielle kontrakt. Hemmeligheder er Functions-secrets.
+- Retursynk har separate sikre checkpoints pr. dokumenttype, seneste forsøg
+  og seneste succes, maksimum otte dokumenter pr. art pr. kørsel og scheduler
+  hvert 15. minut. Manglende/stale data vises aldrig som nul.
+- Betalt originalfaktura viser tilbagebetalings-/udligningsbehov. Veyro
+  markerer aldrig automatisk banktilbagebetaling som udført.
+
 ## Verifikation 2026-09-10 — aktuel arbejdsrunde
 
 - Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
@@ -157,12 +180,16 @@ Opdateret: 2026-09-10
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
 - Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4330/4330 består. Functions-
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4338/4338 består. Functions-
   emulatoren er separat verificeret på den deklarerede Node 20-runtime.
 - M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
   provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
   AI-budget/API-fejl samt ukendt Graph-udfald efter oprettet kladde.
-- Målrettet ESLint består. `npm run build` består med 508 moduler.
+- Målrettet ESLint består.
+- Etape G-måltests: 7/7 består. Den eksisterende fire-emulator-E2E dækker
+  nu også kundeafvisning, delkredit, samtidig restkredit med én vinder,
+  overkreditafvisning, frossen PDF og idempotent testafsendelse.
+- `npm run build` efter etape G består med 511 moduler.
 - En ny fuld callable-E2E for salgsindbakken blev ikke oprettet, fordi miljøets
   sikkerhedsreview afviste den foreslåede emulatortestfil. Den eksisterende
   ejer-flow-E2E, rules, rene adaptertests og build er grønne; M365-/AI-callables
@@ -196,3 +223,6 @@ syntetisk prøve. Dependency-opgraderingen forbliver et separat spor; ingen
 produktionstilslutning, virkelig mail eller kundedataoverførsel sker herfra.
 Indgående vedhæftninger gemmes som tvungen download, privat/no-store og med
 20 MB loft; valg af malware-scanning og retention skal træffes før produktion.
+Dinero-aktivering kræver personlig client-id/-secret, organisations-id,
+organisationsspecifik API-nøgle, salgskonto og en separat testorganisation.
+Først derefter kan oprettelse/bogføring/mailout og retursynk dokumenteres live.

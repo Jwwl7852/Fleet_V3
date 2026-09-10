@@ -64,3 +64,64 @@ export function simulerFakturaPort(payload, scenario) {
   if (scenario === "book_ok_send_fail") return { kind: "send_error", invoice: { ...base, documentStatus: "booked" } };
   return { kind: "sent", invoice: { ...base, documentStatus: "booked", deliveryStatus: "sent" } };
 }
+
+export function byggKreditnotaPortPayload(snapshot, eksternReference, originalEksternReference) {
+  return {
+    operationKey: `kreditnota:${snapshot.kreditId}`,
+    externalReference: eksternReference,
+    documentType: "credit_note",
+    creditNoteFor: originalEksternReference,
+    currency: snapshot.valuta || "DKK",
+    contact: {
+      externalKey: snapshot.originalFaktura?.kundeId,
+      name: snapshot.modtager?.navn || null,
+      vatNumber: snapshot.modtager?.cvr || null,
+      email: snapshot.modtager?.email || null,
+      deliveryChannel: snapshot.modtager?.kanal || "manuel",
+    },
+    reason: snapshot.aarsag,
+    lines: (snapshot.linjer || []).map((linje) => ({
+      sourceKey: `${snapshot.originalFaktura?.forretningsnoegle}:${linje.kildeNoegle}`,
+      description: linje.navn,
+      quantityMillis: linje.antal,
+      unitAmountCents: linje.satsOere,
+      vatRatePercent: linje.momssats,
+      lineAmountCents: linje.beloebOere,
+    })),
+    totals: { subtotalCents: snapshot.beloebOere, vatCents: snapshot.momsOere, totalCents: snapshot.ialtOere },
+  };
+}
+
+export function validerKreditnotaPortPayload(payload) {
+  const fejl = [];
+  if (payload?.documentType !== "credit_note" || !payload.creditNoteFor) fejl.push("Originalfakturaen mangler.");
+  if (!payload?.reason || !payload.externalReference) fejl.push("Årsag eller ekstern reference mangler.");
+  if (!Array.isArray(payload?.lines) || !payload.lines.length) fejl.push("Kreditnotaen mangler linjer.");
+  for (const [index, linje] of (payload?.lines || []).entries()) {
+    if (!linje.sourceKey || !linje.description || !heltal(linje.quantityMillis)
+        || linje.quantityMillis <= 0 || !heltal(linje.lineAmountCents) || linje.lineAmountCents <= 0) {
+      fejl.push(`Kreditlinje ${index + 1} bryder portkontrakten.`);
+    }
+  }
+  const subtotal = (payload?.lines || []).reduce((sum, linje) => sum + (linje.lineAmountCents || 0), 0);
+  if (!heltal(payload?.totals?.subtotalCents) || !heltal(payload?.totals?.vatCents)
+      || !heltal(payload?.totals?.totalCents) || subtotal !== payload.totals.subtotalCents
+      || payload.totals.subtotalCents + payload.totals.vatCents !== payload.totals.totalCents) {
+    fejl.push("Kreditlinjer, moms og totaler stemmer ikke.");
+  }
+  return fejl;
+}
+
+export function simulerKreditnotaPort(payload, scenario) {
+  const fejl = validerKreditnotaPortPayload(payload);
+  if (!TEST_SCENARIER.includes(scenario)) fejl.push("Et eksplicit, tilladt testscenario mangler.");
+  if (fejl.length) return { kind: "contract_error", errors: fejl };
+  const base = {
+    externalReference: payload.externalReference, creditNoteFor: payload.creditNoteFor,
+    currency: payload.currency, subtotalCents: payload.totals.subtotalCents,
+    vatCents: payload.totals.vatCents, totalCents: payload.totals.totalCents,
+  };
+  if (scenario === "timeout_after_create") return { kind: "unknown", draft: base };
+  if (scenario === "book_ok_send_fail") return { kind: "send_error", creditNote: { ...base, documentStatus: "booked" } };
+  return { kind: "sent", creditNote: { ...base, documentStatus: "booked", deliveryStatus: "sent" } };
+}

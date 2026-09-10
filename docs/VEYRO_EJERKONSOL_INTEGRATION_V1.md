@@ -9,7 +9,7 @@ Den bruger den eksisterende tenantløse `/main`-gren, mens kundernes egen
 administration fortsat ligger bag tenantclaims. FLEET, FACILITY, PLANNING og
 FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 
-## Fælles kontrakter berørt af etape B–G2
+## Fælles kontrakter berørt af etape B–G2 og G
 
 | Fil/område | Kontrakt |
 |---|---|
@@ -25,6 +25,9 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 | `functions/tilbud-pdf.js` | Server-PDF bygges fra det frosne versionssnapshot og repositoryets Veyro-logo. |
 | `functions/fakturagrundlag-pdf.js` | Fakturagrundlags-PDF/CSV bygges kun fra det frosne frigivelsessnapshot. |
 | `functions/dinero-test-adapter.js` | Intern, fail-closed fakturaport til emulatoren; ingen påstået live-Dinero-kontrakt. |
+| `src/fleet/ejer-kreditnota-regler.js` | Delt heltalsberegning og reservationskontrol for hel/delvis kredit. |
+| `functions/dinero-personlig.js` | Server-only personlig auth, kreditnota- og returdataadapter mod Dineros aktuelle v1-endpoints. |
+| `functions/kreditnota-pdf.js` | Kredit-PDF bygges af den frosne kreditversion, ikke af aktuelle priser. |
 | `functions/microsoft-graph.js` | Graph-token, delta, vedhæftninger og draft/send-port med eksplicit ukendt udfald. |
 | `functions/openai-salgsassistent.js` | Serverbaseret Responses API-kontrakt med struktureret output og `store: false`. |
 | `functions/salgsplatform.js` | Rene normaliserings-, dublet-, godkendelses- og AI-budgetregler. |
@@ -42,6 +45,11 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 - `udbyder/invitationer/<invitationId>` med tokenhash, generation og livscyklus
 - `udbyder/integrationer/tilbudsmail` som adapterstatus, ikke credentials
 - `udbyder/fakturajobs/<jobId>` med stabil forretningsnøgle, eksternt reference-id og tre statusdomæner
+- `udbyder/kreditnotaer/<fakturaId>/poster/<kreditId>` med frossen kilde, reservation, version og dokument
+- `udbyder/kreditjobs/<jobId>` med stabil ekstern GUID og separate dokument-/send-/afregningsstatusser
+- `udbyder/dinero/dokumenter/{faktura|kreditnota}/<guid>` med normaliserede returdata og oprindelse
+- `udbyder/dinero/synk/checkpoints/<art>` og `/status/<art>` med side, `changesSince`, forsøg og succes
+- `udbyder/dinero/posteringer/<id>` med normaliserede bogførte posteringer
 - `udbyder/salgsindbakke/traade/<traadId>` med mails, CRM-links, noter, analyse og opfølgninger
 - `udbyder/salgsindbakke/dedupe/<hash>` som serverejet leveringslås
 - `udbyder/mailjobs/<jobId>` med indholdshash, tilbudsversion og providerstatus
@@ -109,6 +117,25 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
   består i isoleret demo-projekt.
 - Server-PDF's layoutprøve er renderet og visuelt kontrolleret.
 - Mail, Dinero, OCR, MFA og produktion er ikke tilsluttet eller testet.
+- Kreditregler og kredit-callables er emulatorverificeret. Den personlige
+  Dinero-adapter og retursynk er kontrakttestet, men ikke kaldt mod Dinero.
+
+## Dinero-kontrakt for etape G
+
+- Personlig auth: `POST https://authz.dinero.dk/dineroapi/oauth/token` med
+  Basic client-id/secret og API-nøglen som username/password. Tokenet lever
+  en time og gemmes ikke i RTDB.
+- Kredit: `POST /v1/{organizationId}/sales/creditnotes`, derefter
+  `POST .../{guid}/book` med den seneste timestamp og `POST .../{guid}/email`.
+  En mistet response efter en skrivning er et ukendt udfald og blokerer retry.
+- Returdata: listeendpoints for invoices og sales/creditnotes bruger
+  `changesSince`, 0-baseret side og begrænset sidestørrelse. Checkpoint flyttes
+  først efter sikker lagring. Payments og mailouts hentes pr. dokument.
+- Personlige integrationer kan ikke bruge entries-webhook; 15-minutters
+  polling er derfor den valgte transport. Officielle kilder:
+  `https://developer.dinero.dk/documentation/personal-integration/`,
+  `https://developer.dinero.dk/documentation/faq/` og
+  `https://api.dinero.dk/openapi/index.html`.
 
 ## Supplerende Microsoft 365- og OpenAI-kontrakt
 

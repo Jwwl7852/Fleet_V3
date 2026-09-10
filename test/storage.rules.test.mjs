@@ -139,6 +139,16 @@ describe("Ejerens tilbuds-PDF kan kun hentes gennem den adgangskontrollerede ser
     await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "application/pdf" }));
     await assertFails(getBytes(fil));
   });
+
+  it("afviser direkte adgang til faktura- og kreditnotadokumenter", async () => {
+    const ejer = miljoe.authenticatedContext("ejer-regnskabsdokumenter", byggEjerClaims({})).storage();
+    const kunde = somMed("kunde-regnskabsdokumenter", ALLE_PERMS);
+    for (const sti of ["ejer/fakturagrundlag/2026-08/kunde-a/v1.pdf", "ejer/kreditnotaer/faktura-1/kredit-1/v1.pdf"]) {
+      await assertFails(uploadBytes(storageRef(ejer, sti), NOGLE_BYTES, { contentType: "application/pdf" }));
+      await assertFails(getBytes(storageRef(ejer, sti)));
+      await assertFails(getBytes(storageRef(kunde, sti)));
+    }
+  });
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

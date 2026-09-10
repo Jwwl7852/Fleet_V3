@@ -97,7 +97,7 @@ export default function EjerOverblik({ bruger }) {
       <Kort titel="Forbindelsesstatus">
         <div className="ejer-statuslinjer">
           <div><Pille tone="ok">Aktiv</Pille><span>Firebase ejerdata og adgangskontrol</span></div>
-          <div><Pille tone="warn">Ikke tilsluttet</Pille><span>Dinero — credentials og testorganisation mangler</span></div>
+          <div><Pille tone={salgsplatform?.integrationer?.dinero?.status === "aktiv" ? "ok" : "warn"}>{salgsplatform?.integrationer?.dinero?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>Dinero · fakturaer, kreditnotaer og returdata</span></div>
           <div><Pille tone={salgsplatform?.integrationer?.microsoft365?.status === "aktiv" ? "ok" : "warn"}>{salgsplatform?.integrationer?.microsoft365?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>Microsoft 365 · info@veyrosystems.com</span></div>
           <div><Pille tone={salgsplatform?.integrationer?.openai?.status === "aktiv" ? "ok" : "warn"}>{salgsplatform?.integrationer?.openai?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>OpenAI-salgsassistent · mail og CRM virker uafhængigt</span></div>
           <div><Pille tone="warn">Ikke tilsluttet</Pille><span>Bilagsmail og OCR-leverandør er ikke valgt</span></div>

@@ -45,7 +45,14 @@ import { getStorage } from "firebase-admin/storage";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { genererTilbudsPdf } from "./tilbud-pdf.js";
 import { fakturagrundlagCsv, genererFakturagrundlagPdf } from "./fakturagrundlag-pdf.js";
-import { byggFakturaPortPayload, simulerFakturaPort, TEST_SCENARIER } from "./dinero-test-adapter.js";
+import { genererKreditnotaPdf } from "./kreditnota-pdf.js";
+import {
+  byggFakturaPortPayload, byggKreditnotaPortPayload, simulerFakturaPort,
+  simulerKreditnotaPort, TEST_SCENARIER,
+} from "./dinero-test-adapter.js";
+import {
+  DineroFejl, dineroKlient, dineroKreditnotaCreateModel, hentDineroToken,
+} from "./dinero-personlig.js";
 import {
   TRAAD_STATUS, VIDEN_STATUS, aiBudgetKanReserveres,
   godkendelseErAktuel, mailIndholdHash, normaliserBesked, normaliserEmail,
@@ -82,6 +89,7 @@ import {
   harValideringsfejl, validerCrmVirksomhed, validerCrmMulighed, validerCrmAktivitet,
 } from "./delt/ejer-crm-regler.js";
 import { validerTilbud, tilbudsnummer } from "./delt/ejer-tilbud-regler.js";
+import { byggKreditsnapshot, validerKreditModResterende } from "./delt/ejer-kreditnota-regler.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
    for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
@@ -171,6 +179,8 @@ const MAILGUN_AFSENDER = defineSecret("MAILGUN_AFSENDER");
 const M365_CLIENT_SECRET = defineSecret("M365_CLIENT_SECRET");
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const WEBFORM_HMAC_SECRET = defineSecret("WEBFORM_HMAC_SECRET");
+const DINERO_CLIENT_SECRET = defineSecret("DINERO_CLIENT_SECRET");
+const DINERO_API_KEY = defineSecret("DINERO_API_KEY");
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
    i retention-regler.js. */
@@ -3072,6 +3082,498 @@ export const fakturajobkoer = onCall({ region: REGION }, async (req) => {
   await db.ref(sti).update({ afsendelsesStatus: "sendt", betalingsStatus: "ikke_betalt", procesStatus: "sendt", opdateretMs: afsluttetMs });
   await skrivEjerAudit({ uid: ejerUid, handling: "fakturajob.test.sendt", objekt: "fakturajob", objektId: id, korrelationsId: kortStreng(req.data?.operationId, 60) });
   return { ok: true, id, status: "sendt", eksternReference, genbrugt: Boolean(job.eksternReference) };
+});
+
+/* ══════════════════════════════════════════════════════════════
+   EJERKREDITNOTAER — reservation, historisk snapshot og separat outbox
+
+   Alle beløb gemmes som positive størrelser. `type: kreditnota` er det
+   eksplicitte fortegn; det undgår dobbelt negation i UI og Dinero-porten.
+   ══════════════════════════════════════════════════════════════ */
+
+const kreditJobId = (kreditId) => `kreditjob_${kreditId}`;
+const kreditGruppeSti = (fakturaId) => `udbyder/kreditnotaer/${fakturaId}`;
+
+function kraevFakturaJobId(vaerdi) {
+  const id = kortStreng(vaerdi, 160);
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) throw new HttpsError("invalid-argument", "Faktura-id mangler eller er ugyldigt.");
+  return id;
+}
+
+function kraevKreditId(vaerdi) {
+  const id = kortStreng(vaerdi, 100);
+  if (!id || !/^kredit_[a-f0-9]{20}$/.test(id)) throw new HttpsError("invalid-argument", "Kredit-id mangler eller er ugyldigt.");
+  return id;
+}
+
+async function hentKreditKontekst(db, fakturaId) {
+  const job = (await db.ref(`udbyder/fakturajobs/${fakturaId}`).once("value")).val();
+  if (!job) throw new HttpsError("not-found", "Den valgte faktura findes ikke i Veyros fakturakø.");
+  if (!["sendt", "bogfoert"].includes(job.status) && !["sendt", "bogfoert"].includes(job.eksternStatus)) {
+    throw new HttpsError("failed-precondition", "Fakturaen skal være bogført i Dinero før kreditering.");
+  }
+  if (!job.eksternReference) throw new HttpsError("failed-precondition", "Fakturaen mangler en dokumenteret Dinero-reference.");
+  const sti = `udbyder/fakturagrundlag/${job.periode}/${job.tenantId}`;
+  const grundlag = (await db.ref(sti).once("value")).val();
+  if (!grundlag?.frigivelse?.sha256 || grundlag.frigivelse.sha256 !== job.grundlagSha256) {
+    throw new HttpsError("failed-precondition", "Fakturaens frosne kilde kan ikke verificeres.");
+  }
+  return { job, faktura: grundlag.frigivelse, grundlagSti: sti };
+}
+
+export const kreditnotaopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const operationId = kortStreng(req.data?.operationId, 80);
+  const aarsag = kortStreng(req.data?.aarsag, 500);
+  if (!operationId || !aarsag) throw new HttpsError("invalid-argument", "Operations-id og årsag er påkrævet.");
+  const kreditId = `kredit_${createHash("sha256").update(`${fakturaId}:${operationId}`).digest("hex").slice(0, 20)}`;
+  const valg = Array.isArray(req.data?.valg) ? req.data.valg.slice(0, 100).map((v) => ({
+    kildeIndeks: Number(v?.kildeIndeks), antal: Number(v?.antal),
+  })) : [];
+  const db = getDatabase();
+  const { job, faktura } = await hentKreditKontekst(db, fakturaId);
+  const nu = Date.now();
+  const requestSha256 = createHash("sha256").update(stabilJson({ fakturaId, aarsag, valg, fakturaSha256: faktura.sha256 })).digest("hex");
+  let snapshot;
+  try { snapshot = byggKreditsnapshot({ faktura, valg, aarsag, kreditId, oprettetMs: nu, oprettetAf: ejerUid }); }
+  catch (error) { throw new HttpsError("invalid-argument", error.message); }
+  const ref = db.ref(kreditGruppeSti(fakturaId));
+  const foer = (await ref.once("value")).val() || {};
+  let domFejl = null;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const gruppe = transaktionsstart(lokal) || {};
+    const eksisterende = gruppe.poster?.[kreditId];
+    if (eksisterende) {
+      if (eksisterende.requestSha256 !== requestSha256) { domFejl = "Operations-id'et er allerede brugt med et andet kreditindhold."; return; }
+      return gruppe;
+    }
+    const kontrol = validerKreditModResterende(faktura, gruppe.poster, snapshot);
+    if (!kontrol.ok) { domFejl = kontrol.fejl.join(" "); return; }
+    return {
+      ...gruppe,
+      fakturaId, tenantId: job.tenantId, kundeId: faktura.kundeId,
+      originalEksternReference: job.eksternReference,
+      originalIaltOere: faktura.ialtOere,
+      revision: (gruppe.revision || 0) + 1, opdateretMs: nu,
+      poster: {
+        ...(gruppe.poster || {}),
+        [kreditId]: {
+          id: kreditId, fakturaId, type: "kreditnota", status: "kladde", revision: 0,
+          snapshot, requestSha256, beloebOere: snapshot.beloebOere, momsOere: snapshot.momsOere, ialtOere: snapshot.ialtOere,
+          oprettetMs: nu, oprettetAf: ejerUid, opdateretMs: nu,
+        },
+      },
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists()) {
+    throw new HttpsError("aborted", domFejl || "Kreditreservationen blev ændret samtidigt. Genindlæs og prøv igen.");
+  }
+  const gemt = resultat.snapshot.val().poster[kreditId];
+  await skrivEjerAudit({ uid: ejerUid, handling: "kreditnota.opret", objekt: "kreditnota", objektId: kreditId, korrelationsId: operationId });
+  return { ok: true, fakturaId, kreditId, status: gemt.status, genbrugt: gemt.oprettetMs !== nu };
+});
+
+async function sikrKreditJob({ db, post, gruppe, ejerUid, nu }) {
+  const id = kreditJobId(post.id);
+  const ref = db.ref(`udbyder/kreditjobs/${id}`);
+  const job = {
+    id, kreditId: post.id, fakturaId: post.fakturaId, type: "kreditnota",
+    snapshotSha256: post.frigivelse.sha256, originalEksternReference: gruppe.originalEksternReference,
+    status: "afventer", dokumentStatus: "frigivet", sendStatus: "afventer",
+    afregningsStatus: "ikke_afstemt", forsoeg: 0,
+    oprettetMs: nu, oprettetAf: ejerUid, opdateretMs: nu,
+  };
+  const resultat = await ref.transaction((aktuel) => aktuel || job);
+  const gemt = resultat.snapshot.val();
+  if (!resultat.committed || gemt.snapshotSha256 !== job.snapshotSha256) {
+    throw new HttpsError("already-exists", "Kreditjobbet er allerede knyttet til et andet snapshot.");
+  }
+  return { id, job: gemt };
+}
+
+export const kreditnotafrigiv = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const kreditId = kraevKreditId(req.data?.kreditId);
+  const forventetRevision = kraevForventetRevision(req.data?.forventetRevision);
+  const sendEfterFrigivelse = req.data?.sendEfterFrigivelse === true;
+  const db = getDatabase();
+  const { faktura } = await hentKreditKontekst(db, fakturaId);
+  const ref = db.ref(kreditGruppeSti(fakturaId));
+  const foer = (await ref.once("value")).val();
+  const postFoer = foer?.poster?.[kreditId];
+  if (!postFoer) throw new HttpsError("not-found", "Kreditnotaen findes ikke.");
+  const kontrol = validerKreditModResterende(faktura, foer.poster, postFoer.snapshot, kreditId);
+  if (!kontrol.ok) throw new HttpsError("failed-precondition", kontrol.fejl.join(" "));
+  const nu = Date.now();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const gruppe = transaktionsstart(lokal);
+    const post = gruppe?.poster?.[kreditId];
+    if (post?.frigivelse) return gruppe;
+    if (!post || post.status !== "kladde" || (post.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    const snapshot = post.snapshot;
+    const sha256Vaerdi = createHash("sha256").update(stabilJson(snapshot)).digest("hex");
+    return {
+      ...gruppe, revision: (gruppe.revision || 0) + 1, opdateretMs: nu,
+      poster: { ...gruppe.poster, [kreditId]: {
+        ...post, status: sendEfterFrigivelse ? "frigivet" : "frigivet",
+        frigivelse: { version: 1, sha256: sha256Vaerdi, snapshot, frigivetMs: nu, frigivetAf: ejerUid },
+        revision: (post.revision || 0) + 1, opdateretMs: nu, opdateretAf: ejerUid,
+      } },
+    };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Kreditnotaen blev ændret samtidigt. Genindlæs før frigivelse.");
+  let koe = null;
+  if (sendEfterFrigivelse) {
+    koe = await sikrKreditJob({ db, post: resultat.snapshot.val().poster[kreditId], gruppe: resultat.snapshot.val(), ejerUid, nu });
+    await db.ref(`${kreditGruppeSti(fakturaId)}/poster/${kreditId}`).update({ status: "frigivet", sendStatus: koe.job.sendStatus, opdateretMs: Date.now() });
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: sendEfterFrigivelse ? "kreditnota.frigiv.koe" : "kreditnota.frigiv", objekt: "kreditnota", objektId: kreditId, korrelationsId: kortStreng(req.data?.operationId, 60) });
+  return { ok: true, fakturaId, kreditId, sha256: resultat.snapshot.val().poster[kreditId].frigivelse.sha256, jobId: koe?.id || null };
+});
+
+export const kreditnotaannuller = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const kreditId = kraevKreditId(req.data?.kreditId);
+  const forventetRevision = kraevForventetRevision(req.data?.forventetRevision);
+  const ref = getDatabase().ref(`${kreditGruppeSti(fakturaId)}/poster/${kreditId}`);
+  const foer = (await ref.once("value")).val();
+  if (!foer) throw new HttpsError("not-found", "Kreditnotaen findes ikke.");
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const post = transaktionsstart(lokal);
+    if (post?.status === "annulleret") return post;
+    if (!post || post.status !== "kladde" || (post.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    return { ...post, status: "annulleret", revision: (post.revision || 0) + 1, annulleretMs: Date.now(), annulleretAf: ejerUid, opdateretMs: Date.now() };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("failed-precondition", "Kun en uændret kladde kan annulleres.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "kreditnota.annuller", objekt: "kreditnota", objektId: kreditId });
+  return { ok: true, fakturaId, kreditId, status: "annulleret" };
+});
+
+export const kreditnotadokumenter = onCall({ region: REGION, memory: "512MiB" }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const kreditId = kraevKreditId(req.data?.kreditId);
+  const ref = getDatabase().ref(`${kreditGruppeSti(fakturaId)}/poster/${kreditId}`);
+  const post = (await ref.once("value")).val();
+  if (!post?.frigivelse?.sha256) throw new HttpsError("failed-precondition", "Frigiv kreditnotaen før dokumentet dannes.");
+  if (post.dokument?.storagePath) return { ok: true, dokument: post.dokument, genbrugt: true };
+  const bytes = Buffer.from(await genererKreditnotaPdf(post.frigivelse.snapshot));
+  const storagePath = `ejer/kreditnotaer/${fakturaId}/${kreditId}/v1.pdf`;
+  await getStorage().bucket().file(storagePath).save(bytes, {
+    resumable: false, contentType: "application/pdf",
+    metadata: { metadata: { fakturaId, kreditId, version: "1", snapshotSha256: post.frigivelse.sha256 } },
+  });
+  const dokument = {
+    storagePath, contentType: "application/pdf", stoerrelse: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"), snapshotSha256: post.frigivelse.sha256,
+    oprettetMs: Date.now(), oprettetAf: ejerUid,
+  };
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(post);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (aktuel?.frigivelse?.sha256 !== post.frigivelse.sha256) { konflikt = true; return; }
+    if (aktuel.dokument?.storagePath) return aktuel;
+    return { ...aktuel, dokument, revision: (aktuel.revision || 0) + 1, opdateretMs: Date.now(), opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Kreditversionen ændrede sig under dokumentgenereringen.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "kreditnota.dokument", objekt: "kreditnota", objektId: kreditId });
+  return { ok: true, dokument: resultat.snapshot.val().dokument, genbrugt: false };
+});
+
+export const kreditnotadokumenthent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const kreditId = kraevKreditId(req.data?.kreditId);
+  const dokument = (await getDatabase().ref(`${kreditGruppeSti(fakturaId)}/poster/${kreditId}/dokument`).once("value")).val();
+  if (!dokument?.storagePath) throw new HttpsError("not-found", "Kreditnotadokumentet er ikke dannet.");
+  const [url] = await getStorage().bucket().file(dokument.storagePath).getSignedUrl({ action: "read", expires: Date.now() + 5 * 60 * 1000 });
+  return { ok: true, fakturaId, kreditId, url, expiresInSeconds: 300, dokument };
+});
+
+function dineroGuidFraNoegle(noegle) {
+  const h = createHash("sha256").update(noegle).digest("hex").slice(0, 32).split("");
+  h[12] = "5"; h[16] = ((parseInt(h[16], 16) & 3) | 8).toString(16);
+  const s = h.join(""); return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
+}
+
+async function koerKreditnotaLive({ integration, job, post, jobRef, postRef }) {
+  const clientId = kortStreng(integration.clientId, 200);
+  const organizationId = kortStreng(integration.organizationId, 80);
+  const accountNumber = Number(integration.salesAccountNumber);
+  if (!clientId || !organizationId || !Number.isInteger(accountNumber)) {
+    throw new DineroFejl("Dinero mangler client-id, organisation-id eller salgskonto.", { code: "KONFIGURATION" });
+  }
+  const token = await hentDineroToken({ clientId, clientSecret: DINERO_CLIENT_SECRET.value(), apiKey: DINERO_API_KEY.value() });
+  const klient = dineroKlient({ organizationId, accessToken: token.accessToken });
+  let guid = job.eksternReference || dineroGuidFraNoegle(`veyro:${job.id}`);
+  let timestamp = job.eksternTimestamp || null;
+  let eksternStatus = job.eksternStatus || null;
+  if (!job.eksternReference) {
+    const model = dineroKreditnotaCreateModel(post.frigivelse.snapshot, {
+      invoiceGuid: job.originalEksternReference, externalReference: `veyro:${job.id}`, accountNumber,
+    });
+    model.Guid = guid;
+    const oprettet = await klient.opretKreditnota(model);
+    guid = oprettet?.Guid || guid; timestamp = oprettet?.TimeStamp;
+    if (!timestamp) throw new DineroFejl("Dinero returnerede ingen timestamp for kreditkladden.", { code: "SVAR_DIFFERENCE" });
+    eksternStatus = "kladde";
+    await jobRef.update({ eksternReference: guid, eksternTimestamp: timestamp, eksternStatus, opdateretMs: Date.now() });
+  }
+  if (eksternStatus !== "bogfoert") {
+    const bogfoert = await klient.bogfoerKreditnota(guid, timestamp);
+    timestamp = bogfoert?.TimeStamp || timestamp; eksternStatus = "bogfoert";
+    await jobRef.update({ eksternReference: guid, eksternTimestamp: timestamp, eksternStatus, status: "bogfoert", opdateretMs: Date.now() });
+    await postRef.update({ status: "bogfoert", eksternReference: guid, opdateretMs: Date.now() });
+  }
+  const email = post.frigivelse.snapshot.modtager?.email;
+  if (!email) throw new DineroFejl("Kunden mangler en fakturamail; kreditnotaen er bogført, men ikke sendt.", { code: "MODTAGER_MANGLER" });
+  await klient.sendKreditnota(guid, {
+    ShouldAddTrustPilotEmailAsBcc: false, Timestamp: timestamp,
+    Receiver: email, Subject: "Kreditnota fra Veyro Systems",
+    Message: `${post.frigivelse.snapshot.aarsag}\n\n[link-to-pdf]`, AddVoucherAsPdfAttachment: true,
+  });
+  return { guid, timestamp };
+}
+
+export const kreditnotajobkoer = onCall({
+  region: REGION, secrets: [DINERO_CLIENT_SECRET, DINERO_API_KEY],
+}, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const fakturaId = kraevFakturaJobId(req.data?.fakturaId);
+  const kreditId = kraevKreditId(req.data?.kreditId);
+  const db = getDatabase();
+  const jobRef = db.ref(`udbyder/kreditjobs/${kreditJobId(kreditId)}`);
+  const postRef = db.ref(`${kreditGruppeSti(fakturaId)}/poster/${kreditId}`);
+  const [jobSnap, postSnap, integrationSnap] = await Promise.all([
+    jobRef.once("value"), postRef.once("value"), db.ref("udbyder/integrationer/dinero").once("value"),
+  ]);
+  const job = jobSnap.val(); const post = postSnap.val(); const integration = integrationSnap.val();
+  if (!job || !post?.frigivelse || job.snapshotSha256 !== post.frigivelse.sha256) {
+    throw new HttpsError("failed-precondition", "Kreditjob og frigivet snapshot passer ikke sammen.");
+  }
+  if (job.status === "sendt") return { ok: true, kreditId, status: "sendt", eksternReference: job.eksternReference, genbrugt: true };
+  if (job.status === "ukendt_udfald") throw new HttpsError("failed-precondition", "Det eksterne udfald er ukendt. Afstem i Dinero før et nyt forsøg.");
+  if (integration?.status !== "aktiv" || !integration?.adapter) {
+    await jobRef.update({ status: "ikke_tilsluttet", sendStatus: "ikke_tilsluttet", senesteFejlKode: "DINERO_IKKE_TILSLUTTET", opdateretMs: Date.now() });
+    await postRef.update({ sendStatus: "ikke_tilsluttet", opdateretMs: Date.now() });
+    throw new HttpsError("failed-precondition", "Dinero er ikke tilsluttet. Kreditversionen og reservationen er bevaret.");
+  }
+  const nu = Date.now();
+  await jobRef.update({ status: "arbejder", sendStatus: "arbejder", forsoeg: (job.forsoeg || 0) + 1, senesteForsoegMs: nu, opdateretMs: nu });
+  if (integration.adapter === "test" && erIsoleretFakturatest()) {
+    if (!TEST_SCENARIER.includes(integration.testScenario)) throw new HttpsError("failed-precondition", "Testadapteren kræver et eksplicit scenario.");
+    const eksternReference = job.eksternReference || dineroGuidFraNoegle(`test:${job.id}`);
+    const payload = byggKreditnotaPortPayload(post.frigivelse.snapshot, eksternReference, job.originalEksternReference);
+    const svar = simulerKreditnotaPort(payload, integration.testScenario);
+    if (svar.kind === "contract_error") throw new HttpsError("failed-precondition", svar.errors.join(" "));
+    if (svar.kind === "unknown") {
+      await jobRef.update({ status: "ukendt_udfald", sendStatus: "ukendt_udfald", eksternReference, eksternStatus: "ukendt", senesteFejlKode: "TEST_TIMEOUT_EFTER_OPRET", opdateretMs: Date.now() });
+      await postRef.update({ status: "ukendt_udfald", sendStatus: "ukendt_udfald", opdateretMs: Date.now() });
+      throw new HttpsError("deadline-exceeded", "Testadapteren mistede svaret efter oprettelse; automatisk genforsøg er blokeret.");
+    }
+    if (svar.kind === "send_error") {
+      await jobRef.update({ status: "handling_pakraevet", sendStatus: "fejl", eksternReference, eksternStatus: "bogfoert", senesteFejlKode: "TEST_SEND_FEJL", opdateretMs: Date.now() });
+      await postRef.update({ status: "bogfoert", sendStatus: "fejl", eksternReference, opdateretMs: Date.now() });
+      throw new HttpsError("unavailable", "Testkreditnotaen blev bogført, men afsendelsen fejlede.");
+    }
+    if (svar.kind !== "sent" || svar.creditNote.totalCents !== post.frigivelse.snapshot.ialtOere) {
+      throw new HttpsError("data-loss", "Testadapterens svar afviger fra kreditversionen.");
+    }
+    await jobRef.update({ status: "sendt", sendStatus: "sendt", eksternStatus: "sendt", eksternReference, dokumentStatus: "bogfoert", sendtMs: Date.now(), sendtAf: ejerUid, senesteFejlKode: null, opdateretMs: Date.now() });
+    await postRef.update({ status: "sendt", sendStatus: "sendt", eksternReference, opdateretMs: Date.now() });
+  } else if (integration.adapter === "dinero_personlig") {
+    try {
+      const resultat = await koerKreditnotaLive({ integration, job, post, jobRef, postRef });
+      await jobRef.update({ status: "bogfoert", sendStatus: "anmodet", eksternStatus: "bogfoert", eksternReference: resultat.guid, eksternTimestamp: resultat.timestamp, sendAnmodetMs: Date.now(), sendtAf: ejerUid, senesteFejlKode: null, opdateretMs: Date.now() });
+      await postRef.update({ status: "bogfoert", sendStatus: "anmodet", eksternReference: resultat.guid, opdateretMs: Date.now() });
+    } catch (error) {
+      const ukendt = error instanceof DineroFejl && error.unknownOutcome;
+      await jobRef.update({ status: ukendt ? "ukendt_udfald" : "handling_pakraevet", sendStatus: ukendt ? "ukendt_udfald" : "fejl", senesteFejlKode: error.code || `HTTP_${error.status || "FEJL"}`, opdateretMs: Date.now() });
+      if (ukendt) await postRef.update({ status: "ukendt_udfald", sendStatus: "ukendt_udfald", opdateretMs: Date.now() });
+      throw new HttpsError(ukendt ? "deadline-exceeded" : "unavailable", error.message);
+    }
+  } else {
+    throw new HttpsError("unimplemented", `Dinero-adapteren '${integration.adapter}' er ikke understøttet.`);
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: "kreditnota.afsend", objekt: "kreditnota", objektId: kreditId, korrelationsId: kortStreng(req.data?.operationId, 60) });
+  const afsluttetJob = (await jobRef.once("value")).val();
+  return { ok: true, fakturaId, kreditId, status: afsluttetJob.status, sendStatus: afsluttetJob.sendStatus, eksternReference: afsluttetJob.eksternReference };
+});
+
+const dineroOere = (vaerdi) => Number.isFinite(Number(vaerdi)) ? Math.round(Number(vaerdi) * 100) : null;
+const dineroGuid = (post) => kortStreng(post?.Guid || post?.guid, 80);
+
+function dineroReturpost(art, oversigt, detalje, betalinger, mailouts, synkroniseretMs) {
+  const guid = dineroGuid(detalje) || dineroGuid(oversigt);
+  const betaling = betalinger && typeof betalinger === "object" ? {
+    betaltOere: dineroOere(betalinger.PaidAmount), restOere: dineroOere(betalinger.RemainingAmount),
+    totalInklRykkerOere: dineroOere(betalinger.InvoiceTotalIncludingReminderExpenses),
+    poster: Array.isArray(betalinger.Payments) ? betalinger.Payments.slice(0, 100) : [],
+  } : null;
+  const udsendelser = Array.isArray(mailouts) ? mailouts : (mailouts?.Collection || []);
+  const senesteMail = udsendelser.length ? udsendelser[udsendelser.length - 1] : null;
+  return {
+    guid, art, oprindelse: "dinero", nummer: detalje?.Number ?? oversigt?.Number ?? null,
+    eksternReference: detalje?.ExternalReference || oversigt?.ExternalReference || null,
+    status: detalje?.Status || oversigt?.Status || "ukendt",
+    betalingsStatus: detalje?.PaymentStatus || oversigt?.PaymentStatus || "ukendt",
+    mailStatus: senesteMail?.Status || detalje?.MailOutStatus || oversigt?.MailOutStatus || "ukendt",
+    timestamp: detalje?.TimeStamp || oversigt?.TimeStamp || null,
+    kontaktGuid: detalje?.ContactGuid || oversigt?.ContactGuid || null,
+    valuta: detalje?.Currency || oversigt?.Currency || null,
+    dato: detalje?.Date || oversigt?.Date || null,
+    totalEksklMomsOere: dineroOere(detalje?.TotalExclVat ?? oversigt?.TotalExclVat),
+    totalInklMomsOere: dineroOere(detalje?.TotalInclVat ?? oversigt?.TotalInclVat),
+    betaling, mailouts: udsendelser.slice(0, 100), synkroniseretMs,
+  };
+}
+
+async function synkroniserDineroArt({ db, klient, art, status, startMs, maks }) {
+  const checkpointSti = `udbyder/dinero/synk/checkpoints/${art}`;
+  const checkpoint = (await db.ref(checkpointSti).once("value")).val() || {};
+  const changesSince = checkpoint.changesSince || null;
+  const page = Number.isInteger(checkpoint.page) ? checkpoint.page : 0;
+  const svar = await klient.liste(art, { changesSince, page, pageSize: maks });
+  const collection = Array.isArray(svar) ? svar : (svar?.Collection || []);
+  const updates = {};
+  for (const oversigt of collection) {
+    const guid = dineroGuid(oversigt);
+    if (!guid) continue;
+    const dokumentArt = art === "kreditnotaer" ? "kreditnota" : "faktura";
+    const [detalje, betalinger, mailouts] = await Promise.all([
+      dokumentArt === "kreditnota" ? klient.kreditnota(guid) : klient.faktura(guid),
+      klient.betalinger(dokumentArt, guid), klient.mailouts(dokumentArt, guid),
+    ]);
+    updates[`udbyder/dinero/dokumenter/${dokumentArt}/${guid}`] = dineroReturpost(dokumentArt, oversigt, detalje, betalinger, mailouts, Date.now());
+  }
+  const faerdig = collection.length < maks;
+  updates[checkpointSti] = faerdig
+    ? { changesSince: new Date(startMs).toISOString(), page: 0, senesteSikreGemMs: Date.now() }
+    : { changesSince, page: page + 1, senesteSikreGemMs: Date.now() };
+  updates[`udbyder/dinero/synk/status/${art}`] = {
+    ...status, senesteForsoegMs: startMs, senesteSuccesMs: Date.now(),
+    status: faerdig ? "ajour" : "flere_sider", antal: collection.length, page,
+  };
+  await db.ref().update(updates);
+  return { antal: collection.length, faerdig, page };
+}
+
+async function synkroniserDineroPosteringer({ db, klient, integration, startMs }) {
+  const aar = new Date(startMs).getUTCFullYear();
+  const fra = /^\d{4}-\d{2}-\d{2}$/.test(integration.regnskabsFraDato || "") ? integration.regnskabsFraDato : `${aar}-01-01`;
+  const til = new Date(startMs).toISOString().slice(0, 10);
+  const svar = await klient.poster({ fromDate: fra, toDate: til, includePrimo: false });
+  const collection = Array.isArray(svar) ? svar : (svar?.Collection || []);
+  const poster = {};
+  for (const [index, post] of collection.slice(0, 5000).entries()) {
+    const noegle = post.Guid || post.Id || `${post.Date || ""}:${post.VoucherNumber || ""}:${post.AccountNumber || ""}:${index}`;
+    const id = createHash("sha256").update(String(noegle)).digest("hex").slice(0, 32);
+    poster[id] = {
+      id, guid: post.Guid || null, dato: post.Date || null,
+      kontonummer: post.AccountNumber ?? null, kontonavn: post.AccountName || null,
+      bilagsnummer: post.VoucherNumber ?? null, bilagsart: post.VoucherType || null,
+      tekst: post.Text || post.Description || null, kontaktGuid: post.ContactGuid || null,
+      beloebOere: dineroOere(post.Amount), beloebInklMomsOere: dineroOere(post.AmountInclVat),
+      momsOere: dineroOere(post.VatAmount), synkroniseretMs: startMs, oprindelse: "dinero",
+    };
+  }
+  await db.ref().update({
+    "udbyder/dinero/posteringer": poster,
+    "udbyder/dinero/synk/status/posteringer": {
+      status: "ajour", fra, til, antal: collection.length,
+      afkortet: collection.length > 5000, senesteForsoegMs: startMs,
+      senesteSuccesMs: Date.now(),
+    },
+  });
+  return { antal: collection.length, fra, til, afkortet: collection.length > 5000 };
+}
+
+async function afstemLokaleDineroJobs(db) {
+  const [dokumentSnap, fakturaJobSnap, kreditJobSnap] = await Promise.all([
+    db.ref("udbyder/dinero/dokumenter").once("value"), db.ref("udbyder/fakturajobs").once("value"),
+    db.ref("udbyder/kreditjobs").once("value"),
+  ]);
+  const dokumenter = dokumentSnap.val() || {};
+  const updates = {};
+  const betalingsstatus = (dokument) => dokument?.betaling?.restOere === 0 ? "betalt"
+    : Number.isInteger(dokument?.betaling?.restOere) && dokument.betaling.restOere < dokument.totalInklMomsOere ? "delvist_betalt"
+      : dokument?.betalingsStatus || "ikke_betalt";
+  const mailstatus = (dokument, hidtidig) => ["Sent", "SeenByCustomer"].includes(dokument?.mailStatus) ? "dokumenteret_sendt"
+    : dokument?.mailStatus === "Failed" ? "fejl" : hidtidig || "ukendt";
+  for (const [id, job] of Object.entries(fakturaJobSnap.val() || {})) {
+    const dokument = dokumenter.faktura?.[job.eksternReference];
+    if (!dokument) continue;
+    updates[`udbyder/fakturajobs/${id}/betalingStatus`] = betalingsstatus(dokument);
+    updates[`udbyder/fakturajobs/${id}/sendStatus`] = mailstatus(dokument, job.sendStatus);
+    updates[`udbyder/fakturajobs/${id}/dineroNummer`] = dokument.nummer;
+    updates[`udbyder/fakturajobs/${id}/senesteDineroSynkMs`] = dokument.synkroniseretMs;
+  }
+  for (const [id, job] of Object.entries(kreditJobSnap.val() || {})) {
+    const dokument = dokumenter.kreditnota?.[job.eksternReference];
+    if (!dokument) continue;
+    updates[`udbyder/kreditjobs/${id}/afregningsStatus`] = betalingsstatus(dokument);
+    updates[`udbyder/kreditjobs/${id}/sendStatus`] = mailstatus(dokument, job.sendStatus);
+    updates[`udbyder/kreditjobs/${id}/dineroNummer`] = dokument.nummer;
+    updates[`udbyder/kreditjobs/${id}/senesteDineroSynkMs`] = dokument.synkroniseretMs;
+  }
+  if (Object.keys(updates).length) await db.ref().update(updates);
+  return Object.keys(updates).length;
+}
+
+async function koerDineroRetursynk({ ejerUid = "scheduler" } = {}) {
+  const db = getDatabase();
+  const integration = (await db.ref("udbyder/integrationer/dinero").once("value")).val();
+  const startMs = Date.now();
+  await db.ref("udbyder/dinero/synk/status/samlet").update({ senesteForsoegMs: startMs, status: "arbejder" });
+  if (integration?.status !== "aktiv" || integration?.adapter !== "dinero_personlig" || integration?.retursynkAktiv !== true) {
+    await db.ref("udbyder/dinero/synk/status/samlet").update({ status: "ikke_tilsluttet", senesteFejlKode: "DINERO_IKKE_TILSLUTTET", opdateretMs: Date.now() });
+    return { ok: false, status: "ikke_tilsluttet" };
+  }
+  const clientId = kortStreng(integration.clientId, 200);
+  const organizationId = kortStreng(integration.organizationId, 80);
+  if (!clientId || !organizationId) throw new DineroFejl("Dinero client-id eller organisation-id mangler.", { code: "KONFIGURATION" });
+  const token = await hentDineroToken({ clientId, clientSecret: DINERO_CLIENT_SECRET.value(), apiKey: DINERO_API_KEY.value() });
+  const klient = dineroKlient({ organizationId, accessToken: token.accessToken });
+  // 8 dokumenter pr. art giver højst 50 API-kald inkl. token og lister og
+  // holder personlig integration under den dokumenterede 60/min-grænse.
+  const maks = Math.max(1, Math.min(8, Number(integration.syncPageSize) || 8));
+  try {
+    const fakturaer = await synkroniserDineroArt({ db, klient, art: "fakturaer", status: {}, startMs, maks });
+    const kreditnotaer = await synkroniserDineroArt({ db, klient, art: "kreditnotaer", status: {}, startMs, maks });
+    const posteringer = await synkroniserDineroPosteringer({ db, klient, integration, startMs });
+    const afstemteFelter = await afstemLokaleDineroJobs(db);
+    await db.ref("udbyder/dinero/synk/status/samlet").update({ status: "ajour", senesteSuccesMs: Date.now(), senesteFejlKode: null, opdateretMs: Date.now() });
+    if (ejerUid !== "scheduler") await skrivEjerAudit({ uid: ejerUid, handling: "dinero.synkroniser", objekt: "dinero", objektId: organizationId });
+    return { ok: true, fakturaer, kreditnotaer, posteringer, afstemteFelter };
+  } catch (error) {
+    await db.ref("udbyder/dinero/synk/status/samlet").update({ status: "fejl", senesteFejlKode: error.code || `HTTP_${error.status || "FEJL"}`, opdateretMs: Date.now() });
+    throw error;
+  }
+}
+
+export const dinerosynkroniser = onCall({
+  region: REGION, secrets: [DINERO_CLIENT_SECRET, DINERO_API_KEY], timeoutSeconds: 300,
+}, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  try { return await koerDineroRetursynk({ ejerUid }); }
+  catch (error) { throw new HttpsError("unavailable", error.message || "Dinero-synkronisering fejlede."); }
+});
+
+export const dinerosynkroniserPlanlagt = onSchedule({
+  region: REGION, schedule: "every 15 minutes", timeZone: "Europe/Copenhagen",
+  secrets: [DINERO_CLIENT_SECRET, DINERO_API_KEY], timeoutSeconds: 300,
+}, async () => {
+  try { await koerDineroRetursynk(); }
+  catch (error) { console.error("Planlagt Dinero-synk fejlede", { name: error?.name, code: error?.code, status: error?.status }); }
 });
 
 /**

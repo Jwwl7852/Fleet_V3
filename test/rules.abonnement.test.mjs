@@ -186,6 +186,9 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/ai/.read",
       "/udbyder/audit/.read",
       "/udbyder/crm/.read",
+      /* Dinero-returdata og kreditreservationer er Veyros egne regnskabsdata.
+         De ligger aldrig under en kundetenant og er kun læsbare for en ren ejer. */
+      "/udbyder/dinero/.read",
       "/udbyder/fakturagrundlag/.read",
       /* Køposterne er platformens integrationsstatus, ikke kundedrift. De
          indeholder kun stabil nøgle, status og eksterne referencer og må
@@ -193,6 +196,8 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/udbyder/fakturajobs/.read",
       "/udbyder/integrationer/.read",
       "/udbyder/invitationer/.read",
+      "/udbyder/kreditjobs/.read",
+      "/udbyder/kreditnotaer/.read",
       "/udbyder/kunder/.read",
       "/udbyder/maalinger/.read",
       "/udbyder/mailjobs/.read",

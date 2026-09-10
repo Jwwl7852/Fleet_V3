@@ -58,6 +58,12 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Kreditnotaens PDF er ligeledes kun tilgængelig gennem et nyt
+    // servercheck og et kortlivet link; klient-SDK'et er lukket.
+    match /ejer/kreditnotaer/{fakturaId}/{kreditId}/{dokumentId} {
+      allow read, write: if false;
+    }
+
     // Originale mailvedhæftninger er ejerdata og udleveres kun efter et nyt
     // servercheck gennem salgsvedhaeftninghent med et fem minutters link.
     match /ejer/salgsmail/{traadHash}/{beskedHash}/{dokumentId} {

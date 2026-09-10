@@ -101,7 +101,44 @@ try {
   const genkoert = await kald("fakturajobkoer", { periode: "2026-08", tenantId: "faktura-c" }, ejerToken);
   assert.equal(genkoert.eksternReference, refFoer);
 
-  console.log("Ejerfakturering E2E: race, dokumenter, succes, timeout-spærre og delvis fejl er verificeret.");
+  // Etape G: en halv linje reserveres straks. To samtidige ejere kan derefter
+  // ikke begge tage den sidste halvdel, fordi reservationen ligger i samme
+  // RTDB-transaction som kontrollen af restmængde og restbeløb.
+  await fejl(kald("kreditnotaopret", {
+    fakturaId: "faktura_202608_faktura-a", operationId: "kunde-forsoeg",
+    aarsag: "Må afvises", valg: [{ kildeIndeks: 0, antal: 500 }],
+  }, kundeToken), "PERMISSION_DENIED");
+  const delkredit = await kald("kreditnotaopret", {
+    fakturaId: "faktura_202608_faktura-a", operationId: "delkredit-a",
+    aarsag: "Aftalt delvis kreditering", valg: [{ kildeIndeks: 0, antal: 500 }],
+  }, ejerToken);
+  const restRace = await Promise.allSettled(["rest-a", "rest-b"].map((operationId) => kald("kreditnotaopret", {
+    fakturaId: "faktura_202608_faktura-a", operationId,
+    aarsag: "Resterende kredit", valg: [{ kildeIndeks: 0, antal: 500 }],
+  }, ejerToken)));
+  assert.equal(restRace.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(restRace.filter((r) => r.status === "rejected").length, 1);
+  await fejl(kald("kreditnotaopret", {
+    fakturaId: "faktura_202608_faktura-a", operationId: "overkredit",
+    aarsag: "Skal afvises", valg: [{ kildeIndeks: 0, antal: 1 }],
+  }, ejerToken), "ABORTED");
+
+  await kald("kreditnotafrigiv", {
+    fakturaId: "faktura_202608_faktura-a", kreditId: delkredit.kreditId,
+    forventetRevision: 0, sendEfterFrigivelse: true, operationId: "frigiv-delkredit",
+  }, ejerToken);
+  const kreditDokument = await kald("kreditnotadokumenter", {
+    fakturaId: "faktura_202608_faktura-a", kreditId: delkredit.kreditId,
+  }, ejerToken);
+  assert.equal((await bucket.file(kreditDokument.dokument.storagePath).exists())[0], true);
+  const kreditSendt = await kald("kreditnotajobkoer", {
+    fakturaId: "faktura_202608_faktura-a", kreditId: delkredit.kreditId,
+    operationId: "send-delkredit",
+  }, ejerToken);
+  assert.equal(kreditSendt.status, "sendt");
+  assert.equal((await db.ref(`udbyder/kreditnotaer/faktura_202608_faktura-a/poster/${delkredit.kreditId}/status`).once("value")).val(), "sendt");
+
+  console.log("Ejerfakturering E2E: faktura- og kreditrace, dokumenter, succes, timeout-spærre og delvis fejl er verificeret.");
 } finally {
   await deleteApp(app);
 }

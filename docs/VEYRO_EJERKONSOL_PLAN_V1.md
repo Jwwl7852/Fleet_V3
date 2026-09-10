@@ -41,7 +41,7 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 | Kundens `opsaetning/brugere` | Bevares adskilt fra ejeradministrationen |
 | Genereret administratoradgangskode | Lukket og erstattet af tidsbegrænset invitation |
 | CRM og tilbud | Implementeret additivt med servervalidering og versionssnapshots |
-| Dinero | Fakturajob og isoleret testport er implementeret; liveforbindelse mangler |
+| Dinero | Faktura-/kreditkø, personlig API-adapter og pagineret retursynk er implementeret; liveforbindelse mangler |
 | Microsoft 365-salgsindbakke | Implementeret additivt i G1 under Salg; ekstern forbindelse er ikke aktiveret |
 | OpenAI-salgsassistent og vidensbase | Implementeret servermæssigt i G2; secret, model og budgetaktivering mangler |
 | Bilagsindbakke | Mangler og tilføjes senere med migration/status |
@@ -169,11 +169,27 @@ Status: implementeret og isoleret verificeret 2026-09-10; OpenAI er ikke tilslut
   sagsspecifik grænse. Livekald kræver
   særskilt serversecret, modelvalg og aktivering og udføres ikke i denne runde.
 
-### G–I — Kredit, returdata, udgifter og overblik
+### G — Kreditnotaer og Dinero-returdata
 
-Status: ikke startet ud over fakturering og de supplerende G1/G2-spor.
+Status: implementeret og isoleret verificeret 2026-09-10; live Dinero er ikke tilsluttet.
 
-- Kreditnotaer, returdata, betalinger og synkroniseringscheckpoints.
+- Hel og delvis kredit fra frossen fakturaversion med historiske priser og moms.
+- Kladder, frigivne dokumenter, igangværende job og ukendte udfald reserverer
+  restbeløb og restmængde i én servertransaktion; annullering er kun mulig før frigivelse.
+- Separat, idempotent kredit-outbox med stabil ekstern GUID, eksplicit
+  dokumenttype/fortegn, bogføring, afsendelsesanmodning og blind-retry-spærre.
+- Persistent PDF fra det præcise kreditsnapshot. Endeligt kreditnummer kommer
+  først fra Dinero-returdata og foregives ikke af Veyro.
+- Personlig Dinero-adapter følger den aktuelle auth-/credit-note-kontrakt.
+  Retursynk henter fakturaer, kreditnotaer, betalinger, mailouts og posteringer
+  med sikre sidecheckpoints, separat seneste forsøg/succes og 15-minutters job.
+- Fakturaer fundet direkte i Dinero importeres med oprindelse. Uden et
+  verificerbart Veyro-linjesnapshot kan de ses, men ikke krediteres fra Veyro.
+
+### H–I — Udgifter og overblik
+
+Status: ikke startet.
+
 - Beskyttet bilagsupload, mail-/OCR-adaptergrænser og dubletkontrol.
 - Fælles beregnede KPI-definitioner med klikbar afstemning.
 
@@ -189,7 +205,8 @@ Status: ikke startet.
 
 - Der var ingen yderligere designbilleder tilgængelige; repositoryets faktiske
   brandfiler har derfor forrang.
-- Dinero-organisation, API-credentials og testorganisation er ikke tilsluttet.
+- Dinero-organisation, personlig integrations client-id/-secret, API-nøgle,
+  salgskonto og testorganisation er ikke tilsluttet. Adapteren er derfor ikke live-testet.
 - `info@veyrosystems.com` er valgt, men delt postkasse, selvstændig postkasse
   eller alias samt den korrekte underliggende postkasse er ikke verificeret.
 - Microsoft Entra/Graph-app, webhook-endpoint, Graph-secrets og nødvendige
