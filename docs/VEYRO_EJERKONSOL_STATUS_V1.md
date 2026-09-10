@@ -34,9 +34,9 @@ Opdateret: 2026-09-10
 | G1 — Microsoft 365-salgsmail | Implementeret; ekstern forbindelse mangler | Rene kontrakt-/fejltests, rules og samlet build/regression består; live Graph og ny callable-E2E er ikke kørt |
 | G2 — OpenAI-salgsassistent | Implementeret; ekstern forbindelse mangler | Struktureret request, API-fejl, budgetstop, rules og samlet build/regression består; live API er ikke kaldt |
 | G — Kredit og returdata | Implementeret; live Dinero mangler | Beregning, reservation/race, PDF og testkø emulatorverificeret; live API og retursynk ikke eksternt testet |
-| H — Udgifter | Ikke implementeret | — |
-| I — Overblik | Ikke implementeret | — |
-| J — Samlet aflevering | Ikke implementeret | — |
+| H — Udgifter | Implementeret; mail/OCR/Dinero-køb mangler eksternt | Upload, signatur/hash, dedupe, metadata, godkendelse, genkørbar klargøring og match emulatorverificeret |
+| I — Overblik | Implementeret og isoleret verificeret | Afstemte KPI-definitioner, datadækning, filtre og detaljelinks består på kendt datasæt |
+| J — Samlet aflevering | Implementeret og isoleret verificeret | Additiv fixture-migration, recoveryplan, driftsvejledning, 4360/4360 regression, build og normal browserlogin-gennemgang består |
 
 ## Kortlægning af eksisterende løsning
 
@@ -94,9 +94,9 @@ Opdateret: 2026-09-10
 | 5 | Tilbud | Versioner, PDF, M365-mailkladde/outbox, AI-tekstforslag, manuel registrering og accept implementeret |
 | 6 | Fakturaer | Frigivelse, PDF/CSV, kø, adapterstatus og fejlforløb implementeret; Dinero ikke tilsluttet |
 | 7 | Kreditnotaer | Hel/delvis kredit, reservation, PDF, kø og afstemningsstatus implementeret; live Dinero ikke tilsluttet |
-| 8 | Bilagsindbakke | Ikke implementeret |
-| 9 | Omkostninger | Ikke implementeret |
-| 10 | Økonomioverblik | Ikke implementeret |
+| 8 | Bilagsindbakke | Privat upload, dedupe, metadata, OCR-status og godkendelse implementeret; mail/OCR eksternt frakoblet |
+| 9 | Omkostninger | Dinero-posteringer, eksplicit kontomapping, fortegn, bilagsmatch og datadækning implementeret; købsoverførsel frakoblet |
+| 10 | Økonomioverblik | Afstemte KPI'er, filtre, datadækning og klikbare detaljelister implementeret |
 | 11 | Integrationer | M365/OpenAI-status samt Dinero faktura-, kredit- og retursynkkontrakt implementeret; eksterne forbindelser ikke tilsluttet |
 
 ## Implementeret i etape G1–G2
@@ -206,7 +206,7 @@ Opdateret: 2026-09-10
 - Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
   reproducerbar Windows AF_UNIX-fejl. Isoleret Temurin JDK 11 + Firebase CLI
   13.35.1 virker; systemets Java-installationer er ikke ændret.
-- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4352/4352 grønne
+- AK-01–AK-04, bilagsadgang og Storage-regler indgår i 4360/4360 grønne
   platformtests. Det dækker tenantløs ejer,
   kundeadministrator, tenantadskillelse, tilbagekaldt gammelt token og lukket
   direkte adgang til ejerens PDF-sti.
@@ -224,7 +224,7 @@ Opdateret: 2026-09-10
 - PDF: servergenerering til Storage og versionsmetadata består; den visuelle
   layoutprøve med repositoryets logo er renderet og inspiceret.
 - Fuld platformregression med repositoryets normale Node 24-testmiljø samt
-  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4352/4352 består. Functions-
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4360/4360 består. Functions-
   emulatoren er separat verificeret på den deklarerede Node 20-runtime.
 - M365/OpenAI-måltests: 10/10 består, herunder korrelationsdublet, immutable
   provider-id, ukendt afsender, godkendelsesinvalidering, planlagt forfald,
@@ -239,7 +239,20 @@ Opdateret: 2026-09-10
 - Etape I-måltests: 7/7 består på et kendt afstemningsdatasæt med faktura,
   kredit, betaling, rest, gældsalder, omkostningskredit, umappet konto,
   introaftale, pipeline, vinderate og alle fire filterarter.
-- `npm run build` efter etape I består med 517 moduler.
+- Etape J-måltests: 8/8 består. Den additive migration finder kun manglende
+  forretningsnøgler, er idempotent, stopper på afvigelser og ændrer ikke
+  accepterede tilbud, historiske linjer eller beløb. Fixture-dry-run fandt to
+  forventede operationer; ingen rigtig database blev læst eller migreret.
+- Normal browserlogin med den tenantløse syntetiske ejer er genkørt i fire
+  emulatorer. Overblik, salgspipeline/-indbakke, tilbud, rateblad, vidensbase,
+  abonnement, økonomi, faktura, kredit, bilag, omkostninger og integrationer
+  blev åbnet uden demo-mode. Tastaturnavigation til ratebladet består.
+- Layout blev kontrolleret ved 1440×900 og 1920×1080 uden vandret overflow.
+  Gennemgangen fandt en manglende kolonnenøgle/feltfallback i fællestabellen;
+  den er rettet og visuelt genverificeret med synlige gældsaldersetiketter.
+- Drifts-, migration-, recovery-, smoke-test- og aktiveringsrækkefølge er
+  samlet i `docs/VEYRO_EJERKONSOL_DRIFT_V1.md` uden hemmeligheder.
+- `npm run build` efter etape J består med 517 moduler.
 - En ny fuld callable-E2E for salgsindbakken blev ikke oprettet, fordi miljøets
   sikkerhedsreview afviste den foreslåede emulatortestfil. Den eksisterende
   ejer-flow-E2E, rules, rene adaptertests og build er grønne; M365-/AI-callables
@@ -263,10 +276,9 @@ Opdateret: 2026-09-10
   herunder en major Admin-opgradering ifølge audit. Den brede opgradering er
   bevidst ikke udført i denne arbejdsrunde.
 
-## Næste konkrete opgave
+## Før reel aktivering
 
-Etape J er næste interne etape: samlet migrations-dry-run, browsergennemgang,
-regression og drifts-/aktiveringsvejledning. Før ekstern aktivering skal
+Den internt gennemførlige etape J er afsluttet. Før ekstern aktivering skal
 postkassetype og underliggende mailbox-id for
 `info@veyrosystems.com` verificeres, Entra-app/mailbox-scope og Send As-retten
 godkendes, og en syntetisk ikke-produktions-E2E gennemføres. OpenAI kræver

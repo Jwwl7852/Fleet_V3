@@ -44,7 +44,7 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 | Dinero | Faktura-/kreditkø, personlig API-adapter og pagineret retursynk er implementeret; liveforbindelse mangler |
 | Microsoft 365-salgsindbakke | Implementeret additivt i G1 under Salg; ekstern forbindelse er ikke aktiveret |
 | OpenAI-salgsassistent og vidensbase | Implementeret servermæssigt i G2; secret, model og budgetaktivering mangler |
-| Bilagsindbakke | Mangler og tilføjes senere med migration/status |
+| Bilagsindbakke | Implementeret med privat upload, gennemgang, dedupe og adapterstatus; eksterne mail/OCR-/købsforbindelser mangler |
 | Veyro-logo og tema | Genbruges fra `src/assets/veyro`, `VeyroLogo.jsx` og `fleet.css` |
 
 ## Etaper
@@ -225,11 +225,15 @@ Status: implementeret og isoleret verificeret 2026-09-10.
 
 ### J — Samlet aflevering
 
-Status: næste etape.
+Status: afsluttet for den isolerede, internt gennemførlige leverance 2026-09-10.
 
-- Additiv migrationsprøve med dry-run/recovery.
-- Samlet regression, emulator, browsergennemgang og dokumentpreview.
-- Driftsvejledning og præcise aktiveringstrin uden hemmeligheder.
+- Additiv migrationsprøve med dry-run/recovery er implementeret og består på
+  isoleret fixture; ingen rigtig database er migreret.
+- Samlet regression, fire-emulator-kæder, browsergennemgang ved laptop/stor
+  skærm og dokumentpreview er gennemført. Eksterne liveforbindelser er fortsat
+  særskilte aktiveringsporte og tæller ikke som testede.
+- Driftsvejledning og præcise aktiveringstrin uden hemmeligheder er skrevet i
+  `docs/VEYRO_EJERKONSOL_DRIFT_V1.md`.
 
 ## Registrerede antagelser og blokeringer
 

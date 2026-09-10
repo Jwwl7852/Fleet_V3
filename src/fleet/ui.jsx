@@ -147,8 +147,8 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
       <table className="fc-table">
         <thead>
           <tr>
-            {kolonner.map((k) => (
-              <th key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
+            {kolonner.map((k, i) => (
+              <th key={k.key ?? k.felt ?? `kolonne-${i}`} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
                 {k.label}
               </th>
             ))}
@@ -168,9 +168,9 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
               className={erValgt?.(r) ? "fc-valgt" : undefined}
               style={paaRaekke ? { cursor: "pointer" } : undefined}
             >
-              {kolonner.map((k) => (
-                <td key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""}>
-                  {k.render ? k.render(r) : r[k.key]}
+              {kolonner.map((k, j) => (
+                <td key={k.key ?? k.felt ?? `kolonne-${j}`} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""}>
+                  {k.render ? k.render(r) : r[k.key ?? k.felt]}
                 </td>
               ))}
             </tr>

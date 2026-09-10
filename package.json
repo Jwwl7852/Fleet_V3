@@ -23,6 +23,7 @@
     "ejer:vis": "node scripts/ejer.mjs vis",
     "ejer:giv": "node scripts/ejer.mjs giv",
     "ejer:fjern": "node scripts/ejer.mjs fjern",
+    "ejer:migration:v1": "node scripts/ejer-migration-v1.mjs",
     "devtester:vis": "node scripts/dev-tester.mjs vis",
     "devtester:giv": "node scripts/dev-tester.mjs giv",
     "devtester:fjern": "node scripts/dev-tester.mjs fjern"

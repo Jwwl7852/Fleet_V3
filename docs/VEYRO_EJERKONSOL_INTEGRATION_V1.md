@@ -31,6 +31,9 @@ FAKTURACENTER ændres ikke i deres egne worktrees af dette spor.
 | `functions/microsoft-graph.js` | Graph-token, delta, vedhæftninger og draft/send-port med eksplicit ukendt udfald. |
 | `functions/openai-salgsassistent.js` | Serverbaseret Responses API-kontrakt med struktureret output og `store: false`. |
 | `functions/salgsplatform.js` | Rene normaliserings-, dublet-, godkendelses- og AI-budgetregler. |
+| `src/fleet/ejer-bilag-regler.js` | Fælles upload-, metadata-, dedupe- og omkostningsmapping for ejerens egne bilag. |
+| `src/fleet/ejer-kpi.js` | Fælles afstemte definitioner for økonomi-, aftale- og salgsoverblikket. |
+| `src/fleet/ejer-migration.js` | Ren, additiv dry-run-plan for legacy-fakturadata; rører aldrig historiske beløb eller accepterede tilbud. |
 
 ## Vedvarende datarødder
 
@@ -86,6 +89,15 @@ ingen automatisk migration af eksisterende blandede ejer-/tenantkonti; de skal
 først rapporteres og håndteres manuelt. Nye CRM- og auditnoder kræver de nye
 Database Rules og Functions i samme kontrollerede udviklingsudrulning. Ingen
 udrulning er udført fra dette spor.
+
+Etape J tilføjer `scripts/ejer-migration-v1.mjs`. Dry-run er standard og
+rapporterer manglende eller modstridende forretningsnøgler. `--apply` kræver
+eksplicit projektnavn to gange og en ny rapportfil. En transaktion tilføjer kun
+et tomt felt eller accepterer en allerede identisk værdi; en afvigelse afbryder.
+Fixtureprøven er genkørbar og bekræfter, at tilbud, prislister, linjer og beløb
+er urørte. Der er ikke læst fra eller skrevet til en rigtig Firebase-database.
+Recovery og ekstern aktivering er beskrevet i
+`docs/VEYRO_EJERKONSOL_DRIFT_V1.md`.
 
 `npm run delt:kopier` skal køres før commit/deploy, så
 `functions/delt/ejeradgang.js`, `functions/delt/ejer-crm-regler.js` og
@@ -186,6 +198,6 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
   runtimefund. De berører også Auth/callable- og Admin Storage-overfladen og
   skal løses i et særskilt dependency-opgraderingsspor med fuld regression.
 - M365/OpenAI-kontrakten er testet med syntetiske, rene adaptertests og indgår
-  i den samlede 4352/4352 grønne platform-/rules-suite. Live Graph/OpenAI samt den nye
+  i den samlede 4360/4360 grønne platform-/rules-suite. Live Graph/OpenAI samt den nye
   salgsindbakke-callable-kæde er ikke end-to-end-testet og må ikke beskrives
   som tilsluttet.
