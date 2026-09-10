@@ -235,6 +235,22 @@ Status: afsluttet for den isolerede, internt gennemførlige leverance 2026-09-10
 - Driftsvejledning og præcise aktiveringstrin uden hemmeligheder er skrevet i
   `docs/VEYRO_EJERKONSOL_DRIFT_V1.md`.
 
+### K — Lokal review og backupforberedelse
+
+Status: gennemført lokalt 2026-09-10; ingen push, deployment eller ekstern
+aktivering.
+
+- Frisk, sammenhængende fixture fra salgsforespørgsel til økonomi er seedet og
+  browserverificeret med normalt tenantløst ejerlogin.
+- Testadapterdata er mærket i UI og dokumentation; virkelige Microsoft 365-,
+  OpenAI-, Dinero-, mail- og OCR-forbindelser forbliver `Ikke tilsluttet`.
+- Den faktiske Windows-kompatibilitetsvej og versionsmatrix er dokumenteret i
+  `docs/VEYRO_EJERKONSOL_GENNEMGANG_V1.md`.
+- Ejerbranchens remote-status, filomfang og secret-/fixtureafgrænsning
+  kontrolleres før et lokalt checkpoint. Den planlagte senere handling er en
+  eksplicit push af kun `codex/ejer-integrated-development`; den udføres ikke i
+  denne arbejdsrunde.
+
 ## Registrerede antagelser og blokeringer
 
 - Der var ingen yderligere designbilleder tilgængelige; repositoryets faktiske

@@ -300,3 +300,34 @@ organisationsspecifik API-nøgle, salgskonto og en separat testorganisation.
 Først derefter kan oprettelse/bogføring/mailout og retursynk dokumenteres live.
 Bilagsoverførsel kræver desuden et kontraktverificeret Dinero-købs-/bilagsflow;
 ingen klargjort Veyro-post er rapporteret som bogført.
+
+## Reviewcheckpoint 2026-09-10
+
+- Verificeret arbejdsområde før review: worktree
+  `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`, branch
+  `codex/ejer-integrated-development`, HEAD
+  `31c046c6f9d31a7d1cedbeea0f85581a0393e43b`, ingen upstream. De øvrige
+  modulworktrees blev kun aflæst og ikke ændret.
+- En frisk Auth/Database/Functions/Storage-suite blev startet på det isolerede
+  `demo-veyro-owner`-projekt. Første kolde Functions-discovery overskred 10
+  sekunder; med `FUNCTIONS_DISCOVERY_TIMEOUT=60000` blev alle ejer-callables
+  indlæst.
+- Faktisk anvendt værktøjskæde: Firebase CLI `13.35.1`, Temurin OpenJDK
+  `11.0.32.1+1`, isoleret Node `v20.20.2`, npm `11.17.0` og Vite `5.4.21`.
+  Shellens normale Node er `v24.19.0`. JDK 21/CLI 15.29.0 er fortsat kun den
+  mislykkede AF_UNIX-vej på denne Windows-maskine, ikke den kørte suite.
+- Fixturekæden blev kørt fra tom emulator i rækkefølgen ejer → tilbud/aftale →
+  faktura/kredit/bilag → review. Resultatet omfattede tilbud v1/v2, accepteret
+  version 2, idempotent aftale/tenant, invitation, låst septembergrundlag,
+  delbetaling, delkredit, bilagsdublet og match.
+- Normal browserlogin blev gennemført som den syntetiske tenantløse ejer via
+  Auth-emulatoren. Ingen demo-mode, guard-omgåelse, produktionskonto eller
+  virkelig credential blev brugt.
+- Browseren viste den sammenhængende Nordlys-reviewcase og den præcise
+  prislistesnapshotreference på fakturaen. Microsoft 365, OpenAI, Dinero,
+  bilagsmail og OCR står fortsat som `Ikke tilsluttet`.
+- AI-, mail- og Dinero-resultater i reviewcasen er eksplicit mærkede lokale
+  testadapterfixtures. Der er ikke overført mailindhold til OpenAI og ikke sendt
+  mail eller økonomidata til en ekstern tjeneste.
+- Reproducerbar login-, start- og gennemgangsvejledning samt screenshots er
+  samlet i `docs/VEYRO_EJERKONSOL_GENNEMGANG_V1.md`.
