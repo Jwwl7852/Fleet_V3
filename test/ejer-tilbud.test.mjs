@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   antalTilSkala, beregnTilbud, beregnTilbudslinje, tilbudsnummer, validerTilbud,
+  ratebladFraPrisliste,
 } from "../src/fleet/ejer-tilbud-regler.js";
 
 const linje = (navn, antal, normalprisOere, fakturering, ekstra = {}) => ({
@@ -63,4 +64,42 @@ test("tilbud validerer DKK, datoer, moms, mængder og kendte moduler", () => {
 
 test("tilbudsnummer har stabilt årsformat", () => {
   assert.equal(tilbudsnummer(2026, 42), "T-2026-0042");
+});
+
+test("versioneret prisliste bliver til valgbare tilbudslinjer uden at opfinde priser", () => {
+  const linjer = ratebladFraPrisliste({
+    id: "prisliste-v7", momssats: 25,
+    platform: { basisOere: 149500 },
+    moduler: {
+      flaade: { basisOere: 250000, prKoeretoejOere: 4500, prBrugerOere: { desktop: 7900, chauffoer: 1900 } },
+      facility: { basisOere: 0, prKoeretoejOere: 0, prBrugerOere: { desktop: 0, chauffoer: 0 } },
+      dashboard: { basisOere: 999999 },
+    },
+    tilbudslinjer: {
+      implementering: {
+        art: "implementering", navn: "Implementering", enhed: "time",
+        fakturering: "engang", normalprisOere: 99500, momssats: 25,
+        rabatberettiget: false,
+      },
+    },
+  });
+  assert.equal(linjer.length, 6);
+  assert.equal(linjer[0].art, "grundplatform");
+  assert.ok(linjer.every((l) => l.priskilde === "prisliste:prisliste-v7"));
+  assert.ok(linjer.every((l) => l.normalprisOere > 0));
+  assert.equal(linjer.some((l) => l.modulId === "dashboard"), false);
+  assert.equal(linjer.some((l) => l.modulId === "fakturacenter"), false);
+  const implementering = linjer.find((l) => l.art === "implementering");
+  assert.equal(implementering.fakturering, "engang");
+  assert.equal(implementering.rabatberettiget, false);
+});
+
+test("et tilbudssnapshot beholder sine priser når ratebladobjektet ændres", () => {
+  const prisliste = { id: "p1", momssats: 25, platform: { basisOere: 100000 }, moduler: {} };
+  const valgt = ratebladFraPrisliste(prisliste)[0];
+  const foer = beregnTilbud({ linjer: [valgt] });
+  prisliste.platform.basisOere = 900000;
+  const efter = beregnTilbud({ linjer: [valgt] });
+  assert.equal(foer.maanedlig.beloebOere, 100000);
+  assert.equal(efter.maanedlig.beloebOere, 100000);
 });

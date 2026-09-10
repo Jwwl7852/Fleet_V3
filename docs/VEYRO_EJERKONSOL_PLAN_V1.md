@@ -35,8 +35,9 @@ oprettes ikke en parallel konsol, et separat login eller en ny temakilde.
 | Eksisterende ejer-callables | Bevares, får fælles revocationkontrol og platformaudit |
 | `udbyder/kunder`, målinger og fakturagrundlag | Bevares som autoritative eksisterende data |
 | Kundens `opsaetning/brugere` | Bevares adskilt fra ejeradministrationen |
-| Genereret administratoradgangskode | Erstattes senere af tidsbegrænset invitation |
-| CRM, tilbud, Dinero, bilagsindbakke | Mangler og tilføjes additivt med migration/status |
+| Genereret administratoradgangskode | Lukket og erstattet af tidsbegrænset invitation |
+| CRM og tilbud | Implementeret additivt med servervalidering og versionssnapshots |
+| Dinero og bilagsindbakke | Mangler og tilføjes senere med migration/status |
 | Veyro-logo og tema | Genbruges fra `src/assets/veyro`, `VeyroLogo.jsx` og `fleet.css` |
 
 ## Etaper
@@ -52,19 +53,21 @@ Status: afsluttet 2026-09-10.
 
 ### B — Adgang og skal
 
-Status: implementeret; emulatorverifikation blokeret af lokal Java-version.
+Status: implementeret og emulatorverificeret 2026-09-10.
 
 - Et eksplicit, tenantløst ejerclaim-format med legacy-kompatibilitet.
 - RTDB-læsning for rene ejere uden kunstige tenant/perms-claims.
 - Revocationkontrol i alle privilegerede ejer-callables.
 - Serverstyret platformaudit og afvisning af direkte klientwrites.
 - Ejer-navigation med eksisterende logo, font og Veyro-tokens.
-- Rules-, domæne-, lint-, build- og routingregression.
+- AK-01–AK-04 verificeret i Database Emulator; Storage-stien for tilbuds-PDF
+  er lukket for både ejerklient og kundeadministrator.
+- Normalt login med tenantløs testidentitet verificeret i isolerede Auth-,
+  Database-, Storage- og Functions-emulatorer uden demo-mode eller guard-omgåelse.
 
 ### C — Salg
 
-Status: implementeret som første vertikale arbejdsgang; serverdata og
-domænetests er verificeret, regelbevis afventer Java 21.
+Status: implementeret og emulatorverificeret.
 
 - Vedvarende CRM-data under ejergrænsen.
 - Virksomheder, flere salgsmuligheder, aktiviteter og tidslinje.
@@ -73,25 +76,38 @@ domænetests er verificeret, regelbevis afventer Java 21.
 
 ### D — Priser og tilbud
 
-Status: delvist implementeret.
+Status: implementeret og emulatorverificeret; ekstern mail er bevidst ikke tilsluttet.
 
 - Udvid eksisterende versioneret rateblad med engangs- og abonnementslinjer.
 - Fælles deterministisk beregning i browser/server.
-- Serverallokerede tilbudsnumre, versionssnapshots og PDF.
-
-Første del leverer tilbudskladde, fælles serverberegning, unikt nummer,
-uforanderlig version 1, browserens udskriv/gem-PDF og en eksplicit manuel
-afsendelsesregistrering. Automatisk indlæsning fra officiel prisliste,
-reviderede versioner, vedvarende PDF-fil, mailadapter og accept hører fortsat
-til de resterende D/E-arbejdsgange.
+- Serverallokerede tilbudsnumre og uforanderlige versionssnapshots.
+- Rateblad med valg, mængde, aftalt pris, linjerabat, generel rabat,
+  introduktionsperiode samt adskilte månedlige og engangsbeløb.
+- Automatisk tilbudsudfyldning fra den valgte versionerede prisliste uden at
+  opfinde manglende priser.
+- Ny kladde/version efter udstedelse; gamle snapshots og PDF'er ændres ikke.
+- Vedvarende servergenereret PDF i beskyttet Storage, hash og præcis
+  versionsreference; browserudskrift er fortsat supplement.
+- Mailadapter med fejlforsøg/status `ikke_tilsluttet`; manuel ekstern
+  afsendelse forbliver en særskilt, tydelig registrering.
+- Accept med version, server-tidspunkt, metode og dokumentation; ingen
+  automatisk fakturafrigivelse.
 
 ### E — Aftale og kunde
 
-Status: ikke startet.
+Status: implementeret og emulatorverificeret.
 
 - Genkørbar provisioning med stabile operations-id'er.
 - Aftale-/abonnementsversioner og virkningsdatoer.
 - Sikker administratorinvitation uden synlig adgangskode.
+- Provisionering genbruger CRM's permanente aftale-/tenantkobling, bevarer
+  aftaleversioner og kan genkøres efter delvise fejl uden dobbeltoprettelse.
+- Fremtidig virkningsdato registreres som planlagt uden at overskrive et
+  aktivt abonnement; en senere genkørsel aktiverer den. Automatisk scheduler
+  for dette tidspunkt hører til driftsopsætningen.
+- Invitationstoken lagres kun som SHA-256-hash og kan udløbe, tilbagekaldes
+  og roteres ved genudsendelse. Nye og eksisterende verificerede Auth-konti
+  understøttes; invitationen kan kun give kundens `admin`, aldrig ejeradgang.
 
 ### F–I — Fakturering, kredit, udgifter og overblik
 
@@ -116,5 +132,13 @@ Status: ikke startet.
   brandfiler har derfor forrang.
 - Dinero-organisation, API-credentials og testorganisation er ikke tilsluttet.
 - Invoice-mail, inbound-maildomæne og OCR-leverandør er ikke identificeret.
-- MFA kræver verifikation af Firebase Authentication-produkt/opsætning; UI må
-  ikke vise MFA som aktiv, før en rigtig tenantløs ejerflow er afprøvet.
+- Officielle Veyro-priser blev ikke fundet i repositoryet. Prisadministrationen
+  er færdig, men kun emulatorfixtures indeholder eksempelpriser.
+- MFA kræver fortsat produktionsnær Firebase Authentication-opsætning. Normal
+  tenantløs loginrouting er emulatorverificeret, men MFA er ikke aktiveret.
+- Firebase CLI 15.29.0/JDK 21 rammer en Windows AF_UNIX-fejl på denne maskine.
+  Den reproducerbare testvej er derfor isoleret Temurin JDK 11 + CLI 13.35.1;
+  ingen eksisterende Java- eller Node-installation er overskrevet.
+- `npm audit --omit=dev` rapporterer kendte transitive fund i den eksisterende
+  Firebase/browser- og Admin-SDK-stak. De skal håndteres som en separat,
+  kontrolleret dependency-opgradering; denne arbejdsrunde laver ingen bred opgradering.

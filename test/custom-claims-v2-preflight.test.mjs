@@ -13,10 +13,8 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.match(functions, /\.\/delt\/permissions\.js/);
   assert.equal(rules.split("auth.token.perms.matches").length - 1, 0);
   assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 82);
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 105);
   assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 164);
   assert.ok(Buffer.byteLength(rules, "utf8") < 450_000);
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 210);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);
@@ -37,8 +35,15 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.ok(authRegler.length > 0);
   assert.deepEqual(authRegler.filter(({ regel }) =>
     !regel.includes("child('authRevocations').child(auth.uid)")), []);
+  /* Ejerregler accepterer med vilje ikke legacy tenant-claims: ejeren er
+     tenantløs og har kun det serverudstedte `udbyder`-claim. Alle øvrige
+     auth-regler skal fortsat bevare migrationsperiodens dual-read. */
   assert.deepEqual(authRegler.filter(({ regel }) =>
-    !regel.includes("child('legacyClaimsAllowlist').child(auth.uid)")), []);
+    !regel.includes("child('legacyClaimsAllowlist').child(auth.uid)") &&
+    !regel.includes("auth.token.udbyder === true")), []);
+  assert.deepEqual(authRegler.filter(({ regel }) =>
+    regel.split("child('authRevocations').child(auth.uid)").length - 1 !== 2), [],
+  "hver auth-regel skal kontrollere revocationens eksistens og tidspunkt");
   assert.match(doc, /Rollback-matrix/);
   assert.match(doc, /inventering.*godkendt/is);
   assert.match(doc, /Deploy er blokeret/);

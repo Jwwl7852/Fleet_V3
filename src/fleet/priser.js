@@ -324,6 +324,12 @@ export function tomPrisliste(moduler = []) {
 }
 
 const erHeltal = (n) => Number.isInteger(n) && n >= 0;
+const TILBUDSARTER = new Set([
+  "implementering", "enhed", "konsulent_fjern", "konsulent_kunde",
+  "specialudvikling", "andet",
+]);
+const FAKTURERINGSFORMER = new Set(["maanedlig", "engang"]);
+const RATEBLAD_ID = /^[A-Za-z0-9_-]{1,80}$/;
 
 /**
  * ⚠ SATSER ER ØRE SOM INTEGER. Ikke kroner, ikke float. Beslutning 2, og den
@@ -370,6 +376,35 @@ export function validerPrisliste(liste = {}, { kendteModuler = [] } = {}) {
       else if (sats != null && !erHeltal(sats)) {
         fejl.push(`${modul}: prBrugerOere.${art} skal være hele øre.`);
       }
+    }
+  }
+
+  /* Tilbudsydelser som ikke er en abonnementsakse: implementering,
+     hardware og konsulentarbejde. De bor på SAMME versionerede prisliste,
+     men indgår ikke i den automatiske månedsmåling. */
+  for (const [id, linje] of Object.entries(liste.tilbudslinjer || {})) {
+    if (!RATEBLAD_ID.test(id)) fejl.push(`Ugyldigt rateblads-id: ${id}`);
+    if (!linje || typeof linje !== "object" || Array.isArray(linje)) {
+      fejl.push(`${id}: ratebladslinjen er ugyldig.`);
+      continue;
+    }
+    if (typeof linje.navn !== "string" || !linje.navn.trim() || linje.navn.length > 160) {
+      fejl.push(`${id}: navn mangler eller er for langt.`);
+    }
+    if (!TILBUDSARTER.has(linje.art)) fejl.push(`${id}: ukendt tilbudsart.`);
+    if (!FAKTURERINGSFORMER.has(linje.fakturering)) fejl.push(`${id}: ukendt faktureringsform.`);
+    if (typeof linje.enhed !== "string" || !linje.enhed.trim() || linje.enhed.length > 30) {
+      fejl.push(`${id}: enhed mangler eller er for lang.`);
+    }
+    if (!erHeltal(linje.normalprisOere)) fejl.push(`${id}: normalprisOere skal være hele øre.`);
+    if (!Number.isInteger(linje.momssats) || linje.momssats < 0 || linje.momssats > 100) {
+      fejl.push(`${id}: momssatsen skal være et heltal mellem 0 og 100.`);
+    }
+    if (linje.rabatberettiget !== true && linje.rabatberettiget !== false) {
+      fejl.push(`${id}: rabatberettiget skal være sand eller falsk.`);
+    }
+    if (linje.modulId && kendteModuler.length && !kendteModuler.includes(linje.modulId)) {
+      fejl.push(`${id}: ukendt modul ${linje.modulId}.`);
     }
   }
 

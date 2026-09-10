@@ -42,6 +42,8 @@ import { initializeApp, getApp } from "firebase-admin/app";
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { genererTilbudsPdf } from "./tilbud-pdf.js";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -1198,6 +1200,20 @@ function kraevForventetRevision(vaerdi) {
   return revision;
 }
 
+/* Admin SDK kalder ofte en RTDB-transaction én gang med tom lokal cache.
+   Alle anvendelser nedenfor har først læst det eksisterende objekt, og ingen
+   af objekttyperne har et slette-endpoint. Første callback må derfor bruge
+   dette verificerede snapshot; efterfølgende callbacks bruger altid serverens
+   værdi, så samtidige revisioner stadig afgøres af Firebase-CAS. */
+function verificeretTransaktionsstart(verificeret) {
+  let foerste = true;
+  return (aktuel) => {
+    const vaerdi = foerste && aktuel == null ? verificeret : aktuel;
+    foerste = false;
+    return vaerdi;
+  };
+}
+
 function kastValideringsfejl(resultat) {
   if (!harValideringsfejl(resultat)) return resultat.post;
   throw new HttpsError("invalid-argument", Object.values(resultat.fejl).join(" "));
@@ -1302,6 +1318,13 @@ export const crmmulighedgem = onCall({ region: REGION }, async (req) => {
 
   const db = getDatabase();
   const virksomhedRef = db.ref(`udbyder/crm/virksomheder/${virksomhedId}`);
+  /* En parent-transaction kan på en kold Admin SDK-instans først blive kaldt
+     med tom lokal cache. Læs derfor det konkrete objekt og afvis manglende
+     virksomhed eksplicit, før transaktionen bruger stamdata som præmis. */
+  const virksomhedFoer = (await virksomhedRef.once("value")).val();
+  if (!virksomhedFoer?.stamdata) {
+    throw new HttpsError("not-found", "CRM-virksomheden findes ikke.");
+  }
   const erNy = !d.id;
   const id = erNy
     ? virksomhedRef.child("muligheder").push().key
@@ -1310,8 +1333,9 @@ export const crmmulighedgem = onCall({ region: REGION }, async (req) => {
   const nu = Date.now();
   const tidslinjeId = virksomhedRef.child("tidslinje").push().key;
   let konflikt = false;
-
-  const resultat = await virksomhedRef.transaction((virksomhed) => {
+  const transaktionsstart = verificeretTransaktionsstart(virksomhedFoer);
+  const resultat = await virksomhedRef.transaction((aktuelVirksomhed) => {
+    const virksomhed = transaktionsstart(aktuelVirksomhed);
     if (!virksomhed?.stamdata) { konflikt = true; return; }
     const eksisterende = virksomhed.muligheder?.[id] || null;
     const revision = eksisterende?.revision || 0;
@@ -1342,7 +1366,7 @@ export const crmmulighedgem = onCall({ region: REGION }, async (req) => {
       },
     };
   });
-  if (!resultat.committed || konflikt) {
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
     throw new HttpsError("aborted", "Salgsmuligheden er ændret af en anden. Genindlæs og prøv igen.");
   }
   const revision = resultat.snapshot.val()?.muligheder?.[id]?.revision;
@@ -1363,6 +1387,10 @@ export const crmaktivitetgem = onCall({ region: REGION }, async (req) => {
 
   const db = getDatabase();
   const virksomhedRef = db.ref(`udbyder/crm/virksomheder/${virksomhedId}`);
+  const virksomhedFoer = (await virksomhedRef.once("value")).val();
+  if (!virksomhedFoer?.stamdata) {
+    throw new HttpsError("not-found", "CRM-virksomheden findes ikke.");
+  }
   const erNy = !d.id;
   const id = erNy
     ? virksomhedRef.child("aktiviteter").push().key
@@ -1371,8 +1399,9 @@ export const crmaktivitetgem = onCall({ region: REGION }, async (req) => {
   const nu = Date.now();
   const tidslinjeId = virksomhedRef.child("tidslinje").push().key;
   let konflikt = false;
-
-  const resultat = await virksomhedRef.transaction((virksomhed) => {
+  const transaktionsstart = verificeretTransaktionsstart(virksomhedFoer);
+  const resultat = await virksomhedRef.transaction((aktuelVirksomhed) => {
+    const virksomhed = transaktionsstart(aktuelVirksomhed);
     if (!virksomhed?.stamdata) { konflikt = true; return; }
     const eksisterende = virksomhed.aktiviteter?.[id] || null;
     const revision = eksisterende?.revision || 0;
@@ -1406,7 +1435,7 @@ export const crmaktivitetgem = onCall({ region: REGION }, async (req) => {
       },
     };
   });
-  if (!resultat.committed || konflikt) {
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
     throw new HttpsError("aborted", "Aktiviteten kunne ikke gemmes. Genindlæs virksomhedens data og prøv igen.");
   }
   const revision = resultat.snapshot.val()?.aktiviteter?.[id]?.revision;
@@ -1463,7 +1492,9 @@ export const tilbudgem = onCall({ region: REGION }, async (req) => {
   const forventetRevision = kraevForventetRevision(d.forventetRevision);
   const nu = Date.now();
   let konflikt = false;
-  const resultat = await ref.transaction((aktuel) => {
+  const transaktionsstart = verificeretTransaktionsstart(eksisterendeFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
     const revision = aktuel?.revision || 0;
     if ((!erNy && !aktuel) || revision !== forventetRevision) { konflikt = true; return; }
     if (aktuel && aktuel.status !== "kladde") { konflikt = true; return; }
@@ -1476,7 +1507,7 @@ export const tilbudgem = onCall({ region: REGION }, async (req) => {
       opdateretMs: nu, opdateretAf: ejerUid, revision: revision + 1,
     };
   });
-  if (!resultat.committed || konflikt) {
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
     throw new HttpsError("aborted", "Tilbuddet er ændret eller låst. Genindlæs og prøv igen.");
   }
   await skrivEjerAudit({ uid: ejerUid, handling: erNy ? "tilbud.opret" : "tilbud.opdater", objekt: "tilbud", objektId: id });
@@ -1491,9 +1522,12 @@ export const tilbududsted = onCall({ region: REGION }, async (req) => {
   const id = kraevTilbudId(d.id);
   const forventetRevision = kraevForventetRevision(d.forventetRevision);
   const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const tilbudFoer = (await ref.once("value")).val();
   const nu = Date.now();
   let konflikt = false;
-  const resultat = await ref.transaction((aktuel) => {
+  const transaktionsstart = verificeretTransaktionsstart(tilbudFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
     if (!aktuel?.kladde || aktuel.revision !== forventetRevision || aktuel.status !== "kladde") {
       konflikt = true; return;
     }
@@ -1513,7 +1547,7 @@ export const tilbududsted = onCall({ region: REGION }, async (req) => {
       revision: aktuel.revision + 1,
     };
   });
-  if (!resultat.committed || konflikt) {
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
     throw new HttpsError("aborted", "Kun den aktuelle, gyldige kladde kan udstedes. Genindlæs tilbuddet.");
   }
   const tilbud = resultat.snapshot.val();
@@ -1522,6 +1556,462 @@ export const tilbududsted = onCall({ region: REGION }, async (req) => {
     skrivEjerAudit({ uid: ejerUid, handling: "tilbud.udsted", objekt: "tilbud", objektId: id, korrelationsId: d.operationId }),
   ]);
   return { ok: true, id, nummer: tilbud.nummer, version: tilbud.aktuelVersion, revision: tilbud.revision };
+});
+
+/* En udstedt version redigeres aldrig. Denne handling kopierer det seneste
+   snapshot til en ny kladde; næste udstedelse får næste versionsnummer. */
+export const tilbudrevisionstart = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const tilbudFoer = (await ref.once("value")).val();
+  const nu = Date.now();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(tilbudFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    const version = aktuel?.aktuelVersion;
+    const snapshot = aktuel?.versioner?.[version]?.snapshot;
+    if (!snapshot || aktuel.revision !== forventetRevision || !["klar", "sendt", "afvist", "udloebet"].includes(aktuel.status)) {
+      konflikt = true; return;
+    }
+    const { beregning: _beregning, ...kladde } = snapshot;
+    return {
+      ...aktuel, status: "kladde", kladde, revision: aktuel.revision + 1,
+      opdateretMs: nu, opdateretAf: ejerUid,
+      revisionFraVersion: version,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
+    throw new HttpsError("aborted", "Kun et udstedt, ikke-accepteret tilbud kan få en ny version.");
+  }
+  await skrivEjerAudit({ uid: ejerUid, handling: "tilbud.revision.start", objekt: "tilbud", objektId: id });
+  return { ok: true, id, revision: resultat.snapshot.val().revision, naesteVersion: resultat.snapshot.val().aktuelVersion + 1 };
+});
+
+const ACCEPTMETODER = new Set(["email", "underskrevet_pdf", "moede", "telefon", "andet"]);
+
+export const tilbudacceptregistrer = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const metode = kortStreng(d.metode, 40);
+  const dokumentation = kortStreng(d.dokumentation, 1000);
+  const version = Number(d.version);
+  if (!ACCEPTMETODER.has(metode)) throw new HttpsError("invalid-argument", "Vælg hvordan kunden accepterede.");
+  if (!dokumentation) throw new HttpsError("invalid-argument", "Angiv dokumentation for kundens accept.");
+  if (!Number.isSafeInteger(version) || version < 1) throw new HttpsError("invalid-argument", "Tilbudsversionen er ugyldig.");
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const tilbudFoer = (await ref.once("value")).val();
+  const nu = Date.now();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(tilbudFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    const versionPost = aktuel?.versioner?.[version];
+    if (!versionPost || aktuel.aktuelVersion !== version || aktuel.revision !== forventetRevision || aktuel.status !== "sendt") {
+      konflikt = true; return;
+    }
+    const accept = { version, ms: nu, uid: ejerUid, metode, dokumentation };
+    return {
+      ...aktuel, status: "accepteret", accept,
+      versioner: { ...aktuel.versioner, [version]: { ...versionPost, accept } },
+      revision: aktuel.revision + 1, opdateretMs: nu, opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
+    throw new HttpsError("aborted", "Kun den aktuelle, sendte version kan registreres accepteret.");
+  }
+  const tilbud = resultat.snapshot.val();
+  await Promise.all([
+    skrivTilbudstidslinje(tilbud.virksomhedId, "tilbud.accepteret", id, ejerUid, { nummer: tilbud.nummer, version, metode }),
+    skrivEjerAudit({ uid: ejerUid, handling: "tilbud.accepter", objekt: "tilbud", objektId: id }),
+  ]);
+  return { ok: true, id, version, accepteretMs: nu, revision: tilbud.revision };
+});
+
+/* Accepteret tilbud -> aftale og eventuel tenant. RTDB-delen lander i én
+   multi-path update; den stabile aftalenøgle gør hele processen genkørbar. */
+export const aftaleprovisioner = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const tilbudId = kraevTilbudId(d.tilbudId);
+  const version = Number(d.version);
+  const operationId = kraevTilbudId(d.operationId, "operationId");
+  const virkningsdato = kortStreng(d.virkningsdato, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(virkningsdato || "") || Number.isNaN(Date.parse(`${virkningsdato}T00:00:00Z`))) {
+    throw new HttpsError("invalid-argument", "Virkningsdatoen er ugyldig.");
+  }
+  const tenantId = d.tenantId ? kraevKundeId({ id: d.tenantId }) : null;
+  const db = getDatabase();
+  const tilbud = (await db.ref(`udbyder/tilbud/${tilbudId}`).once("value")).val();
+  if (tilbud?.status !== "accepteret" || tilbud.accept?.version !== version) {
+    throw new HttpsError("failed-precondition", "Kun den registrerede, accepterede tilbudsversion kan blive til en aftale.");
+  }
+  const snapshot = tilbud.versioner?.[version]?.snapshot;
+  if (!snapshot) throw new HttpsError("not-found", "Det accepterede tilbudssnapshot findes ikke.");
+  const crmStamdata = (await db.ref(`udbyder/crm/virksomheder/${tilbud.virksomhedId}/stamdata`).once("value")).val() || {};
+  const angivetAftaleId = d.eksisterendeAftaleId
+    ? kraevTilbudId(d.eksisterendeAftaleId, "Eksisterende aftale-id") : null;
+  const crmAftaleId = crmStamdata.aftaleId
+    ? kraevTilbudId(crmStamdata.aftaleId, "CRM-aftale-id") : null;
+  if (angivetAftaleId && crmAftaleId && angivetAftaleId !== crmAftaleId) {
+    throw new HttpsError("already-exists", "CRM-virksomheden er allerede knyttet til en anden permanent aftale.");
+  }
+  const aftaleId = angivetAftaleId || crmAftaleId || `aftale_${tilbudId}_${version}`;
+  const eksisterendeAftale = (await db.ref(`udbyder/aftaler/${aftaleId}`).once("value")).val();
+  if (angivetAftaleId && !eksisterendeAftale) {
+    throw new HttpsError("not-found", "Den valgte eksisterende aftale findes ikke.");
+  }
+  if (eksisterendeAftale?.tenantId && tenantId && eksisterendeAftale.tenantId !== tenantId) {
+    throw new HttpsError("already-exists", "Aftalen er allerede knyttet til en anden permanent tenant.");
+  }
+  const crmTenant = crmStamdata.tenantId || null;
+  if (crmTenant && tenantId && crmTenant !== tenantId) {
+    throw new HttpsError("already-exists", "CRM-virksomheden er allerede knyttet til en anden permanent tenant.");
+  }
+  const endeligtTenantId = eksisterendeAftale?.tenantId || crmTenant || tenantId;
+  const moduler = [...new Set((snapshot.beregning?.linjer || []).map((l) => l.modulId).filter((m) => m && ALLE_MODULER.includes(m)))];
+  const mangler = manglendeKrav(moduler);
+  if (mangler.length) throw new HttpsError("failed-precondition", `${kravtekst(mangler)}. Tilbuddet kan ikke provisioneres som det står.`);
+
+  const provisioneringId = `provision_${tilbudId}_${version}`;
+  const laasRef = db.ref(`udbyder/provisioneringer/${provisioneringId}`);
+  const laasFoer = (await laasRef.once("value")).val();
+  const nu = Date.now();
+  const laaseStart = verificeretTransaktionsstart(laasFoer);
+  const laas = await laasRef.transaction((lokal) => {
+    const aktuel = laaseStart(lokal);
+    if (aktuel?.status === "faerdig") return aktuel;
+    return { id: provisioneringId, aftaleId, tilbudId, version, operationId, status: "arbejder", startetMs: aktuel?.startetMs || nu, senesteForsoegMs: nu, aktorUid: ejerUid };
+  });
+  if (!laas.committed || !laas.snapshot.exists()) throw new HttpsError("aborted", "Provisioneringen kunne ikke reserveres.");
+  if (laas.snapshot.val()?.status === "faerdig") {
+    return { ok: true, aftaleId, tenantId: laas.snapshot.val().tenantId || null, genbrugt: true };
+  }
+
+  const virkningMs = Date.parse(`${virkningsdato}T00:00:00Z`);
+  const aftaleStatus = virkningMs > nu ? "planlagt" : "aktiv";
+  const aftaleRef = db.ref(`udbyder/aftaler/${aftaleId}`);
+  let aftaleKonflikt = false;
+  const aftaleStart = verificeretTransaktionsstart(eksisterendeAftale);
+  const aftaleResultat = await aftaleRef.transaction((lokal) => {
+    const aktuel = aftaleStart(lokal);
+    if (aktuel?.tenantId && endeligtTenantId && aktuel.tenantId !== endeligtTenantId) {
+      aftaleKonflikt = true; return;
+    }
+    const genbrugtVersion = Object.entries(aktuel?.versioner || {}).find(([, v]) =>
+      v?.tilbudId === tilbudId && v?.tilbudsversion === version);
+    if (genbrugtVersion) return aktuel;
+    const aftaleVersion = (aktuel?.aktuelVersion || 0) + 1;
+    const aftaleVersionPost = {
+      version: aftaleVersion, tilbudId, tilbudsnummer: tilbud.nummer,
+      tilbudsversion: version, virkningsdato, status: aftaleStatus,
+      prisSnapshot: snapshot, acceptSnapshot: tilbud.accept,
+      oprettetMs: nu, oprettetAf: ejerUid,
+    };
+    return {
+      ...(aktuel || {}), id: aftaleId, virksomhedId: tilbud.virksomhedId,
+      tenantId: endeligtTenantId || null, status: aftaleStatus, virkningsdato,
+      aktuelVersion: aftaleVersion,
+      versioner: { ...(aktuel?.versioner || {}), [aftaleVersion]: aftaleVersionPost },
+      oprettetMs: aktuel?.oprettetMs || nu, oprettetAf: aktuel?.oprettetAf || ejerUid,
+      opdateretMs: nu, opdateretAf: ejerUid, revision: (aktuel?.revision || 0) + 1,
+    };
+  });
+  if (!aftaleResultat.committed || !aftaleResultat.snapshot.exists() || aftaleKonflikt) {
+    throw new HttpsError("aborted", "Aftalen blev ændret samtidigt. Genkør processen.");
+  }
+  const aftale = aftaleResultat.snapshot.val();
+  const aftaleVersion = Number(Object.entries(aftale.versioner || {}).find(([, v]) =>
+    v?.tilbudId === tilbudId && v?.tilbudsversion === version)?.[0]);
+  if (!Number.isSafeInteger(aftaleVersion)) throw new HttpsError("internal", "Aftaleversionen kunne ikke fastlægges.");
+  const virksomhed = crmStamdata;
+  const opdatering = {
+    [`udbyder/provisioneringer/${provisioneringId}`]: {
+      ...laas.snapshot.val(), status: endeligtTenantId && virkningMs > nu ? "planlagt" : "faerdig",
+      opdateretMs: nu, ...(endeligtTenantId && virkningMs > nu ? {} : { faerdigMs: nu }),
+      tenantId: endeligtTenantId || null,
+    },
+    [`udbyder/crm/virksomheder/${tilbud.virksomhedId}/stamdata/aftaleId`]: aftaleId,
+  };
+  if (endeligtTenantId) {
+    const tenantFindes = await kundeFindes(endeligtTenantId);
+    if (!tenantFindes) {
+      opdatering[`tenants/${endeligtTenantId}/_findes`] = true;
+      opdatering[`tenants/${endeligtTenantId}/virksomhed`] = virksomhed.cvr
+        ? { navn: virksomhed.navn || endeligtTenantId, cvr: virksomhed.cvr, oprettetMs: nu }
+        : { navn: virksomhed.navn || endeligtTenantId, oprettetMs: nu };
+    }
+    const abonnementsversion = {
+      status: aftaleStatus, startetMs: virkningMs,
+      aftaleId, aftaleVersion, prislisteId: snapshot.prislisteId || null,
+      bindingMaaneder: snapshot.bindingMaaneder || 0, introMaaneder: snapshot.introMaaneder || 0,
+      introRabatBps: snapshot.introRabatBps || 0, rabatBps: snapshot.generelRabatBps || 0,
+      interval: "maaned", aendretMs: nu, aendretAf: ejerUid,
+    };
+    if (tenantFindes && virkningMs > nu) {
+      opdatering[`tenants/${endeligtTenantId}/abonnement/planlagtAftale`] = {
+        ...abonnementsversion, moduler: modulsaet(moduler), status: "planlagt",
+      };
+    } else {
+      const eksisterendeAbonnement = tenantFindes
+        ? (await db.ref(`tenants/${endeligtTenantId}/abonnement`).once("value")).val() || {} : {};
+      opdatering[`tenants/${endeligtTenantId}/moduler`] = modulsaet(moduler);
+      opdatering[`tenants/${endeligtTenantId}/abonnement`] = {
+        ...eksisterendeAbonnement, ...abonnementsversion, planlagtAftale: null,
+      };
+    }
+    const kundeindeks = tenantFindes
+      ? (await db.ref(`udbyder/kunder/${endeligtTenantId}`).once("value")).val() || {} : {};
+    opdatering[`udbyder/kunder/${endeligtTenantId}`] = {
+      ...kundeindeks, oprettetMs: kundeindeks.oprettetMs || nu, aftaleId,
+    };
+    opdatering[`udbyder/crm/virksomheder/${tilbud.virksomhedId}/stamdata/tenantId`] = endeligtTenantId;
+  }
+  await db.ref().update(opdatering);
+  await Promise.all([
+    skrivTilbudstidslinje(tilbud.virksomhedId, "aftale.provisioneret", aftaleId, ejerUid, { tilbudId, version, tenantId: endeligtTenantId || null }),
+    skrivEjerAudit({ uid: ejerUid, handling: "aftale.provisioner", objekt: "aftale", objektId: aftaleId, korrelationsId: operationId }),
+  ]);
+  return {
+    ok: true, aftaleId, aftaleVersion, tenantId: endeligtTenantId || null,
+    status: endeligtTenantId && virkningMs > nu ? "planlagt" : "faerdig",
+    genbrugt: Boolean(eksisterendeAftale),
+  };
+});
+
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const invitationHash = (token) => createHash("sha256").update(token, "utf8").digest("hex");
+const sikkerHashEns = (a, b) => {
+  const aa = Buffer.from(String(a || ""), "hex");
+  const bb = Buffer.from(String(b || ""), "hex");
+  return aa.length === 32 && bb.length === 32 && timingSafeEqual(aa, bb);
+};
+
+async function eksisterendeInvitationKonto(email, tenantId) {
+  try {
+    const bruger = await getAuth().getUserByEmail(email);
+    const claims = bruger.customClaims || {};
+    if (claims.udbyder === true) throw new HttpsError("failed-precondition", "En ejeridentitet kan ikke inviteres som kundeadministrator.");
+    if (claims.tenant && claims.tenant !== tenantId) throw new HttpsError("already-exists", "Adressen tilhører allerede en anden tenant.");
+    return bruger;
+  } catch (e) {
+    if (e.code === "auth/user-not-found") return null;
+    throw e;
+  }
+}
+
+export const kundeinvitationopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const tenantId = kraevKundeId({ id: d.tenantId });
+  if (!(await kundeFindes(tenantId))) throw new HttpsError("not-found", "Kundetenanten findes ikke.");
+  const email = kortStreng(d.email, 120)?.toLowerCase();
+  if (!email || !erGyldigMail(email)) throw new HttpsError("invalid-argument", "Ugyldig mailadresse.");
+  const navn = kortStreng(d.navn, 80) || email;
+  const rolle = kortStreng(d.rolle, 30) || "admin";
+  if (rolle !== "admin") throw new HttpsError("invalid-argument", "Ejerinvitationer kan kun tildele den begrænsede kundeadministratorrolle.");
+  const eksisterende = await eksisterendeInvitationKonto(email, tenantId);
+  const id = `inv_${randomBytes(12).toString("hex")}`;
+  const token = randomBytes(32).toString("base64url");
+  const nu = Date.now();
+  const post = {
+    id, tenantId, email, navn, rolle, status: "afventer", generation: 1,
+    tokenHash: invitationHash(token), oprettetMs: nu, oprettetAf: ejerUid,
+    udloeberMs: nu + INVITATION_TTL_MS, eksisterendeKonto: Boolean(eksisterende),
+    mailStatus: "ikke_tilsluttet",
+  };
+  await getDatabase().ref(`udbyder/invitationer/${id}`).set(post);
+  await skrivEjerAudit({ uid: ejerUid, handling: "invitation.opret", objekt: "invitation", objektId: id, aendrede: ["tenantId", "email", "rolle"] });
+  return { ok: true, id, token, udloeberMs: post.udloeberMs, eksisterendeKonto: post.eksisterendeKonto, mailStatus: post.mailStatus };
+});
+
+export const kundeinvitationtilbagekald = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevTilbudId(req.data?.id, "Invitations-id");
+  const ref = getDatabase().ref(`udbyder/invitationer/${id}`);
+  const invitationFoer = (await ref.once("value")).val();
+  let konflikt = false;
+  const nu = Date.now();
+  const transaktionsstart = verificeretTransaktionsstart(invitationFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (!aktuel || aktuel.status === "accepteret") { konflikt = true; return; }
+    if (aktuel.status === "tilbagekaldt") return aktuel;
+    return { ...aktuel, status: "tilbagekaldt", tilbagekaldtMs: nu, tilbagekaldtAf: ejerUid, tokenHash: null };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) throw new HttpsError("failed-precondition", "En accepteret eller ukendt invitation kan ikke tilbagekaldes.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "invitation.tilbagekald", objekt: "invitation", objektId: id });
+  return { ok: true, id, status: "tilbagekaldt" };
+});
+
+export const kundeinvitationgenudsend = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const id = kraevTilbudId(req.data?.id, "Invitations-id");
+  const token = randomBytes(32).toString("base64url");
+  const nu = Date.now();
+  const ref = getDatabase().ref(`udbyder/invitationer/${id}`);
+  const invitationFoer = (await ref.once("value")).val();
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(invitationFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (!aktuel || aktuel.status === "accepteret") { konflikt = true; return; }
+    return {
+      ...aktuel, status: "afventer", generation: (aktuel.generation || 1) + 1,
+      tokenHash: invitationHash(token), udloeberMs: nu + INVITATION_TTL_MS,
+      genudsendtMs: nu, genudsendtAf: ejerUid, mailStatus: "ikke_tilsluttet",
+      tilbagekaldtMs: null, tilbagekaldtAf: null,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) throw new HttpsError("failed-precondition", "En accepteret eller ukendt invitation kan ikke genudsendes.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "invitation.genudsend", objekt: "invitation", objektId: id });
+  return { ok: true, id, token, udloeberMs: resultat.snapshot.val().udloeberMs, generation: resultat.snapshot.val().generation, mailStatus: "ikke_tilsluttet" };
+});
+
+export const kundeinvitationaccept = onCall({ region: REGION }, async (req) => {
+  if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Log ind med den inviterede e-mailadresse først.");
+  if (req.auth.token?.udbyder === true) throw new HttpsError("permission-denied", "En ejeridentitet kan ikke acceptere kundeadgang.");
+  if (req.auth.token?.email_verified !== true) throw new HttpsError("failed-precondition", "E-mailadressen skal være verificeret før invitationen kan accepteres.");
+  const id = kraevTilbudId(req.data?.id, "Invitations-id");
+  const token = typeof req.data?.token === "string" ? req.data.token : "";
+  if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) throw new HttpsError("invalid-argument", "Invitationstokenet er ugyldigt.");
+  const ref = getDatabase().ref(`udbyder/invitationer/${id}`);
+  const invitation = (await ref.once("value")).val();
+  if (!invitation) throw new HttpsError("not-found", "Invitationen findes ikke.");
+  if (invitation.status === "accepteret" && invitation.accepteretUid === req.auth.uid) {
+    return { ok: true, id, tenantId: invitation.tenantId, alleredeAccepteret: true };
+  }
+  if (invitation.status === "tilbagekaldt") throw new HttpsError("failed-precondition", "Invitationen er tilbagekaldt.");
+  if (Date.now() >= invitation.udloeberMs) {
+    await ref.update({ status: "udloebet" });
+    throw new HttpsError("deadline-exceeded", "Invitationen er udløbet. Bed Veyro om en genudsendelse.");
+  }
+  if (invitation.status !== "afventer" || !sikkerHashEns(invitation.tokenHash, invitationHash(token))) {
+    throw new HttpsError("permission-denied", "Invitationen er ikke gyldig.");
+  }
+  const email = String(req.auth.token?.email || "").toLowerCase();
+  if (email !== invitation.email) throw new HttpsError("permission-denied", "Log ind med den e-mailadresse invitationen er sendt til.");
+  const auth = getAuth();
+  const bruger = await auth.getUser(req.auth.uid);
+  const claims = bruger.customClaims || {};
+  if (claims.tenant && claims.tenant !== invitation.tenantId) throw new HttpsError("already-exists", "Kontoen tilhører allerede en anden tenant.");
+
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(invitation);
+  const reservation = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    if (aktuel?.status === "accepteret" && aktuel.accepteretUid === req.auth.uid) return aktuel;
+    if (aktuel?.status === "accepterer" && aktuel.accepteretUid === req.auth.uid) return aktuel;
+    if (aktuel?.status !== "afventer" || aktuel.tokenHash !== invitation.tokenHash) { konflikt = true; return; }
+    return { ...aktuel, status: "accepterer", accepteretUid: req.auth.uid, acceptererMs: Date.now() };
+  });
+  if (!reservation.committed || !reservation.snapshot.exists() || konflikt) throw new HttpsError("aborted", "Invitationen blev ændret. Genindlæs og prøv igen.");
+  await auth.setCustomUserClaims(bruger.uid, await claimForRolle(invitation.tenantId, invitation.rolle, claims));
+  await auth.revokeRefreshTokens(bruger.uid);
+  await skrivIndeks(invitation.tenantId, { ...bruger, displayName: bruger.displayName || invitation.navn }, invitation.rolle, false);
+  const nu = Date.now();
+  await ref.update({ status: "accepteret", accepteretMs: nu, accepteretUid: bruger.uid, tokenHash: null });
+  await skrivEjerAudit({ uid: bruger.uid, handling: "invitation.accepter", objekt: "invitation", objektId: id });
+  return { ok: true, id, tenantId: invitation.tenantId, rolle: invitation.rolle, alleredeAccepteret: false };
+});
+
+/* Mailtransporten er en adaptergrænse. Uden aktiv serverkonfiguration gemmes
+   et fejlet forsøg, men tilbuddet skifter ikke til Sendt. */
+export const tilbudsend = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const db = getDatabase();
+  const tilbud = (await db.ref(`udbyder/tilbud/${id}`).once("value")).val();
+  if (!tilbud?.aktuelVersion || tilbud.status !== "klar") {
+    throw new HttpsError("failed-precondition", "Kun et klart tilbud kan sendes.");
+  }
+  const forsoegId = kraevTilbudId(d.operationId, "operationId");
+  const integration = (await db.ref("udbyder/integrationer/tilbudsmail").once("value")).val();
+  if (integration?.status !== "aktiv" || !integration?.adapter) {
+    const nu = Date.now();
+    await db.ref(`udbyder/tilbud/${id}/afsendelsesforsoeg/${forsoegId}`).set({
+      id: forsoegId, version: tilbud.aktuelVersion, status: "ikke_tilsluttet",
+      oprettetMs: nu, oprettetAf: ejerUid,
+      fejlKode: "MAIL_IKKE_TILSLUTTET",
+    });
+    await skrivEjerAudit({ uid: ejerUid, handling: "tilbud.send.fejl", objekt: "tilbud", objektId: id, korrelationsId: forsoegId });
+    throw new HttpsError("failed-precondition", "Tilbudsmail er ikke tilsluttet. Brug PDF-download og registrér eventuel ekstern afsendelse manuelt.");
+  }
+  throw new HttpsError("unimplemented", `Mailadapteren '${integration.adapter}' er konfigureret, men transportimplementeringen er ikke aktiveret i denne version.`);
+});
+
+export const tilbudpdfgenerer = onCall({ region: REGION, memory: "512MiB" }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const version = Number(d.version);
+  if (!Number.isSafeInteger(version) || version < 1) throw new HttpsError("invalid-argument", "Tilbudsversionen er ugyldig.");
+  const db = getDatabase();
+  const ref = db.ref(`udbyder/tilbud/${id}`);
+  const tilbud = (await ref.once("value")).val();
+  const versionPost = tilbud?.versioner?.[version];
+  if (!versionPost?.snapshot) throw new HttpsError("not-found", "Tilbudsversionen findes ikke.");
+  if (versionPost.pdf?.storagePath && versionPost.pdf?.sha256) {
+    return { ok: true, id, version, dokument: versionPost.pdf, genbrugt: true };
+  }
+  const virksomhed = (await db.ref(`udbyder/crm/virksomheder/${tilbud.virksomhedId}`).once("value")).val();
+  const storagePath = `ejer/tilbud/${id}/v${version}.pdf`;
+  const file = getStorage().bucket().file(storagePath);
+  const [findes] = await file.exists();
+  let bytes;
+  if (findes) [bytes] = await file.download();
+  else {
+    bytes = Buffer.from(await genererTilbudsPdf({ tilbud, versionPost, virksomhed }));
+    await file.save(bytes, {
+      resumable: false,
+      contentType: "application/pdf",
+      metadata: { metadata: { tilbudId: id, version: String(version), tilbudsnummer: tilbud.nummer } },
+    });
+  }
+  const dokument = {
+    storagePath, sha256: createHash("sha256").update(bytes).digest("hex"),
+    stoerrelse: bytes.length, contentType: "application/pdf",
+    oprettetMs: Date.now(), oprettetAf: ejerUid,
+  };
+  let konflikt = false;
+  const transaktionsstart = verificeretTransaktionsstart(tilbud);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
+    const vp = aktuel?.versioner?.[version];
+    if (!vp?.snapshot) { konflikt = true; return; }
+    if (vp.pdf?.storagePath) return aktuel;
+    return {
+      ...aktuel,
+      versioner: { ...aktuel.versioner, [version]: { ...vp, pdf: dokument } },
+      revision: (aktuel.revision || 0) + 1, opdateretMs: Date.now(), opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) throw new HttpsError("aborted", "Tilbudsversionen ændrede sig under PDF-genereringen.");
+  const gemt = resultat.snapshot.val().versioner[version].pdf;
+  await skrivEjerAudit({ uid: ejerUid, handling: "tilbud.pdf.generer", objekt: "tilbud", objektId: id });
+  return { ok: true, id, version, dokument: gemt, genbrugt: Boolean(findes) };
+});
+
+export const tilbudpdfhent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const d = req.data || {};
+  const id = kraevTilbudId(d.id);
+  const version = Number(d.version);
+  const dokument = (await getDatabase().ref(`udbyder/tilbud/${id}/versioner/${version}/pdf`).once("value")).val();
+  if (!dokument?.storagePath || dokument.contentType !== "application/pdf") {
+    throw new HttpsError("failed-precondition", "Generér først PDF-dokumentet for denne version.");
+  }
+  const [url] = await getStorage().bucket().file(dokument.storagePath).getSignedUrl({
+    version: "v4", action: "read", expires: Date.now() + 10 * 60 * 1000,
+    responseDisposition: `attachment; filename="${id}-v${version}.pdf"`,
+  });
+  return { ok: true, url, udloeberMs: Date.now() + 10 * 60 * 1000, sha256: dokument.sha256 };
 });
 
 /* Manuel afsendelse er en bevidst registrering, ikke en påstand om teknisk
@@ -1534,9 +2024,12 @@ export const tilbudsendtregistrer = onCall({ region: REGION }, async (req) => {
   if (!begrundelse) throw new HttpsError("invalid-argument", "Angiv hvor og hvordan tilbuddet blev sendt.");
   const forventetRevision = kraevForventetRevision(d.forventetRevision);
   const ref = getDatabase().ref(`udbyder/tilbud/${id}`);
+  const tilbudFoer = (await ref.once("value")).val();
   const nu = Date.now();
   let konflikt = false;
-  const resultat = await ref.transaction((aktuel) => {
+  const transaktionsstart = verificeretTransaktionsstart(tilbudFoer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = transaktionsstart(lokal);
     if (!aktuel?.aktuelVersion || aktuel.revision !== forventetRevision || !["klar", "sendt"].includes(aktuel.status)) {
       konflikt = true; return;
     }
@@ -1549,7 +2042,7 @@ export const tilbudsendtregistrer = onCall({ region: REGION }, async (req) => {
       },
     };
   });
-  if (!resultat.committed || konflikt) {
+  if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
     throw new HttpsError("aborted", "Tilbuddet kan ikke registreres sendt i den aktuelle version.");
   }
   const tilbud = resultat.snapshot.val();
@@ -1795,37 +2288,15 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
   return { ok: true, status };
 });
 
-/**
- * Kundens FØRSTE administrator.
- *
- * ⚠ DEN FINDES FORDI opretbruger IKKE KAN BRUGES HER. Den tager tenanten fra
- * kalderens token, og en ejerkonto har ingen. Selve oprettelsen deles med den
- * gennem opretKonto() — to kopier ville drive, og den ene ville glemme
- * indekset eller claims.
- *
- * Løsenet vises én gang i konsollen og gemmes ikke. Firebase gemmer kun et
- * hash, og der er ingen invitationsmail endnu.
- */
+/** Legacy-endpoint for gamle klienter. Direkte kontooprettelse med et
+ * ejerindtastet løsen er lukket; første administrator kommer nu kun ind via
+ * en tidsbegrænset invitation og vælger selv login gennem Firebase Auth. */
 export const kundeadmin = onCall({ region: REGION }, async (req) => {
-  const ejerUid = await kraevUdbyder(req);
-  const d = req.data || {};
-  const id = kraevKundeId(d);
-
-  if (!(await kundeFindes(id))) {
-    throw new HttpsError("not-found", `Kunden "${id}" findes ikke.`);
-  }
-  /* ⚠ ROLLEN KAN VÆLGES, men kun blandt presettene — som alle andre steder.
-     Uden en angivet rolle bliver det admin: det er den første konto, og en
-     kunde uden administrator kan ikke oprette sine egne brugere. */
-  const resultat = await opretKonto({
-    tenantId: id, kalderUid: ejerUid,
-    d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" }
-  });
-  await skrivEjerAudit({
-    uid: ejerUid, handling: "kunde.admin.opret", objekt: "tenant", objektId: id,
-    aendrede: ["administrator"],
-  });
-  return resultat;
+  await kraevUdbyder(req);
+  throw new HttpsError(
+    "failed-precondition",
+    "Direkte administratoroprettelse er lukket. Opret en tidsbegrænset invitation.",
+  );
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1977,6 +2448,7 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
        laengere. Feltlisten bliver, og proeven nedenfor holder den komplet. */
     platform: d.platform || null,
     moduler: d.moduler || {},
+    tilbudslinjer: d.tilbudslinjer || {},
     oprettetAf: ejerUid,
     /* ⚠ TO DATOER, OG DE BETYDER IKKE DET SAMME. gyldigFraMs er hvornaar
        prisen GAELDER; oprettetMs er hvornaar den blev lagt. En liste kan

@@ -4,8 +4,12 @@ import { MODUL, VALGFRIE_MODULER } from "../../fleet/moduler.js";
 import { Felt, Henter, Knap, Kort, Pille, Tabel } from "../../fleet/ui.jsx";
 import {
   FAKTURERING, TILBUD_LINJEART, TILBUD_STATUS, antalTilSkala,
-  gemTilbud, registrerTilbudSendt, udstedTilbud, validerTilbud,
+  gemTilbud, genererTilbudsPdf, hentTilbudsPdf, ratebladFraPrisliste,
+  registrerTilbudSendt, registrerTilbudsaccept, sendTilbud,
+  startTilbudsrevision, udstedTilbud, validerTilbud,
 } from "../../fleet/ejer-tilbud.js";
+import { gaeldendePrisliste } from "../../fleet/priser.js";
+import { provisionerAftale } from "../../fleet/udbyder.js";
 import { crmVirksomhedsliste } from "../../fleet/ejer-crm-regler.js";
 import { useEjerData } from "./EjerDataContext.jsx";
 
@@ -23,6 +27,12 @@ const nyLinje = () => ({
   aftaltPris: "", linjerabat: "0", momssats: "25", rabatberettiget: true,
   priskilde: "Manuelt aftalt i tilbudskladde",
 });
+const linjeTilInput = (l) => ({
+  ...l, antal: String((l.antal || 1000) / 1000).replace(".", ","),
+  normalpris: kroner(l.normalprisOere),
+  aftaltPris: l.aftaltPrisOere == null ? "" : kroner(l.aftaltPrisOere),
+  linjerabat: pct(l.linjerabatBps), momssats: String(l.momssats),
+});
 const tone = (status) => status === "accepteret" ? "ok" : status === "sendt" ? "info" : status === "afvist" || status === "udloebet" ? "bad" : "warn";
 
 function tilInput(tilbud, virksomhedId) {
@@ -37,11 +47,8 @@ function tilInput(tilbud, virksomhedId) {
     introMaaneder: String(k?.introMaaneder || 0), bindingMaaneder: String(k?.bindingMaaneder ?? 3),
     betalingsbetingelser: k?.betalingsbetingelser || "Efter aftale",
     forudsaetninger: k?.forudsaetninger || "", fritekst: k?.fritekst || "",
-    linjer: k?.linjer?.map((l) => ({
-      ...l, antal: String((l.antal || 0) / 1000).replace(".", ","),
-      normalpris: kroner(l.normalprisOere), aftaltPris: l.aftaltPrisOere === null ? "" : kroner(l.aftaltPrisOere),
-      linjerabat: pct(l.linjerabatBps), momssats: String(l.momssats),
-    })) || [nyLinje()],
+    prislisteId: k?.prislisteId || "",
+    linjer: k?.linjer?.map(linjeTilInput) || [],
   };
 }
 
@@ -58,15 +65,23 @@ function tilPost(f) {
   };
 }
 
-function Tilbudsformular({ aktuel, virksomheder, onGemt, onAnnuller }) {
+function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }) {
   const [f, setF] = useState(() => tilInput(aktuel, virksomheder[0]?.id));
   const [operationId] = useState(() => crypto.randomUUID());
   const [gemmer, setGemmer] = useState(false);
   const [svar, setSvar] = useState(null);
   const resultat = validerTilbud(tilPost(f));
+  const rateblad = useMemo(() => ratebladFraPrisliste(prisliste), [prisliste]);
   const saet = (felt) => (vaerdi) => setF((x) => ({ ...x, [felt]: vaerdi }));
   const saetLinje = (id, felt, vaerdi) => setF((x) => ({
     ...x, linjer: x.linjer.map((l) => l.id === id ? { ...l, [felt]: vaerdi } : l),
+  }));
+  const vaelgRatebladslinje = (linje, valgt) => setF((x) => ({
+    ...x,
+    prislisteId: valgt ? prisliste?.id || x.prislisteId : x.prislisteId,
+    linjer: valgt
+      ? (x.linjer.some((l) => l.id === linje.id) ? x.linjer : [...x.linjer, linjeTilInput(linje)])
+      : x.linjer.filter((l) => l.id !== linje.id),
   }));
   const gem = async () => {
     if (Object.keys(resultat.fejl).length) { setSvar({ ok: false, besked: Object.values(resultat.fejl)[0] }); return; }
@@ -93,6 +108,20 @@ function Tilbudsformular({ aktuel, virksomheder, onGemt, onAnnuller }) {
         <Felt id="tilbud-intro" label="Introduktionsrabat, %" vaerdi={f.introRabat} saet={saet("introRabat")} />
         <Felt id="tilbud-intro-maaneder" label="Introduktion, måneder" type="number" vaerdi={f.introMaaneder} saet={saet("introMaaneder")} />
       </div>
+    </Kort>
+    <Kort titel="Rateblad">
+      {rateblad.length ? <>
+        <p className="fc-hint">Afkrydsning indsætter den gældende listes pris som en tilbudslinje. Antal, særpris og rabat ændres kun i kladden; prislisten forbliver uændret.</p>
+        <div className="fc-scroll"><table className="fc-table"><thead><tr><th>Valgt</th><th>Produkt</th><th>Enhed</th><th>Fakturering</th><th className="fc-num">Normalpris</th></tr></thead><tbody>
+          {rateblad.map((l) => {
+            const valgt = f.linjer.some((x) => x.id === l.id);
+            return <tr key={l.id}>
+              <td><input type="checkbox" checked={valgt} aria-label={`Vælg ${l.navn}`} onChange={(e) => vaelgRatebladslinje(l, e.target.checked)} /></td>
+              <td><b>{l.navn}</b></td><td>{l.enhed}</td><td>{FAKTURERING[l.fakturering]}</td><td className="fc-num">{kr(l.normalprisOere)}</td>
+            </tr>;
+          })}
+        </tbody></table></div>
+      </> : <p className="fc-hint">Den gældende officielle prisliste har endnu ingen positive tilbudssatser. Tilføj kun manuelle linjer, hvis prisen er særskilt aftalt og dokumenteret.</p>}
     </Kort>
     <Kort titel="Prislinjer" handling={<Knap onClick={() => setF((x) => ({ ...x, linjer: [...x.linjer, nyLinje()] }))}>Tilføj linje</Knap>}>
       <div className="ejer-tilbudslinjer">
@@ -126,15 +155,44 @@ function Tilbudsformular({ aktuel, virksomheder, onGemt, onAnnuller }) {
   </div>;
 }
 
-function Tilbudsdokument({ tilbud, virksomhed, onOpdater }) {
+function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
   const version = tilbud.versioner?.[tilbud.aktuelVersion];
   const s = version?.snapshot;
   const [sender, setSender] = useState(false);
   const [begrundelse, setBegrundelse] = useState("");
+  const [acceptMetode, setAcceptMetode] = useState("email");
+  const [acceptDokumentation, setAcceptDokumentation] = useState("");
+  const [tenantId, setTenantId] = useState("");
+  const [eksisterendeAftaleId, setEksisterendeAftaleId] = useState(
+    virksomhed?.stamdata?.aftaleId || "",
+  );
+  const [virkningsdato, setVirkningsdato] = useState(iDagIsoLokal());
   const [svar, setSvar] = useState(null);
-  const udsted = async () => { setSender(true); const r = await udstedTilbud({ id: tilbud.id, forventetRevision: tilbud.revision, operationId: crypto.randomUUID() }); setSender(false); setSvar(r); if (r.ok) await onOpdater(); };
-  const sendt = async () => { setSender(true); const r = await registrerTilbudSendt({ id: tilbud.id, forventetRevision: tilbud.revision, begrundelse }); setSender(false); setSvar(r); if (r.ok) await onOpdater(); };
-  if (tilbud.status === "kladde") return <Kort titel={`${tilbud.nummer} — kladde`}><p>Kladde gemt. Udstedelse fryser denne version; den kan derefter udskrives eller gemmes som PDF fra browseren.</p><Knap variant="primaer" onClick={udsted} disabled={sender}>{sender ? "Arbejder…" : "Udsted version 1"}</Knap>{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}</Kort>;
+  const udsted = async () => { setSender(true); const r = await udstedTilbud({ id: tilbud.id, forventetRevision: tilbud.revision, operationId: crypto.randomUUID() }); setSender(false); setSvar({ ...r, succes: `Version ${r.data?.version} er udstedt og låst.` }); if (r.ok) await onOpdater(); };
+  const sendt = async () => { setSender(true); const r = await registrerTilbudSendt({ id: tilbud.id, forventetRevision: tilbud.revision, begrundelse }); setSender(false); setSvar({ ...r, succes: "Den manuelle afsendelse er registreret med audit." }); if (r.ok) await onOpdater(); };
+  const systemSend = async () => { setSender(true); const r = await sendTilbud({ id: tilbud.id, operationId: crypto.randomUUID() }); setSender(false); setSvar(r); if (r.ok) await onOpdater(); };
+  const revision = async () => { setSender(true); const r = await startTilbudsrevision({ id: tilbud.id, forventetRevision: tilbud.revision }); setSender(false); setSvar({ ...r, succes: `Kladde til version ${r.data?.naesteVersion} er oprettet.` }); if (r.ok) await onRedigerRevision(); };
+  const accepter = async () => { setSender(true); const r = await registrerTilbudsaccept({ id: tilbud.id, version: tilbud.aktuelVersion, forventetRevision: tilbud.revision, metode: acceptMetode, dokumentation: acceptDokumentation }); setSender(false); setSvar({ ...r, succes: `Accept af version ${tilbud.aktuelVersion} er registreret.` }); if (r.ok) await onOpdater(); };
+  const pdf = async () => {
+    setSender(true);
+    const genereret = await genererTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion });
+    if (!genereret.ok) { setSender(false); setSvar(genereret); return; }
+    const download = await hentTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion });
+    setSender(false); setSvar({ ...download, succes: `PDF for version ${tilbud.aktuelVersion} er klar.` });
+    if (download.ok) { window.location.assign(download.data.url); await onOpdater(); }
+  };
+  const provisioner = async () => {
+    setSender(true);
+    const r = await provisionerAftale({
+      tilbudId: tilbud.id, version: tilbud.aktuelVersion,
+      tenantId: tenantId.trim() || undefined, virkningsdato,
+      eksisterendeAftaleId: eksisterendeAftaleId.trim() || undefined,
+      operationId: crypto.randomUUID(),
+    });
+    setSender(false); setSvar({ ...r, succes: r.data?.status === "planlagt" ? "Aftalen er planlagt til virkningsdatoen." : "Aftaleprocessen er gennemført." });
+    if (r.ok) await onOpdater();
+  };
+  if (tilbud.status === "kladde") return <Kort titel={`${tilbud.nummer} — kladde`}><p>Kladde gemt. Udstedelse fryser version {Number(tilbud.aktuelVersion || 0) + 1}; tidligere versioner ændres ikke.</p><Knap variant="primaer" onClick={udsted} disabled={sender}>{sender ? "Arbejder…" : `Udsted version ${Number(tilbud.aktuelVersion || 0) + 1}`}</Knap>{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}</Kort>;
   return <div className="fc-grid">
     <Kort titel={`${tilbud.nummer} · version ${tilbud.aktuelVersion}`} handling={<Pille tone={tone(tilbud.status)}>{TILBUD_STATUS[tilbud.status]}</Pille>} className="ejer-tilbudsdokument">
       <h2>{virksomhed?.stamdata?.navn || tilbud.virksomhedId}</h2>
@@ -151,25 +209,45 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater }) {
       {s.forudsaetninger && <p><b>Forudsætninger</b><br />{s.forudsaetninger}</p>}
     </Kort>
     <Kort titel="Dokument og afsendelse">
-      <p className="fc-hint">“Udskriv / gem PDF” åbner browserens dokumentdialog. Der er endnu ingen tilsluttet tilbudsmail; manuel registrering er tydeligt markeret som manuel.</p>
-      <div className="fc-actions"><Knap onClick={() => window.print()}>Udskriv / gem PDF</Knap></div>
+      <p className="fc-hint">Systemafsendelse bruger en serveradapter. Uden aktiv mailopsætning registreres et fejlet forsøg, og tilbuddet bliver ikke markeret sendt. Manuel registrering er fortsat tydeligt markeret som ekstern.</p>
+      <div className="fc-actions"><Knap onClick={pdf} disabled={sender}>Generér / hent versions-PDF</Knap><Knap onClick={() => window.print()}>Browserudskrift</Knap><Knap onClick={systemSend} disabled={sender || tilbud.status !== "klar"}>Send via mailadapter</Knap>{["klar", "sendt", "afvist", "udloebet"].includes(tilbud.status) && <Knap onClick={revision} disabled={sender}>Opret ny version</Knap>}</div>
+      {version?.pdf && <p className="fc-hint">Vedvarende PDF: {version.pdf.storagePath} · SHA-256 {version.pdf.sha256}</p>}
       <Felt id="tilbud-manuel-send" label="Manuel afsendelse — kanal og dokumentation" vaerdi={begrundelse} saet={setBegrundelse} />
-      <Knap variant="primaer" onClick={sendt} disabled={sender || !begrundelse.trim()}>Registrér manuelt sendt</Knap>
-      {svar && <p role="status" className={svar.ok ? "fc-ok" : "fc-fejltekst"}>{svar.ok ? "Den manuelle afsendelse er registreret med audit." : svar.besked}</p>}
+      <Knap variant="primaer" onClick={sendt} disabled={sender || !begrundelse.trim() || !["klar", "sendt"].includes(tilbud.status)}>Registrér manuelt sendt</Knap>
+      {svar && <p role="status" className={svar.ok ? "fc-ok" : "fc-fejltekst"}>{svar.ok ? svar.succes || "Handlingen er gennemført." : svar.besked}</p>}
     </Kort>
+    {tilbud.status === "sendt" && <Kort titel="Registrér kundens accept">
+      <p className="fc-hint">Accepten bindes til version {tilbud.aktuelVersion}. Den opretter hverken aftale, tenant, invitation eller faktura automatisk.</p>
+      <Felt id="tilbud-accept-metode" label="Metode" vaerdi={acceptMetode} saet={setAcceptMetode} valgmuligheder={[
+        { vaerdi: "email", label: "E-mail" }, { vaerdi: "underskrevet_pdf", label: "Underskrevet PDF" },
+        { vaerdi: "moede", label: "Møde" }, { vaerdi: "telefon", label: "Telefon" }, { vaerdi: "andet", label: "Andet" },
+      ]} />
+      <Felt id="tilbud-accept-dokumentation" label="Dokumentation / reference" vaerdi={acceptDokumentation} saet={setAcceptDokumentation} />
+      <Knap variant="primaer" onClick={accepter} disabled={sender || !acceptDokumentation.trim()}>Registrér accept af version {tilbud.aktuelVersion}</Knap>
+    </Kort>}
+    {tilbud.status === "accepteret" && <Kort titel="Opret aftale og eventuel tenant">
+      <p className="fc-hint">Processen bruger en stabil aftalenøgle og kan genkøres efter fejl. Accepten frigiver ikke en faktura. Tenant-id er permanent, når det først er knyttet.</p>
+      <Felt id="aftale-virkning" label="Virkningsdato" type="date" vaerdi={virkningsdato} saet={setVirkningsdato} />
+      <Felt id="aftale-eksisterende" label="Eksisterende aftale-id (valgfrit)" vaerdi={eksisterendeAftaleId} saet={setEksisterendeAftaleId}
+        hint="Udfyld for at føje en ny, uforanderlig aftaleversion til kundens eksisterende aftale." />
+      <Felt id="aftale-tenant" label="Permanent tenant-id (valgfrit ved første kørsel)" vaerdi={tenantId} saet={setTenantId} hint="Små bogstaver, tal og bindestreg. Lad feltet stå tomt for kun at oprette aftalen." />
+      <Knap variant="primaer" onClick={provisioner} disabled={sender || !virkningsdato}>Opret / genoptag aftaleprocessen</Knap>
+      {tilbud.accept && <p className="fc-hint">Accepteret version {tilbud.accept.version} den {new Date(tilbud.accept.ms).toLocaleString("da-DK")} via {tilbud.accept.metode}.</p>}
+    </Kort>}
   </div>;
 }
 
 export default function EjerTilbud() {
-  const { crm, tilbud, henter, fejl, genindlaes } = useEjerData();
+  const { crm, tilbud, prislister, henter, fejl, genindlaes } = useEjerData();
   const virksomheder = crmVirksomhedsliste(crm || {});
   const liste = useMemo(() => Object.entries(tilbud || {}).map(([id, x]) => ({ id, ...x })).sort((a, b) => (b.opdateretMs || 0) - (a.opdateretMs || 0)), [tilbud]);
   const [valgtId, setValgtId] = useState(null);
   const [redigerer, setRedigerer] = useState(false);
   const valgt = liste.find((x) => x.id === valgtId) || null;
+  const prisliste = gaeldendePrisliste(prislister || {}, Date.now());
   if (henter && !crm) return <Henter hvad="tilbud" />;
   if (fejl) return <Kort titel="Tilbud kunne ikke hentes"><p>{fejl.message}</p><Knap onClick={genindlaes}>Prøv igen</Knap></Kort>;
-  if (redigerer) return <Tilbudsformular aktuel={valgt?.status === "kladde" ? valgt : null} virksomheder={virksomheder}
+  if (redigerer) return <Tilbudsformular aktuel={valgt?.status === "kladde" ? valgt : null} virksomheder={virksomheder} prisliste={prisliste}
     onAnnuller={() => setRedigerer(false)} onGemt={async (id) => { await genindlaes(); setValgtId(id); setRedigerer(false); }} />;
   return <div className="fc-grid">
     <div className="ejer-handlingslinje"><p>Nummererede tilbud med serverberegning og uforanderlige udstedte versioner.</p><Knap variant="primaer" onClick={() => { setValgtId(null); setRedigerer(true); }} disabled={!virksomheder.length}>Nyt tilbud</Knap></div>
@@ -181,6 +259,6 @@ export default function EjerTilbud() {
         { key: "version", label: "Version", num: true, render: (r) => r.aktuelVersion || "—" },
       ]} />
     </Kort>
-    {valgt && <><div className="fc-actions">{valgt.status === "kladde" && <Knap onClick={() => setRedigerer(true)}>Redigér kladde</Knap>}</div><Tilbudsdokument tilbud={valgt} virksomhed={crm?.[valgt.virksomhedId]} onOpdater={genindlaes} /></>}
+    {valgt && <><div className="fc-actions">{valgt.status === "kladde" && <Knap onClick={() => setRedigerer(true)}>Redigér kladde</Knap>}</div><Tilbudsdokument tilbud={valgt} virksomhed={crm?.[valgt.virksomhedId]} onOpdater={genindlaes} onRedigerRevision={async () => { await genindlaes(); setRedigerer(true); }} /></>}
   </div>;
 }

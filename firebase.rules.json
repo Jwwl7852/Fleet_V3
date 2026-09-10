@@ -4547,6 +4547,21 @@
               "$andet": { ".validate": false }
             }
           },
+          "tilbudslinjer": {
+            "$linjeId": {
+              ".validate": "$linjeId.matches(/^[A-Za-z0-9_-]{1,80}$/) && newData.hasChildren(['navn', 'art', 'enhed', 'fakturering', 'normalprisOere', 'momssats', 'rabatberettiget'])",
+              "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
+              "beskrivelse": { ".validate": "newData.isString() && newData.val().length <= 500" },
+              "art": { ".validate": "newData.isString() && newData.val().matches(/^(implementering|enhed|konsulent_fjern|konsulent_kunde|specialudvikling|andet)$/)" },
+              "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30" },
+              "fakturering": { ".validate": "newData.isString() && newData.val().matches(/^(maanedlig|engang)$/)" },
+              "normalprisOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+              "momssats": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100" },
+              "rabatberettiget": { ".validate": "newData.isBoolean()" },
+              "modulId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+              "$andet": { ".validate": false }
+            }
+          },
           "$andet": { ".validate": false }
         }
       },
@@ -4628,6 +4643,28 @@
         ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         ".indexOn": ["nummer", "status", "virksomhedId", "opdateretMs"]
+      },
+
+      "aftaler": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["tilbudId", "virksomhedId", "tenantId", "status"]
+      },
+
+      "provisioneringer": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false
+      },
+
+      "invitationer": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        ".indexOn": ["tenantId", "email", "status", "udloeberMs"]
+      },
+
+      "integrationer": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false
       },
 
       "audit": {

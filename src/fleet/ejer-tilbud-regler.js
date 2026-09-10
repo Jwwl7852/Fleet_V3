@@ -17,6 +17,74 @@ export const TILBUD_LINJEART = Object.freeze({
   andet: "Anden aftalt ydelse",
 });
 
+/**
+ * Omsætter den eksisterende, versionerede prisliste til valgbare tilbudslinjer.
+ * Der opfindes ingen priser: kun positive satser fra det valgte snapshot
+ * kommer med. FAKTURACENTER findes ikke som et kommercielt modul-id i det
+ * fælles katalog og kan derfor heller ikke utilsigtet faktureres herfra.
+ */
+export function ratebladFraPrisliste(prisliste = {}) {
+  const prislisteId = tekst(prisliste.id, 160);
+  const momssats = heltal(prisliste.momssats, 0, 100);
+  if (!prislisteId || momssats === null) return [];
+  const kilde = `prisliste:${prislisteId}`;
+  const linjer = [];
+  const tilfoej = (linje) => {
+    if (!Number.isSafeInteger(linje.normalprisOere) || linje.normalprisOere <= 0) return;
+    linjer.push({
+      ...linje, antal: ANTAL_SKALA, aftaltPrisOere: null, linjerabatBps: 0,
+      momssats: linje.momssats ?? momssats,
+      rabatberettiget: linje.rabatberettiget !== false,
+      priskilde: kilde,
+    });
+  };
+
+  tilfoej({
+    id: `${prislisteId}_grundplatform`, art: "grundplatform",
+    navn: "Veyro grundplatform", enhed: "måned", fakturering: "maanedlig",
+    normalprisOere: prisliste.platform?.basisOere,
+  });
+  for (const [modulId, satser] of Object.entries(prisliste.moduler || {})) {
+    if (!MODUL[modulId] || MODUL[modulId].altid) continue;
+    const modulnavn = MODUL[modulId].label;
+    tilfoej({
+      id: `${prislisteId}_${modulId}_basis`, art: "modul", modulId,
+      navn: modulnavn, enhed: "måned", fakturering: "maanedlig",
+      normalprisOere: satser?.basisOere,
+    });
+    tilfoej({
+      id: `${prislisteId}_${modulId}_enhed`, art: "enhed", modulId,
+      navn: `${modulnavn} · enhed`, enhed: "enhed/måned", fakturering: "maanedlig",
+      normalprisOere: satser?.prKoeretoejOere,
+    });
+    tilfoej({
+      id: `${prislisteId}_${modulId}_desktop`, art: "medarbejder", modulId,
+      navn: `${modulnavn} · medarbejderbruger`, enhed: "bruger/måned",
+      fakturering: "maanedlig", normalprisOere: satser?.prBrugerOere?.desktop,
+    });
+    tilfoej({
+      id: `${prislisteId}_${modulId}_chauffoer`, art: "chauffoer", modulId,
+      navn: `${modulnavn} · chaufførbruger`, enhed: "bruger/måned",
+      fakturering: "maanedlig", normalprisOere: satser?.prBrugerOere?.chauffoer,
+    });
+  }
+  for (const [linjeId, linje] of Object.entries(prisliste.tilbudslinjer || {})) {
+    tilfoej({
+      id: `${prislisteId}_ydelse_${linjeId}`,
+      art: linje.art,
+      navn: linje.navn,
+      beskrivelse: linje.beskrivelse,
+      modulId: linje.modulId,
+      enhed: linje.enhed,
+      fakturering: linje.fakturering,
+      normalprisOere: linje.normalprisOere,
+      momssats: linje.momssats,
+      rabatberettiget: linje.rabatberettiget !== false,
+    });
+  }
+  return linjer;
+}
+
 const ISO_DATO = /^\d{4}-\d{2}-\d{2}$/;
 const ID = /^[A-Za-z0-9_-]{1,160}$/;
 const tekst = (v, maks) => typeof v === "string" && v.trim() ? v.trim().slice(0, maks) : null;
@@ -132,4 +200,3 @@ export function validerTilbud(input = {}) {
 
 export const tilbudsnummer = (aar, sekvens) => `T-${aar}-${String(sekvens).padStart(4, "0")}`;
 export const antalTilSkala = (tal) => Math.round(Number(tal || 0) * ANTAL_SKALA);
-

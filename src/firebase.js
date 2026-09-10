@@ -95,6 +95,7 @@ if (!demoMode) {
     if (brugerLokaleEmulatorer) {
       _db.useEmulator("127.0.0.1", 9000);
       _auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
+      _funktioner.useEmulator("127.0.0.1", 5001);
     }
   } catch (e) {
     console.warn("Firebase kunne ikke starte. Kører demo-mode.", e);

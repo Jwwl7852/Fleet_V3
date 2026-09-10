@@ -7,8 +7,9 @@ Opdateret: 2026-09-10
 - Worktree: `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`
 - Branch: `codex/ejer-integrated-development`
 - Base/HEAD ved oprettelse: `989dbb87db639efed0ba1b5a1e271560f7659a0c`
-- Seneste implementeringscheckpoint før denne statusopdatering:
-  `2c7f78a463527b5590c2b787dfc6c7c356b4e908`
+- HEAD ved arbejdsrundens start:
+  `56e9ca0449cd61929d70e4ef58edcb4e90233af3`
+- Nyt lokalt checkpoint indsættes efter afsluttende regression; intet pushes.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
@@ -18,10 +19,10 @@ Opdateret: 2026-09-10
 | Etape | Status | Verifikation |
 |---|---|---|
 | A — Verificeret grundlag | Implementeret og verificeret | Git, worktrees, live ref og filkortlægning |
-| B — Adgang og skal | Implementeret — sikkerhedstest mangler miljø | Claim/revocation-enhedstest, lint, build og Functions-import består; Rules-emulator kræver Java 21 |
-| C — Salg | Implementeret — sikkerhedstest mangler miljø | Persistent servermodel, 6 domænetests, lint, build og Functions-import består |
-| D — Priser og tilbud | Delvist implementeret | 5 deterministiske beregningstests, lint, build og Functions-import består |
-| E — Aftale og kunde | Ikke implementeret | — |
+| B — Adgang og skal | Implementeret og verificeret | AK-01–AK-04 33/33 med Storage; normalt tenantløst browserlogin i fire emulatorer |
+| C — Salg | Implementeret og verificeret | Persistent servermodel, domænetests og callable-kædetest |
+| D — Priser og tilbud | Implementeret; mail eksternt blokeret | Beregning, samtidighed, version 1/2, snapshots, PDF, accept og fejlstatus emulatorverificeret |
+| E — Aftale og kunde | Implementeret og verificeret | Aftale/tenant genkørt uden dublet; nye/eksisterende konti, revoke/resend/accept testet |
 | F — Fakturering | Ikke implementeret | — |
 | G — Kredit og returdata | Ikke implementeret | — |
 | H — Udgifter | Ikke implementeret | — |
@@ -35,7 +36,8 @@ Opdateret: 2026-09-10
   og eksisterende ejer-callables i `functions/index.js`.
 - Routing: tenantløst ejertræ i `src/App.jsx`, `/main` og `/main/priser`.
 - Læsninger: afgrænsede RTDB-reads; direkte writes er afvist.
-- Storage: alle direkte klientreads/-writes er afvist; ejerbilagssti mangler.
+- Storage: alle direkte klientreads/-writes er afvist; servergenererede
+  tilbuds-PDF'er ligger versioneret under `ejer/tilbud/<id>/v<version>.pdf`.
 - Hostingautoritet: Firebase Hosting (`firebase.json`, `dist`) findes, mens
   `netlify.toml` også beskriver Netlify-kontekst. Ingen deployment udføres.
 
@@ -48,7 +50,7 @@ Opdateret: 2026-09-10
 4. Platformhandlinger som prislister har ikke samlet serveraudit.
 5. Ejerkonsollen har ikke den aftalte arbejdsnavigation.
 
-## Implementeret i etape B–C
+## Implementeret i etape B–E
 
 - Fælles tenantløst ejerclaim med legacy-læsning og eksplicit versionsfelt.
 - Ejeroprettelse afviser en eksisterende tenantidentitet; fjernelse opdaterer
@@ -60,6 +62,15 @@ Opdateret: 2026-09-10
   med kundens egen administratorfunktion.
 - Vedvarende CRM med virksomheder, flere salgsmuligheder, aktiviteter,
   Mine/Alle-filtre, pipeline, kundekort, historik og revisionskontrol.
+- Versioneret rateblad med generiske tilbudsydelser, heltalsøre, rabatter,
+  introperiode og automatisk udfyldning af tilbudslinjer.
+- Uforanderlige tilbudsversioner, persistent versions-PDF med SHA-256,
+  mailadapterfejlstatus, manuel afsendelse og dokumenteret accept.
+- Genkørbar aftale-/tenantprovisionering med virkningsdato og beskyttelse mod
+  dubletter samt bevaret aftalehistorik.
+- Tidsbegrænsede administratorinvitationer med hash, udløb, tilbagekaldelse,
+  genudsendelse/tokenrotation og eksisterende-konto-flow. Det gamle
+  engangsadgangskode-endpoint er lukket.
 - Ærlige statussider for endnu ikke byggede eller eksternt blokerede områder;
   ingen demo-success eller localStorage-fallback.
 
@@ -69,9 +80,9 @@ Opdateret: 2026-09-10
 |---|---|---|
 | 1 | Overblik | Implementeret med CRM-opfølgning og ærlig integrationsstatus |
 | 2 | Salgspipeline | Implementeret med persistent pipeline, aktiviteter og kundehistorik |
-| 3 | Kunde og abonnement | Delvist: CRM-kundekort og eksisterende abonnement/modulkonsol; invitation mangler |
-| 4 | Rateblad | Eksisterende versioneret prisliste genbrugt; tilbudsautoudfyldning mangler |
-| 5 | Tilbud | Delvist: kladde, nummer, beregning, version 1, print/PDF-dialog og manuel afsendelse |
+| 3 | Kunde og abonnement | CRM, aftale/tenantprovisionering og sikker administratorinvitation implementeret |
+| 4 | Rateblad | Versioneret redigering og tilbudsautoudfyldning implementeret; officielle priser mangler |
+| 5 | Tilbud | Versioner, PDF, afsendelsesstatus, manuel registrering og accept implementeret |
 | 6 | Fakturaer | Ikke implementeret i den nye ejerflade |
 | 7 | Kreditnotaer | Ikke implementeret |
 | 8 | Bilagsindbakke | Ikke implementeret |
@@ -79,34 +90,51 @@ Opdateret: 2026-09-10
 | 10 | Økonomioverblik | Ikke implementeret |
 | 11 | Integrationer | Statusside implementeret; forbindelser og jobs ikke implementeret |
 
-## Verifikation 2026-09-10
+## Verifikation 2026-09-10 — aktuel arbejdsrunde
 
-- `node --check functions/index.js` og `node --check scripts/ejer.mjs`: består.
-- `node --test test/ejeradgang.test.mjs`: 4/4 består.
-- `node --test test/ejer-crm.test.mjs`: 6/6 består.
-- Målrettet ESLint for `src`, `functions`, `scripts`, `test` og rodconfig:
-  består uden fund.
-- `npm run test:design`: 11/11 består.
-- `npm run build`: består, 498 moduler transformeret. En eksisterende CSS-
-  kommentartekst giver en ikke-blokerende minifier-advarsel.
-- Import af `functions/index.js`: 81 exports indlæst; alle fire nye CRM-exports
-  og tre nye tilbuds-exports findes.
-- Tilbudstest: 5/5 består, inklusive instruksens 5.855,00/40.855,00-fixture,
-  sekventielle rabatter og introperiodens første år.
-- Tilbudsserver: `tilbudgem`, `tilbududsted` og `tilbudsendtregistrer` kan
-  importeres som callables. Runtime mod emulator er ikke kørt pga. Java 21-
-  blokeringen.
-- `npm run test:rules`: ikke kørt færdigt. Firebase CLI 15.29.0 afviser den
-  installerede Temurin Java 8 og kræver Java 21+. AK-01–AK-04 er derfor ikke
-  erklæret bestået.
+- Isoleret Temurin JDK 21 blev fundet/afprøvet, men CLI 15.29.0 rammer en
+  reproducerbar Windows AF_UNIX-fejl. Isoleret Temurin JDK 11 + Firebase CLI
+  13.35.1 virker; systemets Java-installationer er ikke ændret.
+- AK-01–AK-04 og Storage-regler: 33/33 består. Det dækker tenantløs ejer,
+  kundeadministrator, tenantadskillelse, tilbagekaldt gammelt token og lukket
+  direkte adgang til ejerens PDF-sti.
+- Browser: normalt login med syntetisk tenantløs ejer i Auth/Database/Storage/
+  Functions-emulatorer åbner `/main` og tilbudssiden med serverdata. Ingen
+  demo-mode, guard-omgåelse eller produktionskonto blev brugt.
+- Callable end-to-end: salgsmulighed → rateblad v1 → samtidig tilbudsændring
+  → tilbud v1/PDF → rateblad v2 → tilbud v2 → ikke-tilsluttet mail → manuel
+  afsendelse → accept → aftale/tenant → genkørsel → invitation. Består.
+- Samtidighed: to writes med samme forventede revision giver præcis én vinder;
+  cold-start-transaktioner bruger verificeret startsnapshot og efterfølgende
+  Firebase-CAS-retries.
+- Historik: v1-prisen er uændret efter ny prisliste/v2, og aftaleversionen
+  dubleres ikke ved genkørsel. Accept opretter ingen faktura.
+- PDF: servergenerering til Storage og versionsmetadata består; den visuelle
+  layoutprøve med repositoryets logo er renderet og inspiceret.
+- Fuld platformregression med repositoryets normale Node 24-testmiljø samt
+  isoleret JDK 11/CLI 13.35.1 til emulatorerne: 4315/4315 består. Functions-
+  emulatoren er separat verificeret på den deklarerede Node 20-runtime.
+- Målrettet ESLint består. `npm run build` består med 502 moduler; kun den
+  eksisterende CSS-kommentaradvarsel vises.
 - Repositoryets brede `npm run lint` stopper i den eksisterende isolerede
   `facility-v2/eslint.config.js`, fordi dens lokale `@eslint/js` ikke er
   installeret. Den integrerede produktkode er lintet særskilt og består.
 
+## Dependency-audit
+
+- Browserpakken: 12 runtimefund (1 høj, 11 moderate) i den eksisterende
+  Firebase 10.12.2/Undici- og React Router-stak. Ejerens login/callable-routing
+  bruger disse pakker, men der er ikke fundet et konkret exploit i det nye flow.
+- Functions: 11 moderate runtimefund i eksisterende Firebase Admin-transitive
+  pakker. Den nye PDF-lagring bruger Admin Storage og er derfor inden for den
+  berørte dependency-overflade.
+- Rettelser kræver en separat kontrolleret Firebase/Router/Admin-opgradering,
+  herunder en major Admin-opgradering ifølge audit. Den brede opgradering er
+  bevidst ikke udført i denne arbejdsrunde.
+
 ## Næste konkrete opgave
 
-Færdiggør etape D med officiel ratebladsimport, ny version efter udstedelse,
-vedvarende dokumentfil og mailadaptergrænse. Fortsæt derefter etape E med
-accept, genkørbar provisioning og invitationer. Installér eller peg
-`JAVA_HOME` på en JDK 21+ og genkør Rules-suiten, før B–D kan betegnes fuldt
-sikkerhedsverificeret.
+Beslut officiel priskilde, mailleverandør og aktiveringsmekanisme for fremtidige
+virkningsdatoer. Fortsæt derefter etape F med en persistent outbox/jobmodel og
+en isoleret Dinero-testadapter. Dependency-opgraderingen bør planlægges som et
+separat spor med fuld regression; ingen produktionstilslutning sker herfra.

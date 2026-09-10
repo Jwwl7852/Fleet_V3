@@ -45,6 +45,13 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Ejerens tilbudsdokumenter udleveres kun via den korte, signerede URL,
+    // som tilbudpdfhent udsteder efter et nyt servercheck af ejeradgangen.
+    // Kundetokens og også ejerens klient-SDK har derfor ingen mappetilladelse.
+    match /ejer/tilbud/{tilbudId}/{dokumentId} {
+      allow read, write: if false;
+    }
+
     // Alt andet er lukket. Ingen andre stier er bygget endnu.
     match /{allPaths=**} {
       allow read, write: if false;

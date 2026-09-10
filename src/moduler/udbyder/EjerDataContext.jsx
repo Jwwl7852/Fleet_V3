@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { hentEjerCrm, hentEjerprofiler } from "../../fleet/ejer-crm.js";
-import { hentTilbud } from "../../fleet/ejer-tilbud.js";
+import { hentTilbud, hentTilbudsPrislister } from "../../fleet/ejer-tilbud.js";
 
 const EjerDataContext = createContext(null);
 
@@ -8,18 +8,20 @@ export function EjerDataProvider({ children }) {
   const [crm, setCrm] = useState(null);
   const [profiler, setProfiler] = useState(null);
   const [tilbud, setTilbud] = useState(null);
+  const [prislister, setPrislister] = useState(null);
   const [fejl, setFejl] = useState(null);
   const [henter, setHenter] = useState(false);
 
   const genindlaes = useCallback(async () => {
     setHenter(true);
     try {
-      const [naesteCrm, naesteProfiler, naesteTilbud] = await Promise.all([
-        hentEjerCrm(), hentEjerprofiler(), hentTilbud(),
+      const [naesteCrm, naesteProfiler, naesteTilbud, naestePrislister] = await Promise.all([
+        hentEjerCrm(), hentEjerprofiler(), hentTilbud(), hentTilbudsPrislister(),
       ]);
       setCrm(naesteCrm);
       setProfiler(naesteProfiler);
       setTilbud(naesteTilbud);
+      setPrislister(naestePrislister);
       setFejl(null);
     } catch (aarsag) {
       setFejl(aarsag);
@@ -31,8 +33,8 @@ export function EjerDataProvider({ children }) {
   useEffect(() => { genindlaes(); }, [genindlaes]);
 
   const vaerdi = useMemo(() => ({
-    crm, profiler, tilbud, fejl, henter, genindlaes,
-  }), [crm, profiler, tilbud, fejl, henter, genindlaes]);
+    crm, profiler, tilbud, prislister, fejl, henter, genindlaes,
+  }), [crm, profiler, tilbud, prislister, fejl, henter, genindlaes]);
 
   return <EjerDataContext.Provider value={vaerdi}>{children}</EjerDataContext.Provider>;
 }

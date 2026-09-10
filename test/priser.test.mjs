@@ -177,6 +177,24 @@ describe("Prislisten", () => {
     ).some((x) => /Ukendt modul/.test(x)));
   });
 
+  it("validerer versionerede tilbudsydelser på samme prisliste", () => {
+    const medYdelse = {
+      ...PRISLISTE,
+      tilbudslinjer: {
+        installation: {
+          navn: "Installation", art: "implementering", enhed: "time",
+          fakturering: "engang", normalprisOere: 99500, momssats: 25,
+          rabatberettiget: true,
+        },
+      },
+    };
+    assert.deepEqual(validerPrisliste(medYdelse, { kendteModuler: VALGFRIE_MODULER }), []);
+    assert.ok(validerPrisliste({
+      ...medYdelse,
+      tilbudslinjer: { fejl: { ...medYdelse.tilbudslinjer.installation, normalprisOere: 99.5 } },
+    }).some((x) => /hele øre/.test(x)));
+  });
+
   it("finder den liste der GJALDT, ikke den nyeste", () => {
     /* Samme mønster som gyldigFra på en sats: en ny pris er en NY post, og
        den gamle bliver stående. Ingen liste rettes. */

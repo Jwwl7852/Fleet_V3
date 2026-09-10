@@ -110,6 +110,7 @@ const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblik.jsx"));
 const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
 const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
 const EjerIkkeImplementeret = lazy(() => import("./moduler/udbyder/EjerIkkeImplementeret.jsx"));
+const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
 const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
@@ -529,6 +530,11 @@ export default function App() {
             Login-ruten er derfor IKKE doven: uden en grænse omkring sig
             ville en doven Login vise et tomt vindue. Beslutning 97. */}
         <Routes>
+          <Route path="/invitation/:id" element={
+            <Suspense fallback={<div className="fc-boot">Henter invitation …</div>}>
+              <InvitationAccept bruger={bruger} />
+            </Suspense>
+          } />
           {!harAdgang && (
             <>
               {/* Logget ind uden tenant-claim er en ANDEN fejl end forkert

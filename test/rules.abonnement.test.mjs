@@ -138,7 +138,7 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
     assert.ok(med.length >= 40, `kun ${med.length} regler har klausulen.`);
   });
 
-  it("står IKKE i de to udbyderregler", () => {
+  it("står IKKE i de særskilt besluttede udbyderregler", () => {
     /* virksomhed og moduler skal blive læsbare for konsollen og for
        låseskærmen. Kom klausulen på dem, ville en lukket kunde forsvinde ud
        af udbyderens egen kundeliste — netop når han skal genåbnes. */
@@ -182,15 +182,22 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/tenants/$tenantId/abonnementHistorik/.read",
       "/tenants/$tenantId/moduler/.read",
       "/tenants/$tenantId/virksomhed/.read",
+      "/udbyder/aftaler/.read",
+      "/udbyder/audit/.read",
+      "/udbyder/crm/.read",
       "/udbyder/fakturagrundlag/.read",
+      "/udbyder/integrationer/.read",
+      "/udbyder/invitationer/.read",
       "/udbyder/kunder/.read",
       "/udbyder/maalinger/.read",
       "/udbyder/prisliste/.read",
+      "/udbyder/provisioneringer/.read",
       /* ⚠ DEN SYVENDE: retentionsrapporten. Den er ikke kundedata — kun
          tenant, klasse, aar, maaned og et ANTAL. En auditpost kopieret ud i
          en rapport under udbyder/ havde forladt kundens tenant, og reglens
          $andet: false haandhaever at den ikke kan. Se auditoprydning. */
       "/udbyder/retention/.read",
+      "/udbyder/tilbud/.read",
     ], "en regel med udbyder-claim'et staar et andet sted end besluttet.");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);

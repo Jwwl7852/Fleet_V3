@@ -37,9 +37,10 @@ import {
   ABONNEMENT, ALLE_ABONNEMENTSTATUS, AARSAG, ALLE_AARSAGER, opbevaresTil,
   HISTORIK_ART, historikListe, historiktekst,
 } from "../../fleet/abonnement.js";
-import { nytLoesen, erGyldigMail } from "../../fleet/brugere-regler.js";
+import { erGyldigMail } from "../../fleet/brugere-regler.js";
 import {
-  opretKunde, saetModuler, saetStatus, opretKundeadmin, saetAbonnement,
+  genudsendKundeinvitation, opretKunde, saetModuler, saetStatus,
+  opretKundeinvitation, saetAbonnement, tilbagekaldKundeinvitation,
   valideNyKunde, foreslaaId,
 } from "../../fleet/udbyder.js";
 import { bpsTilPct, pctTilBps } from "../../fleet/beloeb.js";
@@ -558,14 +559,22 @@ function Rabat({ kunde, paaGemt }) {
   );
 }
 
-/** Kundens første administrator. Løsenet vises én gang. */
+/** Kundens første administrator oprettes gennem en tidsbegrænset invitation. */
 function Foersteadmin({ kunde }) {
   const [aaben, saetAaben] = useState(false);
   const [f, saetF] = useState({ navn: "", email: "" });
-  const [kode] = useState(() => nytLoesen());
-  const [vist, saetVist] = useState("");
+  const [invitation, saetInvitation] = useState(null);
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
+  const [invitationer, saetInvitationer] = useState([]);
+
+  const hentInvitationer = async () => {
+    try {
+      const data = (await db.ref("udbyder/invitationer").orderByChild("tenantId").equalTo(kunde.id).once("value")).val() || {};
+      saetInvitationer(Object.values(data).sort((a, b) => (b.oprettetMs || 0) - (a.oprettetMs || 0)));
+    } catch (e) { saetSvar({ ok: false, besked: e?.message || "Invitationer kunne ikke hentes." }); }
+  };
+  useEffect(() => { hentInvitationer(); }, [kunde.id]);
 
   /* ⚠ HER STOD MØNSTERET SKREVET AF. Det var tredje kopi, og den kopi
      serveren havde, var en anden. Se noten i brugere-regler.js. */
@@ -573,22 +582,24 @@ function Foersteadmin({ kunde }) {
 
   const gem = async () => {
     saetGemmer(true);
-    const r = await opretKundeadmin({ id: kunde.id, ...f, kode });
+    const r = await opretKundeinvitation({ tenantId: kunde.id, ...f, rolle: "admin" });
     saetGemmer(false);
-    if (r.ok) { saetVist(kode); saetAaben(false); saetSvar(null); }
+    if (r.ok) { saetInvitation(r.data); saetAaben(false); saetSvar(null); await hentInvitationer(); }
     else saetSvar({ ok: false, art: r.art, besked: r.besked });
   };
 
-  if (vist) {
+  if (invitation) {
+    const link = `${window.location.origin}/invitation/${invitation.id}#token=${encodeURIComponent(invitation.token)}`;
     return (
       <div className="fc-empty fc-empty-info">
-        <p><b>Administratoren er oprettet. Adgangskoden vises kun nu:</b></p>
-        <p><code style={{ fontSize: 16, letterSpacing: ".04em" }}>{vist}</code></p>
+        <p><b>Invitationen er oprettet og vises kun med token nu.</b></p>
+        <p style={{ overflowWrap: "anywhere" }}><code>{link}</code></p>
         <p className="fc-hint" style={{ marginTop: 8 }}>
-          Den kan ikke hentes frem igen — Firebase gemmer kun et hash. Giv den
-          videre, og bed ham skifte den.
+          Tokenet gemmes kun som SHA-256-hash, udløber automatisk og er bundet
+          til {f.email}. Mailtjenesten er ikke tilsluttet, så linket er <b>ikke sendt</b>.
+          {invitation.eksisterendeKonto ? " Modtageren har allerede en Firebase-konto og skal logge ind med den." : " Modtageren skal først oprette og verificere sin konto."}
         </p>
-        <Knap onClick={() => saetVist("")}>Jeg har noteret den</Knap>
+        <Knap onClick={() => saetInvitation(null)}>Jeg har registreret linket sikkert</Knap>
       </div>
     );
   }
@@ -596,19 +607,28 @@ function Foersteadmin({ kunde }) {
   if (!aaben) {
     return (
       <div>
-        <Knap onClick={() => saetAaben(true)}>Opret administrator</Knap>
+        <Knap onClick={() => saetAaben(true)}>Invitér administrator</Knap>
         <p className="fc-hint" style={{ marginTop: 8 }}>
           Kunden kan først selv oprette brugere, når han har én administrator.
           Derefter sker det hos ham, under Opsætning → Brugere &amp; roller.
         </p>
+        {invitationer.length > 0 && <Tabel raekker={invitationer} kolonner={[
+          { key: "email", label: "E-mail" },
+          { key: "status", label: "Status", render: (i) => <Pille tone={i.status === "accepteret" ? "ok" : i.status === "afventer" && i.udloeberMs > Date.now() ? "info" : "warn"}>{i.status === "afventer" && i.udloeberMs <= Date.now() ? "udløbet" : i.status}</Pille> },
+          { key: "udloeb", label: "Udløber", render: (i) => dato(i.udloeberMs) },
+          { key: "handling", label: "", render: (i) => i.status === "accepteret" ? null : <span className="fc-actions">
+            <Knap onClick={async () => { const r = await genudsendKundeinvitation({ id: i.id }); if (r.ok) { saetInvitation(r.data); await hentInvitationer(); } else saetSvar(r); }}>Genudsend / nyt token</Knap>
+            {i.status !== "tilbagekaldt" && <Knap variant="fare" onClick={async () => { const r = await tilbagekaldKundeinvitation({ id: i.id }); saetSvar(r); if (r.ok) await hentInvitationer(); }}>Tilbagekald</Knap>}
+          </span> },
+        ]} />}
         <Formularsvar svar={svar} />
       </div>
     );
   }
 
   return (
-    <Formular onGem={gem} gemmer={gemmer} kanGemme={kanGemme}
-              gemLabel="Opret administrator" onAnnuller={() => saetAaben(false)} svar={svar}>
+      <Formular onGem={gem} gemmer={gemmer} kanGemme={kanGemme}
+              gemLabel="Opret invitation" onAnnuller={() => saetAaben(false)} svar={svar}>
       <Feltraekke>
         <Felt id={`an-${kunde.id}`} label="Navn" kraevet vaerdi={f.navn}
               saet={(v) => saetF((x) => ({ ...x, navn: v }))} />
@@ -616,8 +636,7 @@ function Foersteadmin({ kunde }) {
               saet={(v) => saetF((x) => ({ ...x, email: v }))}
               hint="Bliver hans login. Adressen kan ikke bruges hos to virksomheder." />
       </Feltraekke>
-      <Felt id={`ak-${kunde.id}`} label="Adgangskode" vaerdi={kode} readOnly
-            hint="Genereret. Vises kun én gang efter oprettelsen." />
+      <p className="fc-hint">Rollen er kundeadministrator. Invitationen giver aldrig ejeradgang og flytter ikke en eksisterende konto fra en anden tenant.</p>
     </Formular>
   );
 }

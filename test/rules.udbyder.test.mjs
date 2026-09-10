@@ -91,6 +91,10 @@ before(async () => {
     await set(ref(db, "udbyder/audit/2026/09/a1"), {
       ms: 1e12, uid: "udb1", handling: "crm.virksomhed.opret", objekt: "crmVirksomhed",
     });
+    await set(ref(db, "udbyder/aftaler/a1"), { status: "planlagt", tilbudId: "t1", tilbudVersion: 1 });
+    await set(ref(db, "udbyder/provisioneringer/aftale_t1_1"), { status: "faerdig" });
+    await set(ref(db, "udbyder/invitationer/i1"), { tenantId: T_A, status: "afventer" });
+    await set(ref(db, "udbyder/integrationer/mail"), { status: "ikke_tilsluttet" });
   });
 });
 
@@ -113,14 +117,16 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
   });
 
-  it("kan læse CRM, tilbud og platformaudit med scriptets faktiske tenantløse claim", async () => {
+  it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
     const db = somUdbyder();
-    await assertSucceeds(get(ref(db, "udbyder/crm")));
-    await assertSucceeds(get(ref(db, "udbyder/tilbud")));
-    await assertSucceeds(get(ref(db, "udbyder/audit")));
+    for (const node of [
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "integrationer",
+    ]) {
+      await assertSucceeds(get(ref(db, `udbyder/${node}`)));
+    }
   });
 
-  it("afviser et ejer-token udstedt før den aktuelle revocation", async () => {
+  it("AK-04: afviser et ejer-token udstedt før den aktuelle revocation", async () => {
     await miljoe.withSecurityRulesDisabled(async (ctx) => {
       await set(ref(ctx.database(), "authRevocations/gammel-ejer/revokeTime"), 100);
     });
@@ -173,7 +179,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
 });
 
 describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () => {
-  it("kan ikke læse indekset over kunder", async () => {
+  it("AK-02: en kundeadmin kan ikke læse ejerdata", async () => {
     /* Det ville liste alle andre kunder. Det er den mest direkte udgave af
        kravet: kunder må ikke kunne komme til hinandens data. */
     await assertFails(get(ref(somKunde(), "udbyder/kunder")));
@@ -181,6 +187,10 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), "udbyder/crm")));
     await assertFails(get(ref(somKunde(), "udbyder/tilbud")));
     await assertFails(get(ref(somKunde(), "udbyder/audit")));
+    await assertFails(get(ref(somKunde(), "udbyder/aftaler")));
+    await assertFails(get(ref(somKunde(), "udbyder/provisioneringer")));
+    await assertFails(get(ref(somKunde(), "udbyder/invitationer")));
+    await assertFails(get(ref(somKunde(), "udbyder/integrationer")));
   });
 
   it("kan læse SIN EGEN virksomhed og moduler", async () => {
@@ -205,7 +215,7 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), `tenants/${T_A}/abonnementHistorik`)));
   });
 
-  it("kan IKKE læse en anden kundes virksomhed eller moduler", async () => {
+  it("AK-03: kan IKKE læse en anden kundes virksomhed eller moduler", async () => {
     /* De to noder er de eneste hvor reglen har et ELLER i sig. Præcis dér
        skal det efterprøves at tenant-leddet stadig gælder for en kunde. */
     const db = somKunde();

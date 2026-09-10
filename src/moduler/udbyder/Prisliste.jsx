@@ -27,12 +27,13 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular, Formularsvar,
   Henter, Tom,
 } from "../../fleet/ui.jsx";
-import { MODUL, ALLE_MODULER } from "../../fleet/moduler.js";
+import { MODUL, ALLE_MODULER, VALGFRIE_MODULER } from "../../fleet/moduler.js";
 import {
   BRUGERART, ALLE_BRUGERARTER, tomPrisliste, tomPlatform, validerPrisliste,
   gaeldendePrisliste, periodeGraenser, MOMSSATS,
 } from "../../fleet/priser.js";
 import { bpsTilPct, linjeBeloebOere } from "../../fleet/beloeb.js";
+import { FAKTURERING, TILBUD_LINJEART } from "../../fleet/ejer-tilbud-regler.js";
 import { csv, csvOere, filnavn, hentFil } from "../../fleet/eksport.js";
 import {
   opretPrisliste, opretGrundlag, maalNu, sletPrisliste,
@@ -302,6 +303,9 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
     }
     return start;
   });
+  const [tilbudslinjer, saetTilbudslinjer] = useState(() =>
+    Object.entries(udgangspunkt?.tilbudslinjer || {}).map(([id, linje]) => ({ id, ...linje }))
+  );
   const [gemmer, saetGemmer] = useState(false);
   const [svar, saetSvar] = useState(null);
 
@@ -326,6 +330,7 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
     momssats: MOMSSATS,
     platform: pf,
     moduler: p,
+    tilbudslinjer: Object.fromEntries(tilbudslinjer.map(({ id, ...linje }) => [id, linje])),
   };
   const fejl = validerPrisliste(liste, { kendteModuler: ALLE_MODULER });
   const kanGemme = fejl.length === 0;
@@ -461,6 +466,42 @@ function Nyliste({ udgangspunkt, paaGemt, paaLuk }) {
             </tbody>
           </table>
         </div>
+
+        <div className="ejer-handlingslinje" style={{ marginTop: 18 }}>
+          <div>
+            <p className="fc-hint"><b>Øvrige ratebladslinjer</b></p>
+            <p className="fc-hint">Implementering, hardware og konsulentydelser versioneres sammen med abonnementssatserne.</p>
+          </div>
+          <Knap type="button" onClick={() => saetTilbudslinjer((x) => [...x, {
+            id: crypto.randomUUID(), navn: "", beskrivelse: "", art: "implementering",
+            enhed: "time", fakturering: "engang", normalprisOere: 0,
+            momssats: MOMSSATS, rabatberettiget: true, modulId: "",
+          }])}>Tilføj ydelse</Knap>
+        </div>
+        {tilbudslinjer.map((linje, indeks) => {
+          const saet = (felt, vaerdi) => saetTilbudslinjer((alle) =>
+            alle.map((x) => x.id === linje.id ? { ...x, [felt]: vaerdi } : x));
+          return <fieldset key={linje.id} className="ejer-tilbudslinje">
+            <legend>Ratebladslinje {indeks + 1}</legend>
+            <div className="fc-form-grid">
+              <Felt id={`pl-tl-navn-${linje.id}`} label="Ydelse" vaerdi={linje.navn} saet={(v) => saet("navn", v)} />
+              <Felt id={`pl-tl-art-${linje.id}`} label="Art" vaerdi={linje.art} saet={(v) => saet("art", v)}
+                valgmuligheder={Object.entries(TILBUD_LINJEART)
+                  .filter(([id]) => !["grundplatform", "modul", "medarbejder", "chauffoer"].includes(id))
+                  .map(([vaerdi, label]) => ({ vaerdi, label }))} />
+              <Felt id={`pl-tl-modul-${linje.id}`} label="Modul (valgfrit)" vaerdi={linje.modulId || ""} saet={(v) => saet("modulId", v)}
+                valgmuligheder={[{ vaerdi: "", label: "Intet modul" }, ...VALGFRIE_MODULER.map((m) => ({ vaerdi: m, label: MODUL[m].label }))]} />
+              <Felt id={`pl-tl-form-${linje.id}`} label="Fakturering" vaerdi={linje.fakturering} saet={(v) => saet("fakturering", v)}
+                valgmuligheder={Object.entries(FAKTURERING).map(([vaerdi, label]) => ({ vaerdi, label }))} />
+              <Felt id={`pl-tl-enhed-${linje.id}`} label="Enhed" vaerdi={linje.enhed} saet={(v) => saet("enhed", v)} />
+              <Felt id={`pl-tl-pris-${linje.id}`} label="Normalpris, kr." vaerdi={kronerFelt(linje.normalprisOere)} saet={(v) => saet("normalprisOere", oereFelt(v))} />
+              <Felt id={`pl-tl-beskrivelse-${linje.id}`} label="Beskrivelse (valgfri)" vaerdi={linje.beskrivelse || ""} saet={(v) => saet("beskrivelse", v)} />
+            </div>
+            <label className="fc-check"><input type="checkbox" checked={linje.rabatberettiget !== false}
+              onChange={(e) => saet("rabatberettiget", e.target.checked)} /> Generel rabat må anvendes</label>
+            <Knap type="button" variant="fare" onClick={() => saetTilbudslinjer((x) => x.filter((r) => r.id !== linje.id))}>Fjern ydelse</Knap>
+          </fieldset>;
+        })}
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Kroner her, <b>øre</b> i basen. En sats på <b>0</b> faktureres ikke — så

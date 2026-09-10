@@ -142,8 +142,8 @@ describe("Der er et sted at vente", () => {
   it("ejerkonsollen har sin egen — den bruger ikke AppShell", () => {
     /* Udbyderrammen er sideordnet med kundeshellen (beslutning 35), så den
        skal have sin egen grænse. Uden den kaster /main. */
-    const udbyder = KODE.slice(KODE.indexOf("<Udbyderramme"), KODE.indexOf("</Udbyderramme>"));
-    assert.match(udbyder, /<Suspense/,
+    const ejergren = KODE.slice(KODE.indexOf("if (erUdbyder)"), KODE.indexOf("if (bruger?.devTester"));
+    assert.match(ejergren, /<Suspense[\s\S]*<EjerRamme/,
       "ejerkonsollens ruter er dovne uden en grænse omkring sig");
   });
 });

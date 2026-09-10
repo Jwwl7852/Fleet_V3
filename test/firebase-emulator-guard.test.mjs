@@ -14,5 +14,6 @@ test("lokale Firebase-emulatorer er fail-closed og kan ikke pege på produktion"
   assert.match(FIREBASE, /emulatorerAnmodet && !brugerLokaleEmulatorer/);
   assert.match(FIREBASE, /_db\.useEmulator\("127\.0\.0\.1", 9000\)/);
   assert.match(FIREBASE, /_auth\.useEmulator\("http:\/\/127\.0\.0\.1:9099"/);
+  assert.match(FIREBASE, /_funktioner\.useEmulator\("127\.0\.0\.1", 5001\)/);
   assert.equal(FIREBASE_CONFIG.emulators.auth.port, 9099);
 });
