@@ -106,17 +106,19 @@ const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
 const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
 const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
 const EjerRamme = lazy(() => import("./moduler/udbyder/EjerRamme.jsx"));
-const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblik.jsx"));
+const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblikDesign.jsx"));
 const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
+const EjerKunderDesign = lazy(() => import("./moduler/udbyder/EjerKunderDesign.jsx"));
 const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
 const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
 const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.jsx"));
 const EjerBilagsindbakke = lazy(() => import("./moduler/udbyder/EjerBilagsindbakke.jsx"));
 const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.jsx"));
-const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiOverblik.jsx"));
+const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiDesign.jsx"));
 const EjerSalgsindbakke = lazy(() => import("./moduler/udbyder/EjerSalgsindbakke.jsx"));
-const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbase.jsx"));
-const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationer.jsx"));
+const EjerOpfoelgninger = lazy(() => import("./moduler/udbyder/EjerOpfoelgninger.jsx"));
+const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesign.jsx"));
+const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationerDesign.jsx"));
 const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
@@ -470,8 +472,9 @@ export default function App() {
             <Routes>
               <Route path="/main" element={<EjerOverblik bruger={bruger} />} />
               <Route path="/main/salg/pipeline" element={<EjerSalg visning="pipeline" bruger={bruger} />} />
-              <Route path="/main/salg/kunder" element={<EjerSalg visning="kunder" bruger={bruger} />} />
-              <Route path="/main/salg/aktiviteter" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
+              <Route path="/main/salg/kunder" element={<EjerKunderDesign />} />
+              <Route path="/main/salg/aktiviteter" element={<EjerOpfoelgninger />} />
+              <Route path="/main/salg/aktiviteter/alle" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
               <Route path="/main/salg/tilbud" element={<EjerTilbud />} />
               <Route path="/main/salg/indbakke" element={<EjerSalgsindbakke />} />
               <Route path="/main/salg/vidensbase" element={<EjerVidensbase />} />

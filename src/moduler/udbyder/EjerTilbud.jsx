@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { iDagIsoLokal, kr, oereFraKroner } from "../../fleet/format.js";
 import { MODUL, VALGFRIE_MODULER } from "../../fleet/moduler.js";
 import { Felt, Henter, Knap, Kort, Pille, Tabel } from "../../fleet/ui.jsx";
@@ -13,6 +13,7 @@ import { provisionerAftale } from "../../fleet/udbyder.js";
 import { crmVirksomhedsliste } from "../../fleet/ejer-crm-regler.js";
 import { useEjerData } from "./EjerDataContext.jsx";
 import { afsendSalgsmail, hentSalgsplatform, opretTilbudMailkladde, spoergSalgsassistent } from "../../fleet/ejer-salgsindbakke.js";
+import EjerIkon from "./EjerIkon.jsx";
 
 const valg = (o) => Object.entries(o).map(([vaerdi, label]) => ({ vaerdi, label }));
 const kroner = (oere) => Number.isInteger(oere) ? String(oere / 100).replace(".", ",") : "";
@@ -192,13 +193,14 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
   const [virkningsdato, setVirkningsdato] = useState(iDagIsoLokal());
   const [svar, setSvar] = useState(null);
   const [viserMail, setViserMail] = useState(false);
+  const [tekstFane, setTekstFane] = useState("tekst");
   const [mail, setMail] = useState({ til: s?.kontaktEmail || "", emne: `Tilbud ${tilbud.nummer} fra Veyro Systems`, tekst: `Hej ${s?.kontaktNavn || ""}\n\nVedhæftet finder du tilbud ${tilbud.nummer}, version ${tilbud.aktuelVersion}.\n\nDu er meget velkommen til at kontakte os med spørgsmål.`, signatur: "Venlig hilsen\nVeyro Systems" });
   const [mailjob, setMailjob] = useState(null);
   const udsted = async () => { setSender(true); const r = await udstedTilbud({ id: tilbud.id, forventetRevision: tilbud.revision, operationId: crypto.randomUUID() }); setSender(false); setSvar({ ...r, succes: `Version ${r.data?.version} er udstedt og låst.` }); if (r.ok) await onOpdater(); };
   const sendt = async () => { setSender(true); const r = await registrerTilbudSendt({ id: tilbud.id, forventetRevision: tilbud.revision, begrundelse }); setSender(false); setSvar({ ...r, succes: "Den manuelle afsendelse er registreret med audit." }); if (r.ok) await onOpdater(); };
   const opretMail = async () => { setSender(true); let r = await genererTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion }); if (r.ok) r = await opretTilbudMailkladde({ tilbudId: tilbud.id, version: tilbud.aktuelVersion, ...mail }); setSender(false); setSvar({ ...r, succes: "Mailkladden er gemt med den præcise tilbudsversion og PDF." }); if (r.ok) { setMailjob(r.data); await onOpdater(); } };
   const sendMail = async () => { setSender(true); const r = await afsendSalgsmail({ jobId: mailjob.jobId, forventetRevision: mailjob.revision }); setSender(false); setSvar({ ...r, succes: "Microsoft Graph har accepteret anmodningen. Afsendelsen dokumenteres først ved Sendt post-synk." }); if (r.ok) await onOpdater(); };
-  const revision = async () => { setSender(true); const r = await startTilbudsrevision({ id: tilbud.id, forventetRevision: tilbud.revision }); setSender(false); setSvar({ ...r, succes: `Kladde til version ${r.data?.naesteVersion} er oprettet.` }); if (r.ok) await onRedigerRevision(); };
+  const revision = async () => { setSender(true); const r = await startTilbudsrevision({ id: tilbud.id, forventetRevision: tilbud.revision }); setSender(false); setSvar({ ...r, succes: `Kladde til version ${r.data?.naesteVersion} er oprettet.` }); if (r.ok) await onRedigerRevision(true); };
   const accepter = async () => { setSender(true); const r = await registrerTilbudsaccept({ id: tilbud.id, version: tilbud.aktuelVersion, forventetRevision: tilbud.revision, metode: acceptMetode, dokumentation: acceptDokumentation }); setSender(false); setSvar({ ...r, succes: `Accept af version ${tilbud.aktuelVersion} er registreret.` }); if (r.ok) await onOpdater(); };
   const pdf = async () => {
     setSender(true);
@@ -220,33 +222,55 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
     if (r.ok) await onOpdater();
   };
   if (tilbud.status === "kladde") return <Kort titel={`${tilbud.nummer} — kladde`}><p>Kladde gemt. Udstedelse fryser version {Number(tilbud.aktuelVersion || 0) + 1}; tidligere versioner ændres ikke.</p><Knap variant="primaer" onClick={udsted} disabled={sender}>{sender ? "Arbejder…" : `Udsted version ${Number(tilbud.aktuelVersion || 0) + 1}`}</Knap>{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}</Kort>;
-  return <div className="fc-grid">
-    <Kort titel={`${tilbud.nummer} · version ${tilbud.aktuelVersion}`} handling={<Pille tone={tone(tilbud.status)}>{TILBUD_STATUS[tilbud.status]}</Pille>} className="ejer-tilbudsdokument">
-      <h2>{virksomhed?.stamdata?.navn || tilbud.virksomhedId}</h2>
-      <p>{s.kontaktNavn || "Ingen kontakt angivet"}{s.kontaktEmail ? ` · ${s.kontaktEmail}` : ""}</p>
-      <p>Udstedt {s.udstedelsesdato} · gyldigt til {s.gyldigTil} · {s.valuta}</p>
-      <Tabel raekker={s.beregning.linjer} kolonner={[
-        { key: "navn", label: "Ydelse" }, { key: "antal", label: "Antal", num: true, render: (l) => `${l.antal / 1000} ${l.enhed}` },
-        { key: "sats", label: "Pris ekskl. moms", num: true, render: (l) => kr(l.satsOere) },
-        { key: "total", label: "Linjetotal", num: true, render: (l) => kr(l.linjetotalOere) },
-      ]} />
-      <div className="ejer-tilbudstotal"><span>Månedligt: <b>{kr(s.beregning.maanedlig.beloebOere)}</b> ekskl. moms</span><span>Engang: <b>{kr(s.beregning.engang.beloebOere)}</b> ekskl. moms</span></div>
-      {s.introMaaneder > 0 && <p>Introduktion: {s.introRabatBps / 100} % i {s.introMaaneder} måneder. Derefter normal aftalt pris.</p>}
-      <p>Binding: {s.bindingMaaneder} måneder · Betaling: {s.betalingsbetingelser}</p>
-      {s.forudsaetninger && <p><b>Forudsætninger</b><br />{s.forudsaetninger}</p>}
-      {s.indledning && <p><b>Indledning</b><br />{s.indledning}</p>}
-      {s.behovstekst && <p><b>Kundens behov</b><br />{s.behovstekst}</p>}
-      {s.loesningsbeskrivelse && <p><b>Foreslået løsning</b><br />{s.loesningsbeskrivelse}</p>}
-    </Kort>
-    <Kort titel="Dokument og afsendelse">
-      <p className="fc-hint">Systemafsendelse bruger en serveradapter. Uden aktiv mailopsætning registreres et fejlet forsøg, og tilbuddet bliver ikke markeret sendt. Manuel registrering er fortsat tydeligt markeret som ekstern.</p>
-      <div className="fc-actions"><Knap onClick={pdf} disabled={sender}>Generér / hent versions-PDF</Knap><Knap onClick={() => window.print()}>Browserudskrift</Knap><Knap onClick={() => setViserMail((v) => !v)} disabled={sender || tilbud.status !== "klar"}>Send tilbud</Knap>{["klar", "sendt", "afvist", "udloebet"].includes(tilbud.status) && <Knap onClick={revision} disabled={sender}>Opret ny version</Knap>}</div>
-      {version?.pdf && <p className="fc-hint">Vedvarende PDF: {version.pdf.storagePath} · SHA-256 {version.pdf.sha256}</p>}
-      {viserMail && <fieldset className="ejer-tilbudslinje"><legend>Microsoft 365-mailkladde · tilbudsversion {tilbud.aktuelVersion}</legend><Felt id="tilbud-mail-til" label="Modtager" type="email" vaerdi={mail.til} saet={(v) => setMail({ ...mail, til: v })} /><Felt id="tilbud-mail-emne" label="Emne" vaerdi={mail.emne} saet={(v) => setMail({ ...mail, emne: v })} /><Felt id="tilbud-mail-tekst" label="Redigerbar tekst" vaerdi={mail.tekst} saet={(v) => setMail({ ...mail, tekst: v })} multiline /><Felt id="tilbud-mail-signatur" label="Signatur" vaerdi={mail.signatur} saet={(v) => setMail({ ...mail, signatur: v })} multiline /><p className="fc-hint">PDF'en hentes servermæssigt fra versionens frosne Storage-sti og kontrolleres med SHA-256 før afsendelse.</p><div className="fc-actions"><Knap onClick={opretMail} disabled={sender || !mail.til || !mail.emne || !mail.tekst}>Gem mailkladde</Knap>{mailjob && <Knap variant="primaer" onClick={sendMail} disabled={sender}>Send gennem Microsoft 365</Knap>}</div></fieldset>}
-      <Felt id="tilbud-manuel-send" label="Manuel afsendelse — kanal og dokumentation" vaerdi={begrundelse} saet={setBegrundelse} />
-      <Knap variant="primaer" onClick={sendt} disabled={sender || !begrundelse.trim() || !["klar", "sendt"].includes(tilbud.status)}>Registrér manuelt sendt</Knap>
-      {svar && <p role="status" className={svar.ok ? "fc-ok" : "fc-fejltekst"}>{svar.ok ? svar.succes || "Handlingen er gennemført." : svar.besked}</p>}
-    </Kort>
+  if (viserMail) return (
+    <div className="ejer-send-tilbud">
+      <button type="button" className="ejer-tilbage" onClick={() => setViserMail(false)}>← Tilbage til tilbud</button>
+      <div className="ejer-send-layout">
+        <section className="ejer-design-kort ejer-email-kunde">
+          <header><h2>E-mail til kunde</h2><span>Kladde · ikke sendt</span><small>Gemmes automatisk</small></header>
+          <label>Fra<input value="info@veyrosystems.com" readOnly /></label>
+          <label>Til<input type="email" value={mail.til} onChange={(e) => setMail({ ...mail, til: e.target.value })} /><i>Cc&nbsp;&nbsp;&nbsp; Bcc</i></label>
+          <label>Emne<input value={mail.emne} onChange={(e) => setMail({ ...mail, emne: e.target.value })} /></label>
+          <textarea value={`${mail.tekst}\n\n${mail.signatur}`} onChange={(e) => setMail({ ...mail, tekst: e.target.value })} />
+          <div className="ejer-pdf-vedhaeftning">
+            <b>Vedhæftet fil</b><span>PDF</span>
+            <p><strong>{`${tilbud.nummer}_v${tilbud.aktuelVersion}.pdf`}</strong><small>Gemt tilbudsversion {tilbud.aktuelVersion} · permanent versionsdokument</small></p>
+            <button type="button" onClick={pdf}>Åbn PDF</button>
+          </div>
+        </section>
+        <aside>
+          <section className="ejer-design-kort ejer-foer-send">
+            <h2>Før du sender</h2>
+            <p><span>✓</span><b>Korrekt modtager</b><small>{mail.til}</small></p>
+            <p><span>✓</span><b>Korrekt version</b><small>Version {tilbud.aktuelVersion} ({tilbud.nummer}) er vedhæftet</small></p>
+            <p><EjerIkon navn="info" size={22} /><b>Ekstern afsendelse er ikke tilsluttet</b><small>Microsoft 365 skal være verificeret før afsendelse.</small></p>
+          </section>
+          <section className="ejer-design-kort ejer-plan-opfoelgning">
+            <h2>Planlæg opfølgning</h2>
+            <label>Dato<input type="date" defaultValue={plusDage(iDagIsoLokal(), 7)} /></label>
+            <label>Ansvarlig<select defaultValue="dennis"><option value="dennis">Dennis Christensen</option><option value="joern">Jørn</option></select></label>
+            <p><span>✓</span>Opret mailkladde, hvis kunden ikke svarer</p>
+            <small><EjerIkon navn="info" size={18} /> Opfølgningen kræver din godkendelse.</small>
+          </section>
+          <div className="ejer-send-actions">
+            <button type="button" onClick={opretMail} disabled={sender || !mail.til || !mail.emne || !mail.tekst}>Gem kladde</button>
+            <button type="button" className="ejer-primaer" onClick={mailjob ? sendMail : opretMail} disabled={sender}><EjerIkon navn="send" size={21} />Send via Microsoft 365</button>
+          </div>
+          <section className="ejer-manuel-afsendelse">
+            <label>Dokumentation for ekstern afsendelse<input value={begrundelse} onChange={(e) => setBegrundelse(e.target.value)} placeholder="Fx Outlook-reference eller journalnote" /></label>
+            <button type="button" onClick={sendt} disabled={sender || !begrundelse.trim()}>Registrér manuelt sendt</button>
+            <small>Bruges kun, når afsendelsen er dokumenteret uden for Veyro. Handlingen sender ikke en mail.</small>
+          </section>
+          {svar && <p className={svar.ok ? "fc-ok" : "fc-fejltekst"}>{svar.ok ? svar.succes : svar.besked}</p>}
+        </aside>
+      </div>
+    </div>
+  );
+  return <div className="fc-grid ejer-tilbud-design">
+    <section className="ejer-tilbud-identitet"><div><h2>{tilbud.nummer}</h2><span className="warn">{TILBUD_STATUS[tilbud.status]}</span><span>Version {tilbud.aktuelVersion}</span></div><p>{virksomhed?.stamdata?.navn || tilbud.virksomhedId}</p></section>
+    <section className="ejer-design-kort ejer-tilbud-summering"><div><span className="ejer-ikonfelt">◇</span><p><small>Abonnement</small><b>{kr(s.beregning.maanedlig.beloebOere)}/md.</b></p></div><div><span className="ejer-ikonfelt">▤</span><p><small>Engangsydelser</small><b>{kr(s.beregning.engang.beloebOere)}</b></p></div><p><b>Eksempelpriser · ekskl. moms</b><small>Priserne hentes fra ratebladet. AI redigerer kun tekst.</small></p></section>
+    <div className="ejer-tilbud-layout"><section className="ejer-design-kort ejer-tilbud-tekst"><div className="ejer-tabs">{[["rate","Rateblad"],["tekst","Tilbudstekst"],["dokument","Dokument"]].map(([id,label])=><button type="button" key={id} className={tekstFane===id?"aktiv":""} onClick={()=>setTekstFane(id)}>{label}</button>)}</div>{tekstFane==="rate"?<><h2>Prislinjer fra ratebladet</h2><Tabel raekker={s.beregning.linjer} kolonner={[{key:"navn",label:"Ydelse"},{key:"antal",label:"Antal",render:l=>`${l.antal/1000} ${l.enhed}`},{key:"total",label:"Linjetotal",num:true,render:l=>kr(l.linjetotalOere)}]}/></>:tekstFane==="dokument"?<><h2>Permanent versionsdokument</h2><p>PDF'en er bundet til version {tilbud.aktuelVersion} og SHA-256-kontrolleres før afsendelse.</p><button type="button" className="ejer-primaer" onClick={pdf}>Åbn PDF</button></>:<><h2>Kundetilpasset indledning</h2><div className="ejer-editor-toolbar">Normal　 <b>B</b>　<i>I</i>　☷　☰　🔗　↶　↷</div><div className="ejer-editorfelt">{s.indledning||s.behovstekst||"Tilbuddet tager udgangspunkt i kundens bekræftede behov og den aftalte løsning."}</div><h2>Løsningsbeskrivelse</h2><div className="ejer-editor-toolbar">Normal　 <b>B</b>　<i>I</i>　☷　☰　🔗　↶　↷</div><div className="ejer-editorfelt">{s.loesningsbeskrivelse||"Omfang, arbejdsproces og introduktion gennemgås sammen med kunden."}</div><div className="ejer-prislinjer"><h2>⌄ Prislinjer fra ratebladet <button type="button" onClick={()=>setTekstFane("rate")}>Redigér rateblad ↗</button></h2>{s.beregning.linjer.slice(0,5).map(l=><p key={l.id||l.navn}><span>✓</span>{l.navn}</p>)}</div></>}</section><aside className="ejer-design-kort ejer-tilbud-assistent"><h2><EjerIkon navn="sparkles" size={30}/>Veyro-assistent</h2><p className="fc-hint">Få hjælp til at skrive en skarp og kundetilpasset tekst.</p><div className="ejer-ai-prompt"><input defaultValue="Gør teksten konkret for denne kunde"/><button type="button" onClick={()=>setSvar({ok:false,besked:"OpenAI er ikke tilsluttet; teksten er ikke sendt til en ekstern tjeneste."})}><EjerIkon navn="send" size={20}/></button></div><div className="ejer-ai-forslag"><header><b>✦ AI-forslag</b><time>I dag</time></header><p>{s.indledning||"Et forslag vises her, når den serverbaserede assistent er tilsluttet og aktiveret."}</p><small>Kilder til forslaget</small><div><span>Kundens forespørgsel</span><span>Godkendt Veyro-viden</span></div><em>Opstartsdato mangler afklaring.</em></div><div className="ejer-assistent-actions"><button type="button" className="ejer-primaer" onClick={()=>setSvar({ok:false,besked:"Intet AI-forslag er indsat, fordi integrationen ikke er tilsluttet."})}>✓ Indsæt forslag</button><button type="button" onClick={()=>setSvar({ok:false,besked:"OpenAI er ikke tilsluttet; der er ikke genereret en ny tekst."})}>↻ Prøv en kortere tekst</button></div><div className="ejer-tilbud-hovedactions"><button type="button" onClick={onRedigerRevision}>Gem kladde</button><button type="button" onClick={pdf}>Se PDF</button><button type="button" className="ejer-primaer" onClick={()=>setViserMail(true)}><EjerIkon navn="send" size={20}/>Klargør mail</button></div>{svar&&<p className={svar.ok?"fc-ok":"fc-fejltekst"}>{svar.ok?svar.succes:svar.besked}</p>}</aside></div>
+    {["klar", "sendt", "afvist", "udloebet"].includes(tilbud.status)&&<div className="fc-actions"><Knap onClick={revision} disabled={sender}>Opret ny version</Knap></div>}
     {tilbud.status === "sendt" && <Kort titel="Registrér kundens accept">
       <p className="fc-hint">Accepten bindes til version {tilbud.aktuelVersion}. Den opretter hverken aftale, tenant, invitation eller faktura automatisk.</p>
       <Felt id="tilbud-accept-metode" label="Metode" vaerdi={acceptMetode} saet={setAcceptMetode} valgmuligheder={[
@@ -275,6 +299,7 @@ export default function EjerTilbud() {
   const [valgtId, setValgtId] = useState(null);
   const [redigerer, setRedigerer] = useState(false);
   const valgt = liste.find((x) => x.id === valgtId) || null;
+  useEffect(() => { if (!valgtId && liste[0]) setValgtId(liste[0].id); }, [liste, valgtId]);
   const prisliste = gaeldendePrisliste(prislister || {}, Date.now());
   if (henter && !crm) return <Henter hvad="tilbud" />;
   if (fejl) return <Kort titel="Tilbud kunne ikke hentes"><p>{fejl.message}</p><Knap onClick={genindlaes}>Prøv igen</Knap></Kort>;
@@ -290,6 +315,6 @@ export default function EjerTilbud() {
         { key: "version", label: "Version", num: true, render: (r) => r.aktuelVersion || "—" },
       ]} />
     </Kort>
-    {valgt && <><div className="fc-actions">{valgt.status === "kladde" && <Knap onClick={() => setRedigerer(true)}>Redigér kladde</Knap>}</div><Tilbudsdokument tilbud={valgt} virksomhed={crm?.[valgt.virksomhedId]} onOpdater={genindlaes} onRedigerRevision={async () => { await genindlaes(); setRedigerer(true); }} /></>}
+    {valgt && <><div className="fc-actions">{valgt.status === "kladde" && <Knap onClick={() => setRedigerer(true)}>Redigér kladde</Knap>}</div><Tilbudsdokument tilbud={valgt} virksomhed={crm?.[valgt.virksomhedId]} onOpdater={genindlaes} onRedigerRevision={async (alleredeStartet = false) => { if (!alleredeStartet && valgt.status !== "kladde") { const r = await startTilbudsrevision({ id: valgt.id, forventetRevision: valgt.revision }); if (!r.ok) return; } await genindlaes(); setRedigerer(true); }} /></>}
   </div>;
 }

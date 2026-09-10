@@ -41,7 +41,7 @@ export default function EjerSalgsindbakke() {
   const [note, setNote] = useState(""); const [assistent, setAssistent] = useState(""); const [svar, setSvar] = useState(null);
   const indlaes = async () => { try { setData(await hentSalgsplatform()); setFejl(""); } catch (e) { setFejl(e.message); } };
   useEffect(() => { indlaes(); }, []);
-  const traade = useMemo(() => tilListe(data?.traade).filter((t) => status === "alle" || t.status === status).filter((t) => `${t.emne} ${t.senesteFra}`.toLowerCase().includes(soeg.toLowerCase())).sort((a, b) => (b.senesteAktivitetMs || 0) - (a.senesteAktivitetMs || 0)), [data, status, soeg]);
+  const traade = useMemo(() => tilListe(data?.traade).filter((t) => status === "alle" || (status === "mine" ? t.ansvarligUid === profiler?.[0]?.uid : t.status === status)).filter((t) => `${t.emne} ${t.senesteFra}`.toLowerCase().includes(soeg.toLowerCase())).sort((a, b) => (b.senesteAktivitetMs || 0) - (a.senesteAktivitetMs || 0)), [data, status, soeg, profiler]);
   useEffect(() => { if (!valgtId && traade[0]) setValgtId(traade[0].id); }, [traade, valgtId]);
   const valgt = data?.traade?.[valgtId];
   const [redigering, setRedigering] = useState(null);
@@ -51,13 +51,17 @@ export default function EjerSalgsindbakke() {
   const muligheder = valgt?.links?.virksomhedId ? tilListe(crm?.[valgt.links.virksomhedId]?.muligheder).map((v) => ({ vaerdi: v.id, label: v.titel || v.id })) : [];
   const tilbudsliste = tilListe(tilbud).map((v) => ({ vaerdi: v.id, label: `${v.nummer || v.id} · v${v.aktuelVersion || 0}` }));
   const integration = data?.integrationer?.microsoft365 || {};
-  return <div className="fc-grid">
-    <div className="ejer-handlingslinje"><div><strong>Fælles adresse: info@veyrosystems.com</strong><p className="fc-hint">{integration.status === "aktiv" ? "Microsoft 365 er aktiveret." : "Ikke tilsluttet · postkassetype og Graph-rettigheder er ikke verificeret."}</p></div><Knap onClick={() => koer(synkroniserMicrosoft365)} disabled={arbejder || integration.status !== "aktiv"}>Synkronisér nu</Knap></div>
+  const antalNy = tilListe(data?.traade).filter((t) => t.status === "ny").length;
+  return <div className="fc-grid ejer-indbakke-side">
+    <div className="ejer-indbakke-tabs" role="tablist" aria-label="Filtrér mailtråde">{[
+      ["alle", "Alle"], ["ny", `Nye ${antalNy ? `(${antalNy})` : ""}`], ["afventer_os", "Afventer os"], ["afventer_kunden", "Afventer kunden"], ["mine", "Mine"],
+    ].map(([v, label]) => <button type="button" role="tab" aria-selected={status === v} className={status === v ? "aktiv" : ""} key={v} onClick={() => setStatus(v)}>{label}</button>)}</div>
+    <div className="ejer-integrationnote"><span className={integration.status === "aktiv" ? "aktiv" : "ikke"}>{integration.status === "aktiv" ? "Microsoft 365 tilsluttet" : "TESTADAPTER · Microsoft 365 ikke tilsluttet"}</span><Knap onClick={() => koer(synkroniserMicrosoft365)} disabled={arbejder || integration.status !== "aktiv"}>Synkronisér nu</Knap></div>
     {fejl && <p className="fc-fejltekst">{fejl}</p>}{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}
     <div className="ejer-indbakke">
       <aside className="ejer-traadliste" aria-label="Mailtråde">
         <Felt id="indbakke-soeg" label="Søg" vaerdi={soeg} saet={setSoeg} />
-        <Felt id="indbakke-status" label="Status" vaerdi={status} saet={setStatus} valgmuligheder={[{ vaerdi: "alle", label: "Alle" }, ...Object.entries(SALGSSTATUS).map(([vaerdi, label]) => ({ vaerdi, label }))]} />
+        <div className="ejer-traadfilter"><Felt id="indbakke-status" label="Status" vaerdi={status === "mine" ? "alle" : status} saet={setStatus} valgmuligheder={[{ vaerdi: "alle", label: "Alle" }, ...Object.entries(SALGSSTATUS).map(([vaerdi, label]) => ({ vaerdi, label }))]} /></div>
         <div>{traade.map((t) => <button type="button" className={t.id === valgtId ? "aktiv" : ""} key={t.id} onClick={() => setValgtId(t.id)}><span>{t.emne}</span><small>{t.senesteFra} · {dato(t.senesteAktivitetMs)}</small><Pille>{SALGSSTATUS[t.status] || t.status}</Pille></button>)}</div>
         {!traade.length && <p className="fc-hint">Ingen henvendelser matcher filtrene.</p>}
       </aside>
