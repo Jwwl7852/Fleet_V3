@@ -223,6 +223,21 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(gate, /PERM\.bookingLaes/);
         continue;
       }
+      if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog",
+        "indkoebGodkendelser", "bestillinger", "indkoebModtagelser",
+        "indkoebForbrug"].includes(p.key)) {
+        /* PROCURE v2 samler de syv routes i én integreret router. Wrapperen
+           skal pege på den fælles implementation, og implementationen skal
+           både læse tenant-scopede noder og lukke direkte URL-adgang på den
+           samme indkoeb.laes-permission som menuen. */
+        const wrapper = readFileSync("src/moduler/indkoeb/ProcureModule.jsx", "utf8");
+        const module = readFileSync("src/fleet/procure-v2/ProcureModule.jsx", "utf8");
+        assert.match(wrapper, /fleet\/procure-v2\/ProcureModule/);
+        assert.match(module, /useListe\("indkoebsbehov"/);
+        assert.match(module, /useListe\("indkoebsordrer"/);
+        assert.match(module, /harPerm\(bruger\?\.perms, PERM\.indkoebLaes\)/);
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);

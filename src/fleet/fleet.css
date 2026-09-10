@@ -195,7 +195,8 @@
 }
 
 .fc-side{width:var(--fc-sidebar); flex:0 0 var(--fc-sidebar); background:var(--fc-navy);
-  display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh}
+  display:flex; flex-direction:column; padding:18px 12px 12px; position:sticky; top:0; height:100vh;
+  box-sizing:border-box}
 .veyro-logo{display:block; width:100%; height:auto; object-fit:contain; object-position:center}
 .veyro-logo--sidebar{width:184px; max-width:100%; margin:0 auto}
 .veyro-logo--header{width:112px; max-width:32vw}
@@ -388,7 +389,10 @@
   .fc-app{flex-direction:column}
   .fc-side{position:static; height:auto; width:100%; flex:none}
   .fc-nav{flex-direction:row; overflow-x:auto; flex:none}
-  .fc-nav-gruppe-blok{flex-direction:row}
+  /* Grupperne må ikke være selvstændige flex-items på den vandrette mobilrække:
+     deres indhold har forskellig minimumsbredde og ville ellers overlappe næste
+     gruppe. Links bliver direkte børn af den scrollbare nav via display:contents. */
+  .fc-nav-gruppe-blok{display:contents}
   .fc-nav-gruppe{display:none}
   /* Fold-knappen giver ingen mening i den vandrette ikonrække — og en
      gruppe der blev foldet sammen på desktop, skal stadig vise sine

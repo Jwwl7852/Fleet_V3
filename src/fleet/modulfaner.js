@@ -70,8 +70,10 @@ export const FACILITY_FANER = [
  */
 export const PROCURE_FANER = [
   { sti: "/indkoeb", label: "Overblik" },
+  { sti: "/indkoeb/behov", label: "Indkøbsbehov" },
+  { sti: "/indkoeb/katalog", label: "Varekatalog" },
+  { sti: "/indkoeb/godkendelser", label: "Godkendelser" },
   { sti: "/indkoeb/bestillinger", label: "Bestillinger" },
-  { sti: "/indkoeb/varer", label: "Varer" },
-  { sti: "/indkoeb/arkiv", label: "Arkiv" },
-  { sti: "/indkoeb/statistik", label: "Statistik" },
+  { sti: "/indkoeb/modtagelser", label: "Modtagelser" },
+  { sti: "/indkoeb/forbrug", label: "Forbrug" },
 ];
