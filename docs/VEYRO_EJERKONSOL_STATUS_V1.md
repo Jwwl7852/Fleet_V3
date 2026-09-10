@@ -26,6 +26,16 @@ Opdateret: 2026-09-10
   bag den tidligere rundes bredskærmskontrol.
 - Det detaljerede referencekort og de resterende afvigelser står i
   `docs/review/ejerkonsol-design-v1/README.md`.
+- Lokalt kodecheckpoint: `de72201` (`feat(ejer): match approved owner console design`).
+- Lokalt designreview-checkpoint: `a1fb2f3` (`docs(ejer): record design review and remaining viewport QA`).
+- `origin/codex/ejer-integrated-development` findes ikke endnu. GitHub Actions
+  viser kun custom-claims-workflowet, som er afgrænset til en anden branch.
+- GitHub-backup er ikke udført: repositoryets autoritative driftsdokumentation
+  angiver Netlify som frontend-host, og `netlify.toml` har en aktiv
+  `branch-deploy`-kontekst. Uden adgang til Netlify-siteopsætningen kan et push
+  derfor ikke dokumenteres som deployment-frit. Planlagt kommando er fortsat
+  `git push --set-upstream origin codex/ejer-integrated-development`; ingen
+  force-push, merge eller produktionsændring må indgå.
 
 ## Git og arbejdsområde
 
