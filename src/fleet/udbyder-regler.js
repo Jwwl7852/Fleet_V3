@@ -96,7 +96,7 @@ export function tolkUdbyderfejl(fejl) {
   if (kode === "not-found") {
     return { art: UDBYDERSVAR.ukendt, besked: besked || "Kunden findes ikke." };
   }
-  if (kode === "invalid-argument" || kode === "failed-precondition") {
+  if (kode === "invalid-argument" || kode === "failed-precondition" || kode === "aborted") {
     return { art: UDBYDERSVAR.ugyldig, besked: besked || "Oplysningerne kunne ikke bruges." };
   }
   return {

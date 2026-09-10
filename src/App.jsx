@@ -105,6 +105,10 @@ const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
 const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
 const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
 const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
+const EjerRamme = lazy(() => import("./moduler/udbyder/EjerRamme.jsx"));
+const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblik.jsx"));
+const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
+const EjerIkkeImplementeret = lazy(() => import("./moduler/udbyder/EjerIkkeImplementeret.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
 const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
@@ -135,33 +139,6 @@ const DEMO_BRUGER = {
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
   perms: permStrengFraRolle("admin"),
 };
-
-/**
- * Rammen om ejerkonsollen.
- *
- * ⚠ IKKE AppShell. Shellen ejer sidebar, tenant-vælger og periodevælger, og
- * alle tre hører til en KUNDEKONTEKST. En ejer står ikke i en — han har ingen
- * tenant. En sidebar med kundens moduler ville desuden antyde at han kunne
- * klikke sig ind i dem, og det kan han ikke: reglerne kender kun hans claim,
- * og det rækker til tre noder pr. kunde.
- */
-function Udbyderramme({ bruger, logUd, children }) {
-  return (
-    <div className="fc-app fc-udbyder">
-      <header className="fc-top">
-        <div className="fc-med-ikon" style={{ gap: 12 }}>
-          <VeyroLogo variant="header" />
-          <span className="fc-hint">Ejerkonsol</span>
-        </div>
-        <div className="fc-med-ikon" style={{ gap: 12 }}>
-          <span className="fc-hint">{bruger?.email}</span>
-          <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
-        </div>
-      </header>
-      <main className="fc-slot">{children}</main>
-    </div>
-  );
-}
 
 /**
  * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
@@ -479,15 +456,26 @@ export default function App() {
   if (erUdbyder) {
     return (
       <BrowserRouter>
-        <Udbyderramme bruger={bruger} logUd={() => auth?.signOut()}>
-          <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
-          <Routes>
-            <Route path="/main" element={<Konsol bruger={bruger} />} />
-            <Route path="/main/priser" element={<Prisliste />} />
-            <Route path="*" element={<Navigate to="/main" replace />} />
-          </Routes>
-          </Suspense>
-        </Udbyderramme>
+        <Suspense fallback={<div className="fc-boot">Henter ejerkonsollen …</div>}>
+          <EjerRamme bruger={bruger} logUd={() => auth?.signOut()}>
+            <Routes>
+              <Route path="/main" element={<EjerOverblik bruger={bruger} />} />
+              <Route path="/main/salg/pipeline" element={<EjerSalg visning="pipeline" bruger={bruger} />} />
+              <Route path="/main/salg/kunder" element={<EjerSalg visning="kunder" bruger={bruger} />} />
+              <Route path="/main/salg/aktiviteter" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
+              <Route path="/main/salg/tilbud" element={<EjerIkkeImplementeret titel="Tilbud" etape="etape D" />} />
+              <Route path="/main/priser" element={<Prisliste />} />
+              <Route path="/main/abonnementer" element={<Konsol bruger={bruger} />} />
+              <Route path="/main/oekonomi" element={<EjerIkkeImplementeret titel="Økonomioverblik" etape="etape I" blokering="Dinero er ikke tilsluttet." />} />
+              <Route path="/main/oekonomi/fakturaer" element={<EjerIkkeImplementeret titel="Fakturaer" etape="etape F" blokering="Dinero-credentials og testorganisation mangler." />} />
+              <Route path="/main/oekonomi/kreditnotaer" element={<EjerIkkeImplementeret titel="Kreditnotaer" etape="etape G" blokering="Dinero-credentials og testorganisation mangler." />} />
+              <Route path="/main/oekonomi/bilag" element={<EjerIkkeImplementeret titel="Bilagsindbakke" etape="etape H" blokering="Mail- og OCR-leverandører er ikke valgt." />} />
+              <Route path="/main/oekonomi/omkostninger" element={<EjerIkkeImplementeret titel="Omkostninger" etape="etape H" blokering="Dinero-læseforbindelsen er ikke tilsluttet." />} />
+              <Route path="/main/integrationer" element={<EjerIkkeImplementeret titel="Integrationer" etape="etape F–H" blokering="Dinero, mail og OCR kræver sikker ekstern opsætning." />} />
+              <Route path="*" element={<Navigate to="/main" replace />} />
+            </Routes>
+          </EjerRamme>
+        </Suspense>
       </BrowserRouter>
     );
   }

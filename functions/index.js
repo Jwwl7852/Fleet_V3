@@ -61,6 +61,10 @@ import {
   valideRolleperms, laaserUde, PERM, byggRolleClaims, permStrengFraClaims,
 } from "./delt/permissions.js";
 import { migrerClaimKonti } from "./delt/claims-migration.js";
+import { erEjerClaims, erTokenEfterRevocation } from "./delt/ejeradgang.js";
+import {
+  harValideringsfejl, validerCrmVirksomhed, validerCrmMulighed, validerCrmAktivitet,
+} from "./delt/ejer-crm-regler.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
    for hvorfor mekanismen ikke kan "give" adgang, kun skjule den. */
@@ -1122,14 +1126,296 @@ const TENANT_MOENSTER = /^[a-z0-9][a-z0-9-]{1,39}$/;
  * en skrivning til den liste være en vej til at give sig selv adgang — og så
  * skulle DEN skrivning beskyttes af noget, og så er vi i ring.
  */
-function kraevUdbyder(req) {
+async function kraevUdbyder(req) {
   const auth = req.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
-  if (auth.token?.udbyder !== true) {
+  if (!erEjerClaims(auth.token)) {
     throw new HttpsError("permission-denied", "Kræver udbyderadgang.");
+  }
+
+  const revocation = await getDatabase()
+    .ref(`${REVOCATION_NODE}/${auth.uid}/revokeTime`).once("value");
+  if (revocation.exists()
+      && !erTokenEfterRevocation(auth.token?.auth_time, revocation.val())) {
+    throw new HttpsError(
+      "permission-denied",
+      "Ejeradgangen er tilbagekaldt. Log ind igen med en gyldig ejeridentitet.",
+    );
   }
   return auth.uid;
 }
+
+/** Platformaudit for data, der ikke tilhører en kundetenant. */
+async function skrivEjerAudit({
+  uid, handling, objekt, objektId = null, korrelationsId = null, aendrede = null,
+}) {
+  const ms = Date.now();
+  const nu = new Date(ms);
+  const aar = String(nu.getUTCFullYear());
+  const maaned = String(nu.getUTCMonth() + 1).padStart(2, "0");
+  const ref = getDatabase().ref(`udbyder/audit/${aar}/${maaned}`).push();
+  await ref.set({
+    ms,
+    uid,
+    handling: kortStreng(handling, 50),
+    objekt: kortStreng(objekt, 40),
+    objektId: kortStreng(objektId, 120),
+    korrelationsId: kortStreng(korrelationsId, 60) || ref.key,
+    aendrede: Array.isArray(aendrede)
+      ? aendrede.filter((felt) => typeof felt === "string").slice(0, 30)
+      : null,
+  });
+  return ref.key;
+}
+
+async function kraevRenEjerUid(uid) {
+  const id = kortStreng(uid, 128);
+  if (!id) throw new HttpsError("invalid-argument", "Ansvarlig ejer mangler.");
+  let bruger;
+  try {
+    bruger = await getAuth().getUser(id);
+  } catch (fejl) {
+    if (fejl?.code === "auth/user-not-found") {
+      throw new HttpsError("invalid-argument", "Den ansvarlige ejer findes ikke.");
+    }
+    throw fejl;
+  }
+  if (!erEjerClaims(bruger.customClaims || {}) || bruger.customClaims?.tenant) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Ansvarlig skal være en aktiv, tenantløs ejeridentitet.",
+    );
+  }
+  return id;
+}
+
+function kraevForventetRevision(vaerdi) {
+  const revision = Number(vaerdi ?? 0);
+  if (!Number.isInteger(revision) || revision < 0) {
+    throw new HttpsError("invalid-argument", "forventetRevision skal være et positivt heltal eller nul.");
+  }
+  return revision;
+}
+
+function kastValideringsfejl(resultat) {
+  if (!harValideringsfejl(resultat)) return resultat.post;
+  throw new HttpsError("invalid-argument", Object.values(resultat.fejl).join(" "));
+}
+
+function kraevCrmId(vaerdi, navn) {
+  const id = kortStreng(vaerdi, 160);
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
+    throw new HttpsError("invalid-argument", `${navn} har ugyldigt format.`);
+  }
+  return id;
+}
+
+/* Returnerer de tenantløse ejerprofiler, som må vælges som ansvarlig. Listen
+   kommer fra Firebase Auth og er derfor ikke en ny adgangskilde. */
+export const ejerprofilerhent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const liste = await getAuth().listUsers(1000);
+  const profiler = liste.users
+    .filter((bruger) => erEjerClaims(bruger.customClaims || {}) && !bruger.customClaims?.tenant)
+    .map((bruger) => ({
+      uid: bruger.uid,
+      navn: bruger.displayName || bruger.email || "Ejer",
+      email: bruger.email || null,
+    }))
+    .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
+  return { ok: true, profiler };
+});
+
+export const crmvirksomhedgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const post = kastValideringsfejl(validerCrmVirksomhed(d));
+  await kraevRenEjerUid(post.ansvarligUid);
+
+  const db = getDatabase();
+  const samling = db.ref("udbyder/crm/virksomheder");
+  const erNy = !d.id;
+  const id = erNy ? samling.push().key : kraevCrmId(d.id, "Virksomheds-id");
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const nu = Date.now();
+  const tidslinjeId = samling.child(id).child("tidslinje").push().key;
+
+  if (erNy && post.cvr) {
+    const alle = (await samling.once("value")).val() || {};
+    const dublet = Object.entries(alle).find(([, virksomhed]) =>
+      virksomhed?.stamdata?.cvr === post.cvr);
+    if (dublet) {
+      throw new HttpsError(
+        "already-exists",
+        `En CRM-virksomhed med CVR ${post.cvr} findes allerede (${dublet[0]}).`,
+      );
+    }
+  }
+
+  let konflikt = false;
+  const resultat = await samling.child(id).transaction((aktuel) => {
+    const eksisterende = aktuel?.stamdata || null;
+    const revision = eksisterende?.revision || 0;
+    if ((erNy && aktuel) || (!erNy && !eksisterende) || revision !== forventetRevision) {
+      konflikt = true;
+      return;
+    }
+    return {
+      ...(aktuel || {}),
+      stamdata: {
+        ...post,
+        oprettetMs: eksisterende?.oprettetMs || nu,
+        oprettetAf: eksisterende?.oprettetAf || ejerUid,
+        opdateretMs: nu,
+        opdateretAf: ejerUid,
+        revision: revision + 1,
+      },
+      tidslinje: {
+        ...(aktuel?.tidslinje || {}),
+        [tidslinjeId]: {
+          ms: nu, uid: ejerUid,
+          art: erNy ? "virksomhed.oprettet" : "virksomhed.opdateret",
+          objektId: id,
+        },
+      },
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Virksomheden er ændret af en anden. Genindlæs og prøv igen.");
+  }
+  const revision = resultat.snapshot.val()?.stamdata?.revision;
+  await skrivEjerAudit({
+    uid: ejerUid,
+    handling: erNy ? "crm.virksomhed.opret" : "crm.virksomhed.opdater",
+    objekt: "crmVirksomhed", objektId: id,
+  });
+  return { ok: true, id, revision };
+});
+
+export const crmmulighedgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const virksomhedId = kraevCrmId(d.virksomhedId, "Virksomheds-id");
+  const post = kastValideringsfejl(validerCrmMulighed(d, virksomhedId));
+  await kraevRenEjerUid(post.ansvarligUid);
+
+  const db = getDatabase();
+  const virksomhedRef = db.ref(`udbyder/crm/virksomheder/${virksomhedId}`);
+  const erNy = !d.id;
+  const id = erNy
+    ? virksomhedRef.child("muligheder").push().key
+    : kraevCrmId(d.id, "Muligheds-id");
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const nu = Date.now();
+  const tidslinjeId = virksomhedRef.child("tidslinje").push().key;
+  let konflikt = false;
+
+  const resultat = await virksomhedRef.transaction((virksomhed) => {
+    if (!virksomhed?.stamdata) { konflikt = true; return; }
+    const eksisterende = virksomhed.muligheder?.[id] || null;
+    const revision = eksisterende?.revision || 0;
+    if ((erNy && eksisterende) || (!erNy && !eksisterende) || revision !== forventetRevision) {
+      konflikt = true;
+      return;
+    }
+    return {
+      ...virksomhed,
+      muligheder: {
+        ...(virksomhed.muligheder || {}),
+        [id]: {
+          ...post,
+          oprettetMs: eksisterende?.oprettetMs || nu,
+          oprettetAf: eksisterende?.oprettetAf || ejerUid,
+          opdateretMs: nu,
+          opdateretAf: ejerUid,
+          revision: revision + 1,
+        },
+      },
+      tidslinje: {
+        ...(virksomhed.tidslinje || {}),
+        [tidslinjeId]: {
+          ms: nu, uid: ejerUid,
+          art: erNy ? "mulighed.oprettet" : "mulighed.opdateret",
+          objektId: id, fase: post.fase,
+        },
+      },
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Salgsmuligheden er ændret af en anden. Genindlæs og prøv igen.");
+  }
+  const revision = resultat.snapshot.val()?.muligheder?.[id]?.revision;
+  await skrivEjerAudit({
+    uid: ejerUid,
+    handling: erNy ? "crm.mulighed.opret" : "crm.mulighed.opdater",
+    objekt: "crmMulighed", objektId: id,
+  });
+  return { ok: true, id, virksomhedId, revision };
+});
+
+export const crmaktivitetgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {};
+  const virksomhedId = kraevCrmId(d.virksomhedId, "Virksomheds-id");
+  const post = kastValideringsfejl(validerCrmAktivitet(d, virksomhedId));
+  await kraevRenEjerUid(post.ansvarligUid);
+
+  const db = getDatabase();
+  const virksomhedRef = db.ref(`udbyder/crm/virksomheder/${virksomhedId}`);
+  const erNy = !d.id;
+  const id = erNy
+    ? virksomhedRef.child("aktiviteter").push().key
+    : kraevCrmId(d.id, "Aktivitets-id");
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const nu = Date.now();
+  const tidslinjeId = virksomhedRef.child("tidslinje").push().key;
+  let konflikt = false;
+
+  const resultat = await virksomhedRef.transaction((virksomhed) => {
+    if (!virksomhed?.stamdata) { konflikt = true; return; }
+    const eksisterende = virksomhed.aktiviteter?.[id] || null;
+    const revision = eksisterende?.revision || 0;
+    if ((erNy && eksisterende) || (!erNy && !eksisterende) || revision !== forventetRevision) {
+      konflikt = true;
+      return;
+    }
+    if (post.mulighedId && !virksomhed.muligheder?.[post.mulighedId]) {
+      konflikt = true;
+      return;
+    }
+    const aktivitet = {
+      ...post,
+      oprettetMs: eksisterende?.oprettetMs || nu,
+      oprettetAf: eksisterende?.oprettetAf || ejerUid,
+      opdateretMs: nu,
+      opdateretAf: ejerUid,
+      afsluttetMs: post.status === "afsluttet" ? (eksisterende?.afsluttetMs || nu) : null,
+      revision: revision + 1,
+    };
+    return {
+      ...virksomhed,
+      aktiviteter: { ...(virksomhed.aktiviteter || {}), [id]: aktivitet },
+      tidslinje: {
+        ...(virksomhed.tidslinje || {}),
+        [tidslinjeId]: {
+          ms: nu, uid: ejerUid,
+          art: post.status === "afsluttet" ? "aktivitet.afsluttet" : (erNy ? "aktivitet.oprettet" : "aktivitet.opdateret"),
+          objektId: id, mulighedId: post.mulighedId,
+        },
+      },
+    };
+  });
+  if (!resultat.committed || konflikt) {
+    throw new HttpsError("aborted", "Aktiviteten kunne ikke gemmes. Genindlæs virksomhedens data og prøv igen.");
+  }
+  const revision = resultat.snapshot.val()?.aktiviteter?.[id]?.revision;
+  await skrivEjerAudit({
+    uid: ejerUid,
+    handling: post.status === "afsluttet" ? "crm.aktivitet.afslut" : (erNy ? "crm.aktivitet.opret" : "crm.aktivitet.opdater"),
+    objekt: "crmAktivitet", objektId: id,
+  });
+  return { ok: true, id, virksomhedId, revision };
+});
 
 /** Kunde-id'et fra nyttelasten — se noten ovenfor om hvorfor det er lovligt her. */
 function kraevKundeId(d) {
@@ -1171,7 +1457,7 @@ function medHistorik(db, id, opdatering, poster) {
 }
 
 export const kundeopret = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
   const id = kraevKundeId(d);
 
@@ -1230,6 +1516,9 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
   })));
 
   await log(id, ejerUid, AUDIT.opret, id, "kunde oprettet");
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "kunde.opret", objekt: "tenant", objektId: id,
+  });
 
   /* ⚠ INGEN DEMO-DATA. Kunden skal se sit eget system tomt og opdage hvad
      tomme tilstande faktisk siger. Se opret-kunde.mjs. */
@@ -1237,7 +1526,7 @@ export const kundeopret = onCall({ region: REGION }, async (req) => {
 });
 
 export const kundemoduler = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
   const id = kraevKundeId(d);
 
@@ -1293,12 +1582,16 @@ export const kundemoduler = onCall({ region: REGION }, async (req) => {
 
   await log(id, ejerUid, AUDIT.aendre, id,
     fjernet.length ? `moduler; fravalgt: ${fjernet.join(",")}` : "moduler");
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "kunde.moduler", objekt: "tenant", objektId: id,
+    aendrede: ["moduler"],
+  });
 
   return { ok: true, moduler: Object.keys(efter), fjernet, historik: poster.length };
 });
 
 export const kundestatus = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
   const id = kraevKundeId(d);
 
@@ -1351,6 +1644,10 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
      tilbage: de der var spærret individuelt ville blive åbnet med. */
   await log(id, ejerUid, AUDIT.tilstandsskift, id,
     aarsag ? `abonnement ${status} (${aarsag})` : `abonnement ${status}`);
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "kunde.status", objekt: "tenant", objektId: id,
+    aendrede: ["status", ...(aarsag ? ["aarsag"] : [])],
+  });
 
   return { ok: true, status };
 });
@@ -1367,7 +1664,7 @@ export const kundestatus = onCall({ region: REGION }, async (req) => {
  * hash, og der er ingen invitationsmail endnu.
  */
 export const kundeadmin = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
   const id = kraevKundeId(d);
 
@@ -1377,10 +1674,15 @@ export const kundeadmin = onCall({ region: REGION }, async (req) => {
   /* ⚠ ROLLEN KAN VÆLGES, men kun blandt presettene — som alle andre steder.
      Uden en angivet rolle bliver det admin: det er den første konto, og en
      kunde uden administrator kan ikke oprette sine egne brugere. */
-  return opretKonto({
+  const resultat = await opretKonto({
     tenantId: id, kalderUid: ejerUid,
     d: { ...d, rolle: kortStreng(d.rolle, 30) || "admin" }
   });
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "kunde.admin.opret", objekt: "tenant", objektId: id,
+    aendrede: ["administrator"],
+  });
+  return resultat;
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1470,7 +1772,7 @@ export const maaldagligt = onSchedule(
  * kørsel og den planlagte ikke kan give to forskellige målinger.
  */
 export const maalnu = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const db = getDatabase();
   const indeks = (await db.ref("udbyder/kunder").once("value")).val() || {};
   const nu = Date.now();
@@ -1483,6 +1785,9 @@ export const maalnu = onCall({ region: REGION }, async (req) => {
     ud[id] = post;
   }
   console.log(`maalnu: ${Object.keys(ud).length} kunder, kaldt af ${ejerUid}`);
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "maaling.koer", objekt: "maaling", objektId: dato,
+  });
   return { ok: true, dato, maalinger: ud };
 });
 
@@ -1504,7 +1809,7 @@ export const maalnu = onCall({ region: REGION }, async (req) => {
  * den anden.
  */
 export const prislisteopret = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
 
   const liste = {
@@ -1549,6 +1854,9 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
      der er ingen tenant at logge den under, og at vælge en tilfældig ville
      være at skrive en fremmed hændelse ind i hans log. */
   console.log(`prislisteopret: ${ref.key} af ${ejerUid}`);
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "prisliste.opret", objekt: "prisliste", objektId: ref.key,
+  });
   return { ok: true, id: ref.key };
 });
 
@@ -1563,7 +1871,7 @@ export const prislisteopret = onCall({ region: REGION }, async (req) => {
  * fordi feltet manglede i nyttelasten.
  */
 export const kundeabonnement = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
   const id = kraevKundeId(d);
 
@@ -1653,6 +1961,10 @@ export const kundeabonnement = onCall({ region: REGION }, async (req) => {
      skal kunne se hvad der blev aftalt om hans egen regning. */
   await log(id, ejerUid, AUDIT.aendre, id,
     post.rabatBps !== undefined ? `rabat ${post.rabatBps} bps` : "abonnementsvilkaar");
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "kunde.abonnement", objekt: "tenant", objektId: id,
+    aendrede: Object.keys(post).filter((felt) => !["aendretMs", "aendretAf"].includes(felt)),
+  });
 
   return { ok: true, ...post };
 });
@@ -1733,7 +2045,7 @@ function byggKundegrundlag({ id, periode, graenser, maalinger, prisliste, abonne
 }
 
 export const grundlagopret = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
 
   const periode = kortStreng(d.periode, 7);
@@ -1818,6 +2130,9 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
     oprettet.push({ id, beloebOere: g.beloebOere });
   }
 
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "fakturagrundlag.opret", objekt: "periode", objektId: periode,
+  });
   return {
     ok: true, periode,
     oprettet: oprettet.length,
@@ -1843,7 +2158,7 @@ export const grundlagopret = onCall({ region: REGION }, async (req) => {
  * væk, er ikke en kontrol.
  */
 export const prislisteslet = onCall({ region: REGION }, async (req) => {
-  const ejerUid = kraevUdbyder(req);
+  const ejerUid = await kraevUdbyder(req);
   const id = kortStreng(req.data?.id, 60);
   if (!id) throw new HttpsError("invalid-argument", "id mangler.");
 
@@ -1871,6 +2186,9 @@ export const prislisteslet = onCall({ region: REGION }, async (req) => {
      vælge en tilfældig tenant ville skrive en fremmed hændelse i hans log.
      Se prislisteopret. */
   console.log(`prislisteslet: ${id} af ${ejerUid}`);
+  await skrivEjerAudit({
+    uid: ejerUid, handling: "prisliste.slet", objekt: "prisliste", objektId: id,
+  });
   return { ok: true, id };
 });
 

@@ -24,12 +24,14 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  initializeTestEnvironment,
+  initializeUnwrappedTestEnvironment,
+  testClaimsV2,
   assertSucceeds,
   assertFails,
 } from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
 
 /* Egne tenant-id'er: node --test kører filerne parallelt, og denne fil må
    ikke kunne tørre en anden fils data væk. Samme grund som i
@@ -65,7 +67,9 @@ function nodeliste() {
 const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler", "abonnement", "abonnementHistorik"];
 
 before(async () => {
-  miljoe = await initializeTestEnvironment({
+  /* Bevidst uden claims-wrapper: AK-01 skal prøve præcis det claim, som
+     ejer-scriptets fælles builder producerer. */
+  miljoe = await initializeUnwrappedTestEnvironment({
     projectId: "fleetcontrol-rules-test",
     database: { rules: readFileSync("firebase.rules.json", "utf8") },
   });
@@ -82,6 +86,10 @@ before(async () => {
     }
     await set(ref(db, `udbyder/kunder/${T_A}`), { oprettetMs: 1e12, status: "aktiv" });
     await set(ref(db, `udbyder/kunder/${T_B}`), { oprettetMs: 1e12, status: "aktiv" });
+    await set(ref(db, "udbyder/crm/virksomheder/v1/stamdata"), { navn: "CRM Kunde" });
+    await set(ref(db, "udbyder/audit/2026/09/a1"), {
+      ms: 1e12, uid: "udb1", handling: "crm.virksomhed.opret", objekt: "crmVirksomhed",
+    });
   });
 });
 
@@ -89,19 +97,39 @@ after(async () => { await miljoe?.cleanup(); });
 
 /** En udbyder: intet tenant-claim, kun udbyder-flaget. */
 const somUdbyder = (uid = "udb1") =>
-  miljoe.authenticatedContext(uid, { udbyder: true }).database();
+  miljoe.authenticatedContext(uid, byggEjerClaims({})).database();
 
 /** En helt almindelig kunde-admin i tenant A. */
 const somKunde = (uid = "kunde1", tenant = T_A) =>
-  miljoe.authenticatedContext(uid, {
+  miljoe.authenticatedContext(uid, testClaimsV2({
     tenant, rolle: "admin", perms: permStrengFraRolle("admin"),
-  }).database();
+  })).database();
 
 describe("udbyder-claim'et rører ikke kundedata", () => {
   it("kan læse indekset over kunder", async () => {
     /* Det er hele grunden til at noden findes: uden den kan konsollen ikke
        vide hvilke tenants der er. */
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
+  });
+
+  it("kan læse CRM og platformaudit med scriptets faktiske tenantløse claim", async () => {
+    const db = somUdbyder();
+    await assertSucceeds(get(ref(db, "udbyder/crm")));
+    await assertSucceeds(get(ref(db, "udbyder/audit")));
+  });
+
+  it("afviser et ejer-token udstedt før den aktuelle revocation", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), "authRevocations/gammel-ejer/revokeTime"), 100);
+    });
+    const gammel = miljoe.authenticatedContext(
+      "gammel-ejer", { ...byggEjerClaims({}), auth_time: 100 },
+    ).database();
+    const ny = miljoe.authenticatedContext(
+      "gammel-ejer", { ...byggEjerClaims({}), auth_time: 101 },
+    ).database();
+    await assertFails(get(ref(gammel, "udbyder/kunder")));
+    await assertSucceeds(get(ref(ny, "udbyder/kunder")));
   });
 
   it("kan læse virksomhed, moduler, abonnement og historikken — og PRÆCIS de fire", async () => {
@@ -148,6 +176,8 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
        kravet: kunder må ikke kunne komme til hinandens data. */
     await assertFails(get(ref(somKunde(), "udbyder/kunder")));
     await assertFails(get(ref(somKunde(), `udbyder/kunder/${T_B}`)));
+    await assertFails(get(ref(somKunde(), "udbyder/crm")));
+    await assertFails(get(ref(somKunde(), "udbyder/audit")));
   });
 
   it("kan læse SIN EGEN virksomhed og moduler", async () => {

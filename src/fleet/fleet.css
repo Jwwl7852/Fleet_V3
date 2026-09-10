@@ -1094,6 +1094,52 @@
      noeglen peger paa DEV, saa hos en kunde er det der ikke. */
 }
 
+/* ── Veyro Systems ejerkonsol ──────────────────────────────────────────
+   Bruger kun det fælles Veyro-tema. Ingen ny brandpalette eller font. */
+.ejer-app{display:grid;grid-template-columns:228px minmax(0,1fr);min-height:100vh;align-items:stretch}
+.ejer-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:12px;padding:20px 14px 14px;background:var(--veyro-nav-bg);color:var(--veyro-white);overflow-y:auto}
+.ejer-logo{display:block;padding:2px 8px 0}.ejer-logo .veyro-logo{width:166px;margin:0}
+.ejer-produkt{padding:0 10px 12px;color:var(--veyro-cyan);font-size:var(--fc-t-xs);font-weight:750;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--fc-navy-3)}
+.ejer-nav{display:grid;gap:12px}.ejer-nav section{display:grid;gap:2px}.ejer-nav h2{margin:0;padding:5px 10px;color:#9aa7b8;font-size:var(--fc-t-tight);letter-spacing:.08em;text-transform:uppercase}
+.ejer-link{display:flex;align-items:center;min-height:36px;padding:8px 10px;border-radius:8px;color:#c3ccda;text-decoration:none;font-size:var(--fc-t-m)}
+.ejer-link:hover{background:var(--veyro-nav-bg-deep);color:var(--veyro-white)}
+.ejer-link-aktiv{background:var(--veyro-nav-active);color:var(--veyro-white);font-weight:700}
+.ejer-identitet{display:grid;gap:3px;margin-top:auto;padding:13px 9px 3px;border-top:1px solid var(--fc-navy-3)}
+.ejer-identitet strong{font-size:var(--fc-t-s)}.ejer-identitet span{color:#c3ccda;font-size:var(--fc-t-xs);overflow-wrap:anywhere}
+.ejer-identitet .fc-btn{margin-top:9px;color:var(--veyro-white);background:transparent;border-color:var(--fc-navy-3)}
+.ejer-hoved{min-width:0;display:flex;flex-direction:column;background:var(--veyro-workspace)}
+.ejer-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 26px 12px;background:var(--veyro-surface);border-bottom:1px solid var(--veyro-border)}
+.ejer-top h1{margin:0;font-size:var(--fc-t-3xl);letter-spacing:-.02em}.ejer-top p{margin:3px 0 0;color:var(--bc-muted)}
+.ejer-sikkerhed{padding:6px 9px;border:1px solid var(--veyro-border);border-radius:999px;color:var(--bc-muted);font-size:var(--fc-t-xs)}
+.ejer-indhold{min-width:0;padding:20px 26px 32px}.ejer-indhold>.fc-grid{max-width:1500px;margin:0 auto}
+.ejer-overblik-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.ejer-statuslinjer{display:grid;gap:9px}.ejer-statuslinjer>div{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:12px}
+.ejer-handlingslinje{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.ejer-handlingslinje p{margin:0}.ejer-handlingslinje label{display:flex;align-items:center;gap:8px;color:var(--bc-muted)}
+.ejer-handlingslinje select{min-height:36px;padding:6px 30px 6px 9px;border:1px solid var(--bc-line);border-radius:8px;background:var(--bc-card);color:var(--bc-text)}
+.ejer-pipeline{display:grid;grid-template-columns:repeat(7,minmax(230px,1fr));gap:10px;overflow-x:auto;padding-bottom:12px;align-items:start}
+.ejer-pipeline-kolonne{min-height:360px;padding:10px;background:var(--veyro-workspace-surface);border:1px solid var(--veyro-border);border-radius:var(--fc-r)}
+.ejer-pipeline-kolonne>header{display:flex;align-items:center;justify-content:space-between;gap:8px}.ejer-pipeline-kolonne>header span{display:grid;place-items:center;min-width:24px;height:24px;border-radius:999px;background:var(--veyro-surface);color:var(--bc-muted);font-size:var(--fc-t-xs)}
+.ejer-pipeline-kolonne>p{margin:5px 0 10px;color:var(--bc-muted);font-size:var(--fc-t-xs)}.ejer-pipeline-kolonne>div{display:grid;gap:8px}
+.ejer-mulighed{display:grid;gap:4px;width:100%;padding:11px;text-align:left;border:1px solid var(--bc-line);border-radius:9px;background:var(--veyro-surface);color:var(--bc-text);box-shadow:var(--fc-shadow);cursor:pointer}
+.ejer-mulighed:hover{border-color:var(--veyro-action)}.ejer-mulighed span,.ejer-mulighed small{color:var(--bc-muted)}.ejer-mulighed small{margin-top:4px}
+.ejer-pipeline-tom{padding:24px 10px;text-align:center;color:var(--bc-muted);font-size:var(--fc-t-s)}
+.ejer-modulvalg{display:flex;flex-wrap:wrap;gap:8px 15px;margin:12px 0;padding:12px;border:1px solid var(--bc-line);border-radius:9px}.ejer-modulvalg legend{padding:0 6px;font-weight:650}.ejer-modulvalg label{display:flex;align-items:center;gap:6px}
+.ejer-kundelayout{display:grid;grid-template-columns:minmax(520px,1.15fr) minmax(380px,.85fr);gap:12px;align-items:start}
+.ejer-kundekort{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ejer-kundekort>div{display:grid;gap:3px;padding:11px;border:1px solid var(--bc-line);border-radius:9px}.ejer-kundekort span,.ejer-kundekort small{color:var(--bc-muted);font-size:var(--fc-t-xs)}
+.ejer-tidslinje{display:grid;gap:0;margin:0;padding:0;list-style:none}.ejer-tidslinje li{display:grid;grid-template-columns:145px 1fr minmax(100px,auto);gap:10px;padding:9px 0;border-top:1px solid var(--bc-line)}.ejer-tidslinje time,.ejer-tidslinje span{color:var(--bc-muted);font-size:var(--fc-t-xs)}
+.ejer-tabelhandlinger{display:flex;gap:6px;flex-wrap:wrap}.ejer-tabelhandlinger .fc-btn{min-height:30px;padding:5px 8px;font-size:var(--fc-t-s)}
+
+@media(max-width:1050px){
+  .ejer-app{grid-template-columns:184px minmax(0,1fr)}.ejer-overblik-grid,.ejer-kundelayout{grid-template-columns:1fr}
+  .ejer-logo .veyro-logo{width:142px}.ejer-top,.ejer-indhold{padding-left:18px;padding-right:18px}
+}
+@media(max-width:720px){
+  .ejer-app{display:block}.ejer-side{position:relative;width:100%;height:auto;max-height:none}.ejer-nav{grid-template-columns:1fr 1fr}.ejer-identitet{margin-top:0}
+  .ejer-top{align-items:flex-start;flex-direction:column}.ejer-sikkerhed{align-self:flex-start}.ejer-indhold{padding:14px}
+  .ejer-kundekort{grid-template-columns:1fr}.ejer-tidslinje li{grid-template-columns:1fr}.ejer-statuslinjer>div{grid-template-columns:1fr}
+}
+
 /* ── Transportlabelen paa papir ──────────────────────────────────────────
    ⚠ 100 x 200 mm PAA EN ZEBRA 420. Formatet stod aabent, indtil det var
    oplyst — en @page size vi selv fandt paa, ville skalere koderne skaevt.

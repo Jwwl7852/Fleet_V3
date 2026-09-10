@@ -113,7 +113,7 @@
         // Virksomhedens stamoplysninger. Kunden laeser sit eget navn i
         // sidebaren; udbyderen laeser det for at kunne vise kundelisten.
         "virksomhed": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && (auth.token.udbyder === true || (((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()))",
           ".write": false
         },
 
@@ -145,7 +145,7 @@
         // skrive den for dem alle — reglen kan ikke kende forskel paa
         // "min kunde" og "en anden kunde", naar begge er kunder.
         "abonnement": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && (auth.token.udbyder === true || (((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()))",
           ".write": false,
           ".validate": "newData.hasChildren(['status', 'aendretMs'])",
           "status": { ".validate": "newData.isString() && newData.val().matches(/^(aktiv|paused|opsagt)$/)" },
@@ -227,7 +227,7 @@
         // kunne tegne status. Den viser aldrig aarsagen. Historikken har
         // ingen tilsvarende grund.
         "abonnementHistorik": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
           ".write": false,
           "$postId": {
             ".validate": "newData.hasChildren(['ms', 'afUid', 'art'])",
@@ -253,7 +253,7 @@
           }
         },
         "moduler": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && ((auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()) || auth.token.udbyder === true)",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && (auth.token.udbyder === true || (((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists()))",
           ".write": false
         },
 
@@ -4479,7 +4479,7 @@
       // gaelder kun ved og under sin egen sti, og den sti findes ikke — men
       // grundlaget kunne ikke laeses, og skaermen viste "ingen prisliste".
       "fakturagrundlag": {
-        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         "$periode": {
           "$kundeId": {
@@ -4493,7 +4493,7 @@
       },
 
       "prisliste": {
-        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         ".indexOn": ["gyldigFraMs"],
         "$listeId": {
@@ -4567,7 +4567,7 @@
       // ⚠ .write: false. Maalingen skrives af maaldagligt. Kunne en klient
       // skrive den, kunne den skrive sin egen regning ned.
       "maalinger": {
-        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         "$kundeId": {
           "$dato": {
@@ -4604,7 +4604,7 @@
       // ⚠ .write: false. Rapporten skrives af jobbet. Kunne en klient skrive
       // den, kunne den skrive "intet forfaldent" og lukke spoergsmaalet.
       "retention": {
-        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         "$dato": {
           ".validate": "newData.hasChildren(['koertMs'])",
@@ -4616,8 +4616,26 @@
         }
       },
 
+      // Ejerkonsollens CRM og platformaudit. Klienten må læse dem med en
+      // gyldig, ikke-tilbagekaldt ejeridentitet, men alle writes går gennem
+      // Cloud Functions/Admin SDK. Kundebrugere har ingen adgang til noden.
+      "crm": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false
+      },
+
+      "audit": {
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
+        ".write": false,
+        "$aar": {
+          "$maaned": {
+            ".indexOn": ["ms", "uid", "handling", "objektId"]
+          }
+        }
+      },
+
       "kunder": {
-        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.udbyder === true",
+        ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && auth.token.udbyder === true",
         ".write": false,
         ".indexOn": ["oprettetMs", "status"]
       }

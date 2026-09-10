@@ -11,6 +11,7 @@ import "firebase/compat/auth";
 import "firebase/compat/database";
 import "firebase/compat/functions";
 import { permStrengFraClaims } from "./fleet/permissions.js";
+import { erEjerClaims } from "./fleet/ejeradgang.js";
 
 const cfg = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -150,7 +151,8 @@ export async function hentBrugerContext(user) {
      * dem, og `harAdgang` i App.jsx lukker dem ude af kundeshellen. Det er
      * ikke en betingelse i en skærm; det er fraværet af en nøgle.
      */
-    udbyder: token.claims.udbyder === true,
+    udbyder: erEjerClaims(token.claims),
+    ejerVersion: token.claims.ev || null,
     /* ⚠ ÉN TING: MÅ KONTOEN BRUGE devBrugerSkift. Sat med
        scripts/dev-tester.mjs — ikke det samme som `udbyder` ovenfor, og
        giver ikke selv nogen adgang. Se noten i functions/index.js. */

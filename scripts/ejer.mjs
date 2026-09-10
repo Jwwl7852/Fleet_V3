@@ -26,18 +26,19 @@
  * data uanset hvad klienten sender. Spærringen er ikke en betingelse i en
  * skærm; den er fraværet af en nøgle.
  *
- * Giver man ejerskab til en konto der ALLEREDE har en tenant, beholder den
- * sin kundeadgang. Scriptet siger det højt, men nægter ikke: i dev er det
- * nogle gange det man vil.
+ * En konto der allerede har en tenant afvises. Eksisterende blandede konti
+ * vises fortsat af `ejer:vis`, så de kan migreres bevidst uden at scriptet
+ * flytter eller fjerner en virkelig persons adgang automatisk.
  */
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import {
-  NOEGLEFIL, tjekProjekt, vurderIgnorering, laesNoegle, laesKode,
+  DEV_PROJEKT, NOEGLEFIL, tjekProjekt, vurderIgnorering, laesNoegle, laesKode,
 } from "./provisioner-dev.mjs";
 import { laesArgumenter } from "./opret-kunde.mjs";
 import { opdaterTilladtEkstraClaim } from "../src/fleet/permissions.js";
+import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
 
 const MAIL_MOENSTER = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -48,6 +49,18 @@ export function tjekArgumenter(a, handling) {
     else if (!MAIL_MOENSTER.test(String(a.mail))) fejl.push(`"${a.mail}" er ikke en mailadresse.`);
   }
   return fejl;
+}
+
+async function skrivEjerAudit(db, handling, maalUid) {
+  const ms = Date.now();
+  const dato = new Date(ms);
+  const aar = String(dato.getUTCFullYear());
+  const maaned = String(dato.getUTCMonth() + 1).padStart(2, "0");
+  const ref = db.ref(`udbyder/audit/${aar}/${maaned}`).push();
+  await ref.set({
+    ms, uid: "service-account", handling, objekt: "ejeridentitet",
+    objektId: maalUid, korrelationsId: ref.key,
+  });
 }
 
 async function main() {
@@ -72,8 +85,13 @@ async function main() {
 
   const { initializeApp, cert } = await import("firebase-admin/app");
   const { getAuth } = await import("firebase-admin/auth");
-  const app = initializeApp({ credential: cert(noegle) });
+  const { getDatabase } = await import("firebase-admin/database");
+  const app = initializeApp({
+    credential: cert(noegle),
+    databaseURL: `https://${DEV_PROJEKT}-default-rtdb.europe-west1.firebasedatabase.app`,
+  });
   const auth = getAuth(app);
+  const db = getDatabase(app);
 
   if (handling === "vis") {
     const liste = await auth.listUsers(1000);
@@ -97,8 +115,8 @@ async function main() {
   } catch (e) {
     if (e.code !== "auth/user-not-found") throw e;
     if (handling === "fjern") throw new Error(`${mail} findes ikke.`);
-    /* ⚠ OPRETTES UDEN CLAIMS UD OVER udbyder. Ingen tenant, ingen rolle,
-       ingen perms — se noten øverst. */
+    /* Kontoen oprettes uden kundeautoritet. Det eksplicitte ejerclaim sættes
+       først efter den fælles revocationmarkør nedenfor. */
     bruger = await auth.createUser({
       email: mail, password: laesKode(), displayName: `Ejer ${mail}`,
     });
@@ -107,27 +125,38 @@ async function main() {
 
   const nu = bruger.customClaims || {};
   if (handling === "giv") {
-    /* ⚠ CLAIMS LÆGGES OVEN PÅ. Overskrev vi dem, ville en konto der også er
-       kundeadmin miste sin tenant og sine perms — og en ejer der lige har
-       fået adgang ville være låst ude af sin egen tenant. */
-    await auth.setCustomUserClaims(bruger.uid, opdaterTilladtEkstraClaim(nu, "udbyder", true));
-    console.log(`\n  ${mail} er nu EJER.`);
     if (nu.tenant) {
-      console.log(`  ⚠ Kontoen har også tenant "${nu.tenant}" og beholder sin kundeadgang.`);
-      console.log(`     En ren ejerkonto har ingen tenant — se beslutning 35.`);
+      throw new Error(
+        `Kontoen har tenant "${nu.tenant}". Opret en separat ejerkonto; blandet kundeadgang afvises.`,
+      );
     }
+    /* Revocationmetadata skrives før claimændringen. Et gammelt token er
+       dermed lukket i både RTDB-regler og ejer-callables, også hvis næste
+       skridt fejler. */
+    await auth.revokeRefreshTokens(bruger.uid);
+    const efterRevocation = await auth.getUser(bruger.uid);
+    const revokeTime = Date.parse(efterRevocation.tokensValidAfterTime || "") / 1000;
+    if (!Number.isFinite(revokeTime)) throw new Error("Ugyldigt revocation-tidspunkt fra Firebase Auth.");
+    await db.ref(`authRevocations/${bruger.uid}/revokeTime`).set(revokeTime);
+    await auth.setCustomUserClaims(bruger.uid, byggEjerClaims(nu));
+    console.log(`\n  ${mail} er nu EJER.`);
+    await skrivEjerAudit(db, "ejer.giv", bruger.uid);
   } else {
     const uden = opdaterTilladtEkstraClaim(nu, "udbyder", undefined);
+    delete uden.ev;
+    await auth.revokeRefreshTokens(bruger.uid);
+    const efterRevocation = await auth.getUser(bruger.uid);
+    const revokeTime = Date.parse(efterRevocation.tokensValidAfterTime || "") / 1000;
+    if (!Number.isFinite(revokeTime)) throw new Error("Ugyldigt revocation-tidspunkt fra Firebase Auth.");
+    await db.ref(`authRevocations/${bruger.uid}/revokeTime`).set(revokeTime);
     await auth.setCustomUserClaims(bruger.uid, uden);
     console.log(`\n  ${mail} er ikke længere ejer.`);
     if (!uden.tenant) {
       console.log(`  ⚠ Kontoen har hverken tenant eller ejerskab og kan ikke logge ind nogen steder.`);
     }
+    await skrivEjerAudit(db, "ejer.fjern", bruger.uid);
   }
-  /* Uden den beholder en indlogget session sine GAMLE claims indtil tokenet
-     udløber af sig selv — og så ville man tro man havde fjernet en adgang. */
-  await auth.revokeRefreshTokens(bruger.uid);
-  console.log(`  Tokens tilbagekaldt — der skal logges ind igen.\n`);
+  console.log(`  Tokens og applikationsadgang tilbagekaldt — der skal logges ind igen.\n`);
 
   await app.delete();
 }

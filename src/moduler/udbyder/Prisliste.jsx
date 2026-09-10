@@ -604,7 +604,7 @@ export default function Prisliste() {
           står ikke i en kundekontekst), så uden det er browserens tilbageknap
           den eneste vej — og den findes ikke, hvis man kom via et link. */}
       <div className="fc-med-ikon fc-ikke-print" style={{ gap: 12 }}>
-        <Link className="fc-a" to="/main">← Kunder</Link>
+        <Link className="fc-a" to="/main/abonnementer">← Kunder og abonnementer</Link>
         <span className="fc-hint">Priser &amp; fakturagrundlag</span>
       </div>
 
