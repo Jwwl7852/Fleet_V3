@@ -15,6 +15,8 @@ Opdateret: 2026-09-10
   `f948eaf6c55d7f940775ca7f53522ad238fcc441`; intet er pushet.
 - Lokalt faktura-outbox-checkpoint før Microsoft 365/OpenAI-runden:
   `1d7b5d0b2b400a28adfcfc8bcabf12d228694349`; intet er pushet.
+- Lokalt Microsoft 365-/salgsassistent-checkpoint:
+  `ca2354cd1f11354f6f01a05c2525e5908c9782b5`; intet er pushet.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
