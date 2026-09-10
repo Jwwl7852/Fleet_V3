@@ -17,6 +17,14 @@ Opdateret: 2026-09-10
   `1d7b5d0b2b400a28adfcfc8bcabf12d228694349`; intet er pushet.
 - Lokalt Microsoft 365-/salgsassistent-checkpoint:
   `ca2354cd1f11354f6f01a05c2525e5908c9782b5`; intet er pushet.
+- Lokalt kredit-/Dinero-returcheckpoint:
+  `f7500301366038eee455077c8ab5b4624804cd68`; intet er pushet.
+- Lokalt bilags-/udgiftscheckpoint:
+  `fe288ffc90dc99f00be06157cc778ea8b9bdd43c`; intet er pushet.
+- Lokalt økonomioverblikscheckpoint:
+  `e11b5afd4e944895b4cabccc19484b514bab70aa`; intet er pushet.
+- Lokalt etape-J-/afleveringscheckpoint:
+  `9d3fbd9aca7921e154f771568cd70a4b5dba25ec`; intet er pushet.
 - Live `origin/codex/veyro-integration-v1` ved oprettelse: `39963337a52d4464f619077683d1f39aa81eff1e`
 - Upstream: ingen; første publicering skal bruge eget branchnavn.
 - FLEET, FACILITY, PLANNING og FAKTURACENTER-worktrees: ikke ændret.
