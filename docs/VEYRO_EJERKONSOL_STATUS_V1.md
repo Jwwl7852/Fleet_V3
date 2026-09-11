@@ -1,6 +1,31 @@
 # Veyro ejerkonsol — status v1
 
-Opdateret: 2026-09-11
+Opdateret: 2026-09-12
+
+## V7.1 mail og AI — lokal reviewstatus
+
+- V7.1 er implementeret i det isolerede ejerspor. Browserverificeret kode er
+  `09d1359a637608567231a059c47a7bb4fc6918ed`; intet er pushet, merget eller
+  deployet.
+- **Svar og AI** har præcis fanerne **Svarudkast**, **AI-chat** og
+  **Oplysninger**. Dennis og Jørn kan fortsætte den samme revisionsbeskyttede
+  interne AI-chat på en delt sag. Chat, sælgerbaggrund og interne noter kan ikke
+  indgå i kundens sendepayload.
+- Lokale AI-forslag vises før eksplicit indsættelse. Ny mail, samtidig ændring
+  eller manuel kladdeændring forælder forslaget. Gennemgang, godkendelse og
+  afsendelse er separate trin; browseraccepten sendte ingen mail.
+- Domicil viser den korrekte modpart uden kundeetiket. Supportovertagelse viser
+  Jørn / Afventer os i kø og detalje efter reload. Normal testejerlogin viser
+  de varige reviewdata efter genindlæsning.
+- Mobil ved 360/390/899 px har læsbare rækker, synlige filtre og mapper samt
+  intet vandret dokumentoverflow. 900/1440/1920 er kontrolleret. Samtale og
+  Svar/AI ruller uafhængigt på desktop med verificerede wheel-events.
+- Målrettet lint består, V7/V7.1/design-regressionen er 19/19, og Vite-build
+  består med 535 moduler. 15 faktiske screenshots og maskinlæsbare beviser
+  ligger i `docs/screenshots/ejer-review-v7-1/`.
+- Detaljeret A01–A11-acceptmatrix står i
+  `docs/VEYRO_EJERKONSOL_REVIEW_V7_1.md`. Microsoft 365, OpenAI, Dinero, OCR og
+  bilagsmail er fortsat **Ikke tilsluttet**.
 
 ## V7 mailreference — lokal reviewstatus
 

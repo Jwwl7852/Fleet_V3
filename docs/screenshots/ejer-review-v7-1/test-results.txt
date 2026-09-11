@@ -1,0 +1,32 @@
+VEYRO EJERKONSOL V7.1 — LOKAL TESTEVIDENS
+Dato: 2026-09-12
+Browserverificeret kode: 09d1359a637608567231a059c47a7bb4fc6918ed
+
+ESLint
+- Scope: functions/index.js, ejer-mail-v7-regler.js, ejer-salgsindbakke.js,
+  EjerMailV7.jsx, EjerMailV71Samtale.jsx, seed- og capture-script.
+- Resultat: bestået, exit 0, 0 fejl.
+
+Node test runner
+- Filer: test/ejer-mail-v7.test.mjs, test/ejer-mail-v7-1.test.mjs,
+  test/design-tokens.test.mjs.
+- Resultat: 19 tests, 19 bestået, 0 fejl.
+
+Build
+- Kommando: npm run build
+- Resultat: bestået med Vite 5.4.21; 535 moduler transformeret.
+
+Emulator
+- 118 syntetiske V7.1-tråde skrevet til lokale emulatorer.
+- Dennis/Jørn fortsatte samme delte AI-chat.
+- Privat scope blev afvist.
+- Forældet AI-forslag blev afvist.
+- Supportovertagelse gav Jørn / Afventer os i kø og detalje.
+- Intern chat fandtes ikke i transportpayload.
+- Ekstern mail sendt: false.
+
+Browser
+- Normal Auth-emulatorlogin og genindlæsning: bestået.
+- 1440x900, 1920x1080, 899x900, 900x900, 390x844 og 360x800: bestået.
+- 15 faktiske screenshots optaget.
+- Detaljer: browser-verification.json og capture-manifest.json.

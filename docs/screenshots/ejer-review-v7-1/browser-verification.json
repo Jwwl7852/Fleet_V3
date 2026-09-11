@@ -1,0 +1,142 @@
+{
+  "normalLoginReload": true,
+  "indbakke": {
+    "route": "/main/mail/indbakker?postkasse=faelles",
+    "overviewWithoutSelectedCase": true,
+    "renderedRows": 25,
+    "visibleRows": 7,
+    "totalText": "Viser 1–25 af 116\n← Forrige\nSide 1 af 5\nNæste →",
+    "aiPoints": 8,
+    "aiSources": 8,
+    "horizontalOverflow": false
+  },
+  "aiEmptyState": true,
+  "tilbage": {
+    "status": "afventer_os",
+    "side": "2",
+    "rowFocus": true
+  },
+  "nyMail": {
+    "modal": "true",
+    "hasCancel": true,
+    "focusInside": true,
+    "externalSendAvailable": false
+  },
+  "faner": [
+    "Svarudkast",
+    "AI-chat",
+    "Oplysninger"
+  ],
+  "uafhaengigRulning": {
+    "foer": {
+      "left": 0,
+      "right": 0
+    },
+    "efterVenstreHjul": {
+      "left": 223,
+      "right": 0
+    },
+    "efterHoejreHjul": {
+      "left": 223,
+      "right": 420
+    },
+    "trustedWheelEvents": true
+  },
+  "aiForslagUdsnit": {
+    "panelTop": 426,
+    "panelBottom": 843,
+    "forslagTop": 434,
+    "forslagBottom": 837,
+    "overskriftSynlig": true
+  },
+  "reviewAdskillerInternData": true,
+  "svarflow": {
+    "aiForslag": true,
+    "forslagFoerIndsaettelse": true,
+    "indsatEksplicit": true,
+    "gemt": true,
+    "reviewFoerGodkendelse": true,
+    "godkendt": true,
+    "sendt": false
+  },
+  "oplysninger": {
+    "fiveUsers": true,
+    "twoAdmins": true,
+    "cvrMissing": true,
+    "sellerContext": true
+  },
+  "internSag": {
+    "kundeOprettet": false,
+    "internMappe": true,
+    "correctCounterparty": true,
+    "wrongCustomerLabel": false
+  },
+  "support": {
+    "sharedCaseVisible": true,
+    "route": "/main/support?sag=v7-support-dennis",
+    "joern": true,
+    "notUnallocated": true,
+    "status": true
+  },
+  "opfoelgning": {
+    "defaultTab": "Til godkendelse1",
+    "joernLeak": false,
+    "mineLabel": true
+  },
+  "mobilListe390": {
+    "rowWidth": 360,
+    "cardWidth": 362,
+    "ratio": 0.994475138121547,
+    "horizontalOverflow": false,
+    "wordBreak": "normal",
+    "overflowWrap": "normal",
+    "foldersVisible": true,
+    "filtersVisible": true
+  },
+  "mobil": {
+    "draftPreserved": true,
+    "horizontalOverflow": false,
+    "activePanel": "Svar og AI",
+    "reachedBottom": true
+  },
+  "breakpoint": {
+    "width": 899,
+    "horizontalOverflow": false,
+    "columns": "871px"
+  },
+  "breakpoint900": {
+    "width": 900,
+    "horizontalOverflow": false,
+    "columns": "872px"
+  },
+  "mobilListe360": {
+    "ratio": 0.9939759036144579,
+    "horizontalOverflow": false
+  },
+  "styles": {
+    "fonts": {
+      "status": "loaded",
+      "interVariableLoaded": true
+    },
+    "body": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "0px"
+    },
+    "button": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "38px"
+    },
+    "input": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "auto"
+    },
+    "cardRadius": "12px",
+    "focusRule": "2px (verificeret af design-token-test og :focus-visible-regel)"
+  }
+}

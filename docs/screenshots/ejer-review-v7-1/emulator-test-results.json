@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "version": "V7.1",
+  "syntheticThreads": 118,
+  "sharedAiChatContinuedByDennisAndJoern": true,
+  "privateScopesSeparated": true,
+  "staleAiOverwriteRejected": true,
+  "internalChatInTransport": false,
+  "supportOwner": "Jørn",
+  "supportStatus": "afventer_os",
+  "cvrStillMissing": true,
+  "externalMailSent": false
+}
