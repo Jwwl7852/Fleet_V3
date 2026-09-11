@@ -65,7 +65,7 @@ try {
   await klik("button", "Tilbage til indbakke");
   await ventPaa("Boolean(document.querySelector('.ejer-mail-v7-oversigt')) && !new URLSearchParams(location.search).has('sag')", "Tilbage genskabte ikke oversigten");
   kontroller.tilbage = await evaluer(`(()=>({status:new URLSearchParams(location.search).get('status'),side:new URLSearchParams(location.search).get('side'),rowFocus:Boolean(document.activeElement?.closest('.ejer-mail-raekker'))}))()`);
-  if (kontroller.tilbage.status !== "afventer_os" || kontroller.tilbage.side !== "2" || !kontroller.tilbage.rowFocus) throw new Error("Tilbage bevarede ikke filter, side og rækkefokus");
+  if (kontroller.tilbage.status !== "afventer_os" || kontroller.tilbage.side !== "2" || !kontroller.tilbage.rowFocus) throw new Error(`Tilbage bevarede ikke filter, side og rækkefokus: ${JSON.stringify(kontroller.tilbage)}`);
   await gaaTil("/main/mail/indbakker?postkasse=faelles");
 
   if (!(await klik("button", "Ny mail"))) throw new Error("Ny mail-handlingen mangler");
