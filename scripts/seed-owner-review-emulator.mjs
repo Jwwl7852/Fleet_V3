@@ -143,6 +143,10 @@ try {
     },
     [`tenants/${TENANT_ID}/virksomhed/navn`]: "Nordlys Drift ApS — syntetisk reviewkunde",
     [`tenants/${TENANT_ID}/virksomhed/cvr`]: "00000001",
+    [`udbyder/maalinger/${TENANT_ID}/2026-09-11`]: {
+      id: "2026-09-11", fixture: true, status: "aktiv", brugere: { desktop: 2, chauffoer: 3, unikkePersoner: 5, administratorer: 2 }, koeretoejer: 25,
+      note: "Syntetisk V5-måling; personer tælles unikt på tværs af modulrettigheder.",
+    },
     "udbyder/salgsindbakke/traade/review-nordlys": {
       id: "review-nordlys",
       emne: "TESTADAPTER: forespørgsel om samlet driftsplatform",
@@ -233,7 +237,10 @@ try {
       opfoelgninger: {
         "review-followup-1": {
           id: "review-followup-1",
-          status: "godkendt",
+          status: "pauset",
+          pauseAarsag: "tilbud_accepteret",
+          pausetMs: nu,
+          pausetAf: "system",
           til: REVIEW_MAIL,
           emne: "Opfølgning på Veyro-tilbud T-2026-0001",
           tekst: maerke("Hej Maria\n\nHar I haft mulighed for at gennemgå oplægget? Vi foreslår et kort møde om brugerantal og første lokation.\n\nVenlig hilsen\nVeyro Systems"),

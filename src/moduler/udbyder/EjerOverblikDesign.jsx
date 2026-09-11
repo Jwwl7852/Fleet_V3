@@ -47,7 +47,7 @@ export default function EjerOverblikDesign({ bruger }) {
       <Kpi ikon="calendar" label="Opgaver i dag" vaerdi={aabne.filter((a) => a.fristDato === iDag).length} til="/main/salg/aktiviteter?filter=idag" />
     </section>
     <div className="ejer-overblik-hoved">
-      <section className="ejer-design-kort ejer-opmaerksomhed"><h2>Det kræver din opmærksomhed</h2><div className="ejer-tabs"><button type="button" className={visMine ? "aktiv" : ""} onClick={() => setVisMine(true)}>Mine</button><button type="button" className={!visMine ? "aktiv" : ""} onClick={() => setVisMine(false)}>Alle</button></div><div className="ejer-opmaerksomhed-tabel"><header><span>Kunde</span><span>Emne</span><span>Ansvarlig</span><span>Handling</span><span /></header>
+      <section className="ejer-design-kort ejer-opmaerksomhed"><h2>Det kræver din opmærksomhed</h2><div className="ejer-tabs"><button type="button" className={visMine ? "aktiv" : ""} onClick={() => setVisMine(true)}>Mine</button><button type="button" className={!visMine ? "aktiv" : ""} onClick={() => setVisMine(false)}>Alle</button></div><div className="ejer-opmaerksomhed-tabel"><header><span>Kontakt / sag</span><span>Emne</span><span>Ansvarlig</span><span>Handling</span><span /></header>
         {synligeHandlinger.map((h) => { const navn = profilnavn(profiler, h.uid); return <div key={h.id}><strong>{h.firma}</strong><span>{h.emne}</span><span className="ejer-ansvarlig"><i>{initialer(navn)}</i>{navn.split(" ")[0]}</span><Link className="ejer-primaer" to={h.til}>{h.knap}</Link><EjerIkon navn="chevron" size={17} /></div>; })}
         {!synligeHandlinger.length && <p className="ejer-tomlinje">Ingen henvendelser eller opgaver kræver handling lige nu.</p>}
       </div></section>

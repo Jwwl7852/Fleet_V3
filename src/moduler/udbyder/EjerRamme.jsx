@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import VeyroLogo from "../../fleet/VeyroLogo.jsx";
 import { EjerDataProvider } from "./EjerDataContext.jsx";
 import EjerIkon from "./EjerIkon.jsx";
+import { erEjerNavgruppeAaben, ejerInitialer, ejerVisningsnavn } from "../../fleet/ejer-navigation.js";
 
 const NAV = [
   { label: null, punkter: [{ to: "/main", label: "Overblik", slut: true, ikon: "home" }] },
@@ -127,7 +128,7 @@ export default function EjerRamme({ bruger, logUd, children }) {
               {NAV.map((gruppe) => {
                 const aktivGruppe = gruppe.punkter.some((punkt) => punkt.slut ? location.pathname === punkt.to : location.pathname.startsWith(punkt.to));
                 const noegle = gruppe.label || gruppe.punkter[0].to;
-                const aaben = !gruppe.label || aabneGrupper[noegle] === true || aktivGruppe;
+                const aaben = !gruppe.label || erEjerNavgruppeAaben({ gemt: aabneGrupper, noegle, aktiv: aktivGruppe });
                 return (
                 <section key={gruppe.label || gruppe.punkter[0].to} className={gruppe.separat ? "ejer-nav-separat" : ""}>
                   {gruppe.label && <button type="button" className="ejer-navgruppe" aria-expanded={aaben} onClick={() => setAabneGrupper((gamle) => ({ ...gamle, [noegle]: !aaben }))}><EjerIkon navn={gruppe.ikon} size={20}/><span>{gruppe.label}</span><b>{aaben ? "⌃" : "⌄"}</b></button>}
@@ -147,8 +148,8 @@ export default function EjerRamme({ bruger, logUd, children }) {
               })}
             </nav>
             <div className="ejer-identitet">
-              <span className="ejer-avatar">DC</span>
-              <span className="ejer-identitetstekst"><strong>{bruger?.navn || "Dennis Christensen"}</strong><small>Ejer</small></span>
+              <span className="ejer-avatar">{ejerInitialer(bruger)}</span>
+              <span className="ejer-identitetstekst"><strong>{ejerVisningsnavn(bruger)}</strong><small>Ejer</small></span>
               <button type="button" className="ejer-profilmenu" onClick={logUd} aria-label="Åbn profilmenu eller log ud">⌄</button>
             </div>
           </div>
@@ -157,7 +158,7 @@ export default function EjerRamme({ bruger, logUd, children }) {
         <div className="ejer-hoved">
           <header className="ejer-top">
             <form className="ejer-globalsoeg" role="search" onSubmit={soeg}><EjerIkon navn="search" size={23} /><input aria-label="Søg i ejerkonsollen" value={soegning} onChange={(event) => setSoegning(event.target.value)} placeholder="Søg kunde, tilbud eller bilag..." /></form>
-            <div className="ejer-tophandlinger"><select className="ejer-ejerfilter" value={ejerfilter} onChange={(event) => setEjerfilter(event.target.value)} aria-label="Filtrér på ansvarlig"><option value="Alle">Alle ansvarlige</option><option value="Dennis">Dennis</option><option value="Jørn">Jørn</option></select><button type="button" className="ejer-notifikation" aria-label="Åbn opgaver og notifikationer" onClick={() => navigate("/main/mail/opfoelgning")}><EjerIkon navn="bell" size={25} /><b>3</b></button><span className="ejer-avatar">DC</span></div>
+            <div className="ejer-tophandlinger"><select className="ejer-ejerfilter" value={ejerfilter} onChange={(event) => setEjerfilter(event.target.value)} aria-label="Filtrér på ansvarlig"><option value="Alle">Alle ansvarlige</option><option value="Dennis">Dennis</option><option value="Jørn">Jørn</option></select><button type="button" className="ejer-notifikation" aria-label="Åbn opgaver og notifikationer" onClick={() => navigate("/main/mail/opfoelgning")}><EjerIkon navn="bell" size={25} /><b>3</b></button><span className="ejer-avatar">{ejerInitialer(bruger)}</span></div>
           </header>
           <main className="ejer-indhold" id="ejer-indhold">
             <div className="ejer-sidehoved"><div><h1>{titel}</h1><p>{undertekst}</p></div><div className="ejer-eksempelmaerke"><span>DESIGNFORSLAG&nbsp; · &nbsp;EKSEMPELDATA</span></div></div>

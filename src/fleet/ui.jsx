@@ -731,7 +731,7 @@ export function MiniKurve({ punkter = [], tone = "neutral", bredde = 62, hoejde 
  */
 export function Felt({
   id, label, type = "text", vaerdi, saet, fejl, hint, kraevet,
-  suffiks, valgmuligheder, disabled, ...p
+  suffiks, valgmuligheder, disabled, multiline = false, ...p
 }) {
   const beskrivelse = [hint && `${id}-hint`, fejl && `${id}-fejl`].filter(Boolean).join(" ");
   return (
@@ -752,6 +752,11 @@ export function Felt({
               <option key={o.vaerdi} value={o.vaerdi}>{o.label}</option>
             ))}
           </select>
+        ) : multiline ? (
+          <textarea id={id} value={vaerdi ?? ""} disabled={disabled}
+                    aria-invalid={fejl ? "true" : undefined}
+                    aria-describedby={beskrivelse || undefined}
+                    onChange={(e) => saet(e.target.value)} {...p} />
         ) : (
           <input id={id} type={type} value={vaerdi ?? ""} disabled={disabled}
                  aria-invalid={fejl ? "true" : undefined}

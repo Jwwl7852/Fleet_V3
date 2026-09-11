@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 
 const BASE = process.env.OWNER_REVIEW_URL || "http://127.0.0.1:5211";
 const PORT = Number(process.env.OWNER_REVIEW_DEBUG_PORT || 9331);
-const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v4-final");
+const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v5");
 const browserKandidater = [
   process.env.OWNER_REVIEW_BROWSER,
   join(process.env.ProgramFiles || "C:/Program Files", "Microsoft/Edge/Application/msedge.exe"),
@@ -105,6 +105,17 @@ async function billede(navn, sti, bredde, højde) {
   writeFileSync(fil, Buffer.from(svar.data, "base64"));
   return fil;
 }
+async function aktueltBillede(navn, bredde, højde) {
+  const svar = await kald("Page.captureScreenshot", {
+    format: "png", fromSurface: true, captureBeyondViewport: false,
+  });
+  const fil = join(OUT, `${bredde}x${højde}-${navn}.png`);
+  writeFileSync(fil, Buffer.from(svar.data, "base64"));
+  return fil;
+}
+async function klikTekst(selector, tekst) {
+  return evaluer(`(() => { const el = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find((post) => (post.textContent || '').trim().includes(${JSON.stringify(tekst)})); if (!el) return false; el.click(); return true; })()`);
+}
 
 try {
   await kald("Page.enable");
@@ -121,24 +132,57 @@ try {
 
   const filer = [];
   filer.push(await billede("01-overblik", "/main", 1440, 900));
-  filer.push(await billede("02-mail-faelles-kundekorrespondance", "/main/mail/indbakker?sag=review-nordlys", 1440, 900));
-  filer.push(await billede("03-support", "/main/support", 1440, 900));
-  filer.push(await billede("04-opfoelgning-godkendelse", "/main/mail/opfoelgning", 1440, 900));
-  filer.push(await billede("05-rapporter-og-hitrate", "/main/rapporter", 1920, 1080));
-  filer.push(await billede("06-kundekonto-brugere-enheder", "/main/kunder/flow-tenant?fane=forbrug", 1440, 900));
-  filer.push(await billede("07-kundekonto-obd", "/main/kunder/flow-tenant?fane=obd", 1440, 900));
-  filer.push(await billede("08-tilbud-rateblad-ai", "/main/salg/tilbud", 1920, 1080));
-  filer.push(await billede("09-bilag-mobilkamera", "/main/oekonomi/bilag", 1440, 900));
-  filer.push(await billede("10-leverandoerer", "/main/indstillinger/leverandoerer", 1440, 900));
-  filer.push(await billede("11-integrationer", "/main/integrationer", 1920, 1080));
-  filer.push(await billede("12-mobil-360-kundekonto", "/main/kunder/flow-tenant?fane=forbrug", 360, 800));
-  filer.push(await billede("13-mobil-390-mail", "/main/mail/indbakker?sag=review-nordlys", 390, 844));
-  filer.push(await billede("14-breakpoint-kundekonto", "/main/kunder/flow-tenant?fane=obd", 899, 900));
+  filer.push(await billede("02-mail-liste", "/main/mail/indbakker", 1440, 900));
+  filer.push(await billede("03-mail-faelles-kundekorrespondance", "/main/mail/indbakker?sag=review-nordlys", 1440, 900));
+  filer.push(await billede("04-support", "/main/support", 1440, 900));
+  await viewport(1440, 900);
+  await gaaTil("/main/mail/opfoelgning");
+  await ventPaa("Boolean(document.querySelector('.ejer-opfoelgning-tabs'))", "Opfølgninger blev ikke klar.", 30000);
+  if (!(await klikTekst(".ejer-opfoelgning-tabs button", "På pause"))) throw new Error("Fanen På pause blev ikke fundet.");
+  await ventPaa("document.body.innerText.includes('Stoppet — tilbud accepteret')", "Den stoppede opfølgning blev ikke vist.");
+  filer.push(await aktueltBillede("05-opfoelgning-stoppet-ved-accept", 1440, 900));
+  filer.push(await billede("06-rapporter-og-hitrate", "/main/rapporter", 1920, 1080));
+  filer.push(await billede("07-kundekonto-brugere-enheder", "/main/kunder/flow-tenant?fane=forbrug", 1440, 900));
+  filer.push(await billede("08-kundekonto-obd", "/main/kunder/flow-tenant?fane=obd", 1440, 900));
+  filer.push(await billede("09-kundekonto-brugere-enheder", "/main/kunder/flow-tenant?fane=forbrug", 1920, 1080));
+  await viewport(1920, 1080);
+  await gaaTil("/main/salg/tilbud");
+  await ventPaa("document.body.innerText.includes('accepteret og låst')", "Det accepterede tilbud blev ikke vist.", 30000);
+  filer.push(await aktueltBillede("10-tilbud-accepteret-og-laast", 1920, 1080));
+  const laasekontrol = await evaluer(`(() => { const område = document.querySelector('.ejer-tilbud-layout'); const tekst = område?.innerText || ''; return { accepteretOgLaast:tekst.includes('accepteret og låst') || document.body.innerText.includes('accepteret og låst'), gemKladde:tekst.includes('Gem kladde'), indsaetForslag:tekst.includes('Indsæt i tilbud'), redigerRateblad:tekst.includes('Redigér rateblad') }; })()`);
+  const aabnedeNyKladde = await klikTekst("button", "Opret ny kladde");
+  if (aabnedeNyKladde || await klikTekst("button", "Redigér")) {
+    await ventPaa("Boolean(document.querySelector('#tilbud-ai-instruks'))", "Tilbudskladden blev ikke åbnet.");
+    await evaluer(`(() => { const el=document.querySelector('#tilbud-ai-instruks'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Gør teksten kortere og fremhæv pilotens afgrænsning.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+    await klikTekst("button", "Foreslå indledning");
+    await ventPaa("document.body.innerText.includes('AI-forslag · gennemgå før indsættelse')", "Den lokale AI-testadapter lavede ikke et forslag.");
+    await evaluer("document.querySelector('.ejer-ai-resultat')?.scrollIntoView({block:'center'}); true");
+    await pause(200);
+    filer.push(await aktueltBillede("11-tilbud-ai-forslag-foer-indsaettelse", 1920, 1080));
+    await evaluer(`(() => { const type=document.querySelector('#tilbud-type'); const selectSetter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; selectSetter.call(type,'pilot_med_drift'); type.dispatchEvent(new Event('change',{bubbles:true})); return true; })()`);
+    await ventPaa("Boolean(document.querySelector('#tilbud-pilot-start'))", "Pilotfelterne blev ikke vist.");
+    await evaluer(`(() => { const skriv=(id,v)=>{const el=document.querySelector(id);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,v);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}; skriv('#tilbud-pilot-start','2026-01-31'); skriv('#tilbud-pilot-maaneder','1'); scrollTo(0,0); return true; })()`);
+    await pause(200);
+    filer.push(await aktueltBillede("11b-pilot-med-vejledende-drift", 1920, 1080));
+  }
+  filer.push(await billede("12-bilag-mobilkamera", "/main/oekonomi/bilag", 1440, 900));
+  filer.push(await billede("13-leverandoerer", "/main/indstillinger/leverandoerer", 1440, 900));
+  await klikTekst("button", "Redigér");
+  await ventPaa("Boolean(document.querySelector('.ejer-leverandoer-form'))", "Leverandørformularen blev ikke vist.");
+  await klikTekst("button", "Gem leverandør");
+  await ventPaa("document.body.innerText.includes('Gem leverandørændringer?')", "Leverandørens gemmebekræftelse blev ikke vist.");
+  filer.push(await aktueltBillede("13b-gem-bekraeftelsesdialog", 1440, 900));
+  filer.push(await billede("14-integrationer", "/main/integrationer", 1920, 1080));
+  filer.push(await billede("15-mobil-360-mail-liste", "/main/mail/indbakker", 360, 800));
+  const mobil360Kontrol = await evaluer(`({ viewport:{width:innerWidth,height:innerHeight}, horizontalOverflow:document.documentElement.scrollWidth > innerWidth, listeBredde:document.querySelector('.ejer-mail-liste')?.getBoundingClientRect().width || 0 })`);
+  filer.push(await billede("16-mobil-360-mail-samtale", "/main/mail/indbakker?sag=review-nordlys", 360, 800));
+  filer.push(await billede("17-mobil-390-mail-samtale", "/main/mail/indbakker?sag=review-nordlys", 390, 844));
+  filer.push(await billede("18-breakpoint-kundekonto", "/main/kunder/flow-tenant?fane=obd", 899, 900));
   await evaluer("document.querySelector('.ejer-mobilmenuknap')?.click(); true");
   await ventPaa("document.querySelector('.ejer-side')?.classList.contains('ejer-side-aaben')", "Mobilnavigationen åbnede ikke.");
   await pause(250);
   const mobilMenuSvar = await kald("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
-  const mobilMenuFil = join(OUT, "899x900-15-mobil-navigation-aaben.png");
+  const mobilMenuFil = join(OUT, "899x900-19-mobil-navigation-aaben.png");
   writeFileSync(mobilMenuFil, Buffer.from(mobilMenuSvar.data, "base64"));
   filer.push(mobilMenuFil);
   await kald("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
@@ -150,14 +194,41 @@ try {
     return { menuButton:mål('.ejer-mobilmenuknap'), sidebar:mål('.ejer-side'), menu:mål('.ejer-menuindhold'), horizontalOverflow:document.documentElement.scrollWidth > innerWidth };
   })()`);
 
+  await viewport(1440, 900);
+  await gaaTil("/main/salg/pipeline");
+  const menuFoer = await evaluer(`(() => { const knap=Array.from(document.querySelectorAll('.ejer-navgruppe')).find((el)=>(el.textContent||'').includes('Salg')); return { expanded:knap?.getAttribute('aria-expanded'), path:location.pathname, underpunkter:knap?.parentElement?.querySelectorAll('.ejer-link').length || 0 }; })()`);
+  await klikTekst(".ejer-navgruppe", "Salg");
+  await pause(150);
+  const menuLukket = await evaluer(`(() => { const knap=Array.from(document.querySelectorAll('.ejer-navgruppe')).find((el)=>(el.textContent||'').includes('Salg')); return { expanded:knap?.getAttribute('aria-expanded'), path:location.pathname, underpunkter:knap?.parentElement?.querySelectorAll('.ejer-link').length || 0 }; })()`);
+  filer.push(await aktueltBillede("20-pipeline-med-salg-sammenfoldet", 1440, 900));
+  await klikTekst(".ejer-navgruppe", "Salg");
+  await pause(150);
+  const menuGenAabnet = await evaluer(`(() => { const knap=Array.from(document.querySelectorAll('.ejer-navgruppe')).find((el)=>(el.textContent||'').includes('Salg')); return { expanded:knap?.getAttribute('aria-expanded'), path:location.pathname, underpunkter:knap?.parentElement?.querySelectorAll('.ejer-link').length || 0 }; })()`);
+  await gaaTil("/main/mail/indbakker?sag=review-nordlys");
+  await viewport(1440, 600);
+  await pause(150);
+  const scrollKontrol = await evaluer(`(() => { const mål=(selector)=>{const el=document.querySelector(selector);if(!el)return null;el.scrollTop=0;const før=el.scrollTop;el.scrollTop=Math.min(80,Math.max(0,el.scrollHeight-el.clientHeight));return { selector, clientHeight:el.clientHeight, scrollHeight:el.scrollHeight, før, efter:el.scrollTop, kanRulle:el.scrollHeight>el.clientHeight };}; return ['.ejer-mail-raekker','.ejer-mail-samtale','.ejer-mail-ai'].map(mål); })()`);
+
+  await viewport(390, 844);
+  await gaaTil("/main/mail/indbakker?sag=review-nordlys");
+  const bevaretTekst = "Lokalt V5-udkast bevares ved tilbage-navigation.";
+  await evaluer(`(() => { const el=document.querySelector('textarea[aria-label="Svarudkast"]'); if(!el)return false; const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,${JSON.stringify(bevaretTekst)}); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+  await klikTekst(".ejer-mail-mobil-tilbage", "Tilbage til indbakken");
+  await ventPaa("!new URLSearchParams(location.search).has('sag')", "Mobil tilbage-navigation fjernede ikke sagsvisningen.");
+  await klikTekst(".ejer-mail-raekker button", "Maria Eksempel");
+  await ventPaa("new URLSearchParams(location.search).get('sag') === 'review-nordlys'", "Sagen kunne ikke åbnes igen fra listen.");
+  const draftKontrol = await evaluer(`({ path:location.pathname, sag:new URLSearchParams(location.search).get('sag'), tekst:document.querySelector('textarea[aria-label="Svarudkast"]')?.value || '', bevaret:document.querySelector('textarea[aria-label="Svarudkast"]')?.value === ${JSON.stringify(bevaretTekst)}, viewport:{width:innerWidth,height:innerHeight}, horizontalOverflow:document.documentElement.scrollWidth > innerWidth })`);
+
   await viewport(1920, 1080);
   await gaaTil("/main/mail/indbakker?sag=review-nordlys");
   const styles = await evaluer(`(() => {
     const mål = (selector) => { const el = document.querySelector(selector); if (!el) return null; const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return { fontFamily:s.fontFamily, fontSize:s.fontSize, lineHeight:s.lineHeight, height:r.height, width:r.width, borderRadius:s.borderRadius, color:s.color, backgroundColor:s.backgroundColor }; };
-    return { url:location.href, viewport:{ width:innerWidth, height:innerHeight, devicePixelRatio }, fonts:{ status:document.fonts.status, interLoaded:document.fonts.check('14px "Inter Variable"') }, body:mål('body'), sidebar:mål('.ejer-side'), content:mål('.ejer-indhold'), card:mål('.ejer-mail-liste'), input:mål('.ejer-mail-soeg input'), button:mål('.ejer-segmenter button'), tableHeader:mål('.fc-table th'), horizontalOverflow:document.documentElement.scrollWidth > innerWidth, mobile:${JSON.stringify(mobilStyles)} };
+    return { url:location.href, viewport:{ width:innerWidth, height:innerHeight, devicePixelRatio }, fonts:{ status:document.fonts.status, interVariableLoaded:document.fonts.check('14px "Inter Variable"'), interLoaded:document.fonts.check('14px Inter') }, body:mål('body'), sidebar:mål('.ejer-side'), content:mål('.ejer-indhold'), card:mål('.ejer-mail-liste'), input:mål('.ejer-mail-soeg input'), button:mål('.ejer-segmenter button'), tableHeader:mål('.fc-table th'), horizontalOverflow:document.documentElement.scrollWidth > innerWidth, mobile:${JSON.stringify(mobilStyles)} };
   })()`);
   writeFileSync(join(OUT, "browser-style-verification.json"), `${JSON.stringify(styles, null, 2)}\n`);
-  console.log(JSON.stringify({ ok: true, filer: filer.map((fil) => fil.slice(resolve(".").length + 1)), styles }, null, 2));
+  const interaktioner = { menu:{ før:menuFoer, lukket:menuLukket, genåbnet:menuGenAabnet }, desktopScroll:scrollKontrol, mobilListe360:mobil360Kontrol, mobilKladde:draftKontrol, accepteretTilbud:laasekontrol };
+  writeFileSync(join(OUT, "interaction-verification.json"), `${JSON.stringify(interaktioner, null, 2)}\n`);
+  console.log(JSON.stringify({ ok: true, filer: filer.map((fil) => fil.slice(resolve(".").length + 1)), styles, interaktioner }, null, 2));
 } finally {
   try { socket.close(); } catch { /* allerede lukket */ }
   proces.kill();

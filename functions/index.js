@@ -1688,7 +1688,7 @@ export const aftaleprovisioner = onCall({ region: REGION }, async (req) => {
   const tenantId = d.tenantId ? kraevKundeId({ id: d.tenantId }) : null;
   const db = getDatabase();
   const tilbud = (await db.ref(`udbyder/tilbud/${tilbudId}`).once("value")).val();
-  if (tilbud?.accept?.version !== version || !tilbud?.versioner?.[version]?.accept) {
+  if (!tilbud || tilbud.accept?.version !== version || !tilbud.versioner?.[version]?.accept) {
     throw new HttpsError("failed-precondition", "Kun den registrerede, accepterede tilbudsversion kan blive til en aftale.");
   }
   const snapshot = tilbud.versioner?.[version]?.snapshot;
@@ -10953,6 +10953,7 @@ export const ejerleverandoererhent = onCall({ region: REGION }, async (req) => {
   return { poster: Object.fromEntries(Object.entries(poster).map(([id, post]) => [id, {
     id, navn: tekst(post?.navn, 300), kategori: tekst(post?.kategori, 120), kontakt: tekst(post?.kontakt, 300),
     status: tekst(post?.status, 40), aftaleTil: tekst(post?.aftaleTil, 20), noter: tekst(post?.noter, 2_000), revision: Number(post?.revision || 0),
+    opdateretMs: Number(post?.opdateretMs || 0), opdateretAf: tekst(post?.opdateretAf, 200),
   }])) };
 });
 
@@ -11334,6 +11335,13 @@ export const salgsopfoelgningafsend = onCall({ region: REGION, secrets: [M365_CL
   const traadRef = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
   const traad = (await traadRef.once("value")).val();
   const opf = traad?.opfoelgninger?.[id];
+  const tilbudId = traad?.links?.tilbudId;
+  const tilbudStatus = tilbudId ? (await getDatabase().ref(`udbyder/tilbud/${tilbudId}/status`).once("value")).val() : null;
+  if (["accepteret", "afvist"].includes(tilbudStatus)) {
+    const pauseAarsag = tilbudStatus === "accepteret" ? "tilbud_accepteret" : "tilbud_afvist";
+    if (opf) await traadRef.child(`opfoelgninger/${id}`).update({ status: "pauset", pauseAarsag, pausetMs: Date.now(), pausetAf: "system", revision: Number(opf.revision || 0) + 1 });
+    throw new HttpsError("failed-precondition", tilbudStatus === "accepteret" ? "Opfølgningen er stoppet, fordi tilbuddet er accepteret." : "Opfølgningen er stoppet, fordi tilbuddet er afvist.");
+  }
   if (!godkendelseErAktuel(opf, traad)) throw new HttpsError("failed-precondition", "Opfølgningen er ikke konkret godkendt eller sagen har ændret sig.");
   if (Number(opf.revision) !== kraevForventetRevision(req.data?.forventetRevision)) throw new HttpsError("aborted", "Opfølgningen blev ændret samtidigt.");
   const jobId = `opfoelgning_${traadId}_${id}_r${opf.revision}`;

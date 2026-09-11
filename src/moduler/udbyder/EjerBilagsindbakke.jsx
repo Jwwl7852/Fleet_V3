@@ -46,8 +46,8 @@ export default function EjerBilagsindbakke() {
   return <div className="fc-grid" style={{ gap: 16 }}>
     <Kort titel="Modtag bilag">
       <div className="ejer-bilag-upload" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); filer(e.dataTransfer.files); }}>
-        <label><b>Upload bilag</b><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(e) => filer(e.target.files)} disabled={arbejder} /><span>Vælg PDF, JPEG eller PNG</span></label>
-        <label><b>Tag billede</b><input type="file" accept="image/jpeg,image/png" capture="environment" onChange={(e) => filer(e.target.files, "mobilkamera")} disabled={arbejder} /><span>Mobilkamera, når enheden understøtter det</span></label>
+        <label className="ejer-bilag-valg"><b>Upload bilag</b><input className="ejer-visuelt-skjult" type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(e) => filer(e.target.files)} disabled={arbejder} /><strong>Vælg filer fra computer</strong><span>PDF, JPEG eller PNG</span></label>
+        <label className="ejer-bilag-valg"><b>Foto af bilag</b><input className="ejer-visuelt-skjult" type="file" accept="image/jpeg,image/png" capture="environment" onChange={(e) => filer(e.target.files, "mobilkamera")} disabled={arbejder} /><strong>Vælg eller tag billede</strong><span>På en fysisk mobil kan systemets kamera tilbydes af enheden</span></label>
         <p><b>eller træk filer hertil</b><span>Maks. 20 MB · original og indholdssignatur bevares</span></p>
       </div>
       {arbejder && <p className="ejer-handlingssvar" role="status">Uploader og afventer serverens bekræftelse…</p>}

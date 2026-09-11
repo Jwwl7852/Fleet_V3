@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   SAGSTYPE_LABEL, gemKommunikationssvarkladde, godkendKommunikationssvar,
   hentSalgsplatform, opdaterKommunikationsklassifikation, opdaterSalgstraad, opretSalgsnote,
@@ -24,8 +24,10 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
   const [soegning, setSoegning] = useState("");
   const [besked, setBesked] = useState("");
   const [internNote, setInternNote] = useState("");
+  const [lokaleKladder, setLokaleKladder] = useState({});
   const [arbejder, setArbejder] = useState(false);
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const hent = async () => setData(await hentSalgsplatform());
   useEffect(() => { hent(); }, []);
 
@@ -45,9 +47,11 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
     return !q || `${traad.emne} ${traad.virksomhedsnavn} ${traad.kontaktNavn} ${traad.kontaktEmail}`.toLowerCase().includes(q);
   }).sort((a, b) => Number(b.senesteAktivitetMs || 0) - Number(a.senesteAktivitetMs || 0)), [data, filter, postkasse, kunMineSager, soegning, visning, bruger?.uid]);
 
-  const valgtId = params.get("sag") || traade[0]?.id || "";
+  const eksplicitValgtId = params.get("sag") || "";
+  const valgtId = eksplicitValgtId || traade[0]?.id || "";
   const valgt = poster(data?.traade).find((t) => t.id === valgtId) || traade[0];
   const aaben = (id) => setParams((gamle) => { const naeste = new URLSearchParams(gamle); naeste.set("sag", id); return naeste; });
+  const tilbageTilListe = () => setParams((gamle) => { const naeste = new URLSearchParams(gamle); naeste.delete("sag"); return naeste; });
   const udfoer = async (fn) => {
     setArbejder(true); setBesked(""); const resultat = await fn(); setArbejder(false);
     setBesked(resultat.ok ? "Ændringen er gemt." : resultat.besked || "Handlingen kunne ikke gennemføres.");
@@ -68,8 +72,15 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
   const analyse = poster(valgt?.analyser).sort((a, b) => Number(b.oprettetMs) - Number(a.oprettetMs))[0];
   const kladde = poster(valgt?.svarKladder).sort((a, b) => Number(b.opdateretMs) - Number(a.opdateretMs))[0];
   const senesteInd = [...beskeder].reverse().find((m) => m.retning === "indgaaende");
+  const svartekst = lokaleKladder[valgt?.id] ?? kladde?.tekst ?? analyse?.svarudkast ?? "";
+  const supportHandling = async () => {
+    if (!valgt) return;
+    if (valgt.sagstype === "support") { navigate(`/main/support?sag=${encodeURIComponent(valgt.id)}`); return; }
+    const resultat = await delSom("support");
+    if (resultat?.ok) navigate(`/main/support?sag=${encodeURIComponent(valgt.id)}`);
+  };
 
-  return <div className="ejer-mail-v2">
+  return <div className={`ejer-mail-v2${eksplicitValgtId ? " ejer-mail-mobil-detalje" : ""}`}>
     <div className="ejer-mail-toolbar">
       <div className="ejer-segmenter" role="tablist" aria-label="Postkassevisning">
         {[['mine','Min postkasse'],['faelles','Fælles kundekorrespondance'],['info','Fælles · info@']].map(([id,label]) => <button key={id} type="button" className={postkasse === id ? "aktiv" : ""} onClick={() => setPostkasse(id)}>{label}</button>)}
@@ -95,6 +106,7 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
         </button>)}
         {!traade.length && <p className="ejer-tomlinje">Ingen sager matcher filtrene.</p>}</div>
         {valgt && <div className="ejer-mail-samtale" aria-label="Valgt kundekorrespondance">
+          <button type="button" className="ejer-mail-mobil-tilbage" onClick={tilbageTilListe}>← Tilbage til indbakken</button>
           <header><div><small>Samtale</small><h2>{valgt.emne}</h2><small>{kildeTekst(valgt)}</small></div><span className={`fc-pill ${valgt.status === 'afventer_os' ? 'warn' : 'info'}`}>{statusTekst[valgt.status] || valgt.status}</span></header>
           {beskeder.map((mail) => <article key={mail.id} className={mail.retning === "udgaaende" ? "udgaaende" : "indgaaende"}>
             <header><b>{mail.retning === "udgaaende" ? `Veyro · ${mail.fra || "info@veyrosystems.com"}` : mail.fra}</b><time>{dato(mail.sendtMs)}</time></header>
@@ -110,8 +122,8 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
           <header><span className="ejer-ikonfelt"><EjerIkon navn="sparkles"/></span><div><h2>AI holder øje</h2><small>{data.integrationer?.openai?.status === "aktiv" ? "Tilsluttet" : "Ikke tilsluttet · testadapter vises"}</small></div></header>
           <section><h3>{valgt.emne}</h3><p>{analyse?.opsummering || senesteInd?.tekst?.slice(0, 240) || "Ingen analyse endnu."}</p></section>
           {analyse && <section className="ejer-ai-fakta"><h3>Udledt fra kundens mail</h3><dl><dt>Bekræftet</dt><dd>{(analyse.behov || []).slice(0,2).join(" · ") || "—"}</dd><dt>Mangler</dt><dd>{(analyse.manglendeOplysninger || []).join(", ") || "Ingen registreret"}</dd></dl></section>}
-          <section><h3>Sagsstyring</h3><p><b>{SAGSTYPE_LABEL[valgt.sagstype] || "Kræver gennemgang"}</b> · {valgt.delingsstatus === "delt" ? "Synlig for Dennis og Jørn" : "Afventer delingsafklaring"}</p><div className="fc-actions"><button className="fc-btn" type="button" onClick={overtag} disabled={arbejder}>Overtag sag</button><button className="fc-btn" type="button" onClick={() => delSom("support")} disabled={arbejder}>Vis i Support</button></div></section>
-          <section><h3>Svarudkast</h3><textarea aria-label="Svarudkast" value={kladde?.tekst || analyse?.svarudkast || ""} readOnly rows="7"/><div className="fc-actions"><button className="fc-btn" type="button" disabled={arbejder || !analyse?.svarudkast || Boolean(kladde)} onClick={() => udfoer(() => gemKommunikationssvarkladde({ traadId: valgt.id, fra: "info@veyrosystems.com", til: valgt.kontaktEmail, emne: `Re: ${valgt.emne}`, tekst: analyse.svarudkast, signatur: "Venlig hilsen\nVeyro Systems", vedhaeftninger: [], basisAktivitetMs: valgt.senesteAktivitetMs, forventetRevision: 0 }))}>Gem kladde</button><button className="fc-btn fc-btn-primary" type="button" disabled={arbejder || !kladde || kladde.status !== "kladde"} onClick={() => udfoer(() => godkendKommunikationssvar({ traadId: valgt.id, id: kladde.id, forventetRevision: kladde.revision }))}>Gennemse og godkend</button></div><small>Intet sendes automatisk. Ændringer efter godkendelse kræver ny godkendelse.</small></section>
+          <section><h3>Sagsstyring</h3><p><b>{SAGSTYPE_LABEL[valgt.sagstype] || "Kræver gennemgang"}</b> · {valgt.delingsstatus === "delt" ? "Synlig for Dennis og Jørn" : "Afventer delingsafklaring"}</p><div className="fc-actions"><button className="fc-btn" type="button" onClick={overtag} disabled={arbejder}>Overtag sag</button><button className="fc-btn" type="button" onClick={supportHandling} disabled={arbejder}>{valgt.sagstype === "support" ? "Åbn supportsag" : "Opret supportsag"}</button></div></section>
+          <section><h3>Svarudkast</h3><textarea aria-label="Svarudkast" value={svartekst} onChange={(event) => setLokaleKladder((gamle) => ({ ...gamle, [valgt.id]: event.target.value }))} rows="7"/><div className="fc-actions"><button className="fc-btn" type="button" disabled={arbejder || !svartekst.trim()} onClick={() => udfoer(() => gemKommunikationssvarkladde({ traadId: valgt.id, id: kladde?.id, fra: "info@veyrosystems.com", til: valgt.kontaktEmail, emne: `Re: ${valgt.emne}`, tekst: svartekst, signatur: "Venlig hilsen\nVeyro Systems", vedhaeftninger: [], basisAktivitetMs: valgt.senesteAktivitetMs, forventetRevision: kladde?.revision || 0 }))}>Gem kladde</button><button className="fc-btn fc-btn-primary" type="button" disabled={arbejder || !kladde || kladde.status !== "kladde"} onClick={() => udfoer(() => godkendKommunikationssvar({ traadId: valgt.id, id: kladde.id, forventetRevision: kladde.revision }))}>Gennemse og godkend</button></div><small>Lokale ændringer bevares, når du går tilbage til listen. Intet sendes automatisk, og ændringer efter godkendelse kræver ny godkendelse.</small></section>
           {besked && <p className="ejer-handlingssvar" role="status">{besked}</p>}
         </> : <p>Vælg en sag.</p>}
       </aside>
