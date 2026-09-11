@@ -223,3 +223,16 @@ processen skal genkøres af bruger eller senere scheduler på virkningsdatoen.
 - Andre modulspor kan senere genbruge Dialogens ESC/fokus-kontrakt og de
   semantiske designtokens. Der kræves ingen ændring i FLEET, FACILITY, PLANNING
   eller FAKTURACENTER for at anvende ejerleverancen nu.
+
+## Kommunikationsintegration V2
+
+- Autoritativ indgående model er én delt sag med flere postkassekilder; der
+  oprettes ikke én tråd pr. Dennis/Jørn/info-postkasse.
+- Graph-jobbet har checkpoint pr. mailbox/mappe og læser Inbox og Sent Items.
+  Outlook-svar kan dermed påvirke sagen uden en åben ejerbrowser.
+- Internet Message ID er primær deduplikeringsnøgle. Provider-id og eksakt hash
+  er sekundære værn; webformularer skal levere stabilt delivery-id.
+- Svarafsendelse er totrins: accepteret anmodning/mailjob er ikke det samme som
+  dokumenteret afsendelse. Ukendt resultat blokerer blind genudsendelse.
+- Se `VEYRO_EJERKONSOL_MAIL_SUPPORT_V2_IMPLEMENTERING.md` for testbevis og
+  resterende Microsoft/OpenAI/Dinero/OCR-konfiguration.

@@ -88,3 +88,20 @@ mængder, den separate OBD-model og den låste prisoprindelse. Handlingen
   låste semantiske tokens og består design-tokenkontrollen; en oprydning af det
   gamle blok bør ske særskilt for ikke at udvide denne rettelse til en risikabel
   total omskrivning af alle tidligere ejerskærme.
+
+## V2-designreview 2026-09-11
+
+Den nyeste mailserie har forrang for Mail, Support og Opfølgning. Den aktuelle
+implementering bruger `src/fleet/fleet.css` som eneste farve-/tokenkilde;
+omtalen ovenfor af en separat `ejer-standard.css` er historisk og gælder ikke
+den aktuelle build.
+
+- Mail følger arbejdsindbakkeprincippet med fysisk postkassevalg, statusfiltre,
+  separat **Kun mine sager**, samtalehistorik og AI/sagsstyring.
+- Support og opfølgning følger den korrigerede todelte liste/detaljevisning.
+- Ved 1440 px bruges en kompakt Ejer-kolonne for at undgå overlap; ansvar og
+  status forbliver tekstligt synlige. Ved 1920 px vises fulde kolonner.
+- Bilagsmodtagelse bruger fælles felter og kontrolmål med særskilt mobilkamera.
+  Leverandørsiden bruger samme tabel-, kort- og formularsprog.
+- Den aktive ejerflade er målt til Inter Variable og de fastlagte 216/12/38+/26/11
+  mål. Alle ejerkomponenter, felter, knapper og tabeller måles med Inter.

@@ -405,3 +405,25 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   dokumentoverflow ved mobilkontrollen.
 - Microsoft 365, OpenAI, Dinero, OCR og bilagsmail står stadig som `Ikke
   tilsluttet`. Kun syntetiske `.invalid`-data og lokale testadaptere er brugt.
+
+## Mail, support og arbejdsflow V2 — 2026-09-11
+
+- Lokal baseline før runden: branch `codex/ejer-integrated-development`, HEAD
+  `463aab33392651edf3eb12dc54d340bba05242fa`, ren arbejdsstatus. Nyere arbejde
+  blev bevaret; de øvrige worktrees er ikke ændret.
+- Nye routes dækker Mail/Indbakker, Opfølgning, Sager og mapper, Sendt, fælles
+  Support, Rapporter og Veyros leverandører.
+- Mail skelner fysisk postkasse fra sagsansvar og viser sammensmeltede kilder,
+  valgt samtale, AI-testgrundlag og konkret godkendelsesstatus. Support er samme
+  tråd, ikke en kopi.
+- Det planlagte M365-deltajob kan hente Inbox og Sent Items for flere postkasser
+  uden browser. Graph er ikke kaldt lokalt, fordi credentials og mailbox-type
+  ikke er verificeret.
+- Grøn verifikation: salg/aftale/invitation; økonomi/bilag;
+  kommunikation/support/samtidighed/stale-godkendelse; AK-regler 34/34;
+  kommunikations-/designtests 16/16; build med 530 moduler.
+- Screenshots ligger i `docs/screenshots/ejer-review-v3/`. Computed styles viser
+  Inter Variable, 14 px/20,3 px, 216 px sidebar, 12 px kort, 40–42 px kontroller
+  og intet vandret dokumentoverflow ved de målte viewports.
+- Bred `npm run lint` er stadig blokeret af det eksisterende FACILITY-hul
+  (`@eslint/js`). Afgrænset lint af alle ændrede ejerfiler består.

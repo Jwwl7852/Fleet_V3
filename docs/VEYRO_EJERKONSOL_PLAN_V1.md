@@ -317,3 +317,16 @@ ekstern aktivering.
 - Ejerskallen følger det fælles 216 px/12 px/38 px/26 px/11 px/900 px-system,
   bruger de låste semantiske farvetokens og lokal Inter Variable. Under 900 px
   bliver navigationen en lukket mobilskuffe i stedet for at optage hele siden.
+
+### M — Mail, support og arbejdsflow V2
+
+Status: implementeret og lokalt verificeret 2026-09-11; ekstern aktivering mangler.
+
+- Fælles og personlige Microsoft 365-kilder samles serverbaseret med Inbox/Sent
+  Items-delta, deduplikering, klassifikation og fælles kundesager.
+- Support genbruger samme mailtråd med separat supportmetadata, ansvar, frist og
+  status. Eksterne svar og opfølgninger kræver konkret, aktuel godkendelse.
+- Tilbud/AI/rateblad er bevarete; pilotforløb, rabatregler, statistik, mobilbilag
+  og Veyros eget leverandørkartotek er føjet ind i samme ejerskal.
+- Lokal reviewadresse, tests, screenshots og ekstern opsætning er samlet i
+  `VEYRO_EJERKONSOL_MAIL_SUPPORT_V2_IMPLEMENTERING.md` og gennemgangsvejledningen.

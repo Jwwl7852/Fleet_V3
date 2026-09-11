@@ -194,3 +194,27 @@ faner; `document.fonts.check('14px "Inter Variable"')` er sand. JSON-filen
 gemmer de konkrete computed styles. `body` arver ikke app-typografien, men hele
 den interaktive ejerflade gør; det er en bevidst scope-afgrænsning, så andre
 Veyro-moduler ikke ændres af ejersporet.
+
+## V3-gennemgang: mail, support og arbejdsflow
+
+Preview: `http://127.0.0.1:5211/main/mail/indbakker?sag=review-nordlys`.
+Brug det normale login. Den git-ignorerede `.env.owner-emulator.local` forudfylder
+kun den lokale formular; adgangsoplysninger må ikke kopieres til dokumentation.
+
+1. **Mail → Indbakker**: gennemgå fælles kundekorrespondance, den valgte samtale,
+   postkassekilder, ansvar, AI-testgrundlag og svarudkast.
+2. **Support**: samme kundemail vises som `SUP-2026-0001`; overtagelse og status
+   er servervalideret.
+3. **Salg → Pipeline/Tilbud/Rateblad**: gennemgå pilot, accepteret version 2,
+   rabatter, PDF-snapshot og AI-tekst uden prisautoritet.
+4. **Mail → Opfølgning**: kontrollér konkret godkendelse. Intet sendes, mens
+   Microsoft 365 er frakoblet; ny aktivitet invaliderer godkendelsen.
+5. **Kunder → Kundekort → Administrér kundekonto**: gennemgå aftale,
+   administratorinvitation, mængder og OBD på `flow-tenant`.
+6. **Økonomi**: gennemgå faktura/delbetaling, kreditnota og bilag. Mobilkamera
+   bruger samme validering; Dinero/OCR/bilagsmail står som Ikke tilsluttet.
+7. **Rapporter** og **Indstillinger → Leverandører/Integrationer**: gennemgå
+   hitrate/pilot og den isolerede ejeropsætning.
+
+Den aktuelle serie ligger i `docs/screenshots/ejer-review-v3/` med 13 PNG-filer
+ved 1440×900, 1920×1080 og 899×900 samt `browser-style-verification.json`.
