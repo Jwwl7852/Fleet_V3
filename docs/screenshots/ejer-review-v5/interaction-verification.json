@@ -1,0 +1,70 @@
+{
+  "menu": {
+    "før": {
+      "expanded": "true",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 4
+    },
+    "lukket": {
+      "expanded": "false",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 0
+    },
+    "genåbnet": {
+      "expanded": "true",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 4
+    }
+  },
+  "desktopScroll": [
+    {
+      "selector": ".ejer-mail-raekker",
+      "clientHeight": 155,
+      "scrollHeight": 180,
+      "før": 0,
+      "efter": 25,
+      "kanRulle": true
+    },
+    {
+      "selector": ".ejer-mail-samtale",
+      "clientHeight": 286,
+      "scrollHeight": 667,
+      "før": 0,
+      "efter": 80,
+      "kanRulle": true
+    },
+    {
+      "selector": ".ejer-mail-ai",
+      "clientHeight": 510,
+      "scrollHeight": 879,
+      "før": 0,
+      "efter": 80,
+      "kanRulle": true
+    }
+  ],
+  "mobilListe360": {
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "horizontalOverflow": false,
+    "listeBredde": 332
+  },
+  "mobilKladde": {
+    "path": "/main/mail/indbakker",
+    "sag": "review-nordlys",
+    "tekst": "Lokalt V5-udkast bevares ved tilbage-navigation.",
+    "bevaret": true,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "horizontalOverflow": false
+  },
+  "accepteretTilbud": {
+    "accepteretOgLaast": true,
+    "gemKladde": false,
+    "indsaetForslag": false,
+    "redigerRateblad": false
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "review": "V5",
+  "capturedAt": "2026-09-11T14:58:52+02:00",
+  "documentedAt": "2026-09-11T15:08:59+02:00",
+  "worktree": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated",
+  "branch": "codex/ejer-integrated-development",
+  "sourceCodeCommit": "06f71c024d3600b339029bc408a7ac894375d4ab",
+  "codeChangesAfterCommit": [],
+  "preview": "http://127.0.0.1:5211",
+  "firebaseProject": "demo-veyro-owner",
+  "fixture": "syntetisk lokal owner-review fixture; ingen produktionsdata",
+  "login": "normalt tenantloest ejerlogin via Auth-emulator",
+  "externalIntegrations": {
+    "microsoft365": "ikke_tilsluttet",
+    "openai": "ikke_tilsluttet",
+    "dinero": "ikke_tilsluttet",
+    "ocr": "ikke_tilsluttet",
+    "bilagsmail": "ikke_tilsluttet"
+  },
+  "screenshots": [
+    { "file": "1440x900-01-overblik.png", "route": "/main/overblik", "viewport": "1440x900" },
+    { "file": "1440x900-02-mail-liste.png", "route": "/main/mail/indbakker", "viewport": "1440x900" },
+    { "file": "1440x900-03-mail-faelles-kundekorrespondance.png", "route": "/main/mail/indbakker?sag=review-nordlys", "viewport": "1440x900" },
+    { "file": "1440x900-04-support.png", "route": "/main/support", "viewport": "1440x900" },
+    { "file": "1440x900-05-opfoelgning-stoppet-ved-accept.png", "route": "/main/mail/opfoelgning", "viewport": "1440x900" },
+    { "file": "1920x1080-06-rapporter-og-hitrate.png", "route": "/main/rapporter", "viewport": "1920x1080" },
+    { "file": "1440x900-07-kundekonto-brugere-enheder.png", "route": "/main/kunder/flow-tenant?fane=brugere", "viewport": "1440x900" },
+    { "file": "1440x900-08-kundekonto-obd.png", "route": "/main/kunder/flow-tenant?fane=obd", "viewport": "1440x900" },
+    { "file": "1920x1080-09-kundekonto-brugere-enheder.png", "route": "/main/kunder/flow-tenant?fane=brugere", "viewport": "1920x1080" },
+    { "file": "1920x1080-10-tilbud-accepteret-og-laast.png", "route": "/main/tilbud/tilbud-flow-v1", "viewport": "1920x1080" },
+    { "file": "1920x1080-11-tilbud-ai-forslag-foer-indsaettelse.png", "route": "/main/tilbud/tilbud-flow-v1?version=3", "viewport": "1920x1080" },
+    { "file": "1920x1080-11b-pilot-med-vejledende-drift.png", "route": "/main/tilbud/tilbud-flow-v1?version=3&fane=rateblad", "viewport": "1920x1080" },
+    { "file": "1440x900-12-bilag-mobilkamera.png", "route": "/main/bilag", "viewport": "1440x900" },
+    { "file": "1440x900-13-leverandoerer.png", "route": "/main/leverandoerer", "viewport": "1440x900" },
+    { "file": "1440x900-13b-gem-bekraeftelsesdialog.png", "route": "/main/leverandoerer", "viewport": "1440x900" },
+    { "file": "1920x1080-14-integrationer.png", "route": "/main/integrationer", "viewport": "1920x1080" },
+    { "file": "360x800-15-mobil-360-mail-liste.png", "route": "/main/mail/indbakker", "viewport": "360x800" },
+    { "file": "360x800-16-mobil-360-mail-samtale.png", "route": "/main/mail/indbakker?sag=review-nordlys", "viewport": "360x800" },
+    { "file": "390x844-17-mobil-390-mail-samtale.png", "route": "/main/mail/indbakker?sag=review-nordlys", "viewport": "390x844" },
+    { "file": "899x900-18-breakpoint-kundekonto.png", "route": "/main/kunder/flow-tenant?fane=brugere", "viewport": "899x900" },
+    { "file": "899x900-19-mobil-navigation-aaben.png", "route": "/main/kunder/flow-tenant?fane=brugere", "viewport": "899x900" },
+    { "file": "1440x900-20-pipeline-med-salg-sammenfoldet.png", "route": "/main/salg/pipeline", "viewport": "1440x900" }
+  ],
+  "measurements": [
+    "browser-style-verification.json",
+    "interaction-verification.json"
+  ]
+}

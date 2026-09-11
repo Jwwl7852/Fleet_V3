@@ -446,3 +446,32 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   regelpakke exit 0, afgrænset ESLint og build med 530 moduler.
 - 15 nye browseroptagelser og acceptstatus R01–R20 ligger i
   `docs/screenshots/ejer-review-v4-final/` og `VEYRO_EJERKONSOL_REVIEW_V4.md`.
+
+## V5-rettelsesrunde — 2026-09-11
+
+- Verificeret udgangspunkt var worktree
+  `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-ejer-integrated`, branch
+  `codex/ejer-integrated-development`, HEAD
+  `617b47d96e2c8123f81cda3481bcbce3b7597559`. Koderettelserne er gemt lokalt i
+  checkpoint `06f71c024d3600b339029bc408a7ac894375d4ab`.
+- Menugrupper kan nu foldes sammen, selv om et aktivt underpunkt er valgt.
+  Pipeline bliver på samme URL, mens Salg kan skifte lukket/åben gentagne
+  gange. Det udtrykkelige gemte brugervalg har forrang for route-defaulten.
+- Accepterede tilbud viser nu en låst læseflade. Ny redigering foregår i en
+  særskilt kladde, og opfølgninger for den accepterede tilbudskæde stoppes og
+  afvises igen umiddelbart før afsendelsesjobbet.
+- Lokal AI-testadapter, pilot/rabat, fælles kundemail, support, mobilmail,
+  licens-/OBD-visning, rapporter, bilag og leverandørhistorik er rettet efter
+  V5-instruksen. Ingen ekstern AI-, mail- eller økonomitjeneste blev kaldt.
+- V5-verifikation består: 97/97 målrettede tests, målrettet ESLint, Vite-build
+  med 531 moduler og de syntetiske ejer-/økonomiflows i emulatorerne.
+- Browsermålinger viser Inter 14 px / 20,3 px på hele ejerfladen, 216 px
+  sidebar, 12 px kortradius, bevaret mobilkladde og faktisk uafhængig scroll i
+  mailens liste-, samtale- og AI-panel.
+- 22 faktiske screenshots ved 360×800, 390×844, 899×900, 1440×900 og
+  1920×1080 samt route-/commitmanifest ligger i
+  `docs/screenshots/ejer-review-v5/`. Den samlede acceptstatus står i
+  `docs/VEYRO_EJERKONSOL_REVIEW_V5.md`.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail står fortsat som **Ikke
+  tilsluttet**. Ingen push, merge, deployment, produktionsændring eller rigtig
+  mailafsendelse er foretaget.
