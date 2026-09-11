@@ -16,6 +16,9 @@ const statusLabel = (status) => ({
   sent: "Sendt til leverandør", sendt: "Sendt til leverandør",
   "part-received": "Delvist modtaget", modtaget: "Fuldt modtaget", afsluttet: "Afsluttet",
 }[status] || "Indsendt behov");
+const receiptHeading = (status) => ["approved", "godkendt"].includes(status)
+  ? "Godkendt – klar til bestilling"
+  : "Sendt til godkendelse";
 
 function useOnline() {
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -161,11 +164,15 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const scope = `${tenant?.id || tenant?.navn || "tenant"}:${user?.uid || user?.id || user?.navn || "user"}`;
   const draftKey = `veyro:procure:mobile-draft:v1:${scope}`;
   const historyKey = `veyro:procure:mobile-history:v1:${scope}`;
+  const receiptKey = `veyro:procure:mobile-receipt:v1:${scope}`;
   const [draft, setDraft] = useState(() => {
     try { const saved = JSON.parse(localStorage.getItem(draftKey)); return saved ? { ...saved, submissionId: saved.submissionId || newSubmissionId() } : emptyDraft(); } catch { return emptyDraft(); }
   });
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem(historyKey)) || []; } catch { return []; }
+  });
+  const [lastReceipt, setLastReceipt] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(receiptKey)) || null; } catch { return null; }
   });
   const [saveStatus, setSaveStatus] = useState("Gemt på denne enhed");
   const [serverHydrated, setServerHydrated] = useState(demo);
@@ -302,6 +309,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const setQuantity = (id, value) => setDraft((current) => ({ ...current, items: { ...current.items, [id]: value } }));
   const setSubmissionQuantity = (id, value, maximum) => setDraft((current) => ({ ...current, submitQuantities: { ...(current.submitQuantities || {}), [id]: Math.min(maximum, Math.max(0, Number(value) || 0)) } }));
   const saveHistory = (items) => { setHistory(items); localStorage.setItem(historyKey, JSON.stringify(items)); };
+  const saveReceipt = (receipt) => { setLastReceipt(receipt); localStorage.setItem(receiptKey, JSON.stringify(receipt)); };
   const addScanned = () => {
     if (!scanned?.item || !validateOrderUnit(scanned.item, scanQuantity).ok) return;
     const current = quantity(scanned.item.id);
@@ -320,13 +328,23 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
         groups.set(key, [...(groups.get(key) || []), item]);
       });
       const stamp = Date.now(); const createdAt = new Date(stamp).toISOString();
+      const year = new Date(stamp).getFullYear();
+      const reference = `IND-${year}-${String(stamp).slice(-6)}`;
+      const outcomeStatus = total > 500000 ? "pending-approval" : "approved";
       const references = [...groups.entries()].map(([supplierId, lines], index) => ({
-        id: `mobile-${stamp}-${index}`, reference: `IND-${new Date(stamp).getFullYear()}-${String(150 + history.length + index).padStart(4, "0")}`,
-        supplierId, status: total > 500000 ? "pending-approval" : "approved", createdAt,
+        id: `mobile-${stamp}-${index}`, reference,
+        poNumber: outcomeStatus === "approved" ? `PO-${year}-${String(stamp).slice(-6)}-${index + 1}` : null,
+        supplierId, status: outcomeStatus, createdAt,
         lines: lines.map((item) => ({ id: item.id, sourceLineId: item.id, name: item.name, quantity: item.submitQuantity, requestedQuantity: item.quantity, unit: item.orderUnit || item.unit, unitPriceOere: orderUnitSummary(item, 1).orderPriceOere, baseUnit: item.baseUnit || item.unit, unitsPerOrder: item.unitsPerOrder || 1, categorySnapshot: item.category || "Ukategoriseret" })),
       }));
       setState((current) => ({ ...current, orders: [...references.filter((item) => item.poNumber), ...current.orders] }));
       saveHistory([...references, ...history]);
+      saveReceipt({
+        reference, status: outcomeStatus, createdAt,
+        submittedLineCount: submitLines.length,
+        remainingLineCount: selected.filter((item) => submissionQuantity(item) < item.quantity).length,
+        supplierOrders: references.map((item) => ({ poNumber: item.poNumber, supplierId: item.supplierId, lineCount: item.lines.length, status: item.status })),
+      });
       setDraft((current) => ({ ...current,
         items: Object.fromEntries(Object.entries(current.items).map(([id, value]) => [id, Math.max(0, value - Number(current.submitQuantities?.[id] ?? 0))]).filter(([, value]) => value > 0)),
         custom: current.custom.map((row) => ({ ...row, quantity: Math.max(0, row.quantity - Number(current.submitQuantities?.[row.id] ?? 0)) })).filter((row) => row.quantity > 0), submitQuantities: {}, updatedAt: Date.now(),
@@ -335,9 +353,12 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     }
     const result = await submitMobileDraftPart({ selections: submitLines.map((item) => ({ id: item.id, quantity: item.submitQuantity })), expectedRevision: serverRevisionRef.current, requestId: draft.submissionId });
     if (!result.ok) { setMessage(result.message); submittingRef.current = false; setSubmitting(false); return; }
-    const reference = { id: result.data.approvalId, reference: result.data.reference, status: "pending-approval", createdAt: new Date().toISOString(), lines: submitLines,
+    const reference = { id: result.data.approvalId, reference: result.data.reference, status: result.data.status || "pending-approval", createdAt: new Date().toISOString(), lines: submitLines,
       submittedLineCount: submitLines.length, remainingLineCount: Math.max(0, lineCount - submitLines.filter((item) => item.submitQuantity >= item.quantity).length) };
     saveHistory([reference, ...history]);
+    saveReceipt({ reference: reference.reference, status: reference.status, createdAt: reference.createdAt,
+      submittedLineCount: reference.submittedLineCount, remainingLineCount: reference.remainingLineCount,
+      supplierOrders: (result.data.orders || []).map((item) => ({ poNumber: item.poNumber || item.nummer, supplierId: item.supplierId || item.leverandoerId, lineCount: item.lineCount || Object.keys(item.linjer || {}).length, status: item.status })) });
     const returnedDraft = result.data.draft || {};
     serverRevisionRef.current = Number(returnedDraft.revision || serverRevisionRef.current);
     lastServerDraftRef.current = returnedDraft; lastServerSignatureRef.current = draftSignature(returnedDraft);
@@ -399,7 +420,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     </div>}
 
     {mode === "mine" && <div className="procure-mobile-mine">
-      {new URLSearchParams(location.search).get("kvittering") === "1" && history[0] && <article className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>Sendt til godkendelse</h2><p>Reference {history[0].reference || "oprettet"}</p><b>{history[0].submittedLineCount || history[0].lines?.length || 0} linjer sendt · {history[0].remainingLineCount || 0} linjer bliver på listen</b><p>Faktisk status: {statusLabel(history[0].status)}. Leverandøren har endnu ikke modtaget bestillingen.</p></div></article>}
+      {new URLSearchParams(location.search).get("kvittering") === "1" && (lastReceipt || history[0]) && (() => { const receipt = lastReceipt || history[0]; const supplierOrders = receipt.supplierOrders || []; return <article className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>{receiptHeading(receipt.status)}</h2><p>Reference <b>{receipt.reference}</b></p><b>{receipt.submittedLineCount ?? receipt.lines?.length ?? 0} linjer sendt · {receipt.remainingLineCount ?? 0} linjer bliver på listen</b>{supplierOrders.length > 0 && <div className="procure-mobile-receipt-orders"><small>{supplierOrders.length} leverandørordrer fra denne indsendelse</small>{supplierOrders.map((item, index) => <span key={`${item.supplierId}-${index}`}><b>{item.poNumber || "PO dannes efter godkendelse"}</b> · {state.suppliers.find((supplier) => supplier.id === item.supplierId)?.name || "Leverandør afklares"} · {item.lineCount} varelinjer</span>)}</div>}<p>Faktisk status: {statusLabel(receipt.status)}. Leverandøren har endnu ikke modtaget bestillingen; afsendelse kræver en særskilt aktiv handling.</p></div></article>; })()}
       <h2 className="procure-mobile-list-title">Seneste indkøb</h2>
       {[...history, ...state.orders.filter((order) => !history.some((item) => item.id === order.id))].slice(0, 12).map((order) => { const supplierNames = [...new Set((order.lines || []).map((line) => state.suppliers.find((supplier) => supplier.id === (line.supplierId || order.supplierId))?.name).filter(Boolean))]; const supplierLabel = supplierNames.length > 1 ? "Flere leverandører" : supplierNames[0] || (order.supplierId ? state.suppliers.find((supplier) => supplier.id === order.supplierId)?.name : "Leverandør afklares"); return <article className="procure-mobile-purchase" key={order.id}><div><small>{order.poNumber || order.reference || "Behov"}</small><h3>{supplierLabel}</h3><p>{order.lines?.length || 1} varelinjer</p></div><strong>{statusLabel(order.status)}</strong></article>; })}
       {!history.length && !state.orders.length && <div className="procure-mobile-empty"><b>Ingen indkøb endnu</b><span>Dine indsendte behov og bestillinger vises her.</span></div>}

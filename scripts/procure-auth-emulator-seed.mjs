@@ -73,7 +73,7 @@ async function main() {
   const now = Date.now();
   const tenantBase = {
     _findes: true,
-    virksomhed: { navn: "Syntetisk PROCURE-virksomhed", cvr: "00000000" },
+    virksomhed: { navn: "Syntetisk PROCURE-virksomhed", cvr: "00000000", procureAppUrl: "https://procure-preview.example.invalid" },
     abonnement: { status: "aktiv" },
     moduler: { indkoeb: true, oekonomi: true },
     brugere: Object.fromEntries(Object.values(users).filter((user) => user.tenant === TENANT_A).map((user) => [user.uid, { email: user.email, navn: user.name, rolle: user.role }])),

@@ -130,8 +130,16 @@ try {
   await waitFor("location.pathname.endsWith('/mine') && new URLSearchParams(location.search).get('kvittering') === '1'", "kvittering", sessionId);
   const historyAfter = Number(await evaluate("JSON.parse(localStorage.getItem('veyro:procure:mobile-history:v1:demo:demo')).length", sessionId));
   if (historyAfter !== historyBefore + 2) throw new Error("Gentagne tryk oprettede et forkert antal leverandørordrer.");
+  const receipt = await evaluate("JSON.parse(localStorage.getItem('veyro:procure:mobile-receipt:v1:demo:demo'))", sessionId);
+  const newestOrders = await evaluate("JSON.parse(localStorage.getItem('veyro:procure:mobile-history:v1:demo:demo')).slice(0,2)", sessionId);
+  if (receipt.submittedLineCount !== 5 || receipt.remainingLineCount !== 0 || receipt.supplierOrders.length !== 2) throw new Error("Demo-kvitteringen stemmer ikke med indsendelsen.");
+  if (newestOrders.some((order, index) => order.poNumber !== receipt.supplierOrders[index].poNumber)) throw new Error("Kvitteringen viser andre PO'er end den konkrete indsendelse.");
+  if (!await evaluate("document.querySelector('.procure-mobile-receipt h2')?.textContent.includes('Godkendt – klar til bestilling')", sessionId)) throw new Error("Kvitteringens overskrift afspejler ikke den godkendte status.");
+  if (await evaluate("Boolean(document.querySelector('.procure-mobile-nav a:nth-child(2) i'))", sessionId)) throw new Error("Kurvbadgen viser en rest, selv om alle fem linjer blev sendt.");
 
-  const functionalChecks = { draftResumedLines: 5, qrBefore, qrAfter, cartLinesBeforeOffline, cartLinesAfterOffline, automaticSubmitAfterReconnect: false, supplierOrdersCreated: historyAfter - historyBefore };
+  const functionalChecks = { draftResumedLines: 5, qrBefore, qrAfter, cartLinesBeforeOffline, cartLinesAfterOffline, automaticSubmitAfterReconnect: false,
+    submittedLines: receipt.submittedLineCount, remainingLines: receipt.remainingLineCount, supplierOrdersCreated: historyAfter - historyBefore,
+    receiptReference: receipt.reference, receiptStatus: receipt.status, receiptPoNumbers: receipt.supplierOrders.map((order) => order.poNumber), cartBadgeAfterSubmit: 0 };
 
   const results = [];
   for (const [target, width, height, selector, filename, scrollBottom] of cases) {

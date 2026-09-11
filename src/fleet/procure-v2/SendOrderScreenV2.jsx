@@ -16,7 +16,7 @@ export default function SendOrderScreenV2({ state, setState, demo, tenant, canWr
   const order = state.orders.find((item) => item.id === orderId || item.poNumber?.toLowerCase() === orderId?.toLowerCase());
   const supplier = supplierFor(state, order?.supplierId);
   const available = supplier?.orderMethod === "both" ? ["mail", "webshop"] : supplier?.orderMethod === "webshop" ? ["webshop"] : ["mail"];
-  const [method, setMethod] = useState(available[0] || "mail");
+  const [method, setMethod] = useState(order?.orderMethod === "webshop" ? "webshop" : available[0] || "mail");
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState(order ? `Bestilling ${order.poNumber} – ${order.title}` : "");
   const [body, setBody] = useState(order ? `Hej ${supplier?.name || "leverandør"}\n\nHermed vores bestilling. Bekræft venligst bestillingen og den bekræftede leveringsdato. Ordreoplysningerne fremgår af den vedhæftede PDF.\n\nMed venlig hilsen\n${order.contact || tenant?.navn || "Virksomheden"}` : "");

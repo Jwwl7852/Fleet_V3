@@ -61,8 +61,12 @@ const normalizeOrder = (order) => order.poNumber ? order : ({
   revision: order.revision || 1,
   approvedRevision: order.godkendtRevision || (["godkendt", "sendt", "modtaget"].includes(order.status) ? (order.revision || 1) : null),
   approvalStatus: order.status === "afventerGodkendelse" ? "pending" : order.status === "afvist" ? "rejected" : "approved",
-  status: order.status, sendStatus: order.status === "sendt" ? "accepted" : "draft",
+  status: order.status, sendStatus: order.status === "sendt" ? (order.bestillingsmetode === "webshop" ? "webshop-registered" : "accepted") : "draft",
   supplierConfirmationStatus: order.leverandoerBekraeftet ? "confirmed" : "pending",
+  orderMethod: order.bestillingsmetode || null,
+  paymentStatus: order.betaling?.oekonomistatus === "afventerDokumentation" ? "Afventer dokumentation" : order.betaling?.oekonomistatus || "Ikke registreret",
+  paymentDocumentRef: order.betaling?.dokumentId || null,
+  webshopOrder: Object.values(order.webshop?.registreringer || {}).sort((a, b) => Number(b.registreretMs || 0) - Number(a.registreretMs || 0))[0] || null,
   lines: Object.entries(order.linjer || {}).map(([id, line]) => ({ id, itemId: line.vareId, sku: line.varenummer, name: line.vare, categorySnapshot: line.varegruppe || "Ukategoriseret", quantity: line.antal, unit: line.enhed || "stk.", unitPriceOere: line.prisPrEnhedOere || 0, priceBasis: line.prisgrundlag || "Historisk pris" })),
   history: [],
 });

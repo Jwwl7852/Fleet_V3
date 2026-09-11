@@ -6779,12 +6779,20 @@ export const procureQrMaerkatHent = onCall({ region: REGION }, async (req) => {
 /* WEBSHOP-ADGANG — legitimation ligger krypteret uden for tenanttræet.
    Ciphertext må aldrig sendes til browseren eller skrives i auditloggen. */
 function krypterWebshopCredential(credential) {
-  try { return encryptWebshopCredential(credential, PROCURE_WEBSHOP_KEY.value()); }
+  const erLokalDemo = process.env.FUNCTIONS_EMULATOR === "true"
+    || /^demo-/.test(runtimeFirebaseConfig.projectId || process.env.GCLOUD_PROJECT || "");
+  const key = PROCURE_WEBSHOP_KEY.value()
+    || (erLokalDemo ? process.env.PROCURE_WEBSHOP_KEY_LOCAL : "");
+  try { return encryptWebshopCredential(credential, key); }
   catch { throw new HttpsError("failed-precondition", "Webshophemmeligheder er ikke konfigureret."); }
 }
 
 function dekrypterWebshopCredential(record) {
-  try { return decryptWebshopCredential(record, PROCURE_WEBSHOP_KEY.value()); }
+  const erLokalDemo = process.env.FUNCTIONS_EMULATOR === "true"
+    || /^demo-/.test(runtimeFirebaseConfig.projectId || process.env.GCLOUD_PROJECT || "");
+  const key = PROCURE_WEBSHOP_KEY.value()
+    || (erLokalDemo ? process.env.PROCURE_WEBSHOP_KEY_LOCAL : "");
+  try { return decryptWebshopCredential(record, key); }
   catch { throw new HttpsError("data-loss", "Webshopadgangen kunne ikke dekrypteres."); }
 }
 
