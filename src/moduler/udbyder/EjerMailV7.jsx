@@ -36,13 +36,14 @@ function Kildetekst({ traad, bruger }) {
 function NyMailDialog({ bruger, onLuk, onOprettet }) {
   const [formular, setFormular] = useState({ fra: "info@veyrosystems.com", til: "", emne: "", tekst: "", sagstype: "kundedialog", delingsstatus: "delt" });
   const [arbejder, setArbejder] = useState(false); const [fejl, setFejl] = useState("");
-  const dialogRef = useRef(null);
+  const dialogRef = useRef(null); const beskidtRef = useRef(false); const onLukRef = useRef(onLuk);
   const beskidt = Boolean(formular.til || formular.emne || formular.tekst);
+  beskidtRef.current = beskidt; onLukRef.current = onLuk;
   const luk = () => { if (!beskidt || window.confirm("Kassér den ugemte mailkladde?")) onLuk(); };
   useEffect(() => {
     dialogRef.current?.querySelector("input, select, textarea, button")?.focus();
     const tast = (event) => {
-      if (event.key === "Escape") { event.preventDefault(); luk(); return; }
+      if (event.key === "Escape") { event.preventDefault(); if (!beskidtRef.current || window.confirm("Kassér den ugemte mailkladde?")) onLukRef.current(); return; }
       if (event.key !== "Tab") return;
       const kontroller = [...(dialogRef.current?.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])") || [])];
       if (!kontroller.length) return;
@@ -51,7 +52,7 @@ function NyMailDialog({ bruger, onLuk, onOprettet }) {
       else if (!event.shiftKey && document.activeElement === sidste) { event.preventDefault(); foerste.focus(); }
     };
     document.addEventListener("keydown", tast); return () => document.removeEventListener("keydown", tast);
-  });
+  }, []);
   const saet = (felt) => (event) => setFormular((gammel) => ({ ...gammel, [felt]: event.target.value }));
   const gem = async () => {
     setArbejder(true); setFejl("");
