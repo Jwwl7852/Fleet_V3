@@ -251,6 +251,27 @@ async function hjulKontrol(selectors) {
   return resultat;
 }
 
+async function udvidScrollFixture() {
+  return evaluer(`(() => {
+    const liste=document.querySelector('.ejer-mail-raekker');
+    const listeKilde=liste?.querySelector('button');
+    while(listeKilde && liste.children.length<8){const kopi=listeKilde.cloneNode(true);kopi.removeAttribute('aria-current');kopi.classList.remove('aktiv');liste.appendChild(kopi);}
+    const ai=document.querySelector('.ejer-mail-ai');
+    const aiKilde=ai?.querySelector('section');
+    while(aiKilde && ai.querySelectorAll('section').length<8)ai.appendChild(aiKilde.cloneNode(true));
+    return {liste:liste?.children.length||0,ai:ai?.querySelectorAll('section').length||0};
+  })()`);
+}
+
+async function maalAssistentOverlap(tilstand) {
+  return evaluer(`(() => {
+    const find=(selector)=>{const el=document.querySelector(selector);if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,text:(el.textContent||'').trim()}};
+    const overlap=(a,b)=>Boolean(a&&b&&a.x<b.right&&a.right>b.x&&a.y<b.bottom&&a.bottom>b.y);
+    const maerke=find('.ejer-assistent-test');const titel=find('.ejer-assistentbody>strong');const tekst=find('.ejer-assistentbody>p');
+    return {tilstand:${JSON.stringify(tilstand)},viewport:{width:innerWidth,height:innerHeight},maerke,titel,tekst,overlapMaerkeTitel:overlap(maerke,titel),overlapMaerkeTekst:overlap(maerke,tekst),horizontalOverflow:document.documentElement.scrollWidth>innerWidth};
+  })()`);
+}
+
 try {
   await kald("Page.enable");
   await kald("Runtime.enable");
@@ -282,6 +303,24 @@ try {
 
   const filer = [];
   filer.push(await billede("01-overblik", "/main", 1440, 900));
+  const overblikKontrol = {
+    normal1440: await maalAssistentOverlap("1440×900 · 100 %"),
+  };
+  await evaluer(`(() => { document.body.style.zoom='1.25'; const tekst=document.querySelector('.ejer-assistentbody>p'); if(tekst)tekst.textContent='Lang syntetisk kontroltekst: Kunden ønsker en samlet løsning på tværs af køretøjer, brugere, lokationer og en trinvis indfasning med tydelige afklaringspunkter.'; return true; })()`);
+  await pause(200);
+  overblikKontrol.zoom125LangTekst = await maalAssistentOverlap(
+    "1440×900 · 125 % · lang syntetisk tekst",
+  );
+  filer.push(
+    await aktueltBillede("01b-overblik-125pct-lang-tekst", 1440, 900),
+  );
+  await evaluer("document.body.style.zoom=''; true");
+  await viewport(1920, 1080);
+  await gaaTil("/main");
+  overblikKontrol.normal1920 = await maalAssistentOverlap(
+    "1920×1080 · 100 %",
+  );
+  filer.push(await aktueltBillede("01c-overblik", 1920, 1080));
   filer.push(await billede("02-mail-liste", "/main/mail/indbakker", 1440, 900));
   filer.push(
     await billede(
@@ -529,6 +568,7 @@ try {
   );
   await viewport(1440, 900);
   await gaaTil("/main/mail/indbakker?sag=review-nordlys");
+  const scrollFixture1440 = await udvidScrollFixture();
   await pause(150);
   const scrollKontrol1440 = await hjulKontrol([
     ".ejer-mail-raekker",
@@ -538,6 +578,7 @@ try {
   ]);
   await viewport(1920, 1080);
   await gaaTil("/main/mail/indbakker?sag=review-nordlys");
+  const scrollFixture1920 = await udvidScrollFixture();
   await pause(150);
   const scrollKontrol1920 = await hjulKontrol([
     ".ejer-mail-raekker",
@@ -579,9 +620,10 @@ try {
   const interaktioner = {
     menu: { før: menuFoer, lukket: menuLukket, genåbnet: menuGenAabnet },
     desktopScroll: {
-      "1440x900": scrollKontrol1440,
-      "1920x1080": scrollKontrol1920,
+      "1440x900": { fixture: scrollFixture1440, maalinger: scrollKontrol1440 },
+      "1920x1080": { fixture: scrollFixture1920, maalinger: scrollKontrol1920 },
     },
+    overblikOverlap: overblikKontrol,
     mobilListe360: mobil360Kontrol,
     mobilKladde: draftKontrol,
     accepteretTilbud: laasekontrol,

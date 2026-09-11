@@ -53,8 +53,11 @@ test("V6 foretager sidste sagstjek efter jobreservation og før Microsoft Graph"
 
 test("V6 capture dokumenterer begge desktopstørrelser, hjulgrænser og kodecommit", () => {
   const kode = laes("scripts/capture-owner-review.mjs");
-  assert.match(kode, /"1440x900":\s*scrollKontrol1440/);
-  assert.match(kode, /"1920x1080":\s*scrollKontrol1920/);
+  assert.match(kode, /"1440x900"/);
+  assert.match(kode, /"1920x1080"/);
+  assert.match(kode, /maalinger:\s*scrollKontrol1440/);
+  assert.match(kode, /maalinger:\s*scrollKontrol1920/);
+  assert.match(kode, /udvidScrollFixture/);
   assert.match(kode, /Input\.dispatchMouseEvent/);
   assert.match(kode, /isolationOk/);
   assert.match(kode, /capture-manifest\.json/);
