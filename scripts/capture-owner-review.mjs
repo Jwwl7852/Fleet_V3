@@ -43,6 +43,9 @@ if (!browser)
   );
 
 mkdirSync(OUT, { recursive: true });
+rmSync(join(OUT, "1440x900-03-mail-faelles-kundekorrespondance.png"), {
+  force: true,
+});
 const profil = mkdtempSync(join(tmpdir(), "veyro-owner-review-"));
 const proces = spawn(
   browser,
@@ -321,11 +324,10 @@ try {
     "1920×1080 · 100 %",
   );
   filer.push(await aktueltBillede("01c-overblik", 1920, 1080));
-  filer.push(await billede("02-mail-liste", "/main/mail/indbakker", 1440, 900));
   filer.push(
     await billede(
-      "03-mail-faelles-kundekorrespondance",
-      "/main/mail/indbakker?sag=review-nordlys",
+      "02-mail-faelles-kundekorrespondance",
+      "/main/mail/indbakker",
       1440,
       900,
     ),
@@ -643,6 +645,32 @@ try {
         dataSource: "Syntetiske emulatorfixtures og lokale testadaptere",
         externalIntegrations: "Ikke tilsluttet",
         files: filer.map((fil) => fil.slice(resolve(".").length + 1)),
+        captures: [
+          { file: "1440x900-01-overblik.png", route: "/main", viewport: "1440x900", state: "Overblik uden overlap" },
+          { file: "1440x900-01b-overblik-125pct-lang-tekst.png", route: "/main", viewport: "1440x900", state: "125 % zoom og lang syntetisk tekst" },
+          { file: "1920x1080-01c-overblik.png", route: "/main", viewport: "1920x1080", state: "Overblik uden overlap" },
+          { file: "1440x900-02-mail-faelles-kundekorrespondance.png", route: "/main/mail/indbakker", viewport: "1440x900", state: "Fælles kundekorrespondance med valgt syntetisk sag" },
+          { file: "1440x900-04-support.png", route: "/main/support", viewport: "1440x900", state: "Supportvisning af samme syntetiske kundetråd" },
+          { file: "1440x900-05-opfoelgning-stoppet-ved-accept.png", route: "/main/mail/opfoelgning", viewport: "1440x900", state: "Fanen På pause; tilbud accepteret" },
+          { file: "1920x1080-06-rapporter-og-hitrate.png", route: "/main/rapporter", viewport: "1920x1080", state: "Driftsaftaler, hitrate, solgte moduler og målte tal" },
+          { file: "1440x900-07-kundekonto-brugere-enheder.png", route: "/main/kunder/flow-tenant?fane=forbrug", viewport: "1440x900", state: "Brugere og enheder" },
+          { file: "1440x900-08-kundekonto-obd.png", route: "/main/kunder/flow-tenant?fane=obd", viewport: "1440x900", state: "OBD-hardware og data" },
+          { file: "1920x1080-09-kundekonto-brugere-enheder.png", route: "/main/kunder/flow-tenant?fane=forbrug", viewport: "1920x1080", state: "Brugere og enheder" },
+          { file: "1920x1080-10-tilbud-accepteret-og-laast.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Accepteret v2; låst læsevisning" },
+          { file: "1920x1080-11-tilbud-ai-forslag-foer-indsaettelse.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; Tilbudstekst; lokalt AI-forslag før indsættelse" },
+          { file: "1920x1080-11a-tilbud-ai-foraeldet-efter-manuel-aendring.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; forældet AI-forslag blokeret" },
+          { file: "1920x1080-11b-pilot-med-vejledende-drift.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; Pilot med vejledende drift" },
+          { file: "1440x900-12-bilag-mobilkamera.png", route: "/main/oekonomi/bilag", viewport: "1440x900", state: "Bilag med mobilkamera-adgang; lokal testadapter" },
+          { file: "1440x900-13-leverandoerer.png", route: "/main/indstillinger/leverandoerer", viewport: "1440x900", state: "Leverandøroversigt" },
+          { file: "1440x900-13b-gem-bekraeftelsesdialog.png", route: "/main/indstillinger/leverandoerer", viewport: "1440x900", state: "Gemmedialog med konkret før → efter" },
+          { file: "1920x1080-14-integrationer.png", route: "/main/integrationer", viewport: "1920x1080", state: "Eksterne integrationer Ikke tilsluttet" },
+          { file: "360x800-15-mobil-360-mail-liste.png", route: "/main/mail/indbakker", viewport: "360x800", state: "Kompakt mailliste med mindst to hele rækker" },
+          { file: "360x800-16-mobil-360-mail-samtale.png", route: "/main/mail/indbakker?sag=review-nordlys", viewport: "360x800", state: "Fokuseret samtale" },
+          { file: "390x844-17-mobil-390-mail-samtale.png", route: "/main/mail/indbakker?sag=review-nordlys", viewport: "390x844", state: "Fokuseret samtale og kladde" },
+          { file: "899x900-18-breakpoint-kundekonto.png", route: "/main/kunder/flow-tenant?fane=obd", viewport: "899x900", state: "Kundekonto ved mobilbreakpoint" },
+          { file: "899x900-19-mobil-navigation-aaben.png", route: "/main/kunder/flow-tenant?fane=obd", viewport: "899x900", state: "Mobilnavigation åben før ESC/fokusretur" },
+          { file: "1440x900-20-pipeline-med-salg-sammenfoldet.png", route: "/main/salg/pipeline", viewport: "1440x900", state: "Salg sammenfoldet; Pipeline fortsat aktiv" },
+        ],
         evidence: [
           "browser-style-verification.json",
           "interaction-verification.json",
