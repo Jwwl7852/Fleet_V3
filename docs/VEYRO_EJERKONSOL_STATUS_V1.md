@@ -475,3 +475,34 @@ ingen klargjort Veyro-post er rapporteret som bogført.
 - Microsoft 365, OpenAI, Dinero, OCR og bilagsmail står fortsat som **Ikke
   tilsluttet**. Ingen push, merge, deployment, produktionsændring eller rigtig
   mailafsendelse er foretaget.
+
+## V6-afsluttende rettelser — 2026-09-11
+
+- Verificeret udgangspunkt var branch `codex/ejer-integrated-development` ved
+  `4c0108935337fda6ccde1d011916d1d27820a634`. Nyere V5-arbejde og de øvrige
+  worktrees er bevaret.
+- Overblikkets testadaptermærke overlapper ikke titel eller brødtekst ved
+  1440×900, 1920×1080 eller 125 % zoom med lang tekst. Ansvarlige vises med
+  profilnavn eller `Ikke tildelt`.
+- Tilbud er samlet i **Sammensæt løsning**, **Tilbudstekst** og **Dokument**.
+  Accepteret v2 er fortsat låst; en ny v3 arver sit grundlag uden at ændre v2
+  eller dens PDF.
+- Den lokale AI-testadapter laver kundevendt tekst, kræver eksplicit indsættelse
+  og blokerer et forældet forslag efter manuel tekstændring. Pilotdatoer,
+  vejledende drift og manuelle evalueringsdatoer er afstemt.
+- Rapporter viser accepterede modulkøb med deduplikering og pilot/drift-filter,
+  hitrate 104/(104+26)=80 % samt kendte målinger med datadækning og tidspunkt.
+- Mobilmail viser mindst to komplette rækker ved 360×800, bevarer kladde og
+  route ved tilbage-navigation, og desktopscroll er målt før/efter for liste,
+  samtale, AI-panel og dokument ved begge desktopstørrelser.
+- Gemmedialogen viser konkrete før → efter-værdier. Workerens sidste
+  serverkontrol ligger efter jobreservation og før Graph-transport; support er
+  særskilt, og et ukendt transportresultat genudsendes ikke blindt.
+- Målrettet V5/V6/designsuite består 26/26, målrettet ESLint og Vite-build
+  består. 24 unikke browseroptagelser og målefiler ligger i
+  `docs/screenshots/ejer-review-v6/`; den detaljerede acceptmatrix ligger i
+  `docs/VEYRO_EJERKONSOL_REVIEW_V6.md`.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail er fortsat **Ikke
+  tilsluttet**. Kun syntetiske emulatorfixtures er anvendt; ingen push, merge,
+  deployment, produktionsændring, bogføring eller virkelig mailafsendelse er
+  udført.

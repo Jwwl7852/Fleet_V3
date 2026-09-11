@@ -43,6 +43,7 @@ if (!browser)
   );
 
 mkdirSync(OUT, { recursive: true });
+rmSync(join(OUT, "1440x900-02-mail-liste.png"), { force: true });
 rmSync(join(OUT, "1440x900-03-mail-faelles-kundekorrespondance.png"), {
   force: true,
 });
