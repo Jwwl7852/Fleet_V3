@@ -403,9 +403,6 @@ try {
       "Boolean(document.querySelector('#tilbud-ai-instruks'))",
       "Tilbudstekstens AI-arbejdsområde blev ikke åbnet.",
     );
-    await evaluer(
-      `(() => { const el=document.querySelector('#tilbud-ai-instruks'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Gør teksten kortere og fremhæv pilotens afgrænsning.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
-    );
     await klikTekst("button", "Foreslå indledning");
     await ventPaa(
       "document.body.innerText.includes('AI-forslag · gennemgå før indsættelse')",
@@ -422,6 +419,30 @@ try {
         1080,
       ),
     );
+    await evaluer(
+      `(() => { const el=document.querySelector('#tilbud-ai-instruks'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Gør teksten kortere og fremhæv pilotens afgrænsning.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
+    );
+    await klikTekst("button", "Lav revideret forslag");
+    await ventPaa(
+      "document.querySelector('.ejer-ai-resultat p')?.innerText.includes('Her er et samlet forslag')",
+      "Det reviderede, kortere forslag blev ikke vist.",
+    );
+    filer.push(await aktueltBillede("11c-tilbud-ai-revideret-kortere", 1920, 1080));
+    await klikTekst("button", "Indsæt i tilbud");
+    await ventPaa("!document.querySelector('.ejer-ai-resultat')", "AI-forslaget blev ikke indsat.");
+    filer.push(await aktueltBillede("11d-tilbud-ai-indsat", 1920, 1080));
+    await klikTekst("button", "Gem kladde");
+    await ventPaa("!document.querySelector('.ejer-tilbudsredigering')", "Tilbudskladden blev ikke gemt.", 30000);
+    await klikTekst("button", "Redigér");
+    await ventPaa("Boolean(document.querySelector('.ejer-tilbudsredigering'))", "Den gemte v3-kladden kunne ikke genåbnes.");
+    await klikTekst(".ejer-tilbud-redigerfaner button", "Tilbudstekst");
+    await ventPaa("document.querySelector('#tilbud-indledning')?.value.includes('Her er et samlet forslag')", "Den indsatte tekst overlevede ikke genindlæsning.");
+    await viewport(1440, 900);
+    filer.push(await aktueltBillede("11e-tilbud-tekst-ai-gemt", 1440, 900));
+    await viewport(1920, 1080);
+    filer.push(await aktueltBillede("11f-tilbud-tekst-ai-gemt", 1920, 1080));
+    await klikTekst("button", "Foreslå indledning");
+    await ventPaa("Boolean(document.querySelector('.ejer-ai-resultat'))", "Nyt forslag til stale-kontrollen mangler.");
     await evaluer(
       `(() => { const el=document.querySelector('#tilbud-indledning'); if(!el)return false; const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Nyere manuelt skrevet kundetekst.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
     );
@@ -448,7 +469,7 @@ try {
       "Pilotfelterne blev ikke vist.",
     );
     await evaluer(
-      `(() => { const skriv=(id,v)=>{const el=document.querySelector(id);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,v);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}; skriv('#tilbud-pilot-start','2026-01-31'); skriv('#tilbud-pilot-maaneder','1'); scrollTo(0,0); return true; })()`,
+      `(() => { const skriv=(id,v)=>{const el=document.querySelector(id);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,v);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}; skriv('#tilbud-pilot-start','2026-10-01'); skriv('#tilbud-pilot-maaneder','3'); scrollTo(0,0); return true; })()`,
     );
     await pause(200);
     filer.push(
@@ -610,6 +631,38 @@ try {
     `({ path:location.pathname, sag:new URLSearchParams(location.search).get('sag'), tekst:document.querySelector('textarea[aria-label="Svarudkast"]')?.value || '', bevaret:document.querySelector('textarea[aria-label="Svarudkast"]')?.value === ${JSON.stringify(bevaretTekst)}, viewport:{width:innerWidth,height:innerHeight}, horizontalOverflow:document.documentElement.scrollWidth > innerWidth })`,
   );
 
+  await viewport(390, 844);
+  await gaaTil("/main/salg/tilbud");
+  await klikTekst("button", "Redigér");
+  await ventPaa("Boolean(document.querySelector('.ejer-tilbudsredigering'))", "Tilbudskladden kunne ikke åbnes på mobil.");
+  await klikTekst(".ejer-tilbud-redigerfaner button", "Tilbudstekst");
+  const mobilTilbudFoer = await evaluer("document.querySelector('#tilbud-indledning')?.value || ''");
+  await evaluer(`(() => { const el=document.querySelector('#tilbud-indledning'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,el.value+' · mobilkladde'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+  await klikTekst(".ejer-tilbud-mobilpaneler button", "Veyro-assistent");
+  await klikTekst(".ejer-tilbud-mobilpaneler button", "Tilbudstekst");
+  const mobilTilbudKontrol = await evaluer(`({ route:location.pathname, viewport:{width:innerWidth,height:innerHeight}, paneler:Array.from(document.querySelectorAll('.ejer-tilbud-mobilpaneler button')).map((el)=>({tekst:el.textContent,aktiv:el.classList.contains('aktiv')})), kladdeBevaret:document.querySelector('#tilbud-indledning')?.value === ${JSON.stringify(`${mobilTilbudFoer} · mobilkladde`)}, horizontalOverflow:document.documentElement.scrollWidth > innerWidth })`);
+  filer.push(await aktueltBillede("21-mobil-tilbudstekst-med-bevaret-kladde", 390, 844));
+  await evaluer(`(() => { const el=document.querySelector('#tilbud-indledning'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,${JSON.stringify(mobilTilbudFoer)}); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
+
+  async function maalKontrol(sti, selector, fokus = false) {
+    await viewport(1440, 900);
+    await gaaTil(sti);
+    if (fokus) await evaluer(`document.querySelector(${JSON.stringify(selector)})?.focus(); true`);
+    return evaluer(`(() => { const selector=${JSON.stringify(selector)}; const el=document.querySelector(selector); if(!el)return{route:location.pathname+location.search,selector,findes:false}; const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return{route:location.pathname+location.search,selector,findes:true,synlig:r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden',dimensioner:{width:r.width,height:r.height,x:r.x,y:r.y},font:{family:s.fontFamily,size:s.fontSize,lineHeight:s.lineHeight},farver:{tekst:s.color,baggrund:s.backgroundColor,kant:s.borderColor},borderRadius:s.borderRadius,fokus:{active:document.activeElement===el,outline:s.outline,outlineOffset:s.outlineOffset}}; })()`);
+  }
+  const synligeKontroller = [
+    await maalKontrol("/main/oekonomi/bilag", ".ejer-bilag-soeg input", true),
+    await maalKontrol("/main/kunder/flow-tenant?fane=obd", ".ejer-konto-formgrid input[type='number']", true),
+  ];
+  await viewport(1440, 900);
+  await gaaTil("/main/salg/tilbud");
+  await klikTekst("button", "Redigér");
+  await ventPaa("Boolean(document.querySelector('.ejer-tilbudsredigering'))", "Tilbudskladden kunne ikke åbnes til kontrolmåling.");
+  await klikTekst(".ejer-tilbud-redigerfaner button", "Tilbudstekst");
+  await evaluer("document.querySelector('#tilbud-indledning')?.focus(); true");
+  synligeKontroller.push(await evaluer(`(() => { const selector='#tilbud-indledning'; const el=document.querySelector(selector); const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return{route:location.pathname+location.search,selector,findes:Boolean(el),synlig:r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden',dimensioner:{width:r.width,height:r.height,x:r.x,y:r.y},font:{family:s.fontFamily,size:s.fontSize,lineHeight:s.lineHeight},farver:{tekst:s.color,baggrund:s.backgroundColor,kant:s.borderColor},borderRadius:s.borderRadius,fokus:{active:document.activeElement===el,outline:s.outline,outlineOffset:s.outlineOffset}}; })()`));
+  writeFileSync(join(OUT, "visible-control-measurements.json"), `${JSON.stringify({ codeCommit:CODE_COMMIT, maalinger:synligeKontroller }, null, 2)}\n`);
+
   await viewport(1920, 1080);
   await gaaTil("/main/mail/indbakker?sag=review-nordlys");
   const styles = await evaluer(`(() => {
@@ -631,6 +684,7 @@ try {
     mobilKladde: draftKontrol,
     accepteretTilbud: laasekontrol,
     aiStale: aiStaleKontrol,
+    mobilTilbud: mobilTilbudKontrol,
   };
   writeFileSync(
     join(OUT, "interaction-verification.json"),
@@ -661,6 +715,10 @@ try {
           { file: "1920x1080-11-tilbud-ai-forslag-foer-indsaettelse.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; Tilbudstekst; lokalt AI-forslag før indsættelse" },
           { file: "1920x1080-11a-tilbud-ai-foraeldet-efter-manuel-aendring.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; forældet AI-forslag blokeret" },
           { file: "1920x1080-11b-pilot-med-vejledende-drift.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; Pilot med vejledende drift" },
+          { file: "1920x1080-11c-tilbud-ai-oprindeligt-forslag.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; første lokale AI-forslag før sælgerinstruks" },
+          { file: "1920x1080-11d-tilbud-ai-kortere-revideret.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Kladde v3; reelt kortere forslag efter sælgerinstruks" },
+          { file: "1440x900-11e-tilbud-tekst-og-ai-60-40.png", route: "/main/salg/tilbud", viewport: "1440x900", state: "Tilbudstekst og Veyro-assistent side om side i 60/40-layout" },
+          { file: "1920x1080-11f-tilbud-tekst-og-ai-60-40.png", route: "/main/salg/tilbud", viewport: "1920x1080", state: "Tilbudstekst og Veyro-assistent side om side i 60/40-layout" },
           { file: "1440x900-12-bilag-mobilkamera.png", route: "/main/oekonomi/bilag", viewport: "1440x900", state: "Bilag med mobilkamera-adgang; lokal testadapter" },
           { file: "1440x900-13-leverandoerer.png", route: "/main/indstillinger/leverandoerer", viewport: "1440x900", state: "Leverandøroversigt" },
           { file: "1440x900-13b-gem-bekraeftelsesdialog.png", route: "/main/indstillinger/leverandoerer", viewport: "1440x900", state: "Gemmedialog med konkret før → efter" },
@@ -671,10 +729,12 @@ try {
           { file: "899x900-18-breakpoint-kundekonto.png", route: "/main/kunder/flow-tenant?fane=obd", viewport: "899x900", state: "Kundekonto ved mobilbreakpoint" },
           { file: "899x900-19-mobil-navigation-aaben.png", route: "/main/kunder/flow-tenant?fane=obd", viewport: "899x900", state: "Mobilnavigation åben før ESC/fokusretur" },
           { file: "1440x900-20-pipeline-med-salg-sammenfoldet.png", route: "/main/salg/pipeline", viewport: "1440x900", state: "Salg sammenfoldet; Pipeline fortsat aktiv" },
+          { file: "390x844-21-mobil-tilbudstekst-med-bevaret-kladde.png", route: "/main/salg/tilbud", viewport: "390x844", state: "Mobile separate paneler; kladdetekst bevaret ved skift" },
         ],
         evidence: [
           "browser-style-verification.json",
           "interaction-verification.json",
+          "visible-control-measurements.json",
         ],
       },
       null,

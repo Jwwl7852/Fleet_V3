@@ -179,6 +179,7 @@ export function validerTilbud(input = {}) {
   if (introMaaneder === null) fejl.introMaaneder = "Introduktionsperioden er ugyldig.";
   if (bindingMaaneder === null) fejl.bindingMaaneder = "Bindingsperioden er ugyldig.";
   if (tilbudstype !== "almindelig" && !pilotStart) fejl.pilotStart = "Pilotens startdato er ugyldig.";
+  if (tilbudstype !== "almindelig" && pilotStart && udstedelsesdato && pilotStart < udstedelsesdato) fejl.pilotStart = "Pilotstart må ikke ligge før tilbudsdatoen.";
   if (tilbudstype !== "almindelig" && pilotMaaneder === null) fejl.pilotMaaneder = "Pilotens varighed skal være 1–24 kalendermåneder.";
   if (tilbudstype !== "almindelig" && !pilotEvaluering) fejl.pilotEvaluering = "Vælg en evalueringsdato for piloten.";
   if (pilotEvaluering && pilotStart && (pilotEvaluering < pilotStart || pilotEvaluering > pilotSlut)) fejl.pilotEvaluering = "Evalueringen skal ligge i pilotperioden.";

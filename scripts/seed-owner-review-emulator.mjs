@@ -97,6 +97,8 @@ try {
   const mulighedId = tilbud.mulighedId;
   const nu = Date.now();
   const iMorgen = nu + 24 * 60 * 60 * 1000;
+  const ratebladId = tilbud.versioner?.[tilbud.aktuelVersion]?.snapshot?.prislisteId;
+  if (ratebladId) await db.ref(`udbyder/prisliste/${ratebladId}`).update({ navn: "Syntetisk Veyro-rateblad", version: "Version 2 · oktober 2026", fixture: true });
 
   const stamRef = db.ref(`udbyder/crm/virksomheder/${virksomhedId}/stamdata`);
   const stam = (await stamRef.once("value")).val() || {};

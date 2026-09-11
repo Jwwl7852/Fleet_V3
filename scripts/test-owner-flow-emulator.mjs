@@ -189,6 +189,9 @@ try {
   ];
   const gemtV2 = await kald("tilbudgem", {
     ...faeldes, id: oprettet.id, prislisteId: rateblad2.id,
+    indledning: "Tak for dialogen om en samlet Veyro-løsning til Flowtest ApS.",
+    behovstekst: "Flowtest ApS ønsker ét samlet overblik over 60 køretøjer, 10 medarbejderbrugere og 60 chaufførbrugere.",
+    loesningsbeskrivelse: "Veyro Fleet samler flådestyring, brugeradgang og OBD-grundlag i en dokumenteret opstartsplan.",
     forventetRevision: nyKladde.revision, linjer: [v2Linje, fleetlinjeV2, ...maengdelinjerV2],
   }, ejerToken);
   const v2 = await kald("tilbududsted", {

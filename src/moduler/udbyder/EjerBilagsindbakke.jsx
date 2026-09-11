@@ -59,7 +59,7 @@ export default function EjerBilagsindbakke() {
         <div><Pille tone={bilagIntegration.ocr?.status === "aktiv" ? "ok" : "warn"}>{bilagIntegration.ocr?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>OCR-forslag</span></div>
       </div>
     </Kort>
-    <Kort titel="Bilagsindbakke" handling={<input aria-label="Søg i bilag" placeholder="Søg leverandør, nummer…" value={soeg} onChange={(e) => setSoeg(e.target.value)} />}>
+    <Kort titel="Bilagsindbakke" handling={<label className="ejer-bilag-soeg"><span className="ejer-visuelt-skjult">Søg i bilag</span><input type="search" aria-label="Søg i bilag" placeholder="Søg leverandør, nummer…" value={soeg} onChange={(e) => setSoeg(e.target.value)} /></label>}>
       <Tabel noegle={(r) => r.id} paaRaekke={(r) => setValgtId(r.id)} erValgt={(r) => r.id === valgt?.id} raekker={poster} tom="Der er ingen modtagne bilag."
         kolonner={[
           { key: "dato", label: "Modtaget", render: (r) => new Date(r.modtagetMs).toLocaleDateString("da-DK") },

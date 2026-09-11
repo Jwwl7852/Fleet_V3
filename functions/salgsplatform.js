@@ -91,9 +91,9 @@ export function vurderForfaldenOpfoelgning(opfoelgning, traad, nu = Date.now()) 
 }
 
 /** Sidste, rene kontrol efter at et mailjob er reserveret og umiddelbart før transport. */
-export function vurderMailjobFoerTransport({ job, traad, opfoelgning, svarKladde, tilbudStatus } = {}) {
+export function vurderMailjobFoerTransport({ job, traad, opfoelgning, svarKladde, tilbudStatus, tilbud } = {}) {
   if (job?.art === "opfoelgning") {
-    if (tilbudStatus === "accepteret") return { tilladt: false, aarsag: "tilbud_accepteret" };
+    if (tilbudStatus === "accepteret" || tilbud?.accept?.version) return { tilladt: false, aarsag: "tilbud_accepteret" };
     if (tilbudStatus === "afvist") return { tilladt: false, aarsag: "tilbud_afvist" };
     if (!godkendelseErAktuel(opfoelgning, traad)) return { tilladt: false, aarsag: "godkendelse_forældet" };
   }

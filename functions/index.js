@@ -65,6 +65,7 @@ import {
 import {
   SALGS_AI_INSTRUKTION, byggOpenAiAnmodning, kaldOpenAi,
 } from "./openai-salgsassistent.js";
+import { koerMailjobWorker, MailjobWorkerFejl } from "./mailjob-worker.js";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -11251,6 +11252,34 @@ async function afsendMailjob({ jobId, forventetRevision, ejerUid }) {
   }
   if (!tekst(integration.entraTenantId, 200) || !tekst(integration.clientId, 200) || !tekst(integration.mailboxId, 500) || !M365_CLIENT_SECRET.value()) {
     throw new HttpsError("failed-precondition", "Microsoft 365 mangler verificeret mailbox-id, Entra-konfiguration eller serversecret.");
+  }
+  // V6.1: den samme arbejdskerne bruges i produktion og i den isolerede
+  // emulator-integrationstest. Testtransport og pause-hook er dependencies i
+  // modulet og kan ikke aktiveres gennem en offentlig callable.
+  if (typeof koerMailjobWorker === "function") {
+    try {
+      return await koerMailjobWorker({
+        db,
+        jobId,
+        forventetRevision,
+        ejerUid,
+        transport: async ({ job }) => {
+          const token = await hentGraphToken({ tenantId: integration.entraTenantId, clientId: integration.clientId, clientSecret: M365_CLIENT_SECRET.value() });
+          let vedhaeftning = null;
+          const vedh = job.vedhaeftninger?.[0];
+          if (vedh?.storagePath) {
+            const [bytes] = await getStorage().bucket().file(vedh.storagePath).download();
+            if (vedh.sha256 && sha256(bytes) !== vedh.sha256) throw new Error("Vedhæftningens hash svarer ikke til den godkendte tilbudsversion.");
+            vedhaeftning = { navn: vedh.navn, mime: vedh.mime, bytes };
+          }
+          return opretOgSendKladde({ token, mailboxId: integration.mailboxId, mail: job, vedhaeftning });
+        },
+        audit: () => skrivEjerAudit({ uid: ejerUid, handling: "salg.mail.graph.accepteret", objekt: "mailjob", objektId: jobId }),
+      });
+    } catch (aarsag) {
+      if (aarsag instanceof MailjobWorkerFejl) throw new HttpsError(aarsag.kode, aarsag.message);
+      throw aarsag;
+    }
   }
   let konflikt = false;
   const start = verificeretTransaktionsstart(foer);
