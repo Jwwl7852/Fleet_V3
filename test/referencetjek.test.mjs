@@ -88,6 +88,21 @@ const UDEN_TJEK = {
     + "invalid-argument hvis det ikke findes, før noget skrives. Skive 3D.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/forbrugsvareId":
     "samme lukkede vej — `ordreskriv` kender varen.",
+  "indkoebsordrer/$ordreId/modtagelser/$modtagelseId/linjer/$linjeId/ordrelinjeId":
+    "`indkoebsordrer` er lukket; procureModtagelseRegistrer validerer linjen mod "
+    + "den tenant-afgrænsede ordre og skriver modtagelsen i en transaktion.",
+  "indkoebsordrer/$ordreId/modtagelser/$modtagelseId/dokumenter/$dokumentId/dokumentId":
+    "lig $dokumentId, ikke en fremmed reference. Uploadbekræftelsen bygger "
+    + "posten fra den verificerede Storage-fil under samme tenant, ordre og modtagelse.",
+  "indkoebsordrer/$ordreId/sendtMail/sendRequestId":
+    "idempotensnøglen peger på samme ordres lukkede mail-record; ordreMailSend "
+    + "reserverer den med transaction før transport og arkiverer den efter accept.",
+  "fakturaer/$fakturaId/kreditererFakturaId":
+    "fakturaer er lukket for klientskrivning; procureFakturaImport slår den oprindelige "
+    + "faktura op og kræver samme tenant, ordre, leverandør og fakturatype.",
+  "fakturaer/$fakturaId/linjer/$linjeId/ordrelinjeId":
+    "procureFakturaImport bygger linjen fra den tenant-afgrænsede ordres egne linjer "
+    + "og afviser mængder over den godkendte modtagelse.",
   "optaellinger/$optaellingId/bevaegelseId":
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
@@ -141,6 +156,15 @@ const UDEN_TJEK = {
     "SAMME FELT SOM ovenfor, samme grund — et opakt id UDBYDEREN tildeler en "
     + "accepteret ordremail (functions/mail/), ikke en reference til en post "
     + "i denne database. Skive 4D.",
+  "indkoebsordrer/$ordreId/sendtMail/providerId":
+    "samme opake transportudbyder-id som mail-recorden; det findes kun hos "
+    + "mailudbyderen og kan derfor ikke slås op i RTDB.",
+  "fakturaer/$fakturaId/importRequestId":
+    "en klientgenereret idempotensnøgle for importkaldet, ikke en reference til en "
+    + "anden post; backend bruger den som stabil faktura-id.",
+  "fakturaer/$fakturaId/linjer/$linjeId/vareId":
+    "et historisk varesnapshot må overleve sletning eller omgruppering i kataloget; "
+    + "backend kopierer id'et fra ordrelinjen, men kræver ikke fortsat katalogeksistens.",
 
   /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
   "sager/$sagId/objektId":

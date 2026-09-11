@@ -35,6 +35,8 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
    Tilføjer du en fil, så følg dens imports hele vejen ned. */
 export const DELTE_FILER = [
+  "procure-v2/procure-pdf.js",
+  "procure-v2/procure-backend-domain.js",
   /* ⚠ procure.js ER DELT fordi behovskriv og skærmens formular kalder den
      SAMME valideBehov(). Serveren afviser med den sætning brugeren allerede
      har set — to formuleringer af én spærring er to forklaringer på én ting. */
@@ -247,6 +249,7 @@ export function kopier() {
   const gjort = [];
   for (const navn of DELTE_FILER) {
     const kilde = readFileSync(kildeSti(navn), "utf8");
+    mkdirSync(dirname(kopiSti(navn)), { recursive: true });
     writeFileSync(kopiSti(navn), advarsel(navn) + kilde, "utf8");
     gjort.push(navn);
   }

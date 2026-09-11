@@ -12,11 +12,11 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.match(klient, /permStrengFraClaims/);
   assert.match(functions, /\.\/delt\/permissions\.js/);
   assert.equal(rules.split("auth.token.perms.matches").length - 1, 0);
-  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 82);
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 105);
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 164);
+  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 83);
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 106);
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 166);
   assert.ok(Buffer.byteLength(rules, "utf8") < 450_000);
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 210);
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 212);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);

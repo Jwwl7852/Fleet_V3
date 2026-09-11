@@ -1,0 +1,289 @@
+/* Reelt handler-flow mod isolerede RTDB/Storage-emulatorer. Callables køres
+ * med syntetiske auth-claims. Mailgun-grænsen erstattes af en kontrolleret
+ * multipart-inspektion; ingen ekstern mail sendes. */
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { deleteApp, getApps } from "firebase-admin/app";
+import { getDatabase } from "firebase-admin/database";
+import { getStorage } from "firebase-admin/storage";
+
+const projectId = "demo-fleetcontrol-rules-test";
+process.env.GCLOUD_PROJECT = projectId;
+process.env.FIREBASE_DATABASE_EMULATOR_HOST ||= "127.0.0.1:9200";
+process.env.FIREBASE_STORAGE_EMULATOR_HOST ||= "127.0.0.1:9399";
+process.env.FIREBASE_CONFIG = JSON.stringify({
+  projectId,
+  databaseURL: `https://${projectId}-default-rtdb.firebaseio.com`,
+  storageBucket: `${projectId}.appspot.com`,
+});
+process.env.MAILGUN_API_KEY = "syntetisk-noegle";
+process.env.MAILGUN_DOMAIN = "example.invalid";
+process.env.MAILGUN_AFSENDER = "Veyro test <no-reply@example.invalid>";
+
+const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const mailPayloads = [];
+let mailMode = "accept";
+globalThis.fetch = async (url, options = {}) => {
+  assert.match(String(url), /^https:\/\/api\.eu\.mailgun\.net\/v3\/example\.invalid\/messages$/);
+  if (mailMode === "unknown") throw new Error("syntetisk timeout efter transportens accept");
+  const payload = { attachments: [] };
+  for (const [name, value] of options.body.entries()) {
+    if (name === "attachment") payload.attachments.push({
+      filename: value.name,
+      contentType: value.type,
+      bytes: Buffer.from(await value.arrayBuffer()),
+    });
+    else payload[name] = String(value);
+  }
+  mailPayloads.push(payload);
+  return new Response(JSON.stringify({ id: "<syntetisk-accept@example.invalid>" }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+};
+
+const functions = await import("../index.js");
+const { createOrderPdfBytes, ordrePdfStoragePath } = await import("../delt/procure-v2/procure-pdf.js");
+const { permStrengFraRolle } = await import("../delt/permissions.js");
+const db = getDatabase();
+const bucket = getStorage().bucket();
+const tenantA = "procure-callable-a";
+const tenantB = "procure-callable-b";
+const orderId = "ordre-8880";
+const uid = "procure-bestiller";
+const auth = (tenant = tenantA, user = uid) => ({
+  uid: user,
+  token: {
+    tenant,
+    rolle: "admin",
+    perms: permStrengFraRolle("admin"),
+  },
+});
+const run = (handler, data, login = auth()) => handler.run({ auth: login, data });
+const order = (id = orderId) => ({
+  id,
+  nummer: id === orderId ? "BST-2026-00888" : "BST-2026-00889",
+  leverandoerId: "nordisk",
+  status: "godkendt",
+  revision: 4,
+  godkendtRevision: 4,
+  leveringssted: "Hovedlager",
+  oensketDato: "2026-09-15",
+  oprettetAf: uid,
+  linjer: {
+    tape: { vare: "Pakketape", antal: 120, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" },
+    film: { vare: "Strækfilm", antal: 80, enhed: "ruller", prisPrEnhedOere: 7500, forbrugsvareId: "film", varegruppe: "Emballage" },
+  },
+});
+const supplier = {
+  navn: "Syntetisk Leverandør A/S",
+  ordreEmail: "ordre@example.invalid",
+  kontaktEmail: "kontakt@example.invalid",
+  sprog: "da",
+};
+const company = { navn: "Nordisk Drift", fakturaModtagelse: "faktura@example.invalid" };
+
+await db.ref().set(null);
+await db.ref(`tenants/${tenantA}`).set({
+  _findes: true,
+  abonnement: { status: "aktiv" },
+  moduler: { indkoeb: true },
+  virksomhed: company,
+  leverandoerer: { nordisk: supplier },
+  indkoebsordrer: { [orderId]: order(), "ordre-unknown": order("ordre-unknown") },
+});
+await db.ref(`tenants/${tenantB}`).set({
+  _findes: true,
+  abonnement: { status: "aktiv" },
+  moduler: { indkoeb: true },
+});
+
+/* Mail: handleren renderer, arkiverer og transporterer samme bytes. */
+const mailResult = await run(functions.ordreMailSend, {
+  ordreId: orderId,
+  sendRequestId: "mail-8880",
+  cc: "indkoeb@example.invalid",
+  emne: "Bestilling BST-2026-00888",
+  ledsagetekst: "Kontrolleret integrationsprøve.",
+});
+assert.equal(mailResult.mailStatus, "accepteret");
+assert.equal(mailPayloads.length, 1);
+assert.equal(mailPayloads[0].attachments.length, 1);
+assert.equal(mailPayloads[0].attachments[0].contentType, "application/pdf");
+const attachmentBytes = mailPayloads[0].attachments[0].bytes;
+const archivedPath = ordrePdfStoragePath(tenantA, orderId, 4);
+const [archivedBytes] = await bucket.file(archivedPath).download();
+const sentRecord = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/sendtMail`).get()).val();
+const expectedBytes = Buffer.from(createOrderPdfBytes(order(), supplier, company));
+assert.deepEqual(attachmentBytes, archivedBytes);
+assert.deepEqual(attachmentBytes, expectedBytes);
+assert.equal(hash(attachmentBytes), mailResult.pdfSha256);
+assert.equal(hash(archivedBytes), sentRecord.pdfSha256);
+assert.equal(sentRecord.ordreRevision, 4);
+assert.equal(sentRecord.til, "ordre@example.invalid");
+assert.equal(sentRecord.afsender, process.env.MAILGUN_AFSENDER);
+assert.equal(sentRecord.mailStatus, "accepteret");
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/status`).get()).val(), "sendt");
+
+const replay = await run(functions.ordreMailSend, { ordreId: orderId, sendRequestId: "mail-8880" });
+assert.equal(replay.allerede, true);
+assert.equal(mailPayloads.length, 1, "gentagelse må ikke kontakte transporten igen");
+
+/* Timeout efter mulig accept gemmes som ukendt, uden statusændring/retry. */
+mailMode = "unknown";
+await assert.rejects(
+  run(functions.ordreMailSend, { ordreId: "ordre-unknown", sendRequestId: "mail-unknown" }),
+  (error) => error?.code === "aborted",
+);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/ordre-unknown/status`).get()).val(), "godkendt");
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/ordre-unknown/mail/mail-unknown/mailStatus`).get()).val(), "ukendt");
+assert.equal((await run(functions.ordreMailSend, {
+  ordreId: "ordre-unknown", sendRequestId: "mail-unknown",
+})).allerede, true);
+mailMode = "accept";
+
+/* En faktisk Storage-fil valideres før den vedvarende modtagelse oprettes. */
+const receiptId = "receipt-1";
+const documentId = "delivery-note-1";
+const noteBytes = Buffer.from("%PDF-1.4\n% syntetisk følgeseddel\n%%EOF\n");
+const notePath = `tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${receiptId}/dokumenter/${documentId}`;
+await bucket.file(notePath).save(noteBytes, { resumable: false, metadata: { contentType: "application/pdf" } });
+await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${receiptId}/dokumenter/${documentId}`).set({
+  dokumentId: documentId,
+  originaltFilnavn: "FS-4482.pdf",
+  valideretMime: "application/pdf",
+  stoerrelse: noteBytes.length,
+  storagePath: notePath,
+  uploader: uid,
+  oprettetTid: Date.now(),
+  status: "karantaene",
+});
+const confirm = await run(functions.procureModtagelseUploadBekraeft, {
+  ordreId: orderId, modtagelseId: receiptId, dokumentId: documentId,
+});
+assert.equal(confirm.status, "aktiv");
+assert.equal(confirm.sha256, hash(noteBytes));
+
+const receiptInput = {
+  ordreId: orderId,
+  modtagelseId: receiptId,
+  ordreRevision: 4,
+  receivedDate: "2026-09-15",
+  receivedBy: "Lagerbruger",
+  deliveryNote: "FS-4482",
+  lines: [
+    { orderLineId: "tape", deliveredQuantity: 72, damagedQuantity: 0, rejectedQuantity: 0 },
+    { orderLineId: "film", deliveredQuantity: 82, damagedQuantity: 1, rejectedQuantity: 1 },
+  ],
+};
+const beforeReceipt = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}`).get()).val();
+assert.equal(beforeReceipt.status, "sendt");
+assert.equal(beforeReceipt.revision, 4);
+assert.deepEqual(
+  Object.values(beforeReceipt.modtagelser[receiptId].dokumenter).map((document) => document.status),
+  ["aktiv"],
+);
+const receipt = await run(functions.procureModtagelseRegistrer, receiptInput);
+assert.equal(receipt.ordreStatus, "sendt");
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/resterendeVaerdiOere`).get()).val(), 115200);
+const persisted = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${receiptId}`).get()).val();
+assert.equal(persisted.linjer.film.godkendtAntal, 80);
+assert.equal(persisted.dokumenter[documentId].status, "aktiv");
+
+/* En ny autoriseret session genåbner posten; en anden tenant kan ikke. */
+const reopened = await run(functions.procureModtagelseRegistrer, receiptInput, auth(tenantA, "anden-lagerbruger"));
+assert.equal(reopened.allerede, true);
+await assert.rejects(
+  run(functions.procureModtagelseRegistrer, receiptInput, auth(tenantB, "fremmed-bruger")),
+  (error) => error?.code === "not-found",
+);
+
+/* Forkert magic bytes afvises, slettes og bliver aldrig en aktiv fil. */
+const badReceiptId = "receipt-bad";
+const badDocumentId = "bad-file";
+const badPath = `tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${badReceiptId}/dokumenter/${badDocumentId}`;
+await bucket.file(badPath).save(Buffer.from("MZ-malware"), { resumable: false, metadata: { contentType: "application/pdf" } });
+await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${badReceiptId}/dokumenter/${badDocumentId}`).set({
+  dokumentId: badDocumentId,
+  originaltFilnavn: "forkert.pdf",
+  valideretMime: "application/pdf",
+  stoerrelse: 10,
+  storagePath: badPath,
+  uploader: uid,
+  oprettetTid: Date.now(),
+  status: "karantaene",
+});
+await assert.rejects(
+  run(functions.procureModtagelseUploadBekraeft, {
+    ordreId: orderId, modtagelseId: badReceiptId, dokumentId: badDocumentId,
+  }),
+  (error) => error?.code === "failed-precondition",
+);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${badReceiptId}/dokumenter/${badDocumentId}/status`).get()).val(), "afvist");
+assert.equal((await bucket.file(badPath).exists())[0], false);
+
+/* Autoriseret Fakturacenter-import: 7.872 kr., 144 kr. afvigelse/kredit. */
+const importInvoice = (data) => run(functions.procureFakturaImport, {
+  ordreId: orderId, ordreRevision: 4, ...data,
+});
+const firstInvoice = await importInvoice({
+  requestId: "invoice-1", invoiceNumber: "ND-8841", invoiceDate: "2026-09-16", type: "invoice",
+  lines: [
+    { orderLineId: "tape", quantity: 72, unitPriceOere: 2600 },
+    { orderLineId: "film", quantity: 80, unitPriceOere: 7500 },
+  ],
+});
+assert.equal(firstInvoice.beloebOere, 787200);
+assert.equal(firstInvoice.prisafvigelseOere, 14400);
+assert.equal((await importInvoice({
+  requestId: "invoice-1", invoiceNumber: "ND-8841", invoiceDate: "2026-09-16", type: "invoice",
+  lines: [
+    { orderLineId: "tape", quantity: 72, unitPriceOere: 2600 },
+    { orderLineId: "film", quantity: 80, unitPriceOere: 7500 },
+  ],
+})).allerede, true);
+await run(functions.fakturastatus, { fakturaId: firstInvoice.fakturaId, til: "godkendt" });
+
+const credit = await importInvoice({
+  requestId: "credit-1", invoiceNumber: "KN-8841", invoiceDate: "2026-09-17", type: "credit-note",
+  creditsInvoiceId: firstInvoice.fakturaId,
+  lines: [{ orderLineId: "tape", quantity: 72, unitPriceOere: 200 }],
+});
+assert.equal(credit.beloebOere, 14400);
+await run(functions.fakturastatus, { fakturaId: credit.fakturaId, til: "godkendt" });
+assert.equal((await db.ref(`tenants/${tenantA}/fakturaer/${firstInvoice.fakturaId}/afvigelsesstatus`).get()).val(), "korrigeret");
+
+await run(functions.procureModtagelseRegistrer, {
+  ordreId: orderId, modtagelseId: "receipt-2", ordreRevision: 4,
+  receivedDate: "2026-09-20", receivedBy: "Lagerbruger", deliveryNote: "FS-4499",
+  lines: [{ orderLineId: "tape", deliveredQuantity: 48, damagedQuantity: 0, rejectedQuantity: 0 }],
+});
+const finalInvoice = await importInvoice({
+  requestId: "invoice-2", invoiceNumber: "ND-8892", invoiceDate: "2026-09-21", type: "invoice",
+  lines: [{ orderLineId: "tape", quantity: 48, unitPriceOere: 2400 }],
+});
+assert.equal(finalInvoice.beloebOere, 115200);
+await run(functions.fakturastatus, { fakturaId: finalInvoice.fakturaId, til: "godkendt" });
+const invoices = (await db.ref(`tenants/${tenantA}/fakturaer`).get()).val();
+const netOere = Object.values(invoices).reduce((sum, invoice) =>
+  invoice.status !== "godkendt" ? sum
+    : sum + (invoice.fakturatype === "credit-note" ? -1 : 1) * Number(invoice.beloebOere || 0), 0);
+assert.equal(netOere, 888000);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/status`).get()).val(), "modtaget");
+
+console.log(JSON.stringify({
+  ok: true,
+  handlerFlow: "ordreMailSend → procureModtagelseUploadBekraeft → procureModtagelseRegistrer → procureFakturaImport → fakturastatus",
+  ordreOere: 888000,
+  modtagetFoersteGangOere: 772800,
+  restOere: 115200,
+  delFakturaOere: 787200,
+  prisafvigelseOere: 14400,
+  kreditnotaOere: 14400,
+  nettoOere: netOere,
+  pdfSha256: mailResult.pdfSha256,
+  mailTransportCalls: mailPayloads.length,
+  tenantIsolation: "verified",
+  receiptReopened: reopened.allerede,
+}));
+await Promise.all(getApps().map((app) => deleteApp(app)));

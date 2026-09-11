@@ -22,7 +22,7 @@
 const MAILGUN_API_BASE = "https://api.eu.mailgun.net/v3";
 
 export const mailgunAdapter = {
-  async send({ til, emne, tekst }) {
+  async send({ til, cc, emne, tekst, attachments = [] }) {
     const apiKey = process.env.MAILGUN_API_KEY;
     const domaene = process.env.MAILGUN_DOMAIN;
     if (!apiKey || !domaene) {
@@ -30,15 +30,23 @@ export const mailgunAdapter = {
     }
     const afsender = process.env.MAILGUN_AFSENDER || `FleetControl <postmaster@${domaene}>`;
 
-    const form = new URLSearchParams({ from: afsender, to: til, subject: emne, text: tekst });
-    const res = await fetch(`${MAILGUN_API_BASE}/${domaene}/messages`, {
-      method: "POST",
-      headers: {
-        "Authorization": "Basic " + Buffer.from(`api:${apiKey}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form,
-    });
+    const form = new FormData();
+    form.append("from", afsender); form.append("to", til); form.append("subject", emne); form.append("text", tekst);
+    if (cc) form.append("cc", cc);
+    for (const attachment of attachments) {
+      form.append("attachment", new Blob([attachment.bytes], { type: attachment.contentType }), attachment.filename);
+    }
+    let res;
+    try {
+      res = await fetch(`${MAILGUN_API_BASE}/${domaene}/messages`, {
+        method: "POST",
+        headers: { "Authorization": "Basic " + Buffer.from(`api:${apiKey}`).toString("base64") },
+        body: form,
+      });
+    } catch (error) {
+      error.resultatUkendt = true;
+      throw error;
+    }
 
     let data = {};
     try { data = await res.json(); } catch { /* Mailgun svarer altid JSON ved fejl -- et tomt svar haandteres som "ukendt fejl" nedenfor. */ }
@@ -46,6 +54,6 @@ export const mailgunAdapter = {
     if (!res.ok) {
       throw new Error(data?.message || `Mailgun svarede ${res.status}.`);
     }
-    return { providerId: data?.id || null };
+    return { providerId: data?.id || null, afsender };
   },
 };

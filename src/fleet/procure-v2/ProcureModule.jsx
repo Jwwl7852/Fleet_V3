@@ -13,6 +13,7 @@ import {
   ApprovalsScreen, CatalogScreen, ConsumptionScreen, GroupConsumptionScreen,
   NeedScreen, OrdersScreen, OverviewScreen, ReceiptScreen, SendOrderScreen,
 } from "./ProcureScreens.jsx";
+import MobileOrderScreen from "./MobileOrderScreen.jsx";
 import "./procure-v2.css";
 
 const normalizeSupplier = (supplier) => ({
@@ -31,6 +32,14 @@ const normalizeNeed = (need) => need.id?.startsWith("BEH-") ? need : ({
   lines: [{ id: `${need.id}-line`, name: need.vare, quantity: need.antal || 1, unit: need.enhed || "stk." }],
 });
 
+const normalizeCatalogItem = (item) => ({
+  id: item.id, sku: item.varenummer || item.id, name: item.navn,
+  category: item.varegruppe || "Ukategoriseret", supplierId: item.leverandoerId || null,
+  unit: item.enhed || "stk.", packageSize: item.pakningsstoerrelse || item.enhed || "stk.",
+  unitPriceOere: Number(item.indkoebsprisOere || 0), favorite: Boolean(item.favorit),
+  boughtBefore: Boolean(item.tidligereKoeb), visual: item.billedeType || "other",
+});
+
 const normalizeOrder = (order) => order.poNumber ? order : ({
   id: order.id, poNumber: order.nummer, supplierId: order.leverandoerId,
   title: order.note || "Bestilling", departmentId: order.afdelingId || "ukendt",
@@ -45,6 +54,32 @@ const normalizeOrder = (order) => order.poNumber ? order : ({
   history: [],
 });
 
+const receiptsFromOrders = (orders) => orders.flatMap((order) => Object.entries(order.modtagelser || {})
+  .filter(([, receipt]) => receipt.status === "registreret")
+  .map(([id, receipt]) => ({
+    id, orderId: order.id, receivedDate: receipt.modtagetDato, receivedBy: receipt.modtagetAfNavn,
+    deliveryNote: receipt.foelgeseddel || "", note: receipt.note || receipt.begrundelse || "",
+    type: receipt.type, correctionOf: receipt.korrektionAf,
+    lines: Object.values(receipt.linjer || {}).map((line) => ({
+      orderLineId: line.ordrelinjeId, deliveredQuantity: line.leveretAntal,
+      acceptedQuantity: line.godkendtAntal, damagedQuantity: line.beskadigetAntal,
+      rejectedQuantity: line.afvistAntal, unit: line.enhed,
+    })),
+    attachments: Object.values(receipt.dokumenter || {}).filter((doc) => doc.status === "aktiv")
+      .map((doc) => ({ id: doc.dokumentId, name: doc.originaltFilnavn, sha256: doc.sha256 })),
+  })));
+
+const normalizeInvoice = (invoice) => invoice.invoiceNumber ? invoice : ({
+  ...invoice, invoiceNumber: invoice.fakturanummer, supplierId: invoice.leverandoerId,
+  orderId: invoice.destinationArt === "procure" ? invoice.destinationId : null,
+  approvalStatus: invoice.status === "godkendt" || invoice.status === "bogfoert" ? "approved" : invoice.status,
+  approvedAt: invoice.godkendtMs || invoice.fakturadatoMs, type: invoice.fakturatype || "invoice",
+  lines: Object.values(invoice.linjer || {}).map((line) => ({
+    orderLineId: line.ordrelinjeId, itemId: line.vareId, categorySnapshot: line.varegruppe,
+    quantity: line.antal, unit: line.enhed, unitPriceOere: line.prisPrEnhedOere,
+  })),
+});
+
 export default function ProcureModule() {
   const location = useLocation();
   const { bruger, demo, tenant } = useFleet();
@@ -54,6 +89,7 @@ export default function ProcureModule() {
   const needsSource = useListe("indkoebsbehov", { vindue: "alle", graense: 500, demo: DEMO_INDKOEBSBEHOV });
   const ordersSource = useListe("indkoebsordrer", { vindue: "alle", graense: 500, demo: DEMO_INDKOEBSORDRER });
   const suppliersSource = useListe("leverandoerer", { vindue: "alle", graense: 500, demo: DEMO_LEVERANDOERER });
+  const catalogSource = useListe("forbrugsvarer", { vindue: "alle", graense: 500, demo: [] });
   const invoicesSource = useListe("fakturaer", { vindue: "alle", graense: 500, demo: DEMO_FAKTURAER });
   const [demoState, setDemoState] = useState(() => ({
     needs: DEMO_NEEDS, orders: DEMO_ORDERS, suppliers: DEMO_SUPPLIERS,
@@ -62,19 +98,20 @@ export default function ProcureModule() {
   }));
   const liveState = useMemo(() => ({
     needs: needsSource.data.map(normalizeNeed), orders: ordersSource.data.map(normalizeOrder),
-    suppliers: suppliersSource.data.map(normalizeSupplier), catalog: [], approvals: [],
-    receipts: [], invoices: invoicesSource.data, rules: [],
-  }), [needsSource.data, ordersSource.data, suppliersSource.data, invoicesSource.data]);
+    suppliers: suppliersSource.data.map(normalizeSupplier), catalog: catalogSource.data.map(normalizeCatalogItem), approvals: [],
+    receipts: receiptsFromOrders(ordersSource.data), invoices: invoicesSource.data.map(normalizeInvoice), rules: [],
+  }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data]);
   const state = demo ? demoState : liveState;
   const setState = (producer) => { if (demo) setDemoState((current) => typeof producer === "function" ? producer(current) : producer); };
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [location.pathname]);
 
   if (!canRead) return <section className="procure-v2 procure-denied"><h1>PROCURE</h1><p>Du har ikke adgang til indkøb. Kontakt en administrator, hvis du mener, det er en fejl.</p></section>;
-  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || invoicesSource.henter);
-  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || invoicesSource.fejl);
+  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || invoicesSource.henter);
+  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || invoicesSource.fejl);
   const common = { state, setState, demo, tenant, user: bruger, canWrite, canApprove, busy, error };
   const path = location.pathname.replace(/\/$/, "");
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
+  if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine))?$/.test(path)) return <MobileOrderScreen {...common} />;
   if (path === "/indkoeb/behov") return <NeedScreen {...common} />;
   if (path === "/indkoeb/katalog") return <CatalogScreen {...common} />;
   if (path === "/indkoeb/godkendelser") return <ApprovalsScreen {...common} />;

@@ -5,18 +5,33 @@ export async function registerReceipt({ order, receipts, input, actorId, demo })
   const built = buildReceipt(order, receipts, input, { actorId });
   if (!built.ok) return { ok: false, kind: "validation", errors: built.errors };
   if (demo) return { ok: true, kind: "test-adapter", receipt: built.receipt };
+  const modtagelseId = input.requestId || globalThis.crypto?.randomUUID?.() || `modtagelse-${Date.now()}`;
   try {
+    const uploaded = [];
+    for (const file of input.attachments || []) {
+      const init = await kaldFunktion("procureModtagelseUploadInitier", {
+        ordreId: order.id, modtagelseId, ordreRevision: order.revision,
+        originaltFilnavn: file.name, mimeType: file.type, stoerrelse: file.size,
+      });
+      const meta = init?.data ?? init;
+      const upload = await fetch(meta.uploadUrl, {
+        method: "PUT", headers: { "Content-Type": file.type }, body: file,
+      });
+      if (!upload.ok) throw new Error(`Upload fejlede med HTTP ${upload.status}.`);
+      const confirmed = await kaldFunktion("procureModtagelseUploadBekraeft", {
+        ordreId: order.id, modtagelseId, dokumentId: meta.dokumentId,
+      });
+      uploaded.push({ ...meta, ...(confirmed?.data ?? confirmed) });
+    }
     const response = await kaldFunktion("procureModtagelseRegistrer", {
-      orderId: order.id,
+      ordreId: order.id, modtagelseId, ordreRevision: order.revision,
       lines: built.receipt.lines.map(({ orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity }) => ({ orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity })),
       receivedDate: built.receipt.receivedDate,
       receivedBy: built.receipt.receivedBy,
       deliveryNote: built.receipt.deliveryNote || undefined,
       note: built.receipt.note || undefined,
-      attachmentIds: built.receipt.attachments.map((item) => item.id).filter(Boolean),
-      correctionOf: built.receipt.correctionOf || undefined,
     });
-    return { ok: true, kind: "server", receipt: response?.data ?? response };
+    return { ok: true, kind: "server", receipt: response?.data ?? response, attachments: uploaded };
   } catch (error) {
     const code = String(error?.code || "");
     if (code.includes("not-found") || code.includes("unimplemented")) {
@@ -31,6 +46,18 @@ export const RECEIPT_CONTRACT = Object.freeze({
   callable: "procureModtagelseRegistrer",
   tenantSource: "signed auth token",
   requiredPermission: "indkoeb.skriv",
-  persistence: "indkoebsmodtagelser/{receiptId}",
-  attachments: "server-validated attachmentIds",
+  persistence: "indkoebsordrer/{orderId}/modtagelser/{receiptId}",
+  attachments: "signed upload URL → magic-byte validation → active attachment",
 });
+
+export async function getOrderPdf(orderId) {
+  const response = await kaldFunktion("ordrePdfHent", { ordreId: orderId });
+  return response?.data ?? response;
+}
+
+export async function getReceiptAttachment({ orderId, receiptId, attachmentId }) {
+  const response = await kaldFunktion("procureModtagelseDownloadLink", {
+    ordreId: orderId, modtagelseId: receiptId, dokumentId: attachmentId,
+  });
+  return response?.data ?? response;
+}

@@ -19,6 +19,7 @@ import { NAV, REDIRECTS } from "../src/fleet/nav.js";
 const kilde = readFileSync("functions/index.js", "utf8");
 const REGELFIL = readFileSync("firebase.rules.json", "utf8")
   .replace(/^﻿/, "").replace(/^\s*\/\/.*$/gm, "");
+const FAKTURA_REGEL = JSON.parse(REGELFIL).rules.tenants.$tenantId.fakturaer;
 
 const blokAf = (navn) => {
   const start = kilde.indexOf(`export const ${navn}`);
@@ -81,19 +82,18 @@ describe("fakturaer.laes/.skriv/.godkend — rollefordelingen", () => {
    RTDB-REGLEN — fakturaer/.read
    ══════════════════════════════════════════════════════════════════════════ */
 describe("fakturaer-nodens .read kræver fakturaer.laes", () => {
-  const i = REGELFIL.indexOf('"fakturaer": {');
-  const blok = REGELFIL.slice(i, i + 30000);
+  const laeseregel = FAKTURA_REGEL[".read"];
 
   it("⚠ REGLEN NÆVNER fakturaer.laes", () => {
-    assert.match(blok, /perms\.contains\('\|fakturaer\.laes\|'\)/);
+    assert.match(laeseregel, /perms\.contains\('\|fakturaer\.laes\|'\)/);
   });
 
   it("⚠ REGLEN KRÆVER FORTSAT TENANT-MEDLEMSKAB — permissionen erstatter ikke isolationen", () => {
-    assert.match(blok, /auth\.token\.tenant === \$tenantId/);
+    assert.match(laeseregel, /auth\.token\.tenant === \$tenantId/);
   });
 
   it("⚠ INGEN MODULKLAUSUL — uændret, tre skærme rører noden", () => {
-    assert.ok(!/moduler'\)\.child\('indkoeb'\)/.test(blok),
+    assert.ok(!/moduler'\)\.child\('indkoeb'\)/.test(laeseregel),
       "fakturaer har fået en modulklausul — det ville spærre en af de tre forbrugere");
   });
 });
