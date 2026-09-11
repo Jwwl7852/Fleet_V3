@@ -7,6 +7,7 @@ import { kr } from "../../fleet/format.js";
 import { useEjerData } from "./EjerDataContext.jsx";
 import EjerIkon from "./EjerIkon.jsx";
 import { grupperSolgteModuler, solgteModulerFraTilbud } from "../../fleet/ejer-v6-regler.js";
+import { hentKundekontiMedMaalinger } from "../../fleet/ejer-kundekonto.js";
 
 const liste = (objekt) => Object.entries(objekt || {}).map(([id, post]) => ({ id, ...post }));
 
@@ -29,7 +30,11 @@ export default function EjerRapporter() {
   const [ansvarlig, setAnsvarlig] = useState("alle");
   const [forloeb, setForloeb] = useState("drift");
   const [valgtModul, setValgtModul] = useState(null);
-  useEffect(() => { hentSalgsplatform().then(setKommunikation); }, []);
+  const [kundekonti, setKundekonti] = useState([]);
+  useEffect(() => {
+    hentSalgsplatform().then(setKommunikation);
+    hentKundekontiMedMaalinger().then(setKundekonti).catch(() => setKundekonti([]));
+  }, []);
   const virksomheder = useMemo(() => crmVirksomhedsliste(crm), [crm]);
   const alleMuligheder = useMemo(() => crmMuligheder(crm), [crm]);
   const ejerNavn = (uid) => `${profiler?.[uid]?.navn || profiler?.[uid]?.displayName || ""}`.toLowerCase();
@@ -50,6 +55,15 @@ export default function EjerRapporter() {
   const topModuler = grupperSolgteModuler(solgte).slice(0, 5);
   const accepteretSnapshot = tilbudsliste.map((post) => post.versioner?.[post.accept?.version]?.snapshot).find(Boolean);
   const aftaltAntal = (ord) => accepteretSnapshot?.beregning?.linjer?.filter((linje) => ord.some((o) => `${linje.navn}`.toLowerCase().includes(o))).reduce((sum, linje) => sum + Number(linje.antal || 0) / 1000, 0) || null;
+  const maalteKonti = kundekonti.filter((konto) => konto.senesteMaaling);
+  const maalSum = (hent) => {
+    const kendte = maalteKonti.map((konto) => hent(konto.senesteMaaling)).filter(Number.isFinite);
+    return kendte.length ? kendte.reduce((sum, tal) => sum + tal, 0) : null;
+  };
+  const maaleDato = maalteKonti.map((konto) => konto.senesteMaaling?.id).filter(Boolean).sort().at(-1);
+  const maaleNote = maalteKonti.length
+    ? `Målt hos ${maalteKonti.length} af ${kundekonti.length} kundekonti · senest ${new Date(`${maaleDato}T12:00:00`).toLocaleDateString("da-DK")}`
+    : `Ingen af ${kundekonti.length} kundekonti har en tilgængelig måling`;
   if (henter || !crm || !kommunikation) return <div className="fc-empty">Henter rapportgrundlag…</div>;
   return <div className="ejer-rapporter">
     <div className="ejer-rapport-filtre"><label>Periode<select value={periode} onChange={(e)=>setPeriode(e.target.value)}><option value="seneste_12">Seneste 12 måneder</option><option value="maaned">Denne måned</option><option value="kvartal">Dette kvartal</option></select></label><label>Ansvarlig<select value={ansvarlig} onChange={(e)=>setAnsvarlig(e.target.value)}><option value="alle">Alle ansvarlige</option><option value="dennis">Dennis</option><option value="joern">Jørn</option></select></label><label>Forløb<select value={forloeb} onChange={(e)=>{setForloeb(e.target.value);setValgtModul(null);}}><option value="drift">Driftsaftaler</option><option value="pilot">Pilotforløb</option></select></label><span>Opdateret fra lokal testadapter · {new Date().toLocaleDateString("da-DK")}</span></div>
@@ -64,7 +78,7 @@ export default function EjerRapporter() {
       <section className="ejer-design-kort"><header><h2>Hitrate og salgsudfald</h2><Link to="/main/salg/pipeline">Se underliggende salg</Link></header><HitrateDiagram hitrate={hitrate}/><dl className="ejer-rapport-definitioner"><div><dt>Virksomheder i CRM</dt><dd>{virksomheder.length}</dd></div><div><dt>Åbne muligheder</dt><dd>{aabne.length}</dd></div><div><dt>Vundne / afsluttede</dt><dd>{hitrate.vundet} / {hitrate.afsluttede}</dd></div><div><dt>Pilotforløb</dt><dd>{pilot.length}</dd></div></dl><p className="fc-hint">Hitrate beregnes kun som vundne divideret med vundne plus tabte. Åbne muligheder, tilbudsversioner og sidetal påvirker ikke tallet.</p></section>
       <section className="ejer-design-kort"><header><h2>Mail og support</h2><Link to="/main/mail/indbakker">Åbn kundekorrespondance</Link></header><StatusSojler traade={traade}/><dl className="ejer-rapport-definitioner"><div><dt>Fælles sager</dt><dd>{traade.filter((t) => t.delingsstatus === "delt").length}</dd></div><div><dt>Supportsager</dt><dd>{support.length}</dd></div><div><dt>Support afventer os</dt><dd>{support.filter((t) => ["ny", "triage", "afventer_os"].includes(t.support?.status)).length}</dd></div><div><dt>Kræver klassifikation</dt><dd>{traade.filter((t) => t.kraeverKlassifikationsgennemgang).length}</dd></div></dl><p className="fc-hint">Ansvarlig styrer arbejdsfordeling, ikke hvem af de godkendte ejere der kan se en delt kundesag.</p></section>
       <section className="ejer-design-kort"><header><h2>Mest solgte moduler</h2><span>{forloeb === "drift" ? "Accepterede driftsaftaler" : "Accepterede pilotforløb"}</span></header>{topModuler.length ? <><ol className="ejer-rapport-moduler ejer-rapport-soejler">{topModuler.map((post) => <li key={post.modulId}><button type="button" onClick={()=>setValgtModul(post.modulId)}><b>{post.label}</b><i style={{"--andel":`${Math.max(12,(post.antal/topModuler[0].antal)*100)}%`}}/><span>{post.antal} kunde{post.antal === 1 ? "" : "r"}</span></button></li>)}</ol>{valgtModul && <div className="ejer-rapport-drilldown"><b>Grundlag · {topModuler.find((p)=>p.modulId===valgtModul)?.label}</b>{solgte.filter((p)=>p.modulId===valgtModul).map((p)=><p key={`${p.tilbudId}-${p.virksomhedId}`}>{crm?.[p.virksomhedId]?.stamdata?.navn || p.virksomhedId}<span>{new Date(p.acceptMs).toLocaleDateString("da-DK")}</span></p>)}</div>}</> : <div className="ejer-rapport-tom"><b>Ingen accepterede moduler i perioden</b><span>Åbne, tabte og rådgivende muligheder tælles ikke.</span></div>}<p className="fc-hint">Kilden er modul-linjer i den accepterede, låste tilbudsversion. Samme kunde og modul tælles kun én gang i perioden.</p></section>
-      <section className="ejer-design-kort"><header><h2>Aftalt og registreret forbrug</h2><Link to="/main/abonnementer">Åbn kundekonti</Link></header><div className="ejer-rapport-forbrug"><div><span>Administrative brugere · aftalt</span><b>{aftaltAntal(["administrativ", "medarbejderbruger"]) ?? "Ukendt"}</b><small>Registreret forbrug: Ikke tilgængeligt</small></div><div><span>Operative brugere · aftalt</span><b>{aftaltAntal(["operativ", "chaufførbruger"]) ?? "Ukendt"}</b><small>Registreret forbrug: Ikke tilgængeligt</small></div><div><span>Enheder · aftalt</span><b>{aftaltAntal(["enhed"]) ?? "Ukendt"}</b><small>Målt antal: Ikke tilgængeligt</small></div></div><p className="fc-hint">Aftalegrundlag og målinger vises hver for sig. Manglende målinger vises aldrig som nul.</p></section>
+      <section className="ejer-design-kort"><header><h2>Aftalt og registreret forbrug</h2><Link to="/main/abonnementer">Åbn kundekonti</Link></header><div className="ejer-rapport-forbrug"><div><span>Administrative brugere · aftalt</span><b>{aftaltAntal(["administrativ", "medarbejderbruger"]) ?? "Ukendt"}</b><small>Registreret: {maalSum((m) => Number(m.brugere?.desktop)) ?? "Ikke tilgængeligt"}</small></div><div><span>Operative brugere · aftalt</span><b>{aftaltAntal(["operativ", "chaufførbruger"]) ?? "Ukendt"}</b><small>Registreret: {maalSum((m) => Number(m.brugere?.chauffoer)) ?? "Ikke tilgængeligt"}</small></div><div><span>Enheder · aftalt</span><b>{aftaltAntal(["enhed"]) ?? "Ukendt"}</b><small>Registreret: {maalSum((m) => Number(m.koeretoejer)) ?? "Ikke tilgængeligt"}</small></div></div><p className="fc-hint">{maaleNote}. Aftalegrundlag og målinger vises hver for sig; ukendte værdier bliver ikke til nul. Unikke personer: {maalSum((m) => Number(m.brugere?.unikkePersoner)) ?? "Ikke tilgængeligt"}; administratorroller: {maalSum((m) => Number(m.brugere?.administratorer)) ?? "Ikke tilgængeligt"} og lægges ikke oveni persontallet.</p></section>
     </div>
   </div>;
 }

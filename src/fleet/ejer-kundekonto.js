@@ -28,6 +28,12 @@ export async function hentKundekonto(tenantId) {
   };
 }
 
+export async function hentKundekontiMedMaalinger() {
+  const konti = await db.ref("udbyder/kundekonti").once("value");
+  const tenantIds = Object.keys(konti.val() || {});
+  return Promise.all(tenantIds.map((tenantId) => hentKundekonto(tenantId)));
+}
+
 export async function gemKundekonto(data) {
   try {
     const svar = await kaldFunktion("kundekontogem", data);
