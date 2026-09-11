@@ -96,6 +96,7 @@ try {
   await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-aiinstruks input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Lav et kortere forslag, behold alle fakta, vent med CVR og foreslå telefon');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
   await klik("button", "Lav nyt forslag");
   await ventPaa("Boolean(document.querySelector('.ejer-ai-forslag'))", "Lokalt AI-svarforslag blev ikke dannet");
+  await viewport(1440, 900);
   await evaluer(`(()=>{const panel=document.querySelector('.ejer-mail-ai-panel');const forslag=document.querySelector('.ejer-ai-forslag');panel.scrollTop+=forslag.getBoundingClientRect().top-panel.getBoundingClientRect().top-8;return true})()`);
   await pause(200);
   kontroller.aiForslagUdsnit = await evaluer(`(()=>{const panel=document.querySelector('.ejer-mail-ai-panel').getBoundingClientRect();const forslag=document.querySelector('.ejer-ai-forslag').getBoundingClientRect();return{panelTop:Math.round(panel.top),panelBottom:Math.round(panel.bottom),forslagTop:Math.round(forslag.top),forslagBottom:Math.round(forslag.bottom),overskriftSynlig:forslag.top>=panel.top&&forslag.top<panel.bottom}})()`);
