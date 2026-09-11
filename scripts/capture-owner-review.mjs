@@ -346,6 +346,7 @@ try {
   const laasekontrol = await evaluer(
     `(() => { const område = document.querySelector('.ejer-tilbud-layout'); const tekst = område?.innerText || ''; return { accepteretOgLaast:tekst.includes('accepteret og låst') || document.body.innerText.includes('accepteret og låst'), gemKladde:tekst.includes('Gem kladde'), indsaetForslag:tekst.includes('Indsæt i tilbud'), redigerRateblad:tekst.includes('Redigér rateblad') }; })()`,
   );
+  let aiStaleKontrol = null;
   const aabnedeNyKladde = await klikTekst("button", "Opret ny kladde");
   if (aabnedeNyKladde || (await klikTekst("button", "Redigér"))) {
     await ventPaa(
@@ -375,6 +376,23 @@ try {
     filer.push(
       await aktueltBillede(
         "11-tilbud-ai-forslag-foer-indsaettelse",
+        1920,
+        1080,
+      ),
+    );
+    await evaluer(
+      `(() => { const el=document.querySelector('#tilbud-indledning'); if(!el)return false; const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Nyere manuelt skrevet kundetekst.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
+    );
+    await ventPaa(
+      "document.body.innerText.includes('Feltet er ændret efter forslaget blev lavet')",
+      "AI-forslaget blev ikke markeret forældet efter en manuel ændring.",
+    );
+    aiStaleKontrol = await evaluer(
+      `(() => { const resultat=document.querySelector('.ejer-ai-resultat'); const indsæt=Array.from(resultat?.querySelectorAll('button')||[]).find((el)=>(el.textContent||'').includes('Indsæt i tilbud')); return { advarsel:(resultat?.innerText||'').includes('Feltet er ændret efter forslaget blev lavet'), indsaetDeaktiveret:Boolean(indsæt?.disabled), manuelTekst:document.querySelector('#tilbud-indledning')?.value || '' }; })()`,
+    );
+    filer.push(
+      await aktueltBillede(
+        "11a-tilbud-ai-foraeldet-efter-manuel-aendring",
         1920,
         1080,
       ),
@@ -530,7 +548,7 @@ try {
 
   await viewport(390, 844);
   await gaaTil("/main/mail/indbakker?sag=review-nordlys");
-  const bevaretTekst = "Lokalt V5-udkast bevares ved tilbage-navigation.";
+  const bevaretTekst = "Lokalt V6-udkast bevares ved tilbage-navigation.";
   await evaluer(
     `(() => { const el=document.querySelector('textarea[aria-label="Svarudkast"]'); if(!el)return false; const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,${JSON.stringify(bevaretTekst)}); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
   );
@@ -567,6 +585,7 @@ try {
     mobilListe360: mobil360Kontrol,
     mobilKladde: draftKontrol,
     accepteretTilbud: laasekontrol,
+    aiStale: aiStaleKontrol,
   };
   writeFileSync(
     join(OUT, "interaction-verification.json"),
