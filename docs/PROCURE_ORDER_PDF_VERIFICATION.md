@@ -1,0 +1,108 @@
+# PROCURE ordre-PDF – implementering og lokal verifikation
+
+Dato: 11. september 2026  
+Branch: `codex/procure-integrated-development`
+
+## Resultat
+
+Den leverandørvendte ordre-PDF er implementeret som rigtig PDF-tekst, vektorgrafik, tabel og QR-kode. Den følger det godkendte informationshierarki med BESTILLING, bestillingsdata, BESTILLER, LEVERANDØR, LEVERING, VARER, FAKTURERING, VAREMODTAGELSE og sidefod. Referencebilledets mærkninger "DESIGNFORSLAG", "EKSEMPELDATA" og "QR-eksempel" indgår ikke i produktionsdokumentet.
+
+Leverandørmail og ordre-PDF indeholder ikke priser, rabatter, moms eller totaler. De interne ordrebeløb er fortsat bevaret til godkendelse, budget, analyse og fakturamatch.
+
+## Implementerede kontroller
+
+- PDF-tabellen viser kun `Varenr.`, `Beskrivelse`, `Antal` og `Enhed`.
+- Kun godkendt og faktisk bestilt mængde sendes til PDF-generatoren.
+- Pakningsstørrelse og dansk ental/flertal beregnes ud fra antal og varedata.
+- Leveringsønsket er enten `Hurtigst muligt` eller `Senest dd.mm.åååå`; en gammel dato ignoreres ved hurtigst muligt.
+- Begge leveringsvalg viser `Mellem 7.00-15.00` og `(lagerets åbningstider)`.
+- Kunde-, kontakt-, leverandør-, leverings- og faktureringsdata kommer fra ordre- og tenantstamdata. Interne bruger-id'er anvendes ikke som kontakttekst.
+- Manglende obligatoriske stamdata giver en konkret servervalideringsfejl før første PDF-generation/afsendelse.
+- En eksisterende arkiveret PDF returneres uændret; en ny skabelon overskriver derfor ikke tidligere dokumentrevisioner.
+- Preview, mailvedhæftning og arkiv anvender det samme arkiverede PDF-objekt for en ordrerevision.
+- QR-koden åbner den konkrete ordre til mobilmodtagelse. Scanning registrerer ikke modtagelse.
+- Webshopordrens eksisterende afsendelsesvej er uændret og udløser ikke en ekstra leverandørmail.
+
+## Genererede prøvefiler
+
+| Fil | Omfang | SHA-256 |
+| --- | --- | --- |
+| `output/pdf/PROCURE-bestilling-hurtigst-muligt.pdf` | Hurtigst muligt, inkl. bevidst gammel dato i input | `d8a1cfac9bd3b0a1819a73fe3e7b01b3f6685867d7ff628598db4aefed11b99d` |
+| `output/pdf/PROCURE-bestilling-senest-dato.pdf` | Senest-dato | `6ab71b0ba98eae6337720d06199dd0ac473895b9b759fe20c75bafa869b50f15` |
+| `output/pdf/PROCURE-bestilling-flere-sider.pdf` | 4 sider, 48 lange varelinjer | `38e3a6f0fc6eddd0424238814e527fe4575b9823ebbfa334baef3e9ef99e3b6c` |
+
+Renderede PNG'er ligger i `output/pdf/screenshots/`. Alle fire sider i flersideeksemplet er inspiceret.
+
+## Faktisk afprøvning
+
+### PDF-indhold og rendering
+
+Prøvefilerne blev genereret med:
+
+```powershell
+npm run procure:pdf-samples
+```
+
+PDF'erne blev renderet med Poppler og kontrolleret med `pdfplumber`, Pillow og ZXing:
+
+- ingen forekomst af pris-, total-, moms- eller valutafelter i udtrukket leverandørtekst;
+- `Hurtigst muligt` skjuler den gamle inputdato;
+- `Senest 30.09.2026` vises i datoeksemplet;
+- de faste lageråbningstider vises i begge leveringsvarianter;
+- vareoverskriften gentages på alle 4 sider;
+- danske tegn kan udtrækkes som tekst;
+- ingen synlige overlap eller afskårne tekster på de seks inspicerede renders;
+- QR-koder blev afkodet fra de renderede PDF-sider til de forventede, ordrespecifikke mobilmodtagelseslinks.
+
+### Samlet backendflow gennem handlers
+
+Et lokalt, syntetisk flow blev kørt med Auth-, Realtime Database-, Storage- og Functions-emulatorer og serverkontrollerede roller. Det brugte `.invalid`-modtagere og en kontrolleret testtransport; der blev ikke sendt eksterne mails.
+
+Resultat:
+
+- ordre: 8.880,00 kr. internt;
+- første godkendte modtagelse: 7.728,00 kr.; rest 1.152,00 kr.;
+- delfaktura: 7.872,00 kr.; identificeret prisafvigelse 144,00 kr.;
+- kreditnota: 144,00 kr.;
+- slutfaktura: 1.152,00 kr.;
+- godkendt nettoforbrug: 8.880,00 kr.;
+- to aktive følgeseddel/dokumentfiler kunne genåbnes;
+- adgang fra anden tenant blev afvist;
+- dubletbeskyttelse for mail og fakturaimport blev udløst;
+- leverandørbekræftelse stod fortsat særskilt som `afventer`.
+
+Den faktiske backendgenererede ordre-PDF havde følgende identitet i alle tre led:
+
+| Led | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Preview | 35.495 | `04b6753014917a3a2731eb2b8b7735b7afe053627aabcfdc928cf30635a96b24` |
+| Testmailens vedhæftning | 35.495 | `04b6753014917a3a2731eb2b8b7735b7afe053627aabcfdc928cf30635a96b24` |
+| Arkiv | 35.495 | `04b6753014917a3a2731eb2b8b7735b7afe053627aabcfdc928cf30635a96b24` |
+
+QR-koden blev desuden afkodet fra den renderede backend-PDF til den konkrete syntetiske ordre. Der er dermed testet dokumentpayload, ikke kun en registreret afsendelseshændelse.
+
+### Testkommandoer
+
+Kørt før aflevering:
+
+```powershell
+npm run lint -- --quiet
+npm run build
+npm run test:design
+$procureTests = Get-ChildItem test -Filter 'procure*.test.mjs' | Select-Object -ExpandProperty FullName
+node --test $procureTests
+node --test test/functions-delt.test.mjs test/skive4d-ordremail.test.mjs test/bestilling.test.mjs
+firebase emulators:exec --only database,storage "node functions/test/procure-callables.integration.mjs"
+firebase emulators:start --only auth,database,storage,functions
+node scripts/procure-auth-emulator-seed.mjs
+node scripts/procure-review-backend-qa.mjs
+```
+
+De tre PDF/mail-fokuserede tests gav 88 beståede og 0 fejl. Den afsluttende kørsel af alle `procure*.test.mjs` gav 67 beståede og 0 fejl; delte filer, mailkontrakt og ordretests gav yderligere 107 beståede og 0 fejl. Designtokentesten gav 11 beståede og 0 fejl. Lint og produktionsbuild bestod. Direkte callable-integration og det samlede handlerflow bestod med ovenstående beløb, tenantkontroller, dubletbeskyttelse og PDF-hash.
+
+## Afgrænsning og resterende ekstern konfiguration
+
+- Fysisk scanning med et rigtigt mobilkamera blev ikke udført i denne runde. QR blev afkodet maskinelt fra både prøve-PDF og faktisk backend-PDF.
+- Produktionsafsendelse kræver fortsat kundens mailtransportcredentials, offentlige HTTPS-appadresse samt komplette kunde-, leverandør-, leverings- og faktureringsstamdata.
+- Inter-skrifttypen er ikke indlejret som en særskilt fontfil; PDF'en bruger platformens dokumentegnede systemfallback Helvetica. Farver, størrelseshierarki og geometri følger de fælles PROCURE-tokens.
+- Ingen deployment, push, merge, produktionsændring, rigtig ordre, betaling eller leverandørmail er udført.

@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-09-11T20:07:17.440Z",
+  "samples": [
+    {
+      "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-hurtigst-muligt.pdf",
+      "bytes": 30707,
+      "sha256": "d8a1cfac9bd3b0a1819a73fe3e7b01b3f6685867d7ff628598db4aefed11b99d",
+      "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-asap",
+      "delivery": "Hurtigst muligt",
+      "lines": 2
+    },
+    {
+      "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-senest-dato.pdf",
+      "bytes": 31107,
+      "sha256": "6ab71b0ba98eae6337720d06199dd0ac473895b9b759fe20c75bafa869b50f15",
+      "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-deadline",
+      "delivery": "Senest 30.09.2026",
+      "lines": 2
+    },
+    {
+      "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-flere-sider.pdf",
+      "bytes": 66125,
+      "sha256": "38e3a6f0fc6eddd0424238814e527fe4575b9823ebbfa334baef3e9ef99e3b6c",
+      "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-multipage",
+      "delivery": "Senest 30.09.2026",
+      "lines": 42
+    }
+  ]
+}
