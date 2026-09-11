@@ -2,6 +2,36 @@
 
 Opdateret: 2026-09-11
 
+## V7 mailreference — lokal reviewstatus
+
+- V7 er implementeret i det isolerede ejerspor fra HEAD
+  `4b58690309535fde4474e1a489814c4991362e7b`. Den browserverificerede kode er
+  `eefc7f4105327555fb2e66d07d7e6b7bbd1333da`; intet er pushet, merget eller
+  deployet.
+- Mailoversigt og fokuseret sag er adskilt. Oversigten åbner uden automatisk
+  valg, viser 25 rækker pr. side, bevarer postkasse/status/mappe/søgning/side og
+  samler flere sagers AI-opmærksomhed med eksplicit kilde.
+- Pilotflowet dækker sagsafgrænset AI-forslag, revision, eksplicit indsættelse,
+  gem/genindlæs og menneskelig godkendelse. Ny mail opretter kun en
+  idempotent kladde; browsertesten og fixturekæden sendte ingen ekstern mail.
+- Fælles Support er samme underliggende sag: en mail til Dennis blev overtaget
+  af Jørn, Jørn skrev en intern note, og Dennis kunne se ændringen. Personlige
+  scopes forblev adskilt. Interne Domicil-sager opretter ingen kunde eller
+  tenant.
+- Opfølgningssiden starter på **Til godkendelse**, og Dennis' Mine-filter kan
+  ikke vise Jørns personlige opfølgning. Workerens syv stop-, samtidigheds- og
+  ukendt-udfaldsscenarier består fortsat.
+- Faktisk Edge-rendering er kontrolleret ved 1440×900, 1920×1080, 899×900,
+  390×844 og 360×800. Tilbage gendanner side 2 og rækkefokus; mobil bevarer
+  kladden. Computed styles viser Inter Variable 14 px/20,3 px, mindst 38 px
+  kontroller, 12 px kort og 2 px fokusregel.
+- V7/V6.2-regressionen består 76/76, målrettet ESLint har 0 fejl, og Vite-build
+  består med 534 moduler. 12 faktiske screenshots og maskinlæsbare beviser
+  ligger i `docs/screenshots/ejer-review-v7/`.
+- Detaljeret M01–M10-acceptmatrix står i
+  `docs/VEYRO_EJERKONSOL_REVIEW_V7.md`. Microsoft 365, OpenAI, Dinero, OCR og
+  bilagsmail er fortsat **Ikke tilsluttet**.
+
 ## V6.2-afslutning — lokal reviewstatus
 
 - Den afgrænsede V6.2-runde er implementeret på branch

@@ -1,0 +1,69 @@
+{
+  "codeCommit": "eefc7f4105327555fb2e66d07d7e6b7bbd1333da",
+  "capturedAt": "2026-09-11T21:23:09.711Z",
+  "baseUrl": "http://127.0.0.1:5211",
+  "normalOwnerLogin": true,
+  "externalMailSent": false,
+  "captures": [
+    {
+      "file": "1440x900-01-din-arbejdsindbakke.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1920x1080-02-din-arbejdsindbakke.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-03-pilotprojekt-samtale-og-ai.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1920x1080-04-pilotprojekt-samtale-og-ai.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-05-pilotprojekt-godkendt-ikke-sendt.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-06-intern-sag-domicil.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-07-delt-supportsag.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-08-opfoelgning-mine.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "390x844-09-mobil-mail-liste.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "390x844-10-mobil-svar-og-ai.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "899x900-11-breakpoint-mail.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "360x800-12-mobil-mail-liste.png",
+      "data": "Syntetisk V7-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    }
+  ]
+}
