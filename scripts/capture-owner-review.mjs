@@ -349,8 +349,16 @@ try {
   const aabnedeNyKladde = await klikTekst("button", "Opret ny kladde");
   if (aabnedeNyKladde || (await klikTekst("button", "Redigér"))) {
     await ventPaa(
-      "Boolean(document.querySelector('#tilbud-ai-instruks'))",
+      "Boolean(document.querySelector('.ejer-tilbudsredigering'))",
       "Tilbudskladden blev ikke åbnet.",
+    );
+    await klikTekst(
+      ".ejer-tilbud-redigerfaner button",
+      "Tilbudstekst",
+    );
+    await ventPaa(
+      "Boolean(document.querySelector('#tilbud-ai-instruks'))",
+      "Tilbudstekstens AI-arbejdsområde blev ikke åbnet.",
     );
     await evaluer(
       `(() => { const el=document.querySelector('#tilbud-ai-instruks'); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(el,'Gør teksten kortere og fremhæv pilotens afgrænsning.'); el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`,
