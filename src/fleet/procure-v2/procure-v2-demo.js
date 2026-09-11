@@ -1,16 +1,16 @@
 export const DEMO_SUPPLIERS = [
-  { id: "nordisk", name: "Nordisk Drift ApS", orderEmail: "ordre@nordiskdrift.example", address: "Industrivej 12, 8200 Aarhus N", agreement: "Prisaftale til 31.12.2026" },
-  { id: "arbejde", name: "Dansk Arbejdsbeklædning ApS", orderEmail: "ordre@arbejdstoej.example", address: "Håndværkervej 4, 2600 Glostrup", agreement: "Prisaftale til 31.03.2027" },
-  { id: "kontor", name: "Kontorpartner ApS", orderEmail: "salg@kontorpartner.example", address: "Papirvej 7, 6000 Kolding", agreement: null },
+  { id: "nordisk", name: "Nordisk Drift ApS", orderEmail: "ordre@nordiskdrift.example", address: "Industrivej 12, 8200 Aarhus N", agreement: "Prisaftale til 31.12.2026", orderMethod: "both", webshopUrl: "https://shop.nordiskdrift.example", customerNumber: "SYN-10042", responsibleBuyers: ["demo-user"] },
+  { id: "arbejde", name: "Dansk Arbejdsbeklædning ApS", orderEmail: "ordre@arbejdstoej.example", address: "Håndværkervej 4, 2600 Glostrup", agreement: "Prisaftale til 31.03.2027", orderMethod: "email" },
+  { id: "kontor", name: "Kontorpartner ApS", orderEmail: "salg@kontorpartner.example", address: "Papirvej 7, 6000 Kolding", agreement: null, orderMethod: "webshop", webshopUrl: "https://shop.kontorpartner.example", customerNumber: "SYN-884" },
 ];
 
 export const DEMO_CATALOG = [
-  { id: "tape", sku: "ND-1001", name: "Pakketape, klar 48 mm", category: "Emballage", supplierId: "nordisk", unit: "rulle", packageSize: "6 ruller", unitPriceOere: 2400, favorite: true, boughtBefore: true, visual: "tape" },
-  { id: "film", sku: "ND-2005", name: "Strækfilm, 500 mm", category: "Emballage", supplierId: "nordisk", unit: "rulle", packageSize: "4 ruller", unitPriceOere: 7500, favorite: false, boughtBefore: true, visual: "film" },
-  { id: "gloves", sku: "ND-2004", name: "Nitrilhandsker, str. L", category: "Arbejdstøj", supplierId: "nordisk", unit: "æske", packageSize: "100 stk.", unitPriceOere: 5500, favorite: true, boughtBefore: true, visual: "gloves" },
-  { id: "bags", sku: "ND-3007", name: "Affaldssække, 100 L", category: "Rengøring", supplierId: "nordisk", unit: "rulle", packageSize: "10 stk.", unitPriceOere: 3800, favorite: false, boughtBefore: true, visual: "bags" },
-  { id: "vest", sku: "DA-1040", name: "Sikkerhedsvest med tryk", category: "Arbejdstøj", supplierId: "arbejde", unit: "stk.", packageSize: "1 stk.", unitPriceOere: 31000, favorite: false, boughtBefore: false, visual: "vest" },
-  { id: "paper", sku: "KP-0080", name: "Kopipapir A4, 80 g", category: "Kontor", supplierId: "kontor", unit: "kasse", packageSize: "5 pakker", unitPriceOere: 22900, favorite: false, boughtBefore: true, visual: "paper" },
+  { id: "tape", sku: "ND-1001", name: "Pakketape, klar 48 mm", category: "Emballage", supplierId: "nordisk", unit: "pakker", orderUnit: "pakker", baseUnit: "ruller", unitsPerOrder: 6, packageSize: "Pakke á 6 ruller", unitPriceOere: 2400, orderPriceOere: 14400, minimumOrderQuantity: 1, orderStep: 1, allowSingles: false, favorite: true, boughtBefore: true, visual: "tape" },
+  { id: "film", sku: "ND-2005", name: "Strækfilm, 500 mm", category: "Emballage", supplierId: "nordisk", unit: "ruller", orderUnit: "ruller", baseUnit: "ruller", unitsPerOrder: 1, packageSize: "Sælges enkeltvis", unitPriceOere: 7500, orderPriceOere: 7500, minimumOrderQuantity: 1, orderStep: 1, allowSingles: true, favorite: false, boughtBefore: true, visual: "film" },
+  { id: "gloves", sku: "ND-2004", name: "Nitrilhandsker, str. L", category: "Arbejdstøj", supplierId: "nordisk", unit: "æsker", orderUnit: "æsker", baseUnit: "stk.", unitsPerOrder: 100, packageSize: "Æske á 100 stk.", unitPriceOere: 55, orderPriceOere: 5500, minimumOrderQuantity: 1, orderStep: 1, favorite: true, boughtBefore: true, visual: "gloves" },
+  { id: "bags", sku: "ND-3007", name: "Affaldssække, 100 L", category: "Rengøring", supplierId: "nordisk", unit: "ruller", orderUnit: "ruller", baseUnit: "sække", unitsPerOrder: 10, packageSize: "Rulle á 10 sække", unitPriceOere: 380, orderPriceOere: 3800, minimumOrderQuantity: 1, orderStep: 1, favorite: false, boughtBefore: true, visual: "bags" },
+  { id: "vest", sku: "DA-1040", name: "Sikkerhedsvest med tryk", category: "Arbejdstøj", supplierId: "arbejde", unit: "stk.", orderUnit: "stk.", baseUnit: "stk.", unitsPerOrder: 1, packageSize: "Sælges enkeltvis", unitPriceOere: 31000, orderPriceOere: 31000, minimumOrderQuantity: 1, orderStep: 1, allowSingles: true, favorite: false, boughtBefore: false, visual: "vest" },
+  { id: "paper", sku: "KP-0080", name: "Kopipapir A4, 80 g", category: "Kontor", supplierId: "kontor", unit: "kasser", orderUnit: "kasser", baseUnit: "pakker", unitsPerOrder: 5, packageSize: "Kasse á 5 pakker", unitPriceOere: 4580, orderPriceOere: 22900, minimumOrderQuantity: 1, orderStep: 1, favorite: false, boughtBefore: true, visual: "paper" },
 ];
 
 export const DEMO_QR_LABELS = [

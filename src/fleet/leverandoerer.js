@@ -59,6 +59,13 @@ export const AFTALETYPE = {
 
 export const ALLE_AFTALETYPER = Object.keys(AFTALETYPE);
 
+export const BESTILLINGSMETODE = {
+  mail: "E-mail",
+  webshop: "Webshop",
+  begge: "E-mail og webshop",
+};
+export const ALLE_BESTILLINGSMETODER = Object.keys(BESTILLINGSMETODE);
+
 /* ---- Opslag ------------------------------------------------------------ */
 
 /**
@@ -639,6 +646,9 @@ export const GRAENSE_LEVERANDOER = {
      functions/index.js — så ingen eksisterende leverandør mister sin
      ordremail ved denne udvidelse. */
   ordreEmail: 120,
+  webshopUrl: 500,
+  kundenummer: 80,
+  aftalevilkaar: 500,
 };
 
 /**
@@ -673,6 +683,20 @@ export function valideLeverandoer(post = {}) {
       f.ordreEmail = "Skal være en gyldig e-mailadresse.";
     }
   }
+
+  if (post.bestillingsmetode && !ALLE_BESTILLINGSMETODER.includes(post.bestillingsmetode)) {
+    f.bestillingsmetode = "Vælg e-mail, webshop eller begge.";
+  }
+  if (["webshop", "begge"].includes(post.bestillingsmetode)) {
+    try {
+      const url = new URL(post.webshopUrl || "");
+      if (url.protocol !== "https:") f.webshopUrl = "Webshoppen skal bruge en sikker https-adresse.";
+    } catch {
+      f.webshopUrl = "Angiv leverandørens fulde webshopadresse.";
+    }
+  }
+  if (post.kundenummer && post.kundenummer.length > GRAENSE_LEVERANDOER.kundenummer) f.kundenummer = "Kundenummeret er for langt.";
+  if (post.aftalevilkaar && post.aftalevilkaar.length > GRAENSE_LEVERANDOER.aftalevilkaar) f.aftalevilkaar = "Aftalevilkårene er for lange.";
 
   if (post.kontaktTelefon && post.kontaktTelefon.length > GRAENSE_LEVERANDOER.kontaktTelefon) {
     f.kontaktTelefon = `Højst ${GRAENSE_LEVERANDOER.kontaktTelefon} tegn.`;
@@ -717,6 +741,7 @@ export function byggLeverandoer(post) {
        læses; her skrives den ÉN gang, eksplicit, som en beslutning — ikke
        som en formodning genberegnet ved hver mail. */
     sprog: ALLE_SPROG.includes(post.sprog) ? post.sprog : STANDARD_SPROG,
+    bestillingsmetode: ALLE_BESTILLINGSMETODER.includes(post.bestillingsmetode) ? post.bestillingsmetode : "mail",
   };
   if (post.cvr?.trim()) ud.cvr = post.cvr.trim();
   if (post.adresse?.trim()) ud.adresse = post.adresse.trim();
@@ -724,6 +749,14 @@ export function byggLeverandoer(post) {
   if (post.kontaktEmail?.trim()) ud.kontaktEmail = post.kontaktEmail.trim();
   if (post.ordreEmail?.trim()) ud.ordreEmail = post.ordreEmail.trim();
   if (post.kontaktTelefon?.trim()) ud.kontaktTelefon = post.kontaktTelefon.trim();
+  if (post.webshopUrl?.trim()) ud.webshopUrl = post.webshopUrl.trim();
+  if (post.kundenummer?.trim()) ud.kundenummer = post.kundenummer.trim();
+  if (post.aftalevilkaar?.trim()) ud.aftalevilkaar = post.aftalevilkaar.trim();
+  if (Array.isArray(post.ansvarligeIndkoebere)) {
+    ud.ansvarligeIndkoebere = Object.fromEntries(post.ansvarligeIndkoebere.filter(Boolean).map((uid) => [uid, true]));
+  } else if (post.ansvarligeIndkoebere && typeof post.ansvarligeIndkoebere === "object") {
+    ud.ansvarligeIndkoebere = post.ansvarligeIndkoebere;
+  }
   return ud;
 }
 

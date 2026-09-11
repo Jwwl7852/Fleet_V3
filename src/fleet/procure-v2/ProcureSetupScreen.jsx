@@ -1,0 +1,51 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { loadProcureSetup, saveProcureBudget, saveProcureMasterData } from "./procure-v2-adapter.js";
+
+const TYPES = [
+  ["afdelinger", "Afdelinger"], ["varekategorier", "Varekategorier"], ["leveringssteder", "Leveringssteder"],
+];
+export const DEMO_SETUP = {
+  afdelinger: { lager: { id: "lager", label: "Lager", active: true, revision: 1 }, produktion: { id: "produktion", label: "Produktion", active: true, revision: 1 } },
+  varekategorier: { emballage: { id: "emballage", label: "Emballage", active: true, revision: 1 }, sikkerhed: { id: "sikkerhed", label: "Sikkerhedsudstyr", active: true, revision: 1 } },
+  leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager · rampe 2", active: true, revision: 1 }, vaerksted: { id: "vaerksted", label: "Værksted", active: true, revision: 1 } },
+  budgetter: {},
+};
+export const EMPTY_SETUP = { afdelinger: {}, varekategorier: {}, leveringssteder: {}, budgetter: {} };
+const slug = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+const kr = (oere) => new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(Number(oere || 0) / 100);
+
+export default function ProcureSetupScreen({ demo, tenant, canAdmin }) {
+  const [setup, setSetup] = useState(() => demo ? DEMO_SETUP : EMPTY_SETUP); const [type, setType] = useState("afdelinger");
+  const [name, setName] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(!demo);
+  const [renaming, setRenaming] = useState(null); const [renameValue, setRenameValue] = useState("");
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)); const [departmentId, setDepartmentId] = useState("lager"); const [budgetKr, setBudgetKr] = useState("");
+  useEffect(() => { if (demo) return; let active = true; loadProcureSetup().then((result) => { if (!active) return; if (result.ok) setSetup({ ...EMPTY_SETUP, ...(result.data.setup || {}) }); else setMessage(result.message); setBusy(false); }); return () => { active = false; }; }, [demo]);
+  const persist = async (kind, row) => {
+    if (!canAdmin) return;
+    if (demo) { setSetup((current) => ({ ...current, [kind]: { ...current[kind], [row.id]: row } })); setMessage("Ændringen er gemt i den syntetiske preview."); return; }
+    setBusy(true); const result = await saveProcureMasterData({ type: kind, id: row.id, label: row.label, active: row.active, expectedRevision: Number(row.revision || 0) }); setBusy(false);
+    if (!result.ok) { setMessage(result.message); return; }
+    setSetup((current) => ({ ...current, [kind]: { ...current[kind], [row.id]: result.data.item } })); setMessage("Stamdata er gemt med historik.");
+  };
+  const add = async () => { const id = slug(name); if (!id) return; await persist(type, { id, label: name.trim(), active: true, revision: 0 }); setName(""); };
+  const beginRename = (row) => { setRenaming(row.id); setRenameValue(row.label); };
+  const saveRename = async (row) => { if (!renameValue.trim()) return; await persist(type, { ...row, label: renameValue.trim() }); setRenaming(null); setRenameValue(""); };
+  const saveBudget = async () => {
+    const amountOere = Math.round(Number(budgetKr.replace(",", ".")) * 100); if (!Number.isInteger(amountOere) || amountOere < 0) { setMessage("Angiv et gyldigt budget."); return; }
+    const current = setup.budgetter?.[period]?.[departmentId];
+    if (demo) { setSetup((value) => ({ ...value, budgetter: { ...(value.budgetter || {}), [period]: { ...(value.budgetter?.[period] || {}), [departmentId]: { departmentId, period, amountOere, currency: "DKK", revision: Number(current?.revision || 0) + 1 } } } })); setMessage("Budgettet er gemt i previewen."); return; }
+    setBusy(true); const result = await saveProcureBudget({ period, departmentId, amountOere, expectedRevision: Number(current?.revision || 0) }); setBusy(false);
+    if (!result.ok) { setMessage(result.message); return; }
+    setSetup((value) => ({ ...value, budgetter: { ...(value.budgetter || {}), [period]: { ...(value.budgetter?.[period] || {}), [departmentId]: result.data.budget } } })); setMessage("Budgettet er gemt med historik.");
+  };
+  const rows = Object.values(setup[type] || {}).sort((a, b) => a.label.localeCompare(b.label, "da"));
+  const departments = Object.values(setup.afdelinger || {}).filter((row) => row.active !== false);
+  return <section className="procure-v2 procure-setup"><header className="procure-pagehead"><div><Link className="procure-back" to="/indkoeb/forbrug">← Tilbage</Link><h1>PROCURE-opsætning</h1><p>Adskilte afdelinger, varekategorier, leveringssteder og afgrænsede periodebudgetter.</p></div>{demo && <span className="procure-demo">Syntetiske testdata · {tenant?.navn || "demo"}</span>}</header>
+    {message && <div className="procure-alert info" role="status"><span>{message}</span></div>}
+    {!canAdmin && <div className="procure-alert warn"><b>Kun administrator</b><span>Visningen er læsbar, men ændringer kræver den serverkontrollerede rettighed brugere.skriv.</span></div>}
+    <div className="procure-detail-tabs" role="tablist">{TYPES.map(([id, label]) => <button key={id} role="tab" aria-selected={type === id} className={type === id ? "active" : ""} onClick={() => setType(id)}>{label}</button>)}</div>
+    <div className="procure-two-col"><article className="procure-card"><h2>{TYPES.find(([id]) => id === type)?.[1]}</h2><div className="procure-setup-add"><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nyt navn" /><button className="procure-button" disabled={!canAdmin || busy || !name.trim()} onClick={add}>Opret</button></div><div className="procure-setup-list">{rows.map((row) => <article key={row.id}><div>{renaming === row.id ? <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") saveRename(row); if (event.key === "Escape") setRenaming(null); }} aria-label={`Nyt navn for ${row.label}`} /> : <b>{row.label}</b>}<small>{row.active === false ? "Kan ikke vælges i nye indkøb" : "Kan vælges i nye indkøb"}</small></div><span className={`procure-status ${row.active === false ? "warn" : "ok"}`}>{row.active === false ? "Deaktiveret" : "Aktiv"}</span>{renaming === row.id ? <><button className="procure-button secondary small" disabled={!canAdmin || busy || !renameValue.trim()} onClick={() => saveRename(row)}>Gem navn</button><button className="procure-button ghost small" onClick={() => setRenaming(null)}>Annuller</button></> : <button className="procure-button secondary small" disabled={!canAdmin || busy} onClick={() => beginRename(row)}>Omdøb</button>}<button className="procure-button secondary small" disabled={!canAdmin || busy} onClick={() => persist(type, { ...row, active: row.active === false })}>{row.active === false ? "Aktivér" : "Deaktivér"}</button></article>)}</div><p className="procure-hint">Omdøbning og deaktivering ændrer ikke historiske snapshots på bestillingslinjer.</p></article>
+      <article className="procure-card"><h2>Budget pr. afdeling og periode</h2><div className="procure-form-grid"><label className="procure-field"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="procure-field"><span>Afdeling</span><select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>{departments.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><label className="procure-field"><span>Budget ekskl. moms</span><input inputMode="decimal" value={budgetKr} onChange={(event) => setBudgetKr(event.target.value)} placeholder="Fx 50000,00" /></label></div><button className="procure-button" disabled={!canAdmin || busy || !departmentId} onClick={saveBudget}>Gem budget</button><div className="procure-setup-budgets">{Object.entries(setup.budgetter?.[period] || {}).map(([id, row]) => <p key={id}><span>{setup.afdelinger?.[id]?.label || id}</span><b>{kr(row.amountOere)}</b></p>)}</div><p className="procure-hint">Manglende budget vises som “Ikke opsat”; åbne disponeringer lægges ikke skjult til realiseret forbrug.</p></article></div>
+  </section>;
+}

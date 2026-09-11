@@ -50,6 +50,13 @@ export const RECEIPT_CONTRACT = Object.freeze({
   attachments: "signed upload URL → magic-byte validation → active attachment",
 });
 
+export async function registerPhysicalReturn(input) {
+  try {
+    const response = await kaldFunktion("procureVareReturneringRegistrer", input);
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) { return callableFailure(error, "Den fysiske retur kunne ikke registreres. Modtagelsen er uændret."); }
+}
+
 export async function getOrderPdf(orderId) {
   const response = await kaldFunktion("ordrePdfHent", { ordreId: orderId });
   return response?.data ?? response;
@@ -104,4 +111,79 @@ export async function setQrLabelActive({ labelId, active }) {
   } catch (error) {
     return { ok: false, message: error?.message || "QR-mærkatets status kunne ikke ændres." };
   }
+}
+
+export async function getWebshopCredential(supplierId) {
+  try {
+    const response = await kaldFunktion("procureWebshopCredentialHent", { leverandoerId: supplierId });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    const code = String(error?.code || "");
+    if (code.includes("permission-denied")) return { ok: false, kind: "denied", message: "Kun en ansvarlig indkøber eller administrator må se webshopadgangen." };
+    if (code.includes("failed-precondition")) return { ok: false, kind: "missing", message: error?.message || "Webshopadgang er ikke konfigureret." };
+    return { ok: false, kind: "error", message: "Webshopadgangen kunne ikke hentes sikkert." };
+  }
+}
+
+export async function registerWebshopOrder(input) {
+  try {
+    const response = await kaldFunktion("procureWebshopBestillingRegistrer", input);
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    const code = String(error?.code || "");
+    if (code.includes("permission-denied")) return { ok: false, kind: "denied", message: "Du har ikke rettighed til at registrere webshopbestillingen." };
+    if (code.includes("failed-precondition")) return { ok: false, kind: "conflict", message: error?.message || "Bestillingen er ændret eller har allerede en anden bestillingsmetode." };
+    return { ok: false, kind: "error", message: "Registreringen kunne ikke bekræftes. Kontrollér Mine indkøb før et nyt forsøg." };
+  }
+}
+
+function callableFailure(error, fallback) {
+  const code = String(error?.code || "");
+  if (code.includes("permission-denied") || code.includes("unauthenticated")) return { ok: false, kind: "denied", message: error?.message || "Adgangen blev afvist." };
+  if (code.includes("aborted") || code.includes("already-exists")) return { ok: false, kind: "conflict", message: error?.message || "Data er ændret i en anden session. Genindlæs og prøv igen.", current: error?.details?.current || null };
+  if (code.includes("invalid-argument") || code.includes("failed-precondition")) return { ok: false, kind: "validation", message: error?.message || fallback };
+  return { ok: false, kind: "error", message: fallback };
+}
+
+export async function loadMobileDraft() {
+  try {
+    const response = await kaldFunktion("procureMobilKladdeHent", {});
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) { return callableFailure(error, "Serverkladden kunne ikke hentes."); }
+}
+
+export async function saveMobileDraft({ draft, expectedRevision, mutationId }) {
+  try {
+    const response = await kaldFunktion("procureMobilKladdeGem", { draft, expectedRevision, mutationId });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) { return callableFailure(error, "Serverkladden kunne ikke gemmes. Den lokale kopi er bevaret."); }
+}
+
+export async function submitMobileDraftPart({ selections, expectedRevision, requestId }) {
+  try {
+    const response = await kaldFunktion("procureMobilKladdeDelIndsend", { selections, expectedRevision, requestId });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) { return callableFailure(error, "De valgte linjer kunne ikke sendes videre. Kladden er bevaret."); }
+}
+
+export async function decideApprovalLineBatch({ approvalId, expectedRevision, decisions, requestId }) {
+  try {
+    const response = await kaldFunktion("procureGodkendelseslinjerAfgor", { approvalId, expectedRevision, decisions, requestId });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) { return callableFailure(error, "Linjeafgørelsen kunne ikke gemmes."); }
+}
+
+export async function loadProcureSetup() {
+  try { const response = await kaldFunktion("procureOpsaetningHent", {}); return { ok: true, data: response?.data ?? response }; }
+  catch (error) { return callableFailure(error, "PROCURE-opsætningen kunne ikke hentes."); }
+}
+
+export async function saveProcureMasterData(input) {
+  try { const response = await kaldFunktion("procureStamdataGem", input); return { ok: true, data: response?.data ?? response }; }
+  catch (error) { return callableFailure(error, "Stamdata kunne ikke gemmes."); }
+}
+
+export async function saveProcureBudget(input) {
+  try { const response = await kaldFunktion("procureBudgetGem", input); return { ok: true, data: response?.data ?? response }; }
+  catch (error) { return callableFailure(error, "Budgettet kunne ikke gemmes."); }
 }

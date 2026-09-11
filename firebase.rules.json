@@ -62,6 +62,14 @@
       }
     },
 
+    // Krypterede webshop-login ligger uden for tenantens almindelige data.
+    // Kun Admin SDK-callables kan læse eller skrive; browseren får aldrig
+    // adgang til ciphertext, IV eller auth-tag direkte.
+    "procureHemmeligeOplysninger": {
+      ".read": false,
+      ".write": false
+    },
+
     "tenants": {
       // Tenant kommer fra custom claim, ALDRIG fra klienten. Rolleskift skal
       // følges af revokeRefreshTokens, ellers beholder brugeren sin gamle
@@ -2786,6 +2794,13 @@
             // ordremail.
             "ordreEmail": { ".validate": "newData.isString() && newData.val().length <= 120 && newData.val().contains('@')" },
             "kontaktTelefon": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "bestillingsmetode": { ".validate": "newData.isString() && newData.val().matches(/^(mail|webshop|begge)$/)" },
+            "webshopUrl": { ".validate": "newData.isString() && newData.val().length <= 500 && newData.val().matches(/^https:\\/\\/.+/)" },
+            "kundenummer": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "aftalevilkaar": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "ansvarligeIndkoebere": {
+              "$uid": { ".validate": "newData.isBoolean() && newData.val() === true" }
+            },
 
             // ⚠ SUPPLIER PORTAL — DETTE FELT TÆNDER/SLUKKER KUN VISNINGEN,
             // IKKE ADGANGEN. Samme skel som dashboardvisning.js's eget hoved
@@ -2979,7 +2994,7 @@
             // ⚠ godkendt OG afvist er egne tilstande, ikke et flag ved siden
             // af. Godkendelsen er trin 3, og en ordre der er sendt uden at
             // vaere godkendt, skal kunne ses paa tilstanden alene.
-            "status": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerGodkendelse|godkendt|afvist|sendt|modtaget|annulleret)$/)" },
+            "status": { ".validate": "newData.isString() && newData.val().matches(/^(kladde|afventerGodkendelse|tilbageTilRettelse|godkendt|afvist|sendt|modtaget|afsluttet|annulleret)$/)" },
             "oprettetAf": { ".validate": "newData.isString()" },
             "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
             // ⚠ SAMME PAR SOM anmoderId. `bestillerId` er hvem ordren er
@@ -3005,6 +3020,14 @@
             "modtagetMs": { ".validate": "newData.isNumber()" },
             "revision": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
             "godkendtRevision": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
+            "godkendelsesgrundlagOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
+            "godkendelsessagId": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "afdelingId": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "afdeling": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            "leveringsstedId": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "leveringssted": { ".validate": "newData.isString() && newData.val().length <= 160" },
+            "oensketDato": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+            "hurtigstMuligt": { ".validate": "newData.isBoolean()" },
             "resterendeVaerdiOere": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
             "linjer": {
@@ -3025,7 +3048,12 @@
                 // Behovet linjen kom fra, saa sporet gaar begge veje.
                 "behovId": { ".validate": "newData.isString()" },
                 "forbrugsvareId": { ".validate": "newData.isString()" },
+                "vareId": { ".validate": "newData.isString()" },
                 "varegruppe": { ".validate": "newData.isString() && newData.val().length <= 80" },
+                "grundenhed": { ".validate": "newData.isString() && newData.val().length <= 20" },
+                "antalPrBestillingsenhed": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "kildeGodkendelseslinjeId": { ".validate": "newData.isString() && newData.val().length <= 80" },
+                "oprindeligtAnmodetAntal": { ".validate": "newData.isNumber() && newData.val() > 0" },
                 "$andet": { ".validate": false }
               }
             },
@@ -3132,6 +3160,29 @@
             "division": { ".validate": false },
             "$andet": { ".validate": false }
           }
+        },
+
+        // Servergemte mobilkladder er brugerbundne og kan kun læses/skrive
+        // gennem callables med revisions- og idempotenskontrol.
+        "procureMobilKladder": {
+          ".read": false,
+          ".write": false
+        },
+
+        // Godkendelsessager kan læses i den normale Procure-kontekst, men
+        // alle afgørelser foretages server-side pr. linje og mængde.
+        "procureGodkendelsessager": {
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('indkoeb').val() === true) && auth.token.perms != null && (auth.token.perms != null && (((auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains('|07|')) || (auth.token.pv == null && auth.token.perms != null && auth.token.perms.contains('|indkoeb.laes|')))))",
+          ".write": false,
+          ".indexOn": ["status", "submittedAt", "departmentId"]
+        },
+
+        // Afdelinger, varekategorier, leveringssteder og periodebudgetter
+        // hentes/ændres gennem callables, som håndhæver adminrettighed,
+        // stabile id'er, revisioner og historik.
+        "procureOpsaetning": {
+          ".read": false,
+          ".write": false
         },
 
         // QR-HYLDEMAERKATER — stabil reference, aktuelle varedata slås op ved

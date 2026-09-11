@@ -26,7 +26,8 @@ export async function sendMail(adapter, { til, cc, emne, tekst, attachments = []
   }
   try {
     const res = await adapter.send({ til, cc, emne, tekst, attachments });
-    return { status: "accepteret", providerId: res?.providerId || null, afsender: res?.afsender || null };
+    return { status: "accepteret", providerId: res?.providerId || null, afsender: res?.afsender || null,
+      ...(res?.transportKvittering ? { transportKvittering: res.transportKvittering } : {}) };
   } catch (e) {
     return { status: e?.resultatUkendt === true ? "ukendt" : "fejlet", fejlAarsag: kortFejl(e) };
   }

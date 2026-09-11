@@ -1,6 +1,7 @@
 /* Deterministisk ordre-PDF. Filen kopieres til functions/delt, så browserens
    fallback og mailbackendens arkiv bruger præcis samme bytegenerator. */
 
+
 const oere = (value) => `${(Number(value || 0) / 100).toFixed(2).replace(".", ",")} kr.`;
 const ascii = (value) => String(value ?? "")
   .replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")
@@ -37,6 +38,37 @@ export function ordrePdfStoragePath(tenantId, ordreId, revision) {
   return `tenants/${tenantId}/indkoebsordrer/${ordreId}/revisioner/${revision}/ordre.pdf`;
 }
 
+export function ordreModtagelsesUrl(ordre = {}, tenant = {}) {
+  const raw = tenant.procureAppUrl || tenant.publicAppUrl || tenant.appUrl;
+  if (!raw) return null;
+  try {
+    const base = new URL(raw);
+    if (base.protocol !== "https:" || ["localhost", "127.0.0.1", "::1"].includes(base.hostname)) return null;
+    const reference = ordre.modtagelsesreference || ordre.id || ordre.nummer || ordre.poNumber;
+    if (!reference) return null;
+    return new URL(`/indkoeb/mobil/modtag/${encodeURIComponent(reference)}`, base).toString();
+  } catch {
+    return null;
+  }
+}
+
+function qrCommands(qr, { x = 430, y = 655, size = 112 } = {}) {
+  if (!qr?.size || !Array.isArray(qr.data)) return [];
+  const modules = qr;
+  const quiet = 4;
+  const cells = modules.size + quiet * 2;
+  const cell = size / cells;
+  const out = ["0 0 0 rg"];
+  for (let row = 0; row < modules.size; row += 1) {
+    for (let col = 0; col < modules.size; col += 1) {
+      if (modules.data[row * modules.size + col]) {
+        out.push(`${(x + (col + quiet) * cell).toFixed(3)} ${(y + (modules.size - row - 1 + quiet) * cell).toFixed(3)} ${cell.toFixed(3)} ${cell.toFixed(3)} re f`);
+      }
+    }
+  }
+  return out;
+}
+
 export function createOrderPdfBytes(ordre = {}, leverandoer = {}, tenant = {}) {
   const nummer = ordre.poNumber || ordre.nummer || "ORDRE UDEN NUMMER";
   const revision = ordreRevision(ordre);
@@ -48,7 +80,7 @@ export function createOrderPdfBytes(ordre = {}, leverandoer = {}, tenant = {}) {
     `Kunde: ${tenant.navn || tenant.name || "Ikke angivet"}`,
     `Leverandoer: ${leverandoer.navn || leverandoer.name || "Ukendt"}`,
     `Leveringssted: ${ordre.leveringssted || ordre.deliveryLocation || "Ikke angivet"}`,
-    `Oensket levering: ${ordre.oensketDato || ordre.wantedDate || "Ikke angivet"}`,
+    `Oensket levering: ${ordre.hurtigstMuligt || ordre.asSoonAsPossible ? "Hurtigst muligt" : ordre.oensketDato || ordre.wantedDate || "Ikke angivet"}`,
     "",
     ...linjer.map((line) => `${line.antal} ${line.enhed || "stk."}  ${line.navn}  ${oere(line.prisOere)}  ${oere(line.antal * line.prisOere)}`),
     "",
@@ -57,13 +89,15 @@ export function createOrderPdfBytes(ordre = {}, leverandoer = {}, tenant = {}) {
     `Angiv ${nummer} paa fakturaen.`,
     `Faktura: ${tenant.fakturaModtagelse || tenant.fakturamodtagelse || "Kundens konfigurerede fakturamodtagelse"}`,
   ];
+  const receiptUrl = ordreModtagelsesUrl(ordre, tenant);
+  if (receiptUrl) tekst.push("", "Scan QR-koden for at modtage varer. Scanning registrerer intet i sig selv.");
   let y = 790;
   const commands = ["BT", "/F1 16 Tf", `50 ${y} Td`];
   tekst.forEach((line, index) => {
     if (index === 0) commands.push(`(${ascii(line)}) Tj`, "/F1 11 Tf");
     else commands.push(`0 -24 Td (${ascii(line)}) Tj`);
   });
-  commands.push("ET");
+  commands.push("ET", ...qrCommands(tenant.procureReceiptQr));
   const stream = commands.join("\n");
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",

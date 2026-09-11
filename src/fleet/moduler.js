@@ -333,6 +333,7 @@ export const NODE_MODUL = {
      Procure har hverken behov at melde ind eller ordrer at sende. */
   indkoebsbehov: "indkoeb",
   indkoebsordrer: "indkoeb",
+  procureGodkendelsessager: "indkoeb",
   godkendelsesregler: "indkoeb",
   forbrugsvarer: "indkoeb",
   forbrugsvarebevaegelser: "indkoeb",

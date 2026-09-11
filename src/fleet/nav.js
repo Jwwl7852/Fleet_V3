@@ -413,18 +413,22 @@ export const NAV = [
     born: [
       { key: "indkoebOversigt", kraeverPerm: "indkoeb.laes", sti: "/indkoeb", label: "Overblik",
         titel: "Procure – overblik", under: "Dagens behov, godkendelser, leveringer og afvigelser." },
-      { key: "indkoebBehov", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/behov", label: "Indkøbsbehov",
-        titel: "Procure – indkøbsbehov", under: "Opret, redigér og behandl indkøbsbehov." },
+      { key: "bestillinger", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/bestillinger", label: "Bestillinger",
+        titel: "Procure – bestillinger", under: "Kladder, godkendelser, ordrer og afsluttede indkøb i ét overblik." },
       { key: "indkoebKatalog", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/katalog", label: "Varekatalog",
         titel: "Procure – varekatalog", under: "Varer, aftalepriser, favoritter og indkøbskurv." },
       { key: "indkoebGodkendelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/godkendelser", label: "Godkendelser",
         titel: "Procure – godkendelser", under: "Indkøb som afventer en afgørelse efter den aktive regel." },
-      { key: "bestillinger", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/bestillinger", label: "Bestillinger",
-        titel: "Procure – bestillinger", under: "Ordrer, leverancer, fakturalinks, PDF og historik." },
       { key: "indkoebModtagelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/modtagelser", label: "Modtagelser",
         titel: "Procure – modtagelser", under: "Hele og delvise leverancer, skader og korrektioner." },
       { key: "indkoebForbrug", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/forbrug", label: "Forbrug",
         titel: "Procure – forbrug", under: "Godkendt fakturaforbrug, åbne bestillinger og varegrupper." },
+      { key: "indkoebMobil", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/mobil", label: "Mobilbestilling", skjulINav: true,
+        titel: "Procure – mobilbestilling", under: "Saml, scan og indsend varer fra telefonen." },
+      { key: "indkoebAnalyseVaregrupper", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/forbrug/varegrupper", label: "Forbrug pr. varegruppe", skjulINav: true,
+        titel: "Procure – forbrug pr. varegruppe", under: "Dokumenterede indkøb, mængder og prisudvikling." },
+      { key: "indkoebOpsaetning", kraeverPerm: "brugere.skriv", sti: "/indkoeb/opsaetning", label: "Procure-opsætning", skjulINav: true,
+        titel: "Procure – opsætning", under: "Afdelinger, varekategorier, leveringssteder og budgetter." },
       /* ⚠ SKIVE 4A — INDSKRÆNKET, OG STADIG UDEN FOR FANEBJÆLKEN.
          Faktura-listen/status/godkendelse er i det fælles Fakturacenter;
          denne skærm har kun match-til-bestilling, kontantkøb og

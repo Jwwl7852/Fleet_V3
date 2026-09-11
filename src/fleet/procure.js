@@ -72,10 +72,12 @@ export const PRIORITET = { lav: "Lav", mellem: "Mellem", hoej: "Høj" };
 export const ORDRESTATUS = {
   kladde: { label: "Kladde", tone: "info" },
   afventerGodkendelse: { label: "Afventer godkendelse", tone: "warn" },
-  godkendt: { label: "Godkendt", tone: "ok" },
+  tilbageTilRettelse: { label: "Tilbage til rettelse", tone: "warn" },
+  godkendt: { label: "Godkendt — klar til bestilling", tone: "ok" },
   afvist: { label: "Afvist", tone: "bad" },
-  sendt: { label: "Sendt", tone: "ok" },
-  modtaget: { label: "Modtaget", tone: "ok" },
+  sendt: { label: "Bestilt", tone: "ok" },
+  modtaget: { label: "Fuldt modtaget", tone: "ok" },
+  afsluttet: { label: "Afsluttet", tone: "ok" },
   annulleret: { label: "Annulleret", tone: "bad" },
 };
 export const ALLE_ORDRESTATUS = Object.keys(ORDRESTATUS);
@@ -662,10 +664,15 @@ export const ORDRE_OVERGANGE = {
   ],
   afventerGodkendelse: [
     { til: "godkendt", label: "Godkend", perm: "indkoeb.godkend" },
+    { til: "tilbageTilRettelse", label: "Send tilbage til rettelse", perm: "indkoeb.godkend", kraeverBegrundelse: true },
     /* ⚠ EN AFVISNING KRÆVER EN GRUND. Uden den er den en tavshed, og den
        samme bestilling bliver lagt igen i næste uge — nøjagtig som et afvist
        behov (beslutning 80). */
     { til: "afvist", label: "Afvis", perm: "indkoeb.godkend", kraeverBegrundelse: true },
+  ],
+  tilbageTilRettelse: [
+    { til: "afventerGodkendelse", label: "Send til godkendelse igen", perm: "indkoeb.skriv" },
+    { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
   ],
   godkendt: [
     /* ⚠ "SEND ORDRE" STÅR IKKE HER, MED VILJE — se noten ovenfor. */
@@ -677,6 +684,7 @@ export const ORDRE_OVERGANGE = {
   ],
   afvist: [],
   modtaget: [],
+  afsluttet: [],
   annulleret: [],
 };
 
@@ -727,7 +735,7 @@ export function kanSkifteIndkoebsordre(ordre, til, { perms = "", regler, uid } =
    * og skærmen skriver "godkendt af den der bestilte". En fire-øjne-regel der
    * ikke kan opfyldes, er værre end en selvgodkendelse man kan se.
    */
-  if (til === "godkendt" || til === "afvist") {
+  if (til === "godkendt" || til === "afvist" || til === "tilbageTilRettelse") {
     const udpeget = regler?.overBeloeb?.godkenderUid;
     if (udpeget && uid && udpeget !== uid) {
       return {
@@ -780,11 +788,19 @@ export function ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler } = {
   const ud = {};
 
   if (til === "afventerGodkendelse") {
+    if (ordre?.status === "tilbageTilRettelse") {
+      ud.revision = (Number.isInteger(ordre.revision) ? ordre.revision : 1) + 1;
+      ud.godkendtRevision = null;
+      ud.godkendtAf = null;
+      ud.godkendtMs = null;
+      ud.godkendtAutomatisk = null;
+    }
     const krav = kraeverGodkendelse(ordre, regler);
     if (!krav.kraever) {
       ud.status = "godkendt";
       ud.godkendtMs = nu;
       ud.godkendtAutomatisk = true;
+      ud.godkendtRevision = ud.revision || ordre?.revision || 1;
       return ud;
     }
     ud.status = "afventerGodkendelse";
@@ -796,12 +812,18 @@ export function ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler } = {
     ud.godkendtAf = uid;
     ud.godkendtMs = nu;
     ud.godkendtAutomatisk = false;
+    ud.godkendtRevision = ordre?.revision || 1;
     /* ⚠ SELVGODKENDELSE MARKERES. Se noten i kanSkifteIndkoebsordre(). */
     if (ordre?.oprettetAf && ordre.oprettetAf === uid) ud.selvgodkendt = true;
   }
   if (til === "afvist") {
     ud.afvistAf = uid;
     ud.afvistMs = nu;
+  }
+  if (til === "tilbageTilRettelse") {
+    ud.returneretAf = uid;
+    ud.returneretMs = nu;
+    ud.returneringsbegrundelse = begrundelse;
   }
   if (til === "sendt") ud.sendtMs = nu;
   if (til === "modtaget") ud.modtagetMs = nu;

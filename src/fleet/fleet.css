@@ -1682,7 +1682,7 @@
 
 /* ⚠ KVITTERING OG FEJL ER IKKE DET SAMME, OG DE SKAL KUNNE SKELNES PÅ
    AFSTAND. Et grønt flueben ved siden af en melding der ikke kom frem, er
-   samme fejl som et grønt flueben ved siden af en bøde. */
+   samme fejl som et grønt flueben ved siden af en bøde.
    ⚠ PARRET ER PILLERNES EGET — `--fc-ok-bg` mod `--bc-ok`. Et color-mix af
    farven SELV ville være en ny farve (test:design fejler på den), og fladen
    ville desuden flytte MED farven hvis nogen rettede tokenet — så rammer

@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { meldBehov } from "../behov.js";
-import { opretBestilling } from "../bestilling.js";
-import { skiftOrdre } from "../godkendelse.js";
-import { resolveQrLabel } from "./procure-v2-adapter.js";
+import { loadMobileDraft, resolveQrLabel, saveMobileDraft, submitMobileDraftPart } from "./procure-v2-adapter.js";
+import { formatUnitQuantity, orderUnitSummary, unitLabel, validateOrderUnit } from "./procure-v2-domain.js";
 
 const kr = (oere = 0) => new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(oere / 100);
 const todayPlus = (days) => {
   const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10);
 };
 const newSubmissionId = () => globalThis.crypto?.randomUUID?.() || `m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const emptyDraft = () => ({ submissionId: newSubmissionId(), items: {}, custom: [], department: "Lager", departmentId: "lager", deliveryLocation: "Hovedlager", wantedDate: todayPlus(7), updatedAt: Date.now() });
+const emptyDraft = () => ({ submissionId: newSubmissionId(), items: {}, custom: [], submitQuantities: {}, department: "Lager", departmentId: "lager", deliveryLocation: "Hovedlager", wantedDate: todayPlus(7), asSoonAsPossible: false, updatedAt: Date.now() });
+const clientDraft = (value) => ({ ...emptyDraft(), ...(value || {}), custom: Array.isArray(value?.custom) ? value.custom : Object.values(value?.custom || {}), submitQuantities: value?.submitQuantities || {} });
 const statusLabel = (status) => ({
   "pending-approval": "Afventer godkendelse", afventerGodkendelse: "Afventer godkendelse",
   approved: "Klar til afsendelse", godkendt: "Klar til afsendelse",
   sent: "Sendt til leverandør", sendt: "Sendt til leverandør",
-  "part-received": "Delvist modtaget", modtaget: "Modtaget",
+  "part-received": "Delvist modtaget", modtaget: "Fuldt modtaget", afsluttet: "Afsluttet",
 }[status] || "Indsendt behov");
 
 function useOnline() {
@@ -32,11 +31,11 @@ function ProductGlyph({ type }) {
   return <span className={`procure-mobile-glyph ${type || "other"}`} aria-hidden="true"><i /></span>;
 }
 
-function Quantity({ value = 0, onChange, label }) {
+function Quantity({ value = 0, onChange, label, step = 1, minimum = 0 }) {
   return <div className="procure-mobile-qty" aria-label={`Antal ${label}`}>
-    <button type="button" aria-label={`Fjern én ${label}`} disabled={value <= 0} onClick={() => onChange(Math.max(0, value - 1))}>−</button>
-    <input aria-label={`Antal ${label}`} inputMode="numeric" pattern="[0-9]*" min="0" type="number" value={value || ""} placeholder="0" onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} />
-    <button type="button" aria-label={`Tilføj én ${label}`} onClick={() => onChange(value + 1)}>＋</button>
+    <button type="button" aria-label={`Fjern ${step} ${label}`} disabled={value <= 0} onClick={() => onChange(Math.max(0, value - step))}>−</button>
+    <input aria-label={`Antal ${label}`} inputMode="numeric" pattern="[0-9]*" min={minimum} step={step} type="number" value={value || ""} placeholder="0" onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} />
+    <button type="button" aria-label={`Tilføj ${step} ${label}`} onClick={() => onChange(value > 0 ? value + step : Math.max(minimum, step))}>＋</button>
   </div>;
 }
 
@@ -50,6 +49,35 @@ function qrIdFromValue(value) {
   } catch { /* En rå mærkatreference prøves nedenfor. */ }
   const id = raw.replace(/^VEYRO-QR:/i, "");
   return /^[a-zA-Z0-9_-]{3,80}$/.test(id) ? id : "";
+}
+
+const draftSignature = (draft = {}) => JSON.stringify({
+  items: draft.items || {}, custom: Array.isArray(draft.custom) ? draft.custom : Object.values(draft.custom || {}),
+  departmentId: draft.departmentId || "", department: draft.department || "",
+  deliveryLocationId: draft.deliveryLocationId || "", deliveryLocation: draft.deliveryLocation || "",
+  wantedDate: draft.wantedDate || "", asSoonAsPossible: Boolean(draft.asSoonAsPossible),
+});
+const hasDraftLines = (draft = {}) => Object.keys(draft.items || {}).length > 0 || (Array.isArray(draft.custom) ? draft.custom.length : Object.keys(draft.custom || {}).length) > 0;
+
+function mergeConcurrentDraft(base = {}, local = {}, remote = {}) {
+  const itemIds = new Set([...Object.keys(base.items || {}), ...Object.keys(local.items || {}), ...Object.keys(remote.items || {})]);
+  const items = {};
+  for (const id of itemIds) {
+    const merged = Math.max(0, Number(remote.items?.[id] || 0) + Number(local.items?.[id] || 0) - Number(base.items?.[id] || 0));
+    if (merged > 0) items[id] = merged;
+  }
+  const customById = (rows = []) => Object.fromEntries(rows.map((row) => [row.id, row]));
+  const baseCustom = customById(base.customItems); const localCustom = customById(local.customItems); const remoteCustom = customById(remote.customItems);
+  const customItems = [...new Set([...Object.keys(baseCustom), ...Object.keys(localCustom), ...Object.keys(remoteCustom)])].map((id) => {
+    const row = localCustom[id] || remoteCustom[id] || baseCustom[id];
+    const quantity = Math.max(0, Number(remoteCustom[id]?.quantity || 0) + Number(localCustom[id]?.quantity || 0) - Number(baseCustom[id]?.quantity || 0));
+    return { ...row, quantity };
+  }).filter((row) => row.quantity > 0);
+  const pick = (field) => local[field] !== base[field] ? local[field] : remote[field];
+  return { ...remote, ...local, items, customItems,
+    departmentId: pick("departmentId"), department: pick("department"),
+    deliveryLocationId: pick("deliveryLocationId"), deliveryLocation: pick("deliveryLocation"),
+    wantedDate: pick("wantedDate"), asSoonAsPossible: pick("asSoonAsPossible"), updatedAt: Date.now() };
 }
 
 function QrScanner({ onResult, canManage, added }) {
@@ -140,6 +168,14 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     try { return JSON.parse(localStorage.getItem(historyKey)) || []; } catch { return []; }
   });
   const [saveStatus, setSaveStatus] = useState("Gemt på denne enhed");
+  const [serverHydrated, setServerHydrated] = useState(demo);
+  const serverRevisionRef = useRef(0);
+  const lastServerSignatureRef = useRef("");
+  const lastServerDraftRef = useRef({});
+  const savingSignatureRef = useRef("");
+  const latestDraftRef = useRef(draft);
+  const [saveEpoch, setSaveEpoch] = useState(0);
+  latestDraftRef.current = draft;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("Alle");
   const [customOpen, setCustomOpen] = useState(false);
@@ -151,20 +187,74 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const [scanState, setScanState] = useState(scanId ? "loading" : "idle");
   const [scanQuantity, setScanQuantity] = useState(1);
   const customButtonRef = useRef(null);
+  const activeDepartments = useMemo(() => Object.values(state.setup?.afdelinger || {}).filter((row) => row.active !== false), [state.setup]);
+  const activeDeliveryLocations = useMemo(() => Object.values(state.setup?.leveringssteder || {}).filter((row) => row.active !== false), [state.setup]);
   useEffect(() => {
-    if (!draft) return undefined;
+    if (demo) return undefined;
+    let active = true;
+    loadMobileDraft().then((result) => {
+      if (!active) return;
+      if (result.ok && result.data?.draft) {
+        const remote = result.data.draft;
+        serverRevisionRef.current = Number(remote.revision || 0);
+        lastServerSignatureRef.current = draftSignature(remote);
+        lastServerDraftRef.current = remote;
+        setDraft((local) => hasDraftLines(remote) && !hasDraftLines(local)
+          ? clientDraft(remote)
+          : Number(remote.updatedAt || 0) >= Number(local?.updatedAt || 0) ? clientDraft(remote) : local);
+        setSaveStatus("Synkroniseret");
+      }
+      setServerHydrated(true);
+    });
+    return () => { active = false; };
+  }, [demo]);
+  useEffect(() => {
+    if (!draft || !serverHydrated) return undefined;
+    const signature = draftSignature(draft);
+    try { localStorage.setItem(draftKey, JSON.stringify(draft)); }
+    catch { setSaveStatus("Kunne ikke gemme kladden"); }
+    if (demo) { lastServerSignatureRef.current = signature; setSaveStatus("Gemt på denne enhed"); return undefined; }
+    if (!hasDraftLines(draft) && serverRevisionRef.current === 0) {
+      setSaveStatus("Klar til at samle varer"); return undefined;
+    }
+    if (signature === lastServerSignatureRef.current || signature === savingSignatureRef.current) return undefined;
     setSaveStatus("Gemmer …");
-    const timer = setTimeout(() => {
-      try { localStorage.setItem(draftKey, JSON.stringify({ ...draft, updatedAt: Date.now() })); setSaveStatus("Gemt på denne enhed"); }
+    const timer = setTimeout(async () => {
+      savingSignatureRef.current = signature;
+      const snapshot = { ...draft, updatedAt: Date.now() };
+      try { localStorage.setItem(draftKey, JSON.stringify(snapshot)); }
       catch { setSaveStatus("Kunne ikke gemme kladden"); }
+      if (!online) { savingSignatureRef.current = ""; setSaveStatus("Afventer forbindelse"); return; }
+      const result = await saveMobileDraft({ draft: snapshot, expectedRevision: serverRevisionRef.current, mutationId: newSubmissionId() });
+      if (result.ok) {
+        const saved = result.data?.draft || snapshot;
+        serverRevisionRef.current = Number(saved.revision || serverRevisionRef.current); lastServerSignatureRef.current = signature; lastServerDraftRef.current = saved; savingSignatureRef.current = ""; setSaveStatus("Synkroniseret");
+        if (draftSignature(latestDraftRef.current) !== signature) setSaveEpoch((value) => value + 1);
+        return;
+      }
+      if (result.kind === "conflict" && result.current) {
+        const merged = mergeConcurrentDraft(lastServerDraftRef.current, latestDraftRef.current, result.current);
+        serverRevisionRef.current = Number(result.current.revision || 0); lastServerSignatureRef.current = draftSignature(result.current); lastServerDraftRef.current = result.current; savingSignatureRef.current = ""; setDraft(clientDraft(merged));
+      }
+      savingSignatureRef.current = "";
+      setSaveStatus(result.kind === "conflict" ? "Synkroniseret" : "Afventer forbindelse");
     }, 180);
     return () => clearTimeout(timer);
-  }, [draft, draftKey]);
+  }, [draft, draftKey, demo, online, serverHydrated, saveEpoch]);
   useEffect(() => {
     if (!customOpen) return undefined;
     const close = (event) => { if (event.key === "Escape") { setCustomOpen(false); customButtonRef.current?.focus(); } };
     window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close);
   }, [customOpen]);
+  useEffect(() => {
+    if (!draft || !activeDepartments.length || !activeDeliveryLocations.length) return;
+    setDraft((current) => {
+      const department = activeDepartments.find((row) => row.id === current.departmentId) || activeDepartments[0];
+      const delivery = activeDeliveryLocations.find((row) => row.id === current.deliveryLocationId) || activeDeliveryLocations[0];
+      if (current.departmentId === department.id && current.department === department.label && current.deliveryLocationId === delivery.id && current.deliveryLocation === delivery.label) return current;
+      return { ...current, departmentId: department.id, department: department.label, deliveryLocationId: delivery.id, deliveryLocation: delivery.label };
+    });
+  }, [activeDepartments, activeDeliveryLocations, draft?.departmentId, draft?.deliveryLocationId]);
   useEffect(() => {
     let alive = true;
     if (!scanId) { setScanned(null); setScanState("idle"); setScanQuantity(1); return undefined; }
@@ -184,7 +274,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       const row = result.data;
       setScanned({
         label: { id: row.maerkat.id, itemId: row.maerkat.vareId, location: row.maerkat.placering, active: true },
-        item: { id: row.vare.id, sku: row.vare.varenummer || row.vare.id, name: row.vare.navn, category: row.vare.varegruppe || "Ukategoriseret", supplierId: row.vare.leverandoerId || null, unit: row.vare.enhed || "stk.", packageSize: row.vare.pakningsstoerrelse || row.vare.enhed || "stk.", unitPriceOere: Number(row.vare.indkoebsprisOere || 0), visual: row.vare.billedeType || "other" },
+        item: { id: row.vare.id, sku: row.vare.varenummer || row.vare.id, name: row.vare.navn, category: row.vare.varegruppe || "Ukategoriseret", supplierId: row.vare.leverandoerId || null, unit: row.vare.bestillingsenhed || row.vare.enhed || "stk.", orderUnit: row.vare.bestillingsenhed || row.vare.enhed || "stk.", baseUnit: row.vare.grundenhed || row.vare.enhed || "stk.", unitsPerOrder: Number(row.vare.antalPrBestillingsenhed || 1), packageSize: row.vare.pakningsstoerrelse || row.vare.enhed || "stk.", unitPriceOere: Number(row.vare.indkoebsprisOere || 0), orderPriceOere: Number(row.vare.bestillingsprisOere || row.vare.indkoebsprisOere || 0), minimumOrderQuantity: Number(row.vare.minimumsantal || 1), orderStep: Number(row.vare.bestillingstrin || 1), visual: row.vare.billedeType || "other" },
       });
       setScanState("ready"); setScanQuantity(1);
     };
@@ -198,7 +288,10 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     return [...catalog, ...(draft.custom || []).map((item) => ({ ...item, quantity: Number(item.quantity || 1), custom: true }))];
   }, [draft, state.catalog]);
   const lineCount = selected.length;
-  const total = selected.reduce((sum, item) => sum + Number(item.unitPriceOere || 0) * Number(item.quantity), 0);
+  const total = selected.reduce((sum, item) => sum + orderUnitSummary(item, item.quantity).totalOere, 0);
+  const submissionQuantity = (item) => Math.min(item.quantity, Math.max(0, Number(draft.submitQuantities?.[item.id] ?? 0)));
+  const submitLines = selected.map((item) => ({ ...item, submitQuantity: submissionQuantity(item) })).filter((item) => item.submitQuantity > 0);
+  const submissionTotal = submitLines.reduce((sum, item) => sum + orderUnitSummary(item, item.submitQuantity).totalOere, 0);
   const categories = ["Alle", "Favoritter", "Tidligere køb", ...new Set(state.catalog.map((item) => item.category))];
   const shown = state.catalog.filter((item) => {
     const search = `${item.name} ${item.sku} ${item.category}`.toLowerCase().includes(query.toLowerCase());
@@ -207,56 +300,48 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   });
   const quantity = (id) => Number(draft?.items?.[id] || 0);
   const setQuantity = (id, value) => setDraft((current) => ({ ...current, items: { ...current.items, [id]: value } }));
+  const setSubmissionQuantity = (id, value, maximum) => setDraft((current) => ({ ...current, submitQuantities: { ...(current.submitQuantities || {}), [id]: Math.min(maximum, Math.max(0, Number(value) || 0)) } }));
   const saveHistory = (items) => { setHistory(items); localStorage.setItem(historyKey, JSON.stringify(items)); };
   const addScanned = () => {
-    if (!scanned?.item || scanQuantity <= 0) return;
+    if (!scanned?.item || !validateOrderUnit(scanned.item, scanQuantity).ok) return;
     const current = quantity(scanned.item.id);
     setQuantity(scanned.item.id, current + scanQuantity);
     navigate("/indkoeb/mobil/scan", { state: { added: `${scanQuantity} × ${scanned.item.name}` } });
   };
 
   const submit = async () => {
-    if (!canWrite || submitting || submittingRef.current || !lineCount || !online) return;
+    if (!canWrite || submitting || submittingRef.current || !submitLines.length || !online) return;
     submittingRef.current = true; setSubmitting(true); setMessage("");
     if (demo) {
       await new Promise((resolve) => setTimeout(resolve, 350));
       const groups = new Map();
-      selected.forEach((item) => {
+      submitLines.forEach((item) => {
         const key = item.supplierId || "mangler-leverandoer";
         groups.set(key, [...(groups.get(key) || []), item]);
       });
       const stamp = Date.now(); const createdAt = new Date(stamp).toISOString();
       const references = [...groups.entries()].map(([supplierId, lines], index) => ({
-        id: `mobile-${stamp}-${index}`, poNumber: supplierId === "mangler-leverandoer" ? null : `PO-2026-${String(150 + history.length + index).padStart(4, "0")}`,
+        id: `mobile-${stamp}-${index}`, reference: `IND-${new Date(stamp).getFullYear()}-${String(150 + history.length + index).padStart(4, "0")}`,
         supplierId, status: total > 500000 ? "pending-approval" : "approved", createdAt,
-        lines: lines.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity, unit: item.unit, unitPriceOere: item.unitPriceOere || 0, categorySnapshot: item.category || "Ukategoriseret" })),
+        lines: lines.map((item) => ({ id: item.id, sourceLineId: item.id, name: item.name, quantity: item.submitQuantity, requestedQuantity: item.quantity, unit: item.orderUnit || item.unit, unitPriceOere: orderUnitSummary(item, 1).orderPriceOere, baseUnit: item.baseUnit || item.unit, unitsPerOrder: item.unitsPerOrder || 1, categorySnapshot: item.category || "Ukategoriseret" })),
       }));
       setState((current) => ({ ...current, orders: [...references.filter((item) => item.poNumber), ...current.orders] }));
       saveHistory([...references, ...history]);
-      localStorage.removeItem(draftKey); setDraft(emptyDraft());
+      setDraft((current) => ({ ...current,
+        items: Object.fromEntries(Object.entries(current.items).map(([id, value]) => [id, Math.max(0, value - Number(current.submitQuantities?.[id] ?? 0))]).filter(([, value]) => value > 0)),
+        custom: current.custom.map((row) => ({ ...row, quantity: Math.max(0, row.quantity - Number(current.submitQuantities?.[row.id] ?? 0)) })).filter((row) => row.quantity > 0), submitQuantities: {}, updatedAt: Date.now(),
+      }));
       navigate("/indkoeb/mobil/mine?kvittering=1", { replace: true }); submittingRef.current = false; setSubmitting(false); return;
     }
-    const needs = [];
-    for (const item of selected) {
-      const result = await meldBehov({
-        vare: item.name, kilde: draft.departmentId, antal: Number(item.quantity), enhed: item.unit || "stk.",
-        varenummer: item.sku, leverandoerId: item.supplierId, note: `Mobilbestilling · ${draft.deliveryLocation} · ønsket ${draft.wantedDate}`,
-        requestId: `${draft.submissionId}-${String(item.id).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 40)}`,
-      });
-      if (!result.ok) { setMessage(result.besked || "Behovet kunne ikke indsendes. Kurven er bevaret."); submittingRef.current = false; setSubmitting(false); return; }
-      needs.push({ item, behovId: result.data.id });
-    }
-    const groups = new Map();
-    needs.forEach((entry) => { if (entry.item.supplierId) groups.set(entry.item.supplierId, [...(groups.get(entry.item.supplierId) || []), entry]); });
-    const references = [];
-    for (const [supplierId, entries] of groups) {
-      const order = await opretBestilling({ leverandoerId: supplierId, requestId: `${draft.submissionId}-${String(supplierId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 40)}`, linjer: entries.map(({ item, behovId }) => ({ behovId, antal: item.quantity, prisPrEnhedOere: item.unitPriceOere })) });
-      if (!order.ok) { setMessage(`${order.besked} Behovene er bevaret, og kurven er ikke ryddet.`); submittingRef.current = false; setSubmitting(false); return; }
-      const moved = await skiftOrdre({ ordreId: order.data.id, til: "afventerGodkendelse" });
-      references.push({ id: order.data.id, poNumber: order.data.nummer, supplierId, status: moved.data?.status || "afventerGodkendelse", createdAt: new Date().toISOString() });
-    }
-    saveHistory([...references, ...history]);
-    localStorage.removeItem(draftKey); setDraft(emptyDraft());
+    const result = await submitMobileDraftPart({ selections: submitLines.map((item) => ({ id: item.id, quantity: item.submitQuantity })), expectedRevision: serverRevisionRef.current, requestId: draft.submissionId });
+    if (!result.ok) { setMessage(result.message); submittingRef.current = false; setSubmitting(false); return; }
+    const reference = { id: result.data.approvalId, reference: result.data.reference, status: "pending-approval", createdAt: new Date().toISOString(), lines: submitLines,
+      submittedLineCount: submitLines.length, remainingLineCount: Math.max(0, lineCount - submitLines.filter((item) => item.submitQuantity >= item.quantity).length) };
+    saveHistory([reference, ...history]);
+    const returnedDraft = result.data.draft || {};
+    serverRevisionRef.current = Number(returnedDraft.revision || serverRevisionRef.current);
+    lastServerDraftRef.current = returnedDraft; lastServerSignatureRef.current = draftSignature(returnedDraft);
+    setDraft(clientDraft({ ...returnedDraft, submissionId: newSubmissionId(), submitQuantities: {} }));
     navigate("/indkoeb/mobil/mine?kvittering=1", { replace: true }); submittingRef.current = false; setSubmitting(false);
   };
 
@@ -280,8 +365,8 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       <div className="procure-mobile-search"><span>⌕</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Søg vare, varenummer eller varegruppe" /></div>
       <div className="procure-mobile-chips" aria-label="Varefiltre">{categories.map((category) => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}</div>
       <div className="procure-mobile-products">{shown.map((item) => <article key={item.id} className="procure-mobile-product">
-        <ProductGlyph type={item.visual} /><div className="procure-mobile-product-copy"><small>{item.category} · {item.sku}</small><h2>{item.name}</h2><p><b>{item.packageSize}</b> · {kr(item.unitPriceOere)} pr. {item.unit}</p></div>
-        <Quantity label={item.name} value={quantity(item.id)} onChange={(value) => setQuantity(item.id, value)} />
+        <ProductGlyph type={item.visual} /><div className="procure-mobile-product-copy"><small>{item.category} · {item.sku}</small><h2>{item.name}</h2><p><b>{orderUnitSummary(item, 1).label}</b> · {kr(orderUnitSummary(item, 1).orderPriceOere)} pr. {unitLabel(item.orderUnit || item.unit, 1)}</p>{quantity(item.id) > 0 && <small>{orderUnitSummary(item, quantity(item.id)).label}</small>}</div>
+        <Quantity label={item.orderUnit || item.unit || item.name} value={quantity(item.id)} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => setQuantity(item.id, value)} />
       </article>)}</div>
       {!shown.length && <div className="procure-mobile-empty"><b>Ingen varer matcher</b><span>Prøv en anden søgning, eller beskriv varen nedenfor.</span></div>}
       <button ref={customButtonRef} className="procure-mobile-missing" onClick={() => setCustomOpen(true)}>＋ Beskriv en vare, der mangler</button>
@@ -292,9 +377,10 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       {scanState === "loading" && <div className="procure-mobile-empty"><b>Henter varen …</b><span>Aktuelle oplysninger læses sikkert.</span></div>}
       {scanState === "ready" && scanned && <article className="procure-qr-product">
         <ProductGlyph type={scanned.item.visual} />
-        <div className="procure-mobile-product-copy"><small>{scanned.item.sku} · {scanned.label.location}</small><h2>{scanned.item.name}</h2><p>Bestillingsenhed: <b>{scanned.item.packageSize}</b></p><p>{kr(scanned.item.unitPriceOere)} pr. {scanned.item.unit}</p></div>
-        <div className="procure-qr-existing">Allerede i kurven til {draft.deliveryLocation}: <b>{quantity(scanned.item.id)}</b></div>
-        <label className="procure-qr-add-label">Tilføj antal<Quantity label={scanned.item.name} value={scanQuantity} onChange={setScanQuantity} /></label>
+        <div className="procure-mobile-product-copy"><small>{scanned.item.sku} · {scanned.label.location}</small><h2>{scanned.item.name}</h2><p>Bestillingsenhed: <b>{orderUnitSummary(scanned.item, 1).label}</b></p><p>{kr(orderUnitSummary(scanned.item, 1).orderPriceOere)} pr. {unitLabel(scanned.item.orderUnit || scanned.item.unit, 1)}</p></div>
+        <div className="procure-qr-existing">Allerede i kurven til {draft.deliveryLocation}: <b>{formatUnitQuantity(quantity(scanned.item.id), scanned.item.orderUnit || scanned.item.unit)}</b></div>
+        <label className="procure-qr-add-label">Tilføj antal<Quantity label={scanned.item.orderUnit || scanned.item.unit} value={scanQuantity} step={scanned.item.orderStep || 1} minimum={scanned.item.minimumOrderQuantity || 1} onChange={setScanQuantity} /></label>
+        <p className="procure-qr-existing">Der tilføjes: <b>{orderUnitSummary(scanned.item, scanQuantity).label}</b></p>
         <button type="button" className="procure-mobile-submit" disabled={scanQuantity <= 0} onClick={addScanned}>Tilføj og scan næste</button>
         <p className="procure-mobile-submit-note">Dette lægger kun varen i din gemte kurv. Indsendelse sker senere fra kurven.</p>
       </article>}
@@ -304,18 +390,18 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     {mode === "cart" && <div className="procure-mobile-cart">
       {!lineCount ? <div className="procure-mobile-empty"><b>Kurven er tom</b><span>Tilføj varer, mens du går hylderne igennem.</span><Link to="/indkoeb/mobil">Find varer</Link></div> : <>
         <div className="procure-mobile-section-head"><span>{lineCount} varelinjer</span><b>{kr(total)} ekskl. moms</b></div>
-        {selected.map((item) => <article className="procure-mobile-cartline" key={item.id}><div><small>{state.suppliers.find((supplier) => supplier.id === item.supplierId)?.name || "Leverandør afklares"}</small><h2>{item.name}</h2><p>{item.packageSize || item.unit}</p></div><Quantity label={item.name} value={item.quantity} onChange={(value) => item.custom ? setDraft((current) => ({ ...current, custom: current.custom.map((row) => row.id === item.id ? { ...row, quantity: value } : row).filter((row) => row.quantity > 0) })) : setQuantity(item.id, value)} /></article>)}
-        <article className="procure-mobile-delivery"><h2>Levering</h2><label>Afdeling<select value={draft.departmentId} onChange={(event) => setDraft({ ...draft, departmentId: event.target.value, department: event.target.options[event.target.selectedIndex].text })}><option value="lager">Lager</option><option value="drift">Drift</option><option value="kontor">Kontor</option><option value="facility">Facility</option></select></label><label>Leveringssted<input value={draft.deliveryLocation} onChange={(event) => setDraft({ ...draft, deliveryLocation: event.target.value })} /></label><label>Ønsket dato<input type="date" value={draft.wantedDate} onChange={(event) => setDraft({ ...draft, wantedDate: event.target.value })} /></label></article>
-        <div className="procure-mobile-review"><h2>Kompakt overblik</h2><p><span>Varer</span><b>{lineCount} varelinjer</b></p><p><span>Antal</span><b>{selected.reduce((sum, item) => sum + item.quantity, 0)} enheder/pakker</b></p><p><span>Leverandører</span><b>{new Set(selected.map((item) => item.supplierId).filter(Boolean)).size || "Afklares"}</b></p><p><span>Levering</span><b>{draft.deliveryLocation} · {draft.wantedDate}</b></p><small>Flere leverandører opdeles i separate bestillinger med hvert sit PO-nummer.</small></div>
-        <button className="procure-mobile-submit" disabled={!canWrite || submitting || !online} onClick={submit}>{submitting ? "Indsender sikkert …" : canApprove ? "Send til godkendelse" : "Indsend behov"}</button>
+        {selected.map((item) => { const sendNow = submissionQuantity(item); const chosen = sendNow > 0; const unit = item.orderUnit || item.unit || "enhed"; return <article className="procure-mobile-cartline" key={item.id}><div><small>{state.suppliers.find((supplier) => supplier.id === item.supplierId)?.name || "Leverandør afklares"}</small><h2>{item.name}</h2><p><b>På listen</b> {formatUnitQuantity(item.quantity, unit)}</p></div><Quantity label={unit} value={item.quantity} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => item.custom ? setDraft((current) => ({ ...current, custom: current.custom.map((row) => row.id === item.id ? { ...row, quantity: value } : row).filter((row) => row.quantity > 0) })) : setQuantity(item.id, value)} /><div className={`procure-mobile-send-part ${chosen ? "selected" : ""}`}><label className="procure-mobile-send-toggle"><input type="checkbox" checked={chosen} onChange={(event) => setSubmissionQuantity(item.id, event.target.checked ? item.quantity : 0, item.quantity)} /><span>Send denne linje videre</span></label>{chosen && <><span>Send nu</span><Quantity label={`send ${unit}`} value={sendNow} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => setSubmissionQuantity(item.id, value, item.quantity)} /></>}<small><b>Bliver på listen</b> {formatUnitQuantity(item.quantity - sendNow, unit)}</small></div></article>; })}
+        <article className="procure-mobile-delivery"><h2>Levering</h2><label>Afdeling<select value={draft.departmentId || ""} disabled={!activeDepartments.length} onChange={(event) => { const row = activeDepartments.find((item) => item.id === event.target.value); setDraft({ ...draft, departmentId: row?.id || "", department: row?.label || "" }); }}>{!activeDepartments.length && <option value="">Ingen aktive afdelinger · kontakt administrator</option>}{activeDepartments.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><label>Leveringssted<select value={draft.deliveryLocationId || ""} disabled={!activeDeliveryLocations.length} onChange={(event) => { const row = activeDeliveryLocations.find((item) => item.id === event.target.value); setDraft({ ...draft, deliveryLocationId: row?.id || "", deliveryLocation: row?.label || "" }); }}>{!activeDeliveryLocations.length && <option value="">Ingen aktive leveringssteder · kontakt administrator</option>}{activeDeliveryLocations.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><fieldset className="procure-mobile-delivery-choice"><legend>Ønsket levering</legend><label><input type="radio" name="delivery-time" checked={Boolean(draft.asSoonAsPossible)} onChange={() => setDraft({ ...draft, asSoonAsPossible: true })} /> Hurtigst muligt</label><label><input type="radio" name="delivery-time" checked={!draft.asSoonAsPossible} onChange={() => setDraft({ ...draft, asSoonAsPossible: false })} /> På en bestemt dato</label>{!draft.asSoonAsPossible && <input aria-label="Ønsket leveringsdato" type="date" value={draft.wantedDate || ""} onChange={(event) => setDraft({ ...draft, wantedDate: event.target.value })} />}</fieldset></article>
+        <div className="procure-mobile-review"><h2>Kompakt overblik</h2><p><span>Sendes nu</span><b>{submitLines.length} af {lineCount} varelinjer · {kr(submissionTotal)}</b></p><p><span>Bliver på listen</span><b>{selected.filter((item) => submissionQuantity(item) < item.quantity).length} varelinjer</b></p><p><span>Leverandører</span><b>{new Set(submitLines.map((item) => item.supplierId).filter(Boolean)).size || "Afklares"}</b></p><p><span>Levering</span><b>{draft.deliveryLocation} · {draft.asSoonAsPossible ? "Hurtigst muligt" : draft.wantedDate || "Dato mangler"}</b></p><small>Godkendelsesgrundlaget beregnes af hele listen før deling. Kun aktivt godkendte mængder kan danne leverandørordrer.</small></div>
+        <button className="procure-mobile-submit" disabled={!canWrite || submitting || !online || !submitLines.length || !draft.departmentId || !draft.deliveryLocationId || (!draft.asSoonAsPossible && !draft.wantedDate)} onClick={submit}>{submitting ? "Indsender sikkert …" : canApprove ? "Send valgte til godkendelse" : "Indsend valgte behov"}</button>
         <p className="procure-mobile-submit-note">Mail og PDF dannes efter godkendelse. Leverandøren modtager intet, før en bruger aktivt vælger Send bestilling.</p>
       </>}
     </div>}
 
     {mode === "mine" && <div className="procure-mobile-mine">
-      {new URLSearchParams(location.search).get("kvittering") === "1" && history[0] && <article className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>Indkøbet er modtaget</h2><p>{history.filter((item) => item.createdAt === history[0].createdAt).map((item) => item.poNumber || "Behovsreference").join(" · ")}</p><b>{statusLabel(history[0].status)}</b></div></article>}
+      {new URLSearchParams(location.search).get("kvittering") === "1" && history[0] && <article className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>Sendt til godkendelse</h2><p>Reference {history[0].reference || "oprettet"}</p><b>{history[0].submittedLineCount || history[0].lines?.length || 0} linjer sendt · {history[0].remainingLineCount || 0} linjer bliver på listen</b><p>Faktisk status: {statusLabel(history[0].status)}. Leverandøren har endnu ikke modtaget bestillingen.</p></div></article>}
       <h2 className="procure-mobile-list-title">Seneste indkøb</h2>
-      {[...history, ...state.orders.filter((order) => !history.some((item) => item.id === order.id))].slice(0, 12).map((order) => <article className="procure-mobile-purchase" key={order.id}><div><small>{order.poNumber || order.id}</small><h3>{state.suppliers.find((supplier) => supplier.id === order.supplierId)?.name || "Leverandør afklares"}</h3><p>{order.lines?.length || 1} varelinjer</p></div><strong>{statusLabel(order.status)}</strong></article>)}
+      {[...history, ...state.orders.filter((order) => !history.some((item) => item.id === order.id))].slice(0, 12).map((order) => { const supplierNames = [...new Set((order.lines || []).map((line) => state.suppliers.find((supplier) => supplier.id === (line.supplierId || order.supplierId))?.name).filter(Boolean))]; const supplierLabel = supplierNames.length > 1 ? "Flere leverandører" : supplierNames[0] || (order.supplierId ? state.suppliers.find((supplier) => supplier.id === order.supplierId)?.name : "Leverandør afklares"); return <article className="procure-mobile-purchase" key={order.id}><div><small>{order.poNumber || order.reference || "Behov"}</small><h3>{supplierLabel}</h3><p>{order.lines?.length || 1} varelinjer</p></div><strong>{statusLabel(order.status)}</strong></article>; })}
       {!history.length && !state.orders.length && <div className="procure-mobile-empty"><b>Ingen indkøb endnu</b><span>Dine indsendte behov og bestillinger vises her.</span></div>}
     </div>}
 

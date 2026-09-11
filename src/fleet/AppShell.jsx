@@ -59,8 +59,8 @@ function MiljoeBjaelke() {
   if (miljoe === "dev") {
     return (
       <div className="fc-miljoe fc-miljoe-dev" role="status">
-        <b>Dev{netlifyKontekst && !erProduktionsdeploy ? ` · ${netlifyKontekst}` : ""}</b>
-        <span>{projektId} — data her er til at smide væk.</span>
+        <b>TEST{netlifyKontekst && !erProduktionsdeploy ? ` · ${netlifyKontekst}` : ""}</b>
+        <span>Syntetiske testdata i {projektId}. Ingen eksterne handlinger.</span>
       </div>
     );
   }
@@ -68,7 +68,7 @@ function MiljoeBjaelke() {
     return (
       <div className="fc-miljoe fc-miljoe-demo" role="status">
         <b>Demo</b>
-        <span>Ingen databaseforbindelse. Tallene kommer fra datasættene i fleet/demo-*.js.</span>
+        <span>Syntetiske testdata. Handlinger påvirker ikke kundedata eller eksterne leverandører.</span>
       </div>
     );
   }
@@ -106,6 +106,7 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
+  const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/");
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
 
@@ -405,7 +406,7 @@ export default function AppShell() {
         </aside>
 
         <div className="fc-main">
-          <header className="fc-top">
+          {!procureOwnsPageTitle && <header className="fc-top">
             <div className="fc-top-h">
               <h1>{modul.titel}</h1>
               <p>{modul.under}</p>
@@ -432,7 +433,7 @@ export default function AppShell() {
                 vinduer. Det er KONTROLLERNE der er væk, ikke begrebet — og
                 skal en periodevælger tilbage, hører den her i shellen igen,
                 aldrig i et modul. */}
-          </header>
+          </header>}
           {/* ⚠ Suspense LIGGER HER, IKKE OM HELE RUTETRÆET.
               Skærmene hentes når de åbnes (beslutning 97), og React
               venter ved den NÆRMESTE grænse. Lå den om <Routes> i
