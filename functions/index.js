@@ -43,7 +43,6 @@ import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
 import { createHash, randomUUID } from "node:crypto";
-import QRCode from "qrcode";
 import { decryptWebshopCredential, encryptWebshopCredential } from "./procure-webshop-credentials.js";
 
 import {
@@ -172,6 +171,10 @@ import {
   byggImporteretFaktura, modtagetPrLinje, serverOrdreLinjer,
   sanitizeMobileDraft, splitServerDraft, decideServerApproval,
 } from "./delt/procure-v2/procure-backend-domain.js";
+import {
+  USER_INVENTORY_TYPES, applyInventoryMovement, applyInventoryTransfer,
+  inventoryLocation, stockQuantityForOrderLine,
+} from "./delt/procure-v2/procure-inventory-domain.js";
 /* ⚠ B2 — ansoegningAfgoer skal prøve mod NØJAGTIG samme
    kanAfgoereAnsoegning()/valideAnsoegning()/reservationFraFravaer() som
    chaufførappen og Workforce-skærmen bruger. Se fravaer.js's eget hoved. */
@@ -713,25 +716,10 @@ async function sikrOrdrePdf({ rod, tenantId, ordreId, ordre, leverandoer, uid })
     leveringspostnr: ordre.leveringspostnr || leveringssted.postnr || leveringssted.postalCode,
     leveringsby: ordre.leveringsby || leveringssted.by || leveringssted.city,
   };
-  const modtagelsesUrl = virksomhed.procureAppUrl || virksomhed.publicAppUrl || virksomhed.appUrl;
-  if (modtagelsesUrl) {
-    try {
-      const base = new URL(modtagelsesUrl);
-      if (base.protocol === "https:" && !["localhost", "127.0.0.1", "::1"].includes(base.hostname)) {
-        const url = new URL(`/indkoeb/mobil/modtag/${encodeURIComponent(ordreId)}`, base).toString();
-        const modules = QRCode.create(url, { errorCorrectionLevel: "M" }).modules;
-        virksomhed.procureReceiptQr = { size: modules.size, data: Array.from(modules.data, Boolean) };
-      }
-    } catch { /* Manglende/ugyldig offentlig appadresse vises uden falsk QR. */ }
-  }
   const grundlag = validerOrdrePdfGrundlag(pdfOrdre, leverandoer, virksomhed);
   if (!grundlag.ok) {
     throw new HttpsError("failed-precondition",
       `Ordre-PDF'en kan ikke dannes. Udfyld ${grundlag.missing.join(", ")} før afsendelse.`);
-  }
-  if (!grundlag.data.receiptUrl || !virksomhed.procureReceiptQr) {
-    throw new HttpsError("failed-precondition",
-      "Ordre-PDF'en kan ikke dannes. Konfigurér kundens offentlige HTTPS-adresse til sikker mobilmodtagelse.");
   }
   const bytes = Buffer.from(createOrderPdfBytes(pdfOrdre, leverandoer, virksomhed));
   const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -6705,12 +6693,12 @@ export const procureGodkendelseslinjerAfgor = onCall({ region: REGION }, async (
   return { ok: true, duplicate: false, status: result.status, orders, revision: finished.revision };
 });
 
-const PROCURE_STAMDATA_TYPER = ["afdelinger", "varekategorier", "leveringssteder"];
+const PROCURE_STAMDATA_TYPER = ["afdelinger", "varekategorier", "leveringssteder", "lagre", "lagerplaceringer"];
 
 export const procureOpsaetningHent = onCall({ region: REGION }, async (req) => {
   const { rod } = await procureDoer(req, { perm: "indkoeb.laes", modul: "indkoeb" });
   const snap = await rod.child("procureOpsaetning").once("value");
-  return { setup: snap.val() || { afdelinger: {}, varekategorier: {}, leveringssteder: {}, budgetter: {} } };
+  return { setup: snap.val() || { afdelinger: {}, varekategorier: {}, leveringssteder: {}, lagre: {}, lagerplaceringer: {}, budgetter: {} } };
 });
 
 export const procureStamdataGem = onCall({ region: REGION }, async (req) => {
@@ -6718,16 +6706,22 @@ export const procureStamdataGem = onCall({ region: REGION }, async (req) => {
   const type = kortStreng(req.data?.type, 30); const id = kortStreng(req.data?.id, 80);
   const label = kortStreng(req.data?.label, 120); const active = req.data?.active !== false;
   const adresse = kortStreng(req.data?.adresse, 160); const postnr = kortStreng(req.data?.postnr, 20); const by = kortStreng(req.data?.by, 80);
+  const lagerId = kortStreng(req.data?.lagerId, 60);
   const expectedRevision = Number(req.data?.expectedRevision || 0);
   if (!PROCURE_STAMDATA_TYPER.includes(type) || !/^[A-Za-z0-9_-]{2,80}$/.test(id) || !label || !Number.isInteger(expectedRevision)) throw new HttpsError("invalid-argument", "Type, stabilt id, navn eller revision er ugyldig.");
   if (type === "leveringssteder" && (!adresse || !postnr || !by)) throw new HttpsError("invalid-argument", "Et leveringssted skal have adresse, postnummer og by.");
+  if (type === "lagerplaceringer") {
+    if (!lagerId) throw new HttpsError("invalid-argument", "Vælg lager for placeringen.");
+    const warehouse = await rod.child(`procureOpsaetning/lagre/${lagerId}`).once("value");
+    if (!warehouse.exists() || warehouse.val().active === false) throw new HttpsError("invalid-argument", "Det valgte lager findes ikke eller er deaktiveret.");
+  }
   const ref = rod.child(`procureOpsaetning/${type}/${id}`); let conflict = false; const now = Date.now();
   await ref.once("value");
   const tx = await ref.transaction((current) => {
     conflict = false;
     if (Number(current?.revision || 0) !== expectedRevision) { conflict = true; return current; }
-    return { id, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}), revision: expectedRevision + 1, createdAt: current?.createdAt || now, createdBy: current?.createdBy || uid, updatedAt: now, updatedBy: uid,
-      history: { ...(current?.history || {}), [`${now}`]: { at: now, actorId: uid, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}) } } };
+    return { id, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}), ...(type === "lagerplaceringer" ? { lagerId } : {}), revision: expectedRevision + 1, createdAt: current?.createdAt || now, createdBy: current?.createdBy || uid, updatedAt: now, updatedBy: uid,
+      history: { ...(current?.history || {}), [`${now}`]: { at: now, actorId: uid, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}), ...(type === "lagerplaceringer" ? { lagerId } : {}) } } };
   });
   if (!tx.committed || conflict) throw new HttpsError("aborted", "Stamdata er ændret af en anden administrator.", { current: (await ref.once("value")).val() });
   await logProcure(tenantId, uid, AUDIT.aendre, `procure-${type}`, id, null, { status: active ? "aktiv" : "deaktiveret" }, "PROCURE-stamdata ændret med historik");
@@ -7060,39 +7054,74 @@ export const procureModtagelseRegistrer = onCall({ region: REGION }, async (req)
   if (!ordreId || !modtagelseId || !erGyldigtSendRequestId(modtagelseId)) {
     throw new HttpsError("invalid-argument", "ordreId/modtagelseId mangler eller er ugyldigt.");
   }
+  const user = (await rod.child(`brugere/${uid}`).once("value")).val() || {};
+  const actorName = kortStreng(user.navn || user.displayName || user.email, 160) || "Medarbejder";
   let resultat;
   let afvistGrund = null;
-  const ordreRef = rod.child(`indkoebsordrer/${ordreId}`);
-  const ordreFoerSnap = await ordreRef.once("value");
-  if (!ordreFoerSnap.exists()) {
+  const tenantFoerSnap = await rod.once("value");
+  if (!tenantFoerSnap.exists() || !tenantFoerSnap.val()?.indkoebsordrer?.[ordreId]) {
     throw new HttpsError("not-found", "Bestillingen findes ikke.");
   }
-  const ordreFoer = ordreFoerSnap.val();
+  const tenantFoer = tenantFoerSnap.val();
+  const now = Date.now();
   let koldCacheFallback = true;
-  const tx = await ordreRef.transaction((ordre) => {
-    /* Admin-SDK kan kalde update-funktionen én gang med null før dens lokale
-       cache er fyldt. Brug den netop serverlæste revision kun ved dette
-       første kald; et senere null (fx. samtidig sletning) må ikke genskabe
-       en gammel ordre. Serverens compare-and-swap fremtvinger retry, hvis
-       posten er ændret siden opslaget. */
-    if (!ordre && koldCacheFallback) ordre = structuredClone(ordreFoer);
+  const tx = await rod.transaction((tenantData) => {
+    if (!tenantData && koldCacheFallback) tenantData = structuredClone(tenantFoer);
     koldCacheFallback = false;
+    const ordre = tenantData?.indkoebsordrer?.[ordreId];
     if (!ordre) { afvistGrund = "Bestillingen findes ikke."; return; }
     const eksisterende = ordre.modtagelser?.[modtagelseId];
-    if (eksisterende?.status === "registreret") { resultat = { allerede: true, receipt: eksisterende }; return ordre; }
+    if (eksisterende?.status === "registreret") {
+      resultat = { allerede: true, receipt: eksisterende, status: ordre.status,
+        inventoryEffects: Object.values(eksisterende.lagerresultater || {}) };
+      return tenantData;
+    }
     if (!["sendt", "modtaget"].includes(ordre.status)) { afvistGrund = "Bestillingen er ikke afsendt."; return; }
     if (Number(d.ordreRevision) !== ordreRevision(ordre)) { afvistGrund = "Bestillingsrevisionen er ændret."; return; }
     const dokumenter = eksisterende?.dokumenter || {};
     if (Object.values(dokumenter).some((dok) => dok.status !== "aktiv")) { afvistGrund = "En vedhæftning er ikke færdigvalideret."; return; }
-    const bygget = byggServerModtagelse({ ...ordre, id: ordreId }, d, { uid });
+    const bygget = byggServerModtagelse({ ...ordre, id: ordreId }, { ...d, receivedBy: actorName }, { uid, now });
     if (!bygget.ok) { resultat = bygget; return; }
-    ordre.modtagelser = { ...(ordre.modtagelser || {}), [modtagelseId]: { ...bygget.receipt, dokumenter } };
-    const fuld = ordreErFuldtModtaget(ordre);
-    ordre.status = fuld ? "modtaget" : "sendt";
+
+    const inventoryEffects = [];
+    const lagerbevaegelser = {};
+    const orderLines = serverOrdreLinjer(ordre);
+    for (const [index, receiptLine] of Object.values(bygget.receipt.linjer).entries()) {
+      const orderLine = orderLines.find((line) => line.id === receiptLine.ordrelinjeId);
+      const item = orderLine?.vareId ? tenantData.forbrugsvarer?.[orderLine.vareId] : null;
+      if (!item || item.lagerfoert !== true) continue;
+      const row = (d.lines || []).find((candidate) => candidate.orderLineId === orderLine.id) || {};
+      const converted = stockQuantityForOrderLine(item, orderLine, receiptLine.godkendtAntal);
+      if (!converted.ok) { afvistGrund = converted.message; return; }
+      const warehouseId = kortStreng(row.warehouseId || d.warehouseId, 60);
+      const locationId = kortStreng(row.locationId || d.locationId, 60);
+      const current = inventoryLocation(item, warehouseId, locationId);
+      const movementId = `${modtagelseId}-${index + 1}`;
+      const stock = applyInventoryMovement({ ...item, id: orderLine.vareId }, {
+        type: "modtaget", quantity: converted.quantity, unit: converted.unit,
+        requestId: movementId, warehouseId,
+        warehouse: kortStreng(row.warehouse || d.warehouse, 120),
+        locationId, location: kortStreng(row.location || d.location, 120),
+        expectedRevision: Number(current?.revision || 0), orderId: ordreId,
+        receiptId: modtagelseId, orderLineId: orderLine.id,
+      }, { uid, actorName, now });
+      if (!stock.ok) { afvistGrund = Object.values(stock.errors)[0]; return; }
+      tenantData.forbrugsvarer[orderLine.vareId] = stock.item;
+      tenantData.forbrugsvarebevaegelser = tenantData.forbrugsvarebevaegelser || {};
+      tenantData.forbrugsvarebevaegelser[movementId] = stock.movement;
+      lagerbevaegelser[movementId] = stock.movement;
+      inventoryEffects.push({ movementId, itemId: orderLine.vareId, itemName: orderLine.navn,
+        ...stock.location, before: stock.movement.foer, received: converted.quantity, after: stock.movement.efter });
+    }
+    ordre.modtagelser = { ...(ordre.modtagelser || {}), [modtagelseId]: {
+      ...bygget.receipt, modtagetAfNavn: actorName, dokumenter, lagerbevaegelser,
+      lagerresultater: Object.fromEntries(inventoryEffects.map((effect) => [effect.movementId, effect])),
+    } };
+    ordre.status = ordreErFuldtModtaget(ordre) ? "modtaget" : "sendt";
     ordre.resterendeVaerdiOere = serverOrdreLinjer(ordre).reduce((sum, line) =>
       sum + Math.max(0, line.antal - Number(modtagetPrLinje(ordre).get(line.id) || 0)) * line.prisOere, 0);
-    resultat = { receipt: ordre.modtagelser[modtagelseId], status: ordre.status };
-    return ordre;
+    resultat = { receipt: ordre.modtagelser[modtagelseId], status: ordre.status, inventoryEffects };
+    return tenantData;
   });
   if (!tx.committed) {
     if (resultat?.errors) throw new HttpsError("invalid-argument", Object.values(resultat.errors)[0]);
@@ -7101,7 +7130,8 @@ export const procureModtagelseRegistrer = onCall({ region: REGION }, async (req)
   if (!resultat) throw new HttpsError("aborted", "Modtagelsen kunne ikke registreres.");
   await logProcure(tenantId, uid, AUDIT.opret, "modtagelse", modtagelseId, null,
     { status: "registreret" }, resultat.allerede ? "gentaget kald — ingen dobbeltregistrering" : "varemodtagelse registreret");
-  return { ok: true, modtagelseId, ordreStatus: resultat.status || tx.snapshot.val().status, allerede: Boolean(resultat.allerede) };
+  return { ok: true, modtagelseId, ordreStatus: resultat.status,
+    allerede: Boolean(resultat.allerede), inventoryEffects: resultat.inventoryEffects || [] };
 });
 
 export const procureModtagelseKorriger = onCall({ region: REGION }, async (req) => {
@@ -7150,21 +7180,51 @@ export const procureVareReturneringRegistrer = onCall({ region: REGION }, async 
   const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
   const d = req.data || {}; const ordreId = kortStreng(d.ordreId, 60); const returneringId = kortStreng(d.returneringId, 60);
   if (!ordreId || !returneringId || !erGyldigtSendRequestId(returneringId)) throw new HttpsError("invalid-argument", "Returneringens reference mangler eller er ugyldig.");
-  const ref = rod.child(`indkoebsordrer/${ordreId}`); let resultat; let afvistGrund = "";
-  const ordreFoerSnap = await ref.once("value");
-  let koldCacheFallback = ordreFoerSnap.exists();
-  const ordreFoer = ordreFoerSnap.val();
-  const tx = await ref.transaction((ordre) => {
-    if (!ordre && koldCacheFallback) ordre = structuredClone(ordreFoer);
+  const tenantFoerSnap = await rod.once("value");
+  if (!tenantFoerSnap.exists() || !tenantFoerSnap.val()?.indkoebsordrer?.[ordreId]) throw new HttpsError("not-found", "Bestillingen findes ikke.");
+  const user = tenantFoerSnap.val()?.brugere?.[uid] || {};
+  const actorName = kortStreng(user.navn || user.displayName || user.email, 160) || "Medarbejder";
+  const tenantFoer = tenantFoerSnap.val(); const now = Date.now(); let resultat; let afvistGrund = ""; let koldCacheFallback = true;
+  const tx = await rod.transaction((tenantData) => {
+    if (!tenantData && koldCacheFallback) tenantData = structuredClone(tenantFoer);
     koldCacheFallback = false;
+    const ordre = tenantData?.indkoebsordrer?.[ordreId];
     if (!ordre) { afvistGrund = "Bestillingen findes ikke."; return; }
-    if (ordre.returneringer?.[returneringId]?.status === "registreret") { resultat = { allerede: true, returned: ordre.returneringer[returneringId] }; return ordre; }
+    if (ordre.returneringer?.[returneringId]?.status === "registreret") {
+      resultat = { allerede: true, returned: ordre.returneringer[returneringId] }; return tenantData;
+    }
     if (Number(d.ordreRevision) !== ordreRevision(ordre)) { afvistGrund = "Bestillingen er ændret."; return; }
-    const bygget = byggServerReturnering({ ...ordre, id: ordreId }, d, { uid });
+    const bygget = byggServerReturnering({ ...ordre, id: ordreId }, d, { uid, now });
     if (!bygget.ok) { resultat = bygget; return; }
-    ordre.returneringer = { ...(ordre.returneringer || {}), [returneringId]: bygget.returned };
-    resultat = { returned: bygget.returned };
-    return ordre;
+    const movements = {};
+    const orderLines = serverOrdreLinjer(ordre);
+    for (const [index, returnedLine] of Object.values(bygget.returned.linjer).entries()) {
+      const orderLine = orderLines.find((line) => line.id === returnedLine.ordrelinjeId);
+      const item = orderLine?.vareId ? tenantData.forbrugsvarer?.[orderLine.vareId] : null;
+      if (!item || item.lagerfoert !== true) continue;
+      const row = (d.lines || []).find((candidate) => candidate.orderLineId === orderLine.id) || {};
+      const converted = stockQuantityForOrderLine(item, orderLine, returnedLine.antal);
+      if (!converted.ok) { afvistGrund = converted.message; return; }
+      const warehouseId = kortStreng(row.warehouseId || d.warehouseId, 60);
+      const locationId = kortStreng(row.locationId || d.locationId, 60);
+      const current = inventoryLocation(item, warehouseId, locationId);
+      const movementId = `${returneringId}-${index + 1}`;
+      const stock = applyInventoryMovement({ ...item, id: orderLine.vareId }, {
+        type: "retur", quantity: converted.quantity, unit: converted.unit,
+        requestId: movementId, warehouseId, warehouse: kortStreng(row.warehouse || d.warehouse, 120),
+        locationId, location: kortStreng(row.location || d.location, 120),
+        expectedRevision: Number(current?.revision || 0), orderId: ordreId,
+        reason: d.reason, orderLineId: orderLine.id,
+      }, { uid, actorName, now });
+      if (!stock.ok) { afvistGrund = Object.values(stock.errors)[0]; return; }
+      tenantData.forbrugsvarer[orderLine.vareId] = stock.item;
+      tenantData.forbrugsvarebevaegelser = tenantData.forbrugsvarebevaegelser || {};
+      tenantData.forbrugsvarebevaegelser[movementId] = stock.movement;
+      movements[movementId] = stock.movement;
+    }
+    ordre.returneringer = { ...(ordre.returneringer || {}), [returneringId]: { ...bygget.returned, lagerbevaegelser: movements } };
+    resultat = { returned: ordre.returneringer[returneringId] };
+    return tenantData;
   });
   if (!tx.committed) throw new HttpsError(resultat?.errors ? "invalid-argument" : "aborted", resultat?.errors ? Object.values(resultat.errors)[0] : afvistGrund || "Returneringen kunne ikke registreres.");
   await logProcure(tenantId, uid, AUDIT.opret, "procureReturnering", returneringId, null, { status: "registreret", vaerdiOere: resultat.returned.vaerdiOere }, resultat.allerede ? "gentaget retur — ingen dublet" : "fysisk retur registreret; kredit afventes");
@@ -8320,6 +8380,12 @@ export const forbrugsvareskriv = onCall({ region: REGION }, async (req) => {
   if (kortStreng(d.varenummer, 60)) post.varenummer = kortStreng(d.varenummer, 60);
   if (kortStreng(d.note, 250)) post.note = kortStreng(d.note, 250);
   if (kortStreng(d.leverandoerId, 60)) post.leverandoerId = kortStreng(d.leverandoerId, 60);
+  post.lagerfoert = d.lagerfoert === true;
+  if (kortStreng(d.grundenhed, 20)) post.grundenhed = kortStreng(d.grundenhed, 20);
+  if (kortStreng(d.bestillingsenhed, 20)) post.bestillingsenhed = kortStreng(d.bestillingsenhed, 20);
+  if (Number.isFinite(Number(d.antalPrBestillingsenhed)) && Number(d.antalPrBestillingsenhed) > 0) {
+    post.antalPrBestillingsenhed = Number(d.antalPrBestillingsenhed);
+  }
   /* ⚠ MINIMUM ER VALGFRIT, og `null` betyder UDTRYKKELIGT "ingen graense" —
      ikke "uaendret". Uden den skelnen kunne en graense aldrig fjernes igen. */
   if (Number.isFinite(d.minimumBeholdning)) post.minimumBeholdning = d.minimumBeholdning;
@@ -8359,8 +8425,8 @@ export const forbrugsvareskriv = onCall({ region: REGION }, async (req) => {
 
   post.oprettetAf = uid;
   post.oprettetMs = Date.now();
-  /* En ny vare har beholdning nul. Den foerste modtagelse er en bevaegelse. */
-  post.beholdning = 0;
+  /* En ny vare har UKENDT beholdning. Nul er kun sandt efter en dokumenteret
+     startoptælling; ellers ville manglende viden blive vist som en tom hylde. */
 
   const ref = rod.child("forbrugsvarer").push();
   await ref.set(post);
@@ -8398,6 +8464,10 @@ export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => 
   const snap = await rod.child(`forbrugsvarer/${forbrugsvareId}`).once("value");
   if (!snap.exists()) throw new HttpsError("not-found", "Varen findes ikke.");
   const vare = { ...snap.val(), id: forbrugsvareId };
+  if (vare.lagerfoert === true) {
+    throw new HttpsError("failed-precondition",
+      "Lagerførte varer skal registreres via Lager, så lager og placering bevares.");
+  }
 
   const nu = Date.now();
   const post = {
@@ -8440,6 +8510,88 @@ export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => 
     `${post.art}: ${post.antal}`);
 
   return { ok: true, id: ref.key, beholdning: post.efter };
+});
+
+/* PROCURE LAGER V2 — samme forbrugsvarer og samme append-only
+   forbrugsvarebevaegelser som hidtil, nu med lagerplacering og revision.
+   Transaktionen ligger på tenant-roden, så cache, historik og eventuelle to
+   flytteben enten gemmes samlet eller slet ikke. */
+export const procureLagerBevaegelse = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, {
+    perm: "indkoeb.skriv", modul: "indkoeb",
+  });
+  const d = req.data || {};
+  const requestId = kortStreng(d.requestId, 60);
+  const forbrugsvareId = kortStreng(d.forbrugsvareId, 60);
+  const type = kortStreng(d.type, 30);
+  if (!requestId || !erGyldigtSendRequestId(requestId) || !forbrugsvareId) {
+    throw new HttpsError("invalid-argument", "Vare- eller handlingsreference mangler eller er ugyldig.");
+  }
+  if (![...USER_INVENTORY_TYPES].includes(type)) {
+    throw new HttpsError("invalid-argument", "Bevægelsestypen kan ikke registreres manuelt.");
+  }
+  const bruger = (await rod.child(`brugere/${uid}`).once("value")).val() || {};
+  const actorName = kortStreng(bruger.navn || bruger.displayName || bruger.email, 160) || "Medarbejder";
+  const tenantBeforeSnap = await rod.once("value");
+  if (!tenantBeforeSnap.exists()) throw new HttpsError("not-found", "Kunden findes ikke.");
+  const tenantBefore = tenantBeforeSnap.val();
+  let coldFallback = true;
+  let outcome = null;
+  let failure = null;
+  const tx = await rod.transaction((tenant) => {
+    if (!tenant && coldFallback) tenant = structuredClone(tenantBefore);
+    coldFallback = false;
+    if (!tenant) { failure = "Kunden findes ikke."; return; }
+    const existing = type === "flytning"
+      ? [tenant.forbrugsvarebevaegelser?.[`${requestId}-ud`], tenant.forbrugsvarebevaegelser?.[`${requestId}-ind`]].filter(Boolean)
+      : [tenant.forbrugsvarebevaegelser?.[requestId]].filter(Boolean);
+    if (existing.length) {
+      if (existing.some((movement) => movement.forbrugsvareId !== forbrugsvareId)
+        || (type === "flytning" && existing.length !== 2)) {
+        failure = "Handlingsreferencen er allerede brugt til en anden eller ufuldstændig bevægelse."; return;
+      }
+      outcome = { already: true, movements: existing, item: tenant.forbrugsvarer?.[forbrugsvareId] };
+      return tenant;
+    }
+    const item = tenant.forbrugsvarer?.[forbrugsvareId];
+    if (!item) { failure = "Varen findes ikke."; return; }
+    const context = { uid, actorName, now: Date.now() };
+    const input = {
+      ...d, type, requestId,
+      warehouseId: kortStreng(d.warehouseId, 60), warehouse: kortStreng(d.warehouse, 120),
+      locationId: kortStreng(d.locationId, 60), location: kortStreng(d.location, 120),
+      fromWarehouseId: kortStreng(d.fromWarehouseId, 60), fromWarehouse: kortStreng(d.fromWarehouse, 120),
+      fromLocationId: kortStreng(d.fromLocationId, 60), fromLocation: kortStreng(d.fromLocation, 120),
+      toWarehouseId: kortStreng(d.toWarehouseId, 60), toWarehouse: kortStreng(d.toWarehouse, 120),
+      toLocationId: kortStreng(d.toLocationId, 60), toLocation: kortStreng(d.toLocation, 120),
+      reason: kortStreng(d.reason, 250), orderId: kortStreng(d.orderId, 60),
+    };
+    const built = type === "flytning"
+      ? applyInventoryTransfer({ ...item, id: forbrugsvareId }, input, context)
+      : applyInventoryMovement({ ...item, id: forbrugsvareId }, input, context);
+    if (!built.ok) { failure = Object.values(built.errors)[0]; return; }
+    tenant.forbrugsvarer = tenant.forbrugsvarer || {};
+    tenant.forbrugsvarer[forbrugsvareId] = built.item;
+    tenant.forbrugsvarebevaegelser = tenant.forbrugsvarebevaegelser || {};
+    const movements = built.movements || [built.movement];
+    movements.forEach((movement, index) => {
+      const movementId = movements.length === 1 ? requestId : `${requestId}-${index === 0 ? "ud" : "ind"}`;
+      tenant.forbrugsvarebevaegelser[movementId] = movement;
+    });
+    outcome = { already: false, movements, item: built.item, locations: built.locations || [built.location] };
+    return tenant;
+  });
+  if (!tx.committed || !outcome) {
+    const conflict = /ændret af en anden/i.test(failure || "");
+    throw new HttpsError(conflict ? "aborted" : "failed-precondition", failure || "Lagerbevægelsen kunne ikke registreres.");
+  }
+  const currentLocation = type === "flytning" ? null : inventoryLocation(outcome.item, d.warehouseId, d.locationId);
+  const currentQuantity = currentLocation?.beholdning ?? outcome.item?.beholdning;
+  await logProcure(tenantId, uid, AUDIT.aendre, "forbrugsvarer", forbrugsvareId,
+    null, { antal: Number.isFinite(Number(currentQuantity)) ? Number(currentQuantity) : null },
+    outcome.already ? "gentaget lagerkald — ingen dublet" : `lagerbevægelse: ${type}`);
+  return { ok: true, requestId, already: outcome.already, item: outcome.item,
+    movements: outcome.movements, locations: outcome.locations || (currentLocation ? [currentLocation] : []) };
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

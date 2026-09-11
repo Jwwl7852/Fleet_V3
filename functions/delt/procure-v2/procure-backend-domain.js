@@ -41,6 +41,7 @@ export function byggServerModtagelse(ordre, input = {}, { uid, now = Date.now() 
     const delivered = finite(row.deliveredQuantity);
     const damaged = finite(row.damagedQuantity);
     const rejected = finite(row.rejectedQuantity);
+    if (delivered === 0 && damaged === 0 && rejected === 0) continue;
     const accepted = delivered - damaged - rejected;
     const remaining = orderLine.antal - finite(current.get(orderLine.id));
     if (delivered <= 0 || damaged < 0 || rejected < 0 || accepted < 0) errors[orderLine.id] = "Mængderne er ugyldige.";

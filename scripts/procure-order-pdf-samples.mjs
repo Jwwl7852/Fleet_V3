@@ -3,7 +3,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import QRCode from "qrcode";
 import { createOrderPdfBytes, ordrePdfData, validerOrdrePdfGrundlag } from "../src/fleet/procure-v2/procure-pdf.js";
 
 const outputDirectory = resolve("output/pdf");
@@ -27,18 +26,12 @@ const baseOrder = {
   },
 };
 
-function withQr(order) {
-  const url = `${tenant.procureAppUrl}/indkoeb/mobil/modtag/${encodeURIComponent(order.id)}`;
-  const modules = QRCode.create(url, { errorCorrectionLevel: "M" }).modules;
-  return { ...tenant, procureReceiptQr: { size: modules.size, data: Array.from(modules.data, Boolean) } };
-}
-
 const manyLines = Object.fromEntries(Array.from({ length: 42 }, (_, index) => {
   const number = String(index + 1).padStart(3, "0");
   return [`line-${number}`, {
     varenummer: `MAT-${number}`,
     vare: index % 4 === 0
-      ? `Miljømærket rengøringsmiddel med ekstra lang dansk beskrivelse til lager, værksted og udendørs vedligeholdelse – variant ${number}`
+      ? `Miljømærket rengøringsmiddel med ekstra lang dansk beskrivelse til lager, værksted og udendørs vedligeholdelse - variant ${number}`
       : `Forbrugsmateriale med størrelse og kvalitetsangivelse ${number}`,
     antal: index + 1, enhed: index % 3 === 0 ? "kasse" : index % 3 === 1 ? "rulle" : "stk.",
     grundenhed: "stk.", antalPrBestillingsenhed: index % 3 === 0 ? 12 : 1,
@@ -60,7 +53,7 @@ const samples = [
 
 const results = [];
 for (const sample of samples) {
-  const pdfTenant = withQr(sample.order);
+  const pdfTenant = tenant;
   const validation = validerOrdrePdfGrundlag(sample.order, supplier, pdfTenant);
   if (!validation.ok) throw new Error(`${sample.file}: ${validation.missing.join(", ")}`);
   const data = ordrePdfData(sample.order, supplier, pdfTenant);
@@ -68,7 +61,7 @@ for (const sample of samples) {
   const bytes = createOrderPdfBytes(sample.order, supplier, pdfTenant);
   const path = resolve(outputDirectory, sample.file);
   await writeFile(path, bytes);
-  results.push({ file: path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), receiptUrl: data.receiptUrl, delivery: data.delivery.request, lines: data.lines.length });
+  results.push({ file: path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), receiptUrl: data.receiptUrl, delivery: data.delivery.request, lines: data.lines.length, vendorReceiptQr: false });
 }
 
 await writeFile(resolve(outputDirectory, "PROCURE-bestilling-manifest.json"), `${JSON.stringify({ generatedAt: new Date().toISOString(), samples: results }, null, 2)}\n`);

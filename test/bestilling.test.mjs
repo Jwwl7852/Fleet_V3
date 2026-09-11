@@ -292,8 +292,8 @@ describe("Udkastet er et udkast", () => {
   test("⚠ NUMMERET STÅR I EMNET OG I TEKSTEN", () => {
     const u = mailudkast(ORDRE, { leverandoer: LEV });
     assert.ok(u.emne.includes(ORDRE.nummer), "emnet bærer ikke bestillingsnummeret");
-    assert.match(u.brodtekst, new RegExp(`Angiv venligst bestillingsnummer ${ORDRE.nummer}`),
-      "teksten beder ikke om nummeret på fakturaen");
+    assert.match(u.brodtekst, new RegExp(`Angiv vores bestillingsnummer ${ORDRE.nummer} på følgesedlen og fakturaen`),
+      "teksten beder ikke om nummeret på følgesedlen og fakturaen");
   });
 
   test("hver linje står i teksten med antal og vare", () => {

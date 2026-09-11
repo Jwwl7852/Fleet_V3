@@ -421,6 +421,8 @@ export const NAV = [
         titel: "Procure – godkendelser", under: "Indkøb som afventer en afgørelse efter den aktive regel." },
       { key: "indkoebModtagelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/modtagelser", label: "Modtagelser",
         titel: "Procure – modtagelser", under: "Hele og delvise leverancer, skader og korrektioner." },
+      { key: "indkoebLager", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/lager", label: "Lager",
+        titel: "Procure – lager", under: "Beholdning, placeringer, optællinger og sporbare bevægelser." },
       { key: "indkoebForbrug", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/forbrug", label: "Forbrug",
         titel: "Procure – forbrug", under: "Godkendt fakturaforbrug, åbne bestillinger og varegrupper." },
       { key: "indkoebMobil", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/mobil", label: "Mobilbestilling", skjulINav: true,
@@ -446,7 +448,7 @@ export const NAV = [
          link fra Varer. */
       { key: "varelager", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/varelager", label: "Varelager",
         skjulINav: true, titel: "Varelager — vores egne forbrugsvarer",
-        under: "Beholdning, minimum og bevægelser. Et lavt lager bliver til et indkøbsbehov." },
+        under: "Kompatibilitetslink til PROCURE Lager." },
     ],
   },
   {

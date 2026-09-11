@@ -3235,6 +3235,10 @@
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
             "varenummer": { ".validate": "newData.isString() && newData.val().length <= 60" },
             "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "grundenhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "bestillingsenhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "antalPrBestillingsenhed": { ".validate": "newData.isNumber() && newData.val() > 0" },
+            "lagerfoert": { ".validate": "newData.isBoolean()" },
             // ⚠ MINIMUM ER VALGFRIT. En vare uden graense har ingen "lav"-tilstand.
             // Nul som standard ville betyde ALDRIG lav; et tal ville vaere en
             // indkoebspolitik vi havde opfundet paa kundens vegne. Manglen taelles
@@ -3258,6 +3262,21 @@
             "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
             "oprettetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
             "sidstBevaegetMs": { ".validate": "newData.isNumber()" },
+            "lagerplaceringer": {
+              "$lagerplaceringId": {
+                ".validate": "newData.hasChildren(['lagerId', 'lager', 'placeringId', 'placering', 'beholdning', 'enhed', 'revision', 'senestBevaegetMs'])",
+                "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "lager": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+                "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "placering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+                "beholdning": { ".validate": "newData.isNumber()" },
+                "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+                "revision": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0" },
+                "senestBevaegetMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "senestOptaltMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "$andet": { ".validate": false }
+              }
+            },
             "division": { ".validate": false },
             "$andet": { ".validate": false }
           }
@@ -3275,13 +3294,24 @@
             // ⚠ FIRE ARTER, IKKE ET FORTEGN. antal: -3 alene siger at tallet faldt
             // — ikke OM det var forbrug, svind eller en optaelling der rettede en
             // fejl. De tre kraever hver sin handling.
-            "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtaget|forbrug|svind|optaelling)$/)" },
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(startbeholdning|modtaget|forbrug|retur|svind|optaelling|korrektion|flytningUd|flytningInd)$/)" },
             // ⚠ ALTID POSITIVT. Retningen kommer af ARTEN. Et minus paa et forbrug
             // ville traekke to gange.
             "antal": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "ms": { ".validate": "newData.isNumber() && newData.val() > 0" },
             // uid — hvem der GJORDE det. Ikke personId.
             "uid": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "medarbejderNavn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
+            "delta": { ".validate": "newData.isNumber()" },
+            "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
+            "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "lager": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "placering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "anmodningsnoegle": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+            "modtagelseId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+            "ordrelinjeId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+            "flytningId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
             "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
             // Beholdningen FOER og EFTER, saa en raekke kan laeses alene.
             "foer": { ".validate": "newData.isNumber()" },

@@ -37,6 +37,7 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DELTE_FILER = [
   "procure-v2/procure-pdf.js",
   "procure-v2/procure-backend-domain.js",
+  "procure-v2/procure-inventory-domain.js",
   /* ⚠ procure.js ER DELT fordi behovskriv og skærmens formular kalder den
      SAMME valideBehov(). Serveren afviser med den sætning brugeren allerede
      har set — to formuleringer af én spærring er to forklaringer på én ting. */

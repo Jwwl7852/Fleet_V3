@@ -396,7 +396,7 @@ export function mailudkast(ordre, { leverandoer } = {}) {
       "",
       /* ⚠ DEN VIGTIGSTE LINJE I MAILEN. Uden nummeret på fakturaen kan
          matchet i trin 5 kun gættes. */
-      `Angiv venligst bestillingsnummer ${nummer} på fakturaen.`,
+      `Angiv vores bestillingsnummer ${nummer} på følgesedlen og fakturaen.`,
       "",
       "Med venlig hilsen",
     ].join("\n"),
@@ -424,21 +424,21 @@ const ORDREMAIL_TEKST = {
     til: "Til", bestiller: "Vi bestiller hermed følgende under ordrenummer",
     levering: "Levering", hurtigst: "Hurtigst muligt", senest: "Senest",
     aabning: "Mellem 7.00-15.00", aabningNote: "(lagerets åbningstider)",
-    angiv: "Angiv venligst bestillingsnummer", paaFakturaen: "på fakturaen.",
+    angiv: "Angiv vores bestillingsnummer", paaFakturaen: "på følgesedlen og fakturaen.",
     hilsen: "Med venlig hilsen", leverandoeren: "leverandøren",
   },
   sv: {
     til: "Till", bestiller: "Vi beställer härmed följande under beställningsnummer",
     levering: "Leverans", hurtigst: "Så snart som möjligt", senest: "Senast",
     aabning: "Mellan 7.00-15.00", aabningNote: "(lagrets öppettider)",
-    angiv: "Ange gärna beställningsnumret", paaFakturaen: "på fakturan.",
+    angiv: "Ange vårt beställningsnummer", paaFakturaen: "på följesedeln och fakturan.",
     hilsen: "Med vänlig hälsning", leverandoeren: "leverantören",
   },
   en: {
     til: "To", bestiller: "We hereby place the following order under order number",
     levering: "Delivery", hurtigst: "As soon as possible", senest: "No later than",
     aabning: "Between 7.00-15.00", aabningNote: "(warehouse opening hours)",
-    angiv: "Please state order number", paaFakturaen: "on the invoice.",
+    angiv: "Please state our order number", paaFakturaen: "on the delivery note and invoice.",
     hilsen: "Kind regards", leverandoeren: "the supplier",
   },
 };

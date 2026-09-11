@@ -36,7 +36,7 @@ test("mobilmodtagelse kan genåbne serverbilag med ny adgangskontrol", () => {
   assert.match(receiving, /getReceiptAttachment/);
   assert.match(receiving, /Tidligere modtagelser/);
   assert.match(receiving, /tenantkontrolleret link/);
-  assert.match(receiving, /setRegisteredStatus\(result\.receipt\?\.ordreStatus \|\| order\.status\)/);
+  assert.match(receiving, /setRegisteredStatus\(result\.server\?\.ordreStatus \|\| order\.status\)/);
   assert.match(receiving, /Lagerstatus:/);
   assert.match(receiving, /Økonomisk opfølgning:/);
 });

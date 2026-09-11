@@ -230,6 +230,7 @@ export function buildReceipt(order, receipts = [], input = {}, { actorId = "unkn
     const delivered = finite(Number(row.deliveredQuantity));
     const damaged = finite(Number(row.damagedQuantity));
     const rejected = finite(Number(row.rejectedQuantity));
+    if (delivered === 0 && damaged === 0 && rejected === 0) continue;
     const accepted = delivered - damaged - rejected;
     const remaining = remainingQuantity(order, receipts, orderLine.id);
     if (delivered < 0 || damaged < 0 || rejected < 0 || accepted < 0) {

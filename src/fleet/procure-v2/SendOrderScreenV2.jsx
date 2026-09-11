@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import QRCode from "qrcode";
 import { sendOrdreMail } from "../godkendelse.js";
 import { canSendOrder, orderTotalOere } from "./procure-v2-domain.js";
 import { getOrderPdf, getWebshopCredential, registerWebshopOrder } from "./procure-v2-adapter.js";
@@ -33,11 +32,8 @@ export default function SendOrderScreenV2({ state, setState, demo, tenant, canWr
     (async () => {
       try {
         if (demo) {
-          const procureAppUrl = "https://preview.veyro.example";
-          const url = `${procureAppUrl}/indkoeb/mobil/modtag/${encodeURIComponent(order.id)}`;
-          const modules = QRCode.create(url, { errorCorrectionLevel: "M" }).modules;
           const demoOrder = { ...order, oprettetMs: Date.parse("2026-09-11T09:00:00Z"), bestillerNavn: order.contact, bestillerEmail: "indkoeb@fjordholm.example", leveringsadresse: order.deliveryAddress || "Lagervej 8", leveringspostnr: order.deliveryPostalCode || "8000", leveringsby: order.deliveryCity || "Aarhus C" };
-          const demoTenant = { ...(tenant || {}), navn: tenant?.navn || "Fjordholm Drift A/S", adresse: tenant?.adresse || "Havnevej 14", postnr: tenant?.postnr || "8000", by: tenant?.by || "Aarhus C", fakturaModtagelse: tenant?.fakturaModtagelse || "faktura@fjordholm.example", procureAppUrl, procureReceiptQr: { size: modules.size, data: Array.from(modules.data, Boolean) } };
+          const demoTenant = { ...(tenant || {}), navn: tenant?.navn || "Fjordholm Drift A/S", adresse: tenant?.adresse || "Havnevej 14", postnr: tenant?.postnr || "8000", by: tenant?.by || "Aarhus C", fakturaModtagelse: tenant?.fakturaModtagelse || "faktura@fjordholm.example" };
           const bytes = createOrderPdfBytes(demoOrder, supplier, demoTenant);
           const digest = await crypto.subtle.digest("SHA-256", bytes);
           objectUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));

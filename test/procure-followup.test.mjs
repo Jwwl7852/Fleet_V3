@@ -32,13 +32,13 @@ const addReceipt = (ordre, id, input) => {
 };
 
 describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
-  it("bruger kun en konfigureret offentlig https-adresse til modtagelses-QR", () => {
+  it("bevarer internt modtagelseslink uden at ændre nye leverandør-PDF-bytes", () => {
     const ordre = order();
     assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "http://127.0.0.1:5205" }), null);
     assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "https://kunde.veyro.example/base" }), "https://kunde.veyro.example/indkoeb/mobil/modtag/ordre-8880");
     const withoutQr = createOrderPdfBytes(ordre, {}, {});
     const withQr = createOrderPdfBytes(ordre, {}, { procureAppUrl: "https://kunde.veyro.example", procureReceiptQr: { size: 1, data: [true] } });
-    assert.notEqual(createHash("sha256").update(withoutQr).digest("hex"), createHash("sha256").update(withQr).digest("hex"));
+    assert.equal(createHash("sha256").update(withoutQr).digest("hex"), createHash("sha256").update(withQr).digest("hex"));
   });
   it("er deterministisk, revisionslåst og sendes som faktisk payload", async () => {
     const ordre = order();
@@ -63,6 +63,10 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.deepEqual(data.lines.map((line) => [line.navn, line.antal]), [["Strækfilm", 80], ["Pakketape", 120]]);
     assert.ok(data.lines.every((line) => !("prisOere" in line)));
     assert.equal(validerOrdrePdfGrundlag(ordre, supplier, company).ok, true);
+    const pdfHex = Buffer.from(preview).toString("latin1");
+    const encoded = (value) => Buffer.from(value, "latin1").toString("hex");
+    assert.doesNotMatch(pdfHex, new RegExp(`${encoded("VAREMODTAGELSE")}|${encoded("Scan for at åbne bestillingen")}`));
+    assert.match(pdfHex, new RegExp(encoded("Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen.")));
     assert.equal(ordreEnhed({ antal: 1, enhed: "kasser", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasse á 12 stk.");
     assert.equal(ordreEnhed({ antal: 6, enhed: "kasse", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasser á 12 stk.");
   });
@@ -143,7 +147,7 @@ describe("sammenhængende bestilling → dellevering → faktura → kreditnota"
 describe("backendgrænser og filkontrakt", () => {
   const source = readFileSync("functions/index.js", "utf8");
   it("alle nye callables tager tenant fra den signerede authkontekst", () => {
-    for (const name of ["procureModtagelseUploadInitier", "procureModtagelseUploadBekraeft", "procureModtagelseDownloadLink", "procureModtagelseRegistrer", "procureModtagelseKorriger", "procureVareReturneringRegistrer", "procureFakturaImport", "ordrePdfHent"]) {
+    for (const name of ["procureModtagelseUploadInitier", "procureModtagelseUploadBekraeft", "procureModtagelseDownloadLink", "procureModtagelseRegistrer", "procureModtagelseKorriger", "procureVareReturneringRegistrer", "procureLagerBevaegelse", "procureFakturaImport", "ordrePdfHent"]) {
       const start = source.indexOf(`export const ${name}`); const next = source.indexOf("\nexport const ", start + 1); const block = source.slice(start, next < 0 ? undefined : next);
       assert.ok(start >= 0, `${name} mangler`);
       assert.match(block, /procureDoer\(req,/);

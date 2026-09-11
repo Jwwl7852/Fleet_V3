@@ -95,10 +95,23 @@ await db.ref(`tenants/${tenantA}`).set({
   moduler: { indkoeb: true },
   virksomhed: company,
   brugere: { [uid]: { navn: "Mette Jensen", email: "indkoeb@fjordholm.example" } },
-  procureOpsaetning: { leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true } } },
+  procureOpsaetning: {
+    leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true } },
+    lagre: { hovedlager: { id: "hovedlager", label: "Hovedlager", active: true } },
+    lagerplaceringer: {
+      "a-01": { id: "a-01", label: "A-01", lagerId: "hovedlager", active: true },
+      "a-02": { id: "a-02", label: "A-02", lagerId: "hovedlager", active: true },
+      "b-01": { id: "b-01", label: "B-01", lagerId: "hovedlager", active: true },
+    },
+  },
   leverandoerer: { nordisk: supplier },
   forbrugsvarer: {
-    tape: { navn: "Pakketape", varenummer: "ND-1001", enhed: "rulle", pakningsstoerrelse: "6 ruller", indkoebsprisOere: 2400, varegruppe: "Emballage", leverandoerId: "nordisk", aktiv: true },
+    tape: { navn: "Pakketape", varenummer: "ND-1001", enhed: "ruller", grundenhed: "ruller", bestillingsenhed: "ruller", antalPrBestillingsenhed: 1,
+      lagerfoert: true, pakningsstoerrelse: "6 ruller", indkoebsprisOere: 2400, varegruppe: "Emballage", leverandoerId: "nordisk", aktiv: true,
+      lagerplaceringer: { "11_hovedlager_a-01": { lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", beholdning: 12, enhed: "ruller", revision: 1, senestBevaegetMs: 1, senestOptaltMs: 1 } } },
+    film: { navn: "Strækfilm", varenummer: "ND-2005", enhed: "ruller", grundenhed: "ruller", bestillingsenhed: "ruller", antalPrBestillingsenhed: 1,
+      lagerfoert: true, indkoebsprisOere: 7500, varegruppe: "Emballage", leverandoerId: "nordisk", aktiv: true,
+      lagerplaceringer: { "11_hovedlager_a-02": { lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-02", placering: "A-02", beholdning: 6, enhed: "ruller", revision: 1, senestBevaegetMs: 1, senestOptaltMs: 1 } } },
   },
   indkoebsordrer: { [orderId]: order(), "ordre-unknown": order("ordre-unknown") },
 });
@@ -168,8 +181,12 @@ assert.equal(sentRecord.ordreRevision, 4);
 assert.equal(sentRecord.til, "ordre@example.invalid");
 assert.equal(sentRecord.afsender, process.env.MAILGUN_AFSENDER);
 assert.equal(sentRecord.mailStatus, "accepteret");
-assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 2);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 3);
 assert.ok(!/kr\.|pris|moms|total|i alt/i.test(mailPayloads[0].text), "leverandørmailen indeholder interne priser");
+assert.match(mailPayloads[0].text, /Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen\./);
+assert.ok(!Buffer.from(attachmentBytes).toString("latin1").toLowerCase()
+  .includes(Buffer.from("VAREMODTAGELSE", "latin1").toString("hex").toLowerCase()),
+"ny leverandør-PDF indeholder modtagelses-QR-blokken");
 assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/status`).get()).val(), "sendt");
 
 const replay = await run(functions.ordreMailSend, { ordreId: orderId, sendRequestId: "mail-8880" });
@@ -219,8 +236,8 @@ const receiptInput = {
   receivedBy: "Lagerbruger",
   deliveryNote: "FS-4482",
   lines: [
-    { orderLineId: "tape", deliveredQuantity: 72, damagedQuantity: 0, rejectedQuantity: 0 },
-    { orderLineId: "film", deliveredQuantity: 82, damagedQuantity: 1, rejectedQuantity: 1 },
+    { orderLineId: "tape", deliveredQuantity: 72, damagedQuantity: 0, rejectedQuantity: 0, warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01" },
+    { orderLineId: "film", deliveredQuantity: 82, damagedQuantity: 1, rejectedQuantity: 1, warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-02", location: "A-02" },
   ],
 };
 const beforeReceipt = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}`).get()).val();
@@ -232,6 +249,9 @@ assert.deepEqual(
 );
 const receipt = await run(functions.procureModtagelseRegistrer, receiptInput);
 assert.equal(receipt.ordreStatus, "sendt");
+assert.equal(receipt.inventoryEffects.length, 2);
+assert.equal(receipt.inventoryEffects.find((effect) => effect.itemId === "tape").after, 84);
+assert.equal(receipt.inventoryEffects.find((effect) => effect.itemId === "film").after, 86);
 assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/resterendeVaerdiOere`).get()).val(), 115200);
 const persisted = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/modtagelser/${receiptId}`).get()).val();
 assert.equal(persisted.linjer.film.godkendtAntal, 80);
@@ -240,10 +260,70 @@ assert.equal(persisted.dokumenter[documentId].status, "aktiv");
 /* En ny autoriseret session genåbner posten; en anden tenant kan ikke. */
 const reopened = await run(functions.procureModtagelseRegistrer, receiptInput, auth(tenantA, "anden-lagerbruger"));
 assert.equal(reopened.allerede, true);
+assert.deepEqual(reopened.inventoryEffects, receipt.inventoryEffects);
+assert.equal(Object.keys((await db.ref(`tenants/${tenantA}/forbrugsvarebevaegelser`).get()).val()).length, 2, "retry oprettede en ekstra lagerbevægelse");
 await assert.rejects(
   run(functions.procureModtagelseRegistrer, receiptInput, auth(tenantB, "fremmed-bruger")),
   (error) => error?.code === "not-found",
 );
+
+/* Lager: optælling, samtidighed, forbrug og atomisk flytning gennem callables. */
+const counted = await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "optaelling", requestId: "lager-count-1", quantity: 82, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01",
+  expectedRevision: 2, reason: "Afvigelse ved optælling",
+});
+assert.equal(counted.already, false);
+assert.deepEqual([counted.movements[0].foer, counted.movements[0].delta, counted.movements[0].efter], [84, -2, 82]);
+assert.equal((await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "optaelling", requestId: "lager-count-1", quantity: 82, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01",
+  expectedRevision: 2, reason: "Afvigelse ved optælling",
+})).already, true);
+await assert.rejects(run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "optaelling", requestId: "lager-stale-1", quantity: 81, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01",
+  expectedRevision: 2, reason: "Forældet session",
+}), (error) => error?.code === "aborted");
+await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "forbrug", requestId: "lager-use-1", quantity: 2, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01", expectedRevision: 3,
+});
+await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "startbeholdning", requestId: "lager-start-b", quantity: 0, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "b-01", location: "B-01", expectedRevision: 0,
+});
+const moved = await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "flytning", requestId: "lager-move-1", quantity: 5, unit: "ruller",
+  fromWarehouseId: "hovedlager", fromWarehouse: "Hovedlager", fromLocationId: "a-01", fromLocation: "A-01", expectedFromRevision: 4,
+  toWarehouseId: "hovedlager", toWarehouse: "Hovedlager", toLocationId: "b-01", toLocation: "B-01", expectedToRevision: 1,
+});
+assert.deepEqual(moved.movements.map((entry) => [entry.art, entry.delta]), [["flytningUd", -5], ["flytningInd", 5]]);
+assert.equal((await run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "flytning", requestId: "lager-move-1", quantity: 5, unit: "ruller",
+  fromWarehouseId: "hovedlager", fromWarehouse: "Hovedlager", fromLocationId: "a-01", fromLocation: "A-01", expectedFromRevision: 4,
+  toWarehouseId: "hovedlager", toWarehouse: "Hovedlager", toLocationId: "b-01", toLocation: "B-01", expectedToRevision: 1,
+})).already, true);
+const tapeAfterTransfer = (await db.ref(`tenants/${tenantA}/forbrugsvarer/tape`).get()).val();
+assert.equal(tapeAfterTransfer.beholdning, 80);
+assert.equal(tapeAfterTransfer.lagerplaceringer["11_hovedlager_a-01"].beholdning, 75);
+assert.equal(tapeAfterTransfer.lagerplaceringer["11_hovedlager_b-01"].beholdning, 5);
+const returned = await run(functions.procureVareReturneringRegistrer, {
+  ordreId: orderId, ordreRevision: 4, returneringId: "return-stock-1", returnDate: "2026-09-18",
+  reason: "Beskadiget efter udpakning", lines: [{ orderLineId: "tape", quantity: 1,
+    warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01" }],
+});
+assert.equal(returned.allerede, false);
+assert.equal((await db.ref(`tenants/${tenantA}/forbrugsvarer/tape/lagerplaceringer/11_hovedlager_a-01/beholdning`).get()).val(), 74);
+assert.equal((await run(functions.procureVareReturneringRegistrer, {
+  ordreId: orderId, ordreRevision: 4, returneringId: "return-stock-1", returnDate: "2026-09-18",
+  reason: "Beskadiget efter udpakning", lines: [{ orderLineId: "tape", quantity: 1,
+    warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01" }],
+})).allerede, true);
+await assert.rejects(run(functions.procureLagerBevaegelse, {
+  forbrugsvareId: "tape", type: "forbrug", requestId: "foreign-tenant-stock", quantity: 1, unit: "ruller",
+  warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01", expectedRevision: 5,
+}, auth(tenantB, "fremmed-bruger")), (error) => error?.code === "failed-precondition");
 
 /* Forkert magic bytes afvises, slettes og bliver aldrig en aktiv fil. */
 const badReceiptId = "receipt-bad";
@@ -299,11 +379,14 @@ const credit = await importInvoice({
 assert.equal(credit.beloebOere, 14400);
 await run(functions.fakturastatus, { fakturaId: credit.fakturaId, til: "godkendt" });
 assert.equal((await db.ref(`tenants/${tenantA}/fakturaer/${firstInvoice.fakturaId}/afvigelsesstatus`).get()).val(), "korrigeret");
+assert.equal((await db.ref(`tenants/${tenantA}/forbrugsvarer/tape/lagerplaceringer/11_hovedlager_a-01/beholdning`).get()).val(), 74,
+  "prisafvigelseskreditten må ikke ændre fysisk lager");
 
 await run(functions.procureModtagelseRegistrer, {
   ordreId: orderId, modtagelseId: "receipt-2", ordreRevision: 4,
   receivedDate: "2026-09-20", receivedBy: "Lagerbruger", deliveryNote: "FS-4499",
-  lines: [{ orderLineId: "tape", deliveredQuantity: 48, damagedQuantity: 0, rejectedQuantity: 0 }],
+  lines: [{ orderLineId: "tape", deliveredQuantity: 48, damagedQuantity: 0, rejectedQuantity: 0,
+    warehouseId: "hovedlager", warehouse: "Hovedlager", locationId: "a-01", location: "A-01" }],
 });
 const finalInvoice = await importInvoice({
   requestId: "invoice-2", invoiceNumber: "ND-8892", invoiceDate: "2026-09-21", type: "invoice",

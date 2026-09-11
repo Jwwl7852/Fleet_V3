@@ -1,7 +1,7 @@
 /* Deterministisk leverandørordre-PDF. Filen kopieres til functions/delt, så
    preview, mailvedhæftning og arkiv bruger præcis samme bytegenerator. */
 
-export const ORDRE_PDF_SKABELON_VERSION = 2;
+export const ORDRE_PDF_SKABELON_VERSION = 3;
 
 const PAGE = { width: 595, height: 842, margin: 32, footerTop: 805 };
 const COLOR = {
@@ -284,22 +284,12 @@ function buildDocument(data) {
     cursor += rowHeight;
   }
 
-  if (cursor + 150 > 790) { page = makePage(); cursor = 58; }
-  const bottomTop = cursor + 22; const bottomWidth = (PAGE.width - PAGE.margin * 2 - gap) / 2;
-  rect(PAGE.margin, bottomTop, bottomWidth, 122, { fill: COLOR.white, stroke: COLOR.border }); sectionHeader("FAKTURERING", PAGE.margin, bottomTop, bottomWidth);
+  if (cursor + 128 > 790) { page = makePage(); cursor = 58; }
+  const bottomTop = cursor + 22; const bottomWidth = PAGE.width - PAGE.margin * 2;
+  rect(PAGE.margin, bottomTop, bottomWidth, 100, { fill: COLOR.white, stroke: COLOR.border }); sectionHeader("FAKTURERING", PAGE.margin, bottomTop, bottomWidth);
   text("Send faktura til:", PAGE.margin + 14, bottomTop + 41, { size: 9.5 });
   paragraph(data.invoiceEmail, PAGE.margin + 14, bottomTop + 57, bottomWidth - 28, { size: 10.2, bold: true, leading: 13 });
-  paragraph(`Angiv bestillingsnr. ${data.number} på fakturaen.`, PAGE.margin + 14, bottomTop + 87, bottomWidth - 28, { size: 9.2, leading: 13 });
-  const receiptX = PAGE.margin + bottomWidth + gap;
-  rect(receiptX, bottomTop, bottomWidth, 122, { fill: COLOR.white, stroke: COLOR.border }); sectionHeader("VAREMODTAGELSE", receiptX, bottomTop, bottomWidth);
-  if (data.qr?.size && Array.isArray(data.qr.data)) {
-    const quiet = 4; const size = 68; const cell = size / (data.qr.size + quiet * 2); const qrX = receiptX + 14; const qrTop = bottomTop + 39;
-    page.push("0 0 0 rg");
-    for (let row = 0; row < data.qr.size; row += 1) for (let col = 0; col < data.qr.size; col += 1) {
-      if (data.qr.data[row * data.qr.size + col]) page.push(`${(qrX + (col + quiet) * cell).toFixed(3)} ${yPdf(qrTop + (row + quiet) * cell, cell).toFixed(3)} ${cell.toFixed(3)} ${cell.toFixed(3)} re f`);
-    }
-    paragraph("Scan for at åbne bestillingen. Modtagelsen registreres først efter bekræftelse.", receiptX + 92, bottomTop + 48, bottomWidth - 105, { size: 9, leading: 13 });
-  } else paragraph("Mobilmodtagelse åbnes fra PROCURE. Modtagelsen registreres først efter bekræftelse.", receiptX + 14, bottomTop + 48, bottomWidth - 28, { size: 9, leading: 13 });
+  paragraph(`Angiv vores bestillingsnummer ${data.number} på følgesedlen og fakturaen.`, PAGE.margin + 14, bottomTop + 78, bottomWidth - 28, { size: 9.5, leading: 13 });
 
   pages.forEach((commands, index) => {
     commands.push(rgb(COLOR.teal, true), "0.7 w", `${PAGE.margin} ${yPdf(PAGE.footerTop)} m ${PAGE.width - PAGE.margin} ${yPdf(PAGE.footerTop)} l S`);

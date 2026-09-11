@@ -25,13 +25,19 @@ export async function registerReceipt({ order, receipts, input, actorId, demo })
     }
     const response = await kaldFunktion("procureModtagelseRegistrer", {
       ordreId: order.id, modtagelseId, ordreRevision: order.revision,
-      lines: built.receipt.lines.map(({ orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity }) => ({ orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity })),
+      lines: built.receipt.lines.map(({ orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity }) => {
+        const source = input.lines?.[orderLineId] || input.lines?.find?.((row) => row.orderLineId === orderLineId) || {};
+        return { orderLineId, deliveredQuantity, damagedQuantity, rejectedQuantity,
+          warehouseId: source.warehouseId, warehouse: source.warehouse,
+          locationId: source.locationId, location: source.location };
+      }),
       receivedDate: built.receipt.receivedDate,
       receivedBy: built.receipt.receivedBy,
       deliveryNote: built.receipt.deliveryNote || undefined,
       note: built.receipt.note || undefined,
     });
-    return { ok: true, kind: "server", receipt: response?.data ?? response, attachments: uploaded };
+    return { ok: true, kind: "server", receipt: built.receipt,
+      server: response?.data ?? response, attachments: uploaded };
   } catch (error) {
     const code = String(error?.code || "");
     if (code.includes("not-found") || code.includes("unimplemented")) {
@@ -49,6 +55,18 @@ export const RECEIPT_CONTRACT = Object.freeze({
   persistence: "indkoebsordrer/{orderId}/modtagelser/{receiptId}",
   attachments: "signed upload URL → magic-byte validation → active attachment",
 });
+
+export async function registerInventoryMovement(input) {
+  try {
+    const response = await kaldFunktion("procureLagerBevaegelse", input);
+    return { ok: true, kind: "server", data: response?.data ?? response };
+  } catch (error) {
+    const code = String(error?.code || "");
+    if (code.includes("aborted")) return { ok: false, kind: "conflict", message: "Beholdningen blev ændret af en anden medarbejder. Den nye situation er indlæst; kontrollér og bekræft igen." };
+    if (code.includes("permission-denied")) return { ok: false, kind: "denied", message: "Du har ikke rettighed til at ændre lageret." };
+    return { ok: false, kind: "error", message: error?.message || "Lagerændringen kunne ikke gemmes. Ingen bevægelse er registreret." };
+  }
+}
 
 export async function registerPhysicalReturn(input) {
   try {
