@@ -218,3 +218,27 @@ kun den lokale formular; adgangsoplysninger må ikke kopieres til dokumentation.
 
 Den aktuelle serie ligger i `docs/screenshots/ejer-review-v3/` med 13 PNG-filer
 ved 1440×900, 1920×1080 og 899×900 samt `browser-style-verification.json`.
+
+## V3-opfølgningsrunde
+
+1. Åbn `http://127.0.0.1:5211/login`, og brug den lokalt seedede tenantløse
+   testejer via den git-ignorerede emulatoropsætning. Del ikke testhemmeligheden.
+2. Gå til **Mail → Indbakker** og åbn Nordlys Drift. Kontrollér kildeetiketten,
+   interne noter, selvstændig samtale-/AI-scroll og at ekstern afsendelse er
+   blokeret, mens Microsoft 365 er frakoblet.
+3. Gå til **Mail → Opfølgning**. Fanen **Godkendt — afventer afsendelse** viser
+   den godkendte tekst, et læsbart tilbudsnummer og den nye kontrol før send.
+4. Gå til **Kunder → Nordkyst Service → Administrér kundekonto**. Under
+   **Brugere og enheder** og **OBD** vises aftalt antal, ukendt måling,
+   hardware, dataabonnement og pris 675 kr. uden falsk online-status.
+5. Gå til **Salg → Tilbud**. Vælg accepteret version 2, kontrollér låsen, og
+   opret eventuelt en ny separat kladde. Den accepterede PDF og aftale ændres
+   ikke.
+6. Gå til **Salg → Rapporter**. Kontrolgrundlaget 104 vundne og 26 tabte viser
+   80 %, mens en tom filtrering giver tekstlig tomtilstand.
+7. Gå til **Økonomi → Bilagsindbakke**, **Indstillinger → Leverandører** og
+   **Indstillinger → Integrationer**. Kontrollér retry, testadaptertekst,
+   leverandørdetaljer og neutral status **Ikke tilsluttet**.
+
+Den seneste serie ligger i `docs/screenshots/ejer-review-v4-final/` med 15 PNG-filer
+og browserens beregnede styles i `browser-style-verification.json`.

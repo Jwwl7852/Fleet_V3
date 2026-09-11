@@ -105,3 +105,16 @@ den aktuelle build.
   Leverandørsiden bruger samme tabel-, kort- og formularsprog.
 - Den aktive ejerflade er målt til Inter Variable og de fastlagte 216/12/38+/26/11
   mål. Alle ejerkomponenter, felter, knapper og tabeller måles med Inter.
+
+## V3-opfølgning
+
+Den nye faktiske serie ligger i `../../screenshots/ejer-review-v4-final/` og dækker
+overblik, mail, support, opfølgning, rapporter, kundeopsætning, OBD, tilbud,
+bilag, leverandører og integrationer. Serien omfatter 360×800, 390×844,
+899×900, 1440×900 og 1920×1080.
+
+Målingen bekræfter scoped Inter, 216 px sidebar, 12 px kortradius, 40–42 px
+kontroller og intet vandret dokumentoverflow. Mailens liste, samtale og AI-panel
+ruller uafhængigt på desktop og går over i naturligt dokumentflow under
+mobilbreakpointet. Integrationsfunktioner bruger neutral markering, indtil en
+forbindelse faktisk er etableret.

@@ -5,6 +5,7 @@ import { Henter } from "../../fleet/ui.jsx";
 import { crmAktiviteter, crmMuligheder, erAabenMulighed, erForfaldenAktivitet } from "../../fleet/ejer-crm-regler.js";
 import { useEjerData } from "./EjerDataContext.jsx";
 import { hentSalgsplatform } from "../../fleet/ejer-salgsindbakke.js";
+import { beregnHitrate } from "../../fleet/ejer-kommunikation-regler.js";
 import EjerIkon from "./EjerIkon.jsx";
 
 const profilnavn = (profiler, uid) => profiler?.find((p) => p.uid === uid)?.navn || "Ikke fordelt";
@@ -25,6 +26,7 @@ export default function EjerOverblikDesign({ bruger }) {
   const iDag = iDagIsoLokal();
   const aktiviteter = crmAktiviteter(crm);
   const muligheder = crmMuligheder(crm);
+  const hitrate = beregnHitrate(muligheder);
   const aabne = aktiviteter.filter((a) => a.status !== "afsluttet");
   const traade = Object.entries(salgsplatform?.traade || {}).map(([id, v]) => ({ id, ...v }));
   const nye = traade.filter((t) => t.status === "ny");
@@ -49,10 +51,10 @@ export default function EjerOverblikDesign({ bruger }) {
         {synligeHandlinger.map((h) => { const navn = profilnavn(profiler, h.uid); return <div key={h.id}><strong>{h.firma}</strong><span>{h.emne}</span><span className="ejer-ansvarlig"><i>{initialer(navn)}</i>{navn.split(" ")[0]}</span><Link className="ejer-primaer" to={h.til}>{h.knap}</Link><EjerIkon navn="chevron" size={17} /></div>; })}
         {!synligeHandlinger.length && <p className="ejer-tomlinje">Ingen henvendelser eller opgaver kræver handling lige nu.</p>}
       </div></section>
-      <aside className="ejer-design-kort ejer-assistentkort"><h2><EjerIkon navn="sparkles" size={30} /> Veyro-assistent</h2><div className="ejer-assistentbody"><small>TESTADAPTER · ingen ekstern AI</small><strong>{nye.length || afventerOs.length} nye forespørgsler er opsummeret</strong><p>Vi har samlet de seneste henvendelser og fremhæver, hvad der kræver din opmærksomhed.</p><hr /><p><EjerIkon navn="check" size={14} /> Se kundens behov</p><p><EjerIkon navn="check" size={14} /> Afklar manglende oplysninger</p><Link className="ejer-primaer" to="/main/salg/indbakke">Åbn salgsindbakken <EjerIkon navn="chevron" size={16} /></Link></div><small className="ejer-infoboks"><EjerIkon navn="info" size={18} /> Assistenten er et værktøj til at samle information. Alle henvendelser gennemgås og behandles af dig.</small></aside>
+      <aside className="ejer-design-kort ejer-assistentkort"><h2><EjerIkon navn="sparkles" size={30} /> Veyro-assistent</h2><div className="ejer-assistentbody"><small>TESTADAPTER · ingen ekstern AI</small><strong>{nye.length} {nye.length === 1 ? "ny forespørgsel er" : "nye forespørgsler er"} opsummeret</strong><p>Tallet følger samme statusgrundlag som “Nye henvendelser”. Derudover afventer {afventerOs.length} sager vores svar.</p><hr /><p><EjerIkon navn="check" size={14} /> Se kundens behov</p><p><EjerIkon navn="check" size={14} /> Afklar manglende oplysninger</p><Link className="ejer-primaer" to="/main/mail/indbakker">Åbn kundekorrespondance <EjerIkon navn="chevron" size={16} /></Link></div><small className="ejer-infoboks"><EjerIkon navn="info" size={18} /> Assistenten er et værktøj til at samle information. Alle henvendelser gennemgås og behandles af dig.</small></aside>
     </div>
     <div className="ejer-overblik-bund">
-      <section className="ejer-design-kort ejer-salgkort"><h2>Salg og økonomi · September 2026</h2><div>
+      <section className="ejer-design-kort ejer-salgkort"><h2>Salg og økonomi · September 2026 <small>Hitrate: {hitrate.procent === null ? "Ingen afsluttede salg" : `${hitrate.procent} %`}</small></h2><div>
         <Link to="/main/salg/tilbud"><span className="ejer-ikonfelt"><EjerIkon navn="document" /></span><small>Tilbud uden svar</small><b>{muligheder.filter(erAabenMulighed).length}</b><em>Se alle tilbud <EjerIkon navn="chevron" size={15} /></em></Link>
         <Link to="/main/oekonomi/fakturaer"><span className="ejer-ikonfelt"><EjerIkon navn="document" /></span><small>Fakturaer til frigivelse</small><b>2</b><em>Gå til fakturaer <EjerIkon navn="chevron" size={15} /></em></Link>
         <Link to="/main/oekonomi/bilag"><span className="ejer-ikonfelt"><EjerIkon navn="link" /></span><small>Bilag til gennemgang</small><b>5</b><em>Gå til bilagsindbakke <EjerIkon navn="chevron" size={15} /></em></Link>

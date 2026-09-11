@@ -9,6 +9,7 @@ export const TILBUD_STATUS = Object.freeze({
   afvist: "Afvist", udloebet: "Udløbet",
 });
 export const FAKTURERING = Object.freeze({ maanedlig: "Månedligt abonnement", engang: "Engangsbeløb" });
+export const TILBUDSTYPE = Object.freeze({ almindelig: "Almindeligt tilbud", pilot: "Pilotprojekt alene", pilot_med_drift: "Pilotprojekt + vejledende driftstilbud" });
 export const TILBUD_LINJEART = Object.freeze({
   grundplatform: "Grundplatform", modul: "Modul", enhed: "Enhed/hardware",
   medarbejder: "Medarbejderbruger", chauffoer: "Chaufførbruger",
@@ -97,6 +98,18 @@ const dato = (v) => {
   return s && ISO_DATO.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) ? s : null;
 };
 
+/** Lægger hele kalendermåneder til og klemmer månedsslutningen korrekt. */
+export function tilfoejKalendermaaneder(isoDato, maaneder) {
+  const start = dato(isoDato); const antal = heltal(maaneder, 0, 120);
+  if (!start || antal === null) return null;
+  const [aar, maaned, dag] = start.split("-").map(Number);
+  const maalMaaned = maaned - 1 + antal;
+  const maalAar = aar + Math.floor(maalMaaned / 12);
+  const normalMaaned = ((maalMaaned % 12) + 12) % 12;
+  const sidsteDag = new Date(Date.UTC(maalAar, normalMaaned + 1, 0)).getUTCDate();
+  return `${maalAar}-${String(normalMaaned + 1).padStart(2, "0")}-${String(Math.min(dag, sidsteDag)).padStart(2, "0")}`;
+}
+
 export function beregnTilbudslinje(input = {}, generelRabatBps = 0) {
   const listeprisOere = heltal(input.normalprisOere);
   const aftaltPrisOere = input.aftaltPrisOere === null || input.aftaltPrisOere === "" || input.aftaltPrisOere === undefined
@@ -145,6 +158,11 @@ export function validerTilbud(input = {}) {
   const introRabatBps = heltal(input.introRabatBps ?? 0, 0, BPS_SKALA);
   const introMaaneder = heltal(input.introMaaneder ?? 0, 0, 120);
   const bindingMaaneder = heltal(input.bindingMaaneder ?? 3, 0, 120);
+  const tilbudstype = Object.hasOwn(TILBUDSTYPE, input.tilbudstype) ? input.tilbudstype : "almindelig";
+  const pilotStart = tilbudstype === "almindelig" ? null : dato(input.pilotStart);
+  const pilotMaaneder = tilbudstype === "almindelig" ? 0 : heltal(input.pilotMaaneder, 1, 24);
+  const pilotSlut = pilotStart && pilotMaaneder ? tilfoejKalendermaaneder(pilotStart, pilotMaaneder) : null;
+  const pilotEvaluering = tilbudstype === "almindelig" ? null : dato(input.pilotEvaluering);
   if (!virksomhedId || !ID.test(virksomhedId)) fejl.virksomhedId = "Virksomheden mangler.";
   if (mulighedId && !ID.test(mulighedId)) fejl.mulighedId = "Salgsmuligheden er ugyldig.";
   if (!udstedelsesdato) fejl.udstedelsesdato = "Udstedelsesdatoen er ugyldig.";
@@ -155,6 +173,10 @@ export function validerTilbud(input = {}) {
   if (introRabatBps === null) fejl.introRabatBps = "Introduktionsrabat skal være 0–100 %.";
   if (introMaaneder === null) fejl.introMaaneder = "Introduktionsperioden er ugyldig.";
   if (bindingMaaneder === null) fejl.bindingMaaneder = "Bindingsperioden er ugyldig.";
+  if (tilbudstype !== "almindelig" && !pilotStart) fejl.pilotStart = "Pilotens startdato er ugyldig.";
+  if (tilbudstype !== "almindelig" && pilotMaaneder === null) fejl.pilotMaaneder = "Pilotens varighed skal være 1–24 kalendermåneder.";
+  if (tilbudstype !== "almindelig" && !pilotEvaluering) fejl.pilotEvaluering = "Vælg en evalueringsdato for piloten.";
+  if (pilotEvaluering && pilotStart && (pilotEvaluering < pilotStart || pilotEvaluering > pilotSlut)) fejl.pilotEvaluering = "Evalueringen skal ligge i pilotperioden.";
 
   const linjer = (Array.isArray(input.linjer) ? input.linjer : []).map((linje, indeks) => {
     const art = tekst(linje.art, 40);
@@ -191,6 +213,7 @@ export function validerTilbud(input = {}) {
     kontaktNavn: tekst(input.kontaktNavn, 120), kontaktEmail: tekst(input.kontaktEmail, 160),
     udstedelsesdato, gyldigTil, valuta: "DKK", linjer,
     generelRabatBps, introRabatBps, introMaaneder, bindingMaaneder,
+    tilbudstype, pilotStart, pilotMaaneder, pilotSlut, pilotEvaluering,
     betalingsbetingelser: tekst(input.betalingsbetingelser, 300) || "Efter aftale",
     indledning: tekst(input.indledning, 4000), behovstekst: tekst(input.behovstekst, 4000),
     loesningsbeskrivelse: tekst(input.loesningsbeskrivelse, 6000),

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   SAGSTYPE_LABEL, gemKommunikationssvarkladde, godkendKommunikationssvar,
-  hentSalgsplatform, opdaterKommunikationsklassifikation, opdaterSalgstraad,
+  hentSalgsplatform, opdaterKommunikationsklassifikation, opdaterSalgstraad, opretSalgsnote,
 } from "../../fleet/ejer-salgsindbakke.js";
 import EjerIkon from "./EjerIkon.jsx";
 
@@ -23,6 +23,7 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
   const [kunMineSager, setKunMineSager] = useState(false);
   const [soegning, setSoegning] = useState("");
   const [besked, setBesked] = useState("");
+  const [internNote, setInternNote] = useState("");
   const [arbejder, setArbejder] = useState(false);
   const [params, setParams] = useSearchParams();
   const hent = async () => setData(await hentSalgsplatform());
@@ -54,6 +55,13 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
   };
   const overtag = () => valgt && udfoer(() => opdaterSalgstraad({ traadId: valgt.id, status: valgt.status, ansvarligUid: bruger.uid, forventetRevision: valgt.revision, ...(valgt.links || {}) }));
   const delSom = (sagstype) => valgt && udfoer(() => opdaterKommunikationsklassifikation({ traadId: valgt.id, sagstype, delingsstatus: sagstype === "intern" ? "afklaring" : "delt", forventetRevision: valgt.revision }));
+  const gemNote = () => valgt && internNote.trim() && udfoer(async () => { const r = await opretSalgsnote({ traadId: valgt.id, tekst: internNote }); if (r.ok) setInternNote(""); return r; });
+  const kildeTekst = (traad) => {
+    const kilder = Object.values(traad?.postkasseKilder || {});
+    const personlig = kilder.find((k) => k.type === "personlig");
+    if (personlig) return `Modtaget i ${personlig.ejerUid === bruger?.uid ? egetNavn(bruger) : "Jørn"}' postkasse · ${traad.delingsstatus === "delt" ? "Delt på kundesagen" : "Ikke delt"}`;
+    return kilder.some((k)=>k.adresse === "info@veyrosystems.com") ? "Modtaget på info@veyrosystems.com · Fælles kundesag" : "Kilde kræver gennemgang";
+  };
 
   if (!data) return <div className="fc-empty">Henter fælles kundekorrespondance…</div>;
   const beskeder = poster(valgt?.beskeder).sort((a, b) => Number(a.sendtMs) - Number(b.sendtMs));
@@ -80,20 +88,21 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
       </aside>
       <section className="ejer-mail-liste" aria-label="Sager">
         <header><b>Fra / Emne</b><span>Ansvarlig</span><span>Status</span></header>
-        {traade.map((traad) => <button type="button" className={valgt?.id === traad.id ? "aktiv" : ""} key={traad.id} onClick={() => aaben(traad.id)}>
+        <div className="ejer-mail-raekker">{traade.map((traad) => <button type="button" className={valgt?.id === traad.id ? "aktiv" : ""} key={traad.id} onClick={() => aaben(traad.id)}>
           <span><b>{traad.virksomhedsnavn || traad.kontaktNavn || traad.kontaktEmail || "Ukendt afsender"}</b><strong>{traad.emne}</strong><small>{SAGSTYPE_LABEL[traad.sagstype] || "Kræver gennemgang"} · {dato(traad.senesteAktivitetMs)}</small></span>
           <span className="ejer-person"><i>{ejerNavn(traad.ansvarligUid, bruger).slice(0,2).toUpperCase()}</i>{ejerNavn(traad.ansvarligUid, bruger)}</span>
           <span className={`fc-pill ${traad.status === 'ny' ? 'info' : traad.status === 'afventer_os' ? 'warn' : 'ok'}`}>{statusTekst[traad.status] || traad.status}</span>
         </button>)}
-        {!traade.length && <p className="ejer-tomlinje">Ingen sager matcher filtrene.</p>}
+        {!traade.length && <p className="ejer-tomlinje">Ingen sager matcher filtrene.</p>}</div>
         {valgt && <div className="ejer-mail-samtale" aria-label="Valgt kundekorrespondance">
-          <header><div><small>Samtale</small><h2>{valgt.emne}</h2></div><span className={`fc-pill ${valgt.status === 'afventer_os' ? 'warn' : 'info'}`}>{statusTekst[valgt.status] || valgt.status}</span></header>
+          <header><div><small>Samtale</small><h2>{valgt.emne}</h2><small>{kildeTekst(valgt)}</small></div><span className={`fc-pill ${valgt.status === 'afventer_os' ? 'warn' : 'info'}`}>{statusTekst[valgt.status] || valgt.status}</span></header>
           {beskeder.map((mail) => <article key={mail.id} className={mail.retning === "udgaaende" ? "udgaaende" : "indgaaende"}>
             <header><b>{mail.retning === "udgaaende" ? `Veyro · ${mail.fra || "info@veyrosystems.com"}` : mail.fra}</b><time>{dato(mail.sendtMs)}</time></header>
             <p>{mail.tekst}</p>
             {Array.isArray(mail.vedhaeftninger) && mail.vedhaeftninger.length > 0 && <small>{mail.vedhaeftninger.length} vedhæftning(er) · syntetisk testgrundlag</small>}
           </article>)}
           <footer><EjerIkon navn="info" size={17}/> Interne noter og AI-samtaler medsendes aldrig i kundekorrespondancen.</footer>
+          <section className="ejer-intern-note"><h3>Interne noter</h3>{poster(valgt.noter).map((note)=><p key={note.id}><b>Intern note</b> · {note.tekst}</p>)}<textarea value={internNote} onChange={(e)=>setInternNote(e.target.value)} placeholder="Skriv kun til Dennis og Jørn …"/><button type="button" className="fc-btn" onClick={gemNote} disabled={arbejder || !internNote.trim()}>Gem intern note</button></section>
         </div>}
       </section>
       <aside className="ejer-mail-ai">

@@ -427,3 +427,22 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   og intet vandret dokumentoverflow ved de målte viewports.
 - Bred `npm run lint` er stadig blokeret af det eksisterende FACILITY-hul
   (`@eslint/js`). Afgrænset lint af alle ændrede ejerfiler består.
+
+## V3-opfølgning — 2026-09-11
+
+- Kommunikation læses nu gennem den ejerautoriserede serverfunktion
+  `ejerkommunikationhent`; direkte læsning af hele trådsamlingen er lukket.
+- Personlige postkassetråde filtreres efter fysisk postkasseejer eller ansvar,
+  mens delte kundesager fortsat kan ses og overtages af begge ejere.
+- Accepterede tilbud kan danne en ny, separat kladde uden at ændre accepteret
+  tekst, PDF, aftale eller fakturagrundlag. Provisionering følger den låste
+  accepterede version.
+- OBD-priser bruger nu eksplicit kronevisning og øretransport. Pilotdatoer,
+  rabatomfang, rapportfiltre, hitrate, bilagsretry, leverandørkort og neutral
+  integrationsstatus er samlet i ejerskallen.
+- Godkendte opfølgninger ligger i en særskilt kø og kræver fortsat en ny
+  afsendelseshandling med umiddelbar statuskontrol.
+- Lokal verifikation: 44/44 afgrænsede tests, 11/11 designtests, fuld
+  regelpakke exit 0, afgrænset ESLint og build med 530 moduler.
+- 15 nye browseroptagelser og acceptstatus R01–R20 ligger i
+  `docs/screenshots/ejer-review-v4-final/` og `VEYRO_EJERKONSOL_REVIEW_V4.md`.

@@ -16,11 +16,11 @@ async function laes(sti) {
 }
 
 export async function hentSalgsplatform() {
-  const [traade, mailjobs, viden, integrationer, aiForbrug] = await Promise.all([
-    laes("udbyder/salgsindbakke/traade"), laes("udbyder/mailjobs"),
+  const [kommunikation, mailjobs, viden, integrationer, aiForbrug] = await Promise.all([
+    kaldFunktion("ejerkommunikationhent", {}), laes("udbyder/mailjobs"),
     laes("udbyder/vidensbase/poster"), laes("udbyder/integrationer"), laes("udbyder/ai/forbrug"),
   ]);
-  return { traade, mailjobs, viden, integrationer, aiForbrug };
+  return { traade: kommunikation?.data?.traade || {}, mailjobs, viden, integrationer, aiForbrug };
 }
 
 export const opdaterSalgstraad = (data) => kald("salgstraadopdater", data);

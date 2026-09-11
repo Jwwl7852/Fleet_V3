@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   antalTilSkala, beregnTilbud, beregnTilbudslinje, tilbudsnummer, validerTilbud,
-  ratebladFraPrisliste,
+  ratebladFraPrisliste, tilfoejKalendermaaneder,
 } from "../src/fleet/ejer-tilbud-regler.js";
 
 const linje = (navn, antal, normalprisOere, fakturering, ekstra = {}) => ({
@@ -44,6 +44,15 @@ test("introperioden påvirker første år uden at ændre normal månedspris", ()
   assert.equal(resultat.maanedlig.beloebOere, 100000);
   assert.equal(resultat.introMaanedlig.beloebOere, 80000);
   assert.equal(resultat.foersteAarEksklMomsOere, 1140000);
+});
+
+test("pilotvarighed bruger kalendermåneder og klemmer månedsslutning", () => {
+  assert.equal(tilfoejKalendermaaneder("2026-01-31", 1), "2026-02-28");
+  assert.equal(tilfoejKalendermaaneder("2028-01-31", 1), "2028-02-29");
+  assert.equal(tilfoejKalendermaaneder("2026-11-30", 3), "2027-02-28");
+  const pilot = validerTilbud({ virksomhedId: "kunde_1", udstedelsesdato: "2026-01-01", gyldigTil: "2026-02-01", valuta: "DKK", tilbudstype: "pilot_med_drift", pilotStart: "2026-01-31", pilotMaaneder: 1, pilotEvaluering: "2026-02-20", linjer: [linje("Pilot", 1, 100000, "engang")] });
+  assert.deepEqual(pilot.fejl, {});
+  assert.equal(pilot.post.pilotSlut, "2026-02-28");
 });
 
 test("tilbud validerer DKK, datoer, moms, mængder og kendte moduler", () => {

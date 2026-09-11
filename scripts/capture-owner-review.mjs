@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 
 const BASE = process.env.OWNER_REVIEW_URL || "http://127.0.0.1:5211";
 const PORT = Number(process.env.OWNER_REVIEW_DEBUG_PORT || 9331);
-const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v3");
+const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v4-final");
 const browserKandidater = [
   process.env.OWNER_REVIEW_BROWSER,
   join(process.env.ProgramFiles || "C:/Program Files", "Microsoft/Edge/Application/msedge.exe"),
@@ -42,7 +42,8 @@ let side;
 for (let forsøg = 0; forsøg < 60; forsøg += 1) {
   try {
     const sider = await hentJson("/json/list");
-    side = sider.find((post) => post.type === "page");
+    side = sider.find((post) => post.type === "page" && post.url?.startsWith(BASE))
+      || sider.find((post) => post.type === "page");
     if (side?.webSocketDebuggerUrl) break;
   } catch { /* Browseren starter stadig. */ }
   await pause(250);
@@ -110,11 +111,13 @@ try {
   await kald("Runtime.enable");
   await viewport(1440, 900);
   await gaaTil("/login");
-  await ventPaa("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)", "Den lokale loginformular blev ikke sikkert forudfyldt.", 15000);
-  const klar = await evaluer("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)");
-  if (!klar) throw new Error("Den lokale loginformular er ikke sikkert forudfyldt; reviewcapture afbrydes.");
-  await evaluer("document.querySelector('form')?.requestSubmit(); true");
-  await ventPaa("location.pathname.startsWith('/main')", "Normalt ejerlogin lykkedes ikke.");
+  if (!(await evaluer("location.pathname.startsWith('/main')"))) {
+    await ventPaa("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)", `Den lokale loginformular blev ikke sikkert forudfyldt (${await evaluer("location.href")}).`, 15000);
+    const klar = await evaluer("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)");
+    if (!klar) throw new Error("Den lokale loginformular er ikke sikkert forudfyldt; reviewcapture afbrydes.");
+    await evaluer("document.querySelector('form')?.requestSubmit(); true");
+    await ventPaa("location.pathname.startsWith('/main')", "Normalt ejerlogin lykkedes ikke.");
+  }
 
   const filer = [];
   filer.push(await billede("01-overblik", "/main", 1440, 900));
@@ -128,12 +131,14 @@ try {
   filer.push(await billede("09-bilag-mobilkamera", "/main/oekonomi/bilag", 1440, 900));
   filer.push(await billede("10-leverandoerer", "/main/indstillinger/leverandoerer", 1440, 900));
   filer.push(await billede("11-integrationer", "/main/integrationer", 1920, 1080));
-  filer.push(await billede("12-mobil-kundekonto", "/main/kunder/flow-tenant?fane=forbrug", 899, 900));
+  filer.push(await billede("12-mobil-360-kundekonto", "/main/kunder/flow-tenant?fane=forbrug", 360, 800));
+  filer.push(await billede("13-mobil-390-mail", "/main/mail/indbakker?sag=review-nordlys", 390, 844));
+  filer.push(await billede("14-breakpoint-kundekonto", "/main/kunder/flow-tenant?fane=obd", 899, 900));
   await evaluer("document.querySelector('.ejer-mobilmenuknap')?.click(); true");
   await ventPaa("document.querySelector('.ejer-side')?.classList.contains('ejer-side-aaben')", "Mobilnavigationen åbnede ikke.");
   await pause(250);
   const mobilMenuSvar = await kald("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
-  const mobilMenuFil = join(OUT, "899x900-13-mobil-navigation-aaben.png");
+  const mobilMenuFil = join(OUT, "899x900-15-mobil-navigation-aaben.png");
   writeFileSync(mobilMenuFil, Buffer.from(mobilMenuSvar.data, "base64"));
   filer.push(mobilMenuFil);
   await kald("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });

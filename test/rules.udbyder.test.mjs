@@ -138,7 +138,9 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
     ]) {
       await assertSucceeds(get(ref(db, `udbyder/${node}`)));
     }
-    await assertSucceeds(get(ref(db, "udbyder/salgsindbakke/traade")));
+    // Kommunikation leveres gennem en filtrerende callable, så private
+    // personlige tråde aldrig forlader serveren til den forkerte ejer.
+    await assertFails(get(ref(db, "udbyder/salgsindbakke/traade")));
     await assertSucceeds(get(ref(db, "udbyder/bilagsindbakke/poster")));
     await assertFails(get(ref(db, "udbyder/salgsindbakke/dedupe")));
     await assertFails(get(ref(db, "udbyder/bilagsindbakke/dedupe")));

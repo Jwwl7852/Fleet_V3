@@ -330,3 +330,17 @@ Status: implementeret og lokalt verificeret 2026-09-11; ekstern aktivering mangl
   og Veyros eget leverandørkartotek er føjet ind i samme ejerskal.
 - Lokal reviewadresse, tests, screenshots og ekstern opsætning er samlet i
   `VEYRO_EJERKONSOL_MAIL_SUPPORT_V2_IMPLEMENTERING.md` og gennemgangsvejledningen.
+
+### N — V3-opfølgning og acceptlukning
+
+Status: implementeret og lokalt verificeret 2026-09-11.
+
+- Luk kommunikationssamlingen bag serverfiltreret ejeradgang og bevis privat
+  Dennis/Jørn-adskillelse med syntetiske ejere.
+- Bevar accepterede tilbud som låste snapshots og opret efterfølgende arbejde
+  som en separat kladde/version.
+- Afslut reviewpunkterne for opfølgningskø, pilot/rabat, OBD-enheder,
+  rapportering, mobilbilag, leverandører og integrationsforklaringer.
+- Kør sikkerheds-, design-, build- og browserkontrol i de fem krævede viewports.
+- Hold alle eksterne forbindelser frakoblet indtil særskilt opsætning og
+  godkendelse. Ingen push, merge eller deployment indgår i etapen.

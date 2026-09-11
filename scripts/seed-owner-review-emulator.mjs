@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { initializeApp, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getDatabase } from "firebase-admin/database";
+import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
 
 const PROJEKT = process.env.GCLOUD_PROJECT || "demo-veyro-owner";
 const VAERTER = Object.freeze({
@@ -26,6 +27,7 @@ if (!/^demo-/.test(PROJEKT)
 }
 
 const EJERMAIL = "ejer@demo.veyro.invalid";
+const JOERNMAIL = "joern@demo.veyro.invalid";
 const EJERKODE = process.env.VITE_DEV_BRUGER_KODE;
 if (!EJERKODE) {
   throw new Error(
@@ -47,13 +49,13 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const funktionsUrl = (navn) => `http://${VAERTER.functions}/${PROJEKT}/europe-west1/${navn}`;
 
-async function logInd() {
+async function logInd(email = EJERMAIL) {
   const svar = await fetch(
     `http://${VAERTER.auth}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=review-fixture`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: EJERMAIL, password: EJERKODE, returnSecureToken: true }),
+      body: JSON.stringify({ email, password: EJERKODE, returnSecureToken: true }),
     },
   );
   const json = await svar.json();
@@ -77,6 +79,16 @@ const maerke = (tekst) => `[SYNTETISK TESTFIXTURE — ingen ekstern forbindelse]
 try {
   const token = await logInd();
   const ejer = await auth.getUserByEmail(EJERMAIL);
+  let joern;
+  try {
+    joern = await auth.getUserByEmail(JOERNMAIL);
+    await auth.updateUser(joern.uid, { password: EJERKODE, displayName: "Jørn Testejer" });
+  } catch (aarsag) {
+    if (aarsag?.code !== "auth/user-not-found") throw aarsag;
+    joern = await auth.createUser({ email: JOERNMAIL, password: EJERKODE, displayName: "Jørn Testejer", emailVerified: true });
+  }
+  await auth.setCustomUserClaims(joern.uid, byggEjerClaims({}));
+  await db.ref(`profiler/${joern.uid}`).set({ uid: joern.uid, navn: "Jørn Testejer", email: JOERNMAIL, aktiv: true, fixture: true });
   const tilbud = (await db.ref(`udbyder/tilbud/${TILBUD_ID}`).once("value")).val();
   if (!tilbud?.virksomhedId || !tilbud?.mulighedId) {
     throw new Error("Kør først seed-owner-emulator.mjs og test-owner-flow-emulator.mjs i den friske suite.");
@@ -348,6 +360,17 @@ try {
   await db.ref("udbyder/integrationer/dinero").set({
     status: "aktiv", adapter: "test", testScenario: "success", testOnly: true,
   });
+
+  await db.ref("udbyder/salgsindbakke/traade/review-privat-dennis").set({
+    id: "review-privat-dennis", emne: "Privat syntetisk ejertråd", status: "ny",
+    sagstype: "intern", delingsstatus: "privat", ansvarligUid: ejer.uid,
+    senesteAktivitetMs: nu, revision: 1, fixture: true,
+    postkasseKilder: { dennis: { type: "personlig", ejerUid: ejer.uid, adresse: EJERMAIL, mappe: "inbox" } },
+  });
+  const dennisKommunikation = await kald("ejerkommunikationhent", {}, token);
+  const joernKommunikation = await kald("ejerkommunikationhent", {}, await logInd(JOERNMAIL));
+  assert.ok(dennisKommunikation.traade?.["review-privat-dennis"], "Dennis skal kunne læse sin private tråd.");
+  assert.equal(joernKommunikation.traade?.["review-privat-dennis"], undefined, "Jørn må ikke modtage Dennis' private tråd.");
   let fakturajob = (await db.ref(`udbyder/fakturajobs/${FAKTURA_ID}`).once("value")).val();
   if (fakturajob?.status !== "sendt") {
     await kald("fakturajobkoer", { periode: PERIODE, tenantId: TENANT_ID, operationId: "review-send-202609" }, token);

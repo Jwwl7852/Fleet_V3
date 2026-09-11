@@ -19,6 +19,7 @@ export default function EjerBilagsindbakke() {
   const [data, setData] = useState(null); const [valgtId, setValgtId] = useState(null);
   const [metadata, setMetadata] = useState(tomMetadata); const [arbejder, setArbejder] = useState(false);
   const [svar, setSvar] = useState(null); const [soeg, setSoeg] = useState("");
+  const [fejledeFiler, setFejledeFiler] = useState([]);
   const hent = async () => setData(await hentEjerBilag());
   useEffect(() => { hent().catch((e) => setSvar({ ok: false, besked: e.message })); }, []);
   const poster = useMemo(() => Object.values(data?.poster || {}).filter((p) => !soeg || JSON.stringify(p).toLowerCase().includes(soeg.toLowerCase())).sort((a, b) => (b.modtagetMs || 0) - (a.modtagetMs || 0)), [data, soeg]);
@@ -30,8 +31,11 @@ export default function EjerBilagsindbakke() {
   }, [valgt?.id, valgt?.metadata?.version, valgt?.ocr?.oprettetMs]);
   const kald = async (fn, besked) => { setArbejder(true); const r = await fn(); setArbejder(false); setSvar({ ok: r.ok, besked: r.ok ? besked : r.besked }); await hent(); return r; };
   const filer = async (liste, kildeArt = "filupload") => {
-    for (const file of Array.from(liste || [])) await kald(() => uploadEjerBilag(file, kildeArt), `${file.name} er modtaget og verificeret.`);
+    const fejl = [];
+    for (const file of Array.from(liste || [])) { const r = await kald(() => uploadEjerBilag(file, kildeArt), `${file.name} er modtaget og verificeret af serveren.`); if (!r.ok) fejl.push({ file, kildeArt }); }
+    setFejledeFiler(fejl);
   };
+  const statusLabel = (post) => post.status === "matchet_dinero" ? "Matchet i Dinero-testadapter" : String(post.status).replaceAll("_", " ");
   const gem = () => kald(() => gemBilagsmetadata({ id: valgt.id, forventetRevision: valgt.revision || 0, metadata: {
     ...metadata, beloebEksklMomsOere: tilOere(metadata.beloebEksklMomsOere), momsOere: tilOere(metadata.momsOere), totalOere: tilOere(metadata.totalOere),
   } }), "Metadata er gemt som en ny version.");
@@ -41,15 +45,17 @@ export default function EjerBilagsindbakke() {
   const bilagIntegration = data.integrationer?.bilag || {};
   return <div className="fc-grid" style={{ gap: 16 }}>
     <Kort titel="Modtag bilag">
-      <div className="fc-form-grid">
-        <label className="fc-field"><span>Vælg filer</span><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(e) => filer(e.target.files)} disabled={arbejder} /></label>
-        <label className="fc-field"><span>Tag billede med mobilkamera</span><input type="file" accept="image/jpeg,image/png" capture="environment" onChange={(e) => filer(e.target.files, "mobilkamera")} disabled={arbejder} /><small>Originalbilledet bevares. Kontrol og godkendelse sker som for andre bilag.</small></label>
-        <div className="fc-empty" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); filer(e.dataTransfer.files); }}><b>Træk PDF, JPEG eller PNG hertil</b><p>Maks. 20 MB pr. fil. Indholdssignaturen kontrolleres efter upload.</p></div>
+      <div className="ejer-bilag-upload" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); filer(e.dataTransfer.files); }}>
+        <label><b>Upload bilag</b><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(e) => filer(e.target.files)} disabled={arbejder} /><span>Vælg PDF, JPEG eller PNG</span></label>
+        <label><b>Tag billede</b><input type="file" accept="image/jpeg,image/png" capture="environment" onChange={(e) => filer(e.target.files, "mobilkamera")} disabled={arbejder} /><span>Mobilkamera, når enheden understøtter det</span></label>
+        <p><b>eller træk filer hertil</b><span>Maks. 20 MB · original og indholdssignatur bevares</span></p>
       </div>
+      {arbejder && <p className="ejer-handlingssvar" role="status">Uploader og afventer serverens bekræftelse…</p>}
+      {fejledeFiler.length > 0 && <p className="fc-fejltekst" role="alert">Uploaden blev ikke bekræftet. <button type="button" className="fc-btn" onClick={()=>filer(fejledeFiler.map((x)=>x.file),fejledeFiler[0].kildeArt)}>Prøv igen</button></p>}
       <div className="ejer-statuslinjer">
         <div><Pille tone="ok">Aktiv</Pille><span>Filvælger og drag & drop</span></div>
         <div><Pille tone={bilagIntegration.invoiceMail?.status === "aktiv" ? "ok" : "warn"}>{bilagIntegration.invoiceMail?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>Invoice-mail/mappe</span></div>
-        <div><Pille tone={bilagIntegration.inboundMail?.status === "aktiv" ? "ok" : "warn"}>{bilagIntegration.inboundMail?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>Egen modtageadresse — ingen adresse opfundet</span></div>
+        <div><Pille tone={bilagIntegration.inboundMail?.status === "aktiv" ? "ok" : "warn"}>{bilagIntegration.inboundMail?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>Bilagsadresse ikke opsat</span></div>
         <div><Pille tone={bilagIntegration.ocr?.status === "aktiv" ? "ok" : "warn"}>{bilagIntegration.ocr?.status === "aktiv" ? "Aktiv" : "Ikke tilsluttet"}</Pille><span>OCR-forslag</span></div>
       </div>
     </Kort>
@@ -60,7 +66,7 @@ export default function EjerBilagsindbakke() {
           { key: "leverandoer", label: "Leverandør", render: (r) => r.metadata?.aktuel?.leverandoer || r.ocr?.felter?.leverandoer || "Ikke udtrukket" },
           { key: "nummer", label: "Dokumentnr.", render: (r) => r.metadata?.aktuel?.dokumentnummer || "—" },
           { key: "kilde", label: "Kilde", render: (r) => r.kilde?.art || "ukendt" },
-          { key: "status", label: "Status", render: (r) => <Pille tone={tone(r.status)}>{String(r.status).replaceAll("_", " ")}</Pille> },
+          { key: "status", label: "Status", render: (r) => <Pille tone={tone(r.status)}>{statusLabel(r)}</Pille> },
           { key: "total", label: "Total", num: true, render: (r) => Number.isSafeInteger(r.metadata?.aktuel?.totalOere) ? kr(r.metadata.aktuel.totalOere) : "Ukendt" },
         ]} />
     </Kort>

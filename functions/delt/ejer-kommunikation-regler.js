@@ -71,6 +71,22 @@ export function normaliserSupport(input = {}, nu = Date.now()) {
   };
 }
 
+/**
+ * En delt kundesag kan ses af alle rene ejere. En privat eller endnu
+ * uafklaret personlig tråd kan kun ses af postkassens ejer eller den ejer,
+ * tråden udtrykkeligt er tildelt. Funktionen bruges server-side før data
+ * forlader ejergrænsen; browseren må ikke være sikkerhedsfilteret.
+ */
+export function ejerMaaSeKommunikation(traad = {}, ejerUid = "") {
+  const uid = trim(ejerUid, 160);
+  if (!uid) return false;
+  if (traad?.delingsstatus === "delt") return true;
+  if (trim(traad?.ansvarligUid, 160) === uid) return true;
+  return Object.values(traad?.postkasseKilder || {}).some((kilde) =>
+    kilde?.type === "personlig" && trim(kilde?.ejerUid, 160) === uid
+  );
+}
+
 export function beregnHitrate(muligheder = []) {
   const afsluttede = muligheder.filter((m) => ["vundet", "tabt"].includes(m?.fase));
   const vundet = afsluttede.filter((m) => m.fase === "vundet").length;

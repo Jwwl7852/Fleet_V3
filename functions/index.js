@@ -99,7 +99,7 @@ import {
 } from "./delt/ejer-bilag-regler.js";
 import {
   DELINGSSTATUS, SAGSTYPER, SUPPORT_PRIORITET, SUPPORT_STATUS, SUPPORT_TYPER,
-  fletPostkasseKilder, klassificerKommunikation, normaliserSupport, postkasseKilde,
+  ejerMaaSeKommunikation, fletPostkasseKilder, klassificerKommunikation, normaliserSupport, postkasseKilde,
 } from "./delt/ejer-kommunikation-regler.js";
 import { bilagMailForbindelsesstatus, koerIsoleretOcrTest } from "./bilag-adaptere.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
@@ -1613,7 +1613,7 @@ export const tilbudrevisionstart = onCall({ region: REGION }, async (req) => {
     const aktuel = transaktionsstart(lokal);
     const version = aktuel?.aktuelVersion;
     const snapshot = aktuel?.versioner?.[version]?.snapshot;
-    if (!snapshot || aktuel.revision !== forventetRevision || !["klar", "sendt", "afvist", "udloebet"].includes(aktuel.status)) {
+    if (!snapshot || aktuel.revision !== forventetRevision || !["klar", "sendt", "accepteret", "afvist", "udloebet"].includes(aktuel.status)) {
       konflikt = true; return;
     }
     const { beregning: _beregning, ...kladde } = snapshot;
@@ -1624,7 +1624,7 @@ export const tilbudrevisionstart = onCall({ region: REGION }, async (req) => {
     };
   });
   if (!resultat.committed || !resultat.snapshot.exists() || konflikt) {
-    throw new HttpsError("aborted", "Kun et udstedt, ikke-accepteret tilbud kan få en ny version.");
+    throw new HttpsError("aborted", "Kun et udstedt tilbud kan danne grundlag for en ny kladde.");
   }
   await skrivEjerAudit({ uid: ejerUid, handling: "tilbud.revision.start", objekt: "tilbud", objektId: id });
   return { ok: true, id, revision: resultat.snapshot.val().revision, naesteVersion: resultat.snapshot.val().aktuelVersion + 1 };
@@ -1688,7 +1688,7 @@ export const aftaleprovisioner = onCall({ region: REGION }, async (req) => {
   const tenantId = d.tenantId ? kraevKundeId({ id: d.tenantId }) : null;
   const db = getDatabase();
   const tilbud = (await db.ref(`udbyder/tilbud/${tilbudId}`).once("value")).val();
-  if (tilbud?.status !== "accepteret" || tilbud.accept?.version !== version) {
+  if (tilbud?.accept?.version !== version || !tilbud?.versioner?.[version]?.accept) {
     throw new HttpsError("failed-precondition", "Kun den registrerede, accepterede tilbudsversion kan blive til en aftale.");
   }
   const snapshot = tilbud.versioner?.[version]?.snapshot;
@@ -10838,6 +10838,16 @@ export const salgshenvendelsemodtag = onRequest({ region: REGION, secrets: [WEBF
     }, "webform");
     res.status(resultat.ny ? 201 : 200).json({ ok: true, ny: resultat.ny, henvendelseId: resultat.traadId });
   } catch (aarsag) { res.status(400).json({ ok: false, fejl: tekst(aarsag.message, 500) }); }
+});
+
+export const ejerkommunikationhent = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const snap = await getDatabase().ref("udbyder/salgsindbakke/traade").once("value");
+  const alle = snap.val() || {};
+  const traade = Object.fromEntries(Object.entries(alle).filter(([, traad]) =>
+    ejerMaaSeKommunikation(traad, ejerUid)
+  ));
+  return { ok: true, traade };
 });
 
 export const salgstraadopdater = onCall({ region: REGION }, async (req) => {

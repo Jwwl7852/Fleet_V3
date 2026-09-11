@@ -3,7 +3,7 @@ import { iDagIsoLokal, kr, oereFraKroner } from "../../fleet/format.js";
 import { MODUL, VALGFRIE_MODULER } from "../../fleet/moduler.js";
 import { Felt, Henter, Knap, Kort, Pille, Tabel } from "../../fleet/ui.jsx";
 import {
-  FAKTURERING, TILBUD_LINJEART, TILBUD_STATUS, antalTilSkala,
+  FAKTURERING, TILBUD_LINJEART, TILBUD_STATUS, TILBUDSTYPE, antalTilSkala, tilfoejKalendermaaneder,
   gemTilbud, genererTilbudsPdf, hentTilbudsPdf, ratebladFraPrisliste,
   registrerTilbudSendt, registrerTilbudsaccept,
   startTilbudsrevision, udstedTilbud, validerTilbud,
@@ -48,6 +48,9 @@ function tilInput(tilbud, virksomhedId) {
     generelRabat: pct(k?.generelRabatBps), introRabat: pct(k?.introRabatBps),
     introMaaneder: String(k?.introMaaneder || 0), bindingMaaneder: String(k?.bindingMaaneder ?? 3),
     betalingsbetingelser: k?.betalingsbetingelser || "Efter aftale",
+    tilbudstype: k?.tilbudstype || "almindelig", pilotStart: k?.pilotStart || iDag,
+    pilotMaaneder: String(k?.pilotMaaneder || 3), pilotEvaluering: k?.pilotEvaluering || plusDage(iDag, 30),
+    generelRabatAlle: k?.linjer ? k.linjer.every((l)=>l.rabatberettiget !== false) : true,
     indledning: k?.indledning || "", behovstekst: k?.behovstekst || "", loesningsbeskrivelse: k?.loesningsbeskrivelse || "",
     forudsaetninger: k?.forudsaetninger || "", fritekst: k?.fritekst || "",
     prislisteId: k?.prislisteId || "",
@@ -58,7 +61,7 @@ function tilInput(tilbud, virksomhedId) {
 function tilPost(f) {
   return {
     ...f, generelRabatBps: bps(f.generelRabat), introRabatBps: bps(f.introRabat),
-    introMaaneder: Number(f.introMaaneder), bindingMaaneder: Number(f.bindingMaaneder),
+    introMaaneder: Number(f.introMaaneder), bindingMaaneder: Number(f.bindingMaaneder), pilotMaaneder: Number(f.pilotMaaneder),
     linjer: f.linjer.map((l) => ({
       ...l, antal: antalTilSkala(String(l.antal).replace(",", ".")),
       normalprisOere: oereFraKroner(l.normalpris),
@@ -75,6 +78,7 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
   const [svar, setSvar] = useState(null);
   const [aiForslag, setAiForslag] = useState(null);
   const resultat = validerTilbud(tilPost(f));
+  const pilotSlut = f.tilbudstype === "almindelig" ? null : tilfoejKalendermaaneder(f.pilotStart, Number(f.pilotMaaneder));
   const rateblad = useMemo(() => ratebladFraPrisliste(prisliste), [prisliste]);
   const saet = (felt) => (vaerdi) => setF((x) => ({ ...x, [felt]: vaerdi }));
   const saetLinje = (id, felt, vaerdi) => setF((x) => ({
@@ -102,7 +106,17 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
     try {
       const platform = await hentSalgsplatform();
       const traad = Object.values(platform.traade || {}).find((t) => (f.mulighedId && t.links?.mulighedId === f.mulighedId) || (!f.mulighedId && t.links?.virksomhedId === f.virksomhedId));
-      if (!traad) { setSvar({ ok: false, besked: "Kobl først tilbuddet til en sag i Salgsindbakken." }); return; }
+      if (!traad) {
+        const kunde = virksomheder.find((v) => v.id === f.virksomhedId)?.stamdata?.navn || "kunden";
+        const lokale = {
+          indledning: `Tak for den gode dialog. Dette forslag samler ${kunde}s bekræftede behov i et konkret, gennemgåeligt oplæg.`,
+          behovstekst: `${kunde} har behov for et samlet overblik og en tydelig opstart. Omfang, startdato og eventuelle integrationer skal bekræftes før aftale.`,
+          loesningsbeskrivelse: "Veyro samler de valgte moduler i én løsning. Implementering, ansvar og leverancer aftales i en fælles opstartsplan.",
+        };
+        setAiForslag({ felt, tekst: lokale[felt] });
+        setSvar({ ok: true, besked: "Forslaget er lavet af den lokale testadapter. Ingen data er sendt til OpenAI." });
+        return;
+      }
       const r = await spoergSalgsassistent({ traadId: traad.id, spoergsmaal });
       setSvar(r); if (r.ok) setAiForslag({ felt, tekst: r.data?.resultat?.svar || "" });
     } finally { setGemmer(false); }
@@ -121,7 +135,10 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
         <Felt id="tilbud-rabat" label="Generel rabat, %" vaerdi={f.generelRabat} saet={saet("generelRabat")} />
         <Felt id="tilbud-intro" label="Introduktionsrabat, %" vaerdi={f.introRabat} saet={saet("introRabat")} />
         <Felt id="tilbud-intro-maaneder" label="Introduktion, måneder" type="number" vaerdi={f.introMaaneder} saet={saet("introMaaneder")} />
+        <Felt id="tilbud-type" label="Tilbudstype" vaerdi={f.tilbudstype} saet={saet("tilbudstype")} valgmuligheder={valg(TILBUDSTYPE)} />
+        {f.tilbudstype !== "almindelig" && <><Felt id="tilbud-pilot-start" label="Pilotstart" type="date" vaerdi={f.pilotStart} saet={saet("pilotStart")} /><Felt id="tilbud-pilot-maaneder" label="Pilotvarighed · kalendermåneder" type="number" vaerdi={f.pilotMaaneder} saet={saet("pilotMaaneder")} /><Felt id="tilbud-pilot-slut" label="Beregnet pilotslut" type="date" vaerdi={pilotSlut || ""} saet={()=>{}} disabled /><Felt id="tilbud-pilot-evaluering" label="Evalueringsaktivitet" type="date" vaerdi={f.pilotEvaluering} saet={saet("pilotEvaluering")} /></>}
       </div>
+      {f.tilbudstype === "pilot_med_drift" && <p className="ejer-infoboks"><EjerIkon navn="info" size={18}/> Fase 1 er den bindende pilot. Fase 2 er et vejledende driftstilbud og aktiveres aldrig automatisk ved pilotens udløb.</p>}
     </Kort>
     <Kort titel="Kundetekst og Veyro-salgsassistent">
       <p className="fc-hint">AI-forslag bruger kun den koblede sag og godkendt Veyro-viden. Forslaget ændrer intet, før du vælger Indsæt i tilbud. Priser og totaler berøres aldrig.</p>
@@ -134,6 +151,8 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
       {aiForslag && <div className="ejer-ai-resultat"><strong>AI-forslag · gennemgå før indsættelse</strong><p>{aiForslag.tekst}</p><Knap variant="primaer" onClick={() => { setF((x) => ({ ...x, [aiForslag.felt]: aiForslag.tekst })); setAiForslag(null); }}>Indsæt i tilbud</Knap><Knap onClick={() => setAiForslag(null)}>Forkast</Knap></div>}
     </Kort>
     <Kort titel="Rateblad">
+      <label className="ejer-rabat-alle"><input type="checkbox" checked={f.generelRabatAlle} onChange={(e)=>setF((x)=>({...x,generelRabatAlle:e.target.checked,linjer:x.linjer.map((l)=>({...l,rabatberettiget:e.target.checked}))}))}/> Rabat på alle valgte prislinjer <b>{f.generelRabat || "0"} %</b></label>
+      {!f.generelRabatAlle && <p className="fc-hint">Vælg “Omfattet af generel rabat” på de konkrete linjer nedenfor.</p>}
       {rateblad.length ? <>
         <p className="fc-hint">Afkrydsning indsætter den gældende listes pris som en tilbudslinje. Antal, særpris og rabat ændres kun i kladden; prislisten forbliver uændret.</p>
         <div className="fc-scroll"><table className="fc-table"><thead><tr><th>Valgt</th><th>Produkt</th><th>Enhed</th><th>Fakturering</th><th className="fc-num">Normalpris</th></tr></thead><tbody>
@@ -162,6 +181,7 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
             <Felt id={`tl-aftalt-${l.id}`} label="Aftalt pris, kr. (valgfri)" vaerdi={l.aftaltPris} saet={(v) => saetLinje(l.id, "aftaltPris", v)} />
             <Felt id={`tl-rabat-${l.id}`} label="Linjerabat, %" vaerdi={l.linjerabat} saet={(v) => saetLinje(l.id, "linjerabat", v)} />
             <Felt id={`tl-moms-${l.id}`} label="Moms, %" vaerdi={l.momssats} saet={(v) => saetLinje(l.id, "momssats", v)} />
+            {!f.generelRabatAlle && <label className="fc-field"><span>Generel rabat</span><span><input type="checkbox" checked={l.rabatberettiget !== false} onChange={(e)=>saetLinje(l.id,"rabatberettiget",e.target.checked)}/> Omfattet af generel rabat</span></label>}
           </div>
           <Knap variant="fare" onClick={() => setF((x) => ({ ...x, linjer: x.linjer.filter((x) => x.id !== l.id) }))}>Fjern linje</Knap>
         </fieldset>)}
@@ -180,7 +200,9 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
 }
 
 function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
-  const version = tilbud.versioner?.[tilbud.aktuelVersion];
+  const accepteretVersion = Number(tilbud.accept?.version || 0) || null;
+  const [vistVersion, setVistVersion] = useState(accepteretVersion || tilbud.aktuelVersion);
+  const version = tilbud.versioner?.[vistVersion];
   const s = version?.snapshot;
   const [sender, setSender] = useState(false);
   const [begrundelse, setBegrundelse] = useState("");
@@ -194,26 +216,26 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
   const [svar, setSvar] = useState(null);
   const [viserMail, setViserMail] = useState(false);
   const [tekstFane, setTekstFane] = useState("tekst");
-  const [mail, setMail] = useState({ til: s?.kontaktEmail || "", emne: `Tilbud ${tilbud.nummer} fra Veyro Systems`, tekst: `Hej ${s?.kontaktNavn || ""}\n\nVedhæftet finder du tilbud ${tilbud.nummer}, version ${tilbud.aktuelVersion}.\n\nDu er meget velkommen til at kontakte os med spørgsmål.`, signatur: "Venlig hilsen\nVeyro Systems" });
+  const [mail, setMail] = useState({ til: s?.kontaktEmail || "", emne: `Tilbud ${tilbud.nummer} fra Veyro Systems`, tekst: `Hej ${s?.kontaktNavn || ""}\n\nVedhæftet finder du tilbud ${tilbud.nummer}, version ${vistVersion}.\n\nDu er meget velkommen til at kontakte os med spørgsmål.`, signatur: "Venlig hilsen\nVeyro Systems" });
   const [mailjob, setMailjob] = useState(null);
   const udsted = async () => { setSender(true); const r = await udstedTilbud({ id: tilbud.id, forventetRevision: tilbud.revision, operationId: crypto.randomUUID() }); setSender(false); setSvar({ ...r, succes: `Version ${r.data?.version} er udstedt og låst.` }); if (r.ok) await onOpdater(); };
   const sendt = async () => { setSender(true); const r = await registrerTilbudSendt({ id: tilbud.id, forventetRevision: tilbud.revision, begrundelse }); setSender(false); setSvar({ ...r, succes: "Den manuelle afsendelse er registreret med audit." }); if (r.ok) await onOpdater(); };
-  const opretMail = async () => { setSender(true); let r = await genererTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion }); if (r.ok) r = await opretTilbudMailkladde({ tilbudId: tilbud.id, version: tilbud.aktuelVersion, ...mail }); setSender(false); setSvar({ ...r, succes: "Mailkladden er gemt med den præcise tilbudsversion og PDF." }); if (r.ok) { setMailjob(r.data); await onOpdater(); } };
+  const opretMail = async () => { setSender(true); let r = await genererTilbudsPdf({ id: tilbud.id, version: vistVersion }); if (r.ok) r = await opretTilbudMailkladde({ tilbudId: tilbud.id, version: vistVersion, ...mail }); setSender(false); setSvar({ ...r, succes: "Mailkladden er gemt med den præcise tilbudsversion og PDF." }); if (r.ok) { setMailjob(r.data); await onOpdater(); } };
   const sendMail = async () => { setSender(true); const r = await afsendSalgsmail({ jobId: mailjob.jobId, forventetRevision: mailjob.revision }); setSender(false); setSvar({ ...r, succes: "Microsoft Graph har accepteret anmodningen. Afsendelsen dokumenteres først ved Sendt post-synk." }); if (r.ok) await onOpdater(); };
   const revision = async () => { setSender(true); const r = await startTilbudsrevision({ id: tilbud.id, forventetRevision: tilbud.revision }); setSender(false); setSvar({ ...r, succes: `Kladde til version ${r.data?.naesteVersion} er oprettet.` }); if (r.ok) await onRedigerRevision(true); };
   const accepter = async () => { setSender(true); const r = await registrerTilbudsaccept({ id: tilbud.id, version: tilbud.aktuelVersion, forventetRevision: tilbud.revision, metode: acceptMetode, dokumentation: acceptDokumentation }); setSender(false); setSvar({ ...r, succes: `Accept af version ${tilbud.aktuelVersion} er registreret.` }); if (r.ok) await onOpdater(); };
   const pdf = async () => {
     setSender(true);
-    const genereret = await genererTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion });
+    const genereret = await genererTilbudsPdf({ id: tilbud.id, version: vistVersion });
     if (!genereret.ok) { setSender(false); setSvar(genereret); return; }
-    const download = await hentTilbudsPdf({ id: tilbud.id, version: tilbud.aktuelVersion });
-    setSender(false); setSvar({ ...download, succes: `PDF for version ${tilbud.aktuelVersion} er klar.` });
+    const download = await hentTilbudsPdf({ id: tilbud.id, version: vistVersion });
+    setSender(false); setSvar({ ...download, succes: `PDF for version ${vistVersion} er klar.` });
     if (download.ok) { window.location.assign(download.data.url); await onOpdater(); }
   };
   const provisioner = async () => {
     setSender(true);
     const r = await provisionerAftale({
-      tilbudId: tilbud.id, version: tilbud.aktuelVersion,
+      tilbudId: tilbud.id, version: accepteretVersion,
       tenantId: tenantId.trim() || undefined, virkningsdato,
       eksisterendeAftaleId: eksisterendeAftaleId.trim() || undefined,
       operationId: crypto.randomUUID(),
@@ -221,7 +243,7 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
     setSender(false); setSvar({ ...r, succes: r.data?.status === "planlagt" ? "Aftalen er planlagt til virkningsdatoen." : "Aftaleprocessen er gennemført." });
     if (r.ok) await onOpdater();
   };
-  if (tilbud.status === "kladde") return <Kort titel={`${tilbud.nummer} — kladde`}><p>Kladde gemt. Udstedelse fryser version {Number(tilbud.aktuelVersion || 0) + 1}; tidligere versioner ændres ikke.</p><Knap variant="primaer" onClick={udsted} disabled={sender}>{sender ? "Arbejder…" : `Udsted version ${Number(tilbud.aktuelVersion || 0) + 1}`}</Knap>{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}</Kort>;
+  if (tilbud.status === "kladde" && !accepteretVersion) return <Kort titel={`${tilbud.nummer} — kladde`}><p>Kladde gemt. Udstedelse fryser version {Number(tilbud.aktuelVersion || 0) + 1}; tidligere versioner ændres ikke.</p><Knap variant="primaer" onClick={udsted} disabled={sender}>{sender ? "Arbejder…" : `Udsted version ${Number(tilbud.aktuelVersion || 0) + 1}`}</Knap>{svar && !svar.ok && <p className="fc-fejltekst">{svar.besked}</p>}</Kort>;
   if (viserMail) return (
     <div className="ejer-send-tilbud">
       <button type="button" className="ejer-tilbage" onClick={() => setViserMail(false)}>← Tilbage til tilbud</button>
@@ -234,7 +256,7 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
           <textarea value={`${mail.tekst}\n\n${mail.signatur}`} onChange={(e) => setMail({ ...mail, tekst: e.target.value })} />
           <div className="ejer-pdf-vedhaeftning">
             <b>Vedhæftet fil</b><span>PDF</span>
-            <p><strong>{`${tilbud.nummer}_v${tilbud.aktuelVersion}.pdf`}</strong><small>Gemt tilbudsversion {tilbud.aktuelVersion} · permanent versionsdokument</small></p>
+            <p><strong>{`${tilbud.nummer}_v${vistVersion}.pdf`}</strong><small>Gemt tilbudsversion {vistVersion} · permanent versionsdokument</small></p>
             <button type="button" onClick={pdf}>Åbn PDF</button>
           </div>
         </section>
@@ -242,7 +264,7 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
           <section className="ejer-design-kort ejer-foer-send">
             <h2>Før du sender</h2>
             <p><span>✓</span><b>Korrekt modtager</b><small>{mail.til}</small></p>
-            <p><span>✓</span><b>Korrekt version</b><small>Version {tilbud.aktuelVersion} ({tilbud.nummer}) er vedhæftet</small></p>
+            <p><span>✓</span><b>Korrekt version</b><small>Version {vistVersion} ({tilbud.nummer}) er vedhæftet</small></p>
             <p><EjerIkon navn="info" size={22} /><b>Ekstern afsendelse er ikke tilsluttet</b><small>Microsoft 365 skal være verificeret før afsendelse.</small></p>
           </section>
           <section className="ejer-design-kort ejer-plan-opfoelgning">
@@ -267,10 +289,10 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
     </div>
   );
   return <div className="fc-grid ejer-tilbud-design">
-    <section className="ejer-tilbud-identitet"><div><h2>{tilbud.nummer}</h2><span className="warn">{TILBUD_STATUS[tilbud.status]}</span><span>Version {tilbud.aktuelVersion}</span></div><p>{virksomhed?.stamdata?.navn || tilbud.virksomhedId}</p></section>
+    <section className="ejer-tilbud-identitet"><div><h2>{tilbud.nummer}</h2><span className={tilbud.accept ? "ok" : "warn"}>{tilbud.status === "kladde" && tilbud.accept ? `Ny kladde · version ${Number(tilbud.aktuelVersion || 0) + 1}` : TILBUD_STATUS[tilbud.status]}</span><label>Vis version <select value={vistVersion} onChange={(e)=>setVistVersion(Number(e.target.value))}>{Object.keys(tilbud.versioner || {}).sort((a,b)=>Number(b)-Number(a)).map((v)=><option key={v} value={v}>Version {v}{Number(v)===accepteretVersion ? " · accepteret og låst" : ""}</option>)}</select></label></div><p>{virksomhed?.stamdata?.navn || tilbud.virksomhedId}</p></section>
     <section className="ejer-design-kort ejer-tilbud-summering"><div><span className="ejer-ikonfelt">◇</span><p><small>Abonnement</small><b>{kr(s.beregning.maanedlig.beloebOere)}/md.</b></p></div><div><span className="ejer-ikonfelt">▤</span><p><small>Engangsydelser</small><b>{kr(s.beregning.engang.beloebOere)}</b></p></div><p><b>Eksempelpriser · ekskl. moms</b><small>Priserne hentes fra ratebladet. AI redigerer kun tekst.</small></p></section>
     <div className="ejer-tilbud-layout"><section className="ejer-design-kort ejer-tilbud-tekst"><div className="ejer-tabs">{[["rate","Rateblad"],["tekst","Tilbudstekst"],["dokument","Dokument"]].map(([id,label])=><button type="button" key={id} className={tekstFane===id?"aktiv":""} onClick={()=>setTekstFane(id)}>{label}</button>)}</div>{tekstFane==="rate"?<><h2>Prislinjer fra ratebladet</h2><Tabel raekker={s.beregning.linjer} kolonner={[{key:"navn",label:"Ydelse"},{key:"antal",label:"Antal",render:l=>`${l.antal/1000} ${l.enhed}`},{key:"total",label:"Linjetotal",num:true,render:l=>kr(l.linjetotalOere)}]}/></>:tekstFane==="dokument"?<><h2>Permanent versionsdokument</h2><p>PDF'en er bundet til version {tilbud.aktuelVersion} og SHA-256-kontrolleres før afsendelse.</p><button type="button" className="ejer-primaer" onClick={pdf}>Åbn PDF</button></>:<><h2>Kundetilpasset indledning</h2><div className="ejer-editor-toolbar">Normal　 <b>B</b>　<i>I</i>　☷　☰　🔗　↶　↷</div><div className="ejer-editorfelt">{s.indledning||s.behovstekst||"Tilbuddet tager udgangspunkt i kundens bekræftede behov og den aftalte løsning."}</div><h2>Løsningsbeskrivelse</h2><div className="ejer-editor-toolbar">Normal　 <b>B</b>　<i>I</i>　☷　☰　🔗　↶　↷</div><div className="ejer-editorfelt">{s.loesningsbeskrivelse||"Omfang, arbejdsproces og introduktion gennemgås sammen med kunden."}</div><div className="ejer-prislinjer"><h2>⌄ Prislinjer fra ratebladet <button type="button" onClick={()=>setTekstFane("rate")}>Redigér rateblad ↗</button></h2>{s.beregning.linjer.slice(0,5).map(l=><p key={l.id||l.navn}><span>✓</span>{l.navn}</p>)}</div></>}</section><aside className="ejer-design-kort ejer-tilbud-assistent"><h2><EjerIkon navn="sparkles" size={30}/>Veyro-assistent</h2><p className="fc-hint">Få hjælp til at skrive en skarp og kundetilpasset tekst.</p><div className="ejer-ai-prompt"><input defaultValue="Gør teksten konkret for denne kunde"/><button type="button" onClick={()=>setSvar({ok:false,besked:"OpenAI er ikke tilsluttet; teksten er ikke sendt til en ekstern tjeneste."})}><EjerIkon navn="send" size={20}/></button></div><div className="ejer-ai-forslag"><header><b>✦ TESTADAPTER · ingen ekstern AI</b><time>I dag</time></header><p>Et forslag vises her, når den serverbaserede assistent er tilsluttet og aktiveret.</p><small>Kilder til forslaget</small><div><span>Kundens forespørgsel</span><span>Godkendt Veyro-viden</span></div><em>Opstartsdato mangler afklaring.</em></div><div className="ejer-assistent-actions"><button type="button" className="ejer-primaer" onClick={()=>setSvar({ok:false,besked:"Intet AI-forslag er indsat, fordi integrationen ikke er tilsluttet."})}>✓ Indsæt forslag</button><button type="button" onClick={()=>setSvar({ok:false,besked:"OpenAI er ikke tilsluttet; der er ikke genereret en ny tekst."})}>↻ Prøv en kortere tekst</button></div><div className="ejer-tilbud-hovedactions"><button type="button" onClick={onRedigerRevision}>Gem kladde</button><button type="button" onClick={pdf}>Se PDF</button><button type="button" className="ejer-primaer" onClick={()=>setViserMail(true)}><EjerIkon navn="send" size={20}/>Klargør mail</button></div>{svar&&<p className={svar.ok?"fc-ok":"fc-fejltekst"}>{svar.ok?svar.succes:svar.besked}</p>}</aside></div>
-    {["klar", "sendt", "afvist", "udloebet"].includes(tilbud.status)&&<div className="fc-actions"><Knap onClick={revision} disabled={sender}>Opret ny version</Knap></div>}
+    {["klar", "sendt", "accepteret", "afvist", "udloebet"].includes(tilbud.status)&&<div className="fc-actions"><Knap onClick={revision} disabled={sender}>Opret ny kladde fra version {vistVersion}</Knap></div>}
     {tilbud.status === "sendt" && <Kort titel="Registrér kundens accept">
       <p className="fc-hint">Accepten bindes til version {tilbud.aktuelVersion}. Den opretter hverken aftale, tenant, invitation eller faktura automatisk.</p>
       <Felt id="tilbud-accept-metode" label="Metode" vaerdi={acceptMetode} saet={setAcceptMetode} valgmuligheder={[
@@ -280,13 +302,13 @@ function Tilbudsdokument({ tilbud, virksomhed, onOpdater, onRedigerRevision }) {
       <Felt id="tilbud-accept-dokumentation" label="Dokumentation / reference" vaerdi={acceptDokumentation} saet={setAcceptDokumentation} />
       <Knap variant="primaer" onClick={accepter} disabled={sender || !acceptDokumentation.trim()}>Registrér accept af version {tilbud.aktuelVersion}</Knap>
     </Kort>}
-    {tilbud.status === "accepteret" && <Kort titel="Opret aftale og eventuel tenant">
-      <p className="fc-hint">Processen bruger en stabil aftalenøgle og kan genkøres efter fejl. Accepten frigiver ikke en faktura. Tenant-id er permanent, når det først er knyttet.</p>
+    {tilbud.accept && <Kort titel="Aktivér kundeaftale">
+      <p className="fc-hint">Den accepterede version {accepteretVersion} er låst og bruges som aftalegrundlag. En eventuel nyere kladde ændrer ikke aftalen. Processen kan genoptages sikkert efter fejl.</p>
       <Felt id="aftale-virkning" label="Virkningsdato" type="date" vaerdi={virkningsdato} saet={setVirkningsdato} />
       <Felt id="aftale-eksisterende" label="Eksisterende aftale-id (valgfrit)" vaerdi={eksisterendeAftaleId} saet={setEksisterendeAftaleId}
         hint="Udfyld for at føje en ny, uforanderlig aftaleversion til kundens eksisterende aftale." />
       <Felt id="aftale-tenant" label="Permanent tenant-id (valgfrit ved første kørsel)" vaerdi={tenantId} saet={setTenantId} hint="Små bogstaver, tal og bindestreg. Lad feltet stå tomt for kun at oprette aftalen." />
-      <Knap variant="primaer" onClick={provisioner} disabled={sender || !virkningsdato}>Opret / genoptag aftaleprocessen</Knap>
+      <Knap variant="primaer" onClick={provisioner} disabled={sender || !virkningsdato}>Gennemgå og aktivér kundeaftale</Knap>
       {tilbud.accept && <p className="fc-hint">Accepteret version {tilbud.accept.version} den {new Date(tilbud.accept.ms).toLocaleString("da-DK")} via {tilbud.accept.metode}.</p>}
     </Kort>}
   </div>;
