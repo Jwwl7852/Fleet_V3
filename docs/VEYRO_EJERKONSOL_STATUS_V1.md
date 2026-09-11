@@ -2,6 +2,38 @@
 
 Opdateret: 2026-09-11
 
+## V6.1-afslutning — lokal reviewstatus
+
+- V6.1 er implementeret og lokalt verificeret på branch
+  `codex/ejer-integrated-development`. Kodecheckpoints er `749791f` og
+  `f7e3f45`; intet er pushet, merget eller deployet.
+- Tilbudstekst og Veyro-assistent står i 60/40-layout ved 1440×900 og
+  1920×1080. Mobil viser dem som særskilte paneler, og alle tre hovedfaner er
+  nu synlige uden vandret afklipning ved 390×844.
+- En ny v3-kladde arver den accepterede v2-tekst og opsætning. Den redigerede
+  tekst består gem/genindlæs, mens v2-snapshot og PDF er uændrede med identisk
+  SHA-256 før og efter.
+- Den lokale AI-testadapter er kørt gennem første forslag, sælgerinstruks,
+  kortere revideret forslag og eksplicit indsættelse. Instruksen lækkes ikke,
+  økonomifelter ændres ikke, og forældede forslag kan ikke indsættes.
+- Den faktiske produktions-mailworker er integrationstestet mod den lokale
+  databaseemulator med injiceret lokal transport. Accept, afvisning, ny mail og
+  ældre accepteret version med nyere kladde giver 0 transportkald; uafhængig
+  support giver 1; to samtidige workers giver højst 1; ukendt udfald blokerer
+  automatisk genforsøg.
+- Bilagssøgning, OBD-hjælp og læsbart rateblad er visuelt kontrolleret. Den
+  målte bilagssøgning er 330×39,75 px og har 2 px cyan fokusmarkering med 2 px
+  afstand. Inter Variable er faktisk indlæst i browseren.
+- V5/V6/V6.1-regressionen består 39/39, målrettet ESLint har 0 fejl, og Vite-
+  produktionsbuild består med 532 moduler. Repositoryets brede lint er fortsat
+  blokeret af det uvedkommende FACILITY-hul omkring manglende `@eslint/js`.
+- Der er taget 29 faktiske PNG-optagelser og seks maskinlæsbare bevisfiler i
+  `docs/screenshots/ejer-review-v6-1/`, bundet til kodecommit
+  `f7e3f45544ba13053658235bfe1b66c3b07ed56a`.
+- Detaljeret acceptmatrix og lokal gennemgang står i
+  `docs/VEYRO_EJERKONSOL_REVIEW_V6_1.md`. Microsoft 365, OpenAI, Dinero, OCR og
+  bilagsmail forbliver **Ikke tilsluttet**.
+
 ## Designreview — aktuel arbejdsrunde
 
 - Starttilstand genverificeret på branch `codex/ejer-integrated-development`,

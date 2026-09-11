@@ -1,0 +1,89 @@
+{
+  "codeCommit": "f7e3f45544ba13053658235bfe1b66c3b07ed56a",
+  "maalinger": [
+    {
+      "route": "/main/oekonomi/bilag",
+      "selector": ".ejer-bilag-soeg input",
+      "findes": true,
+      "synlig": true,
+      "dimensioner": {
+        "width": 330,
+        "height": 39.75,
+        "x": 1069,
+        "y": 511.984375
+      },
+      "font": {
+        "family": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+        "size": "15px",
+        "lineHeight": "21.75px"
+      },
+      "farver": {
+        "tekst": "rgb(16, 34, 53)",
+        "baggrund": "rgb(255, 255, 255)",
+        "kant": "rgb(220, 227, 232)"
+      },
+      "borderRadius": "4px",
+      "fokus": {
+        "active": true,
+        "outline": "rgb(34, 194, 207) solid 2px",
+        "outlineOffset": "2px"
+      }
+    },
+    {
+      "route": "/main/kunder/flow-tenant?fane=obd",
+      "selector": ".ejer-konto-formgrid input[type='number']",
+      "findes": true,
+      "synlig": true,
+      "dimensioner": {
+        "width": 369.328125,
+        "height": 38,
+        "x": 263,
+        "y": 435.515625
+      },
+      "font": {
+        "family": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+        "size": "14px",
+        "lineHeight": "20.3px"
+      },
+      "farver": {
+        "tekst": "rgb(91, 107, 123)",
+        "baggrund": "rgb(245, 247, 249)",
+        "kant": "rgb(220, 227, 232)"
+      },
+      "borderRadius": "9px",
+      "fokus": {
+        "active": false,
+        "outline": "rgb(91, 107, 123) none 3px",
+        "outlineOffset": "0px"
+      }
+    },
+    {
+      "route": "/main/salg/tilbud",
+      "selector": "#tilbud-indledning",
+      "findes": true,
+      "synlig": true,
+      "dimensioner": {
+        "width": 658.59375,
+        "height": 60.59375,
+        "x": 261,
+        "y": 528.53125
+      },
+      "font": {
+        "family": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+        "size": "14px",
+        "lineHeight": "20.3px"
+      },
+      "farver": {
+        "tekst": "rgb(16, 34, 53)",
+        "baggrund": "rgb(247, 248, 249)",
+        "kant": "rgb(219, 226, 231)"
+      },
+      "borderRadius": "4px",
+      "fokus": {
+        "active": true,
+        "outline": "rgb(8, 116, 132) solid 2px",
+        "outlineOffset": "2px"
+      }
+    }
+  ]
+}

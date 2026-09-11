@@ -1,0 +1,18 @@
+{
+  "projekt": "demo-veyro-owner",
+  "tilbudId": "flow_quote_20260910",
+  "accepteretVersion": 2,
+  "nyKladdeVersion": 3,
+  "revision": 13,
+  "arv": true,
+  "original": "Tak for dialogen om en samlet Veyro-løsning til Flowtest ApS.",
+  "foersteForslag": "Tak for den gode dialog. Dette tilbud samler Flowtest ApSs bekræftede behov i et konkret og gennemgåeligt oplæg.",
+  "revideretForslag": "Tak for dialogen. Her er et samlet forslag til Flowtest ApS.",
+  "revideretErKortere": true,
+  "saelgerinstruksIkkeLaekket": true,
+  "struktureretOekonomiUaendret": true,
+  "v2SnapshotUaendret": true,
+  "v2PdfSha256Foer": "8b13729c5e3c25175c17be9fdb65e2c12359c144f91061a6d58bf3ab5efe2517",
+  "v2PdfSha256Efter": "8b13729c5e3c25175c17be9fdb65e2c12359c144f91061a6d58bf3ab5efe2517",
+  "eksternAI": false
+}
