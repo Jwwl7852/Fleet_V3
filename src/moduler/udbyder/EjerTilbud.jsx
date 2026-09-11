@@ -60,6 +60,8 @@ function tilInput(tilbud, virksomhedId) {
     generelRabatAlle: k?.linjer ? k.linjer.every((l)=>l.rabatberettiget !== false) : true,
     indledning: k?.indledning || "", behovstekst: k?.behovstekst || "", loesningsbeskrivelse: k?.loesningsbeskrivelse || "",
     forudsaetninger: k?.forudsaetninger || "", fritekst: k?.fritekst || "",
+    pilotOmfang: k?.pilotOmfang || "", pilotAktiviteter: k?.pilotAktiviteter || "",
+    pilotUdenfor: k?.pilotUdenfor || "", pilotUafklaret: k?.pilotUafklaret || "",
     prislisteId: k?.prislisteId || "",
     linjer: k?.linjer?.map(linjeTilInput) || [],
   };
@@ -125,7 +127,19 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
       const platform = await hentSalgsplatform();
       const traad = Object.values(platform.traade || {}).find((t) => (f.mulighedId && t.links?.mulighedId === f.mulighedId) || (!f.mulighedId && t.links?.virksomhedId === f.virksomhedId));
       if (!traad || platform.integrationer?.openai?.status !== "aktiv") {
-        const tekst = lokaltTilbudsforslag({ felt, kunde: kundeNavn, instruks: aiInstruks, pilot: f.tilbudstype !== "almindelig" });
+        const tekst = lokaltTilbudsforslag({
+          felt, kunde: kundeNavn, instruks: aiInstruks, pilot: f.tilbudstype !== "almindelig",
+          kontekst: {
+            moduler: f.linjer.map((l) => MODUL[l.modulId]?.label).filter(Boolean),
+            aktiviteter: f.pilotAktiviteter,
+            pilotStart: f.pilotStart,
+            pilotMaaneder: f.pilotMaaneder,
+            omfang: f.pilotOmfang,
+            udenfor: f.pilotUdenfor,
+            uafklaret: f.pilotUafklaret,
+            vejledendeDrift: f.tilbudstype === "pilot_med_drift",
+          },
+        });
         setAiForslag({ felt, tekst, basisTekst: f[felt] || "" });
         setSvar({ ok: true, besked: "Forslaget er lavet af den lokale testadapter. Ingen data er sendt til OpenAI." });
         return;
@@ -152,7 +166,7 @@ function Tilbudsformular({ aktuel, virksomheder, prisliste, onGemt, onAnnuller }
         <Felt id="tilbud-intro" label="Introduktionsrabat, %" vaerdi={f.introRabat} saet={saet("introRabat")} />
         <Felt id="tilbud-intro-maaneder" label="Introduktion, måneder" type="number" vaerdi={f.introMaaneder} saet={saet("introMaaneder")} />
         <Felt id="tilbud-type" label="Tilbudstype" vaerdi={f.tilbudstype} saet={saet("tilbudstype")} valgmuligheder={valg(TILBUDSTYPE)} />
-        {f.tilbudstype !== "almindelig" && <><Felt id="tilbud-pilot-start" label="Pilotstart" type="date" vaerdi={f.pilotStart} saet={(v)=>saetPilot("pilotStart",v)} /><Felt id="tilbud-pilot-maaneder" label="Pilotvarighed · kalendermåneder" type="number" vaerdi={f.pilotMaaneder} saet={(v)=>saetPilot("pilotMaaneder",v)} /><Felt id="tilbud-pilot-slut" label="Beregnet pilotslut" type="date" vaerdi={pilotSlut || ""} saet={()=>{}} disabled /><Felt id="tilbud-pilot-evaluering" label="Evalueringsaktivitet" type="date" vaerdi={f.pilotEvaluering} saet={(v)=>{setEvalueringManuel(true);saet("pilotEvaluering")(v);}} hint={evalueringManuel ? "Manuelt valgt" : "Automatisk: 14 dage før pilotslut"}/></>}
+        {f.tilbudstype !== "almindelig" && <><Felt id="tilbud-pilot-start" label="Pilotstart" type="date" vaerdi={f.pilotStart} saet={(v)=>saetPilot("pilotStart",v)} /><Felt id="tilbud-pilot-maaneder" label="Pilotvarighed · kalendermåneder" type="number" vaerdi={f.pilotMaaneder} saet={(v)=>saetPilot("pilotMaaneder",v)} /><Felt id="tilbud-pilot-slut" label="Beregnet pilotslut" type="date" vaerdi={pilotSlut || ""} saet={()=>{}} disabled /><Felt id="tilbud-pilot-evaluering" label="Evalueringsaktivitet" type="date" vaerdi={f.pilotEvaluering} saet={(v)=>{setEvalueringManuel(true);saet("pilotEvaluering")(v);}} hint={evalueringManuel ? "Manuelt valgt" : "Automatisk: 14 dage før pilotslut"}/><Felt id="tilbud-pilot-omfang" label="Bekræftet pilotomfang" vaerdi={f.pilotOmfang} saet={saet("pilotOmfang")} multiline hint="Kun oplysninger, der er aftalt med kunden."/><Felt id="tilbud-pilot-aktiviteter" label="Pilotaktiviteter" vaerdi={f.pilotAktiviteter} saet={saet("pilotAktiviteter")} multiline hint="Adskil flere aktiviteter med komma eller ny linje."/><Felt id="tilbud-pilot-udenfor" label="Udtrykkeligt uden for piloten" vaerdi={f.pilotUdenfor} saet={saet("pilotUdenfor")} multiline/><Felt id="tilbud-pilot-uafklaret" label="Skal afklares før opstart" vaerdi={f.pilotUafklaret} saet={saet("pilotUafklaret")} multiline/></>}
       </div>
       {f.tilbudstype === "pilot_med_drift" && <p className="ejer-infoboks"><EjerIkon navn="info" size={18}/> Fase 1 er den bindende pilot. Fase 2 er et vejledende driftstilbud og aktiveres aldrig automatisk ved pilotens udløb.</p>}
       {evalAdvarsel&&<p className="ejer-advarsel"><EjerIkon navn="info" size={18}/>{evalAdvarsel}</p>}

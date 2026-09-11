@@ -26,9 +26,9 @@ test("V6.1 lokalt revideret AI-forslag er faktisk kortere og lækker ikke instru
   assert.ok(kort.length < langt.length); assert.doesNotMatch(kort, /HEMMELIGT|instruks/i);
 });
 
-test("V6.1 pilot må ikke begynde før tilbudsdatoen", () => {
+test("V6.2 historisk pilotstart afvises ikke alene i forhold til tilbudsdatoen", () => {
   const resultat = validerTilbud({ virksomhedId: "kunde", udstedelsesdato: "2026-09-10", gyldigTil: "2026-10-10", valuta: "DKK", tilbudstype: "pilot", pilotStart: "2026-09-01", pilotMaaneder: 3, pilotEvaluering: "2026-10-01", linjer: [] });
-  assert.equal(resultat.fejl.pilotStart, "Pilotstart må ikke ligge før tilbudsdatoen.");
+  assert.equal(resultat.fejl.pilotStart, undefined);
 });
 
 test("V6.1 produktions-worker anvendes af afsendelsesvejen og har ingen offentlig testbypass", () => {

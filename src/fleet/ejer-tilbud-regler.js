@@ -174,7 +174,6 @@ export function validerTilbud(input = {}) {
   if (introMaaneder === null) fejl.introMaaneder = "Introduktionsperioden er ugyldig.";
   if (bindingMaaneder === null) fejl.bindingMaaneder = "Bindingsperioden er ugyldig.";
   if (tilbudstype !== "almindelig" && !pilotStart) fejl.pilotStart = "Pilotens startdato er ugyldig.";
-  if (tilbudstype !== "almindelig" && pilotStart && udstedelsesdato && pilotStart < udstedelsesdato) fejl.pilotStart = "Pilotstart må ikke ligge før tilbudsdatoen.";
   if (tilbudstype !== "almindelig" && pilotMaaneder === null) fejl.pilotMaaneder = "Pilotens varighed skal være 1–24 kalendermåneder.";
   if (tilbudstype !== "almindelig" && !pilotEvaluering) fejl.pilotEvaluering = "Vælg en evalueringsdato for piloten.";
   if (pilotEvaluering && pilotStart && (pilotEvaluering < pilotStart || pilotEvaluering > pilotSlut)) fejl.pilotEvaluering = "Evalueringen skal ligge i pilotperioden.";
@@ -219,6 +218,8 @@ export function validerTilbud(input = {}) {
     indledning: tekst(input.indledning, 4000), behovstekst: tekst(input.behovstekst, 4000),
     loesningsbeskrivelse: tekst(input.loesningsbeskrivelse, 6000),
     forudsaetninger: tekst(input.forudsaetninger, 4000), fritekst: tekst(input.fritekst, 4000),
+    pilotOmfang: tekst(input.pilotOmfang, 1000), pilotAktiviteter: tekst(input.pilotAktiviteter, 1000),
+    pilotUdenfor: tekst(input.pilotUdenfor, 1000), pilotUafklaret: tekst(input.pilotUafklaret, 1000),
     prislisteId: tekst(input.prislisteId, 160),
   };
   return { fejl, post, beregning: Object.keys(fejl).length ? null : beregnTilbud(post) };
