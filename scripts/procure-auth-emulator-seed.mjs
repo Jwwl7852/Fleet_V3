@@ -73,19 +73,19 @@ async function main() {
   const now = Date.now();
   const tenantBase = {
     _findes: true,
-    virksomhed: { navn: "Syntetisk PROCURE-virksomhed", cvr: "00000000", procureAppUrl: "https://procure-preview.example.invalid" },
+    virksomhed: { navn: "Fjordholm Drift A/S", cvr: "00000000", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example", procureAppUrl: "https://procure-preview.example.invalid" },
     abonnement: { status: "aktiv" },
     moduler: { indkoeb: true, oekonomi: true },
     brugere: Object.fromEntries(Object.values(users).filter((user) => user.tenant === TENANT_A).map((user) => [user.uid, { email: user.email, navn: user.name, rolle: user.role }])),
     leverandoerer: {
-      nordisk: { navn: "Nordisk Testleverandør ApS", ordreEmail: "testtransport@example.invalid", kontaktEmail: "kontakt@example.invalid", adresse: "Testvej 1", bestillingsmetode: "begge", prisaftale: "QA-aftale", webshopUrl: "https://example.invalid/testshop" },
-      sikker: { navn: "Sikkerhed Test ApS", ordreEmail: "testtransport-2@example.invalid", kontaktEmail: "kontakt-2@example.invalid", adresse: "Testvej 2", bestillingsmetode: "mail", prisaftale: "QA-aftale 2" },
+      nordisk: { navn: "Nordisk Materialehandel A/S", ordreEmail: "testtransport@example.invalid", kontaktEmail: "kontakt@example.invalid", adresse: "Industrivej 12", postnr: "8200", by: "Aarhus N", kundenummer: "FH-1042", bestillingsmetode: "begge", prisaftale: "QA-aftale", webshopUrl: "https://example.invalid/testshop" },
+      sikker: { navn: "Sikkerhed Materiel A/S", ordreEmail: "testtransport-2@example.invalid", kontaktEmail: "kontakt-2@example.invalid", adresse: "Håndværkervej 4", postnr: "2600", by: "Glostrup", kundenummer: "FH-1043", bestillingsmetode: "mail", prisaftale: "QA-aftale 2" },
     },
     forbrugsvarer: catalog,
     procureOpsaetning: {
       afdelinger: { lager: { id: "lager", label: "Lager", active: true, revision: 1 }, drift: { id: "drift", label: "Drift", active: true, revision: 1 } },
       varekategorier: { emballage: { id: "emballage", label: "Emballage", active: true, revision: 1 }, sikkerhed: { id: "sikkerhed", label: "Sikkerhedsudstyr", active: true, revision: 1 } },
-      leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager · rampe 2", active: true, revision: 1 }, vaerksted: { id: "vaerksted", label: "Værksted", active: true, revision: 1 } },
+      leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager · rampe 2", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true, revision: 1 }, vaerksted: { id: "vaerksted", label: "Værksted", adresse: "Værkstedsvej 2", postnr: "8000", by: "Aarhus C", active: true, revision: 1 } },
       budgetter: { "2026-09": { lager: { departmentId: "lager", period: "2026-09", amountOere: 12000000, currency: "DKK", revision: 1 } } },
     },
     procureQrMaerkater: {

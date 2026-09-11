@@ -14,6 +14,7 @@
     "procure:auth-seed": "node scripts/procure-auth-emulator-seed.mjs",
     "procure:auth-browser-qa": "node scripts/procure-auth-browser-qa.mjs",
     "procure:partial-backend-qa": "node scripts/procure-partial-backend-qa.mjs",
+    "procure:pdf-samples": "node scripts/procure-order-pdf-samples.mjs",
     "provisioner:dev": "node scripts/provisioner-dev.mjs",
     "regler:tjek": "node scripts/tjek-regler.mjs",
     "regler:udrul": "npm run delt:kopier && firebase deploy --only database --project dev && npm run regler:tjek",

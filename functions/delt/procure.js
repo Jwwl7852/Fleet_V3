@@ -351,12 +351,13 @@ export function grupperPaaLeverandoer(linjer = []) {
    systemet påstår.
 */
 
-/** Beløb i hele øre → "1.250,00 kr." Kun til udkastets tekst. */
-function kr(oere) {
-  if (!Number.isInteger(oere)) return "—";
-  return `${(oere / 100).toLocaleString("da-DK", {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  })} kr.`;
+function formatOrdreDato(value) {
+  if (!value) return "";
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC",
+  }).format(date);
 }
 
 /**
@@ -367,23 +368,22 @@ function kr(oere) {
  * fakturaen kan matchet i trin 5 kun gættes ud fra beløb og leverandør — og
  * to bestillinger til samme firma i samme uge ser så ens ud.
  *
- * ⚠ OG TEKSTEN INDEHOLDER INGEN PRISER UDEN GRUNDLAG. En linje uden pris
- * skriver "—", ikke 0: en bestilling der beder om noget til nul kroner, er
- * en aftale ingen har indgået.
+ * ⚠ LEVERANDØRUDKASTET INDEHOLDER INGEN PRISER. Prisgrundlaget bliver i den
+ * interne ordre til godkendelse, budget, analyse og fakturamatch.
  */
 export function mailudkast(ordre, { leverandoer } = {}) {
   const linjer = linjeListe(ordre);
-  const sum = ordreSumOere(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || "leverandøren";
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
     const enhed = l.enhed ? ` ${l.enhed}` : "";
-    const pris = Number.isInteger(l.prisPrEnhedOere)
-      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : " — pris ikke oplyst";
-    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+    return `  • ${antal}${enhed} × ${l.vare}`;
   });
+  const levering = ordre?.hurtigstMuligt
+    ? "Hurtigst muligt"
+    : `Senest ${formatOrdreDato(ordre?.oensketDato)}`;
 
   return {
     tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
@@ -395,7 +395,9 @@ export function mailudkast(ordre, { leverandoer } = {}) {
       "",
       ...punkter,
       "",
-      `I alt (ekskl. moms): ${sum > 0 ? kr(sum) : "—"}`,
+      `Levering: ${levering}`,
+      "Mellem 7.00-15.00",
+      "(lagerets åbningstider)",
       "",
       /* ⚠ DEN VIGTIGSTE LINJE I MAILEN. Uden nummeret på fakturaen kan
          matchet i trin 5 kun gættes. */
@@ -418,27 +420,29 @@ export function mailudkast(ordre, { leverandoer } = {}) {
    deler kode med Indkøbslinjens valideIndkoeb().
 
    ⚠ SAMME TO REGLER SOM mailudkast(): bestillingsnummeret ligger i emnet
-   (matchet i trin 5 kan kun gættes uden det), og en linje uden pris skriver
-   teksten for "ikke oplyst" — aldrig 0, som ville være et løfte om en gratis
-   vare.
+   (matchet i trin 5 kan kun gættes uden det), og alle priser forbliver i den
+   interne ordre. Leverandørmailen bærer kun varer, mængder, levering og PO.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const ORDREMAIL_TEKST = {
   da: {
     til: "Til", bestiller: "Vi bestiller hermed følgende under ordrenummer",
-    ialt: "I alt (ekskl. moms)", prisIkkeOplyst: "pris ikke oplyst",
+    levering: "Levering", hurtigst: "Hurtigst muligt", senest: "Senest",
+    aabning: "Mellem 7.00-15.00", aabningNote: "(lagerets åbningstider)",
     angiv: "Angiv venligst bestillingsnummer", paaFakturaen: "på fakturaen.",
     hilsen: "Med venlig hilsen", leverandoeren: "leverandøren",
   },
   sv: {
     til: "Till", bestiller: "Vi beställer härmed följande under beställningsnummer",
-    ialt: "Totalt (exkl. moms)", prisIkkeOplyst: "pris ej angivet",
+    levering: "Leverans", hurtigst: "Så snart som möjligt", senest: "Senast",
+    aabning: "Mellan 7.00-15.00", aabningNote: "(lagrets öppettider)",
     angiv: "Ange gärna beställningsnumret", paaFakturaen: "på fakturan.",
     hilsen: "Med vänlig hälsning", leverandoeren: "leverantören",
   },
   en: {
     til: "To", bestiller: "We hereby place the following order under order number",
-    ialt: "Total (excl. VAT)", prisIkkeOplyst: "price not stated",
+    levering: "Delivery", hurtigst: "As soon as possible", senest: "No later than",
+    aabning: "Between 7.00-15.00", aabningNote: "(warehouse opening hours)",
     angiv: "Please state order number", paaFakturaen: "on the invoice.",
     hilsen: "Kind regards", leverandoeren: "the supplier",
   },
@@ -459,17 +463,17 @@ const ORDREMAIL_TEKST = {
 export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
   const t = ORDREMAIL_TEKST[erGyldigtSprog(sprog) ? sprog : STANDARD_SPROG];
   const linjer = linjeListe(ordre);
-  const sum = ordreSumOere(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || t.leverandoeren;
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
     const enhed = l.enhed ? ` ${l.enhed}` : "";
-    const pris = Number.isInteger(l.prisPrEnhedOere)
-      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : ` — ${t.prisIkkeOplyst}`;
-    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+    return `  • ${antal}${enhed} × ${l.vare}`;
   });
+  const levering = ordre?.hurtigstMuligt
+    ? t.hurtigst
+    : `${t.senest} ${formatOrdreDato(ordre?.oensketDato)}`;
 
   return {
     tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
@@ -481,7 +485,9 @@ export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
       "",
       ...punkter,
       "",
-      `${t.ialt}: ${sum > 0 ? kr(sum) : "—"}`,
+      `${t.levering}: ${levering}`,
+      t.aabning,
+      t.aabningNote,
       "",
       `${t.angiv} ${nummer} ${t.paaFakturaen}`,
       "",

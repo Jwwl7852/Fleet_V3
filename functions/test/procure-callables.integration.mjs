@@ -43,7 +43,7 @@ globalThis.fetch = async (url, options = {}) => {
 };
 
 const functions = await import("../index.js");
-const { createOrderPdfBytes, ordrePdfStoragePath } = await import("../delt/procure-v2/procure-pdf.js");
+const { ordrePdfStoragePath } = await import("../delt/procure-v2/procure-pdf.js");
 const { permStrengFraRolle } = await import("../delt/permissions.js");
 const db = getDatabase();
 const bucket = getStorage().bucket();
@@ -68,8 +68,12 @@ const order = (id = orderId) => ({
   revision: 4,
   godkendtRevision: 4,
   leveringssted: "Hovedlager",
+  leveringsstedId: "hovedlager",
+  leveringsadresse: "Lagervej 8", leveringspostnr: "8000", leveringsby: "Aarhus C",
   oensketDato: "2026-09-15",
   oprettetAf: uid,
+  oprettetMs: Date.parse("2026-09-11T09:00:00Z"),
+  bestillerNavn: "Mette Jensen", bestillerEmail: "indkoeb@fjordholm.example",
   linjer: {
     tape: { vare: "Pakketape", antal: 120, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" },
     film: { vare: "Strækfilm", antal: 80, enhed: "ruller", prisPrEnhedOere: 7500, forbrugsvareId: "film", varegruppe: "Emballage" },
@@ -77,11 +81,12 @@ const order = (id = orderId) => ({
 });
 const supplier = {
   navn: "Syntetisk Leverandør A/S",
+  adresse: "Industrivej 12", postnr: "8200", by: "Aarhus N", kundenummer: "FH-1042",
   ordreEmail: "ordre@example.invalid",
   kontaktEmail: "kontakt@example.invalid",
   sprog: "da",
 };
-const company = { navn: "Nordisk Drift", fakturaModtagelse: "faktura@example.invalid" };
+const company = { navn: "Nordisk Drift", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@example.invalid", procureAppUrl: "https://procure-preview.example.invalid" };
 
 await db.ref().set(null);
 await db.ref(`tenants/${tenantA}`).set({
@@ -89,6 +94,8 @@ await db.ref(`tenants/${tenantA}`).set({
   abonnement: { status: "aktiv" },
   moduler: { indkoeb: true },
   virksomhed: company,
+  brugere: { [uid]: { navn: "Mette Jensen", email: "indkoeb@fjordholm.example" } },
+  procureOpsaetning: { leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true } } },
   leverandoerer: { nordisk: supplier },
   forbrugsvarer: {
     tape: { navn: "Pakketape", varenummer: "ND-1001", enhed: "rulle", pakningsstoerrelse: "6 ruller", indkoebsprisOere: 2400, varegruppe: "Emballage", leverandoerId: "nordisk", aktiv: true },
@@ -154,15 +161,15 @@ const attachmentBytes = mailPayloads[0].attachments[0].bytes;
 const archivedPath = ordrePdfStoragePath(tenantA, orderId, 4);
 const [archivedBytes] = await bucket.file(archivedPath).download();
 const sentRecord = (await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/sendtMail`).get()).val();
-const expectedBytes = Buffer.from(createOrderPdfBytes(order(), supplier, company));
 assert.deepEqual(attachmentBytes, archivedBytes);
-assert.deepEqual(attachmentBytes, expectedBytes);
 assert.equal(hash(attachmentBytes), mailResult.pdfSha256);
 assert.equal(hash(archivedBytes), sentRecord.pdfSha256);
 assert.equal(sentRecord.ordreRevision, 4);
 assert.equal(sentRecord.til, "ordre@example.invalid");
 assert.equal(sentRecord.afsender, process.env.MAILGUN_AFSENDER);
 assert.equal(sentRecord.mailStatus, "accepteret");
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 2);
+assert.ok(!/kr\.|pris|moms|total|i alt/i.test(mailPayloads[0].text), "leverandørmailen indeholder interne priser");
 assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/status`).get()).val(), "sendt");
 
 const replay = await run(functions.ordreMailSend, { ordreId: orderId, sendRequestId: "mail-8880" });

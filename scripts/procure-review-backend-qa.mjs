@@ -3,6 +3,8 @@
  * lokale mailtransport accepterer kun reserverede .invalid-adresser. */
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { PROJECT_ID, SYNTHETIC_PASSWORD, TENANT_A, TEST_USERS } from "./procure-auth-emulator-seed.mjs";
 
 const hosts = {
@@ -76,6 +78,11 @@ assert.equal(Object.values(order.linjer).reduce((sum, line) => sum + line.antal 
 const preview = await call("ordrePdfHent", { ordreId: orderId }, buyer);
 const previewBytes = Buffer.from(await (await fetch(preview.url)).arrayBuffer());
 assert.equal(sha(previewBytes), preview.sha256);
+if (process.env.PROCURE_QA_PDF_OUTPUT) {
+  const outputPath = resolve(process.env.PROCURE_QA_PDF_OUTPUT);
+  await mkdir(dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, previewBytes);
+}
 const sendRequestId = `send-${randomUUID()}`;
 const sent = await call("ordreMailSend", { ordreId: orderId, sendRequestId, sprog: "da", emne: `Syntetisk bestilling ${order.nummer}`, ledsagetekst: "Kontrolleret lokal flowtest." }, buyer);
 assert.equal(sent.mailStatus, "accepteret");

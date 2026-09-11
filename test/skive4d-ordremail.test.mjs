@@ -154,11 +154,11 @@ describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
     }
   });
 
-  it("⚠ ordreMailIndhold() ER EN REN FUNKTION DER IKKE GÆTTER EN PRIS", () => {
+  it("⚠ ordreMailIndhold() ER EN REN FUNKTION UDEN LEVERANDØRPRISER", () => {
     const ordre = { nummer: "BST-2026-00001", linjer: { l1: { vare: "Skruer", antal: 10 } } };
     const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da" });
-    assert.match(indhold.brodtekst, /pris ikke oplyst/);
-    assert.ok(!indhold.brodtekst.includes("0,00 kr."), "en linje uden pris skriver 0,00 — et løfte om en gratis vare");
+    assert.match(indhold.brodtekst, /10 × Skruer/);
+    assert.ok(!/kr\.|pris|moms|total|i alt/i.test(indhold.brodtekst), "leverandørmailen afslører interne prisfelter");
   });
 });
 

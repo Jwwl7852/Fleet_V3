@@ -164,7 +164,8 @@ import {
   tjekSignatur, stiForDokument, sprængerKvote,
 } from "./delt/dokumenter.js";
 import {
-  createOrderPdfBytes, ordrePdfStoragePath, ordreRevision,
+  createOrderPdfBytes, ORDRE_PDF_SKABELON_VERSION, ordrePdfStoragePath,
+  ordreRevision, validerOrdrePdfGrundlag,
 } from "./delt/procure-v2/procure-pdf.js";
 import {
   byggServerModtagelse, byggServerKorrektion, byggServerReturnering, ordreErFuldtModtaget,
@@ -672,7 +673,46 @@ async function sikrOrdrePdf({ rod, tenantId, ordreId, ordre, leverandoer, uid })
   if (godkendtRevision !== revision || !["godkendt", "sendt", "modtaget"].includes(ordre.status)) {
     throw new HttpsError("failed-precondition", "Ordre-PDF kan kun dannes af den aktuelle godkendte revision.");
   }
+  const storagePath = ordrePdfStoragePath(tenantId, ordreId, revision);
+  const file = getStorage().bucket().file(storagePath);
+  const archiveRef = rod.child(`indkoebsordrer/${ordreId}/pdfArkiv/${revision}`);
+  const [exists, archiveSnap] = await Promise.all([file.exists(), archiveRef.once("value")]);
+  if (exists[0]) {
+    /* Et arkiveret dokument er en hændelse, ikke en cache. En senere
+       skabelonversion eller ændring i stamdata må derfor aldrig overskrive
+       de bytes, som blev forhåndsvist/arkiveret for denne revision. */
+    const [archived] = await file.download();
+    const sha256 = createHash("sha256").update(archived).digest("hex");
+    const known = archiveSnap.val() || {};
+    if (known.sha256 && known.sha256 !== sha256) {
+      throw new HttpsError("data-loss", "Den arkiverede ordre-PDF består ikke sin gemte SHA-256-kontrol.");
+    }
+    const metadata = {
+      revision, storagePath, sha256, stoerrelse: archived.length,
+      oprettetMs: known.oprettetMs || Date.now(), oprettetAf: known.oprettetAf || uid,
+      skabelonVersion: Number(known.skabelonVersion || 1),
+    };
+    if (!archiveSnap.exists()) await archiveRef.set(metadata);
+    return { ...metadata, bytes: archived, file };
+  }
+
   const virksomhed = (await rod.child("virksomhed").once("value")).val() || {};
+  const bestillerUid = ordre.oprettetAf || ordre.bestillerId;
+  const [bestillerSnap, leveringsstedSnap] = await Promise.all([
+    bestillerUid ? rod.child(`brugere/${bestillerUid}`).once("value") : Promise.resolve(null),
+    ordre.leveringsstedId ? rod.child(`procureOpsaetning/leveringssteder/${ordre.leveringsstedId}`).once("value") : Promise.resolve(null),
+  ]);
+  const bestiller = bestillerSnap?.val?.() || {};
+  const leveringssted = leveringsstedSnap?.val?.() || {};
+  const pdfOrdre = {
+    ...ordre,
+    bestillerNavn: ordre.bestillerNavn || ordre.kontaktNavn || bestiller.navn || bestiller.name,
+    bestillerEmail: ordre.bestillerEmail || ordre.kontaktEmail || bestiller.email,
+    leveringssted: ordre.leveringssted || leveringssted.label || leveringssted.navn,
+    leveringsadresse: ordre.leveringsadresse || leveringssted.adresse || leveringssted.address,
+    leveringspostnr: ordre.leveringspostnr || leveringssted.postnr || leveringssted.postalCode,
+    leveringsby: ordre.leveringsby || leveringssted.by || leveringssted.city,
+  };
   const modtagelsesUrl = virksomhed.procureAppUrl || virksomhed.publicAppUrl || virksomhed.appUrl;
   if (modtagelsesUrl) {
     try {
@@ -684,21 +724,21 @@ async function sikrOrdrePdf({ rod, tenantId, ordreId, ordre, leverandoer, uid })
       }
     } catch { /* Manglende/ugyldig offentlig appadresse vises uden falsk QR. */ }
   }
-  const bytes = Buffer.from(createOrderPdfBytes(ordre, leverandoer, virksomhed));
-  const sha256 = createHash("sha256").update(bytes).digest("hex");
-  const storagePath = ordrePdfStoragePath(tenantId, ordreId, revision);
-  const file = getStorage().bucket().file(storagePath);
-  const [exists] = await file.exists();
-  if (exists) {
-    const [archived] = await file.download();
-    const archivedHash = createHash("sha256").update(archived).digest("hex");
-    if (archivedHash !== sha256) throw new HttpsError("data-loss", "Den arkiverede ordre-PDF svarer ikke til den godkendte revision.");
-  } else {
-    await file.save(bytes, { resumable: false, metadata: { contentType: "application/pdf", cacheControl: "private,no-store" } });
+  const grundlag = validerOrdrePdfGrundlag(pdfOrdre, leverandoer, virksomhed);
+  if (!grundlag.ok) {
+    throw new HttpsError("failed-precondition",
+      `Ordre-PDF'en kan ikke dannes. Udfyld ${grundlag.missing.join(", ")} før afsendelse.`);
   }
+  if (!grundlag.data.receiptUrl || !virksomhed.procureReceiptQr) {
+    throw new HttpsError("failed-precondition",
+      "Ordre-PDF'en kan ikke dannes. Konfigurér kundens offentlige HTTPS-adresse til sikker mobilmodtagelse.");
+  }
+  const bytes = Buffer.from(createOrderPdfBytes(pdfOrdre, leverandoer, virksomhed));
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  await file.save(bytes, { resumable: false, metadata: { contentType: "application/pdf", cacheControl: "private,no-store" } });
   const nu = Date.now();
-  const metadata = { revision, storagePath, sha256, stoerrelse: bytes.length, oprettetMs: nu, oprettetAf: uid };
-  await rod.child(`indkoebsordrer/${ordreId}/pdfArkiv/${revision}`).set(metadata);
+  const metadata = { revision, storagePath, sha256, stoerrelse: bytes.length, oprettetMs: nu, oprettetAf: uid, skabelonVersion: ORDRE_PDF_SKABELON_VERSION };
+  await archiveRef.set(metadata);
   return { ...metadata, bytes, file };
 }
 
@@ -6612,6 +6652,13 @@ export const procureGodkendelseslinjerAfgor = onCall({ region: REGION }, async (
   if (!tx.committed || conflict) throw new HttpsError("aborted", "Godkendelsen er ændret i en anden session. Genindlæs før en ny afgørelse.", { current: (await ref.once("value")).val() });
   if (duplicate) return { ok: true, duplicate: true, ...(result || {}) };
   if (!result?.ok) throw new HttpsError("invalid-argument", Object.values(result?.errors || {})[0] || "Linjeafgørelsen er ugyldig.");
+  const godkendelsessag = tx.snapshot.val();
+  const [bestillerSnap, leveringsstedSnap] = await Promise.all([
+    godkendelsessag.submittedBy ? rod.child(`brugere/${godkendelsessag.submittedBy}`).once("value") : Promise.resolve(null),
+    godkendelsessag.deliveryLocationId ? rod.child(`procureOpsaetning/leveringssteder/${godkendelsessag.deliveryLocationId}`).once("value") : Promise.resolve(null),
+  ]);
+  const bestillerSnapshot = bestillerSnap?.val?.() || {};
+  const leveringsstedSnapshot = leveringsstedSnap?.val?.() || {};
   const groups = new Map();
   for (const line of result.approvedOrderLines) {
     if (!line.supplierId) continue;
@@ -6638,6 +6685,11 @@ export const procureGodkendelseslinjerAfgor = onCall({ region: REGION }, async (
       godkendelsesgrundlagOere: tx.snapshot.val().approvalBasisOere, godkendelsessagId: approvalId,
       afdelingId: tx.snapshot.val().departmentId || null, afdeling: tx.snapshot.val().department || null,
       leveringsstedId: tx.snapshot.val().deliveryLocationId || null, leveringssted: tx.snapshot.val().deliveryLocation || null,
+      leveringsadresse: leveringsstedSnapshot.adresse || leveringsstedSnapshot.address || null,
+      leveringspostnr: leveringsstedSnapshot.postnr || leveringsstedSnapshot.postalCode || null,
+      leveringsby: leveringsstedSnapshot.by || leveringsstedSnapshot.city || null,
+      bestillerNavn: bestillerSnapshot.navn || bestillerSnapshot.name || null,
+      bestillerEmail: bestillerSnapshot.email || null,
       oensketDato: tx.snapshot.val().wantedDate || null, hurtigstMuligt: Boolean(tx.snapshot.val().asSoonAsPossible),
       linjer: orderLines,
     };
@@ -6665,15 +6717,17 @@ export const procureStamdataGem = onCall({ region: REGION }, async (req) => {
   const { rod, tenantId, uid } = await procureDoer(req, { perm: "brugere.skriv", modul: "indkoeb" });
   const type = kortStreng(req.data?.type, 30); const id = kortStreng(req.data?.id, 80);
   const label = kortStreng(req.data?.label, 120); const active = req.data?.active !== false;
+  const adresse = kortStreng(req.data?.adresse, 160); const postnr = kortStreng(req.data?.postnr, 20); const by = kortStreng(req.data?.by, 80);
   const expectedRevision = Number(req.data?.expectedRevision || 0);
   if (!PROCURE_STAMDATA_TYPER.includes(type) || !/^[A-Za-z0-9_-]{2,80}$/.test(id) || !label || !Number.isInteger(expectedRevision)) throw new HttpsError("invalid-argument", "Type, stabilt id, navn eller revision er ugyldig.");
+  if (type === "leveringssteder" && (!adresse || !postnr || !by)) throw new HttpsError("invalid-argument", "Et leveringssted skal have adresse, postnummer og by.");
   const ref = rod.child(`procureOpsaetning/${type}/${id}`); let conflict = false; const now = Date.now();
   await ref.once("value");
   const tx = await ref.transaction((current) => {
     conflict = false;
     if (Number(current?.revision || 0) !== expectedRevision) { conflict = true; return current; }
-    return { id, label, active, revision: expectedRevision + 1, createdAt: current?.createdAt || now, createdBy: current?.createdBy || uid, updatedAt: now, updatedBy: uid,
-      history: { ...(current?.history || {}), [`${now}`]: { at: now, actorId: uid, label, active } } };
+    return { id, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}), revision: expectedRevision + 1, createdAt: current?.createdAt || now, createdBy: current?.createdBy || uid, updatedAt: now, updatedBy: uid,
+      history: { ...(current?.history || {}), [`${now}`]: { at: now, actorId: uid, label, active, ...(type === "leveringssteder" ? { adresse, postnr, by } : {}) } } };
   });
   if (!tx.committed || conflict) throw new HttpsError("aborted", "Stamdata er ændret af en anden administrator.", { current: (await ref.once("value")).val() });
   await logProcure(tenantId, uid, AUDIT.aendre, `procure-${type}`, id, null, { status: active ? "aktiv" : "deaktiveret" }, "PROCURE-stamdata ændret med historik");

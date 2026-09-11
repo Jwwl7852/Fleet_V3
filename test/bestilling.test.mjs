@@ -313,7 +313,7 @@ describe("Udkastet er et udkast", () => {
       nummer: "BST-2026-00099",
       linjer: { a: { vare: "Presenning", antal: 2, enhed: "stk" } },
     }, {});
-    assert.match(u.brodtekst, /pris ikke oplyst/);
+    assert.ok(!/pris|kr\.|moms|total|i alt/i.test(u.brodtekst));
     assert.ok(!/0,00 kr\./.test(u.brodtekst), "en manglende pris blev til nul kroner");
   });
 

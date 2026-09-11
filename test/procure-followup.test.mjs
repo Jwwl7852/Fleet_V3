@@ -8,14 +8,16 @@ import {
   byggImporteretFaktura, byggServerModtagelse, byggServerReturnering, modtagetPrLinje,
   nettoFaktureretOere, ordreErFuldtModtaget, serverOrdreLinjer,
 } from "../src/fleet/procure-v2/procure-backend-domain.js";
-import { createOrderPdfBytes, ordreModtagelsesUrl, ordrePdfStoragePath } from "../src/fleet/procure-v2/procure-pdf.js";
+import { createOrderPdfBytes, ordreEnhed, ordreModtagelsesUrl, ordrePdfData, ordrePdfStoragePath, validerOrdrePdfGrundlag } from "../src/fleet/procure-v2/procure-pdf.js";
 import { receiptValueOere } from "../src/fleet/procure-v2/procure-v2-domain.js";
 import { tjekSignatur } from "../src/fleet/dokumenter.js";
 
 const order = () => ({
   id: "ordre-8880", nummer: "BST-2026-00888", leverandoerId: "nordisk",
   status: "godkendt", revision: 4, godkendtRevision: 4, leveringssted: "Hovedlager",
-  oensketDato: "2026-09-15", oprettetAf: "bestiller-1",
+  leveringsadresse: "Lagervej 8", leveringspostnr: "8000", leveringsby: "Aarhus C",
+  oensketDato: "2026-09-15", oprettetMs: Date.parse("2026-09-11T09:00:00Z"), oprettetAf: "bestiller-1",
+  bestillerNavn: "Mette Jensen", bestillerEmail: "indkoeb@fjordholm.example",
   linjer: {
     tape: { vare: "Pakketape", antal: 120, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" },
     film: { vare: "Strækfilm", antal: 80, enhed: "ruller", prisPrEnhedOere: 7500, forbrugsvareId: "film", varegruppe: "Emballage" },
@@ -35,13 +37,15 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "http://127.0.0.1:5205" }), null);
     assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "https://kunde.veyro.example/base" }), "https://kunde.veyro.example/indkoeb/mobil/modtag/ordre-8880");
     const withoutQr = createOrderPdfBytes(ordre, {}, {});
-    const withQr = createOrderPdfBytes(ordre, {}, { procureAppUrl: "https://kunde.veyro.example" });
+    const withQr = createOrderPdfBytes(ordre, {}, { procureAppUrl: "https://kunde.veyro.example", procureReceiptQr: { size: 1, data: [true] } });
     assert.notEqual(createHash("sha256").update(withoutQr).digest("hex"), createHash("sha256").update(withQr).digest("hex"));
   });
   it("er deterministisk, revisionslåst og sendes som faktisk payload", async () => {
     const ordre = order();
-    const preview = createOrderPdfBytes(ordre, { navn: "Nordisk Drift" }, { navn: "Syntetisk A/S", fakturaModtagelse: "faktura@example.invalid" });
-    const archive = createOrderPdfBytes(ordre, { navn: "Nordisk Drift" }, { navn: "Syntetisk A/S", fakturaModtagelse: "faktura@example.invalid" });
+    const supplier = { navn: "Nordisk Drift", adresse: "Industrivej 12", postnr: "8200", by: "Aarhus N" };
+    const company = { navn: "Fjordholm A/S", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example" };
+    const preview = createOrderPdfBytes(ordre, supplier, company);
+    const archive = createOrderPdfBytes(ordre, supplier, company);
     assert.deepEqual(preview, archive);
     const sha = createHash("sha256").update(preview).digest("hex");
     assert.equal(sha, createHash("sha256").update(archive).digest("hex"));
@@ -55,10 +59,12 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.equal(payload.attachments.length, 1);
     assert.deepEqual(payload.attachments[0].bytes, preview);
     assert.equal(createHash("sha256").update(payload.attachments[0].bytes).digest("hex"), sha);
-    const pdfText = Buffer.from(preview).toString("latin1");
-    for (const expected of [ordre.nummer, "Pakketape", "120", "24,00", "Straekfilm", "80", "75,00", "8880,00", "Hovedlager"]) {
-      assert.match(pdfText, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `PDF mangler ${expected}`);
-    }
+    const data = ordrePdfData(ordre, supplier, company);
+    assert.deepEqual(data.lines.map((line) => [line.navn, line.antal]), [["Strækfilm", 80], ["Pakketape", 120]]);
+    assert.ok(data.lines.every((line) => !("prisOere" in line)));
+    assert.equal(validerOrdrePdfGrundlag(ordre, supplier, company).ok, true);
+    assert.equal(ordreEnhed({ antal: 1, enhed: "kasser", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasse á 12 stk.");
+    assert.equal(ordreEnhed({ antal: 6, enhed: "kasse", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasser á 12 stk.");
   });
 
   it("markerer transporttimeout som ukendt og gør den ikke til accepteret", async () => {
