@@ -5,10 +5,10 @@ import { readFileSync } from "node:fs";
 
 import { sendMail } from "../functions/mail/transport.js";
 import {
-  byggImporteretFaktura, byggServerModtagelse, modtagetPrLinje,
+  byggImporteretFaktura, byggServerModtagelse, byggServerReturnering, modtagetPrLinje,
   nettoFaktureretOere, ordreErFuldtModtaget, serverOrdreLinjer,
 } from "../src/fleet/procure-v2/procure-backend-domain.js";
-import { createOrderPdfBytes, ordrePdfStoragePath } from "../src/fleet/procure-v2/procure-pdf.js";
+import { createOrderPdfBytes, ordreModtagelsesUrl, ordrePdfStoragePath } from "../src/fleet/procure-v2/procure-pdf.js";
 import { receiptValueOere } from "../src/fleet/procure-v2/procure-v2-domain.js";
 import { tjekSignatur } from "../src/fleet/dokumenter.js";
 
@@ -30,6 +30,14 @@ const addReceipt = (ordre, id, input) => {
 };
 
 describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
+  it("bruger kun en konfigureret offentlig https-adresse til modtagelses-QR", () => {
+    const ordre = order();
+    assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "http://127.0.0.1:5205" }), null);
+    assert.equal(ordreModtagelsesUrl(ordre, { procureAppUrl: "https://kunde.veyro.example/base" }), "https://kunde.veyro.example/indkoeb/mobil/modtag/ordre-8880");
+    const withoutQr = createOrderPdfBytes(ordre, {}, {});
+    const withQr = createOrderPdfBytes(ordre, {}, { procureAppUrl: "https://kunde.veyro.example" });
+    assert.notEqual(createHash("sha256").update(withoutQr).digest("hex"), createHash("sha256").update(withQr).digest("hex"));
+  });
   it("er deterministisk, revisionslåst og sendes som faktisk payload", async () => {
     const ordre = order();
     const preview = createOrderPdfBytes(ordre, { navn: "Nordisk Drift" }, { navn: "Syntetisk A/S", fakturaModtagelse: "faktura@example.invalid" });
@@ -47,12 +55,29 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.equal(payload.attachments.length, 1);
     assert.deepEqual(payload.attachments[0].bytes, preview);
     assert.equal(createHash("sha256").update(payload.attachments[0].bytes).digest("hex"), sha);
+    const pdfText = Buffer.from(preview).toString("latin1");
+    for (const expected of [ordre.nummer, "Pakketape", "120", "24,00", "Straekfilm", "80", "75,00", "8880,00", "Hovedlager"]) {
+      assert.match(pdfText, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `PDF mangler ${expected}`);
+    }
   });
 
   it("markerer transporttimeout som ukendt og gør den ikke til accepteret", async () => {
     const error = new Error("forbindelsen lukkede efter POST"); error.resultatUkendt = true;
     const result = await sendMail({ send: async () => { throw error; } }, { til: "x@example.invalid", emne: "x", tekst: "x" });
     assert.equal(result.status, "ukendt");
+  });
+});
+
+describe("fysisk retur, kreditnota og tilbagebetaling er adskilte hændelser", () => {
+  it("tillader retur af modtaget vare til korrekt pris uden at omskrive modtagelsen", () => {
+    const ordre = { id: "o-retur", revision: 1, linjer: { tape: { vare: "Pakketape", antal: 10, enhed: "ruller", prisPrEnhedOere: 2400 } }, modtagelser: {
+      m1: { status: "registreret", linjer: { tape: { ordrelinjeId: "tape", godkendtAntal: 10 } } },
+    } };
+    const returned = byggServerReturnering(ordre, { returnDate: "2026-09-22", reason: "Overskydende vare", invoiceId: "invoice-correct", lines: [{ orderLineId: "tape", quantity: 2 }] }, { uid: "lager-1", now: 30 });
+    assert.equal(returned.ok, true);
+    assert.equal(returned.returned.vaerdiOere, 4800);
+    assert.equal(returned.returned.kreditstatus, "afventer-kreditnota");
+    assert.equal(modtagetPrLinje(ordre).get("tape"), 10);
   });
 });
 
@@ -112,7 +137,7 @@ describe("sammenhængende bestilling → dellevering → faktura → kreditnota"
 describe("backendgrænser og filkontrakt", () => {
   const source = readFileSync("functions/index.js", "utf8");
   it("alle nye callables tager tenant fra den signerede authkontekst", () => {
-    for (const name of ["procureModtagelseUploadInitier", "procureModtagelseUploadBekraeft", "procureModtagelseDownloadLink", "procureModtagelseRegistrer", "procureModtagelseKorriger", "procureFakturaImport", "ordrePdfHent"]) {
+    for (const name of ["procureModtagelseUploadInitier", "procureModtagelseUploadBekraeft", "procureModtagelseDownloadLink", "procureModtagelseRegistrer", "procureModtagelseKorriger", "procureVareReturneringRegistrer", "procureFakturaImport", "ordrePdfHent"]) {
       const start = source.indexOf(`export const ${name}`); const next = source.indexOf("\nexport const ", start + 1); const block = source.slice(start, next < 0 ? undefined : next);
       assert.ok(start >= 0, `${name} mangler`);
       assert.match(block, /procureDoer\(req,/);
@@ -139,17 +164,18 @@ describe("mobilindsendelse bevarer kladden og genbruger stabile referencer", () 
   const orders = readFileSync("src/fleet/bestilling.js", "utf8");
   const backend = readFileSync("functions/index.js", "utf8");
 
-  it("gemmer kladden tenant- og brugerspecifikt og rydder kun efter fuldt resultat", () => {
+  it("gemmer kladden tenant- og brugerspecifikt lokalt og på serveren", () => {
     assert.match(mobile, /mobile-draft:v1:\$\{scope\}/);
     assert.match(mobile, /submissionId: newSubmissionId\(\)/);
     assert.match(mobile, /submittingRef\.current/);
-    assert.match(mobile, /Kurven er bevaret/);
-    assert.match(mobile, /localStorage\.removeItem\(draftKey\)/);
-    assert.ok(mobile.indexOf("saveHistory([...references, ...history])") < mobile.lastIndexOf("localStorage.removeItem(draftKey)"));
+    assert.match(mobile, /kurven er bevaret/i);
+    assert.match(mobile, /loadMobileDraft\(\)/);
+    assert.match(mobile, /saveMobileDraft\(\{ draft: snapshot, expectedRevision:/);
+    assert.match(mobile, /Synkroniseret/);
   });
 
   it("sender samme idempotensreference gennem behov og leverandørordre", () => {
-    assert.match(mobile, /requestId: `\$\{draft\.submissionId\}/);
+    assert.match(mobile, /requestId: draft\.submissionId/);
     assert.match(needs, /requestId: post\.requestId \|\| undefined/);
     assert.match(orders, /requestId: requestId \|\| undefined/);
     assert.match(backend, /indkoebsbehov\/mobil-\$\{requestId\}/);

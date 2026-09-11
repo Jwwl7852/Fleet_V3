@@ -212,7 +212,7 @@ describe("Ordren skifter tilstand efter tabellen", () => {
   test("⚠ EN ANDEN END DEN UDPEGEDE KAN IKKE AFGØRE", () => {
     const o = ordre("afventerGodkendelse");
     const anden = { perms: PERMS_ALT, regler: REGLER, uid: "uid-en-anden" };
-    for (const til of ["godkendt", "afvist"]) {
+    for (const til of ["godkendt", "tilbageTilRettelse", "afvist"]) {
       const svar = kanSkifteIndkoebsordre(o, til, anden);
       assert.equal(svar.ok, false, `${til} kunne afgøres af en anden`);
       assert.match(svar.aarsag, /udpegede godkender/);
@@ -240,12 +240,15 @@ describe("Ordren skifter tilstand efter tabellen", () => {
     assert.equal(opd.godkendtAutomatisk, false);
   });
 
-  /* ⚠ EN AFVISNING KRÆVER EN GRUND. Uden den er den en tavshed, og den samme
-     bestilling bliver lagt igen i næste uge. */
-  test("⚠ AFVISNING OG ANNULLERING KRÆVER EN BEGRUNDELSE", () => {
+  /* ⚠ EN AFVISNING ELLER RETUR KRÆVER EN GRUND. Uden den er den en tavshed,
+     og den samme bestilling bliver lagt igen i næste uge. */
+  test("⚠ RETUR, AFVISNING OG ANNULLERING KRÆVER EN BEGRUNDELSE", () => {
     const som = { perms: PERMS_ALT, regler: REGLER, uid: "uid-mikkel" };
     assert.equal(
       kanSkifteIndkoebsordre(ordre("afventerGodkendelse", "uid-mikkel"), "afvist", som).kraeverBegrundelse,
+      true);
+    assert.equal(
+      kanSkifteIndkoebsordre(ordre("afventerGodkendelse", "uid-mikkel"), "tilbageTilRettelse", som).kraeverBegrundelse,
       true);
     assert.equal(
       kanSkifteIndkoebsordre(ordre("kladde"), "annulleret", som).kraeverBegrundelse, true);
@@ -287,7 +290,7 @@ describe("Ordren skifter tilstand efter tabellen", () => {
   test("⚠ HANDLINGSLISTEN BÆRER OGSÅ DE UMULIGE, MED EN GRUND", () => {
     const h = tilgaengeligeOrdreHandlinger(ordre("afventerGodkendelse"),
       { perms: PERMS_ALT, regler: REGLER, uid: "uid-en-anden" });
-    assert.equal(h.length, 2);
+    assert.equal(h.length, 3);
     assert.ok(h.every((x) => !x.ok), "en anden end godkenderen fik lov");
     assert.ok(h.every((x) => x.aarsag), "en umulig handling står uden sin grund");
   });

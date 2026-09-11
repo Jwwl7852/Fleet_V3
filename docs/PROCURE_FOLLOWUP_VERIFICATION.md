@@ -10,16 +10,20 @@ Dato: 2026-09-11
   `/indkoeb/mobil/mine`.
 - Varer har søgning, favoritter, tidligere køb, varegrupper, store
   antalstrin, numerisk input og fritekstvare.
-- Kurven gemmes løbende i `localStorage` pr. tenant og bruger. Den bevarer
-  afdeling, leveringssted, varer og en stabil indsendelsesreference gennem
-  genindlæsning og navigation. Den ryddes først efter et fuldt serversvar.
+- Kurven gemmes løbende både lokalt og via de brugerbundne callables
+  `procureMobilKladdeHent`/`procureMobilKladdeGem`. Revision, mutation-id og
+  trevejsfletning bevarer afdeling, leveringssted og varer gennem reload,
+  skærmlås og en anden autoriseret browsersession uden tavst overskriv.
 - Produktionsflowet bruger de eksisterende callable-grænser og
   godkendelsesregler. Leverandørgrupper bliver separate ordrer og PO-numre.
 - Offline deaktiverer indsendelse og bevarer kladden. En genoprettet
   forbindelse afsender ikke automatisk.
-- Browserafprøvet ved 390 px og 360 px: ingen horisontal overflow, søgning,
-  fem varelinjer på tværs af grupper, ændring af antal, reload, ESC med
-  fokusretur, browser-Tilbage, offline/online og synkront dobbeltklik.
+- Browserafprøvet ved præcis 390 px og 360 px: ingen horisontal overflow,
+  ti varelinjer på tværs af grupper, ændring af antal, søgning, reload, ESC
+  med fokusretur, offline/online og synkront dobbeltklik. Fem af ti linjer
+  blev sendt videre, mens fem blev stående i den servergemte liste. En
+  supplerende demo-regression bevarede 5/5 kurvlinjer gennem
+  netværksafbrydelsen og oprettede præcis to leverandørordrer.
 
 ### 1a. QR-bestilling fra materialehylder — færdig kode og browserafprøvet
 
@@ -45,17 +49,37 @@ Dato: 2026-09-11
   bevarer hele scan-URL'en. QR-koden tildeler ingen rolle eller tenantadgang.
 
 Browserafprøvningen dækkede direkte og manuel QR-URL, gentagen scanning af
-samme vare (kurvantal 3 → 4), deaktiveret mærkat, simuleret afvist
+samme vare (passiv aflæsning 0 → 0, aktivt `Tilføj` 0 → 1), deaktiveret mærkat, simuleret afvist
 kameraadgang, to genererede QR-billeder, flerudskrift, vedvarende kurv,
 offlineværn og det eksisterende indsendelsesflow ved både 360 og 390 px.
 Et fysisk mobilkamera er **ikke** afprøvet i denne lokale aflevering; den
 native kamerasti er implementeret, men den afsluttende hardwareprøve mangler.
 
-Den lokale preview er tydeligt mærket `DEMO`, fordi dette checkout ikke har
-en Firebase-kundeforbindelse. Den visuelle browserprøve er derfor ikke en
-påstand om et rigtigt kundelogin. Produktionskoden bevarer AppShells normale
-login-, modul- og permission-gates; de signerede tenant-/permissiongrænser er
-afprøvet i Firebase-emulatoren som beskrevet nedenfor.
+Formuleringen »normal demo-login/adgang« fra den tidligere rapport var
+upræcis. `:5205` er fortsat en tydeligt mærket visuel DEMO med lokal
+`DEMO_BRUGER`, og den tæller ikke som adgangstest. Den autoriserede preview
+på `:5207` bruger derimod almindeligt Firebase Auth-login mod den lokale
+Auth-emulator, signerede tenant-/rolle-/permission-claims, aktivt abonnement
+og modul samt faktiske Functions-/Database-/Storage-emulatorer. To separate
+autoriserede browsersessioner genåbnede samme serverkladde. Login-retur til
+QR-varen lykkedes, og en bruger fra en anden tenant blev afvist. De
+syntetiske brugere aktiverer intet login- eller rettighedsbypass.
+
+### 1b. Delvis indsendelse og linjegodkendelse — færdig backend og afprøvet
+
+- Medarbejderen kan sende enkelte linjer eller en delmængde videre; resten
+  bliver i den revisionsstyrede serverkladde.
+- Godkenderen kan pr. linje godkende, udskyde, sende retur eller afvise og
+  kan godkende en del af mængden. Begrundelse er obligatorisk for de tre
+  ikke-godkendende handlinger.
+- Kun aktivt godkendte mængder danner leverandørordrer. Udskudte mængder
+  bestilles ikke automatisk, og hele den oprindelige liste bruges fortsat
+  som godkendelsesgrundlag, så deling ikke omgår beløbsgrænser.
+- Faktisk callable-prøve: 10 taperuller ønsket, 6 godkendt i browseren og
+  genåbnet i en anden godkendersession. Backendprøven godkendte yderligere
+  2, så 8 blev bestilt og 2 forblev ventende; idempotent gentagelse
+  efterlod præcis én ny leverandørordre, og en køber uden
+  `indkoeb.godkend` blev afvist.
 
 ### 2. Modtagelser og filopbevaring — færdig backend og emulatorafprøvet
 
@@ -74,13 +98,12 @@ idempotens og historik. PDF, JPEG og PNG er tilladt; maksimal størrelse er
 før metadata skifter fra karantæne til aktiv. Fejlede filer slettes fra
 karantænen og markeres afvist.
 
-Den faktiske handlerprøve gemte en PDF-følgeseddel i Storage, verificerede
-den gennem backendfunktionen og registrerede 72 accepterede taperuller samt
-80 accepterede filmruller. To leverede filmruller, hvoraf én var beskadiget
-og én afvist, talte ikke med. Resultatet kunne genåbnes med en ny autoriseret
-brugerkontekst; gentagelsen gav `allerede: true`. Samme ordre-id med en anden
-tenant gav `not-found`. En fil med EXE-signatur og PDF-type blev markeret
-afvist og fjernet fra karantænen.
+Den sammenhængende handlerprøve lagrede to PNG-bilag i Storage, verificerede
+dem gennem backendfunktionen og registrerede 72 accepterede taperuller samt
+80 accepterede filmruller. Resultatet og begge aktive bilag kunne genåbnes
+efter en ny læsning; samme ordre-id med en anden tenant gav `not-found`.
+Domæne-/sikkerhedstesten bekræfter desuden, at beskadigede og afviste varer
+ikke tæller med, og at falsk filsignatur afvises.
 
 ### 3. Bestillingsmail og PDF — færdig backend og payload afprøvet
 
@@ -90,12 +113,13 @@ afsendelse omfatter faktisk modtager, Cc, emne, ledsagetekst, afsender,
 tidspunkt, provider-id, mailstatus, ordrevision, Storage-sti, størrelse og
 SHA-256.
 
-Den faktiske callable-handler blev kørt med Mailgun-adapteren og en lokalt
-kontrolleret `fetch`-transport. Multipart-payloaden indeholdt præcis én
-`application/pdf`-fil. Previewgenerator, vedhæftning og Storage-arkiv havde
-identiske bytes og denne SHA-256:
+Den faktiske callable-handler blev kørt med den emulatorlåste testtransport,
+som kun accepterer reserverede `.invalid`-adresser og kontrollerer præcis én
+PDF-vedhæftning. Den konkrete revisionslåste ordre-PDF er 1.217 bytes, og
+preview, transportpayload og Storage-arkiv blev sammenlignet byte-for-byte
+med denne SHA-256:
 
-`c784db7e34b64a7006854875260c98bca8c110619e11cf72cdc6ac35ce1a4a13`
+`a9f933191b4a699ec4dea7381d93bdad53603d1ad7d5b4fb11e9a159d75b0233`
 
 Samme `sendRequestId` kontaktede ikke transporten igen. En simuleret timeout
 efter mulig accept blev gemt som `ukendt`; ordren forblev `godkendt`, og et
@@ -116,48 +140,100 @@ Flowet bruger `procureFakturaImport` til den fælles `fakturaer`-node og
 6. Restmodtagelse og slutfaktura på 1.152 kr. gav et godkendt nettobeløb på
    8.880 kr. og ordrestatus `modtaget`.
 
+Efter denne afstemte slutstatus blev en særskilt fysisk retur af én
+taperulle (24 kr.) registreret uden at omskrive modtagelsen. Gentagelsen gav
+ingen dublet. En tilknyttet kreditnota blev derefter godkendt i
+Fakturacenteret, returstatus skiftede til `krediteret`, og nettobeløbet blev
+8.856 kr. Dette er et efterfølgende returflow og ændrer ikke dokumentationen
+af den oprindelige ordreafstemning på 8.880 kr.
+
 Importen er idempotent pr. request-id, kontrollerer dubletfakturanumre,
 leverandør, PO, ordrevision og samlet faktureret mængde mod accepterede
 modtagelser. Kreditnotaen skal pege på samme ordre og leverandør og kan ikke
 overstige den åbne prisafvigelse.
 
+### 5. Samlet Bestillinger, enheder og webshop — færdig kode og kontraktafprøvet
+
+- Behov, under behandling, bestilt og afsluttet ligger i én Bestillinger-
+  arbejdsflade med URL-bevarede faner, søgning, sortering og valgte sager.
+- Godkendelser kan sendes tilbage til rettelse med obligatorisk begrundelse;
+  relevante ændringer øger revisionen og nulstiller tidligere godkendelse.
+- Ordrelinjer bærer bestillingsenhed, grundenhed, pakningsfaktor og prisbasis.
+  Mobilen viser eksempelvis `1 pakke = 6 ruller` og blander ikke
+  uforenelige enheder.
+- Leverandørstamdata kan vælge mail, webshop eller begge, inkl. webshop-URL,
+  kundenummer, betingelser og ansvarlige indkøbere.
+- Webshoplegitimation krypteres server-side med AES-256-GCM uden lagring i
+  browseren. Den faktiske emulatorprøve gemte/hentede legitimationen som
+  administrator, afviste en almindelig køber og fandt ingen hemmelighed i
+  auditloggen. Åbning af webshopadgangen ændrede ikke ordrestatus. Ekstern
+  webshopbestilling og firmakort kan registreres
+  revisionslåst og idempotent; kortnummer/CVV afvises, og mail- og
+  webshopmetoder kan ikke blandes på samme ordre.
+- Forbrugsanalysen holder fakturaforbrug, ikke-modtagne ordrer og modtaget
+  uden dokumentation adskilt og filtrerer faktisk på periode, afdeling,
+  varegruppe, leverandør, leveringssted og tilknytning.
+
 ## Testresultater
 
 - `npm run lint`: bestået.
-- `npm run build`: bestået. Vite viser fortsat den eksisterende minifier-
-  advarsel om et backtick i en CSS-kommentar; builden afslutter succesfuldt.
-- `node --test test/custom-claims-v2-preflight.test.mjs test/design-tokens.test.mjs test/modulkrav.test.mjs test/referencetjek.test.mjs test/statustal.test.mjs test/procure-qr.test.mjs`:
-  42/42 bestået.
+- `npm run build`: bestået, 647 moduler transformeret.
+- `node --test --test-isolation=none test/procure-followup.test.mjs test/procure-round2-domain.test.mjs test/procure-round2-security.test.mjs test/procure-partial-workflow.test.mjs test/godkendelse.test.mjs`:
+  64/64 fokuserede PROCURE-/godkendelsestests bestået.
+- `npm run test:design`: 11/11 bestået.
 - Fuld Database/Storage-emulatorsuite via
-  `firebase emulators:exec ... "node scripts/test-platform.mjs"`:
-  4.315/4.315 bestået, 884 suites.
-- Faktisk callable-handlerflow mod Database/Storage-emulatorer: bestået.
+  `firebase emulators:exec --only database,storage --config firebase.rules-test.json --project demo-fleetcontrol-rules-test "node scripts/test-platform.mjs"`:
+  4.333/4.333 bestået, 885 suites.
+- `node scripts/procure-review-backend-qa.mjs`: bestået mod lokale Auth-,
+  Functions-, Database- og Storage-emulatorer. Dækker ordre 8.880 kr.,
+  PDF/mail-hash, to bilag, delleverancer, afvigelse/kreditnota,
+  dubletværn, fysisk retur, krypteret webshopadgang og firmakortstatus.
 - `node --check functions/index.js`: bestået.
 - `git diff --check`: bestået.
+- `node scripts/procure-browser-qa.mjs <afleveringsmappe>`: bestået med
+  reload, Escape, gentagen QR, rigtig offline-emulering, genforbindelse uden
+  automatisk indsendelse, dobbelttryk, leverandørdeling samt 360/390 px.
 
-Repoets fastlåste `npm test` bruger Firebase CLI 15.29.0 og Java 21. På
-denne Windows-host fejler Java 21 før teststart med en lokal NIO-loopback-
-selectorfejl. Den samme konfiguration, regler og `scripts/test-platform.mjs`
-er derfor kørt med cachet Firebase CLI 13.35.1 og portable Temurin 11; alle
-4.310 tests består. Det er et lokalt værktøjsproblem, ikke en udeladt test.
+- `node scripts/procure-auth-browser-qa.mjs <afleveringsmappe>`: bestået med
+  to Firebase-login-sessioner, servergenoptagelse, offline, delindsendelse,
+  QR 0→0 ved passiv aflæsning og 0→1 efter aktivt Tilføj samt tenantafvisning.
+- `node scripts/procure-partial-backend-qa.mjs`: bestået mod de faktiske
+  Functions- og Database-emulatorer.
+
+Den fulde suite blev kørt med den installerede lokale Temurin JDK 21, som
+Firebase CLI 15.29.0 kræver. En første kørsel uden eksplicit `JAVA_HOME`
+stoppede før teststart på værtsmaskinens Java 8; den efterfølgende JDK
+21-kørsel bestod 4.333/4.333 tests.
 
 ## Screenshots og preview
 
-- `01-mobile-varer-390.png`
-- `02-mobile-kurv-390.png`
-- `03-mobile-kvittering-390.png`
-- `04-mobile-qr-vare-390.png`
-- `05-qr-maerkater-print-390.png`
-- Tilsvarende 360-pixelversioner ligger i samme afleveringsmappe.
-- Lokal preview: `http://127.0.0.1:5205/indkoeb/mobil`
+- `01-mobil-varer-390.png`
+- `02-mobil-qr-gentagelse-390.png`
+- `03-mobil-kurv-390.png`
+- `03b-mobil-kurv-gennemgang-390.png`
+- `04-mobil-kvittering-390.png`
+- `05-mobil-varer-360.png`
+- Autoriserede screenshots: `01-auth-mobil-varer-390.png`,
+  `01b-auth-mobil-varer-360.png`,
+  `02-auth-mobil-kurv-delindsendelse-390.png`,
+  `03-auth-mobil-kvittering-390.png`,
+  `04-auth-qr-aktiv-tilfoejelse-390.png` og
+  `05-auth-godkendelse-delmaengde-390.png`.
+- Desktop-screenshots af Bestillinger, Godkendelser, Analyse og Opsætning:
+  `06-desktop-bestillinger.png`–`09-desktop-opsaetning.png`.
+- Visuel demo-preview: `http://127.0.0.1:5205/indkoeb/mobil`.
+- Autoriseret preview med lokale emulatorer:
+  `http://127.0.0.1:5207/indkoeb/mobil`.
 
 ## Ekstern konfiguration og deployment
 
 Færdig kode er ikke deployet. Der er ikke pushet eller merget.
 
-Produktion kræver fortsat kundens Firebase-projekt/Storage-bucket og Mailgun-
-secrets (`MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_AFSENDER`) samt
-leverandørens bestillingsadresse og kundens fakturamodtagelse i stamdata.
-Ingen rigtig leverandørmail er sendt. Manglende credentials ændrer ikke, at
-callables, PDF-arkiv, Storage-validering og Fakturacenterkontrakten er
-implementeret og afprøvet lokalt.
+Produktion kræver fortsat kundens Firebase-projekt/Storage-bucket, offentlig
+HTTPS-appadresse til modtagelses-QR, `PROCURE_WEBSHOP_KEY` og Mailgun-secrets
+(`MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_AFSENDER`) samt leverandørens
+bestillingsadresse/webshopopsætning og kundens fakturamodtagelse i stamdata.
+Ingen rigtig leverandørmail, webshopordre eller betaling er foretaget.
+Manglende credentials ændrer ikke, at callables, PDF-arkiv,
+Storage-validering og Fakturacenterkontrakten er implementeret og afprøvet
+lokalt.

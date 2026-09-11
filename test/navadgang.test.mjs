@@ -225,7 +225,7 @@ describe("kraeverPerm peger på noget der findes", () => {
       }
       if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog",
         "indkoebGodkendelser", "bestillinger", "indkoebModtagelser",
-        "indkoebForbrug"].includes(p.key)) {
+        "indkoebForbrug", "indkoebMobil", "indkoebAnalyseVaregrupper"].includes(p.key)) {
         /* PROCURE v2 samler de syv routes i én integreret router. Wrapperen
            skal pege på den fælles implementation, og implementationen skal
            både læse tenant-scopede noder og lukke direkte URL-adgang på den
@@ -236,6 +236,17 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(module, /useListe\("indkoebsbehov"/);
         assert.match(module, /useListe\("indkoebsordrer"/);
         assert.match(module, /harPerm\(bruger\?\.perms, PERM\.indkoebLaes\)/);
+        continue;
+      }
+      if (p.key === "indkoebOpsaetning") {
+        /* Opsætningen må gerne læses i Procure, men alle ændringer går gennem
+           callables med brugere.skriv. Menuens snævre gate spejles derfor i
+           routerens canAdmin og Functions — ikke i en klientskrivbar node. */
+        const module = readFileSync("src/fleet/procure-v2/ProcureModule.jsx", "utf8");
+        const functions = readFileSync("functions/index.js", "utf8");
+        assert.match(module, /canAdmin\s*=\s*harPerm\(bruger\?\.perms, PERM\.brugereSkriv\)/);
+        assert.match(functions, /procureStamdataGem[\s\S]*?perm:\s*"brugere\.skriv"/);
+        assert.match(functions, /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/);
         continue;
       }
       assert.ok(kraevet.includes(p.kraeverPerm),
@@ -346,8 +357,12 @@ describe("Menuen er ikke spærringen", () => {
     const brugte = [...new Set(ALLE.map((p) => p.kraeverPerm).filter(Boolean))];
     assert.ok(brugte.length >= 3, `kun ${brugte.length} permissions i brug i nav`);
     const iRegler = JSON.stringify(REGLER);
+    const functions = readFileSync("functions/index.js", "utf8");
     for (const perm of brugte) {
-      assert.ok(iRegler.includes(`|${perm}|`),
+      const serverhaandhaevetProcureOpsaetning = perm === "brugere.skriv"
+        && /procureStamdataGem[\s\S]*?perm:\s*"brugere\.skriv"/.test(functions)
+        && /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/.test(functions);
+      assert.ok(iRegler.includes(`|${perm}|`) || serverhaandhaevetProcureOpsaetning,
         `nav skjuler et punkt på "${perm}", som ingen regel spørger om — `
         + "det ville være en pæn knap");
     }

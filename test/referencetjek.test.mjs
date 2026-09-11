@@ -80,6 +80,21 @@ const UDEN_TJEK = {
   "indkoebsordrer/$ordreId/leverandoerId":
     "`ordreskriv` slår leverandøren op og afviser med not-found. Noden er "
     + "`.write: false`, så `.validate` kan ikke nås af en klient.",
+  "indkoebsordrer/$ordreId/godkendelsessagId":
+    "`indkoebsordrer` er `.write: false`; procureGodkendelseslinjerAfgor bygger "
+    + "ordren direkte fra den tenantafgrænsede sag i samme serveropdatering.",
+  "indkoebsordrer/$ordreId/afdelingId":
+    "serveren kopierer det historiske snapshot fra godkendelsessagen. "
+    + "procureMobilKladdeGem har først valideret den aktive stabile stamdata-id.",
+  "indkoebsordrer/$ordreId/leveringsstedId":
+    "samme lukkede vej og historiske snapshot som afdelingId; en senere "
+    + "deaktivering må ikke gøre den gamle ordre ugyldig.",
+  "indkoebsordrer/$ordreId/linjer/$linjeId/vareId":
+    "procureGodkendelseslinjerAfgor bygger linjen fra katalogopslaget i den "
+    + "signerede tenant; fritekstlinjer har bevidst null.",
+  "indkoebsordrer/$ordreId/linjer/$linjeId/kildeGodkendelseslinjeId":
+    "serveren sætter id'et fra den aktuelle godkendelsessags egne linjer og "
+    + "skriver ordren gennem den lukkede Admin SDK-vej.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/behovId":
     "samme lukkede vej; linjen skrives sammen med sit behov.",
   "sensitive/sager/$sagId/beskeder/$id/partId":
