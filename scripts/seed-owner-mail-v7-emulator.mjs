@@ -101,11 +101,17 @@ try {
   assert.ok(joernView.traade["v7-private-joern"]); assert.equal(joernView.traade["v7-private-dennis"], undefined);
   assert.ok(dennisView.traade["v7-support-dennis"] && joernView.traade["v7-support-dennis"], "Support skal være fælles for begge ejere.");
   assert.equal(Object.keys(dennisView.traade).filter((id) => id.startsWith("v7-list-")).length, 112);
+  const supportFoer = joernView.traade["v7-support-dennis"];
+  await call("salgstraadopdater", { traadId: supportFoer.id, status: supportFoer.status, ansvarligUid: joern.uid, virksomhedId: supportFoer.links?.virksomhedId || "", kontaktId: supportFoer.links?.kontaktId || "", mulighedId: supportFoer.links?.mulighedId || "", tilbudId: supportFoer.links?.tilbudId || "", forventetRevision: supportFoer.revision }, joernToken);
+  await call("salgsnoteopret", { traadId: supportFoer.id, tekst: marker("Jørn har overtaget sagen og klargør næste svar.") }, joernToken);
+  const supportEfter = await call("ejerkommunikationhent", {}, dennisToken);
+  assert.equal(supportEfter.traade["v7-support-dennis"].ansvarligUid, joern.uid);
+  assert.ok(Object.values(supportEfter.traade["v7-support-dennis"].noter || {}).some((note) => note.oprettetAf === joern.uid));
   const operationId = "v7-new-mail-idempotent";
   const first = await call("kommunikationsnykladdeopret", { operationId, fra: "info@veyrosystems.com", til: "ny@syntetisk.invalid", emne: "Ny syntetisk V7-mail", tekst: marker("Gem som kladde."), signatur: "Dennis", vedhaeftninger: [], sagstype: "kundedialog", delingsstatus: "delt" }, dennisToken);
   const second = await call("kommunikationsnykladdeopret", { operationId, fra: "info@veyrosystems.com", til: "ny@syntetisk.invalid", emne: "Ny syntetisk V7-mail", tekst: marker("Gem som kladde."), signatur: "Dennis", vedhaeftninger: [], sagstype: "kundedialog", delingsstatus: "delt" }, dennisToken);
   assert.equal(first.traadId, second.traadId); assert.equal(second.oprettet, false);
-  console.log(JSON.stringify({ ok: true, v7Threads: Object.keys(threads).length, listThreads: 112, privacy: "Dennis/Jørn private scopes separated", sharedSupport: true, newDraftIdempotent: true, externalMailSent: false }, null, 2));
+  console.log(JSON.stringify({ ok: true, v7Threads: Object.keys(threads).length, listThreads: 112, privacy: "Dennis/Jørn private scopes separated", sharedSupport: true, sharedSupportTakeoverByJoern: true, joernInternalNoteVisibleToDennis: true, newDraftIdempotent: true, externalMailSent: false }, null, 2));
 } finally {
   await deleteApp(app);
 }
