@@ -1,4 +1,4 @@
-/* Browserbaseret V7-accept og screenshots fra det lokale, isolerede ejermiljø. */
+/* Browserbaseret V7.1-accept og screenshots fra det lokale, isolerede ejermiljø. */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 
 const BASE = process.env.OWNER_REVIEW_URL || "http://127.0.0.1:5211";
 const PORT = Number(process.env.OWNER_REVIEW_DEBUG_PORT || 9337);
-const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v7");
+const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v7-1");
 const CODE_COMMIT = process.env.OWNER_REVIEW_CODE_COMMIT || "arbejdstrae";
 const EMAIL = process.env.VITE_DEV_EJER_MAIL || "";
 const KODE = process.env.VITE_DEV_BRUGER_KODE || "";
@@ -16,7 +16,7 @@ if (!edge) throw new Error("Microsoft Edge blev ikke fundet.");
 if (!EMAIL || !KODE) throw new Error("Den git-ignorerede lokale ejerloginfixture mangler.");
 
 mkdirSync(OUT, { recursive: true });
-const profil = mkdtempSync(join(tmpdir(), "veyro-owner-v7-"));
+const profil = mkdtempSync(join(tmpdir(), "veyro-owner-v71-"));
 const proces = spawn(edge, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "--window-size=1920,1080", `${BASE}/login`], { stdio: "ignore" });
 const pause = (ms) => new Promise((resolvePause) => setTimeout(resolvePause, ms));
 const json = async (sti) => { const svar = await fetch(`http://127.0.0.1:${PORT}${sti}`); if (!svar.ok) throw new Error(`DevTools ${svar.status}`); return svar.json(); };
@@ -35,6 +35,7 @@ async function viewport(width, height) { await kald("Emulation.setDeviceMetricsO
 async function gaaTil(sti) { await kald("Page.navigate", { url: `${BASE}${sti}` }); await ventPaa("document.readyState === 'complete'", `${sti} blev ikke klar`); await pause(500); }
 async function klik(selector, tekst) { return evaluer(`(()=>{const e=Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find(x=>(x.textContent||'').includes(${JSON.stringify(tekst)}));if(!e)return false;e.click();return true})()`); }
 async function billede(navn, width, height) { await viewport(width, height); await pause(250); const resultat = await kald("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false }); const fil = join(OUT, `${width}x${height}-${navn}.png`); writeFileSync(fil, Buffer.from(resultat.data, "base64")); return fil; }
+async function hjul(x, y, deltaY) { await kald("Input.dispatchMouseEvent", { type: "mouseMoved", x, y }); await kald("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: 0, deltaY }); await pause(300); }
 const filer = [];
 const kontroller = {};
 
@@ -47,6 +48,8 @@ try {
 
   await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "Den kompakte V7-mailliste viser ikke mindst syv rækker");
+  await kald("Page.reload", { ignoreCache: true }); await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "Reviewdata forsvandt efter genindlæsning med normalt login");
+  kontroller.normalLoginReload = true;
   kontroller.indbakke = await evaluer(`(()=>{const rows=[...document.querySelectorAll('.ejer-mail-raekker > button')];const visible=rows.filter(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}).length;const ai=[...document.querySelectorAll('.ejer-mail-ai-overblik article')];return{route:location.pathname+location.search,overviewWithoutSelectedCase:!document.querySelector('.ejer-mail-v7-detalje'),renderedRows:rows.length,visibleRows:visible,totalText:document.querySelector('.ejer-mail-paginering')?.innerText,aiPoints:ai.length,aiSources:[...new Set(ai.map(e=>e.innerText.split('\\n')[0]))].length,horizontalOverflow:document.documentElement.scrollWidth>innerWidth}})()`);
   if (kontroller.indbakke.visibleRows < 7) throw new Error(`Kun ${kontroller.indbakke.visibleRows} fuldt synlige mailrækker ved 1440×900`);
   if (kontroller.indbakke.aiPoints < 3) throw new Error("Det samlede AI-overblik har færre end tre punkter");
@@ -76,41 +79,67 @@ try {
 
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("document.body.innerText.includes('Pilotprojekt') && Boolean(document.querySelector('textarea[aria-label=Svarudkast]'))", "Pilotsagen blev ikke vist");
-  filer.push(await billede("03-pilotprojekt-samtale-og-ai", 1440, 900));
-  filer.push(await billede("04-pilotprojekt-samtale-og-ai", 1920, 1080));
-  await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-aiinstruks input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Gør svaret kortere og konkret');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
-  await klik("button", "Lav svarforslag");
+  kontroller.faner = await evaluer(`(()=>[...document.querySelectorAll('[role=tab]')].map(e=>e.innerText))()`);
+  if (JSON.stringify(kontroller.faner) !== JSON.stringify(["Svarudkast", "AI-chat", "Oplysninger"])) throw new Error("Svar og AI har ikke præcis de tre krævede faner");
+  filer.push(await billede("03-svarudkast", 1440, 900));
+  filer.push(await billede("04-svarudkast", 1920, 1080));
+  await klik("[role=tab]", "AI-chat");
+  const rulPunkter = await evaluer(`(()=>{const l=document.querySelector('.ejer-mail-beskeder').getBoundingClientRect();const r=document.querySelector('.ejer-mail-ai-panel').getBoundingClientRect();return{lx:l.left+l.width/2,ly:l.top+l.height/2,rx:r.left+r.width/2,ry:r.top+r.height/2,leftMax:document.querySelector('.ejer-mail-beskeder').scrollHeight-document.querySelector('.ejer-mail-beskeder').clientHeight,rightMax:document.querySelector('.ejer-mail-ai-panel').scrollHeight-document.querySelector('.ejer-mail-ai-panel').clientHeight}})()`);
+  if (rulPunkter.leftMax <= 0 || rulPunkter.rightMax <= 0) throw new Error(`Begge arbejdsruder skal have selvstændigt rulbart indhold: ${JSON.stringify(rulPunkter)}`);
+  const rulFoer = await evaluer(`(()=>({left:document.querySelector('.ejer-mail-beskeder').scrollTop,right:document.querySelector('.ejer-mail-ai-panel').scrollTop}))()`);
+  await hjul(rulPunkter.lx, rulPunkter.ly, 420);
+  const rulVenstre = await evaluer(`(()=>({left:document.querySelector('.ejer-mail-beskeder').scrollTop,right:document.querySelector('.ejer-mail-ai-panel').scrollTop}))()`);
+  await hjul(rulPunkter.rx, rulPunkter.ry, 420);
+  const rulHoejre = await evaluer(`(()=>({left:document.querySelector('.ejer-mail-beskeder').scrollTop,right:document.querySelector('.ejer-mail-ai-panel').scrollTop}))()`);
+  kontroller.uafhaengigRulning = { foer: rulFoer, efterVenstreHjul: rulVenstre, efterHoejreHjul: rulHoejre, trustedWheelEvents: true };
+  if (rulVenstre.left <= rulFoer.left || rulVenstre.right !== rulFoer.right || rulHoejre.right <= rulVenstre.right || rulHoejre.left !== rulVenstre.left) throw new Error(`Ruderne ruller ikke uafhængigt: ${JSON.stringify(kontroller.uafhaengigRulning)}`);
+  await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-aiinstruks input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Lav et kortere forslag, behold alle fakta, vent med CVR og foreslå telefon');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
+  await klik("button", "Lav nyt forslag");
   await ventPaa("Boolean(document.querySelector('.ejer-ai-forslag'))", "Lokalt AI-svarforslag blev ikke dannet");
-  await klik("button", "Indsæt i svar");
+  filer.push(await billede("05-ai-chat-forslag-foer-indsaettelse", 1440, 900));
+  await klik("button", "Indsæt i svarudkast");
   await ventPaa("document.querySelector('textarea[aria-label=Svarudkast]')?.value.includes('Hej Maria')", "AI-forslaget blev ikke indsat i svaret");
   await klik("button", "Gem kladde");
   await ventPaa("document.body.innerText.includes('Svarudkastet er gemt')", "Svarudkastet blev ikke gemt");
-  await klik("button", "Gennemse og godkend");
-  await pause(800);
+  await klik("button", "Gennemse og send");
+  await ventPaa("document.body.innerText.includes('Gennemse svar')", "Gennemgangen før godkendelse åbnede ikke");
+  kontroller.reviewAdskillerInternData = await evaluer(`(()=>{const d=document.querySelector('[role=dialog]');return !d.innerText.includes('Dennis og Jørn kan se samtalen')&&!d.innerText.includes('Sælgerens ekstra baggrund')})()`);
+  filer.push(await billede("06-gennemse-foer-godkendelse", 1440, 900));
+  await klik("[role=dialog] button", "Godkend svar");
+  await ventPaa("document.body.innerText.includes('afventer særskilt afsendelse')", "Svar blev ikke godkendt efter gennemgang");
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("document.body.innerText.includes('Afsend godkendt svar')", "Det konkrete svar blev ikke godkendt og genindlæst lokalt");
-  kontroller.svarflow = { aiForslag: true, indsat: true, gemt: true, godkendt: true, sendt: false };
-  filer.push(await billede("05-pilotprojekt-godkendt-ikke-sendt", 1440, 900));
+  kontroller.svarflow = { aiForslag: true, forslagFoerIndsaettelse: true, indsatEksplicit: true, gemt: true, reviewFoerGodkendelse: true, godkendt: true, sendt: false };
+  await klik("[role=tab]", "Oplysninger");
+  await ventPaa("document.body.innerText.includes('2 af de 5 brugere') && document.body.innerText.includes('CVR')", "Oplysningsfanens fakta mangler");
+  kontroller.oplysninger = await evaluer(`(()=>({fiveUsers:document.body.innerText.includes('5 brugere i alt'),twoAdmins:document.body.innerText.includes('2 af de 5 brugere'),cvrMissing:document.body.innerText.includes('CVR')&&document.body.innerText.includes('Ikke oplyst'),sellerContext:document.body.innerText.includes('Maria foretrækker en kort afklaring')}))()`);
+  filer.push(await billede("07-oplysninger-med-kilder", 1440, 900));
 
   await gaaTil("/main/mail/sager?postkasse=faelles&mappe=domicil&sag=v7-domicil&fra=sager");
+  await klik("[role=tab]", "Oplysninger");
   await ventPaa("document.body.innerText.includes('Domicil') && document.body.innerText.includes('Intern sag og mappe')", "Den interne Domicil-sag blev ikke vist");
-  kontroller.internSag = await evaluer(`(()=>({kundeOprettet:document.body.innerText.includes('Åbn kundekort'),internMappe:document.body.innerText.includes('Foreslået mappe: Domicil'),dokumenter:document.body.innerText.includes('dokument(er) på sagen')}))()`);
-  filer.push(await billede("06-intern-sag-domicil", 1440, 900));
+  kontroller.internSag = await evaluer(`(()=>({kundeOprettet:document.body.innerText.includes('Åbn kundekort'),internMappe:document.body.innerText.includes('Foreslået mappe: Domicil'),correctCounterparty:document.body.innerText.includes('Havneparken Ejendomme'),wrongCustomerLabel:document.querySelector('.ejer-mail-sagshoved')?.innerText.includes('Nordlys Drift')}))()`);
+  if (kontroller.internSag.kundeOprettet || kontroller.internSag.wrongCustomerLabel || !kontroller.internSag.correctCounterparty) throw new Error("Domicil-sagen viser fortsat en forkert kundemærkat");
+  filer.push(await billede("08-intern-sag-domicil", 1440, 900));
 
   await gaaTil("/main/support?sag=v7-support-dennis");
   await ventPaa("document.body.innerText.includes('Support') && document.body.innerText.includes('Nordlys')", "Den delte supportsag blev ikke vist i Support");
-  kontroller.support = { sharedCaseVisible: true, route: "/main/support?sag=v7-support-dennis" };
-  filer.push(await billede("07-delt-supportsag", 1440, 900));
+  kontroller.support = await evaluer(`(()=>({sharedCaseVisible:true,route:location.pathname+location.search,joern:document.body.innerText.includes('Jørn'),notUnallocated:!document.body.innerText.includes('Ikke fordelt'),status:document.body.innerText.includes('Afventer os')}))()`);
+  if (!kontroller.support.joern || !kontroller.support.notUnallocated || !kontroller.support.status) throw new Error("Support-overtagelsen er ikke ens i kø og detalje");
+  await kald("Page.reload", { ignoreCache: true }); await ventPaa("document.body.innerText.includes('Jørn') && document.body.innerText.includes('Afventer os')", "Supportstatus blev ikke bevaret efter genindlæsning");
+  filer.push(await billede("09-delt-supportsag", 1440, 900));
 
   await gaaTil("/main/mail/opfoelgning");
   await ventPaa("document.body.innerText.includes('Det, der kræver din eller Jørns handling')", "Opfølgningssiden blev ikke klar");
   kontroller.opfoelgning = await evaluer(`(()=>({defaultTab:[...document.querySelectorAll('.ejer-opfoelgning-tabs button')].find(b=>b.classList.contains('aktiv'))?.innerText,joernLeak:document.body.innerText.includes('Jørns opfølgning'),mineLabel:document.body.innerText.includes('Mine')}))()`);
   if (kontroller.opfoelgning.joernLeak) throw new Error("Dennis' Mine-visning viser fortsat Jørns private opfølgning");
-  filer.push(await billede("08-opfoelgning-mine", 1440, 900));
+  filer.push(await billede("10-opfoelgning-mine", 1440, 900));
 
   await viewport(390, 844); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "Mobilmaillisten blev ikke klar");
-  filer.push(await billede("09-mobil-mail-liste", 390, 844));
+  kontroller.mobilListe390 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');const t=getComputedStyle(document.querySelector('.ejer-mail-identitet strong'));return{rowWidth:Math.round(row.getBoundingClientRect().width),cardWidth:Math.round(card.getBoundingClientRect().width),ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,wordBreak:t.wordBreak,overflowWrap:t.overflowWrap}})()`);
+  if (kontroller.mobilListe390.ratio < .95 || kontroller.mobilListe390.horizontalOverflow || kontroller.mobilListe390.wordBreak === "break-all") throw new Error("390 px-listen bruger ikke kortets bredde læsbart");
+  filer.push(await billede("11-mobil-mail-liste", 390, 844));
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("Boolean(document.querySelector('.ejer-mail-mobilpaneler'))", "Mobilpanelvælgeren mangler");
   await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
@@ -119,18 +148,26 @@ try {
   await klik(".ejer-mail-mobilpaneler button", "Samtale"); await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
   kontroller.mobil = await evaluer(`(()=>({draftPreserved:document.querySelector('textarea[aria-label=Svarudkast]')?.value.endsWith('ugemt mobiltest'),horizontalOverflow:document.documentElement.scrollWidth>innerWidth,activePanel:[...document.querySelectorAll('.ejer-mail-mobilpaneler button')].find(b=>b.classList.contains('aktiv'))?.innerText}))()`);
   if (!kontroller.mobil.draftPreserved || kontroller.mobil.horizontalOverflow) throw new Error("Mobilpanel eller kladdebevarelse fejlede");
-  filer.push(await billede("10-mobil-svar-og-ai", 390, 844));
+  await evaluer("window.scrollTo(0,document.documentElement.scrollHeight);true"); await pause(250);
+  kontroller.mobil.reachedBottom = await evaluer("Math.ceil(scrollY+innerHeight)>=document.documentElement.scrollHeight-2");
+  filer.push(await billede("12-mobil-svar-og-ai", 390, 844));
 
   await viewport(899, 900); await gaaTil("/main/mail/indbakker?postkasse=faelles");
-  kontroller.breakpoint = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,mobileLayout:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).display}))()`);
-  filer.push(await billede("11-breakpoint-mail", 899, 900));
+  kontroller.breakpoint = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns}))()`);
+  if (kontroller.breakpoint.horizontalOverflow) throw new Error("899 px-layoutet har vandret overflow");
+  filer.push(await billede("13-breakpoint-mail", 899, 900));
+  await viewport(900, 900); await gaaTil("/main/mail/indbakker?postkasse=faelles");
+  kontroller.breakpoint900 = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns}))()`);
+  filer.push(await billede("14-breakpoint-mail", 900, 900));
   await viewport(360, 800); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "360 px mobilmaillisten blev ikke klar");
-  filer.push(await billede("12-mobil-mail-liste", 360, 800));
+  kontroller.mobilListe360 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');return{ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth}})()`);
+  if (kontroller.mobilListe360.ratio < .95 || kontroller.mobilListe360.horizontalOverflow) throw new Error("360 px-listen bruger ikke kortets bredde");
+  filer.push(await billede("15-mobil-mail-liste", 360, 800));
 
   const styles = await evaluer(`(()=>{const css=e=>{const s=getComputedStyle(e);return{fontFamily:s.fontFamily,fontSize:s.fontSize,lineHeight:s.lineHeight,minHeight:s.minHeight}};return{fonts:{status:document.fonts.status,interVariableLoaded:document.fonts.check('14px "Inter Variable"')},body:css(document.body),button:css(document.querySelector('.fc-btn')),input:css(document.querySelector('input')),cardRadius:getComputedStyle(document.querySelector('.ejer-mail-liste')).borderRadius,focusRule:'2px (verificeret af design-token-test og :focus-visible-regel)'}})()`);
   writeFileSync(join(OUT, "browser-verification.json"), `${JSON.stringify({ ...kontroller, styles }, null, 2)}\n`);
-  const captures = filer.map((fil) => ({ file: fil.split(/[\\/]/).pop(), data: "Syntetisk V7-emulatorfixture", externalIntegrations: "Ikke tilsluttet" }));
+  const captures = filer.map((fil) => ({ file: fil.split(/[\\/]/).pop(), data: "Syntetisk V7.1-emulatorfixture", externalIntegrations: "Ikke tilsluttet" }));
   writeFileSync(join(OUT, "capture-manifest.json"), `${JSON.stringify({ codeCommit: CODE_COMMIT, capturedAt: new Date().toISOString(), baseUrl: BASE, normalOwnerLogin: true, externalMailSent: false, captures }, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, codeCommit: CODE_COMMIT, filer, kontroller, styles }, null, 2));
 } finally {

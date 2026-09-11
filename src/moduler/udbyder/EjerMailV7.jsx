@@ -11,6 +11,7 @@ import {
   lokaltSvarforslag, paginerMailtraade,
 } from "../../fleet/ejer-mail-v7-regler.js";
 import EjerIkon from "./EjerIkon.jsx";
+import EjerMailV71Samtale from "./EjerMailV71Samtale.jsx";
 import "../../fleet/ejer-mail-v7.css";
 
 const poster = (objekt) => Object.entries(objekt || {}).map(([id, post]) => ({ id, ...post }));
@@ -75,6 +76,8 @@ function NyMailDialog({ bruger, onLuk, onOprettet }) {
   </section></div>;
 }
 
+// Beholdes midlertidigt som V7-fallback, mens V7.1 kan tilbagerulles isoleret.
+// eslint-disable-next-line no-unused-vars
 function Samtale({ valgt, bruger, hent, params, lokaleKladder, setLokaleKladder, tilbage }) {
   const navigate = useNavigate(); const [besked, setBesked] = useState(""); const [internNote, setInternNote] = useState("");
   const [arbejder, setArbejder] = useState(false); const [aiInstruks, setAiInstruks] = useState(""); const [aiForslag, setAiForslag] = useState(null); const [mobilpanel, setMobilpanel] = useState("samtale");
@@ -105,9 +108,9 @@ function Samtale({ valgt, bruger, hent, params, lokaleKladder, setLokaleKladder,
 }
 
 export default function EjerMailV7({ bruger, visning = "indbakker" }) {
-  const [data, setData] = useState(null); const [lokaleKladder, setLokaleKladder] = useState({}); const [nyMail, setNyMail] = useState(false); const [aabneMapper, setAabneMapper] = useState({ interne: true }); const [fravaer, setFravaer] = useState(null); const [visFravaer, setVisFravaer] = useState(false);
+  const [data, setData] = useState(null); const [indlaesningsfejl, setIndlaesningsfejl] = useState(""); const [lokaleKladder, setLokaleKladder] = useState({}); const [nyMail, setNyMail] = useState(false); const [aabneMapper, setAabneMapper] = useState({ interne: true }); const [fravaer, setFravaer] = useState(null); const [visFravaer, setVisFravaer] = useState(false);
   const [params, setParams] = useSearchParams(); const listeRef = useRef(null); const sidsteRaekkeRef = useRef(null); const sidsteTraadIdRef = useRef(""); const nyMailKnapRef = useRef(null); const scrollRef = useRef(0);
-  const hent = async () => setData(await hentSalgsplatform()); useEffect(() => { hent(); hentEjerarbejdsflow().then((r) => r.ok && setFravaer(r.data?.fravaer)); }, []);
+  const hent = async () => { try { setIndlaesningsfejl(""); setData(await hentSalgsplatform()); } catch (fejl) { setIndlaesningsfejl(fejl?.message || "Mailarbejdsområdet kunne ikke hentes."); } }; useEffect(() => { hent(); hentEjerarbejdsflow().then((r) => r.ok && setFravaer(r.data?.fravaer)); }, []);
   const standardMappe = visning === "sager" ? "interne" : "indbakke"; const postkasse = params.get("postkasse") || (visning === "sager" ? "mine" : "faelles"); const filter = params.get("status") || "aabne"; const mappe = params.get("mappe") || standardMappe; const kunMine = params.get("mine") === "1"; const soegning = params.get("q") || ""; const side = Number(params.get("side") || 1); const valgtId = params.get("sag") || "";
   const saetQuery = (aendringer, replace = false) => setParams((gammel) => { const ny = new URLSearchParams(gammel); for (const [navn, vaerdi] of Object.entries(aendringer)) vaerdi === "" || vaerdi == null || vaerdi === false ? ny.delete(navn) : ny.set(navn, String(vaerdi)); return ny; }, { replace });
   const alleTraade = data?.traade || {}; const traade = useMemo(() => filtrerMailtraade(alleTraade, { postkasse, ejerUid: bruger?.uid, status: filter, mappe, kunMine, soegning, visning }), [alleTraade, postkasse, bruger?.uid, filter, mappe, kunMine, soegning, visning]); const paginering = useMemo(() => paginerMailtraade(traade, side), [traade, side]);
@@ -115,9 +118,10 @@ export default function EjerMailV7({ bruger, visning = "indbakker" }) {
   const valgt = valgtId ? poster(alleTraade).find((traad) => traad.id === valgtId) : null; const opmærksomhed = useMemo(() => bygAiOpmærksomhedspunkter(traade), [traade]);
   const aaben = (traadId, element) => { scrollRef.current = listeRef.current?.scrollTop || 0; sidsteRaekkeRef.current = element; sidsteTraadIdRef.current = traadId; saetQuery({ sag: traadId, fra: visning === "sager" ? "sager" : "indbakke" }); };
   const tilbage = (beskidt = false) => { if (beskidt && !window.confirm("Kassér ændringerne i svarudkastet?")) return; saetQuery({ sag: "", fra: "" }); requestAnimationFrame(() => requestAnimationFrame(() => { if (listeRef.current) listeRef.current.scrollTop = scrollRef.current; const nyRaekke = [...(listeRef.current?.querySelectorAll("button[data-traad-id]") || [])].find((element) => element.dataset.traadId === sidsteTraadIdRef.current); (nyRaekke || sidsteRaekkeRef.current)?.focus?.(); })); };
+  if (indlaesningsfejl) return <div className="ejer-design-kort fc-empty"><h2>Mailarbejdsområdet kunne ikke indlæses</h2><p>{indlaesningsfejl}</p><button type="button" className="fc-btn" onClick={hent}>Prøv igen</button></div>;
   if (!data) return <div className="fc-empty">Henter autoriseret mailarbejdsområde…</div>;
   if (valgtId && !valgt) return <div className="ejer-design-kort"><h2>Sagen kan ikke åbnes</h2><p>Den findes ikke, eller den er ikke tilgængelig for denne ejer.</p><button type="button" className="fc-btn" onClick={() => tilbage()}>Tilbage til indbakke</button></div>;
-  if (valgt) return <Samtale valgt={valgt} bruger={bruger} hent={hent} params={params} lokaleKladder={lokaleKladder} setLokaleKladder={setLokaleKladder} tilbage={tilbage}/>;
+  if (valgt) return <EjerMailV71Samtale valgt={valgt} bruger={bruger} hent={hent} params={params} lokaleKladder={lokaleKladder} setLokaleKladder={setLokaleKladder} tilbage={tilbage}/>;
   const basis = filtrerMailtraade(alleTraade, { postkasse, ejerUid: bruger?.uid, status: "aabne", mappe, visning }); const tael = (id) => id === "aabne" ? basis.length : basis.filter((traad) => traad.status === id).length;
   const mappeAntal = (id) => filtrerMailtraade(alleTraade, { postkasse, ejerUid: bruger?.uid, status: id === "arkiv" ? "aabne" : filter, mappe: id, visning: ["interne", "domicil", "energi"].includes(id) ? "sager" : visning }).length;
   const gemFravaer = async () => { const uids = [...new Set(poster(alleTraade).map((traad) => traad.ansvarligUid).filter(Boolean))]; await gemEjerfravaer({ ...fravaer, afloeserUid: uids.find((uid) => uid !== bruger.uid) || "" }); setVisFravaer(false); };

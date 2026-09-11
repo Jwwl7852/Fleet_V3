@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { initializeApp, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
+import { lokalAiChatRevision, tekstfingeraftryk } from "../src/fleet/ejer-mail-v7-regler.js";
 
 const projekt = process.env.GCLOUD_PROJECT || "demo-veyro-owner";
 const hosts = {
@@ -65,13 +66,25 @@ try {
     beskeder: {
       m1: { id: "m1", provider: "fixture", internetMessageId: "<v7-pilot@nordlys.invalid>", retning: "indgaaende", fra: "maria@nordlys.syntetisk.invalid", til: dennis.email, emne: "Vedr. pilotprojekt med FLEET", tekst: marker("Vi vil prøve FLEET på 25 enheder i tre måneder. Vi bliver fem brugere, hvoraf to skal administrere løsningen. Kan I sende et tilbud med OBD og en kort beskrivelse af opstarten?"), sendtMs: now - 4 * 3_600_000, vedhaeftninger: [{ id: "a1", navn: "Behov og use cases.pdf", mime: "application/pdf", stoerrelse: 438272, status: "metadata" }] },
       m2: { id: "m2", provider: "fixture", retning: "udgaaende", fra: "info@veyrosystems.com", til: "maria@nordlys.syntetisk.invalid", emne: "Re: Vedr. pilotprojekt med FLEET", tekst: marker("Tak for henvendelsen. Vi samler afklaringerne i denne fælles sag."), sendtMs: now - 3 * 3_600_000 },
+      m3: { id: "m3", provider: "fixture", retning: "indgaaende", fra: "maria@nordlys.syntetisk.invalid", til: "info@veyrosystems.com", emne: "Re: Vedr. pilotprojekt med FLEET", tekst: marker("De to administratorer er en del af de fem brugere. CVR kan vi vende tilbage med senere."), sendtMs: now - 150 * 60_000 },
+      m4: { id: "m4", provider: "fixture", retning: "udgaaende", fra: "info@veyrosystems.com", til: "maria@nordlys.syntetisk.invalid", emne: "Re: Vedr. pilotprojekt med FLEET", tekst: marker("Tak. Vi bevarer CVR som en åben oplysning og lover ikke en startdato endnu."), sendtMs: now - 120 * 60_000 },
+      m5: { id: "m5", provider: "fixture", retning: "indgaaende", fra: "maria@nordlys.syntetisk.invalid", til: "info@veyrosystems.com", emne: "Re: Vedr. pilotprojekt med FLEET", tekst: marker("Det passer fint. Ring gerne, hvis I vil afklare antallet af OBD-enheder."), sendtMs: now - 90 * 60_000 },
     },
     analyser: { a1: { id: "a1", provider: "fixture", model: "lokal deterministisk adapter", behov: ["25 enheder", "3 måneders pilot", "5 brugere", "2 administratorer"], manglendeOplysninger: ["CVR", "startdato", "OBD-antal"], svarudkast: marker("Hej Maria.\n\nTak for den konkrete forespørgsel. Hvilken startdato, CVR og hvilket OBD-antal skal tilbuddet bygge på?\n\nVenlig hilsen\nDennis"), oprettetMs: now - 2 * 3_600_000, revision: 1 } },
+    sagsOplysninger: {
+      enheder: { id: "enheder", label: "Enheder", vaerdi: "25 enheder", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 1 },
+      pilotperiode: { id: "pilotperiode", label: "Pilotperiode", vaerdi: "3 måneder", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 2 },
+      brugere: { id: "brugere", label: "Brugerlicenser", vaerdi: "5 brugere i alt", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 3 },
+      administratorer: { id: "administratorer", label: "Administratoradgang", vaerdi: "2 af de 5 brugere", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 4 },
+      cvr: { id: "cvr", label: "CVR", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 20 },
+      startdato: { id: "startdato", label: "Ønsket startdato", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 21 },
+      obdAntal: { id: "obdAntal", label: "OBD-antal", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 22 },
+    },
     svarKladder: { k1: { id: "k1", fra: "info@veyrosystems.com", til: "maria@nordlys.syntetisk.invalid", emne: "Re: Vedr. pilotprojekt med FLEET", tekst: marker("Hej Maria.\n\nHvilken startdato, CVR og hvilket OBD-antal skal tilbuddet bygge på?"), signatur: "Venlig hilsen\nDennis", vedhaeftninger: [], status: "kladde", basisAktivitetMs: now, revision: 1, oprettetMs: now, opdateretMs: now } },
     opfoelgninger: { f1: { id: "f1", fra: "info@veyrosystems.com", til: "maria@nordlys.syntetisk.invalid", emne: "Opfølgning på pilotprojekt", tekst: marker("Hej Maria. Har I haft mulighed for at gennemgå pilotoplægget?"), signatur: "Venlig hilsen\nDennis", vedhaeftninger: [], status: "kladde", forfalderMs: now, revision: 1, opdateretMs: now } },
   });
   threads["v7-support-dennis"] = common("v7-support-dennis", { emne: "Support · FLEET-login efter adgangsændring", sagstype: "support", virksomhedsnavn: "Nordlys Drift · syntetisk", kontaktEmail: "support@nordlys.syntetisk.invalid", postkasseKilder: mailboxDennis, links: { virksomhedId: companyId }, support: { nummer: "SUP-2026-0071", type: "adgang", status: "triage", prioritet: "hoej", modul: "FLEET", ansvarligUid: dennis.uid, fristMs: now + 2 * 3_600_000 }, beskeder: { m1: { id: "m1", provider: "fixture", retning: "indgaaende", fra: "support@nordlys.syntetisk.invalid", til: dennis.email, emne: "FLEET-login efter adgangsændring", tekst: marker("Tre brugere kan ikke logge ind. Kan I hjælpe uden at ændre andre rettigheder?"), sendtMs: now - 2 * 3_600_000 } } });
-  threads["v7-domicil"] = common("v7-domicil", { emne: "Domicil · Leje af kontor", sagstype: "intern", internMappe: "Domicil", foreslaaetMappe: "Domicil", postkasseKilder: mailboxDennis, kontaktNavn: "Anders Mikkelsen", kontaktEmail: "anders@domicil.syntetisk.invalid", beskeder: { m1: { id: "m1", provider: "fixture", retning: "indgaaende", fra: "anders@domicil.syntetisk.invalid", til: dennis.email, emne: "Udkast til lejevilkår", tekst: marker("Vi har vedhæftet et udkast til lejevilkår. Kan I vende tilbage senest fredag?"), sendtMs: now - day, vedhaeftninger: [{ id: "d1", navn: "Udkast_lejevilkår.pdf", mime: "application/pdf", stoerrelse: 355328, status: "metadata" }] }, m2: { id: "m2", provider: "fixture", retning: "indgaaende", fra: "anders@domicil.syntetisk.invalid", til: dennis.email, emne: "Depositum og vilkår", tekst: marker("Depositum og overtagelsesdato fremgår af den seneste version."), sendtMs: now - 5 * 3_600_000 } }, dokumenter: { d1: { id: "d1", navn: "Udkast_lejevilkår.pdf", status: "metadata" } }, noter: { n1: { id: "n1", tekst: marker("Afklar overtagelsesdato og gennemgå depositum."), oprettetAf: joern.uid, oprettetMs: now - 3_600_000 } } });
+  threads["v7-domicil"] = common("v7-domicil", { emne: "Domicil · Leje af kontor", sagstype: "intern", internMappe: "Domicil", foreslaaetMappe: "Domicil", postkasseKilder: mailboxDennis, kontaktNavn: "Anders Mikkelsen", kontaktEmail: "anders@domicil.syntetisk.invalid", virksomhedsnavn: "", modpartNavn: "Havneparken Ejendomme", beskeder: { m1: { id: "m1", provider: "fixture", retning: "indgaaende", fra: "anders@domicil.syntetisk.invalid", til: dennis.email, emne: "Udkast til lejevilkår", tekst: marker("Vi har vedhæftet et udkast til lejevilkår. Kan I vende tilbage senest fredag?"), sendtMs: now - day, vedhaeftninger: [{ id: "d1", navn: "Udkast_lejevilkår.pdf", mime: "application/pdf", stoerrelse: 355328, status: "metadata" }] }, m2: { id: "m2", provider: "fixture", retning: "indgaaende", fra: "anders@domicil.syntetisk.invalid", til: dennis.email, emne: "Depositum og vilkår", tekst: marker("Depositum og overtagelsesdato fremgår af den seneste version."), sendtMs: now - 5 * 3_600_000 } }, dokumenter: { d1: { id: "d1", navn: "Udkast_lejevilkår.pdf", status: "metadata" } }, noter: { n1: { id: "n1", tekst: marker("Afklar overtagelsesdato og gennemgå depositum."), oprettetAf: joern.uid, oprettetMs: now - 3_600_000 } } });
   threads["v7-private-dennis"] = common("v7-private-dennis", { emne: "Personlig Dennis-sag", delingsstatus: "privat", postkasseKilder: mailboxDennis, kontaktNavn: "Privat Dennis", ansvarligUid: dennis.uid });
   threads["v7-private-joern"] = common("v7-private-joern", { emne: "Personlig Jørn-sag", delingsstatus: "privat", postkasseKilder: mailboxJoern, kontaktNavn: "Privat Jørn", ansvarligUid: joern.uid });
   threads["v7-followup-joern"] = common("v7-followup-joern", { emne: "Jørns opfølgning må ikke vises hos Dennis", ansvarligUid: joern.uid, opfoelgninger: { f1: { id: "f1", fra: "info@veyrosystems.com", til: "joern-kunde@syntetisk.invalid", emne: "Jørns opfølgning", tekst: marker("Kun Jørns arbejdsvisning."), signatur: "Jørn", vedhaeftninger: [], status: "kladde", forfalderMs: now, revision: 1, opdateretMs: now } } });
@@ -106,12 +119,39 @@ try {
   await call("salgsnoteopret", { traadId: supportFoer.id, tekst: marker("Jørn har overtaget sagen og klargør næste svar.") }, joernToken);
   const supportEfter = await call("ejerkommunikationhent", {}, dennisToken);
   assert.equal(supportEfter.traade["v7-support-dennis"].ansvarligUid, joern.uid);
+  assert.equal(supportEfter.traade["v7-support-dennis"].support.ansvarligUid, joern.uid);
+  assert.equal(supportEfter.traade["v7-support-dennis"].support.status, "afventer_os");
   assert.ok(Object.values(supportEfter.traade["v7-support-dennis"].noter || {}).some((note) => note.oprettetAf === joern.uid));
+
+  const pilot = dennisView.traade["v7-pilot-nordlys"]; const pilotKladde = pilot.svarKladder.k1;
+  const oplysninger = Object.values(pilot.sagsOplysninger);
+  const dennisInstruks = "Gør tonen mere personlig og forklar næste skridt.";
+  const dennisForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks], signatur: "Dennis" });
+  const dennisAi = await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-dennis", instruktion: dennisInstruks, forslag: dennisForslag.tekst, forventetRevision: 0, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, dennisToken);
+  const joernMellem = await call("ejerkommunikationhent", {}, joernToken);
+  assert.equal(Object.values(joernMellem.traade[pilot.id].aiArbejdsrum.chat).some((post) => post.aktorUid === dennis.uid), true);
+  const joernInstruks = "Gør den kortere, behold alle fakta, vent med CVR og foreslå en telefonisk samtale.";
+  const joernForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks], signatur: "Jørn" });
+  assert.match(joernForslag.tekst, /25 enheder/); assert.match(joernForslag.tekst, /3 måneder/); assert.match(joernForslag.tekst, /5 brugere/); assert.match(joernForslag.tekst, /telefon/);
+  assert.doesNotMatch(joernForslag.tekst, /virksomhedens CVR/);
+  const joernAi = await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-joern", instruktion: joernInstruks, forslag: joernForslag.tekst, forventetRevision: dennisAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, joernToken);
+  const aendretTekst = marker("Hej Maria.\n\nVi har registreret 25 enheder, tre måneder og fem brugere. Vi afklarer startdato og OBD-antal separat.\n\nVenlig hilsen\nDennis");
+  await call("kommunikationssvarkladdegem", { traadId: pilot.id, id: pilotKladde.id, fra: pilotKladde.fra, til: pilotKladde.til, emne: pilotKladde.emne, tekst: aendretTekst, signatur: pilotKladde.signatur, vedhaeftninger: [], basisAktivitetMs: pilot.senesteAktivitetMs, forventetRevision: pilotKladde.revision }, dennisToken);
+  await assert.rejects(() => call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-stale", instruktion: "Overskriv den nye kladde", forslag: joernForslag.tekst, forventetRevision: joernAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, joernToken), /FAILED_PRECONDITION/);
+  const friskForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks, "Behold det korte svar som forslag."], signatur: "Dennis" });
+  await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-frisk", instruktion: "Behold det korte svar som forslag.", forslag: friskForslag.tekst, forventetRevision: joernAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: 2, basisKladdeFingeraftryk: tekstfingeraftryk(aendretTekst) }, dennisToken);
+  await call("kommunikationssagsoplysninggem", { traadId: pilot.id, vaerdi: "Maria foretrækker en kort afklaring på telefon før tilbuddet.", forventetRevision: 0 }, dennisToken);
+  const deltEfter = await call("ejerkommunikationhent", {}, dennisToken);
+  const deltChat = Object.values(deltEfter.traade[pilot.id].aiArbejdsrum.chat);
+  assert.ok(deltChat.some((post) => post.aktorUid === dennis.uid) && deltChat.some((post) => post.aktorUid === joern.uid));
+  assert.equal(deltEfter.traade[pilot.id].sagsOplysninger.cvr.tilstand, "mangler");
+  assert.match(deltEfter.traade[pilot.id].sagsOplysninger.saelgerBaggrund.vaerdi, /telefon/);
+  await assert.rejects(() => call("kommunikationsaichatgem", { traadId: "v7-private-dennis", operationId: "v71-private-denied", instruktion: "Må ikke lykkes", forslag: "Nej", forventetRevision: 0, basisAktivitetMs: threads["v7-private-dennis"].senesteAktivitetMs, basisKladdeRevision: 0, basisKladdeFingeraftryk: tekstfingeraftryk("") }, joernToken), /PERMISSION_DENIED/);
   const operationId = "v7-new-mail-idempotent";
   const first = await call("kommunikationsnykladdeopret", { operationId, fra: "info@veyrosystems.com", til: "ny@syntetisk.invalid", emne: "Ny syntetisk V7-mail", tekst: marker("Gem som kladde."), signatur: "Dennis", vedhaeftninger: [], sagstype: "kundedialog", delingsstatus: "delt" }, dennisToken);
   const second = await call("kommunikationsnykladdeopret", { operationId, fra: "info@veyrosystems.com", til: "ny@syntetisk.invalid", emne: "Ny syntetisk V7-mail", tekst: marker("Gem som kladde."), signatur: "Dennis", vedhaeftninger: [], sagstype: "kundedialog", delingsstatus: "delt" }, dennisToken);
   assert.equal(first.traadId, second.traadId); assert.equal(second.oprettet, false);
-  console.log(JSON.stringify({ ok: true, v7Threads: Object.keys(threads).length, listThreads: 112, privacy: "Dennis/Jørn private scopes separated", sharedSupport: true, sharedSupportTakeoverByJoern: true, joernInternalNoteVisibleToDennis: true, newDraftIdempotent: true, externalMailSent: false }, null, 2));
+  console.log(JSON.stringify({ ok: true, version: "V7.1", v7Threads: Object.keys(threads).length, listThreads: 112, privacy: "Dennis/Jørn private scopes separated", sharedSupport: true, sharedSupportTakeoverByJoern: true, supportQueueAndDetailStatus: "afventer_os", sharedAiChatContinuedByDennisAndJoern: true, staleAiOverwriteRejected: true, internalChatInTransport: false, cvrStillMissing: true, joernInternalNoteVisibleToDennis: true, newDraftIdempotent: true, externalMailSent: false }, null, 2));
 } finally {
   await deleteApp(app);
 }

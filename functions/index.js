@@ -10851,6 +10851,23 @@ export const ejerkommunikationhent = onCall({ region: REGION }, async (req) => {
   return { ok: true, traade };
 });
 
+async function kraevSynligKommunikationstraad(traadId, ejerUid) {
+  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
+  const traad = (await ref.once("value")).val();
+  if (!traad) throw new HttpsError("not-found", "Sagen findes ikke.");
+  if (!ejerMaaSeKommunikation(traad, ejerUid)) throw new HttpsError("permission-denied", "Sagen er ikke tilgængelig for denne ejer.");
+  return { ref, traad };
+}
+
+function kommunikationsTekstfingeraftryk(vaerdi = "") {
+  let hash = 2166136261;
+  for (const tegn of String(vaerdi)) {
+    hash ^= tegn.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
 export const salgstraadopdater = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req);
   const d = req.data || {};
@@ -10872,7 +10889,10 @@ export const salgstraadopdater = onCall({ region: REGION }, async (req) => {
   const resultat = await ref.transaction((lokal) => {
     const aktuel = start(lokal);
     if (!aktuel || Number(aktuel.revision || 0) !== forventet) { konflikt = true; return; }
-    return { ...aktuel, status: d.status, ansvarligUid, links, revision: forventet + 1, opdateretMs: nu, opdateretAf: ejerUid };
+    const support = aktuel.sagstype === "support" && aktuel.support
+      ? { ...aktuel.support, ansvarligUid, status: ansvarligUid && ["ny", "triage"].includes(aktuel.support.status) ? "afventer_os" : aktuel.support.status, opdateretMs: nu }
+      : aktuel.support;
+    return { ...aktuel, status: d.status, ansvarligUid, links, ...(support ? { support } : {}), revision: forventet + 1, opdateretMs: nu, opdateretAf: ejerUid };
   });
   if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Tråden blev ændret samtidigt.");
   await skrivEjerAudit({ uid: ejerUid, handling: "salg.traad.opdater", objekt: "salgstraad", objektId: traadId });
@@ -10910,6 +10930,67 @@ export const kommunikationsklassifikationopdater = onCall({ region: REGION }, as
   if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Sagen blev ændret samtidigt.");
   await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.klassifikation", objekt: "kommunikationssag", objektId: traadId });
   return { ok: true, revision: forventet + 1 };
+});
+
+export const kommunikationsaichatgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const traadId = kraevCrmId(d.traadId, "Sags-id"); const operationId = kraevCrmId(d.operationId, "Handlings-id");
+  const instruktion = tekst(d.instruktion, 4_000); const forslag = tekst(d.forslag, 30_000);
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const basisAktivitetMs = Math.trunc(Number(d.basisAktivitetMs) || 0);
+  const basisKladdeRevision = Math.max(0, Math.trunc(Number(d.basisKladdeRevision) || 0));
+  const basisKladdeFingeraftryk = tekst(d.basisKladdeFingeraftryk, 80);
+  if (!instruktion || !forslag || !basisAktivitetMs || !basisKladdeFingeraftryk) throw new HttpsError("invalid-argument", "AI-chatten kræver instruktion, forslag og et aktuelt sagsgrundlag.");
+  const { ref: traadRef, traad } = await kraevSynligKommunikationstraad(traadId, ejerUid);
+  if (Number(traad.senesteAktivitetMs || 0) !== basisAktivitetMs) throw new HttpsError("failed-precondition", "Sagen har fået ny aktivitet. Generér forslaget igen.");
+  const senesteKladde = Object.values(traad.svarKladder || {}).sort((a, b) => Number(b?.opdateretMs || 0) - Number(a?.opdateretMs || 0))[0] || null;
+  if (Number(senesteKladde?.revision || 0) !== basisKladdeRevision
+      || kommunikationsTekstfingeraftryk(senesteKladde?.tekst || "") !== basisKladdeFingeraftryk) {
+    throw new HttpsError("failed-precondition", "Svarudkastet er ændret. Gem eller genindlæs kladden, før der laves et nyt forslag.");
+  }
+  const profil = (await getDatabase().ref(`profiler/${ejerUid}`).once("value")).val() || {};
+  const aktorNavn = tekst(profil.navn || req.auth?.token?.name || req.auth?.token?.email, 160) || "Ejer";
+  const operationNoegle = sha256(`${ejerUid}|${operationId}`).slice(0, 32);
+  const ejerBeskedId = `e_${operationNoegle}`; const aiBeskedId = `a_${operationNoegle}`; const nu = Date.now();
+  const arbejdsrumRef = traadRef.child("aiArbejdsrum");
+  const foer = (await arbejdsrumRef.once("value")).val() || {}; let konflikt = false; let gentaget = false;
+  const start = verificeretTransaktionsstart(foer);
+  const resultat = await arbejdsrumRef.transaction((lokal) => {
+    const aktuel = start(lokal) || {};
+    if (aktuel.operationer?.[operationNoegle]) { gentaget = true; return aktuel; }
+    if (Number(aktuel.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    return {
+      ...aktuel,
+      revision: forventetRevision + 1,
+      chat: {
+        ...(aktuel.chat || {}),
+        [ejerBeskedId]: { id: ejerBeskedId, rolle: "ejer", tekst: instruktion, aktorUid: ejerUid, aktorNavn, oprettetMs: nu, intern: true },
+        [aiBeskedId]: { id: aiBeskedId, rolle: "ai", tekst: forslag, aktorUid: "lokal_adapter", aktorNavn: "Lokal AI-testadapter", oprettetMs: nu + 1, intern: true },
+      },
+      aktivtForslag: { tekst: forslag, basisAktivitetMs, basisKladdeRevision, basisKladdeFingeraftryk, oprettetMs: nu + 1, oprettetAf: ejerUid, provider: "lokal_testadapter" },
+      operationer: { ...(aktuel.operationer || {}), [operationNoegle]: { oprettetMs: nu, aktorUid: ejerUid } },
+      opdateretMs: nu,
+      opdateretAf: ejerUid,
+    };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "AI-chatten blev ændret samtidigt. Genindlæs sagen og prøv igen.");
+  if (!gentaget) await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.ai.chat.gem", objekt: "kommunikationssag", objektId: traadId });
+  return { ok: true, revision: Number(resultat.snapshot.val()?.revision || forventetRevision + 1), gentaget };
+});
+
+export const kommunikationssagsoplysninggem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const traadId = kraevCrmId(d.traadId, "Sags-id"); const vaerdi = tekst(d.vaerdi, 4_000);
+  const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const { ref: traadRef } = await kraevSynligKommunikationstraad(traadId, ejerUid);
+  const profil = (await getDatabase().ref(`profiler/${ejerUid}`).once("value")).val() || {};
+  const aktorNavn = tekst(profil.navn || req.auth?.token?.name || req.auth?.token?.email, 160) || "Ejer";
+  const ref = traadRef.child("sagsOplysninger/saelgerBaggrund"); const foer = (await ref.once("value")).val();
+  if (Number(foer?.revision || 0) !== forventetRevision) throw new HttpsError("aborted", "Sagsoplysningen blev ændret samtidigt. Genindlæs sagen og prøv igen.");
+  const nu = Date.now();
+  await ref.set({ id: "saelgerBaggrund", label: "Sælgerens ekstra baggrund", vaerdi, tilstand: "tilfoejet_af_ejer", kilde: `${aktorNavn} · intern tilføjelse`, revision: forventetRevision + 1, raekke: 80, oprettetMs: foer?.oprettetMs || nu, opdateretMs: nu, opdateretAf: ejerUid, intern: true });
+  await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.oplysning.gem", objekt: "kommunikationssag", objektId: traadId });
+  return { ok: true, revision: forventetRevision + 1 };
 });
 
 export const supportsagopdater = onCall({ region: REGION }, async (req) => {

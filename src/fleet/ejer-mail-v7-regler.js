@@ -76,3 +76,60 @@ export function lokaltSvarforslag({ navn = "", mangler = [], instruktion = "", s
   ];
   return linjer.filter(Boolean).join("\n\n");
 }
+
+export function tekstfingeraftryk(vaerdi = "") {
+  let hash = 2166136261;
+  for (const tegn of String(vaerdi)) {
+    hash ^= tegn.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+export function oplysningerForSag(traad = {}) {
+  const gemte = liste(traad.sagsOplysninger);
+  if (gemte.length) return gemte.sort((a, b) => Number(a.raekke || 999) - Number(b.raekke || 999));
+  const analyse = liste(traad.analyser).sort((a, b) => Number(b.oprettetMs || 0) - Number(a.oprettetMs || 0))[0] || {};
+  const behov = Array.isArray(analyse.behov) ? analyse.behov : [];
+  const mangler = Array.isArray(analyse.manglendeOplysninger) ? analyse.manglendeOplysninger : [];
+  return [
+    ...behov.map((vaerdi, index) => ({ id: `behov-${index}`, label: "Oplysning", vaerdi, tilstand: "oplyst_af_kunden", kilde: "Kundens mail", raekke: index + 1 })),
+    ...mangler.map((label, index) => ({ id: `mangler-${index}`, label, vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens kilder", raekke: 100 + index })),
+  ];
+}
+
+export function lokalAiChatRevision({ navn = "", oplysninger = [], instruktioner = [], signatur = "Veyro Systems" } = {}) {
+  const samletInstruktion = instruktioner.filter(Boolean).join("\n");
+  const fakta = Object.fromEntries(oplysninger.filter((post) => post.tilstand === "oplyst_af_kunden").map((post) => [post.id, post.vaerdi]));
+  const mangler = new Set(oplysninger.filter((post) => post.tilstand === "mangler").map((post) => post.id));
+  const kort = /kortere|kort og|meget kort|kompakt/i.test(samletInstruktion);
+  const telefon = /telefon|samtale|ring/i.test(samletInstruktion);
+  const ventMedCvr = /cvr[^.\n]*(senere|venter|vente|ikke nu|spring)|(?:senere|venter|vente|vent)[^.\n]*cvr/i.test(samletInstruktion);
+  const fornavn = String(navn).trim().split(/\s+/)[0];
+  const omfang = [fakta.enheder, fakta.pilotperiode, fakta.brugere].filter(Boolean).join(", ");
+  const spoergsmaal = [];
+  if (mangler.has("startdato")) spoergsmaal.push("hvilken startdato I ønsker");
+  if (mangler.has("obdAntal")) spoergsmaal.push("hvor mange OBD-enheder der skal indgå");
+  if (mangler.has("cvr") && !ventMedCvr) spoergsmaal.push("virksomhedens CVR");
+  const linjer = [
+    `Hej${fornavn ? ` ${fornavn}` : ""}.`,
+    kort ? `Tak for din besked om pilotforløbet${omfang ? ` med ${omfang}` : ""}.` : `Tak for den konkrete forespørgsel. Vi hjælper jer gerne trygt gennem opstarten${omfang ? ` med ${omfang}` : ""}.`,
+    fakta.administratorer ? `${fakta.administratorer} får administratoradgang; de indgår i det samlede brugerantal.` : "",
+    spoergsmaal.length ? `For at tage næste skridt vil jeg kun bede jer bekræfte ${spoergsmaal.join(" og ")}.` : "Vi har de nødvendige oplysninger til næste skridt.",
+    telefon ? "Hvis det er nemmere, foreslår jeg en kort telefonsamtale." : "",
+    kort ? "" : "Når vi har afklaringen, samler vi det videre forløb uden at love en leveringsdato endnu.",
+    `Venlig hilsen\n${signatur}`,
+  ];
+  return {
+    tekst: linjer.filter(Boolean).join("\n\n"),
+    kilder: oplysninger.filter((post) => post.tilstand === "oplyst_af_kunden").map((post) => post.kilde).filter((kilde, index, alle) => alle.indexOf(kilde) === index),
+    anvendteInstruktioner: instruktioner.length,
+  };
+}
+
+export function forslagErForældet(forslag, { senesteAktivitetMs = 0, kladdeRevision = 0, kladdetekst = "" } = {}) {
+  if (!forslag?.tekst) return false;
+  return Number(forslag.basisAktivitetMs || 0) !== Number(senesteAktivitetMs || 0)
+    || Number(forslag.basisKladdeRevision || 0) !== Number(kladdeRevision || 0)
+    || forslag.basisKladdeFingeraftryk !== tekstfingeraftryk(kladdetekst);
+}

@@ -8,3 +8,76 @@
 .ejer-modalbaggrund{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:18px;background:var(--fc-overlay)}.ejer-mail-nydialog{display:grid;gap:10px;width:min(680px,calc(100vw - 36px));max-height:calc(100vh - 36px);padding:18px;border:1px solid var(--veyro-border);border-radius:12px;background:var(--veyro-white);box-shadow:var(--fc-shadow);overflow:auto}.ejer-mail-nydialog>header,.ejer-mail-nydialog>footer{display:flex;align-items:center;justify-content:space-between;gap:10px}.ejer-mail-nydialog h2{margin:2px 0;font-size:25px}.ejer-mail-nydialog>header button{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);color:var(--veyro-primary-text)}.ejer-mail-nydialog>footer{justify-content:flex-end}
 @media(max-width:1240px) and (min-width:901px){.ejer-mail-v7-oversigt .ejer-mail-arbejdsflade{grid-template-columns:155px minmax(500px,1fr)}.ejer-mail-v7-oversigt .ejer-mail-ai{grid-column:1/-1;height:auto;max-height:310px}.ejer-mail-ai-overblik{grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto auto}.ejer-mail-ai-overblik>header,.ejer-mail-ai-overblik>footer{grid-column:1/-1}}
 @media(max-width:900px){.ejer-mail-v7-oversigt .ejer-mail-arbejdsflade{height:auto}.ejer-mail-v7-oversigt .ejer-mail-liste-v7{overflow:visible}.ejer-mail-liste-v7 .ejer-mail-raekker>button{grid-template-columns:minmax(0,1fr) auto}.ejer-mail-liste-v7 .ejer-mail-raekker>button>time,.ejer-mail-liste-v7 .ejer-mail-raekker>button>.ejer-person{display:none}.ejer-mail-v7-oversigt .ejer-mail-ai{display:grid}.ejer-mail-paginering{align-items:flex-start;flex-direction:column}.ejer-mail-toolbarhandlinger{align-items:stretch;flex-direction:column;margin-left:0}.ejer-mail-v7-detalje .ejer-mail-sagshoved{align-items:stretch;flex-direction:column}.ejer-mail-v7-detalje .ejer-mail-fokus{display:block;height:auto}.ejer-mail-v7-detalje .ejer-mail-traadfokus,.ejer-mail-v7-detalje .ejer-mail-svarfokus{overflow:visible}.ejer-mail-v7-detalje .ejer-mail-mobilpaneler{display:grid;grid-template-columns:1fr 1fr}.ejer-mail-v7-detalje .ejer-mail-mobilpaneler button{min-height:42px;border:1px solid var(--veyro-border);background:var(--veyro-white);color:var(--veyro-link);font:inherit}.ejer-mail-v7-detalje .ejer-mail-mobilpaneler button.aktiv{background:var(--veyro-teal);color:var(--veyro-white)}.ejer-mail-v7-detalje .ejer-mail-fokus.mobil-samtale .ejer-mail-svarfokus,.ejer-mail-v7-detalje .ejer-mail-fokus.mobil-svar .ejer-mail-traadfokus{display:none}.ejer-mail-beskeder{overflow:visible}.ejer-mail-beskeder article.udgaaende{margin-left:0}.ejer-mail-aiinstruks{grid-template-columns:1fr}.ejer-mail-detaljetop{align-items:flex-start;flex-direction:column}.ejer-fravaerlinje{align-items:stretch;flex-direction:column}}
+
+/* V7.1: fanerne er selvstaendige arbejdsomraader. Kun det aktive panel ruller. */
+.ejer-mail-svarfokus{grid-template-rows:auto auto minmax(0,1fr) auto;align-content:normal;overflow:hidden}
+.ejer-mail-ai-faner{display:flex;border-bottom:1px solid var(--veyro-border)}
+.ejer-mail-ai-faner button{min-height:38px;padding:0 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--veyro-muted-text);font:inherit;font-weight:650;cursor:pointer}
+.ejer-mail-ai-faner button.aktiv{border-bottom-color:var(--veyro-teal);color:var(--veyro-link)}
+.ejer-mail-ai-faner button:focus-visible{outline:2px solid var(--veyro-cyan);outline-offset:-2px}
+.ejer-mail-ai-paneler,.ejer-mail-ai-panel{min-width:0;min-height:0}
+.ejer-mail-ai-paneler{display:grid;overflow:hidden}
+.ejer-mail-ai-panel{display:grid;align-content:start;gap:11px;padding:11px 2px 2px;overflow:auto}
+.ejer-svarmeta{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr);gap:7px 12px}
+.ejer-svarmeta span{display:grid;gap:2px;min-width:0;color:var(--veyro-muted-text);font-size:var(--fc-t-s)}
+.ejer-svarmeta span:last-child{grid-column:1/-1}
+.ejer-svarmeta b{color:var(--veyro-primary-text);font-size:var(--fc-t-xs)}
+.ejer-mail-editor{overflow:hidden;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}
+.ejer-mail-formatlinje{display:flex;align-items:center;gap:3px;min-height:38px;padding:0 7px;border-bottom:1px solid var(--veyro-border);background:var(--veyro-app-background)}
+.ejer-mail-formatlinje button{display:grid;place-items:center;min-width:32px;min-height:32px;border:0;background:transparent;color:var(--veyro-primary-text);font:inherit;font-weight:700}
+.ejer-mail-formatlinje span{height:22px;border-left:1px solid var(--veyro-border)}
+.ejer-mail-editor textarea,.ejer-sagsbaggrund textarea,.ejer-intern-note textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);color:var(--veyro-primary-text);font:inherit;line-height:1.45;resize:vertical}
+.ejer-mail-editor textarea{display:block;border:0;border-radius:0;resize:none}
+.ejer-mail-ugemt{color:var(--fc-warn-text)}
+.ejer-mail-vedhaeftningslinje{display:flex;align-items:center;gap:7px;margin:0;padding:8px;border:1px solid var(--veyro-border);border-radius:8px;color:var(--veyro-muted-text);font-size:var(--fc-t-s)}
+.ejer-svarhandlinger{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+.ejer-ai-chatintro{display:flex;align-items:flex-start;gap:8px;padding:9px;border-radius:8px;background:var(--veyro-teal-light);color:var(--veyro-primary-text)}
+.ejer-ai-chathistorik{display:grid;gap:8px}
+.ejer-ai-chathistorik article{display:grid;gap:5px;max-width:90%;padding:9px 11px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}
+.ejer-ai-chathistorik article.ejer{justify-self:end;background:var(--veyro-teal-light)}
+.ejer-ai-chathistorik article header{display:flex;justify-content:space-between;gap:12px}
+.ejer-ai-chathistorik article time{color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
+.ejer-ai-chathistorik article p{margin:0;white-space:pre-wrap}
+.ejer-ai-forslag.foraeldet{background:var(--fc-warn-bg);color:var(--fc-warn-text)}
+.ejer-oplysningstabel{display:grid;gap:7px}
+.ejer-oplysningstabel article{display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding:9px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-white)}
+.ejer-oplysningstabel article>div{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr);gap:3px 10px}
+.ejer-oplysningstabel article small{grid-column:1/-1;color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
+.ejer-oplysning-status{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--fc-success-bg);color:var(--fc-success-text)}
+.ejer-oplysning-status.mangler{background:var(--fc-warn-bg);color:var(--fc-warn-text)}
+.ejer-sagsbaggrund{display:grid;gap:5px;color:var(--veyro-primary-text);font-weight:650}
+.ejer-sagsbaggrund small{color:var(--veyro-muted-text);font-size:var(--fc-t-xs);font-weight:400}
+.ejer-oplysningsdokumenter{display:grid;gap:7px;padding:10px;border:1px solid var(--veyro-border);border-radius:8px}
+.ejer-oplysningsdokumenter span{display:flex;align-items:center;gap:7px;color:var(--veyro-link)}
+.ejer-mail-reviewdialog{display:grid;gap:11px;width:min(720px,calc(100vw - 36px));max-height:calc(100vh - 36px);padding:18px;border:1px solid var(--veyro-border);border-radius:12px;background:var(--veyro-white);box-shadow:var(--fc-shadow);overflow:auto}
+.ejer-mail-reviewdialog>header,.ejer-mail-reviewdialog>footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ejer-mail-reviewdialog h2{margin:2px 0;font-size:var(--fc-t-3xl)}
+.ejer-mail-reviewdialog dl{display:grid;grid-template-columns:70px minmax(0,1fr);gap:6px 12px;margin:0}
+.ejer-mail-reviewdialog dd{margin:0}
+.ejer-mail-reviewtekst{padding:12px;border:1px solid var(--veyro-border);border-radius:8px;white-space:pre-wrap}
+.ejer-mail-reviewdialog>footer{justify-content:flex-end}
+
+@media(max-width:900px){
+  .ejer-mail-v7-oversigt,.ejer-mail-v7-detalje{width:100%;min-width:0}
+  .ejer-mail-v7-oversigt .ejer-mail-arbejdsflade{display:grid;grid-template-columns:minmax(0,1fr);width:100%;height:auto}
+  .ejer-mail-v7-oversigt .ejer-mail-mapper,.ejer-mail-v7-oversigt .ejer-mail-liste,.ejer-mail-v7-oversigt .ejer-mail-ai{box-sizing:border-box;width:100%;min-width:0}
+  .ejer-mail-toolbar,.ejer-mail-filterlinje{align-items:stretch;flex-direction:column}
+  .ejer-mail-desktopvalg,.ejer-mail-filterlinje .ejer-segmenter{display:grid;grid-template-columns:minmax(0,1fr)}
+  .ejer-mail-filterlinje .ejer-mail-soeg{box-sizing:border-box;width:100%;margin-left:0}
+  .ejer-mail-liste-v7>header{display:none}
+  .ejer-mail-liste-v7 .ejer-mail-raekker>button{grid-template-columns:minmax(0,1fr) auto;width:100%;min-height:84px;padding:10px}
+  .ejer-mail-identitet strong,.ejer-mail-identitet small{white-space:normal;overflow-wrap:normal;word-break:normal}
+  .ejer-mail-liste-v7 .fc-pill{align-self:start}
+  .ejer-mail-ai-overblik{display:grid;grid-template-columns:minmax(0,1fr)!important}
+  .ejer-mail-v7-detalje .ejer-mail-svarfokus{display:grid;grid-template-rows:auto auto auto;overflow:visible}
+  .ejer-mail-v7-detalje .ejer-mail-ai-paneler,.ejer-mail-v7-detalje .ejer-mail-ai-panel{overflow:visible}
+  .ejer-mail-ai-faner{overflow-x:auto}
+  .ejer-mail-ai-faner button{flex:1 0 auto;padding-inline:10px}
+  .ejer-svarmeta{grid-template-columns:minmax(0,1fr)}
+  .ejer-svarmeta span:last-child{grid-column:auto}
+  .ejer-svarhandlinger,.ejer-mail-reviewdialog>footer{align-items:stretch;flex-direction:column}
+  .ejer-svarhandlinger .fc-btn,.ejer-mail-reviewdialog>footer .fc-btn{width:100%}
+  .ejer-oplysningstabel article>div{grid-template-columns:minmax(0,1fr)}
+  .ejer-oplysningstabel article small{grid-column:auto}
+  .ejer-mail-reviewdialog dl{grid-template-columns:minmax(0,1fr)}
+}

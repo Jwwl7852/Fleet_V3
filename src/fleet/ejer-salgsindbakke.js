@@ -45,6 +45,8 @@ export const gemKommunikationssvarkladde = (data) => kald("kommunikationssvarkla
 export const opretKommunikationskladde = (data) => kald("kommunikationsnykladdeopret", data);
 export const godkendKommunikationssvar = (data) => kald("kommunikationssvargodkend", data);
 export const afsendKommunikationssvar = (data) => kald("kommunikationssvarafsend", data);
+export const gemKommunikationsAiChat = (data) => kald("kommunikationsaichatgem", data);
+export const gemKommunikationsSagsoplysning = (data) => kald("kommunikationssagsoplysninggem", data);
 
 export const SALGSSTATUS = Object.freeze({
   ny: "Ny", afventer_os: "Afventer vores svar", afventer_kunden: "Afventer kunden", afsluttet: "Afsluttet",
