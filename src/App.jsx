@@ -116,7 +116,7 @@ const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.j
 const EjerBilagsindbakke = lazy(() => import("./moduler/udbyder/EjerBilagsindbakke.jsx"));
 const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.jsx"));
 const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiDesign.jsx"));
-const EjerMailV2 = lazy(() => import("./moduler/udbyder/EjerMailV2.jsx"));
+const EjerMailV7 = lazy(() => import("./moduler/udbyder/EjerMailV7.jsx"));
 const EjerSupportV2 = lazy(() => import("./moduler/udbyder/EjerSupportV2.jsx"));
 const EjerOpfoelgninger = lazy(() => import("./moduler/udbyder/EjerOpfoelgninger.jsx"));
 const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesignV2.jsx"));
@@ -481,11 +481,11 @@ export default function App() {
               <Route path="/main/salg/aktiviteter" element={<EjerOpfoelgninger bruger={bruger} />} />
               <Route path="/main/salg/aktiviteter/alle" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
               <Route path="/main/salg/tilbud" element={<EjerTilbud />} />
-              <Route path="/main/salg/indbakke" element={<EjerMailV2 bruger={bruger} visning="indbakker" />} />
-              <Route path="/main/mail/indbakker" element={<EjerMailV2 bruger={bruger} visning="indbakker" />} />
+              <Route path="/main/salg/indbakke" element={<EjerMailV7 bruger={bruger} visning="indbakker" />} />
+              <Route path="/main/mail/indbakker" element={<EjerMailV7 bruger={bruger} visning="indbakker" />} />
               <Route path="/main/mail/opfoelgning" element={<EjerOpfoelgninger bruger={bruger} />} />
-              <Route path="/main/mail/sager" element={<EjerMailV2 bruger={bruger} visning="sager" />} />
-              <Route path="/main/mail/sendt" element={<EjerMailV2 bruger={bruger} visning="sendt" />} />
+              <Route path="/main/mail/sager" element={<EjerMailV7 bruger={bruger} visning="sager" />} />
+              <Route path="/main/mail/sendt" element={<EjerMailV7 bruger={bruger} visning="sendt" />} />
               <Route path="/main/support" element={<EjerSupportV2 bruger={bruger} />} />
               <Route path="/main/salg/vidensbase" element={<EjerVidensbase />} />
               <Route path="/main/priser" element={<Prisliste />} />

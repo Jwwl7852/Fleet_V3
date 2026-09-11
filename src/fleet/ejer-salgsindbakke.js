@@ -42,6 +42,7 @@ export const gemAnalyseSvarudkast = (data) => kald("salgsanalysesvarudkastgem", 
 export const spoergSalgsassistent = (data) => kald("salgsassistentspoerg", data);
 export const gemVidenspost = (data) => kald("videnspostgem", data);
 export const gemKommunikationssvarkladde = (data) => kald("kommunikationssvarkladdegem", data);
+export const opretKommunikationskladde = (data) => kald("kommunikationsnykladdeopret", data);
 export const godkendKommunikationssvar = (data) => kald("kommunikationssvargodkend", data);
 export const afsendKommunikationssvar = (data) => kald("kommunikationssvarafsend", data);
 

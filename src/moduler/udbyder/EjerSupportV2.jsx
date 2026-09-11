@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { hentSalgsplatform, opdaterSupportsag, opretSalgsnote } from "../../fleet/ejer-salgsindbakke.js";
 import EjerIkon from "./EjerIkon.jsx";
 
@@ -9,12 +9,13 @@ const PRIORITET = { lav: "Lav", normal: "Normal", hoej: "Høj", kritisk: "Kritis
 const egetNavn = (bruger) => bruger?.displayName || (bruger?.navn && !bruger.navn.includes("@") ? bruger.navn : "Dennis");
 
 export default function EjerSupportV2({ bruger }) {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null); const [valgtId, setValgtId] = useState(""); const [besked, setBesked] = useState(""); const [arbejder, setArbejder] = useState(false);
   const [note, setNote] = useState("");
   const hent = async () => setData(await hentSalgsplatform()); useEffect(() => { hent(); }, []);
   const sager = useMemo(() => liste(data?.traade).filter((t) => t.sagstype === "support").sort((a,b)=>Number(b.senesteAktivitetMs)-Number(a.senesteAktivitetMs)), [data]);
-  const valgt = sager.find((s)=>s.id===valgtId) || sager[0];
+  const valgt = sager.find((s)=>s.id===(valgtId || params.get("sag"))) || sager[0];
+  useEffect(() => { if (valgt?.id && params.get("sag") !== valgt.id) setParams({ sag: valgt.id }, { replace: true }); }, [valgt?.id]);
   const gem = async (status) => { if (!valgt) return; setArbejder(true); const r = await opdaterSupportsag({ traadId: valgt.id, status, type: valgt.support?.type || "andet", prioritet: valgt.support?.prioritet || "normal", modul: valgt.support?.modul || "", fristMs: valgt.support?.fristMs || null, ansvarligUid: valgt.ansvarligUid || bruger.uid, forventetRevision: valgt.revision }); setArbejder(false); setBesked(r.ok ? "Supportsagen er opdateret." : r.besked); await hent(); };
   const gemNote = async () => { if (!valgt || !note.trim()) return; setArbejder(true); const r = await opretSalgsnote({ traadId: valgt.id, tekst: note }); setArbejder(false); setBesked(r.ok ? "Den interne note er gemt og sendes ikke til kunden." : r.besked); if (r.ok) setNote(""); await hent(); };
   if (!data) return <div className="fc-empty">Henter supportsager…</div>;

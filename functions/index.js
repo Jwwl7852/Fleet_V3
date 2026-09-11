@@ -10896,6 +10896,7 @@ export const kommunikationsklassifikationopdater = onCall({ region: REGION }, as
   const ejerUid = await kraevUdbyder(req);
   const d = req.data || {}; const traadId = kraevCrmId(d.traadId, "Sags-id");
   const sagstype = tekst(d.sagstype, 40); const delingsstatus = tekst(d.delingsstatus, 40);
+  const internMappe = sagstype === "intern" ? tekst(d.internMappe, 80) : "";
   if (!SAGSTYPER.has(sagstype) || !DELINGSSTATUS.has(delingsstatus)) throw new HttpsError("invalid-argument", "Vælg en gyldig sagstype og deling.");
   const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
   const foer = (await ref.once("value")).val(); const forventet = kraevForventetRevision(d.forventetRevision);
@@ -10904,7 +10905,7 @@ export const kommunikationsklassifikationopdater = onCall({ region: REGION }, as
   const resultat = await ref.transaction((lokal) => {
     const aktuel = start(lokal);
     if (!aktuel || Number(aktuel.revision || 0) !== forventet) { konflikt = true; return; }
-    return { ...aktuel, sagstype, delingsstatus, kraeverKlassifikationsgennemgang: false, revision: forventet + 1, opdateretMs: nu, opdateretAf: ejerUid };
+    return { ...aktuel, sagstype, delingsstatus, internMappe, kraeverKlassifikationsgennemgang: false, revision: forventet + 1, opdateretMs: nu, opdateretAf: ejerUid };
   });
   if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Sagen blev ændret samtidigt.");
   await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.klassifikation", objekt: "kommunikationssag", objektId: traadId });
@@ -10966,6 +10967,35 @@ export const ejerleverandoergem = onCall({ region: REGION }, async (req) => {
   if (Number(foer?.revision || 0) !== forventet) throw new HttpsError("aborted", "Leverandøren blev ændret samtidigt.");
   await ref.set({ id, navn, kategori, kontakt, status, aftaleTil: tekst(d.aftaleTil, 20), noter: tekst(d.noter, 2_000), revision: forventet + 1, oprettetMs: foer?.oprettetMs || Date.now(), opdateretMs: Date.now(), opdateretAf: ejerUid });
   return { ok: true, id, revision: forventet + 1 };
+});
+
+export const kommunikationsnykladdeopret = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const operationId = kraevCrmId(d.operationId, "Handlings-id");
+  const sagstype = tekst(d.sagstype, 40); const delingsstatus = tekst(d.delingsstatus, 40);
+  const fra = normaliserEmail(d.fra); const til = normaliserEmail(d.til);
+  const emne = tekst(d.emne, 500); const mailtekst = tekst(d.tekst, 30_000);
+  const tokenEmail = normaliserEmail(req.auth?.token?.email);
+  if (!SAGSTYPER.has(sagstype) || sagstype === "uafklaret" || !DELINGSSTATUS.has(delingsstatus)) throw new HttpsError("invalid-argument", "Vælg en gyldig sagstype og deling.");
+  if (!fra || !til || !emne || !mailtekst) throw new HttpsError("invalid-argument", "Mailkladden kræver afsender, modtager, emne og tekst.");
+  if (fra !== "info@veyrosystems.com" && fra !== tokenEmail) throw new HttpsError("permission-denied", "Afsenderen er ikke en tilgængelig postkasse for denne ejer.");
+  const traadId = `ny_${sha256(`${ejerUid}|${operationId}`).slice(0, 24)}`; const kladdeId = "start"; const nu = Date.now();
+  const indhold = { fra, til, emne, tekst: mailtekst, signatur: tekst(d.signatur, 4_000), vedhaeftninger: Array.isArray(d.vedhaeftninger) ? d.vedhaeftninger.slice(0, 20) : [] };
+  const postkasseId = fra === "info@veyrosystems.com" ? "info" : `personlig_${sha256(ejerUid).slice(0, 12)}`;
+  const post = {
+    id: traadId, emne, sagstype, delingsstatus, status: "afventer_os", ansvarligUid: ejerUid,
+    kontaktEmail: til, kontaktNavn: til.split("@")[0], senesteFra: fra, senesteRetning: "udgaaende",
+    senesteAktivitetMs: nu, oprettetMs: nu, opdateretMs: nu, oprettetAf: ejerUid, opdateretAf: ejerUid, revision: 1,
+    kilde: { art: "lokal_kladde", adapter: "ejer" },
+    postkasseKilder: { [postkasseId]: { mailboxId: postkasseId, adresse: fra, mappe: "drafts", type: fra === "info@veyrosystems.com" ? "delt" : "personlig", ...(fra === "info@veyrosystems.com" ? {} : { ejerUid }) } },
+    svarKladder: { [kladdeId]: { ...indhold, id: kladdeId, status: "kladde", indholdHash: mailIndholdHash(indhold), basisAktivitetMs: nu, revision: 1, oprettetMs: nu, opdateretMs: nu, oprettetAf: ejerUid, opdateretAf: ejerUid } },
+  };
+  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
+  const resultat = await ref.transaction((aktuel) => aktuel || post);
+  if (!resultat.committed) throw new HttpsError("aborted", "Mailkladden kunne ikke oprettes.");
+  const oprettet = Number(resultat.snapshot.val()?.oprettetMs) === nu;
+  if (oprettet) await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.kladde.opret", objekt: "kommunikationssag", objektId: traadId });
+  return { ok: true, traadId, kladdeId, oprettet };
 });
 
 export const kommunikationssvarkladdegem = onCall({ region: REGION }, async (req) => {
