@@ -7,36 +7,48 @@ import EjerIkon from "./EjerIkon.jsx";
 const NAV = [
   { label: null, punkter: [{ to: "/main", label: "Overblik", slut: true, ikon: "home" }] },
   {
-    label: "Salg",
+    label: "Mail", ikon: "mail",
     punkter: [
-      { to: "/main/salg/indbakke", label: "Salgsindbakke", ikon: "inbox" },
+      { to: "/main/mail/indbakker", label: "Indbakker", ikon: "inbox" },
+      { to: "/main/mail/opfoelgning", label: "Opfølgning", ikon: "clock" },
+      { to: "/main/mail/sager", label: "Sager og mapper", ikon: "document" },
+      { to: "/main/mail/sendt", label: "Sendt", ikon: "send" },
+    ],
+  },
+  { label: null, punkter: [{ to: "/main/support", label: "Support", ikon: "info" }] },
+  {
+    label: "Salg", ikon: "pipeline",
+    punkter: [
       { to: "/main/salg/pipeline", label: "Pipeline", ikon: "pipeline" },
-      { to: "/main/salg/kunder", label: "Kunder", ikon: "users" },
       { to: "/main/salg/aktiviteter", label: "Aktiviteter", ikon: "calendar" },
       { to: "/main/salg/tilbud", label: "Tilbud", ikon: "document" },
       { to: "/main/priser", label: "Rateblad", ikon: "tag" },
     ],
   },
-  { label: "Administration", punkter: [{ to: "/main/abonnementer", label: "Abonnementer", ikon: "layers" }] },
+  { label: "Kunder", ikon: "users", punkter: [{ to: "/main/salg/kunder", label: "Kundekort", ikon: "users" }, { to: "/main/abonnementer", label: "Abonnementer", ikon: "layers" }] },
   {
-    label: "Økonomi",
+    label: "Økonomi", ikon: "chart",
     punkter: [
       { to: "/main/oekonomi", label: "Økonomioverblik", slut: true, ikon: "chart" },
       { to: "/main/oekonomi/fakturaer", label: "Fakturaer", ikon: "invoice" },
       { to: "/main/oekonomi/kreditnotaer", label: "Kreditnotaer", ikon: "undo" },
       { to: "/main/oekonomi/bilag", label: "Bilagsindbakke", ikon: "inbox" },
+      { to: "/main/rapporter", label: "Rapporter", ikon: "chart" },
     ],
   },
-  { label: null, separat: true, punkter: [
-    { to: "/main/salg/vidensbase", label: "Vidensbase", ikon: "book" },
-    { to: "/main/integrationer", label: "Integrationer", ikon: "link" },
-  ] },
+  { label: "Vidensbase", ikon: "book", punkter: [{ to: "/main/salg/vidensbase", label: "Godkendt viden", ikon: "book" }] },
+  { label: "Indstillinger", ikon: "link", punkter: [{ to: "/main/integrationer", label: "Integrationer", ikon: "link" }, { to: "/main/indstillinger/leverandoerer", label: "Leverandører", ikon: "building" }] },
 ];
 
 const TITLER = {
   "/main": ["Overblik", "Din arbejdsdag, kunderne og økonomien samlet"],
   "/main/salg/pipeline": ["Salgspipeline", "Muligheder, næste handling og forventet værdi"],
   "/main/salg/indbakke": ["Salgsindbakke", "info@veyrosystems.com · Microsoft 365 · Eksempelvisning"],
+  "/main/mail/indbakker": ["Din arbejdsindbakke", "Mail, fælles kundekorrespondance og ansvar samlet"],
+  "/main/mail/opfoelgning": ["Opfølgning", "Det, der kræver din eller Jørns handling"],
+  "/main/mail/sager": ["Sager og mapper", "Intern korrespondance holdt adskilt fra kundesager"],
+  "/main/mail/sendt": ["Sendt", "Dokumenterede afsendelser fra tilsluttede postkasser"],
+  "/main/support": ["Support", "Fælles supportkø, ansvar og frister"],
   "/main/salg/kunder": ["Kunder", "CRM-virksomheder, kontakter og samlet historik"],
   "/main/kunder": ["Kundekonto", "Profil, adgang, abonnement og administratorer samlet"],
   "/main/salg/aktiviteter": ["Opfølgninger til godkendelse", "Gennemgå og godkend AI-udkast til opfølgningsmails, før de sendes."],
@@ -49,7 +61,9 @@ const TITLER = {
   "/main/oekonomi/kreditnotaer": ["Kreditnotaer", "Hel og delvis kreditering"],
   "/main/oekonomi/bilag": ["Bilagsindbakke", "Veyros egne udgiftsbilag"],
   "/main/oekonomi/omkostninger": ["Omkostninger", "Bogførte udgifter og bilagsmatch"],
+  "/main/rapporter": ["Statistik og rapporter", "Salg, pilotforløb, mail og support på et dokumenteret grundlag"],
   "/main/integrationer": ["Integrationer", "Forbindelser, synkronisering og fejl"],
+  "/main/indstillinger/leverandoerer": ["Leverandører", "Veyros egne leverandører og aftaler"],
 };
 
 export default function EjerRamme({ bruger, logUd, children }) {
@@ -58,6 +72,9 @@ export default function EjerRamme({ bruger, logUd, children }) {
   const [soegning, setSoegning] = useState("");
   const [ejerfilter, setEjerfilter] = useState("Alle");
   const [mobilmenuAaben, setMobilmenuAaben] = useState(false);
+  const [aabneGrupper, setAabneGrupper] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("veyro.ejer.nav.aabne") || "{}") || {}; } catch { return {}; }
+  });
   const mobilmenuknap = useRef(null);
   const [titel, undertekst] = TITLER[location.pathname]
     || (location.pathname.startsWith("/main/kunder/") ? TITLER["/main/kunder"] : TITLER["/main"]);
@@ -71,6 +88,7 @@ export default function EjerRamme({ bruger, logUd, children }) {
   };
 
   useEffect(() => setMobilmenuAaben(false), [location.pathname]);
+  useEffect(() => { localStorage.setItem("veyro.ejer.nav.aabne", JSON.stringify(aabneGrupper)); }, [aabneGrupper]);
   useEffect(() => {
     document.body.classList.add("ejer-body");
     return () => document.body.classList.remove("ejer-body");
@@ -106,10 +124,14 @@ export default function EjerRamme({ bruger, logUd, children }) {
           >{mobilmenuAaben ? "×" : "☰"}</button>
           <div className="ejer-menuindhold" id="ejer-mobilmenu">
             <nav className="ejer-nav" aria-label="Ejerkonsollens hovednavigation">
-              {NAV.map((gruppe) => (
+              {NAV.map((gruppe) => {
+                const aktivGruppe = gruppe.punkter.some((punkt) => punkt.slut ? location.pathname === punkt.to : location.pathname.startsWith(punkt.to));
+                const noegle = gruppe.label || gruppe.punkter[0].to;
+                const aaben = !gruppe.label || aabneGrupper[noegle] !== false || aktivGruppe;
+                return (
                 <section key={gruppe.label || gruppe.punkter[0].to} className={gruppe.separat ? "ejer-nav-separat" : ""}>
-                  {gruppe.label && <h2>{gruppe.label}</h2>}
-                  {gruppe.punkter.map((punkt) => (
+                  {gruppe.label && <button type="button" className="ejer-navgruppe" aria-expanded={aaben} onClick={() => setAabneGrupper((gamle) => ({ ...gamle, [noegle]: !aaben }))}><EjerIkon navn={gruppe.ikon} size={20}/><span>{gruppe.label}</span><b>{aaben ? "⌃" : "⌄"}</b></button>}
+                  {aaben && gruppe.punkter.map((punkt) => (
                     <NavLink
                       key={punkt.to}
                       to={punkt.to}
@@ -121,7 +143,8 @@ export default function EjerRamme({ bruger, logUd, children }) {
                     </NavLink>
                   ))}
                 </section>
-              ))}
+                );
+              })}
             </nav>
             <div className="ejer-identitet">
               <span className="ejer-avatar">DC</span>

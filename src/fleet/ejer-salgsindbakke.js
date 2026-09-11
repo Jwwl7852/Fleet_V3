@@ -24,6 +24,10 @@ export async function hentSalgsplatform() {
 }
 
 export const opdaterSalgstraad = (data) => kald("salgstraadopdater", data);
+export const opdaterKommunikationsklassifikation = (data) => kald("kommunikationsklassifikationopdater", data);
+export const opdaterSupportsag = (data) => kald("supportsagopdater", data);
+export const gemEjerfravaer = (data) => kald("ejerfravaergem", data);
+export const hentEjerarbejdsflow = () => kald("ejerarbejdsflowhent");
 export const opretSalgsnote = (data) => kald("salgsnoteopret", data);
 export const hentSalgsvedhaeftning = (data) => kald("salgsvedhaeftninghent", data);
 export const synkroniserMicrosoft365 = () => kald("m365salgsynkroniser");
@@ -37,6 +41,9 @@ export const koerSalgsanalyse = (data) => kald("salgsanalysekoer", data);
 export const gemAnalyseSvarudkast = (data) => kald("salgsanalysesvarudkastgem", data);
 export const spoergSalgsassistent = (data) => kald("salgsassistentspoerg", data);
 export const gemVidenspost = (data) => kald("videnspostgem", data);
+export const gemKommunikationssvarkladde = (data) => kald("kommunikationssvarkladdegem", data);
+export const godkendKommunikationssvar = (data) => kald("kommunikationssvargodkend", data);
+export const afsendKommunikationssvar = (data) => kald("kommunikationssvarafsend", data);
 
 export const SALGSSTATUS = Object.freeze({
   ny: "Ny", afventer_os: "Afventer vores svar", afventer_kunden: "Afventer kunden", afsluttet: "Afsluttet",
@@ -47,4 +54,8 @@ export const MAILSTATUS = Object.freeze({
   accepteret_af_graph: "Accepteret af Microsoft Graph – afventer dokumentation",
   dokumenteret_sendt: "Dokumenteret sendt", fejlet: "Fejlet", ukendt: "Ukendt udfald – må ikke genudsendes blindt",
   godkendt: "Godkendt", pauset: "Pauset", udskudt: "Udskudt", annulleret: "Annulleret",
+});
+
+export const SAGSTYPE_LABEL = Object.freeze({
+  salg: "Salg", support: "Support", kundedialog: "Kundedialog", leverandoer: "Leverandør", intern: "Intern sag", uafklaret: "Kræver gennemgang",
 });

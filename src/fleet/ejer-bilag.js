@@ -15,11 +15,17 @@ export async function hentEjerBilag() {
   return { poster: poster.val() || {}, jobs: jobs.val() || {}, integrationer: integrationer.val() || {}, dinero: dinero.val() || {} };
 }
 
-export async function uploadEjerBilag(file) {
+export async function uploadEjerBilag(file, kildeArt = "filupload") {
   const operationId = crypto.randomUUID();
-  const init = await kald("ejerbilaguploadinitier", { operationId, filnavn: file.name, contentType: file.type, stoerrelse: file.size });
+  const init = await kald("ejerbilaguploadinitier", { operationId, filnavn: file.name, contentType: file.type, stoerrelse: file.size, kildeArt });
   if (!init.ok) return init;
-  if (!init.data.uploadUrl) return { ok: false, art: "ikke_tilsluttet", besked: "Lokal bilagsupload kræver en isoleret Storage-fixture; produktionslinket blev ikke oprettet.", data: init.data };
+  if (!init.data.uploadUrl && init.data.testOnlyStoragePath) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = ""; for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+    const gemt = await kald("ejerbilagtestbytesgem", { id: init.data.id, base64: btoa(binary) });
+    return gemt.ok ? kald("ejerbilaguploadbekraeft", { id: init.data.id }) : gemt;
+  }
+  if (!init.data.uploadUrl) return { ok: false, art: "ikke_tilsluttet", besked: "Bilagslageret oprettede ikke et uploadlink.", data: init.data };
   let upload;
   try { upload = await fetch(init.data.uploadUrl, { method: "PUT", headers: { "content-type": init.data.contentType }, body: file }); }
   catch (fejl) { return { ok: false, art: "forbindelse", besked: `Filen blev ikke overført: ${fejl.message}`, data: null }; }

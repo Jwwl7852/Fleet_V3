@@ -97,6 +97,10 @@ import {
   BILAG_MAX_BYTES, BILAG_MIME, BILAG_STATUS, bilagDedupeSignaler,
   filsignaturMatcher, normaliserBilagsmetadata,
 } from "./delt/ejer-bilag-regler.js";
+import {
+  DELINGSSTATUS, SAGSTYPER, SUPPORT_PRIORITET, SUPPORT_STATUS, SUPPORT_TYPER,
+  fletPostkasseKilder, klassificerKommunikation, normaliserSupport, postkasseKilde,
+} from "./delt/ejer-kommunikation-regler.js";
 import { bilagMailForbindelsesstatus, koerIsoleretOcrTest } from "./bilag-adaptere.js";
 import { valideVisning, skjulerAlt } from "./delt/dashboardvisning.js";
 /* ⚠ SKIVE 2B — SAMME SNIT SOM dashboardvisning.js OVENFOR. Se navvisning.js
@@ -3761,6 +3765,7 @@ export const ejerbilaguploadinitier = onCall({ region: REGION }, async (req) => 
   const filnavn = kortStreng(req.data?.filnavn, 240);
   const contentType = kortStreng(req.data?.contentType, 100)?.toLowerCase();
   const stoerrelse = Number(req.data?.stoerrelse);
+  const kildeArt = ["filupload", "mobilkamera"].includes(req.data?.kildeArt) ? req.data.kildeArt : "filupload";
   if (!operationId) throw new HttpsError("invalid-argument", "Operations-id mangler.");
   const fejl = BILAG_MIME.includes(contentType) ? [] : ["Kun PDF, JPEG og PNG kan modtages."];
   if (!filnavn || !Number.isSafeInteger(stoerrelse) || stoerrelse <= 0 || stoerrelse > BILAG_MAX_BYTES) fejl.push("Filnavn eller størrelse er ugyldig; maksimum er 20 MB.");
@@ -3778,7 +3783,7 @@ export const ejerbilaguploadinitier = onCall({ region: REGION }, async (req) => 
     }
     return {
       id, requestSha256, status: "upload_afventer", revision: 0,
-      kilde: { art: "filupload", id: operationId, gruppeId: operationId },
+      kilde: { art: kildeArt, id: operationId, gruppeId: operationId },
       fil: { filnavn, angivetContentType: contentType, angivetStoerrelse: stoerrelse, storagePath },
       modtagetMs: nu, oprettetMs: nu, oprettetAf: ejerUid, opdateretMs: nu,
     };
@@ -3841,6 +3846,21 @@ export const ejerbilaguploadbekraeft = onCall({ region: REGION, memory: "512MiB"
   });
   await skrivEjerAudit({ uid: ejerUid, handling: "bilag.upload.bekraeft", objekt: "bilag", objektId: id });
   return { ok: true, id, status, dubletAf: andetId };
+});
+
+export const ejerbilagtestbytesgem = onCall({ region: REGION, memory: "512MiB" }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const emulatorer = /^demo-veyro-(ejer|owner)$/.test(process.env.GCLOUD_PROJECT || "")
+    && process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIREBASE_DATABASE_EMULATOR_HOST
+    && process.env.FIREBASE_STORAGE_EMULATOR_HOST && process.env.FUNCTIONS_EMULATOR;
+  if (!emulatorer) throw new HttpsError("permission-denied", "Lokal filadapter findes kun i det isolerede ejer-emulatormiljø.");
+  const id = kraevBilagId(req.data?.id); const post = (await getDatabase().ref(bilagSti(id)).once("value")).val();
+  if (!post || post.status !== "upload_afventer" || post.oprettetAf !== ejerUid) throw new HttpsError("failed-precondition", "Uploadreservationen findes ikke eller tilhører ikke den aktuelle ejer.");
+  let bytes;
+  try { bytes = Buffer.from(String(req.data?.base64 || ""), "base64"); } catch { throw new HttpsError("invalid-argument", "Fixturefilen kunne ikke aflæses."); }
+  if (!bytes.length || bytes.length !== Number(post.fil.angivetStoerrelse) || bytes.length > 5 * 1024 * 1024) throw new HttpsError("invalid-argument", "Lokal fixturefil er tom, ændret eller større end 5 MB.");
+  await getStorage().bucket().file(post.fil.storagePath).save(bytes, { resumable: false, metadata: { contentType: post.fil.angivetContentType, cacheControl: "private, no-store" } });
+  return { ok: true, id, testadapter: true };
 });
 
 export const ejerbilaghent = onCall({ region: REGION }, async (req) => {
@@ -10623,6 +10643,29 @@ export const kpiaggregering = onSchedule(
 
 const mailboxSafeId = (id) => sha256(String(id || "")).slice(0, 40);
 
+async function findKommunikationsmatch(db, besked) {
+  const kontaktEmail = normaliserEmail(besked.retning === "indgaaende" ? besked.fra : besked.til);
+  if (!kontaktEmail) return { kendtKunde: false };
+  const virksomheder = (await db.ref("udbyder/crm/virksomheder").once("value")).val() || {};
+  for (const [virksomhedId, virksomhed] of Object.entries(virksomheder)) {
+    const stam = virksomhed?.stamdata || {};
+    const kontaktEmails = [stam.kontaktEmail, stam.fakturaEmail, ...(Object.values(virksomhed?.kontakter || {}).map((k) => k?.email))]
+      .map(normaliserEmail).filter(Boolean);
+    if (kontaktEmails.includes(kontaktEmail)) {
+      return { kendtKunde: true, virksomhedId, virksomhedsnavn: tekst(stam.navn, 300), tenantId: tekst(stam.tenantId, 160) };
+    }
+  }
+  return { kendtKunde: false };
+}
+
+async function naesteSupportnummer(db, nu = new Date()) {
+  const aar = nu.getUTCFullYear();
+  const ref = db.ref(`udbyder/arbejdsflow/sekvenser/support/${aar}`);
+  const resultat = await ref.transaction((aktuel) => Math.max(0, Math.trunc(Number(aktuel) || 0)) + 1);
+  if (!resultat.committed) throw new Error("Supportnummer kunne ikke reserveres.");
+  return `SUP-${aar}-${String(resultat.snapshot.val()).padStart(4, "0")}`;
+}
+
 async function pauseOpfoelgningerForTilbud(tilbudId, aarsag) {
   const db = getDatabase();
   const snap = await db.ref("udbyder/salgsindbakke/traade").orderByChild("links/tilbudId").equalTo(tilbudId).once("value");
@@ -10643,6 +10686,12 @@ async function pauseOpfoelgningerForTilbud(tilbudId, aarsag) {
 
 async function gemSalgsbesked(db, raa, aktor = "system") {
   const besked = normaliserBesked(raa);
+  const match = await findKommunikationsmatch(db, besked);
+  const kilde = postkasseKilde(raa.postkasseKilde || {});
+  const klassifikation = klassificerKommunikation({
+    fra: besked.fra, til: besked.til, emne: besked.emne, tekst: besked.tekst,
+    mailboxType: kilde.type, kendtKunde: match.kendtKunde,
+  });
   const dedupeId = sha256(besked.dedupeNoegle);
   const beskedId = `besked_${dedupeId.slice(0, 32)}`;
   const nu = Date.now();
@@ -10655,7 +10704,17 @@ async function gemSalgsbesked(db, raa, aktor = "system") {
     return { status: "reserveret", beskedId, traadId: besked.traadId, reserveretMs: nu, noegleHash: dedupeId };
   });
   const dedupe = reservation.snapshot.val();
-  if (!ny && dedupe?.status === "gemt") return { ny: false, beskedId: dedupe.beskedId, traadId: dedupe.traadId };
+  if (!ny && dedupe?.status === "gemt") {
+    // Deduplikering må ikke miste sporbarheden, når den samme RFC-mail findes
+    // i flere personlige/delte postkasser. Vi føjer kun kilden til den fælles
+    // besked; selve kundehændelsen forbliver én post.
+    if (kilde.mailboxId || kilde.adresse) {
+      const kildeRef = db.ref(`udbyder/salgsindbakke/traade/${dedupe.traadId}/beskeder/${dedupe.beskedId}/postkasseKilder`);
+      const aktuelleKilder = (await kildeRef.once("value")).val() || {};
+      await kildeRef.set(fletPostkasseKilder(aktuelleKilder, kilde));
+    }
+    return { ny: false, beskedId: dedupe.beskedId, traadId: dedupe.traadId };
+  }
   if (!ny) return { ny: false, afventer: true, beskedId, traadId: besked.traadId };
 
   const traadRef = db.ref(`udbyder/salgsindbakke/traade/${besked.traadId}`);
@@ -10663,6 +10722,9 @@ async function gemSalgsbesked(db, raa, aktor = "system") {
   const status = besked.retning === "indgaaende"
     ? (eksisterende.oprettetMs ? "afventer_os" : "ny") : "afventer_kunden";
   const providerJobId = tekst(raa.providerJobId, 200);
+  const sagstype = SAGSTYPER.has(raa.sagstype) ? raa.sagstype : (eksisterende.sagstype || klassifikation.sagstype);
+  const delingsstatus = DELINGSSTATUS.has(raa.delingsstatus) ? raa.delingsstatus : (eksisterende.delingsstatus || klassifikation.delingsstatus);
+  const postkasseKilder = fletPostkasseKilder(eksisterende.postkasseKilder, kilde);
   const opdateringer = {
     [`udbyder/salgsindbakke/traade/${besked.traadId}/id`]: besked.traadId,
     [`udbyder/salgsindbakke/traade/${besked.traadId}/emne`]: besked.emne,
@@ -10675,9 +10737,22 @@ async function gemSalgsbesked(db, raa, aktor = "system") {
     [`udbyder/salgsindbakke/traade/${besked.traadId}/kilde`]: eksisterende.kilde || besked.kilde,
     [`udbyder/salgsindbakke/traade/${besked.traadId}/kontaktEmail`]: eksisterende.kontaktEmail || (besked.retning === "indgaaende" ? besked.fra : ""),
     [`udbyder/salgsindbakke/traade/${besked.traadId}/revision`]: Number(eksisterende.revision || 0) + 1,
-    [`udbyder/salgsindbakke/traade/${besked.traadId}/beskeder/${beskedId}`]: { ...besked, id: beskedId, gemtMs: nu, gemtAf: aktor },
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/sagstype`]: sagstype,
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/delingsstatus`]: delingsstatus,
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/kraeverKlassifikationsgennemgang`]: klassifikation.kraeverGennemgang,
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/klassifikationsgrundlag`]: klassifikation.klassifikationsgrundlag,
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/postkasseKilder`]: postkasseKilder,
+    [`udbyder/salgsindbakke/traade/${besked.traadId}/beskeder/${beskedId}`]: { ...besked, id: beskedId, gemtMs: nu, gemtAf: aktor, postkasseKilder: fletPostkasseKilder({}, kilde) },
     [`udbyder/salgsindbakke/dedupe/${dedupeId}`]: { status: "gemt", beskedId, traadId: besked.traadId, gemtMs: nu, noegleHash: dedupeId },
   };
+  if (match.virksomhedId && !eksisterende.links?.virksomhedId) opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/links/virksomhedId`] = match.virksomhedId;
+  if (match.virksomhedsnavn) opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/virksomhedsnavn`] = match.virksomhedsnavn;
+  if (match.tenantId) opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/links/tenantId`] = match.tenantId;
+  if (sagstype === "support" && !eksisterende.support?.nummer) {
+    opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/support`] = normaliserSupport({
+      nummer: await naesteSupportnummer(db), type: "andet", status: "ny", prioritet: "normal",
+    }, nu);
+  }
   if (besked.kontakt?.navn) opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/kontaktNavn`] = besked.kontakt.navn;
   if (besked.kontakt?.telefon) opdateringer[`udbyder/salgsindbakke/traade/${besked.traadId}/kontaktTelefon`] = besked.kontakt.telefon;
   if (besked.retning === "indgaaende") {
@@ -10703,6 +10778,12 @@ async function gemSalgsbesked(db, raa, aktor = "system") {
       opdateringer[`${rod}/dokumenteretSendtMs`] = besked.sendtMs;
       opdateringer[`${rod}/providerMessageId`] = besked.providerId;
     }
+    if (job?.art === "sagssvar" && job.traadId && job.svarKladdeId) {
+      const rod = `udbyder/salgsindbakke/traade/${job.traadId}/svarKladder/${job.svarKladdeId}`;
+      opdateringer[`${rod}/status`] = "dokumenteret_sendt";
+      opdateringer[`${rod}/dokumenteretSendtMs`] = besked.sendtMs;
+      opdateringer[`${rod}/providerMessageId`] = besked.providerId;
+    }
   }
   const opfoelgninger = eksisterende.opfoelgninger || {};
   if (besked.retning === "indgaaende") {
@@ -10720,7 +10801,7 @@ async function gemSalgsbesked(db, raa, aktor = "system") {
 
 export const salgsbeskedfixtureindlaes = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req);
-  const emulatorer = process.env.GCLOUD_PROJECT === "demo-veyro-ejer"
+  const emulatorer = /^demo-veyro-(ejer|owner)$/.test(process.env.GCLOUD_PROJECT || "")
     && process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIREBASE_DATABASE_EMULATOR_HOST
     && process.env.FIREBASE_STORAGE_EMULATOR_HOST && process.env.FUNCTIONS_EMULATOR;
   if (!emulatorer) throw new HttpsError("permission-denied", "Fixtureindlæsning findes kun i det fulde, isolerede ejer-emulatormiljø.");
@@ -10800,7 +10881,103 @@ export const salgsnoteopret = onCall({ region: REGION }, async (req) => {
   return { ok: true, id };
 });
 
-function graphBeskedTilIntern(post, folder) {
+export const kommunikationsklassifikationopdater = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {}; const traadId = kraevCrmId(d.traadId, "Sags-id");
+  const sagstype = tekst(d.sagstype, 40); const delingsstatus = tekst(d.delingsstatus, 40);
+  if (!SAGSTYPER.has(sagstype) || !DELINGSSTATUS.has(delingsstatus)) throw new HttpsError("invalid-argument", "Vælg en gyldig sagstype og deling.");
+  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
+  const foer = (await ref.once("value")).val(); const forventet = kraevForventetRevision(d.forventetRevision);
+  if (!foer) throw new HttpsError("not-found", "Sagen findes ikke.");
+  let konflikt = false; const start = verificeretTransaktionsstart(foer); const nu = Date.now();
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = start(lokal);
+    if (!aktuel || Number(aktuel.revision || 0) !== forventet) { konflikt = true; return; }
+    return { ...aktuel, sagstype, delingsstatus, kraeverKlassifikationsgennemgang: false, revision: forventet + 1, opdateretMs: nu, opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Sagen blev ændret samtidigt.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "kommunikation.klassifikation", objekt: "kommunikationssag", objektId: traadId });
+  return { ok: true, revision: forventet + 1 };
+});
+
+export const supportsagopdater = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const d = req.data || {}; const traadId = kraevCrmId(d.traadId, "Support-id");
+  if (!SUPPORT_STATUS.has(d.status) || !SUPPORT_TYPER.has(d.type) || !SUPPORT_PRIORITET.has(d.prioritet)) throw new HttpsError("invalid-argument", "Supportstatus, type eller prioritet er ugyldig.");
+  const ansvarligUid = tekst(d.ansvarligUid, 160); if (ansvarligUid) await kraevRenEjerUid(ansvarligUid);
+  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
+  const foer = (await ref.once("value")).val(); const forventet = kraevForventetRevision(d.forventetRevision);
+  if (!foer) throw new HttpsError("not-found", "Sagen findes ikke.");
+  const nummer = foer.support?.nummer || await naesteSupportnummer(getDatabase());
+  const support = normaliserSupport({ ...d, nummer, ansvarligUid, opdateretMs: Date.now() });
+  let konflikt = false; const start = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = start(lokal);
+    if (!aktuel || Number(aktuel.revision || 0) !== forventet) { konflikt = true; return; }
+    return { ...aktuel, sagstype: "support", delingsstatus: "delt", ansvarligUid, support, revision: forventet + 1, opdateretMs: Date.now(), opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Supportsagen blev ændret samtidigt.");
+  await skrivEjerAudit({ uid: ejerUid, handling: "support.sag.opdater", objekt: "supportsag", objektId: nummer });
+  return { ok: true, nummer, revision: forventet + 1 };
+});
+
+export const ejerfravaergem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const fraMs = Math.trunc(Number(d.fraMs) || 0); const tilMs = Math.trunc(Number(d.tilMs) || 0);
+  const afloeserUid = tekst(d.afloeserUid, 160); if (afloeserUid) await kraevRenEjerUid(afloeserUid);
+  if (d.aktiv === true && (!fraMs || !tilMs || tilMs <= fraMs)) throw new HttpsError("invalid-argument", "Fravær kræver en gyldig start og slutning.");
+  await getDatabase().ref(`udbyder/arbejdsflow/fravaer/${ejerUid}`).set({ aktiv: d.aktiv === true, fraMs, tilMs, afloeserUid, opdateretMs: Date.now(), opdateretAf: ejerUid });
+  await skrivEjerAudit({ uid: ejerUid, handling: "arbejdsflow.fravaer.gem", objekt: "ejerfravaer", objektId: ejerUid });
+  return { ok: true };
+});
+
+export const ejerarbejdsflowhent = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const post = (await getDatabase().ref(`udbyder/arbejdsflow/fravaer/${ejerUid}`).once("value")).val() || {};
+  return { fravaer: { aktiv: post.aktiv === true, fraMs: Number(post.fraMs || 0), tilMs: Number(post.tilMs || 0), afloeserUid: tekst(post.afloeserUid, 160), opdateretMs: Number(post.opdateretMs || 0) } };
+});
+
+export const ejerleverandoererhent = onCall({ region: REGION }, async (req) => {
+  await kraevUdbyder(req);
+  const poster = (await getDatabase().ref("udbyder/leverandoerer").once("value")).val() || {};
+  return { poster: Object.fromEntries(Object.entries(poster).map(([id, post]) => [id, {
+    id, navn: tekst(post?.navn, 300), kategori: tekst(post?.kategori, 120), kontakt: tekst(post?.kontakt, 300),
+    status: tekst(post?.status, 40), aftaleTil: tekst(post?.aftaleTil, 20), noter: tekst(post?.noter, 2_000), revision: Number(post?.revision || 0),
+  }])) };
+});
+
+export const ejerleverandoergem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {}; const id = d.id ? kraevCrmId(d.id, "Leverandør-id") : getDatabase().ref("udbyder/leverandoerer").push().key;
+  const navn = tekst(d.navn, 300); const kategori = tekst(d.kategori, 120); const kontakt = normaliserEmail(d.kontakt); const status = tekst(d.status, 40);
+  if (!navn || !kategori || !kontakt || !["aktiv", "pause", "afsluttet"].includes(status)) throw new HttpsError("invalid-argument", "Leverandøren kræver navn, kategori, kontaktmail og gyldig status.");
+  const ref = getDatabase().ref(`udbyder/leverandoerer/${id}`); const foer = (await ref.once("value")).val(); const forventet = kraevForventetRevision(d.forventetRevision);
+  if (Number(foer?.revision || 0) !== forventet) throw new HttpsError("aborted", "Leverandøren blev ændret samtidigt.");
+  await ref.set({ id, navn, kategori, kontakt, status, aftaleTil: tekst(d.aftaleTil, 20), noter: tekst(d.noter, 2_000), revision: forventet + 1, oprettetMs: foer?.oprettetMs || Date.now(), opdateretMs: Date.now(), opdateretAf: ejerUid });
+  return { ok: true, id, revision: forventet + 1 };
+});
+
+export const kommunikationssvarkladdegem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = d.id ? kraevCrmId(d.id, "Kladde-id") : getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}/svarKladder`).push().key;
+  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}/svarKladder/${id}`); const foer = (await ref.once("value")).val();
+  const forventet = kraevForventetRevision(d.forventetRevision); if (Number(foer?.revision || 0) !== forventet) throw new HttpsError("aborted", "Svarudkastet blev ændret samtidigt.");
+  const post = { fra: normaliserEmail(d.fra), til: normaliserEmail(d.til), emne: tekst(d.emne, 500), tekst: tekst(d.tekst, 30_000), signatur: tekst(d.signatur, 4_000), vedhaeftninger: Array.isArray(d.vedhaeftninger) ? d.vedhaeftninger.slice(0, 20) : [] };
+  if (!post.fra || !post.til || !post.emne || !post.tekst) throw new HttpsError("invalid-argument", "Svarudkastet kræver afsender, modtager, emne og tekst.");
+  const indholdHash = mailIndholdHash(post); const nu = Date.now();
+  await ref.set({ ...post, id, status: "kladde", indholdHash, basisAktivitetMs: Number(d.basisAktivitetMs || 0), revision: forventet + 1, oprettetMs: foer?.oprettetMs || nu, oprettetAf: foer?.oprettetAf || ejerUid, opdateretMs: nu, opdateretAf: ejerUid });
+  return { ok: true, id, revision: forventet + 1, indholdHash };
+});
+
+export const kommunikationssvargodkend = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {}; const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = kraevCrmId(d.id, "Kladde-id");
+  const traadRef = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`); const traad = (await traadRef.once("value")).val(); const foer = traad?.svarKladder?.[id];
+  if (!foer || foer.status !== "kladde" || Number(foer.revision) !== kraevForventetRevision(d.forventetRevision)) throw new HttpsError("aborted", "Svarudkastet er ikke længere den kladde, du gennemgik.");
+  if (Number(foer.basisAktivitetMs) !== Number(traad.senesteAktivitetMs || 0)) throw new HttpsError("failed-precondition", "Der er kommet ny aktivitet; gennemgå et nyt svarudkast.");
+  await traadRef.child(`svarKladder/${id}`).update({ status: "godkendt", godkendtIndholdHash: foer.indholdHash, godkendtAf: ejerUid, godkendtMs: Date.now(), revision: Number(foer.revision) + 1 });
+  return { ok: true, revision: Number(foer.revision) + 1 };
+});
+
+function graphBeskedTilIntern(post, folder, postkasse) {
   const header = (post.internetMessageHeaders || []).find((h) => String(h?.name || "").toLowerCase() === "x-veyro-job-id");
   const webform = (post.internetMessageHeaders || []).find((h) => String(h?.name || "").toLowerCase() === "x-veyro-submission-id");
   const udgaaende = folder === "sentitems";
@@ -10812,6 +10989,7 @@ function graphBeskedTilIntern(post, folder) {
     emne: post.subject || "", tekst: post.body?.content || "",
     sendtMs: Date.parse(udgaaende ? post.sentDateTime : post.receivedDateTime) || Date.now(),
     kilde: udgaaende ? "microsoft365_sendt" : "microsoft365_indbakke",
+    postkasseKilde: { mailboxId: postkasse.mailboxId, adresse: postkasse.adresse, type: postkasse.type, ejerUid: postkasse.ejerUid, mappe: folder },
   };
 }
 
@@ -10822,32 +11000,35 @@ async function koerM365Synk({ aktorUid = "system" } = {}) {
   if (config.status !== "aktiv") return { ok: false, status: "ikke_tilsluttet", antal: 0 };
   const tenantId = tekst(config.entraTenantId, 200);
   const clientId = tekst(config.clientId, 200);
-  const mailboxId = tekst(config.mailboxId, 500);
-  if (!tenantId || !clientId || !mailboxId || !M365_CLIENT_SECRET.value()) {
-    throw new Error("Microsoft 365 mangler verificeret mailbox-id, Entra-konfiguration eller serversecret.");
+  const konfigurerede = Object.values(config.postkasser || {}).map(postkasseKilde).filter((p) => p.mailboxId);
+  const postkasser = konfigurerede.length ? konfigurerede : [postkasseKilde({ mailboxId: config.mailboxId, adresse: config.salgsadresse || "info@veyrosystems.com", type: config.postkassetype || "uafklaret" })].filter((p) => p.mailboxId);
+  if (!tenantId || !clientId || !postkasser.length || !M365_CLIENT_SECRET.value()) {
+    throw new Error("Microsoft 365 mangler verificeret postkasse-id, Entra-konfiguration eller serversecret.");
   }
   const token = await hentGraphToken({ tenantId, clientId, clientSecret: M365_CLIENT_SECRET.value() });
   let antal = 0;
-  for (const folder of ["inbox", "sentitems"]) {
-    const deltaPath = `udbyder/integrationshemmeligheder/microsoft365/delta/${folder}`;
-    const deltaLink = (await db.ref(deltaPath).once("value")).val()?.link || null;
-    const delta = await hentMailDelta({ token, mailboxId, folderId: folder, deltaLink });
-    for (const post of delta.beskeder) {
+  for (const postkasse of postkasser) {
+    for (const folder of ["inbox", "sentitems"]) {
+      const mailboxHash = mailboxSafeId(postkasse.mailboxId);
+      const deltaPath = `udbyder/integrationshemmeligheder/microsoft365/delta/${mailboxHash}/${folder}`;
+      const deltaLink = (await db.ref(deltaPath).once("value")).val()?.link || null;
+      const delta = await hentMailDelta({ token, mailboxId: postkasse.mailboxId, folderId: folder, deltaLink });
+      for (const post of delta.beskeder) {
       if (post["@removed"] || post.isDraft) continue;
-      const intern = graphBeskedTilIntern(post, folder);
+      const intern = graphBeskedTilIntern(post, folder, postkasse);
       if (intern.providerJobId) {
         const job = (await db.ref(`udbyder/mailjobs/${intern.providerJobId}`).once("value")).val();
         if (job?.traadId) intern.traadId = job.traadId;
       }
       if (!intern.fra || !intern.til || !intern.tekst) continue;
       if (post.hasAttachments) {
-        const metadata = await hentMailVedhaeftninger({ token, mailboxId, messageId: post.id });
+        const metadata = await hentMailVedhaeftninger({ token, mailboxId: postkasse.mailboxId, messageId: post.id });
         intern.vedhaeftninger = [];
         for (const vedh of metadata) {
           const gemt = { ...vedh, status: "metadata" };
           if (!vedh.inline && vedh.stoerrelse > 0 && vedh.stoerrelse <= 20 * 1024 * 1024) {
             try {
-              const bytes = await hentMailVedhaeftningBytes({ token, mailboxId, messageId: post.id, attachmentId: vedh.id });
+              const bytes = await hentMailVedhaeftningBytes({ token, mailboxId: postkasse.mailboxId, messageId: post.id, attachmentId: vedh.id });
               const hash = sha256(bytes); const storagePath = `ejer/salgsmail/${sha256(intern.samtaleId || intern.internetMessageId).slice(0, 32)}/${sha256(post.id).slice(0, 32)}/${hash}.bin`;
               const filnavn = (tekst(vedh.navn, 200) || "vedhaeftning").replace(/["\r\n]/g, "_");
               await getStorage().bucket().file(storagePath).save(bytes, { resumable: false, metadata: { contentType: vedh.mime || "application/octet-stream", contentDisposition: `attachment; filename="${filnavn}"`, cacheControl: "private, no-store", metadata: { originaltNavn: tekst(vedh.navn, 500), providerMessageHash: sha256(post.id) } } });
@@ -10859,11 +11040,12 @@ async function koerM365Synk({ aktorUid = "system" } = {}) {
       }
       const gemt = await gemSalgsbesked(db, intern, aktorUid);
       if (gemt.ny) antal += 1;
+      }
+      await db.ref(deltaPath).set({ link: delta.deltaLink, opdateretMs: Date.now(), mailboxHash, mappe: folder });
     }
-    await db.ref(deltaPath).set({ link: delta.deltaLink, opdateretMs: Date.now(), mailboxHash: mailboxSafeId(mailboxId) });
   }
-  await ref.update({ senesteSuccesMs: Date.now(), senesteFejl: null });
-  return { ok: true, status: "synkroniseret", antal };
+  await ref.update({ senesteSuccesMs: Date.now(), senesteFejl: null, synkroniseredePostkasser: postkasser.length });
+  return { ok: true, status: "synkroniseret", antal, postkasser: postkasser.length };
 }
 
 export const m365salgsynkroniser = onCall({ region: REGION, secrets: [M365_CLIENT_SECRET], timeoutSeconds: 300 }, async (req) => {
@@ -11040,6 +11222,17 @@ async function afsendMailjob({ jobId, forventetRevision, ejerUid }) {
       throw new HttpsError("failed-precondition", "Et nyt svar eller en sagsændring har ugyldiggjort godkendelsen.");
     }
   }
+  if (foer.art === "sagssvar") {
+    const traad = (await db.ref(`udbyder/salgsindbakke/traade/${foer.traadId}`).once("value")).val();
+    const kladde = traad?.svarKladder?.[foer.svarKladdeId];
+    const aktuelHash = mailIndholdHash(kladde || {});
+    if (!kladde || kladde.status !== "godkendt" || kladde.godkendtIndholdHash !== aktuelHash
+        || foer.indholdHash !== aktuelHash || Number(kladde.basisAktivitetMs) !== Number(traad?.senesteAktivitetMs || 0)
+        || traad?.status === "afsluttet") {
+      await ref.update({ status: "pauset", fejl: "Godkendelsen er ikke længere aktuel.", opdateretMs: Date.now() });
+      throw new HttpsError("failed-precondition", "Et nyt svar eller en ændring har ugyldiggjort godkendelsen.");
+    }
+  }
   const integration = (await db.ref("udbyder/integrationer/microsoft365").once("value")).val() || {};
   if (integration.status !== "aktiv") {
     await ref.update({ status: "ikke_tilsluttet", fejl: "Microsoft 365 er ikke tilsluttet.", senesteForsoegMs: Date.now(), revision: Number(foer.revision) + 1 });
@@ -11080,6 +11273,11 @@ async function afsendMailjob({ jobId, forventetRevision, ejerUid }) {
       opdateringer[`${rod}/status`] = "accepteret_af_graph";
       opdateringer[`${rod}/graphAccepteretMs`] = graphAccepteretMs;
     }
+    if (job.art === "sagssvar" && job.traadId && job.svarKladdeId) {
+      const rod = `udbyder/salgsindbakke/traade/${job.traadId}/svarKladder/${job.svarKladdeId}`;
+      opdateringer[`${rod}/status`] = "accepteret_af_graph";
+      opdateringer[`${rod}/graphAccepteretMs`] = graphAccepteretMs;
+    }
     await db.ref().update(opdateringer);
     await skrivEjerAudit({ uid: ejerUid, handling: "salg.mail.graph.accepteret", objekt: "mailjob", objektId: jobId });
     return { ok: true, status: "accepteret_af_graph", dokumenteretSendt: false };
@@ -11106,6 +11304,17 @@ export const salgsmailafsend = onCall({ region: REGION, secrets: [M365_CLIENT_SE
   const ejerUid = await kraevUdbyder(req);
   const jobId = kraevCrmId(req.data?.jobId, "Mailjob-id");
   return afsendMailjob({ jobId, forventetRevision: kraevForventetRevision(req.data?.forventetRevision), ejerUid });
+});
+
+export const kommunikationssvarafsend = onCall({ region: REGION, secrets: [M365_CLIENT_SECRET], timeoutSeconds: 120 }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = kraevCrmId(d.id, "Kladde-id");
+  const traad = (await getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`).once("value")).val(); const kladde = traad?.svarKladder?.[id];
+  if (!kladde || kladde.status !== "godkendt" || kladde.godkendtIndholdHash !== mailIndholdHash(kladde)) throw new HttpsError("failed-precondition", "Svarudkastet er ikke konkret godkendt.");
+  if (Number(kladde.revision) !== kraevForventetRevision(d.forventetRevision) || Number(kladde.basisAktivitetMs) !== Number(traad.senesteAktivitetMs || 0)) throw new HttpsError("aborted", "Sagen eller kladden har ændret sig siden godkendelsen.");
+  const jobId = `sagssvar_${traadId}_${id}_r${kladde.revision}`; const jobRef = getDatabase().ref(`udbyder/mailjobs/${jobId}`);
+  const opret = await jobRef.transaction((aktuel) => aktuel || { ...kladde, id: jobId, art: "sagssvar", status: "kladde", traadId, svarKladdeId: id, revision: 1, oprettetMs: Date.now(), oprettetAf: ejerUid });
+  const job = opret.snapshot.val(); return afsendMailjob({ jobId, forventetRevision: Number(job.revision), ejerUid });
 });
 
 export const salgsopfoelgningafsend = onCall({ region: REGION, secrets: [M365_CLIENT_SECRET], timeoutSeconds: 120 }, async (req) => {

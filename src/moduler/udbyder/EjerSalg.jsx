@@ -12,6 +12,7 @@ import {
   harValideringsfejl, validerCrmAktivitet, validerCrmMulighed, validerCrmVirksomhed,
 } from "../../fleet/ejer-crm.js";
 import { useEjerData } from "./EjerDataContext.jsx";
+import { beregnHitrate } from "../../fleet/ejer-kommunikation-regler.js";
 
 const valg = (objekt) => Object.entries(objekt).map(([vaerdi, label]) => ({ vaerdi, label }));
 
@@ -283,6 +284,7 @@ export default function EjerSalg({ visning, bruger }) {
   const [dialog, setDialog] = useState(null);
   const [valgtVirksomhed, setValgtVirksomhed] = useState(null);
   const [ejerfilter, setEjerfilter] = useState(bruger.uid);
+  const [pipelineSide, setPipelineSide] = useState(1);
   const [searchParams] = useSearchParams();
   const profiler = useMemo(() => hentedeProfiler?.length
     ? hentedeProfiler
@@ -317,10 +319,11 @@ export default function EjerSalg({ visning, bruger }) {
   if (visning === "pipeline") {
     const udenNaeste = searchParams.get("filter") === "uden-naeste";
     const viste = muligheder.filter((m) => !udenNaeste || (erAabenMulighed(m) && !m.naesteAktivitetDato));
+    const hitrate = beregnHitrate(muligheder);
     return <>
       {formular}
       <div className="ejer-handlingslinje">
-        <p className="fc-hint">Månedsværdi og engangsbeløb summeres hver for sig.</p>
+        <p className="fc-hint">Månedsværdi og engangsbeløb summeres hver for sig. Hitrate: {hitrate.procent == null ? "ikke beregnelig" : `${hitrate.procent}% (${hitrate.vundet} af ${hitrate.afsluttede} afsluttede)`}.</p>
         <Knap variant="primaer" disabled={!virksomheder.length}
           onClick={() => setDialog({ art: "mulighed" })}>Ny salgsmulighed</Knap>
       </div>
@@ -328,19 +331,22 @@ export default function EjerSalg({ visning, bruger }) {
         <div className="ejer-pipeline" aria-label="Salgspipeline">
           {Object.entries(CRM_FASE).map(([fase, label]) => {
             const poster = viste.filter((m) => m.fase === fase);
+            const sidestoerrelse = 25; const antalSider = Math.max(1, Math.ceil(poster.length / sidestoerrelse));
+            const vistePoster = fase === "vundet" ? poster.slice((Math.min(pipelineSide, antalSider) - 1) * sidestoerrelse, Math.min(pipelineSide, antalSider) * sidestoerrelse) : poster;
             const maaned = poster.reduce((s, m) => s + (m.maanedligVaerdiOere || 0), 0);
             const engangs = poster.reduce((s, m) => s + (m.engangsVaerdiOere || 0), 0);
             return <section className="ejer-pipeline-kolonne" key={fase}>
               <header><strong>{label}</strong><span>{poster.length}</span></header>
               <p>{kr(maaned)}/md. · {kr(engangs)} engang</p>
               <div>
-                {poster.map((m) => <button type="button" className="ejer-mulighed" key={m.id}
+                {vistePoster.map((m) => <button type="button" className="ejer-mulighed" key={m.id}
                   onClick={() => setDialog({ art: "mulighed", aktuel: m })}>
                   <strong>{m.titel}</strong><span>{m.virksomhedsnavn}</span>
                   <span>{kr(m.maanedligVaerdiOere)}/md.</span>
                   <small>{m.naesteAktivitetDato ? `${m.naesteAktivitetDato} · ${m.naesteAktivitet || "Opfølgning"}` : "Mangler næste handling"}</small>
                 </button>)}
                 {!poster.length && <div className="ejer-pipeline-tom">Ingen muligheder</div>}
+                {fase === "vundet" && antalSider > 1 && <div className="ejer-pipeline-sider"><button type="button" disabled={pipelineSide <= 1} onClick={() => setPipelineSide((s) => Math.max(1, s - 1))}>Forrige</button><span>Side {Math.min(pipelineSide, antalSider)} af {antalSider}</span><button type="button" disabled={pipelineSide >= antalSider} onClick={() => setPipelineSide((s) => Math.min(antalSider, s + 1))}>Næste</button></div>}
               </div>
             </section>;
           })}
@@ -428,4 +434,3 @@ export default function EjerSalg({ visning, bruger }) {
     </div>
   </>;
 }
-

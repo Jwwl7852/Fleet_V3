@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 
 const BASE = process.env.OWNER_REVIEW_URL || "http://127.0.0.1:5211";
 const PORT = Number(process.env.OWNER_REVIEW_DEBUG_PORT || 9331);
-const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v2");
+const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v3");
 const browserKandidater = [
   process.env.OWNER_REVIEW_BROWSER,
   join(process.env.ProgramFiles || "C:/Program Files", "Microsoft/Edge/Application/msedge.exe"),
@@ -96,6 +96,7 @@ async function billede(navn, sti, bredde, højde) {
   await viewport(bredde, højde);
   await gaaTil(sti);
   await ventPaa("Boolean(document.querySelector('.ejer-app'))", `Ejerskallen mangler på ${sti}.`);
+  await ventPaa("!Array.from(document.querySelectorAll('.fc-empty')).some((el) => /^Henter/.test(el.textContent || ''))", `Dataindholdet blev ikke klar på ${sti}.`, 30000);
   const svar = await kald("Page.captureScreenshot", {
     format: "png", fromSurface: true, captureBeyondViewport: false,
   });
@@ -109,6 +110,7 @@ try {
   await kald("Runtime.enable");
   await viewport(1440, 900);
   await gaaTil("/login");
+  await ventPaa("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)", "Den lokale loginformular blev ikke sikkert forudfyldt.", 15000);
   const klar = await evaluer("Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)");
   if (!klar) throw new Error("Den lokale loginformular er ikke sikkert forudfyldt; reviewcapture afbrydes.");
   await evaluer("document.querySelector('form')?.requestSubmit(); true");
@@ -116,17 +118,22 @@ try {
 
   const filer = [];
   filer.push(await billede("01-overblik", "/main", 1440, 900));
-  filer.push(await billede("02-salgsindbakke", "/main/salg/indbakke", 1440, 900));
-  filer.push(await billede("03-kundekonto-brugere-enheder", "/main/kunder/flow-tenant?fane=forbrug", 1440, 900));
-  filer.push(await billede("04-kundekonto-obd", "/main/kunder/flow-tenant?fane=obd", 1440, 900));
-  filer.push(await billede("05-kundekonto-priser", "/main/kunder/flow-tenant?fane=abonnement", 1920, 1080));
-  filer.push(await billede("06-integrationer", "/main/integrationer", 1920, 1080));
-  filer.push(await billede("07-mobil-kundekonto", "/main/kunder/flow-tenant?fane=forbrug", 899, 900));
+  filer.push(await billede("02-mail-faelles-kundekorrespondance", "/main/mail/indbakker?sag=review-nordlys", 1440, 900));
+  filer.push(await billede("03-support", "/main/support", 1440, 900));
+  filer.push(await billede("04-opfoelgning-godkendelse", "/main/mail/opfoelgning", 1440, 900));
+  filer.push(await billede("05-rapporter-og-hitrate", "/main/rapporter", 1920, 1080));
+  filer.push(await billede("06-kundekonto-brugere-enheder", "/main/kunder/flow-tenant?fane=forbrug", 1440, 900));
+  filer.push(await billede("07-kundekonto-obd", "/main/kunder/flow-tenant?fane=obd", 1440, 900));
+  filer.push(await billede("08-tilbud-rateblad-ai", "/main/salg/tilbud", 1920, 1080));
+  filer.push(await billede("09-bilag-mobilkamera", "/main/oekonomi/bilag", 1440, 900));
+  filer.push(await billede("10-leverandoerer", "/main/indstillinger/leverandoerer", 1440, 900));
+  filer.push(await billede("11-integrationer", "/main/integrationer", 1920, 1080));
+  filer.push(await billede("12-mobil-kundekonto", "/main/kunder/flow-tenant?fane=forbrug", 899, 900));
   await evaluer("document.querySelector('.ejer-mobilmenuknap')?.click(); true");
   await ventPaa("document.querySelector('.ejer-side')?.classList.contains('ejer-side-aaben')", "Mobilnavigationen åbnede ikke.");
   await pause(250);
   const mobilMenuSvar = await kald("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
-  const mobilMenuFil = join(OUT, "899x900-08-mobil-navigation-aaben.png");
+  const mobilMenuFil = join(OUT, "899x900-13-mobil-navigation-aaben.png");
   writeFileSync(mobilMenuFil, Buffer.from(mobilMenuSvar.data, "base64"));
   filer.push(mobilMenuFil);
   await kald("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
@@ -139,10 +146,10 @@ try {
   })()`);
 
   await viewport(1920, 1080);
-  await gaaTil("/main/kunder/flow-tenant?fane=obd");
+  await gaaTil("/main/mail/indbakker?sag=review-nordlys");
   const styles = await evaluer(`(() => {
     const mål = (selector) => { const el = document.querySelector(selector); if (!el) return null; const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return { fontFamily:s.fontFamily, fontSize:s.fontSize, lineHeight:s.lineHeight, height:r.height, width:r.width, borderRadius:s.borderRadius, color:s.color, backgroundColor:s.backgroundColor }; };
-    return { url:location.href, viewport:{ width:innerWidth, height:innerHeight, devicePixelRatio }, fonts:{ status:document.fonts.status, interLoaded:document.fonts.check('14px "Inter Variable"') }, body:mål('body'), sidebar:mål('.ejer-side'), content:mål('.ejer-indhold'), card:mål('.ejer-konto-kort'), input:mål('.ejer-konto-felt input'), button:mål('.ejer-konto-faner button'), tableHeader:mål('.fc-table th'), mobile:${JSON.stringify(mobilStyles)} };
+    return { url:location.href, viewport:{ width:innerWidth, height:innerHeight, devicePixelRatio }, fonts:{ status:document.fonts.status, interLoaded:document.fonts.check('14px "Inter Variable"') }, body:mål('body'), sidebar:mål('.ejer-side'), content:mål('.ejer-indhold'), card:mål('.ejer-mail-liste'), input:mål('.ejer-mail-soeg input'), button:mål('.ejer-segmenter button'), tableHeader:mål('.fc-table th'), horizontalOverflow:document.documentElement.scrollWidth > innerWidth, mobile:${JSON.stringify(mobilStyles)} };
   })()`);
   writeFileSync(join(OUT, "browser-style-verification.json"), `${JSON.stringify(styles, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, filer: filer.map((fil) => fil.slice(resolve(".").length + 1)), styles }, null, 2));

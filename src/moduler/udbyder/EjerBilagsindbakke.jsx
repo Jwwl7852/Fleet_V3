@@ -29,8 +29,8 @@ export default function EjerBilagsindbakke() {
     setMetadata({ ...tomMetadata, ...kilde, beloebEksklMomsOere: fraOere(kilde.beloebEksklMomsOere), momsOere: fraOere(kilde.momsOere), totalOere: fraOere(kilde.totalOere) });
   }, [valgt?.id, valgt?.metadata?.version, valgt?.ocr?.oprettetMs]);
   const kald = async (fn, besked) => { setArbejder(true); const r = await fn(); setArbejder(false); setSvar({ ok: r.ok, besked: r.ok ? besked : r.besked }); await hent(); return r; };
-  const filer = async (liste) => {
-    for (const file of Array.from(liste || [])) await kald(() => uploadEjerBilag(file), `${file.name} er modtaget og verificeret.`);
+  const filer = async (liste, kildeArt = "filupload") => {
+    for (const file of Array.from(liste || [])) await kald(() => uploadEjerBilag(file, kildeArt), `${file.name} er modtaget og verificeret.`);
   };
   const gem = () => kald(() => gemBilagsmetadata({ id: valgt.id, forventetRevision: valgt.revision || 0, metadata: {
     ...metadata, beloebEksklMomsOere: tilOere(metadata.beloebEksklMomsOere), momsOere: tilOere(metadata.momsOere), totalOere: tilOere(metadata.totalOere),
@@ -43,6 +43,7 @@ export default function EjerBilagsindbakke() {
     <Kort titel="Modtag bilag">
       <div className="fc-form-grid">
         <label className="fc-field"><span>Vælg filer</span><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(e) => filer(e.target.files)} disabled={arbejder} /></label>
+        <label className="fc-field"><span>Tag billede med mobilkamera</span><input type="file" accept="image/jpeg,image/png" capture="environment" onChange={(e) => filer(e.target.files, "mobilkamera")} disabled={arbejder} /><small>Originalbilledet bevares. Kontrol og godkendelse sker som for andre bilag.</small></label>
         <div className="fc-empty" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); filer(e.dataTransfer.files); }}><b>Træk PDF, JPEG eller PNG hertil</b><p>Maks. 20 MB pr. fil. Indholdssignaturen kontrolleres efter upload.</p></div>
       </div>
       <div className="ejer-statuslinjer">

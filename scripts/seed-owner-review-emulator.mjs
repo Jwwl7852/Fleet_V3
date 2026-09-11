@@ -134,6 +134,13 @@ try {
     "udbyder/salgsindbakke/traade/review-nordlys": {
       id: "review-nordlys",
       emne: "TESTADAPTER: forespørgsel om samlet driftsplatform",
+      sagstype: "salg",
+      delingsstatus: "delt",
+      kraeverKlassifikationsgennemgang: false,
+      postkasseKilder: {
+        "info_veyrosystems_com_info_inbox": { mailboxId: "fixture-info", adresse: "info@veyrosystems.com", mappe: "inbox", type: "delt", ejerUid: "" },
+        "dennis_veyrosystems_com_fixture-dennis_inbox": { mailboxId: "fixture-dennis", adresse: "dennis@veyrosystems.com", mappe: "inbox", type: "personlig", ejerUid: ejer.uid },
+      },
       status: "afventer_kunden",
       ansvarligUid: ejer.uid,
       kontaktNavn: "Maria Eksempel",
@@ -228,6 +235,23 @@ try {
         },
       },
     },
+    "udbyder/salgsindbakke/traade/review-support": {
+      id: "review-support", emne: "TESTADAPTER: FLEET-login virker ikke", sagstype: "support", delingsstatus: "delt",
+      status: "afventer_os", ansvarligUid: "", kontaktNavn: "Maria Eksempel", kontaktEmail: REVIEW_MAIL,
+      virksomhedsnavn: "Nordlys Drift ApS — syntetisk reviewkunde", senesteFra: REVIEW_MAIL, senesteRetning: "indgaaende",
+      senesteAktivitetMs: nu - 900_000, oprettetMs: nu - 1_800_000, revision: 1,
+      links: { virksomhedId, mulighedId, tenantId: TENANT_ID },
+      support: { nummer: "SUP-2026-0001", type: "adgang", status: "triage", prioritet: "hoej", modul: "FLEET", ansvarligUid: "", fristMs: iMorgen, opdateretMs: nu },
+      postkasseKilder: { "dennis_veyrosystems_com_fixture-dennis_inbox": { mailboxId: "fixture-dennis", adresse: "dennis@veyrosystems.com", mappe: "inbox", type: "personlig", ejerUid: ejer.uid } },
+      beskeder: { "support-mail-1": { id: "support-mail-1", provider: "fixture", internetMessageId: "<support-1@review.invalid>", retning: "indgaaende", fra: REVIEW_MAIL, til: "dennis@veyrosystems.com", emne: "FLEET-login virker ikke", tekst: maerke("Vi kan ikke logge ind i FLEET efter en adgangsændring. Kan I hjælpe?"), sendtMs: nu - 900_000 } },
+      analyser: { "support-ai-1": { id: "support-ai-1", provider: "fixture", model: "ingen — statisk testadapter", opsummering: maerke("Kendt kunde melder et adgangsproblem i FLEET."), behov: ["Genetablér adgang uden at udvide rettigheder"], manglendeOplysninger: ["Berørt bruger", "Fejltekst"], svarudkast: maerke("Hej Maria\n\nTak for beskeden. Hvilken bruger og præcis fejltekst ser I? Vi undersøger sagen uden at ændre jeres adgangsniveau.\n\nVenlig hilsen\nVeyro Systems"), revision: 1, oprettetMs: nu } },
+    },
+    "udbyder/salgsindbakke/traade/review-intern": {
+      id: "review-intern", emne: "TESTADAPTER: Domicil · leje af kontor", sagstype: "intern", delingsstatus: "afklaring",
+      status: "afventer_kunden", ansvarligUid: ejer.uid, kontaktNavn: "Anders Eksempel", kontaktEmail: "anders@intern.fixture.invalid",
+      senesteFra: "anders@intern.fixture.invalid", senesteRetning: "indgaaende", senesteAktivitetMs: nu - 7_200_000, oprettetMs: nu - 86_400_000, revision: 1,
+      beskeder: { "intern-mail-1": { id: "intern-mail-1", provider: "fixture", retning: "indgaaende", fra: "anders@intern.fixture.invalid", til: "dennis@veyrosystems.com", emne: "Udkast til lejevilkår", tekst: maerke("Vedhæftet er et udkast. Kan I vende tilbage fredag?"), sendtMs: nu - 7_200_000 } },
+    },
     "udbyder/integrationer/microsoft365": {
       status: "ikke_tilsluttet",
       mailboxType: null,
@@ -241,7 +265,43 @@ try {
       testfixture: true,
       note: "AI-visningen bruger et statisk, mærket reviewfixture; intet er sendt til OpenAI.",
     },
+    "udbyder/leverandoerer/review-hosting": { id: "review-hosting", navn: "Eksempel Hosting A/S", kategori: "Hosting", kontakt: "aftale@hosting.fixture.invalid", status: "aktiv", aftaleTil: "2027-12-31", noter: maerke("Syntetisk leverandør til lokal gennemgang."), revision: 1 },
+    "udbyder/leverandoerer/review-hardware": { id: "review-hardware", navn: "Eksempel Hardware ApS", kategori: "OBD-hardware", kontakt: "salg@hardware.fixture.invalid", status: "aktiv", aftaleTil: "2027-06-30", noter: maerke("Syntetisk leverandør. Ingen bestilling er sendt."), revision: 1 },
   });
+
+  // Stor, deterministisk pipelinefixture: dokumenterer at vundne muligheder
+  // ikke klippes efter 100 poster, og at hitrate/paginering kan gennemgås.
+  const pipelineFixture = {
+    [`udbyder/crm/virksomheder/${virksomhedId}/muligheder/review-pilot-001`]: {
+      id: "review-pilot-001", virksomhedId, titel: "Pilotforløb · FLEET og OBD · TESTFIXTURE",
+      kontaktNavn: "Maria Eksempel", kontaktEmail: REVIEW_MAIL, ansvarligUid: ejer.uid,
+      kilde: "indgaaende", behov: maerke("Tre måneders pilot på 25 enheder; OBD-antal og startdato kræver afklaring."),
+      moduler: ["flaade"], fase: "demo", pilotFra: "2026-10-01", pilotTil: "2026-12-31",
+      forventetLukDato: "2027-01-10", naesteAktivitet: "Afklar OBD-antal og pilotstart",
+      naesteAktivitetDato: "2026-09-15", maanedligVaerdiOere: 125000, engangsVaerdiOere: 375000,
+      revision: 1, oprettetMs: nu - 2 * 86_400_000, opdateretMs: nu,
+    },
+  };
+  for (let indeks = 1; indeks <= 103; indeks += 1) {
+    const id = `review-vundet-${String(indeks).padStart(3, "0")}`;
+    pipelineFixture[`udbyder/crm/virksomheder/${virksomhedId}/muligheder/${id}`] = {
+      id, virksomhedId, titel: `Historisk vundet aftale ${String(indeks).padStart(3, "0")} · TESTFIXTURE`,
+      kontaktNavn: "Maria Eksempel", kontaktEmail: REVIEW_MAIL, ansvarligUid: ejer.uid,
+      kilde: "indgaaende", behov: maerke("Historisk pipelinepost til paginering og hitrate."),
+      moduler: ["flaade"], forventetLukDato: "2026-08-31", fase: "vundet",
+      naesteAktivitet: "", naesteAktivitetDato: "", maanedligVaerdiOere: 100000 + indeks * 100,
+      engangsVaerdiOere: 250000, revision: 1, oprettetMs: nu - indeks * 86_400_000, opdateretMs: nu - indeks * 86_400_000,
+    };
+  }
+  for (let indeks = 1; indeks <= 26; indeks += 1) {
+    const id = `review-tabt-${String(indeks).padStart(3, "0")}`;
+    pipelineFixture[`udbyder/crm/virksomheder/${virksomhedId}/muligheder/${id}`] = {
+      id, virksomhedId, titel: `Historisk tabt aftale ${String(indeks).padStart(3, "0")} · TESTFIXTURE`, kontaktNavn: "Maria Eksempel", kontaktEmail: REVIEW_MAIL,
+      ansvarligUid: ejer.uid, kilde: "indgaaende", behov: maerke("Historisk tabt post til hitrate."), moduler: ["flaade"], forventetLukDato: "2026-08-31",
+      fase: "tabt", tabtAarsag: "Syntetisk testårsag", maanedligVaerdiOere: 90000, engangsVaerdiOere: 0, revision: 1, oprettetMs: nu - indeks * 86_400_000, opdateretMs: nu - indeks * 86_400_000,
+    };
+  }
+  await db.ref().update(pipelineFixture);
 
   const grundlagRef = db.ref(`udbyder/fakturagrundlag/${PERIODE}/${TENANT_ID}`);
   if (!(await grundlagRef.once("value")).exists()) {

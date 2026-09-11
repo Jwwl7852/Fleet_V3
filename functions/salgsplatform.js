@@ -24,10 +24,12 @@ export const sha256 = (vaerdi) => createHash("sha256").update(typeof vaerdi === 
 export function dedupeNoegle(besked) {
   const korrelation = tekst(besked.eksternKorrelationId, 200);
   if (korrelation) return `korrelation:${sha256(korrelation)}`;
-  const providerId = tekst(besked.providerId, 500);
-  if (providerId) return `${tekst(besked.provider, 40) || "provider"}:${sha256(providerId)}`;
   const internetMessageId = tekst(besked.internetMessageId, 500).toLowerCase();
   if (internetMessageId) return `message:${sha256(internetMessageId)}`;
+  // Provider-id'et er kun stabilt i den enkelte postkasse. Den samme mail kan
+  // derfor have flere provider-id'er hos Dennis, Jørn og info-postkassen.
+  const providerId = tekst(besked.providerId, 500);
+  if (providerId) return `${tekst(besked.provider, 40) || "provider"}:${sha256(providerId)}`;
   return `indhold:${sha256({
     fra: normaliserEmail(besked.fra), til: normaliserEmail(besked.til),
     emne: tekst(besked.emne, 500), sendtMs: Number(besked.sendtMs) || 0,
@@ -71,7 +73,7 @@ export function normaliserBesked(input) {
 }
 
 export function mailIndholdHash(post) {
-  return sha256({ til: post.til, emne: post.emne, tekst: post.tekst, signatur: post.signatur || "", vedhaeftninger: post.vedhaeftninger || [] });
+  return sha256({ fra: post.fra || "", til: post.til, emne: post.emne, tekst: post.tekst, signatur: post.signatur || "", vedhaeftninger: post.vedhaeftninger || [] });
 }
 
 export function godkendelseErAktuel(opfoelgning, traad) {
