@@ -1,8 +1,9 @@
 /* Faktiske reviewbilleder fra den isolerede ejer-emulator.
  *
  * Scriptet starter en separat headless Edge-profil, bruger den normale
- * loginformular (som kun forudfyldes i owner-emulator mode), og gemmer
- * viewport-screenshots. Ingen loginværdier læses, udskrives eller gemmes.
+ * loginformular og gemmer viewport-screenshots. Den lokale, syntetiske
+ * testkonto kan komme fra procesmiljøet, men værdierne udskrives eller
+ * gemmes aldrig i reviewmaterialet.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,6 +16,8 @@ const OUT = resolve(
   process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v6",
 );
 const CODE_COMMIT = process.env.OWNER_REVIEW_CODE_COMMIT || "ikke-angivet";
+const REVIEW_EMAIL = process.env.VITE_DEV_EJER_MAIL || "";
+const REVIEW_KODE = process.env.VITE_DEV_BRUGER_KODE || "";
 const browserKandidater = [
   process.env.OWNER_REVIEW_BROWSER,
   join(
@@ -254,17 +257,21 @@ try {
   await viewport(1440, 900);
   await gaaTil("/login");
   if (!(await evaluer("location.pathname.startsWith('/main')"))) {
-    await ventPaa(
-      "Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)",
-      `Den lokale loginformular blev ikke sikkert forudfyldt (${await evaluer("location.href")}).`,
-      15000,
-    );
-    const klar = await evaluer(
+    let klar = await evaluer(
       "Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)",
     );
+    if (!klar && REVIEW_EMAIL && REVIEW_KODE) {
+      await evaluer(`(() => {
+        const skriv=(selector,vaerdi)=>{const el=document.querySelector(selector);if(!el)return false;const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,vaerdi);el.dispatchEvent(new Event('input',{bubbles:true}));return true;};
+        return skriv('input[type=email]',${JSON.stringify(REVIEW_EMAIL)}) && skriv('input[type=password]',${JSON.stringify(REVIEW_KODE)});
+      })()`);
+      klar = await evaluer(
+        "Boolean(document.querySelector('input[type=email]')?.value && document.querySelector('input[type=password]')?.value)",
+      );
+    }
     if (!klar)
       throw new Error(
-        "Den lokale loginformular er ikke sikkert forudfyldt; reviewcapture afbrydes.",
+        "Den lokale loginformular mangler en syntetisk testkonto; reviewcapture afbrydes.",
       );
     await evaluer("document.querySelector('form')?.requestSubmit(); true");
     await ventPaa(
