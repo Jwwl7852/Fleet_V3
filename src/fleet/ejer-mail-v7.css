@@ -56,12 +56,18 @@
 .ejer-mail-reviewdialog dd{margin:0}
 .ejer-mail-reviewtekst{padding:12px;border:1px solid var(--veyro-border);border-radius:8px;white-space:pre-wrap}
 .ejer-mail-reviewdialog>footer{justify-content:flex-end}
+.ejer-mail-v7-detalje .ejer-handlingssvar{color:var(--veyro-link)}
 
 @media(max-width:900px){
   .ejer-mail-v7-oversigt,.ejer-mail-v7-detalje{width:100%;min-width:0}
   .ejer-mail-v7-oversigt .ejer-mail-arbejdsflade{display:grid;grid-template-columns:minmax(0,1fr);width:100%;height:auto}
   .ejer-mail-v7-oversigt .ejer-mail-mapper,.ejer-mail-v7-oversigt .ejer-mail-liste,.ejer-mail-v7-oversigt .ejer-mail-ai{box-sizing:border-box;width:100%;min-width:0}
+  .ejer-mail-v7-oversigt .ejer-mail-mapper{display:flex!important;align-items:center;gap:6px;padding:8px;overflow-x:auto}
+  .ejer-mail-v7-oversigt .ejer-mail-mapper h2{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0)}
+  .ejer-mail-v7-oversigt .ejer-mail-mapper button{display:flex;flex:0 0 auto;width:auto;min-height:38px;padding:6px 10px;border:1px solid var(--veyro-border)}
+  .ejer-mail-v7-oversigt .ejer-mail-undermapper{display:flex;flex:0 0 auto;margin:0;border:0}
   .ejer-mail-toolbar,.ejer-mail-filterlinje{align-items:stretch;flex-direction:column}
+  .ejer-mail-v7-oversigt .ejer-mail-filterlinje{display:flex!important}
   .ejer-mail-desktopvalg,.ejer-mail-filterlinje .ejer-segmenter{display:grid;grid-template-columns:minmax(0,1fr)}
   .ejer-mail-filterlinje .ejer-mail-soeg{box-sizing:border-box;width:100%;margin-left:0}
   .ejer-mail-liste-v7>header{display:none}

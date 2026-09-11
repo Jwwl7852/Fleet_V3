@@ -112,7 +112,8 @@ try {
   kontroller.svarflow = { aiForslag: true, forslagFoerIndsaettelse: true, indsatEksplicit: true, gemt: true, reviewFoerGodkendelse: true, godkendt: true, sendt: false };
   await klik("[role=tab]", "Oplysninger");
   await ventPaa("document.body.innerText.includes('2 af de 5 brugere') && document.body.innerText.includes('CVR')", "Oplysningsfanens fakta mangler");
-  kontroller.oplysninger = await evaluer(`(()=>({fiveUsers:document.body.innerText.includes('5 brugere i alt'),twoAdmins:document.body.innerText.includes('2 af de 5 brugere'),cvrMissing:document.body.innerText.includes('CVR')&&document.body.innerText.includes('Ikke oplyst'),sellerContext:document.body.innerText.includes('Maria foretrækker en kort afklaring')}))()`);
+  kontroller.oplysninger = await evaluer(`(()=>({fiveUsers:document.body.innerText.includes('5 brugere i alt'),twoAdmins:document.body.innerText.includes('2 af de 5 brugere'),cvrMissing:document.body.innerText.includes('CVR')&&document.body.innerText.includes('Ikke oplyst'),sellerContext:document.querySelector('.ejer-sagsbaggrund textarea')?.value.includes('Maria foretrækker en kort afklaring')}))()`);
+  if (Object.values(kontroller.oplysninger).some((vaerdi) => !vaerdi)) throw new Error(`Oplysningsfanen mangler dokumenterede fakta: ${JSON.stringify(kontroller.oplysninger)}`);
   filer.push(await billede("07-oplysninger-med-kilder", 1440, 900));
 
   await gaaTil("/main/mail/sager?postkasse=faelles&mappe=domicil&sag=v7-domicil&fra=sager");
