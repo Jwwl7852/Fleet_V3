@@ -62,6 +62,9 @@
 
 @media(max-width:900px){
   .ejer-mail-v7-oversigt,.ejer-mail-v7-detalje{width:100%;min-width:0}
+  .ejer-mail-v7-oversigt .ejer-mail-toolbar{flex-direction:column!important;align-items:stretch!important}
+  .ejer-mail-v7-oversigt .ejer-mail-toolbarhandlinger{width:100%}
+  .ejer-mail-v7-oversigt .ejer-testmaerke{box-sizing:border-box;width:100%!important;white-space:normal!important}
   .ejer-mail-v7-oversigt .ejer-mail-arbejdsflade{display:grid;grid-template-columns:minmax(0,1fr);width:100%;height:auto}
   .ejer-mail-v7-oversigt .ejer-mail-mapper,.ejer-mail-v7-oversigt .ejer-mail-liste,.ejer-mail-v7-oversigt .ejer-mail-ai{box-sizing:border-box;width:100%;min-width:0}
   .ejer-mail-v7-oversigt .ejer-mail-mapper{display:flex!important;align-items:center;gap:6px;padding:8px;overflow-x:auto}
