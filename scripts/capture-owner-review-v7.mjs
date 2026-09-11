@@ -98,6 +98,8 @@ try {
   await ventPaa("Boolean(document.querySelector('.ejer-ai-forslag'))", "Lokalt AI-svarforslag blev ikke dannet");
   await evaluer(`(()=>{const panel=document.querySelector('.ejer-mail-ai-panel');const forslag=document.querySelector('.ejer-ai-forslag');panel.scrollTop+=forslag.getBoundingClientRect().top-panel.getBoundingClientRect().top-8;return true})()`);
   await pause(200);
+  kontroller.aiForslagUdsnit = await evaluer(`(()=>{const panel=document.querySelector('.ejer-mail-ai-panel').getBoundingClientRect();const forslag=document.querySelector('.ejer-ai-forslag').getBoundingClientRect();return{panelTop:Math.round(panel.top),panelBottom:Math.round(panel.bottom),forslagTop:Math.round(forslag.top),forslagBottom:Math.round(forslag.bottom),overskriftSynlig:forslag.top>=panel.top&&forslag.top<panel.bottom}})()`);
+  if (!kontroller.aiForslagUdsnit.overskriftSynlig) throw new Error(`AI-forslagets overskrift er ikke med i screenshotudsnittet: ${JSON.stringify(kontroller.aiForslagUdsnit)}`);
   filer.push(await billede("05-ai-chat-forslag-foer-indsaettelse", 1440, 900));
   await klik("button", "Indsæt i svarudkast");
   await ventPaa("document.querySelector('textarea[aria-label=Svarudkast]')?.value.includes('Hej Maria')", "AI-forslaget blev ikke indsat i svaret");
@@ -147,7 +149,7 @@ try {
   await ventPaa("Boolean(document.querySelector('.ejer-mail-mobilpaneler'))", "Mobilpanelvælgeren mangler");
   await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
   const mobilFoer = await evaluer("document.querySelector('textarea[aria-label=Svarudkast]').value");
-  await evaluer(`(()=>{const e=document.querySelector('textarea[aria-label=Svarudkast]');const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;set.call(e,${JSON.stringify(`${"${mobilFoer}"} · ugemt mobiltest`)});e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`.replace('"${mobilFoer}"', JSON.stringify(mobilFoer)));
+  await evaluer(`(()=>{const e=document.querySelector('textarea[aria-label=Svarudkast]');const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;set.call(e,${JSON.stringify(`${mobilFoer} · ugemt mobiltest`)});e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
   await klik(".ejer-mail-mobilpaneler button", "Samtale"); await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
   kontroller.mobil = await evaluer(`(()=>({draftPreserved:document.querySelector('textarea[aria-label=Svarudkast]')?.value.endsWith('ugemt mobiltest'),horizontalOverflow:document.documentElement.scrollWidth>innerWidth,activePanel:[...document.querySelectorAll('.ejer-mail-mobilpaneler button')].find(b=>b.classList.contains('aktiv'))?.innerText}))()`);
   if (!kontroller.mobil.draftPreserved || kontroller.mobil.horizontalOverflow) throw new Error("Mobilpanel eller kladdebevarelse fejlede");
