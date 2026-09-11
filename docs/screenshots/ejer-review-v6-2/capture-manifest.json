@@ -1,0 +1,46 @@
+{
+  "codeCommit": "203bff346e0955444260214fba1e2e3708b0f937",
+  "capturedAt": "2026-09-11T19:03:32.091Z",
+  "baseUrl": "http://127.0.0.1:5211",
+  "dataSource": "Syntetisk emulatorfixture og lokal deterministisk adapter",
+  "externalIntegrations": "Ikke tilsluttet",
+  "customerFlow": "v62_pilot_20260911",
+  "captures": [
+    {
+      "file": "1920x1080-01-foerste-kildebaserede-pilotforslag.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "1920x1080",
+      "flow": "V6.2 Aurora-v2-kladde, første lokale forslag"
+    },
+    {
+      "file": "1920x1080-02-revideret-kort-pilotafgraensning.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "1920x1080",
+      "flow": "Samme kladde, sælgerinstruks og revideret forslag"
+    },
+    {
+      "file": "1440x900-03-indsat-gemt-samme-kunde.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "1440x900",
+      "flow": "Indsat, gemt og genindlæst tekst"
+    },
+    {
+      "file": "1920x1080-04-sammenhaengende-pilotopsaetning.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "1920x1080",
+      "flow": "Sammenhængende, strukturerede pilotkilder"
+    },
+    {
+      "file": "1440x900-05-dokumentpreview-samme-kunde.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "1440x900",
+      "flow": "Dokumentpreview med samme V6.2-kunde og kladde"
+    },
+    {
+      "file": "390x844-06-mobilkladde-bevaret.png",
+      "route": "/main/salg/tilbud",
+      "viewport": "390x844",
+      "flow": "Ugemt mobilkladde bevaret ved panelskift"
+    }
+  ]
+}

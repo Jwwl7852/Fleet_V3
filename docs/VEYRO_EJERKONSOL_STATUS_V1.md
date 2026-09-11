@@ -2,7 +2,45 @@
 
 Opdateret: 2026-09-11
 
+## V6.2-afslutning — lokal reviewstatus
+
+- Den afgrænsede V6.2-runde er implementeret på branch
+  `codex/ejer-integrated-development` fra udgangspunkt
+  `8b6e5ff0715234feec14582dfd12e9ad37aec112`. Kodecheckpoint er
+  `203bff346e0955444260214fba1e2e3708b0f937`; intet er pushet, merget eller
+  deployet.
+- V6.1-02 markeres historisk som **delvist dokumenteret**, fordi den tidligere
+  ordtælling ikke beviste det krævede indhold. V6.2 lukker punktet med en
+  kildebaseret lokal adapter, en meningsfuld kortere pilotrevision,
+  kontrastprøver og eksplicit indsættelse/gem/genindlæsning.
+- Et nyt autoriseret emulatorforløb bruger konsekvent Aurora Mobilitet ApS,
+  Sara Testperson og en `.invalid`-adresse fra CRM til accepteret version, ny
+  kladde, AI-kontekst og dokumentpreview. Navneblandingen i V6.1 var en
+  reviewfixture, der ændrede CRM-navnet efter det låste snapshot; den var ikke en
+  tenant- eller adgangsfejl.
+- Accepteret snapshot og PDF er fortsat låst og har identiske SHA-256-værdier
+  før/efter AI- og kladdeforløbet. Strukturerede prislinjer, rabatter, mængder,
+  perioder og ratebladskilde er uændrede.
+- Den V6.1-indførte generelle afvisning af pilotstart før tilbudsdatoen er
+  fjernet i klient- og serverkopien. Fremtidig og historisk registrering,
+  ugyldige værdier, månedsslut/skudår, evaluering og vejledende drift er
+  kontrolleret særskilt.
+- Den aktuelle fokuserede suite består 37/37, målrettet ESLint har 0 fejl, og
+  Vite 5.4.21 bygger 532 moduler. Det autoriserede V6.2-emulatorflow består.
+- Seks faktiske browseroptagelser ved 1440×900, 1920×1080 og 390×844 samt tre
+  maskinlæsbare bevisfiler ligger i `docs/screenshots/ejer-review-v6-2/`.
+  Computed styles bekræfter indlæst Inter Variable 14 px / 20,3 px og intet
+  vandret dokumentoverflow på mobil.
+- Detaljeret acceptmatrix står i `docs/VEYRO_EJERKONSOL_REVIEW_V6_2.md`.
+  Microsoft 365, OpenAI, Dinero, OCR og bilagsmail forbliver **Ikke
+  tilsluttet**; kun syntetiske data og lokale adaptere er anvendt.
+
 ## V6.1-afslutning — lokal reviewstatus
+
+Historisk note: punkt V6.1-02 var kun delvist dokumenteret, fordi en kortere
+tekst ikke i sig selv beviste en korrekt pilotafgrænsning. V6.2-rapporten
+dokumenterer den efterfølgende indholdsmæssige accept. Resten af afsnittet
+bevares som den oprindelige V6.1-status.
 
 - V6.1 er implementeret og lokalt verificeret på branch
   `codex/ejer-integrated-development`. Kodecheckpoints er `749791f` og
