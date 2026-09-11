@@ -55,6 +55,19 @@ try {
   filer.push(await billede("01-din-arbejdsindbakke", 1440, 900));
   filer.push(await billede("02-din-arbejdsindbakke", 1920, 1080));
 
+  await gaaTil("/main/mail/indbakker?postkasse=faelles&q=ingen-sag-med-denne-v7-soegning");
+  await ventPaa("Boolean(document.querySelector('.ejer-ai-tom'))", "AI-overblikkets tomtilstand blev ikke vist");
+  kontroller.aiEmptyState = true;
+  await gaaTil("/main/mail/indbakker?postkasse=faelles&status=afventer_os&side=2");
+  await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length > 0", "Side 2 kunne ikke åbnes");
+  await evaluer("document.querySelector('.ejer-mail-raekker').scrollTop=120;document.querySelector('.ejer-mail-raekker > button').click();true");
+  await ventPaa("Boolean(document.querySelector('.ejer-mail-v7-detalje'))", "Rækkeåbning skiftede ikke til sagsvisningen");
+  await klik("button", "Tilbage til indbakke");
+  await ventPaa("Boolean(document.querySelector('.ejer-mail-v7-oversigt')) && !new URLSearchParams(location.search).has('sag')", "Tilbage genskabte ikke oversigten");
+  kontroller.tilbage = await evaluer(`(()=>({status:new URLSearchParams(location.search).get('status'),side:new URLSearchParams(location.search).get('side'),rowFocus:Boolean(document.activeElement?.closest('.ejer-mail-raekker'))}))()`);
+  if (kontroller.tilbage.status !== "afventer_os" || kontroller.tilbage.side !== "2" || !kontroller.tilbage.rowFocus) throw new Error("Tilbage bevarede ikke filter, side og rækkefokus");
+  await gaaTil("/main/mail/indbakker?postkasse=faelles");
+
   if (!(await klik("button", "Ny mail"))) throw new Error("Ny mail-handlingen mangler");
   await ventPaa("Boolean(document.querySelector('[role=dialog]'))", "Ny mail-dialogen åbnede ikke");
   kontroller.nyMail = await evaluer(`(()=>{const d=document.querySelector('[role=dialog]');return{modal:d?.getAttribute('aria-modal'),hasCancel:[...d.querySelectorAll('button')].some(b=>b.innerText.includes('Annullér')),focusInside:d?.contains(document.activeElement),externalSendAvailable:[...d.querySelectorAll('button')].some(b=>/send/i.test(b.innerText))}})()`);
@@ -111,6 +124,9 @@ try {
   await viewport(899, 900); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   kontroller.breakpoint = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,mobileLayout:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).display}))()`);
   filer.push(await billede("11-breakpoint-mail", 899, 900));
+  await viewport(360, 800); await gaaTil("/main/mail/indbakker?postkasse=faelles");
+  await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "360 px mobilmaillisten blev ikke klar");
+  filer.push(await billede("12-mobil-mail-liste", 360, 800));
 
   const styles = await evaluer(`(()=>{const css=e=>{const s=getComputedStyle(e);return{fontFamily:s.fontFamily,fontSize:s.fontSize,lineHeight:s.lineHeight,minHeight:s.minHeight}};return{fonts:{status:document.fonts.status,interVariableLoaded:document.fonts.check('14px "Inter Variable"')},body:css(document.body),button:css(document.querySelector('.fc-btn')),input:css(document.querySelector('input')),cardRadius:getComputedStyle(document.querySelector('.ejer-mail-liste')).borderRadius,focusRule:'2px (verificeret af design-token-test og :focus-visible-regel)'}})()`);
   writeFileSync(join(OUT, "browser-verification.json"), `${JSON.stringify({ ...kontroller, styles }, null, 2)}\n`);
