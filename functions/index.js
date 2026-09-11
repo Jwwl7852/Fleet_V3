@@ -56,7 +56,7 @@ import {
 import {
   TRAAD_STATUS, VIDEN_STATUS, aiBudgetKanReserveres,
   godkendelseErAktuel, mailIndholdHash, normaliserBesked, normaliserEmail,
-  sha256, tekst, vurderForfaldenOpfoelgning,
+  sha256, tekst, vurderForfaldenOpfoelgning, vurderMailjobFoerTransport,
 } from "./salgsplatform.js";
 import {
   hentGraphToken, hentMailDelta, hentMailVedhaeftninger, hentMailVedhaeftningBytes,
@@ -11262,6 +11262,23 @@ async function afsendMailjob({ jobId, forventetRevision, ejerUid }) {
   if (!reserve.committed || konflikt) throw new HttpsError("aborted", "Mailjobbet kunne ikke reserveres; genindlæs før nyt forsøg.");
   const job = reserve.snapshot.val();
   try {
+    // V6: job-id og revision er nu reserveret. Hent sagen igen og kontrollér
+    // den sidst mulige lokale tilstand, før transportgrænsen krydses.
+    if (["opfoelgning", "sagssvar"].includes(job.art)) {
+      const friskTraad = (await db.ref(`udbyder/salgsindbakke/traade/${job.traadId}`).once("value")).val();
+      const friskOpfoelgning = friskTraad?.opfoelgninger?.[job.opfoelgningId];
+      const friskKladde = friskTraad?.svarKladder?.[job.svarKladdeId];
+      const friskTilbudId = job.art === "opfoelgning" ? friskTraad?.links?.tilbudId : null;
+      const friskTilbudStatus = friskTilbudId ? (await db.ref(`udbyder/tilbud/${friskTilbudId}/status`).once("value")).val() : null;
+      const sidsteKontrol = vurderMailjobFoerTransport({ job, traad: friskTraad, opfoelgning: friskOpfoelgning, svarKladde: friskKladde, tilbudStatus: friskTilbudStatus });
+      if (!sidsteKontrol.tilladt) {
+        const nu = Date.now();
+        const pause = { status: "pauset", pauseAarsag: sidsteKontrol.aarsag, fejl: "Afsendelsen blev stoppet ved sidste kontrol før Microsoft Graph.", opdateretMs: nu };
+        await ref.update(pause);
+        if (job.art === "opfoelgning" && friskOpfoelgning) await db.ref(`udbyder/salgsindbakke/traade/${job.traadId}/opfoelgninger/${job.opfoelgningId}`).update({ ...pause, revision: Number(friskOpfoelgning.revision || 0) + 1, pausetAf: "system", pausetMs: nu });
+        throw new HttpsError("failed-precondition", "Afsendelsen blev stoppet, fordi sagen ændrede sig efter godkendelsen.");
+      }
+    }
     const token = await hentGraphToken({ tenantId: integration.entraTenantId, clientId: integration.clientId, clientSecret: M365_CLIENT_SECRET.value() });
     let vedhaeftning = null;
     const vedh = job.vedhaeftninger?.[0];
@@ -11293,6 +11310,7 @@ async function afsendMailjob({ jobId, forventetRevision, ejerUid }) {
     await skrivEjerAudit({ uid: ejerUid, handling: "salg.mail.graph.accepteret", objekt: "mailjob", objektId: jobId });
     return { ok: true, status: "accepteret_af_graph", dokumenteretSendt: false };
   } catch (aarsag) {
+    if (`${aarsag?.message || ""}`.includes("sagen ændrede sig efter godkendelsen")) throw aarsag;
     const status = aarsag.ukendtUdfald ? "ukendt" : "fejlet";
     const fejlMs = Date.now();
     const opdateringer = {

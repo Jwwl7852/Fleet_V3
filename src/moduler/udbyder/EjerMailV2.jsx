@@ -13,7 +13,7 @@ const dato = (ms) => ms ? new Date(ms).toLocaleString("da-DK", { dateStyle: "sho
 const statusTekst = { ny: "Ny", afventer_os: "Afventer os", afventer_kunden: "Afventer kunden", afsluttet: "Afsluttet" };
 
 function Testmaerke() {
-  return <span className="ejer-testmaerke"><EjerIkon navn="info" size={15} /> Syntetiske testdata · virkelige postkasser ikke tilsluttet</span>;
+  return <span className="ejer-testmaerke"><EjerIkon navn="info" size={15} /><span className="ejer-testmaerke-lang"> Syntetiske testdata · virkelige postkasser ikke tilsluttet</span><span className="ejer-testmaerke-kort">Testdata</span></span>;
 }
 
 export default function EjerMailV2({ bruger, visning = "indbakker" }) {
@@ -26,6 +26,7 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
   const [internNote, setInternNote] = useState("");
   const [lokaleKladder, setLokaleKladder] = useState({});
   const [arbejder, setArbejder] = useState(false);
+  const [visMobilFiltre, setVisMobilFiltre] = useState(false);
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const hent = async () => setData(await hentSalgsplatform());
@@ -82,12 +83,14 @@ export default function EjerMailV2({ bruger, visning = "indbakker" }) {
 
   return <div className={`ejer-mail-v2${eksplicitValgtId ? " ejer-mail-mobil-detalje" : ""}`}>
     <div className="ejer-mail-toolbar">
-      <div className="ejer-segmenter" role="tablist" aria-label="Postkassevisning">
+      <div className="ejer-segmenter ejer-mail-desktopvalg" role="tablist" aria-label="Postkassevisning">
         {[['mine','Min postkasse'],['faelles','Fælles kundekorrespondance'],['info','Fælles · info@']].map(([id,label]) => <button key={id} type="button" className={postkasse === id ? "aktiv" : ""} onClick={() => setPostkasse(id)}>{label}</button>)}
       </div>
+      <label className="ejer-mail-mobilvalg"><span>Postkasse</span><select value={postkasse} onChange={(e)=>setPostkasse(e.target.value)}><option value="mine">Min postkasse</option><option value="faelles">Fælles kundekorrespondance</option><option value="info">Fælles · info@</option></select></label>
       <Testmaerke />
     </div>
-    <div className="ejer-mail-filterlinje">
+    <div className="ejer-mail-mobilkontroller"><button type="button" className="fc-btn" onClick={()=>setVisMobilFiltre((v)=>!v)}><EjerIkon navn="filter" size={18}/> Filtre{filter !== "aabne" || kunMineSager ? " · 1 aktiv" : ""}</button><label className="ejer-mail-soeg"><EjerIkon navn="search" size={19}/><input value={soegning} onChange={(e) => setSoegning(e.target.value)} placeholder="Søg i mail" /></label></div>
+    <div className={`ejer-mail-filterlinje${visMobilFiltre ? " mobil-aaben" : ""}`}>
       <div className="ejer-segmenter kompakt">{[['aabne','Alle åbne'],['nye','Nye'],['afventer_os','Afventer os'],['afventer_kunden','Afventer kunden']].map(([id,label]) => <button key={id} type="button" className={filter === id ? "aktiv" : ""} onClick={() => setFilter(id)}>{label}</button>)}</div>
       <label className="ejer-mail-mine"><input type="checkbox" checked={kunMineSager} onChange={(event) => setKunMineSager(event.target.checked)} /> Kun mine sager</label>
       <label className="ejer-mail-soeg"><EjerIkon navn="search" size={19}/><input value={soegning} onChange={(e) => setSoegning(e.target.value)} placeholder="Søg i kunde, sag eller mail" /></label>

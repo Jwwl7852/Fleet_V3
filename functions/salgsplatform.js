@@ -90,6 +90,25 @@ export function vurderForfaldenOpfoelgning(opfoelgning, traad, nu = Date.now()) 
   return "klar_til_godkendelse";
 }
 
+/** Sidste, rene kontrol efter at et mailjob er reserveret og umiddelbart før transport. */
+export function vurderMailjobFoerTransport({ job, traad, opfoelgning, svarKladde, tilbudStatus } = {}) {
+  if (job?.art === "opfoelgning") {
+    if (tilbudStatus === "accepteret") return { tilladt: false, aarsag: "tilbud_accepteret" };
+    if (tilbudStatus === "afvist") return { tilladt: false, aarsag: "tilbud_afvist" };
+    if (!godkendelseErAktuel(opfoelgning, traad)) return { tilladt: false, aarsag: "godkendelse_forældet" };
+  }
+  if (job?.art === "sagssvar") {
+    const aktuelHash = mailIndholdHash(svarKladde || {});
+    const aktuel = svarKladde?.status === "godkendt"
+      && svarKladde.godkendtIndholdHash === aktuelHash
+      && job.indholdHash === aktuelHash
+      && Number(svarKladde.basisAktivitetMs) === Number(traad?.senesteAktivitetMs || 0)
+      && traad?.status !== "afsluttet";
+    if (!aktuel) return { tilladt: false, aarsag: "godkendelse_forældet" };
+  }
+  return { tilladt: true, aarsag: null };
+}
+
 export function aiBudgetKanReserveres(forbrug = {}, graense = {}, inputEstimat, outputMaks) {
   const requests = Number(forbrug.requests || 0);
   const reserveretInput = Number(forbrug.reserveretInputTokens || 0);

@@ -45,7 +45,7 @@ test("V09-V12 bruger forståelige termer og sandfærdige ukendte målinger", () 
   assert.doesNotMatch(konto, /kompatible felt <code>chauffoerbrugere/);
   assert.match(konto, /Ikke tilgængeligt/);
   const rapport = laes("src/moduler/udbyder/EjerRapporter.jsx");
-  assert.match(rapport, /Mest efterspurgte moduler/);
+  assert.match(rapport, /Mest solgte moduler/);
   assert.match(rapport, /Aftalt og registreret forbrug/);
 });
 
