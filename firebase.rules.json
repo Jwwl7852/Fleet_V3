@@ -3134,6 +3134,27 @@
           }
         },
 
+        // QR-HYLDEMAERKATER — stabil reference, aktuelle varedata slås op ved
+        // scanning. Direkte klientskrivning er lukket; callables håndhæver
+        // tenant, Procure-modul, rettighed, idempotens og historik.
+        "procureQrMaerkater": {
+          ".read": false,
+          ".write": false,
+          ".indexOn": ["forbrugsvareId", "aktiv", "aendretMs"],
+          "$maerkatId": {
+            ".validate": "newData.hasChildren(['forbrugsvareId', 'placering', 'aktiv', 'anmodningsnoegle', 'oprettetAf', 'oprettetMs', 'aendretAf', 'aendretMs'])",
+            "forbrugsvareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('forbrugsvarer').child(newData.val()).exists()" },
+            "placering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "anmodningsnoegle": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "oprettetMs": { ".validate": "newData.isNumber()" },
+            "aendretAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "aendretMs": { ".validate": "newData.isNumber()" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // ══════════════════════════════════════════════════════════════════
         // FORBRUGSVARER — Procures EGET varelager (beslutning 85)
         //

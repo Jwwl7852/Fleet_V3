@@ -90,13 +90,53 @@ await db.ref(`tenants/${tenantA}`).set({
   moduler: { indkoeb: true },
   virksomhed: company,
   leverandoerer: { nordisk: supplier },
+  forbrugsvarer: {
+    tape: { navn: "Pakketape", varenummer: "ND-1001", enhed: "rulle", pakningsstoerrelse: "6 ruller", indkoebsprisOere: 2400, varegruppe: "Emballage", leverandoerId: "nordisk", aktiv: true },
+  },
   indkoebsordrer: { [orderId]: order(), "ordre-unknown": order("ordre-unknown") },
 });
 await db.ref(`tenants/${tenantB}`).set({
   _findes: true,
   abonnement: { status: "aktiv" },
   moduler: { indkoeb: true },
+  forbrugsvarer: {
+    tape: { navn: "Anden tenants tape", varenummer: "B-100", enhed: "rulle", aktiv: true },
+  },
 });
+
+/* QR: stabil idempotent reference, live varedata og tenantafvisning. */
+const qrCreated = await run(functions.procureQrMaerkatOpret, {
+  vareId: "tape", placering: "Reol A · Hylde 1", requestId: "qr-request-8880",
+});
+assert.match(qrCreated.maerkatId, /^qr-[a-f0-9]{24}$/);
+assert.equal(qrCreated.allerede, false);
+const qrReplay = await run(functions.procureQrMaerkatOpret, {
+  vareId: "tape", placering: "Reol A · Hylde 1", requestId: "qr-request-8880",
+});
+assert.equal(qrReplay.maerkatId, qrCreated.maerkatId);
+assert.equal(qrReplay.allerede, true);
+const qrResolved = await run(functions.procureQrMaerkatHent, { maerkatId: qrCreated.maerkatId });
+assert.equal(qrResolved.maerkat.placering, "Reol A · Hylde 1");
+assert.equal(qrResolved.vare.navn, "Pakketape");
+const qrSecondLocation = await run(functions.procureQrMaerkatOpret, {
+  vareId: "tape", placering: "Reol D · Hylde 4", requestId: "qr-request-8881",
+});
+assert.notEqual(qrSecondLocation.maerkatId, qrCreated.maerkatId);
+const qrList = await run(functions.procureQrMaerkatListe, {});
+assert.equal(qrList.maerkater.length, 2);
+assert.ok(qrList.maerkater.every((row) => row.itemId === "tape"));
+assert.equal((await run(functions.procureQrMaerkatListe, {}, auth(tenantA, "procure-second-session"))).maerkater.length, 2);
+assert.equal((await run(functions.procureQrMaerkatListe, {}, auth(tenantB, "tenant-b-user"))).maerkater.length, 0);
+await assert.rejects(
+  run(functions.procureQrMaerkatHent, { maerkatId: qrCreated.maerkatId }, auth(tenantB, "tenant-b-user")),
+  (error) => error?.code === "not-found",
+);
+await run(functions.procureQrMaerkatStatus, { maerkatId: qrCreated.maerkatId, aktiv: false });
+await assert.rejects(
+  run(functions.procureQrMaerkatHent, { maerkatId: qrCreated.maerkatId }),
+  (error) => error?.code === "failed-precondition",
+);
+await run(functions.procureQrMaerkatStatus, { maerkatId: qrCreated.maerkatId, aktiv: true });
 
 /* Mail: handleren renderer, arkiverer og transporterer samme bytes. */
 const mailResult = await run(functions.ordreMailSend, {
@@ -284,6 +324,9 @@ console.log(JSON.stringify({
   pdfSha256: mailResult.pdfSha256,
   mailTransportCalls: mailPayloads.length,
   tenantIsolation: "verified",
+  qrLabelId: qrCreated.maerkatId,
+  qrIdempotency: qrReplay.allerede,
+  qrTenantIsolation: "verified",
   receiptReopened: reopened.allerede,
 }));
 await Promise.all(getApps().map((app) => deleteApp(app)));

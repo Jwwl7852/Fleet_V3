@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { meldBehov } from "../behov.js";
 import { opretBestilling } from "../bestilling.js";
 import { skiftOrdre } from "../godkendelse.js";
+import { resolveQrLabel } from "./procure-v2-adapter.js";
 
 const kr = (oere = 0) => new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(oere / 100);
 const todayPlus = (days) => {
@@ -39,11 +40,96 @@ function Quantity({ value = 0, onChange, label }) {
   </div>;
 }
 
+function qrIdFromValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw, window.location.origin);
+    const match = url.pathname.match(/\/indkoeb\/mobil\/scan\/([^/]+)\/?$/);
+    if (match) return decodeURIComponent(match[1]);
+  } catch { /* En rå mærkatreference prøves nedenfor. */ }
+  const id = raw.replace(/^VEYRO-QR:/i, "");
+  return /^[a-zA-Z0-9_-]{3,80}$/.test(id) ? id : "";
+}
+
+function QrScanner({ onResult, canManage, added }) {
+  const videoRef = useRef(null);
+  const tracksRef = useRef([]);
+  const frameRef = useRef(0);
+  const [cameraState, setCameraState] = useState("idle");
+  const [manual, setManual] = useState("");
+  const [error, setError] = useState("");
+
+  const stop = () => {
+    cancelAnimationFrame(frameRef.current);
+    tracksRef.current.forEach((track) => track.stop()); tracksRef.current = [];
+    setCameraState((current) => current === "active" ? "idle" : current);
+  };
+  useEffect(() => stop, []);
+
+  const start = async () => {
+    setError("");
+    if (!navigator.mediaDevices?.getUserMedia || !globalThis.BarcodeDetector) {
+      setCameraState("unsupported");
+      setError("Kamera-QR er ikke understøttet i denne browser. Indsæt QR-linket eller brug almindelig varesøgning.");
+      return;
+    }
+    try {
+      const detector = new globalThis.BarcodeDetector({ formats: ["qr_code"] });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      tracksRef.current = stream.getTracks();
+      videoRef.current.srcObject = stream; await videoRef.current.play(); setCameraState("active");
+      const detect = async () => {
+        if (!videoRef.current || !tracksRef.current.length) return;
+        try {
+          const codes = await detector.detect(videoRef.current);
+          const id = qrIdFromValue(codes[0]?.rawValue);
+          if (id) { stop(); onResult(id); return; }
+          if (codes.length) setError("QR-koden er ikke et gyldigt Veyro-hyldemærkat.");
+        } catch { /* Næste kamerabillede prøves. */ }
+        frameRef.current = requestAnimationFrame(detect);
+      };
+      frameRef.current = requestAnimationFrame(detect);
+    } catch (cause) {
+      stop(); setCameraState("denied");
+      setError(cause?.name === "NotAllowedError" ? "Kameraadgang blev afvist. Du kan stadig indsætte koden eller søge efter varen." : "Kameraet kunne ikke startes. Brug manuel kode eller almindelig varesøgning.");
+    }
+  };
+  const submitManual = (event) => {
+    event.preventDefault(); const id = qrIdFromValue(manual);
+    if (!id) { setError("Indtast et gyldigt Veyro QR-link eller mærkat-id."); return; }
+    onResult(id);
+  };
+
+  return <div className="procure-mobile-scan">
+    {added && <div className="procure-qr-added" role="status">✓ {added} er lagt i kurven. Klar til næste hylde.</div>}
+    <section className="procure-camera-card">
+      <div className={`procure-camera-frame ${cameraState}`}>
+        <video ref={videoRef} playsInline muted aria-label="Kamerabillede til QR-scanning" />
+        {cameraState !== "active" && <span aria-hidden="true">⌗</span>}
+        {cameraState === "active" && <i aria-hidden="true" />}
+      </div>
+      <h2>Scan mærkatet på hylden</h2>
+      <p>Scanning åbner kun varen. Intet indsendes eller sendes til en leverandør.</p>
+      {cameraState === "active" ? <button type="button" className="procure-camera-stop" onClick={stop}>Stop kamera</button> : <button type="button" className="procure-mobile-submit" onClick={start}>Åbn kamera</button>}
+      {error && <div className="procure-qr-error" role="alert">{error}</div>}
+    </section>
+    <form className="procure-qr-manual" onSubmit={submitManual}>
+      <label>QR-link eller mærkat-id<input value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Fx qr-tape-a1" autoCapitalize="none" /></label>
+      <button type="submit">Åbn vare</button>
+    </form>
+    <Link className="procure-qr-search-fallback" to="/indkoeb/mobil">Søg efter varen i stedet</Link>
+    {canManage && <Link className="procure-qr-manage" to="/indkoeb/mobil/qr-maerkater">Opret og udskriv QR-mærkater</Link>}
+  </div>;
+}
+
 export default function MobileOrderScreen({ state, setState, demo, tenant, user, canWrite, canApprove }) {
   const location = useLocation();
   const navigate = useNavigate();
   const online = useOnline();
-  const mode = location.pathname.endsWith("/kurv") ? "cart" : location.pathname.endsWith("/mine") ? "mine" : "products";
+  const scanMatch = location.pathname.match(/\/indkoeb\/mobil\/scan\/([^/]+)\/?$/);
+  const scanId = scanMatch ? decodeURIComponent(scanMatch[1]) : "";
+  const mode = location.pathname.endsWith("/kurv") ? "cart" : location.pathname.endsWith("/mine") ? "mine" : location.pathname.includes("/scan") ? "scan" : "products";
   const scope = `${tenant?.id || tenant?.navn || "tenant"}:${user?.uid || user?.id || user?.navn || "user"}`;
   const draftKey = `veyro:procure:mobile-draft:v1:${scope}`;
   const historyKey = `veyro:procure:mobile-history:v1:${scope}`;
@@ -61,6 +147,9 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const [message, setMessage] = useState("");
+  const [scanned, setScanned] = useState(null);
+  const [scanState, setScanState] = useState(scanId ? "loading" : "idle");
+  const [scanQuantity, setScanQuantity] = useState(1);
   const customButtonRef = useRef(null);
   useEffect(() => {
     if (!draft) return undefined;
@@ -76,6 +165,31 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     const close = (event) => { if (event.key === "Escape") { setCustomOpen(false); customButtonRef.current?.focus(); } };
     window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close);
   }, [customOpen]);
+  useEffect(() => {
+    let alive = true;
+    if (!scanId) { setScanned(null); setScanState("idle"); setScanQuantity(1); return undefined; }
+    setScanState("loading"); setMessage("");
+    const load = async () => {
+      if (demo) {
+        const label = (state.qrLabels || []).find((row) => row.id === scanId);
+        const item = state.catalog.find((row) => row.id === label?.itemId);
+        if (!label) { if (alive) { setScanned(null); setScanState("not-found"); } return; }
+        if (!label.active || !item) { if (alive) { setScanned(null); setScanState("inactive"); } return; }
+        if (alive) { setScanned({ label, item }); setScanState("ready"); setScanQuantity(1); }
+        return;
+      }
+      const result = await resolveQrLabel(scanId);
+      if (!alive) return;
+      if (!result.ok) { setScanned(null); setScanState(result.kind); setMessage(result.message); return; }
+      const row = result.data;
+      setScanned({
+        label: { id: row.maerkat.id, itemId: row.maerkat.vareId, location: row.maerkat.placering, active: true },
+        item: { id: row.vare.id, sku: row.vare.varenummer || row.vare.id, name: row.vare.navn, category: row.vare.varegruppe || "Ukategoriseret", supplierId: row.vare.leverandoerId || null, unit: row.vare.enhed || "stk.", packageSize: row.vare.pakningsstoerrelse || row.vare.enhed || "stk.", unitPriceOere: Number(row.vare.indkoebsprisOere || 0), visual: row.vare.billedeType || "other" },
+      });
+      setScanState("ready"); setScanQuantity(1);
+    };
+    load(); return () => { alive = false; };
+  }, [scanId, demo, state.catalog, state.qrLabels]);
 
   const selected = useMemo(() => {
     if (!draft) return [];
@@ -94,6 +208,12 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const quantity = (id) => Number(draft?.items?.[id] || 0);
   const setQuantity = (id, value) => setDraft((current) => ({ ...current, items: { ...current.items, [id]: value } }));
   const saveHistory = (items) => { setHistory(items); localStorage.setItem(historyKey, JSON.stringify(items)); };
+  const addScanned = () => {
+    if (!scanned?.item || scanQuantity <= 0) return;
+    const current = quantity(scanned.item.id);
+    setQuantity(scanned.item.id, current + scanQuantity);
+    navigate("/indkoeb/mobil/scan", { state: { added: `${scanQuantity} × ${scanned.item.name}` } });
+  };
 
   const submit = async () => {
     if (!canWrite || submitting || submittingRef.current || !lineCount || !online) return;
@@ -149,13 +269,14 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   return <section className="procure-v2 procure-mobile-order">
     <header className="procure-mobile-head">
       <Link to="/indkoeb" className="procure-mobile-close" aria-label="Luk mobilbestilling">←</Link>
-      <div><small>PROCURE · mobilbestilling</small><h1>{mode === "products" ? "Varer" : mode === "cart" ? "Kurv" : "Mine indkøb"}</h1></div>
+      <div><small>PROCURE · mobilbestilling</small><h1>{mode === "products" ? "Varer" : mode === "cart" ? "Kurv" : mode === "scan" ? "Scan QR" : "Mine indkøb"}</h1></div>
       <span className={`procure-mobile-save ${saveStatus.includes("ikke") ? "bad" : ""}`}>{saveStatus}</span>
     </header>
     {!online && <div className="procure-mobile-offline" role="alert">Offline · kurven er bevaret. Ordren sendes ikke automatisk, når forbindelsen vender tilbage.</div>}
     {message && <div className="procure-mobile-offline" role="alert">{message}</div>}
 
     {mode === "products" && <>
+      <div className="procure-mobile-primary-actions"><Link to="/indkoeb/mobil/scan">⌗ <span>Scan QR</span></Link>{canWrite && <Link to="/indkoeb/mobil/qr-maerkater">QR-mærkater</Link>}</div>
       <div className="procure-mobile-search"><span>⌕</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Søg vare, varenummer eller varegruppe" /></div>
       <div className="procure-mobile-chips" aria-label="Varefiltre">{categories.map((category) => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}</div>
       <div className="procure-mobile-products">{shown.map((item) => <article key={item.id} className="procure-mobile-product">
@@ -165,6 +286,20 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       {!shown.length && <div className="procure-mobile-empty"><b>Ingen varer matcher</b><span>Prøv en anden søgning, eller beskriv varen nedenfor.</span></div>}
       <button ref={customButtonRef} className="procure-mobile-missing" onClick={() => setCustomOpen(true)}>＋ Beskriv en vare, der mangler</button>
     </>}
+
+    {mode === "scan" && !scanId && <QrScanner onResult={(id) => navigate(`/indkoeb/mobil/scan/${encodeURIComponent(id)}`)} canManage={canWrite} added={location.state?.added} />}
+    {mode === "scan" && scanId && <div className="procure-mobile-scan-result">
+      {scanState === "loading" && <div className="procure-mobile-empty"><b>Henter varen …</b><span>Aktuelle oplysninger læses sikkert.</span></div>}
+      {scanState === "ready" && scanned && <article className="procure-qr-product">
+        <ProductGlyph type={scanned.item.visual} />
+        <div className="procure-mobile-product-copy"><small>{scanned.item.sku} · {scanned.label.location}</small><h2>{scanned.item.name}</h2><p>Bestillingsenhed: <b>{scanned.item.packageSize}</b></p><p>{kr(scanned.item.unitPriceOere)} pr. {scanned.item.unit}</p></div>
+        <div className="procure-qr-existing">Allerede i kurven til {draft.deliveryLocation}: <b>{quantity(scanned.item.id)}</b></div>
+        <label className="procure-qr-add-label">Tilføj antal<Quantity label={scanned.item.name} value={scanQuantity} onChange={setScanQuantity} /></label>
+        <button type="button" className="procure-mobile-submit" disabled={scanQuantity <= 0} onClick={addScanned}>Tilføj og scan næste</button>
+        <p className="procure-mobile-submit-note">Dette lægger kun varen i din gemte kurv. Indsendelse sker senere fra kurven.</p>
+      </article>}
+      {["not-found", "inactive", "denied", "error"].includes(scanState) && <div className="procure-mobile-empty"><b>{scanState === "inactive" ? "Mærkatet er deaktiveret" : scanState === "denied" ? "Ingen adgang" : "QR-koden kan ikke bruges"}</b><span>{message || (scanState === "inactive" ? "Mærkatet eller varen er deaktiveret. Brug varesøgning eller kontakt en indkøbsansvarlig." : "Mærkatet er ukendt eller tilhører en anden kunde.")}</span><Link to="/indkoeb/mobil/scan">Scan en anden kode</Link><Link to="/indkoeb/mobil">Søg efter varen</Link></div>}
+    </div>}
 
     {mode === "cart" && <div className="procure-mobile-cart">
       {!lineCount ? <div className="procure-mobile-empty"><b>Kurven er tom</b><span>Tilføj varer, mens du går hylderne igennem.</span><Link to="/indkoeb/mobil">Find varer</Link></div> : <>
@@ -184,8 +319,8 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       {!history.length && !state.orders.length && <div className="procure-mobile-empty"><b>Ingen indkøb endnu</b><span>Dine indsendte behov og bestillinger vises her.</span></div>}
     </div>}
 
-    {mode === "products" && lineCount > 0 && <Link className="procure-mobile-cart-cta" to="/indkoeb/mobil/kurv"><span>Se kurv · {lineCount} varelinjer</span><b>{kr(total)} ›</b></Link>}
-    <nav className="procure-mobile-nav" aria-label="Mobilbestilling"><Link className={mode === "products" ? "active" : ""} to="/indkoeb/mobil"><span>▦</span>Varer</Link><Link className={mode === "cart" ? "active" : ""} to="/indkoeb/mobil/kurv"><span>▣</span>Kurv{lineCount > 0 && <i>{lineCount}</i>}</Link><Link className={mode === "mine" ? "active" : ""} to="/indkoeb/mobil/mine"><span>◎</span>Mine indkøb</Link></nav>
+    {["products", "scan"].includes(mode) && lineCount > 0 && <Link className="procure-mobile-cart-cta" to="/indkoeb/mobil/kurv"><span>Se kurv · {lineCount} varelinjer</span><b>{kr(total)} ›</b></Link>}
+    <nav className="procure-mobile-nav" aria-label="Mobilbestilling"><Link className={["products", "scan"].includes(mode) ? "active" : ""} to="/indkoeb/mobil"><span>▦</span>Varer</Link><Link className={mode === "cart" ? "active" : ""} to="/indkoeb/mobil/kurv"><span>▣</span>Kurv{lineCount > 0 && <i>{lineCount}</i>}</Link><Link className={mode === "mine" ? "active" : ""} to="/indkoeb/mobil/mine"><span>◎</span>Mine indkøb</Link></nav>
 
     {customOpen && <div className="procure-mobile-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCustomOpen(false); }}><section role="dialog" aria-modal="true" aria-labelledby="mobile-custom-title"><button aria-label="Luk" onClick={() => setCustomOpen(false)}>×</button><h2 id="mobile-custom-title">Vare uden for katalog</h2><p>Beskriv varen kort. Indkøbsteamet afklarer leverandør og pris.</p><label>Varebeskrivelse<textarea autoFocus maxLength="200" value={customName} onChange={(event) => setCustomName(event.target.value)} placeholder="Fx genopfyldning til særlig sæbedispenser" /></label><button className="procure-mobile-submit" disabled={!customName.trim()} onClick={addCustom}>Læg i kurven</button></section></div>}
   </section>;

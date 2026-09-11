@@ -6385,6 +6385,82 @@ async function procureDoer(req, { perm, modul }) {
   return { db, rod, tenantId, uid: auth.uid, perms };
 }
 
+/* QR-HYLDEMAERKATER — QR'en bærer kun denne stabile, ugættede reference.
+   Tenant, vare, pris og adgang kommer altid fra den signerede session og
+   det aktuelle katalog. Et mærkat er derfor ikke en adgangsbillet. */
+const gyldigtQrId = (value) => /^qr-[a-zA-Z0-9_-]{8,60}$/.test(String(value || ""));
+
+export const procureQrMaerkatOpret = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
+  const vareId = kortStreng(req.data?.vareId, 80);
+  const placering = kortStreng(req.data?.placering, 120);
+  const requestId = kortStreng(req.data?.requestId, 80);
+  if (!vareId || !placering || !requestId || !erGyldigtSendRequestId(requestId)) {
+    throw new HttpsError("invalid-argument", "Vare, placering eller stabil anmodningsreference mangler.");
+  }
+  const vareSnap = await rod.child(`forbrugsvarer/${vareId}`).once("value");
+  if (!vareSnap.exists()) throw new HttpsError("not-found", "Varen findes ikke i denne tenant.");
+  if (vareSnap.val().aktiv === false) throw new HttpsError("failed-precondition", "Varen er deaktiveret.");
+  const maerkatId = `qr-${createHash("sha256").update(`${tenantId}:${requestId}`).digest("hex").slice(0, 24)}`;
+  const ref = rod.child(`procureQrMaerkater/${maerkatId}`);
+  let allerede = false;
+  const now = Date.now();
+  const tx = await ref.transaction((current) => {
+    if (current) {
+      if (current.anmodningsnoegle === requestId && current.forbrugsvareId === vareId && current.placering === placering) { allerede = true; return current; }
+      return;
+    }
+    return { forbrugsvareId: vareId, placering, aktiv: true, anmodningsnoegle: requestId, oprettetAf: uid, oprettetMs: now, aendretAf: uid, aendretMs: now };
+  });
+  if (!tx.committed) throw new HttpsError("already-exists", "Anmodningsreferencen er allerede brugt til et andet mærkat.");
+  await logProcure(tenantId, uid, AUDIT.opret, "procureQrMaerkat", maerkatId, null,
+    { status: "aktiv" }, allerede ? "gentaget kald — intet ekstra mærkat" : "QR-hyldemærkat oprettet");
+  return { ok: true, maerkatId, allerede };
+});
+
+export const procureQrMaerkatStatus = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
+  const maerkatId = kortStreng(req.data?.maerkatId, 80);
+  const aktiv = req.data?.aktiv;
+  if (!gyldigtQrId(maerkatId) || typeof aktiv !== "boolean") throw new HttpsError("invalid-argument", "Mærkat eller status er ugyldig.");
+  const ref = rod.child(`procureQrMaerkater/${maerkatId}`);
+  const before = await ref.once("value");
+  if (!before.exists()) throw new HttpsError("not-found", "QR-mærkatet findes ikke.");
+  await ref.update({ aktiv, aendretAf: uid, aendretMs: Date.now() });
+  await logProcure(tenantId, uid, AUDIT.tilstandsskift, "procureQrMaerkat", maerkatId,
+    { status: before.val().aktiv === false ? "deaktiveret" : "aktiv" }, { status: aktiv ? "aktiv" : "deaktiveret" }, "QR-mærkatstatus ændret");
+  return { ok: true, maerkatId, aktiv };
+});
+
+export const procureQrMaerkatListe = onCall({ region: REGION }, async (req) => {
+  const { rod } = await procureDoer(req, { perm: "indkoeb.laes", modul: "indkoeb" });
+  const snap = await rod.child("procureQrMaerkater").orderByChild("aendretMs").limitToLast(500).once("value");
+  const maerkater = [];
+  snap.forEach((child) => {
+    const row = child.val();
+    maerkater.push({ id: child.key, itemId: row.forbrugsvareId, location: row.placering, active: row.aktiv !== false, changedAt: row.aendretMs });
+  });
+  maerkater.sort((a, b) => Number(b.changedAt || 0) - Number(a.changedAt || 0) || a.id.localeCompare(b.id));
+  return { maerkater };
+});
+
+export const procureQrMaerkatHent = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.laes", modul: "indkoeb" });
+  const maerkatId = kortStreng(req.data?.maerkatId, 80);
+  if (!gyldigtQrId(maerkatId)) throw new HttpsError("not-found", "QR-mærkatet er ukendt.");
+  const snap = await rod.child(`procureQrMaerkater/${maerkatId}`).once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "QR-mærkatet er ukendt i denne tenant.");
+  const maerkat = snap.val();
+  if (maerkat.aktiv === false) throw new HttpsError("failed-precondition", "QR-mærkatet er deaktiveret.");
+  const vareSnap = await rod.child(`forbrugsvarer/${maerkat.forbrugsvareId}`).once("value");
+  if (!vareSnap.exists() || vareSnap.val().aktiv === false) throw new HttpsError("failed-precondition", "Varen er ikke længere aktiv.");
+  await logProcure(tenantId, uid, AUDIT.laes, "procureQrMaerkat", maerkatId, null, null, "QR-hyldemærkat scannet");
+  return {
+    maerkat: { id: maerkatId, vareId: maerkat.forbrugsvareId, placering: maerkat.placering },
+    vare: { id: maerkat.forbrugsvareId, ...vareSnap.val() },
+  };
+});
+
 /* PROCURE-MODTAGELSER — dokumenter går gennem signerede server-URL'er og
    bliver først aktive efter kontrol af størrelse og magic bytes. Klienten
    kan hverken vælge tenant, Storage-sti eller markere en fil som færdig. */

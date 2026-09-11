@@ -13,6 +13,14 @@ export const DEMO_CATALOG = [
   { id: "paper", sku: "KP-0080", name: "Kopipapir A4, 80 g", category: "Kontor", supplierId: "kontor", unit: "kasse", packageSize: "5 pakker", unitPriceOere: 22900, favorite: false, boughtBefore: true, visual: "paper" },
 ];
 
+export const DEMO_QR_LABELS = [
+  { id: "qr-tape-a1", itemId: "tape", location: "Reol A · Hylde 1", active: true },
+  { id: "qr-film-a2", itemId: "film", location: "Reol A · Hylde 2", active: true },
+  { id: "qr-gloves-b1", itemId: "gloves", location: "Reol B · Hylde 1", active: true },
+  { id: "qr-bags-c3", itemId: "bags", location: "Rengøringslager · C3", active: true },
+  { id: "qr-inactive", itemId: "paper", location: "Kontor · Skab 4", active: false },
+];
+
 export const DEMO_NEEDS = [
   { id: "BEH-0108", title: "Emballage til lageret", departmentId: "lager", department: "Lager", deliveryLocation: "Hovedlager", wantedDate: "2026-09-15", status: "new", createdBy: "Maja Larsen", note: "Til de kommende leverancer fra hovedlageret.", links: ["FLEET", "FACILITY"], lines: [{ id: "n1", itemId: "tape", name: "Pakketape, klar 48 mm", quantity: 120, unit: "ruller" }, { id: "n2", itemId: "film", name: "Strækfilm, 500 mm", quantity: 80, unit: "ruller" }] },
   { id: "BEH-0109", title: "Nitrilhandsker", departmentId: "drift", department: "Drift", deliveryLocation: "Værksted", wantedDate: "2026-09-14", status: "new", createdBy: "Henrik Nielsen", note: "", links: [], lines: [{ id: "n3", itemId: "gloves", name: "Nitrilhandsker, str. L", quantity: 8, unit: "æsker" }] },

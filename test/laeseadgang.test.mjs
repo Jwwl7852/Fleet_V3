@@ -317,11 +317,15 @@ describe("Hvor mange noder står åbne", () => {
        topniveaupunkter en bruger får vist) er ikke en sikkerhedsgrænse:
        enhver i tenanten skal kunne se sin egen indstilling, og noden
        læses aldrig af nogen anden regel. Se src/fleet/navvisning.js's
-       hoved. Dette er en dokumenteret stigning, ikke en tavs én. */
+       hoved. 30 → 31: `procureQrMaerkater` er endnu strammere — både direkte
+       læsning og skrivning er false; kun de tenant- og permission-gatede
+       callables kan liste, slå op og ændre mærkater. Dette er en dokumenteret
+       stigning i noder uden læse-permission, ikke en åbning. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 30,
+    assert.ok(uden.length <= 31,
       `${uden.length} noder kræver ingen læse-permission — det var 39 før `
-      + `beslutning 104, 29 efter, og 30 fra Skive 2B (navvisning). Er en `
+      + `beslutning 104, 29 efter, 30 fra Skive 2B og 31 med den lukkede `
+      + `PROCURE QR-node. Er en `
       + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });

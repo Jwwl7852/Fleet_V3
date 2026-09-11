@@ -21,6 +21,36 @@ Dato: 2026-09-11
   fem varelinjer på tværs af grupper, ændring af antal, reload, ESC med
   fokusretur, browser-Tilbage, offline/online og synkront dobbeltklik.
 
+### 1a. QR-bestilling fra materialehylder — færdig kode og browserafprøvet
+
+- `Scan QR` åbner mobilens kameraflow med native `BarcodeDetector` og
+  bagudvendt kamera, når browseren understøtter det. Kameraafvisning og
+  manglende scannerunderstøttelse giver en konkret fejl samt fortsat adgang
+  til manuel kode/URL og almindelig varesøgning.
+- Mærkatlinket indeholder kun en stabil reference på formen
+  `/indkoeb/mobil/scan/{maerkat-id}`. Varenavn, pris, varenummer,
+  pakningsstørrelse og aktiv status hentes ved hvert opslag.
+- Scanvisningen viser eksisterende kurvantal for det aktuelle leveringssted,
+  store plus/minus-felter og `Tilføj og scan næste`. En scanning navigerer
+  kun til varen; den lægger ikke i kurven og kan aldrig indsende en ordre.
+- Brugere med `indkoeb.skriv` kan oprette flere placeringsmærkater til samme
+  vare, deaktivere dem og udskrive et udvalg som kompakte hyldemærkater med
+  faktisk QR-billede, varenavn, nummer, bestillingsenhed og placering.
+- De fire QR-callables kræver signeret bruger, aktivt PROCURE-modul og normal
+  læse-/skriverettighed. Den underliggende tenantnode er lukket for direkte
+  Database-læsning og -skrivning. En ny autoriseret session i samme tenant
+  kunne liste mærkaterne; en anden tenant fik en tom liste og `not-found` ved
+  opslag på den fremmede stabile reference.
+- Login-retur bruger den eksisterende `TilLogin`/`EfterLogin`-mekanisme og
+  bevarer hele scan-URL'en. QR-koden tildeler ingen rolle eller tenantadgang.
+
+Browserafprøvningen dækkede direkte og manuel QR-URL, gentagen scanning af
+samme vare (kurvantal 3 → 4), deaktiveret mærkat, simuleret afvist
+kameraadgang, to genererede QR-billeder, flerudskrift, vedvarende kurv,
+offlineværn og det eksisterende indsendelsesflow ved både 360 og 390 px.
+Et fysisk mobilkamera er **ikke** afprøvet i denne lokale aflevering; den
+native kamerasti er implementeret, men den afsluttende hardwareprøve mangler.
+
 Den lokale preview er tydeligt mærket `DEMO`, fordi dette checkout ikke har
 en Firebase-kundeforbindelse. Den visuelle browserprøve er derfor ikke en
 påstand om et rigtigt kundelogin. Produktionskoden bevarer AppShells normale
@@ -96,8 +126,11 @@ overstige den åbne prisafvigelse.
 - `npm run lint`: bestået.
 - `npm run build`: bestået. Vite viser fortsat den eksisterende minifier-
   advarsel om et backtick i en CSS-kommentar; builden afslutter succesfuldt.
-- Fokuseret PROCURE/design/integration: 224/224 bestået.
-- Fuld Database/Storage-emulatorsuite: 4.310/4.310 bestået, 883 suites.
+- `node --test test/custom-claims-v2-preflight.test.mjs test/design-tokens.test.mjs test/modulkrav.test.mjs test/referencetjek.test.mjs test/statustal.test.mjs test/procure-qr.test.mjs`:
+  42/42 bestået.
+- Fuld Database/Storage-emulatorsuite via
+  `firebase emulators:exec ... "node scripts/test-platform.mjs"`:
+  4.315/4.315 bestået, 884 suites.
 - Faktisk callable-handlerflow mod Database/Storage-emulatorer: bestået.
 - `node --check functions/index.js`: bestået.
 - `git diff --check`: bestået.
@@ -113,6 +146,8 @@ er derfor kørt med cachet Firebase CLI 13.35.1 og portable Temurin 11; alle
 - `01-mobile-varer-390.png`
 - `02-mobile-kurv-390.png`
 - `03-mobile-kvittering-390.png`
+- `04-mobile-qr-vare-390.png`
+- `05-qr-maerkater-print-390.png`
 - Tilsvarende 360-pixelversioner ligger i samme afleveringsmappe.
 - Lokal preview: `http://127.0.0.1:5205/indkoeb/mobil`
 

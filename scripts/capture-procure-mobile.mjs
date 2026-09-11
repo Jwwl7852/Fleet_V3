@@ -53,8 +53,12 @@ const evaluate = async (expression) => {
   if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
   return result.result.value;
 };
-const screenshot = async (name) => {
-  const result = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+const screenshot = async (name, fullPage = false) => {
+  const metrics = fullPage ? await send("Page.getLayoutMetrics") : null;
+  const result = await send("Page.captureScreenshot", {
+    format: "png", fromSurface: true, captureBeyondViewport: fullPage,
+    ...(fullPage ? { clip: { x: 0, y: 0, width: metrics.cssContentSize.width, height: metrics.cssContentSize.height, scale: 1 } } : {}),
+  });
   await writeFile(join(outputDir, name), Buffer.from(result.data, "base64"));
 };
 
@@ -83,6 +87,32 @@ try {
   }
   await screenshot(`01-mobile-varer-${viewportWidth}.png`);
 
+  await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/scan/qr-tape-a1` }); await sleep(800);
+  const qrFirst = await evaluate(`({
+    path:location.pathname,
+    existing:document.querySelector('.procure-qr-existing')?.textContent,
+    title:document.querySelector('.procure-qr-product h2')?.textContent,
+    unit:document.querySelector('.procure-qr-product .procure-mobile-product-copy')?.textContent,
+    scrollWidth:document.documentElement.scrollWidth
+  })`);
+  if (!qrFirst.existing?.includes("3") || qrFirst.title !== "Pakketape, klar 48 mm" || !qrFirst.unit?.includes("6 ruller") || qrFirst.scrollWidth > viewportWidth) {
+    throw new Error(`QR-varevisning er forkert: ${JSON.stringify(qrFirst)}`);
+  }
+  await screenshot(`04-mobile-qr-vare-${viewportWidth}.png`);
+  await evaluate(`document.querySelector('.procure-qr-product>.procure-mobile-submit').click()`); await sleep(500);
+  if (!(await evaluate("location.pathname")).endsWith("/scan")) throw new Error("Tilføj og scan næste gjorde ikke klar til næste mærkat.");
+  await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/scan/qr-tape-a1` }); await sleep(500);
+  const qrRepeat = await evaluate(`document.querySelector('.procure-qr-existing')?.textContent`);
+  if (!qrRepeat?.includes("4")) throw new Error(`Gentagen scanning viste ikke nyt kurvantal: ${qrRepeat}`);
+  await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/scan/qr-inactive` }); await sleep(500);
+  const inactive = await evaluate(`document.querySelector('.procure-mobile-empty')?.textContent`);
+  if (!inactive?.includes("deaktiveret")) throw new Error(`Deaktiveret QR-kode blev ikke afvist: ${inactive}`);
+  await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/scan` }); await sleep(400);
+  await evaluate(`(() => { Object.defineProperty(globalThis,'BarcodeDetector',{configurable:true,value:class { async detect(){ return []; } }}); Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{ const error=new Error('denied by synthetic browser test'); error.name='NotAllowedError'; throw error; }}}); })()`);
+  await evaluate(`document.querySelector('.procure-camera-card .procure-mobile-submit').click()`); await sleep(350);
+  const cameraFallback = await evaluate(`({error:document.querySelector('.procure-qr-error')?.textContent,manual:Boolean(document.querySelector('.procure-qr-manual input')),search:Boolean(document.querySelector('.procure-qr-search-fallback'))})`);
+  if (!cameraFallback.error?.includes("afvist") || !cameraFallback.manual || !cameraFallback.search) throw new Error(`Kamerafallback mangler: ${JSON.stringify(cameraFallback)}`);
+
   await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/kurv` }); await sleep(800);
   const cartMetrics = await evaluate(`({innerWidth,scrollWidth:document.documentElement.scrollWidth,lines:document.querySelectorAll('.procure-mobile-cartline').length})`);
   if (cartMetrics.innerWidth !== viewportWidth || cartMetrics.scrollWidth > viewportWidth || cartMetrics.lines !== 5) {
@@ -95,7 +125,7 @@ try {
   await send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
   await sleep(400);
   if (!(await evaluate("location.pathname")).endsWith("/kurv")) throw new Error("Genoprettet forbindelse afsendte eller navigerede automatisk.");
-  await screenshot(`02-mobile-kurv-${viewportWidth}.png`);
+  await screenshot(`02-mobile-kurv-${viewportWidth}.png`, true);
 
   await evaluate(`(() => { const button=document.querySelector('.procure-mobile-submit'); button.click(); button.click(); })()`);
   await sleep(900);
@@ -105,7 +135,22 @@ try {
     throw new Error(`Dobbelttryk gav forkert kvittering: ${JSON.stringify(receipt)}`);
   }
   await screenshot(`03-mobile-kvittering-${viewportWidth}.png`);
-  process.stdout.write(`${JSON.stringify({ viewportWidth, productMetrics, cartMetrics, offline, receipt, profile }, null, 2)}\n`);
+
+  await send("Page.navigate", { url: `${baseUrl}/indkoeb/mobil/qr-maerkater` }); await sleep(900);
+  const labelsBefore = await evaluate(`document.querySelectorAll('.procure-qr-list>article').length`);
+  await evaluate(`(() => { const field=document.querySelector('.procure-qr-create input'); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; setter.call(field,'QA Reol Z · Hylde 9'); field.dispatchEvent(new Event('input',{bubbles:true})); field.dispatchEvent(new Event('change',{bubbles:true})); document.querySelector('.procure-qr-create').requestSubmit(); })()`);
+  await sleep(550);
+  const labelsAfter = await evaluate(`document.querySelectorAll('.procure-qr-list>article').length`);
+  if (labelsAfter !== labelsBefore + 1) throw new Error(`Nyt mærkat blev ikke oprettet: ${labelsBefore} → ${labelsAfter}`);
+  await evaluate(`(() => { const boxes=[...document.querySelectorAll('.procure-qr-list input[type=checkbox]')].slice(0,3); boxes.forEach((box)=>box.click()); })()`);
+  await sleep(650);
+  const qrPrint = await evaluate(`({count:document.querySelectorAll('.procure-qr-print .procure-qr-label').length, images:[...document.querySelectorAll('.procure-qr-print img')].map((img)=>img.src.startsWith('data:image/png;base64,'))})`);
+  if (qrPrint.count < 2 || qrPrint.images.some((ok) => !ok)) throw new Error(`QR-udskrift blev ikke genereret: ${JSON.stringify(qrPrint)}`);
+  await send("Emulation.setDeviceMetricsOverride", { width: 794, height: 1123, deviceScaleFactor: 1, mobile: false, screenWidth: 794, screenHeight: 1123 });
+  await send("Emulation.setEmulatedMedia", { media: "print" }); await sleep(200);
+  await screenshot(`05-qr-maerkater-print-${viewportWidth}.png`);
+  await send("Emulation.setEmulatedMedia", { media: "screen" });
+  process.stdout.write(`${JSON.stringify({ viewportWidth, productMetrics, qrFirst, qrRepeat, inactive, cameraFallback, cartMetrics, offline, receipt, qrPrint, profile }, null, 2)}\n`);
 } finally {
   socket.close(); edge.kill();
 }

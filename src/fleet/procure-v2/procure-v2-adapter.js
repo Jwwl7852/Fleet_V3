@@ -61,3 +61,47 @@ export async function getReceiptAttachment({ orderId, receiptId, attachmentId })
   });
   return response?.data ?? response;
 }
+
+export async function resolveQrLabel(labelId) {
+  try {
+    const response = await kaldFunktion("procureQrMaerkatHent", { maerkatId: labelId });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    const code = String(error?.code || "");
+    if (code.includes("permission-denied")) return { ok: false, kind: "denied", message: "Du har ikke adgang til varen på denne QR-kode." };
+    if (code.includes("not-found")) return { ok: false, kind: "not-found", message: "QR-koden er ukendt eller tilhører en anden kunde." };
+    if (code.includes("failed-precondition")) return { ok: false, kind: "inactive", message: "QR-koden eller varen er deaktiveret." };
+    return { ok: false, kind: "error", message: "QR-koden kunne ikke hentes. Kontrollér forbindelsen og prøv igen." };
+  }
+}
+
+export async function createQrLabel({ itemId, location, requestId }) {
+  try {
+    const response = await kaldFunktion("procureQrMaerkatOpret", {
+      vareId: itemId, placering: location, requestId,
+    });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    const code = String(error?.code || "");
+    if (code.includes("permission-denied")) return { ok: false, message: "Du har ikke rettighed til at oprette QR-mærkater." };
+    return { ok: false, message: error?.message || "QR-mærkatet kunne ikke oprettes." };
+  }
+}
+
+export async function listQrLabels() {
+  try {
+    const response = await kaldFunktion("procureQrMaerkatListe", {});
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    return { ok: false, message: error?.message || "QR-mærkaterne kunne ikke indlæses." };
+  }
+}
+
+export async function setQrLabelActive({ labelId, active }) {
+  try {
+    const response = await kaldFunktion("procureQrMaerkatStatus", { maerkatId: labelId, aktiv: active });
+    return { ok: true, data: response?.data ?? response };
+  } catch (error) {
+    return { ok: false, message: error?.message || "QR-mærkatets status kunne ikke ændres." };
+  }
+}

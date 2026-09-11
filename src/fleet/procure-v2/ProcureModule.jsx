@@ -7,13 +7,14 @@ import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER } from "../demo-procure.js";
 import { DEMO_FAKTURAER, DEMO_LEVERANDOERER } from "../demo-indkoeb.js";
 import {
   DEMO_APPROVALS, DEMO_CATALOG, DEMO_INVOICES, DEMO_NEEDS, DEMO_ORDERS,
-  DEMO_RECEIPTS, DEMO_RULES, DEMO_SUPPLIERS,
+  DEMO_QR_LABELS, DEMO_RECEIPTS, DEMO_RULES, DEMO_SUPPLIERS,
 } from "./procure-v2-demo.js";
 import {
   ApprovalsScreen, CatalogScreen, ConsumptionScreen, GroupConsumptionScreen,
   NeedScreen, OrdersScreen, OverviewScreen, ReceiptScreen, SendOrderScreen,
 } from "./ProcureScreens.jsx";
 import MobileOrderScreen from "./MobileOrderScreen.jsx";
+import QrLabelScreen from "./QrLabelScreen.jsx";
 import "./procure-v2.css";
 
 const normalizeSupplier = (supplier) => ({
@@ -94,12 +95,13 @@ export default function ProcureModule() {
   const [demoState, setDemoState] = useState(() => ({
     needs: DEMO_NEEDS, orders: DEMO_ORDERS, suppliers: DEMO_SUPPLIERS,
     catalog: DEMO_CATALOG, approvals: DEMO_APPROVALS, receipts: DEMO_RECEIPTS,
-    invoices: DEMO_INVOICES, rules: DEMO_RULES,
+    invoices: DEMO_INVOICES, rules: DEMO_RULES, qrLabels: DEMO_QR_LABELS,
   }));
   const liveState = useMemo(() => ({
     needs: needsSource.data.map(normalizeNeed), orders: ordersSource.data.map(normalizeOrder),
     suppliers: suppliersSource.data.map(normalizeSupplier), catalog: catalogSource.data.map(normalizeCatalogItem), approvals: [],
     receipts: receiptsFromOrders(ordersSource.data), invoices: invoicesSource.data.map(normalizeInvoice), rules: [],
+    qrLabels: [],
   }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data]);
   const state = demo ? demoState : liveState;
   const setState = (producer) => { if (demo) setDemoState((current) => typeof producer === "function" ? producer(current) : producer); };
@@ -111,7 +113,8 @@ export default function ProcureModule() {
   const common = { state, setState, demo, tenant, user: bruger, canWrite, canApprove, busy, error };
   const path = location.pathname.replace(/\/$/, "");
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
-  if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine))?$/.test(path)) return <MobileOrderScreen {...common} />;
+  if (path === "/indkoeb/mobil/qr-maerkater") return <QrLabelScreen {...common} />;
+  if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine|scan(?:\/[^/]+)?))?$/.test(path)) return <MobileOrderScreen {...common} />;
   if (path === "/indkoeb/behov") return <NeedScreen {...common} />;
   if (path === "/indkoeb/katalog") return <CatalogScreen {...common} />;
   if (path === "/indkoeb/godkendelser") return <ApprovalsScreen {...common} />;
