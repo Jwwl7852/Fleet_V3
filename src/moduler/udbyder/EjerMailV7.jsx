@@ -24,7 +24,14 @@ const postkasser = [["mine", "Min postkasse"], ["faelles", "Fælles kundekorresp
 const statusser = [["aabne", "Alle åbne"], ["ny", "Nye"], ["afventer_os", "Afventer os"], ["afventer_kunden", "Afventer kunden"]];
 
 function Testmaerke() {
-  return <span className="ejer-testmaerke"><EjerIkon navn="info" size={15} /><span>Syntetiske testdata · virkelige postkasser ikke tilsluttet</span></span>;
+  const [params, setParams] = useSearchParams();
+  const kanNulstille = !params.get("sag") && Boolean(params.get("q") || params.get("status") || params.get("mine") || params.get("mappe"));
+  const nulstilFiltre = () => {
+    const naeste = new URLSearchParams(params);
+    ["q", "status", "mine", "mappe", "side"].forEach((navn) => naeste.delete(navn));
+    setParams(naeste, { replace: true });
+  };
+  return <span className="ejer-testmaerke"><EjerIkon navn="info" size={15} /><span>Syntetiske testdata · virkelige postkasser ikke tilsluttet</span>{kanNulstille && <button type="button" className="ejer-testmaerke-nulstil" onClick={nulstilFiltre}>Nulstil filtre</button>}</span>;
 }
 
 function Kildetekst({ traad, bruger }) {

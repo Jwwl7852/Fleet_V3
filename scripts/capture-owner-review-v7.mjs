@@ -96,6 +96,8 @@ try {
   await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-aiinstruks input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Lav et kortere forslag, behold alle fakta, vent med CVR og foreslå telefon');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
   await klik("button", "Lav nyt forslag");
   await ventPaa("Boolean(document.querySelector('.ejer-ai-forslag'))", "Lokalt AI-svarforslag blev ikke dannet");
+  await evaluer(`(()=>{const panel=document.querySelector('.ejer-mail-ai-panel');const forslag=document.querySelector('.ejer-ai-forslag');panel.scrollTop=Math.max(0,forslag.offsetTop-120);return true})()`);
+  await pause(200);
   filer.push(await billede("05-ai-chat-forslag-foer-indsaettelse", 1440, 900));
   await klik("button", "Indsæt i svarudkast");
   await ventPaa("document.querySelector('textarea[aria-label=Svarudkast]')?.value.includes('Hej Maria')", "AI-forslaget blev ikke indsat i svaret");
@@ -138,8 +140,8 @@ try {
 
   await viewport(390, 844); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "Mobilmaillisten blev ikke klar");
-  kontroller.mobilListe390 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');const t=getComputedStyle(document.querySelector('.ejer-mail-identitet strong'));return{rowWidth:Math.round(row.getBoundingClientRect().width),cardWidth:Math.round(card.getBoundingClientRect().width),ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,wordBreak:t.wordBreak,overflowWrap:t.overflowWrap}})()`);
-  if (kontroller.mobilListe390.ratio < .95 || kontroller.mobilListe390.horizontalOverflow || kontroller.mobilListe390.wordBreak === "break-all") throw new Error("390 px-listen bruger ikke kortets bredde læsbart");
+  kontroller.mobilListe390 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');const t=getComputedStyle(document.querySelector('.ejer-mail-identitet strong'));const synlig=(selector)=>{const e=document.querySelector(selector);return Boolean(e&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0)};return{rowWidth:Math.round(row.getBoundingClientRect().width),cardWidth:Math.round(card.getBoundingClientRect().width),ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,wordBreak:t.wordBreak,overflowWrap:t.overflowWrap,foldersVisible:synlig('.ejer-mail-mapper'),filtersVisible:synlig('.ejer-mail-filterlinje')}})()`);
+  if (kontroller.mobilListe390.ratio < .95 || kontroller.mobilListe390.horizontalOverflow || kontroller.mobilListe390.wordBreak === "break-all" || !kontroller.mobilListe390.foldersVisible || !kontroller.mobilListe390.filtersVisible) throw new Error(`390 px-listen eller dens betjening er ikke læsbar: ${JSON.stringify(kontroller.mobilListe390)}`);
   filer.push(await billede("11-mobil-mail-liste", 390, 844));
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("Boolean(document.querySelector('.ejer-mail-mobilpaneler'))", "Mobilpanelvælgeren mangler");
