@@ -1,4 +1,4 @@
-# PROCURE lagerstyring – implementering og lokal verifikation
+# PROCURE lager – rettelse og verificering
 
 Dato: 12. september 2026
 
@@ -6,82 +6,78 @@ Dato: 12. september 2026
 
 - Arbejdsmappe: `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-procure-integrated`
 - Branch: `codex/procure-integrated-development`
-- Start-HEAD: `da84b466089cd3af3d398b08bb933c8645d9fdee`
-- Kodecommit: `0769a5e` (`feat(procure): add inventory management`)
-- Arbejdstræet var rent, da lagerarbejdet begyndte.
-- Ingen `AGENTS.md` fandtes i sporet.
-- Den gældende `docs/VEYRO_MODULUDVIKLINGSSPOR_V1.md` blev læst direkte fra `codex/veyro-integration-v1` ved commit `39963337a52d4464f619077683d1f39aa81eff1e`; arbejdsfiler på andre spor blev ikke ændret.
-- Eksisterende `forbrugsvarer` og append-only `forbrugsvarebevaegelser` er genbrugt. Warehouse-modulets 3PL-varemodel er ikke kopieret til et parallelt PROCURE-register.
+- Start-HEAD for denne runde: `128c2d947d6170117c8698e3c4ff9b59c4af6af7`
+- Kode- og testcommit: `c36f8b6` (`fix(procure): verify inventory flows and layouts`)
+- Arbejdstræet var rent ved rundens start. Ingen igangværende Git-operation blev fundet.
+- Ingen `AGENTS.md` fandtes i worktreet. Den gældende udviklingsvejledning blev læst direkte fra `codex/veyro-integration-v1` ved commit `39963337a52d4464f619077683d1f39aa81eff1e` uden at ændre andre spor.
+- Eksisterende `forbrugsvarer` og append-only `forbrugsvarebevaegelser` er fortsat den fælles lagerkilde; der er ikke oprettet et parallelt lagerregister.
 
 ## Kravmatrix
 
-| Krav | Relevant kode | Implementeret adfærd | Faktisk afprøvning | Resterende |
+| Krav | Relevant kode/backend | Implementeret | Faktisk afprøvet på denne version | Status / rest |
 | --- | --- | --- | --- | --- |
-| Lageroversigt og menu | `InventoryScreen.jsx`, `ProcureModule.jsx`, `nav.js`, `App.jsx` | Vare/varenummer, lager/placering, kendt eller ukendt beholdning, minimum, på vej, seneste optælling, søgning og filtre. Legacy `/indkoeb/varelager` viderestilles. | Desktop-browser viste tre syntetiske lagerposter, under-minimum, historik og periodeoversigt. | Ingen kendt kodefejl. |
-| Lagerført kontra direkte levering | `varelager.js`, `procure-inventory-domain.js`, `functions/index.js` | Varer markeres eksplicit som lagerførte. Kun lagerførte og accepterede modtagelseslinjer øger lager. Ukendt beholdning bevares som ukendt og omdannes ikke til nul. | Domænetests dækker ukendt beholdning og modtagelse. UI viser oprettelseshandling for ikke-lagerførte katalogvarer. | Kald mod emulator kunne ikke køres; se begrænsning nedenfor. |
-| Modtagelse ved hylden | `MobileReceiptScreen.jsx`, `procure-v2-adapter.js`, `procureVaremodtagelseRegistrer` | Søg åbne ordrer på PO eller leverandør, modtag alle eller delvist, vælg placering, vedhæft dokumenter, og gem modtagelse og lagerbevægelse atomisk med idempotensnøgle. Beskadiget/afvist tælles ikke som accepteret. | Mobil-browser: 48 resterende ruller blev valgt på PO-2026-0142; 20 før + 48 modtaget gav 68 beregnet. UI viste serverbekræftelsesformulering og delmodtagelsesstatus. | Vedvarende opslag i en ny Auth-emulatorsession kunne ikke gennemføres lokalt. |
-| Optælling ved og efter modtagelse | `MobileReceiptScreen.jsx`, `InventoryScreen.jsx`, `procure-inventory-domain.js` | Valgfri optælling; difference gemmes som særskilt korrektionsbevægelse med begrundelse. Optælling uden difference gemmes stadig. Seneste optælling ændres ikke, hvis brugeren afslutter uden optælling. Revisionskonflikt kræver ny bekræftelse. | Browser: beregnet 68, faktisk 66, difference -2 og begrundelse. Efter bekræftelse viste lageret 66 og separat +48/-2 i historikken. Senere direkte optællingsdialog blev åbnet; ESC lukkede og fokus vendte til “Optæl lager”. | To samtidige rigtige browsersessioner mod emulator blev ikke gennemført. |
-| Mobil og desktop | `InventoryScreen.jsx`, `MobileReceiptScreen.jsx`, `procure-v2.css` | Store handlinger til “Modtag varer”, “Registrér forbrug” og “Optæl lager”; enheder vises ved alle antal. “Gemt” vises først efter callback-resultat. | Kontrolleret ved CSS-bredder ca. 388 og 358 px; ingen dokumentbredde-overflow. Desktop og smal visning er fotograferet. | Ikke afprøvet på fysisk telefon; mobilbrowserens kamera indgår ikke i dette lagerflow. |
-| Forbrug, retur, flytning og historik | `InventoryScreen.jsx`, `procure-inventory-domain.js`, `procureLagerBevaegelse`, `procureLeverandoerReturRegistrer` | Startbeholdning, forbrug, fysisk retur, optælling, korrektion og tobenet flytning. Hver bevægelse har vare, placering, enhed, type, medarbejder, servertid og reference. Retur reducerer fysisk lager én gang; kreditnota ændrer ikke lager. | Enheds- og domænetests dækker fortegn, enheder, idempotens, revision, retur og nettoflytning. UI-dialoger og historik er gennemgået. | Callable-integration mod rigtig emulator blev blokeret før teststart. |
-| Årsoversigt og CSV | `procure-inventory-domain.js`, `InventoryScreen.jsx` | Primo + modtagelser - forbrug - retur ± korrektioner + nettoflytning = ultimo beregnes fra bevægelser. Interne flytninger summerer til nul på lagerniveau. Optællinger/afvigelser vises separat, og filtreret periode kan eksporteres som CSV. | Domænetest validerer perioderegnestykket og CSV. Browser viste tape: 0 + 10 + 10 = 20 i nulstillet demo samt tidligere gennemført 0 + 58 + 8 = 66 før genindlæsning. | CSV-download er udløst fra UI-kontrakten, men filen er ikke genimporteret i et regneark. |
-| Ordre-PDF og leverandørmail | `procure-pdf.js`, `SendOrderScreenV2.jsx`, `ordreMailIndhold`, eksempelgenerator | Nye leverandørdokumenter har ingen modtagelses-QR og ingen priser. Teksten “Angiv vores bestillingsnummer [PO] på følgesedlen og fakturaen.” står i PDF og mail. Interne modtagelseslinks og gamle arkiver ændres ikke. Leveringsvalg og åbningstid er bevaret. | Tre PDF'er er genereret, tekstkontrolleret og renderet: 1 side hurtigst, 1 side senest og 4 sider/42 linjer med gentagne tabeloverskrifter. Målrettede tests kontrollerer ingen priser/QR og uændret intern prismodel. | Ingen rigtig mail er sendt; kun kontrolleret kode/testtransportkontrakt. |
-| Tenant, roller, dubletter og samtidighed | `functions/index.js`, `firebase.rules.json`, `procure-inventory-domain.js` | Callables kræver auth, tenanttilknytning og `indkoeb.skriv`. Transaktioner håndhæver revisionsnummer og idempotens. Database-regler tillader ikke direkte klientskrivning til bevægelser. | Statiske adgangstests, præflight og 107 målrettede tests bestod. | Auth-/Database-emulator kunne ikke starte på værten; fremmed-tenant og to-sessioners browserflow er derfor ikke dokumenteret som runtime-test. |
+| Desktoplayout | `InventoryScreen.jsx`, `procure-v2.css` | PROCURE-indholdet bruger hele AppShell-arbejdsområdet. Min-bredder er begrænset til tabelwrappers med lokal rulning; siden får ikke global vandret rulning. | Autoriseret Edge-session ved 1440 px: indhold `left=250`, `right=1391`, `width=1141`; dokument `clientWidth=scrollWidth=1425`; filtre, handlinger og tabeller var tilgængelige. | Bestået. |
+| Mobillayout og overskrifter | `MobileReceiptScreen.jsx`, `procure-v2.css` | Ét trinbestemt H1: “Modtag varer”, “Optæl lager” eller “Lagerstatus opdateret”. Teksten “Servervalideret” og unødvendig teknisk succeshjælp er fjernet. | Syv screenshots ved 360/390 CSS-px. Alle målte dokumenter havde `clientWidth=scrollWidth`; samtlige kontroller lå inden for viewporten. Modtagelse, optælling og kvittering blev betjent i browseren. | Bestået. Ikke testet på fysisk telefon. |
+| Konkret kvittering | `MobileReceiptScreen.jsx` | Gemte serverresultater leverer vare/varenummer, lager/placering, ny beholdning, korrektion, medarbejder og servertid. Kvitteringen linker til lager og tilknyttet ordre. Uden optælling står der eksplicit, at beholdningen er beregnet og ikke fysisk optalt. | Autoriseret browserflow viste `Pakketape, klar 48 mm · EMB-1001`, `Hovedlager · A-01`, `Ny beholdning: 66 ruller`, `Optællingskorrektion: −2 ruller`, syntetisk medarbejder og servertid. | Bestået. Ingen værdier er hardcodet i komponenten. |
+| Historik og periode | `InventoryScreen.jsx`, `procure-inventory-domain.js` | Synlig dato/tid pr. bevægelse; fra-/til-dato; særskilte startbeholdning, modtagelser, forbrug, retur, korrektion og nettoflytning; enheder og ultimo; “Vis bevægelser” åbner grundlaget. Start før perioden går i primo, start i perioden vises separat. | UI viste valgt periode `2026-01-01 – 2026-12-31`. Runtimeafstemning: `58 + 0 + 10 − 1 − 1 − 2 + 0 = 64 ruller`. | Bestået. |
+| CSV | `inventoryCsv`, `InventoryScreen.jsx` | Downloaden indeholder valgt fra/til, alle afstemningskolonner, ultimo og enhed. | Faktisk browserdownload `procure-lager-2026-01-01-2026-12-31.csv` blev læst tilbage. Runtime-CSV SHA-256: `24af9cec5593af332355a7ea1ba9c62f2a0b276f7d9360a75072ac805a471d32`; indholdet stemmer med UI-perioden og 64-rullers afstemningen. | Bestået. |
+| Modtagelse og lagerbevægelse | `procureModtagelseRegistrer`, regler, browseradapter | Lagerført accepteret mængde og modtagelse gemmes atomisk. Idempotensnøgle forhindrer dobbeltregistrering. | Almindeligt Firebase-password-login mod Auth/Functions/Database: +10 gav 68. Gentaget kald gav `allerede=true` uden ekstra bevægelse. Anden autoriseret session genåbnede ordre og beholdning. | Bestået. |
+| Modtagelse uden optælling | samme som ovenfor | Modtagelsen kan afsluttes med beregnet beholdning; seneste optællingsdato ændres ikke. | Browseren gemte modtagelsen og viste særskilt mellemkvittering før optælling. Backenddata blev genåbnet i session 2, mens beholdningen var 68 og før den efterfølgende optælling. | Bestået. |
+| Optælling med/uden difference | `procureLagerBevaegelse` | En nul-difference gemmes som dokumentation. Difference kræver begrundelse og bliver særskilt korrektionsbevægelse. | Runtime: 68→68 med delta 0; derefter 68→66 med delta −2. Browseren gennemførte −2-flowet og viste den konkrete kvittering. | Bestået. |
+| Samtidighed | revisionskontrol i callable/domæne | En forældet expected revision afvises; nyere bevægelse overskrives ikke. | To tokens/sessioner. Session B gemte optællingen 68; session A's gamle revision blev afvist med `ABORTED`; efter genindlæsning blev 66 gemt. | Bestået. |
+| Adgangskontrol | Auth-claims, Functions, `firebase.rules.json` | Tenant og `indkoeb.skriv` håndhæves på serveren; lokationer valideres mod tenantens stamdata. | Læsebruger uden skriveret blev afvist. Fremmed tenant kunne hverken læse varen eller kalde lagerændringen. Tokenclaims blev kontrolleret efter almindeligt password-login. | Bestået lokalt i emulator. |
+| Atomisk fejl | `procureModtagelseRegistrer` | Fejl efter servervalidering må hverken give succes eller efterlade modtagelse/lager ude af takt. | Modtagelse med ukendt lager/placering blev afvist; ingen modtagelse blev oprettet, og bevægelsesantallet var uændret. | Bestået. |
+| Forbrug, retur, flytning og kreditnota | lager- og returcallables, Fakturacenter | Forbrug reducerer lager. Fysisk retur reducerer én gang. Flytning skriver −/+ og er samlet nul. Kreditnota påvirker ikke fysisk lager. | Runtimeflow kørte alle fire hændelser. Flytning gav `[-2,+2]`; kreditnotaens før-/efter-lagerplaceringer var identiske. | Bestået. Ingen ekstern bogføring/betaling udført. |
+| Ordre-PDF fortsættelsessider | `procure-pdf.js`, `procure-followup.test.mjs` | Skabelon v4 viser BESTILLING og bestillingsnummer på alle sider; tabeloverskrift gentages; lange beskrivelser brydes inden antal/enhed. Ingen priser eller modtagelses-QR. | 42 linjer renderet til 4 sider. Alle sider blev visuelt kontrolleret. PDF SHA-256: `db634ff74d61aa2d3bea30dcc618622d61bf4bff5e6cef32d4b6df661236624a`. | Bestået. |
 
-## Sammenhængende lokal browserkontrol
+## Autoriseret runtimeflow
 
-Preview: `http://127.0.0.1:5206/indkoeb/lager`
+Miljøet var den lokale Firebase Emulator Suite for projektet `demo-veyro-owner`:
 
-Den lokale browser blev kørt med tydeligt mærkede syntetiske testdata. Denne demo bruger ikke login- eller rettighedsbypass som bevis for backendadgang; den er alene UI- og flowkontrol. Normal login og servervaliderede claims ligger i produktionsstien, men den lokale Auth-emulator kunne ikke startes på denne Windows-vært.
+- Auth `127.0.0.1:9109`
+- Realtime Database `127.0.0.1:9010`
+- Storage `127.0.0.1:9209`
+- Functions `127.0.0.1:5012`
+- Preview `http://127.0.0.1:5208`
 
-Gennemført browserflow:
+Der blev brugt syntetiske brugere, almindeligt Firebase-password-login og signerede tenant-, rolle- og permission-claims. Ingen demo-login, rollevælger eller rettighedsbypass indgik som adgangsbevis.
 
-1. Åbn lageroversigt og vælg Pakketape på Hovedlager/A-01.
-2. Find PO-2026-0142 via åbne ordrer og registrer resterende 48 ruller.
-3. Bekræft, at 20 + 48 = 68 beregnet beholdning.
-4. Optæl 66, angiv begrundelse, og registrer en særskilt korrektion på -2.
-5. Gå tilbage til lageret og se 66 ruller samt de separate bevægelser +48 og -2.
-6. Åbn en senere optælling direkte fra lageret; kontroller dialogfokus, ESC-lukning og fokusretur.
-7. Kontroller smal visning ved ca. 390 og 360 CSS-pixel uden utilsigtet vandret dokumentoverflow.
+Runtimebeviset ligger i `output/review/lager-runtime/PROCURE-lager-auth-functions-bevis.json`. Det dokumenterer to autoriserede sessioner, writer-/tenantafvisning, idempotens, revisionskonflikt, atomisk fejl, fysisk retur, kreditnota uden lagerændring og periodeafstemning.
 
-## PDF-bevis
+## Browser- og artefaktbevis
 
-| Eksempel | Sider/linjer | SHA-256 | Kontrol |
-| --- | ---: | --- | --- |
-| Hurtigst muligt | 1 / 2 | `e3ffd058b2c2f69c14b65d19f6ba0c218a0695117ac3752b3574053ac79b7e45` | Ingen pris eller QR; fast åbningstid og følgeseddel-/fakturatekst. |
-| Senest dato | 1 / 2 | `e7f1c3fb3a98a286c353cba5282868c5f8019f3785468143a686f1201a4ed221` | Dato uden særskilt klokkeslæt; samme åbningstid. |
-| Flere sider | 4 / 42 | `ad85945953f86afceadd8d53ec7829523ba4e8e7f6a353f0836c4907c0f39139` | Gentaget tabeloverskrift; ingen overlap eller afskåret tekst ved visuel renderkontrol. |
-
-`output/pdf/PROCURE-bestilling-manifest.json` dokumenterer de genererede bytes og `vendorReceiptQr: false`. Preview, mailvedhæftning og arkiv bruger fortsat den samme revisionslåste PDF-bytebuffer; dette er dækket af de eksisterende PDF/mailtests. Allerede arkiverede filer bliver ikke regenereret.
+- `output/review/lager-browser/01-mobil-modtag-varer-390.png`
+- `output/review/lager-browser/02-mobil-modtag-varer-360.png`
+- `output/review/lager-browser/03-mobil-modtagelse-gemt-390.png`
+- `output/review/lager-browser/04-mobil-optael-lager-390.png`
+- `output/review/lager-browser/05-mobil-optael-lager-360.png`
+- `output/review/lager-browser/06-mobil-lagerstatus-opdateret-390.png`
+- `output/review/lager-browser/07-mobil-lagerstatus-opdateret-360.png`
+- `output/review/lager-browser/08-desktop-lageroversigt-og-historik.png`
+- `output/review/lager-browser/09-desktop-genaabnet-anden-session.png`
+- `output/review/lager-browser/procure-lager-2026-01-01-2026-12-31.csv`
+- `output/review/lager-browser/PROCURE_LAGER_BROWSER_QA.json`
+- `output/review/lager-pdf-render-v4/PROCURE-bestilling-flere-sider-1.png` … `-4.png`
+- `output/pdf/PROCURE-bestilling-flere-sider.pdf`
 
 ## Testresultater
 
-Bestået:
+Bestået på kodecommit `c36f8b6`:
 
-- `node --test test/procure-inventory.test.mjs test/procure-followup.test.mjs test/procure-review2.test.mjs test/bestilling.test.mjs test/skive4d-ordremail.test.mjs test/statustal.test.mjs test/custom-claims-v2-preflight.test.mjs` → 107 bestået, 0 fejl.
 - `npm run lint` → bestået.
-- `npm run build` → bestået.
-- `npm run test:design` → 11 bestået, 0 fejl.
-- `git diff --check` → ingen whitespacefejl; kun forventede Windows line-ending-advarsler før commit.
+- `npm run build` → bestået, 647 moduler transformeret.
+- `node --test --test-isolation=none test/design-tokens.test.mjs` → 11/11.
+- `node --test --test-isolation=none test/procure-inventory.test.mjs test/procure-followup.test.mjs test/forbrugsvarer.test.mjs test/navadgang.test.mjs test/referencetjek.test.mjs` → 70/70.
+- `firebase emulators:exec --only database,storage --config firebase.rules-test.json --project demo-fleetcontrol-rules-test "node scripts/test-platform.mjs"` → 4.349/4.349, 0 fejl.
+- `firebase emulators:exec --only auth,database,storage,functions --config firebase.procure-suite.json --project demo-veyro-owner "node scripts/procure-inventory-auth-functions-qa.mjs output/review/lager-runtime"` → bestået.
+- `node scripts/procure-inventory-browser-qa.mjs` mod samme lokale miljø → bestået; ni screenshots og faktisk CSV oprettet.
+- `npm run procure:pdf-samples` samt Poppler-rendering af flerside-PDF → 4/4 sider visuelt kontrolleret.
 
-Ikke bestået/ikke kørt som bevis:
+## Statusgrænser
 
-- `npm run test:rules` kom ikke frem til tests. Firebase Database-emulatoren fejlede under opstart med `Unable to establish loopback connection` / `SocketException: Invalid argument: connect`, også med den lokale Java 21-runtime.
-- Derfor er `functions/test/procure-callables.integration.mjs`, almindeligt Auth-login, fremmed-tenant-afvisning, vedvarende genåbning og to samtidige browser-sessioner ikke faktisk kørt mod emulator i denne aflevering.
-- En fuld, ufiltreret `node --test` rammer allerede kendte, ikke-PROCURE-relaterede extensionless import-/fixturefejl i Facility V2/Fleet V2. Den afgrænsede PROCURE-pakke ovenfor er grøn.
+- **Implementeret:** layoutrettelser, konkret kvittering, historik/periode/CSV, runtime-QA og PDF-fortsættelseshoved.
+- **Faktisk afprøvet:** almindeligt lokalt login, servercallables, database-/storage-regler, to sessioner, adgangsafvisninger, samtidighed, retry, atomisk fejl, browser ved 360/390/1440 og PDF-rendering.
+- **Fortsat uafprøvet:** fysisk telefon/hardwarebrowser. Det er ikke nødvendigt for de krævede CSS-bredder, men er ikke påstået gennemført.
+- **Ekstern konfiguration:** produktions-Firebase, rigtig mailtransport, kredentialer og eksterne økonomiintegrationer er ikke anvendt eller ændret.
 
-## Artefakter
-
-- Desktop: `output/screenshots/lager/01-lageroversigt-desktop.png`
-- Mobil modtagelse: `output/screenshots/lager/02-mobilmodtagelse-390.png`
-- Mobil optælling: `output/screenshots/lager/04-mobiloptaelling-difference-390.png`
-- Mobil gemt status: `output/screenshots/lager/05-mobil-lager-gemt-390.png`
-- Renderede PDF-sider: `output/screenshots/lager/pdf-*.png`
-- PDF'er og manifest: `output/pdf/PROCURE-bestilling-*.pdf` og `output/pdf/PROCURE-bestilling-manifest.json`
-
-## Afgrænsning
-
-- Færdig kode: lagerdomæne, UI, callables, regler, mobilmodtagelse, bevægelseshistorik, periodeafstemning/CSV samt nye PDF/mailkrav.
-- Lokalt afprøvet: domæne-/regressionstests, lint, build, design-tests, syntetiske browserflows og PDF-rendering.
-- Ikke runtime-afprøvet: Firebase Auth/Database/Functions-integration på grund af emulatorens loopbackfejl på værten.
-- Ekstern konfiguration: rigtig mailtransport, kundecredentials og produktionsmiljø er hverken anvendt eller ændret.
-- Ingen push, merge, deployment, produktionsændring, køb, betaling eller leverandørmail er foretaget.
+Ingen push, merge, deployment, offentlig eksponering, produktionsændring, køb, betaling eller leverandørmail er udført.

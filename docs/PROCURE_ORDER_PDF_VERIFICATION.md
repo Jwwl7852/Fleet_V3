@@ -1,15 +1,30 @@
 # PROCURE ordre-PDF – implementering og lokal verifikation
 
-Dato: 11. september 2026  
+Oprindelig rapport: 11. september 2026  
+Aktuel skabelonstatus: 12. september 2026  
 Branch: `codex/procure-integrated-development`
+
+## Aktuel skabelon v4
+
+Nye leverandørvendte ordre-PDF'er har **ingen modtagelses-QR**. QR-beskrivelser og QR-hashes længere nede i denne rapport er historiske beviser for allerede arkiverede revisioner; de må ikke læses som beskrivelse af den aktuelle skabelon.
+
+Skabelon v4 bevarer layoutet uden priser, leveringsønsket, åbningstiden 7.00–15.00 og kravet om bestillingsnummer på følgeseddel/faktura. Flersideeksemplet viser nu `BESTILLING` og det konkrete bestillingsnummer på alle fortsættelsessider samt gentagne tabeloverskrifter.
+
+Aktuelt flersidebevis:
+
+- Fil: `output/pdf/PROCURE-bestilling-flere-sider.pdf`
+- 42 linjer, 4 sider
+- SHA-256: `db634ff74d61aa2d3bea30dcc618622d61bf4bff5e6cef32d4b6df661236624a`
+- Alle fire sider renderet og visuelt kontrolleret i `output/review/lager-pdf-render-v4/`
+- Målrettede tests kontrollerer fortsat ingen priser/QR, gentaget tabelhoved, bestillingsnummer og uændret intern prismodel.
 
 ## Resultat
 
-Den leverandørvendte ordre-PDF er implementeret som rigtig PDF-tekst, vektorgrafik, tabel og QR-kode. Den følger det godkendte informationshierarki med BESTILLING, bestillingsdata, BESTILLER, LEVERANDØR, LEVERING, VARER, FAKTURERING, VAREMODTAGELSE og sidefod. Referencebilledets mærkninger "DESIGNFORSLAG", "EKSEMPELDATA" og "QR-eksempel" indgår ikke i produktionsdokumentet.
+Den oprindelige leverandørvendte ordre-PDF blev implementeret som rigtig PDF-tekst, vektorgrafik, tabel og på daværende tidspunkt QR-kode. Den historiske revision fulgte informationshierarkiet med BESTILLING, bestillingsdata, BESTILLER, LEVERANDØR, LEVERING, VARER, FAKTURERING, VAREMODTAGELSE og sidefod. Referencebilledets mærkninger "DESIGNFORSLAG", "EKSEMPELDATA" og "QR-eksempel" indgik ikke i produktionsdokumentet.
 
 Leverandørmail og ordre-PDF indeholder ikke priser, rabatter, moms eller totaler. De interne ordrebeløb er fortsat bevaret til godkendelse, budget, analyse og fakturamatch.
 
-## Implementerede kontroller
+## Historiske kontroller for skabelon v3
 
 - PDF-tabellen viser kun `Varenr.`, `Beskrivelse`, `Antal` og `Enhed`.
 - Kun godkendt og faktisk bestilt mængde sendes til PDF-generatoren.
@@ -23,7 +38,7 @@ Leverandørmail og ordre-PDF indeholder ikke priser, rabatter, moms eller totale
 - QR-koden åbner den konkrete ordre til mobilmodtagelse. Scanning registrerer ikke modtagelse.
 - Webshopordrens eksisterende afsendelsesvej er uændret og udløser ikke en ekstra leverandørmail.
 
-## Genererede prøvefiler
+## Historiske prøvefiler fra 11. september
 
 | Fil | Omfang | SHA-256 |
 | --- | --- | --- |
@@ -33,7 +48,7 @@ Leverandørmail og ordre-PDF indeholder ikke priser, rabatter, moms eller totale
 
 Renderede PNG'er ligger i `output/pdf/screenshots/`. Alle fire sider i flersideeksemplet er inspiceret.
 
-## Faktisk afprøvning
+## Historisk afprøvning fra 11. september
 
 ### PDF-indhold og rendering
 

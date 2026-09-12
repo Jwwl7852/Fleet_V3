@@ -22,8 +22,9 @@ funktionelt mærket som syntetisk og erstatter ikke adgangstest.
 - Mobil vareindsamling med servergemt kladde, delvis indsendelse,
   leverandøropdeling, tydelig kvittering og ingen automatisk afsendelse.
 - Hylde-QR med stabil mærkatreference, aktivt antalvalg og udskrivning.
-- Ordre-PDF med stabil modtagelses-QR, eksplicit mailafsendelse,
-  revisionslås, idempotens, faktisk PDF-vedhæftning og byteidentisk arkiv.
+- Ordre-PDF med eksplicit mailafsendelse, revisionslås, idempotens,
+  faktisk PDF-vedhæftning og byteidentisk arkiv. Modtagelses-QR i ældre
+  arkiverede revisioner bevares historisk; nye leverandør-PDF'er har ikke QR.
 - Linjegodkendelse med godkend, udskyd, send tilbage og afvis, herunder
   delmængder og begrundelseskrav.
 - Produktionsegnet modtagelses-backend med flere delleverancer,
@@ -62,6 +63,13 @@ og signerede claims. Den visuelle demo findes på
 Se `PROCURE_FOLLOWUP_VERIFICATION.md` for konkrete kommandoer, hashes,
 browserresultater og screenshots samt `PROCURE_REQUIREMENTS_TRACEABILITY.md`
 for status pr. krav.
+
+Lagerrettelsen den 12. september er afprøvet separat gennem almindeligt
+Firebase-login mod lokale Auth-, Functions-, Realtime Database- og
+Storage-emulatorer. Den omfatter to autoriserede sessioner, samtidighed,
+dubletværn, fremmed-tenant-/permission-afvisning, faktisk CSV-download samt
+browserkontrol ved 360, 390 og 1440 px. Se
+`PROCURE_LAGER_VERIFIKATION_2026-09-12.md`.
 
 ## Resterende eksterne afhængigheder
 
