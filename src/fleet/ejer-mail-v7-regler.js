@@ -38,7 +38,7 @@ export function filtrerMailtraade(traade, {
     if (kunMine && traad.ansvarligUid !== ejerUid) return false;
     if (q && !tekst(`${traad.emne} ${traad.virksomhedsnavn} ${traad.kontaktNavn} ${traad.kontaktEmail} ${traad.preview}`).includes(q)) return false;
     return true;
-  }).sort((a, b) => Number(b.senesteAktivitetMs || 0) - Number(a.senesteAktivitetMs || 0));
+  }).sort((a, b) => Number(b.senesteAktivitetMs || 0) - Number(a.senesteAktivitetMs || 0) || String(b.id).localeCompare(String(a.id), "da"));
 }
 
 export function paginerMailtraade(traade, side = 1, sidestoerrelse = MAIL_SIDESTOERRELSE) {
@@ -114,11 +114,11 @@ export function lokalAiChatRevision({ navn = "", oplysninger = [], instruktioner
   const linjer = [
     `Hej${fornavn ? ` ${fornavn}` : ""}.`,
     kort ? `Tak for din besked om pilotforløbet${omfang ? ` med ${omfang}` : ""}.` : `Tak for den konkrete forespørgsel. Vi hjælper jer gerne trygt gennem opstarten${omfang ? ` med ${omfang}` : ""}.`,
-    fakta.administratorer ? `${fakta.administratorer} får administratoradgang; de indgår i det samlede brugerantal.` : "",
+    fakta.administratorer ? `${fakta.administratorer}${/administratoradgang/i.test(fakta.administratorer) ? "" : " har administratoradgang"}; de indgår i det samlede brugerantal.` : "",
     spoergsmaal.length ? `For at tage næste skridt vil jeg kun bede jer bekræfte ${spoergsmaal.join(" og ")}.` : "Vi har de nødvendige oplysninger til næste skridt.",
     telefon ? "Hvis det er nemmere, foreslår jeg en kort telefonsamtale." : "",
     kort ? "" : "Når vi har afklaringen, samler vi det videre forløb uden at love en leveringsdato endnu.",
-    `Venlig hilsen\n${signatur}`,
+    signatur ? `Venlig hilsen\n${signatur}` : "",
   ];
   return {
     tekst: linjer.filter(Boolean).join("\n\n"),

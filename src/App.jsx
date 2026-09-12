@@ -123,6 +123,7 @@ const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesign
 const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationerDesign.jsx"));
 const EjerLeverandoerer = lazy(() => import("./moduler/udbyder/EjerLeverandoerer.jsx"));
 const EjerRapporter = lazy(() => import("./moduler/udbyder/EjerRapporter.jsx"));
+const EjerMailSignatur = lazy(() => import("./moduler/udbyder/EjerMailSignatur.jsx"));
 const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
@@ -498,6 +499,7 @@ export default function App() {
               <Route path="/main/rapporter" element={<EjerRapporter />} />
               <Route path="/main/integrationer" element={<EjerIntegrationer />} />
               <Route path="/main/indstillinger/leverandoerer" element={<EjerLeverandoerer />} />
+              <Route path="/main/indstillinger/mail-signatur" element={<EjerMailSignatur />} />
               <Route path="*" element={<Navigate to="/main" replace />} />
             </Routes>
           </EjerRamme>

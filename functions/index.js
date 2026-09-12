@@ -10904,8 +10904,7 @@ export const salgsnoteopret = onCall({ region: REGION }, async (req) => {
   const traadId = kraevCrmId(req.data?.traadId, "Tråd-id");
   const indhold = tekst(req.data?.tekst, 10_000);
   if (!indhold) throw new HttpsError("invalid-argument", "Noten er tom.");
-  const traadRef = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`);
-  if (!(await traadRef.child("id").once("value")).exists()) throw new HttpsError("not-found", "Tråden findes ikke.");
+  const { ref: traadRef } = await kraevSynligKommunikationstraad(traadId, ejerUid);
   const id = traadRef.child("noter").push().key;
   await traadRef.child(`noter/${id}`).set({ id, tekst: indhold, oprettetMs: Date.now(), oprettetAf: ejerUid, intern: true });
   await skrivEjerAudit({ uid: ejerUid, handling: "salg.note.opret", objekt: "salgstraad", objektId: traadId });
@@ -10964,8 +10963,8 @@ export const kommunikationsaichatgem = onCall({ region: REGION }, async (req) =>
       revision: forventetRevision + 1,
       chat: {
         ...(aktuel.chat || {}),
-        [ejerBeskedId]: { id: ejerBeskedId, rolle: "ejer", tekst: instruktion, aktorUid: ejerUid, aktorNavn, oprettetMs: nu, intern: true },
-        [aiBeskedId]: { id: aiBeskedId, rolle: "ai", tekst: forslag, aktorUid: "lokal_adapter", aktorNavn: "Lokal AI-testadapter", oprettetMs: nu + 1, intern: true },
+        [ejerBeskedId]: { id: ejerBeskedId, udvekslingId: operationNoegle, rolle: "ejer", tekst: instruktion, aktorUid: ejerUid, aktorNavn, oprettetMs: nu, intern: true },
+        [aiBeskedId]: { id: aiBeskedId, udvekslingId: operationNoegle, rolle: "ai", tekst: forslag, aktorUid: "lokal_adapter", aktorNavn: "Lokal AI-testadapter", oprettetMs: nu + 1, intern: true },
       },
       aktivtForslag: { tekst: forslag, basisAktivitetMs, basisKladdeRevision, basisKladdeFingeraftryk, oprettetMs: nu + 1, oprettetAf: ejerUid, provider: "lokal_testadapter" },
       operationer: { ...(aktuel.operationer || {}), [operationNoegle]: { oprettetMs: nu, aktorUid: ejerUid } },
@@ -11028,6 +11027,34 @@ export const ejerarbejdsflowhent = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req);
   const post = (await getDatabase().ref(`udbyder/arbejdsflow/fravaer/${ejerUid}`).once("value")).val() || {};
   return { fravaer: { aktiv: post.aktiv === true, fraMs: Number(post.fraMs || 0), tilMs: Number(post.tilMs || 0), afloeserUid: tekst(post.afloeserUid, 160), opdateretMs: Number(post.opdateretMs || 0) } };
+});
+
+function normaliserMailsignatur(post = {}) {
+  const hjemmeside = tekst(post.hjemmeside, 500);
+  if (hjemmeside && !/^https?:\/\//i.test(hjemmeside)) throw new HttpsError("invalid-argument", "Hjemmesiden skal begynde med http:// eller https://.");
+  return {
+    navn: tekst(post.navn, 160), titel: tekst(post.titel, 160), virksomhed: tekst(post.virksomhed, 160),
+    telefon: tekst(post.telefon, 80), email: normaliserEmail(post.email), hjemmeside,
+    ekstra: tekst(post.ekstra, 1_000), navnFed: post.navnFed !== false, titelKursiv: post.titelKursiv === true,
+    brugLogo: post.brugLogo === true,
+  };
+}
+
+export const ejermailsignaturhent = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req);
+  const post = (await getDatabase().ref(`profiler/${ejerUid}/mailSignatur`).once("value")).val() || {};
+  return { ok: true, signatur: { ...normaliserMailsignatur(post), revision: Number(post.revision || 0), opdateretMs: Number(post.opdateretMs || 0) } };
+});
+
+export const ejermailsignaturgem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const ref = getDatabase().ref(`profiler/${ejerUid}/mailSignatur`);
+  const foer = (await ref.once("value")).val() || {}; const forventet = kraevForventetRevision(d.forventetRevision);
+  if (Number(foer.revision || 0) !== forventet) throw new HttpsError("aborted", "Mailsignaturen blev ændret samtidigt. Genindlæs og prøv igen.");
+  const signatur = normaliserMailsignatur(d); const nu = Date.now();
+  await ref.set({ ...signatur, revision: forventet + 1, oprettetMs: Number(foer.oprettetMs || nu), opdateretMs: nu, opdateretAf: ejerUid });
+  await skrivEjerAudit({ uid: ejerUid, handling: "ejer.mail.signatur.gem", objekt: "ejerprofil", objektId: ejerUid });
+  return { ok: true, revision: forventet + 1, opdateretMs: nu };
 });
 
 export const ejerleverandoererhent = onCall({ region: REGION }, async (req) => {

@@ -38,7 +38,7 @@ const NAV = [
     ],
   },
   { label: "Vidensbase", ikon: "book", punkter: [{ to: "/main/salg/vidensbase", label: "Godkendt viden", ikon: "book" }] },
-  { label: "Indstillinger", ikon: "link", punkter: [{ to: "/main/integrationer", label: "Integrationer", ikon: "link" }, { to: "/main/indstillinger/leverandoerer", label: "Leverandører", ikon: "building" }] },
+  { label: "Indstillinger", ikon: "link", punkter: [{ to: "/main/indstillinger/mail-signatur", label: "Mail og signatur", ikon: "mail" }, { to: "/main/integrationer", label: "Integrationer", ikon: "link" }, { to: "/main/indstillinger/leverandoerer", label: "Leverandører", ikon: "building" }] },
 ];
 
 const TITLER = {
@@ -65,6 +65,7 @@ const TITLER = {
   "/main/rapporter": ["Statistik og rapporter", "Salg, pilotforløb, mail og support på et dokumenteret grundlag"],
   "/main/integrationer": ["Integrationer", "Forbindelser, synkronisering og fejl"],
   "/main/indstillinger/leverandoerer": ["Leverandører", "Veyros egne leverandører og aftaler"],
+  "/main/indstillinger/mail-signatur": ["Mail og signatur", "Din personlige afsenderidentitet og signatur"],
 };
 
 export default function EjerRamme({ bruger, logUd, children }) {

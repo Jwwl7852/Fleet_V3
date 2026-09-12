@@ -17,13 +17,13 @@
 .ejer-mail-ai-faner button:focus-visible{outline:2px solid var(--veyro-cyan);outline-offset:-2px}
 .ejer-mail-ai-paneler,.ejer-mail-ai-panel{min-width:0;min-height:0}
 .ejer-mail-ai-paneler{display:grid;overflow:hidden}
-.ejer-mail-ai-panel{display:grid;align-content:start;gap:11px;padding:11px 2px 2px;overflow:auto}
+.ejer-mail-ai-panel{display:grid;grid-auto-rows:max-content;align-content:start;gap:11px;padding:11px 2px 2px;overflow:auto}
 @media(min-width:901px){.ejer-mail-ai-panel{height:max(330px,calc(100vh - 535px))}}
 .ejer-svarmeta{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr);gap:7px 12px}
 .ejer-svarmeta span{display:grid;gap:2px;min-width:0;color:var(--veyro-muted-text);font-size:var(--fc-t-s)}
 .ejer-svarmeta span:last-child{grid-column:1/-1}
 .ejer-svarmeta b{color:var(--veyro-primary-text);font-size:var(--fc-t-xs)}
-.ejer-mail-editor{overflow:hidden;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}
+.ejer-mail-editor{min-height:218px;overflow:hidden;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}
 .ejer-mail-formatlinje{display:flex;align-items:center;gap:3px;min-height:38px;padding:0 7px;border-bottom:1px solid var(--veyro-border);background:var(--veyro-app-background)}
 .ejer-mail-formatlinje button{display:grid;place-items:center;min-width:32px;min-height:32px;border:0;background:transparent;color:var(--veyro-primary-text);font:inherit;font-weight:700}
 .ejer-mail-formatlinje span{height:22px;border-left:1px solid var(--veyro-border)}
@@ -73,10 +73,10 @@
 .ejer-ai-seneste p{display:-webkit-box;margin:0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3;white-space:pre-wrap}
 .ejer-ai-seneste p.aaben{display:block;overflow:visible}
 .ejer-ai-seneste>div{justify-content:flex-end;flex-wrap:wrap}
-.ejer-mail-hurtiginstruks{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+.ejer-mail-hurtiginstruks{grid-template-columns:minmax(0,1fr);align-items:end}
 .ejer-mail-hurtiginstruks label{display:grid;gap:4px;color:var(--veyro-primary-text);font-weight:650}
 .ejer-mail-hurtiginstruks input{box-sizing:border-box;width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);color:var(--veyro-primary-text);font:inherit;font-weight:400}
-.ejer-mail-hurtiginstruks small{grid-column:1/-1;color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
+.ejer-mail-hurtiginstruks .fc-btn{justify-self:end}.ejer-mail-hurtiginstruks small{grid-column:1/-1;color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
 
 @media(max-width:900px){
   .ejer-mail-v7-oversigt{gap:7px}
@@ -110,7 +110,7 @@
   .ejer-mail-identitet strong,.ejer-mail-identitet small{white-space:normal;overflow-wrap:normal;word-break:normal}
   .ejer-mail-liste-v7 .fc-pill{align-self:start}
   .ejer-mail-ai-overblik{display:grid;grid-template-columns:minmax(0,1fr)!important}
-  .ejer-mail-v7-detalje .ejer-mail-svarfokus{display:grid;grid-template-rows:auto auto auto;overflow:visible}
+  .ejer-mail-v7-detalje .ejer-mail-svarfokus{grid-template-rows:auto auto auto;overflow:visible}
   .ejer-mail-v7-detalje .ejer-mail-ai-paneler,.ejer-mail-v7-detalje .ejer-mail-ai-panel{overflow:visible}
   .ejer-mail-ai-faner{overflow-x:auto}
   .ejer-mail-ai-faner button{flex:1 0 auto;padding-inline:10px}
@@ -125,4 +125,50 @@
   .ejer-mail-hurtiginstruks small{grid-column:auto}
   .ejer-svarfakta dl{grid-template-columns:minmax(0,1fr)}
   .ejer-mail-v7-oversigt .ejer-mail-ai-overblik{display:none}
+}
+
+@media(min-width:901px){
+  .ejer-mail-fokus{height:max(470px,calc(100vh - 390px))}
+  .ejer-mail-editor textarea{height:150px;min-height:150px}
+}
+
+/* V7.3: hver kolonne har sin egen historik og en komposer, der bliver nederst. */
+.ejer-mail-traadfokus{grid-template-rows:auto minmax(0,1fr) auto}
+.ejer-mail-venstrehistorik{min-height:0;padding-right:3px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.ejer-mail-beskeder{overflow:visible}
+.ejer-notehistorik{display:grid;gap:7px;padding:12px 4px 4px;border-top:2px solid var(--veyro-border)}
+.ejer-notehistorik h3,.ejer-notehistorik p{margin:0}.ejer-notehistorik p{padding:9px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-app-background);white-space:pre-wrap}
+.ejer-intern-note-komposer{display:grid;gap:7px;margin-top:9px;padding-top:10px;border-top:1px solid var(--veyro-border);background:var(--veyro-card-surface)}
+.ejer-intern-note-komposer label{display:grid;gap:4px;font-weight:650}.ejer-intern-note-komposer textarea{min-height:82px;max-height:140px;resize:none}
+.ejer-intern-note-komposer>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.ejer-intern-note-komposer small{color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
+.ejer-mail-ai-paneler{height:100%}.ejer-mail-ai-panel{box-sizing:border-box;height:100%!important;min-height:0}
+.ejer-mail-editor textarea{min-height:178px}
+.ejer-mail-aiinstruks{position:sticky;z-index:2;bottom:0;grid-template-columns:minmax(0,1fr);background:var(--veyro-card-surface);box-shadow:var(--fc-shadow)}
+.ejer-mail-hurtiginstruks textarea,.ejer-mail-aiinstruks textarea{box-sizing:border-box;width:100%;min-height:72px;max-height:140px;padding:8px 10px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);color:var(--veyro-primary-text);font:inherit;font-weight:400;line-height:1.45;resize:none}
+.ejer-mail-aiinstruks small{grid-column:1/-1;color:var(--veyro-muted-text);font-size:var(--fc-t-xs)}
+.ejer-ai-chatpanel{grid-template-rows:auto minmax(112px,1fr) auto auto;overflow:hidden}
+.ejer-ai-chatpanel>.ejer-ai-chathistorik{min-height:0;padding-right:3px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.ejer-ai-udveksling{display:grid;gap:6px!important;max-width:100%!important;padding:8px!important;background:var(--veyro-app-background)!important}
+.ejer-ai-udveksling>section{display:grid;gap:5px;padding:8px 10px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-white)}
+.ejer-ai-udveksling>section.ejer{margin-left:10%;background:var(--veyro-teal-light)}
+.ejer-kladde-signatur{display:grid;gap:7px;padding:10px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}
+.ejer-kladde-signatur header{display:flex;align-items:center;justify-content:space-between;gap:8px}.ejer-kladde-signatur pre{margin:0;white-space:pre-wrap;font:inherit;line-height:1.45}.ejer-kladde-signatur .fc-btn{justify-self:start}
+.ejer-mail-historisk-signatur{padding-top:8px;color:var(--veyro-muted-text);white-space:pre-wrap}
+.ejer-mail-reviewdialog dl{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ejer-mail-reviewdialog dl>div{display:grid;grid-template-columns:82px minmax(0,1fr);gap:8px;padding:8px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-app-background)}
+.ejer-mail-reviewtekst{display:grid;gap:7px}.ejer-mail-reviewtekst pre{margin:0;white-space:pre-wrap;font:inherit;line-height:1.45}
+.ejer-signaturkonflikt{display:grid;gap:7px;padding:10px;border:1px solid var(--veyro-warning);border-radius:8px;background:var(--fc-warn-bg);color:var(--veyro-warning-text)}.ejer-signaturkonflikt p{margin:0}.ejer-signaturkonflikt>div,.ejer-signaturvalg{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.ejer-signaturvalg{justify-content:space-between}
+.ejer-support-notehistorik{display:grid;gap:7px;margin-top:11px;padding-top:11px;border-top:1px solid var(--veyro-border)}.ejer-support-notehistorik h3,.ejer-support-notehistorik p{margin:0}.ejer-support-notehistorik p{padding:9px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-app-background);white-space:pre-wrap}
+.ejer-signatur-side{display:grid;gap:11px}.ejer-signatur-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:11px}.ejer-signatur-form,.ejer-signatur-preview{padding:16px}.ejer-signatur-form>header{display:flex;align-items:center;justify-content:space-between}.ejer-signatur-form h2,.ejer-signatur-preview h2{margin:2px 0 12px;font-size:21px}
+.ejer-signatur-felter{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.ejer-signatur-felter label{display:grid;gap:4px;font-weight:650}.ejer-signatur-felter label.bred{grid-column:1/-1}.ejer-signatur-felter input,.ejer-signatur-felter textarea{box-sizing:border-box;width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);color:var(--veyro-primary-text);font:inherit;line-height:1.45}
+.ejer-signatur-form fieldset{display:flex;flex-wrap:wrap;gap:12px;margin:13px 0;padding:11px;border:1px solid var(--veyro-border);border-radius:8px}.ejer-signatur-form fieldset label{display:flex;align-items:center;gap:6px}.ejer-signatur-visning{display:grid;gap:10px;padding:14px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white)}.ejer-signatur-visning svg,.ejer-signatur-visning img{max-width:190px;max-height:80px}.ejer-signatur-visning p{display:grid;margin:0;white-space:pre-wrap}.ejer-signatur-visning .fed{font-weight:700}.ejer-signatur-visning .kursiv{font-style:italic}.ejer-signatur-preview pre{padding:11px;border-radius:8px;background:var(--veyro-app-background);white-space:pre-wrap;font:inherit}
+
+@media(max-width:900px){
+  .ejer-mail-v7-detalje .ejer-mail-traadfokus{grid-template-rows:auto auto auto;height:auto}.ejer-mail-venstrehistorik{max-height:none;overflow:visible}
+  .ejer-mail-v7-detalje .ejer-mail-fokus.mobil-samtale .ejer-mail-traadfokus{display:grid!important}.ejer-mail-v7-detalje .ejer-mail-fokus.mobil-samtale .ejer-mail-svarfokus{display:none!important}.ejer-mail-v7-detalje .ejer-mail-fokus.mobil-svar .ejer-mail-traadfokus{display:none!important}.ejer-mail-v7-detalje .ejer-mail-fokus.mobil-svar .ejer-mail-svarfokus{display:grid!important}
+  .ejer-intern-note-komposer,.ejer-mail-aiinstruks{position:static}
+  .ejer-mail-ai-panel{height:auto!important}.ejer-ai-chatpanel{grid-template-rows:auto auto auto auto;overflow:visible}.ejer-ai-chatpanel>.ejer-ai-chathistorik{max-height:55vh;overflow:auto}
+  .ejer-intern-note-komposer>div,.ejer-signaturkonflikt>div{align-items:stretch;flex-direction:column}.ejer-intern-note-komposer .fc-btn,.ejer-signaturkonflikt .fc-btn{width:100%}
+  .ejer-mail-reviewdialog dl{grid-template-columns:minmax(0,1fr)}.ejer-mail-reviewdialog dl>div{grid-template-columns:minmax(0,1fr)}
+  .ejer-signatur-grid,.ejer-signatur-felter{grid-template-columns:minmax(0,1fr)}.ejer-signatur-felter label.bred{grid-column:auto}
 }

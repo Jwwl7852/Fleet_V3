@@ -28,6 +28,8 @@ export const opdaterKommunikationsklassifikation = (data) => kald("kommunikation
 export const opdaterSupportsag = (data) => kald("supportsagopdater", data);
 export const gemEjerfravaer = (data) => kald("ejerfravaergem", data);
 export const hentEjerarbejdsflow = () => kald("ejerarbejdsflowhent");
+export const hentEjerMailsignatur = () => kald("ejermailsignaturhent");
+export const gemEjerMailsignatur = (data) => kald("ejermailsignaturgem", data);
 export const opretSalgsnote = (data) => kald("salgsnoteopret", data);
 export const hentSalgsvedhaeftning = (data) => kald("salgsvedhaeftninghent", data);
 export const synkroniserMicrosoft365 = () => kald("m365salgsynkroniser");

@@ -40,7 +40,10 @@ async function ensureOwner(email, displayName) {
   console.error(`V7 seed: sætter ejerclaim for ${displayName}`);
   await auth.setCustomUserClaims(user.uid, byggEjerClaims({}));
   console.error(`V7 seed: skriver profil for ${displayName}`);
-  await dbPut(`profiler/${user.uid}`, { uid: user.uid, navn: displayName, email, aktiv: true, fixture: true });
+  const eksisterendeProfil = await dbGet(`profiler/${user.uid}`) || {};
+  await dbPut(`profiler/${user.uid}`, { ...eksisterendeProfil, uid: user.uid, navn: displayName, email, aktiv: true, fixture: true,
+    mailSignatur: eksisterendeProfil.mailSignatur || { navn: displayName, titel: "Ejer", virksomhed: "Veyro Systems", email, hjemmeside: "https://veyrosystems.com", ekstra: "", navnFed: true, titelKursiv: false, brugLogo: true, revision: 1, oprettetMs: Date.now(), opdateretMs: Date.now(), opdateretAf: user.uid },
+  });
   return user;
 }
 
@@ -75,7 +78,7 @@ try {
       enheder: { id: "enheder", label: "Enheder", vaerdi: "25 enheder", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 1 },
       pilotperiode: { id: "pilotperiode", label: "Pilotperiode", vaerdi: "3 måneder", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 2 },
       brugere: { id: "brugere", label: "Brugerlicenser", vaerdi: "5 brugere i alt", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 3 },
-      administratorer: { id: "administratorer", label: "Administratoradgang", vaerdi: "2 af de 5 brugere", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 4 },
+      administratorer: { id: "administratorer", label: "Administratoradgang", vaerdi: "2 af de 5 brugere har administratoradgang", tilstand: "oplyst_af_kunden", kilde: "Kundens mail · 12.09.2026", raekke: 4 },
       cvr: { id: "cvr", label: "CVR", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 20 },
       startdato: { id: "startdato", label: "Ønsket startdato", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 21 },
       obdAntal: { id: "obdAntal", label: "OBD-antal", vaerdi: "Ikke oplyst", tilstand: "mangler", kilde: "Ikke fundet i sagens mails", raekke: 22 },
@@ -126,19 +129,19 @@ try {
   const pilot = dennisView.traade["v7-pilot-nordlys"]; const pilotKladde = pilot.svarKladder.k1;
   const oplysninger = Object.values(pilot.sagsOplysninger);
   const dennisInstruks = "Gør tonen mere personlig og forklar næste skridt.";
-  const dennisForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks], signatur: "Dennis" });
+  const dennisForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks], signatur: "" });
   const dennisAi = await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-dennis", instruktion: dennisInstruks, forslag: dennisForslag.tekst, forventetRevision: 0, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, dennisToken);
   const joernMellem = await call("ejerkommunikationhent", {}, joernToken);
   assert.equal(Object.values(joernMellem.traade[pilot.id].aiArbejdsrum.chat).some((post) => post.aktorUid === dennis.uid), true);
   const joernInstruks = "Gør den kortere, behold alle fakta, vent med CVR og foreslå en telefonisk samtale.";
-  const joernForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks], signatur: "Jørn" });
+  const joernForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks], signatur: "" });
   assert.match(joernForslag.tekst, /25 enheder/); assert.match(joernForslag.tekst, /3 måneder/); assert.match(joernForslag.tekst, /5 brugere/); assert.match(joernForslag.tekst, /telefon/);
   assert.doesNotMatch(joernForslag.tekst, /virksomhedens CVR/);
   const joernAi = await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-joern", instruktion: joernInstruks, forslag: joernForslag.tekst, forventetRevision: dennisAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, joernToken);
   const aendretTekst = marker("Hej Maria.\n\nVi har registreret 25 enheder, tre måneder og fem brugere. Vi afklarer startdato og OBD-antal separat.\n\nVenlig hilsen\nDennis");
   await call("kommunikationssvarkladdegem", { traadId: pilot.id, id: pilotKladde.id, fra: pilotKladde.fra, til: pilotKladde.til, emne: pilotKladde.emne, tekst: aendretTekst, signatur: pilotKladde.signatur, vedhaeftninger: [], basisAktivitetMs: pilot.senesteAktivitetMs, forventetRevision: pilotKladde.revision }, dennisToken);
   await assert.rejects(() => call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-stale", instruktion: "Overskriv den nye kladde", forslag: joernForslag.tekst, forventetRevision: joernAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: pilotKladde.revision, basisKladdeFingeraftryk: tekstfingeraftryk(pilotKladde.tekst) }, joernToken), /FAILED_PRECONDITION/);
-  const friskForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks, "Behold det korte svar som forslag."], signatur: "Dennis" });
+  const friskForslag = lokalAiChatRevision({ navn: pilot.kontaktNavn, oplysninger, instruktioner: [dennisInstruks, joernInstruks, "Behold det korte svar som forslag."], signatur: "" });
   await call("kommunikationsaichatgem", { traadId: pilot.id, operationId: "v71-ai-frisk", instruktion: "Behold det korte svar som forslag.", forslag: friskForslag.tekst, forventetRevision: joernAi.revision, basisAktivitetMs: pilot.senesteAktivitetMs, basisKladdeRevision: 2, basisKladdeFingeraftryk: tekstfingeraftryk(aendretTekst) }, dennisToken);
   await call("kommunikationssagsoplysninggem", { traadId: pilot.id, vaerdi: "Maria foretrækker en kort afklaring på telefon før tilbuddet.", forventetRevision: 0 }, dennisToken);
   const deltEfter = await call("ejerkommunikationhent", {}, dennisToken);
