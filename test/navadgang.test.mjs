@@ -225,7 +225,7 @@ describe("kraeverPerm peger på noget der findes", () => {
       }
       if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog",
         "indkoebGodkendelser", "bestillinger", "indkoebModtagelser",
-        "indkoebForbrug", "indkoebMobil", "indkoebAnalyseVaregrupper"].includes(p.key)) {
+        "indkoebForbrug", "indkoebLager", "indkoebMobil", "indkoebAnalyseVaregrupper", "varelager"].includes(p.key)) {
         /* PROCURE v2 samler de syv routes i én integreret router. Wrapperen
            skal pege på den fælles implementation, og implementationen skal
            både læse tenant-scopede noder og lukke direkte URL-adgang på den

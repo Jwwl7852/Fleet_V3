@@ -185,13 +185,14 @@ export function inventoryPeriodSummary(items = [], movements = [], { fromMs = 0,
       : firstInPeriod?.art === "startbeholdning" && finite(firstInPeriod.foer) === null ? 0
       : firstInPeriod ? finite(firstInPeriod.foer) : null;
     const last = inPeriod.at(-1);
-    const sums = { receipts: 0, consumption: 0, returns: 0, corrections: 0, transfers: 0, counts: 0, countDeviation: 0 };
+    const sums = { starts: 0, receipts: 0, consumption: 0, returns: 0, corrections: 0, transfers: 0, counts: 0, countDeviation: 0 };
     for (const row of inPeriod) {
       const delta = movementDelta(row);
-      if (row.art === "modtaget") sums.receipts += delta;
+      if (row.art === "startbeholdning") sums.starts += delta;
+      else if (row.art === "modtaget") sums.receipts += delta;
       else if (row.art === "forbrug") sums.consumption += Math.abs(delta);
       else if (row.art === "retur") sums.returns += Math.abs(delta);
-      else if (["korrektion", "svind", "startbeholdning"].includes(row.art)) sums.corrections += delta;
+      else if (["korrektion", "svind"].includes(row.art)) sums.corrections += delta;
       else if (["flytningInd", "flytningUd"].includes(row.art)) sums.transfers += delta;
       else if (row.art === "optaelling") { sums.counts += 1; sums.countDeviation += delta; sums.corrections += delta; }
     }
@@ -205,13 +206,13 @@ export function inventoryPeriodSummary(items = [], movements = [], { fromMs = 0,
     const key = `${row.itemId}|${row.warehouseId}`;
     const current = warehouseRows.get(key) || { key, itemId: row.itemId, item: row.item,
       warehouseId: row.warehouseId, locationId: "", opening: 0, closing: 0, movements: [],
-      receipts: 0, consumption: 0, returns: 0, corrections: 0, transfers: 0, counts: 0, countDeviation: 0,
+      starts: 0, receipts: 0, consumption: 0, returns: 0, corrections: 0, transfers: 0, counts: 0, countDeviation: 0,
       openingKnown: true, closingKnown: true };
     current.openingKnown &&= row.opening !== null;
     current.closingKnown &&= row.closing !== null;
     if (row.opening !== null) current.opening += row.opening;
     if (row.closing !== null) current.closing += row.closing;
-    for (const field of ["receipts", "consumption", "returns", "corrections", "transfers", "counts", "countDeviation"]) current[field] += row[field];
+    for (const field of ["starts", "receipts", "consumption", "returns", "corrections", "transfers", "counts", "countDeviation"]) current[field] += row[field];
     current.movements.push(...row.movements);
     warehouseRows.set(key, current);
   }
@@ -221,9 +222,9 @@ export function inventoryPeriodSummary(items = [], movements = [], { fromMs = 0,
   }));
 }
 
-export function inventoryCsv(rows = []) {
+export function inventoryCsv(rows = [], { from = "", to = "" } = {}) {
   const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  const header = ["Vare", "Varenummer", "Lager", "Placering", "Primo", "Modtagelser", "Forbrug", "Retur", "Korrektioner", "Nettoflytning", "Ultimo", "Enhed"];
-  return [header, ...rows.map((row) => [row.item.navn, row.item.varenummer, row.movements[0]?.lager || row.warehouseId, row.locationId ? row.movements[0]?.placering || row.locationId : "Alle placeringer", row.opening ?? "Ukendt", row.receipts, row.consumption, row.returns, row.corrections, row.transfers, row.closing ?? "Ukendt", row.item.grundenhed || row.item.enhed])]
+  const header = ["Fra dato", "Til dato", "Vare", "Varenummer", "Lager", "Placering", "Primo", "Startbeholdning i perioden", "Modtagelser", "Forbrug", "Retur", "Korrektioner", "Nettoflytning", "Ultimo", "Enhed"];
+  return [header, ...rows.map((row) => [from, to, row.item.navn, row.item.varenummer, row.movements[0]?.lager || row.warehouseId, row.locationId ? row.movements[0]?.placering || row.locationId : "Alle placeringer", row.opening ?? "Ukendt", row.starts, row.receipts, row.consumption, row.returns, row.corrections, row.transfers, row.closing ?? "Ukendt", row.item.grundenhed || row.item.enhed])]
     .map((columns) => columns.map(quote).join(";")).join("\r\n");
 }

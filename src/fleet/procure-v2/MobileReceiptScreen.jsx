@@ -5,6 +5,8 @@ import { acceptedQuantityForLine, remainingQuantity, unitLabel } from "./procure
 import { applyInventoryMovement, stockQuantityForOrderLine } from "./procure-inventory-domain.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const receiptDateTime = (value) => Number.isFinite(Number(value)) ? new Intl.DateTimeFormat("da-DK", { dateStyle: "short", timeStyle: "short" }).format(new Date(Number(value))) : "Ukendt tidspunkt";
+const signed = (value) => `${Number(value) > 0 ? "+" : Number(value) < 0 ? "−" : ""}${Math.abs(Number(value || 0)).toLocaleString("da-DK", { maximumFractionDigits: 3 })}`;
 const newRequestId = () => globalThis.crypto?.randomUUID?.() || `receipt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
 const effectKey = (effect) => `${effect.itemId}|${effect.lagerId}|${effect.placeringId}`;
@@ -39,6 +41,8 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
   const [saving, setSaving] = useState(false);
   const [registeredStatus, setRegisteredStatus] = useState("");
   const [inventoryEffects, setInventoryEffects] = useState([]);
+  const [savedCounts, setSavedCounts] = useState([]);
+  const [completionKind, setCompletionKind] = useState("");
   const [counted, setCounted] = useState({});
   const [countReasons, setCountReasons] = useState({});
   const [openingAttachment, setOpeningAttachment] = useState("");
@@ -48,17 +52,20 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
   useEffect(() => () => previews.forEach((preview) => preview.url && URL.revokeObjectURL(preview.url)), [previews]);
   useEffect(() => {
     if (!order) return;
-    setRows(Object.fromEntries(order.lines.map((line) => {
+    setRows((current) => Object.fromEntries(order.lines.map((line) => {
       const item = state.catalog.find((candidate) => candidate.id === line.itemId);
       const stockLocation = Object.values(item?.inventoryLocations || {})[0];
       const fallbackPlace = Object.values(state.setup?.lagerplaceringer || {}).find((place) => place.active !== false);
       const warehouseId = stockLocation?.warehouseId || fallbackPlace?.lagerId || "";
       const locationId = stockLocation?.locationId || fallbackPlace?.id || "";
+      const existing = current[line.id] || {};
       return [line.id, { deliveredQuantity: remainingQuantity(order, receipts, line.id), damagedQuantity: 0, rejectedQuantity: 0,
-        warehouseId, warehouse: stockLocation?.warehouse || state.setup?.lagre?.[warehouseId]?.label || "",
-        locationId, location: stockLocation?.location || fallbackPlace?.label || "" }];
+        ...existing, warehouseId: existing.warehouseId || warehouseId,
+        warehouse: existing.warehouse || stockLocation?.warehouse || state.setup?.lagre?.[warehouseId]?.label || "",
+        locationId: existing.locationId || locationId,
+        location: existing.location || stockLocation?.location || fallbackPlace?.label || "" }];
     })));
-  }, [order?.id]);
+  }, [order?.id, state.catalog, state.setup, state.receipts]);
   const update = (lineId, key, value) => setRows((current) => ({ ...current, [lineId]: { ...current[lineId], [key]: Math.max(0, Number(value) || 0) } }));
   const accepted = (line) => Math.max(0, Number(rows[line.id]?.deliveredQuantity || 0) - Number(rows[line.id]?.damagedQuantity || 0) - Number(rows[line.id]?.rejectedQuantity || 0));
   const confirm = async () => {
@@ -93,13 +100,16 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
         { uid: user?.uid, actorName: user?.navn || "Mette Rasmussen" });
         if (!built.ok) { setMessage(Object.values(built.errors)[0]); setSaving(false); return; }
         catalog[itemIndex] = stateItem(item, built.item); movements.push({ id: `${requestIdRef.current}-${line.id}`, ...built.movement });
-        effects.push({ itemId: item.id, itemName: item.name, before: built.movement.foer,
+        effects.push({ itemId: item.id, itemName: item.name, itemNumber: item.sku, before: built.movement.foer,
           received: converted.quantity, after: built.movement.efter, ...built.location });
       }
       setState((current) => ({ ...current, catalog, inventoryMovements: [...current.inventoryMovements, ...movements],
         receipts: [...current.receipts, { ...result.receipt, id: requestIdRef.current, orderId: order.id,
           attachments: files.map((file) => ({ name: file.name, status: "aktiv", testOnly: true })) }] }));
     }
+    effects = effects.map((effect) => ({ ...effect,
+      itemNumber: effect.itemNumber || state.catalog.find((item) => item.id === effect.itemId)?.sku || "",
+    }));
     setInventoryEffects(effects);
     setCounted(Object.fromEntries(effects.map((effect) => [effectKey(effect), String(effect.after)])));
     setRegisteredStatus(result.server?.ordreStatus || order.status);
@@ -133,7 +143,7 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
   const saveCounts = async () => {
     if (saving || !inventoryEffects.length) return;
     setSaving(true); setMessage("");
-    let catalog = [...state.catalog]; const movements = [];
+    let catalog = [...state.catalog]; const movements = []; const results = [];
     for (const effect of inventoryEffects) {
       const key = effectKey(effect);
       const actual = Number(counted[key]); const difference = actual - Number(effect.after);
@@ -151,17 +161,23 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
         const built = applyInventoryMovement(domainItem(catalog[index]), payload, { uid: user?.uid, actorName: user?.navn || "Mette Rasmussen" });
         if (!built.ok) { setMessage(Object.values(built.errors)[0]); setSaving(false); return; }
         catalog[index] = stateItem(catalog[index], built.item); movements.push({ id: actionId, ...built.movement });
+        results.push({ ...built.movement, itemName: effect.itemName, itemNumber: state.catalog[index]?.sku || effect.itemNumber });
       } else {
         const result = await registerInventoryMovement(payload);
         if (!result.ok) { setMessage(result.message); setSaving(false); return; }
+        const movement = result.data?.movements?.[0];
+        if (movement) results.push({ ...movement, itemName: effect.itemName, itemNumber: state.catalog.find((item) => item.id === effect.itemId)?.sku || effect.itemNumber });
       }
     }
     if (demo) setState((current) => ({ ...current, catalog, inventoryMovements: [...current.inventoryMovements, ...movements] }));
-    setStep("done-counted"); setSaving(false); setMessage("Optællingen er gemt med medarbejder og servertidspunkt.");
+    setSavedCounts(results); setCompletionKind("counted"); setStep("done-counted"); setSaving(false); setMessage("");
   };
 
+  const finishWithoutCount = () => { setCompletionKind("calculated"); setSavedCounts([]); setStep("done-counted"); setMessage(""); };
+  const pageTitle = step === "count" ? "Optæl lager" : step === "done-counted" && completionKind === "counted" ? "Lagerstatus opdateret" : step === "done-counted" ? "Modtagelse gemt" : "Modtag varer";
+
   return <section className="procure-v2 procure-mobile-order procure-mobile-receiving">
-    <header className="procure-mobile-head"><Link to="/indkoeb/modtagelser" className="procure-mobile-close" aria-label="Tilbage">←</Link><div><small>PROCURE · varemodtagelse</small><h1>Modtag varer</h1></div><span className="procure-mobile-save">Servervalideret</span></header>
+    <header className="procure-mobile-head"><Link to="/indkoeb/modtagelser" className="procure-mobile-close" aria-label="Tilbage">←</Link><div><small>PROCURE · varemodtagelse</small><h1>{pageTitle}</h1></div></header>
     {message && <div className="procure-mobile-offline" role="alert">{message}</div>}
     {!order && <div className="procure-mobile-receipt-search"><h2>Find bestilling</h2><p>Søg på bestillingsnummer eller leverandør. Følgesedlen behøver ikke have en QR-kode.</p><form onSubmit={(event) => { event.preventDefault(); const exact = openOrders.find((candidate) => candidate.poNumber.toLowerCase() === query.trim().toLowerCase()); if (exact) { setReference(exact.id); navigate(`/indkoeb/mobil/modtag/${encodeURIComponent(exact.id)}`, { replace: true }); } }}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bestillingsnr. eller leverandør" autoFocus /><button className="procure-mobile-submit">Søg</button></form><div className="procure-mobile-open-orders">{openOrders.map((candidate) => <button type="button" key={candidate.id} onClick={() => { setReference(candidate.id); navigate(`/indkoeb/mobil/modtag/${encodeURIComponent(candidate.id)}`, { replace: true }); }}><b>{candidate.poNumber}</b><span>{state.suppliers.find((supplier) => supplier.id === candidate.supplierId)?.name}</span><small>{candidate.wantedDate || "Ingen leveringsdato"} · {candidate.lines.map((line) => line.name).join(", ")} · {candidate.deliveryLocation}</small></button>)}</div>{query && !openOrders.length && <div className="procure-mobile-empty"><b>Ingen åbne bestillinger fundet</b><span>Kontrollér søgningen og din adgang til kundens data.</span></div>}</div>}
     {order && ["edit", "review"].includes(step) && <>
@@ -173,8 +189,8 @@ export default function MobileReceiptScreen({ state, setState, demo, user, canWr
       <article className="procure-mobile-attachments"><h2>Følgeseddel og billeder</h2><p>Filer er kun kladder, indtil serveren har kontrolleret dem og modtagelsen er bekræftet.</p><label className="procure-mobile-file">＋ Tilføj billeder eller PDF<input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={addFiles} /></label><div>{previews.map(({ file, url }) => <article key={fileKey(file)}>{url ? <img src={url} alt={`Forhåndsvisning af ${file.name}`} /> : <span>PDF</span>}<div><b>{file.name}</b><small>Kladde · afventer upload og serverkontrol</small></div><button type="button" aria-label={`Fjern ${file.name}`} onClick={() => setFiles((current) => current.filter((item) => fileKey(item) !== fileKey(file)))}>×</button></article>)}</div></article>
       {step === "edit" ? <button className="procure-mobile-submit" disabled={!canWrite} onClick={() => setStep("review")}>Gennemgå modtagelse</button> : <article className="procure-mobile-receipt-review"><h2>Kontrollér før bekræftelse</h2>{order.lines.map((line) => <p key={line.id}><span>{line.name}</span><b>{accepted(line)} {line.unit} godkendes</b></p>)}<p><span>Vedhæftninger</span><b>{files.length}</b></p><button className="procure-mobile-submit" disabled={!canWrite || saving} onClick={confirm}>{saving ? "Uploader og validerer …" : "Bekræft modtagelse"}</button><button className="procure-camera-stop" onClick={() => setStep("edit")}>Tilbage og ret</button></article>}
     </>}
-    {order && step === "done" && <article className="procure-mobile-receipt-done-card"><div className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>Varerne er modtaget</h2><p>{order.poNumber} · {requestIdRef.current}</p><b>Godkendte mængder er registreret én gang. Beskadigede og afviste varer øger ikke lageret.</b><p>Lagerstatus: {registeredStatus === "modtaget" ? "Afsluttet" : "Delvist modtaget"} · Økonomisk opfølgning: {order.paymentStatus || "Afventer dokumentation"}</p></div></div>{inventoryEffects.map((effect) => <div className="procure-mobile-stock-result" key={effectKey(effect)}><b>{effect.itemName} · {effect.placering}</b><span>Før modtagelse: {effect.before} {effect.enhed}</span><span>Modtaget: +{effect.received} {effect.enhed}</span><strong>Beregnet beholdning: {effect.after} {effect.enhed}</strong></div>)}{inventoryEffects.length > 0 && <button className="procure-mobile-submit" onClick={() => setStep("count")}>Optæl og opdater lagerstatus</button>}<button className="procure-camera-stop" onClick={() => setStep("done-counted")}>Færdig uden optælling</button></article>}
-    {order && step === "count" && <article className="procure-mobile-count"><h2>Optæl lager</h2><p>Kontrollér den faktiske beholdning, når varerne er sat på hylden.</p>{inventoryEffects.map((effect) => { const key = effectKey(effect); const actual = Number(counted[key]); const difference = actual - Number(effect.after); return <section key={key}><h3>{effect.itemName}</h3><small>{effect.lager} · {effect.placering}</small><div className="procure-inventory-calculation"><span>Beregnet beholdning</span><b>{effect.after} {effect.enhed}</b></div><label>Faktisk antal på hylden<span className="procure-inventory-unit-input"><input inputMode="decimal" type="number" min="0" step="any" value={counted[key] ?? ""} onChange={(event) => setCounted((current) => ({ ...current, [key]: event.target.value }))} /><b>{effect.enhed}</b></span></label><div className={`procure-inventory-difference ${difference === 0 ? "ok" : "warn"}`}><span>{difference === 0 ? "Optællingen stemmer" : "Korrektion"}</span><b>{difference > 0 ? "+" : ""}{difference} {effect.enhed}</b></div>{difference !== 0 && <label>Begrundelse<textarea value={countReasons[key] || ""} onChange={(event) => setCountReasons((current) => ({ ...current, [key]: event.target.value }))} placeholder="Fx afvigelse ved optælling" /></label>}</section>; })}<button className="procure-mobile-submit" disabled={saving} onClick={saveCounts}>{saving ? "Gemmer på serveren …" : "Bekræft optælling"}</button><button className="procure-camera-stop" disabled={saving} onClick={() => setStep("done")}>Tilbage</button></article>}
-    {order && step === "done-counted" && <article className="procure-mobile-receipt procure-mobile-receipt-done"><span>✓</span><div><small>Afsluttet</small><h2>{inventoryEffects.length ? "Lagerstatus er opdateret" : "Modtagelsen er registreret"}</h2><p>Seneste optællingsdato ændres kun, hvis en optælling blev bekræftet.</p><Link to="/indkoeb/lager">Åbn lageroversigten</Link> · <Link to={`/indkoeb/bestillinger/${order.id}`}>Åbn bestillingen</Link></div></article>}
+    {order && step === "done" && <article className="procure-mobile-receipt-done-card"><div className="procure-mobile-receipt"><span>✓</span><div><small>Kvittering</small><h2>Varerne er modtaget</h2><p>{order.poNumber} · {requestIdRef.current}</p><b>Godkendte mængder er registreret én gang. Beskadigede og afviste varer øger ikke lageret.</b><p>Lagerstatus: {registeredStatus === "modtaget" ? "Afsluttet" : "Delvist modtaget"} · Økonomisk opfølgning: {order.paymentStatus || "Afventer dokumentation"}</p></div></div>{inventoryEffects.map((effect) => <div className="procure-mobile-stock-result" key={effectKey(effect)}><b>{effect.itemName} · {effect.lager} · {effect.placering}</b><span>Før modtagelse: {effect.before} {effect.enhed}</span><span>Modtaget: +{effect.received} {effect.enhed}</span><strong>Beregnet beholdning: {effect.after} {effect.enhed}</strong></div>)}{inventoryEffects.length > 0 && <button className="procure-mobile-submit" onClick={() => setStep("count")}>Optæl og opdater lagerstatus</button>}<button className="procure-camera-stop" onClick={finishWithoutCount}>Færdig uden optælling</button></article>}
+    {order && step === "count" && <article className="procure-mobile-count"><p>Kontrollér den faktiske beholdning, når varerne er sat på hylden.</p>{inventoryEffects.map((effect) => { const key = effectKey(effect); const actual = Number(counted[key]); const difference = actual - Number(effect.after); return <section key={key}><h3>{effect.itemName}</h3><small>{effect.lager} · {effect.placering}</small><div className="procure-inventory-calculation"><span>Beregnet beholdning</span><b>{effect.after} {effect.enhed}</b></div><label>Faktisk antal på hylden<span className="procure-inventory-unit-input"><input inputMode="decimal" type="number" min="0" step="any" value={counted[key] ?? ""} onChange={(event) => setCounted((current) => ({ ...current, [key]: event.target.value }))} /><b>{effect.enhed}</b></span></label><div className={`procure-inventory-difference ${difference === 0 ? "ok" : "warn"}`}><span>{difference === 0 ? "Optællingen stemmer" : "Optællingskorrektion"}</span><b>{signed(difference)} {effect.enhed}</b></div>{difference !== 0 && <label>Begrundelse<textarea value={countReasons[key] || ""} onChange={(event) => setCountReasons((current) => ({ ...current, [key]: event.target.value }))} placeholder="Fx afvigelse ved optælling" /></label>}</section>; })}<button className="procure-mobile-submit" disabled={saving} onClick={saveCounts}>{saving ? "Gemmer på serveren …" : "Bekræft optælling"}</button><button className="procure-camera-stop" disabled={saving} onClick={() => setStep("done")}>Tilbage</button></article>}
+    {order && step === "done-counted" && <article className="procure-mobile-receipt-done-card procure-mobile-final"><div className="procure-mobile-receipt procure-mobile-receipt-done"><span>✓</span><div><small>Kvittering</small><h2>{completionKind === "counted" ? "Lagerstatus er opdateret" : "Modtagelsen er gemt"}</h2><p>{order.poNumber} · {requestIdRef.current}</p></div></div>{completionKind === "counted" ? savedCounts.map((movement) => <section className="procure-mobile-stock-result" key={movement.anmodningsnoegle || `${movement.forbrugsvareId}-${movement.ms}`}><b>{movement.itemName}{movement.itemNumber ? ` · ${movement.itemNumber}` : ""}</b><span>{movement.lager} · {movement.placering}</span><strong>Ny beholdning: {movement.efter} {movement.enhed}</strong><span>Optællingskorrektion: {signed(movement.delta)} {movement.enhed}</span><span>{movement.medarbejderNavn || "Medarbejder"} · {receiptDateTime(movement.ms)}</span></section>) : inventoryEffects.map((effect) => <section className="procure-mobile-stock-result" key={effectKey(effect)}><b>{effect.itemName}{effect.itemNumber ? ` · ${effect.itemNumber}` : ""}</b><span>{effect.lager} · {effect.placering}</span><strong>Beregnet beholdning: {effect.after} {effect.enhed}</strong><span>Modtagelsen er gemt uden fysisk optælling.</span></section>)}<div className="procure-mobile-final-actions"><Link to="/indkoeb/lager">Åbn lageroversigten</Link><Link to={`/indkoeb/bestillinger/${order.id}`}>Åbn bestillingen</Link></div></article>}
   </section>;
 }

@@ -13,12 +13,13 @@ export const TEST_USERS = Object.freeze({
   buyer: { email: "procure-buyer@example.invalid", name: "Syntetisk indkøber", tenant: TENANT_A, role: "indkoeber" },
   approver: { email: "procure-approver@example.invalid", name: "Syntetisk godkender", tenant: TENANT_A, role: "godkender" },
   admin: { email: "procure-admin@example.invalid", name: "Syntetisk administrator", tenant: TENANT_A, role: "admin" },
+  reader: { email: "procure-reader@example.invalid", name: "Syntetisk lagerlæser", tenant: TENANT_A, role: "revisor" },
   foreign: { email: "procure-foreign@example.invalid", name: "Anden tenant", tenant: TENANT_B, role: "indkoeber" },
 });
 
 const buyerPerms = [PERM.indkoebSkriv, PERM.indkoebLaes, PERM.leverandoererLaes, PERM.fakturaerLaes];
 const approverPerms = [...buyerPerms, PERM.indkoebGodkend, PERM.fakturaerGodkend];
-const permissionsFor = (key) => key === "admin" ? ALLE_PERMS : key === "approver" ? approverPerms : buyerPerms;
+const permissionsFor = (key) => key === "admin" ? ALLE_PERMS : key === "approver" ? approverPerms : key === "reader" ? [PERM.indkoebLaes] : buyerPerms;
 
 async function jsonRequest(url, options = {}) {
   const response = await fetch(url, options);
@@ -46,7 +47,8 @@ async function createUser(authHost, key, definition) {
 }
 
 const catalog = {
-  tape: { navn: "Pakketape, klar", varenummer: "EMB-1001", enhed: "rulle", bestillingsenhed: "rulle", grundenhed: "rulle", antalPrBestillingsenhed: 1, bestillingsprisOere: 2400, indkoebsprisOere: 2400, leverandoerId: "nordisk", varegruppe: "Emballage", aktiv: true, favorit: true, tidligereKoeb: true },
+  tape: { navn: "Pakketape, klar 48 mm", varenummer: "EMB-1001", enhed: "ruller", bestillingsenhed: "ruller", grundenhed: "ruller", antalPrBestillingsenhed: 1, bestillingsprisOere: 2400, indkoebsprisOere: 2400, leverandoerId: "nordisk", varegruppe: "Emballage", aktiv: true, favorit: true, tidligereKoeb: true, lagerfoert: true, minimumBeholdning: 10,
+    lagerplaceringer: { "10_hovedlager_a-01": { lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", beholdning: 58, enhed: "ruller", revision: 1, senestBevaegetMs: 1789120800000, senestOptaltMs: 1789120800000 } } },
   film: { navn: "Strækfilm 50 cm", varenummer: "EMB-2040", enhed: "rulle", bestillingsenhed: "rulle", grundenhed: "rulle", antalPrBestillingsenhed: 1, bestillingsprisOere: 7500, indkoebsprisOere: 7500, leverandoerId: "nordisk", varegruppe: "Emballage", aktiv: true, favorit: true, tidligereKoeb: true },
   gloves: { navn: "Arbejdshandsker", varenummer: "SIK-1212", enhed: "kasse", bestillingsenhed: "kasse", grundenhed: "par", antalPrBestillingsenhed: 12, bestillingsprisOere: 18900, indkoebsprisOere: 18900, leverandoerId: "sikker", varegruppe: "Sikkerhedsudstyr", aktiv: true, favorit: false, tidligereKoeb: true },
   cleaner: { navn: "Industrirens 5 l", varenummer: "REN-5000", enhed: "dunk", bestillingsenhed: "dunk", grundenhed: "liter", antalPrBestillingsenhed: 5, bestillingsprisOere: 22900, indkoebsprisOere: 22900, leverandoerId: "sikker", varegruppe: "Rengøring", aktiv: true, favorit: false, tidligereKoeb: false },
@@ -58,7 +60,7 @@ const catalog = {
   cable: { navn: "Kabelbindere", varenummer: "RES-4400", enhed: "pose", bestillingsenhed: "pose", grundenhed: "stk.", antalPrBestillingsenhed: 100, bestillingsprisOere: 4900, indkoebsprisOere: 4900, leverandoerId: "nordisk", varegruppe: "Reservedele", aktiv: true },
 };
 
-async function main() {
+export async function seedProcureAuthEmulator() {
   process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "127.0.0.1:9099";
   process.env.FIREBASE_DATABASE_EMULATOR_HOST ||= "127.0.0.1:9000";
   if (!/^127\.0\.0\.1:|^localhost:/.test(process.env.FIREBASE_AUTH_EMULATOR_HOST)
@@ -86,18 +88,26 @@ async function main() {
       afdelinger: { lager: { id: "lager", label: "Lager", active: true, revision: 1 }, drift: { id: "drift", label: "Drift", active: true, revision: 1 } },
       varekategorier: { emballage: { id: "emballage", label: "Emballage", active: true, revision: 1 }, sikkerhed: { id: "sikkerhed", label: "Sikkerhedsudstyr", active: true, revision: 1 } },
       leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager · rampe 2", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true, revision: 1 }, vaerksted: { id: "vaerksted", label: "Værksted", adresse: "Værkstedsvej 2", postnr: "8000", by: "Aarhus C", active: true, revision: 1 } },
+      lagre: { hovedlager: { id: "hovedlager", label: "Hovedlager", active: true, revision: 1 } },
+      lagerplaceringer: { "a-01": { id: "a-01", label: "A-01", lagerId: "hovedlager", active: true, revision: 1 }, "b-01": { id: "b-01", label: "B-01", lagerId: "hovedlager", active: true, revision: 1 } },
       budgetter: { "2026-09": { lager: { departmentId: "lager", period: "2026-09", amountOere: 12000000, currency: "DKK", revision: 1 } } },
+    },
+    indkoebsordrer: {
+      "lager-ordre-1": { id: "lager-ordre-1", nummer: "BST-2026-00042", leverandoerId: "nordisk", status: "sendt", revision: 1, godkendtRevision: 1,
+        leveringssted: "Hovedlager · rampe 2", leveringsstedId: "hovedlager", leveringsadresse: "Lagervej 8", leveringspostnr: "8000", leveringsby: "Aarhus C",
+        oensketDato: "2026-09-30", oprettetAf: users.buyer.uid, oprettetMs: 1789120800000, bestillerNavn: users.buyer.name, bestillerEmail: users.buyer.email,
+        linjer: { tape: { vare: "Pakketape, klar 48 mm", varenummer: "EMB-1001", antal: 10, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" } } },
     },
     procureQrMaerkater: {
       "qr-auth-tape-a1": { forbrugsvareId: "tape", placering: "A1 · tape", aktiv: true, anmodningsnoegle: "seed-tape-a1", oprettetAf: users.admin.uid, oprettetMs: now, aendretAf: users.admin.uid, aendretMs: now },
     },
   };
-  const databaseWrite = (tenant, value) => jsonRequest(`http://${databaseHost}/tenants/${tenant}.json?ns=${PROJECT_ID}&auth=owner`, {
-    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(value),
+  const databaseWrite = (tenant, value) => jsonRequest(`http://${databaseHost}/tenants/${tenant}.json?ns=${PROJECT_ID}`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer owner" }, body: JSON.stringify(value),
   });
   await databaseWrite(TENANT_A, tenantBase);
   await databaseWrite(TENANT_B, { _findes: true, virksomhed: { navn: "Anden syntetisk tenant" }, abonnement: { status: "aktiv" }, moduler: { indkoeb: true }, brugere: { [users.foreign.uid]: { email: users.foreign.email, navn: users.foreign.name, rolle: users.foreign.role } }, forbrugsvarer: { foreign: { navn: "Kun anden tenant", varenummer: "B-1", enhed: "stk.", bestillingsenhed: "stk.", grundenhed: "stk.", antalPrBestillingsenhed: 1, bestillingsprisOere: 100, leverandoerId: "foreign", varegruppe: "Andet", aktiv: true } }, procureQrMaerkater: { "qr-other-tenant": { forbrugsvareId: "foreign", placering: "B1", aktiv: true, anmodningsnoegle: "seed-other", oprettetAf: users.foreign.uid, oprettetMs: now, aendretAf: users.foreign.uid, aendretMs: now } } });
   console.log(JSON.stringify({ ok: true, projectId: PROJECT_ID, tenants: [TENANT_A, TENANT_B], users: Object.fromEntries(Object.entries(users).map(([key, user]) => [key, { uid: user.uid, email: user.email, tenant: user.tenant, role: user.role }])) }, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((error) => { console.error(error); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) seedProcureAuthEmulator().catch((error) => { console.error(error); process.exitCode = 1; });

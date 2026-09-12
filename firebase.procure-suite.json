@@ -1,5 +1,5 @@
 {
-  "database": { "rules": "firebase.rules.json" },
+  "database": [{ "instance": "demo-veyro-owner", "rules": "firebase.rules.json" }],
   "storage": { "rules": "storage.rules" },
   "functions": [{
     "source": "functions",

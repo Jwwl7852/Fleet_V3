@@ -121,6 +121,14 @@ const UDEN_TJEK = {
   "optaellinger/$optaellingId/bevaegelseId":
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
+  "forbrugsvarebevaegelser/$bevaegelseId/modtagelseId":
+    "modtagelsesfunktionen sætter feltet fra den modtagelse, den opretter i samme "
+    + "tenanttransaktion; bevægelsesnoden er lukket for klientskrivning.",
+  "forbrugsvarebevaegelser/$bevaegelseId/ordrelinjeId":
+    "modtagelsesfunktionen slår linjen op i den tenantafgrænsede ordre før den lukkede skrivning.",
+  "forbrugsvarebevaegelser/$bevaegelseId/flytningId":
+    "et internt idempotens-id der binder to serveroprettede modbevægelser sammen; det peger "
+    + "ikke på en selvstændig databasepost.",
   /* ⚠ SKIVE 4C — DE TO HER PEGER IKKE PÅ EN ANDEN SAMLING, DE ER LÅST TIL
      DERES EGET PATH-WILDCARD. `dokumentId` skal være lig $dokumentId, og
      `fakturaId` skal være lig $fakturaId — en existence-tjek mod en

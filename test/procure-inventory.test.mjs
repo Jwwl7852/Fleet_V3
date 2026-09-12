@@ -108,11 +108,13 @@ test("periodeafstemning beregnes af bevægelser og CSV bevarer ligningen", () =>
     { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", lager: "Hovedlager", placering: "A-01", art: "optaelling", foer: 19, efter: 18, delta: -1, ms: 40, enhed: "ruller" },
   ];
   const [summary] = inventoryPeriodSummary([item()], movements, { fromMs: 0, toMs: 100 });
-  assert.deepEqual({ opening: summary.opening, receipts: summary.receipts, consumption: summary.consumption,
+  assert.deepEqual({ opening: summary.opening, starts: summary.starts, receipts: summary.receipts, consumption: summary.consumption,
     corrections: summary.corrections, closing: summary.closing, counts: summary.counts },
-  { opening: 0, receipts: 10, consumption: 3, corrections: 11, closing: 18, counts: 1 });
-  const csv = inventoryCsv([summary]);
-  assert.match(csv, /"Primo";"Modtagelser";"Forbrug";"Retur";"Korrektioner";"Nettoflytning";"Ultimo"/);
+  { opening: 0, starts: 12, receipts: 10, consumption: 3, corrections: -1, closing: 18, counts: 1 });
+  const csv = inventoryCsv([summary], { from: "2026-01-01", to: "2026-12-31" });
+  assert.match(csv, /"Fra dato";"Til dato";"Vare";"Varenummer"/);
+  assert.match(csv, /"Primo";"Startbeholdning i perioden";"Modtagelser";"Forbrug";"Retur";"Korrektioner";"Nettoflytning";"Ultimo"/);
+  assert.match(csv, /"2026-01-01";"2026-12-31"/);
   assert.match(csv, /"Tape, brun"/);
 });
 

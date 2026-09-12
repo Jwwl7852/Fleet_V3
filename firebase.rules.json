@@ -3265,9 +3265,9 @@
             "lagerplaceringer": {
               "$lagerplaceringId": {
                 ".validate": "newData.hasChildren(['lagerId', 'lager', 'placeringId', 'placering', 'beholdning', 'enhed', 'revision', 'senestBevaegetMs'])",
-                "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('procureOpsaetning').child('lagre').child(newData.val()).exists()" },
                 "lager": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
-                "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('procureOpsaetning').child('lagerplaceringer').child(newData.val()).child('lagerId').val() === newData.parent().child('lagerId').val()" },
                 "placering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
                 "beholdning": { ".validate": "newData.isNumber()" },
                 "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
@@ -3304,9 +3304,9 @@
             "medarbejderNavn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
             "delta": { ".validate": "newData.isNumber()" },
             "enhed": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20" },
-            "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "lagerId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('procureOpsaetning').child('lagre').child(newData.val()).exists()" },
             "lager": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
-            "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+            "placeringId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60 && root.child('tenants').child($tenantId).child('procureOpsaetning').child('lagerplaceringer').child(newData.val()).child('lagerId').val() === newData.parent().child('lagerId').val()" },
             "placering": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
             "anmodningsnoegle": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
             "modtagelseId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },

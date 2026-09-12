@@ -1,7 +1,7 @@
 /* Deterministisk leverandørordre-PDF. Filen kopieres til functions/delt, så
    preview, mailvedhæftning og arkiv bruger præcis samme bytegenerator. */
 
-export const ORDRE_PDF_SKABELON_VERSION = 3;
+export const ORDRE_PDF_SKABELON_VERSION = 4;
 
 const PAGE = { width: 595, height: 842, margin: 32, footerTop: 805 };
 const COLOR = {
@@ -262,6 +262,10 @@ function buildDocument(data) {
   let tableTop = 420;
   const columns = [PAGE.margin, 128, 405, 477, PAGE.width - PAGE.margin];
   const drawTableHeader = (continued = false) => {
+    if (continued) {
+      text("BESTILLING", PAGE.margin, 20, { size: 12, bold: true });
+      text(`Bestillingsnr. ${data.number}`, 330, 20, { size: 10, bold: true, align: "right", width: PAGE.width - PAGE.margin - 330 });
+    }
     sectionHeader(continued ? "VARER · FORTSAT" : "VARER", PAGE.margin, tableTop, PAGE.width - PAGE.margin * 2);
     const headTop = tableTop + 26;
     rect(PAGE.margin, headTop, PAGE.width - PAGE.margin * 2, 27, { fill: COLOR.light, stroke: COLOR.border });
@@ -271,7 +275,10 @@ function buildDocument(data) {
   };
   let cursor = drawTableHeader();
   for (const row of data.lines) {
-    const description = wrap(row.navn, columns[2] - columns[1] - 20, 9.5);
+    // Helvetica-metrikkerne i PDF-læserne er en anelse bredere end den
+    // deterministiske estimator ovenfor. En sikker tekstbredde forhindrer,
+    // at lange danske beskrivelser løber ind i antal-kolonnen.
+    const description = wrap(row.navn, (columns[2] - columns[1] - 20) * 0.86, 9.5);
     const unit = wrap(row.enhedsvisning, columns[4] - columns[3] - 12, 9.2);
     const rowHeight = Math.max(31, Math.max(description.length, unit.length) * 13 + 10);
     if (cursor + rowHeight > 760) { page = makePage(); tableTop = 48; cursor = drawTableHeader(true); }
@@ -284,7 +291,11 @@ function buildDocument(data) {
     cursor += rowHeight;
   }
 
-  if (cursor + 128 > 790) { page = makePage(); cursor = 58; }
+  if (cursor + 128 > 790) {
+    page = makePage(); cursor = 58;
+    text("BESTILLING", PAGE.margin, 20, { size: 12, bold: true });
+    text(`Bestillingsnr. ${data.number}`, 330, 20, { size: 10, bold: true, align: "right", width: PAGE.width - PAGE.margin - 330 });
+  }
   const bottomTop = cursor + 22; const bottomWidth = PAGE.width - PAGE.margin * 2;
   rect(PAGE.margin, bottomTop, bottomWidth, 100, { fill: COLOR.white, stroke: COLOR.border }); sectionHeader("FAKTURERING", PAGE.margin, bottomTop, bottomWidth);
   text("Send faktura til:", PAGE.margin + 14, bottomTop + 41, { size: 9.5 });

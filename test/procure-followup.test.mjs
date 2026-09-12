@@ -71,6 +71,21 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.equal(ordreEnhed({ antal: 6, enhed: "kasse", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasser á 12 stk.");
   });
 
+  it("viser bestillingsnummer og tabelhoved på alle fortsættelsessider", () => {
+    const ordre = order();
+    ordre.linjer = Object.fromEntries(Array.from({ length: 42 }, (_, index) => [`linje-${index}`, {
+      vare: `Lang dansk materialebeskrivelse med æ, ø og å til varelinje ${index + 1}`,
+      varenummer: `MAT-${String(index + 1).padStart(3, "0")}`, antal: index + 1, enhed: "ruller",
+    }]));
+    const pdf = Buffer.from(createOrderPdfBytes(ordre, {}, {})).toString("latin1");
+    const pageCount = (pdf.match(/\/Type \/Page\b/g) || []).length;
+    const encodedContinuationNumber = Buffer.from(`Bestillingsnr. ${ordre.nummer}`, "latin1").toString("hex");
+    const encodedHeading = Buffer.from("VARER · FORTSAT", "latin1").toString("hex");
+    assert.ok(pageCount > 1);
+    assert.equal((pdf.match(new RegExp(encodedContinuationNumber, "g")) || []).length, pageCount - 1);
+    assert.ok((pdf.match(new RegExp(encodedHeading, "g")) || []).length > 0);
+  });
+
   it("markerer transporttimeout som ukendt og gør den ikke til accepteret", async () => {
     const error = new Error("forbindelsen lukkede efter POST"); error.resultatUkendt = true;
     const result = await sendMail({ send: async () => { throw error; } }, { til: "x@example.invalid", emne: "x", tekst: "x" });
