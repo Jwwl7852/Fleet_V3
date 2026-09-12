@@ -1,0 +1,22 @@
+{
+  "version": "V7.3.1",
+  "projekt": "demo-veyro-owner",
+  "adapter": "lokal_injiceret_transport",
+  "eksternAfsendelse": false,
+  "resultater": [
+    {
+      "scenario": "signaturændring_ugyldiggør_godkendelse",
+      "transportkald": 0,
+      "status": "pauset",
+      "stopaarsag": "godkendelse_forældet"
+    },
+    {
+      "scenario": "ny_godkendelse_én_signatur",
+      "transportkald": 1,
+      "venligHilsenForekomster": 1,
+      "status": "accepteret_af_graph",
+      "internChatITransport": false,
+      "interneNoterITransport": false
+    }
+  ]
+}

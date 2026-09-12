@@ -657,3 +657,52 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   tilsluttet**. Kun syntetiske emulatorfixtures er anvendt; ingen push, merge,
   deployment, produktionsændring, bogføring eller virkelig mailafsendelse er
   udført.
+
+## V7.3 — samtaler, interne noter og personlig signatur — 2026-09-12
+
+- **Samtale** og **Svar og AI** følger fortsat V7-referenceopbygningen. Interne
+  noter og AI-chat har nu et fast 4-linjers skrivefelt nederst, mens historikken
+  ruller uafhængigt ovenover.
+- Mail og noter vises nyeste først med stabil rækkefølge. AI-chatten grupperer
+  ejerens besked og AI-svaret som én udveksling, viser nyeste udveksling først
+  og bevarer kronologisk kontekst til testadapteren.
+- Noter gemmes på sagen med forfatter og tidspunkt, deles mellem Dennis og Jørn
+  på fælles sager og vises på den tilknyttede supportsag. Serveren afviser noter
+  på en anden ejers private sag.
+- **Indstillinger → Mail og signatur** giver hver tenantløs ejer sin egen
+  persistente afsenderidentitet, logo-/formatvalg, forhåndsvisning og ren tekst.
+  Eksisterende kladder ændres kun via **Anvend min aktuelle signatur** og skal
+  derefter gennemgås/godkendes igen.
+- AI-forslag indeholder ingen signatur, og interne noter/chat indgår aldrig i
+  kundetransporten. Ændret signatur ugyldiggør en tidligere godkendelse.
+- Lokal verifikation består: 27/27 målrettede tests, målrettet ESLint,
+  Vite-build, emulatorautorisation/persistence og normal Edge-login/reload.
+  9 faktiske browseroptagelser og `browser-proof.json` ligger i
+  `docs/screenshots/ejer-review-v7-3/`.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail er fortsat **Ikke
+  tilsluttet**. Ingen push, merge, deployment, produktionsændring, eksternt
+  AI-kald eller virkelig mailafsendelse er udført.
+
+## V7.3.1 — fire afsluttende rettelser — 2026-09-12
+
+- Kundeeditoren er synlig og klikbar ved 1440×900 og 1920×1080. Svarudkastets
+  og AI-chattens flerlinjede felter bruger panelbredden, handlingen står på en
+  separat række, og AI-historikken har reserveret læseplads over komposeren.
+- Mobilens **Samtale** og **Svar og AI** deler nu én aktiv state på tværs af
+  markering, ARIA og layout. Usendt tekst bevares ved faneskift. En virkelig
+  OS-skærmtastaturoverlejring er ikke tilgængelig i den lokale headless Edge;
+  dette ene delkrav står derfor som delvist verificeret.
+- En kendt afslutning i brødteksten plus en separat signatur kræver nu et
+  synligt valg. Review viser ét samlet svar. Workerbeviset viser 0 transportkald
+  efter signaturændring og præcis 1 lokalt kald efter ny godkendelse.
+- Noter findes på den konkrete sag under **Interne noter · nyeste først** og på
+  samme sag i Support med identisk forfatter og tidspunkt. Klikvejledning:
+  **Mail → Indbakker → åbn sagen → skriv/gem nederst i Samtale → rul til
+  Interne noter**. Signaturen findes under **Indstillinger → Mail og signatur**.
+- Normal login/reload, 6/6 målrettede tests, 11/11 designtests, målrettet
+  ESLint, lokal emulatorautorisation, lokal mailworker og Vite-build med 537
+  moduler består. 12 faktiske screenshots og maskinbeviser ligger i
+  `docs/screenshots/ejer-review-v7-3-1/`.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail er fortsat **Ikke
+  tilsluttet**. Ingen push, merge, deployment, produktionsændring, eksternt
+  AI-kald eller virkelig mailafsendelse er udført.

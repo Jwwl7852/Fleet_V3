@@ -1,0 +1,130 @@
+{
+  "version": "V7.3.1",
+  "base": "http://127.0.0.1:5213",
+  "normalLogin": true,
+  "reload": true,
+  "viewports": [
+    "1440x900",
+    "1920x1080",
+    "390x844",
+    "360x800"
+  ],
+  "testCase": "v7-pilot-nordlys",
+  "checks": {
+    "signatureConflict": {
+      "warning": true,
+      "reviewBlocked": true,
+      "bodySignoffs": 1,
+      "separateSignoffs": 1
+    },
+    "desktop1440": {
+      "editor": {
+        "top": 486.109375,
+        "bottom": 664.109375,
+        "height": 178,
+        "visible": true
+      },
+      "aiField": {
+        "width": 507.09375,
+        "visible": false
+      },
+      "aiButtonSeparate": true,
+      "horizontalOverflow": false,
+      "font": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif"
+    },
+    "draftPersisted": true,
+    "quickInstruction": {
+      "visible": true,
+      "width": 507.09375,
+      "buttonSeparate": true,
+      "leftScrollBefore": 0,
+      "leftScrollAfter": 0,
+      "rightScrollBefore": 0,
+      "rightScrollAfter": 518
+    },
+    "review": {
+      "signoffs": 1,
+      "multiLine": true,
+      "internalExcluded": true
+    },
+    "approvedNotSent": true,
+    "ai": {
+      "historyScrollable": true,
+      "scrollBefore": 0,
+      "scrollAfter": 98,
+      "composerVisible": true,
+      "textareaWidth": 505.09375,
+      "buttonSeparate": true,
+      "focused": true,
+      "aiHasSignature": false
+    },
+    "sharedNote": {
+      "threadId": "v7-pilot-nordlys",
+      "noteId": "-P1LkjCbKHrVw_HBX-nj",
+      "mail": {
+        "id": "-P1LkjCbKHrVw_HBX-nj",
+        "time": "2026-09-12T17:55:53.836Z",
+        "author": "Dennis Testejer",
+        "text": "Dennis Testejer · 12.09.2026, 19.55\nV7.3.1 fælles browsernote – samme note i Mail og Support"
+      },
+      "support": {
+        "id": "-P1LkjCbKHrVw_HBX-nj",
+        "time": "2026-09-12T17:55:53.836Z",
+        "author": "Dennis Testejer"
+      },
+      "otherOwner": true,
+      "otherOwnerUid": "OpzlL9iTyuKQVk4DFf5G0L1Pf2jP",
+      "reload": true
+    },
+    "mobile390": {
+      "activeTab": "Svar og AI",
+      "responseDisplay": "grid",
+      "conversationDisplay": "none",
+      "draftPreserved": true,
+      "horizontalOverflow": false,
+      "focused": true,
+      "fieldRect": {
+        "x": 18,
+        "y": 953.1875,
+        "width": 326,
+        "height": 263.5625,
+        "top": 953.1875,
+        "right": 344,
+        "bottom": 1216.75,
+        "left": 18
+      }
+    },
+    "mobile360": {
+      "activeInnerTab": "AI-chat",
+      "focused": true,
+      "multiLine": true,
+      "visible": true,
+      "horizontalOverflow": false,
+      "visualViewport": {
+        "width": 360,
+        "height": 800
+      }
+    },
+    "fonts": {
+      "status": "loaded",
+      "inter": true,
+      "body": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "textarea": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "button": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif"
+    }
+  },
+  "screenshots": [
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-01-synligt-svarfelt.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-02-signaturvalg.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-03-gemt-flerlinjet-svar.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1920x1080-04-gemt-flerlinjet-svar.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-05-bred-hurtiginstruks-efter-rulning.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-06-samlet-svar-med-en-signatur.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-07-ai-chat-foer-rulning.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-08-ai-chat-efter-rulning.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-09-gemt-note-i-mail.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\1440x900-10-samme-note-i-support.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\390x844-11-mobil-aktiv-svarfane.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-1\\360x800-12-mobil-ai-chat-fokus.png"
+  ]
+}
