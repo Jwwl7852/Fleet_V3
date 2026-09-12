@@ -9,6 +9,7 @@ import {
   nettoFaktureretOere, ordreErFuldtModtaget, serverOrdreLinjer,
 } from "../src/fleet/procure-v2/procure-backend-domain.js";
 import { createOrderPdfBytes, ordreEnhed, ordreModtagelsesUrl, ordrePdfData, ordrePdfStoragePath, validerOrdrePdfGrundlag } from "../src/fleet/procure-v2/procure-pdf.js";
+import { INTER_BOLD_BASE64, INTER_REGULAR_BASE64 } from "../src/fleet/procure-v2/procure-pdf-fonts.js";
 import { receiptValueOere } from "../src/fleet/procure-v2/procure-v2-domain.js";
 import { tjekSignatur } from "../src/fleet/dokumenter.js";
 
@@ -92,6 +93,21 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.ok(pageCount > 1);
     assert.equal((pdf.match(new RegExp(encodedContinuationNumber, "g")) || []).length, pageCount - 1);
     assert.ok((pdf.match(new RegExp(encodedHeading, "g")) || []).length > 0);
+  });
+
+  it("indlejrer Inter Regular og Bold som de eneste dokumentfonte", () => {
+    const bytes = Buffer.from(createOrderPdfBytes(order(), {}, {}));
+    const pdf = bytes.toString("latin1");
+    const regular = Buffer.from(INTER_REGULAR_BASE64, "base64");
+    const bold = Buffer.from(INTER_BOLD_BASE64, "base64");
+    assert.deepEqual(regular, readFileSync(new URL("../src/fleet/procure-v2/fonts/Inter-Regular.ttf", import.meta.url)));
+    assert.deepEqual(bold, readFileSync(new URL("../src/fleet/procure-v2/fonts/Inter-Bold.ttf", import.meta.url)));
+    assert.ok(bytes.indexOf(regular) > 0);
+    assert.ok(bytes.indexOf(bold) > 0);
+    assert.match(pdf, /\/Subtype \/TrueType \/BaseFont \/Inter-Regular/);
+    assert.match(pdf, /\/Subtype \/TrueType \/BaseFont \/Inter-Bold/);
+    assert.equal((pdf.match(/\/FontFile2/g) || []).length, 2);
+    assert.doesNotMatch(pdf, /\/Helvetica/);
   });
 
   it("markerer transporttimeout som ukendt og gør den ikke til accepteret", async () => {

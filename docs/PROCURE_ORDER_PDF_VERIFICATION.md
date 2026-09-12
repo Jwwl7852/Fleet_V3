@@ -4,32 +4,35 @@ Oprindelig rapport: 11. september 2026
 Aktuel skabelonstatus: 12. september 2026  
 Branch: `codex/procure-integrated-development`
 
-## Aktuel skabelon v6
+## Aktuel skabelon v7
 
 Nye leverandørvendte ordre-PDF'er har **ingen modtagelses-QR**. QR-beskrivelser og QR-hashes længere nede i denne rapport er historiske beviser for allerede arkiverede revisioner; de må ikke læses som beskrivelse af den aktuelle skabelon.
 
-Skabelon v6 viser side 1 i den godkendte rækkefølge: bestillingsoverskrift/nummer/dato, `BESTILLER` og `LEVERANDØR`, `LEVERING`, `FAKTURERING` og derefter `VARER`. Faktureringsblokken henter fakturamail og eventuelle ekstra instruktioner fra den konkrete tenants `virksomhed`-stamdata og viser altid kravet `Angiv vores bestillingsnummer [nummer] på følgesedlen og fakturaen.`
+Skabelon v7 viser side 1 i den godkendte rækkefølge: bestillingsoverskrift/nummer/dato, `BESTILLER` og `LEVERANDØR`, `LEVERING`, `FAKTURERING` og derefter `VARER`. Faktureringsblokken henter fakturamail og eventuelle ekstra instruktioner fra den konkrete tenants `virksomhed`-stamdata og viser altid kravet `Angiv vores bestillingsnummer [nummer] på følgesedlen og fakturaen.`
+
+Hele dokumentet bruger nu Inter 4.1. Repoet havde kun CSS-familienavnet `Inter`, men ingen TTF/OTF-fil egnet til PDF-indlejring; derfor er udgiverens officielle `Inter-Regular.ttf` og `Inter-Bold.ttf` vendoreret med SIL OFL 1.1-licensen. De separate, ægte fontvægte indlejres som `/Subtype /TrueType` med `/FontFile2`. Generatoren læser Inter-fontens egne `cmap`- og `hmtx`-tabeller ved opstart; tekstbredde, centrering, linjeskift og sideombrydning beregnes derfor med de samme indlejrede fontdata, som PDF-læseren gengiver. Helvetica indgår ikke længere i den aktuelle skabelon.
 
 Samme kanoniske faktureringsblok indgår i mailpreviewet og den serverbyggede tekst, der afleveres til testtransporten. Klientens redigerbare tekst kan ikke fjerne serverens faktureringskrav. Manglende fakturamail eller øvrige obligatoriske stamdata afvises før dokumentgeneration og afsendelse.
 
-Skabelonen bevarer layoutet uden priser, leveringsønsket, åbningstiden 7.00–15.00 og bestillingsnummer på alle fortsættelsessider. Allerede arkiverede dokumentrevisioner returneres fortsat byteidentisk fra den revisionslåste arkivsti og regenereres ikke med v6. Den tidligere v5-placering af Fakturering før bestiller/leverandør er dermed historisk og gælder kun allerede arkiverede v5-dokumenter.
+Skabelonen bevarer layoutet uden priser, leveringsønsket, åbningstiden 7.00–15.00 og bestillingsnummer på alle fortsættelsessider. Allerede arkiverede dokumentrevisioner returneres fortsat byteidentisk fra den revisionslåste arkivsti og regenereres ikke med v7. De tidligere skabelonversioner og deres placering/fontvalg er dermed historiske og gælder kun allerede arkiverede dokumenter.
 
 ### Aktuelle prøvefiler
 
 | Fil | Omfang | SHA-256 |
 | --- | --- | --- |
-| `output/pdf/PROCURE-bestilling-hurtigst-muligt.pdf` | 1 side, Hurtigst muligt | `2e9c297cde78d1d936d10e1de3190312cdec7b3b3483ffc988577488f633010c` |
-| `output/pdf/PROCURE-bestilling-senest-dato.pdf` | 1 side, Senest 30.09.2026 | `3c91f2d76c338e989eef54586aedc9559587e2b74aad3dd9df60a1d62d13001b` |
-| `output/pdf/PROCURE-bestilling-flere-sider.pdf` | 42 lange varelinjer, 4 sider | `1dd9aea5472d23d13d625b96950ab98e5c0da26b3267ac248bb4bf18a4e9fe3d` |
+| `output/pdf/PROCURE-bestilling-hurtigst-muligt.pdf` | 1 side, Hurtigst muligt | `bfd838e0b18ac94f082870e8190465180045d686d78f7074b61481c6a1646b44` |
+| `output/pdf/PROCURE-bestilling-senest-dato.pdf` | 1 side, Senest 30.09.2026 | `e7efdb32421c8c2ddcbd341f4618f0908a42c079e87b5a1a26e24f7b5fa98adf` |
+| `output/pdf/PROCURE-bestilling-flere-sider.pdf` | 42 lange varelinjer, 4 sider | `cb9abb2175406f562c267b1724e4a9d522af2726d58f5beaf22bae60a91980b8` |
 
-Alle seks sider er renderet i `output/pdf/screenshots-v6/` og visuelt kontrolleret. Faktureringsblokken står mellem Levering og Varer på side 1 i begge korte varianter og flersidevarianten. Flersideeksemplet gentager tabeloverskrifter og `Bestillingsnr. BST-2026-00042` på side 2–4 uden overlap eller afskæring.
+Alle seks sider er renderet i `output/pdf/screenshots-v7/` og visuelt kontrolleret. Faktureringsblokken står mellem Levering og Varer på side 1 i begge korte varianter og flersidevarianten. Flersideeksemplet gentager tabeloverskrifter og `Bestillingsnr. BST-2026-00042` på side 2–4 uden overlap eller afskæring. Inter-gengivelsen har ensartet bogstavafstand, danske tegn gengives og kan udtrækkes, og lange varebeskrivelser bliver inden for beskrivelseskolonnen.
 
-### Faktisk afprøvning af v6
+### Faktisk afprøvning af v7
 
 - Autoriseret browser-QA med almindeligt Firebase-login mod lokale Auth-, Database-, Functions- og Storage-emulatorer bestod. Den sendeklare syntetiske ordre `BST-2026-00043` viste den tenantlagrede fakturamail og ekstra faktureringsinstruks i mailforslaget. Den revisionslåste PDF var klar til preview før screenshot.
 - Screenshot: `output/review/pdf-mail-v5/12-desktop-mailforslag-fakturering.png`.
 - Det samlede backendflow inspicerede den faktiske multipart-payload til den kontrollerede testtransport: præcis én PDF-vedhæftning, ingen priser i mailteksten, faktureringsoverskrift, fakturamail, bestillingsnummerkrav og den ekstra instruktion.
-- Vedhæftning og arkiv var byteidentiske; SHA-256 var `0a039fed6d468699fd11b7f36df899d58cd56c9339ab2dea821c2694dcac31c6`. Transportadapteren blev kaldt én gang, og replay med samme idempotensnøgle sendte ikke igen.
+- Vedhæftning og arkiv var byteidentiske; SHA-256 var `004600f29bf15f71ffdfdc1c4a122e22dc9ce82fd7a49dc7189ff05ceb2bcf42`. Den inspicerede mailvedhæftning var skabelonversion 7 og indeholdt både `/Inter-Regular`, `/Inter-Bold` og præcis to indlejrede `/FontFile2`-streams. Transportadapteren blev kaldt én gang, og replay med samme idempotensnøgle sendte ikke igen.
+- `pypdf` genåbnede flersidefilen og fandt fire sider, `/Inter-Regular` og `/Inter-Bold` som indlejrede TrueType-fonte. De udtrukne fontstream-hashes var `40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82` og `288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f`, identisk med de to vendorerede TTF-kilder.
 - Det interne ordrebeløb og det sammenhængende fakturamatch var uændret: 8.880,00 kr. i godkendt nettoforbrug, inklusive dokumenteret prisafvigelse og kreditnota på 144,00 kr.
 - Ingen rigtig leverandørmail blev sendt; alle modtagere brugte `.invalid`, og transportens HTTP-kald blev erstattet af en lokal payload-inspektion.
 
@@ -45,7 +48,7 @@ npm run build
 npm run test:design
 ```
 
-Resultat: 118/118 målrettede tests, 11/11 designtests, lint og produktionsbuild bestod. Backend- og browserflows afsluttede med `ok: true`.
+Resultat: 119/119 målrettede tests, 11/11 designtests, lint og produktionsbuild bestod. Den isolerede backendintegration afsluttede med `ok: true`. Den tidligere autoriserede mailpreview-browserkontrol er fortsat relevant for mailteksten; PDF-renderingerne er nye for v7.
 
 ## Resultat
 
@@ -148,5 +151,5 @@ De tre PDF/mail-fokuserede tests gav 88 beståede og 0 fejl. Den afsluttende kø
 
 - Fysisk scanning med et rigtigt mobilkamera blev ikke udført i denne runde. QR blev afkodet maskinelt fra både prøve-PDF og faktisk backend-PDF.
 - Produktionsafsendelse kræver fortsat kundens mailtransportcredentials, offentlige HTTPS-appadresse samt komplette kunde-, leverandør-, leverings- og faktureringsstamdata.
-- Inter-skrifttypen er ikke indlejret som en særskilt fontfil; PDF'en bruger platformens dokumentegnede systemfallback Helvetica. Farver, størrelseshierarki og geometri følger de fælles PROCURE-tokens.
+- Inter 4.1 Regular og Bold er indlejret i hver ny leverandør-PDF. Fontfilerne ligger lokalt med OFL-licensen, og samme fontbytes bruges af browser-preview og Functions-kopien. Farver, størrelseshierarki og geometri følger fortsat de fælles PROCURE-tokens.
 - Ingen deployment, push, merge, produktionsændring, rigtig ordre, betaling eller leverandørmail er udført.

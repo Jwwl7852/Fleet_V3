@@ -35,6 +35,7 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
    Tilføjer du en fil, så følg dens imports hele vejen ned. */
 export const DELTE_FILER = [
+  "procure-v2/procure-pdf-fonts.js",
   "procure-v2/procure-pdf.js",
   "procure-v2/procure-backend-domain.js",
   "procure-v2/procure-inventory-domain.js",

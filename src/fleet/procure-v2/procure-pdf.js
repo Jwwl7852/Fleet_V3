@@ -1,7 +1,8 @@
 /* Deterministisk leverandørordre-PDF. Filen kopieres til functions/delt, så
    preview, mailvedhæftning og arkiv bruger præcis samme bytegenerator. */
+import { INTER_BOLD_BASE64, INTER_REGULAR_BASE64 } from "./procure-pdf-fonts.js";
 
-export const ORDRE_PDF_SKABELON_VERSION = 6;
+export const ORDRE_PDF_SKABELON_VERSION = 7;
 
 const PAGE = { width: 595, height: 842, margin: 32, footerTop: 805 };
 const COLOR = {
@@ -177,6 +178,99 @@ const WIN_ANSI = new Map([
   ["™", 153], ["š", 154], ["›", 155], ["œ", 156], ["ž", 158], ["Ÿ", 159],
 ]);
 
+const WIN_ANSI_UNICODE = Object.freeze({
+  128: 0x20ac, 130: 0x201a, 131: 0x0192, 132: 0x201e, 133: 0x2026,
+  134: 0x2020, 135: 0x2021, 136: 0x02c6, 137: 0x2030, 138: 0x0160,
+  139: 0x2039, 140: 0x0152, 142: 0x017d, 145: 0x2018, 146: 0x2019,
+  147: 0x201c, 148: 0x201d, 149: 0x2022, 150: 0x2013, 151: 0x2014,
+  152: 0x02dc, 153: 0x2122, 154: 0x0161, 155: 0x203a, 156: 0x0153,
+  158: 0x017e, 159: 0x0178,
+});
+
+const u16 = (bytes, offset) => (bytes[offset] << 8) | bytes[offset + 1];
+const s16 = (bytes, offset) => { const value = u16(bytes, offset); return value > 0x7fff ? value - 0x10000 : value; };
+const u32 = (bytes, offset) => ((bytes[offset] * 0x1000000) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3]) >>> 0;
+
+function decodeBase64(value) {
+  if (globalThis.Buffer) return Uint8Array.from(globalThis.Buffer.from(value, "base64"));
+  const binary = globalThis.atob(value); const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function fontTables(bytes) {
+  const tables = new Map(); const count = u16(bytes, 4);
+  for (let index = 0; index < count; index += 1) {
+    const entry = 12 + index * 16;
+    const tag = String.fromCharCode(...bytes.slice(entry, entry + 4));
+    tables.set(tag, { offset: u32(bytes, entry + 8), length: u32(bytes, entry + 12) });
+  }
+  return tables;
+}
+
+function cmapLookup(bytes, table) {
+  const count = u16(bytes, table.offset + 2); let selected = null; let score = -1;
+  for (let index = 0; index < count; index += 1) {
+    const entry = table.offset + 4 + index * 8;
+    const platform = u16(bytes, entry); const encoding = u16(bytes, entry + 2);
+    const offset = table.offset + u32(bytes, entry + 4); const format = u16(bytes, offset);
+    const candidateScore = format === 4 ? (platform === 3 && encoding === 1 ? 3 : platform === 0 ? 2 : 1) : -1;
+    if (candidateScore > score) { selected = offset; score = candidateScore; }
+  }
+  if (selected == null) throw new Error("Inter-fonten mangler en Unicode cmap format 4.");
+  const length = u16(bytes, selected + 2); const segCount = u16(bytes, selected + 6) / 2;
+  const endCodes = selected + 14; const startCodes = endCodes + segCount * 2 + 2;
+  const deltas = startCodes + segCount * 2; const rangeOffsets = deltas + segCount * 2;
+  return (codePoint) => {
+    for (let index = 0; index < segCount; index += 1) {
+      const end = u16(bytes, endCodes + index * 2);
+      if (codePoint > end) continue;
+      const start = u16(bytes, startCodes + index * 2);
+      if (codePoint < start) return 0;
+      const delta = s16(bytes, deltas + index * 2); const range = u16(bytes, rangeOffsets + index * 2);
+      if (range === 0) return (codePoint + delta) & 0xffff;
+      const address = rangeOffsets + index * 2 + range + (codePoint - start) * 2;
+      if (address + 1 >= selected + length) return 0;
+      const glyph = u16(bytes, address);
+      return glyph === 0 ? 0 : (glyph + delta) & 0xffff;
+    }
+    return 0;
+  };
+}
+
+function winAnsiUnicode(byte) {
+  if (byte >= 32 && byte <= 126) return byte;
+  if (byte >= 160) return byte;
+  return WIN_ANSI_UNICODE[byte] || 0x003f;
+}
+
+function parseInterFont(base64, postScriptName, bold) {
+  const bytes = decodeBase64(base64); const tables = fontTables(bytes);
+  const head = tables.get("head"); const hhea = tables.get("hhea"); const hmtx = tables.get("hmtx");
+  const maxp = tables.get("maxp"); const cmap = tables.get("cmap");
+  if (![head, hhea, hmtx, maxp, cmap].every(Boolean)) throw new Error(`${postScriptName} mangler nødvendige TrueType-tabeller.`);
+  const unitsPerEm = u16(bytes, head.offset + 18); const glyphCount = u16(bytes, maxp.offset + 4);
+  const metricCount = u16(bytes, hhea.offset + 34); const advances = new Array(glyphCount);
+  let lastAdvance = 0;
+  for (let glyph = 0; glyph < glyphCount; glyph += 1) {
+    if (glyph < metricCount) lastAdvance = u16(bytes, hmtx.offset + glyph * 4);
+    advances[glyph] = lastAdvance;
+  }
+  const glyphFor = cmapLookup(bytes, cmap); const widths = new Array(256).fill(Math.round((advances[0] || unitsPerEm) * 1000 / unitsPerEm));
+  for (let byte = 32; byte <= 255; byte += 1) widths[byte] = Math.round((advances[glyphFor(winAnsiUnicode(byte))] || advances[0] || unitsPerEm) * 1000 / unitsPerEm);
+  const scale = (value) => Math.round(value * 1000 / unitsPerEm);
+  return {
+    bytes, widths, postScriptName, bold,
+    bbox: [scale(s16(bytes, head.offset + 36)), scale(s16(bytes, head.offset + 38)), scale(s16(bytes, head.offset + 40)), scale(s16(bytes, head.offset + 42))],
+    ascent: scale(s16(bytes, hhea.offset + 4)), descent: scale(s16(bytes, hhea.offset + 6)),
+  };
+}
+
+const INTER_FONT = Object.freeze({
+  regular: parseInterFont(INTER_REGULAR_BASE64, "Inter-Regular", false),
+  bold: parseInterFont(INTER_BOLD_BASE64, "Inter-Bold", true),
+});
+
 function hexText(value) {
   let hex = "";
   for (const char of String(value ?? "")) {
@@ -187,14 +281,13 @@ function hexText(value) {
 }
 
 function textWidth(value, size, bold = false) {
+  const font = bold ? INTER_FONT.bold : INTER_FONT.regular;
   let units = 0;
   for (const char of String(value)) {
-    if (" ilI.,:;!'|".includes(char)) units += 0.27;
-    else if ("mwMW@%&ØÆ".includes(char)) units += 0.86;
-    else if (/[A-Z0-9]/.test(char)) units += 0.62;
-    else units += 0.51;
+    const code = WIN_ANSI.get(char) ?? char.codePointAt(0);
+    units += font.widths[code <= 255 ? code : 63];
   }
-  return units * size * (bold ? 1.035 : 1);
+  return units * size / 1000;
 }
 
 function wrap(value, maxWidth, size, bold = false) {
@@ -303,10 +396,7 @@ function buildDocument(data) {
   if (tableTop + 53 > 760) { page = makePage(); tableTop = 48; cursor = drawTableHeader(true); }
   else cursor = drawTableHeader();
   for (const row of data.lines) {
-    // Helvetica-metrikkerne i PDF-læserne er en anelse bredere end den
-    // deterministiske estimator ovenfor. En sikker tekstbredde forhindrer,
-    // at lange danske beskrivelser løber ind i antal-kolonnen.
-    const description = wrap(row.navn, (columns[2] - columns[1] - 20) * 0.86, 9.5);
+    const description = wrap(row.navn, columns[2] - columns[1] - 20, 9.5);
     const unit = wrap(row.enhedsvisning, columns[4] - columns[3] - 12, 9.2);
     const rowHeight = Math.max(31, Math.max(description.length, unit.length) * 13 + 10);
     if (cursor + rowHeight > 760) { page = makePage(); tableTop = 48; cursor = drawTableHeader(true); }
@@ -334,26 +424,62 @@ function latin1Bytes(value) {
   return bytes;
 }
 
+function concatBytes(parts) {
+  const length = parts.reduce((sum, part) => sum + part.length, 0); const result = new Uint8Array(length);
+  let offset = 0;
+  parts.forEach((part) => { result.set(part, offset); offset += part.length; });
+  return result;
+}
+
+function streamObject(bytes, extra = "") {
+  return concatBytes([latin1Bytes(`<< /Length ${bytes.length}${extra} >>\nstream\n`), bytes, latin1Bytes("\nendstream")]);
+}
+
+function toUnicodeStream(name) {
+  const mappings = [];
+  for (let byte = 32; byte <= 255; byte += 1) {
+    if ((byte >= 127 && byte <= 159) && !WIN_ANSI_UNICODE[byte]) continue;
+    mappings.push(`<${byte.toString(16).padStart(2, "0")}> <${winAnsiUnicode(byte).toString(16).padStart(4, "0")}>`);
+  }
+  const blocks = [];
+  for (let index = 0; index < mappings.length; index += 100) {
+    const block = mappings.slice(index, index + 100); blocks.push(`${block.length} beginbfchar\n${block.join("\n")}\nendbfchar`);
+  }
+  return `/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /${name}-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<00> <FF>\nendcodespacerange\n${blocks.join("\n")}\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend`;
+}
+
 function assemblePdf(pageStreams) {
-  const firstPageObject = 5;
+  const firstPageObject = 11;
+  const regular = INTER_FONT.regular; const bold = INTER_FONT.bold;
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     `<< /Type /Pages /Kids [${pageStreams.map((_, index) => `${firstPageObject + index * 2} 0 R`).join(" ")}] /Count ${pageStreams.length} >>`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+    `<< /Type /Font /Subtype /TrueType /BaseFont /${regular.postScriptName} /FirstChar 32 /LastChar 255 /Widths [${regular.widths.slice(32).join(" ")}] /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /ToUnicode 7 0 R >>`,
+    `<< /Type /Font /Subtype /TrueType /BaseFont /${bold.postScriptName} /FirstChar 32 /LastChar 255 /Widths [${bold.widths.slice(32).join(" ")}] /FontDescriptor 8 0 R /Encoding /WinAnsiEncoding /ToUnicode 10 0 R >>`,
+    `<< /Type /FontDescriptor /FontName /${regular.postScriptName} /Flags 32 /FontBBox [${regular.bbox.join(" ")}] /ItalicAngle 0 /Ascent ${regular.ascent} /Descent ${regular.descent} /CapHeight ${regular.ascent} /StemV 80 /FontFile2 6 0 R >>`,
+    streamObject(regular.bytes, ` /Length1 ${regular.bytes.length}`),
+    streamObject(latin1Bytes(toUnicodeStream(regular.postScriptName))),
+    `<< /Type /FontDescriptor /FontName /${bold.postScriptName} /Flags 32 /FontBBox [${bold.bbox.join(" ")}] /ItalicAngle 0 /Ascent ${bold.ascent} /Descent ${bold.descent} /CapHeight ${bold.ascent} /StemV 120 /FontFile2 9 0 R >>`,
+    streamObject(bold.bytes, ` /Length1 ${bold.bytes.length}`),
+    streamObject(latin1Bytes(toUnicodeStream(bold.postScriptName))),
   ];
   pageStreams.forEach((stream, index) => {
     const contentObject = firstPageObject + index * 2 + 1;
     objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.width} ${PAGE.height}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObject} 0 R >>`);
     objects.push(`<< /Length ${latin1Bytes(stream).length} >>\nstream\n${stream}\nendstream`);
   });
-  let pdf = "%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"; const offsets = [0];
-  objects.forEach((object, index) => { offsets.push(latin1Bytes(pdf).length); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; });
-  const xref = latin1Bytes(pdf).length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return latin1Bytes(pdf);
+  const parts = [latin1Bytes("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")]; const offsets = [0]; let length = parts[0].length;
+  objects.forEach((object, index) => {
+    const body = typeof object === "string" ? latin1Bytes(object) : object;
+    const wrapped = concatBytes([latin1Bytes(`${index + 1} 0 obj\n`), body, latin1Bytes("\nendobj\n")]);
+    offsets.push(length); parts.push(wrapped); length += wrapped.length;
+  });
+  const xref = length;
+  let trailer = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => { trailer += `${String(offset).padStart(10, "0")} 00000 n \n`; });
+  trailer += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  parts.push(latin1Bytes(trailer));
+  return concatBytes(parts);
 }
 
 export function createOrderPdfBytes(ordre = {}, leverandoer = {}, tenant = {}) {
