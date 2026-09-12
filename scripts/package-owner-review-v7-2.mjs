@@ -26,10 +26,13 @@ try {
   const manifestEntries = files(stage).map((path) => ({ path: relative(stage, path).replaceAll("\\", "/"), bytes: statSync(path).size, sha256: sha256(path) })).sort((a, b) => a.path.localeCompare(b.path));
   writeFileSync(join(stage, "archive-manifest.json"), JSON.stringify({ version: "V7.2", codeCommit: "f5533b190b48175bef22024cc4890d1ba6172011", entries: manifestEntries }, null, 2));
   if (existsSync(out)) rmSync(out);
-  const zip = spawnSync("tar.exe", ["-a", "-c", "-f", out, "-C", stage, "."], { encoding: "utf8" });
-  if (zip.status !== 0) throw new Error(zip.stderr || zip.stdout || "ZIP-oprettelse fejlede");
-  const unzip = spawnSync("tar.exe", ["-x", "-f", out, "-C", unpacked], { encoding: "utf8" });
-  if (unzip.status !== 0) throw new Error(unzip.stderr || unzip.stdout || "ZIP-kontroludpakning fejlede");
+  const psStage = stage.replaceAll("'", "''");
+  const psOut = out.replaceAll("'", "''");
+  const psUnpacked = unpacked.replaceAll("'", "''");
+  const zip = spawnSync("powershell", ["-NoProfile", "-Command", `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory('${psStage}', '${psOut}', [System.IO.Compression.CompressionLevel]::Optimal, $false)`], { encoding: "utf8" });
+  if (zip.status !== 0) throw new Error(zip.stderr || zip.stdout || ".NET ZIP-oprettelse fejlede");
+  const unzip = spawnSync("powershell", ["-NoProfile", "-Command", `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${psOut}', '${psUnpacked}')`], { encoding: "utf8" });
+  if (unzip.status !== 0) throw new Error(unzip.stderr || unzip.stdout || ".NET ZIP-kontroludpakning fejlede");
   const extracted = JSON.parse(readFileSync(join(unpacked, "archive-manifest.json"), "utf8"));
   const checks = extracted.entries.map((entry) => {
     const path = join(unpacked, ...entry.path.split("/"));
