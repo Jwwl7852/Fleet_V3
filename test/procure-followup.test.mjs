@@ -69,7 +69,12 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     assert.doesNotMatch(pdfHex, new RegExp(`${encoded("VAREMODTAGELSE")}|${encoded("Scan for at åbne bestillingen")}`));
     assert.match(pdfHex, new RegExp(encoded("Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen.")));
     assert.match(pdfHex, new RegExp(encoded("Fakturaen skal være i PDF-format.")));
-    assert.ok(pdfHex.indexOf(encoded("FAKTURERING")) < pdfHex.indexOf(encoded("BESTILLER")), "Fakturering skal stå før bestillerfeltet på første side");
+    const buyerIndex = pdfHex.indexOf(encoded("BESTILLER"));
+    const deliveryIndex = pdfHex.indexOf(encoded("LEVERING"));
+    const invoicingIndex = pdfHex.indexOf(encoded("FAKTURERING"));
+    const itemsIndex = pdfHex.indexOf(encoded("VARER"));
+    assert.ok(buyerIndex < deliveryIndex && deliveryIndex < invoicingIndex && invoicingIndex < itemsIndex,
+      "Første side skal vise bestiller/leverandør, levering, fakturering og varer i den godkendte rækkefølge");
     assert.equal(ordreEnhed({ antal: 1, enhed: "kasser", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasse á 12 stk.");
     assert.equal(ordreEnhed({ antal: 6, enhed: "kasse", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasser á 12 stk.");
   });

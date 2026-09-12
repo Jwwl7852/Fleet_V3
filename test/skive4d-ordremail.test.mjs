@@ -159,6 +159,8 @@ describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
     const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da", virksomhed: { fakturaModtagelse: "faktura@example.invalid", faktureringsInstruktioner: ["Vedhæft én PDF pr. faktura."] } });
     assert.match(indhold.brodtekst, /10 × Skruer/);
     assert.match(indhold.brodtekst, /Fakturering\nSend faktura til: faktura@example\.invalid/);
+    assert.match(indhold.brodtekst, /Levering:[\s\S]*\(lagerets åbningstider\)\n\nFakturering\n/,
+      "Fakturering skal stå umiddelbart efter mailens Levering-sektion");
     assert.match(indhold.brodtekst, /Vedhæft én PDF pr\. faktura\./);
     assert.ok(!/kr\.|pris|moms|total|i alt/i.test(indhold.brodtekst), "leverandørmailen afslører interne prisfelter");
   });

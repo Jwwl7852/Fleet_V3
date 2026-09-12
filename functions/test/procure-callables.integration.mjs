@@ -89,6 +89,13 @@ const supplier = {
 const company = { navn: "Nordisk Drift", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@example.invalid", faktureringsInstruktioner: ["Fakturaen skal være i PDF-format."], procureAppUrl: "https://procure-preview.example.invalid" };
 
 await db.ref().set(null);
+/* Testen bruger faste syntetiske id'er og skal derfor også nulstille sit eget
+ * Storage-prefix. Arkiver fra en tidligere testrunde må ikke få en ny
+ * skabelon til at se ud som den gamle; produktionskoden bevarer dem fortsat. */
+await Promise.all([
+  bucket.deleteFiles({ prefix: `tenants/${tenantA}/` }),
+  bucket.deleteFiles({ prefix: `tenants/${tenantB}/` }),
+]);
 await db.ref(`tenants/${tenantA}`).set({
   _findes: true,
   abonnement: { status: "aktiv" },
@@ -181,7 +188,7 @@ assert.equal(sentRecord.ordreRevision, 4);
 assert.equal(sentRecord.til, "ordre@example.invalid");
 assert.equal(sentRecord.afsender, process.env.MAILGUN_AFSENDER);
 assert.equal(sentRecord.mailStatus, "accepteret");
-assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 5);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 6);
 assert.ok(!/kr\.|pris|moms|total|i alt/i.test(mailPayloads[0].text), "leverandørmailen indeholder interne priser");
 assert.match(mailPayloads[0].text, /Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen\./);
 assert.match(mailPayloads[0].text, /Fakturering\nSend faktura til: faktura@example\.invalid/);
