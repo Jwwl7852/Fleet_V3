@@ -728,3 +728,29 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   OCR og bilagsmail er fortsat **Ikke tilsluttet**. Ingen push, merge,
   deployment, produktionsændring, eksternt AI-kald eller virkelig
   mailafsendelse er udført.
+
+## V8 — Support AI — 2026-09-12
+
+- Support genbruger nu samme kommunikationstråd, historik, noter, ansvarlige,
+  kladde, signatur og menneskelige godkendelse som Mail. Højrepanelet har
+  **Svarudkast**, **AI-chat** og **Oplysninger**.
+- En lokal, deterministisk Support-AI viser dokumenterede fakta, mulige
+  forklaringer, ukendte forhold og konkrete kilder. Kun godkendt viden med
+  publikum **kundevendt** kan levere løsningstekst til et kundesvar; intern og
+  forældet viden bliver ikke gjort kundevendt.
+- Serveren beskytter det fælles AI-arbejdsrum med ejeradgang, revision,
+  idempotens og stale-kontrol. En ny kundebesked eller ændret kladde blokerer et
+  gammelt forslag. Interne noter og AI-chat indgår aldrig i kundetransporten.
+- Vidensbasen registrerer modul, relevante versioner, nøgleord, status,
+  publikum og reviewer. Supportkøen viser søgning, filtre, prioritet, modul,
+  ansvarlig og status med syntetisk/ikke-tilsluttet mærkning.
+- Lokal verifikation består: 22/22 V7–V8-regressioner, 11/11 designtests,
+  målrettet ESLint, emulatoraccept E1–E6 og Vite-build med 538 moduler.
+  Edge bekræftede normalt login/reload, Inter i body/knap/textarea, fast
+  komposer, uafhængig rulning og bevaret mobiltekst uden vandret overflow.
+- Kundeportalens supportindgang og den fælles kontrakt afventer samlingschatten;
+  kontraktinputtet ligger i `docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1.md`.
+  Ekstern AI er ikke aktiveret. Microsoft 365, OpenAI, Dinero, OCR og
+  bilagsmail er fortsat **Ikke tilsluttet**.
+- Ingen push, merge, deployment, produktionsændring, eksternt AI-kald eller
+  rigtig mailafsendelse er udført.
