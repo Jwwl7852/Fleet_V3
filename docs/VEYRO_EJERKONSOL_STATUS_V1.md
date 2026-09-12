@@ -2,6 +2,32 @@
 
 Opdateret: 2026-09-12
 
+## V7.2 afslutning — lokal reviewstatus
+
+- V7.2 er implementeret i det isolerede ejerspor fra HEAD
+  `8b08da24246c9482a2c76acaaebb600164e15d17`. Browserverificeret kode er
+  `f5533b190b48175bef22024cc4890d1ba6172011`; intet er pushet, merget eller
+  deployet.
+- Mobilindbakken viser tre hele rækker ved 360×800, 390×844, 899×900 og
+  900×900. Valgt postkasse, kort testmærke, Ny mail, søgning, mapper, aktive
+  filtre og nulstilling er dokumenteret i start-/værktøjsforløbet.
+- Svarudkast viser sagens bekræftede/manglende oplysninger og samme fælles
+  AI-historik som AI-chat. Ny revision gemmes, indsættes kun eksplicit og
+  overskriver aldrig kladden automatisk.
+- Enhver ændring efter godkendelse blokerer afsendelse. Servergemning og ny
+  godkendelse er transaktionelle; mailworkerens sidste hash-/revisionskontrol
+  stoppede fire forældede scenarier før transport. En ny godkendt version gav
+  ét lokalt transportkald uden intern chat eller noter.
+- Otte trusted-wheel-målinger ved 1440×900 og 1920×1080 dokumenterer
+  uafhængig rulning for samtale mod alle tre Svar/AI-faner samt mailliste mod
+  samlet AI-overblik. Dokumentets scrollposition forblev uændret.
+- Build, målrettet lint, 11/11 designtests, 12/12 mailregressioner og 5/5
+  mailworker-scenarier består. Normal testejerlogin viser 116 reviewtråde efter
+  reload. 20 faktiske screenshots og JSON-beviser ligger i
+  `docs/screenshots/ejer-review-v7-2/`.
+- Detaljeret acceptmatrix: `docs/VEYRO_EJERKONSOL_REVIEW_V7_2.md`. Microsoft
+  365, OpenAI, Dinero, OCR og bilagsmail er fortsat **Ikke tilsluttet**.
+
 ## V7.1 mail og AI — lokal reviewstatus
 
 - V7.1 er implementeret i det isolerede ejerspor. Browserverificeret kode er

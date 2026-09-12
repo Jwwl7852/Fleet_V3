@@ -1,0 +1,93 @@
+{
+  "viewports": [
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "documentScroll": {
+        "x": 0,
+        "y": 0,
+        "height": 864
+      },
+      "ratio": 0.9939759036144579,
+      "horizontalOverflow": false,
+      "firstTwoRows": [
+        {
+          "index": 0,
+          "top": 384,
+          "bottom": 459,
+          "height": 75,
+          "fullyVisible": true
+        },
+        {
+          "index": 1,
+          "top": 459,
+          "bottom": 527,
+          "height": 68,
+          "fullyVisible": true
+        }
+      ],
+      "fullyVisibleRows": 3
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentScroll": {
+        "x": 0,
+        "y": 0,
+        "height": 908
+      },
+      "rowWidth": 360,
+      "cardWidth": 362,
+      "ratio": 0.994475138121547,
+      "horizontalOverflow": false,
+      "wordBreak": "normal",
+      "overflowWrap": "normal",
+      "firstTwoRows": [
+        {
+          "index": 0,
+          "top": 384,
+          "bottom": 459,
+          "height": 75,
+          "fullyVisible": true
+        },
+        {
+          "index": 1,
+          "top": 459,
+          "bottom": 527,
+          "height": 68,
+          "fullyVisible": true
+        }
+      ],
+      "fullyVisibleRows": 3,
+      "toolsOpen": "false"
+    }
+  ],
+  "controls": {
+    "aabnet": {
+      "filtersVisible": true,
+      "foldersVisible": true,
+      "searchVisible": true
+    },
+    "aktivtFilter": "Fælles kundekorrespondance\nTestdata · frakoblet\n Ny mail\nLuk værktøjer\n1 aktive filtre\nNulstil",
+    "nulstillet": true,
+    "lukket": true
+  },
+  "breakpoints": [
+    {
+      "width": 899,
+      "horizontalOverflow": false,
+      "columns": "871px",
+      "fullyVisibleRows": 3
+    },
+    {
+      "width": 900,
+      "horizontalOverflow": false,
+      "columns": "872px",
+      "fullyVisibleRows": 3
+    }
+  ]
+}

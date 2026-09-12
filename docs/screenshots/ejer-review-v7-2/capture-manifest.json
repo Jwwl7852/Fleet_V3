@@ -1,0 +1,109 @@
+{
+  "codeCommit": "f5533b190b48175bef22024cc4890d1ba6172011",
+  "capturedAt": "2026-09-12T13:45:51.798Z",
+  "baseUrl": "http://127.0.0.1:5211",
+  "normalOwnerLogin": true,
+  "externalMailSent": false,
+  "captures": [
+    {
+      "file": "1440x900-01-din-arbejdsindbakke.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1920x1080-02-din-arbejdsindbakke.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-03-svarudkast.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1920x1080-04-svarudkast.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-05-svarudkast-ai-instruks-og-revision.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1920x1080-06-svarudkast-ai-instruks-og-revision.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-05-ai-chat-forslag-foer-indsaettelse.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-06-gennemse-foer-godkendelse.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-08-godkendelse-blokeret-efter-aendring.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-09-aktuel-reviewmodal-efter-aendring.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-07-oplysninger-med-kilder.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-08-intern-sag-domicil.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-09-delt-supportsag.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "1440x900-10-opfoelgning-mine.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "390x844-11-mobil-mail-liste.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "390x844-12-mobil-ai-instruks-og-revision.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "390x844-12-mobil-svar-og-ai.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "899x900-13-breakpoint-mail.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "900x900-14-breakpoint-mail.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    },
+    {
+      "file": "360x800-15-mobil-mail-liste.png",
+      "data": "Syntetisk V7.2-emulatorfixture",
+      "externalIntegrations": "Ikke tilsluttet"
+    }
+  ]
+}
