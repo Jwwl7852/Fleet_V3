@@ -11082,21 +11082,34 @@ export const kommunikationsnykladdeopret = onCall({ region: REGION }, async (req
 export const kommunikationssvarkladdegem = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req); const d = req.data || {};
   const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = d.id ? kraevCrmId(d.id, "Kladde-id") : getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}/svarKladder`).push().key;
-  const ref = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}/svarKladder/${id}`); const foer = (await ref.once("value")).val();
+  const { ref: traadRef, traad } = await kraevSynligKommunikationstraad(traadId, ejerUid);
+  const ref = traadRef.child(`svarKladder/${id}`); const foer = traad.svarKladder?.[id];
   const forventet = kraevForventetRevision(d.forventetRevision); if (Number(foer?.revision || 0) !== forventet) throw new HttpsError("aborted", "Svarudkastet blev ændret samtidigt.");
   const post = { fra: normaliserEmail(d.fra), til: normaliserEmail(d.til), emne: tekst(d.emne, 500), tekst: tekst(d.tekst, 30_000), signatur: tekst(d.signatur, 4_000), vedhaeftninger: Array.isArray(d.vedhaeftninger) ? d.vedhaeftninger.slice(0, 20) : [] };
   if (!post.fra || !post.til || !post.emne || !post.tekst) throw new HttpsError("invalid-argument", "Svarudkastet kræver afsender, modtager, emne og tekst.");
-  const indholdHash = mailIndholdHash(post); const nu = Date.now();
-  await ref.set({ ...post, id, status: "kladde", indholdHash, basisAktivitetMs: Number(d.basisAktivitetMs || 0), revision: forventet + 1, oprettetMs: foer?.oprettetMs || nu, oprettetAf: foer?.oprettetAf || ejerUid, opdateretMs: nu, opdateretAf: ejerUid });
+  const indholdHash = mailIndholdHash(post); const nu = Date.now(); let konflikt = false;
+  const start = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = start(lokal);
+    if (Number(aktuel?.revision || 0) !== forventet) { konflikt = true; return; }
+    return { ...post, id, status: "kladde", indholdHash, basisAktivitetMs: Number(d.basisAktivitetMs || 0), revision: forventet + 1, oprettetMs: aktuel?.oprettetMs || nu, oprettetAf: aktuel?.oprettetAf || ejerUid, opdateretMs: nu, opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Svarudkastet blev ændret samtidigt.");
   return { ok: true, id, revision: forventet + 1, indholdHash };
 });
 
 export const kommunikationssvargodkend = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req); const d = req.data || {}; const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = kraevCrmId(d.id, "Kladde-id");
-  const traadRef = getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`); const traad = (await traadRef.once("value")).val(); const foer = traad?.svarKladder?.[id];
+  const { ref: traadRef, traad } = await kraevSynligKommunikationstraad(traadId, ejerUid); const foer = traad.svarKladder?.[id];
   if (!foer || foer.status !== "kladde" || Number(foer.revision) !== kraevForventetRevision(d.forventetRevision)) throw new HttpsError("aborted", "Svarudkastet er ikke længere den kladde, du gennemgik.");
   if (Number(foer.basisAktivitetMs) !== Number(traad.senesteAktivitetMs || 0)) throw new HttpsError("failed-precondition", "Der er kommet ny aktivitet; gennemgå et nyt svarudkast.");
-  await traadRef.child(`svarKladder/${id}`).update({ status: "godkendt", godkendtIndholdHash: foer.indholdHash, godkendtAf: ejerUid, godkendtMs: Date.now(), revision: Number(foer.revision) + 1 });
+  const ref = traadRef.child(`svarKladder/${id}`); let konflikt = false; const start = verificeretTransaktionsstart(foer);
+  const resultat = await ref.transaction((lokal) => {
+    const aktuel = start(lokal);
+    if (!aktuel || aktuel.status !== "kladde" || Number(aktuel.revision) !== Number(foer.revision) || aktuel.indholdHash !== foer.indholdHash) { konflikt = true; return; }
+    return { ...aktuel, status: "godkendt", godkendtIndholdHash: aktuel.indholdHash, godkendtAf: ejerUid, godkendtMs: Date.now(), revision: Number(aktuel.revision) + 1 };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Svarudkastet blev ændret under gennemgangen. Gem og gennemse igen.");
   return { ok: true, revision: Number(foer.revision) + 1 };
 });
 
@@ -11478,7 +11491,7 @@ export const salgsmailafsend = onCall({ region: REGION, secrets: [M365_CLIENT_SE
 export const kommunikationssvarafsend = onCall({ region: REGION, secrets: [M365_CLIENT_SECRET], timeoutSeconds: 120 }, async (req) => {
   const ejerUid = await kraevUdbyder(req); const d = req.data || {};
   const traadId = kraevCrmId(d.traadId, "Sags-id"); const id = kraevCrmId(d.id, "Kladde-id");
-  const traad = (await getDatabase().ref(`udbyder/salgsindbakke/traade/${traadId}`).once("value")).val(); const kladde = traad?.svarKladder?.[id];
+  const { traad } = await kraevSynligKommunikationstraad(traadId, ejerUid); const kladde = traad.svarKladder?.[id];
   if (!kladde || kladde.status !== "godkendt" || kladde.godkendtIndholdHash !== mailIndholdHash(kladde)) throw new HttpsError("failed-precondition", "Svarudkastet er ikke konkret godkendt.");
   if (Number(kladde.revision) !== kraevForventetRevision(d.forventetRevision) || Number(kladde.basisAktivitetMs) !== Number(traad.senesteAktivitetMs || 0)) throw new HttpsError("aborted", "Sagen eller kladden har ændret sig siden godkendelsen.");
   const jobId = `sagssvar_${traadId}_${id}_r${kladde.revision}`; const jobRef = getDatabase().ref(`udbyder/mailjobs/${jobId}`);

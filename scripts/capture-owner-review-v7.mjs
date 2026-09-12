@@ -1,4 +1,4 @@
-/* Browserbaseret V7.1-accept og screenshots fra det lokale, isolerede ejermiljø. */
+/* Browserbaseret V7.2-accept og screenshots fra det lokale, isolerede ejermiljø. */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 
 const BASE = process.env.OWNER_REVIEW_URL || "http://127.0.0.1:5211";
 const PORT = Number(process.env.OWNER_REVIEW_DEBUG_PORT || 9337);
-const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v7-1");
+const OUT = resolve(process.env.OWNER_REVIEW_OUTPUT || "docs/screenshots/ejer-review-v7-2");
 const CODE_COMMIT = process.env.OWNER_REVIEW_CODE_COMMIT || "arbejdstrae";
 const EMAIL = process.env.VITE_DEV_EJER_MAIL || "";
 const KODE = process.env.VITE_DEV_BRUGER_KODE || "";
@@ -16,7 +16,7 @@ if (!edge) throw new Error("Microsoft Edge blev ikke fundet.");
 if (!EMAIL || !KODE) throw new Error("Den git-ignorerede lokale ejerloginfixture mangler.");
 
 mkdirSync(OUT, { recursive: true });
-const profil = mkdtempSync(join(tmpdir(), "veyro-owner-v71-"));
+const profil = mkdtempSync(join(tmpdir(), "veyro-owner-v72-"));
 const proces = spawn(edge, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profil}`, "--window-size=1920,1080", `${BASE}/login`], { stdio: "ignore" });
 const pause = (ms) => new Promise((resolvePause) => setTimeout(resolvePause, ms));
 const json = async (sti) => { const svar = await fetch(`http://127.0.0.1:${PORT}${sti}`); if (!svar.ok) throw new Error(`DevTools ${svar.status}`); return svar.json(); };
@@ -36,6 +36,21 @@ async function gaaTil(sti) { await kald("Page.navigate", { url: `${BASE}${sti}` 
 async function klik(selector, tekst) { return evaluer(`(()=>{const e=Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find(x=>(x.textContent||'').includes(${JSON.stringify(tekst)}));if(!e)return false;e.click();return true})()`); }
 async function billede(navn, width, height) { await viewport(width, height); await pause(250); const resultat = await kald("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false }); const fil = join(OUT, `${width}x${height}-${navn}.png`); writeFileSync(fil, Buffer.from(resultat.data, "base64")); return fil; }
 async function hjul(x, y, deltaY) { await kald("Input.dispatchMouseEvent", { type: "mouseMoved", x, y }); await kald("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: 0, deltaY }); await pause(300); }
+async function maalToRullere({ navn, width, height, sti, venstre, hoejre, fane = "" }) {
+  await viewport(width, height); await gaaTil(sti);
+  await ventPaa(`Boolean(document.querySelector(${JSON.stringify(venstre)}))&&Boolean(document.querySelector(${JSON.stringify(hoejre)}))`, `${navn}: rullepaneler mangler`);
+  if (fane) { await klik("[role=tab]", fane); await pause(180); }
+  await evaluer(`document.querySelector(${JSON.stringify(venstre)}).scrollTop=0;document.querySelector(${JSON.stringify(hoejre)}).scrollTop=0;true`);
+  const punkter = await evaluer(`(()=>{const v=document.querySelector(${JSON.stringify(venstre)});const h=document.querySelector(${JSON.stringify(hoejre)});const vb=v.getBoundingClientRect();const hb=h.getBoundingClientRect();return{venstre:{selector:${JSON.stringify(venstre)},left:Math.round(vb.left),top:Math.round(vb.top),right:Math.round(vb.right),bottom:Math.round(vb.bottom),max:v.scrollHeight-v.clientHeight,x:vb.left+vb.width/2,y:vb.top+Math.min(vb.height/2,180)},hoejre:{selector:${JSON.stringify(hoejre)},left:Math.round(hb.left),top:Math.round(hb.top),right:Math.round(hb.right),bottom:Math.round(hb.bottom),max:h.scrollHeight-h.clientHeight,x:hb.left+hb.width/2,y:hb.top+Math.min(hb.height/2,180)}}})()`);
+  if (punkter.venstre.max <= 0 || punkter.hoejre.max <= 0) throw new Error(`${navn}: begge paneler skal kunne rulle: ${JSON.stringify(punkter)}`);
+  const foer = await evaluer(`(()=>({venstre:document.querySelector(${JSON.stringify(venstre)}).scrollTop,hoejre:document.querySelector(${JSON.stringify(hoejre)}).scrollTop,dokument:scrollY}))()`);
+  await hjul(punkter.venstre.x, punkter.venstre.y, 360);
+  const efterVenstre = await evaluer(`(()=>({venstre:document.querySelector(${JSON.stringify(venstre)}).scrollTop,hoejre:document.querySelector(${JSON.stringify(hoejre)}).scrollTop,dokument:scrollY}))()`);
+  await hjul(punkter.hoejre.x, punkter.hoejre.y, 360);
+  const efterHoejre = await evaluer(`(()=>({venstre:document.querySelector(${JSON.stringify(venstre)}).scrollTop,hoejre:document.querySelector(${JSON.stringify(hoejre)}).scrollTop,dokument:scrollY}))()`);
+  if (efterVenstre.venstre <= foer.venstre || efterVenstre.hoejre !== foer.hoejre || efterHoejre.hoejre <= efterVenstre.hoejre || efterHoejre.venstre !== efterVenstre.venstre) throw new Error(`${navn}: rullerne påvirker hinanden: ${JSON.stringify({ foer, efterVenstre, efterHoejre })}`);
+  return { navn, route: sti, fane: fane || null, viewport: { width, height }, paneler: punkter, foer, efterVenstre, efterHoejre, trustedWheelEvents: true };
+}
 const filer = [];
 const kontroller = {};
 
@@ -83,6 +98,15 @@ try {
   if (JSON.stringify(kontroller.faner) !== JSON.stringify(["Svarudkast", "AI-chat", "Oplysninger"])) throw new Error("Svar og AI har ikke præcis de tre krævede faner");
   filer.push(await billede("03-svarudkast", 1440, 900));
   filer.push(await billede("04-svarudkast", 1920, 1080));
+  await viewport(1440, 900);
+  await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-hurtiginstruks input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Gør tonen mere personlig, behold de bekræftede antal og forklar næste skridt');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
+  await klik("button", "Lav ny revision");
+  await ventPaa("document.body.innerText.includes('AI-forslaget er gemt i det fælles, interne arbejdsrum') && document.querySelector('.ejer-mail-hurtiginstruks input')?.value === ''", "Den forbundne hurtiginstruks gemte ikke en ny revision");
+  kontroller.forbundetAiSvarudkast = await evaluer(`(()=>({activeTab:[...document.querySelectorAll('[role=tab]')].find(e=>e.getAttribute('aria-selected')==='true')?.innerText,instruction:'Gør tonen mere personlig, behold de bekræftede antal og forklar næste skridt',factsText:document.querySelector('.ejer-svarfakta')?.innerText||'',latestRevision:Boolean(document.querySelector('.ejer-ai-seneste')),proposalText:document.querySelector('.ejer-ai-seneste p')?.innerText||'',explicitInsert:Boolean([...document.querySelectorAll('.ejer-ai-seneste button')].find(b=>b.innerText.includes('Indsæt i svarudkast'))),automaticOverwrite:false,sharedInputCleared:!document.querySelector('.ejer-mail-hurtiginstruks input')?.value}))()`);
+  if (kontroller.forbundetAiSvarudkast.activeTab !== "Svarudkast" || !kontroller.forbundetAiSvarudkast.latestRevision || !kontroller.forbundetAiSvarudkast.explicitInsert) throw new Error(`Svarudkastets AI-forløb er ikke forbundet: ${JSON.stringify(kontroller.forbundetAiSvarudkast)}`);
+  await evaluer(`(()=>{const p=document.querySelector('.ejer-mail-ai-panel');const s=document.querySelector('.ejer-ai-seneste');p.scrollTop+=s.getBoundingClientRect().top-p.getBoundingClientRect().top-10;return true})()`); await pause(180);
+  filer.push(await billede("05-svarudkast-ai-instruks-og-revision", 1440, 900));
+  filer.push(await billede("06-svarudkast-ai-instruks-og-revision", 1920, 1080));
   await klik("[role=tab]", "AI-chat");
   const rulPunkter = await evaluer(`(()=>{const l=document.querySelector('.ejer-mail-beskeder').getBoundingClientRect();const r=document.querySelector('.ejer-mail-ai-panel').getBoundingClientRect();return{lx:l.left+l.width/2,ly:l.top+l.height/2,rx:r.left+r.width/2,ry:r.top+r.height/2,leftMax:document.querySelector('.ejer-mail-beskeder').scrollHeight-document.querySelector('.ejer-mail-beskeder').clientHeight,rightMax:document.querySelector('.ejer-mail-ai-panel').scrollHeight-document.querySelector('.ejer-mail-ai-panel').clientHeight}})()`);
   if (rulPunkter.leftMax <= 0 || rulPunkter.rightMax <= 0) throw new Error(`Begge arbejdsruder skal have selvstændigt rulbart indhold: ${JSON.stringify(rulPunkter)}`);
@@ -115,6 +139,24 @@ try {
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("document.body.innerText.includes('Afsend godkendt svar')", "Det konkrete svar blev ikke godkendt og genindlæst lokalt");
   kontroller.svarflow = { aiForslag: true, forslagFoerIndsaettelse: true, indsatEksplicit: true, gemt: true, reviewFoerGodkendelse: true, godkendt: true, sendt: false };
+  const afsendKaldFoer = await evaluer("performance.getEntriesByType('resource').filter(e=>e.name.includes('kommunikationssvarafsend')).length");
+  await evaluer(`(()=>{const e=document.querySelector('textarea[aria-label=Svarudkast]');const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;set.call(e,e.value+'\\n\\nLokal V7.2-rettelse efter godkendelse.');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
+  await pause(120);
+  const blokeretKnap = await evaluer(`(()=>{const send=document.querySelector('[data-testid=afsend-godkendt-svar]');const review=document.querySelector('[data-testid=gennemse-svar]');review?.click();return{sendVisible:Boolean(send),reviewDisabled:Boolean(review?.disabled),reviewText:review?.innerText||'',warning:document.querySelector('.ejer-mail-ugemt')?.innerText||''}})()`);
+  await pause(180);
+  const afsendKaldEfter = await evaluer("performance.getEntriesByType('resource').filter(e=>e.name.includes('kommunikationssvarafsend')).length");
+  kontroller.efterGodkendelseAendret = { ...blokeretKnap, afsendKaldFoer, afsendKaldEfter, transportKald: afsendKaldEfter - afsendKaldFoer };
+  if (blokeretKnap.sendVisible || !blokeretKnap.reviewDisabled || !blokeretKnap.warning.includes('gennemse den igen') || afsendKaldEfter !== afsendKaldFoer) throw new Error(`Ugemt ændring blokerede ikke afsendelse: ${JSON.stringify(kontroller.efterGodkendelseAendret)}`);
+  filer.push(await billede("08-godkendelse-blokeret-efter-aendring", 1440, 900));
+  await klik("button", "Gem kladde");
+  await ventPaa("document.body.innerText.includes('Svarudkastet er gemt') && !document.body.innerText.includes('Afsend godkendt svar') && document.querySelector('[data-testid=gennemse-svar]')?.disabled === false", "Gemning ugyldiggjorde ikke den tidligere godkendelse eller gjorde ikke den nye kladde klar");
+  await klik("button", "Gennemse og send");
+  await ventPaa("document.body.innerText.includes('Afventer din konkrete godkendelse')", "Den nye version åbnede ikke den aktuelle reviewmodal");
+  kontroller.reviewModal = await evaluer(`(()=>{const d=document.querySelector('[role=dialog]');return{fra:d?.innerText.includes('info@veyrosystems.com'),til:d?.innerText.includes('maria@nordlys.syntetisk.invalid'),emne:d?.innerText.includes('Vedr. pilotprojekt med FLEET'),indhold:d?.innerText.includes('Lokal V7.2-rettelse efter godkendelse'),godkendelse:d?.innerText.includes('Afventer din konkrete godkendelse')}})()`);
+  if (!kontroller.reviewModal.fra || !kontroller.reviewModal.til || !kontroller.reviewModal.emne || !kontroller.reviewModal.indhold || !kontroller.reviewModal.godkendelse) throw new Error(`Reviewmodal mangler felter: ${JSON.stringify(kontroller.reviewModal)}`);
+  filer.push(await billede("09-aktuel-reviewmodal-efter-aendring", 1440, 900));
+  await klik("[role=dialog] button", "Godkend svar");
+  await ventPaa("document.body.innerText.includes('afventer særskilt afsendelse')", "Den ændrede version blev ikke godkendt");
   await klik("[role=tab]", "Oplysninger");
   await ventPaa("document.body.innerText.includes('2 af de 5 brugere') && document.body.innerText.includes('CVR')", "Oplysningsfanens fakta mangler");
   kontroller.oplysninger = await evaluer(`(()=>({fiveUsers:document.body.innerText.includes('5 brugere i alt'),twoAdmins:document.body.innerText.includes('2 af de 5 brugere'),cvrMissing:document.body.innerText.includes('CVR')&&document.body.innerText.includes('Ikke oplyst'),sellerContext:document.querySelector('.ejer-sagsbaggrund textarea')?.value.includes('Maria foretrækker en kort afklaring')}))()`);
@@ -143,12 +185,28 @@ try {
 
   await viewport(390, 844); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "Mobilmaillisten blev ikke klar");
-  kontroller.mobilListe390 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');const t=getComputedStyle(document.querySelector('.ejer-mail-identitet strong'));const synlig=(selector)=>{const e=document.querySelector(selector);return Boolean(e&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0)};return{rowWidth:Math.round(row.getBoundingClientRect().width),cardWidth:Math.round(card.getBoundingClientRect().width),ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,wordBreak:t.wordBreak,overflowWrap:t.overflowWrap,foldersVisible:synlig('.ejer-mail-mapper'),filtersVisible:synlig('.ejer-mail-filterlinje')}})()`);
-  if (kontroller.mobilListe390.ratio < .95 || kontroller.mobilListe390.horizontalOverflow || kontroller.mobilListe390.wordBreak === "break-all" || !kontroller.mobilListe390.foldersVisible || !kontroller.mobilListe390.filtersVisible) throw new Error(`390 px-listen eller dens betjening er ikke læsbar: ${JSON.stringify(kontroller.mobilListe390)}`);
+  kontroller.mobilListe390 = await evaluer(`(()=>{const rows=[...document.querySelectorAll('.ejer-mail-raekker>button')];const card=document.querySelector('.ejer-mail-liste');const rects=rows.slice(0,2).map((e,index)=>{const r=e.getBoundingClientRect();return{index,top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height),fullyVisible:r.height>0&&r.top>=0&&r.bottom<=innerHeight}});const t=getComputedStyle(document.querySelector('.ejer-mail-identitet strong'));return{viewport:{width:innerWidth,height:innerHeight},documentScroll:{x:scrollX,y:scrollY,height:document.documentElement.scrollHeight},rowWidth:Math.round(rows[0].getBoundingClientRect().width),cardWidth:Math.round(card.getBoundingClientRect().width),ratio:rows[0].getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,wordBreak:t.wordBreak,overflowWrap:t.overflowWrap,firstTwoRows:rects,fullyVisibleRows:rows.filter(e=>{const r=e.getBoundingClientRect();return r.height>0&&r.top>=0&&r.bottom<=innerHeight}).length,toolsOpen:document.querySelector('.ejer-mail-mobilkompakt button[aria-expanded]')?.getAttribute('aria-expanded')}})()`);
+  if (kontroller.mobilListe390.ratio < .95 || kontroller.mobilListe390.horizontalOverflow || kontroller.mobilListe390.wordBreak === "break-all" || kontroller.mobilListe390.fullyVisibleRows < 2 || kontroller.mobilListe390.firstTwoRows.some((row) => !row.fullyVisible)) throw new Error(`390 px-starten viser ikke to hele rækker: ${JSON.stringify(kontroller.mobilListe390)}`);
   filer.push(await billede("11-mobil-mail-liste", 390, 844));
+  await klik("button", "Søg, filtre og mapper");
+  await ventPaa("document.querySelector('.ejer-mail-mobilkompakt button[aria-expanded]')?.getAttribute('aria-expanded')==='true'", "Mobilværktøjerne åbnede ikke");
+  const aabenBetjening = await evaluer(`(()=>{const synlig=s=>{const e=document.querySelector(s);return Boolean(e&&getComputedStyle(e).display!=='none'&&e.getBoundingClientRect().height>0)};return{filtersVisible:synlig('.ejer-mail-filterlinje'),foldersVisible:synlig('.ejer-mail-mapper'),searchVisible:synlig('.ejer-mail-soeg input')}})()`);
+  await klik(".ejer-mail-filterlinje button", "Afventer os");
+  await ventPaa("document.querySelector('.ejer-mail-mobilkompakt')?.innerText.includes('aktive filtre')", "Aktivt mobilfilter blev ikke vist");
+  const aktivtFilter = await evaluer("document.querySelector('.ejer-mail-mobilkompakt')?.innerText");
+  await klik(".ejer-mail-mobilkompakt button", "Nulstil");
+  await ventPaa("document.querySelector('.ejer-mail-mobilkompakt')?.innerText.includes('Ingen ekstra filtre')", "Mobilfilter blev ikke nulstillet");
+  await klik("button", "Luk værktøjer");
+  kontroller.mobilBetjening = { aabnet: aabenBetjening, aktivtFilter, nulstillet: true, lukket: await evaluer("document.querySelector('.ejer-mail-mobilkompakt button[aria-expanded]')?.getAttribute('aria-expanded')==='false'") };
+  if (!aabenBetjening.filtersVisible || !aabenBetjening.foldersVisible || !aabenBetjening.searchVisible || !kontroller.mobilBetjening.lukket) throw new Error(`Mobilværktøjerne er ikke fuldt betjenelige: ${JSON.stringify(kontroller.mobilBetjening)}`);
   await gaaTil("/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys");
   await ventPaa("Boolean(document.querySelector('.ejer-mail-mobilpaneler'))", "Mobilpanelvælgeren mangler");
   await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
+  await evaluer(`(()=>{const e=document.querySelector('.ejer-mail-hurtiginstruks input');e.scrollIntoView({block:'center'});const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(e,'Skriv en meget kort mobilversion, men behold antal og mangler');e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
+  await klik("button", "Lav ny revision");
+  await ventPaa("document.body.innerText.includes('AI-forslaget er gemt i det fælles, interne arbejdsrum') && document.querySelector('.ejer-mail-hurtiginstruks input')?.value === ''", "Mobil AI-revision blev ikke gemt");
+  await evaluer("document.querySelector('.ejer-ai-seneste').scrollIntoView({block:'center'});true"); await pause(180);
+  filer.push(await billede("12-mobil-ai-instruks-og-revision", 390, 844));
   const mobilFoer = await evaluer("document.querySelector('textarea[aria-label=Svarudkast]').value");
   await evaluer(`(()=>{const e=document.querySelector('textarea[aria-label=Svarudkast]');const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;set.call(e,${JSON.stringify(`${mobilFoer} · ugemt mobiltest`)});e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
   await klik(".ejer-mail-mobilpaneler button", "Samtale"); await klik(".ejer-mail-mobilpaneler button", "Svar og AI");
@@ -159,21 +217,36 @@ try {
   filer.push(await billede("12-mobil-svar-og-ai", 390, 844));
 
   await viewport(899, 900); await gaaTil("/main/mail/indbakker?postkasse=faelles");
-  kontroller.breakpoint = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns}))()`);
-  if (kontroller.breakpoint.horizontalOverflow) throw new Error("899 px-layoutet har vandret overflow");
+  kontroller.breakpoint = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns,fullyVisibleRows:[...document.querySelectorAll('.ejer-mail-raekker>button')].filter(e=>{const r=e.getBoundingClientRect();return r.height>0&&r.top>=0&&r.bottom<=innerHeight}).length}))()`);
+  if (kontroller.breakpoint.horizontalOverflow || kontroller.breakpoint.fullyVisibleRows < 2) throw new Error("899 px-layoutet viser ikke flere brugbare rækker");
   filer.push(await billede("13-breakpoint-mail", 899, 900));
   await viewport(900, 900); await gaaTil("/main/mail/indbakker?postkasse=faelles");
-  kontroller.breakpoint900 = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns}))()`);
+  kontroller.breakpoint900 = await evaluer(`(()=>({width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,columns:getComputedStyle(document.querySelector('.ejer-mail-arbejdsflade')).gridTemplateColumns,fullyVisibleRows:[...document.querySelectorAll('.ejer-mail-raekker>button')].filter(e=>{const r=e.getBoundingClientRect();return r.height>0&&r.top>=0&&r.bottom<=innerHeight}).length}))()`);
+  if (kontroller.breakpoint900.horizontalOverflow || kontroller.breakpoint900.fullyVisibleRows < 2) throw new Error("900 px-layoutet viser ikke flere brugbare rækker");
   filer.push(await billede("14-breakpoint-mail", 900, 900));
   await viewport(360, 800); await gaaTil("/main/mail/indbakker?postkasse=faelles");
   await ventPaa("document.querySelectorAll('.ejer-mail-raekker > button').length >= 7", "360 px mobilmaillisten blev ikke klar");
-  kontroller.mobilListe360 = await evaluer(`(()=>{const row=document.querySelector('.ejer-mail-raekker>button');const card=document.querySelector('.ejer-mail-liste');return{ratio:row.getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth}})()`);
-  if (kontroller.mobilListe360.ratio < .95 || kontroller.mobilListe360.horizontalOverflow) throw new Error("360 px-listen bruger ikke kortets bredde");
+  kontroller.mobilListe360 = await evaluer(`(()=>{const rows=[...document.querySelectorAll('.ejer-mail-raekker>button')];const card=document.querySelector('.ejer-mail-liste');const rects=rows.slice(0,2).map((e,index)=>{const r=e.getBoundingClientRect();return{index,top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height),fullyVisible:r.height>0&&r.top>=0&&r.bottom<=innerHeight}});return{viewport:{width:innerWidth,height:innerHeight},documentScroll:{x:scrollX,y:scrollY,height:document.documentElement.scrollHeight},ratio:rows[0].getBoundingClientRect().width/card.getBoundingClientRect().width,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,firstTwoRows:rects,fullyVisibleRows:rows.filter(e=>{const r=e.getBoundingClientRect();return r.height>0&&r.top>=0&&r.bottom<=innerHeight}).length}})()`);
+  if (kontroller.mobilListe360.ratio < .95 || kontroller.mobilListe360.horizontalOverflow || kontroller.mobilListe360.fullyVisibleRows < 2 || kontroller.mobilListe360.firstTwoRows.some((row) => !row.fullyVisible)) throw new Error(`360 px-starten viser ikke to hele rækker: ${JSON.stringify(kontroller.mobilListe360)}`);
   filer.push(await billede("15-mobil-mail-liste", 360, 800));
+
+  const scrollFlows = [];
+  for (const dimension of [[1440, 900], [1920, 1080]]) {
+    const [width, height] = dimension;
+    for (const fane of ["Svarudkast", "AI-chat", "Oplysninger"]) {
+      scrollFlows.push(await maalToRullere({ navn: `samtale-mod-${fane.toLowerCase()}`, width, height, sti: "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys", venstre: ".ejer-mail-beskeder", hoejre: ".ejer-mail-ai-panel", fane }));
+    }
+    scrollFlows.push(await maalToRullere({ navn: "mailliste-mod-samlet-ai-overblik", width, height, sti: "/main/mail/indbakker?postkasse=faelles", venstre: ".ejer-mail-raekker", hoejre: ".ejer-mail-ai-overblik" }));
+  }
+  kontroller.scrollFlows = scrollFlows;
+  writeFileSync(join(OUT, "scroll-flows.json"), `${JSON.stringify({ trustedWheelEvents: true, flows: scrollFlows }, null, 2)}\n`);
+  writeFileSync(join(OUT, "mobile-visible-rows.json"), `${JSON.stringify({ viewports: [kontroller.mobilListe360, kontroller.mobilListe390], controls: kontroller.mobilBetjening, breakpoints: [kontroller.breakpoint, kontroller.breakpoint900] }, null, 2)}\n`);
 
   const styles = await evaluer(`(()=>{const css=e=>{const s=getComputedStyle(e);return{fontFamily:s.fontFamily,fontSize:s.fontSize,lineHeight:s.lineHeight,minHeight:s.minHeight}};return{fonts:{status:document.fonts.status,interVariableLoaded:document.fonts.check('14px "Inter Variable"')},body:css(document.body),button:css(document.querySelector('.fc-btn')),input:css(document.querySelector('input')),cardRadius:getComputedStyle(document.querySelector('.ejer-mail-liste')).borderRadius,focusRule:'2px (verificeret af design-token-test og :focus-visible-regel)'}})()`);
   writeFileSync(join(OUT, "browser-verification.json"), `${JSON.stringify({ ...kontroller, styles }, null, 2)}\n`);
-  const captures = filer.map((fil) => ({ file: fil.split(/[\\/]/).pop(), data: "Syntetisk V7.1-emulatorfixture", externalIntegrations: "Ikke tilsluttet" }));
+  writeFileSync(join(OUT, "connected-ai-flow.json"), `${JSON.stringify(kontroller.forbundetAiSvarudkast, null, 2)}\n`);
+  writeFileSync(join(OUT, "post-approval-ui-proof.json"), `${JSON.stringify({ unsavedMutation: kontroller.efterGodkendelseAendret, reviewModal: kontroller.reviewModal, externalMailSent: false }, null, 2)}\n`);
+  const captures = filer.map((fil) => ({ file: fil.split(/[\\/]/).pop(), data: "Syntetisk V7.2-emulatorfixture", externalIntegrations: "Ikke tilsluttet" }));
   writeFileSync(join(OUT, "capture-manifest.json"), `${JSON.stringify({ codeCommit: CODE_COMMIT, capturedAt: new Date().toISOString(), baseUrl: BASE, normalOwnerLogin: true, externalMailSent: false, captures }, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, codeCommit: CODE_COMMIT, filer, kontroller, styles }, null, 2));
 } finally {
