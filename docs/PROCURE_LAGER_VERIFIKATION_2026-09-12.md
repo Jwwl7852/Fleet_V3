@@ -32,6 +32,13 @@ Dato: 12. september 2026
 
 ## Autoriseret runtimeflow
 
+### To forskellige dokumenterede slutpunkter
+
+- **Browserflowet stopper efter optællingen:** modtagelse 58 → 68 og optællingskorrektion −2 giver **66 ruller**. Det er tallet i mobilkvitteringen og browser-screenshots.
+- **Backendflowet fortsætter efter optællingen:** efterfølgende forbrug, intern flytning og fysisk retur giver en samlet slutbeholdning på **64 ruller**. Det er tallet i `PROCURE-lager-auth-functions-bevis.json` og periodeafstemningen.
+
+Tallene beskriver derfor to forskellige tidspunkter og må ikke bruges som om de var samme slutstatus.
+
 Miljøet var den lokale Firebase Emulator Suite for projektet `demo-veyro-owner`:
 
 - Auth `127.0.0.1:9109`

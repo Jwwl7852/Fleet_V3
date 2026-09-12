@@ -1,6 +1,6 @@
 # PROCURE — sporbarhed for samlet udviklingsrunde
 
-Dato: 2026-09-11
+Dato: 2026-09-12
 
 Grundlaget er hele `VEYRO PROCURE – samlet instruks til næste udviklingsrunde`,
 inklusive afsnit 0–15, webshopadgang, firmakort, mobil/QR og bilag A–B. Tabellen
@@ -40,6 +40,19 @@ skelner mellem færdig kode, faktisk lokal afprøvning og ekstern tilslutning.
 | Hylde-QR til bestilling | QR-mærkat-callables og mobilscan | Passiv scanning ændrer ikke antal; kun aktivt `Tilføj` lægger varen i den bevarede kurv | Fysisk kamera ikke afprøvet |
 | Historisk ordre-PDF-QR til modtagelse | Ældre arkiveret `procure-pdf.js`-revision, `ordrePdfHent`, `MobileReceiptScreen.jsx` | Den tidligere QR-test dokumenterer en bevaret historisk dokumentrevision. Nye leverandør-PDF'er har ikke QR; interne adgangskontrollerede links kan fortsat åbne mobilmodtagelsen. | Fysisk kamera ikke afprøvet; den gamle softwareafkodning er ikke aktuelt bevis for skabelon v4 |
 | Modtagelse, faktura og fysisk retur | Storage-/faktura-/returcallables | To aktive bilag kan genåbnes; lager og økonomi holdes adskilt; prisafvigelseskredit og returkredit spores med forskellige grænser | Fysisk returtransport og betaling/refundering ikke afprøvet |
+
+## Forenklet Varelager og allerede foretaget køb – 12. september 2026
+
+| Krav | Relevant kode/backend | Implementeret og faktisk afprøvet | Resterende |
+| --- | --- | --- | --- |
+| Varelager pr. varenummer | `InventoryScreen.jsx`, `procure-inventory-domain.js` | Én række pr. lagerført varenummer, kompatible placeringer summeres, ukendt beholdning er “Ikke optalt”, genbestillingsniveau/status, statusdato og forbrugsgrundlag. Autoriseret desktopbrowser uden global overflow. | Fysisk telefon ikke afprøvet. |
+| Beregnet forbrug | `calculatedConsumptionIntervals` | Modtagelse, nettoflytning, retur, registreret udtag, øvrige korrektioner og slutoptælling indgår én gang. 10 + 6 − 12 = 4 er låst i test; manglende/delvis dækning og negativt resultat vises ærligt. | Ingen kendt kodemangel. |
+| Vareopsætning og kundeafdelinger | katalogeditor, mobil-/behovs-/ordrelinjer, eksisterende `procureOpsaetning` | Lagerstyring, genbestillingsniveau, enheder/pakningsfaktor og standardafdeling. Kundens aktive afdelinger bruges pr. linje; runtimeordre bevarede både Administration og Varemodtagelse. | Kundens produktionsstamdata skal opsættes. |
+| Ny bestilling / allerede foretaget køb | `NewPurchaseScreen.jsx`, `procureKoebRegistrer` | Samme indgang giver leverandørflow eller registrering uden mail/betaling. Firmakortstatus er ikke bogført/godkendt. Lagerført linje øger lager én gang; ikke-lagerført linje gør ikke. | Ekstern kort-/bogføringsintegration ikke tilsluttet. |
+| Kvittering og Forbrug | bilagscallables, Storage-regler, `ConsumptionScreen` | Faktiske bilagsbytes blev genåbnet i session 2 med identisk SHA-256. Forbrug viser beregnet mellem optællinger eller indkøbt mængde; faktisk CSV viste 12 liter i september. | OCR og fysisk kamera ikke afprøvet. |
+| Mobilkvittering og talafstemning | `NewPurchaseScreen`, `MobileReceiptScreen` | Ingen intern UUID vises. Købskvittering ved 360/390 px og lagerkvittering 66 ruller er browserbevis; det særskilte længere backendflow ender på 64 ruller efter efterfølgende bevægelser. | Ingen kendt kodemangel. |
+
+Detaljer og konkrete hashes findes i `PROCURE_VARELAGER_KOEB_VERIFIKATION_2026-09-12.md`.
 
 ## Kontrollerede lokale miljøer
 
