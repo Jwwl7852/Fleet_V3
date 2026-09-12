@@ -10977,6 +10977,87 @@ export const kommunikationsaichatgem = onCall({ region: REGION }, async (req) =>
   return { ok: true, revision: Number(resultat.snapshot.val()?.revision || forventetRevision + 1), gentaget };
 });
 
+function supportAiFakta(traad = {}) {
+  const oplysninger = traad.sagsOplysninger || {};
+  const beskeder = Object.values(traad.beskeder || {}).sort((a, b) => Number(b?.sendtMs || 0) - Number(a?.sendtMs || 0));
+  const kundebesked = beskeder.find((post) => post?.retning === "indgaaende") || beskeder[0] || {};
+  const kendt = (...navne) => {
+    const post = navne.map((navn) => oplysninger[navn]).find(Boolean);
+    return post?.tilstand === "mangler" ? "Ukendt" : tekst(post?.vaerdi, 1_000) || "Ukendt";
+  };
+  return {
+    kunde: tekst(traad.virksomhedsnavn || traad.kontaktNavn || traad.kontaktEmail, 300) || "Ukendt kunde",
+    modul: tekst(traad.support?.modul, 80) || "Ukendt",
+    version: tekst(traad.support?.version || traad.support?.kendtVersion, 80) || kendt("version", "produktversion"),
+    problem: tekst(traad.support?.problem || kundebesked.tekst, 3_000) || "Problemet er ikke beskrevet.",
+    fejltekst: tekst(traad.support?.fejltekst, 1_000) || kendt("fejltekst", "fejl"),
+    forsoegt: tekst(traad.support?.forsoegt, 2_000) || kendt("forsoegt", "fejlsoegning"),
+  };
+}
+
+function supportAiKilder(traad, viden = {}) {
+  const fakta = supportAiFakta(traad); const haystack = `${fakta.modul} ${fakta.problem} ${fakta.fejltekst}`.toLowerCase();
+  return Object.entries(viden || {}).map(([id, post]) => {
+    const noegleord = Array.isArray(post?.noegleord) ? post.noegleord.map((ord) => tekst(ord, 80).toLowerCase()).filter(Boolean) : [];
+    const modul = tekst(post?.modul, 80); let relevans = modul && fakta.modul !== "Ukendt" && modul.toLowerCase() === fakta.modul.toLowerCase() ? 1 : 0;
+    for (const ord of noegleord) if (haystack.includes(ord)) relevans += 3;
+    return { id, titel: tekst(post?.titel, 300), indhold: tekst(post?.indhold, 12_000), kilde: tekst(post?.kilde, 1_000), modul,
+      relevanteVersioner: tekst(post?.relevanteVersioner, 200) || "Ikke afgrænset", publikum: tekst(post?.publikum, 30) || "intern",
+      vidensstatus: tekst(post?.vidensstatus, 30) || (post?.godkendt === true ? "godkendt" : "kladde"), godkendt: post?.godkendt === true, aktuelVersion: Number(post?.aktuelVersion || 0),
+      gennemgaaetAfNavn: tekst(post?.gennemgaaetAfNavn, 160) || "Ikke registreret", gennemgaaetMs: Number(post?.gennemgaaetMs || 0), relevans };
+  }).filter((post) => post.relevans >= 3 && post.titel && post.indhold && post.kilde && post.godkendt && post.vidensstatus === "godkendt")
+    .sort((a, b) => b.relevans - a.relevans || b.aktuelVersion - a.aktuelVersion).slice(0, 5);
+}
+
+function bygLokaltSupportAiForslag(traad, viden, instruktion) {
+  const fakta = supportAiFakta(traad); const kilder = supportAiKilder(traad, viden);
+  const kundekilde = kilder.find((post) => post.publikum === "kunde_godkendt");
+  const mangler = [fakta.version === "Ukendt" ? "produktversion" : "", fakta.fejltekst === "Ukendt" ? "præcis fejltekst eller logudsnit" : "", fakta.forsoegt === "Ukendt" ? "allerede udførte fejlsøgningstrin" : ""].filter(Boolean);
+  const navn = tekst(traad.kontaktNavn, 120).split(/\s+/)[0] || "der"; const kort = /kort|kortere/i.test(instruktion);
+  const kundesvar = kundekilde
+    ? `Hej ${navn}.\n\nTak for din besked. ${tekst(kundekilde.indhold, kort ? 650 : 1_300)}${mangler.length ? `\n\nFor at kontrollere løsningen på jeres konkrete sag mangler vi ${mangler.join(", ")}.` : ""}\n\nSkriv gerne tilbage, hvis trinnene ikke løser problemet.`
+    : `Hej ${navn}.\n\nTak for din besked. Vi har ikke tilstrækkeligt godkendt grundlag til at anvise en løsning endnu.${mangler.length ? `\n\nSend venligst ${mangler.join(", ")}, så vi kan undersøge sagen uden at gætte.` : "\n\nVi undersøger sagen manuelt og vender tilbage, når grundlaget er dokumenteret."}`;
+  const vurdering = kundekilde ? "Dokumenteret løsning fundet i kundegodkendt produktviden. Fejlteksten er et signal, men beviser ikke alene årsagen."
+    : kilder.length ? "Relevant intern viden findes, men ingen kilde er godkendt til kundesvar. Den må kun bruges til intern fejlsøgning."
+      : "Ingen tilstrækkelig godkendt viden blev fundet. Indhent flere oplysninger eller undersøg sagen manuelt.";
+  const aiSvar = `Dokumenterede fakta\nKunde: ${fakta.kunde}\nModul: ${fakta.modul}\nVersion: ${fakta.version}\nProblem: ${fakta.problem}\nForsøgt: ${fakta.forsoegt}\n\nVurdering\n${vurdering}\n\nDokumenterede kilder\n${kilder.length ? kilder.map((post) => `${post.titel} · v${post.aktuelVersion || "?"} · ${post.publikum === "kunde_godkendt" ? "kundegodkendt" : "kun intern"}`).join("\n") : "Ingen matchende godkendte kilder."}\n\n${mangler.length ? `Ukendt / næste spørgsmål\nBed om ${mangler.join(", ")}.` : "Næste trin\nKontrollér resultatet med kunden før sagen markeres løst."}`;
+  return { kundesvar, aiSvar, fakta, kilder, mangler, harKundegodkendtLoesning: Boolean(kundekilde) };
+}
+
+export const supportaiforslaggem = onCall({ region: REGION }, async (req) => {
+  const ejerUid = await kraevUdbyder(req); const d = req.data || {};
+  const traadId = kraevCrmId(d.traadId, "Support-id"); const operationId = kraevCrmId(d.operationId, "Handlings-id");
+  const instruktion = tekst(d.instruktion, 4_000); const forventetRevision = kraevForventetRevision(d.forventetRevision);
+  const basisAktivitetMs = Math.trunc(Number(d.basisAktivitetMs) || 0); const basisKladdeRevision = Math.max(0, Math.trunc(Number(d.basisKladdeRevision) || 0));
+  const basisKladdeFingeraftryk = tekst(d.basisKladdeFingeraftryk, 80);
+  if (!instruktion || !basisAktivitetMs || !basisKladdeFingeraftryk) throw new HttpsError("invalid-argument", "Support-AI kræver instruktion og et aktuelt sagsgrundlag.");
+  const { ref: traadRef, traad } = await kraevSynligKommunikationstraad(traadId, ejerUid);
+  if (traad.sagstype !== "support") throw new HttpsError("failed-precondition", "AI-fejlsøgning kan kun køres på en supportsag.");
+  if (Number(traad.senesteAktivitetMs || 0) !== basisAktivitetMs) throw new HttpsError("failed-precondition", "Sagen har fået ny aktivitet. Generér forslaget igen.");
+  const senesteKladde = Object.values(traad.svarKladder || {}).sort((a, b) => Number(b?.opdateretMs || 0) - Number(a?.opdateretMs || 0))[0] || null;
+  if (Number(senesteKladde?.revision || 0) !== basisKladdeRevision || kommunikationsTekstfingeraftryk(senesteKladde?.tekst || "") !== basisKladdeFingeraftryk) throw new HttpsError("failed-precondition", "Svarudkastet er ændret. Gem eller genindlæs før ny fejlsøgning.");
+  const viden = (await getDatabase().ref("udbyder/vidensbase/poster").once("value")).val() || {};
+  const forslag = bygLokaltSupportAiForslag(traad, viden, instruktion);
+  const profil = (await getDatabase().ref(`profiler/${ejerUid}`).once("value")).val() || {};
+  const aktorNavn = tekst(profil.navn || req.auth?.token?.name || req.auth?.token?.email, 160) || "Ejer";
+  const operationNoegle = sha256(`${ejerUid}|support|${operationId}`).slice(0, 32); const nu = Date.now();
+  const arbejdsrumRef = traadRef.child("aiArbejdsrum"); const foer = (await arbejdsrumRef.once("value")).val() || {}; let konflikt = false; let gentaget = false;
+  const start = verificeretTransaktionsstart(foer);
+  const resultat = await arbejdsrumRef.transaction((lokal) => {
+    const aktuel = start(lokal) || {};
+    if (aktuel.operationer?.[operationNoegle]) { gentaget = true; return aktuel; }
+    if (Number(aktuel.revision || 0) !== forventetRevision) { konflikt = true; return; }
+    return { ...aktuel, revision: forventetRevision + 1, chat: { ...(aktuel.chat || {}),
+      [`e_${operationNoegle}`]: { id: `e_${operationNoegle}`, udvekslingId: operationNoegle, rolle: "ejer", tekst: instruktion, aktorUid: ejerUid, aktorNavn, oprettetMs: nu, intern: true },
+      [`a_${operationNoegle}`]: { id: `a_${operationNoegle}`, udvekslingId: operationNoegle, rolle: "ai", tekst: forslag.aiSvar, aktorUid: "lokal_support_adapter", aktorNavn: "Lokal Support-AI", oprettetMs: nu + 1, intern: true, kilder: forslag.kilder },
+    }, aktivtForslag: { tekst: forslag.kundesvar, basisAktivitetMs, basisKladdeRevision, basisKladdeFingeraftryk, oprettetMs: nu + 1, oprettetAf: ejerUid, provider: "lokal_support_testadapter", kilder: forslag.kilder, mangler: forslag.mangler, harKundegodkendtLoesning: forslag.harKundegodkendtLoesning },
+    operationer: { ...(aktuel.operationer || {}), [operationNoegle]: { oprettetMs: nu, aktorUid: ejerUid, art: "support_ai" } }, opdateretMs: nu, opdateretAf: ejerUid };
+  });
+  if (!resultat.committed || konflikt) throw new HttpsError("aborted", "Support-AI-chatten blev ændret samtidigt. Genindlæs sagen.");
+  if (!gentaget) await skrivEjerAudit({ uid: ejerUid, handling: "support.ai.forslag.gem", objekt: "supportsag", objektId: traad.support?.nummer || traadId });
+  return { ok: true, revision: Number(resultat.snapshot.val()?.revision || forventetRevision + 1), gentaget, harKundegodkendtLoesning: forslag.harKundegodkendtLoesning, antalKilder: forslag.kilder.length };
+});
+
 export const kommunikationssagsoplysninggem = onCall({ region: REGION }, async (req) => {
   const ejerUid = await kraevUdbyder(req); const d = req.data || {};
   const traadId = kraevCrmId(d.traadId, "Sags-id"); const vaerdi = tekst(d.vaerdi, 4_000);
@@ -11561,8 +11642,13 @@ export const videnspostgem = onCall({ region: REGION }, async (req) => {
   const forventet = kraevForventetRevision(d.forventetRevision);
   if (Number(foer?.revision || 0) !== forventet) throw new HttpsError("aborted", "Vidensposten blev ændret samtidigt.");
   const version = Number(foer?.aktuelVersion || 0) + 1; const nu = Date.now();
-  const snapshot = { titel, indhold, kilde, leveringsstatus, godkendt: d.godkendt === true, version, oprettetMs: nu, oprettetAf: ejerUid };
-  await ref.set({ id, titel, indhold, kilde, leveringsstatus, godkendt: snapshot.godkendt, aktuelVersion: version, revision: forventet + 1, oprettetMs: foer?.oprettetMs || nu, opdateretMs: nu, opdateretAf: ejerUid, versioner: { ...(foer?.versioner || {}), [version]: snapshot } });
+  const vidensstatus = ["godkendt", "kladde", "foraeldet"].includes(d.vidensstatus) ? d.vidensstatus : d.godkendt === true ? "godkendt" : "kladde";
+  const publikum = ["intern", "kunde_godkendt", "sag"].includes(d.publikum) ? d.publikum : "intern";
+  const metadata = { modul: tekst(d.modul, 80), relevanteVersioner: tekst(d.relevanteVersioner, 200), vidensstatus, publikum,
+    noegleord: Array.isArray(d.noegleord) ? d.noegleord.map((ord) => tekst(ord, 80).toLowerCase()).filter(Boolean).slice(0, 30) : [],
+    gennemgaaetAfNavn: d.godkendt === true ? tekst(d.gennemgaaetAfNavn, 160) || "Godkendt ejer" : "", gennemgaaetMs: d.godkendt === true ? nu : 0 };
+  const snapshot = { titel, indhold, kilde, leveringsstatus, godkendt: d.godkendt === true, ...metadata, version, oprettetMs: nu, oprettetAf: ejerUid };
+  await ref.set({ id, titel, indhold, kilde, leveringsstatus, godkendt: snapshot.godkendt, ...metadata, aktuelVersion: version, revision: forventet + 1, oprettetMs: foer?.oprettetMs || nu, opdateretMs: nu, opdateretAf: ejerUid, versioner: { ...(foer?.versioner || {}), [version]: snapshot } });
   await skrivEjerAudit({ uid: ejerUid, handling: "salg.viden.gem", objekt: "videnspost", objektId: id });
   return { ok: true, id, version, revision: forventet + 1 };
 });

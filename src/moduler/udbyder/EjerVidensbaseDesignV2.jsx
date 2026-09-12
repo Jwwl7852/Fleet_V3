@@ -8,7 +8,9 @@ const STATUS = {
   under_udvikling: "Under udvikling",
   saerskilt_aftale: "Kræver særskilt aftale",
 };
-const tom = { titel: "", indhold: "", kilde: "", leveringsstatus: "tilgaengelig", godkendt: false };
+const tom = { titel: "", indhold: "", kilde: "", modul: "", relevanteVersioner: "", noegleordTekst: "", leveringsstatus: "tilgaengelig", vidensstatus: "kladde", publikum: "intern", godkendt: false };
+const VIDENSTATUS = { godkendt: "Godkendt", kladde: "Kladde", foraeldet: "Forældet" };
+const PUBLIKUM = { intern: "Intern produktviden", kunde_godkendt: "Godkendt til kundesvar", sag: "Kun denne sag" };
 
 export default function EjerVidensbaseDesignV2() {
   const [data, setData] = useState({});
@@ -33,7 +35,8 @@ export default function EjerVidensbaseDesignV2() {
   const rediger = (v) => {
     const nyForm = {
       titel: v?.titel || "", indhold: v?.indhold || "", kilde: v?.kilde || "",
-      leveringsstatus: v?.leveringsstatus || "tilgaengelig", godkendt: v?.godkendt === true,
+      modul: v?.modul || "", relevanteVersioner: v?.relevanteVersioner || "", noegleordTekst: (v?.noegleord || []).join(", "),
+      leveringsstatus: v?.leveringsstatus || "tilgaengelig", vidensstatus: v?.vidensstatus || (v?.godkendt ? "godkendt" : "kladde"), publikum: v?.publikum || "intern", godkendt: v?.godkendt === true,
       id: v?.id, revision: v?.revision || 0,
     };
     setForm(nyForm);
@@ -41,7 +44,7 @@ export default function EjerVidensbaseDesignV2() {
   };
 
   const gem = async () => {
-    const r = await gemVidenspost({ ...form, id: form.id, forventetRevision: form.revision });
+    const r = await gemVidenspost({ ...form, noegleord: form.noegleordTekst.split(",").map((ord) => ord.trim()).filter(Boolean), gennemgaaetAfNavn: "Godkendt ejer", id: form.id, forventetRevision: form.revision });
     setBesked(r.ok ? "Den nye, låste version er gemt." : r.besked);
     if (r.ok) { setForm(null); setUdgangspunkt(null); setValgt(null); await hent(); }
   };
@@ -62,7 +65,7 @@ export default function EjerVidensbaseDesignV2() {
     </section>
     <aside className="ejer-design-kort ejer-viden-detalje">{valgt ? <>
       <header><h2>{valgt.titel}</h2><span className={valgt.godkendt ? "ok" : "warn"}>{valgt.godkendt ? "Godkendt" : "Kladde"}</span></header>
-      <dl><dt>Type</dt><dd>{valgt.type || "Modul"}</dd><dt>Version</dt><dd>{valgt.aktuelVersion || 1}</dd><dt>Tilgængelighed</dt><dd>{STATUS[valgt.leveringsstatus] || valgt.leveringsstatus}</dd><dt>Godkendt til AI-brug</dt><dd>{valgt.godkendt ? "Ja" : "Nej"}</dd><dt>Kilde</dt><dd>{valgt.kilde}</dd><dt>Ansvarlig</dt><dd>{valgt.ansvarligNavn || "Dennis Christensen"}</dd></dl>
+      <dl><dt>Type</dt><dd>{valgt.type || "Modul"}</dd><dt>Version</dt><dd>{valgt.aktuelVersion || 1}</dd><dt>Modul</dt><dd>{valgt.modul || "Ikke afgrænset"}</dd><dt>Relevante versioner</dt><dd>{valgt.relevanteVersioner || "Ikke afgrænset"}</dd><dt>Vidensstatus</dt><dd>{VIDENSTATUS[valgt.vidensstatus || (valgt.godkendt ? "godkendt" : "kladde")]}</dd><dt>Målgruppe</dt><dd>{PUBLIKUM[valgt.publikum || "intern"]}</dd><dt>Tilgængelighed</dt><dd>{STATUS[valgt.leveringsstatus] || valgt.leveringsstatus}</dd><dt>Godkendt til AI-brug</dt><dd>{valgt.godkendt ? "Ja" : "Nej"}</dd><dt>Kilde</dt><dd>{valgt.kilde}</dd><dt>Gennemgået af</dt><dd>{valgt.gennemgaaetAfNavn || "Ikke registreret"}</dd></dl>
       <hr/><h3>Godkendt tekst</h3><p className="ejer-videntekst">{valgt.indhold}</p>
       <p className="ejer-viden-advarsel"><b>Under udvikling må ikke beskrives som leveringsklart</b><span>Funktioner med denne status må ikke beskrives som tilgængelige i tilbud eller kundedialog.</span></p>
       <p className="ejer-infoboks"><EjerIkon navn="info" size={19}/><span><b>Kundeoplysninger bliver på den enkelte sag</b><br/>Vidensbasen indeholder kun generelle beskrivelser og standardtekster.</span></p>
@@ -73,7 +76,12 @@ export default function EjerVidensbaseDesignV2() {
         <label>Titel<input value={form.titel} onChange={(e) => setForm({ ...form, titel: e.target.value })}/></label>
         <label>Godkendt tekst<textarea value={form.indhold} onChange={(e) => setForm({ ...form, indhold: e.target.value })}/></label>
         <label>Kilde<input value={form.kilde} onChange={(e) => setForm({ ...form, kilde: e.target.value })}/></label>
+        <label>Modul<input value={form.modul} onChange={(e) => setForm({ ...form, modul: e.target.value })} placeholder="Fx FLEET"/></label>
+        <label>Relevante versioner<input value={form.relevanteVersioner} onChange={(e) => setForm({ ...form, relevanteVersioner: e.target.value })} placeholder="Fx 3.0–3.4"/></label>
+        <label>Nøgleord<input value={form.noegleordTekst} onChange={(e) => setForm({ ...form, noegleordTekst: e.target.value })} placeholder="login, adgang, session"/></label>
         <label>Leveringsstatus<select value={form.leveringsstatus} onChange={(e) => setForm({ ...form, leveringsstatus: e.target.value })}>{Object.entries(STATUS).map(([v, titel]) => <option value={v} key={v}>{titel}</option>)}</select></label>
+        <label>Vidensstatus<select value={form.vidensstatus} onChange={(e) => setForm({ ...form, vidensstatus: e.target.value, godkendt: e.target.value === "godkendt" ? form.godkendt : false })}>{Object.entries(VIDENSTATUS).map(([v, titel]) => <option value={v} key={v}>{titel}</option>)}</select></label>
+        <label>Målgruppe<select value={form.publikum} onChange={(e) => setForm({ ...form, publikum: e.target.value })}>{Object.entries(PUBLIKUM).map(([v, titel]) => <option value={v} key={v}>{titel}</option>)}</select></label>
         <label className="check"><input type="checkbox" checked={form.godkendt} onChange={(e) => setForm({ ...form, godkendt: e.target.checked })}/>Godkend denne version til AI-brug</label>
         <div className="fc-formular-knapper"><button type="button" onClick={lukForm}>Annullér</button><button type="submit" className="ejer-primaer" disabled={!form.titel || !form.indhold || !form.kilde}>Gem version</button></div>
       </form>

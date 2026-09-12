@@ -35,11 +35,13 @@ test("V7.3 UI har flerlinjede bundkomposere og signaturvalg", () => {
 test("V7.3.1 mobilpanel og supportnoter følger samme aktive sag", () => {
   const jsx = readFileSync(new URL("../src/moduler/udbyder/EjerMailV71Samtale.jsx", import.meta.url), "utf8");
   const support = readFileSync(new URL("../src/moduler/udbyder/EjerSupportV2.jsx", import.meta.url), "utf8");
+  const samtale = readFileSync(new URL("../src/moduler/udbyder/EjerMailV71Samtale.jsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../src/fleet/ejer-mail-v7.css", import.meta.url), "utf8");
   assert.match(jsx, /aria-selected=\{mobilpanel === "svar"\}/);
   assert.match(css, /mobil-svar \.ejer-mail-traadfokus\{display:none!important\}/);
   assert.match(support, /Interne noter · nyeste først/);
-  assert.match(support, /data-note-id=\{n\.id\}/);
+  assert.match(support, /EjerMailV71Samtale/);
+  assert.match(samtale, /data-note-id=\{note\.id\}/);
 });
 
 test("V7.3.2 højrepanelet reserverer plads til begge AI-komposere", () => {

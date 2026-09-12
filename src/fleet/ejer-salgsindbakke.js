@@ -48,6 +48,7 @@ export const opretKommunikationskladde = (data) => kald("kommunikationsnykladdeo
 export const godkendKommunikationssvar = (data) => kald("kommunikationssvargodkend", data);
 export const afsendKommunikationssvar = (data) => kald("kommunikationssvarafsend", data);
 export const gemKommunikationsAiChat = (data) => kald("kommunikationsaichatgem", data);
+export const gemSupportAiForslag = (data) => kald("supportaiforslaggem", data);
 export const gemKommunikationsSagsoplysning = (data) => kald("kommunikationssagsoplysninggem", data);
 
 export const SALGSSTATUS = Object.freeze({
