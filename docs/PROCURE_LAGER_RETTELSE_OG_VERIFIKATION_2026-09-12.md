@@ -27,3 +27,5 @@ Rettelsesrunden er gennemført på `codex/procure-integrated-development`. Kode-
 | Fysisk telefon | Ikke afprøvet |
 
 Den fulde kravmatrix, kommandoer og artefaktliste findes i `PROCURE_LAGER_VERIFIKATION_2026-09-12.md`.
+
+Den samlede ZIP indeholder seks rapporter, 16 aktuelle screenshots, runtime-/CSV-beviser og tre PDF-eksempler.

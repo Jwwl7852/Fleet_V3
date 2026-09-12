@@ -17,7 +17,7 @@ Dato: 12. september 2026
 | Krav | Relevant kode/backend | Implementeret | Faktisk afprøvet på denne version | Status / rest |
 | --- | --- | --- | --- | --- |
 | Desktoplayout | `InventoryScreen.jsx`, `procure-v2.css` | PROCURE-indholdet bruger hele AppShell-arbejdsområdet. Min-bredder er begrænset til tabelwrappers med lokal rulning; siden får ikke global vandret rulning. | Autoriseret Edge-session ved 1440 px: indhold `left=250`, `right=1391`, `width=1141`; dokument `clientWidth=scrollWidth=1425`; filtre, handlinger og tabeller var tilgængelige. | Bestået. |
-| Mobillayout og overskrifter | `MobileReceiptScreen.jsx`, `procure-v2.css` | Ét trinbestemt H1: “Modtag varer”, “Optæl lager” eller “Lagerstatus opdateret”. Teksten “Servervalideret” og unødvendig teknisk succeshjælp er fjernet. | Syv screenshots ved 360/390 CSS-px. Alle målte dokumenter havde `clientWidth=scrollWidth`; samtlige kontroller lå inden for viewporten. Modtagelse, optælling og kvittering blev betjent i browseren. | Bestået. Ikke testet på fysisk telefon. |
+| Mobillayout og overskrifter | `MobileReceiptScreen.jsx`, `procure-v2.css` | Ét trinbestemt H1: “Modtag varer”, “Optæl lager” eller “Lagerstatus opdateret”. Teksten “Servervalideret” og unødvendig teknisk succeshjælp er fjernet. | Otte mobile screenshots ved 360/375/390 CSS-px. Alle målte dokumenter havde `clientWidth=scrollWidth`; samtlige kontroller lå inden for viewporten. Modtagelse, optælling og kvittering blev betjent i browseren. | Bestået. Ikke testet på fysisk telefon. |
 | Konkret kvittering | `MobileReceiptScreen.jsx` | Gemte serverresultater leverer vare/varenummer, lager/placering, ny beholdning, korrektion, medarbejder og servertid. Kvitteringen linker til lager og tilknyttet ordre. Uden optælling står der eksplicit, at beholdningen er beregnet og ikke fysisk optalt. | Autoriseret browserflow viste `Pakketape, klar 48 mm · EMB-1001`, `Hovedlager · A-01`, `Ny beholdning: 66 ruller`, `Optællingskorrektion: −2 ruller`, syntetisk medarbejder og servertid. | Bestået. Ingen værdier er hardcodet i komponenten. |
 | Historik og periode | `InventoryScreen.jsx`, `procure-inventory-domain.js` | Synlig dato/tid pr. bevægelse; fra-/til-dato; særskilte startbeholdning, modtagelser, forbrug, retur, korrektion og nettoflytning; enheder og ultimo; “Vis bevægelser” åbner grundlaget. Start før perioden går i primo, start i perioden vises separat. | UI viste valgt periode `2026-01-01 – 2026-12-31`. Runtimeafstemning: `58 + 0 + 10 − 1 − 1 − 2 + 0 = 64 ruller`. | Bestået. |
 | CSV | `inventoryCsv`, `InventoryScreen.jsx` | Downloaden indeholder valgt fra/til, alle afstemningskolonner, ultimo og enhed. | Faktisk browserdownload `procure-lager-2026-01-01-2026-12-31.csv` blev læst tilbage. Runtime-CSV SHA-256: `24af9cec5593af332355a7ea1ba9c62f2a0b276f7d9360a75072ac805a471d32`; indholdet stemmer med UI-perioden og 64-rullers afstemningen. | Bestået. |
@@ -47,6 +47,7 @@ Runtimebeviset ligger i `output/review/lager-runtime/PROCURE-lager-auth-function
 ## Browser- og artefaktbevis
 
 - `output/review/lager-browser/01-mobil-modtag-varer-390.png`
+- `output/review/lager-browser/01b-mobil-modtag-varer-375.png`
 - `output/review/lager-browser/02-mobil-modtag-varer-360.png`
 - `output/review/lager-browser/03-mobil-modtagelse-gemt-390.png`
 - `output/review/lager-browser/04-mobil-optael-lager-390.png`
@@ -58,7 +59,11 @@ Runtimebeviset ligger i `output/review/lager-runtime/PROCURE-lager-auth-function
 - `output/review/lager-browser/procure-lager-2026-01-01-2026-12-31.csv`
 - `output/review/lager-browser/PROCURE_LAGER_BROWSER_QA.json`
 - `output/review/lager-pdf-render-v4/PROCURE-bestilling-flere-sider-1.png` … `-4.png`
+- `output/review/lager-pdf-render-v4/PROCURE-bestilling-hurtigst-muligt.png`
+- `output/review/lager-pdf-render-v4/PROCURE-bestilling-senest-dato.png`
 - `output/pdf/PROCURE-bestilling-flere-sider.pdf`
+
+Den samlede pakke `output/PROCURE-lager-review-2026-09-12.zip` indeholder seks rapporter, 16 aktuelle screenshots, fire JSON/CSV-beviser og tre PDF-eksempler.
 
 ## Testresultater
 
@@ -70,7 +75,7 @@ Bestået på kodecommit `c36f8b6`:
 - `node --test --test-isolation=none test/procure-inventory.test.mjs test/procure-followup.test.mjs test/forbrugsvarer.test.mjs test/navadgang.test.mjs test/referencetjek.test.mjs` → 70/70.
 - `firebase emulators:exec --only database,storage --config firebase.rules-test.json --project demo-fleetcontrol-rules-test "node scripts/test-platform.mjs"` → 4.349/4.349, 0 fejl.
 - `firebase emulators:exec --only auth,database,storage,functions --config firebase.procure-suite.json --project demo-veyro-owner "node scripts/procure-inventory-auth-functions-qa.mjs output/review/lager-runtime"` → bestået.
-- `node scripts/procure-inventory-browser-qa.mjs` mod samme lokale miljø → bestået; ni screenshots og faktisk CSV oprettet.
+- `node scripts/procure-inventory-browser-qa.mjs` mod samme lokale miljø → bestået; ti screenshots og faktisk CSV oprettet.
 - `npm run procure:pdf-samples` samt Poppler-rendering af flerside-PDF → 4/4 sider visuelt kontrolleret.
 
 ## Statusgrænser

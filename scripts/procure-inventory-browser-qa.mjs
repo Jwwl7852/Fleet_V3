@@ -63,8 +63,11 @@ const screenshots = []; const checks = {};
 try {
   await login(mobile, "/indkoeb/mobil/modtag/lager-ordre-1");
   await mobile.waitFor("document.querySelector('.procure-mobile-receipt-line') && document.body.innerText.includes('BST-2026-00042')", "modtagelsesordre");
+  await mobile.waitFor("document.querySelector('.procure-mobile-receiving select')?.value", "serverhentet lagerplacering");
   assert.equal(await mobile.evaluate("document.querySelectorAll('h1').length"), 1);
   screenshots.push(await mobile.screenshot("01-mobil-modtag-varer-390.png", ".procure-mobile-receiving"));
+  await mobile.setViewport(375, 812); await sleep(150);
+  screenshots.push(await mobile.screenshot("01b-mobil-modtag-varer-375.png", ".procure-mobile-receiving"));
   await mobile.setViewport(360, 800); await sleep(150);
   screenshots.push(await mobile.screenshot("02-mobil-modtag-varer-360.png", ".procure-mobile-receiving"));
   await mobile.setViewport(390, 844);
