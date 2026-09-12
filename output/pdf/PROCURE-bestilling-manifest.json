@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-12T07:11:17.195Z",
+  "generatedAt": "2026-09-12T15:07:52.519Z",
   "samples": [
     {
       "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-hurtigst-muligt.pdf",
-      "bytes": 6727,
-      "sha256": "e3ffd058b2c2f69c14b65d19f6ba0c218a0695117ac3752b3574053ac79b7e45",
+      "bytes": 6861,
+      "sha256": "0dcf4e7e00bff1bfa1be209ee3e9ed30603b8d958038e8b18b0b99a7d2cea819",
       "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-asap",
       "delivery": "Hurtigst muligt",
       "lines": 2,
@@ -12,8 +12,8 @@
     },
     {
       "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-senest-dato.pdf",
-      "bytes": 6731,
-      "sha256": "e7f1c3fb3a98a286c353cba5282868c5f8019f3785468143a686f1201a4ed221",
+      "bytes": 6865,
+      "sha256": "123e1dfba553089fc7c0cf77dac2fdee2df5091c3afe852ea7b5ffa2a25a7e10",
       "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-deadline",
       "delivery": "Senest 30.09.2026",
       "lines": 2,
@@ -21,8 +21,8 @@
     },
     {
       "file": "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-procure-integrated\\output\\pdf\\PROCURE-bestilling-flere-sider.pdf",
-      "bytes": 42455,
-      "sha256": "db634ff74d61aa2d3bea30dcc618622d61bf4bff5e6cef32d4b6df661236624a",
+      "bytes": 42589,
+      "sha256": "0aee52434e8d91e7f771bc577845260899cd57c59811e4e85f031baca003baf3",
       "receiptUrl": "https://procure-preview.example.invalid/indkoeb/mobil/modtag/pdf-order-multipage",
       "delivery": "Senest 30.09.2026",
       "lines": 42,

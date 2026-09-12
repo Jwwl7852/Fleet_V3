@@ -4,19 +4,48 @@ Oprindelig rapport: 11. september 2026
 Aktuel skabelonstatus: 12. september 2026  
 Branch: `codex/procure-integrated-development`
 
-## Aktuel skabelon v4
+## Aktuel skabelon v5
 
 Nye leverandørvendte ordre-PDF'er har **ingen modtagelses-QR**. QR-beskrivelser og QR-hashes længere nede i denne rapport er historiske beviser for allerede arkiverede revisioner; de må ikke læses som beskrivelse af den aktuelle skabelon.
 
-Skabelon v4 bevarer layoutet uden priser, leveringsønsket, åbningstiden 7.00–15.00 og kravet om bestillingsnummer på følgeseddel/faktura. Flersideeksemplet viser nu `BESTILLING` og det konkrete bestillingsnummer på alle fortsættelsessider samt gentagne tabeloverskrifter.
+Skabelon v5 flytter hele `FAKTURERING`-blokken til første side direkte efter bestillingsnummer, bestillingsdato og leverandørkundenummer og før `BESTILLER`/`LEVERANDØR`. Den tidligere placering nederst er fjernet. Blokken henter fakturamail og eventuelle ekstra instruktioner fra den konkrete tenants `virksomhed`-stamdata og viser altid kravet `Angiv vores bestillingsnummer [nummer] på følgesedlen og fakturaen.`
 
-Aktuelt flersidebevis:
+Samme kanoniske faktureringsblok indgår i mailpreviewet og den serverbyggede tekst, der afleveres til testtransporten. Klientens redigerbare tekst kan ikke fjerne serverens faktureringskrav. Manglende fakturamail eller øvrige obligatoriske stamdata afvises før dokumentgeneration og afsendelse.
 
-- Fil: `output/pdf/PROCURE-bestilling-flere-sider.pdf`
-- 42 linjer, 4 sider
-- SHA-256: `db634ff74d61aa2d3bea30dcc618622d61bf4bff5e6cef32d4b6df661236624a`
-- Alle fire sider renderet og visuelt kontrolleret i `output/review/lager-pdf-render-v4/`
-- Målrettede tests kontrollerer fortsat ingen priser/QR, gentaget tabelhoved, bestillingsnummer og uændret intern prismodel.
+Skabelonen bevarer layoutet uden priser, leveringsønsket, åbningstiden 7.00–15.00 og bestillingsnummer på alle fortsættelsessider. Allerede arkiverede dokumentrevisioner returneres fortsat byteidentisk fra den revisionslåste arkivsti og regenereres ikke med v5.
+
+### Aktuelle prøvefiler
+
+| Fil | Omfang | SHA-256 |
+| --- | --- | --- |
+| `output/pdf/PROCURE-bestilling-hurtigst-muligt.pdf` | 1 side, Hurtigst muligt | `0dcf4e7e00bff1bfa1be209ee3e9ed30603b8d958038e8b18b0b99a7d2cea819` |
+| `output/pdf/PROCURE-bestilling-senest-dato.pdf` | 1 side, Senest 30.09.2026 | `123e1dfba553089fc7c0cf77dac2fdee2df5091c3afe852ea7b5ffa2a25a7e10` |
+| `output/pdf/PROCURE-bestilling-flere-sider.pdf` | 42 lange varelinjer, 4 sider | `0aee52434e8d91e7f771bc577845260899cd57c59811e4e85f031baca003baf3` |
+
+Alle seks sider er renderet i `output/pdf/screenshots-v5/` og visuelt kontrolleret. Faktureringsblokken står på side 1 i begge korte varianter og flersidevarianten. Flersideeksemplet gentager tabeloverskrifter og `Bestillingsnr. BST-2026-00042` på side 2–4 uden overlap eller afskæring.
+
+### Faktisk afprøvning af v5
+
+- Autoriseret browser-QA med almindeligt Firebase-login mod lokale Auth-, Database-, Functions- og Storage-emulatorer bestod. Den sendeklare syntetiske ordre `BST-2026-00043` viste den tenantlagrede fakturamail og ekstra faktureringsinstruks i mailforslaget. Den revisionslåste PDF var klar til preview før screenshot.
+- Screenshot: `output/review/pdf-mail-v5/12-desktop-mailforslag-fakturering.png`.
+- Det samlede backendflow inspicerede den faktiske multipart-payload til den kontrollerede testtransport: præcis én PDF-vedhæftning, ingen priser i mailteksten, faktureringsoverskrift, fakturamail, bestillingsnummerkrav og den ekstra instruktion.
+- Vedhæftning og arkiv var byteidentiske; SHA-256 var `c6cdb21ec290452bf6a4519a6f6d6781027e048c6a89011709af17e752a244d2`. Transportadapteren blev kaldt én gang, og replay med samme idempotensnøgle sendte ikke igen.
+- Det interne ordrebeløb og det sammenhængende fakturamatch var uændret: 8.880,00 kr. i godkendt nettoforbrug, inklusive dokumenteret prisafvigelse og kreditnota på 144,00 kr.
+- Ingen rigtig leverandørmail blev sendt; alle modtagere brugte `.invalid`, og transportens HTTP-kald blev erstattet af en lokal payload-inspektion.
+
+Kørte aktuelle kommandoer:
+
+```powershell
+npm run procure:pdf-samples
+node --test test/bestilling.test.mjs test/procure-followup.test.mjs test/skive4d-ordremail.test.mjs test/functions-delt.test.mjs
+node functions/test/procure-callables.integration.mjs
+node scripts/procure-varelager-purchase-browser-qa.mjs output/review/pdf-mail-v5
+npm run lint -- --quiet
+npm run build
+npm run test:design
+```
+
+Resultat: 118/118 målrettede tests, 11/11 designtests, lint og produktionsbuild bestod. Backend- og browserflows afsluttede med `ok: true`.
 
 ## Resultat
 
